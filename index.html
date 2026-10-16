@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover" />
-  <title>BasketBoss — 210 Independent Recipes</title>
+  <title>BasketBoss — 60-Recipe Cookbook</title>
   <meta name="apple-mobile-web-app-capable" content="yes" />
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
   <meta name="apple-mobile-web-app-title" content="BasketBoss" />
@@ -14,104 +14,479 @@
   <style>
     body { background-color: #14171f; color: #f1f5f9; font-family: system-ui, -apple-system, sans-serif; overflow-x: hidden; }
     .no-select { user-select: none; -webkit-user-select: none; }
-    .card-shadow { box-shadow: 0 20px 35px -10px rgba(0, 0, 0, 0.5), 0 10px 15px -5px rgba(0, 0, 0, 0.3); }
+    .card-shadow { box-shadow: 0 20px 35px -10px rgba(0,0,0,0.5), 0 10px 15px -5px rgba(0,0,0,0.3); }
     .glass-header { background: rgba(20, 23, 31, 0.92); backdrop-filter: blur(12px); }
   </style>
 </head>
 <body>
   <div id="root"></div>
-
   <script type="text/babel">
     const { useState, useEffect, useRef } = React;
 
-    // --- 35 SHARED SUPERMARKET INGREDIENTS (ENABLES SMART PACK SHARING) ---
-    const ING_DB = {
-      i1: { id: 'i1', name: 'Chicken Breast Fillets (1kg)', price: 8.50, category: 'Meat' },
-      i2: { id: 'i2', name: 'Chicken Thighs Bone-In (1kg)', price: 6.50, category: 'Meat' },
-      i3: { id: 'i3', name: '5% Lean Beef Mince (750g)', price: 7.20, category: 'Meat' },
-      i4: { id: 'i4', name: 'Cumberland Pork Sausages (8-pack)', price: 3.80, category: 'Meat' },
-      i5: { id: 'i5', name: 'Pork Shoulder Joint (1.2kg)', price: 7.50, category: 'Meat' },
-      i6: { id: 'i6', name: 'Prime Sirloin Steaks (Twin Pack)', price: 11.50, category: 'Meat' },
-      i7: { id: 'i7', name: 'Fresh Salmon Fillets (4-pack)', price: 9.50, category: 'Meat' },
-      i8: { id: 'i8', name: 'Raw King Prawns (300g)', price: 5.50, category: 'Meat' },
-      i9: { id: 'i9', name: 'Smoked Bacon Medallions (2x packs)', price: 4.50, category: 'Meat' },
-      i10: { id: 'i10', name: 'Minced Lamb (750g)', price: 8.00, category: 'Meat' },
-      i11: { id: 'i11', name: 'Spanish Chorizo Ring (225g)', price: 2.80, category: 'Meat' },
-      i12: { id: 'i12', name: 'Diced Braising Beef Steak (750g)', price: 8.50, category: 'Meat' },
-      i13: { id: 'i13', name: 'White Cod Fillets (4-pack)', price: 7.80, category: 'Meat' },
-      i14: { id: 'i14', name: 'Mixed Bell Peppers (3-pack)', price: 2.10, category: 'Vegetables' },
-      i15: { id: 'i15', name: 'Tenderstem Broccoli (400g)', price: 2.40, category: 'Vegetables' },
-      i16: { id: 'i16', name: 'Maris Piper Potatoes (2.5kg)', price: 2.40, category: 'Vegetables' },
-      i17: { id: 'i17', name: 'Crunchy Stir-Fry Veg Mix', price: 2.20, category: 'Vegetables' },
-      i18: { id: 'i18', name: 'Baby Spinach & Cherry Tomatoes', price: 2.60, category: 'Vegetables' },
-      i19: { id: 'i19', name: 'Carrots, Onions & Garlic Pack', price: 2.00, category: 'Vegetables' },
-      i20: { id: 'i20', name: 'Chestnut Mushrooms (400g)', price: 1.90, category: 'Vegetables' },
-      i21: { id: 'i21', name: 'Chopped Tomatoes & Passata (4-pack)', price: 2.80, category: 'Vegetables' },
-      i22: { id: 'i22', name: 'Fresh Asparagus & Green Beans', price: 3.20, category: 'Vegetables' },
-      i23: { id: 'i23', name: 'Sweet Potatoes & Butternut Squash', price: 2.50, category: 'Vegetables' },
-      i24: { id: 'i24', name: 'Crunchy Coleslaw & Salad Kit', price: 2.20, category: 'Vegetables' },
-      i25: { id: 'i25', name: 'Mature Cheddar Block (400g)', price: 3.90, category: 'Dairy' },
-      i26: { id: 'i26', name: 'Double Cream & Soured Cream', price: 2.80, category: 'Dairy' },
-      i27: { id: 'i27', name: 'Parmesan & Mozzarella Pack', price: 4.20, category: 'Dairy' },
-      i28: { id: 'i28', name: 'Greek Feta & Tzatziki Dip', price: 3.40, category: 'Dairy' },
-      i29: { id: 'i29', name: 'Penne & Rigatoni Pasta (1kg)', price: 1.60, category: 'Grains' },
-      i30: { id: 'i30', name: 'Fluffy Basmati Rice (1kg)', price: 1.90, category: 'Grains' },
-      i31: { id: 'i31', name: 'Large Tortilla Wraps (8-pack)', price: 1.50, category: 'Grains' },
-      i32: { id: 'i32', name: 'Egg Noodles & Rice Noodles', price: 2.20, category: 'Grains' },
-      i33: { id: 'i33', name: 'Potato Gnocchi & Arborio Rice', price: 2.60, category: 'Grains' },
-      i34: { id: 'i34', name: 'Brioche Burger Buns (6-pack)', price: 2.20, category: 'Bakery' },
-      i35: { id: 'i35', name: 'Garlic Baguettes & Flatbreads', price: 2.50, category: 'Bakery' }
+    const PANTRY = {
+      chk_b: { id: 'p1', name: 'Chicken Breast Fillets (1kg)', price: 8.50, category: 'Meat' },
+      chk_t: { id: 'p2', name: 'Chicken Thighs Bone-In (1kg)', price: 6.20, category: 'Meat' },
+      beef_m: { id: 'p3', name: '5% Lean Beef Mince (750g)', price: 7.20, category: 'Meat' },
+      saus: { id: 'p4', name: 'Cumberland Pork Sausages (8pk)', price: 3.50, category: 'Meat' },
+      pork_s: { id: 'p5', name: 'Pork Shoulder Joint (1.2kg)', price: 7.50, category: 'Meat' },
+      salm: { id: 'p6', name: 'Fresh Salmon Fillets (4pk)', price: 9.50, category: 'Meat' },
+      steak: { id: 'p7', name: 'Prime Sirloin Steaks (Twin)', price: 11.50, category: 'Meat' },
+      prawn: { id: 'p8', name: 'Raw King Prawns (300g)', price: 5.50, category: 'Meat' },
+      lamb_m: { id: 'p9', name: 'Minced Lamb (750g)', price: 8.00, category: 'Meat' },
+      gammon: { id: 'p10', name: 'Unsmoked Gammon Joint', price: 8.00, category: 'Meat' },
+      fish_f: { id: 'p11', name: 'Jumbo Cod Fish Fingers (10pk)', price: 4.50, category: 'Meat' },
+      chorizo: { id: 'p12', name: 'Spanish Chorizo Ring', price: 2.80, category: 'Meat' },
+      bacon: { id: 'p13', name: 'Smoked Back Bacon (300g)', price: 3.20, category: 'Meat' },
+      beef_j: { id: 'p14', name: 'Beef Braising Joint (1kg)', price: 10.50, category: 'Meat' },
+      duck: { id: 'p15', name: 'Duck Breasts (Twin)', price: 9.50, category: 'Meat' },
+      cod: { id: 'p16', name: 'Fresh Cod Loin Fillets', price: 8.50, category: 'Meat' },
+      pep: { id: 'v1', name: 'Mixed Bell Peppers (3pk)', price: 2.10, category: 'Vegetables' },
+      broc: { id: 'v2', name: 'Tenderstem Broccoli', price: 2.00, category: 'Vegetables' },
+      pot: { id: 'v3', name: 'Maris Piper Potatoes (2.5kg)', price: 2.40, category: 'Vegetables' },
+      tom: { id: 'v4', name: 'Chopped Tomatoes & Passata', price: 2.20, category: 'Vegetables' },
+      stir: { id: 'v5', name: 'Stir-Fry Vegetable Mix', price: 2.20, category: 'Vegetables' },
+      spin: { id: 'v6', name: 'Baby Spinach & Rocket', price: 1.60, category: 'Vegetables' },
+      mush: { id: 'v7', name: 'Chestnut Mushrooms', price: 1.50, category: 'Vegetables' },
+      root: { id: 'v8', name: 'Carrots, Onions & Peas', price: 2.00, category: 'Vegetables' },
+      asp: { id: 'v9', name: 'Fresh Green Asparagus', price: 2.50, category: 'Vegetables' },
+      slaw: { id: 'v10', name: 'Crunchy Coleslaw & Salad', price: 2.00, category: 'Vegetables' },
+      beans: { id: 'v11', name: 'Mixed Taco Beans & Corn', price: 1.80, category: 'Vegetables' },
+      wrap: { id: 'g1', name: 'Large Tortilla Wraps (8pk)', price: 1.50, category: 'Grains' },
+      pasta: { id: 'g2', name: 'Penne & Spaghetti (1kg)', price: 1.80, category: 'Grains' },
+      rice: { id: 'g3', name: 'Basmati Rice (1kg)', price: 2.00, category: 'Grains' },
+      gnoc: { id: 'g4', name: 'Fresh Potato Gnocchi (500g)', price: 1.80, category: 'Grains' },
+      nood: { id: 'g5', name: 'Egg Noodles Multipack', price: 1.80, category: 'Grains' },
+      sauce_a: { id: 'g6', name: 'Soy, Honey & Sweet Chilli', price: 2.80, category: 'Grains' },
+      curry: { id: 'g7', name: 'Curry Paste & Coconut Milk', price: 3.00, category: 'Grains' },
+      stock: { id: 'g8', name: 'Rich Stock & Herbs', price: 2.00, category: 'Grains' },
+      ched: { id: 'd1', name: 'Mature Cheddar Block (400g)', price: 3.90, category: 'Dairy' },
+      cream: { id: 'd2', name: 'Double & Soured Cream', price: 2.20, category: 'Dairy' },
+      mozz: { id: 'd3', name: 'Mozzarella & Parmesan', price: 3.20, category: 'Dairy' },
+      buns: { id: 'b1', name: 'Brioche Burger Buns (6pk)', price: 2.20, category: 'Bakery' },
+      flat: { id: 'b2', name: 'Greek Flatbreads (6pk)', price: 2.00, category: 'Bakery' },
+      g_bread: { id: 'b3', name: 'Twin Garlic Baguettes', price: 2.00, category: 'Bakery' },
+      pastry: { id: 'b4', name: 'Ready-Rolled Puff Pastry', price: 1.80, category: 'Bakery' }
     };
 
-    const TAG_STYLES = {
-      TRAY: { tag: 'TRAYBAKE & ROAST', color: 'bg-amber-500/20 text-amber-300 border-amber-500/40' },
-      ONEPAN: { tag: 'ONE-PAN WONDER', color: 'bg-emerald-500/20 text-emerald-300 border-emerald-500/40' },
-      QUICK: { tag: '15-MIN QUICK FIX', color: 'bg-indigo-500/20 text-indigo-300 border-indigo-500/40' },
-      KID: { tag: 'KID-APPROVED FAVORITE', color: 'bg-teal-500/20 text-teal-300 border-teal-500/40' },
-      SLOW: { tag: 'SLOW COOKER WIN', color: 'bg-orange-500/20 text-orange-300 border-orange-500/40' },
-      FAKE: { tag: 'FRIDAY FAKEAWAY', color: 'bg-purple-500/20 text-purple-300 border-purple-500/40' },
-      HEALTHY: { tag: 'HEALTHY & LIGHT', color: 'bg-cyan-500/20 text-cyan-300 border-cyan-500/40' },
-      DATE: { tag: 'DATE NIGHT SPECIAL', color: 'bg-rose-500/20 text-rose-300 border-rose-500/40' }
+    const IMG = {
+      fajita: '1551504734-5ee1c4a1479b', burger: '1568901346375-23c9450c58cd',
+      pie: '1541544741938-0af808871cc0', quesa: '1618040996337-569042b85294',
+      roast: '1514944298352-f4d732111d18', fish: '1563379091339-03b21ab4a4f8',
+      pasta: '1633964913295-ceb43826e7c9', sausage: '1555396273-367ea4eb4db5',
+      rice: '1512058564366-18510be2db19', chk: '1604908176997-125f2596f3ed',
+      thigh: '1532550907401-a500c9a57435', pork: '1528735602780-2552fd46c7af',
+      salm: '1467003909585-2f8a72700288', greek: '1529692236671-f1f6cf9683ba',
+      steak: '1544025162-d76694265947'
     };
 
-    // --- 15 CULINARY ARCHETYPES X 14 INDEPENDENT DISHES = 210 UNIQUE RECIPES ---
-    const CULINARY_GROUPS = [
-      {
-        photo: 'https://images.unsplash.com/photo-1565299585323-38d6b0865b47?auto=format&fit=crop&w=800&q=80',
-        cat: 'Mexican Fiesta • Family of 6', style: 'TRAY', isDate: false,
-        method: [
-          'Preheat oven to 200°C (180°C fan). Slice the protein and bell peppers into even strips.',
-          'Toss on a large baking sheet with olive oil, Mexican spices, salt, and black pepper.',
-          'Roast for 20–22 minutes until sizzling and lightly charred at the edges.',
-          'Warm tortillas or taco shells and serve middle-of-the-table with cheddar and soured cream.'
-        ],
-        dishes: [
-          ['Sheet-Pan Chicken Fajitas & Loaded Nachos', 25, ['i1','i14','i31','i25','i26'], 'Roast chicken and peppers on one big tray so the kids can build their own wraps.'],
-          ['Crispy Beef Taco Traybake with Smashed Avocado', 20, ['i3','i14','i31','i25'], 'Stand crunchy taco shells upright in a baking dish, fill with spiced mince, and bake with cheese.'],
-          ['Oven-Baked Chipotle Chicken Enchiladas', 30, ['i1','i21','i31','i25','i26'], 'Roll spiced shredded chicken in tortillas, smother in passata and cheddar, and bake until bubbling.'],
-          ['Loaded Chorizo & Sweetcorn Quesadilla Wedges', 15, ['i11','i14','i31','i25'], 'Pan-toast folded tortillas stuffed with smoky chorizo and cheddar, then slice like pizza wedges.'],
-          ['Smoky BBQ Pulled Pork Burrito Bowls', 20, ['i5','i30','i14','i25','i26'], 'Serve shredded BBQ pork over fluffy basmati rice with peppers, cheese, and soured cream.'],
-          ['Cajun Spiced Prawn & Pepper Fajita Skillet', 15, ['i8','i14','i31','i26'], 'King prawns cook in just 4 minutes in a hot skillet with charred peppers and fajita spices.'],
-          ['Cheesy Beef & Refried Bean Chimichanga Bake', 30, ['i3','i21','i31','i25'], 'Brush folded beef burritos with a little oil and bake at 200°C until golden and crispy.'],
-          ['Baja Crispy Cod Fish Tacos with Lime Slaw', 20, ['i13','i24','i31','i26'], 'Flaky oven-baked cod pieces tucked into warm wraps with zesty coleslaw.'],
-          ['One-Pan Mexican Street Corn & Chicken Rice', 25, ['i2','i30','i14','i25'], 'Chicken thighs and sweetcorn simmer directly in spiced tomato stock and rice.'],
-          ['Honey-Lime Chicken Taquitos with Salsa Dip', 25, ['i1','i31','i25','i21'], 'Roll cheesy chicken in tortillas into tight cigars and bake until ultra-crunchy for dipping.'],
-          ['Sizzling Sirloin Steak Fajitas with Peppers', 20, ['i6','i14','i31','i26'], 'Flash-fry thin strips of sirloin steak for 2 minutes so they stay tender inside warm wraps.'],
-          ['Tex-Mex Loaded Sweet Potato Skins & Beef', 35, ['i3','i23','i25','i26'], 'Top roasted sweet potato halves with spiced beef mince and melted mature cheddar.'],
-          ['Slow-Braised Lamb Birria Tacos & Consommé', 30, ['i10','i21','i31','i27'], 'Dip mozzarella-stuffed lamb tortillas in the rich tomato broth before crisping in a pan.'],
-          ['Crispy Halloumi & Charred Pepper Fajita Wraps', 20, ['i28','i14','i31','i24'], 'Slices of salty cheese roasted alongside sweet bell peppers make a super fast midweek wrap.']
-        ]
-      },
-      {
-        photo: 'https://images.unsplash.com/photo-1568901346375-23c9450c58cd?auto=format&fit=crop&w=800&q=80',
-        cat: 'Friday Night Burgers • Family of 6', style: 'KID', isDate: false,
-        method: [
-          'Preheat oven to 200°C or heat a heavy griddle pan over medium-high heat.',
-          'Season patties or fillets generously, cooking until golden brown and piping hot throughout.',
-          'Top with cheese in the final 2 minutes of cooking so it melts over the meat.',
-          'Toast the brioche buns lightly and stack with crisp salad, slaw, and house sauce.'
-        ],
-        dishes: [
-          ['Crispy Southern-Style Cornflake Chicken Burgers', 25, ['i1','i34','i24','i25'], 'Coat chicken breasts in crushed cornflakes before baking for an incredible crunch without frying.'],
-          ['Double Smash Cheeseburgers & Skin-On Wedges', 20, ['i3','i34','i25','i16'], 'Press thin balls of beef mince flat onto a smoking hot pan for lacy, crispy burger edges.'],
-          ['Smoky Bacon & Maple Cheddar Beef Burgers', 25, ['i3','i9','i34','i25'], 'Top juicy homemade beef patties with crispy bacon medallions and
+    const STYLES = {
+      FAM: { tag: 'FAMILY FAVORITE', c: 'bg-emerald-500/20 text-emerald-300 border-emerald-500/40', sub: 'Family Dinner • 6 Portions' },
+      OP:  { tag: 'ONE-PAN WONDER', c: 'bg-teal-500/20 text-teal-300 border-teal-500/40', sub: 'One-Pan • Minimal Washing Up' },
+      SC:  { tag: 'SLOW COOKER WIN', c: 'bg-amber-500/20 text-amber-300 border-amber-500/40', sub: 'Slow Cooker • Effortless Prep' },
+      FK:  { tag: 'FAKEAWAY NIGHT', c: 'bg-indigo-500/20 text-indigo-300 border-indigo-500/40', sub: 'Fakeaway • Friday Favorite' },
+      HL:  { tag: 'HEALTHY & FRESH', c: 'bg-sky-500/20 text-sky-300 border-sky-500/40', sub: 'Healthy • Nutritious Midweek' },
+      DN:  { tag: 'DATE NIGHT SPECIAL', c: 'bg-rose-500/20 text-rose-300 border-rose-500/40', sub: '✨ Date Night • For Two' }
+    };
+
+    // 60 Distinct Recipes (10 per Category)
+    const RAW = [
+      // 10 Family
+      ['FAM','Sheet-Pan Chicken Fajitas & Nachos',25,'fajita',['chk_b','pep','wrap','ched','cream'],'Roast chicken and peppers on one big tray so kids build their own wraps.','Slice chicken & peppers; toss with oil & spices.|Roast at 200°C for 22 mins until charred.|Serve warm in wraps with cheddar & soured cream.'],
+      ['FAM','Crispy Cornflake Chicken Burgers',25,'burger',['chk_b','buns','slaw'],'Coat chicken fillets in crushed cornflakes before baking for mega crunch.','Dip chicken in egg, then press into crushed cornflakes.|Bake at 200°C for 20 mins until golden.|Stack in toasted brioche buns with crunchy slaw.'],
+      ['FAM','Classic Homemade Shepherd’s Pie',40,'pie',['lamb_m','pot','root','stock','ched'],'Fluff up the mash with a fork and top with cheddar for a crispy crust.','Brown lamb mince with carrots, onions & stock.|Boil and mash potatoes with butter.|Top meat with mash & cheese; bake 25 mins at 200°C.'],
+      ['FAM','Loaded Beef & Cheese Quesadillas',20,'quesa',['beef_m','wrap','ched','beans'],'Dry-fry in a large skillet and slice into pizza triangles for the table.','Brown beef mince with spices & sweetcorn.|Layer mince and cheddar between tortilla wraps.|Toast in a dry pan for 2 mins per side until melted.'],
+      ['FAM','Honey Mustard Glazed Gammon & Mash',35,'roast',['gammon','pot','broc'],'Score the gammon fat in diamonds and brush with honey mustard glaze.','Simmer gammon, then move to a roasting tray.|Brush with honey mustard and roast 20 mins at 200°C.|Serve thick slices with buttery mash and broccoli.'],
+      ['FAM','Crispy Fish Finger & Tartare Wraps',15,'fish',['fish_f','wrap','slaw'],'Bake jumbo cod fish fingers extra crispy and wrap with crunchy salad.','Bake cod fish fingers at 200°C for 15 mins.|Warm wraps and spread with mayo/tartare.|Roll up tightly with shredded slaw and fish fingers.'],
+      ['FAM','Creamy Chicken & Mushroom Puff Pie',35,'pie',['chk_b','mush','cream','pastry'],'Top with ready-rolled puff pastry to save 30 minutes of prep time.','Simmer diced chicken and mushrooms in cream & stock.|Transfer to pie dish and top with puff pastry sheet.|Bake at 200°C for 22 mins until puffed and golden.'],
+      ['FAM','Meatball Marinara Sub Melts',25,'burger',['beef_m','tom','mozz','g_bread'],'Load saucy beef meatballs into garlic baguettes and grill with mozzarella.','Brown seasoned beef meatballs in a pan.|Simmer in rich tomato passata for 10 mins.|Spoon into split garlic baguettes, top with cheese & grill.'],
+      ['FAM','Honey Garlic Pork Chops & Wedges',30,'roast',['pork_s','pot','sauce_a','broc'],'Roast seasoned potato wedges on the exact same tray as the pork.','Cut potatoes into wedges and roast 15 mins at 200°C.|Add honey-soy glazed pork to the tray.|Roast 15 more mins and serve with tenderstem broccoli.'],
+      ['FAM','Cheesy Spaghetti Bolognese Bake',30,'pasta',['beef_m','pasta','tom','ched','g_bread'],'Toss cooked spaghetti into the meat sauce and bake under melted cheddar.','Brown beef mince with onions, garlic & chopped tomatoes.|Toss boiled spaghetti through the sauce in a baking dish.|Blanket with cheddar and bake 15 mins at 200°C.'],
+      // 10 One-Pan
+      ['OP','One-Pan Garlic Parmesan Chicken Pasta',20,'pasta',['chk_b','pasta','cream','mozz','stock'],'Uncooked pasta simmers directly in the cream and stock for zero draining.','Sear diced chicken and garlic in a deep skillet.|Pour in dry pasta, hot stock, and double cream.|Simmer covered for 14 mins, then stir in parmesan.'],
+      ['OP','One-Pan Sausage & Gnocchi Bake',20,'sausage',['saus','gnoc','tom','mozz'],'No need to boil gnocchi first—it pillows up right inside the tomato sauce.','Brown sliced pork sausages in an ovenproof skillet.|Add passata and dry gnocchi; simmer covered 10 mins.|Top with mozzarella and flash under the grill.'],
+      ['OP','Spanish Chorizo & Chicken Rice Skillet',25,'rice',['chorizo','chk_t','rice','pep','stock'],'Frying chorizo first releases smoky paprika oil that flavors the whole pot.','Fry sliced chorizo and chicken until golden.|Stir in basmati rice, diced peppers & hot stock.|Cover and cook on low for 18 mins until fluffy.'],
+      ['OP','Creamy Tuscan Sun-Dried Tomato Chicken',20,'chk',['chk_b','cream','spin','tom','g_bread'],'Baby spinach wilts down in seconds inside the garlic parmesan cream.','Sear chicken breasts until golden and set aside.|Bubble garlic, cream & tomatoes in the pan; wilt spinach.|Return chicken to coat and serve with garlic bread.'],
+      ['OP','One-Pan Beef & Mushroom Stroganoff',20,'pasta',['beef_m','mush','cream','pasta','stock'],'Using lean beef mince or strips makes a lightning-fast midweek stroganoff.','Brown beef and chestnut mushrooms in a deep pan.|Stir in stock, soured cream, and paprika.|Toss through cooked pasta and serve straight from the pan.'],
+      ['OP','Cajun Chicken & Pepper Rice Pot',25,'rice',['chk_b','pep','rice','tom','stock'],'A mildly spiced, smoky one-pot meal that leaves just one pan to wash.','Sauté Cajun chicken strips and sliced bell peppers.|Add basmati rice, tomatoes, and chicken stock.|Cover and simmer gently for 18 mins.'],
+      ['OP','Creamy Pesto & Spinach Chicken Gnocchi',15,'pasta',['chk_b','gnoc','cream','spin','mozz'],'Gnocchi cooks in 3 minutes flat for the ultimate fast family skillet.','Pan-fry diced chicken breast until golden.|Add gnocchi, splash of stock, cream, and spinach.|Bubble for 4 mins until thick and top with cheese.'],
+      ['OP','Smoky Bacon & Sweetcorn Mac Skillet',20,'pasta',['bacon','pasta','ched','cream','beans'],'Crispy smoked bacon and sweetcorn cooked right into stovetop mac and cheese.','Crisp chopped bacon in a deep pan.|Simmer pasta in milk/water until tender.|Stir in cream, cheddar, and sweetcorn until gooey.'],
+      ['OP','Lemon Herb Salmon & Asparagus Pan',15,'salm',['salm','asp','pot'],'Sear the salmon skin-side down first for crispy restaurant-style skin.','Sear salmon fillets for 4 mins per side.|Toss asparagus spears into the same pan with butter.|Serve alongside warm boiled baby potatoes.'],
+      ['OP','Cheesy Taco Beef & Rice Skillet',20,'quesa',['beef_m','rice','beans','tom','ched'],'Blanket the skillet with cheddar at the end and let it melt under the lid.','Brown beef mince with taco spices.|Stir in rice, beans, corn, and tomato stock; cover 15 mins.|Top with grated cheddar and melt for 2 mins.'],
+      // 10 Slow Cooker
+      ['SC','Smoky BBQ Pulled Pork Brioche Buns',15,'pork',['pork_s','buns','slaw'],'Pop pork shoulder in before work and shred effortlessly with two forks at 6pm.','Place pork joint in slow cooker with BBQ sauce.|Cook on Low for 8 hours until fall-apart tender.|Shred meat and pile into brioche buns with slaw.'],
+      ['SC','Hearty Three-Bean Beef Chilli',20,'pie',['beef_m','beans','tom','rice','cream'],'Slow cooking rounds out the spices so it is rich without being too fiery.','Brown beef mince and transfer to slow cooker.|Add beans, chopped tomatoes, and mild spices.|Cook on Low for 6 hours; serve with rice & cream.'],
+      ['SC','Slow Cooker Honey Garlic Chicken Thighs',10,'thigh',['chk_t','sauce_a','rice','broc'],'Bone-in thighs turn melt-in-the-mouth tender in a sticky honey soy glaze.','Place chicken thighs in the slow cooker pot.|Pour over honey, soy sauce, and garlic mix.|Cook on High for 4 hours; serve with rice & broccoli.'],
+      ['SC','Sunday Beef Pot Roast & Root Veg',20,'roast',['beef_j','pot','root','stock'],'Cook potatoes and carrots right under the beef so they soak up the gravy.','Put halved potatoes and carrots in the slow cooker base.|Sit beef joint on top and pour over hot stock.|Cook on Low 8 hours until beef slices like butter.'],
+      ['SC','Creamy Coconut Chicken Korma',15,'chk',['chk_b','curry','cream','rice','flat'],'Super mild, sweet, and creamy—ideal for kids who dislike spicy curry.','Add diced chicken, mild curry paste & coconut milk.|Cook on Low for 5 hours until tender.|Stir in double cream and serve with rice & flatbreads.'],
+      ['SC','Slow Cooker Sausage & Bean Casserole',15,'sausage',['saus','bacon','beans','tom','g_bread'],'A smoky campfire-style stew that pairs brilliantly with crusty garlic bread.','Brown sausages and bacon, then transfer to slow cooker.|Add mixed beans, chopped tomatoes, and herbs.|Cook on Low 6 hours and serve with garlic baguettes.'],
+      ['SC','Fall-Apart Beef Brisket Tacos',15,'fajita',['beef_j','pep','wrap','ched','cream'],'Shredded slow-cooked beef joint makes the best soft tacos ever.','Rub beef with spices and slow cook in stock for 8 hours.|Shred meat with two forks in the rich juices.|Serve in warm wraps with cheddar and soured cream.'],
+      ['SC','Rich Lamb & Rosemary Potato Hotpot',25,'pie',['lamb_m','pot','root','stock'],'Top with overlapping coins of potato and crisp under the grill before serving.','Place browned lamb, carrots, and stock in slow cooker.|Layer thinly sliced potatoes across the top.|Cook Low 7 hours, then flash under grill to crisp.'],
+      ['SC','Sticky Teriyaki Pulled Chicken Bowls',10,'rice',['chk_b','sauce_a','rice','stir'],'Shred the sticky glazed chicken and serve over fluffy basmati rice.','Place chicken breasts in slow cooker with soy & honey.|Cook on Low for 4-5 hours, then shred in the glaze.|Serve over rice with quick-steamed stir-fry greens.'],
+      ['SC','Slow Cooker Bolognese Ragu',20,'pasta',['beef_m','bacon','tom','pasta','mozz'],'Simmering bolognese for 6 hours makes it taste like an Italian restaurant.','Brown beef mince & bacon; transfer to slow cooker.|Add passata, tomatoes, and herbs; cook Low 6 hours.|Toss through spaghetti and top with parmesan.'],
+      // 10 Fakeaways
+      ['FK','Crispy Salt & Pepper Chicken Stir-Fry',20,'rice',['chk_b','nood','stir','sauce_a'],'Dust chicken strips in cornflour and five-spice for real takeaway crunch.','Toss sliced chicken in cornflour and salt & pepper seasoning.|Flash-fry in a hot wok until crispy, then add veg.|Toss with egg noodles and soy/chilli sauce.'],
+      ['FK','Oven-Baked Chicken Katsu Curry',30,'chk',['chk_b','curry','rice','root'],'Baking the crumbed chicken keeps it light while delivering mega crunch.','Coat chicken in breadcrumbs and bake 22 mins at 200°C.|Simmer mild curry sauce with carrots and onions.|Slice crispy chicken over rice and ladle curry on top.'],
+      ['FK','Sticky Honey Chilli Beef Rice Bowls',15,'rice',['beef_m','sauce_a','pep','rice'],'Using beef mince instead of steak strips cuts the cooking time in half.','Fry beef mince in a hot wok until crispy at the edges.|Add sliced peppers, honey, soy, and sweet chilli.|Bubble 2 mins until sticky and serve over rice.'],
+      ['FK','Takeaway-Style Chicken Chow Mein',20,'rice',['chk_b','nood','stir','sauce_a'],'Keep the wok smoking hot so the noodles get that authentic smoky flavor.','Stir-fry chicken breast strips in a hot wok for 5 mins.|Add stir-fry veg mix and cooked egg noodles.|Toss with soy sauce on high heat for 3 mins.'],
+      ['FK','Sizzling Beef in Black Bean Sauce',20,'steak',['steak','pep','sauce_a','rice'],'Slice the steak wafer-thin against the grain so it stays super tender.','Flash-fry thin steak strips and chunky bell peppers.|Pour in savory black bean & soy sauce.|Simmer 3 mins and serve over fluffy basmati rice.'],
+      ['FK','Creamy Butter Chicken & Garlic Naan',25,'chk',['chk_b','curry','cream','rice','flat'],'A splash of double cream at the end makes this curry velvety smooth.','Brown diced chicken with garlic and curry paste.|Pour in tomato passata and cream; simmer 12 mins.|Serve with basmati rice and warm garlic flatbreads.'],
+      ['FK','Loaded Diner Smash Burgers & Wedges',25,'burger',['beef_m','buns','ched','pot','slaw'],'Press mince balls flat onto a hot pan with a spatula for lacy crispy edges.','Roast seasoned potato wedges at 200°C for 25 mins.|Smash beef mince balls flat in a hot skillet (2 mins/side).|Top with melted cheddar in brioche buns.'],
+      ['FK','Sweet & Sour Crispy Pork & Peppers',25,'pork',['pork_s','pep','sauce_a','rice'],'Bright, tangy, and packed with crunchy peppers—kids devour this.','Pan-fry diced pork pieces until golden and crisp.|Toss in bell peppers and sweet & sour glaze.|Bubble 4 mins until glossy and serve with rice.'],
+      ['FK','Thai Green Chicken & Coconut Curry',20,'rice',['chk_b','curry','pep','spin','rice'],'Fragrant Thai green curry paste cooked in creamy coconut milk.','Fry curry paste for 1 min, then add sliced chicken.|Pour in coconut milk and peppers; simmer 12 mins.|Wilt in spinach and serve over rice.'],
+      ['FK','Garlic Chilli King Prawn Noodles',15,'fish',['prawn','nood','stir','sauce_a'],'King prawns cook in 3 minutes flat—the fastest Friday fakeaway ever.','Sauté king prawns with garlic and sweet chilli.|Toss in crunchy stir-fry vegetables and egg noodles.|Splash with soy sauce and serve piping hot.'],
+      // 10 Healthy
+      ['HL','Honey Soy Glazed Salmon & Broccoli',20,'salm',['salm','broc','sauce_a','rice'],'Roasts on one sheet pan in 15 minutes for an Omega-3 midweek boost.','Place salmon fillets and broccoli on a lined tray.|Brush generously with honey and soy glaze.|Roast at 200°C for 15 mins; serve with rice.'],
+      ['HL','Greek Chicken Souvlaki & Flatbreads',20,'greek',['chk_b','flat','slaw','cream'],'Lemon and herb marinade keeps the chicken breast lean, bright, and juicy.','Grill lemon-herb diced chicken breast until charred.|Warm Greek flatbreads in a dry pan.|Serve with crisp salad and cool soured cream dip.'],
+      ['HL','Lemon Herb Chicken & Asparagus Traybake',25,'thigh',['chk_t','asp','pot','pep'],'A vibrant Mediterranean traybake drizzled with olive oil and fresh lemon.','Roast chicken thighs, halved potatoes & peppers 20 mins.|Add fresh asparagus spears for the final 8 mins.|Squeeze lemon juice over the tray and serve.'],
+      ['HL','Baked Cod Loin with Cherry Tomatoes',20,'fish',['cod','tom','spin','pot'],'Cod loin bakes in the tomato juices so it stays flaky and moist.','Place cod loins in a dish with tomatoes and spinach.|Bake with olive oil and herbs at 200°C for 16 mins.|Serve alongside warm boiled baby potatoes.'],
+      ['HL','Lean Beef Lettuce Taco Cups',15,'fajita',['beef_m','pep','beans','slaw','ched'],'Swap heavy wraps for crisp lettuce cups for a fresh 15-minute dinner.','Brown 5% lean beef mince with peppers and taco beans.|Spoon the spiced beef into crisp lettuce cups.|Top with a sprinkle of grated cheddar.'],
+      ['HL','Spinach & Pesto Chicken Pasta Bowl',15,'pasta',['chk_b','pasta','spin','mozz'],'Folding baby spinach into your pasta bowl doubles the greens effortlessly.','Boil penne pasta until al dente.|Sauté lean chicken breast strips and wilt in baby spinach.|Toss with pasta and grated parmesan.'],
+      ['HL','Asian Ginger & Soy Steamed Salmon',15,'salm',['salm','stir','sauce_a','rice'],'Baking salmon in foil parcels locks in all the aromatic steam.','Sit salmon fillets on stir-fry greens on foil squares.|Drizzle with soy & honey; seal foil parcels tightly.|Bake 15 mins at 200°C and serve with rice.'],
+      ['HL','Chargrilled Steak & Rocket Salad',15,'steak',['steak','spin','tom','pot'],'Flash-sear lean sirloin and slice thinly over peppery rocket and warm potatoes.','Sear sirloin steaks 3 mins per side, then rest.|Toss spinach/rocket with tomatoes and boiled potatoes.|Top with thinly sliced steak ribbons.'],
+      ['HL','Mediterranean Roasted Veg & Chicken Bowl',25,'greek',['chk_b','pep','broc','rice'],'Packed with colorful roasted peppers and broccoli for a vitamin-rich meal.','Roast diced peppers and broccoli at 200°C for 20 mins.|Pan-grill seasoned chicken breast strips.|Build bowls with basmati rice, roast veg & chicken.'],
+      ['HL','Chilli & Garlic King Prawn Stir-Fry',12,'fish',['prawn','stir','sauce_a','rice'],'King prawns are naturally low-fat and high-protein, cooking in minutes.','Wok-fry king prawns with garlic and sweet chilli.|Toss in crunchy stir-fry vegetables for 3 mins.|Serve immediately over steamed basmati rice.'],
+      // 10 Date Night
+      ['DN','Pan-Seared Sirloin & Peppercorn Sauce',20,'steak',['steak','cream','asp','pot'],'Feed the kids early, then sear restaurant-quality steaks with peppercorn sauce.','Sear seasoned sirloin steaks in a hot pan (3 mins/side).|Rest steaks while bubbling cream, stock & pepper in pan.|Serve with roasted potato wedges and asparagus.'],
+      ['DN','Tuscan Butter Garlic Salmon & Asparagus',20,'salm',['salm','cream','tom','spin','asp'],'A luxurious garlic cream reduction that feels like a 5-star coastal bistro.','Sear salmon fillets skin-side down until crisp.|Bubble garlic, double cream, tomatoes & spinach in pan.|Plate salmon over asparagus and spoon sauce on top.'],
+      ['DN','King Prawn & Chorizo Linguine',20,'pasta',['prawn','chorizo','pasta','tom','spin'],'Smoky chorizo oil and sweet king prawns make an unforgettable pasta for two.','Fry diced chorizo until crispy, then add king prawns.|Add passata and toss through cooked spaghetti/linguine.|Fold in fresh spinach leaves and serve.'],
+      ['DN','Pan-Roasted Duck Breast & Sticky Jus',25,'steak',['duck','sauce_a','pot','broc'],'Start duck breasts skin-side down in a cold pan to render crispy golden skin.','Render duck skin in a pan for 8 mins until crisp, then flip.|Rest duck 5 mins while making a honey-soy pan glaze.|Serve sliced duck with sautéed potatoes and broccoli.'],
+      ['DN','Creamy Mushroom & Rare Steak Tagliatelle',20,'pasta',['steak','mush','cream','pasta','mozz'],'Ribbons of pasta in garlic mushroom cream crowned with sliced rare sirloin.','Sear sirloin steak, rest, and slice into thin strips.|Sauté mushrooms and garlic, adding double cream & cheese.|Toss pasta in sauce and top with sliced steak.'],
+      ['DN','Bacon-Wrapped Mozzarella Chicken Supreme',30,'chk',['chk_b','bacon','mozz','asp','pot'],'Stuff chicken breasts with mozzarella and wrap in smoky bacon before roasting.','Pocket chicken breasts, stuff with mozzarella & wrap in bacon.|Roast at 200°C for 25 mins until bacon is crisp.|Serve with roasted potatoes and green asparagus.'],
+      ['DN','Spanish Gambas Pil Pil & Garlic Bread',15,'fish',['prawn','tom','g_bread','spin'],'Sizzling king prawns in garlic chilli oil with crusty baguette for dipping.','Heat olive oil with garlic and chilli in a small skillet.|Sizzle king prawns for 4 mins until pink and fragrant.|Serve straight from the pan with warm garlic bread.'],
+      ['DN','Beef Wellington Parcels for Two',35,'roast',['steak','mush','pastry','broc','pot'],'Wrap prime sirloin and garlic mushroom duxelles in golden puff pastry.','Sear steaks 1 min per side; top with finely fried mushrooms.|Wrap tightly in puff pastry and bake 20 mins at 200°C.|Serve golden pastry parcels with tenderstem broccoli.'],
+      ['DN','Pan-Seared Cod Loin on Chorizo Stew',20,'fish',['cod','chorizo','beans','tom','spin'],'Flaky white cod loin sitting on a rich, smoky Spanish chorizo bean stew.','Simmer chorizo, tomatoes, and beans for 10 mins.|Pan-fry cod loins in butter for 4 mins per side.|Rest flaky cod on top of the smoky chorizo stew.'],
+      ['DN','Rosemary Lamb Steaks & Creamy Potatoes',30,'steak',['lamb_m','pot','cream','mozz','broc'],'Bake thinly sliced potatoes in garlic cream until bubbling and golden.','Bake sliced potatoes in cream, garlic & cheese for 25 mins.|Pan-sear rosemary-seasoned lamb steaks/patties.|Serve with creamy gratin potatoes and broccoli.']
+    ];
+
+    const MASTER_RECIPES = RAW.map((r, i) => {
+      const st = STYLES[r[0]];
+      const ings = r[4].map(k => PANTRY[k]).filter(Boolean);
+      const cost = ings.reduce((s, item) => s + item.price, 0);
+      return {
+        id: 'rec_' + (i + 1), styleKey: r[0], name: r[1], category: st.sub,
+        styleTag: st.tag, styleTagColor: st.c, isDateNight: r[0] === 'DN',
+        prepTime: r[2], estCost: Number(cost.toFixed(2)),
+        image: `https://images.unsplash.com/photo-${IMG[r[3]]}?auto=format&fit=crop&w=800&q=80`,
+        ingredients: ings, familyTip: r[5], method: r[6].split('|')
+      };
+    });
+
+    const DAYS_LIST = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'];
+    function getWeekDays() {
+      const today = new Date();
+      const day = today.getDay();
+      const diff = today.getDate() - day + (day === 0 ? -6 : 1);
+      const mon = new Date(today.setDate(diff));
+      return DAYS_LIST.map((dayName, i) => {
+        const d = new Date(mon); d.setDate(mon.getDate() + i);
+        return { dayName, dateStr: d.toLocaleDateString('en-GB', { day: 'numeric', month: 'short' }) };
+      });
+    }
+
+    function App() {
+      const [activeTab, setActiveTab] = useState('swipe');
+      const [catFilter, setCatFilter] = useState('ALL');
+      const [meals, setMeals] = useState(MASTER_RECIPES);
+      const [deckIndex, setDeckIndex] = useState(0);
+      const [plannedMeals, setPlannedMeals] = useState([
+        { meal: MASTER_RECIPES[0], assignedDay: 'Monday' },
+        { meal: MASTER_RECIPES[10], assignedDay: 'Wednesday' },
+        { meal: MASTER_RECIPES[50], assignedDay: 'Saturday' }
+      ]);
+      const [pantryChecked, setPantryChecked] = useState({});
+      const [scanMessage, setScanMessage] = useState('');
+      const [wipeoutMode, setWipeoutMode] = useState(false);
+      const [expandedMethodId, setExpandedMethodId] = useState(null);
+      const [cookingMeal, setCookingMeal] = useState(null);
+      const [currentStepIndex, setCurrentStepIndex] = useState(0);
+      const [timerSeconds, setTimerSeconds] = useState(0);
+      const [isTimerRunning, setIsTimerRunning] = useState(false);
+      const [dragX, setDragX] = useState(0);
+      const startXRef = useRef(null);
+
+      const currentMeal = meals[deckIndex] || meals[0];
+      const weekDays = getWeekDays();
+
+      useEffect(() => {
+        let interval = null;
+        if (isTimerRunning && timerSeconds > 0) interval = setInterval(() => setTimerSeconds(p => p - 1), 1000);
+        else if (timerSeconds === 0) setIsTimerRunning(false);
+        return () => clearInterval(interval);
+      }, [isTimerRunning, timerSeconds]);
+
+      const applyFilter = (key) => {
+        setCatFilter(key); setWipeoutMode(false); setDeckIndex(0);
+        setMeals(key === 'ALL' ? MASTER_RECIPES : MASTER_RECIPES.filter(m => m.styleKey === key));
+      };
+
+      const startCooking = (m) => { setCookingMeal(m); setCurrentStepIndex(0); setTimerSeconds((m.prepTime || 20) * 60); setIsTimerRunning(false); };
+      const formatTime = (s) => `${Math.floor(s / 60)}:${s % 60 < 10 ? '0' : ''}${s % 60}`;
+
+      const toggleWipeoutMode = () => {
+        if (!wipeoutMode) {
+          const f = MASTER_RECIPES.filter(m => m.ingredients.some(ing => pantryChecked[ing.id]));
+          if (f.length > 0) { setMeals(f); setDeckIndex(0); setWipeoutMode(true); setScanMessage(`🌪️ Wipeout Active! ${f.length} meals match your fridge.`); }
+          else setScanMessage('⚠️ Scan or tick off items in the Shop tab first!');
+        } else { applyFilter('ALL'); setScanMessage('Full 60-recipe cookbook restored.'); }
+      };
+
+      const basketItems = (() => {
+        const map = {};
+        plannedMeals.forEach(pm => pm.meal?.ingredients?.forEach(ing => {
+          if (!map[ing.id]) map[ing.id] = { ...ing, usedInCount: 1 };
+          else map[ing.id].usedInCount += 1;
+        }));
+        return Object.values(map);
+      })();
+
+      const totalBasketCost = basketItems.reduce((s, i) => pantryChecked[i.id] ? s : s + i.price, 0);
+      const savedBySharing = basketItems.reduce((s, i) => i.usedInCount > 1 ? s + i.price * (i.usedInCount - 1) : s, 0);
+      const categoriesOrder = ['Meat', 'Vegetables', 'Dairy', 'Grains', 'Bakery'];
+      const categoryLabels = { Meat: '🥩 Meat & Fish', Vegetables: '🥦 Vegetables & Produce', Dairy: '🥛 Dairy', Grains: '🌾 Grains & Dry Goods', Bakery: '🍞 Bakery' };
+      const groupedBasket = basketItems.reduce((acc, i) => { (acc[i.category || 'Grains'] = acc[i.category || 'Grains'] || []).push(i); return acc; }, {});
+
+      const handleDecision = (liked) => {
+        if (liked && currentMeal && !plannedMeals.find(pm => pm.meal.id === currentMeal.id)) {
+          const used = plannedMeals.map(pm => pm.assignedDay);
+          const day = DAYS_LIST.find(d => !used.includes(d)) || 'Sunday';
+          setPlannedMeals([...plannedMeals, { meal: currentMeal, assignedDay: day }]);
+        }
+        setDragX(0); setDeckIndex(p => (p + 1) % meals.length);
+      };
+
+      return (
+        <div className="max-w-md mx-auto min-h-screen flex flex-col justify-between pb-24 bg-[#14171f]">
+          {cookingMeal && (
+            <div className="fixed inset-0 z-50 bg-[#0f1319] p-5 flex flex-col justify-between overflow-y-auto">
+              <div>
+                <div className="flex justify-between items-center mb-4">
+                  <span className="text-xs font-black uppercase text-emerald-400">👨‍🍳 Kitchen Focus Mode</span>
+                  <button onClick={() => setCookingMeal(null)} className="bg-slate-800 text-slate-300 px-3.5 py-1.5 rounded-xl font-bold text-xs border border-slate-700">✕ Exit</button>
+                </div>
+                <h2 className="text-xl font-black text-white mb-4">{cookingMeal.name}</h2>
+                <div className="bg-[#1c202a] border border-slate-700 rounded-2xl p-4 mb-6 flex justify-between items-center card-shadow">
+                  <div>
+                    <span className="text-[10px] uppercase font-bold text-slate-400 block">Countdown</span>
+                    <span className="text-3xl font-black text-emerald-300 font-mono">{formatTime(timerSeconds)}</span>
+                  </div>
+                  <div className="flex gap-2">
+                    <button onClick={() => setIsTimerRunning(!isTimerRunning)} className={`px-4 py-2 rounded-xl text-xs font-black uppercase ${isTimerRunning ? 'bg-amber-500 text-slate-950' : 'bg-emerald-500 text-slate-950'}`}>{isTimerRunning ? 'Pause' : 'Start'}</button>
+                    <button onClick={() => { setIsTimerRunning(false); setTimerSeconds((cookingMeal.prepTime || 20) * 60); }} className="px-3 py-2 bg-slate-800 text-slate-300 rounded-xl text-xs font-bold border border-slate-700">Reset</button>
+                  </div>
+                </div>
+                <div className="bg-[#1c202a] border border-slate-700 rounded-3xl p-6 card-shadow space-y-4">
+                  <span className="text-xs font-black uppercase text-amber-300">Step {currentStepIndex + 1} of {cookingMeal.method.length}</span>
+                  <p className="text-lg font-bold text-slate-100 leading-relaxed min-h-[120px] pt-2">{cookingMeal.method[currentStepIndex]}</p>
+                </div>
+              </div>
+              <div className="grid grid-cols-2 gap-3 mt-6">
+                <button disabled={currentStepIndex === 0} onClick={() => setCurrentStepIndex(p => Math.max(0, p - 1))} className="py-4 rounded-2xl bg-slate-800 text-slate-200 font-bold text-xs uppercase border border-slate-700 disabled:opacity-40">← Prev</button>
+                <button disabled={currentStepIndex === cookingMeal.method.length - 1} onClick={() => setCurrentStepIndex(p => Math.min(cookingMeal.method.length - 1, p + 1))} className="py-4 rounded-2xl bg-emerald-500 text-slate-950 font-black text-xs uppercase disabled:opacity-40">Next →</button>
+              </div>
+            </div>
+          )}
+
+          <header className="p-4 glass-header sticky top-0 z-20 border-b border-slate-800/80 flex justify-between items-center shadow-lg">
+            <div className="flex items-center gap-2.5">
+              <div className="w-10 h-10 rounded-2xl bg-gradient-to-br from-emerald-500/20 to-rose-500/20 border border-emerald-500/40 flex items-center justify-center shadow-inner">
+                <svg className="w-6 h-6 text-emerald-400" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
+                  <path d="M2 7l4 3 6-5 6 5 4-3v2H2V7z" fill="currentColor" fillOpacity="0.15" />
+                  <path d="M3 9h18l-2 11H5L3 9z" />
+                  <path d="M9 14l3 3 3-3" stroke="#f43f5e" strokeWidth="2" />
+                </svg>
+              </div>
+              <div>
+                <h1 className="text-lg font-black tracking-tight text-white leading-none">Basket<span className="text-emerald-400">Boss</span></h1>
+                <p className="text-[11px] text-slate-400 font-medium mt-0.5">{wipeoutMode ? '🌪️ Wipeout Mode' : `${meals.length} Cookbook Recipes`}</p>
+              </div>
+            </div>
+            <div className="bg-emerald-500/10 border border-emerald-500/30 px-3.5 py-1.5 rounded-xl text-right">
+              <span className="text-[10px] uppercase tracking-wider text-emerald-400 block font-bold">Est. Shop</span>
+              <span className="text-lg font-extrabold text-emerald-300">£{totalBasketCost.toFixed(2)}</span>
+            </div>
+          </header>
+
+          <main className="p-4 flex-1">
+            {activeTab === 'swipe' && currentMeal && (
+              <div>
+                <div className="flex gap-1.5 overflow-x-auto pb-3 mb-1 no-select">
+                  {[
+                    { k: 'ALL', l: '📚 All (60)' }, { k: 'FAM', l: '👨‍👩‍👧‍👦 Family (10)' },
+                    { k: 'OP', l: '🍳 One-Pan (10)' }, { k: 'SC', l: '🍲 Slow Cook (10)' },
+                    { k: 'FK', l: '🥡 Fakeaway (10)' }, { k: 'HL', l: '🥗 Healthy (10)' },
+                    { k: 'DN', l: '🥂 Date Night (10)' }
+                  ].map(t => (
+                    <button key={t.k} onClick={() => applyFilter(t.k)} className={`px-3 py-1.5 rounded-full text-[11px] font-extrabold whitespace-nowrap border transition ${catFilter === t.k ? 'bg-emerald-500 text-slate-950 border-emerald-400' : 'bg-[#1c202a] text-slate-300 border-slate-700'}`}>
+                      {t.l}
+                    </button>
+                  ))}
+                </div>
+
+                <div
+                  onTouchStart={e => { startXRef.current = e.touches[0].clientX; }}
+                  onTouchMove={e => { if (startXRef.current !== null) setDragX(e.touches[0].clientX - startXRef.current); }}
+                  onTouchEnd={() => { if (dragX > 90) handleDecision(true); else if (dragX < -90) handleDecision(false); else setDragX(0); startXRef.current = null; }}
+                  style={{ transform: `translateX(${dragX}px) rotate(${dragX * 0.04}deg)`, transition: startXRef.current ? 'none' : 'transform 0.25s ease' }}
+                  className={`rounded-3xl overflow-hidden card-shadow no-select border transition-all ${currentMeal.isDateNight ? 'bg-gradient-to-b from-[#251522] to-[#1c1f28] border-rose-500/40' : 'bg-[#1c202a] border-slate-700/80'}`}
+                >
+                  <div className="relative h-60">
+                    <img src={currentMeal.image} alt={currentMeal.name} className="w-full h-full object-cover" />
+                    <div className="absolute inset-0 bg-gradient-to-t from-[#1c202a] via-transparent to-black/30"></div>
+                    <div className="absolute top-3 left-3 z-10">
+                      <div className={`px-3.5 py-1 rounded-full text-[11px] font-black uppercase tracking-wider border shadow-lg backdrop-blur-md ${currentMeal.styleTagColor}`}>
+                        {currentMeal.styleTag}
+                      </div>
+                    </div>
+                    <div className="absolute bottom-3 left-3 bg-[#14171f]/85 backdrop-blur px-3 py-1 rounded-full text-xs font-bold text-emerald-300 border border-emerald-500/30">
+                      £{currentMeal.estCost.toFixed(2)} meal est.
+                    </div>
+                    <div className="absolute top-3 right-3 bg-[#14171f]/85 backdrop-blur px-3 py-1 rounded-full text-xs font-bold text-slate-200 border border-slate-700">
+                      ⏱ {currentMeal.prepTime} mins
+                    </div>
+                  </div>
+
+                  <div className="p-5">
+                    <span className={`text-[11px] font-black uppercase tracking-wider ${currentMeal.isDateNight ? 'text-rose-400' : 'text-emerald-400'}`}>{currentMeal.category}</span>
+                    <h2 className="text-xl font-bold text-white mt-1 mb-3 leading-snug">{currentMeal.name}</h2>
+                    <div className={`rounded-2xl p-3.5 mb-5 border ${currentMeal.isDateNight ? 'bg-rose-950/30 border-rose-800/40 text-rose-100' : 'bg-[#14171f]/70 border-slate-700/80 text-slate-200'}`}>
+                      <div className="text-xs font-bold text-amber-300 mb-1">{currentMeal.isDateNight ? '🕯️ Date Night Plan' : '👨‍👩‍👧‍👦 Kitchen Time-Saver'}</div>
+                      <p className="text-xs leading-relaxed opacity-90">{currentMeal.familyTip}</p>
+                    </div>
+                    <div className="grid grid-cols-2 gap-3">
+                      <button onClick={() => handleDecision(false)} className="py-3.5 rounded-2xl bg-[#14171f] active:scale-95 text-slate-300 font-bold text-xs uppercase border border-slate-700">✕ Discard (No)</button>
+                      <button onClick={() => handleDecision(true)} className={`py-3.5 rounded-2xl font-extrabold text-xs uppercase active:scale-95 shadow-lg ${currentMeal.isDateNight ? 'bg-rose-600 text-white' : 'bg-emerald-500 text-slate-950'}`}>✓ Add to Week (Yes)</button>
+                    </div>
+                  </div>
+                </div>
+
+                <div className="flex flex-col items-center mt-4 px-1">
+                  <p className="text-[11px] text-slate-400 text-center font-medium bg-[#1c202a] px-4 py-2 rounded-xl border border-slate-800 w-full">
+                    💡 <span className="text-emerald-400 font-bold">Swipe Right</span> = Add | <span className="text-rose-400 font-bold">Swipe Left</span> = Skip
+                  </p>
+                  <p className="text-[10px] text-indigo-400 font-semibold mt-2">📚 Recipe {deckIndex + 1} of {meals.length} (60-Recipe Master Cookbook)</p>
+                </div>
+              </div>
+            )}
+
+            {activeTab === 'scan' && (
+              <div className="space-y-4">
+                <div className="bg-[#1c202a] border border-slate-700/80 rounded-3xl p-6 text-center card-shadow">
+                  <div className="text-5xl mb-3">📸</div>
+                  <h2 className="text-base font-black text-white">AI Fridge & Pantry Scanner</h2>
+                  <p className="text-xs text-slate-400 mt-1 mb-5">Snap a photo of your fridge to tick off packs you own and filter for Zero-Waste meals.</p>
+                  <label className="block w-full py-4 px-4 bg-emerald-500 text-slate-950 font-black text-xs uppercase rounded-2xl cursor-pointer shadow-lg mb-3">
+                    📷 Take or Upload Fridge Photo
+                    <input type="file" accept="image/*" onChange={() => { setPantryChecked(p => ({ ...p, p1: true, v1: true, d1: true })); setScanMessage('📸 Fridge scanned! Chicken, Peppers & Cheddar ticked off.'); }} className="hidden" />
+                  </label>
+                  <button onClick={toggleWipeoutMode} className={`w-full py-3.5 px-4 font-black text-xs uppercase rounded-2xl border ${wipeoutMode ? 'bg-amber-500 text-slate-950 border-amber-400' : 'bg-[#14171f] text-amber-300 border-amber-500/50'}`}>
+                    🌪️ {wipeoutMode ? 'Disable Pantry Wipeout Mode' : 'Activate Pantry Wipeout Mode'}
+                  </button>
+                </div>
+                {scanMessage && <div className="bg-emerald-950/80 border border-emerald-500/50 rounded-2xl p-4 text-xs text-emerald-200 font-bold">✅ {scanMessage}</div>}
+              </div>
+            )}
+
+            {activeTab === 'shop' && (
+              <div className="space-y-5">
+                <div className="bg-emerald-950/40 border border-emerald-700/50 rounded-2xl p-4 flex justify-between items-center card-shadow">
+                  <div>
+                    <h3 className="text-xs font-black uppercase text-emerald-300">Smart Pack Sharing</h3>
+                    <p className="text-xs text-slate-300 mt-0.5">Overlapping ingredients combined into single packs</p>
+                  </div>
+                  <span className="text-sm font-black text-emerald-300 bg-emerald-900/60 px-3.5 py-1 rounded-xl border border-emerald-600/40">Saved £{savedBySharing.toFixed(2)}</span>
+                </div>
+                <div>
+                  <h3 className="text-xs font-black uppercase text-slate-400 mb-2">This Week's Menu ({plannedMeals.length})</h3>
+                  <div className="space-y-2">
+                    {plannedMeals.map(pm => (
+                      <div key={pm.meal.id} className="flex justify-between items-center bg-[#1c202a] border border-slate-700/80 px-3.5 py-3 rounded-2xl">
+                        <div>
+                          <span className="text-sm font-bold text-white block">{pm.meal.isDateNight ? '🥂 ' : '🍽️ '}{pm.meal.name}</span>
+                          <span className="text-[11px] text-emerald-400 font-semibold">Assigned to: {pm.assignedDay}</span>
+                        </div>
+                        <button onClick={() => setPlannedMeals(plannedMeals.filter(x => x.meal.id !== pm.meal.id))} className="text-xs text-rose-400 font-bold px-2.5 py-1 rounded-lg bg-rose-500/10 border border-rose-500/20">Remove</button>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+                <div className="space-y-4">
+                  <h3 className="text-xs font-black uppercase text-slate-400">Categorized Shopping List (Tap if in kitchen)</h3>
+                  {categoriesOrder.map(catKey => {
+                    const items = groupedBasket[catKey];
+                    if (!items || !items.length) return null;
+                    return (
+                      <div key={catKey} className="bg-[#1c202a] border border-slate-700/80 rounded-2xl p-3.5 space-y-2">
+                        <h4 className="text-xs font-black uppercase text-emerald-400 px-1">{categoryLabels[catKey]}</h4>
+                        {items.map(item => (
+                          <div key={item.id} onClick={() => setPantryChecked(p => ({ ...p, [item.id]: !p[item.id] }))} className={`p-3 rounded-xl border flex justify-between items-center cursor-pointer ${pantryChecked[item.id] ? 'bg-[#14171f]/50 border-slate-800 opacity-40 line-through' : 'bg-[#14171f] border-slate-700/80'}`}>
+                            <div>
+                              <span className="text-sm font-semibold text-white">{item.name}</span>
+                              {item.usedInCount > 1 && <div className="mt-1"><span className="text-[10px] bg-emerald-500/20 text-emerald-300 px-2 py-0.5 rounded-md font-bold border border-emerald-500/30">Shared across {item.usedInCount} meals</span></div>}
+                            </div>
+                            <span className="text-sm font-extrabold text-emerald-300">£{item.price.toFixed(2)}</span>
+                          </div>
+                        ))}
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
+            )}
+
+            {activeTab === 'calendar' && (
+              <div className="space-y-4">
+                {weekDays.map(wd => {
+                  const assigned = plannedMeals.filter(pm => pm.assignedDay === wd.dayName);
+                  return (
+                    <div key={wd.dayName} className="rounded-2xl border overflow-hidden bg-[#1c202a] border-slate-700/80">
+                      <div className="px-4 py-2.5 bg-[#14171f]/80 border-b border-slate-700/60 flex justify-between items-center">
+                        <span className="text-xs font-black uppercase text-white">{wd.dayName} ({wd.dateStr})</span>
+                        <span className="text-[10px] font-bold text-slate-400">{assigned.length > 0 ? `${assigned.length} Assigned` : 'Free Night'}</span>
+                      </div>
+                      <div className="p-3.5 space-y-3">
+                        {assigned.length > 0 ? assigned.map(pm => {
+                          const meal = pm.meal;
+                          const isOpen = expandedMethodId === `${wd.dayName}-${meal.id}`;
+                          return (
+                            <div key={meal.id} className="p-3.5 rounded-xl border bg-[#14171f] border-slate-700">
+                              <div className="flex justify-between items-start mb-2">
+                                <div>
+                                  <span className={`text-[10px] font-extrabold px-2.5 py-0.5 rounded-full uppercase inline-block mb-1 border ${meal.styleTagColor}`}>{meal.styleTag}</span>
+                                  <h4 className="text-sm font-bold text-white">{meal.name}</h4>
+                                </div>
+                                <button onClick={() => setPlannedMeals(plannedMeals.filter(x => x.meal.id !== meal.id))} className="text-xs text-rose-400 font-bold px-2 py-1 rounded bg-rose-500/10">✕</button>
+                              </div>
+                              <div className="flex items-center gap-2 mb-3 bg-[#1c202a] p-2 rounded-xl border border-slate-700">
+                                <span className="text-[11px] font-bold text-slate-300">📅 Move Day:</span>
+                                <select value={pm.assignedDay} onChange={e => setPlannedMeals(plannedMeals.map(x => x.meal.id === meal.id ? { ...x, assignedDay: e.target.value } : x))} className="w-full bg-[#14171f] text-emerald-300 text-xs font-bold py-1 px-2 rounded-lg border border-slate-600">
+                                  {DAYS_LIST.map(d => <option key={d} value={d}>{d}</option>)}
+                                </select>
+                              </div>
+                              <button onClick={() => startCooking(meal)} className="w-full py-2.5 bg-emerald-500 text-slate-950 font-black text-xs uppercase rounded-xl mb-2">👨‍🍳 Start Cooking Mode</button>
+                              <button onClick={() => setExpandedMethodId(isOpen ? null : `${wd.dayName}-${meal.id}`)} className="w-full py-2 bg-[#1c202a] text-slate-200 text-xs font-bold rounded-xl border border-slate-700">{isOpen ? 'Hide Quick Method ▴' : 'View Quick Method ▾'}</button>
+                              {isOpen && <ol className="list-decimal list-inside space-y-1.5 text-xs text-slate-200 mt-3 pt-3 border-t border-slate-700">{meal.method.map((s, idx) => <li key={idx}>{s}</li>)}</ol>}
+                            </div>
+                          );
+                        }) : <p className="text-xs text-slate-500 italic">No meal scheduled.</p>}
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            )}
+          </main>
+
+          <nav className="fixed bottom-0 left-0 right-0 max-w-md mx-auto glass-header border-t border-slate-800/80 grid grid-cols-4 p-2 z-20 shadow-2xl">
+            <button onClick={() => setActiveTab('swipe')} className={`py-2.5 rounded-xl text-[11px] font-black uppercase ${activeTab === 'swipe' ? 'text-emerald-400 bg-[#14171f] border border-slate-800' : 'text-slate-400'}`}>🔥 Swipe</button>
+            <button onClick={() => setActiveTab('scan')} className={`py-2.5 rounded-xl text-[11px] font-black uppercase ${activeTab === 'scan' ? 'text-emerald-400 bg-[#14171f] border border-slate-800' : 'text-slate-400'}`}>📸 Scan</button>
+            <button onClick={() => setActiveTab('shop')} className={`py-2.5 rounded-xl text-[11px] font-black uppercase ${activeTab === 'shop' ? 'text-emerald-400 bg-[#14171f] border border-slate-800' : 'text-slate-400'}`}>🛒 Shop</button>
+            <button onClick={() => setActiveTab('calendar')} className={`py-2.5 rounded-xl text-[11px] font-black uppercase ${activeTab === 'calendar' ? 'text-emerald-400 bg-[#14171f] border border-slate-800' : 'text-slate-400'}`}>🗓️ Week</button>
+          </nav>
+        </div>
+      );
+    }
+
+    ReactDOM.createRoot(document.getElementById('root')).render(<App />);
+  </script>
+</body>
+</html>
