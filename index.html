@@ -24,7 +24,6 @@
   <script type="text/babel">
     const { useState, useEffect, useRef } = React;
 
-    // --- HAND-CURATED MASTER LIBRARY WITH 100% ACCURATELY MATCHED PHOTOS ---
     const MASTER_RECIPES = [
       {
         id: 'm_1',
@@ -37,18 +36,13 @@
         estCost: 16.50,
         image: 'https://images.unsplash.com/photo-1551504734-5ee1c4a1479b?auto=format&fit=crop&w=800&q=80',
         familyTip: 'Roast chicken and peppers on one big tray. Put wraps, cheddar, and sour cream in the middle of the table.',
-        method: [
-          'Preheat oven to 200°C (180°C fan). Slice chicken breasts and bell peppers into thin strips.',
-          'Toss chicken and peppers on a large baking tray with olive oil, fajita seasoning, salt, and pepper.',
-          'Roast in the oven for 20-22 minutes until chicken is cooked through and peppers are charred at the edges.',
-          'Warm tortilla wraps in the microwave for 30 seconds. Serve family-style with grated cheddar and soured cream.'
-        ],
+        method: ['Preheat oven to 200°C.', 'Slice chicken and peppers.', 'Toss with oil and fajita seasoning.', 'Roast 20 mins and serve in warm wraps.'],
         ingredients: [
-          { id: 'mi_1', name: 'Chicken Breast Fillets (1kg pack)', price: 8.50, category: 'Meat' },
+          { id: 'mi_1', name: 'Chicken Breast Fillets (1kg)', price: 8.50, category: 'Meat' },
           { id: 'mi_2', name: 'Mixed Bell Peppers (3-pack)', price: 2.10, category: 'Vegetables' },
           { id: 'mi_3', name: 'Tortilla Wraps (8-pack)', price: 1.50, category: 'Grains' },
-          { id: 'mi_4', name: 'Soured Cream & Chive Dip', price: 1.80, category: 'Dairy' },
-          { id: 'mi_5', name: 'Mature Cheddar Block (400g)', price: 3.90, category: 'Dairy' }
+          { id: 'mi_4', name: 'Soured Cream Dip', price: 1.80, category: 'Dairy' },
+          { id: 'mi_5', name: 'Cheddar Block (400g)', price: 3.90, category: 'Dairy' }
         ]
       },
       {
@@ -62,11 +56,7 @@
         estCost: 14.80,
         image: 'https://images.unsplash.com/photo-1568901346375-23c9450c58cd?auto=format&fit=crop&w=800&q=80',
         familyTip: 'Coat chicken breasts in crushed cornflakes before baking for an incredible crunch without frying.',
-        method: [
-          'Dip chicken breasts in beaten egg, then press firmly into crushed cornflakes seasoned with paprika.',
-          'Bake on a wire rack over a baking tray at 200°C for 22 minutes until golden and crispy.',
-          'Toast brioche buns and assemble with lettuce, mayo, and the crispy chicken.'
-        ],
+        method: ['Dip chicken in egg.', 'Press into crushed cornflakes.', 'Bake at 200°C for 22 mins.', 'Serve in brioche buns.'],
         ingredients: [
           { id: 'mi_6', name: 'Chicken Breast Fillets (1kg)', price: 8.50, category: 'Meat' },
           { id: 'mi_7', name: 'Brioche Burger Buns (6-pack)', price: 2.20, category: 'Bakery' },
@@ -84,18 +74,13 @@
         prepTime: 20,
         estCost: 11.20,
         image: 'https://images.unsplash.com/photo-1633964913295-ceb43826e7c9?auto=format&fit=crop&w=800&q=80',
-        familyTip: 'Everything cooks in a single deep frying pan—pasta, chicken stock, and cream cook together.',
-        method: [
-          'Sauté diced chicken and minced garlic in olive oil in a large deep pan until golden.',
-          'Add dry penne pasta, chicken stock, and double cream straight into the pan and bring to a simmer.',
-          'Cover and simmer for 12-15 minutes until pasta absorbs liquid and is tender.',
-          'Stir in grated parmesan cheese until melted and creamy. Serve straight from the pan.'
-        ],
+        familyTip: 'Everything cooks in a single deep frying pan—pasta, stock, and cream cook together.',
+        method: ['Sauté chicken and garlic.', 'Add dry pasta, stock, and cream.', 'Simmer 15 mins.', 'Stir in parmesan.'],
         ingredients: [
-          { id: 'mi_10', name: 'Chicken Breast Fillets (500g)', price: 4.50, category: 'Meat' },
+          { id: 'mi_10', name: 'Chicken Breast (500g)', price: 4.50, category: 'Meat' },
           { id: 'mi_11', name: 'Penne Pasta (500g)', price: 1.10, category: 'Grains' },
           { id: 'mi_12', name: 'Double Cream (300ml)', price: 1.80, category: 'Dairy' },
-          { id: 'mi_13', name: 'Parmesan Grating Block', price: 3.80, category: 'Dairy' }
+          { id: 'mi_13', name: 'Parmesan Block', price: 3.80, category: 'Dairy' }
         ]
       },
       {
@@ -108,18 +93,13 @@
         prepTime: 20,
         estCost: 12.50,
         image: 'https://images.unsplash.com/photo-1555396273-367ea4eb4db5?auto=format&fit=crop&w=800&q=80',
-        familyTip: 'Soft potato gnocchi cooks directly in the tomato sauce alongside sliced pork sausages.',
-        method: [
-          'Brown sliced Cumberland sausages in a large frying pan until golden.',
-          'Add passata, Italian herbs, and uncooked potato gnocchi straight into the pan.',
-          'Simmer covered for 10 minutes until gnocchi is pillow-soft.',
-          'Top with mozzarella cheese and grill for 3 minutes until bubbly and golden.'
-        ],
+        familyTip: 'Soft potato gnocchi cooks directly in tomato sauce alongside sausages.',
+        method: ['Brown sausages.', 'Add passata and gnocchi.', 'Simmer 10 mins.', 'Top with mozzarella and grill.'],
         ingredients: [
-          { id: 'mi_14', name: 'Cumberland Pork Sausages (6-pack)', price: 3.50, category: 'Meat' },
-          { id: 'mi_15', name: 'Potato Gnocchi Pack (500g)', price: 1.80, category: 'Grains' },
-          { id: 'mi_16', name: 'Passata with Basil (500g)', price: 1.30, category: 'Vegetables' },
-          { id: 'mi_17', name: 'Mozzarella Grating Ball', price: 2.40, category: 'Dairy' },
+          { id: 'mi_14', name: 'Cumberland Sausages', price: 3.50, category: 'Meat' },
+          { id: 'mi_15', name: 'Potato Gnocchi (500g)', price: 1.80, category: 'Grains' },
+          { id: 'mi_16', name: 'Passata (500g)', price: 1.30, category: 'Vegetables' },
+          { id: 'mi_17', name: 'Mozzarella Ball', price: 2.40, category: 'Dairy' },
           { id: 'mi_18', name: 'Garlic Baguette', price: 3.50, category: 'Bakery' }
         ]
       },
@@ -134,15 +114,11 @@
         estCost: 14.50,
         image: 'https://images.unsplash.com/photo-1528735602780-2552fd46c7af?auto=format&fit=crop&w=800&q=80',
         familyTip: 'Put pork shoulder in the slow cooker in the morning; shred effortlessly by dinner time.',
-        method: [
-          'Place pork shoulder joint in the slow cooker with chopped onions and a bottle of smoky BBQ sauce.',
-          'Cook on low for 7-8 hours. Remove and shred easily using two forks.',
-          'Serve piled high in soft brioche buns with crunchy coleslaw.'
-        ],
+        method: ['Place pork in slow cooker with BBQ sauce.', 'Cook on low 7-8 hours.', 'Shred with forks and serve in brioche buns.'],
         ingredients: [
           { id: 'mi_19', name: 'Pork Shoulder Joint (1.2kg)', price: 7.50, category: 'Meat' },
-          { id: 'mi_20', name: 'Brioche Burger Buns (6-pack)', price: 2.20, category: 'Bakery' },
-          { id: 'mi_21', name: 'Coleslaw Kit & BBQ Sauce', price: 4.80, category: 'Vegetables' }
+          { id: 'mi_20', name: 'Brioche Buns', price: 2.20, category: 'Bakery' },
+          { id: 'mi_21', name: 'Coleslaw & BBQ Sauce', price: 4.80, category: 'Vegetables' }
         ]
       },
       {
@@ -155,16 +131,11 @@
         prepTime: 25,
         estCost: 14.30,
         image: 'https://images.unsplash.com/photo-1541544741938-0af808871cc0?auto=format&fit=crop&w=800&q=80',
-        familyTip: 'Batch cook this hearty chilli; leftovers taste even better the next day wrapped in burritos.',
-        method: [
-          'Brown beef mince in a large pot with diced onions and garlic.',
-          'Add cumin, smoked paprika, chilli powder, chopped tomatoes, and rinsed kidney beans.',
-          'Simmer on low heat for 25 minutes until rich and thick.',
-          'Serve over fluffy boiled long-grain rice with a dollop of sour cream.'
-        ],
+        familyTip: 'Batch cook this hearty chilli; leftovers taste even better wrapped in burritos.',
+        method: ['Brown beef mince with onions.', 'Add spices, tomatoes, and beans.', 'Simmer low 25 mins.'],
         ingredients: [
           { id: 'mi_22', name: '5% Lean Beef Mince (750g)', price: 7.20, category: 'Meat' },
-          { id: 'mi_23', name: 'Mixed Beans & Chopped Tomatoes', price: 3.50, category: 'Vegetables' },
+          { id: 'mi_23', name: 'Mixed Beans & Tomatoes', price: 3.50, category: 'Vegetables' },
           { id: 'mi_24', name: 'Long Grain Rice (1kg)', price: 3.60, category: 'Grains' }
         ]
       },
@@ -178,17 +149,13 @@
         prepTime: 20,
         estCost: 13.50,
         image: 'https://images.unsplash.com/photo-1512058564366-18510be2db19?auto=format&fit=crop&w=800&q=80',
-        familyTip: 'Toss chicken strips in Chinese five-spice and cornflour before wok-frying for a crispy crunch.',
-        method: [
-          'Slice chicken breast into strips and toss with five-spice, salt, and cornflour.',
-          'Flash fry in a hot wok with sesame oil until crispy and golden brown.',
-          'Add mixed stir-fry veg and egg noodles, tossing with soy sauce and sweet chilli.'
-        ],
+        familyTip: 'Toss chicken strips in Chinese five-spice and cornflour before wok-frying.',
+        method: ['Slice chicken and toss with five-spice and cornflour.', 'Flash fry in wok.', 'Add veg, noodles, and soy sauce.'],
         ingredients: [
-          { id: 'mi_25', name: 'Chicken Breast Fillets (1kg)', price: 8.50, category: 'Meat' },
-          { id: 'mi_26', name: 'Egg Noodle Multipack', price: 1.60, category: 'Grains' },
+          { id: 'mi_25', name: 'Chicken Breast (1kg)', price: 8.50, category: 'Meat' },
+          { id: 'mi_26', name: 'Egg Noodles', price: 1.60, category: 'Grains' },
           { id: 'mi_27', name: 'Stir-Fry Veg Mix', price: 2.20, category: 'Vegetables' },
-          { id: 'mi_28', name: 'Soy Sauce & Sweet Chilli Squeezy', price: 1.20, category: 'Grains' }
+          { id: 'mi_28', name: 'Soy & Sweet Chilli', price: 1.20, category: 'Grains' }
         ]
       },
       {
@@ -202,14 +169,10 @@
         estCost: 15.80,
         image: 'https://images.unsplash.com/photo-1467003909585-2f8a72700288?auto=format&fit=crop&w=800&q=80',
         familyTip: 'Glazed in soy sauce, honey, and garlic. Roasts on a single sheet pan in under 20 minutes.',
-        method: [
-          'Place salmon fillets and tenderstem broccoli on a baking tray.',
-          'Whisk soy sauce, honey, and minced garlic together, then brush generously over the salmon.',
-          'Bake at 200°C for 15-18 minutes until salmon flakes easily.'
-        ],
+        method: ['Place salmon and broccoli on tray.', 'Brush with soy sauce, honey, and garlic mix.', 'Bake at 200°C for 18 mins.'],
         ingredients: [
-          { id: 'mi_29', name: 'Fresh Salmon Fillets (4-pack)', price: 9.50, category: 'Meat' },
-          { id: 'mi_30', name: 'Tenderstem Broccoli (2 packs)', price: 3.60, category: 'Vegetables' },
+          { id: 'mi_29', name: 'Salmon Fillets (4-pack)', price: 9.50, category: 'Meat' },
+          { id: 'mi_30', name: 'Tenderstem Broccoli', price: 3.60, category: 'Vegetables' },
           { id: 'mi_31', name: 'Honey & Soy Sauce', price: 2.70, category: 'Grains' }
         ]
       },
@@ -224,12 +187,7 @@
         estCost: 18.50,
         image: 'https://images.unsplash.com/photo-1544025162-d76694265947?auto=format&fit=crop&w=800&q=80',
         familyTip: 'Enjoy this restaurant-quality dinner in peace once the kids are in bed.',
-        method: [
-          'Take sirloin steaks out of fridge 20 mins prior. Season with salt and pepper.',
-          'Roast cubed potatoes at 200°C for 30 minutes.',
-          'Sear steaks in a smoking hot skillet for 3 minutes each side for medium-rare. Rest for 5 minutes.',
-          'Warm creamy peppercorn sauce and serve alongside tenderstem broccoli.'
-        ],
+        method: ['Sear steaks in smoking hot skillet 3 mins each side.', 'Warm peppercorn sauce.', 'Serve with roasted potatoes and broccoli.'],
         ingredients: [
           { id: 'mi_32', name: 'Sirloin Steaks (Twin Pack)', price: 11.50, category: 'Meat' },
           { id: 'mi_33', name: 'Peppercorn Sauce Tub', price: 2.50, category: 'Dairy' },
@@ -247,12 +205,8 @@
         prepTime: 20,
         estCost: 17.80,
         image: 'https://images.unsplash.com/photo-1467003909585-2f8a72700288?auto=format&fit=crop&w=800&q=80',
-        familyTip: 'Pan-sear salmon and simmer in a sun-dried tomato and garlic cream reduction.',
-        method: [
-          'Season salmon fillets and sear skin-side down in olive oil for 4 minutes.',
-          'Flip salmon and add minced garlic, cherry tomatoes, and sun-dried tomatoes.',
-          'Pour in double cream and simmer gently for 5 minutes until thick. Serve over asparagus.'
-        ],
+        familyTip: 'Pan-sear salmon and simmer in sun-dried tomato cream.',
+        method: ['Sear salmon fillets.', 'Add garlic, tomatoes, and double cream.', 'Simmer 5 mins.'],
         ingredients: [
           { id: 'mi_36', name: 'Salmon Fillets (Twin)', price: 9.50, category: 'Meat' },
           { id: 'mi_37', name: 'Cream & Sun-Dried Tomatoes', price: 4.20, category: 'Dairy' },
