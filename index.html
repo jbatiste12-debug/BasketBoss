@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover" />
-  <title>BasketBoss — 500+ Recipe AI Meal Planner</title>
+  <title>BasketBoss — Modular Multi-File AI Meal Planner</title>
   <!-- Apple Mobile Web App Meta Tags -->
   <meta name="apple-mobile-web-app-capable" content="yes" />
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
@@ -15,6 +15,10 @@
   <script crossorigin src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
   <!-- Babel for in-browser JSX -->
   <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+  <!-- Load Modular Recipe Files -->
+  <script src="recipes-family.js"></script>
+  <script src="recipes-onepan.js"></script>
+  <script src="recipes-datenight.js"></script>
   <style>
     body { background-color: #14171f; color: #f1f5f9; font-family: system-ui, -apple-system, sans-serif; overflow-x: hidden; }
     .no-select { user-select: none; -webkit-user-select: none; }
@@ -27,110 +31,6 @@
 
   <script type="text/babel">
     const { useState, useEffect, useRef } = React;
-
-    // --- PROCEDURAL RECIPE GENERATOR (JAMIE OLIVER & BBC GOOD FOOD INSPIRED) ---
-    // Generates hundreds of realistic family favorites, one-pan wonders, and date nights on the fly.
-    const PROTEINS = [
-      { name: 'Chicken Breast Fillets (1kg pack)', price: 8.50, cat: 'Meat' },
-      { name: 'Chicken Thighs Bone-In (1kg)', price: 6.50, cat: 'Meat' },
-      { name: '5% Lean Beef Mince (750g)', price: 7.20, cat: 'Meat' },
-      { name: 'Cumberland Pork Sausages (6-pack)', price: 3.50, cat: 'Meat' },
-      { name: 'Fresh Salmon Fillets (Twin Pack)', price: 9.50, cat: 'Meat' },
-      { name: 'Smoked Bacon Medallions (2x packs)', price: 5.00, cat: 'Meat' },
-      { name: 'King Prawns (180g pack)', price: 4.80, cat: 'Meat' }
-    ];
-
-    const CARBS = [
-      { name: 'Penne or Rigatoni Pasta (1kg)', price: 1.60, cat: 'Grains' },
-      { name: 'Basmati Rice (1kg)', price: 1.80, cat: 'Grains' },
-      { name: 'Tortilla Wraps (8-pack)', price: 1.50, cat: 'Grains' },
-      { name: 'Maris Piper Potatoes (2.5kg bag)', price: 2.40, cat: 'Vegetables' },
-      { name: 'Potato Gnocchi Pack (500g)', price: 1.80, cat: 'Grains' },
-      { name: 'Brioche Burger Buns (6-pack)', price: 2.20, cat: 'Bakery' },
-      { name: 'Noodle Nest Multipack', price: 1.60, cat: 'Grains' }
-    ];
-
-    const VEG_OPTIONS = [
-      { name: 'Mixed Bell Peppers (3-pack)', price: 2.10, cat: 'Vegetables' },
-      { name: 'Tenderstem Broccoli (2 heads)', price: 1.80, cat: 'Vegetables' },
-      { name: 'Carrots & Courgettes Pack', price: 1.80, cat: 'Vegetables' },
-      { name: 'Baby Spinach & Cherry Tomatoes', price: 2.40, cat: 'Vegetables' },
-      { name: 'Asparagus Bunch', price: 2.50, cat: 'Vegetables' },
-      { name: 'Stir-Fry Veg Mix', price: 2.20, cat: 'Vegetables' }
-    ];
-
-    const EXTRAS = [
-      { name: 'Double Cream (300ml)', price: 1.80, cat: 'Dairy' },
-      { name: 'Mature Cheddar Block (400g)', price: 3.90, cat: 'Dairy' },
-      { name: 'Chopped Tomatoes (4-pack tins)', price: 2.60, cat: 'Vegetables' },
-      { name: 'Garlic Baguette (Twin Pack)', price: 2.00, cat: 'Bakery' },
-      { name: 'Soured Cream & Chive Dip', price: 1.80, cat: 'Dairy' }
-    ];
-
-    const STYLES = [
-      { tag: 'ONE-PAN WONDER', color: 'bg-emerald-500/20 text-emerald-300 border-emerald-500/40', desc: 'Minimal washing up; cooked entirely in one pan.' },
-      { tag: 'TRAYBAKE & ROAST', color: 'bg-amber-500/20 text-amber-300 border-amber-500/40', desc: 'Prep it, put it on a tray, and let the oven do the work.' },
-      { tag: 'KID-APPROVED FAVORITE', color: 'bg-teal-500/20 text-teal-300 border-teal-500/40', desc: 'A certified family winner that kids will ask for again.' },
-      { tag: '15-MIN QUICK FIX', color: 'bg-indigo-500/20 text-indigo-300 border-indigo-500/40', desc: 'Jamie Oliver style speed food for hectic weeknights.' }
-    ];
-
-    const IMAGES = [
-      'https://images.unsplash.com/photo-1565299585323-38d6b0865b47?auto=format&fit=crop&w=800&q=80',
-      'https://images.unsplash.com/photo-1621996346565-e3d5d6281298?auto=format&fit=crop&w=800&q=80',
-      'https://images.unsplash.com/photo-1541544741938-0af808871cc0?auto=format&fit=crop&w=800&q=80',
-      'https://images.unsplash.com/photo-1565299624946-b28f40a0ae38?auto=format&fit=crop&w=800&q=80',
-      'https://images.unsplash.com/photo-1512621776951-a57141f2eefd?auto=format&fit=crop&w=800&q=80',
-      'https://images.unsplash.com/photo-1555396273-367ea4eb4db5?auto=format&fit=crop&w=800&q=80',
-      'https://images.unsplash.com/photo-1504674900247-0877df9cc836?auto=format&fit=crop&w=800&q=80'
-    ];
-
-    function generateRandomRecipe(index) {
-      const p = PROTEINS[index % PROTEINS.length];
-      const c = CARBS[Math.floor(Math.random() * CARBS.length)];
-      const v = VEG_OPTIONS[Math.floor(Math.random() * VEG_OPTIONS.length)];
-      const e = EXTRAS[Math.floor(Math.random() * EXTRAS.length)];
-      const style = STYLES[Math.floor(Math.random() * STYLES.length)];
-      const isDate = index % 8 === 0; // Every 8th recipe is a date night special
-
-      const names = [
-        `Garlic Herb ${p.name.split(' ')[0]} with ${c.name.split(' ')[0]}`,
-        `Smoky One-Pan ${p.name.split(' ')[0]} & ${v.name.split(' ')[0]}`,
-        `BBC Good Food Style ${v.name.split(' ')[0]} & ${p.name.split(' ')[0]} Traybake`,
-        `Jamie's Quick Skillet ${c.name.split(' ')[0]} Bake`,
-        `Family Special ${p.name.split(' ')[0]} & Crispy ${c.name.split(' ')[0]}`
-      ];
-
-      const name = isDate ? `Gourmet Pan-Seared Steak & Truffle Butter` : names[index % names.length] + ` (#${index + 1})`;
-      const category = isDate ? '✨ Date Night Idea • For Two' : `Family Feast • 6 Portions`;
-      const prepTime = Math.floor(Math.random() * 15) + 15;
-      const estCost = Number((p.price + c.price + v.price + e.price).toFixed(2));
-      const image = IMAGES[index % IMAGES.length];
-
-      return {
-        id: 'rec_' + index + '_' + Date.now(),
-        name,
-        category,
-        styleTag: isDate ? 'DATE NIGHT SPECIAL' : style.tag,
-        styleTagColor: isDate ? 'bg-rose-500/20 text-rose-300 border-rose-500/40' : style.color,
-        isDateNight: isDate,
-        prepTime,
-        estCost,
-        image,
-        familyTip: isDate ? 'Pop a quick pizza in for the kids early, then enjoy this restaurant-quality dish in peace.' : `BBC Good Food Tip: ${style.desc} Kids will love the rich flavor profile.`,
-        method: [
-          `Prep all ingredients: chop ${v.name.toLowerCase()} and season ${p.name.toLowerCase()} with salt, pepper, and olive oil.`,
-          `Heat oil in a large skillet or roasting tray over medium-high heat. Sear the primary protein until golden.`,
-          `Toss in the vegetables and carbohydrate base, adding stock or cream for sauce reduction.`,
-          `Simmer or roast in the oven for ${prepTime} minutes until cooked through. Serve family-style.`
-        ],
-        ingredients: [
-          { id: 'ing_' + p.name, name: p.name, price: p.price, category: p.cat },
-          { id: 'ing_' + c.name, name: c.name, price: c.price, category: c.cat },
-          { id: 'ing_' + v.name, name: v.name, price: v.price, category: v.cat },
-          { id: 'ing_' + e.name, name: e.name, price: e.price, category: e.cat }
-        ]
-      };
-    }
 
     const DAYS_LIST = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'];
 
@@ -153,13 +53,19 @@
 
     function App() {
       const [activeTab, setActiveTab] = useState('swipe');
-      // Initialize with 50 pre-generated recipes instantly ready to swipe!
-      const [meals, setMeals] = useState(() => Array.from({ length: 50 }, (_, i) => generateRandomRecipe(i)));
+      
+      // Combine all modular recipe files together into the swipe deck
+      const [meals, setMeals] = useState(() => [
+        ...(window.FAMILY_RECIPES || []),
+        ...(window.ONEPAN_RECIPES || []),
+        ...(window.DATENIGHT_RECIPES || [])
+      ]);
+      
       const [deckIndex, setDeckIndex] = useState(0);
       const [plannedMeals, setPlannedMeals] = useState([
-        { meal: meals[0], assignedDay: 'Monday' },
-        { meal: meals[1], assignedDay: 'Tuesday' },
-        { meal: meals[2], assignedDay: 'Friday' }
+        { meal: meals[0] || {}, assignedDay: 'Monday' },
+        { meal: meals[3] || {}, assignedDay: 'Tuesday' },
+        { meal: meals[4] || {}, assignedDay: 'Friday' }
       ]);
       const [pantryChecked, setPantryChecked] = useState({});
       const [scanMessage, setScanMessage] = useState('');
@@ -170,17 +76,10 @@
       const currentMeal = meals[deckIndex];
       const weekDays = getWeekDays();
 
-      // Infinite background generator up to 500+ recipes
-      useEffect(() => {
-        if (deckIndex >= meals.length - 5 && meals.length < 500) {
-          const moreMeals = Array.from({ length: 20 }, (_, i) => generateRandomRecipe(meals.length + i));
-          setMeals(prev => [...prev, ...moreMeals]);
-        }
-      }, [deckIndex, meals.length]);
-
       const consolidatedBasket = () => {
         const map = {};
         plannedMeals.forEach(item => {
+          if (!item.meal || !item.meal.ingredients) return;
           item.meal.ingredients.forEach(ing => {
             if (!map[ing.id]) {
               map[ing.id] = { ...ing, usedInCount: 1, meals: [item.meal.name] };
@@ -228,7 +127,7 @@
           }
         }
         setDragX(0);
-        setDeckIndex(prev => prev + 1);
+        setDeckIndex(prev => (prev + 1) % meals.length);
       };
 
       const removePlannedMeal = (mealId) => {
@@ -284,7 +183,7 @@
                   Basket<span className="text-emerald-400">Boss</span>
                 </h1>
                 <p className="text-[11px] text-slate-400 font-medium mt-0.5">
-                  {meals.length}+ Recipes Loaded
+                  Multi-File Recipe Library Active
                 </p>
               </div>
             </div>
@@ -387,7 +286,7 @@
                       💡 <span className="text-emerald-400 font-bold">Swipe Right / Add to Week</span> = Yes | <span className="text-rose-400 font-bold">Swipe Left / Discard</span> = No
                     </p>
                     <p className="text-[10px] text-indigo-400 font-semibold mt-2">
-                      📚 Library: Recipe {deckIndex + 1} of {meals.length}+ (Jamie Oliver & BBC Good Food inspired)
+                      📚 Modular Library: Recipe {deckIndex + 1} of {meals.length}
                     </p>
                   </div>
                 </div>
@@ -546,6 +445,7 @@
                           {assignedMealsForDay.length > 0 ? (
                             assignedMealsForDay.map((pm) => {
                               const meal = pm.meal;
+                              if (!meal || !meal.name) return null;
                               const isDate = meal.isDateNight;
                               const isMethodOpen = expandedMethodId === `${wd.dayName}-${meal.id}`;
 
