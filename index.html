@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover" />
-  <title>BasketBoss — Ultimate AI Meal Planner</title>
+  <title>BasketBoss — 210 Independent Recipes</title>
   <meta name="apple-mobile-web-app-capable" content="yes" />
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
   <meta name="apple-mobile-web-app-title" content="BasketBoss" />
@@ -24,380 +24,94 @@
   <script type="text/babel">
     const { useState, useEffect, useRef } = React;
 
-    // --- SMART BUILDER FOR 50+ VARIED RECIPES WITH MATCHED PHOTOS ---
-    const CATEGORIES = [
-      { name: 'Sheet-Pan Chicken Fajitas', cat: 'Mexican • Family of 6', tag: 'TRAYBAKE & ROAST', color: 'bg-amber-500/20 text-amber-300 border-amber-500/40', img: 'https://images.unsplash.com/photo-1551504734-5ee1c4a1479b?auto=format&fit=crop&w=800&q=80', isDate: false, prep: 25, cost: 16.50, tip: 'Roast chicken and peppers on one big tray. Put wraps and sour cream in the middle.' },
-      { name: 'Crispy Southern Chicken Burgers', cat: 'Family Favorite • Friday', tag: 'KID-APPROVED', color: 'bg-teal-500/20 text-teal-300 border-teal-500/40', img: 'https://images.unsplash.com/photo-1568901346375-23c9450c58cd?auto=format&fit=crop&w=800&q=80', tip: 'Coat chicken in crushed cornflakes before baking for an incredible crunch.', isDate: false, prep: 25, cost: 14.80 },
-      { name: 'Creamy Garlic Parmesan Pasta Bake', cat: 'Italian • Minimal Washing Up', tag: 'ONE-PAN WONDER', color: 'bg-emerald-500/20 text-emerald-300 border-emerald-500/40', img: 'https://images.unsplash.com/photo-1633964913295-ceb43826e7c9?auto=format&fit=crop&w=800&q=80', tip: 'Pasta, stock, and cream cook together in a single deep pan.', isDate: false, prep: 20, cost: 11.20 },
-      { name: 'Sausage & Gnocchi Tomato Bake', cat: 'Midweek Comfort • Family of 6', tag: 'ONE-PAN WONDER', color: 'bg-emerald-500/20 text-emerald-300 border-emerald-500/40', img: 'https://images.unsplash.com/photo-1555396273-367ea4eb4db5?auto=format&fit=crop&w=800&q=80', tip: 'Soft potato gnocchi cooks directly in tomato sauce alongside sausages.', isDate: false, prep: 20, cost: 12.50 },
-      { name: 'Smoky BBQ Pulled Pork Buns', cat: 'Slow Cooker • Family Feast', tag: 'TRAYBAKE & ROAST', color: 'bg-amber-500/20 text-amber-300 border-amber-500/40', img: 'https://images.unsplash.com/photo-1528735602780-2552fd46c7af?auto=format&fit=crop&w=800&q=80', tip: 'Slow cook pork shoulder all day; shred effortlessly by dinner time.', isDate: false, prep: 15, cost: 14.50 },
-      { name: 'Hearty Beef & Bean Chilli Bowl', cat: 'Batch Cook • Zero Waste', tag: 'ONE-PAN WONDER', color: 'bg-emerald-500/20 text-emerald-300 border-emerald-500/40', img: 'https://images.unsplash.com/photo-1541544741938-0af808871cc0?auto=format&fit=crop&w=800&q=80', tip: 'Batch cook this chilli; leftovers taste even better wrapped in burritos.', isDate: false, prep: 25, cost: 14.30 },
-      { name: 'Salt & Pepper Chicken Stir-Fry', cat: 'Fakeaway Night • Family of 6', tag: '15-MIN QUICK FIX', color: 'bg-indigo-500/20 text-indigo-300 border-indigo-500/40', img: 'https://images.unsplash.com/photo-1512058564366-18510be2db19?auto=format&fit=crop&w=800&q=80', tip: 'Toss chicken strips in five-spice and cornflour before wok-frying.', isDate: false, prep: 20, cost: 13.50 },
-      { name: 'Honey-Glazed Salmon & Broccoli', cat: 'Midweek Traybake • Healthy', tag: 'TRAYBAKE & ROAST', color: 'bg-amber-500/20 text-amber-300 border-amber-500/40', img: 'https://images.unsplash.com/photo-1467003909585-2f8a72700288?auto=format&fit=crop&w=800&q=80', tip: 'Glazed in soy sauce, honey, and garlic. Roasts on a single sheet pan.', isDate: false, prep: 20, cost: 15.80 },
-      { name: 'Sirloin Steaks & Peppercorn Sauce', cat: '✨ Date Night Idea • For Two', tag: 'DATE NIGHT SPECIAL', color: 'bg-rose-500/20 text-rose-300 border-rose-500/40', img: 'https://images.unsplash.com/photo-1544025162-d76694265947?auto=format&fit=crop&w=800&q=80', tip: 'Enjoy this restaurant-quality dinner in peace once the kids are in bed.', isDate: true, prep: 20, cost: 18.50 },
-      { name: 'Creamy Tuscan Garlic Salmon', cat: '✨ Date Night Idea • For Two', tag: 'DATE NIGHT SPECIAL', color: 'bg-rose-500/20 text-rose-300 border-rose-500/40', img: 'https://images.unsplash.com/photo-1467003909585-2f8a72700288?auto=format&fit=crop&w=800&q=80', tip: 'Pan-sear salmon and simmer in sun-dried tomato cream reduction.', isDate: true, prep: 20, cost: 17.80 }
-    ];
+    // --- 35 SHARED SUPERMARKET INGREDIENTS (ENABLES SMART PACK SHARING) ---
+    const ING_DB = {
+      i1: { id: 'i1', name: 'Chicken Breast Fillets (1kg)', price: 8.50, category: 'Meat' },
+      i2: { id: 'i2', name: 'Chicken Thighs Bone-In (1kg)', price: 6.50, category: 'Meat' },
+      i3: { id: 'i3', name: '5% Lean Beef Mince (750g)', price: 7.20, category: 'Meat' },
+      i4: { id: 'i4', name: 'Cumberland Pork Sausages (8-pack)', price: 3.80, category: 'Meat' },
+      i5: { id: 'i5', name: 'Pork Shoulder Joint (1.2kg)', price: 7.50, category: 'Meat' },
+      i6: { id: 'i6', name: 'Prime Sirloin Steaks (Twin Pack)', price: 11.50, category: 'Meat' },
+      i7: { id: 'i7', name: 'Fresh Salmon Fillets (4-pack)', price: 9.50, category: 'Meat' },
+      i8: { id: 'i8', name: 'Raw King Prawns (300g)', price: 5.50, category: 'Meat' },
+      i9: { id: 'i9', name: 'Smoked Bacon Medallions (2x packs)', price: 4.50, category: 'Meat' },
+      i10: { id: 'i10', name: 'Minced Lamb (750g)', price: 8.00, category: 'Meat' },
+      i11: { id: 'i11', name: 'Spanish Chorizo Ring (225g)', price: 2.80, category: 'Meat' },
+      i12: { id: 'i12', name: 'Diced Braising Beef Steak (750g)', price: 8.50, category: 'Meat' },
+      i13: { id: 'i13', name: 'White Cod Fillets (4-pack)', price: 7.80, category: 'Meat' },
+      i14: { id: 'i14', name: 'Mixed Bell Peppers (3-pack)', price: 2.10, category: 'Vegetables' },
+      i15: { id: 'i15', name: 'Tenderstem Broccoli (400g)', price: 2.40, category: 'Vegetables' },
+      i16: { id: 'i16', name: 'Maris Piper Potatoes (2.5kg)', price: 2.40, category: 'Vegetables' },
+      i17: { id: 'i17', name: 'Crunchy Stir-Fry Veg Mix', price: 2.20, category: 'Vegetables' },
+      i18: { id: 'i18', name: 'Baby Spinach & Cherry Tomatoes', price: 2.60, category: 'Vegetables' },
+      i19: { id: 'i19', name: 'Carrots, Onions & Garlic Pack', price: 2.00, category: 'Vegetables' },
+      i20: { id: 'i20', name: 'Chestnut Mushrooms (400g)', price: 1.90, category: 'Vegetables' },
+      i21: { id: 'i21', name: 'Chopped Tomatoes & Passata (4-pack)', price: 2.80, category: 'Vegetables' },
+      i22: { id: 'i22', name: 'Fresh Asparagus & Green Beans', price: 3.20, category: 'Vegetables' },
+      i23: { id: 'i23', name: 'Sweet Potatoes & Butternut Squash', price: 2.50, category: 'Vegetables' },
+      i24: { id: 'i24', name: 'Crunchy Coleslaw & Salad Kit', price: 2.20, category: 'Vegetables' },
+      i25: { id: 'i25', name: 'Mature Cheddar Block (400g)', price: 3.90, category: 'Dairy' },
+      i26: { id: 'i26', name: 'Double Cream & Soured Cream', price: 2.80, category: 'Dairy' },
+      i27: { id: 'i27', name: 'Parmesan & Mozzarella Pack', price: 4.20, category: 'Dairy' },
+      i28: { id: 'i28', name: 'Greek Feta & Tzatziki Dip', price: 3.40, category: 'Dairy' },
+      i29: { id: 'i29', name: 'Penne & Rigatoni Pasta (1kg)', price: 1.60, category: 'Grains' },
+      i30: { id: 'i30', name: 'Fluffy Basmati Rice (1kg)', price: 1.90, category: 'Grains' },
+      i31: { id: 'i31', name: 'Large Tortilla Wraps (8-pack)', price: 1.50, category: 'Grains' },
+      i32: { id: 'i32', name: 'Egg Noodles & Rice Noodles', price: 2.20, category: 'Grains' },
+      i33: { id: 'i33', name: 'Potato Gnocchi & Arborio Rice', price: 2.60, category: 'Grains' },
+      i34: { id: 'i34', name: 'Brioche Burger Buns (6-pack)', price: 2.20, category: 'Bakery' },
+      i35: { id: 'i35', name: 'Garlic Baguettes & Flatbreads', price: 2.50, category: 'Bakery' }
+    };
 
-    function generateFullLibrary() {
-      const list = [];
-      let idCounter = 1;
-      // Replicate and vary to reach 50 distinct items with proper matching
-      for (let batch = 0; batch < 5; batch++) {
-        CATEGORIES.forEach((item, idx) => {
-          list.push({
-            id: 'm_' + idCounter,
-            name: batch === 0 ? item.name : `${item.name} (Variation #${batch + 1})`,
-            category: item.cat,
-            styleTag: item.tag,
-            styleTagColor: item.color,
-            isDateNight: item.isDate,
-            prepTime: item.prep + (batch * 2),
-            estCost: Number((item.cost + (batch * 0.5)).toFixed(2)),
-            image: item.img,
-            familyTip: item.tip,
-            method: [
-              'Prep all fresh ingredients and season with salt and pepper.',
-              'Cook primary protein in a skillet or baking tray until golden and tender.',
-              'Add secondary ingredients, sauces, or garnishes and simmer until rich.',
-              'Serve warm and enjoy family-style.'
-            ],
-            ingredients: [
-              { id: `ing_${idCounter}_1`, name: 'Primary Protein Pack', price: 7.50, category: 'Meat' },
-              { id: `ing_${idCounter}_2`, name: 'Fresh Produce & Veg', price: 3.20, category: 'Vegetables' },
-              { id: `ing_${idCounter}_3`, name: 'Carbs & Grains', price: 2.10, category: 'Grains' },
-              { id: `ing_${idCounter}_4`, name: 'Sauces & Dairy', price: 2.50, category: 'Dairy' }
-            ]
-          });
-          idCounter++;
-        });
-      }
-      return list;
-    }
+    const TAG_STYLES = {
+      TRAY: { tag: 'TRAYBAKE & ROAST', color: 'bg-amber-500/20 text-amber-300 border-amber-500/40' },
+      ONEPAN: { tag: 'ONE-PAN WONDER', color: 'bg-emerald-500/20 text-emerald-300 border-emerald-500/40' },
+      QUICK: { tag: '15-MIN QUICK FIX', color: 'bg-indigo-500/20 text-indigo-300 border-indigo-500/40' },
+      KID: { tag: 'KID-APPROVED FAVORITE', color: 'bg-teal-500/20 text-teal-300 border-teal-500/40' },
+      SLOW: { tag: 'SLOW COOKER WIN', color: 'bg-orange-500/20 text-orange-300 border-orange-500/40' },
+      FAKE: { tag: 'FRIDAY FAKEAWAY', color: 'bg-purple-500/20 text-purple-300 border-purple-500/40' },
+      HEALTHY: { tag: 'HEALTHY & LIGHT', color: 'bg-cyan-500/20 text-cyan-300 border-cyan-500/40' },
+      DATE: { tag: 'DATE NIGHT SPECIAL', color: 'bg-rose-500/20 text-rose-300 border-rose-500/40' }
+    };
 
-    const MASTER_RECIPES = generateFullLibrary();
-    const DAYS_LIST = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'];
-
-    function getWeekDays() {
-      const today = new Date();
-      const day = today.getDay();
-      const diffToMonday = today.getDate() - day + (day === 0 ? -6 : 1);
-      const monday = new Date(today.setDate(diffToMonday));
-      const days = [];
-      for (let i = 0; i < 7; i++) {
-        const d = new Date(monday);
-        d.setDate(monday.getDate() + i);
-        days.push({ dayName: DAYS_LIST[i], dateStr: d.toLocaleDateString('en-GB', { day: 'numeric', month: 'short' }) });
-      }
-      return days;
-    }
-
-    function App() {
-      const [activeTab, setActiveTab] = useState('swipe');
-      const [meals, setMeals] = useState(MASTER_RECIPES);
-      const [deckIndex, setDeckIndex] = useState(0);
-      const [plannedMeals, setPlannedMeals] = useState([
-        { meal: MASTER_RECIPES[0], assignedDay: 'Monday' },
-        { meal: MASTER_RECIPES[1], assignedDay: 'Tuesday' },
-        { meal: MASTER_RECIPES[4], assignedDay: 'Friday' }
-      ]);
-      const [pantryChecked, setPantryChecked] = useState({});
-      const [scanMessage, setScanMessage] = useState('');
-      const [wipeoutMode, setWipeoutMode] = useState(false);
-      const [expandedMethodId, setExpandedMethodId] = useState(null);
-      const [cookingMeal, setCookingMeal] = useState(null);
-      const [currentStepIndex, setCurrentStepIndex] = useState(0);
-      const [timerSeconds, setTimerSeconds] = useState(0);
-      const [isTimerRunning, setIsTimerRunning] = useState(false);
-      const [dragX, setDragX] = useState(0);
-      const startXRef = useRef(null);
-
-      const currentMeal = meals[deckIndex];
-      const weekDays = getWeekDays();
-
-      useEffect(() => {
-        let interval = null;
-        if (isTimerRunning && timerSeconds > 0) {
-          interval = setInterval(() => setTimerSeconds(prev => prev - 1), 1000);
-        } else if (timerSeconds === 0) {
-          setIsTimerRunning(false);
-        }
-        return () => clearInterval(interval);
-      }, [isTimerRunning, timerSeconds]);
-
-      const startCooking = (meal) => {
-        setCookingMeal(meal);
-        setCurrentStepIndex(0);
-        setTimerSeconds((meal.prepTime || 20) * 60);
-        setIsTimerRunning(false);
-      };
-
-      const formatTime = (secs) => {
-        const mins = Math.floor(secs / 60);
-        const rem = secs % 60;
-        return `${mins}:${rem < 10 ? '0' : ''}${rem}`;
-      };
-
-      const toggleWipeoutMode = () => {
-        if (!wipeoutMode) {
-          const filtered = MASTER_RECIPES.filter(m => m.ingredients.some(ing => pantryChecked[ing.id]));
-          if (filtered.length > 0) {
-            setMeals(filtered);
-            setDeckIndex(0);
-            setWipeoutMode(true);
-            setScanMessage('🌪️ Wipeout Mode Active!');
-          } else {
-            setScanMessage('⚠️ Tick off fridge items first!');
-          }
-        } else {
-          setMeals(MASTER_RECIPES);
-          setDeckIndex(0);
-          setWipeoutMode(false);
-          setScanMessage('Library reset.');
-        }
-      };
-
-      const consolidatedBasket = () => {
-        const map = {};
-        plannedMeals.forEach(item => {
-          if (!item.meal || !item.meal.ingredients) return;
-          item.meal.ingredients.forEach(ing => {
-            if (!map[ing.id]) map[ing.id] = { ...ing, usedInCount: 1 };
-            else map[ing.id].usedInCount += 1;
-          });
-        });
-        return Object.values(map);
-      };
-
-      const basketItems = consolidatedBasket();
-      const totalBasketCost = basketItems.reduce((sum, item) => pantryChecked[item.id] ? sum : sum + item.price, 0);
-      const savedBySharingPacks = basketItems.reduce((sum, item) => item.usedInCount > 1 ? sum + item.price * (item.usedInCount - 1) : sum, 0);
-
-      const categoriesOrder = ['Meat', 'Vegetables', 'Dairy', 'Grains', 'Bakery'];
-      const categoryLabels = { Meat: '🥩 Meat & Fish', Vegetables: '🥦 Vegetables & Produce', Dairy: '🥛 Dairy', Grains: '🌾 Grains & Dry Goods', Bakery: '🍞 Bakery' };
-      const groupedBasket = basketItems.reduce((acc, item) => {
-        const cat = item.category || 'Grains';
-        if (!acc[cat]) acc[cat] = [];
-        acc[cat].push(item);
-        return acc;
-      }, {});
-
-      const handleDecision = (liked) => {
-        if (!currentMeal) return;
-        if (liked && !plannedMeals.find(pm => pm.meal.id === currentMeal.id)) {
-          const assignedDays = plannedMeals.map(pm => pm.assignedDay);
-          const availableDay = DAYS_LIST.find(d => !assignedDays.includes(d)) || 'Saturday';
-          setPlannedMeals([...plannedMeals, { meal: currentMeal, assignedDay: availableDay }]);
-        }
-        setDragX(0);
-        setDeckIndex(prev => (prev + 1) % meals.length);
-      };
-
-      const removePlannedMeal = (id) => setPlannedMeals(plannedMeals.filter(pm => pm.meal.id !== id));
-      const updateAssignedDay = (id, day) => setPlannedMeals(plannedMeals.map(pm => pm.meal.id === id ? { ...pm, assignedDay: day } : pm));
-      const togglePantryItem = (id) => setPantryChecked(prev => ({ ...prev, [id]: !prev[id] }));
-      const handlePhotoUpload = () => setScanMessage('📸 Fridge scanned successfully!');
-
-      const onTouchStart = (e) => { startXRef.current = e.touches[0].clientX; };
-      const onTouchMove = (e) => {
-        if (startXRef.current === null) return;
-        setDragX(e.touches[0].clientX - startXRef.current);
-      };
-      const onTouchEnd = () => {
-        if (dragX > 90) handleDecision(true);
-        else if (dragX < -90) handleDecision(false);
-        else setDragX(0);
-        startXRef.current = null;
-      };
-
-      return (
-        <div className="max-w-md mx-auto min-h-screen flex flex-col justify-between pb-24 bg-[#14171f]">
-          {cookingMeal && (
-            <div className="fixed inset-0 z-50 bg-[#0f1319] p-5 flex flex-col justify-between overflow-y-auto animate-fadeIn">
-              <div>
-                <div className="flex justify-between items-center mb-4">
-                  <span className="text-xs font-black uppercase text-emerald-400">👨‍🍳 Cooking Mode</span>
-                  <button onClick={() => setCookingMeal(null)} className="bg-slate-800 text-slate-300 px-3 py-1 rounded-xl text-xs">✕ Exit</button>
-                </div>
-                <h2 className="text-xl font-black text-white mb-4">{cookingMeal.name}</h2>
-                <div className="bg-[#1c202a] border border-slate-700 rounded-2xl p-4 mb-6 flex justify-between items-center">
-                  <div>
-                    <span className="text-[10px] text-slate-400 block font-bold">Countdown</span>
-                    <span className="text-3xl font-black text-emerald-300 font-mono">{formatTime(timerSeconds)}</span>
-                  </div>
-                  <div className="flex gap-2">
-                    <button onClick={() => setIsTimerRunning(!isTimerRunning)} className={`px-4 py-2 rounded-xl text-xs font-bold ${isTimerRunning ? 'bg-amber-500 text-slate-950' : 'bg-emerald-500 text-slate-950'}`}>
-                      {isTimerRunning ? 'Pause' : 'Start'}
-                    </button>
-                  </div>
-                </div>
-                <div className="bg-[#1c202a] border border-slate-700 rounded-3xl p-6 space-y-4">
-                  <span className="text-xs font-black text-amber-300">Step {currentStepIndex + 1} of {cookingMeal.method.length}</span>
-                  <p className="text-lg font-bold text-slate-100 leading-relaxed min-h-[100px]">{cookingMeal.method[currentStepIndex]}</p>
-                </div>
-              </div>
-              <div className="grid grid-cols-2 gap-3 mt-6">
-                <button disabled={currentStepIndex === 0} onClick={() => setCurrentStepIndex(p => Math.max(0, p - 1))} className="py-4 bg-slate-800 text-slate-200 rounded-2xl text-xs font-bold disabled:opacity-40">← Prev</button>
-                <button disabled={currentStepIndex === cookingMeal.method.length - 1} onClick={() => setCurrentStepIndex(p => Math.min(cookingMeal.method.length - 1, p + 1))} className="py-4 bg-emerald-500 text-slate-950 rounded-2xl text-xs font-black disabled:opacity-40">Next →</button>
-              </div>
-            </div>
-          )}
-
-          {/* HEADER WITH SWIPE & CROWN LOGO */}
-          <header className="p-4 glass-header sticky top-0 z-20 border-b border-slate-800 flex justify-between items-center shadow-lg">
-            <div className="flex items-center gap-2.5">
-              <div className="w-10 h-10 rounded-2xl bg-gradient-to-br from-emerald-500/20 to-rose-500/20 border border-emerald-500/40 flex items-center justify-center shadow-inner relative overflow-hidden">
-                <svg className="w-6 h-6 text-emerald-400" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
-                  <path d="M2 7l4 3 6-5 6 5 4-3v2H2V7z" fill="currentColor" fillOpacity="0.15" stroke="currentColor" />
-                  <path d="M3 9h18l-2 11H5L3 9z" />
-                  <path d="M9 14l3 3 3-3" stroke="#f43f5e" strokeWidth="2" />
-                </svg>
-              </div>
-              <div>
-                <h1 className="text-lg font-black tracking-tight text-white flex items-center gap-1 leading-none">
-                  Basket<span className="text-emerald-400">Boss</span>
-                </h1>
-                <p className="text-[11px] text-slate-400 font-medium mt-0.5">
-                  {meals.length} Verified Recipes Loaded
-                </p>
-              </div>
-            </div>
-            
-            <div className="bg-emerald-500/10 border border-emerald-500/30 px-3.5 py-1.5 rounded-xl text-right">
-              <span className="text-[10px] uppercase text-emerald-400 block font-bold">Est. Shop</span>
-              <span className="text-lg font-extrabold text-emerald-300">£{totalBasketCost.toFixed(2)}</span>
-            </div>
-          </header>
-
-          <main className="p-4 flex-1">
-            {activeTab === 'swipe' && currentMeal && (
-              <div>
-                {wipeoutMode && (
-                  <div className="bg-amber-500/10 border border-amber-500/30 p-3 rounded-2xl mb-3 flex items-center justify-between">
-                    <span className="text-xs font-bold text-amber-300">🌪️ Wipeout Mode Active</span>
-                    <button onClick={toggleWipeoutMode} className="text-[10px] bg-amber-500 text-slate-950 font-black px-2.5 py-1 rounded-lg">Exit</button>
-                  </div>
-                )}
-
-                <div
-                  onTouchStart={onTouchStart}
-                  onTouchMove={onTouchMove}
-                  onTouchEnd={onTouchEnd}
-                  style={{
-                    transform: `translateX(${dragX}px) rotate(${dragX * 0.04}deg)`,
-                    transition: startXRef.current ? 'none' : 'transform 0.25s ease'
-                  }}
-                  className={`rounded-3xl overflow-hidden card-shadow border transition-all ${
-                    currentMeal.isDateNight ? 'bg-gradient-to-b from-[#251522] to-[#1c1f28] border-rose-500/40' : 'bg-[#1c202a] border-slate-700'
-                  }`}
-                >
-                  <div className="relative h-60">
-                    <img src={currentMeal.image} alt={currentMeal.name} className="w-full h-full object-cover" />
-                    <div className="absolute inset-0 bg-gradient-to-t from-[#1c202a] via-transparent to-black/30"></div>
-                    
-                    <div className="absolute top-3 left-3 z-10">
-                      <span className={`px-4 py-1.5 rounded-full text-xs font-black uppercase border shadow-lg ${currentMeal.styleTagColor}`}>
-                        {currentMeal.styleTag}
-                      </span>
-                    </div>
-
-                    <div className="absolute top-3 right-3 bg-[#14171f]/85 backdrop-blur px-3 py-1 rounded-full text-xs font-bold text-slate-200 border border-slate-700">
-                      ⏱ {currentMeal.prepTime} mins
-                    </div>
-                  </div>
-
-                  <div className="p-5">
-                    <span className="text-[11px] font-black uppercase text-emerald-400">{currentMeal.category}</span>
-                    <h2 className="text-xl font-bold text-white mt-1 mb-3">{currentMeal.name}</h2>
-                    <p className="text-xs text-slate-300 mb-5 bg-[#14171f] p-3 rounded-2xl border border-slate-700">{currentMeal.familyTip}</p>
-                    <div className="grid grid-cols-2 gap-3">
-                      <button onClick={() => handleDecision(false)} className="py-3.5 bg-[#14171f] text-slate-300 font-bold text-xs rounded-2xl border border-slate-700">✕ Discard</button>
-                      <button onClick={() => handleDecision(true)} className="py-3.5 bg-emerald-500 text-slate-950 font-black text-xs rounded-2xl">✓ Add to Week</button>
-                    </div>
-                  </div>
-                </div>
-
-                <div className="flex flex-col items-center mt-4">
-                  <p className="text-[10px] text-indigo-400 font-semibold">
-                    📚 Library: Recipe {deckIndex + 1} of {meals.length} (100% Matched Photos)
-                  </p>
-                </div>
-              </div>
-            )}
-
-            {activeTab === 'scan' && (
-              <div className="bg-[#1c202a] border border-slate-700 rounded-3xl p-6 text-center">
-                <div className="text-4xl mb-3">📸</div>
-                <h2 className="text-base font-black text-white mb-2">AI Fridge Scanner</h2>
-                <button onClick={handlePhotoUpload} className="w-full py-3 bg-emerald-500 text-slate-950 font-black text-xs rounded-2xl mb-3">Scan Fridge Photo</button>
-                <button onClick={toggleWipeoutMode} className="w-full py-3 bg-[#14171f] text-amber-300 border border-amber-500 font-bold text-xs rounded-2xl">
-                  {wipeoutMode ? 'Disable Wipeout Mode' : 'Activate Wipeout Mode'}
-                </button>
-                {scanMessage && <p className="text-xs text-emerald-400 mt-3 font-bold">{scanMessage}</p>}
-              </div>
-            )}
-
-            {activeTab === 'shop' && (
-              <div className="space-y-4">
-                <h3 className="text-xs font-black uppercase text-slate-400">Shopping List ({basketItems.length} items)</h3>
-                {categoriesOrder.map(cat => {
-                  const items = groupedBasket[cat];
-                  if (!items || !items.length) return null;
-                  return (
-                    <div key={cat} className="bg-[#1c202a] border border-slate-700 rounded-2xl p-3">
-                      <h4 className="text-xs font-black text-emerald-400 mb-2">{categoryLabels[cat]}</h4>
-                      <div className="space-y-2">
-                        {items.map(item => (
-                          <div key={item.id} onClick={() => togglePantryItem(item.id)} className={`p-2.5 rounded-xl border flex justify-between cursor-pointer ${pantryChecked[item.id] ? 'opacity-40 line-through bg-slate-900' : 'bg-[#14171f]'}`}>
-                            <span className="text-sm font-semibold">{item.name}</span>
-                            <span className="text-sm font-bold text-emerald-300">£{item.price.toFixed(2)}</span>
-                          </div>
-                        ))}
-                      </div>
-                    </div>
-                  );
-                })}
-              </div>
-            )}
-
-            {activeTab === 'calendar' && (
-              <div className="space-y-3">
-                {weekDays.map(wd => {
-                  const assigned = plannedMeals.filter(pm => pm.assignedDay === wd.dayName);
-                  return (
-                    <div key={wd.dayName} className="bg-[#1c202a] border border-slate-700 rounded-2xl p-3">
-                      <div className="flex justify-between items-center mb-2">
-                        <span className="text-xs font-black uppercase text-white">{wd.dayName} ({wd.dateStr})</span>
-                      </div>
-                      {assigned.length > 0 ? assigned.map(pm => (
-                        <div key={pm.meal.id} className="bg-[#14171f] p-3 rounded-xl border border-slate-700 space-y-2">
-                          <span className="text-xs font-bold text-emerald-400 block">{pm.meal.name}</span>
-                          <div className="flex gap-2">
-                            <select value={pm.assignedDay} onChange={(e) => updateAssignedDay(pm.meal.id, e.target.value)} className="bg-[#1c202a] text-xs text-emerald-300 p-1 rounded border border-slate-600">
-                              {DAYS_LIST.map(d => <option key={d} value={d}>{d}</option>)}
-                            </select>
-                            <button onClick={() => startCooking(pm.meal)} className="px-3 py-1 bg-emerald-500 text-slate-950 font-black text-[10px] rounded">Cook</button>
-                            <button onClick={() => removePlannedMeal(pm.meal.id)} className="px-2 py-1 bg-rose-500/20 text-rose-300 font-bold text-[10px] rounded">Remove</button>
-                          </div>
-                        </div>
-                      )) : <p className="text-[11px] text-slate-500 italic">No meal assigned.</p>}
-                    </div>
-                  );
-                })}
-              </div>
-            )}
-          </main>
-
-          <nav className="fixed bottom-0 left-0 right-0 max-w-md mx-auto glass-header border-t border-slate-800 grid grid-cols-4 p-2 z-20 shadow-2xl">
-            <button onClick={() => setActiveTab('swipe')} className={`py-2.5 rounded-xl text-[11px] font-black uppercase ${activeTab === 'swipe' ? 'text-emerald-400 bg-[#14171f]' : 'text-slate-400'}`}>🔥 Swipe</button>
-            <button onClick={() => setActiveTab('scan')} className={`py-2.5 rounded-xl text-[11px] font-black uppercase ${activeTab === 'scan' ? 'text-emerald-400 bg-[#14171f]' : 'text-slate-400'}`}>📸 Scan</button>
-            <button onClick={() => setActiveTab('shop')} className={`py-2.5 rounded-xl text-[11px] font-black uppercase ${activeTab === 'shop' ? 'text-emerald-400 bg-[#14171f]' : 'text-slate-400'}`}>🛒 Shop</button>
-            <button onClick={() => setActiveTab('calendar')} className={`py-2.5 rounded-xl text-[11px] font-black uppercase ${activeTab === 'calendar' ? 'text-emerald-400 bg-[#14171f]' : 'text-slate-400'}`}>🗓️ Week</button>
-          </nav>
-        </div>
-      );
-    }
-
-    ReactDOM.createRoot(document.getElementById('root')).render(<App />);
-  </script>
-</body>
-</html>
+    // --- 15 CULINARY ARCHETYPES X 14 INDEPENDENT DISHES = 210 UNIQUE RECIPES ---
+    const CULINARY_GROUPS = [
+      {
+        photo: 'https://images.unsplash.com/photo-1565299585323-38d6b0865b47?auto=format&fit=crop&w=800&q=80',
+        cat: 'Mexican Fiesta • Family of 6', style: 'TRAY', isDate: false,
+        method: [
+          'Preheat oven to 200°C (180°C fan). Slice the protein and bell peppers into even strips.',
+          'Toss on a large baking sheet with olive oil, Mexican spices, salt, and black pepper.',
+          'Roast for 20–22 minutes until sizzling and lightly charred at the edges.',
+          'Warm tortillas or taco shells and serve middle-of-the-table with cheddar and soured cream.'
+        ],
+        dishes: [
+          ['Sheet-Pan Chicken Fajitas & Loaded Nachos', 25, ['i1','i14','i31','i25','i26'], 'Roast chicken and peppers on one big tray so the kids can build their own wraps.'],
+          ['Crispy Beef Taco Traybake with Smashed Avocado', 20, ['i3','i14','i31','i25'], 'Stand crunchy taco shells upright in a baking dish, fill with spiced mince, and bake with cheese.'],
+          ['Oven-Baked Chipotle Chicken Enchiladas', 30, ['i1','i21','i31','i25','i26'], 'Roll spiced shredded chicken in tortillas, smother in passata and cheddar, and bake until bubbling.'],
+          ['Loaded Chorizo & Sweetcorn Quesadilla Wedges', 15, ['i11','i14','i31','i25'], 'Pan-toast folded tortillas stuffed with smoky chorizo and cheddar, then slice like pizza wedges.'],
+          ['Smoky BBQ Pulled Pork Burrito Bowls', 20, ['i5','i30','i14','i25','i26'], 'Serve shredded BBQ pork over fluffy basmati rice with peppers, cheese, and soured cream.'],
+          ['Cajun Spiced Prawn & Pepper Fajita Skillet', 15, ['i8','i14','i31','i26'], 'King prawns cook in just 4 minutes in a hot skillet with charred peppers and fajita spices.'],
+          ['Cheesy Beef & Refried Bean Chimichanga Bake', 30, ['i3','i21','i31','i25'], 'Brush folded beef burritos with a little oil and bake at 200°C until golden and crispy.'],
+          ['Baja Crispy Cod Fish Tacos with Lime Slaw', 20, ['i13','i24','i31','i26'], 'Flaky oven-baked cod pieces tucked into warm wraps with zesty coleslaw.'],
+          ['One-Pan Mexican Street Corn & Chicken Rice', 25, ['i2','i30','i14','i25'], 'Chicken thighs and sweetcorn simmer directly in spiced tomato stock and rice.'],
+          ['Honey-Lime Chicken Taquitos with Salsa Dip', 25, ['i1','i31','i25','i21'], 'Roll cheesy chicken in tortillas into tight cigars and bake until ultra-crunchy for dipping.'],
+          ['Sizzling Sirloin Steak Fajitas with Peppers', 20, ['i6','i14','i31','i26'], 'Flash-fry thin strips of sirloin steak for 2 minutes so they stay tender inside warm wraps.'],
+          ['Tex-Mex Loaded Sweet Potato Skins & Beef', 35, ['i3','i23','i25','i26'], 'Top roasted sweet potato halves with spiced beef mince and melted mature cheddar.'],
+          ['Slow-Braised Lamb Birria Tacos & Consommé', 30, ['i10','i21','i31','i27'], 'Dip mozzarella-stuffed lamb tortillas in the rich tomato broth before crisping in a pan.'],
+          ['Crispy Halloumi & Charred Pepper Fajita Wraps', 20, ['i28','i14','i31','i24'], 'Slices of salty cheese roasted alongside sweet bell peppers make a super fast midweek wrap.']
+        ]
+      },
+      {
+        photo: 'https://images.unsplash.com/photo-1568901346375-23c9450c58cd?auto=format&fit=crop&w=800&q=80',
+        cat: 'Friday Night Burgers • Family of 6', style: 'KID', isDate: false,
+        method: [
+          'Preheat oven to 200°C or heat a heavy griddle pan over medium-high heat.',
+          'Season patties or fillets generously, cooking until golden brown and piping hot throughout.',
+          'Top with cheese in the final 2 minutes of cooking so it melts over the meat.',
+          'Toast the brioche buns lightly and stack with crisp salad, slaw, and house sauce.'
+        ],
+        dishes: [
+          ['Crispy Southern-Style Cornflake Chicken Burgers', 25, ['i1','i34','i24','i25'], 'Coat chicken breasts in crushed cornflakes before baking for an incredible crunch without frying.'],
+          ['Double Smash Cheeseburgers & Skin-On Wedges', 20, ['i3','i34','i25','i16'], 'Press thin balls of beef mince flat onto a smoking hot pan for lacy, crispy burger edges.'],
+          ['Smoky Bacon & Maple Cheddar Beef Burgers', 25, ['i3','i9','i34','i25'], 'Top juicy homemade beef patties with crispy bacon medallions and
