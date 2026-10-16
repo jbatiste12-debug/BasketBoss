@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
-  <title>BasketBoss — AI Meal Planner & Weekly Calendar with Methods</title>
+  <title>BasketBoss — Snappy AI Meal Planner</title>
   <!-- Tailwind CSS -->
   <script src="https://cdn.tailwindcss.com"></script>
   <!-- React & ReactDOM -->
@@ -12,8 +12,10 @@
   <!-- Babel for in-browser JSX -->
   <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
   <style>
-    body { background-color: #0f172a; color: #f8fafc; font-family: system-ui, -apple-system, sans-serif; overflow-x: hidden; }
+    body { background-color: #14171f; color: #f1f5f9; font-family: system-ui, -apple-system, sans-serif; overflow-x: hidden; }
     .no-select { user-select: none; -webkit-user-select: none; }
+    .card-shadow { box-shadow: 0 20px 35px -10px rgba(0, 0, 0, 0.5), 0 10px 15px -5px rgba(0, 0, 0, 0.3); }
+    .glass-header { background: rgba(20, 23, 31, 0.9); backdrop-filter: blur(12px); }
   </style>
 </head>
 <body>
@@ -22,7 +24,7 @@
   <script type="text/babel">
     const { useState, useEffect, useRef } = React;
 
-    // --- INITIAL SEED RECIPES WITH FULL METHODS ---
+    // --- REALISTICALLY PRICED INITIAL RECIPES ---
     const BASE_MEALS = [
       {
         id: 'm1',
@@ -30,7 +32,7 @@
         category: 'Mexican • Family of 6',
         isDateNight: false,
         prepTime: 25,
-        estCost: 13.50,
+        estCost: 16.50,
         image: 'https://images.unsplash.com/photo-1565299585323-38d6b0865b47?auto=format&fit=crop&w=800&q=80',
         familyTip: 'Roast chicken and peppers on one big tray. Put wraps, cheddar, and sour cream in the middle of the table so kids build their own.',
         method: [
@@ -40,11 +42,11 @@
           'Warm tortilla wraps in the microwave for 30 seconds. Serve family-style with grated cheddar and soured cream.'
         ],
         ingredients: [
-          { id: 'i1', name: 'Chicken Breast Fillets (1kg pack)', price: 7.00, aisle: 'Meat & Fish' },
-          { id: 'i2', name: 'Mixed Bell Peppers (3-pack)', price: 1.80, aisle: 'Produce' },
+          { id: 'i1', name: 'Chicken Breast Fillets (1kg pack)', price: 8.50, aisle: 'Meat & Fish' },
+          { id: 'i2', name: 'Mixed Bell Peppers (3-pack)', price: 2.10, aisle: 'Produce' },
           { id: 'i3', name: 'Tortilla Wraps (8-pack)', price: 1.50, aisle: 'Bakery' },
-          { id: 'i4', name: 'Soured Cream & Chive Dip', price: 1.60, aisle: 'Dairy' },
-          { id: 'i5', name: 'Mature Cheddar Block (400g)', price: 3.20, aisle: 'Dairy' }
+          { id: 'i4', name: 'Soured Cream & Chive Dip', price: 1.80, aisle: 'Dairy' },
+          { id: 'i5', name: 'Mature Cheddar Block (400g)', price: 3.90, aisle: 'Dairy' }
         ]
       },
       {
@@ -53,7 +55,7 @@
         category: 'Italian • Crowd Pleaser',
         isDateNight: false,
         prepTime: 30,
-        estCost: 11.90,
+        estCost: 14.80,
         image: 'https://images.unsplash.com/photo-1621996346565-e3d5d6281298?auto=format&fit=crop&w=800&q=80',
         familyTip: 'Finely grate courgettes and carrots straight into the mince—they melt into the tomato sauce so the kids never spot them.',
         method: [
@@ -63,11 +65,11 @@
           'Boil penne pasta in salted water until al dente. Bake garlic baguettes according to package instructions.'
         ],
         ingredients: [
-          { id: 'i6', name: 'Beef Mince (750g family pack)', price: 5.80, aisle: 'Meat & Fish' },
-          { id: 'i7', name: 'Penne Pasta (1kg)', price: 1.50, aisle: 'Tins & Dry' },
-          { id: 'i8', name: 'Chopped Tomatoes (4-pack tins)', price: 2.40, aisle: 'Tins & Dry' },
-          { id: 'i9', name: 'Carrots & Courgettes Pack', price: 1.70, aisle: 'Produce' },
-          { id: 'i10', name: 'Garlic Baguette (Twin Pack)', price: 1.80, aisle: 'Bakery' }
+          { id: 'i6', name: '5% Lean Beef Mince (750g family pack)', price: 7.20, aisle: 'Meat & Fish' },
+          { id: 'i7', name: 'Penne Pasta (1kg)', price: 1.60, aisle: 'Tins & Dry' },
+          { id: 'i8', name: 'Chopped Tomatoes (4-pack tins)', price: 2.60, aisle: 'Tins & Dry' },
+          { id: 'i9', name: 'Carrots & Courgettes Pack', price: 1.80, aisle: 'Produce' },
+          { id: 'i10', name: 'Garlic Baguette (Twin Pack)', price: 2.00, aisle: 'Bakery' }
         ]
       },
       {
@@ -76,7 +78,7 @@
         category: '✨ Date Night Idea • For Two',
         isDateNight: true,
         prepTime: 20,
-        estCost: 14.50,
+        estCost: 18.50,
         image: 'https://images.unsplash.com/photo-1600891964092-4316c288032e?auto=format&fit=crop&w=800&q=80',
         familyTip: 'Pop a quick freezer pizza on for the kids at 5:30 PM, then enjoy this restaurant-quality steak dinner in peace once they are in bed.',
         method: [
@@ -86,22 +88,22 @@
           'Rest steaks for 5 minutes. Warm creamy peppercorn sauce in a pan and serve alongside tenderstem broccoli.'
         ],
         ingredients: [
-          { id: 'i17', name: '2x Matured Sirloin Steaks (450g)', price: 10.50, aisle: 'Meat & Fish' },
-          { id: 'i18', name: 'Fresh Creamy Peppercorn Sauce Tub', price: 2.20, aisle: 'Dairy' },
-          { id: 'i12', name: 'Tenderstem Broccoli', price: 1.80, aisle: 'Produce' },
-          { id: 'i13', name: 'Maris Piper Potatoes (2.5kg bag)', price: 2.20, aisle: 'Produce' }
+          { id: 'i17', name: 'Prime Matured Sirloin Steaks (Twin Pack 450g)', price: 11.50, aisle: 'Meat & Fish' },
+          { id: 'i18', name: 'Fresh Creamy Peppercorn Sauce Tub', price: 2.50, aisle: 'Dairy' },
+          { id: 'i12', name: 'Tenderstem Broccoli', price: 2.10, aisle: 'Produce' },
+          { id: 'i13', name: 'Maris Piper Potatoes (2.5kg bag)', price: 2.40, aisle: 'Produce' }
         ]
       }
     ];
 
-    // --- INFINITE AI GENERATION POOL WITH METHODS ---
+    // --- INFINITE AI GENERATION POOL ---
     const AI_GENERATION_POOL = [
       {
         name: 'Crispy Southern Fried Chicken Burgers & Slaw',
         category: 'Fakeaway Night • Family of 6',
         isDateNight: false,
         prepTime: 25,
-        estCost: 12.20,
+        estCost: 15.10,
         image: 'https://images.unsplash.com/photo-1625813506062-0aeb1d7a094b?auto=format&fit=crop&w=800&q=80',
         familyTip: 'Coat chicken in crushed cornflakes for an incredible crunch without deep frying.',
         method: [
@@ -111,9 +113,9 @@
           'Toast brioche buns, add coleslaw and lettuce, and place crispy chicken inside.'
         ],
         ingredients: [
-          { id: 'ai_i1', name: 'Chicken Breast Fillets (1kg)', price: 7.00, aisle: 'Meat & Fish' },
-          { id: 'ai_i2', name: 'Brioche Buns (6-pack)', price: 1.90, aisle: 'Bakery' },
-          { id: 'ai_i3', name: 'Coleslaw Kit & Salad', price: 3.30, aisle: 'Produce' }
+          { id: 'ai_i1', name: 'Chicken Breast Fillets (1kg)', price: 8.50, aisle: 'Meat & Fish' },
+          { id: 'ai_i2', name: 'Brioche Buns (6-pack)', price: 2.20, aisle: 'Bakery' },
+          { id: 'ai_i3', name: 'Coleslaw Kit & Salad', price: 4.40, aisle: 'Produce' }
         ]
       },
       {
@@ -121,7 +123,7 @@
         category: '✨ Date Night Idea • For Two',
         isDateNight: true,
         prepTime: 20,
-        estCost: 14.20,
+        estCost: 17.80,
         image: 'https://images.unsplash.com/photo-1519708227418-c8fd9a32b7a2?auto=format&fit=crop&w=800&q=80',
         familyTip: 'Pan-sear salmon and simmer in a sun-dried tomato and garlic cream reduction.',
         method: [
@@ -131,9 +133,9 @@
           'Serve hot over sautéed asparagus.'
         ],
         ingredients: [
-          { id: 'ai_i6', name: 'Salmon Fillets (Twin Pack)', price: 7.50, aisle: 'Meat & Fish' },
-          { id: 'ai_i7', name: 'Double Cream & Sun-Dried Tomatoes', price: 3.50, aisle: 'Dairy' },
-          { id: 'ai_i8', name: 'Fresh Asparagus', price: 3.20, aisle: 'Produce' }
+          { id: 'ai_i6', name: 'Fresh Salmon Fillets (Twin Pack)', price: 9.50, aisle: 'Meat & Fish' },
+          { id: 'ai_i7', name: 'Double Cream & Sun-Dried Tomatoes', price: 4.20, aisle: 'Dairy' },
+          { id: 'ai_i8', name: 'Fresh Asparagus', price: 4.10, aisle: 'Produce' }
         ]
       },
       {
@@ -141,7 +143,7 @@
         category: 'Batch Cook • Family of 6',
         isDateNight: false,
         prepTime: 25,
-        estCost: 11.50,
+        estCost: 14.30,
         image: 'https://images.unsplash.com/photo-1541544741938-0af808871cc0?auto=format&fit=crop&w=800&q=80',
         familyTip: 'Batch cook this hearty chilli; leftovers taste even better the next day wrapped in burritos.',
         method: [
@@ -151,14 +153,13 @@
           'Serve over fluffy boiled long-grain rice with a dollop of sour cream.'
         ],
         ingredients: [
-          { id: 'ai_i9', name: 'Beef Mince (750g)', price: 5.80, aisle: 'Meat & Fish' },
-          { id: 'ai_i10', name: 'Mixed Beans & Chopped Tomatoes', price: 3.00, aisle: 'Tins & Dry' },
-          { id: 'ai_i11', name: 'Long Grain Rice (1kg)', price: 2.70, aisle: 'Tins & Dry' }
+          { id: 'ai_i9', name: '5% Lean Beef Mince (750g)', price: 7.20, aisle: 'Meat & Fish' },
+          { id: 'ai_i10', name: 'Mixed Beans & Chopped Tomatoes', price: 3.50, aisle: 'Tins & Dry' },
+          { id: 'ai_i11', name: 'Long Grain Rice (1kg)', price: 3.60, aisle: 'Tins & Dry' }
         ]
       }
     ];
 
-    // Helper to generate current week's dates (Monday to Sunday)
     function getWeekDays() {
       const today = new Date();
       const day = today.getDay();
@@ -191,7 +192,6 @@
       const currentMeal = meals[deckIndex];
       const weekDays = getWeekDays();
 
-      // --- AUTOMATIC BACKGROUND AI GENERATOR ---
       useEffect(() => {
         if (deckIndex >= meals.length - 2 && !isAutoGenerating) {
           setIsAutoGenerating(true);
@@ -209,7 +209,6 @@
         }
       }, [deckIndex, meals.length, isAutoGenerating]);
 
-      // --- SMART PACK CONSOLIDATION ---
       const consolidatedBasket = () => {
         const map = {};
         plannedMeals.forEach(meal => {
@@ -234,11 +233,12 @@
         return item.usedInCount > 1 ? sum + item.price * (item.usedInCount - 1) : sum;
       }, 0);
 
-      // --- SWIPE HANDLERS ---
       const handleDecision = (liked) => {
         if (!currentMeal) return;
-        if (liked && !plannedMeals.find(m => m.id === currentMeal.id)) {
-          setPlannedMeals([...plannedMeals, currentMeal]);
+        if (liked) {
+          if (!plannedMeals.find(m => m.id === currentMeal.id)) {
+            setPlannedMeals([...plannedMeals, currentMeal]);
+          }
         }
         setDragX(0);
         setDeckIndex(prev => prev + 1);
@@ -268,20 +268,20 @@
       };
 
       return (
-        <div className="max-w-md mx-auto min-h-screen flex flex-col justify-between pb-24">
-          {/* TOP HEADER */}
-          <header className="p-4 bg-slate-900/95 backdrop-blur sticky top-0 z-20 border-b border-slate-800 flex justify-between items-center">
+        <div className="max-w-md mx-auto min-h-screen flex flex-col justify-between pb-24 bg-[#14171f]">
+          {/* QUARTZ GRAY GLASS HEADER */}
+          <header className="p-4 glass-header sticky top-0 z-20 border-b border-slate-800/80 flex justify-between items-center shadow-lg">
             <div>
-              <h1 className="text-xl font-extrabold tracking-tight text-white flex items-center gap-2">
+              <h1 className="text-xl font-black tracking-tight text-white flex items-center gap-2">
                 🛒 BasketBoss
               </h1>
-              <p className="text-xs text-slate-400">
-                {plannedMeals.filter(m => !m.isDateNight).length} Family + {plannedMeals.filter(m => m.isDateNight).length} Date Night
+              <p className="text-xs text-slate-400 font-medium">
+                {plannedMeals.filter(m => !m.isDateNight).length} Family • {plannedMeals.filter(m => m.isDateNight).length} Date Night
               </p>
             </div>
-            <div className="bg-emerald-500/10 border border-emerald-500/30 px-3.5 py-1.5 rounded-xl text-right">
-              <span className="text-[10px] uppercase tracking-wider text-emerald-400 block font-semibold">Est. Shop</span>
-              <span className="text-lg font-bold text-emerald-300">£{totalBasketCost.toFixed(2)}</span>
+            <div className="bg-emerald-500/10 border border-emerald-500/30 px-3.5 py-1.5 rounded-xl text-right shadow-inner">
+              <span className="text-[10px] uppercase tracking-wider text-emerald-400 block font-bold">Est. Shop</span>
+              <span className="text-lg font-extrabold text-emerald-300">£{totalBasketCost.toFixed(2)}</span>
             </div>
           </header>
 
@@ -299,85 +299,91 @@
                       transform: `translateX(${dragX}px) rotate(${dragX * 0.04}deg)`,
                       transition: startXRef.current ? 'none' : 'transform 0.25s ease'
                     }}
-                    className={`rounded-3xl overflow-hidden shadow-2xl no-select border ${
+                    className={`rounded-3xl overflow-hidden card-shadow no-select border transition-all ${
                       currentMeal.isDateNight
-                        ? 'bg-gradient-to-b from-rose-950/80 to-slate-900 border-rose-500/50'
-                        : 'bg-slate-800 border-slate-700'
+                        ? 'bg-gradient-to-b from-[#251522] to-[#1c1f28] border-rose-500/40'
+                        : 'bg-[#1c202a] border-slate-700/80'
                     }`}
                   >
                     <div className="relative h-60">
                       <img src={currentMeal.image} alt={currentMeal.name} className="w-full h-full object-cover" />
+                      <div className="absolute inset-0 bg-gradient-to-t from-[#1c202a] via-transparent to-black/30"></div>
                       {currentMeal.isDateNight && (
-                        <div className="absolute top-3 left-3 bg-rose-600 text-white px-3 py-1 rounded-full text-xs font-extrabold shadow-lg">
-                          🥂 DATE NIGHT IDEA
+                        <div className="absolute top-3 left-3 bg-rose-600 text-white px-3.5 py-1 rounded-full text-xs font-black shadow-lg tracking-wide uppercase">
+                          🥂 Date Night Idea
                         </div>
                       )}
                       {!currentMeal.isDateNight && (
-                        <div className="absolute top-3 left-3 bg-slate-900/85 backdrop-blur px-3 py-1 rounded-full text-xs font-semibold text-emerald-300">
+                        <div className="absolute top-3 left-3 bg-[#14171f]/85 backdrop-blur px-3 py-1 rounded-full text-xs font-bold text-emerald-300 border border-emerald-500/30">
                           £{currentMeal.estCost.toFixed(2)} meal est.
                         </div>
                       )}
-                      <div className="absolute top-3 right-3 bg-slate-900/85 backdrop-blur px-3 py-1 rounded-full text-xs font-semibold text-white">
+                      <div className="absolute top-3 right-3 bg-[#14171f]/85 backdrop-blur px-3 py-1 rounded-full text-xs font-bold text-slate-200 border border-slate-700">
                         ⏱ {currentMeal.prepTime} mins
                       </div>
                     </div>
 
                     <div className="p-5">
-                      <span className={`text-xs font-bold uppercase tracking-wider ${
+                      <span className={`text-[11px] font-black uppercase tracking-wider ${
                         currentMeal.isDateNight ? 'text-rose-400' : 'text-emerald-400'
                       }`}>
                         {currentMeal.category}
                       </span>
-                      <h2 className="text-xl font-bold text-white mt-1 mb-3">{currentMeal.name}</h2>
+                      <h2 className="text-xl font-bold text-white mt-1 mb-3 leading-snug">{currentMeal.name}</h2>
 
-                      <div className={`rounded-2xl p-3.5 mb-4 border ${
+                      <div className={`rounded-2xl p-3.5 mb-5 border ${
                         currentMeal.isDateNight
-                          ? 'bg-rose-950/50 border-rose-700/40'
-                          : 'bg-slate-900/70 border-slate-700'
+                          ? 'bg-rose-950/30 border-rose-800/40 text-rose-100'
+                          : 'bg-[#14171f]/70 border-slate-700/80 text-slate-200'
                       }`}>
-                        <div className="text-xs font-bold text-amber-300 mb-1">
-                          {currentMeal.isDateNight ? '🕯️ Date Night Plan' : '👨‍👩‍👧‍👦 Kitchen Time-Saver'}
+                        <div className="text-xs font-bold text-amber-300 mb-1 flex items-center gap-1.5">
+                          <span>{currentMeal.isDateNight ? '🕯️' : '👨‍👩‍👧‍👦'}</span>
+                          <span>{currentMeal.isDateNight ? 'Date Night Plan' : 'Kitchen Time-Saver'}</span>
                         </div>
-                        <p className="text-xs text-slate-200 leading-relaxed">{currentMeal.familyTip}</p>
+                        <p className="text-xs leading-relaxed opacity-90">{currentMeal.familyTip}</p>
                       </div>
 
                       <div className="grid grid-cols-2 gap-3">
                         <button
                           onClick={() => handleDecision(false)}
-                          className="py-3 rounded-2xl bg-slate-700 hover:bg-slate-600 text-slate-200 font-bold text-sm transition"
+                          className="py-3.5 rounded-2xl bg-[#14171f] hover:bg-[#222734] active:scale-95 text-slate-300 font-bold text-xs uppercase tracking-wider border border-slate-700 transition shadow"
                         >
-                          ✕ Skip
+                          ✕ Discard (No)
                         </button>
                         <button
                           onClick={() => handleDecision(true)}
-                          className={`py-3 rounded-2xl font-bold text-sm transition ${
+                          className={`py-3.5 rounded-2xl font-extrabold text-xs uppercase tracking-wider active:scale-95 transition shadow-lg ${
                             currentMeal.isDateNight
-                              ? 'bg-rose-500 hover:bg-rose-400 text-white'
+                              ? 'bg-rose-600 hover:bg-rose-500 text-white'
                               : 'bg-emerald-500 hover:bg-emerald-400 text-slate-950'
                           }`}
                         >
-                          ✓ Add to Week
+                          ✓ Add to Week (Yes)
                         </button>
                       </div>
                     </div>
                   </div>
 
-                  <div className="flex justify-between items-center mt-3 px-1">
-                    <p className="text-xs text-slate-500">Card {deckIndex + 1} of infinite deck</p>
+                  <div className="flex flex-col items-center mt-4 px-1">
+                    <p className="text-[11px] text-slate-400 text-center font-medium bg-[#1c202a] px-4 py-2 rounded-xl border border-slate-800 shadow-inner w-full">
+                      💡 <span className="text-emerald-400 font-bold">Swipe Right / Add to Week</span> = Yes | <span className="text-rose-400 font-bold">Swipe Left / Discard</span> = No
+                    </p>
                     {isAutoGenerating && (
-                      <span className="text-xs text-indigo-400 font-semibold animate-pulse">✨ AI inventing next recipe...</span>
+                      <span className="text-xs text-indigo-400 font-bold animate-pulse mt-2">✨ AI inventing next recipe...</span>
                     )}
                   </div>
                 </div>
               ) : null
             )}
 
-            {/* TAB 2: WEEK CALENDAR OVERVIEW WITH DATES & METHODS */}
+            {/* TAB 2: WEEK CALENDAR OVERVIEW */}
             {activeTab === 'calendar' && (
               <div className="space-y-4">
-                <div className="bg-slate-800/90 border border-slate-700 rounded-2xl p-4">
-                  <h2 className="text-sm font-extrabold uppercase tracking-wider text-emerald-400 mb-1">📅 Weekly Meal Calendar & Methods</h2>
-                  <p className="text-xs text-slate-300">Your scheduled meals mapped by day and date, complete with step-by-step cooking methods.</p>
+                <div className="bg-[#1c202a] border border-slate-700/80 rounded-2xl p-4 card-shadow">
+                  <h2 className="text-xs font-black uppercase tracking-wider text-emerald-400 mb-1 flex items-center gap-1.5">
+                    <span>📅</span> Weekly Meal Calendar & Methods
+                  </h2>
+                  <p className="text-xs text-slate-300">Your scheduled meals mapped by day and date from your liked swipe choices.</p>
                 </div>
 
                 <div className="space-y-3">
@@ -389,18 +395,18 @@
                     return (
                       <div
                         key={wd.dayName}
-                        className={`p-4 rounded-2xl border transition ${
+                        className={`p-4 rounded-2xl border transition card-shadow ${
                           isDate
-                            ? 'bg-rose-950/30 border-rose-800/50'
-                            : 'bg-slate-800 border-slate-700'
+                            ? 'bg-gradient-to-br from-[#251522] to-[#1c202a] border-rose-800/50'
+                            : 'bg-[#1c202a] border-slate-700/80'
                         }`}
                       >
-                        <div className="flex justify-between items-center mb-1.5">
-                          <span className="text-xs font-bold uppercase tracking-wider text-emerald-300">
+                        <div className="flex justify-between items-center mb-2">
+                          <span className="text-xs font-black uppercase tracking-wider text-emerald-300">
                             {wd.dayName} <span className="text-slate-400 font-normal">({wd.dateStr})</span>
                           </span>
-                          <span className={`text-[10px] font-bold px-2.5 py-0.5 rounded-full ${
-                            isDate ? 'bg-rose-500/20 text-rose-300 border border-rose-500/30' : 'bg-emerald-500/10 text-emerald-300'
+                          <span className={`text-[10px] font-extrabold px-2.5 py-0.5 rounded-full uppercase tracking-wider ${
+                            isDate ? 'bg-rose-500/20 text-rose-300 border border-rose-500/40' : 'bg-emerald-500/10 text-emerald-300 border border-emerald-500/20'
                           }`}>
                             {isDate ? '🥂 Date Night' : '🍽️ Family Dinner'}
                           </span>
@@ -409,37 +415,35 @@
                         {meal ? (
                           <div>
                             <h3 className="text-sm font-bold text-white mb-1">{meal.name}</h3>
-                            <div className="flex justify-between items-center text-xs text-slate-300 mb-3">
+                            <div className="flex justify-between items-center text-xs text-slate-400 mb-3">
                               <span>⏱ {meal.prepTime} mins prep</span>
-                              <span className="font-semibold text-emerald-400">£{meal.estCost.toFixed(2)}</span>
+                              <span className="font-bold text-emerald-400">£{meal.estCost.toFixed(2)}</span>
                             </div>
 
-                            {/* TOGGLE METHOD BUTTON */}
                             <button
                               onClick={() => setExpandedMethodId(isMethodOpen ? null : `${wd.dayName}-${idx}`)}
-                              className="w-full py-2 bg-slate-900/60 hover:bg-slate-900 text-slate-200 text-xs font-bold rounded-xl border border-slate-700 transition flex justify-center items-center gap-1.5"
+                              className="w-full py-2.5 bg-[#14171f] hover:bg-[#222734] text-slate-200 text-xs font-bold rounded-xl border border-slate-700 transition flex justify-center items-center gap-1.5 shadow"
                             >
                               <span>{isMethodOpen ? 'Hide Cooking Method ▴' : 'View Step-by-Step Method ▾'}</span>
                             </button>
 
-                            {/* METHOD DROPDOWN */}
                             {isMethodOpen && (
-                              <div className="mt-3 pt-3 border-t border-slate-700/80 space-y-2">
-                                <h4 className="text-[11px] font-bold uppercase tracking-wider text-amber-300">👨‍🍳 Step-by-Step Method:</h4>
+                              <div className="mt-3 pt-3 border-t border-slate-700/80 space-y-2 animate-fadeIn">
+                                <h4 className="text-[11px] font-black uppercase tracking-wider text-amber-300">👨‍🍳 Step-by-Step Method:</h4>
                                 <ol className="list-decimal list-inside space-y-1.5 text-xs text-slate-200 leading-relaxed">
                                   {meal.method?.map((step, sIdx) => (
-                                    <li key={sIdx}>{step}</li>
+                                    <li key={sIdx} className="pl-1">{step}</li>
                                   ))}
                                 </ol>
-                                <div className="mt-2.5 bg-slate-900/80 p-2.5 rounded-xl border border-slate-700">
-                                  <span className="text-[10px] font-bold text-emerald-400 block">💡 Kitchen Tip:</span>
-                                  <p className="text-[11px] text-slate-300 mt-0.5">{meal.familyTip}</p>
+                                <div className="mt-2.5 bg-[#14171f] p-3 rounded-xl border border-slate-700">
+                                  <span className="text-[10px] font-black uppercase tracking-wider text-emerald-400 block mb-0.5">💡 Kitchen Tip:</span>
+                                  <p className="text-[11px] text-slate-300 leading-relaxed">{meal.familyTip}</p>
                                 </div>
                               </div>
                             )}
                           </div>
                         ) : (
-                          <p className="text-xs text-slate-500 italic">No meal assigned yet. Swipe more cards!</p>
+                          <p className="text-xs text-slate-500 italic">No meal assigned yet. Swipe right on more cards!</p>
                         )}
                       </div>
                     );
@@ -448,33 +452,33 @@
               </div>
             )}
 
-            {/* TAB 3: WEEK PLAN & AISLE SHOPPING LIST */}
+            {/* TAB 3: SHOPPING LIST */}
             {activeTab === 'shop' && (
               <div className="space-y-5">
-                <div className="bg-emerald-950/60 border border-emerald-700/50 rounded-2xl p-4 flex justify-between items-center">
+                <div className="bg-emerald-950/40 border border-emerald-700/50 rounded-2xl p-4 flex justify-between items-center card-shadow">
                   <div>
-                    <h3 className="text-xs font-bold uppercase tracking-wider text-emerald-300">Smart Pack Sharing</h3>
+                    <h3 className="text-xs font-black uppercase tracking-wider text-emerald-300">Smart Pack Sharing</h3>
                     <p className="text-xs text-slate-300 mt-0.5">Overlapping ingredients combined into single packs</p>
                   </div>
-                  <span className="text-sm font-extrabold text-emerald-300 bg-emerald-900/70 px-3 py-1 rounded-lg">
+                  <span className="text-sm font-black text-emerald-300 bg-emerald-900/60 px-3.5 py-1 rounded-xl border border-emerald-600/40">
                     Saved £{savedBySharingPacks.toFixed(2)}
                   </span>
                 </div>
 
                 <div>
-                  <h3 className="text-xs font-bold uppercase tracking-wider text-slate-400 mb-2">This Week's Menu ({plannedMeals.length})</h3>
+                  <h3 className="text-xs font-black uppercase tracking-wider text-slate-400 mb-2">This Week's Menu ({plannedMeals.length})</h3>
                   <div className="space-y-2">
                     {plannedMeals.map(meal => (
-                      <div key={meal.id} className="flex justify-between items-center bg-slate-800/90 border border-slate-700 px-3.5 py-2.5 rounded-xl">
+                      <div key={meal.id} className="flex justify-between items-center bg-[#1c202a] border border-slate-700/80 px-3.5 py-3 rounded-2xl card-shadow">
                         <div>
-                          <span className="text-sm font-semibold text-white block">
+                          <span className="text-sm font-bold text-white block">
                             {meal.isDateNight ? '🥂 ' : '🍽️ '}{meal.name}
                           </span>
-                          <span className="text-[11px] text-slate-400">{meal.category}</span>
+                          <span className="text-[11px] text-slate-400 font-medium">{meal.category}</span>
                         </div>
                         <button
                           onClick={() => setPlannedMeals(plannedMeals.filter(m => m.id !== meal.id))}
-                          className="text-xs text-rose-400 hover:text-rose-300 font-semibold px-2 py-1"
+                          className="text-xs text-rose-400 hover:text-rose-300 font-bold px-2.5 py-1 rounded-lg bg-rose-500/10 border border-rose-500/20 transition"
                         >
                           Remove
                         </button>
@@ -484,7 +488,7 @@
                 </div>
 
                 <div>
-                  <h3 className="text-xs font-bold uppercase tracking-wider text-slate-400 mb-2">
+                  <h3 className="text-xs font-black uppercase tracking-wider text-slate-400 mb-2">
                     Consolidated Supermarket List (Tap if already in kitchen)
                   </h3>
                   <div className="space-y-2">
@@ -494,26 +498,26 @@
                         <div
                           key={item.id}
                           onClick={() => togglePantryItem(item.id)}
-                          className={`p-3 rounded-xl border flex justify-between items-center cursor-pointer transition ${
+                          className={`p-3.5 rounded-2xl border flex justify-between items-center cursor-pointer transition card-shadow ${
                             checked
-                              ? 'bg-slate-900/40 border-slate-800 opacity-50 line-through'
-                              : 'bg-slate-800 border-slate-700'
+                              ? 'bg-[#14171f]/50 border-slate-800 opacity-40 line-through'
+                              : 'bg-[#1c202a] border-slate-700/80 hover:border-slate-600'
                           }`}
                         >
                           <div>
-                            <span className="text-sm font-medium text-white">{item.name}</span>
-                            <div className="flex items-center gap-2 mt-0.5">
-                              <span className="text-[10px] bg-slate-700 text-slate-300 px-2 py-0.5 rounded">
+                            <span className="text-sm font-semibold text-white">{item.name}</span>
+                            <div className="flex items-center gap-2 mt-1">
+                              <span className="text-[10px] bg-[#14171f] text-slate-300 px-2.5 py-0.5 rounded-md border border-slate-700 font-medium">
                                 {item.aisle}
                               </span>
                               {item.usedInCount > 1 && (
-                                <span className="text-[10px] bg-emerald-500/20 text-emerald-300 px-2 py-0.5 rounded font-semibold">
+                                <span className="text-[10px] bg-emerald-500/20 text-emerald-300 px-2.5 py-0.5 rounded-md font-bold border border-emerald-500/30">
                                   Shared across {item.usedInCount} meals
                                 </span>
                               )}
                             </div>
                           </div>
-                          <span className="text-sm font-bold text-emerald-300">£{item.price.toFixed(2)}</span>
+                          <span className="text-sm font-extrabold text-emerald-300">£{item.price.toFixed(2)}</span>
                         </div>
                       );
                     })}
@@ -522,24 +526,24 @@
               </div>
             )}
 
-            {/* TAB 4: AI FRIDGE PHOTO SCANNER */}
+            {/* TAB 4: AI FRIDGE SCANNER */}
             {activeTab === 'scan' && (
               <div className="space-y-4">
-                <div className="bg-slate-800 border border-slate-700 rounded-3xl p-5 text-center">
-                  <div className="text-4xl mb-2">📸</div>
-                  <h2 className="text-lg font-bold text-white">AI Fridge & Pantry Scanner</h2>
-                  <p className="text-xs text-slate-400 mt-1 mb-4">
+                <div className="bg-[#1c202a] border border-slate-700/80 rounded-3xl p-6 text-center card-shadow">
+                  <div className="text-5xl mb-3">📸</div>
+                  <h2 className="text-base font-black text-white">AI Fridge & Pantry Scanner</h2>
+                  <p className="text-xs text-slate-400 mt-1 mb-5 leading-relaxed">
                     Snap a photo of your fridge shelves to automatically tick off packs you already own and deduct them from your shop total.
                   </p>
 
-                  <label className="block w-full py-3.5 px-4 bg-emerald-500 hover:bg-emerald-400 text-slate-950 font-bold text-sm rounded-2xl cursor-pointer transition">
+                  <label className="block w-full py-4 px-4 bg-emerald-500 hover:bg-emerald-400 active:scale-98 text-slate-950 font-black text-xs uppercase tracking-wider rounded-2xl cursor-pointer transition shadow-lg">
                     📷 Take or Upload Fridge Photo
                     <input type="file" accept="image/*" onChange={handlePhotoUpload} className="hidden" />
                   </label>
                 </div>
 
                 {scanMessage && (
-                  <div className="bg-emerald-950/80 border border-emerald-500/40 rounded-2xl p-4 text-xs text-emerald-200 font-medium">
+                  <div className="bg-emerald-950/80 border border-emerald-500/50 rounded-2xl p-4 text-xs text-emerald-200 font-bold card-shadow">
                     ✅ {scanMessage}
                   </div>
                 )}
@@ -547,36 +551,36 @@
             )}
           </main>
 
-          {/* BOTTOM NAVIGATION BAR (4 TABS) */}
-          <nav className="fixed bottom-0 left-0 right-0 max-w-md mx-auto bg-slate-900/95 backdrop-blur border-t border-slate-800 grid grid-cols-4 p-1.5 z-20">
+          {/* QUARTZ GRAY BOTTOM NAVIGATION BAR */}
+          <nav className="fixed bottom-0 left-0 right-0 max-w-md mx-auto glass-header border-t border-slate-800/80 grid grid-cols-4 p-2 z-20 shadow-2xl">
             <button
               onClick={() => setActiveTab('swipe')}
-              className={`py-2 rounded-xl text-[11px] font-bold transition ${
-                activeTab === 'swipe' ? 'text-emerald-400 bg-slate-800' : 'text-slate-400'
+              className={`py-2.5 rounded-xl text-[11px] font-black uppercase tracking-wider transition ${
+                activeTab === 'swipe' ? 'text-emerald-400 bg-[#14171f] shadow-inner border border-slate-800' : 'text-slate-400 hover:text-slate-200'
               }`}
             >
               🔥 Swipe
             </button>
             <button
               onClick={() => setActiveTab('calendar')}
-              className={`py-2 rounded-xl text-[11px] font-bold transition ${
-                activeTab === 'calendar' ? 'text-emerald-400 bg-slate-800' : 'text-slate-400'
+              className={`py-2.5 rounded-xl text-[11px] font-black uppercase tracking-wider transition ${
+                activeTab === 'calendar' ? 'text-emerald-400 bg-[#14171f] shadow-inner border border-slate-800' : 'text-slate-400 hover:text-slate-200'
               }`}
             >
-              📅 Week Plan
+              📅 Week
             </button>
             <button
               onClick={() => setActiveTab('shop')}
-              className={`py-2 rounded-xl text-[11px] font-bold transition ${
-                activeTab === 'shop' ? 'text-emerald-400 bg-slate-800' : 'text-slate-400'
+              className={`py-2.5 rounded-xl text-[11px] font-black uppercase tracking-wider transition ${
+                activeTab === 'shop' ? 'text-emerald-400 bg-[#14171f] shadow-inner border border-slate-800' : 'text-slate-400 hover:text-slate-200'
               }`}
             >
-              🛒 Shop ({basketItems.length})
+              🛒 Shop
             </button>
             <button
               onClick={() => setActiveTab('scan')}
-              className={`py-2 rounded-xl text-[11px] font-bold transition ${
-                activeTab === 'scan' ? 'text-emerald-400 bg-slate-800' : 'text-slate-400'
+              className={`py-2.5 rounded-xl text-[11px] font-black uppercase tracking-wider transition ${
+                activeTab === 'scan' ? 'text-emerald-400 bg-[#14171f] shadow-inner border border-slate-800' : 'text-slate-400 hover:text-slate-200'
               }`}
             >
               📸 Scan
