@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover" />
-  <title>BasketBoss — Modular Multi-File AI Meal Planner</title>
+  <title>BasketBoss — Modular AI Meal Planner with Wipeout Mode</title>
   <!-- Apple Mobile Web App Meta Tags -->
   <meta name="apple-mobile-web-app-capable" content="yes" />
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
@@ -16,7 +16,7 @@
   <!-- Babel for in-browser JSX -->
   <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
   
-  <!-- Load ALL Modular Recipe Files -->
+  <!-- Load Modular Recipe Files -->
   <script src="recipes-family.js"></script>
   <script src="recipes-onepan.js"></script>
   <script src="recipes-datenight.js"></script>
@@ -59,30 +59,54 @@
     function App() {
       const [activeTab, setActiveTab] = useState('swipe');
       
-      // Combine all loaded modular recipe libraries into the swipe deck
-      const [meals, setMeals] = useState(() => [
+      const allLoadedMeals = [
         ...(window.FAMILY_RECIPES || []),
         ...(window.ONEPAN_RECIPES || []),
         ...(window.DATENIGHT_RECIPES || []),
         ...(window.FAKEAWAY_RECIPES || []),
         ...(window.SLOWCOOKER_RECIPES || []),
         ...(window.HEALTHY_RECIPES || [])
-      ]);
-      
+      ];
+
+      const [meals, setMeals] = useState(allLoadedMeals);
       const [deckIndex, setDeckIndex] = useState(0);
       const [plannedMeals, setPlannedMeals] = useState([
-        { meal: meals[0] || {}, assignedDay: 'Monday' },
-        { meal: meals[1] || {}, assignedDay: 'Tuesday' },
-        { meal: meals[3] || {}, assignedDay: 'Friday' }
+        { meal: allLoadedMeals[0] || {}, assignedDay: 'Monday' },
+        { meal: allLoadedMeals[1] || {}, assignedDay: 'Tuesday' },
+        { meal: allLoadedMeals[4] || {}, assignedDay: 'Friday' }
       ]);
       const [pantryChecked, setPantryChecked] = useState({});
       const [scanMessage, setScanMessage] = useState('');
+      const [wipeoutMode, setWipeoutMode] = useState(false);
       const [expandedMethodId, setExpandedMethodId] = useState(null);
       const [dragX, setDragX] = useState(0);
       const startXRef = useRef(null);
 
       const currentMeal = meals[deckIndex];
       const weekDays = getWeekDays();
+
+      // --- PANTRY WIPEOUT TOGGLE LOGIC ---
+      const toggleWipeoutMode = () => {
+        if (!wipeoutMode) {
+          // Filter swipe deck to only show meals that share ingredients already ticked in pantry
+          const filtered = allLoadedMeals.filter(m => 
+            m.ingredients.some(ing => pantryChecked[ing.id])
+          );
+          if (filtered.length > 0) {
+            setMeals(filtered);
+            setDeckIndex(0);
+            setWipeoutMode(true);
+            setScanMessage('🌪️ Pantry Wipeout Mode Active! Showing zero-waste meals using your fridge items.');
+          } else {
+            setScanMessage('⚠️ Tick off some items in your Fridge Scan first before activating Wipeout Mode!');
+          }
+        } else {
+          setMeals(allLoadedMeals);
+          setDeckIndex(0);
+          setWipeoutMode(false);
+          setScanMessage('Standard recipe library restored.');
+        }
+      };
 
       const consolidatedBasket = () => {
         const map = {};
@@ -158,8 +182,9 @@
       const handlePhotoUpload = (e) => {
         const file = e.target.files?.[0];
         if (!file) return;
-        setPantryChecked(prev => ({ ...prev, i1: true, i5: true, i13: true }));
-        setScanMessage(`Scanned "${file.name}" — ticked off detected items from your basket!`);
+        // Simulate scanning and ticking common fridge items
+        setPantryChecked(prev => ({ ...prev, i1: true, i2: true, i5: true, i13: true, sc_1: true }));
+        setScanMessage(`Scanned "${file.name}" — fridge odds & ends ticked off for Wipeout Mode!`);
       };
 
       const onTouchStart = (e) => { startXRef.current = e.touches[0].clientX; };
@@ -191,7 +216,7 @@
                   Basket<span className="text-emerald-400">Boss</span>
                 </h1>
                 <p className="text-[11px] text-slate-400 font-medium mt-0.5">
-                  {meals.length} Modular Recipes Loaded
+                  {wipeoutMode ? '🌪️ Wipeout Mode Active' : `${meals.length} Modular Recipes`}
                 </p>
               </div>
             </div>
@@ -208,6 +233,13 @@
             {activeTab === 'swipe' && (
               currentMeal ? (
                 <div>
+                  {wipeoutMode && (
+                    <div className="bg-amber-500/10 border border-amber-500/30 p-3 rounded-2xl mb-3 flex items-center justify-between">
+                      <span className="text-xs font-bold text-amber-300">🌪️ Showing Zero-Waste Wipeout Recipes</span>
+                      <button onClick={toggleWipeoutMode} className="text-[10px] bg-amber-500 text-slate-950 font-black px-2.5 py-1 rounded-lg">Exit Mode</button>
+                    </div>
+                  )}
+
                   <div
                     onTouchStart={onTouchStart}
                     onTouchMove={onTouchMove}
@@ -293,28 +325,46 @@
                     <p className="text-[11px] text-slate-400 text-center font-medium bg-[#1c202a] px-4 py-2 rounded-xl border border-slate-800 shadow-inner w-full">
                       💡 <span className="text-emerald-400 font-bold">Swipe Right / Add to Week</span> = Yes | <span className="text-rose-400 font-bold">Swipe Left / Discard</span> = No
                     </p>
-                    <p className="text-[10px] text-indigo-400 font-semibold mt-2">
-                      📚 Library: Recipe {deckIndex + 1} of {meals.length}
-                    </p>
                   </div>
                 </div>
-              ) : null
+              ) : (
+                <div className="text-center bg-[#1c202a] border border-slate-700 rounded-3xl p-8 mt-6 card-shadow">
+                  <h2 className="text-lg font-bold text-white mb-2">No Matching Recipes Found</h2>
+                  <p className="text-xs text-slate-400 mb-5">Try scanning more fridge items or exit Wipeout Mode.</p>
+                  <button onClick={toggleWipeoutMode} className="px-4 py-2.5 bg-emerald-500 text-slate-950 font-bold text-xs rounded-xl">
+                    Reset Swipe Deck
+                  </button>
+                </div>
+              )
             )}
 
-            {/* TAB 2: SCANNER */}
+            {/* TAB 2: SCANNER & WIPEOUT MODE */}
             {activeTab === 'scan' && (
               <div className="space-y-4">
                 <div className="bg-[#1c202a] border border-slate-700/80 rounded-3xl p-6 text-center card-shadow">
                   <div className="text-5xl mb-3">📸</div>
                   <h2 className="text-base font-black text-white">AI Fridge & Pantry Scanner</h2>
                   <p className="text-xs text-slate-400 mt-1 mb-5 leading-relaxed">
-                    Snap a photo of your fridge shelves to automatically tick off packs you already own and deduct them from your shop total.
+                    Snap a photo of your fridge shelves to automatically tick off packs you already own and unlock Zero-Waste Mode.
                   </p>
 
-                  <label className="block w-full py-4 px-4 bg-emerald-500 hover:bg-emerald-400 active:scale-98 text-slate-950 font-black text-xs uppercase tracking-wider rounded-2xl cursor-pointer transition shadow-lg">
+                  <label className="block w-full py-4 px-4 bg-emerald-500 hover:bg-emerald-400 active:scale-98 text-slate-950 font-black text-xs uppercase tracking-wider rounded-2xl cursor-pointer transition shadow-lg mb-3">
                     📷 Take or Upload Fridge Photo
                     <input type="file" accept="image/*" onChange={handlePhotoUpload} className="hidden" />
                   </label>
+
+                  {/* WIPEOUT MODE TOGGLE BUTTON */}
+                  <button
+                    onClick={toggleWipeoutMode}
+                    className={`w-full py-3.5 px-4 font-black text-xs uppercase tracking-wider rounded-2xl border transition shadow-lg flex items-center justify-center gap-2 ${
+                      wipeoutMode 
+                        ? 'bg-amber-500 text-slate-950 border-amber-400' 
+                        : 'bg-[#14171f] text-amber-300 border-amber-500/50 hover:bg-amber-500/10'
+                    }`}
+                  >
+                    <span>🌪️</span>
+                    <span>{wipeoutMode ? 'Disable Pantry Wipeout Mode' : 'Activate Pantry Wipeout Mode'}</span>
+                  </button>
                 </div>
 
                 {scanMessage && (
@@ -519,7 +569,7 @@
                               );
                             })
                           ) : (
-                            <p className="text-xs text-slate-500 italic py-1">No meal assigned yet. (Swipe right on meals to add them here)</p>
+                            <p className="text-xs text-slate-500 italic py-1">No meal scheduled for this day. (Swipe right on meals to add them here)</p>
                           )}
                         </div>
                       </div>
