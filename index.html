@@ -1,0 +1,118 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+  <title>BasketBoss — Family & Date Night Meal Planner</title>
+  <!-- Tailwind CSS -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  <!-- React & ReactDOM -->
+  <script crossorigin src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
+  <script crossorigin src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
+  <!-- Babel for in-browser JSX -->
+  <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+  <style>
+    body { background-color: #0f172a; color: #f8fafc; font-family: system-ui, -apple-system, sans-serif; overflow-x: hidden; }
+    .no-select { user-select: none; -webkit-user-select: none; }
+  </style>
+</head>
+<body>
+  <div id="root"></div>
+
+  <script type="text/babel">
+    const { useState, useRef } = React;
+
+    // --- MEAL & SUPERMARKET PACK DATABASE ---
+    const INITIAL_MEALS = [
+      {
+        id: 'm1',
+        name: 'Sheet-Pan Chicken Fajitas & Loaded Nachos',
+        category: 'Mexican • Family of 6',
+        isDateNight: false,
+        prepTime: 25,
+        estCost: 13.50,
+        image: 'https://images.unsplash.com/photo-1565299585323-38d6b0865b47?auto=format&fit=crop&w=800&q=80',
+        familyTip: 'Roast the chicken and peppers on one big tray. Put wraps, grated cheddar, and sour cream in the middle of the table so the kids can build their own.',
+        ingredients: [
+          { id: 'i1', name: 'Chicken Breast Fillets (1kg pack)', price: 7.00, aisle: 'Meat & Fish' },
+          { id: 'i2', name: 'Mixed Bell Peppers (3-pack)', price: 1.80, aisle: 'Produce' },
+          { id: 'i3', name: 'Tortilla Wraps (8-pack)', price: 1.50, aisle: 'Bakery' },
+          { id: 'i4', name: 'Soured Cream & Chive Dip', price: 1.60, aisle: 'Dairy' },
+          { id: 'i5', name: 'Mature Cheddar Block (400g)', price: 3.20, aisle: 'Dairy' }
+        ]
+      },
+      {
+        id: 'm2',
+        name: 'Slow-Simmered Beef Bolognese & Garlic Bread',
+        category: 'Italian • Crowd Pleaser',
+        isDateNight: false,
+        prepTime: 30,
+        estCost: 11.90,
+        image: 'https://images.unsplash.com/photo-1621996346565-e3d5d6281298?auto=format&fit=crop&w=800&q=80',
+        familyTip: 'Finely grate courgettes and carrots straight into the mince—they melt into the tomato sauce so the kids never spot them. Save half the batch for Thursday!',
+        ingredients: [
+          { id: 'i6', name: 'Beef Mince (750g family pack)', price: 5.80, aisle: 'Meat & Fish' },
+          { id: 'i7', name: 'Penne Pasta (1kg)', price: 1.50, aisle: 'Tins & Dry' },
+          { id: 'i8', name: 'Chopped Tomatoes (4-pack tins)', price: 2.40, aisle: 'Tins & Dry' },
+          { id: 'i9', name: 'Carrots & Courgettes Pack', price: 1.70, aisle: 'Produce' },
+          { id: 'i10', name: 'Garlic Baguette (Twin Pack)', price: 1.80, aisle: 'Bakery' }
+        ]
+      },
+      {
+        id: 'm3',
+        name: 'Honey-Glazed Salmon, Crispy Potatoes & Broccoli',
+        category: 'Midweek Traybake • Family of 6',
+        isDateNight: false,
+        prepTime: 25,
+        estCost: 15.20,
+        image: 'https://images.unsplash.com/photo-1467003909585-2f8a72700288?auto=format&fit=crop&w=800&q=80',
+        familyTip: 'Uses the rest of the chicken pack from Monday for any kids who aren’t keen on salmon, cooked in the exact same honey-soy glaze.',
+        ingredients: [
+          { id: 'i11', name: 'Salmon Fillets (4-pack)', price: 8.50, aisle: 'Meat & Fish' },
+          { id: 'i1', name: 'Chicken Breast Fillets (1kg pack)', price: 7.00, aisle: 'Meat & Fish' },
+          { id: 'i12', name: 'Tenderstem Broccoli', price: 1.80, aisle: 'Produce' },
+          { id: 'i13', name: 'Maris Piper Potatoes (2.5kg bag)', price: 2.20, aisle: 'Produce' }
+        ]
+      },
+      {
+        id: 'm4',
+        name: 'Crispy Fluffy Jacket Potatoes & Mild Beef Chilli',
+        category: 'Batch Cook • Zero Waste',
+        isDateNight: false,
+        prepTime: 15,
+        estCost: 8.90,
+        image: 'https://images.unsplash.com/photo-1518779578993-ec3579fee39f?auto=format&fit=crop&w=800&q=80',
+        familyTip: 'Uses the second half of your potato bag, cheddar block, and sour cream from earlier in the week so zero food goes to waste.',
+        ingredients: [
+          { id: 'i6', name: 'Beef Mince (750g family pack)', price: 5.80, aisle: 'Meat & Fish' },
+          { id: 'i13', name: 'Maris Piper Potatoes (2.5kg bag)', price: 2.20, aisle: 'Produce' },
+          { id: 'i14', name: 'Red Kidney Beans & Sweetcorn Tins', price: 1.60, aisle: 'Tins & Dry' },
+          { id: 'i5', name: 'Mature Cheddar Block (400g)', price: 3.20, aisle: 'Dairy' },
+          { id: 'i4', name: 'Soured Cream & Chive Dip', price: 1.60, aisle: 'Dairy' }
+        ]
+      },
+      {
+        id: 'm5',
+        name: 'Homemade Brioche Chicken Burgers & Wedges',
+        category: 'Friday Fakeaway • Family of 6',
+        isDateNight: false,
+        prepTime: 30,
+        estCost: 11.80,
+        image: 'https://images.unsplash.com/photo-1568901346375-23c9450c58cd?auto=format&fit=crop&w=800&q=80',
+        familyTip: 'Way cheaper than a takeaway! Slice the remaining potatoes into chunky wedges and roast alongside crispy coated chicken fillets.',
+        ingredients: [
+          { id: 'i1', name: 'Chicken Breast Fillets (1kg pack)', price: 7.00, aisle: 'Meat & Fish' },
+          { id: 'i13', name: 'Maris Piper Potatoes (2.5kg bag)', price: 2.20, aisle: 'Produce' },
+          { id: 'i15', name: 'Brioche Burger Buns (6-pack)', price: 1.90, aisle: 'Bakery' },
+          { id: 'i16', name: 'Little Gem Lettuce (2-pack)', price: 1.20, aisle: 'Produce' }
+        ]
+      },
+      {
+        id: 'm6',
+        name: 'Pan-Seared Sirloin Steaks, Peppercorn Sauce & Parmentier Potatoes',
+        category: '✨ Date Night Idea • For Two',
+        isDateNight: true,
+        prepTime: 20,
+        estCost: 14.50,
+        image: 'https://images.unsplash.com/photo-1600891964092-4316c288032e?auto=format&fit=crop&w=800&q=80',
+        familyTip: 'Pop a quick freezer pizza or fish fingers on
