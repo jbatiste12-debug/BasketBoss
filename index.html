@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover" />
-  <title>BasketBoss — Modular AI Meal Planner with Wipeout Mode</title>
+  <title>BasketBoss — AI Meal Planner with Cooking Mode</title>
   <!-- Apple Mobile Web App Meta Tags -->
   <meta name="apple-mobile-web-app-capable" content="yes" />
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
@@ -79,16 +79,47 @@
       const [scanMessage, setScanMessage] = useState('');
       const [wipeoutMode, setWipeoutMode] = useState(false);
       const [expandedMethodId, setExpandedMethodId] = useState(null);
+      
+      // --- COOKING MODE STATE ---
+      const [cookingMeal, setCookingMeal] = useState(null);
+      const [currentStepIndex, setCurrentStepIndex] = useState(0);
+      const [timerSeconds, setTimerSeconds] = useState(0);
+      const [isTimerRunning, setIsTimerRunning] = useState(false);
+
       const [dragX, setDragX] = useState(0);
       const startXRef = useRef(null);
 
       const currentMeal = meals[deckIndex];
       const weekDays = getWeekDays();
 
-      // --- PANTRY WIPEOUT TOGGLE LOGIC ---
+      // Timer countdown effect for Cooking Mode
+      useEffect(() => {
+        let interval = null;
+        if (isTimerRunning && timerSeconds > 0) {
+          interval = setInterval(() => {
+            setTimerSeconds(prev => prev - 1);
+          }, 1000);
+        } else if (timerSeconds === 0) {
+          setIsTimerRunning(false);
+        }
+        return () => clearInterval(interval);
+      }, [isTimerRunning, timerSeconds]);
+
+      const startCooking = (meal) => {
+        setCookingMeal(meal);
+        setCurrentStepIndex(0);
+        setTimerSeconds((meal.prepTime || 20) * 60);
+        setIsTimerRunning(false);
+      };
+
+      const formatTime = (secs) => {
+        const mins = Math.floor(secs / 60);
+        const remainingSecs = secs % 60;
+        return `${mins}:${remainingSecs < 10 ? '0' : ''}${remainingSecs}`;
+      };
+
       const toggleWipeoutMode = () => {
         if (!wipeoutMode) {
-          // Filter swipe deck to only show meals that share ingredients already ticked in pantry
           const filtered = allLoadedMeals.filter(m => 
             m.ingredients.some(ing => pantryChecked[ing.id])
           );
@@ -96,7 +127,7 @@
             setMeals(filtered);
             setDeckIndex(0);
             setWipeoutMode(true);
-            setScanMessage('🌪️ Pantry Wipeout Mode Active! Showing zero-waste meals using your fridge items.');
+            setScanMessage('🌪️ Pantry Wipeout Mode Active! Showing zero-waste meals.');
           } else {
             setScanMessage('⚠️ Tick off some items in your Fridge Scan first before activating Wipeout Mode!');
           }
@@ -182,7 +213,6 @@
       const handlePhotoUpload = (e) => {
         const file = e.target.files?.[0];
         if (!file) return;
-        // Simulate scanning and ticking common fridge items
         setPantryChecked(prev => ({ ...prev, i1: true, i2: true, i5: true, i13: true, sc_1: true }));
         setScanMessage(`Scanned "${file.name}" — fridge odds & ends ticked off for Wipeout Mode!`);
       };
@@ -201,6 +231,86 @@
 
       return (
         <div className="max-w-md mx-auto min-h-screen flex flex-col justify-between pb-24 bg-[#14171f]">
+          
+          {/* --- FULL SCREEN COOKING MODE OVERLAY --- */}
+          {cookingMeal && (
+            <div className="fixed inset-0 z-50 bg-[#0f1319] p-5 flex flex-col justify-between overflow-y-auto animate-fadeIn">
+              <div>
+                <div className="flex justify-between items-center mb-4">
+                  <span className="text-xs font-black uppercase tracking-wider text-emerald-400">👨‍🍳 Kitchen Focus Mode</span>
+                  <button 
+                    onClick={() => setCookingMeal(null)}
+                    className="bg-slate-800 text-slate-300 px-3.5 py-1.5 rounded-xl font-bold text-xs border border-slate-700"
+                  >
+                    ✕ Exit Cooking Mode
+                  </button>
+                </div>
+
+                <h2 className="text-xl font-black text-white mb-4">{cookingMeal.name}</h2>
+
+                {/* TIMER WIDGET */}
+                <div className="bg-[#1c202a] border border-slate-700 rounded-2xl p-4 mb-6 flex justify-between items-center card-shadow">
+                  <div>
+                    <span className="text-[10px] uppercase font-bold text-slate-400 block">Kitchen Countdown</span>
+                    <span className="text-3xl font-black text-emerald-300 font-mono">{formatTime(timerSeconds)}</span>
+                  </div>
+                  <div className="flex gap-2">
+                    <button 
+                      onClick={() => setIsTimerRunning(!isTimerRunning)}
+                      className={`px-4 py-2 rounded-xl text-xs font-black uppercase tracking-wider ${
+                        isTimerRunning ? 'bg-amber-500 text-slate-950' : 'bg-emerald-500 text-slate-950'
+                      }`}
+                    >
+                      {isTimerRunning ? 'Pause' : 'Start Timer'}
+                    </button>
+                    <button 
+                      onClick={() => { setIsTimerRunning(false); setTimerSeconds((cookingMeal.prepTime || 20) * 60); }}
+                      className="px-3 py-2 bg-slate-800 text-slate-300 rounded-xl text-xs font-bold border border-slate-700"
+                    >
+                      Reset
+                    </button>
+                  </div>
+                </div>
+
+                {/* ACTIVE STEP DISPLAY */}
+                <div className="bg-[#1c202a] border border-slate-700/80 rounded-3xl p-6 card-shadow space-y-4">
+                  <div className="flex justify-between items-center">
+                    <span className="text-xs font-black uppercase tracking-wider text-amber-300">
+                      Step {currentStepIndex + 1} of {cookingMeal.method.length}
+                    </span>
+                    <div className="flex gap-1">
+                      {cookingMeal.method.map((_, i) => (
+                        <div key={i} className={`h-1.5 rounded-full transition-all ${i === currentStepIndex ? 'w-6 bg-emerald-400' : 'w-2 bg-slate-700'}`}></div>
+                      ))}
+                    </div>
+                  </div>
+
+                  <p className="text-lg font-bold text-slate-100 leading-relaxed min-h-[120px] pt-2">
+                    {cookingMeal.method[currentStepIndex]}
+                  </p>
+                </div>
+              </div>
+
+              {/* STEP NAVIGATION CONTROLS */}
+              <div className="grid grid-cols-2 gap-3 mt-6">
+                <button
+                  disabled={currentStepIndex === 0}
+                  onClick={() => setCurrentStepIndex(prev => Math.max(0, prev - 1))}
+                  className="py-4 rounded-2xl bg-slate-800 hover:bg-slate-700 text-slate-200 font-bold text-xs uppercase tracking-wider border border-slate-700 disabled:opacity-40 transition"
+                >
+                  ← Previous Step
+                </button>
+                <button
+                  disabled={currentStepIndex === cookingMeal.method.length - 1}
+                  onClick={() => setCurrentStepIndex(prev => Math.min(cookingMeal.method.length - 1, prev + 1))}
+                  className="py-4 rounded-2xl bg-emerald-500 hover:bg-emerald-400 text-slate-950 font-black text-xs uppercase tracking-wider transition shadow-lg disabled:opacity-40"
+                >
+                  Next Step →
+                </button>
+              </div>
+            </div>
+          )}
+
           {/* HEADER */}
           <header className="p-4 glass-header sticky top-0 z-20 border-b border-slate-800/80 flex justify-between items-center shadow-lg">
             <div className="flex items-center gap-2.5">
@@ -338,7 +448,7 @@
               )
             )}
 
-            {/* TAB 2: SCANNER & WIPEOUT MODE */}
+            {/* TAB 2: SCANNER & WIPEOUT */}
             {activeTab === 'scan' && (
               <div className="space-y-4">
                 <div className="bg-[#1c202a] border border-slate-700/80 rounded-3xl p-6 text-center card-shadow">
@@ -353,7 +463,6 @@
                     <input type="file" accept="image/*" onChange={handlePhotoUpload} className="hidden" />
                   </label>
 
-                  {/* WIPEOUT MODE TOGGLE BUTTON */}
                   <button
                     onClick={toggleWipeoutMode}
                     className={`w-full py-3.5 px-4 font-black text-xs uppercase tracking-wider rounded-2xl border transition shadow-lg flex items-center justify-center gap-2 ${
@@ -459,7 +568,7 @@
               </div>
             )}
 
-            {/* TAB 4: CALENDAR */}
+            {/* TAB 4: CALENDAR WITH COOKING MODE BUTTON */}
             {activeTab === 'calendar' && (
               <div className="space-y-4">
                 <div className="bg-[#1c202a] border border-slate-700/80 rounded-2xl p-4 card-shadow flex items-center justify-between">
@@ -467,7 +576,7 @@
                     <h2 className="text-xs font-black uppercase tracking-wider text-emerald-400 flex items-center gap-1.5">
                       <span>🗓️</span> Interactive Weekly Schedule
                     </h2>
-                    <p className="text-xs text-slate-300 mt-0.5">Use the dropdown on any meal to instantly reschedule days.</p>
+                    <p className="text-xs text-slate-300 mt-0.5">Reschedule days or launch full-screen Cooking Mode.</p>
                   </div>
                   <div className="bg-[#14171f] border border-slate-700 px-3 py-1.5 rounded-xl text-center">
                     <span className="text-[10px] text-slate-400 block font-bold uppercase">Planned</span>
@@ -544,11 +653,19 @@
                                     </select>
                                   </div>
 
+                                  {/* START COOKING MODE BUTTON */}
+                                  <button
+                                    onClick={() => startCooking(meal)}
+                                    className="w-full py-3 bg-emerald-500 hover:bg-emerald-400 text-slate-950 font-black text-xs uppercase tracking-wider rounded-xl transition flex justify-center items-center gap-2 shadow-lg mb-2"
+                                  >
+                                    <span>👨‍🍳 Start Cooking Mode</span>
+                                  </button>
+
                                   <button
                                     onClick={() => setExpandedMethodId(isMethodOpen ? null : `${wd.dayName}-${meal.id}`)}
                                     className="w-full py-2 bg-[#1c202a] hover:bg-[#252a36] text-slate-200 text-xs font-bold rounded-xl border border-slate-700 transition flex justify-center items-center gap-1.5 shadow"
                                   >
-                                    <span>{isMethodOpen ? 'Hide Cooking Method ▴' : 'View Step-by-Step Method ▾'}</span>
+                                    <span>{isMethodOpen ? 'Hide Quick Method ▴' : 'View Quick Method ▾'}</span>
                                   </button>
 
                                   {isMethodOpen && (
