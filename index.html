@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
-  <title>BasketBoss — Fully Automated AI Meal Planner</title>
+  <title>BasketBoss — AI Meal Planner & Weekly Calendar with Methods</title>
   <!-- Tailwind CSS -->
   <script src="https://cdn.tailwindcss.com"></script>
   <!-- React & ReactDOM -->
@@ -22,7 +22,7 @@
   <script type="text/babel">
     const { useState, useEffect, useRef } = React;
 
-    // --- INITIAL SEED RECIPES ---
+    // --- INITIAL SEED RECIPES WITH FULL METHODS ---
     const BASE_MEALS = [
       {
         id: 'm1',
@@ -33,6 +33,12 @@
         estCost: 13.50,
         image: 'https://images.unsplash.com/photo-1565299585323-38d6b0865b47?auto=format&fit=crop&w=800&q=80',
         familyTip: 'Roast chicken and peppers on one big tray. Put wraps, cheddar, and sour cream in the middle of the table so kids build their own.',
+        method: [
+          'Preheat oven to 200°C (180°C fan). Slice chicken breasts and bell peppers into thin strips.',
+          'Toss chicken and peppers on a large baking tray with olive oil, fajita seasoning, salt, and pepper.',
+          'Roast in the oven for 20-22 minutes until chicken is cooked through and peppers are charred at the edges.',
+          'Warm tortilla wraps in the microwave for 30 seconds. Serve family-style with grated cheddar and soured cream.'
+        ],
         ingredients: [
           { id: 'i1', name: 'Chicken Breast Fillets (1kg pack)', price: 7.00, aisle: 'Meat & Fish' },
           { id: 'i2', name: 'Mixed Bell Peppers (3-pack)', price: 1.80, aisle: 'Produce' },
@@ -50,6 +56,12 @@
         estCost: 11.90,
         image: 'https://images.unsplash.com/photo-1621996346565-e3d5d6281298?auto=format&fit=crop&w=800&q=80',
         familyTip: 'Finely grate courgettes and carrots straight into the mince—they melt into the tomato sauce so the kids never spot them.',
+        method: [
+          'Brown beef mince in a large pot over medium-high heat until well browned. Drain excess fat.',
+          'Add finely diced onions, minced garlic, and grated carrots & courgettes. Cook for 5 minutes until soft.',
+          'Pour in chopped tomatoes, beef stock, and simmer on low for 20 minutes until rich and thick.',
+          'Boil penne pasta in salted water until al dente. Bake garlic baguettes according to package instructions.'
+        ],
         ingredients: [
           { id: 'i6', name: 'Beef Mince (750g family pack)', price: 5.80, aisle: 'Meat & Fish' },
           { id: 'i7', name: 'Penne Pasta (1kg)', price: 1.50, aisle: 'Tins & Dry' },
@@ -67,6 +79,12 @@
         estCost: 14.50,
         image: 'https://images.unsplash.com/photo-1600891964092-4316c288032e?auto=format&fit=crop&w=800&q=80',
         familyTip: 'Pop a quick freezer pizza on for the kids at 5:30 PM, then enjoy this restaurant-quality steak dinner in peace once they are in bed.',
+        method: [
+          'Take sirloin steaks out of the fridge 20 minutes prior. Pat dry and season generously with salt and black pepper.',
+          'Chop Maris Piper potatoes into cubes, toss in olive oil and seasoning, and roast at 200°C for 30 minutes.',
+          'Heat a heavy skillet until smoking hot. Add a splash of oil and sear steaks for 3 minutes each side for medium-rare.',
+          'Rest steaks for 5 minutes. Warm creamy peppercorn sauce in a pan and serve alongside tenderstem broccoli.'
+        ],
         ingredients: [
           { id: 'i17', name: '2x Matured Sirloin Steaks (450g)', price: 10.50, aisle: 'Meat & Fish' },
           { id: 'i18', name: 'Fresh Creamy Peppercorn Sauce Tub', price: 2.20, aisle: 'Dairy' },
@@ -76,7 +94,7 @@
       }
     ];
 
-    // --- INFINITE AI GENERATION POOL ---
+    // --- INFINITE AI GENERATION POOL WITH METHODS ---
     const AI_GENERATION_POOL = [
       {
         name: 'Crispy Southern Fried Chicken Burgers & Slaw',
@@ -86,24 +104,16 @@
         estCost: 12.20,
         image: 'https://images.unsplash.com/photo-1625813506062-0aeb1d7a094b?auto=format&fit=crop&w=800&q=80',
         familyTip: 'Coat chicken in crushed cornflakes for an incredible crunch without deep frying.',
+        method: [
+          'Crush cornflakes into breadcrumb consistency in a bowl. Beat eggs in a separate bowl.',
+          'Dip chicken breasts in egg wash, then coat thoroughly in crushed cornflakes.',
+          'Bake in the oven at 200°C for 22-25 minutes until golden and crispy.',
+          'Toast brioche buns, add coleslaw and lettuce, and place crispy chicken inside.'
+        ],
         ingredients: [
           { id: 'ai_i1', name: 'Chicken Breast Fillets (1kg)', price: 7.00, aisle: 'Meat & Fish' },
           { id: 'ai_i2', name: 'Brioche Buns (6-pack)', price: 1.90, aisle: 'Bakery' },
           { id: 'ai_i3', name: 'Coleslaw Kit & Salad', price: 3.30, aisle: 'Produce' }
-        ]
-      },
-      {
-        name: 'Loaded Greek Chicken Souvlaki & Flatbreads',
-        category: 'Mediterranean • Family of 6',
-        isDateNight: false,
-        prepTime: 30,
-        estCost: 13.00,
-        image: 'https://images.unsplash.com/photo-1529692236671-f1f6cf9683ba?auto=format&fit=crop&w=800&q=80',
-        familyTip: 'Marinate chicken in oregano, lemon, and garlic. Serve with tzatziki and cucumber sticks.',
-        ingredients: [
-          { id: 'ai_i1', name: 'Chicken Breast Fillets (1kg)', price: 7.00, aisle: 'Meat & Fish' },
-          { id: 'ai_i4', name: 'Greek Flatbreads (6-pack)', price: 1.80, aisle: 'Bakery' },
-          { id: 'ai_i5', name: 'Tzatziki & Cucumbers', price: 4.20, aisle: 'Produce' }
         ]
       },
       {
@@ -114,6 +124,12 @@
         estCost: 14.20,
         image: 'https://images.unsplash.com/photo-1519708227418-c8fd9a32b7a2?auto=format&fit=crop&w=800&q=80',
         familyTip: 'Pan-sear salmon and simmer in a sun-dried tomato and garlic cream reduction.',
+        method: [
+          'Season salmon fillets with salt, pepper, and garlic powder. Sear skin-side down in olive oil for 4 minutes.',
+          'Flip salmon and add minced garlic, halved cherry tomatoes, and sliced sun-dried tomatoes to the pan.',
+          'Pour in double cream and let simmer gently for 5 minutes until sauce thickens.',
+          'Serve hot over sautéed asparagus.'
+        ],
         ingredients: [
           { id: 'ai_i6', name: 'Salmon Fillets (Twin Pack)', price: 7.50, aisle: 'Meat & Fish' },
           { id: 'ai_i7', name: 'Double Cream & Sun-Dried Tomatoes', price: 3.50, aisle: 'Dairy' },
@@ -128,43 +144,54 @@
         estCost: 11.50,
         image: 'https://images.unsplash.com/photo-1541544741938-0af808871cc0?auto=format&fit=crop&w=800&q=80',
         familyTip: 'Batch cook this hearty chilli; leftovers taste even better the next day wrapped in burritos.',
+        method: [
+          'Brown beef mince in a large pot with diced onions and garlic.',
+          'Add cumin, smoked paprika, chilli powder, chopped tomatoes, and rinsed kidney beans.',
+          'Simmer on low heat for 25 minutes until rich and thick.',
+          'Serve over fluffy boiled long-grain rice with a dollop of sour cream.'
+        ],
         ingredients: [
           { id: 'ai_i9', name: 'Beef Mince (750g)', price: 5.80, aisle: 'Meat & Fish' },
           { id: 'ai_i10', name: 'Mixed Beans & Chopped Tomatoes', price: 3.00, aisle: 'Tins & Dry' },
           { id: 'ai_i11', name: 'Long Grain Rice (1kg)', price: 2.70, aisle: 'Tins & Dry' }
         ]
-      },
-      {
-        name: 'Truffled Wild Mushroom & Spinach Tagliatelle',
-        category: '✨ Date Night Idea • For Two',
-        isDateNight: true,
-        prepTime: 25,
-        estCost: 12.80,
-        image: 'https://images.unsplash.com/photo-1563379926898-05f4575a45d8?auto=format&fit=crop&w=800&q=80',
-        familyTip: 'Earthy mushrooms tossed in garlic butter, parmesan, and fresh ribbon tagliatelle.',
-        ingredients: [
-          { id: 'ai_i12', name: 'Fresh Tagliatelle Pasta', price: 2.50, aisle: 'Tins & Dry' },
-          { id: 'ai_i13', name: 'Wild Mushrooms & Spinach', price: 4.80, aisle: 'Produce' },
-          { id: 'ai_i14', name: 'Parmesan Block', price: 5.50, aisle: 'Dairy' }
-        ]
       }
     ];
+
+    // Helper to generate current week's dates (Monday to Sunday)
+    function getWeekDays() {
+      const today = new Date();
+      const day = today.getDay();
+      const diffToMonday = today.getDate() - day + (day === 0 ? -6 : 1);
+      const monday = new Date(today.setDate(diffToMonday));
+
+      const days = [];
+      for (let i = 0; i < 7; i++) {
+        const d = new Date(monday);
+        d.setDate(monday.getDate() + i);
+        const dayName = d.toLocaleDateString('en-GB', { weekday: 'long' });
+        const dateStr = d.toLocaleDateString('en-GB', { day: 'numeric', month: 'short' });
+        days.push({ dayName, dateStr });
+      }
+      return days;
+    }
 
     function App() {
       const [activeTab, setActiveTab] = useState('swipe');
       const [meals, setMeals] = useState(BASE_MEALS);
       const [deckIndex, setDeckIndex] = useState(0);
-      const [plannedMeals, setPlannedMeals] = useState([BASE_MEALS[0], BASE_MEALS[2]]);
+      const [plannedMeals, setPlannedMeals] = useState([BASE_MEALS[0], BASE_MEALS[1], BASE_MEALS[2]]);
       const [pantryChecked, setPantryChecked] = useState({});
       const [scanMessage, setScanMessage] = useState('');
       const [isAutoGenerating, setIsAutoGenerating] = useState(false);
+      const [expandedMethodId, setExpandedMethodId] = useState(null);
       const [dragX, setDragX] = useState(0);
       const startXRef = useRef(null);
 
       const currentMeal = meals[deckIndex];
+      const weekDays = getWeekDays();
 
       // --- AUTOMATIC BACKGROUND AI GENERATOR ---
-      // Whenever you get within 2 cards of the end of the deck, automatically invent new recipes!
       useEffect(() => {
         if (deckIndex >= meals.length - 2 && !isAutoGenerating) {
           setIsAutoGenerating(true);
@@ -303,7 +330,6 @@
                       </span>
                       <h2 className="text-xl font-bold text-white mt-1 mb-3">{currentMeal.name}</h2>
 
-                      {/* FAMILY / DATE NIGHT TIP BOX */}
                       <div className={`rounded-2xl p-3.5 mb-4 border ${
                         currentMeal.isDateNight
                           ? 'bg-rose-950/50 border-rose-700/40'
@@ -315,7 +341,6 @@
                         <p className="text-xs text-slate-200 leading-relaxed">{currentMeal.familyTip}</p>
                       </div>
 
-                      {/* ACTION BUTTONS */}
                       <div className="grid grid-cols-2 gap-3">
                         <button
                           onClick={() => handleDecision(false)}
@@ -347,10 +372,85 @@
               ) : null
             )}
 
-            {/* TAB 2: WEEK PLAN & AISLE SHOPPING LIST */}
+            {/* TAB 2: WEEK CALENDAR OVERVIEW WITH DATES & METHODS */}
+            {activeTab === 'calendar' && (
+              <div className="space-y-4">
+                <div className="bg-slate-800/90 border border-slate-700 rounded-2xl p-4">
+                  <h2 className="text-sm font-extrabold uppercase tracking-wider text-emerald-400 mb-1">📅 Weekly Meal Calendar & Methods</h2>
+                  <p className="text-xs text-slate-300">Your scheduled meals mapped by day and date, complete with step-by-step cooking methods.</p>
+                </div>
+
+                <div className="space-y-3">
+                  {weekDays.map((wd, idx) => {
+                    const meal = plannedMeals[idx % plannedMeals.length];
+                    const isDate = meal?.isDateNight;
+                    const isMethodOpen = expandedMethodId === `${wd.dayName}-${idx}`;
+
+                    return (
+                      <div
+                        key={wd.dayName}
+                        className={`p-4 rounded-2xl border transition ${
+                          isDate
+                            ? 'bg-rose-950/30 border-rose-800/50'
+                            : 'bg-slate-800 border-slate-700'
+                        }`}
+                      >
+                        <div className="flex justify-between items-center mb-1.5">
+                          <span className="text-xs font-bold uppercase tracking-wider text-emerald-300">
+                            {wd.dayName} <span className="text-slate-400 font-normal">({wd.dateStr})</span>
+                          </span>
+                          <span className={`text-[10px] font-bold px-2.5 py-0.5 rounded-full ${
+                            isDate ? 'bg-rose-500/20 text-rose-300 border border-rose-500/30' : 'bg-emerald-500/10 text-emerald-300'
+                          }`}>
+                            {isDate ? '🥂 Date Night' : '🍽️ Family Dinner'}
+                          </span>
+                        </div>
+
+                        {meal ? (
+                          <div>
+                            <h3 className="text-sm font-bold text-white mb-1">{meal.name}</h3>
+                            <div className="flex justify-between items-center text-xs text-slate-300 mb-3">
+                              <span>⏱ {meal.prepTime} mins prep</span>
+                              <span className="font-semibold text-emerald-400">£{meal.estCost.toFixed(2)}</span>
+                            </div>
+
+                            {/* TOGGLE METHOD BUTTON */}
+                            <button
+                              onClick={() => setExpandedMethodId(isMethodOpen ? null : `${wd.dayName}-${idx}`)}
+                              className="w-full py-2 bg-slate-900/60 hover:bg-slate-900 text-slate-200 text-xs font-bold rounded-xl border border-slate-700 transition flex justify-center items-center gap-1.5"
+                            >
+                              <span>{isMethodOpen ? 'Hide Cooking Method ▴' : 'View Step-by-Step Method ▾'}</span>
+                            </button>
+
+                            {/* METHOD DROPDOWN */}
+                            {isMethodOpen && (
+                              <div className="mt-3 pt-3 border-t border-slate-700/80 space-y-2">
+                                <h4 className="text-[11px] font-bold uppercase tracking-wider text-amber-300">👨‍🍳 Step-by-Step Method:</h4>
+                                <ol className="list-decimal list-inside space-y-1.5 text-xs text-slate-200 leading-relaxed">
+                                  {meal.method?.map((step, sIdx) => (
+                                    <li key={sIdx}>{step}</li>
+                                  ))}
+                                </ol>
+                                <div className="mt-2.5 bg-slate-900/80 p-2.5 rounded-xl border border-slate-700">
+                                  <span className="text-[10px] font-bold text-emerald-400 block">💡 Kitchen Tip:</span>
+                                  <p className="text-[11px] text-slate-300 mt-0.5">{meal.familyTip}</p>
+                                </div>
+                              </div>
+                            )}
+                          </div>
+                        ) : (
+                          <p className="text-xs text-slate-500 italic">No meal assigned yet. Swipe more cards!</p>
+                        )}
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
+            )}
+
+            {/* TAB 3: WEEK PLAN & AISLE SHOPPING LIST */}
             {activeTab === 'shop' && (
               <div className="space-y-5">
-                {/* SAVED BY PACK SHARING BANNER */}
                 <div className="bg-emerald-950/60 border border-emerald-700/50 rounded-2xl p-4 flex justify-between items-center">
                   <div>
                     <h3 className="text-xs font-bold uppercase tracking-wider text-emerald-300">Smart Pack Sharing</h3>
@@ -361,7 +461,6 @@
                   </span>
                 </div>
 
-                {/* LOCKED IN MEALS */}
                 <div>
                   <h3 className="text-xs font-bold uppercase tracking-wider text-slate-400 mb-2">This Week's Menu ({plannedMeals.length})</h3>
                   <div className="space-y-2">
@@ -384,7 +483,6 @@
                   </div>
                 </div>
 
-                {/* CONSOLIDATED SHOPPING LIST */}
                 <div>
                   <h3 className="text-xs font-bold uppercase tracking-wider text-slate-400 mb-2">
                     Consolidated Supermarket List (Tap if already in kitchen)
@@ -424,7 +522,7 @@
               </div>
             )}
 
-            {/* TAB 3: AI FRIDGE PHOTO SCANNER */}
+            {/* TAB 4: AI FRIDGE PHOTO SCANNER */}
             {activeTab === 'scan' && (
               <div className="space-y-4">
                 <div className="bg-slate-800 border border-slate-700 rounded-3xl p-5 text-center">
@@ -449,19 +547,27 @@
             )}
           </main>
 
-          {/* BOTTOM NAVIGATION BAR */}
-          <nav className="fixed bottom-0 left-0 right-0 max-w-md mx-auto bg-slate-900/95 backdrop-blur border-t border-slate-800 grid grid-cols-3 p-2 z-20">
+          {/* BOTTOM NAVIGATION BAR (4 TABS) */}
+          <nav className="fixed bottom-0 left-0 right-0 max-w-md mx-auto bg-slate-900/95 backdrop-blur border-t border-slate-800 grid grid-cols-4 p-1.5 z-20">
             <button
               onClick={() => setActiveTab('swipe')}
-              className={`py-2.5 rounded-xl text-xs font-bold transition ${
+              className={`py-2 rounded-xl text-[11px] font-bold transition ${
                 activeTab === 'swipe' ? 'text-emerald-400 bg-slate-800' : 'text-slate-400'
               }`}
             >
-              🔥 Swipe Deck
+              🔥 Swipe
+            </button>
+            <button
+              onClick={() => setActiveTab('calendar')}
+              className={`py-2 rounded-xl text-[11px] font-bold transition ${
+                activeTab === 'calendar' ? 'text-emerald-400 bg-slate-800' : 'text-slate-400'
+              }`}
+            >
+              📅 Week Plan
             </button>
             <button
               onClick={() => setActiveTab('shop')}
-              className={`py-2.5 rounded-xl text-xs font-bold transition ${
+              className={`py-2 rounded-xl text-[11px] font-bold transition ${
                 activeTab === 'shop' ? 'text-emerald-400 bg-slate-800' : 'text-slate-400'
               }`}
             >
@@ -469,11 +575,11 @@
             </button>
             <button
               onClick={() => setActiveTab('scan')}
-              className={`py-2.5 rounded-xl text-xs font-bold transition ${
+              className={`py-2 rounded-xl text-[11px] font-bold transition ${
                 activeTab === 'scan' ? 'text-emerald-400 bg-slate-800' : 'text-slate-400'
               }`}
             >
-              📸 AI Fridge
+              📸 Scan
             </button>
           </nav>
         </div>
