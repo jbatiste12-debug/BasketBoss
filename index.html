@@ -52,13 +52,14 @@ img{-webkit-user-drag:none}
   .mini-recipe,.recipe-image{touch-action:pan-y}
 }
 @media(display-mode:standalone){body{user-select:none;-webkit-user-select:none}input,textarea{user-select:text;-webkit-user-select:text}}
+.photo-manager-row{display:grid;grid-template-columns:125px minmax(0,1fr);gap:14px;padding:16px 0;border-bottom:1px solid var(--line)}.photo-manager-row>img{width:125px;height:125px;object-fit:cover;border-radius:13px}.photo-manager-info{min-width:0}.photo-manager-info strong,.photo-manager-info small,.photo-manager-info label{display:block}.photo-manager-info small{color:var(--muted);margin:4px 0}.photo-manager-info a{display:inline-block;color:#93c5fd;margin:4px 0 10px;font-size:12px}.photo-manager-info label{font-size:11px;margin-bottom:5px}.photo-manager-info .actions{margin-top:8px}@media(max-width:450px){.photo-manager-row{grid-template-columns:90px minmax(0,1fr);gap:9px}.photo-manager-row>img{width:90px;height:95px}.photo-manager-info .btn{padding:8px}}
 </style>
 </head>
 <body><div class="shell">
 <header class="top"><div class="brand"><div class="logo">🧺</div><div><h1>Basket<span>Boss</span></h1><div class="sub" id="saveStatus">Your week, sorted.</div></div></div><div class="budget"><small>Still to buy</small><strong id="headerTotal">£0.00</strong></div></header>
 <section class="hero"><div><div class="eyebrow">Less planning. More living.</div><h2>Own your week.<br><span style="color:var(--green)">Eat like a boss.</span></h2><p>Pick your dinners, keep the shopping list honest, and make the most of what’s already in your fridge.</p></div></section>
 <div class="stats"><div class="stat"><b id="statMeals">0/7</b><span>Dinners planned</span></div><div class="stat"><b id="statSpend">£0</b><span>Estimated shop</span></div><div class="stat"><b id="statPantry">0</b><span>Items already owned</span></div></div>
-<nav class="tabs" aria-label="Main navigation"><button class="tab active" data-tab="discover">✨ Discover</button><button class="tab" data-tab="week">🗓️ My week</button><button class="tab" data-tab="shop">🛒 Shopping list</button><button class="tab" data-tab="fridge">📸 Fridge scan</button></nav>
+<nav class="tabs" aria-label="Main navigation"><button class="tab active" data-tab="discover">✨ Discover</button><button class="tab" data-tab="week">🗓️ My week</button><button class="tab" data-tab="shop">🛒 Shopping list</button><button class="tab" data-tab="fridge">📸 Fridge scan</button><button class="tab" data-tab="photos">🖼️ Photos</button></nav>
 <main id="app" class="view"></main><footer class="footer">BasketBoss · Your data stays in this browser · Prices are estimates, not live store prices.</footer></div>
 <div id="modalRoot"></div><div id="toastRoot" aria-live="polite"></div>
 <script>
@@ -247,7 +248,19 @@ function getBasket(){const map=new Map();for(const p of getPlanned())for(const r
 function totals(){const basket=getBasket();return {basket,total:basket.reduce((s,i)=>s+(i.owned?0:i.price),0),owned:basket.filter(i=>i.owned).length}}
 function updateStats(){const t=totals();document.getElementById('headerTotal').textContent=money(t.total);document.getElementById('statMeals').textContent=getPlanned().length+'/7';document.getElementById('statSpend').textContent=money(t.total);document.getElementById('statPantry').textContent=t.owned}
 function tabs(){document.querySelectorAll('.tab').forEach(b=>b.classList.toggle('active',b.dataset.tab===tab))}
-function render(){tabs();updateStats();const app=document.getElementById('app');app.innerHTML='';if(tab==='discover')renderDiscover(app);if(tab==='week')renderWeek(app);if(tab==='shop')renderShop(app);if(tab==='fridge')renderFridge(app)}
+function render(){tabs();updateStats();const app=document.getElementById('app');app.innerHTML='';if(tab==='discover')renderDiscover(app);if(tab==='week')renderWeek(app);if(tab==='shop')renderShop(app);if(tab==='fridge')renderFridge(app);if(tab==='photos')renderPhotos(app)}
+function renderPhotos(app){
+const counts={};for(const r of RECIPES)counts[r.image]=(counts[r.image]||0)+1;
+const custom=RECIPES.filter(r=>state.recipePhotos[r.id]).length;
+const duplicated=RECIPES.filter(r=>!state.recipePhotos[r.id]&&counts[r.image]>1).length;
+app.innerHTML=`<section class="card side"><div class="eyebrow">Recipe photo checklist</div><h3 style="font-size:23px;margin:8px 0">Pictures for all ${RECIPES.length} recipes</h3><p>${custom} individually customised · ${duplicated} still use repeated default photos. Search for a matching image, check its licence and save its URL here. Your current pictures stay visible until replaced.</p><input class="field" id="photoSearch" placeholder="Find a recipe…" aria-label="Find a recipe" style="margin:10px 0"><div class="notice">Photos aren't automatically sourced or licensed by this checklist. Only use images you have permission to publish. Saved photo changes are stored on this device and may be backed up by your configured cloud account.</div><div id="photoRows"></div></section>`;
+const input=app.querySelector('#photoSearch'),area=app.querySelector('#photoRows');
+function rows(){const q=input.value.trim().toLowerCase();const found=RECIPES.filter(r=>r.name.toLowerCase().includes(q));area.innerHTML=found.map(r=>{const current=state.recipePhotos[r.id]||r.image;const search='https://unsplash.com/s/photos/'+encodeURIComponent(r.name.toLowerCase().replace(/[&]/g,'and'));
+return `<div class="photo-manager-row"><img src="${esc(current)}" alt="${esc(r.name)}" loading="lazy" onerror="this.style.opacity='.25'"><div class="photo-manager-info"><strong>${esc(r.name)}</strong><small>${state.recipePhotos[r.id]?'✓ Custom picture':counts[r.image]>1?'⚠ Default image shared by '+counts[r.image]+' recipes':'Default picture'}</small><a href="${esc(search)}" target="_blank" rel="noopener noreferrer">Find matching photos ↗</a><label class="muted" for="photo-${esc(r.id)}">Picture URL or GitHub image path</label><input class="field" id="photo-${esc(r.id)}" data-photo-input="${esc(r.id)}" value="${esc(current)}"><div class="actions"><button class="btn primary" data-photo-save="${esc(r.id)}">Save picture</button><button class="btn" data-photo-reset="${esc(r.id)}">Reset</button></div></div></div>`}).join('')||'<p class="muted">No matching recipes.</p>';
+area.querySelectorAll('[data-photo-save]').forEach(b=>b.onclick=()=>{const id=b.dataset.photoSave;const v=area.querySelector('[data-photo-input="'+id+'"]').value.trim();if(!v||!(/^(https:\/\/|images\/|\.\/images\/)/i.test(v))||/[<>"']/.test(v)){notify('Use an HTTPS photo URL or images/ path');return}state.recipePhotos[id]=v;persist();notify('Picture saved ✓');rows()});
+area.querySelectorAll('[data-photo-reset]').forEach(b=>b.onclick=()=>{delete state.recipePhotos[b.dataset.photoReset];persist();notify('Default picture restored');rows()});}
+input.oninput=rows;rows();}
+
 function imageHTML(r,cls=''){const fallback='https://images.unsplash.com/photo-1490645935967-10de6ba17061?auto=format&fit=crop&w=900&q=80';return `<img class="${cls}" src="${esc(state.recipePhotos[r.id]||r.image)}" alt="${esc(r.name)}" loading="lazy" decoding="async" onerror="if(!this.dataset.fallback){this.dataset.fallback='1';this.src='${fallback}'}else{this.style.display='none'}">`}
 function collectionsFor(r){return state.recipeCollections[r.id]||defaultCollections(r)}
 function renderDiscover(app){
@@ -314,6 +327,7 @@ if ('serviceWorker' in navigator && location.protocol==='https:') {
 #cloud-card button{margin:4px;padding:10px 13px;border-radius:10px;background:#2563eb;color:white;border:0;font-weight:700}
 #cloud-card .secondary{background:#233c5c}
 #cloud-card small{display:block;color:#a9c0df;line-height:1.5}
+.photo-manager-row{display:grid;grid-template-columns:125px minmax(0,1fr);gap:14px;padding:16px 0;border-bottom:1px solid var(--line)}.photo-manager-row>img{width:125px;height:125px;object-fit:cover;border-radius:13px}.photo-manager-info{min-width:0}.photo-manager-info strong,.photo-manager-info small,.photo-manager-info label{display:block}.photo-manager-info small{color:var(--muted);margin:4px 0}.photo-manager-info a{display:inline-block;color:#93c5fd;margin:4px 0 10px;font-size:12px}.photo-manager-info label{font-size:11px;margin-bottom:5px}.photo-manager-info .actions{margin-top:8px}@media(max-width:450px){.photo-manager-row{grid-template-columns:90px minmax(0,1fr);gap:9px}.photo-manager-row>img{width:90px;height:95px}.photo-manager-info .btn{padding:8px}}
 </style>
 <div id="cloud-account"><button id="cloud-open" type="button">☁ Account</button></div>
 <div id="cloud-panel" role="dialog" aria-modal="true" aria-label="BasketBoss cloud account"><div id="cloud-card">
