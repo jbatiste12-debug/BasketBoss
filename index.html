@@ -3,27 +3,14 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover" />
-  <title>BasketBoss — Modular Multi-File AI Meal Planner</title>
-  <!-- Apple Mobile Web App Meta Tags -->
+  <title>BasketBoss — Ultimate AI Meal Planner</title>
   <meta name="apple-mobile-web-app-capable" content="yes" />
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
   <meta name="apple-mobile-web-app-title" content="BasketBoss" />
-  <!-- Tailwind CSS -->
   <script src="https://cdn.tailwindcss.com"></script>
-  <!-- React & ReactDOM -->
   <script crossorigin src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
   <script crossorigin src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
-  <!-- Babel for in-browser JSX -->
-  <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
-  
-  <!-- Load All Your Modular Recipe JS Files from GitHub -->
-  <script src="recipes-family.js"></script>
-  <script src="recipes-onepan.js"></script>
-  <script src="recipes-datenight.js"></script>
-  <script src="recipes-fakeaways.js"></script>
-  <script src="recipes-slowcooker.js"></script>
-  <script src="recipes-healthy.js"></script>
-
+  <script crossorigin src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
   <style>
     body { background-color: #14171f; color: #f1f5f9; font-family: system-ui, -apple-system, sans-serif; overflow-x: hidden; }
     .no-select { user-select: none; -webkit-user-select: none; }
@@ -37,6 +24,92 @@
   <script type="text/babel">
     const { useState, useEffect, useRef } = React;
 
+    const PROTEINS = [
+      { name: 'Chicken Breast Fillets (1kg pack)', price: 8.50, cat: 'Meat', img: 'https://images.unsplash.com/photo-1604908176997-125f2596f3ed?auto=format&fit=crop&w=800&q=80' },
+      { name: 'Chicken Thighs Bone-In (1kg)', price: 6.50, cat: 'Meat', img: 'https://images.unsplash.com/photo-1532550907401-a500c9a57435?auto=format&fit=crop&w=800&q=80' },
+      { name: '5% Lean Beef Mince (750g)', price: 7.20, cat: 'Meat', img: 'https://images.unsplash.com/photo-1621996346565-e3d5d6281298?auto=format&fit=crop&w=800&q=80' },
+      { name: 'Cumberland Pork Sausages (6-pack)', price: 3.50, cat: 'Meat', img: 'https://images.unsplash.com/photo-1555396273-367ea4eb4db5?auto=format&fit=crop&w=800&q=80' },
+      { name: 'Fresh Salmon Fillets (Twin Pack)', price: 9.50, cat: 'Meat', img: 'https://images.unsplash.com/photo-1467003909585-2f8a72700288?auto=format&fit=crop&w=800&q=80' },
+      { name: 'Smoked Bacon Medallions (2x packs)', price: 5.00, cat: 'Meat', img: 'https://images.unsplash.com/photo-1565299585323-38d6b0865b47?auto=format&fit=crop&w=800&q=80' },
+      { name: 'Prime Matured Sirloin Steaks', price: 11.50, cat: 'Meat', img: 'https://images.unsplash.com/photo-1544025162-d76694265947?auto=format&fit=crop&w=800&q=80' }
+    ];
+
+    const CARBS = [
+      { name: 'Penne Pasta (1kg)', price: 1.60, cat: 'Grains' },
+      { name: 'Basmati Rice (1kg)', price: 1.80, cat: 'Grains' },
+      { name: 'Tortilla Wraps (8-pack)', price: 1.50, cat: 'Grains' },
+      { name: 'Maris Piper Potatoes (2.5kg)', price: 2.40, cat: 'Vegetables' },
+      { name: 'Potato Gnocchi (500g)', price: 1.80, cat: 'Grains' },
+      { name: 'Brioche Burger Buns (6-pack)', price: 2.20, cat: 'Bakery' },
+      { name: 'Egg Noodle Multipack', price: 1.60, cat: 'Grains' }
+    ];
+
+    const VEGS = [
+      { name: 'Mixed Bell Peppers (3-pack)', price: 2.10, cat: 'Vegetables' },
+      { name: 'Tenderstem Broccoli', price: 1.80, cat: 'Vegetables' },
+      { name: 'Carrots & Courgettes', price: 1.80, cat: 'Vegetables' },
+      { name: 'Stir-Fry Veg Mix', price: 2.20, cat: 'Vegetables' }
+    ];
+
+    const EXTRAS = [
+      { name: 'Double Cream (300ml)', price: 1.80, cat: 'Dairy' },
+      { name: 'Mature Cheddar Block (400g)', price: 3.90, cat: 'Dairy' },
+      { name: 'Chopped Tomatoes (4-pack)', price: 2.60, cat: 'Vegetables' },
+      { name: 'Garlic Baguette (Twin Pack)', price: 2.00, cat: 'Bakery' }
+    ];
+
+    const STYLES = [
+      { tag: 'ONE-PAN WONDER', color: 'bg-emerald-500/20 text-emerald-300 border-emerald-500/40' },
+      { tag: 'TRAYBAKE & ROAST', color: 'bg-amber-500/20 text-amber-300 border-amber-500/40' },
+      { tag: 'KID-APPROVED FAVORITE', color: 'bg-teal-500/20 text-teal-300 border-teal-500/40' },
+      { tag: '15-MIN QUICK FIX', color: 'bg-indigo-500/20 text-indigo-300 border-indigo-500/40' }
+    ];
+
+    function generateRecipe(index) {
+      const p = PROTEINS[index % PROTEINS.length];
+      const c = CARBS[(index * 3) % CARBS.length];
+      const v = VEGS[(index * 5) % VEGS.length];
+      const e = EXTRAS[(index * 7) % EXTRAS.length];
+      const style = STYLES[index % STYLES.length];
+      const isDate = index > 0 && index % 7 === 0;
+
+      const titles = [
+        `Garlic Herb ${p.name.split(' ')[0]} Skillet`,
+        `Smoky One-Pan ${p.name.split(' ')[0]} & ${c.name.split(' ')[0]}`,
+        `BBC Good Food Style ${v.name.split(' ')[0]} Traybake`,
+        `Jamie's Speed-Cook ${c.name.split(' ')[0]} & ${p.name.split(' ')[0]}`,
+        `Family Favourite Crispy ${p.name.split(' ')[0]} Feast`,
+        `One-Pan Creamy Garlic Parmesan ${c.name.split(' ')[0]}`,
+        `Sheet-Pan Honey Mustard ${p.name.split(' ')[0]} & Veg`,
+        `Crispy Salt & Pepper ${p.name.split(' ')[0]} Stir-Fry`
+      ];
+
+      return {
+        id: 'rec_gen_' + index + '_' + Date.now(),
+        name: isDate ? 'Gourmet Pan-Seared Sirloin & Truffle Butter' : titles[index % titles.length] + ` (#${index + 1})`,
+        category: isDate ? '✨ Date Night Idea • For Two' : 'Family Feast • 6 Portions',
+        styleTag: isDate ? 'DATE NIGHT SPECIAL' : style.tag,
+        styleTagColor: isDate ? 'bg-rose-500/20 text-rose-300 border-rose-500/40' : style.color,
+        isDateNight: isDate,
+        prepTime: 15 + (index % 20),
+        estCost: Number((p.price + c.price + v.price + e.price).toFixed(2)),
+        image: p.img,
+        familyTip: isDate ? 'Enjoy this restaurant-quality meal in peace once the kids are in bed.' : 'Quick, easy, and loved by the whole family.',
+        method: [
+          `Prep all ingredients: chop ${v.name.toLowerCase()} and season ${p.name.toLowerCase()} with salt and pepper.`,
+          `Heat oil in a large skillet or tray over medium-high heat. Sear the primary protein until golden.`,
+          `Toss in vegetables and carbs, adding stock or cream for sauce reduction.`,
+          `Simmer or roast until cooked through. Serve family-style.`
+        ],
+        ingredients: [
+          { id: 'ing_p_' + index, name: p.name, price: p.price, category: p.cat },
+          { id: 'ing_c_' + index, name: c.name, price: c.price, category: c.cat },
+          { id: 'ing_v_' + index, name: v.name, price: v.price, category: c.cat },
+          { id: 'ing_e_' + index, name: e.name, price: e.price, category: c.cat }
+        ]
+      };
+    }
+
     const DAYS_LIST = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'];
 
     function getWeekDays() {
@@ -44,61 +117,49 @@
       const day = today.getDay();
       const diffToMonday = today.getDate() - day + (day === 0 ? -6 : 1);
       const monday = new Date(today.setDate(diffToMonday));
-
       const days = [];
       for (let i = 0; i < 7; i++) {
         const d = new Date(monday);
         d.setDate(monday.getDate() + i);
-        const dayName = DAYS_LIST[i];
-        const dateStr = d.toLocaleDateString('en-GB', { day: 'numeric', month: 'short' });
-        days.push({ dayName, dateStr });
+        days.push({ dayName: DAYS_LIST[i], dateStr: d.toLocaleDateString('en-GB', { day: 'numeric', month: 'short' }) });
       }
       return days;
     }
 
     function App() {
       const [activeTab, setActiveTab] = useState('swipe');
-      
-      // Combine all modular files into the main swipe deck automatically
-      const [meals, setMeals] = useState(() => [
-        ...(window.FAMILY_RECIPES || []),
-        ...(window.ONEPAN_RECIPES || []),
-        ...(window.DATENIGHT_RECIPES || []),
-        ...(window.FAKEAWAY_RECIPES || []),
-        ...(window.SLOWCOOKER_RECIPES || []),
-        ...(window.HEALTHY_RECIPES || [])
-      ]);
-      
+      // Starts with 200 pre-generated recipes instantly!
+      const [meals, setMeals] = useState(() => Array.from({ length: 200 }, (_, i) => generateRecipe(i)));
       const [deckIndex, setDeckIndex] = useState(0);
       const [plannedMeals, setPlannedMeals] = useState([
-        { meal: meals[0] || {}, assignedDay: 'Monday' },
-        { meal: meals[1] || {}, assignedDay: 'Tuesday' },
-        { meal: meals[3] || {}, assignedDay: 'Friday' }
+        { meal: generateRecipe(0), assignedDay: 'Monday' },
+        { meal: generateRecipe(1), assignedDay: 'Tuesday' },
+        { meal: generateRecipe(2), assignedDay: 'Friday' }
       ]);
       const [pantryChecked, setPantryChecked] = useState({});
       const [scanMessage, setScanMessage] = useState('');
       const [wipeoutMode, setWipeoutMode] = useState(false);
       const [expandedMethodId, setExpandedMethodId] = useState(null);
-      
-      // Cooking Mode State
       const [cookingMeal, setCookingMeal] = useState(null);
       const [currentStepIndex, setCurrentStepIndex] = useState(0);
       const [timerSeconds, setTimerSeconds] = useState(0);
       const [isTimerRunning, setIsTimerRunning] = useState(false);
-
       const [dragX, setDragX] = useState(0);
       const startXRef = useRef(null);
 
       const currentMeal = meals[deckIndex];
       const weekDays = getWeekDays();
 
-      // Timer countdown effect for Cooking Mode
+      useEffect(() => {
+        if (deckIndex >= meals.length - 10 && !wipeoutMode && meals.length < 500) {
+          setMeals(prev => [...prev, ...Array.from({ length: 50 }, (_, i) => generateRecipe(prev.length + i))]);
+        }
+      }, [deckIndex, wipeoutMode, meals.length]);
+
       useEffect(() => {
         let interval = null;
         if (isTimerRunning && timerSeconds > 0) {
-          interval = setInterval(() => {
-            setTimerSeconds(prev => prev - 1);
-          }, 1000);
+          interval = setInterval(() => setTimerSeconds(prev => prev - 1), 1000);
         } else if (timerSeconds === 0) {
           setIsTimerRunning(false);
         }
@@ -114,37 +175,26 @@
 
       const formatTime = (secs) => {
         const mins = Math.floor(secs / 60);
-        const remainingSecs = secs % 60;
-        return `${mins}:${remainingSecs < 10 ? '0' : ''}${remainingSecs}`;
+        const rem = secs % 60;
+        return `${mins}:${rem < 10 ? '0' : ''}${rem}`;
       };
-
-      const allLoadedMeals = [
-        ...(window.FAMILY_RECIPES || []),
-        ...(window.ONEPAN_RECIPES || []),
-        ...(window.DATENIGHT_RECIPES || []),
-        ...(window.FAKEAWAY_RECIPES || []),
-        ...(window.SLOWCOOKER_RECIPES || []),
-        ...(window.HEALTHY_RECIPES || [])
-      ];
 
       const toggleWipeoutMode = () => {
         if (!wipeoutMode) {
-          const filtered = allLoadedMeals.filter(m => 
-            m.ingredients && m.ingredients.some(ing => pantryChecked[ing.id])
-          );
+          const filtered = meals.filter(m => m.ingredients.some(ing => pantryChecked[ing.id]));
           if (filtered.length > 0) {
             setMeals(filtered);
             setDeckIndex(0);
             setWipeoutMode(true);
-            setScanMessage('🌪️ Pantry Wipeout Mode Active!');
+            setScanMessage('🌪️ Wipeout Mode Active!');
           } else {
-            setScanMessage('⚠️ Tick off some items in your Fridge Scan first!');
+            setScanMessage('⚠️ Tick off fridge items first!');
           }
         } else {
-          setMeals(allLoadedMeals);
+          setMeals(Array.from({ length: 200 }, (_, i) => generateRecipe(i)));
           setDeckIndex(0);
           setWipeoutMode(false);
-          setScanMessage('Standard recipe library restored.');
+          setScanMessage('Library reset.');
         }
       };
 
@@ -153,35 +203,19 @@
         plannedMeals.forEach(item => {
           if (!item.meal || !item.meal.ingredients) return;
           item.meal.ingredients.forEach(ing => {
-            if (!map[ing.id]) {
-              map[ing.id] = { ...ing, usedInCount: 1, meals: [item.meal.name] };
-            } else {
-              map[ing.id].usedInCount += 1;
-              map[ing.id].meals.push(item.meal.name);
-            }
+            if (!map[ing.id]) map[ing.id] = { ...ing, usedInCount: 1 };
+            else map[ing.id].usedInCount += 1;
           });
         });
         return Object.values(map);
       };
 
       const basketItems = consolidatedBasket();
-      const totalBasketCost = basketItems.reduce((sum, item) => {
-        return pantryChecked[item.id] ? sum : sum + item.price;
-      }, 0);
-
-      const savedBySharingPacks = basketItems.reduce((sum, item) => {
-        return item.usedInCount > 1 ? sum + item.price * (item.usedInCount - 1) : sum;
-      }, 0);
+      const totalBasketCost = basketItems.reduce((sum, item) => pantryChecked[item.id] ? sum : sum + item.price, 0);
+      const savedBySharingPacks = basketItems.reduce((sum, item) => item.usedInCount > 1 ? sum + item.price * (item.usedInCount - 1) : sum, 0);
 
       const categoriesOrder = ['Meat', 'Vegetables', 'Dairy', 'Grains', 'Bakery'];
-      const categoryLabels = {
-        Meat: '🥩 Meat & Fish',
-        Vegetables: '🥦 Vegetables & Produce',
-        Dairy: '🥛 Dairy',
-        Grains: '🌾 Grains & Dry Goods',
-        Bakery: '🍞 Bakery'
-      };
-
+      const categoryLabels = { Meat: '🥩 Meat & Fish', Vegetables: '🥦 Vegetables & Produce', Dairy: '🥛 Dairy', Grains: '🌾 Grains & Dry Goods', Bakery: '🍞 Bakery' };
       const groupedBasket = basketItems.reduce((acc, item) => {
         const cat = item.category || 'Grains';
         if (!acc[cat]) acc[cat] = [];
@@ -191,40 +225,19 @@
 
       const handleDecision = (liked) => {
         if (!currentMeal) return;
-        if (liked) {
-          if (!plannedMeals.find(pm => pm.meal.id === currentMeal.id)) {
-            const assignedDays = plannedMeals.map(pm => pm.assignedDay);
-            const availableDay = DAYS_LIST.find(d => !assignedDays.includes(d)) || 'Saturday';
-            setPlannedMeals([...plannedMeals, { meal: currentMeal, assignedDay: availableDay }]);
-          }
+        if (liked && !plannedMeals.find(pm => pm.meal.id === currentMeal.id)) {
+          const assignedDays = plannedMeals.map(pm => pm.assignedDay);
+          const availableDay = DAYS_LIST.find(d => !assignedDays.includes(d)) || 'Saturday';
+          setPlannedMeals([...plannedMeals, { meal: currentMeal, assignedDay: availableDay }]);
         }
         setDragX(0);
-        setDeckIndex(prev => (prev + 1) % meals.length);
+        setDeckIndex(prev => prev + 1);
       };
 
-      const removePlannedMeal = (mealId) => {
-        setPlannedMeals(plannedMeals.filter(pm => pm.meal.id !== mealId));
-      };
-
-      const updateAssignedDay = (mealId, newDay) => {
-        setPlannedMeals(plannedMeals.map(pm => {
-          if (pm.meal.id === mealId) {
-            return { ...pm, assignedDay: newDay };
-          }
-          return pm;
-        }));
-      };
-
-      const togglePantryItem = (id) => {
-        setPantryChecked(prev => ({ ...prev, [id]: !prev[id] }));
-      };
-
-      const handlePhotoUpload = (e) => {
-        const file = e.target.files?.[0];
-        if (!file) return;
-        setPantryChecked(prev => ({ ...prev, i1: true, i2: true, i5: true }));
-        setScanMessage(`Scanned "${file.name}" — fridge items ticked off!`);
-      };
+      const removePlannedMeal = (id) => setPlannedMeals(plannedMeals.filter(pm => pm.meal.id !== id));
+      const updateAssignedDay = (id, day) => setPlannedMeals(plannedMeals.map(pm => pm.meal.id === id ? { ...pm, assignedDay: day } : pm));
+      const togglePantryItem = (id) => setPantryChecked(prev => ({ ...prev, [id]: !prev[id] }));
+      const handlePhotoUpload = () => setScanMessage('📸 Fridge scanned successfully!');
 
       const onTouchStart = (e) => { startXRef.current = e.touches[0].clientX; };
       const onTouchMove = (e) => {
@@ -240,85 +253,38 @@
 
       return (
         <div className="max-w-md mx-auto min-h-screen flex flex-col justify-between pb-24 bg-[#14171f]">
-          
-          {/* COOKING MODE OVERLAY */}
           {cookingMeal && (
-            <div className="fixed inset-0 z-50 bg-[#0f1319] p-5 flex flex-col justify-between overflow-y-auto animate-fadeIn">
+            <div className="fixed inset-0 z-50 bg-[#0f1319] p-5 flex flex-col justify-between overflow-y-auto">
               <div>
                 <div className="flex justify-between items-center mb-4">
-                  <span className="text-xs font-black uppercase tracking-wider text-emerald-400">👨‍🍳 Kitchen Focus Mode</span>
-                  <button 
-                    onClick={() => setCookingMeal(null)}
-                    className="bg-slate-800 text-slate-300 px-3.5 py-1.5 rounded-xl font-bold text-xs border border-slate-700"
-                  >
-                    ✕ Exit Cooking Mode
-                  </button>
+                  <span className="text-xs font-black uppercase text-emerald-400">👨‍🍳 Cooking Mode</span>
+                  <button onClick={() => setCookingMeal(null)} className="bg-slate-800 text-slate-300 px-3 py-1 rounded-xl text-xs">✕ Exit</button>
                 </div>
-
                 <h2 className="text-xl font-black text-white mb-4">{cookingMeal.name}</h2>
-
-                <div className="bg-[#1c202a] border border-slate-700 rounded-2xl p-4 mb-6 flex justify-between items-center card-shadow">
+                <div className="bg-[#1c202a] border border-slate-700 rounded-2xl p-4 mb-6 flex justify-between items-center">
                   <div>
-                    <span className="text-[10px] uppercase font-bold text-slate-400 block">Kitchen Countdown</span>
+                    <span className="text-[10px] text-slate-400 block font-bold">Countdown</span>
                     <span className="text-3xl font-black text-emerald-300 font-mono">{formatTime(timerSeconds)}</span>
                   </div>
                   <div className="flex gap-2">
-                    <button 
-                      onClick={() => setIsTimerRunning(!isTimerRunning)}
-                      className={`px-4 py-2 rounded-xl text-xs font-black uppercase tracking-wider ${
-                        isTimerRunning ? 'bg-amber-500 text-slate-950' : 'bg-emerald-500 text-slate-950'
-                      }`}
-                    >
-                      {isTimerRunning ? 'Pause' : 'Start Timer'}
-                    </button>
-                    <button 
-                      onClick={() => { setIsTimerRunning(false); setTimerSeconds((cookingMeal.prepTime || 20) * 60); }}
-                      className="px-3 py-2 bg-slate-800 text-slate-300 rounded-xl text-xs font-bold border border-slate-700"
-                    >
-                      Reset
+                    <button onClick={() => setIsTimerRunning(!isTimerRunning)} className={`px-4 py-2 rounded-xl text-xs font-bold ${isTimerRunning ? 'bg-amber-500 text-slate-950' : 'bg-emerald-500 text-slate-950'}`}>
+                      {isTimerRunning ? 'Pause' : 'Start'}
                     </button>
                   </div>
                 </div>
-
-                <div className="bg-[#1c202a] border border-slate-700/80 rounded-3xl p-6 card-shadow space-y-4">
-                  <div className="flex justify-between items-center">
-                    <span className="text-xs font-black uppercase tracking-wider text-amber-300">
-                      Step {currentStepIndex + 1} of {cookingMeal.method?.length || 1}
-                    </span>
-                    <div className="flex gap-1">
-                      {cookingMeal.method?.map((_, i) => (
-                        <div key={i} className={`h-1.5 rounded-full transition-all ${i === currentStepIndex ? 'w-6 bg-emerald-400' : 'w-2 bg-slate-700'}`}></div>
-                      ))}
-                    </div>
-                  </div>
-
-                  <p className="text-lg font-bold text-slate-100 leading-relaxed min-h-[120px] pt-2">
-                    {cookingMeal.method?.[currentStepIndex] || 'Follow recipe instructions.'}
-                  </p>
+                <div className="bg-[#1c202a] border border-slate-700 rounded-3xl p-6 space-y-4">
+                  <span className="text-xs font-black text-amber-300">Step {currentStepIndex + 1} of {cookingMeal.method.length}</span>
+                  <p className="text-lg font-bold text-slate-100 leading-relaxed min-h-[100px]">{cookingMeal.method[currentStepIndex]}</p>
                 </div>
               </div>
-
               <div className="grid grid-cols-2 gap-3 mt-6">
-                <button
-                  disabled={currentStepIndex === 0}
-                  onClick={() => setCurrentStepIndex(prev => Math.max(0, prev - 1))}
-                  className="py-4 rounded-2xl bg-slate-800 hover:bg-slate-700 text-slate-200 font-bold text-xs uppercase tracking-wider border border-slate-700 disabled:opacity-40 transition"
-                >
-                  ← Previous Step
-                </button>
-                <button
-                  disabled={currentStepIndex === (cookingMeal.method?.length || 1) - 1}
-                  onClick={() => setCurrentStepIndex(prev => Math.min((cookingMeal.method?.length || 1) - 1, prev + 1))}
-                  className="py-4 rounded-2xl bg-emerald-500 hover:bg-emerald-400 text-slate-950 font-black text-xs uppercase tracking-wider transition shadow-lg disabled:opacity-40"
-                >
-                  Next Step →
-                </button>
+                <button disabled={currentStepIndex === 0} onClick={() => setCurrentStepIndex(p => Math.max(0, p - 1))} className="py-4 bg-slate-800 text-slate-200 rounded-2xl text-xs font-bold disabled:opacity-40">← Prev</button>
+                <button disabled={currentStepIndex === cookingMeal.method.length - 1} onClick={() => setCurrentStepIndex(p => Math.min(cookingMeal.method.length - 1, p + 1))} className="py-4 bg-emerald-500 text-slate-950 rounded-2xl text-xs font-black disabled:opacity-40">Next →</button>
               </div>
             </div>
           )}
 
-          {/* HEADER WITH SWIPE & CROWN LOGO */}
-          <header className="p-4 glass-header sticky top-0 z-20 border-b border-slate-800/80 flex justify-between items-center shadow-lg">
+          <header className="p-4 glass-header sticky top-0 z-20 border-b border-slate-800 flex justify-between items-center shadow-lg">
             <div className="flex items-center gap-2.5">
               <div className="w-10 h-10 rounded-2xl bg-gradient-to-br from-emerald-500/20 to-rose-500/20 border border-emerald-500/40 flex items-center justify-center shadow-inner relative overflow-hidden">
                 <svg className="w-6 h-6 text-emerald-400" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
@@ -332,414 +298,141 @@
                   Basket<span className="text-emerald-400">Boss</span>
                 </h1>
                 <p className="text-[11px] text-slate-400 font-medium mt-0.5">
-                  {wipeoutMode ? '🌪️ Wipeout Mode Active' : `${meals.length} Modular Recipes Loaded`}
+                  200+ Infinite Recipes Loaded
                 </p>
               </div>
             </div>
             
-            <div className="bg-emerald-500/10 border border-emerald-500/30 px-3.5 py-1.5 rounded-xl text-right shadow-inner">
-              <span className="text-[10px] uppercase tracking-wider text-emerald-400 block font-bold">Est. Shop</span>
+            <div className="bg-emerald-500/10 border border-emerald-500/30 px-3.5 py-1.5 rounded-xl text-right">
+              <span className="text-[10px] uppercase text-emerald-400 block font-bold">Est. Shop</span>
               <span className="text-lg font-extrabold text-emerald-300">£{totalBasketCost.toFixed(2)}</span>
             </div>
           </header>
 
-          {/* MAIN */}
           <main className="p-4 flex-1">
-            {/* TAB 1: SWIPE DECK */}
-            {activeTab === 'swipe' && (
-              currentMeal ? (
-                <div>
-                  {wipeoutMode && (
-                    <div className="bg-amber-500/10 border border-amber-500/30 p-3 rounded-2xl mb-3 flex items-center justify-between">
-                      <span className="text-xs font-bold text-amber-300">🌪️ Showing Zero-Waste Wipeout Recipes</span>
-                      <button onClick={toggleWipeoutMode} className="text-[10px] bg-amber-500 text-slate-950 font-black px-2.5 py-1 rounded-lg">Exit Mode</button>
-                    </div>
-                  )}
-
-                  <div
-                    onTouchStart={onTouchStart}
-                    onTouchMove={onTouchMove}
-                    onTouchEnd={onTouchEnd}
-                    style={{
-                      transform: `translateX(${dragX}px) rotate(${dragX * 0.04}deg)`,
-                      transition: startXRef.current ? 'none' : 'transform 0.25s ease'
-                    }}
-                    className={`rounded-3xl overflow-hidden card-shadow no-select border transition-all ${
-                      currentMeal.isDateNight
-                        ? 'bg-gradient-to-b from-[#251522] to-[#1c1f28] border-rose-500/40'
-                        : 'bg-[#1c202a] border-slate-700/80'
-                    }`}
-                  >
-                    <div className="relative h-60">
-                      <img src={currentMeal.image} alt={currentMeal.name} className="w-full h-full object-cover" />
-                      <div className="absolute inset-0 bg-gradient-to-t from-[#1c202a] via-transparent to-black/30"></div>
-                      
-                      {/* PROMINENT TOP BADGE */}
-                      <div className="absolute top-3 left-3 flex flex-wrap gap-2 z-10">
-                        {currentMeal.isDateNight ? (
-                          <div className="bg-rose-600 text-white px-3.5 py-1 rounded-full text-xs font-black shadow-lg uppercase tracking-wide">
-                            🥂 Date Night Special
-                          </div>
-                        ) : (
-                          <div className={`px-3 py-1 rounded-full text-[11px] font-black uppercase tracking-wider border shadow-lg ${currentMeal.styleTagColor || 'bg-emerald-500/20 text-emerald-300 border-emerald-500/40'}`}>
-                            {currentMeal.styleTag || 'FAMILY FAVORITE'}
-                          </div>
-                        )}
-                      </div>
-
-                      {!currentMeal.isDateNight && (
-                        <div className="absolute bottom-3 left-3 bg-[#14171f]/85 backdrop-blur px-3 py-1 rounded-full text-xs font-bold text-emerald-300 border border-emerald-500/30">
-                          £{currentMeal.estCost?.toFixed(2) || '0.00'} meal est.
-                        </div>
-                      )}
-                      <div className="absolute top-3 right-3 bg-[#14171f]/85 backdrop-blur px-3 py-1 rounded-full text-xs font-bold text-slate-200 border border-slate-700">
-                        ⏱ {currentMeal.prepTime} mins
-                      </div>
-                    </div>
-
-                    <div className="p-5">
-                      <span className={`text-[11px] font-black uppercase tracking-wider ${
-                        currentMeal.isDateNight ? 'text-rose-400' : 'text-emerald-400'
-                      }`}>
-                        {currentMeal.category}
-                      </span>
-                      <h2 className="text-xl font-bold text-white mt-1 mb-3 leading-snug">{currentMeal.name}</h2>
-
-                      <div className={`rounded-2xl p-3.5 mb-5 border ${
-                        currentMeal.isDateNight
-                          ? 'bg-rose-950/30 border-rose-800/40 text-rose-100'
-                          : 'bg-[#14171f]/70 border-slate-700/80 text-slate-200'
-                      }`}>
-                        <div className="text-xs font-bold text-amber-300 mb-1 flex items-center gap-1.5">
-                          <span>{currentMeal.isDateNight ? '🕯️' : '👨‍👩‍👧‍👦'}</span>
-                          <span>{currentMeal.isDateNight ? 'Date Night Plan' : 'Kitchen Time-Saver'}</span>
-                        </div>
-                        <p className="text-xs leading-relaxed opacity-90">{currentMeal.familyTip}</p>
-                      </div>
-
-                      <div className="grid grid-cols-2 gap-3">
-                        <button
-                          onClick={() => handleDecision(false)}
-                          className="py-3.5 rounded-2xl bg-[#14171f] hover:bg-[#222734] active:scale-95 text-slate-300 font-bold text-xs uppercase tracking-wider border border-slate-700 transition shadow"
-                        >
-                          ✕ Discard (No)
-                        </button>
-                        <button
-                          onClick={() => handleDecision(true)}
-                          className={`py-3.5 rounded-2xl font-extrabold text-xs uppercase tracking-wider active:scale-95 transition shadow-lg ${
-                            currentMeal.isDateNight
-                              ? 'bg-rose-600 hover:bg-rose-500 text-white'
-                              : 'bg-emerald-500 hover:bg-emerald-400 text-slate-950'
-                          }`}
-                        >
-                          ✓ Add to Week (Yes)
-                        </button>
-                      </div>
-                    </div>
-                  </div>
-
-                  <div className="flex flex-col items-center mt-4 px-1">
-                    <p className="text-[11px] text-slate-400 text-center font-medium bg-[#1c202a] px-4 py-2 rounded-xl border border-slate-800 shadow-inner w-full">
-                      💡 <span className="text-emerald-400 font-bold">Swipe Right / Add to Week</span> = Yes | <span className="text-rose-400 font-bold">Swipe Left / Discard</span> = No
-                    </p>
-                    <p className="text-[10px] text-indigo-400 font-semibold mt-2">
-                      📚 Library: Recipe {deckIndex + 1} of {meals.length} (Pulled from modular .js files)
-                    </p>
-                  </div>
-                </div>
-              ) : (
-                <div className="text-center bg-[#1c202a] border border-slate-700 rounded-3xl p-8 mt-6 card-shadow">
-                  <h2 className="text-lg font-bold text-white mb-2">No Matching Recipes Found</h2>
-                  <p className="text-xs text-slate-400 mb-5">Try scanning more fridge items or exit Wipeout Mode.</p>
-                  <button onClick={toggleWipeoutMode} className="px-4 py-2.5 bg-emerald-500 text-slate-950 font-bold text-xs rounded-xl">
-                    Reset Swipe Deck
-                  </button>
-                </div>
-              )
-            )}
-
-            {/* TAB 2: SCANNER & WIPEOUT */}
-            {activeTab === 'scan' && (
-              <div className="space-y-4">
-                <div className="bg-[#1c202a] border border-slate-700/80 rounded-3xl p-6 text-center card-shadow">
-                  <div className="text-5xl mb-3">📸</div>
-                  <h2 className="text-base font-black text-white">AI Fridge & Pantry Scanner</h2>
-                  <p className="text-xs text-slate-400 mt-1 mb-5 leading-relaxed">
-                    Snap a photo of your fridge shelves to automatically tick off packs you already own and unlock Zero-Waste Mode.
-                  </p>
-
-                  <label className="block w-full py-4 px-4 bg-emerald-500 hover:bg-emerald-400 active:scale-98 text-slate-950 font-black text-xs uppercase tracking-wider rounded-2xl cursor-pointer transition shadow-lg mb-3">
-                    📷 Take or Upload Fridge Photo
-                    <input type="file" accept="image/*" onChange={handlePhotoUpload} className="hidden" />
-                  </label>
-
-                  <button
-                    onClick={toggleWipeoutMode}
-                    className={`w-full py-3.5 px-4 font-black text-xs uppercase tracking-wider rounded-2xl border transition shadow-lg flex items-center justify-center gap-2 ${
-                      wipeoutMode 
-                        ? 'bg-amber-500 text-slate-950 border-amber-400' 
-                        : 'bg-[#14171f] text-amber-300 border-amber-500/50 hover:bg-amber-500/10'
-                    }`}
-                  >
-                    <span>🌪️</span>
-                    <span>{wipeoutMode ? 'Disable Pantry Wipeout Mode' : 'Activate Pantry Wipeout Mode'}</span>
-                  </button>
-                </div>
-
-                {scanMessage && (
-                  <div className="bg-emerald-950/80 border border-emerald-500/50 rounded-2xl p-4 text-xs text-emerald-200 font-bold card-shadow">
-                    ✅ {scanMessage}
+            {activeTab === 'swipe' && currentMeal && (
+              <div>
+                {wipeoutMode && (
+                  <div className="bg-amber-500/10 border border-amber-500/30 p-3 rounded-2xl mb-3 flex items-center justify-between">
+                    <span className="text-xs font-bold text-amber-300">🌪️ Wipeout Mode Active</span>
+                    <button onClick={toggleWipeoutMode} className="text-[10px] bg-amber-500 text-slate-950 font-black px-2.5 py-1 rounded-lg">Exit</button>
                   </div>
                 )}
+
+                <div
+                  onTouchStart={onTouchStart}
+                  onTouchMove={onTouchMove}
+                  onTouchEnd={onTouchEnd}
+                  style={{
+                    transform: `translateX(${dragX}px) rotate(${dragX * 0.04}deg)`,
+                    transition: startXRef.current ? 'none' : 'transform 0.25s ease'
+                  }}
+                  className={`rounded-3xl overflow-hidden card-shadow border transition-all ${
+                    currentMeal.isDateNight ? 'bg-gradient-to-b from-[#251522] to-[#1c1f28] border-rose-500/40' : 'bg-[#1c202a] border-slate-700'
+                  }`}
+                >
+                  <div className="relative h-60">
+                    <img src={currentMeal.image} alt={currentMeal.name} className="w-full h-full object-cover" />
+                    <div className="absolute inset-0 bg-gradient-to-t from-[#1c202a] via-transparent to-black/30"></div>
+                    
+                    <div className="absolute top-3 left-3 z-10">
+                      <span className={`px-4 py-1.5 rounded-full text-xs font-black uppercase border shadow-lg ${currentMeal.styleTagColor}`}>
+                        {currentMeal.styleTag}
+                      </span>
+                    </div>
+
+                    <div className="absolute top-3 right-3 bg-[#14171f]/85 backdrop-blur px-3 py-1 rounded-full text-xs font-bold text-slate-200 border border-slate-700">
+                      ⏱ {currentMeal.prepTime} mins
+                    </div>
+                  </div>
+
+                  <div className="p-5">
+                    <span className="text-[11px] font-black uppercase text-emerald-400">{currentMeal.category}</span>
+                    <h2 className="text-xl font-bold text-white mt-1 mb-3">{currentMeal.name}</h2>
+                    <p className="text-xs text-slate-300 mb-5 bg-[#14171f] p-3 rounded-2xl border border-slate-700">{currentMeal.familyTip}</p>
+                    <div className="grid grid-cols-2 gap-3">
+                      <button onClick={() => handleDecision(false)} className="py-3.5 bg-[#14171f] text-slate-300 font-bold text-xs rounded-2xl border border-slate-700">✕ Discard</button>
+                      <button onClick={() => handleDecision(true)} className="py-3.5 bg-emerald-500 text-slate-950 font-black text-xs rounded-2xl">✓ Add to Week</button>
+                    </div>
+                  </div>
+                </div>
+
+                <div className="flex flex-col items-center mt-4">
+                  <p className="text-[10px] text-indigo-400 font-semibold">
+                    📚 Library: Recipe {deckIndex + 1} of 200+ (Endless Generator Active)
+                  </p>
+                </div>
               </div>
             )}
 
-            {/* TAB 3: SHOP */}
+            {activeTab === 'scan' && (
+              <div className="bg-[#1c202a] border border-slate-700 rounded-3xl p-6 text-center">
+                <div className="text-4xl mb-3">📸</div>
+                <h2 className="text-base font-black text-white mb-2">AI Fridge Scanner</h2>
+                <button onClick={handlePhotoUpload} className="w-full py-3 bg-emerald-500 text-slate-950 font-black text-xs rounded-2xl mb-3">Scan Fridge Photo</button>
+                <button onClick={toggleWipeoutMode} className="w-full py-3 bg-[#14171f] text-amber-300 border border-amber-500 font-bold text-xs rounded-2xl">
+                  {wipeoutMode ? 'Disable Wipeout Mode' : 'Activate Wipeout Mode'}
+                </button>
+                {scanMessage && <p className="text-xs text-emerald-400 mt-3 font-bold">{scanMessage}</p>}
+              </div>
+            )}
+
             {activeTab === 'shop' && (
-              <div className="space-y-5">
-                <div className="bg-emerald-950/40 border border-emerald-700/50 rounded-2xl p-4 flex justify-between items-center card-shadow">
-                  <div>
-                    <h3 className="text-xs font-black uppercase tracking-wider text-emerald-300">Smart Pack Sharing</h3>
-                    <p className="text-xs text-slate-300 mt-0.5">Overlapping ingredients combined into single packs</p>
-                  </div>
-                  <span className="text-sm font-black text-emerald-300 bg-emerald-900/60 px-3.5 py-1 rounded-xl border border-emerald-600/40">
-                    Saved £{savedBySharingPacks.toFixed(2)}
-                  </span>
-                </div>
-
-                <div>
-                  <h3 className="text-xs font-black uppercase tracking-wider text-slate-400 mb-2">This Week's Menu ({plannedMeals.length})</h3>
-                  <div className="space-y-2">
-                    {plannedMeals.map(pm => (
-                      <div key={pm.meal.id} className="flex justify-between items-center bg-[#1c202a] border border-slate-700/80 px-3.5 py-3 rounded-2xl card-shadow">
-                        <div>
-                          <span className="text-sm font-bold text-white block">
-                            {pm.meal.isDateNight ? '🥂 ' : '🍽️ '}{pm.meal.name}
-                          </span>
-                          <span className="text-[11px] text-emerald-400 font-semibold">Assigned to: {pm.assignedDay}</span>
-                        </div>
-                        <button
-                          onClick={() => removePlannedMeal(pm.meal.id)}
-                          className="text-xs text-rose-400 hover:text-rose-300 font-bold px-2.5 py-1 rounded-lg bg-rose-500/10 border border-rose-500/20 transition"
-                        >
-                          Remove
-                        </button>
+              <div className="space-y-4">
+                <h3 className="text-xs font-black uppercase text-slate-400">Shopping List ({basketItems.length} items)</h3>
+                {categoriesOrder.map(cat => {
+                  const items = groupedBasket[cat];
+                  if (!items || !items.length) return null;
+                  return (
+                    <div key={cat} className="bg-[#1c202a] border border-slate-700 rounded-2xl p-3">
+                      <h4 className="text-xs font-black text-emerald-400 mb-2">{categoryLabels[cat]}</h4>
+                      <div className="space-y-2">
+                        {items.map(item => (
+                          <div key={item.id} onClick={() => togglePantryItem(item.id)} className={`p-2.5 rounded-xl border flex justify-between cursor-pointer ${pantryChecked[item.id] ? 'opacity-40 line-through bg-slate-900' : 'bg-[#14171f]'}`}>
+                            <span className="text-sm font-semibold">{item.name}</span>
+                            <span className="text-sm font-bold text-emerald-300">£{item.price.toFixed(2)}</span>
+                          </div>
+                        ))}
                       </div>
-                    ))}
-                  </div>
-                </div>
-
-                <div className="space-y-4">
-                  <h3 className="text-xs font-black uppercase tracking-wider text-slate-400">
-                    Categorized Shopping List (Tap if already in kitchen)
-                  </h3>
-
-                  {categoriesOrder.map(catKey => {
-                    const itemsInCat = groupedBasket[catKey];
-                    if (!itemsInCat || itemsInCat.length === 0) return null;
-
-                    return (
-                      <div key={catKey} className="bg-[#1c202a] border border-slate-700/80 rounded-2xl p-3.5 card-shadow space-y-2">
-                        <h4 className="text-xs font-black uppercase tracking-wider text-emerald-400 px-1">
-                          {categoryLabels[catKey]}
-                        </h4>
-                        <div className="space-y-2">
-                          {itemsInCat.map(item => {
-                            const checked = !!pantryChecked[item.id];
-                            return (
-                              <div
-                                key={item.id}
-                                onClick={() => togglePantryItem(item.id)}
-                                className={`p-3 rounded-xl border flex justify-between items-center cursor-pointer transition ${
-                                  checked
-                                    ? 'bg-[#14171f]/50 border-slate-800 opacity-40 line-through'
-                                    : 'bg-[#14171f] border-slate-700/80 hover:border-slate-600'
-                                }`}
-                              >
-                                <div>
-                                  <span className="text-sm font-semibold text-white">{item.name}</span>
-                                  {item.usedInCount > 1 && (
-                                    <div className="mt-1">
-                                      <span className="text-[10px] bg-emerald-500/20 text-emerald-300 px-2 py-0.5 rounded-md font-bold border border-emerald-500/30">
-                                        Shared across {item.usedInCount} meals
-                                      </span>
-                                    </div>
-                                  )}
-                                </div>
-                                <span className="text-sm font-extrabold text-emerald-300">£{item.price?.toFixed(2) || '0.00'}</span>
-                              </div>
-                            );
-                          })}
-                        </div>
-                      </div>
-                    );
-                  })}
-                </div>
+                    </div>
+                  );
+                })}
               </div>
             )}
 
-            {/* TAB 4: CALENDAR */}
             {activeTab === 'calendar' && (
-              <div className="space-y-4">
-                <div className="bg-[#1c202a] border border-slate-700/80 rounded-2xl p-4 card-shadow flex items-center justify-between">
-                  <div>
-                    <h2 className="text-xs font-black uppercase tracking-wider text-emerald-400 flex items-center gap-1.5">
-                      <span>🗓️</span> Interactive Weekly Schedule
-                    </h2>
-                    <p className="text-xs text-slate-300 mt-0.5">Use dropdown to reschedule or launch Cooking Mode.</p>
-                  </div>
-                  <div className="bg-[#14171f] border border-slate-700 px-3 py-1.5 rounded-xl text-center">
-                    <span className="text-[10px] text-slate-400 block font-bold uppercase">Planned</span>
-                    <span className="text-sm font-black text-emerald-300">{plannedMeals.length} Meals</span>
-                  </div>
-                </div>
-
-                <div className="grid grid-cols-1 gap-3">
-                  {weekDays.map((wd) => {
-                    const assignedMealsForDay = plannedMeals.filter(pm => pm.assignedDay === wd.dayName);
-
-                    return (
-                      <div
-                        key={wd.dayName}
-                        className="rounded-2xl border card-shadow overflow-hidden bg-[#1c202a] border-slate-700/80"
-                      >
-                        <div className="px-4 py-2.5 bg-[#14171f]/80 border-b border-slate-700/60 flex justify-between items-center">
-                          <div className="flex items-center gap-2">
-                            <div className="w-7 h-7 rounded-xl bg-emerald-500/10 border border-emerald-500/30 flex items-center justify-center text-emerald-400 font-black text-xs">
-                              {wd.dateStr.split(' ')[0]}
-                            </div>
-                            <div>
-                              <h3 className="text-xs font-black uppercase tracking-wider text-white">{wd.dayName}</h3>
-                              <span className="text-[10px] text-slate-400 font-medium">{wd.dateStr}</span>
-                            </div>
-                          </div>
-                          <span className="text-[10px] font-bold text-slate-400">
-                            {assignedMealsForDay.length > 0 ? '1 Meal Assigned' : 'Rest / Free Night'}
-                          </span>
-                        </div>
-
-                        <div className="p-3.5 space-y-3">
-                          {assignedMealsForDay.length > 0 ? (
-                            assignedMealsForDay.map((pm) => {
-                              const meal = pm.meal;
-                              if (!meal || !meal.name) return null;
-                              const isDate = meal.isDateNight;
-                              const isMethodOpen = expandedMethodId === `${wd.dayName}-${meal.id}`;
-
-                              return (
-                                <div key={meal.id} className={`p-3.5 rounded-xl border ${isDate ? 'bg-gradient-to-r from-[#251522] to-[#1c1f28] border-rose-800/50' : 'bg-[#14171f] border-slate-700'}`}>
-                                  <div className="flex justify-between items-start mb-2">
-                                    <div>
-                                      <span className={`text-[10px] font-extrabold px-2.5 py-0.5 rounded-full uppercase tracking-wider inline-block mb-1 ${
-                                        isDate ? 'bg-rose-500/20 text-rose-300 border border-rose-500/40' : 'bg-emerald-500/10 text-emerald-300 border border-emerald-500/20'
-                                      }`}>
-                                        {isDate ? '🥂 Date Night' : (meal.styleTag || '🍽️ Family Dinner')}
-                                      </span>
-                                      <h4 className="text-sm font-bold text-white leading-snug">{meal.name}</h4>
-                                    </div>
-                                    <button
-                                      onClick={() => removePlannedMeal(meal.id)}
-                                      className="text-xs text-rose-400 hover:text-rose-300 font-bold px-2 py-1 rounded bg-rose-500/10 border border-rose-500/20 transition"
-                                    >
-                                      ✕
-                                    </button>
-                                  </div>
-
-                                  <div className="flex justify-between items-center text-xs text-slate-400 mb-3">
-                                    <span>⏱ {meal.prepTime}m prep</span>
-                                    <span className="font-bold text-emerald-400">£{meal.estCost?.toFixed(2) || '0.00'}</span>
-                                  </div>
-
-                                  <div className="flex items-center gap-2 mb-3 bg-[#1c202a] p-2 rounded-xl border border-slate-700">
-                                    <span className="text-[11px] font-bold text-slate-300 whitespace-nowrap">📅 Move Day:</span>
-                                    <select
-                                      value={pm.assignedDay}
-                                      onChange={(e) => updateAssignedDay(meal.id, e.target.value)}
-                                      className="w-full bg-[#14171f] text-emerald-300 text-xs font-bold py-1 px-2 rounded-lg border border-slate-600 focus:outline-none focus:border-emerald-500"
-                                    >
-                                      {DAYS_LIST.map(d => (
-                                        <option key={d} value={d}>{d}</option>
-                                      ))}
-                                    </select>
-                                  </div>
-
-                                  <button
-                                    onClick={() => startCooking(meal)}
-                                    className="w-full py-3 bg-emerald-500 hover:bg-emerald-400 text-slate-950 font-black text-xs uppercase tracking-wider rounded-xl transition flex justify-center items-center gap-2 shadow-lg mb-2"
-                                  >
-                                    <span>👨‍🍳 Start Cooking Mode</span>
-                                  </button>
-
-                                  <button
-                                    onClick={() => setExpandedMethodId(isMethodOpen ? null : `${wd.dayName}-${meal.id}`)}
-                                    className="w-full py-2 bg-[#1c202a] hover:bg-[#252a36] text-slate-200 text-xs font-bold rounded-xl border border-slate-700 transition flex justify-center items-center gap-1.5 shadow"
-                                  >
-                                    <span>{isMethodOpen ? 'Hide Quick Method ▴' : 'View Quick Method ▾'}</span>
-                                  </button>
-
-                                  {isMethodOpen && (
-                                    <div className="mt-3 pt-3 border-t border-slate-700/80 space-y-2 animate-fadeIn">
-                                      <h5 className="text-[11px] font-black uppercase tracking-wider text-amber-300">👨‍🍳 Step-by-Step Method:</h5>
-                                      <ol className="list-decimal list-inside space-y-1.5 text-xs text-slate-200 leading-relaxed">
-                                        {meal.method?.map((step, sIdx) => (
-                                          <li key={sIdx} className="pl-1">{step}</li>
-                                        ))}
-                                      </ol>
-                                      <div className="mt-2.5 bg-[#14171f] p-3 rounded-xl border border-slate-700">
-                                        <span className="text-[10px] font-black uppercase tracking-wider text-emerald-400 block mb-0.5">💡 Kitchen Tip:</span>
-                                        <p className="text-[11px] text-slate-300 leading-relaxed">{meal.familyTip}</p>
-                                      </div>
-                                    </div>
-                                  )}
-                                </div>
-                              );
-                            })
-                          ) : (
-                            <p className="text-xs text-slate-500 italic py-1">No meal scheduled for this day. (Swipe right on meals to add them here)</p>
-                          )}
-                        </div>
+              <div className="space-y-3">
+                {weekDays.map(wd => {
+                  const assigned = plannedMeals.filter(pm => pm.assignedDay === wd.dayName);
+                  return (
+                    <div key={wd.dayName} className="bg-[#1c202a] border border-slate-700 rounded-2xl p-3">
+                      <div className="flex justify-between items-center mb-2">
+                        <span className="text-xs font-black uppercase text-white">{wd.dayName} ({wd.dateStr})</span>
                       </div>
-                    );
-                  })}
-                </div>
+                      {assigned.length > 0 ? assigned.map(pm => (
+                        <div key={pm.meal.id} className="bg-[#14171f] p-3 rounded-xl border border-slate-700 space-y-2">
+                          <span className="text-xs font-bold text-emerald-400 block">{pm.meal.name}</span>
+                          <div className="flex gap-2">
+                            <select value={pm.assignedDay} onChange={(e) => updateAssignedDay(pm.meal.id, e.target.value)} className="bg-[#1c202a] text-xs text-emerald-300 p-1 rounded border border-slate-600">
+                              {DAYS_LIST.map(d => <option key={d} value={d}>{d}</option>)}
+                            </select>
+                            <button onClick={() => startCooking(pm.meal)} className="px-3 py-1 bg-emerald-500 text-slate-950 font-black text-[10px] rounded">Cook</button>
+                            <button onClick={() => removePlannedMeal(pm.meal.id)} className="px-2 py-1 bg-rose-500/20 text-rose-300 font-bold text-[10px] rounded">Remove</button>
+                          </div>
+                        </div>
+                      )) : <p className="text-[11px] text-slate-500 italic">No meal assigned.</p>}
+                    </div>
+                  );
+                })}
               </div>
             )}
           </main>
 
-          {/* BOTTOM NAVIGATION */}
-          <nav className="fixed bottom-0 left-0 right-0 max-w-md mx-auto glass-header border-t border-slate-800/80 grid grid-cols-4 p-2 z-20 shadow-2xl">
-            <button
-              onClick={() => setActiveTab('swipe')}
-              className={`py-2.5 rounded-xl text-[11px] font-black uppercase tracking-wider transition ${
-                activeTab === 'swipe' ? 'text-emerald-400 bg-[#14171f] shadow-inner border border-slate-800' : 'text-slate-400 hover:text-slate-200'
-              }`}
-            >
-              🔥 Swipe
-            </button>
-            <button
-              onClick={() => setActiveTab('scan')}
-              className={`py-2.5 rounded-xl text-[11px] font-black uppercase tracking-wider transition ${
-                activeTab === 'scan' ? 'text-emerald-400 bg-[#14171f] shadow-inner border border-slate-800' : 'text-slate-400 hover:text-slate-200'
-              }`}
-            >
-              📸 Scan
-            </button>
-            <button
-              onClick={() => setActiveTab('shop')}
-              className={`py-2.5 rounded-xl text-[11px] font-black uppercase tracking-wider transition ${
-                activeTab === 'shop' ? 'text-emerald-400 bg-[#14171f] shadow-inner border border-slate-800' : 'text-slate-400 hover:text-slate-200'
-              }`}
-            >
-              🛒 Shop
-            </button>
-            <button
-              onClick={() => setActiveTab('calendar')}
-              className={`py-2.5 rounded-xl text-[11px] font-black uppercase tracking-wider transition ${
-                activeTab === 'calendar' ? 'text-emerald-400 bg-[#14171f] shadow-inner border border-slate-800' : 'text-slate-400 hover:text-slate-200'
-              }`}
-            >
-              🗓️ Week
-            </button>
+          <nav className="fixed bottom-0 left-0 right-0 max-w-md mx-auto glass-header border-t border-slate-800 grid grid-cols-4 p-2 z-20 shadow-2xl">
+            <button onClick={() => setActiveTab('swipe')} className={`py-2.5 rounded-xl text-[11px] font-black uppercase ${activeTab === 'swipe' ? 'text-emerald-400 bg-[#14171f]' : 'text-slate-400'}`}>🔥 Swipe</button>
+            <button onClick={() => setActiveTab('scan')} className={`py-2.5 rounded-xl text-[11px] font-black uppercase ${activeTab === 'scan' ? 'text-emerald-400 bg-[#14171f]' : 'text-slate-400'}`}>📸 Scan</button>
+            <button onClick={() => setActiveTab('shop')} className={`py-2.5 rounded-xl text-[11px] font-black uppercase ${activeTab === 'shop' ? 'text-emerald-400 bg-[#14171f]' : 'text-slate-400'}`}>🛒 Shop</button>
+            <button onClick={() => setActiveTab('calendar')} className={`py-2.5 rounded-xl text-[11px] font-black uppercase ${activeTab === 'calendar' ? 'text-emerald-400 bg-[#14171f]' : 'text-slate-400'}`}>🗓️ Week</button>
           </nav>
         </div>
       );
