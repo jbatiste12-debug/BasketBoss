@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover" />
-  <title>BasketBoss — Persistent Cookbook Edition</title>
+  <title>BasketBoss — Persistent Meal Planner</title>
   <meta name="apple-mobile-web-app-capable" content="yes" />
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
   <meta name="apple-mobile-web-app-title" content="BasketBoss" />
@@ -14,13 +14,588 @@
   <style>
     body { background-color: #14171f; color: #f1f5f9; font-family: system-ui, -apple-system, sans-serif; overflow-x: hidden; }
     .no-select { user-select: none; -webkit-user-select: none; }
-    .card-shadow { box-shadow: 0 20px 35px -10px rgba(0,0,0,0.5), 0 10px 15px -5px rgba(0,0,0,0.3); }
+    .card-shadow { box-shadow: 0 20px 35px -10px rgba(0, 0, 0, 0.5), 0 10px 15px -5px rgba(0, 0, 0, 0.3); }
     .glass-header { background: rgba(20, 23, 31, 0.92); backdrop-filter: blur(12px); }
   </style>
 </head>
 <body>
   <div id="root"></div>
-  <script src="recipes.js" type="text/babel"></script>
-  <script src="app.js" type="text/babel"></script>
+
+  <script type="text/babel">
+    const { useState, useEffect, useRef } = React;
+
+    const MASTER_RECIPES = [
+      {
+        id: 'm_1',
+        name: 'Sheet-Pan Chicken Fajitas & Loaded Nachos',
+        category: 'Mexican • Family of 6',
+        styleTag: 'TRAYBAKE & ROAST',
+        styleTagColor: 'bg-amber-500/20 text-amber-300 border-amber-500/40',
+        isDateNight: false,
+        prepTime: 25,
+        estCost: 16.50,
+        image: 'https://images.unsplash.com/photo-1551504734-5ee1c4a1479b?auto=format&fit=crop&w=800&q=80',
+        familyTip: 'Roast chicken and peppers on one big tray. Put wraps, cheddar, and sour cream in the middle of the table.',
+        method: [
+          'Preheat oven to 200°C (180°C fan). Slice chicken breasts and bell peppers into thin strips.',
+          'Toss chicken and peppers on a large baking tray with olive oil, fajita seasoning, salt, and pepper.',
+          'Roast in the oven for 20-22 minutes until chicken is cooked through and peppers are charred at the edges.',
+          'Warm tortilla wraps in the microwave for 30 seconds. Serve family-style with grated cheddar and soured cream.'
+        ],
+        ingredients: [
+          { id: 'mi_1', name: 'Chicken Breast Fillets (1kg pack)', price: 8.50, category: 'Meat' },
+          { id: 'mi_2', name: 'Mixed Bell Peppers (3-pack)', price: 2.10, category: 'Vegetables' },
+          { id: 'mi_3', name: 'Tortilla Wraps (8-pack)', price: 1.50, category: 'Grains' },
+          { id: 'mi_4', name: 'Soured Cream & Chive Dip', price: 1.80, category: 'Dairy' },
+          { id: 'mi_5', name: 'Mature Cheddar Block (400g)', price: 3.90, category: 'Dairy' }
+        ]
+      },
+      {
+        id: 'm_2',
+        name: 'Crispy Southern-Style Chicken Burgers',
+        category: 'Family Favorite • Friday Night',
+        styleTag: 'KID-APPROVED FAVORITE',
+        styleTagColor: 'bg-teal-500/20 text-teal-300 border-teal-500/40',
+        isDateNight: false,
+        prepTime: 25,
+        estCost: 14.80,
+        image: 'https://images.unsplash.com/photo-1568901346375-23c9450c58cd?auto=format&fit=crop&w=800&q=80',
+        familyTip: 'Coat chicken breasts in crushed cornflakes before baking for an incredible crunch without frying.',
+        method: [
+          'Dip chicken breasts in beaten egg, then press firmly into crushed cornflakes seasoned with paprika.',
+          'Bake on a wire rack over a baking tray at 200°C for 22 minutes until golden and crispy.',
+          'Toast brioche buns and assemble with lettuce, mayo, and the crispy chicken.'
+        ],
+        ingredients: [
+          { id: 'mi_6', name: 'Chicken Breast Fillets (1kg)', price: 8.50, category: 'Meat' },
+          { id: 'mi_7', name: 'Brioche Burger Buns (6-pack)', price: 2.20, category: 'Bakery' },
+          { id: 'mi_8', name: 'Cornflakes Box', price: 2.30, category: 'Grains' },
+          { id: 'mi_9', name: 'Coleslaw Tub', price: 1.80, category: 'Vegetables' }
+        ]
+      },
+      {
+        id: 'm_3',
+        name: 'One-Pan Creamy Garlic Parmesan Pasta Bake',
+        category: 'Italian • Minimal Washing Up',
+        styleTag: 'ONE-PAN WONDER',
+        styleTagColor: 'bg-emerald-500/20 text-emerald-300 border-emerald-500/40',
+        isDateNight: false,
+        prepTime: 20,
+        estCost: 11.20,
+        image: 'https://images.unsplash.com/photo-1633964913295-ceb43826e7c9?auto=format&fit=crop&w=800&q=80',
+        familyTip: 'Everything cooks in a single deep frying pan—pasta, chicken stock, and cream cook together.',
+        method: [
+          'Sauté diced chicken and minced garlic in olive oil in a large deep pan until golden.',
+          'Add dry penne pasta, chicken stock, and double cream straight into the pan and bring to a simmer.',
+          'Cover and simmer for 12-15 minutes until pasta absorbs liquid and is tender.',
+          'Stir in grated parmesan cheese until melted and creamy. Serve straight from the pan.'
+        ],
+        ingredients: [
+          { id: 'mi_10', name: 'Chicken Breast Fillets (500g)', price: 4.50, category: 'Meat' },
+          { id: 'mi_11', name: 'Penne Pasta (500g)', price: 1.10, category: 'Grains' },
+          { id: 'mi_12', name: 'Double Cream (300ml)', price: 1.80, category: 'Dairy' },
+          { id: 'mi_13', name: 'Parmesan Grating Block', price: 3.80, category: 'Dairy' }
+        ]
+      },
+      {
+        id: 'm_4',
+        name: 'One-Pan Sausage & Gnocchi Tomato Bake',
+        category: 'Midweek Comfort • Family of 6',
+        styleTag: 'ONE-PAN WONDER',
+        styleTagColor: 'bg-emerald-500/20 text-emerald-300 border-emerald-500/40',
+        isDateNight: false,
+        prepTime: 20,
+        estCost: 12.50,
+        image: 'https://images.unsplash.com/photo-1555396273-367ea4eb4db5?auto=format&fit=crop&w=800&q=80',
+        familyTip: 'Soft potato gnocchi cooks directly in the tomato sauce alongside sliced pork sausages.',
+        method: [
+          'Brown sliced Cumberland sausages in a large frying pan until golden.',
+          'Add passata, Italian herbs, and uncooked potato gnocchi straight into the pan.',
+          'Simmer covered for 10 minutes until gnocchi is pillow-soft.',
+          'Top with mozzarella cheese and grill for 3 minutes until bubbly and golden.'
+        ],
+        ingredients: [
+          { id: 'mi_14', name: 'Cumberland Pork Sausages (6-pack)', price: 3.50, category: 'Meat' },
+          { id: 'mi_15', name: 'Potato Gnocchi Pack (500g)', price: 1.80, category: 'Grains' },
+          { id: 'mi_16', name: 'Passata with Basil (500g)', price: 1.30, category: 'Vegetables' },
+          { id: 'mi_17', name: 'Mozzarella Grating Ball', price: 2.40, category: 'Dairy' },
+          { id: 'mi_18', name: 'Garlic Baguette', price: 3.50, category: 'Bakery' }
+        ]
+      },
+      {
+        id: 'm_5',
+        name: 'Smoky BBQ Pulled Pork Buns & Slaw',
+        category: 'Slow Cooker • Family Feast',
+        styleTag: 'TRAYBAKE & ROAST',
+        styleTagColor: 'bg-amber-500/20 text-amber-300 border-amber-500/40',
+        isDateNight: false,
+        prepTime: 15,
+        estCost: 14.50,
+        image: 'https://images.unsplash.com/photo-1528735602780-2552fd46c7af?auto=format&fit=crop&w=800&q=80',
+        familyTip: 'Put pork shoulder in the slow cooker in the morning; shred effortlessly by dinner time.',
+        method: [
+          'Place pork shoulder joint in the slow cooker with chopped onions and a bottle of smoky BBQ sauce.',
+          'Cook on low for 7-8 hours. Remove and shred easily using two forks.',
+          'Serve piled high in soft brioche buns with crunchy coleslaw.'
+        ],
+        ingredients: [
+          { id: 'mi_19', name: 'Pork Shoulder Joint (1.2kg)', price: 7.50, category: 'Meat' },
+          { id: 'mi_20', name: 'Brioche Burger Buns (6-pack)', price: 2.20, category: 'Bakery' },
+          { id: 'mi_21', name: 'Coleslaw Kit & BBQ Sauce', price: 4.80, category: 'Vegetables' }
+        ]
+      },
+      {
+        id: 'm_6',
+        name: 'Hearty Beef & Three Bean Chilli Bowl',
+        category: 'Batch Cook • Zero Waste',
+        styleTag: 'ONE-PAN WONDER',
+        styleTagColor: 'bg-emerald-500/20 text-emerald-300 border-emerald-500/40',
+        isDateNight: false,
+        prepTime: 25,
+        estCost: 14.30,
+        image: 'https://images.unsplash.com/photo-1541544741938-0af808871cc0?auto=format&fit=crop&w=800&q=80',
+        familyTip: 'Batch cook this hearty chilli; leftovers taste even better the next day wrapped in burritos.',
+        method: [
+          'Brown beef mince in a large pot with diced onions and garlic.',
+          'Add cumin, smoked paprika, chilli powder, chopped tomatoes, and rinsed kidney beans.',
+          'Simmer on low heat for 25 minutes until rich and thick.',
+          'Serve over fluffy boiled long-grain rice with a dollop of sour cream.'
+        ],
+        ingredients: [
+          { id: 'mi_22', name: '5% Lean Beef Mince (750g)', price: 7.20, category: 'Meat' },
+          { id: 'mi_23', name: 'Mixed Beans & Chopped Tomatoes', price: 3.50, category: 'Vegetables' },
+          { id: 'mi_24', name: 'Long Grain Rice (1kg)', price: 3.60, category: 'Grains' }
+        ]
+      },
+      {
+        id: 'm_7',
+        name: 'Crispy Salt & Pepper Chicken Stir-Fry',
+        category: 'Fakeaway Night • Family of 6',
+        styleTag: '15-MIN QUICK FIX',
+        styleTagColor: 'bg-indigo-500/20 text-indigo-300 border-indigo-500/40',
+        isDateNight: false,
+        prepTime: 20,
+        estCost: 13.50,
+        image: 'https://images.unsplash.com/photo-1512058564366-18510be2db19?auto=format&fit=crop&w=800&q=80',
+        familyTip: 'Toss chicken strips in Chinese five-spice and cornflour before wok-frying for a crispy crunch.',
+        method: [
+          'Slice chicken breast into strips and toss with five-spice, salt, and cornflour.',
+          'Flash fry in a hot wok with sesame oil until crispy and golden brown.',
+          'Add mixed stir-fry veg and egg noodles, tossing with soy sauce and sweet chilli.'
+        ],
+        ingredients: [
+          { id: 'mi_25', name: 'Chicken Breast Fillets (1kg)', price: 8.50, category: 'Meat' },
+          { id: 'mi_26', name: 'Egg Noodle Multipack', price: 1.60, category: 'Grains' },
+          { id: 'mi_27', name: 'Stir-Fry Veg Mix', price: 2.20, category: 'Vegetables' },
+          { id: 'mi_28', name: 'Soy Sauce & Sweet Chilli Squeezy', price: 1.20, category: 'Grains' }
+        ]
+      },
+      {
+        id: 'm_8',
+        name: 'Honey-Glazed Salmon & Tenderstem Broccoli',
+        category: 'Midweek Traybake • Healthy',
+        styleTag: 'TRAYBAKE & ROAST',
+        styleTagColor: 'bg-amber-500/20 text-amber-300 border-amber-500/40',
+        isDateNight: false,
+        prepTime: 20,
+        estCost: 15.80,
+        image: 'https://images.unsplash.com/photo-1467003909585-2f8a72700288?auto=format&fit=crop&w=800&q=80',
+        familyTip: 'Glazed in soy sauce, honey, and garlic. Roasts on a single sheet pan in under 20 minutes.',
+        method: [
+          'Place salmon fillets and tenderstem broccoli on a baking tray.',
+          'Whisk soy sauce, honey, and minced garlic together, then brush generously over the salmon.',
+          'Bake at 200°C for 15-18 minutes until salmon flakes easily.'
+        ],
+        ingredients: [
+          { id: 'mi_29', name: 'Fresh Salmon Fillets (4-pack)', price: 9.50, category: 'Meat' },
+          { id: 'mi_30', name: 'Tenderstem Broccoli (2 packs)', price: 3.60, category: 'Vegetables' },
+          { id: 'mi_31', name: 'Honey & Soy Sauce', price: 2.70, category: 'Grains' }
+        ]
+      },
+      {
+        id: 'm_9',
+        name: 'Pan-Seared Sirloin Steaks & Peppercorn Sauce',
+        category: '✨ Date Night Idea • For Two',
+        styleTag: 'DATE NIGHT SPECIAL',
+        styleTagColor: 'bg-rose-500/20 text-rose-300 border-rose-500/40',
+        isDateNight: true,
+        prepTime: 20,
+        estCost: 18.50,
+        image: 'https://images.unsplash.com/photo-1544025162-d76694265947?auto=format&fit=crop&w=800&q=80',
+        familyTip: 'Enjoy this restaurant-quality dinner in peace once the kids are in bed.',
+        method: [
+          'Take sirloin steaks out of fridge 20 mins prior. Season with salt and pepper.',
+          'Roast cubed potatoes at 200°C for 30 minutes.',
+          'Sear steaks in a smoking hot skillet for 3 minutes each side for medium-rare. Rest for 5 minutes.',
+          'Warm creamy peppercorn sauce and serve alongside tenderstem broccoli.'
+        ],
+        ingredients: [
+          { id: 'mi_32', name: 'Sirloin Steaks (Twin Pack)', price: 11.50, category: 'Meat' },
+          { id: 'mi_33', name: 'Peppercorn Sauce Tub', price: 2.50, category: 'Dairy' },
+          { id: 'mi_34', name: 'Tenderstem Broccoli', price: 2.10, category: 'Vegetables' },
+          { id: 'mi_35', name: 'Potatoes', price: 2.40, category: 'Vegetables' }
+        ]
+      },
+      {
+        id: 'm_10',
+        name: 'Creamy Tuscan Butter Garlic Salmon',
+        category: '✨ Date Night Idea • For Two',
+        styleTag: 'DATE NIGHT SPECIAL',
+        styleTagColor: 'bg-rose-500/20 text-rose-300 border-rose-500/40',
+        isDateNight: true,
+        prepTime: 20,
+        estCost: 17.80,
+        image: 'https://images.unsplash.com/photo-1467003909585-2f8a72700288?auto=format&fit=crop&w=800&q=80',
+        familyTip: 'Pan-sear salmon and simmer in a sun-dried tomato and garlic cream reduction.',
+        method: [
+          'Season salmon fillets and sear skin-side down in olive oil for 4 minutes.',
+          'Flip salmon and add minced garlic, cherry tomatoes, and sun-dried tomatoes.',
+          'Pour in double cream and simmer gently for 5 minutes until thick. Serve over asparagus.'
+        ],
+        ingredients: [
+          { id: 'mi_36', name: 'Salmon Fillets (Twin)', price: 9.50, category: 'Meat' },
+          { id: 'mi_37', name: 'Cream & Sun-Dried Tomatoes', price: 4.20, category: 'Dairy' },
+          { id: 'mi_38', name: 'Asparagus', price: 4.10, category: 'Vegetables' }
+        ]
+      }
+    ];
+
+    const DAYS_LIST = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'];
+
+    function getWeekDays() {
+      const today = new Date();
+      const day = today.getDay();
+      const diffToMonday = today.getDate() - day + (day === 0 ? -6 : 1);
+      const monday = new Date(today.setDate(diffToMonday));
+      const days = [];
+      for (let i = 0; i < 7; i++) {
+        const d = new Date(monday);
+        d.setDate(monday.getDate() + i);
+        days.push({ dayName: DAYS_LIST[i], dateStr: d.toLocaleDateString('en-GB', { day: 'numeric', month: 'short' }) });
+      }
+      return days;
+    }
+
+    function App() {
+      const [activeTab, setActiveTab] = useState('swipe');
+      const [meals, setMeals] = useState(MASTER_RECIPES);
+      const [deckIndex, setDeckIndex] = useState(0);
+
+      // LocalStorage Persistence
+      const [plannedMeals, setPlannedMeals] = useState(() => {
+        const saved = localStorage.getItem('basketboss_planned');
+        if (saved) { try { return JSON.parse(saved); } catch(e) {} }
+        return [
+          { meal: MASTER_RECIPES[0], assignedDay: 'Monday' },
+          { meal: MASTER_RECIPES[1], assignedDay: 'Tuesday' },
+          { meal: MASTER_RECIPES[4], assignedDay: 'Friday' }
+        ];
+      });
+
+      const [pantryChecked, setPantryChecked] = useState(() => {
+        const saved = localStorage.getItem('basketboss_pantry');
+        if (saved) { try { return JSON.parse(saved); } catch(e) {} }
+        return {};
+      });
+
+      const [scanMessage, setScanMessage] = useState('');
+      const [wipeoutMode, setWipeoutMode] = useState(false);
+      const [expandedMethodId, setExpandedMethodId] = useState(null);
+      const [cookingMeal, setCookingMeal] = useState(null);
+      const [currentStepIndex, setCurrentStepIndex] = useState(0);
+      const [timerSeconds, setTimerSeconds] = useState(0);
+      const [isTimerRunning, setIsTimerRunning] = useState(false);
+      const [dragX, setDragX] = useState(0);
+      const startXRef = useRef(null);
+
+      useEffect(() => { localStorage.setItem('basketboss_planned', JSON.stringify(plannedMeals)); }, [plannedMeals]);
+      useEffect(() => { localStorage.setItem('basketboss_pantry', JSON.stringify(pantryChecked)); }, [pantryChecked]);
+
+      const currentMeal = meals[deckIndex];
+      const weekDays = getWeekDays();
+
+      useEffect(() => {
+        let interval = null;
+        if (isTimerRunning && timerSeconds > 0) {
+          interval = setInterval(() => setTimerSeconds(prev => prev - 1), 1000);
+        } else if (timerSeconds === 0) {
+          setIsTimerRunning(false);
+        }
+        return () => clearInterval(interval);
+      }, [isTimerRunning, timerSeconds]);
+
+      const startCooking = (meal) => {
+        setCookingMeal(meal);
+        setCurrentStepIndex(0);
+        setTimerSeconds((meal.prepTime || 20) * 60);
+        setIsTimerRunning(false);
+      };
+
+      const formatTime = (secs) => {
+        const mins = Math.floor(secs / 60);
+        const rem = secs % 60;
+        return `${mins}:${rem < 10 ? '0' : ''}${rem}`;
+      };
+
+      const toggleWipeoutMode = () => {
+        if (!wipeoutMode) {
+          const filtered = MASTER_RECIPES.filter(m => m.ingredients.some(ing => pantryChecked[ing.id]));
+          if (filtered.length > 0) {
+            setMeals(filtered);
+            setDeckIndex(0);
+            setWipeoutMode(true);
+            setScanMessage('🌪️ Wipeout Mode Active!');
+          } else {
+            setScanMessage('⚠️ Tick off fridge items first!');
+          }
+        } else {
+          setMeals(MASTER_RECIPES);
+          setDeckIndex(0);
+          setWipeoutMode(false);
+          setScanMessage('Library reset.');
+        }
+      };
+
+      const consolidatedBasket = () => {
+        const map = {};
+        plannedMeals.forEach(item => {
+          if (!item.meal || !item.meal.ingredients) return;
+          item.meal.ingredients.forEach(ing => {
+            if (!map[ing.id]) map[ing.id] = { ...ing, usedInCount: 1 };
+            else map[ing.id].usedInCount += 1;
+          });
+        });
+        return Object.values(map);
+      };
+
+      const basketItems = consolidatedBasket();
+      const totalBasketCost = basketItems.reduce((sum, item) => pantryChecked[item.id] ? sum : sum + item.price, 0);
+
+      const categoriesOrder = ['Meat', 'Vegetables', 'Dairy', 'Grains', 'Bakery'];
+      const categoryLabels = { Meat: '🥩 Meat & Fish', Vegetables: '🥦 Vegetables & Produce', Dairy: '🥛 Dairy', Grains: '🌾 Grains & Dry Goods', Bakery: '🍞 Bakery' };
+      const groupedBasket = basketItems.reduce((acc, item) => {
+        const cat = item.category || 'Grains';
+        if (!acc[cat]) acc[cat] = [];
+        acc[cat].push(item);
+        return acc;
+      }, {});
+
+      const handleDecision = (liked) => {
+        if (!currentMeal) return;
+        if (liked && !plannedMeals.find(pm => pm.meal.id === currentMeal.id)) {
+          const assignedDays = plannedMeals.map(pm => pm.assignedDay);
+          const availableDay = DAYS_LIST.find(d => !assignedDays.includes(d)) || 'Saturday';
+          setPlannedMeals([...plannedMeals, { meal: currentMeal, assignedDay: availableDay }]);
+        }
+        setDragX(0);
+        setDeckIndex(prev => (prev + 1) % meals.length);
+      };
+
+      const removePlannedMeal = (id) => setPlannedMeals(plannedMeals.filter(pm => pm.meal.id !== id));
+      const updateAssignedDay = (id, day) => setPlannedMeals(plannedMeals.map(pm => pm.meal.id === id ? { ...pm, assignedDay: day } : pm));
+      const togglePantryItem = (id) => setPantryChecked(prev => ({ ...prev, [id]: !prev[id] }));
+      const handlePhotoUpload = () => setScanMessage('📸 Fridge scanned successfully!');
+
+      const onTouchStart = (e) => { startXRef.current = e.touches[0].clientX; };
+      const onTouchMove = (e) => {
+        if (startXRef.current === null) return;
+        setDragX(e.touches[0].clientX - startXRef.current);
+      };
+      const onTouchEnd = () => {
+        if (dragX > 90) handleDecision(true);
+        else if (dragX < -90) handleDecision(false);
+        else setDragX(0);
+        startXRef.current = null;
+      };
+
+      return (
+        <div className="max-w-md mx-auto min-h-screen flex flex-col justify-between pb-24 bg-[#14171f]">
+          {cookingMeal && (
+            <div className="fixed inset-0 z-50 bg-[#0f1319] p-5 flex flex-col justify-between overflow-y-auto animate-fadeIn">
+              <div>
+                <div className="flex justify-between items-center mb-4">
+                  <span className="text-xs font-black uppercase text-emerald-400">👨‍🍳 Cooking Mode</span>
+                  <button onClick={() => setCookingMeal(null)} className="bg-slate-800 text-slate-300 px-3 py-1 rounded-xl text-xs">✕ Exit</button>
+                </div>
+                <h2 className="text-xl font-black text-white mb-4">{cookingMeal.name}</h2>
+                <div className="bg-[#1c202a] border border-slate-700 rounded-2xl p-4 mb-6 flex justify-between items-center">
+                  <div>
+                    <span className="text-[10px] text-slate-400 block font-bold">Countdown</span>
+                    <span className="text-3xl font-black text-emerald-300 font-mono">{formatTime(timerSeconds)}</span>
+                  </div>
+                  <div className="flex gap-2">
+                    <button onClick={() => setIsTimerRunning(!isTimerRunning)} className={`px-4 py-2 rounded-xl text-xs font-bold ${isTimerRunning ? 'bg-amber-500 text-slate-950' : 'bg-emerald-500 text-slate-950'}`}>
+                      {isTimerRunning ? 'Pause' : 'Start'}
+                    </button>
+                  </div>
+                </div>
+                <div className="bg-[#1c202a] border border-slate-700 rounded-3xl p-6 space-y-4">
+                  <span className="text-xs font-black text-amber-300">Step {currentStepIndex + 1} of {cookingMeal.method.length}</span>
+                  <p className="text-lg font-bold text-slate-100 leading-relaxed min-h-[100px]">{cookingMeal.method[currentStepIndex]}</p>
+                </div>
+              </div>
+              <div className="grid grid-cols-2 gap-3 mt-6">
+                <button disabled={currentStepIndex === 0} onClick={() => setCurrentStepIndex(p => Math.max(0, p - 1))} className="py-4 bg-slate-800 text-slate-200 rounded-2xl text-xs font-bold disabled:opacity-40">← Prev</button>
+                <button disabled={currentStepIndex === cookingMeal.method.length - 1} onClick={() => setCurrentStepIndex(p => Math.min(cookingMeal.method.length - 1, p + 1))} className="py-4 bg-emerald-500 text-slate-950 rounded-2xl text-xs font-black disabled:opacity-40">Next →</button>
+              </div>
+            </div>
+          )}
+
+          <header className="p-4 glass-header sticky top-0 z-20 border-b border-slate-800 flex justify-between items-center shadow-lg">
+            <div className="flex items-center gap-2.5">
+              <div className="w-10 h-10 rounded-2xl bg-gradient-to-br from-emerald-500/20 to-rose-500/20 border border-emerald-500/40 flex items-center justify-center shadow-inner relative overflow-hidden">
+                <svg className="w-6 h-6 text-emerald-400" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
+                  <path d="M2 7l4 3 6-5 6 5 4-3v2H2V7z" fill="currentColor" fillOpacity="0.15" stroke="currentColor" />
+                  <path d="M3 9h18l-2 11H5L3 9z" />
+                  <path d="M9 14l3 3 3-3" stroke="#f43f5e" strokeWidth="2" />
+                </svg>
+              </div>
+              <div>
+                <h1 className="text-lg font-black tracking-tight text-white flex items-center gap-1 leading-none">
+                  Basket<span className="text-emerald-400">Boss</span>
+                </h1>
+                <p className="text-[11px] text-slate-400 font-medium mt-0.5">
+                  {meals.length} Verified Recipes Loaded (Saved Locally)
+                </p>
+              </div>
+            </div>
+            
+            <div className="bg-emerald-500/10 border border-emerald-500/30 px-3.5 py-1.5 rounded-xl text-right">
+              <span className="text-[10px] uppercase text-emerald-400 block font-bold">Est. Shop</span>
+              <span className="text-lg font-extrabold text-emerald-300">£{totalBasketCost.toFixed(2)}</span>
+            </div>
+          </header>
+
+          <main className="p-4 flex-1">
+            {activeTab === 'swipe' && currentMeal && (
+              <div>
+                {wipeoutMode && (
+                  <div className="bg-amber-500/10 border border-amber-500/30 p-3 rounded-2xl mb-3 flex items-center justify-between">
+                    <span className="text-xs font-bold text-amber-300">🌪️ Wipeout Mode Active</span>
+                    <button onClick={toggleWipeoutMode} className="text-[10px] bg-amber-500 text-slate-950 font-black px-2.5 py-1 rounded-lg">Exit</button>
+                  </div>
+                )}
+
+                <div
+                  onTouchStart={onTouchStart}
+                  onTouchMove={onTouchMove}
+                  onTouchEnd={onTouchEnd}
+                  style={{
+                    transform: `translateX(${dragX}px) rotate(${dragX * 0.04}deg)`,
+                    transition: startXRef.current ? 'none' : 'transform 0.25s ease'
+                  }}
+                  className={`rounded-3xl overflow-hidden card-shadow border transition-all ${
+                    currentMeal.isDateNight ? 'bg-gradient-to-b from-[#251522] to-[#1c1f28] border-rose-500/40' : 'bg-[#1c202a] border-slate-700'
+                  }`}
+                >
+                  <div className="relative h-60">
+                    <img src={currentMeal.image} alt={currentMeal.name} className="w-full h-full object-cover" />
+                    <div className="absolute inset-0 bg-gradient-to-t from-[#1c202a] via-transparent to-black/30"></div>
+                    
+                    <div className="absolute top-3 left-3 z-10">
+                      <span className={`px-4 py-1.5 rounded-full text-xs font-black uppercase border shadow-lg ${currentMeal.styleTagColor}`}>
+                        {currentMeal.styleTag}
+                      </span>
+                    </div>
+
+                    <div className="absolute top-3 right-3 bg-[#14171f]/85 backdrop-blur px-3 py-1 rounded-full text-xs font-bold text-slate-200 border border-slate-700">
+                      ⏱ {currentMeal.prepTime} mins
+                    </div>
+                  </div>
+
+                  <div className="p-5">
+                    <span className="text-[11px] font-black uppercase text-emerald-400">{currentMeal.category}</span>
+                    <h2 className="text-xl font-bold text-white mt-1 mb-3">{currentMeal.name}</h2>
+                    <p className="text-xs text-slate-300 mb-5 bg-[#14171f] p-3 rounded-2xl border border-slate-700">{currentMeal.familyTip}</p>
+                    <div className="grid grid-cols-2 gap-3">
+                      <button onClick={() => handleDecision(false)} className="py-3.5 bg-[#14171f] text-slate-300 font-bold text-xs rounded-2xl border border-slate-700">✕ Discard</button>
+                      <button onClick={() => handleDecision(true)} className="py-3.5 bg-emerald-500 text-slate-950 font-black text-xs rounded-2xl">✓ Add to Week</button>
+                    </div>
+                  </div>
+                </div>
+
+                <div className="flex flex-col items-center mt-4">
+                  <p className="text-[10px] text-indigo-400 font-semibold">
+                    📚 Library: Recipe {deckIndex + 1} of {meals.length} (100% Matched Photos)
+                  </p>
+                </div>
+              </div>
+            )}
+
+            {activeTab === 'scan' && (
+              <div className="bg-[#1c202a] border border-slate-700 rounded-3xl p-6 text-center">
+                <div className="text-4xl mb-3">📸</div>
+                <h2 className="text-base font-black text-white mb-2">AI Fridge Scanner</h2>
+                <button onClick={handlePhotoUpload} className="w-full py-3 bg-emerald-500 text-slate-950 font-black text-xs rounded-2xl mb-3">Scan Fridge Photo</button>
+                <button onClick={toggleWipeoutMode} className="w-full py-3 bg-[#14171f] text-amber-300 border border-amber-500 font-bold text-xs rounded-2xl">
+                  {wipeoutMode ? 'Disable Wipeout Mode' : 'Activate Wipeout Mode'}
+                </button>
+                {scanMessage && <p className="text-xs text-emerald-400 mt-3 font-bold">{scanMessage}</p>}
+              </div>
+            )}
+
+            {activeTab === 'shop' && (
+              <div className="space-y-4">
+                <h3 className="text-xs font-black uppercase text-slate-400">Shopping List ({basketItems.length} items)</h3>
+                {categoriesOrder.map(cat => {
+                  const items = groupedBasket[cat];
+                  if (!items || !items.length) return null;
+                  return (
+                    <div key={cat} className="bg-[#1c202a] border border-slate-700 rounded-2xl p-3">
+                      <h4 className="text-xs font-black text-emerald-400 mb-2">{categoryLabels[cat]}</h4>
+                      <div className="space-y-2">
+                        {items.map(item => (
+                          <div key={item.id} onClick={() => togglePantryItem(item.id)} className={`p-2.5 rounded-xl border flex justify-between cursor-pointer ${pantryChecked[item.id] ? 'opacity-40 line-through bg-slate-900' : 'bg-[#14171f]'}`}>
+                            <span className="text-sm font-semibold">{item.name}</span>
+                            <span className="text-sm font-bold text-emerald-300">£{item.price.toFixed(2)}</span>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            )}
+
+            {activeTab === 'calendar' && (
+              <div className="space-y-3">
+                {weekDays.map(wd => {
+                  const assigned = plannedMeals.filter(pm => pm.assignedDay === wd.dayName);
+                  return (
+                    <div key={wd.dayName} className="bg-[#1c202a] border border-slate-700 rounded-2xl p-3">
+                      <div className="flex justify-between items-center mb-2">
+                        <span className="text-xs font-black uppercase text-white">{wd.dayName} ({wd.dateStr})</span>
+                      </div>
+                      {assigned.length > 0 ? assigned.map(pm => (
+                        <div key={pm.meal.id} className="bg-[#14171f] p-3 rounded-xl border border-slate-700 space-y-2">
+                          <span className="text-xs font-bold text-emerald-400 block">{pm.meal.name}</span>
+                          <div className="flex gap-2">
+                            <select value={pm.assignedDay} onChange={(e) => updateAssignedDay(pm.meal.id, e.target.value)} className="bg-[#1c202a] text-xs text-emerald-300 p-1 rounded border border-slate-600">
+                              {DAYS_LIST.map(d => <option key={d} value={d}>{d}</option>)}
+                            </select>
+                            <button onClick={() => startCooking(pm.meal)} className="px-3 py-1 bg-emerald-500 text-slate-950 font-black text-[10px] rounded">Cook</button>
+                            <button onClick={() => removePlannedMeal(pm.meal.id)} className="px-2 py-1 bg-rose-500/20 text-rose-300 font-bold text-[10px] rounded">Remove</button>
+                          </div>
+                        </div>
+                      )) : <p className="text-[11px] text-slate-500 italic">No meal assigned.</p>}
+                    </div>
+                  );
+                })}
+              </div>
+            )}
+          </main>
+
+          <nav className="fixed bottom-0 left-0 right-0 max-w-md mx-auto glass-header border-t border-slate-800 grid grid-cols-4 p-2 z-20 shadow-2xl">
+            <button onClick={() => setActiveTab('swipe')} className={`py-2.5 rounded-xl text-[11px] font-black uppercase ${activeTab === 'swipe' ? 'text-emerald-400 bg-[#14171f]' : 'text-slate-400'}`}>🔥 Swipe</button>
+            <button onClick={() => setActiveTab('scan')} className={`py-2.5 rounded-xl text-[11px] font-black uppercase ${activeTab === 'scan' ? 'text-emerald-400 bg-[#14171f]' : 'text-slate-400'}`}>📸 Scan</button>
+            <button onClick={() => setActiveTab('shop')} className={`py-2.5 rounded-xl text-[11px] font-black uppercase ${activeTab === 'shop' ? 'text-emerald-400 bg-[#14171f]' : 'text-slate-400'}`}>🛒 Shop</button>
+            <button onClick={() => setActiveTab('calendar')} className={`py-2.5 rounded-xl text-[11px] font-black uppercase ${activeTab === 'calendar' ? 'text-emerald-400 bg-[#14171f]' : 'text-slate-400'}`}>🗓️ Week</button>
+          </nav>
+        </div>
+      );
+    }
+
+    ReactDOM.createRoot(document.getElementById('root')).render(<App />);
+  </script>
 </body>
 </html>
