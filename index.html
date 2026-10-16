@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
-  <title>BasketBoss — Snappy AI Meal Planner</title>
+  <title>BasketBoss — Snappy AI Meal Planner & Categorized Shop</title>
   <!-- Tailwind CSS -->
   <script src="https://cdn.tailwindcss.com"></script>
   <!-- React & ReactDOM -->
@@ -42,11 +42,11 @@
           'Warm tortilla wraps in the microwave for 30 seconds. Serve family-style with grated cheddar and soured cream.'
         ],
         ingredients: [
-          { id: 'i1', name: 'Chicken Breast Fillets (1kg pack)', price: 8.50, aisle: 'Meat & Fish' },
-          { id: 'i2', name: 'Mixed Bell Peppers (3-pack)', price: 2.10, aisle: 'Produce' },
-          { id: 'i3', name: 'Tortilla Wraps (8-pack)', price: 1.50, aisle: 'Bakery' },
-          { id: 'i4', name: 'Soured Cream & Chive Dip', price: 1.80, aisle: 'Dairy' },
-          { id: 'i5', name: 'Mature Cheddar Block (400g)', price: 3.90, aisle: 'Dairy' }
+          { id: 'i1', name: 'Chicken Breast Fillets (1kg pack)', price: 8.50, category: 'Meat' },
+          { id: 'i2', name: 'Mixed Bell Peppers (3-pack)', price: 2.10, category: 'Vegetables' },
+          { id: 'i3', name: 'Tortilla Wraps (8-pack)', price: 1.50, category: 'Grains' },
+          { id: 'i4', name: 'Soured Cream & Chive Dip', price: 1.80, category: 'Dairy' },
+          { id: 'i5', name: 'Mature Cheddar Block (400g)', price: 3.90, category: 'Dairy' }
         ]
       },
       {
@@ -65,11 +65,11 @@
           'Boil penne pasta in salted water until al dente. Bake garlic baguettes according to package instructions.'
         ],
         ingredients: [
-          { id: 'i6', name: '5% Lean Beef Mince (750g family pack)', price: 7.20, aisle: 'Meat & Fish' },
-          { id: 'i7', name: 'Penne Pasta (1kg)', price: 1.60, aisle: 'Tins & Dry' },
-          { id: 'i8', name: 'Chopped Tomatoes (4-pack tins)', price: 2.60, aisle: 'Tins & Dry' },
-          { id: 'i9', name: 'Carrots & Courgettes Pack', price: 1.80, aisle: 'Produce' },
-          { id: 'i10', name: 'Garlic Baguette (Twin Pack)', price: 2.00, aisle: 'Bakery' }
+          { id: 'i6', name: '5% Lean Beef Mince (750g family pack)', price: 7.20, category: 'Meat' },
+          { id: 'i7', name: 'Penne Pasta (1kg)', price: 1.60, category: 'Grains' },
+          { id: 'i8', name: 'Chopped Tomatoes (4-pack tins)', price: 2.60, category: 'Vegetables' },
+          { id: 'i9', name: 'Carrots & Courgettes Pack', price: 1.80, category: 'Vegetables' },
+          { id: 'i10', name: 'Garlic Baguette (Twin Pack)', price: 2.00, category: 'Bakery' }
         ]
       },
       {
@@ -88,10 +88,10 @@
           'Rest steaks for 5 minutes. Warm creamy peppercorn sauce in a pan and serve alongside tenderstem broccoli.'
         ],
         ingredients: [
-          { id: 'i17', name: 'Prime Matured Sirloin Steaks (Twin Pack 450g)', price: 11.50, aisle: 'Meat & Fish' },
-          { id: 'i18', name: 'Fresh Creamy Peppercorn Sauce Tub', price: 2.50, aisle: 'Dairy' },
-          { id: 'i12', name: 'Tenderstem Broccoli', price: 2.10, aisle: 'Produce' },
-          { id: 'i13', name: 'Maris Piper Potatoes (2.5kg bag)', price: 2.40, aisle: 'Produce' }
+          { id: 'i17', name: 'Prime Matured Sirloin Steaks (Twin Pack 450g)', price: 11.50, category: 'Meat' },
+          { id: 'i18', name: 'Fresh Creamy Peppercorn Sauce Tub', price: 2.50, category: 'Dairy' },
+          { id: 'i12', name: 'Tenderstem Broccoli', price: 2.10, category: 'Vegetables' },
+          { id: 'i13', name: 'Maris Piper Potatoes (2.5kg bag)', price: 2.40, category: 'Vegetables' }
         ]
       }
     ];
@@ -113,9 +113,9 @@
           'Toast brioche buns, add coleslaw and lettuce, and place crispy chicken inside.'
         ],
         ingredients: [
-          { id: 'ai_i1', name: 'Chicken Breast Fillets (1kg)', price: 8.50, aisle: 'Meat & Fish' },
-          { id: 'ai_i2', name: 'Brioche Buns (6-pack)', price: 2.20, aisle: 'Bakery' },
-          { id: 'ai_i3', name: 'Coleslaw Kit & Salad', price: 4.40, aisle: 'Produce' }
+          { id: 'ai_i1', name: 'Chicken Breast Fillets (1kg)', price: 8.50, category: 'Meat' },
+          { id: 'ai_i2', name: 'Brioche Buns (6-pack)', price: 2.20, category: 'Bakery' },
+          { id: 'ai_i3', name: 'Coleslaw Kit & Salad', price: 4.40, category: 'Vegetables' }
         ]
       },
       {
@@ -133,9 +133,9 @@
           'Serve hot over sautéed asparagus.'
         ],
         ingredients: [
-          { id: 'ai_i6', name: 'Fresh Salmon Fillets (Twin Pack)', price: 9.50, aisle: 'Meat & Fish' },
-          { id: 'ai_i7', name: 'Double Cream & Sun-Dried Tomatoes', price: 4.20, aisle: 'Dairy' },
-          { id: 'ai_i8', name: 'Fresh Asparagus', price: 4.10, aisle: 'Produce' }
+          { id: 'ai_i6', name: 'Fresh Salmon Fillets (Twin Pack)', price: 9.50, category: 'Meat' },
+          { id: 'ai_i7', name: 'Double Cream & Sun-Dried Tomatoes', price: 4.20, category: 'Dairy' },
+          { id: 'ai_i8', name: 'Fresh Asparagus', price: 4.10, category: 'Vegetables' }
         ]
       },
       {
@@ -153,9 +153,9 @@
           'Serve over fluffy boiled long-grain rice with a dollop of sour cream.'
         ],
         ingredients: [
-          { id: 'ai_i9', name: '5% Lean Beef Mince (750g)', price: 7.20, aisle: 'Meat & Fish' },
-          { id: 'ai_i10', name: 'Mixed Beans & Chopped Tomatoes', price: 3.50, aisle: 'Tins & Dry' },
-          { id: 'ai_i11', name: 'Long Grain Rice (1kg)', price: 3.60, aisle: 'Tins & Dry' }
+          { id: 'ai_i9', name: '5% Lean Beef Mince (750g)', price: 7.20, category: 'Meat' },
+          { id: 'ai_i10', name: 'Mixed Beans & Chopped Tomatoes', price: 3.50, category: 'Vegetables' },
+          { id: 'ai_i11', name: 'Long Grain Rice (1kg)', price: 3.60, category: 'Grains' }
         ]
       }
     ];
@@ -232,6 +232,23 @@
       const savedBySharingPacks = basketItems.reduce((sum, item) => {
         return item.usedInCount > 1 ? sum + item.price * (item.usedInCount - 1) : sum;
       }, 0);
+
+      // Group basket items by category
+      const categoriesOrder = ['Meat', 'Vegetables', 'Dairy', 'Grains', 'Bakery'];
+      const categoryLabels = {
+        Meat: '🥩 Meat & Fish',
+        Vegetables: '🥦 Vegetables & Produce',
+        Dairy: '🥛 Dairy',
+        Grains: '🌾 Grains & Dry Goods',
+        Bakery: '🍞 Bakery'
+      };
+
+      const groupedBasket = basketItems.reduce((acc, item) => {
+        const cat = item.category || 'Grains';
+        if (!acc[cat]) acc[cat] = [];
+        acc[cat].push(item);
+        return acc;
+      }, {});
 
       const handleDecision = (liked) => {
         if (!currentMeal) return;
@@ -376,83 +393,31 @@
               ) : null
             )}
 
-            {/* TAB 2: WEEK CALENDAR OVERVIEW */}
-            {activeTab === 'calendar' && (
+            {/* TAB 2: AI FRIDGE SCANNER */}
+            {activeTab === 'scan' && (
               <div className="space-y-4">
-                <div className="bg-[#1c202a] border border-slate-700/80 rounded-2xl p-4 card-shadow">
-                  <h2 className="text-xs font-black uppercase tracking-wider text-emerald-400 mb-1 flex items-center gap-1.5">
-                    <span>📅</span> Weekly Meal Calendar & Methods
-                  </h2>
-                  <p className="text-xs text-slate-300">Your scheduled meals mapped by day and date from your liked swipe choices.</p>
+                <div className="bg-[#1c202a] border border-slate-700/80 rounded-3xl p-6 text-center card-shadow">
+                  <div className="text-5xl mb-3">📸</div>
+                  <h2 className="text-base font-black text-white">AI Fridge & Pantry Scanner</h2>
+                  <p className="text-xs text-slate-400 mt-1 mb-5 leading-relaxed">
+                    Snap a photo of your fridge shelves to automatically tick off packs you already own and deduct them from your shop total.
+                  </p>
+
+                  <label className="block w-full py-4 px-4 bg-emerald-500 hover:bg-emerald-400 active:scale-98 text-slate-950 font-black text-xs uppercase tracking-wider rounded-2xl cursor-pointer transition shadow-lg">
+                    📷 Take or Upload Fridge Photo
+                    <input type="file" accept="image/*" onChange={handlePhotoUpload} className="hidden" />
+                  </label>
                 </div>
 
-                <div className="space-y-3">
-                  {weekDays.map((wd, idx) => {
-                    const meal = plannedMeals[idx % plannedMeals.length];
-                    const isDate = meal?.isDateNight;
-                    const isMethodOpen = expandedMethodId === `${wd.dayName}-${idx}`;
-
-                    return (
-                      <div
-                        key={wd.dayName}
-                        className={`p-4 rounded-2xl border transition card-shadow ${
-                          isDate
-                            ? 'bg-gradient-to-br from-[#251522] to-[#1c202a] border-rose-800/50'
-                            : 'bg-[#1c202a] border-slate-700/80'
-                        }`}
-                      >
-                        <div className="flex justify-between items-center mb-2">
-                          <span className="text-xs font-black uppercase tracking-wider text-emerald-300">
-                            {wd.dayName} <span className="text-slate-400 font-normal">({wd.dateStr})</span>
-                          </span>
-                          <span className={`text-[10px] font-extrabold px-2.5 py-0.5 rounded-full uppercase tracking-wider ${
-                            isDate ? 'bg-rose-500/20 text-rose-300 border border-rose-500/40' : 'bg-emerald-500/10 text-emerald-300 border border-emerald-500/20'
-                          }`}>
-                            {isDate ? '🥂 Date Night' : '🍽️ Family Dinner'}
-                          </span>
-                        </div>
-
-                        {meal ? (
-                          <div>
-                            <h3 className="text-sm font-bold text-white mb-1">{meal.name}</h3>
-                            <div className="flex justify-between items-center text-xs text-slate-400 mb-3">
-                              <span>⏱ {meal.prepTime} mins prep</span>
-                              <span className="font-bold text-emerald-400">£{meal.estCost.toFixed(2)}</span>
-                            </div>
-
-                            <button
-                              onClick={() => setExpandedMethodId(isMethodOpen ? null : `${wd.dayName}-${idx}`)}
-                              className="w-full py-2.5 bg-[#14171f] hover:bg-[#222734] text-slate-200 text-xs font-bold rounded-xl border border-slate-700 transition flex justify-center items-center gap-1.5 shadow"
-                            >
-                              <span>{isMethodOpen ? 'Hide Cooking Method ▴' : 'View Step-by-Step Method ▾'}</span>
-                            </button>
-
-                            {isMethodOpen && (
-                              <div className="mt-3 pt-3 border-t border-slate-700/80 space-y-2 animate-fadeIn">
-                                <h4 className="text-[11px] font-black uppercase tracking-wider text-amber-300">👨‍🍳 Step-by-Step Method:</h4>
-                                <ol className="list-decimal list-inside space-y-1.5 text-xs text-slate-200 leading-relaxed">
-                                  {meal.method?.map((step, sIdx) => (
-                                    <li key={sIdx} className="pl-1">{step}</li>
-                                  ))}
-                                </ol>
-                                <div className="mt-2.5 bg-[#14171f] p-3 rounded-xl border border-slate-700">
-                                  <span className="text-[10px] font-black uppercase tracking-wider text-emerald-400 block mb-0.5">💡 Kitchen Tip:</span>
-                                  <p className="text-[11px] text-slate-300 leading-relaxed">{meal.familyTip}</p>
-                                </div>
-                              </div>
-                            )}
-                          </div>
-                        ) : (
-                          <p className="text-xs text-slate-500 italic">No meal assigned yet. Swipe right on more cards!</p>
-                        )}
-                      </div>
-                    );
-                  })}
-                </div>
+                {scanMessage && (
+                  <div className="bg-emerald-950/80 border border-emerald-500/50 rounded-2xl p-4 text-xs text-emerald-200 font-bold card-shadow">
+                    ✅ {scanMessage}
+                  </div>
+                )}
               </div>
             )}
 
-            {/* TAB 3: SHOPPING LIST */}
+            {/* TAB 3: SHOPPING LIST (CATEGORIZED BY FOOD TYPE) */}
             {activeTab === 'shop' && (
               <div className="space-y-5">
                 <div className="bg-emerald-950/40 border border-emerald-700/50 rounded-2xl p-4 flex justify-between items-center card-shadow">
@@ -487,71 +452,152 @@
                   </div>
                 </div>
 
-                <div>
-                  <h3 className="text-xs font-black uppercase tracking-wider text-slate-400 mb-2">
-                    Consolidated Supermarket List (Tap if already in kitchen)
+                {/* CATEGORIZED SHOPPING LIST BY FOOD TYPE */}
+                <div className="space-y-4">
+                  <h3 className="text-xs font-black uppercase tracking-wider text-slate-400">
+                    Categorized Shopping List (Tap if already in kitchen)
                   </h3>
-                  <div className="space-y-2">
-                    {basketItems.map(item => {
-                      const checked = !!pantryChecked[item.id];
-                      return (
-                        <div
-                          key={item.id}
-                          onClick={() => togglePantryItem(item.id)}
-                          className={`p-3.5 rounded-2xl border flex justify-between items-center cursor-pointer transition card-shadow ${
-                            checked
-                              ? 'bg-[#14171f]/50 border-slate-800 opacity-40 line-through'
-                              : 'bg-[#1c202a] border-slate-700/80 hover:border-slate-600'
-                          }`}
-                        >
-                          <div>
-                            <span className="text-sm font-semibold text-white">{item.name}</span>
-                            <div className="flex items-center gap-2 mt-1">
-                              <span className="text-[10px] bg-[#14171f] text-slate-300 px-2.5 py-0.5 rounded-md border border-slate-700 font-medium">
-                                {item.aisle}
-                              </span>
-                              {item.usedInCount > 1 && (
-                                <span className="text-[10px] bg-emerald-500/20 text-emerald-300 px-2.5 py-0.5 rounded-md font-bold border border-emerald-500/30">
-                                  Shared across {item.usedInCount} meals
-                                </span>
-                              )}
-                            </div>
-                          </div>
-                          <span className="text-sm font-extrabold text-emerald-300">£{item.price.toFixed(2)}</span>
+
+                  {categoriesOrder.map(catKey => {
+                    const itemsInCat = groupedBasket[catKey];
+                    if (!itemsInCat || itemsInCat.length === 0) return null;
+
+                    return (
+                      <div key={catKey} className="bg-[#1c202a] border border-slate-700/80 rounded-2xl p-3.5 card-shadow space-y-2">
+                        <h4 className="text-xs font-black uppercase tracking-wider text-emerald-400 px-1">
+                          {categoryLabels[catKey]}
+                        </h4>
+                        <div className="space-y-2">
+                          {itemsInCat.map(item => {
+                            const checked = !!pantryChecked[item.id];
+                            return (
+                              <div
+                                key={item.id}
+                                onClick={() => togglePantryItem(item.id)}
+                                className={`p-3 rounded-xl border flex justify-between items-center cursor-pointer transition ${
+                                  checked
+                                    ? 'bg-[#14171f]/50 border-slate-800 opacity-40 line-through'
+                                    : 'bg-[#14171f] border-slate-700/80 hover:border-slate-600'
+                                }`}
+                              >
+                                <div>
+                                  <span className="text-sm font-semibold text-white">{item.name}</span>
+                                  {item.usedInCount > 1 && (
+                                    <div className="mt-1">
+                                      <span className="text-[10px] bg-emerald-500/20 text-emerald-300 px-2 py-0.5 rounded-md font-bold border border-emerald-500/30">
+                                        Shared across {item.usedInCount} meals
+                                      </span>
+                                    </div>
+                                  )}
+                                </div>
+                                <span className="text-sm font-extrabold text-emerald-300">£{item.price.toFixed(2)}</span>
+                              </div>
+                            );
+                          })}
                         </div>
-                      );
-                    })}
-                  </div>
+                      </div>
+                    );
+                  })}
                 </div>
               </div>
             )}
 
-            {/* TAB 4: AI FRIDGE SCANNER */}
-            {activeTab === 'scan' && (
+            {/* TAB 4: TRUE WEEKLY CALENDAR VIEW */}
+            {activeTab === 'calendar' && (
               <div className="space-y-4">
-                <div className="bg-[#1c202a] border border-slate-700/80 rounded-3xl p-6 text-center card-shadow">
-                  <div className="text-5xl mb-3">📸</div>
-                  <h2 className="text-base font-black text-white">AI Fridge & Pantry Scanner</h2>
-                  <p className="text-xs text-slate-400 mt-1 mb-5 leading-relaxed">
-                    Snap a photo of your fridge shelves to automatically tick off packs you already own and deduct them from your shop total.
-                  </p>
-
-                  <label className="block w-full py-4 px-4 bg-emerald-500 hover:bg-emerald-400 active:scale-98 text-slate-950 font-black text-xs uppercase tracking-wider rounded-2xl cursor-pointer transition shadow-lg">
-                    📷 Take or Upload Fridge Photo
-                    <input type="file" accept="image/*" onChange={handlePhotoUpload} className="hidden" />
-                  </label>
+                {/* CALENDAR HEADER CARD */}
+                <div className="bg-[#1c202a] border border-slate-700/80 rounded-2xl p-4 card-shadow flex items-center justify-between">
+                  <div>
+                    <h2 className="text-xs font-black uppercase tracking-wider text-emerald-400 flex items-center gap-1.5">
+                      <span>🗓️</span> Weekly Calendar Schedule
+                    </h2>
+                    <p className="text-xs text-slate-300 mt-0.5">Your complete week mapped out from liked swipe cards.</p>
+                  </div>
+                  <div className="bg-[#14171f] border border-slate-700 px-3 py-1.5 rounded-xl text-center">
+                    <span className="text-[10px] text-slate-400 block font-bold uppercase">Total Days</span>
+                    <span className="text-sm font-black text-emerald-300">7 Days</span>
+                  </div>
                 </div>
 
-                {scanMessage && (
-                  <div className="bg-emerald-950/80 border border-emerald-500/50 rounded-2xl p-4 text-xs text-emerald-200 font-bold card-shadow">
-                    ✅ {scanMessage}
-                  </div>
-                )}
+                {/* TRUE CALENDAR GRID CARDS */}
+                <div className="grid grid-cols-1 gap-3">
+                  {weekDays.map((wd, idx) => {
+                    const meal = plannedMeals[idx % plannedMeals.length];
+                    const isDate = meal?.isDateNight;
+                    const isMethodOpen = expandedMethodId === `${wd.dayName}-${idx}`;
+
+                    return (
+                      <div
+                        key={wd.dayName}
+                        className={`rounded-2xl border card-shadow overflow-hidden transition ${
+                          isDate
+                            ? 'bg-gradient-to-r from-[#251522] to-[#1c202a] border-rose-800/60'
+                            : 'bg-[#1c202a] border-slate-700/80'
+                        }`}
+                      >
+                        {/* CALENDAR TILE HEADER */}
+                        <div className="px-4 py-3 bg-[#14171f]/60 border-b border-slate-700/60 flex justify-between items-center">
+                          <div className="flex items-center gap-2">
+                            <div className="w-8 h-8 rounded-xl bg-emerald-500/10 border border-emerald-500/30 flex items-center justify-center text-emerald-400 font-black text-xs">
+                              {wd.dateStr.split(' ')[0]}
+                            </div>
+                            <div>
+                              <h3 className="text-xs font-black uppercase tracking-wider text-white">{wd.dayName}</h3>
+                              <span className="text-[10px] text-slate-400 font-medium">{wd.dateStr}</span>
+                            </div>
+                          </div>
+                          <span className={`text-[10px] font-extrabold px-2.5 py-0.5 rounded-full uppercase tracking-wider ${
+                            isDate ? 'bg-rose-500/20 text-rose-300 border border-rose-500/40' : 'bg-emerald-500/10 text-emerald-300 border border-emerald-500/20'
+                          }`}>
+                            {isDate ? '🥂 Date Night' : '🍽️ Family Dinner'}
+                          </span>
+                        </div>
+
+                        {/* CALENDAR TILE BODY */}
+                        <div className="p-4">
+                          {meal ? (
+                            <div>
+                              <h4 className="text-sm font-bold text-white mb-1">{meal.name}</h4>
+                              <div className="flex justify-between items-center text-xs text-slate-400 mb-3">
+                                <span>⏱ {meal.prepTime} mins prep</span>
+                                <span className="font-bold text-emerald-400">£{meal.estCost.toFixed(2)}</span>
+                              </div>
+
+                              <button
+                                onClick={() => setExpandedMethodId(isMethodOpen ? null : `${wd.dayName}-${idx}`)}
+                                className="w-full py-2.5 bg-[#14171f] hover:bg-[#222734] text-slate-200 text-xs font-bold rounded-xl border border-slate-700 transition flex justify-center items-center gap-1.5 shadow"
+                              >
+                                <span>{isMethodOpen ? 'Hide Cooking Method ▴' : 'View Step-by-Step Method ▾'}</span>
+                              </button>
+
+                              {isMethodOpen && (
+                                <div className="mt-3 pt-3 border-t border-slate-700/80 space-y-2 animate-fadeIn">
+                                  <h5 className="text-[11px] font-black uppercase tracking-wider text-amber-300">👨‍🍳 Step-by-Step Method:</h5>
+                                  <ol className="list-decimal list-inside space-y-1.5 text-xs text-slate-200 leading-relaxed">
+                                    {meal.method?.map((step, sIdx) => (
+                                      <li key={sIdx} className="pl-1">{step}</li>
+                                    ))}
+                                  </ol>
+                                  <div className="mt-2.5 bg-[#14171f] p-3 rounded-xl border border-slate-700">
+                                    <span className="text-[10px] font-black uppercase tracking-wider text-emerald-400 block mb-0.5">💡 Kitchen Tip:</span>
+                                    <p className="text-[11px] text-slate-300 leading-relaxed">{meal.familyTip}</p>
+                                  </div>
+                                </div>
+                              )}
+                            </div>
+                          ) : (
+                            <p className="text-xs text-slate-500 italic">No meal assigned yet. Swipe right on more cards!</p>
+                          )}
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
               </div>
             )}
           </main>
 
-          {/* QUARTZ GRAY BOTTOM NAVIGATION BAR */}
+          {/* QUARTZ GRAY BOTTOM NAVIGATION BAR (SWIPE → SCAN → SHOP → WEEK) */}
           <nav className="fixed bottom-0 left-0 right-0 max-w-md mx-auto glass-header border-t border-slate-800/80 grid grid-cols-4 p-2 z-20 shadow-2xl">
             <button
               onClick={() => setActiveTab('swipe')}
@@ -562,12 +608,12 @@
               🔥 Swipe
             </button>
             <button
-              onClick={() => setActiveTab('calendar')}
+              onClick={() => setActiveTab('scan')}
               className={`py-2.5 rounded-xl text-[11px] font-black uppercase tracking-wider transition ${
-                activeTab === 'calendar' ? 'text-emerald-400 bg-[#14171f] shadow-inner border border-slate-800' : 'text-slate-400 hover:text-slate-200'
+                activeTab === 'scan' ? 'text-emerald-400 bg-[#14171f] shadow-inner border border-slate-800' : 'text-slate-400 hover:text-slate-200'
               }`}
             >
-              📅 Week
+              📸 Scan
             </button>
             <button
               onClick={() => setActiveTab('shop')}
@@ -578,12 +624,12 @@
               🛒 Shop
             </button>
             <button
-              onClick={() => setActiveTab('scan')}
+              onClick={() => setActiveTab('calendar')}
               className={`py-2.5 rounded-xl text-[11px] font-black uppercase tracking-wider transition ${
-                activeTab === 'scan' ? 'text-emerald-400 bg-[#14171f] shadow-inner border border-slate-800' : 'text-slate-400 hover:text-slate-200'
+                activeTab === 'calendar' ? 'text-emerald-400 bg-[#14171f] shadow-inner border border-slate-800' : 'text-slate-400 hover:text-slate-200'
               }`}
             >
-              📸 Scan
+              🗓️ Week
             </button>
           </nav>
         </div>
