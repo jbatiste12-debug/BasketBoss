@@ -64,7 +64,7 @@
       const [deckIndex, setDeckIndex] = useState(0);
       const [plannedMeals, setPlannedMeals] = useState([
         { meal: meals[0] || {}, assignedDay: 'Monday' },
-        { meal: meals[3] || {}, assignedDay: 'Tuesday' },
+        { meal: meals[1] || {}, assignedDay: 'Tuesday' },
         { meal: meals[4] || {}, assignedDay: 'Friday' }
       ]);
       const [pantryChecked, setPantryChecked] = useState({});
@@ -284,9 +284,6 @@
                   <div className="flex flex-col items-center mt-4 px-1">
                     <p className="text-[11px] text-slate-400 text-center font-medium bg-[#1c202a] px-4 py-2 rounded-xl border border-slate-800 shadow-inner w-full">
                       💡 <span className="text-emerald-400 font-bold">Swipe Right / Add to Week</span> = Yes | <span className="text-rose-400 font-bold">Swipe Left / Discard</span> = No
-                    </p>
-                    <p className="text-[10px] text-indigo-400 font-semibold mt-2">
-                      📚 Modular Library: Recipe {deckIndex + 1} of {meals.length}
                     </p>
                   </div>
                 </div>
