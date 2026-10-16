@@ -15,10 +15,15 @@
   <script crossorigin src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
   <!-- Babel for in-browser JSX -->
   <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
-  <!-- Load Modular Recipe Files -->
+  
+  <!-- Load ALL Modular Recipe Files -->
   <script src="recipes-family.js"></script>
   <script src="recipes-onepan.js"></script>
   <script src="recipes-datenight.js"></script>
+  <script src="recipes-fakeaways.js"></script>
+  <script src="recipes-slowcooker.js"></script>
+  <script src="recipes-healthy.js"></script>
+
   <style>
     body { background-color: #14171f; color: #f1f5f9; font-family: system-ui, -apple-system, sans-serif; overflow-x: hidden; }
     .no-select { user-select: none; -webkit-user-select: none; }
@@ -54,18 +59,21 @@
     function App() {
       const [activeTab, setActiveTab] = useState('swipe');
       
-      // Combine all modular recipe files together into the swipe deck
+      // Combine all loaded modular recipe libraries into the swipe deck
       const [meals, setMeals] = useState(() => [
         ...(window.FAMILY_RECIPES || []),
         ...(window.ONEPAN_RECIPES || []),
-        ...(window.DATENIGHT_RECIPES || [])
+        ...(window.DATENIGHT_RECIPES || []),
+        ...(window.FAKEAWAY_RECIPES || []),
+        ...(window.SLOWCOOKER_RECIPES || []),
+        ...(window.HEALTHY_RECIPES || [])
       ]);
       
       const [deckIndex, setDeckIndex] = useState(0);
       const [plannedMeals, setPlannedMeals] = useState([
         { meal: meals[0] || {}, assignedDay: 'Monday' },
         { meal: meals[1] || {}, assignedDay: 'Tuesday' },
-        { meal: meals[4] || {}, assignedDay: 'Friday' }
+        { meal: meals[3] || {}, assignedDay: 'Friday' }
       ]);
       const [pantryChecked, setPantryChecked] = useState({});
       const [scanMessage, setScanMessage] = useState('');
@@ -183,7 +191,7 @@
                   Basket<span className="text-emerald-400">Boss</span>
                 </h1>
                 <p className="text-[11px] text-slate-400 font-medium mt-0.5">
-                  Multi-File Recipe Library Active
+                  {meals.length} Modular Recipes Loaded
                 </p>
               </div>
             </div>
@@ -284,6 +292,9 @@
                   <div className="flex flex-col items-center mt-4 px-1">
                     <p className="text-[11px] text-slate-400 text-center font-medium bg-[#1c202a] px-4 py-2 rounded-xl border border-slate-800 shadow-inner w-full">
                       💡 <span className="text-emerald-400 font-bold">Swipe Right / Add to Week</span> = Yes | <span className="text-rose-400 font-bold">Swipe Left / Discard</span> = No
+                    </p>
+                    <p className="text-[10px] text-indigo-400 font-semibold mt-2">
+                      📚 Library: Recipe {deckIndex + 1} of {meals.length}
                     </p>
                   </div>
                 </div>
@@ -508,7 +519,7 @@
                               );
                             })
                           ) : (
-                            <p className="text-xs text-slate-500 italic py-1">No meal scheduled for this day. (Swipe right on meals to add them here)</p>
+                            <p className="text-xs text-slate-500 italic py-1">No meal assigned yet. (Swipe right on meals to add them here)</p>
                           )}
                         </div>
                       </div>
