@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover" />
-  <title>BasketBoss — Modular AI Meal Planner & Cooking Mode</title>
+  <title>BasketBoss — Modular Multi-File AI Meal Planner</title>
   <!-- Apple Mobile Web App Meta Tags -->
   <meta name="apple-mobile-web-app-capable" content="yes" />
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
@@ -16,7 +16,7 @@
   <!-- Babel for in-browser JSX -->
   <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
   
-  <!-- Load All Modular Recipe JS Files -->
+  <!-- Load All Your Modular Recipe JS Files from GitHub -->
   <script src="recipes-family.js"></script>
   <script src="recipes-onepan.js"></script>
   <script src="recipes-datenight.js"></script>
@@ -59,7 +59,7 @@
     function App() {
       const [activeTab, setActiveTab] = useState('swipe');
       
-      // Combine all modular recipe files into the swipe deck automatically
+      // Combine all modular files into the main swipe deck automatically
       const [meals, setMeals] = useState(() => [
         ...(window.FAMILY_RECIPES || []),
         ...(window.ONEPAN_RECIPES || []),
@@ -73,7 +73,7 @@
       const [plannedMeals, setPlannedMeals] = useState([
         { meal: meals[0] || {}, assignedDay: 'Monday' },
         { meal: meals[1] || {}, assignedDay: 'Tuesday' },
-        { meal: meals[4] || {}, assignedDay: 'Friday' }
+        { meal: meals[3] || {}, assignedDay: 'Friday' }
       ]);
       const [pantryChecked, setPantryChecked] = useState({});
       const [scanMessage, setScanMessage] = useState('');
@@ -443,7 +443,7 @@
                       💡 <span className="text-emerald-400 font-bold">Swipe Right / Add to Week</span> = Yes | <span className="text-rose-400 font-bold">Swipe Left / Discard</span> = No
                     </p>
                     <p className="text-[10px] text-indigo-400 font-semibold mt-2">
-                      📚 Library: Recipe {deckIndex + 1} of {meals.length}
+                      📚 Library: Recipe {deckIndex + 1} of {meals.length} (Pulled from modular .js files)
                     </p>
                   </div>
                 </div>
