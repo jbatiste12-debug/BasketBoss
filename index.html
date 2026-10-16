@@ -28,12 +28,14 @@
   <script type="text/babel">
     const { useState, useEffect, useRef } = React;
 
-    // --- REALISTICALLY PRICED INITIAL RECIPES ---
+    // --- REALISTICALLY PRICED INITIAL RECIPES WITH BADGES ---
     const BASE_MEALS = [
       {
         id: 'm1',
         name: 'Sheet-Pan Chicken Fajitas & Loaded Nachos',
         category: 'Mexican • Family of 6',
+        styleTag: 'TRAYBAKE & ROAST',
+        styleTagColor: 'bg-amber-500/20 text-amber-300 border-amber-500/40',
         isDateNight: false,
         prepTime: 25,
         estCost: 16.50,
@@ -55,31 +57,58 @@
       },
       {
         id: 'm2',
-        name: 'Slow-Simmered Beef Bolognese & Garlic Bread',
+        name: 'One-Pan Creamy Garlic Parmesan Pasta Bake',
         category: 'Italian • Crowd Pleaser',
+        styleTag: 'ONE-PAN WONDER',
+        styleTagColor: 'bg-emerald-500/20 text-emerald-300 border-emerald-500/40',
         isDateNight: false,
-        prepTime: 30,
-        estCost: 14.80,
+        prepTime: 20,
+        estCost: 11.20,
         image: 'https://images.unsplash.com/photo-1621996346565-e3d5d6281298?auto=format&fit=crop&w=800&q=80',
-        familyTip: 'Finely grate courgettes and carrots straight into the mince—they melt into the tomato sauce so the kids never spot them.',
+        familyTip: 'Everything cooks in a single deep frying pan or casserole dish—pasta, chicken broth, and cream cook together for maximum flavor and zero washing up.',
         method: [
-          'Brown beef mince in a large pot over medium-high heat until well browned. Drain excess fat.',
-          'Add finely diced onions, minced garlic, and grated carrots & courgettes. Cook for 5 minutes until soft.',
-          'Pour in chopped tomatoes, beef stock, and simmer on low for 20 minutes until rich and thick.',
-          'Boil penne pasta in salted water until al dente. Bake garlic baguettes according to package instructions.'
+          'Sauté diced chicken and minced garlic in olive oil in a large deep pan until golden.',
+          'Add dry penne pasta, chicken stock, and double cream straight into the pan and bring to a simmer.',
+          'Cover and simmer for 12-15 minutes until pasta absorbs liquid and is tender.',
+          'Stir in grated parmesan cheese until melted and creamy. Serve straight from the pan.'
         ],
         ingredients: [
-          { id: 'i6', name: '5% Lean Beef Mince (750g family pack)', price: 7.20, category: 'Meat' },
-          { id: 'i7', name: 'Penne Pasta (1kg)', price: 1.60, category: 'Grains' },
-          { id: 'i8', name: 'Chopped Tomatoes (4-pack tins)', price: 2.60, category: 'Vegetables' },
-          { id: 'i9', name: 'Carrots & Courgettes Pack', price: 1.80, category: 'Vegetables' },
-          { id: 'i10', name: 'Garlic Baguette (Twin Pack)', price: 2.00, category: 'Bakery' }
+          { id: 'i6', name: 'Chicken Breast Fillets (500g)', price: 4.50, category: 'Meat' },
+          { id: 'i7', name: 'Penne Pasta (500g)', price: 1.10, category: 'Grains' },
+          { id: 'i8', name: 'Double Cream (300ml)', price: 1.80, category: 'Dairy' },
+          { id: 'i9', name: 'Parmesan Grating Block', price: 3.80, category: 'Dairy' }
+        ]
+      },
+      {
+        id: 'm3',
+        name: 'Crispy Fish Finger Tacos & Crunchy Slaw',
+        category: 'Fun Friday • Kids Favorite',
+        styleTag: 'KID-APPROVED FAVORITE',
+        styleTagColor: 'bg-teal-500/20 text-teal-300 border-teal-500/40',
+        isDateNight: false,
+        prepTime: 15,
+        estCost: 9.80,
+        image: 'https://images.unsplash.com/photo-1565299624946-b28f40a0ae38?auto=format&fit=crop&w=800&q=80',
+        familyTip: 'An absolute winner with kids. Bake fish fingers until super crispy and let them wrap their own tacos with shredded lettuce and mayo.',
+        method: [
+          'Bake jumbo fish fingers in the oven at 200°C for 15 minutes until extra crunchy.',
+          'Warm mini tortilla wraps in the microwave for 20 seconds.',
+          'Shred lettuce and mix with a splash of mayo and lemon juice for a quick slaw.',
+          'Assemble tacos with fish fingers, lettuce, and a mild garlic mayo drizzle.'
+        ],
+        ingredients: [
+          { id: 'i10', name: 'Jumbo Battered Fish Fingers (10-pack)', price: 4.50, category: 'Meat' },
+          { id: 'i11', name: 'Mini Tortilla Wraps (8-pack)', price: 1.50, category: 'Grains' },
+          { id: 'i12', name: 'Little Gem Lettuce (2-pack)', price: 1.50, category: 'Vegetables' },
+          { id: 'i13', name: 'Mayonnaise Squeezy Bottle', price: 2.30, category: 'Dairy' }
         ]
       },
       {
         id: 'd1',
         name: 'Pan-Seared Sirloin Steaks & Peppercorn Sauce',
         category: '✨ Date Night Idea • For Two',
+        styleTag: 'DATE NIGHT SPECIAL',
+        styleTagColor: 'bg-rose-500/20 text-rose-300 border-rose-500/40',
         isDateNight: true,
         prepTime: 20,
         estCost: 18.50,
@@ -100,31 +129,57 @@
       }
     ];
 
-    // --- INFINITE AI GENERATION POOL ---
+    // --- INFINITE AI GENERATION POOL WITH BADGES ---
     const AI_GENERATION_POOL = [
       {
-        name: 'Crispy Southern Fried Chicken Burgers & Slaw',
-        category: 'Fakeaway Night • Family of 6',
+        name: 'One-Pan Sausage & Gnocchi Tomato Bake',
+        category: 'Midweek Comfort • Family of 6',
+        styleTag: 'ONE-PAN WONDER',
+        styleTagColor: 'bg-emerald-500/20 text-emerald-300 border-emerald-500/40',
         isDateNight: false,
-        prepTime: 25,
-        estCost: 15.10,
-        image: 'https://images.unsplash.com/photo-1625813506062-0aeb1d7a094b?auto=format&fit=crop&w=800&q=80',
-        familyTip: 'Coat chicken in crushed cornflakes for an incredible crunch without deep frying.',
+        prepTime: 20,
+        estCost: 12.50,
+        image: 'https://images.unsplash.com/photo-1621996346565-e3d5d6281298?auto=format&fit=crop&w=800&q=80',
+        familyTip: 'Soft potato gnocchi cooks directly in the tomato sauce alongside sliced pork sausages. Incredible texture kids adore.',
         method: [
-          'Crush cornflakes into breadcrumb consistency in a bowl. Beat eggs in a separate bowl.',
-          'Dip chicken breasts in egg wash, then coat thoroughly in crushed cornflakes.',
-          'Bake in the oven at 200°C for 22-25 minutes until golden and crispy.',
-          'Toast brioche buns, add coleslaw and lettuce, and place crispy chicken inside.'
+          'Brown sliced Cumberland sausages in a large frying pan until golden.',
+          'Add a carton of passata, garlic powder, Italian herbs, and uncooked potato gnocchi straight into the pan.',
+          'Simmer covered for 10 minutes until gnocchi is pillow-soft.',
+          'Top with mozzarella cheese and grill for 3 minutes until bubbly and golden.'
         ],
         ingredients: [
-          { id: 'ai_i1', name: 'Chicken Breast Fillets (1kg)', price: 8.50, category: 'Meat' },
-          { id: 'ai_i2', name: 'Brioche Buns (6-pack)', price: 2.20, category: 'Bakery' },
-          { id: 'ai_i3', name: 'Coleslaw Kit & Salad', price: 4.40, category: 'Vegetables' }
+          { id: 'ai_i1', name: 'Cumberland Pork Sausages (6-pack)', price: 3.50, category: 'Meat' },
+          { id: 'ai_i2', name: 'Potato Gnocchi Pack (500g)', price: 1.80, category: 'Grains' },
+          { id: 'ai_i3', name: 'Passata with Basil (500g)', price: 1.30, category: 'Vegetables' },
+          { id: 'ai_i4', name: 'Mozzarella Grating Ball', price: 2.40, category: 'Dairy' }
+        ]
+      },
+      {
+        name: 'Sheet-Pan Honey Mustard Chicken & Veggies',
+        category: 'Healthy Traybake • Family of 6',
+        styleTag: 'TRAYBAKE & ROAST',
+        styleTagColor: 'bg-amber-500/20 text-amber-300 border-amber-500/40',
+        isDateNight: false,
+        prepTime: 25,
+        estCost: 13.80,
+        image: 'https://images.unsplash.com/photo-1532550907401-a500c9a57435?auto=format&fit=crop&w=800&q=80',
+        familyTip: 'Chop everything onto one roasting tray, drizzle with honey and mustard, and let the oven do 100% of the work.',
+        method: [
+          'Preheat oven to 200°C. Chop chicken thighs, new potatoes, and carrots into bite-sized pieces.',
+          'Whisk honey, whole grain mustard, olive oil, and a splash of soy sauce together.',
+          'Toss everything together on a large baking sheet and roast for 35 minutes until caramelised.'
+        ],
+        ingredients: [
+          { id: 'ai_i5', name: 'Chicken Thighs Bone-In (1kg)', price: 6.50, category: 'Meat' },
+          { id: 'ai_i6', name: 'Baby New Potatoes (1kg bag)', price: 2.10, category: 'Vegetables' },
+          { id: 'ai_i7', name: 'Carrots & Honey Bottle', price: 3.20, category: 'Vegetables' }
         ]
       },
       {
         name: 'Creamy Tuscan Butter Garlic Salmon',
         category: '✨ Date Night Idea • For Two',
+        styleTag: 'DATE NIGHT SPECIAL',
+        styleTagColor: 'bg-rose-500/20 text-rose-300 border-rose-500/40',
         isDateNight: true,
         prepTime: 20,
         estCost: 17.80,
@@ -137,29 +192,30 @@
           'Serve hot over sautéed asparagus.'
         ],
         ingredients: [
-          { id: 'ai_i6', name: 'Fresh Salmon Fillets (Twin Pack)', price: 9.50, category: 'Meat' },
-          { id: 'ai_i7', name: 'Double Cream & Sun-Dried Tomatoes', price: 4.20, category: 'Dairy' },
-          { id: 'ai_i8', name: 'Fresh Asparagus', price: 4.10, category: 'Vegetables' }
+          { id: 'ai_i8', name: 'Fresh Salmon Fillets (Twin Pack)', price: 9.50, category: 'Meat' },
+          { id: 'ai_i9', name: 'Double Cream & Sun-Dried Tomatoes', price: 4.20, category: 'Dairy' },
+          { id: 'ai_i10', name: 'Fresh Asparagus', price: 4.10, category: 'Vegetables' }
         ]
       },
       {
-        name: 'Smoky Beef & Three Bean Chilli Bowl',
-        category: 'Batch Cook • Family of 6',
+        name: 'One-Pan Crispy Bacon & Cheese Quesadillas',
+        category: 'Quick Kid-Pleaser • Family of 6',
+        styleTag: 'KID-APPROVED FAVORITE',
+        styleTagColor: 'bg-teal-500/20 text-teal-300 border-teal-500/40',
         isDateNight: false,
-        prepTime: 25,
-        estCost: 14.30,
-        image: 'https://images.unsplash.com/photo-1541544741938-0af808871cc0?auto=format&fit=crop&w=800&q=80',
-        familyTip: 'Batch cook this hearty chilli; leftovers taste even better the next day wrapped in burritos.',
+        prepTime: 15,
+        estCost: 10.50,
+        image: 'https://images.unsplash.com/photo-1565299585323-38d6b0865b47?auto=format&fit=crop&w=800&q=80',
+        familyTip: 'Kids go crazy for these. Crisp up bacon, fold with loads of melted cheddar inside tortillas, and toast in a dry frying pan until golden.',
         method: [
-          'Brown beef mince in a large pot with diced onions and garlic.',
-          'Add cumin, smoked paprika, chilli powder, chopped tomatoes, and rinsed kidney beans.',
-          'Simmer on low heat for 25 minutes until rich and thick.',
-          'Serve over fluffy boiled long-grain rice with a dollop of sour cream.'
+          'Fry smoked bacon medallions in a pan until crispy, then chop into bits.',
+          'Place tortilla wrap in pan, add grated cheese and bacon, fold in half and toast both sides until crispy.',
+          'Slice into triangles and serve with sweetcorn and sour cream.'
         ],
         ingredients: [
-          { id: 'ai_i9', name: '5% Lean Beef Mince (750g)', price: 7.20, category: 'Meat' },
-          { id: 'ai_i10', name: 'Mixed Beans & Chopped Tomatoes', price: 3.50, category: 'Vegetables' },
-          { id: 'ai_i11', name: 'Long Grain Rice (1kg)', price: 3.60, category: 'Grains' }
+          { id: 'ai_i11', name: 'Smoked Bacon Medallions (2x packs)', price: 5.00, category: 'Meat' },
+          { id: 'ai_i12', name: 'Tortilla Wraps (8-pack)', price: 1.50, category: 'Grains' },
+          { id: 'ai_i13', name: 'Mature Cheddar Block (400g)', price: 3.90, category: 'Dairy' }
         ]
       }
     ];
@@ -187,14 +243,11 @@
       const [activeTab, setActiveTab] = useState('swipe');
       const [meals, setMeals] = useState(BASE_MEALS);
       const [deckIndex, setDeckIndex] = useState(0);
-      
-      // plannedMeals stores objects with { meal, assignedDay }
       const [plannedMeals, setPlannedMeals] = useState([
         { meal: BASE_MEALS[0], assignedDay: 'Monday' },
         { meal: BASE_MEALS[1], assignedDay: 'Tuesday' },
-        { meal: BASE_MEALS[2], assignedDay: 'Friday' }
+        { meal: BASE_MEALS[3], assignedDay: 'Friday' }
       ]);
-      
       const [pantryChecked, setPantryChecked] = useState({});
       const [scanMessage, setScanMessage] = useState('');
       const [isAutoGenerating, setIsAutoGenerating] = useState(false);
@@ -246,7 +299,6 @@
         return item.usedInCount > 1 ? sum + item.price * (item.usedInCount - 1) : sum;
       }, 0);
 
-      // Group basket items by category
       const categoriesOrder = ['Meat', 'Vegetables', 'Dairy', 'Grains', 'Bakery'];
       const categoryLabels = {
         Meat: '🥩 Meat & Fish',
@@ -266,9 +318,7 @@
       const handleDecision = (liked) => {
         if (!currentMeal) return;
         if (liked) {
-          // Check if already in planned meals
           if (!plannedMeals.find(pm => pm.meal.id === currentMeal.id)) {
-            // Find next unassigned day or default to next available day
             const assignedDays = plannedMeals.map(pm => pm.assignedDay);
             const availableDay = DAYS_LIST.find(d => !assignedDays.includes(d)) || 'Saturday';
             setPlannedMeals([...plannedMeals, { meal: currentMeal, assignedDay: availableDay }]);
@@ -316,7 +366,7 @@
 
       return (
         <div className="max-w-md mx-auto min-h-screen flex flex-col justify-between pb-24 bg-[#14171f]">
-          {/* QUARTZ GRAY GLASS HEADER */}
+          {/* HEADER */}
           <header className="p-4 glass-header sticky top-0 z-20 border-b border-slate-800/80 flex justify-between items-center shadow-lg">
             <div className="flex items-center gap-2.5">
               <div className="w-10 h-10 rounded-2xl bg-gradient-to-br from-emerald-500/20 to-rose-500/20 border border-emerald-500/40 flex items-center justify-center shadow-inner relative overflow-hidden">
@@ -342,7 +392,7 @@
             </div>
           </header>
 
-          {/* MAIN CONTENT */}
+          {/* MAIN */}
           <main className="p-4 flex-1">
             {/* TAB 1: SWIPE DECK */}
             {activeTab === 'swipe' && (
@@ -365,13 +415,22 @@
                     <div className="relative h-60">
                       <img src={currentMeal.image} alt={currentMeal.name} className="w-full h-full object-cover" />
                       <div className="absolute inset-0 bg-gradient-to-t from-[#1c202a] via-transparent to-black/30"></div>
-                      {currentMeal.isDateNight && (
-                        <div className="absolute top-3 left-3 bg-rose-600 text-white px-3.5 py-1 rounded-full text-xs font-black shadow-lg tracking-wide uppercase">
-                          🥂 Date Night Idea
-                        </div>
-                      )}
+                      
+                      {/* STYLE & QUICK BADGE */}
+                      <div className="absolute top-3 left-3 flex flex-wrap gap-2">
+                        {currentMeal.isDateNight ? (
+                          <div className="bg-rose-600 text-white px-3.5 py-1 rounded-full text-xs font-black shadow-lg uppercase tracking-wide">
+                            🥂 Date Night Idea
+                          </div>
+                        ) : (
+                          <div className={`px-3 py-1 rounded-full text-[11px] font-black uppercase tracking-wider border shadow-lg ${currentMeal.styleTagColor || 'bg-emerald-500/20 text-emerald-300 border-emerald-500/40'}`}>
+                            {currentMeal.styleTag || 'FAMILY FAVORITE'}
+                          </div>
+                        )}
+                      </div>
+
                       {!currentMeal.isDateNight && (
-                        <div className="absolute top-3 left-3 bg-[#14171f]/85 backdrop-blur px-3 py-1 rounded-full text-xs font-bold text-emerald-300 border border-emerald-500/30">
+                        <div className="absolute bottom-3 left-3 bg-[#14171f]/85 backdrop-blur px-3 py-1 rounded-full text-xs font-bold text-emerald-300 border border-emerald-500/30">
                           £{currentMeal.estCost.toFixed(2)} meal est.
                         </div>
                       )}
@@ -433,7 +492,7 @@
               ) : null
             )}
 
-            {/* TAB 2: AI FRIDGE SCANNER */}
+            {/* TAB 2: SCANNER */}
             {activeTab === 'scan' && (
               <div className="space-y-4">
                 <div className="bg-[#1c202a] border border-slate-700/80 rounded-3xl p-6 text-center card-shadow">
@@ -457,7 +516,7 @@
               </div>
             )}
 
-            {/* TAB 3: CATEGORIZED SHOPPING LIST */}
+            {/* TAB 3: SHOP */}
             {activeTab === 'shop' && (
               <div className="space-y-5">
                 <div className="bg-emerald-950/40 border border-emerald-700/50 rounded-2xl p-4 flex justify-between items-center card-shadow">
@@ -492,7 +551,6 @@
                   </div>
                 </div>
 
-                {/* CATEGORIZED SHOPPING LIST */}
                 <div className="space-y-4">
                   <h3 className="text-xs font-black uppercase tracking-wider text-slate-400">
                     Categorized Shopping List (Tap if already in kitchen)
@@ -542,10 +600,9 @@
               </div>
             )}
 
-            {/* TAB 4: INTERACTIVE WEEKLY CALENDAR VIEW */}
+            {/* TAB 4: CALENDAR */}
             {activeTab === 'calendar' && (
               <div className="space-y-4">
-                {/* CALENDAR HEADER */}
                 <div className="bg-[#1c202a] border border-slate-700/80 rounded-2xl p-4 card-shadow flex items-center justify-between">
                   <div>
                     <h2 className="text-xs font-black uppercase tracking-wider text-emerald-400 flex items-center gap-1.5">
@@ -559,10 +616,8 @@
                   </div>
                 </div>
 
-                {/* CALENDAR GRID */}
                 <div className="grid grid-cols-1 gap-3">
                   {weekDays.map((wd) => {
-                    // Find any meal assigned to this specific day
                     const assignedMealsForDay = plannedMeals.filter(pm => pm.assignedDay === wd.dayName);
 
                     return (
@@ -570,7 +625,6 @@
                         key={wd.dayName}
                         className="rounded-2xl border card-shadow overflow-hidden bg-[#1c202a] border-slate-700/80"
                       >
-                        {/* DAY TILE HEADER */}
                         <div className="px-4 py-2.5 bg-[#14171f]/80 border-b border-slate-700/60 flex justify-between items-center">
                           <div className="flex items-center gap-2">
                             <div className="w-7 h-7 rounded-xl bg-emerald-500/10 border border-emerald-500/30 flex items-center justify-center text-emerald-400 font-black text-xs">
@@ -586,7 +640,6 @@
                           </span>
                         </div>
 
-                        {/* DAY TILE BODY */}
                         <div className="p-3.5 space-y-3">
                           {assignedMealsForDay.length > 0 ? (
                             assignedMealsForDay.map((pm) => {
@@ -595,13 +648,13 @@
                               const isMethodOpen = expandedMethodId === `${wd.dayName}-${meal.id}`;
 
                               return (
-                                <div key={meal.id} className={`p-3.5 rounded-xl border ${isDate ? 'bg-gradient-to-r from-[#251522] to-[#1c202a] border-rose-800/50' : 'bg-[#14171f] border-slate-700'}`}>
+                                <div key={meal.id} className={`p-3.5 rounded-xl border ${isDate ? 'bg-gradient-to-r from-[#251522] to-[#1c1f28] border-rose-800/50' : 'bg-[#14171f] border-slate-700'}`}>
                                   <div className="flex justify-between items-start mb-2">
                                     <div>
                                       <span className={`text-[10px] font-extrabold px-2 py-0.5 rounded-full uppercase tracking-wider inline-block mb-1 ${
                                         isDate ? 'bg-rose-500/20 text-rose-300 border border-rose-500/40' : 'bg-emerald-500/10 text-emerald-300 border border-emerald-500/20'
                                       }`}>
-                                        {isDate ? '🥂 Date Night' : '🍽️ Family Dinner'}
+                                        {isDate ? '🥂 Date Night' : (meal.styleTag || '🍽️ Family Dinner')}
                                       </span>
                                       <h4 className="text-sm font-bold text-white leading-snug">{meal.name}</h4>
                                     </div>
@@ -618,7 +671,6 @@
                                     <span className="font-bold text-emerald-400">£{meal.estCost.toFixed(2)}</span>
                                   </div>
 
-                                  {/* INTERCHANGE / RESCHEDULE DROPDOWN */}
                                   <div className="flex items-center gap-2 mb-3 bg-[#1c202a] p-2 rounded-xl border border-slate-700">
                                     <span className="text-[11px] font-bold text-slate-300 whitespace-nowrap">📅 Move Day:</span>
                                     <select
@@ -668,7 +720,7 @@
             )}
           </main>
 
-          {/* QUARTZ GRAY BOTTOM NAVIGATION BAR */}
+          {/* BOTTOM NAVIGATION */}
           <nav className="fixed bottom-0 left-0 right-0 max-w-md mx-auto glass-header border-t border-slate-800/80 grid grid-cols-4 p-2 z-20 shadow-2xl">
             <button
               onClick={() => setActiveTab('swipe')}
@@ -687,7 +739,6 @@
               📸 Scan
             </button>
             <button
-              onClick`={"shop"}`
               onClick={() => setActiveTab('shop')}
               className={`py-2.5 rounded-xl text-[11px] font-black uppercase tracking-wider transition ${
                 activeTab === 'shop' ? 'text-emerald-400 bg-[#14171f] shadow-inner border border-slate-800' : 'text-slate-400 hover:text-slate-200'
