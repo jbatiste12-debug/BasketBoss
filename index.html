@@ -53,13 +53,57 @@ img{-webkit-user-drag:none}
 }
 @media(display-mode:standalone){body{user-select:none;-webkit-user-select:none}input,textarea{user-select:text;-webkit-user-select:text}}
 .photo-manager-row{display:grid;grid-template-columns:125px minmax(0,1fr);gap:14px;padding:16px 0;border-bottom:1px solid var(--line)}.photo-manager-row>img{width:125px;height:125px;object-fit:cover;border-radius:13px}.photo-manager-info{min-width:0}.photo-manager-info strong,.photo-manager-info small,.photo-manager-info label{display:block}.photo-manager-info small{color:var(--muted);margin:4px 0}.photo-manager-info a{display:inline-block;color:#93c5fd;margin:4px 0 10px;font-size:12px}.photo-manager-info label{font-size:11px;margin-bottom:5px}.photo-manager-info .actions{margin-top:8px}@media(max-width:450px){.photo-manager-row{grid-template-columns:90px minmax(0,1fr);gap:9px}.photo-manager-row>img{width:90px;height:95px}.photo-manager-info .btn{padding:8px}}
+
+
+/* BasketBoss 2.0 — visual refresh; existing recipe and application logic preserved */
+:root{--bg:#091426;--panel:#12233e;--panel2:#1a3152;--line:#34557e;--green:#6dc9ff;--green2:#347aff;--radius:24px}
+body{background:radial-gradient(ellipse 85% 36% at 95% -3%,#21539b66,transparent),radial-gradient(ellipse 75% 45% at -20% 60%,#173e7450,transparent),#091426}
+.shell{max-width:1150px}
+.top{background:#0a1930ee;border-bottom-color:#76c4ff24}
+.logo{width:54px;height:54px;flex:none;border-radius:18px;background:linear-gradient(140deg,#53d6fa,#2671ff 70%,#7447e5);box-shadow:0 9px 28px #227bff60,inset 0 1px #ffffff8c;transform:none}
+.brand h1{font-size:23px;letter-spacing:-1.15px}
+.brand h1 span{background:linear-gradient(110deg,#91e5ff,#5aa5ff);background-clip:text;-webkit-background-clip:text;color:transparent}
+.sub{font-size:11px;letter-spacing:.1px}
+.hero{padding-top:32px}.hero h2{font-size:clamp(34px,5vw,50px);line-height:1.06}
+.eyebrow{color:#7dcaff}
+.stat,.card,.list-group,.day{border-color:#78b9ff2b;box-shadow:0 14px 35px #00000024,inset 0 1px #ffffff0c}
+.stat{background:linear-gradient(145deg,#1b3659,#12213a)}
+.stat b{color:#eff8ff}.stat span{color:#a9c7e6}
+.recipe-image{border-radius:22px 22px 0 0}.recipe-image img{object-fit:cover}
+.card{background:linear-gradient(145deg,#1b3150,#101f37)}
+.recipe-body h3{font-weight:950}
+.swipe-card{touch-action:pan-y;cursor:grab}
+.swipe-stamp.yes{color:#8af2cb}.swipe-stamp.no{color:#ff9fa9}
+.swipe-action{width:68px;height:68px;border-radius:50%;background:#172c49;box-shadow:0 8px 24px #0005}
+.swipe-action.yes{background:linear-gradient(135deg,#53baff,#316cf7);border-color:#82d6ff;color:white;box-shadow:0 8px 28px #338dff66}
+.swipe-action.no{border-color:#ff9fa970}
+.btn.primary,.tab.active{background:linear-gradient(125deg,#69c8ff,#3875ff);color:#06162f;border-color:#8bdcff;box-shadow:0 7px 24px #277eff3b}
+.mini-recipe{border-radius:20px}.mini-img{height:185px}.mini-img img{object-fit:cover}
+.budget{border-color:#69baff66;background:#4c9fff15}
+.nav-icon{display:inline-block;font-size:19px;line-height:1}.nav-label{display:inline-block}
+@media(max-width:700px){
+  .shell{padding:0 14px calc(120px + env(safe-area-inset-bottom,0px))}
+  .top{margin:0 -14px;padding:11px 14px}.logo{width:48px;height:48px;border-radius:16px}.logo svg{width:39px;height:39px}.brand h1{font-size:20px}
+  .hero{padding-top:25px}.hero h2{font-size:36px}.hero p{font-size:13px}
+  .tabs{position:fixed;left:0;right:0;bottom:0;z-index:90;display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:0;margin:0;padding:9px 5px calc(12px + env(safe-area-inset-bottom,0px));border-top:1px solid #78c6ff38;background:#0c1c34f5;backdrop-filter:blur(22px);-webkit-backdrop-filter:blur(22px);box-shadow:0 -10px 35px #0005;overflow:visible}
+  .tab{min-width:0;min-height:54px;padding:7px 2px;border:0;border-radius:13px;background:transparent;color:#98b4d6;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:3px;font-size:10px;line-height:1.2;white-space:normal}
+  .tab.active{background:#2769c02d;border:1px solid #67bdff55;color:#91dbff;box-shadow:none}
+  .nav-icon{font-size:23px}.nav-label{font-size:10px;font-weight:850}
+  .recipe-image{height:265px}.swipe-actions{gap:22px}.swipe-action{width:66px;height:66px}
+  .mini-img{height:145px}.mini-content h4{font-size:13px}
+  #cloud-account{bottom:calc(94px + env(safe-area-inset-bottom,0px))}
+  .footer{margin-bottom:15px}
+}
+@media(max-width:365px){.budget{padding:5px 7px}.budget strong{font-size:14px}.brand h1{font-size:18px}.nav-label{font-size:9px}}
+@media(prefers-reduced-motion:reduce){.swipe-action,.mini-recipe,.stat{animation:none!important}}
+
 </style>
 </head>
 <body><div class="shell">
-<header class="top"><div class="brand"><div class="logo">🧺</div><div><h1>Basket<span>Boss</span></h1><div class="sub" id="saveStatus">Your week, sorted.</div></div></div><div class="budget"><small>Still to buy</small><strong id="headerTotal">£0.00</strong></div></header>
-<section class="hero"><div><div class="eyebrow">Less planning. More living.</div><h2>Own your week.<br><span style="color:var(--green)">Eat like a boss.</span></h2><p>Pick your dinners, keep the shopping list honest, and make the most of what’s already in your fridge.</p></div></section>
+<header class="top"><div class="brand"><div class="logo" aria-label="BasketBoss colourful grocery basket"><svg viewBox="0 0 64 64" width="43" height="43" aria-hidden="true"><defs><linearGradient id="bbBasket" x1="0" y1="0" x2="1" y2="1"><stop stop-color="#8be9ff"/><stop offset="1" stop-color="#1761d6"/></linearGradient></defs><path d="M17 29 Q18 13 32 13 Q46 13 47 29" fill="none" stroke="#dff9ff" stroke-width="5" stroke-linecap="round"/><ellipse cx="23" cy="25" rx="9" ry="12" fill="#fa6a57"/><path d="M21 14 Q24 9 30 12" fill="none" stroke="#77d46a" stroke-width="5" stroke-linecap="round"/><path d="M35 28 Q30 14 42 12 Q54 17 45 29" fill="#89d96b"/><path d="M10 29 H54 L48 53 Q32 60 16 53 Z" fill="url(#bbBasket)" stroke="#d8f5ff" stroke-width="2"/><path d="M20 39 L28 46 L43 34" fill="none" stroke="white" stroke-width="5" stroke-linecap="round" stroke-linejoin="round"/></svg></div><div><h1>Basket<span>Boss</span></h1><div class="sub" id="saveStatus">Plan smart. Eat brilliantly.</div></div></div><div class="budget"><small>Still to buy</small><strong id="headerTotal">£0.00</strong></div></header>
+<section class="hero"><div><div class="eyebrow">✦ YOUR KITCHEN, SORTED</div><h2>Good food.<br><span style="color:var(--green)">Less hassle.</span></h2><p>Swipe your way to dinner, plan your week and shop smarter — all in one place.</p></div></section>
 <div class="stats"><div class="stat"><b id="statMeals">0/7</b><span>Dinners planned</span></div><div class="stat"><b id="statSpend">£0</b><span>Estimated shop</span></div><div class="stat"><b id="statPantry">0</b><span>Items already owned</span></div></div>
-<nav class="tabs" aria-label="Main navigation"><button class="tab active" data-tab="discover">✨ Discover</button><button class="tab" data-tab="week">🗓️ My week</button><button class="tab" data-tab="shop">🛒 Shopping list</button><button class="tab" data-tab="fridge">📸 Fridge scan</button><button class="tab" data-tab="photos">🖼️ Photos</button></nav>
+<nav class="tabs" aria-label="Main navigation"><button class="tab active" data-tab="discover"><span class="nav-icon">⇄</span><span class="nav-label">Discover</span></button><button class="tab" data-tab="week"><span class="nav-icon">▣</span><span class="nav-label">Planner</span></button><button class="tab" data-tab="shop"><span class="nav-icon">🛒</span><span class="nav-label">Shopping</span></button><button class="tab" data-tab="fridge"><span class="nav-icon">◉</span><span class="nav-label">Fridge</span></button></nav>
 <main id="app" class="view"></main><footer class="footer">BasketBoss · Your data stays in this browser · Prices are estimates, not live store prices.</footer></div>
 <div id="modalRoot"></div><div id="toastRoot" aria-live="polite"></div>
 <script>
@@ -248,7 +292,7 @@ function getBasket(){const map=new Map();for(const p of getPlanned())for(const r
 function totals(){const basket=getBasket();return {basket,total:basket.reduce((s,i)=>s+(i.owned?0:i.price),0),owned:basket.filter(i=>i.owned).length}}
 function updateStats(){const t=totals();document.getElementById('headerTotal').textContent=money(t.total);document.getElementById('statMeals').textContent=getPlanned().length+'/7';document.getElementById('statSpend').textContent=money(t.total);document.getElementById('statPantry').textContent=t.owned}
 function tabs(){document.querySelectorAll('.tab').forEach(b=>b.classList.toggle('active',b.dataset.tab===tab))}
-function render(){tabs();updateStats();const app=document.getElementById('app');app.innerHTML='';if(tab==='discover')renderDiscover(app);if(tab==='week')renderWeek(app);if(tab==='shop')renderShop(app);if(tab==='fridge')renderFridge(app);if(tab==='photos')renderPhotos(app)}
+function render(){tabs();updateStats();const app=document.getElementById('app');app.innerHTML='';if(tab==='discover')renderDiscover(app);if(tab==='week')renderWeek(app);if(tab==='shop')renderShop(app);if(tab==='fridge')renderFridge(app);}
 function renderPhotos(app){
 const counts={};for(const r of RECIPES)counts[r.image]=(counts[r.image]||0)+1;
 const custom=RECIPES.filter(r=>state.recipePhotos[r.id]).length;
@@ -266,14 +310,14 @@ function collectionsFor(r){return state.recipeCollections[r.id]||defaultCollecti
 function renderDiscover(app){
 const filtered=RECIPES.filter(r=>(collectionFilter==='All'||collectionsFor(r).includes(collectionFilter))&&(r.name+' '+r.category+' '+r.tag+' '+r.ingredients.map(i=>i[0]).join(' ')).toLowerCase().includes(query.toLowerCase()));
 const r=filtered[Math.min(recipeIndex,Math.max(0,filtered.length-1))];
-app.innerHTML=`<div class="section-head"><div><h3>Your recipe picture library</h3><p>${RECIPES.length} recipes · Organise meals into collections and change any recipe photo</p></div><span class="chip">✦ ${RECIPES.length} recipes</span></div>
+app.innerHTML=`<div class="section-head"><div><h3>Swipe your way to dinner ✦</h3><p>${RECIPES.length} recipes · Swipe right to plan, left to skip</p></div><span class="chip">✦ ${RECIPES.length} recipes</span></div>
 <input class="field" id="recipeSearch" placeholder="Search recipes or ingredients…" value="${esc(query)}" aria-label="Search recipes" style="margin-bottom:12px">
 <div class="chips" style="margin-bottom:16px">${['All',...COLLECTIONS].map(c=>`<button class="btn ${collectionFilter===c?'primary':''}" data-collection="${esc(c)}">${esc(c)}</button>`).join('')}</div>
-${r?`<div class="layout"><section class="card"><div class="recipe-image swipe-card" id="swipeCard" aria-label="Swipe left to skip or right to add meal">${imageHTML(r).replace('loading="lazy"','loading="eager"')}<div class="image-overlay"></div><span class="swipe-stamp no" id="swipeNo">NOPE</span><span class="swipe-stamp yes" id="swipeYes">YES!</span><span class="pill">${esc(r.tag)}</span><span class="time-pill">◷ ${r.mins} min</span></div><div class="recipe-body"><div class="eyebrow">${esc(r.category)} · serves ${r.servings}</div><h3>${esc(r.name)}</h3><div class="chips"><span class="chip">${money(r.cost)} estimated</span><span class="chip">${r.ingredients.length} ingredients</span></div><div class="tip">💡 ${esc(r.tip)}</div>
-<div class="swipe-guide">Swipe photo left to skip · right to add to your week</div><div class="swipe-actions"><button class="swipe-action no" id="skipRecipe" aria-label="Skip this recipe">✕</button><button class="swipe-action yes" id="addRecipe" aria-label="Add this recipe to your week">♥</button></div><div class="actions"><button class="btn" id="cookRecipe">View recipe & cook</button></div>
+${r?`<div class="layout"><section class="card"><div class="recipe-image swipe-card" id="swipeCard" aria-label="Swipe left to skip or right to add meal">${imageHTML(r).replace('loading="lazy"','loading="eager"')}<div class="image-overlay"></div><span class="swipe-stamp no" id="swipeNo">SKIP</span><span class="swipe-stamp yes" id="swipeYes">LOVE</span><span class="pill">${esc(r.tag)}</span><span class="time-pill">◷ ${r.mins} min</span></div><div class="recipe-body"><div class="eyebrow">${esc(r.category)} · serves ${r.servings}</div><h3>${esc(r.name)}</h3><div class="chips"><span class="chip">${money(r.cost)} estimated</span><span class="chip">${r.ingredients.length} ingredients</span></div><div class="tip">💡 ${esc(r.tip)}</div>
+<div class="swipe-guide">← Swipe left to skip · swipe right to plan →</div><div class="swipe-actions"><button class="swipe-action no" id="skipRecipe" aria-label="Skip this recipe">✕</button><button class="swipe-action yes" id="addRecipe" aria-label="Add this recipe to your week">♥</button></div><div class="actions"><button class="btn" id="cookRecipe">View recipe & cook</button></div>
 <details style="margin-top:15px" id="recipeEditor"><summary style="cursor:pointer;font-weight:800">✎ Edit picture & categories</summary><p class="muted">Choose collections (a recipe can belong to more than one):</p><div class="chips">${COLLECTIONS.map(c=>`<label class="chip" style="cursor:pointer"><input type="checkbox" data-edit-collection="${esc(c)}" ${collectionsFor(r).includes(c)?'checked':''}> ${esc(c)}</label>`).join('')}</div><p class="muted" style="margin-top:14px">Photo URL (e.g. <code>images/recipes/my-dinner.jpg</code> from your GitHub repo):</p><input class="field" id="photoUrl" value="${esc(state.recipePhotos[r.id]||r.image)}" placeholder="https://… or images/recipes/…"><div class="actions"><button class="btn primary" id="savePhoto">Save picture</button><button class="btn" id="resetPhoto">Restore default</button></div><p class="muted">For reliable pictures on all devices, upload your own JPG/WebP images to your GitHub repository and paste their relative paths here. Changes made in this editor are saved on this device only.</p></details>
 </div></section><aside class="card side"><h3>What you'll need</h3>${r.ingredients.map(i=>`<div class="ingredient-row"><span>${esc(i[0])}<span class="muted"> · ${esc(i[1])}</span></span><span class="price">${money(i[2])}</span></div>`).join('')}</aside></div>`:`<div class="empty">No recipes in this collection match your search.</div>`}
-<div class="section-head" style="margin-top:25px"><div><h3>${collectionFilter==='All'?'All recipes':esc(collectionFilter)} (${filtered.length})</h3><p>Tap a picture to see the recipe and edit its categories or image.</p></div></div><div class="grid-recipes">${filtered.map(x=>`<article class="card mini-recipe" tabindex="0" role="button" data-recipe="${esc(x.id)}" aria-label="View ${esc(x.name)}"><div class="mini-img">${imageHTML(x)}<span class="pill">${esc(x.tag)}</span></div><div class="mini-content"><h4>${esc(x.name)}</h4><p>◷ ${x.mins} min · ${money(x.cost)}</p><p class="muted">${collectionsFor(x).map(esc).join(' · ')}</p></div></article>`).join('')}</div>`;
+<div class="section-head" style="margin-top:25px"><div><h3>${collectionFilter==='All'?'Explore recipes':esc(collectionFilter)} (${filtered.length})</h3><p>Tap a picture to see the recipe and edit its categories or image.</p></div></div><div class="grid-recipes">${filtered.map(x=>`<article class="card mini-recipe" tabindex="0" role="button" data-recipe="${esc(x.id)}" aria-label="View ${esc(x.name)}"><div class="mini-img">${imageHTML(x)}<span class="pill">${esc(x.tag)}</span></div><div class="mini-content"><h4>${esc(x.name)}</h4><p>◷ ${x.mins} min · ${money(x.cost)}</p><p class="muted">${collectionsFor(x).map(esc).join(' · ')}</p></div></article>`).join('')}</div>`;
 const search=document.getElementById('recipeSearch');search.addEventListener('input',e=>{query=e.target.value;recipeIndex=0;const pos=e.target.selectionStart;renderDiscover(app);const n=document.getElementById('recipeSearch');n.focus();n.setSelectionRange(pos,pos)});
 app.querySelectorAll('[data-collection]').forEach(el=>el.onclick=()=>{collectionFilter=el.dataset.collection;recipeIndex=0;render()});
 const bind=(id,fn)=>{const el=document.getElementById(id);if(el)el.onclick=fn};
