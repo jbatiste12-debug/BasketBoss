@@ -188,11 +188,41 @@ const COLLECTIONS=['Family Meals','Date Nights','Slow Cooker','One Pan','Air Fry
 function defaultCollections(r){const t=(r.name+' '+r.category+' '+r.tag).toLowerCase();const out=[];for(const c of COLLECTIONS.slice(4))if(t.includes(c.toLowerCase()))out.push(c);if(/date night|for two|romantic|steak|tuscan/.test(t))out.push('Date Nights');if(/slow.cook|pulled pork/.test(t))out.push('Slow Cooker');if(/one.pan|one.pot|traybake|sheet.pan|skillet|orzo/.test(t))out.push('One Pan');if(/family|crowd|comfort|burger|fajita|pasta|chilli|chicken|bake|taco/.test(t))out.push('Family Meals');return [...new Set(out.length?out:['Family Meals'])]}
 const INGREDIENTS=[['Chicken breast','Meat'],['Beef mince','Meat'],['Pork sausages','Meat'],['Salmon','Meat'],['Eggs','Dairy'],['Milk','Dairy'],['Cheddar','Dairy'],['Butter','Dairy'],['Natural yoghurt','Dairy'],['Potatoes','Vegetables'],['Carrots','Vegetables'],['Onions','Vegetables'],['Bell peppers','Vegetables'],['Tomatoes','Vegetables'],['Spinach','Vegetables'],['Broccoli','Vegetables'],['Lettuce','Vegetables'],['Apples','Vegetables'],['Bananas','Vegetables'],['Lemons','Vegetables'],['Tortilla wraps','Grains'],['Rice','Grains'],['Pasta','Grains'],['Bread','Bakery'],['Brioche buns','Bakery'],['Beans','Grains'],['Chickpeas','Grains'],['Oats','Grains'],['Cream','Dairy'],['Cheese','Dairy'],['Garlic','Vegetables'],['Mushrooms','Vegetables'],['Cucumber','Vegetables'],['Frozen peas','Vegetables'],['Sweet potatoes','Vegetables']];
 const clone=x=>JSON.parse(JSON.stringify(x));
-function loadState(){try{const raw=localStorage.getItem(KEY);if(raw){const x=JSON.parse(raw);if(x&&x.version===2)return normalize(x)}}catch(e){console.warn('Saved data could not be read',e)}let planned=[];try{const old=JSON.parse(localStorage.getItem(OLD_PLAN)||'null');if(Array.isArray(old))planned=old.map((p,i)=>({recipeId:p.meal&&p.meal.id,day:DAYS.includes(p.assignedDay)?p.assignedDay:DAYS[i%7]})).filter(p=>RECIPES.some(r=>r.id===p.recipeId))}catch(e){}/* New visitors begin with an empty plan; existing saved plans remain untouched. */let pantry={};try{const old=JSON.parse(localStorage.getItem(OLD_PANTRY)||'{}');for(const r of RECIPES)for(const ing of r.ingredients){if(old[ing[0]]||old[ing[0].toLowerCase()])pantry[norm(ing[0])]=true}}catch(e){}return normalize({version:2,planned,pantry,customPantry:[],dismissed:[],scanEndpoint:'',servings:4})}
+/* Read-only startup: never overwrite a saved plan while the app is opening. */
+let bbStorageSafe=true,bbRecovered=false;
+const BB_SNAPSHOT='basketboss_state_v2_recovery';
+function loadState(){
+ let raw=null;
+ try{raw=localStorage.getItem(KEY)}catch(e){bbStorageSafe=false;console.warn('BasketBoss storage unavailable',e)}
+ if(raw!==null){
+  try{const x=JSON.parse(raw);if(x&&x.version===2)return normalize(x);throw Error('Unrecognised saved state')}
+  catch(e){bbStorageSafe=false;console.warn('Saved BasketBoss state invalid; not overwriting it',e)}
+ }
+ if(raw===null&&bbStorageSafe){
+  try{const recovery=localStorage.getItem(BB_SNAPSHOT);if(recovery){const x=JSON.parse(recovery);if(x&&x.version===2){bbRecovered=true;return normalize(x)}}}catch(e){console.warn('Recovery snapshot unreadable',e)}
+ }
+ let planned=[];
+ try{const old=JSON.parse(localStorage.getItem(OLD_PLAN)||'null');if(Array.isArray(old))planned=old.map((p,i)=>({recipeId:p.meal&&p.meal.id,day:DAYS.includes(p.assignedDay)?p.assignedDay:DAYS[i%7]})).filter(p=>RECIPES.some(r=>r.id===p.recipeId))}catch(e){}
+ let pantry={};try{const old=JSON.parse(localStorage.getItem(OLD_PANTRY)||'{}');for(const r of RECIPES)for(const ing of r.ingredients){if(old[ing[0]]||old[ing[0].toLowerCase()])pantry[norm(ing[0])]=true}}catch(e){}
+ return normalize({version:2,planned,pantry,customPantry:[],dismissed:[],scanEndpoint:'',servings:4});
+}
 function normalize(s){return {version:2,planned:Array.isArray(s.planned)?s.planned.filter(p=>p&&RECIPES.some(r=>r.id===p.recipeId)&&DAYS.includes(p.day)).map(p=>({recipeId:p.recipeId,day:p.day})):[],pantry:s.pantry&&typeof s.pantry==='object'?s.pantry:{},customPantry:Array.isArray(s.customPantry)?s.customPantry:[],dismissed:Array.isArray(s.dismissed)?s.dismissed:[],scanEndpoint:typeof s.scanEndpoint==='string'?s.scanEndpoint:'',servings:Number(s.servings)||4,recipePhotos:s.recipePhotos&&typeof s.recipePhotos==='object'?s.recipePhotos:{},recipeCollections:s.recipeCollections&&typeof s.recipeCollections==='object'?s.recipeCollections:{}}}
 function norm(s){return String(s||'').toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g,'').replace(/\b(pack|packs|fresh|large|small|medium|block|tub|bag|box|fillets|fillet)\b/g,'').replace(/[^a-z0-9]+/g,' ').trim()}
 let state=loadState(),tab='discover',recipeIndex=0,query='',collectionFilter='All',selectedRecipe=null,cookStep=0,timer=0,timerHandle=null,scanFile=null,scanItems=[],scanPreview='',toastHandle=null;
-function persist(){try{localStorage.setItem(KEY,JSON.stringify(state));window.BasketBossCloud?.scheduleSave();const el=document.getElementById('saveStatus');if(el)el.textContent='\u2713 Saved on this device';return true}catch(e){notify('Could not save: device storage may be full.');return false}}
+function persist(){
+ if(!bbStorageSafe){notify('Saving unavailable. Do not close BasketBoss; export a backup.');return false}
+ try{
+  const next=JSON.stringify(state);
+  const old=localStorage.getItem(KEY);
+  /* Preserve the previous nonempty plan before any update, including clearing the week. */
+  if(old){try{const prev=JSON.parse(old);if(prev&&Array.isArray(prev.planned)&&prev.planned.length){localStorage.setItem(BB_SNAPSHOT,old)}}catch(e){bbStorageSafe=false;throw Error('Existing saved data cannot be read safely')}}
+  localStorage.setItem(KEY,next);
+  if(localStorage.getItem(KEY)!==next)throw Error('Save verification failed');
+  window.BasketBossCloud?.scheduleSave();
+  const el=document.getElementById('saveStatus');if(el)el.textContent='\u2713 Saved on this device';
+  return true;
+ }catch(e){console.error('BasketBoss save failed',e);notify('Saving failed. Export a backup before leaving.');return false}
+}
 function notify(msg){const root=document.getElementById('toastRoot');root.innerHTML='<div class="toast" role="status"></div>';root.firstChild.textContent=msg;clearTimeout(toastHandle);toastHandle=setTimeout(()=>root.innerHTML='',2600)}
 function esc(s){return String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]))}
 function money(n){return '\u00A3'+Number(n||0).toFixed(2)}
@@ -470,7 +500,8 @@ function openCook(id){
  paint();
 }
 function formatTime(s){return Math.floor(s/60)+':'+String(s%60).padStart(2,'0')}
-window.addEventListener('storage',e=>{if(e.key===KEY){state=loadState();render();notify('Updated from another tab')}});window.addEventListener('beforeunload',()=>{if(timerHandle)clearInterval(timerHandle)});persist();render();
+window.addEventListener('storage',e=>{if(e.key===KEY){state=loadState();render();notify('Updated from another tab')}});window.addEventListener('beforeunload',()=>{if(timerHandle)clearInterval(timerHandle)});render();
+if(!bbStorageSafe){setTimeout(()=>notify('Saved data could not be read. Saving is paused to protect it.'),400)}else if(bbRecovered){setTimeout(()=>notify('Recovered your last saved weekly plan.'),400)}
 })();
 </script>
 <script>
