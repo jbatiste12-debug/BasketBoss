@@ -537,3 +537,153 @@ async function refresh(){
 async function getCloud(){
  if(!await refresh())return null;
  const rows=await api('/rest/v1/basketboss_data?select=data,updated_at&limit=1','GET',null,session.access_token);
+ return rows?.[0]||null;
+}
+async function push(){
+ if(!session||!await refresh())return;
+ const raw=localStorage.getItem(stateKey);if(!raw)return;
+ const data=JSON.parse(raw);
+ const response=await fetch(config.url.replace(/\/$/,'')+'/rest/v1/basketboss_data?on_conflict=user_id',{method:'POST',headers:{...headers(session.access_token),'Prefer':'resolution=merge-duplicates,return=minimal'},body:JSON.stringify({user_id:session.user.id,data,updated_at:new Date().toISOString()})});
+ if(!response.ok)throw new Error('Cloud save failed ('+response.status+'). Check database setup.');
+ dirty=false;setMessage('\u2713 Synced securely to your account');
+}
+async function pull(confirmReplace=true){
+ if(!session)return;
+ if(confirmReplace&&!confirm('Replace this device\u2019s current meal plan and preferences with your cloud copy?'))return;
+ const row=await getCloud();if(!row){setMessage('No cloud backup yet. Use Upload this device\u2019s plan first.');return;}
+ const remote=row.data;if(!remote||remote.version!==2||!Array.isArray(remote.planned))throw new Error('Cloud data format is not supported.');
+ loading=true;localStorage.setItem(stateKey,JSON.stringify(remote));loading=false;
+ setMessage('\u2713 Cloud plan restored. Reloading\u2026');location.reload();
+}
+async function signIn(signup){
+ if(!enabled)return;
+ const email=document.getElementById('cloud-email').value.trim(),password=document.getElementById('cloud-password').value;
+ if(!email||password.length<8){setMessage('Enter your email and a password of at least 8 characters.');return;}
+ try{
+ const result=await api(signup?'/auth/v1/signup':'/auth/v1/token?grant_type=password','POST',{email,password});
+ if(!result.access_token){setMessage('Check your email for a confirmation link, then sign in.');return;}
+ saveSession({...result,expires_at:Math.floor(Date.now()/1000)+result.expires_in});
+ const row=await getCloud();
+ if(row){setMessage('Cloud backup found. Choose Restore cloud plan to use it, or Upload to keep this device\u2019s plan.');}
+ else{await push();setMessage('Account connected and this device\u2019s plan backed up.');}
+ }catch(e){setMessage(e.message)}
+}
+window.BasketBossCloud={scheduleSave(){if(loading||!session||!enabled)return;dirty=true;clearTimeout(timer);timer=setTimeout(()=>{if(navigator.onLine)push().catch(e=>setMessage(e.message));},1400)}};
+document.getElementById('cloud-open').onclick=()=>{panel.classList.add('open');setStatus()};
+document.getElementById('cloud-close').onclick=()=>panel.classList.remove('open');
+panel.onclick=e=>{if(e.target===panel)panel.classList.remove('open')};
+document.getElementById('cloud-login').onclick=()=>signIn(false);
+document.getElementById('cloud-signup').onclick=()=>signIn(true);
+document.getElementById('cloud-upload').onclick=()=>push().catch(e=>setMessage(e.message));
+document.getElementById('cloud-download').onclick=()=>pull(true).catch(e=>setMessage(e.message));
+document.getElementById('cloud-logout').onclick=()=>{saveSession(null);setMessage('Signed out. Local data remains on this device.')};
+window.addEventListener('online',()=>{if(dirty)push().catch(e=>setMessage(e.message))});
+try{const saved=JSON.parse(localStorage.getItem(sessionKey)||'null');if(saved?.access_token)session=saved;}catch{}
+setStatus();
+})();
+</script>
+<script id="bb-backup-feature">
+(function(){'use strict';
+const button=document.getElementById('bbBackup');if(!button)return;
+button.addEventListener('click',function(){
+try{
+const saved=localStorage.getItem('basketboss_state_v2');
+if(!saved){alert('No saved BasketBoss data was found on this device yet.');return;}
+const state=JSON.parse(saved);
+if(!state||state.version!==2)throw new Error('Unexpected saved data format');
+const backup={app:'BasketBoss',backupVersion:1,exportedAt:new Date().toISOString(),state};
+const blob=new Blob([JSON.stringify(backup,null,2)],{type:'application/json'});
+const url=URL.createObjectURL(blob);const a=document.createElement('a');
+a.href=url;a.download='BasketBoss-backup-'+new Date().toISOString().slice(0,10)+'.json';
+document.body.appendChild(a);a.click();a.remove();setTimeout(()=>URL.revokeObjectURL(url),3000);
+}catch(err){console.error('Backup failed',err);alert('Could not make the backup. Check Safari storage settings and try again.');}
+});
+})();
+</script>
+<script id="bb-restore-feature">
+(function(){'use strict';
+const btn=document.getElementById('bbRestore'),input=document.getElementById('bbRestoreFile');if(!btn||!input)return;
+btn.addEventListener('click',()=>input.click());
+input.addEventListener('change',async()=>{
+ const file=input.files&&input.files[0];input.value='';if(!file)return;
+ if(file.size>3*1024*1024){alert('That backup is too large. Please choose a BasketBoss backup file.');return;}
+ try{
+  const data=JSON.parse(await file.text());
+  if(data.app!=='BasketBoss'||data.backupVersion!==1||!data.state||data.state.version!==2||!Array.isArray(data.state.planned)||!data.state.pantry||typeof data.state.pantry!=='object')throw Error('Not a supported BasketBoss backup');
+  const validDays=['Monday','Tuesday','Wednesday','Thursday','Friday','Saturday','Sunday'];
+  if(data.state.planned.length>100||!data.state.planned.every(x=>x&&typeof x.recipeId==='string'&&validDays.includes(x.day)))throw Error('Invalid saved meal plan');
+  if(!confirm('Restore this BasketBoss backup? This replaces the saved meal plan, pantry, photo preferences and collections on this device. Make a backup of your current data first if you want to keep it.'))return;
+  const old=localStorage.getItem('basketboss_state_v2');
+  try{localStorage.setItem('basketboss_state_v2',JSON.stringify(data.state));}catch(e){if(old===null)localStorage.removeItem('basketboss_state_v2');else localStorage.setItem('basketboss_state_v2',old);throw e;}
+  alert('Backup restored. BasketBoss will reload now.');location.reload();
+ }catch(e){alert('Could not restore backup: '+e.message);}
+});
+})();
+</script>
+<style id="bb-iphone-hotfix">
+:root{--bb-blue:#55595c;--bb-aqua:#dedfe0;--bb-ink:#333638}
+.nav-icon{display:flex!important;align-items:center;justify-content:center;height:25px!important;font-size:0!important;line-height:1!important}
+.nav-icon svg{width:24px;height:24px;display:block;flex-shrink:0}
+.tabs{z-index:90!important}.tab{min-width:0!important;overflow:hidden}
+.swipe-action.no{background:#45494c!important;color:#fff!important;border:3px solid #b8b9ba!important;box-shadow:0 10px 22px #3333!important}
+.swipe-action.yes{background:#85898c!important;color:#fff!important;border:3px solid #d5d6d7!important;box-shadow:0 10px 22px #3332!important}
+.swipe-action{font-family:-apple-system,BlinkMacSystemFont,system-ui,sans-serif!important;font-size:32px!important;line-height:1!important}
+#cloud-account{right:12px!important;bottom:calc(106px + env(safe-area-inset-bottom,0px))!important;z-index:80!important}
+#cloud-account button{background:#44484B!important;border:1px solid #888c8e!important;color:#fff!important;box-shadow:0 4px 14px #0002!important;font-size:12px!important;padding:9px 12px!important}
+@media(max-width:700px){.tabs{bottom:calc(10px + env(safe-area-inset-bottom,0px))!important;padding:7px!important}.tab{padding:9px 2px!important;gap:4px!important}.nav-label{font-size:11px!important}.shell{padding-bottom:calc(118px + env(safe-area-inset-bottom,0px))!important}#cloud-account{bottom:calc(105px + env(safe-area-inset-bottom,0px))!important}}
+</style>
+
+<style id="bb-quartz-accessibility-final">
+/* High-contrast, iPhone-safe Kitchen Mode: scoped to avoid affecting other screens. */
+.bb-kitchen{background:#F8F8F8!important;color:#262A2D!important}
+.bb-kitchen .bb-check{background:#202C38!important;border:1px solid #536475!important;color:#FFFFFF!important;min-height:60px;box-sizing:border-box}
+.bb-kitchen .bb-check .bb-item,.bb-kitchen .bb-check .bb-item *{color:#FFFFFF!important;opacity:1!important}
+.bb-kitchen .bb-check .bb-item{font-size:16px!important;font-weight:650!important;line-height:1.4!important;overflow-wrap:anywhere}
+.bb-kitchen .bb-check .bb-item small{color:#E3EAF1!important;font-size:13px!important;font-weight:400!important;line-height:1.55!important;margin-top:5px}
+.bb-kitchen .bb-check:has(input:checked){background:#35444E!important;border-color:#9BA8B2!important}
+.bb-kitchen .bb-check:has(input:checked) .bb-item{opacity:1!important;text-decoration:line-through;text-decoration-color:#DDE5EC}
+.bb-kitchen .bb-check input[type="checkbox"]{accent-color:#FFFFFF!important;flex-shrink:0;width:24px!important;height:24px!important}
+.bb-kitchen .bb-head,.bb-kitchen .bb-head h2,.bb-kitchen h2,.bb-kitchen h3,.bb-kitchen .bb-step{color:#252A2E!important}
+.bb-kitchen .bb-phase{color:#454D54!important;font-weight:600}
+.bb-kitchen .bb-phase:before{background:#C9CDD0!important}
+.bb-kitchen .bb-phase.active:before{background:#51575B!important}
+.bb-kitchen .bb-tip{background:#E9ECEE!important;border-color:#CFD4D8!important;color:#30363B!important}
+.bb-kitchen .bb-clock{background:#FFFFFF!important;border-color:#D2D6D9!important;color:#252A2E!important}
+.bb-kitchen .bb-clock strong{color:#343B40!important}
+.bb-kitchen .bb-progress{background:#D8DDE0!important}
+.bb-kitchen .bb-progress>div{background:#51575B!important}
+.bb-kitchen .bb-done{color:#252A2E!important}
+.bb-kitchen button:focus-visible,.bb-kitchen input:focus-visible{outline:3px solid #65727E!important;outline-offset:3px}
+@media(max-width:500px){.bb-kitchen .bb-check{padding:14px 12px!important;gap:12px!important}.bb-kitchen .bb-check .bb-item{font-size:16px!important}}
+@media(prefers-reduced-motion:reduce){.bb-kitchen .bb-check{transition:none!important}}
+</style>
+<style id="bb-quartz-contrast-system-v2">
+
+/* BasketBoss Quartz 2.0: unified high-contrast tokens and iPhone layout */
+:root{--bg:#F4F4F4!important;--panel:#FFFFFF!important;--panel2:#E8EAEB!important;--line:#CED2D4!important;--text:#252A2E!important;--muted:#525B61!important;--green:#44484B!important;--green2:#575B5E!important;color-scheme:light!important}
+body{color:#252A2E!important;background:#F4F4F4!important}
+/* Dashboard: never allow pale blue text on white cards */
+.stats .stat,.stat{background:#FFFFFF!important;border:1px solid #C9CED1!important;color:#252A2E!important;box-shadow:0 4px 18px #252A2E0D!important}
+.stats .stat b,.stats .stat strong,.stat b,.stat strong{color:#252A2E!important;opacity:1!important}
+.stats .stat span,.stats .stat small,.stat span,.stat small{color:#485159!important;opacity:1!important}
+/* Consistent readable light surfaces and labels */
+.section-head,.section-head h3,.recipe-body h3,.day h3,.list-group h3{color:#252A2E!important}
+.tab{color:#333A3E!important}.tab .nav-label,.tab .nav-icon{color:inherit!important;opacity:1!important}
+.tab.active,.tab[aria-selected="true"],.tab[aria-current="page"]{background:#44484B!important;color:#FFFFFF!important}
+.tab.active .nav-label,.tab.active .nav-icon,.tab[aria-selected="true"] .nav-label,.tab[aria-current="page"] .nav-label{color:#FFFFFF!important}
+#cloud-account button{background:#44484B!important;border-color:#909598!important;color:#FFFFFF!important}
+/* Safe readable contrast in dark preparation cards */
+.bb-kitchen .bb-check,.bb-kitchen .bb-check *{color:#FFFFFF!important}
+.bb-kitchen .bb-check .bb-item small{color:#E5EDF1!important}
+/* Prevent fixed navigation and floating Account from covering Kitchen Mode */
+body:has(.cook-overlay) .tabs,body:has(.cook-overlay) #cloud-account{visibility:hidden!important;pointer-events:none!important}
+.cook-overlay{z-index:1000!important;box-sizing:border-box!important;overflow:auto!important;padding:calc(12px + env(safe-area-inset-top,0px)) 12px calc(14px + env(safe-area-inset-bottom,0px))!important;align-items:start!important;place-items:initial!important}
+.cook-overlay .bb-kitchen{box-sizing:border-box!important;width:100%!important;max-width:600px!important;margin:auto!important;max-height:calc(100dvh - 32px - env(safe-area-inset-top,0px) - env(safe-area-inset-bottom,0px))!important;overflow-y:auto!important;-webkit-overflow-scrolling:touch!important;scroll-padding-bottom:110px!important;padding-bottom:calc(96px + env(safe-area-inset-bottom,0px))!important}
+.cook-overlay #bbStart{min-height:54px!important;margin-bottom:22px!important;position:relative!important;z-index:2!important}
+/* More space for bottom navigation when not cooking */
+.shell{padding-bottom:calc(155px + env(safe-area-inset-bottom,0px))!important}
+button,input,select,textarea{touch-action:manipulation}
+:focus-visible{outline:3px solid #51575B!important;outline-offset:3px}
+@media(prefers-reduced-motion:reduce){*,*::before,*::after{animation-duration:.01ms!important;transition-duration:.01ms!important;scroll-behavior:auto!important}}
+</style>
+</body></html>
