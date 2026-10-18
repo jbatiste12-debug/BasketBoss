@@ -796,6 +796,37 @@ function imageHTML(r,cls=''){const fallback='https://images.unsplash.com/photo-1
 function collectionsFor(r){return state.recipeCollections[r.id]||defaultCollections(r)}
 function renderDiscover(app){
 const filtered=RECIPES.filter(r=>(collectionFilter==='All'||collectionsFor(r).includes(collectionFilter))&&(r.name+' '+r.category+' '+r.tag+' '+r.ingredients.map(i=>i[0]).join(' ')).toLowerCase().includes(query.toLowerCase()));
+
+/* BB_RANDOM_RECIPE_START_V1 */
+if (
+  !window.__bbStartRandomised &&
+  collectionFilter === 'All' &&
+  !String(query || '').trim() &&
+  filtered.length > 1
+) {
+  window.__bbStartRandomised = true;
+
+  const key = 'bb_previous_start_recipe';
+  let previous = -1;
+
+  try {
+    previous = Number(localStorage.getItem(key));
+  } catch (e) {}
+
+  let selected = Math.floor(Math.random() * filtered.length);
+
+  if (selected === previous) {
+    selected = (selected + 1 +
+      Math.floor(Math.random() * (filtered.length - 1)))
+      % filtered.length;
+  }
+
+  recipeIndex = selected;
+
+  try {
+    localStorage.setItem(key, String(selected));
+  } catch (e) {}
+}
 galleryPage=Math.max(0,Math.min(galleryPage,Math.max(0,Math.ceil(filtered.length/24)-1)));
 const r=filtered[Math.min(recipeIndex,Math.max(0,filtered.length-1))];
 app.innerHTML=`<div class="section-head"><div><h3>Swipe your way to dinner \u2726</h3><p>${RECIPES.length} recipes \u00B7 Swipe right to plan, left to skip</p></div><span class="chip">\u2726 ${RECIPES.length} recipes</span></div>
