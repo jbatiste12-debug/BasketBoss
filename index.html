@@ -210,10 +210,7 @@ button:focus-visible,.mini-recipe:focus-visible,summary:focus-visible{outline:3p
 .bb-leftover-panel small{display:block;color:#4e565c;font-size:12px;margin:7px 0 0 28px}
 .bb-leftover-options{display:flex;flex-wrap:wrap;gap:8px;margin:10px 0 0 28px}
 .bb-leftover-options .small-btn{background:#e5e9ec!important;color:#252a2e!important;border:1px solid #bfc7ce!important;min-height:42px;white-space:normal;text-align:left}
-@media(max-width:600px){.bb-leftover-panel{padding:12px}.bb-leftover-options,.bb-leftover-panel small{margin-left:0}}
-</style>
-
-<style id="bb-dessert-category-css">
+@media(max-width:600px){.bb-leftover-panel{padding:12px}.bb-leftover-options,.bb-leftover-panel small{"bb-dessert-category-css">
 /* Dessert day slots in the premium quartz-grey Planner */
 .day .bb-add-dessert{margin-top:9px;background:#f1f3f4!important;color:#252a2e!important;border:1px dashed #bbc4c9!important;min-height:42px}
 .bb-dessert-day-row{display:flex;align-items:center;gap:10px;background:#fff;color:#252a2e;border:1px solid #cbd0d4;border-radius:12px;padding:10px;margin-top:9px;min-width:0;flex-wrap:wrap}
@@ -349,6 +346,274 @@ button:focus-visible,.mini-recipe:focus-visible,summary:focus-visible{outline:3p
         width: 21px !important;
         height: 21px !important;
     }
+}
+</style>
+
+
+<style id="bb-premium-cta-style">
+.bb-cta-wrap{
+  display:flex;
+  justify-content:center;
+  align-items:center;
+  margin:22px 0 18px;
+}
+.bb-premium-cta{
+  display:inline-flex;
+  align-items:center;
+  justify-content:center;
+  gap:10px;
+  min-width:260px;
+  padding:14px 24px;
+  border:none;
+  border-radius:999px;
+  background:linear-gradient(180deg,#4b5057 0%, #34383e 100%);
+  color:#fff;
+  font-weight:800;
+  font-size:15px;
+  letter-spacing:.2px;
+  box-shadow:0 10px 24px rgba(0,0,0,.16), inset 0 1px 0 rgba(255,255,255,.14);
+  cursor:pointer;
+  transition:transform .18s ease, box-shadow .18s ease, opacity .18s ease;
+}
+.bb-premium-cta:hover{
+  transform:translateY(-1px);
+  box-shadow:0 14px 28px rgba(0,0,0,.18), inset 0 1px 0 rgba(255,255,255,.16);
+}
+.bb-premium-cta:active{
+  transform:translateY(0);
+}
+.bb-cta-icon{
+  display:inline-flex;
+  align-items:center;
+  justify-content:center;
+  width:22px;
+  height:22px;
+  border-radius:50%;
+  background:rgba(255,255,255,.12);
+  font-size:12px;
+  line-height:1;
+}
+@media (max-width: 640px){
+  .bb-cta-wrap{
+    margin:18px 0 16px;
+  }
+  .bb-premium-cta{
+    width:min(100%, 320px);
+    min-width:0;
+    padding:14px 18px;
+    font-size:14px;
+  }
+}
+</style>
+
+
+<style id="bb-final-recipe-controls">
+/* BasketBoss 1.0 premium recipe actions */
+.bb-polished-cook {
+  display: flex !important;
+  justify-content: center !important;
+  align-items: center !important;
+  gap: 11px !important;
+  width: min(100%, 330px) !important;
+  min-height: 54px !important;
+  margin: 22px auto !important;
+  padding: 14px 25px !important;
+  box-sizing: border-box !important;
+  border: 1px solid #34393d !important;
+  border-radius: 999px !important;
+  background: linear-gradient(
+    155deg,#52585d 0%,#3c4247 100%
+  ) !important;
+  color: #ffffff !important;
+  font-size: 15px !important;
+  font-weight: 800 !important;
+  letter-spacing: .1px !important;
+  text-align: center !important;
+  box-shadow: 0 9px 22px rgba(32,37,41,.20) !important;
+  cursor: pointer;
+  transition: transform .18s,box-shadow .18s !important;
+}
+.bb-polished-cook::before {
+  content: "\2726";
+  font-size: 17px;
+  color: #ffffff;
+}
+.bb-polished-cook:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 13px 26px rgba(32,37,41,.24) !important;
+}
+.bb-polished-cook:active {
+  transform: scale(.98);
+}
+.bb-polished-skip,
+.bb-polished-love {
+  width: 65px !important;
+  height: 65px !important;
+  min-width: 65px !important;
+  min-height: 65px !important;
+  border-radius: 50% !important;
+  display: inline-flex !important;
+  justify-content: center !important;
+  align-items: center !important;
+  font-size: 27px !important;
+  box-shadow: 0 8px 19px rgba(28,32,36,.14) !important;
+  transition: transform .18s,box-shadow .18s !important;
+  touch-action: manipulation;
+}
+.bb-polished-skip {
+  background: #ffffff !important;
+  color: #44494d !important;
+  border: 2px solid #d7dadd !important;
+}
+.bb-polished-love {
+  background: #44494d !important;
+  color: #ffffff !important;
+  border: 2px solid #44494d !important;
+}
+.bb-polished-skip:hover,
+.bb-polished-love:hover {
+  transform: translateY(-2px) scale(1.04);
+  box-shadow: 0 12px 24px rgba(28,32,36,.2) !important;
+}
+.bb-polished-skip:active,
+.bb-polished-love:active {
+  transform: scale(.94);
+}
+@media(max-width:600px) {
+  .bb-polished-cook {
+    width: min(100%,310px) !important;
+    min-height: 52px !important;
+    font-size: 14px !important;
+  }
+  .bb-polished-skip,
+  .bb-polished-love {
+    width: 58px !important;
+    height: 58px !important;
+    min-width: 58px !important;
+    min-height: 58px !important;
+  }
+}
+@media(prefers-reduced-motion:reduce) {
+  .bb-polished-cook,
+  .bb-polished-skip,
+  .bb-polished-love {
+    transition: none !important;
+  }
+}
+</style>
+
+
+<style id="bb-cook-button-final-centre">
+button.bb-cook-final {
+  position: relative !important;
+  left: 50% !important;
+  transform: translateX(-50%) !important;
+  display: inline-flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  gap: 12px !important;
+  width: min(320px, 90%) !important;
+  min-height: 58px !important;
+  margin: 24px 0 !important;
+  padding: 15px 24px !important;
+  box-sizing: border-box !important;
+  background: linear-gradient(
+    145deg,#53595e,#383e43
+  ) !important;
+  color: #ffffff !important;
+  border: 1px solid #32373c !important;
+  border-radius: 18px !important;
+  font-size: 15px !important;
+  font-weight: 800 !important;
+  letter-spacing: .2px !important;
+  text-align: center !important;
+  box-shadow:
+    0 12px 28px rgba(30,35,40,.20),
+    inset 0 1px 0 rgba(255,255,255,.18) !important;
+  cursor: pointer !important;
+  touch-action: manipulation;
+}
+
+button.bb-cook-final:hover {
+  transform: translate(-50%,-2px) !important;
+  box-shadow:
+    0 16px 30px rgba(30,35,40,.25) !important;
+}
+
+button.bb-cook-final:active {
+  transform: translateX(-50%) scale(.98) !important;
+}
+
+button.bb-cook-final:focus-visible {
+  outline: 3px solid #8ebde2 !important;
+  outline-offset: 3px;
+}
+
+@media(max-width:600px) {
+  button.bb-cook-final {
+    width: min(300px, 92%) !important;
+    min-height: 54px !important;
+    font-size: 14px !important;
+  }
+}
+</style>
+
+
+<style id="bb-cook-centre-layout-fix">
+.bb-cook-centre-wrapper {
+  display: flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  width: 100% !important;
+  max-width: 100% !important;
+  flex: 0 0 100% !important;
+  grid-column: 1 / -1 !important;
+  clear: both !important;
+  margin: 24px auto 20px !important;
+  box-sizing: border-box !important;
+}
+
+.bb-cook-centre-wrapper > button {
+  position: static !important;
+  inset: auto !important;
+  left: auto !important;
+  transform: none !important;
+  display: inline-flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  width: min(330px, 92%) !important;
+  min-width: 0 !important;
+  min-height: 58px !important;
+  margin: 0 !important;
+  padding: 15px 24px !important;
+  background: linear-gradient(145deg,#52585D,#383E43) !important;
+  border: 1px solid #373D42 !important;
+  border-radius: 18px !important;
+  color: #FFFFFF !important;
+  font-size: 15px !important;
+  font-weight: 800 !important;
+  white-space: nowrap !important;
+  line-height: 1.2 !important;
+  box-shadow: 0 12px 26px rgba(30,35,40,.18) !important;
+  box-sizing: border-box !important;
+  cursor: pointer !important;
+}
+
+.bb-cook-centre-wrapper > button:hover {
+  transform: translateY(-2px) !important;
+}
+
+.bb-cook-centre-wrapper > button:active {
+  transform: scale(.98) !important;
+}
+
+@media(max-width:600px) {
+  .bb-cook-centre-wrapper > button {
+    width: min(310px, 94%) !important;
+    min-height: 54px !important;
+    padding: 13px 14px !important;
+    font-size: 14px !important;
+  }
 }
 </style>
 
@@ -499,7 +764,7 @@ function bbDecorate(){
    const holder=row.firstElementChild;if(!holder)return;
    holder.classList.add('bb-planned-info');
    const photo=document.createElement('img');photo.className='bb-day-photo';photo.loading='lazy';photo.alt='';
-   const path=(state.recipePhotos&&state.recipePhotos[recipe.id])||recipe.image;
+   const path=(typeof recipe.image==='string' && recipe.image.startsWith('photos/desserts/'))?recipe.image:((state.recipePhotos&&state.recipePhotos[recipe.id])||recipe.image);
    if(path&&typeof path==='string')photo.src=path;
    photo.onerror=()=>{photo.style.display='none'};
    holder.prepend(photo);
@@ -537,10 +802,10 @@ app.innerHTML=`<div class="section-head"><div><h3>Swipe your way to dinner \u272
 <input class="field" id="recipeSearch" placeholder="Search recipes or ingredients\u2026" value="${esc(query)}" aria-label="Search recipes" style="margin-bottom:12px">
 <div class="chips" style="margin-bottom:16px">${['All',...COLLECTIONS].map(c=>`<button class="btn ${collectionFilter===c?'primary':''}" data-collection="${esc(c)}">${esc(c)}</button>`).join('')}</div>
 ${r?`<div class="layout"><section class="card"><div class="recipe-image swipe-card" id="swipeCard" aria-label="Swipe left to skip or right to add meal">${imageHTML(r).replace('loading="lazy"','loading="eager"')}<div class="image-overlay"></div><span class="swipe-stamp no" id="swipeNo">SKIP</span><span class="swipe-stamp yes" id="swipeYes">LOVE</span><span class="pill">${esc(r.tag)}</span><span class="time-pill">\u25F7 ${r.mins} min</span></div><div class="recipe-body"><div class="eyebrow">${esc(r.category)} \u00B7 serves ${r.servings}</div><h3>${esc(r.name)}</h3><div class="chips"><span class="chip">${money(r.cost)} estimated</span><span class="chip">${r.ingredients.length} ingredients</span></div><div class="tip">\uD83D\uDCA1 ${esc(r.tip)}</div>
-<div class="swipe-guide">\u2190 Swipe left to skip \u00B7 swipe right to plan \u2192</div><div class="swipe-actions"><button class="swipe-action no" id="skipRecipe" aria-label="Skip this recipe">\u2715</button><button class="swipe-action yes" id="addRecipe" aria-label="Add this meal or dessert to your week">\u2665</button></div><div class="actions"><button class="btn" id="cookRecipe">View recipe & cook</button></div>
-<details style="margin-top:15px" id="recipeEditor"><summary style="cursor:pointer;font-weight:800">\u270E Edit picture & categories</summary><p class="muted">Choose collections (a recipe can belong to more than one):</p><div class="chips">${COLLECTIONS.map(c=>`<label class="chip" style="cursor:pointer"><input type="checkbox" data-edit-collection="${esc(c)}" ${collectionsFor(r).includes(c)?'checked':''}> ${esc(c)}</label>`).join('')}</div><p class="muted" style="margin-top:14px">Photo URL (e.g. <code>images/recipes/my-dinner.jpg</code> from your GitHub repo):</p><input class="field" id="photoUrl" value="${esc(state.recipePhotos[r.id]||r.image)}" placeholder="https://\u2026 or images/recipes/\u2026"><div class="actions"><button class="btn primary" id="savePhoto">Save picture</button><button class="btn" id="resetPhoto">Restore default</button></div><p class="muted">For reliable pictures on all devices, upload your own JPG/WebP images to your GitHub repository and paste their relative paths here. Changes made in this editor are saved on this device only.</p></details>
+<div class="swipe-guide">\u2190 Swipe left to skip \u00B7 swipe right to plan \u2192</div><div class="swipe-actions"><button class="swipe-action no" id="skipRecipe" aria-label="Skip this recipe">\u2715</button><button class="swipe-action yes" id="addRecipe" aria-label="Add this meal or dessert to your week">\u2665</button></div><div class="actions"><div class="bb-cta-wrap"><button class="btn" id="cookRecipe" class="bb-premium-cta"><span class="bb-cta-icon">✦</span><span>View Recipe &amp; Cook</span></button></div></div>
+<details style="display:none!important;margin-top:15px" id="recipeEditor"><summary style="cursor:pointer;font-weight:800">\u270E Edit picture & categories</summary><p class="muted">Choose collections (a recipe can belong to more than one):</p><div class="chips">${COLLECTIONS.map(c=>`<label class="chip" style="cursor:pointer"><input type="checkbox" data-edit-collection="${esc(c)}" ${collectionsFor(r).includes(c)?'checked':''}> ${esc(c)}</label>`).join('')}</div><p class="muted" style="margin-top:14px">Photo URL (e.g. <code>images/recipes/my-dinner.jpg</code> from your GitHub repo):</p><input class="field" id="photoUrl" value="${esc(state.recipePhotos[r.id]||r.image)}" placeholder="https://\u2026 or images/recipes/\u2026"><div class="actions"><button class="btn primary" id="savePhoto">Save picture</button><button class="btn" id="resetPhoto">Restore default</button></div><p class="muted">For reliable pictures on all devices, upload your own JPG/WebP images to your GitHub repository and paste their relative paths here. Changes made in this editor are saved on this device only.</p></details>
 </div></section><aside class="card side"><h3>What you'll need</h3>${r.ingredients.map(i=>`<div class="ingredient-row"><span>${esc(i[0])}<span class="muted"> \u00B7 ${esc(i[1])}</span></span><span class="price">${money(i[2])}</span></div>`).join('')}</aside></div>`:`<div class="empty">No recipes in this collection match your search.</div>`}
-<div class="section-head" style="margin-top:25px"><div><h3>${collectionFilter==='All'?'Explore recipes':esc(collectionFilter)} (${filtered.length})</h3><p>Tap a picture to see the recipe and edit its categories or image.</p></div></div><p class="muted" style="margin:0 0 12px">Showing ${filtered.length ? galleryPage*24+1 : 0}â${Math.min((galleryPage+1)*24,filtered.length)} of ${filtered.length} matching recipes. Use the buttons below to browse all recipes.</p><div class="grid-recipes">${filtered.slice(galleryPage*24,(galleryPage+1)*24).map(x=>`<article class="card mini-recipe" tabindex="0" role="button" data-recipe="${esc(x.id)}" aria-label="View ${esc(x.name)}"><div class="mini-img">${imageHTML(x)}<span class="pill">${esc(x.tag)}</span></div><div class="mini-content"><h4>${esc(x.name)}</h4><p>\u25F7 ${x.mins} min \u00B7 ${money(x.cost)}</p><p class="muted">${collectionsFor(x).map(esc).join(' \u00B7 ')}</p></div></article>`).join('')}</div><div class="bb-gallery-pages" style="display:flex;align-items:center;justify-content:center;gap:12px;flex-wrap:wrap;margin:18px 0 28px"><button class="btn" id="bbGalleryPrev" ${galleryPage===0?'disabled':''}>â &larr; Previous 24</button><strong>Page ${galleryPage+1} of ${Math.max(1,Math.ceil(filtered.length/24))}</strong><button class="btn primary" id="bbGalleryNext" ${(galleryPage+1)*24>=filtered.length?'disabled':''}>Next 24 &rarr;â</button></div>`;
+<div class="section-head" style="margin-top:25px"><div><h3>${collectionFilter==='All'?'Explore recipes':esc(collectionFilter)} (${filtered.length})</h3><p>Tap a picture to explore the recipe and start cooking.</p></div></div><p class="muted" style="margin:0 0 12px">Showing ${filtered.length ? galleryPage*24+1 : 0}&ndash;${Math.min((galleryPage+1)*24,filtered.length)} of ${filtered.length} matching recipes. Use the buttons below to browse all recipes.</p><div class="grid-recipes">${filtered.slice(galleryPage*24,(galleryPage+1)*24).map(x=>`<article class="card mini-recipe" tabindex="0" role="button" data-recipe="${esc(x.id)}" aria-label="View ${esc(x.name)}"><div class="mini-img">${imageHTML(x)}<span class="pill">${esc(x.tag)}</span></div><div class="mini-content"><h4>${esc(x.name)}</h4><p>\u25F7 ${x.mins} min \u00B7 ${money(x.cost)}</p><p class="muted">${collectionsFor(x).map(esc).join(' \u00B7 ')}</p></div></article>`).join('')}</div><div class="bb-gallery-pages" style="display:flex;align-items:center;justify-content:center;gap:12px;flex-wrap:wrap;margin:18px 0 28px"><button class="btn" id="bbGalleryPrev" ${galleryPage===0?'disabled':''}>â &larr; Previous 24</button><strong>Page ${galleryPage+1} of ${Math.max(1,Math.ceil(filtered.length/24))}</strong><button class="btn primary" id="bbGalleryNext" ${(galleryPage+1)*24>=filtered.length?'disabled':''}>Next 24 &rarr;â</button></div>`;
 const prevGallery=document.getElementById('bbGalleryPrev'),nextGallery=document.getElementById('bbGalleryNext');
 if(prevGallery)prevGallery.onclick=()=>{if(galleryPage>0){galleryPage--;renderDiscover(app)}};
 if(nextGallery)nextGallery.onclick=()=>{if((galleryPage+1)*24<filtered.length){galleryPage++;renderDiscover(app)}};
@@ -994,5 +1259,146 @@ button,input,select,textarea{touch-action:manipulation}
 </style>
 
 
+
+
+<script id="bb-recipe-controls-enhancer">
+(function () {
+  function polish() {
+    const buttons = document.querySelectorAll('button');
+    buttons.forEach(function (button) {
+      const label = (button.textContent || '')
+        .replace(/\\s+/g, ' ').trim().toLowerCase();
+
+      if (/view recipe\\s*&\\s*cook/.test(label)) {
+        button.classList.add('bb-polished-cook');
+        return;
+      }
+
+      const actionArea = button.closest(
+        '.swipe-actions,.swipe-controls,.swipe-buttons,' +
+        '.swipe-choices,.swipe-card-actions'
+      );
+
+      const id = (button.id || '').toLowerCase();
+      const cls = typeof button.className === 'string'
+        ? button.className.toLowerCase() : '';
+
+      const skip = /^(x|×|✕|✖)$/.test(label)
+        || /^(skip|no|swipeleft|swipe-no)$/.test(id)
+        || /\\b(swipe-no|skip-btn|skip-button)\\b/.test(cls);
+
+      const love = /^(♥|❤|♡|🤍|❤️)$/.test(label)
+        || /^(love|yes|swiperight|swipe-yes)$/.test(id)
+        || /\\b(swipe-yes|love-btn|love-button)\\b/.test(cls);
+
+      if (actionArea || skip || love) {
+        if (skip) button.classList.add('bb-polished-skip');
+        if (love) button.classList.add('bb-polished-love');
+      }
+    });
+  }
+
+  function refreshAfterInteraction() {
+    requestAnimationFrame(polish);
+  }
+
+  if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', polish);
+  } else {
+    polish();
+  }
+
+  // Category changes and swipes rebuild recipe controls.
+  // No MutationObserver or interval is needed.
+  document.addEventListener(
+    'click', refreshAfterInteraction, true
+  );
+  document.addEventListener(
+    'touchend', refreshAfterInteraction, true
+  );
+})();
+</script>
+
+
+<script id="bb-cook-button-centre-enhancer">
+(function () {
+  function upgradeCookButton() {
+    document.querySelectorAll('button').forEach(function(btn) {
+      const label = (btn.textContent || '')
+        .replace(/\s+/g,' ')
+        .trim()
+        .toLowerCase();
+
+      if (/view recipe\s*&\s*cook/.test(label)) {
+        btn.classList.add('bb-cook-final');
+      }
+    });
+  }
+
+  if (document.readyState === 'loading') {
+    document.addEventListener(
+      'DOMContentLoaded', upgradeCookButton
+    );
+  } else {
+    upgradeCookButton();
+  }
+
+  // The recipe card is rebuilt when swiping or filtering.
+  // Refresh the styling after an interaction.
+  document.addEventListener('click', function () {
+    requestAnimationFrame(upgradeCookButton);
+  }, true);
+
+  document.addEventListener('touchend', function () {
+    requestAnimationFrame(upgradeCookButton);
+  }, true);
+})();
+</script>
+
+
+<script id="bb-cook-centre-wrapper-script">
+(function () {
+  function centreCookButton() {
+    document.querySelectorAll('button').forEach(function(btn) {
+      const label = (btn.textContent || '')
+        .replace(/\s+/g, ' ')
+        .trim()
+        .toLowerCase();
+
+      if (!/view recipe\s*&\s*cook/.test(label)) return;
+
+      btn.classList.add('bb-cook-final');
+
+      if (btn.parentElement &&
+          btn.parentElement.classList.contains(
+            'bb-cook-centre-wrapper')) return;
+
+      const wrapper = document.createElement('div');
+      wrapper.className = 'bb-cook-centre-wrapper';
+
+      btn.parentNode.insertBefore(wrapper, btn);
+      wrapper.appendChild(btn);
+    });
+  }
+
+  if (document.readyState === 'loading') {
+    document.addEventListener(
+      'DOMContentLoaded', centreCookButton
+    );
+  } else {
+    centreCookButton();
+  }
+
+  // Reapply after the recipe gallery rebuilds.
+  // This does not replace the existing click handlers.
+  document.addEventListener('click', function() {
+    requestAnimationFrame(centreCookButton);
+  }, true);
+
+  document.addEventListener('touchend', function() {
+    requestAnimationFrame(centreCookButton);
+  }, true);
+})();
+</script>
 
 </body></html>
