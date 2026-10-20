@@ -860,6 +860,199 @@ header.top .brand h1{font-family:"Avenir Next",ui-sans-serif,system-ui,-apple-sy
 @media(max-width:650px){.bb16-account-card{top:12px;right:12px}.bb16-account-card button{padding:8px 10px;font-size:11px}.shell .hero{padding-top:60px!important}.shell .tabs{gap:5px!important}.shell .tabs .tab{padding:7px 2px!important;min-height:64px!important;border-radius:10px!important}.shell .tabs .tab .nav-label{font-size:10px!important}.bb16-filter-panel{padding:13px}.bb16-category-grid{grid-template-columns:repeat(2,minmax(0,1fr))!important}.bb16-day-row{grid-template-columns:70px minmax(0,1fr);gap:6px}.bb16-day-lunch{grid-column:2;text-align:left}.bb16-overview-heading{padding:17px}.bb16-overview-metrics{gap:8px}.bb16-metric{padding:13px 11px}#bb307EssentialsForm{grid-template-columns:repeat(2,minmax(0,1fr))!important}#bb307EssentialsForm .bb16-essential-name{grid-column:1 / -1}}
 @media(max-width:380px){.bb16-providers{grid-template-columns:1fr}.bb16-overview-metrics{grid-template-columns:minmax(0,1fr)}.shell .tabs .tab .nav-label{font-size:9px!important}.shell .tabs .tab{padding:6px 1px!important}.bb16-filter-heading{align-items:flex-start}}
 </style><script id="bb16AccountShortcutJs">document.addEventListener('DOMContentLoaded',function(){const b=document.getElementById('bb16AccountShortcut');if(!b)return;b.addEventListener('click',function(){const old=document.getElementById('cloud-open');if(old)old.click();else window.alert('Account sign-in is not configured in this preview.')})});</script><script id="basketboss-v17-safe-live-migration">(function(){try{const next='basketboss_321_unified_state_v1',legacy='basketboss_state_v2';if(localStorage.getItem(next)!==null)return;const raw=localStorage.getItem(legacy);if(!raw)return;const parsed=JSON.parse(raw);if(parsed&&parsed.version===2&&Array.isArray(parsed.planned)){localStorage.setItem(next,raw)}}catch(error){console.warn('BasketBoss legacy plan remains untouched; automatic copy unavailable.',error)}})();</script>
+<style id="bb17MobilePolishCss">
+/* BasketBoss v17.1 iPhone layout: scoped, non-destructive presentation-only patch.
+   Keep the original three-market selector and all shopping calculations intact. */
+#bb17RegionCard {
+  display: block !important;
+  width: 100% !important;
+  max-width: 100% !important;
+  box-sizing: border-box !important;
+  margin: 14px 0 20px !important;
+  padding: 14px 16px !important;
+  color: #28445b !important;
+  background: linear-gradient(135deg,#f6faff,#eef6fb) !important;
+  border: 1px solid #c6d9e8 !important;
+  border-left: 4px solid #3979a7 !important;
+  border-radius: 16px !important;
+  box-shadow: 0 5px 16px rgba(43,91,126,.08) !important;
+  line-height: 1.4 !important;
+}
+#bb17RegionCard .bb17-region-top {
+  display: flex !important;
+  flex-flow: row wrap !important;
+  gap: 10px 16px !important;
+  align-items: center !important;
+  justify-content: space-between !important;
+}
+#bb17RegionCard .bb17-region-title {
+  display: block !important;
+  font-size: 14px !important;
+  font-weight: 850 !important;
+  color: #24506f !important;
+}
+#bb17RegionCard .bb17-region-select-label {
+  display: inline-flex !important;
+  align-items: center !important;
+  gap: 9px !important;
+  flex-wrap: wrap !important;
+  font-size: 13px !important;
+  font-weight: 700 !important;
+  color: #385e78 !important;
+  max-width: 100% !important;
+}
+#bb17RegionCard #bb307Island {
+  display: inline-block !important;
+  font: 700 16px/1.2 system-ui,sans-serif !important;
+  min-height: 44px !important;
+  max-width: 100% !important;
+  padding: 9px 32px 9px 13px !important;
+  color: #193f5b !important;
+  background: #fff !important;
+  border: 1.5px solid #9bbcd5 !important;
+  border-radius: 11px !important;
+  box-sizing: border-box !important;
+  touch-action: manipulation;
+}
+#bb17RegionCard #bb307Island:focus-visible {outline:3px solid #f5bc5c !important;outline-offset:2px !important}
+#bb17RegionCard .bb17-price-disclaimer {
+  display: block !important;
+  margin-top: 9px !important;
+  font-size: 12px !important;
+  color: #516a7c !important;
+}
+#bb17RegionCard .bb17-price-details {margin-top: 5px;color:#475f71;font-size:12px}
+#bb17RegionCard .bb17-price-details summary {
+  cursor: pointer;
+  font-size: 12px;
+  font-weight: 700;
+  color: #35688c;
+  padding: 4px 0;
+}
+#bb17RegionCard .bb17-price-details > span {display:block;font-size:12px;line-height:1.55;margin-top:4px;color:#4b6374}
+@media (max-width:700px) {
+  /* iOS standalone app: do not put notice/header under 19:19 and phone icons. */
+  body {padding-top:env(safe-area-inset-top,0px) !important}
+  .shell > header.top {top:env(safe-area-inset-top,0px) !important}
+  #bb17RegionCard {margin:12px 0 15px!important;padding:12px 13px!important}
+  #bb17RegionCard .bb17-region-top {flex-direction:column!important;align-items:stretch!important;gap:8px!important}
+  #bb17RegionCard .bb17-region-select-label {justify-content:space-between!important}
+  #bb17RegionCard #bb307Island {min-width:126px!important}
+  /* Override legacy 4-button full-width nav and newer 5-button nav equally.
+     A centred floating dock uses symmetric margins and a fixed 5-column grid. */
+  .shell .tabs {
+    position:fixed!important;
+    z-index:90!important;
+    left:50%!important;
+    right:auto!important;
+    bottom:calc(8px + env(safe-area-inset-bottom,0px))!important;
+    transform:translateX(-50%)!important;
+    display:grid!important;
+    grid-template-columns:repeat(5,minmax(0,1fr))!important;
+    justify-content:center!important;
+    justify-items:stretch!important;
+    align-items:stretch!important;
+    width:calc(100% - 24px)!important;
+    max-width:640px!important;
+    margin:0!important;
+    padding:7px!important;
+    gap:clamp(4px,1.15vw,9px)!important;
+    box-sizing:border-box!important;
+    overflow:visible!important;
+    border:1px solid #d9e2eb!important;
+    border-radius:18px!important;
+    background:rgba(247,250,252,.97)!important;
+    box-shadow:0 8px 30px rgba(17,49,74,.22)!important;
+    -webkit-backdrop-filter:blur(18px)!important;
+    backdrop-filter:blur(18px)!important;
+  }
+  .shell .tabs > .tab {
+    display:flex!important;
+    flex-direction:column!important;
+    align-items:center!important;
+    justify-content:center!important;
+    gap:4px!important;
+    width:100%!important;
+    min-width:0!important;
+    max-width:100%!important;
+    min-height:66px!important;
+    padding:8px 2px!important;
+    box-sizing:border-box!important;
+    border-radius:12px!important;
+    white-space:normal!important;
+    text-align:center!important;
+    line-height:1.2!important;
+  }
+  .shell .tabs .tab .nav-label {
+    display:block!important;
+    max-width:100%!important;
+    font-size:clamp(9px,2.45vw,12px)!important;
+    line-height:1.15!important;
+    font-weight:850!important;
+    overflow-wrap:normal!important;
+    white-space:nowrap!important;
+  }
+  .shell .tabs .tab .nav-icon {display:flex!important;align-items:center!important;justify-content:center!important;min-height:22px!important}
+  .shell .tabs .tab svg {max-width:24px!important;max-height:24px!important}
+  .shell {padding-bottom:calc(110px + env(safe-area-inset-bottom,0px))!important}
+}
+@media (min-width:701px) {
+  .shell .tabs {max-width:1000px!important;margin-left:auto!important;margin-right:auto!important;justify-content:center!important}
+}
+@media (prefers-reduced-motion:reduce) {
+  .shell .tabs, .shell .tabs .tab {transition:none!important}
+}
+
+</style>
+<script id="bb17MobilePolishJs">
+/* BasketBoss v17.1: relocate ONLY the existing region banner, preserving its select
+   element, ID and existing onchange handler / local-storage island preference. */
+(function(){
+  'use strict';
+  function mount(){
+    const select=document.getElementById('bb307Island');
+    const header=document.querySelector('.shell > header.top');
+    if(!select||!header)return;
+    const original=select.closest('div[role="note"]');
+    if(!original||original.id==='bb17RegionCard')return;
+    const label=select.closest('label');
+    const originalHeading=original.querySelector('strong');
+    const disclaimer=original.querySelector('span');
+    if(!label||!originalHeading||!disclaimer)return;
+    original.id='bb17RegionCard';
+    original.setAttribute('aria-label','Shopping region and approximate pricing');
+    originalHeading.textContent='Your shopping region';
+    originalHeading.classList.add('bb17-region-title');
+    label.classList.add('bb17-region-select-label');
+    label.firstChild && label.firstChild.nodeType===3 && (label.firstChild.textContent='Estimated region ');
+    const bar=document.createElement('div');
+    bar.className='bb17-region-top';
+    bar.appendChild(originalHeading);
+    bar.appendChild(label);
+    original.prepend(bar);
+    const brief=document.createElement('div');
+    brief.className='bb17-price-disclaimer';
+    brief.textContent='Approximate prices only · Not live retailer quotes';
+    original.appendChild(brief);
+    const details=document.createElement('details');
+    details.className='bb17-price-details';
+    const summary=document.createElement('summary');
+    summary.textContent='How prices are estimated and allergen guidance';
+    details.appendChild(summary);
+    details.appendChild(disclaimer);
+    original.appendChild(details);
+    header.insertAdjacentElement('afterend',original);
+    /* No new select element was created: keep the same browser event listeners. */
+    if(typeof window.bb307ActiveMarket==='function'){
+      const region=window.bb307ActiveMarket();
+      if(['Jersey','Guernsey','UK'].includes(region))select.value=region;
+    }
+  }
+  if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',mount,{once:true});
+  else mount();
+})();
+
+</script>
 </head>
 <body>
 <div role="note" style="font:12px/1.5 system-ui;background:#fff7e2;color:#493b29;padding:10px 16px;border-bottom:1px solid #ead9b3;display:flex;align-items:center;gap:12px;flex-wrap:wrap"><strong>BasketBoss · weekly shopping</strong><label>Estimated region <select id="bb307Island" aria-label="Estimated region" onchange="window.bb307SwitchIsland(this.value)" style="font:inherit;padding:4px"><option>Jersey</option><option>Guernsey</option><option>UK</option></select></label><span>Approx. Est. £ only · UK-based indicative recipe costs adjusted for the selected region; not verified retailer prices or live quotes · check allergens</span></div><script>document.addEventListener('DOMContentLoaded',function(){const sel=document.getElementById('bb307Island');if(sel && window.bb307ActiveMarket)sel.value=window.bb307ActiveMarket();});</script><div class="shell">
