@@ -1,0 +1,55 @@
+/* BasketBoss v17.3 — cupboard/fridge thumbnail parity, warm brand colors. */
+/* The cupboard staples remain clickable in exactly the same way; only their structure changes. */
+#app #bb172StaplesPanel {
+  background:#fbfaf5;
+  border:1px solid #dce7d7;
+  border-radius:20px;
+  box-shadow:0 4px 15px rgba(27,67,55,.05);
+}
+#app #bb172StaplesPanel .bb172-quick-head h3{color:#195c41;font-size:clamp(19px,2vw,25px)}
+#app #bb172StaplesPanel .bb172-quick-head p{color:#587064;font-size:13px}
+#app #bb172StaplesPanel .bb172-staple-grid{
+  display:grid!important;
+  grid-template-columns:repeat(8,minmax(0,1fr))!important;
+  gap:9px!important;
+  margin:13px 0!important;
+  align-items:stretch;
+}
+#app #bb172StaplesPanel .bb173-cupboard-food-tile{
+  display:flex!important;flex-direction:column;align-items:center;justify-content:center;
+  gap:5px;box-sizing:border-box;min-width:0;min-height:108px;width:100%!important;
+  padding:10px 6px!important;
+  border:1px solid #d7e3da!important;border-radius:14px!important;
+  background:#fffefa!important;color:#173b32!important;
+  font:750 12px/1.24 system-ui,-apple-system,'Segoe UI',sans-serif!important;
+  text-align:center!important;white-space:normal;overflow-wrap:anywhere;
+  cursor:pointer;touch-action:manipulation;
+  transition:background-color .16s,border-color .16s,box-shadow .16s;
+}
+#app #bb172StaplesPanel .bb173-cupboard-food-tile[aria-pressed="true"]{
+  background:#e5f1e6!important;border:2px solid #2e6f40!important;
+  color:#173b32!important;box-shadow:0 2px 9px #2e6f4014;
+}
+#app #bb172StaplesPanel .bb173-cupboard-food-tile:focus-visible{
+  outline:3px solid #e0b143!important;outline-offset:2px;
+}
+#app #bb172StaplesPanel .bb173-cupboard-tile-art{
+  display:grid;place-items:center;width:46px;height:46px;
+  border-radius:11px;background:#f3f7ef;font-size:27px;line-height:1;
+  flex:none;
+}
+#app #bb172StaplesPanel .bb173-cupboard-tile-label{
+  display:block;max-width:100%;font-size:12px;font-weight:800;line-height:1.2;
+}
+#app #bb172StaplesPanel .bb173-cupboard-tile-state{
+  display:block;color:#587163;font-size:10px;font-weight:700;line-height:1.2;
+}
+#app #bb172StaplesPanel .bb173-cupboard-food-tile[aria-pressed="true"] .bb173-cupboard-tile-state{color:#216847}
+@media(max-width:1100px){#app #bb172StaplesPanel .bb172-staple-grid{grid-template-columns:repeat(6,minmax(0,1fr))!important}}
+@media(max-width:780px){#app #bb172StaplesPanel .bb172-staple-grid{grid-template-columns:repeat(4,minmax(0,1fr))!important}}
+@media(max-width:500px){
+  #app #bb172StaplesPanel .bb172-staple-grid{grid-template-columns:repeat(3,minmax(0,1fr))!important;gap:7px!important}
+  #app #bb172StaplesPanel .bb173-cupboard-food-tile{min-height:102px;padding:8px 4px!important}
+  #app #bb172StaplesPanel .bb173-cupboard-tile-art{width:43px;height:43px;font-size:25px}
+}
+@media(prefers-reduced-motion:reduce){#app #bb172StaplesPanel .bb173-cupboard-food-tile{transition:none}}

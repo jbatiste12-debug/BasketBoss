@@ -1,0 +1,75 @@
+/* BB-BETA-FIVE-20261025 — five-issue QA patch; desktop + iPhone. */
+.bb-beta-surplus-badge{display:inline-flex;align-items:center;width:fit-content;max-width:100%;white-space:normal;background:#e6f6e9!important;color:#175e38!important;border:1px solid #bbdfc3!important;border-radius:99px!important;padding:5px 9px!important;font-size:12px!important;font-weight:750!important;line-height:1.35!important}
+.bb-beta-surplus-line{display:flex;flex-direction:column;gap:6px;border-bottom:1px solid #e3ece6;padding:13px 8px;min-width:0}
+.bb-beta-surplus-line small{color:#4c6559}
+.bb-beta-surplus-title{font-size:21px;color:#174c33;margin:12px 0 4px}
+.bb-beta-surplus-explain{font-size:13px;line-height:1.5;color:#486454;max-width:70ch}
+.bbcompact-drawer .bb-beta-surplus-badge{margin:7px 0}
+#app.bbnext-plan .bbnext-day-toggle{display:flex!important;align-items:center!important;gap:10px!important;min-width:0!important}
+#app.bbnext-plan .bb-beta-day-thumb{width:44px!important;height:44px!important;min-width:44px!important;flex:0 0 44px!important;object-fit:cover!important;border-radius:11px!important;background:#e9f2e9!important;border:1px solid #d8e6dc!important}
+#app.bbnext-plan .bbnext-day-description{flex:1 1 auto!important;min-width:0!important}
+#app.bbnext-plan .bbnext-day-description strong{overflow-wrap:anywhere}
+/* One continuous glass dock; override the older five separate bordered tiles. */
+body:not(.bb172-storefront-visible) .shell nav.tabs,
+body:not(.bb172-storefront-visible) nav.bb-r6-cook-nav,
+body:not(.bb172-storefront-visible) nav[data-bb-beta-dock="1"]{
+ position:fixed!important;left:50%!important;right:auto!important;bottom:max(10px,env(safe-area-inset-bottom,0px))!important;
+ transform:translateX(-50%)!important;display:flex!important;align-items:stretch!important;justify-content:space-between!important;
+ width:min(680px,calc(100% - 20px))!important;max-width:680px!important;min-height:65px!important;
+ padding:6px!important;margin:0!important;gap:3px!important;
+ background:rgba(250,255,251,.92)!important;backdrop-filter:blur(18px)!important;-webkit-backdrop-filter:blur(18px)!important;
+ border:1px solid rgba(50,112,70,.18)!important;border-radius:24px!important;
+ box-shadow:0 12px 32px rgba(20,65,42,.2)!important;z-index:9990!important;box-sizing:border-box!important;
+}
+body:not(.bb172-storefront-visible) .shell nav.tabs > *,
+body:not(.bb172-storefront-visible) nav.bb-r6-cook-nav > *,
+body:not(.bb172-storefront-visible) nav[data-bb-beta-dock="1"] > *{
+ flex:1 1 0!important;min-width:0!important;width:auto!important;max-width:none!important;
+ display:flex!important;flex-direction:column!important;align-items:center!important;justify-content:center!important;
+ border:none!important;outline-offset:2px!important;border-radius:18px!important;
+ background:transparent!important;box-shadow:none!important;color:#24543b!important;
+ padding:7px 2px!important;gap:3px!important;min-height:54px!important;text-decoration:none!important;
+}
+body:not(.bb172-storefront-visible) .shell nav.tabs > .active,
+body:not(.bb172-storefront-visible) .shell nav.tabs > [aria-current="page"],
+body:not(.bb172-storefront-visible) nav.bb-r6-cook-nav > .active,
+body:not(.bb172-storefront-visible) nav.bb-r6-cook-nav > [aria-current="page"],
+body:not(.bb172-storefront-visible) nav[data-bb-beta-dock="1"] > .active,
+body:not(.bb172-storefront-visible) nav[data-bb-beta-dock="1"] > [aria-current="page"]{
+ background:#187646!important;color:#fff!important;box-shadow:0 3px 10px rgba(16,95,48,.25)!important;
+}
+body:not(.bb172-storefront-visible) nav.tabs > .active *,
+body:not(.bb172-storefront-visible) nav.tabs > [aria-current="page"] *,
+body:not(.bb172-storefront-visible) nav.bb-r6-cook-nav > .active *,
+body:not(.bb172-storefront-visible) nav.bb-r6-cook-nav > [aria-current="page"] *,
+body:not(.bb172-storefront-visible) nav[data-bb-beta-dock="1"] > .active *,
+body:not(.bb172-storefront-visible) nav[data-bb-beta-dock="1"] > [aria-current="page"] *{color:#fff!important;stroke:#fff!important}
+body:not(.bb172-storefront-visible) nav.tabs svg,
+body:not(.bb172-storefront-visible) nav.bb-r6-cook-nav svg,
+body:not(.bb172-storefront-visible) nav[data-bb-beta-dock="1"] svg{width:22px!important;height:22px!important;display:block!important;visibility:visible!important;opacity:1!important;stroke:currentColor!important;fill:none!important}
+body:not(.bb172-storefront-visible) nav.tabs svg *,
+body:not(.bb172-storefront-visible) nav.bb-r6-cook-nav svg *,
+body:not(.bb172-storefront-visible) nav[data-bb-beta-dock="1"] svg *{stroke:currentColor!important}
+body:not(.bb172-storefront-visible) nav.tabs .nav-icon,
+body:not(.bb172-storefront-visible) nav.bb-r6-cook-nav .nav-icon{display:flex!important;align-items:center!important;justify-content:center!important;min-height:22px!important}
+body:not(.bb172-storefront-visible) .shell{padding-bottom:calc(105px + env(safe-area-inset-bottom,0px))!important}
+.bb-beta-replay{display:inline-flex;gap:6px;align-items:center;padding:9px 12px;border:1px solid #bed8c5;border-radius:12px;background:#eff8f1;color:#155b38;font-weight:750;cursor:pointer}
+@media(max-width:480px){#app.bbnext-plan .bb-beta-day-thumb{width:44px!important;height:44px!important;min-width:44px!important;flex-basis:44px!important}body:not(.bb172-storefront-visible) .shell nav.tabs,body:not(.bb172-storefront-visible) nav.bb-r6-cook-nav{width:calc(100% - 12px)!important;bottom:max(6px,env(safe-area-inset-bottom,0px))!important;padding:5px!important}body:not(.bb172-storefront-visible) nav.tabs > *,body:not(.bb172-storefront-visible) nav.bb-r6-cook-nav > *{font-size:10px!important}}
+
+/* QA release refinement: prevent nested nav tiles from restoring individual box borders. */
+body:not(.bb172-storefront-visible) nav[data-bb-beta-dock="1"] > button,
+body:not(.bb172-storefront-visible) nav[data-bb-beta-dock="1"] > a,
+body:not(.bb172-storefront-visible) .shell nav.tabs > button,
+body:not(.bb172-storefront-visible) .shell nav.tabs > a{
+ border:0!important;border-top:0!important;border-right:0!important;border-bottom:0!important;border-left:0!important;
+ outline-color:#1d7146!important;
+}
+body:not(.bb172-storefront-visible) nav[data-bb-beta-dock="1"] > .active,
+body:not(.bb172-storefront-visible) nav[data-bb-beta-dock="1"] > [aria-selected="true"],
+body:not(.bb172-storefront-visible) .shell nav.tabs > [aria-selected="true"]{
+ background:#187646!important;color:#fff!important;
+}
+body:not(.bb172-storefront-visible) nav[data-bb-beta-dock="1"] > [aria-selected="true"] svg,
+body:not(.bb172-storefront-visible) .shell nav.tabs > [aria-selected="true"] svg{
+ color:#fff!important;stroke:#fff!important;
+}

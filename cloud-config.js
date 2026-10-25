@@ -1,6 +1,3 @@
-// Replace both values using Supabase Project Settings > API.
-// Publishable / anon key only. NEVER use a service_role or secret key here.
-window.BASKETBOSS_CLOUD_CONFIG = {
-  url: "https://YOUR_PROJECT.supabase.co",
-  anonKey: "YOUR_SUPABASE_PUBLISHABLE_OR_ANON_KEY"
-};
+// Public safe default: cloud login/sync remains disabled until separately configured.
+// Only publishable/anon credentials may ever go in a browser config; NEVER a service_role key.
+window.BASKETBOSS_CLOUD_CONFIG = { url: 'https://kbhyosxuvlcazyzzinqv.supabase.co', anonKey: 'sb_publishable_HT0rR8JaTUBSkiVweGojcA_wzd11Ufq' };

@@ -1,25 +1,25 @@
 {
-  "name": "BasketBoss \u2014 Your Weekly Meal Planner",
+  "id": "./index.html",
+  "name": "BasketBoss",
   "short_name": "BasketBoss",
-  "description": "Swipe, save and plan meals with 159 recipes.",
+  "description": "BasketBoss Beta — meal planning, shopping and less food waste.",
   "start_url": "./index.html",
   "scope": "./",
   "display": "standalone",
-  "background_color": "#0b1222",
-  "theme_color": "#2563eb",
-  "orientation": "any",
+  "background_color": "#E9ECEF",
+  "theme_color": "#E9ECEF",
   "icons": [
     {
-      "src": "./icons/icon-192.png",
+      "src": "icons/basketboss-crowned-v1766-192.png",
       "sizes": "192x192",
       "type": "image/png",
-      "purpose": "any maskable"
+      "purpose": "any"
     },
     {
-      "src": "./icons/icon-512.png",
+      "src": "icons/basketboss-crowned-v1766-512.png",
       "sizes": "512x512",
       "type": "image/png",
-      "purpose": "any maskable"
+      "purpose": "any"
     }
   ]
 }

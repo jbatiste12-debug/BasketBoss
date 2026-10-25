@@ -1,0 +1,53 @@
+/* BasketBoss Premium — preview-only upsell modal */
+.bb-action-card { position:relative; }
+.bb-premium-tag {
+  display:inline-flex; width:max-content; align-items:center; gap:.35rem;
+  padding:.28rem .65rem; margin-top:.2rem; border-radius:100px;
+  background:rgba(255,245,197,.16); border:1px solid rgba(255,237,153,.52);
+  color:#fff6c8; font-size:.77rem; font-weight:800; letter-spacing:.02em;
+}
+.bb-premium-dialog {
+  box-sizing:border-box; width:min(94vw,560px); max-height:min(90dvh,800px);
+  padding:0; border:1px solid #dde7e0; border-radius:24px;
+  box-shadow:0 24px 90px rgba(0,25,22,.32);
+  background:#fffefa; color:#17382d; overflow:auto;
+}
+.bb-premium-dialog::backdrop { background:rgba(3,20,15,.72); backdrop-filter:blur(4px); }
+.bb-upgrade-head {
+  position:relative; padding:24px 26px 22px; color:white;
+  background:linear-gradient(135deg,#124b39 0%,#217456 70%,#0c3028 100%);
+}
+.bb-upgrade-head .bb-premium-small {color:#d7f6d8; font-size:.72rem; font-weight:800; letter-spacing:.095em;}
+.bb-upgrade-head h2 { color:#fff; font-size:clamp(1.55rem,4vw,2.1rem); line-height:1.17; margin:12px 0 8px; }
+.bb-upgrade-head p {color:#e8f9ef; line-height:1.5; margin:0; max-width:42ch;}
+.bb-upgrade-close {
+  position:absolute;right:15px;top:15px;border-radius:50%;height:36px;width:36px;
+  font-size:24px;line-height:1;border:1px solid rgba(255,255,255,.5);
+  color:white;background:rgba(0,0,0,.18);cursor:pointer;
+}
+.bb-upgrade-close:focus-visible,.bb-upgrade-plan:focus-visible,.bb-upgrade-free:focus-visible {outline:3px solid #f8c94f;outline-offset:3px;}
+.bb-upgrade-body {padding:24px 26px 27px;}
+.bb-upgrade-intro {margin:0 0 16px;color:#365448;font-size:.96rem;line-height:1.5;}
+.bb-upgrade-plans {display:grid;grid-template-columns:1fr 1fr;gap:12px;}
+.bb-upgrade-plan {
+  display:flex;flex-direction:column;gap:8px;min-width:0;text-decoration:none;
+  background:#f3f7f2;color:#143e30;border:1px solid #bed5c7;
+  padding:17px 14px;border-radius:17px;
+}
+.bb-upgrade-plan strong {font-size:.96rem;}
+.bb-upgrade-plan .bb-price {font-weight:850;font-size:1.78rem;line-height:1.1;}
+.bb-upgrade-plan small{font-size:.73rem;line-height:1.4;color:#315c4a;}
+.bb-upgrade-plan b:last-child{font-size:.8rem;display:flex;align-items:center;gap:5px;margin-top:auto;}
+.bb-upgrade-plan.annual {background:#fff7e0;border-color:#e4c35d;color:#3d3211;}
+.bb-upgrade-plan.annual small {color:#66551b;}
+.bb-upgrade-plan:hover{transform:translateY(-2px);box-shadow:0 8px 20px rgba(20,64,43,.12);}
+.bb-upgrade-note{background:#faf7ef;border-left:3px solid #d8ac30;border-radius:8px;padding:12px;margin:16px 0;color:#584b31;font-size:.79rem;line-height:1.55;}
+.bb-upgrade-free{display:block;width:100%;background:transparent;border:1px solid #a2bdb0;color:#15543b;padding:11px 14px;border-radius:12px;font-weight:800;cursor:pointer;}
+.bb-upgrade-meta{text-align:center;font-size:.73rem;color:#52675e;margin:10px 0 0;}
+@media(max-width:460px){
+  .bb-upgrade-head{padding:21px 18px 17px}.bb-upgrade-body{padding:19px 17px 20px}
+  .bb-upgrade-plans{gap:8px}.bb-upgrade-plan{padding:12px 9px;gap:7px}
+  .bb-upgrade-plan .bb-price{font-size:1.52rem}
+  .bb-upgrade-head h2{padding-right:18px}
+}
+@media(prefers-reduced-motion:reduce){.bb-upgrade-plan:hover{transform:none}.bb-premium-dialog::backdrop{backdrop-filter:none}}

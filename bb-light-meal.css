@@ -1,0 +1,73 @@
+/* BasketBoss v17.3 -- Make a Meal light visual refresh.
+ * Visual-only: no change to inventory, scanning, recipes or payment security.
+ */
+.bb-meal-dashboard {
+  --bb-forest:#1e5d42; --bb-sage:#eef6ed; --bb-gold:#efc14e;
+  --bb-cream:#fcfaf4; --bb-copy:#244638; --bb-border:#d5e4d7;
+  background:linear-gradient(155deg,#f5faf4 0%,#fffdf8 60%,#f8f5eb 100%);
+  color:var(--bb-copy);border:1px solid #d7e7d9;
+  box-shadow:0 14px 42px rgba(30,83,56,.10);
+}
+.bb-dashboard-heading h1{color:#174e38}
+.bb-dashboard-heading p:last-child{color:#557061}
+.bb-dashboard-heading strong{color:#204b35}
+.bb-kicker{color:#2f8455}
+.bb-action-grid{gap:clamp(10px,2vw,18px)}
+.bb-action-card{border-radius:23px;box-shadow:0 10px 25px rgba(35,75,50,.08)}
+.bb-action-scan{background:linear-gradient(135deg,#297c52 0%,#18583f 90%);border:1px solid #6aab83;color:#fff}
+.bb-action-meal{background:linear-gradient(130deg,#ffe9b0 0%,#f6cb69 95%);border:1px solid #e7ba4d;color:#244536}
+.bb-action-scan .bb-action-desc{color:#ecfaee}
+.bb-action-meal .bb-action-desc{color:#5e4e28}
+.bb-action-meal .bb-action-icon{color:#396745}
+.bb-action-meal .bb-action-arrow{color:#214b35;background:#ffffff90;border-color:#d6a83c}
+.bb-action-scan .bb-action-arrow{background:#ffffff24;border-color:#e8fae474}
+.bb-action-meal .bb-action-art{opacity:.12}
+.bb-action-card:hover,.bb-action-card:focus-visible{box-shadow:0 14px 32px rgba(31,82,54,.18)}
+.bb-action-card[aria-expanded="true"]{outline:3px solid #cb9940;outline-offset:3px}
+.bb-photo-list{background:#fff;border:1px solid var(--bb-border);box-shadow:0 6px 20px rgba(30,83,56,.045);border-radius:21px;padding:19px}
+.bb-photo-heading h2{color:#214e39}
+.bb-small-count{background:#e7f4e8;border-color:#cbe1ce;color:#216442}
+.bb-list-hint{color:#607668}
+.bb-ingredient-strip{gap:11px;scrollbar-color:#b5d2be #f0f5ee;min-height:152px;padding:2px 2px 10px}
+.bb-mini-tile{flex:0 0 118px;background:#fff;border:1px solid #d9e5d9;border-radius:17px;min-height:162px;box-shadow:0 3px 10px rgba(22,79,49,.06)}
+.bb-mini-tile:hover,.bb-mini-tile:focus-within{border-color:#82bc94;box-shadow:0 6px 15px rgba(25,102,60,.12)}
+.bb-mini-focus{padding:9px 7px 12px;color:#234738;min-height:159px;gap:7px;justify-content:flex-start;font-size:12.5px;font-weight:800}
+/* Every item gets exactly the same 94px square illustration/photo area. */
+.bb-mini-image{height:94px;width:94px;max-width:100%;aspect-ratio:1/1;flex-shrink:0;margin-inline:auto;display:grid;place-items:center;border-radius:13px;background:#f7f3e8;border:1px solid #efe8d8;overflow:hidden}
+.bb-mini-image .bb-food-photo{width:100%;height:100%;max-height:none;object-fit:contain;padding:4px;border-radius:11px;display:block}
+.bb-food-fallback{display:grid;place-items:center;width:100%;height:100%;background:radial-gradient(circle at 55% 28%,#fffef6 0%,#f2efdf 100%)}
+.bb-mini-image .bb-food-emoji{font-size:46px;line-height:1;display:block;filter:drop-shadow(0 2px 1px #aebda242)}
+.bb-mini-name{display:-webkit-box;-webkit-box-orient:vertical;-webkit-line-clamp:2;line-clamp:2;overflow:hidden;line-height:1.22;color:#234b37;max-width:100%;min-height:30px;overflow-wrap:anywhere;text-align:center}
+.bb-mini-group-count{position:absolute;left:6px;top:6px;padding:2px 6px;background:#eff8ef;border:1px solid #bed8bf;color:#215c3d;border-radius:999px;font-size:10px;font-weight:900;box-shadow:0 1px 4px #173c2f15}
+.bb-mini-remove{background:#fff;color:#425d4e;border:1px solid #c6dbce;width:25px;height:25px;box-shadow:0 2px 5px #173c2f18;z-index:1}
+.bb-mini-remove:hover{background:#fff1ef;color:#a43f35;border-color:#e6b1ad}
+.bb-strip-empty{min-height:118px;color:#657f70;background:#f8fbf7;border:1px dashed #c3d7c9}
+.bb-dashboard-note{color:#557260}
+.bb-dashboard-note a{color:#276a48}
+.bb-tool-stage{background:#f4f8f2;border:1px solid #c6dbca;box-shadow:inset 0 1px 0 #fff;border-radius:19px}
+.bb-tool-close{background:#fff;color:#2b6346;border:1px solid #b9d6c2}
+.bb-tool-close:hover{background:#e8f5ea}
+.bb-drawer{background:#fff;border:1px solid #d2e5d8;color:#264d38;box-shadow:0 4px 12px #1d533610}
+.bb-drawer>summary{background:#f0f7ef;color:#235337}
+.bb-drawer>summary:after{color:#2b764a}
+.bb-drawer[open]>summary{border-bottom:1px solid #d6e6d9}
+.bb-inline-section{background:#fffefa}
+/* Give picker tiles the same consistent photo / illustration language. */
+.bb-tile-image{width:min(88px,100%);height:74px;aspect-ratio:1.18/1;background:#f7f3e8;border:1px solid #efe8d8;border-radius:12px;display:grid;place-items:center;overflow:hidden}
+.bb-tile-image .bb-food-photo{max-height:none;width:100%;height:100%;object-fit:contain;padding:3px}
+.bb-tile-image .bb-food-fallback{border-radius:10px}
+.bb-tile-image .bb-food-emoji{font-size:36px;line-height:1}
+.tile{background:#fff;border-color:#d2e4d7;color:#24523c;min-height:132px}
+.tile[aria-pressed=true]{background:#eef9ee}
+@media(max-width:600px){
+ .bb-meal-dashboard{padding:12px;border-radius:20px}
+ .bb-action-card{min-height:244px}
+ .bb-photo-list{padding:14px 11px}
+ .bb-mini-tile{flex-basis:104px;min-height:150px}
+ .bb-mini-focus{min-height:146px;padding:7px 5px 10px}
+ .bb-mini-image{width:85px;height:85px}
+ .bb-mini-image .bb-food-emoji{font-size:41px}
+ .bb-ingredient-strip{min-height:142px;gap:9px}
+ .bb-tile-image{width:74px;height:68px}
+}
+@media(prefers-reduced-motion:reduce){.bb-meal-dashboard *{scroll-behavior:auto}}

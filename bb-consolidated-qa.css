@@ -1,0 +1,25 @@
+/* BB-QA-CONSOLIDATED-20261025-R1 — presentation-only supplemental polish.
+   Preserve existing navigation events, price maths and user state. */
+@media(max-width:700px){
+  .bb-day-photo{width:44px!important;height:44px!important;border-radius:11px!important;object-fit:cover!important}
+  .bb-planned-info{gap:10px!important;min-width:0!important}
+  .bb-planned-info strong{font-size:14px!important;line-height:1.3!important}
+  #bb321SchoolLunchbox .bb15-lunch-day{box-shadow:none!important;border:0!important;border-bottom:1px solid rgba(0,0,0,.06)!important;border-radius:0!important;background:transparent!important}
+  #bb321SchoolLunchbox .bb15-lunch-day:last-child{border-bottom:0!important}
+  .bb172-storefront-item.bbcompact-shop-row{contain:layout style}
+  .bb172-storefront-item.bbcompact-shop-row .bbcompact-main{min-height:52px}
+}
+@supports(backdrop-filter:blur(12px)){
+  @media(max-width:700px){
+    .bb15-bottom-nav,.bb-mobile-bottom-nav,.bb172-mobile-nav{backdrop-filter:blur(16px);-webkit-backdrop-filter:blur(16px)}
+  }
+}
+@media(prefers-reduced-motion:reduce){.bbcompact-drawer,.bbcompact-toggle{transition:none!important}}
+
+/* BB-BETA-QA-PHASE2: actual lunchbox DOM classes; earlier guessed selectors did not match. */
+#bb321SchoolLunchbox .bb15-lunch-day {border:0!important;border-bottom:1px solid rgba(29,78,55,.12)!important;border-radius:0!important;box-shadow:none!important;background:transparent!important;margin:0!important;padding:12px 4px!important}
+#bb321SchoolLunchbox .bb15-lunch-day:last-child {border-bottom:0!important}
+#bb321SchoolLunchbox .bb15-lunch-item {border:0!important;border-bottom:1px solid rgba(29,78,55,.08)!important;border-radius:0!important;box-shadow:none!important;background:transparent!important;padding:7px 3px!important}
+#bb321SchoolLunchbox .bb15-lunch-item:last-child {border-bottom:0!important}
+#bb172Storefront .bb77-pantry-row {border:0!important;border-bottom:1px solid rgba(29,78,55,.10)!important;border-radius:0!important;box-shadow:none!important;background:transparent!important}
+@media(max-width:700px){#bb321SchoolLunchbox .bb15-lunch-items{display:block!important}#bb321SchoolLunchbox .bb15-lunch-item{display:flex!important;gap:10px!important}}

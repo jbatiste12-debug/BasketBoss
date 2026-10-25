@@ -1,0 +1,3296 @@
+{
+  "metadata": {
+    "catalogue_entries": 583,
+    "recipes": 321,
+    "recipe_ingredient_lines": 2540,
+    "unique_ingredient_names": 655,
+    "review_required": 5,
+    "allowed_aisles": [
+      "Produce",
+      "Meat & Fish",
+      "Dairy & Chilled",
+      "Bakery",
+      "Cupboard / Pantry",
+      "Household & Other"
+    ],
+    "household_food_items": 0,
+    "description": "Name-based strict aisle suggestions. Uncertain names are flagged. Browser still honours existing non-household aisle preferences."
+  },
+  "ingredients": {
+    "apple": {
+      "aisle": "Produce",
+      "needs_review": false,
+      "reason": "produce"
+    },
+    "apple cider vinegar": {
+      "aisle": "Cupboard / Pantry",
+      "needs_review": false,
+      "reason": "cupboard_dry"
+    },
+    "apples": {
+      "aisle": "Produce",
+      "needs_review": false,
+      "reason": "produce"
+    },
+    "apples cored and cut into thick wedges": {
+      "aisle": "Produce",
+      "needs_review": false,
+      "reason": "produce"
+    },
+    "apples peeled and finely": {
+      "aisle": "Produce",
+      "needs_review": false,
+      "reason": "produce"
+    },
+    "asparagus": {
+      "aisle": "Produce",
+      "needs_review": false,
+      "reason": "produce"
+    },
+    "aubergines": {
+      "aisle": "Produce",
+      "needs_review": false,
+      "reason": "produce"
+    },
+    "avocado": {
+      "aisle": "Produce",
+      "needs_review": false,
+      "reason": "produce"
+    },
+    "baby potatoes": {
+      "aisle": "Produce",
+      "needs_review": false,
+      "reason": "produce"
+    },
+    "baby potatoes, halved": {
+      "aisle": "Produce",
+      "needs_review": false,
+      "reason": "produce"
+    },
+    "baby spinach": {
+      "aisle": "Produce",
+      "needs_review": false,
+      "reason": "produce"
+    },
+    "baby spinach finely": {
+      "aisle": "Produce",
+      "needs_review": false,
+      "reason": "produce"
+    },
+    "baguettes": {
+      "aisle": "Bakery",
+      "needs_review": false,
+      "reason": "bakery"
+    },
+    "baked beans": {
+      "aisle": "Cupboard / Pantry",
+      "needs_review": false,
+      "reason": "cupboard_dry"
+    },
+    "baking potato": {
+      "aisle": "Produce",
+      "needs_review": false,
+      "reason": "produce"
+    },
+    "Baking potatoes": {
+      "aisle": "Produce",
+      "needs_review": false,
+      "reason": "produce"
+    },
+    "baking potatoes (about 250 g each)": {
+      "aisle": "Produce",
+      "needs_review": false,
+      "reason": "produce"
+    },
+    "baking powder": {
+      "aisle": "Cupboard / Pantry",
+      "needs_review": false,
+      "reason": "cupboard_dry"
+    },
+    "balsamic vinegar": {
+      "aisle": "Cupboard / Pantry",
+      "needs_review": false,
+      "reason": "cupboard_dry"
+    },
+    "bananas": {
+      "aisle": "Produce",
+      "needs_review": false,
+      "reason": "produce"
+    },
+    "basil": {
+      "aisle": "Produce",
+      "needs_review": false,
+      "reason": "produce"
+    },
+    "basil pesto": {
+      "aisle": "Cupboard / Pantry",
+      "needs_review": false,
+      "reason": "cupboard_dry"
+    },
+    "basmati rice": {
+      "aisle": "Cupboard / Pantry",
+      "needs_review": false,
+      "reason": "cupboard_dry"
+    },
+    "bbq sauce": {
+      "aisle": "Cupboard / Pantry",
+      "needs_review": false,
+      "reason": "cupboard_dry"
+    },
+    "beef mince": {
+      "aisle": "Meat & Fish",
+      "needs_review": false,
+      "reason": "meat_fish"
+    },
+    "beef roasting joint": {
+      "aisle": "Meat & Fish",
+      "needs_review": false,
+      "reason": "meat_fish"
+    },
+    "beef steak": {
+      "aisle": "Meat & Fish",
+      "needs_review": false,
+      "reason": "meat_fish"
+    },
+    "beef stock": {
+      "aisle": "Cupboard / Pantry",
+      "needs_review": false,
+      "reason": "shelf_stable_exception"
+    },
+    "beef strips": {
+      "aisle": "Meat & Fish",
+      "needs_review": false,
+      "reason": "meat_fish"
+    },
+    "bell peppers": {
+      "aisle": "Produce",
+      "needs_review": false,
+      "reason": "produce"
+    },
+    "bell peppers halved and deseeded": {
+      "aisle": "Produce",
+      "needs_review": false,
+      "reason": "produce"
+    },
+    "bicarbonate of soda": {
+      "aisle": "Cupboard / Pantry",
+      "needs_review": false,
+      "reason": "cupboard_dry"
+    },
+    "black beans": {
+      "aisle": "Cupboard / Pantry",
+      "needs_review": false,
+      "reason": "cupboard_dry"
+    },
+    "blueberries": {
+      "aisle": "Produce",
+      "needs_review": false,
+      "reason": "produce"
+    },
+    "boiling low-salt vegetable stock": {
+      "aisle": "Cupboard / Pantry",
+      "needs_review": false,
+      "reason": "shelf_stable_exception"
+    },
+    "boneless chicken breast": {
+      "aisle": "Meat & Fish",
+      "needs_review": false,
+      "reason": "meat_fish"
+    },
+    "boneless chicken thighs": {
+      "aisle": "Meat & Fish",
+      "needs_review": false,
+      "reason": "meat_fish"
+    },
+    "boneless salmon fillets (about 120 g each), checked for bones": {
+      "aisle": "Meat & Fish",
+      "needs_review": false,
+      "reason": "meat_fish"
+    },
+    "boneless salmon fillets checked for bones": {
+      "aisle": "Meat & Fish",
+      "needs_review": false,
+      "reason": "meat_fish"
+    },
+    "boneless salmon portions (about 100–120 g each), checked for bones": {
+      "aisle": "Meat & Fish",
+      "needs_review": false,
+      "reason": "meat_fish"
+    },
+    "boneless salmon portions checked for bones": {
+      "aisle": "Meat & Fish",
+      "needs_review": false,
+      "reason": "meat_fish"
+    },
+    "boneless skinless chicken thighs": {
+      "aisle": "Meat & Fish",
+      "needs_review": false,
+      "reason": "meat_fish"
+    },
+    "bread": {
+      "aisle": "Bakery",
+      "needs_review": false,
+      "reason": "bakery"
+    },
+    "breadcrumbs": {
+      "aisle": "Cupboard / Pantry",
+      "needs_review": false,
+      "reason": "cupboard_dry"
+    },
+    "brioche buns": {
+      "aisle": "Bakery",
+      "needs_review": false,
+      "reason": "bakery"
+    },
+    "broccoli": {
+      "aisle": "Produce",
+      "needs_review": false,
+      "reason": "produce"
+    },
+    "broccoli finely": {
+      "aisle": "Produce",
+      "needs_review": false,
+      "reason": "produce"
+    },
+    "broccoli florets": {
+      "aisle": "Produce",
+      "needs_review": false,
+      "reason": "produce"
+    },
+    "broccoli head": {
+      "aisle": "Produce",
+      "needs_review": false,
+      "reason": "produce"
+    },
+    "broccoli head , in small florets": {
+      "aisle": "Produce",
+      "needs_review": false,
+      "reason": "produce"
+    },
+    "broccoli head (about 300 g florets)": {
+      "aisle": "Produce",
+      "needs_review": false,
+      "reason": "produce"
+    },
+    "broccoli head florets": {
+      "aisle": "Produce",
+      "needs_review": false,
+      "reason": "produce"
+    },
+    "bulgur wheat": {
+      "aisle": "Cupboard / Pantry",
+      "needs_review": false,
+      "reason": "cupboard_dry"
+    },
+    "burrata": {
+      "aisle": "Dairy & Chilled",
+      "needs_review": false,
+      "reason": "dairy_chilled"
+    },
+    "butter": {
+      "aisle": "Dairy & Chilled",
+      "needs_review": false,
+      "reason": "dairy_chilled"
+    },
+    "butter beans": {
+      "aisle": "Cupboard / Pantry",
+      "needs_review": false,
+      "reason": "shelf_stable_exception"
+    },
+    "butter for dish": {
+      "aisle": "Dairy & Chilled",
+      "needs_review": false,
+      "reason": "dairy_chilled"
+    },
+    "butterbeans": {
+      "aisle": "Cupboard / Pantry",
+      "needs_review": false,
+      "reason": "cupboard_dry"
+    },
+    "butternut squash": {
+      "aisle": "Produce",
+      "needs_review": false,
+      "reason": "produce"
+    },
+    "butternut squash small": {
+      "aisle": "Produce",
+      "needs_review": false,
+      "reason": "produce"
+    },
+    "cabbage": {
+      "aisle": "Produce",
+      "needs_review": false,
+      "reason": "produce"
+    },
+    "cabbage slaw": {
+      "aisle": "Produce",
+      "needs_review": false,
+      "reason": "produce"
+    },
+    "caesar dressing": {
+      "aisle": "Cupboard / Pantry",
+      "needs_review": false,
+      "reason": "cupboard_dry"
+    },
+    "canned mixed beans": {
+      "aisle": "Cupboard / Pantry",
+      "needs_review": false,
+      "reason": "preserved_food"
+    },
+    "cannellini beans": {
+      "aisle": "Cupboard / Pantry",
+      "needs_review": false,
+      "reason": "cupboard_dry"
+    },
+    "capers": {
+      "aisle": "Cupboard / Pantry",
+      "needs_review": false,
+      "reason": "cupboard_dry"
+    },
+    "carrot": {
+      "aisle": "Produce",
+      "needs_review": false,
+      "reason": "produce"
+    },
+    "carrot cut into matchsticks": {
+      "aisle": "Produce",
+      "needs_review": false,
+      "reason": "produce"
+    },
+    "carrot finely": {
+      "aisle": "Produce",
+      "needs_review": false,
+      "reason": "produce"
+    },
+    "carrot julienned": {
+      "aisle": "Produce",
+      "needs_review": false,
+      "reason": "produce"
+    },
+    "carrot, thinly sliced": {
+      "aisle": "Produce",
+      "needs_review": false,
+      "reason": "produce"
+    },
+    "carrots": {
+      "aisle": "Produce",
+      "needs_review": false,
+      "reason": "produce"
+    },
+    "carrots cut into batons": {
+      "aisle": "Produce",
+      "needs_review": false,
+      "reason": "produce"
+    },
+    "carrots cut into matchsticks": {
+      "aisle": "Produce",
+      "needs_review": false,
+      "reason": "produce"
+    },
+    "carrots cut into sticks": {
+      "aisle": "Produce",
+      "needs_review": false,
+      "reason": "produce"
+    },
+    "carrots, thickly sliced": {
+      "aisle": "Produce",
+      "needs_review": false,
+      "reason": "produce"
+    },
+    "caster sugar": {
+      "aisle": "Cupboard / Pantry",
+      "needs_review": false,
+      "reason": "cupboard_dry"
+    },
+    "cauliflower": {
+      "aisle": "Produce",
+      "needs_review": false,
+      "reason": "produce"
+    },
+    "celery": {
+      "aisle": "Produce",
+      "needs_review": false,
+      "reason": "produce"
+    },
+    "celery sticks": {
+      "aisle": "Produce",
+      "needs_review": false,
+      "reason": "produce"
+    },
+    "cheddar": {
+      "aisle": "Dairy & Chilled",
+      "needs_review": false,
+      "reason": "dairy_chilled"
+    },
+    "cheese tortellini": {
+      "aisle": "Dairy & Chilled",
+      "needs_review": false,
+      "reason": "dairy_chilled"
+    },
+    "cherry tomatoes": {
+      "aisle": "Produce",
+      "needs_review": false,
+      "reason": "fresh_produce"
+    },
+    "cherry tomatoes, halved": {
+      "aisle": "Produce",
+      "needs_review": false,
+      "reason": "fresh_produce"
+    },
+    "chestnut mushrooms": {
+      "aisle": "Produce",
+      "needs_review": false,
+      "reason": "produce"
+    },
+    "chicken": {
+      "aisle": "Meat & Fish",
+      "needs_review": false,
+      "reason": "meat_fish"
+    },
+    "chicken breast": {
+      "aisle": "Meat & Fish",
+      "needs_review": false,
+      "reason": "meat_fish"
+    },
+    "chicken breast fillets": {
+      "aisle": "Meat & Fish",
+      "needs_review": false,
+      "reason": "meat_fish"
+    },
+    "chicken breast fillets (about 150 g each)": {
+      "aisle": "Meat & Fish",
+      "needs_review": false,
+      "reason": "meat_fish"
+    },
+    "chicken breast into even strips": {
+      "aisle": "Meat & Fish",
+      "needs_review": false,
+      "reason": "meat_fish"
+    },
+    "chicken breast sliced into small strips": {
+      "aisle": "Meat & Fish",
+      "needs_review": false,
+      "reason": "meat_fish"
+    },
+    "chicken breast sliced thinly": {
+      "aisle": "Meat & Fish",
+      "needs_review": false,
+      "reason": "meat_fish"
+    },
+    "chicken breast small": {
+      "aisle": "Meat & Fish",
+      "needs_review": false,
+      "reason": "meat_fish"
+    },
+    "chicken breast, thinly sliced": {
+      "aisle": "Meat & Fish",
+      "needs_review": false,
+      "reason": "meat_fish"
+    },
+    "chicken breasts": {
+      "aisle": "Meat & Fish",
+      "needs_review": false,
+      "reason": "meat_fish"
+    },
+    "chicken mince": {
+      "aisle": "Meat & Fish",
+      "needs_review": false,
+      "reason": "meat_fish"
+    },
+    "chicken stock": {
+      "aisle": "Cupboard / Pantry",
+      "needs_review": false,
+      "reason": "shelf_stable_exception"
+    },
+    "chicken thighs": {
+      "aisle": "Meat & Fish",
+      "needs_review": false,
+      "reason": "meat_fish"
+    },
+    "chicken wings": {
+      "aisle": "Meat & Fish",
+      "needs_review": false,
+      "reason": "meat_fish"
+    },
+    "chickpea": {
+      "aisle": "Cupboard / Pantry",
+      "needs_review": false,
+      "reason": "cupboard_dry"
+    },
+    "chickpeas": {
+      "aisle": "Cupboard / Pantry",
+      "needs_review": false,
+      "reason": "cupboard_dry"
+    },
+    "chilli": {
+      "aisle": "Produce",
+      "needs_review": false,
+      "reason": "produce"
+    },
+    "chilli flakes": {
+      "aisle": "Cupboard / Pantry",
+      "needs_review": false,
+      "reason": "cupboard_dry"
+    },
+    "chilli powder": {
+      "aisle": "Cupboard / Pantry",
+      "needs_review": false,
+      "reason": "cupboard_dry"
+    },
+    "Chinese five-spice powder": {
+      "aisle": "Cupboard / Pantry",
+      "needs_review": false,
+      "reason": "cupboard_dry"
+    },
+    "chives": {
+      "aisle": "Produce",
+      "needs_review": false,
+      "reason": "produce"
+    },
+    "chocolate chips": {
+      "aisle": "Cupboard / Pantry",
+      "needs_review": false,
+      "reason": "shelf_stable_exception"
+    },
+    "chopped parsley": {
+      "aisle": "Produce",
+      "needs_review": false,
+      "reason": "produce"
+    },
+    "chopped tomatoes": {
+      "aisle": "Cupboard / Pantry",
+      "needs_review": false,
+      "reason": "preserved_food"
+    },
+    "chopped tomatoes canned": {
+      "aisle": "Cupboard / Pantry",
+      "needs_review": false,
+      "reason": "preserved_food"
+    },
+    "Chopped walnuts": {
+      "aisle": "Cupboard / Pantry",
+      "needs_review": false,
+      "reason": "cupboard_dry"
+    },
+    "chorizo": {
+      "aisle": "Meat & Fish",
+      "needs_review": false,
+      "reason": "meat_fish"
+    },
+    "cinnamon": {
+      "aisle": "Cupboard / Pantry",
+      "needs_review": false,
+      "reason": "cupboard_dry"
+    },
+    "cocoa powder": {
+      "aisle": "Cupboard / Pantry",
+      "needs_review": false,
+      "reason": "cupboard_dry"
+    },
+    "coconut milk": {
+      "aisle": "Cupboard / Pantry",
+      "needs_review": false,
+      "reason": "shelf_stable_exception"
+    },
+    "cod fillets": {
+      "aisle": "Meat & Fish",
+      "needs_review": false,
+      "reason": "meat_fish"
+    },
+    "cod fillets (about 120–150 g each), boneless": {
+      "aisle": "Meat & Fish",
+      "needs_review": false,
+      "reason": "meat_fish"
+    },
+    "cod fillets boneless": {
+      "aisle": "Meat & Fish",
+      "needs_review": false,
+      "reason": "meat_fish"
+    },
+    "cold butter": {
+      "aisle": "Dairy & Chilled",
+      "needs_review": false,
+      "reason": "dairy_chilled"
+    },
+    "cold leftover mashed potato refrigerated promptly": {
+      "aisle": "Produce",
+      "needs_review": false,
+      "reason": "produce"
+    },
+    "cold mashed potato": {
+      "aisle": "Produce",
+      "needs_review": false,
+      "reason": "produce"
+    },
+    "coleslaw": {
+      "aisle": "Produce",
+      "needs_review": true,
+      "reason": "produce_guess_review"
+    },
+    "cooked beetroot": {
+      "aisle": "Produce",
+      "needs_review": false,
+      "reason": "produce"
+    },
+    "cooked broccoli": {
+      "aisle": "Produce",
+      "needs_review": false,
+      "reason": "produce"
+    },
+    "Cooked chicken": {
+      "aisle": "Meat & Fish",
+      "needs_review": false,
+      "reason": "meat_fish"
+    },
+    "cooked green lentils": {
+      "aisle": "Cupboard / Pantry",
+      "needs_review": false,
+      "reason": "cupboard_dry"
+    },
+    "cooked ham": {
+      "aisle": "Meat & Fish",
+      "needs_review": false,
+      "reason": "meat_fish"
+    },
+    "cooked leftover chicken": {
+      "aisle": "Meat & Fish",
+      "needs_review": false,
+      "reason": "meat_fish"
+    },
+    "cooked mashed potato": {
+      "aisle": "Produce",
+      "needs_review": false,
+      "reason": "produce"
+    },
+    "cooked rice": {
+      "aisle": "Cupboard / Pantry",
+      "needs_review": false,
+      "reason": "cupboard_dry"
+    },
+    "Cooked rice, freshly prepared or safely chilled": {
+      "aisle": "Cupboard / Pantry",
+      "needs_review": false,
+      "reason": "cupboard_dry"
+    },
+    "Cooked salmon (from 2 fillets)": {
+      "aisle": "Meat & Fish",
+      "needs_review": false,
+      "reason": "meat_fish"
+    },
+    "cooking apples": {
+      "aisle": "Produce",
+      "needs_review": false,
+      "reason": "produce"
+    },
+    "cooking oil": {
+      "aisle": "Cupboard / Pantry",
+      "needs_review": false,
+      "reason": "shelf_stable_exception"
+    },
+    "coriander": {
+      "aisle": "Produce",
+      "needs_review": false,
+      "reason": "produce"
+    },
+    "cornflakes": {
+      "aisle": "Cupboard / Pantry",
+      "needs_review": false,
+      "reason": "cupboard_dry"
+    },
+    "cornflour": {
+      "aisle": "Cupboard / Pantry",
+      "needs_review": false,
+      "reason": "cupboard_dry"
+    },
+    "cottage cheese": {
+      "aisle": "Dairy & Chilled",
+      "needs_review": false,
+      "reason": "dairy_chilled"
+    },
+    "courgette": {
+      "aisle": "Produce",
+      "needs_review": false,
+      "reason": "produce"
+    },
+    "courgette cut into matchsticks": {
+      "aisle": "Produce",
+      "needs_review": false,
+      "reason": "produce"
+    },
+    "courgette cut into small half-moons": {
+      "aisle": "Produce",
+      "needs_review": false,
+      "reason": "produce"
+    },
+    "courgette finely": {
+      "aisle": "Produce",
+      "needs_review": false,
+      "reason": "produce"
+    },
+    "courgettes, halved lengthways": {
+      "aisle": "Produce",
+      "needs_review": false,
+      "reason": "produce"
+    },
+    "couscous": {
+      "aisle": "Cupboard / Pantry",
+      "needs_review": false,
+      "reason": "cupboard_dry"
+    },
+    "cranberries": {
+      "aisle": "Produce",
+      "needs_review": false,
+      "reason": "produce"
+    },
+    "cream": {
+      "aisle": "Dairy & Chilled",
+      "needs_review": false,
+      "reason": "dairy_chilled"
+    },
+    "cream cheese": {
+      "aisle": "Dairy & Chilled",
+      "needs_review": false,
+      "reason": "dairy_chilled"
+    },
+    "crème fraîche": {
+      "aisle": "Dairy & Chilled",
+      "needs_review": false,
+      "reason": "dairy_chilled"
+    },
+    "crme frache": {
+      "aisle": "Dairy & Chilled",
+      "needs_review": false,
+      "reason": "dairy_chilled"
+    },
+    "cucumber": {
+      "aisle": "Produce",
+      "needs_review": false,
+      "reason": "produce"
+    },
+    "curry paste": {
+      "aisle": "Cupboard / Pantry",
+      "needs_review": false,
+      "reason": "cupboard_dry"
+    },
+    "curry powder": {
+      "aisle": "Cupboard / Pantry",
+      "needs_review": false,
+      "reason": "cupboard_dry"
+    },
+    "dark chocolate": {
+      "aisle": "Cupboard / Pantry",
+      "needs_review": false,
+      "reason": "shelf_stable_exception"
+    },
+    "Diced lamb": {
+      "aisle": "Meat & Fish",
+      "needs_review": false,
+      "reason": "meat_fish"
+    },
+    "diced lamb shoulder": {
+      "aisle": "Meat & Fish",
+      "needs_review": false,
+      "reason": "meat_fish"
+    },
+    "Diced stewing beef": {
+      "aisle": "Meat & Fish",
+      "needs_review": false,
+      "reason": "meat_fish"
+    },
+    "digestive biscuits": {
+      "aisle": "Cupboard / Pantry",
+      "needs_review": false,
+      "reason": "cupboard_dry"
+    },
+    "dijon mustard": {
+      "aisle": "Cupboard / Pantry",
+      "needs_review": false,
+      "reason": "cupboard_dry"
+    },
+    "double cream": {
+      "aisle": "Dairy & Chilled",
+      "needs_review": false,
+      "reason": "dairy_chilled"
+    },
+    "dried apricots": {
+      "aisle": "Cupboard / Pantry",
+      "needs_review": false,
+      "reason": "cupboard_dry"
+    },
+    "dried basil": {
+      "aisle": "Cupboard / Pantry",
+      "needs_review": false,
+      "reason": "cupboard_dry"
+    },
+    "dried breadcrumbs": {
+      "aisle": "Cupboard / Pantry",
+      "needs_review": false,
+      "reason": "cupboard_dry"
+    },
+    "dried cannelloni tubes": {
+      "aisle": "Cupboard / Pantry",
+      "needs_review": false,
+      "reason": "cupboard_dry"
+    },
+    "dried dill": {
+      "aisle": "Cupboard / Pantry",
+      "needs_review": false,
+      "reason": "cupboard_dry"
+    },
+    "dried egg noodles": {
+      "aisle": "Cupboard / Pantry",
+      "needs_review": false,
+      "reason": "shelf_stable_exception"
+    },
+    "dried fine egg noodles": {
+      "aisle": "Cupboard / Pantry",
+      "needs_review": false,
+      "reason": "shelf_stable_exception"
+    },
+    "dried fusilli": {
+      "aisle": "Cupboard / Pantry",
+      "needs_review": false,
+      "reason": "cupboard_dry"
+    },
+    "dried herbs": {
+      "aisle": "Cupboard / Pantry",
+      "needs_review": false,
+      "reason": "cupboard_dry"
+    },
+    "dried italian herbs": {
+      "aisle": "Cupboard / Pantry",
+      "needs_review": false,
+      "reason": "cupboard_dry"
+    },
+    "dried lasagne sheets": {
+      "aisle": "Cupboard / Pantry",
+      "needs_review": false,
+      "reason": "cupboard_dry"
+    },
+    "dried macaroni": {
+      "aisle": "Cupboard / Pantry",
+      "needs_review": false,
+      "reason": "cupboard_dry"
+    },
+    "dried mixed herbs": {
+      "aisle": "Cupboard / Pantry",
+      "needs_review": false,
+      "reason": "cupboard_dry"
+    },
+    "dried oregano": {
+      "aisle": "Cupboard / Pantry",
+      "needs_review": false,
+      "reason": "cupboard_dry"
+    },
+    "dried orzo": {
+      "aisle": "Cupboard / Pantry",
+      "needs_review": false,
+      "reason": "cupboard_dry"
+    },
+    "dried parsley": {
+      "aisle": "Cupboard / Pantry",
+      "needs_review": false,
+      "reason": "cupboard_dry"
+    },
+    "dried pasta": {
+      "aisle": "Cupboard / Pantry",
+      "needs_review": false,
+      "reason": "cupboard_dry"
+    },
+    "dried pasta shapes": {
+      "aisle": "Cupboard / Pantry",
+      "needs_review": false,
+      "reason": "cupboard_dry"
+    },
+    "dried pasta shells": {
+      "aisle": "Cupboard / Pantry",
+      "needs_review": false,
+      "reason": "cupboard_dry"
+    },
+    "dried penne": {
+      "aisle": "Cupboard / Pantry",
+      "needs_review": false,
+      "reason": "cupboard_dry"
+    },
+    "dried red lentils": {
+      "aisle": "Cupboard / Pantry",
+      "needs_review": false,
+      "reason": "cupboard_dry"
+    },
+    "dried sage": {
+      "aisle": "Cupboard / Pantry",
+      "needs_review": false,
+      "reason": "cupboard_dry"
+    },
+    "dried spaghetti": {
+      "aisle": "Cupboard / Pantry",
+      "needs_review": false,
+      "reason": "cupboard_dry"
+    },
+    "dried thyme": {
+      "aisle": "Cupboard / Pantry",
+      "needs_review": false,
+      "reason": "cupboard_dry"
+    },
+    "dry basmati rice": {
+      "aisle": "Cupboard / Pantry",
+      "needs_review": false,
+      "reason": "cupboard_dry"
+    },
+    "dry couscous": {
+      "aisle": "Cupboard / Pantry",
+      "needs_review": false,
+      "reason": "cupboard_dry"
+    },
+    "dry egg noodles": {
+      "aisle": "Cupboard / Pantry",
+      "needs_review": false,
+      "reason": "shelf_stable_exception"
+    },
+    "dry lasagne sheets": {
+      "aisle": "Cupboard / Pantry",
+      "needs_review": false,
+      "reason": "cupboard_dry"
+    },
+    "dry long-grain rice": {
+      "aisle": "Cupboard / Pantry",
+      "needs_review": false,
+      "reason": "cupboard_dry"
+    },
+    "dry rice": {
+      "aisle": "Cupboard / Pantry",
+      "needs_review": false,
+      "reason": "cupboard_dry"
+    },
+    "dry small pasta shapes": {
+      "aisle": "Cupboard / Pantry",
+      "needs_review": false,
+      "reason": "cupboard_dry"
+    },
+    "duck breasts": {
+      "aisle": "Meat & Fish",
+      "needs_review": false,
+      "reason": "meat_fish"
+    },
+    "easy-cook long-grain rice": {
+      "aisle": "Cupboard / Pantry",
+      "needs_review": false,
+      "reason": "cupboard_dry"
+    },
+    "eating apples": {
+      "aisle": "Produce",
+      "needs_review": false,
+      "reason": "produce"
+    },
+    "eating apples, cored and sliced": {
+      "aisle": "Produce",
+      "needs_review": false,
+      "reason": "produce"
+    },
+    "edamame": {
+      "aisle": "Produce",
+      "needs_review": false,
+      "reason": "fresh_produce"
+    },
+    "egg": {
+      "aisle": "Dairy & Chilled",
+      "needs_review": false,
+      "reason": "dairy_chilled"
+    },
+    "egg beaten": {
+      "aisle": "Dairy & Chilled",
+      "needs_review": false,
+      "reason": "dairy_chilled"
+    },
+    "egg noodles": {
+      "aisle": "Cupboard / Pantry",
+      "needs_review": false,
+      "reason": "shelf_stable_exception"
+    },
+    "egg whites": {
+      "aisle": "Dairy & Chilled",
+      "needs_review": false,
+      "reason": "dairy_chilled"
+    },
+    "eggs": {
+      "aisle": "Dairy & Chilled",
+      "needs_review": false,
+      "reason": "dairy_chilled"
+    },
+    "eggs beaten": {
+      "aisle": "Dairy & Chilled",
+      "needs_review": false,
+      "reason": "dairy_chilled"
+    },
+    "english muffins": {
+      "aisle": "Bakery",
+      "needs_review": false,
+      "reason": "bakery"
+    },
+    "fajita seasoning": {
+      "aisle": "Cupboard / Pantry",
+      "needs_review": false,
+      "reason": "cupboard_dry"
+    },
+    "falafel": {
+      "aisle": "Produce",
+      "needs_review": true,
+      "reason": "produce_guess_review"
+    },
+    "feta": {
+      "aisle": "Dairy & Chilled",
+      "needs_review": false,
+      "reason": "dairy_chilled"
+    },
+    "feta crumbled": {
+      "aisle": "Dairy & Chilled",
+      "needs_review": false,
+      "reason": "dairy_chilled"
+    },
+    "filo pastry": {
+      "aisle": "Bakery",
+      "needs_review": false,
+      "reason": "bakery"
+    },
+    "fine breadcrumbs": {
+      "aisle": "Cupboard / Pantry",
+      "needs_review": false,
+      "reason": "cupboard_dry"
+    },
+    "fine salt": {
+      "aisle": "Cupboard / Pantry",
+      "needs_review": false,
+      "reason": "cupboard_dry"
+    },
+    "firm tofu": {
+      "aisle": "Dairy & Chilled",
+      "needs_review": true,
+      "reason": "refrigerated_food_review"
+    },
+    "five-spice powder": {
+      "aisle": "Cupboard / Pantry",
+      "needs_review": false,
+      "reason": "cupboard_dry"
+    },
+    "flaky sea salt": {
+      "aisle": "Cupboard / Pantry",
+      "needs_review": false,
+      "reason": "cupboard_dry"
+    },
+    "flatbreads": {
+      "aisle": "Bakery",
+      "needs_review": false,
+      "reason": "bakery"
+    },
+    "flour tortilla wraps": {
+      "aisle": "Bakery",
+      "needs_review": false,
+      "reason": "bakery"
+    },
+    "flour tortillas": {
+      "aisle": "Bakery",
+      "needs_review": false,
+      "reason": "bakery"
+    },
+    "flour wraps": {
+      "aisle": "Bakery",
+      "needs_review": false,
+      "reason": "bakery"
+    },
+    "fresh basil": {
+      "aisle": "Produce",
+      "needs_review": false,
+      "reason": "fresh_produce"
+    },
+    "Fresh breadcrumbs": {
+      "aisle": "Cupboard / Pantry",
+      "needs_review": false,
+      "reason": "cupboard_dry"
+    },
+    "Fresh chilli": {
+      "aisle": "Produce",
+      "needs_review": false,
+      "reason": "produce"
+    },
+    "fresh chives": {
+      "aisle": "Produce",
+      "needs_review": false,
+      "reason": "fresh_produce"
+    },
+    "Fresh coriander": {
+      "aisle": "Produce",
+      "needs_review": false,
+      "reason": "fresh_produce"
+    },
+    "fresh ginger": {
+      "aisle": "Produce",
+      "needs_review": false,
+      "reason": "produce"
+    },
+    "Fresh herbs": {
+      "aisle": "Produce",
+      "needs_review": false,
+      "reason": "fresh_produce"
+    },
+    "fresh mint": {
+      "aisle": "Produce",
+      "needs_review": false,
+      "reason": "fresh_produce"
+    },
+    "fresh parsley": {
+      "aisle": "Produce",
+      "needs_review": false,
+      "reason": "fresh_produce"
+    },
+    "fresh potato gnocchi": {
+      "aisle": "Cupboard / Pantry",
+      "needs_review": false,
+      "reason": "cupboard_dry"
+    },
+    "Fresh raspberries": {
+      "aisle": "Produce",
+      "needs_review": false,
+      "reason": "produce"
+    },
+    "fresh rosemary": {
+      "aisle": "Produce",
+      "needs_review": false,
+      "reason": "fresh_produce"
+    },
+    "fresh sage": {
+      "aisle": "Produce",
+      "needs_review": false,
+      "reason": "fresh_produce"
+    },
+    "fresh scallops": {
+      "aisle": "Meat & Fish",
+      "needs_review": false,
+      "reason": "meat_fish"
+    },
+    "fresh thyme": {
+      "aisle": "Produce",
+      "needs_review": false,
+      "reason": "fresh_produce"
+    },
+    "fresh udon noodles": {
+      "aisle": "Cupboard / Pantry",
+      "needs_review": false,
+      "reason": "cupboard_dry"
+    },
+    "frozen fish fingers": {
+      "aisle": "Meat & Fish",
+      "needs_review": false,
+      "reason": "meat_fish"
+    },
+    "frozen mixed vegetables": {
+      "aisle": "Produce",
+      "needs_review": false,
+      "reason": "produce"
+    },
+    "frozen peas": {
+      "aisle": "Produce",
+      "needs_review": false,
+      "reason": "produce"
+    },
+    "frozen sweetcorn": {
+      "aisle": "Produce",
+      "needs_review": false,
+      "reason": "produce"
+    },
+    "frozen sweetcorn thawed": {
+      "aisle": "Produce",
+      "needs_review": false,
+      "reason": "produce"
+    },
+    "full-fat cream cheese": {
+      "aisle": "Dairy & Chilled",
+      "needs_review": false,
+      "reason": "dairy_chilled"
+    },
+    "gammon joint": {
+      "aisle": "Meat & Fish",
+      "needs_review": false,
+      "reason": "meat_fish"
+    },
+    "garlic": {
+      "aisle": "Produce",
+      "needs_review": false,
+      "reason": "produce"
+    },
+    "garlic baguette": {
+      "aisle": "Bakery",
+      "needs_review": false,
+      "reason": "bakery"
+    },
+    "garlic clove": {
+      "aisle": "Produce",
+      "needs_review": false,
+      "reason": "produce"
+    },
+    "garlic cloves": {
+      "aisle": "Produce",
+      "needs_review": false,
+      "reason": "produce"
+    },
+    "ginger": {
+      "aisle": "Produce",
+      "needs_review": false,
+      "reason": "produce"
+    },
+    "gnocchi": {
+      "aisle": "Cupboard / Pantry",
+      "needs_review": false,
+      "reason": "cupboard_dry"
+    },
+    "golden syrup": {
+      "aisle": "Cupboard / Pantry",
+      "needs_review": false,
+      "reason": "cupboard_dry"
+    },
+    "granola": {
+      "aisle": "Cupboard / Pantry",
+      "needs_review": false,
+      "reason": "cupboard_dry"
+    },
+    "grated cheddar": {
+      "aisle": "Dairy & Chilled",
+      "needs_review": false,
+      "reason": "dairy_chilled"
+    },
+    "grated fresh ginger": {
+      "aisle": "Produce",
+      "needs_review": false,
+      "reason": "produce"
+    },
+    "grated ginger": {
+      "aisle": "Produce",
+      "needs_review": false,
+      "reason": "produce"
+    },
+    "grated mature cheddar": {
+      "aisle": "Dairy & Chilled",
+      "needs_review": false,
+      "reason": "dairy_chilled"
+    },
+    "grated mozzarella": {
+      "aisle": "Dairy & Chilled",
+      "needs_review": false,
+      "reason": "dairy_chilled"
+    },
+    "grated parmesan": {
+      "aisle": "Dairy & Chilled",
+      "needs_review": false,
+      "reason": "dairy_chilled"
+    },
+    "gravy": {
+      "aisle": "Cupboard / Pantry",
+      "needs_review": false,
+      "reason": "shelf_stable_exception"
+    },
+    "greek yoghurt": {
+      "aisle": "Dairy & Chilled",
+      "needs_review": false,
+      "reason": "dairy_chilled"
+    },
+    "green beans": {
+      "aisle": "Produce",
+      "needs_review": false,
+      "reason": "fresh_produce"
+    },
+    "green beans, halved": {
+      "aisle": "Produce",
+      "needs_review": false,
+      "reason": "fresh_produce"
+    },
+    "green curry paste": {
+      "aisle": "Cupboard / Pantry",
+      "needs_review": false,
+      "reason": "cupboard_dry"
+    },
+    "green lentils": {
+      "aisle": "Cupboard / Pantry",
+      "needs_review": false,
+      "reason": "cupboard_dry"
+    },
+    "ground black pepper": {
+      "aisle": "Cupboard / Pantry",
+      "needs_review": false,
+      "reason": "cupboard_dry"
+    },
+    "ground cinnamon": {
+      "aisle": "Cupboard / Pantry",
+      "needs_review": false,
+      "reason": "cupboard_dry"
+    },
+    "ground cumin": {
+      "aisle": "Cupboard / Pantry",
+      "needs_review": false,
+      "reason": "cupboard_dry"
+    },
+    "ground ginger": {
+      "aisle": "Cupboard / Pantry",
+      "needs_review": false,
+      "reason": "cupboard_dry"
+    },
+    "halloumi": {
+      "aisle": "Dairy & Chilled",
+      "needs_review": false,
+      "reason": "dairy_chilled"
+    },
+    "ham": {
+      "aisle": "Meat & Fish",
+      "needs_review": false,
+      "reason": "meat_fish"
+    },
+    "hard cheese": {
+      "aisle": "Dairy & Chilled",
+      "needs_review": false,
+      "reason": "dairy_chilled"
+    },
+    "harissa": {
+      "aisle": "Cupboard / Pantry",
+      "needs_review": false,
+      "reason": "cupboard_dry"
+    },
+    "herbs": {
+      "aisle": "Produce",
+      "needs_review": false,
+      "reason": "produce"
+    },
+    "honey": {
+      "aisle": "Cupboard / Pantry",
+      "needs_review": false,
+      "reason": "cupboard_dry"
+    },
+    "hot low-salt beef stock": {
+      "aisle": "Cupboard / Pantry",
+      "needs_review": false,
+      "reason": "shelf_stable_exception"
+    },
+    "hot low-salt chicken stock": {
+      "aisle": "Cupboard / Pantry",
+      "needs_review": false,
+      "reason": "shelf_stable_exception"
+    },
+    "hot low-salt vegetable stock": {
+      "aisle": "Cupboard / Pantry",
+      "needs_review": false,
+      "reason": "shelf_stable_exception"
+    },
+    "hummus": {
+      "aisle": "Dairy & Chilled",
+      "needs_review": true,
+      "reason": "refrigerated_food_review"
+    },
+    "icing sugar": {
+      "aisle": "Cupboard / Pantry",
+      "needs_review": false,
+      "reason": "cupboard_dry"
+    },
+    "instant dried yeast": {
+      "aisle": "Cupboard / Pantry",
+      "needs_review": false,
+      "reason": "cupboard_dry"
+    },
+    "instant polenta": {
+      "aisle": "Cupboard / Pantry",
+      "needs_review": false,
+      "reason": "cupboard_dry"
+    },
+    "italian herbs": {
+      "aisle": "Produce",
+      "needs_review": false,
+      "reason": "produce"
+    },
+    "jarred roasted red peppers": {
+      "aisle": "Cupboard / Pantry",
+      "needs_review": false,
+      "reason": "cupboard_dry"
+    },
+    "kidney beans": {
+      "aisle": "Cupboard / Pantry",
+      "needs_review": false,
+      "reason": "cupboard_dry"
+    },
+    "korma paste": {
+      "aisle": "Cupboard / Pantry",
+      "needs_review": false,
+      "reason": "cupboard_dry"
+    },
+    "lamb": {
+      "aisle": "Meat & Fish",
+      "needs_review": false,
+      "reason": "meat_fish"
+    },
+    "lamb rump steaks": {
+      "aisle": "Meat & Fish",
+      "needs_review": false,
+      "reason": "meat_fish"
+    },
+    "lamb shoulder": {
+      "aisle": "Meat & Fish",
+      "needs_review": false,
+      "reason": "meat_fish"
+    },
+    "lamb stock": {
+      "aisle": "Cupboard / Pantry",
+      "needs_review": false,
+      "reason": "shelf_stable_exception"
+    },
+    "large baking potatoes": {
+      "aisle": "Produce",
+      "needs_review": false,
+      "reason": "produce"
+    },
+    "large bell peppers": {
+      "aisle": "Produce",
+      "needs_review": false,
+      "reason": "produce"
+    },
+    "large broccoli head in small florets": {
+      "aisle": "Produce",
+      "needs_review": false,
+      "reason": "produce"
+    },
+    "large courgette": {
+      "aisle": "Produce",
+      "needs_review": false,
+      "reason": "produce"
+    },
+    "large courgettes halved lengthways": {
+      "aisle": "Produce",
+      "needs_review": false,
+      "reason": "produce"
+    },
+    "large dried pasta shells": {
+      "aisle": "Cupboard / Pantry",
+      "needs_review": false,
+      "reason": "cupboard_dry"
+    },
+    "large egg": {
+      "aisle": "Dairy & Chilled",
+      "needs_review": false,
+      "reason": "dairy_chilled"
+    },
+    "large egg beaten": {
+      "aisle": "Dairy & Chilled",
+      "needs_review": false,
+      "reason": "dairy_chilled"
+    },
+    "large eggs": {
+      "aisle": "Dairy & Chilled",
+      "needs_review": false,
+      "reason": "dairy_chilled"
+    },
+    "large flour tortillas": {
+      "aisle": "Bakery",
+      "needs_review": false,
+      "reason": "bakery"
+    },
+    "large flour wraps": {
+      "aisle": "Bakery",
+      "needs_review": false,
+      "reason": "bakery"
+    },
+    "large plain flatbreads": {
+      "aisle": "Bakery",
+      "needs_review": false,
+      "reason": "bakery"
+    },
+    "large sweet potato small": {
+      "aisle": "Produce",
+      "needs_review": false,
+      "reason": "produce"
+    },
+    "large tortilla wraps": {
+      "aisle": "Bakery",
+      "needs_review": false,
+      "reason": "bakery"
+    },
+    "Lasagne sheets": {
+      "aisle": "Cupboard / Pantry",
+      "needs_review": false,
+      "reason": "cupboard_dry"
+    },
+    "lean beef mince": {
+      "aisle": "Meat & Fish",
+      "needs_review": false,
+      "reason": "meat_fish"
+    },
+    "lean beef steak": {
+      "aisle": "Meat & Fish",
+      "needs_review": false,
+      "reason": "meat_fish"
+    },
+    "lean beef steak, thinly sliced": {
+      "aisle": "Meat & Fish",
+      "needs_review": false,
+      "reason": "meat_fish"
+    },
+    "lean beef strips": {
+      "aisle": "Meat & Fish",
+      "needs_review": false,
+      "reason": "meat_fish"
+    },
+    "leek": {
+      "aisle": "Produce",
+      "needs_review": false,
+      "reason": "produce"
+    },
+    "leeks": {
+      "aisle": "Produce",
+      "needs_review": false,
+      "reason": "produce"
+    },
+    "leftover bbq pulled pork": {
+      "aisle": "Meat & Fish",
+      "needs_review": false,
+      "reason": "meat_fish"
+    },
+    "leftover beef and bean chilli": {
+      "aisle": "Meat & Fish",
+      "needs_review": false,
+      "reason": "meat_fish"
+    },
+    "leftover beef bolognese": {
+      "aisle": "Meat & Fish",
+      "needs_review": false,
+      "reason": "meat_fish"
+    },
+    "leftover chicken": {
+      "aisle": "Meat & Fish",
+      "needs_review": false,
+      "reason": "meat_fish"
+    },
+    "leftover chickpea and spinach curry": {
+      "aisle": "Cupboard / Pantry",
+      "needs_review": false,
+      "reason": "cupboard_dry"
+    },
+    "Leftover cooked BBQ pulled pork": {
+      "aisle": "Meat & Fish",
+      "needs_review": false,
+      "reason": "meat_fish"
+    },
+    "Leftover cooked beef and bean chilli": {
+      "aisle": "Meat & Fish",
+      "needs_review": false,
+      "reason": "meat_fish"
+    },
+    "Leftover cooked beef bolognese": {
+      "aisle": "Meat & Fish",
+      "needs_review": false,
+      "reason": "meat_fish"
+    },
+    "Leftover cooked chickpea and spinach curry": {
+      "aisle": "Cupboard / Pantry",
+      "needs_review": false,
+      "reason": "cupboard_dry"
+    },
+    "Leftover cooked gammon": {
+      "aisle": "Meat & Fish",
+      "needs_review": false,
+      "reason": "meat_fish"
+    },
+    "Leftover cooked Greek chicken": {
+      "aisle": "Meat & Fish",
+      "needs_review": false,
+      "reason": "meat_fish"
+    },
+    "Leftover cooked katsu chicken": {
+      "aisle": "Meat & Fish",
+      "needs_review": false,
+      "reason": "meat_fish"
+    },
+    "Leftover cooked meatballs and tomato sauce": {
+      "aisle": "Cupboard / Pantry",
+      "needs_review": false,
+      "reason": "shelf_stable_exception"
+    },
+    "Leftover cooked roast beef": {
+      "aisle": "Meat & Fish",
+      "needs_review": false,
+      "reason": "meat_fish"
+    },
+    "Leftover cooked roast chicken": {
+      "aisle": "Meat & Fish",
+      "needs_review": false,
+      "reason": "meat_fish"
+    },
+    "Leftover cooked roast lamb": {
+      "aisle": "Meat & Fish",
+      "needs_review": false,
+      "reason": "meat_fish"
+    },
+    "Leftover cooked roast pork": {
+      "aisle": "Meat & Fish",
+      "needs_review": false,
+      "reason": "meat_fish"
+    },
+    "Leftover cooked roast potatoes": {
+      "aisle": "Produce",
+      "needs_review": false,
+      "reason": "produce"
+    },
+    "Leftover cooked roast turkey": {
+      "aisle": "Meat & Fish",
+      "needs_review": false,
+      "reason": "meat_fish"
+    },
+    "Leftover cooked roasted vegetables": {
+      "aisle": "Produce",
+      "needs_review": false,
+      "reason": "produce"
+    },
+    "Leftover cooked salmon": {
+      "aisle": "Meat & Fish",
+      "needs_review": false,
+      "reason": "meat_fish"
+    },
+    "Leftover cooked sausages": {
+      "aisle": "Meat & Fish",
+      "needs_review": false,
+      "reason": "meat_fish"
+    },
+    "Leftover cooked vegetable quinoa bake": {
+      "aisle": "Cupboard / Pantry",
+      "needs_review": false,
+      "reason": "cupboard_dry"
+    },
+    "leftover gammon": {
+      "aisle": "Meat & Fish",
+      "needs_review": false,
+      "reason": "meat_fish"
+    },
+    "leftover greek chicken": {
+      "aisle": "Meat & Fish",
+      "needs_review": false,
+      "reason": "meat_fish"
+    },
+    "leftover katsu chicken": {
+      "aisle": "Meat & Fish",
+      "needs_review": false,
+      "reason": "meat_fish"
+    },
+    "leftover meatballs and tomato sauce": {
+      "aisle": "Cupboard / Pantry",
+      "needs_review": false,
+      "reason": "shelf_stable_exception"
+    },
+    "leftover roast beef": {
+      "aisle": "Meat & Fish",
+      "needs_review": false,
+      "reason": "meat_fish"
+    },
+    "leftover roast chicken": {
+      "aisle": "Meat & Fish",
+      "needs_review": false,
+      "reason": "meat_fish"
+    },
+    "leftover roast lamb": {
+      "aisle": "Meat & Fish",
+      "needs_review": false,
+      "reason": "meat_fish"
+    },
+    "leftover roast pork": {
+      "aisle": "Meat & Fish",
+      "needs_review": false,
+      "reason": "meat_fish"
+    },
+    "leftover roast potatoes": {
+      "aisle": "Produce",
+      "needs_review": false,
+      "reason": "produce"
+    },
+    "leftover roast turkey": {
+      "aisle": "Meat & Fish",
+      "needs_review": false,
+      "reason": "meat_fish"
+    },
+    "leftover roasted vegetables": {
+      "aisle": "Produce",
+      "needs_review": false,
+      "reason": "produce"
+    },
+    "leftover salmon": {
+      "aisle": "Meat & Fish",
+      "needs_review": false,
+      "reason": "meat_fish"
+    },
+    "leftover sausages": {
+      "aisle": "Meat & Fish",
+      "needs_review": false,
+      "reason": "meat_fish"
+    },
+    "leftover vegetable quinoa bake": {
+      "aisle": "Cupboard / Pantry",
+      "needs_review": false,
+      "reason": "cupboard_dry"
+    },
+    "lemon": {
+      "aisle": "Produce",
+      "needs_review": false,
+      "reason": "produce"
+    },
+    "lemon juice": {
+      "aisle": "Produce",
+      "needs_review": false,
+      "reason": "produce"
+    },
+    "lemon zest": {
+      "aisle": "Produce",
+      "needs_review": false,
+      "reason": "produce"
+    },
+    "lemon zest and juice": {
+      "aisle": "Produce",
+      "needs_review": false,
+      "reason": "produce"
+    },
+    "lemon zest and tbsp juice": {
+      "aisle": "Produce",
+      "needs_review": false,
+      "reason": "produce"
+    },
+    "lemon zest only": {
+      "aisle": "Produce",
+      "needs_review": false,
+      "reason": "produce"
+    },
+    "lemon, juice only": {
+      "aisle": "Produce",
+      "needs_review": false,
+      "reason": "produce"
+    },
+    "lemon, zest and 1 tbsp juice": {
+      "aisle": "Produce",
+      "needs_review": false,
+      "reason": "produce"
+    },
+    "lemon, zest and 2 tbsp juice": {
+      "aisle": "Produce",
+      "needs_review": false,
+      "reason": "produce"
+    },
+    "Lemons": {
+      "aisle": "Produce",
+      "needs_review": false,
+      "reason": "produce"
+    },
+    "lettuce": {
+      "aisle": "Produce",
+      "needs_review": false,
+      "reason": "produce"
+    },
+    "light brown sugar": {
+      "aisle": "Cupboard / Pantry",
+      "needs_review": false,
+      "reason": "cupboard_dry"
+    },
+    "Light soy sauce": {
+      "aisle": "Cupboard / Pantry",
+      "needs_review": false,
+      "reason": "cupboard_dry"
+    },
+    "lime": {
+      "aisle": "Produce",
+      "needs_review": false,
+      "reason": "produce"
+    },
+    "Limes": {
+      "aisle": "Produce",
+      "needs_review": false,
+      "reason": "produce"
+    },
+    "linguine": {
+      "aisle": "Cupboard / Pantry",
+      "needs_review": false,
+      "reason": "cupboard_dry"
+    },
+    "litre low-salt chicken stock": {
+      "aisle": "Cupboard / Pantry",
+      "needs_review": false,
+      "reason": "shelf_stable_exception"
+    },
+    "long-grain rice": {
+      "aisle": "Cupboard / Pantry",
+      "needs_review": false,
+      "reason": "cupboard_dry"
+    },
+    "long-grain rice dry": {
+      "aisle": "Cupboard / Pantry",
+      "needs_review": false,
+      "reason": "cupboard_dry"
+    },
+    "low-salt beef stock": {
+      "aisle": "Cupboard / Pantry",
+      "needs_review": false,
+      "reason": "shelf_stable_exception"
+    },
+    "low-salt chicken stock": {
+      "aisle": "Cupboard / Pantry",
+      "needs_review": false,
+      "reason": "shelf_stable_exception"
+    },
+    "low-salt lamb or vegetable stock": {
+      "aisle": "Cupboard / Pantry",
+      "needs_review": false,
+      "reason": "shelf_stable_exception"
+    },
+    "low-salt stock": {
+      "aisle": "Cupboard / Pantry",
+      "needs_review": false,
+      "reason": "shelf_stable_exception"
+    },
+    "low-salt vegetable stock": {
+      "aisle": "Cupboard / Pantry",
+      "needs_review": false,
+      "reason": "shelf_stable_exception"
+    },
+    "lukewarm water": {
+      "aisle": "Cupboard / Pantry",
+      "needs_review": false,
+      "reason": "cupboard_dry"
+    },
+    "macaroni": {
+      "aisle": "Cupboard / Pantry",
+      "needs_review": false,
+      "reason": "cupboard_dry"
+    },
+    "maple syrup": {
+      "aisle": "Cupboard / Pantry",
+      "needs_review": false,
+      "reason": "cupboard_dry"
+    },
+    "mascarpone": {
+      "aisle": "Dairy & Chilled",
+      "needs_review": false,
+      "reason": "dairy_chilled"
+    },
+    "mashed potato cooled": {
+      "aisle": "Produce",
+      "needs_review": false,
+      "reason": "produce"
+    },
+    "mature cheddar": {
+      "aisle": "Dairy & Chilled",
+      "needs_review": false,
+      "reason": "dairy_chilled"
+    },
+    "mayonnaise": {
+      "aisle": "Cupboard / Pantry",
+      "needs_review": false,
+      "reason": "cupboard_dry"
+    },
+    "medium baking potatoes": {
+      "aisle": "Produce",
+      "needs_review": false,
+      "reason": "produce"
+    },
+    "medium broccoli head": {
+      "aisle": "Produce",
+      "needs_review": false,
+      "reason": "produce"
+    },
+    "medium courgette and squeezed dry": {
+      "aisle": "Produce",
+      "needs_review": false,
+      "reason": "produce"
+    },
+    "medium flatbreads": {
+      "aisle": "Bakery",
+      "needs_review": false,
+      "reason": "bakery"
+    },
+    "medium flour tortilla wraps": {
+      "aisle": "Bakery",
+      "needs_review": false,
+      "reason": "bakery"
+    },
+    "medium flour tortillas": {
+      "aisle": "Bakery",
+      "needs_review": false,
+      "reason": "bakery"
+    },
+    "microwaveable cooked rice pouches": {
+      "aisle": "Cupboard / Pantry",
+      "needs_review": false,
+      "reason": "cupboard_dry"
+    },
+    "microwaveable wholegrain rice": {
+      "aisle": "Cupboard / Pantry",
+      "needs_review": false,
+      "reason": "cupboard_dry"
+    },
+    "mild curry powder": {
+      "aisle": "Cupboard / Pantry",
+      "needs_review": false,
+      "reason": "cupboard_dry"
+    },
+    "mild korma curry paste": {
+      "aisle": "Cupboard / Pantry",
+      "needs_review": false,
+      "reason": "cupboard_dry"
+    },
+    "mild korma curry paste (check allergens)": {
+      "aisle": "Cupboard / Pantry",
+      "needs_review": false,
+      "reason": "cupboard_dry"
+    },
+    "mild paprika": {
+      "aisle": "Cupboard / Pantry",
+      "needs_review": false,
+      "reason": "cupboard_dry"
+    },
+    "mild smoked paprika": {
+      "aisle": "Cupboard / Pantry",
+      "needs_review": false,
+      "reason": "cupboard_dry"
+    },
+    "mild taco seasoning": {
+      "aisle": "Cupboard / Pantry",
+      "needs_review": false,
+      "reason": "cupboard_dry"
+    },
+    "mild tikka curry paste": {
+      "aisle": "Cupboard / Pantry",
+      "needs_review": false,
+      "reason": "cupboard_dry"
+    },
+    "milk": {
+      "aisle": "Dairy & Chilled",
+      "needs_review": false,
+      "reason": "dairy_chilled"
+    },
+    "miso paste": {
+      "aisle": "Cupboard / Pantry",
+      "needs_review": false,
+      "reason": "cupboard_dry"
+    },
+    "mixed beans": {
+      "aisle": "Cupboard / Pantry",
+      "needs_review": false,
+      "reason": "cupboard_dry"
+    },
+    "mixed berries": {
+      "aisle": "Produce",
+      "needs_review": false,
+      "reason": "produce"
+    },
+    "mixed dried herbs": {
+      "aisle": "Cupboard / Pantry",
+      "needs_review": false,
+      "reason": "cupboard_dry"
+    },
+    "mixed fish": {
+      "aisle": "Meat & Fish",
+      "needs_review": false,
+      "reason": "meat_fish"
+    },
+    "mixed herbs": {
+      "aisle": "Produce",
+      "needs_review": false,
+      "reason": "produce"
+    },
+    "mixed italian herbs": {
+      "aisle": "Produce",
+      "needs_review": false,
+      "reason": "produce"
+    },
+    "mixed peppers": {
+      "aisle": "Produce",
+      "needs_review": false,
+      "reason": "produce"
+    },
+    "mixed peppers, thinly sliced": {
+      "aisle": "Produce",
+      "needs_review": false,
+      "reason": "produce"
+    },
+    "mixed salad leaves": {
+      "aisle": "Produce",
+      "needs_review": false,
+      "reason": "fresh_produce"
+    },
+    "mixed spice": {
+      "aisle": "Cupboard / Pantry",
+      "needs_review": false,
+      "reason": "cupboard_dry"
+    },
+    "mixed stir-fry vegetables": {
+      "aisle": "Produce",
+      "needs_review": false,
+      "reason": "produce"
+    },
+    "mozzarella": {
+      "aisle": "Dairy & Chilled",
+      "needs_review": false,
+      "reason": "dairy_chilled"
+    },
+    "mozzarella torn": {
+      "aisle": "Dairy & Chilled",
+      "needs_review": false,
+      "reason": "dairy_chilled"
+    },
+    "mushrooms": {
+      "aisle": "Produce",
+      "needs_review": false,
+      "reason": "produce"
+    },
+    "mustard": {
+      "aisle": "Cupboard / Pantry",
+      "needs_review": false,
+      "reason": "cupboard_dry"
+    },
+    "natural yoghurt": {
+      "aisle": "Dairy & Chilled",
+      "needs_review": false,
+      "reason": "dairy_chilled"
+    },
+    "noodles": {
+      "aisle": "Cupboard / Pantry",
+      "needs_review": false,
+      "reason": "cupboard_dry"
+    },
+    "oats": {
+      "aisle": "Cupboard / Pantry",
+      "needs_review": false,
+      "reason": "cupboard_dry"
+    },
+    "oil": {
+      "aisle": "Cupboard / Pantry",
+      "needs_review": false,
+      "reason": "cupboard_dry"
+    },
+    "olive oil": {
+      "aisle": "Cupboard / Pantry",
+      "needs_review": false,
+      "reason": "cupboard_dry"
+    },
+    "olives": {
+      "aisle": "Cupboard / Pantry",
+      "needs_review": false,
+      "reason": "cupboard_dry"
+    },
+    "onion": {
+      "aisle": "Produce",
+      "needs_review": false,
+      "reason": "produce"
+    },
+    "onion finely": {
+      "aisle": "Produce",
+      "needs_review": false,
+      "reason": "produce"
+    },
+    "Onions": {
+      "aisle": "Produce",
+      "needs_review": false,
+      "reason": "produce"
+    },
+    "orange": {
+      "aisle": "Produce",
+      "needs_review": false,
+      "reason": "produce"
+    },
+    "orange juice": {
+      "aisle": "Produce",
+      "needs_review": false,
+      "reason": "produce"
+    },
+    "oranges": {
+      "aisle": "Produce",
+      "needs_review": false,
+      "reason": "produce"
+    },
+    "oregano": {
+      "aisle": "Cupboard / Pantry",
+      "needs_review": false,
+      "reason": "cupboard_dry"
+    },
+    "orzo": {
+      "aisle": "Cupboard / Pantry",
+      "needs_review": false,
+      "reason": "cupboard_dry"
+    },
+    "paella rice": {
+      "aisle": "Cupboard / Pantry",
+      "needs_review": false,
+      "reason": "cupboard_dry"
+    },
+    "pak choi": {
+      "aisle": "Produce",
+      "needs_review": false,
+      "reason": "produce"
+    },
+    "pancetta": {
+      "aisle": "Meat & Fish",
+      "needs_review": false,
+      "reason": "meat_fish"
+    },
+    "panko breadcrumbs": {
+      "aisle": "Cupboard / Pantry",
+      "needs_review": false,
+      "reason": "cupboard_dry"
+    },
+    "paprika": {
+      "aisle": "Cupboard / Pantry",
+      "needs_review": false,
+      "reason": "cupboard_dry"
+    },
+    "parmesan": {
+      "aisle": "Dairy & Chilled",
+      "needs_review": false,
+      "reason": "dairy_chilled"
+    },
+    "parsley": {
+      "aisle": "Produce",
+      "needs_review": false,
+      "reason": "produce"
+    },
+    "parsnips": {
+      "aisle": "Produce",
+      "needs_review": false,
+      "reason": "produce"
+    },
+    "passata": {
+      "aisle": "Cupboard / Pantry",
+      "needs_review": false,
+      "reason": "cupboard_dry"
+    },
+    "Pasta": {
+      "aisle": "Cupboard / Pantry",
+      "needs_review": false,
+      "reason": "cupboard_dry"
+    },
+    "pasta cooking water": {
+      "aisle": "Cupboard / Pantry",
+      "needs_review": false,
+      "reason": "cupboard_dry"
+    },
+    "pasta shells": {
+      "aisle": "Cupboard / Pantry",
+      "needs_review": false,
+      "reason": "cupboard_dry"
+    },
+    "peanut butter": {
+      "aisle": "Cupboard / Pantry",
+      "needs_review": false,
+      "reason": "shelf_stable_exception"
+    },
+    "peeled prawns": {
+      "aisle": "Meat & Fish",
+      "needs_review": false,
+      "reason": "meat_fish"
+    },
+    "peeled pumpkin in cm cubes": {
+      "aisle": "Produce",
+      "needs_review": false,
+      "reason": "produce"
+    },
+    "peeled pumpkin, in 1 cm cubes": {
+      "aisle": "Produce",
+      "needs_review": false,
+      "reason": "produce"
+    },
+    "penne": {
+      "aisle": "Cupboard / Pantry",
+      "needs_review": false,
+      "reason": "cupboard_dry"
+    },
+    "penne pasta": {
+      "aisle": "Cupboard / Pantry",
+      "needs_review": false,
+      "reason": "cupboard_dry"
+    },
+    "peppercorn sauce": {
+      "aisle": "Cupboard / Pantry",
+      "needs_review": false,
+      "reason": "cupboard_dry"
+    },
+    "peppers": {
+      "aisle": "Produce",
+      "needs_review": false,
+      "reason": "produce"
+    },
+    "pesto": {
+      "aisle": "Cupboard / Pantry",
+      "needs_review": false,
+      "reason": "cupboard_dry"
+    },
+    "pineapple chunks": {
+      "aisle": "Produce",
+      "needs_review": false,
+      "reason": "produce"
+    },
+    "pineapple chunks in juice": {
+      "aisle": "Cupboard / Pantry",
+      "needs_review": false,
+      "reason": "preserved_food"
+    },
+    "pitta breads": {
+      "aisle": "Bakery",
+      "needs_review": false,
+      "reason": "bakery"
+    },
+    "pitted dates": {
+      "aisle": "Cupboard / Pantry",
+      "needs_review": false,
+      "reason": "cupboard_dry"
+    },
+    "plain flatbreads": {
+      "aisle": "Bakery",
+      "needs_review": false,
+      "reason": "bakery"
+    },
+    "plain flatbreads (about 80 g each)": {
+      "aisle": "Bakery",
+      "needs_review": false,
+      "reason": "bakery"
+    },
+    "plain flour": {
+      "aisle": "Cupboard / Pantry",
+      "needs_review": false,
+      "reason": "cupboard_dry"
+    },
+    "Plain yoghurt": {
+      "aisle": "Dairy & Chilled",
+      "needs_review": false,
+      "reason": "dairy_chilled"
+    },
+    "plain yoghurt to serve": {
+      "aisle": "Dairy & Chilled",
+      "needs_review": false,
+      "reason": "dairy_chilled"
+    },
+    "pork chops": {
+      "aisle": "Meat & Fish",
+      "needs_review": false,
+      "reason": "meat_fish"
+    },
+    "pork escalopes": {
+      "aisle": "Meat & Fish",
+      "needs_review": false,
+      "reason": "meat_fish"
+    },
+    "pork loin": {
+      "aisle": "Meat & Fish",
+      "needs_review": false,
+      "reason": "meat_fish"
+    },
+    "pork loin strips": {
+      "aisle": "Meat & Fish",
+      "needs_review": false,
+      "reason": "meat_fish"
+    },
+    "pork mince": {
+      "aisle": "Meat & Fish",
+      "needs_review": false,
+      "reason": "meat_fish"
+    },
+    "pork sausages": {
+      "aisle": "Meat & Fish",
+      "needs_review": false,
+      "reason": "meat_fish"
+    },
+    "pork sausages casings removed": {
+      "aisle": "Meat & Fish",
+      "needs_review": false,
+      "reason": "meat_fish"
+    },
+    "pork sausages sliced into rounds": {
+      "aisle": "Meat & Fish",
+      "needs_review": false,
+      "reason": "meat_fish"
+    },
+    "pork shoulder": {
+      "aisle": "Meat & Fish",
+      "needs_review": false,
+      "reason": "meat_fish"
+    },
+    "pork tenderloin": {
+      "aisle": "Meat & Fish",
+      "needs_review": false,
+      "reason": "meat_fish"
+    },
+    "pork tenderloin cut into even strips": {
+      "aisle": "Meat & Fish",
+      "needs_review": false,
+      "reason": "meat_fish"
+    },
+    "portobello mushrooms": {
+      "aisle": "Produce",
+      "needs_review": false,
+      "reason": "produce"
+    },
+    "potato": {
+      "aisle": "Produce",
+      "needs_review": false,
+      "reason": "produce"
+    },
+    "potato gnocchi": {
+      "aisle": "Cupboard / Pantry",
+      "needs_review": false,
+      "reason": "cupboard_dry"
+    },
+    "potatoes": {
+      "aisle": "Produce",
+      "needs_review": false,
+      "reason": "produce"
+    },
+    "potatoes coarsely": {
+      "aisle": "Produce",
+      "needs_review": false,
+      "reason": "produce"
+    },
+    "potatoes cut into cm pieces": {
+      "aisle": "Produce",
+      "needs_review": false,
+      "reason": "produce"
+    },
+    "potatoes cut into small wedges": {
+      "aisle": "Produce",
+      "needs_review": false,
+      "reason": "produce"
+    },
+    "potatoes peeled and": {
+      "aisle": "Produce",
+      "needs_review": false,
+      "reason": "produce"
+    },
+    "potatoes small": {
+      "aisle": "Produce",
+      "needs_review": false,
+      "reason": "produce"
+    },
+    "potatoes, coarsely grated": {
+      "aisle": "Produce",
+      "needs_review": false,
+      "reason": "produce"
+    },
+    "potatoes, thinly sliced": {
+      "aisle": "Produce",
+      "needs_review": false,
+      "reason": "produce"
+    },
+    "prawns": {
+      "aisle": "Meat & Fish",
+      "needs_review": false,
+      "reason": "meat_fish"
+    },
+    "pre-cooked salmon": {
+      "aisle": "Meat & Fish",
+      "needs_review": false,
+      "reason": "meat_fish"
+    },
+    "prepared coleslaw": {
+      "aisle": "Produce",
+      "needs_review": true,
+      "reason": "produce_guess_review"
+    },
+    "prepared gravy": {
+      "aisle": "Cupboard / Pantry",
+      "needs_review": false,
+      "reason": "shelf_stable_exception"
+    },
+    "prepared squid rings": {
+      "aisle": "Meat & Fish",
+      "needs_review": false,
+      "reason": "meat_fish"
+    },
+    "prosciutto": {
+      "aisle": "Meat & Fish",
+      "needs_review": false,
+      "reason": "meat_fish"
+    },
+    "protein pasta": {
+      "aisle": "Cupboard / Pantry",
+      "needs_review": false,
+      "reason": "cupboard_dry"
+    },
+    "pudding rice": {
+      "aisle": "Cupboard / Pantry",
+      "needs_review": false,
+      "reason": "cupboard_dry"
+    },
+    "puff pastry": {
+      "aisle": "Bakery",
+      "needs_review": false,
+      "reason": "bakery"
+    },
+    "pumpkin": {
+      "aisle": "Produce",
+      "needs_review": false,
+      "reason": "produce"
+    },
+    "quick-cook noodles": {
+      "aisle": "Cupboard / Pantry",
+      "needs_review": false,
+      "reason": "cupboard_dry"
+    },
+    "quick-cook pasta shapes": {
+      "aisle": "Cupboard / Pantry",
+      "needs_review": false,
+      "reason": "cupboard_dry"
+    },
+    "quinoa": {
+      "aisle": "Cupboard / Pantry",
+      "needs_review": false,
+      "reason": "cupboard_dry"
+    },
+    "raisins": {
+      "aisle": "Cupboard / Pantry",
+      "needs_review": false,
+      "reason": "cupboard_dry"
+    },
+    "rapeseed oil": {
+      "aisle": "Cupboard / Pantry",
+      "needs_review": false,
+      "reason": "cupboard_dry"
+    },
+    "raspberries": {
+      "aisle": "Produce",
+      "needs_review": false,
+      "reason": "produce"
+    },
+    "raspberry jam": {
+      "aisle": "Cupboard / Pantry",
+      "needs_review": false,
+      "reason": "cupboard_dry"
+    },
+    "raw king prawns": {
+      "aisle": "Meat & Fish",
+      "needs_review": false,
+      "reason": "meat_fish"
+    },
+    "raw peeled prawns": {
+      "aisle": "Meat & Fish",
+      "needs_review": false,
+      "reason": "meat_fish"
+    },
+    "Raw prawns": {
+      "aisle": "Meat & Fish",
+      "needs_review": false,
+      "reason": "meat_fish"
+    },
+    "ready rolled puff pastry": {
+      "aisle": "Bakery",
+      "needs_review": false,
+      "reason": "bakery"
+    },
+    "ready-made caramel": {
+      "aisle": "Cupboard / Pantry",
+      "needs_review": false,
+      "reason": "cupboard_dry"
+    },
+    "ready-made meringue nests": {
+      "aisle": "Bakery",
+      "needs_review": false,
+      "reason": "bakery"
+    },
+    "ready-made shortcrust pastry": {
+      "aisle": "Bakery",
+      "needs_review": false,
+      "reason": "bakery"
+    },
+    "ready-rolled puff pastry": {
+      "aisle": "Bakery",
+      "needs_review": false,
+      "reason": "bakery"
+    },
+    "ready-rolled puff pastry sheet": {
+      "aisle": "Bakery",
+      "needs_review": false,
+      "reason": "bakery"
+    },
+    "ready-rolled shortcrust pastry": {
+      "aisle": "Bakery",
+      "needs_review": false,
+      "reason": "bakery"
+    },
+    "ready-to-serve custard": {
+      "aisle": "Dairy & Chilled",
+      "needs_review": false,
+      "reason": "dairy_chilled"
+    },
+    "red cabbage": {
+      "aisle": "Produce",
+      "needs_review": false,
+      "reason": "produce"
+    },
+    "red lentils": {
+      "aisle": "Cupboard / Pantry",
+      "needs_review": false,
+      "reason": "cupboard_dry"
+    },
+    "red onion": {
+      "aisle": "Produce",
+      "needs_review": false,
+      "reason": "produce"
+    },
+    "red onion wedged": {
+      "aisle": "Produce",
+      "needs_review": false,
+      "reason": "produce"
+    },
+    "red onion, thinly sliced": {
+      "aisle": "Produce",
+      "needs_review": false,
+      "reason": "produce"
+    },
+    "red onions": {
+      "aisle": "Produce",
+      "needs_review": false,
+      "reason": "produce"
+    },
+    "red pepper": {
+      "aisle": "Produce",
+      "needs_review": false,
+      "reason": "produce"
+    },
+    "red pepper finely": {
+      "aisle": "Produce",
+      "needs_review": false,
+      "reason": "produce"
+    },
+    "red pepper small": {
+      "aisle": "Produce",
+      "needs_review": false,
+      "reason": "produce"
+    },
+    "red pepper, thinly sliced": {
+      "aisle": "Produce",
+      "needs_review": false,
+      "reason": "produce"
+    },
+    "red peppers": {
+      "aisle": "Produce",
+      "needs_review": false,
+      "reason": "produce"
+    },
+    "reduced-fat coconut milk": {
+      "aisle": "Cupboard / Pantry",
+      "needs_review": false,
+      "reason": "shelf_stable_exception"
+    },
+    "reduced-fat cream cheese": {
+      "aisle": "Dairy & Chilled",
+      "needs_review": false,
+      "reason": "dairy_chilled"
+    },
+    "reduced-fat crème fraîche": {
+      "aisle": "Dairy & Chilled",
+      "needs_review": false,
+      "reason": "dairy_chilled"
+    },
+    "reduced-fat crme frache": {
+      "aisle": "Dairy & Chilled",
+      "needs_review": false,
+      "reason": "dairy_chilled"
+    },
+    "reduced-salt soy sauce": {
+      "aisle": "Cupboard / Pantry",
+      "needs_review": false,
+      "reason": "cupboard_dry"
+    },
+    "reserved pasta water": {
+      "aisle": "Cupboard / Pantry",
+      "needs_review": false,
+      "reason": "cupboard_dry"
+    },
+    "rice": {
+      "aisle": "Cupboard / Pantry",
+      "needs_review": false,
+      "reason": "cupboard_dry"
+    },
+    "rice freshly": {
+      "aisle": "Cupboard / Pantry",
+      "needs_review": false,
+      "reason": "cupboard_dry"
+    },
+    "Rice, freshly cooked": {
+      "aisle": "Cupboard / Pantry",
+      "needs_review": false,
+      "reason": "cupboard_dry"
+    },
+    "ricotta": {
+      "aisle": "Dairy & Chilled",
+      "needs_review": false,
+      "reason": "dairy_chilled"
+    },
+    "Ricotta ravioli": {
+      "aisle": "Dairy & Chilled",
+      "needs_review": false,
+      "reason": "dairy_chilled"
+    },
+    "ripe avocado mashed": {
+      "aisle": "Produce",
+      "needs_review": false,
+      "reason": "produce"
+    },
+    "ripe bananas": {
+      "aisle": "Produce",
+      "needs_review": false,
+      "reason": "produce"
+    },
+    "ripe bananas mashed": {
+      "aisle": "Produce",
+      "needs_review": false,
+      "reason": "produce"
+    },
+    "risotto rice": {
+      "aisle": "Cupboard / Pantry",
+      "needs_review": false,
+      "reason": "cupboard_dry"
+    },
+    "rocket leaves": {
+      "aisle": "Produce",
+      "needs_review": false,
+      "reason": "fresh_produce"
+    },
+    "rolled oats": {
+      "aisle": "Cupboard / Pantry",
+      "needs_review": false,
+      "reason": "cupboard_dry"
+    },
+    "romaine lettuce": {
+      "aisle": "Produce",
+      "needs_review": false,
+      "reason": "produce"
+    },
+    "rosemary": {
+      "aisle": "Produce",
+      "needs_review": false,
+      "reason": "produce"
+    },
+    "Runny honey": {
+      "aisle": "Cupboard / Pantry",
+      "needs_review": false,
+      "reason": "cupboard_dry"
+    },
+    "safely refrigerated chicken": {
+      "aisle": "Meat & Fish",
+      "needs_review": false,
+      "reason": "meat_fish"
+    },
+    "safely refrigerated cooked chicken": {
+      "aisle": "Meat & Fish",
+      "needs_review": false,
+      "reason": "meat_fish"
+    },
+    "saffron": {
+      "aisle": "Cupboard / Pantry",
+      "needs_review": false,
+      "reason": "cupboard_dry"
+    },
+    "sage": {
+      "aisle": "Produce",
+      "needs_review": false,
+      "reason": "produce"
+    },
+    "salad dressing": {
+      "aisle": "Cupboard / Pantry",
+      "needs_review": false,
+      "reason": "cupboard_dry"
+    },
+    "salad leaves": {
+      "aisle": "Produce",
+      "needs_review": false,
+      "reason": "fresh_produce"
+    },
+    "salmon fillets": {
+      "aisle": "Meat & Fish",
+      "needs_review": false,
+      "reason": "meat_fish"
+    },
+    "salmon side": {
+      "aisle": "Meat & Fish",
+      "needs_review": false,
+      "reason": "meat_fish"
+    },
+    "salsa": {
+      "aisle": "Cupboard / Pantry",
+      "needs_review": false,
+      "reason": "cupboard_dry"
+    },
+    "salt": {
+      "aisle": "Cupboard / Pantry",
+      "needs_review": false,
+      "reason": "cupboard_dry"
+    },
+    "sausages": {
+      "aisle": "Meat & Fish",
+      "needs_review": false,
+      "reason": "meat_fish"
+    },
+    "sea bass fillets": {
+      "aisle": "Meat & Fish",
+      "needs_review": false,
+      "reason": "meat_fish"
+    },
+    "self raising flour": {
+      "aisle": "Cupboard / Pantry",
+      "needs_review": false,
+      "reason": "cupboard_dry"
+    },
+    "self-raising flour": {
+      "aisle": "Cupboard / Pantry",
+      "needs_review": false,
+      "reason": "cupboard_dry"
+    },
+    "sesame oil": {
+      "aisle": "Cupboard / Pantry",
+      "needs_review": false,
+      "reason": "cupboard_dry"
+    },
+    "sesame seeds": {
+      "aisle": "Cupboard / Pantry",
+      "needs_review": false,
+      "reason": "cupboard_dry"
+    },
+    "shredded lettuce": {
+      "aisle": "Produce",
+      "needs_review": false,
+      "reason": "produce"
+    },
+    "single cream": {
+      "aisle": "Dairy & Chilled",
+      "needs_review": false,
+      "reason": "dairy_chilled"
+    },
+    "sirloin steaks": {
+      "aisle": "Meat & Fish",
+      "needs_review": false,
+      "reason": "meat_fish"
+    },
+    "skinless boneless white fish fillets": {
+      "aisle": "Meat & Fish",
+      "needs_review": false,
+      "reason": "meat_fish"
+    },
+    "skinless salmon fillets": {
+      "aisle": "Meat & Fish",
+      "needs_review": false,
+      "reason": "meat_fish"
+    },
+    "skinless salmon fillets (about 120 g each)": {
+      "aisle": "Meat & Fish",
+      "needs_review": false,
+      "reason": "meat_fish"
+    },
+    "slices wholemeal bread": {
+      "aisle": "Bakery",
+      "needs_review": false,
+      "reason": "bakery"
+    },
+    "small apple": {
+      "aisle": "Produce",
+      "needs_review": false,
+      "reason": "produce"
+    },
+    "small broccoli florets": {
+      "aisle": "Produce",
+      "needs_review": false,
+      "reason": "produce"
+    },
+    "small carrot": {
+      "aisle": "Produce",
+      "needs_review": false,
+      "reason": "produce"
+    },
+    "small cauliflower cut into florets": {
+      "aisle": "Produce",
+      "needs_review": false,
+      "reason": "produce"
+    },
+    "small cucumber": {
+      "aisle": "Produce",
+      "needs_review": false,
+      "reason": "produce"
+    },
+    "small egg": {
+      "aisle": "Dairy & Chilled",
+      "needs_review": false,
+      "reason": "dairy_chilled"
+    },
+    "small flour tortillas": {
+      "aisle": "Bakery",
+      "needs_review": false,
+      "reason": "bakery"
+    },
+    "small lettuce": {
+      "aisle": "Produce",
+      "needs_review": false,
+      "reason": "produce"
+    },
+    "small onion": {
+      "aisle": "Produce",
+      "needs_review": false,
+      "reason": "produce"
+    },
+    "small onion finely": {
+      "aisle": "Produce",
+      "needs_review": false,
+      "reason": "produce"
+    },
+    "small red cabbage": {
+      "aisle": "Produce",
+      "needs_review": false,
+      "reason": "produce"
+    },
+    "small spring onion finely": {
+      "aisle": "Produce",
+      "needs_review": false,
+      "reason": "produce"
+    },
+    "small tomato finely and patted dry": {
+      "aisle": "Produce",
+      "needs_review": false,
+      "reason": "produce"
+    },
+    "smoked paprika": {
+      "aisle": "Cupboard / Pantry",
+      "needs_review": false,
+      "reason": "cupboard_dry"
+    },
+    "smoked salmon": {
+      "aisle": "Meat & Fish",
+      "needs_review": false,
+      "reason": "meat_fish"
+    },
+    "soft brown sugar": {
+      "aisle": "Cupboard / Pantry",
+      "needs_review": false,
+      "reason": "cupboard_dry"
+    },
+    "soft cheese": {
+      "aisle": "Dairy & Chilled",
+      "needs_review": false,
+      "reason": "dairy_chilled"
+    },
+    "soft goat s cheese": {
+      "aisle": "Dairy & Chilled",
+      "needs_review": false,
+      "reason": "dairy_chilled"
+    },
+    "Soft goat's cheese": {
+      "aisle": "Dairy & Chilled",
+      "needs_review": false,
+      "reason": "dairy_chilled"
+    },
+    "soured cream": {
+      "aisle": "Dairy & Chilled",
+      "needs_review": false,
+      "reason": "dairy_chilled"
+    },
+    "Soured cream (optional topping)": {
+      "aisle": "Dairy & Chilled",
+      "needs_review": false,
+      "reason": "dairy_chilled"
+    },
+    "soy sauce": {
+      "aisle": "Cupboard / Pantry",
+      "needs_review": false,
+      "reason": "cupboard_dry"
+    },
+    "spaghetti": {
+      "aisle": "Cupboard / Pantry",
+      "needs_review": false,
+      "reason": "cupboard_dry"
+    },
+    "spinach": {
+      "aisle": "Produce",
+      "needs_review": false,
+      "reason": "produce"
+    },
+    "spinach ricotta ravioli": {
+      "aisle": "Dairy & Chilled",
+      "needs_review": false,
+      "reason": "dairy_chilled"
+    },
+    "sponge fingers": {
+      "aisle": "Bakery",
+      "needs_review": false,
+      "reason": "bakery"
+    },
+    "spring onion": {
+      "aisle": "Produce",
+      "needs_review": false,
+      "reason": "produce"
+    },
+    "spring onions": {
+      "aisle": "Produce",
+      "needs_review": false,
+      "reason": "produce"
+    },
+    "spring onions finely": {
+      "aisle": "Produce",
+      "needs_review": false,
+      "reason": "produce"
+    },
+    "Steak": {
+      "aisle": "Meat & Fish",
+      "needs_review": false,
+      "reason": "meat_fish"
+    },
+    "stewing beef": {
+      "aisle": "Meat & Fish",
+      "needs_review": false,
+      "reason": "meat_fish"
+    },
+    "stir-fry vegetables": {
+      "aisle": "Produce",
+      "needs_review": false,
+      "reason": "produce"
+    },
+    "stock": {
+      "aisle": "Cupboard / Pantry",
+      "needs_review": false,
+      "reason": "shelf_stable_exception"
+    },
+    "strawberries": {
+      "aisle": "Produce",
+      "needs_review": false,
+      "reason": "produce"
+    },
+    "strawberry jam": {
+      "aisle": "Cupboard / Pantry",
+      "needs_review": false,
+      "reason": "cupboard_dry"
+    },
+    "strong coffee": {
+      "aisle": "Cupboard / Pantry",
+      "needs_review": false,
+      "reason": "cupboard_dry"
+    },
+    "strong white bread flour": {
+      "aisle": "Cupboard / Pantry",
+      "needs_review": false,
+      "reason": "shelf_stable_exception"
+    },
+    "sub rolls": {
+      "aisle": "Bakery",
+      "needs_review": false,
+      "reason": "bakery"
+    },
+    "Sun-dried tomatoes, drained": {
+      "aisle": "Cupboard / Pantry",
+      "needs_review": false,
+      "reason": "cupboard_dry"
+    },
+    "sunflower oil": {
+      "aisle": "Cupboard / Pantry",
+      "needs_review": false,
+      "reason": "cupboard_dry"
+    },
+    "sweet chilli sauce": {
+      "aisle": "Cupboard / Pantry",
+      "needs_review": false,
+      "reason": "cupboard_dry"
+    },
+    "sweet potato": {
+      "aisle": "Produce",
+      "needs_review": false,
+      "reason": "produce"
+    },
+    "sweet potato small": {
+      "aisle": "Produce",
+      "needs_review": false,
+      "reason": "produce"
+    },
+    "Sweet potatoes": {
+      "aisle": "Produce",
+      "needs_review": false,
+      "reason": "produce"
+    },
+    "sweet potatoes peeled and": {
+      "aisle": "Produce",
+      "needs_review": false,
+      "reason": "produce"
+    },
+    "sweet sour sauce": {
+      "aisle": "Cupboard / Pantry",
+      "needs_review": false,
+      "reason": "cupboard_dry"
+    },
+    "sweetcorn": {
+      "aisle": "Produce",
+      "needs_review": false,
+      "reason": "produce"
+    },
+    "sweetcorn thawed": {
+      "aisle": "Produce",
+      "needs_review": false,
+      "reason": "produce"
+    },
+    "sweetened condensed milk": {
+      "aisle": "Cupboard / Pantry",
+      "needs_review": false,
+      "reason": "shelf_stable_exception"
+    },
+    "taco seasoning": {
+      "aisle": "Cupboard / Pantry",
+      "needs_review": false,
+      "reason": "cupboard_dry"
+    },
+    "tenderstem broccoli": {
+      "aisle": "Produce",
+      "needs_review": false,
+      "reason": "produce"
+    },
+    "teriyaki sauce": {
+      "aisle": "Cupboard / Pantry",
+      "needs_review": false,
+      "reason": "cupboard_dry"
+    },
+    "thyme": {
+      "aisle": "Produce",
+      "needs_review": false,
+      "reason": "produce"
+    },
+    "tikka paste": {
+      "aisle": "Cupboard / Pantry",
+      "needs_review": false,
+      "reason": "cupboard_dry"
+    },
+    "tinned black beans": {
+      "aisle": "Cupboard / Pantry",
+      "needs_review": false,
+      "reason": "preserved_food"
+    },
+    "tinned butterbeans": {
+      "aisle": "Cupboard / Pantry",
+      "needs_review": false,
+      "reason": "preserved_food"
+    },
+    "tinned cannellini beans": {
+      "aisle": "Cupboard / Pantry",
+      "needs_review": false,
+      "reason": "preserved_food"
+    },
+    "tinned chickpeas": {
+      "aisle": "Cupboard / Pantry",
+      "needs_review": false,
+      "reason": "preserved_food"
+    },
+    "tinned green lentils": {
+      "aisle": "Cupboard / Pantry",
+      "needs_review": false,
+      "reason": "preserved_food"
+    },
+    "tinned jackfruit": {
+      "aisle": "Cupboard / Pantry",
+      "needs_review": false,
+      "reason": "preserved_food"
+    },
+    "tinned kidney beans": {
+      "aisle": "Cupboard / Pantry",
+      "needs_review": false,
+      "reason": "preserved_food"
+    },
+    "tinned pineapple chunks in juice": {
+      "aisle": "Cupboard / Pantry",
+      "needs_review": false,
+      "reason": "preserved_food"
+    },
+    "tinned sweetcorn": {
+      "aisle": "Cupboard / Pantry",
+      "needs_review": false,
+      "reason": "preserved_food"
+    },
+    "tinned tuna": {
+      "aisle": "Cupboard / Pantry",
+      "needs_review": false,
+      "reason": "preserved_food"
+    },
+    "tomato": {
+      "aisle": "Produce",
+      "needs_review": false,
+      "reason": "produce"
+    },
+    "tomato ketchup": {
+      "aisle": "Cupboard / Pantry",
+      "needs_review": false,
+      "reason": "cupboard_dry"
+    },
+    "tomato passata": {
+      "aisle": "Cupboard / Pantry",
+      "needs_review": false,
+      "reason": "cupboard_dry"
+    },
+    "tomato pure": {
+      "aisle": "Cupboard / Pantry",
+      "needs_review": false,
+      "reason": "cupboard_dry"
+    },
+    "tomato purée": {
+      "aisle": "Cupboard / Pantry",
+      "needs_review": false,
+      "reason": "cupboard_dry"
+    },
+    "tomato salsa": {
+      "aisle": "Cupboard / Pantry",
+      "needs_review": false,
+      "reason": "cupboard_dry"
+    },
+    "tomatoes": {
+      "aisle": "Produce",
+      "needs_review": false,
+      "reason": "fresh_produce"
+    },
+    "tomatoes, thinly sliced": {
+      "aisle": "Produce",
+      "needs_review": false,
+      "reason": "fresh_produce"
+    },
+    "tortilla chips": {
+      "aisle": "Cupboard / Pantry",
+      "needs_review": false,
+      "reason": "shelf_stable_exception"
+    },
+    "tortilla wraps": {
+      "aisle": "Bakery",
+      "needs_review": false,
+      "reason": "bakery"
+    },
+    "tortillas": {
+      "aisle": "Bakery",
+      "needs_review": false,
+      "reason": "bakery"
+    },
+    "tuna in spring water": {
+      "aisle": "Cupboard / Pantry",
+      "needs_review": false,
+      "reason": "preserved_food"
+    },
+    "tuna steaks": {
+      "aisle": "Meat & Fish",
+      "needs_review": false,
+      "reason": "meat_fish"
+    },
+    "turkey breast": {
+      "aisle": "Meat & Fish",
+      "needs_review": false,
+      "reason": "meat_fish"
+    },
+    "turkey mince": {
+      "aisle": "Meat & Fish",
+      "needs_review": false,
+      "reason": "meat_fish"
+    },
+    "udon noodles": {
+      "aisle": "Cupboard / Pantry",
+      "needs_review": false,
+      "reason": "cupboard_dry"
+    },
+    "unsalted butter": {
+      "aisle": "Dairy & Chilled",
+      "needs_review": false,
+      "reason": "dairy_chilled"
+    },
+    "vanilla extract": {
+      "aisle": "Cupboard / Pantry",
+      "needs_review": false,
+      "reason": "cupboard_dry"
+    },
+    "vanilla ice cream": {
+      "aisle": "Dairy & Chilled",
+      "needs_review": false,
+      "reason": "dairy_chilled"
+    },
+    "vegetable oil": {
+      "aisle": "Cupboard / Pantry",
+      "needs_review": false,
+      "reason": "cupboard_dry"
+    },
+    "vegetable or lamb stock": {
+      "aisle": "Cupboard / Pantry",
+      "needs_review": false,
+      "reason": "shelf_stable_exception"
+    },
+    "vegetable stock": {
+      "aisle": "Cupboard / Pantry",
+      "needs_review": false,
+      "reason": "shelf_stable_exception"
+    },
+    "vegetable suet": {
+      "aisle": "Cupboard / Pantry",
+      "needs_review": false,
+      "reason": "cupboard_dry"
+    },
+    "walnuts": {
+      "aisle": "Cupboard / Pantry",
+      "needs_review": false,
+      "reason": "cupboard_dry"
+    },
+    "water": {
+      "aisle": "Cupboard / Pantry",
+      "needs_review": false,
+      "reason": "cupboard_dry"
+    },
+    "white bread": {
+      "aisle": "Bakery",
+      "needs_review": false,
+      "reason": "bakery"
+    },
+    "white chocolate": {
+      "aisle": "Cupboard / Pantry",
+      "needs_review": false,
+      "reason": "shelf_stable_exception"
+    },
+    "white fish fillets": {
+      "aisle": "Meat & Fish",
+      "needs_review": false,
+      "reason": "meat_fish"
+    },
+    "white miso paste": {
+      "aisle": "Cupboard / Pantry",
+      "needs_review": false,
+      "reason": "cupboard_dry"
+    },
+    "white sauce": {
+      "aisle": "Cupboard / Pantry",
+      "needs_review": false,
+      "reason": "cupboard_dry"
+    },
+    "white wine vinegar": {
+      "aisle": "Cupboard / Pantry",
+      "needs_review": false,
+      "reason": "cupboard_dry"
+    },
+    "whole chicken": {
+      "aisle": "Meat & Fish",
+      "needs_review": false,
+      "reason": "meat_fish"
+    },
+    "whole milk": {
+      "aisle": "Dairy & Chilled",
+      "needs_review": false,
+      "reason": "dairy_chilled"
+    },
+    "wholegrain mustard": {
+      "aisle": "Cupboard / Pantry",
+      "needs_review": false,
+      "reason": "cupboard_dry"
+    },
+    "wholemeal bread": {
+      "aisle": "Bakery",
+      "needs_review": false,
+      "reason": "bakery"
+    },
+    "wholemeal pittas": {
+      "aisle": "Bakery",
+      "needs_review": false,
+      "reason": "bakery"
+    },
+    "wraps": {
+      "aisle": "Bakery",
+      "needs_review": false,
+      "reason": "bakery"
+    },
+    "yoghurt": {
+      "aisle": "Dairy & Chilled",
+      "needs_review": false,
+      "reason": "dairy_chilled"
+    }
+  }
+}

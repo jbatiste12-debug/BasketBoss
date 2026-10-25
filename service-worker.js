@@ -1,30 +1,69 @@
-/* BasketBoss PWA: caches app shell and images for repeat visits. */
-const CACHE='basketboss-shell-v2';
-const IMAGES='basketboss-images-v1';
-const SHELL=['./','./index.html','./manifest.webmanifest','./cloud-config.js','./icons/icon-192.png','./icons/icon-512.png','./icons/apple-touch-icon.png'];
-self.addEventListener('install',event=>{
-  event.waitUntil(caches.open(CACHE).then(c=>c.addAll(SHELL)).then(()=>self.skipWaiting()));
+/* BasketBoss v17.2 release-candidate scoped offline shell.
+ * Caches app pages and assets only; no personal localStorage or sync data is transmitted.
+ * Food photographs outside the preview are cached only after being viewed, where supported.
+ */
+const CACHE = 'basketboss-v17513-owner-qa-shell-v1-r10-20261025-ingredient-audit-five-20261025-choice-20261025-bb-public-beta-crowned-v1';
+const IMAGE_CACHE = 'basketboss-v17513-owner-qa-images-v1';
+const APP_BASE = new URL(self.registration.scope);
+const CORE = ['bb-consolidated-qa.css','bb-consolidated-qa.js','bb-culinary-enhancements.js','bb-culinary.css','index.html','tutorial.html','bb-real-app-tour.css','bb-real-app-tour.js','bb-cloudflare-qa.js','privacy.html','make-a-meal.html','make-a-meal.css','bb174-trial-ux.css','bb174-trial-ux.js','bb-premium-features.css','bb-premium-preview-config.js','bb-premium-features.js','bb-light-meal.css','make-a-meal.js','premium-upgrade.js','premium-upgrade.css','bb-intro-trial.js','bb-intro-trial.css','bb-us-market.js','bb-us-market.css','bb173-final-polish.css','bb-welcome-splash.js','bb-welcome-splash.css','bb-install.js','bb-install.css','shopping-inventory.js','recipes.json','manifest.webmanifest','bb-beta-launch-polish.js','bb-beta-launch-polish.css','bb-beta-six-fixes.css','bb-beta-six-fixes.js','bb-beta-five.css','bb-beta-five-nav.js','bb-purchase-choice.css',
+              'icons/basketboss-crowned-v1766-180.png','icons/basketboss-crowned-v1766-192.png','icons/basketboss-crowned-v1766-512.png',
+              'icons/basketboss-silver-192-v1755.png','icons/basketboss-silver-512-v1755.png','icons/basketboss-silver-180-v1755.png',
+              'food-thumbs/tomato.webp','food-thumbs/lettuce.webp','food-thumbs/red-onion.webp',
+              'food-thumbs/parmesan.webp','food-thumbs/eggs.webp','food-thumbs/chicken-breast.webp',
+              'food-thumbs/rice.webp','food-thumbs/broccoli.webp','food-thumbs/yellow-pepper.webp',
+              'food-thumbs/onion.webp','food-thumbs/red-pepper.webp','food-thumbs/courgette.webp',
+  './basketboss-pricing-v19.js',
+  './basketboss-pricing-v19.js?v=bb82-aisle-20261024',
+  './basketboss-aisles-v20.js',
+  './basketboss-aisles-v20.js?v=bb82-aisle-20261024',
+  './ingredient-pack-catalog.json',
+  './make-a-meal.js?v=bb83-20261024',
+  './make-a-meal.js?v=bb717-20261024'
+]
+  .map(path => new URL(path, APP_BASE).href);
+self.addEventListener('install', event => {
+  event.waitUntil(caches.open(CACHE).then(cache => cache.addAll(CORE)).then(() => self.skipWaiting()));
 });
-self.addEventListener('activate',event=>{
-  event.waitUntil(caches.keys().then(keys=>Promise.all(keys.filter(k=>![CACHE,IMAGES].includes(k)).map(k=>caches.delete(k)))).then(()=>self.clients.claim()));
+self.addEventListener('activate', event => {
+  event.waitUntil(caches.keys().then(keys => Promise.all(keys
+    .filter(key => key.startsWith('basketboss-v') && ![CACHE, IMAGE_CACHE].includes(key))
+    .map(key => caches.delete(key)))).then(() => self.clients.claim()));
 });
-self.addEventListener('fetch',event=>{
-  const req=event.request;
-  if(req.method!=='GET')return;
-  const url=new URL(req.url);
-  if(req.mode==='navigate'){
-    event.respondWith(fetch(req).then(resp=>{if(resp.ok){const clone=resp.clone();caches.open(CACHE).then(c=>c.put('./index.html',clone));}return resp;}).catch(()=>caches.match('./index.html')));
+self.addEventListener('fetch', event => {
+  const req = event.request;
+  if (req.method !== 'GET') return;
+  const target = new URL(req.url);
+  if (target.origin !== self.location.origin) return;
+  // Never cache live AI status or responses, even when served under our PWA scope.
+  if (target.pathname.startsWith(new URL('api/', APP_BASE).pathname)) return;
+  if (target.pathname.startsWith(APP_BASE.pathname)) {
+    if (req.mode === 'navigate') {
+      event.respondWith(fetch(req).then(response => {
+        if (response.ok) { const copy=response.clone(); event.waitUntil(caches.open(CACHE).then(c=>c.put(req,copy))); }
+        return response;
+      }).catch(async () => {
+        const cached = await caches.match(req, {ignoreSearch: true});
+        if (cached) return cached;
+        const pathname = new URL(req.url).pathname;
+        if (pathname === APP_BASE.pathname || pathname === new URL('index.html',APP_BASE).pathname)
+          return (await caches.match(new URL('index.html',APP_BASE).href)) || Response.error();
+        return Response.error();
+      }));
+      return;
+    }
+    event.respondWith(caches.match(req).then(cached => cached || fetch(req).then(response => {
+      if (response.ok) { const copy=response.clone(); event.waitUntil(caches.open(CACHE).then(c=>c.put(req,copy))); }
+      return response;
+    })));
     return;
   }
-  if(url.origin===self.location.origin){
-    event.respondWith(caches.match(req).then(hit=>hit||fetch(req).then(resp=>{if(resp.ok){const copy=resp.clone();caches.open(CACHE).then(c=>c.put(req,copy));}return resp;})));
-    return;
-  }
-  if(req.destination==='image'){
-    event.respondWith(caches.open(IMAGES).then(async cache=>{
-      const hit=await cache.match(req);
-      if(hit)return hit;
-      try{const resp=await fetch(req);if(resp.ok||resp.type==='opaque'){await cache.put(req,resp.clone());}return resp;}catch(e){return Response.error();}
+  // Only same-origin recipe images that the user has opened; not blanket cache of all 321.
+  if (req.destination === 'image') {
+    event.respondWith(caches.open(IMAGE_CACHE).then(async cache => {
+      const cached = await cache.match(req);
+      if (cached) return cached;
+      try { const response = await fetch(req); if (response.ok) event.waitUntil(cache.put(req,response.clone())); return response; }
+      catch (_) { return Response.error(); }
     }));
   }
 });

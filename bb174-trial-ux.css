@@ -1,0 +1,9 @@
+/* Trial UX preview does not provide access control. */
+.bb174-billing-terms{border-left:3px solid #bc9650;padding:10px 12px;background:#fff9e9;border-radius:7px;line-height:1.5!important;color:#4f4634!important;font-size:13px!important}
+.bb174-subscription-banner{border:1px solid #b9d2be;background:#f5fbf0;color:#20472d;border-radius:15px;padding:16px;margin:12px 0;line-height:1.45}
+.bb174-subscription-banner strong{font-size:16px}.bb174-subscription-banner p{font-size:14px;margin:7px 0}.bb174-subscription-banner small{display:block;font-size:12px;color:#667568;margin-top:6px}
+.bb174-billing-link{display:inline-block;margin:8px 0;color:#185638;font-weight:700;min-height:40px;padding-top:8px}
+.bb174-expiry-dialog{max-width:min(94vw,470px);padding:25px;border:1px solid #bcd4bc;border-radius:18px;color:#1e4830;background:#fffcf5;box-shadow:0 20px 80px #0004}
+.bb174-expiry-dialog::backdrop{background:#132d20a8}.bb174-expiry-dialog h2{font-size:23px;margin:0 0 11px}.bb174-expiry-dialog p{line-height:1.55}.bb174-expiry-dialog a{display:block;color:#175b39;font-weight:800;margin:13px 0;padding:10px 0}
+.bb174-expiry-dialog button{background:#246d4a;color:white;border:0;border-radius:10px;font-weight:700;min-height:44px;padding:10px 15px;cursor:pointer}
+.bb174-expiry-dialog button:focus-visible,.bb174-expiry-dialog a:focus-visible{outline:3px solid #c69a3c;outline-offset:3px}

@@ -1,0 +1,303 @@
+/* BasketBoss mobile six-fix QA 2026-10-25. Visual + navigation only.
+   Original grocery records, pricing calculations, recipe access, billing, AI and
+   In-Store Mode are unchanged. Mobile overrides avoid affecting desktop UI. */
+@media(max-width:720px) {
+  /* 2 — A persistent Shop overview is kept OUTSIDE the app's rerendered #app.
+     Hide canonical list only when the replacement overview is definitely ready. */
+  body.bb-r6-shop-ready[data-bbnext-view="shop-list"] #app {display:none!important;}
+  body.bb-r6-shop-ready[data-bbnext-view="shop-list"] #bbReleaseShopOverview {display:block!important;}
+  #bbReleaseShopOverview[hidden] {display:none!important;}
+  #bbReleaseShopOverview {margin:16px auto 20px;max-width:760px;color:#194633;padding:0 10px;box-sizing:border-box;}
+  #bbReleaseShopOverview .bb-r6-hero {padding:24px 20px;overflow:hidden;position:relative;color:#fff;border-radius:26px;background:radial-gradient(circle at 100% 0%,#3c9a7359,transparent 52%),linear-gradient(138deg,#163e38,#256c4b);box-shadow:0 13px 26px #194b3a35;}
+  #bbReleaseShopOverview .bb-r6-eyebrow {color:#ebdbad;font-size:10px;font-weight:900;letter-spacing:.14em;}
+  #bbReleaseShopOverview h2 {color:#fff;font-weight:900;font-size:clamp(28px,8vw,36px);line-height:1.09;letter-spacing:-.035em;margin:11px 0 9px;}
+  #bbReleaseShopOverview .bb-r6-hero p {color:#e5f5ea;line-height:1.4;font-size:13px;margin:0;}
+  #bbReleaseShopOverview .bb-r6-stats {display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px;margin:19px 0 0;}
+  #bbReleaseShopOverview .bb-r6-stat {min-width:0;border:1px solid #ffffff49;background:#ffffff13;border-radius:13px;padding:13px 5px;text-align:center;}
+  #bbReleaseShopOverview .bb-r6-stat strong {display:block;color:white;font-size:clamp(15px,4.3vw,23px);overflow-wrap:anywhere;letter-spacing:-.04em;}
+  #bbReleaseShopOverview .bb-r6-stat span {display:block;color:#d7ede0;font-size:10px;margin-top:3px;}
+  #bbReleaseShopOverview .bb-r6-track {height:8px;border-radius:999px;overflow:hidden;background:#ffffff3c;margin-top:18px;}
+  #bbReleaseShopOverview .bb-r6-track span {display:block;height:100%;background:linear-gradient(90deg,#d7ad52,#f6e0a1);transition:width .2s ease;}
+  #bbReleaseShopOverview .bb-r6-progress {font-size:11px!important;margin-top:7px!important;}
+  #bbReleaseShopOverview .bb-r6-list {background:#fff;border:1px solid #dae7dc;border-radius:23px;padding:18px;margin:14px 0;box-shadow:0 6px 16px #2a59431b;}
+  #bbReleaseShopOverview h3 {margin:0 0 8px;color:#174a34;font-weight:850;font-size:19px;}
+  #bbReleaseShopOverview .bb-r6-list p {color:#597064;font-size:13px;line-height:1.5;margin:5px 0 11px;}
+  #bbReleaseShopOverview ul {padding:0;margin:12px 0 0;list-style:none;display:grid;gap:8px;}
+  #bbReleaseShopOverview li {border-radius:11px;background:#f5faf6;border:1px solid #e1e9e1;padding:11px 12px;display:flex;justify-content:space-between;align-items:center;gap:10px;font-size:13px;}
+  #bbReleaseShopOverview li strong {overflow-wrap:anywhere;min-width:0;}
+  #bbReleaseShopOverview li small {font-size:10px;color:#5d7a66;max-width:40%;text-align:right;}
+  #bbReleaseShopOverview .bb-r6-begin {display:flex;justify-content:space-between;align-items:center;width:100%;min-height:64px;background:linear-gradient(120deg,#27834b,#176138);border:1px solid #177548;border-radius:18px;box-shadow:0 7px 16px #185b3940;color:white;font-weight:900;font-size:18px;padding:14px 19px;cursor:pointer;}
+  #bbReleaseShopOverview .bb-r6-begin:disabled {background:#789a82;border-color:#789a82;box-shadow:none;opacity:.8;cursor:not-allowed;}
+  #bbReleaseShopOverview .bb-r6-secondary {display:grid;grid-template-columns:1fr 1fr;gap:9px;margin-top:10px;}
+  #bbReleaseShopOverview .bb-r6-secondary button {min-height:44px;border:1px solid #c6dbc9;background:#f7fbf6;color:#245d3f;font:800 13px system-ui,sans-serif;border-radius:14px;padding:10px 6px;}
+  #bbReleaseShopOverview button:focus-visible {outline:3px solid #c59638;outline-offset:2px;}
+  /* Disable only the old, broken snapshot UI, not any original shopping model. */
+  #bbMobileShopPreview {display:none!important;}
+
+  /* 3 — Gallery cards: same photo ratio and aligned title, price and CTAs. */
+  #app .grid-recipes {align-items:stretch!important;grid-auto-rows:1fr;}
+  #app .grid-recipes .mini-recipe {height:100%!important;display:flex!important;flex-direction:column!important;overflow:hidden!important;}
+  #app .grid-recipes .mini-img {height:auto!important;aspect-ratio:4/3!important;flex:none!important;overflow:hidden!important;}
+  #app .grid-recipes .mini-img img {width:100%!important;height:100%!important;object-fit:cover!important;object-position:center!important;}
+  #app .grid-recipes .mini-content {flex:1;display:flex!important;flex-direction:column!important;min-width:0!important;}
+  #app .grid-recipes .mini-content h4 {height:3.05em!important;line-height:1.45!important;display:-webkit-box!important;-webkit-box-orient:vertical!important;-webkit-line-clamp:2;overflow:hidden!important;}
+  #app .grid-recipes .bb18-recipe-meta {display:flex!important;flex-direction:column!important;align-items:flex-start!important;justify-content:flex-end!important;min-height:49px!important;gap:4px!important;margin:8px 0 10px!important;}
+  #app .grid-recipes .bb18-recipe-meta .bb18-price-value {display:block!important;font-weight:850!important;color:#276547!important;font-size:13px!important;white-space:nowrap!important;}
+  #app .grid-recipes .mini-content > .muted {min-height:2.8em!important;line-height:1.4!important;margin-top:0!important;}
+  #app .grid-recipes .bb80-gallery-add, #app .grid-recipes .bb18-unlock-cta {margin-top:auto!important;}
+
+  /* 4 — The large BasketBoss header belongs to Plan, not every app section. */
+  body[data-bbnext-view]:not([data-bbnext-view="week"]) .shell > header.top {display:none!important;}
+  #bbR6QuickSettings {display:none;}
+  body[data-bbnext-view]:not([data-bbnext-view="week"]) #bbR6QuickSettings {
+    display:grid!important;place-items:center;position:fixed;z-index:760;right:12px;top:calc(12px + env(safe-area-inset-top,0px));
+    width:44px;height:44px;border-radius:15px;background:#fff;border:1px solid #c6d8cb;box-shadow:0 5px 15px #174f3526;
+    color:#205e3b;font-size:24px;cursor:pointer;
+  }
+  /* 5 — The original Market select is available only inside Settings. */
+  #bbuiLinksSection #bb17RegionCard {display:block!important;position:static!important;margin:10px 0 14px!important;width:100%!important;max-width:none!important;box-shadow:none!important;}
+  #bbuiLinksSection #bb17RegionCard .bb17-region-top {display:flex!important;flex-wrap:wrap!important;gap:8px!important;align-items:center!important;}
+  #bbuiLinksSection #bb17RegionCard select {min-height:44px!important;}
+  /* Keep main app content clear of the fixed tab bar. */
+  .shell {padding-bottom:calc(110px + env(safe-area-inset-bottom,0px))!important;}
+
+  /* 6 — Same persistent, equal-width five-tab bar on the Cook page. */
+  .bb-r6-cook-page .bb17513-meal-brand {display:none!important;}
+  .bb-r6-cook-page .bb17513-meal-topbar {background:transparent!important;border:0!important;box-shadow:none!important;border-radius:0!important;margin:0!important;padding:8px 10px!important;}
+  .bb-r6-cook-page .bb17513-meal-topbar .back {font-size:12px!important;}
+  .bb-r6-cook-page {padding-bottom:calc(110px + env(safe-area-inset-bottom,0px))!important;}
+  .bb-r6-cook-nav {position:fixed;inset:auto 0 0 0;z-index:9999;width:100vw;box-sizing:border-box;
+    display:grid!important;grid-template-columns:repeat(5,minmax(0,1fr));gap:5px;
+    padding:8px max(8px,env(safe-area-inset-right,0px)) calc(8px + env(safe-area-inset-bottom,0px)) max(8px,env(safe-area-inset-left,0px));
+    border-radius:22px 22px 0 0;background:#f9fcf9fb;border-top:1px solid #bfd6c7;box-shadow:0 -8px 25px #123b2729;}
+  .bb-r6-cook-nav a {display:flex;flex-direction:column;align-items:center;justify-content:center;gap:5px;min-width:0;min-height:65px;padding:7px 0;box-sizing:border-box;
+    border-radius:15px;text-decoration:none!important;color:#205b3b!important;background:linear-gradient(#fff,#f1f7f1);border:1px solid #d6e5d9;font:bold 11px/1.2 system-ui,sans-serif;}
+  .bb-r6-cook-nav a[aria-current="page"] {color:white!important;background:linear-gradient(140deg,#29824f,#185b37);border-color:#206d43;box-shadow:0 6px 15px #1b643e40;}
+  .bb-r6-cook-nav svg {width:23px;height:23px;stroke:currentColor;fill:none;stroke-width:1.8;}
+  .bb-r6-cook-nav a:focus-visible {outline:3px solid #dbb364;outline-offset:1px;}
+}
+@media(min-width:721px) {#bbReleaseShopOverview,#bbR6QuickSettings,.bb-r6-cook-nav{display:none!important;}}
+@media(prefers-reduced-motion:reduce) {#bbReleaseShopOverview .bb-r6-track span{transition:none!important;}}
+
+/* v1767 — Plan hero + tactile Auto-Fill + unified five-tab dock.
+   All adjustments are mobile-only and preserve the source forms, labels, IDs,
+   progress data and existing click handlers. The market selector stays in Settings. */
+@media(max-width:720px){
+  /* Compact, accessible Plan header; no duplicated region banner. */
+  body[data-bbnext-view="week"] .shell > header.top{
+    min-height:58px!important;padding:7px 12px!important;margin-bottom:10px!important;
+    border-radius:17px!important;box-shadow:0 5px 15px rgba(20,63,45,.08)!important;
+  }
+  body[data-bbnext-view="week"] .shell > header.top .brand{
+    display:flex!important;align-items:center!important;gap:9px!important;
+  }
+  body[data-bbnext-view="week"] .shell > header.top .brand .logo{
+    width:42px!important;height:42px!important;border-radius:12px!important;flex:none!important;
+  }
+  body[data-bbnext-view="week"] .shell > header.top .brand .logo svg{width:28px!important;height:28px!important;}
+  body[data-bbnext-view="week"] .shell > header.top .brand h1{font-size:22px!important;line-height:1.05!important;letter-spacing:-.06em!important;margin:0!important;}
+  body[data-bbnext-view="week"] .shell > header.top #saveStatus{font-size:10px!important;line-height:1.25!important;}
+  body[data-bbnext-view="week"] .shell > header.top #bbuiOpenSettings{
+    width:42px!important;height:42px!important;min-width:42px!important;border-radius:13px!important;
+  }
+
+  /* Two-column weekly hero: context on left, real SVG progress ring on right. */
+  #app.bbnext-plan .bbnext-plan-budget.bb-r7-budget{
+    display:grid!important;grid-template-columns:minmax(0,1fr) 116px!important;
+    grid-template-rows:auto auto!important;gap:12px 12px!important;
+    align-items:center!important;justify-items:stretch!important;
+    padding:20px 17px 17px!important;margin:8px 0 12px!important;
+    background:linear-gradient(132deg,#f9fff9 2%,#e8f6ed 100%)!important;
+    border:1px solid #b7dcc7!important;border-top:4px solid #187c4a!important;
+    border-radius:24px!important;box-shadow:0 11px 26px rgba(20,67,44,.13)!important;
+    overflow:hidden!important;isolation:isolate!important;
+  }
+  #app.bbnext-plan .bbnext-plan-budget.bb-r7-budget .bb77-week-mark{display:none!important;}
+  #app.bbnext-plan .bbnext-plan-budget.bb-r7-budget .bbnext-plan-budget-text{
+    grid-column:1!important;grid-row:1!important;align-self:center!important;
+    width:100%!important;justify-self:stretch!important;min-width:0!important;
+    text-align:left!important;display:block!important;
+  }
+  #app.bbnext-plan .bbnext-plan-budget.bb-r7-budget .bbnext-plan-kicker{
+    display:inline-block!important;font-size:9px!important;font-weight:850!important;
+    letter-spacing:.09em!important;padding:5px 7px!important;border-radius:999px!important;
+    background:#e1f1e6!important;border:1px solid #b8dec4!important;color:#236844!important;
+    white-space:nowrap!important;
+  }
+  #app.bbnext-plan .bbnext-plan-budget.bb-r7-budget .bbnext-plan-budget-text h2{
+    font-size:clamp(28px,8.1vw,37px)!important;line-height:1.04!important;
+    color:#163d2c!important;font-weight:950!important;letter-spacing:-.06em!important;
+    margin:10px 0 8px!important;
+  }
+  #app.bbnext-plan .bbnext-plan-budget.bb-r7-budget .bbnext-plan-budget-line{
+    font-size:13px!important;line-height:1.25!important;font-weight:900!important;
+    color:#175c39!important;margin-bottom:5px!important;
+  }
+  #app.bbnext-plan .bbnext-plan-budget.bb-r7-budget .bbnext-plan-budget-text > p{
+    font-size:11px!important;line-height:1.38!important;color:#4c7059!important;
+    margin:5px 0!important;
+  }
+  #app.bbnext-plan .bbnext-plan-budget.bb-r7-budget .bbnext-plan-budget-text > small{
+    font-size:9px!important;line-height:1.32!important;color:#667d6b!important;
+    max-width:100%!important;margin:0!important;
+  }
+  #app.bbnext-plan .bbnext-plan-budget.bb-r7-budget .bbnext-plan-donut{
+    grid-column:2!important;grid-row:1!important;justify-self:center!important;
+    margin:0!important;width:116px!important;height:116px!important;
+    background:transparent!important;border:0!important;box-shadow:none!important;filter:none!important;
+    position:relative!important;display:grid!important;place-items:center!important;overflow:visible!important;
+  }
+  #app.bbnext-plan .bbnext-plan-budget.bb-r7-budget .bbnext-plan-donut-core{
+    width:89px!important;height:89px!important;position:relative!important;z-index:1!important;
+    border-radius:50%!important;background:#fff!important;border:1px solid #e4f3e9!important;
+    box-shadow:0 4px 12px rgba(32,89,60,.11)!important;display:flex!important;
+    flex-direction:column!important;align-items:center!important;justify-content:center!important;
+  }
+  #app.bbnext-plan .bbnext-plan-budget.bb-r7-budget .bbnext-plan-donut-core strong{
+    font-size:19px!important;font-weight:950!important;letter-spacing:-.05em!important;
+    color:#155638!important;white-space:nowrap!important;
+  }
+  #app.bbnext-plan .bbnext-plan-budget.bb-r7-budget .bbnext-plan-donut-core small{
+    font-size:10px!important;color:#658574!important;
+  }
+  #app.bbnext-plan .bbnext-plan-budget.bb-r7-budget .bb-r7-ring{
+    position:absolute!important;inset:0!important;width:100%!important;height:100%!important;
+    transform:rotate(-90deg);pointer-events:none!important;overflow:visible!important;
+  }
+  #app.bbnext-plan .bbnext-plan-budget.bb-r7-budget .bb-r7-ring circle{fill:none;stroke-width:9;}
+  #app.bbnext-plan .bbnext-plan-budget.bb-r7-budget .bb-r7-ring-track{stroke:#cfe7d6;}
+  #app.bbnext-plan .bbnext-plan-budget.bb-r7-budget .bb-r7-ring-fill{
+    stroke:#04a75e;stroke-linecap:round;transition:stroke-dashoffset .35s ease;
+  }
+  #app.bbnext-plan .bbnext-plan-budget.bb-r7-budget .bb-r7-ring.bb-r7-close .bb-r7-ring-fill{stroke:#ba8429;}
+  #app.bbnext-plan .bbnext-plan-budget.bb-r7-budget .bb-r7-ring.bb-r7-over .bb-r7-ring-fill{stroke:#c65349;}
+  #app.bbnext-plan .bbnext-plan-budget.bb-r7-budget .bb77-budget-form,
+  #app.bbnext-plan .bbnext-plan-budget.bb-r7-budget .bb-r7-budget-pill{
+    grid-column:1/-1!important;grid-row:2!important;margin:0!important;
+    justify-self:stretch!important;width:100%!important;max-width:none!important;box-sizing:border-box!important;
+  }
+  #app.bbnext-plan .bbnext-plan-budget.bb-r7-budget .bb77-budget-form{
+    background:rgba(255,255,255,.63)!important;border:1px solid #d5e9dc!important;
+    border-radius:16px!important;padding:10px!important;
+  }
+  #app.bbnext-plan .bbnext-plan-budget.bb-r7-budget .bb77-budget-form[hidden],
+  #app.bbnext-plan .bbnext-plan-budget.bb-r7-budget .bb-r7-budget-pill[hidden]{display:none!important;}
+  #app.bbnext-plan .bbnext-plan-budget.bb-r7-budget .bb77-budget-form label{
+    font-size:11px!important;font-weight:800!important;color:#246444!important;
+    display:block!important;text-align:left!important;margin:0 0 6px!important;
+  }
+  #app.bbnext-plan .bbnext-plan-budget.bb-r7-budget .bb77-budget-controls{
+    display:grid!important;grid-template-columns:minmax(0,1fr) auto!important;
+    align-items:center!important;gap:8px!important;
+  }
+  #app.bbnext-plan .bbnext-plan-budget.bb-r7-budget .bb77-budget-controls input{
+    width:100%!important;max-width:none!important;min-width:0!important;
+    height:43px!important;border-radius:11px!important;font-size:15px!important;
+  }
+  #app.bbnext-plan .bbnext-plan-budget.bb-r7-budget .bb77-budget-controls button{
+    min-height:43px!important;padding:8px 12px!important;border-radius:12px!important;
+    background:#226d45!important;color:#fff!important;font-size:12px!important;
+  }
+  #app.bbnext-plan .bbnext-plan-budget.bb-r7-budget .bb-r7-budget-pill{
+    background:#fff!important;border:1px solid #c3decf!important;border-radius:999px!important;
+    box-shadow:0 4px 11px rgba(26,83,51,.09)!important;
+    color:#145b39!important;font-size:13px!important;font-weight:850!important;
+    min-height:43px!important;padding:9px 15px!important;text-align:center!important;cursor:pointer!important;
+  }
+  #app.bbnext-plan .bbnext-plan-budget.bb-r7-budget .bb-r7-budget-pill:focus-visible{
+    outline:3px solid #d6ac4a!important;outline-offset:2px!important;
+  }
+
+  /* Distinct, tactile Smart Auto-Fill presets; source Premium checks still run. */
+  #app.bbnext-plan .bb81-pro-filters{
+    padding:16px!important;margin:10px 0 14px!important;border-radius:21px!important;
+    border:1px solid #e3c888!important;
+    background:linear-gradient(145deg,#fff9e8,#ffefd0)!important;
+    box-shadow:0 8px 22px rgba(108,75,30,.1)!important;
+  }
+  #app.bbnext-plan .bb81-pro-filters-heading{gap:5px!important;}
+  #app.bbnext-plan .bb81-pro-filters-heading strong{font-size:17px!important;font-weight:900!important;color:#74501b!important;}
+  #app.bbnext-plan .bb81-pro-filters-heading span{font-size:11px!important;line-height:1.35!important;color:#7d6b49!important;}
+  #app.bbnext-plan .bb81-pro-pills{
+    display:grid!important;grid-template-columns:repeat(2,minmax(0,1fr))!important;
+    gap:9px!important;margin:13px 0 11px!important;
+  }
+  #app.bbnext-plan .bb81-pro-pill{
+    display:grid!important;place-items:center!important;text-align:center!important;
+    min-width:0!important;min-height:53px!important;padding:9px 7px!important;
+    border:1px solid #d9b778!important;border-bottom-width:3px!important;
+    border-radius:14px!important;background:#fffefa!important;
+    color:#73511f!important;font-size:12px!important;font-weight:900!important;
+    line-height:1.22!important;box-shadow:0 4px 9px rgba(119,81,29,.1)!important;
+    transition:transform .15s ease,box-shadow .15s ease,background .15s ease!important;
+  }
+  #app.bbnext-plan .bb81-pro-pill:active{transform:translateY(2px) scale(.985)!important;box-shadow:0 1px 3px rgba(119,81,29,.17)!important;}
+  #app.bbnext-plan .bb81-pro-pill.selected,
+  #app.bbnext-plan .bb81-pro-pill[aria-pressed="true"]{
+    background:linear-gradient(140deg,#287c4b,#175d3b)!important;border-color:#175d3b!important;
+    color:#fff!important;box-shadow:0 6px 12px rgba(23,93,59,.22)!important;
+  }
+  #app.bbnext-plan .bb81-pro-pill:focus-visible{outline:3px solid #b8882b!important;outline-offset:2px!important;}
+  #app.bbnext-plan .bb81-pro-filter-note{
+    font-size:11px!important;line-height:1.45!important;margin:4px 0 0!important;color:#755e35!important;
+  }
+
+  /* Unified full-width dock: five segments, ONE surface, active green pill. */
+  .shell nav.tabs,nav.bb-r6-cook-nav{
+    position:fixed!important;left:0!important;right:0!important;bottom:0!important;
+    display:grid!important;grid-template-columns:repeat(5,minmax(0,1fr))!important;
+    width:100%!important;max-width:none!important;margin:0!important;gap:3px!important;
+    box-sizing:border-box!important;z-index:9999!important;
+    padding:8px max(8px,env(safe-area-inset-right,0px)) calc(9px + env(safe-area-inset-bottom,0px)) max(8px,env(safe-area-inset-left,0px))!important;
+    background:rgba(252,255,252,.97)!important;
+    backdrop-filter:blur(17px)!important;-webkit-backdrop-filter:blur(17px)!important;
+    border:0!important;border-top:1px solid rgba(39,97,66,.14)!important;
+    border-radius:24px 24px 0 0!important;
+    box-shadow:0 -8px 24px rgba(26,78,47,.14)!important;
+  }
+  .shell nav.tabs >.tab, .shell nav.tabs >.bb173-make-meal-link,
+  nav.bb-r6-cook-nav >a{
+    display:flex!important;flex-direction:column!important;align-items:center!important;
+    justify-content:center!important;gap:5px!important;
+    min-width:0!important;width:100%!important;max-width:none!important;
+    min-height:64px!important;padding:7px 0!important;
+    border:0!important;border-radius:16px!important;
+    background:transparent!important;box-shadow:none!important;
+    color:#255e41!important;font:850 11px/1.2 system-ui,-apple-system,sans-serif!important;
+    text-decoration:none!important;letter-spacing:0!important;
+    transition:transform .16s ease,background .16s ease,box-shadow .16s ease!important;
+  }
+  .shell nav.tabs >.tab.active, .shell nav.tabs >.tab[aria-current="page"],
+  nav.bb-r6-cook-nav >a[aria-current="page"]{
+    background:linear-gradient(155deg,#27824f,#155b39)!important;
+    color:#fff!important;box-shadow:0 5px 12px rgba(24,90,55,.3)!important;
+  }
+  .shell nav.tabs >.tab:active,nav.bb-r6-cook-nav >a:active{transform:scale(.95)!important;}
+  .shell nav.tabs .nav-icon,.shell nav.tabs .nav-icon svg,nav.bb-r6-cook-nav svg{
+    width:24px!important;height:24px!important;flex:none!important;
+  }
+  .shell nav.tabs .nav-label{font-size:11px!important;font-weight:850!important;white-space:nowrap!important;}
+  .shell nav.tabs >.tab:focus-visible,nav.bb-r6-cook-nav >a:focus-visible{
+    outline:3px solid #d5a94e!important;outline-offset:1px!important;
+  }
+  .shell {padding-bottom:calc(95px + env(safe-area-inset-bottom,0px))!important;}
+  .bb-r6-cook-page {padding-bottom:calc(95px + env(safe-area-inset-bottom,0px))!important;}
+}
+@media(max-width:350px){
+  #app.bbnext-plan .bbnext-plan-budget.bb-r7-budget{grid-template-columns:minmax(0,1fr) 102px!important;padding:16px 12px!important;}
+  #app.bbnext-plan .bbnext-plan-budget.bb-r7-budget .bbnext-plan-donut{width:102px!important;height:102px!important;}
+  #app.bbnext-plan .bbnext-plan-budget.bb-r7-budget .bbnext-plan-donut-core{width:77px!important;height:77px!important;}
+  #app.bbnext-plan .bbnext-plan-budget.bb-r7-budget .bbnext-plan-donut-core strong{font-size:16px!important;}
+  #app.bbnext-plan .bbnext-plan-budget.bb-r7-budget .bbnext-plan-kicker{font-size:8px!important;letter-spacing:.02em!important;}
+  #app.bbnext-plan .bb81-pro-pill{font-size:11px!important;}
+}
+@media(prefers-reduced-motion:reduce){
+  #app.bbnext-plan .bb-r7-ring-fill, #app.bbnext-plan .bb81-pro-pill,
+  .shell nav.tabs >.tab,nav.bb-r6-cook-nav >a{transition:none!important;}
+}
+@media(max-width:720px){
+  #app.bbnext-plan .bb81-pro-filters-heading{
+    display:flex!important;flex-direction:column!important;align-items:flex-start!important;
+    justify-content:flex-start!important;gap:5px!important;
+  }
+}

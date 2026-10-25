@@ -1,0 +1,23 @@
+/* BasketBoss v17.3: calm cream/sage PWA install call-to-action. */
+.bb173-install-banner[hidden]{display:none!important}
+.bb173-install-banner{box-sizing:border-box;display:flex;align-items:center;justify-content:space-between;gap:14px;flex-wrap:wrap;margin:13px 0 16px;padding:14px 18px;background:linear-gradient(115deg,#fffdf5,#edf6ea);border:1px solid #b7d7b6;border-left:4px solid #216b45;border-radius:16px;color:#1e4b35;box-shadow:0 5px 18px rgba(26,75,40,.07);font:inherit}
+.bb173-install-banner strong{display:block;font-size:15px;line-height:1.4;color:#21583b}
+.bb173-install-banner p{font-size:13px;line-height:1.45;margin:3px 0 0;color:#416953;max-width:55ch}
+.bb173-install-cta,.bb173-install-primary{border:0;border-radius:12px;background:#246c46;color:#fff!important;font:750 14px/1.25 system-ui,sans-serif;min-height:44px;padding:11px 19px;cursor:pointer;white-space:nowrap}
+.bb173-install-cta:hover,.bb173-install-primary:hover{background:#155333}
+.bb173-install-cta:focus-visible,.bb173-install-dialog button:focus-visible{outline:3px solid #e9af4e;outline-offset:3px}
+.bb173-install-dialog{box-sizing:border-box;border:1px solid #accbac;border-radius:18px;max-width:min(560px,calc(100vw - 26px));width:100%;max-height:min(90dvh,820px);overflow:auto;background:#fffdf7;color:#244b36;padding:24px;box-shadow:0 24px 78px rgba(0,0,0,.32);font:14px/1.5 system-ui,sans-serif}
+.bb173-install-dialog::backdrop{background:rgba(14,42,29,.57)}
+.bb173-install-dialog-head{display:flex;align-items:start;justify-content:space-between;gap:16px}
+.bb173-install-dialog h2{font-size:24px;line-height:1.16;margin:5px 0 12px;color:#175337}
+.bb173-install-kicker{font-size:11px;font-weight:800;letter-spacing:.11em;color:#987028}
+.bb173-install-close{background:#e8f1e8;border:0;color:#235d42;border-radius:9px;width:38px;height:38px;cursor:pointer;font-size:18px;flex-shrink:0}
+.bb173-install-steps{display:grid;gap:10px;margin:16px 0}
+.bb173-install-steps section{border:1px solid #d9e7d6;background:#f4f9f1;border-radius:12px;padding:11px 13px}
+.bb173-install-steps strong{color:#1c5639}
+.bb173-install-steps p{margin:5px 0 0;color:#324d3b}
+.bb173-install-note{font-size:12px;color:#536858}
+.bb173-install-status{font-weight:650;color:#286342;min-height:1.25em}
+.bb173-install-actions{display:flex;gap:9px;flex-wrap:wrap;margin-top:18px}
+.bb173-install-secondary{border:1px solid #b7cdb8;background:#fff;color:#205b3c;font:700 14px system-ui,sans-serif;border-radius:12px;min-height:44px;padding:9px 16px;cursor:pointer}
+@media(max-width:580px){.bb173-install-banner{margin:12px 0;padding:12px}.bb173-install-cta{width:100%}.bb173-install-dialog{padding:17px}.bb173-install-dialog h2{font-size:21px}}

@@ -1,0 +1,183 @@
+/* BasketBoss mobile UX release candidate 2026-10-24.
+   Visual only. Preserves pricing, calculations, entitlement state and shopping ticks. */
+
+@media (max-width: 720px) {
+  /* 1 — Accessible, compact Planner meal actions (not giant wrapping squares). */
+  #app.bbnext-plan .bbnext-day-content .bb14-meal-card {
+    padding: 12px !important;
+    gap: 9px !important;
+  }
+  #app.bbnext-plan .bbnext-day-content .bb14-meal-card .bb14-meal-body {
+    display: grid !important;
+    grid-template-columns: minmax(0, .92fr) minmax(0, 1.08fr) !important;
+    gap: 10px !important;
+    align-items: stretch !important;
+  }
+  #app.bbnext-plan .bbnext-day-content .bb14-meal-card .bb14-meal-photo,
+  #app.bbnext-plan .bbnext-day-content .bb14-meal-card .bb14-meal-commands {min-width:0!important; width:100%!important;}
+  #app.bbnext-plan .bbnext-day-content .bb14-meal-card .bb-day-photo {
+    width:100%!important; max-width:none!important; height:100%!important;
+    min-height:142px!important; object-fit:cover!important; border-radius:14px!important;
+  }
+  #app.bbnext-plan .bb172-planner-controls {
+    width:100%!important; display:grid!important;
+    grid-template-columns:repeat(2,minmax(0,1fr))!important;
+    gap:7px!important; align-content:start!important;
+  }
+  #app.bbnext-plan .bb172-planner-controls select[data-move] {
+    grid-column:1/-1!important; width:100%!important;
+    min-width:0!important; min-height:43px!important;
+    padding:8px 30px 8px 11px!important; font-size:14px!important;
+    font-weight:800!important; border-radius:11px!important;
+  }
+  #app.bbnext-plan .bb172-planner-controls [data-cook],
+  #app.bbnext-plan .bb172-planner-controls .bb172-replace-meal {
+    grid-column:auto!important; width:100%!important; min-width:0!important;
+    min-height:44px!important; max-height:none!important;
+    padding:8px 4px!important; margin:0!important;
+    font-size:12px!important; line-height:1.15!important;
+    font-weight:800!important; letter-spacing:-.02em!important;
+    white-space:normal!important; overflow-wrap:normal!important;
+    word-break:normal!important; border-radius:11px!important;
+  }
+  #app.bbnext-plan .bb172-planner-controls .bb172-replace-meal {background:#eef5f9!important;}
+  #app.bbnext-plan .bbnext-day-content .bb77-remove-meal {
+    min-height:42px!important; padding:9px 14px!important;
+    font-size:13px!important; margin-top:8px!important;
+  }
+  @media (max-width:370px) {
+    #app.bbnext-plan .bb172-planner-controls [data-cook],
+    #app.bbnext-plan .bb172-planner-controls .bb172-replace-meal {font-size:11px!important;padding:7px 2px!important;}
+  }
+
+  /* 2 — My Week becomes a considered budget dashboard, not a plain circle. */
+  #app.bbnext-plan .bbnext-plan-budget {
+    display:grid!important; grid-template-columns:104px minmax(0,1fr)!important;
+    align-items:center!important; gap:13px!important;
+    background:linear-gradient(142deg,#f9fdf8 0%,#eff8f1 55%,#e6f4ec 100%)!important;
+    border:1px solid #bddcc9!important; border-top:4px solid #2c7650!important;
+    border-radius:24px!important; padding:18px 15px!important; margin:12px 0 14px!important;
+    box-shadow:0 16px 32px rgba(18,69,45,.09),inset 0 1px #fff!important;
+    position:relative!important; overflow:hidden!important;
+  }
+  #app.bbnext-plan .bbnext-plan-budget:before {
+    content:""; position:absolute; width:180px; height:180px; border-radius:50%;
+    right:-92px; top:-104px; pointer-events:none;
+    border:26px solid rgba(46,111,64,.055);
+  }
+  #app.bbnext-plan .bbnext-plan-donut {
+    width:104px!important; height:104px!important;
+    background:conic-gradient(var(--bb77-budget-color,#287646) 0 var(--bbnext-budget-pct,0%), #d6e8da var(--bbnext-budget-pct,0%) 100%)!important;
+    box-shadow:0 7px 18px rgba(28,91,57,.16),0 0 0 5px rgba(255,255,255,.65)!important;
+    border:1px solid #e3f0e6!important; position:relative!important;
+  }
+  #app.bbnext-plan .bbnext-plan-donut-core {
+    width:78px!important;height:78px!important;
+    background:#fff!important; box-shadow:inset 0 1px 6px rgba(15,54,35,.08)!important;
+  }
+  #app.bbnext-plan .bbnext-plan-donut-core strong {font-size:16px!important;color:#174e35!important;line-height:1.12!important;}
+  #app.bbnext-plan .bbnext-plan-donut-core small {font-size:10px!important;color:#648471!important;}
+  #app.bbnext-plan .bbnext-plan-budget-text {position:relative;min-width:0!important;}
+  #app.bbnext-plan .bbnext-plan-kicker {color:#23704b!important;letter-spacing:.1em!important;font-size:10px!important;}
+  #app.bbnext-plan .bbnext-plan-budget-text h2 {font-size:clamp(24px,7vw,34px)!important;line-height:1.04!important;margin:5px 0 8px!important;color:#173f2b!important;}
+  #app.bbnext-plan .bbnext-plan-budget-line {font-size:14px!important;line-height:1.3!important;color:#1b593a!important;}
+  #app.bbnext-plan .bbnext-plan-budget-text p {font-size:12px!important;line-height:1.45!important;margin:5px 0!important;color:#436755!important;}
+  #app.bbnext-plan .bbnext-plan-budget-text > small {font-size:10px!important;line-height:1.35!important;display:block!important;}
+  #app.bbnext-plan .bb77-budget-form,
+  #app.bbnext-plan .bbnext-plan-budget-editor {grid-column:1/-1!important;width:100%!important;}
+  #app.bbnext-plan .bb77-budget-controls {display:grid!important;grid-template-columns:minmax(0,1fr) auto!important;gap:8px!important;}
+  #app.bbnext-plan .bb77-budget-controls input {max-width:none!important;width:100%!important;border-radius:13px!important;}
+  #app.bbnext-plan .bb77-budget-controls button {border-radius:13px!important;padding-inline:14px!important;}
+
+  /* 3 — Five equal navigation tabs truly edge-to-edge on iPhone. */
+  .shell .tabs {
+    position:fixed!important; left:0!important; right:0!important; bottom:0!important;
+    width:100%!important; max-width:none!important; min-width:0!important;
+    box-sizing:border-box!important; display:grid!important;
+    grid-template-columns:repeat(5,minmax(0,1fr))!important;
+    gap:4px!important; margin:0!important;
+    padding:7px max(5px,env(safe-area-inset-right)) calc(7px + env(safe-area-inset-bottom,0px)) max(5px,env(safe-area-inset-left))!important;
+    border:0!important; border-top:1px solid #cfddd3!important;
+    border-radius:0!important; background:rgba(250,252,249,.98)!important;
+    box-shadow:0 -9px 28px rgba(15,52,35,.11)!important;
+    z-index:700!important;
+  }
+  .shell .tabs > .tab,
+  .shell .tabs > .bb173-make-meal-link {
+    min-width:0!important; width:100%!important; max-width:none!important;
+    border-radius:12px!important; padding:7px 1px!important;
+    font-size:11px!important; line-height:1.2!important;
+    min-height:58px!important; box-sizing:border-box!important;
+    overflow:visible!important; letter-spacing:-.03em!important;
+  }
+  .shell .tabs .nav-label {font-size:11px!important;white-space:nowrap!important;word-break:normal!important;}
+  .shell .tabs .nav-icon, .shell .tabs .nav-icon svg {width:21px!important;height:21px!important;}
+  .shell {padding-bottom:calc(77px + env(safe-area-inset-bottom,0px))!important;}
+
+  /* 4 — Shop tab is a basket snapshot. Original canonical list stays in DOM. */
+  body[data-bbnext-view="shop-list"] #app.bbmobile-shop-overview > :not(#bbMobileShopPreview) {display:none!important;}
+  body[data-bbnext-view="shop-list"] #app.bbmobile-shop-overview {max-width:760px!important;margin:0 auto!important;padding:12px 9px 20px!important;}
+  #bbMobileShopPreview {color:#173e31;display:block;position:relative;isolation:isolate;}
+  #bbMobileShopPreview .bbm-shop-hero {
+    padding:23px 20px 20px; border-radius:26px;
+    background:radial-gradient(circle at 90% 0%,rgba(139,215,171,.32),transparent 39%),linear-gradient(145deg,#153f3b,#245c48 72%,#29714e);
+    box-shadow:0 15px 35px rgba(19,69,55,.23); color:#fff;
+  }
+  #bbMobileShopPreview .bbm-eyebrow {display:inline-flex;align-items:center;gap:7px;font-size:10px;font-weight:900;letter-spacing:.13em;text-transform:uppercase;color:#e9d59b;}
+  #bbMobileShopPreview h2 {font-size:clamp(27px,8vw,36px);letter-spacing:-.045em;line-height:1.03;color:#fff;margin:13px 0 9px;}
+  #bbMobileShopPreview .bbm-shop-hero p {font-size:13px;line-height:1.5;color:#dceee5;margin:0;}
+  #bbMobileShopPreview .bbm-shop-metrics {display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:9px;margin:18px 0 0;}
+  #bbMobileShopPreview .bbm-shop-metric {min-width:0;padding:12px 7px;border-radius:14px;background:rgba(255,255,255,.10);border:1px solid rgba(255,255,255,.22);text-align:center;}
+  #bbMobileShopPreview .bbm-shop-metric strong {display:block;font-size:clamp(17px,5vw,24px);line-height:1.2;color:#fff;letter-spacing:-.045em;overflow-wrap:anywhere;}
+  #bbMobileShopPreview .bbm-shop-metric span {display:block;font-size:10px;color:#d8ede4;margin-top:5px;}
+  #bbMobileShopPreview .bbm-shop-progress {height:8px;border-radius:20px;background:rgba(255,255,255,.2);margin:16px 0 6px;overflow:hidden;}
+  #bbMobileShopPreview .bbm-shop-progress > span {display:block;height:100%;background:linear-gradient(90deg,#eccd83,#f9e8b1);border-radius:inherit;}
+  #bbMobileShopPreview .bbm-shop-caption {font-size:11px!important;color:#e0eee7!important;}
+  #bbMobileShopPreview .bbm-shop-preview {margin:14px 0 12px;padding:18px 16px;background:#fff;border:1px solid #d8e6dc;border-radius:22px;box-shadow:0 7px 20px #17463210;}
+  #bbMobileShopPreview .bbm-shop-preview h3 {color:#204b39;font-size:18px;margin:0 0 6px;letter-spacing:-.02em;}
+  #bbMobileShopPreview .bbm-shop-preview p {color:#597060;font-size:12px;line-height:1.45;margin:0 0 12px;}
+  #bbMobileShopPreview .bbm-shop-items {margin:0;padding:0;list-style:none;display:grid;gap:8px;}
+  #bbMobileShopPreview .bbm-shop-items li {padding:10px 12px;border:1px solid #e3eee6;border-radius:11px;display:flex;align-items:center;justify-content:space-between;gap:8px;font-size:13px;background:#fafdfb;}
+  #bbMobileShopPreview .bbm-shop-items li span {min-width:0;overflow-wrap:anywhere;font-weight:750;}
+  #bbMobileShopPreview .bbm-shop-items li small {color:#648475;font-size:10px;flex:none;max-width:43%;text-align:right;}
+  #bbMobileShopPreview .bbm-shop-cta {display:grid;gap:10px;margin-top:13px;}
+  #bbMobileShopPreview .bbm-begin {display:flex;align-items:center;justify-content:space-between;gap:10px;width:100%;min-height:62px;border:0;border-radius:18px;padding:15px 19px;background:linear-gradient(120deg,#276c43,#328957);color:white;font-weight:900;font-size:18px;box-shadow:0 10px 24px #1c68384d;cursor:pointer;}
+  #bbMobileShopPreview .bbm-begin span:last-child {font-size:23px;}
+  #bbMobileShopPreview .bbm-secondary {min-height:44px;background:#eff7f1;border:1px solid #cbded0;border-radius:13px;padding:11px 12px;color:#21573c;font-weight:800;cursor:pointer;}
+  #bbMobileShopPreview .bbm-shop-actions {display:grid;grid-template-columns:1fr 1fr;gap:8px;}
+  #bbMobileShopPreview button:focus-visible {outline:3px solid #e5a346;outline-offset:3px;}
+  #bbMobileShopPreview .bbm-small-note {font-size:11px;color:#627f70;margin:10px 3px;line-height:1.45;}
+}
+
+/* 5 — AI Studio: premium editorial layout, but honest about unavailable AI.
+   This block is inserted on make-a-meal.html by its existing JS. */
+#bb15AiPremiumHub {
+  background:radial-gradient(ellipse at 84% -12%,rgba(112,194,158,.33),transparent 55%),linear-gradient(145deg,#112f3c 0%,#124f52 55%,#1a6148 100%)!important;
+  border:1px solid #327d73!important;border-radius:26px!important;
+  box-shadow:0 22px 48px rgba(7,49,53,.27)!important;
+  padding:clamp(21px,4vw,35px)!important;
+}
+#bb15AiPremiumHub:before {content:"✦";position:absolute;right:24px;top:15px;color:rgba(243,210,131,.26);font-size:68px;font-weight:300;pointer-events:none;}
+#bb15AiPremiumHub .bb15-ai-kicker {background:rgba(252,232,180,.12)!important;border:1px solid rgba(250,220,149,.45)!important;color:#ffdfa0!important;padding:8px 12px!important;}
+#bb15AiPremiumHub h2 {font-size:clamp(29px,5vw,45px)!important;line-height:1.07!important;letter-spacing:-.05em!important;max-width:700px!important;margin:17px 0 10px!important;}
+#bb15AiPremiumHub .bb15-ai-intro {font-size:14px!important;color:#d6efe8!important;line-height:1.65!important;max-width:650px!important;}
+#bb15AiPremiumHub .bb17-ai-service {background:rgba(244,205,125,.11)!important;border:1px solid rgba(244,205,125,.34)!important;border-radius:14px!important;color:#f6e7c9!important;padding:12px 14px!important;font-size:12px!important;}
+#bb15AiPremiumHub .bb15-ai-grid {gap:13px!important;}
+#bb15AiPremiumHub .bb15-ai-card {padding:20px!important;border:1px solid rgba(227,246,239,.24)!important;border-radius:20px!important;background:linear-gradient(153deg,rgba(255,255,255,.13),rgba(255,255,255,.055))!important;box-shadow:0 12px 24px rgba(4,35,39,.14),inset 0 1px rgba(255,255,255,.23)!important;}
+#bb15AiPremiumHub .bb15-ai-card:first-child {border-top:3px solid #f0d58d!important;}
+#bb15AiPremiumHub .bb15-ai-card:nth-child(2) {border-top:3px solid #a3e3c2!important;}
+#bb15AiPremiumHub .bb15-ai-art {width:54px!important;height:54px!important;font-size:30px!important;border:1px solid rgba(255,255,255,.23)!important;background:linear-gradient(145deg,#ffffff30,#d9ead61f)!important;border-radius:17px!important;box-shadow:0 8px 18px #0e303033!important;}
+#bb15AiPremiumHub h3 {font-size:clamp(21px,3vw,25px)!important;letter-spacing:-.03em!important;}
+#bb15AiPremiumHub .bb15-ai-card p {font-size:13px!important;line-height:1.55!important;color:#deeee8!important;}
+#bb15AiPremiumHub button[data-open-tool] {min-height:52px!important;border:1px solid #e6f5e9!important;border-radius:14px!important;background:linear-gradient(120deg,#fff,#eefaf1)!important;color:#19533f!important;box-shadow:0 7px 16px #06282230!important;font-size:14px!important;}
+#bb15AiPremiumHub button[data-open-tool]:hover {background:#e2f5e9!important;}
+#bb15AiPremiumHub .bb15-ai-footnote {margin-top:16px!important;font-size:11px!important;line-height:1.5!important;color:#c2e5d8!important;}
+@media(max-width:720px){
+  #bb15AiPremiumHub {margin-inline:0!important;border-radius:22px!important;padding:21px 16px!important;}
+  #bb15AiPremiumHub .bb15-ai-grid {grid-template-columns:1fr!important;gap:12px!important;}
+  #bb15AiPremiumHub .bb15-ai-card {padding:18px 16px!important;}
+  #bb15AiPremiumHub h2 {font-size:clamp(29px,8.2vw,38px)!important;}
+  #bb15AiPremiumHub .bb15-ai-art {width:50px!important;height:50px!important;}
+  #bb15AiPremiumHub .bb15-ai-card p {font-size:13px!important;}
+}
+@media(prefers-reduced-motion:reduce){#bb15AiPremiumHub *,#bbMobileShopPreview *{transition:none!important;animation:none!important}}

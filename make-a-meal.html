@@ -1,0 +1,187 @@
+<!DOCTYPE html>
+
+<html lang="en"><head><meta charset="utf-8"/><meta content="width=device-width,initial-scale=1,viewport-fit=cover" name="viewport"/><meta content="#E9ECEF" name="theme-color"/><meta content="no-referrer" name="referrer"/><title>Make a Meal · BasketBoss</title><link href="make-a-meal.css?v=17.3-unified3" rel="stylesheet"/><link href="manifest.webmanifest?v=1766" rel="manifest"/>
+<link rel="stylesheet" href="premium-upgrade.css?v=bb173premium1"><link rel="stylesheet" href="bb-light-meal.css?v=173-light-1"><link rel="stylesheet" href="bb-us-market.css?v=173us1"><link rel="stylesheet" href="bb-install.css?v=173install1"><link rel="apple-touch-icon" sizes="180x180" href="icons/basketboss-crowned-v1766-180.png"><!-- bb173-PremiumFreePreview-v1: client-side preview ONLY; access not secured -->
+<link rel="stylesheet" href="bb-premium-features.css?v=173premiumfree1">
+<script src="bb-premium-preview-config.js?v=173premiumfree1"></script>
+<!-- bb174-trial-ux-preview-v1: verified status display ONLY, no entitlement gate -->
+<link rel="stylesheet" href="bb174-trial-ux.css?v=174trial1">
+<script defer src="bb174-trial-ux.js?v=174trial1"></script>
+<style id="bb17513-meal-header-unify">
+:root{--bb17513-slate:#E9ECEF}
+html,body{max-width:100%;overflow-x:clip}
+body{background:#E9ECEF!important}
+.bb17513-meal-topbar{display:flex!important;align-items:center!important;justify-content:space-between!important;gap:12px!important;padding:10px 16px!important;background:#f9faf9!important;border:1px solid #dce1df!important;border-radius:0 0 14px 14px!important;box-shadow:0 4px 15px rgba(33,48,38,.08)!important;min-width:0!important}
+.bb17513-meal-brand{display:inline-flex!important;align-items:center!important;gap:9px!important;min-width:0!important;text-decoration:none!important;color:#25292c!important}
+.bb17513-meal-mark{width:46px!important;height:46px!important;flex-shrink:0!important;border:1px solid #d9dedb!important;border-radius:13px!important;background:#f0f1f0!important;display:grid!important;place-items:center!important;font-size:0!important}
+.bb17513-meal-brand-copy{display:flex;flex-direction:column;min-width:0}
+.bb17513-meal-brand-copy strong{font:900 clamp(21px,3vw,30px)/1.06 system-ui,sans-serif!important;letter-spacing:-1.1px!important;color:#24282b!important}
+.bb17513-meal-brand-copy small{font:500 11px/1.3 system-ui,sans-serif!important;color:#526068!important;margin-top:4px!important}
+.bb17513-meal-topbar .back{display:inline-flex!important;align-items:center!important;justify-content:center!important;background:#fff!important;border:1px solid #d0d8d3!important;border-radius:999px!important;min-height:41px!important;padding:9px 13px!important;color:#214e38!important;white-space:nowrap!important;text-decoration:none!important;font-weight:750!important}
+.bb17513-meal-topbar .back:focus-visible{outline:3px solid #e0ac58!important;outline-offset:2px!important}
+@media(max-width:700px){
+ .bb17513-meal-topbar{flex-wrap:wrap!important;padding:9px 11px!important;gap:8px!important}
+ .bb17513-meal-brand{width:100%!important}
+ .bb17513-meal-brand-copy strong{font-size:24px!important}
+ .bb17513-meal-topbar .back{font-size:12px!important;min-height:38px!important;padding:8px 10px!important}
+ .bb17513-meal-back{margin-right:auto}
+}
+</style>
+<style id="bb17513-slate-rounded-meal-finish">
+/* Align Make a Meal with the main BasketBoss slate canvas and rounded banner. */
+:root{--bb17513-app-canvas:#E9ECEF}
+html,body{background:#E9ECEF!important;background-image:none!important;min-height:100%}
+.bb17513-meal-topbar{
+  margin:10px 0 16px!important;padding:12px 18px!important;
+  border:1px solid #CBD3D8!important;border-radius:20px!important;
+  background:rgba(255,255,255,.97)!important;
+  box-shadow:0 6px 22px rgba(30,45,57,.10)!important;
+}
+.bb17513-meal-mark{border-radius:15px!important}
+.bb-meal-dashboard,.bb-photo-list,.location-card,
+.bb-inline-section,.bb-tool-stage,.bb-inline-verification,
+.bb173-install-banner,.bb173-make-leftovers,.bb-inline-tool,
+.bb-drawer,.bb-action-card{border-radius:20px!important}
+.bb-location-picker button,.bb-meal-dashboard .field,
+.bb-meal-dashboard input:not([type="checkbox"]):not([type="radio"]),
+.bb-meal-dashboard select,.bb-meal-dashboard textarea{
+  border-radius:12px!important
+}
+.bb-premium-dialog,.meal-review{border-radius:22px!important}
+@media(max-width:700px){
+ .bb17513-meal-topbar{margin:8px 0 12px!important;padding:10px 12px!important;border-radius:16px!important}
+ .bb-meal-dashboard,.bb-photo-list,.location-card,.bb-inline-section,
+ .bb-tool-stage,.bb173-install-banner,.bb-action-card{border-radius:17px!important}
+}
+</style>
+<link rel="stylesheet" href="bb-real-app-tour.css?v=17513real1">
+<link rel="stylesheet" href="bb-mobile-beta-polish.css?v=20261024-1"/>
+<link rel="stylesheet" href="bb-beta-six-fixes.css?v=1767" data-bb-r6="bb-r7-iphone-20261025">
+</head>
+<body><div class="shell"><header class="topbar bb17513-meal-topbar"><a class="brand bb17513-meal-brand" href="index.html" aria-label="BasketBoss home"><span class="brand-mark bb17513-meal-mark" aria-hidden="true"><svg viewBox="0 0 64 64" width="39" height="39" fill="none"><path d="M22 18 18 10 27 14 32 6 37 14 46 10 42 18Z" fill="#44484B" stroke="#44484B" stroke-width="2" stroke-linejoin="round"/><path d="M21 21h22" stroke="#44484B" stroke-width="3" stroke-linecap="round"/><path d="M18 30 25 23M46 30 39 23" stroke="#44484B" stroke-width="4" stroke-linecap="round"/><path d="M11 31h42l-5 24H16l-5-24Z" fill="#44484B" stroke="#44484B" stroke-width="2" stroke-linejoin="round"/><path d="M22 38v10M32 38v10M42 38v10" stroke="#F8F8F8" stroke-width="4" stroke-linecap="round"/></svg></span><span class="bb17513-meal-brand-copy"><strong>BasketBoss</strong><small>Plan Smarter. Eat Better. Less Waste.</small></span></a><a class="back bb17513-meal-back" href="index.html">← Back to BasketBoss</a><a class="back bb17513-meal-premium" href="pricing-sandbox.html" aria-label="Premium test subscription plans">⭐ Premium plans (test)</a></header><aside class="bb173-install-banner" data-bb173-install-banner aria-label="Install BasketBoss">
+  <div><strong>📲 Take BasketBoss wherever you go</strong><p>Keep your recipes and meal plans a tap away — add BasketBoss to your home screen.</p></div>
+  <button type="button" class="bb173-install-cta" data-bb173-install-open>⬇ Install BasketBoss</button>
+</aside>
+<section aria-labelledby="bbDashboardTitle" class="bb-meal-dashboard">
+<div class="bb-dashboard-heading"><p class="bb-kicker">BASKETBOSS · MAKE A MEAL</p><h1 id="bbDashboardTitle">What shall we cook?</h1><p>Scan your food, or choose what you already have. Your ingredients are together below.</p></div>
+<div aria-label="Make a Meal quick actions" class="bb-action-grid">
+<button aria-controls="bbToolStage" aria-expanded="false" class="bb-action-card bb-action-scan" data-open-tool="scan" aria-haspopup="dialog" type="button"><span aria-hidden="true" class="bb-action-art">📸</span><span aria-hidden="true" class="bb-action-icon">📷</span><span class="bb-action-title">Scan ingredients</span><span class="bb-premium-tag">✦ Premium</span><span class="bb-action-desc">Take a food photo and review what AI recognises.</span><span aria-hidden="true" class="bb-action-arrow">→</span></button>
+<button aria-controls="bbToolStage" aria-expanded="false" class="bb-action-card bb-action-meal" data-open-tool="meal" aria-haspopup="dialog" type="button"><span aria-hidden="true" class="bb-action-art">🍲</span><span aria-hidden="true" class="bb-action-icon">✦</span><span class="bb-action-title">Create a meal</span><span class="bb-premium-tag">✦ Premium AI</span><span class="bb-action-desc">Use the ingredients shown below to make dinner.</span><span aria-hidden="true" class="bb-action-arrow">→</span></button>
+</div>
+<div aria-labelledby="bbScannedTitle" class="bb-photo-list"><div class="bb-photo-heading"><h2 id="bbScannedTitle">📷 Scanned ingredients</h2><span class="bb-small-count" id="bbScannedCount">0 items</span></div><p class="bb-list-hint">Foods you approved after scanning. Tap an item to find it in your list.</p><div aria-live="polite" class="bb-ingredient-strip" id="bbScannedStrip"></div></div>
+<div aria-labelledby="bbAddedTitle" class="bb-photo-list"><div class="bb-photo-heading"><h2 id="bbAddedTitle">➕ Added ingredients</h2><span class="bb-small-count" id="bbAddedCount">0 items</span></div><p class="bb-list-hint">Foods you've added yourself. The picture matches the food where available.</p><div aria-live="polite" class="bb-ingredient-strip" id="bbAddedStrip"></div></div><section aria-label="Make a Meal action panel" class="bb-tool-stage" hidden="" id="bbToolStage"><button class="bb-tool-close" data-close-tool="true" type="button">× Close this action</button><section aria-label="Human verification for AI features" class="box bb-inline-verification" id="aiSecurityBox"><h2>🔒 Quick human check</h2><p class="hint">A fresh check may be needed for each AI request.</p><div aria-live="polite" id="aiHumanCheck"></div><p class="hint" id="aiHumanStatus" role="status">Checking early-access availability…</p></section><section aria-labelledby="aiScanTitle" class="box ai-feature ai-scan-feature bb-inline-tool" hidden="" id="aiScanner"><div class="ai-feature-heading"><span class="feature-label">START HERE · AI INGREDIENT SCANNER</span><h2 id="aiScanTitle">📸 Scan your food photo</h2><p>Choose a food photo. Check and save only the ingredients you recognise.</p></div><div class="ai-scan-action"><label class="scan-upload-label" for="photo">Choose a food photo</label><input accept="image/png,image/jpeg,image/webp" aria-label="Choose a food photo for AI ingredient scanning" capture="environment" class="field" id="photo" type="file"/><div class="formrow"><img alt="Your selected food photo" class="photo-preview" id="photoPreview"/></div><button class="button ai-primary-button" id="scanBtn" type="button">✨ Scan my ingredients</button></div><p class="disclosure">Your photo stays on this device until you explicitly approve scanning. After approval, a resized photo is sent to Cloudflare and Google Gemini for ingredient suggestions. Nothing is added to your inventory automatically. You choose the correct foods and their storage locations only after reviewing the results. Estimated quantities are not measured stock.</p><div aria-live="polite" id="scanResults"></div></section><section aria-labelledby="aiMealTitle" class="box ai-feature ai-recipe-feature bb-inline-tool" hidden="" id="aiMeal"><div class="ai-feature-heading"><span class="feature-label">NEXT · AI RECIPE CREATOR</span><h2 id="aiMealTitle">🍲 Turn your ingredients into dinner</h2><p>We’ll use the scanned and added ingredients shown above. Check your choices, then create a recipe.</p></div><p class="notice" id="aiStatus" role="status">AI service status: checking…</p><button class="button ai-primary-button" id="generate" type="button">🍳 Create my AI meal idea</button><div class="warning"><strong>AI-generated recipes are untested.</strong> Always check ingredients, quantities, allergens and safe cooking. Only ingredient names are sent to Gemini after you confirm. AI drafts are never automatically added to Planner or Shopping.</div><div aria-live="polite" id="generated"></div></section></section><details class="bb-drawer" id="bbIngredientsDrawer"><summary>＋ Add or edit ingredients</summary><section aria-labelledby="inventory-title" class="bb-inline-section"><div class="heading"><div><h2 id="inventory-title">Choose or add ingredients</h2><p>Pick an existing food or add your own. Your selection updates the thumbnails above.</p></div><span class="pill" id="stockCount">0 ingredients</span></div>
+<div aria-label="Choose storage location" class="bb-location-picker"><button aria-pressed="true" data-select-location="cupboard" type="button">🥫 Cupboard</button><button aria-pressed="false" data-select-location="fridge" type="button">🥛 Fridge</button><button aria-pressed="false" data-select-location="freezer" type="button">🧊 Freezer</button></div><div class="inventory-sections" id="inventorySections">
+<section aria-labelledby="cupboard-title" class="location-card" data-location="cupboard"><div class="location-heading"><div class="location-symbol">🥫</div><div><h3 id="cupboard-title">Cupboard</h3><p>Dry foods, tins and everyday staples</p></div></div><div class="tile-grid" id="tiles-cupboard"></div>
+<form class="formrow area-add-form" data-add-area="cupboard"><label class="grow">Add your own cupboard food<input class="field" data-food-name="" maxlength="70" placeholder="e.g. Rice noodles" required=""/></label><label>Quantity (optional)<input class="field" data-food-qty="" max="1000000" min="0.01" placeholder="Amount" step="any" type="number"/></label><label>Unit<select class="field" data-food-unit=""><option value="each">each</option><option value="g">g</option><option value="kg">kg</option><option value="ml">ml</option><option value="l">litres</option><option value="pack">pack</option><option value="clove">clove</option></select></label><button class="button" type="submit">＋ Add Yours</button></form></section>
+<section aria-labelledby="fridge-title" class="location-card" data-location="fridge" hidden=""><div class="location-heading"><div class="location-symbol">🥛</div><div><h3 id="fridge-title">Fridge</h3><p>Milk, cheese, vegetables and chilled leftovers</p></div></div><div class="tile-grid" id="tiles-fridge"></div>
+<form class="formrow area-add-form" data-add-area="fridge"><label class="grow">Add your own fridge food<input class="field" data-food-name="" maxlength="70" placeholder="e.g. Hummus" required=""/></label><label>Quantity (optional)<input class="field" data-food-qty="" max="1000000" min="0.01" placeholder="Amount" step="any" type="number"/></label><label>Unit<select class="field" data-food-unit=""><option value="each">each</option><option value="g">g</option><option value="kg">kg</option><option value="ml">ml</option><option value="l">litres</option><option value="pack">pack</option><option value="clove">clove</option></select></label><button class="button" type="submit">＋ Add Yours</button></form></section>
+<section aria-labelledby="freezer-title" class="location-card" data-location="freezer" hidden=""><div class="location-heading"><div class="location-symbol">🧊</div><div><h3 id="freezer-title">Freezer</h3><p>Frozen meals, meat, vegetables and extras</p></div></div><div class="tile-grid" id="tiles-freezer"></div>
+<form class="formrow area-add-form" data-add-area="freezer"><label class="grow">Add your own freezer food<input class="field" data-food-name="" maxlength="70" placeholder="e.g. Frozen salmon" required=""/></label><label>Quantity (optional)<input class="field" data-food-qty="" max="1000000" min="0.01" placeholder="Amount" step="any" type="number"/></label><label>Unit<select class="field" data-food-unit=""><option value="each">each</option><option value="g">g</option><option value="kg">kg</option><option value="ml">ml</option><option value="l">litres</option><option value="pack">pack</option><option value="clove">clove</option></select></label><button class="button" type="submit">＋ Add Yours</button></form></section>
+</div><p class="hint">Selected food names suggest recipe ideas, but do not guarantee enough stock. Check quantities, freshness and allergens before cooking.</p><details><summary>View and remove selected foods</summary><div class="stock-table" id="selected"></div></details></section></details><section class="bb173-make-leftovers"><div><h3>✨ Leftover Magic</h3><p>All Leftover Magic recipes and ingredient-reuse ideas are exclusive to Premium.</p></div><a href="index.html#leftover-magic">See Premium Leftover Magic →</a></section>
+<details class="bb-drawer" id="bbRecipesDrawer"><summary>🍽️ Explore 100 free recipes · Premium unlocks all 321</summary><section aria-labelledby="recipesTitle" class="bb-inline-section"><div class="heading"><div><h2 id="recipesTitle">Find meals using your ingredients</h2><p>Browse 100 starter recipes, with your closest matches shown first. Premium will unlock the full 321-recipe library. No AI check required for free recipes.</p></div></div><div aria-label="How many extra ingredients are allowed?" class="toggle"><button aria-pressed="true" data-mode="only" type="button">✅ Only what I have<span class="hint" style="display:block">Show closest matches first</span></button><button aria-pressed="false" data-mode="extras" type="button">🛒 Allow up to 2 extras<span class="hint" style="display:block">Prioritise recipes with 1–2 extra items</span></button></div><div class="statline"><span id="matchSummary">Select a few ingredients to see matching meals.</span><span>Indicative costs, not retailer quotes</span></div><div aria-live="polite" class="recipes" id="recipes"><div class="empty">Pick a few foods above to begin.</div></div></section></details><div aria-live="polite" hidden="" id="bbToast" role="status"></div>
+<p class="bb-dashboard-note">Only foods shown above will be used for meal ideas. You can change them any time using the ingredient picker below.</p>
+</section>
+<dialog id="bbPremiumDialog" class="bb-premium-dialog" aria-labelledby="bbPremiumHeading" aria-describedby="bbPremiumDescription">
+  <div class="bb-upgrade-head">
+    <button class="bb-upgrade-close" data-premium-dismiss type="button" aria-label="Close upgrade options">×</button>
+    <div class="bb-premium-small">✦ BASKETBOSS PREMIUM · TEST PREVIEW</div>
+    <h2 id="bbPremiumHeading">Make more magic in the kitchen.</h2>
+    <p><strong id="bbPremiumFeature">AI features</strong> are planned for Premium: up to 5 ingredient photo scans and 10 meal ideas per day, with server-side limits still to be implemented.</p>
+  </div>
+  <div class="bb-upgrade-body">
+    <p class="bb-upgrade-intro" id="bbPremiumDescription">Choose a 3-day free-trial plan to explore Sandbox checkout. After your trial, it renews at £4.99/month or £49.90/year unless cancelled. 100 starter recipes stay free. Premium unlocks the full 321-recipe library after verified subscription integration.</p>
+    <div class="bb-upgrade-plans">
+      <a class="bb-upgrade-plan" href="pricing-sandbox.html#monthly" aria-label="Explore Premium Monthly plan: £4.99 per month, sandbox only">
+        <strong>Monthly</strong><span class="bb-price">£4.99</span><small>per month after 3-day trial</small><b>Explore test checkout →</b>
+      </a>
+      <a class="bb-upgrade-plan annual" href="pricing-sandbox.html#annual" aria-label="Explore Premium Annual plan: £49.90 per year, sandbox only">
+        <strong>Annual ✨</strong><span class="bb-price">£49.90</span><small>per year after 3-day trial · 2 months saved</small><b>Explore test checkout →</b>
+      </a>
+    </div>
+    <p class="bb-upgrade-note"><strong>Test mode only.</strong> No real payment is taken. A Sandbox purchase does not grant Premium access yet. Account sign-in and verified subscriptions must be completed before launch.</p>
+    <button type="button" class="bb-upgrade-free" data-premium-free-recipes>Continue with 100 free recipes</button>
+    <p class="bb-upgrade-meta">No payment required for manual ingredients, 100 starter recipes or basic shopping.</p>
+  </div>
+</dialog>
+<dialog aria-labelledby="mealReviewTitle" class="meal-review" id="mealReview"><form class="meal-review-inner" method="dialog"><p class="eyebrow review-eyebrow">Review your dinner</p><h2 id="mealReviewTitle"></h2><p>BasketBoss will add this meal to Planner and automatically include its grocery requirements in the weekly Shopping list <strong>only when you confirm</strong>.</p><div class="meal-review-items" id="mealReviewItems"></div><label class="meal-review-select">Add to which day?<select class="field" id="mealReviewDay"></select></label><p class="warning" hidden="" id="mealReviewNoDay">Your week is full. Open Planner to replace a dinner first; no shopping items have been changed.</p><p class="warning" hidden="" id="mealReviewError" role="alert"></p><div class="meal-review-actions"><button class="button secondary" id="mealReviewCancel" type="submit" value="cancel">Cancel</button><button class="button" id="mealReviewSave" type="button">Confirm &amp; add to Shopping</button></div></form></dialog>
+<footer class="foot">BasketBoss · Eat well. Spend less. Waste less. · <a href="privacy.html">Privacy &amp; Legal</a> · AI early-access availability depends on verification and daily usage limits.</footer></div>
+<script src="bb-premium-preview-config.js?v=1743-premium-leftovers"></script><script defer="" src="make-a-meal.js?v=bb717-20261024"></script><script>if('serviceWorker' in navigator&&location.protocol==='https:')addEventListener('load',()=>navigator.serviceWorker.register('./service-worker.js').catch(()=>{}),{once:true})</script><script defer src="premium-upgrade.js?v=bb173premium1"></script><script src="bb-us-market.js?v=173us1"></script><script defer src="bb-install.js?v=173install1"></script><script src="bb-real-app-tour.js?v=17513real1" defer></script>
+<!-- BB17513 private QA membership switch: PRIVATE CODESPACES HOSTS ONLY. Not an entitlement. -->
+<style id="bb17513-private-qa-toggle-css">
+#bb17513-qa-mode-bar{position:relative;z-index:3;max-width:1100px;margin:8px auto 12px;padding:9px 12px;display:flex;align-items:center;justify-content:space-between;gap:10px;flex-wrap:wrap;background:#fff7df;color:#3e3525;border:1px solid #d7be76;border-radius:15px;font:600 12px/1.35 system-ui,-apple-system,sans-serif;box-shadow:0 2px 9px #0000000a;box-sizing:border-box}
+#bb17513-qa-mode-bar *{box-sizing:border-box}
+#bb17513-qa-mode-bar .bbqa-info{display:flex;align-items:center;gap:7px;flex-wrap:wrap;min-width:0}
+#bb17513-qa-mode-bar .bbqa-info small{font-size:11px;font-weight:500}
+#bb17513-qa-mode-bar .bbqa-buttons{display:flex;gap:5px;border-radius:11px;min-width:0;align-items:center}
+#bb17513-qa-mode-bar button{min-height:44px;border-radius:10px;padding:8px 13px;border:1px solid #b4bea6;background:#fff;color:#1b4f38;font:800 12px/1.2 system-ui,-apple-system,sans-serif;cursor:pointer}
+#bb17513-qa-mode-bar button[aria-pressed="true"]{background:#216444;color:#fff;border-color:#216444;box-shadow:inset 0 0 0 1px #216444}
+#bb17513-qa-mode-bar button:focus-visible{outline:3px solid #206644;outline-offset:3px}
+@media(max-width:430px){#bb17513-qa-mode-bar{margin:6px 10px 10px;padding:8px;gap:6px}#bb17513-qa-mode-bar .bbqa-buttons{width:100%}#bb17513-qa-mode-bar button{flex:1;padding:8px 6px}}
+</style>
+<script id="bb17513-private-qa-toggle-script">
+(function(){
+  'use strict';
+  // This UI and override run ONLY in a local/private Codespaces preview.
+  // It must never be used as a paid subscription entitlement or copied into production auth.
+  const host=String(location.hostname||'').toLowerCase();
+  const privatePreview=(host==='localhost'||host==='127.0.0.1'||host==='[::1]'||host.endsWith('.app.github.dev'));
+  if(!privatePreview)return;
+  const KEY='basketboss_v17513_private_qa_membership_view_v1';
+  function view(){
+    try{return localStorage.getItem(KEY)==='premium'?'premium':'free'}catch(_){return 'free'}
+  }
+  function setView(next){
+    if(next!=='free'&&next!=='premium')return;
+    try{localStorage.setItem(KEY,next)}catch(_){
+      window.alert('Your browser blocked the test setting. Enable storage in this private preview and retry.');
+      return;
+    }
+    // Refresh the current screen so all recipe galleries, meal plans and labels
+    // are recalculated from the selected test view. The saved plan is NOT cleared.
+    location.reload();
+  }
+  window.BasketBossQAMode=Object.freeze({getMode:view,isPremium:function(){return view()==='premium'},setMode:setView});
+  // Reuse the pre-existing local demo interface without writing Paddle membership state.
+  // Some Make a Meal preview screens consult BasketBossPremiumDemo.isPremium().
+  const demo=window.BasketBossPremiumDemo;
+  if(demo&&typeof demo==='object'){
+    try{demo.isPremium=function(){return view()==='premium'}}catch(_){/* main recipe gate also checks BasketBossQAMode */}
+  }
+  function mount(){
+    if(document.getElementById('bb17513-qa-mode-bar'))return;
+    const header=document.querySelector('.shell > header.top,.shell > header.topbar,.bb17513-meal-topbar,header.topbar');
+    if(!header)return;
+    const bar=document.createElement('section');
+    bar.id='bb17513-qa-mode-bar';
+    bar.setAttribute('aria-label','Private BasketBoss membership comparison');
+    const info=document.createElement('div');info.className='bbqa-info';
+    const label=document.createElement('strong');label.textContent='🧪 QA ONLY — NO PAYMENT';
+    const detail=document.createElement('small');detail.textContent='Compare Free (100 recipes) and Premium (321 recipes)';
+    info.append(label,detail);
+    const group=document.createElement('div');group.className='bbqa-buttons';group.setAttribute('role','group');group.setAttribute('aria-label','Membership test view');
+    for(const [mode,text] of [['free','Free'],['premium','Premium']]){
+      const button=document.createElement('button');
+      button.type='button';button.textContent=text;button.setAttribute('aria-pressed',String(view()===mode));
+      button.addEventListener('click',function(){if(view()!==mode)setView(mode)});
+      group.append(button);
+    }
+    bar.append(info,group);
+    header.insertAdjacentElement('afterend',bar);
+  }
+  if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',mount,{once:true});else mount();
+  // Force the first paint to reflect a previously saved QA view, without touching saved data.
+  if(typeof window.render==='function')requestAnimationFrame(function(){try{window.render()}catch(err){console.warn('QA view refresh not available',err)}});
+})();
+</script>
+<script defer src="bb-cloudflare-qa.js?v=17513-owner1"></script>
+
+<!-- bb-r7-iphone-20261025 -->
+<nav class="bb-r6-cook-nav" aria-label="BasketBoss navigation">
+<a href="index.html?bbview=week" aria-label="Plan my week"><svg viewBox="0 0 24 24"><rect x="3" y="5" width="18" height="16" rx="3"/><path d="M7 3v4M17 3v4M3 10h18"/></svg><span>Plan</span></a>
+<a href="index.html?bbview=discover" aria-label="Discover recipes"><svg viewBox="0 0 24 24"><rect x="3" y="3" width="7" height="7" rx="2"/><rect x="14" y="3" width="7" height="7" rx="2"/><rect x="3" y="14" width="7" height="7" rx="2"/><rect x="14" y="14" width="7" height="7" rx="2"/></svg><span>Discover</span></a>
+<a href="index.html?bbview=shop" aria-label="Open Kitchen"><svg viewBox="0 0 24 24"><path d="M4 6h17l-2 9H7L4 3H2M8 20h.01M18 20h.01"/></svg><span>Kitchen</span></a>
+<a href="index.html?bbview=shop-list" aria-label="Open shopping overview"><svg viewBox="0 0 24 24"><path d="M8 5h12M8 12h12M8 19h12M3 5h1M3 12h1M3 19h1"/></svg><span>Shop</span></a>
+<a href="make-a-meal.html" aria-current="page" aria-label="Cook"><svg viewBox="0 0 24 24"><path d="M4 10h16l-2 11H6L4 10ZM8 10V7a4 4 0 0 1 8 0v3"/></svg><span>Cook</span></a>
+</nav>
+<script defer src="bb-beta-six-fixes.js?v=1767"></script>
+</body></html>

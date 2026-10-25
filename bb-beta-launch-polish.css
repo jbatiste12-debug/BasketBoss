@@ -1,0 +1,30 @@
+/* v1768: Shopping uses the Shop tab visually even though the original renderer
+   keeps the internal Kitchen view (`tab=shop`) active in In-Store Mode. */
+@media (max-width: 720px){
+  body.bb-qa-shop-nav-active .shell nav.tabs > .tab[data-tab="shop-list"] {
+    color:#fff!important;background:linear-gradient(140deg,#26874c,#165d36)!important;
+    border-color:#1e7041!important;box-shadow:0 9px 17px rgba(17,88,48,.27)!important;
+  }
+  body.bb-qa-shop-nav-active .shell nav.tabs > .tab[data-tab="shop-list"] :is(svg,.nav-icon,.nav-label){
+    color:#fff!important;stroke:currentColor!important;
+  }
+  body.bb-qa-shop-nav-active .shell nav.tabs > .tab[data-tab="shop-list"]::after {background:#fff!important;opacity:1!important;}
+  body.bb-qa-shop-nav-active .shell nav.tabs > .tab[data-tab="shop"] {
+    color:#20563b!important;background:linear-gradient(#fff,#f1f7f1)!important;
+    border-color:#d6e5d9!important;box-shadow:none!important;
+  }
+  body.bb-qa-shop-nav-active .shell nav.tabs > .tab[data-tab="shop"] :is(svg,.nav-icon,.nav-label){
+    color:#20563b!important;stroke:currentColor!important;
+  }
+  body.bb-qa-shop-nav-active .shell nav.tabs > .tab[data-tab="shop"]::after{opacity:0!important;}
+}
+.bb-qa-recipe-image-fallback{object-fit:contain!important;background:linear-gradient(135deg,#eaf5ee,#d7eadc)!important;padding:16%!important;box-sizing:border-box!important;}
+/* Match the familiar Finish Shop Mode dialogue, with refined accessible controls. */
+.bb-qa-confirm-overlay{z-index:20050!important;background:rgba(12,36,27,.70)!important;backdrop-filter:blur(5px);-webkit-backdrop-filter:blur(5px);}
+.bb-qa-confirm-dialog{background:linear-gradient(145deg,#fffefa,#edf8f0)!important;color:#184b35!important;border:1px solid #b8d4bf;
+  box-shadow:0 25px 75px rgba(0,0,0,.30)!important;}
+.bb-qa-confirm-dialog h3{color:#165d3b!important;font-size:22px;letter-spacing:-.025em;}
+.bb-qa-confirm-dialog p{white-space:pre-line;color:#405d4c!important;}
+.bb-qa-confirm-dialog .bb-qa-destructive{background:#9c3e35!important;color:white!important;border-color:#9c3e35!important;}
+.bb-qa-confirm-dialog button:focus-visible{outline:3px solid #c8a14e!important;outline-offset:3px;}
+@media(prefers-reduced-motion:reduce){.bb-qa-confirm-overlay{backdrop-filter:none;-webkit-backdrop-filter:none;}}

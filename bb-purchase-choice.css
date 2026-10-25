@@ -1,0 +1,29 @@
+/* BB-BETA-PURCHASE-CHOICE-20261025 — purchase confirmation in the existing compact ••• drawer. */
+.bb-beta-choice-panel{display:flex;flex-direction:column;gap:9px;padding:11px 12px;margin-top:9px;background:#f2faf4;border:1px solid #cfebd7;border-radius:13px;min-width:0;box-sizing:border-box}
+.bb-beta-choice-panel>strong{font-size:14px;color:#164c30}
+.bb-beta-choice-panel>small,.bb-beta-choice-pack-details>small{font-size:12px;color:#456753;line-height:1.4}
+.bb-beta-choice-select{width:100%;min-height:44px;border-radius:10px;border:1px solid #a6cfb3;background:#fff;color:#173e2b;font:inherit;font-size:14px;box-sizing:border-box;padding:8px;white-space:normal}
+.bb-beta-choice-select:focus-visible,.bb-beta-pack-fields input:focus-visible{outline:3px solid #15803d;outline-offset:2px}
+.bb-beta-choice-pack-details{display:flex;flex-direction:column;gap:10px;min-width:0}
+.bb-beta-pack-fields{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px}
+.bb-beta-pack-fields label{display:flex;flex-direction:column;gap:4px;font-size:12px;font-weight:700;color:#315f44;min-width:0}
+.bb-beta-pack-fields input{width:100%;min-height:42px;padding:8px;font:inherit;font-size:15px;border:1px solid #a5c6ae;border-radius:9px;box-sizing:border-box}
+.bb-beta-perishable-keep{display:flex;gap:9px;align-items:start;line-height:1.4;font-size:13px;color:#205537}
+.bb-beta-perishable-keep input{width:18px;height:18px;flex:none;margin-top:2px}
+.bb-beta-choice-panel .bb-beta-surplus-badge{border-radius:12px!important;line-height:1.4!important}
+.bbcompact-drawer .bb-beta-choice-panel{width:100%}
+@media(max-width:390px){.bb-beta-pack-fields{grid-template-columns:1fr}.bb-beta-choice-panel{padding:10px}}
+
+/* BB-LIVE-CHOICE-V2 — compact touch targets. No native purchase-type select. */
+.bb-beta-choice-panel{background:#f4faf5!important;gap:8px!important;padding:11px!important}
+.bb-beta-purchase-pills{display:flex;gap:8px;flex-wrap:wrap}
+.bb-beta-purchase-pill{border:1px solid #a5ceb0;border-radius:24px;background:#fff;color:#17533a;min-height:44px;padding:10px 13px;font:inherit;font-size:13px;font-weight:800;cursor:pointer;max-width:100%;white-space:normal;text-align:left}
+.bb-beta-purchase-pill.is-active,.bb-beta-purchase-pill[aria-pressed=true]{background:#daf0e0;border:2px solid #27744a}
+.bb-beta-purchase-pill:focus-visible,.bb-beta-save-actual:focus-visible{outline:3px solid #188a54;outline-offset:2px}
+.bb-beta-choice-pack-details:empty{display:none}
+.bb-beta-choice-pack-details label{display:grid;gap:5px;font-size:12px;font-weight:750;color:#29543c}
+.bb-beta-choice-pack-details input[type=number]{width:100%;max-width:260px;min-height:44px;border:1px solid #9fbda7;border-radius:10px;padding:9px;font:inherit;font-size:16px;background:white}
+.bb-beta-choice-pack-details .bb-beta-perishable-keep{display:flex;align-items:start}
+.bb-beta-save-actual,.bb-beta-change-actual{border:1px solid #91c4a3;border-radius:12px;background:#e0f3e7;color:#174e32;min-height:44px;padding:10px 14px;font:inherit;font-weight:800;cursor:pointer}
+.bb-beta-surplus-badge{display:block;background:#e4f4e8;color:#185c38;padding:9px 11px;border:1px solid #b9dfc3;border-radius:11px;font-size:12px;font-weight:800;line-height:1.5}
+@media(max-width:420px){.bb-beta-purchase-pill{flex:1 1 calc(50% - 5px);font-size:12px;padding:9px}}
