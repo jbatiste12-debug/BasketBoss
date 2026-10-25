@@ -7369,7 +7369,7 @@ function openCook(id){
  paint();
 }
 function formatTime(s){return Math.floor(s/60)+':'+String(s%60).padStart(2,'0')}
-window.addEventListener('storage',e=>{if(e.key===KEY){state=loadState();render();notify('Updated from another tab')}});window.addEventListener('beforeunload',()=>{if(timerHandle)clearInterval(timerHandle)});render();
+window.addEventListener('storage',e=>{if(e.key===KEY){state=loadState();render();notify('Updated from another tab')}});window.addEventListener('beforeunload',()=>{if(timerHandle)clearInterval(timerHandle)});queueMicrotask(render);
 if(!bbStorageSafe){setTimeout(()=>notify('Saved data could not be read. Saving is paused to protect it.'),400)}else if(bbRecovered){setTimeout(()=>notify('Recovered your last saved weekly plan.'),400)}
 
 /* BasketBoss v17.2 — guarded custom lunch/pantry tiles + weekly budget.
