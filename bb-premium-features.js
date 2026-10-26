@@ -108,6 +108,7 @@
     const tabs=$('.tabs');if(tabs)new MutationObserver(schedule).observe(tabs,{subtree:true,attributes:true,attributeFilter:['class']});
     schedule();openLeftoversFromHash();
   });
+  document.addEventListener('basketboss:premium-verified',schedule);
   window.addEventListener('hashchange',openLeftoversFromHash);
   window.BasketBossPremiumPreview={show:showDialog};
 })();

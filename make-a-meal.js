@@ -5,19 +5,53 @@ const FOODS={
  fridge:[['🥛','Milk'],['🧀','Cheddar'],['🥣','Yoghurt'],['🍖','Ham'],['🧈','Butter'],['🥚','Eggs'],['🍗','Cooked chicken'],['🥛','Cream'],['🧀','Mozzarella'],['🥬','Spinach'],['🥒','Cucumber'],['🥗','Lettuce'],['🥓','Bacon'],['🍄','Mushrooms'],['🍅','Tomatoes'],['🥕','Carrots'],['🧅','Onion'],['🫑','Peppers'],['🥦','Broccoli'],['🧀','Cheese strings']],
  freezer:[['🫛','Frozen peas'],['🌽','Frozen sweetcorn'],['🥦','Frozen broccoli'],['🍗','Frozen chicken'],['🐟','Frozen fish'],['🦐','Frozen prawns'],['🍟','Frozen chips'],['🥬','Frozen spinach'],['🥩','Frozen mince'],['🍞','Frozen bread'],['🫐','Frozen berries'],['🍖','Frozen sausages'],['🍲','Frozen leftovers'],['🧊','Frozen mixed vegetables'],['🥔','Frozen potato wedges']]
 };
+/* Premium recipe eligibility is based only on items returned by the authenticated
+ * server endpoint. Preview switches/localStorage must never authorize content. */
+const bbSecureFreeIds=new Set(Array.isArray(window.BB173_FREE_RECIPE_IDS)?window.BB173_FREE_RECIPE_IDS:[]);
+let bbSecurePremiumIds=new Set();
+let bbSecureFreeRecipes=[];
+let bbSecureLastToken=null;
 function bb176MakeMealAllowed(recipe){
- if(!recipe || !recipe.id)return false;
- const host=location.hostname.toLowerCase();
- let demoPremium=false;
- if(host==='basketboss-v17513-qa.basketboss-v1749-qa.pages.dev'){
-   demoPremium=window.BasketBossCloudflareQA?.isPremium?.()===true;
-  }else if(host==='localhost'||host==='127.0.0.1'||host.endsWith('.app.github.dev')){
-  try{demoPremium=localStorage.getItem('basketboss_v17513_private_qa_membership_view_v1')==='premium'||sessionStorage.getItem('bb174_premium_local_demo_v1')==='premium';}catch(_){demoPremium=false;}
- }
- const leftover=String(recipe.id).startsWith('leftover-')||/leftover magic/i.test(String(recipe.tag||'')+' '+String(recipe.category||''));
- if(leftover && !demoPremium)return false;
- return demoPremium || (Array.isArray(window.BB173_FREE_RECIPE_IDS) && window.BB173_FREE_RECIPE_IDS.includes(recipe.id));
+  return !!recipe?.id && (bbSecureFreeIds.has(recipe.id)||bbSecurePremiumIds.has(recipe.id));
 }
+async function bbSecureRefreshPremiumRecipes(){
+  const token=bbPaidToken();
+  bbSecureLastToken=token;
+  bbSecurePremiumIds=new Set();
+  recipes=bbSecureFreeRecipes.slice();
+  renderTiles();
+  if(!token)return;
+  try {
+    const response=await fetch('/api/recipes/premium',{
+      cache:'no-store',credentials:'same-origin',redirect:'manual',
+      headers:{'Accept':'application/json','Authorization':'Bearer '+token}
+    });
+    if(!response.ok)return; // Free, expired, canceled and unverified users stay Free.
+    const data=await response.json();
+    if(data?.count!==221||!Array.isArray(data.recipes)||data.recipes.length!==221)return;
+    const ids=new Set();
+    for(const recipe of data.recipes){
+      if(typeof recipe?.id!=='string'||ids.has(recipe.id)||bbSecureFreeIds.has(recipe.id))return;
+      ids.add(recipe.id);
+    }
+    if(bbPaidToken()!==token)return; // User switched accounts while request was in flight.
+    bbSecurePremiumIds=ids;
+    recipes=bbSecureFreeRecipes.concat(data.recipes);
+    renderTiles();
+  } catch (_) { /* Fail closed: continue with only the 100 public recipes. */ }
+}
+function bbSecureCheckAccountChange(){
+  if(bbPaidToken()!==bbSecureLastToken)void bbSecureRefreshPremiumRecipes();
+}
+window.addEventListener('focus',bbSecureCheckAccountChange);
+// Detect sign-in/out in this tab; storage events normally fire only in other tabs.
+setInterval(bbSecureCheckAccountChange,2000);
+window.addEventListener('storage',event=>{
+  if(event.key==='basketboss_cloud_session_v1')bbSecureCheckAccountChange();
+});
+document.addEventListener('visibilitychange',()=>{
+  if(!document.hidden)bbSecureCheckAccountChange();
+});
 
 let area='cupboard',mode='only',recipes=[],inventory={},results=[],suggestionOffset=0,photoFile=null;
  let bb5Confirmed=false;
@@ -643,6 +677,17 @@ $('#mealReviewSave').addEventListener('click',confirmMeal);
 $('#mealReviewCancel').addEventListener('click',()=>{pendingRecipe=null;$('#mealReviewError').hidden=true;});
 $('#mealReview').addEventListener('close',()=>{$('#mealReviewError').hidden=true;pendingRecipe=null;});
 $('#generate').addEventListener('click',generate);fetch('/api/bb173/status',{cache:'no-store',headers:bbPaidToken()?{'Authorization':'Bearer '+bbPaidToken()}:{}}).then(r=>r.json()).then(j=>{aiEnabled=j.status==='available'&&j.premium_ai===true&&!!j.siteKey;$('#aiStatus').textContent=aiEnabled?'AI early access is available, subject to daily limits.':'Premium AI is unavailable. Browse your available recipes instead.';$('#aiHumanStatus').textContent=aiEnabled?'Complete the human check to make an AI request.':'Human check not needed for the built-in recipes.';if(aiEnabled){bbSiteKey=j.siteKey;if(bbActiveTool&&!bbTurnstileLoading){bbTurnstileLoading=true;setupHumanCheck(bbSiteKey)}}}).catch(()=>{$('#aiStatus').textContent='AI service is not connected — ordinary recipe matching works without it.';$('#aiHumanStatus').textContent='The AI service is unavailable.';});
-fetch('recipes.json',{cache:'no-store'}).then(r=>{if(!r.ok)throw Error('Recipe library unavailable');return r.json()}).then(data=>{if(!Array.isArray(data)||data.length!==321)throw Error('Recipe library must contain 321 recipes');recipes=data.filter(bb176MakeMealAllowed);renderTiles()}).catch(e=>{message(e.message,'warning');renderTiles()});renderTiles();bb82UnifyMealLayout();bb15RestorePremiumEntry()}
+fetch('recipes.json',{cache:'no-store'}).then(r=>{
+  if(!r.ok)throw Error('Free recipe library unavailable');
+  return r.json();
+}).then(data=>{
+  if(!Array.isArray(data)||data.length!==100||bbSecureFreeIds.size!==100||
+      data.some(r=>!r?.id||!bbSecureFreeIds.has(r.id))||
+      new Set(data.map(r=>r.id)).size!==100)
+    throw Error('Free recipe catalogue integrity check failed');
+  bbSecureFreeRecipes=data;
+  void bbSecureRefreshPremiumRecipes();
+}).catch(e=>{message(e.message,'warning');renderTiles()});
+renderTiles();bb82UnifyMealLayout();bb15RestorePremiumEntry()}
 if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',init,{once:true});else init();
 })();
