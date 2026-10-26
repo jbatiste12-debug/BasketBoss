@@ -33,15 +33,33 @@
     opener?.focus({preventScroll: true});
   }
 
-  // Intercept before existing delegated action handlers run. This is only a
-  // preview demonstration and does NOT prevent direct requests to the AI API.
-  document.addEventListener('click', event => {
-    const trigger = event.target.closest?.(premiumSelector);
-    if (!trigger || !document.getElementById('bbToolStage')) return;
+
+  // The server, not this interface, decides Premium access.
+  let passOnce=null;
+  async function paidAIAccess(){
+    try{
+      const s=JSON.parse(localStorage.getItem('basketboss_cloud_session_v1')||'null');
+      if(typeof s?.access_token!=='string'||
+         Number(s.expires_at)*1000<=Date.now()+5000)return false;
+      const r=await fetch('/api/bb173/status',{
+        cache:'no-store',
+        headers:{'Authorization':'Bearer '+s.access_token}
+      });
+      const d=r.ok?await r.json():null;
+      return d?.status==='available'&&d?.premium_ai===true;
+    }catch{return false;}
+  }
+  document.addEventListener('click',event=>{
+    const trigger=event.target.closest?.(premiumSelector);
+    if(!trigger||!document.getElementById('bbToolStage'))return;
+    if(passOnce===trigger){passOnce=null;return;}
     event.preventDefault();
     event.stopImmediatePropagation();
-    showPremium(trigger);
-  }, true);
+    void paidAIAccess().then(ok=>{
+      if(ok){passOnce=trigger;trigger.click();}
+      else showPremium(trigger);
+    });
+  },true);
 
   close?.addEventListener('click', hidePremium);
   browse?.addEventListener('click', () => {
