@@ -4,7 +4,11 @@ export async function onRequestPost({request,env}) {
   // Two independent locks: Live backend may be configured before checkout can open.
   if (!isBillingEnabled(env)||!isConfigured(env)||
       !(isLive(env)?env.PADDLE_LIVE_API_KEY:env.PADDLE_SANDBOX_API_KEY)||
-      (isLive(env)&&env.BB_LIVE_CHECKOUT_ENABLED!=='true'))
+      (isLive(env)&&(
+        env.BB_LIVE_CHECKOUT_ENABLED!=='true' ||
+        env.BB_LIVE_WEBHOOK_ENABLED!=='true' ||
+        !env.PADDLE_LIVE_WEBHOOK_SECRET
+      )))
     return json({error:'Checkout disabled or not configured'},503);
   if(!requireSameOrigin(request)) return json({error:'Origin not allowed'},403);
   const user=await authenticatedUser(request,env);
