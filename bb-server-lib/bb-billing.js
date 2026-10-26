@@ -58,7 +58,7 @@ export async function paddleApi(env,path,method='GET',body=undefined) {
   const host=live?'https://api.paddle.com':'https://sandbox-api.paddle.com';
   const r=await fetch(host+path,{
     method,headers:{ Authorization:'Bearer '+key,'Content-Type':'application/json'},
-    body:body===undefined?undefined:JSON.stringify(body),signal:AbortSignal.timeout(9000),redirect:'error'
+    body:body===undefined?undefined:JSON.stringify(body),signal:AbortSignal.timeout(9000),redirect:'manual'
   });
   const payload=await r.json().catch(()=>null);
   if(!r.ok || !payload?.data) throw Error('Paddle API response not successful: '+r.status);
