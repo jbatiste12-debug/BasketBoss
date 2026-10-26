@@ -66,6 +66,8 @@ const BB5_UNITS=['each','g','kg','ml','l','pack','clove','bulb','tin','can','tbs
    Preserve all existing saved units and quantities, including manual changes. */
 function bb5SuggestedUnit(name){
  const n=String(name||'').toLowerCase();
+ /* BB-DAIRY-DEFAULTS-20261026-V2 */
+ if(/\bparmesan\b/.test(n))return 'g';
  if(/\b(?:garlic|cloves?)\b/.test(n))return 'clove';
  if(/\b(?:aubergines?|courgettes?|(?:red |mixed |bell )?peppers?|onions?|cucumbers?|sweet potatoes?|baking potatoes?|avocados?)\b/.test(n))return 'each';
  if(/\b(?:stock cubes?|bouillon cubes?|cheese strings?|eggs?|onions?|lemons?|limes?|apples?|bananas?|peppers|(?:bell|mixed) pepper|bagels?|wraps?|bread slices?|loaves?)\b/.test(n))return 'each';

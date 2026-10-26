@@ -3,6 +3,14 @@
  * A checkout event is NEVER proof of Premium entitlement. */
 (() => {
   'use strict';
+  /* BB-20261026-FAIL-CLOSED-LIVE: no Sandbox checkout on public website. */
+  const publicBetaHost = /^(?:www\.)?basketboss\.co\.uk$|^basketboss-site\.pages\.dev$/i.test(location.hostname);
+  if(publicBetaHost){
+    document.querySelectorAll('[data-plan]').forEach(b=>{b.disabled=true;b.setAttribute('aria-disabled','true');});
+    const status=document.getElementById('checkoutMessage');
+    if(status){status.textContent='Secure Live checkout is being finalised. No real payments are enabled yet.';status.className='checkout-message';}
+    return;
+  }
   const TOKEN='test_8591040552729f8dee37069a8c7'; // Paddle public client-side token, NOT an API secret
   const buttons=Array.from(document.querySelectorAll('[data-plan]'));
   const message=document.getElementById('checkoutMessage');

@@ -3532,7 +3532,15 @@ body.bbnext-plan-mode .shell > #bb175Toolbar{display:none!important}
 .bb-manual-batch-btn:hover{background:#e1f3e8}
 .bb80-add-week-actions{flex-wrap:wrap}
 .bb321-shop-used-in{line-height:1.4}
-</style></head>
+</style><style id="bb2026-premium-prompt-benefits">
+.bb2026-premium-benefits{padding:12px 14px;background:#f3f9f1;color:#1c5136;border:1px solid #c8dfcb;border-radius:14px;margin-bottom:12px}
+.bb2026-premium-benefits h3{font-size:15px;margin:0 0 7px;font-weight:800}
+.bb2026-premium-benefits ul{margin:0 0 6px;padding-left:18px;line-height:1.45;font-size:13px}
+.bb2026-premium-benefits li+li{margin-top:4px}
+.bb2026-premium-benefits p{margin:8px 0 0;font-size:12px}
+.bb2026-founder-plan{outline:2px solid #276949;outline-offset:-2px}
+</style>
+</head>
 <body>
 <div role="note" style="font:12px/1.5 system-ui;background:#fff7e2;color:#493b29;padding:10px 16px;border-bottom:1px solid #ead9b3;display:flex;align-items:center;gap:12px;flex-wrap:wrap"><strong>BasketBoss · weekly shopping</strong><label>Estimated region <select id="bb307Island" aria-label="Estimated region"  style="font:inherit;padding:4px"><option>Jersey</option><option>Guernsey</option><option>UK</option><option value="US">🇺🇸 United States</option></select></label><button type="button" id="bb307SaveMarket" disabled>Saved ✓</button><small id="bb307RegionSaveStatus" role="status" aria-live="polite">Saved on this device</small><span>Illustrative local-currency prices by ingredient category; not live retailer quotes · check allergens</span></div><script>document.addEventListener('DOMContentLoaded',function(){const sel=document.getElementById('bb307Island');if(sel && window.bb307ActiveMarket)sel.value=window.bb307ActiveMarket();});</script><div class="shell">
 <header class="top"><div class="brand"><div class="logo" aria-label="BasketBoss crowned basket logo"><svg viewBox="0 0 64 64" width="42" height="42" aria-hidden="true" fill="none"><path d="M22 18 18 10 27 14 32 6 37 14 46 10 42 18Z" fill="#44484B" stroke="#44484B" stroke-width="2" stroke-linejoin="round"/><path d="M21 21h22" stroke="#44484B" stroke-width="3" stroke-linecap="round"/><path d="M18 30 25 23M46 30 39 23" stroke="#44484B" stroke-width="4" stroke-linecap="round"/><path d="M11 31h42l-5 24H16l-5-24Z" fill="#44484B" stroke="#44484B" stroke-width="2" stroke-linejoin="round"/><path d="M22 38v10M32 38v10M42 38v10" stroke="#F8F8F8" stroke-width="4" stroke-linecap="round"/></svg></div><div><h1>Basket<span>Boss</span></h1><div class="sub" id="saveStatus">Plan Smarter. Eat Better. Less Waste.</div></div></div><div class="bbui-header-actions"><div class="budget"><small>Remaining in budget</small><strong id="headerTotal">&#163;0.00</strong></div><button type="button" id="bbuiOpenSettings" class="bbui-settings-trigger" aria-label="Open BasketBoss settings" aria-haspopup="dialog" aria-expanded="false">&#9881;</button></div></header><aside class="bb173-install-banner bb1744-install-banner" data-bb173-install-banner aria-label="Install BasketBoss">
@@ -6235,7 +6243,8 @@ function bbNextComposePlan(app){
  const budgetValue=typeof bb1748SyncBudget==='function'?bb1748SyncBudget():null;
  const basket=typeof bb321WeeklySummary==='function'?bb321WeeklySummary():null;
  const spend=Math.max(0,Number(basket?.total)||0);
- const target=budgetValue===null?null:Number(budgetValue);
+ let target=budgetValue===null?150:Number(budgetValue);
+ const bb77HasCustomTarget=budgetValue!==null; /* bb77-budget-autosave-and-ring-20261026 */
  const percent=target>0?Math.max(0,Math.min(100,spend/target*100)):0;
  const moneyValue=n=>BBPriceV19.money(n,bb307Market);
  const budget=document.createElement('section');
@@ -6244,37 +6253,72 @@ function bbNextComposePlan(app){
  const donut=document.createElement('div');donut.className='bbnext-plan-donut';
  const usedPct=target>0?Math.round(spend/target*100):0;
  donut.style.setProperty('--bbnext-budget-pct',String(percent)+'%');
- donut.style.setProperty('--bb77-budget-color',target===null?'#c4d6c9':spend>target?'#be4838':usedPct>=85?'#c28a2a':'#287646');
- donut.classList.toggle('bb77-budget-over',target!==null&&spend>target);
+ donut.style.setProperty('--bb77-budget-color',spend>target?'#be4838':usedPct>=85?'#c28a2a':'#287646');
+ donut.classList.toggle('bb77-budget-over',spend>target);
  donut.setAttribute('role','progressbar');
  donut.setAttribute('aria-label','Estimated grocery spend against your saved weekly budget target');
  donut.setAttribute('aria-valuemin','0');
  donut.setAttribute('aria-valuemax','100');
  donut.setAttribute('aria-valuenow',String(Math.round(percent)));
- donut.setAttribute('aria-valuetext',target===null?'Weekly target not set. Estimated spend '+moneyValue(spend):moneyValue(spend)+' estimated of '+moneyValue(target)+' budget; '+usedPct+' percent used'+(spend>target?', over target':''));
+ donut.setAttribute('aria-valuetext',moneyValue(spend)+' estimated of '+moneyValue(target)+' '+(bb77HasCustomTarget?'saved budget':'suggested baseline')+'; '+usedPct+' percent used'+(spend>target?', over target':''));
  const donutCore=document.createElement('span');donutCore.className='bbnext-plan-donut-core';
- const estimate=document.createElement('strong');estimate.textContent=moneyValue(spend);
+ const estimate=document.createElement('strong');estimate.id='myWeekEstimatedTotal';estimate.textContent=moneyValue(spend);
  const estimateTag=document.createElement('small');estimateTag.textContent='estimated';
  donutCore.append(estimate,estimateTag);donut.append(donutCore);
  const budgetText=document.createElement('div');budgetText.className='bbnext-plan-budget-text';
  const kicker=document.createElement('span');kicker.className='bbnext-plan-kicker';kicker.textContent='MY WEEK · MON–SUN';
  const heading=document.createElement('h2');heading.textContent='My Week';
  const budgetLine=document.createElement('strong');budgetLine.className='bbnext-plan-budget-line';
- budgetLine.textContent=target===null?'Set your weekly target':moneyValue(target)+' weekly target';
+ budgetLine.textContent=bb77HasCustomTarget?moneyValue(target)+' weekly target':moneyValue(150)+' suggested weekly baseline';
  const note=document.createElement('p');
- note.textContent=target===null?'Set a budget to compare with your planned grocery estimate.':spend>target?moneyValue(spend-target)+' over the current target':moneyValue(target-spend)+' estimated remaining';
+ note.textContent=spend>target?moneyValue(spend-target)+' over the '+(bb77HasCustomTarget?'saved target':'suggested baseline'):moneyValue(target-spend)+' estimated remaining against '+(bb77HasCustomTarget?'your target':'suggested baseline');
  const disclaimer=document.createElement('small');disclaimer.textContent='Basket estimates, not supermarket checkout prices.';
  budgetText.append(kicker,heading,budgetLine,note,disclaimer);
+
+ function bb77SyncEstimateAndRing(budgetDenominator, custom){
+   const d=Number(budgetDenominator)>0?Number(budgetDenominator):150;
+   const rawPercent=spend/d*100, used=Math.round(rawPercent);
+   const progress=Math.max(0,Math.min(100,rawPercent));
+   estimate.textContent=moneyValue(spend);
+   donut.style.setProperty('--bbnext-budget-pct',progress+'%');
+   donut.style.setProperty('--bb77-budget-color',spend>d?'#be4838':used>=85?'#c28a2a':'#287646');
+   donut.classList.toggle('bb77-budget-over',spend>d);
+   donut.setAttribute('aria-valuenow',String(Math.round(progress)));
+   donut.setAttribute('aria-valuetext',moneyValue(spend)+' estimated of '+moneyValue(d)+(custom?' saved target':' suggested baseline')+'; '+used+' percent used'+(spend>d?', over target':''));
+   budgetLine.textContent=moneyValue(d)+(custom?' weekly target':' suggested weekly baseline');
+   note.textContent=spend>d?moneyValue(spend-d)+' over '+(custom?'your target':'the suggested baseline'):moneyValue(d-spend)+' estimated remaining against '+(custom?'your target':'the suggested baseline');
+ }
+ bb77SyncEstimateAndRing(target,bb77HasCustomTarget);
+
  // Make the weekly goal actionable where the progress ring lives. The shared
  // existing save helper writes both historical budget keys atomically enough
  // for all Plan/Shop calculation paths; never create a new budget store.
  const budgetForm=document.createElement('form');budgetForm.className='bb77-budget-form';budgetForm.noValidate=true;
  const goalLabel=document.createElement('label');goalLabel.htmlFor='bb77BudgetTarget';goalLabel.textContent='Weekly grocery target ('+BBPriceV19.CURRENCY[bb307Market]+')';
- const goalInput=document.createElement('input');goalInput.id='bb77BudgetTarget';goalInput.type='number';goalInput.inputMode='decimal';goalInput.min='1';goalInput.max='10000';goalInput.step='0.01';goalInput.placeholder='e.g. 150';goalInput.value=target===null?'':target.toFixed(2);
+ const goalInput=document.createElement('input');goalInput.id='bb77BudgetTarget';goalInput.type='number';goalInput.inputMode='decimal';goalInput.min='1';goalInput.max='10000';goalInput.step='0.01';goalInput.placeholder='e.g. 150';goalInput.value=bb77HasCustomTarget?target.toFixed(2):'';
  const goalButton=document.createElement('button');goalButton.type='submit';goalButton.textContent=target===null?'Set budget':'Update budget';
  const goalStatus=document.createElement('p');goalStatus.className='bb77-budget-status';goalStatus.setAttribute('aria-live','polite');
  const goalControls=document.createElement('div');goalControls.className='bb77-budget-controls';goalControls.append(goalInput,goalButton);
  budgetForm.append(goalLabel,goalControls,goalStatus);
+
+ // Save on every valid input as well as change/blur; do not re-render while typing.
+ // The helper above always refreshes the £ total and ring together.
+ function bb77CommitTypedBudget(){
+   const raw=goalInput.value.trim(), value=Number(raw);
+   if(!raw||!Number.isFinite(value)||value<1||value>10000)return;
+   if(typeof bb172SaveBudget!=='function'||!bb172SaveBudget(value)){
+     goalStatus.textContent='Could not save budget; try Set budget.';return;
+   }
+   const saved=typeof bb1748SyncBudget==='function'?bb1748SyncBudget():null;
+   if(saved===null||Math.abs(Number(saved)-value)>0.0001){
+     goalStatus.textContent='Budget not verified; try Set budget.';return;
+   }
+   target=value;
+   bb77SyncEstimateAndRing(value,true);
+   goalButton.textContent='Update budget';
+   goalStatus.textContent='Budget automatically saved: '+moneyValue(value);
+ }
+ for(const eventType of ['input','change','blur'])goalInput.addEventListener(eventType,bb77CommitTypedBudget);
  budgetForm.addEventListener('submit',e=>{
    e.preventDefault();
    const raw=goalInput.value.trim(),value=Number(raw);
@@ -6821,6 +6865,7 @@ function bb80ShoppingQuantity(name,quantity,unit,market=bb307Market){
   const bulbs=Math.max(1,Math.ceil(n/10));return noun('clove')+' ('+bulbs+' '+(bulbs===1?'bulb':'bulbs')+')';
  }
  if(u==='each'){
+  if(/\bcheese\s*strings?\b/.test(k))return noun('cheese string','cheese strings');
   if(/\bbread loaf\b|\bloaf of bread\b/.test(k))return noun('loaf','loaves');
   if(/\b(?:bread|toast)\b/.test(k)&&!/\b(?:garlic baguette|bread rolls?|bread flour|breadcrumbs?|flatbread|pitta bread)\b/.test(k))return noun('slice');
   if(/\b(?:tortilla wraps?|flour wraps?|wraps?)\b/.test(k))return noun('wrap');
@@ -9963,22 +10008,31 @@ if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',
 <script src="shopping-inventory.js?v=bb77-20261024" defer></script><dialog id="bbIntroTrialDialog" aria-labelledby="bbIntroTrialTitle" aria-describedby="bbIntroTrialText">
  <div class="bbtrial-hero">
   <button type="button" class="bbtrial-x" data-bbtrial-close aria-label="Close Premium offer">×</button>
-  <p class="bbtrial-topline">✦ BASKETBOSS PREMIUM · SANDBOX TEST</p>
-  <h2 id="bbIntroTrialTitle">Try Premium free for 3 days.</h2>
-  <p id="bbIntroTrialText">Thanks for exploring BasketBoss! Unlock AI ingredient scanning and personal meal ideas with a Premium subscription. Or continue with our free recipes.</p>
+  <p class="bbtrial-topline">🚀 FOUNDING MEMBER BETA · FIRST 25 PLACES</p>
+  <h2 id="bbIntroTrialTitle">Try Premium free for 7 days</h2>
+  <p id="bbIntroTrialText">Plan meals with more choice and make smarter use of your shopping and Pantry. See exactly what Premium adds below. Trial eligibility and pricing are confirmed at secure checkout.</p>
  </div>
  <div class="bbtrial-main">
+ <div class="bb2026-premium-benefits" aria-label="What is included with BasketBoss Premium">
+  <h3>What’s included with Premium?</h3>
+  <ul><li>All <strong>321 recipes</strong> (100 recipes stay free)</li>
+      <li><strong>Complete Leftover Magic</strong> suggestions and reuse ideas</li>
+      <li><strong>Advanced Shop Mode</strong> and extra shopping tools</li>
+      <li><strong>Premium AI:</strong> up to 5 ingredient photo scans and 10 meal ideas per day, subject to availability and fair-use limits</li>
+      <li><strong>Budget help:</strong> Trim My Basket suggestions where available</li></ul>
+  <p>Free still includes basic meal planning, a shopping list and starter recipes.</p>
+ </div>
   <div class="bbtrial-plans">
-   <a class="bbtrial-plan" href="pricing-sandbox.html#monthly">
-     <span class="bbtrial-label">🌿 Monthly</span><span class="bbtrial-price">£4.99</span>
-     <span class="bbtrial-meta">per month after a 3-day free trial</span><span class="bbtrial-action">Explore monthly checkout →</span>
+   <a class="bbtrial-plan bb2026-founder-plan" href="pricing-sandbox.html#founder">
+     <span class="bbtrial-label">🚀 Founding Member · limited to 25 eligible customers</span><span class="bbtrial-price">£1.99</span>
+     <span class="bbtrial-meta">per month after a 7-day free trial · founding rate continues while your eligible subscription remains active</span><span class="bbtrial-action">View eligibility and full billing terms →</span>
    </a>
-   <a class="bbtrial-plan bbtrial-plan--annual" href="pricing-sandbox.html#annual">
-     <span class="bbtrial-label">✨ Annual</span><span class="bbtrial-price">£49.90</span>
-     <span class="bbtrial-meta">per year after a 3-day free trial · 2 months' saving</span><span class="bbtrial-action">Explore annual checkout →</span>
+   <a class="bbtrial-plan bbtrial-plan--annual" href="pricing-sandbox.html#monthly">
+     <span class="bbtrial-label">✨ Standard Monthly</span><span class="bbtrial-price">£4.99</span>
+     <span class="bbtrial-meta">per month · trial terms shown at checkout; annual plan under review</span><span class="bbtrial-action">View Standard terms →</span>
    </a>
   </div>
-  <p class="bbtrial-legal"><strong>Sandbox demonstration only:</strong> No real payment is taken. Verify the three-day trial and first charge date in Paddle Checkout before submitting test details. Completing a test checkout does not grant Premium access yet. In live billing, a subscription renews automatically unless cancelled.</p>
+  <p class="bbtrial-legal"><strong>Transparent pricing:</strong> Founding Member spaces are limited to the first 25 eligible paid subscribers and require server confirmation. A genuine 7-day trial must be attached to the Paddle Live price. After the trial, the displayed plan renews automatically until cancelled. The final currency, applicable tax, first charge date and cancellation terms are shown at secure checkout. <strong>Payments remain unavailable until Live billing is verified.</strong></p>
   <button type="button" class="bbtrial-free" data-bbtrial-free>Continue with BasketBoss Free →</button>
   <p class="bbtrial-foot">100 starter recipes, manual ingredients and basic planning remain available without subscribing.</p>
  </div>
