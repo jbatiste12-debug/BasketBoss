@@ -144,20 +144,45 @@ function limits(env){
   const n=Number(env.BB_AI_GLOBAL_DAILY_CAP);
   return Number.isInteger(n)&&n>=1&&n<=300?{global:n}:null;
 }
+/* Explicit Owner-only AI testing on the guarded sandbox Preview branch.
+ * This NEVER activates billing and NEVER grants subscription rights to users.
+ * In Production and on any other branch the override always fails closed.
+ */
+export function ownerPreviewAI(env){
+  return env.BB_OWNER_AI_PREVIEW_ENABLED==='true' &&
+    env.BB_PREMIUM_AI_ENABLED==='true' &&
+    env.BB_BILLING_MODE==='sandbox' &&
+    env.BB_BILLING_ENABLED==='false' &&
+    env.BB_OWNER_AI_PREVIEW_BRANCH==='billing-premium-secure-20261026-2' &&
+    (!env.CF_PAGES_BRANCH ||
+     env.CF_PAGES_BRANCH==='billing-premium-secure-20261026-2') &&
+    env.BB_LIVE_CHECKOUT_ENABLED!=='true' &&
+    env.BB_LIVE_WEBHOOK_ENABLED!=='true' &&
+    typeof env.BB_OWNER_USER_ID==='string' && env.BB_OWNER_USER_ID.length>0;
+}
+export function aiConfigurationChecks(env){
+  const issues=[];
+  if(env.BB_PREMIUM_AI_ENABLED!=='true')issues.push('ai_disabled');
+  if(!isBillingEnabled(env)&&!ownerPreviewAI(env))issues.push('billing_disabled_owner_preview_not_authorized');
+  if(!isConfigured(env))issues.push('supabase_or_billing_db_missing');
+  if(!env.GEMINI_API_KEY)issues.push('gemini_secret_missing');
+  if(!env.TURNSTILE_SECRET_KEY)issues.push('turnstile_secret_missing');
+  if(!env.TURNSTILE_SITE_KEY)issues.push('turnstile_site_key_missing');
+  if(typeof env.BILLING_DB?.prepare!=='function')issues.push('billing_db_binding_missing');
+  if(!limits(env))issues.push('global_daily_cap_missing_or_invalid');
+  return issues;
+}
 function configured(env){
-  return env.BB_PREMIUM_AI_ENABLED==='true' &&
-    isBillingEnabled(env) && isConfigured(env) &&
-    !!env.GEMINI_API_KEY &&
-    !!env.TURNSTILE_SECRET_KEY &&
-    !!env.TURNSTILE_SITE_KEY &&
-    typeof env.BILLING_DB?.prepare==='function' &&
-    !!limits(env);
+  return aiConfigurationChecks(env).length===0;
 }
 async function eligibleMember(request,env){
   const user=await authenticatedUser(request,env);
   if(!user)return null;
   if(env.BB_OWNER_USER_ID && user.id===env.BB_OWNER_USER_ID)
     return user;
+  // Preview-only AI never accepts a paying or unauthenticated non-owner
+  // while the billing feature gate is disabled.
+  if(ownerPreviewAI(env))return null;
   const row=await env.BILLING_DB.prepare(
     'SELECT status,price_id,plan FROM bb_paid_entitlements WHERE user_id=? ORDER BY updated_at_ms DESC LIMIT 1'
   ).bind(user.id).first();
@@ -244,8 +269,18 @@ export async function onRequest({request,env,params}){
   if(action==='status'){
     if(request.method!=='GET')
       return respond({error:'GET required'},405);
-    if(!configured(env))
-      return respond({status:'disabled',premium_ai:false,siteKey:null});
+    if(!configured(env)){
+      // Detailed readiness codes are visible only to a verified Owner.
+      // Never expose secret values, tokens, or errors to the browser.
+      let own=false;
+      try{
+        const account=await authenticatedUser(request,env);
+        own=!!account && !!env.BB_OWNER_USER_ID &&
+          account.id===env.BB_OWNER_USER_ID;
+      }catch(_){}
+      return respond({status:'disabled',premium_ai:false,siteKey:null,
+        ...(own?{checks:aiConfigurationChecks(env)}:{})});
+    }
     try{
       const member=await eligibleMember(request,env);
       return respond({

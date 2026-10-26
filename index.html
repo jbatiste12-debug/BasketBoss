@@ -4655,6 +4655,8 @@ const BB174Leftover = (() => {
 /* v17.4.3: UI-ONLY Preview gate. NOT a payment entitlement. Never deploy as authorisation. */
 let bbVerifiedPaidRecipes=false;
 function bb176IsPremiumPreview(){
+  // Presentation only. Protected APIs verify entitlements again on the server.
+  if(window.BasketBossVerifiedPremium?.isActive?.()===true)return true;
  try {
    // A signed Access login AND an exact owner-email match are required by
    // /api/qa-premium before this QA-only test setting can have any effect.
