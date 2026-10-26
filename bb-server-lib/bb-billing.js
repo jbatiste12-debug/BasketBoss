@@ -21,7 +21,7 @@ export async function authenticatedUser(request,env) {
   try {
     const r=await fetch(url+'/auth/v1/user', {
       headers:{'apikey':env.SUPABASE_PUBLISHABLE_KEY,'Authorization':value},
-      redirect:'error', signal:AbortSignal.timeout(6500)
+      redirect:'manual', signal:AbortSignal.timeout(6500)
     });
     if (!r.ok) {
       console.warn('BB_AUTH_PREVIEW: supabase_http',r.status);
