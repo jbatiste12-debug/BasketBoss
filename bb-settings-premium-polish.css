@@ -1,0 +1,215 @@
+/* BasketBoss premium Settings polish — presentation only. */
+
+.bbui-settings-overlay {
+  background:rgba(12,34,23,.69)!important;
+  backdrop-filter:blur(7px);
+}
+
+.bbui-settings-overlay .bbui-settings-panel {
+  max-width:520px!important;
+  background:#faf9f5!important;
+  color:#1e4631!important;
+  border:1px solid #d4e1d6!important;
+  border-radius:24px!important;
+  box-shadow:0 28px 80px rgba(12,34,23,.3)!important;
+}
+
+.bbui-settings-panel .bbui-settings-heading {
+  background:#faf9f5!important;
+  border-bottom:1px solid #e5eae1!important;
+}
+
+.bbui-settings-panel .bbui-settings-heading h2 {
+  color:#194e34!important;
+  letter-spacing:-.6px;
+  font-size:clamp(21px,4vw,25px)!important;
+}
+
+.bbui-settings-panel .bbui-settings-close {
+  display:grid!important;
+  place-items:center!important;
+  width:46px!important;
+  height:46px!important;
+  border-radius:50%!important;
+  color:#20553a!important;
+  background:#fff!important;
+  border:1px solid #d5e2d7!important;
+  box-shadow:0 3px 10px rgba(18,58,37,.09)!important;
+}
+
+.bbui-settings-panel .bbui-settings-switch {
+  background:#eaf2e9!important;
+  border:1px solid #d8e5da;
+  border-radius:16px;
+  padding:5px;
+  gap:5px;
+  margin-bottom:16px;
+}
+
+.bbui-settings-panel .bbui-settings-switch button {
+  border:0!important;
+  background:transparent!important;
+  color:#426450!important;
+  border-radius:12px!important;
+  min-height:46px!important;
+  font-weight:850!important;
+}
+
+.bbui-settings-panel .bbui-settings-switch button[aria-selected="true"] {
+  color:#fff!important;
+  background:#216443!important;
+  box-shadow:0 4px 12px rgba(21,76,48,.2)!important;
+}
+
+.bbui-settings-panel #bbuiSettingsGeneral {
+  display:grid;
+  gap:12px;
+}
+
+.bbui-settings-panel .bbui-settings-section {
+  background:#fff!important;
+  border:1px solid #dfe9df!important;
+  border-radius:18px!important;
+  padding:17px!important;
+  margin:0!important;
+  box-shadow:0 4px 16px rgba(20,65,40,.045);
+  gap:11px!important;
+}
+
+.bbui-settings-panel .bbui-settings-section h3 {
+  font-size:15px!important;
+  font-weight:850!important;
+  letter-spacing:-.2px;
+  color:#20583b!important;
+  margin:0 0 3px!important;
+}
+
+.bbui-settings-panel .bbui-settings-section h3::before {
+  content:"";
+  display:inline-block;
+  width:8px;
+  height:8px;
+  margin-right:9px;
+  border-radius:50%;
+  background:#58a275;
+  vertical-align:middle;
+}
+
+.bbui-settings-panel #bbuiAccountSection .bb16-account-card button {
+  min-height:49px!important;
+  border-radius:13px!important;
+  background:linear-gradient(135deg,#276e49,#174b34)!important;
+  border:1px solid #246443!important;
+  color:#fff!important;
+  font-size:14px!important;
+  font-weight:850!important;
+  box-shadow:0 6px 15px rgba(24,75,46,.17)!important;
+}
+
+.bbui-settings-panel #bbuiStorageSection #bbBackup,
+.bbui-settings-panel #bbuiStorageSection #bbRestore {
+  width:100%!important;
+  min-height:49px!important;
+  border-radius:13px!important;
+  font-size:14px!important;
+  font-weight:800!important;
+  padding:12px 16px!important;
+}
+
+.bbui-settings-panel #bbuiStorageSection #bbBackup {
+  background:#246b45!important;
+  border:1px solid #246b45!important;
+  color:#fff!important;
+}
+
+.bbui-settings-panel #bbuiStorageSection #bbRestore {
+  background:#f0f7f1!important;
+  border:1px solid #c8ddce!important;
+  color:#20553a!important;
+}
+
+.bbui-settings-panel #bbuiLinksSection > button {
+  width:100%!important;
+  min-height:47px!important;
+  border-radius:13px!important;
+  padding:12px 14px!important;
+  font-weight:800!important;
+}
+
+.bbui-settings-panel #bbuiLinksSection #bb172FeedbackButton {
+  background:#235f43!important;
+  border:1px solid #235f43!important;
+  color:#fff!important;
+}
+
+.bbui-settings-panel #bbuiLinksSection > button:not(#bb172FeedbackButton) {
+  background:#f3f8f3!important;
+  border:1px solid #d5e3d8!important;
+  color:#20553a!important;
+}
+
+.bbui-settings-panel #bbuiLinksSection .bb172-privacy-footer a {
+  display:block!important;
+  min-height:46px!important;
+  padding:12px 14px!important;
+  background:#f3f8f4!important;
+  border:1px solid #d5e4d8!important;
+  border-radius:13px!important;
+  color:#205d3d!important;
+  text-decoration:none!important;
+  font-weight:750!important;
+}
+
+.bbui-settings-panel .bbui-tutorial-topic {
+  border-radius:14px!important;
+  border-color:#dae7dc!important;
+  background:#fff!important;
+}
+
+.bbui-settings-panel :is(button,a,summary):focus-visible {
+  outline:3px solid #d0a443!important;
+  outline-offset:3px!important;
+}
+
+/* Legal links belong inside the genuine app footer. */
+.shell .footer nav[aria-label="Legal information and support"] {
+  display:block!important;
+  position:relative!important;
+  margin:19px auto 0!important;
+  padding:18px 12px 22px!important;
+  background:#f6faf6!important;
+  border:1px solid #d7e5d9;
+  border-radius:15px;
+  color:#315943!important;
+  font-size:13px!important;
+  line-height:2.3!important;
+}
+
+.shell .footer nav[aria-label="Legal information and support"] a {
+  display:inline-block;
+  padding:5px 9px;
+  color:#205e3e!important;
+  font-weight:800!important;
+  text-decoration:underline!important;
+  text-underline-offset:3px;
+}
+
+.shell .footer nav[aria-label="Legal information and support"] span {
+  display:block;
+  margin-top:6px;
+  color:#536b5a!important;
+  font-size:12px!important;
+  line-height:1.6;
+}
+
+@media(max-width:520px) {
+  .bbui-settings-overlay .bbui-settings-panel {
+    border-radius:20px!important;
+  }
+  .bbui-settings-panel .bbui-settings-section {
+    padding:14px!important;
+  }
+  .shell .footer nav[aria-label="Legal information and support"] {
+    padding:14px 8px 22px!important;
+  }
+}
