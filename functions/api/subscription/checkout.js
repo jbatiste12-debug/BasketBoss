@@ -1,8 +1,11 @@
-import {json,isSandbox,isConfigured,authenticatedUser,requireSameOrigin,expectedPrice,paddleApi,digestHex} from '../../../bb-server-lib/bb-billing.js';
+import {json,isBillingEnabled,isLive,billingMode,isConfigured,authenticatedUser,requireSameOrigin,expectedPrice,paddleApi,digestHex} from '../../../bb-server-lib/bb-billing.js';
 const MAX_BODY=1024;
 export async function onRequestPost({request,env}) {
-  if (!isSandbox(env)||!isConfigured(env)||!env.PADDLE_SANDBOX_API_KEY)
-    return json({error:'Sandbox billing disabled or not configured'},503);
+  // Two independent locks: Live backend may be configured before checkout can open.
+  if (!isBillingEnabled(env)||!isConfigured(env)||
+      !(isLive(env)?env.PADDLE_LIVE_API_KEY:env.PADDLE_SANDBOX_API_KEY)||
+      (isLive(env)&&env.BB_LIVE_CHECKOUT_ENABLED!=='true'))
+    return json({error:'Checkout disabled or not configured'},503);
   if(!requireSameOrigin(request)) return json({error:'Origin not allowed'},403);
   const user=await authenticatedUser(request,env);
   if(!user) return json({error:'Sign in with a verified account first'},401);
@@ -43,7 +46,7 @@ export async function onRequestPost({request,env}) {
     try {
       transaction=await paddleApi(env,'/transactions','POST',{
         items:[{price_id:priceId,quantity:1}],collection_mode:'automatic',
-        custom_data:{bb_claim_id:claimId,bb_plan:plan,bb_environment:'sandbox'}
+        custom_data:{bb_claim_id:claimId,bb_plan:plan,bb_environment:billingMode(env)}
       });
     } catch(err) {
       console.error('Paddle transaction creation failed; claim held for reconciliation',err);
@@ -53,7 +56,7 @@ export async function onRequestPost({request,env}) {
       return json({error:'Invalid transaction response; claim held for reconciliation'},502);
     await db.prepare(`UPDATE bb_billing_claims SET transaction_id=?,claim_state='checkout_created'
       WHERE claim_id=? AND user_id=? AND transaction_id IS NULL`).bind(transaction.id,claimId,user.id).run();
-    return json({transactionId:transaction.id,plan,mode:'sandbox'});
+    return json({transactionId:transaction.id,plan,mode:billingMode(env)});
   } catch(err) {
     console.error('BasketBoss checkout server error',err);
     return json({error:'Billing database unavailable; no checkout started'},503);
