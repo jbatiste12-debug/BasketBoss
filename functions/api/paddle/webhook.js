@@ -1,7 +1,7 @@
-/* BasketBoss Paddle SANDBOX subscription webhook. DO NOT use with Live credentials.
+/* BasketBoss guarded Paddle subscription webhook: Sandbox/Live secrets are isolated.
    Signed raw-body verification, idempotent D1 event lock, never trusts client tier.
    Strict created-event linkage: a subscription must reference a server-created txn. */
-import {json,isSandbox,expectedPrice,digestHex,recognizedSubscriptionEvent,verifyPaddleSignature,iso} from '../../../bb-server-lib/bb-billing.js';
+import {json,isBillingEnabled,isLive,expectedPrice,digestHex,recognizedSubscriptionEvent,verifyPaddleSignature,iso} from '../../../bb-server-lib/bb-billing.js';
 const statuses=new Set(['trialing','active','past_due','paused','canceled']);
 const parseStatus=d=>statuses.has(d?.status)?d.status:null;
 function itemPrice(d){
@@ -9,11 +9,14 @@ function itemPrice(d){
   return d.items[0]?.price?.id||null;
 }
 export async function onRequestPost({request,env}) {
-  if(!isSandbox(env)||!env.BILLING_DB||!env.PADDLE_SANDBOX_WEBHOOK_SECRET)
+  const secret=isLive(env)?env.PADDLE_LIVE_WEBHOOK_SECRET:env.PADDLE_SANDBOX_WEBHOOK_SECRET;
+  // Live webhook deliberately OFF unless independently enabled for testing.
+  if(!isBillingEnabled(env)||!env.BILLING_DB||!secret||
+     (isLive(env)&&env.BB_LIVE_WEBHOOK_ENABLED!=='true'))
     return json({error:'Webhook unavailable'},503);
   if(Number(request.headers.get('content-length')||0)>128000) return json({error:'Too large'},413);
   let raw;try{raw=await request.text();if(raw.length>128000)return json({error:'Too large'},413);}catch{return json({error:'Invalid body'},400);}
-  if(!await verifyPaddleSignature(request,raw,env.PADDLE_SANDBOX_WEBHOOK_SECRET))
+  if(!await verifyPaddleSignature(request,raw,secret))
     return json({error:'Invalid webhook signature'},401);
   let event;try{event=JSON.parse(raw)}catch{return json({error:'Invalid event'},400)}
   const {event_id:id,event_type:type,data:d,occurred_at:occurredAt}=event;

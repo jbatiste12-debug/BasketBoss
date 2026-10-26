@@ -4,6 +4,10 @@ export const json = (body, status=200) => new Response(JSON.stringify(body), {
     'X-Content-Type-Options':'nosniff','Vary':'Authorization' }
 });
 export const isSandbox = env => env.BB_BILLING_MODE === 'sandbox' && env.BB_BILLING_ENABLED === 'true';
+// Live API and webhook processing have separate enablement gates from checkout.
+export const isLive = env => env.BB_BILLING_MODE === 'live' && env.BB_BILLING_ENABLED === 'true';
+export const isBillingEnabled = env => isSandbox(env) || isLive(env);
+export const billingMode = env => isLive(env) ? 'live' : 'sandbox';
 export const isConfigured = env => !!(env.BILLING_DB && env.SUPABASE_URL && env.SUPABASE_PUBLISHABLE_KEY);
 export function requireSameOrigin(request) {
   const origin=request.headers.get('Origin');
@@ -25,8 +29,10 @@ export async function authenticatedUser(request,env) {
   } catch { return null; }
 }
 export function expectedPrice(env,plan) {
-  const value= plan==='founder' ? env.PADDLE_SANDBOX_FOUNDER_PRICE_ID :
-    plan==='standard' ? env.PADDLE_SANDBOX_STANDARD_PRICE_ID : null;
+  if(!isBillingEnabled(env)) return null;
+  const live=isLive(env);
+  const value= plan==='founder' ? (live?env.PADDLE_LIVE_FOUNDER_PRICE_ID:env.PADDLE_SANDBOX_FOUNDER_PRICE_ID) :
+    plan==='standard' ? (live?env.PADDLE_LIVE_STANDARD_PRICE_ID:env.PADDLE_SANDBOX_STANDARD_PRICE_ID) : null;
   return typeof value==='string' && /^pri_[a-z0-9]{26}$/.test(value) ? value : null;
 }
 export async function digestHex(input) {
@@ -34,9 +40,13 @@ export async function digestHex(input) {
   return [...new Uint8Array(raw)].map(x=>x.toString(16).padStart(2,'0')).join('');
 }
 export async function paddleApi(env,path,method='GET',body=undefined) {
-  if (!isSandbox(env) || !env.PADDLE_SANDBOX_API_KEY) throw Error('Sandbox Paddle API not configured');
-  const r=await fetch('https://sandbox-api.paddle.com'+path,{
-    method,headers:{ Authorization:'Bearer '+env.PADDLE_SANDBOX_API_KEY,'Content-Type':'application/json'},
+  if(!isBillingEnabled(env)) throw Error('Paddle billing mode disabled');
+  const live=isLive(env);
+  const key=live?env.PADDLE_LIVE_API_KEY:env.PADDLE_SANDBOX_API_KEY;
+  if(!key) throw Error('Paddle API credential not configured');
+  const host=live?'https://api.paddle.com':'https://sandbox-api.paddle.com';
+  const r=await fetch(host+path,{
+    method,headers:{ Authorization:'Bearer '+key,'Content-Type':'application/json'},
     body:body===undefined?undefined:JSON.stringify(body),signal:AbortSignal.timeout(9000),redirect:'error'
   });
   const payload=await r.json().catch(()=>null);

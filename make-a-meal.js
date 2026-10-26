@@ -347,15 +347,23 @@ function renderScanResponse(scan){
  const seen=new Set();const unique=items.filter(x=>{const id=canon(x.name);if(!id||seen.has(id))return false;seen.add(id);return true});
  $('#scanResults').innerHTML=unique.length?`<div class="success">Gemini found possible ingredients. Tick only those you recognise, then choose where each one belongs before saving. AI estimates are not counted as measured stock.</div><form id="reviewFoods"><div class="scan-result-list">${unique.map(x=>`<div class="scan-result-row"><label class="scan-item-label"><input type="checkbox" name="food" value="${esc(x.name.trim().slice(0,70))}"><span><strong>${esc(x.name.trim().slice(0,70))}</strong><span class="scan-item-meta">Estimated ${esc(String(x.estimatedQuantity||'unknown').slice(0,60))} · ${esc(String(x.confidence||'uncertain').slice(0,15))} confidence</span><span class="scan-item-meta">${esc(String(x.notes||'').slice(0,150))}</span></span></label><label class="scan-destination">Store this item in<select class="field" data-scan-location aria-label="Choose storage location for ${esc(x.name.trim().slice(0,70))}"><option value="">Choose when saving…</option><option value="fridge">🥛 Fridge</option><option value="freezer">🧊 Freezer</option><option value="cupboard">🥫 Cupboard</option></select></label></div>`).join('')}</div><div class="scan-review-actions"><p id="scanSaveError" class="warning" role="alert" hidden></p><button class="button ai-primary-button" type="submit">✓ Save my confirmed foods</button><p class="hint">Choose an appropriate storage location for each selected food. Raw meat and other perishable foods must not go in the cupboard.</p></div></form>`:'<div class="warning">No foods identified. Use manual ingredient entry instead.</div>';
 }
+function bbPaidToken(){
+ try{
+  const s=JSON.parse(localStorage.getItem('basketboss_cloud_session_v1')||'null');
+  return typeof s?.access_token==='string' &&
+    Number(s.expires_at)*1000>Date.now()+5000?s.access_token:null;
+ }catch{return null;}
+}
 async function requestBody(verb,body){
- if(!aiEnabled)throw Error('AI early access is not enabled. Use the 321 built-in recipes.');
+ if(!aiEnabled)throw Error('Premium AI is not enabled for this account.');
+ if(!bbPaidToken())throw Error('Sign in to a verified Premium account first.');
  if(!turnstileToken)throw Error('Complete the human verification above first.');
  const token=turnstileToken;turnstileToken='';
  try{
   const controller=new AbortController();
   const stop=setTimeout(()=>controller.abort(),verb==='scan'?25000:30000);
   let r;
-  try{r=await fetch('/api/bb173/'+verb,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({...body,turnstileToken:token}),cache:'no-store',credentials:'same-origin',signal:controller.signal});}
+  try{r=await fetch('/api/bb173/'+verb,{method:'POST',headers:{'Content-Type':'application/json','Authorization':'Bearer '+bbPaidToken()},body:JSON.stringify({...body,turnstileToken:token}),cache:'no-store',credentials:'same-origin',signal:controller.signal});}
   catch(err){if(controller.signal.aborted)throw Error('Request timed out. Your selections were not changed; try again or use local recipes.');throw err}
   finally{clearTimeout(stop)}
   const j=await r.json().catch(()=>({}));if(!r.ok)throw Error(String(j.error||'AI is temporarily unavailable.').slice(0,200));return j;
@@ -634,7 +642,7 @@ $('#recipes').addEventListener('click',e=>{const a=e.target.closest('[data-plan]
 $('#mealReviewSave').addEventListener('click',confirmMeal);
 $('#mealReviewCancel').addEventListener('click',()=>{pendingRecipe=null;$('#mealReviewError').hidden=true;});
 $('#mealReview').addEventListener('close',()=>{$('#mealReviewError').hidden=true;pendingRecipe=null;});
-$('#generate').addEventListener('click',generate);fetch('/api/bb173/status',{cache:'no-store'}).then(r=>r.json()).then(j=>{aiEnabled=j.status==='available'&&j.public_beta===true&&!!j.siteKey;$('#aiStatus').textContent=aiEnabled?'AI early access is available, subject to daily limits.':'AI early access is not yet enabled. Browse all 321 recipes below.';$('#aiHumanStatus').textContent=aiEnabled?'Complete the human check to make an AI request.':'Human check not needed for the built-in recipes.';if(aiEnabled){bbSiteKey=j.siteKey;if(bbActiveTool&&!bbTurnstileLoading){bbTurnstileLoading=true;setupHumanCheck(bbSiteKey)}}}).catch(()=>{$('#aiStatus').textContent='AI service is not connected — ordinary recipe matching works without it.';$('#aiHumanStatus').textContent='The AI service is unavailable.';});
+$('#generate').addEventListener('click',generate);fetch('/api/bb173/status',{cache:'no-store',headers:bbPaidToken()?{'Authorization':'Bearer '+bbPaidToken()}:{}}).then(r=>r.json()).then(j=>{aiEnabled=j.status==='available'&&j.premium_ai===true&&!!j.siteKey;$('#aiStatus').textContent=aiEnabled?'AI early access is available, subject to daily limits.':'Premium AI is unavailable. Browse your available recipes instead.';$('#aiHumanStatus').textContent=aiEnabled?'Complete the human check to make an AI request.':'Human check not needed for the built-in recipes.';if(aiEnabled){bbSiteKey=j.siteKey;if(bbActiveTool&&!bbTurnstileLoading){bbTurnstileLoading=true;setupHumanCheck(bbSiteKey)}}}).catch(()=>{$('#aiStatus').textContent='AI service is not connected — ordinary recipe matching works without it.';$('#aiHumanStatus').textContent='The AI service is unavailable.';});
 fetch('recipes.json',{cache:'no-store'}).then(r=>{if(!r.ok)throw Error('Recipe library unavailable');return r.json()}).then(data=>{if(!Array.isArray(data)||data.length!==321)throw Error('Recipe library must contain 321 recipes');recipes=data.filter(bb176MakeMealAllowed);renderTiles()}).catch(e=>{message(e.message,'warning');renderTiles()});renderTiles();bb82UnifyMealLayout();bb15RestorePremiumEntry()}
 if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',init,{once:true});else init();
 })();

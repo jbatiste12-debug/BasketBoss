@@ -20,7 +20,7 @@
       <p><strong>Planned Premium limits:</strong> 5 AI photo scans and 10 AI meal ideas per day. Only the Founding Member offer has a planned 7-day trial. Server-side entitlements and subscription security must be verified before launch.</p>
       <div class="bb173-tier-plans">
         <a href="${PRICING}#monthly"><strong>Monthly</strong><span>£4.99 / month</span><small>Standard plan · Sandbox</small></a>
-        <a href="${PRICING}#annual"><strong>Annual (review)</strong><span>£49.90 / year</span><small>Unavailable until approved</small></a>
+        <a href="${PRICING}#founder"><strong>Founding Member</strong><span>£1.99 / month</span><small>7 days free · first 25 eligible members</small></a>
       </div>
       <p class="bb173-tier-disclaimer"><strong>Preview only:</strong> Checkout is a test. No real payment or Premium entitlement is activated. Basic shopping lists and manual ingredients remain free.</p>
       <button class="bb173-tier-free" type="button" data-bb173-close>Continue with the 100 free recipes</button>
@@ -50,6 +50,7 @@
   },true);
   // Read the same QA view as the recipe gate. This changes presentation only, never billing rights.
   function qaPremiumPreview(){
+    if(window.BasketBossVerifiedPremium?.isActive?.()===true)return true;
     try {
       const host=String(location.hostname||'').toLowerCase();
       if(host==='localhost'||host==='127.0.0.1'||host.endsWith('.app.github.dev'))
