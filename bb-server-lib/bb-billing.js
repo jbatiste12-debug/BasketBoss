@@ -23,10 +23,21 @@ export async function authenticatedUser(request,env) {
       headers:{'apikey':env.SUPABASE_PUBLISHABLE_KEY,'Authorization':value},
       redirect:'error', signal:AbortSignal.timeout(6500)
     });
-    if (!r.ok) return null;
+    if (!r.ok) {
+      console.warn('BB_AUTH_PREVIEW: supabase_http',r.status);
+      return null;
+    }
     const u=await r.json();
-    return typeof u?.id==='string' && u.email_confirmed_at && typeof u.email==='string' ? {id:u.id,email:u.email} : null;
-  } catch { return null; }
+    if (!(typeof u?.id==='string' && u.email_confirmed_at && typeof u.email==='string')) {
+      console.warn('BB_AUTH_PREVIEW: invalid_user_response');
+      return null;
+    }
+    return {id:u.id,email:u.email};
+  } catch (e) {
+    console.warn('BB_AUTH_PREVIEW: verification_exception',
+      e?.name==='TimeoutError' ? 'timeout' : 'request_or_parse_failure');
+    return null;
+  }
 }
 export function expectedPrice(env,plan) {
   if(!isBillingEnabled(env)) return null;
