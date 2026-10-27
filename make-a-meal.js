@@ -619,18 +619,22 @@ function bb15RestorePremiumEntry(){
  // Keep AI Studio visibly above the three-section Kitchen workspace,
  // not inside a hidden legacy dashboard or behind the QA/install banners.
  // This is presentation only; existing scan/generate/entitlement handlers remain.
+ // The promoted AI Studio sits outside the original dashboard. Wire it
+ // directly; bbOpenTool immediately exposes the existing mounted photo input.
+ section.addEventListener('click',event=>{
+  const opener=event.target.closest('[data-open-tool]');
+  if(opener){event.preventDefault();bbOpenTool(opener.dataset.openTool);}
+ });
  if(workspace&&workspace.parentNode)workspace.parentNode.insertBefore(section,workspace);
  else dashboard.prepend(section);
 }
 function init(){bb74InstallTileStyles();load();document.querySelectorAll('[data-mode]').forEach(b=>b.addEventListener('click',()=>{mode=b.dataset.mode;suggestionOffset=0;document.querySelectorAll('[data-mode]').forEach(t=>t.setAttribute('aria-pressed',String(t.dataset.mode===mode)));renderRecipes()}));
 // Dashboard thumbnail controls reuse the existing inventory state and save pathway.
-// AI Studio is inserted outside .bb-meal-dashboard. Handle all AI openers
-// at document level, including promoted buttons and scan-result links.
-document.addEventListener('click',e=>{
- const opener=e.target.closest?.('[data-open-tool]');
- if(opener)bbOpenTool(opener.dataset.openTool);
-});
+// Keep the original synchronous click handler for the existing dashboard
+// controls and the scan-result link. No async gate runs before bbOpenTool.
 $('.bb-meal-dashboard').addEventListener('click',e=>{
+ const opener=e.target.closest('[data-open-tool]');
+ if(opener){bbOpenTool(opener.dataset.openTool);return;}
  if(e.target.closest('[data-close-tool]')){bbCloseTool();return;}
  const area=e.target.closest('[data-select-location]');
  if(area){bbChooseLocation(area.dataset.selectLocation);return;}
@@ -656,7 +660,8 @@ for(const form of document.querySelectorAll('[data-add-area]')){
  form.addEventListener('reset',()=>{manuallyChanged=false});
 }
 for(const form of document.querySelectorAll('[data-add-area]'))form.addEventListener('submit',e=>{e.preventDefault();const location=form.dataset.addArea;const name=form.querySelector('[data-food-name]').value.trim();if(!name)return;const raw=form.querySelector('[data-food-qty]').value;const qty=raw?Number(raw):null;const unit=form.querySelector('[data-food-unit]').value;if(raw&&(!Number.isFinite(qty)||qty<=0)){message('Enter a positive stock quantity.','warning');return}if(qty&&['each','pack','clove'].includes(unit)&&!Number.isInteger(qty)){message('Use whole numbers for each, packs or cloves.','warning');return}inventory[uid(name,location)]={...inventory[uid(name,location)],name,loc:location,selected:true,qty,unit,source:'added'};bb5Confirmed=false;renderTiles();form.reset()});
-$('#photo').addEventListener('change',e=>{scanRevision++;photoFile=e.target.files?.[0]||null;$('#scanResults').replaceChildren();const p=$('#photoPreview');if(p.dataset.url)URL.revokeObjectURL(p.dataset.url);p.classList.toggle('show',!!photoFile);if(photoFile){p.src=p.dataset.url=URL.createObjectURL(photoFile)}});
+$('#photo').addEventListener('change',e=>{scanRevision++;photoFile=e.target.files?.[0]||null;$('#scanResults').replaceChildren();const p=$('#photoPreview');if(p.dataset.url)URL.revokeObjectURL(p.dataset.url);p.classList.toggle('show',!!photoFile);if(photoFile){p.src=p.dataset.url=URL.createObjectURL(photoFile);$('#scanResults').textContent='Photo ready. Tap “Scan my ingredients” to start the scan.';}else{$('#scanResults').textContent='No photo selected. Tap “Take Photo / Choose Image” to try again.';}});
+$('#photo').addEventListener('cancel',()=>{$('#scanResults').textContent='No photo selected. Tap “Take Photo / Choose Image” to try again.';});
 $('#scanBtn').addEventListener('click',scanPhoto);
 $('#scanResults').addEventListener('submit',e=>{
  if(e.target.id!=='reviewFoods')return;e.preventDefault();

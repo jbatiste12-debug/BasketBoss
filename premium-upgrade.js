@@ -12,7 +12,9 @@
   const close = dialog.querySelector('[data-premium-dismiss]');
   const browse = dialog.querySelector('[data-premium-free-recipes]');
   let opener = null;
-  const premiumSelector = '[data-open-tool="scan"], [data-open-tool="meal"], #scanBtn, #generate';
+  // Opening a tool merely reveals UI; no paid AI request occurs here.
+  // Never cancel a Safari tap or defer a native file-picker user gesture.
+  const premiumSelector = '#scanBtn, #generate';
 
   function showPremium(trigger) {
     opener = trigger;
