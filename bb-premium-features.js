@@ -1,6 +1,7 @@
 /* BasketBoss v17.3 — Free/Premium experience preview, NOT an entitlement provider.
    This file only upgrades the presentation and intercepts Shop Mode buttons.
-   The full 321-recipe static bundle and AI API still require server-side access checks.
+   The static public catalogue has 100 Free recipes. The other 221 are
+   served through a server-verified Premium API; AI is separately gated server-side.
 */
 (() => {
   'use strict';
@@ -13,7 +14,7 @@
     <header class="bb173-tier-header"><button type="button" data-bb173-close aria-label="Close Premium information">×</button>
       <p>✦ BASKETBOSS PREMIUM · SANDBOX PREVIEW</p>
       <h2 id="bb173TierHeading">More magic, less waste.</h2>
-      <p id="bb173TierDesc">Unlock all 321 recipes, Leftover Magic, Advanced Shop Mode and Premium AI.</p>
+      <p id="bb173TierDesc">Verified Premium unlocks all 321 recipes, Leftover Magic and Advanced Shop Mode. AI tools are early access and require service availability.</p>
     </header>
     <div class="bb173-tier-body">
       <div class="bb173-tier-stat"><span>🧺 100 recipes stay free</span><span>✨ 321 with Premium</span></div>
@@ -35,7 +36,7 @@
   }
   function hideDialog(){const d=$('#bb173TierDialog');if(d?.open)d.close();else d?.removeAttribute('open');lastOpener?.focus({preventScroll:true});}
   function showDialog(trigger,context){installDialog();lastOpener=trigger||document.activeElement;
-    $('#bb173TierDesc').textContent=context||'Unlock all 321 recipes, Leftover Magic, Advanced Shop Mode and Premium AI.';
+    $('#bb173TierDesc').textContent=context||'Verified Premium unlocks all 321 recipes, Leftover Magic and Advanced Shop Mode. AI tools are early access and require service availability.';
     const d=$('#bb173TierDialog');if(!d.open){if(typeof d.showModal==='function')d.showModal();else d.setAttribute('open','');}
     $('[data-bb173-close]',d)?.focus({preventScroll:true});
   }
@@ -85,13 +86,13 @@
     }
     if(!app.querySelector('.bb173-recipe-tier-banner')){
       const banner=document.createElement('section');banner.className='bb173-recipe-tier-banner';
-      banner.innerHTML='<div><strong>100 free recipes today · All 321 with Premium</strong><p>Explore family favourites and quick meals. Leftover Magic, advanced shopping and Premium AI are available only with Premium.</p></div><button type="button" data-bb173-upgrade>See Premium benefits →</button>';
+      banner.innerHTML='<div><strong>100 free recipes today · All 321 with Premium</strong><p>Explore family favourites and quick meals. Leftover Magic and advanced shopping require Premium. AI tools are early access and require service availability.</p></div><button type="button" data-bb173-upgrade>See Premium benefits →</button>';
       const card=app.querySelector('.bb173-leftover-card');if(card)card.insertAdjacentElement('afterend',banner);else app.prepend(banner);
       banner.querySelector('[data-bb173-upgrade]').addEventListener('click',e=>showDialog(e.currentTarget));
     }
     if(!app.querySelector('.bb173-locked-teasers')){
       const teasers=document.createElement('section');teasers.className='bb173-locked-teasers';
-      teasers.innerHTML='<div><strong>🔒 221 more recipes in Premium</strong><p>Along with exclusive Leftover Magic recipes and ideas, AI inspiration and Advanced Shop Mode.</p></div><button type="button" data-bb173-upgrade>Explore plans</button>';
+      teasers.innerHTML='<div><strong>🔒 221 more recipes in Premium</strong><p>Along with exclusive Leftover Magic recipes and Advanced Shop Mode. AI tools are early access and require service availability.</p></div><button type="button" data-bb173-upgrade>Explore plans</button>';
       app.appendChild(teasers);
       teasers.querySelector('[data-bb173-upgrade]').addEventListener('click',e=>showDialog(e.currentTarget));
     }
