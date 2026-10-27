@@ -410,7 +410,7 @@ async function scanPhoto(){
  if(!f.type.startsWith('image/')||f.size>12*1024*1024){$('#scanResults').innerHTML='<div class="warning">Choose a food-only photo under 12 MB.</div>';return}
  if(!confirm('Send this resized food photograph to Cloudflare and Google Gemini to suggest ingredients? You will review every item before anything is saved. Cancel keeps it on this device.'))return;
  scanInFlight=true;
- const btn=$('#scanBtn');btn.disabled=true;$('#scanResults').innerHTML='<p class="notice">Reducing and scanning your food photo…</p>';
+ const btn=$('#scanBtn');btn.disabled=true;$('#scanResults').innerHTML='<p class="notice" role="status">Scanning ingredients…</p>';
  try{
   const bitmap=await createImageBitmap(f);const scale=Math.min(1,1024/Math.max(bitmap.width,bitmap.height));
   const canvas=document.createElement('canvas');canvas.width=Math.max(1,Math.round(bitmap.width*scale));canvas.height=Math.max(1,Math.round(bitmap.height*scale));
@@ -613,18 +613,15 @@ function bb15RestorePremiumEntry(){
  <p class="bb15-ai-intro">Choose your ingredients below for local recipe matches. Premium AI tools offer optional photo recognition or an AI recipe draft when the service is connected.</p>
  <p class="bb17-ai-service"><span aria-hidden="true">●</span> Premium tools are previewed here for everyone. AI requests need an active connection and service access; the local recipe finder still works offline.</p>
  <div class="bb15-ai-grid">
-  <article class="bb15-ai-card"><span class="bb15-ai-art" aria-hidden="true">📸</span><h3>Scan ingredients</h3><p>Take or upload a food photo. Review every AI suggestion before saving anything to Kitchen.</p><button type="button" data-open-tool="scan" aria-expanded="false">Open AI Photo Scanner →</button></article>
-  <article class="bb15-ai-card"><span class="bb15-ai-art" aria-hidden="true">✨</span><h3>AI Create a Meal</h3><p>Use your confirmed ingredient names to request a draft recipe. The standard recipe finder still works offline.</p><button type="button" data-open-tool="meal" aria-expanded="false">Open AI Meal Creator →</button></article>
+  <article class="bb15-ai-card"><span class="bb15-ai-art" aria-hidden="true">📸</span><h3>Scan ingredients</h3><p>Take or upload a food photo. Review every AI suggestion before saving anything to Kitchen.</p><label class="bb-ai-native-trigger" data-ai-scan-btn for="ai-photo-input" role="button" tabindex="0" aria-controls="bbToolStage">Open AI Photo Scanner →</label></article>
+  <article class="bb15-ai-card"><span class="bb15-ai-art" aria-hidden="true">✨</span><h3>AI Create a Meal</h3><p>Use your confirmed ingredient names to request a draft recipe. The standard recipe finder still works offline.</p><button type="button" data-ai-meal-btn data-open-tool="meal" aria-controls="bbToolStage" aria-expanded="false">Open AI Meal Creator →</button></article>
  </div><p class="bb15-ai-footnote">Premium early access · AI features need a live connection and may be unavailable in the private Codespaces preview. Your local ingredients and recipes remain accessible.</p>`;
  // Keep AI Studio visibly above the three-section Kitchen workspace,
  // not inside a hidden legacy dashboard or behind the QA/install banners.
  // This is presentation only; existing scan/generate/entitlement handlers remain.
- // The promoted AI Studio sits outside the original dashboard. Wire it
- // directly; bbOpenTool immediately exposes the existing mounted photo input.
- section.addEventListener('click',event=>{
-  const opener=event.target.closest('[data-open-tool]');
-  if(opener){event.preventDefault();bbOpenTool(opener.dataset.openTool);}
- });
+ // The promoted AI Studio is outside the original dashboard; the early,
+ // document-level native opener in make-a-meal.html handles these controls.
+ // Do not bind duplicate click handlers to a re-rendered AI Studio element.
  if(workspace&&workspace.parentNode)workspace.parentNode.insertBefore(section,workspace);
  else dashboard.prepend(section);
 }
@@ -660,8 +657,8 @@ for(const form of document.querySelectorAll('[data-add-area]')){
  form.addEventListener('reset',()=>{manuallyChanged=false});
 }
 for(const form of document.querySelectorAll('[data-add-area]'))form.addEventListener('submit',e=>{e.preventDefault();const location=form.dataset.addArea;const name=form.querySelector('[data-food-name]').value.trim();if(!name)return;const raw=form.querySelector('[data-food-qty]').value;const qty=raw?Number(raw):null;const unit=form.querySelector('[data-food-unit]').value;if(raw&&(!Number.isFinite(qty)||qty<=0)){message('Enter a positive stock quantity.','warning');return}if(qty&&['each','pack','clove'].includes(unit)&&!Number.isInteger(qty)){message('Use whole numbers for each, packs or cloves.','warning');return}inventory[uid(name,location)]={...inventory[uid(name,location)],name,loc:location,selected:true,qty,unit,source:'added'};bb5Confirmed=false;renderTiles();form.reset()});
-$('#photo').addEventListener('change',e=>{scanRevision++;photoFile=e.target.files?.[0]||null;$('#scanResults').replaceChildren();const p=$('#photoPreview');if(p.dataset.url)URL.revokeObjectURL(p.dataset.url);p.classList.toggle('show',!!photoFile);if(photoFile){p.src=p.dataset.url=URL.createObjectURL(photoFile);$('#scanResults').textContent='Photo ready. Tap “Scan my ingredients” to start the scan.';}else{$('#scanResults').textContent='No photo selected. Tap “Take Photo / Choose Image” to try again.';}});
-$('#photo').addEventListener('cancel',()=>{$('#scanResults').textContent='No photo selected. Tap “Take Photo / Choose Image” to try again.';});
+$('#ai-photo-input').addEventListener('change',e=>{scanRevision++;photoFile=e.target.files?.[0]||null;$('#scanResults').replaceChildren();const p=$('#photoPreview');if(p.dataset.url)URL.revokeObjectURL(p.dataset.url);p.classList.toggle('show',!!photoFile);if(photoFile){p.src=p.dataset.url=URL.createObjectURL(photoFile);$('#scanResults').textContent='Photo ready. Tap “Scan my ingredients” to start the scan.';}else{$('#scanResults').textContent='No photo selected. Tap “Take Photo / Choose Image” to try again.';}});
+$('#ai-photo-input').addEventListener('cancel',()=>{$('#scanResults').textContent='No photo selected. Tap “Take Photo / Choose Image” to try again.';});
 $('#scanBtn').addEventListener('click',scanPhoto);
 $('#scanResults').addEventListener('submit',e=>{
  if(e.target.id!=='reviewFoods')return;e.preventDefault();
