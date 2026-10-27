@@ -625,6 +625,57 @@ function bb15RestorePremiumEntry(){
  if(workspace&&workspace.parentNode)workspace.parentNode.insertBefore(section,workspace);
  else dashboard.prepend(section);
 }
+// Keep AI readiness tied to the CURRENT authenticated account, not the
+// browser that happened to load this page earlier. Server checks are authoritative.
+let bbAIStatusRequest=0;
+async function bbRefreshAIStatus(){
+  const token=bbPaidToken(),requestId=++bbAIStatusRequest;
+  aiEnabled=false;bbSiteKey=null;
+  $('#aiStatus').textContent=token?'Checking Premium AI availability…':'Sign in to your Premium account to use AI.';
+  $('#aiHumanStatus').textContent='Human check is not ready yet.';
+  if(!token)return;
+  try{
+    const response=await fetch('/api/bb173/status',{
+      cache:'no-store',headers:{Authorization:'Bearer '+token}
+    });
+    const data=await response.json();
+    if(requestId!==bbAIStatusRequest||bbPaidToken()!==token)return;
+    aiEnabled=data?.status==='available'&&data?.premium_ai===true&&!!data?.siteKey;
+    if(aiEnabled){
+      bbSiteKey=data.siteKey;
+      $('#aiStatus').textContent='Premium AI is available, subject to daily limits.';
+      $('#aiHumanStatus').textContent='Complete the human check to make an AI request.';
+      if(bbActiveTool&&!bbTurnstileLoading&&turnstileWidgetId===null){
+        bbTurnstileLoading=true;setupHumanCheck(bbSiteKey);
+      }
+      return;
+    }
+    // The API reveals these CONFIGURATION CODES to the authenticated Owner only;
+    // there are no API keys or secret values in this response.
+    const descriptions={
+      ai_disabled:'Premium AI enable switch is off',
+      billing_disabled_owner_preview_not_authorized:'Live billing prerequisite is disabled',
+      supabase_or_billing_db_missing:'Billing account/database setup is incomplete',
+      gemini_secret_missing:'Gemini API key is missing',
+      turnstile_secret_missing:'Turnstile secret is missing',
+      turnstile_site_key_missing:'Turnstile site key is missing',
+      billing_db_binding_missing:'Billing database binding is missing',
+      global_daily_cap_missing_or_invalid:'BB_AI_GLOBAL_DAILY_CAP is missing or invalid'
+    };
+    const checks=Array.isArray(data?.checks)?data.checks:[];
+    $('#aiStatus').textContent=checks.length?
+      'Owner AI setup: '+checks.map(x=>descriptions[x]||'A service prerequisite is missing').join('; ')+'.':
+      'AI is not available for this login. Check that your Owner/Premium membership is verified.';
+    $('#aiHumanStatus').textContent='The human check cannot start until AI is available.';
+  }catch(_){
+    if(requestId===bbAIStatusRequest&&bbPaidToken()===token){
+      $('#aiStatus').textContent='AI status could not be checked. Check your connection and try again.';
+      $('#aiHumanStatus').textContent='Human check is unavailable.';
+    }
+  }
+}
+document.addEventListener('basketboss:premium-verified',()=>{void bbRefreshAIStatus();});
+window.addEventListener('focus',()=>{void bbRefreshAIStatus();});
 function init(){bb74InstallTileStyles();load();document.querySelectorAll('[data-mode]').forEach(b=>b.addEventListener('click',()=>{mode=b.dataset.mode;suggestionOffset=0;document.querySelectorAll('[data-mode]').forEach(t=>t.setAttribute('aria-pressed',String(t.dataset.mode===mode)));renderRecipes()}));
 // Dashboard thumbnail controls reuse the existing inventory state and save pathway.
 // Keep the original synchronous click handler for the existing dashboard
@@ -688,7 +739,7 @@ $('#recipes').addEventListener('click',e=>{const a=e.target.closest('[data-plan]
 $('#mealReviewSave').addEventListener('click',confirmMeal);
 $('#mealReviewCancel').addEventListener('click',()=>{pendingRecipe=null;$('#mealReviewError').hidden=true;});
 $('#mealReview').addEventListener('close',()=>{$('#mealReviewError').hidden=true;pendingRecipe=null;});
-$('#generate').addEventListener('click',generate);fetch('/api/bb173/status',{cache:'no-store',headers:bbPaidToken()?{'Authorization':'Bearer '+bbPaidToken()}:{}}).then(r=>r.json()).then(j=>{aiEnabled=j.status==='available'&&j.premium_ai===true&&!!j.siteKey;$('#aiStatus').textContent=aiEnabled?'AI early access is available, subject to daily limits.':'Premium AI is unavailable. Browse your available recipes instead.';$('#aiHumanStatus').textContent=aiEnabled?'Complete the human check to make an AI request.':'Human check not needed for the built-in recipes.';if(aiEnabled){bbSiteKey=j.siteKey;if(bbActiveTool&&!bbTurnstileLoading){bbTurnstileLoading=true;setupHumanCheck(bbSiteKey)}}}).catch(()=>{$('#aiStatus').textContent='AI service is not connected — ordinary recipe matching works without it.';$('#aiHumanStatus').textContent='The AI service is unavailable.';});
+$('#generate').addEventListener('click',generate);bbRefreshAIStatus();
 fetch('recipes.json',{cache:'no-store'}).then(r=>{
   if(!r.ok)throw Error('Free recipe library unavailable');
   return r.json();

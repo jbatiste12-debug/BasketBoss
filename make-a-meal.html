@@ -57,7 +57,7 @@ html,body{background:#E9ECEF!important;background-image:none!important;min-heigh
 <link rel="stylesheet" href="bb-real-app-tour.css?v=17513real1">
 <link rel="stylesheet" href="bb-mobile-beta-polish.css?v=20261024-1"/>
 <link rel="stylesheet" href="bb-beta-six-fixes.css?v=1767" data-bb-r6="bb-r7-iphone-20261025">
-<script defer src="bb-verified-premium-ui.js?v=bbsecure20261026"></script>
+<script defer src="bb-verified-premium-ui.js?v=bb-owner-session-bound-20261027"></script>
 <link rel="stylesheet" href="bb-mobile-three-20261027.css?v=20261027-mobile-3">
 </head>
 <body><div class="shell"><header class="topbar bb17513-meal-topbar"><a class="brand bb17513-meal-brand" href="index.html" aria-label="BasketBoss home"><span class="brand-mark bb17513-meal-mark" aria-hidden="true"><svg viewBox="0 0 64 64" width="39" height="39" fill="none"><path d="M22 18 18 10 27 14 32 6 37 14 46 10 42 18Z" fill="#44484B" stroke="#44484B" stroke-width="2" stroke-linejoin="round"/><path d="M21 21h22" stroke="#44484B" stroke-width="3" stroke-linecap="round"/><path d="M18 30 25 23M46 30 39 23" stroke="#44484B" stroke-width="4" stroke-linecap="round"/><path d="M11 31h42l-5 24H16l-5-24Z" fill="#44484B" stroke="#44484B" stroke-width="2" stroke-linejoin="round"/><path d="M22 38v10M32 38v10M42 38v10" stroke="#F8F8F8" stroke-width="4" stroke-linecap="round"/></svg></span><span class="bb17513-meal-brand-copy"><strong>BasketBoss</strong><small>Plan Smarter. Eat Better. Less Waste.</small></span></a><a class="back bb17513-meal-back" href="index.html">← Back to BasketBoss</a><a class="back bb17513-meal-premium" href="pricing-sandbox.html" aria-label="Premium test subscription plans">⭐ Premium plans (test)</a></header><aside class="bb173-install-banner" data-bb173-install-banner aria-label="Install BasketBoss">
@@ -156,6 +156,72 @@ html,body{background:#E9ECEF!important;background-image:none!important;min-heigh
       }
     }catch(_){visibleError('AI panel could not open. Reload BasketBoss and try again.');}
   }
+  // Synchronous fail-closed gate. For a verified user, leave the native
+  // label click's default action intact so iOS Safari opens the camera sheet.
+  function membershipState(){
+    var verified=window.BasketBossVerifiedPremium;
+    if(verified?.isActive?.()===true)return 'premium';
+    try{
+      var session=JSON.parse(localStorage.getItem('basketboss_cloud_session_v1')||'null');
+      if(typeof session?.access_token!=='string'||
+        Number(session.expires_at)*1000<=Date.now()+5000)return 'signed_out';
+    }catch(_){return 'signed_out';}
+    return verified?.state?.()||'checking';
+  }
+  function showPremiumForAI(entry){
+    var dialog=document.getElementById('bbPremiumDialog');
+    if(!dialog){visibleError('Sign in or choose Premium to unlock AI. Open Premium plans to subscribe.');return;}
+    var feature=document.getElementById('bbPremiumFeature');
+    if(feature)feature.textContent=entry.matches('[data-ai-scan-btn],[data-open-tool="scan"],#ai-photo-input,#scanBtn')?
+      'AI ingredient scanning':'AI meal creation';
+    if(!dialog.open){
+      try{if(typeof dialog.showModal==='function')dialog.showModal();
+        else dialog.setAttribute('open','');}
+      catch(_){dialog.setAttribute('open','');}
+    }
+  }
+  document.addEventListener('click',function(event){
+    var protectedEntry=event.target.closest?.(
+      '[data-ai-scan-btn],[data-ai-meal-btn],[data-open-tool],#ai-photo-input,#scanBtn,#generate');
+    if(!protectedEntry)return;
+    var state=membershipState();
+    if(state==='premium')return; // NO await / preventDefault for paid members.
+    // Prevent the label's native file-picker activation only for Free users.
+    event.preventDefault();
+    event.stopImmediatePropagation();
+    if(state==='signed_out'||state==='free')showPremiumForAI(protectedEntry);
+    else{
+      visibleError('Checking your Premium membership. Please tap again once verified.');
+      void window.BasketBossVerifiedPremium?.refresh?.(true);
+    }
+  },true);
+  // Keyboard activation of the native scanner label must be gated too.
+  document.addEventListener('keydown',function(event){
+    if(event.key!=='Enter'&&event.key!==' ')return;
+    var entry=event.target.closest?.('[data-ai-scan-btn],[data-ai-meal-btn],[data-open-tool]');
+    if(!entry||membershipState()==='premium')return;
+    event.preventDefault();
+    event.stopImmediatePropagation();
+    var state=membershipState();
+    if(state==='signed_out'||state==='free')showPremiumForAI(entry);
+    else{
+      visibleError('Checking your Premium membership. Please tap again once verified.');
+      void window.BasketBossVerifiedPremium?.refresh?.(true);
+    }
+  },true);
+  document.addEventListener('basketboss:premium-verified',function(){
+    if(membershipState()==='premium'){
+      document.getElementById('bbAiEntryError')?.remove();
+      return;
+    }
+    var panel=document.getElementById('bbToolStage');
+    if(panel){panel.hidden=true;panel.classList.remove('bb-ai-native-visible');}
+    var input=document.getElementById('ai-photo-input');
+    if(input?.files?.length){
+      input.value='';
+      input.dispatchEvent(new Event('change',{bubbles:true}));
+    }
+  });
   document.addEventListener('click',function(event){
     var opener=event.target.closest?.('[data-ai-scan-btn],[data-ai-meal-btn],[data-open-tool]');
     if(opener){
@@ -197,7 +263,7 @@ html,body{background:#E9ECEF!important;background-image:none!important;min-heigh
   });
 })();
 </script>
-<script src="bb-premium-preview-config.js?v=1743-premium-leftovers"></script><script defer="" src="make-a-meal.js?v=bb-native-ai-open-20261027-v1"></script><script>if('serviceWorker' in navigator&&location.protocol==='https:')addEventListener('load',()=>navigator.serviceWorker.register('./service-worker.js').catch(()=>{}),{once:true})</script><script defer src="premium-upgrade.js?v=bb-native-ai-open-20261027-v1"></script><script src="bb-us-market.js?v=173us1"></script><script defer src="bb-install.js?v=173install1"></script><script src="bb-real-app-tour.js?v=17513real1" defer></script>
+<script src="bb-premium-preview-config.js?v=1743-premium-leftovers"></script><script defer="" src="make-a-meal.js?v=bb-owner-session-bound-20261027"></script><script>if('serviceWorker' in navigator&&location.protocol==='https:')addEventListener('load',()=>navigator.serviceWorker.register('./service-worker.js').catch(()=>{}),{once:true})</script><script defer src="premium-upgrade.js?v=bb-native-ai-open-20261027-v1"></script><script src="bb-us-market.js?v=173us1"></script><script defer src="bb-install.js?v=173install1"></script><script src="bb-real-app-tour.js?v=17513real1" defer></script>
 <!-- BB17513 private QA membership switch: PRIVATE CODESPACES HOSTS ONLY. Not an entitlement. -->
 <style id="bb17513-private-qa-toggle-css">
 #bb17513-qa-mode-bar{position:relative;z-index:3;max-width:1100px;margin:8px auto 12px;padding:9px 12px;display:flex;align-items:center;justify-content:space-between;gap:10px;flex-wrap:wrap;background:#fff7df;color:#3e3525;border:1px solid #d7be76;border-radius:15px;font:600 12px/1.35 system-ui,-apple-system,sans-serif;box-shadow:0 2px 9px #0000000a;box-sizing:border-box}
