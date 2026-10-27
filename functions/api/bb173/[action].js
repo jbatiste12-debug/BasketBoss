@@ -375,7 +375,14 @@ export async function onRequest({request,env,params}){
   const bad=validateInput(action,body);
   if(bad)return respond({error:bad},400);
 
-  if(!await siteVerify(body.turnstileToken,request,env))
+  // A real Supabase-authenticated, current Live Owner/subscriber has already
+  // passed eligibleMember() (D1 or a Paddle-verified completed trial). Safari
+  // may block Turnstile from appearing; authentication + entitlement is the
+  // ONLY Live fallback. Anonymous/Free/sandbox requests never bypass it.
+  // All per-user and global AI quotas are still enforced below.
+  const hasChallenge=typeof body.turnstileToken==='string' && body.turnstileToken.length>0;
+  const passedChallenge=hasChallenge && await siteVerify(body.turnstileToken,request,env);
+  if(!passedChallenge && !isLive(env))
     return respond({error:'Human verification failed'},403);
 
   try{

@@ -358,21 +358,76 @@ function resetHumanCheck(){
  turnstileToken='';
  if(turnstileWidgetId!==null&&window.turnstile?.reset)window.turnstile.reset(turnstileWidgetId);
 }
+// The native iOS <label for=ai-photo-input> opens the panel via an inline
+// synchronous handler, NOT bbOpenTool(). Render only after the panel is visible.
 function setupHumanCheck(siteKey){
- if(!siteKey||!/^[-_a-zA-Z0-9]+$/.test(siteKey)){return;}
- const script=document.createElement('script');
- script.src='https://challenges.cloudflare.com/turnstile/v0/api.js?render=explicit';
- script.async=true;
- script.onload=()=>{
-  if(!window.turnstile){$('#aiHumanStatus').textContent='Human verification unavailable.';return;}
-  turnstileWidgetId=window.turnstile.render('#aiHumanCheck',{sitekey:siteKey,action:'bb_ai',
-   callback:token=>{turnstileToken=token;$('#aiHumanStatus').textContent='Verified. You can now request one AI action.';},
-   'expired-callback':()=>{turnstileToken='';$('#aiHumanStatus').textContent='Verification expired; please complete it again.';},
-   'error-callback':()=>{turnstileToken='';$('#aiHumanStatus').textContent='Human verification failed. Try again.';}
-  });
+ const stage=$('#bbToolStage'),host=$('#aiHumanCheck'),status=$('#aiHumanStatus');
+ if(!stage||stage.hidden||!host?.isConnected||!status||
+    !siteKey||!/^[-_a-zA-Z0-9]+$/.test(siteKey)||
+    turnstileWidgetId!==null||bbTurnstileLoading)return;
+ const panel=$('#aiSecurityBox');
+ if(panel){panel.hidden=false;panel.style.setProperty('display','block','important');}
+ bbTurnstileLoading=true;
+ status.textContent='Loading human verification…';
+ const failed=()=>{
+   bbTurnstileLoading=false;turnstileWidgetId=null;
+   status.textContent='Human check unavailable. Verified Live Premium members can continue securely.';
  };
- script.onerror=()=>{$('#aiHumanStatus').textContent='Human verification could not load. Built-in recipes remain available.';};
- document.head.appendChild(script);
+ const render=()=>requestAnimationFrame(()=>{
+   if(stage.hidden||!host.isConnected){bbTurnstileLoading=false;return;}
+   try{
+     if(typeof window.turnstile?.render!=='function')throw Error('Turnstile missing');
+     const widget=window.turnstile.render(host,{
+       sitekey:siteKey,action:'bb_ai',appearance:'always',
+       callback:token=>{turnstileToken=token;status.textContent='Verified. You can now request an AI action.';},
+       'expired-callback':()=>{turnstileToken='';status.textContent='Verification expired. Complete the check again.';},
+       'error-callback':()=>{turnstileToken='';status.textContent='Human verification unavailable. Verified Live Premium members can continue.';}
+     });
+     if(widget===null||widget===undefined)throw Error('Turnstile did not render');
+     turnstileWidgetId=widget;
+     status.textContent='Complete the check if prompted. Verified Live Premium members can continue without it.';
+     bbTurnstileLoading=false;
+   }catch(_){
+     document.querySelector('script[data-bb-ai-turnstile]')?.remove();
+     failed();
+   }
+ });
+ if(typeof window.turnstile?.render==='function'){render();return;}
+ let script=document.querySelector('script[data-bb-ai-turnstile]');
+ if(!script){
+   script=document.createElement('script');
+   script.dataset.bbAiTurnstile='1';
+   script.src='https://challenges.cloudflare.com/turnstile/v0/api.js?render=explicit';
+   script.async=true;
+   script.addEventListener('load',render,{once:true});
+   script.addEventListener('error',()=>{script.remove();failed();},{once:true});
+   document.head.appendChild(script);
+ }else{
+   script.addEventListener('load',render,{once:true});
+   script.addEventListener('error',failed,{once:true});
+ }
+}
+// Track modal attributes, not the camera click. This runs AFTER Safari's
+// native file-label activation, and never preventDefault()s the gesture.
+function bbObserveAIHumanPanel(){
+ const stage=$('#bbToolStage');if(!stage)return;
+ let wasOpen=false;
+ const check=()=>{
+   const open=!stage.hidden;
+   if(!open){wasOpen=false;return;}
+   if(wasOpen)return;
+   wasOpen=true;
+   const panel=$('#aiSecurityBox');
+   if(panel){panel.hidden=false;panel.style.setProperty('display','block','important');}
+   turnstileToken='';
+   if(turnstileWidgetId!==null&&window.turnstile?.reset){
+     try{window.turnstile.reset(turnstileWidgetId);}catch(_){turnstileWidgetId=null;}
+   }
+   // The server supplies the LIVE site key only for verified members.
+   requestAnimationFrame(()=>{if(!stage.hidden)void bbRefreshAIStatus();});
+ };
+ new MutationObserver(check).observe(stage,{attributes:true,attributeFilter:['hidden','class']});
+ check();
 }
 function likelyPerishable(name){return /\b(chicken|beef|pork|lamb|fish|prawns?|shrimp|salmon|raw meat|turkey|milk|yoghurt|cream|cheese|eggs?|ham|bacon)\b/i.test(name) && !/\b(tinned|canned|shelf.stable|dried|powdered)\b/i.test(name);}
 
@@ -396,8 +451,9 @@ async function requestBody(verb,body){
  if(!aiEnabled)await bbRefreshAIStatus();
  if(bbPaidToken()!==accessToken)throw Error('Account changed. Please try again.');
  if(!aiEnabled)throw Error('Premium AI is not enabled for this account.');
- if(!turnstileToken)throw Error('Complete the human verification above first.');
- const token=turnstileToken;turnstileToken='';
+ // The server independently verifies the Supabase bearer and current Live
+ // Paddle/D1 entitlement before allowing a request without Turnstile.
+ const token=turnstileToken||'';turnstileToken='';
  try{
   const controller=new AbortController();
   const stop=setTimeout(()=>controller.abort(),verb==='scan'?25000:30000);
@@ -469,7 +525,7 @@ function bbOpenTool(tool){
  scanner.hidden=tool!=='scan';
  meal.hidden=tool!=='meal';
  document.querySelectorAll('[data-open-tool]').forEach(btn=>btn.setAttribute('aria-expanded',String(btn.dataset.openTool===tool)));
- if(aiEnabled&&bbSiteKey&&!bbTurnstileLoading&&turnstileWidgetId===null){bbTurnstileLoading=true;setupHumanCheck(bbSiteKey)}
+ if(aiEnabled&&bbSiteKey)setupHumanCheck(bbSiteKey);
  stage.scrollIntoView({behavior:'smooth',block:'start'});
 }
 function bbCloseTool(){
@@ -650,9 +706,7 @@ async function bbRefreshAIStatus(){
       bbSiteKey=data.siteKey;
       $('#aiStatus').textContent='Premium AI is available, subject to daily limits.';
       $('#aiHumanStatus').textContent='Complete the human check to make an AI request.';
-      if(bbActiveTool&&!bbTurnstileLoading&&turnstileWidgetId===null){
-        bbTurnstileLoading=true;setupHumanCheck(bbSiteKey);
-      }
+      if(!$('#bbToolStage')?.hidden)setupHumanCheck(bbSiteKey);
       return;
     }
     // The API reveals these CONFIGURATION CODES to the authenticated Owner only;
@@ -681,7 +735,7 @@ async function bbRefreshAIStatus(){
 }
 document.addEventListener('basketboss:premium-verified',()=>{void bbRefreshAIStatus();});
 window.addEventListener('focus',()=>{void bbRefreshAIStatus();});
-function init(){bb74InstallTileStyles();load();document.querySelectorAll('[data-mode]').forEach(b=>b.addEventListener('click',()=>{mode=b.dataset.mode;suggestionOffset=0;document.querySelectorAll('[data-mode]').forEach(t=>t.setAttribute('aria-pressed',String(t.dataset.mode===mode)));renderRecipes()}));
+function init(){bbObserveAIHumanPanel();bb74InstallTileStyles();load();document.querySelectorAll('[data-mode]').forEach(b=>b.addEventListener('click',()=>{mode=b.dataset.mode;suggestionOffset=0;document.querySelectorAll('[data-mode]').forEach(t=>t.setAttribute('aria-pressed',String(t.dataset.mode===mode)));renderRecipes()}));
 // Dashboard thumbnail controls reuse the existing inventory state and save pathway.
 // Keep the original synchronous click handler for the existing dashboard
 // controls and the scan-result link. No async gate runs before bbOpenTool.
