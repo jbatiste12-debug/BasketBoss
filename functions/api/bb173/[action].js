@@ -1,4 +1,4 @@
-import {authenticatedUser,isBillingEnabled,isConfigured,expectedPrice} from '../../../bb-server-lib/bb-billing.js';
+import {authenticatedUser,isBillingEnabled,isConfigured,isLive,expectedPrice,paddleApi,digestHex} from '../../../bb-server-lib/bb-billing.js';
 // BasketBoss AI structured output formats, taken from the successful private test.
 export const MODEL='gemini-3.5-flash-lite';
 export const GEMINI_URL=`https://generativelanguage.googleapis.com/v1beta/models/${MODEL}:generateContent`;
@@ -175,6 +175,57 @@ export function aiConfigurationChecks(env){
 function configured(env){
   return aiConfigurationChecks(env).length===0;
 }
+// Webhooks remain authoritative for durable D1 entitlement. During their delivery
+// delay, allow AI only after Paddle confirms BOTH a completed server-created
+// checkout transaction AND the CURRENT trialing/active subscription for the same
+// authenticated user's existing D1 claim. This never consumes a Founder slot,
+// grants a browser-selected tier, or writes a subscription entitlement.
+async function verifiedPaddleCheckoutMember(user,env){
+  if(!isLive(env)||!env.PADDLE_LIVE_API_KEY)return false;
+  const claim=await env.BILLING_DB.prepare(`SELECT claim_id,plan,price_id,slot_no,transaction_id
+    FROM bb_billing_claims WHERE user_id=? AND claim_state IN ('checkout_created','subscription_linked')
+    AND transaction_id IS NOT NULL ORDER BY created_at_ms DESC LIMIT 1`)
+    .bind(user.id).first();
+  if(!claim||!['founder','standard'].includes(claim.plan)||
+     expectedPrice(env,claim.plan)!==claim.price_id||
+     !/^txn_[a-z0-9]{26}$/.test(claim.transaction_id||'')||
+     !/^[0-9a-f-]{36}$/.test(claim.claim_id||''))return false;
+  // Paddle responses, not merely a checkout redirect or a claimed trial, prove access.
+  try{
+    const tx=await paddleApi(env,'/transactions/'+claim.transaction_id);
+    if(tx?.id!==claim.transaction_id||tx.status!=='completed'||
+       tx.collection_mode!=='automatic'||
+       tx.custom_data?.bb_claim_id!==claim.claim_id||
+       tx.custom_data?.bb_plan!==claim.plan||
+       tx.custom_data?.bb_environment!=='live'||
+       !/^sub_[a-z0-9]{26}$/.test(tx.subscription_id||'')||
+       !/^ctm_[a-z0-9]{26}$/.test(tx.customer_id||'')||
+       !Array.isArray(tx.items)||tx.items.length!==1||
+       tx.items[0]?.price?.id!==claim.price_id||tx.items[0]?.quantity!==1)return false;
+    const sub=await paddleApi(env,'/subscriptions/'+tx.subscription_id);
+    if(sub?.id!==tx.subscription_id||sub.customer_id!==tx.customer_id||
+       !['trialing','active'].includes(sub.status)||
+       sub.custom_data?.bb_claim_id!==claim.claim_id||
+       sub.custom_data?.bb_plan!==claim.plan||
+       sub.custom_data?.bb_environment!=='live'||
+       !Array.isArray(sub.items)||sub.items.length!==1||
+       sub.items[0]?.price?.id!==claim.price_id||sub.items[0]?.quantity!==1)return false;
+    if(claim.plan==='founder'){
+      if(!Number.isInteger(claim.slot_no)||claim.slot_no<1||claim.slot_no>25)return false;
+      const slot=await env.BILLING_DB.prepare(`SELECT state,user_id,reservation_token_hash,paddle_subscription_id
+        FROM bb_founder_slots WHERE slot_no=?`).bind(claim.slot_no).first();
+      if(!slot||slot.user_id!==user.id||
+         slot.reservation_token_hash!==await digestHex(claim.claim_id)||
+         !['reserved','trialing','active'].includes(slot.state)||
+         (slot.paddle_subscription_id&&slot.paddle_subscription_id!==sub.id))return false;
+    }
+    return true;
+  }catch(_){
+    // Missing Paddle read permissions, API errors or an incomplete transaction
+    // never create entitlement. The signed webhook may still complete normally.
+    return false;
+  }
+}
 async function eligibleMember(request,env){
   const user=await authenticatedUser(request,env);
   if(!user)return null;
@@ -186,9 +237,11 @@ async function eligibleMember(request,env){
   const row=await env.BILLING_DB.prepare(
     'SELECT status,price_id,plan FROM bb_paid_entitlements WHERE user_id=? ORDER BY updated_at_ms DESC LIMIT 1'
   ).bind(user.id).first();
-  return row &&
-    (row.status==='active'||row.status==='trialing') &&
-    expectedPrice(env,row.plan)===row.price_id ? user:null;
+  if(row && (row.status==='active'||row.status==='trialing') &&
+     expectedPrice(env,row.plan)===row.price_id)return user;
+  // Recover only a Paddle-verified, CURRENT paid/trial checkout, never a
+  // pending D1 claim or a checkout window merely shown on screen.
+  return await verifiedPaddleCheckoutMember(user,env)?user:null;
 }
 async function hashIP(ip,salt){
   const key=await crypto.subtle.importKey('raw',new TextEncoder().encode(salt),{name:'HMAC',hash:'SHA-256'},false,['sign']);

@@ -389,15 +389,20 @@ function bbPaidToken(){
  }catch{return null;}
 }
 async function requestBody(verb,body){
+ const accessToken=bbPaidToken();
+ if(!accessToken)throw Error('Sign in to a verified Premium account first.');
+ // A trial may complete after the initial page-load availability probe.
+ // Refresh the server check once at the user's explicit AI request.
+ if(!aiEnabled)await bbRefreshAIStatus();
+ if(bbPaidToken()!==accessToken)throw Error('Account changed. Please try again.');
  if(!aiEnabled)throw Error('Premium AI is not enabled for this account.');
- if(!bbPaidToken())throw Error('Sign in to a verified Premium account first.');
  if(!turnstileToken)throw Error('Complete the human verification above first.');
  const token=turnstileToken;turnstileToken='';
  try{
   const controller=new AbortController();
   const stop=setTimeout(()=>controller.abort(),verb==='scan'?25000:30000);
   let r;
-  try{r=await fetch('/api/bb173/'+verb,{method:'POST',headers:{'Content-Type':'application/json','Authorization':'Bearer '+bbPaidToken()},body:JSON.stringify({...body,turnstileToken:token}),cache:'no-store',credentials:'same-origin',signal:controller.signal});}
+  try{r=await fetch('/api/bb173/'+verb,{method:'POST',headers:{'Content-Type':'application/json','Authorization':'Bearer '+accessToken},body:JSON.stringify({...body,turnstileToken:token}),cache:'no-store',credentials:'same-origin',signal:controller.signal});}
   catch(err){if(controller.signal.aborted)throw Error('Request timed out. Your selections were not changed; try again or use local recipes.');throw err}
   finally{clearTimeout(stop)}
   const j=await r.json().catch(()=>({}));if(!r.ok)throw Error(String(j.error||'AI is temporarily unavailable.').slice(0,200));return j;
