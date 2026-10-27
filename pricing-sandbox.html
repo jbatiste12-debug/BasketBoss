@@ -8,7 +8,13 @@
   <title>BasketBoss Premium Plans</title>
   <link rel="stylesheet" href="pricing-sandbox.css?v=bb173paddle1">
   <script defer src="https://cdn.paddle.com/paddle/v2/paddle.js"></script>
-  <script defer src="paddle-sandbox.js?v=bb-live-checkout-20261027-v1"></script>
+  <style>
+  .bb-checkout-feedback{margin-top:12px;padding:12px 14px;border-radius:12px;border:1px solid #c7dbc9;background:#f5faf4;color:#234a34;font-size:14px;line-height:1.55}
+  .bb-checkout-feedback[data-type="error"]{background:#fff2ed;border-color:#e8b4a3;color:#793b28}
+  .bb-checkout-fallback{display:inline-block;margin-top:9px;padding:11px 14px;min-height:44px;border-radius:10px;background:#205f3f;color:white!important;font-weight:800;text-decoration:none}
+  .bb-checkout-fallback:focus-visible{outline:3px solid #d5a437;outline-offset:3px}
+  </style>
+  <script defer src="paddle-sandbox.js?v=bb-live-checkout-20261027-v2-mobile"></script>
 <!-- bb174-trial-ux-preview-v1: verified status display ONLY, no entitlement gate -->
 <link rel="stylesheet" href="bb174-trial-ux.css?v=174trial1">
 <script defer src="bb174-trial-ux.js?v=bbprodmodal20261027"></script>
@@ -28,6 +34,7 @@
         <p class="lead">Compare Founder and Standard Premium, including trial lengths and monthly renewal terms.</p>
       </section>
 
+      <div id="checkoutMessage" class="checkout-message" role="status" aria-live="polite">Preparing secure Paddle checkout…</div>
       <section class="plan-grid" aria-label="BasketBoss Premium subscription options" data-bb2026-pricing-clear-premium-benefits>
         <article class="plan-card monthly" id="founder">
           <div class="card-top"><span class="plan-icon" aria-hidden="true">🚀</span><span class="plan-label">FOUNDING MEMBER · FIRST 25 CONFIRMED ELIGIBLE MEMBERS</span></div>
@@ -61,7 +68,7 @@
 <p style="line-height:1.5">Free: 100 recipes, manual ingredients, basic planning and shopping lists, Install BasketBoss and all four markets. Premium: all 321 recipes, complete Leftover Magic and Advanced Shop Mode. AI tools are optional early access, subject to availability and daily limits (5 scans and 10 meal ideas/day).</p>
 <p style="font-size:12px;color:#52705b">Founding places are limited to the first 25 qualifying confirmed members. The exact first charge, taxes and renewal amount are shown in secure checkout.</p>
 </section>
-<div id="checkoutMessage" class="checkout-message" role="status" aria-live="polite">Checking secure Paddle checkout…</div>
+
 <p class="hint" style="margin:10px 0 0;color:#284c42;font-size:14px">New to BasketBoss? <a href="index.html">Open BasketBoss to sign in or create an account</a>, then return to choose a plan.</p>
 
       <section class="test-info" aria-labelledby="test-info-title">

@@ -10,3 +10,7 @@
 #bbMembershipSettings .bb-membership-policies{display:flex;flex-wrap:wrap;gap:9px 16px;margin-top:15px}
 #bbMembershipSettings a{color:#175e3d;font-size:.83rem;text-decoration:underline;text-underline-offset:3px}
 #bbMembershipSettings button:focus-visible,#bbMembershipSettings a:focus-visible{outline:3px solid #d6a93a;outline-offset:3px}
+
+#bbMembershipSettings .bb-membership-upgrade{display:flex;align-items:center;justify-content:center;min-height:52px;width:100%;margin:12px 0 3px;padding:12px 16px;border-radius:14px;background:#216747;color:#fff;font:800 15px/1.3 system-ui,-apple-system,sans-serif;text-align:center;text-decoration:none;box-shadow:0 5px 16px #17563c24}
+#bbMembershipSettings .bb-membership-upgrade[hidden]{display:none!important}
+#bbMembershipSettings .bb-membership-upgrade:focus-visible{outline:3px solid #e2b44b;outline-offset:3px}

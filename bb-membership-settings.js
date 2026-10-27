@@ -45,6 +45,9 @@
     const manage=safeText('button','Manage subscription / cancel','bb-membership-button');
     manage.type='button';manage.disabled=true;manage.id='bbMembershipManage';
     root.append(manage);
+    const upgrade=link('⭐ Upgrade to Premium — view plans & trials','pricing-sandbox.html#founder');
+    upgrade.id='bbMembershipUpgrade';upgrade.className='bb-membership-upgrade';upgrade.hidden=true;
+    root.append(upgrade);
     const links=document.createElement('div');links.className='bb-membership-policies';
     links.append(link('Subscription, cancellation & refunds','subscriptions.html'));
     links.append(link('Terms of service','terms.html'));
@@ -71,8 +74,8 @@
     });
     async function refresh(){
       const bearer=token();
-      details.textContent='';manage.disabled=true;
-      if(!bearer){status.textContent='Sign in to view your membership. If you have a Paddle receipt, it also contains a manage-subscription link.';return;}
+      details.textContent='';manage.disabled=true;upgrade.hidden=true;
+      if(!bearer){status.textContent='BasketBoss Free — sign in or create an account to start a Premium trial.';upgrade.hidden=false;return;}
       try{
         const response=await fetch(API,{
           headers:{'Authorization':'Bearer '+bearer,'Accept':'application/json'},
@@ -80,6 +83,7 @@
         });
         if(!response.ok){status.textContent=response.status===401?'Session expired — sign in again.':'Membership status temporarily unavailable. Please try again.';return;}
         const raw=await response.json();
+        if(token()!==bearer)return;
         if(raw?.authenticated!==true){status.textContent='Unable to verify your account.';return;}
         if(raw.tier==='owner' && raw.premiumAccess===true){
           status.textContent='Owner Premium — complimentary access';
@@ -87,7 +91,7 @@
           return;
         }
         const sub=raw.subscription;
-        if(!sub){status.textContent='BasketBoss Free — no active paid subscription';return;}
+        if(!sub){status.textContent='BasketBoss Free — no active paid subscription';upgrade.hidden=false;return;}
         if(typeof sub.id!=='string' || !/^sub_[a-z0-9]{26}$/.test(sub.id)){
           status.textContent='Membership details temporarily unavailable.';return;
         }
@@ -102,13 +106,15 @@
         if(sub.status==='trialing'&&trial)parts.push(`Trial ends ${trial}. Cancel before this date to avoid the first subscription charge.`);
         else if(sub.status==='active'&&renewal)parts.push(`Current billing period ends ${renewal}.`);
         if(sub.cancelAtPeriodEnd===true)parts.push(`Cancellation scheduled${cancel?` for ${cancel}`:''}.`);
-        if(!raw.premiumAccess)parts.push('Premium access is currently unavailable.');
+        if(!raw.premiumAccess){parts.push('Premium access is currently unavailable.');upgrade.hidden=false;}
         details.textContent=parts.join(' ');
         manage.disabled=false;
       }catch{status.textContent='Membership status temporarily unavailable. Please retry later.';}
     }
     refresh();
     window.addEventListener('focus',refresh);
+    window.addEventListener('basketboss:session-changed',refresh);
+    window.addEventListener('storage',event=>{if(event.key==='basketboss_cloud_session_v1')refresh();});
     document.addEventListener('visibilitychange',()=>{if(!document.hidden)refresh();});
     return true;
   }
