@@ -26,12 +26,16 @@ function accessToken(){
 }
 
 buttons.forEach(button=>{
-  button.disabled=true;
-  button.setAttribute('aria-disabled','true');
+  button.disabled=false;
+  button.setAttribute('aria-disabled','false');
+  button.addEventListener('click',()=>{
+    if(button.dataset.bbCheckoutReady==='true')return;
+    notify('Checkout is not available yet. Please check back soon.','error');
+  });
 });
 
 async function boot(){
-  notify('Secure checkout is not enabled yet.');
+  notify('Review the plans and subscription terms above.');
 
   if(!window.Paddle?.Initialize ||
      !window.Paddle?.Checkout?.open)return;
@@ -48,6 +52,9 @@ async function boot(){
 
   if(config?.enabled!==true ||
      !['live','sandbox'].includes(config.mode))return;
+
+  // Public domain never opens a test-money Sandbox checkout.
+  if(['basketboss.co.uk','www.basketboss.co.uk'].includes(location.hostname) && config.mode!=='live')return;
 
   // These are Paddle PUBLIC client-side tokens, never API secrets.
   const clientToken=config.mode==='live'
@@ -101,11 +108,10 @@ async function boot(){
 
     button.disabled=false;
     button.setAttribute('aria-disabled','false');
-
-    if(config.mode==='live')
-      button.textContent=plan==='founder'
-        ? 'Start 7-day Founder trial'
-        : 'Subscribe for £4.99/month';
+    button.dataset.bbCheckoutReady='true';
+    button.textContent=plan==='founder'
+      ? 'Start 7-day Founder trial'
+      : 'Start 3-day Standard trial';
 
     button.addEventListener('click',async()=>{
       const bearer=accessToken();

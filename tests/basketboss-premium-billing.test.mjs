@@ -50,11 +50,11 @@ test('Paddle requests use separate credentials and hosts and never follow redire
   }finally{globalThis.fetch=realFetch;}
 });
 
-test('Make a Meal offers Founder and conditional Standard trials without annual plans',async()=>{
+test('Make a Meal offers Founder and Standard monthly trials without annual plans',async()=>{
   const html=await fs.readFile(new URL('../make-a-meal.html',import.meta.url),'utf8');
   assert.ok(html.includes('Founding Member'));
   assert.ok(html.includes('7 days free'));
-  assert.ok(html.includes('three-day Standard trial once configured in Paddle'));
+  assert.ok(html.includes('3-day free trial · Cancel anytime'));
   for(const text of ['£49.90','pricing-sandbox.html#annual'])
     assert.equal(html.includes(text),false,'obsolete offer: '+text);
 });

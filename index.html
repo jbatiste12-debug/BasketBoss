@@ -2305,7 +2305,7 @@ body.bb172-storefront-visible .bb172-shop-status{display:none!important}
  </style>
 <style id="bb173-make-a-meal-nav">/* bb172-make-a-meal-experimental-preview-v1 */@media(max-width:700px){.bb173-make-meal-link .nav-label{font-size:9px;line-height:1.15;text-align:center}.bb173-make-meal-link{min-width:0}}</style>
 <link rel="stylesheet" href="bb-intro-trial.css?v=173trial1"><link rel="stylesheet" href="bb-us-market.css?v=173us1"><link rel="stylesheet" href="bb-install.css?v=173install1"><link rel="stylesheet" href="bb-welcome-splash.css?v=173welcome1"><link rel="stylesheet" href="bb173-final-polish.css?v=173polish1"><!-- bb173-PremiumFreePreview-v1: client-side preview ONLY; access not secured -->
-<link rel="stylesheet" href="bb-premium-features.css?v=173premiumfree1">
+<link rel="stylesheet" href="bb-premium-features.css?v=bbprodmodal20261027">
 <script src="bb-premium-preview-config.js?v=1743leftoverpremium"></script>
 
 <!-- BB-OWNER-QA-RESTORE-20261025: UI-only QA state, Codespaces/localhost ONLY; never billing entitlement. -->
@@ -2342,7 +2342,7 @@ body.bb172-storefront-visible .bb172-shop-status{display:none!important}
 </script>
 <!-- bb174-trial-ux-preview-v1: verified status display ONLY, no entitlement gate -->
 <link rel="stylesheet" href="bb174-trial-ux.css?v=174trial1">
-<script defer src="bb174-trial-ux.js?v=174trial1"></script>
+<script defer src="bb174-trial-ux.js?v=bbprodmodal20261027"></script>
 <style id="bb174-leftover-three-css">
 /* BasketBoss v17.4.1: scoped, accessible recipe suggestions and planner reminder. */
 #app .bb174-leftover-three{padding:15px!important;color:#213d51!important}
@@ -5396,9 +5396,9 @@ function bb175EnhanceUI(app){
      <p class="bb175-eyebrow">BASKETBOSS · PLAN COMPARISON</p><h2 id="bb175TiersHeading">Free or Premium?</h2>
      <div class="bb175-tier-grid"><section><h3>Free · £0</h3><ul><li>100 starter recipes</li><li>Basic meal planning &amp; shopping list</li><li>Leftover Magic locked (Premium only)</li><li>Manually add cupboard ingredients</li><li>No AI scan or AI meal ideas</li></ul></section>
      <section class="bb175-tier-premium"><h3>✦ Premium</h3><ul><li>All 321 recipes</li><li>Complete Leftover Magic suggestions</li><li>Advanced Shop Mode</li><li>Up to 5 AI photo scans/day*</li><li>Up to 10 AI meal ideas/day*</li><li>🍲 Batch Cook (2 days) · Premium only</li><li>Founding Member: 7 days free, then £1.99/month · first 25</li><li>Standard Premium: 3 days free, then £4.99/month*</li></ul></section></div>
-     <p class="bb175-trial-note">*Founding Member: 7-day free trial, then £1.99/month, limited to 25 confirmed members. Standard Premium: 3-day free trial, then £4.99/month, once configured on the Standard Paddle price. Both plans renew monthly unless cancelled. Verify the trial dates and final amount in Paddle checkout; your Free features remain if Premium ends.</p>
-     <p class="bb175-sandbox-note">PREVIEW / TEST ONLY: Sandbox checkouts take no real payments. Verified Premium access requires an eligible subscription; local QA switches never grant paid access. AI tools are early access and may be unavailable.</p>
-     <div class="bb175-tier-actions"><a href="pricing-sandbox.html" class="bb175-pricing">See sandbox pricing &amp; trial</a><button type="button" class="bb175-done">Continue browsing</button></div></div>`;
+     <p class="bb175-trial-note">*Founding Member: 7-day free trial, then £1.99/month, limited to 25 confirmed members. Standard Premium: 3-day free trial, then £4.99/month. Both plans renew monthly unless cancelled. Verify the trial dates and final amount in Paddle checkout; your Free features remain if Premium ends.</p>
+     <p class="bb175-sandbox-note">Premium access requires an eligible subscription. AI tools have daily usage limits and are subject to availability.</p>
+     <div class="bb175-tier-actions"><a href="pricing-sandbox.html" class="bb175-pricing">See Premium pricing &amp; trial</a><button type="button" class="bb175-done">Continue browsing</button></div></div>`;
     document.body.appendChild(dlg);
     dlg.querySelector('.bb175-close').onclick=()=>dlg.close();dlg.querySelector('.bb175-done').onclick=()=>dlg.close();
     dlg.addEventListener('click',e=>{if(e.target===dlg)dlg.close();});
@@ -10168,14 +10168,14 @@ if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',
    </a>
    <a class="bbtrial-plan bbtrial-plan--annual" href="pricing-sandbox.html#monthly">
      <span class="bbtrial-label">✨ Standard Monthly</span><span class="bbtrial-price">£4.99</span>
-     <span class="bbtrial-meta">per month · trial terms shown at checkout; annual plan under review</span><span class="bbtrial-action">View Standard terms →</span>
+     <span class="bbtrial-meta">per month after a 3-day free trial · cancel anytime</span><span class="bbtrial-action">View Standard terms →</span>
    </a>
   </div>
-  <p class="bbtrial-legal"><strong>Transparent pricing:</strong> Founding Member spaces are limited to the first 25 eligible paid subscribers and require server confirmation. A genuine 7-day trial must be attached to the Paddle Live price. After the trial, the displayed plan renews automatically until cancelled. The final currency, applicable tax, first charge date and cancellation terms are shown at secure checkout. <strong>Payments remain unavailable until Live billing is verified.</strong></p>
+  <p class="bbtrial-legal"><strong>Transparent pricing:</strong> Founding Member spaces are limited to the first 25 eligible paid subscribers and require server confirmation. After the trial, the displayed plan renews automatically until cancelled. The final currency, applicable tax, first charge date and cancellation terms are shown at secure checkout.</p>
   <button type="button" class="bbtrial-free" data-bbtrial-free>Continue with BasketBoss Free →</button>
   <p class="bbtrial-foot">100 starter recipes, manual ingredients and basic planning remain available without subscribing.</p>
  </div>
-</dialog><script src="bb-intro-trial.js?v=173trial1"></script><script src="bb-us-market.js?v=173us1"></script><script defer src="bb-install.js?v=173install1"></script><script defer src="bb-welcome-splash.js?v=173welcome1"></script><script defer src="bb-premium-features.js?v=1743leftoverpremium"></script>
+</dialog><script src="bb-intro-trial.js?v=173trial1"></script><script src="bb-us-market.js?v=173us1"></script><script defer src="bb-install.js?v=173install1"></script><script defer src="bb-welcome-splash.js?v=173welcome1"></script><script defer src="bb-premium-features.js?v=bbprodmodal20261027"></script>
 <style id="bb175-ux-fix">
 /* BasketBoss v17.4.2 premium-preview usability improvements */
 #app .swipe-action.yes{color:#c91e43!important;background:#fff2f4!important;border:3px solid #d92c50!important;box-shadow:0 5px 18px rgba(192,22,60,.22)!important;font-size:37px!important;font-weight:900!important}

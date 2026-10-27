@@ -12,18 +12,19 @@
   const html = `
   <dialog id="bb173TierDialog" class="bb173-tier-dialog" aria-labelledby="bb173TierHeading" aria-describedby="bb173TierDesc">
     <header class="bb173-tier-header"><button type="button" data-bb173-close aria-label="Close Premium information">×</button>
-      <p>✦ BASKETBOSS PREMIUM · SANDBOX PREVIEW</p>
+      <p>✦ BASKETBOSS PREMIUM</p>
       <h2 id="bb173TierHeading">More magic, less waste.</h2>
-      <p id="bb173TierDesc">Verified Premium unlocks all 321 recipes, Leftover Magic and Advanced Shop Mode. AI tools are early access and require service availability.</p>
+      <p id="bb173TierDesc">Includes 321 recipes, Smart Auto-Fill, 1-Tap Batch Cooking, 5 AI photo scans &amp; 10 AI meal ideas per day.</p>
     </header>
     <div class="bb173-tier-body">
       <div class="bb173-tier-stat"><span>🧺 100 recipes stay free</span><span>✨ 321 with Premium</span></div>
-      <p><strong>Planned Premium limits:</strong> 5 AI photo scans and 10 AI meal ideas per day. Founding Member has a planned 7-day trial; Standard Premium has a planned 3-day trial after Paddle Sandbox configuration. Server-side entitlements and subscription security must be verified before launch.</p>
+      <p>Enjoy Premium recipes, Leftover Magic and advanced shopping. AI features are subject to service availability and daily usage limits.</p>
       <div class="bb173-tier-plans">
-        <a href="${PRICING}#monthly"><strong>Monthly</strong><span>£4.99 / month</span><small>3 days free, then £4.99/month · Sandbox price verification required</small></a>
-        <a href="${PRICING}#founder"><strong>Founding Member</strong><span>£1.99 / month</span><small>7 days free · first 25 eligible members</small></a>
+        <a href="${PRICING}#monthly"><strong>Monthly Standard</strong><span>£4.99 / month</span><small>3-day free trial · Cancel anytime</small></a>
+        <a href="${PRICING}#founder"><strong>Founding Member</strong><span>£1.99 / month</span><small>7-day free trial · First 25 confirmed members only</small></a>
       </div>
-      <p class="bb173-tier-disclaimer"><strong>Preview only:</strong> Checkout is a test. No real payment or Premium entitlement is activated. Basic shopping lists and manual ingredients remain free.</p>
+      <p class="bb173-tier-disclaimer">Start your free trial today. Cancel anytime before your trial ends and you won't be charged. Exact billing dates, taxes and monthly renewals are shown at secure checkout.</p>
+      <p class="bb173-checkout-status" id="bb173CheckoutStatus" role="status" aria-live="polite" hidden></p>
       <button class="bb173-tier-free" type="button" data-bb173-close>Continue with the 100 free recipes</button>
     </div>
   </dialog>`;
@@ -33,10 +34,29 @@
     const dialog=$('#bb173TierDialog');
     dialog.addEventListener('click',e=>{if(e.target===dialog || e.target.closest('[data-bb173-close]'))hideDialog();});
     dialog.addEventListener('cancel',e=>{e.preventDefault();hideDialog();});
+    dialog.addEventListener('click',async e=>{
+      const link=e.target.closest('.bb173-tier-plans a');
+      if(!link)return;
+      e.preventDefault();
+      const message=$('#bb173CheckoutStatus',dialog);
+      message.hidden=false;
+      message.textContent='Checking checkout availability…';
+      try {
+        const response=await fetch('/api/subscription/checkout-config',{cache:'no-store',credentials:'same-origin'});
+        const config=response.ok?await response.json():null;
+        if(config?.enabled===true && config.mode==='live'){
+          location.assign(link.href);return;
+        }
+      }catch(_){/* Checkout remains unavailable on a network error. */}
+      message.textContent=link.hash==='#founder'
+        ? 'Founding Member checkout is not available yet. Please check back soon.'
+        : 'Standard Premium checkout is not available yet. Please check back soon.';
+    });
   }
   function hideDialog(){const d=$('#bb173TierDialog');if(d?.open)d.close();else d?.removeAttribute('open');lastOpener?.focus({preventScroll:true});}
   function showDialog(trigger,context){installDialog();lastOpener=trigger||document.activeElement;
-    $('#bb173TierDesc').textContent=context||'Verified Premium unlocks all 321 recipes, Leftover Magic and Advanced Shop Mode. AI tools are early access and require service availability.';
+    $('#bb173TierDesc').textContent='Includes 321 recipes, Smart Auto-Fill, 1-Tap Batch Cooking, 5 AI photo scans & 10 AI meal ideas per day.';
+    const checkoutStatus=$('#bb173CheckoutStatus');if(checkoutStatus){checkoutStatus.hidden=true;checkoutStatus.textContent='';}
     const d=$('#bb173TierDialog');if(!d.open){if(typeof d.showModal==='function')d.showModal();else d.setAttribute('open','');}
     $('[data-bb173-close]',d)?.focus({preventScroll:true});
   }
