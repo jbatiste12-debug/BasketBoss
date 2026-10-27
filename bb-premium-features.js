@@ -1,6 +1,7 @@
 /* BasketBoss v17.3 — Free/Premium experience preview, NOT an entitlement provider.
    This file only upgrades the presentation and intercepts Shop Mode buttons.
-   The full 321-recipe static bundle and AI API still require server-side access checks.
+   The static public catalogue has 100 Free recipes. The other 221 are
+   served through a server-verified Premium API; AI is separately gated server-side.
 */
 (() => {
   'use strict';
@@ -11,18 +12,19 @@
   const html = `
   <dialog id="bb173TierDialog" class="bb173-tier-dialog" aria-labelledby="bb173TierHeading" aria-describedby="bb173TierDesc">
     <header class="bb173-tier-header"><button type="button" data-bb173-close aria-label="Close Premium information">×</button>
-      <p>✦ BASKETBOSS PREMIUM · SANDBOX PREVIEW</p>
+      <p>✦ BASKETBOSS PREMIUM</p>
       <h2 id="bb173TierHeading">More magic, less waste.</h2>
-      <p id="bb173TierDesc">Unlock all 321 recipes, Leftover Magic, Advanced Shop Mode and Premium AI.</p>
+      <p id="bb173TierDesc">Includes 321 recipes, Smart Auto-Fill, 1-Tap Batch Cooking, 5 AI photo scans &amp; 10 AI meal ideas per day.</p>
     </header>
     <div class="bb173-tier-body">
       <div class="bb173-tier-stat"><span>🧺 100 recipes stay free</span><span>✨ 321 with Premium</span></div>
-      <p><strong>Planned Premium limits:</strong> 5 AI photo scans and 10 AI meal ideas per day. Only the Founding Member offer has a planned 7-day trial. Server-side entitlements and subscription security must be verified before launch.</p>
+      <p>Enjoy Premium recipes, Leftover Magic and advanced shopping. AI features are subject to service availability and daily usage limits.</p>
       <div class="bb173-tier-plans">
-        <a href="${PRICING}#monthly"><strong>Monthly</strong><span>£4.99 / month</span><small>Standard plan · Sandbox</small></a>
-        <a href="${PRICING}#annual"><strong>Annual (review)</strong><span>£49.90 / year</span><small>Unavailable until approved</small></a>
+        <a href="${PRICING}#monthly"><strong>Monthly Standard</strong><span>£4.99 / month</span><small>3-day free trial · Cancel anytime</small></a>
+        <a href="${PRICING}#founder"><strong>Founding Member</strong><span>£1.99 / month</span><small>7-day free trial · First 25 confirmed members only</small></a>
       </div>
-      <p class="bb173-tier-disclaimer"><strong>Preview only:</strong> Checkout is a test. No real payment or Premium entitlement is activated. Basic shopping lists and manual ingredients remain free.</p>
+      <p class="bb173-tier-disclaimer">Start your free trial today. Cancel anytime before your trial ends and you won't be charged. Exact billing dates, taxes and monthly renewals are shown at secure checkout.</p>
+      <p class="bb173-checkout-status" id="bb173CheckoutStatus" role="status" aria-live="polite" hidden></p>
       <button class="bb173-tier-free" type="button" data-bb173-close>Continue with the 100 free recipes</button>
     </div>
   </dialog>`;
@@ -32,10 +34,29 @@
     const dialog=$('#bb173TierDialog');
     dialog.addEventListener('click',e=>{if(e.target===dialog || e.target.closest('[data-bb173-close]'))hideDialog();});
     dialog.addEventListener('cancel',e=>{e.preventDefault();hideDialog();});
+    dialog.addEventListener('click',async e=>{
+      const link=e.target.closest('.bb173-tier-plans a');
+      if(!link)return;
+      e.preventDefault();
+      const message=$('#bb173CheckoutStatus',dialog);
+      message.hidden=false;
+      message.textContent='Checking checkout availability…';
+      try {
+        const response=await fetch('/api/subscription/checkout-config',{cache:'no-store',credentials:'same-origin'});
+        const config=response.ok?await response.json():null;
+        if(config?.enabled===true && config.mode==='live'){
+          location.assign(link.href);return;
+        }
+      }catch(_){/* Checkout remains unavailable on a network error. */}
+      message.textContent=link.hash==='#founder'
+        ? 'Founding Member checkout is not available yet. Please check back soon.'
+        : 'Standard Premium checkout is not available yet. Please check back soon.';
+    });
   }
   function hideDialog(){const d=$('#bb173TierDialog');if(d?.open)d.close();else d?.removeAttribute('open');lastOpener?.focus({preventScroll:true});}
   function showDialog(trigger,context){installDialog();lastOpener=trigger||document.activeElement;
-    $('#bb173TierDesc').textContent=context||'Unlock all 321 recipes, Leftover Magic, Advanced Shop Mode and Premium AI.';
+    $('#bb173TierDesc').textContent='Includes 321 recipes, Smart Auto-Fill, 1-Tap Batch Cooking, 5 AI photo scans & 10 AI meal ideas per day.';
+    const checkoutStatus=$('#bb173CheckoutStatus');if(checkoutStatus){checkoutStatus.hidden=true;checkoutStatus.textContent='';}
     const d=$('#bb173TierDialog');if(!d.open){if(typeof d.showModal==='function')d.showModal();else d.setAttribute('open','');}
     $('[data-bb173-close]',d)?.focus({preventScroll:true});
   }
@@ -50,6 +71,7 @@
   },true);
   // Read the same QA view as the recipe gate. This changes presentation only, never billing rights.
   function qaPremiumPreview(){
+    if(window.BasketBossVerifiedPremium?.isActive?.()===true)return true;
     try {
       const host=String(location.hostname||'').toLowerCase();
       if(host==='localhost'||host==='127.0.0.1'||host.endsWith('.app.github.dev'))
@@ -84,13 +106,13 @@
     }
     if(!app.querySelector('.bb173-recipe-tier-banner')){
       const banner=document.createElement('section');banner.className='bb173-recipe-tier-banner';
-      banner.innerHTML='<div><strong>100 free recipes today · All 321 with Premium</strong><p>Explore family favourites and quick meals. Leftover Magic, advanced shopping and Premium AI are available only with Premium.</p></div><button type="button" data-bb173-upgrade>See Premium benefits →</button>';
+      banner.innerHTML='<div><strong>100 free recipes today · All 321 with Premium</strong><p>Explore family favourites and quick meals. Leftover Magic and advanced shopping require Premium. AI tools are early access and require service availability.</p></div><button type="button" data-bb173-upgrade>See Premium benefits →</button>';
       const card=app.querySelector('.bb173-leftover-card');if(card)card.insertAdjacentElement('afterend',banner);else app.prepend(banner);
       banner.querySelector('[data-bb173-upgrade]').addEventListener('click',e=>showDialog(e.currentTarget));
     }
     if(!app.querySelector('.bb173-locked-teasers')){
       const teasers=document.createElement('section');teasers.className='bb173-locked-teasers';
-      teasers.innerHTML='<div><strong>🔒 221 more recipes in Premium</strong><p>Along with exclusive Leftover Magic recipes and ideas, AI inspiration and Advanced Shop Mode.</p></div><button type="button" data-bb173-upgrade>Explore plans</button>';
+      teasers.innerHTML='<div><strong>🔒 221 more recipes in Premium</strong><p>Along with exclusive Leftover Magic recipes and Advanced Shop Mode. AI tools are early access and require service availability.</p></div><button type="button" data-bb173-upgrade>Explore plans</button>';
       app.appendChild(teasers);
       teasers.querySelector('[data-bb173-upgrade]').addEventListener('click',e=>showDialog(e.currentTarget));
     }
@@ -107,6 +129,7 @@
     const tabs=$('.tabs');if(tabs)new MutationObserver(schedule).observe(tabs,{subtree:true,attributes:true,attributeFilter:['class']});
     schedule();openLeftoversFromHash();
   });
+  document.addEventListener('basketboss:premium-verified',schedule);
   window.addEventListener('hashchange',openLeftoversFromHash);
   window.BasketBossPremiumPreview={show:showDialog};
 })();

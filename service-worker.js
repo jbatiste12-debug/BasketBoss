@@ -2,10 +2,10 @@
  * Caches app pages and assets only; no personal localStorage or sync data is transmitted.
  * Food photographs outside the preview are cached only after being viewed, where supported.
  */
-const CACHE = 'basketboss-v17513-legal-policies-20261026';
+const CACHE = 'basketboss-premium-secure-shell-20261027-v3-free-only';
 const IMAGE_CACHE = 'basketboss-v17513-owner-qa-images-v1';
 const APP_BASE = new URL(self.registration.scope);
-const CORE = ['bb-consolidated-qa.css','bb-consolidated-qa.js','bb-culinary-enhancements.js','bb-culinary.css','index.html','tutorial.html','bb-real-app-tour.css','bb-real-app-tour.js','bb-cloudflare-qa.js','privacy.html','make-a-meal.html','make-a-meal.css','bb174-trial-ux.css','bb174-trial-ux.js','bb-premium-features.css','bb-premium-preview-config.js','bb-premium-features.js','bb-light-meal.css','make-a-meal.js','premium-upgrade.js','premium-upgrade.css','bb-intro-trial.js','bb-intro-trial.css','bb-us-market.js','bb-us-market.css','bb173-final-polish.css','bb-welcome-splash.js','bb-welcome-splash.css','bb-install.js','bb-install.css','shopping-inventory.js','recipes.json','manifest.webmanifest','bb-beta-launch-polish.js','bb-beta-launch-polish.css','bb-beta-six-fixes.css','bb-beta-six-fixes.js','bb-beta-five.css','bb-beta-five-nav.js','bb-purchase-choice.css',
+const CORE = ['bb-consolidated-qa.css','bb-consolidated-qa.js','bb-culinary-enhancements.js','bb-culinary.css','index.html','tutorial.html','bb-real-app-tour.css','bb-real-app-tour.js','bb-cloudflare-qa.js','privacy.html','make-a-meal.html','make-a-meal.css','bb174-trial-ux.css','bb174-trial-ux.js','bb-premium-features.css','bb-premium-preview-config.js','bb-premium-features.js','bb-light-meal.css','make-a-meal.js','premium-upgrade.js','premium-upgrade.css','bb-intro-trial.js','bb-intro-trial.css','bb-us-market.js','bb-us-market.css','bb173-final-polish.css','bb-welcome-splash.js','bb-welcome-splash.css','bb-install.js','bb-install.css','shopping-inventory.js','bb-beta-launch-polish.js','bb-beta-launch-polish.css','bb-beta-six-fixes.css','bb-beta-six-fixes.js','bb-beta-five.css','bb-beta-five-nav.js','bb-purchase-choice.css',
               'icons/basketboss-crowned-v1766-180.png','icons/basketboss-crowned-v1766-192.png','icons/basketboss-crowned-v1766-512.png',
               'icons/basketboss-silver-192-v1755.png','icons/basketboss-silver-512-v1755.png','icons/basketboss-silver-180-v1755.png',
               'food-thumbs/tomato.webp','food-thumbs/lettuce.webp','food-thumbs/red-onion.webp',
@@ -26,7 +26,7 @@ self.addEventListener('install', event => {
 });
 self.addEventListener('activate', event => {
   event.waitUntil(caches.keys().then(keys => Promise.all(keys
-    .filter(key => key.startsWith('basketboss-v') && ![CACHE, IMAGE_CACHE].includes(key))
+    .filter(key => (key.startsWith('basketboss-v')||key.startsWith('basketboss-premium-secure-')) && ![CACHE, IMAGE_CACHE].includes(key))
     .map(key => caches.delete(key)))).then(() => self.clients.claim()));
 });
 self.addEventListener('fetch', event => {
@@ -34,6 +34,15 @@ self.addEventListener('fetch', event => {
   if (req.method !== 'GET') return;
   const target = new URL(req.url);
   if (target.origin !== self.location.origin) return;
+  // Cloudflare Access may redirect this PWA asset to another origin.
+  // Never cache the Access login page as a web manifest.
+  if (target.pathname === new URL('manifest.webmanifest', APP_BASE).pathname) return;
+  // Security: recipe catalogue must be refreshed from the public 100-only asset.
+  // Do not fall back to potentially stale offline caches containing Premium content.
+  if (target.pathname === new URL('recipes.json',APP_BASE).pathname) {
+    event.respondWith(fetch(req,{cache:'no-store'}));
+    return;
+  }
   // Never cache live AI status or responses, even when served under our PWA scope.
   if (target.pathname.startsWith(new URL('api/', APP_BASE).pathname)) return;
   if (target.pathname.startsWith(APP_BASE.pathname)) {

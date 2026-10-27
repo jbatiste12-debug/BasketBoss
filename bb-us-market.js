@@ -72,7 +72,7 @@
    const description=host.querySelector('#bbPremiumDescription');
    if(description){
     if(!description.dataset.bbOriginalDescription)description.dataset.bbOriginalDescription=description.textContent;
-    description.textContent=isUS()?'Explore a 3-day free trial in Paddle Sandbox. US dollar subscription prices must be confirmed at checkout. Cancel before the trial ends to avoid a first charge. Your 321 free recipes remain available.':description.dataset.bbOriginalDescription;
+    description.textContent=isUS()?'Founding Member trial is seven days, then GBP £1.99 per month for up to 25 eligible members. Standard Premium is GBP £4.99/month with no trial. Verify local currency, taxes and final amount at checkout. No real payments are enabled yet.':description.dataset.bbOriginalDescription;
    }
    host.querySelectorAll('a[aria-label]').forEach(a=>{
     if(!a.dataset.bbOriginalAria)a.dataset.bbOriginalAria=a.getAttribute('aria-label');

@@ -1,0 +1,12 @@
+/* Isolated BasketBoss Settings card; no overrides to app navigation or paywall */
+#bbMembershipSettings{box-sizing:border-box;margin:16px 0;padding:16px;background:#f7fbf6;border:1px solid #b7d6bd;border-radius:16px;color:#173e2b;font:inherit}
+#bbMembershipSettings *{box-sizing:border-box}
+#bbMembershipSettings h3{margin:0 0 6px;font-size:1.08rem;color:#173e2b}
+#bbMembershipSettings .bb-membership-intro{font-size:.9rem;margin:0 0 12px;color:#456450}
+#bbMembershipSettings .bb-membership-status{font-weight:800;margin:8px 0;color:#193f2b}
+#bbMembershipSettings .bb-membership-details{margin:6px 0 12px;line-height:1.5;font-size:.88rem}
+#bbMembershipSettings .bb-membership-button{font:inherit;font-weight:800;padding:12px 14px;border-radius:10px;border:0;background:#215a3d;color:white;min-height:44px;cursor:pointer}
+#bbMembershipSettings .bb-membership-button:disabled{opacity:.55;cursor:not-allowed}
+#bbMembershipSettings .bb-membership-policies{display:flex;flex-wrap:wrap;gap:9px 16px;margin-top:15px}
+#bbMembershipSettings a{color:#175e3d;font-size:.83rem;text-decoration:underline;text-underline-offset:3px}
+#bbMembershipSettings button:focus-visible,#bbMembershipSettings a:focus-visible{outline:3px solid #d6a93a;outline-offset:3px}
