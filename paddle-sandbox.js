@@ -4,6 +4,7 @@
 
 const buttons=[...document.querySelectorAll('button[data-plan]')];
 const message=document.getElementById('checkoutMessage');
+let openFounderTransaction=null;
 
 function notify(text,type=''){
   if(message){
@@ -67,10 +68,26 @@ async function boot(){
         }
       },
       eventCallback(event){
-        if(event?.name==='checkout.completed')
+        if(event?.name==='checkout.completed'){
+          openFounderTransaction=null;
           notify('Checkout completed. Premium awaits verified confirmation.','success');
-        else if(event?.name==='checkout.closed')
+        }else if(event?.name==='checkout.closed'){
+          const id=openFounderTransaction;
+          openFounderTransaction=null;
+          if(id && (!event.data?.transaction_id || event.data.transaction_id===id)){
+            const bearer=accessToken();
+            const founder=buttons.find(b=>b.dataset.plan==='founder');
+            if(bearer){
+              if(founder)founder.disabled=true;
+              void fetch('/api/subscription/checkout',{
+                method:'POST',cache:'no-store',credentials:'same-origin',
+                headers:{'Content-Type':'application/json','Authorization':'Bearer '+bearer},
+                body:JSON.stringify({plan:'founder',abandonTransactionId:id})
+              }).catch(()=>{}).finally(()=>{if(founder)founder.disabled=false;});
+            }
+          }
           notify('Checkout closed.');
+        }
       }
     });
   }catch{
@@ -119,6 +136,7 @@ async function boot(){
            !/^txn_[a-z0-9]{26}$/.test(result.transactionId||''))
           throw Error(result.error||'Checkout unavailable');
 
+        openFounderTransaction=plan==='founder'?result.transactionId:null;
         window.Paddle.Checkout.open({
           transactionId:result.transactionId
         });
