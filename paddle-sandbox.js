@@ -5,6 +5,8 @@
 const buttons=[...document.querySelectorAll('button[data-plan]')];
 const message=document.getElementById('checkoutMessage');
 let openFounderTransaction=null;
+let checkoutReady=false;
+let checkoutIssue='Checking secure Paddle checkout availability…';
 
 function notify(text,type=''){
   if(message){
@@ -29,32 +31,54 @@ buttons.forEach(button=>{
   button.disabled=false;
   button.setAttribute('aria-disabled','false');
   button.addEventListener('click',()=>{
-    if(button.dataset.bbCheckoutReady==='true')return;
-    notify('Checkout is not available yet. Please check back soon.','error');
+    if(checkoutReady && button.dataset.bbCheckoutReady==='true')return;
+    notify(checkoutIssue,'error');
   });
 });
 
 async function boot(){
-  notify('Review the plans and subscription terms above.');
-
-  if(!window.Paddle?.Initialize ||
-     !window.Paddle?.Checkout?.open)return;
+  notify('Checking secure Paddle checkout availability…');
 
   let config;
   try{
+    const bearer=accessToken();
     const response=await fetch('/api/subscription/checkout-config',{
       cache:'no-store',
-      credentials:'same-origin'
+      credentials:'same-origin',
+      headers:bearer?{'Authorization':'Bearer '+bearer}:{}
     });
-    if(!response.ok)return;
+    if(!response.ok)throw Error('Checkout server returned HTTP '+response.status);
     config=await response.json();
-  }catch{return;}
+  }catch(err){
+    checkoutIssue='Could not check Paddle Live checkout: '+String(err.message||'network error').slice(0,110)+'. Please try again.';
+    notify(checkoutIssue,'error');
+    return;
+  }
 
-  if(config?.enabled!==true ||
-     !['live','sandbox'].includes(config.mode))return;
+  if(config?.enabled!==true || !['live','sandbox'].includes(config.mode)){
+    // Only an authenticated Owner receives specific variable names from the API.
+    // Never reveal key *values* or let a public browser bypass server gates.
+    const missing=Array.isArray(config?.missing)&&config.missing.every(x=>typeof x==='string')
+      ?config.missing.slice(0,12).join(', '):null;
+    checkoutIssue=missing
+      ?'Paddle checkout configuration needs: '+missing+'.'
+      :'Secure checkout is not enabled by the server. Please contact BasketBoss support.';
+    notify(checkoutIssue,'error');
+    return;
+  }
 
   // Public domain never opens a test-money Sandbox checkout.
-  if(['basketboss.co.uk','www.basketboss.co.uk'].includes(location.hostname) && config.mode!=='live')return;
+  if(['basketboss.co.uk','www.basketboss.co.uk'].includes(location.hostname) && config.mode!=='live'){
+    checkoutIssue='Live checkout is required on basketboss.co.uk; Sandbox payments are blocked.';
+    notify(checkoutIssue,'error');
+    return;
+  }
+
+  if(!window.Paddle?.Initialize || !window.Paddle?.Checkout?.open){
+    checkoutIssue='Paddle checkout script did not load. Check your connection or content blockers, then reload this page.';
+    notify(checkoutIssue,'error');
+    return;
+  }
 
   // These are Paddle PUBLIC client-side tokens, never API secrets.
   const clientToken=config.mode==='live'
@@ -97,8 +121,10 @@ async function boot(){
         }
       }
     });
-  }catch{
-    notify('Paddle checkout unavailable.','error');
+  }catch(err){
+    checkoutIssue='Paddle Live checkout initialization failed. Please contact BasketBoss support.';
+    console.error('Paddle checkout initialization failed',err);
+    notify(checkoutIssue,'error');
     return;
   }
 
@@ -116,7 +142,7 @@ async function boot(){
     button.addEventListener('click',async()=>{
       const bearer=accessToken();
       if(!bearer){
-        notify('Please sign in to your verified BasketBoss account.','error');
+        notify('Sign in to BasketBoss first using the link below, then return to start your trial.','error');
         return;
       }
 
@@ -154,6 +180,9 @@ async function boot(){
       }
     });
   }
+
+  checkoutReady=true;
+  checkoutIssue='Paddle checkout is ready.';
 
   if(config.mode==='live'){
     const ribbon=document.querySelector('.test-ribbon');
