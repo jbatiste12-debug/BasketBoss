@@ -453,10 +453,16 @@ function bbChooseLocation(loc){
 }
 function bbOpenTool(tool){
  if(!['scan','meal'].includes(tool))return;
+ const stage=$('#bbToolStage'),scanner=$('#aiScanner'),meal=$('#aiMeal');
+ if(!stage||!scanner||!meal){
+  const toast=$('#bbToast');
+  if(toast){toast.hidden=false;toast.textContent='AI tool could not open. Reload BasketBoss and try again.';}
+  return;
+ }
  bbActiveTool=tool;
- const stage=$('#bbToolStage');stage.hidden=false;
- $('#aiScanner').hidden=tool!=='scan';
- $('#aiMeal').hidden=tool!=='meal';
+ stage.hidden=false;
+ scanner.hidden=tool!=='scan';
+ meal.hidden=tool!=='meal';
  document.querySelectorAll('[data-open-tool]').forEach(btn=>btn.setAttribute('aria-expanded',String(btn.dataset.openTool===tool)));
  if(aiEnabled&&bbSiteKey&&!bbTurnstileLoading&&turnstileWidgetId===null){bbTurnstileLoading=true;setupHumanCheck(bbSiteKey)}
  stage.scrollIntoView({behavior:'smooth',block:'start'});
@@ -618,9 +624,13 @@ function bb15RestorePremiumEntry(){
 }
 function init(){bb74InstallTileStyles();load();document.querySelectorAll('[data-mode]').forEach(b=>b.addEventListener('click',()=>{mode=b.dataset.mode;suggestionOffset=0;document.querySelectorAll('[data-mode]').forEach(t=>t.setAttribute('aria-pressed',String(t.dataset.mode===mode)));renderRecipes()}));
 // Dashboard thumbnail controls reuse the existing inventory state and save pathway.
+// AI Studio is inserted outside .bb-meal-dashboard. Handle all AI openers
+// at document level, including promoted buttons and scan-result links.
+document.addEventListener('click',e=>{
+ const opener=e.target.closest?.('[data-open-tool]');
+ if(opener)bbOpenTool(opener.dataset.openTool);
+});
 $('.bb-meal-dashboard').addEventListener('click',e=>{
- const opener=e.target.closest('[data-open-tool]');
- if(opener){bbOpenTool(opener.dataset.openTool);return;}
  if(e.target.closest('[data-close-tool]')){bbCloseTool();return;}
  const area=e.target.closest('[data-select-location]');
  if(area){bbChooseLocation(area.dataset.selectLocation);return;}
