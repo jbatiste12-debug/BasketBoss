@@ -113,7 +113,7 @@ html,body{background:#E9ECEF!important;background-image:none!important;min-heigh
 #bbToolStage.bb-ai-native-visible {display:block!important;position:fixed!important;inset:max(8px,env(safe-area-inset-top)) 8px max(8px,env(safe-area-inset-bottom))!important;width:min(620px,calc(100% - 16px))!important;margin:0 auto!important;max-height:calc(100dvh - 16px)!important;overflow-y:auto!important;z-index:2147483000!important;background:#edf6f0!important;box-shadow:0 0 0 120vmax rgba(6,23,18,.80),0 20px 60px #06171080!important;overscroll-behavior:contain}
 #bbToolStage.bb-ai-native-visible[hidden] {display:none!important}
 #bbToolStage.bb-ai-native-visible .bb-tool-close {position:sticky;top:0;z-index:2;background:#fff;color:#194b37;border:2px solid #bdd8c2;border-radius:10px;padding:10px;font-weight:800}
-#bbToolStage.bb-ai-native-visible #aiSecurityBox{display:block!important;visibility:visible!important}
+#bbToolStage.bb-ai-native-visible #aiSecurityBox:not([hidden]){display:block!important;visibility:visible!important}
 #bbToolStage.bb-ai-native-visible #aiHumanCheck{min-height:60px}
 </style>
 <script id="bb-ai-native-open-script">
@@ -265,7 +265,7 @@ html,body{background:#E9ECEF!important;background-image:none!important;min-heigh
   });
 })();
 </script>
-<script src="bb-premium-preview-config.js?v=1743-premium-leftovers"></script><script defer="" src="make-a-meal.js?v=bb-turnstile-safari-entitlement-20261027-v1"></script><script>if('serviceWorker' in navigator&&location.protocol==='https:')addEventListener('load',()=>navigator.serviceWorker.register('./service-worker.js').catch(()=>{}),{once:true})</script><script defer src="premium-upgrade.js?v=bb-native-ai-open-20261027-v1"></script><script src="bb-us-market.js?v=173us1"></script><script defer src="bb-install.js?v=173install1"></script><script src="bb-real-app-tour.js?v=17513real1" defer></script>
+<script src="bb-premium-preview-config.js?v=1743-premium-leftovers"></script><script defer="" src="make-a-meal.js?v=bb-ai-quota-turnstile-live-20261027-v1"></script><script>if('serviceWorker' in navigator&&location.protocol==='https:')addEventListener('load',()=>navigator.serviceWorker.register('./service-worker.js').catch(()=>{}),{once:true})</script><script defer src="premium-upgrade.js?v=bb-native-ai-open-20261027-v1"></script><script src="bb-us-market.js?v=173us1"></script><script defer src="bb-install.js?v=173install1"></script><script src="bb-real-app-tour.js?v=17513real1" defer></script>
 <!-- BB17513 private QA membership switch: PRIVATE CODESPACES HOSTS ONLY. Not an entitlement. -->
 <style id="bb17513-private-qa-toggle-css">
 #bb17513-qa-mode-bar{position:relative;z-index:3;max-width:1100px;margin:8px auto 12px;padding:9px 12px;display:flex;align-items:center;justify-content:space-between;gap:10px;flex-wrap:wrap;background:#fff7df;color:#3e3525;border:1px solid #d7be76;border-radius:15px;font:600 12px/1.35 system-ui,-apple-system,sans-serif;box-shadow:0 2px 9px #0000000a;box-sizing:border-box}

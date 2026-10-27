@@ -132,11 +132,11 @@ test('Safari modal observer and cached script changes never touch camera label',
  const html=await fs.readFile(new URL('../make-a-meal.html',import.meta.url),'utf8');
  assert.match(js,/function bbObserveAIHumanPanel\(\)/);
  assert.match(js,/new MutationObserver\(check\)\.observe\(stage/);
- assert.match(js,/if\(!\$\('#bbToolStage'\)\?\.hidden\)setupHumanCheck\(bbSiteKey\)/);
+ assert.match(js,/if\(bbTurnstileRequired&&!\$\('#bbToolStage'\)\?\.hidden\)setupHumanCheck\(bbSiteKey\)/);
  assert.match(js,/window\.turnstile\.render\(host,/);
  assert.match(js,/if\(!aiEnabled\)await bbRefreshAIStatus\(\)/);
  assert.match(js,/const token=turnstileToken\|\|''/);
  assert.match(html,/<label class="scan-upload-label" for="ai-photo-input">/);
  assert.match(html,/<input accept="image\/\*"[^>]+id="ai-photo-input" type="file"/);
- assert.match(html,/make-a-meal\.js\?v=bb-turnstile-safari-entitlement-20261027-v1/);
+ assert.match(html,/make-a-meal\.js\?v=bb-ai-quota-turnstile-live-20261027-v1/);
 });

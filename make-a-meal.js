@@ -361,6 +361,9 @@ function resetHumanCheck(){
 // The native iOS <label for=ai-photo-input> opens the panel via an inline
 // synchronous handler, NOT bbOpenTool(). Render only after the panel is visible.
 function setupHumanCheck(siteKey){
+ // Live subscribers have already been checked by the backend. Do not
+ // load the broken Turnstile iframe in their scanner/meal modal.
+ if(!bbTurnstileRequired)return;
  const stage=$('#bbToolStage'),host=$('#aiHumanCheck'),status=$('#aiHumanStatus');
  if(!stage||stage.hidden||!host?.isConnected||!status||
     !siteKey||!/^[-_a-zA-Z0-9]+$/.test(siteKey)||
@@ -374,7 +377,7 @@ function setupHumanCheck(siteKey){
    status.textContent='Human check unavailable. Verified Live Premium members can continue securely.';
  };
  const render=()=>requestAnimationFrame(()=>{
-   if(stage.hidden||!host.isConnected){bbTurnstileLoading=false;return;}
+   if(!bbTurnstileRequired||stage.hidden||!host.isConnected){bbTurnstileLoading=false;return;}
    try{
      if(typeof window.turnstile?.render!=='function')throw Error('Turnstile missing');
      const widget=window.turnstile.render(host,{
@@ -418,7 +421,10 @@ function bbObserveAIHumanPanel(){
    if(wasOpen)return;
    wasOpen=true;
    const panel=$('#aiSecurityBox');
-   if(panel){panel.hidden=false;panel.style.setProperty('display','block','important');}
+   if(panel){
+     panel.hidden=!bbTurnstileRequired;
+     panel.style.removeProperty('display');
+   }
    turnstileToken='';
    if(turnstileWidgetId!==null&&window.turnstile?.reset){
      try{window.turnstile.reset(turnstileWidgetId);}catch(_){turnstileWidgetId=null;}
@@ -502,7 +508,7 @@ function generate(){
  }).catch(e=>{$('#generated').innerHTML='<div class="warning">'+esc(e.message+'. Your saved ingredients were not changed. The built-in recipes remain available.')+'</div>';}).finally(()=>{generateInFlight=false;btn.disabled=false});
 }
 // One streamlined Make a Meal workspace. Keep the original controls and event hooks.
-let bbActiveTool=null,bbSiteKey=null,bbTurnstileLoading=false;
+let bbActiveTool=null,bbSiteKey=null,bbTurnstileLoading=false,bbTurnstileRequired=true;
 function bbChooseLocation(loc){
  if(!['cupboard','fridge','freezer'].includes(loc))return;
  for(const location of ['cupboard','fridge','freezer']){
@@ -702,11 +708,26 @@ async function bbRefreshAIStatus(){
     const data=await response.json();
     if(requestId!==bbAIStatusRequest||bbPaidToken()!==token)return;
     aiEnabled=data?.status==='available'&&data?.premium_ai===true&&!!data?.siteKey;
+    // Only authenticated entitlement-backed Live accounts receive false.
+    bbTurnstileRequired=!(aiEnabled&&data.turnstileRequired===false);
+    const verifyPanel=$('#aiSecurityBox');
+    if(verifyPanel){
+      verifyPanel.hidden=!bbTurnstileRequired;
+      verifyPanel.style.removeProperty('display');
+    }
+    if(!bbTurnstileRequired){
+      turnstileToken='';
+      if(turnstileWidgetId!==null&&window.turnstile?.remove){
+        try{window.turnstile.remove(turnstileWidgetId);}catch(_){}
+      }
+      turnstileWidgetId=null;
+      bbTurnstileLoading=false;
+    }
     if(aiEnabled){
       bbSiteKey=data.siteKey;
       $('#aiStatus').textContent='Premium AI is available, subject to daily limits.';
       $('#aiHumanStatus').textContent='Complete the human check to make an AI request.';
-      if(!$('#bbToolStage')?.hidden)setupHumanCheck(bbSiteKey);
+      if(bbTurnstileRequired&&!$('#bbToolStage')?.hidden)setupHumanCheck(bbSiteKey);
       return;
     }
     // The API reveals these CONFIGURATION CODES to the authenticated Owner only;

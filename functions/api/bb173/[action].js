@@ -279,7 +279,9 @@ async function siteVerify(token,request,env){
   }catch(_){return false;}
 }
 
-// Atomic per-key increments. Failed provider calls still count toward limits.
+// D1 quota table is initialized ONLY if D1 explicitly reports it absent.
+// An incompatible existing schema or unavailable database still fails closed.
+// Quotas are never bypassed, including for Live Founder, Premium and Owner.
 async function consumeQuota(db,userId,action,globalCap){
   const day=new Date().toISOString().slice(0,10);
   const cap=action==='scan'?5:10;
@@ -288,12 +290,30 @@ async function consumeQuota(db,userId,action,globalCap){
     ON CONFLICT(day_utc,actor,action)
     DO UPDATE SET used=used+1 WHERE used < ?
     RETURNING used`;
-  const mine=await db.prepare(inc)
-    .bind(day,'user:'+userId,action,cap).first();
-  if(!mine)return false;
-  const all=await db.prepare(inc)
-    .bind(day,'global','all',globalCap).first();
-  return !!all;
+  const increment=async()=>{
+    // The existing per-user limit (5 scans / 10 meal drafts) and global
+    // limit remain mandatory; no unmetered alternative is allowed.
+    const mine=await db.prepare(inc)
+      .bind(day,'user:'+userId,action,cap).first();
+    if(!mine)return false;
+    const all=await db.prepare(inc)
+      .bind(day,'global','all',globalCap).first();
+    return !!all;
+  };
+  try{return await increment();}
+  catch(err){
+    // Cloudflare D1 reports missing tables as "D1_ERROR: no such table: ...".
+    // Never "repair" an unknown existing quota schema or conceal DB failures.
+    if(!/no such table:\s*["'`]?bb_ai_daily_usage\b/i.test(String(err?.message||'')))throw err;
+    await db.prepare(`CREATE TABLE IF NOT EXISTS bb_ai_daily_usage (
+      day_utc TEXT NOT NULL,
+      actor TEXT NOT NULL,
+      action TEXT NOT NULL,
+      used INTEGER NOT NULL DEFAULT 0 CHECK (used >= 0),
+      PRIMARY KEY(day_utc,actor,action)
+    )`).run();
+    return await increment();
+  }
 }
 async function gemini(action,body,env){
   const {parts,schema,maxOutputTokens}=geminiRequest(action,body);
@@ -339,6 +359,9 @@ export async function onRequest({request,env,params}){
       return respond({
         status:member?'available':'disabled',
         premium_ai:!!member,
+        // Client presentation only. Live paid/Owner fallback is enforced
+        // independently by eligibleMember() on every AI POST.
+        turnstileRequired:member?!isLive(env):true,
         siteKey:member?env.TURNSTILE_SITE_KEY:null
       });
     }catch{
@@ -389,7 +412,13 @@ export async function onRequest({request,env,params}){
     if(!await consumeQuota(
       env.BILLING_DB,member.id,action,limits(env).global
     ))return respond({error:'Daily AI usage limit reached'},429);
-  }catch{
+  }catch(err){
+    // Diagnostic class only: never log auth tokens, IPs, secrets or D1 row data.
+    const detail=String(err?.message||'').toLowerCase();
+    const classification=detail.includes('no such table')?'missing_table':
+      detail.includes('on conflict')||detail.includes('has no column')||detail.includes('no such column')?
+      'quota_schema_mismatch':'quota_db_error';
+    console.error('BB_AI_QUOTA_D1:',classification);
     return respond({error:'AI quota protection unavailable'},503);
   }
 
