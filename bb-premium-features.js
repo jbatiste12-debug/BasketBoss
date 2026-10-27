@@ -18,9 +18,9 @@
     </header>
     <div class="bb173-tier-body">
       <div class="bb173-tier-stat"><span>🧺 100 recipes stay free</span><span>✨ 321 with Premium</span></div>
-      <p><strong>Planned Premium limits:</strong> 5 AI photo scans and 10 AI meal ideas per day. Only the Founding Member offer has a planned 7-day trial. Server-side entitlements and subscription security must be verified before launch.</p>
+      <p><strong>Planned Premium limits:</strong> 5 AI photo scans and 10 AI meal ideas per day. Founding Member has a planned 7-day trial; Standard Premium has a planned 3-day trial after Paddle Sandbox configuration. Server-side entitlements and subscription security must be verified before launch.</p>
       <div class="bb173-tier-plans">
-        <a href="${PRICING}#monthly"><strong>Monthly</strong><span>£4.99 / month</span><small>Standard plan · Sandbox</small></a>
+        <a href="${PRICING}#monthly"><strong>Monthly</strong><span>£4.99 / month</span><small>3 days free, then £4.99/month · Sandbox price verification required</small></a>
         <a href="${PRICING}#founder"><strong>Founding Member</strong><span>£1.99 / month</span><small>7 days free · first 25 eligible members</small></a>
       </div>
       <p class="bb173-tier-disclaimer"><strong>Preview only:</strong> Checkout is a test. No real payment or Premium entitlement is activated. Basic shopping lists and manual ingredients remain free.</p>

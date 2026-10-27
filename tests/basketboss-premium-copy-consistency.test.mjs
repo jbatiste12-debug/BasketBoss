@@ -11,9 +11,9 @@ test('Premium introduction describes server-gated private recipes, not a static 
   assert.match(copy,/AI tools.*service availability/i);
 });
 
-test('Pricing does not sell Free Leftover Magic or a Standard free trial',async()=>{
+test('Pricing does not sell Free Leftover Magic and identifies 3-day Standard trial',async()=>{
   const pricing=await read('pricing-sandbox.html');
   assert.doesNotMatch(pricing,/Free: 100 recipes, a starter selection of Leftover Magic/i);
-  assert.match(pricing,/no Standard free trial currently offered/i);
+  assert.match(pricing,/3-day free trial/i);
   assert.match(pricing,/AI tools.*subject to availability/i);
 });

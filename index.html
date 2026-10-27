@@ -3543,6 +3543,51 @@ body.bbnext-plan-mode .shell > #bb175Toolbar{display:none!important}
 <link rel="stylesheet" href="bb-membership-settings.css?v=bbsecure1">
 <script defer src="bb-membership-settings.js?v=bbsecure1"></script>
 <script defer src="bb-verified-premium-ui.js?v=bbsecure20261026"></script>
+<style id="bb-mvp-four-items-20261027">
+/* Presentation only: plan actions and consistent food crops. Never change photo sources. */
+#app .day .planned .bb172-planner-controls [data-cook],
+#app .day .planned .bb172-planner-controls .bb172-replace-meal{
+  border-radius:19px!important;min-width:0!important;min-height:49px!important;
+  backdrop-filter:blur(12px) saturate(130%);-webkit-backdrop-filter:blur(12px) saturate(130%);
+  box-shadow:inset 0 1px 0 rgba(255,255,255,.45),0 7px 17px rgba(17,48,42,.15)!important;
+  transition:background .16s ease,box-shadow .16s ease,transform .16s ease!important;
+}
+#app .day .planned .bb172-planner-controls [data-cook]{
+  background:linear-gradient(145deg,rgba(71,153,105,.95),rgba(19,88,61,.98))!important;
+  border:1px solid rgba(202,247,218,.68)!important;color:#fff!important;-webkit-text-fill-color:#fff!important;
+}
+#app .day .planned .bb172-planner-controls .bb172-replace-meal{
+  background:linear-gradient(135deg,rgba(255,255,255,.92),rgba(221,238,239,.86))!important;
+  border:1px solid rgba(122,176,174,.60)!important;color:#194d53!important;-webkit-text-fill-color:#194d53!important;
+}
+#app .day .planned .bb172-planner-controls select[data-move]{
+  border-radius:19px!important;min-width:0!important;min-height:49px!important;
+  background:linear-gradient(135deg,rgba(43,95,113,.96),rgba(18,59,83,.98))!important;
+  border:1px solid rgba(168,217,224,.68)!important;color:#fff!important;-webkit-text-fill-color:#fff!important;
+  backdrop-filter:blur(12px) saturate(125%);-webkit-backdrop-filter:blur(12px) saturate(125%);
+  box-shadow:inset 0 1px 0 rgba(255,255,255,.28),0 7px 17px rgba(17,48,65,.14)!important;
+}
+#app .day .planned .bb172-planner-controls :is([data-cook],.bb172-replace-meal):active{transform:scale(.985)}
+#app .grid-recipes .mini-img,
+#app .recipe-image{aspect-ratio:4/3!important;height:auto!important;min-height:0!important;overflow:hidden!important;border-radius:17px!important;background:#ecf2ed!important;}
+#app .recipe-image{max-height:390px!important;}
+#app .grid-recipes .mini-img img,
+#app .recipe-image img{width:100%!important;height:100%!important;position:absolute!important;inset:0!important;object-fit:cover!important;object-position:center!important;border-radius:inherit!important;}
+#app .grid-recipes .mini-img,#app .recipe-image{position:relative!important;}
+#app .day .planned img.bb-day-photo,
+#app.bbnext-plan .bbnext-day-content .bb14-meal-card img.bb-day-photo{
+  object-fit:cover!important;object-position:center!important;
+  border-radius:17px!important;aspect-ratio:4/3!important;}
+#app.bbnext-plan .bbnext-day-content .bb14-meal-photo{overflow:hidden!important;border-radius:17px!important;aspect-ratio:4/3!important;min-height:0!important;}
+#app .bb-beta-day-thumb{object-fit:cover!important;object-position:center!important;aspect-ratio:1/1!important;border-radius:13px!important;}
+@media(max-width:720px){
+ #app .day .planned .bb172-planner-controls :is([data-cook],.bb172-replace-meal,select[data-move]){
+   min-height:48px!important;font-size:clamp(12px,3.4vw,15px)!important;border-radius:16px!important;}
+ #app .recipe-image{max-height:310px!important;}
+ #app .grid-recipes .mini-img{border-radius:14px!important;}
+}
+@media(prefers-reduced-motion:reduce){#app .day .planned .bb172-planner-controls :is([data-cook],.bb172-replace-meal){transition:none!important;}}
+</style>
 </head>
 <body>
 <div role="note" style="font:12px/1.5 system-ui;background:#fff7e2;color:#493b29;padding:10px 16px;border-bottom:1px solid #ead9b3;display:flex;align-items:center;gap:12px;flex-wrap:wrap"><strong>BasketBoss · weekly shopping</strong><label>Estimated region <select id="bb307Island" aria-label="Estimated region"  style="font:inherit;padding:4px"><option>Jersey</option><option>Guernsey</option><option>UK</option><option value="US">🇺🇸 United States</option></select></label><button type="button" id="bb307SaveMarket" disabled>Saved ✓</button><small id="bb307RegionSaveStatus" role="status" aria-live="polite">Saved on this device</small><span>Illustrative local-currency prices by ingredient category; not live retailer quotes · check allergens</span></div><script>document.addEventListener('DOMContentLoaded',function(){const sel=document.getElementById('bb307Island');if(sel && window.bb307ActiveMarket)sel.value=window.bb307ActiveMarket();});</script><div class="shell">
@@ -5259,9 +5304,9 @@ function bb175EnhanceUI(app){
     dlg.innerHTML=`<div class="bb175-tier-wrap"><button type="button" class="bb175-close" aria-label="Close comparison">×</button>
      <p class="bb175-eyebrow">BASKETBOSS · PLAN COMPARISON</p><h2 id="bb175TiersHeading">Free or Premium?</h2>
      <div class="bb175-tier-grid"><section><h3>Free · £0</h3><ul><li>100 starter recipes</li><li>Basic meal planning &amp; shopping list</li><li>Leftover Magic locked (Premium only)</li><li>Manually add cupboard ingredients</li><li>No AI scan or AI meal ideas</li></ul></section>
-     <section class="bb175-tier-premium"><h3>✦ Premium</h3><ul><li>All 321 recipes</li><li>Complete Leftover Magic suggestions</li><li>Advanced Shop Mode</li><li>Up to 5 AI photo scans/day*</li><li>Up to 10 AI meal ideas/day*</li><li>3-day trial with payment method*</li></ul></section></div>
-     <p class="bb175-trial-note">*Planned subscription terms: the selected monthly or annual plan renews automatically after the trial unless cancelled. Cancel anytime through billing management. Your saved plans and Free features remain when Premium ends.</p>
-     <p class="bb175-sandbox-note">PREVIEW / TEST ONLY: Payments, AI limits and verified Premium access are not connected to a production membership system. The local Premium switch is a demonstration, not proof of a subscription.</p>
+     <section class="bb175-tier-premium"><h3>✦ Premium</h3><ul><li>All 321 recipes</li><li>Complete Leftover Magic suggestions</li><li>Advanced Shop Mode</li><li>Up to 5 AI photo scans/day*</li><li>Up to 10 AI meal ideas/day*</li><li>🍲 Batch Cook (2 days) · Premium only</li><li>Founding Member: 7 days free, then £1.99/month · first 25</li><li>Standard Premium: 3 days free, then £4.99/month*</li></ul></section></div>
+     <p class="bb175-trial-note">*Founding Member: 7-day free trial, then £1.99/month, limited to 25 confirmed members. Standard Premium: 3-day free trial, then £4.99/month, once configured on the Standard Paddle price. Both plans renew monthly unless cancelled. Verify the trial dates and final amount in Paddle checkout; your Free features remain if Premium ends.</p>
+     <p class="bb175-sandbox-note">PREVIEW / TEST ONLY: Sandbox checkouts take no real payments. Verified Premium access requires an eligible subscription; local QA switches never grant paid access. AI tools are early access and may be unavailable.</p>
      <div class="bb175-tier-actions"><a href="pricing-sandbox.html" class="bb175-pricing">See sandbox pricing &amp; trial</a><button type="button" class="bb175-done">Continue browsing</button></div></div>`;
     document.body.appendChild(dlg);
     dlg.querySelector('.bb175-close').onclick=()=>dlg.close();dlg.querySelector('.bb175-done').onclick=()=>dlg.close();
@@ -5853,6 +5898,7 @@ function bbManualPairs(){
 }
 function bbManualReservedDays(){return bbManualPairs().map(x=>x.leftoverDay)}
 function bbBatchPairs(){
+ if(!bb176IsPremiumPreview())return []; // Preserve saved links but do not apply Pro batch nights in Free mode.
  const b=bb81ActiveBatch();
  if(b)return [{sourceDay:'Monday',leftoverDay:'Tuesday',recipeId:b.monday},{sourceDay:'Wednesday',leftoverDay:'Thursday',recipeId:b.wednesday}];
  return bbManualPairs();
@@ -5865,6 +5911,7 @@ function bbManualCleanStale(){
  if(valid.length!==(before.pairs||[]).length)state.bbManualBatch=valid.length?{version:1,pairs:valid}:null;
 }
 function bbManualBatchPlan(id,sourceDay,allowReplace=false){
+ if(!bb176IsPremiumPreview()){bb176OpenPremiumUpgrade();return {ok:false,reason:"Batch Cook is a Premium-only feature."};}
  const recipe=getRecipe(id);if(!recipe||!bb176AllowedRecipe(id)||bb172IsDessertOrNonDinner(recipe))return {ok:false,reason:'Choose an available dinner recipe.'};
  if(bb81ActiveBatch())return {ok:false,reason:'Remove the existing Auto-Fill batch links before adding manual batches.'};
  const idx=DAYS.indexOf(sourceDay),next=DAYS[idx+1];if(idx<0||!next)return {ok:false,reason:'Choose a cook day with a following day.'};
@@ -5884,6 +5931,7 @@ function bbManualBatchPlan(id,sourceDay,allowReplace=false){
  return {ok:true};
 }
 function bbManualBatchDialog(id,preferredDay){
+ if(!bb176IsPremiumPreview()){bb176OpenPremiumUpgrade();return;}
  const recipe=getRecipe(id);if(!recipe||!bb176AllowedRecipe(id)||bb172IsDessertOrNonDinner(recipe)){notify('Choose an unlocked dinner recipe to batch cook.');return;}
  if(bb81ActiveBatch()){notify('Your Auto-Fill batch nights are active. Remove those links before creating manual pairs.');return;}
  document.getElementById('bbManualBatchDialog')?.remove();
@@ -5936,7 +5984,7 @@ function bbManualPlanDecorate(app){
  for(const day of DAYS){
   const p=state.planned.find(x=>x.day===day);if(!p||!bb176AllowedRecipe(p.recipeId)||bbBatchPairFor(p))continue;
   const card=app.querySelector('.bbnext-day[data-bbnext-day="'+day+'"] .bbnext-day-content');if(!card)continue;
-  const btn=document.createElement('button');btn.type='button';btn.className='small-btn bb-manual-batch-btn';btn.textContent='🍲 Batch cook (2 days)';btn.addEventListener('click',()=>bbManualBatchDialog(p.recipeId,day));card.append(btn);
+  const btn=document.createElement('button');btn.type='button';btn.className='small-btn bb-manual-batch-btn';btn.textContent=bb176IsPremiumPreview()?'🍲 Batch cook (2 days)':'♛ Batch cook · Premium';btn.addEventListener('click',()=>bbManualBatchDialog(p.recipeId,day));card.append(btn);
  }
 }
 
@@ -6487,7 +6535,7 @@ function bb18GalleryCard(x){
  return `<article class="card mini-recipe${locked?' bb18-locked-recipe':''}" tabindex="0" role="button" ${action}>
  <div class="mini-img">${imageHTML(x)}<span class="pill">${esc(x.tag)}</span>${locked?'<span class="bb18-premium-crown" aria-hidden="true">♛ Premium</span><span class="bb18-premium-image-lock" aria-hidden="true"><span class="bb18-lock-icon"><svg viewBox="0 0 64 64" width="42" height="42" aria-hidden="true" fill="none"><path d="M22 18 18 10 27 14 32 6 37 14 46 10 42 18Z" fill="#44484B" stroke="#44484B" stroke-width="2" stroke-linejoin="round"/><path d="M21 21h22" stroke="#44484B" stroke-width="3" stroke-linecap="round"/><path d="M18 30 25 23M46 30 39 23" stroke="#44484B" stroke-width="4" stroke-linecap="round"/><path d="M11 31h42l-5 24H16l-5-24Z" fill="#44484B" stroke="#44484B" stroke-width="2" stroke-linejoin="round"/><path d="M22 38v10M32 38v10M42 38v10" stroke="#F8F8F8" stroke-width="4" stroke-linecap="round"/></svg></span><strong>BasketBoss</strong><span>Unlock with Premium</span></span>':''}</div>
  <div class="mini-content"><h4>${esc(x.name)}</h4><p class="bb18-recipe-meta"><span>◷ ${x.mins} min</span><span class="bb18-price-value">${money(x.cost)}</span></p>
- <p class="muted">${collectionsFor(x).map(esc).join(' · ')}</p>${locked?'':`<button type="button" class="bb80-gallery-add" data-bb80-add-week="${esc(x.id)}" aria-label="Add ${esc(x.name)} to your week">＋ Add to week</button><button type="button" class="bb80-gallery-add bb-manual-batch-btn" data-bb-manual-batch="${esc(x.id)}" aria-label="Batch cook ${esc(x.name)} for two days">🍲 Batch cook (2 days)</button>`}${locked?'<span class="bb18-unlock-cta">♛ Unlock with Premium</span>':''}</div></article>`;
+ <p class="muted">${collectionsFor(x).map(esc).join(' · ')}</p>${locked?'':`<button type="button" class="bb80-gallery-add" data-bb80-add-week="${esc(x.id)}" aria-label="Add ${esc(x.name)} to your week">＋ Add to week</button><button type="button" class="bb80-gallery-add bb-manual-batch-btn" data-bb-manual-batch="${esc(x.id)}" aria-label="Batch cook ${esc(x.name)} for two days">${bb176IsPremiumPreview()?'🍲 Batch cook (2 days)':'♛ Batch cook · Premium'}</button>`}${locked?'<span class="bb18-unlock-cta">♛ Unlock with Premium</span>':''}</div></article>`;
 }
 function bb80PromptAddRecipe(id){
  const recipe=getRecipe(id);if(!recipe)return;
@@ -6509,7 +6557,7 @@ function bb80PromptAddRecipe(id){
  const actions=document.createElement('div');actions.className='bb80-add-week-actions';
  const cancel=document.createElement('button');cancel.type='button';cancel.textContent='Cancel';cancel.onclick=()=>dialog.close();
  const confirm=document.createElement('button');confirm.type='submit';confirm.textContent='Add to '+(dessert?'desserts':'dinners');
- const batchButton=document.createElement('button');batchButton.type='button';batchButton.className='bb-manual-batch-btn';batchButton.textContent='🍲 Batch cook (2 days)';batchButton.hidden=dessert;batchButton.onclick=()=>{dialog.close();bbManualBatchDialog(id,select.value);};
+ const batchButton=document.createElement('button');batchButton.type='button';batchButton.className='bb-manual-batch-btn';batchButton.textContent=bb176IsPremiumPreview()?'🍲 Batch cook (2 days)':'♛ Batch cook · Premium';batchButton.hidden=dessert;batchButton.onclick=()=>{dialog.close();bbManualBatchDialog(id,select.value);};
  actions.append(cancel,confirm,batchButton);form.append(label,actions);dialog.append(heading,p,form);document.body.append(dialog);
  form.addEventListener('submit',event=>{event.preventDefault();const day=select.value;if(!free.includes(day))return;dialog.close();addRecipe(id,day);});
  dialog.addEventListener('close',()=>dialog.remove(),{once:true});
@@ -6556,7 +6604,7 @@ app.innerHTML=`<div class="section-head"><div><h3>Swipe your way to dinner \u272
 <input class="field" id="recipeSearch" placeholder="Search recipes or ingredients\u2026" value="${esc(query)}" aria-label="Search recipes" style="margin-bottom:12px">
 <div class="chips" style="margin-bottom:16px">${['All',...COLLECTIONS.filter(c=>bb176CanUseLeftovers()||c!=='Leftover Magic')].map(c=>`<button class="btn ${collectionFilter===c?'primary':''}" data-collection="${esc(c)}">${esc(c)}</button>`).join('')}</div>
 ${r?`<div class="layout"><section class="card"><div class="recipe-image swipe-card" id="swipeCard" aria-label="Swipe left or right to browse recipe ideas">${imageHTML(r).replace('loading="lazy"','loading="eager"')}<div class="image-overlay"></div><span class="swipe-stamp no" id="swipeNo">SKIP</span><span class="swipe-stamp yes" id="swipeYes">NEXT</span><span class="pill">${esc(r.tag)}</span><span class="time-pill">\u25F7 ${r.mins} min</span></div><div class="recipe-body"><div class="eyebrow">${esc(r.category)} \u00B7 serves ${r.servings}</div><h3>${esc(r.name)}</h3><div class="chips"><span class="chip">${money(r.cost)} estimated</span><span class="chip">${r.ingredients.length} ingredients</span></div><div class="tip">\uD83D\uDCA1 ${esc(r.tip)}</div>
-<div class="swipe-guide">Tap the red heart to save a favourite, or ✕ to skip. Use <strong>Add to week</strong> on recipe cards below.</div><div class="swipe-actions"><button class="swipe-action no" id="skipRecipe" aria-label="Skip this recipe">\u2715</button><button class="swipe-action yes bb15-love" id="addRecipe" aria-label="Save this recipe to favourites and show another" title="Love this recipe · save to favourites">\u2665</button></div><div class="actions"><div class="bb-cta-wrap"><button class="btn bb-premium-cta" id="cookRecipe"><span class="bb-cta-icon">✦</span><span>View Recipe &amp; Cook</span></button><button class="btn bb-manual-batch-btn" id="bbFeaturedBatch">🍲 Batch cook (2 days)</button></div></div>
+<div class="swipe-guide">Tap the red heart to save a favourite, or ✕ to skip. Use <strong>Add to week</strong> on recipe cards below.</div><div class="swipe-actions"><button class="swipe-action no" id="skipRecipe" aria-label="Skip this recipe">\u2715</button><button class="swipe-action yes bb15-love" id="addRecipe" aria-label="Save this recipe to favourites and show another" title="Love this recipe · save to favourites">\u2665</button></div><div class="actions"><div class="bb-cta-wrap"><button class="btn bb-premium-cta" id="cookRecipe"><span class="bb-cta-icon">✦</span><span>View Recipe &amp; Cook</span></button><button class="btn bb-manual-batch-btn" id="bbFeaturedBatch">${bb176IsPremiumPreview()?'🍲 Batch cook (2 days)':'♛ Batch cook · Premium'}</button></div></div>
 <details style="display:none!important;margin-top:15px" id="recipeEditor"><summary style="cursor:pointer;font-weight:800">\u270E Edit picture & categories</summary><p class="muted">Choose collections (a recipe can belong to more than one):</p><div class="chips">${COLLECTIONS.map(c=>`<label class="chip" style="cursor:pointer"><input type="checkbox" data-edit-collection="${esc(c)}" ${collectionsFor(r).includes(c)?'checked':''}> ${esc(c)}</label>`).join('')}</div><p class="muted" style="margin-top:14px">Photo URL (e.g. <code>images/recipes/my-dinner.jpg</code> from your GitHub repo):</p><input class="field" id="photoUrl" value="${esc(state.recipePhotos[r.id]||r.image)}" placeholder="https://\u2026 or images/recipes/\u2026"><div class="actions"><button class="btn primary" id="savePhoto">Save picture</button><button class="btn" id="resetPhoto">Restore default</button></div><p class="muted">For reliable pictures on all devices, upload your own JPG/WebP images to your GitHub repository and paste their relative paths here. Changes made in this editor are saved on this device only.</p></details>
 </div></section><aside class="card side bb321-need-box"><h3>What you'll need</h3>${r.ingredients.map(i=>`<div class="ingredient-row"><span>${esc(i[0])}<span class="muted"> \u00B7 ${esc(i[1])}</span></span><span class="price">${money(i[2])}</span></div>`).join('')}</aside></div>`:`<div class="empty">No recipes in this collection match your search.</div>`}
 <div class="section-head" style="margin-top:25px"><div><h3>${collectionFilter==='All'?'Explore recipes':esc(collectionFilter)} (${galleryFiltered.length})</h3><p>Browse the free collection and see which recipes require Premium.</p></div></div><p class="muted" style="margin:0 0 12px">Showing ${galleryFiltered.length ? galleryPage*24+1 : 0}–${Math.min((galleryPage+1)*24,galleryFiltered.length)} of ${galleryFiltered.length} matching recipes. Locked cards cannot be planned or cooked without verified Premium access.</p><div class="grid-recipes">${galleryFiltered.slice(galleryPage*24,(galleryPage+1)*24).map(bb18GalleryCard).join('')}</div><div class="bb-gallery-pages" style="display:flex;align-items:center;justify-content:center;gap:12px;flex-wrap:wrap;margin:18px 0 28px"><button class="btn" id="bbGalleryPrev" ${galleryPage===0?'disabled':''}>← Previous 24</button><strong>Page ${galleryPage+1} of ${Math.max(1,Math.ceil(galleryFiltered.length/24))}</strong><button class="btn primary" id="bbGalleryNext" ${(galleryPage+1)*24>=galleryFiltered.length?'disabled':''}>Next 24 →</button></div>`;

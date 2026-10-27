@@ -24,7 +24,7 @@
     if (text) node.textContent = text;
     return node;
   }
-  const terms = 'Sandbox preview: the first 25 eligible Founding Members may choose a 7-day free trial, followed by £1.99/month unless canceled before billing. Standard Premium is £4.99/month; any Standard trial or annual plan requires separate approval. Payment details are collected during checkout. Verify the exact terms in Paddle checkout. Nothing here activates Premium without a verified subscription.';
+  const terms = 'Sandbox preview: the first 25 eligible Founding Members may choose a 7-day free trial, followed by £1.99/month unless canceled before billing. Standard Premium is £4.99/month after a 3-day free trial once configured on its Paddle price. There is no annual plan. Payment details are collected during checkout. Verify the exact terms in Paddle checkout. Nothing here activates Premium without a verified subscription.';
   function addTerms() {
     const comparison = $$('.bb173-tier-comparison');
     if (comparison && !$$('#bb174PricingTerms')) {
