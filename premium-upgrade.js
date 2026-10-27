@@ -34,19 +34,31 @@
   }
 
 
-  // The server, not this interface, decides Premium access.
+  // Use the same authenticated, server-verified Premium state as the Owner badge.
+  // The /api/bb173 endpoints still independently enforce AI configuration,
+  // authentication, quotas and Turnstile; this is presentation logic only.
   let passOnce=null;
-  async function paidAIAccess(){
+  async function verifiedPremiumAccess(){
+    const verified=window.BasketBossVerifiedPremium;
+    if(verified?.refresh){
+      try{
+        await verified.refresh(true);
+        if(verified.isActive()===true)return true;
+      }catch(_){/* Fail closed. */}
+    }
+    // Compatibility fallback when the badge module has not loaded.
     try{
       const s=JSON.parse(localStorage.getItem('basketboss_cloud_session_v1')||'null');
       if(typeof s?.access_token!=='string'||
          Number(s.expires_at)*1000<=Date.now()+5000)return false;
-      const r=await fetch('/api/bb173/status',{
-        cache:'no-store',
-        headers:{'Authorization':'Bearer '+s.access_token}
+      const r=await fetch('/api/subscription/status',{
+        cache:'no-store',credentials:'same-origin',redirect:'manual',
+        headers:{'Authorization':'Bearer '+s.access_token,'Accept':'application/json'}
       });
       const d=r.ok?await r.json():null;
-      return d?.status==='available'&&d?.premium_ai===true;
+      return d?.authenticated===true && d?.premiumAccess===true &&
+        (d.tier==='owner'||d.tier==='premium') &&
+        (d.mode==='sandbox'||d.mode==='live');
     }catch{return false;}
   }
   document.addEventListener('click',event=>{
@@ -55,7 +67,7 @@
     if(passOnce===trigger){passOnce=null;return;}
     event.preventDefault();
     event.stopImmediatePropagation();
-    void paidAIAccess().then(ok=>{
+    void verifiedPremiumAccess().then(ok=>{
       if(ok){passOnce=trigger;trigger.click();}
       else showPremium(trigger);
     });
