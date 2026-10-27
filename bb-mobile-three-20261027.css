@@ -139,3 +139,25 @@
     line-height:1!important;
   }
 }
+
+/* Follow-up fix: keep the mobile budget summary pill out of the My Week heading block */
+@media (max-width:740px){
+  #app.bbnext-plan .bbnext-plan-budget.bb-r7-budget .bb-r7-budget-pill{
+    position:static!important;
+    inset:auto!important;
+    grid-column:1!important;
+    grid-row:2!important;
+    width:100%!important;
+    max-width:none!important;
+    margin:12px 0 14px!important;
+    align-self:stretch!important;
+    justify-self:stretch!important;
+    z-index:auto!important;
+  }
+
+  #app.bbnext-plan .bbnext-plan-budget.bb-r7-budget .bbnext-plan-budget-text{
+    grid-column:1!important;
+    grid-row:3!important;
+    margin-top:0!important;
+  }
+}
