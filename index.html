@@ -6481,7 +6481,10 @@ function bbNextComposePlan(app){
  budgetText.append(budgetForm);
   const brandMark=document.createElement('span');brandMark.className='bb77-week-mark';
   brandMark.innerHTML='<svg viewBox="0 0 64 64" width="40" height="40" focusable="false" aria-hidden="true" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M22 18 18 10 27 14 32 6 37 14 46 10 42 18Z" fill="#2E6F40"/><path d="M21 21h22" stroke="#1B4365" stroke-width="3"/><path d="M18 30 25 23M46 30 39 23" stroke="#1B4365" stroke-width="4"/><path d="M11 31h42l-5 24H16l-5-24Z" fill="#1B4365"/><path d="M22 38v10M32 38v10M42 38v10" stroke="#FAF8F5" stroke-width="4"/></svg>';
-  budget.append(brandMark,donut,budgetText);
+   // Presentation-only emblem: preserve the original logo SVG and live budget donut.
+   const weekEmblem=document.createElement('div');weekEmblem.className='bb-myweek-emblem';
+   weekEmblem.append(brandMark,donut);
+   budget.append(weekEmblem,budgetText);
  // Old nested budget editor duplicated the controls and obscured whether
  // a target had been recorded. Keep the single in-place form above instead.
  const oldBudget=app.querySelector('.bb1748-planner-budget');
@@ -10889,6 +10892,83 @@ if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',
 #modalRoot .cook-overlay .bb-kitchen .bb-chef-boost{display:none!important}
 body[data-bbnext-view="discover"] #app .bb175-discover-heading{padding-top:calc(env(safe-area-inset-top,20px) + 12px)!important}
 @media(display-mode:standalone) and (max-width:800px){body[data-bbnext-view="discover"] #app{padding-top:max(68px,calc(env(safe-area-inset-top,20px) + 12px))!important}}
+</style>
+<style id="bb-myweek-etched-watermark-20261027">
+/* MY WEEK ONLY. Presentation-only: the live spend/target donut remains unchanged. */
+#app.bbnext-plan .bbnext-plan-budget {
+  grid-template-columns:minmax(0,220px) minmax(0,1fr)!important;
+  column-gap:clamp(16px,3vw,30px)!important;
+}
+#app.bbnext-plan .bbnext-plan-budget .bb-myweek-emblem {
+  grid-column:1!important;grid-row:1!important;
+  position:relative;isolation:isolate;
+  display:grid!important;place-items:center!important;
+  justify-self:center!important;align-self:center!important;
+  width:clamp(180px,20vw,220px)!important;
+  aspect-ratio:1/1;max-width:100%;min-width:0;
+}
+/* Reuse original basket-crown SVG, not a new image or an icon font. */
+#app.bbnext-plan .bbnext-plan-budget .bb-myweek-emblem > .bb77-week-mark {
+  position:absolute!important;inset:0!important;
+  grid-column:auto!important;grid-row:auto!important;
+  display:grid!important;place-items:center!important;
+  width:100%!important;height:100%!important;
+  margin:0!important;padding:0!important;
+  border:0!important;border-radius:0!important;
+  background:transparent!important;box-shadow:none!important;
+  opacity:.085!important;pointer-events:none!important;
+  z-index:0!important;
+}
+#app.bbnext-plan .bbnext-plan-budget .bb-myweek-emblem > .bb77-week-mark svg {
+  display:block;width:100%!important;height:100%!important;
+  max-width:none!important;max-height:none!important;
+}
+#app.bbnext-plan .bbnext-plan-budget .bb-myweek-emblem > .bbnext-plan-donut {
+  grid-column:auto!important;grid-row:auto!important;
+  position:relative!important;z-index:1!important;
+  justify-self:center!important;align-self:center!important;
+  width:120px!important;height:120px!important;
+  margin:0!important;
+  border:1px solid rgba(223,239,229,.96)!important;
+  box-shadow:0 9px 25px rgba(21,74,44,.19),0 0 0 5px rgba(255,255,255,.72)!important;
+  filter:none!important;
+}
+#app.bbnext-plan .bbnext-plan-budget .bb-myweek-emblem .bbnext-plan-donut-core {
+  position:relative;z-index:2;
+  width:87px!important;height:87px!important;
+  background:rgba(255,255,255,.98)!important;
+  border:1px solid rgba(230,240,233,.96)!important;
+  box-shadow:inset 0 1px 6px rgba(22,66,44,.08)!important;
+  backdrop-filter:blur(12px);-webkit-backdrop-filter:blur(12px);
+}
+#app.bbnext-plan .bbnext-plan-budget .bb-myweek-emblem .bbnext-plan-donut-core strong {
+  color:#194b35!important;font-size:16px!important;
+}
+#app.bbnext-plan .bbnext-plan-budget .bbnext-plan-budget-text {
+  grid-column:2!important;grid-row:1!important;
+  min-width:0;
+}
+@media(max-width:740px) {
+  #app.bbnext-plan .bbnext-plan-budget {
+    grid-template-columns:minmax(0,1fr)!important;
+    justify-items:center!important;row-gap:8px!important;
+  }
+  #app.bbnext-plan .bbnext-plan-budget .bb-myweek-emblem {
+    grid-column:1!important;grid-row:1!important;
+    width:clamp(174px,48vw,200px)!important;
+    justify-self:center!important;
+  }
+  #app.bbnext-plan .bbnext-plan-budget .bb-myweek-emblem > .bbnext-plan-donut {
+    width:108px!important;height:108px!important;
+  }
+  #app.bbnext-plan .bbnext-plan-budget .bb-myweek-emblem .bbnext-plan-donut-core {
+    width:79px!important;height:79px!important;
+  }
+  #app.bbnext-plan .bbnext-plan-budget .bbnext-plan-budget-text {
+    grid-column:1!important;grid-row:2!important;
+    width:100%;text-align:center!important;
+  }
+}
 </style>
 <script defer src="bb-consolidated-qa.js?v=20261025-r1"></script>
 <script defer src="bb-beta-five-nav.js?v=20261025-five"></script>
