@@ -3,6 +3,84 @@ const MAX_BODY=1024;
 // A Founder seat is a temporary hold until Paddle confirms a subscription.
 // Release only AFTER Paddle confirms its unpaid transaction is canceled.
 const FOUNDER_HOLD_MS=60*60*1000;
+// A missing transaction ID is an unfinished server-side checkout, not a paid
+// Founder seat. A 30-second lease prevents two taps from racing Paddle.
+const PENDING_RECOVERY_MS=30*1000;
+const TX_ID=/^txn_[a-z0-9]{26}$/;
+
+function paddleErrorText(text){
+  return String(text||'').replace(/[\r\n<>]/g,' ').replace(/(?:live|test)_[a-z0-9]{12,}/gi,'[redacted]')
+    .slice(0,180);
+}
+
+// Keep the explicit HTTP rejection reason visible without leaking the API key.
+// On network failures, timeouts, 5xx or unparseable success, the outcome is
+// ambiguous: keep the claim and its Founder reservation for safe recovery.
+async function createPaddleCheckoutTransaction(env,priceId,claimId,plan){
+  const host=isLive(env)?'https://api.paddle.com':'https://sandbox-api.paddle.com';
+  const key=isLive(env)?env.PADDLE_LIVE_API_KEY:env.PADDLE_SANDBOX_API_KEY;
+  let response;
+  try{
+    response=await fetch(host+'/transactions',{
+      method:'POST',redirect:'manual',signal:AbortSignal.timeout(9000),
+      headers:{Authorization:'Bearer '+key,'Content-Type':'application/json'},
+      body:JSON.stringify({items:[{price_id:priceId,quantity:1}],collection_mode:'automatic',
+        custom_data:{bb_claim_id:claimId,bb_plan:plan,bb_environment:billingMode(env)}})
+    });
+  }catch(err){
+    console.error('Paddle checkout transport error',err?.name||'request_failed');
+    throw Error('Paddle did not confirm whether the transaction was created. Please retry after a short interval.');
+  }
+  const payload=await response.json().catch(()=>null);
+  if(!response.ok){
+    const code=paddleErrorText(payload?.error?.code||'request_rejected');
+    const detail=paddleErrorText(payload?.error?.detail||'Paddle rejected the request');
+    const requestId=paddleErrorText(payload?.meta?.request_id||'');
+    const err=Error('Paddle HTTP '+response.status+' — '+code+': '+detail+
+      (requestId?' (request '+requestId+')':''));
+    // A definitive HTTP rejection did not create a transaction; unlike a
+    // timeout or HTTP 5xx, its uncompleted claim may be safely rolled back.
+    err.paddleRejected=response.status>=400&&response.status<500&&response.status!==408;
+    throw err;
+  }
+  if(!TX_ID.test(payload?.data?.id||''))throw Error('Paddle returned an uncertain transaction result. Checkout reservation retained for safety.');
+  return payload.data;
+}
+
+async function verifyPendingFounderSeat(db,claim){
+  if(claim.plan!=='founder')return true;
+  if(!Number.isInteger(claim.slot_no)||claim.slot_no<1||claim.slot_no>25)return false;
+  const hash=await digestHex(claim.claim_id);
+  const seat=await db.prepare(`SELECT state,user_id,reservation_token_hash,paddle_subscription_id
+    FROM bb_founder_slots WHERE slot_no=?`).bind(claim.slot_no).first();
+  return seat?.state==='reserved'&&seat.user_id===claim.user_id&&
+    seat.reservation_token_hash===hash&&!seat.paddle_subscription_id;
+}
+
+// Exact-match cleanup; never touches confirmed Founder subscriptions or other
+// people's reservations. The two writes are an atomic Cloudflare D1 batch.
+async function releasePendingWithoutPaddle(db,claim){
+  if(claim.claim_state!=='pending'||claim.transaction_id!=null||
+     !await verifyPendingFounderSeat(db,claim))return false;
+  const operations=[];
+  if(claim.plan==='founder'){
+    const hash=await digestHex(claim.claim_id);
+    operations.push(db.prepare(`UPDATE bb_founder_slots
+      SET state='available',user_id=NULL,reservation_token_hash=NULL,
+        reservation_expires_at_ms=NULL,updated_at_ms=?
+      WHERE slot_no=? AND state='reserved' AND user_id=?
+        AND reservation_token_hash=? AND paddle_subscription_id IS NULL
+      RETURNING slot_no`).bind(Date.now(),claim.slot_no,claim.user_id,hash));
+  }
+  operations.push(db.prepare(`DELETE FROM bb_billing_claims
+    WHERE claim_id=? AND user_id=? AND plan=? AND claim_state='pending'
+      AND transaction_id IS NULL AND created_at_ms=? RETURNING claim_id`)
+      .bind(claim.claim_id,claim.user_id,claim.plan,claim.created_at_ms));
+  const results=await db.batch(operations);
+  // Fail closed if a row changed unexpectedly. No paid claim is deleted.
+  return results.length===operations.length&&results.every(x=>x.results?.length===1);
+}
+
 async function releaseUnpaidFounder(env,db,claim){
   if(claim?.plan!=='founder'||claim.claim_state!=='checkout_created'||
      !/^txn_[a-z0-9]{26}$/.test(claim.transaction_id||''))return false;
@@ -76,10 +154,34 @@ export async function onRequestPost({request,env}) {
     if(plan==='founder')await releaseExpiredFounderHolds(env,db);
     const hasSub=await db.prepare("SELECT 1 AS found FROM bb_paid_entitlements WHERE user_id=? AND status IN ('trialing','active') LIMIT 1").bind(user.id).first();
     if(hasSub) return json({error:'You already have an eligible subscription'},409);
-    const existing=await db.prepare(`SELECT claim_id,user_id,plan,slot_no,claim_state,transaction_id
+    const existing=await db.prepare(`SELECT claim_id,user_id,plan,price_id,slot_no,claim_state,transaction_id,created_at_ms
       FROM bb_billing_claims WHERE user_id=? AND claim_state IN ('pending','checkout_created') LIMIT 1`).bind(user.id).first();
+    const now=Date.now();let claimId=crypto.randomUUID(),slot=null,recovered=null;
     if(existing){
-      if(plan==='founder'&&existing.plan==='founder'&&existing.claim_state==='checkout_created'){
+      if(existing.claim_state==='pending' && existing.transaction_id==null){
+        // Reuse an orphan's ORIGINAL Founder reservation; never allocate a 2nd
+        // seat or accidentally consume one of the first 25 places twice.
+        if(!Number.isFinite(existing.created_at_ms)||now-existing.created_at_ms<PENDING_RECOVERY_MS)
+          return json({error:'Checkout is being prepared. Please try again in 30 seconds.'},409);
+        if(!await verifyPendingFounderSeat(db,existing))
+          return json({error:'Founder reservation needs secure reconciliation; no new place was taken'},409);
+        // Atomic compare-and-swap lease. Another tap cannot create in parallel.
+        const lease=await db.prepare(`UPDATE bb_billing_claims SET created_at_ms=?
+          WHERE claim_id=? AND user_id=? AND claim_state='pending'
+            AND transaction_id IS NULL AND created_at_ms=?
+          RETURNING claim_id`).bind(now,existing.claim_id,user.id,existing.created_at_ms).first();
+        if(!lease)return json({error:'Checkout is already being recovered. Please try again shortly.'},409);
+        recovered={...existing,created_at_ms:now};
+        if(existing.plan===plan && existing.price_id===priceId){
+          claimId=existing.claim_id;slot=existing.slot_no;
+        }else{
+          // Switching plans: release the old uncompleted claim/Founder hold,
+          // then create a normal fresh claim for the selected plan.
+          if(!await releasePendingWithoutPaddle(db,recovered))
+            return json({error:'Previous uncompleted checkout could not be safely released'},503);
+          recovered=null;
+        }
+      }else if(plan==='founder'&&existing.plan==='founder'&&existing.claim_state==='checkout_created'){
         const tx=await paddleApi(env,'/transactions/'+existing.transaction_id);
         if(tx?.id===existing.transaction_id && tx.custom_data?.bb_claim_id===existing.claim_id){
           if(['draft','ready'].includes(tx.status))
@@ -88,42 +190,49 @@ export async function onRequestPost({request,env}) {
             // Reclaim the canceled checkout, then create a fresh Founder transaction.
           }else return json({error:'Checkout awaiting payment confirmation; try again shortly'},409);
         }else return json({error:'Existing checkout could not be verified'},409);
-      }else return json({error:'Existing checkout pending; contact support to reconcile before starting another'},409);
+      }else return json({error:'Existing checkout awaiting confirmation; contact support before starting another'},409);
     }
-    const now=Date.now(); const claimId=crypto.randomUUID(); let slot=null;
-    const tokenHash=await digestHex(claimId);
-    if(plan==='founder') {
-      // Atomic UPDATE: only one simultaneous customer can claim each numbered slot.
-      // Do NOT recycle a slot after Paddle has created a payable transaction.
-      const row=await db.prepare(`UPDATE bb_founder_slots SET state='reserved',user_id=?,reservation_token_hash=?,reservation_expires_at_ms=NULL,updated_at_ms=?
-        WHERE slot_no=(SELECT slot_no FROM bb_founder_slots WHERE state='available' ORDER BY slot_no LIMIT 1)
-        AND state='available' RETURNING slot_no`).bind(user.id,tokenHash,now).first();
-      if(!row) return json({error:'All 25 founding places are currently claimed or reserved'},409);
-      slot=row.slot_no;
-    }
-    try {
-      await db.prepare(`INSERT INTO bb_billing_claims (claim_id,user_id,plan,price_id,slot_no,created_at_ms)
-        VALUES (?,?,?,?,?,?)`).bind(claimId,user.id,plan,priceId,slot,now).run();
-    } catch(err) {
-      // Intentionally leave reserved founder seat untouched if DB integrity is uncertain.
-      console.error('BasketBoss claim insert failed',err);
-      return json({error:'Checkout preparation failed; contact support before retrying'},503);
+    if(!recovered){
+      const tokenHash=await digestHex(claimId);
+      if(plan==='founder'){
+        const row=await db.prepare(`UPDATE bb_founder_slots SET state='reserved',user_id=?,reservation_token_hash=?,reservation_expires_at_ms=NULL,updated_at_ms=?
+          WHERE slot_no=(SELECT slot_no FROM bb_founder_slots WHERE state='available' ORDER BY slot_no LIMIT 1)
+          AND state='available' RETURNING slot_no`).bind(user.id,tokenHash,now).first();
+        if(!row)return json({error:'All 25 founding places are currently claimed or reserved'},409);
+        slot=row.slot_no;
+      }
+      try{
+        await db.prepare(`INSERT INTO bb_billing_claims (claim_id,user_id,plan,price_id,slot_no,created_at_ms)
+          VALUES (?,?,?,?,?,?)`).bind(claimId,user.id,plan,priceId,slot,now).run();
+      }catch(err){
+        console.error('BasketBoss claim insert failed',err);
+        return json({error:'Checkout preparation failed; reservation retained for safety'},503);
+      }
     }
     let transaction;
-    try {
-      transaction=await paddleApi(env,'/transactions','POST',{
-        items:[{price_id:priceId,quantity:1}],collection_mode:'automatic',
-        custom_data:{bb_claim_id:claimId,bb_plan:plan,bb_environment:billingMode(env)}
-      });
-    } catch(err) {
-      console.error('Paddle transaction creation failed; claim held for reconciliation',err);
-      return json({error:'Checkout could not be prepared; claim retained for safe reconciliation'},502);
+    try{
+      transaction=await createPaddleCheckoutTransaction(env,priceId,claimId,plan);
+    }catch(err){
+      console.error('Paddle transaction creation:',String(err?.message||'unknown').slice(0,300));
+      if(err?.paddleRejected===true){
+        // HTTP 4xx: Paddle expressly rejected creation, so there is no remote
+        // transaction to reconcile. Release only this claimant's pending hold.
+        const claim={claim_id:claimId,user_id:user.id,plan,slot_no:slot,
+          claim_state:'pending',transaction_id:null,created_at_ms:now};
+        let released=false;
+        try{released=await releasePendingWithoutPaddle(db,claim);}catch(e){console.error('Pending-claim rollback failed',e);}
+        return json({error:err.message+(released?'':' — local claim retained for safe reconciliation')},502);
+      }
+      return json({error:String(err?.message||'Paddle transaction creation uncertain')},502);
     }
-    if(!/^txn_[a-z0-9]{26}$/.test(transaction?.id||''))
-      return json({error:'Invalid transaction response; claim held for reconciliation'},502);
-    await db.prepare(`UPDATE bb_billing_claims SET transaction_id=?,claim_state='checkout_created'
-      WHERE claim_id=? AND user_id=? AND transaction_id IS NULL`).bind(transaction.id,claimId,user.id).run();
-    return json({transactionId:transaction.id,plan,mode:billingMode(env)});
+    // Only the winning lease can finish the claim; do not leak a transaction
+    // unless the user/account reservation was durably linked to it.
+    const saved=await db.prepare(`UPDATE bb_billing_claims SET transaction_id=?,claim_state='checkout_created'
+      WHERE claim_id=? AND user_id=? AND plan=? AND claim_state='pending'
+        AND transaction_id IS NULL AND created_at_ms=? RETURNING claim_id`)
+      .bind(transaction.id,claimId,user.id,plan,now).first();
+    if(!saved)return json({error:'Paddle created a transaction, but its local claim could not be linked; contact support before retrying'},503);
+    return json({transactionId:transaction.id,plan,mode:billingMode(env),recovered:!!recovered});
   } catch(err) {
     console.error('BasketBoss checkout server error',err);
     return json({error:'Billing database unavailable; no checkout started'},503);
