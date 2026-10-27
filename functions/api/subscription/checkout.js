@@ -8,9 +8,21 @@ const FOUNDER_HOLD_MS=60*60*1000;
 const PENDING_RECOVERY_MS=30*1000;
 const TX_ID=/^txn_[a-z0-9]{26}$/;
 
+// Retain Paddle's diagnostic text but redact any accidentally echoed API token.
 function paddleErrorText(text){
-  return String(text||'').replace(/[\r\n<>]/g,' ').replace(/(?:live|test)_[a-z0-9]{12,}/gi,'[redacted]')
-    .slice(0,180);
+  return String(text??'').replace(/[\r\n<>]/g,' ').replace(/(?:live|test)_[a-z0-9]{12,}/gi,'[redacted]')
+    .slice(0,700);
+}
+function paddleFieldErrors(errors){
+  if(!Array.isArray(errors))return [];
+  return errors.slice(0,12).map(value=>({
+    field:paddleErrorText(value?.field),
+    message:paddleErrorText(value?.message)
+  }));
+}
+function paddleErrorInfo(err){
+  return err?.paddleError && typeof err.paddleError==='object'
+    ?{paddle:err.paddleError}:{};
 }
 
 // Keep the explicit HTTP rejection reason visible without leaking the API key.
@@ -33,13 +45,19 @@ async function createPaddleCheckoutTransaction(env,priceId,claimId,plan){
   }
   const payload=await response.json().catch(()=>null);
   if(!response.ok){
-    const code=paddleErrorText(payload?.error?.code||'request_rejected');
-    const detail=paddleErrorText(payload?.error?.detail||'Paddle rejected the request');
-    const requestId=paddleErrorText(payload?.meta?.request_id||'');
-    const err=Error('Paddle HTTP '+response.status+' — '+code+': '+detail+
-      (requestId?' (request '+requestId+')':''));
-    // A definitive HTTP rejection did not create a transaction; unlike a
-    // timeout or HTTP 5xx, its uncompleted claim may be safely rolled back.
+    // Paddle's actual upstream status and JSON details must survive our public
+    // 502 response. The UI already displays the top-level error string.
+    const code=paddleErrorText(payload?.error?.code||'unavailable');
+    const detail=paddleErrorText(payload?.error?.detail||'No JSON error detail returned by Paddle');
+    const errors=paddleFieldErrors(payload?.error?.errors);
+    const requestId=paddleErrorText(payload?.meta?.request_id||response.headers.get('Paddle-Request-Id')||'');
+    const firstField=errors[0]?(' | '+errors[0].field+': '+errors[0].message):'';
+    const msg=('Paddle HTTP '+response.status+' — '+code+': '+detail+firstField+
+      (requestId?' (request '+requestId+')':'')).slice(0,1500);
+    const err=Error(msg);
+    err.paddleError={http_status:response.status,code,detail,errors,request_id:requestId};
+    // Only a definitive 4xx rejection allows rollback. Timeout/5xx may have
+    // created a remote transaction; leave the original claim for reconciliation.
     err.paddleRejected=response.status>=400&&response.status<500&&response.status!==408;
     throw err;
   }
@@ -221,9 +239,17 @@ export async function onRequestPost({request,env}) {
           claim_state:'pending',transaction_id:null,created_at_ms:now};
         let released=false;
         try{released=await releasePendingWithoutPaddle(db,claim);}catch(e){console.error('Pending-claim rollback failed',e);}
-        return json({error:err.message+(released?'':' — local claim retained for safe reconciliation')},502);
+        return json({
+          error:err.message+(released?'':' — local claim retained for safe reconciliation'),
+          ...paddleErrorInfo(err),
+          claim_state:released?'released':'needs_reconciliation'
+        },502);
       }
-      return json({error:String(err?.message||'Paddle transaction creation uncertain')},502);
+      return json({
+        error:String(err?.message||'Paddle transaction creation uncertain'),
+        ...paddleErrorInfo(err),
+        claim_state:'pending_reconciliation'
+      },502);
     }
     // Only the winning lease can finish the claim; do not leak a transaction
     // unless the user/account reservation was durably linked to it.
