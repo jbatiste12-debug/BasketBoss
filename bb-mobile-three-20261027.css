@@ -1,0 +1,141 @@
+/* BasketBoss iPhone layout corrections — 27 October 2026.
+   Presentation only: existing budget math, watermark, food data, and billing are unchanged. */
+
+/* Resolve the older two-column r7 rules conflicting with the existing
+   centre-emblem watermark wrapper. Put the emblem and text in separate rows. */
+@media (max-width:740px) {
+  #app.bbnext-plan .bbnext-plan-budget.bb-r7-budget {
+    display:grid!important;
+    grid-template-columns:minmax(0,1fr)!important;
+    grid-template-rows:auto auto!important;
+    align-items:start!important;
+    justify-items:stretch!important;
+    gap:12px!important;
+    padding:18px 16px!important;
+  }
+  #app.bbnext-plan .bbnext-plan-budget.bb-r7-budget .bb-myweek-emblem {
+    grid-column:1!important;
+    grid-row:1!important;
+    display:grid!important;
+    grid-template-columns:minmax(0,1fr)!important;
+    grid-template-rows:minmax(0,1fr)!important;
+    place-items:center!important;
+    justify-self:center!important;
+    align-self:center!important;
+    width:min(52vw,184px)!important;
+    max-width:100%!important;
+    margin:0 auto!important;
+  }
+  #app.bbnext-plan .bbnext-plan-budget.bb-r7-budget .bb-myweek-emblem > .bb77-week-mark {
+    display:grid!important;
+    grid-column:1!important;
+    grid-row:1!important;
+  }
+  #app.bbnext-plan .bbnext-plan-budget.bb-r7-budget .bb-myweek-emblem > .bbnext-plan-donut {
+    grid-column:1!important;
+    grid-row:1!important;
+    justify-self:center!important;
+    align-self:center!important;
+    width:108px!important;
+    height:108px!important;
+    margin:0!important;
+  }
+  #app.bbnext-plan .bbnext-plan-budget.bb-r7-budget .bbnext-plan-budget-text {
+    grid-column:1!important;
+    grid-row:2!important;
+    width:100%!important;
+    min-width:0!important;
+    text-align:left!important;
+    align-self:start!important;
+    position:relative!important;
+    z-index:1!important;
+  }
+  #app.bbnext-plan .bbnext-plan-budget.bb-r7-budget .bbnext-plan-budget-text h2 {
+    font-size:clamp(28px,7.5vw,34px)!important;
+    line-height:1.14!important;
+    margin:7px 0 8px!important;
+  }
+}
+
+/* The Plan header already contains an accessible Settings control. Remove
+   the older duplicate mobile floating shortcut that covers Kitchen content. */
+@media (max-width:720px) {
+  body[data-bbnext-view]:not([data-bbnext-view="week"]) #bbR6QuickSettings {
+    display:none!important;
+  }
+}
+
+/* Main Kitchen selector: identical soft-square art frames and aligned labels.
+   The existing emoji, labels and food-selection handlers are preserved. */
+@media (max-width:740px) {
+  #app #bb173ShopFridge .bb76-store-body .bb173-shop-tiles button {
+    display:flex!important;
+    flex-direction:column!important;
+    align-items:center!important;
+    justify-content:flex-start!important;
+    gap:7px!important;
+    min-height:148px!important;
+    padding:11px 5px 9px!important;
+    line-height:1.25!important;
+    text-align:center!important;
+  }
+  #app #bb173ShopFridge .bb76-store-body .bb173-shop-tiles button > .bb173-emoji {
+    width:62px!important;
+    height:62px!important;
+    min-width:62px!important;
+    min-height:62px!important;
+    display:grid!important;
+    place-items:center!important;
+    flex:none!important;
+    font-size:31px!important;
+    line-height:1!important;
+    background:#f5f5ee!important;
+    border:1px solid #e7e5da!important;
+    border-radius:14px!important;
+  }
+  #app #bb173ShopFridge .bb76-store-body .bb173-shop-tiles button > span:nth-of-type(2) {
+    display:block!important;
+    font-size:13px!important;
+    font-weight:800!important;
+    line-height:1.25!important;
+    overflow-wrap:anywhere!important;
+  }
+  #app #bb173ShopFridge .bb76-store-body .bb173-shop-tiles button > small {
+    margin-top:auto!important;
+    font-size:11px!important;
+  }
+}
+
+/* Make a Meal: photographs and emoji fallbacks share the same art frame.
+   Do not add or replace food assets or update pantry quantities. */
+@media (max-width:600px) {
+  body #inventorySections button[data-food].tile.bb74-food-tile .bb-tile-image {
+    width:62px!important;
+    height:62px!important;
+    min-width:62px!important;
+    min-height:62px!important;
+    background:#f5f5ee!important;
+    border:1px solid #e7e5da!important;
+    border-radius:14px!important;
+    display:grid!important;
+    place-items:center!important;
+    overflow:hidden!important;
+  }
+  body #inventorySections button[data-food].tile.bb74-food-tile .bb-food-photo {
+    display:block!important;
+    width:100%!important;
+    height:100%!important;
+    object-fit:contain!important;
+    border-radius:12px!important;
+  }
+  body #inventorySections button[data-food].tile.bb74-food-tile .bb-food-fallback {
+    display:grid!important;
+    place-items:center!important;
+    width:100%!important;
+    height:100%!important;
+  }
+  body #inventorySections button[data-food].tile.bb74-food-tile .bb-food-emoji {
+    font-size:32px!important;
+    line-height:1!important;
+  }
+}
