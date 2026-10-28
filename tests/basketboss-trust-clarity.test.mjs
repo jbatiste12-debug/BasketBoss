@@ -7,20 +7,15 @@ const [index,terms,pricing,compare,privacy,subscription] = await Promise.all([
   read('index.html'),read('terms.html'),read('pricing-sandbox.html'),read('compare.html'),read('privacy.html'),read('subscriptions.html')
 ]);
 
-test('Homepage introduces genuine family-built founder story with clear links',()=>{
-  assert.match(index, /id="bb2026Trust"[^>]*class="bb2026-trust"/);
-  assert.match(index, /Built for busy families, by a dad of four/);
-  assert.match(index, /100 recipes free/);
-  assert.match(index, /This is a growing app and genuine feedback is welcome/);
+test('Founder story lives on Why BasketBoss, not on working app',()=>{
+  assert.doesNotMatch(index, /id="bb2026Trust"/);
+  assert.doesNotMatch(index, /Built for busy families, by a dad of four/);
+  assert.match(compare, /Made by a dad of four/);
   assert.match(index, /href="compare.html"/);
   assert.match(index, /href="privacy.html"/);
   assert.match(index, /href="subscriptions.html"/);
-  assert.match(index, /href="mailto:support@basketboss\.co\.uk\?subject=BasketBoss%20early%20feedback"/);
-  assert.match(index, /<style id="bb2026TrustStyle">/);
-  assert.ok(index.indexOf('id="bb2026Trust"')>index.indexOf('<section class="hero">'));
-  assert.ok(index.indexOf('id="bb2026Trust"')<index.indexOf('<div class="stats">'));
+  assert.match(index, /mailto:support@basketboss.co.uk/);
 });
-
 test('Comparison page is accurate, accessible and links to existing actual product',()=>{
   assert.match(compare, /<html lang="en-GB">/);
   assert.match(compare, /<h1>More dinner ideas/);

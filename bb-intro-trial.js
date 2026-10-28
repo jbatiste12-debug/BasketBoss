@@ -140,6 +140,8 @@
   dialog.addEventListener('cancel', event => { event.preventDefault(); dismiss(); });
   dialog.addEventListener('click', event => { if (event.target === dialog) dismiss(); });
 
+  // Public presentation-only open hook; original Paddle links and checkout stay authoritative.
+  window.BBIntroTrialOffer = { open: () => openOffer(true) };
   // Keep the existing private Preview replay without exposing a public bypass.
   if (location.hostname === 'basketboss-preview.basketboss-site.pages.dev' &&
       new URLSearchParams(location.search).get('bb_trial_offer_preview') === '1') {

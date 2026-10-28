@@ -98,7 +98,7 @@
  }
  window.BB173WelcomeSplash={shouldShow,isPreview,show:()=>show(true),replay};
  const init=()=>{
-   if(shouldShow())show();
+   if(shouldShow()&&!window.BBOnboard2026?.willShow())show();
    const footer=document.querySelector('footer');
    if(footer&&!footer.querySelector('#bb173WelcomeReplay')){
      const btn=document.createElement('button');btn.type='button';btn.id='bb173WelcomeReplay';btn.textContent='Replay BasketBoss logo animation';
