@@ -5,7 +5,7 @@
  */
 (()=>{'use strict';
  const SHOW_FOUNDER_STORY=false;
- const KEY='bb_onboarding_v2_20261028';
+ const KEY='bb_onboarding_fresh_once_20261028_v1'; // New rollout only: never clear earlier state or credentials.
  const PREVIEW_HOST='basketboss-preview.basketboss-site.pages.dev';
  const LOGO='icons/basketboss-crowned-v1766-512.png';
  const STEP_MAX=9;
@@ -27,21 +27,12 @@
  const validSession=()=>{try{const s=JSON.parse(read('basketboss_cloud_session_v1')||'null');return !!(s?.user?.id&&typeof s.access_token==='string'&&Number(s.expires_at)*1000>Date.now()+5000)}catch(_){return false}};
  const installed=()=>{try{return window.matchMedia('(display-mode: standalone)').matches||navigator.standalone===true}catch(_){return navigator.standalone===true}};
  const preview=()=>location.hostname===PREVIEW_HOST&&new URLSearchParams(location.search).get('bb_onboarding_v2_preview')==='1';
- function returningUser(){
-   if(read('basketboss_onboarding_seen_v1')==='true')return true;
-   if(validSession())return true;
-   try{const s=JSON.parse(read('basketboss_321_unified_state_v1')||'null');
-     if(s&&((s.planned?.length||0)||(s.plannedDesserts?.length||0)||(s.customPantry?.length||0)||Object.values(s.pantry||{}).some(Boolean)))return true;
-   }catch(_){}
-   return !!read('basketboss_v172_personal_food_tiles_v1');
- }
  function restoreState(){try{const v=JSON.parse(read(KEY)||'null');return v&&typeof v==='object'?v:null}catch(_){return null}}
  function willShow(){
+   // The new version deliberately runs once for everyone, including signed-in
+   // members and users with existing plans, without deleting older state.
    if(preview())return true;
-   const previous=restoreState();
-   if(previous?.complete)return false;
-   if(previous?.started)return true; // Continue onboarding after email confirmation/reload.
-   return !returningUser();
+   return restoreState()?.complete!==true;
  }
  // Returning and paying members keep their existing opening experience.
  window.BBOnboard2026={willShow,preview,getPreferences:()=>({house:state.house,region:state.region,goals:[...state.goals],diets:[...state.diets]})};
@@ -76,11 +67,20 @@
        art='<div class="bbob-intro-art bbob-restored-animation">'+originalCrownAnimation()+'<span>Built for real-life food shopping.</span></div>';
        actions=btn('Let’s get started','next')+btn('Browse 100 free recipes instead','free','link');break;
      case 1:
-       eyebrow='YOUR ACCOUNT';headline='One account. Your plans, wherever you are.';
-       description='Create a free account or sign in using the existing secure email form. No card needed. If your email needs confirmation, you can continue setup and confirm later.';
-       art='<div id="bbobAuthSlot" class="bbob-auth-slot"></div><div id="bbobMessageSlot" class="bbob-message-slot" aria-live="polite"></div>';
-       foot='If you create an account, you may need to confirm your email before signing in.';
-       actions=btn('Continue setup','next','outline')+btn('Explore Free without an account','free','link');break;
+       eyebrow='YOUR ACCOUNT';
+       if(validSession()){
+         headline='You’re already signed in.';
+         description='Your existing BasketBoss account and saved meals are ready. There is no need to sign in again.';
+         art='<div class="bbob-auth-ready" role="status">✓ Your account is connected</div>';
+         actions=btn('Continue setup','next')+btn('Explore Free','free','link');
+       }else{
+         headline='One account. Your plans, wherever you are.';
+         description='Create a free account or sign in using the existing secure email form. No card needed. If your email needs confirmation, you can continue setup and confirm later.';
+         art='<div id="bbobAuthSlot" class="bbob-auth-slot"></div><div id="bbobMessageSlot" class="bbob-message-slot" aria-live="polite"></div>';
+         foot='If you create an account, you may need to confirm your email before signing in.';
+         actions=btn('Continue setup','next','outline')+btn('Explore Free without an account','free','link');
+       }
+       break;
      case 2:
        eyebrow='A LITTLE ABOUT YOUR HOUSEHOLD';headline='How many people are you usually cooking for?';
        description='Choose a starting household size and shopping region. These update your actual portions and estimated prices when you finish. Both can be changed later.';
@@ -134,7 +134,8 @@
    form.hidden=false;
    id('cloud-email')?.focus({preventScroll:true});
  }
- function render(){if(!host)return;restoreAuth();host.innerHTML=content();if(state.step===1){if(validSession()){state.step=2;persist();render();return;}mountAuth();}
+ function render(){if(!host)return;restoreAuth();host.innerHTML=content();
+   if(state.step===1&&!validSession())mountAuth();
    host.scrollTop=0;host.querySelector('[data-bbob="next"]')?.focus({preventScroll:true});
  }
  // No changes to app state take place on preview, survey selection or Back.
@@ -195,7 +196,7 @@
  function begin(){
    if(!willShow()||host)return;
    state=restoreState()||state;
-   if(!preview()&&returningUser()&&!state.started)return;
+   // Everyone sees the new rollout once; saved recipes, plans and sessions stay intact.
    if(!state.started){state={step:0,house:'',goals:[],diets:[],region:'',started:true,complete:false};persist();}
    if(!Number.isInteger(state.step)||state.step<0||state.step>STEP_MAX)state.step=0;
    oldOverflow=document.body.style.overflow;
