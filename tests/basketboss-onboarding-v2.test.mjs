@@ -9,8 +9,8 @@ const style=fs.readFileSync('bb-onboarding-v2.css','utf8');
 const compare=fs.readFileSync('compare.html','utf8');
 
 test('new onboarding runs before legacy animation without modifying its artwork',()=>{
- assert.match(index,/bb-onboarding-v2\.js\?v=20261028-onboard-v2/);
- assert.match(index,/bb-onboarding-v2\.css\?v=20261028-onboard-v2/);
+ assert.match(index,/bb-onboarding-v2\.js\?v=20261028-onboard-v3/);
+ assert.match(index,/bb-onboarding-v2\.css\?v=20261028-onboard-v3/);
  assert.ok(index.indexOf('bb-onboarding-v2.js')<index.indexOf('bb-welcome-splash.js'));
  assert.match(index,/if\(window\.BBOnboard2026\?\.willShow\(\)\)return;/);
  assert.match(splash,/!window\.BBOnboard2026\?\.willShow\(\)/);
@@ -28,7 +28,9 @@ test('all required onboarding screens and actual logo are present',()=>{
  assert.match(onboarding,/Sheet-pan chicken fajitas/);
  assert.match(onboarding,/release-assets\/basketboss-v17\/images\/existing\/fajitas\.webp/);
  assert.match(onboarding,/REGIONS/);
- assert.match(onboarding,/bb307SaveMarket/);
+ assert.match(onboarding,/window\.bb307SwitchIsland/);
+ assert.match(onboarding,/window\.BasketBossSetOnboardingServings/);
+ assert.match(index,/id="bb307SaveMarket"/);
 });
 test('Free is an explicit no-payment option and Premium opens existing offer',()=>{
  assert.match(onboarding,/Continue with BasketBoss Free/);
@@ -48,4 +50,42 @@ test('legacy Paddle, Cloud D1 quota and camera routes are untouched',()=>{
  assert.match(index,/id="cloud-login"/);
  assert.match(index,/data-bbtrial-free/);
  assert.doesNotMatch(onboarding,/consumeQuota|siteVerify|Paddle\.Checkout|MediaDevices\.getUserMedia/);
+});
+
+
+test('original crowned-basket welcome animation is restored within onboarding without extra modal',()=>{
+ const splashCss=fs.readFileSync('bb-welcome-splash.css','utf8');
+ assert.match(splashCss,/@keyframes bbwsBasketSlide/);
+ assert.match(splashCss,/@keyframes bbwsCrownDrop/);
+ assert.match(onboarding,/originalCrownAnimation/);
+ assert.match(style,/animation:bbwsBasketSlide/);
+ assert.match(style,/animation:bbwsCrownDrop/);
+ assert.match(style,/prefers-reduced-motion:reduce/);
+ assert.doesNotMatch(onboarding,/BB173WelcomeSplash\.show\(/);
+});
+
+test('real three Free recipe previews use canonical data and no interactive app write actions',()=>{
+ const recipes=JSON.parse(fs.readFileSync('recipes.json','utf8'));
+ for(const id of ['fajitas','creamy-pasta','chickpea-curry']){
+   const meal=recipes.find(r=>r.id===id);
+   assert.ok(meal,'Catalogue recipe missing: '+id);
+   assert.ok(onboarding.includes(meal.name));
+   assert.ok(onboarding.includes(meal.image));
+ }
+ assert.match(onboarding,/class="recipe-body"/);
+ assert.match(onboarding,/class="eyebrow"/);
+ assert.match(onboarding,/bbob-preview-disclaimer/);
+ assert.doesNotMatch(onboarding, /\b(?:addRecipe|bbPlanDessert|bb307SetPantry|bbShopV7Close|Paddle\.Checkout)\s*\(/);
+});
+
+test('survey stores choices and uses original household and region setters only on completion',()=>{
+ assert.match(onboarding,/function applyChosenPreferences/);
+ assert.match(onboarding,/function complete\(goPremium=false\)/);
+ assert.match(onboarding,/window\.BasketBossSetOnboardingServings/);
+ assert.match(onboarding,/window\.bb307SwitchIsland/);
+ assert.match(onboarding,/basketboss_321_unified_state_v1/);
+ assert.doesNotMatch(onboarding,/localStorage\.setItem\(['"]basketboss_321_unified_state_v1/);
+ assert.match(index,/window\.BasketBossSetOnboardingServings\s*=\s*function/);
+ assert.match(index,/if\(!persist\(\)\)\{state\.servings=previous;return false;\}/);
+ assert.match(index,/window\.bb307SwitchIsland=bb307SwitchIsland/);
 });

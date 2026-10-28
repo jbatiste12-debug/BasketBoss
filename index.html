@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
 <base href="../../">
-<link rel="stylesheet" href="bb-onboarding-v2.css?v=20261028-onboard-v2">
+<link rel="stylesheet" href="bb-onboarding-v2.css?v=20261028-onboard-v3">
 <link rel="stylesheet" href="bb-ux-cleanup.css?v=20261028-ux1">
 <meta charset="utf-8"><meta http-equiv="Content-Type" content="text/html; charset=utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
 <meta name="apple-mobile-web-app-capable" content="yes"><meta name="apple-mobile-web-app-title" content="BasketBoss">
@@ -4202,6 +4202,19 @@ function bb307ApplyRememberedMarket(){
   for(let k=0;k<recipe.ingredients.length;k++)if(Number.isFinite(base.lines[k]))recipe.ingredients[k][2]=Math.round(base.lines[k]*factor*100)/100;
  }
 }
+// Only the onboarding UI calls this opt-in bridge, after Finish/Explore Free.
+// It delegates to the existing app persistence/render functions: no new
+// calculation, customer, authentication or billing logic.
+window.BasketBossSetOnboardingServings=function(size){
+ const requested=Number(size);
+ if(!Number.isInteger(requested)||requested<1||requested>12)return false;
+ const previous=state.servings;
+ if(previous===requested)return true;
+ state.servings=requested;
+ if(!persist()){state.servings=previous;return false;}
+ render();
+ return true;
+};
 window.bb307SwitchIsland=bb307SwitchIsland;
 window.bb307ActiveMarket=()=>bb307Market;
 
@@ -10223,7 +10236,7 @@ if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',
   <button type="button" class="bbtrial-free" data-bbtrial-free>Continue with BasketBoss Free →</button>
   <p class="bbtrial-foot">100 starter recipes, manual ingredients and basic planning remain available without subscribing.</p>
  </div>
-</dialog><script src="bb-intro-trial.js?v=bb-account-first-20261027-v1"></script><script defer src="bb-onboarding-v2.js?v=20261028-onboard-v2"></script><script defer src="bb-cold-preview.js?v=20261028-conversion-1"></script><script defer src="bb-funnel.js?v=20261028-v1"></script><script defer src="bb-ux-cleanup.js?v=20261028-ux1"></script><script src="bb-us-market.js?v=173us1"></script><script defer src="bb-install.js?v=173install1"></script><script defer src="bb-welcome-splash.js?v=173welcome1"></script><script defer src="bb-premium-features.js?v=bbprodmodal20261027"></script>
+</dialog><script src="bb-intro-trial.js?v=bb-account-first-20261027-v1"></script><script defer src="bb-onboarding-v2.js?v=20261028-onboard-v3"></script><script defer src="bb-cold-preview.js?v=20261028-conversion-1"></script><script defer src="bb-funnel.js?v=20261028-v1"></script><script defer src="bb-ux-cleanup.js?v=20261028-ux1"></script><script src="bb-us-market.js?v=173us1"></script><script defer src="bb-install.js?v=173install1"></script><script defer src="bb-welcome-splash.js?v=173welcome1"></script><script defer src="bb-premium-features.js?v=bbprodmodal20261027"></script>
 <style id="bb175-ux-fix">
 /* BasketBoss v17.4.2 premium-preview usability improvements */
 #app .swipe-action.yes{color:#c91e43!important;background:#fff2f4!important;border:3px solid #d92c50!important;box-shadow:0 5px 18px rgba(192,22,60,.22)!important;font-size:37px!important;font-weight:900!important}
