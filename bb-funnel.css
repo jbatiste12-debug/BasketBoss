@@ -1,0 +1,14 @@
+/* Scoped, dismissible, nonmodal Free-user reminder after TWO different recipes. */
+#bbFunnelNudge[hidden]{display:none!important}
+#bbFunnelNudge,#bbFunnelNudge *{box-sizing:border-box}
+#bbFunnelNudge{position:fixed;z-index:1100;bottom:calc(92px + env(safe-area-inset-bottom,0px));left:50%;transform:translateX(-50%);width:min(92vw,540px);background:#fffef9;color:#194631;border:1px solid #bbd9be;border-radius:18px;box-shadow:0 16px 48px #0b2b2440;display:flex;gap:12px;align-items:center;justify-content:space-between;padding:15px 17px;font:14px/1.4 system-ui,-apple-system,sans-serif}
+#bbFunnelNudge .bbf-copy{display:flex;flex-direction:column;gap:3px;min-width:0}
+#bbFunnelNudge strong{font-size:15px;font-weight:850;color:#164c34}
+#bbFunnelNudge .bbf-copy span{font-size:12px;color:#536c5a}
+#bbFunnelNudge .bbf-actions{display:flex;flex-direction:column;gap:6px;flex-shrink:0}
+#bbFunnelNudge button{font:800 12px system-ui,-apple-system,sans-serif;min-height:39px;border-radius:10px;cursor:pointer;padding:8px 11px;white-space:nowrap}
+#bbFunnelNudge [data-bbf-signup]{background:#216a43;color:#fff;border:1px solid #216a43}
+#bbFunnelNudge [data-bbf-dismiss]{background:#fff;color:#386448;border:1px solid #d5e3d7}
+#bbFunnelNudge button:focus-visible{outline:3px solid #e7b849;outline-offset:2px}
+@media(max-width:540px){#bbFunnelNudge{width:calc(100vw - 22px);padding:12px 14px;gap:9px}#bbFunnelNudge .bbf-actions{gap:4px}#bbFunnelNudge button{font-size:11px;padding:8px 7px}#bbFunnelNudge .bbf-copy span{font-size:11px}}
+@media(prefers-reduced-motion:reduce){#bbFunnelNudge{scroll-behavior:auto}}

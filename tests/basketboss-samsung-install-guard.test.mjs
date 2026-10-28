@@ -56,7 +56,7 @@ test('iPhone and desktop browsers retain their normal paths',()=>{
 });
 
 test('service worker refreshes cached install script without changing API handling',()=>{
-  assert.match(worker,/basketboss-premium-secure-shell-20261028-v12-samsung-install-guard/);
+  assert.match(worker,/basketboss-premium-secure-shell-20261028-v13-free-signup-funnel/);
   assert.match(worker,/'bb-install\.js'/);
   assert.match(worker,/target\.pathname\.startsWith\(new URL\('api\/', APP_BASE\)\.pathname\)\) return/);
 });
