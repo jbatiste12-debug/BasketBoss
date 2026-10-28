@@ -1,0 +1,79 @@
+/* BasketBoss onboarding v2 — isolated visual layer. No app navigation styles modified. */
+#bbNewOnboarding,#bbNewOnboarding *{box-sizing:border-box}
+#bbNewOnboarding{position:fixed;inset:0;z-index:2147483520;overflow:auto;overscroll-behavior:contain;background:radial-gradient(circle at 8% 8%,#edf4ec 0,transparent 46%),radial-gradient(circle at 95% 88%,#f9f2e6 0,transparent 42%),#f8faf7;color:#193f32;font:15px/1.5 -apple-system,BlinkMacSystemFont,'Segoe UI',system-ui,sans-serif}
+#bbNewOnboarding button{font:inherit;cursor:pointer}
+#bbNewOnboarding button:focus-visible{outline:3px solid #e5b85e;outline-offset:3px}
+#bbNewOnboarding .bbob-shell{width:min(100% - 34px,520px);min-height:100svh;margin:auto;display:flex;flex-direction:column;padding:calc(23px + env(safe-area-inset-top,0px)) 0 calc(20px + env(safe-area-inset-bottom,0px))}
+#bbNewOnboarding .bbob-header{display:flex;align-items:center;justify-content:space-between;gap:14px}
+#bbNewOnboarding .bbob-brand{display:flex;align-items:center;gap:9px;font-weight:950;font-size:20px;letter-spacing:-.06em;color:#183d31}
+#bbNewOnboarding .bbob-brand img{width:41px;height:41px;border-radius:12px;object-fit:contain}
+#bbNewOnboarding .bbob-brand span span{color:#24754b}
+#bbNewOnboarding .bbob-exit{border:0;background:transparent;color:#547463;padding:12px 0 12px 8px;font-size:12px;font-weight:700;white-space:nowrap}
+#bbNewOnboarding .bbob-exit span{font-size:18px;vertical-align:-2px;padding-left:3px}
+#bbNewOnboarding .bbob-progress{height:4px;background:#e0eae1;border-radius:999px;overflow:hidden;margin-top:22px}
+#bbNewOnboarding .bbob-progress span{display:block;height:100%;background:#1d744b;border-radius:999px;transition:width .25s ease}
+#bbNewOnboarding .bbob-main{flex:1;display:flex;flex-direction:column;justify-content:center;padding:30px 0 26px;min-height:0}
+#bbNewOnboarding .bbob-eyebrow{margin:0 0 9px;font-size:10px;letter-spacing:.18em;text-transform:uppercase;font-weight:850;color:#3e7860}
+#bbNewOnboarding h1{margin:0;color:#193f32;font-size:clamp(29px,7vw,39px);font-weight:850;line-height:1.14;letter-spacing:-.045em}
+#bbNewOnboarding .bbob-description{margin:13px 0 20px;color:#4b6a5a;font-size:15px;line-height:1.6;max-width:445px}
+#bbNewOnboarding .bbob-footer{display:grid;gap:10px;margin-top:auto}
+#bbNewOnboarding .bbob-btn{min-height:51px;padding:12px 18px;border-radius:13px;display:flex;align-items:center;justify-content:center;text-align:center;font-size:14px;font-weight:800}
+#bbNewOnboarding .bbob-primary{border:1px solid #18633f;background:#176a45;color:#fff;box-shadow:0 7px 15px #0e55391d}
+#bbNewOnboarding .bbob-outline{border:1px solid #98c0a3;background:#fff;color:#185d40}
+#bbNewOnboarding .bbob-link{border:0;background:transparent;color:#3e6a53;min-height:38px;text-decoration:underline;text-underline-offset:3px}
+#bbNewOnboarding .bbob-stepname{text-align:center;color:#83968a;font-size:11px;letter-spacing:.02em}
+#bbNewOnboarding .bbob-intro-art{min-height:260px;margin:6px 0 20px;border:1px solid #dae8de;background:linear-gradient(155deg,#f0f7f0,#fffefa);border-radius:25px;display:flex;flex-direction:column;justify-content:center;align-items:center;gap:15px}
+#bbNewOnboarding .bbob-brand-halo{width:140px;height:140px;background:#e2efe5;border:1px solid #c7dccd;border-radius:39px;display:grid;place-items:center}
+#bbNewOnboarding .bbob-brand-halo img{width:116px;height:116px;object-fit:contain;border-radius:30px}
+#bbNewOnboarding .bbob-intro-art > span{font-size:13px;color:#557365}
+#bbNewOnboarding .bbob-options{display:grid;gap:9px;margin-top:5px}
+#bbNewOnboarding .bbob-option{width:100%;min-height:55px;display:flex;align-items:center;gap:12px;text-align:left;padding:11px 15px;border-radius:13px;border:1px solid #dbe5dc;background:#fff;color:#254c3a;font-weight:750}
+#bbNewOnboarding .bbob-option.chosen{border-color:#36815d;background:#eaf5ed;box-shadow:inset 0 0 0 1px #36815d}
+#bbNewOnboarding .bbob-choice-mark{display:grid;place-items:center;min-width:22px;height:22px;border-radius:6px;background:#f1f5f1;border:1px solid #b5ccbc;color:#fff;font-size:13px}
+#bbNewOnboarding .bbob-option.chosen .bbob-choice-mark{background:#186b44;border-color:#186b44}
+#bbNewOnboarding .bbob-figure{margin-top:6px;min-height:260px;border:1px solid #dce7df;border-radius:24px;background:#fff;padding:24px;box-shadow:0 16px 40px #244c3320;display:grid;gap:13px;align-content:center}
+#bbNewOnboarding .bbob-mock-top{font-size:11px;letter-spacing:.11em;color:#547461;font-weight:900;display:flex;justify-content:space-between;gap:12px}
+#bbNewOnboarding .bbob-mock-top span{background:#e4f2e8;color:#216b46;border-radius:99px;padding:4px 8px;letter-spacing:0;font-size:10px}
+#bbNewOnboarding .bbob-minirow{display:flex;align-items:center;gap:15px;border:1px solid #edf0ed;background:#f8faf7;border-radius:14px;padding:12px}
+#bbNewOnboarding .bbob-minirow strong{display:block;font-size:15px}
+#bbNewOnboarding .bbob-minirow small{display:block;color:#678270;font-size:12px}
+#bbNewOnboarding .bbob-real-recipe-photo{width:96px;height:88px;flex:0 0 96px;border-radius:12px;object-fit:cover;border:1px solid #dce8df;background:#f0f6ef}
+#bbNewOnboarding .bbob-mock-pill{width:max-content;background:#176a45;color:white;border-radius:99px;padding:8px 14px;font-size:12px;font-weight:750}
+#bbNewOnboarding .bbob-days{display:grid;grid-template-columns:repeat(5,1fr);gap:6px}
+#bbNewOnboarding .bbob-days span{background:#edf4ee;border-radius:10px;text-align:center;padding:12px 4px;color:#316047;font-weight:800;font-size:12px}
+#bbNewOnboarding .bbob-mealrow{display:flex;justify-content:space-between;gap:6px;border-bottom:1px solid #ebefeb;padding:8px 3px;color:#577365;font-size:12px}
+#bbNewOnboarding .bbob-mealrow strong{color:#214934;font-size:13px}
+#bbNewOnboarding .bbob-shoprow{display:flex;align-items:center;gap:12px;padding:10px 0;border-bottom:1px solid #e9eee9;font-size:13px;font-weight:750}
+#bbNewOnboarding .bbob-shoprow span{width:24px;height:24px;display:grid;place-items:center;background:#e3f1e6;color:#196d46;border-radius:7px}
+#bbNewOnboarding .bbob-shoprow small{margin-left:auto;color:#73917e;font-weight:500}
+#bbNewOnboarding .bbob-finish-art{height:255px;margin:4px 0 14px;position:relative;display:grid;place-items:center;overflow:hidden;border:1px solid #dbeade;background:radial-gradient(circle,#f6fff8 0%,#e9f4ed 60%,#f9fbf8 100%);border-radius:24px}
+#bbNewOnboarding .bbob-finish-ring{width:142px;height:142px;border:1px solid #bdd9c5;border-radius:40px;display:grid;place-items:center;background:#f4faf5;animation:bbobSettle .7s ease-out both}
+#bbNewOnboarding .bbob-finish-ring img{width:118px;height:118px;border-radius:30px}
+#bbNewOnboarding .bbob-sheen{position:absolute;width:160px;height:300px;transform:rotate(25deg) translateX(-300px);background:linear-gradient(90deg,transparent,#ffffffbb,transparent);animation:bbobSweep 1.4s ease-out .3s 1 both;pointer-events:none}
+@keyframes bbobSettle{from{opacity:0;transform:translateY(15px) scale(.93)}to{opacity:1;transform:none}}
+@keyframes bbobSweep{to{transform:rotate(25deg) translateX(400px)}}
+#bbNewOnboarding .bbob-plan-options{display:grid;grid-template-columns:1fr 1fr;gap:11px}
+#bbNewOnboarding .bbob-plan{border:1px solid #dce7dd;border-radius:18px;padding:16px 14px;background:#fff;display:flex;flex-direction:column;gap:8px;min-height:220px}
+#bbNewOnboarding .bbob-plan-premium{border-color:#c6d9c1;background:linear-gradient(150deg,#edf6eb,#f8fcf7)}
+#bbNewOnboarding .bbob-plan strong{font-size:14px;color:#234938}
+#bbNewOnboarding .bbob-plan b{font-size:22px;letter-spacing:-.04em;color:#16663f}
+#bbNewOnboarding .bbob-plan p{margin:0;font-size:12px;color:#526c5b;line-height:1.5}
+#bbNewOnboarding .bbob-plan span{font-size:11px;color:#60806a;line-height:1.5;margin-top:auto}
+#bbNewOnboarding .bbob-footnote{color:#708678;font-size:11px;line-height:1.5;margin:12px 0 0}
+/* Existing Supabase inputs are temporarily moved here; original handlers remain intact. */
+#bbNewOnboarding #cloud-auth{display:grid;gap:10px;background:#fff;border:1px solid #e0e9e0;padding:16px;border-radius:16px}
+#bbNewOnboarding #cloud-auth[hidden]{display:none!important}
+#bbNewOnboarding #cloud-auth label{display:block;color:#365a44;font-size:12px;font-weight:750}
+#bbNewOnboarding #cloud-auth input{display:block;margin:5px 0 0;width:100%;min-height:48px;border:1px solid #c8dacd;background:#f9fbf9;border-radius:11px;padding:12px;font:16px system-ui;color:#213a2b}
+#bbNewOnboarding #cloud-auth button{min-height:48px;border:1px solid #1c6f48;border-radius:11px;background:#1e704a;color:#fff;font-weight:850;font-size:14px}
+#bbNewOnboarding #cloud-auth button.secondary{background:#fff;color:#1c6f48;border-color:#a4c7ae}
+#bbNewOnboarding #cloud-message{display:block;font-size:12px!important;line-height:1.5;margin-top:10px;color:#496e57!important}
+#bbNewOnboarding .bbob-trust-note{font-size:12px;color:#557462}
+#bb2026Trust.bbob-trust-compact{padding:11px 15px!important}
+#bb2026Trust.bbob-trust-compact .bb2026-trust-links{margin-top:0}
+@media(max-width:560px){#bbNewOnboarding .bbob-shell{width:min(100% - 30px,500px)}#bbNewOnboarding .bbob-main{justify-content:flex-start;padding-top:35px}#bbNewOnboarding h1{font-size:30px}#bbNewOnboarding .bbob-description{font-size:14px}#bbNewOnboarding .bbob-figure{min-height:230px;padding:18px}#bbNewOnboarding .bbob-plan-options{gap:8px}#bbNewOnboarding .bbob-plan{padding:13px 10px;min-height:226px}#bbNewOnboarding .bbob-plan b{font-size:19px}}
+@media(max-height:700px){#bbNewOnboarding .bbob-main{padding-top:22px;padding-bottom:16px}#bbNewOnboarding .bbob-intro-art{min-height:160px}#bbNewOnboarding .bbob-brand-halo{width:103px;height:103px;border-radius:30px}#bbNewOnboarding .bbob-brand-halo img{width:86px;height:86px}#bbNewOnboarding .bbob-figure{min-height:180px}#bbNewOnboarding .bbob-finish-art{height:180px}}
+@media(prefers-reduced-motion:reduce){#bbNewOnboarding *{animation:none!important;transition:none!important}}
+
+#bbNewOnboarding .bbob-market-label{display:grid;gap:7px;margin:16px 0 0;color:#365a44;font-size:13px;font-weight:750}
+#bbNewOnboarding .bbob-market-label select{width:100%;min-height:48px;border:1px solid #c8dacd;border-radius:11px;background:#fff;color:#234836;padding:9px 13px;font:15px system-ui}
