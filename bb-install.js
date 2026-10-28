@@ -5,6 +5,9 @@
 (()=>{
   'use strict';
   let deferredPrompt=null;
+  // Samsung Internet may generate WebAPKs that Play Protect rejects on recent Android.
+  // This guard applies only to Samsung Internet on Android.
+  const isSamsungInternet=/\bAndroid\b/i.test(navigator.userAgent||'') && /\bSamsungBrowser\//i.test(navigator.userAgent||'');
   let lastOpener=null;
   let dialog=null;
   const installed=()=>{
@@ -38,8 +41,9 @@
     document.querySelectorAll('[data-bb173-install-banner]').forEach(el=>setHidden(el,done));
     setHidden($('bb172InstallButton'),done); // independent older footer install link
     if (done && dialog?.open) dialog.close();
+    setHidden($('bb173SamsungInstallNote'),!isSamsungInternet);
     const go=$('bb173NativeInstall');
-    if (go) go.textContent=deferredPrompt?'Install now':'Show installation steps';
+    if (go) go.textContent=isSamsungInternet?'View safe Android advice':(deferredPrompt?'Install now':'Show installation steps');
   }
   function close(){if(!dialog)return;dialog.close?.();lastOpener?.focus?.();}
   function buildDialog(){
@@ -58,6 +62,7 @@
       <div class="bb173-install-steps">
         <section><strong>iPhone / iPad</strong><p>Open BasketBoss in Safari, tap <b>Share</b>, then <b>Add to Home Screen</b>. If offered, select <b>Open as Web App</b>, then tap <b>Add</b>.</p></section>
         <section><strong>Android / Chrome or Edge</strong><p>Tap <b>Install now</b> if available. Otherwise open the browser's <b>⋮ menu</b> and choose <b>Install app</b> or <b>Add to Home screen</b>.</p></section>
+        <section id="bb173SamsungInstallNote" hidden role="note"><strong>Samsung Internet: safer installation advice</strong><p>Some Samsung Internet installs are blocked by Google Play Protect. BasketBoss still works in this browser. To try adding it to your home screen, open <b>Google Chrome</b>, type <b>basketboss.co.uk</b>, then use Chrome's <b>⋮ menu</b> to choose <b>Install app</b> or <b>Add to Home screen</b> if available. If Play Protect warns again, do not bypass it; continue using BasketBoss in the browser.</p></section>
         <section><strong>Desktop</strong><p>Use <b>Install now</b> when offered, or look for the install icon in the browser address bar or browser menu.</p></section>
       </div>
       <p class="bb173-install-note">Offline access is limited to content previously saved by this device. Live AI tools still require an internet connection.</p>
@@ -78,6 +83,7 @@
     dialog.addEventListener('click',e=>{if(e.target===dialog)close();});
     $('bb173NativeInstall').addEventListener('click',async()=>{
       if(finishedInstalling()){setStatus('BasketBoss is already installed on this device.');refresh();return;}
+      if(isSamsungInternet){setStatus('Use BasketBoss in this browser, or open basketboss.co.uk in Chrome. Never bypass Play Protect.');return;}
       if(!deferredPrompt){setStatus('Use the instructions above for your device. The browser has not offered a one-click install.');return;}
       const event=deferredPrompt; deferredPrompt=null;
       try {
@@ -98,11 +104,12 @@
     refresh();
     if(typeof el.showModal==='function')el.showModal();
     else el.setAttribute('open','');
-    setStatus(deferredPrompt?'Your browser can install BasketBoss. Tap Install now.':'Follow the steps for your device; one-click installation might not be available.');
+    setStatus(isSamsungInternet?'Samsung Internet installation may trigger Play Protect. Use BasketBoss in the browser or try Chrome; never bypass Play Protect.':(deferredPrompt?'Your browser can install BasketBoss. Tap Install now.':'Follow the steps for your device; one-click installation might not be available.'));
     $('bb173InstallClose').focus();
   }
   window.addEventListener('beforeinstallprompt',event=>{
     event.preventDefault();
+    if(isSamsungInternet){deferredPrompt=null;refresh();return;}
     deferredPrompt=event;
     refresh();
   });
