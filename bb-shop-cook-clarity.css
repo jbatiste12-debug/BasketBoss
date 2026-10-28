@@ -1,0 +1,140 @@
+/* BasketBoss 2026-10-28 — Shop onboarding readability and Cook UI clarity.
+   Presentation ONLY. Do not alter handlers, budgeting, recipes, checkout or saves. */
+
+/* Retire the obsolete duplicate marketing tour now that the real 11-step
+   onboarding exists. Keep the element/scripts intact for safe rollback. */
+#bbColdVisitor { display:none !important; }
+
+/* Read-only onboarding Shop: keep product, quantity and estimated price as
+   three distinct, legible values even on 320–390px iPhones. */
+#bbNewOnboarding .bbob-real-shop,
+#bbNewOnboarding .bbob-real-shop * { box-sizing:border-box; }
+#bbNewOnboarding .bbob-real-shop { min-width:0; max-width:100%; }
+#bbNewOnboarding .bbob-real-shop .bbob-shop-aisle { min-width:0; margin:12px 0 17px; }
+#bbNewOnboarding .bbob-real-shop .bbob-aisle-heading { margin:0 0 3px; }
+#bbNewOnboarding .bbob-real-shop .bbob-shop-item {
+  display:grid !important;
+  grid-template-columns:24px minmax(0,1fr) max-content !important;
+  align-items:center !important;
+  gap:10px !important;
+  min-width:0;
+  padding:13px 1px !important;
+  border-bottom:1px solid #e5eee7;
+  color:#1c4531;
+}
+#bbNewOnboarding .bbob-real-shop .bbob-shop-check {
+  display:grid;place-items:center;align-self:center;
+  width:24px;height:24px;flex:none;
+  font-size:19px;line-height:1;color:#216645;
+}
+#bbNewOnboarding .bbob-real-shop .bbob-shop-item-name {
+  display:flex !important;flex-direction:column !important;align-items:flex-start !important;
+  gap:3px !important;min-width:0;overflow-wrap:break-word;
+}
+#bbNewOnboarding .bbob-real-shop .bbob-shop-item-name strong {
+  display:block !important;font-size:14px !important;line-height:1.3 !important;
+  font-weight:760 !important;letter-spacing:-.015em;
+  color:#18432e !important;
+}
+#bbNewOnboarding .bbob-real-shop .bbob-shop-item-name small {
+  display:block !important;font-size:12px !important;line-height:1.35 !important;
+  font-weight:500 !important;color:#627b6c !important;
+}
+#bbNewOnboarding .bbob-real-shop .bbob-shop-price {
+  display:inline-flex !important;align-items:center;justify-self:end;
+  max-width:100%;padding:6px 8px;
+  background:#eaf7ed;color:#18683f;
+  border:1px solid #d0e9d5;border-radius:999px;
+  font-size:12px !important;font-weight:750 !important;line-height:1.25 !important;
+  white-space:nowrap;text-align:right;
+}
+#bbNewOnboarding .bbob-real-shop .bbob-shop-total {
+  display:flex !important;align-items:center;justify-content:space-between;
+  flex-wrap:wrap;gap:8px;padding:12px 13px;margin:10px 0 13px;
+  border:1px solid #c6e2cf;border-radius:13px;
+  background:#eff8f0;color:#24563a;
+}
+#bbNewOnboarding .bbob-real-shop .bbob-shop-total span { font-size:12px;line-height:1.35; }
+#bbNewOnboarding .bbob-real-shop .bbob-shop-total strong { font-size:19px;white-space:nowrap; }
+@media (max-width:390px) {
+  #bbNewOnboarding .bbob-real-shop .bbob-shop-item { grid-template-columns:22px minmax(0,1fr) max-content!important;gap:7px!important; }
+  #bbNewOnboarding .bbob-real-shop .bbob-shop-price { font-size:11px!important;padding:5px 6px; }
+  #bbNewOnboarding .bbob-real-shop .bbob-shop-item-name strong {font-size:13px!important;}
+}
+
+/* Cook: normalise the modal surface and narrow-phone spacing without changing
+   Prep / Cook / Done state, timers, content, checkboxes or navigation events. */
+#modalRoot > .cook-overlay {
+  background:rgba(11,33,23,.77) !important;
+  padding:calc(8px + env(safe-area-inset-top,0px))
+          8px calc(8px + env(safe-area-inset-bottom,0px)) !important;
+  box-sizing:border-box;overscroll-behavior:contain;
+}
+#modalRoot > .cook-overlay .bb-kitchen {
+  box-sizing:border-box;width:min(100%,600px) !important;max-width:600px !important;
+  max-height:calc(100dvh - 16px - env(safe-area-inset-top,0px) - env(safe-area-inset-bottom,0px)) !important;
+  overflow-y:auto !important;overflow-x:hidden !important;
+  overscroll-behavior:contain;-webkit-overflow-scrolling:touch;
+  padding:clamp(15px,3vw,24px) !important;
+  padding-bottom:calc(24px + env(safe-area-inset-bottom,0px)) !important;
+  border:1px solid #d5e5d8 !important;border-radius:22px !important;
+  background:#fbfcf9 !important;color:#193d2b !important;
+  box-shadow:0 22px 64px rgba(10,39,25,.27) !important;
+}
+#modalRoot > .cook-overlay .bb-kitchen .bb-head {
+  background:#fbfcf9 !important;border-color:#dfeae1 !important;
+  top:0 !important;gap:10px;min-height:53px;
+}
+#modalRoot > .cook-overlay .bb-kitchen #bbTitle {
+  font-size:clamp(22px,5.5vw,29px) !important;line-height:1.17 !important;
+  letter-spacing:-.035em;overflow-wrap:break-word;color:#1a4532 !important;
+  margin:12px 0 5px;
+}
+#modalRoot > .cook-overlay .bb-kitchen #bbMeta {
+  font-size:13px !important;line-height:1.45 !important;color:#647767 !important;
+}
+#modalRoot > .cook-overlay .bb-kitchen #bbBody { min-width:0;padding-bottom:calc(35px + env(safe-area-inset-bottom,0px)) !important; }
+#modalRoot > .cook-overlay .bb-kitchen .bb-step {
+  font-size:clamp(17px,4.5vw,21px) !important;line-height:1.5 !important;
+  overflow-wrap:break-word;white-space:normal;
+}
+#modalRoot > .cook-overlay .bb-kitchen .bb-clock,
+#modalRoot > .cook-overlay .bb-kitchen .bb-tip { max-width:100%;box-sizing:border-box; }
+#modalRoot > .cook-overlay .bb-kitchen .bb-clock > div:last-child {
+  display:flex !important;flex-wrap:wrap !important;gap:8px !important;
+}
+#modalRoot > .cook-overlay .bb-kitchen .bb-clock > div:last-child > button {
+  flex:1 1 86px;min-width:0;min-height:44px !important;
+  margin:0 !important;border-radius:11px !important;
+}
+#modalRoot > .cook-overlay .bb-kitchen .bb-controls {
+  display:grid !important;grid-template-columns:minmax(0,1fr) minmax(0,1.5fr) !important;
+  gap:9px !important;min-width:0;
+}
+#modalRoot > .cook-overlay .bb-kitchen .bb-controls button {
+  min-width:0;min-height:48px !important;
+  white-space:normal;line-height:1.28;
+}
+#modalRoot > .cook-overlay .bb-kitchen .bb-phases { max-width:100%;min-width:0; }
+#modalRoot > .cook-overlay .bb-kitchen .bb-check { border-radius:14px !important;max-width:100%; }
+#modalRoot > .cook-overlay .bb-kitchen .bb-prep-quantity { white-space:normal;overflow-wrap:anywhere; }
+#modalRoot > .cook-overlay .bb-kitchen button:focus-visible,
+#modalRoot > .cook-overlay .bb-kitchen input:focus-visible {
+  outline:3px solid #25774e !important;outline-offset:3px !important;
+}
+@media(max-width:430px) {
+  #modalRoot > .cook-overlay .bb-kitchen .bb-clock > div:last-child {
+    display:grid !important;grid-template-columns:repeat(2,minmax(0,1fr)) !important;
+    gap:8px !important;
+  }
+  #modalRoot > .cook-overlay .bb-kitchen .bb-clock > div:last-child > button {
+    width:100%;min-width:0;
+  }
+}
+@media(max-width:380px) {
+  #modalRoot > .cook-overlay .bb-kitchen {padding:13px !important;}
+  #modalRoot > .cook-overlay .bb-kitchen .bb-clock > div:last-child > button {flex-basis:calc(50% - 8px);}
+}
+@media(prefers-reduced-motion:reduce) {
+  #modalRoot > .cook-overlay .bb-kitchen * {scroll-behavior:auto !important;transition-duration:.01ms !important;}
+}
