@@ -56,6 +56,7 @@
     <p class="bbtrial-progress">STEP 1 OF 2 · YOUR ACCOUNT</p>
     <h3>Keep your BasketBoss membership with you.</h3>
     <p>Sign in or create an account first. If you choose Premium, it will be linked to that account — including when you return on another device.</p>
+    <button type="button" class="bbtrial-explore-free" data-bbtrial-preview>Explore 100 Free Recipes — No Email →</button>
     <button type="button" class="bbtrial-account-cta" data-bbtrial-account>Sign in / Create account →</button>
     <p class="bbtrial-account-help">Already have an account? Use the same email and password. New here? Choose Create account in the next screen.</p>`;
   main.insertBefore(accountStep, main.firstChild);
@@ -68,9 +69,9 @@
     if (legal) legal.hidden = account;
     dialog.dataset.bbtrialStep = step;
     if (heroTag) heroTag.textContent = account ? '✦ WELCOME TO BASKETBOSS' : '✦ YOUR BASKETBOSS MEMBERSHIP';
-    title.textContent = account ? 'First, your BasketBoss account.' : 'Choose your BasketBoss membership.';
+    title.textContent = account ? 'Explore Free first. Sign up when ready.' : 'Choose your BasketBoss membership.';
     description.textContent = account
-      ? 'Your recipes and meal plans start here. Create an account or sign in, then choose Free, Founding Member or Standard Premium.'
+      ? 'Look around the real 100-recipe Free app without entering an email. You can create an account when ready or choose a Premium trial after signing in.'
       : 'Continue with BasketBoss Free, or explore Founder and Standard Premium below. Review all trial and renewal terms before choosing a paid plan.';
     if (foot) foot.textContent = account
       ? 'Free remains available without a subscription. No payment details are needed to create an account.'
@@ -129,6 +130,11 @@
   window.addEventListener('basketboss:session-changed', accountPanelClosed);
   window.addEventListener('basketboss:welcome-finished', () => { void openOffer(); });
   accountStep.querySelector('[data-bbtrial-account]').addEventListener('click', openAccount);
+  accountStep.querySelector('[data-bbtrial-preview]').addEventListener('click',()=>{
+    dismiss();
+    document.querySelector('.shell .tabs [data-tab="discover"]')?.click();
+    document.getElementById('app')?.scrollIntoView({block:'start',behavior:'smooth'});
+  });
   close?.addEventListener('click', dismiss);
   continueFree?.addEventListener('click', dismiss);
   dialog.addEventListener('cancel', event => { event.preventDefault(); dismiss(); });

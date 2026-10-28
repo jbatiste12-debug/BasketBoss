@@ -1,0 +1,29 @@
+/* BasketBoss cold visitor walkthrough: marketing-only, scoped, and hidden until JS confirms logged-out state. */
+#bbColdVisitor[hidden],#bb173WelcomeSplash [hidden]{display:none!important}
+#bbColdVisitor{background:#f7fbf6;color:#19442d;border:1px solid #bdd7c3;border-radius:20px;padding:19px;margin:16px 0 20px;box-shadow:0 7px 24px #16472b16;font:inherit}
+#bbColdVisitor *{box-sizing:border-box}
+#bbColdVisitor .bbc-kicker{color:#20643e;letter-spacing:.09em;text-transform:uppercase;font-size:11px;font-weight:850;margin:0 0 7px}
+#bbColdVisitor h3{font-size:clamp(23px,3.3vw,31px);line-height:1.13;letter-spacing:-.03em;color:#153e2b;margin:0 0 9px}
+#bbColdVisitor .bbc-lead{font-size:14px;line-height:1.55;color:#456453;margin:0 0 16px;max-width:69ch}
+#bbColdVisitor .bbc-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:10px;margin:13px 0 15px}
+#bbColdVisitor .bbc-step{background:#fff;border:1px solid #dbe9dc;border-radius:15px;padding:13px;min-width:0}
+#bbColdVisitor .bbc-step:nth-child(2){background:#eef8ef}
+#bbColdVisitor .bbc-step .bbc-top{display:flex;align-items:center;gap:8px;margin-bottom:9px}
+#bbColdVisitor .bbc-number{width:27px;height:27px;display:grid;place-items:center;flex:none;border-radius:9px;background:#235d3f;color:white;font-weight:900;font-size:12px}
+#bbColdVisitor .bbc-step h4{color:#153e2b;font-size:15px;line-height:1.25;margin:0;font-weight:850}
+#bbColdVisitor .bbc-stage{min-height:84px;display:flex;justify-content:center;align-items:center;background:#edf4ee;border-radius:12px;gap:8px;margin-bottom:10px}
+#bbColdVisitor .bbc-stage .bbc-pict{font-size:32px;line-height:1}
+#bbColdVisitor .bbc-stage .bbc-clip{border-radius:9px;background:#fff;color:#205338;padding:9px 11px;box-shadow:0 3px 7px #0f462111;font-size:12px;font-weight:750;line-height:1.5}
+#bbColdVisitor .bbc-step p{font-size:12px;line-height:1.5;margin:0;color:#4c6b59}
+#bbColdVisitor .bbc-actions{display:flex;flex-wrap:wrap;gap:9px;align-items:center}
+#bbColdVisitor .bbc-primary{border:0;border-radius:12px;padding:13px 16px;min-height:48px;background:#216a43;color:white!important;font-weight:850;cursor:pointer;font-size:14px}
+#bbColdVisitor .bbc-secondary{border:1px solid #b9d5bd;background:white;color:#215d3c!important;border-radius:12px;padding:12px 15px;min-height:48px;font-weight:750;text-decoration:none;display:inline-flex;align-items:center;font-size:13px}
+#bbColdVisitor .bbc-note{font-size:11px;color:#5c7565;line-height:1.55;margin:11px 0 0}
+#bbColdVisitor .bbc-primary:focus-visible,#bbColdVisitor .bbc-secondary:focus-visible{outline:3px solid #eead41;outline-offset:3px}
+#bb173WelcomeSplash .bbws-quickfree{display:block!important;min-height:48px;width:min(100%,310px);margin:6px auto 0;border:0;border-radius:13px;background:#25683f;color:#fff;font:800 14px system-ui,sans-serif;cursor:pointer;padding:11px 16px}
+#bb173WelcomeSplash .bbws-quickfree:focus-visible{outline:3px solid #efbd57;outline-offset:3px}
+#bb173WelcomeSplash .bbws-free-note{font:12px/1.4 system-ui,sans-serif;color:#5b7060;margin:4px auto 0;text-align:center}
+#bbtrial-account-first .bbtrial-explore-free{display:block;width:100%;padding:13px 15px;min-height:48px;margin:10px 0 3px;border:2px solid #28804d;border-radius:12px;background:#eaf6e9;color:#1b5635;font:800 14px system-ui,sans-serif;cursor:pointer}
+#bbtrial-account-first .bbtrial-explore-free:focus-visible{outline:3px solid #edb84a;outline-offset:3px}
+@media(max-width:640px){#bbColdVisitor{padding:15px 12px;margin:10px 0 14px}#bbColdVisitor .bbc-grid{grid-template-columns:1fr;gap:8px}#bbColdVisitor .bbc-step{display:grid;grid-template-columns:1fr 112px;gap:6px 10px;align-items:center;padding:10px}#bbColdVisitor .bbc-step .bbc-top{margin:0;grid-column:1;grid-row:1}#bbColdVisitor .bbc-step .bbc-stage{grid-row:1/span 2;grid-column:2;margin:0;min-height:84px}#bbColdVisitor .bbc-step p{grid-column:1;grid-row:2}#bbColdVisitor .bbc-stage .bbc-pict{font-size:26px}#bbColdVisitor .bbc-stage .bbc-clip{padding:6px;font-size:10px}#bbColdVisitor .bbc-primary,#bbColdVisitor .bbc-secondary{width:100%;justify-content:center}}
+@media(prefers-reduced-motion:reduce){#bbColdVisitor *,#bb173WelcomeSplash .bbws-quickfree{animation:none!important;transition:none!important}}

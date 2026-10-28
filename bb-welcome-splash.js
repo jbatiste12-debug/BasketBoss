@@ -14,6 +14,8 @@
    catch(_){return seenInMemory;}
  };
  const shouldShow=()=>isPreview()||!seen();
+ // Only a valid signed-in session counts as an existing authenticated visitor.
+ const signedIn=()=>{try{const s=JSON.parse(localStorage.getItem('basketboss_cloud_session_v1')||'null');return !!(s?.user?.id&&typeof s.access_token==='string'&&Number(s.expires_at)*1000>Date.now()+5000);}catch(_){return false;}};
  const remember=()=>{seenInMemory=true;try{sessionStorage.setItem(KEY,'1');}catch(_){}};
  function finish(){
    if(!overlay||complete)return;
@@ -48,6 +50,8 @@
       <h1 class="bbws-wordmark" id="bbwsTitle">Basket<span>Boss</span></h1>
       <div class="bbws-line" aria-hidden="true"></div><p class="bbws-tagline">Plan Smarter. Eat Better. Less Waste.</p>
       <p class="bbws-intro">Your recipes, ingredients and meal plans — right where you need them.</p>
+      <button type="button" class="bbws-quickfree" data-bbws-quickfree>Explore 100 Free Recipes — No Email →</button>
+      <p class="bbws-free-note" data-bbws-free-note>No account or card needed to look around.</p>
       <button type="button" class="bbws-install" data-bb173-install-open>
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2.2" aria-hidden="true"><path d="M12 3v12m-5-5 5 5 5-5M4 18v3h16v-3"/></svg>Install BasketBoss
       </button>
@@ -58,6 +62,17 @@
    document.body.style.overflow='hidden';
    if(window.matchMedia?.('(prefers-reduced-motion: reduce)').matches)host.classList.add('bbws-reduced');
    host.querySelectorAll('[data-bbws-close]').forEach(btn=>btn.addEventListener('click',finish));
+   const free=host.querySelector('[data-bbws-quickfree]');
+   if(signedIn()){
+     free.hidden=true;
+     host.querySelector('[data-bbws-free-note]').hidden=true;
+   }else free.addEventListener('click',()=>{
+     // User explicitly opted to explore; skip the separate intro, not the real app.
+     // This is presentation state only: never seed a sample pantry or an account.
+     try{localStorage.setItem('basketboss_onboarding_seen_v1','true');}
+     catch(_){try{sessionStorage.setItem('basketboss_onboarding_seen_v1','true');}catch(__){}}
+     finish();
+   });
    host.addEventListener('keydown',e=>{
      if(e.key==='Escape'){e.preventDefault();finish();return;}
      if(e.key==='Tab'){
