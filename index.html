@@ -5172,7 +5172,7 @@ function loadState(){
  let pantry={};try{const old=JSON.parse(localStorage.getItem(OLD_PANTRY)||'{}');for(const r of RECIPES)for(const ing of r.ingredients){if(old[ing[0]]||old[ing[0].toLowerCase()])pantry[norm(ing[0])]=true}}catch(e){}
  return normalize({version:2,planned,pantry,customPantry:[],dismissed:[],scanEndpoint:'',servings:4});
 }
-function normalize(s){return {version:2,planned:Array.isArray(s.planned)?s.planned.filter(p=>p&&RECIPES.some(r=>r.id===p.recipeId)&&DAYS.includes(p.day)).map(p=>({recipeId:p.recipeId,day:p.day})):[],pantry:s.pantry&&typeof s.pantry==='object'?s.pantry:{},customPantry:Array.isArray(s.customPantry)?s.customPantry:[],dismissed:Array.isArray(s.dismissed)?s.dismissed:[],scanEndpoint:'',servings:Number(s.servings)||4,recipePhotos:s.recipePhotos&&typeof s.recipePhotos==='object'?s.recipePhotos:{},recipeCollections:s.recipeCollections&&typeof s.recipeCollections==='object'?s.recipeCollections:{},leftoverSources:s.leftoverSources&&typeof s.leftoverSources==='object'?s.leftoverSources:{},leftoverConfirmed:s.leftoverConfirmed&&typeof s.leftoverConfirmed==='object'?s.leftoverConfirmed:{},plannedDesserts:Array.isArray(s.plannedDesserts)?s.plannedDesserts.filter(p=>p&&RECIPES.some(r=>r.id===p.recipeId)&&DAYS.includes(p.day)).map(p=>({recipeId:p.recipeId,day:p.day})):[],bbManualBatch:s.bbManualBatch?.version===1&&Array.isArray(s.bbManualBatch.pairs)?{version:1,pairs:s.bbManualBatch.pairs.slice(0,3).filter(x=>x&&typeof x.sourceDay==='string'&&typeof x.leftoverDay==='string'&&typeof x.recipeId==='string').map(x=>({sourceDay:x.sourceDay,leftoverDay:x.leftoverDay,recipeId:x.recipeId}))}:null,bb81Batch:s.bb81Batch?.version===1 && typeof s.bb81Batch.monday==='string' && typeof s.bb81Batch.wednesday==='string' ? {version:1,monday:s.bb81Batch.monday,wednesday:s.bb81Batch.wednesday}:null}}
+function normalize(s){return {version:2,planned:Array.isArray(s.planned)?s.planned.filter(p=>p&&typeof p.recipeId==='string'&&p.recipeId.length>0&&p.recipeId.length<=256&&DAYS.includes(p.day)).map(p=>({recipeId:p.recipeId,day:p.day})):[],pantry:s.pantry&&typeof s.pantry==='object'?s.pantry:{},customPantry:Array.isArray(s.customPantry)?s.customPantry:[],dismissed:Array.isArray(s.dismissed)?s.dismissed:[],scanEndpoint:'',servings:Number(s.servings)||4,recipePhotos:s.recipePhotos&&typeof s.recipePhotos==='object'?s.recipePhotos:{},recipeCollections:s.recipeCollections&&typeof s.recipeCollections==='object'?s.recipeCollections:{},leftoverSources:s.leftoverSources&&typeof s.leftoverSources==='object'?s.leftoverSources:{},leftoverConfirmed:s.leftoverConfirmed&&typeof s.leftoverConfirmed==='object'?s.leftoverConfirmed:{},plannedDesserts:Array.isArray(s.plannedDesserts)?s.plannedDesserts.filter(p=>p&&typeof p.recipeId==='string'&&p.recipeId.length>0&&p.recipeId.length<=256&&DAYS.includes(p.day)).map(p=>({recipeId:p.recipeId,day:p.day})):[],bbManualBatch:s.bbManualBatch?.version===1&&Array.isArray(s.bbManualBatch.pairs)?{version:1,pairs:s.bbManualBatch.pairs.slice(0,3).filter(x=>x&&typeof x.sourceDay==='string'&&typeof x.leftoverDay==='string'&&typeof x.recipeId==='string').map(x=>({sourceDay:x.sourceDay,leftoverDay:x.leftoverDay,recipeId:x.recipeId}))}:null,bb81Batch:s.bb81Batch?.version===1 && typeof s.bb81Batch.monday==='string' && typeof s.bb81Batch.wednesday==='string' ? {version:1,monday:s.bb81Batch.monday,wednesday:s.bb81Batch.wednesday}:null}}
 function norm(s){return String(s||'').toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g,'').replace(/\b(pack|packs|fresh|large|small|medium|block|tub|bag|box|fillets|fillet)\b/g,'').replace(/[^a-z0-9]+/g,' ').trim()}
 let state=loadState(),tab='week',recipeIndex=0,galleryPage=0,query='',collectionFilter='All',selectedRecipe=null,cookStep=0,timer=0,timerHandle=null,scanFile=null,scanItems=[],scanPreview='',toastHandle=null;
 function persist(){
@@ -6584,17 +6584,19 @@ function bbNextComposePlan(app){
    const row=oldDays[i];
    const plannedDay=byDay.get(day);
    const recipe=plannedDay?.recipe;
-   const available=!recipe || (typeof bb176AllowedRecipe==='function'&&bb176AllowedRecipe(recipe.id));
+   // Preserve the day even when Premium recipes are still being hydrated.
+   const pendingUnloaded=state.planned.some(p=>p.day===day&&!getRecipe(p.recipeId));
+   const available=!pendingUnloaded&&(!recipe || (typeof bb176AllowedRecipe==='function'&&bb176AllowedRecipe(recipe.id)));
    const details=document.createElement('details');details.className='bbnext-day';details.dataset.bbnextDay=day;
-   if(recipe)details.classList.add('has-meal');
+   if(recipe||pendingUnloaded)details.classList.add('has-meal');
    if(!available)details.classList.add('is-locked');
    details.open=bb80OpenPlanDays.has(day);
    const toggle=document.createElement('summary');toggle.className='bbnext-day-toggle';
    const label=document.createElement('span');label.className='bbnext-day-label';label.textContent=day.slice(0,3).toUpperCase();
    const desc=document.createElement('span');desc.className='bbnext-day-description';
-   const title=document.createElement('strong');title.textContent=available?(recipe?.name||'No meal planned'):'🔒 Premium dinner saved';
+   const title=document.createElement('strong');title.textContent=pendingUnloaded?'Saved dinner · waiting for recipe access':available?(recipe?.name||'No meal planned'):'🔒 Premium dinner saved';
    const subtitle=document.createElement('small');
-   subtitle.textContent=available?(recipe?`${Number(recipe.mins)||'?'} min · ${moneyValue(recipe.cost||0)} estimated`:'Tap to choose dinner'):'Unlock Premium to see this meal';
+   subtitle.textContent=pendingUnloaded?'Your meal is still saved. Reconnect Premium to load its details and estimate.':available?(recipe?`${Number(recipe.mins)||'?'} min · ${moneyValue(recipe.cost||0)} estimated`:'Tap to choose dinner'):'Unlock Premium to see this meal';
    desc.append(title,subtitle);
    const caret=document.createElement('span');caret.className='bbnext-day-caret';caret.textContent='⌄';caret.setAttribute('aria-hidden','true');
    if(recipe&&available){
@@ -11039,4 +11041,5 @@ body[data-bbnext-view="discover"] #app .bb175-discover-heading{padding-top:calc(
 <link rel="stylesheet" href="bb-plan-premium-polish.css?v=20261028-plan-convert-1">
 <script defer src="bb-plan-premium-polish.js?v=20261028-plan-convert-1"></script>
 <link rel="stylesheet" href="bb-shop-cook-clarity.css?v=20261028-r1">
+<link rel="stylesheet" href="bb-cook-plan-hotfix.css?v=20261028-cook-plan-v1">
 </body></html>
