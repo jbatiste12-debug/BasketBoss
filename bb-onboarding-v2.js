@@ -52,8 +52,18 @@
  function figure(key){
    const lead=RECIPES[0];
    if(key==='discover')return `<div class="bbob-figure bbob-recipe-gallery" aria-label="Read-only examples from the actual BasketBoss Free recipe catalogue"><div class="bbob-mock-top">REAL BASKETBOSS RECIPE CARDS <span>100 FREE</span></div>${recipeCard(lead,true)}<div class="bbob-more-recipes">${RECIPES.slice(1).map(r=>recipeCard(r)).join('')}</div><p class="bbob-preview-disclaimer">Example cards only. No recipe has been opened, saved or added to your plan. Estimates vary by region.</p></div>`;
-   if(key==='plan')return `<div class="bbob-figure bbob-real-plan" aria-label="Read-only sample weekly meal plan"><div class="bbob-mock-top">YOUR WEEK · EXAMPLE ONLY <span>7 DAYS</span></div><div class="bbob-days"><span>MON</span><span>TUE</span><span>WED</span><span>THU</span><span>FRI</span></div><div class="bbob-sample-day"><img src="${lead.image}" alt="${esc(lead.name)}" loading="lazy"><div><small>Monday · Dinner planned</small><strong>${esc(lead.name)}</strong><span>${lead.mins} min · serves ${lead.servings}</span></div></div><div class="bbob-mealrow">Tuesday <strong>Open dinner slot</strong></div><div class="bbob-mealrow">Wednesday <strong>Open dinner slot</strong></div><p class="bbob-preview-disclaimer">This is a demonstration. Your actual meal plan stays empty until you add meals yourself.</p></div>`;
-   return `<div class="bbob-figure bbob-real-shop" aria-label="Read-only aisle shopping list example"><div class="bbob-mock-top">SHOPPING LIST · EXAMPLE ONLY <span>BY AISLE</span></div><div class="bbob-aisle-heading">Vegetables</div><div class="bbob-shoprow"><span aria-hidden="true">○</span> Mixed peppers <small>3 peppers</small></div><div class="bbob-aisle-heading">Dairy</div><div class="bbob-shoprow"><span aria-hidden="true">○</span> Cheddar <small>400 g</small></div><div class="bbob-aisle-heading">Grains</div><div class="bbob-shoprow"><span aria-hidden="true">○</span> Tortilla wraps <small>12 medium</small></div><p class="bbob-preview-disclaimer">Ingredients are from ${esc(lead.name)}. Nothing is added to your real shopping list.</p></div>`;
+   if(key==='plan')return `<div class="bbob-figure bbob-real-plan" aria-label="Read-only sample weekly meal plan"><div class="bbob-mock-top">YOUR WEEK · EXAMPLE ONLY <span>7 DAYS</span></div><div class="bbob-days"><span>MON</span><span>TUE</span><span>WED</span><span>THU</span><span>FRI</span></div><div class="bbob-sample-day"><img src="${lead.image}" alt="${esc(lead.name)}" loading="lazy"><div><small>Monday · Dinner planned</small><strong>${esc(lead.name)}</strong><span>${lead.mins} min · serves ${lead.servings}</span></div></div><div class="bbob-mealrow">Tuesday <strong>Open dinner slot</strong></div><div class="bbob-mealrow">Wednesday <strong>Open dinner slot</strong></div><p class="bbob-preview-disclaimer">Illustration only. Your saved week is never changed by this tour.</p></div>`;
+   // The eight rows below exactly reproduce the Free "fajitas" catalogue item's
+   // names, quantities and indicative per-item prices (total £22.60). No writes.
+   const groups=[
+     ['Produce', [['Mixed peppers','3 peppers',2.48],['Lime','1',0.37]]],
+     ['Meat & Fish', [['Chicken breast','1 kg',10.05]]],
+     ['Cupboard', [['Tortilla wraps','12 medium tortilla wraps',1.77],['Fajita seasoning','2 tbsp',0.89],['Cooking oil','2 tbsp',0.30]]],
+     ['Dairy & Chilled', [['Soured cream','180 g',2.13],['Cheddar','400 g',4.61]]]
+   ];
+   const total=groups.flatMap(([,rows])=>rows).reduce((sum,[,,price])=>sum+price,0);
+   const rows=groups.map(([aisle,items])=>`<section class="bbob-shop-aisle" aria-label="${esc(aisle)}"><h3 class="bbob-aisle-heading">${esc(aisle)}</h3>${items.map(([name,quantity,price])=>`<div class="bbob-shop-item"><span class="bbob-shop-check" aria-hidden="true">○</span><div class="bbob-shop-item-name"><strong>${esc(name)}</strong><small>${esc(quantity)}</small></div><span class="bbob-shop-price">£${price.toFixed(2)} est.</span></div>`).join('')}</section>`).join('');
+   return `<div class="bbob-figure bbob-real-shop" aria-label="Read-only BasketBoss aisle shopping example"><div class="bbob-mock-top">FAJITAS SHOPPING LIST · EXAMPLE <span>BY AISLE</span></div><div class="bbob-shop-total"><span>Indicative basket estimate</span><strong>£${total.toFixed(2)}</strong></div>${rows}<p class="bbob-preview-disclaimer">Real ingredients and indicative £ estimates from ${esc(lead.name)} (6 servings). Local market prices, pack sizes and pantry deductions vary. This example does not change your shopping list.</p></div>`;
  }
 
  function options(items,selected,multiple){return `<div class="bbob-options ${multiple?'bbob-goals':''}">${items.map((v,i)=>`<button type="button" class="bbob-option ${selected.includes(v)?'chosen':''}" data-bbob-opt="${i}" aria-pressed="${selected.includes(v)}"><span class="bbob-choice-mark" aria-hidden="true">${selected.includes(v)?'✓':' '}</span><span>${v}</span></button>`).join('')}</div>`;}
@@ -99,12 +109,12 @@
        description='Explore 100 recipes free. Browse for something the family will actually enjoy.';
        art=figure('discover');actions=btn('Next · Meal planning','next')+btn('Back','back','link');break;
      case 6:
-       eyebrow='STEP 2 OF 3 · PLAN';headline='Turn dinner ideas into a plan.';
-       description='Build your week one meal at a time. Premium Smart Auto-Fill is an optional upgrade.';
+       eyebrow='STEP 2 OF 3 · PLAN';headline='A delicious week, sorted.';
+       description='Pick dinners for each day. BasketBoss brings your week together in one place.';
        art=figure('plan');actions=btn('Next · Shopping lists','next')+btn('Back','back','link');break;
      case 7:
        eyebrow='STEP 3 OF 3 · SHOP';headline='One shopping list, organised by aisle.';
-       description='See what you need, check what you already have and shop with a clearer plan.';
+       description='Your meals become one clear aisle-by-aisle list, with useful cost estimates.';
        art=figure('shop');actions=btn('Finish the tour','next')+btn('Back','back','link');break;
      case 8:
        eyebrow='READY WHEN YOU ARE';headline='You’re all set.';
@@ -115,8 +125,8 @@
        eyebrow='ONE LAST THING';headline='Choose your BasketBoss experience.';
        description='Start with BasketBoss Free or explore Premium. You decide — there’s no need to subscribe to use your free account.';
        art='<div class="bbob-plan-options"><div class="bbob-plan"><strong>BasketBoss Free</strong><b>£0</b><p>100 recipes and basic meal planning.</p><span>No card needed</span></div><div class="bbob-plan bbob-plan-premium"><strong>Premium / Founder offer</strong><b>See plans</b><p>Optional advanced planning and eligible Premium AI features.</p><span>Standard Premium £4.99/month. Founder £1.99/month after a 7-day trial if eligible among the first 25 confirmed members. Final prices, renewals and trial terms are shown at checkout.</span></div></div>';
-       foot='Founder places are not guaranteed by viewing this page. Pricing, taxes and renewal terms are confirmed at checkout.';
-       actions=btn('Continue with BasketBoss Free','free-complete')+btn('Explore Premium plans','premium','outline');
+       foot='Standard is monthly, not annual. Founder eligibility is verified at checkout. Subscription checkout requires a signed-in account; payment, taxes and renewal terms are confirmed on the existing secure Paddle page.';
+       actions=btn('Explore Premium plans','premium')+btn('Continue with BasketBoss Free','free-complete','outline');
    }
    const counter=state.step===0?'':`<div class="bbob-progress" aria-label="Onboarding step ${state.step} of ${STEP_MAX}"><span style="width:${Math.min(100,Math.round(100*state.step/STEP_MAX))}%"></span></div>`;
    return `<div class="bbob-shell"><header class="bbob-header"><div class="bbob-brand"><img src="${LOGO}" alt=""><span>Basket<span>Boss</span></span></div><button type="button" class="bbob-exit" data-bbob="free" aria-label="Exit onboarding and explore free recipes">Explore Free <span aria-hidden="true">×</span></button></header>${counter}<section class="bbob-main" aria-labelledby="bbob-title"><p class="bbob-eyebrow">${eyebrow}</p><h1 id="bbob-title">${headline}</h1><p class="bbob-description">${description}</p>${art}${foot?`<p class="bbob-footnote">${foot}</p>`:''}<p id="bbobSaveError" role="alert" class="bbob-save-error"></p></section><footer class="bbob-footer">${actions}<div class="bbob-stepname">${titles[state.step]} · ${state.step+1} of 10</div></footer></div>`;
@@ -177,8 +187,10 @@
    restoreAuth();host.remove();host=null;document.body.style.overflow=oldOverflow;
    // Do not dispatch legacy splash-finished: it can open a duplicate sales modal.
    if(goPremium){
-     if(window.BBIntroTrialOffer?.open)void window.BBIntroTrialOffer.open();
-     else window.location.assign('subscriptions.html');
+     // Hand off to the EXISTING Paddle checkout page. Only its original
+     // authenticated data-plan buttons may create transactions; never here.
+     if(typeof window.location?.assign==='function')window.location.assign('pricing-sandbox.html#monthly');
+     else if(window.BBIntroTrialOffer?.open)void window.BBIntroTrialOffer.open();
    }else{
      document.querySelector('.shell .tabs [data-tab="discover"]')?.click();
    }
