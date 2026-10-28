@@ -1,20 +1,29 @@
-/* BasketBoss onboarding v2 — purely presentational; Supabase form and Paddle offer reused.
-   Config: set SHOW_FOUNDER_STORY = true to restore the personal founder copy.
-   No plan, pantry, auth-token, checkout or entitlement writes. */
+/* BasketBoss onboarding refinement — scoped, read-only tutorial screens.
+ * Reuses existing crowned-basket motion and genuine free-recipe card data.
+ * Never writes plan/pantry/billing/auth tokens; household & region go through
+ * the existing app save and market handlers, only when the user finishes.
+ */
 (()=>{'use strict';
  const SHOW_FOUNDER_STORY=false;
  const KEY='bb_onboarding_v2_20261028';
  const PREVIEW_HOST='basketboss-preview.basketboss-site.pages.dev';
  const LOGO='icons/basketboss-crowned-v1766-512.png';
  const STEP_MAX=9;
- const RECIPE={name:'Sheet-pan chicken fajitas',mins:30,image:'release-assets/basketboss-v17/images/existing/fajitas.webp'}; // from recipes.json; read-only sample
+ // Exact public Free recipe facts from the pinned recipes.json catalogue.
+ // These are static read-only samples, never copies of user plans.
+ const RECIPES=[
+  {id:'fajitas',name:'Sheet-pan chicken fajitas',mins:30,servings:6,category:'Mexican · Family favourite',tag:'TRAYBAKE',cost:22.6,ingredientCount:8,image:'release-assets/basketboss-v17/images/existing/fajitas.webp',tip:'Set everything in the middle of the table and let everyone build their own.'},
+  {id:'creamy-pasta',name:'Creamy garlic parmesan chicken pasta',mins:30,servings:4,category:'Italian · Comfort food',tag:'ONE-PAN',cost:15.11,ingredientCount:0,image:'release-assets/basketboss-v17/images/existing/creamy-pasta.webp'},
+  {id:'chickpea-curry',name:'Creamy chickpea & spinach curry',mins:25,servings:4,category:'Vegetarian · Pantry-friendly',tag:'ONE-POT',cost:11.99,ingredientCount:0,image:'release-assets/basketboss-v17/images/existing/chickpea-curry.webp'}
+ ];
+ const HOUSE_SERVINGS={'Just me':1,'2 people':2,'3–4 people':4,'5+ people':5};
  const HOUSE=['Just me','2 people','3–4 people','5+ people'];
  const GOALS=['Spend less on groceries','Plan dinners faster','Waste less food','Make shopping simpler','Try new recipes'];
  const DIETS=['No specific preference','Vegetarian','Vegan','Gluten-free','Dairy-free'];
  const REGIONS=['UK','Jersey','Guernsey','US'];
  const id=x=>document.getElementById(x);
  const read=k=>{try{return localStorage.getItem(k)}catch(_){return null}};
- const write=(k,v)=>{try{localStorage.setItem(k,v)}catch(_){}};
+ const write=(k,v)=>{try{localStorage.setItem(k,v);return localStorage.getItem(k)===v}catch(_){return false}};
  const validSession=()=>{try{const s=JSON.parse(read('basketboss_cloud_session_v1')||'null');return !!(s?.user?.id&&typeof s.access_token==='string'&&Number(s.expires_at)*1000>Date.now()+5000)}catch(_){return false}};
  const installed=()=>{try{return window.matchMedia('(display-mode: standalone)').matches||navigator.standalone===true}catch(_){return navigator.standalone===true}};
  const preview=()=>location.hostname===PREVIEW_HOST&&new URLSearchParams(location.search).get('bb_onboarding_v2_preview')==='1';
@@ -35,18 +44,27 @@
    return !returningUser();
  }
  // Returning and paying members keep their existing opening experience.
- window.BBOnboard2026={willShow,preview};
+ window.BBOnboard2026={willShow,preview,getPreferences:()=>({house:state.house,region:state.region,goals:[...state.goals],diets:[...state.diets]})};
  // Founder story is retained on compare.html; no homepage element is modified here.
  function trimFounder(){return SHOW_FOUNDER_STORY;}
  let state=restoreState()||{step:0,house:'',goals:[],diets:[],region:'',started:false,complete:false};
  let host=null,form=null,message=null,formMarker=null,messageMarker=null,oldOverflow='';
- function persist(){write(KEY,JSON.stringify({step:state.step,house:state.house,goals:state.goals,diets:state.diets,region:state.region,started:state.started,complete:state.complete}));}
+ function persist(){return write(KEY,JSON.stringify({step:state.step,house:state.house,goals:state.goals,diets:state.diets,region:state.region,started:state.started,complete:state.complete}));}
  const btn=(label,action,kind='primary')=>`<button type="button" class="bbob-btn bbob-${kind}" data-bbob="${action}">${label}</button>`;
- const figure=(key)=>{
-   if(key==='discover')return `<div class="bbob-figure bbob-discover"><div class="bbob-mock-top">DISCOVER RECIPES <span>100 FREE</span></div><div class="bbob-minirow"><img class="bbob-real-recipe-photo" loading="lazy" src="${RECIPE.image}" alt="${RECIPE.name}"><div><strong>${RECIPE.name}</strong><small>${RECIPE.mins} min · from the BasketBoss recipe catalogue</small></div></div><div class="bbob-mock-pill">Browse recipes</div></div>`;
-   if(key==='plan')return `<div class="bbob-figure"><div class="bbob-mock-top">MY WEEK <span>7 DAYS</span></div><div class="bbob-days"><span>M</span><span>T</span><span>W</span><span>T</span><span>F</span></div><div class="bbob-mealrow">Monday <strong>${RECIPE.name}</strong></div><div class="bbob-mealrow">Tuesday <strong>Choose a recipe +</strong></div><div class="bbob-mealrow">Wednesday <strong>Choose a recipe +</strong></div></div>`;
-   return `<div class="bbob-figure"><div class="bbob-mock-top">SHOPPING EXAMPLE <span>BY AISLE</span></div><div class="bbob-shoprow"><span>✓</span> Vegetables <small>Mixed peppers</small></div><div class="bbob-shoprow"><span>✓</span> Dairy <small>Cheddar</small></div><div class="bbob-shoprow"><span>○</span> Grains <small>Tortilla wraps</small></div></div>`;
- };
+ // Reuse exactly the SVG basket/crown paths and keyframe names from the original
+ // bb-welcome-splash.js / bb-welcome-splash.css. No second splash dialog fires.
+ const originalCrownAnimation=()=>`<div class="bbob-original-logo-motion" role="img" aria-label="Animated BasketBoss crowned basket logo"><div class="bbob-motion-square"></div><svg class="bbob-motion-mark" viewBox="0 0 64 64" fill="none" aria-hidden="true"><g class="bbob-motion-basket"><path d="M18 30 25 23M46 30 39 23" fill="none" stroke="#44484B" stroke-width="4" stroke-linecap="round"/><path d="M11 31h42l-5 24H16l-5-24Z" fill="#44484B" stroke="#44484B" stroke-width="2" stroke-linejoin="round"/><path class="bbob-motion-slots" d="M22 38v10M32 38v10M42 38v10" stroke="#F8F8F8" stroke-width="4" stroke-linecap="round"/></g><g class="bbob-motion-crown"><path d="M22 18 18 10 27 14 32 6 37 14 46 10 42 18Z" fill="#44484B" stroke="#44484B" stroke-width="2" stroke-linejoin="round"/><path d="M21 21h22" stroke="#44484B" stroke-width="3" stroke-linecap="round"/></g></svg></div>`;
+ const esc=s=>String(s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+ // Real BasketBoss Discover DOM class names, not the fake cards from the mockup.
+ // There are no active buttons, data-recipe, add-to-plan or shopping handlers.
+ const recipeCard=(r,featured=false)=>`<article class="card ${featured?'bb-featured-card':'mini-recipe'} bbob-recipe-card" aria-label="Example recipe: ${esc(r.name)}"><div class="recipe-image"><img src="${esc(r.image)}" alt="${esc(r.name)}" loading="lazy" decoding="async"><span class="pill">${esc(r.tag)}</span><span class="time-pill">◷ ${r.mins} min</span></div><div class="recipe-body"><div class="eyebrow">${esc(r.category)} · serves ${r.servings}</div><h3>${esc(r.name)}</h3><div class="chips"><span class="chip">£${r.cost.toFixed(2)} estimated</span>${r.ingredientCount?`<span class="chip">${r.ingredientCount} ingredients</span>`:''}</div>${r.tip?`<div class="tip">${esc(r.tip)}</div>`:''}</div></article>`;
+ function figure(key){
+   const lead=RECIPES[0];
+   if(key==='discover')return `<div class="bbob-figure bbob-recipe-gallery" aria-label="Read-only examples from the actual BasketBoss Free recipe catalogue"><div class="bbob-mock-top">REAL BASKETBOSS RECIPE CARDS <span>100 FREE</span></div>${recipeCard(lead,true)}<div class="bbob-more-recipes">${RECIPES.slice(1).map(r=>recipeCard(r)).join('')}</div><p class="bbob-preview-disclaimer">Example cards only. No recipe has been opened, saved or added to your plan. Estimates vary by region.</p></div>`;
+   if(key==='plan')return `<div class="bbob-figure bbob-real-plan" aria-label="Read-only sample weekly meal plan"><div class="bbob-mock-top">YOUR WEEK · EXAMPLE ONLY <span>7 DAYS</span></div><div class="bbob-days"><span>MON</span><span>TUE</span><span>WED</span><span>THU</span><span>FRI</span></div><div class="bbob-sample-day"><img src="${lead.image}" alt="${esc(lead.name)}" loading="lazy"><div><small>Monday · Dinner planned</small><strong>${esc(lead.name)}</strong><span>${lead.mins} min · serves ${lead.servings}</span></div></div><div class="bbob-mealrow">Tuesday <strong>Open dinner slot</strong></div><div class="bbob-mealrow">Wednesday <strong>Open dinner slot</strong></div><p class="bbob-preview-disclaimer">This is a demonstration. Your actual meal plan stays empty until you add meals yourself.</p></div>`;
+   return `<div class="bbob-figure bbob-real-shop" aria-label="Read-only aisle shopping list example"><div class="bbob-mock-top">SHOPPING LIST · EXAMPLE ONLY <span>BY AISLE</span></div><div class="bbob-aisle-heading">Vegetables</div><div class="bbob-shoprow"><span aria-hidden="true">○</span> Mixed peppers <small>3 peppers</small></div><div class="bbob-aisle-heading">Dairy</div><div class="bbob-shoprow"><span aria-hidden="true">○</span> Cheddar <small>400 g</small></div><div class="bbob-aisle-heading">Grains</div><div class="bbob-shoprow"><span aria-hidden="true">○</span> Tortilla wraps <small>12 medium</small></div><p class="bbob-preview-disclaimer">Ingredients are from ${esc(lead.name)}. Nothing is added to your real shopping list.</p></div>`;
+ }
+
  function options(items,selected,multiple){return `<div class="bbob-options ${multiple?'bbob-goals':''}">${items.map((v,i)=>`<button type="button" class="bbob-option ${selected.includes(v)?'chosen':''}" data-bbob-opt="${i}" aria-pressed="${selected.includes(v)}"><span class="bbob-choice-mark" aria-hidden="true">${selected.includes(v)?'✓':' '}</span><span>${v}</span></button>`).join('')}</div>`;}
  const titles=['Welcome','Account','Household','Goals','Preferences','Discover','Plan','Shop','All set','Membership'];
  function content(){
@@ -55,7 +73,7 @@
      case 0:
        eyebrow='WELCOME TO BASKETBOSS';headline=installed()? 'Thanks for downloading BasketBoss!' : 'Welcome to BasketBoss.';
        description='Plan Smarter. Eat Better. Less Waste. Take the stress out of deciding what to cook and what to buy.';
-       art='<div class="bbob-intro-art"><div class="bbob-brand-halo"><img src="'+LOGO+'" alt="BasketBoss crowned basket logo"></div><span>Built for real-life food shopping.</span></div>';
+       art='<div class="bbob-intro-art bbob-restored-animation">'+originalCrownAnimation()+'<span>Built for real-life food shopping.</span></div>';
        actions=btn('Let’s get started','next')+btn('Browse 100 free recipes instead','free','link');break;
      case 1:
        eyebrow='YOUR ACCOUNT';headline='One account. Your plans, wherever you are.';
@@ -65,17 +83,17 @@
        actions=btn('Continue setup','next','outline')+btn('Explore Free without an account','free','link');break;
      case 2:
        eyebrow='A LITTLE ABOUT YOUR HOUSEHOLD';headline='How many people are you usually cooking for?';
-       description='A quick introduction so BasketBoss can guide you to relevant tools.';
+       description='Choose a starting household size and shopping region. These update your actual portions and estimated prices when you finish. Both can be changed later.';
        art=options(HOUSE,state.house?[state.house]:[],false)+`<label class="bbob-market-label" for="bbob-region">Where do you shop? (optional)<select id="bbob-region" data-bbob-region><option value="">Choose later in Settings</option>${REGIONS.map(r=>`<option value="${r}" ${state.region===r?'selected':''}>${r==='US'?'United States':r}</option>`).join('')}</select></label>`;
-       actions=btn('Continue','next')+btn('Skip question','next','link');break;
+       actions=btn('Continue','next')+btn('Skip question','skip','link');break;
      case 3:
        eyebrow='WHAT MATTERS MOST';headline='What would make dinner easier?';
-       description='Choose up to three. Your answers shape the introduction, not your saved recipes.';
-       art=options(GOALS,state.goals,true);actions=btn('Continue','next')+btn('Skip question','next','link');break;
+       description='Choose up to three. We save your answers on this device; this does not silently change recipes or meal plans.';
+       art=options(GOALS,state.goals,true);actions=btn('Continue','next')+btn('Skip question','skip','link');break;
      case 4:
        eyebrow='YOUR PREFERENCES';headline='Any dietary preferences?';
-       description='Optional. These choices are stored on this device; they do not automatically filter recipes.';
-       art=options(DIETS,state.diets,true);actions=btn('Show me BasketBoss','next')+btn('Skip question','next','link');break;
+       description='Optional. Saved on this device for future reference; recipes are NOT automatically filtered and allergens must always be checked on packaging.';
+       art=options(DIETS,state.diets,true);actions=btn('Show me BasketBoss','next')+btn('Skip question','skip','link');break;
      case 5:
        eyebrow='STEP 1 OF 3 · DISCOVER';headline='Dinner ideas without the endless scrolling.';
        description='Explore 100 recipes free. Browse for something the family will actually enjoy.';
@@ -91,17 +109,17 @@
      case 8:
        eyebrow='READY WHEN YOU ARE';headline='You’re all set.';
        description='Less time wondering what’s for dinner. More time enjoying it.';
-       art='<div class="bbob-finish-art"><div class="bbob-finish-ring"><img src="'+LOGO+'" alt="BasketBoss crowned basket logo"></div><span class="bbob-sheen" aria-hidden="true"></span></div>';
+       art='<div class="bbob-finish-art">'+originalCrownAnimation()+'<span class="bbob-sheen" aria-hidden="true"></span></div>';
        actions=btn('Choose how to get started','next');break;
      default:
        eyebrow='ONE LAST THING';headline='Choose your BasketBoss experience.';
        description='Start with BasketBoss Free or explore Premium. You decide — there’s no need to subscribe to use your free account.';
-       art='<div class="bbob-plan-options"><div class="bbob-plan"><strong>BasketBoss Free</strong><b>£0</b><p>100 recipes and basic meal planning.</p><span>No card needed</span></div><div class="bbob-plan bbob-plan-premium"><strong>Premium / Founder offer</strong><b>7-day trial</b><p>More meal-planning tools and eligible Premium AI features.</p><span>Founder: £1.99/month after trial, only if eligible among the first 25 confirmed members. See full terms at checkout.</span></div></div>';
+       art='<div class="bbob-plan-options"><div class="bbob-plan"><strong>BasketBoss Free</strong><b>£0</b><p>100 recipes and basic meal planning.</p><span>No card needed</span></div><div class="bbob-plan bbob-plan-premium"><strong>Premium / Founder offer</strong><b>See plans</b><p>Optional advanced planning and eligible Premium AI features.</p><span>Standard Premium £4.99/month. Founder £1.99/month after a 7-day trial if eligible among the first 25 confirmed members. Final prices, renewals and trial terms are shown at checkout.</span></div></div>';
        foot='Founder places are not guaranteed by viewing this page. Pricing, taxes and renewal terms are confirmed at checkout.';
        actions=btn('Continue with BasketBoss Free','free-complete')+btn('Explore Premium plans','premium','outline');
    }
    const counter=state.step===0?'':`<div class="bbob-progress" aria-label="Onboarding step ${state.step} of ${STEP_MAX}"><span style="width:${Math.min(100,Math.round(100*state.step/STEP_MAX))}%"></span></div>`;
-   return `<div class="bbob-shell"><header class="bbob-header"><div class="bbob-brand"><img src="${LOGO}" alt=""><span>Basket<span>Boss</span></span></div><button type="button" class="bbob-exit" data-bbob="free" aria-label="Exit onboarding and explore free recipes">Explore Free <span aria-hidden="true">×</span></button></header>${counter}<section class="bbob-main" aria-labelledby="bbob-title"><p class="bbob-eyebrow">${eyebrow}</p><h1 id="bbob-title">${headline}</h1><p class="bbob-description">${description}</p>${art}${foot?`<p class="bbob-footnote">${foot}</p>`:''}</section><footer class="bbob-footer">${actions}<div class="bbob-stepname">${titles[state.step]} · ${state.step+1} of 10</div></footer></div>`;
+   return `<div class="bbob-shell"><header class="bbob-header"><div class="bbob-brand"><img src="${LOGO}" alt=""><span>Basket<span>Boss</span></span></div><button type="button" class="bbob-exit" data-bbob="free" aria-label="Exit onboarding and explore free recipes">Explore Free <span aria-hidden="true">×</span></button></header>${counter}<section class="bbob-main" aria-labelledby="bbob-title"><p class="bbob-eyebrow">${eyebrow}</p><h1 id="bbob-title">${headline}</h1><p class="bbob-description">${description}</p>${art}${foot?`<p class="bbob-footnote">${foot}</p>`:''}<p id="bbobSaveError" role="alert" class="bbob-save-error"></p></section><footer class="bbob-footer">${actions}<div class="bbob-stepname">${titles[state.step]} · ${state.step+1} of 10</div></footer></div>`;
  }
  function restoreAuth(){
    if(form&&formMarker?.parentNode)formMarker.parentNode.insertBefore(form,formMarker);
@@ -119,13 +137,44 @@
  function render(){if(!host)return;restoreAuth();host.innerHTML=content();if(state.step===1){if(validSession()){state.step=2;persist();render();return;}mountAuth();}
    host.scrollTop=0;host.querySelector('[data-bbob="next"]')?.focus({preventScroll:true});
  }
+ // No changes to app state take place on preview, survey selection or Back.
+ // Commit to the existing app's OWN setters only when the user exits onboarding.
+ function applyChosenPreferences(){
+   if(state.house){
+     const servings=HOUSE_SERVINGS[state.house];
+     if(servings&&typeof window.BasketBossSetOnboardingServings==='function'){
+       if(window.BasketBossSetOnboardingServings(servings)!==true)return 'Could not save household servings. Please retry or choose Skip.';
+     }else if(servings)return 'Household controls are unavailable. Please retry after refreshing.';
+   }
+   if(REGIONS.includes(state.region)){
+     // The existing market setter handles its own local storage, price update & render.
+     if(typeof window.bb307SwitchIsland!=='function'||window.bb307SwitchIsland(state.region)!==true)
+       return 'Could not save shopping region. Please retry or edit it later in Settings.';
+   }
+   return '';
+ }
  function complete(goPremium=false){
    if(!host)return;
-   restoreAuth();host.remove();host=null;document.body.style.overflow=oldOverflow;
-   state.complete=true;state.started=false;persist();
+   if(!persist()){
+     host.querySelector('#bbobSaveError')?.replaceChildren(document.createTextNode('Unable to save your setup on this device. Please check browser storage and retry.'));
+     return;
+   }
+   const error=applyChosenPreferences();
+   if(error){
+     const status=host.querySelector('#bbobSaveError');
+     if(status)status.textContent=error;
+     return;
+   }
+   state.complete=true;state.started=false;
+   if(!persist()){state.complete=false;state.started=true;
+     const status=host.querySelector('#bbobSaveError');
+     if(status)status.textContent='Could not save onboarding completion. Please retry.';
+     return;
+   } // Goals and diets stay in the existing local onboarding app state.
    write('basketboss_onboarding_seen_v1','true');
    try{sessionStorage.setItem('basketboss_welcome_splash_seen_v1','1')}catch(_){}
-   // Legacy welcome finished event intentionally NOT fired: it would open a second sales dialog.
+   restoreAuth();host.remove();host=null;document.body.style.overflow=oldOverflow;
+   // Do not dispatch legacy splash-finished: it can open a duplicate sales modal.
    if(goPremium){
      if(window.BBIntroTrialOffer?.open)void window.BBIntroTrialOffer.open();
      else window.location.assign('subscriptions.html');
@@ -133,13 +182,7 @@
      document.querySelector('.shell .tabs [data-tab="discover"]')?.click();
    }
  }
- function applyRegion(){
-   if(!REGIONS.includes(state.region))return;
-   const selector=id('bb307Island'), save=id('bb307SaveMarket');
-   if(!selector||!save)return;
-   selector.value=state.region;selector.dispatchEvent(new Event('change',{bubbles:true}));
-   save.click(); // Invoke original region-setting and pricing refresh handlers only.
- }
+
  function chooseOption(i){
    const items=state.step===2?HOUSE:state.step===3?GOALS:DIETS;
    const v=items[i];if(v===undefined)return;
@@ -163,7 +206,8 @@
      const action=e.target.closest('[data-bbob]')?.dataset.bbob;if(!action)return;
      if(action==='free'||action==='free-complete'){complete();return;}
      if(action==='premium'){complete(true);return;}
-     if(action==='next'){if(state.step===2)applyRegion();state.step=Math.min(STEP_MAX,state.step+1);persist();render();return;}
+     if(action==='next'){state.step=Math.min(STEP_MAX,state.step+1);persist();render();return;}
+     if(action==='skip'){if(state.step===2){state.house='';state.region='';}if(state.step===3)state.goals=[];if(state.step===4)state.diets=[];state.step=Math.min(STEP_MAX,state.step+1);persist();render();return;}
      if(action==='back'){state.step=Math.max(0,state.step-1);persist();render();}
    });
    host.addEventListener('change',e=>{if(e.target.matches('[data-bbob-region]')){state.region=e.target.value;persist();}});

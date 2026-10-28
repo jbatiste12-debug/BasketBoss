@@ -77,3 +77,42 @@
 
 #bbNewOnboarding .bbob-market-label{display:grid;gap:7px;margin:16px 0 0;color:#365a44;font-size:13px;font-weight:750}
 #bbNewOnboarding .bbob-market-label select{width:100%;min-height:48px;border:1px solid #c8dacd;border-radius:11px;background:#fff;color:#234836;padding:9px 13px;font:15px system-ui}
+
+/* Refinement — restore the original bb-welcome-splash basket/crown motion IN onboarding.
+   Keyframes are the existing bbws* names defined in bb-welcome-splash.css. */
+#bbNewOnboarding .bbob-original-logo-motion{position:relative;width:154px;height:154px;display:grid;place-items:center;margin:auto;transform-origin:center;animation:bbwsMarkArrive .88s cubic-bezier(.2,.85,.28,1) .12s both}
+#bbNewOnboarding .bbob-motion-square{width:144px;height:144px;position:absolute;border-radius:37px;background:linear-gradient(150deg,#f7f8f9,#e4e6e8);border:1px solid #cfd3d7;box-shadow:0 18px 34px #26303724}
+#bbNewOnboarding .bbob-motion-mark{width:106px;height:106px;z-index:1;overflow:visible}
+#bbNewOnboarding .bbob-motion-basket{transform-box:fill-box;transform-origin:center;animation:bbwsBasketSlide .86s cubic-bezier(.2,.85,.28,1) .30s both}
+#bbNewOnboarding .bbob-motion-crown{transform-box:fill-box;transform-origin:center;animation:bbwsCrownDrop .78s cubic-bezier(.15,1.25,.4,1) 1.08s both}
+#bbNewOnboarding .bbob-motion-crown path{stroke-linecap:round;stroke-linejoin:round}
+#bbNewOnboarding .bbob-restored-animation{min-height:230px}
+#bbNewOnboarding .bbob-recipe-gallery{display:block;max-height:min(55svh,530px);overflow:auto;padding:12px}
+#bbNewOnboarding .bbob-recipe-gallery .bbob-mock-top{margin:5px 3px 13px}
+#bbNewOnboarding .bbob-recipe-card{overflow:hidden;border:1px solid #dce5df;border-radius:17px;background:#fff;box-shadow:0 7px 15px #1b4a3321;margin:0;pointer-events:none}
+#bbNewOnboarding .bbob-recipe-card .recipe-image{height:163px;position:relative;overflow:hidden;background:#eaf2e9}
+#bbNewOnboarding .bbob-recipe-card .recipe-image img{width:100%;height:100%;object-fit:cover;display:block}
+#bbNewOnboarding .bbob-recipe-card .pill,#bbNewOnboarding .bbob-recipe-card .time-pill{position:absolute;top:10px;background:#fafff5ed;color:#214c35;border-radius:99px;padding:5px 9px;font-size:10px;font-weight:850}
+#bbNewOnboarding .bbob-recipe-card .pill{left:10px}
+#bbNewOnboarding .bbob-recipe-card .time-pill{right:10px}
+#bbNewOnboarding .bbob-recipe-card .recipe-body{padding:13px}
+#bbNewOnboarding .bbob-recipe-card .eyebrow{font-size:10px;color:#60806d;margin-bottom:3px}
+#bbNewOnboarding .bbob-recipe-card h3{margin:0 0 8px;color:#193e2d;font-size:15px;line-height:1.22}
+#bbNewOnboarding .bbob-recipe-card .chips{display:flex;gap:6px;flex-wrap:wrap}
+#bbNewOnboarding .bbob-recipe-card .chip{border:1px solid #d1e2d5;background:#f0f7f1;border-radius:99px;color:#275a3b;font-size:10px;padding:4px 7px}
+#bbNewOnboarding .bbob-recipe-card .tip{margin:8px 0 0;color:#496c51;font-size:11px;line-height:1.4}
+#bbNewOnboarding .bbob-more-recipes{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px;margin-top:11px}
+#bbNewOnboarding .bbob-more-recipes .recipe-image{height:90px}
+#bbNewOnboarding .bbob-more-recipes .recipe-body{padding:9px}
+#bbNewOnboarding .bbob-more-recipes .recipe-body h3{font-size:12px}
+#bbNewOnboarding .bbob-more-recipes .eyebrow{font-size:9px}
+#bbNewOnboarding .bbob-preview-disclaimer{font-size:11px;line-height:1.5;color:#607b69;margin:13px 2px 0}
+#bbNewOnboarding .bbob-sample-day{display:flex;align-items:center;gap:12px;padding:10px;border-radius:12px;background:#f1f7f0;border:1px solid #d5e6d6}
+#bbNewOnboarding .bbob-sample-day img{width:79px;height:79px;object-fit:cover;border-radius:10px}
+#bbNewOnboarding .bbob-sample-day div{display:grid;gap:3px}
+#bbNewOnboarding .bbob-sample-day small,#bbNewOnboarding .bbob-sample-day span{font-size:11px;color:#5e7d66}
+#bbNewOnboarding .bbob-sample-day strong{color:#214a32;font-size:13px}
+#bbNewOnboarding .bbob-aisle-heading{padding:8px 12px;background:#e8f3ea;color:#1b603e;border-radius:9px;font-size:12px;font-weight:850}
+#bbNewOnboarding .bbob-save-error{color:#a3292b;font-size:12px;font-weight:700;line-height:1.45}
+@media(max-width:560px){#bbNewOnboarding .bbob-recipe-gallery{max-height:48svh}#bbNewOnboarding .bbob-recipe-card .recipe-image{height:137px}#bbNewOnboarding .bbob-more-recipes .recipe-image{height:80px}}
+@media(prefers-reduced-motion:reduce){#bbNewOnboarding .bbob-original-logo-motion,#bbNewOnboarding .bbob-motion-basket,#bbNewOnboarding .bbob-motion-crown{animation:none!important;opacity:1!important;transform:none!important}}
