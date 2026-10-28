@@ -1,0 +1,78 @@
+/* BasketBoss surgical Cook -> Plan and text-overflow hotfix, 2026-10-28.
+   CSS only; no edits to auth, billing, price calculation or Cook handlers. */
+#bbNewOnboarding, #bbNewOnboarding *,
+#app.bbnext-plan, #app.bbnext-plan *,
+.shell > header.top, .shell > header.top * {
+  box-sizing:border-box;
+}
+#bbNewOnboarding :is(.bbob-shell,.bbob-content,.bbob-figure,.bbob-real-shop,.bbob-real-plan,
+ .bbob-shop-aisle,.bbob-shop-item,.bbob-shop-item-name,.bbob-shop-price,
+ .bbob-sample-day,.bbob-sample-day>div,.bbob-plan,.bbob-plan>*,.bbob-mock-top),
+#app.bbnext-plan :is(.bbnext-day,.bbnext-day-toggle,.bbnext-day-description,
+ .bbnext-day-description>*,.bbnext-plan-budget-text,.bb1756-extra-group,
+ .bb1756-extra-group>summary,.bb1756-extra-group>summary>*,.bb-next-plan-card),
+.shell > header.top :is(.brand,.brand>div,.bbui-header-actions,.bbpol-header-pill,.bbpol-region-popover) {
+  min-width:0;
+  max-width:100%;
+  overflow-wrap:break-word;
+}
+/* Real-shop rows: a long name may wrap but cannot push prices outside the card. */
+#bbNewOnboarding .bbob-real-shop .bbob-shop-item {
+  display:grid!important;
+  grid-template-columns:22px minmax(0,1fr) minmax(0,104px)!important;
+  gap:8px!important;
+  align-items:center!important;
+  width:100%; min-width:0;
+}
+#bbNewOnboarding .bbob-real-shop .bbob-shop-item-name {
+  min-width:0!important;max-width:100%!important;
+  display:flex!important;flex-direction:column!important;align-items:flex-start!important;
+}
+#bbNewOnboarding .bbob-real-shop .bbob-shop-item-name :is(strong,small) {
+  display:block!important;max-width:100%;white-space:normal!important;
+  overflow-wrap:anywhere!important;line-height:1.4!important;
+}
+#bbNewOnboarding .bbob-real-shop .bbob-shop-price {
+  min-width:0;max-width:100%!important;justify-self:end;
+  white-space:normal!important;overflow-wrap:break-word!important;
+  text-align:right;font-variant-numeric:tabular-nums;
+}
+#bbNewOnboarding .bbob-real-shop .bbob-shop-total {
+  min-width:0;max-width:100%;flex-wrap:wrap;
+}
+#bbNewOnboarding .bbob-real-shop .bbob-shop-total :is(strong,span) {
+  min-width:0;max-width:100%;overflow-wrap:break-word;
+}
+#bbNewOnboarding .bbob-sample-day {
+  display:grid!important;grid-template-columns:clamp(70px,25%,94px) minmax(0,1fr)!important;
+  min-width:0;align-items:center;gap:12px;
+}
+#bbNewOnboarding .bbob-sample-day img {
+  display:block!important;width:100%!important;max-width:100%!important;
+  aspect-ratio:1/1;object-fit:cover;
+}
+#bbNewOnboarding .bbob-sample-day div :is(small,strong,span){
+  min-width:0;overflow-wrap:break-word;white-space:normal;
+}
+#bbNewOnboarding :is(.bbob-plan,.bbob-plan p,.bbob-description,.bbob-content p) {
+  overflow-wrap:break-word;white-space:normal;
+}
+#app.bbnext-plan .bbnext-day-description strong {
+  white-space:normal!important;overflow-wrap:break-word!important;
+}
+#app.bbnext-plan .bbnext-day-description small {
+  white-space:normal!important;overflow-wrap:break-word!important;
+}
+#app.bbnext-plan .bbnext-day-toggle {min-width:0;max-width:100%;}
+.shell > header.top .bbpol-header-pill {white-space:normal;line-height:1.25;}
+@media(max-width:375px) {
+  #bbNewOnboarding .bbob-real-shop .bbob-shop-item {
+    grid-template-columns:22px minmax(0,1fr)!important;
+  }
+  #bbNewOnboarding .bbob-real-shop .bbob-shop-price {
+    grid-column:2;justify-self:start;max-width:100%;text-align:left;
+  }
+  #bbNewOnboarding .bbob-sample-day {
+    grid-template-columns:76px minmax(0,1fr)!important;
+  }
+}
