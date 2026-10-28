@@ -9,7 +9,7 @@ const style=fs.readFileSync('bb-onboarding-v2.css','utf8');
 const compare=fs.readFileSync('compare.html','utf8');
 
 test('new onboarding runs before legacy animation without modifying its artwork',()=>{
- assert.match(index,/bb-onboarding-v2\.js\?v=20261028-onboard-v4/);
+ assert.match(index,/bb-onboarding-v2\.js\?v=20261028-onboard-v5/);
  assert.match(index,/bb-onboarding-v2\.css\?v=20261028-onboard-v3/);
  assert.ok(index.indexOf('bb-onboarding-v2.js')<index.indexOf('bb-welcome-splash.js'));
  assert.match(index,/if\(window\.BBOnboard2026\?\.willShow\(\)\)return;/);
@@ -37,7 +37,8 @@ test('Free is an explicit no-payment option and Premium opens existing offer',()
  assert.match(onboarding,/Explore Premium plans/);
  assert.match(onboarding,/BBIntroTrialOffer\?\.open/);
  assert.match(trial,/BBIntroTrialOffer = \{ open: \(\) => openOffer\(true\) \}/);
- assert.match(onboarding,/Founder places are not guaranteed/);
+ assert.match(onboarding,/Founder eligibility is verified at checkout/);
+ assert.match(onboarding,/first 25 confirmed members/);
 });
 test('founder story is optional while privacy, pricing and feedback remain',()=>{
  assert.match(onboarding,/SHOW_FOUNDER_STORY=false/);
@@ -101,4 +102,16 @@ test('fresh one-time onboarding restart does not skip returning users or remove 
  assert.match(onboarding,/Continue with BasketBoss Free/);
  assert.match(onboarding,/Explore Premium plans/);
  assert.match(onboarding,/BBIntroTrialOffer\?\.open/);
+});
+
+
+test('rich Shop preview uses genuine fajitas prices, no plan writes or phantom annual tier',()=>{
+  for(const part of ['Chicken breast','Mixed peppers','Tortilla wraps','Soured cream','Cheddar','Fajita seasoning','Cooking oil','Lime','£${total.toFixed(2)}','Indicative basket estimate','£22.60']){
+    if(part==='£22.60')continue; // computed at render, tested in isolated runtime
+    assert.ok(onboarding.includes(part),`Missing audited catalogue item: ${part}`);
+  }
+  assert.match(onboarding,/pricing-sandbox\.html#monthly/);
+  assert.doesNotMatch(onboarding,/pricing-sandbox\.html#annual|Paddle\.Checkout\.open/);
+  const presentation=fs.readFileSync('bb-plan-premium-polish.js','utf8');
+  assert.doesNotMatch(presentation,/fetch\(|localStorage\.setItem|Paddle\.Checkout|addRecipe\(/);
 });

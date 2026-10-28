@@ -1,0 +1,111 @@
+/* BasketBoss Plan / My Week UI refinement. All rules are presentational.
+   Keep original DOM IDs, input elements, handlers and budget ring mechanics. */
+:root { --bbpol-forest:#174b35;--bbpol-green:#047857;--bbpol-border:#d9e5dc; }
+body .shell { max-width:744px!important;width:100%!important;margin-inline:auto!important;padding-inline:12px!important;padding-bottom:calc(144px + env(safe-area-inset-bottom,0px))!important;box-sizing:border-box!important; }
+body .shell > header.top {max-width:720px!important;width:100%!important;min-height:60px!important;margin:0 auto 11px!important;padding:9px 13px!important;box-sizing:border-box!important;position:relative!important;overflow:visible!important;border-radius:0 0 17px 17px!important;}
+body .shell #app {width:100%!important;max-width:720px!important;margin-inline:auto!important;padding-bottom:calc(155px + env(safe-area-inset-bottom,0px))!important;box-sizing:border-box!important;}
+body .shell > header.top .brand h1{font-family:"Avenir Next",Inter,ui-sans-serif,system-ui,sans-serif!important;font-weight:800!important;letter-spacing:-.03em!important;font-size:clamp(17px,3vw,23px)!important;}
+body .shell > header.top .bb-public-beta-badge{border-radius:999px!important;font-size:9px!important;letter-spacing:.075em!important;font-weight:800!important;padding:3px 8px!important;}
+body .shell > header.top .bbui-header-actions{display:flex!important;align-items:center!important;gap:7px!important;min-width:0!important;}
+body .shell > header.top .bbpol-header-pill{display:inline-flex!important;align-items:center!important;justify-content:center!important;min-height:40px!important;max-width:155px!important;min-width:0!important;flex-shrink:1!important;padding:8px 10px!important;border-radius:12px!important;border:1px solid #c4dbca!important;background:#edf7ef!important;color:#165c3e!important;font-size:11px!important;font-weight:800!important;white-space:normal!important;line-height:1.25!important;cursor:pointer!important;box-shadow:none!important;}
+body .shell > header.top .bbpol-header-pill:hover{background:#dff3e5!important}
+body .shell > header.top .bbpol-header-pill:focus-visible{outline:3px solid #d7a243!important;outline-offset:2px!important}
+body .shell > header.top .bbpol-upgrade{background:#145f40!important;color:#fff!important;border-color:#145f40!important;white-space:nowrap!important;}
+body .shell > header.top .bbpol-upgrade:hover{background:#0d4c31!important;}
+body .shell > header.top .bbpol-upgrade[hidden]{display:none!important;}
+/* Preserve the real shopping-region card and its existing select/save handlers.
+   Its compact face moves to a single header button; the original editor pops down. */
+body .shell > header.top #bb17RegionCard.bbpol-region-popover.bb17513-region-collapsed{display:none!important;}
+body .shell > header.top #bb17RegionCard.bbpol-region-popover:not(.bb17513-region-collapsed){display:block!important;position:absolute!important;top:calc(100% + 7px)!important;right:0!important;left:0!important;width:100%!important;max-width:720px!important;z-index:100!important;margin:0!important;padding:14px!important;border-radius:17px!important;background:white!important;border:1px solid #caddce!important;box-shadow:0 14px 42px #172b2229!important;box-sizing:border-box!important;}
+body .shell > header.top #bb17RegionCard.bbpol-region-popover:not(.bb17513-region-collapsed) .bb17-region-top{display:flex!important;flex-wrap:wrap!important;gap:10px!important;}
+body .shell > header.top #bb17RegionCard .bb17513-region-summary{display:none!important}
+/* Core weekly budget: two balanced columns, no watermark, original live ring. */
+#app.bbnext-plan .bbnext-plan-budget{display:grid!important;grid-template-columns:112px minmax(0,1fr)!important;column-gap:18px!important;row-gap:8px!important;align-items:center!important;justify-items:stretch!important;padding:20px!important;border-radius:21px!important;background:#fff!important;border:1px solid #dce7dd!important;box-shadow:0 9px 30px #102d1b12!important;}
+#app.bbnext-plan .bbnext-plan-budget .bb-myweek-emblem{grid-column:1!important;grid-row:1!important;position:relative!important;align-self:center!important;justify-self:center!important;width:108px!important;height:108px!important;max-width:108px!important;min-width:0!important;margin:0!important;display:grid!important;place-items:center!important;}
+#app.bbnext-plan .bbnext-plan-budget .bb-myweek-emblem .bb77-week-mark,
+#app.bbnext-plan .bbnext-plan-budget .bb-myweek-emblem .bb-myweek-watermark,
+#app.bbnext-plan .bbnext-plan-budget .bb-myweek-emblem >svg{display:none!important;}
+#app.bbnext-plan .bbnext-plan-budget .bbnext-plan-donut{position:static!important;grid-column:auto!important;grid-row:auto!important;justify-self:center!important;margin:0!important;width:106px!important;height:106px!important;box-shadow:none!important;}
+#app.bbnext-plan .bbnext-plan-budget .bbnext-plan-donut-core{width:78px!important;height:78px!important;}
+#app.bbnext-plan .bbnext-plan-budget .bbnext-plan-budget-text{min-width:0!important;grid-column:2!important;grid-row:1!important;justify-self:stretch!important;text-align:left!important;align-items:start!important;margin:0!important;padding:0!important;}
+#app.bbnext-plan .bbnext-plan-budget .bbnext-plan-kicker{font-size:10px!important;color:#1e7650!important;font-weight:850!important;letter-spacing:.10em!important;text-align:left!important;}
+#app.bbnext-plan .bbnext-plan-budget .bbnext-plan-budget-text h2{font-size:clamp(26px,4.8vw,34px)!important;line-height:1.12!important;letter-spacing:-.042em!important;text-align:left!important;margin:3px 0 9px!important;}
+#app.bbnext-plan .bbnext-plan-budget .bbnext-plan-budget-line{font-size:14px!important;text-align:left!important;}
+#app.bbnext-plan .bbnext-plan-budget .bbnext-plan-budget-text>p{font-size:12px!important;margin:7px 0!important;max-width:none!important;text-align:left!important;}
+#app.bbnext-plan .bbnext-plan-budget .bbnext-plan-budget-text>small{margin:0!important;max-width:none!important;text-align:left!important;font-size:10px!important;}
+#app.bbnext-plan .bbnext-plan-budget .bb77-budget-form{width:100%!important;max-width:none!important;margin:12px 0 0!important;text-align:left!important;}
+#app.bbnext-plan .bbnext-plan-budget .bb77-budget-controls{display:flex!important;gap:7px!important;justify-content:flex-start!important;flex-wrap:wrap!important;}
+#app.bbnext-plan .bb77-budget-controls input{flex:1 1 85px!important;width:100%!important;min-width:75px!important;max-width:180px!important;min-height:40px!important;border:1px solid #c8dacd!important;border-radius:11px!important;background:#fbfdfb!important;color:#173d2c!important;font-variant-numeric:tabular-nums!important;padding:8px 10px!important;}
+#app.bbnext-plan .bb77-budget-controls button{min-height:40px!important;flex:0 1 auto!important;border-radius:11px!important;padding:8px 12px!important;font-size:12px!important;white-space:nowrap!important;}
+#app.bbnext-plan .bb77-budget-controls input::-webkit-inner-spin-button,
+#app.bbnext-plan .bb77-budget-controls input::-webkit-outer-spin-button{-webkit-appearance:none!important;margin:0!important;}
+#app.bbnext-plan .bb77-budget-controls input[type=number]{-moz-appearance:textfield!important;appearance:textfield!important;}
+/* Day pills, filled meals, and deliberate empty slots. Native <details> still owns toggles. */
+#app.bbnext-plan .bb1759-days{gap:11px!important;}
+#app.bbnext-plan .bbnext-day{border-radius:17px!important;border:1px solid #d9e6dd!important;background:white!important;box-shadow:0 3px 14px #1427190b!important;overflow:hidden!important;}
+#app.bbnext-plan .bbnext-day:not(.has-meal):not(.is-locked){border:1.5px dashed #cbd5e1!important;background:#f8fafc!important;}
+#app.bbnext-plan .bbnext-day-toggle{display:flex!important;align-items:center!important;gap:12px!important;min-height:96px!important;padding:12px!important;}
+#app.bbnext-plan .bbnext-day-label{display:grid!important;place-items:center!important;flex:0 0 45px!important;width:45px!important;height:68px!important;background:#e9f4ec!important;border:1px solid #d6e7d8!important;border-radius:12px!important;color:#185c40!important;font:850 12px/1 system-ui,sans-serif!important;letter-spacing:.07em!important;}
+#app.bbnext-plan .bbnext-day-toggle img.bb-beta-day-thumb{flex:0 0 84px!important;width:84px!important;height:84px!important;min-width:84px!important;max-width:84px!important;max-height:84px!important;aspect-ratio:1!important;display:block!important;object-fit:cover!important;border-radius:12px!important;box-shadow:0 2px 8px #00000014!important;}
+#app.bbnext-plan .bbnext-day-description{flex:1 1 auto!important;display:grid!important;align-content:center!important;gap:6px!important;min-width:0!important;text-align:left!important;}
+#app.bbnext-plan .bbnext-day-description strong{font-size:clamp(15px,2.4vw,17px)!important;line-height:1.25!important;font-weight:750!important;overflow-wrap:break-word!important;letter-spacing:-.012em!important;}
+#app.bbnext-plan .bbnext-day-description small.bbpol-meta-done{display:flex!important;flex-wrap:wrap!important;gap:6px!important;font-size:11px!important;text-align:left!important;}
+#app.bbnext-plan .bbpol-time,#app.bbnext-plan .bbpol-price{display:inline-flex!important;align-items:center!important;border-radius:999px!important;padding:5px 8px!important;font-size:11px!important;line-height:1.2!important;font-weight:750!important;white-space:normal!important;}
+#app.bbnext-plan .bbpol-time{background:#f1f5f3!important;color:#52675a!important;}
+#app.bbnext-plan .bbpol-price{background:#ecfdf5!important;color:#047857!important;}
+#app.bbnext-plan .bbnext-day:not(.has-meal) .bbnext-day-description{display:grid!important;grid-template-columns:72px minmax(0,1fr)!important;grid-template-rows:1fr 1fr!important;column-gap:12px!important;align-items:center!important;}
+#app.bbnext-plan .bbnext-day:not(.has-meal) .bbnext-day-description:before{content:'+'!important;grid-column:1!important;grid-row:1/3!important;display:grid!important;place-items:center!important;width:72px!important;height:72px!important;border:1.5px dashed #cbd5e1!important;border-radius:12px!important;background:#edf3f5!important;color:#7a9a89!important;font-size:30px!important;font-weight:350!important;}
+#app.bbnext-plan .bbnext-day:not(.has-meal) .bbnext-day-description strong{grid-column:2!important;grid-row:1!important;align-self:end!important;}
+#app.bbnext-plan .bbnext-day:not(.has-meal) .bbnext-day-description small{grid-column:2!important;grid-row:2!important;align-self:start!important;}
+#app.bbnext-plan .bbnext-day-caret{flex:0 0 auto!important;font-size:20px!important;}
+/* Warm Pro feature strip and clean status pills for school lunches. */
+#app.bbnext-plan .bb81-pro-filters,#app.bbnext-plan .bbnext-plan-autofill,#app.bbnext-plan #bb172SixDinnerPanel{background:#fcfbf7!important;border:1px solid #e6e5da!important;border-radius:16px!important;box-shadow:none!important;}
+#app.bbnext-plan .bb81-pro-pill{border-radius:999px!important;background:#fff!important;border:1px solid #cfded1!important;min-height:39px!important;font-size:12px!important;padding:8px 13px!important;}
+#app.bbnext-plan .bb81-pro-pill:focus-visible{outline:3px solid #d5a443!important;outline-offset:2px!important;}
+#app.bbnext-plan .bb1756-extra-group>summary span{margin-left:auto!important;display:inline-flex!important;align-items:center!important;border-radius:999px!important;background:#edf7f0!important;color:#27664a!important;border:1px solid #d2e5d7!important;padding:5px 10px!important;font-size:11px!important;font-weight:800!important;}
+/* The native 5-tab dock remains fully clickable, elevated and non-overlapping. */
+body .shell .tabs{max-width:720px!important;width:min(calc(100vw - 24px),720px)!important;box-sizing:border-box!important;background:rgba(255,255,255,.92)!important;-webkit-backdrop-filter:blur(12px)!important;backdrop-filter:blur(12px)!important;box-shadow:0 13px 45px #102d1c26,0 2px 10px #15301b12!important;border:1px solid #d7e8db!important;z-index:90!important;}
+/* Existing Pro modal gains a non-destructive direct link to the checkout route. */
+#bb81PremiumPreviewDialog .bbpol-direct-plans{display:inline-flex;align-items:center;justify-content:center;min-height:44px;border-radius:12px;background:#17613f;color:white;padding:10px 14px;font-size:13px;font-weight:800;text-decoration:none;}
+#bb81PremiumPreviewDialog .bbpol-direct-plans:focus-visible{outline:3px solid #d7a243;outline-offset:2px;}
+@media(max-width:600px){
+ body .shell>header.top{padding:8px!important;gap:7px!important}
+ body .shell>header.top .bbui-header-actions{gap:4px!important}
+ body .shell>header.top .bbpol-header-pill{min-height:35px!important;padding:6px 7px!important;font-size:10px!important;max-width:104px!important}
+ body .shell>header.top .brand{gap:5px!important}
+ body .shell>header.top .brand h1{font-size:16px!important}
+ body .shell>header.top .bbui-settings-trigger{width:36px!important;height:36px!important;min-height:36px!important}
+ #app.bbnext-plan .bbnext-plan-budget{grid-template-columns:82px minmax(0,1fr)!important;column-gap:12px!important;padding:13px!important}
+ #app.bbnext-plan .bbnext-plan-budget .bb-myweek-emblem{width:82px!important;height:82px!important}
+ #app.bbnext-plan .bbnext-plan-budget .bbnext-plan-donut{width:80px!important;height:80px!important}
+ #app.bbnext-plan .bbnext-plan-budget .bbnext-plan-donut-core{width:59px!important;height:59px!important}
+ #app.bbnext-plan .bbnext-plan-budget .bbnext-plan-donut-core strong{font-size:11px!important}
+ #app.bbnext-plan .bbnext-plan-budget .bbnext-plan-budget-text h2{font-size:27px!important}
+ #app.bbnext-plan .bbnext-day-toggle{gap:8px!important;padding:9px!important}
+ #app.bbnext-plan .bbnext-day-label{width:38px!important;flex-basis:38px!important;height:61px!important;font-size:11px!important}
+ #app.bbnext-plan .bbnext-day-toggle img.bb-beta-day-thumb{width:72px!important;height:72px!important;min-width:72px!important;max-width:72px!important;max-height:72px!important;flex-basis:72px!important}
+ #app.bbnext-plan .bbnext-day:not(.has-meal) .bbnext-day-description{grid-template-columns:72px minmax(0,1fr)!important;column-gap:7px!important}
+ #app.bbnext-plan .bbnext-day-description strong{font-size:14px!important}
+}
+@media(max-width:375px){
+ body .shell>header.top .bbpol-upgrade{max-width:70px!important}
+ #app.bbnext-plan .bbnext-day-label{flex-basis:33px!important;width:33px!important}
+ #app.bbnext-plan .bbnext-day-toggle img.bb-beta-day-thumb{width:63px!important;height:63px!important;min-width:63px!important;max-width:63px!important;flex-basis:63px!important}
+ #app.bbnext-plan .bbnext-day:not(.has-meal) .bbnext-day-description{grid-template-columns:62px minmax(0,1fr)!important}
+ #app.bbnext-plan .bbnext-day:not(.has-meal) .bbnext-day-description:before{height:62px!important;width:62px!important}
+}
+@media(prefers-reduced-motion:reduce){body .shell .tabs{scroll-behavior:auto!important}}
+
+/* Original budget aria-valuenow drives this SVG; no duplicated spending math. */
+#app.bbnext-plan .bbnext-plan-budget .bbnext-plan-donut:has(.bbpol-ring-svg){background:transparent!important;position:relative!important;}
+#app.bbnext-plan .bbnext-plan-budget .bbpol-ring-svg{position:absolute;inset:0;width:100%;height:100%;overflow:visible;transform:rotate(-90deg);pointer-events:none;}
+#app.bbnext-plan .bbpol-ring-svg circle{fill:none;stroke-width:10;stroke-linecap:round;}
+#app.bbnext-plan .bbpol-ring-track{stroke:#e0ebe4;}
+#app.bbnext-plan .bbpol-ring-progress{stroke:#287646;stroke-dasharray:263.894;stroke-dashoffset:263.894;transition:stroke-dashoffset .25s ease;}
+@media(prefers-reduced-motion:reduce){#app.bbnext-plan .bbpol-ring-progress{transition:none}}
+@media(max-width:430px){
+ body .shell > header.top{flex-wrap:wrap!important;row-gap:6px!important;}
+ body .shell > header.top .brand{flex:1 1 100%!important;}
+ body .shell > header.top .bbui-header-actions{width:100%!important;justify-content:flex-end!important;}
+ body .shell > header.top .bbpol-header-pill{max-width:145px!important;}
+}
