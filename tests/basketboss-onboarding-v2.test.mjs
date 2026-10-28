@@ -9,7 +9,7 @@ const style=fs.readFileSync('bb-onboarding-v2.css','utf8');
 const compare=fs.readFileSync('compare.html','utf8');
 
 test('new onboarding runs before legacy animation without modifying its artwork',()=>{
- assert.match(index,/bb-onboarding-v2\.js\?v=20261028-onboard-v3/);
+ assert.match(index,/bb-onboarding-v2\.js\?v=20261028-onboard-v4/);
  assert.match(index,/bb-onboarding-v2\.css\?v=20261028-onboard-v3/);
  assert.ok(index.indexOf('bb-onboarding-v2.js')<index.indexOf('bb-welcome-splash.js'));
  assert.match(index,/if\(window\.BBOnboard2026\?\.willShow\(\)\)return;/);
@@ -83,9 +83,22 @@ test('survey stores choices and uses original household and region setters only 
  assert.match(onboarding,/function complete\(goPremium=false\)/);
  assert.match(onboarding,/window\.BasketBossSetOnboardingServings/);
  assert.match(onboarding,/window\.bb307SwitchIsland/);
- assert.match(onboarding,/basketboss_321_unified_state_v1/);
+ assert.match(index,/basketboss_321_unified_state_v1/);
  assert.doesNotMatch(onboarding,/localStorage\.setItem\(['"]basketboss_321_unified_state_v1/);
  assert.match(index,/window\.BasketBossSetOnboardingServings\s*=\s*function/);
  assert.match(index,/if\(!persist\(\)\)\{state\.servings=previous;return false;\}/);
  assert.match(index,/window\.bb307SwitchIsland=bb307SwitchIsland/);
+});
+
+
+test('fresh one-time onboarding restart does not skip returning users or remove sign-in and Premium screens',()=>{
+ assert.match(onboarding,/bb_onboarding_fresh_once_20261028_v1/);
+ assert.match(onboarding,/return restoreState\(\)\?\.complete!==true/);
+ assert.doesNotMatch(onboarding,/if\(!preview\(\)\&\&returningUser\(\)/);
+ assert.match(onboarding,/headline='You’re already signed in\.'/);
+ assert.match(onboarding,/id\('cloud-auth'\)/);
+ assert.match(onboarding,/Create a free account or sign in/);
+ assert.match(onboarding,/Continue with BasketBoss Free/);
+ assert.match(onboarding,/Explore Premium plans/);
+ assert.match(onboarding,/BBIntroTrialOffer\?\.open/);
 });
