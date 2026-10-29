@@ -5188,6 +5188,31 @@ function bbFeedingSave(next,id){
  if(!persist()){state.servings=oldServings;state.feedingSet=oldSet;state.mealServings=oldMap;return false;}
  render();return true;
 }
+/* Each day stepper is its own contained control; the original summary/card
+   DOM remains intact. Never allow its buttons to toggle the details accordion. */
+function bbFeedingDayStepper(day,recipe,position){
+ const current=bbFeedingForRecipe(recipe);
+ const pill=document.createElement('span');pill.className='bbfeed-control bbfeed-meal';
+ pill.dataset.bbfeedDay=day;pill.dataset.bbfeedPos=position;
+ pill.setAttribute('role','group');pill.setAttribute('aria-label',day+' dinner servings');
+ const value=document.createElement('span');value.className='bbfeed-value';value.textContent='👥 '+current;
+ for(const [delta,symbol,word] of [[-1,'−','Reduce'],[1,'+','Increase']]){
+   const button=document.createElement('button');button.type='button';button.textContent=symbol;
+   button.dataset.bbfeedDelta=String(delta);
+   button.setAttribute('aria-label',word+' '+day+' servings');
+   button.disabled=delta<0?current<=1:current>=12;
+   button.addEventListener('pointerdown',e=>e.stopPropagation());
+   button.addEventListener('keydown',e=>e.stopPropagation());
+   button.addEventListener('click',e=>{
+     e.preventDefault();e.stopPropagation();
+     if(!bbFeedingSave(current+delta,recipe.id))return;
+     const restored=[...document.querySelectorAll('[data-bbfeed-day]')].find(el=>el.dataset.bbfeedDay===day&&el.dataset.bbfeedPos===position);
+     restored?.querySelector('[data-bbfeed-delta="'+delta+'"]')?.focus({preventScroll:true});
+   });
+   if(delta<0)pill.append(button,value);else pill.append(button);
+ }
+ return pill;
+}
 let tab='week',recipeIndex=0,galleryPage=0,query='',collectionFilter='All',selectedRecipe=null,cookStep=0,timer=0,timerHandle=null,scanFile=null,scanItems=[],scanPreview='',toastHandle=null;
 function persist(){
  if(!bbStorageSafe){notify('Saving unavailable. Do not close BasketBoss; export a backup.');return false}
@@ -6620,17 +6645,18 @@ function bbNextComposePlan(app){
    const desc=document.createElement('span');desc.className='bbnext-day-description';
    const title=document.createElement('strong');title.textContent=pendingUnloaded?'Saved dinner · waiting for recipe access':available?(recipe?.name||'No meal planned'):'🔒 Premium dinner saved';
    const subtitle=document.createElement('small');
-   subtitle.textContent=pendingUnloaded?'Your meal is still saved. Reconnect Premium to load its details and estimate.':available?(recipe?`${Number(recipe.mins)||'?'} min · `:'Tap to choose dinner'):'Unlock Premium to see this meal';
    if(recipe&&available){
-     const count=bbFeedingForRecipe(recipe);
-     const serving=document.createElement('span');serving.className='bbfeed-control bbfeed-meal';serving.setAttribute('role','group');serving.setAttribute('aria-label',day+' servings');
-     const minus=document.createElement('button');minus.type='button';minus.textContent='−';minus.setAttribute('aria-label','Reduce servings for '+day);minus.disabled=count<=1;
-     const value=document.createElement('span');value.textContent='👥 '+count;
-     const plus=document.createElement('button');plus.type='button';plus.textContent='+';plus.setAttribute('aria-label','Increase servings for '+day);plus.disabled=count>=12;
-     const adjust=delta=>e=>{e.preventDefault();e.stopPropagation();bbFeedingSave(count+delta,recipe.id);};
-     minus.addEventListener('click',adjust(-1));plus.addEventListener('click',adjust(1));
-     serving.append(minus,value,plus);
-     subtitle.append(serving,document.createTextNode(' · '+moneyValue(BBServing.moneyCost(recipe.cost,count,recipe))+' est.'));
+     // The existing bb-plan-premium-polish decorator reads textContent and
+     // replaces child nodes. Mark this as already structured to preserve buttons.
+     subtitle.className='bbpol-meta-done bbfeed-meta';
+     const time=document.createElement('span');time.className='bbpol-time';
+     time.textContent='◷ '+(Number(recipe.mins)||'?')+' min';
+     const serving=bbFeedingDayStepper(day,recipe,'summary');
+     const price=document.createElement('span');price.className='bbpol-price bbfeed-price';
+     price.textContent=moneyValue(BBServing.moneyCost(recipe.cost,bbFeedingForRecipe(recipe),recipe))+' est.';
+     subtitle.append(time,serving,price);
+   }else{
+     subtitle.textContent=pendingUnloaded?'Your meal is still saved. Reconnect Premium to load its details and estimate.':available?'Tap to choose dinner':'Unlock Premium to see this meal';
    }
    desc.append(title,subtitle);
    const caret=document.createElement('span');caret.className='bbnext-day-caret';caret.textContent='⌄';caret.setAttribute('aria-hidden','true');
@@ -6645,10 +6671,16 @@ function bbNextComposePlan(app){
    if(recipe&&available){
      // The original Planner meal card below already shows its image.
      // Do not add a duplicate picture above the card.
+     const nightServing=document.createElement('div');nightServing.className='bbfeed-night-row';
+     const nightLabel=document.createElement('strong');nightLabel.textContent='Serving this night:';
+     const nightPeople=document.createElement('span');nightPeople.textContent='people';
+     nightServing.append(nightLabel,bbFeedingDayStepper(day,recipe,'expanded'),nightPeople);
+     content.append(nightServing);
      if(Array.isArray(recipe.ingredients)&&recipe.ingredients.length){
        const ingredients=document.createElement('div');ingredients.className='bbnext-meal-ingredients';
        const title=document.createElement('strong');title.textContent='Ingredients in this recipe';
-       const values=document.createElement('p');values.textContent=recipe.ingredients.slice(0,6).map(item=>Array.isArray(item)?item[0]:String(item)).join(' · ')+(recipe.ingredients.length>6?' · + more':'');
+       const factor=BBServing.ratio(bbFeedingForRecipe(recipe),recipe);
+       const values=document.createElement('p');values.textContent=recipe.ingredients.slice(0,6).map(item=>Array.isArray(item)?item[0]+' ('+BBServing.scaleText(item[1],factor,item[0])+')':String(item)).join(' · ')+(recipe.ingredients.length>6?' · + more':'');
        ingredients.append(title,values);content.append(ingredients);
      }
    }
@@ -11080,5 +11112,5 @@ body[data-bbnext-view="discover"] #app .bb175-discover-heading{padding-top:calc(
 <script defer src="bb-plan-premium-polish.js?v=20261028-plan-convert-1"></script>
 <link rel="stylesheet" href="bb-shop-cook-clarity.css?v=20261028-r1">
 <link rel="stylesheet" href="bb-cook-plan-hotfix.css?v=20261028-cook-plan-v1">
-<link rel="stylesheet" href="bb-servings-mobile-polish.css?v=20261029-preview1">
+<link rel="stylesheet" href="bb-servings-mobile-polish.css?v=20261029-preview2">
 </body></html>

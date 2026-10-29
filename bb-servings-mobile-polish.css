@@ -30,3 +30,15 @@ body:has(#bbpolRegionPill) .shell > #bb17RegionCard.bb17513-region-collapsed{dis
   #app.bbnext-plan .bbnext-plan-budget .bbfeed-global{margin-left:auto;margin-right:auto}
   #app.bbnext-plan .bbnext-day-toggle .bbfeed-meal{max-width:100%}
 }
+
+/* Review refinement: metadata stays in three independent pills, and the
+   existing bbpol meta decorator skips structured controls. No grid changes. */
+#app.bbnext-plan .bbnext-day-description small.bbfeed-meta{display:flex!important;flex-wrap:wrap!important;align-items:center!important;gap:5px!important;min-width:0!important;max-width:100%!important;overflow-wrap:normal!important}
+#app.bbnext-plan .bbfeed-meta .bbfeed-meal{margin:0!important;flex:0 1 auto!important;white-space:nowrap!important;flex-wrap:nowrap!important;gap:4px!important;padding:3px 6px!important}
+#app.bbnext-plan .bbfeed-meta .bbfeed-price{display:inline-flex!important;white-space:nowrap!important;padding:5px 8px!important}
+#app.bbnext-plan .bbfeed-meta .bbfeed-meal button{min-width:30px!important;min-height:30px!important}
+#app.bbnext-plan .bbfeed-night-row{display:flex;align-items:center;flex-wrap:wrap;gap:7px;min-width:0;max-width:100%;box-sizing:border-box;padding:6px 1px 10px;color:#244f35;font-size:12px}
+#app.bbnext-plan .bbfeed-night-row .bbfeed-meal{flex-wrap:nowrap;white-space:nowrap;min-width:0;max-width:100%}
+#app.bbnext-plan .bbfeed-night-row .bbfeed-meal button{min-width:34px;min-height:34px}
+#app.bbnext-plan .bbnext-meal-ingredients p{overflow-wrap:anywhere}
+@media(max-width:390px){#app.bbnext-plan .bbfeed-meta{gap:4px!important}#app.bbnext-plan .bbfeed-meta .bbfeed-meal{font-size:11px!important}}
