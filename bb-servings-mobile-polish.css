@@ -94,3 +94,8 @@ body:has(#bbpolRegionPill) .shell > #bb17RegionCard.bb17513-region-collapsed{dis
   min-height:40px!important;
   min-width:54px!important;
 }
+
+/* Hide duplicate expanded servings control only. */
+#app.bbnext-plan .bbfeed-night-row {
+  display: none !important;
+}
