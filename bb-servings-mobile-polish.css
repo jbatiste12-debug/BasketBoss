@@ -42,3 +42,55 @@ body:has(#bbpolRegionPill) .shell > #bb17RegionCard.bb17513-region-collapsed{dis
 #app.bbnext-plan .bbfeed-night-row .bbfeed-meal button{min-width:34px;min-height:34px}
 #app.bbnext-plan .bbnext-meal-ingredients p{overflow-wrap:anywhere}
 @media(max-width:390px){#app.bbnext-plan .bbfeed-meta{gap:4px!important}#app.bbnext-plan .bbfeed-meta .bbfeed-meal{font-size:11px!important}}
+
+/* BasketBoss approved mobile Plan-card declutter — 2026-10-29.
+   Presentation only; all existing buttons, handlers, DOM IDs, saves and state intact. */
+#app.bbnext-plan .bbnext-day-content .bb172-planner-controls .bb172-replace-meal,
+#app.bbnext-plan .bbnext-day-content > .bb77-remove-meal {
+  display:none!important;
+}
+/* Only the meal-action control itself changes; no card or photo grid changes. */
+#app.bbnext-plan .bbnext-day-content .small-actions.bb172-planner-controls {
+  display:grid!important;
+  grid-template-columns:minmax(0,1fr)!important;
+  width:100%!important;
+  min-width:0!important;
+  gap:9px!important;
+}
+#app.bbnext-plan .bbnext-day-content .bb172-planner-controls select[data-move] {
+  grid-column:1 / -1!important;
+  width:100%!important;
+  max-width:none!important;
+  min-width:0!important;
+}
+/* Cook uses the exact same available width as the date selector. */
+#app.bbnext-plan .bbnext-day-content .bb172-planner-controls [data-cook] {
+  grid-column:1 / -1!important;
+  width:100%!important;
+  max-width:none!important;
+  min-width:0!important;
+  min-height:56px!important;
+}
+/* Separate the one remaining Clear action from the day-serving stepper.
+   Flex wrapping remains responsive without repositioning or moving DOM nodes. */
+#app.bbnext-plan .bbnext-day-toggle .bbnext-day-description small.bbfeed-meta {
+  row-gap:9px!important;
+  column-gap:9px!important;
+  min-width:0!important;
+  max-width:100%!important;
+}
+#app.bbnext-plan .bbnext-day-toggle .bbfeed-meta > .bbpol-time {order:1;}
+#app.bbnext-plan .bbnext-day-toggle .bbfeed-meta > .bbfeed-meal {order:2;}
+#app.bbnext-plan .bbnext-day-toggle .bbfeed-meta::after {
+  content:"";
+  flex-basis:100%;
+  height:0;
+  order:3;
+}
+#app.bbnext-plan .bbnext-day-toggle .bbfeed-meta > .bbfeed-price {order:4;}
+#app.bbnext-plan .bbnext-day-toggle .bbfeed-meta > .bb77-clear-day {
+  order:5;
+  margin:0 0 0 13px!important;
+  min-height:40px!important;
+  min-width:54px!important;
+}
