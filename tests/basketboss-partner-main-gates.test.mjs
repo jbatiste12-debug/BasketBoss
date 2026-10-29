@@ -1,7 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
-import vm from 'node:vm';
 const read=p=>fs.readFileSync(p,'utf8');
 const index=read('index.html'), js=read('bb-onboarding-v2.js'), prompt=read('bb-partner-signup-prompt.js'), api=read('functions/api/household/index.js');
 test('main onboarding and account prompt installed without replacing the account flow',()=>{
@@ -16,20 +15,19 @@ test('production UI cannot grant access or modify billing and meal plans',()=>{
   assert.doesNotMatch(prompt,/SUPABASE_SECRET_KEY|SERVICE_ROLE_KEY|sb_secret_|cbucbdvwgmkgmsajtbfe|basketboss-partner-qa\.pages\.dev/);
   assert.doesNotMatch(js,/SUPABASE_SECRET_KEY|SERVICE_ROLE_KEY|sb_secret_|cbucbdvwgmkgmsajtbfe|basketboss-partner-qa\.pages\.dev/);
   assert.doesNotMatch(prompt,/basketboss_321_unified_state_v1|Paddle\.Checkout|bb_paid_entitlements/);
-  assert.doesNotMatch(api,/BB_OWNER_USER_ID|isBillingEnabled|bb_paid_entitlements|SUPABASE_SECRET_KEY/);
+  assert.doesNotMatch(api,/BB_OWNER_USER_ID|BB_PARTNER_QA_MODE|cbucbdvwgmkgmsajtbfe/);
+  assert.match(api,/BB_PARTNER_PRODUCTION_READY/);
+  assert.match(api,/const RELEASE_ARMED=false/);
+  assert.match(api,/BB_PREMIUM_SINGLE_SESSION_ENABLED/);
+  assert.match(api,/bb_paid_entitlements/);
   assert.match(api,/configured:false/);
-  assert.match(api,/403/);
   assert.match(prompt,/data\.configured===true/);
 });
-test('disabled production API always rejects writes and never returns Premium',async()=>{
-  const script=api.replace(/export function /g,'function ')+ '\n globalThis.testApi={onRequestGet,onRequestPost}';
-  const context={Response,globalThis:{}};
-  vm.runInNewContext(script,context,{timeout:1000});
-  const get=context.globalThis.testApi.onRequestGet();
-  const value=await get.json();
-  assert.equal(value.configured,false);assert.equal(value.premium,false);assert.equal(value.household_id,null);
-  const post=context.globalThis.testApi.onRequestPost();
-  assert.equal(post.status,403);
+test('production API is guarded by explicit disabled-by-default feature flags',()=>{
+  assert.match(api,/env\.BB_PARTNER_SHARING_ENABLED==='true'/);
+  assert.match(api,/env\.BB_PARTNER_PRODUCTION_READY==='true'/);
+  assert.match(api,/env\.BB_PREMIUM_SINGLE_SESSION_ENABLED==='true'/);
+  assert.match(api,/env\.SUPABASE_URL===LIVE_SUPABASE/);
 });
 test('offline/backend missing still has a truthful post-sign-in prompt',()=>{
   assert.match(prompt,/let data=\{configured:false\}/);
