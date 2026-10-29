@@ -1,4 +1,4 @@
--- BasketBoss Household Partner Sharing v1 (2026-10-29)
+-- BasketBoss Household Partner Sharing v2 (hardened, removes exposed definer helper) (2026-10-29)
 -- Execute in the CORRECT Supabase project as the database owner.
 -- Does not modify basketboss_data, auth, Paddle, D1, or existing customer rows.
 -- CRITICAL: this schema is intentionally CLOSED to client-side writes.
@@ -46,29 +46,19 @@ CREATE TABLE IF NOT EXISTS public.bb_household_entries (
 );
 CREATE INDEX IF NOT EXISTS bb_hh_entries_updated ON public.bb_household_entries(household_id,updated_at);
 
-CREATE OR REPLACE FUNCTION public.bb_hh_is_member(p_household uuid)
-RETURNS boolean LANGUAGE sql STABLE SECURITY DEFINER SET search_path = '' AS $$
- SELECT EXISTS(SELECT 1 FROM public.bb_households h
-  WHERE h.id=p_household AND auth.uid() IS NOT NULL AND
-    (h.owner_user_id=auth.uid() OR
-     (h.partner_user_id=auth.uid() AND h.invite_status='accepted')));
-$$;
-REVOKE ALL ON FUNCTION public.bb_hh_is_member(uuid) FROM PUBLIC,anon;
-GRANT EXECUTE ON FUNCTION public.bb_hh_is_member(uuid) TO authenticated;
-
 ALTER TABLE public.bb_households ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.bb_household_invites ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.bb_household_entries ENABLE ROW LEVEL SECURITY;
 DROP POLICY IF EXISTS bb_hh_read ON public.bb_households;
 CREATE POLICY bb_hh_read ON public.bb_households FOR SELECT TO authenticated
- USING (public.bb_hh_is_member(id));
+ USING (auth.uid() IS NOT NULL AND (owner_user_id=auth.uid() OR (partner_user_id=auth.uid() AND invite_status='accepted')));
 DROP POLICY IF EXISTS bb_hh_invite_owner_read ON public.bb_household_invites;
 CREATE POLICY bb_hh_invite_owner_read ON public.bb_household_invites FOR SELECT TO authenticated
  USING (EXISTS (SELECT 1 FROM public.bb_households h
    WHERE h.id=household_id AND h.owner_user_id=auth.uid()));
 DROP POLICY IF EXISTS bb_hh_entries_member_read ON public.bb_household_entries;
 CREATE POLICY bb_hh_entries_member_read ON public.bb_household_entries FOR SELECT TO authenticated
- USING (public.bb_hh_is_member(household_id));
+ USING (EXISTS (SELECT 1 FROM public.bb_households h WHERE h.id=household_id AND auth.uid() IS NOT NULL AND (h.owner_user_id=auth.uid() OR (h.partner_user_id=auth.uid() AND h.invite_status='accepted'))));
 -- No INSERT, UPDATE, or DELETE policies. Read access does not imply write access.
 REVOKE ALL ON public.bb_households,public.bb_household_invites,public.bb_household_entries FROM anon,authenticated;
 -- Defense in depth: RLS defines eligible identities, but there is NO direct

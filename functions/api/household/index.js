@@ -1,12 +1,23 @@
 /* BasketBoss Household Sharing — closed-by-default Cloudflare Pages API.
    D1 remains the ONLY payment entitlement authority. Supabase's service-role
    secret is server-only. No legacy basketboss_data restore is called here. */
-import {json,authenticatedUser,isConfigured,isBillingEnabled,expectedPrice,entitlementForStatus,requireSameOrigin} from '../../../bb-server-lib/bb-billing.js';
+import {json,authenticatedUser,isBillingEnabled,expectedPrice,entitlementForStatus,requireSameOrigin} from '../../../bb-server-lib/bb-billing.js';
 const SECTIONS=new Set(['planned_day','servings','pantry_item','kitchen_item','shopping_checked','budget_target','household_servings']);
 function privateKey(env){return env.SUPABASE_SECRET_KEY||env.SUPABASE_SERVICE_ROLE_KEY||'';}
-function configured(env){return isConfigured(env)&&env.BB_PARTNER_SHARING_ENABLED==='true'&&
-  typeof privateKey(env)==='string'&&privateKey(env).length>30&&
-  typeof env.BILLING_DB?.prepare==='function';}
+// QA-only, deliberately impossible to activate on basketboss-site production.
+// D1/Paddle are NOT connected here. Only an explicitly designated disposable
+// test-owner UUID is treated as Premium; all other test users remain Free unless
+// connected as the accepted partner. Never merge this QA variant into main.
+function configured(env,request){
+ const origin=new URL(request.url);
+ return origin.protocol==='https:'&&origin.hostname==='basketboss-partner-qa.pages.dev'&&
+   env.BB_PARTNER_QA_MODE==='true'&&env.BB_PARTNER_SHARING_ENABLED==='true'&&
+   env.BB_BILLING_ENABLED!=='true'&&
+   env.SUPABASE_URL==='https://cbucbdvwgmkgmsajtbfe.supabase.co'&&
+   env.SUPABASE_PUBLISHABLE_KEY==='sb_publishable_HlxPJiBlXZtgRdhC2YMb3A_EOP2wno6'&&
+   /^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(env.BB_OWNER_USER_ID||'')&&
+   typeof privateKey(env)==='string'&&privateKey(env).length>30;
+}
 function serviceHeaders(env){
  const secret=privateKey(env);
  // Current sb_secret_* keys belong ONLY in `apikey`; they are not JWTs.
@@ -50,7 +61,7 @@ async function getPending(env,user){
  return {household_id:h.id,expires_at:rows[0].expires_at};
 }
 async function authorized(request,env){
- if(!configured(env))return {error:json({error:'Partner Sharing not configured'},503)};
+ if(!configured(env,request))return {error:json({error:'Partner Sharing not configured'},503)};
  const user=await authenticatedUser(request,env);
  if(!user)return {error:json({error:'Sign in with a confirmed email'},401)};
  return {user};
@@ -58,7 +69,7 @@ async function authorized(request,env){
 export async function onRequestGet({request,env}){
  // An unconfigured preview is a supported, non-error state. Do not emit 503
  // network noise or touch local data merely because the migration is absent.
- if(!configured(env))return json({configured:false,premium:false,role:'unavailable',household_id:null,invite:null});
+ if(!configured(env,request))return json({configured:false,premium:false,role:'unavailable',household_id:null,invite:null});
  const auth=await authorized(request,env);if(auth.error)return auth.error;
  try{
   const {household,role}=await householdForUser(env,auth.user);
