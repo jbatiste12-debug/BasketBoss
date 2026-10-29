@@ -1,0 +1,12 @@
+/* Self-contained sharing controls; no existing planner grid or card layout rewritten. */
+.bbhs-trigger{display:inline-flex;align-items:center;justify-content:center;max-width:100%;min-width:0;min-height:34px;margin:5px 0;padding:7px 12px;border:1px solid #abcdb8;border-radius:999px;background:#eff8ef;color:#23583d;font:700 12px system-ui;white-space:normal;cursor:pointer}
+.bbhs-dialog{width:min(440px,calc(100vw - 28px));max-height:85dvh;overflow:auto;box-sizing:border-box;border:1px solid #abcdb8;border-radius:20px;padding:0;background:#fffdf7;color:#254b35;box-shadow:0 25px 70px #0005}
+.bbhs-dialog::backdrop{background:#14271d99}
+.bbhs-card{padding:22px;line-height:1.5}.bbhs-card h2{font-size:21px;margin:4px 0 8px}.bbhs-card p{font-size:14px}.bbhs-card label{display:block;font-size:13px;font-weight:700}
+.bbhs-card input{display:block;box-sizing:border-box;width:100%;min-width:0;min-height:44px;padding:10px;margin:7px 0 12px;border:1px solid #b4cbbb;border-radius:9px;font-size:16px}
+.bbhs-card button,.bbhs-card .bbhs-primary{display:inline-flex;align-items:center;justify-content:center;box-sizing:border-box;min-height:40px;margin:6px 7px 6px 0;padding:8px 13px;border:1px solid #b4cbbb;border-radius:11px;background:#f2f9f3;color:#25553a;font:700 13px system-ui;text-decoration:none;cursor:pointer}
+.bbhs-card .bbhs-primary{background:#177349;color:#fff}.bbhs-card button:disabled{opacity:.5;cursor:not-allowed}
+.bbhs-card .bbhs-close{float:right;width:34px;padding:0;font-size:21px}
+.bbhs-card small{display:block;font-size:12px;color:#64776c;margin-top:9px}.bbhs-message{min-height:20px;font-size:13px!important}
+.bbhs-invite-notice{position:fixed;z-index:1200;bottom:calc(104px + env(safe-area-inset-bottom,0px));right:12px;left:12px;max-width:420px;margin:auto;padding:13px 15px;border:1px solid #aad2b7;border-radius:12px;background:#177349;color:#fff;font:700 13px system-ui;box-shadow:0 8px 22px #0003}
+@media(max-width:390px){.bbhs-card{padding:16px}.bbhs-trigger{font-size:11px}}

@@ -73,7 +73,7 @@
    switch(state.step){
      case 0:
        eyebrow='WELCOME TO BASKETBOSS';headline=installed()? 'Thanks for downloading BasketBoss!' : 'Welcome to BasketBoss.';
-       description='Plan Smarter. Eat Better. Less Waste. Take the stress out of deciding what to cook and what to buy.';
+       description='Plan Smarter. Eat Better. Less Waste. Plan solo today; Premium partner sharing for two phones is coming after secure activation.';
        art='<div class="bbob-intro-art bbob-restored-animation">'+originalCrownAnimation()+'<span>Built for real-life food shopping.</span></div>';
        actions=btn('Let’s get started','next')+btn('Browse 100 free recipes instead','free','link');break;
      case 1:
@@ -85,7 +85,7 @@
          actions=btn('Continue setup','next')+btn('Explore Free','free','link');
        }else{
          headline='One account. Your plans, wherever you are.';
-         description='Create a free account or sign in using the existing secure email form. No card needed. If your email needs confirmation, you can continue setup and confirm later.';
+         description='Create a free account or sign in using the existing secure email form. No card needed. Plan solo now; Premium household sharing with one partner is being prepared for secure activation. If your email needs confirmation, you can continue setup and confirm later.';
          art='<div id="bbobAuthSlot" class="bbob-auth-slot"></div><div id="bbobMessageSlot" class="bbob-message-slot" aria-live="polite"></div>';
          foot='If you create an account, you may need to confirm your email before signing in.';
          actions=btn('Continue setup','next','outline')+btn('Explore Free without an account','free','link');
@@ -124,7 +124,7 @@
      default:
        eyebrow='ONE LAST THING';headline='Choose your BasketBoss experience.';
        description='Start with BasketBoss Free or explore Premium. You decide — there’s no need to subscribe to use your free account.';
-       art='<div class="bbob-plan-options"><div class="bbob-plan"><strong>BasketBoss Free</strong><b>£0</b><p>100 recipes and basic meal planning.</p><span>No card needed</span></div><div class="bbob-plan bbob-plan-premium"><strong>Premium / Founder offer</strong><b>See plans</b><p>Optional advanced planning and eligible Premium AI features.</p><span>Standard Premium £4.99/month. Founder £1.99/month after a 7-day trial if eligible among the first 25 confirmed members. Final prices, renewals and trial terms are shown at checkout.</span></div></div>';
+       art='<div class="bbob-plan-options"><div class="bbob-plan"><strong>BasketBoss Free</strong><b>£0</b><p>100 recipes and basic meal planning.</p><span>No card needed</span></div><div class="bbob-plan bbob-plan-premium"><strong>Premium / Founder offer</strong><b>See plans</b><p>Optional advanced planning and eligible Premium AI features. 👥 Shared Household Sync for one partner email (pending secure activation).</p><span>Standard Premium £4.99/month. Founder £1.99/month after a 7-day trial if eligible among the first 25 confirmed members. Final prices, renewals and trial terms are shown at checkout.</span></div></div>';
        foot='Standard is monthly, not annual. Founder eligibility is verified at checkout. Subscription checkout requires a signed-in account; payment, taxes and renewal terms are confirmed on the existing secure Paddle page.';
        actions=btn('Explore Premium plans','premium')+btn('Continue with BasketBoss Free','free-complete','outline');
    }
