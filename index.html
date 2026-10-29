@@ -6627,6 +6627,29 @@ function bbNextComposePlan(app){
       oldIntro.append(clear);
     }
   }
+  /* BB-SINGLE-DINNER-CLEAR: remove ONLY one verified day/recipe pair.
+     Do not reset Shop sessions, pantry, onboarding, saved recipes, or other days. */
+  async function bb77ClearSingleDinner(day,expectedRecipeId){
+    if(!DAYS.includes(day)||typeof expectedRecipeId!=='string')return false;
+    const initial=state.planned.find(p=>p.day===day);
+    if(!initial||initial.recipeId!==expectedRecipeId){notify('That dinner has changed. Please reopen the Planner.');return false;}
+    const name=getRecipe(expectedRecipeId)?.name||'saved dinner';
+    const prompt='Remove '+name+' from '+day+' only?\n\nThe other days, desserts, pantry, School Lunchboxes, saved recipes and shopping checkmarks will stay. Your shopping estimate will recalculate.';
+    if(!await bbQaConfirm(prompt,'Clear '+day+' dinner?','Clear this meal'))return false;
+    // The confirm dialog is asynchronous; a different edit may have happened.
+    const current=state.planned.find(p=>p.day===day);
+    if(!current||current.recipeId!==expectedRecipeId){notify('That dinner changed while confirming. Nothing was removed.');return false;}
+    const before={planned:state.planned,bb81Batch:state.bb81Batch,bbManualBatch:state.bbManualBatch};
+    state.planned=before.planned.filter(p=>!(p.day===day&&p.recipeId===expectedRecipeId));
+    if(!persist()){
+      Object.assign(state,before);
+      notify('Could not save. Your dinner remains planned.');return false;
+    }
+    bb80OpenPlanDays.add(day);bb80RememberPlanDays();
+    render();notify(day+' dinner cleared. Choose another meal whenever you like.');
+    return true;
+  }
+  /* END-BB-SINGLE-DINNER-CLEAR */
  const days=['Monday','Tuesday','Wednesday','Thursday','Friday','Saturday','Sunday'];
  grid.replaceChildren();
  days.forEach((day,i)=>{
@@ -6659,6 +6682,22 @@ function bbNextComposePlan(app){
      subtitle.textContent=pendingUnloaded?'Your meal is still saved. Reconnect Premium to load its details and estimate.':available?'Tap to choose dinner':'Unlock Premium to see this meal';
    }
    desc.append(title,subtitle);
+   const plannedSlot=state.planned.find(p=>p.day===day);
+    if(plannedSlot){
+      const clearDay=document.createElement('button');clearDay.type='button';
+      clearDay.className='bb77-clear-day';clearDay.textContent='Clear';
+      clearDay.dataset.bb77ClearDay=day;
+      clearDay.setAttribute('aria-label','Clear only '+day+' dinner');
+      clearDay.addEventListener('pointerdown',e=>e.stopPropagation());
+      clearDay.addEventListener('keydown',e=>e.stopPropagation());
+      clearDay.addEventListener('click',e=>{
+        e.preventDefault();e.stopPropagation();
+        void bb77ClearSingleDinner(day,plannedSlot.recipeId);
+      });
+      // Keep the action inside the already-wrapping metadata area on phones.
+      if(recipe&&available)subtitle.append(clearDay);
+      else desc.append(clearDay);
+    }
    const caret=document.createElement('span');caret.className='bbnext-day-caret';caret.textContent='⌄';caret.setAttribute('aria-hidden','true');
    if(recipe&&available){
     const photo=state.recipePhotos?.[recipe.id]||recipe.image;
@@ -6690,13 +6729,7 @@ function bbNextComposePlan(app){
       const remove=document.createElement('button');remove.type='button';
       remove.className='bb77-remove-meal';remove.textContent='Remove meal';
       remove.setAttribute('aria-label','Remove dinner from '+day);
-      remove.addEventListener('click',()=>{
-        if(!confirm('Remove '+recipe.name+' from '+day+'? This will recalculate Shopping, but keep your PANTRY and School Lunches.'))return;
-        const old=state.planned.slice();
-        state.planned=state.planned.filter(p=>!(p.day===day&&p.recipeId===recipe.id));
-        if(!persist()){state.planned=old;notify('Could not save removal. Your dinner is still planned.');return;}
-        bb80OpenPlanDays.add(day);bb80RememberPlanDays();render();notify(day+' dinner removed.');
-      });
+      remove.addEventListener('click',()=>{void bb77ClearSingleDinner(day,recipe.id);});
       content.append(remove);
       // Hide the small unlabeled legacy X but leave its handler in place.
       const oldRemove=row.querySelector('[data-remove]');if(oldRemove)oldRemove.hidden=true;
@@ -10660,6 +10693,9 @@ if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',
 #app.bbnext-plan .bb1759-summary-heading{display:flex;align-items:flex-start;gap:12px;flex-wrap:wrap}
 #app.bbnext-plan .bb77-clear-week{margin-left:auto;align-self:center;padding:10px 14px;min-height:44px;border-radius:10px;border:1px solid #e3b8ac;background:#fff5f1;color:#8a382a;font-weight:800;cursor:pointer}
 #app.bbnext-plan .bb77-clear-week:disabled{opacity:.45;cursor:default}
+#app.bbnext-plan .bb77-clear-day{display:inline-flex;align-items:center;justify-content:center;min-width:54px;min-height:40px;flex:0 0 auto;max-width:100%;box-sizing:border-box;border:1px solid #e4b7ac;background:#fff5f2;color:#873a29;border-radius:999px;padding:6px 9px;font:800 11px/1.2 system-ui,-apple-system,sans-serif;white-space:nowrap;cursor:pointer;touch-action:manipulation}
+#app.bbnext-plan .bb77-clear-day:focus-visible{outline:2px solid #1c6a43;outline-offset:2px}
+#app.bbnext-plan .bbnext-day-description>.bb77-clear-day{justify-self:start;margin-top:4px}
 #app.bbnext-plan .bb77-remove-meal{display:block;margin:12px 2px 3px auto;min-height:44px;padding:9px 14px;border:1px solid #e4b7ac;border-radius:10px;background:#fff5f2;color:#873a29;font-weight:800;cursor:pointer}
 #app.bbnext-plan [data-remove][hidden]{display:none!important}
 #app.bbnext-plan .bbnext-day-content .bb176-locked-meal .small-btn:last-child{min-height:44px}
