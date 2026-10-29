@@ -7,7 +7,7 @@ const KITCHEN='basketboss_makeameal_v1_inventory';
 const TICKS='basketboss_321_v11_shop_ticks',SESSION='basketboss_active_shop_session_v7',BUDGET='basketboss_v172_weekly_budget_target_v1';
 const SYNC_KEYS=[STATE,STOCK,KITCHEN,TICKS,SESSION,BUDGET];
 const DAYS=['Monday','Tuesday','Wednesday','Thursday','Friday','Saturday','Sunday'];
-let status=null,busy=false,dialog=null,lastPoll=0,booted=false,conflicts=[];
+let status=null,busy=false,dialog=null,lastPoll=0,booted=false,conflicts=[],heldConflicts=[];
 const read=(k,d)=>{try{return JSON.parse(localStorage.getItem(k)||'null')??d}catch{return d}};
 const raw=(k)=>{try{return localStorage.getItem(k)}catch{return null}};
 const copy=v=>JSON.parse(JSON.stringify(v));
@@ -113,9 +113,14 @@ function applyLeaves(remoteChanges){
  return true;
 }
 async function synchronize({allowInitialImport=false}={}){
- if(busy||!status?.premium||!status?.household_id||document.hidden||!navigator.onLine)return;
+ if(busy){message('A household sync is already running.');return;}
+ if(!status?.premium||!status?.household_id){message('Household access needs refreshing. Close and reopen Partner Sharing.');return;}
+ if(document.hidden){message('Return to the BasketBoss tab before syncing.');return;}
+ if(!navigator.onLine){message('You are offline. Nothing was changed on this device.');return;}
+ message('Checking your shared household for changes…');
  busy=true;let applied=false;try{
-  const hid=status.household_id,prior=baseline(hid),local=snapshot();if(!local)return;
+  const hid=status.household_id,prior=baseline(hid),local=snapshot();
+  if(!local){message('This device has no readable local plan yet. The household remains connected.');return;}
   // Record the phone's exact local state before the asynchronous request. If a
   // user edits Plan or Shop while the request is pending, abort instead of
   // overwriting that newer edit with an obsolete remote snapshot.
@@ -125,7 +130,7 @@ async function synchronize({allowInitialImport=false}={}){
   const fetched=await api('?mode=entries');
   requireUnchanged();if(fetched.household_id!==hid)throw Error('Household changed');
   const remote=new Map((fetched.entries||[]).map(x=>[key(x.section,x.entry_key),x]));
-  const nextBaseline={...prior},changes=[];conflicts=[];
+  const nextBaseline={...prior},changes=[];conflicts=[];heldConflicts=[];
   const initialSync=Object.keys(prior).length===0;
   // A fresh device is never permitted to replace existing remote entries.
   const union=new Set([...remote.keys(),...local.keys(),...Object.keys(prior)]);
@@ -138,7 +143,7 @@ async function synchronize({allowInitialImport=false}={}){
      // Never upload an unknown device's existing data to a new household
      // without an explicit initial import confirmed by the PREMIUM OWNER.
      if(initialSync&&(!allowInitialImport||status.role!=='owner')){
-      nextBaseline[k]={revision:0,value:localValue,held:true};conflicts.push(k);continue;
+      nextBaseline[k]={revision:0,value:localValue,held:true};conflicts.push(k);heldConflicts.push(k);continue;
      }
      requireUnchanged();const response=await api('',{action:'patch',section:l.section,key:l.entry_key,value:localValue,expected:0});
      nextBaseline[k]={revision:response.revision,value:localValue};continue;}
@@ -151,8 +156,14 @@ async function synchronize({allowInitialImport=false}={}){
     if(allowInitialImport&&status.role==='owner'&&!r&&l){
      requireUnchanged();const response=await api('',{action:'patch',section:l.section,key:l.entry_key,value:localValue,expected:0});
      nextBaseline[k]={revision:response.revision,value:localValue};
-    }else conflicts.push(k);
+    }else{conflicts.push(k);heldConflicts.push(k);}
     continue;
+   }
+   // A reviewed item can remain private to this device without being uploaded.
+   // If an owner adds the same key to the household later, flag it for review.
+   if(b.localOnly){
+    if(r){conflicts.push(k);continue;}
+    nextBaseline[k]={...b,value:localValue};continue;
    }
    const localEdited=!eq(localValue,b.value),remoteEdited=!eq(remoteValue,b.value)||Number(r?.revision||0)!==b.revision;
    if(localEdited&&remoteEdited){if(eq(localValue,remoteValue)){nextBaseline[k]={revision:r?.revision||0,value:remoteValue};}
@@ -166,16 +177,49 @@ async function synchronize({allowInitialImport=false}={}){
   // Never mark a remote change as applied if the local write fails.
   requireUnchanged();if(changes.length)applied=applyLeaves(changes);
   writeBaseline(hid,nextBaseline);
-  if(conflicts.length)message(`${conflicts.length} item(s) need review or an owner-approved initial import. No conflicting data was overwritten.`);
-  else message('Household synced safely.');
+  if(conflicts.length)message(`${conflicts.length} item(s) need review. Your existing data was preserved; other changes can still sync.`);
+  else message(changes.length?'Household changes received and saved safely.':'Sync complete. No new household changes to apply.');
+  showHeldReview();
  }catch(e){message(e.status===409?'Another device changed the same item. No data was overwritten.':'Sharing unavailable; this device remains unchanged.');}
  finally{busy=false;if(applied)location.reload();}
 }
 function message(t){const el=dialog?.querySelector('[data-bbhs-message]');if(el)el.textContent=t;}
+function showHeldReview(){
+ const area=dialog?.querySelector('[data-bbhs-review]');if(!area)return;
+ area.replaceChildren();
+ if(!heldConflicts.length)return;
+ const info=document.createElement('p');
+ info.textContent=`${heldConflicts.length} existing local item(s) are held back. You can keep them private on this device without deleting or uploading them.`;
+ area.append(info);
+ const button=document.createElement('button');button.type='button';button.textContent='Keep held item(s) on this device only';
+ button.onclick=async()=>{
+  if(busy){message('Finish the current sync first.');return;}
+  if(!status?.household_id){message('Reconnect to your household first.');return;}
+  if(!confirm('Keep held local items on THIS device only? They will not be shared, deleted or overwrite household data.'))return;
+  button.disabled=true;
+  try{
+   const hid=status.household_id,keys=[...new Set(heldConflicts)],prior=baseline(hid),local=snapshot();
+   if(!local||keys.some(k=>!prior[k]?.held||!local.has(k)))throw Error('Local review has changed. Sync again.');
+   const before=Object.fromEntries(SYNC_KEYS.map(k=>[k,raw(k)]));
+   const latest=await api('?mode=entries');
+   if(latest.household_id!==hid)throw Error('Household changed.');
+   const remote=new Set((latest.entries||[]).map(e=>key(e.section,e.entry_key)));
+   if(keys.some(k=>remote.has(k)))throw Error('A shared version now exists. Review the change before deciding.');
+   if(SYNC_KEYS.some(k=>raw(k)!==before[k]))throw Error('Your device changed during review. Sync again.');
+   const next={...prior};
+   for(const k of keys)next[k]={revision:0,value:copy(local.get(k).value),localOnly:true};
+   writeBaseline(hid,next);
+   heldConflicts=[];showHeldReview();
+   message('Held items remain on this device only. Nothing was deleted or uploaded. Tap Sync safely now to check again.');
+  }catch(e){message(e?.message||'Review could not complete; nothing was changed.');}
+  finally{button.disabled=false;}
+ };
+ area.append(button);
+}
 function makeModal(){if(dialog)return dialog;
  dialog=document.createElement('dialog');dialog.id='bbhs-dialog';dialog.className='bbhs-dialog';
  dialog.setAttribute('aria-label','Household Partner Sharing');
- dialog.innerHTML='<div class="bbhs-card"><button type="button" class="bbhs-close" aria-label="Close sharing dialog">×</button><h2>👥 Household Partner Sharing</h2><p>Share one Premium household plan with one confirmed-email partner.</p><div data-bbhs-body></div><p class="bbhs-message" role="status" data-bbhs-message></p></div>';
+ dialog.innerHTML='<div class="bbhs-card"><button type="button" class="bbhs-close" aria-label="Close sharing dialog">×</button><h2>👥 Household Partner Sharing</h2><p>Share one Premium household plan with one confirmed-email partner.</p><div data-bbhs-body></div><p class="bbhs-message" role="status" data-bbhs-message></p><div data-bbhs-review></div></div>';
  document.body.append(dialog);
  dialog.querySelector('.bbhs-close').onclick=()=>dialog.close();
  dialog.addEventListener('click',e=>{if(e.target===dialog)dialog.close()});return dialog;
@@ -185,7 +229,7 @@ async function refreshStatus(){
  try{status=await api('?mode=status');return status}catch{status=null;return null;}
 }
 async function open(){makeModal();if(!dialog.open)dialog.showModal();const body=dialog.querySelector('[data-bbhs-body]');
- body.textContent='Checking account…';message('');const s=await refreshStatus();
+ body.textContent='Checking account…';message('');dialog.querySelector('[data-bbhs-review]').replaceChildren();const s=await refreshStatus();
  if(!s){body.innerHTML='<p>Sign in to link a partner, or explore BasketBoss Premium. Your saved plan is unchanged.</p><a class="bbhs-primary" href="pricing-sandbox.html">Explore Premium</a>';return;}
  if(!s.configured){body.innerHTML='<p>Household Partner Sharing is being prepared. It is not activated yet; your saved plan remains private on this device.</p><a class="bbhs-primary" href="pricing-sandbox.html">Explore Premium</a>';return;}
  if(s.invite){body.innerHTML='<p>You have been invited to share a BasketBoss household.</p><button class="bbhs-primary" data-accept>Accept &amp; Sync</button>';
