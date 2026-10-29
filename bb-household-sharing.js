@@ -25,7 +25,9 @@ function snapshot(){
  const out=new Map(),state=read(STATE,null);if(!state||state.version!==2||!Array.isArray(state.planned))return null;
  for(const day of DAYS){const p=state.planned.find(x=>x?.day===day);if(p?.recipeId){
   out.set(key('planned_day',day),{section:'planned_day',entry_key:day,value:{recipeId:p.recipeId}});
-  const n=state.mealServings?.[p.recipeId];if(Number.isInteger(n)&&n>=1&&n<=12)
+  const perDay=state.dayServings?.[day];
+  const n=perDay?.recipeId===p.recipeId?perDay.count:state.mealServings?.[p.recipeId];
+  if(Number.isInteger(n)&&n>=1&&n<=12)
    out.set(key('servings',day),{section:'servings',entry_key:day,value:{count:n}});
  }}
  for(const [k,v] of Object.entries(state.pantry||{}))if(k.length<=170)
@@ -63,13 +65,17 @@ function applyLeaves(remoteChanges){
    const original=next.planned.find(x=>x.day===entry_key);
    next.planned=next.planned.filter(x=>x.day!==entry_key);
    if(!deleted)next.planned.push({day:entry_key,recipeId:value.recipeId});
-   if(original?.recipeId&&original.recipeId!==value?.recipeId)delete next.mealServings?.[original.recipeId];
+   // Day overrides carry the original recipe ID; stale overrides cannot
+   // affect a replacement dinner. Preserve legacy overrides for other days.
+   if(original?.recipeId&&original.recipeId!==value?.recipeId&&next.dayServings)
+     delete next.dayServings[entry_key];
   }else if(section==='servings'){
    if(!DAYS.includes(entry_key)||(!deleted&&(!Number.isInteger(value?.count)||value.count<1||value.count>12)))throw Error('Invalid servings');
    const p=next.planned.find(x=>x.day===entry_key);if(!p)continue;
-   if(!next.mealServings)next.mealServings={};
-   if(deleted)delete next.mealServings[p.recipeId];
-   else if(Number.isInteger(value?.count)&&value.count>=1&&value.count<=12)next.mealServings[p.recipeId]=value.count;
+   if(!next.dayServings)next.dayServings={};
+   if(deleted)next.dayServings[entry_key]={recipeId:p.recipeId,count:null};
+   else if(Number.isInteger(value?.count)&&value.count>=1&&value.count<=12)
+     next.dayServings[entry_key]={recipeId:p.recipeId,count:value.count};
   }else if(section==='pantry_item'){
    const simple=entry_key.startsWith('simple:'),measured=entry_key.startsWith('measured:');
    if(!simple&&!measured)throw Error('Invalid pantry key');
