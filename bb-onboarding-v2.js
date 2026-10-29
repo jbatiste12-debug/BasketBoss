@@ -8,7 +8,7 @@
  const KEY='bb_onboarding_fresh_once_20261028_v1'; // New rollout only: never clear earlier state or credentials.
  const PREVIEW_HOST='basketboss-preview.basketboss-site.pages.dev';
  const LOGO='icons/basketboss-crowned-v1766-512.png';
- const STEP_MAX=9;
+ const STEP_MAX=10;
  // Exact public Free recipe facts from the pinned recipes.json catalogue.
  // These are static read-only samples, never copies of user plans.
  const RECIPES=[
@@ -38,9 +38,9 @@
  window.BBOnboard2026={willShow,preview,getPreferences:()=>({house:state.house,region:state.region,goals:[...state.goals],diets:[...state.diets]})};
  // Founder story is retained on compare.html; no homepage element is modified here.
  function trimFounder(){return SHOW_FOUNDER_STORY;}
- let state=restoreState()||{step:0,house:'',goals:[],diets:[],region:'',started:false,complete:false};
+ let state=restoreState()||{step:0,house:'',goals:[],diets:[],region:'',started:false,complete:false,partnerStepV2:true,wantsPartnerInvite:false,partnerIntent:'none'};
  let host=null,form=null,message=null,formMarker=null,messageMarker=null,oldOverflow='';
- function persist(){return write(KEY,JSON.stringify({step:state.step,house:state.house,goals:state.goals,diets:state.diets,region:state.region,started:state.started,complete:state.complete}));}
+ function persist(){return write(KEY,JSON.stringify({step:state.step,house:state.house,goals:state.goals,diets:state.diets,region:state.region,started:state.started,complete:state.complete,partnerStepV2:true,wantsPartnerInvite:state.wantsPartnerInvite===true,partnerIntent:state.partnerIntent||'none'}));}
  const btn=(label,action,kind='primary')=>`<button type="button" class="bbob-btn bbob-${kind}" data-bbob="${action}">${label}</button>`;
  // Reuse exactly the SVG basket/crown paths and keyframe names from the original
  // bb-welcome-splash.js / bb-welcome-splash.css. No second splash dialog fires.
@@ -67,13 +67,13 @@
  }
 
  function options(items,selected,multiple){return `<div class="bbob-options ${multiple?'bbob-goals':''}">${items.map((v,i)=>`<button type="button" class="bbob-option ${selected.includes(v)?'chosen':''}" data-bbob-opt="${i}" aria-pressed="${selected.includes(v)}"><span class="bbob-choice-mark" aria-hidden="true">${selected.includes(v)?'✓':' '}</span><span>${v}</span></button>`).join('')}</div>`;}
- const titles=['Welcome','Account','Household','Goals','Preferences','Discover','Plan','Shop','All set','Membership'];
+ const titles=['Welcome','Account','Partner sharing','Household','Goals','Preferences','Discover','Plan','Shop','All set','Membership'];
  function content(){
    let headline='',eyebrow='',description='',art='',foot='',actions='';
    switch(state.step){
      case 0:
        eyebrow='WELCOME TO BASKETBOSS';headline=installed()? 'Thanks for downloading BasketBoss!' : 'Welcome to BasketBoss.';
-       description='Plan Smarter. Eat Better. Less Waste. Take the stress out of deciding what to cook and what to buy.';
+       description='Plan Smarter. Eat Better. Less Waste. Plan together. Shop together. One shared household on Premium. Household linking is available only when secure sharing is activated.';
        art='<div class="bbob-intro-art bbob-restored-animation">'+originalCrownAnimation()+'<span>Built for real-life food shopping.</span></div>';
        actions=btn('Let’s get started','next')+btn('Browse 100 free recipes instead','free','link');break;
      case 1:
@@ -84,39 +84,48 @@
          art='<div class="bbob-auth-ready" role="status">✓ Your account is connected</div>';
          actions=btn('Continue setup','next')+btn('Explore Free','free','link');
        }else{
-         headline='One account. Your plans, wherever you are.';
-         description='Create a free account or sign in using the existing secure email form. No card needed. If your email needs confirmation, you can continue setup and confirm later.';
+         headline=state.partnerIntent==='join'?'Sign in to join your partner.':'One account. Your plans, wherever you are.';
+         description=state.partnerIntent==='join'?'Use the email address your partner invited. Once your email is verified and you sign in, we’ll check for their invitation before asking you to create a separate plan.':'Create a free account or sign in using the existing secure email form. No card needed. Partner Sharing is available to one verified partner when enabled for Premium.';
          art='<div id="bbobAuthSlot" class="bbob-auth-slot"></div><div id="bbobMessageSlot" class="bbob-message-slot" aria-live="polite"></div>';
          foot='If you create an account, you may need to confirm your email before signing in.';
-         actions=btn('Continue setup','next','outline')+btn('Explore Free without an account','free','link');
+         actions=btn(state.partnerIntent==='join'?'Continue without signing in':'Continue setup','next','outline')+btn('Skip account for now · see partner sharing','next','link');
        }
        break;
      case 2:
+       eyebrow='ONE PLAN · TWO PHONES';headline='Would you like to share with a partner?';
+       description='Premium households can link one verified partner email, so you both see the same planned meals, pantry and shopping list. You can choose now even without an account.';
+       art=`<div class="bbob-partner-choices" role="group" aria-label="Partner Sharing options">
+         <button type="button" class="bbob-partner-choice ${state.wantsPartnerInvite?'chosen':''}" data-bbob="partner-invite" aria-pressed="${!!state.wantsPartnerInvite}"><span class="bbob-partner-icon">👥</span><span><strong>Invite one partner (Premium)</strong><small>Plan together across two phones</small></span></button>
+         <button type="button" class="bbob-partner-choice" data-bbob="partner-join"><span class="bbob-partner-icon">✉️</span><span><strong>Join an invitation</strong><small>Sign in with your invited email to accept securely</small></span></button>
+         <button type="button" class="bbob-partner-choice" data-bbob="partner-later"><span class="bbob-partner-icon">✓</span><span><strong>Not now</strong><small>Continue meal planning on your own</small></span></button>
+       </div>${state.wantsPartnerInvite?'<p class="bbob-partner-saved" role="status">✓ Choice saved. Once your account is verified and Premium is active, we’ll help you invite and link your partner. No email has been sent yet.</p>':''}`;
+       actions=btn('Continue meal planning','next')+btn('Back','back','link');break;
+     case 3:
        eyebrow='A LITTLE ABOUT YOUR HOUSEHOLD';headline='How many people are you usually cooking for?';
        description='Choose a starting household size and shopping region. These update your actual portions and estimated prices when you finish. Both can be changed later.';
        art=options(HOUSE,state.house?[state.house]:[],false)+`<label class="bbob-market-label" for="bbob-region">Where do you shop? (optional)<select id="bbob-region" data-bbob-region><option value="">Choose later in Settings</option>${REGIONS.map(r=>`<option value="${r}" ${state.region===r?'selected':''}>${r==='US'?'United States':r}</option>`).join('')}</select></label>`;
        actions=btn('Continue','next')+btn('Skip question','skip','link');break;
-     case 3:
+     case 4:
        eyebrow='WHAT MATTERS MOST';headline='What would make dinner easier?';
        description='Choose up to three. We save your answers on this device; this does not silently change recipes or meal plans.';
        art=options(GOALS,state.goals,true);actions=btn('Continue','next')+btn('Skip question','skip','link');break;
-     case 4:
+     case 5:
        eyebrow='YOUR PREFERENCES';headline='Any dietary preferences?';
        description='Optional. Saved on this device for future reference; recipes are NOT automatically filtered and allergens must always be checked on packaging.';
        art=options(DIETS,state.diets,true);actions=btn('Show me BasketBoss','next')+btn('Skip question','skip','link');break;
-     case 5:
+     case 6:
        eyebrow='STEP 1 OF 3 · DISCOVER';headline='Dinner ideas without the endless scrolling.';
        description='Explore 100 recipes free. Browse for something the family will actually enjoy.';
        art=figure('discover');actions=btn('Next · Meal planning','next')+btn('Back','back','link');break;
-     case 6:
+     case 7:
        eyebrow='STEP 2 OF 3 · PLAN';headline='A delicious week, sorted.';
        description='Pick dinners for each day. BasketBoss brings your week together in one place.';
        art=figure('plan');actions=btn('Next · Shopping lists','next')+btn('Back','back','link');break;
-     case 7:
+     case 8:
        eyebrow='STEP 3 OF 3 · SHOP';headline='One shopping list, organised by aisle.';
        description='Your meals become one clear aisle-by-aisle list, with useful cost estimates.';
        art=figure('shop');actions=btn('Finish the tour','next')+btn('Back','back','link');break;
-     case 8:
+     case 9:
        eyebrow='READY WHEN YOU ARE';headline='You’re all set.';
        description='Less time wondering what’s for dinner. More time enjoying it.';
        art='<div class="bbob-finish-art">'+originalCrownAnimation()+'<span class="bbob-sheen" aria-hidden="true"></span></div>';
@@ -128,8 +137,8 @@
        foot='Standard is monthly, not annual. Founder eligibility is verified at checkout. Subscription checkout requires a signed-in account; payment, taxes and renewal terms are confirmed on the existing secure Paddle page.';
        actions=btn('Explore Premium plans','premium')+btn('Continue with BasketBoss Free','free-complete','outline');
    }
-   const counter=state.step===0?'':`<div class="bbob-progress" aria-label="Onboarding step ${state.step} of ${STEP_MAX}"><span style="width:${Math.min(100,Math.round(100*state.step/STEP_MAX))}%"></span></div>`;
-   return `<div class="bbob-shell"><header class="bbob-header"><div class="bbob-brand"><img src="${LOGO}" alt=""><span>Basket<span>Boss</span></span></div><button type="button" class="bbob-exit" data-bbob="free" aria-label="Exit onboarding and explore free recipes">Explore Free <span aria-hidden="true">×</span></button></header>${counter}<section class="bbob-main" aria-labelledby="bbob-title"><p class="bbob-eyebrow">${eyebrow}</p><h1 id="bbob-title">${headline}</h1><p class="bbob-description">${description}</p>${art}${foot?`<p class="bbob-footnote">${foot}</p>`:''}<p id="bbobSaveError" role="alert" class="bbob-save-error"></p></section><footer class="bbob-footer">${actions}<div class="bbob-stepname">${titles[state.step]} · ${state.step+1} of 10</div></footer></div>`;
+   const counter=state.step===0?'':`<div class="bbob-progress" aria-label="Onboarding step ${state.step+1} of ${STEP_MAX+1}"><span style="width:${Math.min(100,Math.round(100*state.step/STEP_MAX))}%"></span></div>`;
+   return `<div class="bbob-shell"><header class="bbob-header"><div class="bbob-brand"><img src="${LOGO}" alt=""><span>Basket<span>Boss</span></span></div><button type="button" class="bbob-exit" data-bbob="free" aria-label="Exit onboarding and explore free recipes">Explore Free <span aria-hidden="true">×</span></button></header>${counter}<section class="bbob-main" aria-labelledby="bbob-title"><p class="bbob-eyebrow">${eyebrow}</p><h1 id="bbob-title">${headline}</h1><p class="bbob-description">${description}</p>${art}${foot?`<p class="bbob-footnote">${foot}</p>`:''}<p id="bbobSaveError" role="alert" class="bbob-save-error"></p></section><footer class="bbob-footer">${actions}<div class="bbob-stepname">${titles[state.step]} · ${state.step+1} of 11</div></footer></div>`;
  }
  function restoreAuth(){
    if(form&&formMarker?.parentNode)formMarker.parentNode.insertBefore(form,formMarker);
@@ -196,12 +205,29 @@
    }
  }
 
+ function finishJoinHandoff(){
+   if(!host||!validSession())return;
+   // Only consent to join is saved; backend still checks the verified email,
+   // the actual invite and Premium membership. No local plan is imported.
+   state.complete=true;state.started=false;
+   if(!persist()){
+     const e=host.querySelector('#bbobSaveError');if(e)e.textContent='Could not save onboarding on this device. Please retry.';
+     return;
+   }
+   write('basketboss_onboarding_seen_v1','true');
+   restoreAuth();host.remove();host=null;document.body.style.overflow=oldOverflow;
+   queueMicrotask(()=>{
+     const button=document.querySelector('#cloud-signed [data-bbhs-trigger], [data-bbhs-trigger]');
+     if(button)button.click();
+     else document.getElementById('cloud-open')?.click();
+   });
+ }
  function chooseOption(i){
-   const items=state.step===2?HOUSE:state.step===3?GOALS:DIETS;
+   const items=state.step===3?HOUSE:state.step===4?GOALS:DIETS;
    const v=items[i];if(v===undefined)return;
-   if(state.step===2)state.house=v;
-   if(state.step===3){const set=new Set(state.goals);set.has(v)?set.delete(v):(set.size<3&&set.add(v));state.goals=[...set];}
-   if(state.step===4){const set=new Set(state.diets);if(v===DIETS[0]){state.diets=[v];}
+   if(state.step===3)state.house=v;
+   if(state.step===4){const set=new Set(state.goals);set.has(v)?set.delete(v):(set.size<3&&set.add(v));state.goals=[...set];}
+   if(state.step===5){const set=new Set(state.diets);if(v===DIETS[0]){state.diets=[v];}
      else{set.delete(DIETS[0]);set.has(v)?set.delete(v):set.add(v);state.diets=[...set];}}
    persist();render();
  }
@@ -209,7 +235,14 @@
    if(!willShow()||host)return;
    state=restoreState()||state;
    // Everyone sees the new rollout once; saved recipes, plans and sessions stay intact.
-   if(!state.started){state={step:0,house:'',goals:[],diets:[],region:'',started:true,complete:false};persist();}
+   if(!state.started){state={step:0,house:'',goals:[],diets:[],region:'',started:true,complete:false,partnerStepV2:true,wantsPartnerInvite:false,partnerIntent:'none'};persist();}
+   else if(!state.partnerStepV2){
+     // Resume older incomplete onboarding at the corresponding screen; never
+     // reset or repeat the tour for users who already completed it.
+     if(Number.isInteger(state.step)&&state.step>=2&&state.step<=9)state.step++;
+     state.partnerStepV2=true;
+     if(!persist())return;
+   }
    if(!Number.isInteger(state.step)||state.step<0||state.step>STEP_MAX)state.step=0;
    oldOverflow=document.body.style.overflow;
    host=document.createElement('div');host.id='bbNewOnboarding';host.setAttribute('role','dialog');host.setAttribute('aria-modal','true');host.setAttribute('aria-label','BasketBoss welcome and setup');
@@ -219,14 +252,29 @@
      const action=e.target.closest('[data-bbob]')?.dataset.bbob;if(!action)return;
      if(action==='free'||action==='free-complete'){complete();return;}
      if(action==='premium'){complete(true);return;}
-     if(action==='next'){state.step=Math.min(STEP_MAX,state.step+1);persist();render();return;}
-     if(action==='skip'){if(state.step===2){state.house='';state.region='';}if(state.step===3)state.goals=[];if(state.step===4)state.diets=[];state.step=Math.min(STEP_MAX,state.step+1);persist();render();return;}
+     if(action==='partner-invite'){
+       state.partnerIntent='invite';state.wantsPartnerInvite=true;persist();render();return;
+     }
+     if(action==='partner-join'){
+       state.partnerIntent='join';state.wantsPartnerInvite=false;persist();
+       if(validSession())finishJoinHandoff();else{state.step=1;persist();render();}
+       return;
+     }
+     if(action==='partner-later'){
+       state.partnerIntent='none';state.wantsPartnerInvite=false;
+       state.step=3;persist();render();return;
+     }
+     if(action==='next'){
+       if(state.step===2 && state.partnerIntent==='join' && validSession()){finishJoinHandoff();return;}
+       state.step=Math.min(STEP_MAX,state.step+1);persist();render();return;
+     }
+     if(action==='skip'){if(state.step===3){state.house='';state.region='';}if(state.step===4)state.goals=[];if(state.step===5)state.diets=[];state.step=Math.min(STEP_MAX,state.step+1);persist();render();return;}
      if(action==='back'){state.step=Math.max(0,state.step-1);persist();render();}
    });
    host.addEventListener('change',e=>{if(e.target.matches('[data-bbob-region]')){state.region=e.target.value;persist();}});
    host.addEventListener('keydown',e=>{if(e.key==='Escape'){e.preventDefault();complete();}});
    window.addEventListener('basketboss:session-changed',()=>{
-     if(host&&state.step===1&&validSession()){state.step=2;persist();render();}
+     if(host&&state.step===1&&validSession()){if(state.partnerIntent==='join')finishJoinHandoff();else{state.step=2;persist();render();}}
    });
    render();
  }
