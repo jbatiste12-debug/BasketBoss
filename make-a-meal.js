@@ -167,7 +167,7 @@ const BB_EMOJI_MATCH=[
  [/\b(nut|peanut)\b/i,'🥜'],[/\b(honey)\b/i,'🍯'],[/\b(oil)\b/i,'🫒'],[/\b(salt)\b/i,'🧂'],
  [/\b(herb|basil|parsley|coriander)\b/i,'🌿']
 ];
-function bbPhotoName(name){const nameKey=String(name||'').toLowerCase().normalize('NFKC').trim().replace(/\s+/g,' ');return BB_PHOTO_EXACT[nameKey]||null}
+function bbPhotoName(name){const nameKey=String(name||'').toLowerCase().normalize('NFKC').trim().replace(/\s+/g,' ');if(['rice','white rice','basmati rice','long grain rice'].includes(nameKey))return null;return BB_PHOTO_EXACT[nameKey]||null}
 function bbFoodEmoji(name,preferred){
  const text=String(name||'').toLowerCase();
  if(/\b(sausages?|bratwurst|frankfurter)\b/.test(text))return '🌭';

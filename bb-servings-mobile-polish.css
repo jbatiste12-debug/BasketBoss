@@ -1,0 +1,44 @@
+/* BasketBoss preview/servings-and-fixes — presentation only.
+   No changes to original card/grid/flex layouts or existing control IDs. */
+@media(max-width:720px){#app.view{padding-top:max(16px,env(safe-area-inset-top,0px));min-width:0}}
+#app .bbfeed-control{display:inline-flex;align-items:center;justify-content:center;gap:5px;flex-wrap:wrap;min-width:0;max-width:100%;box-sizing:border-box;border:1px solid #cbdccc;border-radius:999px;padding:3px 7px;background:#f3f9f2;color:#174a31;font:750 12px/1.3 system-ui,-apple-system,sans-serif;vertical-align:middle;white-space:normal}
+#app .bbfeed-control button{display:inline-grid;place-items:center;flex:0 0 auto;min-width:28px;min-height:28px;padding:2px 6px;border:1px solid #b2cbb9;border-radius:999px;background:#fff;color:#1d5635;font:900 17px/1 system-ui,sans-serif;touch-action:manipulation;cursor:pointer}
+#app .bbfeed-control button:disabled{opacity:.42;cursor:default}
+#app .bbfeed-control button:focus-visible{outline:2px solid #247a47;outline-offset:2px}
+#app.bbnext-plan .bbnext-plan-budget .bbfeed-global{display:flex;width:max-content;max-width:100%;margin:7px 0 9px;padding:4px 9px}
+#app.bbnext-plan .bbnext-day-toggle .bbnext-day-description,
+#app.bbnext-plan .bbnext-day-toggle .bbnext-day-description small{min-width:0;max-width:100%;overflow-wrap:anywhere}
+#app.bbnext-plan .bbnext-day-toggle .bbfeed-meal{margin:3px 4px 3px 0;font-size:11px;padding:2px 5px;vertical-align:middle}
+#app.bbnext-plan .bbnext-day-toggle .bbfeed-meal button{min-width:26px;min-height:26px;font-size:15px}
+#app .bbfeed-shop-status{display:block;width:fit-content;max-width:100%;box-sizing:border-box;margin:0 0 10px;padding:7px 11px;border:1px solid #d7e4d4;border-radius:999px;background:#f5faf4;color:#295c3d;font:700 12px/1.4 system-ui,sans-serif;white-space:normal;overflow-wrap:anywhere}
+#app .bbfeed-ingredients{min-width:0}
+#app .bbfeed-ingredients summary{cursor:pointer;color:#245f3b;font-weight:800;font-size:13px;line-height:1.4;overflow-wrap:anywhere}
+#app .bbfeed-ingredients[open] summary{margin-bottom:10px}
+/* Only the duplicated inner title, never the actual School Lunchboxes accordion. */
+#app #bb1756Lunchboxes #bb321SchoolLunchbox > .section-head{display:none!important}
+/* Cook retains its visible BasketBoss logo, Premium link and five-tab dock. */
+body .bb17513-meal-topbar > .bb17513-meal-back{display:none!important}
+/* Existing left-hand Premium comparison remains functional; hide only two redundant upsells. */
+body[data-bbnext-view="discover"] #app > .bb173-leftover-card,
+body[data-bbnext-view="discover"] #app > .bb173-recipe-tier-banner{display:none!important}
+body[data-bbnext-view="discover"] #bb175Toolbar{margin:0 0 7px!important}
+body[data-bbnext-view="discover"] #bb175Toolbar #bb175Compare{min-height:36px!important;padding:7px 12px!important;font-size:12px!important}
+/* The original region card is already preserved as a header popover by plan-polish.
+   Hide a redundant collapsed shell banner only when the functional header pill exists. */
+body:has(#bbpolRegionPill) .shell > #bb17RegionCard.bb17513-region-collapsed{display:none!important}
+@media(max-width:520px){
+  #app.bbnext-plan .bbnext-plan-budget .bbfeed-global{margin-left:auto;margin-right:auto}
+  #app.bbnext-plan .bbnext-day-toggle .bbfeed-meal{max-width:100%}
+}
+
+/* Review refinement: metadata stays in three independent pills, and the
+   existing bbpol meta decorator skips structured controls. No grid changes. */
+#app.bbnext-plan .bbnext-day-description small.bbfeed-meta{display:flex!important;flex-wrap:wrap!important;align-items:center!important;gap:5px!important;min-width:0!important;max-width:100%!important;overflow-wrap:normal!important}
+#app.bbnext-plan .bbfeed-meta .bbfeed-meal{margin:0!important;flex:0 1 auto!important;white-space:nowrap!important;flex-wrap:nowrap!important;gap:4px!important;padding:3px 6px!important}
+#app.bbnext-plan .bbfeed-meta .bbfeed-price{display:inline-flex!important;white-space:nowrap!important;padding:5px 8px!important}
+#app.bbnext-plan .bbfeed-meta .bbfeed-meal button{min-width:30px!important;min-height:30px!important}
+#app.bbnext-plan .bbfeed-night-row{display:flex;align-items:center;flex-wrap:wrap;gap:7px;min-width:0;max-width:100%;box-sizing:border-box;padding:6px 1px 10px;color:#244f35;font-size:12px}
+#app.bbnext-plan .bbfeed-night-row .bbfeed-meal{flex-wrap:nowrap;white-space:nowrap;min-width:0;max-width:100%}
+#app.bbnext-plan .bbfeed-night-row .bbfeed-meal button{min-width:34px;min-height:34px}
+#app.bbnext-plan .bbnext-meal-ingredients p{overflow-wrap:anywhere}
+@media(max-width:390px){#app.bbnext-plan .bbfeed-meta{gap:4px!important}#app.bbnext-plan .bbfeed-meta .bbfeed-meal{font-size:11px!important}}
