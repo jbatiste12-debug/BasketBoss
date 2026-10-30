@@ -1,4 +1,5 @@
 import {authenticatedUser,isBillingEnabled,isConfigured,isLive,expectedPrice,paddleApi,digestHex} from '../../../bb-server-lib/bb-billing.js';
+import {sharedHouseholdPremiumOwner} from '../../../bb-server-lib/bb-household-premium.js';
 // BasketBoss AI structured output formats, taken from the successful private test.
 export const MODEL='gemini-3.5-flash-lite';
 export const GEMINI_URL=`https://generativelanguage.googleapis.com/v1beta/models/${MODEL}:generateContent`;
@@ -239,6 +240,10 @@ async function eligibleMember(request,env){
   ).bind(user.id).first();
   if(row && (row.status==='active'||row.status==='trialing') &&
      expectedPrice(env,row.plan)===row.price_id)return user;
+  // Partner inherits ONLY an accepted, owner-paid Household entitlement.
+  // Quota remains on the paid owner, not one additional allocation per partner.
+  const householdOwner=await sharedHouseholdPremiumOwner(request,env,user);
+  if(householdOwner)return {...user,bbQuotaOwnerId:householdOwner};
   // Recover only a Paddle-verified, CURRENT paid/trial checkout, never a
   // pending D1 claim or a checkout window merely shown on screen.
   return await verifiedPaddleCheckoutMember(user,env)?user:null;
@@ -410,7 +415,7 @@ export async function onRequest({request,env,params}){
 
   try{
     if(!await consumeQuota(
-      env.BILLING_DB,member.id,action,limits(env).global
+      env.BILLING_DB,member.bbQuotaOwnerId||member.id,action,limits(env).global
     ))return respond({error:'Daily AI usage limit reached'},429);
   }catch(err){
     // Diagnostic class only: never log auth tokens, IPs, secrets or D1 row data.
