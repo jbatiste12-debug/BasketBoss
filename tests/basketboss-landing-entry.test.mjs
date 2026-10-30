@@ -129,3 +129,59 @@ test('compact genuine-assets hero and three-column family feature previews',()=>
  assert.match(css,/features-compact\{display:grid!important;grid-template-columns:repeat\(3/);
  assert.match(page,/release-assets\/basketboss-v17\/images\/existing\/fajitas\.webp/);
 });
+
+
+test('final hero is a phone-framed public sample, not a fabricated screenshot',()=>{
+ assert.match(page,/class="hero-art hero-app-preview"/);
+ assert.match(page,/class="bb-device"/);
+ assert.match(page,/class="bb-device-speaker"/);
+ assert.match(page,/class="bb-device-home"/);
+ assert.match(page,/not a captured account screen/);
+ assert.doesNotMatch(page,/class="phone-shell"/);
+ assert.match(css,/\.bb-device\{position:relative/);
+});
+test('mobile cards keep generous internal padding and responsive preview sizing',()=>{
+ assert.match(css,/@media\(max-width:580px\)/);
+ assert.match(css,/features-compact article\{padding:20px!important/);
+ assert.match(css,/feature-mini\{padding:13px!important/);
+ assert.match(css,/@media\(max-width:370px\)/);
+});
+test('free planning calls to action are prominent with readable contrast',()=>{
+ assert.match(page,/Start planning free/);
+ assert.match(page,/class="button solid large" href="\/index\.html">Start planning free/);
+ assert.match(css,/background:#075431!important;color:#fff!important/);
+});
+test('secure checkout and cancellation trust copy is underneath both pricing tiers',()=>{
+ const pricing=read('pricing-sandbox.html');
+ assert.match(page,/Secure checkout via Paddle ·/);
+ assert.equal((pricing.match(/class="bb-paddle-trust"/g)||[]).length,2);
+ for(const tier of ['founder','monthly']){
+  const button=pricing.indexOf(`data-plan="${tier}"`);
+  const trust=pricing.indexOf('class="bb-paddle-trust"',button);
+  assert.ok(button>=0&&trust>button);
+ }
+ assert.match(pricing,/Secure checkout via Paddle/);
+ assert.match(pricing,/href="subscriptions\.html">Cancel anytime/);
+ assert.match(pricing,/paddle-sandbox\.js|class="bb-paddle-trust"/);
+});
+
+
+test('father-of-four founder story uses the original submitted photo in one circular portrait',()=>{
+ assert.match(page,/id="about-founder"/);
+ assert.match(page,/Why I built BasketBoss/);
+ assert.match(page,/As a father of four/);
+ assert.match(page,/src="\/bb-founder-portrait\.jpg"/);
+ assert.match(page,/class="bb-founder-portrait"/);
+ assert.match(css,/\.bb-founder-portrait img\{[^}]*border-radius:50%;object-fit:cover/);
+ assert.ok(page.indexOf('id="about-founder"')<page.indexOf('id="premium"'));
+ assert.match(css,/\.bb-founder-section/);
+ assert.doesNotMatch(page,/fake testimonial|thousands of customers|founder family photo|helmet illustration/i);
+ assert.equal((page.match(/bb-founder-portrait\.jpg/g)||[]).length,1);
+});
+
+test('founder photograph is the actual staged JPEG and no generated portrait is referenced',()=>{
+ const photo=fs.readFileSync(path.join(root,'bb-founder-portrait.jpg'));
+ assert.ok(photo.length>30000);
+ assert.equal(photo[0],0xff);assert.equal(photo[1],0xd8);
+ assert.doesNotMatch(page,/AI-generated founder|generated firefighter|firefighter-illustration|decorative-helmet/i);
+});

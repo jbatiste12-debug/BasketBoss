@@ -122,3 +122,56 @@
 .features-compact .feature-partner>div{margin:4px 0!important;font-size:1.2rem!important}.features-compact .feature-pantry>div{margin:5px 0!important}
 @media(max-width:900px){.features-compact{grid-template-columns:repeat(2,minmax(0,1fr))!important}.hero-app-preview .bb-app-snapshot{width:min(100%,420px)}}
 @media(max-width:580px){.features-compact{grid-template-columns:1fr!important}.features-compact article{padding:16px!important}.hero-app-preview .bb-app-snapshot{transform:none;width:100%}.bb-app-summary{gap:5px}.bb-app-summary span{padding:7px}.bb-app-meal{grid-template-columns:27px 45px minmax(0,1fr) 8px}.bb-app-meal img{width:45px;height:43px}.bb-app-bottom{font-size:.55rem}}
+
+/* Micro-polish: phone form restores device context without inventing an app screenshot. */
+.hero-app-preview{height:auto;min-height:0;gap:0;padding:18px 6px}
+.hero-app-preview .bb-device{position:relative;box-sizing:border-box;width:min(100%,385px);max-width:385px;border:8px solid #263830;border-radius:44px;background:#263830;padding:12px 7px 13px;box-shadow:19px 29px 55px rgba(15,57,37,.25);transform:rotate(-1deg)}
+.hero-app-preview .bb-device-speaker{display:block;width:58px;height:5px;background:#849890;border-radius:999px;margin:0 auto 10px}
+.hero-app-preview .bb-device-home{display:block;width:86px;height:4px;border-radius:999px;background:#9fb5a7;margin:11px auto 0}
+.hero-app-preview .bb-device .bb-app-snapshot{box-sizing:border-box;width:100%;max-width:none;height:auto;transform:none;box-shadow:none;border-radius:27px;padding:14px 12px;border-color:#d7e7d8}
+.hero-app-preview .bb-app-top{min-width:0}.bb-app-top span{white-space:nowrap}
+.hero-app-preview .bb-app-list{min-width:0}.hero-app-preview .bb-app-meal span{min-width:0}.hero-app-preview .bb-app-meal strong{overflow-wrap:anywhere}
+.hero-app-preview .bb-app-summary span{min-width:0}
+/* High-contrast action buttons maintain a clear visual hierarchy on small screens. */
+.hero .button.solid,.end-cta .button.solid,.head-actions .button.solid{background:#075431!important;color:#fff!important;border-color:#075431!important;box-shadow:0 9px 22px rgba(7,84,49,.2)}
+.hero .button.solid:hover,.end-cta .button.solid:hover,.head-actions .button.solid:hover{background:#053c24!important;border-color:#053c24!important}
+.bb-landing-checkout-trust{font-size:.78rem;line-height:1.5;color:#315b45;margin:11px 0 0;font-weight:650}
+.bb-landing-checkout-trust a{text-underline-offset:3px}
+/* Card content and preview rows can wrap without squeezing or overflowing narrow screens. */
+.features-compact article,.features-compact .feature-mini{box-sizing:border-box;min-width:0}
+.features-compact .feature-meal span,.features-compact .feature-servings>div,.features-compact .feature-cook>div{min-width:0;overflow-wrap:anywhere}
+.features-compact .feature-shop label{display:flex;align-items:center;flex-wrap:wrap;gap:6px;min-height:32px}
+.features-compact .feature-shop label small{margin-left:auto;white-space:nowrap}
+@media(max-width:900px){.hero-app-preview .bb-device{transform:none}}
+@media(max-width:580px){
+ .hero-app-preview{width:100%;height:auto;min-height:0;padding:20px 0 10px;margin:0 auto}
+ .hero-app-preview .bb-device{width:min(100%,354px);padding:10px 5px 11px;border-width:7px;border-radius:38px}
+ .hero-app-preview .bb-device .bb-app-snapshot{padding:12px 10px;border-radius:24px}
+ .hero-app-preview .bb-app-top strong{font-size:1rem}
+ .hero-app-preview .bb-app-top span{font-size:.55rem}
+ .hero-app-preview .bb-app-meal{gap:6px;padding:7px 5px}
+ .features-compact{row-gap:14px!important}
+ .features-compact article{padding:20px!important;min-height:0!important}
+ .features-compact .feature-mini{padding:13px!important;min-height:0!important}
+ .features-compact p{max-width:100%;overflow-wrap:anywhere}
+ .feature-section .section-heading{padding-inline:6px}
+ .hero .actions .button.solid,.end-cta .actions .button.solid{min-height:49px;padding:13px 18px;font-size:.94rem}
+}
+@media(max-width:370px){
+ .features-compact article{padding:17px!important}
+ .features-compact .feature-mini{padding:11px!important}
+ .hero-app-preview .bb-app-meal{grid-template-columns:22px 39px minmax(0,1fr) 8px}
+ .hero-app-preview .bb-app-meal img{width:39px;height:39px}
+ .hero-app-preview .bb-app-meal strong{font-size:.7rem}
+ .hero-app-preview .bb-app-bottom{font-size:.5rem;gap:2px}
+}
+
+/* Founder note: uses the actual founder-submitted photograph, never generated art. */
+.bb-founder-section{box-sizing:border-box;display:grid;grid-template-columns:158px minmax(0,1fr);gap:30px;align-items:center;margin:25px auto 80px;padding:29px 33px;background:linear-gradient(125deg,#eff7ee,#fff);border:1px solid #d7e7d7;border-radius:25px;box-shadow:0 12px 28px rgba(20,61,40,.06)}
+.bb-founder-portrait{box-sizing:border-box;width:154px;height:154px;border-radius:50%;overflow:hidden;background:#e1eddf;border:4px solid #fff;box-shadow:0 8px 25px rgba(14,65,39,.14)}
+.bb-founder-portrait img{display:block;width:100%;height:100%;border-radius:50%;object-fit:cover;object-position:center 35%}
+.bb-founder-story{min-width:0}.bb-founder-story h2{font-size:clamp(1.65rem,2.7vw,2.35rem);line-height:1.12;letter-spacing:-.045em;margin:2px 0 11px;color:#163e2e}
+.bb-founder-story p:not(.eyebrow){max-width:78ch;color:#496d58;line-height:1.65;margin:0 0 9px;font-size:.95rem}
+.bb-founder-story .bb-founder-signoff{color:#18653f!important;font-weight:850;font-size:.85rem!important}
+@media(max-width:690px){.bb-founder-section{grid-template-columns:88px minmax(0,1fr);gap:15px;padding:20px 17px;border-radius:20px;margin-bottom:65px}.bb-founder-portrait{width:88px;height:88px}.bb-founder-story h2{font-size:1.7rem}.bb-founder-story p:not(.eyebrow){font-size:.91rem;line-height:1.6}}
+@media(max-width:450px){.bb-founder-section{display:block;padding:19px 18px}.bb-founder-portrait{float:left;width:82px;height:82px;margin:0 14px 8px 0}.bb-founder-story h2{font-size:1.68rem}.bb-founder-story p{clear:both}}
