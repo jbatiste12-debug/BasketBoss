@@ -4,15 +4,15 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <meta name="theme-color" content="#f7faf5">
-  <meta name="description" content="BasketBoss Beta helps busy households plan family dinners, find real recipes, adjust servings and make shopping lists. Free to start, with Premium partner sharing.">
+  <meta name="description" content="BasketBoss Beta: Plan Smarter. Eat Better. Less Waste. Family meal planning, per-meal servings, smart shopping lists, confirmed pantry leftovers and Premium partner sharing.">
   <link rel="canonical" href="https://basketboss.co.uk/">
   <meta property="og:type" content="website">
   <meta property="og:title" content="BasketBoss Beta | Family meal planning that saves time">
-  <meta property="og:description" content="Less time deciding what to cook. More time for the family. Discover recipes, see a sample meal plan and explore BasketBoss Free.">
+  <meta property="og:description" content="Plan Smarter. Eat Better. Less Waste. Family-friendly meal plans, shopping by aisle, pantry awareness and less guesswork.">
   <meta property="og:url" content="https://basketboss.co.uk/">
   <meta property="og:image" content="https://basketboss.co.uk/release-assets/basketboss-v17/images/existing/fajitas.webp">
   <link rel="icon" href="icons/basketboss-crowned-v1766-192.png" type="image/png">
-  <link rel="stylesheet" href="bb-beta-landing.css?v=20261030-beta1">
+  <link rel="stylesheet" href="bb-beta-landing.css?v=20261030-beta2">
   <title>BasketBoss Beta — Family meal planning that actually saves time</title>
   <script>
   /* Existing members go straight into the unchanged app. This checks only that
@@ -25,7 +25,7 @@
     if(standalone||active||(onboarding&&onboarding.complete===true))location.replace('/index.html');
   }catch(_){/* First-time/private visitors see the landing page. */}})();
   </script>
-  <script src="bb-beta-landing.js?v=20261030-beta1" defer></script>
+  <script src="bb-beta-landing.js?v=20261030-beta2" defer></script>
 </head>
 <body>
   <a class="skip" href="#main">Skip to content</a>
@@ -39,10 +39,10 @@
   <main id="main">
     <section class="hero wrap">
       <div class="hero-copy">
-        <p class="eyebrow">SIMPLE MEAL PLANNING FOR REAL LIFE</p>
+        <p class="eyebrow">PLAN SMARTER. EAT BETTER. LESS WASTE.</p>
         <h1>Family meal planning that <em>actually saves time.</em></h1>
         <p class="lede">Less “what's for dinner?” More time for everything else.</p>
-        <p class="subcopy">BasketBoss helps busy parents plan family meals, adjust portions, make shopping lists and share one Premium household plan. No macro tracking. No complicated routines.</p>
+        <p class="subcopy">BasketBoss helps busy parents plan family meals, adjust portions, shop by aisle, follow step-by-step cooking instructions, keep track of confirmed pantry leftovers and share one Premium household plan. No macro tracking. No complicated routines.</p>
         <div class="actions"><a class="button solid large" href="/index.html">Start free <span aria-hidden="true">→</span></a><a class="button outline large" href="#demo">See a sample week <span aria-hidden="true">↘</span></a></div>
         <p class="trust"><span class="trust-dot"></span> 100 real recipes free to explore <span class="sep">·</span> No card to start <span class="sep">·</span> BasketBoss Beta</p>
       </div>
@@ -50,17 +50,23 @@
         <div class="hero-blob"></div>
         <div class="food-orb food-orb-one"><img loading="eager" src="release-assets/basketboss-v17/images/existing/creamy-pasta.webp" alt="Creamy garlic parmesan chicken pasta"></div>
         <div class="food-orb food-orb-two"><img loading="lazy" src="release-assets/basketboss-v17/images/existing/fajitas.webp" alt="Sheet-pan chicken fajitas"></div>
-        <div class="phone-shell">
-          <div class="phone-top"><span>9:41</span><span>●●● ▰</span></div>
-          <div class="phone-brand"><img src="icons/basketboss-crowned-v1766-192.png" alt=""><b>BasketBoss</b><span>◉</span></div>
-          <div class="phone-tabs"><b>Plan</b><span>Discover</span><span>Kitchen</span><span>Shop</span><span>Cook</span></div>
-          <h2>This week, sorted.</h2><p class="phone-caption">A simpler answer to dinner.</p>
-          <div class="phone-meal"><img src="release-assets/basketboss-v17/images/existing/fajitas.webp" alt=""><div><strong>Monday</strong><small>Sheet-pan chicken fajitas</small></div><span>›</span></div>
-          <div class="phone-meal"><img src="release-assets/basketboss-v17/images/existing/creamy-pasta.webp" alt=""><div><strong>Tuesday</strong><small>Creamy chicken pasta</small></div><span>›</span></div>
-          <div class="phone-meal"><img src="release-assets/basketboss-v17/images/existing/chickpea-curry.webp" alt=""><div><strong>Wednesday</strong><small>Chickpea & spinach curry</small></div><span>›</span></div>
-          <div class="phone-progress"><strong>✓</strong><span>Planning feels a little easier.</span></div>
+        <div class="phone-shell" aria-label="Illustrative BasketBoss mobile app screen with actual public recipe names">
+          <div class="phone-notch" aria-hidden="true"></div>
+          <div class="phone-top" aria-hidden="true"><span>9:41</span><span class="phone-signals">●●● ᯤ ▰</span></div>
+          <div class="phone-brand"><img src="icons/basketboss-crowned-v1766-192.png" alt=""><b>Basket<span>Boss</span></b><small>BETA</small></div>
+          <div class="phone-week-bar"><span class="phone-week-label">MY WEEK</span><strong>What's for dinner?</strong><span class="phone-sample">Sample view</span></div>
+          <div class="phone-plan-metrics"><div><strong>3</strong><span>Meals planned</span></div><div><strong>4</strong><span>Family servings</span></div></div>
+          <div class="phone-meals">
+            <div class="phone-meal"><span class="phone-day">MON</span><img src="release-assets/basketboss-v17/images/existing/fajitas.webp" alt=""><div><strong>Sheet-pan chicken fajitas</strong><small>30 min · family favourite</small></div><span aria-hidden="true">›</span></div>
+            <div class="phone-meal"><span class="phone-day">TUE</span><img src="release-assets/basketboss-v17/images/existing/creamy-pasta.webp" alt=""><div><strong>Creamy chicken pasta</strong><small>30 min · comfort food</small></div><span aria-hidden="true">›</span></div>
+            <div class="phone-meal"><span class="phone-day">WED</span><img src="release-assets/basketboss-v17/images/existing/chickpea-curry.webp" alt=""><div><strong>Chickpea &amp; spinach curry</strong><small>25 min · pantry-friendly</small></div><span aria-hidden="true">›</span></div>
+          </div>
+          <div class="phone-progress"><strong aria-hidden="true">✓</strong><span>Plan set · Shopping list ready</span></div>
+          <div class="phone-app-nav" aria-label="BasketBoss app areas">
+            <a class="phone-nav-active" href="#demo"><span>▦</span>Plan</a><a href="#recipes"><span>⌕</span>Discover</a><a href="#pantry-feature"><span>▤</span>Kitchen</a><a href="#demo" data-landing-phone-shop><span>🛒</span>Shop</a><a href="#cook-demo"><span>♨</span>Cook</a>
+          </div>
         </div>
-        <div class="float-card list-float"><span>🛒 Smart shopping</span><strong>From plan to list</strong><small>See what you need for dinner.</small></div>
+        <div class="float-card list-float"><span>🛒 SHOP MODE</span><strong>By aisle · by quantity</strong><small>Check off what you buy. Confirm leftovers to Kitchen.</small></div>
         <div class="float-card serving-float"><span>🍽️ Adjust each meal</span><strong>2 <span>−</span> 4 <span>+</span></strong><small>Portions that suit your family.</small></div>
       </div>
     </section>
@@ -71,7 +77,7 @@
         <article><span class="iconbubble">±</span><h3>Portions for your family</h3><p>Set servings for each planned meal, not just one number for everyone.</p></article>
         <article><span class="iconbubble">🛒</span><h3>Shopping made simpler</h3><p>Turn planned meals into an organised shopping list.</p></article>
         <article><span class="iconbubble">♧</span><h3>One household, two people</h3><p>One Premium owner can invite one verified partner.</p></article>
-        <article><span class="iconbubble">✦</span><h3>Leftover Magic</h3><p>Find ideas to make more of ingredients you already have.</p></article>
+        <article><span class="iconbubble">▤</span><h3>Smart pantry &amp; shopping</h3><p>Confirm unused pack quantities into Kitchen, then account for what you already own.</p></article><article><span class="iconbubble">✦</span><h3>Leftover Magic</h3><p>Find ideas to make more of ingredients you already have.</p></article>
       </div>
     </div></section>
     <section id="demo" class="wrap demo-section">
@@ -81,17 +87,38 @@
           <div class="demo-toolbar"><div><span class="kicker">A LITTLE LESS PLANNING</span><h3>Sample family dinners</h3></div><button type="button" id="new-demo-week" class="button outline small">↻ Refresh sample meals</button></div>
           <div class="demo-tabs" role="tablist" aria-label="Demo views"><button type="button" id="tab-plan" role="tab" aria-selected="true" aria-controls="demo-plan">This week's meals</button><button type="button" id="tab-shop" role="tab" aria-selected="false" aria-controls="demo-shop">Shopping preview</button></div>
           <div id="demo-plan" role="tabpanel" aria-labelledby="tab-plan"><div id="demo-meals" class="demo-meals"><p class="demo-loading">Loading real recipe cards…</p></div></div>
-          <div id="demo-shop" role="tabpanel" aria-labelledby="tab-shop" hidden><div id="demo-shopping"></div></div>
+          <div id="demo-shop" role="tabpanel" aria-labelledby="tab-shop" hidden><div id="demo-shopping" aria-live="polite"></div></div>
           <div class="demo-footer"><p>Ingredient amounts and prices are indicative. Check packaging, allergies and shop prices.</p><strong id="demo-total" aria-live="polite">Estimated total: —</strong></div>
         </div>
         <aside class="side-panel"><p class="eyebrow">THE GOOD PART</p><h3>From “what's for dinner?” to a plan you can use.</h3><p>Pick a few meals, change their serving sizes, then see ingredients appear in a shopping preview.</p><div class="steps"><div><b>1</b><span>Find something everyone might eat</span></div><div><b>2</b><span>Adjust it for the people at your table</span></div><div><b>3</b><span>Take a clearer shopping list to the store</span></div></div><a href="/index.html" class="button solid full">Start planning free <span aria-hidden="true">→</span></a><small>The demo is read-only. Real planning happens inside BasketBoss.</small></aside>
       </div>
     </section>
+    <section id="pantry-feature" class="wrap pantry-feature" aria-labelledby="pantry-title">
+      <div class="pantry-feature-copy">
+        <p class="eyebrow">SHOP SMARTER, WASTE LESS</p>
+        <h2 id="pantry-title">Buy a pack. Use what you need. Keep the rest.</h2>
+        <p>BasketBoss Shop Mode supports pack-size choices and measured Kitchen stock. After you confirm what you bought and finish shopping, unused amounts can be saved for next week's recipes — reducing repeat purchases when the quantity and unit match.</p>
+        <p class="pantry-disclaimer">Fresh food requires safe-storage confirmation. Unmeasured or unconfirmed pantry items never count as unlimited stock.</p>
+        <a class="button outline" href="/index.html">Explore Kitchen &amp; Shop in the app <span aria-hidden="true">→</span></a>
+      </div>
+      <div class="pantry-demo" aria-label="Illustrative pack-size and pantry demonstration">
+        <div class="pantry-demo-heading"><span>▤ SMART SHOPPING EXAMPLE</span><strong>500g pack → 200g needed</strong></div>
+        <div class="pantry-pack" role="img" aria-label="500 grams purchased, 200 grams used this week, 300 grams unused"><span class="pantry-pack-used">200g used</span><span class="pantry-pack-left">300g left</span></div>
+        <div class="pantry-demo-grid"><div><span>Buy for this week</span><strong>500g pack</strong></div><div><span>Recipe uses</span><strong>200g</strong></div><div><span>Available next week</span><strong id="pantry-available">Not confirmed</strong></div><div><span>Next week's 250g recipe</span><strong id="pantry-to-buy">250g to buy</strong></div></div>
+        <div class="pantry-demo-actions"><button type="button" class="button solid" id="confirm-pantry-demo">Confirm pack bought (demo)</button><button type="button" class="button outline" id="reset-pantry-demo">Reset</button></div>
+        <p id="pantry-demo-note" class="pantry-demo-note" role="status">Tap confirm to see how 300g of unused food can count towards next week's shopping.</p>
+        <small>Illustrative only. No real purchases, pantry changes or account data are made here. In the app, confirm quantities and finish Shop to save eligible unused stock.</small>
+      </div>
+    </section>
+    <section id="cook-demo" class="wrap landing-cook" aria-labelledby="cook-demo-title">
+      <div class="landing-cook-copy"><p class="eyebrow">FROM PLAN TO PLATE</p><h2 id="cook-demo-title">Dinner, one clear step at a time.</h2><p>BasketBoss Cook Mode gives you step-by-step cooking instructions for your chosen recipe. Try a real instruction from a public BasketBoss recipe, then open the full app to cook your meal.</p><p class="cook-note">Cooking times are guides. Check safe temperatures, ingredient labels and allergies.</p><a href="/index.html" class="button solid">Open Cook in BasketBoss →</a></div>
+      <div class="cook-card" aria-label="Example BasketBoss Cook Mode"><div class="cook-card-top"><span>♨ BASKETBOSS · COOK</span><small>Sample — no account needed</small></div><div class="cook-card-dish"><img src="release-assets/basketboss-v17/images/existing/fajitas.webp" alt="Sheet-pan chicken fajitas"><div><strong id="cook-recipe-name">Sheet-pan chicken fajitas</strong><small>Real recipe from BasketBoss Free</small></div></div><div class="cook-progress"><strong id="cook-step-count">Step 1 of 5</strong><span>Follow along</span></div><p id="cook-step-text" aria-live="polite">Loading real cooking instructions…</p><div class="cook-controls"><button id="cook-prev" type="button" class="button outline">← Previous</button><button id="cook-next" type="button" class="button solid">Next step →</button></div></div>
+    </section>
     <section id="recipes" class="recipe-section"><div class="wrap"><div class="recipe-heading"><div><p class="eyebrow">REAL FOOD, REAL EVENINGS</p><h2>Recipes you'll actually want to cook.</h2><p>Here are a few favourites from the existing BasketBoss Free recipe collection.</p></div><a class="button outline" href="/index.html">Explore 100 free recipes <span aria-hidden="true">→</span></a></div><div class="recipe-grid" id="landing-recipes"><p>Loading your recipe inspiration…</p></div></div></section>
-    <section class="wrap why-section"><div><p class="eyebrow">A DIFFERENT KIND OF MEAL PLANNER</p><h2>Built for the school-run, workday and real-life juggle.</h2><p>BasketBoss isn't trying to make family dinner another numbers dashboard. We focus on convenience: planning meals, changing portions, shopping with less guesswork and making the most of leftovers.</p></div><div class="why-card"><h3>What matters here</h3><p>✓ Less deciding what to cook</p><p>✓ Meals that fit your household</p><p>✓ A shopping list you can actually use</p><p>✓ One Premium household plan to share</p><p>✓ More ideas for what you already have</p></div></section>
+    <section class="wrap why-section"><div><p class="eyebrow">A DIFFERENT KIND OF MEAL PLANNER</p><h2>Built for the school-run, workday and real-life juggle.</h2><p>BasketBoss isn't trying to make family dinner another numbers dashboard. We focus on convenience: planning meals, changing portions, shopping with less guesswork and making the most of leftovers.</p></div><div class="why-card"><h3>What matters here</h3><p>✓ Less deciding what to cook</p><p>✓ Meals that fit your household</p><p>✓ By-aisle shopping with real ingredient quantities</p><p>✓ Confirmed unused packs help with future shopping</p><p>✓ One Premium household plan to share</p><p>✓ More ideas for what you already have</p></div></section>
     <section id="premium" class="wrap premium-section"><div class="premium-copy"><p class="eyebrow">BASKETBOSS PREMIUM</p><h2>Plan together. Shop together.</h2><p>Premium lets one actively subscribed household owner invite one confirmed-email partner, with shared plans and shopping updates. Manage your subscription securely through BasketBoss.</p><p class="premium-note">Invitations are accepted inside the app; automatic invitation emails are not currently sent.</p><a href="/pricing-sandbox.html" class="button solid">See Premium plans <span aria-hidden="true">→</span></a></div><div class="partner-mock"><div class="partner-avatars"><span aria-hidden="true">👤</span><span class="connection">↔</span><span aria-hidden="true">👤</span></div><h3>One plan. Two people.</h3><p>Plan together, with one household instead of separate lists.</p><div class="partner-row"><span>Shared meal plan</span><b>✓</b></div><div class="partner-row"><span>Shopping updates</span><b>✓</b></div><div class="partner-row"><span>One verified partner</span><b>✓</b></div></div></section>
     <section class="faq-section" id="faq"><div class="wrap faq-wrap"><div><p class="eyebrow">GOOD TO KNOW</p><h2>Questions parents ask.</h2><p>BasketBoss is in Beta. We're focused on making the features already here more reliable and useful.</p></div><div class="faq-items"><details><summary>Is BasketBoss free?</summary><p>Yes. Start with 100 free recipes and basic planning. Premium adds extra tools and household partner sharing.</p></details><details><summary>Does the example week change my meal plan?</summary><p>No. This landing page only demonstrates publicly available recipes. Your actual saved plans are changed only inside the signed-in app.</p></details><details><summary>Can I share with a partner?</summary><p>Premium supports one verified partner per paid household. A partner accepts an invitation through their own confirmed BasketBoss account.</p></details><details><summary>Can I install BasketBoss?</summary><p>Yes. Open the full app in a compatible browser and follow its install instructions to add it to your home screen.</p></details></div></div></section>
     <section class="end-cta wrap"><p class="eyebrow">A LITTLE MORE TIME BACK</p><h2>Let's make mealtimes feel easier.</h2><p>Start with free recipes, build a dinner plan and see where BasketBoss takes the everyday hassle away.</p><div class="actions"><a class="button solid large" href="/index.html">Get started free <span aria-hidden="true">→</span></a><a class="button outline large" href="/pricing-sandbox.html">Explore Premium</a></div></section>
   </main>
-  <footer><div class="wrap footrow"><div class="brand footbrand"><img src="icons/basketboss-crowned-v1766-192.png" alt="" width="34" height="34"><span>BasketBoss</span><small>Beta</small></div><nav aria-label="Legal links"><a href="/privacy.html">Privacy</a><a href="/terms.html">Terms</a><a href="/index.html">Enter app</a></nav><span>© 2026 BasketBoss · Made for real households</span></div></footer>
+  <footer><div class="wrap footrow"><div class="brand footbrand"><img src="icons/basketboss-crowned-v1766-192.png" alt="" width="34" height="34"><span>BasketBoss</span><small>Beta</small></div><nav aria-label="Legal links"><a href="/privacy.html">Privacy</a><a href="/terms.html">Terms</a><a href="/index.html">Enter app</a></nav><span>© 2026 BasketBoss · Plan Smarter. Eat Better. Less Waste.</span></div></footer>
 </body></html>

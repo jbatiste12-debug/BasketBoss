@@ -57,3 +57,47 @@ test('responsive layout, landmark and accessible interactive controls',()=>{
  assert.match(css,/@media\(max-width:570px\)/);
  assert.match(css,/@media\(prefers-reduced-motion:reduce\)/);
 });
+
+test('verified BasketBoss slogan, mobile presentation and correct public app links',()=>{
+ assert.match(page,/PLAN SMARTER\. EAT BETTER\. LESS WASTE\./);
+ assert.match(page,/Plan Smarter\. Eat Better\. Less Waste\./);
+ assert.match(page,/phone-notch/);
+ assert.match(page,/phone-app-nav/);
+ assert.match(page,/Sample view/);
+ assert.match(page,/release-assets\/basketboss-v17\/images\/existing\/fajitas.webp/);
+ assert.match(page,/href="\/index\.html"/);
+ assert.doesNotMatch(page,/(?:fpdrivinggsy|@gmail\.com|sb_secret_|session_id=)/i);
+});
+test('shopping preview uses real recipe ingredient quantities and grouped aisles, not a marketing-only checklist',()=>{
+ assert.match(js,/AISLE_ORDER/);
+ assert.match(js,/function rowsForShopping\(\)/);
+ assert.match(js,/r\.ingredients/);
+ assert.match(js,/portions\[i\]\/Number\(r\.servings/);
+ assert.match(js,/shop-item-price/);
+ assert.match(js,/shopping progress|Sample shopping progress/i);
+ assert.match(js,/demoChecked\.add/);
+ assert.match(js,/demoChecked\.delete/);
+ assert.match(js,/textContent/);
+ assert.doesNotMatch(js,/innerHTML|insertAdjacentHTML|eval\(/);
+});
+test('pack and pantry example requires a deliberate demo action, makes no customer writes',()=>{
+ assert.match(page,/500g pack → 200g needed/);
+ assert.match(page,/300g left/);
+ assert.match(page,/Next week&#39;s 250g recipe|Next week's 250g recipe/);
+ assert.match(page,/Fresh food requires safe-storage confirmation/);
+ assert.match(page,/No real purchases, pantry changes or account data/);
+ assert.match(js,/confirm-pantry-demo/);
+ assert.match(js,/300g in Kitchen/);
+ assert.match(js,/0g to buy · 50g remains/);
+ assert.match(js,/render\(false\)/);
+ assert.doesNotMatch(js,/localStorage|sessionStorage|Authorization|\/api\/|bb_paid_entitlements|\.setItem\(/);
+});
+
+test('Cook Mode preview reads actual public recipe method, with no private data access',()=>{
+ assert.match(page,/id="cook-demo"/);
+ assert.match(page,/step-by-step cooking instructions/);
+ assert.match(js,/cookRecipe=publicRecipes\.find/);
+ assert.match(js,/cookRecipe\.method/);
+ assert.match(js,/cook-step-text/);
+ assert.doesNotMatch(js,/sessionStorage|localStorage|Authorization|\/api\/|\.setItem\(/);
+});
