@@ -2,7 +2,7 @@
  * Caches app pages and assets only; no personal localStorage or sync data is transmitted.
  * Food photographs outside the preview are cached only after being viewed, where supported.
  */
-const CACHE = 'basketboss-premium-secure-shell-20261028-v13-free-signup-funnel';
+const CACHE = 'basketboss-premium-secure-shell-20261030-v14-beta-live';
 const IMAGE_CACHE = 'basketboss-v17513-owner-qa-images-v1';
 const APP_BASE = new URL(self.registration.scope);
 const CORE = ['bb-funnel.css','bb-funnel.js','bb-consolidated-qa.css','bb-consolidated-qa.js','bb-culinary-enhancements.js','bb-culinary.css','index.html','tutorial.html','bb-real-app-tour.css','bb-real-app-tour.js','bb-cloudflare-qa.js','privacy.html','make-a-meal.html','make-a-meal.css','bb174-trial-ux.css','bb174-trial-ux.js','bb-premium-features.css','bb-premium-preview-config.js','bb-premium-features.js','bb-light-meal.css','make-a-meal.js','premium-upgrade.js','premium-upgrade.css','bb-intro-trial.js','bb-intro-trial.css','bb-us-market.js','bb-us-market.css','bb173-final-polish.css','bb-welcome-splash.js','bb-welcome-splash.css','bb-install.js','bb-install.css','shopping-inventory.js','bb-beta-launch-polish.js','bb-beta-launch-polish.css','bb-beta-six-fixes.css','bb-beta-six-fixes.js','bb-beta-five.css','bb-beta-five-nav.js','bb-purchase-choice.css',
@@ -45,6 +45,26 @@ self.addEventListener('fetch', event => {
   }
   // Never cache live AI status or responses, even when served under our PWA scope.
   if (target.pathname.startsWith(new URL('api/', APP_BASE).pathname)) return;
+  // Beta stability: browser installations on basketboss.co.uk and www each
+  // have their own PWA cache. Always ask the network for these release-critical
+  // STATIC assets, falling back to the cached file only while offline.
+  // No account, plan, API or billing response may be cached by this exception.
+  const releaseAssets = new Set([
+    'bb-onboarding-v2.js','bb-onboarding-v2.css',
+    'bb-household-sharing.js','bb-household-sharing.css',
+    'bb-serving-scale.js',
+    'bb-partner-signup-prompt.js','bb-partner-signup-prompt.css'
+  ].map(path => new URL(path, APP_BASE).pathname));
+  if (releaseAssets.has(target.pathname)) {
+    event.respondWith(fetch(req, {cache:'no-store'}).then(response => {
+      if (response.ok) {
+        const copy = response.clone();
+        event.waitUntil(caches.open(CACHE).then(c => c.put(req, copy)));
+      }
+      return response;
+    }).catch(async () => (await caches.match(req)) || Response.error()));
+    return;
+  }
   if (target.pathname.startsWith(APP_BASE.pathname)) {
     if (req.mode === 'navigate') {
       event.respondWith(fetch(req).then(response => {
