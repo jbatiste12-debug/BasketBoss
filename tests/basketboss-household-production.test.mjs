@@ -132,7 +132,7 @@ test('Paid middleware is opt-in and ignores public routes and webhooks',async()=
 });
 test('Premium middleware rejects an old session for paid recipes and AI',async()=>{
  mockFetch({current:false});let hit=0;
- for(const path of ['/api/recipes/premium','/api/bb173/scan','/api/bb173/generate','/api/subscription/status','/api/subscription/portal','/api/household']){
+ for(const path of ['/api/recipes/premium','/api/bb173/scan','/api/bb173/generate','/api/household']){
   const r=await middleware.onRequest({request:req(path),env:env(),next:()=>{hit++;return json({ok:true})}});
   assert.equal(r.status,403);
  }
@@ -140,12 +140,26 @@ test('Premium middleware rejects an old session for paid recipes and AI',async()
 });
 test('Premium middleware allows the latest valid session and does not touch Paddle webhook',async()=>{
  mockFetch({current:true});let hit=0;
- for(const path of ['/api/recipes/premium','/api/bb173/generate','/api/subscription/status','/api/paddle/webhook']){
+ for(const path of ['/api/recipes/premium','/api/bb173/generate','/api/subscription/status','/api/subscription/portal','/api/paddle/webhook']){
   const r=await middleware.onRequest({request:req(path),env:env(),next:()=>{hit++;return json({ok:true})}});
   assert.equal(r.status,200);
  }
- assert.equal(hit,4);
- assert.equal(fetchCalls.filter(x=>x.url.includes('rpc/bb_hh_service_session_ok')).length,3);
+ assert.equal(hit,5);
+ assert.equal(fetchCalls.filter(x=>x.url.includes('rpc/bb_hh_service_session_ok')).length,2);
+});
+test('Free account status and subscription portal remain reachable from older valid login',async()=>{
+ mockFetch({current:false});let hit=0;
+ for(const path of ['/api/subscription/status','/api/subscription/portal']){
+  const r=await middleware.onRequest({request:req(path),env:env(),next:()=>{hit++;return json({ok:true})}});
+  assert.equal(r.status,200);
+ }
+ assert.equal(hit,2);assert.equal(fetchCalls.length,0);
+ mockFetch({sessionStatus:503});
+ for(const path of ['/api/subscription/status','/api/subscription/portal']){
+  const r=await middleware.onRequest({request:req(path),env:env(),next:()=>json({ok:true})});
+  assert.equal(r.status,200);
+ }
+ assert.equal(fetchCalls.length,0);
 });
 test('Production database migration is least-privilege and leaves original plans alone',()=>{
  for(const fragment of ['BEGIN;','COMMIT;','CREATE TABLE IF NOT EXISTS public.bb_households','CREATE TABLE IF NOT EXISTS public.bb_household_entries','UNIQUE REFERENCES auth.users','ENABLE ROW LEVEL SECURITY','REVOKE ALL ON public.bb_households','REVOKE ALL ON FUNCTION public.bb_hh_service_session_ok','TO service_role','SELECT 1 FROM auth.sessions','account_already_owns_household'])assert.ok(SQL.includes(fragment),`missing ${fragment}`);
