@@ -116,3 +116,13 @@
 #bbNewOnboarding .bbob-save-error{color:#a3292b;font-size:12px;font-weight:700;line-height:1.45}
 @media(max-width:560px){#bbNewOnboarding .bbob-recipe-gallery{max-height:48svh}#bbNewOnboarding .bbob-recipe-card .recipe-image{height:137px}#bbNewOnboarding .bbob-more-recipes .recipe-image{height:80px}}
 @media(prefers-reduced-motion:reduce){#bbNewOnboarding .bbob-original-logo-motion,#bbNewOnboarding .bbob-motion-basket,#bbNewOnboarding .bbob-motion-crown{animation:none!important;opacity:1!important;transform:none!important}}
+
+/* 2026-10-29: visible Partner Sharing screen in initial onboarding. */
+#bbNewOnboarding .bbob-partner-choices{display:grid;gap:11px;margin:9px 0 12px}
+#bbNewOnboarding .bbob-partner-choice{display:flex;align-items:center;gap:12px;width:100%;min-height:74px;padding:12px 14px;border:1px solid #d1e3d5;border-radius:15px;background:#fff;color:#214b35;text-align:left;box-shadow:0 5px 15px #1b4a330a}
+#bbNewOnboarding .bbob-partner-choice.chosen{background:#e9f5eb;border-color:#28764b;box-shadow:inset 0 0 0 1px #28764b}
+#bbNewOnboarding .bbob-partner-choice .bbob-partner-icon{display:grid;place-items:center;flex:none;width:41px;height:41px;border-radius:13px;background:#edf6ec;font-size:20px}
+#bbNewOnboarding .bbob-partner-choice strong{display:block;font-size:14px;line-height:1.3}
+#bbNewOnboarding .bbob-partner-choice small{display:block;margin-top:3px;font-size:12px;line-height:1.4;color:#65806d;font-weight:500}
+#bbNewOnboarding .bbob-partner-saved{margin:9px 0 0;border-radius:11px;padding:11px 12px;background:#e8f4e9;color:#245d3e;font-size:12px;line-height:1.55}
+@media(max-width:400px){#bbNewOnboarding .bbob-partner-choice{min-height:72px;padding:10px 12px}#bbNewOnboarding .bbob-partner-choice strong{font-size:13px}}

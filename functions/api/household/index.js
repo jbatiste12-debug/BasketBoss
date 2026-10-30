@@ -1,12 +1,30 @@
 /* BasketBoss Household Sharing — closed-by-default Cloudflare Pages API.
    D1 remains the ONLY payment entitlement authority. Supabase's service-role
    secret is server-only. No legacy basketboss_data restore is called here. */
-import {json,authenticatedUser,isConfigured,isBillingEnabled,expectedPrice,entitlementForStatus,requireSameOrigin} from '../../../bb-server-lib/bb-billing.js';
+import {json,authenticatedUser,isLive,expectedPrice,entitlementForStatus,requireSameOrigin} from '../../../bb-server-lib/bb-billing.js';
+import {isNewestVerifiedSession} from '../../../bb-server-lib/bb-premium-seat.js';
 const SECTIONS=new Set(['planned_day','servings','pantry_item','kitchen_item','shopping_checked','budget_target','household_servings']);
 function privateKey(env){return env.SUPABASE_SECRET_KEY||env.SUPABASE_SERVICE_ROLE_KEY||'';}
-function configured(env){return isConfigured(env)&&env.BB_PARTNER_SHARING_ENABLED==='true'&&
+// Four independent gates. This never accepts the QA tenant or test-owner entitlement.
+// "Configured" means permitted to attempt status reads, not that any user is paid.
+// HARD RELEASE BRAKE: separate security-reviewed activation commit required.
+const RELEASE_ARMED=false;
+const LIVE_SUPABASE='https://kbhyosxuvlcazyzzinqv.supabase.co';
+const LIVE_HOSTS=new Set(['basketboss.co.uk','www.basketboss.co.uk','basketboss-site.pages.dev']);
+function configured(env,request){
+ const url=new URL(request.url);
+ return RELEASE_ARMED&&url.protocol==='https:'&&LIVE_HOSTS.has(url.hostname)&&
+  (!env.CF_PAGES_BRANCH||env.CF_PAGES_BRANCH==='main')&&
+  env.BB_PARTNER_SHARING_ENABLED==='true'&&
+  env.BB_PARTNER_PRODUCTION_READY==='true'&&
+  env.BB_PREMIUM_SINGLE_SESSION_ENABLED==='true'&&
+  isLive(env)&&env.BB_LIVE_WEBHOOK_ENABLED==='true'&&
+  env.SUPABASE_URL===LIVE_SUPABASE&&
+  typeof env.SUPABASE_PUBLISHABLE_KEY==='string'&&env.SUPABASE_PUBLISHABLE_KEY.length>20&&
   typeof privateKey(env)==='string'&&privateKey(env).length>30&&
-  typeof env.BILLING_DB?.prepare==='function';}
+  typeof env.BILLING_DB?.prepare==='function'&&
+  !!expectedPrice(env,'founder')&&!!expectedPrice(env,'standard');
+}
 function serviceHeaders(env){
  const secret=privateKey(env);
  // Current sb_secret_* keys belong ONLY in `apikey`; they are not JWTs.
@@ -30,8 +48,7 @@ async function first(env,table,filter,select='*'){
  return Array.isArray(rows)?rows[0]||null:null;
 }
 async function premium(env,userId){
- if(userId===env.BB_OWNER_USER_ID&&!!env.BB_OWNER_USER_ID)return true;
- if(!isBillingEnabled(env))return false;
+ if(!isLive(env)||!env.BILLING_DB?.prepare)return false;
  const row=await env.BILLING_DB.prepare('SELECT status,price_id,plan FROM bb_paid_entitlements WHERE user_id=? ORDER BY updated_at_ms DESC LIMIT 1').bind(userId).first();
  return !!row&&entitlementForStatus(row.status)&&expectedPrice(env,row.plan)===row.price_id;
 }
@@ -50,15 +67,19 @@ async function getPending(env,user){
  return {household_id:h.id,expires_at:rows[0].expires_at};
 }
 async function authorized(request,env){
- if(!configured(env))return {error:json({error:'Partner Sharing not configured'},503)};
+ if(!configured(env,request))return {error:json({error:'Partner Sharing not configured'},503)};
  const user=await authenticatedUser(request,env);
  if(!user)return {error:json({error:'Sign in with a confirmed email'},401)};
+ try{
+  if(!await isNewestVerifiedSession(request,env,user))
+   return {error:json({error:'Another device has a newer session. Sign in again on this device to use Household Sharing.'},403)};
+ }catch{return {error:json({error:'Device session verification is temporarily unavailable'},503)};}
  return {user};
 }
 export async function onRequestGet({request,env}){
- // An unconfigured preview is a supported, non-error state. Do not emit 503
+ // A gated-off production feature is a supported, non-error state. Do not emit 503
  // network noise or touch local data merely because the migration is absent.
- if(!configured(env))return json({configured:false,premium:false,role:'unavailable',household_id:null,invite:null});
+ if(!configured(env,request))return json({configured:false,premium:false,role:'unavailable',household_id:null,invite:null});
  const auth=await authorized(request,env);if(auth.error)return auth.error;
  try{
   const {household,role}=await householdForUser(env,auth.user);
@@ -93,6 +114,7 @@ export async function onRequestPost({request,env}){
    return json({...result,email_sent:false,message:'Invite saved. Ask your partner to sign in using their confirmed email.'});
   }
   if(data.action==='accept'){
+   if(household)return json({error:'Already linked to a household'},409);
    const pending=await getPending(env,actor);
    if(!pending||pending.household_id!==data.household_id)return json({error:'No eligible invitation'},403);
    const result=await supa(env,'rpc/bb_hh_service_accept','POST',{p_user:actor.id,p_email:actor.email,p_household:pending.household_id});
