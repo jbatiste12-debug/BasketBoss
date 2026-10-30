@@ -94,3 +94,31 @@
 .serving-demo-control{display:inline-flex!important;align-items:center;gap:12px}.serving-demo-control b{color:#143d2d;font-size:1.25rem}.serving-float>small{margin:3px 0}
 @media(max-width:850px){.features-rich{grid-template-columns:repeat(2,minmax(0,1fr))}}
 @media(max-width:570px){.features-rich{grid-template-columns:1fr}.features-rich article{min-height:280px}.feature-mini{min-height:100px}}
+
+/* 2026-10-30: Compact marketing snapshots from existing BasketBoss public assets.
+   No private screenshots, synthetic account details or oversized recipe mosaics. */
+.hero-app-preview{display:flex;flex-direction:column;align-items:center;justify-content:center;min-height:0;padding:8px 0 16px}
+.hero-app-preview .bb-app-snapshot{width:min(100%,440px);height:auto;background:#fff;border:1px solid #d7e7d8;border-radius:24px;padding:16px;box-shadow:0 26px 55px #1c4a3226;transform:rotate(-1deg)}
+.bb-app-top{display:flex;align-items:center;gap:9px;color:#174932;border-bottom:1px solid #e1ebdf;padding-bottom:10px}
+.bb-app-top img{width:31px;height:31px;object-fit:contain}.bb-app-top strong{font-size:1.16rem}.bb-app-top span{margin-left:auto;color:#45815e;font-size:.66rem;font-weight:850;letter-spacing:.09em}
+.bb-app-title{padding:13px 2px 6px}.bb-app-title small{color:#2c9259;font-weight:850;font-size:.66rem;letter-spacing:.12em}.bb-app-title h3{margin:3px 0;font-size:1.32rem;color:#143d2d}.bb-app-title p{margin:0;font-size:.72rem;color:#6e8575}
+.bb-app-summary{display:flex;gap:10px;margin:9px 0 12px}.bb-app-summary span{background:#ebf6ed;border-radius:11px;padding:9px 12px;flex:1;font-size:.73rem;color:#376b4b}.bb-app-summary b{font-size:1.1rem;color:#13663e}
+.bb-app-list{display:grid;gap:9px}.bb-app-meal{display:grid;grid-template-columns:29px 54px minmax(0,1fr) 12px;align-items:center;gap:9px;padding:7px;background:#fafcf8;border:1px solid #e6efe5;border-radius:13px}.bb-app-meal>b{font-size:.64rem;color:#16714a}.bb-app-meal img{width:54px;height:48px;object-fit:cover;border-radius:8px}.bb-app-meal strong{display:block;font-size:.78rem;color:#143e2d}.bb-app-meal small{display:block;font-size:.64rem;color:#6b8774;margin-top:3px}.bb-app-meal i{color:#769681;font-style:normal}
+.bb-app-bottom{display:flex;justify-content:space-between;gap:5px;margin-top:15px;padding-top:11px;border-top:1px solid #e6eee5;font-size:.63rem;font-weight:750;color:#43745a}
+.bb-preview-note{font-size:.68rem;color:#658571;text-align:center;line-height:1.4;max-width:380px;margin:14px 8px 0}
+.features-compact{display:grid!important;grid-template-columns:repeat(3,minmax(0,1fr))!important;gap:15px!important;align-items:stretch}
+.features-compact article{min-height:0!important;padding:18px!important;border-radius:19px!important;display:flex;flex-direction:column;gap:0;overflow:hidden}
+.features-compact .iconbubble{width:38px;height:38px;min-height:38px;margin-bottom:8px}
+.features-compact h3{font-size:1.08rem!important;margin:0 0 5px!important;line-height:1.25}
+.features-compact p{font-size:.81rem!important;line-height:1.42!important;margin:0 0 10px!important}
+.features-compact .feature-mini{margin-top:auto!important;min-height:0!important;padding:10px!important;border-radius:11px!important;font-size:.73rem!important;max-width:100%;overflow:hidden}
+.features-compact .feature-meal{padding:3px 5px!important;gap:7px!important;margin:3px 0!important}
+.features-compact .feature-meal img{width:32px!important;height:28px!important;max-width:32px!important;object-fit:cover}
+.features-compact .feature-mini img{max-width:100%;object-fit:cover}
+.features-compact .feature-servings img,.features-compact .feature-cook img{width:65px!important;max-width:65px!important;height:65px!important;flex:0 0 65px}
+.features-compact .feature-servings,.features-compact .feature-cook{align-items:center!important}
+.features-compact .feature-link{margin-top:9px!important;font-size:.74rem!important}
+.feature-serving-control{display:inline-flex!important;align-items:center!important;gap:11px!important;background:#fff;border:1px solid #dae8db;border-radius:30px;padding:5px 9px;margin-top:6px!important}.feature-serving-control em{font-style:normal;font-size:1rem;color:#137247}.feature-serving-control b{font-size:.95rem}
+.features-compact .feature-partner>div{margin:4px 0!important;font-size:1.2rem!important}.features-compact .feature-pantry>div{margin:5px 0!important}
+@media(max-width:900px){.features-compact{grid-template-columns:repeat(2,minmax(0,1fr))!important}.hero-app-preview .bb-app-snapshot{width:min(100%,420px)}}
+@media(max-width:580px){.features-compact{grid-template-columns:1fr!important}.features-compact article{padding:16px!important}.hero-app-preview .bb-app-snapshot{transform:none;width:100%}.bb-app-summary{gap:5px}.bb-app-summary span{padding:7px}.bb-app-meal{grid-template-columns:27px 45px minmax(0,1fr) 8px}.bb-app-meal img{width:45px;height:43px}.bb-app-bottom{font-size:.55rem}}

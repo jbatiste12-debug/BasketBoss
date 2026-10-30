@@ -61,8 +61,8 @@ test('responsive layout, landmark and accessible interactive controls',()=>{
 test('verified BasketBoss slogan, mobile presentation and correct public app links',()=>{
  assert.match(page,/PLAN SMARTER\. EAT BETTER\. LESS WASTE\./);
  assert.match(page,/Plan Smarter\. Eat Better\. Less Waste\./);
- assert.match(page,/phone-notch/);
- assert.match(page,/phone-app-nav/);
+ assert.match(page,/bb-app-snapshot/);
+ assert.match(page,/bb-app-bottom/);
  assert.match(page,/Sample view/);
  assert.match(page,/release-assets\/basketboss-v17\/images\/existing\/fajitas.webp/);
  assert.match(page,/href="\/index\.html"/);
@@ -103,11 +103,11 @@ test('Cook Mode preview reads actual public recipe method, with no private data 
 });
 
 test('approved family-first cards reuse actual BasketBoss recipe assets and no account data',()=>{
- assert.match(page,/class="features features-rich"/);
+ assert.match(page,/class="features features-rich features-compact"/);
  assert.match(page,/Sheet-pan chicken fajitas/);
  assert.match(page,/real, step-by-step recipe instructions/);
  assert.match(page,/release-assets\/basketboss-v17\/images\/existing\/fajitas\.webp/);
- assert.match(page,/4 servings · example/);
+ assert.match(page,/class="feature-serving-control"/);
  assert.doesNotMatch(page,/2 <span>−<\/span> 4/);
  assert.match(css,/features-rich/);
 });
@@ -117,4 +117,15 @@ test('shopping aggregation totals compatible quantities without guessing packs',
  assert.match(js,/unitAliases/);
  assert.match(js,/values\.join\(' \+ '\)/);
  assert.doesNotMatch(js,/row\.amounts\.join\(' \+ '\)/);
+});
+
+test('compact genuine-assets hero and three-column family feature previews',()=>{
+ assert.match(page,/class="hero-art hero-app-preview"/);
+ assert.match(page,/class="bb-app-snapshot"/);
+ assert.match(page,/illustrative sample, not a captured account screen/);
+ assert.match(page,/features-rich features-compact/);
+ assert.match(page,/class="feature-serving-control"/);
+ assert.doesNotMatch(page,/class="phone-shell"/);
+ assert.match(css,/features-compact\{display:grid!important;grid-template-columns:repeat\(3/);
+ assert.match(page,/release-assets\/basketboss-v17\/images\/existing\/fajitas\.webp/);
 });
