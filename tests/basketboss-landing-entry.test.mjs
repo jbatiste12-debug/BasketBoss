@@ -101,3 +101,20 @@ test('Cook Mode preview reads actual public recipe method, with no private data 
  assert.match(js,/cook-step-text/);
  assert.doesNotMatch(js,/sessionStorage|localStorage|Authorization|\/api\/|\.setItem\(/);
 });
+
+test('approved family-first cards reuse actual BasketBoss recipe assets and no account data',()=>{
+ assert.match(page,/class="features features-rich"/);
+ assert.match(page,/Sheet-pan chicken fajitas/);
+ assert.match(page,/real, step-by-step recipe instructions/);
+ assert.match(page,/release-assets\/basketboss-v17\/images\/existing\/fajitas\.webp/);
+ assert.match(page,/4 servings · example/);
+ assert.doesNotMatch(page,/2 <span>−<\/span> 4/);
+ assert.match(css,/features-rich/);
+});
+test('shopping aggregation totals compatible quantities without guessing packs',()=>{
+ assert.match(js,/function combinedQuantity\(amounts\)/);
+ assert.match(js,/combinedQuantity\(row\.amounts\)/);
+ assert.match(js,/unitAliases/);
+ assert.match(js,/values\.join\(' \+ '\)/);
+ assert.doesNotMatch(js,/row\.amounts\.join\(' \+ '\)/);
+});

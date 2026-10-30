@@ -52,6 +52,23 @@
   // Do not invent pack counts, purchase rounding or conversions for complex recipe quantities.
   return original+' (adjust for servings in app)';
  }
+ // Combine only unambiguous compatible amounts; never guess pack sizes or mixed units.
+ function combinedQuantity(amounts){
+  const values=amounts.filter(Boolean);
+  if(values.length<=1)return values[0]||'';
+  const unitAliases={kg:'g',g:'g',l:'ml',ml:'ml',clove:'cloves',cloves:'cloves',tbsp:'tbsp',tsp:'tsp',can:'cans',cans:'cans',pepper:'peppers',peppers:'peppers',pack:'packs',packs:'packs'};
+  const parsed=values.map(v=>{const m=/^(\d+(?:\.\d+)?)\s*(kg|g|ml|l|cloves?|tbsp|tsp|cans?|peppers?|packs?)$/i.exec(v.trim());
+   if(m){const base=unitAliases[m[2].toLowerCase()];const factor=(m[2].toLowerCase()==='kg'||m[2].toLowerCase()==='l')?1000:1;return {n:Number(m[1])*factor,unit:base}};
+   const plain=/^(\d+(?:\.\d+)?)$/.exec(v.trim());return plain?{n:Number(plain[1]),unit:'count'}:null;
+  });
+  if(parsed.some(x=>!x)||parsed.some(x=>x.unit!==parsed[0].unit))return values.join(' + ');
+  const total=parsed.reduce((v,x)=>v+x.n,0);if(!Number.isFinite(total))return values.join(' + ');
+  const display=n=>String(Number(n.toFixed(2)));
+  const unit=parsed[0].unit;
+  if(unit==='g'&&total>=1000)return display(total/1000)+' kg';
+  if(unit==='ml'&&total>=1000)return display(total/1000)+' l';
+  return display(total)+(unit==='count'?'':' '+(unit==='cloves'&&total===1?'clove':unit==='cans'&&total===1?'can':unit==='peppers'&&total===1?'pepper':unit==='packs'&&total===1?'pack':unit));
+ }
  function rowsForShopping(){
   const byName=new Map();
   for(let i=0;i<shown.length;i++){
@@ -95,7 +112,7 @@
     const li=elem('li','shop-item');const label=document.createElement('label');
     const tick=document.createElement('input');tick.type='checkbox';tick.checked=demoChecked.has(row.key);tick.setAttribute('aria-label','Mark '+row.name+' bought in the sample list');
     tick.addEventListener('change',()=>{if(tick.checked)demoChecked.add(row.key);else demoChecked.delete(row.key);renderShopping()});
-    const desc=elem('span','shop-item-name');desc.append(elem('strong','',row.name),elem('small','',row.amounts.join(' + ')||'See recipe for quantity'));
+    const desc=elem('span','shop-item-name');desc.append(elem('strong','',row.name),elem('small','',combinedQuantity(row.amounts)||'See recipe for quantity'));
     label.append(tick,desc,elem('span','shop-item-price',money(row.cost)+' est.'));li.append(label);ul.append(li);
    }
    section.append(ul);content.append(section);
