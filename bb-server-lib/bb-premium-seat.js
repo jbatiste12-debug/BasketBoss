@@ -3,7 +3,7 @@
  * protected paid API routes on every request. Cloudflare secret stays server-only.
  */
 // HARD RELEASE BRAKE: even Cloudflare flags cannot activate this staged code.
-const RELEASE_ARMED=false;
+const RELEASE_ARMED=true;
 const UUID=/^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
 export function seatGateEnabled(env){return RELEASE_ARMED&&env.BB_PREMIUM_SINGLE_SESSION_ENABLED==='true';}
 export function sessionFromVerifiedBearer(request,user){

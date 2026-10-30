@@ -1,5 +1,6 @@
 /* Authenticated Premium recipe delivery. Never served as a static JSON asset. */
 import {json,authenticatedUser,isBillingEnabled,isConfigured,expectedPrice,entitlementForStatus} from '../../../bb-server-lib/bb-billing.js';
+import {sharedHouseholdPremiumOwner} from '../../../bb-server-lib/bb-household-premium.js';
 export async function onRequestGet({request,env}){
   if(!isConfigured(env))return json({error:'Premium catalogue unavailable'},503);
   const user=await authenticatedUser(request,env);
@@ -11,6 +12,7 @@ export async function onRequestGet({request,env}){
     if(!premium){
       const row=await env.BILLING_DB.prepare('SELECT status,price_id,plan FROM bb_paid_entitlements WHERE user_id=? ORDER BY updated_at_ms DESC LIMIT 1').bind(user.id).first();
       premium=!!row&&entitlementForStatus(row.status)&&expectedPrice(env,row.plan)===row.price_id;
+      if(!premium)premium=!!await sharedHouseholdPremiumOwner(request,env,user);
     }
     if(!premium)return json({error:'Verified Premium subscription required'},403);
     const rows=await env.BILLING_DB.prepare('SELECT recipe_json,normalized_json FROM bb_private_premium_recipes ORDER BY sort_index').all();

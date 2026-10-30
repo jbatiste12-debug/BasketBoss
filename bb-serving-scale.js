@@ -21,6 +21,15 @@
     return (count(servings)||4)/(base>0?base:4);
   }
   function forMeal(state,slot,recipe){
+    // New overrides are per DAY and tied to its recipe ID. A replaced dinner
+    // must never inherit a former dinner's headcount. Legacy recipe-scoped
+    // overrides still work for existing saved plans without any migration write.
+    const day=slot?.day, current=day&&state?.dayServings?.[day];
+    if(current?.recipeId===slot?.recipeId){
+      // A null count intentionally clears an older recipe-scoped override
+      // for this day without deleting the original saved value.
+      return count(current.count)||count(state?.servings)||count(recipe?.servings)||4;
+    }
     const saved=state?.mealServings&&state.mealServings[slot?.recipeId];
     return count(saved)||count(state?.servings)||count(recipe?.servings)||4;
   }
@@ -72,5 +81,17 @@
     for(const [id,n] of Object.entries(value))if(id.length<=256 && /^[\w.-]+$/.test(id)&&count(n))out[id]=Number(n);
     return out;
   }
-  return Object.freeze({count,onboardingHousehold,ratio,forMeal,moneyCost,formatAmount,scaleText,validOverrides});
+  function validDayOverrides(value){
+    if(!value||typeof value!=='object'||Array.isArray(value))return {};
+    const days=new Set(['Monday','Tuesday','Wednesday','Thursday','Friday','Saturday','Sunday']);
+    const out={};
+    for(const [day,v] of Object.entries(value)){
+      if(!days.has(day)||!v||typeof v!=='object'||Array.isArray(v))continue;
+      if(typeof v.recipeId==='string'&&v.recipeId.length<=256&&v.recipeId.length>0&&
+         (v.count===null||count(v.count)))
+        out[day]={recipeId:v.recipeId,count:v.count===null?null:Number(v.count)};
+    }
+    return out;
+  }
+  return Object.freeze({count,onboardingHousehold,ratio,forMeal,moneyCost,formatAmount,scaleText,validOverrides,validDayOverrides});
 });

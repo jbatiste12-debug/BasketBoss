@@ -8,7 +8,7 @@ function privateKey(env){return env.SUPABASE_SECRET_KEY||env.SUPABASE_SERVICE_RO
 // Four independent gates. This never accepts the QA tenant or test-owner entitlement.
 // "Configured" means permitted to attempt status reads, not that any user is paid.
 // HARD RELEASE BRAKE: separate security-reviewed activation commit required.
-const RELEASE_ARMED=false;
+const RELEASE_ARMED=true;
 const LIVE_SUPABASE='https://kbhyosxuvlcazyzzinqv.supabase.co';
 const LIVE_HOSTS=new Set(['basketboss.co.uk','www.basketboss.co.uk','basketboss-site.pages.dev']);
 function configured(env,request){

@@ -1,5 +1,6 @@
 /* Authoritative Owner + sandbox subscriber status. Never trust a browser tier. */
 import {json,authenticatedUser,entitlementForStatus,isBillingEnabled,billingMode,expectedPrice,isConfigured} from '../../../bb-server-lib/bb-billing.js';
+import {sharedHouseholdPremiumOwner} from '../../../bb-server-lib/bb-household-premium.js';
 export async function onRequestGet({request,env}) {
   if(!isConfigured(env)) return json({tier:'free',premium:false,reason:'server_not_configured'},503);
   const user=await authenticatedUser(request,env);
@@ -11,9 +12,19 @@ export async function onRequestGet({request,env}) {
     const row=await env.BILLING_DB.prepare(`SELECT paddle_subscription_id,paddle_customer_id,status,price_id,plan,
       trial_ends_at,current_period_ends_at,cancellation_effective_at,cancel_at_period_end
       FROM bb_paid_entitlements WHERE user_id=? ORDER BY updated_at_ms DESC LIMIT 1`).bind(user.id).first();
-    if(!row) return json({authenticated:true,mode:billingMode(env),tier:'free',premium:false,premiumAccess:false,subscription:null});
+    if(!row){
+      const householdOwner=await sharedHouseholdPremiumOwner(request,env,user);
+      if(householdOwner)return json({authenticated:true,mode:billingMode(env),tier:'premium',
+        premium:true,premiumAccess:true,householdRole:'partner',subscription:null,portalUrl:null});
+      return json({authenticated:true,mode:billingMode(env),tier:'free',premium:false,premiumAccess:false,subscription:null});
+    }
     const expected=expectedPrice(env,row.plan);
     const premiumAccess=!!(expected && row.price_id===expected && entitlementForStatus(row.status));
+    if(!premiumAccess){
+      const householdOwner=await sharedHouseholdPremiumOwner(request,env,user);
+      if(householdOwner)return json({authenticated:true,mode:billingMode(env),tier:'premium',
+        premium:true,premiumAccess:true,householdRole:'partner',subscription:null,portalUrl:null});
+    }
     return json({authenticated:true,mode:billingMode(env),tier:premiumAccess?'premium':'free',premium:premiumAccess,premiumAccess,
       subscription:{id:row.paddle_subscription_id,plan:row.price_id===expected?row.plan:null,status:row.status,trialEndsAt:row.trial_ends_at,
         currentPeriodEndsAt:row.current_period_ends_at,cancellationEffectiveAt:row.cancellation_effective_at,

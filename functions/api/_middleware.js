@@ -1,5 +1,8 @@
 /* Production Premium API session boundary, disabled until explicitly activated.
- * Leave Free, Paddle webhooks, site pages, and subscription checkout unchanged.
+ * Keep subscription status and Paddle management available from every valid
+ * authenticated session. Those endpoints independently authenticate and
+ * authorize; neither grants access to paid recipes or AI.
+ * Leave Free, webhooks, public pages, and checkout unchanged.
  * Enforces at most one CURRENT server-authorized paid-device session per user.
  */
 import {authenticatedUser,json,isLive} from '../../bb-server-lib/bb-billing.js';
@@ -7,8 +10,6 @@ import {seatGateEnabled,isNewestVerifiedSession} from '../../bb-server-lib/bb-pr
 const PROTECTED=[
  /^\/api\/recipes\/premium\/?$/,
  /^\/api\/bb173\/(?:generate|scan)\/?$/,
- /^\/api\/subscription\/status\/?$/,
- /^\/api\/subscription\/portal\/?$/,
  /^\/api\/household\/?$/
 ];
 export async function onRequest({request,env,next}){

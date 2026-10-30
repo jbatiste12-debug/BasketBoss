@@ -5173,25 +5173,30 @@ function loadState(){
  let pantry={};try{const old=JSON.parse(localStorage.getItem(OLD_PANTRY)||'{}');for(const r of RECIPES)for(const ing of r.ingredients){if(old[ing[0]]||old[ing[0].toLowerCase()])pantry[norm(ing[0])]=true}}catch(e){}
  return normalize({version:2,planned,pantry,customPantry:[],dismissed:[],scanEndpoint:'',servings:4});
 }
-function normalize(s){return {version:2,planned:Array.isArray(s.planned)?s.planned.filter(p=>p&&typeof p.recipeId==='string'&&p.recipeId.length>0&&p.recipeId.length<=256&&DAYS.includes(p.day)).map(p=>({recipeId:p.recipeId,day:p.day})):[],pantry:s.pantry&&typeof s.pantry==='object'?s.pantry:{},customPantry:Array.isArray(s.customPantry)?s.customPantry:[],dismissed:Array.isArray(s.dismissed)?s.dismissed:[],scanEndpoint:'',servings:Number(s.servings)||4,feedingSet:s.feedingSet===true,mealServings:BBServing.validOverrides(s.mealServings),recipePhotos:s.recipePhotos&&typeof s.recipePhotos==='object'?s.recipePhotos:{},recipeCollections:s.recipeCollections&&typeof s.recipeCollections==='object'?s.recipeCollections:{},leftoverSources:s.leftoverSources&&typeof s.leftoverSources==='object'?s.leftoverSources:{},leftoverConfirmed:s.leftoverConfirmed&&typeof s.leftoverConfirmed==='object'?s.leftoverConfirmed:{},plannedDesserts:Array.isArray(s.plannedDesserts)?s.plannedDesserts.filter(p=>p&&typeof p.recipeId==='string'&&p.recipeId.length>0&&p.recipeId.length<=256&&DAYS.includes(p.day)).map(p=>({recipeId:p.recipeId,day:p.day})):[],bbManualBatch:s.bbManualBatch?.version===1&&Array.isArray(s.bbManualBatch.pairs)?{version:1,pairs:s.bbManualBatch.pairs.slice(0,3).filter(x=>x&&typeof x.sourceDay==='string'&&typeof x.leftoverDay==='string'&&typeof x.recipeId==='string').map(x=>({sourceDay:x.sourceDay,leftoverDay:x.leftoverDay,recipeId:x.recipeId}))}:null,bb81Batch:s.bb81Batch?.version===1 && typeof s.bb81Batch.monday==='string' && typeof s.bb81Batch.wednesday==='string' ? {version:1,monday:s.bb81Batch.monday,wednesday:s.bb81Batch.wednesday}:null}}
+function normalize(s){return {version:2,planned:Array.isArray(s.planned)?s.planned.filter(p=>p&&typeof p.recipeId==='string'&&p.recipeId.length>0&&p.recipeId.length<=256&&DAYS.includes(p.day)).map(p=>({recipeId:p.recipeId,day:p.day})):[],pantry:s.pantry&&typeof s.pantry==='object'?s.pantry:{},customPantry:Array.isArray(s.customPantry)?s.customPantry:[],dismissed:Array.isArray(s.dismissed)?s.dismissed:[],scanEndpoint:'',servings:Number(s.servings)||4,feedingSet:s.feedingSet===true,mealServings:BBServing.validOverrides(s.mealServings),dayServings:BBServing.validDayOverrides(s.dayServings),recipePhotos:s.recipePhotos&&typeof s.recipePhotos==='object'?s.recipePhotos:{},recipeCollections:s.recipeCollections&&typeof s.recipeCollections==='object'?s.recipeCollections:{},leftoverSources:s.leftoverSources&&typeof s.leftoverSources==='object'?s.leftoverSources:{},leftoverConfirmed:s.leftoverConfirmed&&typeof s.leftoverConfirmed==='object'?s.leftoverConfirmed:{},plannedDesserts:Array.isArray(s.plannedDesserts)?s.plannedDesserts.filter(p=>p&&typeof p.recipeId==='string'&&p.recipeId.length>0&&p.recipeId.length<=256&&DAYS.includes(p.day)).map(p=>({recipeId:p.recipeId,day:p.day})):[],bbManualBatch:s.bbManualBatch?.version===1&&Array.isArray(s.bbManualBatch.pairs)?{version:1,pairs:s.bbManualBatch.pairs.slice(0,3).filter(x=>x&&typeof x.sourceDay==='string'&&typeof x.leftoverDay==='string'&&typeof x.recipeId==='string').map(x=>({sourceDay:x.sourceDay,leftoverDay:x.leftoverDay,recipeId:x.recipeId}))}:null,bb81Batch:s.bb81Batch?.version===1 && typeof s.bb81Batch.monday==='string' && typeof s.bb81Batch.wednesday==='string' ? {version:1,monday:s.bb81Batch.monday,wednesday:s.bb81Batch.wednesday}:null}}
 function norm(s){return String(s||'').toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g,'').replace(/\b(pack|packs|fresh|large|small|medium|block|tub|bag|box|fillets|fillet)\b/g,'').replace(/[^a-z0-9]+/g,' ').trim()}
 let state=loadState();
 /* Onboarding is read-only here; no saved week or pantry writes on startup. */
 function bbFeedingOnboard(){try{return BBServing.onboardingHousehold(localStorage.getItem('bb_onboarding_fresh_once_20261028_v1'))}catch(_){return null}}
 function bbFeedingApplyDefault(){if(!state.feedingSet&&Number(state.servings)===4){const n=bbFeedingOnboard();if(n)state.servings=n}}
 bbFeedingApplyDefault();
-function bbFeedingForRecipe(r){return BBServing.forMeal(state,{recipeId:r.id},r)}
-function bbFeedingSave(next,id){
+function bbFeedingForRecipe(r,day){
+ const slot=day?{recipeId:r.id,day}:(state.planned||[]).find(p=>p.recipeId===r.id)||{recipeId:r.id};
+ return BBServing.forMeal(state,slot,r);
+}
+function bbFeedingSave(next,id,day){
  const n=BBServing.count(next);if(!n)return false;
- const oldServings=state.servings,oldSet=state.feedingSet,oldMap={...state.mealServings};
- if(id){state.mealServings={...state.mealServings,[id]:n};}else{state.servings=n;state.feedingSet=true;}
- if(!persist()){state.servings=oldServings;state.feedingSet=oldSet;state.mealServings=oldMap;return false;}
+ const oldServings=state.servings,oldSet=state.feedingSet,oldByDay={...state.dayServings};
+ if(id&&day&&DAYS.includes(day))state.dayServings={...state.dayServings,[day]:{recipeId:id,count:n}};
+ else if(!id){state.servings=n;state.feedingSet=true;}
+ else return false;
+ if(!persist()){state.servings=oldServings;state.feedingSet=oldSet;state.dayServings=oldByDay;return false;}
  render();return true;
 }
 /* Each day stepper is its own contained control; the original summary/card
    DOM remains intact. Never allow its buttons to toggle the details accordion. */
 function bbFeedingDayStepper(day,recipe,position){
- const current=bbFeedingForRecipe(recipe);
+ const current=bbFeedingForRecipe(recipe,day);
  const pill=document.createElement('span');pill.className='bbfeed-control bbfeed-meal';
  pill.dataset.bbfeedDay=day;pill.dataset.bbfeedPos=position;
  pill.setAttribute('role','group');pill.setAttribute('aria-label',day+' dinner servings');
@@ -5205,7 +5210,7 @@ function bbFeedingDayStepper(day,recipe,position){
    button.addEventListener('keydown',e=>e.stopPropagation());
    button.addEventListener('click',e=>{
      e.preventDefault();e.stopPropagation();
-     if(!bbFeedingSave(current+delta,recipe.id))return;
+     if(!bbFeedingSave(current+delta,recipe.id,day))return;
      const restored=[...document.querySelectorAll('[data-bbfeed-day]')].find(el=>el.dataset.bbfeedDay===day&&el.dataset.bbfeedPos===position);
      restored?.querySelector('[data-bbfeed-delta="'+delta+'"]')?.focus({preventScroll:true});
    });
@@ -6676,7 +6681,7 @@ function bbNextComposePlan(app){
      time.textContent='◷ '+(Number(recipe.mins)||'?')+' min';
      const serving=bbFeedingDayStepper(day,recipe,'summary');
      const price=document.createElement('span');price.className='bbpol-price bbfeed-price';
-     price.textContent=moneyValue(BBServing.moneyCost(recipe.cost,bbFeedingForRecipe(recipe),recipe))+' est.';
+     price.textContent=moneyValue(BBServing.moneyCost(recipe.cost,bbFeedingForRecipe(recipe,day),recipe))+' est.';
      subtitle.append(time,serving,price);
    }else{
      subtitle.textContent=pendingUnloaded?'Your meal is still saved. Reconnect Premium to load its details and estimate.':available?'Tap to choose dinner':'Unlock Premium to see this meal';
@@ -6718,13 +6723,18 @@ function bbNextComposePlan(app){
      if(Array.isArray(recipe.ingredients)&&recipe.ingredients.length){
        const ingredients=document.createElement('div');ingredients.className='bbnext-meal-ingredients';
        const title=document.createElement('strong');title.textContent='Ingredients in this recipe';
-       const factor=BBServing.ratio(bbFeedingForRecipe(recipe),recipe);
+       const factor=BBServing.ratio(bbFeedingForRecipe(recipe,day),recipe);
        const values=document.createElement('p');values.textContent=recipe.ingredients.slice(0,6).map(item=>Array.isArray(item)?item[0]+' ('+BBServing.scaleText(item[1],factor,item[0])+')':String(item)).join(' · ')+(recipe.ingredients.length>6?' · + more':'');
        ingredients.append(title,values);content.append(ingredients);
      }
    }
     // Move (never clone) the actual Planner card and retain native handlers.
     content.append(row);
+    // Preserve the selected day for recipes cooked on multiple days.
+    const cookFromDay=row.querySelector('[data-cook]');
+    if(cookFromDay&&recipe&&available) cookFromDay.onclick=e=>{
+      e.stopPropagation();openCook(recipe.id,day);
+    };
     if(recipe&&available){
       const remove=document.createElement('button');remove.type='button';
       remove.className='bb77-remove-meal';remove.textContent='Remove meal';
@@ -7632,7 +7642,7 @@ function bbUICookStepSeconds(text){
  const seconds=/^sec/i.test(match[3])?value:value*60;
  return Math.min(4*60*60,seconds);
 }
-function openCook(id){
+function openCook(id,day){
  const r=getRecipe(id);if(!r)return;
  if(!bb176AllowedRecipe(id)){bb176OpenPremiumUpgrade();return;}
  if(timerHandle)clearInterval(timerHandle);timerHandle=null;timer=bbUICookStepSeconds(kitchenMethodFor(r)[0]);
@@ -7641,7 +7651,7 @@ function openCook(id){
  root.innerHTML=`<div class="cook-overlay" role="dialog" aria-modal="true" aria-label="BasketBoss Kitchen"><section class="cook-panel bb-kitchen"><div class="bb-head"><span class="eyebrow">\u2726 BASKETBOSS KITCHEN</span><button class="btn" id="bbExit">\u2715 Exit</button></div><h2 id="bbTitle"></h2><div class="muted" id="bbMeta"></div><div class="bb-phases"><div class="bb-phase" id="bbPhasePrep">PREP</div><div class="bb-phase" id="bbPhaseCook">COOK</div><div class="bb-phase" id="bbPhaseDone">DONE</div></div><div id="bbBody" aria-live="polite"></div></section></div>`;
  const $=id=>root.querySelector('#'+id);$('bbTitle').textContent=r.name;
  const batchCook=!!(typeof bb81IsBatchSource==='function'&&state.planned.some(p=>p.recipeId===id&&bb81IsBatchSource(p)));
- const chosenServings=bbFeedingForRecipe(r);
+ const chosenServings=bbFeedingForRecipe(r,day);
  const cookFactor=BBServing.ratio(chosenServings,r)*(batchCook?2:1);
  const ingredients=r.ingredients.map(i=>[i[0],BBServing.scaleText(i[1],cookFactor,i[0]),i[2],i[3]]);
  $('bbMeta').textContent=`${r.mins} min estimated \u00B7 ${batchCook?chosenServings*2:chosenServings} servings`+(batchCook?' · Double batch for the next day':'');
@@ -11151,4 +11161,6 @@ body[data-bbnext-view="discover"] #app .bb175-discover-heading{padding-top:calc(
 <link rel="stylesheet" href="bb-servings-mobile-polish.css?v=20261029-preview2">
 <link rel="stylesheet" href="bb-partner-signup-prompt.css?v=partner-main1">
 <script defer src="bb-partner-signup-prompt.js?v=partner-main1"></script>
+<link rel="stylesheet" href="bb-household-sharing.css?v=20261030-rc1">
+<script defer src="bb-household-sharing.js?v=20261030-rc1"></script>
 </body></html>
