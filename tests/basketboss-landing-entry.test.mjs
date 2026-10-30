@@ -25,11 +25,11 @@ test('only the official root route serves the new public landing document',async
  assert.equal(blocked.status,405);assert.equal(calls.length,2);
 });
 test('the existing app and signup remain reachable, no rewriting index',()=>{
- assert.match(page,/href="\/index\.html"/);
+ assert.match(page,/href="\/app"/);
  assert.match(page,/href="\/pricing-sandbox\.html"/);
  assert.match(page,/basketboss_cloud_session_v1/);
  assert.match(page,/bb_onboarding_fresh_once_20261028_v1/);
- assert.match(page,/location\.replace\('\/index\.html'\)/);
+ assert.match(page,/location\.replace\('\/app'\)/);
  assert.doesNotMatch(handler,/bb_paid_entitlements|SUPABASE_SECRET_KEY|BB_OWNER_USER_ID/);
 });
 test('real public recipe images, source catalogue and only read-only interactive demo',()=>{
@@ -65,7 +65,7 @@ test('verified BasketBoss slogan, mobile presentation and correct public app lin
  assert.match(page,/bb-app-bottom/);
  assert.match(page,/Sample view/);
  assert.match(page,/release-assets\/basketboss-v17\/images\/existing\/fajitas.webp/);
- assert.match(page,/href="\/index\.html"/);
+ assert.match(page,/href="\/app"/);
  assert.doesNotMatch(page,/(?:fpdrivinggsy|@gmail\.com|sb_secret_|session_id=)/i);
 });
 test('shopping preview uses real recipe ingredient quantities and grouped aisles, not a marketing-only checklist',()=>{
@@ -148,7 +148,7 @@ test('mobile cards keep generous internal padding and responsive preview sizing'
 });
 test('free planning calls to action are prominent with readable contrast',()=>{
  assert.match(page,/Start planning free/);
- assert.match(page,/class="button solid large" href="\/index\.html">Start planning free/);
+ assert.match(page,/class="button solid large" href="\/app">Start planning free/);
  assert.match(css,/background:#075431!important;color:#fff!important/);
 });
 test('secure checkout and cancellation trust copy is underneath both pricing tiers',()=>{

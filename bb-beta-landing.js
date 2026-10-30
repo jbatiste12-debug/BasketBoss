@@ -150,7 +150,7 @@
  function renderRecipes(){
   const box=$('landing-recipes');if(!box)return;box.replaceChildren();
   const featured=['fajitas','creamy-pasta','chickpea-curry'].map(id=>publicRecipes.find(x=>x.id===id)||FALLBACK.find(x=>x.id===id));
-  for(const r of featured){const card=elem('article','recipe-card');const img=document.createElement('img');img.src=safeSrc(r);img.loading='lazy';img.alt=r.name;const body=elem('div','recipe-body');body.append(elem('p','','BASKETBOSS FREE RECIPE'),elem('h3','',r.name),elem('div','recipe-meta',`${r.mins} min · ${portionsFor(r)} servings`));const link=elem('a','view-link','Explore recipes in the app →');link.href='/index.html';body.append(link);card.append(img,body);box.append(card)}
+  for(const r of featured){const card=elem('article','recipe-card');const img=document.createElement('img');img.src=safeSrc(r);img.loading='lazy';img.alt=r.name;const body=elem('div','recipe-body');body.append(elem('p','','BASKETBOSS FREE RECIPE'),elem('h3','',r.name),elem('div','recipe-meta',`${r.mins} min · ${portionsFor(r)} servings`));const link=elem('a','view-link','Explore recipes in the app →');link.href='/app';body.append(link);card.append(img,body);box.append(card)}
  }
  $('tab-plan')?.addEventListener('click',()=>switchTab('plan'));
  $('tab-shop')?.addEventListener('click',()=>switchTab('shop'));
