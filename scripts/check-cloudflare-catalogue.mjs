@@ -2,6 +2,7 @@
 // or provider error bodies. The private import is deliberately a separate step.
 import {appendFileSync} from 'node:fs';
 import {pathToFileURL} from 'node:url';
+import {recipientForToken} from './private-catalogue-envelope.mjs';
 
 export async function inspectCloudflare(env, perform = fetch) {
   if (!env.CLOUDFLARE_API_TOKEN) throw Error('Add CLOUDFLARE_API_TOKEN to the github-pages environment secrets.');
@@ -55,7 +56,7 @@ export async function inspectCloudflare(env, perform = fetch) {
     counts[name] = tables.some(t => t.name === name) ? Number((await query('SELECT COUNT(*) AS count FROM ' + name))[0]?.count) : null;
     if (counts[name] !== null && !Number.isSafeInteger(counts[name])) throw Error('Database recipe count is invalid.');
   }
-  return {project: project.name, branch: project.production_branch, databaseId: dbId,
+  return {accountId, project: project.name, branch: project.production_branch, databaseId: dbId,
     productionCommit: project.canonical_deployment?.deployment_trigger?.metadata?.commit_hash || null,
     counts, expandedCatalogueReady: counts.bb_private_premium_recipes_500_v1 === 400};
 }
@@ -65,6 +66,11 @@ if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) 
   try {
     const result = await inspectCloudflare(process.env);
     text = 'Cloudflare connection verified.\n\n```json\n' + JSON.stringify(result, null, 2) + '\n```\n\nRead-only check; no database import or configuration changes were performed.\n';
+    const notice = (title, value) => console.log('::notice title=' + title + '::' + JSON.stringify(value).replace(/%/g, '%25').replace(/\r/g, '%0D').replace(/\n/g, '%0A'));
+    notice('Cloudflare catalogue connection', result);
+    // Only this public encryption key leaves the runner. The token and derived
+    // private key remain in memory; no extra user-managed secret is required.
+    notice('Catalogue import public key', recipientForToken(process.env.CLOUDFLARE_API_TOKEN));
   } catch (error) {
     text = 'Cloudflare connection check incomplete: ' + error.message + '\n';
     // Public annotations remain readable when GitHub requires sign-in for logs.
