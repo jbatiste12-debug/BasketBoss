@@ -74,14 +74,22 @@ export async function inspectCloudflare(env, perform = fetch) {
   const latest = project.latest_deployment;
   const latestDeployment = latest ? {id: latest.id, commit: latest.deployment_trigger?.metadata?.commit_hash || null,
     stage: latest.latest_stage?.name || null, status: latest.latest_stage?.status || null} : null;
-  let buildFailureCategories = [];
-  if (latestDeployment?.status === 'failure' && /^[a-f0-9-]{36}$/i.test(latestDeployment.id || '')) {
+  let failed = latestDeployment?.status === 'failure' ? latest : null;
+  if (latestDeployment && latestDeployment.status !== 'success' && !failed) {
     try {
-      const logs = await api(prefix + '/pages/projects/' + encodeURIComponent(project.name) + '/deployments/' + latestDeployment.id + '/history/logs', undefined, 'Pages build diagnostics');
+      const history=await api(prefix+'/pages/projects/'+encodeURIComponent(project.name)+'/deployments?env=production&per_page=10&page=1',undefined,'Pages deployment history');
+      failed=(Array.isArray(history)?history:[]).find(d=>d.latest_stage?.status==='failure'&&d.environment==='production')||null;
+    } catch { /* Connection validation remains useful if history is unavailable. */ }
+  }
+  const diagnosedFailure = failed ? {id:failed.id,commit:failed.deployment_trigger?.metadata?.commit_hash||null} : null;
+  let buildFailureCategories = [];
+  if (diagnosedFailure && /^[a-f0-9-]{36}$/i.test(diagnosedFailure.id || '')) {
+    try {
+      const logs = await api(prefix + '/pages/projects/' + encodeURIComponent(project.name) + '/deployments/' + diagnosedFailure.id + '/history/logs', undefined, 'Pages build diagnostics');
       buildFailureCategories = classifyBuildFailure(logs?.data);
     } catch {buildFailureCategories = ['diagnostics_unavailable'];}
   }
-  return {accountId, project: project.name, branch: project.production_branch, databaseId: dbId, latestDeployment, buildFailureCategories,
+  return {accountId, project: project.name, branch: project.production_branch, databaseId: dbId, latestDeployment, diagnosedFailure, buildFailureCategories,
     productionCommit: project.canonical_deployment?.deployment_trigger?.metadata?.commit_hash || null,
     counts, expandedCatalogueReady: counts.bb_private_premium_recipes_500_v1 === 400};
 }
