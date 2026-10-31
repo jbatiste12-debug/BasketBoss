@@ -8162,6 +8162,34 @@ function bb172AddEditControls(panel,where){
  const ref=where==='lunch'?panel.querySelector('label[for="bb321LunchSpeech"]'):null;
  if(ref)ref.insertAdjacentElement('beforebegin',button);else panel.append(button);
 }
+/* BB_LUNCH_COPY_WEEK_V1: Checking all weekdays copies a saved lunch.
+ * Future tile taps continue to use the existing bb172AllDays selection.
+ */
+function bb172CopySavedLunchAcrossSchoolDays(sourceDay){
+ const days=BB321Lunch.LUNCH_DAYS;
+ if(!days.includes(sourceDay))return false;
+ const next=BB321Lunch.normaliseLunchbox(bb321LunchState);
+ const source=next.days[sourceDay];
+ if(!source.length)return true; // No saved lunch yet: future taps will apply to all five days.
+ const other=days.filter(day=>day!==sourceDay);
+ const changed=other.filter(day=>JSON.stringify(next.days[day])!==JSON.stringify(source)||
+  next.menus[day]!==next.menus[sourceDay]);
+ if(!changed.length)return true;
+ const existing=changed.filter(day=>next.days[day].length);
+ if(existing.length&&!window.confirm(
+  'Copy '+sourceDay+' lunch to all five school days? This will replace existing lunches on '+
+  existing.join(', ')+'. Your dinner plan, pantry and other saved data will stay unchanged.'
+ ))return false;
+ for(const day of changed){
+  next.days[day]=source.map(item=>({...item}));
+  next.menus[day]=next.menus[sourceDay];
+ }
+ if(!bb321StoreLunch(next))return false;
+ render();
+ notify(sourceDay+' lunch copied to Monday–Friday. Shopping quantities recalculated ✓');
+ return true;
+}
+
 function bb172RenderLunchCustom(){
  const box=document.getElementById('bb321SchoolLunchbox');if(!box)return;
  // No separate Your Personal Lunchbox section: inject choices inside existing School Lunchboxes.
@@ -8170,7 +8198,14 @@ function bb172RenderLunchCustom(){
   const row=document.createElement('label');row.className='bb172-inline-all-days';row.innerHTML=`<input type="checkbox" id="bb172CustomAllDays" ${bb172AllDays?'checked':''}> Apply food selections to Monday–Friday`;
   const count=box.querySelector('#bb321LunchChildren');const anchor=count?.closest('label');
   if(anchor)anchor.insertAdjacentElement('afterend',row);else if(before)before.insertAdjacentElement('beforebegin',row);else box.append(row);
-  row.querySelector('input').onchange=e=>{bb172AllDays=e.target.checked;};
+  row.querySelector('input').onchange=e=>{
+   bb172AllDays=e.target.checked;
+   if(!bb172AllDays)return; // Unchecking does not remove previously saved lunches.
+   const sourceDay=box.querySelector('#bb321LunchDay')?.value||bb321LunchDay||'Monday';
+   if(!bb172CopySavedLunchAcrossSchoolDays(sourceDay)){
+    bb172AllDays=false;e.target.checked=false;
+   }
+  };
  }
  for(const category of ['bread','fillings','snacks'])bb172BuildGroup(box,category,'lunch',before);
  bb172EditorTarget('snacks');bb172AddEditControls(box,'lunch');
