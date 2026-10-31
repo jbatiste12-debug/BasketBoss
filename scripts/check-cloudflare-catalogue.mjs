@@ -4,6 +4,21 @@ import {appendFileSync} from 'node:fs';
 import {pathToFileURL} from 'node:url';
 import {recipientForToken} from './private-catalogue-envelope.mjs';
 
+// Logs stay inside the runner. Only these fixed, non-sensitive categories may
+// leave it; never return snippets, paths, provider messages or captured matches.
+export function classifyBuildFailure(lines) {
+  const text=(Array.isArray(lines)?lines:[]).slice(-500).map(x=>typeof x?.line==='string'?x.line.slice(0,5000):'').join('\n');
+  const found=[];
+  if(/(?:unexpected|expected|unsupported)[^\n]{0,100}\b(?:with|assert)\b|import attributes|import assertions/i.test(text))found.push('json_import_syntax');
+  if(/could not resolve|cannot resolve|module not found|no such file/i.test(text))found.push('module_resolution');
+  if(/(?:nodejs_compat|node:)[^\n]*(?:required|missing|not supported|compatibility)|(?:missing|required)[^\n]*nodejs_compat/i.test(text))found.push('node_compatibility');
+  if(/(?:worker|bundle|script)[^\n]*(?:too large|exceeds|size limit)|(?:exceeds|size limit)[^\n]*(?:worker|bundle|script)/i.test(text))found.push('worker_size_limit');
+  if(/(?:file|asset)[^\n]*(?:too large|exceeds|maximum size|25 mib)/i.test(text))found.push('asset_size_limit');
+  if(/(?:cpu|startup|memory)[^\n]*(?:limit|exceed|timed out)/i.test(text))found.push('worker_resource_limit');
+  if(/(?:invalid|unknown)[^\n]*(?:binding|compatibility|configuration)/i.test(text))found.push('deployment_configuration');
+  return found.length?found:['unclassified_build_failure'];
+}
+
 export async function inspectCloudflare(env, perform = fetch) {
   if (!env.CLOUDFLARE_API_TOKEN) throw Error('Add CLOUDFLARE_API_TOKEN to the github-pages environment secrets.');
   async function api(path, body, operation = 'Cloudflare request', includePagination = false) {
@@ -56,7 +71,17 @@ export async function inspectCloudflare(env, perform = fetch) {
     counts[name] = tables.some(t => t.name === name) ? Number((await query('SELECT COUNT(*) AS count FROM ' + name))[0]?.count) : null;
     if (counts[name] !== null && !Number.isSafeInteger(counts[name])) throw Error('Database recipe count is invalid.');
   }
-  return {accountId, project: project.name, branch: project.production_branch, databaseId: dbId,
+  const latest = project.latest_deployment;
+  const latestDeployment = latest ? {id: latest.id, commit: latest.deployment_trigger?.metadata?.commit_hash || null,
+    stage: latest.latest_stage?.name || null, status: latest.latest_stage?.status || null} : null;
+  let buildFailureCategories = [];
+  if (latestDeployment?.status === 'failure' && /^[a-f0-9-]{36}$/i.test(latestDeployment.id || '')) {
+    try {
+      const logs = await api(prefix + '/pages/projects/' + encodeURIComponent(project.name) + '/deployments/' + latestDeployment.id + '/history/logs', undefined, 'Pages build diagnostics');
+      buildFailureCategories = classifyBuildFailure(logs?.data);
+    } catch {buildFailureCategories = ['diagnostics_unavailable'];}
+  }
+  return {accountId, project: project.name, branch: project.production_branch, databaseId: dbId, latestDeployment, buildFailureCategories,
     productionCommit: project.canonical_deployment?.deployment_trigger?.metadata?.commit_hash || null,
     counts, expandedCatalogueReady: counts.bb_private_premium_recipes_500_v1 === 400};
 }

@@ -1,12 +1,20 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import {inspectCloudflare} from '../scripts/check-cloudflare-catalogue.mjs';
+import {inspectCloudflare,classifyBuildFailure} from '../scripts/check-cloudflare-catalogue.mjs';
 
 const token = 'synthetic-secret-that-must-not-appear-in-results';
 const env = {CLOUDFLARE_API_TOKEN: token, CLOUDFLARE_ACCOUNT_ID: 'a'.repeat(32)};
 const databaseId = '12345678-1234-1234-1234-123456789012';
 const project = {name: 'basketboss', domains: ['basketboss.co.uk']};
 const response = (result, result_info) => ({ok: true, status: 200, json: async () => ({success: true, result, result_info})});
+
+test('private build messages never leave the runner, only fixed failure categories',()=>{
+ const privateText='synthetic-private-token-and-recipe-data';
+ assert.deepEqual(classifyBuildFailure([{line:'ERROR Expected semicolon but found with '+privateText}]),['json_import_syntax']);
+ assert.deepEqual(classifyBuildFailure([{line:'Could not resolve '+privateText}]),['module_resolution']);
+ assert.deepEqual(classifyBuildFailure([{line:privateText}]),['unclassified_build_failure']);
+ assert.ok(!JSON.stringify(classifyBuildFailure([{line:'ERROR '+privateText}])).includes(privateText));
+});
 
 function cloudflare({pages, expanded = true} = {}) {
   const requests = [];

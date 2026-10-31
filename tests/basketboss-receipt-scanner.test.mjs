@@ -419,4 +419,3 @@ test('no selected purchases means confirmation stays disabled even when totals w
   await setValue(field(line(dialog), 'selected'), false); assert.equal(action(dialog, 'save').disabled, true);
   await submit(dialog); assert.equal(h.commits.length, 0);
 });
-
