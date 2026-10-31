@@ -17,15 +17,19 @@ const jwt=({sub=USER,session_id=SID,exp=Math.floor(Date.now()/1000)+1800}={})=>'
 const req=(path='/api/household?mode=status',method='GET',body,origin=ORIGIN)=>new Request(ORIGIN+path,{method,headers:{Authorization:'Bearer '+jwt(),...(method==='POST'?{'Content-Type':'application/json',Origin:origin}:{})},body:body?JSON.stringify(body):undefined});
 const moduleFrom=text=>'data:text/javascript;base64,'+Buffer.from(text).toString('base64');
 // Tests call the exact production module logic but replace only its imports.
-const seatUnarmed=await import(moduleFrom(SEAT));
-const seat=await import(moduleFrom(SEAT.replace('const RELEASE_ARMED=false;','const RELEASE_ARMED=true;')));
+const brake=/const RELEASE_ARMED=(?:true|false);/;
+assert.match(SEAT,brake);assert.match(HOUSE,brake);
+// Test the shipped release unchanged; create a separate hard-OFF fixture solely
+// to verify that rolling the code brake back cannot be bypassed by env flags.
+const seat=await import(moduleFrom(SEAT));
+const seatUnarmed=await import(moduleFrom(SEAT.replace(brake,'const RELEASE_ARMED=false;')));
 globalThis.__bbTestLib=lib;
 globalThis.__bbTestSeat=seat;
-const houseCode=HOUSE.replace('const RELEASE_ARMED=false;','const RELEASE_ARMED=true;').replace(/import \{[^\n]+\} from '\.\.\/\.\.\/\.\.\/bb-server-lib\/bb-billing\.js';/,"const {json,authenticatedUser,isLive,expectedPrice,entitlementForStatus,requireSameOrigin}=globalThis.__bbTestLib;").replace(/import \{[^\n]+\} from '\.\.\/\.\.\/\.\.\/bb-server-lib\/bb-premium-seat\.js';/,"const {isNewestVerifiedSession}=globalThis.__bbTestSeat;");
+const houseCode=HOUSE.replace(/import \{[^\n]+\} from '\.\.\/\.\.\/\.\.\/bb-server-lib\/bb-billing\.js';/,"const {json,authenticatedUser,isLive,expectedPrice,entitlementForStatus,requireSameOrigin}=globalThis.__bbTestLib;").replace(/import \{[^\n]+\} from '\.\.\/\.\.\/\.\.\/bb-server-lib\/bb-premium-seat\.js';/,"const {isNewestVerifiedSession}=globalThis.__bbTestSeat;");
 const middleCode=MIDDLE.replace(/import \{[^\n]+\} from '\.\.\/\.\.\/bb-server-lib\/bb-billing\.js';/,"const {authenticatedUser,json,isLive}=globalThis.__bbTestLib;").replace(/import \{[^\n]+\} from '\.\.\/\.\.\/bb-server-lib\/bb-premium-seat\.js';/,"const {seatGateEnabled,isNewestVerifiedSession}=globalThis.__bbTestSeat;");
 assert.ok(!houseCode.includes(" from '../../../bb-server-lib/"),'backend import fixture did not resolve');
 assert.ok(!middleCode.includes(" from '../../bb-server-lib/"),'middleware import fixture did not resolve');
-const unarmedCode=HOUSE.replace(/import \{[^\n]+\} from '\.\.\/\.\.\/\.\.\/bb-server-lib\/bb-billing\.js';/,"const {json,authenticatedUser,isLive,expectedPrice,entitlementForStatus,requireSameOrigin}=globalThis.__bbTestLib;").replace(/import \{[^\n]+\} from '\.\.\/\.\.\/\.\.\/bb-server-lib\/bb-premium-seat\.js';/,"const {isNewestVerifiedSession}=globalThis.__bbTestSeat;");
+const unarmedCode=houseCode.replace(brake,'const RELEASE_ARMED=false;');
 const unarmedHouse=await import(moduleFrom(unarmedCode));
 const house=await import(moduleFrom(houseCode));
 const middleware=await import(moduleFrom(middleCode));
@@ -48,20 +52,24 @@ function mockFetch({current=true,household=null,invite=null,rows=[],sessionStatu
  };
 }
 
-test('staged release is physically unarmed regardless of environment flags',()=>{
- assert.match(SEAT,/const RELEASE_ARMED=false;/);
- assert.match(HOUSE,/const RELEASE_ARMED=false;/);
- assert.equal(seatUnarmed.seatGateEnabled(env()),false);
+test('released paid-device gate requires an explicit runtime flag',()=>{
+ assert.equal(seat.seatGateEnabled(env()),true);
+ for(const value of [undefined,'false',false,'TRUE','1'])
+  assert.equal(seat.seatGateEnabled(env({BB_PREMIUM_SINGLE_SESSION_ENABLED:value})),false);
 });
-test('unarmed production API ignores even accidental ON environment values',async()=>{
+test('hard-OFF rollback blocks household reads even with every live flag enabled',async()=>{
+ assert.equal(seatUnarmed.seatGateEnabled(env()),false);
  mockFetch();const r=await unarmedHouse.onRequestGet({request:req(),env:env()});
  assert.equal((await r.json()).configured,false);
  assert.equal(fetchCalls.length,0);
 });
 test('production flag OFF is fail-closed, no fetch and no local sync',async()=>{
- mockFetch();const e=env({BB_PARTNER_SHARING_ENABLED:'false',BB_PREMIUM_SINGLE_SESSION_ENABLED:'false'});
- const r=await house.onRequestGet({request:req(),env:e});
- assert.equal(r.status,200);assert.equal((await r.json()).configured,false);assert.equal(fetchCalls.length,0);
+ for(const flag of ['BB_PARTNER_SHARING_ENABLED','BB_PARTNER_PRODUCTION_READY','BB_PREMIUM_SINGLE_SESSION_ENABLED']){
+  for(const value of ['false',undefined]){
+   mockFetch();const r=await house.onRequestGet({request:req(),env:env({[flag]:value})});
+   assert.equal(r.status,200);assert.equal((await r.json()).configured,false);assert.equal(fetchCalls.length,0);
+  }
+ }
 });
 test('QA tenant never enables production sharing',async()=>{
  mockFetch();const r=await house.onRequestGet({request:req(),env:env({SUPABASE_URL:'https://cbucbdvwgmkgmsajtbfe.supabase.co'})});
@@ -70,6 +78,16 @@ test('QA tenant never enables production sharing',async()=>{
 test('sandbox billing and missing live webhook cannot turn on sharing',async()=>{
  for(const overrides of [{BB_BILLING_MODE:'sandbox'},{BB_LIVE_WEBHOOK_ENABLED:'false'},{BB_PARTNER_PRODUCTION_READY:'false'}]){
   mockFetch();const r=await house.onRequestGet({request:req(),env:env(overrides)});
+  assert.equal((await r.json()).configured,false);assert.equal(fetchCalls.length,0);
+ }
+});
+test('missing service credentials, database or trusted production host cannot enable sharing',async()=>{
+ for(const overrides of [{SUPABASE_SECRET_KEY:''},{SUPABASE_PUBLISHABLE_KEY:''},{BILLING_DB:null},{CF_PAGES_BRANCH:'preview'}]){
+  mockFetch();const r=await house.onRequestGet({request:req(),env:env(overrides)});
+  assert.equal((await r.json()).configured,false);assert.equal(fetchCalls.length,0);
+ }
+ for(const url of ['https://untrusted.example/api/household','http://basketboss.co.uk/api/household']){
+  mockFetch();const r=await house.onRequestGet({request:new Request(url),env:env()});
   assert.equal((await r.json()).configured,false);assert.equal(fetchCalls.length,0);
  }
 });

@@ -55,8 +55,31 @@ test('iPhone and desktop browsers retain their normal paths',()=>{
   }
 });
 
-test('service worker refreshes cached install script without changing API handling',()=>{
-  assert.match(worker,/basketboss-premium-secure-shell-20261028-v13-free-signup-funnel/);
-  assert.match(worker,/'bb-install\.js'/);
-  assert.match(worker,/target\.pathname\.startsWith\(new URL\('api\/', APP_BASE\)\.pathname\)\) return/);
+test('service worker installs the current install asset, retires old caches and leaves APIs untouched',async()=>{
+  const handlers={},installed=[],deleted=[];
+  let skipped=false,claimed=false;
+  const self={registration:{scope:'https://basketboss.co.uk/'},location:{origin:'https://basketboss.co.uk'},
+    addEventListener:(name,fn)=>{handlers[name]=fn;},
+    skipWaiting:async()=>{skipped=true;},clients:{claim:async()=>{claimed=true;}}};
+  const caches={
+    open:async key=>({addAll:async urls=>{installed.push({key,urls:Array.from(urls)});}}),
+    keys:async()=>[installed[0].key,'basketboss-premium-secure-obsolete','another-app-cache'],
+    delete:async key=>{deleted.push(key);return true;}
+  };
+  vm.runInNewContext(worker,{self,caches,URL},{filename:'service-worker.js'});
+  let pending;
+  handlers.install({waitUntil:promise=>{pending=promise;}});await pending;
+  assert.equal(installed.length,1);
+  assert.ok(installed[0].key,'An explicit app cache must be opened');
+  assert.ok(installed[0].urls.some(url=>new URL(url).pathname==='/bb-install.js'));
+  assert.equal(skipped,true);
+  handlers.activate({waitUntil:promise=>{pending=promise;}});await pending;
+  assert.deepEqual(deleted,['basketboss-premium-secure-obsolete']);
+  assert.equal(claimed,true);
+  for(const path of ['api/household?mode=status','api/subscription/status','api/bb173/scan']){
+    let intercepted=false;
+    handlers.fetch({request:{method:'GET',url:'https://basketboss.co.uk/'+path},
+      respondWith(){intercepted=true;},waitUntil(){}});
+    assert.equal(intercepted,false,`${path} must not be handled by the offline cache`);
+  }
 });

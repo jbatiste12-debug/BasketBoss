@@ -17,7 +17,9 @@ test('production UI cannot grant access or modify billing and meal plans',()=>{
   assert.doesNotMatch(prompt,/basketboss_321_unified_state_v1|Paddle\.Checkout|bb_paid_entitlements/);
   assert.doesNotMatch(api,/BB_OWNER_USER_ID|BB_PARTNER_QA_MODE|cbucbdvwgmkgmsajtbfe/);
   assert.match(api,/BB_PARTNER_PRODUCTION_READY/);
-  assert.match(api,/const RELEASE_ARMED=false/);
+  assert.match(api,/await authenticatedUser\(request,env\)/);
+  assert.match(api,/if\(!user\)return \{error:json\(\{error:'Sign in with a confirmed email'\},401\)/);
+  assert.match(api,/await isNewestVerifiedSession\(request,env,user\)/);
   assert.match(api,/BB_PREMIUM_SINGLE_SESSION_ENABLED/);
   assert.match(api,/bb_paid_entitlements/);
   assert.match(api,/configured:false/);

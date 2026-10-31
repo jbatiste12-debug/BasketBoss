@@ -2,6 +2,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import vm from 'node:vm';
+import BBServing from '../bb-serving-scale.js';
 const index=fs.readFileSync('index.html','utf8');
 const cook=fs.readFileSync('make-a-meal.html','utf8');
 const css=fs.readFileSync('bb-cook-plan-hotfix.css','utf8');
@@ -12,6 +13,7 @@ assert.ok(s>0&&n>s&&e>n,'original load/normalize source must be present');
 const actualSource=index.slice(s,e);
 function loadAsFreshPage(storage,catalogue){
  const ctx={
+   BBServing,
    KEY:'basketboss_321_unified_state_v1',
    BB_SNAPSHOT:'basketboss_321_unified_recovery_v1',
    OLD_PLAN:'basketboss_321_unified_oldplan_v1',
@@ -23,7 +25,7 @@ function loadAsFreshPage(storage,catalogue){
    norm:s=>String(s).toLowerCase(),
    console:{warn:()=>{}}
  };
- return vm.runInNewContext(actualSource+'\nJSON.parse(JSON.stringify(loadState()))',ctx);
+ return JSON.parse(vm.runInNewContext(actualSource+'\nJSON.stringify(loadState())',ctx));
 }
 test('Cook opens an independent page; return path is the original Plan app',()=>{
  assert.match(index,/<a class="tab bb173-make-meal-link" href="make-a-meal\.html"[^>]*>/);
@@ -35,9 +37,12 @@ test('Plan -> Cook -> Plan restores identical Free and deferred Premium meal ref
  const original={version:2,servings:4,
    planned:[{day:'Wednesday',recipeId:'fajitas'},{day:'Friday',recipeId:'premium-example-loaded-after-auth'}],
    plannedDesserts:[{day:'Sunday',recipeId:'premium-dessert-loaded-after-auth'}],
-   pantry:{},customPantry:[],dismissed:[]};
+   pantry:{},customPantry:[],dismissed:[],mealServings:{fajitas:6},
+   dayServings:{Wednesday:{recipeId:'fajitas',count:5}}};
  const storage=new Map([[key,JSON.stringify(original)],[budgetKey,'150']]);
  const initial=loadAsFreshPage(storage,[{id:'fajitas',cost:22.6}]);
+ assert.deepEqual(initial.mealServings,original.mealServings);
+ assert.deepEqual(initial.dayServings,original.dayServings);
  assert.equal(JSON.stringify(initial.planned.map(p=>[p.day,p.recipeId])),JSON.stringify(original.planned.map(p=>[p.day,p.recipeId])));
  // Navigation to Make a Meal performs no writes to the canonical plan storage.
  const before=JSON.stringify([...storage]);
@@ -66,7 +71,17 @@ test('text overflow is scoped to real onboarding, Plan, and header',()=>{
  assert.match(css,/\.shell > header\.top/);
 });
 test('existing Cook handlers, budget saving, and checkout surface remain intact',()=>{
- assert.match(index,/function openCook\(id\)/);
+ const cookStart=index.indexOf('function openCook(');
+ const cookEnd=index.indexOf('\nfunction formatTime(',cookStart);
+ assert.ok(cookStart>=0&&cookEnd>cookStart,'Cook entry point must be present');
+ const requested=[],upgrades=[];
+ const ctx={getRecipe:id=>{requested.push(id);return {id};},
+  bb176AllowedRecipe:()=>false,bb176OpenPremiumUpgrade:()=>upgrades.push(true)};
+ // Existing callers pass an ID; planned-day callers also pass a day. Both must
+ // retain the access check before opening or changing the Cook UI.
+ vm.runInNewContext(index.slice(cookStart,cookEnd)+'\nopenCook("locked");openCook("locked","Monday");',ctx);
+ assert.deepEqual(requested,['locked','locked']);
+ assert.equal(upgrades.length,2);
  assert.match(index,/function bb77CommitTypedBudget\(/);
  assert.match(index,/data-tab="week"/);
  assert.match(index,/bb-onboarding-v2\.js\?v=/);

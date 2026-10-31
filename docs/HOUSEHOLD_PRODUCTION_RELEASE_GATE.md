@@ -1,5 +1,7 @@
 # BasketBoss — production Household Sharing backend staging gate (29 October 2026)
 
+> Historical staging record. The later release commit [97f663d](https://github.com/jbatiste12-debug/BasketBoss/commit/97f663d) (30 October 2026) armed the code-level Household Sharing and partner Premium release brakes. The disabled-brake statements below describe the earlier staged release, not the current source. Runtime feature flags, verified sessions and server-side paid entitlement checks still control access. This note does not verify or change deployed configuration or database permissions.
+
 This release **only stages server-side code on `main` behind disabled-by-default feature flags**.
 It is additionally protected by two hardcoded `RELEASE_ARMED=false` brakes, so even
 pre-existing Cloudflare variables cannot activate it. A separately reviewed
