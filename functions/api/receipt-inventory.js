@@ -148,7 +148,7 @@ export async function onRequestGet({request, env}) {
 }
 export async function onRequestPost({request, env}) {
   if (!receiptInventoryConfigured(request, env)) return unavailable();
-  if (!requireSameOrigin(request) || request.headers.get('Sec-Fetch-Site') && request.headers.get('Sec-Fetch-Site') !== 'same-origin') return json({ok: false, error: 'receipt_origin_not_allowed'}, 403);
+  if (!requireSameOrigin(request, true)) return json({ok: false, error: 'receipt_origin_not_allowed'}, 403);
   let auth;
   try {auth = await authorized(request, env);} catch {return unavailable();}
   if (auth.error) return auth.error;

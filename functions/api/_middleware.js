@@ -7,13 +7,14 @@
  */
 import {authenticatedUser,json,isLive} from '../../bb-server-lib/bb-billing.js';
 import {seatGateEnabled,isNewestVerifiedSession} from '../../bb-server-lib/bb-premium-seat.js';
+import {nativeCorsResponse,nativePreflightResponse} from '../../bb-server-lib/bb-request-origin.js';
 const PROTECTED=[
  /^\/api\/recipes\/premium\/?$/,
  /^\/api\/bb173\/(?:generate|scan)\/?$/,
  /^\/api\/household\/?$/,
  /^\/api\/receipt-inventory\/?$/
 ];
-export async function onRequest({request,env,next}){
+async function enforcePremiumSession({request,env,next}){
  const url=new URL(request.url);
  // Availability exposes no inventory; the endpoint independently authenticates
  // before reporting Premium readiness and never initializes stock in this mode.
@@ -32,4 +33,11 @@ export async function onRequest({request,env,next}){
    return json({error:'This Premium account has a newer sign-in on another device. Sign in here again to continue.'},403);
  }catch{return json({error:'Premium device verification temporarily unavailable'},503);}
  return next();
+}
+export async function onRequest(context){
+ // Preflight has no Bearer token and exposes no account data. Actual requests
+ // still pass the same authenticated/current-session/entitlement checks below.
+ const preflight=nativePreflightResponse(context.request);
+ if(preflight)return preflight;
+ return nativeCorsResponse(context.request,await enforcePremiumSession(context));
 }

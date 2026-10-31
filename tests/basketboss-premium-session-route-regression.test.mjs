@@ -2,6 +2,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import path from 'node:path';
+import * as requestOrigin from '../bb-server-lib/bb-request-origin.js';
 const ROOT=process.env.BB_RC_TEST_ROOT||process.cwd();
 const read=f=>fs.readFileSync(path.join(ROOT,f),'utf8');
 const middlewareCode=read('functions/api/_middleware.js');
@@ -9,9 +10,12 @@ const input=middlewareCode
  .replace("import {authenticatedUser,json,isLive} from '../../bb-server-lib/bb-billing.js';",
    'const {authenticatedUser,json,isLive}=globalThis.__bbBoundaryBilling;')
  .replace("import {seatGateEnabled,isNewestVerifiedSession} from '../../bb-server-lib/bb-premium-seat.js';",
-   'const {seatGateEnabled,isNewestVerifiedSession}=globalThis.__bbBoundarySeat;');
+   'const {seatGateEnabled,isNewestVerifiedSession}=globalThis.__bbBoundarySeat;')
+ .replace("import {nativeCorsResponse,nativePreflightResponse} from '../../bb-server-lib/bb-request-origin.js';",
+   'const {nativeCorsResponse,nativePreflightResponse}=globalThis.__bbBoundaryOrigin;');
 assert.ok(!input.includes("from '../../bb-server-lib/"),'middleware imports did not resolve');
 let authCalls=0,seatCalls=0,accepted=true,sessionOk=false,throwSession=false;
+globalThis.__bbBoundaryOrigin=requestOrigin;
 globalThis.__bbBoundaryBilling={
  authenticatedUser:async(req)=>{authCalls++;return accepted?{id:'11111111-1111-4111-8111-111111111111',email:'member@example.com'}:null},
  json:(obj,status=200)=>new Response(JSON.stringify(obj),{status}),

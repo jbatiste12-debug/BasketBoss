@@ -1,0 +1,29 @@
+{
+  "appId": "uk.co.basketboss.app",
+  "appName": "BasketBoss",
+  "webDir": "dist/native",
+  "server": {
+    "hostname": "localhost",
+    "iosScheme": "capacitor",
+    "cleartext": false
+  },
+  "ios": {
+    "minVersion": "16.0",
+    "contentInset": "never",
+    "backgroundColor": "#fffdf7",
+    "allowsLinkPreview": false
+  },
+  "plugins": {
+    "CapacitorHttp": { "enabled": false },
+    "SplashScreen": {
+      "launchAutoHide": false,
+      "backgroundColor": "#fffdf7",
+      "showSpinner": false
+    },
+    "StatusBar": {
+      "style": "DARK",
+      "overlaysWebView": false,
+      "backgroundColor": "#fffdf7"
+    }
+  }
+}

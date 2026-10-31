@@ -9,7 +9,7 @@ const moduleFrom=s=>'data:text/javascript;base64,'+Buffer.from(s).toString('base
 const OWNER='22222222-2222-4222-8222-222222222222',PARTNER='11111111-1111-4111-8111-111111111111';
 const URL='https://basketboss.co.uk';
 const LIVE='https://kbhyosxuvlcazyzzinqv.supabase.co',price=p=>'pri_'+p.repeat(26);
-const lib=await import(moduleFrom(read('bb-server-lib/bb-billing.js')));
+const lib=await import(pathToFileURL(path.join(ROOT,'bb-server-lib/bb-billing.js')).href);
 globalThis.__partnerTestBilling=lib;
 let seatActive=true;
 globalThis.__partnerTestSeat={seatGateEnabled:()=>seatActive};

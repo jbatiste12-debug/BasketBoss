@@ -1,0 +1,30 @@
+{
+  "name": "basketboss",
+  "version": "1.0.0",
+  "private": true,
+  "description": "BasketBoss PWA and separately packaged Capacitor iOS application",
+  "engines": {
+    "node": ">=22.0.0"
+  },
+  "scripts": {
+    "build:native": "node scripts/build-native-web.mjs",
+    "ios:sync": "node scripts/ios-sync.mjs",
+    "ios:open": "cap open ios",
+    "ios:verify": "node scripts/verify-ios.mjs",
+    "test:native": "node --test --test-isolation=none tests/basketboss-native-*.test.mjs"
+  },
+  "dependencies": {
+    "@capacitor/app": "8.1.2",
+    "@capacitor/browser": "8.0.5",
+    "@capacitor/camera": "8.2.6",
+    "@capacitor/core": "8.6.0",
+    "@capacitor/haptics": "8.0.2",
+    "@capacitor/ios": "8.6.0",
+    "@capacitor/splash-screen": "8.0.2",
+    "@capacitor/status-bar": "8.0.4"
+  },
+  "devDependencies": {
+    "@capacitor/cli": "8.6.0",
+    "esbuild": "0.28.2"
+  }
+}

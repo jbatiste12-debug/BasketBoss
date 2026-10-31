@@ -5,8 +5,7 @@ import assert from 'node:assert/strict';
 import fs from 'node:fs/promises';
 import {webcrypto} from 'node:crypto';
 
-const source=await fs.readFile(new URL('../bb-server-lib/bb-billing.js',import.meta.url),'utf8');
-const billing=await import('data:text/javascript;charset=utf-8,'+encodeURIComponent(source));
+const billing=await import(new URL('../bb-server-lib/bb-billing.js',import.meta.url));
 const nowMs=Date.parse('2026-10-27T12:00:00Z');
 const ts=String(nowMs/1000);
 const secret='isolated_test_secret_not_real';

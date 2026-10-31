@@ -1,6 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
+import * as requestOrigin from '../bb-server-lib/bb-request-origin.js';
 const HOUSE=fs.readFileSync('functions/api/household/index.js','utf8');
 const MIDDLE=fs.readFileSync('functions/api/_middleware.js','utf8');
 const SEAT=fs.readFileSync('bb-server-lib/bb-premium-seat.js','utf8');
@@ -25,8 +26,9 @@ const seat=await import(moduleFrom(SEAT));
 const seatUnarmed=await import(moduleFrom(SEAT.replace(brake,'const RELEASE_ARMED=false;')));
 globalThis.__bbTestLib=lib;
 globalThis.__bbTestSeat=seat;
+globalThis.__bbTestOrigin=requestOrigin;
 const houseCode=HOUSE.replace(/import \{[^\n]+\} from '\.\.\/\.\.\/\.\.\/bb-server-lib\/bb-billing\.js';/,"const {json,authenticatedUser,isLive,expectedPrice,entitlementForStatus,requireSameOrigin}=globalThis.__bbTestLib;").replace(/import \{[^\n]+\} from '\.\.\/\.\.\/\.\.\/bb-server-lib\/bb-premium-seat\.js';/,"const {isNewestVerifiedSession}=globalThis.__bbTestSeat;");
-const middleCode=MIDDLE.replace(/import \{[^\n]+\} from '\.\.\/\.\.\/bb-server-lib\/bb-billing\.js';/,"const {authenticatedUser,json,isLive}=globalThis.__bbTestLib;").replace(/import \{[^\n]+\} from '\.\.\/\.\.\/bb-server-lib\/bb-premium-seat\.js';/,"const {seatGateEnabled,isNewestVerifiedSession}=globalThis.__bbTestSeat;");
+const middleCode=MIDDLE.replace(/import \{[^\n]+\} from '\.\.\/\.\.\/bb-server-lib\/bb-billing\.js';/,"const {authenticatedUser,json,isLive}=globalThis.__bbTestLib;").replace(/import \{[^\n]+\} from '\.\.\/\.\.\/bb-server-lib\/bb-premium-seat\.js';/,"const {seatGateEnabled,isNewestVerifiedSession}=globalThis.__bbTestSeat;").replace(/import \{[^\n]+\} from '\.\.\/\.\.\/bb-server-lib\/bb-request-origin\.js';/,"const {nativeCorsResponse,nativePreflightResponse}=globalThis.__bbTestOrigin;");
 assert.ok(!houseCode.includes(" from '../../../bb-server-lib/"),'backend import fixture did not resolve');
 assert.ok(!middleCode.includes(" from '../../bb-server-lib/"),'middleware import fixture did not resolve');
 const unarmedCode=houseCode.replace(brake,'const RELEASE_ARMED=false;');

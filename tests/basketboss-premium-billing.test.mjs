@@ -2,9 +2,8 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import fs from 'node:fs/promises';
 
-// Load the dependency-free ES module without changing the repository's module type.
-const source=await fs.readFile(new URL('../bb-server-lib/bb-billing.js',import.meta.url),'utf8');
-const lib=await import('data:text/javascript;charset=utf-8,'+encodeURIComponent(source));
+// Load the real helper and its shared request-origin boundary.
+const lib=await import(new URL('../bb-server-lib/bb-billing.js',import.meta.url));
 const price = c => 'pri_'+c.repeat(26);
 const base={BB_BILLING_ENABLED:'true',PADDLE_SANDBOX_API_KEY:'sandbox_FAKE',PADDLE_LIVE_API_KEY:'live_FAKE',
   PADDLE_SANDBOX_STANDARD_PRICE_ID:price('s'), PADDLE_LIVE_STANDARD_PRICE_ID:price('l'),

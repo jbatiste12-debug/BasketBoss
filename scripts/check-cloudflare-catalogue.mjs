@@ -53,6 +53,23 @@ export async function verifyLandingDeployment(perform = fetch) {
   return {headline:true,stylesheet:true,script:true,smartReceiptSectionVisible:!/\shidden(?:\s|=|>)/i.test(section)};
 }
 
+// Verify the native transport on the deployed edge without an account token.
+export async function verifyNativeApiDeployment(perform=fetch){
+ const address='https://basketboss.co.uk/api/receipt-inventory?mode=status';
+ const origin='capacitor://localhost';
+ const options={method:'OPTIONS',headers:{Origin:origin,'Access-Control-Request-Method':'POST','Access-Control-Request-Headers':'authorization, content-type'},redirect:'error',signal:AbortSignal.timeout(15000)};
+ let preflight,status,foreign;
+ try{
+  preflight=await perform(address,options);
+  status=await perform(address,{headers:{Origin:origin},cache:'no-store',redirect:'error',signal:AbortSignal.timeout(15000)});
+  foreign=await perform(address,{...options,headers:{...options.headers,Origin:'capacitor://localhost.evil'}});
+ }catch{throw Error('Native iOS API transport could not be checked.');}
+ if(preflight.status!==204||preflight.headers.get('Access-Control-Allow-Origin')!==origin||preflight.headers.get('Access-Control-Allow-Credentials')!==null)throw Error('Native iOS API preflight is not available on production.');
+ if(![200,401,403].includes(status.status)||status.headers.get('Access-Control-Allow-Origin')!==origin)throw Error('Native iOS API responses are not available on production.');
+ if(foreign.headers.get('Access-Control-Allow-Origin'))throw Error('Native iOS API origin boundary check failed.');
+ return {preflight:true,responseHeaders:true,foreignOriginDenied:true};
+}
+
 export async function inspectCloudflare(env, perform = fetch) {
   if (!env.CLOUDFLARE_API_TOKEN) throw Error('Add CLOUDFLARE_API_TOKEN to the github-pages environment secrets.');
   async function api(path, body, operation = 'Cloudflare request', includePagination = false) {
@@ -141,6 +158,7 @@ if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) 
     }
     if(expectedCommit&&result.productionCommit!==expectedCommit)throw Error('Production has not reached this workflow commit yet. Check the Pages deployment status.');
     result.landingDeployment=await verifyLandingDeployment();
+    result.nativeApiDeployment=await verifyNativeApiDeployment();
     const asset=await fetch('https://basketboss.co.uk/bb-receipt-host.js',{cache:'no-store',redirect:'error',signal:AbortSignal.timeout(15000)});
     if(!asset.ok||!/javascript/i.test(asset.headers.get('content-type')||''))throw Error('The receipt frontend asset is not available on production.');
     const receipt=await fetch('https://basketboss.co.uk/api/receipt-inventory?mode=status',{cache:'no-store',redirect:'error',signal:AbortSignal.timeout(15000)});

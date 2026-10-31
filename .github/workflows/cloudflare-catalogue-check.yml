@@ -10,6 +10,8 @@ on:
       - functions/api/receipt-inventory.js
       - functions/api/bb173/**
       - bb-server-lib/bb-receipt-canonical-pairs.js
+      - bb-server-lib/bb-request-origin.js
+      - functions/api/_middleware.js
       - welcome.html
       - bb-family-landing.css
       - bb-family-landing.js

@@ -1,0 +1,85 @@
+# BasketBoss iOS wrapper
+
+The native app is a **separate installation** from the Safari/PWA app. Its app ID is `uk.co.basketboss.app`, its display name is BasketBoss, and its minimum deployment target is iOS 16.0. Automatic signing selects **Jason Batiste — J25UTUATD2** for Debug and Release.
+
+The PWA files, service worker, browser storage keys and Cloudflare deployment remain in place. The native builder reads public assets and writes only `dist/native/`; Capacitor copies that output to `ios/App/App/public/`. Those generated directories and CocoaPods dependencies are ignored by Git. There is no remote `server.url`: the app shell and public recipes ship inside the app, with updates delivered through Xcode/App Store builds.
+
+## Mac prerequisites
+
+- Node 22 or later (Node 24 LTS is suitable), npm, and Git.
+- Full Xcode 26 or later, launched once to complete installation and accept its license. Capacitor 8 uses the iOS 26 SDK; deployment to iOS 16+ remains supported.
+- CocoaPods installed, for example `brew install cocoapods`.
+- In **Xcode → Settings → Accounts**, sign in to the Apple ID that can access team **J25UTUATD2**. The repository configures the team ID; it cannot include your signing certificate or Apple login.
+
+If Xcode command-line tools point to a standalone tools installation, select full Xcode:
+
+```sh
+sudo xcode-select --switch /Applications/Xcode.app/Contents/Developer
+```
+
+## First clone and run
+
+```sh
+git clone https://github.com/jbatiste12-debug/BasketBoss.git
+cd BasketBoss
+npm ci
+npm run ios:sync
+open ios/App/App.xcworkspace
+```
+
+For an existing clone:
+
+```sh
+cd BasketBoss
+git pull --ff-only
+npm ci
+npm run ios:sync
+open ios/App/App.xcworkspace
+```
+
+`ios:sync` verifies the Mac toolchain, builds the current native web bundle, runs Capacitor's `sync ios` (including CocoaPods installation), and checks the bundle ID, deployment target, signing team, permissions, icon and bundle contents. Use the **workspace**, not the `.xcodeproj`, so Capacitor and plugin pods are included.
+
+In Xcode:
+
+1. Select the **App** scheme and connect/unlock the iPhone. Trust the Mac and enable **Settings → Privacy & Security → Developer Mode** on the iPhone if requested.
+2. Select the physical iPhone as the run destination.
+3. Under **App → Signing & Capabilities**, leave **Automatically manage signing** enabled and select **Jason Batiste (J25UTUATD2)**. Confirm the bundle identifier is `uk.co.basketboss.app`.
+4. Press **Run**. Xcode may need permission to register the phone and create a provisioning profile. This requires your developer account, network access and appropriate team permissions.
+
+## Native behavior
+
+- The native origin is `capacitor://localhost`. Only local/official `/api/` URLs are rewritten to `https://basketboss.co.uk/api/...`; local HTML, images, JavaScript and JSON remain bundled.
+- Supabase's existing public HTTPS auth/cloud URLs remain unchanged. No service key, Cloudflare token, D1 binding or Premium recipe payload is placed in the native bundle.
+- Native API fetch uses Bearer authentication and cookie-free CORS. The API permits the exact native origin on official production HTTPS hosts, including preflight and authenticated errors. Confirmed-email checks, newest Premium session, household scope and entitlement checks remain active.
+- The app includes the public 100 recipes. The private Premium 400 load only through the existing authenticated API. An internet connection is needed for sign-in, cloud sync, receipt recognition and Premium retrieval.
+- Sign in separately on iOS; Safari/PWA sessions and device-local plans do not automatically transfer. Use the existing explicit cloud restore/upload controls after sign-in. Shared cloud data belongs to the same account/household. The current one-current-Premium-session policy still applies.
+- The receipt photo field uses Capacitor's camera/photo chooser on iOS. Permissions are requested when used; photos are not saved to the photo library. The existing Gemini consent, review, quota and confirmation steps still apply before upload or pantry changes.
+- Status-bar setup, safe-area CSS, a brand launch screen, an opaque 1024px icon and haptic hooks are native-only. `window.BBNative.haptic('selection' | 'success' | 'light')` is available to native UI integrations.
+- `basketboss://auth/callback` can reopen account sign-in. Incoming URL tokens are never trusted or saved. Existing email confirmation works in the browser; users return and sign in with their confirmed email/password. No OAuth or password-reset flow is added by this wrapper.
+
+## App Store scope and release gates
+
+This repository prepares a buildable native project; it does **not** certify App Store acceptance or perform an Apple signing/device build from Linux.
+
+This initial native build is a **Free/existing-account companion**. It suppresses web checkout and trial purchase promotions, blocks checkout requests, replaces pricing pages with account information, and does not create accounts. The existing PWA keeps its account creation and Paddle checkout. Existing eligible subscribers can sign in; the app does not grant local Premium rights.
+
+Before enabling native account creation, implement account deletion in the app with the corresponding server-side deletion/cancellation handling. The existing email-only deletion request is not a substitute for that flow. Before selling digital Premium access in iOS, implement the appropriate StoreKit/IAP products, restore-purchase handling and server entitlement verification, or establish an applicable Apple entitlement/program. Removing Paddle links alone does not establish subscription-policy eligibility; review Apple's current rules for this companion model.
+
+Before submission, complete these checks on the Mac/iPhone:
+
+- Sign in and confirm Free/Premium/partner access, cloud restore and the current session policy.
+- Take and select a receipt photo, grant/deny camera and photo permissions, give Gemini consent, review the scan, confirm food/non-food, then check pantry quantities and remembered prices.
+- Verify safe areas, keyboard, rotation, background/resume and external management/privacy links on the actual iPhone.
+- Build/Archive for **Any iOS Device**, validate in Xcode Organizer, and upload to your App Store Connect app with the same bundle ID/team. Increment build number for later uploads.
+- Complete App Store privacy labels, age rating, screenshots, support/privacy URLs, export-compliance answers, content rights and review instructions/test account. The privacy manifest declares the app's local preference access and account/content categories conservatively; review actual Supabase/Gemini/Paddle processing and retention when answering App Store Connect questions.
+
+## Verification without a Mac
+
+```sh
+npm ci
+npm run build:native
+npm run ios:verify
+npm run test:native
+```
+
+These verify packaging, privacy exclusions, routing/CORS and project configuration. CocoaPods installation, Swift compilation, signing, iPhone execution and App Store upload require macOS/Xcode and have not been represented as passing Linux checks.

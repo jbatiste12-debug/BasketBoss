@@ -1,0 +1,50 @@
+name: Verify iOS native build
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+    paths:
+      - .github/workflows/ios-native-build.yml
+      - capacitor.config.json
+      - package.json
+      - package-lock.json
+      - native/**
+      - ios/**
+      - scripts/*native*.mjs
+      - scripts/*ios*.mjs
+
+permissions:
+  contents: read
+
+jobs:
+  simulator-build:
+    runs-on: macos-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+          cache: npm
+      - name: Install pinned native dependencies
+        run: npm ci --no-audit --no-fund
+      - name: Build and sync iOS workspace
+        run: npm run ios:sync
+      - name: Test native routing and permissions
+        run: npm run test:native
+      - name: Compile the iOS simulator app without signing credentials
+        run: >-
+          xcodebuild
+          -workspace ios/App/App.xcworkspace
+          -scheme App
+          -configuration Debug
+          -sdk iphonesimulator
+          -destination 'generic/platform=iOS Simulator'
+          -derivedDataPath /tmp/basketboss-ios-build
+          CODE_SIGNING_ALLOWED=NO
+          build
+      - name: Publish fixed build verification
+        run: echo '::notice title=BasketBoss iOS native build::{"simulatorBuild":true,"bundleId":"uk.co.basketboss.app","minimumIOS":"16.0","signingTested":false}'

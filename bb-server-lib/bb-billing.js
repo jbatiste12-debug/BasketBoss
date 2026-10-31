@@ -1,4 +1,5 @@
 /* BasketBoss Paddle SANDBOX billing helpers. No browser-provided entitlements. */
+import {requestOriginAllowed} from './bb-request-origin.js';
 export const json = (body, status=200) => new Response(JSON.stringify(body), {
   status, headers: { 'Content-Type':'application/json; charset=utf-8', 'Cache-Control':'no-store',
     'X-Content-Type-Options':'nosniff','Vary':'Authorization' }
@@ -9,9 +10,8 @@ export const isLive = env => env.BB_BILLING_MODE === 'live' && env.BB_BILLING_EN
 export const isBillingEnabled = env => isSandbox(env) || isLive(env);
 export const billingMode = env => isLive(env) ? 'live' : 'sandbox';
 export const isConfigured = env => !!(env.BILLING_DB && env.SUPABASE_URL && env.SUPABASE_PUBLISHABLE_KEY);
-export function requireSameOrigin(request) {
-  const origin=request.headers.get('Origin');
-  return !!origin && origin===new URL(request.url).origin;
+export function requireSameOrigin(request, enforceFetchSite = false) {
+  return requestOriginAllowed(request, enforceFetchSite);
 }
 export async function authenticatedUser(request,env) {
   const value=request.headers.get('Authorization')||'';

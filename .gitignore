@@ -1,0 +1,16 @@
+# Native tooling/build outputs only. The existing PWA assets stay tracked.
+node_modules/
+dist/
+.DS_Store
+ios/App/Pods/
+ios/App/build/
+ios/App/DerivedData/
+ios/App/App/public/
+ios/App/App/capacitor.config.json
+ios/App/App/config.xml
+**/xcuserdata/
+*.xcuserstate
+*.p12
+*.mobileprovision
+*.ipa
+*.dSYM/

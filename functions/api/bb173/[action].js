@@ -1,4 +1,4 @@
-import {authenticatedUser,isBillingEnabled,isConfigured,isLive,expectedPrice,paddleApi,digestHex} from '../../../bb-server-lib/bb-billing.js';
+import {authenticatedUser,isBillingEnabled,isConfigured,isLive,expectedPrice,paddleApi,digestHex,requireSameOrigin} from '../../../bb-server-lib/bb-billing.js';
 import {sharedHouseholdPremiumOwner} from '../../../bb-server-lib/bb-household-premium.js';
 import {receiptCanonicalPairs} from '../../../bb-server-lib/bb-receipt-canonical-pairs.js';
 import {canonicalIngredientKey} from '../../../bb-receipt-inventory-core.mjs';
@@ -443,13 +443,8 @@ export async function onRequest({request,env,params}){
   if(!configured(env))
     return respond({error:'Premium AI not configured'},503);
 
-  const origin=request.headers.get('Origin');
-  if(origin!==new URL(request.url).origin)
+  if(!requireSameOrigin(request,true))
     return respond({error:'Origin not permitted'},403);
-
-  const site=request.headers.get('Sec-Fetch-Site');
-  if(site && site!=='same-origin')
-    return respond({error:'Cross-site request not permitted'},403);
 
   let member;
   try{

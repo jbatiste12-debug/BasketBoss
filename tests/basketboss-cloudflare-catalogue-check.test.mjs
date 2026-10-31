@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import {inspectCloudflare,classifyBuildFailure,verifyLandingDeployment} from '../scripts/check-cloudflare-catalogue.mjs';
+import {inspectCloudflare,classifyBuildFailure,verifyLandingDeployment,verifyNativeApiDeployment} from '../scripts/check-cloudflare-catalogue.mjs';
 
 const token = 'synthetic-secret-that-must-not-appear-in-results';
 const env = {CLOUDFLARE_API_TOKEN: token, CLOUDFLARE_ACCOUNT_ID: 'a'.repeat(32)};
@@ -122,4 +122,16 @@ test('403 identifies the failing operation and code without exposing provider te
     assert.ok(!error.message.includes('untrusted provider text'));
     return true;
   });
+});
+
+
+test('native production transport verifies exact preflight, response CORS and foreign-origin denial without auth',async()=>{
+ const requests=[];
+ const perform=async(address,options)=>{
+  requests.push({address,options});assert.equal(options.headers.Authorization,undefined);
+  const allowed=options.headers.Origin==='capacitor://localhost';
+  return new Response(null,{status:options.method==='OPTIONS'?(allowed?204:405):200,headers:allowed?{'Access-Control-Allow-Origin':'capacitor://localhost'}:{}});
+ };
+ assert.deepEqual(await verifyNativeApiDeployment(perform),{preflight:true,responseHeaders:true,foreignOriginDenied:true});assert.equal(requests.length,3);
+ await assert.rejects(verifyNativeApiDeployment(async()=>new Response(null,{status:200,headers:{'Access-Control-Allow-Origin':'*'}})),/preflight is not available/);
 });

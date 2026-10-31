@@ -94,6 +94,17 @@ test('confirmation sends measured net credit, separate essentials and scoped exa
     assert.match(call.p_payload_hash, /^[a-f0-9]{64}$/);assert.equal(JSON.stringify(call).includes('imageBase64'), false);
   } finally {fixture.restore();}
 });
+test('native iOS receipt confirmation keeps the same authenticated scope and net pantry transaction', async () => {
+  const fixture = setup();try {
+    const base = request('POST', draft());
+    const headers = new Headers(base.headers);headers.set('Origin', 'capacitor://localhost');headers.set('Sec-Fetch-Site', 'cross-site');
+    const response = await onRequestPost({request: new Request(base, {headers}), env: fixture.env});
+    assert.equal(response.status, 200);const value = await response.json();
+    assert.equal(value.stock['dried pasta|g'], 500);assert.equal(fixture.rpc.length, 1);
+    assert.equal(fixture.rpc[0].p_actor, USER);assert.equal(fixture.rpc[0].p_scope_id, USER);
+    assert.equal(fixture.rpc[0].p_scope_kind, 'user');
+  } finally {fixture.restore();}
+});
 test('retry hash excludes synchronization baseline/request ID but changed receipt semantics conflict', async () => {
   const fixture = setup();try {
     assert.equal((await onRequestPost({request: request('POST', draft()), env: fixture.env})).status, 200);
