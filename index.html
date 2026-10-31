@@ -1426,7 +1426,7 @@ function bb172RepeatLunch(app){
   if(other.some(day=>(bb321LunchState.days[day]||[]).length)&&!confirm('Replace existing Tuesday–Friday lunches with Monday’s lunch, including the same ingredients per child?'))return;
   const next=BB321Lunch.normaliseLunchbox(bb321LunchState);
   for(const day of other){next.days[day]=source.map(it=>({...it}));next.menus[day]=String(bb321LunchState.menus?.Monday||'').slice(0,500)}
-  if(bb321StoreLunch(next)){render();bb172Msg('Monday lunch repeated across the school week. Quantities updated ✓')}
+  if(bb321StoreLunch(next)){bb172RefreshLunchbox();bb172Msg('Monday lunch repeated across the school week. Quantities updated ✓')}
  };
  heading.after(btn);
 }
@@ -1686,7 +1686,7 @@ function bb172LunchChipPanel(app){
    const description=chips.map(x=>x.label.replace(/^[^\s]+\s/,'' )).join(', ').slice(0,350);
    const validated=BB321Lunch.saveLunchDay(next,days[0],selectedItems,children,description);
    for(const target of days){validated.days[target]=validated.days[days[0]].map(x=>({...x}));validated.menus[target]=description}
-   if(bb321StoreLunch(validated)){render();bb172Msg('Lunchboxes saved. Shopping quantities updated for '+children+' '+(children===1?'child':'children')+' ✓')}
+   if(bb321StoreLunch(validated)){bb172RefreshLunchbox();bb172Msg('Lunchboxes saved. Shopping quantities updated for '+children+' '+(children===1?'child':'children')+' ✓')}
   }catch(e){bb172Msg('Could not save lunchboxes: '+(e?.message||e))}
  });
  const speech=school.querySelector('label[for="bb321LunchSpeech"]');if(speech)speech.before(panel);else school.querySelector('.section-head')?.after(panel);
@@ -4686,7 +4686,7 @@ function bb321LunchboxBind(app){
  box.querySelector('#bb321LunchSaveCount').onclick=()=>{
   const n=Number(childrenInput.value);
   if(!Number.isInteger(n)||n<1||n>8){notify('Choose 1 to 8 children');childrenInput.value=String(bb321LunchState.children);return}
-  if(bb321StoreLunch({...bb321LunchState,children:n})){render();notify('Number of children saved ✓')}
+  if(bb321StoreLunch({...bb321LunchState,children:n})){bb172RefreshLunchbox();notify('Number of children saved ✓')}
  };
  function showDraft(entries){
   if(!entries.length){draft.innerHTML='<p class="muted">Nothing recognised. Type some foods, then review again.</p>';return}
@@ -4704,7 +4704,7 @@ function bb321LunchboxBind(app){
     const old=bb321LunchState.days[day];
     if(old.length&&!window.confirm('Replace the existing lunch for '+day+' with this new list?'))return;
     const next=BB321Lunch.saveLunchDay(bb321LunchState,day,items,children,raw.value);
-    if(bb321StoreLunch(next)){bb321LunchDay=day;render();notify(day+' lunch saved and shopping list updated ✓')}
+    if(bb321StoreLunch(next)){bb321LunchDay=day;bb172RefreshLunchbox();notify(day+' lunch saved and shopping list updated ✓')}
    }catch(err){notify(err.message)}
   };
  }
@@ -4721,11 +4721,11 @@ function bb321LunchboxBind(app){
   const day=btn.dataset.bb321DayClear;
   if(!window.confirm('Clear '+day+' lunchbox items?'))return;
   const next=BB321Lunch.normaliseLunchbox(bb321LunchState);next.days[day]=[];next.menus[day]='';
-  if(bb321StoreLunch(next))render();
+  if(bb321StoreLunch(next))bb172RefreshLunchbox();
  });
  box.querySelectorAll('[data-bb321-lunch-remove]').forEach(btn=>btn.onclick=()=>{
   const [day,index]=btn.dataset.bb321LunchRemove.split('|');
-  if(bb321StoreLunch(BB321Lunch.removeLunchItem(bb321LunchState,day,Number(index))))render();
+  if(bb321StoreLunch(BB321Lunch.removeLunchItem(bb321LunchState,day,Number(index))))bb172RefreshLunchbox();
  });
  const mic=box.querySelector('#bb321LunchMic'),status=box.querySelector('#bb321LunchVoiceStatus');
  mic.onclick=()=>{
@@ -5806,7 +5806,7 @@ function bb1756PlannerFlow(app){
  if(window.__bb1756LastExtra==='bb1756Lunchboxes')lunchPanel.open=true;
  if(window.__bb1756LastExtra==='bb1756Essentials')panel.querySelector('#bb1756Essentials').open=true;
  panel.querySelectorAll('.bb1756-extra-group').forEach(group=>group.addEventListener('toggle',()=>{
-  if(group.open)window.__bb1756LastExtra=group.id;
+  if(group.isConnected&&group.open)window.__bb1756LastExtra=group.id;
  }));
 }
 
@@ -5919,7 +5919,7 @@ function bb1757PlannerOrder(app){
  const essentials=extras.querySelector('#bb1756Essentials');
  if(lunch){
   lunch.open=window.__bb1757LunchOpen===true;
-  lunch.addEventListener('toggle',()=>{window.__bb1757LunchOpen=lunch.open;});
+  lunch.addEventListener('toggle',()=>{if(lunch.isConnected)window.__bb1757LunchOpen=lunch.open;});
   const lunchTitle=lunch.querySelector('summary strong');
   if(lunchTitle)lunchTitle.textContent='3 · School Lunchboxes';
  }
@@ -7826,7 +7826,7 @@ function bb172ToggleLunch(food){
   }
  }
  next.children=children;
- if(bb321StoreLunch(next)){render();notify((allSet?'Removed ':'Added ')+food.name+' '+(bb172AllDays?'for Monday–Friday':'for '+targets[0])+' — shopping recalculated ✓')}
+ if(bb321StoreLunch(next)){bb172RefreshLunchbox();notify((allSet?'Removed ':'Added ')+food.name+' '+(bb172AllDays?'for Monday–Friday':'for '+targets[0])+' — shopping recalculated ✓')}
 }
 function bb172TogglePantry(food){
  try{
@@ -8162,6 +8162,18 @@ function bb172AddEditControls(panel,where){
  const ref=where==='lunch'?panel.querySelector('label[for="bb321LunchSpeech"]'):null;
  if(ref)ref.insertAdjacentElement('beforebegin',button);else panel.append(button);
 }
+/* BB_LUNCHBOX_STAY_IN_VIEW_20261031: never jump to top on lunchbox saves. */
+function bb172RefreshLunchbox(){
+ const at=window.scrollY;
+ if(tab==='week'){window.__bb1756LastExtra='bb1756Lunchboxes';window.__bb1757LunchOpen=true;}
+ render();
+ if(tab==='week')requestAnimationFrame(()=>{
+  if(tab!=='week')return;
+  const panel=document.getElementById('bb1756Lunchboxes');
+  if(panel)panel.open=true;
+  window.scrollTo({top:at,behavior:'instant'});
+ });
+}
 /* BB_LUNCH_COPY_WEEK_V1: Checking all weekdays copies a saved lunch.
  * Future tile taps continue to use the existing bb172AllDays selection.
  */
@@ -8185,7 +8197,7 @@ function bb172CopySavedLunchAcrossSchoolDays(sourceDay){
   next.menus[day]=next.menus[sourceDay];
  }
  if(!bb321StoreLunch(next))return false;
- render();
+ bb172RefreshLunchbox();
  notify(sourceDay+' lunch copied to Monday–Friday. Shopping quantities recalculated ✓');
  return true;
 }
