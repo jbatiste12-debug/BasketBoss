@@ -20,7 +20,7 @@ export async function inspectCloudflare(env, perform = fetch) {
   if (!accountId) {
     let accounts;
     try { accounts = await api('accounts?per_page=2'); }
-    catch { throw Error('Add CLOUDFLARE_ACCOUNT_ID as an environment variable in github-pages. The token cannot discover the account ID with its current permissions.'); }
+    catch { throw Error('Account discovery failed. Add CLOUDFLARE_ACCOUNT_ID as an environment variable in github-pages, then rerun this check.'); }
     if (!Array.isArray(accounts) || accounts.length !== 1) throw Error('Add CLOUDFLARE_ACCOUNT_ID in github-pages to select the BasketBoss account.');
     accountId = accounts[0].id;
   }
@@ -57,6 +57,10 @@ if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) 
     text = 'Cloudflare connection verified.\n\n```json\n' + JSON.stringify(result, null, 2) + '\n```\n\nRead-only check; no database import or configuration changes were performed.\n';
   } catch (error) {
     text = 'Cloudflare connection check incomplete: ' + error.message + '\n';
+    // Public annotations remain readable when GitHub requires sign-in for logs.
+    // Emit our bounded diagnostic only; never include a provider response body.
+    const annotation = text.slice(0, 1000).replace(/%/g, '%25').replace(/\r/g, '%0D').replace(/\n/g, '%0A');
+    console.error('::error title=Cloudflare catalogue connection::' + annotation);
     process.exitCode = 1;
   }
   console.log(text);
