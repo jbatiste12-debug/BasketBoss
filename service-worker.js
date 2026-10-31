@@ -2,7 +2,7 @@
  * Caches app pages and assets only; no personal localStorage or sync data is transmitted.
  * Food photographs outside the preview are cached only after being viewed, where supported.
  */
-const CACHE = 'basketboss-premium-secure-shell-20261030-v14-beta-live';
+const CACHE = 'basketboss-premium-secure-shell-20261031-v15-meal-pricing';
 const IMAGE_CACHE = 'basketboss-v17513-owner-qa-images-v1';
 const APP_BASE = new URL(self.registration.scope);
 const CORE = ['bb-funnel.css','bb-funnel.js','bb-consolidated-qa.css','bb-consolidated-qa.js','bb-culinary-enhancements.js','bb-culinary.css','index.html','tutorial.html','bb-real-app-tour.css','bb-real-app-tour.js','bb-cloudflare-qa.js','privacy.html','make-a-meal.html','make-a-meal.css','bb174-trial-ux.css','bb174-trial-ux.js','bb-premium-features.css','bb-premium-preview-config.js','bb-premium-features.js','bb-light-meal.css','make-a-meal.js','premium-upgrade.js','premium-upgrade.css','bb-intro-trial.js','bb-intro-trial.css','bb-us-market.js','bb-us-market.css','bb173-final-polish.css','bb-welcome-splash.js','bb-welcome-splash.css','bb-install.js','bb-install.css','shopping-inventory.js','bb-beta-launch-polish.js','bb-beta-launch-polish.css','bb-beta-six-fixes.css','bb-beta-six-fixes.js','bb-beta-five.css','bb-beta-five-nav.js','bb-purchase-choice.css',
@@ -17,6 +17,7 @@ const CORE = ['bb-funnel.css','bb-funnel.js','bb-consolidated-qa.css','bb-consol
   './basketboss-aisles-v20.js',
   './basketboss-aisles-v20.js?v=bb82-aisle-20261024',
   './ingredient-pack-catalog.json',
+  './bb-meal-estimate.js?v=20261031-pricing',
   './make-a-meal.js?v=bb83-20261024',
   './make-a-meal.js?v=bb717-20261024'
 ]
@@ -52,7 +53,7 @@ self.addEventListener('fetch', event => {
   const releaseAssets = new Set([
     'bb-onboarding-v2.js','bb-onboarding-v2.css',
     'bb-household-sharing.js','bb-household-sharing.css',
-    'bb-serving-scale.js',
+    'bb-serving-scale.js','bb-meal-estimate.js',
     'bb-partner-signup-prompt.js','bb-partner-signup-prompt.css'
   ].map(path => new URL(path, APP_BASE).pathname));
   if (releaseAssets.has(target.pathname)) {
