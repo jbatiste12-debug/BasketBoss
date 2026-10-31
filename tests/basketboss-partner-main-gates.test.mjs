@@ -4,7 +4,7 @@ import fs from 'node:fs';
 const read=p=>fs.readFileSync(p,'utf8');
 const index=read('index.html'), js=read('bb-onboarding-v2.js'), prompt=read('bb-partner-signup-prompt.js'), api=read('functions/api/household/index.js');
 test('main onboarding and account prompt installed without replacing the account flow',()=>{
-  assert.match(index,/bb-onboarding-v2\.js\?v=20261029-partner-onboard-main1/);
+  assert.match(index,/bb-onboarding-v2\.js\?v=20261031-shop-prices/);
   assert.match(index,/bb-onboarding-v2\.css\?v=20261029-partner-onboard-main1/);
   assert.match(index,/bb-partner-signup-prompt\.js\?v=partner-main1/);
   assert.match(index,/id="cloud-signup"/);

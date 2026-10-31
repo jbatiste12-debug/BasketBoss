@@ -3293,8 +3293,8 @@
         {
           "name": "Fresh herbs",
           "key": "herbs",
-          "quantity": "small handful (optional)",
-          "unit": null,
+          "quantity": 5,
+          "unit": "g",
           "price_hint": 0.5,
           "status": "NEEDS_REVIEW",
           "recipe_id": "roast-veg-couscous",
@@ -3539,8 +3539,8 @@
         {
           "name": "Fresh parsley",
           "key": "parsley",
-          "quantity": "small handful (optional)",
-          "unit": null,
+          "quantity": 5,
+          "unit": "g",
           "price_hint": 0.5,
           "status": "NEEDS_REVIEW",
           "recipe_id": "chicken-noodle-soup",

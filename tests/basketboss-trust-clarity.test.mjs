@@ -22,7 +22,7 @@ test('Comparison page is accurate, accessible and links to existing actual produ
   assert.match(compare, /<th scope="col">Free<\/th>/);
   assert.match(compare, /<th scope="col">Premium<\/th>/);
   assert.match(compare, /100 recipes/);
-  assert.match(compare, /321 recipes/);
+  assert.match(compare, /500 recipes/);
   assert.match(compare, /7-day free trial, then £1\.99\/month/);
   assert.match(compare, /3-day free trial, then £4\.99\/month/);
   assert.match(compare, /first 25 eligible confirmed subscribers/);

@@ -7,7 +7,7 @@ test('production modal is customer-facing, scroll safe, and checkout gated',asyn
   const [modal,css,terms,pricing,checkout,index]=await Promise.all([
     read('bb-premium-features.js'),read('bb-premium-features.css'),read('bb174-trial-ux.js'),
     read('pricing-sandbox.html'),read('paddle-sandbox.js'),read('index.html')]);
-  for(const s of ['More magic, less waste.','Includes 321 recipes, Smart Auto-Fill, 1-Tap Batch Cooking',
+  for(const s of ['More magic, less waste.','Includes 500 recipes, Smart Auto-Fill, 1-Tap Batch Cooking',
     '7-day free trial · First 25 confirmed members only','3-day free trial · Cancel anytime',
     'Cancel anytime before your trial ends']) assert.ok(modal.includes(s),s);
   for(const s of ['SANDBOX PREVIEW','Preview only:','must be verified before launch',

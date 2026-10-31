@@ -1,0 +1,731 @@
+recipe_id,recipe_name,listed_servings,ingredient,source_quantity,measure_status,explicit_total,unit,amount_per_listed_serving,raw_dry_cooked_status
+fajitas,Sheet-pan chicken fajitas,6,Chicken breast,1 kg,Explicit mass or volume,1000,g,166.667,Not explicitly stated
+fajitas,Sheet-pan chicken fajitas,6,Mixed peppers,3 peppers,Count or household measure; no mass conversion assumed,,,,Not explicitly stated
+fajitas,Sheet-pan chicken fajitas,6,Tortilla wraps,12 medium tortilla wraps,Review quantity wording,,,,Not explicitly stated
+fajitas,Sheet-pan chicken fajitas,6,Soured cream,180 g,Explicit mass or volume,180,g,30,Not explicitly stated
+fajitas,Sheet-pan chicken fajitas,6,Cheddar,400 g,Explicit mass or volume,400,g,66.6667,Not explicitly stated
+fajitas,Sheet-pan chicken fajitas,6,Fajita seasoning,2 tbsp,Count or household measure; no mass conversion assumed,,,,Not explicitly stated
+fajitas,Sheet-pan chicken fajitas,6,Cooking oil,2 tbsp,Count or household measure; no mass conversion assumed,,,,Not explicitly stated
+fajitas,Sheet-pan chicken fajitas,6,Lime,1,Count or household measure; no mass conversion assumed,,,,Not explicitly stated
+chicken-burgers,Crispy southern-style chicken burgers,6,Chicken breast,1 kg pack,Explicit mass or volume,1000,g,166.667,Not explicitly stated
+chicken-burgers,Crispy southern-style chicken burgers,6,Brioche buns,6 pack,Review quantity wording,,,,Not explicitly stated
+chicken-burgers,Crispy southern-style chicken burgers,6,Cornflakes,180 g,Explicit mass or volume,180,g,30,Not explicitly stated
+chicken-burgers,Crispy southern-style chicken burgers,6,Coleslaw,300 g,Explicit mass or volume,300,g,50,Not explicitly stated
+chicken-burgers,Crispy southern-style chicken burgers,6,Egg,1,Count or household measure; no mass conversion assumed,,,,Not explicitly stated
+chicken-burgers,Crispy southern-style chicken burgers,6,Paprika,1 tsp,Count or household measure; no mass conversion assumed,,,,Not explicitly stated
+chicken-burgers,Crispy southern-style chicken burgers,6,Lettuce,1 small head,Review quantity wording,,,,Not explicitly stated
+chicken-burgers,Crispy southern-style chicken burgers,6,Mayonnaise,4 tbsp,Count or household measure; no mass conversion assumed,,,,Not explicitly stated
+chicken-burgers,Crispy southern-style chicken burgers,6,Garlic,2 cloves,Count or household measure; no mass conversion assumed,,,,Not explicitly stated
+creamy-pasta,Creamy garlic parmesan chicken pasta,4,Chicken breast,500 g,Explicit mass or volume,500,g,125,Not explicitly stated
+creamy-pasta,Creamy garlic parmesan chicken pasta,4,Penne pasta,500 g,Explicit mass or volume,500,g,125,Not explicitly stated
+creamy-pasta,Creamy garlic parmesan chicken pasta,4,Double cream,300 ml,Explicit mass or volume,300,ml,75,Not explicitly stated
+creamy-pasta,Creamy garlic parmesan chicken pasta,4,Parmesan,1 block,Review quantity wording,,,,Not explicitly stated
+creamy-pasta,Creamy garlic parmesan chicken pasta,4,Garlic,3 cloves,Count or household measure; no mass conversion assumed,,,,Not explicitly stated
+creamy-pasta,Creamy garlic parmesan chicken pasta,4,Chicken stock,600 ml,Explicit mass or volume,600,ml,150,Not explicitly stated
+creamy-pasta,Creamy garlic parmesan chicken pasta,4,Cooking oil,1 tbsp,Count or household measure; no mass conversion assumed,,,,Not explicitly stated
+creamy-pasta,Creamy garlic parmesan chicken pasta,4,Lemon,1,Count or household measure; no mass conversion assumed,,,,Not explicitly stated
+sausage-gnocchi,Sausage & gnocchi tomato bake,4,Pork sausages,6 pack,Review quantity wording,,,,Not explicitly stated
+sausage-gnocchi,Sausage & gnocchi tomato bake,4,Potato gnocchi,500 g,Explicit mass or volume,500,g,125,Not explicitly stated
+sausage-gnocchi,Sausage & gnocchi tomato bake,4,Passata,500 g,Explicit mass or volume,500,g,125,Not explicitly stated
+sausage-gnocchi,Sausage & gnocchi tomato bake,4,Mozzarella,1 ball,Review quantity wording,,,,Not explicitly stated
+sausage-gnocchi,Sausage & gnocchi tomato bake,4,Garlic baguette,1,Count or household measure; no mass conversion assumed,,,,Not explicitly stated
+sausage-gnocchi,Sausage & gnocchi tomato bake,4,Dried Italian herbs,1 tsp,Count or household measure; no mass conversion assumed,,,,Not explicitly stated
+pulled-pork,Slow-cooker BBQ pulled pork buns,6,Pork shoulder,1.2 kg,Explicit mass or volume,1200,g,200,Not explicitly stated
+pulled-pork,Slow-cooker BBQ pulled pork buns,6,Brioche buns,6 pack,Review quantity wording,,,,Not explicitly stated
+pulled-pork,Slow-cooker BBQ pulled pork buns,6,Prepared coleslaw,300 g (buy a suitable tub),Explicit mass or volume,300,g,50,Not explicitly stated
+pulled-pork,Slow-cooker BBQ pulled pork buns,6,BBQ sauce,150 ml (measure from a bottle),Explicit mass or volume,150,ml,25,Not explicitly stated
+pulled-pork,Slow-cooker BBQ pulled pork buns,6,Onion,1 large,Review quantity wording,,,,Not explicitly stated
+pulled-pork,Slow-cooker BBQ pulled pork buns,6,Smoked paprika,5 g,Explicit mass or volume,5,g,0.833333,Not explicitly stated
+pulled-pork,Slow-cooker BBQ pulled pork buns,6,Garlic,3 cloves,Count or household measure; no mass conversion assumed,,,,Not explicitly stated
+pulled-pork,Slow-cooker BBQ pulled pork buns,6,Apple cider vinegar,30 ml,Explicit mass or volume,30,ml,5,Not explicitly stated
+beef-chilli,Beef & three-bean chilli,6,Lean beef mince,750 g,Explicit mass or volume,750,g,125,Not explicitly stated
+beef-chilli,Beef & three-bean chilli,6,Canned mixed beans,2 × 400 g tins (about 480 g drained),Review quantity wording,,,,Not explicitly stated
+beef-chilli,Beef & three-bean chilli,6,Chopped tomatoes,1 × 400 g tin,Review quantity wording,,,,Not explicitly stated
+beef-chilli,Beef & three-bean chilli,6,Long-grain rice,450 g dry (buy 1 kg bag; keep the remainder),Explicit mass or volume,450,g,75,Dry stated
+beef-chilli,Beef & three-bean chilli,6,Onion,1 medium,Review quantity wording,,,,Not explicitly stated
+beef-chilli,Beef & three-bean chilli,6,Garlic,2 cloves,Count or household measure; no mass conversion assumed,,,,Not explicitly stated
+beef-chilli,Beef & three-bean chilli,6,Ground cumin,1 tsp,Count or household measure; no mass conversion assumed,,,,Not explicitly stated
+beef-chilli,Beef & three-bean chilli,6,Smoked paprika,1 tsp,Count or household measure; no mass conversion assumed,,,,Not explicitly stated
+beef-chilli,Beef & three-bean chilli,6,Chilli powder,½ tsp,Review quantity wording,,,,Not explicitly stated
+beef-chilli,Beef & three-bean chilli,6,Soured cream (optional topping),4 tbsp,Count or household measure; no mass conversion assumed,,,,Not explicitly stated
+beef-chilli,Beef & three-bean chilli,6,Lime,1,Count or household measure; no mass conversion assumed,,,,Not explicitly stated
+stir-fry,Salt & pepper chicken stir-fry,4,Chicken breast,1 kg pack,Explicit mass or volume,1000,g,250,Not explicitly stated
+stir-fry,Salt & pepper chicken stir-fry,4,Egg noodles,250 g dried egg noodles (or equivalent cooked noodles),Explicit mass or volume,250,g,62.5,Cooked stated
+stir-fry,Salt & pepper chicken stir-fry,4,Stir-fry vegetables,400 g prepared stir-fry vegetables,Explicit mass or volume,400,g,100,Not explicitly stated
+stir-fry,Salt & pepper chicken stir-fry,4,Light soy sauce,2 tbsp (30 ml),Review quantity wording,,,,Not explicitly stated
+stir-fry,Salt & pepper chicken stir-fry,4,Sweet chilli sauce,2 tbsp (30 ml),Review quantity wording,,,,Not explicitly stated
+stir-fry,Salt & pepper chicken stir-fry,4,Cooking oil,1 tbsp,Count or household measure; no mass conversion assumed,,,,Not explicitly stated
+stir-fry,Salt & pepper chicken stir-fry,4,Chinese five-spice powder,1 tsp,Count or household measure; no mass conversion assumed,,,,Not explicitly stated
+stir-fry,Salt & pepper chicken stir-fry,4,Cornflour,1 tbsp,Count or household measure; no mass conversion assumed,,,,Not explicitly stated
+stir-fry,Salt & pepper chicken stir-fry,4,Fresh Ginger,10 g,Explicit mass or volume,10,g,2.5,Not explicitly stated
+stir-fry,Salt & pepper chicken stir-fry,4,Lime,1,Count or household measure; no mass conversion assumed,,,,Not explicitly stated
+salmon,Honey-soy salmon & greens,4,Salmon fillets,4 salmon fillets (about 120–150 g each),Review quantity wording,,,,Not explicitly stated
+salmon,Honey-soy salmon & greens,4,Tenderstem broccoli,400 g tenderstem broccoli (often two packs),Explicit mass or volume,400,g,100,Not explicitly stated
+salmon,Honey-soy salmon & greens,4,Runny honey,2 tbsp (30 ml),Review quantity wording,,,,Not explicitly stated
+salmon,Honey-soy salmon & greens,4,Soy sauce,2 tbsp (30 ml),Review quantity wording,,,,Not explicitly stated
+salmon,Honey-soy salmon & greens,4,Garlic,2 cloves,Count or household measure; no mass conversion assumed,,,,Not explicitly stated
+salmon,Honey-soy salmon & greens,4,Fresh Ginger,15 g,Explicit mass or volume,15,g,3.75,Not explicitly stated
+salmon,Honey-soy salmon & greens,4,Lime,1,Count or household measure; no mass conversion assumed,,,,Not explicitly stated
+salmon,Honey-soy salmon & greens,4,Sesame Oil,15 ml,Explicit mass or volume,15,ml,3.75,Not explicitly stated
+steak,Sirloin steak & peppercorn sauce,2,Sirloin steaks,2 steaks,Review quantity wording,,,,Not explicitly stated
+steak,Sirloin steak & peppercorn sauce,2,Peppercorn sauce,90 ml,Explicit mass or volume,90,ml,45,Not explicitly stated
+steak,Sirloin steak & peppercorn sauce,2,Tenderstem broccoli,150 g,Explicit mass or volume,150,g,75,Not explicitly stated
+steak,Sirloin steak & peppercorn sauce,2,Potatoes,400 g,Explicit mass or volume,400,g,200,Not explicitly stated
+steak,Sirloin steak & peppercorn sauce,2,Garlic,2 cloves,Count or household measure; no mass conversion assumed,,,,Not explicitly stated
+steak,Sirloin steak & peppercorn sauce,2,Butter,20 g,Explicit mass or volume,20,g,10,Not explicitly stated
+tuscan-salmon,Creamy Tuscan garlic salmon,2,Salmon fillets,2 fillets,Review quantity wording,,,,Not explicitly stated
+tuscan-salmon,Creamy Tuscan garlic salmon,2,Double cream,150 ml,Explicit mass or volume,150,ml,75,Not explicitly stated
+tuscan-salmon,Creamy Tuscan garlic salmon,2,"Sun-dried tomatoes, drained","60 g, chopped and drained",Explicit mass or volume,60,g,30,Not explicitly stated
+tuscan-salmon,Creamy Tuscan garlic salmon,2,Asparagus,1 bunch,Review quantity wording,,,,Not explicitly stated
+tuscan-salmon,Creamy Tuscan garlic salmon,2,Cooking oil,1 tbsp,Count or household measure; no mass conversion assumed,,,,Not explicitly stated
+tuscan-salmon,Creamy Tuscan garlic salmon,2,Garlic,2 cloves,Count or household measure; no mass conversion assumed,,,,Not explicitly stated
+tuscan-salmon,Creamy Tuscan garlic salmon,2,Cherry tomatoes,150 g,Explicit mass or volume,150,g,75,Not explicitly stated
+tuscan-salmon,Creamy Tuscan garlic salmon,2,Lemon,1,Count or household measure; no mass conversion assumed,,,,Not explicitly stated
+traybake-sausage,"Roasted sausage, potatoes & vegetables",4,Sausages,8 pack,Review quantity wording,,,,Not explicitly stated
+traybake-sausage,"Roasted sausage, potatoes & vegetables",4,Potatoes,1 kg,Explicit mass or volume,1000,g,250,Not explicitly stated
+traybake-sausage,"Roasted sausage, potatoes & vegetables",4,Carrots,350 g,Explicit mass or volume,350,g,87.5,Not explicitly stated
+traybake-sausage,"Roasted sausage, potatoes & vegetables",4,Red onions,2 medium,Review quantity wording,,,,Not explicitly stated
+traybake-sausage,"Roasted sausage, potatoes & vegetables",4,Mixed dried herbs,1 tsp,Count or household measure; no mass conversion assumed,,,,Not explicitly stated
+traybake-sausage,"Roasted sausage, potatoes & vegetables",4,Prepared gravy,200 ml (made per packet instructions),Explicit mass or volume,200,ml,50,Not explicitly stated
+traybake-sausage,"Roasted sausage, potatoes & vegetables",4,Cooking oil,1 tbsp,Count or household measure; no mass conversion assumed,,,,Not explicitly stated
+traybake-sausage,"Roasted sausage, potatoes & vegetables",4,Lemon,1,Count or household measure; no mass conversion assumed,,,,Not explicitly stated
+traybake-sausage,"Roasted sausage, potatoes & vegetables",4,Garlic,2 cloves,Count or household measure; no mass conversion assumed,,,,Not explicitly stated
+chickpea-curry,Creamy chickpea & spinach curry,4,Chickpeas,2 cans,Review quantity wording,,,,Not explicitly stated
+chickpea-curry,Creamy chickpea & spinach curry,4,Chopped tomatoes,1 can,Review quantity wording,,,,Not explicitly stated
+chickpea-curry,Creamy chickpea & spinach curry,4,Coconut milk,1 can,Review quantity wording,,,,Not explicitly stated
+chickpea-curry,Creamy chickpea & spinach curry,4,Spinach,150 g,Explicit mass or volume,150,g,37.5,Not explicitly stated
+chickpea-curry,Creamy chickpea & spinach curry,4,Rice,300 g dry rice,Explicit mass or volume,300,g,75,Dry stated
+chickpea-curry,Creamy chickpea & spinach curry,4,Onion,1 medium,Review quantity wording,,,,Not explicitly stated
+chickpea-curry,Creamy chickpea & spinach curry,4,Garlic,2 cloves,Count or household measure; no mass conversion assumed,,,,Not explicitly stated
+chickpea-curry,Creamy chickpea & spinach curry,4,Curry powder,2 tbsp,Count or household measure; no mass conversion assumed,,,,Not explicitly stated
+chickpea-curry,Creamy chickpea & spinach curry,4,Lemon,1,Count or household measure; no mass conversion assumed,,,,Not explicitly stated
+chickpea-curry,Creamy chickpea & spinach curry,4,Cooking oil,1 tbsp,Count or household measure; no mass conversion assumed,,,,Not explicitly stated
+chickpea-curry,Creamy chickpea & spinach curry,4,Fresh Ginger,12 g,Explicit mass or volume,12,g,3,Not explicitly stated
+fishcakes,Crispy salmon fishcakes & peas,4,Cooked salmon (from 2 fillets),"2 fillets, cooked and flaked before starting",Review quantity wording,,,,Cooked stated
+fishcakes,Crispy salmon fishcakes & peas,4,Potatoes,1 kg,Explicit mass or volume,1000,g,250,Not explicitly stated
+fishcakes,Crispy salmon fishcakes & peas,4,Breadcrumbs,100 g,Explicit mass or volume,100,g,25,Not explicitly stated
+fishcakes,Crispy salmon fishcakes & peas,4,Frozen peas,200 g,Explicit mass or volume,200,g,50,Not explicitly stated
+fishcakes,Crispy salmon fishcakes & peas,4,Lemon,1,Count or household measure; no mass conversion assumed,,,,Not explicitly stated
+fishcakes,Crispy salmon fishcakes & peas,4,Fresh parsley,1 small handful,Review quantity wording,,,,Not explicitly stated
+fishcakes,Crispy salmon fishcakes & peas,4,Cooking oil,1 tbsp,Count or household measure; no mass conversion assumed,,,,Not explicitly stated
+pesto-gnocchi,Pesto tomato gnocchi,4,Potato gnocchi,500 g,Explicit mass or volume,500,g,125,Not explicitly stated
+pesto-gnocchi,Pesto tomato gnocchi,4,Pesto,80 g,Explicit mass or volume,80,g,20,Not explicitly stated
+pesto-gnocchi,Pesto tomato gnocchi,4,Cherry tomatoes,1 punnet,Review quantity wording,,,,Not explicitly stated
+pesto-gnocchi,Pesto tomato gnocchi,4,Hard cheese,50 g,Explicit mass or volume,50,g,12.5,Not explicitly stated
+pesto-gnocchi,Pesto tomato gnocchi,4,Garlic,2 cloves,Count or household measure; no mass conversion assumed,,,,Not explicitly stated
+pesto-gnocchi,Pesto tomato gnocchi,4,Lemon,1,Count or household measure; no mass conversion assumed,,,,Not explicitly stated
+tomato-mozzarella-pasta,Tomato & mozzarella pasta,4,Pasta,500 g,Explicit mass or volume,500,g,125,Not explicitly stated
+tomato-mozzarella-pasta,Tomato & mozzarella pasta,4,Cherry tomatoes,1 punnet,Review quantity wording,,,,Not explicitly stated
+tomato-mozzarella-pasta,Tomato & mozzarella pasta,4,Mozzarella,1 ball,Review quantity wording,,,,Not explicitly stated
+tomato-mozzarella-pasta,Tomato & mozzarella pasta,4,Garlic,1 bulb,Review quantity wording,,,,Not explicitly stated
+tomato-mozzarella-pasta,Tomato & mozzarella pasta,4,Basil,15 g,Explicit mass or volume,15,g,3.75,Not explicitly stated
+tomato-mozzarella-pasta,Tomato & mozzarella pasta,4,Olive oil,1 tbsp,Count or household measure; no mass conversion assumed,,,,Not explicitly stated
+lemon-chicken-orzo,Lemon chicken orzo,4,Chicken breast,600 g,Explicit mass or volume,600,g,150,Not explicitly stated
+lemon-chicken-orzo,Lemon chicken orzo,4,Orzo,500 g,Explicit mass or volume,500,g,125,Not explicitly stated
+lemon-chicken-orzo,Lemon chicken orzo,4,Chicken stock,1 carton,Review quantity wording,,,,Not explicitly stated
+lemon-chicken-orzo,Lemon chicken orzo,4,Spinach,150 g,Explicit mass or volume,150,g,37.5,Not explicitly stated
+lemon-chicken-orzo,Lemon chicken orzo,4,Lemon,1,Count or household measure; no mass conversion assumed,,,,Not explicitly stated
+lemon-chicken-orzo,Lemon chicken orzo,4,Garlic,2 cloves,Count or household measure; no mass conversion assumed,,,,Not explicitly stated
+beef-meatballs,Beef meatballs in tomato sauce,4,Beef mince,500 g,Explicit mass or volume,500,g,125,Not explicitly stated
+beef-meatballs,Beef meatballs in tomato sauce,4,Spaghetti,500 g,Explicit mass or volume,500,g,125,Not explicitly stated
+beef-meatballs,Beef meatballs in tomato sauce,4,Passata,500 g,Explicit mass or volume,500,g,125,Not explicitly stated
+beef-meatballs,Beef meatballs in tomato sauce,4,Eggs,2,Count or household measure; no mass conversion assumed,,,,Not explicitly stated
+beef-meatballs,Beef meatballs in tomato sauce,4,Breadcrumbs,100 g,Explicit mass or volume,100,g,25,Not explicitly stated
+beef-meatballs,Beef meatballs in tomato sauce,4,Garlic,2 cloves,Count or household measure; no mass conversion assumed,,,,Not explicitly stated
+beef-meatballs,Beef meatballs in tomato sauce,4,Dried Italian herbs,2 tsp,Count or household measure; no mass conversion assumed,,,,Not explicitly stated
+veggie-fried-rice,Veggie egg fried rice,4,Rice,"500 g cooked rice, chilled safely (or 2 × 250 g ready-cooked pouches)",Explicit mass or volume,500,g,125,Cooked stated
+veggie-fried-rice,Veggie egg fried rice,4,Eggs,6,Count or household measure; no mass conversion assumed,,,,Not explicitly stated
+veggie-fried-rice,Veggie egg fried rice,4,Frozen mixed vegetables,400 g,Explicit mass or volume,400,g,100,Not explicitly stated
+veggie-fried-rice,Veggie egg fried rice,4,Soy sauce,30 ml,Explicit mass or volume,30,ml,7.5,Not explicitly stated
+veggie-fried-rice,Veggie egg fried rice,4,Spring onions,1 bunch,Review quantity wording,,,,Not explicitly stated
+veggie-fried-rice,Veggie egg fried rice,4,Sesame Oil,10 ml,Explicit mass or volume,10,ml,2.5,Not explicitly stated
+veggie-fried-rice,Veggie egg fried rice,4,Fresh Ginger,10 g,Explicit mass or volume,10,g,2.5,Not explicitly stated
+lentil-bolognese,Lentil bolognese,4,Green lentils,250 g,Explicit mass or volume,250,g,62.5,Not explicitly stated
+lentil-bolognese,Lentil bolognese,4,Spaghetti,500 g,Explicit mass or volume,500,g,125,Not explicitly stated
+lentil-bolognese,Lentil bolognese,4,Chopped tomatoes,2 cans,Review quantity wording,,,,Not explicitly stated
+lentil-bolognese,Lentil bolognese,4,Carrots,2,Count or household measure; no mass conversion assumed,,,,Not explicitly stated
+lentil-bolognese,Lentil bolognese,4,Onions,2,Count or household measure; no mass conversion assumed,,,,Not explicitly stated
+lentil-bolognese,Lentil bolognese,4,Garlic,2 cloves,Count or household measure; no mass conversion assumed,,,,Not explicitly stated
+lentil-bolognese,Lentil bolognese,4,Vegetable stock,500 ml,Explicit mass or volume,500,ml,125,Not explicitly stated
+lentil-bolognese,Lentil bolognese,4,Olive oil,1 tbsp,Count or household measure; no mass conversion assumed,,,,Not explicitly stated
+lentil-bolognese,Lentil bolognese,4,Dried oregano,2 g,Explicit mass or volume,2,g,0.5,Not explicitly stated
+crispy-fish-tacos,Crispy fish tacos,4,White fish fillets,4,Count or household measure; no mass conversion assumed,,,,Not explicitly stated
+crispy-fish-tacos,Crispy fish tacos,4,Tortilla wraps,8 medium tortilla wraps,Review quantity wording,,,,Not explicitly stated
+crispy-fish-tacos,Crispy fish tacos,4,Cabbage slaw,200 g,Explicit mass or volume,200,g,50,Not explicitly stated
+crispy-fish-tacos,Crispy fish tacos,4,Natural yoghurt,150 g,Explicit mass or volume,150,g,37.5,Not explicitly stated
+crispy-fish-tacos,Crispy fish tacos,4,Limes,2,Count or household measure; no mass conversion assumed,,,,Not explicitly stated
+crispy-fish-tacos,Crispy fish tacos,4,Plain flour,80 g,Explicit mass or volume,80,g,20,Not explicitly stated
+crispy-fish-tacos,Crispy fish tacos,4,Egg,1,Count or household measure; no mass conversion assumed,,,,Not explicitly stated
+crispy-fish-tacos,Crispy fish tacos,4,Breadcrumbs,100 g,Explicit mass or volume,100,g,25,Not explicitly stated
+crispy-fish-tacos,Crispy fish tacos,4,Paprika,1 tsp,Count or household measure; no mass conversion assumed,,,,Not explicitly stated
+crispy-fish-tacos,Crispy fish tacos,4,Cooking oil,1 tbsp,Count or household measure; no mass conversion assumed,,,,Not explicitly stated
+mushroom-risotto,Creamy mushroom risotto,4,Risotto rice,300 g,Explicit mass or volume,300,g,75,Not explicitly stated
+mushroom-risotto,Creamy mushroom risotto,4,Mushrooms,300 g,Explicit mass or volume,300,g,75,Not explicitly stated
+mushroom-risotto,Creamy mushroom risotto,4,Vegetable stock,1 carton,Review quantity wording,,,,Not explicitly stated
+mushroom-risotto,Creamy mushroom risotto,4,Parmesan,1 block,Review quantity wording,,,,Not explicitly stated
+mushroom-risotto,Creamy mushroom risotto,4,Onion,1,Count or household measure; no mass conversion assumed,,,,Not explicitly stated
+mushroom-risotto,Creamy mushroom risotto,4,Butter,30 g,Explicit mass or volume,30,g,7.5,Not explicitly stated
+mushroom-risotto,Creamy mushroom risotto,4,Garlic,2 cloves,Count or household measure; no mass conversion assumed,,,,Not explicitly stated
+mushroom-risotto,Creamy mushroom risotto,4,Lemon,1,Count or household measure; no mass conversion assumed,,,,Not explicitly stated
+honey-garlic-tofu,Honey garlic tofu bowls,4,Firm tofu,400 g,Explicit mass or volume,400,g,100,Not explicitly stated
+honey-garlic-tofu,Honey garlic tofu bowls,4,Rice,500 g,Explicit mass or volume,500,g,125,Not explicitly stated
+honey-garlic-tofu,Honey garlic tofu bowls,4,Soy sauce,30 ml,Explicit mass or volume,30,ml,7.5,Not explicitly stated
+honey-garlic-tofu,Honey garlic tofu bowls,4,Honey,30 ml,Explicit mass or volume,30,ml,7.5,Not explicitly stated
+honey-garlic-tofu,Honey garlic tofu bowls,4,Cucumber,1,Count or household measure; no mass conversion assumed,,,,Not explicitly stated
+honey-garlic-tofu,Honey garlic tofu bowls,4,Cornflour,2 tbsp,Count or household measure; no mass conversion assumed,,,,Not explicitly stated
+honey-garlic-tofu,Honey garlic tofu bowls,4,Garlic,2 cloves,Count or household measure; no mass conversion assumed,,,,Not explicitly stated
+honey-garlic-tofu,Honey garlic tofu bowls,4,Carrots,2,Count or household measure; no mass conversion assumed,,,,Not explicitly stated
+honey-garlic-tofu,Honey garlic tofu bowls,4,Fresh Ginger,10 g,Explicit mass or volume,10,g,2.5,Not explicitly stated
+honey-garlic-tofu,Honey garlic tofu bowls,4,Lime,1,Count or household measure; no mass conversion assumed,,,,Not explicitly stated
+chicken-pesto-wraps,Chicken pesto wraps,4,Chicken breast,500 g,Explicit mass or volume,500,g,125,Not explicitly stated
+chicken-pesto-wraps,Chicken pesto wraps,4,Tortilla wraps,8 medium tortilla wraps,Review quantity wording,,,,Not explicitly stated
+chicken-pesto-wraps,Chicken pesto wraps,4,Pesto,80 g,Explicit mass or volume,80,g,20,Not explicitly stated
+chicken-pesto-wraps,Chicken pesto wraps,4,Lettuce,1,Count or household measure; no mass conversion assumed,,,,Not explicitly stated
+chicken-pesto-wraps,Chicken pesto wraps,4,Mozzarella,1 ball,Review quantity wording,,,,Not explicitly stated
+chicken-pesto-wraps,Chicken pesto wraps,4,Tomatoes,2 medium,Review quantity wording,,,,Not explicitly stated
+sweet-potato-soup,Roasted sweet potato soup,4,Sweet potatoes,1 kg,Explicit mass or volume,1000,g,250,Not explicitly stated
+sweet-potato-soup,Roasted sweet potato soup,4,Onions,2,Count or household measure; no mass conversion assumed,,,,Not explicitly stated
+sweet-potato-soup,Roasted sweet potato soup,4,Vegetable stock,1 carton,Review quantity wording,,,,Not explicitly stated
+sweet-potato-soup,Roasted sweet potato soup,4,Natural yoghurt,150 g,Explicit mass or volume,150,g,37.5,Not explicitly stated
+sweet-potato-soup,Roasted sweet potato soup,4,Bread,1 loaf,Review quantity wording,,,,Not explicitly stated
+sweet-potato-soup,Roasted sweet potato soup,4,Ground cumin,1 tsp,Count or household measure; no mass conversion assumed,,,,Not explicitly stated
+sweet-potato-soup,Roasted sweet potato soup,4,Cooking oil,1 tbsp,Count or household measure; no mass conversion assumed,,,,Not explicitly stated
+sweet-potato-soup,Roasted sweet potato soup,4,Lemon,1,Count or household measure; no mass conversion assumed,,,,Not explicitly stated
+sweet-potato-soup,Roasted sweet potato soup,4,Garlic,2 cloves,Count or household measure; no mass conversion assumed,,,,Not explicitly stated
+prawn-linguine,Garlic prawn linguine,4,Prawns,300 g,Explicit mass or volume,300,g,75,Not explicitly stated
+prawn-linguine,Garlic prawn linguine,4,Linguine,500 g,Explicit mass or volume,500,g,125,Not explicitly stated
+prawn-linguine,Garlic prawn linguine,4,Garlic,1 bulb,Review quantity wording,,,,Not explicitly stated
+prawn-linguine,Garlic prawn linguine,4,Lemon,1,Count or household measure; no mass conversion assumed,,,,Not explicitly stated
+prawn-linguine,Garlic prawn linguine,4,Parsley,15 g,Explicit mass or volume,15,g,3.75,Not explicitly stated
+prawn-linguine,Garlic prawn linguine,4,Chilli flakes,½ tsp (optional),Optional or seasoning; review as part of dish,,,,Not explicitly stated
+prawn-linguine,Garlic prawn linguine,4,Olive oil,1 tbsp,Count or household measure; no mass conversion assumed,,,,Not explicitly stated
+turkey-chilli,Turkey and sweetcorn chilli,4,Turkey mince,500 g,Explicit mass or volume,500,g,125,Not explicitly stated
+turkey-chilli,Turkey and sweetcorn chilli,4,Kidney beans,2 cans,Review quantity wording,,,,Not explicitly stated
+turkey-chilli,Turkey and sweetcorn chilli,4,Chopped tomatoes,2 cans,Review quantity wording,,,,Not explicitly stated
+turkey-chilli,Turkey and sweetcorn chilli,4,Sweetcorn,1 can,Review quantity wording,,,,Not explicitly stated
+turkey-chilli,Turkey and sweetcorn chilli,4,Rice,500 g,Explicit mass or volume,500,g,125,Not explicitly stated
+turkey-chilli,Turkey and sweetcorn chilli,4,Onion,1 medium,Review quantity wording,,,,Not explicitly stated
+turkey-chilli,Turkey and sweetcorn chilli,4,Garlic,2 cloves,Count or household measure; no mass conversion assumed,,,,Not explicitly stated
+turkey-chilli,Turkey and sweetcorn chilli,4,Ground cumin,1 tsp,Count or household measure; no mass conversion assumed,,,,Not explicitly stated
+turkey-chilli,Turkey and sweetcorn chilli,4,Smoked paprika,1 tsp,Count or household measure; no mass conversion assumed,,,,Not explicitly stated
+turkey-chilli,Turkey and sweetcorn chilli,4,Natural yoghurt,"150 g (to serve, optional)",Explicit mass or volume,150,g,37.5,Not explicitly stated
+turkey-chilli,Turkey and sweetcorn chilli,4,Lime,1,Count or household measure; no mass conversion assumed,,,,Not explicitly stated
+halloumi-grain-bowls,Halloumi grain bowls,4,Halloumi,250 g,Explicit mass or volume,250,g,62.5,Not explicitly stated
+halloumi-grain-bowls,Halloumi grain bowls,4,Couscous,300 g,Explicit mass or volume,300,g,75,Not explicitly stated
+halloumi-grain-bowls,Halloumi grain bowls,4,Cucumber,1,Count or household measure; no mass conversion assumed,,,,Not explicitly stated
+halloumi-grain-bowls,Halloumi grain bowls,4,Cherry tomatoes,1 punnet,Review quantity wording,,,,Not explicitly stated
+halloumi-grain-bowls,Halloumi grain bowls,4,Spinach,150 g,Explicit mass or volume,150,g,37.5,Not explicitly stated
+halloumi-grain-bowls,Halloumi grain bowls,4,Lemon,1,Count or household measure; no mass conversion assumed,,,,Not explicitly stated
+halloumi-grain-bowls,Halloumi grain bowls,4,Natural yoghurt,150 g,Explicit mass or volume,150,g,37.5,Not explicitly stated
+halloumi-grain-bowls,Halloumi grain bowls,4,Olive oil,1 tbsp,Count or household measure; no mass conversion assumed,,,,Not explicitly stated
+bbq-chicken-pizza,BBQ chicken flatbread pizzas,4,Flatbreads,4,Count or household measure; no mass conversion assumed,,,,Not explicitly stated
+bbq-chicken-pizza,BBQ chicken flatbread pizzas,4,Cooked chicken,300 g,Explicit mass or volume,300,g,75,Cooked stated
+bbq-chicken-pizza,BBQ chicken flatbread pizzas,4,BBQ sauce,90 ml,Explicit mass or volume,90,ml,22.5,Not explicitly stated
+bbq-chicken-pizza,BBQ chicken flatbread pizzas,4,Cheddar,200 g,Explicit mass or volume,200,g,50,Not explicitly stated
+bbq-chicken-pizza,BBQ chicken flatbread pizzas,4,Red onion,1,Count or household measure; no mass conversion assumed,,,,Not explicitly stated
+bbq-chicken-pizza,BBQ chicken flatbread pizzas,4,Spring onions,2 (optional),Optional or seasoning; review as part of dish,,,,Not explicitly stated
+bbq-chicken-pizza,BBQ chicken flatbread pizzas,4,Smoked paprika,3 g,Explicit mass or volume,3,g,0.75,Not explicitly stated
+bbq-chicken-pizza,BBQ chicken flatbread pizzas,4,Apple cider vinegar,15 ml,Explicit mass or volume,15,ml,3.75,Not explicitly stated
+breakfast-shakshuka,Tomato & pepper shakshuka,4,Eggs,6,Count or household measure; no mass conversion assumed,,,,Not explicitly stated
+breakfast-shakshuka,Tomato & pepper shakshuka,4,Chopped tomatoes,2 cans,Review quantity wording,,,,Not explicitly stated
+breakfast-shakshuka,Tomato & pepper shakshuka,4,Bell peppers,2,Count or household measure; no mass conversion assumed,,,,Not explicitly stated
+breakfast-shakshuka,Tomato & pepper shakshuka,4,Onions,1,Count or household measure; no mass conversion assumed,,,,Not explicitly stated
+breakfast-shakshuka,Tomato & pepper shakshuka,4,Bread,1 loaf,Review quantity wording,,,,Not explicitly stated
+breakfast-shakshuka,Tomato & pepper shakshuka,4,Garlic,2 cloves,Count or household measure; no mass conversion assumed,,,,Not explicitly stated
+breakfast-shakshuka,Tomato & pepper shakshuka,4,Ground cumin,1 tsp,Count or household measure; no mass conversion assumed,,,,Not explicitly stated
+breakfast-shakshuka,Tomato & pepper shakshuka,4,Paprika,1 tsp,Count or household measure; no mass conversion assumed,,,,Not explicitly stated
+banana-oat-pancakes,Banana oat pancakes,2,Bananas,2,Count or household measure; no mass conversion assumed,,,,Not explicitly stated
+banana-oat-pancakes,Banana oat pancakes,2,Eggs,2,Count or household measure; no mass conversion assumed,,,,Not explicitly stated
+banana-oat-pancakes,Banana oat pancakes,2,Oats,150 g,Explicit mass or volume,150,g,75,Not explicitly stated
+banana-oat-pancakes,Banana oat pancakes,2,Milk,150 ml,Explicit mass or volume,150,ml,75,Not explicitly stated
+banana-oat-pancakes,Banana oat pancakes,2,Natural yoghurt,75 g,Explicit mass or volume,75,g,37.5,Not explicitly stated
+banana-oat-pancakes,Banana oat pancakes,2,Baking powder,1 tsp,Count or household measure; no mass conversion assumed,,,,Not explicitly stated
+banana-oat-pancakes,Banana oat pancakes,2,Ground cinnamon,½ tsp (optional),Optional or seasoning; review as part of dish,,,,Not explicitly stated
+baked-potato-beans,Jacket potatoes with cheesy beans,4,Baking potatoes,4,Count or household measure; no mass conversion assumed,,,,Not explicitly stated
+baked-potato-beans,Jacket potatoes with cheesy beans,4,Baked beans,2 cans,Review quantity wording,,,,Not explicitly stated
+baked-potato-beans,Jacket potatoes with cheesy beans,4,Cheddar,200 g,Explicit mass or volume,200,g,50,Not explicitly stated
+baked-potato-beans,Jacket potatoes with cheesy beans,4,Butter,40 g,Explicit mass or volume,40,g,10,Not explicitly stated
+baked-potato-beans,Jacket potatoes with cheesy beans,4,Cooking oil,1 tbsp,Count or household measure; no mass conversion assumed,,,,Not explicitly stated
+baked-potato-beans,Jacket potatoes with cheesy beans,4,Smoked paprika,2 g,Explicit mass or volume,2,g,0.5,Not explicitly stated
+greek-chicken-tray,Greek chicken & lemon potatoes,4,Chicken thighs,800 g,Explicit mass or volume,800,g,200,Not explicitly stated
+greek-chicken-tray,Greek chicken & lemon potatoes,4,Potatoes,1 kg,Explicit mass or volume,1000,g,250,Not explicitly stated
+greek-chicken-tray,Greek chicken & lemon potatoes,4,Lemon,2,Count or household measure; no mass conversion assumed,,,,Not explicitly stated
+greek-chicken-tray,Greek chicken & lemon potatoes,4,Feta,200 g,Explicit mass or volume,200,g,50,Not explicitly stated
+greek-chicken-tray,Greek chicken & lemon potatoes,4,Red onion,2,Count or household measure; no mass conversion assumed,,,,Not explicitly stated
+greek-chicken-tray,Greek chicken & lemon potatoes,4,Dried oregano,2 tsp,Count or household measure; no mass conversion assumed,,,,Not explicitly stated
+greek-chicken-tray,Greek chicken & lemon potatoes,4,Garlic,3 cloves,Count or household measure; no mass conversion assumed,,,,Not explicitly stated
+greek-chicken-tray,Greek chicken & lemon potatoes,4,Olives,80 g (optional),Explicit mass or volume,80,g,20,Not explicitly stated
+greek-chicken-tray,Greek chicken & lemon potatoes,4,Olive oil,1 tbsp,Count or household measure; no mass conversion assumed,,,,Not explicitly stated
+teriyaki-beef-noodles,Teriyaki beef noodles,4,Beef strips,400 g,Explicit mass or volume,400,g,100,Not explicitly stated
+teriyaki-beef-noodles,Teriyaki beef noodles,4,Egg noodles,250 g dry egg noodles,Explicit mass or volume,250,g,62.5,Dry stated
+teriyaki-beef-noodles,Teriyaki beef noodles,4,Stir-fry vegetables,400 g,Explicit mass or volume,400,g,100,Not explicitly stated
+teriyaki-beef-noodles,Teriyaki beef noodles,4,Teriyaki sauce,90 ml,Explicit mass or volume,90,ml,22.5,Not explicitly stated
+teriyaki-beef-noodles,Teriyaki beef noodles,4,Fresh Ginger,15 g,Explicit mass or volume,15,g,3.75,Not explicitly stated
+teriyaki-beef-noodles,Teriyaki beef noodles,4,Lime,1,Count or household measure; no mass conversion assumed,,,,Not explicitly stated
+spinach-ricotta-shells,Spinach ricotta pasta bake,4,Pasta shells,500 g,Explicit mass or volume,500,g,125,Not explicitly stated
+spinach-ricotta-shells,Spinach ricotta pasta bake,4,Ricotta,250 g,Explicit mass or volume,250,g,62.5,Not explicitly stated
+spinach-ricotta-shells,Spinach ricotta pasta bake,4,Spinach,150 g,Explicit mass or volume,150,g,37.5,Not explicitly stated
+spinach-ricotta-shells,Spinach ricotta pasta bake,4,Passata,500 g,Explicit mass or volume,500,g,125,Not explicitly stated
+spinach-ricotta-shells,Spinach ricotta pasta bake,4,Mozzarella,1 ball,Review quantity wording,,,,Not explicitly stated
+spinach-ricotta-shells,Spinach ricotta pasta bake,4,Garlic,2 cloves,Count or household measure; no mass conversion assumed,,,,Not explicitly stated
+spinach-ricotta-shells,Spinach ricotta pasta bake,4,Dried oregano,2 g,Explicit mass or volume,2,g,0.5,Not explicitly stated
+coconut-lentil-dhal,Coconut red lentil dhal,4,Red lentils,300 g,Explicit mass or volume,300,g,75,Not explicitly stated
+coconut-lentil-dhal,Coconut red lentil dhal,4,Coconut milk,1 can,Review quantity wording,,,,Not explicitly stated
+coconut-lentil-dhal,Coconut red lentil dhal,4,Chopped tomatoes,1 can,Review quantity wording,,,,Not explicitly stated
+coconut-lentil-dhal,Coconut red lentil dhal,4,Rice,500 g,Explicit mass or volume,500,g,125,Not explicitly stated
+coconut-lentil-dhal,Coconut red lentil dhal,4,Onions,2,Count or household measure; no mass conversion assumed,,,,Not explicitly stated
+coconut-lentil-dhal,Coconut red lentil dhal,4,Garlic,3 cloves,Count or household measure; no mass conversion assumed,,,,Not explicitly stated
+coconut-lentil-dhal,Coconut red lentil dhal,4,Fresh ginger,2 cm piece,Review quantity wording,,,,Not explicitly stated
+coconut-lentil-dhal,Coconut red lentil dhal,4,Curry powder,2 tsp,Count or household measure; no mass conversion assumed,,,,Not explicitly stated
+coconut-lentil-dhal,Coconut red lentil dhal,4,Lime,1 (optional),Optional or seasoning; review as part of dish,,,,Not explicitly stated
+roast-veg-couscous,Roasted vegetable couscous,4,Couscous,300 g,Explicit mass or volume,300,g,75,Not explicitly stated
+roast-veg-couscous,Roasted vegetable couscous,4,Courgette,2,Count or household measure; no mass conversion assumed,,,,Not explicitly stated
+roast-veg-couscous,Roasted vegetable couscous,4,Bell peppers,2,Count or household measure; no mass conversion assumed,,,,Not explicitly stated
+roast-veg-couscous,Roasted vegetable couscous,4,Red onion,1,Count or household measure; no mass conversion assumed,,,,Not explicitly stated
+roast-veg-couscous,Roasted vegetable couscous,4,Lemon,1,Count or household measure; no mass conversion assumed,,,,Not explicitly stated
+roast-veg-couscous,Roasted vegetable couscous,4,Ground cumin,1 tsp,Count or household measure; no mass conversion assumed,,,,Not explicitly stated
+roast-veg-couscous,Roasted vegetable couscous,4,Vegetable stock,300 ml,Explicit mass or volume,300,ml,75,Not explicitly stated
+roast-veg-couscous,Roasted vegetable couscous,4,Fresh herbs,small handful (optional),Optional or seasoning; review as part of dish,,,,Not explicitly stated
+roast-veg-couscous,Roasted vegetable couscous,4,Cooking oil,1 tbsp,Count or household measure; no mass conversion assumed,,,,Not explicitly stated
+pork-apple-tray,Pork chops with apple & mustard,4,Pork chops,4,Count or household measure; no mass conversion assumed,,,,Not explicitly stated
+pork-apple-tray,Pork chops with apple & mustard,4,Apples,2,Count or household measure; no mass conversion assumed,,,,Not explicitly stated
+pork-apple-tray,Pork chops with apple & mustard,4,Potatoes,800 g,Explicit mass or volume,800,g,200,Not explicitly stated
+pork-apple-tray,Pork chops with apple & mustard,4,Onions,2,Count or household measure; no mass conversion assumed,,,,Not explicitly stated
+pork-apple-tray,Pork chops with apple & mustard,4,Wholegrain mustard,20 g,Explicit mass or volume,20,g,5,Not explicitly stated
+pork-apple-tray,Pork chops with apple & mustard,4,Garlic,2 cloves,Count or household measure; no mass conversion assumed,,,,Not explicitly stated
+pork-apple-tray,Pork chops with apple & mustard,4,Fresh parsley,10 g,Explicit mass or volume,10,g,2.5,Not explicitly stated
+sausage-lentil-stew,Sausage & lentil stew,4,Sausages,6,Count or household measure; no mass conversion assumed,,,,Not explicitly stated
+sausage-lentil-stew,Sausage & lentil stew,4,Green lentils,250 g,Explicit mass or volume,250,g,62.5,Not explicitly stated
+sausage-lentil-stew,Sausage & lentil stew,4,Carrots,3,Count or household measure; no mass conversion assumed,,,,Not explicitly stated
+sausage-lentil-stew,Sausage & lentil stew,4,Onions,2,Count or household measure; no mass conversion assumed,,,,Not explicitly stated
+sausage-lentil-stew,Sausage & lentil stew,4,Stock,1 carton,Review quantity wording,,,,Not explicitly stated
+sausage-lentil-stew,Sausage & lentil stew,4,Celery,2 sticks,Review quantity wording,,,,Not explicitly stated
+sausage-lentil-stew,Sausage & lentil stew,4,Fresh parsley,10 g,Explicit mass or volume,10,g,2.5,Not explicitly stated
+chicken-noodle-soup,Chicken noodle soup,4,Chicken,400 g,Explicit mass or volume,400,g,100,Not explicitly stated
+chicken-noodle-soup,Chicken noodle soup,4,Egg noodles,250 g dry egg noodles,Explicit mass or volume,250,g,62.5,Dry stated
+chicken-noodle-soup,Chicken noodle soup,4,Carrots,3,Count or household measure; no mass conversion assumed,,,,Not explicitly stated
+chicken-noodle-soup,Chicken noodle soup,4,Stock,1 carton,Review quantity wording,,,,Not explicitly stated
+chicken-noodle-soup,Chicken noodle soup,4,Celery,1 bunch,Review quantity wording,,,,Not explicitly stated
+chicken-noodle-soup,Chicken noodle soup,4,Onion,1 medium,Review quantity wording,,,,Not explicitly stated
+chicken-noodle-soup,Chicken noodle soup,4,Fresh parsley,small handful (optional),Optional or seasoning; review as part of dish,,,,Not explicitly stated
+chicken-noodle-soup,Chicken noodle soup,4,Fresh Ginger,10 g,Explicit mass or volume,10,g,2.5,Not explicitly stated
+chicken-noodle-soup,Chicken noodle soup,4,Lime,1,Count or household measure; no mass conversion assumed,,,,Not explicitly stated
+baked-feta-orzo,Baked feta tomato orzo,4,Orzo,400 g,Explicit mass or volume,400,g,100,Not explicitly stated
+baked-feta-orzo,Baked feta tomato orzo,4,Feta,200 g,Explicit mass or volume,200,g,50,Not explicitly stated
+baked-feta-orzo,Baked feta tomato orzo,4,Cherry tomatoes,2 punnets,Review quantity wording,,,,Not explicitly stated
+baked-feta-orzo,Baked feta tomato orzo,4,Garlic,1 bulb,Review quantity wording,,,,Not explicitly stated
+baked-feta-orzo,Baked feta tomato orzo,4,Spinach,150 g,Explicit mass or volume,150,g,37.5,Not explicitly stated
+baked-feta-orzo,Baked feta tomato orzo,4,Olive oil,2 tbsp,Count or household measure; no mass conversion assumed,,,,Not explicitly stated
+baked-feta-orzo,Baked feta tomato orzo,4,Dried oregano,2 g,Explicit mass or volume,2,g,0.5,Not explicitly stated
+chicken-katsu-curry,Chicken katsu-style curry,4,Chicken breast,600 g,Explicit mass or volume,600,g,150,Not explicitly stated
+chicken-katsu-curry,Chicken katsu-style curry,4,Panko breadcrumbs,100 g,Explicit mass or volume,100,g,25,Not explicitly stated
+chicken-katsu-curry,Chicken katsu-style curry,4,Rice,500 g dry rice (cook fresh; allow extra time if not already prepared),Explicit mass or volume,500,g,125,Dry stated
+chicken-katsu-curry,Chicken katsu-style curry,4,Carrots,2,Count or household measure; no mass conversion assumed,,,,Not explicitly stated
+chicken-katsu-curry,Chicken katsu-style curry,4,Curry powder,15 g,Explicit mass or volume,15,g,3.75,Not explicitly stated
+chicken-katsu-curry,Chicken katsu-style curry,4,Plain flour,80 g,Explicit mass or volume,80,g,20,Not explicitly stated
+chicken-katsu-curry,Chicken katsu-style curry,4,Egg,1,Count or household measure; no mass conversion assumed,,,,Not explicitly stated
+chicken-katsu-curry,Chicken katsu-style curry,4,Onion,1,Count or household measure; no mass conversion assumed,,,,Not explicitly stated
+chicken-katsu-curry,Chicken katsu-style curry,4,Chicken stock,400 ml,Explicit mass or volume,400,ml,100,Not explicitly stated
+chicken-katsu-curry,Chicken katsu-style curry,4,Fresh Ginger,10 g,Explicit mass or volume,10,g,2.5,Not explicitly stated
+loaded-nachos,Loaded beef nachos,4,Beef mince,400 g,Explicit mass or volume,400,g,100,Not explicitly stated
+loaded-nachos,Loaded beef nachos,4,Tortilla chips,2 bags,Review quantity wording,,,,Not explicitly stated
+loaded-nachos,Loaded beef nachos,4,Cheddar,250 g,Explicit mass or volume,250,g,62.5,Not explicitly stated
+loaded-nachos,Loaded beef nachos,4,Salsa,150 g,Explicit mass or volume,150,g,37.5,Not explicitly stated
+loaded-nachos,Loaded beef nachos,4,Natural yoghurt,150 g,Explicit mass or volume,150,g,37.5,Not explicitly stated
+loaded-nachos,Loaded beef nachos,4,Taco seasoning,2 tbsp,Count or household measure; no mass conversion assumed,,,,Not explicitly stated
+loaded-nachos,Loaded beef nachos,4,Tomatoes,2,Count or household measure; no mass conversion assumed,,,,Not explicitly stated
+loaded-nachos,Loaded beef nachos,4,Spring onions,3,Count or household measure; no mass conversion assumed,,,,Not explicitly stated
+loaded-nachos,Loaded beef nachos,4,Lime,1,Count or household measure; no mass conversion assumed,,,,Not explicitly stated
+broccoli-cheddar-soup,Broccoli cheddar soup,4,Broccoli,2 heads,Review quantity wording,,,,Not explicitly stated
+broccoli-cheddar-soup,Broccoli cheddar soup,4,Cheddar,250 g,Explicit mass or volume,250,g,62.5,Not explicitly stated
+broccoli-cheddar-soup,Broccoli cheddar soup,4,Milk,500 ml,Explicit mass or volume,500,ml,125,Not explicitly stated
+broccoli-cheddar-soup,Broccoli cheddar soup,4,Onion,1,Count or household measure; no mass conversion assumed,,,,Not explicitly stated
+broccoli-cheddar-soup,Broccoli cheddar soup,4,Bread,1 loaf,Review quantity wording,,,,Not explicitly stated
+broccoli-cheddar-soup,Broccoli cheddar soup,4,Butter,25 g,Explicit mass or volume,25,g,6.25,Not explicitly stated
+broccoli-cheddar-soup,Broccoli cheddar soup,4,Vegetable stock,750 ml,Explicit mass or volume,750,ml,187.5,Not explicitly stated
+broccoli-cheddar-soup,Broccoli cheddar soup,4,Fresh parsley,10 g,Explicit mass or volume,10,g,2.5,Not explicitly stated
+tuna-sweetcorn-pasta,Tuna sweetcorn pasta,4,Pasta,500 g,Explicit mass or volume,500,g,125,Not explicitly stated
+tuna-sweetcorn-pasta,Tuna sweetcorn pasta,4,Tinned tuna,2 cans,Review quantity wording,,,,Not explicitly stated
+tuna-sweetcorn-pasta,Tuna sweetcorn pasta,4,Sweetcorn,1 can,Review quantity wording,,,,Not explicitly stated
+tuna-sweetcorn-pasta,Tuna sweetcorn pasta,4,Natural yoghurt,150 g,Explicit mass or volume,150,g,37.5,Not explicitly stated
+tuna-sweetcorn-pasta,Tuna sweetcorn pasta,4,Lemon,1,Count or household measure; no mass conversion assumed,,,,Not explicitly stated
+tuna-sweetcorn-pasta,Tuna sweetcorn pasta,4,Salad leaves,100 g,Explicit mass or volume,100,g,25,Not explicitly stated
+tuna-sweetcorn-pasta,Tuna sweetcorn pasta,4,Garlic,2 cloves,Count or household measure; no mass conversion assumed,,,,Not explicitly stated
+tuna-sweetcorn-pasta,Tuna sweetcorn pasta,4,Dried oregano,2 g,Explicit mass or volume,2,g,0.5,Not explicitly stated
+aubergine-parmigiana,Aubergine parmigiana,4,Aubergines,2,Count or household measure; no mass conversion assumed,,,,Not explicitly stated
+aubergine-parmigiana,Aubergine parmigiana,4,Passata,500 g,Explicit mass or volume,500,g,125,Not explicitly stated
+aubergine-parmigiana,Aubergine parmigiana,4,Mozzarella,2 balls,Review quantity wording,,,,Not explicitly stated
+aubergine-parmigiana,Aubergine parmigiana,4,Parmesan,1 block,Review quantity wording,,,,Not explicitly stated
+aubergine-parmigiana,Aubergine parmigiana,4,Basil,15 g,Explicit mass or volume,15,g,3.75,Not explicitly stated
+aubergine-parmigiana,Aubergine parmigiana,4,Garlic,2 cloves,Count or household measure; no mass conversion assumed,,,,Not explicitly stated
+aubergine-parmigiana,Aubergine parmigiana,4,Olive Oil,20 ml,Explicit mass or volume,20,ml,5,Not explicitly stated
+pesto-salmon-potatoes,Pesto salmon with potatoes,4,Salmon fillets,4,Count or household measure; no mass conversion assumed,,,,Not explicitly stated
+pesto-salmon-potatoes,Pesto salmon with potatoes,4,Potatoes,800 g,Explicit mass or volume,800,g,200,Not explicitly stated
+pesto-salmon-potatoes,Pesto salmon with potatoes,4,Broccoli,1 head,Review quantity wording,,,,Not explicitly stated
+pesto-salmon-potatoes,Pesto salmon with potatoes,4,Pesto,80 g,Explicit mass or volume,80,g,20,Not explicitly stated
+pesto-salmon-potatoes,Pesto salmon with potatoes,4,Lemon,1,Count or household measure; no mass conversion assumed,,,,Not explicitly stated
+pesto-salmon-potatoes,Pesto salmon with potatoes,4,Olive oil,2 tbsp,Count or household measure; no mass conversion assumed,,,,Not explicitly stated
+chorizo-chickpea-stew,Chorizo & chickpea stew,4,Chorizo,200 g,Explicit mass or volume,200,g,50,Not explicitly stated
+chorizo-chickpea-stew,Chorizo & chickpea stew,4,Chickpeas,2 cans,Review quantity wording,,,,Not explicitly stated
+chorizo-chickpea-stew,Chorizo & chickpea stew,4,Chopped tomatoes,1 can,Review quantity wording,,,,Not explicitly stated
+chorizo-chickpea-stew,Chorizo & chickpea stew,4,Spinach,150 g,Explicit mass or volume,150,g,37.5,Not explicitly stated
+chorizo-chickpea-stew,Chorizo & chickpea stew,4,Bread,1 loaf,Review quantity wording,,,,Not explicitly stated
+chorizo-chickpea-stew,Chorizo & chickpea stew,4,Onion,1,Count or household measure; no mass conversion assumed,,,,Not explicitly stated
+chorizo-chickpea-stew,Chorizo & chickpea stew,4,Garlic,2 cloves,Count or household measure; no mass conversion assumed,,,,Not explicitly stated
+chorizo-chickpea-stew,Chorizo & chickpea stew,4,Smoked paprika,1 tsp,Count or household measure; no mass conversion assumed,,,,Not explicitly stated
+chorizo-chickpea-stew,Chorizo & chickpea stew,4,Vegetable stock,250 ml,Explicit mass or volume,250,ml,62.5,Not explicitly stated
+miso-salmon-rice,Miso-glazed salmon rice bowls,4,Salmon fillets,4,Count or household measure; no mass conversion assumed,,,,Not explicitly stated
+miso-salmon-rice,Miso-glazed salmon rice bowls,4,Rice,500 g,Explicit mass or volume,500,g,125,Not explicitly stated
+miso-salmon-rice,Miso-glazed salmon rice bowls,4,Miso paste,35 g,Explicit mass or volume,35,g,8.75,Not explicitly stated
+miso-salmon-rice,Miso-glazed salmon rice bowls,4,Tenderstem broccoli,2 packs,Review quantity wording,,,,Not explicitly stated
+miso-salmon-rice,Miso-glazed salmon rice bowls,4,Honey,1 tbsp,Count or household measure; no mass conversion assumed,,,,Not explicitly stated
+miso-salmon-rice,Miso-glazed salmon rice bowls,4,Sesame seeds,1 tbsp,Count or household measure; no mass conversion assumed,,,,Not explicitly stated
+miso-salmon-rice,Miso-glazed salmon rice bowls,4,Fresh Ginger,10 g,Explicit mass or volume,10,g,2.5,Not explicitly stated
+miso-salmon-rice,Miso-glazed salmon rice bowls,4,Lime,1,Count or household measure; no mass conversion assumed,,,,Not explicitly stated
+falafel-pitas,Falafel & crunchy salad pitas,4,Falafel,12 prepared falafel balls,Review quantity wording,,,,Not explicitly stated
+falafel-pitas,Falafel & crunchy salad pitas,4,Pitta breads,4 pitta breads,Review quantity wording,,,,Not explicitly stated
+falafel-pitas,Falafel & crunchy salad pitas,4,Cucumber,1,Count or household measure; no mass conversion assumed,,,,Not explicitly stated
+falafel-pitas,Falafel & crunchy salad pitas,4,Tomatoes,4,Count or household measure; no mass conversion assumed,,,,Not explicitly stated
+falafel-pitas,Falafel & crunchy salad pitas,4,Lettuce,1,Count or household measure; no mass conversion assumed,,,,Not explicitly stated
+falafel-pitas,Falafel & crunchy salad pitas,4,Natural yoghurt,150 g,Explicit mass or volume,150,g,37.5,Not explicitly stated
+falafel-pitas,Falafel & crunchy salad pitas,4,Lemon,1,Count or household measure; no mass conversion assumed,,,,Not explicitly stated
+slow-beef-stew,Slow-cooker beef & root vegetable stew,6,Diced stewing beef,800 g,Explicit mass or volume,800,g,133.333,Not explicitly stated
+slow-beef-stew,Slow-cooker beef & root vegetable stew,6,Potatoes,700 g,Explicit mass or volume,700,g,116.667,Not explicitly stated
+slow-beef-stew,Slow-cooker beef & root vegetable stew,6,Carrots,4,Count or household measure; no mass conversion assumed,,,,Not explicitly stated
+slow-beef-stew,Slow-cooker beef & root vegetable stew,6,Beef stock,500 ml,Explicit mass or volume,500,ml,83.3333,Not explicitly stated
+slow-beef-stew,Slow-cooker beef & root vegetable stew,6,Onion,1,Count or household measure; no mass conversion assumed,,,,Not explicitly stated
+slow-beef-stew,Slow-cooker beef & root vegetable stew,6,Dried thyme,1 tsp,Count or household measure; no mass conversion assumed,,,,Not explicitly stated
+slow-chicken-curry,Slow-cooker coconut chicken curry,4,Chicken thighs,800 g,Explicit mass or volume,800,g,200,Not explicitly stated
+slow-chicken-curry,Slow-cooker coconut chicken curry,4,Coconut milk,2 cans,Review quantity wording,,,,Not explicitly stated
+slow-chicken-curry,Slow-cooker coconut chicken curry,4,Curry paste,40 g,Explicit mass or volume,40,g,10,Not explicitly stated
+slow-chicken-curry,Slow-cooker coconut chicken curry,4,Spinach,150 g,Explicit mass or volume,150,g,37.5,Not explicitly stated
+slow-chicken-curry,Slow-cooker coconut chicken curry,4,Rice,400 g dry rice (cook just before serving),Explicit mass or volume,400,g,100,Dry stated
+slow-chicken-curry,Slow-cooker coconut chicken curry,4,Onion,1,Count or household measure; no mass conversion assumed,,,,Not explicitly stated
+slow-lamb-tagine,Slow-cooker apricot lamb tagine,4,Diced lamb,800 g,Explicit mass or volume,800,g,200,Not explicitly stated
+slow-lamb-tagine,Slow-cooker apricot lamb tagine,4,Dried apricots,150 g,Explicit mass or volume,150,g,37.5,Not explicitly stated
+slow-lamb-tagine,Slow-cooker apricot lamb tagine,4,Chopped tomatoes,1 can,Review quantity wording,,,,Not explicitly stated
+slow-lamb-tagine,Slow-cooker apricot lamb tagine,4,Couscous,400 g,Explicit mass or volume,400,g,100,Not explicitly stated
+slow-lamb-tagine,Slow-cooker apricot lamb tagine,4,Onion,1,Count or household measure; no mass conversion assumed,,,,Not explicitly stated
+slow-lamb-tagine,Slow-cooker apricot lamb tagine,4,Ground cumin,1 tsp,Count or household measure; no mass conversion assumed,,,,Not explicitly stated
+slow-lamb-tagine,Slow-cooker apricot lamb tagine,4,Lamb stock,250 ml,Explicit mass or volume,250,ml,62.5,Not explicitly stated
+slow-lamb-tagine,Slow-cooker apricot lamb tagine,4,Fresh parsley,10 g,Explicit mass or volume,10,g,2.5,Not explicitly stated
+slow-bolognese,Slow-cooker rich beef bolognese,6,Beef mince,750 g,Explicit mass or volume,750,g,125,Not explicitly stated
+slow-bolognese,Slow-cooker rich beef bolognese,6,Passata,700 g,Explicit mass or volume,700,g,116.667,Not explicitly stated
+slow-bolognese,Slow-cooker rich beef bolognese,6,Onion,1,Count or household measure; no mass conversion assumed,,,,Not explicitly stated
+slow-bolognese,Slow-cooker rich beef bolognese,6,Spaghetti,500 g,Explicit mass or volume,500,g,83.3333,Not explicitly stated
+slow-bolognese,Slow-cooker rich beef bolognese,6,Garlic,2 cloves,Count or household measure; no mass conversion assumed,,,,Not explicitly stated
+slow-bolognese,Slow-cooker rich beef bolognese,6,Mixed Italian herbs,2 tsp,Count or household measure; no mass conversion assumed,,,,Not explicitly stated
+slow-bolognese,Slow-cooker rich beef bolognese,6,Fresh parsley,10 g,Explicit mass or volume,10,g,1.66667,Not explicitly stated
+slow-honey-chicken,Slow-cooker honey garlic chicken,4,Chicken thighs,800 g,Explicit mass or volume,800,g,200,Not explicitly stated
+slow-honey-chicken,Slow-cooker honey garlic chicken,4,Honey,30 ml,Explicit mass or volume,30,ml,7.5,Not explicitly stated
+slow-honey-chicken,Slow-cooker honey garlic chicken,4,Soy sauce,30 ml,Explicit mass or volume,30,ml,7.5,Not explicitly stated
+slow-honey-chicken,Slow-cooker honey garlic chicken,4,Rice,400 g,Explicit mass or volume,400,g,100,Not explicitly stated
+slow-honey-chicken,Slow-cooker honey garlic chicken,4,Garlic,3 cloves,Count or household measure; no mass conversion assumed,,,,Not explicitly stated
+slow-honey-chicken,Slow-cooker honey garlic chicken,4,Fresh Ginger,15 g,Explicit mass or volume,15,g,3.75,Not explicitly stated
+slow-honey-chicken,Slow-cooker honey garlic chicken,4,Apple cider vinegar,15 ml,Explicit mass or volume,15,ml,3.75,Not explicitly stated
+slow-veggie-chilli,Slow-cooker sweet potato bean chilli,4,Sweet potatoes,800 g,Explicit mass or volume,800,g,200,Not explicitly stated
+slow-veggie-chilli,Slow-cooker sweet potato bean chilli,4,Mixed beans,2 cans,Review quantity wording,,,,Not explicitly stated
+slow-veggie-chilli,Slow-cooker sweet potato bean chilli,4,Chopped tomatoes,2 cans,Review quantity wording,,,,Not explicitly stated
+slow-veggie-chilli,Slow-cooker sweet potato bean chilli,4,Peppers,2,Count or household measure; no mass conversion assumed,,,,Not explicitly stated
+slow-veggie-chilli,Slow-cooker sweet potato bean chilli,4,Ground cumin,2 tsp,Count or household measure; no mass conversion assumed,,,,Not explicitly stated
+slow-veggie-chilli,Slow-cooker sweet potato bean chilli,4,Smoked paprika,1 tsp,Count or household measure; no mass conversion assumed,,,,Not explicitly stated
+date-garlic-prawns,Garlic butter prawns & linguine,2,Raw prawns,400 g,Explicit mass or volume,400,g,200,Not explicitly stated
+date-garlic-prawns,Garlic butter prawns & linguine,2,Linguine,250 g,Explicit mass or volume,250,g,125,Not explicitly stated
+date-garlic-prawns,Garlic butter prawns & linguine,2,Butter,100 g,Explicit mass or volume,100,g,50,Not explicitly stated
+date-garlic-prawns,Garlic butter prawns & linguine,2,Lemon,1,Count or household measure; no mass conversion assumed,,,,Not explicitly stated
+date-garlic-prawns,Garlic butter prawns & linguine,2,Parsley,1 bunch,Review quantity wording,,,,Not explicitly stated
+date-garlic-prawns,Garlic butter prawns & linguine,2,Garlic,3 cloves,Count or household measure; no mass conversion assumed,,,,Not explicitly stated
+date-garlic-prawns,Garlic butter prawns & linguine,2,Olive oil,1 tbsp,Count or household measure; no mass conversion assumed,,,,Not explicitly stated
+date-duck-orange,Pan-seared duck with orange glaze,2,Duck breasts,2,Count or household measure; no mass conversion assumed,,,,Not explicitly stated
+date-duck-orange,Pan-seared duck with orange glaze,2,Oranges,2,Count or household measure; no mass conversion assumed,,,,Not explicitly stated
+date-duck-orange,Pan-seared duck with orange glaze,2,Potatoes,600 g,Explicit mass or volume,600,g,300,Not explicitly stated
+date-duck-orange,Pan-seared duck with orange glaze,2,Honey,15 ml,Explicit mass or volume,15,ml,7.5,Not explicitly stated
+date-duck-orange,Pan-seared duck with orange glaze,2,Apple cider vinegar,15 ml,Explicit mass or volume,15,ml,7.5,Not explicitly stated
+date-pesto-gnocchi,Burrata pesto gnocchi,2,Gnocchi,500 g,Explicit mass or volume,500,g,250,Not explicitly stated
+date-pesto-gnocchi,Burrata pesto gnocchi,2,Burrata,1 ball,Review quantity wording,,,,Not explicitly stated
+date-pesto-gnocchi,Burrata pesto gnocchi,2,Pesto,40 g,Explicit mass or volume,40,g,20,Not explicitly stated
+date-pesto-gnocchi,Burrata pesto gnocchi,2,Cherry tomatoes,250 g,Explicit mass or volume,250,g,125,Not explicitly stated
+date-pesto-gnocchi,Burrata pesto gnocchi,2,Olive oil,1 tbsp,Count or household measure; no mass conversion assumed,,,,Not explicitly stated
+date-pesto-gnocchi,Burrata pesto gnocchi,2,Fresh basil,1 handful,Review quantity wording,,,,Not explicitly stated
+date-pesto-gnocchi,Burrata pesto gnocchi,2,Garlic,2 cloves,Count or household measure; no mass conversion assumed,,,,Not explicitly stated
+date-lemon-chicken,Lemon caper chicken piccata,2,Chicken breast,500 g,Explicit mass or volume,500,g,250,Not explicitly stated
+date-lemon-chicken,Lemon caper chicken piccata,2,Capers,15 g,Explicit mass or volume,15,g,7.5,Not explicitly stated
+date-lemon-chicken,Lemon caper chicken piccata,2,Lemons,2,Count or household measure; no mass conversion assumed,,,,Not explicitly stated
+date-lemon-chicken,Lemon caper chicken piccata,2,Baby potatoes,600 g,Explicit mass or volume,600,g,300,Not explicitly stated
+date-lemon-chicken,Lemon caper chicken piccata,2,Chicken stock,150 ml,Explicit mass or volume,150,ml,75,Not explicitly stated
+date-lemon-chicken,Lemon caper chicken piccata,2,Butter,25 g,Explicit mass or volume,25,g,12.5,Not explicitly stated
+date-lemon-chicken,Lemon caper chicken piccata,2,Garlic,2 cloves,Count or household measure; no mass conversion assumed,,,,Not explicitly stated
+date-stuffed-peppers,Mediterranean stuffed peppers,2,Bell peppers,4,Count or household measure; no mass conversion assumed,,,,Not explicitly stated
+date-stuffed-peppers,Mediterranean stuffed peppers,2,Couscous,200 g,Explicit mass or volume,200,g,100,Not explicitly stated
+date-stuffed-peppers,Mediterranean stuffed peppers,2,Chickpeas,1 can,Review quantity wording,,,,Not explicitly stated
+date-stuffed-peppers,Mediterranean stuffed peppers,2,Feta,200 g,Explicit mass or volume,200,g,100,Not explicitly stated
+date-stuffed-peppers,Mediterranean stuffed peppers,2,Mixed herbs,1 tsp,Count or household measure; no mass conversion assumed,,,,Not explicitly stated
+date-stuffed-peppers,Mediterranean stuffed peppers,2,Olive oil,1 tbsp,Count or household measure; no mass conversion assumed,,,,Not explicitly stated
+pan-lemon-chicken,One-pan lemon chicken & potatoes,4,Chicken thighs,800 g,Explicit mass or volume,800,g,200,Not explicitly stated
+pan-lemon-chicken,One-pan lemon chicken & potatoes,4,Potatoes,1 kg,Explicit mass or volume,1000,g,250,Not explicitly stated
+pan-lemon-chicken,One-pan lemon chicken & potatoes,4,Lemons,2,Count or household measure; no mass conversion assumed,,,,Not explicitly stated
+pan-lemon-chicken,One-pan lemon chicken & potatoes,4,Oregano,1 tsp,Count or household measure; no mass conversion assumed,,,,Not explicitly stated
+pan-lemon-chicken,One-pan lemon chicken & potatoes,4,Olive oil,2 tbsp,Count or household measure; no mass conversion assumed,,,,Not explicitly stated
+pan-lemon-chicken,One-pan lemon chicken & potatoes,4,Garlic,3 cloves,Count or household measure; no mass conversion assumed,,,,Not explicitly stated
+pan-sausage-rice,One-pan smoky sausage rice,4,Sausages,6,Count or household measure; no mass conversion assumed,,,,Not explicitly stated
+pan-sausage-rice,One-pan smoky sausage rice,4,Rice,400 g,Explicit mass or volume,400,g,100,Not explicitly stated
+pan-sausage-rice,One-pan smoky sausage rice,4,Peppers,2,Count or household measure; no mass conversion assumed,,,,Not explicitly stated
+pan-sausage-rice,One-pan smoky sausage rice,4,Chicken stock,750 ml,Explicit mass or volume,750,ml,187.5,Not explicitly stated
+pan-sausage-rice,One-pan smoky sausage rice,4,Onion,1,Count or household measure; no mass conversion assumed,,,,Not explicitly stated
+pan-sausage-rice,One-pan smoky sausage rice,4,Smoked paprika,1 tsp,Count or household measure; no mass conversion assumed,,,,Not explicitly stated
+pan-tomato-orzo,One-pan tomato basil orzo,4,Orzo,400 g,Explicit mass or volume,400,g,100,Not explicitly stated
+pan-tomato-orzo,One-pan tomato basil orzo,4,Passata,500 g,Explicit mass or volume,500,g,125,Not explicitly stated
+pan-tomato-orzo,One-pan tomato basil orzo,4,Mozzarella,1 ball,Review quantity wording,,,,Not explicitly stated
+pan-tomato-orzo,One-pan tomato basil orzo,4,Basil,1 bunch,Review quantity wording,,,,Not explicitly stated
+pan-tomato-orzo,One-pan tomato basil orzo,4,Garlic,2 cloves,Count or household measure; no mass conversion assumed,,,,Not explicitly stated
+pan-tomato-orzo,One-pan tomato basil orzo,4,Vegetable stock,500 ml,Explicit mass or volume,500,ml,125,Not explicitly stated
+pan-tomato-orzo,One-pan tomato basil orzo,4,Olive oil,1 tbsp,Count or household measure; no mass conversion assumed,,,,Not explicitly stated
+pan-teriyaki-salmon,One-pan teriyaki salmon noodles,4,Salmon fillets,4,Count or household measure; no mass conversion assumed,,,,Not explicitly stated
+pan-teriyaki-salmon,One-pan teriyaki salmon noodles,4,Egg noodles,300 g,Explicit mass or volume,300,g,75,Not explicitly stated
+pan-teriyaki-salmon,One-pan teriyaki salmon noodles,4,Stir-fry vegetables,400 g,Explicit mass or volume,400,g,100,Not explicitly stated
+pan-teriyaki-salmon,One-pan teriyaki salmon noodles,4,Teriyaki sauce,90 ml,Explicit mass or volume,90,ml,22.5,Not explicitly stated
+pan-teriyaki-salmon,One-pan teriyaki salmon noodles,4,Fresh Ginger,15 g,Explicit mass or volume,15,g,3.75,Not explicitly stated
+pan-teriyaki-salmon,One-pan teriyaki salmon noodles,4,Sesame Oil,10 ml,Explicit mass or volume,10,ml,2.5,Not explicitly stated
+pan-gnocchi-spinach,One-pan creamy spinach gnocchi,4,Gnocchi,500 g,Explicit mass or volume,500,g,125,Not explicitly stated
+pan-gnocchi-spinach,One-pan creamy spinach gnocchi,4,Spinach,200 g,Explicit mass or volume,200,g,50,Not explicitly stated
+pan-gnocchi-spinach,One-pan creamy spinach gnocchi,4,Double cream,200 ml,Explicit mass or volume,200,ml,50,Not explicitly stated
+pan-gnocchi-spinach,One-pan creamy spinach gnocchi,4,Parmesan,100 g,Explicit mass or volume,100,g,25,Not explicitly stated
+pan-gnocchi-spinach,One-pan creamy spinach gnocchi,4,Garlic,2 cloves,Count or household measure; no mass conversion assumed,,,,Not explicitly stated
+pan-gnocchi-spinach,One-pan creamy spinach gnocchi,4,Lemon,1,Count or household measure; no mass conversion assumed,,,,Not explicitly stated
+pan-fajita-rice,One-pan chicken fajita rice,4,Chicken breast,600 g,Explicit mass or volume,600,g,150,Not explicitly stated
+pan-fajita-rice,One-pan chicken fajita rice,4,Rice,400 g,Explicit mass or volume,400,g,100,Not explicitly stated
+pan-fajita-rice,One-pan chicken fajita rice,4,Mixed peppers,3,Count or household measure; no mass conversion assumed,,,,Not explicitly stated
+pan-fajita-rice,One-pan chicken fajita rice,4,Fajita seasoning,1 sachet,Review quantity wording,,,,Not explicitly stated
+pan-fajita-rice,One-pan chicken fajita rice,4,Onion,1,Count or household measure; no mass conversion assumed,,,,Not explicitly stated
+pan-fajita-rice,One-pan chicken fajita rice,4,Chicken stock,500 ml,Explicit mass or volume,500,ml,125,Not explicitly stated
+pan-fajita-rice,One-pan chicken fajita rice,4,Lime,1,Count or household measure; no mass conversion assumed,,,,Not explicitly stated
+family-chicken-wraps,Crispy chicken Caesar wraps,4,Chicken breast,600 g,Explicit mass or volume,600,g,150,Not explicitly stated
+family-chicken-wraps,Crispy chicken Caesar wraps,4,Wraps,8 medium tortilla wraps,Review quantity wording,,,,Not explicitly stated
+family-chicken-wraps,Crispy chicken Caesar wraps,4,Romaine lettuce,1,Count or household measure; no mass conversion assumed,,,,Not explicitly stated
+family-chicken-wraps,Crispy chicken Caesar wraps,4,Caesar dressing,80 ml,Explicit mass or volume,80,ml,20,Not explicitly stated
+family-chicken-wraps,Crispy chicken Caesar wraps,4,Breadcrumbs,80 g,Explicit mass or volume,80,g,20,Not explicitly stated
+family-chicken-wraps,Crispy chicken Caesar wraps,4,Parmesan,25 g,Explicit mass or volume,25,g,6.25,Not explicitly stated
+family-chicken-wraps,Crispy chicken Caesar wraps,4,Garlic,2 cloves,Count or household measure; no mass conversion assumed,,,,Not explicitly stated
+family-sweet-sour,Sweet & sour chicken,4,Chicken breast,700 g,Explicit mass or volume,700,g,175,Not explicitly stated
+family-sweet-sour,Sweet & sour chicken,4,Peppers,2,Count or household measure; no mass conversion assumed,,,,Not explicitly stated
+family-sweet-sour,Sweet & sour chicken,4,Pineapple chunks,1 can,Review quantity wording,,,,Not explicitly stated
+family-sweet-sour,Sweet & sour chicken,4,Sweet sour sauce,200 ml,Explicit mass or volume,200,ml,50,Not explicitly stated
+family-sweet-sour,Sweet & sour chicken,4,Rice,400 g,Explicit mass or volume,400,g,100,Not explicitly stated
+family-sweet-sour,Sweet & sour chicken,4,Fresh Ginger,10 g,Explicit mass or volume,10,g,2.5,Not explicitly stated
+extra-air-fryer-crispy-chicken-tenders,Air-fryer crispy chicken tenders,4,Chicken breast,600 g boneless chicken breast,Explicit mass or volume,600,g,150,Not explicitly stated
+extra-air-fryer-crispy-chicken-tenders,Air-fryer crispy chicken tenders,4,Breadcrumbs,100 g,Explicit mass or volume,100,g,25,Not explicitly stated
+extra-air-fryer-crispy-chicken-tenders,Air-fryer crispy chicken tenders,4,Eggs,2 eggs,Count or household measure; no mass conversion assumed,,,,Not explicitly stated
+extra-air-fryer-crispy-chicken-tenders,Air-fryer crispy chicken tenders,4,Paprika,1 tsp,Count or household measure; no mass conversion assumed,,,,Not explicitly stated
+extra-air-fryer-crispy-chicken-tenders,Air-fryer crispy chicken tenders,4,Garlic,2 cloves,Count or household measure; no mass conversion assumed,,,,Not explicitly stated
+extra-air-fryer-salmon-bites,Air-fryer salmon bites,4,Salmon fillets,4 salmon fillets (about 125–150 g each),Review quantity wording,,,,Not explicitly stated
+extra-air-fryer-salmon-bites,Air-fryer salmon bites,4,Soy sauce,2 tbsp,Count or household measure; no mass conversion assumed,,,,Not explicitly stated
+extra-air-fryer-salmon-bites,Air-fryer salmon bites,4,Honey,2 tbsp,Count or household measure; no mass conversion assumed,,,,Not explicitly stated
+extra-air-fryer-salmon-bites,Air-fryer salmon bites,4,Rice,300 g dry,Explicit mass or volume,300,g,75,Dry stated
+extra-air-fryer-salmon-bites,Air-fryer salmon bites,4,Spring onions,"2, sliced",Review quantity wording,,,,Not explicitly stated
+extra-air-fryer-salmon-bites,Air-fryer salmon bites,4,Fresh Ginger,10 g,Explicit mass or volume,10,g,2.5,Not explicitly stated
+extra-air-fryer-salmon-bites,Air-fryer salmon bites,4,Sesame Oil,10 ml,Explicit mass or volume,10,ml,2.5,Not explicitly stated
+extra-air-fryer-garlic-parmesan-potatoes,Air-fryer garlic parmesan potatoes,4,Baby potatoes,800 g,Explicit mass or volume,800,g,200,Not explicitly stated
+extra-air-fryer-garlic-parmesan-potatoes,Air-fryer garlic parmesan potatoes,4,Parmesan,50 g,Explicit mass or volume,50,g,12.5,Not explicitly stated
+extra-air-fryer-garlic-parmesan-potatoes,Air-fryer garlic parmesan potatoes,4,Garlic,2 cloves,Count or household measure; no mass conversion assumed,,,,Not explicitly stated
+extra-air-fryer-garlic-parmesan-potatoes,Air-fryer garlic parmesan potatoes,4,Parsley,2 tbsp chopped,Review quantity wording,,,,Not explicitly stated
+extra-air-fryer-garlic-parmesan-potatoes,Air-fryer garlic parmesan potatoes,4,Olive oil,1 tbsp,Count or household measure; no mass conversion assumed,,,,Not explicitly stated
+extra-air-fryer-garlic-parmesan-potatoes,Air-fryer garlic parmesan potatoes,4,Lemon,1,Count or household measure; no mass conversion assumed,,,,Not explicitly stated
+extra-air-fryer-turkey-meatballs,Air-fryer turkey meatballs,4,Turkey mince,500 g turkey mince,Explicit mass or volume,500,g,125,Not explicitly stated
+extra-air-fryer-turkey-meatballs,Air-fryer turkey meatballs,4,Breadcrumbs,100 g,Explicit mass or volume,100,g,25,Not explicitly stated
+extra-air-fryer-turkey-meatballs,Air-fryer turkey meatballs,4,Passata,500 g,Explicit mass or volume,500,g,125,Not explicitly stated
+extra-air-fryer-turkey-meatballs,Air-fryer turkey meatballs,4,Pasta,350 g dry,Explicit mass or volume,350,g,87.5,Dry stated
+extra-air-fryer-turkey-meatballs,Air-fryer turkey meatballs,4,Egg,1,Count or household measure; no mass conversion assumed,,,,Not explicitly stated
+extra-air-fryer-turkey-meatballs,Air-fryer turkey meatballs,4,Italian herbs,1 tsp,Count or household measure; no mass conversion assumed,,,,Not explicitly stated
+extra-15-minute-pesto-tortellini,15-minute pesto tortellini,4,Cheese tortellini,500 g fresh cheese tortellini,Explicit mass or volume,500,g,125,Not explicitly stated
+extra-15-minute-pesto-tortellini,15-minute pesto tortellini,4,Pesto,4 tbsp,Count or household measure; no mass conversion assumed,,,,Not explicitly stated
+extra-15-minute-pesto-tortellini,15-minute pesto tortellini,4,Cherry tomatoes,300 g,Explicit mass or volume,300,g,75,Not explicitly stated
+extra-15-minute-pesto-tortellini,15-minute pesto tortellini,4,Parmesan,50 g,Explicit mass or volume,50,g,12.5,Not explicitly stated
+extra-15-minute-pesto-tortellini,15-minute pesto tortellini,4,Lemon,1,Count or household measure; no mass conversion assumed,,,,Not explicitly stated
+extra-speedy-beef-udon-noodles,Speedy beef udon noodles,4,Beef strips,600 g beef strips,Explicit mass or volume,600,g,150,Not explicitly stated
+extra-speedy-beef-udon-noodles,Speedy beef udon noodles,4,Udon noodles,300 g,Explicit mass or volume,300,g,75,Not explicitly stated
+extra-speedy-beef-udon-noodles,Speedy beef udon noodles,4,Broccoli,1 head (about 300 g),Review quantity wording,,,,Not explicitly stated
+extra-speedy-beef-udon-noodles,Speedy beef udon noodles,4,Soy sauce,2 tbsp,Count or household measure; no mass conversion assumed,,,,Not explicitly stated
+extra-speedy-beef-udon-noodles,Speedy beef udon noodles,4,Garlic,2 cloves,Count or household measure; no mass conversion assumed,,,,Not explicitly stated
+extra-speedy-beef-udon-noodles,Speedy beef udon noodles,4,Oil,1 tbsp,Count or household measure; no mass conversion assumed,,,,Not explicitly stated
+extra-speedy-beef-udon-noodles,Speedy beef udon noodles,4,Fresh Ginger,10 g,Explicit mass or volume,10,g,2.5,Not explicitly stated
+extra-speedy-beef-udon-noodles,Speedy beef udon noodles,4,Lime,1,Count or household measure; no mass conversion assumed,,,,Not explicitly stated
+extra-creamy-lemon-tuna-pasta,Creamy lemon tuna pasta,4,Tinned tuna,"2 × 145 g tins, about 200–220 g drained",Review quantity wording,,,,Not explicitly stated
+extra-creamy-lemon-tuna-pasta,Creamy lemon tuna pasta,4,Penne,350 g dry,Explicit mass or volume,350,g,87.5,Dry stated
+extra-creamy-lemon-tuna-pasta,Creamy lemon tuna pasta,4,Lemon,1,Count or household measure; no mass conversion assumed,,,,Not explicitly stated
+extra-creamy-lemon-tuna-pasta,Creamy lemon tuna pasta,4,Cream cheese,150 g,Explicit mass or volume,150,g,37.5,Not explicitly stated
+extra-creamy-lemon-tuna-pasta,Creamy lemon tuna pasta,4,Fresh parsley,10 g,Explicit mass or volume,10,g,2.5,Not explicitly stated
+extra-garlic-chickpea-flatbreads,Garlic chickpea flatbreads,4,Chickpeas,1 × 400 g tin,Review quantity wording,,,,Not explicitly stated
+extra-garlic-chickpea-flatbreads,Garlic chickpea flatbreads,4,Flatbreads,4 flatbreads,Review quantity wording,,,,Not explicitly stated
+extra-garlic-chickpea-flatbreads,Garlic chickpea flatbreads,4,Garlic,2 cloves,Count or household measure; no mass conversion assumed,,,,Not explicitly stated
+extra-garlic-chickpea-flatbreads,Garlic chickpea flatbreads,4,Yoghurt,150 g,Explicit mass or volume,150,g,37.5,Not explicitly stated
+extra-garlic-chickpea-flatbreads,Garlic chickpea flatbreads,4,Oil,1 tbsp,Count or household measure; no mass conversion assumed,,,,Not explicitly stated
+extra-garlic-chickpea-flatbreads,Garlic chickpea flatbreads,4,Ground cumin,1 tsp,Count or household measure; no mass conversion assumed,,,,Not explicitly stated
+extra-lentil-shepherdless-pie,Lentil shepherdless pie,4,Green lentils,200 g dry,Explicit mass or volume,200,g,50,Dry stated
+extra-lentil-shepherdless-pie,Lentil shepherdless pie,4,Potatoes,800 g,Explicit mass or volume,800,g,200,Not explicitly stated
+extra-lentil-shepherdless-pie,Lentil shepherdless pie,4,Carrots,3 medium,Review quantity wording,,,,Not explicitly stated
+extra-lentil-shepherdless-pie,Lentil shepherdless pie,4,Vegetable stock,1 standard pack (check recipe),Review quantity wording,,,,Not explicitly stated
+extra-lentil-shepherdless-pie,Lentil shepherdless pie,4,Onion,1 medium,Review quantity wording,,,,Not explicitly stated
+extra-lentil-shepherdless-pie,Lentil shepherdless pie,4,Oil,1 tbsp,Count or household measure; no mass conversion assumed,,,,Not explicitly stated
+extra-tomato-butter-bean-stew,Tomato butter bean stew,4,Butter beans,"2 × 400 g tins, about 480 g drained",Review quantity wording,,,,Not explicitly stated
+extra-tomato-butter-bean-stew,Tomato butter bean stew,4,Chopped tomatoes,1 × 400 g tin,Review quantity wording,,,,Not explicitly stated
+extra-tomato-butter-bean-stew,Tomato butter bean stew,4,Spinach,150 g,Explicit mass or volume,150,g,37.5,Not explicitly stated
+extra-tomato-butter-bean-stew,Tomato butter bean stew,4,Bread,8 slices,Count or household measure; no mass conversion assumed,,,,Not explicitly stated
+extra-tomato-butter-bean-stew,Tomato butter bean stew,4,Onion,1 medium,Review quantity wording,,,,Not explicitly stated
+extra-tomato-butter-bean-stew,Tomato butter bean stew,4,Garlic,2 cloves,Count or household measure; no mass conversion assumed,,,,Not explicitly stated
+extra-tomato-butter-bean-stew,Tomato butter bean stew,4,Cooking oil,1 tbsp,Count or household measure; no mass conversion assumed,,,,Not explicitly stated
+extra-tomato-butter-bean-stew,Tomato butter bean stew,4,Fresh parsley,10 g,Explicit mass or volume,10,g,2.5,Not explicitly stated
+extra-greek-chicken-protein-bowls,Greek chicken protein bowls,4,Chicken breast,600 g boneless chicken breast,Explicit mass or volume,600,g,150,Not explicitly stated
+extra-greek-chicken-protein-bowls,Greek chicken protein bowls,4,Rice,300 g dry,Explicit mass or volume,300,g,75,Dry stated
+extra-greek-chicken-protein-bowls,Greek chicken protein bowls,4,Cucumber,1 cucumber,Review quantity wording,,,,Not explicitly stated
+extra-greek-chicken-protein-bowls,Greek chicken protein bowls,4,Greek yoghurt,180 g,Explicit mass or volume,180,g,45,Not explicitly stated
+extra-greek-chicken-protein-bowls,Greek chicken protein bowls,4,Tomatoes,2 medium,Review quantity wording,,,,Not explicitly stated
+extra-greek-chicken-protein-bowls,Greek chicken protein bowls,4,Cooking oil,1 tbsp,Count or household measure; no mass conversion assumed,,,,Not explicitly stated
+extra-greek-chicken-protein-bowls,Greek chicken protein bowls,4,Lemon,1,Count or household measure; no mass conversion assumed,,,,Not explicitly stated
+extra-turkey-chilli-quinoa-bowls,Turkey chilli quinoa bowls,4,Turkey mince,500 g turkey mince,Explicit mass or volume,500,g,125,Not explicitly stated
+extra-turkey-chilli-quinoa-bowls,Turkey chilli quinoa bowls,4,Kidney beans,1 × 400 g tin,Review quantity wording,,,,Not explicitly stated
+extra-turkey-chilli-quinoa-bowls,Turkey chilli quinoa bowls,4,Quinoa,250 g dry,Explicit mass or volume,250,g,62.5,Dry stated
+extra-turkey-chilli-quinoa-bowls,Turkey chilli quinoa bowls,4,Passata,500 g,Explicit mass or volume,500,g,125,Not explicitly stated
+extra-turkey-chilli-quinoa-bowls,Turkey chilli quinoa bowls,4,Onion,1 medium,Review quantity wording,,,,Not explicitly stated
+extra-turkey-chilli-quinoa-bowls,Turkey chilli quinoa bowls,4,Chilli powder,1 tsp,Count or household measure; no mass conversion assumed,,,,Not explicitly stated
+extra-turkey-chilli-quinoa-bowls,Turkey chilli quinoa bowls,4,Cooking oil,1 tbsp,Count or household measure; no mass conversion assumed,,,,Not explicitly stated
+extra-turkey-chilli-quinoa-bowls,Turkey chilli quinoa bowls,4,Lime,1,Count or household measure; no mass conversion assumed,,,,Not explicitly stated
+extra-turkey-chilli-quinoa-bowls,Turkey chilli quinoa bowls,4,Smoked paprika,3 g,Explicit mass or volume,3,g,0.75,Not explicitly stated
+extra-cottage-cheese-egg-muffins,Cottage cheese egg muffins,4,Eggs,6 eggs,Count or household measure; no mass conversion assumed,,,,Not explicitly stated
+extra-cottage-cheese-egg-muffins,Cottage cheese egg muffins,4,Cottage cheese,200 g,Explicit mass or volume,200,g,50,Not explicitly stated
+extra-cottage-cheese-egg-muffins,Cottage cheese egg muffins,4,Spinach,150 g,Explicit mass or volume,150,g,37.5,Not explicitly stated
+extra-cottage-cheese-egg-muffins,Cottage cheese egg muffins,4,Peppers,2 peppers,Count or household measure; no mass conversion assumed,,,,Not explicitly stated
+extra-cottage-cheese-egg-muffins,Cottage cheese egg muffins,4,Fresh parsley,10 g,Explicit mass or volume,10,g,2.5,Not explicitly stated
+extra-seared-tuna-edamame-bowls,Seared tuna edamame bowls,4,Tuna steaks,4 tuna steaks (about 125 g each),Review quantity wording,,,,Not explicitly stated
+extra-seared-tuna-edamame-bowls,Seared tuna edamame bowls,4,Edamame,200 g,Explicit mass or volume,200,g,50,Not explicitly stated
+extra-seared-tuna-edamame-bowls,Seared tuna edamame bowls,4,Rice,300 g dry,Explicit mass or volume,300,g,75,Dry stated
+extra-seared-tuna-edamame-bowls,Seared tuna edamame bowls,4,Cucumber,1 cucumber,Review quantity wording,,,,Not explicitly stated
+extra-seared-tuna-edamame-bowls,Seared tuna edamame bowls,4,Lime,1,Count or household measure; no mass conversion assumed,,,,Not explicitly stated
+extra-seared-tuna-edamame-bowls,Seared tuna edamame bowls,4,Sesame Oil,10 ml,Explicit mass or volume,10,ml,2.5,Not explicitly stated
+extra-herb-roast-chicken-dinner,Herb roast chicken dinner,4,Whole chicken,"1 whole chicken, approx. 1.4–1.6 kg (check actual weight)",Review quantity wording,,,,Not explicitly stated
+extra-herb-roast-chicken-dinner,Herb roast chicken dinner,4,Potatoes,800 g,Explicit mass or volume,800,g,200,Not explicitly stated
+extra-herb-roast-chicken-dinner,Herb roast chicken dinner,4,Carrots,3 medium,Review quantity wording,,,,Not explicitly stated
+extra-herb-roast-chicken-dinner,Herb roast chicken dinner,4,Gravy,300 ml prepared,Explicit mass or volume,300,ml,75,Not explicitly stated
+extra-herb-roast-chicken-dinner,Herb roast chicken dinner,4,Garlic,3 cloves,Count or household measure; no mass conversion assumed,,,,Not explicitly stated
+extra-herb-roast-chicken-dinner,Herb roast chicken dinner,4,Dried thyme,3 g,Explicit mass or volume,3,g,0.75,Not explicitly stated
+extra-mustard-roast-beef-with-veg,Mustard roast beef with veg,4,Beef roasting joint,1 kg boneless beef roasting joint (approximate; weigh before roasting),Explicit mass or volume,1000,g,250,Not explicitly stated
+extra-mustard-roast-beef-with-veg,Mustard roast beef with veg,4,Potatoes,800 g,Explicit mass or volume,800,g,200,Not explicitly stated
+extra-mustard-roast-beef-with-veg,Mustard roast beef with veg,4,Parsnips,3 medium,Review quantity wording,,,,Not explicitly stated
+extra-mustard-roast-beef-with-veg,Mustard roast beef with veg,4,Mustard,1 tbsp,Count or household measure; no mass conversion assumed,,,,Not explicitly stated
+extra-mustard-roast-beef-with-veg,Mustard roast beef with veg,4,Cooking oil,2 tbsp,Count or household measure; no mass conversion assumed,,,,Not explicitly stated
+extra-mustard-roast-beef-with-veg,Mustard roast beef with veg,4,Garlic,3 cloves,Count or household measure; no mass conversion assumed,,,,Not explicitly stated
+extra-maple-glazed-gammon-roast,Maple glazed gammon roast,4,Gammon joint,"1 gammon joint, approx. 1 kg (check actual weight and pack)",Review quantity wording,,,,Not explicitly stated
+extra-maple-glazed-gammon-roast,Maple glazed gammon roast,4,Honey,2 tbsp,Count or household measure; no mass conversion assumed,,,,Not explicitly stated
+extra-maple-glazed-gammon-roast,Maple glazed gammon roast,4,Potatoes,800 g,Explicit mass or volume,800,g,200,Not explicitly stated
+extra-maple-glazed-gammon-roast,Maple glazed gammon roast,4,Carrots,3 medium,Review quantity wording,,,,Not explicitly stated
+extra-maple-glazed-gammon-roast,Maple glazed gammon roast,4,Maple syrup,3 tbsp,Count or household measure; no mass conversion assumed,,,,Not explicitly stated
+extra-maple-glazed-gammon-roast,Maple glazed gammon roast,4,Mustard,1 tbsp,Count or household measure; no mass conversion assumed,,,,Not explicitly stated
+extra-rosemary-roast-lamb-shoulder,Rosemary roast lamb shoulder,4,Lamb shoulder,"1 lamb shoulder, approx. 1.2 kg (check actual weight)",Review quantity wording,,,,Not explicitly stated
+extra-rosemary-roast-lamb-shoulder,Rosemary roast lamb shoulder,4,Rosemary,2 sprigs,Review quantity wording,,,,Not explicitly stated
+extra-rosemary-roast-lamb-shoulder,Rosemary roast lamb shoulder,4,Potatoes,800 g,Explicit mass or volume,800,g,200,Not explicitly stated
+extra-rosemary-roast-lamb-shoulder,Rosemary roast lamb shoulder,4,Garlic,2 cloves,Count or household measure; no mass conversion assumed,,,,Not explicitly stated
+extra-rosemary-roast-lamb-shoulder,Rosemary roast lamb shoulder,4,Onions,2 medium,Review quantity wording,,,,Not explicitly stated
+extra-rosemary-roast-lamb-shoulder,Rosemary roast lamb shoulder,4,Vegetable or lamb stock,200 ml,Explicit mass or volume,200,ml,50,Not explicitly stated
+extra-rosemary-roast-lamb-shoulder,Rosemary roast lamb shoulder,4,Cooking oil,1 tbsp,Count or household measure; no mass conversion assumed,,,,Not explicitly stated
+extra-rosemary-roast-lamb-shoulder,Rosemary roast lamb shoulder,4,Lemon,1,Count or household measure; no mass conversion assumed,,,,Not explicitly stated
+extra-sticky-orange-chicken,Sticky orange chicken,4,Chicken breast,600 g boneless chicken breast,Explicit mass or volume,600,g,150,Not explicitly stated
+extra-sticky-orange-chicken,Sticky orange chicken,4,Orange juice,120 ml,Explicit mass or volume,120,ml,30,Not explicitly stated
+extra-sticky-orange-chicken,Sticky orange chicken,4,Soy sauce,2 tbsp,Count or household measure; no mass conversion assumed,,,,Not explicitly stated
+extra-sticky-orange-chicken,Sticky orange chicken,4,Rice,300 g dry,Explicit mass or volume,300,g,75,Dry stated
+extra-sticky-orange-chicken,Sticky orange chicken,4,Honey,2 tbsp,Count or household measure; no mass conversion assumed,,,,Not explicitly stated
+extra-sticky-orange-chicken,Sticky orange chicken,4,Cornflour,1 tsp,Count or household measure; no mass conversion assumed,,,,Not explicitly stated
+extra-sticky-orange-chicken,Sticky orange chicken,4,Cooking oil,1 tbsp,Count or household measure; no mass conversion assumed,,,,Not explicitly stated
+extra-sticky-orange-chicken,Sticky orange chicken,4,Garlic,2 cloves,Count or household measure; no mass conversion assumed,,,,Not explicitly stated
+extra-korean-beef-bulgogi-bowls,Korean beef bulgogi bowls,4,Beef strips,600 g beef strips,Explicit mass or volume,600,g,150,Not explicitly stated
+extra-korean-beef-bulgogi-bowls,Korean beef bulgogi bowls,4,Soy sauce,2 tbsp,Count or household measure; no mass conversion assumed,,,,Not explicitly stated
+extra-korean-beef-bulgogi-bowls,Korean beef bulgogi bowls,4,Rice,300 g dry,Explicit mass or volume,300,g,75,Dry stated
+extra-korean-beef-bulgogi-bowls,Korean beef bulgogi bowls,4,Sesame oil,1 tbsp,Count or household measure; no mass conversion assumed,,,,Not explicitly stated
+extra-korean-beef-bulgogi-bowls,Korean beef bulgogi bowls,4,Garlic,2 cloves,Count or household measure; no mass conversion assumed,,,,Not explicitly stated
+extra-korean-beef-bulgogi-bowls,Korean beef bulgogi bowls,4,Honey,1 tbsp,Count or household measure; no mass conversion assumed,,,,Not explicitly stated
+extra-korean-beef-bulgogi-bowls,Korean beef bulgogi bowls,4,Mixed stir-fry vegetables,300 g,Explicit mass or volume,300,g,75,Not explicitly stated
+extra-korean-beef-bulgogi-bowls,Korean beef bulgogi bowls,4,Sesame seeds,1 tbsp,Count or household measure; no mass conversion assumed,,,,Not explicitly stated
+extra-blueberry-overnight-oats,Blueberry overnight oats,4,Rolled oats,200 g,Explicit mass or volume,200,g,50,Not explicitly stated
+extra-blueberry-overnight-oats,Blueberry overnight oats,4,Milk,400 ml (editorial estimate),Explicit mass or volume,400,ml,100,Not explicitly stated
+extra-blueberry-overnight-oats,Blueberry overnight oats,4,Blueberries,150 g,Explicit mass or volume,150,g,37.5,Not explicitly stated
+extra-blueberry-overnight-oats,Blueberry overnight oats,4,Yoghurt,150 g (editorial estimate),Explicit mass or volume,150,g,37.5,Not explicitly stated
+extra-smoked-salmon-scrambled-eggs,Smoked salmon scrambled eggs,4,Smoked salmon,160 g smoked salmon,Explicit mass or volume,160,g,40,Not explicitly stated
+extra-smoked-salmon-scrambled-eggs,Smoked salmon scrambled eggs,4,Eggs,8 eggs,Count or household measure; no mass conversion assumed,,,,Not explicitly stated
+extra-smoked-salmon-scrambled-eggs,Smoked salmon scrambled eggs,4,Bread,8 slices,Count or household measure; no mass conversion assumed,,,,Not explicitly stated
+extra-smoked-salmon-scrambled-eggs,Smoked salmon scrambled eggs,4,Chives,2 tbsp chopped,Review quantity wording,,,,Not explicitly stated
+extra-smoked-salmon-scrambled-eggs,Smoked salmon scrambled eggs,4,Butter,15 g,Explicit mass or volume,15,g,3.75,Not explicitly stated
+extra-smoked-salmon-scrambled-eggs,Smoked salmon scrambled eggs,4,Lemon,1,Count or household measure; no mass conversion assumed,,,,Not explicitly stated
+extra-spinach-feta-breakfast-wraps,Spinach feta breakfast wraps,4,Eggs,4 eggs,Count or household measure; no mass conversion assumed,,,,Not explicitly stated
+extra-spinach-feta-breakfast-wraps,Spinach feta breakfast wraps,4,Spinach,150 g,Explicit mass or volume,150,g,37.5,Not explicitly stated
+extra-spinach-feta-breakfast-wraps,Spinach feta breakfast wraps,4,Feta,150 g,Explicit mass or volume,150,g,37.5,Not explicitly stated
+extra-spinach-feta-breakfast-wraps,Spinach feta breakfast wraps,4,Wraps,4 wraps,Count or household measure; no mass conversion assumed,,,,Not explicitly stated
+extra-spinach-feta-breakfast-wraps,Spinach feta breakfast wraps,4,Cooking oil,1 tsp,Count or household measure; no mass conversion assumed,,,,Not explicitly stated
+extra-spinach-feta-breakfast-wraps,Spinach feta breakfast wraps,4,Fresh parsley,10 g,Explicit mass or volume,10,g,2.5,Not explicitly stated
+extra-apple-cinnamon-baked-oats,Apple cinnamon baked oats,4,Rolled oats,200 g,Explicit mass or volume,200,g,50,Not explicitly stated
+extra-apple-cinnamon-baked-oats,Apple cinnamon baked oats,4,Apples,2,Count or household measure; no mass conversion assumed,,,,Not explicitly stated
+extra-apple-cinnamon-baked-oats,Apple cinnamon baked oats,4,Cinnamon,1 tsp,Count or household measure; no mass conversion assumed,,,,Not explicitly stated
+extra-apple-cinnamon-baked-oats,Apple cinnamon baked oats,4,Milk,400 ml,Explicit mass or volume,400,ml,100,Not explicitly stated
+extra-apple-cinnamon-baked-oats,Apple cinnamon baked oats,4,Cooking oil,1 tsp,Count or household measure; no mass conversion assumed,,,,Not explicitly stated
+dessert-chocolate-brownies,Chocolate brownies,9,Dark chocolate,200 g,Explicit mass or volume,200,g,22.2222,Not explicitly stated
+dessert-chocolate-brownies,Chocolate brownies,9,Butter,170 g,Explicit mass or volume,170,g,18.8889,Not explicitly stated
+dessert-chocolate-brownies,Chocolate brownies,9,Caster sugar,220 g,Explicit mass or volume,220,g,24.4444,Not explicitly stated
+dessert-chocolate-brownies,Chocolate brownies,9,Eggs,3,Count or household measure; no mass conversion assumed,,,,Not explicitly stated
+dessert-chocolate-brownies,Chocolate brownies,9,Plain flour,100 g,Explicit mass or volume,100,g,11.1111,Not explicitly stated
+dessert-chocolate-brownies,Chocolate brownies,9,Cocoa powder,30 g,Explicit mass or volume,30,g,3.33333,Not explicitly stated
+dessert-chocolate-brownies,Chocolate brownies,9,Chocolate chips,100 g,Explicit mass or volume,100,g,11.1111,Not explicitly stated
+dessert-sticky-toffee-pudding,Sticky toffee pudding,6,Pitted dates,200 g,Explicit mass or volume,200,g,33.3333,Not explicitly stated
+dessert-sticky-toffee-pudding,Sticky toffee pudding,6,Self-raising flour,180 g,Explicit mass or volume,180,g,30,Not explicitly stated
+dessert-sticky-toffee-pudding,Sticky toffee pudding,6,Soft brown sugar,160 g,Explicit mass or volume,160,g,26.6667,Not explicitly stated
+dessert-sticky-toffee-pudding,Sticky toffee pudding,6,Butter,110 g,Explicit mass or volume,110,g,18.3333,Not explicitly stated
+dessert-sticky-toffee-pudding,Sticky toffee pudding,6,Eggs,2,Count or household measure; no mass conversion assumed,,,,Not explicitly stated
+dessert-sticky-toffee-pudding,Sticky toffee pudding,6,Bicarbonate of soda,1 tsp,Count or household measure; no mass conversion assumed,,,,Not explicitly stated
+dessert-sticky-toffee-pudding,Sticky toffee pudding,6,Double cream,200 ml,Explicit mass or volume,200,ml,33.3333,Not explicitly stated
+dessert-sticky-toffee-pudding,Sticky toffee pudding,6,Golden syrup,3 tbsp,Count or household measure; no mass conversion assumed,,,,Not explicitly stated
+dessert-sticky-toffee-pudding,Sticky toffee pudding,6,Vanilla ice cream,500 ml,Explicit mass or volume,500,ml,83.3333,Not explicitly stated
+dessert-lemon-drizzle-cake,Lemon drizzle cake,8,Self-raising flour,200 g,Explicit mass or volume,200,g,25,Not explicitly stated
+dessert-lemon-drizzle-cake,Lemon drizzle cake,8,Butter,200 g,Explicit mass or volume,200,g,25,Not explicitly stated
+dessert-lemon-drizzle-cake,Lemon drizzle cake,8,Caster sugar,200 g,Explicit mass or volume,200,g,25,Not explicitly stated
+dessert-lemon-drizzle-cake,Lemon drizzle cake,8,Eggs,3,Count or household measure; no mass conversion assumed,,,,Not explicitly stated
+dessert-lemon-drizzle-cake,Lemon drizzle cake,8,Lemons,3,Count or household measure; no mass conversion assumed,,,,Not explicitly stated
+dessert-lemon-drizzle-cake,Lemon drizzle cake,8,Icing sugar,150 g,Explicit mass or volume,150,g,18.75,Not explicitly stated
+dessert-lemon-drizzle-cake,Lemon drizzle cake,8,Milk,2 tbsp,Count or household measure; no mass conversion assumed,,,,Not explicitly stated
+dessert-lemon-drizzle-cake,Lemon drizzle cake,8,Baking powder,1 tsp,Count or household measure; no mass conversion assumed,,,,Not explicitly stated
+dessert-apple-crumble,Classic apple crumble,6,Cooking apples,800 g,Explicit mass or volume,800,g,133.333,Not explicitly stated
+dessert-apple-crumble,Classic apple crumble,6,Plain flour,180 g,Explicit mass or volume,180,g,30,Not explicitly stated
+dessert-apple-crumble,Classic apple crumble,6,Cold butter,120 g,Explicit mass or volume,120,g,20,Not explicitly stated
+dessert-apple-crumble,Classic apple crumble,6,Rolled oats,60 g,Explicit mass or volume,60,g,10,Not explicitly stated
+dessert-apple-crumble,Classic apple crumble,6,Caster sugar,130 g,Explicit mass or volume,130,g,21.6667,Not explicitly stated
+dessert-apple-crumble,Classic apple crumble,6,Ground cinnamon,1 tsp,Count or household measure; no mass conversion assumed,,,,Not explicitly stated
+dessert-apple-crumble,Classic apple crumble,6,Ready-to-serve custard,500 ml,Explicit mass or volume,500,ml,83.3333,Not explicitly stated
+family-chocolate-chip-banana-traybake,Chocolate chip banana traybake,12,"ripe bananas, mashed",3,Count or household measure; no mass conversion assumed,,,,Not explicitly stated
+family-chocolate-chip-banana-traybake,Chocolate chip banana traybake,12,self-raising flour,200 g,Explicit mass or volume,200,g,16.6667,Not explicitly stated
+family-chocolate-chip-banana-traybake,Chocolate chip banana traybake,12,light brown sugar,100 g,Explicit mass or volume,100,g,8.33333,Not explicitly stated
+family-chocolate-chip-banana-traybake,Chocolate chip banana traybake,12,eggs,2,Count or household measure; no mass conversion assumed,,,,Not explicitly stated
+family-chocolate-chip-banana-traybake,Chocolate chip banana traybake,12,vegetable oil,100 ml,Explicit mass or volume,100,ml,8.33333,Not explicitly stated
+family-chocolate-chip-banana-traybake,Chocolate chip banana traybake,12,chocolate chips,100 g,Explicit mass or volume,100,g,8.33333,Not explicitly stated
+family-chocolate-chip-banana-traybake,Chocolate chip banana traybake,12,vanilla extract,1 tsp,Count or household measure; no mass conversion assumed,,,,Not explicitly stated
+family-apple-cinnamon-crumble-muffins,Apple cinnamon crumble muffins,12,self-raising flour,200 g,Explicit mass or volume,200,g,16.6667,Not explicitly stated
+family-apple-cinnamon-crumble-muffins,Apple cinnamon crumble muffins,12,apples,2,Count or household measure; no mass conversion assumed,,,,Not explicitly stated
+family-apple-cinnamon-crumble-muffins,Apple cinnamon crumble muffins,12,light brown sugar,100 g,Explicit mass or volume,100,g,8.33333,Not explicitly stated
+family-apple-cinnamon-crumble-muffins,Apple cinnamon crumble muffins,12,eggs,2,Count or household measure; no mass conversion assumed,,,,Not explicitly stated
+family-apple-cinnamon-crumble-muffins,Apple cinnamon crumble muffins,12,milk,120 ml,Explicit mass or volume,120,ml,10,Not explicitly stated
+family-apple-cinnamon-crumble-muffins,Apple cinnamon crumble muffins,12,vegetable oil,80 ml,Explicit mass or volume,80,ml,6.66667,Not explicitly stated
+family-apple-cinnamon-crumble-muffins,Apple cinnamon crumble muffins,12,ground cinnamon,1 tsp,Count or household measure; no mass conversion assumed,,,,Not explicitly stated
+family-apple-cinnamon-crumble-muffins,Apple cinnamon crumble muffins,12,rolled oats,40 g,Explicit mass or volume,40,g,3.33333,Not explicitly stated
+family-apple-cinnamon-crumble-muffins,Apple cinnamon crumble muffins,12,butter,25 g,Explicit mass or volume,25,g,2.08333,Not explicitly stated
+baking-classic-banana-bread,Classic banana bread,12,Ripe bananas,3 medium (about 330 g peeled),Review quantity wording,,,,Not explicitly stated
+baking-classic-banana-bread,Classic banana bread,12,Self-raising flour,225 g,Explicit mass or volume,225,g,18.75,Not explicitly stated
+baking-classic-banana-bread,Classic banana bread,12,Unsalted butter,100 g,Explicit mass or volume,100,g,8.33333,Not explicitly stated
+baking-classic-banana-bread,Classic banana bread,12,Light brown sugar,120 g,Explicit mass or volume,120,g,10,Not explicitly stated
+baking-classic-banana-bread,Classic banana bread,12,Eggs,2 medium,Review quantity wording,,,,Not explicitly stated
+baking-classic-banana-bread,Classic banana bread,12,Baking powder,1 tsp (4 g),Review quantity wording,,,,Not explicitly stated
+baking-classic-banana-bread,Classic banana bread,12,Vanilla extract,1 tsp (5 ml),Review quantity wording,,,,Not explicitly stated
+baking-classic-banana-bread,Classic banana bread,12,Ground cinnamon,1 tsp (3 g),Review quantity wording,,,,Not explicitly stated
+baking-soft-cinnamon-rolls,Soft cinnamon swirl rolls,9,Strong white bread flour,450 g,Explicit mass or volume,450,g,50,Not explicitly stated
+baking-soft-cinnamon-rolls,Soft cinnamon swirl rolls,9,Instant dried yeast,7 g sachet,Explicit mass or volume,7,g,0.777778,Not explicitly stated
+baking-soft-cinnamon-rolls,Soft cinnamon swirl rolls,9,Whole milk,250 ml,Explicit mass or volume,250,ml,27.7778,Not explicitly stated
+baking-soft-cinnamon-rolls,Soft cinnamon swirl rolls,9,Unsalted butter,"80 g (50 g dough, 30 g filling)",Explicit mass or volume,80,g,8.88889,Not explicitly stated
+baking-soft-cinnamon-rolls,Soft cinnamon swirl rolls,9,Caster sugar,50 g,Explicit mass or volume,50,g,5.55556,Not explicitly stated
+baking-soft-cinnamon-rolls,Soft cinnamon swirl rolls,9,Light brown sugar,80 g,Explicit mass or volume,80,g,8.88889,Not explicitly stated
+baking-soft-cinnamon-rolls,Soft cinnamon swirl rolls,9,Ground cinnamon,2 tbsp (about 14 g),Review quantity wording,,,,Not explicitly stated
+baking-soft-cinnamon-rolls,Soft cinnamon swirl rolls,9,Egg,1 medium,Review quantity wording,,,,Not explicitly stated
+baking-soft-cinnamon-rolls,Soft cinnamon swirl rolls,9,Icing sugar,100 g,Explicit mass or volume,100,g,11.1111,Not explicitly stated
+baking-soft-cinnamon-rolls,Soft cinnamon swirl rolls,9,Fine salt,1/4 tsp (1.5 g),Review quantity wording,,,,Not explicitly stated

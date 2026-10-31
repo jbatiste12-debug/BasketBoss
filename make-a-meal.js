@@ -22,13 +22,13 @@ async function bbSecureRefreshPremiumRecipes(){
   renderTiles();
   if(!token)return;
   try {
-    const response=await fetch('/api/recipes/premium',{
+    const response=await fetch('/api/recipes/premium?catalogue=500',{
       cache:'no-store',credentials:'same-origin',redirect:'manual',
       headers:{'Accept':'application/json','Authorization':'Bearer '+token}
     });
     if(!response.ok)return; // Free, expired, canceled and unverified users stay Free.
     const data=await response.json();
-    if(data?.count!==221||!Array.isArray(data.recipes)||data.recipes.length!==221)return;
+    if(![221,400].includes(data?.count)||!Array.isArray(data.recipes)||data.recipes.length!==data.count)return;
     const ids=new Set();
     for(const recipe of data.recipes){
       if(typeof recipe?.id!=='string'||ids.has(recipe.id)||bbSecureFreeIds.has(recipe.id))return;
@@ -292,7 +292,7 @@ function recipeCard(x,index){
  const anyRelated=x.related.length>0;
  const badge=ready?'✓ Ingredient names match':x.missing.length<=2?'1–2 extra ingredients':'More ingredients needed';
  const note=anyRelated?`<div class="related-note"><strong>Check substitutions:</strong> ${x.related.map(z=>`${esc(z.stock.name)} is related to ${esc(z.ingredient.name)}`).join('; ')}. They are not necessarily interchangeable. ${x.related.some(z=>/\bcooked chicken\b/i.test(z.stock.name))?'Cooked and raw chicken require different preparation.':''}</div>`:'';
- return `<article class="recipe" data-id="${esc(x.r.id)}"><h3>${esc(x.r.name)}</h3><p class="meta">⏱ ${Number(x.r.mins)||'?'} mins · ${Number(x.r.servings)||4} servings · Indicative recipe cost £${Number(x.r.cost||0).toFixed(2)}</p><span class="pill">${x.matched.length} matching ingredient${x.matched.length===1?'':'s'}</span>${x.related.length?`<span class="pill amber">${x.related.length} related item${x.related.length===1?'':'s'}</span>`:''}<span class="pill ${ready?'':'amber'}">${badge}</span>${x.missing.length?`<div class="warning"><strong>Still required or check substitution:</strong> ${x.missing.map(z=>esc(z.name)).join(', ')}</div>`:''}${note}<p class="hint">Confirm quantities, substitutions, allergies and freshness. Prices are indicative, not checkout guarantees.</p><details><summary>See ingredients and cooking instructions</summary><ul>${x.ing.map(z=>`<li>${esc(z.name)} — ${esc(z.amount)}</li>`).join('')}</ul><ol>${(x.r.method||[]).map(z=>`<li>${esc(z)}</li>`).join('')}</ol><p class="hint">Allergen notes: ${esc(x.r.allergy_advice||'Check packaging and cross-contact risks.')}</p></details><div class="inline-actions"><button type="button" class="button" data-plan="${index}">Choose this meal</button></div></article>`;
+ return `<article class="recipe" data-id="${esc(x.r.id)}"><h3>${esc(x.r.name)}</h3><p class="meta">⏱ ${Number(x.r.mins)||'?'} mins · ${Number(x.r.servings)||4} servings</p><span class="pill">${x.matched.length} matching ingredient${x.matched.length===1?'':'s'}</span>${x.related.length?`<span class="pill amber">${x.related.length} related item${x.related.length===1?'':'s'}</span>`:''}<span class="pill ${ready?'':'amber'}">${badge}</span>${x.missing.length?`<div class="warning"><strong>Still required or check substitution:</strong> ${x.missing.map(z=>esc(z.name)).join(', ')}</div>`:''}${note}<p class="hint">Confirm quantities, substitutions, allergies and freshness.</p><details><summary>See ingredients and cooking instructions</summary><ul>${x.ing.map(z=>`<li>${esc(z.name)} — ${esc(z.amount)}</li>`).join('')}</ul><ol>${(x.r.method||[]).map(z=>`<li>${esc(z)}</li>`).join('')}</ol><p class="hint">Allergen notes: ${esc(x.r.allergy_advice||'Check packaging and cross-contact risks.')}</p></details><div class="inline-actions"><button type="button" class="button" data-plan="${index}">Choose this meal</button></div></article>`;
 }
 function renderRecipes(){
  const have=list(),dest=$('#recipes'),summary=$('#matchSummary');

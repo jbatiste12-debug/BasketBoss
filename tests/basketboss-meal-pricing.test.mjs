@@ -35,7 +35,7 @@ function fixture(ingredients, servings = 2) {
   };
 }
 
-test('scaling two portions to five or six buys one pesto jar and one potato bag', () => {
+test('scaling portions shares potato packs and charges only the pesto consumed', () => {
   const api = pricing();
   const data = fixture([
     {name: 'pesto', quantity: 40, unit: 'g'},
@@ -45,8 +45,10 @@ test('scaling two portions to five or six buys one pesto jar and one potato bag'
   for (const servings of [5, 6]) {
     const result = api.estimateMeal({...data, servings, market: 'UK'});
     assert.equal(result.unpriced, 0);
-    assert.equal(result.amount, base.amount,
-      'Scaling required grams within existing packs must not multiply full-pack prices');
+    const pesto=api.mealPrice({name:'pesto',quantity:40/2*servings,unit:'g',market:'UK'});
+    const potato=api.mealPrice({name:'potato',quantity:500/2*servings,unit:'g',market:'UK'});
+    assert.equal(result.amount,cents(pesto.unroundedMealAmount+potato.unroundedMealAmount));
+    assert.ok(result.amount>base.amount,'Only the pantry usage grows inside a shared fresh pack');
     for (const source of data.normalized.ingredients) {
       const quantity = source.quantity / 2 * servings;
       const quote = api.price({...source, quantity, market: 'UK'});
@@ -181,9 +183,9 @@ test('meal totals reconcile to ingredient costs without accumulating rounded pac
   for (const market of markets) {
     const actual = api.estimateMeal({...data, servings: 6, market});
     const expected = cents(
-      api.price({name: 'pesto', unit: 'g', quantity: 120, market}).packAmount +
+      api.mealPrice({name: 'pesto', unit: 'g', quantity: 120, market}).unroundedMealAmount +
       api.price({name: 'salmon fillets', unit: 'each', quantity: 6, market}).packAmount +
-      api.price({name: 'soy sauce', unit: 'ml', quantity: 30, market}).portionAmount);
+      api.mealPrice({name: 'soy sauce', unit: 'ml', quantity: 30, market}).unroundedMealAmount);
     assert.equal(actual.amount, expected, market);
   }
 });
@@ -251,12 +253,17 @@ test('runtime pack and regional guides exactly match the checked-in catalog', ()
   assert.deepEqual(JSON.parse(JSON.stringify(api.regionalMarkets)), catalog.metadata.regional_markets);
 });
 
-test('ground meat and dried meal ingredients are not mistaken for pantry spices', () => {
+test('ground meat and dried fruit retain full packs while dry cupboard bases use pantry portions', () => {
   const api = pricing();
-  for (const name of ['ground beef', 'dried lentils', 'dried egg noodles', 'dried apricots']) {
+  for (const name of ['ground beef', 'dried apricots']) {
     assert.equal(api.isPantryStaple(name, 'g'), false, name);
     const data = fixture([{name, quantity: 100, unit: 'g'}]);
     const quote = api.price({name, quantity: 100, unit: 'g', market: 'UK'});
     assert.equal(api.estimateMeal({...data, servings: 2, market: 'UK'}).amount, quote.packAmount, name);
+  }
+  for(const name of ['dried lentils','dried egg noodles']){
+    assert.equal(api.isPantryStaple(name,'g'),true,name);
+    const data=fixture([{name,quantity:100,unit:'g'}]);
+    assert.equal(api.estimateMeal({...data,servings:2,market:'UK'}).amount,api.mealPrice({name,quantity:100,unit:'g',market:'UK'}).amount);
   }
 });

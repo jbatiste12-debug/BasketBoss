@@ -1,0 +1,77 @@
+/* Discover ingredients use the full sidebar width. Shop keeps its price columns. */
+#app .bb14-recipe-side,
+#app .bb321-need-box,
+#app .bb321-need-box .bbfeed-ingredients {
+  min-width: 0 !important;
+  max-width: 100% !important;
+  box-sizing: border-box;
+}
+
+#app .bb321-need-box .bbfeed-ingredients summary {
+  white-space: normal !important;
+  word-break: normal !important;
+  overflow-wrap: break-word !important;
+  line-height: 1.5;
+}
+
+#app .bb321-need-box .ingredient-row {
+  display: block !important;
+  width: 100% !important;
+  min-width: 0 !important;
+  max-width: 100% !important;
+  box-sizing: border-box;
+  padding: 11px 0;
+}
+
+#app .bb321-need-box .ingredient-row > span:first-child {
+  display: block !important;
+  width: auto !important;
+  min-width: 0 !important;
+  max-width: 100% !important;
+  white-space: normal !important;
+  word-break: normal !important;
+  overflow-wrap: break-word !important;
+  line-height: 1.5;
+}
+
+#app .bb321-need-box .ingredient-row > span:first-child > .muted {
+  display: block !important;
+  margin-top: 3px;
+  font-size: 12px;
+  line-height: 1.5;
+}
+
+/* Also suppress price decorations left by an older cached recipe renderer. */
+#app .bb321-need-box .ingredient-row > :not(:first-child),
+#app .bb321-need-box .ingredient-row .price {
+  display: none !important;
+}
+
+/* Expanded Plan cards need a full control row on narrow phones. */
+@media (max-width: 360px) {
+  #app .day .planned.bb14-meal-card .bb14-meal-body {
+    display: grid !important;
+    grid-template-columns: minmax(0, 1fr) !important;
+    gap: 10px !important;
+  }
+  #app .day .planned.bb14-meal-card .bb14-meal-photo {
+    height: 160px !important;
+    max-height: 160px !important;
+  }
+  #app .day .planned.bb14-meal-card .bb14-meal-commands,
+  #app .day .planned.bb14-meal-card .bb14-meal-commands .small-actions {
+    width: 100% !important;
+    min-width: 0 !important;
+  }
+  #app .day .planned.bb14-meal-card .bb14-meal-commands .small-actions {
+    display: grid !important;
+    grid-template-columns: minmax(0, 1fr) !important;
+    grid-template-rows: auto !important;
+  }
+  #app .day .planned.bb14-meal-card .bb14-meal-commands select,
+  #app .day .planned.bb14-meal-card .bb14-meal-commands button {
+    width: 100% !important;
+    min-width: 0 !important;
+    grid-column: 1 !important;
+  }
+}

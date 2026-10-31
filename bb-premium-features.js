@@ -1,6 +1,6 @@
 /* BasketBoss v17.3 — Free/Premium experience preview, NOT an entitlement provider.
    This file only upgrades the presentation and intercepts Shop Mode buttons.
-   The static public catalogue has 100 Free recipes. The other 221 are
+   The static public catalogue has 100 Free recipes. The other 400 are
    served through a server-verified Premium API; AI is separately gated server-side.
 */
 (() => {
@@ -14,10 +14,10 @@
     <header class="bb173-tier-header"><button type="button" data-bb173-close aria-label="Close Premium information">×</button>
       <p>✦ BASKETBOSS PREMIUM</p>
       <h2 id="bb173TierHeading">More magic, less waste.</h2>
-      <p id="bb173TierDesc">Includes 321 recipes, Smart Auto-Fill, 1-Tap Batch Cooking, 5 AI photo scans &amp; 10 AI meal ideas per day.</p>
+      <p id="bb173TierDesc">Includes 500 recipes, Smart Auto-Fill, 1-Tap Batch Cooking, 5 AI photo scans &amp; 10 AI meal ideas per day.</p>
     </header>
     <div class="bb173-tier-body">
-      <div class="bb173-tier-stat"><span>🧺 100 recipes stay free</span><span>✨ 321 with Premium</span></div>
+      <div class="bb173-tier-stat"><span>🧺 100 recipes stay free</span><span>✨ 500 with Premium</span></div>
       <p>Enjoy Premium recipes, Leftover Magic and advanced shopping. AI features are subject to service availability and daily usage limits.</p>
       <div class="bb173-tier-plans">
         <a href="${PRICING}#monthly"><strong>Monthly Standard</strong><span>£4.99 / month</span><small>3-day free trial · Cancel anytime</small></a>
@@ -55,7 +55,7 @@
   }
   function hideDialog(){const d=$('#bb173TierDialog');if(d?.open)d.close();else d?.removeAttribute('open');lastOpener?.focus({preventScroll:true});}
   function showDialog(trigger,context){installDialog();lastOpener=trigger||document.activeElement;
-    $('#bb173TierDesc').textContent='Includes 321 recipes, Smart Auto-Fill, 1-Tap Batch Cooking, 5 AI photo scans & 10 AI meal ideas per day.';
+    $('#bb173TierDesc').textContent='Includes 500 recipes, Smart Auto-Fill, 1-Tap Batch Cooking, 5 AI photo scans & 10 AI meal ideas per day.';
     const checkoutStatus=$('#bb173CheckoutStatus');if(checkoutStatus){checkoutStatus.hidden=true;checkoutStatus.textContent='';}
     const d=$('#bb173TierDialog');if(!d.open){if(typeof d.showModal==='function')d.showModal();else d.setAttribute('open','');}
     $('[data-bb173-close]',d)?.focus({preventScroll:true});
@@ -106,13 +106,13 @@
     }
     if(!app.querySelector('.bb173-recipe-tier-banner')){
       const banner=document.createElement('section');banner.className='bb173-recipe-tier-banner';
-      banner.innerHTML='<div><strong>100 free recipes today · All 321 with Premium</strong><p>Explore family favourites and quick meals. Leftover Magic and advanced shopping require Premium. AI tools are early access and require service availability.</p></div><button type="button" data-bb173-upgrade>See Premium benefits →</button>';
+      banner.innerHTML='<div><strong>100 free recipes today · All 500 with Premium</strong><p>Explore family favourites and quick meals. Leftover Magic and advanced shopping require Premium. AI tools are early access and require service availability.</p></div><button type="button" data-bb173-upgrade>See Premium benefits →</button>';
       const card=app.querySelector('.bb173-leftover-card');if(card)card.insertAdjacentElement('afterend',banner);else app.prepend(banner);
       banner.querySelector('[data-bb173-upgrade]').addEventListener('click',e=>showDialog(e.currentTarget));
     }
     if(!app.querySelector('.bb173-locked-teasers')){
       const teasers=document.createElement('section');teasers.className='bb173-locked-teasers';
-      teasers.innerHTML='<div><strong>🔒 221 more recipes in Premium</strong><p>Along with exclusive Leftover Magic recipes and Advanced Shop Mode. AI tools are early access and require service availability.</p></div><button type="button" data-bb173-upgrade>Explore plans</button>';
+      teasers.innerHTML='<div><strong>🔒 400 more recipes in Premium</strong><p>Along with exclusive Leftover Magic recipes and Advanced Shop Mode. AI tools are early access and require service availability.</p></div><button type="button" data-bb173-upgrade>Explore plans</button>';
       app.appendChild(teasers);
       teasers.querySelector('[data-bb173-upgrade]').addEventListener('click',e=>showDialog(e.currentTarget));
     }

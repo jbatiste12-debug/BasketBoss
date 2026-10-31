@@ -42,11 +42,10 @@
    const minus=elem('button','','−');minus.type='button';minus.setAttribute('aria-label','Remove a serving of '+r.name);
    const amount=elem('output','',portions[i]);amount.setAttribute('aria-live','polite');
    const plus=elem('button','','+');plus.type='button';plus.setAttribute('aria-label','Add a serving of '+r.name);
-   const price=elem('span','meal-price');
-   const update=()=>{amount.textContent=portions[i];const estimate=mealEstimate(r,portions[i]);price.textContent=money(estimate.amount)+(estimate.amount==null?'':' est.');minus.disabled=portions[i]<=1;plus.disabled=portions[i]>=10;renderTotal();if(activeTab==='shop')renderShopping()};
+   const update=()=>{amount.textContent=portions[i];minus.disabled=portions[i]<=1;plus.disabled=portions[i]>=10;renderTotal();if(activeTab==='shop')renderShopping()};
    minus.addEventListener('click',()=>{portions[i]=Math.max(1,portions[i]-1);update()});
    plus.addEventListener('click',()=>{portions[i]=Math.min(10,portions[i]+1);update()});
-   stepper.append(minus,amount,plus);controls.append(stepper,price);row.append(controls);container.append(row);update();
+   stepper.append(minus,amount,plus);controls.append(stepper);row.append(controls);container.append(row);update();
   });
   renderTotal();
  }

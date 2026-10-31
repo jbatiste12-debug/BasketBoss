@@ -37,7 +37,7 @@
      if(premiumActive())return;
      // Existing introductory Premium modal checks entitlement and provides
      // its configured route; never introduce a new checkout authorisation.
-     if(window.BasketBossPremiumPreview?.show) window.BasketBossPremiumPreview.show(upgrade,'Discover 321 recipes, smarter Auto-Fill and more shopping tools.');
+     if(window.BasketBossPremiumPreview?.show) window.BasketBossPremiumPreview.show(upgrade,'Discover 500 recipes, smarter Auto-Fill and more shopping tools.');
      else if(window.BBIntroTrialOffer?.open) void window.BBIntroTrialOffer.open();
      else window.location.assign(checkoutPage);
    });
@@ -77,15 +77,15 @@
    for(const row of app.querySelectorAll('.bbnext-day.has-meal:not(.is-locked)')){
      const meta=$('.bbnext-day-description small',row);
      if(!meta||meta.classList.contains('bbpol-meta-done'))continue;
-     // Cosmetic split of existing text only. Never change price/serving math.
+     // Keep legacy meal metadata focused on cooking time; prices live in Shop.
      const value=meta.textContent||'';
-     const m=value.match(/^(.+?\bmin)\s*·\s*(.+?)(?:\s+estimated)?$/i);
+     const m=value.match(/^(.+?\bmin)(?:\s*·.*)?$/i);
      if(!m)continue;
      meta.classList.add('bbpol-meta-done');
-     const time=document.createElement('span'),price=document.createElement('span');
-     time.className='bbpol-time';price.className='bbpol-price';
-     time.textContent='◷ '+m[1];price.textContent=m[2]+' est.';
-     meta.replaceChildren(time,price);
+     const time=document.createElement('span');
+     time.className='bbpol-time';
+     time.textContent='◷ '+m[1];
+     meta.replaceChildren(time);
    }
  }
  function enhanceExistingProDialog(){

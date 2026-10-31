@@ -15,7 +15,7 @@ test('Only marketing assets added, existing checkout/auth/camera source still pr
   assert.match(html,/id="cloud-open"/);
   assert.match(html,/id="bbColdVisitor"/);
   assert.match(html,/<meta property="og:image"/);
-  assert.match(worker,/v14-beta-live/);
+  assert.match(worker,/v17-expanded-compatible-500/);
   assert.match(worker,/target\.pathname\.startsWith\(new URL\('api\/', APP_BASE\)\.pathname\)\) return/);
   assert.match(privacy,/Anonymous usage steps/);
 });

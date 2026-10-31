@@ -9,7 +9,7 @@ const style=fs.readFileSync('bb-onboarding-v2.css','utf8');
 const compare=fs.readFileSync('compare.html','utf8');
 
 test('new onboarding runs before legacy animation without modifying its artwork',()=>{
- assert.match(index,/bb-onboarding-v2\.js\?v=20261029-partner-onboard-main1/);
+ assert.match(index,/bb-onboarding-v2\.js\?v=20261031-shop-prices/);
  assert.match(index,/bb-onboarding-v2\.css\?v=20261029-partner-onboard-main1/);
  assert.ok(index.indexOf('bb-onboarding-v2.js')<index.indexOf('bb-welcome-splash.js'));
  assert.match(index,/if\(window\.BBOnboard2026\?\.willShow\(\)\)return;/);

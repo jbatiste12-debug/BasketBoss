@@ -47,7 +47,7 @@ async function demo({failQuantities=false,quantityData=normalized,recipeData=rec
   return {context,api:context.BBPriceV19,controller:context.demo,elements,requests};
 }
 
-test('public demo serving controls use ingredient pack estimates and ignore editorial totals',async()=>{
+test('public demo keeps dish prices hidden while serving controls update the budget',async()=>{
   const altered=structuredClone(recipes);
   for(const recipe of altered){recipe.cost=9999;for(const line of recipe.ingredients)line[2]=9999;}
   const h=await demo({recipeData:altered});
@@ -58,7 +58,8 @@ test('public demo serving controls use ingredient pack estimates and ignore edit
   const expected=h.api.estimateMeal({recipe,normalized:normalized.recipes.find(r=>r.id===recipe.id),servings:6,market:'UK'});
   assert.equal(h.controller.total(),expected.amount);
   assert.ok(expected.amount>0&&expected.amount<9999);
-  assert.match(h.elements.get('demo-meals').textContent,new RegExp('£'+expected.amount.toFixed(2).replace('.','\\.')));
+  assert.doesNotMatch(h.elements.get('demo-meals').textContent,/£|\$| est\./i);
+  assert.ok(h.elements.get('demo-meals').textContent.includes(recipe.name));
   assert.match(h.elements.get('demo-total').textContent,/Estimated meals \(UK\): £/);
   assert.equal(h.requests.length,2);
   for(const {options} of h.requests){assert.equal(options.credentials,'omit');assert.equal(options.redirect,'error');}
@@ -88,7 +89,7 @@ test('failed or mismatched public quantity data shows unavailable instead of a f
     const h=await demo(options);
     assert.equal(h.controller.total(),null);
     assert.match(h.elements.get('demo-total').textContent,/Estimate unavailable/);
-    assert.match(h.elements.get('demo-meals').textContent,/Estimate unavailable/);
+    assert.doesNotMatch(h.elements.get('demo-meals').textContent,/£|\$|Estimate unavailable/);
     assert.match(h.elements.get('demo-shopping').textContent,/Pack estimates unavailable/);
     assert.doesNotMatch(h.elements.get('demo-shopping').textContent,/£0\.00/);
   }

@@ -2,13 +2,15 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import vm from 'node:vm';
+import {createRequire} from 'node:module';
+const planning=createRequire(import.meta.url)('../bb-recipe-planning.js');
 
 const index=fs.readFileSync(new URL('../index.html',import.meta.url),'utf8');
 const app=fs.readFileSync(new URL('../app.html',import.meta.url),'utf8');
 const start=index.indexOf("const BB_AF_DAYS=['Monday'");
 const end=index.indexOf('/* END_BASKETBOSS_AUTOFILL_VARIETY_ROTATION_V1 */',start);
 assert.ok(start>0&&end>start,'Auto-fill code is present in the page');
-const code=index.slice(start,end);
+const code=index.match(/function bbPlanVarietyValid\(plans\)\{[\s\S]*?\n\}/)[0]+'\n'+index.slice(start,end);
 const DAYS=['Monday','Tuesday','Wednesday','Thursday','Friday','Saturday','Sunday'];
 function harness(catalog,freeIds=new Set(catalog.map(r=>r.id))){
  const storage=new Map(),state={planned:[],bb81Batch:null};
@@ -19,7 +21,9 @@ function harness(catalog,freeIds=new Set(catalog.map(r=>r.id))){
   removeItem:k=>storage.delete(k)
  };
  const ctx={
-  RECIPES:catalog,state,localStorage,console,
+  RECIPES:catalog,state,localStorage,console,BBRecipePlanning:planning,DAYS,
+  getRecipe:id=>catalog.find(r=>r.id===id),
+  bbRotationSession:()=>planning.createRotation({recipes:catalog,storage:localStorage,isAllowed:r=>freeIds.has(r.id),scope:'guest',legacyKey:'basketboss_autofill_seenRecipeIds_v1'}),
   bb176AllowedRecipe:id=>freeIds.has(id),
   bb172IsDessertOrNonDinner:r=>/dessert|breakfast|brunch|lunch|snack|baking/i.test((r.category||'')+' '+(r.tag||'')),
   bb81Under30:()=>true,bb81KidOK:()=>true,bb81BatchOK:()=>true,
@@ -28,7 +32,7 @@ function harness(catalog,freeIds=new Set(catalog.map(r=>r.id))){
   notify:msg=>notices.push(msg)
  };
  vm.createContext(ctx);vm.runInContext(code,ctx);
- const api=vm.runInContext('({draw:bbAfDraw,commit:bbAfCommit,dinner:bbAfDinner,tags:bbAfTags,read:bbAfRead,SEEN:BB_AF_SEEN,LAST:BB_AF_LAST})',ctx);
+ const api=vm.runInContext('({draw:bbAfDraw,commit:bbAfCommit,dinner:bbAfDinner,tags:bbAfTags,read:bbAfRead,SEEN:BB_AF_SEEN,LAST:BB_AF_LAST,valid:bbPlanVarietyValid,snapshot:()=>bbRotationSession().snapshot()})',ctx);
  return {api,state,storage,localStorage,setPersist:x=>canPersist=x,setStore:x=>canStore=x,notices,get renders(){return renders}};
 }
 function verifyWeek(h,week){
@@ -68,40 +72,43 @@ test('the real Free catalogue rotates at least five complete varied seven-dinner
   h.state.planned=[]; // Clear week must not clear rotation history.
  }
  assert.equal(seen.size,35);
- assert.equal(h.api.read(h.api.SEEN).length,35);
+ assert.equal(h.api.snapshot().seen.length,35);
 });
-test('last batch cannot reappear immediately when the eligible history resets',()=>{
+test('history does not reset early when fewer than seven unused dinners remain',()=>{
  const h=harness(real);h.recipes=real;
- const eligible=real.filter(h.api.dinner);
- const last=eligible.slice(0,7).map(r=>r.id);
- h.storage.set(h.api.SEEN,JSON.stringify(eligible.slice(0,-4).map(r=>r.id)));
- h.storage.set(h.api.LAST,JSON.stringify(last));
- const result=h.api.draw(DAYS,[]);
- assert.ok(result?.reset,'less than seven unseen recipes resets cycle');
- assert.equal(result.additions.length,7);
- assert.ok(result.additions.every(x=>!last.includes(x.recipeId)));
+ const eligible=real.filter(h.api.dinner),prior=eligible.slice(0,-4).map(r=>r.id);
+ h.storage.set(h.api.SEEN,JSON.stringify(prior));
+ const result=h.api.draw(DAYS,[]);assert.ok(result?.additions.length);
+ let seen=new Set(prior);
+ for(const item of result.additions){
+  if(seen.has(item.recipeId)){
+   assert.ok(eligible.every(r=>seen.has(r.id)),'a repeat requires every eligible dinner to have been consumed first');
+   seen=new Set();
+  }
+  seen.add(item.recipeId);
+ }
 });
 test('failed plan saves restore history and old dinners',()=>{
  const h=harness(real);h.recipes=real;
- const before=h.api.read(h.api.SEEN),old=h.state.planned;
+ const before=h.api.snapshot().seen,old=h.state.planned;
  const chosen=h.api.draw(DAYS,old);
  assert.ok(chosen);
  h.setPersist(false);
  assert.equal(h.api.commit(old,JSON.stringify(old),'{}',null,chosen),false);
  assert.equal(h.state.planned.length,0);
- assert.deepEqual(h.api.read(h.api.SEEN),before);
+ assert.deepEqual(h.api.snapshot().seen,before);
  h.setPersist(true);
  h.setStore(false);
  assert.equal(h.api.commit(old,JSON.stringify(old),'{}',null,chosen),false);
  assert.equal(h.state.planned.length,0);
 });
-test('100 Free and 320 Premium eligible dinner IDs respect access and never pick locked recipes',()=>{
- const pool=Array.from({length:320},(_,i)=>({
+test('100 Free and 500 Premium eligible dinner IDs respect access and never pick locked recipes',()=>{
+ const pool=Array.from({length:500},(_,i)=>({
   id:'catalog-'+i,name:['Chicken','Beef','Pork','Salmon','Turkey','Chickpea','Tofu','Lamb'][i%8]+' dinner '+i,
   category:'Family dinner',tag:['ONE-PAN','ONE-POT','TRAYBAKE','QUICK FIX','BUDGET','ROAST','STEW','SLOW COOKER'][Math.floor(i/8)%8],
   servings:4,ingredients:[[['Chicken breast','Beef mince','Pork mince','Salmon fillets','Turkey mince','Chickpeas','Tofu','Lamb shoulder'][i%8],'500 g'],['Mixed vegetables','300 g']]
  }));
- for(const n of [100,320]){
+ for(const n of [100,500]){
   const h=harness(pool,new Set(pool.slice(0,n).map(r=>r.id)));h.recipes=pool;
   const result=h.api.draw(DAYS,[]);
   assert.ok(result, n+' eligible recipes must permit a varied week');
@@ -119,4 +126,19 @@ test('UI removes Saturday date night and Sunday free night without duplicating A
  assert.equal(index.match(/async function bb172AutoFillSixDinners\(\)/g)?.length,1);
  assert.equal(index.match(/async function bb81AutoFillPro\(\)/g)?.length,1);
  assert.match(index,/function bbAfCommit\(/);
+});
+
+test('a completed Auto-fill cannot retain adjacent proteins or more than two cheese-heavy dinners',()=>{
+ const pool=[
+  {id:'a',name:'Cheese dish A',primaryProtein:'cheese',cheeseHeavy:true},
+  {id:'b',name:'Cheese dish B',primaryProtein:'cheese',cheeseHeavy:true},
+  {id:'c',name:'Cheese dish C',primaryProtein:'cheese',cheeseHeavy:true}
+ ];
+ const h=harness(pool);
+ assert.equal(h.api.valid([{day:'Monday',recipeId:'a'},{day:'Tuesday',recipeId:'b'}]),false);
+ assert.equal(h.api.valid([{day:'Monday',recipeId:'a'},{day:'Wednesday',recipeId:'b'},{day:'Friday',recipeId:'c'}]),false);
+ const old=[{day:'Monday',recipeId:'a'},{day:'Wednesday',recipeId:'b'}];h.state.planned=old;
+ const selection={additions:[{day:'Friday',recipeId:'c'}],rotation:{commit(){throw Error('Invalid plan must never consume history')}}};
+ assert.equal(h.api.commit(old,JSON.stringify(old),'{}',null,selection),false);
+ assert.equal(h.state.planned,old);
 });

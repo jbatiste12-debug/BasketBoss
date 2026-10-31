@@ -138,5 +138,5 @@ test('Safari modal observer and cached script changes never touch camera label',
  assert.match(js,/const token=turnstileToken\|\|''/);
  assert.match(html,/<label class="scan-upload-label" for="ai-photo-input">/);
  assert.match(html,/<input accept="image\/\*"[^>]+id="ai-photo-input" type="file"/);
- assert.match(html,/make-a-meal\.js\?v=bb-ai-quota-turnstile-live-20261027-v1/);
+ assert.match(html,/make-a-meal\.js\?v=20261031-shop-prices/);
 });

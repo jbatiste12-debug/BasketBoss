@@ -46,12 +46,12 @@ test('All locally pre-cached PWA assets exist, without manifest or API paths', a
   }
 });
 
-test('Owner 221 additional recipes still pass through authenticated private D1 API', async () => {
+test('Complete legacy and 400-record Premium releases still pass through authenticated private D1 API', async () => {
   const [api, app] = await Promise.all([read('functions/api/recipes/premium.js'), read('make-a-meal.js')]);
   assert.match(api, /authenticatedUser\(request,env\)/);
   assert.match(api, /bb_private_premium_recipes/);
-  assert.match(api, /rows\.results\.length!==221/);
-  assert.match(app, /fetch\('\/api\/recipes\/premium'/);
+  assert.match(api, /\[221,400\]\.includes\(rows\.results\.length\)/);
+  assert.match(app, /fetch\('\/api\/recipes\/premium\?catalogue=500'/);
   assert.doesNotMatch(app, /data\.length!==321/);
 });
 

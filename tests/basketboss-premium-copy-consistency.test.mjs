@@ -4,10 +4,10 @@ import assert from 'node:assert/strict';
 import fs from 'node:fs/promises';
 const read=p=>fs.readFile(new URL('../'+p,import.meta.url),'utf8');
 
-test('Premium introduction describes server-gated private recipes, not a static 321 bundle',async()=>{
+test('Premium introduction describes server-gated private recipes, not a full static bundle',async()=>{
   const copy=await read('bb-premium-features.js');
-  assert.doesNotMatch(copy,/full 321-recipe static bundle/i);
-  assert.match(copy,/221[\s\S]{0,120}server-verified/i);
+  assert.doesNotMatch(copy,/full (?:321|500)-recipe static bundle/i);
+  assert.match(copy,/400[\s\S]{0,120}server-verified/i);
   assert.match(copy,/AI tools.*service availability/i);
 });
 
