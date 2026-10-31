@@ -16,6 +16,9 @@ test('account deletion migration keeps destructive RPCs service-only and install
  assert.match(sql,/bb-receipt:household:/);
  assert.match(sql,/bb-receipt:user:/);
  assert.match(sql,/ORDER BY id FOR UPDATE/);
+ assert.match(sql,/DELETE FROM auth\.refresh_tokens WHERE user_id=\$1/);
+ assert.match(sql,/DELETE FROM auth\.flow_state WHERE user_id=\$1/);
+ assert.doesNotMatch(sql,/DELETE FROM auth\.audit_log_entries/);
 });
 
 // Optional isolated PostgreSQL integration check. No production connection:
@@ -37,6 +40,10 @@ test('real PostgreSQL deletion preserves other accounts, scrubs invitations, rol
    CREATE SCHEMA auth;
    CREATE TABLE auth.users(id uuid PRIMARY KEY,email text,email_confirmed_at timestamptz);
    CREATE TABLE auth.sessions(id uuid PRIMARY KEY,user_id uuid REFERENCES auth.users(id) ON DELETE CASCADE,created_at timestamptz,not_after timestamptz);
+   CREATE TABLE auth.refresh_tokens(id bigserial PRIMARY KEY,token text,user_id varchar(255),session_id uuid REFERENCES auth.sessions(id) ON DELETE CASCADE);
+   CREATE TABLE auth.flow_state(id uuid PRIMARY KEY,user_id uuid,linking_target_id uuid,provider_access_token text,provider_refresh_token text);
+   CREATE TABLE auth.identities(id uuid PRIMARY KEY,user_id uuid REFERENCES auth.users(id) ON DELETE CASCADE,identity_data jsonb);
+   CREATE TABLE auth.audit_log_entries(id uuid PRIMARY KEY,payload jsonb,ip_address text);
    CREATE FUNCTION auth.uid() RETURNS uuid LANGUAGE sql AS 'SELECT NULL::uuid';
    CREATE TABLE public.basketboss_data(user_id uuid PRIMARY KEY,data jsonb,updated_at timestamptz);`);
   const household=fs.readFileSync(new URL('../sql/basketboss_household_production_20261029.sql',import.meta.url),'utf8');
@@ -45,9 +52,15 @@ test('real PostgreSQL deletion preserves other accounts, scrubs invitations, rol
   for(const [id,email] of [[owner,'owner@example.invalid'],[partner,'partner@example.invalid'],[other,'other@example.invalid']]){
    await db.query("INSERT INTO auth.users VALUES($1::uuid,$2,'2026-10-31Z')",[id,email]);
    await db.query('INSERT INTO auth.sessions VALUES(gen_random_uuid(),$1::uuid,now(),NULL)',[id]);
+   await db.query('INSERT INTO auth.refresh_tokens(token,user_id,session_id) SELECT $1,$2::uuid::text,id FROM auth.sessions WHERE user_id=$2::uuid',[id+':session',id]);
+   await db.query('INSERT INTO auth.refresh_tokens(token,user_id,session_id) VALUES($1,$2,NULL)',[id+':legacy',id]);
+   await db.query('INSERT INTO auth.flow_state VALUES(gen_random_uuid(),$1::uuid,NULL,$2,$3)',[id,id+':access',id+':refresh']);
+   await db.query('INSERT INTO auth.identities VALUES(gen_random_uuid(),$1::uuid,$2::jsonb)',[id,JSON.stringify({email})]);
    await db.query("INSERT INTO public.basketboss_data VALUES($1::uuid,'{\"planned\":[\"Monday\"]}',now())",[id]);
    await db.query("INSERT INTO public.bb_receipt_inventory_scopes(scope_kind,scope_id,user_id) VALUES('user',$1::uuid,$1::uuid)",[id]);
   }
+  await db.query("INSERT INTO auth.audit_log_entries VALUES(gen_random_uuid(),$1::jsonb,'192.0.2.1')",[JSON.stringify({actor_id:partner,actor_username:'partner@example.invalid'})]);
+  await db.query("INSERT INTO auth.flow_state VALUES(gen_random_uuid(),$1::uuid,$2::uuid,'linking-access','linking-refresh'),(gen_random_uuid(),NULL,$1::uuid,'unrelated-access','unrelated-refresh')",[other,partner]);
   await db.query("INSERT INTO public.bb_households(id,owner_user_id,partner_user_id,partner_email,invite_status) VALUES($1::uuid,$2::uuid,$3::uuid,'partner@example.invalid','accepted')",[home,owner,partner]);
   await db.query("INSERT INTO public.bb_households(id,owner_user_id,partner_email,invite_status) VALUES($1::uuid,$2::uuid,'partner@example.invalid','pending')",[otherHome,other]);
   await db.query("INSERT INTO public.bb_household_invites(household_id,partner_email,status,accepted_by,expires_at) VALUES($1::uuid,'partner@example.invalid','accepted',$2::uuid,now()+interval '7 days'),($3::uuid,'partner@example.invalid','revoked',NULL,now()+interval '7 days')",[home,partner,otherHome]);
@@ -65,6 +78,12 @@ test('real PostgreSQL deletion preserves other accounts, scrubs invitations, rol
   assert.deepEqual(await remove(partner,'partner@example.invalid'),{deleted:true,version:1});
   assert.equal(await count('auth.users'),2);assert.equal(await count('public.basketboss_data'),2);
   assert.equal(await count('auth.sessions'),2);
+  assert.equal(await count('auth.refresh_tokens'),4);
+  assert.equal(await count('auth.refresh_tokens','WHERE user_id=$1',[partner]),0);
+  assert.equal(await count('auth.refresh_tokens','WHERE session_id IS NULL'),2);
+  assert.equal(await count('auth.flow_state'),3);assert.equal(await count('auth.identities'),2);
+  assert.equal(await count('auth.flow_state','WHERE user_id=$1::uuid OR linking_target_id=$1::uuid',[partner]),0);
+  assert.equal(await count('auth.audit_log_entries'),1);
   assert.equal(await count('public.bb_household_invites'),0);
   assert.deepEqual(await one('SELECT partner_user_id,partner_email,invite_status FROM public.bb_households WHERE id=$1::uuid',[home]),{partner_user_id:null,partner_email:null,invite_status:'none'});
   assert.equal(await count('public.bb_households'),2);assert.equal(await count('public.bb_household_entries'),1);
@@ -88,6 +107,8 @@ test('real PostgreSQL deletion preserves other accounts, scrubs invitations, rol
   assert.equal(await count('public.bb_receipt_inventory_scopes'),1);
   for(const table of ['bb_receipt_inventory_receipts','bb_receipt_inventory_requests','bb_receipt_inventory_legacy_claims'])assert.equal(await count('public.'+table),0);
   assert.equal(await count('public.basketboss_data'),1);
+  assert.equal(await count('auth.refresh_tokens'),2);assert.equal(await count('auth.flow_state'),2);
+  assert.equal(await count('auth.identities'),1);assert.equal(await count('auth.audit_log_entries'),1);
 
   // An unexpected restrictive FK must roll back personal and shared cleanup.
   await db.exec('CREATE TABLE public.test_delete_restriction(user_id uuid REFERENCES auth.users(id) ON DELETE RESTRICT)');
@@ -95,6 +116,7 @@ test('real PostgreSQL deletion preserves other accounts, scrubs invitations, rol
   await assert.rejects(remove(other,'other@example.invalid'),/foreign key constraint/);
   assert.equal(await count('public.basketboss_data'),1);assert.equal(await count('public.bb_households'),1);
   assert.equal(await count('public.bb_household_invites'),1);assert.equal(await count('public.bb_receipt_inventory_scopes'),1);
+  assert.equal(await count('auth.refresh_tokens'),2);assert.equal(await count('auth.flow_state'),2);
   for(const role of ['anon','authenticated']){
    await db.exec('SET ROLE '+role);
    await assert.rejects(db.query('SELECT public.bb_account_deletion_ready()'),/permission denied/);
@@ -108,5 +130,11 @@ test('real PostgreSQL deletion preserves other accounts, scrubs invitations, rol
   await db.exec('DROP TABLE public.basketboss_data');
   await db.exec(sql);
   assert.equal((await one('SELECT public.bb_account_deletion_ready() AS value')).value.ready,true);
+  await db.exec('CREATE ROLE deletion_test_definer BYPASSRLS; GRANT USAGE ON SCHEMA auth TO deletion_test_definer; ALTER FUNCTION public.bb_account_deletion_ready() OWNER TO deletion_test_definer');
+  assert.equal((await one('SELECT public.bb_account_deletion_ready() AS value')).value.ready,false);
+  await db.exec('ALTER FUNCTION public.bb_account_deletion_ready() OWNER TO postgres; DROP TABLE auth.refresh_tokens; DROP TABLE auth.flow_state');
+  await db.exec(sql);
+  assert.equal((await one('SELECT public.bb_account_deletion_ready() AS value')).value.ready,true);
+  assert.deepEqual(await remove(partner,'partner@example.invalid'),{deleted:true,version:1});
  }finally{await db.close();}
 });

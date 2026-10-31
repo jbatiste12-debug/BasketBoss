@@ -14,6 +14,7 @@ on:
       - bb-server-lib/bb-public-legal.js
       - bb-server-lib/bb-account-deletion.js
       - functions/api/account/**
+      - sql/basketboss_account_deletion_20261031.sql
       - functions/api/subscription/**
       - functions/api/receipt-inventory.js
       - functions/api/bb173/**

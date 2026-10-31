@@ -37,6 +37,7 @@ END $$;
 CREATE OR REPLACE FUNCTION public.bb_account_deletion_ready()
 RETURNS jsonb LANGUAGE plpgsql SECURITY DEFINER SET search_path='' AS $$
 DECLARE cloud_exists boolean:=to_regclass('public.basketboss_data') IS NOT NULL; cloud_safe boolean;
+ auth_safe boolean; auth_table text; auth_relation regclass;
 BEGIN
  cloud_safe:=NOT cloud_exists OR EXISTS (
   SELECT 1 FROM pg_constraint c
@@ -47,7 +48,20 @@ BEGIN
     AND c.confkey=ARRAY[(SELECT attnum FROM pg_attribute
       WHERE attrelid='auth.users'::regclass AND attname='id')]::smallint[]
  );
- RETURN jsonb_build_object('version',1,'ready',cloud_safe AND
+ -- Supabase-managed auth tables may give a migration owner SELECT without
+ -- DELETE. Check the definer's privileges before the server cancels billing.
+ auth_safe:=has_table_privilege(current_user,'auth.users','SELECT') AND
+  has_table_privilege(current_user,'auth.users','UPDATE') AND
+  has_table_privilege(current_user,'auth.users','DELETE') AND
+  EXISTS(SELECT 1 FROM pg_roles WHERE rolname=current_user AND (rolsuper OR rolbypassrls));
+ FOREACH auth_table IN ARRAY ARRAY['auth.refresh_tokens','auth.flow_state'] LOOP
+  auth_relation:=to_regclass(auth_table);
+  IF auth_relation IS NOT NULL THEN
+   auth_safe:=auth_safe AND has_table_privilege(current_user,auth_relation,'SELECT') AND
+    has_table_privilege(current_user,auth_relation,'DELETE');
+  END IF;
+ END LOOP;
+ RETURN jsonb_build_object('version',1,'ready',cloud_safe AND auth_safe AND
   to_regclass('public.bb_households') IS NOT NULL AND
   to_regclass('public.bb_household_invites') IS NOT NULL AND
   to_regclass('public.bb_household_entries') IS NOT NULL AND
@@ -114,6 +128,27 @@ BEGIN
  UPDATE public.bb_receipt_inventory_receipts SET created_by=NULL WHERE created_by=p_user;
  IF to_regclass('public.basketboss_data') IS NOT NULL THEN
   EXECUTE 'DELETE FROM public.basketboss_data WHERE user_id=$1' USING p_user;
+ END IF;
+ -- Upstream Supabase Auth retains legacy refresh tokens with user_id varchar
+ -- and nullable session_id. Only session-linked tokens are covered by the
+ -- auth.users -> sessions -> refresh_tokens cascade. Remove both generations.
+ -- Sources: supabase/auth migrations/00_init_auth_schema.up.sql and
+ -- migrations/20220811173540_add_sessions_table.up.sql.
+ IF to_regclass('auth.refresh_tokens') IS NOT NULL THEN
+  EXECUTE 'DELETE FROM auth.refresh_tokens WHERE user_id=$1' USING p_user::text;
+ END IF;
+ -- PKCE/OAuth flow state has UUID user_id but no user FK, and can contain
+ -- provider credentials. Remove only flows tied to this UUID, including a
+ -- linking target where that newer optional column exists. Audit/security logs
+ -- have independent retention and are deliberately not changed here.
+ -- Sources: supabase/auth migrations/20230322519590_add_flow_state_table.up.sql
+ -- and migrations/20260115000000_add_flow_state_oauth_context.up.sql.
+ IF to_regclass('auth.flow_state') IS NOT NULL THEN
+  EXECUTE 'DELETE FROM auth.flow_state WHERE user_id=$1' USING p_user;
+  IF EXISTS(SELECT 1 FROM pg_attribute WHERE attrelid=to_regclass('auth.flow_state')
+    AND attname='linking_target_id' AND NOT attisdropped) THEN
+   EXECUTE 'DELETE FROM auth.flow_state WHERE linking_target_id=$1' USING p_user;
+  END IF;
  END IF;
  -- Hard delete identity and its auth sessions LAST, in this same transaction.
  -- Any unexpected FK/storage restriction rolls back the entire operation.
