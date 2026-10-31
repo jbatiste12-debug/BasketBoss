@@ -88,6 +88,26 @@ export async function verifyReviewDeployment(perform=fetch){
  }catch{throw Error('App review compliance routes could not be verified on production.');}
 }
 
+// Inspect schema only. Never select customer rows, identifiers or table SQL.
+export async function inspectDeletionSchema(query){
+ const required={
+  paidEntitlements:['bb_paid_entitlements',['user_id','paddle_subscription_id']],
+  billingClaims:['bb_billing_claims',['user_id','claim_id','transaction_id','claim_state','slot_no']],
+  founderSlots:['bb_founder_slots',['user_id','slot_no','state','reservation_token_hash','paddle_subscription_id','reservation_expires_at_ms','updated_at_ms']],
+  aiDailyUsage:['bb_ai_daily_usage',['actor']],
+  deletionJournal:['bb_account_deletions',['actor_hash','retry_hash','user_id','email','started_at_ms','completed_at_ms','locked_until_ms']],
+  deletionReferences:['bb_account_deletion_refs',['ref_hash']]
+ };
+ const tables=await query("SELECT name FROM sqlite_master WHERE type='table' AND name IN ("+Object.values(required).map(([table])=>"'"+table+"'").join(',')+")");
+ const result={};
+ for(const [label,[table,columns]] of Object.entries(required)){
+  const present=tables.some(row=>row.name===table);
+  const metadata=present?await query("SELECT name FROM pragma_table_info('"+table+"')"):[];
+  result[label]={present,compatible:present&&columns.every(name=>metadata.some(row=>row.name===name))};
+ }
+ return result;
+}
+
 export async function inspectCloudflare(env, perform = fetch) {
   if (!env.CLOUDFLARE_API_TOKEN) throw Error('Add CLOUDFLARE_API_TOKEN to the github-pages environment secrets.');
   async function api(path, body, operation = 'Cloudflare request', includePagination = false) {
@@ -140,6 +160,7 @@ export async function inspectCloudflare(env, perform = fetch) {
     counts[name] = tables.some(t => t.name === name) ? Number((await query('SELECT COUNT(*) AS count FROM ' + name))[0]?.count) : null;
     if (counts[name] !== null && !Number.isSafeInteger(counts[name])) throw Error('Database recipe count is invalid.');
   }
+  const deletionSchema=await inspectDeletionSchema(query);
   const latest = project.latest_deployment;
   const latestDeployment = latest ? {id: latest.id, commit: latest.deployment_trigger?.metadata?.commit_hash || null,
     stage: latest.latest_stage?.name || null, status: latest.latest_stage?.status || null} : null;
@@ -160,7 +181,7 @@ export async function inspectCloudflare(env, perform = fetch) {
   }
   return {accountId, project: project.name, branch: project.production_branch, databaseId: dbId, latestDeployment, diagnosedFailure, buildFailureCategories,
     productionCommit: project.canonical_deployment?.deployment_trigger?.metadata?.commit_hash || null,
-    counts, expandedCatalogueReady: counts.bb_private_premium_recipes_500_v1 === 400};
+    counts, deletionSchema, expandedCatalogueReady: counts.bb_private_premium_recipes_500_v1 === 400};
 }
 
 if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) {

@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import {inspectCloudflare,classifyBuildFailure,verifyLandingDeployment,verifyNativeApiDeployment,verifyReviewDeployment} from '../scripts/check-cloudflare-catalogue.mjs';
+import {inspectCloudflare,classifyBuildFailure,verifyLandingDeployment,verifyNativeApiDeployment,verifyReviewDeployment,inspectDeletionSchema} from '../scripts/check-cloudflare-catalogue.mjs';
 
 const token = 'synthetic-secret-that-must-not-appear-in-results';
 const env = {CLOUDFLARE_API_TOKEN: token, CLOUDFLARE_ACCOUNT_ID: 'a'.repeat(32)};
@@ -97,7 +97,7 @@ test('reports 221 legacy and 400 versioned rows without mutations or credential 
   assert.equal(result.databaseId, databaseId);
   assert.equal(result.productionCommit, 'verified-production-commit');
   assert.ok(!JSON.stringify(result).includes(token));
-  assert.equal(requests.filter(r => r.options.method === 'POST').length, 3);
+  assert.equal(requests.filter(r => r.options.method === 'POST').length, 4);
   assert.ok(requests.every(r => r.options.method === 'GET' || r.url.pathname.endsWith('/query')));
 });
 
@@ -148,4 +148,18 @@ test('review verification reports public legal/native checkout readiness without
  assert.deepEqual(await check(false),{privacy:true,terms:true,deletionRoute:true,deletionConfigured:true,deletionMigrationReady:false,nativeWebCheckoutDisabled:true});
  assert.equal((await check(true)).deletionMigrationReady,true);assert.equal(calls.length,8);
  await assert.rejects(verifyReviewDeployment(async()=>{throw Error('untrusted-provider-body')}),/^Error: App review compliance routes/);
+});
+
+
+test('deletion schema inspection reads only allowlisted metadata and emits fixed booleans',async()=>{
+ const {DatabaseSync}=await import('node:sqlite');const db=new DatabaseSync(':memory:');
+ db.exec('CREATE TABLE bb_paid_entitlements(user_id TEXT,paddle_subscription_id TEXT);CREATE TABLE bb_ai_daily_usage(unrelated TEXT);');
+ const queries=[];
+ try{
+  const result=await inspectDeletionSchema(async sql=>{queries.push(sql);assert.match(sql,/^SELECT name FROM (sqlite_master|pragma_table_info)/);return db.prepare(sql).all();});
+  assert.deepEqual(result.paidEntitlements,{present:true,compatible:true});
+  assert.deepEqual(result.aiDailyUsage,{present:true,compatible:false});
+  assert.deepEqual(result.billingClaims,{present:false,compatible:false});
+  assert.equal(queries.length,3);assert.doesNotMatch(JSON.stringify(result),/unrelated|user_id|paddle_subscription_id/);
+ }finally{db.close();}
 });
