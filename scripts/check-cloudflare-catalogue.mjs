@@ -97,7 +97,21 @@ export async function inspectCloudflare(env, perform = fetch) {
 if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) {
   let text;
   try {
-    const result = await inspectCloudflare(process.env);
+    let result = await inspectCloudflare(process.env);
+    const expectedCommit=process.env.GITHUB_SHA;
+    for(let attempt=0;expectedCommit&&result.productionCommit!==expectedCommit&&attempt<24;attempt++){
+      if(result.latestDeployment?.commit===expectedCommit&&result.latestDeployment.status==='failure')
+        throw Error('Production deployment failed: '+result.buildFailureCategories.join(', '));
+      await new Promise(resolve=>setTimeout(resolve,5000));
+      result=await inspectCloudflare(process.env);
+    }
+    if(expectedCommit&&result.productionCommit!==expectedCommit)throw Error('Production has not reached this workflow commit yet. Check the Pages deployment status.');
+    const asset=await fetch('https://basketboss.co.uk/bb-receipt-host.js',{cache:'no-store',redirect:'error',signal:AbortSignal.timeout(15000)});
+    if(!asset.ok||!/javascript/i.test(asset.headers.get('content-type')||''))throw Error('The receipt frontend asset is not available on production.');
+    const receipt=await fetch('https://basketboss.co.uk/api/receipt-inventory?mode=status',{cache:'no-store',redirect:'error',signal:AbortSignal.timeout(15000)});
+    if(![200,401,403].includes(receipt.status)||!/json/i.test(receipt.headers.get('content-type')||''))throw Error('The receipt API status route is not available on production.');
+    if(receipt.status===200){const readiness=await receipt.json();if(readiness?.ok!==true||typeof readiness.available!=='boolean')throw Error('The receipt API status response is invalid.');}
+    result.receiptDeployment={staticAsset:true,statusRoute:true,statusHttp:receipt.status};
     text = 'Cloudflare connection verified.\n\n```json\n' + JSON.stringify(result, null, 2) + '\n```\n\nRead-only check; no database import or configuration changes were performed.\n';
     const notice = (title, value) => console.log('::notice title=' + title + '::' + JSON.stringify(value).replace(/%/g, '%25').replace(/\r/g, '%0D').replace(/\n/g, '%0A'));
     notice('Cloudflare catalogue connection', result);

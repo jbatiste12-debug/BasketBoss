@@ -39,7 +39,8 @@ function route(pathname,billingNames,handlerName){
  const secure=/^import \{sharedHouseholdPremiumOwner\} from '\.\.\/\.\.\/\.\.\/bb-server-lib\/bb-household-premium\.js';/m;
  assert.match(source,secure);
  source=source.replace(secure,"const {sharedHouseholdPremiumOwner}=globalThis.__partnerTestHelper;");
- assert.ok(!source.includes("from '../../../bb-server-lib/"));
+ assert.ok(!source.includes("from '../../../bb-server-lib/bb-billing.js'"));
+ assert.ok(!source.includes("from '../../../bb-server-lib/bb-household-premium.js'"));
  // The data-URL test module has no relative base. Preserve the billing/partner
  // doubles above while resolving newly added real receipt dependencies by file.
  source=source.replace(/from (['"])(\.[^'"]+)\1/g,(_match,quote,relative)=>

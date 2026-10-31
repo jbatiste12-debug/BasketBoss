@@ -1,6 +1,6 @@
 import {authenticatedUser,isBillingEnabled,isConfigured,isLive,expectedPrice,paddleApi,digestHex} from '../../../bb-server-lib/bb-billing.js';
 import {sharedHouseholdPremiumOwner} from '../../../bb-server-lib/bb-household-premium.js';
-import packCatalog from '../../../ingredient-pack-catalog.json' with {type:'json'};
+import {receiptCanonicalPairs} from '../../../bb-server-lib/bb-receipt-canonical-pairs.js';
 import {canonicalIngredientKey} from '../../../bb-receipt-inventory-core.mjs';
 import {receiptInventoryConfigured,onRequestGet as receiptInventoryStatus} from '../receipt-inventory.js';
 // BasketBoss AI structured output formats, taken from the successful private test.
@@ -56,7 +56,7 @@ export const RECEIPT_INVENTORY_SCHEMA={type:'OBJECT',properties:{
   pricePaid:{type:'NUMBER',nullable:true},priceType:{type:'STRING'},confidence:{type:'STRING'},notes:{type:'STRING'}
  },required:['lineId','name','brand','kind','canonicalKey','quantity','unit','packCount','packQuantity','packUnit','pricePaid','priceType','confidence','notes']}},
  notes:{type:'STRING'}},required:['currency','retailer','purchasedAt','receiptTotal','items','notes']};
-const RECEIPT_CANONICAL_NAMES=[...new Set(Object.keys(packCatalog.ingredients).map(key=>canonicalIngredientKey(key.slice(0,key.lastIndexOf('|')))).filter(Boolean))];
+const RECEIPT_CANONICAL_NAMES=[...new Set(receiptCanonicalPairs.map(key=>canonicalIngredientKey(key.slice(0,key.lastIndexOf('|')))).filter(Boolean))];
 const RECEIPT_CANONICAL_SET=new Set(RECEIPT_CANONICAL_NAMES);
 
 // The separate private-test.html is bundled for inspection; its content is embedded

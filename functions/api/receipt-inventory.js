@@ -1,6 +1,6 @@
 /* Authenticated receipt inventory. Supabase is reached only with the server
  * service credential; the browser never chooses its user/household scope. */
-import packCatalog from '../../ingredient-pack-catalog.json' with {type: 'json'};
+import {receiptCanonicalPairs} from '../../bb-server-lib/bb-receipt-canonical-pairs.js';
 import {json, authenticatedUser, isLive, expectedPrice, entitlementForStatus, requireSameOrigin, digestHex} from '../../bb-server-lib/bb-billing.js';
 import {seatGateEnabled, isNewestVerifiedSession} from '../../bb-server-lib/bb-premium-seat.js';
 import {partnerBenefitsEnabled, sharedHouseholdPremiumOwner} from '../../bb-server-lib/bb-household-premium.js';
@@ -15,7 +15,7 @@ const object = value => value !== null && typeof value === 'object' && !Array.is
 const serviceKey = env => env.SUPABASE_SECRET_KEY || env.SUPABASE_SERVICE_ROLE_KEY || '';
 const unavailable = () => json({ok: false, error: 'receipt_inventory_unavailable'}, 503);
 const status = (overrides = {}) => json({ok: true, configured: false, available: false, premium: false, migrationReady: false, ...overrides});
-const canonicalPairs = new Set(Object.keys(packCatalog.ingredients).flatMap(pair => {
+const canonicalPairs = new Set(receiptCanonicalPairs.flatMap(pair => {
   const split = pair.lastIndexOf('|'), name = canonicalIngredientKey(pair.slice(0, split)), unit = normalizeUnit(pair.slice(split + 1));
   return name && unit && !['kg', 'l'].includes(unit) ? [name + '|' + unit] : [];
 }));

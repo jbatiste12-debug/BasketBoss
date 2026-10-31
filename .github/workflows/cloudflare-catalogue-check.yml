@@ -7,6 +7,9 @@ on:
     paths:
       - .github/workflows/cloudflare-catalogue-check.yml
       - scripts/check-cloudflare-catalogue.mjs
+      - functions/api/receipt-inventory.js
+      - functions/api/bb173/**
+      - bb-server-lib/bb-receipt-canonical-pairs.js
 
 permissions:
   contents: read
