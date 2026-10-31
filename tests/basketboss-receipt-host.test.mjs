@@ -152,3 +152,35 @@ test('explicit changed-scope review replaces full stock without summing cloud/de
 test('account change closes a Pantry dialog before exposing another account’s amounts', async () => {
   const h = pantryHarness(), dialog = await h.host.reviewPantry();assert.ok(h.body.children.includes(dialog));h.setActor(actorB);h.event('basketboss:session-changed');assert.ok(!h.body.children.includes(dialog));
 });
+
+
+test('deletion prevents receipt actor isolation from archiving deleted pantry into a guest account', () => {
+  const h = harness({stock: {'rice|g': 100}});
+  h.event('basketboss:account-deletion-started');h.store.values.clear();h.setActor('guest');
+  h.event('basketboss:session-changed');h.host.switchActor();h.host.afterRender();
+  assert.equal(h.store.values.size, 0);assert.equal(h.host.allowLegacyTransfer(), false);
+  assert.equal(h.host.confirmLocalPantryReview().ok, false);
+});
+
+test('deletion invalidates a late receipt availability response and never starts projection sync', async () => {
+  let release;
+  const waiting = new Promise(resolve => {release = resolve;});
+  const h = harness({fetch: async () => {await waiting;return {ok: true, json: async () => ({available: true, premium: true})};}});
+  const pending = h.host.refreshAvailability();
+  h.event('basketboss:account-deletion-started');release();await pending;
+  assert.equal(h.host.getAvailability().available, false);assert.equal(h.calls.includes('synchronize'), false);
+});
+
+test('late Pantry confirmation cannot update receipt coverage after deletion starts or is cancelled', async () => {
+  let release, began;
+  const waiting = new Promise(resolve => {release = resolve;});
+  const started = new Promise(resolve => {began = resolve;});
+  const h = harness({stock: {'rice|g': 100}, cached: {scope: {kind: 'user', id: actorA}, inventoryRevision: 1}});
+  h.inventory.confirmPantry = async () => {began();await waiting;return {ok: true, committed: true, localApplied: true, projection: {stock: {'rice|g': 500}}};};
+  let projected = 0;h.options.onProjection = () => {projected++;};
+  const pending = h.host.confirmCurrentPantry({stock: {'rice|g': 100}});await started;
+  const before = [...h.store.values];h.event('basketboss:account-deletion-started');h.event('basketboss:account-deletion-cancelled');
+  const afterCancellation = projected;release();const result = await pending;
+  assert.equal(result.ok, false);assert.equal(projected, afterCancellation);
+  assert.deepEqual([...h.store.values], before);
+});

@@ -7,5 +7,7 @@ html.bb-native-ios{color-scheme:light;background:#fffdf7;min-height:100%;-webkit
 .bb-native-ios .bb-native-membership{padding:18px;border:1px solid #cbdccf;border-radius:16px;background:#f3f8ed;color:#163e2c;margin:16px 0}
 .bb-native-ios .bb-native-membership button{min-height:44px;padding:11px 16px;border:1px solid #2a6c43;border-radius:10px;background:#195f3c;color:white;font:inherit;font-weight:750;margin:5px 8px 5px 0}
 .bb-native-ios .bb-native-membership p{font-size:14px;line-height:1.6}.bb-native-ios .bb-native-membership [role=status]{min-height:24px}
+.bb-native-ios .bb-native-membership button[hidden]{display:none!important}
+.bb-native-ios .bb-native-membership-legal a{display:inline-block;min-height:44px;padding:10px 2px;color:#195f3c}
 
 .bb-native-ios .bb-public-beta-badge,.bb-native-ios .bb-beta-badge{display:none!important}

@@ -70,6 +70,24 @@ export async function verifyNativeApiDeployment(perform=fetch){
  return {preflight:true,responseHeaders:true,foreignOriginDenied:true};
 }
 
+// Fixed public review-readiness signals; never deletes an account or sends auth.
+export async function verifyReviewDeployment(perform=fetch){
+ const options={cache:'no-store',redirect:'error',signal:AbortSignal.timeout(15000)};
+ try{
+  for(const path of ['/privacy','/terms']){
+   const page=await perform('https://basketboss.co.uk'+path,options);
+   if(page.status!==200||!/text\/html/i.test(page.headers.get('content-type')||''))throw Error();
+   const html=await page.text();if(!html.includes('31 October 2026'))throw Error();
+  }
+  const response=await perform('https://basketboss.co.uk/api/account/delete',{...options,headers:{Origin:'capacitor://localhost'}});
+  const status=await response.json();
+  if(response.status!==200||status?.ok!==true||typeof status.available!=='boolean'||typeof status.migrationReady!=='boolean'||response.headers.get('Access-Control-Allow-Origin')!=='capacitor://localhost')throw Error();
+  const checkout=await perform('https://basketboss.co.uk/api/subscription/checkout-config',{...options,headers:{Origin:'capacitor://localhost'}});
+  if((await checkout.json())?.enabled!==false)throw Error();
+  return {privacy:true,terms:true,deletionRoute:true,deletionConfigured:status.available,deletionMigrationReady:status.migrationReady,nativeWebCheckoutDisabled:true};
+ }catch{throw Error('App review compliance routes could not be verified on production.');}
+}
+
 export async function inspectCloudflare(env, perform = fetch) {
   if (!env.CLOUDFLARE_API_TOKEN) throw Error('Add CLOUDFLARE_API_TOKEN to the github-pages environment secrets.');
   async function api(path, body, operation = 'Cloudflare request', includePagination = false) {
@@ -159,6 +177,7 @@ if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) 
     if(expectedCommit&&result.productionCommit!==expectedCommit)throw Error('Production has not reached this workflow commit yet. Check the Pages deployment status.');
     result.landingDeployment=await verifyLandingDeployment();
     result.nativeApiDeployment=await verifyNativeApiDeployment();
+    result.reviewDeployment=await verifyReviewDeployment();
     const asset=await fetch('https://basketboss.co.uk/bb-receipt-host.js',{cache:'no-store',redirect:'error',signal:AbortSignal.timeout(15000)});
     if(!asset.ok||!/javascript/i.test(asset.headers.get('content-type')||''))throw Error('The receipt frontend asset is not available on production.');
     const receipt=await fetch('https://basketboss.co.uk/api/receipt-inventory?mode=status',{cache:'no-store',redirect:'error',signal:AbortSignal.timeout(15000)});

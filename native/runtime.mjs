@@ -1,16 +1,23 @@
-import {Capacitor} from '@capacitor/core';
+import {Capacitor,registerPlugin} from '@capacitor/core';
 import {App} from '@capacitor/app';
 import {Browser} from '@capacitor/browser';
 import {Camera,CameraResultType,CameraSource} from '@capacitor/camera';
 import {Haptics,ImpactStyle,NotificationType} from '@capacitor/haptics';
 import {StatusBar,Style} from '@capacitor/status-bar';
 import {SplashScreen} from '@capacitor/splash-screen';
-import {PRODUCTION_ORIGIN,productionApiURL,nativePageURL,isCheckoutURL,installNativeFetch} from './routing.mjs';
+import {PRODUCTION_ORIGIN,productionApiURL,nativePageURL,nativeMembershipURL,isNativeBillingURL,installNativeFetch,installNativeXHR,installNativeWindowOpen} from './routing.mjs';
 import {installNativeMembership} from './membership.mjs';
 
 if(Capacitor.isNativePlatform()&&Capacitor.getPlatform()==='ios'){
  document.documentElement.classList.add('bb-native-ios');
  const originalFetch=installNativeFetch();
+ const nativeData=registerPlugin('BasketBossNavigation');
+ const clearTemporaryData=async()=>{
+  const result=await nativeData.clearReceiptPhotos();
+  if(result?.ok!==true)throw Object.assign(Error('Temporary receipt photos could not be cleared.'),{code:'BB_NATIVE_CLEANUP'});
+  return result;
+ };
+ const deleting=()=>window.BBAccountDeletion?.isDeleting?.()===true;
  const readSession=()=>{try{return JSON.parse(localStorage.getItem('basketboss_cloud_session_v1')||'null');}catch{return null;}};
  const haptic=kind=>{
   const action=kind==='success'?()=>Haptics.notification({type:NotificationType.Success}):kind==='selection'?()=>Haptics.selectionStart().then(()=>Haptics.selectionChanged()).finally(()=>Haptics.selectionEnd()):()=>Haptics.impact({style:ImpactStyle.Light});
@@ -18,47 +25,52 @@ if(Capacitor.isNativePlatform()&&Capacitor.getPlatform()==='ios'){
  };
  async function openExternal(address){
   const url=new URL(address,location.href);
-  if(url.protocol!=='https:'||isCheckoutURL(url.href))throw Error('This link is not available in the iOS app.');
+  if(isNativeBillingURL(url.href,location.href)){location.assign(nativeMembershipURL(location.href));return;}
+  const local=nativePageURL(url.href,location.href);
+  if(local){location.assign(local);return;}
+  if(url.protocol!=='https:')throw Error('This link is not available in the iOS app.');
   await Browser.open({url:url.href,presentationStyle:'popover'});
  }
- window.BBNative=Object.freeze({isNative:true,platform:'ios',apiOrigin:PRODUCTION_ORIGIN,apiURL:path=>productionApiURL(path)||path,haptic,openExternal});
+ window.BBNative=Object.freeze({isNative:true,platform:'ios',apiOrigin:PRODUCTION_ORIGIN,apiURL:path=>productionApiURL(path)||path,haptic,openExternal,clearTemporaryData});
  // Preserve method/body/authentication. No cookie transport or native HTTP
  // patch is enabled: WKWebView uses the server's narrow native-origin CORS.
- if(window.XMLHttpRequest){
-  const open=XMLHttpRequest.prototype.open;
-  XMLHttpRequest.prototype.open=function(method,address,...rest){
-   if(isCheckoutURL(String(address),location.href))throw Error('Purchases are not available in this iOS build.');
-   return open.call(this,method,productionApiURL(String(address),location.href)||address,...rest);
-  };
- }
+ installNativeXHR();
+ installNativeWindowOpen({openExternal});
  let takingPhoto=false;
  async function nativePhoto(input){
-  if(takingPhoto||input.disabled)return;takingPhoto=true;
+  if(takingPhoto||input.disabled||deleting())return;takingPhoto=true;let cleared=false;
   try{
    const photo=await Camera.getPhoto({resultType:CameraResultType.Uri,source:CameraSource.Prompt,quality:85,width:2200,height:2200,correctOrientation:true,saveToGallery:false,promptLabelHeader:'Receipt photo',promptLabelPhoto:'Choose photo',promptLabelPicture:'Take photo',promptLabelCancel:'Cancel'});
-   if(!photo.webPath||!input.isConnected)return;
+   if(deleting()||!photo.webPath||!input.isConnected)return;
    const response=await originalFetch(photo.webPath);if(!response.ok)throw Error('The photo could not be opened.');
    const blob=await response.blob();if(blob.size>12*1024*1024)throw Error('Choose a receipt photo under 12 MB.');
+   if(deleting()||!input.isConnected)return;
    const file=new File([blob],'receipt-'+Date.now()+'.'+(photo.format==='png'?'png':'jpg'),{type:blob.type||'image/jpeg'});
+   await clearTemporaryData();cleared=true;
+   if(deleting()||!input.isConnected)return;
    const transfer=new DataTransfer();transfer.items.add(file);input.files=transfer.files;
    input.dispatchEvent(new Event('change',{bubbles:true}));await haptic('selection');
   }catch(error){
-   if(!/cancel/i.test(error?.message||'')){
+   if(!deleting()&&!/cancel/i.test(error?.message||'')){
     const status=document.querySelector('#bb-receipt-scanner .bb-receipt-status');
-    const message='Unable to open the photo. Check Camera or Photos permission in iPhone Settings, then try again.';
+    const message=error?.code==='BB_NATIVE_CLEANUP'?'Temporary receipt photos could not be cleared. Please try again.':'Unable to open the photo. Check Camera or Photos permission in iPhone Settings, then try again.';
     if(status)status.textContent=message;else window.alert(message);
    }
-  }finally{takingPhoto=false;}
+  }finally{
+   if(!cleared)try{await clearTemporaryData();}catch{ /* Account deletion retries and reports cleanup failures separately. */ }
+   takingPhoto=false;
+  }
  }
  document.addEventListener('click',event=>{
   const file=event.target.closest?.('input[type=file][data-receipt-action=file]');
   if(file&&!file.disabled){event.preventDefault();event.stopImmediatePropagation();void nativePhoto(file);return;}
+  if(event.target.closest?.('#bb175Compare,button[data-bbob="premium"]')){event.preventDefault();event.stopImmediatePropagation();location.assign(nativeMembershipURL(location.href));return;}
   const link=event.target.closest?.('a[href]');
   if(link){
    let address;try{address=new URL(link.getAttribute('href'),location.href);}catch{return;}
+   if(isNativeBillingURL(address.href,location.href)){event.preventDefault();event.stopImmediatePropagation();location.assign(nativeMembershipURL(location.href));return;}
    const local=nativePageURL(address.href,location.href);
-   if(local&&address.protocol==='https:'){event.preventDefault();event.stopImmediatePropagation();location.assign(local);return;}
-   if(isCheckoutURL(address.href)){event.preventDefault();event.stopImmediatePropagation();location.assign('pricing-sandbox.html');return;}
+   if(local&&local!==address.href){event.preventDefault();event.stopImmediatePropagation();location.assign(local);return;}
    if(address.protocol==='https:'){
     event.preventDefault();event.stopImmediatePropagation();void openExternal(address.href).catch(()=>{});return;
    }
@@ -66,9 +78,14 @@ if(Capacitor.isNativePlatform()&&Capacitor.getPlatform()==='ios'){
   }
   if(event.target.closest?.('[data-bb-haptic],button[data-tab],nav.tabs button'))void haptic('selection');
  },true);
+ document.addEventListener('submit',event=>{
+  const form=event.target;
+  const target=event.submitter?.getAttribute('formaction')||form.getAttribute?.('action')||location.href;
+  if(isNativeBillingURL(target,location.href)){event.preventDefault();event.stopImmediatePropagation();location.assign(nativeMembershipURL(location.href));}
+ },true);
  document.addEventListener('basketboss:receipt-confirmed',()=>void haptic('success'));
  function ready(){
-  installNativeMembership({apiURL:path=>PRODUCTION_ORIGIN+path,openExternal,readSession});
+  installNativeMembership({apiURL:path=>PRODUCTION_ORIGIN+path,readSession});
   void StatusBar.setStyle({style:Style.Dark}).catch(()=>{});
   void StatusBar.setOverlaysWebView({overlay:false}).catch(()=>{});
   // Content is already local. Wait for initial render, then dismiss launch art.

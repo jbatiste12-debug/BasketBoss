@@ -1,4 +1,5 @@
 import {json,isBillingEnabled,isLive,billingMode,isConfigured,authenticatedUser,requireSameOrigin,expectedPrice,paddleApi,digestHex} from '../../../bb-server-lib/bb-billing.js';
+import {ensureDeletionSchema,digestDeletionActor,isAccountDeleting} from '../../../bb-server-lib/bb-account-deletion.js';
 const MAX_BODY=1024;
 // A Founder seat is a temporary hold until Paddle confirms a subscription.
 // Release only AFTER Paddle confirms its unpaid transaction is canceled.
@@ -144,6 +145,8 @@ export async function onRequestPost({request,env}) {
       )))
     return json({error:'Checkout disabled or not configured'},503);
   if(!requireSameOrigin(request)) return json({error:'Origin not allowed'},403);
+  if(request.headers.get('Origin')==='capacitor://localhost')
+    return json({error:'Purchases are unavailable in the iOS app. View your account status in Settings.'},403);
   const user=await authenticatedUser(request,env);
   if(!user) return json({error:'Sign in with a verified account first'},401);
   if(user.id===env.BB_OWNER_USER_ID) return json({error:'Owner already has free Premium'},403);
@@ -160,6 +163,9 @@ export async function onRequestPost({request,env}) {
   if(!priceId) return json({error:'Plan unavailable'},400);
   const db=env.BILLING_DB;
   try {
+    await ensureDeletionSchema(env);
+    const deletionHash=await digestDeletionActor(user.id);
+    if(await isAccountDeleting(env,user.id))return json({error:'Account deletion is in progress. Checkout is unavailable.'},409);
     if(abandonTransactionId){
       const claim=await db.prepare(`SELECT claim_id,user_id,plan,slot_no,claim_state,transaction_id
         FROM bb_billing_claims WHERE user_id=? AND plan='founder'
@@ -187,7 +193,8 @@ export async function onRequestPost({request,env}) {
         const lease=await db.prepare(`UPDATE bb_billing_claims SET created_at_ms=?
           WHERE claim_id=? AND user_id=? AND claim_state='pending'
             AND transaction_id IS NULL AND created_at_ms=?
-          RETURNING claim_id`).bind(now,existing.claim_id,user.id,existing.created_at_ms).first();
+            AND NOT EXISTS (SELECT 1 FROM bb_account_deletions WHERE actor_hash=?)
+          RETURNING claim_id`).bind(now,existing.claim_id,user.id,existing.created_at_ms,deletionHash).first();
         if(!lease)return json({error:'Checkout is already being recovered. Please try again shortly.'},409);
         recovered={...existing,created_at_ms:now};
         if(existing.plan===plan && existing.price_id===priceId){
@@ -202,7 +209,7 @@ export async function onRequestPost({request,env}) {
       }else if(plan==='founder'&&existing.plan==='founder'&&existing.claim_state==='checkout_created'){
         const tx=await paddleApi(env,'/transactions/'+existing.transaction_id);
         if(tx?.id===existing.transaction_id && tx.custom_data?.bb_claim_id===existing.claim_id){
-          if(['draft','ready'].includes(tx.status))
+          if(['draft','ready'].includes(tx.status)&&!await isAccountDeleting(env,user.id))
             return json({transactionId:tx.id,plan,mode:billingMode(env),reused:true});
           if(tx.status==='canceled' && await releaseUnpaidFounder(env,db,existing)){
             // Reclaim the canceled checkout, then create a fresh Founder transaction.
@@ -215,13 +222,17 @@ export async function onRequestPost({request,env}) {
       if(plan==='founder'){
         const row=await db.prepare(`UPDATE bb_founder_slots SET state='reserved',user_id=?,reservation_token_hash=?,reservation_expires_at_ms=NULL,updated_at_ms=?
           WHERE slot_no=(SELECT slot_no FROM bb_founder_slots WHERE state='available' ORDER BY slot_no LIMIT 1)
-          AND state='available' RETURNING slot_no`).bind(user.id,tokenHash,now).first();
+          AND state='available'
+          AND NOT EXISTS (SELECT 1 FROM bb_account_deletions WHERE actor_hash=?)
+          RETURNING slot_no`).bind(user.id,tokenHash,now,deletionHash).first();
         if(!row)return json({error:'All 25 founding places are currently claimed or reserved'},409);
         slot=row.slot_no;
       }
       try{
-        await db.prepare(`INSERT INTO bb_billing_claims (claim_id,user_id,plan,price_id,slot_no,created_at_ms)
-          VALUES (?,?,?,?,?,?)`).bind(claimId,user.id,plan,priceId,slot,now).run();
+        const inserted=await db.prepare(`INSERT INTO bb_billing_claims (claim_id,user_id,plan,price_id,slot_no,created_at_ms)
+          SELECT ?,?,?,?,?,? WHERE NOT EXISTS (SELECT 1 FROM bb_account_deletions WHERE actor_hash=?)
+          RETURNING claim_id`).bind(claimId,user.id,plan,priceId,slot,now,deletionHash).first();
+        if(!inserted)return json({error:'Account deletion is in progress. Checkout is unavailable.'},409);
       }catch(err){
         console.error('BasketBoss claim insert failed',err);
         return json({error:'Checkout preparation failed; reservation retained for safety'},503);
@@ -258,6 +269,17 @@ export async function onRequestPost({request,env}) {
         AND transaction_id IS NULL AND created_at_ms=? RETURNING claim_id`)
       .bind(transaction.id,claimId,user.id,plan,now).first();
     if(!saved)return json({error:'Paddle created a transaction, but its local claim could not be linked; contact support before retrying'},503);
+    // Always preserve the remote ID first. A deletion which observed a pending
+    // claim must wait for this linkage before canceling it; never lose proof of
+    // a payable transaction by dropping the write when deletion starts.
+    if(await isAccountDeleting(env,user.id)){
+      try{
+        const tx=await paddleApi(env,'/transactions/'+transaction.id);
+        if(tx?.id===transaction.id&&tx.custom_data?.bb_claim_id===claimId&&['draft','ready'].includes(tx.status))
+          await paddleApi(env,'/transactions/'+transaction.id,'PATCH',{status:'canceled'});
+      }catch{/* The deletion retry reconciles the durably linked transaction. */}
+      return json({error:'Account deletion is in progress. Checkout has been stopped.'},409);
+    }
     return json({transactionId:transaction.id,plan,mode:billingMode(env),recovered:!!recovered});
   } catch(err) {
     console.error('BasketBoss checkout server error',err);

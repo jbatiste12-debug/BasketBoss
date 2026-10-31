@@ -7,18 +7,23 @@ const KITCHEN='basketboss_makeameal_v1_inventory';
 const TICKS='basketboss_321_v11_shop_ticks',SESSION='basketboss_active_shop_session_v7',BUDGET='basketboss_v172_weekly_budget_target_v1';
 const SYNC_KEYS=[STATE,STOCK,KITCHEN,TICKS,SESSION,BUDGET];
 const DAYS=['Monday','Tuesday','Wednesday','Thursday','Friday','Saturday','Sunday'];
-let status=null,busy=false,dialog=null,lastPoll=0,booted=false,conflicts=[],heldConflicts=[];
+let status=null,busy=false,dialog=null,lastPoll=0,booted=false,conflicts=[],heldConflicts=[],deletionPaused=false,generation=0;
+const deleting=()=>deletionPaused||window.BBAccountDeletion?.isDeleting?.()===true;
+const pauseDeletion=()=>{deletionPaused=true;generation++;status=null;conflicts=[];heldConflicts=[];dialog?.close?.();};
+window.addEventListener('basketboss:account-deletion-started',pauseDeletion);
+window.addEventListener('basketboss:account-deletion-deleted',pauseDeletion);
+window.addEventListener('basketboss:account-deletion-cancelled',()=>{deletionPaused=false;generation++;});
 const read=(k,d)=>{try{return JSON.parse(localStorage.getItem(k)||'null')??d}catch{return d}};
 const raw=(k)=>{try{return localStorage.getItem(k)}catch{return null}};
 const copy=v=>JSON.parse(JSON.stringify(v));
 const esc=v=>String(v??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 const eq=(a,b)=>JSON.stringify(a)===JSON.stringify(b);
-const userSession=()=>{const s=read('basketboss_cloud_session_v1',null);return s?.access_token?s:null};
+const userSession=()=>{if(deleting())return null;const s=read('basketboss_cloud_session_v1',null);return s?.access_token?s:null};
 async function api(path,body){
- const session=userSession();if(!session)throw Error('Sign in to your BasketBoss account first.');
+ const session=userSession(),serial=generation;if(!session)throw Error('Sign in to your BasketBoss account first.');
  const r=await fetch(ROOT+path,{method:body?'POST':'GET',headers:{'Authorization':'Bearer '+session.access_token,'Content-Type':'application/json'},
   body:body?JSON.stringify(body):undefined,credentials:'same-origin',cache:'no-store'});
- const data=await r.json().catch(()=>({}));if(!r.ok){const e=Error(data.error||'Sharing unavailable');e.status=r.status;e.data=data;throw e;}return data;
+ const data=await r.json().catch(()=>({}));const current=userSession();if(deleting()||serial!==generation||current?.user?.id!==session.user?.id||current?.access_token!==session.access_token)throw Error('Account changed during sharing request.');if(!r.ok){const e=Error(data.error||'Sharing unavailable');e.status=r.status;e.data=data;throw e;}return data;
 }
 const key=(s,k)=>s+'\u001f'+k;
 // Receipt inventory has its own revision-checked whole-stock transaction. Do
@@ -54,8 +59,9 @@ function baselineKey(hid){
  return 'bb_partner_baseline_v1_'+hid+'_'+userId;
 }
 function baseline(hid){return read(baselineKey(hid),{});}
-function writeBaseline(hid,v){localStorage.setItem(baselineKey(hid),JSON.stringify(v));}
+function writeBaseline(hid,v){if(deleting())throw Error('Account deletion is in progress.');localStorage.setItem(baselineKey(hid),JSON.stringify(v));}
 function applyLeaves(remoteChanges){
+ if(deleting())throw Error('Account deletion is in progress.');
  if(!remoteChanges.length)return false;
  const expectedKeys=[STATE,STOCK,KITCHEN,TICKS,SESSION,BUDGET],before={};
  for(const k of expectedKeys)before[k]=raw(k);
@@ -118,6 +124,8 @@ function applyLeaves(remoteChanges){
  return true;
 }
 async function synchronize({allowInitialImport=false}={}){
+ if(deleting())return;
+ const serial=generation;
  if(busy){message('A household sync is already running.');return;}
  if(!status?.premium||!status?.household_id){message('Household access needs refreshing. Close and reopen Partner Sharing.');return;}
  if(document.hidden){message('Return to the BasketBoss tab before syncing.');return;}
@@ -131,7 +139,7 @@ async function synchronize({allowInitialImport=false}={}){
   // overwriting that newer edit with an obsolete remote snapshot.
   const observed=Object.fromEntries(SYNC_KEYS.map(k=>[k,raw(k)]));
   const receiptOwnedAtStart=!!window.BBReceiptHost?.handlesInventorySync?.();
-  const unchanged=()=>SYNC_KEYS.every(k=>raw(k)===observed[k])&&receiptOwnedAtStart===!!window.BBReceiptHost?.handlesInventorySync?.();
+  const unchanged=()=>!deleting()&&serial===generation&&SYNC_KEYS.every(k=>raw(k)===observed[k])&&receiptOwnedAtStart===!!window.BBReceiptHost?.handlesInventorySync?.();
   const requireUnchanged=()=>{if(!unchanged())throw Error('Device changed during sharing sync; no local merge performed.');};
   const fetched=await api('?mode=entries');
   requireUnchanged();if(fetched.household_id!==hid)throw Error('Household changed');
@@ -188,7 +196,7 @@ async function synchronize({allowInitialImport=false}={}){
   else message(changes.length?'Household changes received and saved safely.':'Sync complete. No new household changes to apply.');
   showHeldReview();
  }catch(e){message(e.status===409?'Another device changed the same item. No data was overwritten.':'Sharing unavailable; this device remains unchanged.');}
- finally{busy=false;if(applied)location.reload();}
+ finally{busy=false;if(applied&&!deleting()&&serial===generation)location.reload();}
 }
 function message(t){const el=dialog?.querySelector('[data-bbhs-message]');if(el)el.textContent=t;}
 function showHeldReview(){
@@ -232,10 +240,11 @@ function makeModal(){if(dialog)return dialog;
  dialog.addEventListener('click',e=>{if(e.target===dialog)dialog.close()});return dialog;
 }
 async function refreshStatus(){
+ if(deleting())return null;
  if(!userSession()){status=null;return null;}
  try{status=await api('?mode=status');return status}catch{status=null;return null;}
 }
-async function open(){makeModal();if(!dialog.open)dialog.showModal();const body=dialog.querySelector('[data-bbhs-body]');
+async function open(){if(deleting())return;makeModal();if(!dialog.open)dialog.showModal();const body=dialog.querySelector('[data-bbhs-body]');
  body.textContent='Checking account…';message('');dialog.querySelector('[data-bbhs-review]').replaceChildren();const s=await refreshStatus();
  if(!s){body.innerHTML='<p>Sign in to link a partner, or explore BasketBoss Premium. Your saved plan is unchanged.</p><a class="bbhs-primary" href="pricing-sandbox.html">Explore Premium</a>';return;}
  if(!s.configured){body.innerHTML='<p>Household Partner Sharing is being prepared. It is not activated yet; your saved plan remains private on this device.</p><a class="bbhs-primary" href="pricing-sandbox.html">Explore Premium</a>';return;}
@@ -254,7 +263,7 @@ async function open(){makeModal();if(!dialog.open)dialog.showModal();const body=
  }
  body.querySelector('[data-sync]')?.addEventListener('click',()=>synchronize());
 }
-function attach(){const app=document.getElementById('app');if(!app)return;
+function attach(){if(deleting())return;const app=document.getElementById('app');if(!app)return;
  // Add independent buttons without moving existing elements or changing grids.
  // The My Week Feeding control is intentionally left untouched.
  const targets=[app.querySelector('.bb321-shop-summary-top'),
@@ -265,7 +274,7 @@ function attach(){const app=document.getElementById('app');if(!app)return;
 }
 function boot(){if(booted)return;booted=true;const app=document.getElementById('app');if(!app)return;
  const observer=new MutationObserver(()=>{if(!document.hidden)attach()});observer.observe(app,{childList:true,subtree:false});
- attach();window.addEventListener('basketboss:session-changed',()=>{status=null;refreshStatus()});
+ attach();window.addEventListener('basketboss:session-changed',()=>{generation++;status=null;refreshStatus()});
  window.addEventListener('focus',async()=>{if(Date.now()-lastPoll<7000)return;lastPoll=Date.now();await refreshStatus();synchronize()});
  window.addEventListener('online',()=>synchronize());
  setInterval(()=>{if(!document.hidden&&Date.now()-lastPoll>20000){lastPoll=Date.now();synchronize()}},20000);

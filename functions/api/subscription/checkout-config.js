@@ -3,6 +3,7 @@ import {
 } from '../../../bb-server-lib/bb-billing.js';
 
 export async function onRequestGet({request,env}){
+  if(request.headers.get('Origin')==='capacitor://localhost')return json({enabled:false,reason:'native_account_status_only'});
   const live=isLive(env);
   // Match the checkout POST gates exactly; NEVER enable public checkout
   // merely because Paddle approved the domain or a browser flag is set.

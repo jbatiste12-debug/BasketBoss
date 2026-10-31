@@ -1,6 +1,8 @@
 <!doctype html>
 <html lang="en">
 <head>
+<link rel="stylesheet" href="bb-account-deletion.css?v=20261031">
+<script defer src="bb-account-deletion.js?v=20261031"></script>
 <base href="../../">
 <link rel="stylesheet" href="bb-onboarding-v2.css?v=20261029-partner-onboard-main1">
 <link rel="stylesheet" href="bb-ux-cleanup.css?v=20261028-ux1">
@@ -3768,9 +3770,9 @@ body[data-bbnext-view="discover"] #app .bb-featured-card #bbFeaturedBatch {
 <script src="bb-serving-scale.js?v=20261029-preview1"></script>
 <script src="bb-recipe-planning.js?v=20261031-pilot-rotation"></script>
 <script defer src="bb-weekly-essentials.js?v=20261031-receipt-pantry"></script>
-<script defer src="bb-receipt-inventory.js?v=20261031-receipt-pantry"></script>
+<script defer src="bb-receipt-inventory.js?v=20261031-account-compliance"></script>
 <script defer src="bb-receipt-scanner.js?v=20261031-receipt-pantry"></script>
-<script defer src="bb-receipt-host.js?v=20261031-receipt-pantry"></script>
+<script defer src="bb-receipt-host.js?v=20261031-account-compliance"></script>
 <link rel="stylesheet" href="bb-receipt-scanner.css?v=20261031-receipt-pantry">
 <link rel="stylesheet" href="bb-receipt-host.css?v=20261031-receipt-pantry">
 <script>
@@ -5271,6 +5273,7 @@ function bbFeedingDayStepper(day,recipe,position){
 }
 let tab='week',recipeIndex=0,galleryPage=0,query='',collectionFilter='All',selectedRecipe=null,cookStep=0,timer=0,timerHandle=null,scanFile=null,scanItems=[],scanPreview='',toastHandle=null;
 function persist(){
+ if(window.BBAccountDeletion?.isDeleting?.()===true)return false;
  if(!bbStorageSafe){notify('Saving unavailable. Do not close BasketBoss; export a backup.');return false}
  try{
   if(typeof bb81ClearStaleBatch==='function')bb81ClearStaleBatch();
@@ -10126,60 +10129,77 @@ const config=window.BASKETBOSS_CLOUD_CONFIG||{};
 const enabled=/^https:\/\//.test(config.url||'') && !!config.anonKey && !config.url.includes('YOUR_PROJECT');
 const panel=document.getElementById('cloud-panel'),status=document.getElementById('cloud-status'),msg=document.getElementById('cloud-message');
 const auth=document.getElementById('cloud-auth'),signed=document.getElementById('cloud-signed');
-let session=null,dirty=false,timer=null,loading=false;
+let session=null,dirty=false,timer=null,loading=false,generation=0,deleting=false;
 const sessionKey='basketboss_cloud_session_v1',stateKey='basketboss_321_unified_state_v1';
-const setMessage=t=>{msg.textContent=t;};
-function setStatus(){status.textContent=!enabled?'Cloud sync needs setup by the site owner.':session?'Signed in as '+(session.user?.email||'your account'):'Sign in to sync your plan between devices.';auth.hidden=!!session||!enabled;signed.hidden=!session;}
+const blocked=()=>deleting||window.BBAccountDeletion?.isDeleting?.()===true;
+const snapshot=()=>({generation,actor:session?.user?.id||null,token:session?.access_token||null});
+const current=pin=>!blocked()&&pin.generation===generation&&pin.actor===(session?.user?.id||null)&&pin.token===(session?.access_token||null);
+const setMessage=t=>{if(!blocked())msg.textContent=t;};
+function setStatus(){status.textContent=blocked()?'Account deletion is in progress. Cloud sync is paused.':!enabled?'Cloud sync needs setup by the site owner.':session?'Signed in as '+(session.user?.email||'your account'):'Sign in to sync your plan between devices.';auth.hidden=!!session||!enabled||blocked();signed.hidden=!session;for(const id of ['cloud-upload','cloud-download','cloud-logout'])document.getElementById(id).disabled=blocked();}
 function headers(token){return {'apikey':config.anonKey,'Authorization':'Bearer '+(token||config.anonKey),'Content-Type':'application/json'};}
 async function api(path,method='GET',body=null,token=null){
+ if(blocked())throw new Error('Account deletion is in progress.');
  const response=await fetch(config.url.replace(/\/$/,'')+path,{method,headers:headers(token),body:body?JSON.stringify(body):undefined});
  const raw=await response.text();let data;try{data=raw?JSON.parse(raw):null}catch{data={message:raw}}
  if(!response.ok)throw new Error(data?.msg||data?.error_description||data?.message||data?.error||'Cloud request failed');
  return data;
 }
-function saveSession(s){session=s; if(s)localStorage.setItem(sessionKey,JSON.stringify(s));else localStorage.removeItem(sessionKey);setStatus();window.dispatchEvent(new Event('basketboss:session-changed'));}
+function saveSession(s){if(blocked())return false;generation++;session=s;if(s)localStorage.setItem(sessionKey,JSON.stringify(s));else localStorage.removeItem(sessionKey);setStatus();window.dispatchEvent(new Event('basketboss:session-changed'));return true;}
 async function refresh(){
- if(!session)return false;
+ if(blocked()||!session)return false;
  if(Date.now()/1000 < (session.expires_at||0)-90)return true;
+ const pin=snapshot();
  try{const data=await api('/auth/v1/token?grant_type=refresh_token','POST',{refresh_token:session.refresh_token});
- saveSession({...data,expires_at:Math.floor(Date.now()/1000)+data.expires_in});return true;
- }catch(e){saveSession(null);setMessage('Session expired. Please sign in again.');return false}
+ if(!current(pin))return false;
+ return saveSession({...data,expires_at:Math.floor(Date.now()/1000)+data.expires_in});
+ }catch(e){if(current(pin)){saveSession(null);setMessage('Session expired. Please sign in again.');}return false;}
 }
 async function getCloud(){
- if(!await refresh())return null;
- const rows=await api('/rest/v1/basketboss_data?select=data,updated_at&limit=1','GET',null,session.access_token);
- return rows?.[0]||null;
+ if(blocked()||!await refresh()||blocked()||!session)return null;
+ const pin=snapshot();
+ const rows=await api('/rest/v1/basketboss_data?select=data,updated_at&limit=1','GET',null,pin.token);
+ if(!current(pin))return null;
+ return {row:rows?.[0]||null,pin};
 }
 async function push(){
- if(!session||!await refresh())return;
- const raw=localStorage.getItem(stateKey);if(!raw)return;
+ if(blocked()||!session||!await refresh()||blocked()||!session)return;
+ const pin=snapshot(),raw=localStorage.getItem(stateKey);if(!raw)return;
  const data=JSON.parse(raw);
- const response=await fetch(config.url.replace(/\/$/,'')+'/rest/v1/basketboss_data?on_conflict=user_id',{method:'POST',headers:{...headers(session.access_token),'Prefer':'resolution=merge-duplicates,return=minimal'},body:JSON.stringify({user_id:session.user.id,data,updated_at:new Date().toISOString()})});
+ const response=await fetch(config.url.replace(/\/$/,'')+'/rest/v1/basketboss_data?on_conflict=user_id',{method:'POST',headers:{...headers(pin.token),'Prefer':'resolution=merge-duplicates,return=minimal'},body:JSON.stringify({user_id:pin.actor,data,updated_at:new Date().toISOString()})});
+ if(!current(pin))return;
  if(!response.ok)throw new Error('Cloud save failed ('+response.status+'). Check database setup.');
  dirty=false;setMessage('\u2713 Synced securely to your account');
 }
 async function pull(confirmReplace=true){
- if(!session)return;
+ if(blocked()||!session)return;
  if(confirmReplace&&!confirm('Replace this device\u2019s current meal plan and preferences with your cloud copy?'))return;
- const row=await getCloud();if(!row){setMessage('No cloud backup yet. Use Upload this device\u2019s plan first.');return;}
+ const result=await getCloud();if(!result||!current(result.pin))return;
+ const row=result.row;if(!row){setMessage('No cloud backup yet. Use Upload this device\u2019s plan first.');return;}
  const remote=row.data;if(!remote||remote.version!==2||!Array.isArray(remote.planned))throw new Error('Cloud data format is not supported.');
- loading=true;localStorage.setItem(stateKey,JSON.stringify(remote));loading=false;
+ if(!current(result.pin))return;
+ loading=true;try{localStorage.setItem(stateKey,JSON.stringify(remote));}finally{loading=false;}
  setMessage('\u2713 Cloud plan restored. Reloading\u2026');location.reload();
 }
 async function signIn(signup){
- if(!enabled)return;
+ if(!enabled||blocked())return;
  const email=document.getElementById('cloud-email').value.trim(),password=document.getElementById('cloud-password').value;
  if(!email||password.length<8){setMessage('Enter your email and a password of at least 8 characters.');return;}
+ const pin=snapshot();
  try{
  const result=await api(signup?'/auth/v1/signup':'/auth/v1/token?grant_type=password','POST',{email,password});
+ if(!current(pin))return;
  if(!result.access_token){setMessage('Check your email for a confirmation link, then sign in.');return;}
- saveSession({...result,expires_at:Math.floor(Date.now()/1000)+result.expires_in});
- const row=await getCloud();
- if(row){setMessage('Cloud backup found. Choose Restore cloud plan to use it, or Upload to keep this device\u2019s plan.');}
- else{await push();setMessage('Account connected and this device\u2019s plan backed up.');}
- }catch(e){setMessage(e.message)}
+ if(!saveSession({...result,expires_at:Math.floor(Date.now()/1000)+result.expires_in}))return;
+ const cloud=await getCloud();if(!cloud||!current(cloud.pin))return;
+ if(cloud.row){setMessage('Cloud backup found. Choose Restore cloud plan to use it, or Upload to keep this device\u2019s plan.');}
+ else{await push();if(current(cloud.pin))setMessage('Account connected and this device\u2019s plan backed up.');}
+ }catch(e){if(current(pin))setMessage(e.message);}
 }
-window.BasketBossCloud={scheduleSave(){if(loading||!session||!enabled)return;dirty=true;clearTimeout(timer);timer=setTimeout(()=>{if(navigator.onLine)push().catch(e=>setMessage(e.message));},1400)}};
+window.BasketBossCloud={scheduleSave(){if(blocked()||loading||!session||!enabled)return;dirty=true;clearTimeout(timer);timer=setTimeout(()=>{if(!blocked()&&navigator.onLine)push().catch(e=>setMessage(e.message));},1400)}};
+window.addEventListener('basketboss:account-deletion-started',()=>{deleting=true;generation++;dirty=false;clearTimeout(timer);timer=null;setStatus();});
+window.addEventListener('basketboss:account-deletion-cancelled',()=>{deleting=false;generation++;setStatus();});
+window.addEventListener('basketboss:account-deletion-deleted',()=>{deleting=true;generation++;session=null;dirty=false;clearTimeout(timer);timer=null;setStatus();});
+window.addEventListener('storage',event=>{if(event.key!==sessionKey)return;generation++;if(blocked())return;try{const saved=JSON.parse(event.newValue||'null');session=saved?.access_token?saved:null;}catch{session=null;}setStatus();});
 document.getElementById('cloud-open').onclick=()=>{panel.classList.add('open');setStatus()};
 document.getElementById('cloud-close').onclick=()=>panel.classList.remove('open');
 panel.onclick=e=>{if(e.target===panel)panel.classList.remove('open')};
@@ -10187,8 +10207,8 @@ document.getElementById('cloud-login').onclick=()=>signIn(false);
 document.getElementById('cloud-signup').onclick=()=>signIn(true);
 document.getElementById('cloud-upload').onclick=()=>push().catch(e=>setMessage(e.message));
 document.getElementById('cloud-download').onclick=()=>pull(true).catch(e=>setMessage(e.message));
-document.getElementById('cloud-logout').onclick=()=>{saveSession(null);setMessage('Signed out. Local data remains on this device.')};
-window.addEventListener('online',()=>{if(dirty)push().catch(e=>setMessage(e.message))});
+document.getElementById('cloud-logout').onclick=()=>{if(blocked())return;saveSession(null);setMessage('Signed out. Local data remains on this device.')};
+window.addEventListener('online',()=>{if(!blocked()&&dirty)push().catch(e=>setMessage(e.message))});
 try{const saved=JSON.parse(localStorage.getItem(sessionKey)||'null');if(saved?.access_token)session=saved;}catch{}
 setStatus();
 })();
@@ -10216,10 +10236,12 @@ document.body.appendChild(a);a.click();a.remove();setTimeout(()=>URL.revokeObjec
 const btn=document.getElementById('bbRestore'),input=document.getElementById('bbRestoreFile');if(!btn||!input)return;
 btn.addEventListener('click',()=>input.click());
 input.addEventListener('change',async()=>{
+ if(window.BBAccountDeletion?.isDeleting?.()===true)return;
  const file=input.files&&input.files[0];input.value='';if(!file)return;
  if(file.size>3*1024*1024){alert('That backup is too large. Please choose a BasketBoss backup file.');return;}
  try{
   const data=JSON.parse(await file.text());
+  if(window.BBAccountDeletion?.isDeleting?.()===true)return;
   if(data.app!=='BasketBoss'||data.backupVersion!==1||!data.state||data.state.version!==2||!Array.isArray(data.state.planned)||!data.state.pantry||typeof data.state.pantry!=='object')throw Error('Not a supported BasketBoss backup');
   const validDays=['Monday','Tuesday','Wednesday','Thursday','Friday','Saturday','Sunday'];
   if(data.state.planned.length>100||!data.state.planned.every(x=>x&&typeof x.recipeId==='string'&&validDays.includes(x.day)))throw Error('Invalid saved meal plan');
@@ -11451,7 +11473,7 @@ body[data-bbnext-view="discover"] #app .bb175-discover-heading{padding-top:calc(
 <link rel="stylesheet" href="bb-partner-signup-prompt.css?v=partner-main1">
 <script defer src="bb-partner-signup-prompt.js?v=partner-main1"></script>
 <link rel="stylesheet" href="bb-household-sharing.css?v=20261030-rc1">
-<script defer src="bb-household-sharing.js?v=20261030-rc1"></script>
+<script defer src="bb-household-sharing.js?v=20261031-account-compliance"></script>
 <link rel="stylesheet" href="bb-recipe-ingredient-layout.css?v=20261031-sidebar">
 <style id="bb-hide-dish-price-badges">
 /* Dish cards show time and servings; Shop and budget prices keep their own selectors. */

@@ -2,6 +2,7 @@ import {authenticatedUser,isBillingEnabled,isConfigured,isLive,expectedPrice,pad
 import {sharedHouseholdPremiumOwner} from '../../../bb-server-lib/bb-household-premium.js';
 import {receiptCanonicalPairs} from '../../../bb-server-lib/bb-receipt-canonical-pairs.js';
 import {canonicalIngredientKey} from '../../../bb-receipt-inventory-core.mjs';
+import {digestDeletionActor} from '../../../bb-server-lib/bb-account-deletion.js';
 import {receiptInventoryConfigured,onRequestGet as receiptInventoryStatus} from '../receipt-inventory.js';
 // BasketBoss AI structured output formats, taken from the successful private test.
 export const MODEL='gemini-3.5-flash-lite';
@@ -357,11 +358,22 @@ async function consumeQuota(db,userId,action,globalCap){
     ON CONFLICT(day_utc,actor,action)
     DO UPDATE SET used=used+1 WHERE used < ?
     RETURNING used`;
+  // The request middleware creates the deletion gate before entering a route.
+  // Repeat the gate atomically in this write: an AI request already running
+  // when deletion starts must not recreate erased per-account usage rows.
+  const actorHash=await digestDeletionActor(userId);
+  const mineInc=`INSERT INTO bb_ai_daily_usage(day_utc,actor,action,used)
+    SELECT ?,?,?,1 WHERE ? > 0 AND NOT EXISTS
+      (SELECT 1 FROM bb_account_deletions WHERE actor_hash=?)
+    ON CONFLICT(day_utc,actor,action)
+    DO UPDATE SET used=used+1 WHERE used < ? AND NOT EXISTS
+      (SELECT 1 FROM bb_account_deletions WHERE actor_hash=?)
+    RETURNING used`;
   const increment=async()=>{
     // The existing per-user limit (5 scans / 10 meal drafts) and global
     // limit remain mandatory; no unmetered alternative is allowed.
-    const mine=await db.prepare(inc)
-      .bind(day,'user:'+userId,action,cap).first();
+    const mine=await db.prepare(mineInc)
+      .bind(day,'user:'+userId,action,cap,actorHash,cap,actorHash).first();
     if(!mine)return false;
     const all=await db.prepare(inc)
       .bind(day,'global','all',globalCap).first();

@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import {inspectCloudflare,classifyBuildFailure,verifyLandingDeployment,verifyNativeApiDeployment} from '../scripts/check-cloudflare-catalogue.mjs';
+import {inspectCloudflare,classifyBuildFailure,verifyLandingDeployment,verifyNativeApiDeployment,verifyReviewDeployment} from '../scripts/check-cloudflare-catalogue.mjs';
 
 const token = 'synthetic-secret-that-must-not-appear-in-results';
 const env = {CLOUDFLARE_API_TOKEN: token, CLOUDFLARE_ACCOUNT_ID: 'a'.repeat(32)};
@@ -134,4 +134,18 @@ test('native production transport verifies exact preflight, response CORS and fo
  };
  assert.deepEqual(await verifyNativeApiDeployment(perform),{preflight:true,responseHeaders:true,foreignOriginDenied:true});assert.equal(requests.length,3);
  await assert.rejects(verifyNativeApiDeployment(async()=>new Response(null,{status:200,headers:{'Access-Control-Allow-Origin':'*'}})),/preflight is not available/);
+});
+
+
+test('review verification reports public legal/native checkout readiness without credentials or account deletion',async()=>{
+ const calls=[];
+ const check=async ready=>verifyReviewDeployment(async(address,options)=>{
+  calls.push({address,options});assert.notEqual(options.method,'POST');assert.equal(options.headers?.Authorization,undefined);
+  if(/\/(privacy|terms)$/.test(address))return new Response('Last updated 31 October 2026.',{headers:{'Content-Type':'text/html'}});
+  if(address.endsWith('checkout-config'))return Response.json({enabled:false});
+  return Response.json({ok:true,available:true,migrationReady:ready},{headers:{'Access-Control-Allow-Origin':'capacitor://localhost'}});
+ });
+ assert.deepEqual(await check(false),{privacy:true,terms:true,deletionRoute:true,deletionConfigured:true,deletionMigrationReady:false,nativeWebCheckoutDisabled:true});
+ assert.equal((await check(true)).deletionMigrationReady,true);assert.equal(calls.length,8);
+ await assert.rejects(verifyReviewDeployment(async()=>{throw Error('untrusted-provider-body')}),/^Error: App review compliance routes/);
 });

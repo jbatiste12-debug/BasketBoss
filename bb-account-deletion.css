@@ -1,0 +1,28 @@
+.bb-account-deletion-card{margin-top:16px;padding-top:14px;border-top:1px solid #d7e0e6}
+.bb-account-deletion-card[hidden]{display:none!important}
+.bb-account-deletion-card .bb-account-deletion-open,#cloud-card .bb-account-deletion-card .bb-account-deletion-open{box-sizing:border-box;display:block;width:100%;min-height:44px;margin:0;border:1px solid #e1a8a8;border-radius:12px;background:#fff4f3;color:#8f2424;font:inherit;font-weight:700;padding:11px 14px;cursor:pointer;text-align:left}
+.bb-account-deletion-card small{display:block;margin-top:7px;font-size:12px;line-height:1.5;color:#64748b}
+#cloud-card .bb-account-deletion-card small{color:#c6d3e2}
+.bb-account-deletion-legal{display:flex;gap:18px;margin-top:10px;font-size:13px}
+.bb-account-deletion-legal a{color:inherit;text-decoration:underline;text-underline-offset:3px}
+.bb-account-deletion-dialog{box-sizing:border-box;width:min(100% - 24px,560px);max-height:calc(100dvh - 32px);padding:24px;border:1px solid #dce4e6;border-radius:20px;color:#172c28;background:#fff;box-shadow:0 24px 80px #102b3466;overflow:auto;font-family:system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;line-height:1.5;z-index:2147483000}
+.bb-account-deletion-dialog::backdrop{background:#102521b8}
+.bb-account-deletion-dialog [hidden]{display:none!important}
+.bb-account-deletion-dialog h2{font-size:23px;line-height:1.25;margin:0 0 12px;letter-spacing:-.5px}
+.bb-account-deletion-dialog p{margin:0 0 14px;font-size:14px}
+.bb-account-deletion-email{overflow-wrap:anywhere;font-weight:650}
+.bb-account-deletion-dialog ul{padding-left:22px;margin:12px 0 20px;font-size:13px;color:#475b55}
+.bb-account-deletion-dialog li{margin:7px 0}
+.bb-account-deletion-dialog label{display:block;margin:15px 0;font-size:14px;font-weight:650}
+.bb-account-deletion-dialog input:not([type=checkbox]){box-sizing:border-box;width:100%;min-height:46px;margin-top:6px;padding:10px 12px;border:1px solid #8a9b93;border-radius:10px;background:#fff;color:#172c28;font:inherit;font-size:16px}
+.bb-account-deletion-dialog .bb-account-deletion-acknowledge{display:flex;gap:10px;align-items:flex-start;font-size:13px;font-weight:500}
+.bb-account-deletion-acknowledge input{width:20px;height:20px;flex-shrink:0;margin:0;accent-color:#8f2424}
+.bb-account-deletion-message{min-height:1em;color:#475b55}
+.bb-account-deletion-message[role=alert]{color:#8f2424}
+.bb-account-deletion-actions{display:flex;gap:10px;justify-content:flex-end;margin-top:18px}
+.bb-account-deletion-actions button{min-height:46px;padding:11px 15px;border-radius:11px;font:inherit;font-size:14px;font-weight:700;cursor:pointer}
+.bb-account-deletion-cancel{background:#f0f5f2;color:#243e32;border:1px solid #bfcec5}
+.bb-account-deletion-submit{background:#a92d2d;color:#fff;border:1px solid #a92d2d}
+.bb-account-deletion-dialog button:disabled{opacity:.55;cursor:default}
+.bb-account-deletion-dialog :focus-visible,.bb-account-deletion-open:focus-visible{outline:3px solid #16744d;outline-offset:3px}
+@media(max-width:480px){.bb-account-deletion-dialog{padding:20px 17px}.bb-account-deletion-actions{flex-direction:column-reverse}.bb-account-deletion-actions button{width:100%}}

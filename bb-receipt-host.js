@@ -64,6 +64,8 @@
   function createHost(initial = {}) {
     let options = {...initial}, availability = {available: false, premium: false}, lastChecked = 0, checkedActor = null, statusPromise = null;
     let isolationError = null, issue = null, observer = null, scheduled = false, rendering = false, reviewing = false, confirmingCurrent = false, activeDialog = null, lastTab = null, generation = 0, configured = false;
+    let deletionPaused = false;
+    const blocked = () => deletionPaused || root.BBAccountDeletion?.isDeleting?.() === true;
     const store = () => options.storage || root.localStorage;
     const doc = () => options.document || root.document;
     const session = () => options.getSession?.() || null;
@@ -78,8 +80,9 @@
       if (!isObject(parsed)) throw Error('receipt_host_storage_unreadable'); return parsed;
     };
     const notify = text => options.notify?.(text);
-    const projection = () => { try { return actor() === 'guest' ? null : adapter()?.getCachedProjection?.() || null; } catch { return null; } };
+    const projection = () => { try { return blocked() || actor() === 'guest' ? null : adapter()?.getCachedProjection?.() || null; } catch { return null; } };
     function writeAtomic(changes) {
+      if (blocked()) throw Error('account_deletion_in_progress');
       const before = Object.fromEntries(Object.keys(changes).map(key => [key, store().getItem(key)]));
       const after = Object.fromEntries(Object.entries(changes).map(([key, value]) => [key, value === null ? null : JSON.stringify(value)]));
       const written = [];
@@ -98,6 +101,7 @@
     }
     function archiveKey(id) { return 'basketboss_receipt_host_snapshot_v1:' + encodeURIComponent(id); }
     function switchActor() {
+      if (blocked()) return false;
       const next = actor();
       const marker = read(KEYS.actor), receiptOwner = read(KEYS.owner);
       const previous = marker.actorId || receiptOwner.actorId || next;
@@ -121,6 +125,7 @@
       return true;
     }
     function isolate() {
+      if (blocked()) return false;
       try {
         const changed = switchActor();isolationError = null;doc()?.body?.removeAttribute('data-bb-receipt-isolation-error');
         const app = doc()?.getElementById('app');if (app) {app.inert = false;app.style.removeProperty('visibility');}
@@ -150,6 +155,7 @@
       } catch {return false;}
     }
     function confirmLocalPantryReview() {
+      if (blocked()) return {ok: false, localOnly: true};
       if (availability.available || hasPendingConfirmation() || isolationError) return {ok: false, localOnly: true};
       const cached = projection();if (!cached) return {ok: true, localOnly: true};
       const confirmed = read(KEYS.confirmed), reviewedAt = Date.parse(confirmed.confirmedAt || '');
@@ -158,6 +164,7 @@
       schedule();return {ok: true, localOnly: true};
     }
     function allowLegacyTransfer() {
+      if (blocked()) return false;
       if (!hasPendingConfirmation() && !isolationError && !reviewing && !confirmingCurrent) return true;
       notify('Recover the pending receipt before finishing this shop. No leftovers have been transferred.');
       return false;
@@ -168,17 +175,20 @@
       return !!cached && !requiresPantryReview() && receipt?.receiptPantryConfirmedActor === actor() && receipt.receiptPantryConfirmedScope === cached.scope?.kind + ':' + cached.scope?.id && Number.isSafeInteger(receipt.receiptPantryConfirmedRevision) && receipt.receiptPantryConfirmedRevision <= cached.inventoryRevision && receipt.receiptPantryConfirmedShopSessionId === (context().shopSessionId || null);
     }
     async function fetchInventory(signal) {
+      if (blocked()) throw Error('Account deletion is in progress.');
+      const serial = generation;
       const current = session(), id = actor(), token = current?.access_token;
       if (id === 'guest' || !token) throw Error('Sign in to review your saved pantry.');
       const perform = options.fetch || root.fetch?.bind(root);
       const response = await perform('/api/receipt-inventory', {headers: {Accept: 'application/json', Authorization: 'Bearer ' + token}, credentials: 'same-origin', redirect: 'manual', cache: 'no-store', signal});
       const data = await response.json().catch(() => null);
-      if (id !== actor() || token !== session()?.access_token) throw Error('Account changed. Reopen Pantry review.');
+      if (blocked() || serial !== generation || id !== actor() || token !== session()?.access_token) throw Error('Account changed. Reopen Pantry review.');
       if (!response.ok || data?.ok !== true) throw Error('The saved pantry is unavailable. Your quantities have not changed.');
       if (!isObject(data.stock) || !['user', 'household'].includes(data.scope?.kind) || typeof data.scope.id !== 'string' || data.scope.kind === 'user' && data.scope.id !== id || !Number.isSafeInteger(data.inventoryRevision) || data.inventoryRevision < 0 || typeof data.initialized !== 'boolean') throw Error('The saved pantry could not be verified.');
       return data;
     }
     async function refreshAvailability({force = false, synchronize = true} = {}) {
+      if (blocked()) return {available: false, premium: false};
       isolate(); if (isolationError) { afterRender(); return {available: false}; }
       const id = actor();
       if (id === 'guest') { availability = {available: false, premium: false}; checkedActor = id; afterRender(); return availability; }
@@ -190,13 +200,13 @@
           const perform = options.fetch || root.fetch?.bind(root);
           const response = await perform('/api/receipt-inventory?mode=status', {headers: {Accept: 'application/json', Authorization: 'Bearer ' + token}, credentials: 'same-origin', redirect: 'manual', cache: 'no-store'});
           const data = await response.json().catch(() => null);
-          if (serial !== generation || id !== actor() || token !== session()?.access_token) return {available: false};
+          if (blocked() || serial !== generation || id !== actor() || token !== session()?.access_token) return {available: false};
           availability = {available: response.ok && data?.available === true, premium: response.ok && data?.premium === true, configured: data?.configured === true};
           checkedActor = id; lastChecked = clock();
           if (availability.available && synchronize) {
             adapter()?.recoverLocalTransaction?.();
             const result = await adapter().synchronize();
-            if (id !== actor()) return {available: false};
+            if (blocked() || serial !== generation || id !== actor()) return {available: false};
             issue = result?.localApplied === false ? result.localError || 'receipt_refresh_required' : null;
           }
         } catch { if (id === actor() && (availability.available || projection())) issue = 'Receipt inventory is temporarily unavailable. Your local pantry is preserved.'; }
@@ -208,24 +218,30 @@
     function setupAdapter() {
       adapter()?.configure?.({getSession: session, getContext: context, getCatalog: options.getCatalog, canonicalize: options.canonicalize,
         getFinishShopCredits: options.getFinishShopCredits,
-        onProjection: value => {issue = null; options.onProjection?.(value); schedule();}});
+        onProjection: value => {if (blocked()) return;issue = null; options.onProjection?.(value); schedule();}});
       scanner()?.configure?.({getSession: session, getContext: context, inventory: adapter()});
     }
     async function open(value = {}) {
+      if (blocked()) return null;
+      const serial = generation;
       isolate(); if (isolationError) {notify(isolationError); return null;}
       if (reviewing || confirmingCurrent) {notify('Finish or close your Pantry review before scanning another receipt.');return null;}
       await refreshAvailability({synchronize: false});
+      if (blocked() || serial !== generation) return null;
       if (!(availability.premium || options.isPremium?.())) {options.openUpgrade?.(); return null;}
       if (!availability.available) return options.openLegacy?.(value);
       if (hasPendingConfirmation()) {await recoverReceipt(); return null;}
       const captured = context();
       if(!captured.retailer){notify('Choose your supermarket in Shop or region settings before scanning a receipt.');return null;}
-      return scanner()?.open?.({...captured, ...value, onSaved: result => {options.onProjection?.(result?.projection || {}); value.onSaved?.(result); schedule();}});
+      return scanner()?.open?.({...captured, ...value, onSaved: result => {if (blocked() || serial !== generation) return;options.onProjection?.(result?.projection || {}); value.onSaved?.(result); schedule();}});
     }
     async function recoverReceipt({retry = false} = {}) {
+      if (blocked()) return {ok: false};
+      const serial = generation;
       try {
         adapter()?.recoverLocalTransaction?.();
         const result = await (retry ? adapter().retryPendingConfirmation() : adapter().synchronize());
+        if (blocked() || serial !== generation) return {ok: false};
         issue = result.localApplied === false ? result.localError || 'receipt_refresh_required' : null;
         notify(result.localApplied ? 'Receipt recovered. Review your pantry before the next shop.' : 'Receipt recovery is still pending. Keep this receipt and try again.');
         afterRender(); return result;
@@ -241,8 +257,11 @@
       writeAtomic({[KEYS.ledger]: ledger});
     }
     async function confirmCurrentPantry({stock} = {}) {
+      if (blocked()) return {ok: false, needsReview: true};
+      const serial = generation;
       isolate();if (isolationError || hasPendingConfirmation() || reviewing || confirmingCurrent) return {ok: false, needsReview: true};
       await refreshAvailability({synchronize: false});
+      if (blocked() || serial !== generation) return {ok: false, needsReview: true};
       if (!availability.available) return confirmLocalPantryReview();
       const cached = projection();
       if (!cached?.scope || !Number.isSafeInteger(cached.inventoryRevision) || issue?.includes('pantry_merge_required') || issue === 'receipt_household_scope_changed') return {ok: false, needsReview: true};
@@ -250,18 +269,21 @@
       confirmingCurrent = true;
       try {
         const result = await adapter().confirmPantry({stock: clone(stock), expectedRevision: cached.inventoryRevision, expectedScope: clone(cached.scope), shopSessionId: active.shopSessionId || null});
-        if (id !== actor()) return {ok: false, committed: result.committed === true, needsReview: true};
+        if (blocked() || serial !== generation || id !== actor()) return {ok: false, committed: result.committed === true, needsReview: true};
         if (!result.localApplied) {issue = 'receipt_refresh_required';return {...result, needsReview: true};}
         recordLegacyCoverage(ledger, active, id);issue = null;options.onProjection?.(result.projection);schedule();return {...result, needsReview: false, localOnly: false};
       } catch (error) {issue = error.status === 409 ? 'receipt_local_remote_pantry_merge_required' : 'receipt_refresh_required';schedule();return {ok: false, needsReview: true, conflict: error.status === 409};}
       finally {confirmingCurrent = false;}
     }
     async function reviewPantry() {
+      if (blocked()) return null;
+      const serial = generation;
       if (reviewing) return null; isolate(); if (isolationError) {notify(isolationError);return null;}
       if (hasPendingConfirmation()) {await recoverReceipt();return null;}
       reviewing = true;
       let data;
       try {data = await fetchInventory();} catch (error) {reviewing = false;notify(error.message);return null;}
+      if (blocked() || serial !== generation) {reviewing = false;return null;}
       const id = actor(), currentContext = context(), local = clone(options.getStock?.() || read(KEYS.stock));
       const ledgerAtReview = read(KEYS.ledger);
       const document = doc(); if (!document) {reviewing = false;return {data, local};}
@@ -291,7 +313,7 @@
       dialog.addEventListener('cancel', event => {if (busy) event.preventDefault();});dialog.addEventListener('close', () => {reviewing = false;dialog.remove();if (activeDialog === dialog) activeDialog = null;});
       form.addEventListener('submit', async event => {
         event.preventDefault();if (busy) return;
-        if (id !== actor() || currentContext.market !== context().market || currentContext.retailer !== context().retailer) {message.textContent = 'Your account or shopping region changed. Reopen this review.';return;}
+        if (blocked() || serial !== generation || id !== actor() || currentContext.market !== context().market || currentContext.retailer !== context().retailer) {message.textContent = 'Your account or shopping region changed. Reopen this review.';return;}
         const stock = {};
         for (const [key, input] of inputs) {
           const value = Number(input.value), unit = key.slice(key.lastIndexOf('|') + 1);
@@ -303,7 +325,7 @@
           // The adapter adopts the verified scope only after reviewed CAS
           // success, preserving the previous owner/cache on conflict or failure.
           const result = await adapter().confirmPantry({stock, expectedRevision: data.inventoryRevision, expectedScope: clone(data.scope), shopSessionId: currentContext.shopSessionId || null});
-          if (id !== actor()) return;
+          if (blocked() || serial !== generation || id !== actor()) return;
           if (!result.localApplied) {message.textContent = 'Pantry saved online. Refresh it before shopping on this device.';issue = 'receipt_refresh_required';return;}
           recordLegacyCoverage(ledgerAtReview, currentContext, id);
           issue = null;notify('Pantry confirmed. Your shopping list now includes only what is still needed.');close();options.onProjection?.(result.projection);schedule();
@@ -360,12 +382,13 @@
       }
     }
     function afterRender() {
+      if (blocked()) return;
       if (rendering) {schedule();return;}rendering = true;
       observer?.disconnect();
       try {renderHostDOM();}
       finally {rendering = false;const app = doc()?.getElementById('app');if (observer && app) observer.observe(app, {childList: true});}
     }
-    function schedule() {if (scheduled) return;scheduled = true;(root.queueMicrotask || (fn => Promise.resolve().then(fn)))(() => {scheduled = false;afterRender();});}
+    function schedule() {if (blocked()) return;if (scheduled) return;scheduled = true;(root.queueMicrotask || (fn => Promise.resolve().then(fn)))(() => {scheduled = false;afterRender();});}
     function configure(value = {}) {
       options = {...options, ...value};configured = true;setupAdapter();isolate();
       const document = doc();
@@ -373,15 +396,24 @@
       afterRender();return api;
     }
     const accountChanged = () => {if (!configured) return;generation++;activeDialog?.close?.();activeDialog?.remove();activeDialog = null;reviewing = false;lastChecked = 0;checkedActor = null;statusPromise = null;isolate();setupAdapter();schedule();};
+    const pauseDeletion = () => {
+      deletionPaused = true;generation++;availability = {available: false, premium: false};statusPromise = null;checkedActor = null;lastChecked = 0;
+      activeDialog?.close?.();activeDialog?.remove();activeDialog = null;reviewing = false;scanner()?.close?.();
+      if (externalTimer !== null) {root.clearTimeout?.(externalTimer);externalTimer = null;}
+    };
+    root.addEventListener?.('basketboss:account-deletion-started', pauseDeletion);
+    root.addEventListener?.('basketboss:account-deletion-deleted', pauseDeletion);
+    root.addEventListener?.('basketboss:account-deletion-cancelled', () => {deletionPaused = false;accountChanged();});
     root.addEventListener?.('basketboss:session-changed', accountChanged);
     root.addEventListener?.('basketboss:supermarket-changed', () => {if (!configured) return;activeDialog?.close?.();activeDialog?.remove();activeDialog = null;reviewing = false;lastChecked = 0;schedule();});
     let externalTimer = null;
     function externalChange(event) {
+      if (blocked()) return;
       if (!configured || ![KEYS.actor, KEYS.owner, KEYS.stock, KEYS.confirmed, KEYS.ledger, 'basketboss_cloud_session_v1'].includes(event.key)) return;
       if (externalTimer !== null) {root.clearTimeout?.(externalTimer);externalTimer = null;}
       accountChanged();
       if (actor() !== 'guest' && store().getItem('basketboss_receipt_inventory_journal_v1:' + encodeURIComponent(actor()))) {
-        if (root.setTimeout) externalTimer = root.setTimeout(() => {externalTimer = null;if (!store().getItem('basketboss_receipt_inventory_journal_v1:' + encodeURIComponent(actor()))) {options.onProjection?.({externalStorage: true});schedule();}}, 150);
+        if (root.setTimeout) externalTimer = root.setTimeout(() => {externalTimer = null;if (!blocked() && !store().getItem('basketboss_receipt_inventory_journal_v1:' + encodeURIComponent(actor()))) {options.onProjection?.({externalStorage: true});schedule();}}, 150);
         return;
       }
       options.onProjection?.({externalStorage: true});schedule();

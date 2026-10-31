@@ -2,14 +2,7 @@
    All requests synthetic; no database, Paddle, or HTTP provider calls. */
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import fs from 'node:fs/promises';
-const root = new URL('../', import.meta.url);
-const billingUrl = new URL('bb-server-lib/bb-billing.js',root).href;
-let webhookSource = await fs.readFile(new URL('functions/api/paddle/webhook.js',root),'utf8');
-const old = "from '../../../bb-server-lib/bb-billing.js'";
-assert.ok(webhookSource.includes(old), 'expected locked webhook module dependency');
-webhookSource = webhookSource.replace(old, `from '${billingUrl}'`);
-const {onRequestPost} = await import('data:text/javascript;charset=utf-8,' + encodeURIComponent(webhookSource));
+import {onRequestPost} from '../functions/api/paddle/webhook.js';
 const url='https://preview.example/api/paddle/webhook';
 const db={prepare:()=>{ throw Error('must not touch D1 in negative test'); }};
 const request=(signature='ts=invalid;h1=invalid')=>new Request(url,{method:'POST',headers:{'Paddle-Signature':signature},body:'{}'});

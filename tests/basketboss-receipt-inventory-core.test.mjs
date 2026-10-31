@@ -67,12 +67,13 @@ class FullInventoryServer {
   };
 }
 function fixture({ store = new MemoryStorage(), server = new FullInventoryServer(), actor = ACTOR, fetch } = {}) {
-  const root = { localStorage: store, crypto: { randomUUID: () => 'test-random-id' } };
+  const events = new Map();
+  const root = { localStorage: store, crypto: { randomUUID: () => 'test-random-id' }, addEventListener(name, handler) {const handlers = events.get(name) || [];handlers.push(handler);events.set(name, handlers);} };
   vm.runInNewContext(adapterSource, { window: root, URL, console, Date });
   const session = { value: { access_token: `token-${actor}`, user: { id: actor }, expires_at: 4_000_000_000 } };
   const context = { value: { market: 'UK', retailer: 'Tesco', shopSessionId: 'shop-1' } };
   const adapter = root.BBReceiptInventoryFactory({ core: Core, storage: store, fetch: fetch || server.fetch, getSession: () => session.value, getContext: () => context.value, getCatalog: () => CATALOG, createId: () => 'test-random-id' });
-  return { adapter, store, server, session, context, keys: adapter.keys };
+  return { adapter, store, server, session, context, keys: adapter.keys, root, event(name) {for (const handler of events.get(name) || []) handler();} };
 }
 async function draft(f, { receiptId = 'receipt-1', quantity = 500 } = {}) {
   const value = await f.adapter.normalizeDraft({ receiptId, currency: 'GBP', retailer: 'Tesco', shopSessionId: 'shop-1', items: [{ lineId: 'line-1', name: 'Pasta', kind: 'food', canonicalKey: 'pasta', quantity, unit: 'g', packCount: 1, packQuantity: quantity, packUnit: 'g', pricePaid: 1.5, priceType: 'regular' }] });
@@ -369,4 +370,45 @@ test('approved essential pack/session fields and actual receipt summaries surviv
   await f.adapter.commitReviewedReceipt(await draft(f)); const cached = f.adapter.getCachedProjection();
   assert.equal(cached.essentials[0].packQuantity, 4); assert.equal(cached.essentials[0].shopSessionId, 'shop-1'); assert.equal(cached.essentials[0].brand, 'Own label');
   assert.equal(cached.receipts[0].receiptTotal, 3.5); assert.equal(cached.essentials[0].imageBase64, undefined); assert.equal(cached.receipts[0].photo, undefined);
+});
+
+
+test('deletion blocks a receipt confirmation already in flight from projecting saved pantry data', async () => {
+  const server = new FullInventoryServer();let release, posted;
+  const waiting = new Promise(resolve => {release = resolve;});
+  const postStarted = new Promise(resolve => {posted = resolve;});
+  const f = fixture({server, fetch: async (url, options) => {
+    const result = await server.fetch(url, options);
+    if (options.method === 'POST') {posted();await waiting;}
+    return result;
+  }});
+  const reviewed = await draft(f), pending = f.adapter.commitReviewedReceipt(reviewed);
+  await postStarted;
+  const before = [...f.store.data];
+  f.event('basketboss:account-deletion-started');release();
+  const result = await pending;
+  assert.equal(result.committed, true);assert.equal(result.localApplied, false);
+  assert.deepEqual([...f.store.data], before, 'pending confirmation is retained while deletion is unresolved');
+  assert.deepEqual(JSON.parse(f.store.getItem(f.keys.stock) || '{}'), {});
+});
+
+test('deletion pauses new receipt requests and local recovery without removing a pending journal', async () => {
+  let requests = 0;
+  const f = fixture({fetch: async () => {requests++;throw Error('unexpected network');}}), journalKey = 'basketboss_receipt_inventory_journal_v1:' + ACTOR;
+  f.store.setItem(journalKey, 'keep for deletion retry');
+  f.event('basketboss:account-deletion-started');
+  await assert.rejects(f.adapter.synchronize(), /account_deletion_in_progress/);
+  assert.throws(() => f.adapter.recoverLocalTransaction(), /account_deletion_in_progress/);
+  assert.equal(requests, 0);assert.equal(f.store.getItem(journalKey), 'keep for deletion retry');
+});
+
+test('canceling a deletion does not revive a receipt response captured before the deletion began', async () => {
+  const server = new FullInventoryServer();let release, began;
+  const waiting = new Promise(resolve => {release = resolve;});
+  const started = new Promise(resolve => {began = resolve;});
+  const f = fixture({server, fetch: async (url, options) => {const response = await server.fetch(url, options);began();await waiting;return response;}});
+  const pending = f.adapter.synchronize();await started;
+  f.event('basketboss:account-deletion-started');f.event('basketboss:account-deletion-cancelled');release();
+  await assert.rejects(pending, /receipt_context_changed/);
+  assert.equal(f.store.data.size, 0);
 });

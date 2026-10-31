@@ -16,6 +16,7 @@ export const CLIENT_FILES=Object.freeze([
  'basketboss-aisles-v20.js','basketboss-pricing-v19.js','bb-beta-five-nav.js',
  'bb-beta-launch-polish.js','bb-beta-six-fixes.js','bb-cloudflare-qa.js',
  'bb-cold-preview.js','bb-consolidated-qa.js','bb-culinary-enhancements.js',
+ 'bb-account-deletion.js','bb-account-deletion.css',
  'bb-funnel.js','bb-household-sharing.js','bb-install.js','bb-intro-trial.js',
  'bb-membership-settings.js','bb-mobile-beta-polish.js','bb-onboarding-v2.js',
  'bb-partner-signup-prompt.js','bb-plan-premium-polish.js','bb-premium-features.js',
@@ -89,7 +90,7 @@ export function transformNativeHtml(source){
  let html=source.replace(/<script\b[^>]*\bid=["']bb-owner-qa-restore-script["'][^>]*>[\s\S]*?<\/script>/gi,'').replace(/<base\b[^>]*>/gi,'')
   .replace(/<meta\b[^>]*(?:\bcharset\s*=|\bhttp-equiv\s*=\s*["']content-type["'])[^>]*>/gi,'')
   .replace(/<link\b(?=[^>]*\brel\s*=\s*["']manifest["'])[^>]*>/gi,'')
-  .replace(/<script\b[^>]*\bsrc\s*=\s*["'][^"']*(?:paddle-sandbox\.js|service-worker\.js|bb-intro-trial\.js|bb174-trial-ux\.js|bb-membership-settings\.js|bb-install\.js|https?:\/\/[^"']*paddle[^"']*)[^"']*["'][^>]*>\s*<\/script>/gi,'');
+  .replace(/<script\b[^>]*\bsrc\s*=\s*["'][^"']*(?:paddle-sandbox\.js|service-worker\.js|bb-intro-trial\.js|bb174-trial-ux\.js|bb-membership-settings\.js|bb-install\.js|https?:\/\/[^"']*(?:paddle|stripe)[^"']*)[^"']*["'][^>]*>\s*<\/script>/gi,'');
  if(/<meta\b[^>]*\bname\s*=\s*["']viewport["'][^>]*>/i.test(html)){
   html=html.replace(/<meta\b[^>]*\bname\s*=\s*["']viewport["'][^>]*>/gi,'<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">');
  }else html=html.replace(/<head\b[^>]*>/i,match=>match+'\n<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">');
@@ -126,7 +127,7 @@ export function verifyNativeWeb({directory}){
   requireThat(html.includes(NATIVE_MARKER)&&html.includes('<base href="./">')&&html.includes('viewport-fit=cover'),'Native HTML setup is incomplete: '+name);
   const scripts=[...html.matchAll(/<script\b[^>]*>/gi)];
   requireThat(scripts.length>0&&/\bsrc="bb-native-runtime\.js"/.test(scripts[0][0]),'Native runtime must precede every app script: '+name);
-  requireThat(!/<script\b[^>]*src=["'][^"']*paddle/i.test(html),'Native HTML contains a checkout script: '+name);
+  requireThat(!/<script\b[^>]*src=["'][^"']*(?:paddle|stripe)/i.test(html),'Native HTML contains a checkout script: '+name);
  }
  const entry=fs.readFileSync(path.join(directory,'index.html'),'utf8');
  requireThat(entry===fs.readFileSync(path.join(directory,'app.html'),'utf8'),'Native app entrypoints must remain identical');

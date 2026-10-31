@@ -38,7 +38,7 @@ test('Comparison page is accurate, accessible and links to existing actual produ
 test('Outdated paid-checkout notice is corrected without changing existing legal rights',()=>{
   assert.doesNotMatch(terms, /Paid checkout is not yet available/);
   assert.match(terms, /Premium checkout is available where enabled/);
-  assert.match(terms, /Last updated 28 October 2026/);
+  assert.match(terms, /Last updated 31 October 2026/);
   assert.match(terms, /Nothing in these Terms removes mandatory consumer rights/);
   assert.match(terms, /Paddle processes subscription payments as merchant of record/);
 });

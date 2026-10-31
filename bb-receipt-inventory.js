@@ -8,6 +8,12 @@
   function createReceiptInventoryAdapter(initial = {}) {
     let options = { ...initial }, corePromise, memoryDrafts = new Map();
     const inFlight = new Map();
+    let deletionPaused = false, generation = 0;
+    const deleting = () => deletionPaused || root.BBAccountDeletion?.isDeleting?.() === true;
+    const pauseDeletion = () => { deletionPaused = true; generation++; memoryDrafts.clear(); };
+    root.addEventListener?.('basketboss:account-deletion-started', pauseDeletion);
+    root.addEventListener?.('basketboss:account-deletion-deleted', pauseDeletion);
+    root.addEventListener?.('basketboss:account-deletion-cancelled', () => { deletionPaused = false; generation++; });
     const storage = () => options.storage || root.localStorage;
     const now = () => (options.now ? new Date(options.now()) : new Date()).toISOString();
     const clone = value => JSON.parse(JSON.stringify(value));
@@ -21,19 +27,20 @@
     };
     const core = () => options.core ? Promise.resolve(options.core) : (corePromise ||= import(moduleURL));
     function session() {
+      if (deleting()) throw Error('account_deletion_in_progress');
       const value = options.getSession ? options.getSession() : json(KEYS.session, {});
       const actorId = value?.user?.id || value?.actorId;
       const token = value?.access_token || value?.accessToken;
       if (typeof actorId !== 'string' || !/^[a-zA-Z0-9_-]{8,120}$/.test(actorId) || typeof token !== 'string' || !token || token.length > 16000 || /[\r\n]/.test(token)) throw Error('verified_receipt_account_required');
       if (value.expires_at !== undefined && (!Number.isFinite(Number(value.expires_at)) || Number(value.expires_at) * 1000 <= Date.now() + 5000)) throw Error('receipt_session_expired');
-      return { actorId, token };
+      return { actorId, token, generation };
     }
     function activeContext() {
       const value = options.getContext?.();
       if (!value || !['UK', 'Guernsey', 'Jersey', 'US'].includes(value.market)) throw Error('receipt_host_context_required');
       return { market: value.market, retailer: value.retailer || null, shopSessionId: value.shopSessionId || null };
     }
-    function sameSession(captured) { const current = session(); return current.actorId === captured.actorId && current.token === captured.token; }
+    function sameSession(captured) { if (deleting() || captured.generation !== generation) return false; try { const current = session(); return current.actorId === captured.actorId && current.token === captured.token; } catch { return false; } }
     function sameContext(captured) { const current = activeContext(); return current.market === captured.market && current.retailer === captured.retailer; }
     const catalog = () => options.getCatalog ? options.getCatalog() : root.BBPriceV19?.catalog;
     const canonicalize = value => options.canonicalize ? options.canonicalize(value) : root.BBPriceV19?.canonical ? root.BBPriceV19.canonical(value) : value;
@@ -60,6 +67,7 @@
       return run();
     }
     function atomicWrite(changes, actorId) {
+      if (deleting()) throw Error('account_deletion_in_progress');
       const store = storage(), before = Object.fromEntries(Object.keys(changes).map(key => [key, store.getItem(key)]));
       const journalKey = actorJournal(actorId), previousJournal = store.getItem(journalKey);
       if (previousJournal !== null) throw Error('receipt_recovery_required');
@@ -106,6 +114,7 @@
       storage().removeItem(key); return { recovered: true };
     }
     async function request(method, captured, body, signal, query = null) {
+      if (!sameSession(captured)) throw Error('receipt_account_changed');
       const perform = options.fetch || root.fetch?.bind(root);
       if (!perform) throw Error('receipt_network_unavailable');
       const path = '/api/receipt-inventory' + (query?.receiptId ? '?receiptId=' + encodeURIComponent(query.receiptId) : '');
@@ -247,7 +256,7 @@
         let response;
         try { response = await request('POST', captured, body, signal); }
         catch (error) {
-          if (error.status >= 400 && error.status < 500 && error.status !== 408) {
+          if (!deleting() && sameSession(captured) && error.status >= 400 && error.status < 500 && error.status !== 408) {
             try { if (pendingConfirmation(captured.actorId).receiptId === body.receiptId) storage().removeItem(pendingKey(captured.actorId)); } catch {}
           } else { error.commitUnknown = true; error.receiptId = body.receiptId; error.recoveryRequired = true; }
           throw error;
@@ -277,7 +286,7 @@
       let response;
       try { response = await request('POST', captured, body, signal); }
       catch (error) {
-        if (error.status >= 400 && error.status < 500 && error.status !== 408) {
+        if (!deleting() && sameSession(captured) && error.status >= 400 && error.status < 500 && error.status !== 408) {
           try { if (pendingConfirmation(captured.actorId).receiptId === body.receiptId) storage().removeItem(pendingKey(captured.actorId)); } catch {}
         } else { error.commitUnknown = true; error.receiptId = body.receiptId; error.recoveryRequired = true; }
         throw error;

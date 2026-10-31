@@ -7,6 +7,14 @@ on:
     paths:
       - .github/workflows/cloudflare-catalogue-check.yml
       - scripts/check-cloudflare-catalogue.mjs
+      - functions/privacy.js
+      - functions/terms.js
+      - privacy.html
+      - terms.html
+      - bb-server-lib/bb-public-legal.js
+      - bb-server-lib/bb-account-deletion.js
+      - functions/api/account/**
+      - functions/api/subscription/**
       - functions/api/receipt-inventory.js
       - functions/api/bb173/**
       - bb-server-lib/bb-receipt-canonical-pairs.js

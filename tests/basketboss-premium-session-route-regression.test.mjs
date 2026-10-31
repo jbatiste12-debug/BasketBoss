@@ -12,7 +12,9 @@ const input=middlewareCode
  .replace("import {seatGateEnabled,isNewestVerifiedSession} from '../../bb-server-lib/bb-premium-seat.js';",
    'const {seatGateEnabled,isNewestVerifiedSession}=globalThis.__bbBoundarySeat;')
  .replace("import {nativeCorsResponse,nativePreflightResponse} from '../../bb-server-lib/bb-request-origin.js';",
-   'const {nativeCorsResponse,nativePreflightResponse}=globalThis.__bbBoundaryOrigin;');
+   'const {nativeCorsResponse,nativePreflightResponse}=globalThis.__bbBoundaryOrigin;')
+ .replace("import {ensureDeletionSchema,isAccountDeleting} from '../../bb-server-lib/bb-account-deletion.js';",
+   'const ensureDeletionSchema=async()=>{},isAccountDeleting=async()=>false;');
 assert.ok(!input.includes("from '../../bb-server-lib/"),'middleware imports did not resolve');
 let authCalls=0,seatCalls=0,accepted=true,sessionOk=false,throwSession=false;
 globalThis.__bbBoundaryOrigin=requestOrigin;

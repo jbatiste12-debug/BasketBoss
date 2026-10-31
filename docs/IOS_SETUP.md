@@ -63,13 +63,13 @@ This repository prepares a buildable native project; it does **not** certify App
 
 This initial native build is a **Free/existing-account companion**. It suppresses web checkout and trial purchase promotions, blocks checkout requests, replaces pricing pages with account information, and does not create accounts. The existing PWA keeps its account creation and Paddle checkout. Existing eligible subscribers can sign in; the app does not grant local Premium rights.
 
-Before enabling native account creation, implement account deletion in the app with the corresponding server-side deletion/cancellation handling. The existing email-only deletion request is not a substitute for that flow. Before selling digital Premium access in iOS, implement the appropriate StoreKit/IAP products, restore-purchase handling and server entitlement verification, or establish an applicable Apple entitlement/program. Removing Paddle links alone does not establish subscription-policy eligibility; review Apple's current rules for this companion model.
+The app now includes **Delete Account & Data** in Profile and Settings, including password reauthentication, permanent confirmation, billing cancellation and server-confirmed cleanup. Deploy the account-deletion SQL migration below before submission. Native account creation remains disabled in this companion build. Before selling digital Premium access in iOS, implement the appropriate StoreKit/IAP products, restore-purchase handling and server entitlement verification, or establish an applicable Apple entitlement/program. Removing Paddle links alone does not establish subscription-policy eligibility; review Apple's current rules for this companion model.
 
 Before submission, complete these checks on the Mac/iPhone:
 
 - Sign in and confirm Free/Premium/partner access, cloud restore and the current session policy.
 - Take and select a receipt photo, grant/deny camera and photo permissions, give Gemini consent, review the scan, confirm food/non-food, then check pantry quantities and remembered prices.
-- Verify safe areas, keyboard, rotation, background/resume and external management/privacy links on the actual iPhone.
+- Verify safe areas, keyboard, rotation, background/resume and account-status and privacy links on the actual iPhone.
 - Build/Archive for **Any iOS Device**, validate in Xcode Organizer, and upload to your App Store Connect app with the same bundle ID/team. Increment build number for later uploads.
 - Complete App Store privacy labels, age rating, screenshots, support/privacy URLs, export-compliance answers, content rights and review instructions/test account. The privacy manifest declares the app's local preference access and account/content categories conservatively; review actual Supabase/Gemini/Paddle processing and retention when answering App Store Connect questions.
 
@@ -83,3 +83,15 @@ npm run test:native
 ```
 
 These verify packaging, privacy exclusions, routing/CORS and project configuration. CocoaPods installation, Swift compilation, signing, iPhone execution and App Store upload require macOS/Xcode and have not been represented as passing Linux checks.
+
+
+## Account deletion rollout (31 October 2026)
+
+1. Run `sql/basketboss_account_deletion_20261031.sql` in the **production Supabase SQL editor**, after the existing household and receipt-inventory migrations. Installing it deletes no accounts. It creates two service-only RPCs, secures the legacy cloud-data foreign key, and serializes shared writes with account deletion. It has been tested against an isolated PostgreSQL engine; production application still requires database-owner access.
+2. Open `https://basketboss.co.uk/api/account/delete`. Require `available:true` and `migrationReady:true`. The endpoint fails safely until the migration is installed; do not submit a build with a non-working deletion button.
+3. Use a dedicated disposable account to verify the complete flow: cancel leaves data; incorrect password preserves data; confirmed deletion removes cloud identity/plans/receipt inventory and this installation’s local data. Owner deletion removes its shared household, while a partner’s separate account survives. Never use a customer account for testing.
+4. Pull the release on the Mac, run `npm ci && npm run ios:sync`, then rebuild the physical iPhone app. The installed Capacitor shell needs a new build to receive these changes.
+
+The deletion journal retains non-reversible actor/billing-reference hashes and timestamps to suppress delayed billing events. Raw user ID/email exist only during an unfinished retry, and are cleared on completion. No password or bearer token is stored. Payment providers may retain required financial records. Downloaded backups, other offline installations and original library photos cannot be erased remotely.
+
+Public App Store privacy URL: `https://basketboss.co.uk/privacy`. Terms URL: `https://basketboss.co.uk/terms`. Both are also bundled offline and accessible in Profile/Settings and the native account-status page. Native web checkout, payment-provider portals and purchase promotions are disabled; the PWA retains web billing. Apple decides whether the existing-account companion model meets its rules. This change adds no StoreKit products or in-app purchases.

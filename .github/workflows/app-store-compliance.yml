@@ -1,0 +1,43 @@
+name: Verify App Store compliance
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+    paths:
+      - .github/workflows/app-store-compliance.yml
+      - bb-account-deletion.*
+      - bb-server-lib/**
+      - functions/**
+      - sql/**
+      - native/**
+      - index.html
+      - app.html
+      - privacy.html
+      - terms.html
+      - service-worker.js
+      - tests/**
+
+permissions:
+  contents: read
+
+jobs:
+  compliance:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+          cache: npm
+      - run: npm ci --no-audit --no-fund
+      - name: Install isolated PostgreSQL test engine
+        run: npm install --prefix "$RUNNER_TEMP/bb-deletion-pg" --package-lock=false --ignore-scripts --no-audit --no-fund @electric-sql/pglite@0.3.14
+      - run: npm run build:native
+      - name: Verify account deletion, SQL permissions and native billing boundaries
+        env:
+          BB_PGLITE_MODULE: ${{ runner.temp }}/bb-deletion-pg/node_modules/@electric-sql/pglite
+        run: node --test --test-isolation=none tests/*.test.mjs
