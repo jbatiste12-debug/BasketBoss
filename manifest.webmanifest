@@ -3,7 +3,7 @@
   "name": "BasketBoss",
   "short_name": "BasketBoss",
   "description": "BasketBoss Beta — meal planning, shopping and less food waste.",
-  "start_url": "./index.html",
+ "start_url": "/app",
   "scope": "./",
   "display": "standalone",
   "background_color": "#E9ECEF",
