@@ -6006,7 +6006,7 @@ let bbNextExpandedPlanDay=null;
 let bbNextBudgetOpen=false;
 let bbNextAutofillOpen=false;
 function bbNextAttachAutofill(app){
- // UI-NEXT Batch 7.5: show the ONE original, proven six-dinner Auto-fill
+ // UI-NEXT Batch 7.5: move the ONE original Auto-fill action
  // action prominently on Plan. Move its actual button, never clone it or
  // substitute a disclosure-only shortcut; its click handler and all free/
  // premium entitlement checks remain owned by bb172AutoFillSixDinners().
@@ -6303,40 +6303,30 @@ function bbQaConfirm(message,title='Please confirm',confirmLabel='Continue'){
 async function bb81AutoFillPro(){
  if(!bb176IsPremiumPreview()){bb81ProUpgradePreview('auto');return false;}
  if(!BB81_PRO_FILTERS.some(k=>bb81ProFilters[k]))return false;
- if(!Array.isArray(state.planned)){notify('Saved plan format is not recognised; nothing changed.');return false;}
- const current=state.planned,notes=typeof bb172QuickDinners==='function'?bb172QuickDinners():{},occupied=new Set(current.map(p=>p.day).concat(Object.keys(notes)));
+ if(!Array.isArray(state.planned)){notify('Saved plan format not recognised. Nothing changed.');return false;}
+ const previous=state.planned,notes=bb172QuickDinners(),occupied=new Set([...previous.map(x=>x.day),...Object.keys(notes)]);
  const batch=bb81ProFilters.batch;
- if(bbBatchPairs().length){notify('This week already has linked batch nights. Clear or change those nights before another Auto-fill.');return false;}
+ if(bbBatchPairs().length){notify('Linked batch nights already exist. Change those first.');return false;}
  if(batch&&['Monday','Tuesday','Wednesday','Thursday','Friday','Saturday'].some(d=>occupied.has(d))){
-  notify('Batch Mode needs empty Monday–Saturday slots so no existing meals or custom notes are overwritten.');return false;
+  notify('Batch Mode requires free Monday to Saturday. Nothing changed.');return false;
  }
- const picks=current.map(p=>getRecipe(p.recipeId)).filter(Boolean),additions=[];
- const target=batch?['Monday','Wednesday','Friday','Saturday']:['Monday','Tuesday','Wednesday','Thursday','Friday','Saturday'].filter(d=>!occupied.has(d));
- for(const day of target){
-  const next=bb81ChooseDinner(day,picks,bb81ProFilters,batch&&(day==='Monday'||day==='Wednesday'));
-  if(!next){notify('Not enough recipes match this combination of filters. Try removing a filter; nothing was changed.');return false;}
-  picks.push(next);additions.push({day,recipeId:next.id});
- }
- if(!additions.length){notify('All suggested dinner slots are filled; existing meals are untouched.');return false;}
- const message=batch?
-  'Plan 4 cooked dinners plus 2 linked leftover nights? Monday and Wednesday will each use double servings in Shopping. Tuesday and Thursday add no separate recipe items. Keep Sunday free?':
-  'Add '+additions.length+' filtered dinners to empty days only? Existing meals and notes will stay.';
- if(!await bbQaConfirm(message,'Auto-Fill My Week','Add dinners'))return false;
- if(state.planned!==current||additions.some(p=>!bb176AllowedRecipe(p.recipeId))){notify('Your plan or access changed; no new dinners saved.');return false;}
- const next=[...current,...additions];
- if(new Set(next.map(x=>x.day)).size!==next.length||new Set(next.map(x=>x.recipeId)).size!==next.length){notify('Conflicting dinner choices; no changes saved.');return false;}
- const oldBatch=state.bb81Batch||null;
- state.planned=next;
- if(batch){
-  const mon=additions.find(x=>x.day==='Monday')?.recipeId,wed=additions.find(x=>x.day==='Wednesday')?.recipeId;
-  state.bb81Batch={version:1,monday:mon,wednesday:wed};
- }
- if(!persist()){
-  state.planned=current;state.bb81Batch=oldBatch;
-  notify('Could not save the filtered plan and batch links; your prior plan remains unchanged.');return false;
- }
+ const days=batch?['Monday','Wednesday','Friday','Saturday']:BB_AF_DAYS.filter(d=>!occupied.has(d));
+ if(!days.length){notify('All dinner slots are planned. Nothing changed.');return false;}
+ let selection;
+ try{selection=bbAfDraw(days,previous,bb81ProFilters,batch);}
+ catch(_){notify('Unable to read rotation history. Nothing changed.');return false;}
+ if(!selection){notify('Not enough unseen dinners match the Premium filters and variety rules. Nothing changed.');return false;}
+ const confirmText=batch?
+  'Add four different cooked dinners and two linked leftover nights? Monday and Wednesday are double batches; Sunday remains free.':
+  'Add '+days.length+' different dinners to free days, keeping existing meals and notes?';
+ const planSnapshot=JSON.stringify(previous),notesSnapshot=JSON.stringify(notes);
+ if(!await bbQaConfirm(confirmText,'Auto-Fill My Week','Add dinners'))return false;
+ const mon=selection.additions.find(x=>x.day==='Monday')?.recipeId;
+ const wed=selection.additions.find(x=>x.day==='Wednesday')?.recipeId;
+ const batchData=batch?{version:1,monday:mon,wednesday:wed}:null;
+ if(!bbAfCommit(previous,planSnapshot,notesSnapshot,batchData,selection))return false;
  bb80OpenPlanDays.add('Monday');bb80OpenPlanDays.add('Tuesday');bb80RememberPlanDays();
- render();notify(batch?'Batch plan saved: Mon & Wed ingredients doubled; Tue & Thu are linked leftovers.':'Filtered Auto-fill added '+additions.length+' dinners.');
+ notify((batch?'Batch meals':'Seven-dinner plan')+' saved with recipe rotation.');
  return true;
 }
 function bb81TemporaryBasketTotal(nextPlanned){
@@ -8210,6 +8200,150 @@ function bb172DecorateAll(){
 const BB172_SIXDINNER_MARK = 'bb172-family-date-six-dinner-v1';
 const BB172_FAMILY_DAYS=['Monday','Tuesday','Wednesday','Thursday','Friday'];
 const BB172_DATE_DAY='Saturday';
+
+/* BASKETBOSS_AUTOFILL_VARIETY_ROTATION_V1: device-local, entitled dinners only. */
+const BB_AF_DAYS=['Monday','Tuesday','Wednesday','Thursday','Friday','Saturday','Sunday'];
+const BB_AF_SEEN='basketboss_autofill_seenRecipeIds_v1';
+const BB_AF_LAST='basketboss_autofill_lastRecipeIds_v1';
+function bbAfRead(key){
+ const raw=localStorage.getItem(key);
+ if(raw===null)return [];
+ const ids=JSON.parse(raw);
+ if(!Array.isArray(ids)||ids.some(x=>typeof x!=='string'))throw Error('Invalid Auto-fill history');
+ return [...new Set(ids)];
+}
+function bbAfDinner(r){
+ if(!r||typeof r.id!=='string'||!r.id||Number(r.servings)<4)return false;
+ const group=String(r.category||'')+' '+String(r.tag||'')+' '+String(r.name||'');
+ if(/\b(breakfast|brunch|lunch|lunchbox|desserts?|sweet treats?|baking|snacks?|drinks?|smoothies?)\b|after.school/i.test(group))return false;
+ if(/date[\s-]*night|for\s+two/i.test(group))return false;
+ return !bb172IsDessertOrNonDinner(r);
+}
+function bbAfTags(r){
+ const name=String(r.name||'').toLowerCase();
+ const food=(r.ingredients||[]).map(x=>String(Array.isArray(x)?x[0]:(x?.name||'')).toLowerCase());
+ const first=food[0]||'',text=name+' '+first;
+ const proteinGroups=[
+  ['chicken',/\b(chicken|poultry)\b/],['turkey',/\bturkey\b/],
+  ['beef',/\b(beef|steak|sirloin|brisket|veal)\b/],
+  ['pork',/\b(pork|sausage|sausages|bacon|gammon|ham|chorizo)\b/],
+  ['lamb',/\b(lamb|mutton)\b/],['duck',/\bduck\b/],
+  ['seafood',/\b(prawn|prawns|shrimp|scallop|crab|mussels|squid)\b/],
+  ['fish',/\b(fish|salmon|tuna|cod|haddock|trout|mackerel)\b/],
+  ['tofu',/\b(tofu|tempeh|quorn)\b/],
+  ['pulses',/\b(chickpea|chickpeas|lentil|lentils|bean|beans|falafel)\b/],
+  ['eggs',/\b(egg|eggs|omelette|frittata|shakshuka)\b/]
+ ];
+ const protein=proteinGroups.find(([,rx])=>rx.test(name))?.[0]||
+  proteinGroups.find(([,rx])=>rx.test(first))?.[0]||null;
+ const dairy=/\b(cheese|cheesy|cheddar|parmesan|mozzarella|halloumi|ricotta|feta|burrata|brie|mascarpone|cream cheese|double cream|single cream)\b/;
+ const heavyDairy=/\b(cheese|cheesy|cheddar|parmesan|mozzarella|halloumi|ricotta|feta|burrata|alfredo)\b/.test(name)||
+  dairy.test(first)||(/\b(creamy|cream)\b/.test(name)&&food.slice(0,4).some(x=>dairy.test(x)));
+ const primary=protein||(heavyDairy?'heavy-cheese':
+  /\b(pasta|spaghetti|penne|macaroni|linguine|tortellini|gnocchi|orzo)\b/.test(text)?'pasta':
+  /\b(rice|risotto|quinoa|couscous|noodles)\b/.test(text)?'rice-grains':
+  /\b(potato|potatoes|sweet potato)\b/.test(text)?'potatoes':
+  /\b(mushroom|mushrooms)\b/.test(text)?'mushrooms':
+  /\b(aubergine|broccoli|carrot|pepper|peppers|vegetable|vegetables)\b/.test(text)?'vegetables':
+  first.replace(/\b(fresh|raw|cooked|mixed|frozen|large|small|medium|diced|chopped)\b/g,'')
+   .replace(/[^a-z0-9]+/g,' ').trim().split(' ').slice(0,3).join(' '))||null;
+ const style=String(r.tag||'').toLowerCase().trim().replace(/\s+/g,'-');
+ return {protein,primary,style,heavyDairy,food};
+}
+function bbAfFits(r,day,week,details){
+ const candidate=details(r.id);if(!candidate||week.some(x=>x.recipeId===r.id))return false;
+ let proteinN=0,primaryN=0,styleN=0,cheeseN=0;
+ for(const p of week){
+  const other=details(p.recipeId);if(!other)continue;
+  if(candidate.protein&&candidate.protein===other.protein)proteinN++;
+  if(candidate.primary&&candidate.primary===other.primary)primaryN++;
+  if(candidate.style&&candidate.style===other.style)styleN++;
+  if(other.heavyDairy)cheeseN++;
+  if(Math.abs(BB_AF_DAYS.indexOf(day)-BB_AF_DAYS.indexOf(p.day))===1&&
+    ((candidate.protein&&candidate.protein===other.protein)||(candidate.heavyDairy&&other.heavyDairy)))return false;
+ }
+ return proteinN<2&&primaryN<2&&styleN<2&&(!candidate.heavyDairy||cheeseN<2);
+}
+function bbAfDraw(days,previous,filters={},batch=false){
+ const prior=bbAfRead(BB_AF_SEEN),recent=bbAfRead(BB_AF_LAST);
+ const all=RECIPES.filter(r=>bb176AllowedRecipe(r.id)&&bbAfDinner(r)&&
+  (!filters.quick||bb81Under30(r))&&(!filters.kids||bb81KidOK(r)));
+ const unseen=all.filter(r=>!prior.includes(r.id));
+ // Eligible recipes, not locked recipes or breakfast/dessert catalogue entries.
+ const reset=unseen.length<7,seen=new Set(reset?[]:prior);
+ const available=all.filter(r=>!seen.has(r.id)&&(!reset||!recent.includes(r.id)));
+ const byId=new Map(RECIPES.map(r=>[r.id,r])),cache=new Map();
+ const details=id=>{
+  if(!cache.has(id))cache.set(id,byId.has(id)?bbAfTags(byId.get(id)):null);
+  return cache.get(id);
+ };
+ if(available.length<days.length)return null;
+ let fridge=new Set();
+ try{fridge=bb83FridgeStockKeys()}catch(_){}
+ const scored=(r,week)=>{
+  const d=details(r.id),used=new Set();
+  for(const item of week)for(const x of details(item.recipeId)?.food||[])used.add(x);
+  const shared=d.food.filter(x=>used.has(x)).length;
+  const stock=d.food.filter(x=>fridge.has(x)).length;
+  const proteinBoost=filters.protein?Math.min(5,bb81ProteinScore(r))*1.1:0;
+  return Math.min(shared,5)*0.55+Math.min(stock,3)*1.2+proteinBoost+Math.random()*9;
+ };
+ // Random restarts find a complete valid week without loosening safety constraints.
+ for(let attempt=0;attempt<100;attempt++){
+  const selected=[],week=[...previous];let possible=true;
+  for(const day of days){
+   const options=available.filter(r=>bbAfFits(r,day,week,details)&&
+     (!batch||day!=='Monday'&&day!=='Wednesday'||bb81BatchOK(r)));
+   if(!options.length){possible=false;break;}
+   const candidates=options.map(r=>({r,score:scored(r,week)})).sort((a,b)=>b.score-a.score).slice(0,15);
+   const pick=candidates[Math.floor(Math.random()*candidates.length)].r;
+   const item={day,recipeId:pick.id};selected.push(item);week.push(item);
+  }
+  if(possible&&selected.length===days.length)return {
+   additions:selected,prior,recent,reset,
+   seen:[...new Set([...(reset?[]:prior),...selected.map(x=>x.recipeId)])],
+   last:selected.map(x=>x.recipeId)
+  };
+ }
+ return null;
+}
+function bbAfCommit(previous,planSnapshot,notesSnapshot,batchData,selection){
+ if(!selection||state.planned!==previous||JSON.stringify(state.planned)!==planSnapshot||
+   JSON.stringify(bb172QuickDinners())!==notesSnapshot||
+   selection.additions.some(x=>!bb176AllowedRecipe(x.recipeId))){
+  notify('Your plan or access changed. Nothing was saved.');return false;
+ }
+ const next=[...previous,...selection.additions];
+ if(new Set(next.map(x=>x.day)).size!==next.length||
+  new Set(next.map(x=>x.recipeId)).size!==next.length){
+  notify('Conflicting dinner detected. Nothing saved.');return false;
+ }
+ const oldBatch=state.bb81Batch;
+ let beforeSeen,beforeLast;
+ try{
+  beforeSeen=localStorage.getItem(BB_AF_SEEN);beforeLast=localStorage.getItem(BB_AF_LAST);
+  localStorage.setItem(BB_AF_SEEN,JSON.stringify(selection.seen));
+  localStorage.setItem(BB_AF_LAST,JSON.stringify(selection.last));
+ }catch(_){
+  try{if(beforeSeen===null)localStorage.removeItem(BB_AF_SEEN);else if(beforeSeen!==undefined)localStorage.setItem(BB_AF_SEEN,beforeSeen);
+      if(beforeLast===null)localStorage.removeItem(BB_AF_LAST);else if(beforeLast!==undefined)localStorage.setItem(BB_AF_LAST,beforeLast);}catch(_){}
+  notify('Could not save recipe rotation history. The week is unchanged.');return false;
+ }
+ state.planned=next;
+ if(batchData)state.bb81Batch=batchData;
+ try{if(persist()!==true)throw Error('Save failed');}
+ catch(_){
+  state.planned=previous;state.bb81Batch=oldBatch;
+  try{
+   if(beforeSeen===null)localStorage.removeItem(BB_AF_SEEN);else localStorage.setItem(BB_AF_SEEN,beforeSeen);
+   if(beforeLast===null)localStorage.removeItem(BB_AF_LAST);else localStorage.setItem(BB_AF_LAST,beforeLast);
+  }catch(e){console.warn('Auto-fill history rollback failed',e)}
+  notify('Could not save dinners. Your previous plan remains.');return false;
+ }
+ render();return true;
+}
+/* END_BASKETBOSS_AUTOFILL_VARIETY_ROTATION_V1 */
+
 function bb172IsDessertOrNonDinner(recipe){
  const category=String(recipe?.category||'');
  const tag=String(recipe?.tag||'');
@@ -8301,39 +8435,20 @@ function bb172BuildSixDinners(allRecipes){
  return {plans,family:chosen,date:night};
 }
 async function bb172AutoFillSixDinners(){
- if(bbBatchPairs().length){notify('Linked batch nights are already planned. Remove the batch links before running Auto-fill again.');return false;}
+ if(bbBatchPairs().length){notify('Linked batch nights are planned. Remove those links before another Auto-fill.');return false;}
  if(bb176IsPremiumPreview()&&BB81_PRO_FILTERS.some(k=>bb81ProFilters[k]))return bb81AutoFillPro();
- // v17.4.2: Auto-fill NEVER replaces a planned recipe or a custom dinner note.
- if(!Array.isArray(state.planned)){
-  notify('The saved meal plan format is not recognised. Nothing was changed.');return false;
- }
- const previous=state.planned;
- const notes=typeof bb172QuickDinners==='function'?bb172QuickDinners():{};
- const occupied=new Set(previous.map(x=>x.day).concat(Object.keys(notes)));
- const chosen=previous.map(p=>getRecipe(p.recipeId)).filter(Boolean);
- const additions=[];
- const target=[...BB172_FAMILY_DAYS,BB172_DATE_DAY].filter(day=>!occupied.has(day));
- for(const day of target){
-  const options=RECIPES.filter(r=>bb176AllowedRecipe(r.id)&&(day===BB172_DATE_DAY?bb172DateCandidate(r):bb172FamilyCandidate(r)));
-  const pick=bb172RandomWeightedPick(options,chosen);
-  if(!pick)continue;
-  chosen.push(pick);additions.push({day,recipeId:pick.id});
- }
- if(!additions.length){notify('All suggested dinner slots are already filled. Existing meals are untouched.');return false;}
-  if(additions.some(p=>!bb176AllowedRecipe(p.recipeId))){notify('Locked recipes cannot be added. No changes saved.');return false;}
- const answer=await bbQaConfirm('Add '+additions.length+' suggested dinner'+(additions.length===1?'':'s')+' to empty days only? Every selected meal and custom note will be kept.','Auto-Fill My Week','Add dinners');
- if(!answer)return false;
- // Recheck before writing in case another action changed the plan.
- if(state.planned!==previous){notify('Your plan changed; review it and try again. Nothing overwritten.');return false;}
- const next=[...previous,...additions];
- if(new Set(next.map(x=>x.day)).size!==next.length || new Set(next.map(x=>x.recipeId)).size!==next.length){
-  notify('Conflicting dinner detected. No changes saved.');return false;
- }
- state.planned=next;
- try{if(persist()===false)throw Error('Save failed');}
- catch(err){state.planned=previous;notify('Unable to save. Your selected dinners remain unchanged.');return false;}
- render();
- notify(additions.length+' dinner'+(additions.length===1?'':'s')+' added to free days. Existing meals, pantry and shopping data kept.');
+ if(!Array.isArray(state.planned)){notify('Saved plan format not recognised. Nothing changed.');return false;}
+ const previous=state.planned,notes=bb172QuickDinners(),occupied=new Set([...previous.map(x=>x.day),...Object.keys(notes)]);
+ const days=BB_AF_DAYS.filter(day=>!occupied.has(day));
+ if(!days.length){notify('All seven dinners are already planned. Nothing changed.');return false;}
+ let selection;
+ try{selection=bbAfDraw(days,previous);}
+ catch(_){notify('Unable to read rotation history. Nothing changed.');return false;}
+ if(!selection){notify('Not enough different eligible dinners satisfy variety rules. Nothing changed.');return false;}
+ const planSnapshot=JSON.stringify(previous),notesSnapshot=JSON.stringify(notes);
+ if(!await bbQaConfirm('Add '+days.length+' varied family dinners? Existing meals and notes stay. Previously suggested recipes will be avoided until the eligible rotation resets.','Auto-Fill My Week','Add dinners'))return false;
+ if(!bbAfCommit(previous,planSnapshot,notesSnapshot,null,selection))return false;
+ notify(days.length+' varied dinners added.'+(selection.reset?' A new recipe rotation began.':''));
  return true;
 }
 function bb172DrawSixDinnerControl(){
@@ -8346,10 +8461,10 @@ function bb172DrawSixDinnerControl(){
   /^auto[\s-]*fill(?:\s+(?:my|your)\s+week)?(?:\s+(?:dinners|meals))?$/i.test(String(el.textContent||'').trim()) && !el.closest('#bb172SixDinnerPanel'));
  oldButtons.forEach(el=>{el.hidden=true;el.style.setProperty('display','none','important');el.setAttribute('aria-hidden','true');});
  const panel=document.createElement('section');panel.id='bb172SixDinnerPanel';panel.className='bb172-six-dinner';
- panel.innerHTML=`<div class="bb172-six-dinner-top"><span class="bb172-six-dinner-icon" aria-hidden="true">🎲</span><div><h3>Auto-fill my week</h3><p>Five family feasts + one date-night dinner, chosen from your recipes.</p></div></div>
- <div class="bb172-six-dinner-week"><span>Mon–Fri <b>Family feasts</b></span><span>Saturday <b>❤️ Date night</b></span><span>Sunday <b>Free night</b></span></div>
+ panel.innerHTML=`<div class="bb172-six-dinner-top"><span class="bb172-six-dinner-icon" aria-hidden="true">🎲</span><div><h3>Auto-fill my week</h3><p>Seven different family dinners, Monday to Sunday.</p></div></div>
+ <div class="bb172-six-dinner-week"><span>Mon–Fri <b>Family dinners</b></span><span>Saturday <b>Family dinner</b></span><span>Sunday <b>Family dinner</b></span></div>
  <button type="button" id="bb172FillSixDinners" class="btn primary">🎲 Auto-fill my week</button>
- <small>Fills empty dinner days only; existing planned meals and custom dinner notes are never replaced. Estimated shopping costs aren't guaranteed supermarket prices.</small>`;
+ <small>Fills empty dinner days only, rotating through eligible recipes without repeating recent weeks. Existing meals and notes are never replaced. Estimated shopping costs aren't guaranteed supermarket prices.</small>`;
  const anchor=app.querySelector('.bb1756-plan-jump')||app.querySelector('.bb1748-planner-budget');
  if(anchor)anchor.after(panel);else app.prepend(panel);
  panel.querySelector('#bb172FillSixDinners').addEventListener('click',bb172AutoFillSixDinners);
