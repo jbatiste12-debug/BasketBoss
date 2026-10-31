@@ -13,19 +13,21 @@ globalThis.__partnerTestBilling=lib;
 let seatActive=true;
 globalThis.__partnerTestSeat={seatGateEnabled:()=>seatActive};
 const rawHelper=read('bb-server-lib/bb-household-premium.js');
-assert.match(rawHelper,/const PARTNER_PREMIUM_ARMED=false;/);
+const brake=/const PARTNER_PREMIUM_ARMED=(?:true|false);/;
+assert.match(rawHelper,brake);
 function helperLoaded(armed){
- const code=rawHelper.replace(
+ let code=rawHelper.replace(
   "import {isLive,expectedPrice,entitlementForStatus} from './bb-billing.js';",
   "const {isLive,expectedPrice,entitlementForStatus}=globalThis.__partnerTestBilling;"
  ).replace("import {seatGateEnabled} from './bb-premium-seat.js';",
-           "const {seatGateEnabled}=globalThis.__partnerTestSeat;").replace('const PARTNER_PREMIUM_ARMED=false;',
-           'const PARTNER_PREMIUM_ARMED='+String(armed)+';');
+           "const {seatGateEnabled}=globalThis.__partnerTestSeat;");
+ if(typeof armed==='boolean')code=code.replace(brake,'const PARTNER_PREMIUM_ARMED='+String(armed)+';');
  assert.ok(!code.includes("from './bb-billing.js'"));
  return import(moduleFrom(code));
 }
 const closed=await helperLoaded(false);
-const active=await helperLoaded(true);
+// Exercise the shipped production helper without rewriting its activation state.
+const active=await helperLoaded();
 globalThis.__partnerTestHelper=active;
 function route(pathname,billingNames,handlerName){
  const names=billingNames.split(',');
@@ -176,8 +178,8 @@ test('AI status recognises verified partner and denies canceled owner; quotas us
  assert.equal((await res.json()).premium_ai,false);
  assert.match(read('functions/api/bb173/[action].js'),/member\.bbQuotaOwnerId\|\|member\.id/);
 });
-test('no production backend activation is part of this patch',()=>{
- assert.match(read('bb-server-lib/bb-household-premium.js'),/const PARTNER_PREMIUM_ARMED=false;/);
+test('released partner access still uses verified server sharing and omits owner billing',()=>{
+ reset();assert.equal(active.partnerBenefitsEnabled(request(),env()),true);
  assert.match(read('functions/api/recipes/premium.js'),/sharedHouseholdPremiumOwner/);
  assert.match(read('functions/api/subscription/status.js'),/subscription:null,portalUrl:null/);
 });

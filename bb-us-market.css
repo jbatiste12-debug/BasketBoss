@@ -2,7 +2,7 @@
 .bb-us-market-note{margin:10px auto 15px;max-width:1060px;padding:12px 15px;background:#f0f7ed;border:1px solid #abcaa9;border-radius:13px;color:#1b563c;font:600 13px/1.5 system-ui,Arial,sans-serif}
 .bb-us-market-note[hidden]{display:none!important}
 #bb307Island option[value="US"]{font-weight:700}
-html.bb-us-mode .bb172-budget-entry,html.bb-us-mode .bb15-price-editor{opacity:.53;pointer-events:none}
+html.bb-us-legacy-pricing .bb172-budget-entry,html.bb-us-legacy-pricing .bb15-price-editor{opacity:.53;pointer-events:none}
 @media(max-width:620px){.bb-us-market-note{margin:10px 12px 15px}}
 
 /* Four-market preference: explicit Save and consistent BasketBoss cream/sage palette. */
