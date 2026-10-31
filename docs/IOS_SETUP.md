@@ -95,3 +95,12 @@ These verify packaging, privacy exclusions, routing/CORS and project configurati
 The deletion journal retains non-reversible actor/billing-reference hashes and timestamps to suppress delayed billing events. Raw user ID/email exist only during an unfinished retry, and are cleared on completion. No password or bearer token is stored. Payment providers may retain required financial records. Downloaded backups, other offline installations and original library photos cannot be erased remotely.
 
 Public App Store privacy URL: `https://basketboss.co.uk/privacy`. Terms URL: `https://basketboss.co.uk/terms`. Both are also bundled offline and accessible in Profile/Settings and the native account-status page. Native web checkout, payment-provider portals and purchase promotions are disabled; the PWA retains web billing. Apple decides whether the existing-account companion model meets its rules. This change adds no StoreKit products or in-app purchases.
+
+
+## Native launch and replay setup
+
+The OS launch screen displays the crowned BasketBoss logo and name immediately. A matching native view adds a short spring animation and green/gold sparkles while the local WebView prepares the app; there is no fixed hold after controls are ready and no second automatic web welcome animation. Reduce Motion skips decorative movement. If startup cannot finish, Try again reloads the local app without clearing saved data. The cream background uses dark status-bar icons.
+
+First-time users continue into the setup flow. Returning users can use Settings → Replay welcome & setup; cancelling the replay keeps the completed setup marker, preferences and meal plan. Setup is paused during account deletion so it cannot restore data being erased.
+
+Deletion failures now distinguish an unfinished checkout, subscription cancellation, cloud confirmation, saved-data cleanup and temporary sign-in verification failures. A definitively rejected request before deletion starts resumes syncing; an unfinished or unknown result retains saved data and pauses writes. The optional AI quota table is skipped only if database metadata proves it has never been created. Production migration readiness and all required table columns were verified on31October2026; an actual successful deletion must still be tested with a disposable account before submission.

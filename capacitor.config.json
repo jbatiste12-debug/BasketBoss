@@ -16,12 +16,13 @@
   "plugins": {
     "CapacitorHttp": { "enabled": false },
     "SplashScreen": {
-      "launchAutoHide": false,
+      "launchAutoHide": true,
+      "launchShowDuration": 0,
       "backgroundColor": "#fffdf7",
       "showSpinner": false
     },
     "StatusBar": {
-      "style": "DARK",
+      "style": "LIGHT",
       "overlaysWebView": false,
       "backgroundColor": "#fffdf7"
     }

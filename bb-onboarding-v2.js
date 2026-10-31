@@ -25,22 +25,32 @@
  const read=k=>{try{return localStorage.getItem(k)}catch(_){return null}};
  const write=(k,v)=>{try{localStorage.setItem(k,v);return localStorage.getItem(k)===v}catch(_){return false}};
  const validSession=()=>{try{const s=JSON.parse(read('basketboss_cloud_session_v1')||'null');return !!(s?.user?.id&&typeof s.access_token==='string'&&Number(s.expires_at)*1000>Date.now()+5000)}catch(_){return false}};
- const installed=()=>{try{return window.matchMedia('(display-mode: standalone)').matches||navigator.standalone===true}catch(_){return navigator.standalone===true}};
+ const native=()=>window.BBNative?.isNative===true||location.protocol==='capacitor:';
+ const installed=()=>{try{return native()||window.matchMedia('(display-mode: standalone)').matches||navigator.standalone===true}catch(_){return native()||navigator.standalone===true}};
+ const deleting=()=>window.BBAccountDeletion?.isDeleting?.()===true;
+ const startupPending=()=>document.documentElement?.classList?.contains?.('bb-native-starting')===true;
+ const deletionDialogOpen=()=>id('bbAccountDeletionDialog')?.open===true;
+ const blocked=()=>deleting()||startupPending()||deletionDialogOpen();
  const preview=()=>location.hostname===PREVIEW_HOST&&new URLSearchParams(location.search).get('bb_onboarding_v2_preview')==='1';
  function restoreState(){try{const v=JSON.parse(read(KEY)||'null');return v&&typeof v==='object'?v:null}catch(_){return null}}
  function willShow(){
    // The new version deliberately runs once for everyone, including signed-in
    // members and users with existing plans, without deleting older state.
+   if(deleting()||deletionDialogOpen())return false;
+   if(host)return true;
    if(preview())return true;
    return restoreState()?.complete!==true;
  }
  // Returning and paying members keep their existing opening experience.
- window.BBOnboard2026={willShow,preview,getPreferences:()=>({house:state.house,region:state.region,goals:[...state.goals],diets:[...state.diets]})};
+ window.BBOnboard2026={willShow,preview,open:replay,getPreferences:()=>({house:state.house,region:state.region,goals:[...state.goals],diets:[...state.diets]})};
  // Founder story is retained on compare.html; no homepage element is modified here.
  function trimFounder(){return SHOW_FOUNDER_STORY;}
  let state=restoreState()||{step:0,house:'',goals:[],diets:[],region:'',started:false,complete:false,partnerStepV2:true,wantsPartnerInvite:false,partnerIntent:'none'};
- let host=null,form=null,message=null,formMarker=null,messageMarker=null,oldOverflow='';
- function persist(){return write(KEY,JSON.stringify({step:state.step,house:state.house,goals:state.goals,diets:state.diets,region:state.region,started:state.started,complete:state.complete,partnerStepV2:true,wantsPartnerInvite:state.wantsPartnerInvite===true,partnerIntent:state.partnerIntent||'none'}));}
+ let host=null,form=null,message=null,formMarker=null,messageMarker=null,oldOverflow='',lastFocus=null;
+ // Replay uses memory until Finish; closing or reloading keeps prior setup intact.
+ let replaying=false,replayOriginal=null;
+ const changedPreferences=new Set();
+ function persist(commitReplay=false){if(blocked())return false;if(replaying&&!commitReplay)return true;return write(KEY,JSON.stringify({step:state.step,house:state.house,goals:state.goals,diets:state.diets,region:state.region,started:state.started,complete:state.complete,partnerStepV2:true,wantsPartnerInvite:state.wantsPartnerInvite===true,partnerIntent:state.partnerIntent||'none'}));}
  const btn=(label,action,kind='primary')=>`<button type="button" class="bbob-btn bbob-${kind}" data-bbob="${action}">${label}</button>`;
  // Reuse exactly the SVG basket/crown paths and keyframe names from the original
  // bb-welcome-splash.js / bb-welcome-splash.css. No second splash dialog fires.
@@ -133,6 +143,14 @@
        art='<div class="bbob-finish-art">'+originalCrownAnimation()+'<span class="bbob-sheen" aria-hidden="true"></span></div>';
        actions=btn('Choose how to get started','next');break;
      default:
+       if(native()){
+         eyebrow='READY TO GET STARTED';headline='Your BasketBoss is ready.';
+         description='Start planning with 100 Free recipes. You can sign in to an existing account and check your account status in Settings.';
+         art='<div class="bbob-auth-ready" role="status">✓ Your setup is ready</div>';
+         foot='No purchase is needed to use BasketBoss Free.';
+         actions=btn('Start using BasketBoss','free-complete')+btn('Back','back','link');
+         break;
+       }
        eyebrow='ONE LAST THING';headline='Choose your BasketBoss experience.';
        description='Start with BasketBoss Free or explore Premium. You decide — there’s no need to subscribe to use your free account.';
        art='<div class="bbob-plan-options"><div class="bbob-plan"><strong>BasketBoss Free</strong><b>£0</b><p>100 recipes and basic meal planning.</p><span>No card needed</span></div><div class="bbob-plan bbob-plan-premium"><strong>Premium / Founder offer</strong><b>See plans</b><p>All 500 recipes, advanced planning and eligible Premium AI features.</p><span>Standard Premium £4.99/month. Founder £1.99/month after a 7-day trial if eligible among the first 25 confirmed members. Final prices, renewals and trial terms are shown at checkout.</span></div></div>';
@@ -140,7 +158,7 @@
        actions=btn('Explore Premium plans','premium')+btn('Continue with BasketBoss Free','free-complete','outline');
    }
    const counter=state.step===0?'':`<div class="bbob-progress" aria-label="Onboarding step ${state.step+1} of ${STEP_MAX+1}"><span style="width:${Math.min(100,Math.round(100*state.step/STEP_MAX))}%"></span></div>`;
-   return `<div class="bbob-shell"><header class="bbob-header"><div class="bbob-brand"><img src="${LOGO}" alt=""><span>Basket<span>Boss</span></span></div><button type="button" class="bbob-exit" data-bbob="free" aria-label="Exit onboarding and explore free recipes">Explore Free <span aria-hidden="true">×</span></button></header>${counter}<section class="bbob-main" aria-labelledby="bbob-title"><p class="bbob-eyebrow">${eyebrow}</p><h1 id="bbob-title">${headline}</h1><p class="bbob-description">${description}</p>${art}${foot?`<p class="bbob-footnote">${foot}</p>`:''}<p id="bbobSaveError" role="alert" class="bbob-save-error"></p></section><footer class="bbob-footer">${actions}<div class="bbob-stepname">${titles[state.step]} · ${state.step+1} of 11</div></footer></div>`;
+   return `<div class="bbob-shell"><header class="bbob-header"><div class="bbob-brand"><img src="${LOGO}" alt=""><span>Basket<span>Boss</span></span></div><button type="button" class="bbob-exit" data-bbob="${replaying?'replay-cancel':'free'}" aria-label="${replaying?'Cancel setup and keep existing preferences':'Exit onboarding and explore free recipes'}">${replaying?'Cancel setup':'Explore Free'} <span aria-hidden="true">×</span></button></header>${counter}<section class="bbob-main" aria-labelledby="bbob-title"><p class="bbob-eyebrow">${eyebrow}</p><h1 id="bbob-title">${headline}</h1><p class="bbob-description">${description}</p>${art}${foot?`<p class="bbob-footnote">${foot}</p>`:''}<p id="bbobSaveError" role="alert" class="bbob-save-error"></p></section><footer class="bbob-footer">${actions}<div class="bbob-stepname">${titles[state.step]} · ${state.step+1} of 11</div></footer></div>`;
  }
  function restoreAuth(){
    if(form&&formMarker?.parentNode)formMarker.parentNode.insertBefore(form,formMarker);
@@ -162,13 +180,13 @@
  // No changes to app state take place on preview, survey selection or Back.
  // Commit to the existing app's OWN setters only when the user exits onboarding.
  function applyChosenPreferences(){
-   if(state.house){
+   if(state.house&&(!replaying||changedPreferences.has('house'))){
      const servings=HOUSE_SERVINGS[state.house];
      if(servings&&typeof window.BasketBossSetOnboardingServings==='function'){
        if(window.BasketBossSetOnboardingServings(servings)!==true)return 'Could not save household servings. Please retry or choose Skip.';
      }else if(servings)return 'Household controls are unavailable. Please retry after refreshing.';
    }
-   if(REGIONS.includes(state.region)){
+   if(REGIONS.includes(state.region)&&(!replaying||changedPreferences.has('region'))){
      // The existing market setter handles its own local storage, price update & render.
      if(typeof window.bb307SwitchIsland!=='function'||window.bb307SwitchIsland(state.region)!==true)
        return 'Could not save shopping region. Please retry or edit it later in Settings.';
@@ -176,7 +194,7 @@
    return '';
  }
  function complete(goPremium=false){
-   if(!host)return;
+   if(!host||blocked())return;
    if(!persist()){
      host.querySelector('#bbobSaveError')?.replaceChildren(document.createTextNode('Unable to save your setup on this device. Please check browser storage and retry.'));
      return;
@@ -188,14 +206,14 @@
      return;
    }
    state.complete=true;state.started=false;
-   if(!persist()){state.complete=false;state.started=true;
+   if(!persist(true)){state.complete=false;state.started=true;
      const status=host.querySelector('#bbobSaveError');
      if(status)status.textContent='Could not save onboarding completion. Please retry.';
      return;
    } // Goals and diets stay in the existing local onboarding app state.
    write('basketboss_onboarding_seen_v1','true');
    try{sessionStorage.setItem('basketboss_welcome_splash_seen_v1','1')}catch(_){}
-   restoreAuth();host.remove();host=null;document.body.style.overflow=oldOverflow;
+   dismiss(false);
    // Do not dispatch legacy splash-finished: it can open a duplicate sales modal.
    if(goPremium){
      // Hand off to the EXISTING Paddle checkout page. Only its original
@@ -208,16 +226,16 @@
  }
 
  function finishJoinHandoff(){
-   if(!host||!validSession())return;
+   if(!host||blocked()||!validSession())return;
    // Only consent to join is saved; backend still checks the verified email,
    // the actual invite and Premium membership. No local plan is imported.
    state.complete=true;state.started=false;
-   if(!persist()){
+   if(!persist(true)){
      const e=host.querySelector('#bbobSaveError');if(e)e.textContent='Could not save onboarding on this device. Please retry.';
      return;
    }
    write('basketboss_onboarding_seen_v1','true');
-   restoreAuth();host.remove();host=null;document.body.style.overflow=oldOverflow;
+   dismiss(false);
    queueMicrotask(()=>{
      const button=document.querySelector('#cloud-signed [data-bbhs-trigger], [data-bbhs-trigger]');
      if(button)button.click();
@@ -225,17 +243,34 @@
    });
  }
  function chooseOption(i){
+   if(blocked())return;
    const items=state.step===3?HOUSE:state.step===4?GOALS:DIETS;
    const v=items[i];if(v===undefined)return;
-   if(state.step===3)state.house=v;
+   if(state.step===3){state.house=v;changedPreferences.add('house');}
    if(state.step===4){const set=new Set(state.goals);set.has(v)?set.delete(v):(set.size<3&&set.add(v));state.goals=[...set];}
    if(state.step===5){const set=new Set(state.diets);if(v===DIETS[0]){state.diets=[v];}
      else{set.delete(DIETS[0]);set.has(v)?set.delete(v):set.add(v);state.diets=[...set];}}
    persist();render();
  }
- function begin(){
-   if(!willShow()||host)return;
-   state=restoreState()||state;
+ function dismiss(restoreReplay=true){
+   const closeSettings=!restoreReplay&&replaying;
+   restoreAuth();host?.remove();host=null;document.body.style.overflow=oldOverflow;
+   if(restoreReplay&&replaying&&replayOriginal)state=replayOriginal;
+   replaying=false;replayOriginal=null;changedPreferences.clear();
+   if(lastFocus?.isConnected)lastFocus.focus({preventScroll:true});
+   if(closeSettings)document.querySelector('.bbui-settings-overlay:not([hidden]) .bbui-settings-close')?.click();
+ }
+ function replay(){
+   if(host||blocked())return false;
+   replayOriginal=JSON.parse(JSON.stringify(restoreState()||state));
+   state={house:'',goals:[],diets:[],region:'',partnerStepV2:true,wantsPartnerInvite:false,partnerIntent:'none',...replayOriginal,step:0,started:true,complete:false};
+   state.goals=Array.isArray(state.goals)?[...state.goals]:[];state.diets=Array.isArray(state.diets)?[...state.diets]:[];
+   replaying=true;changedPreferences.clear();
+   return begin(true);
+ }
+ function begin(force=false){
+   if((!force&&!willShow())||host||blocked())return false;
+   if(!force)state=restoreState()||state;
    // Everyone sees the new rollout once; saved recipes, plans and sessions stay intact.
    if(!state.started){state={step:0,house:'',goals:[],diets:[],region:'',started:true,complete:false,partnerStepV2:true,wantsPartnerInvite:false,partnerIntent:'none'};persist();}
    else if(!state.partnerStepV2){
@@ -246,12 +281,14 @@
      if(!persist())return;
    }
    if(!Number.isInteger(state.step)||state.step<0||state.step>STEP_MAX)state.step=0;
-   oldOverflow=document.body.style.overflow;
+   oldOverflow=document.body.style.overflow;lastFocus=document.activeElement;
    host=document.createElement('div');host.id='bbNewOnboarding';host.setAttribute('role','dialog');host.setAttribute('aria-modal','true');host.setAttribute('aria-label','BasketBoss welcome and setup');
    document.body.appendChild(host);document.body.style.overflow='hidden';
    host.addEventListener('click',e=>{
+     if(blocked())return;
      const option=e.target.closest('[data-bbob-opt]');if(option){chooseOption(Number(option.dataset.bbobOpt));return;}
      const action=e.target.closest('[data-bbob]')?.dataset.bbob;if(!action)return;
+     if(action==='replay-cancel'){dismiss();return;}
      if(action==='free'||action==='free-complete'){complete();return;}
      if(action==='premium'){complete(true);return;}
      if(action==='partner-invite'){
@@ -270,16 +307,47 @@
        if(state.step===2 && state.partnerIntent==='join' && validSession()){finishJoinHandoff();return;}
        state.step=Math.min(STEP_MAX,state.step+1);persist();render();return;
      }
-     if(action==='skip'){if(state.step===3){state.house='';state.region='';}if(state.step===4)state.goals=[];if(state.step===5)state.diets=[];state.step=Math.min(STEP_MAX,state.step+1);persist();render();return;}
+     if(action==='skip'){
+       if(state.step===3){state.house=replaying?(replayOriginal.house||''):'';state.region=replaying?(replayOriginal.region||''):'';changedPreferences.delete('house');changedPreferences.delete('region');}
+       if(state.step===4)state.goals=replaying?[...(replayOriginal.goals||[])]:[];
+       if(state.step===5)state.diets=replaying?[...(replayOriginal.diets||[])]:[];
+       state.step=Math.min(STEP_MAX,state.step+1);persist();render();return;
+     }
      if(action==='back'){state.step=Math.max(0,state.step-1);persist();render();}
    });
-   host.addEventListener('change',e=>{if(e.target.matches('[data-bbob-region]')){state.region=e.target.value;persist();}});
-   host.addEventListener('keydown',e=>{if(e.key==='Escape'){e.preventDefault();complete();}});
-   window.addEventListener('basketboss:session-changed',()=>{
-     if(host&&state.step===1&&validSession()){if(state.partnerIntent==='join')finishJoinHandoff();else{state.step=2;persist();render();}}
-   });
-   render();
+   host.addEventListener('change',e=>{if(!blocked()&&e.target.matches('[data-bbob-region]')){state.region=e.target.value;changedPreferences.add('region');persist();}});
+   host.addEventListener('keydown',e=>{if(e.key==='Escape'){e.preventDefault();e.stopPropagation?.();if(replaying)dismiss();else complete();}});
+   render();return true;
  }
- function start(){trimFounder();begin();}
+ function replayLabel(){
+   let button=id('bbOnboardingReplay');
+   if(!button){
+     const parent=id('bbuiAccountSection')||id('bbuiLinksSection');if(!parent)return;
+     button=document.createElement('button');button.id='bbOnboardingReplay';button.type='button';button.className='bb-beta-replay';
+     parent.appendChild(button);
+   }
+   if(button.textContent!=='Replay welcome & setup')button.textContent='Replay welcome & setup';
+   const reason=deleting()?'Finish account deletion before restarting setup.':deletionDialogOpen()?'Close account deletion before restarting setup.':startupPending()?'BasketBoss is opening. Setup will be available shortly.':'';
+   button.disabled=!!reason;button.title=reason;button.setAttribute('aria-describedby','bbOnboardingReplayStatus');
+   let hint=id('bbOnboardingReplayStatus');
+   if(!hint&&button.parentNode){hint=document.createElement('p');hint.id='bbOnboardingReplayStatus';hint.setAttribute('role','status');button.parentNode.appendChild(hint);}
+   if(hint){hint.hidden=!reason;if(hint.textContent!==reason)hint.textContent=reason;}
+ }
+ function start(){
+   trimFounder();begin();replayLabel();
+   document.addEventListener('click',event=>{
+     if(!event.target.closest?.('#bbOnboardingReplay,#bbBetaWelcomeReplay'))return;
+     event.preventDefault();event.stopImmediatePropagation();replay();
+   },true);
+   if(typeof MutationObserver==='function')new MutationObserver(replayLabel).observe(document.body,{childList:true,subtree:true});
+   window.addEventListener('basketboss:session-changed',()=>{
+     if(!blocked()&&host&&state.step===1&&validSession()){if(state.partnerIntent==='join')finishJoinHandoff();else{state.step=2;persist();render();}}
+   });
+   window.addEventListener('basketboss:account-deletion-started',()=>{if(host)dismiss();replayLabel();});
+   window.addEventListener('basketboss:account-deletion-deleted',()=>{if(host)dismiss();replayLabel();});
+   window.addEventListener('basketboss:account-deletion-cancelled',()=>queueMicrotask(()=>{replayLabel();begin();}));
+   window.addEventListener('basketboss:native-startup-ready',()=>{replayLabel();begin();});
+   document.addEventListener('close',event=>{if(event.target?.id==='bbAccountDeletionDialog'){replayLabel();if(!deleting())begin();}},true);
+ }
  if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',start,{once:true});else start();
 })();

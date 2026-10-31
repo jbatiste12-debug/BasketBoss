@@ -7,6 +7,7 @@ on:
     paths:
       - .github/workflows/app-store-compliance.yml
       - bb-account-deletion.*
+      - bb-onboarding-v2.*
       - bb-server-lib/**
       - functions/**
       - sql/**

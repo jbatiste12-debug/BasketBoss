@@ -61,10 +61,194 @@ class AppDelegate: UIResponder, UIApplicationDelegate {
 // Register before the first page load. Keep Capacitor's WKNavigationDelegate,
 // plugin lifecycle, authentication callbacks and media handling intact.
 class BasketBossViewController: CAPBridgeViewController {
+    private var startupView: BasketBossStartupView?
+    private var startupTimeout: DispatchWorkItem?
+    private var startupFinished = false
+
     override func capacitorDidLoad() {
         super.capacitorDidLoad()
         bridge?.registerPluginInstance(BasketBossNavigationPlugin())
     }
+
+    override func viewDidLoad() {
+        super.viewDidLoad()
+        if !startupFinished { showStartup() }
+    }
+
+    override func viewDidAppear(_ animated: Bool) {
+        super.viewDidAppear(animated)
+        startupView?.startMotion()
+    }
+
+    private func showStartup() {
+        startupTimeout?.cancel()
+        startupView?.removeFromSuperview()
+        let brand = BasketBossStartupView(frame: view.bounds)
+        brand.autoresizingMask = [.flexibleWidth, .flexibleHeight]
+        brand.retry = { [weak self] in
+            guard let self = self else { return }
+            self.startupFinished = false
+            self.showStartup()
+            self.startupView?.startMotion()
+            self.webView?.reload()
+        }
+        view.addSubview(brand)
+        startupView = brand
+        let timeout = DispatchWorkItem { [weak self] in self?.startupView?.showRecovery() }
+        startupTimeout = timeout
+        DispatchQueue.main.asyncAfter(deadline: .now() + 12, execute: timeout)
+    }
+
+    func finishStartup(completion: @escaping () -> Void) {
+        startupFinished = true
+        startupTimeout?.cancel()
+        guard let brand = startupView else { completion(); return }
+        startupView = nil
+        UIView.animate(withDuration: UIAccessibility.isReduceMotionEnabled ? 0 : 0.14, animations: {
+            brand.alpha = 0
+        }, completion: { _ in brand.removeFromSuperview(); completion() })
+    }
+}
+
+// Native animation runs before, and independently of, the WKWebView JavaScript.
+// The wordmark is present from the first frame; no animation timer holds the app.
+private final class BasketBossStartupView: UIView {
+    var retry: (() -> Void)?
+    private let logo = UIImageView(image: UIImage(named: "Splash"))
+    private let name = UILabel()
+    private let tagline = UILabel()
+    private let recovery = UIStackView()
+    private let retryButton = UIButton(type: .system)
+    private var stars: [UILabel] = []
+    private var brandCenter: NSLayoutConstraint?
+    private var motionStarted = false
+
+    override init(frame: CGRect) {
+        super.init(frame: frame)
+        backgroundColor = UIColor(red: 1, green: 0.992157, blue: 0.968627, alpha: 1)
+        isAccessibilityElement = false
+        accessibilityViewIsModal = true
+        let forest = UIColor(red: 0.09, green: 0.23, blue: 0.196, alpha: 1)
+        let green = UIColor(red: 0.173, green: 0.533, blue: 0.333, alpha: 1)
+        logo.contentMode = .scaleAspectFit
+        logo.translatesAutoresizingMaskIntoConstraints = false
+        logo.accessibilityElementsHidden = true
+        logo.layer.cornerRadius = 30
+        logo.clipsToBounds = true
+        name.attributedText = NSAttributedString(string: "BasketBoss", attributes: [
+            .font: UIFont.systemFont(ofSize: 38, weight: .heavy), .foregroundColor: forest, .kern: -1.6
+        ])
+        let wordmark = NSMutableAttributedString(attributedString: name.attributedText!)
+        wordmark.addAttribute(.foregroundColor, value: green, range: NSRange(location: 6, length: 4))
+        name.attributedText = wordmark
+        name.textAlignment = .center
+        name.accessibilityLabel = "BasketBoss"
+        tagline.text = "Plan smarter. Eat better. Less waste."
+        tagline.font = UIFont.systemFont(ofSize: 15, weight: .medium)
+        tagline.textColor = UIColor(red: 0.286, green: 0.412, blue: 0.341, alpha: 1)
+        tagline.textAlignment = .center
+        let stack = UIStackView(arrangedSubviews: [logo, name, tagline])
+        stack.axis = .vertical
+        stack.alignment = .center
+        stack.spacing = 16
+        stack.translatesAutoresizingMaskIntoConstraints = false
+        addSubview(stack)
+        let centerBrand = stack.centerYAnchor.constraint(equalTo: centerYAnchor)
+        brandCenter = centerBrand
+        NSLayoutConstraint.activate([
+            logo.widthAnchor.constraint(equalToConstant: 128), logo.heightAnchor.constraint(equalToConstant: 128),
+            stack.centerXAnchor.constraint(equalTo: centerXAnchor), centerBrand,
+            stack.leadingAnchor.constraint(greaterThanOrEqualTo: leadingAnchor, constant: 18),
+            stack.trailingAnchor.constraint(lessThanOrEqualTo: trailingAnchor, constant: -18)
+        ])
+        for index in 0..<4 {
+            let star = UILabel()
+            star.text = index % 2 == 0 ? "✦" : "✧"
+            star.font = UIFont.systemFont(ofSize: index % 2 == 0 ? 25 : 20, weight: .semibold)
+            star.textColor = index % 2 == 0 ? UIColor(red: 0.76, green: 0.58, blue: 0.16, alpha: 1) : green
+            star.translatesAutoresizingMaskIntoConstraints = false
+            star.alpha = 0
+            star.accessibilityElementsHidden = true
+            addSubview(star)
+            let offsetX: CGFloat = index % 2 == 0 ? -104 : 104
+            let offsetY: CGFloat = index < 2 ? -42 : 40
+            NSLayoutConstraint.activate([
+                star.centerXAnchor.constraint(equalTo: logo.centerXAnchor, constant: offsetX),
+                star.centerYAnchor.constraint(equalTo: logo.centerYAnchor, constant: offsetY)
+            ])
+            stars.append(star)
+        }
+        let note = UILabel()
+        note.text = "BasketBoss is taking longer to open."
+        note.font = UIFont.systemFont(ofSize: 14)
+        note.textColor = forest
+        note.textAlignment = .center
+        let again = retryButton
+        again.setTitle("Try again", for: .normal)
+        again.titleLabel?.font = UIFont.systemFont(ofSize: 17, weight: .semibold)
+        again.tintColor = green
+        again.addTarget(self, action: #selector(retryTapped), for: .touchUpInside)
+        again.heightAnchor.constraint(greaterThanOrEqualToConstant: 44).isActive = true
+        recovery.addArrangedSubview(note)
+        recovery.addArrangedSubview(again)
+        recovery.axis = .vertical
+        recovery.alignment = .center
+        recovery.spacing = 8
+        recovery.translatesAutoresizingMaskIntoConstraints = false
+        recovery.isHidden = true
+        addSubview(recovery)
+        NSLayoutConstraint.activate([
+            recovery.bottomAnchor.constraint(equalTo: safeAreaLayoutGuide.bottomAnchor, constant: -20),
+            recovery.centerXAnchor.constraint(equalTo: centerXAnchor),
+            recovery.leadingAnchor.constraint(greaterThanOrEqualTo: leadingAnchor, constant: 18),
+            recovery.trailingAnchor.constraint(lessThanOrEqualTo: trailingAnchor, constant: -18)
+        ])
+    }
+
+    required init?(coder: NSCoder) { fatalError("init(coder:) has not been implemented") }
+
+    func startMotion() {
+        guard !motionStarted else { return }
+        motionStarted = true
+        guard !UIAccessibility.isReduceMotionEnabled else { return }
+        logo.transform = CGAffineTransform(rotationAngle: -0.07).scaledBy(x: 0.88, y: 0.88)
+        name.transform = CGAffineTransform(translationX: 0, y: 6).scaledBy(x: 0.98, y: 0.98)
+        UIView.animate(withDuration: 0.7, delay: 0, usingSpringWithDamping: 0.6, initialSpringVelocity: 0.3, options: [.allowUserInteraction], animations: {
+            self.logo.transform = .identity
+            self.name.transform = .identity
+        }, completion: nil)
+        for (index, star) in stars.enumerated() {
+            star.transform = CGAffineTransform(scaleX: 0.5, y: 0.5)
+            UIView.animate(withDuration: 0.32, delay: Double(index) * 0.05, options: [.curveEaseOut], animations: {
+                star.alpha = 0.85
+                star.transform = .identity
+            }, completion: { _ in
+                UIView.animate(withDuration: 0.4, animations: { star.alpha = 0 })
+            })
+        }
+        let sway = CABasicAnimation(keyPath: "transform.rotation.z")
+        sway.fromValue = -0.018
+        sway.toValue = 0.018
+        sway.duration = 1.1
+        sway.autoreverses = true
+        sway.repeatCount = .infinity
+        sway.beginTime = CACurrentMediaTime() + 0.7
+        logo.layer.add(sway, forKey: "basketboss-gentle-sway")
+    }
+
+    override func layoutSubviews() {
+        super.layoutSubviews()
+        // Leave the recovery button clear of the central brand on short screens.
+        brandCenter?.constant = !recovery.isHidden && bounds.height < 500 ? -48 : 0
+    }
+
+    func showRecovery() {
+        recovery.isHidden = false
+        setNeedsLayout()
+        UIAccessibility.post(notification: .layoutChanged, argument: retryButton)
+    }
+
+    @objc private func retryTapped() { retry?() }
 }
 
 // CAPPlugin.shouldOverrideLoad returns true to cancel a navigation, or nil to
@@ -75,7 +259,8 @@ public class BasketBossNavigationPlugin: CAPPlugin, CAPBridgedPlugin {
     public let identifier = "BasketBossNavigationPlugin"
     public let jsName = "BasketBossNavigation"
     public let pluginMethods: [CAPPluginMethod] = [
-        CAPPluginMethod(name: "clearReceiptPhotos", returnType: CAPPluginReturnPromise)
+        CAPPluginMethod(name: "clearReceiptPhotos", returnType: CAPPluginReturnPromise),
+        CAPPluginMethod(name: "finishStartup", returnType: CAPPluginReturnPromise)
     ]
 
     // Keep the billing patterns aligned with native/routing.mjs. Legal processor
@@ -118,6 +303,16 @@ public class BasketBossNavigationPlugin: CAPPlugin, CAPBridgedPlugin {
             }
         }
         return NSNumber(value: true)
+    }
+
+    @objc func finishStartup(_ call: CAPPluginCall) {
+        DispatchQueue.main.async { [weak self] in
+            guard let controller = self?.bridge?.viewController as? BasketBossViewController else {
+                call.reject("Startup controller is unavailable.", "BB_NATIVE_STARTUP")
+                return
+            }
+            controller.finishStartup { call.resolve(["ok": true]) }
+        }
     }
 
     // Camera.getPhoto(resultType: .uri) creates these files in the app's own

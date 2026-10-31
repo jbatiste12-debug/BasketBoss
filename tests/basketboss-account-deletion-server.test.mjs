@@ -2,7 +2,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import {DatabaseSync} from 'node:sqlite';
 import {onRequestGet,onRequestPost} from '../functions/api/account/delete.js';
-import {digestDeletionActor,digestDeletionRef,digestDeletionRetry} from '../bb-server-lib/bb-account-deletion.js';
+import {digestDeletionActor,digestDeletionRef,digestDeletionRetry,ensureDeletionSchema} from '../bb-server-lib/bb-account-deletion.js';
 
 const USER='11111111-1111-4111-8111-111111111111',OTHER='22222222-2222-4222-8222-222222222222';
 const EMAIL='delete-me@example.invalid',TOKEN='Bearer synthetic-original-session',PASSWORD='synthetic current password';
@@ -52,7 +52,7 @@ function fixture(t){
  const env={BILLING_DB:db,SUPABASE_URL:'https://synthetic.supabase.co',SUPABASE_PUBLISHABLE_KEY:'synthetic-public',
   SUPABASE_SECRET_KEY:'sb_secret_'+'x'.repeat(40),BB_BILLING_MODE:'sandbox',BB_BILLING_ENABLED:'true',PADDLE_SANDBOX_API_KEY:'synthetic-paddle-key'};
  const f={db,env,calls:[],ready:true,passwordAccepted:true,knownActor:true,authDeleted:false,loseRpcResponse:false,
-  cancelFails:false,deleteCalls:0,users:new Set([USER,OTHER]),plans:new Map([[USER,['my plan']],[OTHER,['their plan']]]),
+  cancelFails:false,readyThrows:false,passwordUnavailable:false,cloudFails:false,deleteCalls:0,users:new Set([USER,OTHER]),plans:new Map([[USER,['my plan']],[OTHER,['their plan']]]),
   subscriptions:new Map([[SUB,'active'],[OTHER_SUB,'active']]),transactions:new Map()};
  t.after(()=>db.sql.close());
  t.mock.method(console,'warn',()=>{});
@@ -64,12 +64,14 @@ function fixture(t){
    if(url.pathname==='/auth/v1/user')return f.knownActor&&!f.authDeleted?json({id:USER,email:EMAIL,email_confirmed_at:'2026-10-01T00:00:00Z'}):json({error:'Unknown session'},401);
    if(url.pathname==='/auth/v1/token'){
     assert.equal(url.search,'?grant_type=password');
+    if(f.passwordUnavailable)return json({error:'synthetic-private-auth-provider-body'},503);
     assert.deepEqual(body,{email:EMAIL,password:PASSWORD});
     return f.passwordAccepted?json({user:{id:USER,email:EMAIL,email_confirmed_at:'2026-10-01T00:00:00Z'}}):json({error:'Invalid credentials'},400);
    }
-   if(url.pathname==='/rest/v1/rpc/bb_account_deletion_ready')return json({ready:f.ready,version:1});
+   if(url.pathname==='/rest/v1/rpc/bb_account_deletion_ready'){if(f.readyThrows)throw Error('synthetic-private-readiness-body');return json({ready:f.ready,version:1});}
    if(url.pathname==='/rest/v1/rpc/bb_account_delete_data'){
     f.deleteCalls++;
+    if(f.cloudFails)return json({error:'synthetic-private-cloud-body'},503);
     assert.deepEqual(body,{p_user:USER,p_email:EMAIL});
     f.users.delete(USER);f.plans.delete(USER);f.authDeleted=true;
     if(f.loseRpcResponse){f.loseRpcResponse=false;throw new TypeError('Synthetic response lost after database commit');}
@@ -187,7 +189,7 @@ test('active paid deletion immediately cancels billing, retires the consumed fou
 test('failed cancellation retains account data and identifiers for a subsequent successful retry',async t=>{
  const f=fixture(t);activeSubscription(f);f.cancelFails=true;
  const before=savedRows(f),response=await remove(f);
- assert.equal(response.status,202);assert.deepEqual(await response.json(),{ok:false,pending:true,error:'Deletion is in progress. Retry here to finish. Your account data has not been cleared from this device yet.'});
+ assert.equal(response.status,202);const result=await response.json();assert.equal(result.ok,false);assert.equal(result.pending,true);assert.equal(result.code,'deletion_billing_pending');assert.match(result.error,/subscription has been cancelled/);
  assert.deepEqual(savedRows(f),before);assert.equal(f.deleteCalls,0);assert.equal(f.authDeleted,false);
  let journal=rows(f,'bb_account_deletions')[0];
  assert.equal(journal.user_id,USER);assert.equal(journal.email,EMAIL);assert.equal(journal.completed_at_ms,null);assert.equal(journal.locked_until_ms,0);
@@ -201,7 +203,7 @@ test('an unresolved checkout claim prevents erasure and remains recoverable',asy
  const f=fixture(t);
  f.db.sql.prepare('INSERT INTO bb_billing_claims(claim_id,user_id,claim_state) VALUES(?,?,?)').run(CLAIM,USER,'pending');
  const before=savedRows(f),response=await remove(f);
- assert.equal(response.status,202);assert.equal((await response.json()).pending,true);
+ assert.equal(response.status,202);const result=await response.json();assert.equal(result.pending,true);assert.equal(result.code,'deletion_checkout_pending');
  assert.deepEqual(savedRows(f),before);assertNoRemoteDeletion(f);
  assert.equal(rows(f,'bb_account_deletions')[0].completed_at_ms,null);
 });
@@ -209,7 +211,7 @@ test('an unresolved checkout claim prevents erasure and remains recoverable',asy
 test('lost RPC response can finish using the original bearer after Supabase auth identity is gone',async t=>{
  const f=fixture(t);f.loseRpcResponse=true;
  let response=await remove(f);
- assert.equal(response.status,202);assert.equal((await response.json()).pending,true);
+ assert.equal(response.status,202);const firstResult=await response.json();assert.equal(firstResult.pending,true);assert.equal(firstResult.code,'deletion_cloud_pending');
  assert.equal(f.authDeleted,true);assert.equal(f.deleteCalls,1);
  assert.equal(rows(f,'bb_account_deletions')[0].email,EMAIL);
  const initialAuthCalls=f.calls.filter(call=>call.path.startsWith('/auth/')).length;
@@ -229,4 +231,97 @@ test('oversized chunked confirmation is rejected before reading the whole body o
  const req=new Request('https://basketboss.co.uk/api/account/delete',{method:'POST',headers:{Origin:'https://basketboss.co.uk',Authorization:TOKEN,'Content-Type':'application/json'},body:stream,duplex:'half'});
  const response=await onRequestPost({request:req,env:f.env});
  assert.equal(response.status,400);assert.equal(cancelled,true);assert.equal(f.calls.length,0);assertNoRemoteDeletion(f);
+});
+
+test('a proven pre-intent migration failure does not report that deletion is pending',async t=>{
+ const f=fixture(t);f.ready=false;
+ const result=await(await remove(f)).json();
+ assert.equal(result.pending,false);assert.equal(result.code,'deletion_not_ready');assert.match(result.error,/Nothing has been deleted/);
+ assert.equal(rows(f,'bb_account_deletions').length,0);assertNoRemoteDeletion(f);
+});
+
+test('a wrong password before any intent explicitly leaves deletion inactive',async t=>{
+ const f=fixture(t);f.passwordAccepted=false;
+ const response=await remove(f),result=await response.json();
+ assert.equal(response.status,403);assert.equal(result.pending,false);assert.equal(result.code,'deletion_password_required');
+ assert.equal(rows(f,'bb_account_deletions').length,0);assertNoRemoteDeletion(f);
+});
+
+async function pendingActor(f,token='Bearer earlier-password-verified-session'){
+ await ensureDeletionSchema(f.env);
+ await f.db.prepare('INSERT INTO bb_account_deletions(actor_hash,retry_hash,user_id,email,started_at_ms) VALUES(?,?,?,?,?)')
+  .bind(await digestDeletionActor(USER),await digestDeletionRetry(token),USER,EMAIL,Date.now()).run();
+}
+
+test('a new session cannot unpause an existing actor deletion when migration checks fail',async t=>{
+ const f=fixture(t);await pendingActor(f);f.ready=false;
+ const before=rows(f,'bb_account_deletions')[0],response=await remove(f),result=await response.json();
+ assert.equal(response.status,503);assert.equal(result.pending,true);assert.equal(result.code,'deletion_not_ready');
+ assert.deepEqual(rows(f,'bb_account_deletions')[0],before);assertNoRemoteDeletion(f);
+});
+
+test('a wrong password from a new session preserves an existing pending actor job',async t=>{
+ const f=fixture(t);await pendingActor(f);f.passwordAccepted=false;
+ const before=rows(f,'bb_account_deletions')[0],response=await remove(f),result=await response.json();
+ assert.equal(response.status,403);assert.equal(result.pending,true);assert.equal(result.code,'deletion_password_required');
+ assert.deepEqual(rows(f,'bb_account_deletions')[0],before);assertNoRemoteDeletion(f);
+});
+
+test('a password-verified new session can resume its own existing deletion',async t=>{
+ const f=fixture(t);await pendingActor(f);
+ const response=await remove(f);assert.equal(response.status,200);assert.equal((await response.json()).deleted,true);
+ const journal=rows(f,'bb_account_deletions')[0];assert.equal(journal.retry_hash,await digestDeletionRetry(TOKEN));assert.equal(journal.user_id,null);
+});
+
+test('a cloud failure is identified without exposing provider diagnostics or claiming completion',async t=>{
+ const f=fixture(t);f.cloudFails=true;
+ const response=await remove(f),result=await response.json();
+ assert.equal(response.status,202);assert.equal(result.pending,true);assert.equal(result.code,'deletion_cloud_pending');
+ assert.ok(!JSON.stringify(result).includes('synthetic-private'));assert.equal(f.authDeleted,false);assert.equal(rows(f,'bb_account_deletions')[0].completed_at_ms,null);
+ f.cloudFails=false;assert.equal((await remove(f)).status,200);
+});
+
+test('no AI usage table is a valid empty history and does not block account deletion',async t=>{
+ const f=fixture(t);f.db.sql.exec('DROP TABLE bb_ai_daily_usage');
+ const response=await remove(f);assert.equal(response.status,200);assert.equal((await response.json()).deleted,true);
+ assert.equal(f.authDeleted,true);assert.equal(rows(f,'bb_private_premium_recipes_500_v1').length,1);
+ assert.equal(f.db.sql.prepare("SELECT name FROM sqlite_master WHERE name='bb_ai_daily_usage'").get(),undefined);
+});
+
+test('an existing AI usage table with an unexpected schema fails closed and rolls back D1 cleanup',async t=>{
+ const f=fixture(t);f.db.sql.exec('DROP TABLE bb_ai_daily_usage; CREATE TABLE bb_ai_daily_usage(unexpected TEXT)');
+ const before=rows(f,'bb_founder_slots'),response=await remove(f),result=await response.json();
+ assert.equal(response.status,202);assert.equal(result.pending,true);assert.equal(result.code,'deletion_database_pending');
+ assert.deepEqual(rows(f,'bb_founder_slots'),before);assertNoRemoteDeletion(f);
+ assert.ok(!JSON.stringify(result).includes('actor'));assert.ok(!JSON.stringify(result).includes('SQL'));
+});
+
+for(const existing of [false,true])test('readiness network failure '+(existing?'keeps an existing deletion paused':'does not create an intent'),async t=>{
+ const f=fixture(t);if(existing)await pendingActor(f);f.readyThrows=true;
+ const response=await remove(f),result=await response.json();
+ assert.equal(result.pending,existing);assert.equal(result.code,'deletion_not_ready');
+ assert.equal(rows(f,'bb_account_deletions').length,existing?1:0);assertNoRemoteDeletion(f);assert.ok(!JSON.stringify(result).includes('synthetic-private'));
+});
+
+for(const existing of [false,true])test('auth-provider outage '+(existing?'preserves a pending job':'does not imply an incorrect password or start deletion'),async t=>{
+ const f=fixture(t);if(existing)await pendingActor(f);f.passwordUnavailable=true;
+ const response=await remove(f),result=await response.json();
+ assert.equal(response.status,existing?202:503);assert.equal(result.pending,existing);assert.equal(result.code,'deletion_auth_unavailable');
+ assert.equal(rows(f,'bb_account_deletions').length,existing?1:0);assertNoRemoteDeletion(f);assert.ok(!JSON.stringify(result).includes('synthetic-private'));
+});
+
+test('a journal lookup outage cannot declare that no earlier deletion exists',async t=>{
+ const f=fixture(t),prepare=f.db.prepare;
+ f.db.prepare=function(query){if(query.startsWith('SELECT * FROM bb_account_deletions'))throw Error('synthetic-private-SQL');return prepare.call(this,query);};
+ const response=await remove(f),result=await response.json();
+ assert.equal(response.status,503);assert.equal(result.pending,true);assert.equal(result.code,'deletion_state_unknown');
+ assert.ok(!JSON.stringify(result).includes('synthetic-private'));assertNoRemoteDeletion(f);
+});
+
+test('an unavailable AI usage schema check is not mistaken for an empty history',async t=>{
+ const f=fixture(t),prepare=f.db.prepare,before=rows(f,'bb_founder_slots');
+ f.db.prepare=function(query){if(query.includes("name='bb_ai_daily_usage'"))throw Error('synthetic-private-metadata-failure');return prepare.call(this,query);};
+ const response=await remove(f),result=await response.json();
+ assert.equal(response.status,202);assert.equal(result.pending,true);assert.equal(result.code,'deletion_database_pending');
+ assert.deepEqual(rows(f,'bb_founder_slots'),before);assertNoRemoteDeletion(f);assert.ok(!JSON.stringify(result).includes('synthetic-private'));
 });

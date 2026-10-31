@@ -1,0 +1,100 @@
+import test from 'node:test';
+import assert from 'node:assert/strict';
+import fs from 'node:fs';
+import vm from 'node:vm';
+
+const source=fs.readFileSync(new URL('../bb-onboarding-v2.js',import.meta.url),'utf8');
+const KEY='bb_onboarding_fresh_once_20261028_v1';
+const PLAN='basketboss_321_unified_state_v1',SESSION='basketboss_cloud_session_v1';
+const completed={step:10,started:false,complete:true,house:'2 people',region:'UK',goals:['Plan dinners faster'],diets:['Vegetarian'],partnerStepV2:true,wantsPartnerInvite:false,partnerIntent:'none'};
+function harness({saved,store,deleted=false,startup=false,native=true,dialog=false}={}){
+ const storage=store||new Map([[PLAN,'saved meal plan must survive'],[SESSION,JSON.stringify({user:{id:'existing-user-id'},access_token:'synthetic-token',expires_at:9999999999})]]);
+ if(saved)storage.set(KEY,JSON.stringify(saved));
+ const windowEvents=new Map(),documentEvents=new Map(),writes=[],preferences=[],nodes=[];
+ let deleting=deleted,starting=startup,dialogOpen=dialog,observer,closed=0;
+ const on=(map,name,fn)=>{const callbacks=map.get(name)||[];callbacks.push(fn);map.set(name,callbacks);};
+ const replayButton={id:'bbOnboardingReplay',textContent:'Replay welcome animation',isConnected:true,focus(){this.focused=true;}};
+ const uiNodes=new Map([[replayButton.id,replayButton]]);
+ const parent={appendChild(node){node.parentNode=this;uiNodes.set(node.id,node);}};replayButton.parentNode=parent;replayButton.setAttribute=()=>{};
+ const body={style:{overflow:''},appendChild(node){nodes.push(node);}};
+ const document={body,readyState:'complete',activeElement:replayButton,documentElement:{classList:{contains:name=>name==='bb-native-starting'&&starting}},
+  getElementById(id){if(uiNodes.has(id))return uiNodes.get(id);if(id==='bbAccountDeletionDialog')return {open:dialogOpen};return null;},
+  createElement(){return {innerHTML:'',events:new Map(),setAttribute(){},addEventListener(name,fn){on(this.events,name,fn);},querySelector(){return null;},remove(){this.removed=true;}};},
+  querySelector:selector=>selector.includes('bbui-settings-close')?{click(){closed++;}}:null,addEventListener(name,fn){on(documentEvents,name,fn);}};
+ const window={BBNative:native?{isNative:true}:undefined,BBAccountDeletion:{isDeleting:()=>deleting},matchMedia:()=>({matches:false}),addEventListener(name,fn){on(windowEvents,name,fn);},BasketBossSetOnboardingServings(count){preferences.push({house:count});return true;},bb307SwitchIsland(region){preferences.push({region});return true;}};
+ const context=vm.createContext({window,document,localStorage:{getItem:key=>storage.get(key)??null,setItem(key,value){writes.push([key,value]);storage.set(key,value);}},sessionStorage:{setItem(){}},location:{hostname:native?'localhost':'basketboss.co.uk',protocol:native?'capacitor:':'https:',search:''},navigator:{standalone:false},URLSearchParams,queueMicrotask,MutationObserver:class{constructor(fn){observer=fn;}observe(){}},console});
+ vm.runInContext(source,context,{timeout:1000});
+ const active=()=>nodes.findLast(node=>!node.removed);
+ const dispatch=(name,event={})=>{for(const fn of windowEvents.get(name)||[])fn(event);};
+ const tap=(action,option)=>{const node=active();assert.ok(node,'expected active onboarding');for(const fn of node.events.get('click')||[])fn({target:{closest(selector){if(selector==='[data-bbob-opt]'&&option!==undefined)return {dataset:{bbobOpt:String(option)}};if(selector==='[data-bbob]'&&action)return {dataset:{bbob:action}};return null;}}});};
+ const through=step=>{for(let i=0;i<step;i++)tap('next');};
+ return {window,document,storage,writes,preferences,replayButton,settingsClosed:()=>closed,active,tap,through,dispatch,read:()=>JSON.parse(storage.get(KEY)||'null'),setDeleting:value=>{deleting=value;},setStartup:value=>{starting=value;},setDialog:value=>{dialogOpen=value;},
+  escape(){for(const fn of active()?.events.get('keydown')||[])fn({key:'Escape',preventDefault(){}});},
+  region(value){for(const fn of active()?.events.get('change')||[])fn({target:{value,matches:()=>true}});},
+  clickReplay(){let prevented=false,stopped=false;for(const fn of documentEvents.get('click')||[])fn({target:{closest:selector=>selector==='#bbOnboardingReplay,#bbBetaWelcomeReplay'?replayButton:null},preventDefault(){prevented=true;},stopImmediatePropagation(){stopped=true;}});return {prevented,stopped};},
+  closeDeletionDialog(){dialogOpen=false;for(const fn of documentEvents.get('close')||[])fn({target:{id:'bbAccountDeletionDialog'}});},
+  remountReplay(){replayButton.textContent='Replay welcome animation';observer?.();}
+ };
+}
+
+test('fresh native install opens onboarding once and can finish without prices, purchases or data resets',()=>{
+ const h=harness();assert.match(h.active().innerHTML,/Thanks for downloading BasketBoss/);assert.equal(h.read().complete,false);
+ h.through(10);assert.match(h.active().innerHTML,/Start using BasketBoss/);assert.doesNotMatch(h.active().innerHTML,/Explore Premium plans|Paddle|Founder|£\d/);
+ h.tap('free-complete');assert.equal(h.active(),undefined);assert.equal(h.read().complete,true);assert.equal(h.storage.get(PLAN),'saved meal plan must survive');assert.equal(h.preferences.length,0);
+ const again=harness({store:h.storage});assert.equal(again.active(),undefined);assert.equal(again.window.BBOnboard2026.willShow(),false);
+});
+
+test('returning users keep completion, while Settings replay opens the complete setup and preserves data',()=>{
+ const h=harness({saved:completed}),before=h.storage.get(KEY),session=h.storage.get(SESSION);
+ assert.equal(h.active(),undefined);assert.equal(h.replayButton.textContent,'Replay welcome & setup');
+ assert.deepEqual(h.clickReplay(),{prevented:true,stopped:true});assert.match(h.active().innerHTML,/Cancel setup/);
+ h.through(10);assert.equal(h.storage.get(KEY),before,'navigating replay does not clear the completed marker');
+ h.tap('free-complete');assert.equal(h.active(),undefined);assert.equal(h.read().complete,true);assert.equal(h.preferences.length,0,'unchanged old household choices cannot overwrite current app settings');assert.equal(h.settingsClosed(),1,'Finish returns to the actual app');
+ assert.equal(h.storage.get(PLAN),'saved meal plan must survive');assert.equal(h.storage.get(SESSION),session);
+ h.remountReplay();assert.equal(h.replayButton.textContent,'Replay welcome & setup');
+});
+
+test('cancel or reload during replay leaves the completed marker and existing choices intact',()=>{
+ const h=harness({saved:completed}),before=h.storage.get(KEY);
+ assert.equal(h.window.BBOnboard2026.open(),true);h.through(3);h.tap(null,3);h.region('Guernsey');
+ assert.equal(h.preferences.length,0);assert.equal(h.storage.get(KEY),before);
+ h.escape();assert.equal(h.active(),undefined);assert.equal(h.settingsClosed(),0,'Cancel returns to Settings');assert.equal(h.storage.get(KEY),before);assert.equal(h.window.BBOnboard2026.willShow(),false);assert.equal(h.replayButton.focused,true);
+ const again=harness({store:h.storage});assert.equal(again.active(),undefined);
+ assert.equal(again.window.BBOnboard2026.open(),true);again.tap('replay-cancel');assert.equal(again.active(),undefined);assert.equal(again.storage.get(KEY),before);
+});
+
+test('replay applies only explicitly changed household and region choices after Finish',()=>{
+ const h=harness({saved:completed});h.window.BBOnboard2026.open();h.through(3);h.tap(null,3);h.region('Guernsey');
+ assert.equal(h.preferences.length,0);h.through(7);h.tap('free-complete');
+ assert.deepEqual(h.preferences,[{house:5},{region:'Guernsey'}]);assert.equal(h.read().house,'5+ people');assert.equal(h.read().region,'Guernsey');assert.equal(h.read().complete,true);
+ assert.equal(h.window.BBOnboard2026.getPreferences().house,'5+ people');assert.equal(h.storage.get(PLAN),'saved meal plan must survive');
+});
+
+test('native startup defers first onboarding until ready and starts it only once',()=>{
+ const h=harness({startup:true});assert.equal(h.active(),undefined);assert.equal(h.storage.has(KEY),false);assert.equal(h.window.BBOnboard2026.open(),false);
+ h.setStartup(false);h.dispatch('basketboss:native-startup-ready');assert.match(h.active().innerHTML,/Thanks for downloading/);const first=h.active();h.dispatch('basketboss:native-startup-ready');assert.equal(h.active(),first);
+ const returning=harness({saved:completed,startup:true});returning.setStartup(false);returning.dispatch('basketboss:native-startup-ready');assert.equal(returning.active(),undefined);
+});
+
+test('pending deletion blocks onboarding and replay without writes, then cancellation resumes only an incomplete tour',async()=>{
+ const h=harness({deleted:true}),before=h.writes.length;assert.equal(h.active(),undefined);assert.equal(h.replayButton.disabled,true);assert.match(h.replayButton.title,/Finish account deletion/);assert.match(h.document.getElementById('bbOnboardingReplayStatus').textContent,/Finish account deletion/);assert.equal(h.window.BBOnboard2026.open(),false);h.clickReplay();assert.equal(h.writes.length,before);
+ h.setDeleting(false);h.dispatch('basketboss:account-deletion-cancelled');await Promise.resolve();assert.ok(h.active());assert.equal(h.replayButton.disabled,false);
+ h.setDeleting(true);const saved=h.storage.get(KEY),writes=h.writes.length;h.dispatch('basketboss:account-deletion-started');assert.equal(h.active(),undefined);assert.equal(h.window.BBOnboard2026.open(),false);assert.equal(h.storage.get(KEY),saved);assert.equal(h.writes.length,writes);
+ const returning=harness({saved:completed,deleted:true});returning.setDeleting(false);returning.dispatch('basketboss:account-deletion-cancelled');await Promise.resolve();assert.equal(returning.active(),undefined);
+});
+
+test('an open deletion confirmation is never covered by onboarding, including retry after a failed deletion',async()=>{
+ const h=harness({dialog:true});assert.equal(h.active(),undefined);assert.equal(h.storage.has(KEY),false);assert.equal(h.window.BBOnboard2026.open(),false);
+ h.dispatch('basketboss:account-deletion-cancelled');await Promise.resolve();assert.equal(h.active(),undefined);
+ h.closeDeletionDialog();assert.ok(h.active());
+});
+
+test('replay interrupted by deletion does not overwrite completion or reappear for returning users',async()=>{
+ const h=harness({saved:completed}),saved=h.storage.get(KEY);h.window.BBOnboard2026.open();h.through(3);h.tap(null,0);h.setDeleting(true);h.dispatch('basketboss:account-deletion-started');
+ assert.equal(h.active(),undefined);assert.equal(h.storage.get(KEY),saved);assert.equal(h.preferences.length,0);
+ h.setDeleting(false);h.dispatch('basketboss:account-deletion-cancelled');await Promise.resolve();assert.equal(h.active(),undefined);assert.equal(h.storage.get(KEY),saved);
+});
+
+test('web onboarding keeps its existing Premium handoff and does not acquire native-only copy',()=>{
+ const h=harness({native:false});assert.match(h.active().innerHTML,/Welcome to BasketBoss\./);h.through(10);assert.match(h.active().innerHTML,/Explore Premium plans/);assert.match(h.active().innerHTML,/Founder/);assert.doesNotMatch(h.active().innerHTML,/Start using BasketBoss/);
+});

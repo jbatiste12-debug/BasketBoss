@@ -46,6 +46,7 @@ export async function reauthenticateDeletion(env,user,password){
   method:'POST',headers:{apikey:env.SUPABASE_PUBLISHABLE_KEY,'Content-Type':'application/json'},
   body:JSON.stringify({email:user.email,password}),redirect:'manual',signal:AbortSignal.timeout(9000)
  });
+ if(!response.ok&&![400,401,403].includes(response.status))throw Error('deletion_auth_unavailable');
  const result=await response.json().catch(()=>null);
  return response.ok&&result?.user?.id===user.id&&!!result.user.email_confirmed_at;
 }
@@ -93,8 +94,13 @@ export async function eraseAccountD1(env,userId,billing){
   db.prepare(`UPDATE bb_founder_slots SET state=CASE WHEN state='reserved' AND paddle_subscription_id IS NULL THEN 'available' ELSE 'retired' END,
    user_id=NULL,reservation_token_hash=NULL,paddle_subscription_id=NULL,reservation_expires_at_ms=NULL,updated_at_ms=? WHERE user_id=?`).bind(Date.now(),userId),
   db.prepare('DELETE FROM bb_paid_entitlements WHERE user_id=?').bind(userId),
-  db.prepare('DELETE FROM bb_billing_claims WHERE user_id=?').bind(userId),
-  db.prepare('DELETE FROM bb_ai_daily_usage WHERE actor=?').bind('user:'+userId)
+  db.prepare('DELETE FROM bb_billing_claims WHERE user_id=?').bind(userId)
  );
+ // Usage is created lazily on the first AI request. An account with no AI
+ // history must still be deletable before that optional table exists. The
+ // durable actor gate already prevents any in-flight usage write recreating
+ // this account's rows if another request creates the table after this check.
+ const usage=await db.prepare("SELECT 1 AS found FROM sqlite_master WHERE type='table' AND name='bb_ai_daily_usage'").first();
+ if(usage)statements.push(db.prepare('DELETE FROM bb_ai_daily_usage WHERE actor=?').bind('user:'+userId));
  await db.batch(statements);
 }

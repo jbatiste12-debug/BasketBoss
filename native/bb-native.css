@@ -11,3 +11,5 @@ html.bb-native-ios{color-scheme:light;background:#fffdf7;min-height:100%;-webkit
 .bb-native-ios .bb-native-membership-legal a{display:inline-block;min-height:44px;padding:10px 2px;color:#195f3c}
 
 .bb-native-ios .bb-public-beta-badge,.bb-native-ios .bb-beta-badge{display:none!important}
+/* Native launch already plays the crown animation; setup starts with its logo visible. */
+.bb-native-ios #bbNewOnboarding .bbob-original-logo-motion,.bb-native-ios #bbNewOnboarding .bbob-motion-basket,.bb-native-ios #bbNewOnboarding .bbob-motion-crown{animation:none!important;opacity:1!important;transform:none!important}

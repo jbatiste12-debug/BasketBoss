@@ -7,11 +7,13 @@ import {StatusBar,Style} from '@capacitor/status-bar';
 import {SplashScreen} from '@capacitor/splash-screen';
 import {PRODUCTION_ORIGIN,productionApiURL,nativePageURL,nativeMembershipURL,isNativeBillingURL,installNativeFetch,installNativeXHR,installNativeWindowOpen} from './routing.mjs';
 import {installNativeMembership} from './membership.mjs';
+import {installNativeStartup} from './startup.mjs';
 
 if(Capacitor.isNativePlatform()&&Capacitor.getPlatform()==='ios'){
  document.documentElement.classList.add('bb-native-ios');
  const originalFetch=installNativeFetch();
  const nativeData=registerPlugin('BasketBossNavigation');
+ const startup=installNativeStartup({finishNative:()=>nativeData.finishStartup()});
  const clearTemporaryData=async()=>{
   const result=await nativeData.clearReceiptPhotos();
   if(result?.ok!==true)throw Object.assign(Error('Temporary receipt photos could not be cleared.'),{code:'BB_NATIVE_CLEANUP'});
@@ -86,10 +88,12 @@ if(Capacitor.isNativePlatform()&&Capacitor.getPlatform()==='ios'){
  document.addEventListener('basketboss:receipt-confirmed',()=>void haptic('success'));
  function ready(){
   installNativeMembership({apiURL:path=>PRODUCTION_ORIGIN+path,readSession});
-  void StatusBar.setStyle({style:Style.Dark}).catch(()=>{});
+  void StatusBar.setStyle({style:Style.Light}).catch(()=>{});
   void StatusBar.setOverlaysWebView({overlay:false}).catch(()=>{});
-  // Content is already local. Wait for initial render, then dismiss launch art.
-  requestAnimationFrame(()=>requestAnimationFrame(()=>void SplashScreen.hide().catch(()=>{})));
+  // UIKit already animates while WKWebView initializes. Dismiss both layers
+  // when real app controls are present, without waiting for a second intro.
+  void SplashScreen.hide({fadeOutDuration:0}).catch(()=>{});
+  requestAnimationFrame(()=>startup.ready());
  }
  if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',ready,{once:true});else ready();
  void App.addListener('appStateChange',({isActive})=>{if(isActive){window.dispatchEvent(new Event('focus'));window.dispatchEvent(new Event('basketboss:native-resumed'));}});

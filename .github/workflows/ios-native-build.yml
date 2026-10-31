@@ -9,6 +9,11 @@ on:
       - capacitor.config.json
       - package.json
       - package-lock.json
+      - index.html
+      - app.html
+      - bb-account-deletion.*
+      - bb-onboarding-v2.*
+      - tests/basketboss-native-*.test.mjs
       - native/**
       - ios/**
       - scripts/*native*.mjs

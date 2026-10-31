@@ -6,6 +6,35 @@
   const ownedKey = key => /^(?:basketboss(?:[_:-]|$)|bb[_:-])/i.test(String(key));
   const ownedCache = key => /^(?:basketboss(?:[_:-]|$)|bb[_:-])/i.test(String(key));
 
+  // Only fixed responses from our deletion endpoint can explain its progress.
+  // Never show an upstream error body, account identifier or arbitrary code.
+  const pendingMessages = Object.freeze({
+    deletion_auth_unavailable: 'We could not verify your sign-in right now.',
+    deletion_state_unknown: 'We could not confirm your account deletion status.',
+    deletion_checkout_pending: 'A previous checkout is still being checked before your account can be deleted.',
+    deletion_billing_pending: 'We could not complete the subscription check or cancellation.',
+    deletion_cloud_pending: 'We could not confirm that your cloud account and saved data were deleted.',
+    deletion_database_pending: 'We could not finish deleting your saved account data.',
+    deletion_password_required: 'Your password could not be verified. A previous deletion request still needs to finish.',
+    deletion_not_ready: 'Account deletion is temporarily unavailable. A previous deletion request still needs to finish.'
+  });
+
+  function failureFeedback(response, data, hadPending) {
+    const explicitPending = data?.pending === true || data?.deletion_pending === true;
+    const explicitRejection = !response.ok && response.status !== 202 && data?.ok === false && data?.pending === false && !explicitPending;
+    const pending = explicitPending || response.status === 202 || (!explicitRejection && (hadPending || response.status >= 500 || response.ok));
+    const code = typeof data?.code === 'string' && Object.hasOwn(pendingMessages, data.code) ? data.code : '';
+    const kept = 'Your saved device data has been kept';
+    if (pending) {
+      const progress = code ? pendingMessages[code] : 'Deletion has not been confirmed yet.';
+      return { pending, code, text: progress + ' ' + kept + ' and syncing is paused. Re-enter your password and retry to finish.' };
+    }
+    if (code === 'deletion_auth_unavailable') return { pending, code, text: 'We could not verify your sign-in right now. Your account and saved device data have been kept, and syncing can continue. Please try again later.' };
+    if (code === 'deletion_not_ready') return { pending, code, text: 'Account deletion is not available yet. Your account and saved device data have been kept, and syncing can continue. Please try again later.' };
+    if (code === 'deletion_password_required' || response.status === 401 || response.status === 403) return { pending, code, text: 'Your password or session could not be verified. ' + kept + ' and syncing can continue. Check your password, or close this window and sign in again.' };
+    return { pending, code, text: 'Your account deletion could not be completed. ' + kept + ' and syncing can continue. Please retry.' };
+  }
+
   function clearStorage(storage) {
     if (!storage) return;
     const keys = [];
@@ -83,6 +112,7 @@
       confirmation.disabled = busy || locked;
       acknowledged.disabled = busy || locked;
       cancel.disabled = phase === 'deleting' || success;
+      cancel.textContent = phase === 'pending' ? 'Close' : 'Cancel';
       cancel.hidden = success;
       submit.hidden = success;
       form.querySelectorAll('label').forEach(label => { label.hidden = success; });
@@ -186,6 +216,8 @@
       if (input.confirmation !== 'DELETE' || input.acknowledged !== true || typeof input.password !== 'string' || !input.password) return { ok: false, reason: 'confirmation' };
       if (!sameSession(expected)) return { ok: false, reason: 'account_changed' };
       if (!fetcher) return { ok: false, reason: 'unavailable' };
+      const savedLock = readLock();
+      const hadPending = phase === 'pending' || Boolean(savedLock && savedLock.actorId === expected.actorId && ['pending', 'deleting'].includes(savedLock.phase));
       pinned = { ...expected };
       locked = false;
       const run = async () => {
@@ -215,16 +247,11 @@
             return { ok: false, reason: 'account_changed' };
           }
           if (!(response.ok && data?.ok === true && data?.deleted === true)) {
-            const pending = data?.pending === true || data?.deletion_pending === true || response.status === 202 || response.status >= 500 || response.ok;
+            const feedback = failureFeedback(response, data, hadPending), { pending } = feedback;
             lock(pending ? 'pending' : 'idle');
             if (!pending) emit('cancelled');
-            const text = pending
-              ? 'Deletion has not been confirmed yet. Your saved device data has been kept and syncing is paused. Re-enter your password and retry to finish.'
-              : response.status === 401 || response.status === 403
-                ? 'Your password or session could not be verified. Your saved device data has been kept. Check your password, or close this window and sign in again.'
-                : 'Your account deletion could not be completed. Your saved device data has been kept. Please retry.';
-            setMessage(text, true);
-            return { ok: false, pending, reason: pending ? 'pending' : 'rejected' };
+            setMessage(feedback.text, true);
+            return { ok: false, pending, reason: pending ? 'pending' : 'rejected', code: feedback.code, message: feedback.text };
           }
           // Storage events preserve this exact value even if cleanup has already
           // removed the key by the time another tab receives the event.

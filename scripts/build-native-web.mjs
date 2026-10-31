@@ -105,7 +105,7 @@ export function transformNativeHtml(source){
 
 async function defaultBundleRuntime({entry,outfile,root}){
  const {build}=await import('esbuild');
- await build({entryPoints:[entry],outfile,bundle:true,format:'iife',platform:'browser',target:'es2020',charset:'utf8',legalComments:'none',sourcemap:false,minify:false,logLevel:'silent',absWorkingDir:root});
+ await build({entryPoints:[entry],outfile,bundle:true,format:'iife',platform:'browser',target:'es2020',charset:'utf8',legalComments:'none',sourcemap:false,minify:true,logLevel:'silent',absWorkingDir:root});
 }
 
 export function verifyNativeWeb({directory}){
@@ -165,6 +165,7 @@ export async function buildNativeWeb({root=DEFAULT_ROOT,bundleRuntime=defaultBun
   for(const name of [...CLIENT_FILES,...DATA_FILES,...assets]){
    let bytes=readSource(root,name);
    if(name==='bb-premium-features.js')bytes=Buffer.from(bytes.toString().replace("if(window.BasketBossVerifiedPremium?.isActive?.()===true)return true;","if(window.BasketBossVerifiedPremium?.isActive?.()===true)return true; if(window.BBNative?.isNative===true)return false;"));
+   if(name==='bb-welcome-splash.js')bytes=Buffer.from(bytes.toString().replace('if(shouldShow()&&!window.BBOnboard2026?.willShow())show();',"if(window.BBNative?.isNative!==true&&shouldShow()&&!window.BBOnboard2026?.willShow())show();"));
    if(name==='bb-receipt-scanner.js')bytes=Buffer.from(bytes.toString().replace('function finished(result) {',"function finished(result) { document.dispatchEvent(new Event('basketboss:receipt-confirmed'));"));
    if(name==='bb-partner-signup-prompt.js')bytes=Buffer.from(bytes.toString().replace("if(!['basketboss.co.uk'","if(window.BBNative?.isNative!==true&&!['basketboss.co.uk'"));
    if(name==='bb-onboarding-v2.js')bytes=Buffer.from(bytes.toString()

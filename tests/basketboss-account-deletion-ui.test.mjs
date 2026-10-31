@@ -248,3 +248,77 @@ test('a navigation failure after confirmed deletion never reports the account as
   assert.equal(h.local.getItem(SESSION), null);
   assert.equal(h.events.filter(event => event.type === 'basketboss:account-deletion-cancelled').length, 0);
 });
+
+
+test('a definite pre-intent service rejection releases syncing and preserves every saved device record', async () => {
+  const h = harness(async () => response(503, { ok: false, pending: false, code: 'deletion_not_ready', error: 'synthetic private upstream error' }));
+  // This can repair a false pending lock made by an older UI, but only after the
+  // server confirms that this actor has no deletion in progress.
+  h.local.setItem(LOCK, JSON.stringify({ actorId: actor.actorId, phase: 'pending' }));
+  const before = [...h.local.map].filter(([key]) => key !== LOCK);
+  const result = await h.remove();
+  assert.equal(result.pending, false); assert.equal(h.api.isDeleting(), false);
+  assert.equal(h.local.getItem(LOCK), null); assert.deepEqual([...h.local.map], before);
+  assert.match(result.message, /not available yet/); assert.match(result.message, /syncing can continue/);
+  assert.doesNotMatch(result.message, /synthetic private|upstream/);
+  assert.deepEqual(h.events.map(event => event.type), ['basketboss:account-deletion-started', 'basketboss:account-deletion-cancelled']);
+  assert.deepEqual(h.redirects, []);
+});
+
+test('fixed pending stages explain the blocked step without showing provider text or clearing local data', async () => {
+  const stages = {
+    deletion_auth_unavailable: /We could not verify your sign-in right now/,
+    deletion_state_unknown: /confirm your account deletion status/,
+    deletion_checkout_pending: /previous checkout/,
+    deletion_billing_pending: /subscription check or cancellation/,
+    deletion_cloud_pending: /cloud account and saved data/,
+    deletion_database_pending: /deleting your saved account data/,
+    deletion_not_ready: /temporarily unavailable/,
+    deletion_password_required: /password could not be verified/
+  };
+  for (const [code, expected] of Object.entries(stages)) {
+    const h = harness(async () => response(code === 'deletion_password_required' ? 403 : 202, { ok: false, pending: true, code, error: 'synthetic-secret-provider-body' }));
+    const result = await h.remove();
+    assert.equal(result.pending, true); assert.equal(result.code, code); assert.match(result.message, expected);
+    assert.match(result.message, /saved device data has been kept and syncing is paused/);
+    assert.doesNotMatch(result.message, /synthetic-secret|provider-body/);
+    assert.equal(h.api.isDeleting(), true); assert.equal(h.local.getItem('basketboss_321_unified_state_v1'), 'meal plan');
+    assert.equal(h.local.getItem(SESSION), session()); assert.deepEqual(h.redirects, []);
+    assert.equal(h.events.filter(event => event.type === 'basketboss:account-deletion-cancelled').length, 0);
+  }
+});
+
+test('unknown or contradictory responses cannot release a saved pending deletion lock', async () => {
+  for (const [status, data] of [
+    [503, { ok: false }],
+    [401, { error: 'Sign in required' }],
+    [403, { error: 'Password rejected' }],
+    [200, { ok: false, pending: false }],
+    [202, { ok: false, pending: false }],
+    [503, { ok: false, pending: false, deletion_pending: true }],
+    [503, { ok: true, pending: false }]
+  ]) {
+    const h = harness(async () => response(status, data));
+    h.local.setItem(LOCK, JSON.stringify({ actorId: actor.actorId, phase: 'pending' }));
+    const result = await h.remove();
+    assert.equal(result.pending, true, JSON.stringify({ status, data })); assert.equal(h.api.isDeleting(), true);
+    assert.equal(h.local.getItem('basketboss_321_unified_state_v1'), 'meal plan'); assert.equal(h.local.getItem(SESSION), session());
+  }
+});
+
+test('an unknown failure code and response body never become visible feedback', async () => {
+  const h = harness(async () => response(202, { ok: false, pending: true, code: '<img src=x onerror=alert(1)>', error: 'private provider diagnostic' }));
+  const result = await h.remove();
+  assert.equal(result.pending, true); assert.equal(result.code, '');
+  assert.match(result.message, /Deletion has not been confirmed yet/); assert.doesNotMatch(result.message, /<img|private provider|onerror/);
+});
+
+
+test('a sign-in provider outage is not presented as a rejected password', async () => {
+  const h = harness(async () => response(503, { ok: false, pending: false, code: 'deletion_auth_unavailable', error: 'supabase private diagnostic' }));
+  const result = await h.remove();
+  assert.equal(result.pending, false); assert.equal(h.api.isDeleting(), false);
+  assert.match(result.message, /We could not verify your sign-in right now/); assert.match(result.message, /syncing can continue/);
+  assert.doesNotMatch(result.message, /password or session could not be verified|supabase|private diagnostic/);
+  assert.equal(h.local.getItem(SESSION), session());
+});
