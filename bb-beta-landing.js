@@ -139,7 +139,7 @@
   reset.addEventListener('click',()=>render(false));
   render(false);
  }
- function switchTab(next){activeTab=next;const plan=next==='plan';$('demo-plan').hidden=!plan;$('demo-shop').hidden=plan;$('tab-plan').setAttribute('aria-selected',String(plan));$('tab-shop').setAttribute('aria-selected',String(!plan));if(!plan)renderShopping()}
+ function switchTab(next){activeTab=next;const plan=next==='plan';$('demo-plan').hidden=!plan;$('demo-shop').hidden=plan;$('tab-plan').setAttribute('aria-selected',String(plan));$('tab-shop').setAttribute('aria-selected',String(!plan));$('tab-plan').tabIndex=plan?0:-1;$('tab-shop').tabIndex=plan?-1:0;if(!plan)renderShopping()}
  function chooseWeek(){
   const candidates=publicRecipes.filter(r=>valid(r)&&safeSrc(r).includes('/release-assets/')&&!/dessert|breakfast|pancake|cookie|brownie/i.test([r.category,r.tag,r.name].join(' ')));
   if(candidates.length>=3){if(offset===0){const pinned=['fajitas','creamy-pasta','chickpea-curry'];const lookup=new Map(candidates.map(r=>[r.id,r]));shown=pinned.map(id=>lookup.get(id)||FALLBACK.find(x=>x.id===id))}else shown=[0,1,2].map(i=>candidates[(offset+i)%candidates.length]);}

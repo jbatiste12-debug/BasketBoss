@@ -19,6 +19,40 @@ export function classifyBuildFailure(lines) {
   return found.length?found:['unclassified_build_failure'];
 }
 
+// Fetch public marketing assets without credentials. Only fixed booleans leave
+// this check; public HTML and unexpected response bodies are never logged.
+export async function verifyLandingDeployment(perform = fetch) {
+  const options = () => ({cache:'no-store',redirect:'error',signal:AbortSignal.timeout(15000)});
+  let page;
+  try { page = await perform('https://basketboss.co.uk/',options()); }
+  catch { throw Error('The public landing page could not be checked.'); }
+  if(page.status!==200||!/text\/html/i.test(page.headers.get('content-type')||''))
+    throw Error('The public landing page is not available on production.');
+  let html;
+  try { html = await page.text(); }
+  catch { throw Error('The public landing page could not be read.'); }
+  if(html.length>262144)throw Error('The public landing page response is invalid.');
+  const heading=(html.match(/<h1\b[^>]*>([\s\S]*?)<\/h1>/i)?.[1]||'').replace(/<[^>]*>/g,' ').replace(/\s+/g,' ').trim();
+  if(heading!=='Less dinner stress. More family time.')
+    throw Error('The new family landing headline is not present on production.');
+  const sources=[
+    {pattern:/<link\b[^>]*\bhref=["'](\/?bb-family-landing\.css(?:\?[^"']*)?)["'][^>]*>/i,type:/text\/css/i},
+    {pattern:/<script\b[^>]*\bsrc=["'](\/?bb-family-landing\.js(?:\?[^"']*)?)["'][^>]*>/i,type:/javascript/i}
+  ];
+  for(const {pattern,type} of sources){
+    const source=html.match(pattern)?.[1];
+    if(!source)throw Error('The new family landing assets are not referenced on production.');
+    let asset;
+    try { asset=await perform(new URL(source,'https://basketboss.co.uk/').href,options()); }
+    catch { throw Error('A family landing asset could not be checked.'); }
+    if(asset.status!==200||!type.test(asset.headers.get('content-type')||''))
+      throw Error('A family landing asset is not available on production.');
+  }
+  const section=[...html.matchAll(/<section\b[^>]*>/gi)].map(match=>match[0]).find(tag=>/\bid=["']smart-receipt["']/i.test(tag));
+  if(!section)throw Error('The gated SmartReceipt landing section is missing on production.');
+  return {headline:true,stylesheet:true,script:true,smartReceiptSectionVisible:!/\shidden(?:\s|=|>)/i.test(section)};
+}
+
 export async function inspectCloudflare(env, perform = fetch) {
   if (!env.CLOUDFLARE_API_TOKEN) throw Error('Add CLOUDFLARE_API_TOKEN to the github-pages environment secrets.');
   async function api(path, body, operation = 'Cloudflare request', includePagination = false) {
@@ -106,6 +140,7 @@ if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) 
       result=await inspectCloudflare(process.env);
     }
     if(expectedCommit&&result.productionCommit!==expectedCommit)throw Error('Production has not reached this workflow commit yet. Check the Pages deployment status.');
+    result.landingDeployment=await verifyLandingDeployment();
     const asset=await fetch('https://basketboss.co.uk/bb-receipt-host.js',{cache:'no-store',redirect:'error',signal:AbortSignal.timeout(15000)});
     if(!asset.ok||!/javascript/i.test(asset.headers.get('content-type')||''))throw Error('The receipt frontend asset is not available on production.');
     const receipt=await fetch('https://basketboss.co.uk/api/receipt-inventory?mode=status',{cache:'no-store',redirect:'error',signal:AbortSignal.timeout(15000)});

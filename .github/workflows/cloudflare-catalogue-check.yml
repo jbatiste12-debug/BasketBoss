@@ -10,6 +10,12 @@ on:
       - functions/api/receipt-inventory.js
       - functions/api/bb173/**
       - bb-server-lib/bb-receipt-canonical-pairs.js
+      - welcome.html
+      - bb-family-landing.css
+      - bb-family-landing.js
+      - bb-smart-receipt-landing.css
+      - bb-beta-landing.js
+      - functions/index.js
 
 permissions:
   contents: read
