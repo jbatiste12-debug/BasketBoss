@@ -5,7 +5,7 @@ import {pathToFileURL} from 'node:url';
 
 export async function inspectCloudflare(env, perform = fetch) {
   if (!env.CLOUDFLARE_API_TOKEN) throw Error('Add CLOUDFLARE_API_TOKEN to the github-pages environment secrets.');
-  async function api(path, body, operation = 'Cloudflare request') {
+  async function api(path, body, operation = 'Cloudflare request', includePagination = false) {
     const response = await perform('https://api.cloudflare.com/client/v4/' + path, {
       method: body ? 'POST' : 'GET',
       headers: {Authorization: 'Bearer ' + env.CLOUDFLARE_API_TOKEN, 'Content-Type': 'application/json'},
@@ -15,9 +15,10 @@ export async function inspectCloudflare(env, perform = fetch) {
     const parsed = await response.json().catch(() => null);
     if (!response.ok || parsed?.success !== true) {
       const codes = (Array.isArray(parsed?.errors) ? parsed.errors : []).map(e => e?.code).filter(Number.isSafeInteger).slice(0, 5);
-      throw Error(operation + ' failed (HTTP ' + response.status + (codes.length ? '; Cloudflare codes ' + codes.join(', ') : '') + '). Check token permissions and account scope.');
+      const hint = [401, 403].includes(response.status) ? ' Check token permissions and account scope.' : ' Check the API request format and service status.';
+      throw Error(operation + ' failed (HTTP ' + response.status + (codes.length ? '; Cloudflare codes ' + codes.join(', ') : '') + ').' + hint);
     }
-    return parsed.result;
+    return includePagination ? {results: parsed.result, pagination: parsed.result_info} : parsed.result;
   }
   let accountId = env.CLOUDFLARE_ACCOUNT_ID?.trim();
   if (!accountId) {
@@ -29,8 +30,14 @@ export async function inspectCloudflare(env, perform = fetch) {
   }
   if (!/^[a-f0-9]{32}$/i.test(accountId)) throw Error('CLOUDFLARE_ACCOUNT_ID must be the 32-character Cloudflare account ID.');
   const prefix = 'accounts/' + accountId;
-  const projects = await api(prefix + '/pages/projects?per_page=100', undefined, 'Pages project listing');
-  if (!Array.isArray(projects) || projects.length >= 100) throw Error('Pages project list is incomplete; manual account review required.');
+  const projects = [];
+  for (let page = 1; ; page++) {
+    if (page > 100) throw Error('Pages project list is too large; manual account review required.');
+    const batch = await api(prefix + '/pages/projects?per_page=10&page=' + page, undefined, 'Pages project listing', true);
+    if (!Array.isArray(batch.results) || batch.results.length > 10) throw Error('Pages project list is invalid.');
+    projects.push(...batch.results);
+    if (batch.results.length < 10 || Number.isSafeInteger(batch.pagination?.total_pages) && page >= batch.pagination.total_pages) break;
+  }
   const matches = projects.filter(p => p.domains?.some(d => ['basketboss.co.uk', 'www.basketboss.co.uk'].includes(d)));
   if (matches.length !== 1) throw Error('Could not uniquely match the Pages project serving basketboss.co.uk. Check the account and Pages Read permission.');
   const project = await api(prefix + '/pages/projects/' + encodeURIComponent(matches[0].name), undefined, 'Production Pages binding lookup');
