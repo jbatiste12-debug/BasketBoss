@@ -2,13 +2,14 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import path from 'node:path';
+import {pathToFileURL} from 'node:url';
 const root=process.env.BB_LANDING_TEST_ROOT||path.resolve(import.meta.dirname,'..');
 const read=p=>fs.readFileSync(path.join(root,p),'utf8');
 const page=read('welcome.html');
 const js=read('bb-beta-landing.js');
 const css=read('bb-beta-landing.css');
 const handler=read('functions/index.js');
-const route=await import('data:text/javascript;base64,'+Buffer.from(handler).toString('base64'));
+const route=await import(pathToFileURL(path.join(root,'functions/index.js')).href);
 test('only the official root route serves the new public landing document',async()=>{
  const calls=[];
  const env={ASSETS:{fetch:async r=>{calls.push(r);return new Response('<html>Landing mock</html>',{status:200,headers:{'Content-Type':'text/html'}})}}};

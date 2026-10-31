@@ -10,10 +10,14 @@ import {seatGateEnabled,isNewestVerifiedSession} from '../../bb-server-lib/bb-pr
 const PROTECTED=[
  /^\/api\/recipes\/premium\/?$/,
  /^\/api\/bb173\/(?:generate|scan)\/?$/,
- /^\/api\/household\/?$/
+ /^\/api\/household\/?$/,
+ /^\/api\/receipt-inventory\/?$/
 ];
 export async function onRequest({request,env,next}){
  const url=new URL(request.url);
+ // Availability exposes no inventory; the endpoint independently authenticates
+ // before reporting Premium readiness and never initializes stock in this mode.
+ if(/^\/api\/receipt-inventory\/?$/.test(url.pathname)&&request.method==='GET'&&url.searchParams.get('mode')==='status')return next();
  if(!PROTECTED.some(re=>re.test(url.pathname))||!seatGateEnabled(env))return next();
  // Prevent a session-setting mistake from enabling this on QA/sandbox tenants.
  const liveHosts=new Set(['basketboss.co.uk','www.basketboss.co.uk','basketboss-site.pages.dev']);

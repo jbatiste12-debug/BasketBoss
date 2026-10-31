@@ -106,6 +106,28 @@ function getProductOverride(entry,market,retailer=root.BBSupermarkets?.getSelect
   updatedAt:typeof value?.updatedAt==='string'?value.updatedAt:null};
 }
 function getPriceOverride(entry,market,retailer=root.BBSupermarkets?.getSelected(market)||null){return getProductOverride(entry,market,retailer)?.price??null;}
+// The host supplies only its current account's reviewed receipt projection.
+// This hook never persists prices or changes the illustrative public catalogue.
+let receiptPriceProvider=null;
+function setReceiptPriceProvider(provider){
+ if(provider!==null&&typeof provider!=='function')throw Error('Receipt price provider must be a function or null');
+ receiptPriceProvider=provider;
+}
+function receiptPackPrice({name,unit,market,retailer,entry,brand=''}){
+ if(!receiptPriceProvider||!retailer||typeof brand!=='string'||brand.length>80)return null;
+ const request=Object.freeze({canonicalKey:canonical(name),name:canonical(name),unit,market,retailer,
+  currency:regionalMarkets[market]?.currency,packQuantity:entry.standard_pack_size,packUnit:entry.standard_pack_unit,brand:brand.trim()});
+ let value;try{value=receiptPriceProvider(request);}catch{return null;}
+ if(!value||typeof value!=='object'||value.source!=='account_store_receipt_regular_price'||
+    !Number.isFinite(value.packPrice)||value.packPrice<=0||value.packPrice>10000||
+    value.packQuantity!==request.packQuantity||value.packUnit!==request.packUnit||value.currency!==request.currency||
+    value.priceType!==undefined&&value.priceType!=='regular'||value.eligibleForRegularPrice===false||
+    value.market!==undefined&&value.market!==market||value.retailer!==undefined&&String(value.retailer).toLowerCase()!==String(retailer).toLowerCase()||
+    value.canonicalKey!==undefined&&value.canonicalKey!==request.canonicalKey||
+    value.brand!==undefined&&String(value.brand).trim().toLowerCase()!==request.brand.toLowerCase()||
+    value.samples!==undefined&&(!Number.isSafeInteger(value.samples)||value.samples<1||value.samples>21))return null;
+ return {packPrice:round2(value.packPrice),samples:value.samples||1,brand:request.brand};
+}
 function setPriceOverride({name,unit,market,price:localPackPrice,brand='',retailer=root.BBSupermarkets?.getSelected(market)||null}){
  const entry=getPack(name,unit,market,retailer);if(!entry||!MARKET_FACTORS[market])throw Error('Unknown pack or market');
  const n=Number(localPackPrice);if(!Number.isFinite(n)||n<.01||n>10000)throw Error('Enter a local full-pack price between 0.01 and 10,000');
@@ -199,7 +221,7 @@ function convertToPackUnits(name,quantity,inputUnit,entry){
  if(norm.unit==='clove'&&pu==='each'&&canonical(name)==='garlic')return {amount:norm.quantity,assumption:null};
  return null;
 }
-function price({name,unit,quantity,market='UK',mode='shop',retailer=root.BBSupermarkets?.getSelected(market)||null,asOf}={}){
+function price({name,unit,quantity,market='UK',mode='shop',retailer=root.BBSupermarkets?.getSelected(market)||null,asOf,brand=''}={}){
  if(typeof name!=='string'||!canonical(name)||!['number','string'].includes(typeof quantity)||(typeof quantity==='string'&&!quantity.trim())||!['shop','meal'].includes(mode))return null;
  const q=Number(quantity);if(!Number.isFinite(q)||q<0)return null;
  if(!MARKET_FACTORS[market])return null;
@@ -213,28 +235,30 @@ function price({name,unit,quantity,market='UK',mode='shop',retailer=root.BBSuper
  const mult=factor(market,name);if(!positive(entry.standard_pack_size)||!positive(entry.pack_price))return null;
  const usualProduct=getProductOverride(entry,market,retailer);
  const localShelf=usualProduct?.price??null;
- const regionalPack=localShelf===null?entry.pack_price:localShelf;
+ const learned=localShelf===null?receiptPackPrice({name,unit:norm.unit,market,retailer,entry,brand}):null;
+ const regionalPack=localShelf??learned?.packPrice??entry.pack_price;
  const perUnit=regionalPack/entry.standard_pack_size;
  const packs=Math.ceil((c.amount-1e-10)/entry.standard_pack_size);
  const rawPortion=c.amount*perUnit;
  const portion=round2(rawPortion);
- let checkout=localShelf===null&&!entry.sourced_price?shopRound(packs*regionalPack):round2(packs*regionalPack);
+ const guideOnly=localShelf===null&&!learned&&!entry.sourced_price;
+ let checkout=guideOnly?shopRound(packs*regionalPack):round2(packs*regionalPack);
  // A rounded full-pack till estimate must never fall below the corresponding
  // exact fractional portion estimate for the same quantity and pack.
- if(localShelf===null&&checkout+1e-9<portion){
+ if(guideOnly&&checkout+1e-9<portion){
   checkout=round2(Math.ceil((portion-1e-9)*20)/20);
  }
  const pantryStaple=isPantryStaple(name,norm.unit),unroundedMealAmount=pantryStaple?rawPortion:checkout;
  return {amount:mode==='meal'?round2(unroundedMealAmount):checkout,portionAmount:portion,packAmount:checkout,packCount:packs,
   unroundedMealAmount,pantryStaple,costBasis:mode==='meal'&&pantryStaple?'pantry_usage':'full_packs',mode,
-  source:localShelf!==null?'user_shelf_price':entry.sourced_price?'public_online_price':'catalog',userOverride:localShelf!==null,
-  priceKind:localShelf!==null?'user_price':entry.sourced_price?'public_online':'regional_estimate',
-  sourceRetailer:localShelf===null?entry.sourced_price?.retailer||null:null,
-  sourceUrl:localShelf===null?entry.sourced_price?.source_url||null:null,
-  sourceDate:localShelf===null?entry.sourced_price?.retrieved_at||null:null,
-  productName:localShelf===null?entry.sourced_price?.product_name||null:usualProduct.brand||null,
-  userBrand:usualProduct?.brand||'',
-  needsReview:!!entry.needs_review||!!c.assumption,rough:localShelf===null&&(!!entry.needs_review||!!c.assumption),
+  source:localShelf!==null?'user_shelf_price':learned?'account_store_receipt_regular_price':entry.sourced_price?'public_online_price':'catalog',userOverride:localShelf!==null,
+  priceKind:localShelf!==null?'user_price':learned?'receipt_regular':entry.sourced_price?'public_online':'regional_estimate',
+  sourceRetailer:learned?retailer:localShelf===null?entry.sourced_price?.retailer||null:null,
+  sourceUrl:localShelf===null&&!learned?entry.sourced_price?.source_url||null:null,
+  sourceDate:localShelf===null&&!learned?entry.sourced_price?.retrieved_at||null:null,
+  productName:learned?learned.brand||null:localShelf===null?entry.sourced_price?.product_name||null:usualProduct.brand||null,
+  userBrand:usualProduct?.brand||learned?.brand||'',receiptLearned:!!learned,receiptSamples:learned?.samples||0,
+  needsReview:(!learned&&!!entry.needs_review)||!!c.assumption,rough:localShelf===null&&((!learned&&!!entry.needs_review)||!!c.assumption),
   packQty:entry.standard_pack_size,packUnit:entry.standard_pack_unit,unitPrice:perUnit,
   rawPortionAmount:rawPortion,shelfPrice:regionalPack,
   market,currency:CURRENCY[market],category:category(name),regionalFactor:entry.regional_pack_override?null:mult,
@@ -307,9 +331,9 @@ function repriceBasket(result,market){
   item.spend=quote.packAmount;item.portionSpend=quote.portionAmount;
   item.packSize=quote.packQty||null;item.quantityBought=(quote.packCount||0)*(quote.packQty||0);
   item.surplus=Math.max(0,item.quantityBought-item.toBuy);
-  item.priceStatus=quote.userOverride?'LOCAL_SHELF_PRICE':quote.priceKind==='public_online'?'PUBLIC_ONLINE_PRICE_GUIDE':quote.needsReview?'ROUGH_PACK_ESTIMATE':'ILLUSTRATIVE_PACK_GUIDE';
+  item.priceStatus=quote.userOverride?'LOCAL_SHELF_PRICE':quote.priceKind==='receipt_regular'?'REVIEWED_RECEIPT_PRICE':quote.priceKind==='public_online'?'PUBLIC_ONLINE_PRICE_GUIDE':quote.needsReview?'ROUGH_PACK_ESTIMATE':'ILLUSTRATIVE_PACK_GUIDE';
   item.sourceRetailer=quote.sourceRetailer||null;item.sourceDate=quote.sourceDate||null;item.sourceUrl=quote.sourceUrl||null;item.sourceProduct=quote.productName||null;item.priceKind=quote.priceKind;item.needsReview=quote.needsReview;item.roughEstimate=quote.rough;
-  item.description=quote.userOverride?'Your own local full-pack price.':quote.priceKind==='public_online'?'Public online product price checked '+quote.sourceDate+'; local store prices may differ.':
+  item.description=quote.userOverride?'Your own local full-pack price.':quote.priceKind==='receipt_regular'?'Your reviewed regular receipt price for this exact regional store pack; future prices may differ.':quote.priceKind==='public_online'?'Public online product price checked '+quote.sourceDate+'; local store prices may differ.':
    'Illustrative '+market+' regional pack and price guide; not a verified shelf quote.';
   total+=quote.packAmount;
  }
@@ -321,5 +345,5 @@ function repriceBasket(result,market){
 }
 root.BBPriceV19=Object.freeze({canonical,aisle,category,factor,price,mealPrice,getPack,repriceBasket,
  normalizeUnit,formatQuantity,money,CURRENCY,regionalMarkets,estimateMeal,isPantryStaple,findSourcedPrice,sourcedPrices,regionMultipliers:MARKET_FACTORS,catalog:PACKS,
- getPriceOverride,getProductOverride,setPriceOverride,clearPriceOverride});
+ getPriceOverride,getProductOverride,setPriceOverride,clearPriceOverride,setReceiptPriceProvider});
 })(typeof window!=='undefined'?window:globalThis);

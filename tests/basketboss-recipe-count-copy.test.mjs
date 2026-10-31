@@ -87,7 +87,9 @@ test('copy changes preserve legacy storage identities and Premium compatibility'
  assert.match(meal,/\[221,400\]\.includes\(data\?\.count\)/);
 });
 
-test('SmartReceipt landing copy stays draft-only before its workflow is implemented',()=>{
- assert.match(read('docs/SMART_RECEIPT_LANDING_DRAFT.md'),/draft only/);
- for(const file of ['welcome.html','bb-beta-landing.js'])assert.doesNotMatch(read(file),/SmartReceipt/);
+test('SmartReceipt landing copy stays hidden until the implemented feature is configured',()=>{
+ assert.match(read('docs/SMART_RECEIPT_LANDING_DRAFT.md'),/hidden/);
+ assert.match(read('welcome.html'),/<section[^>]*data-bb-smart-receipt-ready[^>]*hidden/);
+ assert.match(read('functions/index.js'),/receiptInventoryConfigured\(request,env\)/);
+ assert.doesNotMatch(read('bb-beta-landing.js'),/SmartReceipt/);
 });

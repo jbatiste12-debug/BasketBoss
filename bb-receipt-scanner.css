@@ -1,0 +1,37 @@
+.bb-receipt-scanner,.bb-receipt-scanner *{box-sizing:border-box}
+.bb-receipt-scanner{width:min(96vw,780px);max-height:92dvh;margin:auto;padding:clamp(14px,3vw,26px);overflow-y:auto;border:1px solid #bfd1c3;border-radius:18px;background:#fffdf9;color:#193f2d;font:15px/1.5 system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;box-shadow:0 16px 60px #142c252e}
+.bb-receipt-scanner::backdrop{background:#152c2580}
+.bb-receipt-scanner [hidden]{display:none!important}
+.bb-receipt-header{display:flex;align-items:start;justify-content:space-between;gap:14px;margin-bottom:8px}
+.bb-receipt-header h2{font-size:clamp(23px,5vw,30px);line-height:1.2;margin:0}
+.bb-receipt-scanner h3{font-size:19px;line-height:1.3;margin:22px 0 10px}
+.bb-receipt-scanner p{margin:9px 0}
+.bb-receipt-scanner button,.bb-receipt-scanner input,.bb-receipt-scanner select{font:inherit}
+.bb-receipt-scanner button{min-height:46px;padding:10px 15px;border:1px solid #aec6b5;border-radius:11px;background:#edf4ed;color:#204d35;font-weight:650;cursor:pointer}
+.bb-receipt-scanner button:disabled{opacity:.5;cursor:not-allowed}
+.bb-receipt-scanner .bb-receipt-primary{background:#236b43;color:#fff;border-color:#236b43}
+.bb-receipt-scanner .bb-receipt-close{flex:0 0 auto;background:#fff}
+.bb-receipt-scanner :is(button,input,select,a):focus-visible{outline:3px solid #3d8a67;outline-offset:3px}
+.bb-receipt-muted,.bb-receipt-field small{font-size:13px;color:#53685c}
+.bb-receipt-scanner a{color:#1d6440;text-underline-offset:3px}
+.bb-receipt-status{padding:12px 14px;border:1px solid #c6d9cb;border-radius:12px;background:#eef5ee;overflow-wrap:anywhere}
+.bb-receipt-capture{display:grid;gap:10px;margin:18px 0}
+.bb-receipt-photo{display:block;max-width:100%;max-height:240px;object-fit:contain;justify-self:start;border:1px solid #d6dfd6;border-radius:10px;background:#f0efeb}
+.bb-receipt-field{display:flex;flex-direction:column;gap:5px;min-width:0;margin:12px 0;font-weight:600}
+.bb-receipt-field input:not([type=checkbox]),.bb-receipt-field select{width:100%;max-width:100%;min-height:46px;padding:10px 11px;border:1px solid #a9c0b0;border-radius:9px;background:#fff;color:#193f2d;font-weight:400;font-size:16px}
+.bb-receipt-field input[type=file]{padding:8px;font-size:14px;overflow-wrap:anywhere}
+.bb-receipt-field input[type=file]::file-selector-button{min-height:38px;border:1px solid #abc0af;border-radius:7px;background:#eaf2e9;color:#204b34;padding:7px 10px;margin-right:10px;font:inherit}
+.bb-receipt-check{display:flex;gap:10px;align-items:flex-start;margin:13px 0;font-size:14px;font-weight:500}
+.bb-receipt-check input{flex:0 0 auto;width:20px;height:20px;margin:2px 0 0;accent-color:#236b43}
+.bb-receipt-review{margin-top:24px;border-top:1px solid #cbd9cc;padding-top:10px}
+.bb-receipt-store{font-weight:600;overflow-wrap:anywhere}
+.bb-receipt-totals{padding:13px;border:1px solid #c9daca;border-radius:11px;background:#f1f6ed;font-size:14px;overflow-wrap:anywhere}
+.bb-receipt-row{min-width:0;margin:12px 0;padding:14px;border:1px solid #c6d7c8;border-radius:13px;background:#fff}
+.bb-receipt-row legend{max-width:100%;padding:0 5px;font-weight:750;font-size:16px;overflow-wrap:anywhere}
+.bb-receipt-row-note{font-size:12px;color:#72512c;overflow-wrap:anywhere}
+.bb-receipt-amount{display:grid;grid-template-columns:minmax(0,1.3fr) minmax(105px,1fr);gap:12px}
+.bb-receipt-recovery{display:flex;flex-wrap:wrap;gap:10px;margin-top:15px}
+.bb-receipt-review>.bb-receipt-primary{width:100%;margin-top:8px}
+.bb-receipt-scanner input:disabled,.bb-receipt-scanner select:disabled{background:#f0f0eb;color:#607367}
+@media(max-width:420px){.bb-receipt-scanner{width:96vw;padding:14px;border-radius:13px;max-height:94dvh}.bb-receipt-amount{grid-template-columns:minmax(0,1fr) minmax(85px,.8fr);gap:8px}.bb-receipt-row{padding:11px}.bb-receipt-recovery button{width:100%}.bb-receipt-header h2{font-size:24px}}
+@media(prefers-reduced-motion:reduce){.bb-receipt-scanner{scroll-behavior:auto}}

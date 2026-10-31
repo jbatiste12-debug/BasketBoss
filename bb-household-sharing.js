@@ -21,6 +21,10 @@ async function api(path,body){
  const data=await r.json().catch(()=>({}));if(!r.ok){const e=Error(data.error||'Sharing unavailable');e.status=r.status;e.data=data;throw e;}return data;
 }
 const key=(s,k)=>s+'\u001f'+k;
+// Receipt inventory has its own revision-checked whole-stock transaction. Do
+// not replay the older per-leaf pantry channel over that authoritative stock.
+const receiptInventoryOwnsLeaf=(section,entryKey)=>!!window.BBReceiptHost?.handlesInventorySync?.()&&
+ (section==='kitchen_item'||section==='pantry_item'&&String(entryKey).startsWith('measured:'));
 function snapshot(){
  const out=new Map(),state=read(STATE,null);if(!state||state.version!==2||!Array.isArray(state.planned))return null;
  for(const day of DAYS){const p=state.planned.find(x=>x?.day===day);if(p?.recipeId){
@@ -32,9 +36,9 @@ function snapshot(){
  }}
  for(const [k,v] of Object.entries(state.pantry||{}))if(k.length<=170)
   out.set(key('pantry_item','simple:'+k),{section:'pantry_item',entry_key:'simple:'+k,value:v});
- for(const [k,v] of Object.entries(read(STOCK,{})||{}))if(k.length<=170)
+ for(const [k,v] of Object.entries(read(STOCK,{})||{}))if(k.length<=170&&!receiptInventoryOwnsLeaf('pantry_item','measured:'+k))
   out.set(key('pantry_item','measured:'+k),{section:'pantry_item',entry_key:'measured:'+k,value:v});
- for(const [k,v] of Object.entries(read(KITCHEN,{})||{}))if(k.length<=180)
+ for(const [k,v] of Object.entries(read(KITCHEN,{})||{}))if(k.length<=180&&!receiptInventoryOwnsLeaf('kitchen_item',k))
   out.set(key('kitchen_item',k),{section:'kitchen_item',entry_key:k,value:v});
  const feeding=Number(state.servings);if(Number.isInteger(feeding)&&feeding>=1&&feeding<=12)
   out.set(key('household_servings','default'),{section:'household_servings',entry_key:'default',value:{count:feeding}});
@@ -60,6 +64,7 @@ function applyLeaves(remoteChanges){
  const session=copy(read(SESSION,{})||{});
  let budget=before[BUDGET];
  for(const {section,entry_key,value} of remoteChanges){const deleted=!!value?.deleted;
+  if(receiptInventoryOwnsLeaf(section,entry_key))continue;
   if(section==='planned_day'){
    if(!DAYS.includes(entry_key)||(!deleted&&(typeof value?.recipeId!=='string'||!value.recipeId||value.recipeId.length>256)))throw Error('Invalid shared day');
    const original=next.planned.find(x=>x.day===entry_key);
@@ -125,7 +130,8 @@ async function synchronize({allowInitialImport=false}={}){
   // user edits Plan or Shop while the request is pending, abort instead of
   // overwriting that newer edit with an obsolete remote snapshot.
   const observed=Object.fromEntries(SYNC_KEYS.map(k=>[k,raw(k)]));
-  const unchanged=()=>SYNC_KEYS.every(k=>raw(k)===observed[k]);
+  const receiptOwnedAtStart=!!window.BBReceiptHost?.handlesInventorySync?.();
+  const unchanged=()=>SYNC_KEYS.every(k=>raw(k)===observed[k])&&receiptOwnedAtStart===!!window.BBReceiptHost?.handlesInventorySync?.();
   const requireUnchanged=()=>{if(!unchanged())throw Error('Device changed during sharing sync; no local merge performed.');};
   const fetched=await api('?mode=entries');
   requireUnchanged();if(fetched.household_id!==hid)throw Error('Household changed');
@@ -135,6 +141,7 @@ async function synchronize({allowInitialImport=false}={}){
   // A fresh device is never permitted to replace existing remote entries.
   const union=new Set([...remote.keys(),...local.keys(),...Object.keys(prior)]);
   for(const k of union){const r=remote.get(k),l=local.get(k),b=prior[k];
+   const parts=k.split('\u001f');if(receiptInventoryOwnsLeaf(parts[0],parts[1]))continue;
    const localValue=l?.value??{deleted:true},remoteValue=r?.value??{deleted:true};
    if(!b){
     if(r&&l&&!eq(localValue,remoteValue)){conflicts.push(k);continue;}

@@ -3,6 +3,7 @@
  * session, saved plans, Premium/Paddle and Household API behaviour.
  * Pages Functions: functions/index.js matches / exactly.
  */
+import {receiptInventoryConfigured} from './api/receipt-inventory.js';
 export async function onRequest({request,env}){
   if(request.method!=='GET'&&request.method!=='HEAD')return new Response('Method not allowed',{status:405,headers:{Allow:'GET, HEAD'}});
   const source=new URL(request.url);
@@ -14,5 +15,12 @@ export async function onRequest({request,env}){
   headers.set('Cache-Control','no-cache, must-revalidate');
   headers.set('X-Content-Type-Options','nosniff');
   if(!['basketboss.co.uk','www.basketboss.co.uk'].includes(source.hostname))headers.set('X-Robots-Tag','noindex, nofollow');
-  return new Response(asset.body,{status:asset.status,headers});
+  const response=new Response(asset.body,{status:asset.status,headers});
+  if(request.method==='GET'&&receiptInventoryConfigured(request,env)){
+    response.headers.delete('Content-Length');response.headers.delete('ETag');
+    return new HTMLRewriter().on('[data-bb-smart-receipt-ready]',{
+      element(element){element.removeAttribute('hidden');}
+    }).transform(response);
+  }
+  return response;
 }

@@ -172,7 +172,10 @@ function build(){
  rows.addEventListener('input',e=>{const k=e.target.dataset.bb5Qty;if(!k||!staged.has(k))return;staged.get(k).qty=e.target.value;draftDirty=true;drawOverview()});
  rows.addEventListener('change',e=>{const k=e.target.dataset.bb5Unit;if(!k||!staged.has(k))return;staged.get(k).unit=e.target.value;draftDirty=true;drawOverview()});
  rows.addEventListener('click',e=>{const btn=e.target.closest('[data-bb5-remove]');if(!btn)return;staged.delete(btn.dataset.bb5Remove);draftDirty=true;render();note.textContent='Item removed from draft; Reconcile to save.'});
- reconcile.addEventListener('click',()=>{
+ reconcile.addEventListener('click',async()=>{
+  if(window.BBReceiptHost?.hasPendingConfirmation?.()){
+   note.textContent='Recover the pending receipt in Shop before changing Pantry quantities.';return;
+  }
   const originalInv=read(INVENTORY),originalStock=read(MEASURED),nextInv={...originalInv},nextStock={...originalStock};
   const chosen=[...staged.values()].map(x=>({...x}));
   for(const x of chosen){const raw=x.qty==null?'':String(x.qty).trim();if(!BB5_UNITS.includes(x.unit)){note.textContent='Select a valid unit for '+x.name;return}x.qty=raw===''?null:amount(raw,x.unit);if(raw!==''&&x.qty===null){note.textContent='Check '+x.name+': positive quantities only; whole numbers for each, packs and cloves.';return}}
@@ -229,6 +232,16 @@ function build(){
    note.textContent='Could not save safely. Review storage and try again.';return;
   }
   externalAtOpen.clear();draftDirty=false;
+  if(window.BBReceiptHost?.confirmCurrentPantry){
+   let synced;reconcile.disabled=true;
+   try{synced=await window.BBReceiptHost.confirmCurrentPantry({stock:nextStock});}
+   catch{note.textContent='Your amounts are saved on this device. Online Pantry confirmation needs another attempt.';return;}
+   finally{reconcile.disabled=false;}
+   if(!synced?.ok||synced.needsReview){
+    note.textContent='Your amounts are saved on this device. Review the saved online pantry before reconciling Shopping.';
+    void window.BBReceiptHost.reviewPantry();return;
+   }
+  }
   note.textContent='✓ PANTRY confirmed. '+chosen.filter(x=>x.qty!==null).length+' measured item(s) saved. Shopping needs have been recalculated.';
   const shopTab=document.querySelector('.tab[data-tab="shop-list"]');
   if(shopTab){shopTab.click();window.scrollTo({top:0,behavior:'instant'})}

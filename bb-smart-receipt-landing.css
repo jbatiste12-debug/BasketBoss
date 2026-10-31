@@ -1,0 +1,10 @@
+.bb-smartreceipt[hidden]{display:none!important}
+.bb-smartreceipt{padding:48px 0;background:#eff5ef;color:#173d2b}
+.bb-smartreceipt h2{font-size:clamp(28px,4vw,42px);line-height:1.15;max-width:700px;margin:10px 0 16px}
+.bb-smartreceipt .bb-smartreceipt-intro{max-width:740px;font-size:18px;line-height:1.6}
+.bb-smartreceipt ol{list-style:none;padding:0;display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:16px;margin:26px 0}
+.bb-smartreceipt li{background:#fffdf8;border:1px solid #cbdbc9;border-radius:18px;padding:22px;overflow-wrap:anywhere}
+.bb-smartreceipt li strong{display:block;font-size:20px;margin-bottom:10px}
+.bb-smartreceipt li p{margin:0;line-height:1.6}
+.bb-smartreceipt .bb-smartreceipt-note{font-size:14px;max-width:760px;color:#3f5c4b;line-height:1.6}
+@media(max-width:680px){.bb-smartreceipt{padding:30px 0}.bb-smartreceipt ol{grid-template-columns:1fr;gap:12px}.bb-smartreceipt li{padding:18px}.bb-smartreceipt .bb-smartreceipt-intro{font-size:16px}}

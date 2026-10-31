@@ -2,6 +2,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import path from 'node:path';
+import {pathToFileURL} from 'node:url';
 const ROOT=process.env.BB_RC_TEST_ROOT||path.resolve(import.meta.dirname,'..');
 const read=p=>fs.readFileSync(path.join(ROOT,p),'utf8');
 const moduleFrom=s=>'data:text/javascript;base64,'+Buffer.from(s).toString('base64');
@@ -39,6 +40,10 @@ function route(pathname,billingNames,handlerName){
  assert.match(source,secure);
  source=source.replace(secure,"const {sharedHouseholdPremiumOwner}=globalThis.__partnerTestHelper;");
  assert.ok(!source.includes("from '../../../bb-server-lib/"));
+ // The data-URL test module has no relative base. Preserve the billing/partner
+ // doubles above while resolving newly added real receipt dependencies by file.
+ source=source.replace(/from (['"])(\.[^'"]+)\1/g,(_match,quote,relative)=>
+  'from '+quote+pathToFileURL(path.resolve(path.dirname(path.join(ROOT,pathname)),relative)).href+quote);
  return import(moduleFrom(source));
 }
 const rec=await route('functions/api/recipes/premium.js',
