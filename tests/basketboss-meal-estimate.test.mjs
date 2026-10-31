@@ -19,3 +19,11 @@ test('region controls currency and US potato pack format',()=>{
  assert.equal(quote('potato',700,'g',2,6,'US').details[0].packCount,1);
 });
 test('missing normalized ingredient data does not return a low price',()=>assert.equal(root.BBMealEstimate.quote({recipe:{servings:4},market:'UK'}),null));
+test('optional herbs without numerical quantity do not invalidate the whole meal',()=>{
+ const q=root.BBMealEstimate.quote({recipe:{servings:4},normalized:{servings:4,ingredients:[
+  {key:'potato',quantity:600,unit:'g'},
+  {key:'fresh herbs',quantity:'small handful (optional)',unit:null}
+ ]},servings:6,market:'UK'});
+ assert.ok(q&&q.amount>0);
+ assert.equal(q.lines[1],0);
+});

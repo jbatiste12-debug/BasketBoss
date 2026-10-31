@@ -17,7 +17,11 @@
   const rows=Array(normalized.ingredients.length).fill(null),groups=new Map();
   for(let i=0;i<normalized.ingredients.length;i++){
    const ing=normalized.ingredients[i],originalQty=Number(ing?.quantity);
-   if(!(originalQty>0)||!Number.isFinite(originalQty)||!ing.key||!ing.unit)return null;
+   if(!(originalQty>0)||!Number.isFinite(originalQty)||!ing.key||!ing.unit){
+    // Optional garnish is not a required shopping quantity.
+    if(/\boptional\b/i.test(String(ing?.quantity))){rows[i]=0;continue;}
+    return null;
+   }
    const name=pricing.canonical(ing.key),unit=String(ing.unit),required=(originalQty/base)*count;
    const key=name+'|'+unit;
    if(!groups.has(key))groups.set(key,{name,unit,required:0,members:[]});
