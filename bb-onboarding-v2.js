@@ -51,7 +51,7 @@
  const recipeCard=(r,featured=false)=>`<article class="card ${featured?'bb-featured-card':'mini-recipe'} bbob-recipe-card" aria-label="Example recipe: ${esc(r.name)}"><div class="recipe-image"><img src="${esc(r.image)}" alt="${esc(r.name)}" loading="lazy" decoding="async"><span class="pill">${esc(r.tag)}</span><span class="time-pill">◷ ${r.mins} min</span></div><div class="recipe-body"><div class="eyebrow">${esc(r.category)} · serves ${r.servings}</div><h3>${esc(r.name)}</h3><div class="chips"><span class="chip">£${r.cost.toFixed(2)} estimated</span>${r.ingredientCount?`<span class="chip">${r.ingredientCount} ingredients</span>`:''}</div>${r.tip?`<div class="tip">${esc(r.tip)}</div>`:''}</div></article>`;
  function figure(key){
    const lead=RECIPES[0];
-   if(key==='discover')return `<div class="bbob-figure bbob-recipe-gallery" aria-label="Read-only examples from the actual BasketBoss Free recipe catalogue"><div class="bbob-mock-top">REAL BASKETBOSS RECIPE CARDS <span>100 FREE</span></div>${recipeCard(lead,true)}<div class="bbob-more-recipes">${RECIPES.slice(1).map(r=>recipeCard(r)).join('')}</div><p class="bbob-preview-disclaimer">Example cards only. No recipe has been opened, saved or added to your plan. Estimates vary by region.</p></div>`;
+   if(key==='discover')return `<div class="bbob-figure bbob-recipe-gallery" aria-label="Read-only examples from the actual BasketBoss Free recipe catalogue"><div class="bbob-mock-top">REAL BASKETBOSS RECIPE CARDS <span>100 FREE</span></div>${recipeCard(lead,true)}<div class="bbob-more-recipes">${RECIPES.slice(1).map(r=>recipeCard(r)).join('')}</div><p class="bbob-preview-disclaimer">Example cards only. No recipe has been opened, saved or added to your plan. The app recalculates estimates for your portions, region and chosen supermarket.</p></div>`;
    if(key==='plan')return `<div class="bbob-figure bbob-real-plan" aria-label="Read-only sample weekly meal plan"><div class="bbob-mock-top">YOUR WEEK · EXAMPLE ONLY <span>7 DAYS</span></div><div class="bbob-days"><span>MON</span><span>TUE</span><span>WED</span><span>THU</span><span>FRI</span></div><div class="bbob-sample-day"><img src="${lead.image}" alt="${esc(lead.name)}" loading="lazy"><div><small>Monday · Dinner planned</small><strong>${esc(lead.name)}</strong><span>${lead.mins} min · serves ${lead.servings}</span></div></div><div class="bbob-mealrow">Tuesday <strong>Open dinner slot</strong></div><div class="bbob-mealrow">Wednesday <strong>Open dinner slot</strong></div><p class="bbob-preview-disclaimer">Illustration only. Your saved week is never changed by this tour.</p></div>`;
    // The eight rows below exactly reproduce the Free "fajitas" catalogue item's
    // names, quantities and indicative per-item prices (total £22.60). No writes.
@@ -63,7 +63,7 @@
    ];
    const total=groups.flatMap(([,rows])=>rows).reduce((sum,[,,price])=>sum+price,0);
    const rows=groups.map(([aisle,items])=>`<section class="bbob-shop-aisle" aria-label="${esc(aisle)}"><h3 class="bbob-aisle-heading">${esc(aisle)}</h3>${items.map(([name,quantity,price])=>`<div class="bbob-shop-item"><span class="bbob-shop-check" aria-hidden="true">○</span><div class="bbob-shop-item-name"><strong>${esc(name)}</strong><small>${esc(quantity)}</small></div><span class="bbob-shop-price">£${price.toFixed(2)} est.</span></div>`).join('')}</section>`).join('');
-   return `<div class="bbob-figure bbob-real-shop" aria-label="Read-only BasketBoss aisle shopping example"><div class="bbob-mock-top">FAJITAS SHOPPING LIST · EXAMPLE <span>BY AISLE</span></div><div class="bbob-shop-total"><span>Indicative basket estimate</span><strong>£${total.toFixed(2)}</strong></div>${rows}<p class="bbob-preview-disclaimer">Real ingredients and indicative £ estimates from ${esc(lead.name)} (6 servings). Local market prices, pack sizes and pantry deductions vary. This example does not change your shopping list.</p></div>`;
+   return `<div class="bbob-figure bbob-real-shop" aria-label="Read-only BasketBoss aisle shopping example"><div class="bbob-mock-top">FAJITAS SHOPPING LIST · EXAMPLE <span>BY AISLE</span></div><div class="bbob-shop-total"><span>Indicative basket estimate</span><strong>£${total.toFixed(2)}</strong></div>${rows}<p class="bbob-preview-disclaimer">Example ingredient quantities and prices for ${esc(lead.name)} (6 servings). Your actual list recalculates quantities, packs and pantry deductions for your region and supermarket. This example does not change your shopping list.</p></div>`;
  }
 
  function options(items,selected,multiple){return `<div class="bbob-options ${multiple?'bbob-goals':''}">${items.map((v,i)=>`<button type="button" class="bbob-option ${selected.includes(v)?'chosen':''}" data-bbob-opt="${i}" aria-pressed="${selected.includes(v)}"><span class="bbob-choice-mark" aria-hidden="true">${selected.includes(v)?'✓':' '}</span><span>${v}</span></button>`).join('')}</div>`;}
@@ -102,8 +102,9 @@
        actions=btn('Continue meal planning','next')+btn('Back','back','link');break;
      case 3:
        eyebrow='A LITTLE ABOUT YOUR HOUSEHOLD';headline='How many people are you usually cooking for?';
-       description='Choose a starting household size and shopping region. These update your actual portions and estimated prices when you finish. Both can be changed later.';
-       art=options(HOUSE,state.house?[state.house]:[],false)+`<label class="bbob-market-label" for="bbob-region">Where do you shop? (optional)<select id="bbob-region" data-bbob-region><option value="">Choose later in Settings</option>${REGIONS.map(r=>`<option value="${r}" ${state.region===r?'selected':''}>${r==='US'?'United States':r}</option>`).join('')}</select></label>`;
+       description='Choose a starting household size and shopping region. These update your actual portions and pack estimates when you finish. Both can be changed later.';
+       foot='After setup, choose your supermarket in region settings or Shopping. The store list matches your region, and each region remembers its own choice.';
+       art=options(HOUSE,state.house?[state.house]:[],false)+`<label class="bbob-market-label" for="bbob-region">Shopping region (optional)<select id="bbob-region" data-bbob-region><option value="">Choose later in Settings</option>${REGIONS.map(r=>`<option value="${r}" ${state.region===r?'selected':''}>${r==='US'?'United States':r}</option>`).join('')}</select></label>`;
        actions=btn('Continue','next')+btn('Skip question','skip','link');break;
      case 4:
        eyebrow='WHAT MATTERS MOST';headline='What would make dinner easier?';
@@ -119,11 +120,12 @@
        art=figure('discover');actions=btn('Next · Meal planning','next')+btn('Back','back','link');break;
      case 7:
        eyebrow='STEP 2 OF 3 · PLAN';headline='A delicious week, sorted.';
-       description='Pick dinners for each day. BasketBoss brings your week together in one place.';
+       description='Pick dinners for each day and adjust servings for the people eating. Ingredient quantities scale first, then the app counts the packs needed.';
        art=figure('plan');actions=btn('Next · Shopping lists','next')+btn('Back','back','link');break;
      case 8:
        eyebrow='STEP 3 OF 3 · SHOP';headline='One shopping list, organised by aisle.';
-       description='Your meals become one clear aisle-by-aisle list, with useful cost estimates.';
+       description='Your meals become one clear aisle-by-aisle list. Choose your supermarket in region settings or Shopping; available stores match your region.';
+       foot='Dated online guides cover selected UK products; regional estimates fill gaps. Meal estimates count the share of staples used, while Shopping includes full replacement packs when needed.';
        art=figure('shop');actions=btn('Finish the tour','next')+btn('Back','back','link');break;
      case 9:
        eyebrow='READY WHEN YOU ARE';headline='You’re all set.';

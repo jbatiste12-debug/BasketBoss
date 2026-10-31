@@ -10,16 +10,26 @@
   {id:'chickpea-curry',name:'Creamy chickpea & spinach curry',category:'Vegetarian · Pantry-friendly',mins:25,servings:4,cost:11.99,image:'release-assets/basketboss-v17/images/existing/chickpea-curry.webp',ingredients:[]}
  ];
  const safeSrc=r=>typeof r.image==='string'&&/^release-assets\/basketboss-v17\/images\/existing\/[a-z0-9-]+\.webp$/.test(r.image)?'/'+r.image:'/icons/basketboss-crowned-v1766-192.png';
- const valid=r=>r&&typeof r.id==='string'&&/^[a-z0-9-]{1,80}$/.test(r.id)&&typeof r.name==='string'&&r.name.length<110&&r.image&&Number.isFinite(Number(r.cost))&&Number(r.cost)>=0&&Number.isFinite(Number(r.servings))&&Number(r.servings)>0;
+ const valid=r=>r&&typeof r.id==='string'&&/^[a-z0-9-]{1,80}$/.test(r.id)&&typeof r.name==='string'&&r.name.length<110&&r.image&&Array.isArray(r.ingredients)&&r.ingredients.length<=60&&Number.isFinite(Number(r.cost))&&Number(r.cost)>=0&&Number.isFinite(Number(r.servings))&&Number(r.servings)>0;
  const GBP=new Intl.NumberFormat('en-GB',{style:'currency',currency:'GBP'});
- const money=n=>GBP.format(n);
+ const money=n=>n==null||!Number.isFinite(Number(n))?'Estimate unavailable':GBP.format(n);
  const elem=(tag,cls,content)=>{const el=document.createElement(tag);if(cls)el.className=cls;if(content!==undefined)el.textContent=String(content);return el};
  let publicRecipes=[...FALLBACK], shown=[...FALLBACK], portions=[6,4,4],offset=0,activeTab='plan';
+ let normalizedById=new Map(),pricingReady=false;
+ // This public sample uses UK packs. The full app supports saved shopping regions.
+ const MARKET='UK';
  const demoChecked=new Set();
  const dayNames=['Monday','Tuesday','Wednesday'];
  const portionsFor=r=>Math.min(10,Math.max(1,Math.round(Number(r.servings)||4)));
- function total(){return shown.reduce((sum,r,i)=>sum+Number(r.cost||0)*portions[i]/Number(r.servings||4),0)}
- function renderTotal(){const target=$('demo-total');if(target)target.textContent='Estimated total: '+money(total())}
+ function mealEstimate(recipe,servings){
+  if(!pricingReady)return {amount:null,items:[],unpriced:1};
+  return window.BBPriceV19.estimateMeal({recipe,normalized:normalizedById.get(recipe.id),servings,market:MARKET});
+ }
+ function total(){
+  const amounts=shown.map((r,i)=>mealEstimate(r,portions[i]).amount);
+  return amounts.some(n=>n==null)?null:amounts.reduce((sum,n)=>sum+n,0);
+ }
+ function renderTotal(){const target=$('demo-total');if(target)target.textContent='Estimated meals (UK): '+money(total())}
  function renderMeals(){
   const container=$('demo-meals');if(!container)return;
   container.replaceChildren();
@@ -33,25 +43,15 @@
    const amount=elem('output','',portions[i]);amount.setAttribute('aria-live','polite');
    const plus=elem('button','','+');plus.type='button';plus.setAttribute('aria-label','Add a serving of '+r.name);
    const price=elem('span','meal-price');
-   const update=()=>{amount.textContent=portions[i];price.textContent=money(Number(r.cost)*portions[i]/Number(r.servings))+' est.';minus.disabled=portions[i]<=1;plus.disabled=portions[i]>=10;renderTotal();if(activeTab==='shop')renderShopping()};
+   const update=()=>{amount.textContent=portions[i];const estimate=mealEstimate(r,portions[i]);price.textContent=money(estimate.amount)+(estimate.amount==null?'':' est.');minus.disabled=portions[i]<=1;plus.disabled=portions[i]>=10;renderTotal();if(activeTab==='shop')renderShopping()};
    minus.addEventListener('click',()=>{portions[i]=Math.max(1,portions[i]-1);update()});
    plus.addEventListener('click',()=>{portions[i]=Math.min(10,portions[i]+1);update()});
    stepper.append(minus,amount,plus);controls.append(stepper,price);row.append(controls);container.append(row);update();
   });
   renderTotal();
  }
- const AISLES={Vegetables:'Fruit & Veg',Meat:'Meat & Fish',Dairy:'Dairy & Chilled',Grains:'Cupboard',Other:'Cupboard & Essentials',Bakery:'Bakery'};
- const AISLE_ORDER=['Fruit & Veg','Meat & Fish','Dairy & Chilled','Bakery','Cupboard','Cupboard & Essentials'];
- function quantityFor(ingredient,ratio){
-  const original=String(ingredient||'').trim();
-  if(Math.abs(ratio-1)<.00001)return original;
-  const found=/^(\d+(?:\.\d+)?)\s*(kg|g|ml|l|cloves?|tbsp|tsp|packs?|cans?|peppers?)\b/i.exec(original);
-  if(found){const n=Number(found[1])*ratio;const display=Number(n.toFixed(2));return `${display} ${original.slice(found[1].length).trim()}`;}
-  const simple=/^(\d+(?:\.\d+)?)$/.exec(original);
-  if(simple)return String(Number((Number(simple[1])*ratio).toFixed(2)));
-  // Do not invent pack counts, purchase rounding or conversions for complex recipe quantities.
-  return original+' (adjust for servings in app)';
- }
+ const AISLES={Produce:'Fruit & Veg','Meat & Fish':'Meat & Fish','Dairy & Chilled':'Dairy & Chilled',Bakery:'Bakery','Cupboard / Pantry':'Cupboard & Essentials','Household & Other':'Other'};
+ const AISLE_ORDER=['Fruit & Veg','Meat & Fish','Dairy & Chilled','Bakery','Cupboard','Cupboard & Essentials','Other'];
  // Combine only unambiguous compatible amounts; never guess pack sizes or mixed units.
  function combinedQuantity(amounts){
   const values=amounts.filter(Boolean);
@@ -70,40 +70,52 @@
   return display(total)+(unit==='count'?'':' '+(unit==='cloves'&&total===1?'clove':unit==='cans'&&total===1?'can':unit==='peppers'&&total===1?'pepper':unit==='packs'&&total===1?'pack':unit));
  }
  function rowsForShopping(){
-  const byName=new Map();
+  if(!pricingReady)return [];
+  const api=window.BBPriceV19,byName=new Map();
   for(let i=0;i<shown.length;i++){
    const r=shown[i];const ratio=portions[i]/Number(r.servings||4);
-   if(!Array.isArray(r.ingredients))continue;
-   for(const entry of r.ingredients){
-    if(!Array.isArray(entry)||typeof entry[0]!=='string')continue;
-    const name=entry[0].trim(),unit=String(entry[1]||'').trim(),cost=Number(entry[2]);
-    if(!name||name.length>80)continue;
-    const key=name.toLocaleLowerCase('en-GB');
-    if(!byName.has(key))byName.set(key,{key,name,aisle:AISLES[entry[3]]||'Other',amounts:[],cost:0});
+   const source=normalizedById.get(r.id);
+   if(!source)continue;
+   for(const entry of source.ingredients){
+    const name=entry.key||entry.name;
+    const amount=entry.quantity==null?NaN:Number(entry.quantity)*ratio;
+    const normalized=api.normalizeUnit(name,amount,entry.unit);
+    const key=api.canonical(name)+'|'+(normalized?.unit||entry.unit);
+    if(!byName.has(key))byName.set(key,{key,name,unit:normalized?.unit||entry.unit,
+      aisle:AISLES[api.aisle(name)]||'Other',quantity:0,amounts:[],cost:null,unpriced:false});
     const row=byName.get(key);
-    if(unit)row.amounts.push(quantityFor(unit,ratio));
-    if(Number.isFinite(cost)&&cost>=0)row.cost+=cost*ratio;
+    if(normalized)row.quantity+=normalized.quantity;else row.unpriced=true;
    }
   }
-  return [...byName.values()].sort((a,b)=>
-    AISLE_ORDER.indexOf(a.aisle)-AISLE_ORDER.indexOf(b.aisle)||a.name.localeCompare(b.name));
+  // Shared ingredients are combined before rounding to purchased packs, including
+  // cupboard containers that the meal estimate charges only by the amount used.
+  return [...byName.values()].map(row=>{
+   if(!row.unpriced){
+    const quote=api.price({name:row.name,quantity:row.quantity,unit:row.unit,market:MARKET});
+    row.cost=quote?.packAmount??null;
+    row.amounts=[api.formatQuantity(row.quantity,row.unit,MARKET)];
+   }
+   return row;
+  }).sort((a,b)=>AISLE_ORDER.indexOf(a.aisle)-AISLE_ORDER.indexOf(b.aisle)||a.name.localeCompare(b.name));
  }
  function renderShopping(){
   const destination=$('demo-shopping');if(!destination)return;
   const rows=rowsForShopping();
   const nChecked=rows.filter(row=>demoChecked.has(row.key)).length;
+  const basketTotal=!pricingReady||rows.some(row=>row.cost==null)?null:rows.reduce((sum,row)=>sum+row.cost,0);
   const pct=rows.length?Math.round(nChecked/rows.length*100):0;
   const content=elem('div','shop-content');
   const hero=elem('div','shop-hero');
   hero.append(elem('p','shop-eyebrow','✦ BASKETBOSS · YOUR SHOP'),elem('h4','','Ready for the aisles?'),elem('p','',"From the three real sample recipes above. Check off what you've picked up — this demo never changes your actual basket."));
   const metrics=elem('div','shop-metrics');
-  for(const [value,label] of [[rows.length-nChecked,'Still to buy'],[nChecked,'Bought'],[money(rows.reduce((sum,row)=>sum+row.cost,0)),'Est. basket']]){
+  for(const [value,label] of [[rows.length-nChecked,'Still to buy'],[nChecked,'Bought'],[money(basketTotal),'Est. basket (UK)']]){
    const tile=elem('div','shop-metric');tile.append(elem('strong','',value),elem('span','',label));metrics.append(tile);
   }
   hero.append(metrics);
   const progress=elem('div','shop-progress');progress.setAttribute('role','progressbar');progress.setAttribute('aria-label','Sample shopping progress');progress.setAttribute('aria-valuemin','0');progress.setAttribute('aria-valuemax','100');progress.setAttribute('aria-valuenow',String(pct));
   const fill=elem('div','shop-progress-fill');fill.style.width=pct+'%';progress.append(fill);hero.append(progress,elem('p','shop-progress-caption',`${pct}% checked off · ${rows.length} items`));
   content.append(hero);
+  if(!pricingReady)content.append(elem('p','shop-footnote','Pack estimates unavailable. Open the full app to review ingredient quantities and prices.'));
   const byAisle=new Map();for(const row of rows){if(!byAisle.has(row.aisle))byAisle.set(row.aisle,[]);byAisle.get(row.aisle).push(row)}
   for(const [aisle,items] of byAisle){
    const section=elem('section','shop-aisle');const h=elem('h5','',aisle);section.append(h);
@@ -113,11 +125,11 @@
     const tick=document.createElement('input');tick.type='checkbox';tick.checked=demoChecked.has(row.key);tick.setAttribute('aria-label','Mark '+row.name+' bought in the sample list');
     tick.addEventListener('change',()=>{if(tick.checked)demoChecked.add(row.key);else demoChecked.delete(row.key);renderShopping()});
     const desc=elem('span','shop-item-name');desc.append(elem('strong','',row.name),elem('small','',combinedQuantity(row.amounts)||'See recipe for quantity'));
-    label.append(tick,desc,elem('span','shop-item-price',money(row.cost)+' est.'));li.append(label);ul.append(li);
+    label.append(tick,desc,elem('span','shop-item-price',money(row.cost)+(row.cost==null?'':' est.')));li.append(label);ul.append(li);
    }
    section.append(ul);content.append(section);
   }
-  content.append(elem('p','shop-footnote','Indicative ingredient totals only — not live retailer quotes. For accurate pack rounding, measured pantry deductions and checkout quantities, use the full app.'));
+  content.append(elem('p','shop-footnote','UK sample: quantities scale before packs are counted. Meals include only the share of cupboard staples used; Shopping includes replacement packs and combines shared ingredients. In the app, choose your region and supermarket; dated online guides cover selected UK products and regional estimates fill gaps.'));
   destination.replaceChildren(content);
  }
  function wirePantryDemo(){
@@ -157,14 +169,37 @@
  $('new-demo-week')?.addEventListener('click',()=>{offset+=3;chooseWeek();switchTab('plan')});
  document.querySelector('[data-landing-phone-shop]')?.addEventListener('click',()=>switchTab('shop'));
  wirePantryDemo();
+ function normalizedCatalogue(data,recipes){
+  if(!Array.isArray(data?.recipes)||data.recipes.length!==100)throw Error('public_quantities_invalid');
+  const sources=new Map(recipes.map(r=>[r.id,r])),out=new Map();
+  for(const recipe of data.recipes){
+   const original=sources.get(recipe?.id);
+   if(!original||out.has(recipe.id)||Number(recipe.servings)!==Number(original.servings)
+      ||!Array.isArray(recipe.ingredients)||recipe.ingredients.length!==original.ingredients?.length)
+    throw Error('public_quantities_mismatch');
+   if(!recipe.ingredients.every(ingredient=>ingredient&&typeof ingredient.key==='string'&&ingredient.key.length>0&&ingredient.key.length<=120
+      &&(ingredient.unit==null||(typeof ingredient.unit==='string'&&['g','kg','ml','l','each','clove','cloves','tsp','tbsp','pack','None'].includes(ingredient.unit)))
+      &&(ingredient.quantity==null||(typeof ingredient.quantity==='string'&&ingredient.quantity.length<=120&&!Number.isFinite(Number(ingredient.quantity)))||(Number.isFinite(Number(ingredient.quantity))&&Number(ingredient.quantity)>=0&&Number(ingredient.quantity)<=1000000))))
+    throw Error('public_quantities_invalid');
+   out.set(recipe.id,{...recipe,ingredients:recipe.ingredients.map(ingredient=>({...ingredient,
+    quantity:ingredient.quantity==null||!Number.isFinite(Number(ingredient.quantity))?null:Number(ingredient.quantity)}))});
+  }
+  return out;
+ }
  async function load(){
-  try{const response=await fetch('/recipes.json',{cache:'no-store',credentials:'omit',redirect:'error'});
-   if(!response.ok)throw Error('catalogue_unavailable');
-   const data=await response.json();
+  try{
+   const [response,quantityResponse]=await Promise.all([
+    fetch('/recipes.json',{cache:'no-store',credentials:'omit',redirect:'error'}),
+    fetch('/normalized-ingredient-database.json',{cache:'no-store',credentials:'omit',redirect:'error'})
+   ]);
+   if(!response.ok||!quantityResponse.ok)throw Error('catalogue_unavailable');
+   const [data,quantityData]=await Promise.all([response.json(),quantityResponse.json()]);
    if(!Array.isArray(data)||data.length!==100)throw Error('public_catalogue_invalid');
-   const safe=data.filter(valid);if(safe.length<80)throw Error('public_catalogue_invalid');
-   publicRecipes=safe;
-  }catch(_){/* Retain pinned public Free recipe summaries while offline. */}
+   const safe=data.filter(valid);if(safe.length!==100||new Set(safe.map(r=>r.id)).size!==100)throw Error('public_catalogue_invalid');
+   const quantities=normalizedCatalogue(quantityData,safe);
+   publicRecipes=safe;normalizedById=quantities;
+   pricingReady=typeof window.BBPriceV19?.estimateMeal==='function';
+  }catch(_){/* Keep public descriptions, but never invent prices if pack data is unavailable. */}
   cookRecipe=publicRecipes.find(r=>r.id==='fajitas'&&Array.isArray(r.method)&&r.method.length)||null;
   if(!cookRecipe){
    const label=$('cook-step-text');if(label)label.textContent='Open BasketBoss to view the complete cooking instructions.';

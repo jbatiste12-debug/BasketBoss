@@ -2033,6 +2033,7 @@ body.bb172-shop-mode-active #app{padding-bottom:105px}
 #bb172ShopModeButton.bb172-storefront-launch:hover{transform:translateY(-2px);box-shadow:0 11px 25px #2e6f4050!important}
 #bb172ShopModeButton.bb172-storefront-launch:focus-visible{outline:3px solid #1b4365;outline-offset:3px}
 body.bb172-storefront-visible .bb172-shop-status{display:none!important}
+body.bb172-storefront-visible .shell nav.tabs{visibility:hidden!important;pointer-events:none!important}
 .bb172-storefront{position:fixed;inset:0;z-index:850;background:#FAF8F5;color:#1b4365;overflow-x:hidden;overflow-y:auto;-webkit-overflow-scrolling:touch;overscroll-behavior:contain;font-family:system-ui,-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;padding-bottom:calc(106px + env(safe-area-inset-bottom,0px))}
 .bb172-storefront *{box-sizing:border-box}
 .bb172-storefront button{cursor:pointer;font-family:inherit}
@@ -3755,6 +3756,8 @@ body[data-bbnext-view="discover"] #app .bb-featured-card #bbFeaturedBatch {
 <nav aria-label="Legal information and support"><a href="compare.html">Why BasketBoss?</a> · <a href="terms.html">Terms</a> · <a href="privacy.html">Privacy</a> · <a href="subscriptions.html">Subscriptions &amp; refunds</a> · <a href="mailto:support@basketboss.co.uk">Support</a><span style="display:block;margin-top:6px">BasketBoss is built and operated from Guernsey, Channel Islands.</span></nav></footer></div>
 <div id="modalRoot"></div><div id="toastRoot" aria-live="polite"></div>
 <script src="basketboss-aisles-v20.js?v=bb82-aisle-20261024"></script>
+<script src="bb-supermarkets.js?v=bb-stores-20261031"></script>
+<script src="bb-price-scan.js?v=bb-receipt-prices-20261031"></script>
 <script src="basketboss-pricing-v19.js?v=bb716-price-audit-20261024"></script>
 <script src="bb-serving-scale.js?v=20261029-preview1"></script>
 <script>
@@ -3911,7 +3914,7 @@ function estimateBasket({selections=[],recipes=[],normalized=[],market='Jersey',
   items.push({key:g.key,unit:g.unit,displayUnit:g.packText||g.unit,required:round(g.required,3),pantryUsed:round(pantryUsed,3),toBuy:round(toBuy,3),quantityBought:round(quantityBought,3),surplus:round(Math.max(0,quantityBought-toBuy),3),spend:checkout,portionSpend:quote?.portionAmount??null,
    priceStatus:quote&&quote.amount!=null?'ILLUSTRATIVE_UK_PACK_GUIDE':'PACK_SPEC_REVIEW_REQUIRED',packSize,sharedAcrossRecipes:g.recipes.size,uncertainPack:!packSize||!!quote?.needsReview,
    sourceRetailer:null,sourceDate:null,sourceProduct:null,sourceUrl:null,sourceStoreId:null,sourcePriceType:null,sourceEvidenceType:null,sourcePackCount:quote?.packCount||0,
-   description:'Illustrative UK pack baseline and local market uplift; review at till.'});
+   description:'Illustrative regional pack and price guide; review at till.'});
  }
  const portionCount=[...selected.values()].reduce((n,s)=>n+s.servings,0);
  const rounded=round(estMid);return {market,recipeIds:[...selected.keys()],portions:portionCount,items,unresolved,
@@ -3920,7 +3923,7 @@ function estimateBasket({selections=[],recipes=[],normalized=[],market='Jersey',
   quotedIngredientGroups:quotedItems,quotedEvidenceGbp:round(quotedSpend),authorisedIngredientGroups:authorisedItems,authorisedEvidenceGbp:round(authorisedSpend),researchIngredientGroups:researchItems,researchEvidenceGbp:round(researchSpend),fallbackIngredientGroups:items.filter(i=>i.priceStatus==='PROVISIONAL_ESTIMATE').length,
   fallbackEstimateGbp:round(provisionalSpend),evidenceRetailer:quotedItems?quoteRetailer:null,
   uncertaintyLabel:'ILLUSTRATIVE_UK_PACK_BASELINES_NOT_LIVE_PRICES',
-  priceDisclaimer:'Illustrative UK standard packs × chosen regional multiplier, not observed retailer prices. Some pack specifications and units require review.',
+  priceDisclaimer:'Illustrative regional packs and baseline prices, not live retailer quotes. Some pack specifications and units require review.',
   status:'ESTIMATE_ONLY',sharedIngredientGroups:items.filter(i=>i.sharedAcrossRecipes>1).length};
 }
 
@@ -4106,20 +4109,18 @@ const BB307_MARKET_KEY='basketboss_321_v7_market';
 const BB307_STOCK_KEY='basketboss_321_v7_measured_pantry';
 const BB_PARTIAL_PURCHASE_KEY='basketboss_partial_purchases_v1';
 const BB321_RETAILER_PREF_KEY='basketboss_321_v10_price_retailer_';
-function bb307PricingRetailers(){
- return [...new Set(BB321_RESEARCH_QUOTES.filter(q=>q.market===bb307Market&&q.retailer).map(q=>q.retailer))].sort();
-}
-function bb307ActiveRetailer(){
- const available=bb307PricingRetailers();if(!available.length)return null;
- let preference=null;
- try{preference=localStorage.getItem(BB321_RETAILER_PREF_KEY+bb307Market)}catch(e){}
- return available.includes(preference)?preference:available[0];
-}
+function bb307PricingRetailers(){return BBSupermarkets.forRegion(bb307Market);}
+function bb307ActiveRetailer(){return BBSupermarkets.getSelected(bb307Market);}
 function bb307SelectPricingRetailer(next){
- if(!bb307PricingRetailers().includes(next))return;
- try{localStorage.setItem(BB321_RETAILER_PREF_KEY+bb307Market,next)}catch(e){}
+ if(!BBSupermarkets.setSelected(bb307Market,next))return false;
+ bb307ApplyRememberedMarket();
  if(typeof render==='function')render();
+ window.dispatchEvent(new CustomEvent('basketboss:supermarket-changed',{detail:{market:bb307Market,retailer:bb307ActiveRetailer()}}));
+ return true;
 }
+window.bb307PricingRetailers=bb307PricingRetailers;
+window.bb307ActiveRetailer=bb307ActiveRetailer;
+window.bb307SelectPricingRetailer=bb307SelectPricingRetailer;
 
 let bb307Market='Jersey';
 try{const v=localStorage.getItem(BB307_MARKET_KEY);if(['UK','Jersey','Guernsey','US'].includes(v))bb307Market=v}catch(e){}
@@ -4179,28 +4180,29 @@ function bb307SetPantry(name,baseUnit,quantity,inputUnit){
  if(state.pantry?.[bb307NormaliseName(name)]){delete state.pantry[bb307NormaliseName(name)];persist()}
  return true;
 }
+// Meal cards use the same regional ingredient packs as Shopping. Scale source
+// quantities first; never multiply an already rounded whole-pack recipe price.
+function bb307MealEstimate(recipe,servings){
+ const normalized=BB307_NORMALIZED.find(r=>r.id===recipe?.id);
+ if(!recipe||!normalized)return {amount:null,items:[],unpriced:1};
+ return BBPriceV19.estimateMeal({recipe,normalized,servings,market:bb307Market,retailer:bb307ActiveRetailer()});
+}
 function bb307SwitchIsland(next){
  if(!['UK','Jersey','Guernsey','US'].includes(next))return;
  try{localStorage.setItem(BB307_MARKET_KEY,next)}catch(e){return false}
  bb307Market=next;
- for(const recipe of RECIPES){
-  const base=BB307_ORIGINAL_COSTS.get(recipe.id),cost=Number(recipe.ci_estimates?.[next==='US'?'UK':next]?.estimate_gbp);
-  if(!base||!Number.isFinite(cost)||cost<=0||!(base.total>0))continue;
-  const factor=cost/base.total;recipe.cost=cost;
-  for(let k=0;k<recipe.ingredients.length;k++)if(Number.isFinite(base.lines[k]))recipe.ingredients[k][2]=Math.round(base.lines[k]*factor*100)/100;
- }
+ bb307ApplyRememberedMarket();
  if(typeof render==='function')render();
  window.dispatchEvent(new CustomEvent('basketboss:market-changed',{detail:{market:next}}));
  return true;
 }
-// Apply remembered region at start, without painting until the original app calls render().
+// Keep baseline costs used by sorting and meal suggestions in the selected market.
+// Ingredient amounts and editorial source records remain authoritative quantities.
 function bb307ApplyRememberedMarket(){
- const selected=bb307Market;
  for(const recipe of RECIPES){
-  const base=BB307_ORIGINAL_COSTS.get(recipe.id),cost=Number(recipe.ci_estimates?.[selected==='US'?'UK':selected]?.estimate_gbp);
-  if(!base||!Number.isFinite(cost)||cost<=0||!(base.total>0))continue;
-  recipe.cost=cost;const factor=cost/base.total;
-  for(let k=0;k<recipe.ingredients.length;k++)if(Number.isFinite(base.lines[k]))recipe.ingredients[k][2]=Math.round(base.lines[k]*factor*100)/100;
+  const estimate=bb307MealEstimate(recipe,Number(recipe.baseServings)||Number(recipe.servings)||4);
+  recipe.cost=estimate.amount;
+  for(let k=0;k<recipe.ingredients.length;k++)recipe.ingredients[k][2]=estimate.items[k]?.amount??null;
  }
 }
 // Only the onboarding UI calls this opt-in bridge, after Finish/Explore Free.
@@ -5237,7 +5239,7 @@ function persist(){
 }
 function notify(msg){const root=document.getElementById('toastRoot');root.innerHTML='<div class="toast" role="status"></div>';root.firstChild.textContent=msg;clearTimeout(toastHandle);toastHandle=setTimeout(()=>root.innerHTML='',2600)}
 function esc(s){return String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]))}
-function money(n){return 'Approx. Est. £'+Number(n||0).toFixed(2)}
+function money(n){return n==null||!Number.isFinite(Number(n))?'Estimate unavailable':'Approx. Est. '+BBPriceV19.money(n,bb307Market)}
 function getRecipe(id){return RECIPES.find(r=>r.id===id)}
 function getPlanned(){return state.planned.map(p=>({...p,recipe:getRecipe(p.recipeId)})).filter(p=>p.recipe)}
 function parseShopQuantity(raw){
@@ -6368,7 +6370,8 @@ function bb81TrimSearch(){
   const ranked=candidates.map(r=>{
    const names=bb172IngredientTypes(r);
    let overlap=0;for(const name of names){const canon=BBPriceV19.canonical(name);if(basketNames.has(canon)||pantryNames.has(canon))overlap++}
-   return {r,score:Math.min(5,overlap)*3-Math.max(0,Number(r.cost)||0)*0.13};
+   const estimate=bb307MealEstimate(r,bbFeedingForRecipe(r,current.day)).amount;
+   return {r,score:estimate==null?-Infinity:Math.min(5,overlap)*3-estimate*0.13};
   }).sort((a,b)=>b.score-a.score).slice(0,16);
   let best=null;
   for(const entry of ranked){
@@ -6671,7 +6674,8 @@ function bbNextComposePlan(app){
      time.textContent='◷ '+(Number(recipe.mins)||'?')+' min';
      const serving=bbFeedingDayStepper(day,recipe,'summary');
      const price=document.createElement('span');price.className='bbpol-price bbfeed-price';
-     price.textContent=moneyValue(BBServing.moneyCost(recipe.cost,bbFeedingForRecipe(recipe,day),recipe))+' est.';
+     const mealEstimate=bb307MealEstimate(recipe,bbFeedingForRecipe(recipe,day));
+     price.textContent=mealEstimate.amount==null?'Estimate unavailable':moneyValue(mealEstimate.amount)+' est.';
      subtitle.append(time,serving,price);
    }else{
      subtitle.textContent=pendingUnloaded?'Your meal is still saved. Reconnect Premium to load its details and estimate.':available?'Tap to choose dinner':'Unlock Premium to see this meal';
@@ -6790,7 +6794,7 @@ function bb18GalleryCard(x){
  const action=locked?`data-bb18-premium="${esc(x.id)}" aria-label="Unlock ${esc(x.name)} with Premium"`:`data-recipe="${esc(x.id)}" aria-label="View ${esc(x.name)}"`;
  return `<article class="card mini-recipe${locked?' bb18-locked-recipe':''}" tabindex="0" role="button" ${action}>
  <div class="mini-img">${imageHTML(x)}<span class="pill">${esc(x.tag)}</span>${locked?'<span class="bb18-premium-crown" aria-hidden="true">♛ Premium</span><span class="bb18-premium-image-lock" aria-hidden="true"><span class="bb18-lock-icon"><svg viewBox="0 0 64 64" width="42" height="42" aria-hidden="true" fill="none"><path d="M22 18 18 10 27 14 32 6 37 14 46 10 42 18Z" fill="#44484B" stroke="#44484B" stroke-width="2" stroke-linejoin="round"/><path d="M21 21h22" stroke="#44484B" stroke-width="3" stroke-linecap="round"/><path d="M18 30 25 23M46 30 39 23" stroke="#44484B" stroke-width="4" stroke-linecap="round"/><path d="M11 31h42l-5 24H16l-5-24Z" fill="#44484B" stroke="#44484B" stroke-width="2" stroke-linejoin="round"/><path d="M22 38v10M32 38v10M42 38v10" stroke="#F8F8F8" stroke-width="4" stroke-linecap="round"/></svg></span><strong>BasketBoss</strong><span>Unlock with Premium</span></span>':''}</div>
- <div class="mini-content"><h4>${esc(x.name)}</h4><p class="bb18-recipe-meta"><span>◷ ${x.mins} min</span><span class="bb18-price-value">${money(x.cost)}</span></p>
+ <div class="mini-content"><h4>${esc(x.name)}</h4><p class="bb18-recipe-meta"><span>◷ ${x.mins} min</span><span class="bb18-price-value">${money(bb307MealEstimate(x,bbFeedingForRecipe(x)).amount)}</span></p>
  <p class="muted">${collectionsFor(x).map(esc).join(' · ')}</p>${locked?'':`<button type="button" class="bb80-gallery-add" data-bb80-add-week="${esc(x.id)}" aria-label="Add ${esc(x.name)} to your week">＋ Add to week</button><button type="button" class="bb80-gallery-add bb-manual-batch-btn" data-bb-manual-batch="${esc(x.id)}" aria-label="Batch cook ${esc(x.name)} for two days">${bb176IsPremiumPreview()?'🍲 Batch cook (2 days)':'♛ Batch cook · Premium'}</button>`}${locked?'<span class="bb18-unlock-cta">♛ Unlock with Premium</span>':''}</div></article>`;
 }
 function bb80PromptAddRecipe(id){
@@ -6859,10 +6863,10 @@ const r=filtered[Math.min(recipeIndex,Math.max(0,filtered.length-1))];
 app.innerHTML=`<div class="section-head"><div><h3>Swipe your way to dinner \u2726</h3><p>${bb176CanUseLeftovers()?'321 Premium recipes':'100 free recipes'} \u00B7 Swipe to browse</p></div><span class="chip">\u2726 ${bb176CanUseLeftovers()?'321 Premium recipes':'100 free recipes'}</span></div>
 <input class="field" id="recipeSearch" placeholder="Search recipes or ingredients\u2026" value="${esc(query)}" aria-label="Search recipes" style="margin-bottom:12px">
 <div class="chips" style="margin-bottom:16px">${['All',...COLLECTIONS.filter(c=>bb176CanUseLeftovers()||c!=='Leftover Magic')].map(c=>`<button class="btn ${collectionFilter===c?'primary':''}" data-collection="${esc(c)}">${esc(c)}</button>`).join('')}</div>
-${r?`<div class="layout"><section class="card bb-featured-card"><div class="recipe-image swipe-card" id="swipeCard" aria-label="Swipe left or right to browse recipe ideas">${imageHTML(r).replace('loading="lazy"','loading="eager"')}<div class="image-overlay"></div><span class="swipe-stamp no" id="swipeNo">SKIP</span><span class="swipe-stamp yes" id="swipeYes">NEXT</span><span class="pill">${esc(r.tag)}</span><span class="time-pill">\u25F7 ${r.mins} min</span></div><div class="recipe-body"><div class="eyebrow">${esc(r.category)} \u00B7 serves ${bbFeedingForRecipe(r)}</div><h3>${esc(r.name)}</h3><div class="chips"><span class="chip">${money(BBServing.moneyCost(r.cost,bbFeedingForRecipe(r),r))} estimated</span><span class="chip">${r.ingredients.length} ingredients</span></div><div class="tip">\uD83D\uDCA1 ${esc(r.tip)}</div>
+${r?`<div class="layout"><section class="card bb-featured-card"><div class="recipe-image swipe-card" id="swipeCard" aria-label="Swipe left or right to browse recipe ideas">${imageHTML(r).replace('loading="lazy"','loading="eager"')}<div class="image-overlay"></div><span class="swipe-stamp no" id="swipeNo">SKIP</span><span class="swipe-stamp yes" id="swipeYes">NEXT</span><span class="pill">${esc(r.tag)}</span><span class="time-pill">\u25F7 ${r.mins} min</span></div><div class="recipe-body"><div class="eyebrow">${esc(r.category)} \u00B7 serves ${bbFeedingForRecipe(r)}</div><h3>${esc(r.name)}</h3><div class="chips"><span class="chip">${money(bb307MealEstimate(r,bbFeedingForRecipe(r)).amount)} estimated</span><span class="chip">${r.ingredients.length} ingredients</span></div><div class="tip">\uD83D\uDCA1 ${esc(r.tip)}</div>
 <div class="swipe-guide">Tap the heart to save to Family Favourites, Add to week for your weekly planner, or ✕ to skip.</div><div class="swipe-actions"><button class="swipe-action no" id="skipRecipe" aria-label="Skip this recipe">\u2715</button><button class="swipe-action yes bb15-love" id="addRecipe" aria-label="Save this recipe to favourites and show another" title="Love this recipe · save to favourites">\u2665</button><button type="button" class="swipe-action bb-featured-add-week" id="bbFeaturedAddWeek" aria-label="Add featured recipe to your week"><span class="bb-featured-add-icon" aria-hidden="true">＋</span><span>Add to week</span></button></div><div class="actions"><div class="bb-cta-wrap"><button class="btn bb-premium-cta" id="cookRecipe"><span class="bb-cta-icon">✦</span><span>View Recipe &amp; Cook</span></button><button class="btn bb-manual-batch-btn" id="bbFeaturedBatch">${bb176IsPremiumPreview()?'🍲 Batch cook (2 days)':'♛ Batch cook · Premium'}</button></div></div>
 <details style="display:none!important;margin-top:15px" id="recipeEditor"><summary style="cursor:pointer;font-weight:800">\u270E Edit picture & categories</summary><p class="muted">Choose collections (a recipe can belong to more than one):</p><div class="chips">${COLLECTIONS.map(c=>`<label class="chip" style="cursor:pointer"><input type="checkbox" data-edit-collection="${esc(c)}" ${collectionsFor(r).includes(c)?'checked':''}> ${esc(c)}</label>`).join('')}</div><p class="muted" style="margin-top:14px">Photo URL (e.g. <code>images/recipes/my-dinner.jpg</code> from your GitHub repo):</p><input class="field" id="photoUrl" value="${esc(state.recipePhotos[r.id]||r.image)}" placeholder="https://\u2026 or images/recipes/\u2026"><div class="actions"><button class="btn primary" id="savePhoto">Save picture</button><button class="btn" id="resetPhoto">Restore default</button></div><p class="muted">For reliable pictures on all devices, upload your own JPG/WebP images to your GitHub repository and paste their relative paths here. Changes made in this editor are saved on this device only.</p></details>
-</div></section><aside class="card side bb321-need-box"><details class="bbfeed-ingredients"><summary>View ${r.ingredients.length} ingredients &amp; prices ▾</summary>${r.ingredients.map(i=>`<div class="ingredient-row"><span>${esc(i[0])}<span class="muted"> \u00B7 ${esc(BBServing.scaleText(i[1],BBServing.ratio(bbFeedingForRecipe(r),r),i[0]))}</span></span><span class="price">${money(BBServing.moneyCost(i[2],bbFeedingForRecipe(r),r))}</span></div>`).join('')}</details></aside></div>`:`<div class="empty">No recipes in this collection match your search.</div>`}
+</div></section><aside class="card side bb321-need-box"><details class="bbfeed-ingredients"><summary>View ${r.ingredients.length} ingredients &amp; prices ▾</summary>${r.ingredients.map((i,ingredientIndex)=>`<div class="ingredient-row"><span>${esc(i[0])}<span class="muted"> \u00B7 ${esc(BBServing.scaleText(i[1],BBServing.ratio(bbFeedingForRecipe(r),r),i[0]))}</span></span><span class="price">${money(bb307MealEstimate(r,bbFeedingForRecipe(r)).items[ingredientIndex]?.amount)}${bb307PriceProvenance(bb307MealEstimate(r,bbFeedingForRecipe(r)).items[ingredientIndex])}</span></div>`).join('')}</details></aside></div>`:`<div class="empty">No recipes in this collection match your search.</div>`}
 <div class="section-head" style="margin-top:25px"><div><h3>${collectionFilter==='All'?'Explore recipes':esc(collectionFilter)} (${galleryFiltered.length})</h3><p>Browse the free collection and see which recipes require Premium.</p></div></div><p class="muted" style="margin:0 0 12px">Showing ${galleryFiltered.length ? galleryPage*24+1 : 0}–${Math.min((galleryPage+1)*24,galleryFiltered.length)} of ${galleryFiltered.length} matching recipes. Locked cards cannot be planned or cooked without verified Premium access.</p><div class="grid-recipes">${galleryFiltered.slice(galleryPage*24,(galleryPage+1)*24).map(bb18GalleryCard).join('')}</div><div class="bb-gallery-pages" style="display:flex;align-items:center;justify-content:center;gap:12px;flex-wrap:wrap;margin:18px 0 28px"><button class="btn" id="bbGalleryPrev" ${galleryPage===0?'disabled':''}>← Previous 24</button><strong>Page ${galleryPage+1} of ${Math.max(1,Math.ceil(galleryFiltered.length/24))}</strong><button class="btn primary" id="bbGalleryNext" ${(galleryPage+1)*24>=galleryFiltered.length?'disabled':''}>Next 24 →</button></div>`;
 bb321MountSuggestion(app,r);
 bb16PolishDiscover(app);
@@ -6946,13 +6950,13 @@ function bbDessertForDay(day){
  if(!d)return `<button class="btn bb-add-dessert" data-dessert-add-day="${day}">+ Choose bake / dessert</button>`;
  return `<div class="bb-dessert-day-row">
  ${imageHTML(d.recipe,'bb-dessert-day-image')}
- <div class="bb-dessert-day-info"><strong>🍰 ${esc(d.recipe.name)}</strong><span>${d.recipe.mins} min · ${money(BBServing.moneyCost(d.recipe.cost,bbFeedingForRecipe(d.recipe),d.recipe))} estimated</span></div>
+ <div class="bb-dessert-day-info"><strong>🍰 ${esc(d.recipe.name)}</strong><span>${d.recipe.mins} min · ${money(bb307MealEstimate(d.recipe,Number(state.servings)||Number(d.recipe.servings)||4).amount)} estimated</span></div>
  <div class="bb-dessert-day-actions"><select data-dessert-move="${esc(d.recipeId)}" aria-label="Move dessert to another day">${DAYS.map(x=>`<option ${x===day?'selected':''}>${x}</option>`).join('')}</select><button class="small-btn" data-dessert-cook="${esc(d.recipeId)}">Cook</button><button class="small-btn" data-dessert-remove="${esc(d.recipeId)}" aria-label="Remove dessert">Remove</button></div>
  </div>`;
 }
 
 function addRecipe(id,day){if(!bb176AllowedRecipe(id)){bb176OpenPremiumUpgrade();return;}const dessertRecipe=getRecipe(id);if(bbIsDessert(dessertRecipe)){bbPlanDessert(id,day);return}if(state.planned.some(p=>p.recipeId===id)){notify('That recipe is already in your week.');return}const used=new Set(state.planned.map(p=>p.day));for(const day of bbBatchPairs().map(x=>x.leftoverDay))used.add(day);if(day&&used.has(day)){notify('That day already has a dinner or linked leftover night.');return}const assigned=day||DAYS.find(d=>!used.has(d));if(!assigned){notify('No free dinner slots; remove one first.');return}state.planned.push({recipeId:id,day:assigned});persist();notify('Added to '+assigned+' \u2713');render()}
-function renderWeek(app){const planned=getPlanned();app.innerHTML=`<div class="section-head"><div><h3>Your weekly game plan</h3><p>One dinner per day keeps the week simple.</p></div><button class="btn" id="clearWeek">Clear week</button></div><div class="notice">Tip: changing a meal's day updates your shopping list automatically. Duplicate recipe bookings are prevented.</div>${DAYS.map((d,i)=>{const p=planned.find(x=>x.day===d);return `<section class="day"><div class="day-head"><strong>${d}</strong><span>${p?'Dinner planned':'Open slot'}</span></div>${p?`<div class="planned"><div><strong>${esc(p.recipe.name)}</strong><div class="muted" style="font-size:10px;margin-top:3px">${p.recipe.mins} min \u00B7 ${money(BBServing.moneyCost(p.recipe.cost,bbFeedingForRecipe(p.recipe),p.recipe))}</div></div><div class="small-actions"><select data-move="${p.recipeId}" aria-label="Move ${esc(p.recipe.name)} to another day">${DAYS.map(x=>`<option ${x===d?'selected':''}>${x}</option>`).join('')}</select><button class="small-btn" data-cook="${p.recipeId}">Cook</button><button class="small-btn" data-remove="${p.recipeId}" aria-label="Remove ${esc(p.recipe.name)}">\u2715</button></div></div>${bbLeftoverControls(p,planned)}`:`<button class="btn" data-add-day="${d}">\uFF0B Choose dinner</button>`}${bbDessertForDay(d)}</section>`}).join('')}`;app.querySelector('#clearWeek').onclick=async()=>{if(await bbQaConfirm('Clear all planned dinners and desserts? Your pantry checklist will stay saved.','Clear this week?','Clear week')){const old={planned:state.planned,plannedDesserts:state.plannedDesserts,leftoverSources:state.leftoverSources,leftoverConfirmed:state.leftoverConfirmed};state.planned=[];state.plannedDesserts=[];state.leftoverSources={};state.leftoverConfirmed={};if(!persist()||!bbShopV7Close()){Object.assign(state,old);persist();notify('Could not safely clear week');return;}render()}};app.querySelectorAll('[data-move]').forEach(el=>el.onchange=()=>{const p=state.planned.find(x=>x.recipeId===el.dataset.move);if(!p)return;const clash=state.planned.find(x=>x.day===el.value&&x.recipeId!==p.recipeId);if(clash){notify('That day already has a dinner. Remove or move it first.');render();return}p.day=el.value;persist();render()});app.querySelectorAll('[data-remove]').forEach(el=>el.onclick=()=>{state.planned=state.planned.filter(p=>p.recipeId!==el.dataset.remove);persist();render();notify('Meal removed')});app.querySelectorAll('[data-leftover-source]').forEach(el=>el.onchange=()=>{state.leftoverSources[el.dataset.leftoverSource]=el.checked;if(!el.checked){for(const r of bbLeftoverSuggestions(el.dataset.leftoverSource))state.leftoverConfirmed[r.id]=false}persist();render()});
+function renderWeek(app){const planned=getPlanned();app.innerHTML=`<div class="section-head"><div><h3>Your weekly game plan</h3><p>One dinner per day keeps the week simple.</p></div><button class="btn" id="clearWeek">Clear week</button></div><div class="notice">Tip: changing a meal's day updates your shopping list automatically. Duplicate recipe bookings are prevented.</div>${DAYS.map((d,i)=>{const p=planned.find(x=>x.day===d);return `<section class="day"><div class="day-head"><strong>${d}</strong><span>${p?'Dinner planned':'Open slot'}</span></div>${p?`<div class="planned"><div><strong>${esc(p.recipe.name)}</strong><div class="muted" style="font-size:10px;margin-top:3px">${p.recipe.mins} min \u00B7 ${money(bb307MealEstimate(p.recipe,bbFeedingForRecipe(p.recipe,d)).amount)}</div></div><div class="small-actions"><select data-move="${p.recipeId}" aria-label="Move ${esc(p.recipe.name)} to another day">${DAYS.map(x=>`<option ${x===d?'selected':''}>${x}</option>`).join('')}</select><button class="small-btn" data-cook="${p.recipeId}">Cook</button><button class="small-btn" data-remove="${p.recipeId}" aria-label="Remove ${esc(p.recipe.name)}">\u2715</button></div></div>${bbLeftoverControls(p,planned)}`:`<button class="btn" data-add-day="${d}">\uFF0B Choose dinner</button>`}${bbDessertForDay(d)}</section>`}).join('')}`;app.querySelector('#clearWeek').onclick=async()=>{if(await bbQaConfirm('Clear all planned dinners and desserts? Your pantry checklist will stay saved.','Clear this week?','Clear week')){const old={planned:state.planned,plannedDesserts:state.plannedDesserts,leftoverSources:state.leftoverSources,leftoverConfirmed:state.leftoverConfirmed};state.planned=[];state.plannedDesserts=[];state.leftoverSources={};state.leftoverConfirmed={};if(!persist()||!bbShopV7Close()){Object.assign(state,old);persist();notify('Could not safely clear week');return;}render()}};app.querySelectorAll('[data-move]').forEach(el=>el.onchange=()=>{const p=state.planned.find(x=>x.recipeId===el.dataset.move);if(!p)return;const clash=state.planned.find(x=>x.day===el.value&&x.recipeId!==p.recipeId);if(clash){notify('That day already has a dinner. Remove or move it first.');render();return}p.day=el.value;persist();render()});app.querySelectorAll('[data-remove]').forEach(el=>el.onclick=()=>{state.planned=state.planned.filter(p=>p.recipeId!==el.dataset.remove);persist();render();notify('Meal removed')});app.querySelectorAll('[data-leftover-source]').forEach(el=>el.onchange=()=>{state.leftoverSources[el.dataset.leftoverSource]=el.checked;if(!el.checked){for(const r of bbLeftoverSuggestions(el.dataset.leftoverSource))state.leftoverConfirmed[r.id]=false}persist();render()});
 app.querySelectorAll('[data-leftover-confirm]').forEach(el=>el.onchange=()=>{state.leftoverConfirmed[el.dataset.leftoverConfirm]=el.checked;persist();render()});
 app.querySelectorAll('[data-leftover-add]').forEach(el=>el.onclick=()=>bbAddSuggestedLeftover(el.dataset.leftoverFrom,el.dataset.leftoverAdd));
 app.querySelectorAll('[data-dessert-add-day]').forEach(el=>el.onclick=()=>{bbDessertTargetDay=el.dataset.dessertAddDay;tab='discover';collectionFilter='Desserts';query='';recipeIndex=0;galleryPage=0;render();notify('Choose a dessert for '+bbDessertTargetDay)});
@@ -7052,40 +7056,48 @@ function bb15PriceEditor(item,essential,index){
  const meta=current?`<p class="bb15-last-price">Saved ${BBPriceV19.money(current.pricePaid,bb307Market)} for ${bb321Number(current.quantity)} ${esc(item.unit)} on ${esc(current.date)}${current.shop?' · '+esc(current.shop):''}. Your own record, not retailer verified.</p>`:'<p class="bb15-last-price">Record what you actually spent; BasketBoss will use it next week for this item and region.</p>';
  return `<details class="bb15-price-editor"><summary>${current?'Update your saved price':'Save price paid for next week'}</summary>${meta}<div class="bb15-price-controls"><label>Amount bought<input class="field" data-bb15-qty="${key}" aria-label="Amount bought of ${esc(item.key||item.name)}" type="number" min="0.01" max="1000000" step="any" value="${bb321Number(qty)}" required></label><span class="bb15-unit">${esc(item.unit)}</span><label>Price paid (${BBPriceV19.CURRENCY[bb307Market]})<input class="field" data-bb15-price="${key}" aria-label="Price paid for ${esc(item.key||item.name)}" type="number" min="0.01" max="10000" step="0.01" placeholder="e.g. 2.49" ${current?'value="'+Number(current.pricePaid).toFixed(2)+'"':''} required></label><label>Shop (optional)<input class="field" data-bb15-shop="${key}" aria-label="Shop for ${esc(item.key||item.name)}" maxlength="60" placeholder="e.g. local shop" value="${current?esc(current.shop||''):''}"></label><button class="small-btn bb15-save-price" data-bb15-save="${key}" type="button">Save paid price</button>${current?`<button class="small-btn bb15-clear-price" data-bb15-delete="${key}" type="button">Remove saved price</button>`:''}</div></details>`;
 }
+function bb307PriceProvenance(quote){
+ if(!quote||quote.amount==null||quote.amount===0)return '';
+ if(quote.userOverride)return '<small class="bb79-local-tag">Your saved price'+(quote.userBrand?' · '+esc(quote.userBrand):'')+'</small>';
+ if(quote.priceKind==='public_online')return '<small class="bb79-local-tag"><a href="'+esc(quote.sourceUrl)+'" target="_blank" rel="noopener noreferrer" title="'+esc(quote.productName)+'">'+esc(quote.sourceRetailer)+' online · checked '+esc(quote.sourceDate)+'</a></small>';
+ return '<small class="bb79-rough-tag">Regional estimate</small>';
+}
 function bb15PriceLabel(quote){
  if(!quote||quote.amount==null)return '<span class="bb80-unpriced">No pack guide — review item</span>';
  if(quote.amount===0)return '<strong>'+BBPriceV19.money(0,bb307Market)+'</strong>';
  const mark=quote.rough?'~':'';
  const p=mark+BBPriceV19.money(quote.portionAmount,bb307Market);
  const pack=mark+BBPriceV19.money(quote.packAmount,bb307Market);
- const tag=quote.userOverride?'<span class="bb79-local-tag">My local shelf price</span>':quote.rough?'<span class="bb79-rough-tag">Rough est.</span>':'';
+ const tag=bb307PriceProvenance(quote);
  const key=quote.entry?` data-bb79-name="${esc(quote.entry.ingredient)}" data-bb79-unit="${esc(quote.entry.unit)}"`:'';
  return `<div class="bb80-price-lines"><div class="bb80-price-line"><span>Portion est.</span><strong>${p}</strong></div><div class="bb80-price-line"><span>Full pack est.</span><button type="button" class="bb79-price-tap"${key} aria-label="Edit local full-pack shelf price">${pack}</button></div>${tag}</div>`;
 }
 
 /* UI-NEXT v19: optional local shelf price editing. Never changes shopping region storage. */
 function bb79OpenShelfPriceEditor(name,unit){
- const pack=BBPriceV19.getPack(name,unit);if(!pack)return;
- const market=bb307Market;const quote=BBPriceV19.price({name,unit,quantity:1,market});
- const symbol=BBPriceV19.CURRENCY[market];const current=BBPriceV19.getPriceOverride(pack,market);
+ const pack=BBPriceV19.getPack(name,unit,bb307Market);if(!pack)return;
+ const market=bb307Market,retailer=bb307ActiveRetailer();
+ const symbol=BBPriceV19.CURRENCY[market];const current=BBPriceV19.getPriceOverride(pack,market,retailer);const usual=BBPriceV19.getProductOverride(pack,market,retailer);
  const existing=document.getElementById('bb79ShelfDialog');if(existing)existing.remove();
  const dialog=document.createElement('dialog');dialog.id='bb79ShelfDialog';dialog.className='bb79-shelf-dialog';
- const h=document.createElement('h2');h.textContent='Local shelf price';
+ const h=document.createElement('h2');h.textContent='My usual product';
  const details=document.createElement('p');details.textContent=pack.ingredient+' · '+pack.standard_pack_size+' '+pack.standard_pack_unit+' standard pack · '+market;
  const form=document.createElement('form');form.method='dialog';
  const label=document.createElement('label');label.textContent='Your local full-pack price ('+symbol+')';
  const input=document.createElement('input');input.type='number';input.min='0.01';input.max='10000';input.step='0.01';input.required=true;
- input.value=current===null?'':String(current);input.placeholder=String(quote?Math.round(pack.uk_pack_price*BBPriceV19.factor(market,name)*100)/100:'');
+ input.value=current===null?'':String(current);input.placeholder=String(pack.pack_price??'');
  label.append(input);
- const notice=document.createElement('p');notice.className='bb79-shelf-note';notice.textContent='Changes this ingredient’s planning estimate for '+market+' only. The separate “price paid” purchase history is unchanged.';
+ const brandLabel=document.createElement('label');brandLabel.textContent='My usual brand (optional)';
+ const brandInput=document.createElement('input');brandInput.type='text';brandInput.maxLength=80;brandInput.value=usual?.brand||'';brandInput.placeholder='e.g. supermarket own label';brandLabel.append(brandInput);
+ const notice=document.createElement('p');notice.className='bb79-shelf-note';notice.textContent='Remembered for this ingredient and pack in '+market+(bb307ActiveRetailer()?' at '+bb307ActiveRetailer():'')+'. Used for future estimates on this device. You can return to the guide price at any time.';
  const error=document.createElement('p');error.className='bb79-shelf-error';error.setAttribute('role','alert');
  const actions=document.createElement('div');actions.className='bb79-shelf-actions';
  const save=document.createElement('button');save.type='submit';save.textContent='Save shelf price';
  const cancel=document.createElement('button');cancel.type='button';cancel.textContent='Cancel';cancel.onclick=()=>dialog.close();
  const reset=document.createElement('button');reset.type='button';reset.textContent='Use guide price';
- reset.onclick=()=>{try{BBPriceV19.clearPriceOverride({name,unit,market});dialog.close();render();bb172StorefrontRefresh()}catch(e){error.textContent=e.message}};
- actions.append(save,reset,cancel);form.append(label,notice,error,actions);dialog.append(h,details,form);document.body.append(dialog);
- form.addEventListener('submit',event=>{event.preventDefault();try{BBPriceV19.setPriceOverride({name,unit,market,price:Number(input.value)});dialog.close();render();bb172StorefrontRefresh()}catch(e){error.textContent=e.message}});
+ reset.onclick=()=>{try{BBPriceV19.clearPriceOverride({name,unit,market,retailer});bb307ApplyRememberedMarket();dialog.close();render();bb172StorefrontRefresh()}catch(e){error.textContent=e.message}};
+ actions.append(save,reset,cancel);form.append(label,brandLabel,notice,error,actions);dialog.append(h,details,form);document.body.append(dialog);
+ form.addEventListener('submit',event=>{event.preventDefault();try{BBPriceV19.setPriceOverride({name,unit,market,retailer,price:Number(input.value),brand:brandInput.value});bb307ApplyRememberedMarket();dialog.close();render();bb172StorefrontRefresh()}catch(e){error.textContent=e.message}});
  dialog.addEventListener('close',()=>{dialog.remove()},{once:true});
  if(typeof dialog.showModal==='function')dialog.showModal();else dialog.setAttribute('open','');
  input.focus();
@@ -7402,7 +7414,7 @@ function renderShop(app){
  const checkedCount=toBuy.filter(item=>ticks[pantryId(item)]).length+essentials.filter(x=>ticks['ess:'+x.id]).length;
  const remainingCount=toBuy.length+essentials.length-checkedCount+summary.extraNeed.length;
  const lunchLineCount=toBuy.filter(item=>item.lunchQty>0||item.lunchAdded).length;
- const retailerHint='<span class="muted">Illustrative UK pack baselines × category-aware regional estimates. Portion cost and full-pack checkout cost are different; no verified live retailer prices.</span>';
+ const retailerHint='<span class="muted">Illustrative regional pack and baseline price estimates. Portion cost and full-pack checkout cost are different; no verified live retailer prices.</span>';
  const buyRows=toBuy.map((item,i)=>{
    const id=pantryId(item),stock=bb307Stock[id]||0,legacy=!!state.pantry?.[bb307NormaliseName(item.key)]&&!stock;
    const effective=legacy?item.required:stock;
@@ -7495,6 +7507,7 @@ function renderShop(app){
   try{bb15ForgetPaidPrice(item,essential);render();notify('Saved price removed ✓');}catch(e){notify(e.message);}
  });
  app.querySelector('#bb321Print').onclick=()=>window.print();
+ const receiptButton=document.createElement('button');receiptButton.type='button';receiptButton.className='btn';receiptButton.textContent='Scan receipt (optional)';receiptButton.addEventListener('click',()=>bb307OpenReceiptPrices());app.querySelector('.bb321-shop-actions')?.append(receiptButton);
  app.querySelector('#bb321ClearTicks').onclick=()=>notify('Your shopping progress is protected. Use Finish shop or Clear week to start a new shopping session.');
  app.querySelector('#bb307Reset').onclick=()=>{
   if(!window.confirm('Clear all measured pantry quantities and older owned ticks in this preview?'))return;
@@ -8782,7 +8795,7 @@ function bbBetaPackSpec(name,unit){
  if(bbBetaDryVolumeUnit(name,u))return null;
  if(!['g','ml'].includes(u))return null;
  const id=BB307Pantry.pantryId(name,u);
- const base=BBPriceV19.getPack(name,u);
+ const base=BBPriceV19.getPack(name,u,bb307Market);
  if(!base||base.standard_pack_unit!==u)return null;
  const custom=Number(bbBetaPackSizes()[id]);
  const size=custom>0&&custom<=1000000?custom:Number(base.standard_pack_size);
@@ -9406,6 +9419,19 @@ function bb83TransferBought(){
 /* An item bought again after explicitly unchecking is a new purchase. */
 /* BB-BETA-PURCHASE-CHOICE-20261025: checkbox changes cannot erase irreversible receipt history. */
 
+function bb307ReceiptPriceContext(){
+ const market=bb307Market,retailer=bb307ActiveRetailer();
+ const items=(bb321WeeklySummary().items||[]).map(item=>{
+  const key=item.key||item.name,quote=BBPriceV19.price({name:key,unit:item.unit,quantity:1,market,retailer});
+  return {key,name:key,unit:quote?.packUnit||item.unit,packQuantity:quote?.packQty||0};
+ }).filter(item=>item.key&&item.packQuantity>0);
+ return {items,market,retailer};
+}
+function bb307OpenReceiptPrices(context=bb307ReceiptPriceContext()){
+ if(!context.retailer){notify('Choose your supermarket in region settings before scanning a receipt.');return;}
+ if(!window.BBPriceScan?.openReceipt){notify('Receipt scanning is unavailable. You can still save prices in My usual product.');return;}
+ window.BBPriceScan.openReceipt({...context,onSaved:()=>{bb307ApplyRememberedMarket();render();bb172StorefrontRefresh();notify('Your regular prices are saved for future shopping estimates.');}});
+}
 function bb172ShopPrompt(kind,after){
  if(bb172ShopDialogOpen)return;
  const rows=bb172ShopUncheckedRows(),n=rows.length;
@@ -9433,7 +9459,13 @@ function bb172ShopPrompt(kind,after){
    notify(result.count+' leftover item'+(result.count===1?'':'s')+' saved to Kitchen.'+
     (result.skipped?' '+result.skipped+' item(s) need review in •••.':'')+' Check storage and use-by dates.');};
  }
- buttons.append(stay,leave);dialog.append(title,message,buttons);overlay.append(dialog);document.body.appendChild(overlay);stay.focus();
+ buttons.append(stay,leave);
+ if(kind==='finish'){
+  const scanReceipt=document.createElement('button');scanReceipt.type='button';scanReceipt.className='btn';scanReceipt.textContent='Finish & scan receipt (optional)';
+  scanReceipt.onclick=()=>{const context=bb307ReceiptPriceContext();leave.click();if(!overlay.isConnected)bb307OpenReceiptPrices(context);};
+  buttons.append(scanReceipt);
+ }
+ dialog.append(title,message,buttons);overlay.append(dialog);document.body.appendChild(overlay);stay.focus();
  // Escape keeps the list open rather than silently confirming unfinished shopping.
  overlay.addEventListener('keydown',e=>{if(e.key==='Escape'){e.preventDefault();close()}});
 }
@@ -9712,8 +9744,9 @@ function bb172StorefrontMakeRow(item){
  prices.append(portionBox,packBox);
  const actions=bb172StorefrontEl('div','bbcompact-actions');
  if(item.row?.querySelector('.bb79-rough-tag'))actions.append(bb172StorefrontEl('span','bb15-shop-rough','~ Rough est.'));
+ const provenance=item.row?.querySelector('.bb79-local-tag');if(provenance)actions.append(provenance.cloneNode(true));
  const editor=item.row?.querySelector('[data-bb79-name][data-bb79-unit]');
- if(editor){actions.append(bb172StorefrontButton('Edit shelf price','bb79-storefront-price-edit',()=>bb79OpenShelfPriceEditor(editor.dataset.bb79Name,editor.dataset.bb79Unit)))}
+ if(editor){actions.append(bb172StorefrontButton('My usual product','bb79-storefront-price-edit',()=>bb79OpenShelfPriceEditor(editor.dataset.bb79Name,editor.dataset.bb79Unit)))}
  const choose=bb172StorefrontEl('select','bb172-storefront-change-aisle');choose.setAttribute('aria-label','Change aisle for '+item.name);
  BB172_AISLES.forEach(([id,,label])=>{const option=document.createElement('option');option.value=id;option.textContent=label;if(id===item.aisle)option.selected=true;choose.append(option)});
  choose.addEventListener('change',e=>bb172StorefrontReroute(item,e.target.value));actions.append(choose);

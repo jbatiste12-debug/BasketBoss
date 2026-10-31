@@ -2,10 +2,10 @@
  * Caches app pages and assets only; no personal localStorage or sync data is transmitted.
  * Food photographs outside the preview are cached only after being viewed, where supported.
  */
-const CACHE = 'basketboss-premium-secure-shell-20261030-v14-beta-live';
+const CACHE = 'basketboss-premium-secure-shell-20261030-v14-beta-live-meal-pricing-20261031';
 const IMAGE_CACHE = 'basketboss-v17513-owner-qa-images-v1';
 const APP_BASE = new URL(self.registration.scope);
-const CORE = ['bb-funnel.css','bb-funnel.js','bb-consolidated-qa.css','bb-consolidated-qa.js','bb-culinary-enhancements.js','bb-culinary.css','index.html','tutorial.html','bb-real-app-tour.css','bb-real-app-tour.js','bb-cloudflare-qa.js','privacy.html','make-a-meal.html','make-a-meal.css','bb174-trial-ux.css','bb174-trial-ux.js','bb-premium-features.css','bb-premium-preview-config.js','bb-premium-features.js','bb-light-meal.css','make-a-meal.js','premium-upgrade.js','premium-upgrade.css','bb-intro-trial.js','bb-intro-trial.css','bb-us-market.js','bb-us-market.css','bb173-final-polish.css','bb-welcome-splash.js','bb-welcome-splash.css','bb-install.js','bb-install.css','shopping-inventory.js','bb-beta-launch-polish.js','bb-beta-launch-polish.css','bb-beta-six-fixes.css','bb-beta-six-fixes.js','bb-beta-five.css','bb-beta-five-nav.js','bb-purchase-choice.css',
+const CORE = ['bb-price-scan.js','bb-supermarkets.js','supermarket-price-observations.json','bb-funnel.css','bb-funnel.js','bb-consolidated-qa.css','bb-consolidated-qa.js','bb-culinary-enhancements.js','bb-culinary.css','index.html','tutorial.html','bb-real-app-tour.css','bb-real-app-tour.js','bb-cloudflare-qa.js','privacy.html','make-a-meal.html','make-a-meal.css','bb174-trial-ux.css','bb174-trial-ux.js','bb-premium-features.css','bb-premium-preview-config.js','bb-premium-features.js','bb-light-meal.css','make-a-meal.js','premium-upgrade.js','premium-upgrade.css','bb-intro-trial.js','bb-intro-trial.css','bb-us-market.js','bb-us-market.css','bb173-final-polish.css','bb-welcome-splash.js','bb-welcome-splash.css','bb-install.js','bb-install.css','shopping-inventory.js','bb-beta-launch-polish.js','bb-beta-launch-polish.css','bb-beta-six-fixes.css','bb-beta-six-fixes.js','bb-beta-five.css','bb-beta-five-nav.js','bb-purchase-choice.css',
               'icons/basketboss-crowned-v1766-180.png','icons/basketboss-crowned-v1766-192.png','icons/basketboss-crowned-v1766-512.png',
               'icons/basketboss-silver-192-v1755.png','icons/basketboss-silver-512-v1755.png','icons/basketboss-silver-180-v1755.png',
               'food-thumbs/tomato.webp','food-thumbs/lettuce.webp','food-thumbs/red-onion.webp',
@@ -52,7 +52,7 @@ self.addEventListener('fetch', event => {
   const releaseAssets = new Set([
     'bb-onboarding-v2.js','bb-onboarding-v2.css',
     'bb-household-sharing.js','bb-household-sharing.css',
-    'bb-serving-scale.js',
+    'bb-serving-scale.js','basketboss-pricing-v19.js','ingredient-pack-catalog.json','bb-us-market.js','bb-us-market.css','bb-supermarkets.js','bb-price-scan.js','supermarket-price-observations.json','bb-beta-landing.js',
     'bb-partner-signup-prompt.js','bb-partner-signup-prompt.css'
   ].map(path => new URL(path, APP_BASE).pathname));
   if (releaseAssets.has(target.pathname)) {

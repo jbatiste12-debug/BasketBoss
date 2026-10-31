@@ -42,7 +42,230 @@
     ],
     "aisle_audit": "BasketBoss strict six-aisle catalogue scan; never default food to Household",
     "last_logic_audit_date": "2026-10-24",
-    "price_audit_note": "UK retail example prices updated for selected common foods only; remaining entries are estimates or marked needs_review; regional factors illustrative."
+    "price_audit_note": "UK retail example prices updated for selected common foods only; remaining entries are estimates or marked needs_review; regional factors illustrative.",
+    "regional_markets": {
+      "UK": {
+        "currency": "GBP",
+        "symbol": "£",
+        "locale": "en-GB",
+        "category_multipliers": {
+          "Dairy": 1,
+          "Produce": 1,
+          "Meat & fish": 1,
+          "Bakery": 1,
+          "Cupboard": 1
+        },
+        "pack_overrides": {},
+        "source": "illustrative_regional_pack_guide_not_live_prices"
+      },
+      "Guernsey": {
+        "currency": "GBP",
+        "symbol": "£",
+        "locale": "en-GB",
+        "category_multipliers": {
+          "Dairy": 1.3,
+          "Produce": 1.24,
+          "Meat & fish": 1.2,
+          "Bakery": 1.25,
+          "Cupboard": 1.1
+        },
+        "pack_overrides": {},
+        "source": "illustrative_regional_pack_guide_not_live_prices"
+      },
+      "Jersey": {
+        "currency": "GBP",
+        "symbol": "£",
+        "locale": "en-GB",
+        "category_multipliers": {
+          "Dairy": 1.365,
+          "Produce": 1.302,
+          "Meat & fish": 1.26,
+          "Bakery": 1.3125,
+          "Cupboard": 1.155
+        },
+        "pack_overrides": {},
+        "source": "illustrative_regional_pack_guide_not_live_prices"
+      },
+      "US": {
+        "currency": "USD",
+        "symbol": "$",
+        "locale": "en-US",
+        "category_multipliers": {
+          "Dairy": 1.65,
+          "Produce": 1.8,
+          "Meat & fish": 1.7,
+          "Bakery": 1.8,
+          "Cupboard": 1.5
+        },
+        "pack_overrides": {
+          "chicken breast|g": {
+            "standard_pack_size": 453.59237,
+            "pack_price": 4.5,
+            "source": "illustrative_us_pack_and_usd_price_guide",
+            "needs_review": true
+          },
+          "lean beef mince|g": {
+            "standard_pack_size": 453.59237,
+            "pack_price": 5.5,
+            "source": "illustrative_us_pack_and_usd_price_guide",
+            "needs_review": true
+          },
+          "beef mince|g": {
+            "standard_pack_size": 453.59237,
+            "pack_price": 5.5,
+            "source": "illustrative_us_pack_and_usd_price_guide",
+            "needs_review": true
+          },
+          "potato|g": {
+            "standard_pack_size": 2267.96185,
+            "pack_price": 4.5,
+            "source": "illustrative_us_pack_and_usd_price_guide",
+            "needs_review": true
+          },
+          "potatoes|g": {
+            "standard_pack_size": 2267.96185,
+            "pack_price": 4.5,
+            "source": "illustrative_us_pack_and_usd_price_guide",
+            "needs_review": true
+          },
+          "carrot|g": {
+            "standard_pack_size": 907.18474,
+            "pack_price": 1.75,
+            "source": "illustrative_us_pack_and_usd_price_guide",
+            "needs_review": true
+          },
+          "carrots|g": {
+            "standard_pack_size": 907.18474,
+            "pack_price": 1.75,
+            "source": "illustrative_us_pack_and_usd_price_guide",
+            "needs_review": true
+          },
+          "pesto|g": {
+            "standard_pack_size": 184.2719003125,
+            "pack_price": 3.5,
+            "source": "illustrative_us_pack_and_usd_price_guide",
+            "needs_review": true
+          },
+          "basil pesto|g": {
+            "standard_pack_size": 184.2719003125,
+            "pack_price": 3.5,
+            "source": "illustrative_us_pack_and_usd_price_guide",
+            "needs_review": true
+          },
+          "cheddar|g": {
+            "standard_pack_size": 226.796185,
+            "pack_price": 2.5,
+            "source": "illustrative_us_pack_and_usd_price_guide",
+            "needs_review": true
+          },
+          "butter|g": {
+            "standard_pack_size": 453.59237,
+            "pack_price": 4,
+            "source": "illustrative_us_pack_and_usd_price_guide",
+            "needs_review": true
+          },
+          "cooking oil|ml": {
+            "standard_pack_size": 1419.529419,
+            "pack_price": 4,
+            "source": "illustrative_us_pack_and_usd_price_guide",
+            "needs_review": true
+          },
+          "olive oil|ml": {
+            "standard_pack_size": 500,
+            "pack_price": 6,
+            "source": "illustrative_us_pack_and_usd_price_guide",
+            "needs_review": true
+          },
+          "soy sauce|ml": {
+            "standard_pack_size": 295.735295625,
+            "pack_price": 2.5,
+            "source": "illustrative_us_pack_and_usd_price_guide",
+            "needs_review": true
+          },
+          "plain flour|g": {
+            "standard_pack_size": 2267.96185,
+            "pack_price": 3,
+            "source": "illustrative_us_pack_and_usd_price_guide",
+            "needs_review": true
+          },
+          "all-purpose flour|g": {
+            "standard_pack_size": 2267.96185,
+            "pack_price": 3,
+            "source": "illustrative_us_pack_and_usd_price_guide",
+            "needs_review": true
+          },
+          "salmon fillets|each": {
+            "standard_pack_size": 2,
+            "pack_price": 8.5,
+            "source": "illustrative_us_pack_and_usd_price_guide",
+            "needs_review": true
+          },
+          "sausages|each": {
+            "standard_pack_size": 8,
+            "pack_price": 4.5,
+            "source": "illustrative_us_pack_and_usd_price_guide",
+            "needs_review": true
+          },
+          "pork sausages|each": {
+            "standard_pack_size": 8,
+            "pack_price": 4.5,
+            "source": "illustrative_us_pack_and_usd_price_guide",
+            "needs_review": true
+          },
+          "egg|each": {
+            "standard_pack_size": 12,
+            "pack_price": 3.5,
+            "source": "illustrative_us_pack_and_usd_price_guide",
+            "needs_review": true
+          },
+          "eggs|each": {
+            "standard_pack_size": 12,
+            "pack_price": 3.5,
+            "source": "illustrative_us_pack_and_usd_price_guide",
+            "needs_review": true
+          },
+          "tortilla wraps|each": {
+            "standard_pack_size": 10,
+            "pack_price": 2.5,
+            "source": "illustrative_us_pack_and_usd_price_guide",
+            "needs_review": true
+          },
+          "tenderstem broccoli|g": {
+            "standard_pack_size": 226.796185,
+            "pack_price": 2.75,
+            "source": "illustrative_us_pack_and_usd_price_guide",
+            "needs_review": true
+          },
+          "cherry tomatoes|g": {
+            "standard_pack_size": 283.49523125,
+            "pack_price": 2.5,
+            "source": "illustrative_us_pack_and_usd_price_guide",
+            "needs_review": true
+          },
+          "onion|each": {
+            "standard_pack_size": 3,
+            "pack_price": 2,
+            "source": "illustrative_us_pack_and_usd_price_guide",
+            "needs_review": true
+          },
+          "red onion|each": {
+            "standard_pack_size": 3,
+            "pack_price": 2,
+            "source": "illustrative_us_pack_and_usd_price_guide",
+            "needs_review": true
+          },
+          "red onions|each": {
+            "standard_pack_size": 3,
+            "pack_price": 2,
+            "source": "illustrative_us_pack_and_usd_price_guide",
+            "needs_review": true
+          }
+        },
+        "source": "illustrative_regional_pack_guide_not_live_prices"
+      }
+    },
+    "meal_pricing": "Scale base ingredient quantity per serving, then ceil ordinary regional packs; pantry staples charged pro-rata. Full-pack checkout remains separate.",
+    "regional_price_note": "All regional baselines and US pack overrides are illustrative planning assumptions; no live retailer feed. Unspecified regional packs inherit the common catalog size and category-adjusted price."
   },
   "ingredients": {
     "chicken breast|g": {
@@ -724,8 +947,8 @@
       "standard_pack_unit": "g",
       "uk_pack_price": 2.4,
       "price_per_unit": 0.0012,
-      "source": "category_guide",
-      "needs_review": false,
+      "source": "illustrative_2kg_potato_bag",
+      "needs_review": true,
       "occurrences": 5,
       "aisle": "Produce",
       "aisle_needs_review": false,
@@ -776,12 +999,12 @@
     "potato|g": {
       "ingredient": "potato",
       "unit": "g",
-      "standard_pack_size": 1000,
+      "standard_pack_size": 2000,
       "standard_pack_unit": "g",
-      "uk_pack_price": 1.6,
-      "price_per_unit": 0.0016,
-      "source": "category_guide",
-      "needs_review": false,
+      "uk_pack_price": 2.4,
+      "price_per_unit": 0.0012,
+      "source": "illustrative_2kg_potato_bag",
+      "needs_review": true,
       "occurrences": 29,
       "aisle": "Produce",
       "aisle_needs_review": false,
@@ -804,11 +1027,11 @@
     "red onions|each": {
       "ingredient": "red onions",
       "unit": "each",
-      "standard_pack_size": 1,
+      "standard_pack_size": 6,
       "standard_pack_unit": "each",
-      "uk_pack_price": 1,
-      "price_per_unit": 1,
-      "source": "heuristic_review",
+      "uk_pack_price": 2,
+      "price_per_unit": 0.3333333333333333,
+      "source": "illustrative_6_onion_bag",
       "needs_review": true,
       "occurrences": 1,
       "aisle": "Produce",
@@ -1577,9 +1800,9 @@
       "standard_pack_size": 6,
       "standard_pack_unit": "each",
       "uk_pack_price": 2,
-      "price_per_unit": 0.333333333333,
-      "source": "category_guide",
-      "needs_review": false,
+      "price_per_unit": 0.3333333333333333,
+      "source": "illustrative_6_onion_bag",
+      "needs_review": true,
       "occurrences": 10,
       "aisle": "Produce",
       "aisle_needs_review": false,
@@ -5886,11 +6109,11 @@
     "basil pesto|g": {
       "ingredient": "basil pesto",
       "unit": "g",
-      "standard_pack_size": 30,
+      "standard_pack_size": 190,
       "standard_pack_unit": "g",
-      "uk_pack_price": 1,
-      "price_per_unit": 0.033333333333,
-      "source": "category_guide",
+      "uk_pack_price": 1.8,
+      "price_per_unit": 0.009473684210526316,
+      "source": "illustrative_pesto_jar",
       "needs_review": true,
       "occurrences": 3,
       "aisle": "Cupboard / Pantry",

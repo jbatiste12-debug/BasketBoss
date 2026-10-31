@@ -1,0 +1,116 @@
+[
+  {
+    "ingredient": "potato",
+    "ingredient_aliases": [
+      "potatoes"
+    ],
+    "retailer": "Tesco",
+    "product_name": "Tesco All Rounder Potatoes 2Kg",
+    "pack_quantity": 2000,
+    "unit": "g",
+    "pack_price": 1.32,
+    "source_url": "https://www.tesco.com/shop/en-GB/products/313165959",
+    "note": "Separate Clubcard offer excluded.",
+    "market": "UK",
+    "currency": "GBP",
+    "retrieved_at": "2026-10-31",
+    "observed_date": null,
+    "price_type": "standard",
+    "max_age_days": 14,
+    "source_type": "public_online_product_page"
+  },
+  {
+    "ingredient": "salmon fillets",
+    "retailer": "Aldi",
+    "product_name": "The Fishmonger Boneless Salmon Fillets 2 Pack",
+    "pack_quantity": 2,
+    "unit": "each",
+    "net_weight_g": 240,
+    "pack_price": 3.59,
+    "source_url": "https://www.aldi.co.uk/product/the-fishmonger-boneless-salmon-fillets-2-pack-000000000000381995",
+    "note": "Two approximately 120g fillets; larger fillets require another product match.",
+    "market": "UK",
+    "currency": "GBP",
+    "retrieved_at": "2026-10-31",
+    "observed_date": null,
+    "price_type": "standard",
+    "max_age_days": 14,
+    "source_type": "public_online_product_page"
+  },
+  {
+    "ingredient": "lean beef mince",
+    "retailer": "Aldi",
+    "product_name": "Ashfields British Lean Beef Steak Mince 5% Fat",
+    "pack_quantity": 500,
+    "unit": "g",
+    "pack_price": 5.05,
+    "source_url": "https://www.aldi.co.uk/product/ashfields-british-lean-beef-steak-mince-5-fat-000000000000575278",
+    "market": "UK",
+    "currency": "GBP",
+    "retrieved_at": "2026-10-31",
+    "observed_date": null,
+    "price_type": "standard",
+    "max_age_days": 14,
+    "source_type": "public_online_product_page"
+  },
+  {
+    "ingredient": "sausages",
+    "ingredient_aliases": [
+      "pork sausages"
+    ],
+    "retailer": "Aldi",
+    "product_name": "Specially Selected Pork Sausages 6 Pack",
+    "pack_quantity": 6,
+    "unit": "each",
+    "net_weight_g": 400,
+    "pack_price": 2.29,
+    "source_url": "https://www.aldi.co.uk/product/specially-selected-pork-sausages-6-pack-000000000000386876",
+    "market": "UK",
+    "currency": "GBP",
+    "retrieved_at": "2026-10-31",
+    "observed_date": null,
+    "price_type": "standard",
+    "max_age_days": 14,
+    "source_type": "public_online_product_page"
+  },
+  {
+    "ingredient": "pesto",
+    "ingredient_aliases": [
+      "basil pesto"
+    ],
+    "retailer": "Waitrose & Partners",
+    "product_name": "Waitrose Green Basil Pesto",
+    "pack_quantity": 190,
+    "unit": "g",
+    "pack_price": 2.2,
+    "source_url": "https://www.waitrose.com/ecom/products/waitrose-green-basil-pesto/017390-8408-8409",
+    "note": "UK website price; not a Jersey or Guernsey price.",
+    "market": "UK",
+    "currency": "GBP",
+    "retrieved_at": "2026-10-31",
+    "observed_date": null,
+    "price_type": "standard",
+    "max_age_days": 14,
+    "source_type": "public_online_product_page"
+  },
+  {
+    "ingredient": "cooking oil",
+    "ingredient_aliases": [
+      "vegetable oil"
+    ],
+    "retailer": "Aldi",
+    "product_name": "Solesta Vegetable Oil",
+    "pack_quantity": 1000,
+    "unit": "ml",
+    "pack_price": 1.45,
+    "source_url": "https://www.aldi.co.uk/product/solesta-vegetable-oil-000000000000335872",
+    "note": "Generic vegetable oil, not olive or sesame oil.",
+    "market": "UK",
+    "currency": "GBP",
+    "retrieved_at": "2026-10-31",
+    "observed_date": null,
+    "price_type": "standard",
+    "max_age_days": 14,
+    "source_type": "public_online_product_page"
+  }
+]
