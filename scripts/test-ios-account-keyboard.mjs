@@ -26,9 +26,10 @@ function readTestSummary(result){
  return summary;
 }
 try{
- execute('ruby',['scripts/prepare-ios-account-keyboard-tests.rb'],30000);
+ stage='prepare_ui_scheme';execute('ruby',['scripts/prepare-ios-account-keyboard-tests.rb'],120000);
+ stage='list_runtimes';
  const runtimes=JSON.parse(run('simctl','list','runtimes','--json')).runtimes;
- const devices=JSON.parse(run('simctl','list','devices','available','--json')).devices;
+ stage='list_devices';const devices=JSON.parse(run('simctl','list','devices','available','--json')).devices;
  const plan=keyboardRuntimePlan({runtimes,devices,githubActions});
  const types=JSON.parse(run('simctl','list','devicetypes','--json')).devicetypes.filter(item=>item.name.startsWith('iPhone'));
  const choices=[types.find(item=>item.name==='iPhone SE (3rd generation)'),types.find(item=>item.name==='iPhone 16'),...types.slice().reverse()].filter(Boolean);

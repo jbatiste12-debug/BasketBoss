@@ -168,13 +168,19 @@ private enum BasketBossAccountKeyboardSetup {
             const form=document.getElementById('cloud-auth'),shell=document.querySelector('.shell');
             if(!host?.contains(form)||!host.getClientRects().length)return;
             const fixed=getComputedStyle(document.body).position==='fixed';
-            if(fixed&&baselineScroll===null)baselineScroll=window.scrollY;
             const viewport=window.visualViewport,box=host.getBoundingClientRect();
-            const top=Math.max(0,Number(viewport?.offsetTop)||0),left=Math.max(0,Number(viewport?.offsetLeft)||0);
+            // Compare document coordinates: WKWebView's DOM rect and scrollY
+            // include keyboard panning differently from Chromium. Visual-only
+            // panning must not be confused with moving the locked page.
+            const scrollY=Number(window.scrollY)||0,scrollX=Number(window.scrollX)||0;
+            const top=Number.isFinite(viewport?.pageTop)?viewport.pageTop:scrollY;
+            const left=Number.isFinite(viewport?.pageLeft)?viewport.pageLeft:scrollX;
+            const layoutY=top-(Number(viewport?.offsetTop)||0);
+            if(fixed&&baselineScroll===null)baselineScroll=layoutY;
             const height=Math.min(Number(viewport?.height)||innerHeight,innerHeight),width=Math.min(Number(viewport?.width)||innerWidth,innerWidth);
-            const flags={bodyFixed:fixed,shellHidden:!!shell&&getComputedStyle(shell).visibility==='hidden',shellInert:!!shell?.closest('[inert]'),viewportCovered:Math.abs(box.top-top)<3&&Math.abs(box.left-left)<3&&Math.abs(box.bottom-top-height)<3&&Math.abs(box.right-left-width)<3,rootLocked:baselineScroll!==null&&Math.abs(window.scrollY-baselineScroll)<2};
+            const flags={bodyFixed:fixed,shellHidden:!!shell&&getComputedStyle(shell).visibility==='hidden',shellInert:!!shell?.closest('[inert]'),viewportCovered:Math.abs(box.top+scrollY-top)<3&&Math.abs(box.left+scrollX-left)<3&&Math.abs(box.bottom+scrollY-top-height)<3&&Math.abs(box.right+scrollX-left-width)<3,rootLocked:baselineScroll!==null&&Math.abs(layoutY-baselineScroll)<2};
             let probe=document.getElementById('bbAccountKeyboardProbe');
-            if(!probe){probe=document.createElement('p');probe.id='bbAccountKeyboardProbe';probe.style.cssText='font-size:8px;line-height:1.1;margin:2px 0;color:#385e45';form.appendChild(probe);}
+            if(!probe){probe=document.createElement('p');probe.id='bbAccountKeyboardProbe';probe.style.cssText='position:absolute;bottom:1px;left:2px;right:2px;height:12px;overflow:hidden;white-space:nowrap;font-size:6px;line-height:12px;z-index:2147483647;margin:0;color:#385e45;pointer-events:none';host.appendChild(probe);}
             // Numeric layout metadata only: never include input values, user
             // text, account/session data, screenshots or recording bytes.
             const number=value=>Number.isFinite(Number(value))?Math.round(Number(value)*10)/10:null;
