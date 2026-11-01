@@ -1,4 +1,3 @@
-import {confirmAppleFounder} from '../../../bb-server-lib/bb-apple-founder.js';
 import {json} from '../../../bb-server-lib/bb-billing.js';
 import {appleErrorResponse,appleAuthenticatedRequest,appleRequestJSON} from '../../../bb-server-lib/bb-apple-http.js';
 import {AppleBillingError,appleConfigForSignedData,assertAppleAccountReady,appleAccountToken,getAppleServices,verifyAppleTransaction,fetchAppleCurrentSubscription,persistAppleSubscription,appleEntitlementFromRow} from '../../../bb-server-lib/bb-apple-subscriptions.js';
@@ -16,7 +15,6 @@ export async function onRequestPost({request,env}){
   // Re-query Apple for CURRENT status; a correctly signed historic receipt by
   // itself can never resurrect an expired or refunded subscription.
   const state=await fetchAppleCurrentSubscription(service,transaction.originalTransactionId,accountToken);
-  if(state.plan==='founder')await confirmAppleFounder(env,user.id,accountToken,state.originalTransactionId,config.environment);
   const saved=await persistAppleSubscription(env,user.id,state);
   const entitlement=appleEntitlementFromRow(config,saved);
   return json({ok:true,acknowledged:true,provider:'apple',premiumAccess:entitlement?.premiumAccess===true,

@@ -1,7 +1,7 @@
 // Native StoreKit bridge controller. Only the server can grant Premium access.
 import {nativeMembershipURL} from './routing.mjs';
-const MONTHLY='uk.co.basketboss.premium.monthly',ANNUAL='uk.co.basketboss.premium.annual',FOUNDER='uk.co.basketboss.premium.founder.monthly';
-const PRODUCTS=Object.freeze([MONTHLY,ANNUAL,FOUNDER]);
+const MONTHLY='uk.co.basketboss.premium.monthly',ANNUAL='uk.co.basketboss.premium.annual';
+const PRODUCTS=Object.freeze([MONTHLY,ANNUAL]);
 const UUID=/^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
 const accountChanged=()=>Object.assign(Error('Your account changed. Sign in to the account used for this purchase, then restore it.'),{code:'account_changed'});
 export function installNativeApplePurchases({plugin,apiURL,readSession,fetch:perform=globalThis.fetch,window:win=globalThis.window,isDeleting=()=>false}){
@@ -13,7 +13,7 @@ export function installNativeApplePurchases({plugin,apiURL,readSession,fetch:per
  const listeners=new Set(),requests=new Set(),queued=new Map();
  let requestedProductId=null;
  try{const requested=new URL(win?.location?.href).searchParams.get('appleIntent');if(PRODUCTS.includes(requested))requestedProductId=requested;}catch{}
- let state={available:false,authenticated:false,premiumAccess:false,provider:null,subscription:null,products:[],founderAvailable:false,requestedProductId,busy:false,phase:'loading',message:'Checking Apple subscriptions…'};
+ let state={available:false,authenticated:false,premiumAccess:false,provider:null,subscription:null,products:[],requestedProductId,busy:false,phase:'loading',message:'Checking Apple subscriptions…'};
  function emit(change){if(destroyed)return;state={...state,...change,busy};for(const listener of listeners)listener({...state,products:[...state.products]});}
  function pin(){const s=readSession();return s?.access_token&&s?.user?.id&&Number(s.expires_at)*1000>Date.now()+5000?{token:s.access_token,user:s.user.id,generation}:null;}
  function current(p){const now=pin();return !destroyed&&!isDeleting()&&p&&now&&now.generation===p.generation&&now.token===p.token&&now.user===p.user;}
@@ -33,12 +33,12 @@ export function installNativeApplePurchases({plugin,apiURL,readSession,fetch:per
  }
  async function loadProducts(){
   const config=await request('/api/apple/config',{pin:pin(),authenticated:false});
-  if(config.available!==true||!Array.isArray(config.productIds)||[MONTHLY,ANNUAL].some(id=>!config.productIds.includes(id)))return {available:false,products:[],founderAvailable:false};
-  const founderAvailable=config.founderAvailable===true&&config.productIds.includes(FOUNDER);
-  const allowed=founderAvailable?[FOUNDER,MONTHLY,ANNUAL]:[MONTHLY,ANNUAL];
-  const result=await plugin.getProducts({productIds:allowed});
-  const products=allowed.map(id=>(result.products||[]).find(product=>product.id===id)).filter(product=>product&&typeof product.displayPrice==='string'&&product.displayPrice.length>0&&product.displayPrice.length<80&&Number(product.subscriptionPeriod?.value)===1&&product.subscriptionPeriod?.unit===(product.id===ANNUAL?'year':'month'));
-  return {available:[MONTHLY,ANNUAL].every(id=>products.some(product=>product.id===id)),products,founderAvailable:founderAvailable&&products.some(product=>product.id===FOUNDER)};
+  if(config.available!==true||!Array.isArray(config.productIds)||PRODUCTS.some(id=>!config.productIds.includes(id)))return {available:false,products:[]};
+  // The web-only Founding Member offer cannot become an Apple plan through
+  // stale server configuration or an unexpected StoreKit catalogue entry.
+  const result=await plugin.getProducts({productIds:[...PRODUCTS]});
+  const products=PRODUCTS.map(id=>(result.products||[]).find(product=>product.id===id)).filter(product=>product&&typeof product.displayPrice==='string'&&product.displayPrice.length>0&&product.displayPrice.length<80&&Number(product.subscriptionPeriod?.value)===1&&product.subscriptionPeriod?.unit===(product.id===ANNUAL?'year':'month'));
+  return {available:PRODUCTS.every(id=>products.some(product=>product.id===id)),products};
  }
  async function refresh(){
   if(destroyed)return {...state};
@@ -46,7 +46,7 @@ export function installNativeApplePurchases({plugin,apiURL,readSession,fetch:per
   if(isDeleting()){emit({available:false,authenticated:!!actor,premiumAccess:false,phase:'paused',message:'Account deletion is in progress. Purchases are paused.'});return {...state};}
   emit({authenticated:!!actor});
   try{
-   const [catalog,membership]=await Promise.all([loadProducts().catch(()=>({available:false,products:[],founderAvailable:false})),actor?request('/api/subscription/status',{pin:actor}):Promise.resolve(null)]);
+   const [catalog,membership]=await Promise.all([loadProducts().catch(()=>({available:false,products:[]})),actor?request('/api/subscription/status',{pin:actor}):Promise.resolve(null)]);
    if(destroyed||revision!==viewRevision||epoch!==generation||isDeleting()||(actor&&!current(actor)))return {...state};
    if(actor&&membership?.authenticated!==true)throw Error('Sign in again to check your membership.');
    const premium=membership?.premiumAccess===true;
@@ -77,14 +77,14 @@ export function installNativeApplePurchases({plugin,apiURL,readSession,fetch:per
   if(isDeleting())return {ok:false,reason:'account_deleting'};
   busy=true;emit({phase:'busy',message:'Please wait…'});
   try{return await operation(actor);}
-  catch(error){if(current(actor)){if(['founder_sold_out','founder_unavailable','founder_not_available'].includes(error.code))emit({founderAvailable:false,products:state.products.filter(product=>product.id!==FOUNDER)});emit({phase:'error',message:error.message||'Apple purchases are temporarily unavailable. Try again.'});}return {ok:false,reason:error.code||'purchase_error',error:error.message};}
+  catch(error){if(current(actor))emit({phase:'error',message:error.message||'Apple purchases are temporarily unavailable. Try again.'});return {ok:false,reason:error.code||'purchase_error',error:error.message};}
   finally{busy=false;if(!destroyed){emit({});if(queued.size)void drain();}}
  }
  async function subscribe(productId){return run(async actor=>{
   if(!PRODUCTS.includes(productId))throw Error('This subscription is not available.');
   await refresh();requireCurrent(actor);
   if(state.premiumAccess){emit({phase:'ready',message:'Your existing Premium membership is available. You do not need another subscription.'});return {ok:false,reason:'already_premium'};}
-  if(!state.available||!state.products.some(product=>product.id===productId)||(productId===FOUNDER&&!state.founderAvailable))throw Error('This Apple subscription is not available right now. Please refresh your membership and try again.');
+  if(!state.available||!state.products.some(product=>product.id===productId))throw Error('This Apple subscription is not available right now. Please refresh your membership and try again.');
   // The server checks current web/household/Apple access immediately before sale.
   const context=await request('/api/apple/purchase-context',{pin:actor,body:{productId}});requireCurrent(actor);
   if(context.canPurchase!==true||!UUID.test(context.appAccountToken||'')||!context.productIds?.includes(productId))throw Error('Your account is not ready for an Apple purchase. Refresh your membership and try again.');

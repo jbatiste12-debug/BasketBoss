@@ -28,4 +28,3 @@ html.bb-native-ios:not(.bb-cook-ready) body .bb17513-meal-back{display:inline-fl
 .bb-native-ios .bb-native-apple-actions{display:flex;flex-wrap:wrap;gap:4px}
 .bb-native-ios .bb-native-apple-disclosure{font-size:12px!important;color:#435b47;line-height:1.65!important}
 .bb-native-ios .bb-native-apple-plans[hidden],.bb-native-ios .bb-native-membership [hidden]{display:none!important}
-.bb-native-ios .bb-native-apple-plan .bb-native-apple-founder{font-size:11px;line-height:1.4;font-weight:750;color:#fff1be}

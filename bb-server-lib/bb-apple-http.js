@@ -1,7 +1,7 @@
 import {json,authenticatedUser,requireSameOrigin} from './bb-billing.js';
 import {AppleBillingError,getVerifiedAppleConfig,assertAppleAccountReady} from './bb-apple-subscriptions.js';
 export function appleErrorResponse(error){
- if(error instanceof AppleBillingError||error?.name==='AppleFounderError')return json({ok:false,code:error.code,error:error.message},error.status);
+ if(error instanceof AppleBillingError)return json({ok:false,code:error.code,error:error.message},error.status);
  return json({ok:false,code:'apple_unavailable',error:'Apple subscriptions are temporarily unavailable. Please try again.'},503);
 }
 export async function appleAuthenticatedRequest(request,env){

@@ -1,7 +1,6 @@
 /* Server-only deletion journal. Hashes suppress late billing events; identifiers
  * exist only while a deletion needs retry. No passwords/tokens are persisted. */
 import {digestHex,paddleApi} from './bb-billing.js';
-import {prepareAppleFounderDeletion} from './bb-apple-founder.js';
 export const digestDeletionActor = id => digestHex('basketboss:account-deletion:actor:'+id);
 export const digestDeletionRef = (kind,id) => digestHex('basketboss:account-deletion:'+kind+':'+id);
 export const digestDeletionRetry = token => digestHex('basketboss:account-deletion:retry:'+token);
@@ -91,13 +90,7 @@ export async function eraseAccountD1(env,userId,billing){
  for(const claim of billing.claims)statements.push(db.prepare('INSERT OR IGNORE INTO bb_account_deletion_refs(ref_hash) VALUES(?)').bind(await digestDeletionRef('claim',claim.claim_id)));
  for(const id of billing.subscriptions)statements.push(db.prepare('INSERT OR IGNORE INTO bb_account_deletion_refs(ref_hash) VALUES(?)').bind(await digestDeletionRef('subscription',id)));
  for(const slot of billing.confirmedSlots||[])statements.push(db.prepare("UPDATE bb_founder_slots SET state='retired' WHERE slot_no=? AND user_id=?").bind(slot,userId));
- // Apple can complete an Ask-to-Buy request after account deletion. Retire
- // those holds before the older Paddle cleanup can classify them as unpaid.
- statements.push(...await prepareAppleFounderDeletion(env,userId));
  const tableExists=async name=>!!await db.prepare("SELECT 1 AS found FROM sqlite_master WHERE type='table' AND name=?").bind(name).first();
- if(await tableExists('bb_apple_founder_sandbox_slots'))statements.push(db.prepare(`UPDATE bb_apple_founder_sandbox_slots
-  SET state='retired',user_id=NULL,reservation_token_hash=NULL,paddle_subscription_id=NULL,
-   reservation_expires_at_ms=NULL,updated_at_ms=? WHERE user_id=?`).bind(Date.now(),userId));
  const appleSubscriptions=await tableExists('bb_apple_subscriptions');
  if(appleSubscriptions&&await tableExists('bb_apple_notifications'))statements.push(db.prepare(`DELETE FROM bb_apple_notifications
   WHERE EXISTS(SELECT 1 FROM bb_apple_subscriptions s WHERE s.user_id=?

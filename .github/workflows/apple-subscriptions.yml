@@ -102,7 +102,7 @@ jobs:
             echo 'Release must not link the local StoreKit test framework.'
             exit 1
           fi
-      - name: Exercise real StoreKit bridge with local test products
+      - name: Exercise real StoreKit bridge in hosted XCTest with local products
         env:
           BB_IAP_KEEP_SIMULATOR_BOOTED: 'true'
         run: node scripts/test-ios-iap-smoke.mjs

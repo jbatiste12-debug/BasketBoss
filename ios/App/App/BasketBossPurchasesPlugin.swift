@@ -21,8 +21,7 @@ public final class BasketBossPurchasesPlugin: CAPPlugin, CAPBridgedPlugin {
         CAPPluginMethod(name: "manageSubscriptions", returnType: CAPPluginReturnPromise)
     ]
     private static let productIDs: Set<String> = [
-        "uk.co.basketboss.premium.monthly", "uk.co.basketboss.premium.annual",
-        "uk.co.basketboss.premium.founder.monthly"
+        "uk.co.basketboss.premium.monthly", "uk.co.basketboss.premium.annual"
     ]
     // Mutable state is touched only by MainActor tasks. No entitlement is stored
     // in UserDefaults and no bearer token is ever accepted by this native bridge.
@@ -33,6 +32,13 @@ public final class BasketBossPurchasesPlugin: CAPPlugin, CAPBridgedPlugin {
     private var updatesTask: Task<Void, Never>?
     private var startupTask: Task<Void, Never>?
     private var purchaseIntentsTask: Task<Void, Never>?
+
+    #if DEBUG && targetEnvironment(simulator)
+    // Internal to the hosted XCTest bundle; absent from Release and the JS API.
+    @MainActor func runHostedStoreKitVerification() async {
+        await runLocalStoreKitSmoke()
+    }
+    #endif
 
     override public func load() {
         if #available(iOS 16.4, *) {
@@ -343,10 +349,9 @@ private extension BasketBossPurchasesPlugin {
             report["stage"] = stage; writeSmokeReport(report)
             let catalog = try await smokeCall("getProducts") { self.getProducts($0) }
             let received = catalog["products"] as? [JSObject] ?? []
-            guard received.count == 3,
+            guard received.count == 2,
                   received.contains(where: { ($0["id"] as? String) == "uk.co.basketboss.premium.monthly" && ($0["price"] as? String) == "4.99" }),
-                  received.contains(where: { ($0["id"] as? String) == "uk.co.basketboss.premium.annual" && ($0["price"] as? String) == "39.99" }),
-                  received.contains(where: { ($0["id"] as? String) == "uk.co.basketboss.premium.founder.monthly" && ($0["price"] as? String) == "1.99" }) else {
+                  received.contains(where: { ($0["id"] as? String) == "uk.co.basketboss.premium.annual" && ($0["price"] as? String) == "39.99" }) else {
                 throw LocalSmokeFailure(code: "catalog_invalid")
             }
             report["productsLoaded"] = true

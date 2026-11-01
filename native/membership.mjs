@@ -62,13 +62,12 @@ export function installNativeMembership({apiURL,readSession,fetch:perform=global
    if(key===productKey)return;productKey=key;
    plans.replaceChildren();
    for(const product of state.products){
-    const annual=product.id.endsWith('.annual'),founder=product.id.endsWith('.founder.monthly');
+    const annual=product.id.endsWith('.annual');
     const button=doc.createElement('button');button.type='button';button.className='bb-native-apple-plan';button.disabled=state.busy||state.premiumAccess;
     button.setAttribute('data-apple-product',product.id);
-    const label=doc.createElement('strong');label.textContent=founder?'Founding Member':annual?'Annual Premium':'Monthly Premium';
+    const label=doc.createElement('strong');label.textContent=annual?'Annual Premium':'Monthly Premium';
     const price=doc.createElement('span');price.textContent=product.displayPrice+(annual?' per year':' per month');
     const action=doc.createElement('small');action.textContent=state.authenticated?'Subscribe with Apple':'Sign in to subscribe';
-    if(founder){const badge=doc.createElement('span');badge.className='bb-native-apple-founder';badge.textContent='Limited to 25 confirmed members';button.append(badge);}
     button.append(label,price,action);
     button.addEventListener('click',()=>{if(!token()){signIn();return;}void purchases.subscribe(product.id);});
     plans.append(button);

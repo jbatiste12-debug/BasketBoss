@@ -183,12 +183,6 @@ export async function onRequestPost({request,env}) {
     // A fresh verified Apple entitlement prevents a second Paddle charge.
     const apple=await readAppleEntitlement(env,user.id);
     if(apple?.premiumAccess)return json({error:'You already have Premium through Apple. Manage your subscription in your Apple account.',provider:'apple'},409);
-    const appleFounderTable=await db.prepare("SELECT 1 AS found FROM sqlite_master WHERE type='table' AND name=?").bind('bb_apple_founder_claims').first();
-    if(appleFounderTable){
-      const appleFounder=await db.prepare('SELECT state FROM bb_apple_founder_claims WHERE user_id=? AND environment=? LIMIT 1').bind(user.id,'Production').first();
-      if(appleFounder?.state==='reserved'||(plan==='founder'&&appleFounder?.state==='confirmed'))
-        return json({error:'Your Apple Founding Member place is already reserved or linked. Restore or manage the Apple purchase before starting another checkout.',provider:'apple'},409);
-    }
     const existing=await db.prepare(`SELECT claim_id,user_id,plan,price_id,slot_no,claim_state,transaction_id,created_at_ms
       FROM bb_billing_claims WHERE user_id=? AND claim_state IN ('pending','checkout_created') LIMIT 1`).bind(user.id).first();
     const now=Date.now();let claimId=crypto.randomUUID(),slot=null,recovered=null;

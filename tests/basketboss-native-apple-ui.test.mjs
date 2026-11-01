@@ -1,7 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import {installNativeApplePurchases} from '../native/apple-purchases.mjs';
-const MONTH='uk.co.basketboss.premium.monthly',YEAR='uk.co.basketboss.premium.annual',FOUNDER='uk.co.basketboss.premium.founder.monthly';
+const MONTH='uk.co.basketboss.premium.monthly',YEAR='uk.co.basketboss.premium.annual',DELETED_FOUNDER='uk.co.basketboss.premium.founder.monthly';
 const TOKEN='c6376990-2814-47bc-b66f-4d5b4ca09538';
 const transaction={id:'123456',originalId:'123000',productId:MONTH,appAccountToken:TOKEN,signedTransactionInfo:'server-verifies-this-signed-JWS'};
 const deferred=()=>{let resolve;const promise=new Promise(r=>{resolve=r;});return {promise,resolve};};
@@ -11,7 +11,7 @@ function fixture(options={}){
  const calls=[],order=[],nativeListeners=new Map();
  const win=new EventTarget();win.Event=Event;
  const plugin={
-  async getProducts(){if(options.productsError)throw Error('StoreKit prices are unavailable.');if(options.products)return {products:options.products};return {products:[{id:MONTH,displayPrice:'€5,49',subscriptionPeriod:{unit:'month',value:1}},{id:YEAR,displayPrice:'€43,99',subscriptionPeriod:{unit:'year',value:1}},{id:FOUNDER,displayPrice:'€2,19',subscriptionPeriod:{unit:'month',value:1}}]};},
+  async getProducts(args){calls.push(['products',args]);if(options.productsError)throw Error('StoreKit prices are unavailable.');if(options.products)return {products:options.products};return {products:[{id:MONTH,displayPrice:'€5,49',subscriptionPeriod:{unit:'month',value:1}},{id:YEAR,displayPrice:'€43,99',subscriptionPeriod:{unit:'year',value:1}}]};},
   async purchase(args){calls.push(['purchase',args]);return options.purchase?options.purchase(args):{status:'purchased',transaction};},
   async restorePurchases(){calls.push(['restore']);return options.restore?options.restore():{transactions:[transaction]};},
   async getPendingTransactions(){return {transactions:[]};},
@@ -23,9 +23,9 @@ function fixture(options={}){
  const perform=async(address,args)=>{
   const route=new URL(address).pathname;calls.push(['http',route,args]);
   if(options.fetch){const custom=await options.fetch(route,args,response);if(custom)return custom;}
-  if(route==='/api/apple/config')return response({available:true,productIds:options.founder?[MONTH,YEAR,FOUNDER]:[MONTH,YEAR],founderAvailable:options.founder===true});
+  if(route==='/api/apple/config')return response(options.config||{available:true,productIds:[MONTH,YEAR]});
   if(route==='/api/subscription/status')return response(options.membership||{authenticated:true,premiumAccess:premium,provider:premium?'apple':null});
-  if(route==='/api/apple/purchase-context')return response({canPurchase:true,appAccountToken:TOKEN,productIds:options.founder?[MONTH,YEAR,FOUNDER]:[MONTH,YEAR]});
+  if(route==='/api/apple/purchase-context')return response({canPurchase:true,appAccountToken:TOKEN,productIds:[MONTH,YEAR]});
   if(route==='/api/apple/verify'){order.push('verified');premium=options.verifiedAccess!==false;return response({ok:true,acknowledged:options.ack!==false,premiumAccess:premium});}
   throw Error('Unexpected endpoint '+route);
  };
@@ -143,23 +143,26 @@ test('signed-out user and unexpected product ID cannot start purchases',async()=
 }));
 
 
-test('Founding Member is offered only when server eligibility says available, with native localised price',async()=>withFixture({founder:true},async h=>{
- assert.equal(h.controller.state.founderAvailable,true);
- assert.equal(h.controller.state.products.find(p=>p.id===FOUNDER).displayPrice,'€2,19');
- await h.controller.subscribe(FOUNDER);
- assert.deepEqual(JSON.parse(h.calls.find(c=>c[1]==='/api/apple/purchase-context')[2].body),{productId:FOUNDER});
- assert.deepEqual(purchases(h)[0][1],{productId:FOUNDER,appAccountToken:TOKEN});
+test('the Apple catalogue requests only the monthly and annual launch products',async()=>withFixture({},async h=>{
+ assert.deepEqual(h.controller.state.products.map(product=>product.id),[MONTH,YEAR]);
+ assert.deepEqual(h.calls.filter(call=>call[0]==='products').map(call=>call[1].productIds),[[MONTH,YEAR]]);
 }));
 
-test('sold-out Founder is hidden even if StoreKit returns that product',async()=>withFixture({},async h=>{
- assert.equal(h.controller.state.founderAvailable,false);assert.equal(h.controller.state.products.some(p=>p.id===FOUNDER),false);
- assert.equal((await h.controller.subscribe(FOUNDER)).ok,false);assert.equal(purchases(h).length,0);
+for(const invalid of [DELETED_FOUNDER,'uk.co.basketboss.premium.unexpected.monthly'])test('an advertised unsupported product cannot be offered or purchased: '+invalid,async()=>withFixture({
+ config:{available:true,productIds:[MONTH,YEAR,invalid],founderAvailable:true},
+ products:[{id:MONTH,displayPrice:'£4.99',subscriptionPeriod:{unit:'month',value:1}},{id:YEAR,displayPrice:'£39.99',subscriptionPeriod:{unit:'year',value:1}},{id:invalid,displayPrice:'£1.99',subscriptionPeriod:{unit:'month',value:1}}]
+},async h=>{
+ assert.deepEqual(h.controller.state.products.map(product=>product.id),[MONTH,YEAR]);
+ assert.deepEqual(h.calls.filter(call=>call[0]==='products').map(call=>call[1].productIds),[[MONTH,YEAR]]);
+ assert.equal((await h.controller.subscribe(invalid)).ok,false);
+ assert.equal(purchases(h).length,0);assert.equal(h.calls.filter(call=>call[1]==='/api/apple/purchase-context').length,0);
 }));
 
-test('last Founder place lost during selection blocks Apple sheet and removes that offer',async()=>withFixture({founder:true,fetch:(route,args,response)=>route==='/api/apple/purchase-context'?response({error:'All Founding Member places are taken.',code:'founder_sold_out'},409):null},async h=>{
- const result=await h.controller.subscribe(FOUNDER);assert.equal(result.reason,'founder_sold_out');
- assert.equal(purchases(h).length,0);assert.equal(h.controller.state.founderAvailable,false);assert.equal(h.controller.state.products.some(p=>p.id===FOUNDER),false);
- assert.equal(h.controller.state.products.some(p=>p.id===MONTH),true);
+test('an existing web Founding Member retains verified Premium without another Apple subscription',async()=>withFixture({membership:{authenticated:true,premiumAccess:true,provider:'paddle',subscription:{provider:'paddle',plan:'founder',status:'active'}}},async h=>{
+ assert.equal(h.controller.state.premiumAccess,true);assert.equal(h.controller.state.provider,'paddle');
+ assert.deepEqual(h.controller.state.subscription,{provider:'paddle',plan:'founder',status:'active'});
+ for(const productId of [MONTH,YEAR])assert.equal((await h.controller.subscribe(productId)).reason,'already_premium');
+ assert.equal(purchases(h).length,0);assert.equal(h.calls.filter(call=>call[1]==='/api/apple/purchase-context').length,0);
 }));
 
 
@@ -189,11 +192,12 @@ test('unsupported external intents and intents during deletion cannot navigate o
  assert.equal(destinations.length,0);assert.equal(purchases(h).length,0);assert.equal(verifications(h).length,0);
 }));
 
-test('an intent on the account page stays there and still cannot bypass sold-out Founder eligibility',async()=>withFixture({},async h=>{
- const destinations=[];h.win.location={href:'capacitor://localhost/pricing-sandbox.html',assign:target=>destinations.push(target)};
- h.receiveIntent(FOUNDER);await tick();
- assert.equal(destinations.length,0);assert.equal(purchases(h).length,0);assert.equal(h.controller.state.founderAvailable,false);
- assert.equal((await h.controller.subscribe(FOUNDER)).ok,false);assert.equal(purchases(h).length,0);
+test('a deleted Founder purchase intent cannot navigate or prepare an Apple payment',async()=>withFixture({},async h=>{
+ const destinations=[];h.win.location={href:'capacitor://localhost/index.html',assign:target=>destinations.push(target)};
+ h.receiveIntent(DELETED_FOUNDER);await tick();
+ assert.equal(h.controller.state.requestedProductId,null);assert.equal(destinations.length,0);
+ assert.equal((await h.controller.subscribe(DELETED_FOUNDER)).ok,false);assert.equal(purchases(h).length,0);
+ assert.equal(h.calls.filter(call=>call[1]==='/api/apple/purchase-context').length,0);
 }));
 
 test('destroying the purchase controller removes both retained native listeners',async()=>{

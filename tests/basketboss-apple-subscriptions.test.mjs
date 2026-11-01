@@ -9,6 +9,8 @@ import {APPLE_ROOT_G3_SHA256,appleRootCertificates} from '../bb-server-lib/bb-ap
 import {ensureDeletionSchema,digestDeletionActor} from '../bb-server-lib/bb-account-deletion.js';
 import {APPLE_BUNDLE_ID,AppleBillingError,getVerifiedAppleConfig,appleConfigForUser,appleConfigForSignedData,appleAccountToken,assertAppleAccountReady,verifyAppleTransaction,evaluateAppleSubscription,fetchAppleCurrentSubscription,persistAppleSubscription,appleEntitlementFromRow,readAppleEntitlement,hasExistingWebPremium,assertNoPendingWebCheckout,appleAppIdentifierMatches} from '../bb-server-lib/bb-apple-subscriptions.js';
 import {appleRequestJSON} from '../bb-server-lib/bb-apple-http.js';
+import {onRequestGet as appleConfigEndpoint} from '../functions/api/apple/config.js';
+import {onRequestPost as applePurchaseContextEndpoint} from '../functions/api/apple/purchase-context.js';
 const USER='11111111-1111-4111-8111-111111111111',OTHER='22222222-2222-4222-8222-222222222222',TOKEN='33333333-3333-4333-8333-333333333333',OTHER_TOKEN='44444444-4444-4444-8444-444444444444';
 const keys=()=>generateKeyPairSync('ec',{namedCurve:'prime256v1',privateKeyEncoding:{format:'pem',type:'pkcs8'},publicKeyEncoding:{format:'pem',type:'spki'}});
 const apiKey=keys().privateKey;
@@ -57,6 +59,23 @@ test('official verifier accepts a valid test chain only with explicit test root;
 test('valid signatures cannot override bundle, environment, product, ownership, token or group restrictions',async()=>{
  const c=getVerifiedAppleConfig(env(database())),service={config:c,verifier:new SignedDataVerifier([pki.root.raw],false,Environment.PRODUCTION,c.bundleId,c.appId)};
  for(const extra of [{bundleId:'evil.app'},{environment:'Sandbox'},{productId:'uk.co.basketboss.premium.fake'},{subscriptionGroupIdentifier:'9999'},{appAccountToken:'not-a-uuid'},{inAppOwnershipType:'FAMILY_SHARED'},{quantity:2},{signedDate:Date.now()+600000}])await assert.rejects(()=>verifyAppleTransaction(service,jws(transaction(c,extra),pki)),error=>error.status===400);
+});
+test('only monthly and annual are advertised; a deleted Founder SKU cannot open a purchase or grant access',async()=>{
+ const {e,c}=await prepared(),deletedProduct='uk.co.basketboss.premium.founder.monthly';
+ // Obsolete variables cannot bring the deleted Apple product back into scope.
+ e.APPLE_FOUNDER_ENABLED='true';e.APPLE_FOUNDER_PRODUCT_ID=deletedProduct;
+ const configResponse=await appleConfigEndpoint({env:e,request:new Request('https://basketboss.co.uk/api/apple/config')});
+ assert.deepEqual((await configResponse.json()).productIds,[c.products.monthly,c.products.annual]);
+ const service={config:c,verifier:new SignedDataVerifier([pki.root.raw],false,Environment.PRODUCTION,c.bundleId,c.appId)};
+ await assert.rejects(()=>verifyAppleTransaction(service,jws(transaction(c,{productId:deletedProduct}),pki)),rejectCode('apple_transaction_mismatch',400));
+ const originalFetch=globalThis.fetch;
+ try{
+  Object.assign(e,{SUPABASE_URL:'https://test.supabase.co',SUPABASE_PUBLISHABLE_KEY:'synthetic-public-key'});
+  globalThis.fetch=async input=>{assert.equal(input,'https://test.supabase.co/auth/v1/user');return Response.json({id:USER,email:'test@example.invalid',email_confirmed_at:new Date().toISOString()});};
+  const response=await applePurchaseContextEndpoint({env:e,request:new Request('https://basketboss.co.uk/api/apple/purchase-context',{method:'POST',headers:{Origin:'capacitor://localhost',Authorization:'Bearer synthetic','Content-Type':'application/json'},body:JSON.stringify({productId:deletedProduct})})});
+  assert.equal(response.status,400);assert.equal((await response.json()).code,'apple_product_unavailable');
+ }finally{globalThis.fetch=originalFetch;}
+ assert.equal(e.BILLING_DB.sql.prepare('SELECT count(*) AS n FROM bb_apple_subscriptions').get().n,0);
 });
 test('cancel at period end retains paid access; expired, refunded and billing-retry subscriptions do not',()=>{
  const c=getVerifiedAppleConfig(env(database())),tx=transaction(c),r=renewal(c,tx,{autoRenewStatus:0});
@@ -119,6 +138,10 @@ test('existing verified web subscribers block purchase even when an unrelated ne
  const {e}=await prepared(),price='pri_'+'p'.repeat(26);Object.assign(e,{BB_BILLING_ENABLED:'true',BB_BILLING_MODE:'live',PADDLE_LIVE_STANDARD_PRICE_ID:price});
  e.BILLING_DB.sql.prepare('INSERT INTO bb_paid_entitlements VALUES(?,?,?,?,?)').run(USER,'active',price,'standard',1);
  e.BILLING_DB.sql.prepare('INSERT INTO bb_paid_entitlements VALUES(?,?,?,?,?)').run(USER,'canceled',price,'standard',2);
+ assert.equal(await hasExistingWebPremium(e,{id:USER,email:'test@example.invalid'}),'paddle');
+ // The £1.99 web Founder membership remains valid after the Apple SKU is deleted.
+ e.PADDLE_LIVE_FOUNDER_PRICE_ID='pri_'+'f'.repeat(26);e.BILLING_DB.sql.exec('DELETE FROM bb_paid_entitlements');
+ e.BILLING_DB.sql.prepare('INSERT INTO bb_paid_entitlements VALUES(?,?,?,?,?)').run(USER,'active',e.PADDLE_LIVE_FOUNDER_PRICE_ID,'founder',3);
  assert.equal(await hasExistingWebPremium(e,{id:USER,email:'test@example.invalid'}),'paddle');
 });
 test('bounded JSON rejects forged oversize signed payloads before any verification',async()=>{

@@ -18,7 +18,6 @@ function database(){
   CREATE TABLE bb_paid_entitlements(paddle_subscription_id TEXT PRIMARY KEY,user_id TEXT,status TEXT,plan TEXT,price_id TEXT,updated_at_ms INTEGER);
   CREATE TABLE bb_billing_claims(claim_id TEXT PRIMARY KEY,user_id TEXT,plan TEXT,price_id TEXT,slot_no INTEGER,claim_state TEXT DEFAULT 'pending',transaction_id TEXT,created_at_ms INTEGER);`);
  sql.exec(read('sql/basketboss_apple_subscriptions_20261101.sql'));
- sql.exec(read('sql/basketboss_apple_founder_20261101.sql'));
  for(let n=1;n<=25;n++)sql.prepare("INSERT INTO bb_founder_slots(slot_no,state) VALUES(?,'available')").run(n);
  function statement(query,args=[]){return {query,bind:(...bound)=>statement(query,bound),first:async()=>sql.prepare(query).get(...args)||null,
   all:async()=>({results:sql.prepare(query).all(...args)}),run:async()=>{const info=sql.prepare(query).run(...args);return {success:true,meta:{changes:Number(info.changes)}};}};}
@@ -27,16 +26,10 @@ function database(){
 }
 function env(db){return {BILLING_DB:db,BB_BILLING_ENABLED:'true',BB_BILLING_MODE:'sandbox',PADDLE_SANDBOX_API_KEY:'synthetic',PADDLE_SANDBOX_STANDARD_PRICE_ID:PRICE,PADDLE_SANDBOX_FOUNDER_PRICE_ID:PRICE,
  SUPABASE_URL:'https://synthetic.supabase.co',SUPABASE_PUBLISHABLE_KEY:'synthetic',APPLE_BILLING_ENABLED:'true',APPLE_ENVIRONMENT:'Production',APPLE_APP_ID:'1234567890',APPLE_ISSUER_ID:'55555555-5555-4555-8555-555555555555',APPLE_KEY_ID:'ABCDEFGHIJ',APPLE_PRIVATE_KEY:applePrivateKey,APPLE_SUBSCRIPTION_GROUP_ID:'12345678'};}
-function appleRow(db,user=USER,original='20000000000000',environment='Production',status='active'){
+function appleRow(db,user=USER,original='20000000000000',environment='Production',status='active',plan='monthly'){
  const now=Date.now();
  db.sql.prepare(`INSERT INTO bb_apple_subscriptions(environment,original_transaction_id,user_id,app_account_token,latest_transaction_id,product_id,plan,status,expires_at_ms,cancel_at_period_end,apple_signed_at_ms,last_verified_at_ms)
-  VALUES(?,?,?,?,?,?,?,?,?,?,?,?)`).run(environment,original,user,TOKEN,'20000000000001','uk.co.basketboss.premium.monthly','monthly',status,now+3600000,0,now,now);
-}
-function founderClaim(db,user,slot,environment='Production',state='reserved'){
- const claim='claim-'+environment+'-'+slot,table=environment==='Production'?'bb_founder_slots':'bb_apple_founder_sandbox_slots';
- db.sql.prepare(`UPDATE ${table} SET state=?,user_id=?,reservation_token_hash='private-hold' WHERE slot_no=?`).run(state==='confirmed'?'active':'reserved',user,slot);
- db.sql.prepare('INSERT INTO bb_apple_founder_claims VALUES(?,?,?,?,?,?,?,?,?)').run(claim,environment,user,user===USER?TOKEN:'44444444-4444-4444-8444-444444444444',slot,'private-hold',state,Date.now(),Date.now());
- if(state==='confirmed')db.sql.prepare('INSERT INTO bb_apple_founder_transactions VALUES(?,?,?,?,?)').run(environment,'3000000000000'+slot,user,claim,Date.now());
+  VALUES(?,?,?,?,?,?,?,?,?,?,?,?)`).run(environment,original,user,TOKEN,'20000000000001','uk.co.basketboss.premium.'+plan,plan,status,now+3600000,0,now,now);
 }
 const response=(body,status=200)=>new Response(JSON.stringify(body),{status,headers:{'Content-Type':'application/json'}});
 const request=(plan='standard')=>new Request('https://basketboss.co.uk/api/subscription/checkout',{method:'POST',headers:{Origin:'https://basketboss.co.uk',Authorization:'Bearer synthetic','Content-Type':'application/json'},body:JSON.stringify({plan})});
@@ -51,31 +44,31 @@ function mockCheckoutFetch(t){
  return remote;
 }
 
-test('account erasure retires Apple Founder holds before generic cleanup and erases only owned Apple records',async()=>{
+test('account erasure removes only owned Apple monthly and annual records across both environments',async()=>{
  const db=database(),e=env(db);try{
-  await ensureDeletionSchema(e);founderClaim(db,USER,1);founderClaim(db,OTHER,2,'Production','confirmed');founderClaim(db,USER,4,'Sandbox','confirmed');
-  appleRow(db);appleRow(db,OTHER,'20000000000002');
+  await ensureDeletionSchema(e);
+  appleRow(db);appleRow(db,USER,'20000000000003','Production','active','annual');appleRow(db,USER,'20000000000004','Sandbox');appleRow(db,OTHER,'20000000000002');
+  db.sql.prepare("UPDATE bb_founder_slots SET state='active',user_id=?,paddle_subscription_id=? WHERE slot_no=2").run(OTHER,'sub_'+'o'.repeat(26));
   db.sql.prepare('INSERT INTO bb_apple_account_tokens VALUES(?,?,?)').run(USER,TOKEN,Date.now());
-  for(const original of ['20000000000000','20000000000002'])db.sql.prepare('INSERT INTO bb_apple_notifications VALUES(?,?,?,?,?)').run('Production','notification-'+original,original,Date.now(),Date.now());
+  for(const [environment,original] of [['Production','20000000000000'],['Production','20000000000003'],['Sandbox','20000000000004'],['Production','20000000000002']])db.sql.prepare('INSERT INTO bb_apple_notifications VALUES(?,?,?,?,?)').run(environment,'notification-'+original,original,Date.now(),Date.now());
   await eraseAccountD1(e,USER,{claims:[],subscriptions:[],confirmedSlots:[]});
-  assert.deepEqual({...db.sql.prepare('SELECT state,user_id,reservation_token_hash FROM bb_founder_slots WHERE slot_no=1').get()},{state:'retired',user_id:null,reservation_token_hash:null});
-  assert.deepEqual({...db.sql.prepare('SELECT state,user_id,reservation_token_hash FROM bb_apple_founder_sandbox_slots WHERE slot_no=4').get()},{state:'retired',user_id:null,reservation_token_hash:null});
-  for(const table of ['bb_apple_account_tokens','bb_apple_subscriptions','bb_apple_founder_claims','bb_apple_founder_transactions'])assert.equal(db.sql.prepare('SELECT count(*) AS n FROM '+table+' WHERE user_id=?').get(USER).n,0);
+  for(const table of ['bb_apple_account_tokens','bb_apple_subscriptions'])assert.equal(db.sql.prepare('SELECT count(*) AS n FROM '+table+' WHERE user_id=?').get(USER).n,0);
   assert.equal(db.sql.prepare('SELECT count(*) AS n FROM bb_apple_subscriptions WHERE user_id=?').get(OTHER).n,1);
-  assert.equal(db.sql.prepare('SELECT count(*) AS n FROM bb_apple_founder_claims WHERE user_id=?').get(OTHER).n,1);
   assert.equal(db.sql.prepare('SELECT original_transaction_id FROM bb_apple_notifications').get().original_transaction_id,'20000000000002');
   assert.ok(db.executed.findIndex(q=>q.startsWith('DELETE FROM bb_apple_notifications'))<db.executed.findIndex(q=>q.startsWith('DELETE FROM bb_apple_subscriptions')));
-  assert.equal(db.sql.prepare("SELECT count(*) AS n FROM bb_founder_slots WHERE state='available'").get().n,23);
+  assert.equal(db.sql.prepare("SELECT count(*) AS n FROM bb_founder_slots WHERE state='available'").get().n,24);
+  assert.deepEqual({...db.sql.prepare('SELECT state,user_id,paddle_subscription_id FROM bb_founder_slots WHERE slot_no=2').get()},{state:'active',user_id:OTHER,paddle_subscription_id:'sub_'+'o'.repeat(26)});
  }finally{db.sql.close();}
 });
-test('an Apple cleanup failure rolls back slot retirement and all account erasure',async()=>{
+test('an Apple cleanup failure rolls back all account erasure and preserves web Founder records',async()=>{
  const db=database(),e=env(db);try{
-  await ensureDeletionSchema(e);founderClaim(db,USER,1);appleRow(db);
+  await ensureDeletionSchema(e);appleRow(db);
+  db.sql.prepare("UPDATE bb_founder_slots SET state='active',user_id=?,paddle_subscription_id=? WHERE slot_no=1").run(USER,'sub_'+'s'.repeat(26));
   db.sql.prepare('INSERT INTO bb_apple_account_tokens VALUES(?,?,?)').run(USER,TOKEN,Date.now());
   db.sql.exec("CREATE TRIGGER refuse_token_delete BEFORE DELETE ON bb_apple_account_tokens BEGIN SELECT RAISE(ABORT,'synthetic failure'); END");
   await assert.rejects(()=>eraseAccountD1(e,USER,{claims:[],subscriptions:[],confirmedSlots:[]}),/synthetic failure/);
-  assert.equal(db.sql.prepare('SELECT state FROM bb_founder_slots WHERE slot_no=1').get().state,'reserved');
-  for(const table of ['bb_apple_account_tokens','bb_apple_subscriptions','bb_apple_founder_claims'])assert.equal(db.sql.prepare('SELECT count(*) AS n FROM '+table+' WHERE user_id=?').get(USER).n,1);
+  assert.deepEqual({...db.sql.prepare('SELECT state,user_id,paddle_subscription_id FROM bb_founder_slots WHERE slot_no=1').get()},{state:'active',user_id:USER,paddle_subscription_id:'sub_'+'s'.repeat(26)});
+  for(const table of ['bb_apple_account_tokens','bb_apple_subscriptions'])assert.equal(db.sql.prepare('SELECT count(*) AS n FROM '+table+' WHERE user_id=?').get(USER).n,1);
  }finally{db.sql.close();}
 });
 test('verified Apple Premium prevents a second web payment before any Paddle mutation',async t=>{
@@ -83,19 +76,6 @@ test('verified Apple Premium prevents a second web payment before any Paddle mut
   appleRow(db);const result=await checkout({request:request(),env:env(db)});
   assert.equal(result.status,409);assert.equal((await result.json()).provider,'apple');assert.equal(remote.length,0);
   assert.equal(db.sql.prepare('SELECT count(*) AS n FROM bb_billing_claims').get().n,0);
- }finally{db.sql.close();}
-});
-test('a pending Apple Founder hold cannot allocate another web place or start standard checkout',async t=>{
- const db=database(),remote=mockCheckoutFetch(t);try{
-  founderClaim(db,USER,1);
-  for(const plan of ['standard','founder']){const result=await checkout({request:request(plan),env:env(db)});assert.equal(result.status,409);assert.equal((await result.json()).provider,'apple');}
-  assert.equal(remote.length,0);assert.equal(db.sql.prepare("SELECT count(*) AS n FROM bb_founder_slots WHERE state='reserved'").get().n,1);
- }finally{db.sql.close();}
-});
-test('a confirmed Apple Founder place is not sold to the same account again on the web after expiry',async t=>{
- const db=database(),remote=mockCheckoutFetch(t);try{
-  founderClaim(db,USER,1,'Production','confirmed');const result=await checkout({request:request('founder'),env:env(db)});
-  assert.equal(result.status,409);assert.equal(remote.length,0);assert.equal(db.sql.prepare("SELECT count(*) AS n FROM bb_founder_slots WHERE state='available'").get().n,24);
  }finally{db.sql.close();}
 });
 test('expired Apple access permits a normal web checkout while an Apple verification outage fails closed',async t=>{
@@ -137,7 +117,7 @@ test('Apple subscription management opens Apple and never calls the Paddle porta
  await h.get('bbMembershipManage').click();assert.deepEqual(h.destinations,['https://apps.apple.com/account/subscriptions']);assert.deepEqual(h.calls,['/api/subscription/status']);
 });
 test('expired Apple subscriptions retain management and accepted household members do not see an upgrade prompt',async()=>{
- const apple=await membershipFixture({authenticated:true,provider:'apple',premiumAccess:false,subscription:{plan:'founder',status:'expired',environment:'Production'}});
+ const apple=await membershipFixture({authenticated:true,provider:'apple',premiumAccess:false,subscription:{plan:'monthly',status:'expired',environment:'Production'}});
  assert.equal(apple.get('bbMembershipManage').disabled,false);assert.match(apple.get('bbMembershipDetails').textContent,/access is currently unavailable/);
  const shared=await membershipFixture({authenticated:true,premiumAccess:true,householdRole:'partner',subscription:null});
  assert.match(shared.get('bbMembershipState').textContent,/shared by your household/);assert.equal(shared.get('bbMembershipUpgrade').hidden,true);assert.equal(shared.get('bbMembershipManage').disabled,true);

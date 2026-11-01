@@ -101,27 +101,6 @@
           "referenceName": "BasketBoss Premium Annual",
           "subscriptionGroupID": "BB810010",
           "type": "RecurringSubscription"
-        },
-        {
-          "adHocOffers": [],
-          "codeOffers": [],
-          "displayPrice": "1.99",
-          "familyShareable": false,
-          "groupNumber": 1,
-          "internalID": "BB810013",
-          "introductoryOffer": null,
-          "localizations": [
-            {
-              "description": "BasketBoss Premium monthly Founder subscription.",
-              "displayName": "Premium Founder Monthly",
-              "locale": "en_GB"
-            }
-          ],
-          "productID": "uk.co.basketboss.premium.founder.monthly",
-          "recurringSubscriptionPeriod": "P1M",
-          "referenceName": "BasketBoss Premium Founder Monthly",
-          "subscriptionGroupID": "BB810010",
-          "type": "RecurringSubscription"
         }
       ]
     }

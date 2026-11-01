@@ -1,7 +1,6 @@
 import {json} from '../../../bb-server-lib/bb-billing.js';
 import {appleErrorResponse,appleAuthenticatedRequest,appleRequestJSON} from '../../../bb-server-lib/bb-apple-http.js';
 import {AppleBillingError,appleConfigForUser,appleAccountToken,hasExistingWebPremium,assertNoPendingWebCheckout,readAppleEntitlement} from '../../../bb-server-lib/bb-apple-subscriptions.js';
-import {reserveAppleFounder} from '../../../bb-server-lib/bb-apple-founder.js';
 export async function onRequestPost({request,env}){
  try{
   const authenticated=await appleAuthenticatedRequest(request,env),{user}=authenticated;
@@ -15,9 +14,7 @@ export async function onRequestPost({request,env}){
   const apple=await readAppleEntitlement(env,user.id);
   if(apple?.premiumAccess)return json({ok:false,canPurchase:false,reason:'already_premium',provider:'apple',error:'Your Apple subscription is already active.'},409);
   const appAccountToken=await appleAccountToken(env,user.id,{create:true});
-  let founder;
-  if(body.productId===config.products.founder)founder=await reserveAppleFounder(env,user.id,appAccountToken,config.environment);
   const allowedProductIds=[body.productId];
-  return json({canPurchase:true,appAccountToken,productIds:allowedProductIds,allowedProductIds,environment:config.environment,...(founder?{founder:{slot:founder.slot,claimId:founder.claimId}}:{})});
+  return json({canPurchase:true,appAccountToken,productIds:allowedProductIds,allowedProductIds,environment:config.environment});
  }catch(error){return appleErrorResponse(error);}
 }

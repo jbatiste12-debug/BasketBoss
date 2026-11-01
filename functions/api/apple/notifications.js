@@ -1,7 +1,6 @@
 /* Apple App Store Server Notifications V2. Signature authentication replaces
  * browser authentication here. An unlinked notification can NEVER claim a user.
  */
-import {confirmAppleFounder} from '../../../bb-server-lib/bb-apple-founder.js';
 import {json} from '../../../bb-server-lib/bb-billing.js';
 import {isAccountDeleting,digestDeletionActor} from '../../../bb-server-lib/bb-account-deletion.js';
 import {appleErrorResponse,appleRequestJSON} from '../../../bb-server-lib/bb-apple-http.js';
@@ -33,7 +32,6 @@ export async function onRequestPost({request,env}){
   if(!appleUserAllowed(config,existing.user_id)||await isAccountDeleting(env,existing.user_id))return json({ok:true,ignored:true});
   if(existing.app_account_token!==transaction.appAccountToken.toLowerCase())throw new AppleBillingError('apple_account_mismatch','Apple account linkage does not match.',409);
   const state=await fetchAppleCurrentSubscription(service,transaction.originalTransactionId,existing.app_account_token);
-  if(state.plan==='founder')await confirmAppleFounder(env,existing.user_id,existing.app_account_token,state.originalTransactionId,config.environment);
   await persistAppleSubscription(env,existing.user_id,state);
   // Record AFTER successful reconciliation. An interrupted attempt is retryable;
   // concurrent duplicates merely perform the same monotonic, ownership-safe write.

@@ -107,10 +107,10 @@
         if(!sub){status.textContent='BasketBoss Free — no active paid subscription';upgrade.hidden=false;return;}
         if(raw.provider==='apple'||sub.provider==='apple'){
           const names={active:'Active',expired:'Expired',billing_retry:'Payment needs attention',grace_period:'Payment needs attention',revoked:'Refunded or revoked'};
-          if(!Object.prototype.hasOwnProperty.call(names,sub.status)||!['monthly','annual','founder'].includes(sub.plan)){
+          if(!Object.prototype.hasOwnProperty.call(names,sub.status)||!['monthly','annual'].includes(sub.plan)){
             status.textContent='Membership status temporarily unavailable.';return;
           }
-          const name=sub.plan==='founder'?'Founding Member':sub.plan==='annual'?'Premium Annual':'Premium Monthly';
+          const name=sub.plan==='annual'?'Premium Annual':'Premium Monthly';
           status.textContent=`${name} — ${names[sub.status]} (Apple${sub.environment==='Sandbox'?' sandbox test':''})`;
           const renewal=dateText(sub.currentPeriodEndsAt),parts=[];
           if(renewal)parts.push(`${sub.cancelAtPeriodEnd===true?'Access ends':'Current billing period ends'} ${renewal}.`);

@@ -13,7 +13,7 @@ CREATE TABLE IF NOT EXISTS bb_apple_subscriptions (
  app_account_token TEXT NOT NULL,
  latest_transaction_id TEXT NOT NULL,
  product_id TEXT NOT NULL,
- plan TEXT NOT NULL CHECK(plan IN ('monthly','annual','founder')),
+ plan TEXT NOT NULL CHECK(plan IN ('monthly','annual')),
  status TEXT NOT NULL CHECK(status IN ('active','expired','billing_retry','grace_period','revoked')),
  expires_at_ms INTEGER NOT NULL,
  grace_expires_at_ms INTEGER,

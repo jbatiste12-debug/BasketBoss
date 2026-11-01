@@ -8,7 +8,7 @@ import {appleRootCertificates} from './bb-apple-roots.js';
 import {expectedPrice,entitlementForStatus} from './bb-billing.js';
 import {ensureDeletionSchema,isAccountDeleting,digestDeletionActor} from './bb-account-deletion.js';
 export const APPLE_BUNDLE_ID='uk.co.basketboss.app';
-export const APPLE_DEFAULT_PRODUCTS=Object.freeze({monthly:'uk.co.basketboss.premium.monthly',annual:'uk.co.basketboss.premium.annual',founder:'uk.co.basketboss.premium.founder.monthly'});
+export const APPLE_DEFAULT_PRODUCTS=Object.freeze({monthly:'uk.co.basketboss.premium.monthly',annual:'uk.co.basketboss.premium.annual'});
 const UUID=/^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
 const TX=/^[0-9]{1,40}$/;
 const REFRESH_MS=60000;
@@ -37,12 +37,12 @@ export function getVerifiedAppleConfig(env){
  const environment=env.APPLE_ENVIRONMENT;
  const appId=Number(env.APPLE_APP_ID),issuerId=env.APPLE_ISSUER_ID,keyId=env.APPLE_KEY_ID;
  const privateKey=typeof env.APPLE_PRIVATE_KEY==='string'?env.APPLE_PRIVATE_KEY.replace(/\\n/g,'\n'):'';
- const products={monthly:env.APPLE_MONTHLY_PRODUCT_ID||APPLE_DEFAULT_PRODUCTS.monthly,annual:env.APPLE_ANNUAL_PRODUCT_ID||APPLE_DEFAULT_PRODUCTS.annual,founder:env.APPLE_FOUNDER_PRODUCT_ID||APPLE_DEFAULT_PRODUCTS.founder};
+ const products={monthly:env.APPLE_MONTHLY_PRODUCT_ID||APPLE_DEFAULT_PRODUCTS.monthly,annual:env.APPLE_ANNUAL_PRODUCT_ID||APPLE_DEFAULT_PRODUCTS.annual};
  const groupId=String(env.APPLE_SUBSCRIPTION_GROUP_ID||'');
  if(![Environment.PRODUCTION,Environment.SANDBOX].includes(environment)||!Number.isSafeInteger(appId)||appId<=0||
     !UUID.test(issuerId||'')||!/[A-Z0-9]{10}/.test(keyId||'')||keyId.length!==10||
     (env.APPLE_BUNDLE_ID&&env.APPLE_BUNDLE_ID!==APPLE_BUNDLE_ID)||!/^\d{1,30}$/.test(groupId)||
-    !Object.values(products).every(id=>typeof id==='string'&&id.startsWith('uk.co.basketboss.premium.')&&/^[A-Za-z0-9._-]{1,200}$/.test(id))||new Set(Object.values(products)).size!==3||!env.BILLING_DB?.prepare)
+    !Object.values(products).every(id=>typeof id==='string'&&id.startsWith('uk.co.basketboss.premium.')&&/^[A-Za-z0-9._-]{1,200}$/.test(id))||new Set(Object.values(products)).size!==2||!env.BILLING_DB?.prepare)
   fail('apple_not_configured','Apple subscriptions are not configured.');
  try{const key=createPrivateKey(privateKey);if(key.asymmetricKeyType!=='ec'||key.asymmetricKeyDetails?.namedCurve!=='prime256v1')throw Error('invalid_key');}
  catch{fail('apple_not_configured','Apple subscriptions are not configured.');}
@@ -190,7 +190,7 @@ export async function persistAppleSubscription(env,userId,state){
  return saved;
 }
 export function appleEntitlementFromRow(config,row,now=Date.now()){
- if(!row||row.environment!==config.environment||!Object.values(config.products).includes(row.product_id)||!['monthly','annual','founder'].includes(row.plan)||config.products[row.plan]!==row.product_id)return null;
+ if(!row||row.environment!==config.environment||!Object.values(config.products).includes(row.product_id)||!['monthly','annual'].includes(row.plan)||config.products[row.plan]!==row.product_id)return null;
  const premiumAccess=!row.revoked_at_ms&&((row.status==='active'&&row.expires_at_ms>now)||(row.status==='grace_period'&&row.grace_expires_at_ms>now));
  return {provider:'apple',premiumAccess,plan:row.plan,status:premiumAccess?row.status:(row.status==='active'||row.status==='grace_period'?'expired':row.status),
   originalTransactionId:row.original_transaction_id,productId:row.product_id,expiresAt:iso(row.expires_at_ms),currentPeriodEndsAt:iso(row.expires_at_ms),
