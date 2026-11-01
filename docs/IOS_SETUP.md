@@ -103,4 +103,10 @@ The OS launch screen displays the crowned BasketBoss logo and name immediately. 
 
 First-time users continue into the setup flow. Returning users can use Settings → Replay welcome & setup; cancelling the replay keeps the completed setup marker, preferences and meal plan. Setup is paused during account deletion so it cannot restore data being erased.
 
-Deletion failures now distinguish an unfinished checkout, subscription cancellation, cloud confirmation, saved-data cleanup and temporary sign-in verification failures. A definitively rejected request before deletion starts resumes syncing; an unfinished or unknown result retains saved data and pauses writes. The optional AI quota table is skipped only if database metadata proves it has never been created. Production migration readiness and all required table columns were verified on31October2026; an actual successful deletion must still be tested with a disposable account before submission.
+Deletion failures now distinguish an unfinished checkout, subscription cancellation, cloud confirmation, saved-data cleanup and temporary sign-in verification failures. A definitively rejected request before deletion starts resumes syncing; an unfinished or unknown result retains saved data and pauses writes. The optional AI quota table is skipped only if database metadata proves it has never been created. Production migration readiness and all required table columns were verified on 31 October 2026; an actual successful deletion must still be tested with a disposable account before submission.
+
+## Shared food thumbnails
+
+Pantry, School Lunches and Make a Meal use the same 78 food photographs in the PWA and native bundle. Exact food names preserve dry, cooked, canned and frozen states. Custom uploaded photos take priority; unknown custom foods keep their emoji fallback. Selection, stock quantities and lunch calculations use the existing data unchanged.
+
+The 13 transparent WebP atlases preserve the source pixels losslessly and total about 9.6 MB. Images load as needed and enter the PWA cache when viewed, rather than all downloading during installation. The service-worker release updates the shared renderer; close and reopen the PWA after deployment. Rebuild the installed iPhone app with `npm run ios:sync` and Xcode Run to receive the bundled images and launch improvements.

@@ -88,6 +88,44 @@ export async function verifyReviewDeployment(perform=fetch){
  }catch{throw Error('App review compliance routes could not be verified on production.');}
 }
 
+// Public assets only; inspect image signatures without downloading whole atlases.
+// Unexpected response bodies and network/provider messages never leave the runner.
+export async function verifyFoodThumbnailDeployment(perform=fetch){
+ const options=()=>({cache:'no-store',redirect:'error',signal:AbortSignal.timeout(15000)});
+ try{
+  const script=await perform('https://basketboss.co.uk/bb-food-visuals.js',options());
+  if(script.status!==200||!/javascript/i.test(script.headers.get('content-type')||''))throw Error();
+  const source=await script.text();
+  if(source.length>131072)throw Error();
+  const manifest=JSON.parse(source.match(/const MANIFEST = (\{[^\n]+\});/)?.[1]||'null');
+  if(manifest?.version!==2||manifest?.layout?.columns!==3||manifest?.layout?.rows!==2||!Array.isArray(manifest.foods)||manifest.foods.length!==78)throw Error();
+  const expected=Array.from({length:13},(_,n)=>'food-thumbs/v2/foods-'+String(n).padStart(2,'0')+'.webp');
+  const cells=new Set();
+  for(const food of manifest.foods){
+   if(!expected.includes(food.atlas)||!Number.isInteger(food.cell)||food.cell<0||food.cell>5)throw Error();
+   cells.add(food.atlas+':'+food.cell);
+  }
+  if(cells.size!==78)throw Error();
+  const css=await perform('https://basketboss.co.uk/bb-food-visuals.css',options());
+  if(css.status!==200||!/text\/css/i.test(css.headers.get('content-type')||''))throw Error();
+  await css.body?.cancel();
+  for(const path of expected){
+   const asset=await perform('https://basketboss.co.uk/'+path,{...options(),headers:{Range:'bytes=0-11'}});
+   if(![200,206].includes(asset.status)||!/^image\/webp(?:;|$)/i.test(asset.headers.get('content-type')||''))throw Error();
+   const reader=asset.body?.getReader();if(!reader)throw Error();
+   const prefix=new Uint8Array(12);let length=0;
+   try{
+    while(length<12){
+     const {done,value}=await reader.read();if(done)break;
+     const bytes=value.subarray(0,12-length);prefix.set(bytes,length);length+=bytes.length;
+    }
+   }finally{await reader.cancel().catch(()=>{});}
+   if(length!==12||new TextDecoder().decode(prefix.subarray(0,4))!=='RIFF'||new TextDecoder().decode(prefix.subarray(8,12))!=='WEBP')throw Error();
+  }
+  return {script:true,stylesheet:true,foods:78,imageAtlases:13};
+ }catch{throw Error('Shared food thumbnail assets could not be verified on production.');}
+}
+
 // Inspect schema only. Never select customer rows, identifiers or table SQL.
 export async function inspectDeletionSchema(query){
  const required={
@@ -199,6 +237,7 @@ if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) 
     result.landingDeployment=await verifyLandingDeployment();
     result.nativeApiDeployment=await verifyNativeApiDeployment();
     result.reviewDeployment=await verifyReviewDeployment();
+    result.foodThumbnailDeployment=await verifyFoodThumbnailDeployment();
     const asset=await fetch('https://basketboss.co.uk/bb-receipt-host.js',{cache:'no-store',redirect:'error',signal:AbortSignal.timeout(15000)});
     if(!asset.ok||!/javascript/i.test(asset.headers.get('content-type')||''))throw Error('The receipt frontend asset is not available on production.');
     const receipt=await fetch('https://basketboss.co.uk/api/receipt-inventory?mode=status',{cache:'no-store',redirect:'error',signal:AbortSignal.timeout(15000)});

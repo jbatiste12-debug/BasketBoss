@@ -7,6 +7,10 @@ on:
     paths:
       - .github/workflows/cloudflare-catalogue-check.yml
       - scripts/check-cloudflare-catalogue.mjs
+      - bb-food-visuals.*
+      - food-thumbs/v2/**
+      - shopping-inventory.js
+      - make-a-meal.*
       - functions/privacy.js
       - functions/terms.js
       - privacy.html

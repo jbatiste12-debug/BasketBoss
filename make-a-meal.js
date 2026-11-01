@@ -181,7 +181,7 @@ function bbFoodEmoji(name,preferred){
  for(const [pattern,glyph] of BB_EMOJI_MATCH)if(pattern.test(name))return glyph;
  return preferred&&preferred!=='✏️'?preferred:'🥣';
 }
-function bbFoodVisual(name,preferred){const photo=bbPhotoName(name);return photo?`<img class="bb-food-photo" src="food-thumbs/${photo}.webp" alt="" loading="lazy" decoding="async">`:`<span class="bb-food-fallback"><span class="bb-food-emoji" aria-hidden="true">${bbFoodEmoji(name,preferred)}</span></span>`}
+function bbFoodVisual(name,preferred){const shared=window.BBFoodVisuals?.html(name,{context:'cook',variant:'tile',emoji:bbFoodEmoji(name,preferred)});if(shared)return shared;const photo=bbPhotoName(name);return photo?`<img class="bb-food-photo" src="food-thumbs/${photo}.webp" alt="" loading="lazy" decoding="async">`:`<span class="bb-food-fallback"><span class="bb-food-emoji" aria-hidden="true">${bbFoodEmoji(name,preferred)}</span></span>`}
 function bbDisplayFoodName(name){
  const raw=String(name||'').trim().replace(/\s+/g,' ');
  // Preserve user-created names; just tidy labels typed entirely in lowercase or uppercase.

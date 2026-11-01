@@ -4,6 +4,8 @@
 <link rel="stylesheet" href="bb-account-deletion.css?v=20261031-feedback2">
 <script defer src="bb-account-deletion.js?v=20261031-feedback2"></script>
 <base href="../../">
+<link rel="stylesheet" href="bb-food-visuals.css?v=20261031-food2">
+<script src="bb-food-visuals.js?v=20261031-food2"></script>
 <link rel="stylesheet" href="bb-onboarding-v2.css?v=20261029-partner-onboard-main1">
 <link rel="stylesheet" href="bb-ux-cleanup.css?v=20261028-ux1">
 <meta charset="utf-8"><meta http-equiv="Content-Type" content="text/html; charset=utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
@@ -1618,13 +1620,14 @@ const tab=window.bb172ActiveTab;
  panel.innerHTML='<div class="bb172-quick-head"><div><h3>🏠 What’s already in your cupboard?</h3><p>Tap your usual staples. No weighing, measuring or setup needed.</p></div><span class="bb172-quick-count"></span></div><div class="bb172-staple-grid" role="group" aria-label="Common cupboard staples"></div><p class="bb172-quick-hint">Selected staples are <strong>assumed on hand</strong> and excluded from shopping estimates until unticked. Check supplies regularly; this does not record an actual stock quantity. Use “Got it” on individual shopping items for quantity-based pantry stock.</p>';
  const grid=panel.querySelector('.bb172-staple-grid');
  for(const [key,label] of BB172_STAPLES){const button=document.createElement('button');button.type='button';button.className='bb172-food-tile bb173-cupboard-food-tile';
-  // Use the existing staple emoji and name as matching fridge-style thumbnail and title.
-  // Keep the same toggle/save listener and pantry quantity semantics below.
+  // Replace only the decorative artwork; retain the existing on-hand toggle.
   const parts=String(label).split(/\s+/u),mark=parts.shift()||'🥫',foodName=parts.join(' ')||label;
-  const art=document.createElement('span');art.className='bb172-tile-emoji bb173-cupboard-tile-art';art.setAttribute('aria-hidden','true');art.textContent=mark;
+  const visual=window.BBFoodVisuals?.html(foodName,{context:'pantry',variant:'tile',emoji:mark});
+  if(visual)button.innerHTML=visual;
+  else{const art=document.createElement('span');art.className='bb172-tile-emoji bb173-cupboard-tile-art';art.setAttribute('aria-hidden','true');art.textContent=mark;button.append(art);}
   const title=document.createElement('span');title.className='bb173-cupboard-tile-label';title.textContent=foodName;
   const state=document.createElement('span');state.className='bb173-cupboard-tile-state';state.textContent=active[key]===true?'On hand':'Tap to add';
-  button.append(art,title,state);button.setAttribute('aria-label',foodName+(active[key]===true?', on hand':', tap to add'));
+  button.append(title,state);button.setAttribute('aria-label',foodName+(active[key]===true?', on hand':', tap to add'));
   button.setAttribute('aria-pressed',active[key]===true?'true':'false');button.addEventListener('click',()=>{
   const fresh=bb172StapleSaved();fresh[key]=!(fresh[key]===true);
   if(bb172SaveObject(BB172_STAPLES_KEY,fresh)){const activeShop=document.querySelector('.tab.active[data-tab="shop"]');if(activeShop)activeShop.click();}
@@ -1658,7 +1661,11 @@ function bb172LunchChipPanel(app){
  for(const group of ['Mains','Fillings','Snacks & fruit']){
   const wrap=document.createElement('div');wrap.className='bb172-chip-group';const heading=document.createElement('h4');heading.textContent=group;const row=document.createElement('div');row.className='bb172-chip-row';
   for(const chip of BB172_LUNCH_CHIPS.filter(c=>c.group===group)){
-   const button=document.createElement('button');button.type='button';button.className='bb172-pill';button.textContent=chip.label;button.dataset.bb172Chip=chip.id;button.setAttribute('aria-pressed','false');button.addEventListener('click',()=>{
+   const button=document.createElement('button');button.type='button';button.className='bb172-pill';
+   const parts=String(chip.label).split(/\s+/u),emoji=parts.shift()||'🥣',label=parts.join(' ')||chip.label;
+   const visual=window.BBFoodVisuals?.html(chip.ingredients[0][0],{context:'lunch',variant:'chip',emoji});
+   if(visual){button.innerHTML=visual;const title=document.createElement('span');title.textContent=label;button.append(title);}else button.textContent=chip.label;
+   button.dataset.bb172Chip=chip.id;button.setAttribute('aria-pressed','false');button.addEventListener('click',()=>{
     if(selection.has(chip.id))selection.delete(chip.id);else selection.add(chip.id);
     button.setAttribute('aria-pressed',selection.has(chip.id)?'true':'false');
     panel.querySelector('#bb172LunchStatus').textContent=selection.size+' items selected. Tap Add to Shop to save your lunchbox plan.';
@@ -7897,7 +7904,8 @@ function bb172RenderBudget(app){
 }
 function bb172ImageMark(food){
  if(food.image)return `<img class="bb172-tile-image" src="${food.image}" alt="" loading="lazy">`;
- return `<span class="bb172-tile-emoji" aria-hidden="true">${bb172Escape(food.emoji||'🍽️')}</span>`;
+ const context=['pantry','fridge'].includes(food.category)?'pantry':'lunch';
+ return window.BBFoodVisuals?.html(food.name,{context,variant:'tile',emoji:food.emoji||'🍽️'})||`<span class="bb172-tile-emoji" aria-hidden="true">${bb172Escape(food.emoji||'🍽️')}</span>`;
 }
 function bb172TileHTML(food,kind='custom'){
  const selected=kind==='pantry'?bb172OwnedInPantry(food):bb172PlannedForTargets(food);

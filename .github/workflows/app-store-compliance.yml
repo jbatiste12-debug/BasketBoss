@@ -7,6 +7,10 @@ on:
     paths:
       - .github/workflows/app-store-compliance.yml
       - bb-account-deletion.*
+      - bb-food-visuals.*
+      - food-thumbs/v2/**
+      - shopping-inventory.js
+      - make-a-meal.*
       - bb-onboarding-v2.*
       - bb-server-lib/**
       - functions/**

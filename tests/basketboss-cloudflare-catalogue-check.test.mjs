@@ -1,6 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import {inspectCloudflare,classifyBuildFailure,verifyLandingDeployment,verifyNativeApiDeployment,verifyReviewDeployment,inspectDeletionSchema} from '../scripts/check-cloudflare-catalogue.mjs';
+import {readFileSync} from 'node:fs';
+import {inspectCloudflare,classifyBuildFailure,verifyLandingDeployment,verifyNativeApiDeployment,verifyReviewDeployment,verifyFoodThumbnailDeployment,inspectDeletionSchema} from '../scripts/check-cloudflare-catalogue.mjs';
 
 const token = 'synthetic-secret-that-must-not-appear-in-results';
 const env = {CLOUDFLARE_API_TOKEN: token, CLOUDFLARE_ACCOUNT_ID: 'a'.repeat(32)};
@@ -37,6 +38,47 @@ test('landing verification rejects stale copy, missing assets and HTML fallback 
 test('landing verification replaces unexpected network messages with a fixed diagnostic',async()=>{
  await assert.rejects(verifyLandingDeployment(async()=>{throw Error('synthetic-private-provider-text');}),error=>{
   assert.equal(error.message,'The public landing page could not be checked.');return true;
+ });
+});
+
+function foodAssetFixture({badPath,status=404,type,signature,source}={}){
+ const requests=[];let cancelled=0;
+ const perform=async(address,options)=>{
+  requests.push({address,options});
+  assert.equal(options.redirect,'error');assert.equal(options.cache,'no-store');assert.equal(options.headers?.Authorization,undefined);
+  const path=new URL(address).pathname;
+  if(path==='/bb-food-visuals.js')return new Response(source??readFileSync(new URL('../bb-food-visuals.js',import.meta.url),'utf8'),{headers:{'Content-Type':'application/javascript'}});
+  if(path==='/bb-food-visuals.css')return new Response('.bb-food-visual{}',{headers:{'Content-Type':'text/css'}});
+  assert.match(path,/^\/food-thumbs\/v2\/foods-\d{2}\.webp$/);assert.equal(options.headers.Range,'bytes=0-11');
+  if(path===badPath)return new Response(signature??'missing',{status,headers:{'Content-Type':type??'text/html'}});
+  const prefix=new TextEncoder().encode('RIFF0000WEBP');
+  return new Response(new ReadableStream({start(controller){controller.enqueue(prefix.subarray(0,4));controller.enqueue(prefix.subarray(4));},cancel(){cancelled++;}}),{status:206,headers:{'Content-Type':'image/webp'}});
+ };
+ return {requests,perform,cancelled:()=>cancelled};
+}
+
+test('food deployment verifies all thirteen public image signatures and cancels streams without credentials',async()=>{
+ const fixture=foodAssetFixture();
+ assert.deepEqual(await verifyFoodThumbnailDeployment(fixture.perform),{script:true,stylesheet:true,foods:78,imageAtlases:13});
+ assert.equal(fixture.requests.length,15);assert.equal(fixture.cancelled(),13);
+ assert.equal(fixture.requests.at(-1).address,'https://basketboss.co.uk/food-thumbs/v2/foods-12.webp');
+});
+
+test('food deployment rejects missing images, HTML fallback and invalid image signatures with a fixed diagnostic',async()=>{
+ for(const invalid of [
+  {badPath:'/food-thumbs/v2/foods-00.webp'},
+  {badPath:'/food-thumbs/v2/foods-12.webp'},
+  {badPath:'/food-thumbs/v2/foods-12.webp',status:200,type:'text/html'},
+  {badPath:'/food-thumbs/v2/foods-12.webp',status:200,type:'image/webp',signature:'not a webp image'}
+ ])await assert.rejects(verifyFoodThumbnailDeployment(foodAssetFixture(invalid).perform),error=>{
+  assert.equal(error.message,'Shared food thumbnail assets could not be verified on production.');return true;
+ });
+});
+
+test('food deployment rejects a stale manifest and never reports response or network text',async()=>{
+ await assert.rejects(verifyFoodThumbnailDeployment(foodAssetFixture({source:'const MANIFEST = {"version":1};'}).perform),/Shared food thumbnail assets could not be verified/);
+ await assert.rejects(verifyFoodThumbnailDeployment(async()=>{throw Error('synthetic-private-provider-text');}),error=>{
+  assert.equal(error.message,'Shared food thumbnail assets could not be verified on production.');return true;
  });
 });
 

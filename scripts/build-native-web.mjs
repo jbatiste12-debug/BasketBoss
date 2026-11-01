@@ -16,7 +16,7 @@ export const CLIENT_FILES=Object.freeze([
  'basketboss-aisles-v20.js','basketboss-pricing-v19.js','bb-beta-five-nav.js',
  'bb-beta-launch-polish.js','bb-beta-six-fixes.js','bb-cloudflare-qa.js',
  'bb-cold-preview.js','bb-consolidated-qa.js','bb-culinary-enhancements.js',
- 'bb-account-deletion.js','bb-account-deletion.css',
+ 'bb-account-deletion.js','bb-account-deletion.css','bb-food-visuals.js','bb-food-visuals.css',
  'bb-funnel.js','bb-household-sharing.js','bb-install.js','bb-intro-trial.js',
  'bb-membership-settings.js','bb-mobile-beta-polish.js','bb-onboarding-v2.js',
  'bb-partner-signup-prompt.js','bb-plan-premium-polish.js','bb-premium-features.js',

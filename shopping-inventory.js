@@ -126,7 +126,8 @@ function build(){
    const tiles=card.querySelector(`[data-bb76-tiles="${loc}"]`),preset=BB5_FOODS[loc];
    const custom=[...new Map([...existing,...staged.values()].filter(x=>x?.name&&x.loc===loc&&!preset.some(([,n])=>canon(n)===canon(x.name))).map(x=>[canon(x.name),['✏️',x.name]])).values()];
    tiles.innerHTML=[...preset,...custom].map(([emoji,name])=>{
-    const on=staged.has(sid(loc,name));return `<button type="button" data-bb5-food="${esc(name)}" aria-pressed="${on}"><span class="bb173-emoji">${emoji}</span><span>${esc(name)}</span><small>${on?'✓ Selected':'Tap to add'}</small></button>`;
+    const visual=window.BBFoodVisuals?.html(name,{context:'pantry',variant:'tile',emoji})||`<span class="bb173-emoji" aria-hidden="true">${esc(emoji)}</span>`;
+    const on=staged.has(sid(loc,name));return `<button type="button" data-bb5-food="${esc(name)}" aria-pressed="${on}">${visual}<span>${esc(name)}</span><small>${on?'✓ Selected':'Tap to add'}</small></button>`;
    }).join('');
    const count=[...staged.values()].filter(x=>x.loc===loc).length;
    card.querySelector(`[data-bb76-count="${loc}"]`).textContent=count?`${count} selected`:'None selected';
