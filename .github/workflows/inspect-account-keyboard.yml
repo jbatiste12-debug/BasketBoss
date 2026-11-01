@@ -1,62 +1,72 @@
-name: Inspect account keyboard test failure
+name: Focused iOS account keyboard check
 
 on:
   push:
     branches: [codex/ios-signin-keyboard-20261101]
-    paths: [.github/workflows/inspect-account-keyboard.yml]
+    paths:
+      - .github/workflows/inspect-account-keyboard.yml
+      - bb-account-polish.*
+      - ios/App/BasketBossAccountKeyboardUITests/**
+      - scripts/test-ios-account-keyboard.mjs
+  workflow_dispatch:
 
 permissions:
   contents: read
-  actions: read
 
 jobs:
-  inspect:
+  keyboard:
     runs-on: macos-latest
-    timeout-minutes: 5
+    timeout-minutes: 20
     steps:
-      - uses: actions/download-artifact@v4
+      - uses: actions/checkout@v4
         with:
-          github-token: ${{ github.token }}
-          run-id: 41347713045
-          name: BasketBoss-Account-Keyboard-Verification
-          path: keyboard-diagnostic
-      - name: Print the synthetic account test failure
-        shell: bash
+          persist-credentials: false
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+          cache: npm
+      - run: npm ci --no-audit --no-fund
+      - run: npm run ios:sync
+      - name: Prepare the proven iOS simulator and software keyboard
+        run: |
+          node --input-type=module <<'JS'
+          import {execFileSync} from 'node:child_process';
+          const run=(...args)=>execFileSync('xcrun',args,{encoding:'utf8',timeout:120000}).trim();
+          const runtimes=JSON.parse(run('simctl','list','runtimes','--json')).runtimes.filter(r=>r.isAvailable&&r.name.startsWith('iOS'));
+          const devices=JSON.parse(run('simctl','list','devices','available','--json')).devices;
+          const runtime=runtimes.find(r=>r.version.startsWith('26.2'))||runtimes.find(r=>r.version.startsWith('18.6'));
+          if(!runtime)throw Error('proven_runtime_missing');
+          const phone=(devices[runtime.identifier]||[]).find(d=>d.isAvailable&&d.name.startsWith('iPhone'));
+          if(!phone)throw Error('iphone_missing');
+          execFileSync('defaults',['write','com.apple.iphonesimulator','ConnectHardwareKeyboard','-bool','NO']);
+          if(phone.state!=='Booted')run('simctl','boot',phone.udid);
+          execFileSync('open',['-a','Simulator','--args','-CurrentDeviceUDID',phone.udid]);
+          console.log('Booting '+phone.name+' / iOS '+runtime.version);
+          execFileSync('xcrun',['simctl','bootstatus',phone.udid,'-b'],{stdio:'inherit',timeout:540000});
+          JS
+      - name: Test real email and password taps and keyboard layout
+        run: node scripts/test-ios-account-keyboard.mjs
+      - name: Print text-only keyboard results
+        if: always()
         run: |
           python - <<'PY'
           from pathlib import Path
           import subprocess
-          import base64
-          root = Path('keyboard-diagnostic')
-          for name, limit in [('report.json', 12000), ('tests.log', 40000)]:
-              for item in sorted(root.rglob(name)):
-                  print(str(item))
-                  print(item.read_text(errors='replace')[-limit:])
-          result = next(root.rglob('AccountKeyboard.xcresult'), None)
-          if result:
-              for kind in ['summary', 'tests']:
-                  print('XCResult ' + kind)
-                  process = subprocess.run(['xcrun', 'xcresulttool', 'get', 'test-results', kind, '--path', str(result)], capture_output=True, text=True)
-                  print(process.stdout[-50000:])
-                  print(process.stderr[-5000:])
-              test = 'BasketBossAccountKeyboardUITests/testPasswordKeyboardKeepsAccountReachable()'
-              for kind in ['test-details', 'activities']:
-                  print('Password XCResult ' + kind)
-                  process = subprocess.run(['xcrun', 'xcresulttool', 'get', 'test-results', kind, '--path', str(result), '--test-id', test], capture_output=True, text=True)
-                  print(process.stdout[-70000:])
-                  print(process.stderr[-5000:])
-              attachments = root / 'exported-attachments'
-              process = subprocess.run(['xcrun', 'xcresulttool', 'export', 'attachments', '--path', str(result), '--output-path', str(attachments), '--only-failures'], capture_output=True, text=True)
-              print(process.stdout[-5000:])
-              print(process.stderr[-5000:])
-              for item in sorted(attachments.rglob('manifest.json')):
-                  print(item.read_text(errors='replace')[-20000:])
-              images = sorted(item for item in attachments.rglob('*') if item.suffix.lower() in ['.png', '.jpg', '.jpeg'])
-              for index, item in enumerate(images[:4]):
-                  scaled = root / ('diagnostic-' + str(index) + '.png')
-                  subprocess.run(['sips', '-s', 'format', 'png', '-Z', '900', str(item), '--out', str(scaled)], capture_output=True)
-                  if scaled.exists():
-                      print('SCREENSHOT_BEGIN:' + item.name)
-                      print(base64.b64encode(scaled.read_bytes()).decode())
-                      print('SCREENSHOT_END')
+          root=Path('artifacts/account-keyboard-diagnostics')
+          for name in ['report.json','summary.json','tests.log']:
+              item=root/name
+              if item.exists():
+                  print(name)
+                  print(item.read_text(errors='replace')[-24000:])
+          result=root/'AccountKeyboard.xcresult'
+          if result.exists():
+              done=subprocess.run(['xcrun','xcresulttool','get','test-results','summary','--path',str(result)],capture_output=True,text=True)
+              print(done.stdout[-20000:])
           PY
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: BasketBoss-Focused-Keyboard-Verification
+          path: artifacts/account-keyboard-diagnostics/
+          if-no-files-found: ignore
+          retention-days: 7

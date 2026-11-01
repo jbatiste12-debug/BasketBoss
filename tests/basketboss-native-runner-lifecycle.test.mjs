@@ -5,7 +5,7 @@ import path from 'node:path';
 import vm from 'node:vm';
 import {keyboardRuntimePlan} from '../scripts/ios-keyboard-runtime.mjs';
 
-async function runScript(name,{ci=true,booted=true,includeLatest=false}={}){
+async function runScript(name,{ci=true,booted=true,includeLatest=false,failTests=false}={}){
  const commands=[],logs=[],written=new Map();
  const processStub={platform:'darwin',env:ci?{GITHUB_ACTIONS:'true'}:{}};
  let state=booted?'Booted':'Shutdown';
@@ -18,8 +18,11 @@ async function runScript(name,{ci=true,booted=true,includeLatest=false}={}){
   readFileSync:()=>JSON.stringify({complete:true,passed:true})
  },execFileSync(command,args){
   commands.push([command,...args]);
+  if(failTests&&command==='xcodebuild'&&args.includes('test-without-building')){
+   const error=Error('xcodebuild failed');error.stdout='XCTAssertTrue failed: real keyboard diagnostic';error.stderr='TEST FAILED';throw error;
+  }
   if(command==='xcrun'){
-   if(args[0]==='xcresulttool')return JSON.stringify({passedTests:2,failedTests:0,skippedTests:0});
+   if(args[0]==='xcresulttool')return JSON.stringify({passedTests:failTests?1:2,failedTests:failTests?1:0,skippedTests:0});
    if(args[0]==='simctl'){
     if(args[1]==='list'&&args[2]==='devices')return JSON.stringify({devices:{[runtime.identifier]:[device()],...(includeLatest?{[latestRuntime.identifier]:[{udid:'cold-latest-phone',name:'iPhone SE (3rd generation)',state:'Shutdown',isAvailable:true}]}:{})}});
     if(args[1]==='list'&&args[2]==='runtimes')return JSON.stringify({runtimes:includeLatest?[latestRuntime,runtime]:[runtime]});
@@ -68,4 +71,14 @@ test('keyboard CI reuses the exercised session without killing its GUI or re-wai
  assert.ok(result.commands.some(command=>command[1]==='simctl'&&command[2]==='uninstall'&&command[3]==='proven-phone'));
  assert.ok(result.commands.some(command=>command[0]==='xcodebuild'&&command.includes('test-without-building')));
  assert.ok(result.logs.some(line=>line.includes('"passed":true')));
+});
+
+test('keyboard test failures retain the actual XCTest diagnostic in both artifacts and job output',async()=>{
+ const result=await runScript('test-ios-account-keyboard.mjs',{failTests:true});
+ assert.equal(result.process.exitCode,1);
+ assert.ok(result.logs.some(line=>line.includes('XCTAssertTrue failed: real keyboard diagnostic')));
+ assert.ok([...result.written].some(([file,text])=>file.endsWith('tests.log')&&text.includes('XCTAssertTrue failed: real keyboard diagnostic')));
+ assert.ok(result.logs.some(line=>line.includes('"failureStage":"real_keyboard_tests"')));
+ assert.ok(result.logs.some(line=>line.includes('keyboard XCTest summary')&&line.includes('"failedTests":1')));
+ assert.ok([...result.written].some(([file,text])=>file.endsWith('summary.json')&&JSON.parse(text).failedTests===1));
 });

@@ -4,7 +4,7 @@ import fs from 'node:fs';
 import vm from 'node:vm';
 
 const source=fs.readFileSync(new URL('../bb-account-polish.js',import.meta.url),'utf8');
-function fixture({viewport=true,preInert=true}={}){
+function fixture({viewport=true,preInert=true,mobile=false}={}){
  const events=()=>{const map=new Map();return{addEventListener(type,fn){const list=map.get(type)||[];list.push(fn);map.set(type,list);},fire(type,event={}){for(const fn of map.get(type)||[])fn(event);}};};
  const style=()=>{const values=new Map();return{setProperty:(key,value)=>values.set(key,value),removeProperty:key=>values.delete(key),getPropertyValue:key=>values.get(key)||''};};
  const classes=()=>{const names=new Set();return{add:name=>names.add(name),remove:name=>names.delete(name),contains:name=>names.has(name)};};
@@ -30,6 +30,7 @@ function fixture({viewport=true,preInert=true}={}){
  const frames=new Map(),scrolls=[];let nextFrame=0;
  root={document:doc,innerHeight:932,innerWidth:430,scrollX:3,scrollY:500,...events(),requestAnimationFrame(fn){const id=++nextFrame;frames.set(id,fn);return id;},cancelAnimationFrame:id=>frames.delete(id),scrollTo(x,y){scrolls.push([x,y]);this.scrollX=x;this.scrollY=y;},MutationObserver:class{constructor(callback){this.callback=callback;}observe(){}}};
  if(viewport)root.visualViewport={height:932,width:430,offsetTop:0,offsetLeft:0,...events()};
+ root.matchMedia=()=>({matches:mobile});
  vm.runInNewContext(source,{window:root,Object,Number,Math});
  const flush=()=>{for(let round=0;frames.size&&round<20;round++){const active=[...frames.values()];frames.clear();for(const fn of active)fn();}assert.equal(frames.size,0,'viewport callbacks settle');};
  const open=()=>{nodes.panel.classList.add('open');root.BBAccountPolish.refresh();flush();};
@@ -47,6 +48,17 @@ test('keyboard visual viewport events update account bounds without requiring a 
  const h=fixture();h.open();h.resize({height:520,width:393,offsetTop:180,offsetLeft:12});
  assert.equal(h.root.innerHeight,932);assert.equal(h.nodes.panel.style.getPropertyValue('--bbap-viewport-height'),'520px');assert.equal(h.nodes.panel.style.getPropertyValue('--bbap-viewport-width'),'393px');assert.equal(h.nodes.panel.style.getPropertyValue('--bbap-viewport-top'),'180px');assert.equal(h.nodes.panel.style.getPropertyValue('--bbap-viewport-left'),'12px');
  h.resize({height:300,offsetTop:300});assert.equal(h.nodes.panel.style.getPropertyValue('--bbap-viewport-height'),'300px');assert.equal(h.nodes.panel.style.getPropertyValue('--bbap-viewport-top'),'300px');
+});
+
+test('touch account opening keeps the form unfocused until the user chooses a field',()=>{
+ const h=fixture({mobile:true});h.open();assert.equal(h.doc.activeElement,h.nodes.close);
+ h.nodes.password.focus();h.flush();assert.equal(h.doc.activeElement,h.nodes.password);
+ h.root.BBAccountPolish.refresh();h.flush();assert.equal(h.doc.activeElement,h.nodes.password);
+});
+
+test('a password tapped before deferred opening focus is never replaced by email',()=>{
+ const h=fixture();h.nodes.panel.classList.add('open');h.root.BBAccountPolish.refresh();
+ h.nodes.password.focus();h.flush();assert.equal(h.doc.activeElement,h.nodes.password);
 });
 
 test('keeping a focused password reachable preserves its value, selection and focus',()=>{

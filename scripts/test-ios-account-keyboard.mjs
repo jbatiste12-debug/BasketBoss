@@ -12,6 +12,19 @@ const run=(...args)=>execute('xcrun',args);
 let stage='prepare',phone=null,ownsSimulator=false,failure='',keyboardPreference=null,preferenceRead=false,runtimeVersion='',deviceName='',resetSyntheticCIApp=false;
 const githubActions=process.env.GITHUB_ACTIONS==='true';
 function save(name,value){fs.writeFileSync(path.join(output,name),value);}
+function saveFailure(name,error){
+ const log=String(error.stdout||'')+'\n'+String(error.stderr||'');
+ save(name,log);
+ // Keep the real XCTest/build failure visible without requiring artifact
+ // downloads; these checks enter no credentials or account data.
+ console.log(log.slice(-16000));
+}
+function readTestSummary(result){
+ const summary=JSON.parse(run('xcresulttool','get','test-results','summary','--path',result));
+ save('summary.json',JSON.stringify(summary,null,2));
+ console.log('::notice title=BasketBoss keyboard XCTest summary::'+JSON.stringify(summary).slice(0,16000));
+ return summary;
+}
 try{
  execute('ruby',['scripts/prepare-ios-account-keyboard-tests.rb'],30000);
  const runtimes=JSON.parse(run('simctl','list','runtimes','--json')).runtimes;
@@ -39,7 +52,7 @@ try{
  if(state!=='Booted')execute('xcrun',['simctl','bootstatus',phone,'-b'],180000);
  const argumentsForTests=['-quiet','-workspace','ios/App/App.xcworkspace','-scheme','BasketBossAccountKeyboardUITests','-configuration','Debug','-sdk','iphonesimulator','-destination','platform=iOS Simulator,id='+phone,'-derivedDataPath','/tmp/basketboss-ios-build','CODE_SIGNING_ALLOWED=NO'];
  stage='build_ui_tests';
- try{save('build.log',execute('xcodebuild',[...argumentsForTests,'build-for-testing'],300000));}catch(error){save('build.log',String(error.stdout||'')+'\n'+String(error.stderr||''));throw error;}
+ try{save('build.log',execute('xcodebuild',[...argumentsForTests,'build-for-testing'],300000));}catch(error){saveFailure('build.log',error);throw error;}
  stage='sign_ui_runner';
  const products='/tmp/basketboss-ios-build/Build/Products/Debug-iphonesimulator',app=path.join(products,'App.app'),runner=path.join(products,'BasketBossAccountKeyboardUITests-Runner.app');
  if(!fs.existsSync(runner))throw Error('ui_runner_missing');
@@ -51,10 +64,9 @@ try{
  run('simctl','install',phone,app);
  stage='real_keyboard_tests';
  const result=path.join(output,'AccountKeyboard.xcresult');
- try{save('tests.log',execute('xcodebuild',[...argumentsForTests,'-parallel-testing-enabled','NO','-test-timeouts-enabled','YES','-default-test-execution-time-allowance','90','-maximum-test-execution-time-allowance','120','-resultBundlePath',result,'test-without-building'],360000));}catch(error){save('tests.log',String(error.stdout||'')+'\n'+String(error.stderr||''));throw error;}
+ try{save('tests.log',execute('xcodebuild',[...argumentsForTests,'-parallel-testing-enabled','NO','-test-timeouts-enabled','YES','-default-test-execution-time-allowance','90','-maximum-test-execution-time-allowance','120','-resultBundlePath',result,'test-without-building'],360000));}catch(error){saveFailure('tests.log',error);try{readTestSummary(result);}catch{}throw error;}
  stage='test_result';
- const summary=JSON.parse(run('xcresulttool','get','test-results','summary','--path',result));
- save('summary.json',JSON.stringify(summary,null,2));
+ const summary=readTestSummary(result);
  if(summary.passedTests!==2||summary.failedTests!==0||summary.skippedTests!==0)throw Error('required_keyboard_tests_missing');
 }catch(error){failure=error.code==='ETIMEDOUT'?'command_timeout':String(error.message||'command_failed').replace(/[^A-Za-z0-9_.-]/g,'').slice(0,100);}
 finally{

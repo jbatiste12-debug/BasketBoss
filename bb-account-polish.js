@@ -23,7 +23,9 @@
     const card = doc.getElementById('cloud-card'), input = doc.activeElement;
     if (!card?.contains(input) || !input.matches?.('input,textarea,select')) return;
     const box = card.getBoundingClientRect(), field = input.getBoundingClientRect();
-    const top = box.top + 52, bottom = box.bottom - 12;
+    const close = doc.getElementById('cloud-close');
+    const closeBottom = close?.getClientRects().length ? close.getBoundingClientRect().bottom + 8 : 0;
+    const top = Math.max(box.top + 52, closeBottom), bottom = box.bottom - 12;
     let delta = field.top < top ? field.top - top : field.bottom > bottom ? field.bottom - bottom : 0;
     const login = doc.getElementById('cloud-login');
     if (input.id === 'cloud-password' && login?.getClientRects().length) {
@@ -94,6 +96,14 @@
   function focusAccount() {
     const panel = state.panel;
     if (!panel?.classList.contains('open')) return;
+    // A deferred modal focus must never replace a field the user just tapped.
+    if (panel.contains(doc.activeElement) && doc.activeElement?.matches?.('input,textarea,select,button,a')) return;
+    // Let touch users choose their field with a trusted tap. Programmatically
+    // focusing email first can leave WKWebView's secure-input keyboard hidden.
+    if (root.BBNative?.isNative === true || root.matchMedia?.('(pointer: coarse)').matches) {
+      doc.getElementById('cloud-close')?.focus?.({ preventScroll: true });
+      return;
+    }
     const email = doc.getElementById('cloud-email');
     const first = email?.getClientRects().length && !email.disabled ? email : visibleControls(panel).find(node => node.id !== 'cloud-close');
     (first || doc.getElementById('cloud-close'))?.focus?.({ preventScroll: true });

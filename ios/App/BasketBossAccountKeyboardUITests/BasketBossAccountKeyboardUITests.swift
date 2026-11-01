@@ -27,9 +27,12 @@ final class BasketBossAccountKeyboardUITests: XCTestCase {
         XCTAssertTrue(close.waitForExistence(timeout: 25), "The account dialog must open.")
         let field = password ? app.secureTextFields.firstMatch : app.textFields.matching(NSPredicate(format: "label == %@ OR placeholderValue == %@", "Email", "you@example.com")).firstMatch
         XCTAssertTrue(field.waitForExistence(timeout: 8), "The signed-out account input must exist.")
+        // Numeric accessibility diagnostics only: no input values, credentials,
+        // screenshots or recordings are copied into the failure message.
+        let targetBeforeTap = "target=\(password ? "password" : "email"), hittable=\(field.isHittable), field=\(field.frame), web=\(web.frame)"
         field.tap()
         let keyboard = app.keyboards.firstMatch
-        XCTAssertTrue(keyboard.waitForExistence(timeout: 8), "A real software keyboard is required; a hardware-keyboard-only run cannot pass.")
+        XCTAssertTrue(keyboard.waitForExistence(timeout: 8), "A real software keyboard is required; a hardware-keyboard-only run cannot pass. Before tap: \(targetBeforeTap). After tap: field=\(field.frame), web=\(web.frame).")
         waitFor("The focused input must remain above the keyboard.") {
             field.isHittable && field.frame.minY >= web.frame.minY - 1 && field.frame.maxY <= keyboard.frame.minY + 1
         }
