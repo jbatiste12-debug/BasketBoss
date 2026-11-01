@@ -5,14 +5,14 @@
 (()=>{'use strict';
 const V='2026.11-planning';
 const STEPS=[
- {title:'Your five BasketBoss tabs',body:'Plan, Discover, Kitchen, Shop and Cook are always your main routes. Small Premium badges identify optional paid tools while you use Free.',target:['.shell .tabs']},
+ {title:'Your five BasketBoss tabs',body:'Plan, Discover, At home, Shop and Cook are always your main routes. Small Premium badges identify optional paid tools while you use Free.',target:['.shell .tabs']},
  {title:'Plan your week',body:'Your seven-day dinner plan and budget are together under Plan. Tap Ingredients to avoid to open searchable food tiles for future Auto-fill. Your manually chosen meals stay in the plan.',tab:'week',target:['.tab[data-tab="week"]','#bbAvoidIngredientTab']},
  {title:'Your grocery budget',body:'Enter a target beside the donut. Estimates reflect the chosen region (UK, Guernsey, Jersey or United States).',tab:'week',target:['#app .bbnext-plan-budget','#app .bbnext-plan-donut']},
  {title:'Smart Auto-Fill',body:'Fill the empty days, add a meal or plan with confirmed PANTRY amounts from one card. Premium filters can favour quick meals, high protein, kid-friendly options and Cook Once, Eat Twice. Trim My Basket suggests estimated savings when budget gets tight.',tab:'week',target:['#app .bb81-pro-filters','#app .bbnext-plan-actions']},
  {title:'Dinner and dessert cards',body:'Tap a weekday to expand its meals. With Premium, Evening Pivot below tonight’s Cook button checks for a quicker dinner already planned later this week that confirmed PANTRY amounts can cover. Review both meals and packaging use-by dates before Swap these two meals.',tab:'week',target:['#app .bbnext-day']},
  {title:'Discover — find your meals',body:'Browse 100 Free recipes; all 500 recipes with Premium are available to eligible signed-in members. Swipe the featured meal only to browse. Tap a card in the list to reveal its larger preview above. Recipe highlights show available dish classifications. Add to week is on the recipe cards below; Premium recipes stay locked in Free.',tab:'discover',target:['.tab[data-tab="discover"]','#app .grid-recipes']},
- {title:'Kitchen — choose what you have',body:'Open Cupboard, Fridge and Freezer; edit your quantities in one PANTRY summary and confirm to reconcile Shopping.',tab:'shop',target:['.tab[data-tab="shop"]']},
- {title:'Shop — buy only what you need',body:'Confirm Kitchen quantities first: those foods reduce the current To buy list. In Live Shop, tick Bought, then use ••• for a standard pack, exact amount, different amount or Already have enough. Finish Shop saves only confirmed unused amounts to Kitchen for next week. Fresh food needs safe-storage confirmation.',tab:'shop-list',target:['.tab[data-tab="shop-list"]']},
+ {title:'At home — choose what you have',body:"Choose four common items or use + Add. Open the selected-items list: Total needed, Already got and To buy show the difference. Confirm & Reconcile is near the top. Keep food in Cupboard, Fridge or Freezer; Weekly essentials is household goods only. Add during the week; requests stay until ticked off.",tab:'shop',target:['.tab[data-tab="shop"]']},
+ {title:'Shop — buy only what you need',body:'Confirm At home quantities first: those foods reduce the current To buy list. In Live Shop, tick Bought, then use ••• for a standard pack, exact amount, different amount or Already have enough. Finish Shop saves only confirmed unused amounts to At home for next week. Fresh food needs safe-storage confirmation.',tab:'shop-list',target:['.tab[data-tab="shop-list"]']},
  {title:'Scan a receipt after shopping',body:'In Shop, choose your region and supermarket, then tap Scan receipt · Premium at the top of your shopping list. Premium scanning needs internet access and your consent to send the photo to Google Gemini. Review names, amounts, food locations, currency and totals before Confirm receipt & add food. Check receipt status after an interrupted confirmation to avoid duplicate stock.',tab:'shop-list',target:['#bbReceiptToolbar','[data-bb-receipt-entry]','.tab[data-tab="shop-list"]']},
  {title:'Cook and get more help',body:'Cook uses your chosen ingredients for recipe matches or optional Premium AI tools. In step-by-step Cook, optional Premium Voice Cook stays available from Prep through Cook. It reads each scaled ingredient, then each full instruction. Say “Next ingredient”, “Ready”, “Start cooking”, “Next step”, “Repeat” or “How many onions?”. It can also start the visible timer. Turn on voice when you want it; Stop listening switches it off. Device and browser support vary. Find full instructions in Plan → Settings → Guides.',target:['.bb173-make-meal-link','#bbuiOpenSettings']}
 ];
@@ -68,9 +68,9 @@ function enhanceHub(){
  ['🥕 Ingredients to avoid','Open the food picker in Plan to choose what future Auto-fill leaves out'],
  ['🌙 Tonight’s dinner · Premium','Review a quicker planned-meal swap, PANTRY amounts and packaging dates'],
  ['🔎 Discover','Browse and Add to week from recipe cards'],
- ['🥫 Kitchen','Confirm Cupboard, Fridge and Freezer quantities'],
- ['🛒 Shop','Kitchen deductions, Bought quantities and next-week leftovers'],
- ['🧾 Receipts','Review a supermarket receipt before food is added to Kitchen'],
+ ['🥫 At home','Confirm Cupboard, Fridge and Freezer quantities'],
+ ['🛒 Shop','At home deductions, Bought quantities and next-week leftovers'],
+ ['🧾 Receipts','Review a supermarket receipt before food is added to At home'],
  ['🍳 Cook','Ingredient ideas, optional AI meals and safe step-by-step cooking'],
  ['🎙 Voice Cook · Premium','A spoken guide through scaled ingredients and full recipe instructions, with optional voice commands'],
  ['📱 PWA & iPhone','The same five tabs, with separate local device storage']

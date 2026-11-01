@@ -8,7 +8,7 @@
    nav.dataset.bbBetaDock='1';
    for(const tab of nav.querySelectorAll('button,a')){
     const label=(tab.querySelector('.nav-label')?.textContent||tab.textContent||'').trim();
-    if(!/^Kitchen$/i.test(label))continue;
+    if(!/^(?:Kitchen|At home)$/i.test(label))continue;
     let icon=tab.querySelector('.nav-icon');
     if(!icon){icon=document.createElement('span');icon.className='nav-icon';icon.setAttribute('aria-hidden','true');tab.prepend(icon);}
     if(!icon.querySelector('svg'))icon.innerHTML=kitchenSvg;

@@ -17,6 +17,19 @@
   if(!['g','ml',...COUNTS].includes(u)||q>1000000||COUNTS.has(u)&&!Number.isInteger(q))return null;
   return {quantity:q,unit:u};
  }
+ function reconcile(item={}){
+  const manual=Object.hasOwn(item,'targetQty')||Object.hasOwn(item,'ownedQty');
+  if(!manual){
+   const required=measured(item.qty,item.unit);
+   return required?{valid:true,manual:false,totalNeeded:item.qty,alreadyGot:item.owned?item.qty:0,toBuy:item.owned?0:item.qty}:{valid:false,manual:false,totalNeeded:null,alreadyGot:null,toBuy:null};
+  }
+  // Both quantities describe the SAME entered unit. Household ownership is
+  // never converted into food stock or subtracted from a recipe ingredient.
+  const target=measured(item.targetQty,item.unit),owned=measured(item.ownedQty,item.unit);
+  if(!target||!owned)return {valid:false,manual:true,totalNeeded:null,alreadyGot:null,toBuy:null};
+  const difference=Math.max(0,item.targetQty-item.ownedQty);
+  return {valid:true,manual:true,totalNeeded:item.targetQty,alreadyGot:item.ownedQty,toBuy:item.manualPending===false?0:Math.round((difference+Number.EPSILON)*1000000)/1000000};
+ }
  function scoped(record,context,{legacy=false}={}){
   const market=record?.market??record?.priceMarket,currency=record?.currency??record?.priceCurrency;
   const retailer=record?.retailer??record?.priceRetailer;
@@ -91,16 +104,22 @@
  function quote(item={},options={}){
   const context={market:options.market,retailer:options.retailer||null};
   if(typeof context.market!=='string'||!Object.hasOwn(MARKETS,context.market))return unknown(context,'unsupported_market');
-  const required=measured(item.qty,item.unit);
+  const quantities=reconcile(item);
+  if(quantities.manual&&!quantities.valid)return unknown(context,'household_quantities_require_review');
+  const required=measured(quantities.manual?quantities.toBuy:item.qty,item.unit);
   if(!clean(item.name)||!required)return unknown(context,'quantity_or_item_required');
   if(required.quantity===0)return result(0,context,{source:'none',packCount:0,packPrice:0,packQuantity:1,packUnit:required.unit});
   return manualQuote(item,required,context)||paidQuote(item,required,options.paidRecord,context)||receiptQuote(item,required,options.receiptObservations,context)||unknown(context);
  }
  function summarize(items=[],options={}){
-  const lines=(Array.isArray(items)?items:[]).filter(item=>item&&item.selected!==false&&!item.owned).map(item=>({item,quote:quote(item,options)}));
+  const lines=(Array.isArray(items)?items:[]).filter(item=>{
+   if(!item||item.selected===false)return false;
+   const quantities=reconcile(item);
+   return quantities.manual?(!quantities.valid||quantities.toBuy>0):!item.owned;
+  }).map(item=>({item,quote:quote(item,options)}));
   const pending=lines.filter(line=>line.quote.amount===null).length;
   const knownAmount=round(lines.reduce((sum,line)=>sum+(line.quote.amount??0),0));
   return {amount:pending?null:knownAmount,knownAmount,pending,unpriced:pending,complete:pending===0,lines};
  }
- root.BBWeeklyEssentials=Object.freeze({quote,summarize});
+ root.BBWeeklyEssentials=Object.freeze({quote,summarize,reconcile});
 })(typeof window!=='undefined'?window:globalThis);

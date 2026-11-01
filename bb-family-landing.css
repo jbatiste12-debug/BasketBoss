@@ -34,3 +34,34 @@
 .bb-family-landing .pantry-feature-copy,.bb-family-landing .pantry-demo{min-width:0}.bb-family-landing .pantry-feature .button{white-space:normal;text-align:center}
 @media(max-width:580px){.bb-more-demos{padding:0 18px;margin-bottom:35px}.bb-more-demos>summary{display:grid;grid-template-columns:1fr auto;gap:3px 10px;padding:18px 0}.bb-more-demos>summary>span{font-size:21px}.bb-more-demos>summary small{margin:0;grid-column:1;font-size:12px}.bb-more-demos>summary b{grid-column:2;grid-row:1/3}.bb-family-landing .bb-more-demos .pantry-feature{padding:20px 16px}.bb-family-landing .features-compact article{display:grid;grid-template-columns:35px minmax(0,1fr);column-gap:13px}.bb-family-landing .features-compact article .iconbubble{grid-column:1;grid-row:1/4;width:35px;height:35px;font-size:22px}.bb-family-landing .features-compact article h3,.bb-family-landing .features-compact article p,.bb-family-landing .features-compact article .feature-link{grid-column:2}.bb-family-landing .features-compact article .feature-mini{display:none!important}.bb-family-landing .features-compact article p{margin-bottom:3px!important}.bb-family-landing .features-compact article .feature-link{margin-top:6px!important}.bb-family-landing .features-compact h3{font-size:18px!important}}
 @media(prefers-reduced-motion:reduce){.bb-family-landing *{scroll-behavior:auto}}
+/* Public stock-check example. Separate from app state and account controls. */
+.bb-at-home-flow{display:grid;grid-template-columns:1fr 1fr;gap:45px;padding-top:15px;padding-bottom:55px;align-items:center}
+.bb-at-home-copy h2{font-size:36px;line-height:1.12;letter-spacing:-.045em;margin:8px 0 22px;color:#193e2b}
+.bb-at-home-copy h2 em{font-style:normal;color:#34734a}
+.bb-at-home-steps{list-style:none;padding:0;margin:0 0 20px;display:grid;gap:16px}
+.bb-at-home-steps li{display:flex;align-items:flex-start;gap:12px}
+.bb-at-home-steps li>b{display:grid;place-items:center;flex:none;width:30px;height:30px;border-radius:10px;background:#e5ecd7;color:#395b34;font-size:13px}
+.bb-at-home-steps strong,.bb-at-home-steps span{display:block}
+.bb-at-home-steps strong{font-size:16px;color:#244f34;margin-bottom:4px}
+.bb-at-home-steps span{font-size:13px;line-height:1.6;color:#587050}
+.bb-at-home-example{min-width:0;padding:25px;border:1px solid #d5dfc7;border-radius:22px;background:#fffdf5;box-shadow:0 10px 30px #24442709}
+.bb-at-home-demo-label{font-size:9px;font-weight:800;letter-spacing:.11em;color:#837137;margin:0 0 10px}
+.bb-at-home-example h3{font-size:23px;letter-spacing:-.035em;line-height:1.2;margin:0 0 16px;color:#234e32}
+.bb-at-home-foods{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:8px;margin-bottom:18px}
+.bb-at-home-foods>span{min-width:0;display:grid;justify-items:center;gap:5px;padding:9px 4px;border-radius:12px;background:#f3f6ea;border:1px solid #e2e8d9;color:#42613d;font-size:11px;font-weight:700}
+.bb-at-home-foods img{width:45px;height:45px;object-fit:contain}
+.bb-at-home-amount{display:flex;align-items:center;justify-content:space-between;gap:12px;padding-top:5px;color:#345838;font-size:13px;font-weight:700}
+.bb-at-home-amount>span{display:flex;align-items:center;gap:6px}
+.bb-at-home-amount input{box-sizing:border-box;width:92px;min-height:44px;padding:9px;border-radius:10px;border:1px solid #acc3a6;background:#fff;color:#254d34;font:inherit;font-size:16px}
+.bb-at-home-calculation{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:7px;margin-top:17px}
+.bb-at-home-calculation>div{min-width:0;padding:12px 8px;border:1px solid #dde5d3;border-radius:11px;background:#f4f6ec}
+.bb-at-home-calculation span{display:block;color:#667858;font-size:10px;line-height:1.4}
+.bb-at-home-calculation strong{display:block;font-size:21px;line-height:1.3;color:#345c3a;margin-top:5px}
+.bb-at-home-calculation>div:last-child{background:#dfeddf;border-color:#aacaaa}
+.bb-at-home-example #at-home-demo-note{font-size:11px;line-height:1.6;color:#5d7053;margin:11px 0 15px}
+.bb-at-home-household{padding:12px 0;border-top:1px solid #e1e6d5;border-bottom:1px solid #e1e6d5}
+.bb-at-home-household summary{min-height:32px;font-size:12px;font-weight:750;color:#50643b;cursor:pointer}
+.bb-at-home-household p{font-size:12px;line-height:1.6;color:#60704d;margin:8px 0 2px}
+.bb-at-home-small{font-size:10px;line-height:1.6;color:#7a8169;margin:13px 0 0}
+@media(max-width:850px){.bb-at-home-flow{grid-template-columns:1fr;gap:25px;max-width:620px}.bb-at-home-copy h2{font-size:33px}}
+@media(max-width:580px){.bb-at-home-flow{padding-bottom:35px}.bb-at-home-copy h2{font-size:30px}.bb-at-home-example{padding:20px 16px}.bb-at-home-steps{gap:14px}.bb-at-home-foods{gap:5px}.bb-at-home-foods img{width:36px;height:36px}.bb-at-home-calculation strong{font-size:19px}.bb-at-home-amount{font-size:12px}}
