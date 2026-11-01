@@ -3,22 +3,29 @@ import path from 'node:path';
 import {execFileSync} from 'node:child_process';
 
 if(process.platform!=='darwin')throw Error('The native Cook smoke test needs a macOS iOS simulator.');
-const run=(...args)=>execFileSync('xcrun',args,{encoding:'utf8',stdio:['ignore','pipe','pipe'],timeout:120000}).trim();
-const devices=JSON.parse(run('simctl','list','devices','available','--json')).devices;
-const phone=Object.entries(devices).filter(([runtime])=>runtime.includes('iOS')).flatMap(([,list])=>list).find(device=>device.isAvailable&&device.name.startsWith('iPhone'));
-if(!phone)throw Error('No available iPhone simulator.');
-if(phone.state!=='Booted')run('simctl','boot',phone.udid);
-run('simctl','bootstatus',phone.udid,'-b');
-run('simctl','install',phone.udid,'/tmp/basketboss-ios-build/Build/Products/Debug-iphonesimulator/App.app');
-run('simctl','launch','--terminate-running-process',phone.udid,'uk.co.basketboss.app','--bb-native-cook-smoke');
-const container=run('simctl','get_app_container',phone.udid,'uk.co.basketboss.app','data');
-const file=path.join(container,'Documents/bb-native-cook-smoke.json');
-let raw;
-for(let tick=0;tick<200;tick++){if(fs.existsSync(file)){raw=JSON.parse(fs.readFileSync(file,'utf8'));if(raw.complete===true)break;}await new Promise(resolve=>setTimeout(resolve,250));}
-const report={reportReceived:!!raw};
+const exec=(command,args)=>execFileSync(command,args,{encoding:'utf8',stdio:['ignore','pipe','pipe'],timeout:120000}).trim();
+const run=(...args)=>exec('xcrun',args);
+let stage='devices',raw,failure='';
+try{
+ const devices=JSON.parse(run('simctl','list','devices','available','--json')).devices;
+ const phone=Object.entries(devices).filter(([runtime])=>runtime.includes('iOS')).flatMap(([,list])=>list).find(device=>device.isAvailable&&device.name.startsWith('iPhone'));
+ if(!phone)throw Error('no_simulator');
+ stage='boot';if(phone.state!=='Booted')run('simctl','boot',phone.udid);
+ stage='bootstatus';run('simctl','bootstatus',phone.udid,'-b');
+ const app='/tmp/basketboss-ios-build/Build/Products/Debug-iphonesimulator/App.app';
+ // Apple Silicon simulators need a local ad-hoc signature for execution. No
+ // developer certificate or distribution identity is used by this smoke test.
+ stage='adhoc_sign';exec('codesign',['--force','--deep','--sign','-',app]);
+ stage='install';run('simctl','install',phone.udid,app);
+ stage='launch';run('simctl','launch','--terminate-running-process',phone.udid,'uk.co.basketboss.app','--bb-native-cook-smoke');
+ stage='container';const container=run('simctl','get_app_container',phone.udid,'uk.co.basketboss.app','data');
+ const file=path.join(container,'Documents/bb-native-cook-smoke.json');
+ stage='report';for(let tick=0;tick<200;tick++){if(fs.existsSync(file)){raw=JSON.parse(fs.readFileSync(file,'utf8'));if(raw.complete===true)break;}await new Promise(resolve=>setTimeout(resolve,250));}
+ if(!raw?.complete)failure='report_timeout';else if(!raw.passed)failure='ui_failed';
+}catch(error){failure=error.code==='ETIMEDOUT'?'command_timeout':'command_failed';}
+const report={reportReceived:!!raw,failureStage:failure?stage:'',failure};
 for(const key of ['passed','nativeOrigin','cookMounted','cookReady','navPresent','navVisible','navHit','legacyVisible','backToPlan','dataKept','mainReady','startupReady'])report[key]=raw?.[key]===true;
 for(const key of ['errorCount','errorLine'])report[key]=Number.isInteger(raw?.[key])?Math.max(0,Math.min(raw[key],1000000)):0;
 for(const key of ['phase','readyState','errorKind','errorSource'])report[key]=String(raw?.[key]||'').replace(/[^A-Za-z0-9_.-]/g,'').slice(0,100);
 console.log('::notice title=BasketBoss native Cook smoke::'+JSON.stringify({nativeCook:report}));
-if(!raw)throw Error('Native Cook smoke report timed out.');
-if(!report.passed)throw Error('Native Cook navigation smoke test failed.');
+if(!report.passed||failure)process.exitCode=1;

@@ -138,6 +138,7 @@ private final class BasketBossCookSmokeReporter: NSObject, WKScriptMessageHandle
         let safe = report.filter { keys.contains($0.key) }
         guard let data = try? JSONSerialization.data(withJSONObject: safe, options: [.sortedKeys]),
               let folder = FileManager.default.urls(for: .documentDirectory, in: .userDomainMask).first else { return }
+        try? FileManager.default.createDirectory(at: folder, withIntermediateDirectories: true)
         try? data.write(to: folder.appendingPathComponent("bb-native-cook-smoke.json"), options: .atomic)
     }
 
@@ -160,7 +161,8 @@ private final class BasketBossCookSmokeReporter: NSObject, WKScriptMessageHandle
             report.backToPlan=document.body.dataset.bbnextView==='week';report.dataKept=localStorage.getItem('basketboss_native_smoke_probe')==='keep';
             report.passed=!!(report.nativeOrigin&&report.cookMounted&&report.cookReady&&report.navVisible&&report.navHit&&report.backToPlan&&report.dataKept);send(report);return;
           }
-          const link=document.querySelector('.bb173-make-meal-link');if(link){sessionStorage.setItem(key,'cook');link.click();}return;
+          if(!sessionStorage.getItem(key+'_region')){const select=document.getElementById('bb307Island'),save=document.getElementById('bb307SaveMarket');if(select&&save){select.value='UK';select.dispatchEvent(new Event('change',{bubbles:true}));save.click();sessionStorage.setItem(key+'_region','1');return;}}
+          const link=document.querySelector('.bb173-make-meal-link');if(link){sessionStorage.setItem(key,'cook');link.click();}if(ticks>200)send({passed:false,navPresent:!!link});return;
         }
         if(!scrolled){scrollTo(0,document.body.scrollHeight);scrolled=true;return;}
         const nav=document.querySelector('nav.bb-r6-cook-nav'),r=nav?.getBoundingClientRect(),style=nav&&getComputedStyle(nav),height=visualViewport?.height||innerHeight;
