@@ -34,6 +34,28 @@ function harness(fetcher, extras = {}) {
 }
 const response = (status, body) => ({ status, ok: status >= 200 && status < 300, json: async () => body });
 
+test('an actor-bound status check releases only a server-proven stale local lock without deleting data',async()=>{
+ const calls=[];
+ const h=harness(async(url,init)=>{calls.push({url,init});return init.method==='POST'?response(202,{ok:false,pending:true}):response(200,{ok:true,deletionState:'not_started'});});
+ await h.remove();assert.equal(h.api.isDeleting(),true);
+ const before=h.local.getItem('basketboss_321_unified_state_v1');const result=await h.api.checkPending();
+ assert.equal(result.state,'not_started');assert.equal(h.api.isDeleting(),false);assert.equal(h.local.getItem(LOCK),null);assert.equal(h.local.getItem('basketboss_321_unified_state_v1'),before);
+ assert.equal(calls[1].init.method,'GET');assert.equal(calls[1].init.body,undefined);assert.match(calls[1].url,/mode=status&actor=user-a/);
+});
+test('unknown, unauthenticated and real pending server states retain the write barrier and saved data',async()=>{
+ for(const reply of [response(401,{ok:false}),response(200,{ok:true,deletionState:'pending'}),response(200,{ok:true}),response(503,{ok:false})]){
+  const h=harness(async(url,init)=>init.method==='POST'?response(202,{ok:false,pending:true}):reply);
+  await h.remove();await h.api.checkPending();assert.equal(h.api.isDeleting(),true);assert.ok(h.local.getItem(LOCK));assert.equal(h.local.getItem('basketboss_321_unified_state_v1'),'meal plan');
+ }
+});
+test('recovery replaces only the original actor session after server verification and never uploads plans',async()=>{
+ const calls=[];
+ const h=harness(async(url,init)=>{calls.push({url,init});return init.method==='POST'?response(202,{ok:false,pending:true}):response(200,{ok:true,deletionState:'pending'});});
+ await h.remove();const fresh={user:{id:actor.actorId,email:actor.email},access_token:'fresh-session',expires_at:9999999999};
+ assert.equal((await h.api.recoverSession({...fresh,user:{id:'other'}})).ok,false);assert.equal(calls.length,1);
+ assert.equal((await h.api.recoverSession(fresh)).state,'pending');assert.equal(JSON.parse(h.local.getItem(SESSION)).access_token,'fresh-session');assert.equal(h.api.isDeleting(),true);assert.equal(calls[1].init.headers.Authorization,'Bearer fresh-session');assert.equal(h.local.getItem('basketboss_321_unified_state_v1'),'meal plan');
+});
+
 test('deletion requires the signed-in actor, typed confirmation, acknowledgement and password', async () => {
   let calls = 0;
   const h = harness(async () => { calls++; return response(200, { ok: true, deleted: true }); });

@@ -144,6 +144,31 @@ test('readiness is public and does not mutate account data',async t=>{
  assert.deepEqual(f.calls.map(call=>call.path),['/rest/v1/rpc/bb_account_deletion_ready']);
 });
 
+const deletionStatus=(f,{actor=USER,token=TOKEN}={})=>onRequestGet({env:f.env,request:new Request('https://basketboss.co.uk/api/account/delete?mode=status&actor='+encodeURIComponent(actor),{headers:{Origin:'https://basketboss.co.uk',Authorization:token}})});
+test('authenticated status proves no deletion started without creating a journal or mutating records',async t=>{
+ const f=fixture(t),before=savedRows(f);const response=await deletionStatus(f);
+ assert.deepEqual(await response.json(),{ok:true,deletionState:'not_started'});assert.deepEqual(savedRows(f),before);assertNoRemoteDeletion(f);
+ assert.equal(f.db.sql.prepare("SELECT name FROM sqlite_master WHERE name='bb_account_deletions'").get(),undefined);
+});
+test('same-origin browser GET without Origin is accepted while foreign fetch metadata is denied',async t=>{
+ const f=fixture(t),address='https://basketboss.co.uk/api/account/delete?mode=status&actor='+USER;
+ const get=site=>onRequestGet({env:f.env,request:new Request(address,{headers:{Authorization:TOKEN,'Sec-Fetch-Site':site}})});
+ assert.deepEqual(await (await get('same-origin')).json(),{ok:true,deletionState:'not_started'});
+ assert.equal((await get('cross-site')).status,403);assertNoRemoteDeletion(f);
+});
+test('status distinguishes pending and completed jobs using the original retry token after auth expires',async t=>{
+ const f=fixture(t);await ensureDeletionSchema(f.env);
+ f.db.sql.prepare('INSERT INTO bb_account_deletions(actor_hash,retry_hash,user_id,email,started_at_ms) VALUES(?,?,?,?,?)').run(await digestDeletionActor(USER),await digestDeletionRetry(TOKEN),USER,EMAIL,Date.now());
+ f.knownActor=false;
+ assert.deepEqual(await (await deletionStatus(f)).json(),{ok:true,deletionState:'pending'});
+ f.db.sql.prepare('UPDATE bb_account_deletions SET completed_at_ms=1,user_id=NULL,email=NULL').run();
+ assert.deepEqual(await (await deletionStatus(f)).json(),{ok:true,deletionState:'deleted'});assert.equal(f.calls.length,0);assertNoRemoteDeletion(f);
+});
+test('status never releases a foreign actor or an expired token with no matching job',async t=>{
+ const f=fixture(t);assert.equal((await deletionStatus(f,{actor:OTHER})).status,403);
+ f.knownActor=false;assert.equal((await deletionStatus(f)).status,401);assertNoRemoteDeletion(f);
+});
+
 test('free account deletion removes own records, preserves others/catalogue and keeps only hashed retry state',async t=>{
  const f=fixture(t),before=savedRows(f);
  const response=await remove(f);

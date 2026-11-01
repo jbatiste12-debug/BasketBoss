@@ -133,7 +133,7 @@ export function verifyNativeWeb({directory}){
   const html=fs.readFileSync(path.join(directory,name),'utf8');
   requireThat(html.includes(NATIVE_MARKER)&&html.includes('<base href="./">')&&html.includes('viewport-fit=cover'),'Native HTML setup is incomplete: '+name);
   const scripts=[...html.matchAll(/<script\b[^>]*>/gi)];
-  requireThat(scripts.length>0&&/\bsrc="bb-native-runtime\.js"/.test(scripts[0][0]),'Native runtime must precede every app script: '+name);
+  requireThat(scripts.length>0&&/\bsrc="bb-native-runtime\.js(?:\?[^"<>]*)?"/.test(scripts[0][0]),'Native runtime must precede every app script: '+name);
   requireThat(!/<script\b[^>]*src=["'][^"']*(?:paddle|stripe)/i.test(html),'Native HTML contains a checkout script: '+name);
  }
  const entry=fs.readFileSync(path.join(directory,'index.html'),'utf8');
@@ -149,6 +149,21 @@ export function verifyNativeWeb({directory}){
   requireThat(bytes.length===file.bytes&&sha256(bytes)===file.sha256,'Native bundle hash mismatch: '+file.path);
  }
  return {files:files.length,freeRecipes:100,privateRecipeBundle:false};
+}
+
+export function versionNativeHtml(source,readAsset,documents=new Map()){
+ return source.replace(/(<(script|link|a)\b[^>]*?\b(?:src|href)\s*=\s*["'])([^"']+)(["'])/gi,(all,prefix,tag,value,quote)=>{
+  if(/^(?:[a-z][a-z0-9+.-]*:|\/\/|#)/i.test(value))return all;
+  let address,name;
+  try{address=new URL(value.replace(/&amp;/g,'&'),'https://native.invalid/');name=decodeURIComponent(address.pathname).replace(/^\//,'');}catch{return all;}
+  if(name.split('/').some(part=>part==='..'||part==='.'))return all;
+  let stamp;
+  if(tag.toLowerCase()==='a')stamp=documents.get(name);
+  else if(/\.(?:js|css)$/.test(name)){const bytes=readAsset(name);if(bytes)stamp=sha256(bytes).slice(0,16);}
+  if(!stamp)return all;
+  address.searchParams.set(tag.toLowerCase()==='a'?'bb_native_doc':'bb_native_asset',stamp);
+  return prefix+value.split(/[?#]/)[0]+'?'+address.searchParams.toString().replace(/&/g,'&amp;')+address.hash+quote;
+ });
 }
 
 export async function buildNativeWeb({root=DEFAULT_ROOT,bundleRuntime=defaultBundleRuntime}={}){
@@ -185,6 +200,13 @@ export async function buildNativeWeb({root=DEFAULT_ROOT,bundleRuntime=defaultBun
   for(const name of MEMBERSHIP_ALIASES)write(name,membership);
   write('bb-native.css',readSource(root,'native/bb-native.css'));
   await bundleRuntime({entry:path.join(root,'native/runtime.mjs'),outfile:path.join(staging,'bb-native-runtime.js'),root});
+  // WKWebView may retain resources across a sideloaded update. Stamp local
+  // assets and page links from content, so a new native build cannot reuse an
+  // older Cook script or document under the same URL. APIs stay untouched.
+  const documents=new Map(),pages=[...HTML_FILES,...MEMBERSHIP_ALIASES];
+  const readAsset=name=>{const file=path.join(staging,name);return fs.existsSync(file)&&fs.statSync(file).isFile()?fs.readFileSync(file):null;};
+  for(const name of pages){const html=versionNativeHtml(fs.readFileSync(path.join(staging,name),'utf8'),readAsset);write(name,html);documents.set(name,sha256(Buffer.from(html)).slice(0,16));}
+  for(const name of pages)write(name,versionNativeHtml(fs.readFileSync(path.join(staging,name),'utf8'),readAsset,documents));
   const files=[];
   function inventory(directory,relative=''){
    for(const entry of fs.readdirSync(directory,{withFileTypes:true}).sort((a,b)=>a.name.localeCompare(b.name,'en'))){

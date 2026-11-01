@@ -56,7 +56,7 @@
     let phase = 'idle', pinned = null, inFlight = null, controller = null;
     let dialog = null, form = null, message = null, password = null, confirmation = null, acknowledged = null;
     let submit = null, cancel = null, cleanupRetry = null, restoreFocus = null, observer = null, started = false, locked = false;
-    let success = false, knownActor = null;
+    let success = false, knownActor = null, statusFlight = null;
 
     function readSession() {
       try {
@@ -133,6 +133,63 @@
       controller?.abort();
       setMessage('The signed-in account changed. Close this window and reopen account settings. If deletion had started, its result must be checked before trying again.', true);
       mount();
+    }
+
+    // Reconcile an old local lock without starting or retrying deletion. Only
+    // an authenticated, actor-bound server answer may release the write barrier.
+    async function reconcile(expected, savedLock, replacement) {
+      if (!expected || !savedLock || expected.actorId !== savedLock.actorId || !fetcher) return { ok: false, state: 'unknown' };
+      const before = local?.getItem(LOCK_KEY);
+      const baseline = readSession();
+      const Abort = options.AbortController || host.AbortController;
+      const check = Abort ? new Abort() : null;
+      const timeout = host.setTimeout?.(() => check?.abort(), 10000);
+      let response, data;
+      try {
+        response = await fetcher('/api/account/delete?mode=status&actor=' + encodeURIComponent(expected.actorId), {
+          method: 'GET', headers: { Authorization: 'Bearer ' + expected.token, Accept: 'application/json' },
+          credentials: 'same-origin', cache: 'no-store', ...(check ? { signal: check.signal } : {})
+        });
+        data = await response.json();
+      } catch { return { ok: false, state: 'unknown', message: 'The earlier deletion could not be checked. Your saved data is kept and cloud syncing remains paused.' }; }
+      finally { if (timeout !== undefined) host.clearTimeout?.(timeout); }
+      if (inFlight || success || phase === 'deleting' || local?.getItem(LOCK_KEY) !== before || readLock()?.actorId !== expected.actorId) return { ok: false, state: 'changed' };
+      const current = readSession();
+      if (!current || current.actorId !== expected.actorId || current.token !== baseline?.token || (!replacement && !sameSession(expected))) return { ok: false, state: 'changed' };
+      if (!response.ok || data?.ok !== true || !['not_started', 'pending', 'deleted'].includes(data.deletionState)) {
+        return { ok: false, state: 'unknown', needsSignIn: response.status === 401, message: response.status === 401 ? 'Sign in with the original account to check the earlier deletion. Cloud syncing remains paused.' : 'The earlier deletion could not be checked. Your saved data is kept and cloud syncing remains paused.' };
+      }
+      if (replacement) {
+        // The endpoint independently matched this new bearer to the original
+        // actor. A successful recovery never uploads/restores any plan data.
+        local.setItem(SESSION_KEY, JSON.stringify(replacement));
+      }
+      pinned = { ...expected }; knownActor = pinned; locked = false;
+      if (data.deletionState === 'deleted') {
+        lock('deleted'); return finishOnThisDevice(true);
+      }
+      if (data.deletionState === 'not_started') {
+        lock('idle'); emit('cancelled', { reconciled: true }); mount();
+        return { ok: true, state: 'not_started', message: 'No account deletion was started. Your saved data is kept and you can sign in normally.' };
+      }
+      phase = 'pending'; emit('started', { recovered: true }); mount();
+      return { ok: true, state: 'pending', message: 'Your sign-in was recovered. The server confirms an unfinished deletion; cloud syncing stays paused. Use Finish Account Deletion to review it.' };
+    }
+
+    async function checkPending() {
+      if (statusFlight) return statusFlight;
+      if (phase !== 'pending' || inFlight || success) return { ok: false, state: phase };
+      const expected = readSession(), saved = readLock();
+      statusFlight = reconcile(expected, saved);
+      try { const result = await statusFlight; if (result.message) setMessage(result.message, !result.ok); return result; }
+      finally { statusFlight = null; }
+    }
+
+    async function recoverSession(value) {
+      const saved = readLock(), original = readSession();
+      if (phase !== 'pending' || inFlight || success || !saved || !original || original.actorId !== saved.actorId) return { ok: false, message: 'The earlier deletion state changed. Reopen account settings.' };
+      if (!value || value.user?.id !== saved.actorId || typeof value.access_token !== 'string' || !value.access_token || !Number.isFinite(Number(value.expires_at)) || Number(value.expires_at) * 1000 <= now()) return { ok: false, message: 'Sign in with the original account whose deletion needs checking. Your saved data has been kept.' };
+      return reconcile({ actorId: value.user.id, token: value.access_token, email: String(value.user.email || '') }, saved, value);
     }
 
     async function clearDeviceData() {
@@ -383,6 +440,9 @@
           const button = element('button', 'Delete Account & Data', 'bb-account-deletion-open'); button.type = 'button';
           button.addEventListener('click', open);
           card.append(button, element('small', 'Permanently remove your account and saved BasketBoss data.'));
+          const check = element('button', 'Check earlier deletion status', 'bb-account-deletion-check'); check.type = 'button';
+          check.addEventListener('click', () => { void checkPending().then(result => { if (!result.ok && doc.getElementById('cloud-open')) doc.getElementById('cloud-open').click(); }); });
+          card.append(check);
           const links = element('div', '', 'bb-account-deletion-legal');
           const native = host.BBNative?.isNative || host.location?.protocol === 'capacitor:';
           for (const [path, text] of [['privacy', 'Privacy'], ['terms', 'Terms']]) {
@@ -395,6 +455,8 @@
         card.hidden = !current;
         card.querySelector('button').disabled = phase === 'deleting' || success;
         card.querySelector('button').textContent = phase === 'pending' && pinned?.actorId === current?.actorId ? 'Finish Account Deletion' : 'Delete Account & Data';
+        const check = card.querySelector('.bb-account-deletion-check');
+        if (check) { check.hidden = phase !== 'pending'; check.disabled = Boolean(statusFlight); }
       }
     }
 
@@ -429,6 +491,7 @@
         mount();
       });
       listen(host, 'focus', () => { accountChanged(); mount(); });
+      listen(host, 'online', () => { void checkPending(); });
       listen(host, 'storage', event => {
         if (event.key === SESSION_KEY || event.key === null) {
           accountChanged();
@@ -455,10 +518,11 @@
         });
         observer.observe(doc.body, { childList: true, subtree: true });
       }
+      if (phase === 'pending') void checkPending();
     }
 
     function stop() { observer?.disconnect(); listeners.splice(0).forEach(remove => remove()); started = false; }
-    return { start, stop, open, close, isDeleting: () => phase !== 'idle', readSession, requestDeletion, clearDeviceData, freshURL };
+    return { start, stop, open, close, isDeleting: () => phase !== 'idle', canRecoverSignIn: () => phase === 'pending' && !inFlight && !success, checkPending, recoverSession, readSession, requestDeletion, clearDeviceData, freshURL };
   }
 
   root.BBAccountDeletionFactory = factory;

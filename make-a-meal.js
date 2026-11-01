@@ -870,6 +870,6 @@ fetch('recipes.json',{cache:'no-store'}).then(r=>{
   bbSecureFreeRecipes=data;
   void bbSecureRefreshPremiumRecipes();
 }).catch(e=>{message(e.message,'warning');renderTiles()});
-renderTiles();bb82UnifyMealLayout();bb15RestorePremiumEntry()}
+renderTiles();bb82UnifyMealLayout();bb15RestorePremiumEntry();document.documentElement.classList.add('bb-cook-ready')}
 if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',init,{once:true});else init();
 })();

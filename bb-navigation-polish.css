@@ -1,10 +1,10 @@
 /* A single, opaque dock across PWA and native. Decorative changes only. */
 html body nav#bbPrimaryNavigation[data-bb-navigation="polished"]{
- position:fixed!important;inset:auto auto max(8px,env(safe-area-inset-bottom,0px)) 50%!important;
- transform:translateX(-50%)!important;display:grid!important;grid-template-columns:repeat(5,minmax(0,1fr))!important;
+ position:fixed!important;inset:auto 0 max(8px,env(safe-area-inset-bottom,0px)) 0!important;
+ transform:none!important;display:grid!important;grid-template-columns:repeat(5,minmax(0,1fr))!important;
  align-items:stretch!important;justify-content:normal!important;gap:4px!important;
  width:min(620px,calc(100% - 24px))!important;max-width:620px!important;min-height:72px!important;
- box-sizing:border-box!important;margin:0!important;padding:6px!important;border:1px solid #dce6d6!important;
+ box-sizing:border-box!important;margin:0 auto!important;padding:6px!important;border:1px solid #dce6d6!important;
  border-radius:24px!important;background:#fffef8!important;color:#64806b!important;
  backdrop-filter:none!important;-webkit-backdrop-filter:none!important;
  box-shadow:0 8px 26px #183f3018,0 2px 7px #183f300a!important;z-index:9990!important;

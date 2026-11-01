@@ -63,3 +63,10 @@
 #bb173WelcomeSplash .bbws-basket .bbws-slots{fill:none!important;stroke:#F8F8F8!important}
 #bb173WelcomeSplash .bbws-crown path{fill:#44484B!important;stroke:#44484B!important}
 #bb173WelcomeSplash .bbws-crown .bbws-crown-base{fill:none!important;stroke:#44484B!important}
+/* Match the instant BasketBoss wordmark and four-second crown intro in the PWA. */
+#bb173WelcomeSplash .bbws-wordmark{opacity:1!important}
+#bb173WelcomeSplash.bbws-play .bbws-logo-pad{animation:bbwsMarkArrive .65s cubic-bezier(.2,.85,.3,1.22) 0s both,bbobBrandSway 1.1s ease-in-out .7s 3 alternate}
+#bb173WelcomeSplash.bbws-play .bbws-basket{animation:bbwsBasketSlide .6s ease-out 0s both}
+#bb173WelcomeSplash.bbws-play .bbws-crown{animation:bbwsCrownDrop .55s cubic-bezier(.2,.8,.3,1.15) .12s both}
+#bb173WelcomeSplash.bbws-play .bbws-wordmark{animation:bbwsInstantName .45s ease-out 0s both}
+@keyframes bbwsInstantName{from{transform:translateY(6px) scale(.98)}to{transform:none}}

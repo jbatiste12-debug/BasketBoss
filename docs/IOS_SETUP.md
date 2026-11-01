@@ -99,7 +99,7 @@ Public App Store privacy URL: `https://basketboss.co.uk/privacy`. Terms URL: `ht
 
 ## Native launch and replay setup
 
-The OS launch screen displays the crowned BasketBoss logo and name immediately. A matching native view adds a short spring animation and green/gold sparkles while the local WebView prepares the app; there is no fixed hold after controls are ready and no second automatic web welcome animation. Reduce Motion skips decorative movement. If startup cannot finish, Try again reloads the local app without clearing saved data. The cream background uses dark status-bar icons.
+The OS launch screen displays the crowned BasketBoss logo and name immediately. A matching native view adds a short spring animation and green/gold sparkles while the local WebView prepares the app; the requested native brand animation stays visible for about four seconds while the app prepares underneath, with no second automatic web welcome animation. Reduce Motion skips decorative movement. If startup cannot finish, Try again reloads the local app without clearing saved data. The cream background uses dark status-bar icons.
 
 First-time users continue into the setup flow. Returning users can use Settings → Replay welcome & setup; cancelling the replay keeps the completed setup marker, preferences and meal plan. Setup is paused during account deletion so it cannot restore data being erased.
 
@@ -120,3 +120,12 @@ A validated AI meal displays immediately, with its ingredients, method, allergen
 Meal pictures use the existing server-side `GEMINI_API_KEY`, a supported image model (default `gemini-2.5-flash-image`), current Premium/session/deletion checks, and an actor/household/origin-bound ten-minute single-use ticket issued after recipe validation. The image allowance is separate from the ten daily meal drafts: up to ten pictures per household per day, subject to availability. `BB_AI_IMAGE_MODEL` optionally selects an allowlisted model; `BB_AI_IMAGE_GLOBAL_DAILY_CAP` optionally sets a bounded global picture cap, otherwise the lower of 50 and the existing AI global cap applies. There is no new secret or database migration. Provider/model access must be smoke-tested with an eligible production account; local tests simulate provider responses and do not establish live image-provider availability.
 
 Native startup now reveals real app controls after the parser, deletion safeguards and required onboarding module are ready, while optional deferred enhancements continue loading. A local Chromium test with one optional asset delayed four seconds reduced handoff from about 4.7 seconds to about 0.9 seconds for both fresh and returning users. These are simulated timings, not measurements from the physical iPhone. First-time setup, pending deletion and failed external requests were checked. The native builder also removes the obsolete inline favicon and private web QA comparison controller; native Free AI entry opens the bundled account-status view.
+
+
+## Account recovery and installed-asset refresh (1 November 2026)
+
+An unfinished local deletion marker now has a read-only, authenticated status check. Only the exact original actor or its original retry bearer can check that job. A server-confirmed not-started state releases the local pause without deleting saved data. A real pending job keeps writes paused; recovery sign-in for that same account is available without uploading or restoring a plan. Unknown responses, network failures and account changes retain the barrier. The public no-argument deletion-readiness URL is unchanged.
+
+Native HTML now fingerprints bundled JavaScript, styles and page links by content. This prevents an updated index from opening an older cached Cook document or script after a sideloaded update. The native Cook navigation has a plain-link fallback, including when its enhancement script fails, and uses centering without a transformed fixed-position layer. Cook also loads deletion recovery directly.
+
+The native opening animation lasts about four seconds when motion is enabled; Reduce Motion skips the decorative hold. App controls and setup prepare behind it. PWA onboarding keeps its action footer visible while only the step content scrolls, including when the visual viewport shrinks for a keyboard. Its BasketBoss wordmark and green/gold crown motion match the updated brand animation.

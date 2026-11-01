@@ -26,3 +26,5 @@
 .bb-account-deletion-dialog button:disabled{opacity:.55;cursor:default}
 .bb-account-deletion-dialog :focus-visible,.bb-account-deletion-open:focus-visible{outline:3px solid #16744d;outline-offset:3px}
 @media(max-width:480px){.bb-account-deletion-dialog{padding:20px 17px}.bb-account-deletion-actions{flex-direction:column-reverse}.bb-account-deletion-actions button{width:100%}}
+.bb-account-deletion-check{display:block;min-height:44px;width:100%;margin:9px 0 0;padding:10px 12px;border:1px solid #cbdccf;border-radius:11px;background:#eff6ed;color:#24553c;font:inherit;font-size:13px;font-weight:650;cursor:pointer}
+.bb-account-deletion-check[hidden]{display:none!important}

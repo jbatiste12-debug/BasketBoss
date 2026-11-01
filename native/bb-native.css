@@ -12,5 +12,8 @@ html.bb-native-ios{color-scheme:light;background:#fffdf7;min-height:100%;-webkit
 
 .bb-native-ios .bb-public-beta-badge,.bb-native-ios .bb-beta-badge{display:none!important}
 html.bb-native-ios body #bbpolUpgradePill,html.bb-native-ios body #bb17513-qa-mode-bar{display:none!important}
+/* Keep an ordinary-link escape route even if Cook enhancements fail to boot. */
+html.bb-native-ios body nav.bb-r6-cook-nav{display:flex!important;position:fixed!important;left:0!important;right:0!important;bottom:max(8px,env(safe-area-inset-bottom,0px))!important;z-index:9990!important}
+html.bb-native-ios:not(.bb-cook-ready) body .bb17513-meal-back{display:inline-flex!important;min-height:44px;align-items:center}
 /* Native launch already plays the crown animation; setup starts with its logo visible. */
 .bb-native-ios #bbNewOnboarding .bbob-original-logo-motion,.bb-native-ios #bbNewOnboarding .bbob-motion-basket,.bb-native-ios #bbNewOnboarding .bbob-motion-crown{animation:none!important;opacity:1!important;transform:none!important}

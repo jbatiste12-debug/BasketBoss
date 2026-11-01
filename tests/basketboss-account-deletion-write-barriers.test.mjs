@@ -23,6 +23,18 @@ function harness({saved=session,fetchResult}={}){
 }
 const tick=()=>new Promise(resolve=>setImmediate(resolve));
 
+test('pending deletion exposes recovery sign-in without sending any saved plan to the cloud',async()=>{
+ const h=harness({saved:{...session,expires_at:1},fetchResult:()=>Response.json({...session,access_token:'fresh-recovery',expires_in:3600})});
+ let received;
+ h.window.BBAccountDeletion={isDeleting:()=>true,canRecoverSignIn:()=>true,async recoverSession(value){received=value;h.store.set(sessionKey,JSON.stringify(value));return {ok:true,state:'pending',message:'Deletion checked; syncing remains paused.'};}};
+ h.dispatch('basketboss:account-deletion-started');
+ assert.equal(h.node('cloud-auth').hidden,false);assert.equal(h.node('cloud-signup').hidden,true);
+ h.node('cloud-email').value='person@example.test';h.node('cloud-password').value='correct password';
+ await h.node('cloud-login').onclick();
+ assert.equal(received.access_token,'fresh-recovery');assert.equal(received.user.id,actor);assert.equal(h.requests.length,1);assert.match(h.requests[0].url,/\/auth\/v1\/token\?grant_type=password$/);
+ assert.equal(h.node('cloud-upload').disabled,true);assert.equal(h.node('cloud-password').value,'');
+});
+
 test('an in-flight cloud restore cannot repopulate local meal plans after deletion starts',async()=>{
  const response=deferred(),h=harness({fetchResult:()=>response.promise});
  const pending=h.node('cloud-download').onclick();await tick();assert.equal(h.requests.length,1);

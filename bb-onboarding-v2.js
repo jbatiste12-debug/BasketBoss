@@ -83,8 +83,8 @@
    switch(state.step){
      case 0:
        eyebrow='WELCOME TO BASKETBOSS';headline=installed()? 'Thanks for downloading BasketBoss!' : 'Welcome to BasketBoss.';
-       description='Plan Smarter. Eat Better. Less Waste. Plan together. Shop together. One shared household on Premium. Household linking is available only when secure sharing is activated.';
-       art='<div class="bbob-intro-art bbob-restored-animation">'+originalCrownAnimation()+'<span>Built for real-life food shopping.</span></div>';
+       description='Plan meals. Shop smarter. Waste less. Start with 100 free recipes, then set BasketBoss up for your household.';
+       art='<div class="bbob-intro-art bbob-restored-animation">'+originalCrownAnimation()+'<strong class="bbob-intro-wordmark">Basket<span>Boss</span></strong><span>Built for real-life food shopping.</span></div>';
        actions=btn('Let’s get started','next')+btn('Browse 100 free recipes instead','free','link');break;
      case 1:
        eyebrow='YOUR ACCOUNT';
@@ -173,7 +173,8 @@
    form.hidden=false;
    id('cloud-email')?.focus({preventScroll:true});
  }
- function render(){if(!host)return;restoreAuth();host.innerHTML=content();
+ function sizeWelcomeViewport(){const height=window.visualViewport?.height;if(host&&Number.isFinite(height)&&height>0)host.style?.setProperty?.('--bbob-viewport-height',Math.round(height)+'px');}
+ function render(){if(!host)return;restoreAuth();host.innerHTML=content();sizeWelcomeViewport();
    if(state.step===1&&!validSession())mountAuth();
    host.scrollTop=0;host.querySelector('[data-bbob="next"]')?.focus({preventScroll:true});
  }
@@ -334,6 +335,8 @@
    if(hint){hint.hidden=!reason;if(hint.textContent!==reason)hint.textContent=reason;}
  }
  function start(){
+   window.visualViewport?.addEventListener?.('resize',sizeWelcomeViewport);
+   window.addEventListener('orientationchange',sizeWelcomeViewport);
    trimFounder();begin();replayLabel();
    document.addEventListener('click',event=>{
      if(!event.target.closest?.('#bbOnboardingReplay,#bbBetaWelcomeReplay'))return;
@@ -345,7 +348,7 @@
    });
    window.addEventListener('basketboss:account-deletion-started',()=>{if(host)dismiss();replayLabel();});
    window.addEventListener('basketboss:account-deletion-deleted',()=>{if(host)dismiss();replayLabel();});
-   window.addEventListener('basketboss:account-deletion-cancelled',()=>queueMicrotask(()=>{replayLabel();begin();}));
+   window.addEventListener('basketboss:account-deletion-cancelled',event=>queueMicrotask(()=>{replayLabel();if(!event.detail?.reconciled)begin();}));
    window.addEventListener('basketboss:native-startup-ready',()=>{replayLabel();begin();});
    document.addEventListener('close',event=>{if(event.target?.id==='bbAccountDeletionDialog'){replayLabel();if(!deleting())begin();}},true);
  }

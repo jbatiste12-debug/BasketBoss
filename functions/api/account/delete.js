@@ -12,7 +12,32 @@ const messages={
 };
 const pending=(code='deletion_database_pending',status=202)=>json({ok:false,pending:true,code,error:messages[code]||messages.deletion_database_pending},status);
 const rejected=(code,error,status,pendingState)=>json({ok:false,...(pendingState===undefined?{}:{pending:pendingState}),code,error},status);
-export async function onRequestGet({env}){
+export async function onRequestGet({request,env}){
+ if(request&&new URL(request.url).searchParams.get('mode')==='status'){
+  // Browsers normally omit Origin on a same-origin GET. Fetch metadata may
+  // establish this read-only transport; bearer/actor checks still follow.
+  const sameOriginRead=!request.headers.get('Origin')&&request.headers.get('Sec-Fetch-Site')==='same-origin';
+  if(!requireSameOrigin(request,true)&&!sameOriginRead)return rejected('deletion_origin_rejected','Origin not allowed',403);
+  const token=request.headers.get('Authorization')||'';
+  if(!/^Bearer [^\s]+$/.test(token)||token.length>16000)return rejected('deletion_sign_in_required','Sign in to check account deletion.',401);
+  const actor=new URL(request.url).searchParams.get('actor');
+  if(!UUID.test(actor||''))return rejected('deletion_actor_required','The original account is required to check deletion.',400);
+  if(!env.BILLING_DB)return rejected('deletion_state_unknown','Account deletion status could not be checked.',503);
+  try{
+   const db=env.BILLING_DB;
+   const present=await db.prepare("SELECT 1 AS found FROM sqlite_master WHERE type='table' AND name='bb_account_deletions'").first();
+   const retry=present?await db.prepare('SELECT actor_hash,completed_at_ms FROM bb_account_deletions WHERE retry_hash=?').bind(await digestDeletionRetry(token)).first():null;
+   if(retry){
+    if(retry.actor_hash!==await digestDeletionActor(actor))return rejected('deletion_actor_changed','Sign in with the original account to check deletion.',403);
+    return json({ok:true,deletionState:retry.completed_at_ms?'deleted':'pending'});
+   }
+   const user=await authenticatedUser(request,env);
+   if(!user||!UUID.test(user.id))return rejected('deletion_sign_in_required','Sign in again to check the earlier deletion request.',401);
+   if(user.id!==actor)return rejected('deletion_actor_changed','Sign in with the original account to check deletion.',403);
+   const row=present?await db.prepare('SELECT completed_at_ms FROM bb_account_deletions WHERE actor_hash=?').bind(await digestDeletionActor(user.id)).first():null;
+   return json({ok:true,deletionState:row?(row.completed_at_ms?'deleted':'pending'):'not_started'});
+  }catch{return rejected('deletion_state_unknown','Account deletion status could not be checked. Your saved data has been kept.',503);}
+ }
  try{return json({ok:true,available:deletionConfigured(env),migrationReady:await deletionReady(env)});}
  catch{return json({ok:true,available:deletionConfigured(env),migrationReady:false});}
 }
