@@ -30,6 +30,30 @@ concurrency:
   group: basketboss-apple-subscriptions-${{ github.ref }}
   cancel-in-progress: true
 jobs:
+  changed-files:
+    runs-on: ubuntu-latest
+    outputs:
+      native: ${{ steps.paths.outputs.native }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 2
+          persist-credentials: false
+      - id: paths
+        env:
+          BEFORE_SHA: ${{ github.event.before }}
+        shell: bash
+        run: |
+          native=true
+          if [[ "$BEFORE_SHA" =~ ^[0-9a-f]{40}$ ]] && git cat-file -e "$BEFORE_SHA^{commit}" 2>/dev/null; then
+            native=false
+            while IFS= read -r file; do
+              if [[ "$file" =~ ^(ios/|native/|scripts/(build-native|ios-|test-ios|prepare-ios)|capacitor\.config\.(ts|js|json)$|package(-lock)?\.json$|[^/]+\.(js|mjs|css|html)$) ]]; then
+                native=true
+              fi
+            done < <(git diff --name-only "$BEFORE_SHA" "$GITHUB_SHA")
+          fi
+          echo "native=$native" >> "$GITHUB_OUTPUT"
   portable-verification:
     runs-on: ubuntu-latest
     timeout-minutes: 15
@@ -59,6 +83,8 @@ jobs:
           BB_WORKER_TEST_TOOLS: ${{ runner.temp }}/bb-apple-worker/node_modules
         run: node scripts/test-apple-worker.mjs
   local-storekit-simulator:
+    needs: changed-files
+    if: needs.changed-files.outputs.native == 'true'
     runs-on: macos-latest
     timeout-minutes: 30
     steps:
