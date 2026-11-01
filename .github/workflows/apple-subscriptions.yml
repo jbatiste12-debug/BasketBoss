@@ -1,7 +1,28 @@
 name: Verify BasketBoss Apple subscriptions
 on:
   push:
-    branches: [codex/apple-subscriptions-20261101]
+    branches: [main, codex/apple-subscriptions-20261101]
+    paths:
+      - .github/workflows/apple-subscriptions.yml
+      - ios/**
+      - native/**
+      - bb-server-lib/**
+      - functions/api/**
+      - scripts/*native*
+      - scripts/*ios*
+      - scripts/*apple*
+      - sql/*apple*
+      - tests/**
+      - package.json
+      - package-lock.json
+      - bb-account-deletion.js
+      - bb-membership-settings.js
+      - index.html
+      - app.html
+      - privacy.html
+      - terms.html
+      - subscriptions.html
+      - service-worker.js
   workflow_dispatch:
 permissions:
   contents: read
