@@ -1707,7 +1707,7 @@ function bb172LunchChipPanel(app){
 function bb172CoreRecipePool(){
  if(!Array.isArray(BB307_NORMALIZED)||!Array.isArray(RECIPES))return [];
  const official=new Set(RECIPES.filter(r=>!String(r.id).startsWith('bb172-own-')&&BBRecipePlanning.isDinner(r)).map(r=>r.id));
- const sample=BB307_NORMALIZED.filter(r=>official.has(r.id)&&bb176AllowedRecipe(r.id)&&Array.isArray(r.ingredients)&&r.ingredients.length>=3&&r.ingredients.length<=18);
+ const sample=BB307_NORMALIZED.filter(r=>official.has(r.id)&&bb176AllowedRecipe(r.id)&&bbAfIngredientAllowed(r)&&Array.isArray(r.ingredients)&&r.ingredients.length>=3&&r.ingredients.length<=18);
  const prefer=/chicken|fried rice|chickpea|curry|pasta|spag|bolognese|roast|stir.fry|soup|risotto|fish|fajita|vegetable|lentil|bean|tray.?bake|egg/i;
  const preferred=sample.filter(r=>prefer.test(String(r.name||RECIPES.find(x=>x.id===r.id)?.name||'')));
  const rest=sample.filter(r=>!preferred.includes(r));
@@ -1743,7 +1743,7 @@ function bb172SuggestRecipe(day,planned,goal,rotation=null){
 }
 function bb172ApplyPlan(next,old,description,rotation=null){
  const previous=new Set((old||[]).map(p=>p.day+'|'+p.recipeId));
-  if(next.some(p=>!previous.has(p.day+'|'+p.recipeId)&& !bb176AllowedRecipe(p.recipeId))){
+  if(next.some(p=>!previous.has(p.day+'|'+p.recipeId)&& (!bb176AllowedRecipe(p.recipeId)||!bbAfIngredientAllowed(getRecipe(p.recipeId))))){
    bb172Msg('A suggested recipe is locked. No meals were added.');return false;
   }
   state.planned=next;
@@ -1766,7 +1766,7 @@ const tab=window.bb172ActiveTab;
   if(!bbPlanVarietyValid(old)){bb172Msg('Adjust the existing dinners to alternate proteins and use at most two cheese-heavy meals before Auto-fill.');return;}
   const rotation=bbRotationSession();
   const candidate=[...old];for(const day of days){const offer=bb172SuggestRecipe(day,candidate,goal,rotation);if(!offer)continue;candidate.push({day,recipeId:offer.recipeId});}
-  if(candidate.length===old.length){bb172Msg('No compatible recipes could be suggested for your available days.');return}
+  if(candidate.length===old.length){bb172Msg('No recipes match your ingredient choices and available days. Try fewer ingredients to avoid.');return}
   let summary;try{const previous=state.planned;state.planned=candidate;try{summary=bb321WeeklySummary()}finally{state.planned=previous}}catch(e){bb172Msg('Could not calculate a safe shop estimate. No meals were changed.');return}
   const total=Number(summary.total)||0;const over=total>goal;
   const approved=await bbQaConfirm((candidate.length-old.length)+' dinners will be added to your free days.\n\nEstimated full shop: £'+total.toFixed(2)+' vs £'+goal.toFixed(2)+' target'+(summary.pending?'\n⚠ '+summary.pending+' unpriced lines are not included.':'')+(over?'\n⚠ Over your target — this is the lowest-scoring combination found, not a budget guarantee.':'')+'\n\nUse these suggested meals?','Auto-Fill My Week','Add dinners');
@@ -3780,6 +3780,7 @@ body[data-bbnext-view="discover"] #app .bb-featured-card #bbFeaturedBatch {
 <script src="basketboss-pricing-v19.js?v=20261031-expanded-regional-prorata"></script>
 <script src="bb-serving-scale.js?v=20261029-preview1"></script>
 <script src="bb-recipe-planning.js?v=20261031-pilot-rotation"></script>
+<script src="bb-ingredient-preferences.js?v=20261101-avoid1"></script>
 <script defer src="bb-weekly-essentials.js?v=20261031-receipt-pantry"></script>
 <script defer src="bb-receipt-inventory.js?v=20261031-account-compliance"></script>
 <script defer src="bb-receipt-scanner.js?v=20261031-receipt-pantry"></script>
@@ -5237,9 +5238,16 @@ function loadState(){
  let pantry={};try{const old=JSON.parse(localStorage.getItem(OLD_PANTRY)||'{}');for(const r of RECIPES)for(const ing of r.ingredients){if(old[ing[0]]||old[ing[0].toLowerCase()])pantry[norm(ing[0])]=true}}catch(e){}
  return normalize({version:2,planned,pantry,customPantry:[],dismissed:[],scanEndpoint:'',servings:4});
 }
-function normalize(s){return {version:2,planned:Array.isArray(s.planned)?s.planned.filter(p=>p&&typeof p.recipeId==='string'&&p.recipeId.length>0&&p.recipeId.length<=256&&DAYS.includes(p.day)).map(p=>({recipeId:p.recipeId,day:p.day})):[],pantry:s.pantry&&typeof s.pantry==='object'?s.pantry:{},customPantry:Array.isArray(s.customPantry)?s.customPantry:[],dismissed:Array.isArray(s.dismissed)?s.dismissed:[],scanEndpoint:'',servings:Number(s.servings)||4,feedingSet:s.feedingSet===true,mealServings:BBServing.validOverrides(s.mealServings),dayServings:BBServing.validDayOverrides(s.dayServings),recipePhotos:s.recipePhotos&&typeof s.recipePhotos==='object'?s.recipePhotos:{},recipeCollections:s.recipeCollections&&typeof s.recipeCollections==='object'?s.recipeCollections:{},leftoverSources:s.leftoverSources&&typeof s.leftoverSources==='object'?s.leftoverSources:{},leftoverConfirmed:s.leftoverConfirmed&&typeof s.leftoverConfirmed==='object'?s.leftoverConfirmed:{},plannedDesserts:Array.isArray(s.plannedDesserts)?s.plannedDesserts.filter(p=>p&&typeof p.recipeId==='string'&&p.recipeId.length>0&&p.recipeId.length<=256&&DAYS.includes(p.day)).map(p=>({recipeId:p.recipeId,day:p.day})):[],bbManualBatch:s.bbManualBatch?.version===1&&Array.isArray(s.bbManualBatch.pairs)?{version:1,pairs:s.bbManualBatch.pairs.slice(0,3).filter(x=>x&&typeof x.sourceDay==='string'&&typeof x.leftoverDay==='string'&&typeof x.recipeId==='string').map(x=>({sourceDay:x.sourceDay,leftoverDay:x.leftoverDay,recipeId:x.recipeId}))}:null,bb81Batch:s.bb81Batch?.version===1 && typeof s.bb81Batch.monday==='string' && typeof s.bb81Batch.wednesday==='string' ? {version:1,monday:s.bb81Batch.monday,wednesday:s.bb81Batch.wednesday}:null}}
+function normalize(s){return {version:2,ingredientAvoidance:typeof BBIngredientPreferences==='undefined'?(s.ingredientAvoidance?.version===1&&typeof s.ingredientAvoidance.scope==='string'&&Array.isArray(s.ingredientAvoidance.excluded)?{version:1,scope:s.ingredientAvoidance.scope,excluded:s.ingredientAvoidance.excluded.filter(x=>typeof x==='string').slice(0,100)}:null):BBIngredientPreferences.normalize(s.ingredientAvoidance),planned:Array.isArray(s.planned)?s.planned.filter(p=>p&&typeof p.recipeId==='string'&&p.recipeId.length>0&&p.recipeId.length<=256&&DAYS.includes(p.day)).map(p=>({recipeId:p.recipeId,day:p.day})):[],pantry:s.pantry&&typeof s.pantry==='object'?s.pantry:{},customPantry:Array.isArray(s.customPantry)?s.customPantry:[],dismissed:Array.isArray(s.dismissed)?s.dismissed:[],scanEndpoint:'',servings:Number(s.servings)||4,feedingSet:s.feedingSet===true,mealServings:BBServing.validOverrides(s.mealServings),dayServings:BBServing.validDayOverrides(s.dayServings),recipePhotos:s.recipePhotos&&typeof s.recipePhotos==='object'?s.recipePhotos:{},recipeCollections:s.recipeCollections&&typeof s.recipeCollections==='object'?s.recipeCollections:{},leftoverSources:s.leftoverSources&&typeof s.leftoverSources==='object'?s.leftoverSources:{},leftoverConfirmed:s.leftoverConfirmed&&typeof s.leftoverConfirmed==='object'?s.leftoverConfirmed:{},plannedDesserts:Array.isArray(s.plannedDesserts)?s.plannedDesserts.filter(p=>p&&typeof p.recipeId==='string'&&p.recipeId.length>0&&p.recipeId.length<=256&&DAYS.includes(p.day)).map(p=>({recipeId:p.recipeId,day:p.day})):[],bbManualBatch:s.bbManualBatch?.version===1&&Array.isArray(s.bbManualBatch.pairs)?{version:1,pairs:s.bbManualBatch.pairs.slice(0,3).filter(x=>x&&typeof x.sourceDay==='string'&&typeof x.leftoverDay==='string'&&typeof x.recipeId==='string').map(x=>({sourceDay:x.sourceDay,leftoverDay:x.leftoverDay,recipeId:x.recipeId}))}:null,bb81Batch:s.bb81Batch?.version===1 && typeof s.bb81Batch.monday==='string' && typeof s.bb81Batch.wednesday==='string' ? {version:1,monday:s.bb81Batch.monday,wednesday:s.bb81Batch.wednesday}:null}}
 function norm(s){return String(s||'').toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g,'').replace(/\b(pack|packs|fresh|large|small|medium|block|tub|bag|box|fillets|fillet)\b/g,'').replace(/[^a-z0-9]+/g,' ').trim()}
 let state=loadState();
+// Unified planner backups carry these personal choices between PWA and iOS.
+// The scope prevents another signed-in account inheriting this device's choices.
+if(typeof BBIngredientPreferences!=='undefined')BBIngredientPreferences.configure({
+ read:()=>state.ingredientAvoidance,
+ write:next=>{const previous=state.ingredientAvoidance;state.ingredientAvoidance=next;
+  if(persist()===true)return true;state.ingredientAvoidance=previous;return false;}
+});
 /* Onboarding is read-only here; no saved week or pantry writes on startup. */
 function bbFeedingOnboard(){try{return BBServing.onboardingHousehold(localStorage.getItem('bb_onboarding_fresh_once_20261028_v1'))}catch(_){return null}}
 function bbFeedingApplyDefault(){if(!state.feedingSet&&Number(state.servings)===4){const n=bbFeedingOnboard();if(n)state.servings=n}}
@@ -5315,7 +5323,7 @@ window.BasketBossMealEstimate=(id,servings)=>bbRecipeMealEstimate(getRecipe(id),
 function bbRotationSession(){
  let account='guest';
  try{account=JSON.parse(localStorage.getItem('basketboss_cloud_session_v1')||'null')?.user?.id||'guest';}catch(_){}
- return BBRecipePlanning.createRotation({recipes:RECIPES,isAllowed:r=>bb176AllowedRecipe(r.id),scope:account,legacyKey:'basketboss_autofill_seenRecipeIds_v1'});
+ return BBRecipePlanning.createRotation({recipes:RECIPES,isAllowed:r=>bb176AllowedRecipe(r.id),isEligible:r=>bbAfIngredientAllowed(r)&&(typeof BBIngredientPreferences==='undefined'||BBIngredientPreferences.scope()===account),scope:account,legacyKey:'basketboss_autofill_seenRecipeIds_v1'});
 }
 function bbPlanVarietyValid(plans){
  const known=(plans||[]).map(p=>({...p,recipe:getRecipe(p.recipeId)})).filter(p=>p.recipe&&BBRecipePlanning.isDinner(p.recipe));
@@ -6311,7 +6319,7 @@ function bb81ProEligible(recipe,day,filters,requireBatch=false){
 }
 function bb81ChooseDinner(day,chosen,filters,requireBatch=false,rotation=null,planned=[]){
  const already=new Set(chosen.map(x=>x.id));
- const pool=RECIPES.filter(r=>!already.has(r.id)&&bb176AllowedRecipe(r.id)&&BBRecipePlanning.isDinner(r)&&(!filters.quick||bb81Under30(r))&&(!filters.kids||bb81KidOK(r))&&(!requireBatch||bb81BatchOK(r)));
+ const pool=RECIPES.filter(r=>!already.has(r.id)&&bb176AllowedRecipe(r.id)&&bbAfIngredientAllowed(r)&&BBRecipePlanning.isDinner(r)&&(!filters.quick||bb81Under30(r))&&(!filters.kids||bb81KidOK(r))&&(!requireBatch||bb81BatchOK(r)));
  const choose=eligible=>{
   let preferred=day==='Saturday'?eligible.filter(bb172DateCandidate):[];
   if(!preferred.length)preferred=eligible;
@@ -6413,7 +6421,7 @@ async function bb81AutoFillPro(){
  let selection;
  try{selection=bbAfDraw(days,previous,bb81ProFilters,batch);}
  catch(_){notify('Unable to read rotation history. Nothing changed.');return false;}
- if(!selection){notify('Not enough unseen dinners match the Premium filters and variety rules. Nothing changed.');return false;}
+ if(!selection){notify('No unused dinners match your ingredient choices, Premium filters and variety rules. Try fewer filters or another empty day. Nothing changed.');return false;}
  const confirmText=batch?
   'Add four different cooked dinners and two linked leftover nights? Monday and Wednesday are double batches; Sunday remains free.':
   'Add '+selection.additions.length+' different dinners to free days, keeping existing meals and notes?';
@@ -8377,6 +8385,7 @@ function bbAfRead(key){
  if(!Array.isArray(ids)||ids.some(x=>typeof x!=='string'))throw Error('Invalid Auto-fill history');
  return [...new Set(ids)];
 }
+function bbAfIngredientAllowed(r){return typeof BBIngredientPreferences!=='undefined'&&BBIngredientPreferences.recipeAllowed(r);}
 function bbAfDinner(r){return BBRecipePlanning.isDinner(r);}
 function bbAfTags(r){
  const name=String(r.name||'').toLowerCase();
@@ -8410,7 +8419,7 @@ function bbAfFits(r,day,week,details){
  return proteinN<2&&primaryN<2&&styleN<2&&(!candidate.heavyDairy||cheeseN<2);
 }
 function bbAfDraw(days,previous,filters={},batch=false){
- const all=RECIPES.filter(r=>bb176AllowedRecipe(r.id)&&bbAfDinner(r)&&
+ const all=RECIPES.filter(r=>bb176AllowedRecipe(r.id)&&bbAfIngredientAllowed(r)&&bbAfDinner(r)&&
   (!filters.quick||bb81Under30(r))&&(!filters.kids||bb81KidOK(r)));
  const byId=new Map(RECIPES.map(r=>[r.id,r])),cache=new Map();
  const details=id=>{
@@ -8457,7 +8466,7 @@ function bbAfDraw(days,previous,filters={},batch=false){
 function bbAfCommit(previous,planSnapshot,notesSnapshot,batchData,selection){
  if(!selection||state.planned!==previous||JSON.stringify(state.planned)!==planSnapshot||
    JSON.stringify(bb172QuickDinners())!==notesSnapshot||
-   selection.additions.some(x=>!bb176AllowedRecipe(x.recipeId))){
+   selection.additions.some(x=>!bb176AllowedRecipe(x.recipeId)||!bbAfIngredientAllowed(getRecipe(x.recipeId)))){
   notify('Your plan or access changed. Nothing was saved.');return false;
  }
  const next=[...previous,...selection.additions];
@@ -8557,7 +8566,7 @@ function bb172RandomWeightedPick(candidates,already){
 function bb172BuildSixDinners(allRecipes){
  const rotation=bbRotationSession(),chosen=[],plans=[];
  for(const day of [...BB172_FAMILY_DAYS,BB172_DATE_DAY]){
-  const pool=allRecipes.filter(r=>bb176AllowedRecipe(r.id)&&BBRecipePlanning.isDinner(r));
+  const pool=allRecipes.filter(r=>bb176AllowedRecipe(r.id)&&bbAfIngredientAllowed(r)&&BBRecipePlanning.isDinner(r));
   const meal=rotation.choose(pool,{day,planned:plans,pick:eligible=>{
    const dates=day===BB172_DATE_DAY?eligible.filter(bb172DateCandidate):[];
    return bb172RandomWeightedPick(dates.length?dates:eligible,chosen);
@@ -8579,7 +8588,7 @@ async function bb172AutoFillSixDinners(){
  let selection;
  try{selection=bbAfDraw(days,previous);}
  catch(_){notify('Unable to read rotation history. Nothing changed.');return false;}
- if(!selection){notify('Not enough different eligible dinners satisfy variety rules. Nothing changed.');return false;}
+ if(!selection){notify('No unused dinners match your ingredient choices and variety rules. Try fewer ingredients to avoid or another empty day. Nothing changed.');return false;}
  const planSnapshot=JSON.stringify(previous),notesSnapshot=JSON.stringify(notes);
  if(!await bbQaConfirm('Add '+selection.additions.length+' varied family dinners? Existing meals and notes stay. Previously suggested recipes will be avoided until the eligible rotation resets.','Auto-Fill My Week','Add dinners'))return false;
  if(!bbAfCommit(previous,planSnapshot,notesSnapshot,null,selection))return false;
@@ -9255,7 +9264,7 @@ function bbPantryRecipeMatches(){
  const questionable=available.filter(x=>/\b(seeds?|rice|flour|pasta|nuts?)\b/i.test(x.name)&&['ml','l'].includes(x.unit));
  const results=[];
  for(const recipe of RECIPES){
-  if(!bb176AllowedRecipe(recipe.id)||bb172IsDessertOrNonDinner(recipe))continue;
+  if(!bb176AllowedRecipe(recipe.id)||!bbAfIngredientAllowed(recipe)||bb172IsDessertOrNonDinner(recipe))continue;
   if(state.planned.some(x=>x.recipeId===recipe.id))continue;
   const normalized=catalogue.get(recipe.id);if(!normalized)continue;
   const found=[];
@@ -9289,7 +9298,7 @@ function bbPantryPlannerPopulate(suggestions){
  const empty=DAYS.filter(day=>!occupied.has(day));
  const chosen=[],used=new Set((state.planned||[]).map(x=>x.recipeId));
  for(const suggestion of suggestions){if(!empty.length)break;if(used.has(suggestion.id))continue;
-  if(!bb176AllowedRecipe(suggestion.id))continue;
+  if(!bb176AllowedRecipe(suggestion.id)||!bbAfIngredientAllowed(getRecipe(suggestion.id)))continue;
   chosen.push({day:empty.shift(),recipeId:suggestion.id});used.add(suggestion.id);
  }
  if(!chosen.length)return {ok:false,reason:'No safe empty days or matching recipes. No changes made.'};
@@ -9315,7 +9324,7 @@ function bbPantryPlannerModal(){
   const small=document.createElement('small');small.style.display='block';small.textContent='Uses Pantry: '+r.matched.map(x=>x.name+' ('+x.qty+' '+x.unit+')').join(', ');
   content.append(strong,small);label.append(input,content);choices.append(label);
  });
- if(!data.recipes.length){const none=document.createElement('p');none.textContent='No safely matching recipes. Check Pantry measurements and food freshness first.';choices.append(none)}
+ if(!data.recipes.length){const none=document.createElement('p');none.textContent='No recipes match your Pantry and ingredient choices. Check Pantry measurements and food freshness first.';choices.append(none)}
  const action=document.createElement('div');action.style.cssText='display:flex;gap:10px;justify-content:flex-end;flex-wrap:wrap';
  const cancel=document.createElement('button');cancel.type='button';cancel.textContent='Cancel';cancel.className='btn';cancel.onclick=()=>dlg.close();
  const confirm=document.createElement('button');confirm.type='button';confirm.textContent='Populate Planner';confirm.className='btn primary';confirm.disabled=!data.recipes.length;
@@ -11497,6 +11506,8 @@ body[data-bbnext-view="discover"] #app .bb175-discover-heading{padding-top:calc(
 <!-- BasketBoss isolated Plan / premium UI polish; original app handlers unchanged -->
 <link rel="stylesheet" href="bb-plan-premium-polish.css?v=20261101-budget2">
 <script defer src="bb-plan-premium-polish.js?v=20261101-budget2"></script>
+<link rel="stylesheet" href="bb-ingredient-picker.css?v=20261101-avoid1">
+<script defer src="bb-ingredient-picker.js?v=20261101-avoid1"></script>
 <link rel="stylesheet" href="bb-shop-cook-clarity.css?v=20261028-r1">
 <link rel="stylesheet" href="bb-cook-plan-hotfix.css?v=20261028-cook-plan-v1">
 <link rel="stylesheet" href="bb-servings-mobile-polish.css?v=20261029-preview2">

@@ -24,6 +24,8 @@ try{
  // developer certificate or distribution identity is used by this smoke test.
  stage='adhoc_sign';exec('codesign',['--force','--deep','--sign','-',app]);
  stage='install';run('simctl','install',phone.udid,app);
+ stage='clear_previous_report';const previousContainer=run('simctl','get_app_container',phone.udid,'uk.co.basketboss.app','data');
+ fs.rmSync(path.join(previousContainer,'Documents/bb-native-cook-smoke.json'),{force:true});
  stage='launch';run('simctl','launch','--terminate-running-process',phone.udid,'uk.co.basketboss.app','--bb-native-cook-smoke');
  stage='container';const container=run('simctl','get_app_container',phone.udid,'uk.co.basketboss.app','data');
  const file=path.join(container,'Documents/bb-native-cook-smoke.json');
@@ -31,7 +33,7 @@ try{
  if(!raw?.complete)failure='report_timeout';else if(!raw.passed)failure='ui_failed';
 }catch(error){failure=error.code==='ETIMEDOUT'?'command_timeout':'command_failed';}
 const report={reportReceived:!!raw,runtimeVersion,failureStage:failure?stage:'',failure};
-for(const key of ['passed','nativeOrigin','cookMounted','cookReady','navPresent','navVisible','navHit','legacyVisible','backToPlan','dataKept','mainReady','startupReady'])report[key]=raw?.[key]===true;
+for(const key of ['passed','nativeOrigin','cookMounted','cookReady','navPresent','navVisible','navHit','legacyVisible','backToPlan','dataKept','mainReady','startupReady','ingredientClosed','ingredientPhoto','ingredientSaved','ingredientAutofill','ingredientExistingKept','ingredientRestored'])report[key]=raw?.[key]===true;
 for(const key of ['errorCount','errorLine','scriptCount'])report[key]=Number.isInteger(raw?.[key])?Math.max(0,Math.min(raw[key],1000000)):0;
 for(const key of ['phase','readyState','errorKind','errorSource','lastScript'])report[key]=String(raw?.[key]||'').replace(/[^A-Za-z0-9_.-]/g,'').slice(0,100);
 console.log('::notice title=BasketBoss native Cook smoke::'+JSON.stringify({nativeCook:report}));

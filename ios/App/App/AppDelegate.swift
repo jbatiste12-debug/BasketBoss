@@ -146,7 +146,7 @@ private final class BasketBossCookSmokeReporter: NSObject, WKScriptMessageHandle
     }
 
     func record(_ report: [String: Any]) {
-        let keys = ["complete", "passed", "nativeOrigin", "cookMounted", "cookReady", "navPresent", "navVisible", "navHit", "legacyVisible", "backToPlan", "dataKept", "mainReady", "startupReady", "phase", "readyState", "errorCount", "errorLine", "errorKind", "errorSource", "lastScript", "scriptCount"]
+        let keys = ["complete", "passed", "nativeOrigin", "cookMounted", "cookReady", "navPresent", "navVisible", "navHit", "legacyVisible", "backToPlan", "dataKept", "mainReady", "startupReady", "phase", "readyState", "errorCount", "errorLine", "errorKind", "errorSource", "lastScript", "scriptCount", "ingredientClosed", "ingredientPhoto", "ingredientSaved", "ingredientAutofill", "ingredientExistingKept", "ingredientRestored"]
         let safe = report.filter { keys.contains($0.key) }
         guard let data = try? JSONSerialization.data(withJSONObject: safe, options: [.sortedKeys]),
               let folder = FileManager.default.urls(for: .documentDirectory, in: .userDomainMask).first else { return }
@@ -161,9 +161,43 @@ private final class BasketBossCookSmokeReporter: NSObject, WKScriptMessageHandle
       addEventListener('error',e=>{errors.push({kind:e.error?.name||'ResourceError',line:e.lineno||0,source:String(e.filename||e.target?.src||'').split('/').pop().split('?')[0].replace(/[^A-Za-z0-9_.-]/g,'').slice(0,100)});},true);
       localStorage.setItem('bb_onboarding_fresh_once_20261028_v1',JSON.stringify({complete:true,step:10}));
       localStorage.setItem('basketboss_native_smoke_probe','keep');
-      let ticks=0,scrolled=false,navigationPending=false;
+      let ticks=0,scrolled=false,navigationPending=false,ingredientRunning=false;
       function progress(report={},complete=false){const e=errors[0]||{},scripts=[...document.scripts],last=scripts.at(-1);window.webkit.messageHandlers.bbNativeCookSmoke.postMessage({...JSON.parse(sessionStorage.getItem(key+'_report')||'{}'),complete,nativeOrigin:location.protocol==='capacitor:',phase:location.pathname.endsWith('/make-a-meal.html')?'cook':sessionStorage.getItem(key)==='back'?'return':'main',readyState:document.readyState,mainReady:!!document.getElementById('app')?.firstElementChild,startupReady:window.BBNativeStartup?.phase==='ready',scriptCount:scripts.length,lastScript:String(last?.src||last?.id||'inline').split('/').pop().split('?')[0].replace(/[^A-Za-z0-9_.-]/g,'').slice(0,100),...report,errorCount:errors.length,errorLine:e.line||0,errorKind:e.kind||'',errorSource:e.source||''});}
       function send(report){progress(report,true);clearInterval(timer);}
+      async function verifyIngredients(){
+        const report={},stateKey='basketboss_321_unified_state_v1';
+        const wait=async read=>{for(let n=0;n<60;n++){const value=read();if(value)return value;await new Promise(resolve=>setTimeout(resolve,100));}throw Error('IngredientSmokeTimeout');};
+        await wait(()=>window.BBIngredientPreferences&&document.getElementById('bbAvoidIngredientTab'));
+        const prior=localStorage.getItem(stateKey),saved=new Map();
+        const recipes=await fetch(new URL('recipes.json',location.href)).then(response=>response.json());
+        const planned=()=>JSON.parse(localStorage.getItem(stateKey)||'{}').planned||[];
+        const refresh=()=>dispatchEvent(new StorageEvent('storage',{key:stateKey,newValue:localStorage.getItem(stateKey)}));
+        const relevant=k=>k===stateKey||k==='basketboss_321_unified_recovery_v1'||k.startsWith('basketboss_autofill_');
+        for(let n=0;n<localStorage.length;n++){const k=localStorage.key(n);if(relevant(k))saved.set(k,localStorage.getItem(k));}
+        try{
+          localStorage.setItem(stateKey,JSON.stringify({version:2,planned:[{recipeId:'fajitas',day:'Monday'}],servings:4,feedingSet:true}));refresh();
+          const button=await wait(()=>document.getElementById('bbAvoidIngredientTab'));
+          report.ingredientClosed=button.getAttribute('aria-expanded')==='false'&&document.getElementById('bbAvoidIngredientPanel').hidden;
+          button.click();
+          const input=await wait(()=>document.getElementById('bbAvoidIngredientSearch'));
+          input.value='chicken';input.dispatchEvent(new Event('input',{bubbles:true}));
+          const tile=await wait(()=>document.querySelector('[data-bb-avoid-id="chicken"]'));
+          const image=await wait(()=>{const img=tile.querySelector('img');return img?.complete&&img.naturalWidth>0?img:null;});
+          report.ingredientPhoto=!!image;tile.click();
+          report.ingredientSaved=BBIngredientPreferences.getSelected().includes('chicken')&&JSON.parse(localStorage.getItem(stateKey)).ingredientAvoidance.excluded.includes('chicken');
+          button.click();document.getElementById('bb172FillSixDinners').click();
+          const confirm=await wait(()=>[...document.querySelectorAll('#bbQaConfirmOverlay button')].find(node=>node.textContent.trim()==='Add dinners'));
+          confirm.click();await wait(()=>planned().length===7);
+          const added=planned().filter(item=>item.day!=='Monday');
+          report.ingredientAutofill=added.length===6&&added.every(item=>{const recipe=recipes.find(candidate=>candidate.id===item.recipeId);return recipe&&!recipe.ingredients.some(ingredient=>/\bchicken\b/i.test(String(ingredient[0])));});
+          report.ingredientExistingKept=planned().some(item=>item.day==='Monday'&&item.recipeId==='fajitas');
+        }finally{
+          const remove=[];for(let n=0;n<localStorage.length;n++){const k=localStorage.key(n);if(relevant(k))remove.push(k);}
+          for(const k of remove)localStorage.removeItem(k);for(const [k,value]of saved)localStorage.setItem(k,value);
+          refresh();report.ingredientRestored=localStorage.getItem(stateKey)===prior;
+        }
+        return report;
+      }
       addEventListener('load',()=>progress(),true);
       document.addEventListener('readystatechange',()=>progress());
       new MutationObserver(records=>{if(records.some(record=>[...record.addedNodes].some(node=>node.nodeName==='SCRIPT')))progress();}).observe(document.documentElement,{childList:true,subtree:true});
@@ -175,16 +209,20 @@ private final class BasketBossCookSmokeReporter: NSObject, WKScriptMessageHandle
           if(stage==='back'){
             const report=JSON.parse(sessionStorage.getItem(key+'_report')||'{}');
             report.backToPlan=document.body.dataset.bbnextView==='week';report.dataKept=localStorage.getItem('basketboss_native_smoke_probe')==='keep';
-            report.passed=!!(report.nativeOrigin&&report.cookMounted&&report.cookReady&&report.navVisible&&report.navHit&&report.backToPlan&&report.dataKept);send(report);return;
+            report.passed=!!(report.nativeOrigin&&report.cookMounted&&report.cookReady&&report.navVisible&&report.navHit&&report.backToPlan&&report.dataKept&&report.ingredientClosed&&report.ingredientPhoto&&report.ingredientSaved&&report.ingredientAutofill&&report.ingredientExistingKept&&report.ingredientRestored);send(report);return;
           }
           if(!sessionStorage.getItem(key+'_region')){const select=document.getElementById('bb307Island'),save=document.getElementById('bb307SaveMarket');if(select&&save){select.value='UK';select.dispatchEvent(new Event('change',{bubbles:true}));save.click();sessionStorage.setItem(key+'_region','1');return;}}
+          if(!sessionStorage.getItem(key+'_ingredients')){
+            if(!ingredientRunning){ingredientRunning=true;void verifyIngredients().then(report=>{sessionStorage.setItem(key+'_report',JSON.stringify(report));if(Object.values(report).some(value=>value!==true)){send({...report,passed:false});return;}sessionStorage.setItem(key+'_ingredients','1');ingredientRunning=false;}).catch(()=>send({passed:false}));}
+            return;
+          }
           const link=document.querySelector('.bb173-make-meal-link');if(link){navigationPending=true;sessionStorage.setItem(key,'cook');link.click();}if(ticks>200)send({passed:false,navPresent:!!link});return;
         }
         if(!scrolled){scrollTo(0,document.body.scrollHeight);scrolled=true;return;}
         const nav=document.querySelector('nav.bb-r6-cook-nav'),r=nav?.getBoundingClientRect(),style=nav&&getComputedStyle(nav),height=visualViewport?.height||innerHeight;
         const visible=!!(r&&r.width>0&&r.height>0&&r.top>=0&&r.bottom<=height+1&&style.display!=='none'&&style.visibility!=='hidden');
         const hit=visible&&document.elementFromPoint(r.left+r.width/2,r.top+r.height/2)?.closest('nav')===nav;
-        const report={nativeOrigin:location.protocol==='capacitor:',cookMounted:!!document.querySelector('.bb-cook-studio'),cookReady:document.documentElement.classList.contains('bb-cook-ready'),navPresent:!!nav,navVisible:visible,navHit:!!hit,legacyVisible:!!document.querySelector('.bb-meal-dashboard')&&getComputedStyle(document.querySelector('.bb-meal-dashboard')).display!=='none'};
+        const report={...JSON.parse(sessionStorage.getItem(key+'_report')||'{}'),nativeOrigin:location.protocol==='capacitor:',cookMounted:!!document.querySelector('.bb-cook-studio'),cookReady:document.documentElement.classList.contains('bb-cook-ready'),navPresent:!!nav,navVisible:visible,navHit:!!hit,legacyVisible:!!document.querySelector('.bb-meal-dashboard')&&getComputedStyle(document.querySelector('.bb-meal-dashboard')).display!=='none'};
         if(report.cookMounted&&report.cookReady&&visible&&hit){navigationPending=true;sessionStorage.setItem(key+'_report',JSON.stringify(report));progress(report);sessionStorage.setItem(key,'back');nav.querySelector('a').click();return;}
         if(ticks>30)send({...report,passed:false});
       },100);

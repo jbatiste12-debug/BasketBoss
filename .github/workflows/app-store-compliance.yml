@@ -8,6 +8,7 @@ on:
       - .github/workflows/app-store-compliance.yml
       - bb-account-deletion.*
       - bb-food-visuals.*
+      - bb-ingredient-*
       - bb-cook-studio.*
       - bb-cook-result.*
       - bb-meal-image.*

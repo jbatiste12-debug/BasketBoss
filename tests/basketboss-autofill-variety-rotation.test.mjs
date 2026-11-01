@@ -21,7 +21,7 @@ function harness(catalog,freeIds=new Set(catalog.map(r=>r.id))){
   removeItem:k=>storage.delete(k)
  };
  const ctx={
-  RECIPES:catalog,state,localStorage,console,BBRecipePlanning:planning,DAYS,
+  RECIPES:catalog,state,localStorage,console,BBRecipePlanning:planning,BBIngredientPreferences:{recipeAllowed:()=>true},DAYS,
   getRecipe:id=>catalog.find(r=>r.id===id),
   bbRotationSession:()=>planning.createRotation({recipes:catalog,storage:localStorage,isAllowed:r=>freeIds.has(r.id),scope:'guest',legacyKey:'basketboss_autofill_seenRecipeIds_v1'}),
   bb176AllowedRecipe:id=>freeIds.has(id),

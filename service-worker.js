@@ -2,10 +2,12 @@
  * Caches app pages and assets only; no personal localStorage or sync data is transmitted.
  * Food photographs outside the preview are cached only after being viewed, where supported.
  */
-const CACHE = 'basketboss-premium-secure-shell-20261101-v26-apple-membership';
+const CACHE = 'basketboss-premium-secure-shell-20261101-v27-ingredient-preferences';
 const IMAGE_CACHE = 'basketboss-v20261031-expanded-500-images-v1';
 const APP_BASE = new URL(self.registration.scope);
 const CORE = ['basketboss-latest-guide.html','bb-real-app-tour-v82.js','bb-plan-premium-polish.js','bb-plan-premium-polish.css','bb-cook-studio.js','bb-cook-studio.css','bb-cook-result.js','bb-cook-result.css','bb-meal-image.js','bb-meal-image.css','bb-navigation-polish.js','bb-navigation-polish.css','bb-account-polish.js','bb-account-polish.css','bb-food-visuals.js','bb-food-visuals.css','bb-account-deletion.js','bb-account-deletion.css','terms.html','bb-receipt-host.js','bb-receipt-host.css','bb-receipt-inventory.js','bb-receipt-inventory-core.mjs','bb-receipt-scanner.js','bb-receipt-scanner.css','bb-weekly-essentials.js','bb-price-scan.js','bb-supermarkets.js','supermarket-price-observations.json','bb-funnel.css','bb-funnel.js','bb-consolidated-qa.css','bb-consolidated-qa.js','bb-culinary-enhancements.js','bb-culinary.css','index.html','tutorial.html','bb-real-app-tour.css','bb-real-app-tour.js','bb-cloudflare-qa.js','privacy.html','make-a-meal.html','make-a-meal.css','bb174-trial-ux.css','bb174-trial-ux.js','bb-premium-features.css','bb-premium-preview-config.js','bb-premium-features.js','bb-light-meal.css','make-a-meal.js','premium-upgrade.js','premium-upgrade.css','bb-intro-trial.js','bb-intro-trial.css','bb-us-market.js','bb-us-market.css','bb173-final-polish.css','bb-welcome-splash.js','bb-welcome-splash.css','bb-install.js','bb-install.css','shopping-inventory.js','bb-beta-launch-polish.js','bb-beta-launch-polish.css','bb-beta-six-fixes.css','bb-beta-six-fixes.js','bb-beta-five.css','bb-beta-five-nav.js','bb-recipe-planning.js','bb-recipe-ingredient-layout.css','bb-purchase-choice.css',
+              'bb-ingredient-preferences.js','bb-ingredient-picker.js','bb-ingredient-picker.css',
+              'bb-ingredient-preferences.js?v=20261101-avoid1','bb-ingredient-picker.js?v=20261101-avoid1','bb-ingredient-picker.css?v=20261101-avoid1',
               'icons/basketboss-crowned-v1766-180.png','icons/basketboss-crowned-v1766-192.png','icons/basketboss-crowned-v1766-512.png',
               'icons/basketboss-silver-192-v1755.png','icons/basketboss-silver-512-v1755.png','icons/basketboss-silver-180-v1755.png',
               'food-thumbs/tomato.webp','food-thumbs/lettuce.webp','food-thumbs/red-onion.webp',
@@ -54,6 +56,7 @@ self.addEventListener('fetch', event => {
     'bb-cook-studio.js','bb-cook-studio.css','bb-cook-result.js','bb-cook-result.css','bb-meal-image.js','bb-meal-image.css','bb-navigation-polish.js','bb-navigation-polish.css','bb-account-polish.js','bb-account-polish.css',
     'make-a-meal.js','make-a-meal.css','bb-welcome-splash.js','bb-welcome-splash.css','bb-account-deletion.js','bb-account-deletion.css','bb-food-visuals.js','bb-food-visuals.css',
     'bb-onboarding-v2.js','bb-onboarding-v2.css',
+    'bb-ingredient-preferences.js','bb-ingredient-picker.js','bb-ingredient-picker.css',
     'bb-household-sharing.js','bb-household-sharing.css','bb-membership-settings.js','bb-membership-settings.css','privacy.html','terms.html','subscriptions.html',
     'bb-serving-scale.js','basketboss-pricing-v19.js','ingredient-pack-catalog.json','bb-us-market.js','bb-us-market.css','bb-supermarkets.js','bb-price-scan.js','supermarket-price-observations.json','bb-beta-landing.js',
     'bb-receipt-host.js','bb-receipt-host.css','bb-receipt-inventory.js','bb-receipt-inventory-core.mjs','bb-receipt-scanner.js','bb-receipt-scanner.css','bb-weekly-essentials.js',
