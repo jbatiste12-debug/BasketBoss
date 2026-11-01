@@ -3,7 +3,7 @@ name: Verify iOS native build
 on:
   workflow_dispatch:
   push:
-    branches: [main]
+    branches: [main, codex/native-cook-fix]
     paths:
       - .github/workflows/ios-native-build.yml
       - capacitor.config.json
@@ -62,3 +62,5 @@ jobs:
           build
       - name: Publish fixed build verification
         run: echo '::notice title=BasketBoss iOS native build::{"simulatorBuild":true,"bundleId":"uk.co.basketboss.app","minimumIOS":"16.0","signingTested":false}'
+      - name: Exercise Cook in the actual iOS WebView
+        run: node scripts/test-ios-cook-smoke.mjs

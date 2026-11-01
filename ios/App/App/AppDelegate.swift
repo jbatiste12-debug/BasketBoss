@@ -68,6 +68,13 @@ class BasketBossViewController: CAPBridgeViewController {
     override func capacitorDidLoad() {
         super.capacitorDidLoad()
         bridge?.registerPluginInstance(BasketBossNavigationPlugin())
+        #if DEBUG
+        if ProcessInfo.processInfo.arguments.contains("--bb-native-cook-smoke"), let webView = webView {
+            let content = webView.configuration.userContentController
+            content.add(BasketBossCookSmokeReporter(), name: "bbNativeCookSmoke")
+            content.addUserScript(WKUserScript(source: BasketBossCookSmokeReporter.script, injectionTime: .atDocumentStart, forMainFrameOnly: true))
+        }
+        #endif
     }
 
     override func viewDidLoad() {
@@ -114,6 +121,52 @@ class BasketBossViewController: CAPBridgeViewController {
         }
     }
 }
+
+#if DEBUG
+// A fresh CI simulator can exercise the actual capacitor:// WKWebView. This
+// hook is excluded from Release and never changes a user's normal installation.
+private final class BasketBossCookSmokeReporter: NSObject, WKScriptMessageHandler {
+    func userContentController(_ userContentController: WKUserContentController, didReceive message: WKScriptMessage) {
+        guard let report = message.body as? [String: Any] else { return }
+        let keys = ["passed", "nativeOrigin", "cookMounted", "cookReady", "navPresent", "navVisible", "navHit", "legacyVisible", "backToPlan", "dataKept", "errorCount", "errorLine", "errorKind", "errorSource"]
+        let safe = report.filter { keys.contains($0.key) }
+        guard let data = try? JSONSerialization.data(withJSONObject: safe, options: [.sortedKeys]),
+              let folder = FileManager.default.urls(for: .documentDirectory, in: .userDomainMask).first else { return }
+        try? data.write(to: folder.appendingPathComponent("bb-native-cook-smoke.json"), options: .atomic)
+    }
+
+    static let script = #"""
+    (()=>{
+      const key='bb_native_cook_smoke', errors=[];
+      addEventListener('error',e=>{errors.push({kind:e.error?.name||'ResourceError',line:e.lineno||0,source:String(e.filename||e.target?.src||'').split('/').pop().split('?')[0].replace(/[^A-Za-z0-9_.-]/g,'').slice(0,100)});},true);
+      localStorage.setItem('bb_onboarding_fresh_once_20261028_v1',JSON.stringify({complete:true,step:10}));
+      localStorage.setItem('basketboss_native_smoke_probe','keep');
+      let ticks=0,scrolled=false;
+      function send(report){const e=errors[0]||{};window.webkit.messageHandlers.bbNativeCookSmoke.postMessage({...report,errorCount:errors.length,errorLine:e.line||0,errorKind:e.kind||'',errorSource:e.source||''});clearInterval(timer);}
+      const timer=setInterval(()=>{
+        ticks++;if(document.readyState!=='complete'){if(ticks>200)send({passed:false});return;}
+        const stage=sessionStorage.getItem(key),cook=location.pathname.endsWith('/make-a-meal.html');
+        if(!cook){
+          if(window.BBNativeStartup?.phase!=='ready')return;
+          if(stage==='back'){
+            const report=JSON.parse(sessionStorage.getItem(key+'_report')||'{}');
+            report.backToPlan=document.body.dataset.bbnextView==='week';report.dataKept=localStorage.getItem('basketboss_native_smoke_probe')==='keep';
+            report.passed=!!(report.nativeOrigin&&report.cookMounted&&report.cookReady&&report.navVisible&&report.navHit&&report.backToPlan&&report.dataKept);send(report);return;
+          }
+          const link=document.querySelector('.bb173-make-meal-link');if(link){sessionStorage.setItem(key,'cook');link.click();}return;
+        }
+        if(!scrolled){scrollTo(0,document.body.scrollHeight);scrolled=true;return;}
+        const nav=document.querySelector('nav.bb-r6-cook-nav'),r=nav?.getBoundingClientRect(),style=nav&&getComputedStyle(nav),height=visualViewport?.height||innerHeight;
+        const visible=!!(r&&r.width>0&&r.height>0&&r.top>=0&&r.bottom<=height+1&&style.display!=='none'&&style.visibility!=='hidden');
+        const hit=visible&&document.elementFromPoint(r.left+r.width/2,r.top+r.height/2)?.closest('nav')===nav;
+        const report={nativeOrigin:location.protocol==='capacitor:',cookMounted:!!document.querySelector('.bb-cook-studio'),cookReady:document.documentElement.classList.contains('bb-cook-ready'),navPresent:!!nav,navVisible:visible,navHit:!!hit,legacyVisible:!!document.querySelector('.bb-meal-dashboard')&&getComputedStyle(document.querySelector('.bb-meal-dashboard')).display!=='none'};
+        if(report.cookMounted&&report.cookReady&&visible&&hit){sessionStorage.setItem(key+'_report',JSON.stringify(report));sessionStorage.setItem(key,'back');nav.querySelector('a').click();return;}
+        if(ticks>30)send({...report,passed:false});
+      },100);
+    })();
+    """#
+}
+#endif
 
 // Native animation runs before, and independently of, the WKWebView JavaScript.
 // The wordmark is present from the first frame during the requested intro.
