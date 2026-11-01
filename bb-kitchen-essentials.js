@@ -61,7 +61,7 @@
    details.append(summary,list,edit);details.addEventListener('toggle',()=>{if(details.isConnected)state('selected-'+key).expanded=details.open;});body.append(details);
   }
   const rows=[...kitchen.querySelectorAll('#bb5SelectedRows [data-pantry-location="'+key+'"] .bb5-review-row')];
-  const values=rows.map(row=>{const name=row.querySelector('strong').textContent,amount=row.querySelector('[data-bb5-qty]').value,unit=row.querySelector('[data-bb5-unit]').value;return name+' · '+(amount.trim()?amount+' '+unit:'Amount unknown');});
+  const values=rows.map(row=>{const name=row.querySelector('strong').textContent,amount=row.querySelector('[data-bb5-qty]').value,unit=row.querySelector('[data-bb5-unit]').value;const needed=row.querySelector('[data-bb5-needed]')?.value,buy=row.querySelector('output')?.textContent;return name+' · '+(amount.trim()?amount+' '+unit+' already got':'Amount unknown')+(needed!==undefined?' · '+needed+' '+unit+' needed':'')+(buy?' · '+buy+' '+unit:'');});
   const stamp=JSON.stringify(values);
   if(details.dataset.bbkeValues!==stamp){details.dataset.bbkeValues=stamp;text(details.querySelector('summary'),'Selected here ('+values.length+')');const list=details.querySelector('ul');list.replaceChildren();for(const value of values){const li=doc.createElement('li');li.textContent=value;list.append(li);}if(!values.length){const li=doc.createElement('li');li.textContent='Nothing selected here yet.';list.append(li);}}
  }
@@ -81,6 +81,8 @@
     let control=[...grid.children].find(node=>node.dataset.bbkeName===item.name);
     if(!control){control=doc.createElement('button');control.type='button';control.dataset.bbkeName=item.name;
      control.addEventListener('click',()=>{
+      const saved=window.BBHomeHost?.household?.().find(row=>row.name.toLowerCase()===item.name.toLowerCase());
+      if(saved&&window.BBHome?.addHousehold?.(saved.id))return;
       const existing=[...full.querySelectorAll('.bb1749-topup-row')].find(row=>row.querySelector('.bb1749-topup-name')?.textContent.trim().toLowerCase()===item.name.toLowerCase());
       if(existing){existing.querySelector('.bb1749-topup-add').click();return;}
       if(!form)return;form.querySelector('#bb307EssName').value=item.name;form.querySelector('#bb307EssQty').value='1';form.querySelector('#bb307EssUnit').value=item.unit;
@@ -121,7 +123,7 @@
   }
   if(legacy)for(const row of legacyRows){const skip=row.querySelector('[data-bb307-skip]');if(skip)text(skip,'Remove from list');legacy.append(row);}
   const selected=region.querySelector('.bb16-ess-selected');if(selected)show(selected,!!selected.querySelector('.bb16-essential-row'));
-  const count=region.querySelector('.bb16-ess-count');text(count,(selected?.querySelectorAll('.bb16-essential-row').length||0)+' household items on list');
+  const count=region.querySelector('.bb16-ess-count');text(count,(selected?.querySelectorAll('.bb16-essential-row').length||0)+' household items');
   text(region.querySelector('.bb16-essentials-heading h3'),'Household essentials');
   text(region.querySelector('.bb16-essentials-heading p'),'Toiletries, cleaning and baby essentials. Food and drink belong in Cupboard, Fridge or Freezer.');
   const topup=region.querySelector('.bb1749-topup-list');if(topup&&!topup.querySelector('.bb1749-topup-row'))topup.hidden=true;
@@ -162,6 +164,7 @@
    essentials.append(original);
   }
   if(rules){for(const area of kitchen.querySelectorAll('.bb76-store[data-bb76-store]')){foodChoices(area);selectedReadout(area,kitchen);}if(original)householdChoices(original,kitchen);}
+  window.BBHome?.decorate?.(original);
   if(!kitchen.querySelector('#bbKitchenSections')){
    const nav=doc.createElement('nav');nav.id='bbKitchenSections';nav.setAttribute('aria-label','At home sections');
    nav.append(button('Choose food','bb76StorageSections'));
@@ -179,7 +182,7 @@
  function schedule(){if(!queued){queued=true;requestAnimationFrame(refresh);}}
  function start(){
   refresh();const app=doc.getElementById('app');if(!app)return;
-  app.addEventListener('input',event=>{if(event.target.matches('[data-bb5-qty]'))schedule();});
+  app.addEventListener('input',event=>{if(event.target.matches('[data-bb5-qty],[data-bb5-needed]'))schedule();});
   app.addEventListener('change',event=>{if(event.target.matches('[data-bb5-unit]'))schedule();});
   new MutationObserver(records=>{
    if(records.some(record=>record.target===app||record.target.matches?.('[data-bb76-tiles]')||[...record.addedNodes].some(node=>node.nodeType===1&&(node.matches?.('#bb173ShopFridge,[data-bb307-extras="shop"],#bb1756PlannerExtras,#bb1756Essentials,[data-bb5-food]')||node.querySelector?.('#bb173ShopFridge,#bb1756Essentials')))))schedule();
