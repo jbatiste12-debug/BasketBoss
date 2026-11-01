@@ -128,7 +128,7 @@ class BasketBossViewController: CAPBridgeViewController {
 private final class BasketBossCookSmokeReporter: NSObject, WKScriptMessageHandler {
     func userContentController(_ userContentController: WKUserContentController, didReceive message: WKScriptMessage) {
         guard let report = message.body as? [String: Any] else { return }
-        let keys = ["passed", "nativeOrigin", "cookMounted", "cookReady", "navPresent", "navVisible", "navHit", "legacyVisible", "backToPlan", "dataKept", "errorCount", "errorLine", "errorKind", "errorSource"]
+        let keys = ["passed", "nativeOrigin", "cookMounted", "cookReady", "navPresent", "navVisible", "navHit", "legacyVisible", "backToPlan", "dataKept", "mainReady", "startupReady", "phase", "readyState", "errorCount", "errorLine", "errorKind", "errorSource"]
         let safe = report.filter { keys.contains($0.key) }
         guard let data = try? JSONSerialization.data(withJSONObject: safe, options: [.sortedKeys]),
               let folder = FileManager.default.urls(for: .documentDirectory, in: .userDomainMask).first else { return }
@@ -142,12 +142,12 @@ private final class BasketBossCookSmokeReporter: NSObject, WKScriptMessageHandle
       localStorage.setItem('bb_onboarding_fresh_once_20261028_v1',JSON.stringify({complete:true,step:10}));
       localStorage.setItem('basketboss_native_smoke_probe','keep');
       let ticks=0,scrolled=false;
-      function send(report){const e=errors[0]||{};window.webkit.messageHandlers.bbNativeCookSmoke.postMessage({...report,errorCount:errors.length,errorLine:e.line||0,errorKind:e.kind||'',errorSource:e.source||''});clearInterval(timer);}
+      function send(report){const e=errors[0]||{};window.webkit.messageHandlers.bbNativeCookSmoke.postMessage({nativeOrigin:location.protocol==='capacitor:',phase:location.pathname.endsWith('/make-a-meal.html')?'cook':sessionStorage.getItem(key)==='back'?'return':'main',readyState:document.readyState,mainReady:!!document.getElementById('app')?.firstElementChild,startupReady:window.BBNativeStartup?.phase==='ready',...report,errorCount:errors.length,errorLine:e.line||0,errorKind:e.kind||'',errorSource:e.source||''});clearInterval(timer);}
       const timer=setInterval(()=>{
-        ticks++;if(document.readyState!=='complete'){if(ticks>200)send({passed:false});return;}
+        ticks++;if(document.readyState==='loading'){if(ticks>200)send({passed:false});return;}
         const stage=sessionStorage.getItem(key),cook=location.pathname.endsWith('/make-a-meal.html');
         if(!cook){
-          if(window.BBNativeStartup?.phase!=='ready')return;
+          if(window.BBNativeStartup?.phase!=='ready'){if(ticks>200)send({passed:false});return;}
           if(stage==='back'){
             const report=JSON.parse(sessionStorage.getItem(key+'_report')||'{}');
             report.backToPlan=document.body.dataset.bbnextView==='week';report.dataKept=localStorage.getItem('basketboss_native_smoke_probe')==='keep';

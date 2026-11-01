@@ -15,10 +15,10 @@ const container=run('simctl','get_app_container',phone.udid,'uk.co.basketboss.ap
 const file=path.join(container,'Documents/bb-native-cook-smoke.json');
 let raw;
 for(let tick=0;tick<200;tick++){if(fs.existsSync(file)){raw=JSON.parse(fs.readFileSync(file,'utf8'));break;}await new Promise(resolve=>setTimeout(resolve,250));}
-const report={};
-for(const key of ['passed','nativeOrigin','cookMounted','cookReady','navPresent','navVisible','navHit','legacyVisible','backToPlan','dataKept'])report[key]=raw?.[key]===true;
+const report={reportReceived:!!raw};
+for(const key of ['passed','nativeOrigin','cookMounted','cookReady','navPresent','navVisible','navHit','legacyVisible','backToPlan','dataKept','mainReady','startupReady'])report[key]=raw?.[key]===true;
 for(const key of ['errorCount','errorLine'])report[key]=Number.isInteger(raw?.[key])?Math.max(0,Math.min(raw[key],1000000)):0;
-for(const key of ['errorKind','errorSource'])report[key]=String(raw?.[key]||'').replace(/[^A-Za-z0-9_.-]/g,'').slice(0,100);
+for(const key of ['phase','readyState','errorKind','errorSource'])report[key]=String(raw?.[key]||'').replace(/[^A-Za-z0-9_.-]/g,'').slice(0,100);
 console.log('::notice title=BasketBoss native Cook smoke::'+JSON.stringify({nativeCook:report}));
 if(!raw)throw Error('Native Cook smoke report timed out.');
 if(!report.passed)throw Error('Native Cook navigation smoke test failed.');
