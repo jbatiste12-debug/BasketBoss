@@ -41,6 +41,8 @@ open ios/App/App.xcworkspace
 
 After pulling UI changes, run `npm run ios:sync` and wait for **Ready for Xcode** before pressing Run. Xcode Run alone reuses the previously copied web bundle, so it can show an older Cook screen and navigation even when Git is current. Stop the existing run before rebuilding; keep the app installed to preserve its saved data.
 
+Verification accepts Xcode's quoted or unquoted project settings. An actual signing mismatch names `DEVELOPMENT_TEAM` (expected `J25UTUATD2`) or `PRODUCT_BUNDLE_IDENTIFIER` (expected `uk.co.basketboss.app`); check **App → Signing & Capabilities** if either differs. The source project and your signing choices are never reset by the verifier.
+
 Settings → Sign in opens the existing account dialog directly. An expired session shows the email/password form. In first-time setup, the real form remains in the account step; the phone keyboard gets priority over the setup footer, and the active field scrolls into view. “Continue without signing in” explicitly skips authentication. Successful setup sign-in advances to Partner sharing, then the rest of setup and the app. Direct account requests suspend the optional tour without applying or overwriting its household preferences.
 
 In Xcode:

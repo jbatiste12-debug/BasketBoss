@@ -5,14 +5,33 @@ import assert from 'node:assert/strict';
 import {fileURLToPath,pathToFileURL} from 'node:url';
 import {verifyNativeWeb} from './build-native-web.mjs';
 const root=path.resolve(path.dirname(fileURLToPath(import.meta.url)),'..');
+// Xcode may quote OpenStep string values when saving project settings. Compare
+// their values, rather than one spelling of an otherwise identical assignment.
+function buildSetting(project,name){
+ const pattern=new RegExp('^[\\t ]*(?:"'+name+'"|'+name+')[\\t ]*=[\\t ]*("(?:\\\\.|[^"\\\\])*"|[^;\\r\\n]*?)[\\t ]*;','gm');
+ return [...project.matchAll(pattern)].map(match=>{
+  const token=match[1].trim();
+  if(!token.startsWith('"'))return token.replace(/\s*\/\*.*?\*\/\s*$/,'').trim();
+  try{return JSON.parse(token);}catch{throw Error('Invalid quoted Xcode setting: '+name);}
+ });
+}
+export function verifyXcodeSettings(project){
+ const minimums=buildSetting(project,'IPHONEOS_DEPLOYMENT_TARGET');
+ assert.ok(minimums.length>=4,'Xcode project must define IPHONEOS_DEPLOYMENT_TARGET for project and app configurations.');
+ assert.ok(minimums.every(value=>value==='16.0'),'IPHONEOS_DEPLOYMENT_TARGET must be 16.0 in every configuration.');
+ for(const [name,expected] of [['DEVELOPMENT_TEAM','J25UTUATD2'],['PRODUCT_BUNDLE_IDENTIFIER','uk.co.basketboss.app']]){
+  const values=buildSetting(project,name);
+  assert.equal(values.length,2,name+' must be defined for both App Debug and Release; found '+values.length+'. Check App → Signing & Capabilities.');
+  assert.ok(values.every(value=>value===expected),name+' must be '+expected+' for both App Debug and Release; found '+[...new Set(values)].join(', ')+'. Check App → Signing & Capabilities.');
+ }
+}
 export function verifyIOS(directory=root){
  const read=file=>fs.readFileSync(path.join(directory,file),'utf8');
  const config=JSON.parse(read('capacitor.config.json'));
  assert.equal(config.appId,'uk.co.basketboss.app');assert.equal(config.appName,'BasketBoss');assert.equal(config.webDir,'dist/native');
  assert.equal(config.server.iosScheme,'capacitor');assert.equal(config.server.hostname,'localhost');assert.equal(config.server.url,undefined);assert.equal(config.plugins.CapacitorHttp.enabled,false);
  const project=read('ios/App/App.xcodeproj/project.pbxproj');
- const minimums=[...project.matchAll(/IPHONEOS_DEPLOYMENT_TARGET = ([\d.]+);/g)].map(m=>m[1]);assert.ok(minimums.length>=4);assert.ok(minimums.every(value=>value==='16.0'));
- assert.equal((project.match(/DEVELOPMENT_TEAM = J25UTUATD2;/g)||[]).length,2);assert.equal((project.match(/PRODUCT_BUNDLE_IDENTIFIER = uk.co.basketboss.app;/g)||[]).length,2);
+ verifyXcodeSettings(project);
  assert.match(project,/PrivacyInfo\.xcprivacy in Resources/);assert.match(read('ios/App/Podfile'),/platform :ios, '16\.0'/);
  const plist=read('ios/App/App/Info.plist');
  for(const value of ['NSCameraUsageDescription','NSPhotoLibraryUsageDescription','UIViewControllerBasedStatusBarAppearance','basketboss','ITSAppUsesNonExemptEncryption'])assert.ok(plist.includes(value));
