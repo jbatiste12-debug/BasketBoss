@@ -17,6 +17,9 @@ export const CLIENT_FILES=Object.freeze([
  'bb-beta-launch-polish.js','bb-beta-six-fixes.js','bb-cloudflare-qa.js',
  'bb-cold-preview.js','bb-consolidated-qa.js','bb-culinary-enhancements.js',
  'bb-account-deletion.js','bb-account-deletion.css','bb-food-visuals.js','bb-food-visuals.css',
+ 'bb-cook-studio.js','bb-cook-studio.css','bb-cook-result.js','bb-cook-result.css',
+ 'bb-meal-image.js','bb-meal-image.css','bb-navigation-polish.js','bb-navigation-polish.css',
+ 'bb-account-polish.js','bb-account-polish.css',
  'bb-funnel.js','bb-household-sharing.js','bb-install.js','bb-intro-trial.js',
  'bb-membership-settings.js','bb-mobile-beta-polish.js','bb-onboarding-v2.js',
  'bb-partner-signup-prompt.js','bb-plan-premium-polish.js','bb-premium-features.js',
@@ -87,9 +90,13 @@ export function validatePublicCatalogue(recipes,normalized,desserts){
 
 export function transformNativeHtml(source){
  requireThat(typeof source==='string'&&/<head\b[^>]*>/i.test(source),'Native HTML requires a head element');
- let html=source.replace(/<script\b[^>]*\bid=["']bb-owner-qa-restore-script["'][^>]*>[\s\S]*?<\/script>/gi,'').replace(/<base\b[^>]*>/gi,'')
+ let html=source.replace(/<script\b[^>]*\bid=["'](?:bb-owner-qa-restore-script|bb17513-private-qa-toggle-script)["'][^>]*>[\s\S]*?<\/script>/gi,'')
+  .replace(/<style\b[^>]*\bid=["']bb17513-private-qa-toggle-css["'][^>]*>[\s\S]*?<\/style>/gi,'').replace(/<base\b[^>]*>/gi,'')
   .replace(/<meta\b[^>]*(?:\bcharset\s*=|\bhttp-equiv\s*=\s*["']content-type["'])[^>]*>/gi,'')
   .replace(/<link\b(?=[^>]*\brel\s*=\s*["']manifest["'])[^>]*>/gi,'')
+  // The bundled app uses the installed iOS icon. Keep normal local icons, but
+  // avoid parsing the obsolete 85 KB data-URL favicon before the app body.
+  .replace(/<link\b(?=[^>]*\brel\s*=\s*["'](?:shortcut\s+)?icon["'])(?=[^>]*\bhref\s*=\s*["']data:image\/)[^>]*>/gi,'')
   .replace(/<script\b[^>]*\bsrc\s*=\s*["'][^"']*(?:paddle-sandbox\.js|service-worker\.js|bb-intro-trial\.js|bb174-trial-ux\.js|bb-membership-settings\.js|bb-install\.js|https?:\/\/[^"']*(?:paddle|stripe)[^"']*)[^"']*["'][^>]*>\s*<\/script>/gi,'');
  if(/<meta\b[^>]*\bname\s*=\s*["']viewport["'][^>]*>/i.test(html)){
   html=html.replace(/<meta\b[^>]*\bname\s*=\s*["']viewport["'][^>]*>/gi,'<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">');

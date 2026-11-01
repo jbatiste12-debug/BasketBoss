@@ -8,6 +8,7 @@ import {SplashScreen} from '@capacitor/splash-screen';
 import {PRODUCTION_ORIGIN,productionApiURL,nativePageURL,nativeMembershipURL,isNativeBillingURL,installNativeFetch,installNativeXHR,installNativeWindowOpen} from './routing.mjs';
 import {installNativeMembership} from './membership.mjs';
 import {installNativeStartup} from './startup.mjs';
+import {watchNativeEntryReadiness} from './entry-readiness.mjs';
 
 if(Capacitor.isNativePlatform()&&Capacitor.getPlatform()==='ios'){
  document.documentElement.classList.add('bb-native-ios');
@@ -86,8 +87,13 @@ if(Capacitor.isNativePlatform()&&Capacitor.getPlatform()==='ios'){
   if(isNativeBillingURL(target,location.href)){event.preventDefault();event.stopImmediatePropagation();location.assign(nativeMembershipURL(location.href));}
  },true);
  document.addEventListener('basketboss:receipt-confirmed',()=>void haptic('success'));
+ let membership;
+ function prepareMembership(){
+  if(!membership)membership=installNativeMembership({apiURL:path=>PRODUCTION_ORIGIN+path,readSession});
+ }
+ const earlyEntry=watchNativeEntryReadiness({startup,prepareMembership});
  function ready(){
-  installNativeMembership({apiURL:path=>PRODUCTION_ORIGIN+path,readSession});
+  earlyEntry.stop();prepareMembership();
   void StatusBar.setStyle({style:Style.Light}).catch(()=>{});
   void StatusBar.setOverlaysWebView({overlay:false}).catch(()=>{});
   // UIKit already animates while WKWebView initializes. Dismiss both layers

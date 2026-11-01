@@ -52,6 +52,11 @@ export function installNativeMembership({apiURL,readSession,fetch:perform=global
    if(node.getAttribute('href')!==target)node.setAttribute('href',target);
    text(node,'Your account status');
   }
+  for(const node of doc.querySelectorAll('.bb17513-meal-premium')){
+   const target=nativeMembershipURL(win.location.href);
+   if(node.getAttribute('href')!==target)node.setAttribute('href',target);
+   text(node,'Your account');node.setAttribute('aria-label','View your BasketBoss account status');
+  }
   for(const node of doc.querySelectorAll('#bb175Compare,button[data-bbob="premium"]'))text(node,'Your account status');
   const parent=doc.getElementById('bbNativeMembershipMount')||doc.getElementById('bbuiLinksSection');if(parent)mount(parent);
   doc.querySelectorAll('[data-native-signin]').forEach(node=>{if(!node.dataset.nativeReady){node.dataset.nativeReady='true';node.addEventListener('click',()=>win.location.assign('index.html#account'));}});

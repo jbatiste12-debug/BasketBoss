@@ -63,10 +63,10 @@ test('Subscription routes survive session RPC downtime but still authenticate',a
  assert.equal(authCalls,0);assert.equal(seatCalls,0);
 });
 test('Paid recipes, AI, and household reject an older session',async()=>{
- reset();for(const p of ['/api/recipes/premium','/api/bb173/generate','/api/bb173/scan','/api/household']){
+ reset();for(const p of ['/api/recipes/premium','/api/bb173/generate','/api/bb173/scan','/api/bb173/meal-image','/api/household']){
   const r=await invoke(p);assert.equal(r.response.status,403,p);assert.equal(r.nextCalls,0,p);
  }
- assert.equal(seatCalls,4);assert.equal(authCalls,4);
+ assert.equal(seatCalls,5);assert.equal(authCalls,5);
 });
 test('Paid API requests fail closed on a session RPC outage',async()=>{
  reset();throwSession=true;
@@ -75,10 +75,10 @@ test('Paid API requests fail closed on a session RPC outage',async()=>{
 });
 test('Paid routes allow only newest verified session',async()=>{
  reset();sessionOk=true;
- for(const p of ['/api/recipes/premium','/api/bb173/scan','/api/household']){
+ for(const p of ['/api/recipes/premium','/api/bb173/scan','/api/bb173/meal-image','/api/household']){
   const r=await invoke(p);assert.equal(r.response.status,200);assert.equal(r.nextCalls,1);
  }
- assert.equal(seatCalls,3);
+ assert.equal(seatCalls,4);
 });
 test('Paid endpoints deny missing authenticated identity',async()=>{
  reset();accepted=false;

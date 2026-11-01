@@ -77,7 +77,7 @@ export async function verifyReviewDeployment(perform=fetch){
   for(const path of ['/privacy','/terms']){
    const page=await perform('https://basketboss.co.uk'+path,options);
    if(page.status!==200||!/text\/html/i.test(page.headers.get('content-type')||''))throw Error();
-   const html=await page.text();if(!html.includes('31 October 2026'))throw Error();
+   const html=await page.text();if(!html.includes('1 November 2026'))throw Error();
   }
   const response=await perform('https://basketboss.co.uk/api/account/delete',{...options,headers:{Origin:'capacitor://localhost'}});
   const status=await response.json();
@@ -124,6 +124,23 @@ export async function verifyFoodThumbnailDeployment(perform=fetch){
   }
   return {script:true,stylesheet:true,foods:78,imageAtlases:13};
  }catch{throw Error('Shared food thumbnail assets could not be verified on production.');}
+}
+
+// Verify the public interface bundle only; never requests an AI generation.
+export async function verifyInterfaceDeployment(perform=fetch){
+ const modules={'cookStudio':'bb-cook-studio','createdMeal':'bb-cook-result','mealPictures':'bb-meal-image','navigation':'bb-navigation-polish','accountSettings':'bb-account-polish'};
+ const result={};
+ try{
+  for(const [label,module] of Object.entries(modules)){
+   for(const extension of ['js','css']){
+    const response=await perform('https://basketboss.co.uk/'+module+'.'+extension,{cache:'no-store',redirect:'error',signal:AbortSignal.timeout(15000)});
+    if(response.status!==200||!(extension==='js'?/javascript/i:/text\/css/i).test(response.headers.get('content-type')||''))throw Error();
+    await response.body?.cancel();
+   }
+   result[label]=true;
+  }
+  return result;
+ }catch{throw Error('The polished app interface assets could not be verified on production.');}
 }
 
 // Inspect schema only. Never select customer rows, identifiers or table SQL.
@@ -238,6 +255,7 @@ if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) 
     result.nativeApiDeployment=await verifyNativeApiDeployment();
     result.reviewDeployment=await verifyReviewDeployment();
     result.foodThumbnailDeployment=await verifyFoodThumbnailDeployment();
+    result.interfaceDeployment=await verifyInterfaceDeployment();
     const asset=await fetch('https://basketboss.co.uk/bb-receipt-host.js',{cache:'no-store',redirect:'error',signal:AbortSignal.timeout(15000)});
     if(!asset.ok||!/javascript/i.test(asset.headers.get('content-type')||''))throw Error('The receipt frontend asset is not available on production.');
     const receipt=await fetch('https://basketboss.co.uk/api/receipt-inventory?mode=status',{cache:'no-store',redirect:'error',signal:AbortSignal.timeout(15000)});

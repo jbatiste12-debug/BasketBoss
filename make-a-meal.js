@@ -41,6 +41,7 @@ async function bbSecureRefreshPremiumRecipes(){
   } catch (_) { /* Fail closed: continue with only the 100 public recipes. */ }
 }
 function bbSecureCheckAccountChange(){
+  bbCheckGeneratedMealAccount();
   if(bbPaidToken()!==bbSecureLastToken)void bbSecureRefreshPremiumRecipes();
 }
 window.addEventListener('focus',bbSecureCheckAccountChange);
@@ -56,6 +57,7 @@ document.addEventListener('visibilitychange',()=>{
 let area='cupboard',mode='only',recipes=[],inventory={},results=[],suggestionOffset=0,photoFile=null;
  let bb5Confirmed=false;
 let aiEnabled=false, turnstileToken='',turnstileWidgetId=null,scanRevision=0,scanInFlight=false,generateInFlight=false;
+let generateRevision=0,generateActor=null,generatedView=null;
 const $=s=>document.querySelector(s), esc=x=>String(x??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 const alias={'cheddar cheese':'cheddar','mature cheddar':'cheddar','cheese (cheddar)':'cheddar','tinned kidney beans':'tinned beans','canned beans':'tinned beans','olive oil':'cooking oil','sunflower oil':'cooking oil','vegetable oil':'cooking oil','chopped tomatoes':'tinned tomatoes','canned tomatoes':'tinned tomatoes','eggs':'egg','tomatoes':'tomato','potatoes':'potato','peppers':'pepper','mushrooms':'mushroom','carrots':'carrot','onions':'onion','wraps':'wrap','peas':'pea','frozen peas':'pea','sweetcorn':'sweetcorn','frozen sweetcorn':'sweetcorn','yoghurts':'yoghurt','chickpeas':'chickpea'};
 function canon(s){let t=String(s||'').toLowerCase().normalize('NFKC').replace(/\([^)]*\)/g,' ').replace(/[–—-]/g,' ').replace(/[^\p{L}\s]/gu,' ').replace(/\s+/g,' ').trim();if(alias[t])return alias[t];t=t.replace(/^(fresh|cooked|raw|diced|chopped|sliced|grated|frozen)\s+/g,'').trim();if(alias[t])return alias[t];if(t.endsWith('ies'))t=t.slice(0,-3)+'y';else if(t.endsWith('s')&&!t.endsWith('ss'))t=t.slice(0,-1);return alias[t]||t}
@@ -491,22 +493,58 @@ async function scanPhoto(){
  }catch(e){if(revision===scanRevision)$('#scanResults').innerHTML='<div class="warning">'+esc(e.message)+'. No inventory was changed.</div>'}
  finally{scanInFlight=false;btn.disabled=false}
 }
+function bbClearGeneratedMeal(){
+ generateRevision++;generateActor=null;generateInFlight=false;
+ generatedView?.cancel?.();generatedView=null;window.BBMealImage?.cancelAll?.();
+ const host=$('#generated');
+ if(window.BBCookResult?.clear)window.BBCookResult.clear(host);else host?.replaceChildren();
+ const button=$('#generate');if(button)button.disabled=false;
+}
+function bbCheckGeneratedMealAccount(){
+ if(generateActor&&(bbPaidToken()!==generateActor||window.BBAccountDeletion?.isDeleting?.()===true))bbClearGeneratedMeal();
+}
+function bbValidGeneratedRecipe(recipe){
+ const text=(value,max)=>typeof value==='string'&&value.trim().length>0&&value.length<=max;
+ const strings=(value,maxItems,maxLength)=>Array.isArray(value)&&value.length<=maxItems&&value.every(item=>text(item,maxLength));
+ return recipe&&typeof recipe==='object'&&!Array.isArray(recipe)&&text(recipe.title,160)&&text(recipe.summary,700)&&
+  recipe.servings===4&&Number.isInteger(recipe.prepMinutes)&&recipe.prepMinutes>=0&&recipe.prepMinutes<=240&&
+  Number.isInteger(recipe.cookMinutes)&&recipe.cookMinutes>=1&&recipe.cookMinutes<=360&&
+  Array.isArray(recipe.ingredients)&&recipe.ingredients.length>=1&&recipe.ingredients.length<=25&&
+  recipe.ingredients.every(item=>item&&text(item.name,120)&&text(item.quantity,120)&&typeof item.fromHome==='boolean')&&
+  strings(recipe.steps,15,600)&&recipe.steps.length>=1&&strings(recipe.extraIngredients,2,120)&&
+  strings(recipe.allergens,25,120)&&strings(recipe.safetyNotes,25,400);
+}
 function generate(){
+ bbCheckGeneratedMealAccount();
  if(generateInFlight)return;
+ if(window.BBAccountDeletion?.isDeleting?.()===true){message('Finish account deletion before creating a meal.','warning');return;}
  if(!bb5Confirmed){message('Confirm your ingredients using “Confirm — Make a Meal” before requesting a recipe.','warning');return}
  const ingredients=[...new Set(list().map(x=>String(x.name||'').trim()).filter(Boolean))];
  if(!ingredients.length){message('Select some ingredients first.','warning');return}
  if(ingredients.length>12){message('Choose up to 12 ingredients for a single AI recipe. Your saved inventory is unchanged.','warning');return}
- if(!confirm('Send these '+ingredients.length+' ingredient names (not stock quantities) to Cloudflare and Google Gemini to suggest a new recipe? Cancel keeps everything local.'))return;
- const btn=$('#generate');generateInFlight=true;btn.disabled=true;$('#generated').innerHTML='<p class="notice">Asking Gemini for a draft meal…</p>';
- requestBody('generate',{ingredients,mode:mode==='only'?'only_have':'up_to_two',servings:4}).then(j=>{
-  const r=j.recipe;if(!j.ok||!j.reviewRequired||!r||!Array.isArray(r.ingredients)||!Array.isArray(r.steps)||!Array.isArray(r.extraIngredients))throw Error('Incomplete recipe response');
-  const extras=r.ingredients.filter(a=>a.fromHome===false);if(mode==='only'&&(extras.length||r.extraIngredients.length))throw Error('AI suggested ingredients you do not have');
-  if(mode==='extras'&&(extras.length>2||r.extraIngredients.length>2))throw Error('AI exceeded the two-extra-ingredient rule');
+ const token=bbPaidToken();if(!token){message('Sign in to a verified Premium account first.','warning');return;}
+ if(!confirm('Send these '+ingredients.length+' ingredient names (not stock quantities) to Cloudflare and Google Gemini for a recipe draft and an illustrative picture of the resulting meal? The picture uses the generated recipe, not your email or a personal photo. Cancel keeps everything local.'))return;
+ const requestMode=mode,revision=++generateRevision;
+ generatedView?.cancel?.();generatedView=null;window.BBMealImage?.cancelAll?.();
+ generateActor=token;
+ const isCurrent=()=>revision===generateRevision&&generateActor===token&&bbPaidToken()===token&&window.BBAccountDeletion?.isDeleting?.()!==true;
+ const btn=$('#generate');generateInFlight=true;btn.disabled=true;$('#generated').innerHTML='<p class="notice" role="status">Creating your recipe draft… Your ingredients stay as they are.</p>';
+ requestBody('generate',{ingredients,mode:requestMode==='only'?'only_have':'up_to_two',servings:4}).then(j=>{
+  if(!isCurrent())return;
+  const r=j.recipe;if(!j.ok||!j.reviewRequired||!bbValidGeneratedRecipe(r))throw Error('Incomplete recipe response');
+  const extras=r.ingredients.filter(a=>a.fromHome===false);if(requestMode==='only'&&(extras.length||r.extraIngredients.length))throw Error('AI suggested ingredients you do not have');
+  if(requestMode==='extras'&&(extras.length>2||r.extraIngredients.length>2))throw Error('AI exceeded the two-extra-ingredient rule');
+  if(window.BBCookResult?.render){
+   generatedView=window.BBCookResult.render($('#generated'),r,{mealImage:j.mealImage,getToken:bbPaidToken,isCurrent,onTryAgain:generate});
+   return;
+  }
   const duration=(Number(r.prepMinutes)||0)+(Number(r.cookMinutes)||0),steps=r.steps.slice(0,15),allergens=Array.isArray(r.allergens)?r.allergens:[],safety=Array.isArray(r.safetyNotes)?r.safetyNotes:[];
   $('#generated').innerHTML=`<article class="generated"><div class="eyebrow" style="color:var(--green)">Unverified AI recipe · early access</div><h3>${esc(r.title||'AI meal')}</h3><p>${esc(r.servings)} servings · ${esc(duration)} estimated minutes</p><p>${esc(r.summary||'')}</p><p class="hint">No cost estimate. This AI recipe is NOT automatically added to Planner or Shopping.</p><h4>Ingredients</h4><ul>${r.ingredients.map(a=>`<li>${esc(a.quantity||'Quantity unclear')} ${esc(a.name||'')} · ${a.fromHome===false?'<strong>To buy</strong>':'Have (check quantity)'}</li>`).join('')}</ul><h4>Method (review for food safety)</h4><ol>${steps.map(st=>`<li>${esc(String(st).replace(/^\s*\d+[.)]\s*/,''))}</li>`).join('')}</ol><h4>Possible allergens</h4><p>${esc(allergens.join(', ')||'Review packaged ingredients and allergens yourself')}</p><h4>Food safety reminders</h4><ul>${safety.map(s=>`<li>${esc(s)}</li>`).join('')||'<li>Check safe handling, storage and cooking temperatures.</li>'}</ul><div class="warning">AI-generated, not kitchen-tested or verified as safe for dietary requirements. Confirm all ingredients, allergens, quantities and cooking safety. BasketBoss never automatically adds AI drafts to the Planner.</div></article>`;
- }).catch(e=>{$('#generated').innerHTML='<div class="warning">'+esc(e.message+'. Your saved ingredients were not changed. The built-in recipes remain available.')+'</div>';}).finally(()=>{generateInFlight=false;btn.disabled=false});
+ }).catch(e=>{if(isCurrent())$('#generated').innerHTML='<div class="warning">'+esc(e.message+'. Your saved ingredients were not changed. The built-in recipes remain available.')+'</div>';}).finally(()=>{if(revision===generateRevision){generateInFlight=false;btn.disabled=false;}});
 }
+window.addEventListener('basketboss:account-deletion-started',bbClearGeneratedMeal);
+window.addEventListener('basketboss:account-deletion-deleted',bbClearGeneratedMeal);
+window.addEventListener('pagehide',bbClearGeneratedMeal);
 // One streamlined Make a Meal workspace. Keep the original controls and event hooks.
 let bbActiveTool=null,bbSiteKey=null,bbTurnstileLoading=false,bbTurnstileRequired=true;
 function bbChooseLocation(loc){
@@ -691,6 +729,7 @@ function bb15RestorePremiumEntry(){
  // Do not bind duplicate click handlers to a re-rendered AI Studio element.
  if(workspace&&workspace.parentNode)workspace.parentNode.insertBefore(section,workspace);
  else dashboard.prepend(section);
+ window.BBCookStudio?.mount({hub:section,workspace,getIngredients:list});
 }
 // Keep AI readiness tied to the CURRENT authenticated account, not the
 // browser that happened to load this page earlier. Server checks are authoritative.

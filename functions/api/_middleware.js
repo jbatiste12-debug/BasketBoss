@@ -11,7 +11,7 @@ import {nativeCorsResponse,nativePreflightResponse} from '../../bb-server-lib/bb
 import {ensureDeletionSchema,isAccountDeleting} from '../../bb-server-lib/bb-account-deletion.js';
 const PROTECTED=[
  /^\/api\/recipes\/premium\/?$/,
- /^\/api\/bb173\/(?:generate|scan)\/?$/,
+ /^\/api\/bb173\/(?:generate|scan|meal-image)\/?$/,
  /^\/api\/household\/?$/,
  /^\/api\/receipt-inventory\/?$/
 ];

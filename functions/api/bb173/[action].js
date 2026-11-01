@@ -4,6 +4,7 @@ import {receiptCanonicalPairs} from '../../../bb-server-lib/bb-receipt-canonical
 import {canonicalIngredientKey} from '../../../bb-receipt-inventory-core.mjs';
 import {digestDeletionActor} from '../../../bb-server-lib/bb-account-deletion.js';
 import {receiptInventoryConfigured,onRequestGet as receiptInventoryStatus} from '../receipt-inventory.js';
+import {issueMealImageTicket,verifyMealImageTicket,mealImageModel,mealImageGlobalCap,requestMealImage} from '../../../bb-server-lib/bb-meal-image.js';
 // BasketBoss AI structured output formats, taken from the successful private test.
 export const MODEL='gemini-3.5-flash-lite';
 export const GEMINI_URL=`https://generativelanguage.googleapis.com/v1beta/models/${MODEL}:generateContent`;
@@ -73,6 +74,7 @@ function photoBytesValid(mime,b64){
 }
 export function validateInput(action, d) {
   if (!d || typeof d !== 'object' || Array.isArray(d)) return 'Expected a JSON object.';
+  if(action==='meal-image')return typeof d.ticket==='string'&&d.ticket.length>=100&&d.ticket.length<=64000?null:'A valid meal picture ticket is required.';
   if (action==='generate') {
     if (!Array.isArray(d.ingredients)||d.ingredients.length<1||d.ingredients.length>12||
       !d.ingredients.every(x=>typeof x==='string'&&x.trim().length>=1&&x.length<=60)) return 'Provide 1–12 ingredient names (up to 60 characters each).';
@@ -350,7 +352,7 @@ async function siteVerify(token,request,env){
 // D1 quota table is initialized ONLY if D1 explicitly reports it absent.
 // An incompatible existing schema or unavailable database still fails closed.
 // Quotas are never bypassed, including for Live Founder, Premium and Owner.
-async function consumeQuota(db,userId,action,globalCap){
+async function consumeQuota(db,userId,action,globalCap,globalAction='all'){
   const day=new Date().toISOString().slice(0,10);
   const cap=action==='scan'?5:10;
   const inc=`INSERT INTO bb_ai_daily_usage(day_utc,actor,action,used)
@@ -376,7 +378,7 @@ async function consumeQuota(db,userId,action,globalCap){
       .bind(day,'user:'+userId,action,cap,actorHash,cap,actorHash).first();
     if(!mine)return false;
     const all=await db.prepare(inc)
-      .bind(day,'global','all',globalCap).first();
+      .bind(day,'global',globalAction,globalCap).first();
     return !!all;
   };
   try{return await increment();}
@@ -394,7 +396,7 @@ async function consumeQuota(db,userId,action,globalCap){
     return await increment();
   }
 }
-async function gemini(action,body,env){
+async function gemini(action,body,env,member,origin){
   const {parts,schema,maxOutputTokens}=geminiRequest(action,body);
   let provider;
   try{
@@ -411,13 +413,14 @@ async function gemini(action,body,env){
       body.scanKind==='receipt_inventory'?{ok:true,aiGenerated:true,reviewRequired:true,warning:'Review every food, essential, quantity, paid price and total before confirming. Confirmed food updates Pantry; non-food stays in Weekly Essentials.',receiptInventory:output}:
       body.scanKind==='receipt_prices'?{ok:true,aiGenerated:true,reviewRequired:true,warning:'Review each product, pack and price before saving for future shops.',receiptPrices:output}:
       {ok:true,aiGenerated:true,reviewRequired:true,warning:'Confirm each ingredient before saving.',scan:output}:
-      {ok:true,aiGenerated:true,reviewRequired:true,warning:'Unverified recipe. Confirm quantities, allergens, cooking and storage safety.',recipe:output});
+      {ok:true,aiGenerated:true,reviewRequired:true,warning:'Unverified recipe. Confirm quantities, allergens, cooking and storage safety.',recipe:output,
+       mealImage:await issueMealImageTicket(output,member,env,origin)});
   }catch(_){return respond({error:'AI request could not be completed or validated.'},502);}
 }
 
 export async function onRequest({request,env,params}){
   const action=params?.action;
-  if(!['status','generate','scan'].includes(action))
+  if(!['status','generate','scan','meal-image'].includes(action))
     return respond({error:'Not found'},404);
 
   if(action==='status'){
@@ -473,6 +476,12 @@ export async function onRequest({request,env,params}){
   const body=parsed.body;
   const bad=validateInput(action,body);
   if(bad)return respond({error:bad},400);
+  let imageGrant=null;
+  if(action==='meal-image'){
+    if(!mealImageModel(env)||!mealImageGlobalCap(env))return respond({error:'Meal pictures are temporarily unavailable.'},503);
+    imageGrant=await verifyMealImageTicket(body.ticket,member,env,new URL(request.url).origin);
+    if(!imageGrant)return respond({error:'This meal picture request has expired or is not valid for this account.'},403);
+  }
   if(action==='scan'&&body.scanKind==='receipt_inventory'){
     // Never charge the shared scan quota or send a photograph when the new
     // transactional inventory migration/feature is unavailable.
@@ -494,8 +503,21 @@ export async function onRequest({request,env,params}){
     return respond({error:'Human verification failed'},403);
 
   try{
+    if(action==='meal-image'){
+      // A ticket is one-use, including concurrent requests. Keep its transient
+      // marker under the requester so normal account deletion removes it. Both
+      // requester and household-owner deletion gates are checked atomically.
+      const actorHash=await digestDeletionActor(member.id),ownerHash=await digestDeletionActor(member.bbQuotaOwnerId||member.id);
+      const claimed=await env.BILLING_DB.prepare(`INSERT INTO bb_ai_daily_usage(day_utc,actor,action,used)
+        SELECT ?,?,?,1 WHERE NOT EXISTS (SELECT 1 FROM bb_account_deletions WHERE actor_hash IN (?,?))
+        ON CONFLICT(day_utc,actor,action) DO NOTHING RETURNING used`)
+        .bind(new Date(imageGrant.issuedAt).toISOString().slice(0,10),'user:'+member.id,'meal-image-ticket:'+imageGrant.nonce,actorHash,ownerHash).first();
+      if(!claimed)return respond({error:'This meal picture has already been requested or the account is unavailable.'},409);
+    }
     if(!await consumeQuota(
-      env.BILLING_DB,member.bbQuotaOwnerId||member.id,action,limits(env).global
+      env.BILLING_DB,member.bbQuotaOwnerId||member.id,action,
+      action==='meal-image'?mealImageGlobalCap(env):limits(env).global,
+      action==='meal-image'?'meal-image-all':'all'
     ))return respond({error:'Daily AI usage limit reached'},429);
   }catch(err){
     // Diagnostic class only: never log auth tokens, IPs, secrets or D1 row data.
@@ -507,5 +529,9 @@ export async function onRequest({request,env,params}){
     return respond({error:'AI quota protection unavailable'},503);
   }
 
-  return gemini(action,body,env);
+  if(action==='meal-image'){
+    try{return respond({ok:true,aiGenerated:true,illustrative:true,mealImage:await requestMealImage(imageGrant.recipe,env)});}
+    catch{return respond({error:'The meal picture could not be created. Your recipe is still ready to review.'},502);}
+  }
+  return gemini(action,body,env,member,new URL(request.url).origin);
 }

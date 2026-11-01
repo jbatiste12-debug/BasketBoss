@@ -1,13 +1,29 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import {readFileSync} from 'node:fs';
-import {inspectCloudflare,classifyBuildFailure,verifyLandingDeployment,verifyNativeApiDeployment,verifyReviewDeployment,verifyFoodThumbnailDeployment,inspectDeletionSchema} from '../scripts/check-cloudflare-catalogue.mjs';
+import {inspectCloudflare,classifyBuildFailure,verifyLandingDeployment,verifyNativeApiDeployment,verifyReviewDeployment,verifyFoodThumbnailDeployment,verifyInterfaceDeployment,inspectDeletionSchema} from '../scripts/check-cloudflare-catalogue.mjs';
 
 const token = 'synthetic-secret-that-must-not-appear-in-results';
 const env = {CLOUDFLARE_API_TOKEN: token, CLOUDFLARE_ACCOUNT_ID: 'a'.repeat(32)};
 const databaseId = '12345678-1234-1234-1234-123456789012';
 const project = {name: 'basketboss', domains: ['basketboss.co.uk']};
 const response = (result, result_info) => ({ok: true, status: 200, json: async () => ({success: true, result, result_info})});
+
+test('polished interface deployment checks every script/style without invoking AI or sending auth',async()=>{
+ const requests=[];
+ const result=await verifyInterfaceDeployment(async(address,options)=>{
+  requests.push(address);assert.equal(options.headers,undefined);assert.notEqual(options.method,'POST');assert.equal(options.redirect,'error');
+  assert.match(new URL(address).pathname,/^\/bb-(cook-studio|cook-result|meal-image|navigation-polish|account-polish)\.(js|css)$/);
+  return new Response('public asset',{headers:{'Content-Type':address.endsWith('.js')?'application/javascript':'text/css'}});
+ });
+ assert.deepEqual(result,{cookStudio:true,createdMeal:true,mealPictures:true,navigation:true,accountSettings:true});assert.equal(requests.length,10);
+});
+
+test('polished interface deployment rejects missing or HTML fallback assets and hides unexpected network text',async()=>{
+ for(const perform of [async()=>new Response('missing',{status:404}),async()=>new Response('fallback',{headers:{'Content-Type':'text/html'}}),async()=>{throw Error('synthetic-private-provider-error');}]){
+  await assert.rejects(verifyInterfaceDeployment(perform),error=>{assert.equal(error.message,'The polished app interface assets could not be verified on production.');return true;});
+ }
+});
 
 function landingFixture({hidden=false,assetType,assetStatus=200,headline='Less dinner stress.<br><em>More family time.</em>'}={}){
  const requests=[];
@@ -183,7 +199,7 @@ test('review verification reports public legal/native checkout readiness without
  const calls=[];
  const check=async ready=>verifyReviewDeployment(async(address,options)=>{
   calls.push({address,options});assert.notEqual(options.method,'POST');assert.equal(options.headers?.Authorization,undefined);
-  if(/\/(privacy|terms)$/.test(address))return new Response('Last updated 31 October 2026.',{headers:{'Content-Type':'text/html'}});
+  if(/\/(privacy|terms)$/.test(address))return new Response('Last updated 1 November 2026.',{headers:{'Content-Type':'text/html'}});
   if(address.endsWith('checkout-config'))return Response.json({enabled:false});
   return Response.json({ok:true,available:true,migrationReady:ready},{headers:{'Access-Control-Allow-Origin':'capacitor://localhost'}});
  });
