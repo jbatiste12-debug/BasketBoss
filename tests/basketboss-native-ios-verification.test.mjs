@@ -11,8 +11,16 @@ test('iOS verification accepts equivalent quoted and spaced Xcode settings',()=>
  assert.notEqual(rewritten,project);assert.doesNotThrow(()=>verifyXcodeSettings(rewritten.replace(/\n/g,'\r\n')));
 });
 
+test('iOS verification preserves the consistent signing team selected locally in Xcode',()=>{
+ const local=project.replaceAll('J25UTUATD2','M4W325XWK2');
+ assert.equal(verifyXcodeSettings(local).team,'M4W325XWK2');
+ assert.throws(()=>verifyXcodeSettings(local,{expectedTeam:'J25UTUATD2'}),/DEVELOPMENT_TEAM must be J25UTUATD2/);
+ assert.throws(()=>verifyXcodeSettings(project.replace('J25UTUATD2','M4W325XWK2')),/DEVELOPMENT_TEAM must match/);
+ assert.throws(()=>verifyXcodeSettings(project.replaceAll('J25UTUATD2','')),/DEVELOPMENT_TEAM must be a valid/);
+ assert.throws(()=>verifyXcodeSettings(project.replaceAll('J25UTUATD2','$(TEAM_ID)')),/DEVELOPMENT_TEAM must be a valid/);
+});
+
 test('iOS verification names wrong or missing settings and keeps App Store identity checks',()=>{
- assert.throws(()=>verifyXcodeSettings(project.replaceAll('J25UTUATD2','OTHERTEAM1')),/DEVELOPMENT_TEAM must be J25UTUATD2/);
  assert.throws(()=>verifyXcodeSettings(project.replaceAll('uk.co.basketboss.app','example.other.app')),/PRODUCT_BUNDLE_IDENTIFIER must be uk\.co\.basketboss\.app/);
  assert.throws(()=>verifyXcodeSettings(project.replaceAll('DEVELOPMENT_TEAM = J25UTUATD2;','')),/DEVELOPMENT_TEAM must be defined.*found 0/);
  assert.throws(()=>verifyXcodeSettings(project.replaceAll('IPHONEOS_DEPLOYMENT_TARGET = 16.0;','IPHONEOS_DEPLOYMENT_TARGET = "15.0";')),/IPHONEOS_DEPLOYMENT_TARGET must be 16\.0/);

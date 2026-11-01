@@ -3,6 +3,8 @@ import {spawnSync} from 'node:child_process';
 import {fileURLToPath} from 'node:url';
 import path from 'node:path';
 import {buildNativeWeb} from './build-native-web.mjs';
+import {verifyXcodeSettings} from './verify-ios.mjs';
+import fs from 'node:fs';
 const root=path.resolve(path.dirname(fileURLToPath(import.meta.url)),'..');
 function run(command,args,capture=false){
  const result=spawnSync(command,args,{cwd:root,encoding:'utf8',stdio:capture?'pipe':'inherit'});
@@ -17,5 +19,6 @@ try{
  const result=await buildNativeWeb();console.log('Built '+result.files+' native web assets. PWA source files are unchanged.');
  run(process.execPath,[path.join(root,'node_modules/@capacitor/cli/bin/capacitor'),'sync','ios']);
  run(process.execPath,[path.join(root,'scripts/verify-ios.mjs')]);
- console.log('\nReady for Xcode. Team: Jason Batiste (J25UTUATD2).\nOpen: open ios/App/App.xcworkspace\nSelect your connected iPhone and press Run.');
+ const {team}=verifyXcodeSettings(fs.readFileSync(path.join(root,'ios/App/App.xcodeproj/project.pbxproj'),'utf8'));
+ console.log('\nReady for Xcode. Signing team: '+team+'.\nOpen: open ios/App/App.xcworkspace\nSelect your connected iPhone and press Run.');
 }catch(error){console.error('iOS sync: '+error.message);process.exitCode=1;}

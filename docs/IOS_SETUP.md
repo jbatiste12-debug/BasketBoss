@@ -1,6 +1,6 @@
 # BasketBoss iOS wrapper
 
-The native app is a **separate installation** from the Safari/PWA app. Its app ID is `uk.co.basketboss.app`, its display name is BasketBoss, and its minimum deployment target is iOS 16.0. Automatic signing selects **Jason Batiste — J25UTUATD2** for Debug and Release.
+The native app is a **separate installation** from the Safari/PWA app. Its app ID is `uk.co.basketboss.app`, its display name is BasketBoss, and its minimum deployment target is iOS 16.0. The repository defaults automatic signing to **Jason Batiste — J25UTUATD2** for Debug and Release; the verifier preserves a different valid team selected locally in Xcode.
 
 The PWA files, service worker, browser storage keys and Cloudflare deployment remain in place. The native builder reads public assets and writes only `dist/native/`; Capacitor copies that output to `ios/App/App/public/`. Those generated directories and CocoaPods dependencies are ignored by Git. There is no remote `server.url`: the app shell and public recipes ship inside the app, with updates delivered through Xcode/App Store builds.
 
@@ -9,7 +9,7 @@ The PWA files, service worker, browser storage keys and Cloudflare deployment re
 - Node 22 or later (Node 24 LTS is suitable), npm, and Git.
 - Full Xcode 26 or later, launched once to complete installation and accept its license. Capacitor 8 uses the iOS 26 SDK; deployment to iOS 16+ remains supported.
 - CocoaPods installed, for example `brew install cocoapods`.
-- In **Xcode → Settings → Accounts**, sign in to the Apple ID that can access team **J25UTUATD2**. The repository configures the team ID; it cannot include your signing certificate or Apple login.
+- In **Xcode → Settings → Accounts**, sign in to the Apple ID for the developer team you use for BasketBoss. The repository cannot include your signing certificate or Apple login.
 
 If Xcode command-line tools point to a standalone tools installation, select full Xcode:
 
@@ -41,7 +41,7 @@ open ios/App/App.xcworkspace
 
 After pulling UI changes, run `npm run ios:sync` and wait for **Ready for Xcode** before pressing Run. Xcode Run alone reuses the previously copied web bundle, so it can show an older Cook screen and navigation even when Git is current. Stop the existing run before rebuilding; keep the app installed to preserve its saved data.
 
-Verification accepts Xcode's quoted or unquoted project settings. An actual signing mismatch names `DEVELOPMENT_TEAM` (expected `J25UTUATD2`) or `PRODUCT_BUNDLE_IDENTIFIER` (expected `uk.co.basketboss.app`); check **App → Signing & Capabilities** if either differs. The source project and your signing choices are never reset by the verifier.
+Verification accepts Xcode's quoted or unquoted project settings. `DEVELOPMENT_TEAM` must be a valid Apple team ID and match between App Debug and Release; it uses the team you selected in Xcode, including `M4W325XWK2` on the current Mac. `PRODUCT_BUNDLE_IDENTIFIER` must remain `uk.co.basketboss.app`. The final “Ready for Xcode” message reports the selected team. Any actual mismatch names its setting; check **App → Signing & Capabilities** to correct it. The source project and your signing choices are never reset by the verifier.
 
 Settings → Sign in opens the existing account dialog directly. An expired session shows the email/password form. In first-time setup, the real form remains in the account step; the phone keyboard gets priority over the setup footer, and the active field scrolls into view. “Continue without signing in” explicitly skips authentication. Successful setup sign-in advances to Partner sharing, then the rest of setup and the app. Direct account requests suspend the optional tour without applying or overwriting its household preferences.
 
@@ -49,7 +49,7 @@ In Xcode:
 
 1. Select the **App** scheme and connect/unlock the iPhone. Trust the Mac and enable **Settings → Privacy & Security → Developer Mode** on the iPhone if requested.
 2. Select the physical iPhone as the run destination.
-3. Under **App → Signing & Capabilities**, leave **Automatically manage signing** enabled and select **Jason Batiste (J25UTUATD2)**. Confirm the bundle identifier is `uk.co.basketboss.app`.
+3. Under **App → Signing & Capabilities**, leave **Automatically manage signing** enabled and select your Apple Developer team for BasketBoss, consistently for Debug and Release. Confirm the bundle identifier is `uk.co.basketboss.app`.
 4. Press **Run**. Xcode may need permission to register the phone and create a provisioning profile. This requires your developer account, network access and appropriate team permissions.
 
 ## Native behavior
