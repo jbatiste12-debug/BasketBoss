@@ -2,22 +2,31 @@
 // Native speech can use Apple's recognition service; nothing is sent to our API.
 export function installNativeCookVoice({plugin,window:win=globalThis.window,isPremium=()=>false}={}){
  if(!plugin||!win)throw Error('Native Cook voice requires the native plugin.');
- let current=null,sequence=0;
+ let current=null,sequence=0,requestGeneration=0;
  const permitted=()=>isPremium()===true&&win.document?.hidden!==true;
  const remove=async handles=>{for(const handle of handles)try{await handle.remove();}catch{}};
  const failure=(code)=>Object.assign(Error(code),{code});
- async function stop(){
-  const session=current;current=null;
+ async function cleanup(session){
   if(!session)return;
+  if(current===session)current=null;
   session.active=false;
-  await Promise.allSettled([plugin.stop({sessionId:session.id}),remove(session.handles)]);
+  if(!session.cleanup)session.cleanup=Promise.allSettled([plugin.stop({sessionId:session.id}),remove(session.handles)]);
+  await session.cleanup;
+ }
+ async function stop(){
+  // A Stop also cancels a replacement waiting for the previous native session
+  // to release its microphone, even while current has temporarily been cleared.
+  requestGeneration++;
+  await cleanup(current);
  }
  async function start(onFinal,onStatus){
   if(!permitted())throw failure('BB_VOICE_PREMIUM_REQUIRED');
-  await stop();
+  const request=++requestGeneration;
+  await cleanup(current);
+  if(request!==requestGeneration)throw failure('BB_VOICE_STOPPED');
   if(!permitted())throw failure('BB_VOICE_PREMIUM_REQUIRED');
   const session={id:'cook-'+Date.now().toString(36)+'-'+(++sequence),active:true,handles:[]};current=session;
-  const active=()=>current===session&&session.active&&permitted();
+  const active=()=>request===requestGeneration&&current===session&&session.active&&permitted();
   try{
    for(const [name,callback]of [
     ['voiceResult',event=>{if(!active()||event?.sessionId!==session.id||event?.isFinal!==true)return;const text=typeof event.text==='string'?event.text.trim():'';if(text&&text.length<=500)onFinal?.(text);}],
@@ -31,7 +40,7 @@ export function installNativeCookVoice({plugin,window:win=globalThis.window,isPr
    if(!active()){await plugin.stop({sessionId:session.id});throw failure('BB_VOICE_STOPPED');}
    if(result?.active!==true)throw failure('BB_VOICE_UNAVAILABLE');
   }catch(error){
-   if(current===session)await stop();else{session.active=false;await remove(session.handles);}
+   await cleanup(session);
    throw error;
   }
  }

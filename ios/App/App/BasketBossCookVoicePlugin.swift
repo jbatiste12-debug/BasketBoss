@@ -242,8 +242,12 @@ public final class BasketBossCookVoicePlugin: CAPPlugin, CAPBridgedPlugin, AVSpe
 
     @MainActor private func resumeAfterPause() {
         let epoch = operation
+        let cycle = capture
         DispatchQueue.main.asyncAfter(deadline: .now() + 0.4) { [weak self] in
-            guard let self = self, self.operation == epoch, self.intent, self.spoken == nil else { return }
+            // A later pause (for speech output or a replacement capture) makes
+            // this resume obsolete, even within the same listening session.
+            guard let self = self, self.operation == epoch, self.capture == cycle,
+                  self.intent, self.spoken == nil else { return }
             do { try self.beginCapture() } catch { self.shutdown(code: "BB_VOICE_RECOGNITION") }
         }
     }

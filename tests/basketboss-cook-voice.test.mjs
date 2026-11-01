@@ -4,7 +4,7 @@ import {createRequire} from 'node:module';
 const voice=createRequire(import.meta.url)('../bb-cook-voice.js');
 const tick=()=>new Promise(resolve=>setImmediate(resolve));
 
-function fixture({premium=true,browser=false,available=true}={}){
+function fixture({premium=true,browser=false,available=true,nativeStartError=null,synthesis=false}={}){
  const events=()=>({handlers:new Map(),addEventListener(name,fn){if(!this.handlers.has(name))this.handlers.set(name,new Set());this.handlers.get(name).add(fn);},removeEventListener(name,fn){this.handlers.get(name)?.delete(fn);},fire(name,event={}){for(const fn of this.handlers.get(name)||[])fn(event);}});
  class Node{
   constructor(tag){Object.assign(this,events());this.tagName=tag.toUpperCase();this.children=[];this.parentNode=null;this.className='';this.textContent='';this.attributes={};this.hidden=false;this.disabled=false;this.classList={toggle:(name,on)=>{const classes=new Set(this.className.split(' ').filter(Boolean));on?classes.add(name):classes.delete(name);this.className=[...classes].join(' ');}};}
@@ -20,7 +20,8 @@ function fixture({premium=true,browser=false,available=true}={}){
  const calls=[],timers=new Map();let timerId=0,final,status;
  const host=Object.assign(events(),{document:doc,navigator:{language:'en-GB'},setTimeout:fn=>{timers.set(++timerId,fn);return timerId;},clearTimeout:id=>timers.delete(id),fetch(){throw Error('Voice must not send data to BasketBoss.');}});
  const context={key:'fajitas|Monday',stepKey:0,active:true,premium,ingredients:[{name:'Cheddar',quantity:'265 g'},{name:'Chicken breast',quantity:'665 g'}],next:()=>{calls.push('next');context.stepKey++;return true;},previous:()=>{calls.push('previous');return true;},startTimer:()=>{calls.push('timer');return true;},upgrade:()=>calls.push('upgrade')};
- const instances=[];
+ const instances=[],utterances=[];
+ if(synthesis){host.SpeechSynthesisUtterance=class{constructor(text){this.text=text;}};host.speechSynthesis={cancel:()=>calls.push('cancelSpeech'),speak:utterance=>{utterances.push(utterance);calls.push(['speak',utterance.text]);}};}
  if(browser){
   if(available)host.SpeechRecognition=class{
    constructor(){instances.push(this);calls.push('construct');}
@@ -28,11 +29,11 @@ function fixture({premium=true,browser=false,available=true}={}){
    abort(){calls.push('abort');this.onend?.();}
   };
  }else{
-  host.BBNativeCookVoice={available:async()=>{calls.push('available');return available;},start:async(onFinal,onStatus)=>{calls.push('start');final=onFinal;status=onStatus;status({state:'listening'});},stop:async()=>{calls.push('stop');},speak:async text=>{calls.push(['speak',text]);}};
+  host.BBNativeCookVoice={available:async()=>{calls.push('available');return available;},start:async(onFinal,onStatus)=>{calls.push('start');if(nativeStartError)throw Object.assign(Error('provider-message-not-for-ui'),{code:nativeStartError});final=onFinal;status=onStatus;status({state:'listening'});},stop:async()=>{calls.push('stop');},speak:async text=>{calls.push(['speak',text]);}};
  }
  const controller=voice.mount({container,context:()=>context,window:host,document:doc});
  const find=name=>{let result;const visit=node=>{if(node.className.split(' ').includes(name))result=node;for(const child of node.children)visit(child);};visit(container);return result;};
- return {host,doc,container,context,calls,timers,controller,instances,find,button:()=>find('bbcv-toggle'),status:()=>find('bbcv-status').textContent,transcript:text=>final?.(text),nativeStatus:value=>status?.(value),runTimers(){const pending=[...timers.values()];timers.clear();for(const fn of pending)fn();}};
+ return {host,doc,container,context,calls,timers,controller,instances,utterances,find,button:()=>find('bbcv-toggle'),status:()=>find('bbcv-status').textContent,transcript:text=>final?.(text),nativeStatus:value=>status?.(value),runTimers(){const pending=[...timers.values()];timers.clear();for(const fn of pending)fn();}};
 }
 
 test('only explicit Cook commands are recognized, including ingredient questions',()=>{
@@ -111,4 +112,61 @@ test('permission errors and unsupported devices leave a clear stopped state',asy
 
 test('a running or unavailable timer is never toggled into pause by the voice controller',async()=>{
  const h=fixture();h.context.startTimer=()=>false;h.button().click();await tick();h.transcript('Start timer');await tick();assert.ok(h.calls.some(x=>Array.isArray(x)&&/already be running/.test(x[1])));h.controller.dispose();
+});
+
+test('native start failures show fixed permission or recovery instructions and never restart automatically',async()=>{
+ const cases=[
+  ['BB_VOICE_SPEECH_PERMISSION',/Settings.*Speech Recognition/],
+  ['BB_VOICE_MICROPHONE_PERMISSION',/Microphone.*Settings/],
+  ['BB_VOICE_MICROPHONE_UNAVAILABLE',/microphone could not start/],
+  ['BB_VOICE_UNAVAILABLE',/Speech recognition is unavailable/],
+  ['BB_VOICE_INTERRUPTED',/Voice was interrupted/],
+  ['BB_VOICE_RECOGNITION',/Speech recognition stopped/],
+  ['BB_VOICE_AUDIO',/Voice audio could not start/],
+  ['BB_VOICE_STOPPED',/Voice is off/]
+ ];
+ for(const [code,message]of cases){
+  const h=fixture({nativeStartError:code});h.button().click();await tick();
+  assert.match(h.status(),message,code);assert.doesNotMatch(h.status(),/provider-message-not-for-ui/);
+  assert.equal(h.button().getAttribute('aria-pressed'),'false',code);assert.equal(h.find('bbcv-label').textContent,'Turn on voice',code);assert.equal(h.button().disabled,false,code);
+  h.runTimers();await tick();assert.equal(h.calls.filter(call=>call==='start').length,1,code+' must require another explicit tap');
+  h.controller.dispose();
+ }
+});
+
+test('a late old utterance cannot clear the new utterance watchdog, resume recognition or accept commands during speech',async()=>{
+ const h=fixture({browser:true,synthesis:true});
+ const result=text=>{const value=[{transcript:text}];value.isFinal=true;return value;};
+ h.button().click();await tick();h.instances[0].onresult({resultIndex:0,results:[result('How much cheddar?')]});
+ const oldUtterance=h.utterances[0],oldWatchdog=[...h.timers.values()][0];assert.ok(oldWatchdog);
+ h.button().click();h.button().click();await tick();
+ const recognition=h.instances[1];recognition.onresult({resultIndex:0,results:[result('How much chicken breast?')]});
+ const currentUtterance=h.utterances[1],currentTimers=[...h.timers.entries()];assert.equal(currentTimers.length,1);
+ const cancelCount=h.calls.filter(call=>call==='cancelSpeech').length;
+ oldUtterance.onend();oldUtterance.onerror();oldWatchdog();
+ assert.deepEqual([...h.timers.entries()],currentTimers,'old completion keeps the new utterance watchdog');
+ assert.equal(h.calls.filter(call=>call==='cancelSpeech').length,cancelCount,'old watchdog cannot cancel the new response');
+ assert.equal(h.instances.length,2,'old completion cannot restart recognition');
+ recognition.onresult({resultIndex:1,results:[result('How much chicken breast?'),result('Next step')]});
+ assert.equal(h.calls.filter(call=>call==='next').length,0,'the new response still owns speaking state');
+ currentUtterance.onend();assert.equal(h.timers.size,0);assert.equal(h.instances.length,3,'only the current response may resume recognition');
+ h.instances[2].onresult({resultIndex:0,results:[result('Next step')]});assert.equal(h.calls.filter(call=>call==='next').length,1);
+ h.controller.dispose();
+});
+
+test('an old browser recognizer cannot control or interrupt the replacement after spoken feedback',async()=>{
+ const h=fixture({browser:true,synthesis:true});
+ const result=text=>{const value=[{transcript:text}];value.isFinal=true;return value;};
+ h.button().click();await tick();const old=h.instances[0];
+ old.onresult({resultIndex:0,results:[result('How much cheddar?')]});h.utterances[0].onend();
+ const current=h.instances[1];assert.ok(current);assert.equal(h.button().getAttribute('aria-pressed'),'true');
+ current.onerror({error:'no-speech'});const status=h.status();
+ old.onstart();assert.equal(h.status(),status,'old start cannot replace the current status');
+ old.onresult({resultIndex:1,results:[result('How much cheddar?'),result('Next step')]});
+ assert.equal(h.calls.filter(call=>call==='next').length,0,'old final result cannot advance the recipe');
+ old.onerror({error:'audio-capture'});assert.equal(h.status(),status,'old error cannot stop the current recognizer');
+ old.onend();assert.equal(h.timers.size,0,'old end cannot schedule an additional recognizer');
+ assert.equal(h.instances.length,2);assert.equal(h.button().getAttribute('aria-pressed'),'true');
+ current.onresult({resultIndex:0,results:[result('Next step')]});assert.equal(h.calls.filter(call=>call==='next').length,1,'the current recognizer retains ownership');
+ h.controller.dispose();
 });

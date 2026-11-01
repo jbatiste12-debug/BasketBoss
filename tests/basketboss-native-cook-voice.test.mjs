@@ -58,6 +58,26 @@ test('replacing a session rejects delayed callbacks from the previous recipe',as
  assert.deepEqual(old,[]);assert.deepEqual(current,['Next step']);
 });
 
+test('Stop cancels a replacement waiting for the old native microphone to stop',async()=>{
+ const h=fixture();await h.api.start(()=>{});let release;
+ h.plugin.stop=options=>{h.calls.push(['stop',options]);return new Promise(resolve=>{release=resolve;});};
+ const replacement=h.api.start(()=>{});await tick();assert.equal(typeof release,'function');
+ await h.api.stop();
+ const rejected=assert.rejects(()=>replacement,{code:'BB_VOICE_STOPPED'});release();await rejected;
+ assert.equal(h.calls.filter(call=>call[0]==='start').length,1,'replacement must not reopen the microphone after Stop');
+ assert.equal(h.listeners.size,0);
+});
+
+test('a later start wins while an obsolete replacement is waiting for microphone cleanup',async()=>{
+ const h=fixture(),results=[];await h.api.start(()=>{});let release;
+ h.plugin.stop=options=>{h.calls.push(['stop',options]);return new Promise(resolve=>{release=resolve;});};
+ const obsolete=h.api.start(()=>results.push('obsolete'));await tick();
+ await h.api.start(()=>results.push('current'));const currentId=h.id();
+ const rejected=assert.rejects(()=>obsolete,{code:'BB_VOICE_STOPPED'});release();await rejected;
+ h.emit('voiceResult',{sessionId:currentId,text:'Next step',isFinal:true});
+ assert.equal(h.calls.filter(call=>call[0]==='start').length,2);assert.deepEqual(results,['current']);
+});
+
 test('backgrounding, navigation and entitlement loss release native listeners and recording',async()=>{
  for(const event of ['document:visibilitychange','pagehide','basketboss:session-changed']){
   const h=fixture();await h.api.start(()=>{});const id=h.id();

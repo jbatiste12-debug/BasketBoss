@@ -40,7 +40,17 @@
   'language-not-supported':'Speech recognition is not available for this language on your device.',
   denied:'Microphone or speech access was not allowed. Check your device permissions, then try again.',
   restricted:'Speech recognition is restricted on this device.',
-  unavailable:'Voice recognition is not available on this device.'
+  unavailable:'Voice recognition is not available on this device.',
+  BB_VOICE_SPEECH_PERMISSION:'Speech Recognition access is off. Enable BasketBoss in iPhone Settings → Privacy & Security → Speech Recognition, then tap Turn on voice.',
+  BB_VOICE_MICROPHONE_PERMISSION:'Microphone access is off. Enable Microphone for BasketBoss in iPhone Settings, then tap Turn on voice.',
+  BB_VOICE_MICROPHONE_UNAVAILABLE:'The microphone could not start. Check microphone access and other apps using audio, then tap Turn on voice.',
+  BB_VOICE_UNAVAILABLE:'Speech recognition is unavailable on this device right now. Check your connection, then tap Turn on voice to try again.',
+  BB_VOICE_INTERRUPTED:'Voice was interrupted. Tap Turn on voice when you are ready to continue.',
+  BB_VOICE_RECOGNITION:'Speech recognition stopped. Tap Turn on voice to try again.',
+  BB_VOICE_AUDIO:'Voice audio could not start. Check your device audio, then tap Turn on voice to try again.',
+  BB_VOICE_STOPPED:'Voice is off. Tap Turn on voice to listen again.',
+  BB_VOICE_PREMIUM_REQUIRED:'Verified Premium access is required for Voice Cook. Check your account, then reopen Cook.',
+  BB_VOICE_SESSION:'Reopen Cook before starting a new voice session.'
  };
  function mount(options={}){
   const host=options.window||root,doc=options.document||host?.document,container=options.container;
@@ -52,7 +62,7 @@
   button.append(icon,label);
   const status=create('p','bbcv-status',''),help=create('p','bbcv-help','Say “Next step”, “Previous step”, “Start timer” or “How much cheddar?”');
   status.setAttribute('role','status');status.setAttribute('aria-live','polite');row.append(button,status);holder.append(row,help);container.append(holder);
-  let disposed=false,wanted=false,listening=false,starting=false,speaking=false,epoch=0,instance=null,backend=null,available=null,currentKey=null,lastHandled=null,restartTimer=null,speechTimer=null;
+  let disposed=false,wanted=false,listening=false,starting=false,speaking=false,epoch=0,speechGeneration=0,instance=null,backend=null,available=null,currentKey=null,lastHandled=null,restartTimer=null,speechTimer=null;
   const native=()=>host.BBNativeCookVoice;
   const Speech=()=>host.SpeechRecognition||host.webkitSpeechRecognition;
   function read(){try{return options.context()||{};}catch(_){return {};}}
@@ -74,7 +84,7 @@
   }
   function clearTimers(){if(restartTimer!==null)host.clearTimeout(restartTimer);if(speechTimer!==null)host.clearTimeout(speechTimer);restartTimer=speechTimer=null;}
   function stop(reason='Voice is off.'){ 
-   wanted=false;listening=false;starting=false;speaking=false;epoch++;clearTimers();
+   wanted=false;listening=false;starting=false;speaking=false;epoch++;speechGeneration++;clearTimers();
    const old=instance;instance=null;try{old?.abort();}catch(_){}
    try{Promise.resolve(native()?.stop()).catch(()=>{});}catch(_){}
    try{host.speechSynthesis?.cancel();}catch(_){}
@@ -96,17 +106,17 @@
    const Ctor=Speech();if(typeof Ctor!=='function'){fail('unavailable');return;}
    let recognition;try{recognition=new Ctor();}catch(_){fail('unavailable');return;}
    instance=recognition;const processed=new Set();recognition.continuous=true;recognition.interimResults=false;recognition.maxAlternatives=1;recognition.lang=read().lang||host.navigator?.language||'en-GB';
-   recognition.onstart=()=>{if(session!==epoch||!wanted||!allowed()){try{recognition.abort();}catch(_){}return;}starting=false;listening=true;message('Listening. Say a Cook command.');render();};
+   recognition.onstart=()=>{if(instance!==recognition)return;if(session!==epoch||!wanted||!allowed()){try{recognition.abort();}catch(_){}return;}starting=false;listening=true;message('Listening. Say a Cook command.');render();};
    recognition.onresult=event=>{
-    if(session!==epoch||!wanted||!allowed()||speaking)return;
+    if(instance!==recognition||session!==epoch||!wanted||!allowed()||speaking)return;
     for(let i=Number.isInteger(event.resultIndex)?event.resultIndex:0;i<(event.results?.length||0);i++){
      const result=event.results[i];if(result?.isFinal!==true||processed.has(i))continue;
      processed.add(i);handle(String(result[0]?.transcript||''),session);
     }
    };
-   recognition.onerror=event=>{if(session!==epoch||!wanted||speaking)return;if(event?.error==='aborted')return;if(event?.error==='no-speech'){message('Listening for a Cook command…');return;}fail(event?.error);};
+   recognition.onerror=event=>{if(instance!==recognition||session!==epoch||!wanted||speaking)return;if(event?.error==='aborted')return;if(event?.error==='no-speech'){message('Listening for a Cook command…');return;}fail(event?.error);};
    recognition.onend=()=>{
-    if(instance===recognition)instance=null;if(session!==epoch||!wanted||!allowed()||speaking)return;
+    if(instance!==recognition)return;instance=null;if(session!==epoch||!wanted||!allowed()||speaking)return;
     listening=false;render();restartTimer=host.setTimeout(()=>{restartTimer=null;beginBrowser(session);},180);
    };
    try{recognition.start();}catch(_){fail('audio-capture');}
@@ -118,12 +128,27 @@
     try{await native().speak(text);}catch(_){if(session===epoch&&wanted)message(text+' Read from the screen if audio is unavailable.');}return;
    }
    if(!host.speechSynthesis||typeof host.SpeechSynthesisUtterance!=='function')return;
+   const generation=++speechGeneration;
+   if(speechTimer!==null)host.clearTimeout(speechTimer);speechTimer=null;
    speaking=true;listening=false;const old=instance;instance=null;try{old?.abort();}catch(_){}render();
    const utterance=new host.SpeechSynthesisUtterance(text);utterance.lang=read().lang||host.navigator?.language||'en-GB';
-   let ended=false;
-   const finish=()=>{if(ended)return;ended=true;if(speechTimer!==null)host.clearTimeout(speechTimer);speechTimer=null;speaking=false;if(session===epoch&&wanted&&allowed())beginBrowser(session);};
+   let ended=false,watchdog=null;
+   const current=()=>session===epoch&&generation===speechGeneration;
+   const finish=()=>{
+    if(ended)return;ended=true;
+    // A cancelled utterance may finish after a new listening session starts.
+    // Only this session's current utterance owns its watchdog and speech state.
+    if(!current())return;
+    if(watchdog!==null)host.clearTimeout(watchdog);
+    if(speechTimer===watchdog)speechTimer=null;
+    watchdog=null;speaking=false;
+    if(wanted&&allowed())beginBrowser(session);
+   };
    utterance.onend=finish;utterance.onerror=finish;
-   try{host.speechSynthesis.cancel();host.speechSynthesis.speak(utterance);speechTimer=host.setTimeout(()=>{try{host.speechSynthesis.cancel();}catch(_){}finish();},15000);}catch(_){finish();}
+   try{
+    host.speechSynthesis.cancel();host.speechSynthesis.speak(utterance);
+    if(!ended&&current())speechTimer=watchdog=host.setTimeout(()=>{if(!current())return;try{host.speechSynthesis.cancel();}catch(_){}finish();},15000);
+   }catch(_){finish();}
   }
   function handle(transcript,session){
    if(session!==epoch||!wanted||!allowed())return;
