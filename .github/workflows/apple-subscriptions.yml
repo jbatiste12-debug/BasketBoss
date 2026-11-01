@@ -84,10 +84,6 @@ jobs:
           -derivedDataPath /tmp/basketboss-ios-build
           CODE_SIGNING_ALLOWED=NO
           build
-      - name: Exercise real StoreKit bridge with local test products
-        run: node scripts/test-ios-iap-smoke.mjs
-      - name: Keep existing Cook navigation working
-        run: node scripts/test-ios-cook-smoke.mjs
       - name: Compile Release without local StoreKit test code
         run: >-
           xcodebuild
@@ -106,6 +102,13 @@ jobs:
             echo 'Release must not link the local StoreKit test framework.'
             exit 1
           fi
+      - name: Exercise real StoreKit bridge with local test products
+        env:
+          BB_IAP_KEEP_SIMULATOR_BOOTED: 'true'
+        run: node scripts/test-ios-iap-smoke.mjs
+      - name: Keep existing Cook navigation working
+        if: ${{ !cancelled() }}
+        run: node scripts/test-ios-cook-smoke.mjs
       - uses: actions/upload-artifact@v4
         if: always()
         with:

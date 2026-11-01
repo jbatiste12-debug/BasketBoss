@@ -317,14 +317,27 @@ private extension BasketBossPurchasesPlugin {
         var report: JSObject = ["complete": false, "passed": false, "localStoreKit": true,
                                 "productionBillingTested": false, "backendPremiumGranted": false]
         var stage = "fixture"
+        var activeSession: SKTestSession?
         report["stage"] = stage
         writeSmokeReport(report)
         do {
-            let session = try SKTestSession(configurationFileNamed: "BasketBossPremium")
-            session.resetToDefaultState()
-            session.disableDialogs = true
-            session.clearTransactions()
-            defer { session.clearTransactions(); session.resetToDefaultState() }
+            // Test-session controls make synchronous XPC calls. Keep the app's
+            // main run loop available while StoreKit configures its test server.
+            stage = "fixture_init"
+            report["stage"] = stage; writeSmokeReport(report)
+            let session = try await Task.detached(priority: .userInitiated) {
+                try SKTestSession(configurationFileNamed: "BasketBossPremium")
+            }.value
+            activeSession = session
+            stage = "fixture_reset"
+            report["stage"] = stage; writeSmokeReport(report)
+            await Task.detached { session.resetToDefaultState() }.value
+            stage = "fixture_dialogs"
+            report["stage"] = stage; writeSmokeReport(report)
+            await Task.detached { session.disableDialogs = true }.value
+            stage = "fixture_clear"
+            report["stage"] = stage; writeSmokeReport(report)
+            await Task.detached { session.clearTransactions() }.value
             let token = UUID()
             stage = "products"
             report["stage"] = stage; writeSmokeReport(report)
@@ -395,25 +408,32 @@ private extension BasketBossPurchasesPlugin {
             report["finishedAfterAcknowledgement"] = true
             stage = "cancel"
             report["stage"] = stage; writeSmokeReport(report)
-            session.clearTransactions()
+            await Task.detached { session.clearTransactions() }.value
             if #available(iOS 17.0, *) {
                 try await session.setSimulatedError(.generic(.userCancelled), forAPI: .purchase)
                 let cancelled = try await smokeCall("purchase", options: ["productId": "uk.co.basketboss.premium.monthly", "appAccountToken": token.uuidString]) { self.purchase($0) }
                 guard cancelled["status"] as? String == "cancelled" else { throw LocalSmokeFailure(code: "cancel_not_preserved") }
                 report["cancellationPreserved"] = true
-                session.resetToDefaultState()
-                session.disableDialogs = true
-                session.clearTransactions()
+                stage = "cancel_reset"
+                report["stage"] = stage; writeSmokeReport(report)
+                await Task.detached {
+                    session.resetToDefaultState()
+                    session.disableDialogs = true
+                    session.clearTransactions()
+                }.value
             }
             stage = "pending"
             report["stage"] = stage; writeSmokeReport(report)
-            session.askToBuyEnabled = true
+            await Task.detached { session.askToBuyEnabled = true }.value
             let pending = try await smokeCall("purchase", options: ["productId": "uk.co.basketboss.premium.annual", "appAccountToken": token.uuidString]) { self.purchase($0) }
             guard pending["status"] as? String == "pending" else { throw LocalSmokeFailure(code: "pending_not_preserved") }
             report["pendingDoesNotGrantAccess"] = true
-            if let waiting = session.allTransactions().first(where: { $0.pendingAskToBuyConfirmation }) {
+            let waitingApproved = try await Task.detached {
+                guard let waiting = session.allTransactions().first(where: { $0.pendingAskToBuyConfirmation }) else { return false }
                 try session.approveAskToBuyTransaction(identifier: waiting.identifier)
-            } else { throw LocalSmokeFailure(code: "ask_to_buy_missing") }
+                return true
+            }.value
+            guard waitingApproved else { throw LocalSmokeFailure(code: "ask_to_buy_missing") }
             var approved = false
             for _ in 0..<50 {
                 let transactions = await collectTransactions()
@@ -423,6 +443,10 @@ private extension BasketBossPurchasesPlugin {
             }
             guard approved else { throw LocalSmokeFailure(code: "ask_to_buy_approval_missing") }
             report["pendingApprovalDelivered"] = true
+            stage = "cleanup"
+            report["stage"] = stage; writeSmokeReport(report)
+            await Task.detached { session.clearTransactions(); session.resetToDefaultState() }.value
+            activeSession = nil
             report["complete"] = true
             report["passed"] = true
             report["stage"] = "complete"
@@ -433,6 +457,11 @@ private extension BasketBossPurchasesPlugin {
             report["error"] = (error as? LocalSmokeFailure)?.code ?? String(describing: type(of: error))
         }
         writeSmokeReport(report)
+        if let session = activeSession {
+            // A failed test reports immediately; cleanup must not hide its
+            // failure behind another synchronous StoreKit control operation.
+            Task.detached { session.clearTransactions(); session.resetToDefaultState() }
+        }
     }
 }
 #endif

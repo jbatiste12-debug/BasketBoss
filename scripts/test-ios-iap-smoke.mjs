@@ -66,5 +66,6 @@ for(const key of ['stage','error'])report[key]=String(raw?.[key]||'').replace(/[
 fs.writeFileSync(path.join(out,'local-storekit-report.json'),JSON.stringify(report,null,2));
 if(failure&&phone){try{execute('xcrun',['simctl','io',phone.udid,'screenshot','--type=png',path.join(out,'failure.png')],30000);}catch{}}
 console.log('::notice title=BasketBoss local StoreKit verification::'+JSON.stringify({localStoreKit:report}));
-if(phone){try{execute('xcrun',['simctl','shutdown',phone.udid],30000);}catch{}}
+if(phone&&process.env.BB_IAP_KEEP_SIMULATOR_BOOTED!=='true'){try{execute('xcrun',['simctl','shutdown',phone.udid],30000);}catch{}}
+else if(phone)console.log('Keeping the selected simulator booted for the following native navigation check.');
 if(failure||!report.passed)process.exitCode=1;

@@ -3,16 +3,19 @@ import path from 'node:path';
 import {execFileSync} from 'node:child_process';
 
 if(process.platform!=='darwin')throw Error('The native Cook smoke test needs a macOS iOS simulator.');
-const exec=(command,args,timeout=120000)=>execFileSync(command,args,{encoding:'utf8',stdio:['ignore','pipe','pipe'],timeout}).trim();
+const exec=(command,args,timeout=120000)=>execFileSync(command,args,{encoding:'utf8',stdio:['ignore','pipe','pipe'],timeout,killSignal:'SIGKILL'}).trim();
 const run=(...args)=>exec('xcrun',args);
 let stage='devices',raw,failure='',runtimeVersion='';
 try{
  const devices=JSON.parse(run('simctl','list','devices','available','--json')).devices;
  const runtimes=JSON.parse(run('simctl','list','runtimes','--json')).runtimes.filter(runtime=>runtime.isAvailable&&runtime.name.startsWith('iOS')).sort((a,b)=>b.version.localeCompare(a.version,undefined,{numeric:true}));
- const runtime=runtimes.find(runtime=>(devices[runtime.identifier]||[]).some(device=>device.isAvailable&&device.name.startsWith('iPhone')));
+ const bootedRuntime=runtimes.find(runtime=>(devices[runtime.identifier]||[]).some(device=>device.isAvailable&&device.name.startsWith('iPhone')&&device.state==='Booted'));
+ const runtime=bootedRuntime||runtimes.find(runtime=>(devices[runtime.identifier]||[]).some(device=>device.isAvailable&&device.name.startsWith('iPhone')));
  runtimeVersion=runtime?.version||'';
- const phone=(devices[runtime?.identifier]||[]).find(device=>device.isAvailable&&device.name.startsWith('iPhone'));
+ const available=devices[runtime?.identifier]||[];
+ const phone=available.find(device=>device.isAvailable&&device.name.startsWith('iPhone')&&device.state==='Booted')||available.find(device=>device.isAvailable&&device.name.startsWith('iPhone'));
  if(!phone)throw Error('no_simulator');
+ console.log('Using '+phone.name+' on iOS '+runtimeVersion+' for Cook navigation verification.');
  stage='boot';if(phone.state!=='Booted')run('simctl','boot',phone.udid);
  stage='simulator_app';exec('open',['-a','Simulator','--args','-CurrentDeviceUDID',phone.udid]);
  stage='bootstatus';exec('xcrun',['simctl','bootstatus',phone.udid,'-b'],360000);
