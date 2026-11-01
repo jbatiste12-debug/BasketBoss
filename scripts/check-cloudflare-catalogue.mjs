@@ -139,7 +139,8 @@ export async function verifyInterfaceDeployment(perform=fetch){
    }
    result[label]=true;
   }
-  for(const file of ['tutorial.html','basketboss-latest-guide.html','bb-real-app-tour-v82.js']){
+  // Pages serves HTML at extensionless routes; the .html aliases redirect.
+  for(const file of ['tutorial','basketboss-latest-guide','bb-real-app-tour-v82.js']){
    const response=await perform('https://basketboss.co.uk/'+file,{cache:'no-store',redirect:'error',signal:AbortSignal.timeout(15000)});
    if(response.status!==200||!(file.endsWith('.js')?/javascript/i:/text\/html/i).test(response.headers.get('content-type')||''))throw Error();
    await response.body?.cancel();
