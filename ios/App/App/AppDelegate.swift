@@ -166,7 +166,7 @@ private enum BasketBossAccountKeyboardSetup {
             }
             const host=document.getElementById(onboarding?'bbNewOnboarding':'cloud-panel');
             const form=document.getElementById('cloud-auth'),shell=document.querySelector('.shell');
-            if(!host?.contains(form)||!host.getClientRects().length)return;
+            if(!host||!host.getClientRects().length)return;
             const fixed=getComputedStyle(document.body).position==='fixed';
             const viewport=window.visualViewport,box=host.getBoundingClientRect();
             // Compare document coordinates: WKWebView's DOM rect and scrollY
@@ -180,12 +180,12 @@ private enum BasketBossAccountKeyboardSetup {
             const height=Math.min(Number(viewport?.height)||innerHeight,innerHeight),width=Math.min(Number(viewport?.width)||innerWidth,innerWidth);
             const flags={bodyFixed:fixed,shellHidden:!!shell&&getComputedStyle(shell).visibility==='hidden',shellInert:!!shell?.closest('[inert]'),viewportCovered:Math.abs(box.top+scrollY-top)<3&&Math.abs(box.left+scrollX-left)<3&&Math.abs(box.bottom+scrollY-top-height)<3&&Math.abs(box.right+scrollX-left-width)<3,rootLocked:baselineScroll!==null&&Math.abs(layoutY-baselineScroll)<2};
             let probe=document.getElementById('bbAccountKeyboardProbe');
-            if(!probe){probe=document.createElement('p');probe.id='bbAccountKeyboardProbe';probe.style.cssText='position:absolute;bottom:1px;left:2px;right:2px;height:12px;overflow:hidden;white-space:nowrap;font-size:6px;line-height:12px;z-index:2147483647;margin:0;color:#385e45;pointer-events:none';host.appendChild(probe);}
+            if(!probe){probe=document.createElement('p');probe.id='bbAccountKeyboardProbe';probe.style.cssText='position:absolute;top:8px;left:8px;right:72px;height:30px;overflow:hidden;font-size:7px;line-height:10px;z-index:2147483647;background:#f5f7ef;margin:0;color:#385e45;pointer-events:none';host.appendChild(probe);}
             // Numeric layout metadata only: never include input values, user
             // text, account/session data, screenshots or recording bytes.
             const number=value=>Number.isFinite(Number(value))?Math.round(Number(value)*10)/10:null;
             const bodyStyle=getComputedStyle(document.body),hostStyle=getComputedStyle(host);
-            const metrics={vvH:number(viewport?.height),vvW:number(viewport?.width),vvTop:number(viewport?.offsetTop),vvLeft:number(viewport?.offsetLeft),vvPageTop:number(viewport?.pageTop),vvScale:number(viewport?.scale),innerH:number(innerHeight),innerW:number(innerWidth),hostT:number(box.top),hostL:number(box.left),hostB:number(box.bottom),hostR:number(box.right),hostH:number(box.height),hostW:number(box.width),cssT:number(parseFloat(hostStyle.top)),cssH:number(parseFloat(hostStyle.height)),bodyT:number(parseFloat(bodyStyle.top)),rootY:number(window.scrollY),baselineY:baselineScroll===null?null:number(baselineScroll),htmlY:number(document.documentElement.scrollTop),bodyY:number(document.body.scrollTop)};
+            const metrics={formMounted:host.contains(form),vvH:number(viewport?.height),vvW:number(viewport?.width),vvTop:number(viewport?.offsetTop),vvLeft:number(viewport?.offsetLeft),vvPageTop:number(viewport?.pageTop),vvScale:number(viewport?.scale),innerH:number(innerHeight),innerW:number(innerWidth),hostT:number(box.top),hostL:number(box.left),hostB:number(box.bottom),hostR:number(box.right),hostH:number(box.height),hostW:number(box.width),cssT:number(parseFloat(hostStyle.top)),cssH:number(parseFloat(hostStyle.height)),bodyT:number(parseFloat(bodyStyle.top)),rootY:number(window.scrollY),baselineY:baselineScroll===null?null:number(baselineScroll),htmlY:number(document.documentElement.scrollTop),bodyY:number(document.body.scrollTop)};
             const text='BB keyboard probe '+(onboarding?'onboarding':'account')+' '+Object.entries(flags).map(([name,value])=>name+'='+value).join(' ')+' metrics='+JSON.stringify(metrics);
             if(probe.textContent!==text)probe.textContent=text;
           },100);
