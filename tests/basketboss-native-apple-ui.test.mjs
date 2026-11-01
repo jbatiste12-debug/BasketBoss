@@ -11,7 +11,7 @@ function fixture(options={}){
  const calls=[],order=[],nativeListeners=new Map();
  const win=new EventTarget();win.Event=Event;
  const plugin={
-  async getProducts(){if(options.products)return {products:options.products};return {products:[{id:MONTH,displayPrice:'€5,49',subscriptionPeriod:{unit:'month',value:1}},{id:YEAR,displayPrice:'€43,99',subscriptionPeriod:{unit:'year',value:1}},{id:FOUNDER,displayPrice:'€2,19',subscriptionPeriod:{unit:'month',value:1}}]};},
+  async getProducts(){if(options.productsError)throw Error('StoreKit prices are unavailable.');if(options.products)return {products:options.products};return {products:[{id:MONTH,displayPrice:'€5,49',subscriptionPeriod:{unit:'month',value:1}},{id:YEAR,displayPrice:'€43,99',subscriptionPeriod:{unit:'year',value:1}},{id:FOUNDER,displayPrice:'€2,19',subscriptionPeriod:{unit:'month',value:1}}]};},
   async purchase(args){calls.push(['purchase',args]);return options.purchase?options.purchase(args):{status:'purchased',transaction};},
   async restorePurchases(){calls.push(['restore']);return options.restore?options.restore():{transactions:[transaction]};},
   async getPendingTransactions(){return {transactions:[]};},
@@ -47,6 +47,12 @@ test('prices come from StoreKit; an eligible web subscriber is never sent to App
 test('household Premium suppresses another purchase',async()=>withFixture({membership:{authenticated:true,premiumAccess:true,householdRole:'partner'}},async h=>{
  assert.equal(h.controller.state.provider,'household');
  assert.equal((await h.controller.subscribe(YEAR)).reason,'already_premium');assert.equal(purchases(h).length,0);
+}));
+
+test('an unavailable Apple price catalogue cannot hide verified existing web Premium',async()=>withFixture({productsError:true,membership:{authenticated:true,premiumAccess:true,provider:'paddle'}},async h=>{
+ assert.equal(h.controller.state.premiumAccess,true);assert.equal(h.controller.state.provider,'paddle');
+ assert.equal(h.controller.state.available,false);assert.equal(h.controller.state.phase,'ready');
+ assert.equal((await h.controller.subscribe(MONTH)).reason,'already_premium');assert.equal(purchases(h).length,0);
 }));
 
 test('fresh server context rejects a web subscription activated after initial status check',async()=>withFixture({fetch:(route,args,response)=>route==='/api/apple/purchase-context'?response({canPurchase:false,reason:'already_premium',error:'Your existing membership already provides Premium.'},409):null},async h=>{

@@ -21,7 +21,8 @@ test('production UI cannot grant access or modify billing and meal plans',()=>{
   assert.match(api,/if\(!user\)return \{error:json\(\{error:'Sign in with a confirmed email'\},401\)/);
   assert.match(api,/await isNewestVerifiedSession\(request,env,user\)/);
   assert.match(api,/BB_PREMIUM_SINGLE_SESSION_ENABLED/);
-  assert.match(api,/bb_paid_entitlements/);
+  assert.match(api,/readPersonalPaidAccess/);
+  assert.match(read('bb-server-lib/bb-paid-access.js'),/bb_paid_entitlements/);
   assert.match(api,/configured:false/);
   assert.match(prompt,/data\.configured===true/);
 });

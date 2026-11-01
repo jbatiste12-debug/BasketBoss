@@ -9,6 +9,8 @@ const middlewareCode=read('functions/api/_middleware.js');
 const input=middlewareCode
  .replace("import {authenticatedUser,json,isLive} from '../../bb-server-lib/bb-billing.js';",
    'const {authenticatedUser,json,isLive}=globalThis.__bbBoundaryBilling;')
+ .replace("import {livePaidBillingEnabled} from '../../bb-server-lib/bb-paid-access.js';",
+   "const livePaidBillingEnabled=env=>globalThis.__bbBoundaryBilling.isLive(env)||(env.APPLE_BILLING_ENABLED==='true'&&env.APPLE_ENVIRONMENT==='Production');")
  .replace("import {seatGateEnabled,isNewestVerifiedSession} from '../../bb-server-lib/bb-premium-seat.js';",
    'const {seatGateEnabled,isNewestVerifiedSession}=globalThis.__bbBoundarySeat;')
  .replace("import {nativeCorsResponse,nativePreflightResponse} from '../../bb-server-lib/bb-request-origin.js';",

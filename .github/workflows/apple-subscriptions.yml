@@ -25,15 +25,12 @@ jobs:
       - run: npm run ios:verify
       - name: Native routing and purchase controller tests
         run: npm run test:native
-      - name: Server Apple subscription tests
-        run: >-
-          node --input-type=module -e "
-          import fs from 'node:fs';
-          import {spawnSync} from 'node:child_process';
-          const tests=fs.readdirSync('tests').filter(name=>/^basketboss-apple.*\.test\.mjs$/.test(name)).map(name=>'tests/'+name);
-          if(!tests.length){console.log('Apple server tests are not part of this staged native verification commit.');process.exit(0);}
-          const result=spawnSync(process.execPath,['--test','--test-isolation=none',...tests],{stdio:'inherit'});
-          process.exit(result.status??1);"
+      - name: Install isolated PostgreSQL test engine
+        run: npm install --prefix "$RUNNER_TEMP/bb-apple-pg" --package-lock=false --ignore-scripts --no-audit --no-fund @electric-sql/pglite@0.3.14
+      - name: Verify Apple, web billing, household and account regression suites
+        env:
+          BB_PGLITE_MODULE: ${{ runner.temp }}/bb-apple-pg/node_modules/@electric-sql/pglite
+        run: node --test --test-isolation=none tests/*.test.mjs
   local-storekit-simulator:
     runs-on: macos-latest
     timeout-minutes: 30

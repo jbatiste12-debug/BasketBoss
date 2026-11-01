@@ -46,7 +46,7 @@ export function installNativeApplePurchases({plugin,apiURL,readSession,fetch:per
   if(isDeleting()){emit({available:false,authenticated:!!actor,premiumAccess:false,phase:'paused',message:'Account deletion is in progress. Purchases are paused.'});return {...state};}
   emit({authenticated:!!actor});
   try{
-   const [catalog,membership]=await Promise.all([loadProducts(),actor?request('/api/subscription/status',{pin:actor}):Promise.resolve(null)]);
+   const [catalog,membership]=await Promise.all([loadProducts().catch(()=>({available:false,products:[],founderAvailable:false})),actor?request('/api/subscription/status',{pin:actor}):Promise.resolve(null)]);
    if(destroyed||revision!==viewRevision||epoch!==generation||isDeleting()||(actor&&!current(actor)))return {...state};
    if(actor&&membership?.authenticated!==true)throw Error('Sign in again to check your membership.');
    const premium=membership?.premiumAccess===true;

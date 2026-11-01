@@ -290,8 +290,8 @@ private extension BasketBossPurchasesPlugin {
     @MainActor func smokeCall(_ method: String, options: JSObject = [:], invoke: (CAPPluginCall) -> Void) async throws -> JSObject {
         try await withCheckedThrowingContinuation { continuation in
             guard let call = CAPPluginCall(callbackId: "local-storekit-smoke", methodName: method, options: options,
-                success: { result, _ in continuation.resume(returning: result.data ?? [:]) },
-                error: { error in continuation.resume(throwing: LocalSmokeFailure(code: error.code ?? "bridge_error")) }) else {
+                success: { result, _ in continuation.resume(returning: result?.data ?? [:]) },
+                error: { error in continuation.resume(throwing: LocalSmokeFailure(code: error?.code ?? "bridge_error")) }) else {
                 continuation.resume(throwing: LocalSmokeFailure(code: "call_unavailable")); return
             }
             invoke(call)

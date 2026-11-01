@@ -67,17 +67,17 @@ In Xcode:
 
 This repository prepares a buildable native project; it does **not** certify App Store acceptance or perform an Apple signing/device build from Linux.
 
-This initial native build is a **Free/existing-account companion**. It suppresses web checkout and trial purchase promotions, blocks checkout requests, replaces pricing pages with account information, and does not create accounts. The existing PWA keeps its account creation and Paddle checkout. Existing eligible subscribers can sign in; the app does not grant local Premium rights.
+The native app supports **Apple Premium subscriptions** at £4.99/month and £39.99/year, displaying StoreKit's localized price before purchase. Settings/account status provides purchase, Restore Purchases and Apple subscription management. Users can create a BasketBoss account and confirm their email, or sign into an existing account. Only server-verified purchases grant Premium; the app does not set a local paid tier. Existing eligible web and household members receive their existing access without a second Apple purchase. The £1.99 Founding Member offer stays web-only with its existing 25-place limit; the user deleted the prepared Apple Founder product.
 
-The app now includes **Delete Account & Data** in Profile and Settings, including password reauthentication, permanent confirmation, billing cancellation and server-confirmed cleanup. Deploy the account-deletion SQL migration below before submission. Native account creation remains disabled in this companion build. Before selling digital Premium access in iOS, implement the appropriate StoreKit/IAP products, restore-purchase handling and server entitlement verification, or establish an applicable Apple entitlement/program. Removing Paddle links alone does not establish subscription-policy eligibility; review Apple's current rules for this companion model.
+The app includes **Delete Account & Data** in Profile and Settings, including password reauthentication, permanent confirmation and server-confirmed cleanup. Deploy the account-deletion SQL migration below before submission. Existing web billing is cancelled through Paddle as part of its established deletion flow. **Deleting an account does not cancel Apple billing**: the flow explains this and offers Apple subscription management. The native app continues to block Paddle checkout/portal requests and web trial promotions; PWA Paddle checkout remains available independently. Complete the server keys, D1 migrations, notification delivery and real Apple sandbox tests in [Apple subscriptions setup](APPLE_SUBSCRIPTIONS_SETUP.md) before enabling purchases or submitting the new build. Creating App Store products alone does not activate billing.
 
 Before submission, complete these checks on the Mac/iPhone:
 
-- Sign in and confirm Free/Premium/partner access, cloud restore and the current session policy.
+- Create/confirm an account, sign in and confirm Free/Premium/partner access, cloud restore and the current session policy. Verify Apple purchase/restore and renewal, cancellation, expiry and refund handling using the full [subscription release checks](APPLE_SUBSCRIPTIONS_SETUP.md#validation-and-release).
 - Take and select a receipt photo, grant/deny camera and photo permissions, give Gemini consent, review the scan, confirm food/non-food, then check pantry quantities and remembered prices.
 - Verify safe areas, keyboard, rotation, background/resume and account-status and privacy links on the actual iPhone.
 - Build/Archive for **Any iOS Device**, validate in Xcode Organizer, and upload to your App Store Connect app with the same bundle ID/team. Increment build number for later uploads.
-- Complete App Store privacy labels, age rating, screenshots, support/privacy URLs, export-compliance answers, content rights and review instructions/test account. The privacy manifest declares the app's local preference access and account/content categories conservatively; review actual Supabase/Gemini/Paddle processing and retention when answering App Store Connect questions.
+- Complete App Store privacy labels, age rating, screenshots, support/privacy URLs, export-compliance answers, content rights and review instructions/test account. The privacy manifest declares local preference access, account/content data and purchase history; review actual Supabase/Gemini/Paddle/Apple processing and retention when answering App Store Connect questions.
 
 ## Verification without a Mac
 
@@ -100,7 +100,7 @@ These verify packaging, privacy exclusions, routing/CORS and project configurati
 
 The deletion journal retains non-reversible actor/billing-reference hashes and timestamps to suppress delayed billing events. Raw user ID/email exist only during an unfinished retry, and are cleared on completion. No password or bearer token is stored. Payment providers may retain required financial records. Downloaded backups, other offline installations and original library photos cannot be erased remotely.
 
-Public App Store privacy URL: `https://basketboss.co.uk/privacy`. Terms URL: `https://basketboss.co.uk/terms`. Both are also bundled offline and accessible in Profile/Settings and the native account-status page. Native web checkout, payment-provider portals and purchase promotions are disabled; the PWA retains web billing. Apple decides whether the existing-account companion model meets its rules. This change adds no StoreKit products or in-app purchases.
+Public App Store privacy URL: `https://basketboss.co.uk/privacy`. Terms URL: `https://basketboss.co.uk/terms`. Both are bundled offline and accessible in Profile/Settings and the native account-status page. Native purchases use Apple; native Paddle checkout, Paddle portals and web purchase promotions are blocked. The PWA retains its web billing. App Review still requires correct product metadata, a working signed build and a confirmed review account able to exercise sandbox purchases; local StoreKit fixture tests do not establish production readiness.
 
 
 ## Native launch and replay setup

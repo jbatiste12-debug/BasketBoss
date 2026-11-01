@@ -4,6 +4,7 @@
   'use strict';
   const API='/api/subscription/status';
   const PORTAL='/api/subscription/portal';
+  const APPLE_SUBSCRIPTIONS='https://apps.apple.com/account/subscriptions';
   const SETTINGS_ID='bbuiLinksSection';
   const $=(id)=>document.getElementById(id);
   function safeText(tag,value,cls){
@@ -54,27 +55,34 @@
     links.append(link('Privacy notice','privacy.html'));
     root.append(links);
     parent.append(root);
-    let busy=false;
+    let busy=false,managedProvider=null;
+    const manageLabel=()=>managedProvider==='apple'?'Manage Apple subscription / cancel':'Manage subscription / cancel';
     manage.addEventListener('click',async()=>{
       if(busy || manage.disabled)return;
       const bearer=token();
       if(!bearer){status.textContent='Sign in again to manage your subscription.';manage.disabled=true;return;}
-      busy=true;manage.disabled=true;manage.textContent='Opening Paddle securely…';
+      busy=true;manage.disabled=true;manage.textContent=managedProvider==='apple'?'Opening Apple subscriptions…':'Opening Paddle securely…';
       try{
+        if(managedProvider==='apple'){
+          if(typeof window.BBNative?.openExternal==='function')await window.BBNative.openExternal(APPLE_SUBSCRIPTIONS);
+          else window.location.assign(APPLE_SUBSCRIPTIONS);
+          return;
+        }
         const res=await fetch(PORTAL,{
           headers:{'Authorization':'Bearer '+bearer,'Accept':'application/json'},
           cache:'no-store',credentials:'same-origin'
         });
         const data=await res.json().catch(()=>null);
+        if(token()!==bearer)return;
         const dest=res.ok&&data ? destinationOK(data.url):null;
         if(!dest)throw Error('Secure billing link unavailable. Use your Paddle receipt or paddle.net.');
         window.location.assign(dest);
       }catch(err){status.textContent=err.message;}
-      finally{busy=false;manage.textContent='Manage subscription / cancel';manage.disabled=false;}
+      finally{busy=false;manage.textContent=manageLabel();manage.disabled=managedProvider===null;}
     });
     async function refresh(){
       const bearer=token();
-      details.textContent='';manage.disabled=true;upgrade.hidden=true;
+      details.textContent='';manage.disabled=true;upgrade.hidden=true;managedProvider=null;manage.textContent=manageLabel();
       if(!bearer){status.textContent='BasketBoss Free — sign in or create an account to start a Premium trial.';upgrade.hidden=false;return;}
       try{
         const response=await fetch(API,{
@@ -90,8 +98,28 @@
           details.textContent='No Paddle subscription or charge applies to this account.';
           return;
         }
+        if(raw.premiumAccess===true&&(raw.provider==='household'||raw.householdRole==='partner')){
+          status.textContent='Premium shared by your household';
+          details.textContent='Your household owner manages the subscription. No separate subscription is needed.';
+          return;
+        }
         const sub=raw.subscription;
         if(!sub){status.textContent='BasketBoss Free — no active paid subscription';upgrade.hidden=false;return;}
+        if(raw.provider==='apple'||sub.provider==='apple'){
+          const names={active:'Active',expired:'Expired',billing_retry:'Payment needs attention',grace_period:'Payment needs attention',revoked:'Refunded or revoked'};
+          if(!Object.prototype.hasOwnProperty.call(names,sub.status)||!['monthly','annual','founder'].includes(sub.plan)){
+            status.textContent='Membership status temporarily unavailable.';return;
+          }
+          const name=sub.plan==='founder'?'Founding Member':sub.plan==='annual'?'Premium Annual':'Premium Monthly';
+          status.textContent=`${name} — ${names[sub.status]} (Apple${sub.environment==='Sandbox'?' sandbox test':''})`;
+          const renewal=dateText(sub.currentPeriodEndsAt),parts=[];
+          if(renewal)parts.push(`${sub.cancelAtPeriodEnd===true?'Access ends':'Current billing period ends'} ${renewal}.`);
+          if(sub.cancelAtPeriodEnd===true)parts.push('Automatic renewal is turned off.');
+          if(raw.premiumAccess!==true)parts.push('Premium access is currently unavailable.');
+          parts.push('Manage renewal, cancellation and billing with Apple.');
+          details.textContent=parts.join(' ');managedProvider='apple';manage.textContent=manageLabel();manage.disabled=false;
+          return;
+        }
         if(typeof sub.id!=='string' || !/^sub_[a-z0-9]{26}$/.test(sub.id)){
           status.textContent='Membership details temporarily unavailable.';return;
         }
@@ -108,7 +136,7 @@
         if(sub.cancelAtPeriodEnd===true)parts.push(`Cancellation scheduled${cancel?` for ${cancel}`:''}.`);
         if(!raw.premiumAccess){parts.push('Premium access is currently unavailable.');upgrade.hidden=false;}
         details.textContent=parts.join(' ');
-        manage.disabled=false;
+        managedProvider='paddle';manage.textContent=manageLabel();manage.disabled=false;
       }catch{status.textContent='Membership status temporarily unavailable. Please retry later.';}
     }
     refresh();

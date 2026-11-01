@@ -358,11 +358,20 @@
       const details = element('ul');
       [
         'Your web subscription will be cancelled as part of deletion. Required billing records may still be kept by the payment provider.',
+        'An Apple App Store subscription continues until you cancel it with Apple. Deleting your BasketBoss account does not cancel Apple billing. You can still delete your account without cancelling first.',
         'You will leave any shared household. If you own it, its cloud sharing and invitations will be removed; other members’ accounts will remain.',
         'Copies on other devices, downloaded backups and original photos in your photo library cannot be removed remotely.',
         'This cannot be undone. You can delete your account whether you have a free or paid membership.'
       ].forEach(text => details.append(element('li', text)));
       explanation.append(details);
+      const appleSubscriptions=element('a','Manage or cancel an Apple subscription');
+      appleSubscriptions.href='https://apps.apple.com/account/subscriptions';
+      appleSubscriptions.addEventListener('click',event=>{
+        if(typeof host.BBNative?.openExternal!=='function')return;
+        event.preventDefault();
+        void Promise.resolve(host.BBNative.openExternal(appleSubscriptions.href)).catch(()=>setMessage('Open iPhone Settings, tap your name, then Subscriptions to cancel your Apple subscription.',true));
+      });
+      explanation.append(appleSubscriptions);
       const passwordLabel = element('label', 'Confirm your account password');
       password = element('input');
       password.type = 'password'; password.autocomplete = 'current-password'; password.required = true;

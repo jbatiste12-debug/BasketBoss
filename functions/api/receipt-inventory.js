@@ -1,3 +1,4 @@
+import {livePaidBillingEnabled,readPersonalPaidAccess} from '../../bb-server-lib/bb-paid-access.js';
 /* Authenticated receipt inventory. Supabase is reached only with the server
  * service credential; the browser never chooses its user/household scope. */
 import {receiptCanonicalPairs} from '../../bb-server-lib/bb-receipt-canonical-pairs.js';
@@ -24,7 +25,7 @@ const canonicalCatalog = Object.fromEntries([...canonicalPairs].map(pair => [pai
 export function receiptInventoryConfigured(request, env) {
   const url = new URL(request.url);
   return env.BB_RECEIPT_INVENTORY_ENABLED === 'true' && url.protocol === 'https:' && LIVE_HOSTS.has(url.hostname) &&
-    (!env.CF_PAGES_BRANCH || env.CF_PAGES_BRANCH === 'main') && seatGateEnabled(env) && isLive(env) &&
+    (!env.CF_PAGES_BRANCH || env.CF_PAGES_BRANCH === 'main') && seatGateEnabled(env) && livePaidBillingEnabled(env) &&
     env.SUPABASE_URL === LIVE_SUPABASE && typeof env.SUPABASE_PUBLISHABLE_KEY === 'string' && env.SUPABASE_PUBLISHABLE_KEY.length > 20 &&
     typeof serviceKey(env) === 'string' && serviceKey(env).length > 30 && typeof env.BILLING_DB?.prepare === 'function';
 }
@@ -40,16 +41,15 @@ async function supabase(env, resource, body) {
   if (!response.ok) throw Error('receipt_database_unavailable');
   return response.json();
 }
-async function paid(env, userId) {
-  const row = await env.BILLING_DB.prepare('SELECT status,price_id,plan FROM bb_paid_entitlements WHERE user_id=? ORDER BY updated_at_ms DESC LIMIT 1').bind(userId).first();
-  const price = row ? expectedPrice(env, row.plan) : null;
-  return !!row && !!price && entitlementForStatus(row.status) && price === row.price_id;
-}
 async function authorized(request, env) {
   const user = await authenticatedUser(request, env);
   if (!user || !UUID.test(user.id)) return {error: json({ok: false, error: 'receipt_sign_in_required'}, 401)};
   if (!await isNewestVerifiedSession(request, env, user)) return {error: json({ok: false, error: 'receipt_newer_session_exists'}, 403)};
-  const personalPaid = await paid(env, user.id);
+  let personal,personalError;
+  try{personal=await readPersonalPaidAccess(env,user.id);}
+  catch(error){personalError=error;personal={premiumAccess:false};}
+  const personalPaid = personal.premiumAccess;
+  const shareablePaid = personalPaid && (personal.provider==='paddle' || personal.apple?.environment==='Production');
   // Match existing catalogue/AI owner access only for the authenticated server ID.
   // This exception is never inherited by a partner or accepted from the browser.
   const owner = typeof env.BB_OWNER_USER_ID === 'string' && user.id === env.BB_OWNER_USER_ID;
@@ -60,13 +60,14 @@ async function authorized(request, env) {
     if (rows.length === 1) {
       const household = rows[0];
       if (!UUID.test(household.id || '') || household.owner_user_id !== user.id && household.partner_user_id !== user.id) throw Error('receipt_household_scope_invalid');
-      if (household.owner_user_id === user.id && personalPaid) scope = {kind: 'household', id: household.id};
+      if (household.owner_user_id === user.id && shareablePaid) scope = {kind: 'household', id: household.id};
       else if (household.invite_status === 'accepted' && household.partner_user_id === user.id && typeof household.partner_email === 'string' && household.partner_email.trim().toLowerCase() === user.email.trim().toLowerCase()) {
         const sharedOwner = await sharedHouseholdPremiumOwner(request, env, user);
         if (sharedOwner && sharedOwner === household.owner_user_id) {premium = true; scope = {kind: 'household', id: household.id};}
       }
     }
   }
+  if(!premium&&personalError)throw personalError;
   return premium ? {user, scope} : {error: json({ok: false, error: 'receipt_premium_required'}, 403)};
 }
 function fullStock(value) {

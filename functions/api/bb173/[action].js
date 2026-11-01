@@ -1,3 +1,4 @@
+import {paidBillingEnabled,livePaidBillingEnabled,readMemberPaidAccess} from '../../../bb-server-lib/bb-paid-access.js';
 import {authenticatedUser,isBillingEnabled,isConfigured,isLive,expectedPrice,paddleApi,digestHex,requireSameOrigin} from '../../../bb-server-lib/bb-billing.js';
 import {sharedHouseholdPremiumOwner} from '../../../bb-server-lib/bb-household-premium.js';
 import {receiptCanonicalPairs} from '../../../bb-server-lib/bb-receipt-canonical-pairs.js';
@@ -229,7 +230,7 @@ export function ownerPreviewAI(env){
 export function aiConfigurationChecks(env){
   const issues=[];
   if(env.BB_PREMIUM_AI_ENABLED!=='true')issues.push('ai_disabled');
-  if(!isBillingEnabled(env)&&!ownerPreviewAI(env))issues.push('billing_disabled_owner_preview_not_authorized');
+  if(!paidBillingEnabled(env)&&!ownerPreviewAI(env))issues.push('billing_disabled_owner_preview_not_authorized');
   if(!isConfigured(env))issues.push('supabase_or_billing_db_missing');
   if(!env.GEMINI_API_KEY)issues.push('gemini_secret_missing');
   if(!env.TURNSTILE_SECRET_KEY)issues.push('turnstile_secret_missing');
@@ -300,18 +301,16 @@ async function eligibleMember(request,env){
   // Preview-only AI never accepts a paying or unauthenticated non-owner
   // while the billing feature gate is disabled.
   if(ownerPreviewAI(env))return null;
-  const row=await env.BILLING_DB.prepare(
-    'SELECT status,price_id,plan FROM bb_paid_entitlements WHERE user_id=? ORDER BY updated_at_ms DESC LIMIT 1'
-  ).bind(user.id).first();
-  if(row && (row.status==='active'||row.status==='trialing') &&
-     expectedPrice(env,row.plan)===row.price_id)return user;
-  // Partner inherits ONLY an accepted, owner-paid Household entitlement.
-  // Quota remains on the paid owner, not one additional allocation per partner.
-  const householdOwner=await sharedHouseholdPremiumOwner(request,env,user);
-  if(householdOwner)return {...user,bbQuotaOwnerId:householdOwner};
+  let access,verificationError;
+  try{access=await readMemberPaidAccess(request,env,user);}
+  catch(error){verificationError=error;}
+  // Quota remains on the verified paid owner, never another partner allocation.
+  if(access?.premiumAccess)return access.householdOwnerId?{...user,bbQuotaOwnerId:access.householdOwnerId}:user;
   // Recover only a Paddle-verified, CURRENT paid/trial checkout, never a
   // pending D1 claim or a checkout window merely shown on screen.
-  return await verifiedPaddleCheckoutMember(user,env)?user:null;
+  if(await verifiedPaddleCheckoutMember(user,env))return user;
+  if(verificationError)throw verificationError;
+  return null;
 }
 async function hashIP(ip,salt){
   const key=await crypto.subtle.importKey('raw',new TextEncoder().encode(salt),{name:'HMAC',hash:'SHA-256'},false,['sign']);
@@ -445,7 +444,7 @@ export async function onRequest({request,env,params}){
         premium_ai:!!member,
         // Client presentation only. Live paid/Owner fallback is enforced
         // independently by eligibleMember() on every AI POST.
-        turnstileRequired:member?!isLive(env):true,
+        turnstileRequired:member?!livePaidBillingEnabled(env):true,
         siteKey:member?env.TURNSTILE_SITE_KEY:null
       });
     }catch{
@@ -499,7 +498,7 @@ export async function onRequest({request,env,params}){
   // All per-user and global AI quotas are still enforced below.
   const hasChallenge=typeof body.turnstileToken==='string' && body.turnstileToken.length>0;
   const passedChallenge=hasChallenge && await siteVerify(body.turnstileToken,request,env);
-  if(!passedChallenge && !isLive(env))
+  if(!passedChallenge && !livePaidBillingEnabled(env))
     return respond({error:'Human verification failed'},403);
 
   try{

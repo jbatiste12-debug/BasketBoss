@@ -6,6 +6,7 @@ let reads=0;
 globalThis.__bbCatalogueTest={
  json:(body,status=200)=>new Response(JSON.stringify(body),{status,headers:{'Content-Type':'application/json'}}),
  authenticatedUser:async()=>authenticated,isBillingEnabled:()=>billingEnabled,isConfigured:()=>true,
+ paidBillingEnabled:()=>billingEnabled,readMemberPaidAccess:async()=>({premiumAccess:false}),
  expectedPrice:()=>null,entitlementForStatus:()=>false,sharedHouseholdPremiumOwner:async()=>false
 };
 let source=fs.readFileSync('functions/api/recipes/premium.js','utf8');
