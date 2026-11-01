@@ -71,7 +71,9 @@ class BasketBossViewController: CAPBridgeViewController {
         #if DEBUG
         if ProcessInfo.processInfo.arguments.contains("--bb-native-cook-smoke"), let webView = webView {
             let content = webView.configuration.userContentController
-            content.add(BasketBossCookSmokeReporter(), name: "bbNativeCookSmoke")
+            let reporter = BasketBossCookSmokeReporter()
+            reporter.record(["phase": "armed", "complete": false, "passed": false])
+            content.add(reporter, name: "bbNativeCookSmoke")
             content.addUserScript(WKUserScript(source: BasketBossCookSmokeReporter.script, injectionTime: .atDocumentStart, forMainFrameOnly: true))
         }
         #endif
@@ -128,7 +130,11 @@ class BasketBossViewController: CAPBridgeViewController {
 private final class BasketBossCookSmokeReporter: NSObject, WKScriptMessageHandler {
     func userContentController(_ userContentController: WKUserContentController, didReceive message: WKScriptMessage) {
         guard let report = message.body as? [String: Any] else { return }
-        let keys = ["passed", "nativeOrigin", "cookMounted", "cookReady", "navPresent", "navVisible", "navHit", "legacyVisible", "backToPlan", "dataKept", "mainReady", "startupReady", "phase", "readyState", "errorCount", "errorLine", "errorKind", "errorSource"]
+        record(report)
+    }
+
+    func record(_ report: [String: Any]) {
+        let keys = ["complete", "passed", "nativeOrigin", "cookMounted", "cookReady", "navPresent", "navVisible", "navHit", "legacyVisible", "backToPlan", "dataKept", "mainReady", "startupReady", "phase", "readyState", "errorCount", "errorLine", "errorKind", "errorSource"]
         let safe = report.filter { keys.contains($0.key) }
         guard let data = try? JSONSerialization.data(withJSONObject: safe, options: [.sortedKeys]),
               let folder = FileManager.default.urls(for: .documentDirectory, in: .userDomainMask).first else { return }
@@ -137,12 +143,13 @@ private final class BasketBossCookSmokeReporter: NSObject, WKScriptMessageHandle
 
     static let script = #"""
     (()=>{
+      window.webkit.messageHandlers.bbNativeCookSmoke.postMessage({phase:'documentStart',complete:false,nativeOrigin:location.protocol==='capacitor:'});
       const key='bb_native_cook_smoke', errors=[];
       addEventListener('error',e=>{errors.push({kind:e.error?.name||'ResourceError',line:e.lineno||0,source:String(e.filename||e.target?.src||'').split('/').pop().split('?')[0].replace(/[^A-Za-z0-9_.-]/g,'').slice(0,100)});},true);
       localStorage.setItem('bb_onboarding_fresh_once_20261028_v1',JSON.stringify({complete:true,step:10}));
       localStorage.setItem('basketboss_native_smoke_probe','keep');
       let ticks=0,scrolled=false;
-      function send(report){const e=errors[0]||{};window.webkit.messageHandlers.bbNativeCookSmoke.postMessage({nativeOrigin:location.protocol==='capacitor:',phase:location.pathname.endsWith('/make-a-meal.html')?'cook':sessionStorage.getItem(key)==='back'?'return':'main',readyState:document.readyState,mainReady:!!document.getElementById('app')?.firstElementChild,startupReady:window.BBNativeStartup?.phase==='ready',...report,errorCount:errors.length,errorLine:e.line||0,errorKind:e.kind||'',errorSource:e.source||''});clearInterval(timer);}
+      function send(report){const e=errors[0]||{};window.webkit.messageHandlers.bbNativeCookSmoke.postMessage({complete:true,nativeOrigin:location.protocol==='capacitor:',phase:location.pathname.endsWith('/make-a-meal.html')?'cook':sessionStorage.getItem(key)==='back'?'return':'main',readyState:document.readyState,mainReady:!!document.getElementById('app')?.firstElementChild,startupReady:window.BBNativeStartup?.phase==='ready',...report,errorCount:errors.length,errorLine:e.line||0,errorKind:e.kind||'',errorSource:e.source||''});clearInterval(timer);}
       const timer=setInterval(()=>{
         ticks++;if(document.readyState==='loading'){if(ticks>200)send({passed:false});return;}
         const stage=sessionStorage.getItem(key),cook=location.pathname.endsWith('/make-a-meal.html');
