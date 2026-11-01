@@ -178,7 +178,7 @@
     if (missingVisibleImages.length) throw Error('Visible images failed to load: ' + missingVisibleImages.join(', '));
     window.__BBPreviewAction = () => {
       if (target === 'budget') {
-        scrollBy({top: 90, behavior: 'smooth'});
+        scrollTo({top: 60, behavior: 'smooth'});
       } else if (target === 'instructions') {
         document.querySelector('#bbNext')?.click();
         document.querySelector('#bbTimerToggle')?.click();

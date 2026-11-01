@@ -3,10 +3,23 @@ on:
   push:
     branches: [codex/app-store-preview-20261101]
   workflow_dispatch:
+concurrency:
+  group: basketboss-preview-capture
+  cancel-in-progress: true
 permissions:
   contents: read
   actions: read
 jobs:
+  inspect-recording:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          name: BasketBoss-preview-diagnostics
+          path: previous-diagnostics
+          run-id: 41312166644
+          github-token: ${{ github.token }}
+      - run: cat previous-diagnostics/budget-recording.log
   capture:
     runs-on: macos-latest
     timeout-minutes: 30
