@@ -33,6 +33,7 @@ export default {async fetch(request,env){try{
 }catch(error){return Response.json({ok:false,code:error.code||error.name,message:error.message},{status:500});}}};
 `);
 execFileSync(process.execPath,[wrangler,'deploy',entry,'--dry-run','--outdir',path.join(directory,'built'),'--compatibility-date','2026-10-30','--compatibility-flags','nodejs_compat','--name','basketboss-apple-local-smoke'],{cwd:directory,env:{...process.env,WRANGLER_SEND_METRICS:'false'},stdio:'pipe'});
+execFileSync(process.execPath,[wrangler,'pages','functions','build',path.join(rootDir,'functions'),'--outdir',path.join(directory,'pages-built'),'--compatibility-date','2026-10-30','--compatibility-flags','nodejs_compat','--project-directory',rootDir],{cwd:directory,env:{...process.env,WRANGLER_SEND_METRICS:'false'},stdio:'pipe'});
 const keys=()=>generateKeyPairSync('ec',{namedCurve:'prime256v1',privateKeyEncoding:{format:'pem',type:'pkcs8'},publicKeyEncoding:{format:'pem',type:'spki'}});
 function certificate(serial,subject,issuer,pub,issuerPrivate,ext){
  const time=n=>new Date(n).toISOString().replace(/[-:T]/g,'').replace(/\.\d{3}/,'');
@@ -54,5 +55,8 @@ try{
  assert.equal(cold.status,200);assert.deepEqual(await cold.json(),{available:false});
  const response=await mf.dispatchFetch('https://example.test/verify');const result=await response.json();
  assert.equal(response.status,200);assert.deepEqual(result,{ok:true,tamperRejected:true,productionRejectedTestRoot:true});
- console.log(JSON.stringify({runtime:'workerd',compatibilityDate:'2026-10-30',coldStart:true,...result}));
+ const pagesOptions={workers:[{modules:true,modulesRoot:directory,scriptPath:path.join(directory,'pages-built/index.js'),compatibilityDate:'2026-10-30',compatibilityFlags:['nodejs_compat'],bindings:{APPLE_BILLING_ENABLED:'false'}}]};
+ const pages=new Miniflare(convertV4MiniflareOptions?convertV4MiniflareOptions(pagesOptions):pagesOptions);
+ try{const disabled=await pages.dispatchFetch('https://basketboss.co.uk/api/apple/config');assert.equal(disabled.status,200);assert.deepEqual(await disabled.json(),{available:false,productIds:[],reason:'apple_not_enabled'});}finally{await pages.dispose();}
+ console.log(JSON.stringify({runtime:'workerd',compatibilityDate:'2026-10-30',coldStart:true,pagesAppleDisabled:true,...result}));
 }finally{await mf.dispose();fs.rmSync(directory,{recursive:true,force:true});}

@@ -317,6 +317,7 @@ private extension BasketBossPurchasesPlugin {
         var report: JSObject = ["complete": false, "passed": false, "localStoreKit": true,
                                 "productionBillingTested": false, "backendPremiumGranted": false]
         var stage = "fixture"
+        report["stage"] = stage
         writeSmokeReport(report)
         do {
             let session = try SKTestSession(configurationFileNamed: "BasketBossPremium")
@@ -326,6 +327,7 @@ private extension BasketBossPurchasesPlugin {
             defer { session.clearTransactions(); session.resetToDefaultState() }
             let token = UUID()
             stage = "products"
+            report["stage"] = stage; writeSmokeReport(report)
             let catalog = try await smokeCall("getProducts") { self.getProducts($0) }
             let received = catalog["products"] as? [JSObject] ?? []
             guard received.count == 3,
@@ -336,6 +338,7 @@ private extension BasketBossPurchasesPlugin {
             }
             report["productsLoaded"] = true
             stage = "purchase"
+            report["stage"] = stage; writeSmokeReport(report)
             let purchase = try await smokeCall("purchase", options: ["productId": "uk.co.basketboss.premium.monthly", "appAccountToken": token.uuidString]) { self.purchase($0) }
             guard purchase["status"] as? String == "purchased", let transaction = purchase["transaction"] as? JSObject,
                   let id = transaction["id"] as? String,
@@ -353,6 +356,7 @@ private extension BasketBossPurchasesPlugin {
             guard queued else { throw LocalSmokeFailure(code: "finished_before_server_ack") }
             report["unfinishedBeforeServerAck"] = true
             stage = "ack_guard"
+            report["stage"] = stage; writeSmokeReport(report)
             do {
                 _ = try await smokeCall("finishTransaction", options: ["transactionId": id]) { self.finishTransaction($0) }
                 throw LocalSmokeFailure(code: "unverified_finish_accepted")
@@ -361,15 +365,18 @@ private extension BasketBossPurchasesPlugin {
             }
             report["earlyFinishRejected"] = true
             stage = "restore"
+            report["stage"] = stage; writeSmokeReport(report)
             let restored = try await smokeCall("restorePurchases") { self.restorePurchases($0) }
             let restoredTransactions = restored["transactions"] as? [JSObject] ?? []
             guard restoredTransactions.contains(where: { $0["id"] as? String == id }) else { throw LocalSmokeFailure(code: "restore_missing") }
             report["restoreVerified"] = true
             stage = "duplicate"
+            report["stage"] = stage; writeSmokeReport(report)
             let duplicate = try await smokeCall("purchase", options: ["productId": "uk.co.basketboss.premium.annual", "appAccountToken": token.uuidString]) { self.purchase($0) }
             guard duplicate["status"] as? String == "alreadyOwned" else { throw LocalSmokeFailure(code: "duplicate_sale_started") }
             report["duplicatePurchasePrevented"] = true
             stage = "account_mismatch"
+            report["stage"] = stage; writeSmokeReport(report)
             do {
                 _ = try await smokeCall("purchase", options: ["productId": "uk.co.basketboss.premium.annual", "appAccountToken": UUID().uuidString]) { self.purchase($0) }
                 throw LocalSmokeFailure(code: "wrong_account_accepted")
@@ -378,6 +385,7 @@ private extension BasketBossPurchasesPlugin {
             }
             report["wrongAccountRejected"] = true
             stage = "finish"
+            report["stage"] = stage; writeSmokeReport(report)
             _ = try await smokeCall("finishTransaction", options: ["transactionId": id, "serverVerified": true]) { self.finishTransaction($0) }
             var stillQueued = false
             for await result in Transaction.unfinished {
@@ -386,6 +394,7 @@ private extension BasketBossPurchasesPlugin {
             guard !stillQueued else { throw LocalSmokeFailure(code: "finish_not_applied") }
             report["finishedAfterAcknowledgement"] = true
             stage = "cancel"
+            report["stage"] = stage; writeSmokeReport(report)
             session.clearTransactions()
             if #available(iOS 17.0, *) {
                 try await session.setSimulatedError(.generic(.userCancelled), forAPI: .purchase)
@@ -397,6 +406,7 @@ private extension BasketBossPurchasesPlugin {
                 session.clearTransactions()
             }
             stage = "pending"
+            report["stage"] = stage; writeSmokeReport(report)
             session.askToBuyEnabled = true
             let pending = try await smokeCall("purchase", options: ["productId": "uk.co.basketboss.premium.annual", "appAccountToken": token.uuidString]) { self.purchase($0) }
             guard pending["status"] as? String == "pending" else { throw LocalSmokeFailure(code: "pending_not_preserved") }

@@ -87,6 +87,15 @@ test('Paid endpoints deny missing authenticated identity',async()=>{
  const r=await invoke('/api/household');assert.equal(r.response.status,401);assert.equal(r.nextCalls,0);
  assert.equal(seatCalls,0);
 });
+test('Apple-only production billing retains the newest-session boundary and Sandbox cannot enable it',async()=>{
+ reset();const apple={BB_BILLING_ENABLED:'false',APPLE_BILLING_ENABLED:'true',APPLE_ENVIRONMENT:'Production'};
+ let result=await invoke('/api/recipes/premium',apple);
+ assert.equal(result.response.status,403);assert.equal(result.nextCalls,0);
+ sessionOk=true;result=await invoke('/api/recipes/premium',apple);
+ assert.equal(result.response.status,200);assert.equal(result.nextCalls,1);
+ result=await invoke('/api/recipes/premium',{...apple,APPLE_ENVIRONMENT:'Sandbox'});
+ assert.equal(result.response.status,503);assert.equal(result.nextCalls,0);
+});
 test('Wrong Supabase tenant and QA preview cannot use paid session middleware',async()=>{
  reset();let r=await invoke('/api/recipes/premium',{SUPABASE_URL:'https://cbucbdvwgmkgmsajtbfe.supabase.co'});
  assert.equal(r.response.status,503);assert.equal(r.nextCalls,0);
