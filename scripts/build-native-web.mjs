@@ -23,6 +23,7 @@ export const CLIENT_FILES=Object.freeze([
  'bb-cook-studio.js','bb-cook-studio.css','bb-cook-result.js','bb-cook-result.css',
  'bb-meal-image.js','bb-meal-image.css','bb-navigation-polish.js','bb-navigation-polish.css',
  'bb-account-polish.js','bb-account-polish.css','bb-membership-compare.js','bb-membership-compare.css',
+ 'bb-premium-feature-badges.js','bb-premium-feature-badges.css',
  'bb-funnel.js','bb-household-sharing.js','bb-install.js','bb-intro-trial.js',
  'bb-membership-settings.js','bb-mobile-beta-polish.js','bb-onboarding-v2.js',
  'bb-partner-signup-prompt.js','bb-plan-premium-polish.js','bb-premium-features.js',

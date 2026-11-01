@@ -30,13 +30,13 @@ try{
  stage='software_keyboard';
  try{keyboardPreference=execute('defaults',['read','com.apple.iphonesimulator','ConnectHardwareKeyboard'],10000);preferenceRead=true;}catch{preferenceRead=true;}
  execute('defaults',['write','com.apple.iphonesimulator','ConnectHardwareKeyboard','-bool','NO'],10000);
- // Reload the Simulator GUI's keyboard preference only on the disposable CI
- // worker. This leaves CoreSimulator devices intact and touches no local GUI.
- if(githubActions)try{execute('killall',['Simulator'],10000);}catch{}
  stage='boot';
  const state=Object.values(JSON.parse(run('simctl','list','devices','available','--json')).devices).flat().find(item=>item.udid===phone)?.state;
  if(state!=='Booted')run('simctl','boot',phone);
- execute('open',['-a','Simulator','--args','-CurrentDeviceUDID',phone]);execute('xcrun',['simctl','bootstatus',phone,'-b'],180000);
+ execute('open',['-a','Simulator','--args','-CurrentDeviceUDID',phone]);
+ // The preceding Cook check has already exercised this booted device. Killing
+ // its GUI or re-waiting for boot bookkeeping can stall a healthy UI session.
+ if(state!=='Booted')execute('xcrun',['simctl','bootstatus',phone,'-b'],180000);
  const argumentsForTests=['-quiet','-workspace','ios/App/App.xcworkspace','-scheme','BasketBossAccountKeyboardUITests','-configuration','Debug','-sdk','iphonesimulator','-destination','platform=iOS Simulator,id='+phone,'-derivedDataPath','/tmp/basketboss-ios-build','CODE_SIGNING_ALLOWED=NO'];
  stage='build_ui_tests';
  try{save('build.log',execute('xcodebuild',[...argumentsForTests,'build-for-testing'],300000));}catch(error){save('build.log',String(error.stdout||'')+'\n'+String(error.stderr||''));throw error;}

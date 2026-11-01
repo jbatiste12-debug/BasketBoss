@@ -63,7 +63,7 @@
   // Block ONLY the advanced in-store experience in this sandbox UI demonstration.
   // The underlying shopping list/checklist remains available as a free feature.
   document.addEventListener('click',event=>{
-    const button=event.target.closest?.('#bb172ShopModeButton, #bb172StoreMode');
+    const button=event.target.closest?.('#bb172ShopModeButton, #bb172StoreMode, .bb1745-go-button');
     if(!button)return;
     if(qaPremiumPreview())return;
     event.preventDefault();event.stopImmediatePropagation();
@@ -119,7 +119,7 @@
   }
   let pending=false;
   function schedule(){if(pending)return;pending=true;queueMicrotask(()=>{pending=false;makeHomeCard();markShop();});}
-  function markShop(){document.querySelectorAll('#bb172ShopModeButton,#bb172StoreMode').forEach(el=>{if(el.dataset.bb173Marked)return;el.dataset.bb173Marked='1';el.setAttribute('title','Advanced Shop Mode · Premium preview');});}
+  function markShop(){document.querySelectorAll('#bb172ShopModeButton,#bb172StoreMode,.bb1745-go-button').forEach(el=>{if(el.dataset.bb173Marked)return;el.dataset.bb173Marked='1';el.setAttribute('title','Advanced Shop Mode · Premium preview');});}
   function openLeftoversFromHash(){if(location.hash!=='#leftover-magic')return;
     const discover=$('button.tab[data-tab="discover"]');if(discover && !discover.classList.contains('active'))discover.click();
     setTimeout(()=>{$(selectFree)?.click();$('.bb173-leftover-card')?.scrollIntoView({block:'center',behavior:'smooth'});},50);

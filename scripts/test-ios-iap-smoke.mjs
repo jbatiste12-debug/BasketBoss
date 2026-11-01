@@ -38,6 +38,7 @@ try{
  if(!phone)throw Error('no_iphone_simulator');
  console.log('Using '+phone.name+' on iOS '+runtimeVersion+' for local StoreKit verification.');
  mark('boot');if(phone.state!=='Booted')run('simctl','boot',phone.udid);
+ if(process.env.GITHUB_ACTIONS==='true')execute('defaults',['write','com.apple.iphonesimulator','ConnectHardwareKeyboard','-bool','NO'],10000);
  mark('simulator_app');execute('open',['-a','Simulator','--args','-CurrentDeviceUDID',phone.udid]);
  mark('bootstatus');console.log('Waiting for simulator boot.');execute('xcrun',['simctl','bootstatus',phone.udid,'-b'],540000);
  const app='/tmp/basketboss-ios-build/Build/Products/Debug-iphonesimulator/App.app';

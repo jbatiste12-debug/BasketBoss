@@ -5,7 +5,7 @@
 (()=>{'use strict';
 const V='2026.11-planning';
 const STEPS=[
- {title:'Your five BasketBoss tabs',body:'Plan, Discover, Kitchen, Shop and Cook are always your main routes.',target:['.shell .tabs']},
+ {title:'Your five BasketBoss tabs',body:'Plan, Discover, Kitchen, Shop and Cook are always your main routes. Small Premium badges identify optional paid tools while you use Free.',target:['.shell .tabs']},
  {title:'Plan your week',body:'Your seven-day dinner plan and budget are together under Plan. Tap Ingredients to avoid to open searchable food tiles for future Auto-fill. Your manually chosen meals stay in the plan.',tab:'week',target:['.tab[data-tab="week"]','#bbAvoidIngredientTab']},
  {title:'Your grocery budget',body:'Enter a target beside the donut. Estimates reflect the chosen region (UK, Guernsey, Jersey or United States).',tab:'week',target:['#app .bbnext-plan-budget','#app .bbnext-plan-donut']},
  {title:'Smart Auto-Fill',body:'Fill the empty days, add a meal or plan with confirmed PANTRY amounts from one card. Premium filters can favour quick meals, high protein, kid-friendly options and Cook Once, Eat Twice. Trim My Basket suggests estimated savings when budget gets tight.',tab:'week',target:['#app .bb81-pro-filters','#app .bbnext-plan-actions']},
