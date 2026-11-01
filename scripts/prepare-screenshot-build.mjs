@@ -10,7 +10,7 @@ const hook=`
            let publicURL = Bundle.main.url(forResource: "public", withExtension: nil),
            let script = try? String(contentsOf: publicURL.appendingPathComponent("bb-screenshot-demo.js"), encoding: .utf8) {
             let target = ProcessInfo.processInfo.arguments[flag + 1]
-            let allowed = ["plan", "discover", "recipe", "kitchen", "shop", "receipt", "cook", "budget", "instructions"]
+            let allowed = ["plan", "discover", "recipe", "kitchen", "shop", "receipt", "cook", "budget", "instructions", "shopping", "meal"]
             if allowed.contains(target) {
                 let reporter = BasketBossScreenshotReporter()
                 let content = webView.configuration.userContentController

@@ -1,0 +1,66 @@
+name: Capture actual shopping checklist and meal with Cook button
+on:
+  push:
+    branches: [codex/shopping-checklist-20261101]
+  workflow_dispatch:
+permissions:
+  contents: read
+  actions: read
+jobs:
+  capture:
+    runs-on: macos-latest
+    timeout-minutes: 25
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+          cache: npm
+      - name: Install pinned dependencies
+        run: npm ci --no-audit --no-fund
+      - name: Build and sync latest main native app
+        run: npm run ios:sync
+      - name: Install capture-only Debug instrumentation
+        run: node scripts/prepare-screenshot-build.mjs
+      - name: Build iPhone simulator app
+        run: >-
+          xcodebuild
+          -workspace ios/App/App.xcworkspace
+          -scheme App
+          -configuration Debug
+          -sdk iphonesimulator
+          -destination 'generic/platform=iOS Simulator'
+          -derivedDataPath /tmp/basketboss-ios-build
+          CODE_SIGNING_ALLOWED=NO
+          build
+      - name: Capture actual shopping checklist and meal button
+        run: node scripts/capture-shopping-and-meal.mjs
+      - name: Explain screenshot placements
+        run: |
+          cat > artifacts/app-store-screenshots/UPLOAD-GUIDE.txt <<'GUIDE'
+          Two actual iPhone16Pro simulator screenshots,1206x2622 pixels.
+          05-actual-shopping-list.png: replace the existing Shop overview screenshot with this full checklist after Begin shop.
+          10-meal-with-cook-button.png: add this to the tenth slot to show the meal and View Recipe & Cook button together.
+          Both fit the medium-display iPhone screenshot slot shown in App Store Connect (6.1/6.3-inch), not Header artwork.
+          The existing nine screenshots are unchanged in their previous download. Main and the app UI are unchanged.
+          GUIDE
+      - name: Upload two iPhone screenshots
+        id: screenshots
+        uses: actions/upload-artifact@v4
+        with:
+          name: BasketBoss-Shopping-List-and-Meal-Cook-Button-1206x2622
+          path: artifacts/app-store-screenshots/
+          if-no-files-found: error
+          retention-days: 30
+      - name: Upload capture diagnostics
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: BasketBoss-shopping-and-meal-diagnostics
+          path: artifacts/capture-diagnostics/
+          if-no-files-found: ignore
+          retention-days: 14
+      - name: Link downloadable screenshots
+        run: echo 'Shopping list and meal screenshots — ${{ steps.screenshots.outputs.artifact-url }}' >> "$GITHUB_STEP_SUMMARY"

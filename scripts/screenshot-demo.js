@@ -5,7 +5,7 @@
 (() => {
   'use strict';
   const target = window.__BB_SCREENSHOT_TARGET__;
-  if (!['plan', 'discover', 'recipe', 'kitchen', 'shop', 'receipt', 'cook', 'budget', 'instructions'].includes(target)) return;
+  if (!['plan', 'discover', 'recipe', 'kitchen', 'shop', 'receipt', 'cook', 'budget', 'instructions', 'shopping', 'meal'].includes(target)) return;
   const post = data => window.webkit?.messageHandlers?.bbScreenshot?.postMessage({ target, path: location.pathname, ...data });
   const errors = [];
   addEventListener('error', event => { if (event.error) errors.push(String(event.error.message || event.message)); });
@@ -129,7 +129,7 @@
         const link = await until(() => document.querySelector('.bb173-make-meal-link'), 'Cook link'); link.click(); return;
       }
       if (target === 'plan' || target === 'budget') await selectTab('week');
-      if (target === 'discover' || target === 'recipe' || target === 'instructions') {
+      if (target === 'discover' || target === 'recipe' || target === 'instructions' || target === 'meal') {
         await selectTab('discover');
         if (target === 'recipe' || target === 'instructions') {
           const button = await until(() => document.querySelector('#cookRecipe'), 'View Recipe & Cook'); button.click();
@@ -142,13 +142,26 @@
         }
       }
       if (target === 'kitchen') await selectTab('shop');
-      if (target === 'shop' || target === 'receipt') await selectTab('shop-list');
+      if (target === 'shop' || target === 'receipt' || target === 'shopping') await selectTab('shop-list');
       if (target === 'receipt') await receiptReview();
+      if (target === 'shopping') {
+        const begin = await until(() => {
+          const button = document.querySelector('.bb-r6-begin') || document.querySelector('.bbm-begin');
+          return button && !button.disabled && button.getBoundingClientRect().height > 0 && button;
+        }, 'Begin shop button');
+        begin.click();
+        await until(() => document.body.classList.contains('bb172-storefront-visible') && document.querySelector('#bb172Storefront .bb172-storefront-checkbox'), 'actual shopping checklist');
+        document.querySelector('#bb172Storefront').scrollTop = 250;
+      }
     }
     if (target !== 'receipt') scrollTo({ top: 0, behavior: 'instant' });
     if (target === 'plan') {
       const firstDay = await until(() => document.querySelector('.bbnext-day'), 'planned meal cards');
       scrollTo({ top: Math.max(0, scrollY + firstDay.getBoundingClientRect().top - 30), behavior: 'instant' });
+    }
+    if (target === 'meal') {
+      const cook = await until(() => document.querySelector('#cookRecipe'), 'View Recipe & Cook');
+      scrollTo({top: Math.max(0, scrollY + cook.getBoundingClientRect().bottom - (innerHeight - 150)), behavior: 'instant'});
     }
     await settle();
     const missingVisibleImages = [...document.images].filter(img => { const r = img.getBoundingClientRect(); return r.width && r.height && r.bottom > 0 && r.top < innerHeight && img.complete && !img.naturalWidth; }).map(img => img.src.split('/').pop());
@@ -165,7 +178,9 @@
       budget = { estimatedTotal: total?.textContent.trim() || '', weeklyTarget: weeklyTarget?.textContent.trim() || '', ringValue: ring?.getAttribute('aria-valuenow') || '', ringLabel: ring?.getAttribute('aria-valuetext') || '', totalVisible: visible(total), targetVisible: visible(weeklyTarget), ringVisible: visible(ring) };
       if (budget.estimatedTotal !== '£107.80' || budget.weeklyTarget !== '£120.00 weekly target' || !budget.ringLabel.includes('£107.80 estimated of £120.00') || !budget.totalVisible || !budget.targetVisible || !budget.ringVisible) throw Error('Budget values or viewport visibility differ from the demo: ' + JSON.stringify(budget));
     }
-    const screenPresent = target === 'budget' ? document.body.dataset.bbnextView === 'week' && budget?.totalVisible && budget?.targetVisible && budget?.ringVisible
+    const screenPresent = target === 'shopping' ? document.body.classList.contains('bb172-storefront-visible') && document.querySelectorAll('#bb172Storefront .bb172-storefront-checkbox').length > 0
+      : target === 'meal' ? document.body.dataset.bbnextView === 'discover' && !!document.querySelector('.bb-featured-card') && (() => { const button = document.querySelector('#cookRecipe'), r = button?.getBoundingClientRect(); return r && r.top >= 0 && r.bottom <= innerHeight - 70 && r.width > 0; })()
+      : target === 'budget' ? document.body.dataset.bbnextView === 'week' && budget?.totalVisible && budget?.targetVisible && budget?.ringVisible
       : target === 'plan' ? document.body.dataset.bbnextView === 'week' && document.querySelectorAll('.bbnext-day').length === 7
       : target === 'discover' ? document.body.dataset.bbnextView === 'discover' && !!document.querySelector('.bb-featured-card')
       : target === 'instructions' ? !!document.querySelector('#bbInstruction')?.textContent.trim() && !!document.querySelector('#bbPhaseCook.active')
