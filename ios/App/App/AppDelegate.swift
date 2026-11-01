@@ -175,7 +175,12 @@ private enum BasketBossAccountKeyboardSetup {
             const flags={bodyFixed:fixed,shellHidden:!!shell&&getComputedStyle(shell).visibility==='hidden',shellInert:!!shell?.closest('[inert]'),viewportCovered:Math.abs(box.top-top)<3&&Math.abs(box.left-left)<3&&Math.abs(box.bottom-top-height)<3&&Math.abs(box.right-left-width)<3,rootLocked:baselineScroll!==null&&Math.abs(window.scrollY-baselineScroll)<2};
             let probe=document.getElementById('bbAccountKeyboardProbe');
             if(!probe){probe=document.createElement('p');probe.id='bbAccountKeyboardProbe';probe.style.cssText='font-size:8px;line-height:1.1;margin:2px 0;color:#385e45';form.appendChild(probe);}
-            const text='BB keyboard probe '+(onboarding?'onboarding':'account')+' '+Object.entries(flags).map(([name,value])=>name+'='+value).join(' ');
+            // Numeric layout metadata only: never include input values, user
+            // text, account/session data, screenshots or recording bytes.
+            const number=value=>Number.isFinite(Number(value))?Math.round(Number(value)*10)/10:null;
+            const bodyStyle=getComputedStyle(document.body),hostStyle=getComputedStyle(host);
+            const metrics={vvH:number(viewport?.height),vvW:number(viewport?.width),vvTop:number(viewport?.offsetTop),vvLeft:number(viewport?.offsetLeft),vvPageTop:number(viewport?.pageTop),vvScale:number(viewport?.scale),innerH:number(innerHeight),innerW:number(innerWidth),hostT:number(box.top),hostL:number(box.left),hostB:number(box.bottom),hostR:number(box.right),hostH:number(box.height),hostW:number(box.width),cssT:number(parseFloat(hostStyle.top)),cssH:number(parseFloat(hostStyle.height)),bodyT:number(parseFloat(bodyStyle.top)),rootY:number(window.scrollY),baselineY:baselineScroll===null?null:number(baselineScroll),htmlY:number(document.documentElement.scrollTop),bodyY:number(document.body.scrollTop)};
+            const text='BB keyboard probe '+(onboarding?'onboarding':'account')+' '+Object.entries(flags).map(([name,value])=>name+'='+value).join(' ')+' metrics='+JSON.stringify(metrics);
             if(probe.textContent!==text)probe.textContent=text;
           },100);
         })();
