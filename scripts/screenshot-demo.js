@@ -5,7 +5,7 @@
 (() => {
   'use strict';
   const target = window.__BB_SCREENSHOT_TARGET__;
-  if (!['plan', 'discover', 'recipe', 'kitchen', 'shop', 'receipt', 'cook', 'budget'].includes(target)) return;
+  if (!['plan', 'discover', 'recipe', 'kitchen', 'shop', 'receipt', 'cook', 'budget', 'instructions'].includes(target)) return;
   const post = data => window.webkit?.messageHandlers?.bbScreenshot?.postMessage({ target, path: location.pathname, ...data });
   const errors = [];
   addEventListener('error', event => { if (event.error) errors.push(String(event.error.message || event.message)); });
@@ -129,11 +129,16 @@
         const link = await until(() => document.querySelector('.bb173-make-meal-link'), 'Cook link'); link.click(); return;
       }
       if (target === 'plan' || target === 'budget') await selectTab('week');
-      if (target === 'discover' || target === 'recipe') {
+      if (target === 'discover' || target === 'recipe' || target === 'instructions') {
         await selectTab('discover');
-        if (target === 'recipe') {
+        if (target === 'recipe' || target === 'instructions') {
           const button = await until(() => document.querySelector('#cookRecipe'), 'View Recipe & Cook'); button.click();
           await until(() => document.querySelector('.cook-overlay .bb-kitchen'), 'recipe detail');
+          if (target === 'instructions') {
+            (await until(() => document.querySelector('#bbStart'), 'Start cooking')).click();
+            await until(() => document.querySelector('#bbInstruction')?.textContent.trim(), 'cooking instructions');
+            document.querySelector('.bb-kitchen').scrollTop = 0;
+          }
         }
       }
       if (target === 'kitchen') await selectTab('shop');
@@ -163,6 +168,7 @@
     const screenPresent = target === 'budget' ? document.body.dataset.bbnextView === 'week' && budget?.totalVisible && budget?.targetVisible && budget?.ringVisible
       : target === 'plan' ? document.body.dataset.bbnextView === 'week' && document.querySelectorAll('.bbnext-day').length === 7
       : target === 'discover' ? document.body.dataset.bbnextView === 'discover' && !!document.querySelector('.bb-featured-card')
+      : target === 'instructions' ? !!document.querySelector('#bbInstruction')?.textContent.trim() && !!document.querySelector('#bbPhaseCook.active')
       : target === 'recipe' ? !!document.querySelector('.cook-overlay .bb-kitchen #bbTitle')
       : target === 'kitchen' ? document.body.dataset.bbnextView === 'shop'
       : target === 'shop' ? document.body.dataset.bbnextView === 'shop-list' && !!document.querySelector('#bbMobileShopPreview')

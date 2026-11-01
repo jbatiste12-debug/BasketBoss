@@ -10,7 +10,7 @@ const exec=(command,args,timeout=120000)=>execFileSync(command,args,{encoding:'u
 const run=(...args)=>exec('xcrun',args);
 const delay=ms=>new Promise(r=>setTimeout(r,ms));
 const bundle='uk.co.basketboss.app';
-const allTargets=['plan','discover','recipe','kitchen','shop','receipt','cook','budget'];
+const allTargets=['plan','discover','recipe','kitchen','shop','receipt','cook','budget','instructions'];
 const targets=process.env.BB_CAPTURE_TARGETS?.split(',')||allTargets;
 if(targets.some(target=>!allTargets.includes(target)))throw Error('Unknown screenshot target');
 let phone,container;
@@ -63,8 +63,8 @@ try{
   if(!capturedNames.has(name))manifest.screens.push({file:name,sha256:crypto.createHash('sha256').update(bytes).digest('hex'),inheritedFromRun:process.env.BB_EXISTING_SCREENSHOTS_RUN});
  }
  fs.writeFileSync(path.join(diagnostics,'manifest.json'),JSON.stringify(manifest,null,2));
- if(fs.readdirSync(out).filter(n=>n.endsWith('.png')).length!==8)throw Error('Expected exactly eight PNGs');
- console.log('All eight actual simulator screenshots verified successfully');
+ if(fs.readdirSync(out).filter(n=>n.endsWith('.png')).length!==9)throw Error('Expected exactly nine PNGs');
+ console.log('All nine actual simulator screenshots verified successfully');
 }catch(error){
  if(phone){try{run('simctl','io',phone,'screenshot','--type=png',path.join(diagnostics,'failure.png'));}catch{}}
  if(container){try{exec('cp',['-R',path.join(container,'Documents'),path.join(diagnostics,'Documents')]);}catch{}}
