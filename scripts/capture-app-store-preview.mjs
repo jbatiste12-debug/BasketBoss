@@ -56,15 +56,26 @@ try{
   let recordingError;
   recording.on('error',error=>{recordingError=error;});
   const closed=new Promise(resolve=>recording.once('close',resolve));
-  await delay(2500);
-  if(recordingError||recording.exitCode!==null)throw Error('Simulator recording failed: '+recordingError);
-  // Trigger the existing UI controller only after screen recording is active.
+  const startDeadline=Date.now()+90000;
+  while(Date.now()<startDeadline){
+    const log=fs.readFileSync(path.join(diagnostics,target+'-recording.log'),'utf8');
+    if(/Recording started/i.test(log))break;
+    if(recordingError||recording.exitCode!==null||recording.signalCode)throw Error('Simulator recording failed: '+log);
+    // An actual viewport movement ensures CoreAnimation supplies fresh frames.
+    fs.writeFileSync(path.join(container,'Documents/bb-preview-action'),'action');
+    await delay(1000);
+  }
+  console.log('Recorder status: '+fs.readFileSync(path.join(diagnostics,target+'-recording.log'),'utf8'));
+  await delay(1500);
   fs.writeFileSync(path.join(container,'Documents/bb-preview-action'),'action');
-  await delay((scene.seconds+2)*1000);
+  await delay((scene.seconds+3)*1000);
   recording.kill('SIGINT');
-  await Promise.race([closed,delay(30000).then(()=>{if(recording.exitCode===null){recording.kill('SIGKILL');throw Error('Screen recorder did not stop');}})]);
+  let stopTimer;
+  await Promise.race([closed,new Promise((_,reject)=>{stopTimer=setTimeout(()=>{recording.kill('SIGKILL');reject(Error('Screen recorder did not stop'));},30000);})]);
+  clearTimeout(stopTimer);
   fs.closeSync(recordingLog);
-  if(!fs.existsSync(file)||fs.statSync(file).size<1000)throw Error('Recording is empty');
+  console.log('Recorder result: '+fs.readFileSync(path.join(diagnostics,target+'-recording.log'),'utf8'));
+  if(!fs.existsSync(file)||fs.statSync(file).size<1000)throw Error('Recording is empty: '+fs.readFileSync(path.join(diagnostics,target+'-recording.log'),'utf8'));
   const sourceProbe=JSON.parse(exec('ffprobe',['-v','error','-show_streams','-of','json',file]));
   const sourceVideo=sourceProbe.streams.find(stream=>stream.codec_type==='video');
   if(sourceVideo.width!==1320||sourceVideo.height!==2868)throw Error('Unexpected simulator recording resolution');

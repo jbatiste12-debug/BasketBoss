@@ -177,7 +177,9 @@
     if (!screenPresent) throw Error('Requested screen is not mounted: ' + target);
     if (missingVisibleImages.length) throw Error('Visible images failed to load: ' + missingVisibleImages.join(', '));
     window.__BBPreviewAction = () => {
-      if (target === 'instructions') {
+      if (target === 'budget') {
+        scrollBy({top: 90, behavior: 'smooth'});
+      } else if (target === 'instructions') {
         document.querySelector('#bbNext')?.click();
         document.querySelector('#bbTimerToggle')?.click();
       } else if (target === 'discover') {

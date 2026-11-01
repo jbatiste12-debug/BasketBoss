@@ -35,16 +35,30 @@ jobs:
           -derivedDataPath /tmp/basketboss-ios-build
           CODE_SIGNING_ALLOWED=NO
           build
+      - name: Read previous recorder diagnostics
+        uses: actions/download-artifact@v4
+        with:
+          name: BasketBoss-preview-diagnostics
+          path: previous-diagnostics
+          run-id: 41312166644
+          github-token: ${{ github.token }}
+      - name: Previous recorder log
+        run: cat previous-diagnostics/budget-recording.log
       - name: Install video encoder
         run: command -v ffmpeg >/dev/null || brew install ffmpeg
       - name: Record real iPhone footage and export App Preview
         run: node scripts/capture-app-store-preview.mjs
+      - name: Finalize Apple video and audio specifications
+        run: |
+          mkdir -p artifacts/recorded-preview
+          cp artifacts/app-store-preview/BasketBoss-App-Store-Preview.mp4 artifacts/recorded-preview/
+          node scripts/finalize-app-store-preview.mjs
       - name: Upload App Store preview video
         id: preview
         uses: actions/upload-artifact@v4
         with:
           name: BasketBoss-App-Store-Preview-27-seconds
-          path: artifacts/app-store-preview/
+          path: artifacts/final-preview/
           if-no-files-found: error
           retention-days: 30
       - name: Upload recording diagnostics
