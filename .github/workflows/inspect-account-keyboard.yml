@@ -11,7 +11,7 @@ permissions:
 
 jobs:
   inspect:
-    runs-on: ubuntu-latest
+    runs-on: macos-latest
     timeout-minutes: 5
     steps:
       - uses: actions/download-artifact@v4
@@ -25,9 +25,17 @@ jobs:
         run: |
           python - <<'PY'
           from pathlib import Path
+          import subprocess
           root = Path('keyboard-diagnostic')
           for name, limit in [('report.json', 12000), ('tests.log', 40000)]:
               for item in sorted(root.rglob(name)):
                   print(str(item))
                   print(item.read_text(errors='replace')[-limit:])
+          result = next(root.rglob('AccountKeyboard.xcresult'), None)
+          if result:
+              for kind in ['summary', 'tests']:
+                  print('XCResult ' + kind)
+                  process = subprocess.run(['xcrun', 'xcresulttool', 'get', 'test-results', kind, '--path', str(result)], capture_output=True, text=True)
+                  print(process.stdout[-50000:])
+                  print(process.stderr[-5000:])
           PY
