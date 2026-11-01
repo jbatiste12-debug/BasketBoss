@@ -31,6 +31,12 @@ jobs:
         env:
           BB_PGLITE_MODULE: ${{ runner.temp }}/bb-apple-pg/node_modules/@electric-sql/pglite
         run: node --test --test-isolation=none tests/*.test.mjs
+      - name: Install isolated Cloudflare runtime verification tools
+        run: npm install --prefix "$RUNNER_TEMP/bb-apple-worker" --package-lock=false --ignore-scripts --no-audit --no-fund wrangler@4.156.0
+      - name: Verify cold Worker startup and real signature verification
+        env:
+          BB_WORKER_TEST_TOOLS: ${{ runner.temp }}/bb-apple-worker/node_modules
+        run: node scripts/test-apple-worker.mjs
   local-storekit-simulator:
     runs-on: macos-latest
     timeout-minutes: 30
@@ -73,7 +79,12 @@ jobs:
           CODE_SIGNING_ALLOWED=NO
           build
       - name: Verify Release excludes StoreKit test fixture
-        run: test ! -f /tmp/basketboss-ios-build/Build/Products/Release-iphonesimulator/App.app/BasketBossPremium.storekit
+        run: |
+          test ! -f /tmp/basketboss-ios-build/Build/Products/Release-iphonesimulator/App.app/BasketBossPremium.storekit
+          if otool -L /tmp/basketboss-ios-build/Build/Products/Release-iphonesimulator/App.app/App | rg StoreKitTest; then
+            echo 'Release must not link the local StoreKit test framework.'
+            exit 1
+          fi
       - uses: actions/upload-artifact@v4
         if: always()
         with:

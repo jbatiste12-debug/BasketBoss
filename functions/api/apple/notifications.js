@@ -1,22 +1,21 @@
 /* Apple App Store Server Notifications V2. Signature authentication replaces
  * browser authentication here. An unlinked notification can NEVER claim a user.
  */
-import {VerificationStatus} from '@apple/app-store-server-library';
 import {confirmAppleFounder} from '../../../bb-server-lib/bb-apple-founder.js';
 import {json} from '../../../bb-server-lib/bb-billing.js';
 import {isAccountDeleting,digestDeletionActor} from '../../../bb-server-lib/bb-account-deletion.js';
 import {appleErrorResponse,appleRequestJSON} from '../../../bb-server-lib/bb-apple-http.js';
-import {AppleBillingError,appleConfigForSignedData,getVerifiedAppleConfig,getAppleServices,validateAppleJWS,verifyAppleTransaction,ensureAppleSchema,fetchAppleCurrentSubscription,persistAppleSubscription,appleUserAllowed,appleAppIdentifierMatches} from '../../../bb-server-lib/bb-apple-subscriptions.js';
+import {AppleBillingError,appleConfigForSignedData,getVerifiedAppleConfig,getAppleServices,validateAppleJWS,verifyAppleTransaction,ensureAppleSchema,fetchAppleCurrentSubscription,persistAppleSubscription,appleUserAllowed,appleAppIdentifierMatches,isAppleRetryableVerificationFailure} from '../../../bb-server-lib/bb-apple-subscriptions.js';
 const UUID=/^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
 export async function onRequestPost({request,env}){
  try{
   const baseConfig=getVerifiedAppleConfig(env);
   if(!baseConfig)throw new AppleBillingError('apple_disabled','Apple notifications are not configured.');
   const body=await appleRequestJSON(request,100000);
-  const config=appleConfigForSignedData(baseConfig,body.signedPayload),service=getAppleServices(env,config);
+  const config=appleConfigForSignedData(baseConfig,body.signedPayload),service=await getAppleServices(env,config);
   let notification;
   try{validateAppleJWS(body.signedPayload);notification=await service.verifier.verifyAndDecodeNotification(body.signedPayload);}
-  catch(error){if(error?.status===VerificationStatus.RETRYABLE_VERIFICATION_FAILURE)throw new AppleBillingError('apple_unavailable','Apple verification is temporarily unavailable.');throw new AppleBillingError('apple_notification_unverified','The Apple notification could not be verified.',400);}
+  catch(error){if(await isAppleRetryableVerificationFailure(error))throw new AppleBillingError('apple_unavailable','Apple verification is temporarily unavailable.');throw new AppleBillingError('apple_notification_unverified','The Apple notification could not be verified.',400);}
   if(notification.version!=='2.0'||!UUID.test(notification.notificationUUID||'')||!Number.isSafeInteger(notification.signedDate)||notification.signedDate>Date.now()+300000)
    throw new AppleBillingError('apple_notification_invalid','Invalid Apple notification.',400);
   // Apple's signed TEST notification validates delivery without transaction data.

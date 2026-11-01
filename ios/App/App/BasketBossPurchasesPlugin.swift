@@ -287,11 +287,19 @@ public final class BasketBossPurchasesPlugin: CAPPlugin, CAPBridgedPlugin {
 private extension BasketBossPurchasesPlugin {
     struct LocalSmokeFailure: Error { let code: String }
 
-    @MainActor func smokeCall(_ method: String, options: JSObject = [:], invoke: (CAPPluginCall) -> Void) async throws -> JSObject {
-        try await withCheckedThrowingContinuation { continuation in
-            guard let call = CAPPluginCall(callbackId: "local-storekit-smoke", methodName: method, options: options,
-                success: { result, _ in continuation.resume(returning: result?.data ?? [:]) },
-                error: { error in continuation.resume(throwing: LocalSmokeFailure(code: error?.code ?? "bridge_error")) }) else {
+    @MainActor func smokeCall(_ method: String, options: JSObject = [:], invoke: (CAPPluginCall) -> Void) async throws -> PluginCallResultData {
+        return try await withCheckedThrowingContinuation { (continuation: CheckedContinuation<PluginCallResultData, Error>) in
+            let success: CAPPluginCallSuccessHandler = { (result: CAPPluginCallResult?, _: CAPPluginCall?) in
+                let payload: PluginCallResultData = result?.data ?? [:]
+                continuation.resume(returning: payload)
+            }
+            let failure: CAPPluginCallErrorHandler = { (error: CAPPluginCallError?) in
+                let code: String = error?.code ?? "bridge_error"
+                continuation.resume(throwing: LocalSmokeFailure(code: code))
+            }
+            let pendingCall: CAPPluginCall? = CAPPluginCall(callbackId: "local-storekit-smoke", methodName: method,
+                                                           options: options, success: success, error: failure)
+            guard let call = pendingCall else {
                 continuation.resume(throwing: LocalSmokeFailure(code: "call_unavailable")); return
             }
             invoke(call)

@@ -8,7 +8,7 @@ export async function onRequestPost({request,env}){
   const body=await appleRequestJSON(request);
   const config=appleConfigForSignedData(baseConfig,body.signedTransactionInfo,user.id);
   await assertAppleAccountReady(env,config,user.id);
-  const service=getAppleServices(env,config);
+  const service=await getAppleServices(env,config);
   const transaction=await verifyAppleTransaction(service,body.signedTransactionInfo);
   if(body.transactionId!==undefined&&body.transactionId!==transaction.transactionId)throw new AppleBillingError('apple_transaction_mismatch','The Apple transaction identifier does not match.',400);
   const accountToken=await appleAccountToken(env,user.id);

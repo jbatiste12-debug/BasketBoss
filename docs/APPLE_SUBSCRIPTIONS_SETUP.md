@@ -36,7 +36,7 @@ Turn off **Streamlined Purchasing** when Apple permits it, and do not configure 
 
 Use the existing production Pages project and its existing `BILLING_DB` D1 binding. Keep all existing Supabase, Paddle, household, session and private-catalogue bindings/flags. Do not deploy a new root Wrangler configuration that discards Dashboard-managed bindings.
 
-The pinned `@apple/app-store-server-library` uses Node crypto, X.509 verification and HTTP. Enable the Pages Functions **`nodejs_compat` compatibility flag** and use an appropriate current compatibility date (tested build target: `2026-11-01`). A successful JavaScript bundle alone does not establish working live Apple HTTP/OCSP requests in the deployed Worker; smoke-test both paths after deployment. Required egress includes Apple's App Store Server API and the certificate revocation endpoints used by the official verifier.
+The pinned `@apple/app-store-server-library` uses Node crypto, X.509 verification and HTTP. Enable the Pages Functions **`nodejs_compat` compatibility flag** and use an appropriate current compatibility date (tested build target: `2026-11-01`). The official library is loaded lazily inside an Apple request: its dependency initializes random state, which Workers forbid during global-scope startup. Keep that request-time boundary when editing imports. A successful JavaScript bundle alone does not establish a working Worker: smoke-test cold startup with Apple disabled, the first enabled Apple request, and live Apple HTTP/OCSP requests after deployment. Required egress includes Apple's App Store Server API and the certificate revocation endpoints used by the official verifier.
 
 Apply these additive SQLite migrations to the D1 database bound as `BILLING_DB`, in order, before enabling billing:
 
@@ -97,6 +97,8 @@ npm run ios:verify
 npm run test:native
 node --test --test-isolation=none tests/basketboss-apple*.test.mjs
 ```
+
+The workflow also verifies real Cloudflare `workerd` cold startup, Node crypto/X.509 verification, tamper rejection and production rejection of a generated test certificate root (compatibility date `2026-10-30`, supported by the pinned local runtime). This does not contact Apple or test OCSP networking.
 
 The Apple workflow also compiles Debug/Release on macOS and exercises real StoreKit calls using the local `.storekit` fixture, including prices, account tokens, purchase/restore, pending approval, cancellation and finish-after-ack. Release excludes the fixture. These are local StoreKit tests: **they do not prove Apple sandbox server credentials, notification delivery or Production billing**. Record actual workflow results rather than inferring them from this guide.
 

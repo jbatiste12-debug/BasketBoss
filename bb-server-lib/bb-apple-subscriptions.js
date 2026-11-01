@@ -4,7 +4,6 @@
  */
 import {Buffer} from 'node:buffer';
 import {createPrivateKey} from 'node:crypto';
-import {AppStoreServerAPIClient,SignedDataVerifier,Environment,VerificationStatus} from '@apple/app-store-server-library';
 import {appleRootCertificates} from './bb-apple-roots.js';
 import {expectedPrice,entitlementForStatus} from './bb-billing.js';
 import {ensureDeletionSchema,isAccountDeleting,digestDeletionActor} from './bb-account-deletion.js';
@@ -14,6 +13,19 @@ const UUID=/^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]
 const TX=/^[0-9]{1,40}$/;
 const REFRESH_MS=60000;
 const services=new WeakMap();
+const Environment=Object.freeze({PRODUCTION:'Production',SANDBOX:'Sandbox'});
+let appleLibraryPromise;
+// jsrsasign, a dependency of Apple's official verifier, seeds its RNG when its
+// module initializes. Workers disallow that during global-scope evaluation.
+// Keep initialization inside the first request that actually needs Apple;
+// disabled billing and existing web access must not load it at Worker startup.
+function loadAppleLibrary(){
+ return appleLibraryPromise??=import('@apple/app-store-server-library').catch(error=>{appleLibraryPromise=undefined;throw error;});
+}
+export async function isAppleRetryableVerificationFailure(error){
+ const {VerificationStatus}=await loadAppleLibrary();
+ return error?.status===VerificationStatus.RETRYABLE_VERIFICATION_FAILURE;
+}
 export class AppleBillingError extends Error {
  constructor(code,message,status=503){super(message);this.name='AppleBillingError';this.code=code;this.status=status;}
 }
@@ -60,12 +72,13 @@ export function appleConfigForSignedData(config,signed,userId){
  fail('apple_environment_mismatch','This Apple purchase environment is not available for this account.',403);
 }
 function bounded(promise){let timer;return Promise.race([promise,new Promise((_,reject)=>{timer=setTimeout(()=>reject(new AppleBillingError('apple_unavailable','Apple verification is temporarily unavailable.')),22000);})]).finally(()=>clearTimeout(timer));}
-export function getAppleServices(env,config=getVerifiedAppleConfig(env)){
+export async function getAppleServices(env,config=getVerifiedAppleConfig(env)){
  if(!config)fail('apple_disabled','Apple subscriptions are not available.');
  const cache=services.get(env)||new Map();
  const cached=cache.get(config.environment);
  const fingerprint=[config.environment,config.appId,config.groupId,config.issuerId,config.keyId,config.privateKey,JSON.stringify(config.products),config.sandboxUsers.join(',')].join('|');
  if(cached?.fingerprint===fingerprint)return cached;
+ const {AppStoreServerAPIClient,SignedDataVerifier}=await loadAppleLibrary();
  const result={fingerprint,config,verifier:new SignedDataVerifier(appleRootCertificates(),true,config.environment,config.bundleId,config.environment===Environment.PRODUCTION?config.appId:undefined),client:new AppStoreServerAPIClient(config.privateKey,config.keyId,config.issuerId,config.bundleId,config.environment)};
  cache.set(config.environment,result);services.set(env,cache);return result;
 }
@@ -106,7 +119,7 @@ export async function verifyAppleTransaction(services,signed){
  validateAppleJWS(signed);
  let transaction;
  try{transaction=await bounded(services.verifier.verifyAndDecodeTransaction(signed));}
- catch(error){if(error instanceof AppleBillingError)throw error;if(error?.status===VerificationStatus.RETRYABLE_VERIFICATION_FAILURE)fail('apple_unavailable','Apple verification is temporarily unavailable.');fail('apple_transaction_unverified','Apple could not verify this transaction.',400);}
+ catch(error){if(error instanceof AppleBillingError)throw error;if(await isAppleRetryableVerificationFailure(error))fail('apple_unavailable','Apple verification is temporarily unavailable.');fail('apple_transaction_unverified','Apple could not verify this transaction.',400);}
  validateTransactionClaims(services.config,transaction);
  return transaction;
 }
@@ -192,7 +205,7 @@ export async function readAppleEntitlement(env,userId){
  const result=[];
  for(let row of rows){
   if(Date.now()-row.last_verified_at_ms>=REFRESH_MS){
-   const state=await fetchAppleCurrentSubscription(getAppleServices(env,config),row.original_transaction_id,row.app_account_token);
+   const state=await fetchAppleCurrentSubscription(await getAppleServices(env,config),row.original_transaction_id,row.app_account_token);
    row=await persistAppleSubscription(env,userId,state);
   }
   const entitlement=appleEntitlementFromRow(config,row);if(entitlement)result.push(entitlement);
