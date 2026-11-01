@@ -82,7 +82,7 @@
     if(!control){control=doc.createElement('button');control.type='button';control.dataset.bbkeName=item.name;
      control.addEventListener('click',()=>{
       const saved=window.BBHomeHost?.household?.().find(row=>row.name.toLowerCase()===item.name.toLowerCase());
-      if(saved&&window.BBHome?.addHousehold?.(saved.id))return;
+      if(saved){try{if(window.BBHome?.addHousehold?.(saved.id))return;}catch(error){let notice=region.querySelector('.bbke-household-error');if(!notice){notice=doc.createElement('p');notice.className='bbke-household-error';notice.setAttribute('role','status');region.prepend(notice);}notice.textContent=error.message||'Check the household amounts and try again.';return;}}
       const existing=[...full.querySelectorAll('.bb1749-topup-row')].find(row=>row.querySelector('.bb1749-topup-name')?.textContent.trim().toLowerCase()===item.name.toLowerCase());
       if(existing){existing.querySelector('.bb1749-topup-add').click();return;}
       if(!form)return;form.querySelector('#bb307EssName').value=item.name;form.querySelector('#bb307EssQty').value='1';form.querySelector('#bb307EssUnit').value=item.unit;
@@ -146,7 +146,7 @@
   text(kitchen.querySelector('.bb76-title h2'),'What have you already got?');
   text(kitchen.querySelector('.bb76-title>div>p:last-child'),'Choose what you have in your cupboard, fridge and freezer. Review the amounts below, then confirm your pantry.');
   const pantryTitle=kitchen.querySelector('#bb76PantryHeading');
-  if(pantryTitle?.firstChild?.nodeType===3&&pantryTitle.firstChild.textContent!=='Your pantry ')pantryTitle.firstChild.textContent='Your pantry ';
+  if(pantryTitle?.firstChild?.nodeType===3&&pantryTitle.firstChild.textContent!=='Review amounts ')pantryTitle.firstChild.textContent='Review amounts ';
   let essentials=app.querySelector('#bbKitchenEssentials');
   if(!essentials){
    essentials=doc.createElement('details');essentials.id='bbKitchenEssentials';essentials.open=essentialsOpen;

@@ -45,7 +45,7 @@ async function capture(browser){
  while(await page.locator('[data-bb5-row]:not([data-bb5-row="cupboard|rice"]) [data-bb5-remove]').count())await page.locator('[data-bb5-row]:not([data-bb5-row="cupboard|rice"]) [data-bb5-remove]').first().click();
  await page.evaluate(()=>{window.BBReceiptHost={requiresPantryReview:()=>false,hasPendingConfirmation:()=>false,confirmCurrentPantry:async()=>({ok:true}),afterRender(){}};});
  await page.locator('#bb5Reconcile').click();await page.locator('.tab[data-tab="shop"]').click();
- await page.evaluate(()=>{document.querySelector('#bbSimplePantry').open=true;document.querySelector('#bbSimplePantry').scrollIntoView({block:'start',behavior:'instant'});});
+ await page.evaluate(()=>{document.querySelector('#bbSimplePantry').open=true;scrollTo({top:document.querySelector('#bbSimplePantry').getBoundingClientRect().top+scrollY-16,behavior:'instant'});});
  await shot(page,'03-reconcile','Buy the difference.','Total needed − already got = to buy.');
  await page.locator('.tab[data-tab="shop-list"]').click();if(await page.locator('.bb-weekly-basic-list').isVisible())await page.locator('.bb-weekly-basic-list').click();await page.evaluate(()=>scrollTo({top:0,behavior:'instant'}));
  await shot(page,'04-shopping','One list. All week.','Keep adding. Tick things off as you shop.');
@@ -69,7 +69,7 @@ async function design(browser){
   await page.screenshot({path:path.join(out,item.id+'.png'),animations:'disabled'});
  }
  await context.close();
- const sheet=await browser.newPage({viewport:{width:1320,height:610},deviceScaleFactor:1});
+ const sheet=await browser.newPage({viewport:{width:1320,height:ipad?259:406},deviceScaleFactor:1});
  await sheet.setContent('<html><body style="margin:0;background:#e8eddf;display:flex;gap:8px;padding:12px">'+captures.map(item=>'<img style="width:176px;height:auto;align-self:flex-start" src="data:image/png;base64,'+fs.readFileSync(path.join(out,item.id+'.png')).toString('base64')+'">').join('')+'</body></html>');await sheet.screenshot({path:path.join(out,'contact-sheet.png')});await sheet.close();
  fs.writeFileSync(path.join(out,'manifest.json'),JSON.stringify({dimensions:ipad?{width:2064,height:2752}:{width:1320,height:2868},source:'Current generated application web assets rendered locally with fictional demonstration data',nativeSimulatorCapture:false,app:'BasketBoss',screens:captures.map(({raw,...item})=>({...item,file:item.id+'.png'}))},null,2));
 }
