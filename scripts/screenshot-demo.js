@@ -38,6 +38,9 @@
   // disposable installation; never authorize Premium or contact a live backend.
   put('bb_onboarding_fresh_once_20261028_v1', { complete: true, step: 10, house: '3–4 people', region: 'UK', goals: ['Plan dinners faster'], diets: ['No specific preference'], partnerStepV2: true });
   put('basketboss_onboarding_seen_v1', 'true');
+  // Each capture opens a fresh demo view even when the previous target began a shop.
+  put('basketboss_v172_shop_mode_active_v1', '0');
+  put('basketboss_v172_instore_v1', 'no');
   put('basketboss_321_v7_market', 'UK');
   put('basketboss_v172_weekly_budget_target_v1', '120');
   put('basketboss_v172_weekly_budget_v1', '120');
@@ -192,5 +195,5 @@
     if (!screenPresent) throw Error('Requested screen is not mounted: ' + target);
     if (missingVisibleImages.length) throw Error('Visible images failed to load: ' + missingVisibleImages.join(', '));
     post({ ready: true, screenPresent: true, ...(budget ? { budget } : {}), phase: 'ready', nativeOrigin: location.protocol === 'capacitor:', heading: document.querySelector('#bbTitle, #app h2, #app h3, .bb-cook-studio h1')?.textContent || '', errors: errors.slice(0, 6), missingVisibleImages, width: innerWidth, height: innerHeight });
-  })().catch(error => post({ ready: false, failed: true, phase: 'failed', error: String(error.stack || error), errors: errors.slice(0, 6) }));
+  })().catch(error => post({ ready: false, failed: true, phase: 'failed', error: String(error.message || error) + '\n' + String(error.stack || ''), errors: errors.slice(0, 6) }));
 })();

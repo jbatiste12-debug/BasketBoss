@@ -46,13 +46,14 @@ jobs:
           Both fit the medium-display iPhone screenshot slot shown in App Store Connect (6.1/6.3-inch), not Header artwork.
           The existing nine screenshots are unchanged in their previous download. Main and the app UI are unchanged.
           GUIDE
-      - name: Upload two iPhone screenshots
+      - name: Upload captured iPhone screenshots
+        if: always()
         id: screenshots
         uses: actions/upload-artifact@v4
         with:
           name: BasketBoss-Shopping-List-and-Meal-Cook-Button-1206x2622
           path: artifacts/app-store-screenshots/
-          if-no-files-found: error
+          if-no-files-found: ignore
           retention-days: 30
       - name: Upload capture diagnostics
         if: always()
