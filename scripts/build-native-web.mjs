@@ -20,6 +20,7 @@ export const CLIENT_FILES=Object.freeze([
  'bb-ingredient-preferences.js','bb-ingredient-picker.js','bb-ingredient-picker.css',
  'bb-evening-pivot.js','bb-evening-pivot-app.js','bb-evening-pivot-ui.js','bb-evening-pivot-ui.css',
  'bb-cook-voice.js','bb-cook-voice.css',
+ 'bb-kitchen-essentials.js','bb-kitchen-essentials.css','bb-keyboard-layout.js','bb-keyboard-layout.css',
  'bb-cook-studio.js','bb-cook-studio.css','bb-cook-result.js','bb-cook-result.css',
  'bb-meal-image.js','bb-meal-image.css','bb-navigation-polish.js','bb-navigation-polish.css',
  'bb-account-polish.js','bb-account-polish.css','bb-membership-compare.js','bb-membership-compare.css',

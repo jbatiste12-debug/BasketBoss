@@ -6,6 +6,8 @@ on:
     paths:
       - .github/workflows/inspect-account-keyboard.yml
       - bb-account-polish.*
+      - bb-onboarding-v2.*
+      - ios/App/App/AppDelegate.swift
       - ios/App/BasketBossAccountKeyboardUITests/**
       - scripts/test-ios-account-keyboard.mjs
   workflow_dispatch:

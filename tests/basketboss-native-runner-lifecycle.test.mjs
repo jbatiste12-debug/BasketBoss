@@ -22,7 +22,7 @@ async function runScript(name,{ci=true,booted=true,includeLatest=false,failTests
    const error=Error('xcodebuild failed');error.stdout='XCTAssertTrue failed: real keyboard diagnostic';error.stderr='TEST FAILED';throw error;
   }
   if(command==='xcrun'){
-   if(args[0]==='xcresulttool')return JSON.stringify({passedTests:failTests?1:2,failedTests:failTests?1:0,skippedTests:0});
+   if(args[0]==='xcresulttool')return JSON.stringify({passedTests:failTests?1:4,failedTests:failTests?1:0,skippedTests:0});
    if(args[0]==='simctl'){
     if(args[1]==='list'&&args[2]==='devices')return JSON.stringify({devices:{[runtime.identifier]:[device()],...(includeLatest?{[latestRuntime.identifier]:[{udid:'cold-latest-phone',name:'iPhone SE (3rd generation)',state:'Shutdown',isAvailable:true}]}:{})}});
     if(args[1]==='list'&&args[2]==='runtimes')return JSON.stringify({runtimes:includeLatest?[latestRuntime,runtime]:[runtime]});

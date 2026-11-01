@@ -57,7 +57,9 @@
  function britishVoice(synthesis){
   try{
    const voices=(synthesis?.getVoices?.()||[]).filter(voice=>/^en[-_]GB$/i.test(voice.lang));
-   const rank=voice=>(voice.localService===true?8:0)+(/premium|enhanced/i.test(voice.name)?4:0)+(/serena|kate|martha|susan|hazel/i.test(voice.name)?2:0)+(voice.default?1:0);
+   // Prefer a natural voice before locality or a familiar name. A compact
+   // default should not beat an available enhanced voice just by being local.
+   const rank=voice=>(/premium/i.test(voice.name)?40:/enhanced|natural|neural/i.test(voice.name)?30:0)+(voice.localService===true?4:0)+(/serena|kate|martha|susan|hazel/i.test(voice.name)?2:0)+(voice.default?1:0);
    return voices.sort((a,b)=>rank(b)-rank(a))[0]||null;
   }catch(_){return null;}
  }
@@ -162,7 +164,7 @@
    const generation=++speechGeneration;
    if(speechTimer!==null)host.clearTimeout(speechTimer);speechTimer=null;
    speaking=true;listening=false;const old=instance;instance=null;try{old?.abort();}catch(_){}render();
-   const utterance=new host.SpeechSynthesisUtterance(text);utterance.lang=read().lang||'en-GB';utterance.rate=.92;utterance.pitch=1;
+   const utterance=new host.SpeechSynthesisUtterance(text);utterance.lang=read().lang||'en-GB';utterance.rate=1;utterance.pitch=1;
    const voice=britishVoice(host.speechSynthesis);if(voice)utterance.voice=voice;
    let ended=false,watchdog=null;
    const current=()=>session===epoch&&generation===speechGeneration;

@@ -177,3 +177,8 @@ body[data-bbnext-view="discover"] #app .bb-discover-benefit{display:inline-flex;
 body[data-bbnext-view="discover"] #app .grid-recipes .mini-content h4{min-height:0!important}
 body[data-bbnext-view="discover"] #app .grid-recipes .mini-content .bb18-recipe-meta{min-height:0!important;height:auto!important;justify-content:flex-start!important;margin:6px 0!important}
 body[data-bbnext-view="discover"] #app .grid-recipes .mini-content>.muted{min-height:0!important;height:auto!important;padding-bottom:0!important;margin-bottom:10px!important}
+/* Keep the two actions together at the foot of each card. Full titles and
+   factual recipe benefits keep their natural height without clipping. */
+body[data-bbnext-view="discover"] #app .grid-recipes .mini-content>.bb80-gallery-add[data-bb80-add-week]{margin-top:auto!important;margin-bottom:0!important}
+body[data-bbnext-view="discover"] #app .grid-recipes .mini-content>.bb-manual-batch-btn{margin-top:8px!important;margin-bottom:0!important;min-height:48px!important;gap:5px!important;padding:9px 6px!important;font-size:12px!important;font-weight:750!important}
+body[data-bbnext-view="discover"] #app .grid-recipes .mini-content>.bb-manual-batch-btn .bb-premium-feature-badge{margin:0!important;align-self:center!important}

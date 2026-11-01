@@ -39,7 +39,7 @@ try{
   if(phone){ownsSimulator=true;break;}
  }
  if(!phone)throw Error('no_iphone_simulator');
- console.log('Checking the real email and password keyboard on '+deviceName+' / iOS '+runtimeVersion+'.');
+ console.log('Checking real email and password keyboards in the account dialog and fresh onboarding on '+deviceName+' / iOS '+runtimeVersion+'.');
  stage='software_keyboard';
  try{keyboardPreference=execute('defaults',['read','com.apple.iphonesimulator','ConnectHardwareKeyboard'],10000);preferenceRead=true;}catch{preferenceRead=true;}
  execute('defaults',['write','com.apple.iphonesimulator','ConnectHardwareKeyboard','-bool','NO'],10000);
@@ -67,12 +67,12 @@ try{
  try{save('tests.log',execute('xcodebuild',[...argumentsForTests,'-parallel-testing-enabled','NO','-test-timeouts-enabled','YES','-default-test-execution-time-allowance','90','-maximum-test-execution-time-allowance','120','-resultBundlePath',result,'test-without-building'],360000));}catch(error){saveFailure('tests.log',error);try{readTestSummary(result);}catch{}throw error;}
  stage='test_result';
  const summary=readTestSummary(result);
- if(summary.passedTests!==2||summary.failedTests!==0||summary.skippedTests!==0)throw Error('required_keyboard_tests_missing');
+ if(summary.passedTests!==4||summary.failedTests!==0||summary.skippedTests!==0)throw Error('required_keyboard_tests_missing');
 }catch(error){failure=error.code==='ETIMEDOUT'?'command_timeout':String(error.message||'command_failed').replace(/[^A-Za-z0-9_.-]/g,'').slice(0,100);}
 finally{
  if(phone){try{run('simctl','io',phone,'screenshot','--type=png',path.join(output,failure?'failure.png':'completed.png'));}catch{}if(ownsSimulator){try{run('simctl','shutdown',phone);}catch{}try{run('simctl','delete',phone);}catch{}}}
  if(preferenceRead)try{if(keyboardPreference===null)execute('defaults',['delete','com.apple.iphonesimulator','ConnectHardwareKeyboard'],10000);else execute('defaults',['write','com.apple.iphonesimulator','ConnectHardwareKeyboard','-bool',keyboardPreference==='1'?'YES':'NO'],10000);}catch{}
 }
-const report={passed:!failure,realSoftwareKeyboard:!failure,emailFocus:!failure,passwordFocus:!failure,credentialsEntered:false,signInSubmitted:false,runtimeVersion,deviceName,reusedCIOnlySimulator:resetSyntheticCIApp,failureStage:failure?stage:'',failure};
+const report={passed:!failure,realSoftwareKeyboard:!failure,emailFocus:!failure,passwordFocus:!failure,onboardingEmailFocus:!failure,onboardingPasswordFocus:!failure,backgroundLocked:!failure,requiredTests:4,credentialsEntered:false,signInSubmitted:false,runtimeVersion,deviceName,reusedCIOnlySimulator:resetSyntheticCIApp,failureStage:failure?stage:'',failure};
 save('report.json',JSON.stringify(report,null,2));console.log('::notice title=BasketBoss native account keyboard::'+JSON.stringify(report));
 if(failure)process.exitCode=1;

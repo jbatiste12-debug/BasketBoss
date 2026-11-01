@@ -145,10 +145,12 @@ public final class BasketBossCookVoicePlugin: CAPPlugin, CAPBridgedPlugin, AVSpe
                 try audio.setActive(true)
                 let utterance = AVSpeechUtterance(string: text)
                 utterance.voice = Self.cookeryVoice()
-                utterance.rate = 0.46
+                // A neutral speaking pace preserves the installed voice's
+                // natural phrasing instead of stretching it into a slow drawl.
+                utterance.rate = AVSpeechUtteranceDefaultSpeechRate
                 utterance.pitchMultiplier = 1.0
-                utterance.preUtteranceDelay = 0.18
-                utterance.postUtteranceDelay = 0.18
+                utterance.preUtteranceDelay = 0.10
+                utterance.postUtteranceDelay = 0.12
                 self.spoken = utterance
                 self.status("paused")
                 self.speaker.speak(utterance)
@@ -166,12 +168,14 @@ public final class BasketBossCookVoicePlugin: CAPPlugin, CAPBridgedPlugin, AVSpe
 
     private static func cookeryVoice() -> AVSpeechSynthesisVoice? {
         // Select an original installed system voice, never an imitation of a
-        // named person. Voice availability and quality depend on the device.
+        // named person. An enhanced/premium voice must win over a compact
+        // female voice: quality matters more than gender for natural speech.
+        // Voice availability and quality depend on the device's downloads.
         let voices = AVSpeechSynthesisVoice.speechVoices().filter { $0.language.lowercased() == "en-gb" }
         return voices.sorted { left, right in
+            if left.quality != right.quality { return left.quality.rawValue > right.quality.rawValue }
             let leftFemale = left.gender == .female, rightFemale = right.gender == .female
             if leftFemale != rightFemale { return leftFemale }
-            if left.quality != right.quality { return left.quality.rawValue > right.quality.rawValue }
             return left.identifier < right.identifier
         }.first ?? AVSpeechSynthesisVoice(language: "en-GB")
     }

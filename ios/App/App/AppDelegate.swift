@@ -90,8 +90,10 @@ class BasketBossViewController: CAPBridgeViewController {
             content.addUserScript(WKUserScript(source: BasketBossCookSmokeReporter.script, injectionTime: .atDocumentStart, forMainFrameOnly: true))
         }
         #if targetEnvironment(simulator)
-        if ProcessInfo.processInfo.arguments.contains("--bb-native-account-keyboard-smoke"), let webView = webView {
-            webView.configuration.userContentController.addUserScript(WKUserScript(source: BasketBossAccountKeyboardSetup.script, injectionTime: .atDocumentStart, forMainFrameOnly: true))
+        let keyboardArguments = ProcessInfo.processInfo.arguments
+        if (keyboardArguments.contains("--bb-native-account-keyboard-smoke") || keyboardArguments.contains("--bb-native-onboarding-keyboard-smoke")), let webView = webView {
+            let onboarding = keyboardArguments.contains("--bb-native-onboarding-keyboard-smoke")
+            webView.configuration.userContentController.addUserScript(WKUserScript(source: BasketBossAccountKeyboardSetup.script(onboarding: onboarding), injectionTime: .atDocumentStart, forMainFrameOnly: true))
         }
         #endif
         #endif
@@ -147,20 +149,38 @@ class BasketBossViewController: CAPBridgeViewController {
 // Only the explicit XCUITest launch on a disposable simulator uses this setup.
 // XCTest itself taps real inputs; this script never focuses, types or signs in.
 private enum BasketBossAccountKeyboardSetup {
-    static let script = #"""
-    (()=>{
-      localStorage.setItem('bb_onboarding_fresh_once_20261028_v1',JSON.stringify({complete:true,step:10,house:'3–4 people',region:'UK',goals:['Plan dinners faster'],diets:['No specific preference'],partnerStepV2:true}));
-      localStorage.setItem('basketboss_onboarding_seen_v1','true');
-      sessionStorage.setItem('basketboss_welcome_splash_seen_v1','1');
-      sessionStorage.setItem('bb_funnel_nudge_dismissed_v1','1');
-      let attempts=0;
-      const open=setInterval(()=>{
-        if(++attempts>250){clearInterval(open);return;}
-        const button=document.getElementById('cloud-open');
-        if(document.readyState!=='loading'&&window.BBNativeStartup?.phase==='ready'&&button){clearInterval(open);button.click();}
-      },100);
-    })();
-    """#
+    static func script(onboarding: Bool) -> String {
+        "window.bbKeyboardSmokeOnboarding=" + (onboarding ? "true;" : "false;") + #"""
+        (()=>{
+          const onboarding=window.bbKeyboardSmokeOnboarding===true;
+          localStorage.setItem('bb_onboarding_fresh_once_20261028_v1',JSON.stringify(onboarding?{complete:false,started:true,step:0,partnerStepV2:true}:{complete:true,step:10,house:'3–4 people',region:'UK',goals:['Plan dinners faster'],diets:['No specific preference'],partnerStepV2:true}));
+          localStorage.setItem('basketboss_onboarding_seen_v1','true');
+          sessionStorage.setItem('basketboss_welcome_splash_seen_v1','1');
+          sessionStorage.setItem('bb_funnel_nudge_dismissed_v1','1');
+          let attempts=0,opened=false,baselineScroll=null;
+          const check=setInterval(()=>{
+            if(++attempts>1800){clearInterval(check);return;}
+            if(!onboarding&&!opened){
+              const button=document.getElementById('cloud-open');
+              if(document.readyState!=='loading'&&window.BBNativeStartup?.phase==='ready'&&button){opened=true;button.click();}
+            }
+            const host=document.getElementById(onboarding?'bbNewOnboarding':'cloud-panel');
+            const form=document.getElementById('cloud-auth'),shell=document.querySelector('.shell');
+            if(!host?.contains(form)||!host.getClientRects().length)return;
+            const fixed=getComputedStyle(document.body).position==='fixed';
+            if(fixed&&baselineScroll===null)baselineScroll=window.scrollY;
+            const viewport=window.visualViewport,box=host.getBoundingClientRect();
+            const top=Math.max(0,Number(viewport?.offsetTop)||0),left=Math.max(0,Number(viewport?.offsetLeft)||0);
+            const height=Math.min(Number(viewport?.height)||innerHeight,innerHeight),width=Math.min(Number(viewport?.width)||innerWidth,innerWidth);
+            const flags={bodyFixed:fixed,shellHidden:!!shell&&getComputedStyle(shell).visibility==='hidden',shellInert:!!shell?.closest('[inert]'),viewportCovered:Math.abs(box.top-top)<3&&Math.abs(box.left-left)<3&&Math.abs(box.bottom-top-height)<3&&Math.abs(box.right-left-width)<3,rootLocked:baselineScroll!==null&&Math.abs(window.scrollY-baselineScroll)<2};
+            let probe=document.getElementById('bbAccountKeyboardProbe');
+            if(!probe){probe=document.createElement('p');probe.id='bbAccountKeyboardProbe';probe.style.cssText='font-size:8px;line-height:1.1;margin:2px 0;color:#385e45';form.appendChild(probe);}
+            const text='BB keyboard probe '+(onboarding?'onboarding':'account')+' '+Object.entries(flags).map(([name,value])=>name+'='+value).join(' ');
+            if(probe.textContent!==text)probe.textContent=text;
+          },100);
+        })();
+        """#
+    }
 }
 #endif
 // A fresh CI simulator can exercise the actual capacitor:// WKWebView. This

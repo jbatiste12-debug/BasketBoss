@@ -9,10 +9,10 @@ const KEY='bb_onboarding_fresh_once_20261028_v1';
 function harness(saved){
  const storage=new Map(saved?[[KEY,JSON.stringify(saved)]]:[]);
  const events={};const body={style:{overflow:''},appendChild(node){this.node=node}};
- const document={readyState:'complete',body,querySelector:()=>null,getElementById:()=>null,
-  createElement:()=>({innerHTML:'',setAttribute(){},addEventListener(type,fn){this.events??={};this.events[type]=fn},querySelector(){return null},remove(){this.removed=true}}),
+ const document={readyState:'complete',body,documentElement:{style:{setProperty(){},removeProperty(){}},classList:{contains:()=>false,add(){},remove(){}}},querySelectorAll:()=>[],querySelector:()=>null,getElementById:()=>null,
+  createElement:()=>({innerHTML:'',contains:()=>false,setAttribute(){},addEventListener(type,fn){this.events??={};this.events[type]=fn},querySelector(){return null},remove(){this.removed=true}}),
   addEventListener(type,fn){events[type]=fn}};
- const sandbox={window:{matchMedia:()=>({matches:false}),addEventListener(type,fn){events[type]=fn}},document,
+ const sandbox={window:{scrollTo(){},matchMedia:()=>({matches:false}),addEventListener(type,fn){events[type]=fn}},document,
   localStorage:{getItem:k=>storage.get(k)??null,setItem(k,v){storage.set(k,v)},removeItem:k=>storage.delete(k)},
   sessionStorage:{setItem(){}},navigator:{standalone:false},location:{hostname:'basketboss-partner-qa.pages.dev',search:''},URLSearchParams,queueMicrotask,console};
  vm.runInNewContext(source,sandbox,{timeout:500});

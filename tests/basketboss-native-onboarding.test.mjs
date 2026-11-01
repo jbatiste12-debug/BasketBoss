@@ -16,19 +16,21 @@ function harness({saved,store,deleted=false,startup=false,native=true,dialog=fal
  const replayButton={id:'bbOnboardingReplay',textContent:'Replay welcome animation',isConnected:true,focus(){this.focused=true;}};
  const uiNodes=new Map([[replayButton.id,replayButton]]);
  const parent={appendChild(node){node.parentNode=this;uiNodes.set(node.id,node);}};replayButton.parentNode=parent;replayButton.setAttribute=()=>{};
+ const rootClasses=new Set(),rootStyle=new Map(),scrolls=[];
+ const background=[false,true].map(inert=>({inert,contains:()=>false,hasAttribute(){return this.inert;},setAttribute(){this.inert=true;},removeAttribute(){this.inert=false;}}));
  const body={style:{overflow:''},appendChild(node){nodes.push(node);}};
- const document={body,readyState:'complete',activeElement:replayButton,documentElement:{classList:{contains:name=>name==='bb-native-starting'&&starting}},
+ const document={body,readyState:'complete',activeElement:replayButton,documentElement:{style:{setProperty:(k,v)=>rootStyle.set(k,v),removeProperty:k=>rootStyle.delete(k)},classList:{contains:name=>rootClasses.has(name)||name==='bb-native-starting'&&starting,add:name=>rootClasses.add(name),remove:name=>rootClasses.delete(name)}},querySelectorAll:()=>background,
   getElementById(id){if(uiNodes.has(id))return uiNodes.get(id);if(id==='bbAccountDeletionDialog')return {open:dialogOpen};return null;},
-  createElement(){const classes=new Set();return {innerHTML:'',events:new Map(),style:{setProperty(){}},classList:{contains:name=>classes.has(name),toggle(name,enabled){enabled?classes.add(name):classes.delete(name);}},contains:node=>node.inside===true,setAttribute(){},addEventListener(name,fn){on(this.events,name,fn);},querySelector(){return null;},remove(){this.removed=true;}};},
+  createElement(){const classes=new Set(),values=new Map();return {innerHTML:'',events:new Map(),style:{setProperty:(k,v)=>values.set(k,v),getPropertyValue:k=>values.get(k)},classList:{contains:name=>classes.has(name),toggle(name,enabled){enabled?classes.add(name):classes.delete(name);}},contains:node=>node?.inside===true,setAttribute(){},addEventListener(name,fn){on(this.events,name,fn);},querySelector(){return null;},remove(){this.removed=true;}};},
   querySelector:selector=>selector.includes('bbui-settings-close')?{click(){closed++;}}:null,addEventListener(name,fn){on(documentEvents,name,fn);}};
- const window={visualViewport:{height:932,addEventListener(name,fn){on(viewportEvents,name,fn);}},BBNative:native?{isNative:true}:undefined,BBAccountDeletion:{isDeleting:()=>deleting},matchMedia:()=>({matches:false}),addEventListener(name,fn){on(windowEvents,name,fn);},BasketBossSetOnboardingServings(count){preferences.push({house:count});return true;},bb307SwitchIsland(region){preferences.push({region});return true;}};
+ const window={innerHeight:932,innerWidth:430,scrollX:3,scrollY:500,scrollTo(x,y){scrolls.push([x,y]);this.scrollX=x;this.scrollY=y;},visualViewport:{height:932,width:430,offsetTop:0,offsetLeft:0,addEventListener(name,fn){on(viewportEvents,name,fn);}},BBNative:native?{isNative:true}:undefined,BBAccountDeletion:{isDeleting:()=>deleting},matchMedia:()=>({matches:false}),addEventListener(name,fn){on(windowEvents,name,fn);},BasketBossSetOnboardingServings(count){preferences.push({house:count});return true;},bb307SwitchIsland(region){preferences.push({region});return true;}};
  const context=vm.createContext({window,document,localStorage:{getItem:key=>storage.get(key)??null,setItem(key,value){writes.push([key,value]);storage.set(key,value);}},sessionStorage:{setItem(){}},location:{hostname:native?'localhost':'basketboss.co.uk',protocol:native?'capacitor:':'https:',search:''},navigator:{standalone:false},URLSearchParams,queueMicrotask,MutationObserver:class{constructor(fn){observer=fn;}observe(){}},console});
  vm.runInContext(source,context,{timeout:1000});
  const active=()=>nodes.findLast(node=>!node.removed);
  const dispatch=(name,event={})=>{for(const fn of windowEvents.get(name)||[])fn(event);};
  const tap=(action,option)=>{const node=active();assert.ok(node,'expected active onboarding');for(const fn of node.events.get('click')||[])fn({target:{closest(selector){if(selector==='[data-bbob-opt]'&&option!==undefined)return {dataset:{bbobOpt:String(option)}};if(selector==='[data-bbob]'&&action)return {dataset:{bbob:action}};return null;}}});};
  const through=step=>{for(let i=0;i<step;i++)tap('next');};
- return {window,document,storage,writes,preferences,replayButton,settingsClosed:()=>closed,active,tap,through,dispatch,read:()=>JSON.parse(storage.get(KEY)||'null'),setDeleting:value=>{deleting=value;},setStartup:value=>{starting=value;},setDialog:value=>{dialogOpen=value;},
+ return {window,document,storage,writes,preferences,replayButton,rootClasses,rootStyle,background,scrolls,settingsClosed:()=>closed,active,tap,through,dispatch,read:()=>JSON.parse(storage.get(KEY)||'null'),setDeleting:value=>{deleting=value;},setStartup:value=>{starting=value;},setDialog:value=>{dialogOpen=value;},
   escape(){for(const fn of active()?.events.get('keydown')||[])fn({key:'Escape',preventDefault(){}});},
   resize(height){window.visualViewport.height=height;for(const fn of viewportEvents.get('resize')||[])fn();},
   region(value){for(const fn of active()?.events.get('change')||[])fn({target:{value,matches:()=>true}});},
@@ -121,4 +123,23 @@ test('keyboard layout stays steady when a sign-in field blurs onto its button',(
  h.document.activeElement={id:'cloud-login'};h.resize(500);assert.equal(h.active().classList.contains('bbob-keyboard'),true,'Sign in must not move while its tap completes');
  h.resize(932);assert.equal(h.active().classList.contains('bbob-keyboard'),false);
  h.resize(500);h.tap('next');assert.equal(h.active().classList.contains('bbob-keyboard'),false,'later setup screens keep their navigation');
+});
+
+test('fresh onboarding isolates the planner, follows keyboard panning and restores the page on exit',()=>{
+ const h=harness({store:new Map([[PLAN,'saved meal plan']])});
+ assert.equal(h.rootClasses.has('bb-onboarding-open'),true);
+ assert.equal(h.rootStyle.get('--bbob-page-top'),'-500px');
+ assert.deepEqual(h.background.map(node=>node.inert),[true,true]);
+ h.tap('next');
+ h.document.activeElement={id:'cloud-password',inside:true,matches:()=>true,blur(){this.blurred=true;}};
+ Object.assign(h.window.visualViewport,{height:300,width:393,offsetTop:180,offsetLeft:12});h.resize(300);
+ for(const [name,value] of Object.entries({height:'300px',width:'393px',top:'180px',left:'12px'})){
+  assert.equal(h.active().style.getPropertyValue('--bbob-viewport-'+name),value);
+ }
+ assert.equal(h.rootClasses.has('bb-onboarding-open'),true,'focusing an onboarding field keeps the page locked');
+ const input=h.document.activeElement;h.window.BBOnboard2026.pauseForAccount();
+ assert.equal(input.blurred,true);assert.equal(h.rootClasses.has('bb-onboarding-open'),false);
+ assert.equal(h.rootStyle.has('--bbob-page-top'),false);assert.deepEqual(h.background.map(node=>node.inert),[false,true]);
+ assert.deepEqual(h.scrolls,[[3,500]]);assert.equal(h.document.body.style.overflow,'');
+ assert.equal(h.storage.get(PLAN),'saved meal plan');assert.equal(h.read().complete,false);
 });

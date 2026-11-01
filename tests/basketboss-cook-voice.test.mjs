@@ -109,8 +109,39 @@ test('full instructions have a length-based reading window and no silent text tr
  const full='Add 265 g cheddar. '+Array.from({length:35},()=> 'Stir gently until the sauce is smooth.').join(' ');
  const h=fixture({browser:true,synthesis:true});h.context.phase='cook';h.context.stepIndex=0;h.context.stepCount=2;h.context.currentStep=full;
  const uk={lang:'en-GB',name:'Kate (Enhanced)',localService:true},other={lang:'en-US',name:'Other',localService:true};h.host.speechSynthesis.getVoices=()=>[other,uk];
- h.button().click();await tick();assert.equal(h.utterances.length,1);assert.ok(h.utterances[0].text.includes(full));assert.equal(h.utterances[0].voice,uk);assert.equal(h.utterances[0].rate,.92);assert.equal(h.utterances[0].lang,'en-GB');
+ h.button().click();await tick();assert.equal(h.utterances.length,1);assert.ok(h.utterances[0].text.includes(full));assert.equal(h.utterances[0].voice,uk);assert.equal(h.utterances[0].rate,1);assert.equal(h.utterances[0].pitch,1);assert.equal(h.utterances[0].lang,'en-GB');
  assert.match(h.status(),/Reading step 1 of 2/);assert.ok(h.status().length<100,'spoken instructions do not expand the compact control');h.controller.dispose();
+});
+
+test('natural British voice quality wins over a compact local default or familiar name',async()=>{
+ const compact={lang:'en-GB',name:'Kate',localService:true,default:true};
+ const enhanced={lang:'en-GB',name:'Daniel (Enhanced)',localService:true};
+ const natural={lang:'en-GB',name:'English UK (Natural)',localService:false};
+ const premium={lang:'en-GB',name:'Serena (Premium)',localService:true};
+ const otherLanguage={lang:'en-US',name:'Premium',localService:true};
+ for(const [offered,expected]of[
+  [[compact,enhanced,otherLanguage],enhanced],
+  [[compact,natural,otherLanguage],natural],
+  [[compact,enhanced,premium,otherLanguage],premium]
+ ]){
+  const h=fixture({browser:true,synthesis:true});
+  h.context.phase='cook';h.context.stepIndex=0;h.context.currentStep='Stir gently until smooth.';
+  h.host.speechSynthesis.getVoices=()=>offered;
+  h.button().click();await tick();
+  assert.equal(h.utterances[0].voice,expected,'prefer the best available natural British voice');
+  assert.equal(h.utterances[0].rate,1,'use a normal speaking pace');
+  assert.equal(h.utterances[0].pitch,1,'preserve the real voice pitch');
+  assert.ok(h.utterances[0].text.includes(h.context.currentStep),'recipe wording is preserved');
+  h.controller.dispose();
+ }
+});
+
+test('voice selection safely falls back to the platform when no British voice is listed yet',async()=>{
+ const h=fixture({browser:true,synthesis:true});
+ h.context.phase='cook';h.context.stepIndex=0;h.context.currentStep='Add the sliced onion.';
+ h.host.speechSynthesis.getVoices=()=>[];
+ h.button().click();await tick();assert.equal(h.utterances[0].voice,undefined);assert.equal(h.utterances[0].lang,'en-GB');
+ h.controller.dispose();
 });
 
 test('Free voice entry opens the existing upgrade flow without native permissions or listening',async()=>{
