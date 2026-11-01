@@ -23,6 +23,13 @@ function harness({saved=session,fetchResult}={}){
 }
 const tick=()=>new Promise(resolve=>setImmediate(resolve));
 
+test('an expired stored session shows real sign-in controls without deleting local data',()=>{
+ const h=harness({saved:{...session,expires_at:1}});h.store.set(stateKey,'saved meal plan');
+ let paused=0;h.window.BBOnboard2026={pauseForAccount(){paused++;}};
+ h.node('cloud-open').onclick();assert.equal(paused,1);assert.equal(h.node('cloud-auth').hidden,false);assert.equal(h.node('cloud-signed').hidden,true);
+ assert.match(h.node('cloud-status').textContent,/session has expired/);assert.equal(h.store.get(stateKey),'saved meal plan');assert.equal(h.requests.length,0);
+});
+
 test('pending deletion exposes recovery sign-in without sending any saved plan to the cloud',async()=>{
  const h=harness({saved:{...session,expires_at:1},fetchResult:()=>Response.json({...session,access_token:'fresh-recovery',expires_in:3600})});
  let received;

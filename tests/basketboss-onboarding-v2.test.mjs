@@ -9,11 +9,11 @@ const style=fs.readFileSync('bb-onboarding-v2.css','utf8');
 const compare=fs.readFileSync('compare.html','utf8');
 
 test('new onboarding runs before legacy animation without modifying its artwork',()=>{
- assert.match(index,/bb-onboarding-v2\.js\?v=20261101-viewport1/);
- assert.match(index,/bb-onboarding-v2\.css\?v=20261101-viewport1/);
+ assert.match(index,/bb-onboarding-v2\.js\?v=20261101-signin2/);
+ assert.match(index,/bb-onboarding-v2\.css\?v=20261101-signin2/);
  assert.ok(index.indexOf('bb-onboarding-v2.js')<index.indexOf('bb-welcome-splash.js'));
- assert.match(index,/if\(window\.BBOnboard2026\?\.willShow\(\)\)return;/);
- assert.match(splash,/!window\.BBOnboard2026\?\.willShow\(\)/);
+ assert.match(index,/if\(window\.BBOnboard2026\)return;/);
+ assert.match(splash,/!window\.BBOnboard2026/);
 });
 test('the real Supabase controls are reused and restored; signup is not replaced',()=>{
  assert.match(index,/id="cloud-auth"/);assert.match(index,/id="cloud-signup"/);

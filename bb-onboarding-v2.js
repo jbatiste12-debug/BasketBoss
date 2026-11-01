@@ -38,15 +38,16 @@
    // members and users with existing plans, without deleting older state.
    if(deleting()||deletionDialogOpen())return false;
    if(host)return true;
+   if(accountRequested||location.hash==='#account')return false;
    if(preview())return true;
    return restoreState()?.complete!==true;
  }
  // Returning and paying members keep their existing opening experience.
- window.BBOnboard2026={willShow,preview,open:replay,getPreferences:()=>({house:state.house,region:state.region,goals:[...state.goals],diets:[...state.diets]})};
+ window.BBOnboard2026={willShow,preview,open:replay,pauseForAccount,getPreferences:()=>({house:state.house,region:state.region,goals:[...state.goals],diets:[...state.diets]})};
  // Founder story is retained on compare.html; no homepage element is modified here.
  function trimFounder(){return SHOW_FOUNDER_STORY;}
  let state=restoreState()||{step:0,house:'',goals:[],diets:[],region:'',started:false,complete:false,partnerStepV2:true,wantsPartnerInvite:false,partnerIntent:'none'};
- let host=null,form=null,message=null,formMarker=null,messageMarker=null,oldOverflow='',lastFocus=null;
+ let host=null,form=null,message=null,formMarker=null,messageMarker=null,oldOverflow='',lastFocus=null,accountRequested=false,fullViewportHeight=0;
  // Replay uses memory until Finish; closing or reloading keeps prior setup intact.
  let replaying=false,replayOriginal=null;
  const changedPreferences=new Set();
@@ -98,7 +99,7 @@
          description=state.partnerIntent==='join'?'Use the email address your partner invited. Once your email is verified and you sign in, we’ll check for their invitation before asking you to create a separate plan.':'Create a free account or sign in using the existing secure email form. No card needed. Partner Sharing is available to one verified partner when enabled for Premium.';
          art='<div id="bbobAuthSlot" class="bbob-auth-slot"></div><div id="bbobMessageSlot" class="bbob-message-slot" aria-live="polite"></div>';
          foot='If you create an account, you may need to confirm your email before signing in.';
-         actions=btn(state.partnerIntent==='join'?'Continue without signing in':'Continue setup','next','outline')+btn('Skip account for now · see partner sharing','next','link');
+         actions=btn('Continue without signing in','next','outline')+btn('Back','back','link');
        }
        break;
      case 2:
@@ -171,12 +172,30 @@
    if(!messageMarker){messageMarker=document.createComment('BasketBoss original Supabase message position');message.parentNode.insertBefore(messageMarker,message);}
    id('bbobAuthSlot')?.appendChild(form);id('bbobMessageSlot')?.appendChild(message);
    form.hidden=false;
-   id('cloud-email')?.focus({preventScroll:true});
  }
- function sizeWelcomeViewport(){const height=window.visualViewport?.height;if(host&&Number.isFinite(height)&&height>0)host.style?.setProperty?.('--bbob-viewport-height',Math.round(height)+'px');}
- function render(){if(!host)return;restoreAuth();host.innerHTML=content();sizeWelcomeViewport();
+ function accountInput(){const active=document.activeElement;return state.step===1&&active?.matches?.('#cloud-email,#cloud-password')&&host?.contains?.(active)?active:null;}
+ function keepAuthFocusVisible(){
+   const active=accountInput(),main=host?.querySelector('.bbob-main');if(!active||!main)return;
+   const bounds=main.getBoundingClientRect(),field=active.getBoundingClientRect();
+   if(field.bottom>bounds.bottom-16)main.scrollTop+=field.bottom-bounds.bottom+16;
+   else if(field.top<bounds.top+16)main.scrollTop-=bounds.top+16-field.top;
+ }
+ function sizeWelcomeViewport(){
+   const height=window.visualViewport?.height||window.innerHeight;if(!host||!Number.isFinite(height)||height<=0)return;
+   host.style?.setProperty?.('--bbob-viewport-height',Math.round(height)+'px');
+   fullViewportHeight=Math.max(fullViewportHeight,height);
+   // Keep this layout until the keyboard actually closes. Removing it on input
+   // blur moves Sign in between touch-down and touch-up and loses the tap.
+   const editing=!!accountInput()||host.classList?.contains('bbob-keyboard');
+   host.classList?.toggle('bbob-keyboard',state.step===1&&editing&&height<fullViewportHeight-100);
+   window.requestAnimationFrame?.(keepAuthFocusVisible);
+ }
+ function render(){if(!host)return;restoreAuth();host.innerHTML=content();
    if(state.step===1&&!validSession())mountAuth();
-   host.scrollTop=0;host.querySelector('[data-bbob="next"]')?.focus({preventScroll:true});
+   sizeWelcomeViewport();host.scrollTop=0;
+   if(state.step===1&&!validSession()){
+     const heading=host.querySelector('#bbob-title');heading?.setAttribute('tabindex','-1');heading?.focus({preventScroll:true});
+   }else host.querySelector('[data-bbob="next"]')?.focus({preventScroll:true});
  }
  // No changes to app state take place on preview, survey selection or Back.
  // Commit to the existing app's OWN setters only when the user exits onboarding.
@@ -263,6 +282,7 @@
  }
  function replay(){
    if(host||blocked())return false;
+   accountRequested=false;
    replayOriginal=JSON.parse(JSON.stringify(restoreState()||state));
    state={house:'',goals:[],diets:[],region:'',partnerStepV2:true,wantsPartnerInvite:false,partnerIntent:'none',...replayOriginal,step:0,started:true,complete:false};
    state.goals=Array.isArray(state.goals)?[...state.goals]:[];state.diets=Array.isArray(state.diets)?[...state.diets]:[];
@@ -270,7 +290,7 @@
    return begin(true);
  }
  function begin(force=false){
-   if((!force&&!willShow())||host||blocked())return false;
+   if((!force&&!willShow())||host||blocked()||(!force&&accountRequested))return false;
    if(!force)state=restoreState()||state;
    // Everyone sees the new rollout once; saved recipes, plans and sessions stay intact.
    if(!state.started){state={step:0,house:'',goals:[],diets:[],region:'',started:true,complete:false,partnerStepV2:true,wantsPartnerInvite:false,partnerIntent:'none'};persist();}
@@ -285,6 +305,9 @@
    oldOverflow=document.body.style.overflow;lastFocus=document.activeElement;
    host=document.createElement('div');host.id='bbNewOnboarding';host.setAttribute('role','dialog');host.setAttribute('aria-modal','true');host.setAttribute('aria-label','BasketBoss welcome and setup');
    document.body.appendChild(host);document.body.style.overflow='hidden';
+   fullViewportHeight=window.visualViewport?.height||window.innerHeight||0;
+   host.addEventListener('focusin',sizeWelcomeViewport);
+   host.addEventListener('focusout',()=>queueMicrotask(sizeWelcomeViewport));
    host.addEventListener('click',e=>{
      if(blocked())return;
      const option=e.target.closest('[data-bbob-opt]');if(option){chooseOption(Number(option.dataset.bbobOpt));return;}
@@ -319,6 +342,10 @@
    host.addEventListener('change',e=>{if(!blocked()&&e.target.matches('[data-bbob-region]')){state.region=e.target.value;changedPreferences.add('region');persist();}});
    host.addEventListener('keydown',e=>{if(e.key==='Escape'){e.preventDefault();e.stopPropagation?.();if(replaying)dismiss();else complete();}});
    render();return true;
+ }
+ function pauseForAccount(){
+   // Direct account requests keep unfinished setup intact without covering login.
+   accountRequested=true;if(host)dismiss();
  }
  function replayLabel(){
    let button=id('bbOnboardingReplay');

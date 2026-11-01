@@ -10,7 +10,7 @@ const completed={step:10,started:false,complete:true,house:'2 people',region:'UK
 function harness({saved,store,deleted=false,startup=false,native=true,dialog=false}={}){
  const storage=store||new Map([[PLAN,'saved meal plan must survive'],[SESSION,JSON.stringify({user:{id:'existing-user-id'},access_token:'synthetic-token',expires_at:9999999999})]]);
  if(saved)storage.set(KEY,JSON.stringify(saved));
- const windowEvents=new Map(),documentEvents=new Map(),writes=[],preferences=[],nodes=[];
+ const windowEvents=new Map(),documentEvents=new Map(),viewportEvents=new Map(),writes=[],preferences=[],nodes=[];
  let deleting=deleted,starting=startup,dialogOpen=dialog,observer,closed=0;
  const on=(map,name,fn)=>{const callbacks=map.get(name)||[];callbacks.push(fn);map.set(name,callbacks);};
  const replayButton={id:'bbOnboardingReplay',textContent:'Replay welcome animation',isConnected:true,focus(){this.focused=true;}};
@@ -19,9 +19,9 @@ function harness({saved,store,deleted=false,startup=false,native=true,dialog=fal
  const body={style:{overflow:''},appendChild(node){nodes.push(node);}};
  const document={body,readyState:'complete',activeElement:replayButton,documentElement:{classList:{contains:name=>name==='bb-native-starting'&&starting}},
   getElementById(id){if(uiNodes.has(id))return uiNodes.get(id);if(id==='bbAccountDeletionDialog')return {open:dialogOpen};return null;},
-  createElement(){return {innerHTML:'',events:new Map(),setAttribute(){},addEventListener(name,fn){on(this.events,name,fn);},querySelector(){return null;},remove(){this.removed=true;}};},
+  createElement(){const classes=new Set();return {innerHTML:'',events:new Map(),style:{setProperty(){}},classList:{contains:name=>classes.has(name),toggle(name,enabled){enabled?classes.add(name):classes.delete(name);}},contains:node=>node.inside===true,setAttribute(){},addEventListener(name,fn){on(this.events,name,fn);},querySelector(){return null;},remove(){this.removed=true;}};},
   querySelector:selector=>selector.includes('bbui-settings-close')?{click(){closed++;}}:null,addEventListener(name,fn){on(documentEvents,name,fn);}};
- const window={BBNative:native?{isNative:true}:undefined,BBAccountDeletion:{isDeleting:()=>deleting},matchMedia:()=>({matches:false}),addEventListener(name,fn){on(windowEvents,name,fn);},BasketBossSetOnboardingServings(count){preferences.push({house:count});return true;},bb307SwitchIsland(region){preferences.push({region});return true;}};
+ const window={visualViewport:{height:932,addEventListener(name,fn){on(viewportEvents,name,fn);}},BBNative:native?{isNative:true}:undefined,BBAccountDeletion:{isDeleting:()=>deleting},matchMedia:()=>({matches:false}),addEventListener(name,fn){on(windowEvents,name,fn);},BasketBossSetOnboardingServings(count){preferences.push({house:count});return true;},bb307SwitchIsland(region){preferences.push({region});return true;}};
  const context=vm.createContext({window,document,localStorage:{getItem:key=>storage.get(key)??null,setItem(key,value){writes.push([key,value]);storage.set(key,value);}},sessionStorage:{setItem(){}},location:{hostname:native?'localhost':'basketboss.co.uk',protocol:native?'capacitor:':'https:',search:''},navigator:{standalone:false},URLSearchParams,queueMicrotask,MutationObserver:class{constructor(fn){observer=fn;}observe(){}},console});
  vm.runInContext(source,context,{timeout:1000});
  const active=()=>nodes.findLast(node=>!node.removed);
@@ -30,6 +30,7 @@ function harness({saved,store,deleted=false,startup=false,native=true,dialog=fal
  const through=step=>{for(let i=0;i<step;i++)tap('next');};
  return {window,document,storage,writes,preferences,replayButton,settingsClosed:()=>closed,active,tap,through,dispatch,read:()=>JSON.parse(storage.get(KEY)||'null'),setDeleting:value=>{deleting=value;},setStartup:value=>{starting=value;},setDialog:value=>{dialogOpen=value;},
   escape(){for(const fn of active()?.events.get('keydown')||[])fn({key:'Escape',preventDefault(){}});},
+  resize(height){window.visualViewport.height=height;for(const fn of viewportEvents.get('resize')||[])fn();},
   region(value){for(const fn of active()?.events.get('change')||[])fn({target:{value,matches:()=>true}});},
   clickReplay(){let prevented=false,stopped=false;for(const fn of documentEvents.get('click')||[])fn({target:{closest:selector=>selector==='#bbOnboardingReplay,#bbBetaWelcomeReplay'?replayButton:null},preventDefault(){prevented=true;},stopImmediatePropagation(){stopped=true;}});return {prevented,stopped};},
   closeDeletionDialog(){dialogOpen=false;for(const fn of documentEvents.get('close')||[])fn({target:{id:'bbAccountDeletionDialog'}});},
@@ -97,4 +98,27 @@ test('replay interrupted by deletion does not overwrite completion or reappear f
 
 test('web onboarding keeps its existing Premium handoff and does not acquire native-only copy',()=>{
  const h=harness({native:false});assert.match(h.active().innerHTML,/Welcome to BasketBoss\./);h.through(10);assert.match(h.active().innerHTML,/Explore Premium plans/);assert.match(h.active().innerHTML,/Founder/);assert.doesNotMatch(h.active().innerHTML,/Start using BasketBoss/);
+});
+
+test('direct account sign-in suspends unfinished setup without changing preferences or completion',()=>{
+ const h=harness();h.through(1);const saved=h.storage.get(KEY),session=h.storage.get(SESSION),count=h.writes.length;
+ h.window.BBOnboard2026.pauseForAccount();assert.equal(h.active(),undefined);assert.equal(h.window.BBOnboard2026.willShow(),false);
+ h.dispatch('basketboss:native-startup-ready');assert.equal(h.active(),undefined);
+ assert.equal(h.storage.get(KEY),saved);assert.equal(h.storage.get(SESSION),session);assert.equal(h.writes.length,count);assert.equal(h.preferences.length,0);
+ assert.equal(h.window.BBOnboard2026.open(),true,'explicit Settings replay remains available');
+});
+
+test('an unsigned account step labels its skip action without implying authentication',()=>{
+ const h=harness({store:new Map([[PLAN,'saved meal plan']])});h.through(1);
+ assert.match(h.active().innerHTML,/Continue without signing in/);assert.doesNotMatch(h.active().innerHTML,/Continue setup/);
+ h.tap('next');assert.match(h.active().innerHTML,/Would you like to share with a partner/);assert.equal(h.storage.has(SESSION),false);
+});
+
+test('keyboard layout stays steady when a sign-in field blurs onto its button',()=>{
+ const h=harness({store:new Map([[PLAN,'saved meal plan']])});h.through(1);
+ h.resize(500);assert.equal(h.active().classList.contains('bbob-keyboard'),false,'rotation without editing must keep setup actions');
+ h.document.activeElement={id:'cloud-email',matches:()=>true,inside:true};h.resize(500);assert.equal(h.active().classList.contains('bbob-keyboard'),true);
+ h.document.activeElement={id:'cloud-login'};h.resize(500);assert.equal(h.active().classList.contains('bbob-keyboard'),true,'Sign in must not move while its tap completes');
+ h.resize(932);assert.equal(h.active().classList.contains('bbob-keyboard'),false);
+ h.resize(500);h.tap('next');assert.equal(h.active().classList.contains('bbob-keyboard'),false,'later setup screens keep their navigation');
 });

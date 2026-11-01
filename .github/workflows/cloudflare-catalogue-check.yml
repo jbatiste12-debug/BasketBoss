@@ -13,6 +13,10 @@ on:
       - bb-meal-image.*
       - bb-navigation-polish.*
       - bb-account-polish.*
+      - bb-onboarding-v2.*
+      - index.html
+      - app.html
+      - service-worker.js
       - food-thumbs/v2/**
       - shopping-inventory.js
       - make-a-meal.*
