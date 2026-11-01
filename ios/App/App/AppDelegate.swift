@@ -180,7 +180,7 @@ private enum BasketBossAccountKeyboardSetup {
             const height=Math.min(Number(viewport?.height)||innerHeight,innerHeight),width=Math.min(Number(viewport?.width)||innerWidth,innerWidth);
             const flags={bodyFixed:fixed,shellHidden:!!shell&&getComputedStyle(shell).visibility==='hidden',shellInert:!!shell?.closest('[inert]'),viewportCovered:Math.abs(box.top+scrollY-top)<3&&Math.abs(box.left+scrollX-left)<3&&Math.abs(box.bottom+scrollY-top-height)<3&&Math.abs(box.right+scrollX-left-width)<3,rootLocked:baselineScroll!==null&&Math.abs(layoutY-baselineScroll)<2};
             let probe=document.getElementById('bbAccountKeyboardProbe');
-            if(!probe){probe=document.createElement('p');probe.id='bbAccountKeyboardProbe';probe.style.cssText='position:absolute;bottom:1px;left:2px;right:2px;height:7px;overflow:hidden;white-space:nowrap;font-size:4px;line-height:7px;margin:0;color:#385e45;pointer-events:none';host.appendChild(probe);}
+            if(!probe){probe=document.createElement('p');probe.id='bbAccountKeyboardProbe';probe.style.cssText='position:absolute;bottom:1px;left:2px;right:2px;height:12px;overflow:hidden;white-space:nowrap;font-size:6px;line-height:12px;z-index:2147483647;margin:0;color:#385e45;pointer-events:none';host.appendChild(probe);}
             // Numeric layout metadata only: never include input values, user
             // text, account/session data, screenshots or recording bytes.
             const number=value=>Number.isFinite(Number(value))?Math.round(Number(value)*10)/10:null;
