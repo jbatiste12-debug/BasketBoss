@@ -335,29 +335,53 @@
       });
       if (typeof dialog.showModal === 'function') dialog.showModal();else dialog.setAttribute('open', '');confirm.focus();return dialog;
     }
+    function openReceiptEntry() {
+      if (blocked()) return;
+      // The visible Premium entry must not probe the receipt service or open a
+      // photo picker for Free/unverified accounts. Paid clicks still use the
+      // original open() path and its fresh account, availability and review gates.
+      const membership = root.BasketBossMembershipUI;
+      const state = membership?.state?.();
+      const premium = state ? state === 'premium' : typeof root.BasketBossVerifiedPremium?.isActive === 'function' ? root.BasketBossVerifiedPremium.isActive() === true : options.isPremium?.() === true;
+      if (!premium) {
+        if (typeof membership?.open === 'function') return membership.open();
+        return options.openUpgrade?.();
+      }
+      return open();
+    }
     function renderHostDOM() {
       const document = doc();if (!document) return;
       const app = document.getElementById('app');if (!app) return;
       const tab = options.getTab?.() || document.querySelector('.tab.active')?.dataset.tab;
       let mount = document.getElementById('bbReceiptHostMount');
-      if (!['shop-list', 'shop'].includes(tab) && !isolationError) {if (mount) mount.hidden = true;lastTab = tab;return;}
+      let toolbar = document.getElementById('bbReceiptToolbar');
+      if (!['shop-list', 'shop'].includes(tab) && !isolationError) {if (mount) mount.hidden = true;if (toolbar) toolbar.hidden = true;lastTab = tab;return;}
       if (!mount) {mount = element('div', undefined, 'bb-receipt-host-mount');mount.id = 'bbReceiptHostMount';app.before(mount);}
       const entered = lastTab !== tab;lastTab = tab;
       if (entered && ['shop-list', 'shop'].includes(tab)) {isolate();void refreshAvailability({synchronize: tab === 'shop-list'});}
       if (isolationError) {
+        if (toolbar) toolbar.hidden = true;
         mount.hidden = false;mount.replaceChildren(element('p', isolationError, 'bb-receipt-host-error'));
         document.body?.setAttribute('data-bb-receipt-isolation-error', 'true');
         app.inert = true;app.style.visibility = 'hidden';
         return;
       }
       document.body?.removeAttribute('data-bb-receipt-isolation-error');app.inert = false;app.style.removeProperty('visibility');
-      if (tab !== 'shop-list') {mount.hidden = true;return;}
+      if (tab !== 'shop-list') {mount.hidden = true;if (toolbar) toolbar.hidden = true;return;}
       mount.hidden = false;
-      let toolbar = mount.querySelector('#bbReceiptToolbar');
-      if (!toolbar) {toolbar = element('section', undefined, 'bb-receipt-host-toolbar bb-receipt-host-section');toolbar.id = 'bbReceiptToolbar';toolbar.setAttribute('aria-label', 'Receipt scanner');mount.prepend(toolbar);}
-      const entryLabel = availability.available ? 'Scan Receipt' : (availability.premium || options.isPremium?.()) ? 'Review receipt prices' : 'Scan Receipt · Premium';
+      if (!toolbar) {toolbar = element('section', undefined, 'bb-receipt-host-toolbar bb-receipt-host-section');toolbar.id = 'bbReceiptToolbar';toolbar.setAttribute('aria-label', 'Shopping list tools');mount.prepend(toolbar);}
+      // Mobile replaces #app with a separate snapshot. Promote only the same
+      // compact toolbar above it; pantry recovery and receipt history retain
+      // their original position. Stay outside the snapshot's replaced subtree.
+      toolbar.hidden = false;
+      const overview = document.getElementById('bbReleaseShopOverview');
+      const anchor = overview && overview.parentNode === app.parentNode ? overview : mount;
+      if (toolbar.nextElementSibling !== anchor) anchor.before(toolbar);
+      const entryLabel = 'Scan receipt · Premium';
       if (toolbar && !toolbar.querySelector('[data-bb-receipt-entry]')) {
-        const button = element('button', entryLabel, 'btn');button.type = 'button';button.dataset.bbReceiptEntry = '1';button.onclick = () => {void open();};toolbar.append(button);
+        const button = element('button', undefined, 'btn bb-receipt-scan-tab');button.type = 'button';button.dataset.bbReceiptEntry = '1';button.setAttribute('aria-label', entryLabel);
+        button.append(element('span', 'Scan receipt', 'bb-receipt-entry-label'), element('span', ' · ', 'bb-receipt-entry-separator'), element('span', 'Premium', 'bb-receipt-entry-badge'));
+        button.onclick = () => {void openReceiptEntry();};toolbar.append(button);
       }
       const entry = toolbar?.querySelector('[data-bb-receipt-entry]');if (entry && entry.textContent !== entryLabel) entry.textContent = entryLabel;
       mount.querySelector('#bbReceiptReviewBanner')?.remove();
