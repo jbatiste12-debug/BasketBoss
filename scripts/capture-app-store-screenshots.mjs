@@ -10,7 +10,9 @@ const exec=(command,args,timeout=120000)=>execFileSync(command,args,{encoding:'u
 const run=(...args)=>exec('xcrun',args);
 const delay=ms=>new Promise(r=>setTimeout(r,ms));
 const bundle='uk.co.basketboss.app';
-const targets=['plan','discover','recipe','kitchen','shop','receipt','cook'];
+const allTargets=['plan','discover','recipe','kitchen','shop','receipt','cook','budget'];
+const targets=process.env.BB_CAPTURE_TARGETS?.split(',')||allTargets;
+if(targets.some(target=>!allTargets.includes(target)))throw Error('Unknown screenshot target');
 let phone,container;
 try{
  const runtimes=JSON.parse(run('simctl','list','runtimes','--json')).runtimes.filter(r=>r.isAvailable&&r.name.startsWith('iOS')).sort((a,b)=>b.version.localeCompare(a.version,undefined,{numeric:true}));
@@ -29,7 +31,9 @@ try{
  container=run('simctl','get_app_container',phone,bundle,'data');
  const reportFile=path.join(container,'Documents/bb-screenshot-status.json');
  const manifest={sourceMain:'622706d56767c19dbdba909014a3c7cc9ebf19ff',captureCommit:process.env.GITHUB_SHA,device:'iPhone 16 Pro Max',runtime:runtime.version,dimensions:{width:1320,height:2868},captureCommand:'xcrun simctl io <udid> screenshot --type=png <file>',demoData:true,screens:[]};
- for(const [index,target] of targets.entries()){
+ for(const target of targets){
+  const index=allTargets.indexOf(target);
+  console.log('Preparing actual simulator capture: '+target);
   fs.rmSync(reportFile,{force:true});
   const launchedAt=Date.now();
   run('simctl','launch','--terminate-running-process',phone,bundle,'--bb-screenshot',target);
@@ -51,9 +55,16 @@ try{
   manifest.screens.push({file:name,sha256:crypto.createHash('sha256').update(bytes).digest('hex'),...report});
   console.log('Captured '+name+' — 1320×2868');
  }
+ const capturedNames=new Set(manifest.screens.map(screen=>screen.file));
+ for(const [index,target] of allTargets.entries()){
+  const name=String(index+1).padStart(2,'0')+'-'+target+'.png';
+  const bytes=fs.readFileSync(path.join(out,name));
+  if(bytes.readUInt32BE(16)!==1320||bytes.readUInt32BE(20)!==2868)throw Error(name+' has wrong dimensions');
+  if(!capturedNames.has(name))manifest.screens.push({file:name,sha256:crypto.createHash('sha256').update(bytes).digest('hex'),inheritedFromRun:process.env.BB_EXISTING_SCREENSHOTS_RUN});
+ }
  fs.writeFileSync(path.join(diagnostics,'manifest.json'),JSON.stringify(manifest,null,2));
- if(fs.readdirSync(out).filter(n=>n.endsWith('.png')).length!==7)throw Error('Expected exactly seven PNGs');
- console.log('All seven actual simulator screenshots captured successfully');
+ if(fs.readdirSync(out).filter(n=>n.endsWith('.png')).length!==8)throw Error('Expected exactly eight PNGs');
+ console.log('All eight actual simulator screenshots verified successfully');
 }catch(error){
  if(phone){try{run('simctl','io',phone,'screenshot','--type=png',path.join(diagnostics,'failure.png'));}catch{}}
  if(container){try{exec('cp',['-R',path.join(container,'Documents'),path.join(diagnostics,'Documents')]);}catch{}}

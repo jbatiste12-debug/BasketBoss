@@ -1,10 +1,11 @@
-name: Capture seven App Store screenshots
+name: Capture eight App Store screenshots
 on:
   push:
     branches: [codex/app-store-screenshots-20261101]
   workflow_dispatch:
 permissions:
   contents: read
+  actions: read
 jobs:
   capture:
     runs-on: macos-latest
@@ -34,9 +35,19 @@ jobs:
           -derivedDataPath /tmp/basketboss-ios-build
           CODE_SIGNING_ALLOWED=NO
           build
-      - name: Capture seven real iPhone 16 Pro Max screens
+      - name: Preserve original seven simulator captures
+        uses: actions/download-artifact@v4
+        with:
+          name: BasketBoss-App-Store-iPhone-16-Pro-Max-1320x2868
+          path: artifacts/app-store-screenshots
+          run-id: 41298769626
+          github-token: ${{ github.token }}
+      - name: Capture budget on the actual iPhone 16 Pro Max simulator
+        env:
+          BB_CAPTURE_TARGETS: budget
+          BB_EXISTING_SCREENSHOTS_RUN: '41298769626'
         run: node scripts/capture-app-store-screenshots.mjs
-      - name: Upload seven App Store PNGs
+      - name: Upload eight App Store PNGs
         id: screenshots
         uses: actions/upload-artifact@v4
         with:
@@ -53,4 +64,4 @@ jobs:
           if-no-files-found: ignore
           retention-days: 14
       - name: Link downloadable screenshots
-        run: echo 'Seven native 1320×2868 PNGs — ${{ steps.screenshots.outputs.artifact-url }}' >> "$GITHUB_STEP_SUMMARY"
+        run: echo 'Eight native 1320×2868 PNGs — ${{ steps.screenshots.outputs.artifact-url }}' >> "$GITHUB_STEP_SUMMARY"

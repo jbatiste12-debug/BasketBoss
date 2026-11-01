@@ -5,7 +5,7 @@
 (() => {
   'use strict';
   const target = window.__BB_SCREENSHOT_TARGET__;
-  if (!['plan', 'discover', 'recipe', 'kitchen', 'shop', 'receipt', 'cook'].includes(target)) return;
+  if (!['plan', 'discover', 'recipe', 'kitchen', 'shop', 'receipt', 'cook', 'budget'].includes(target)) return;
   const post = data => window.webkit?.messageHandlers?.bbScreenshot?.postMessage({ target, path: location.pathname, ...data });
   const errors = [];
   addEventListener('error', event => { if (event.error) errors.push(String(event.error.message || event.message)); });
@@ -128,7 +128,7 @@
       if (target === 'cook') {
         const link = await until(() => document.querySelector('.bb173-make-meal-link'), 'Cook link'); link.click(); return;
       }
-      if (target === 'plan') await selectTab('week');
+      if (target === 'plan' || target === 'budget') await selectTab('week');
       if (target === 'discover' || target === 'recipe') {
         await selectTab('discover');
         if (target === 'recipe') {
@@ -147,7 +147,21 @@
     }
     await settle();
     const missingVisibleImages = [...document.images].filter(img => { const r = img.getBoundingClientRect(); return r.width && r.height && r.bottom > 0 && r.top < innerHeight && img.complete && !img.naturalWidth; }).map(img => img.src.split('/').pop());
-    const screenPresent = target === 'plan' ? document.body.dataset.bbnextView === 'week' && document.querySelectorAll('.bbnext-day').length === 7
+    let budget = null;
+    if (target === 'budget') {
+      const total = document.querySelector('#myWeekEstimatedTotal');
+      const weeklyTarget = document.querySelector('.bbnext-plan-budget-line');
+      const ring = document.querySelector('.bbnext-plan-donut[role="progressbar"]');
+      const visible = element => {
+        if (!element) return false;
+        const rect = element.getBoundingClientRect(), style = getComputedStyle(element);
+        return rect.width > 0 && rect.height > 0 && rect.top >= 0 && rect.bottom <= innerHeight && rect.left >= 0 && rect.right <= innerWidth && style.display !== 'none' && style.visibility !== 'hidden';
+      };
+      budget = { estimatedTotal: total?.textContent.trim() || '', weeklyTarget: weeklyTarget?.textContent.trim() || '', ringValue: ring?.getAttribute('aria-valuenow') || '', ringLabel: ring?.getAttribute('aria-valuetext') || '', totalVisible: visible(total), targetVisible: visible(weeklyTarget), ringVisible: visible(ring) };
+      if (budget.estimatedTotal !== '£107.80' || budget.weeklyTarget !== '£120.00 weekly target' || !budget.ringLabel.includes('£107.80 estimated of £120.00') || !budget.totalVisible || !budget.targetVisible || !budget.ringVisible) throw Error('Budget values or viewport visibility differ from the demo: ' + JSON.stringify(budget));
+    }
+    const screenPresent = target === 'budget' ? document.body.dataset.bbnextView === 'week' && budget?.totalVisible && budget?.targetVisible && budget?.ringVisible
+      : target === 'plan' ? document.body.dataset.bbnextView === 'week' && document.querySelectorAll('.bbnext-day').length === 7
       : target === 'discover' ? document.body.dataset.bbnextView === 'discover' && !!document.querySelector('.bb-featured-card')
       : target === 'recipe' ? !!document.querySelector('.cook-overlay .bb-kitchen #bbTitle')
       : target === 'kitchen' ? document.body.dataset.bbnextView === 'shop'
@@ -156,6 +170,6 @@
       : !!document.querySelector('.bb-cook-studio') && document.documentElement.classList.contains('bb-cook-ready');
     if (!screenPresent) throw Error('Requested screen is not mounted: ' + target);
     if (missingVisibleImages.length) throw Error('Visible images failed to load: ' + missingVisibleImages.join(', '));
-    post({ ready: true, screenPresent: true, phase: 'ready', nativeOrigin: location.protocol === 'capacitor:', heading: document.querySelector('#bbTitle, #app h2, #app h3, .bb-cook-studio h1')?.textContent || '', errors: errors.slice(0, 6), missingVisibleImages, width: innerWidth, height: innerHeight });
+    post({ ready: true, screenPresent: true, ...(budget ? { budget } : {}), phase: 'ready', nativeOrigin: location.protocol === 'capacitor:', heading: document.querySelector('#bbTitle, #app h2, #app h3, .bb-cook-studio h1')?.textContent || '', errors: errors.slice(0, 6), missingVisibleImages, width: innerWidth, height: innerHeight });
   })().catch(error => post({ ready: false, failed: true, phase: 'failed', error: String(error.stack || error), errors: errors.slice(0, 6) }));
 })();
