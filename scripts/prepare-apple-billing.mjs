@@ -47,7 +47,7 @@ export function validateAppleProductionProject(project,connection){
  assert(/^[A-Z0-9]{10}$/.test(plain('APPLE_KEY_ID')||'')&&/^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(plain('APPLE_ISSUER_ID')||''),'The Apple key or issuer identifier is missing or malformed.');
  assert(vars.APPLE_PRIVATE_KEY?.type==='secret_text','Store APPLE_PRIVATE_KEY as an encrypted Cloudflare production secret.');
  const date=production.compatibility_date;
- assert(/^\d{4}-\d{2}-\d{2}$/.test(date||'')&&date>='2026-10-30'&&date<=new Date().toISOString().slice(0,10),'The production compatibility date must be 2026-10-30 or a later current date.');
+ assert(/^\d{4}-\d{2}-\d{2}$/.test(date||'')&&date>='2026-10-01'&&date<=new Date().toISOString().slice(0,10),'The production compatibility date must be 2026-10-01 or a later current date.');
  // Cloudflare enables Node.js compatibility by default for dates from
  // 2026-08-04. At our tested date, absent/empty positive flags are valid;
  // explicit opt-outs still make Apple's Node crypto dependency unavailable.
@@ -112,7 +112,7 @@ function atomicImport(env,connection,sql){
  try{
   const file=path.join(directory,'apple-schema.sql'),config=path.join(directory,'wrangler.json');
   fs.writeFileSync(file,sql,{mode:0o600});
-  fs.writeFileSync(config,JSON.stringify({name:'basketboss-apple-schema-prepare',account_id:connection.accountId,compatibility_date:'2026-10-30',d1_databases:[{binding:'BB_APPLE_SCHEMA_DB',database_name:'basketboss-billing',database_id:connection.databaseId}]}),{mode:0o600});
+  fs.writeFileSync(config,JSON.stringify({name:'basketboss-apple-schema-prepare',account_id:connection.accountId,compatibility_date:'2026-10-01',d1_databases:[{binding:'BB_APPLE_SCHEMA_DB',database_name:'basketboss-billing',database_id:connection.databaseId}]}),{mode:0o600});
   const result=spawnSync(binary,['d1','execute','BB_APPLE_SCHEMA_DB','--remote','--file',file,'--config',config,'--yes'],{cwd:directory,env:childEnv,encoding:'utf8',stdio:['ignore','pipe','pipe'],timeout:240000,killSignal:'SIGKILL',maxBuffer:8*1024*1024});
   assert(result.status===0&&!result.error,'The atomic Apple schema import did not complete. No provider or SQL output has been published.');
  }finally{fs.rmSync(directory,{recursive:true,force:true});}

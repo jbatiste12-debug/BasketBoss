@@ -8,7 +8,7 @@ const migration=fs.readFileSync('sql/basketboss_apple_subscriptions_20261101.sql
 const SHA='a'.repeat(40),connection={accountId:'a'.repeat(32),databaseId:'11111111-1111-4111-8111-111111111111',project:'basketboss-site',branch:'main'};
 const env={GITHUB_ACTIONS:'true',GITHUB_REPOSITORY:'jbatiste12-debug/BasketBoss',GITHUB_REF:'refs/heads/main',GITHUB_SHA:SHA,BB_APPLE_PREPARE_MODE:'prepare',CLOUDFLARE_API_TOKEN:'synthetic-token-'+'t'.repeat(40)};
 const plain=value=>({type:'plain_text',value});
-function project(){return {name:'basketboss-site',production_branch:'main',domains:['basketboss.co.uk'],canonical_deployment:{deployment_trigger:{metadata:{commit_hash:SHA}}},deployment_configs:{production:{compatibility_date:'2026-10-30',compatibility_flags:['nodejs_compat'],d1_databases:{BILLING_DB:{id:connection.databaseId}},env_vars:{APPLE_BILLING_ENABLED:plain('false'),APPLE_ENVIRONMENT:plain('Production'),APPLE_APP_ID:plain('6829160611'),APPLE_SUBSCRIPTION_GROUP_ID:plain('22534568'),APPLE_KEY_ID:plain('ABCDEFGHIJ'),APPLE_ISSUER_ID:plain('11111111-1111-4111-8111-111111111111'),APPLE_PRIVATE_KEY:{type:'secret_text',get value(){throw Error('private secret must not be read');}}}}}};}
+function project(){return {name:'basketboss-site',production_branch:'main',domains:['basketboss.co.uk'],canonical_deployment:{deployment_trigger:{metadata:{commit_hash:SHA}}},deployment_configs:{production:{compatibility_date:'2026-10-01',compatibility_flags:['nodejs_compat'],d1_databases:{BILLING_DB:{id:connection.databaseId}},env_vars:{APPLE_BILLING_ENABLED:plain('false'),APPLE_ENVIRONMENT:plain('Production'),APPLE_APP_ID:plain('6829160611'),APPLE_SUBSCRIPTION_GROUP_ID:plain('22534568'),APPLE_KEY_ID:plain('ABCDEFGHIJ'),APPLE_ISSUER_ID:plain('11111111-1111-4111-8111-111111111111'),APPLE_PRIVATE_KEY:{type:'secret_text',get value(){throw Error('private secret must not be read');}}}}}};}
 function harness(){
  const db=new DatabaseSync(':memory:');
  db.exec("CREATE TABLE bb_paid_entitlements(id INTEGER PRIMARY KEY,status TEXT);INSERT INTO bb_paid_entitlements VALUES(1,'active');CREATE TABLE bb_founder_slots(slot_no INTEGER PRIMARY KEY,state TEXT);INSERT INTO bb_founder_slots VALUES(1,'active'),(2,'reserved'),(3,'available');");
@@ -56,7 +56,7 @@ test('tested current dates accept default Node compatibility without a positive 
  }
  const older=project();delete older.deployment_configs.production.compatibility_flags;
  older.deployment_configs.production.compatibility_date='2026-08-04';
- assert.throws(()=>validateAppleProductionProject(older,connection),/2026-10-30/);
+ assert.throws(()=>validateAppleProductionProject(older,connection),/2026-10-01/);
 });
 test('default Node compatibility prepares the real additive schema with purchases still disabled',async()=>{
  for(const flags of [undefined,[]]){
