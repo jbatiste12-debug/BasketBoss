@@ -45,5 +45,6 @@ test('native output contains public assets and the PWA entrypoints retain identi
  const manifest=JSON.parse(fs.readFileSync(new URL('../dist/native/native-web-manifest.json',import.meta.url)));
  assert.equal(manifest.privateRecipeBundle,false);assert.ok(!manifest.files.some(f=>/(?:^|\/)(?:functions|sql|bb-server-lib|node_modules|ios)\/|sealed\.json|private\.json/.test(f.path)));
  assert.ok(manifest.files.some(f=>f.path==='bb-native-runtime.js'));
+ for(const name of ['bb-ingredient-preferences.js','bb-ingredient-picker.js','bb-ingredient-picker.css'])assert.ok(manifest.files.some(f=>f.path===name),'Ingredient filter must ship in the iOS bundle: '+name);
  assert.equal(verifyNativeWeb({directory:new URL('../dist/native',import.meta.url).pathname}).freeRecipes,100);
 });

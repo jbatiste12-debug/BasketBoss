@@ -28,13 +28,14 @@ function harness(){
 }
 
 test('install succeeds without requesting Access-protected manifest',async()=>{
-  const {listeners,requests}=harness();
+  const {listeners,requests,scope}=harness();
   let work;
   listeners.install({waitUntil:p=>{work=p}});
   await work;
   assert.ok(requests.some(x=>x.endsWith('/index.html')),'offline shell still includes home page');
   assert.ok(requests.every(x=>!x.includes('manifest.webmanifest')),'manifest must be excluded');
   assert.ok(requests.every(x=>!x.endsWith('/recipes.json')),'protected recipe catalogue never pre-cached');
+  for(const name of ['bb-ingredient-preferences.js','bb-ingredient-picker.js','bb-ingredient-picker.css'])assert.ok(requests.includes(scope+name+'?v=20261101-avoid1'),'offline shell includes the versioned ingredient filter: '+name);
 });
 
 test('manifest and API routes bypass service-worker caching',()=>{
