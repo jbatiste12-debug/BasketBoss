@@ -106,6 +106,7 @@ jobs:
       - name: Compile Debug iPhone simulator app
         run: >-
           xcodebuild
+          -quiet
           -workspace ios/App/App.xcworkspace
           -scheme App
           -configuration Debug
@@ -117,6 +118,7 @@ jobs:
       - name: Compile Release without local StoreKit test code
         run: >-
           xcodebuild
+          -quiet
           -workspace ios/App/App.xcworkspace
           -scheme App
           -configuration Release

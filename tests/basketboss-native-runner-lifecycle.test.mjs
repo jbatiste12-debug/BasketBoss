@@ -5,9 +5,10 @@ import path from 'node:path';
 import vm from 'node:vm';
 import {keyboardRuntimePlan} from '../scripts/ios-keyboard-runtime.mjs';
 
-async function runScript(name,{ci=true,booted=true,includeLatest=false,failTests=false}={}){
+async function runScript(name,{ci=true,booted=true,includeLatest=false,failTests=false,bootTimeoutState=null,failReadiness=false,keepSimulator=false}={}){
  const commands=[],logs=[],written=new Map();
  const processStub={platform:'darwin',env:ci?{GITHUB_ACTIONS:'true'}:{}};
+ if(keepSimulator)processStub.env.BB_IAP_KEEP_SIMULATOR_BOOTED='true';
  let state=booted?'Booted':'Shutdown';
  const device=()=>({udid:'proven-phone',name:'iPhone 17 Pro',state,isAvailable:true});
  const runtime={identifier:'proven-runtime',name:'iOS 26.2',version:'26.2',isAvailable:true};
@@ -15,7 +16,12 @@ async function runScript(name,{ci=true,booted=true,includeLatest=false,failTests
  const source=fs.readFileSync(new URL('../scripts/'+name,import.meta.url),'utf8').replace(/^import .+;\r?\n/gm,'');
  const context={process:processStub,path,keyboardRuntimePlan,console:{log:value=>logs.push(value)},setTimeout:fn=>{fn();return 1;},fs:{
   mkdirSync(){},rmSync(){},existsSync(){return true;},writeFileSync:(file,value)=>written.set(file,value),
-  readFileSync:()=>JSON.stringify({complete:true,passed:true})
+  readFileSync:file=>JSON.stringify(String(file).endsWith('bb-native-iap-smoke.json')?{
+   complete:true,passed:true,localStoreKit:true,productionBillingTested:false,backendPremiumGranted:false,
+   productsLoaded:true,purchaseVerified:true,accountTokenPreserved:true,unfinishedBeforeServerAck:true,
+   earlyFinishRejected:true,restoreVerified:true,duplicatePurchasePrevented:true,wrongAccountRejected:true,
+   finishedAfterAcknowledgement:true,pendingDoesNotGrantAccess:true,pendingApprovalDelivered:true,cancellationPreserved:true
+  }:{complete:true,passed:true})
  },execFileSync(command,args){
   commands.push([command,...args]);
   if(failTests&&command==='xcodebuild'&&args.includes('test-without-building')){
@@ -28,7 +34,14 @@ async function runScript(name,{ci=true,booted=true,includeLatest=false,failTests
     if(args[1]==='list'&&args[2]==='runtimes')return JSON.stringify({runtimes:includeLatest?[latestRuntime,runtime]:[runtime]});
     if(args[1]==='list'&&args[2]==='devicetypes')return JSON.stringify({devicetypes:[{name:'iPhone SE (3rd generation)',identifier:'se'}]});
     if(args[1]==='shutdown')state='Shutdown';
-    if(args[1]==='boot')state='Booted';
+    if(args[1]==='boot'){
+     state=bootTimeoutState||'Booted';
+     if(bootTimeoutState){const error=Error('initial simulator boot command timed out');error.code='ETIMEDOUT';throw error;}
+    }
+    if(args[1]==='bootstatus'){
+     if(failReadiness){const error=Error('simulator never became ready');error.code='ETIMEDOUT';throw error;}
+     state='Booted';
+    }
     if(args[1]==='get_app_container')return '/synthetic-ci-app';
    }
   }
@@ -81,4 +94,40 @@ test('keyboard test failures retain the actual XCTest diagnostic in both artifac
  assert.ok(result.logs.some(line=>line.includes('"failureStage":"real_keyboard_tests"')));
  assert.ok(result.logs.some(line=>line.includes('keyboard XCTest summary')&&line.includes('"failedTests":1')));
  assert.ok([...result.written].some(([file,text])=>file.endsWith('summary.json')&&JSON.parse(text).failedTests===1));
+});
+
+test('StoreKit boot timeout recovers only after the selected starting simulator proves ready',async()=>{
+ for(const bootTimeoutState of ['Booting','Booted']){
+  const result=await runScript('test-ios-iap-smoke.mjs',{booted:false,bootTimeoutState,keepSimulator:true});
+  assert.equal(result.process.exitCode,undefined);
+  const boot=result.commands.findIndex(command=>command[1]==='simctl'&&command[2]==='boot');
+  const recheck=result.commands.findIndex((command,index)=>index>boot&&command[1]==='simctl'&&command[2]==='list'&&command[3]==='devices');
+  const ready=result.commands.findIndex(command=>command[1]==='simctl'&&command[2]==='bootstatus');
+  const testRun=result.commands.findIndex(command=>command[0]==='xcodebuild'&&command.includes('test-without-building'));
+  assert.ok(boot>=0&&recheck>boot&&ready>recheck&&testRun>ready,'actual readiness must precede hosted purchase tests');
+  assert.equal(result.commands.filter(command=>command[1]==='simctl'&&command[2]==='boot').length,1);
+  assert.equal(result.commands.some(command=>command[1]==='simctl'&&['shutdown','delete','erase'].includes(command[2])),false);
+  assert.ok(result.logs.some(line=>line.includes('"purchaseVerified":true')&&line.includes('"passed":true')));
+ }
+});
+
+test('StoreKit boot timeout leaves a shutdown simulator failed without entering purchase tests',async()=>{
+ const result=await runScript('test-ios-iap-smoke.mjs',{booted:false,bootTimeoutState:'Shutdown',keepSimulator:true});
+ assert.equal(result.process.exitCode,1);
+ assert.equal(result.commands.some(command=>command[1]==='simctl'&&command[2]==='bootstatus'),false);
+ assert.equal(result.commands.some(command=>command[0]==='xcodebuild'),false);
+ assert.ok(result.logs.some(line=>line.includes('"failureStage":"boot"')&&line.includes('"failure":"command_timeout"')));
+});
+
+test('StoreKit recovery cannot turn a later readiness timeout into a passing check',async()=>{
+ const result=await runScript('test-ios-iap-smoke.mjs',{booted:false,bootTimeoutState:'Booting',failReadiness:true,keepSimulator:true});
+ assert.equal(result.process.exitCode,1);
+ assert.equal(result.commands.some(command=>command[0]==='xcodebuild'),false);
+ assert.ok(result.logs.some(line=>line.includes('"failureStage":"bootstatus"')&&line.includes('"passed":false')));
+});
+
+test('local StoreKit boot recovery does not reset a developer simulator or keyboard preference',async()=>{
+ const result=await runScript('test-ios-iap-smoke.mjs',{ci:false,booted:false,bootTimeoutState:'Booting',keepSimulator:true});
+ assert.equal(result.process.exitCode,undefined);
+ assert.equal(result.commands.some(command=>command[0]==='defaults'||command[0]==='killall'||(command[1]==='simctl'&&['shutdown','delete','erase'].includes(command[2]))),false);
 });

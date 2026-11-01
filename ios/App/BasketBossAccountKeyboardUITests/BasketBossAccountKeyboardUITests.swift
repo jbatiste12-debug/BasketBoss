@@ -13,9 +13,15 @@ final class BasketBossAccountKeyboardUITests: XCTestCase {
         let prefix = "BB keyboard probe " + scope + " "
         let expected = prefix + "bodyFixed=true shellHidden=true shellInert=true viewportCovered=true rootLocked=true"
         let probe = app.staticTexts.matching(NSPredicate(format: "label BEGINSWITH %@", prefix)).firstMatch
-        waitFor("The sign-in surface must cover the visible viewport and lock and hide the planner. Probe: \(probe.exists ? probe.label : "missing")") {
-            probe.exists && probe.label == expected
-        }
+        let expectation = XCTNSPredicateExpectation(predicate: NSPredicate { _, _ in
+            probe.exists && probe.label.hasPrefix(expected + " metrics=")
+        }, object: nil)
+        let result = XCTWaiter.wait(for: [expectation], timeout: 8)
+        // Read after waiting so a failure reports the latest geometry, rather
+        // than a stale first frame or "missing" captured before the wait.
+        let actual = probe.exists ? String(probe.label.prefix(1800)) : "missing"
+        print("BB keyboard geometry " + scope + " " + actual)
+        XCTAssertEqual(result, .completed, "The sign-in surface must cover the visible viewport and lock and hide the planner. Probe: \(actual)")
     }
 
     @MainActor private func swipeForm(_ app: XCUIApplication, web: XCUIElement, close: XCUIElement, keyboard: XCUIElement, gentle: Bool = false) {

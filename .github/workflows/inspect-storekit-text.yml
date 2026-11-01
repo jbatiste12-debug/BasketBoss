@@ -1,4 +1,4 @@
-name: Inspect existing StoreKit text results
+name: Inspect existing native text results
 
 on:
   push:
@@ -29,6 +29,13 @@ jobs:
           run-id: ${{ inputs.run_id || '41353829247' }}
           github-token: ${{ github.token }}
           path: existing-storekit-result
+      - name: Download the existing account keyboard result
+        uses: actions/download-artifact@v4
+        with:
+          name: BasketBoss-Account-Keyboard-Verification
+          run-id: ${{ inputs.run_id || '41353829247' }}
+          github-token: ${{ github.token }}
+          path: existing-keyboard-result
       - name: Print only safe StoreKit status and bounded XCTest failures
         shell: bash
         run: |
@@ -81,4 +88,50 @@ jobs:
                   print(line[:700])
               if not matched:
                   print('No matching XCTest failure lines in the bounded text tail.')
+
+          keyboard = Path('existing-keyboard-result')
+          keyboard_report = keyboard / 'report.json'
+          if keyboard_report.is_file():
+              data = json.loads(keyboard_report.read_text(encoding='utf-8'))
+              keys = {
+                  'passed', 'realSoftwareKeyboard', 'emailFocus', 'passwordFocus',
+                  'onboardingEmailFocus', 'onboardingPasswordFocus',
+                  'backgroundLocked', 'requiredTests', 'credentialsEntered',
+                  'signInSubmitted', 'runtimeVersion', 'deviceName',
+                  'reusedCIOnlySimulator', 'failureStage', 'failure',
+              }
+              print('Account keyboard report.json')
+              print(json.dumps({key: data[key] for key in sorted(keys) if key in data}, indent=2))
+
+          summary = keyboard / 'summary.json'
+          if summary.is_file():
+              data = json.loads(summary.read_text(encoding='utf-8'))
+              keys = {'passedTests', 'failedTests', 'skippedTests', 'expectedFailures', 'result'}
+              print('Account keyboard summary counts')
+              print(json.dumps({key: data[key] for key in sorted(keys) if key in data}, indent=2))
+              print('Account keyboard assertion failures')
+              for failure in data.get('testFailures', [])[:8]:
+                  name = str(failure.get('testName', ''))[:120]
+                  detail = str(failure.get('failureText', ''))
+                  detail = re.sub(r'(?i)(bearer\s+|(?:token|secret|password)=)\S+', r'\1[redacted]', detail)
+                  detail = re.sub(r'[A-Za-z0-9_+./=-]{120,}', '[long value redacted]', detail)
+                  print(name + ': ' + detail[:1000])
+
+          keyboard_log = keyboard / 'tests.log'
+          if keyboard_log.is_file():
+              pattern = re.compile(
+                  r'XCTAssert\w*.*failed|Test Case .*failed|error:|'
+                  r'TEST (?:EXECUTE )?FAILED|Testing failed|Timed out|timed out|'
+                  r'Failed to (?:launch|load|install|establish)|'
+                  r'Error Domain=|Simulator device failed',
+                  re.IGNORECASE,
+              )
+              with keyboard_log.open('rb') as handle:
+                  handle.seek(max(0, keyboard_log.stat().st_size - 2 * 1024 * 1024))
+                  lines = handle.read().decode('utf-8', errors='replace').splitlines()
+              print('Bounded account keyboard XCTest failure lines')
+              for line in [line for line in lines if pattern.search(line)][-40:]:
+                  line = re.sub(r'(?i)(bearer\s+|(?:token|secret|password)=)\S+', r'\1[redacted]', line)
+                  line = re.sub(r'[A-Za-z0-9_+./=-]{120,}', '[long value redacted]', line)
+                  print(line[:700])
           PY

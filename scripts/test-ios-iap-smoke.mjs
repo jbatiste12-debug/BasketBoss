@@ -37,7 +37,21 @@ try{
  phone=available.find(device=>device.isAvailable&&device.name.startsWith('iPhone')&&device.state==='Booted')||available.find(device=>device.isAvailable&&device.name.startsWith('iPhone'));
  if(!phone)throw Error('no_iphone_simulator');
  console.log('Using '+phone.name+' on iOS '+runtimeVersion+' for local StoreKit verification.');
- mark('boot');if(phone.state!=='Booted')run('simctl','boot',phone.udid);
+ mark('boot');
+ if(phone.state!=='Booted'){
+  try{run('simctl','boot',phone.udid);}
+  catch(error){
+   if(error.code!=='ETIMEDOUT')throw error;
+   // A cold simulator may start while simctl's initial command times out.
+   // Continue only for that same device when it is demonstrably starting;
+   // the existing bootstatus call below must still establish real readiness.
+   let state;
+   try{state=Object.values(JSON.parse(run('simctl','list','devices','available','--json')).devices||{}).flat().find(device=>device.udid===phone.udid)?.state;}
+   catch{throw error;}
+   if(state!=='Booting'&&state!=='Booted')throw error;
+   console.log('Initial simulator boot command timed out; selected device is '+state+'. Waiting for verified boot readiness.');
+  }
+ }
  if(process.env.GITHUB_ACTIONS==='true')execute('defaults',['write','com.apple.iphonesimulator','ConnectHardwareKeyboard','-bool','NO'],10000);
  mark('simulator_app');execute('open',['-a','Simulator','--args','-CurrentDeviceUDID',phone.udid]);
  mark('bootstatus');console.log('Waiting for simulator boot.');execute('xcrun',['simctl','bootstatus',phone.udid,'-b'],540000);
