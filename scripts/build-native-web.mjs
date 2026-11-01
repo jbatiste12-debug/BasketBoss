@@ -105,6 +105,9 @@ export function transformNativeHtml(source){
  html=html.replace(/<head\b[^>]*>/i,match=>match+injection);
  // These are app routes, not navigation to the public marketing root. API and
  // cross-origin requests are handled by the native runtime before app scripts.
+ // StoreKit subscribers use the same confirmed-email account flow as the PWA.
+ // This transform changes only the generated native copy, preserving web billing.
+ html=html.replace("document.getElementById('cloud-signup').hidden=recovering||window.BBNative?.isNative===true;","document.getElementById('cloud-signup').hidden=recovering;");
  html=html.replace("if(window.BasketBossVerifiedPremium?.isActive?.()===true)return true;","if(window.BasketBossVerifiedPremium?.isActive?.()===true)return true; if(window.BBNative?.isNative===true)return false;");
  html=html.replace(/(\bhref\s*=\s*["'])\/(?:app(?:\.html)?|index\.html)?(?=[?#"'])/gi,'$1index.html');
  return html;

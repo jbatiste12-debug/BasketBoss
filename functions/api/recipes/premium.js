@@ -1,18 +1,18 @@
 /* Authenticated Premium recipe delivery. Never served as a static JSON asset. */
 import {json,authenticatedUser,isBillingEnabled,isConfigured,expectedPrice,entitlementForStatus} from '../../../bb-server-lib/bb-billing.js';
+import {paidBillingEnabled,readMemberPaidAccess} from '../../../bb-server-lib/bb-paid-access.js';
 import {sharedHouseholdPremiumOwner} from '../../../bb-server-lib/bb-household-premium.js';
 export async function onRequestGet({request,env}){
   if(!isConfigured(env))return json({error:'Premium catalogue unavailable'},503);
   const user=await authenticatedUser(request,env);
   if(!user)return json({error:'Sign in with a verified account'},401);
   const owner=!!env.BB_OWNER_USER_ID&&user.id===env.BB_OWNER_USER_ID;
-  if(!owner&&!isBillingEnabled(env))return json({error:'Premium catalogue unavailable'},503);
+  if(!owner&&!paidBillingEnabled(env))return json({error:'Premium catalogue unavailable'},503);
   try{
     let premium=owner;
     if(!premium){
-      const row=await env.BILLING_DB.prepare('SELECT status,price_id,plan FROM bb_paid_entitlements WHERE user_id=? ORDER BY updated_at_ms DESC LIMIT 1').bind(user.id).first();
-      premium=!!row&&entitlementForStatus(row.status)&&expectedPrice(env,row.plan)===row.price_id;
-      if(!premium)premium=!!await sharedHouseholdPremiumOwner(request,env,user);
+      // Personal Paddle access (bb_paid_entitlements) or verified Apple access.
+      premium=(await readMemberPaidAccess(request,env,user)).premiumAccess;
     }
     if(!premium)return json({error:'Verified Premium subscription required'},403);
     const expanded=new URL(request.url).searchParams.get('catalogue')==='500';

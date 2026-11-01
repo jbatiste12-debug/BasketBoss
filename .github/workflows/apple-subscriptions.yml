@@ -1,0 +1,144 @@
+name: Verify BasketBoss Apple subscriptions
+on:
+  push:
+    branches: [main, codex/apple-subscriptions-20261101]
+    paths:
+      - .github/workflows/apple-subscriptions.yml
+      - ios/**
+      - native/**
+      - bb-server-lib/**
+      - functions/api/**
+      - scripts/*native*
+      - scripts/*ios*
+      - scripts/*apple*
+      - sql/*apple*
+      - tests/**
+      - package.json
+      - package-lock.json
+      - bb-account-deletion.js
+      - bb-membership-settings.js
+      - index.html
+      - app.html
+      - privacy.html
+      - terms.html
+      - subscriptions.html
+      - service-worker.js
+  workflow_dispatch:
+permissions:
+  contents: read
+concurrency:
+  group: basketboss-apple-subscriptions-${{ github.ref }}
+  cancel-in-progress: true
+jobs:
+  changed-files:
+    runs-on: ubuntu-latest
+    outputs:
+      native: ${{ steps.paths.outputs.native }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 2
+          persist-credentials: false
+      - id: paths
+        env:
+          BEFORE_SHA: ${{ github.event.before }}
+        shell: bash
+        run: |
+          native=true
+          if [[ "$BEFORE_SHA" =~ ^[0-9a-f]{40}$ ]] && git cat-file -e "$BEFORE_SHA^{commit}" 2>/dev/null; then
+            native=false
+            while IFS= read -r file; do
+              if [[ "$file" =~ ^(ios/|native/|scripts/(build-native|ios-|test-ios|prepare-ios)|capacitor\.config\.(ts|js|json)$|package(-lock)?\.json$|[^/]+\.(js|mjs|css|html)$) ]]; then
+                native=true
+              fi
+            done < <(git diff --name-only "$BEFORE_SHA" "$GITHUB_SHA")
+          fi
+          echo "native=$native" >> "$GITHUB_OUTPUT"
+  portable-verification:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+          cache: npm
+      - run: npm ci --no-audit --no-fund
+      - run: npm run build:native
+      - run: npm run ios:verify
+      - name: Native routing and purchase controller tests
+        run: npm run test:native
+      - name: Install isolated PostgreSQL test engine
+        run: npm install --prefix "$RUNNER_TEMP/bb-apple-pg" --package-lock=false --ignore-scripts --no-audit --no-fund @electric-sql/pglite@0.3.14
+      - name: Verify Apple, web billing, household and account regression suites
+        env:
+          BB_PGLITE_MODULE: ${{ runner.temp }}/bb-apple-pg/node_modules/@electric-sql/pglite
+        run: node --test --test-isolation=none tests/*.test.mjs
+      - name: Install isolated Cloudflare runtime verification tools
+        run: npm install --prefix "$RUNNER_TEMP/bb-apple-worker" --package-lock=false --ignore-scripts --no-audit --no-fund wrangler@4.156.0
+      - name: Verify cold Worker startup and real signature verification
+        env:
+          BB_WORKER_TEST_TOOLS: ${{ runner.temp }}/bb-apple-worker/node_modules
+        run: node scripts/test-apple-worker.mjs
+  local-storekit-simulator:
+    needs: changed-files
+    if: needs.changed-files.outputs.native == 'true'
+    runs-on: macos-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+          cache: npm
+      - name: Install pinned dependencies
+        run: npm ci --no-audit --no-fund
+      - name: Build and sync native workspace
+        run: npm run ios:sync
+      - name: Compile Debug iPhone simulator app
+        run: >-
+          xcodebuild
+          -workspace ios/App/App.xcworkspace
+          -scheme App
+          -configuration Debug
+          -sdk iphonesimulator
+          -destination 'generic/platform=iOS Simulator'
+          -derivedDataPath /tmp/basketboss-ios-build
+          CODE_SIGNING_ALLOWED=NO
+          build
+      - name: Compile Release without local StoreKit test code
+        run: >-
+          xcodebuild
+          -workspace ios/App/App.xcworkspace
+          -scheme App
+          -configuration Release
+          -sdk iphonesimulator
+          -destination 'generic/platform=iOS Simulator'
+          -derivedDataPath /tmp/basketboss-ios-build
+          CODE_SIGNING_ALLOWED=NO
+          build
+      - name: Verify Release excludes StoreKit test fixture
+        run: |
+          test ! -f /tmp/basketboss-ios-build/Build/Products/Release-iphonesimulator/App.app/BasketBossPremium.storekit
+          if otool -L /tmp/basketboss-ios-build/Build/Products/Release-iphonesimulator/App.app/App | rg StoreKitTest; then
+            echo 'Release must not link the local StoreKit test framework.'
+            exit 1
+          fi
+      - name: Exercise real StoreKit bridge in hosted XCTest with local products
+        env:
+          BB_IAP_KEEP_SIMULATOR_BOOTED: 'true'
+        run: node scripts/test-ios-iap-smoke.mjs
+      - name: Keep existing Cook navigation working
+        if: ${{ !cancelled() }}
+        run: node scripts/test-ios-cook-smoke.mjs
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: BasketBoss-Local-StoreKit-Verification
+          path: artifacts/apple-iap-diagnostics/
+          if-no-files-found: ignore
+          retention-days: 14

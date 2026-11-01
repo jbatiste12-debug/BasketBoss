@@ -9,6 +9,8 @@ const middlewareCode=read('functions/api/_middleware.js');
 const input=middlewareCode
  .replace("import {authenticatedUser,json,isLive} from '../../bb-server-lib/bb-billing.js';",
    'const {authenticatedUser,json,isLive}=globalThis.__bbBoundaryBilling;')
+ .replace("import {livePaidBillingEnabled} from '../../bb-server-lib/bb-paid-access.js';",
+   "const livePaidBillingEnabled=env=>globalThis.__bbBoundaryBilling.isLive(env)||(env.APPLE_BILLING_ENABLED==='true'&&env.APPLE_ENVIRONMENT==='Production');")
  .replace("import {seatGateEnabled,isNewestVerifiedSession} from '../../bb-server-lib/bb-premium-seat.js';",
    'const {seatGateEnabled,isNewestVerifiedSession}=globalThis.__bbBoundarySeat;')
  .replace("import {nativeCorsResponse,nativePreflightResponse} from '../../bb-server-lib/bb-request-origin.js';",
@@ -84,6 +86,15 @@ test('Paid endpoints deny missing authenticated identity',async()=>{
  reset();accepted=false;
  const r=await invoke('/api/household');assert.equal(r.response.status,401);assert.equal(r.nextCalls,0);
  assert.equal(seatCalls,0);
+});
+test('Apple-only production billing retains the newest-session boundary and Sandbox cannot enable it',async()=>{
+ reset();const apple={BB_BILLING_ENABLED:'false',APPLE_BILLING_ENABLED:'true',APPLE_ENVIRONMENT:'Production'};
+ let result=await invoke('/api/recipes/premium',apple);
+ assert.equal(result.response.status,403);assert.equal(result.nextCalls,0);
+ sessionOk=true;result=await invoke('/api/recipes/premium',apple);
+ assert.equal(result.response.status,200);assert.equal(result.nextCalls,1);
+ result=await invoke('/api/recipes/premium',{...apple,APPLE_ENVIRONMENT:'Sandbox'});
+ assert.equal(result.response.status,503);assert.equal(result.nextCalls,0);
 });
 test('Wrong Supabase tenant and QA preview cannot use paid session middleware',async()=>{
  reset();let r=await invoke('/api/recipes/premium',{SUPABASE_URL:'https://cbucbdvwgmkgmsajtbfe.supabase.co'});

@@ -90,6 +90,14 @@ export async function eraseAccountD1(env,userId,billing){
  for(const claim of billing.claims)statements.push(db.prepare('INSERT OR IGNORE INTO bb_account_deletion_refs(ref_hash) VALUES(?)').bind(await digestDeletionRef('claim',claim.claim_id)));
  for(const id of billing.subscriptions)statements.push(db.prepare('INSERT OR IGNORE INTO bb_account_deletion_refs(ref_hash) VALUES(?)').bind(await digestDeletionRef('subscription',id)));
  for(const slot of billing.confirmedSlots||[])statements.push(db.prepare("UPDATE bb_founder_slots SET state='retired' WHERE slot_no=? AND user_id=?").bind(slot,userId));
+ const tableExists=async name=>!!await db.prepare("SELECT 1 AS found FROM sqlite_master WHERE type='table' AND name=?").bind(name).first();
+ const appleSubscriptions=await tableExists('bb_apple_subscriptions');
+ if(appleSubscriptions&&await tableExists('bb_apple_notifications'))statements.push(db.prepare(`DELETE FROM bb_apple_notifications
+  WHERE EXISTS(SELECT 1 FROM bb_apple_subscriptions s WHERE s.user_id=?
+   AND s.environment=bb_apple_notifications.environment
+   AND s.original_transaction_id=bb_apple_notifications.original_transaction_id)`).bind(userId));
+ if(appleSubscriptions)statements.push(db.prepare('DELETE FROM bb_apple_subscriptions WHERE user_id=?').bind(userId));
+ if(await tableExists('bb_apple_account_tokens'))statements.push(db.prepare('DELETE FROM bb_apple_account_tokens WHERE user_id=?').bind(userId));
  statements.push(
   db.prepare(`UPDATE bb_founder_slots SET state=CASE WHEN state='reserved' AND paddle_subscription_id IS NULL THEN 'available' ELSE 'retired' END,
    user_id=NULL,reservation_token_hash=NULL,paddle_subscription_id=NULL,reservation_expires_at_ms=NULL,updated_at_ms=? WHERE user_id=?`).bind(Date.now(),userId),

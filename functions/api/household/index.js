@@ -1,3 +1,4 @@
+import {livePaidBillingEnabled,readPersonalPaidAccess} from '../../../bb-server-lib/bb-paid-access.js';
 /* BasketBoss Household Sharing — closed-by-default Cloudflare Pages API.
    D1 remains the ONLY payment entitlement authority. Supabase's service-role
    secret is server-only. No legacy basketboss_data restore is called here. */
@@ -18,12 +19,13 @@ function configured(env,request){
   env.BB_PARTNER_SHARING_ENABLED==='true'&&
   env.BB_PARTNER_PRODUCTION_READY==='true'&&
   env.BB_PREMIUM_SINGLE_SESSION_ENABLED==='true'&&
-  isLive(env)&&env.BB_LIVE_WEBHOOK_ENABLED==='true'&&
+  livePaidBillingEnabled(env)&&
+  ((isLive(env)&&env.BB_LIVE_WEBHOOK_ENABLED==='true'&&!!expectedPrice(env,'founder')&&!!expectedPrice(env,'standard'))||
+   (env.APPLE_BILLING_ENABLED==='true'&&env.APPLE_ENVIRONMENT==='Production'))&&
   env.SUPABASE_URL===LIVE_SUPABASE&&
   typeof env.SUPABASE_PUBLISHABLE_KEY==='string'&&env.SUPABASE_PUBLISHABLE_KEY.length>20&&
   typeof privateKey(env)==='string'&&privateKey(env).length>30&&
-  typeof env.BILLING_DB?.prepare==='function'&&
-  !!expectedPrice(env,'founder')&&!!expectedPrice(env,'standard');
+  typeof env.BILLING_DB?.prepare==='function';
 }
 function serviceHeaders(env){
  const secret=privateKey(env);
@@ -48,9 +50,8 @@ async function first(env,table,filter,select='*'){
  return Array.isArray(rows)?rows[0]||null:null;
 }
 async function premium(env,userId){
- if(!isLive(env)||!env.BILLING_DB?.prepare)return false;
- const row=await env.BILLING_DB.prepare('SELECT status,price_id,plan FROM bb_paid_entitlements WHERE user_id=? ORDER BY updated_at_ms DESC LIMIT 1').bind(userId).first();
- return !!row&&entitlementForStatus(row.status)&&expectedPrice(env,row.plan)===row.price_id;
+ if(!livePaidBillingEnabled(env)||!env.BILLING_DB?.prepare)return false;
+ return (await readPersonalPaidAccess(env,userId,{productionOnly:true})).premiumAccess;
 }
 async function householdForUser(env,user){
  const owner=await first(env,'bb_households',eq('owner_user_id',user.id));

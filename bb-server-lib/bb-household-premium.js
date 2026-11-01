@@ -18,14 +18,15 @@ export function partnerBenefitsEnabled(request,env){
     env.BB_PARTNER_SHARING_ENABLED==='true'&&
     env.BB_PARTNER_PRODUCTION_READY==='true'&&
     env.BB_PREMIUM_SINGLE_SESSION_ENABLED==='true'&&
-    env.BB_LIVE_WEBHOOK_ENABLED==='true'&&isLive(env)&&
+    ((env.BB_LIVE_WEBHOOK_ENABLED==='true'&&isLive(env)&&
+      !!expectedPrice(env,'founder')&&!!expectedPrice(env,'standard'))||
+     (env.APPLE_BILLING_ENABLED==='true'&&env.APPLE_ENVIRONMENT==='Production'))&&
     env.SUPABASE_URL===LIVE&&
     typeof env.SUPABASE_PUBLISHABLE_KEY==='string'&&
     env.SUPABASE_PUBLISHABLE_KEY.length>20&&
     typeof (env.SUPABASE_SECRET_KEY||env.SUPABASE_SERVICE_ROLE_KEY)==='string'&&
     (env.SUPABASE_SECRET_KEY||env.SUPABASE_SERVICE_ROLE_KEY).length>30&&
-    typeof env.BILLING_DB?.prepare==='function'&&
-    !!expectedPrice(env,'founder')&&!!expectedPrice(env,'standard');
+    typeof env.BILLING_DB?.prepare==='function';
 }
 function serviceHeaders(env){
   const key=env.SUPABASE_SECRET_KEY||env.SUPABASE_SERVICE_ROLE_KEY;
@@ -56,11 +57,18 @@ export async function sharedHouseholdPremiumOwner(request,env,user){
   if(h?.partner_user_id!==user.id||h?.invite_status!=='accepted'||
      typeof h.partner_email!=='string'||h.partner_email.trim().toLowerCase()!==email||
      !UUID.test(h.owner_user_id||'')||h.owner_user_id===user.id)return null;
-  // D1/Paddle webhook-backed subscription is the SOLE inherited entitlement
-  // authority. No BB_OWNER_USER_ID bypass, no pending checkout, no browser claim.
-  const row=await env.BILLING_DB.prepare(
-    'SELECT status,price_id,plan FROM bb_paid_entitlements WHERE user_id=? ORDER BY updated_at_ms DESC LIMIT 1'
-  ).bind(h.owner_user_id).first();
-  return row&&entitlementForStatus(row.status)&&expectedPrice(env,row.plan)===row.price_id
-    ?h.owner_user_id:null;
+  // Only a verified production payment is inherited. No BB_OWNER_USER_ID
+  // bypass, no pending checkout, no browser claim, and no Apple Sandbox access.
+  const row=isLive(env)?await env.BILLING_DB.prepare(
+    `SELECT status,price_id,plan FROM bb_paid_entitlements WHERE user_id=?
+     ORDER BY CASE WHEN status IN ('active','trialing') AND
+      ((plan='founder' AND price_id=?) OR (plan='standard' AND price_id=?))
+      THEN 0 ELSE 1 END,updated_at_ms DESC LIMIT 1`
+  ).bind(h.owner_user_id,expectedPrice(env,'founder'),expectedPrice(env,'standard')).first():null;
+  const expected=row?expectedPrice(env,row.plan):null;
+  if(row&&expected&&entitlementForStatus(row.status)&&expected===row.price_id)return h.owner_user_id;
+  if(env.APPLE_BILLING_ENABLED!=='true')return null;
+  const {readPersonalPaidAccess}=await import('./bb-paid-access.js');
+  const access=await readPersonalPaidAccess(env,h.owner_user_id,{productionOnly:true,paddleRow:row});
+  return access.premiumAccess?h.owner_user_id:null;
 }

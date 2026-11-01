@@ -1,0 +1,112 @@
+{
+  "identifier": "BB810001",
+  "nonRenewingSubscriptions": [],
+  "products": [],
+  "settings": {
+    "_failTransactionsEnabled": false,
+    "_locale": "en_GB",
+    "_storefront": "GBR",
+    "_storeKitErrors": [
+      {
+        "current": null,
+        "enabled": false,
+        "name": "Load Products"
+      },
+      {
+        "current": null,
+        "enabled": false,
+        "name": "Purchase"
+      },
+      {
+        "current": null,
+        "enabled": false,
+        "name": "Verification"
+      },
+      {
+        "current": null,
+        "enabled": false,
+        "name": "App Store Sync"
+      },
+      {
+        "current": null,
+        "enabled": false,
+        "name": "Subscription Status"
+      },
+      {
+        "current": null,
+        "enabled": false,
+        "name": "App Transaction"
+      },
+      {
+        "current": null,
+        "enabled": false,
+        "name": "Manage Subscriptions Sheet"
+      },
+      {
+        "current": null,
+        "enabled": false,
+        "name": "Refund Request Sheet"
+      },
+      {
+        "current": null,
+        "enabled": false,
+        "name": "Offer Code Redeem Sheet"
+      }
+    ]
+  },
+  "subscriptionGroups": [
+    {
+      "id": "BB810010",
+      "localizations": [],
+      "name": "BasketBoss Premium",
+      "subscriptions": [
+        {
+          "adHocOffers": [],
+          "codeOffers": [],
+          "displayPrice": "4.99",
+          "familyShareable": false,
+          "groupNumber": 1,
+          "internalID": "BB810011",
+          "introductoryOffer": null,
+          "localizations": [
+            {
+              "description": "BasketBoss Premium, billed monthly.",
+              "displayName": "Premium Monthly",
+              "locale": "en_GB"
+            }
+          ],
+          "productID": "uk.co.basketboss.premium.monthly",
+          "recurringSubscriptionPeriod": "P1M",
+          "referenceName": "BasketBoss Premium Monthly",
+          "subscriptionGroupID": "BB810010",
+          "type": "RecurringSubscription"
+        },
+        {
+          "adHocOffers": [],
+          "codeOffers": [],
+          "displayPrice": "39.99",
+          "familyShareable": false,
+          "groupNumber": 1,
+          "internalID": "BB810012",
+          "introductoryOffer": null,
+          "localizations": [
+            {
+              "description": "BasketBoss Premium, billed annually.",
+              "displayName": "Premium Annual",
+              "locale": "en_GB"
+            }
+          ],
+          "productID": "uk.co.basketboss.premium.annual",
+          "recurringSubscriptionPeriod": "P1Y",
+          "referenceName": "BasketBoss Premium Annual",
+          "subscriptionGroupID": "BB810010",
+          "type": "RecurringSubscription"
+        }
+      ]
+    }
+  ],
+  "version": {
+    "major": 3,
+    "minor": 0
+  }
+}

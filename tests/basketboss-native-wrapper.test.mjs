@@ -21,10 +21,12 @@ test('native fetch preserves Bearer, POST body and abort signal while using cook
  assert.equal(calls[0][1].credentials,'omit');assert.equal(calls[0][1].mode,'cors');assert.equal(calls[0][1].redirect,'error');assert.equal(calls[0][1].signal,controller.signal);
  await win.fetch('/recipes.json');assert.equal(calls[1][0],'/recipes.json');
 });
-test('native checkout and account-creation requests stop locally without making a network call',async()=>{
+test('native web checkout stops locally while confirmed-email account creation uses the existing auth service',async()=>{
  let called=0;const win={location:{href:'capacitor://localhost/index.html'},fetch:async()=>{called++;return new Response('{}');}};installNativeFetch({window:win});
- for(const target of ['/api/subscription/checkout','/api/subscription/checkout-config','https://kbhyosxuvlcazyzzinqv.supabase.co/auth/v1/signup'])assert.equal((await win.fetch(target,{method:'POST'})).status,403);
+ for(const target of ['/api/subscription/checkout','/api/subscription/checkout-config'])assert.equal((await win.fetch(target,{method:'POST'})).status,403);
  assert.equal(called,0);assert.equal(isCheckoutURL('https://checkout.paddle.com/123'),true);assert.equal(isCheckoutURL('https://customer-portal.paddle.com/123'),false);
+ assert.equal((await win.fetch('https://kbhyosxuvlcazyzzinqv.supabase.co/auth/v1/signup',{method:'POST',body:'{"email":"new@example.test","password":"synthetic-password"}'})).status,200);
+ assert.equal(called,1);
 });
 test('native HTML receives local base and runtime before inline scripts; source is immutable',()=>{
  const original='<html><head><base href="../../"><script>window.test=1</script><script src="bb-intro-trial.js"></script><script src="paddle-sandbox.js"></script></head><body><a href="/app">App</a></body></html>';
