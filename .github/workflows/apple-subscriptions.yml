@@ -1,0 +1,86 @@
+name: Verify BasketBoss Apple subscriptions
+on:
+  push:
+    branches: [codex/apple-subscriptions-20261101]
+  workflow_dispatch:
+permissions:
+  contents: read
+concurrency:
+  group: basketboss-apple-subscriptions-${{ github.ref }}
+  cancel-in-progress: true
+jobs:
+  portable-verification:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+          cache: npm
+      - run: npm ci --no-audit --no-fund
+      - run: npm run build:native
+      - run: npm run ios:verify
+      - name: Native routing and purchase controller tests
+        run: npm run test:native
+      - name: Server Apple subscription tests
+        run: >-
+          node --input-type=module -e "
+          import fs from 'node:fs';
+          import {spawnSync} from 'node:child_process';
+          const tests=fs.readdirSync('tests').filter(name=>/^basketboss-apple.*\.test\.mjs$/.test(name)).map(name=>'tests/'+name);
+          if(!tests.length){console.log('Apple server tests are not part of this staged native verification commit.');process.exit(0);}
+          const result=spawnSync(process.execPath,['--test','--test-isolation=none',...tests],{stdio:'inherit'});
+          process.exit(result.status??1);"
+  local-storekit-simulator:
+    runs-on: macos-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+          cache: npm
+      - name: Install pinned dependencies
+        run: npm ci --no-audit --no-fund
+      - name: Build and sync native workspace
+        run: npm run ios:sync
+      - name: Compile Debug iPhone simulator app
+        run: >-
+          xcodebuild
+          -workspace ios/App/App.xcworkspace
+          -scheme App
+          -configuration Debug
+          -sdk iphonesimulator
+          -destination 'generic/platform=iOS Simulator'
+          -derivedDataPath /tmp/basketboss-ios-build
+          CODE_SIGNING_ALLOWED=NO
+          build
+      - name: Exercise real StoreKit bridge with local test products
+        run: node scripts/test-ios-iap-smoke.mjs
+      - name: Keep existing Cook navigation working
+        run: node scripts/test-ios-cook-smoke.mjs
+      - name: Compile Release without local StoreKit test code
+        run: >-
+          xcodebuild
+          -workspace ios/App/App.xcworkspace
+          -scheme App
+          -configuration Release
+          -sdk iphonesimulator
+          -destination 'generic/platform=iOS Simulator'
+          -derivedDataPath /tmp/basketboss-ios-build
+          CODE_SIGNING_ALLOWED=NO
+          build
+      - name: Verify Release excludes StoreKit test fixture
+        run: test ! -f /tmp/basketboss-ios-build/Build/Products/Release-iphonesimulator/App.app/BasketBossPremium.storekit
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: BasketBoss-Local-StoreKit-Verification
+          path: artifacts/apple-iap-diagnostics/
+          if-no-files-found: ignore
+          retention-days: 14

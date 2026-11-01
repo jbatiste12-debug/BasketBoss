@@ -38,7 +38,7 @@ export function isCheckoutURL(input,base=NATIVE_ORIGIN+'/index.html'){
  return (paymentAPI.test(pathname(url))&&/checkout|payment-?link|prices?/i.test(pathname(url)))||
   (['https:','http:'].includes(url.protocol)&&(checkoutHost.test(host)||host==='payments.link'));
 }
-// The companion app shows account status instead of opening payment-provider
+// The iOS app uses StoreKit instead of opening web payment-provider
 // storefronts or customer portals that could lead to purchases or upgrades.
 // Public processor legal documents remain available as privacy disclosures.
 export function isNativeBillingURL(input,base=NATIVE_ORIGIN+'/index.html'){
@@ -53,8 +53,6 @@ export function installNativeFetch({window:win=globalThis.window}={}){
  const original=win.fetch.bind(win);
  win.fetch=(input,init)=>{
   const value=typeof input==='string'||input instanceof URL?String(input):input.url;
-  const parsed=address(value,win.location.href);
-  if(parsed?.hostname==='kbhyosxuvlcazyzzinqv.supabase.co'&&parsed.pathname==='/auth/v1/signup')return Promise.resolve(new Response(JSON.stringify({message:'Account creation is not available in this iOS build. Sign in with an existing account or continue with Free recipes.'}),{status:403,headers:{'Content-Type':'application/json'}}));
   if(isNativeBillingURL(value,win.location.href))return Promise.resolve(new Response(JSON.stringify({error:'Purchases are not available in this iOS build. View your account status in Settings.'}),{status:403,headers:{'Content-Type':'application/json'}}));
   const target=productionApiURL(value,win.location.href);
   if(!target)return original(input,init);

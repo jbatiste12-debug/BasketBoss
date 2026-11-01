@@ -78,6 +78,7 @@ class BasketBossViewController: CAPBridgeViewController {
     override func capacitorDidLoad() {
         super.capacitorDidLoad()
         bridge?.registerPluginInstance(BasketBossNavigationPlugin())
+        bridge?.registerPluginInstance(BasketBossPurchasesPlugin())
         #if DEBUG
         if #available(iOS 16.4, *) { webView?.isInspectable = true }
         if ProcessInfo.processInfo.arguments.contains("--bb-native-cook-smoke"), let webView = webView {

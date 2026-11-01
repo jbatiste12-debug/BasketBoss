@@ -7,6 +7,7 @@ import {StatusBar,Style} from '@capacitor/status-bar';
 import {SplashScreen} from '@capacitor/splash-screen';
 import {PRODUCTION_ORIGIN,productionApiURL,nativePageURL,nativeMembershipURL,isNativeBillingURL,installNativeFetch,installNativeXHR,installNativeWindowOpen} from './routing.mjs';
 import {installNativeMembership} from './membership.mjs';
+import {installNativeApplePurchases} from './apple-purchases.mjs';
 import {installNativeStartup} from './startup.mjs';
 import {watchNativeEntryReadiness} from './entry-readiness.mjs';
 
@@ -87,10 +88,14 @@ if(Capacitor.isNativePlatform()&&Capacitor.getPlatform()==='ios'){
   if(isNativeBillingURL(target,location.href)){event.preventDefault();event.stopImmediatePropagation();location.assign(nativeMembershipURL(location.href));}
  },true);
  document.addEventListener('basketboss:receipt-confirmed',()=>void haptic('success'));
- let membership;
+ let membership,purchases;
  function prepareMembership(){
-  if(!membership)membership=installNativeMembership({apiURL:path=>PRODUCTION_ORIGIN+path,readSession});
+  if(!purchases)purchases=installNativeApplePurchases({plugin:registerPlugin('BasketBossPurchases'),apiURL:path=>PRODUCTION_ORIGIN+path,readSession,fetch:originalFetch,window,isDeleting:deleting});
+  if(!membership)membership=installNativeMembership({apiURL:path=>PRODUCTION_ORIGIN+path,readSession,purchases});
  }
+ // Refresh the same authenticated account's paid catalogue after the server has
+ // acknowledged an Apple transaction. This never sets a local Premium tier.
+ window.addEventListener('basketboss:apple-membership-updated',()=>window.dispatchEvent(new Event('basketboss:session-changed')));
  const earlyEntry=watchNativeEntryReadiness({startup,prepareMembership});
  function ready(){
   earlyEntry.stop();prepareMembership();
