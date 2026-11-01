@@ -160,14 +160,14 @@ private final class BasketBossCookSmokeReporter: NSObject, WKScriptMessageHandle
       addEventListener('error',e=>{errors.push({kind:e.error?.name||'ResourceError',line:e.lineno||0,source:String(e.filename||e.target?.src||'').split('/').pop().split('?')[0].replace(/[^A-Za-z0-9_.-]/g,'').slice(0,100)});},true);
       localStorage.setItem('bb_onboarding_fresh_once_20261028_v1',JSON.stringify({complete:true,step:10}));
       localStorage.setItem('basketboss_native_smoke_probe','keep');
-      let ticks=0,scrolled=false;
+      let ticks=0,scrolled=false,navigationPending=false;
       function progress(report={},complete=false){const e=errors[0]||{},scripts=[...document.scripts],last=scripts.at(-1);window.webkit.messageHandlers.bbNativeCookSmoke.postMessage({...JSON.parse(sessionStorage.getItem(key+'_report')||'{}'),complete,nativeOrigin:location.protocol==='capacitor:',phase:location.pathname.endsWith('/make-a-meal.html')?'cook':sessionStorage.getItem(key)==='back'?'return':'main',readyState:document.readyState,mainReady:!!document.getElementById('app')?.firstElementChild,startupReady:window.BBNativeStartup?.phase==='ready',scriptCount:scripts.length,lastScript:String(last?.src||last?.id||'inline').split('/').pop().split('?')[0].replace(/[^A-Za-z0-9_.-]/g,'').slice(0,100),...report,errorCount:errors.length,errorLine:e.line||0,errorKind:e.kind||'',errorSource:e.source||''});}
       function send(report){progress(report,true);clearInterval(timer);}
       addEventListener('load',()=>progress(),true);
       document.addEventListener('readystatechange',()=>progress());
       new MutationObserver(records=>{if(records.some(record=>[...record.addedNodes].some(node=>node.nodeName==='SCRIPT')))progress();}).observe(document.documentElement,{childList:true,subtree:true});
       const timer=setInterval(()=>{
-        ticks++;if(ticks%10===0)progress();if(document.readyState==='loading'){if(ticks>200)send({passed:false});return;}
+        ticks++;if(ticks%10===0)progress();if(navigationPending){if(ticks>200)send({passed:false});return;}if(document.readyState==='loading'){if(ticks>200)send({passed:false});return;}
         const stage=sessionStorage.getItem(key),cook=location.pathname.endsWith('/make-a-meal.html');
         if(!cook){
           if(window.BBNativeStartup?.phase!=='ready'){if(ticks>200)send({passed:false});return;}
@@ -177,14 +177,14 @@ private final class BasketBossCookSmokeReporter: NSObject, WKScriptMessageHandle
             report.passed=!!(report.nativeOrigin&&report.cookMounted&&report.cookReady&&report.navVisible&&report.navHit&&report.backToPlan&&report.dataKept);send(report);return;
           }
           if(!sessionStorage.getItem(key+'_region')){const select=document.getElementById('bb307Island'),save=document.getElementById('bb307SaveMarket');if(select&&save){select.value='UK';select.dispatchEvent(new Event('change',{bubbles:true}));save.click();sessionStorage.setItem(key+'_region','1');return;}}
-          const link=document.querySelector('.bb173-make-meal-link');if(link){sessionStorage.setItem(key,'cook');link.click();}if(ticks>200)send({passed:false,navPresent:!!link});return;
+          const link=document.querySelector('.bb173-make-meal-link');if(link){navigationPending=true;sessionStorage.setItem(key,'cook');link.click();}if(ticks>200)send({passed:false,navPresent:!!link});return;
         }
         if(!scrolled){scrollTo(0,document.body.scrollHeight);scrolled=true;return;}
         const nav=document.querySelector('nav.bb-r6-cook-nav'),r=nav?.getBoundingClientRect(),style=nav&&getComputedStyle(nav),height=visualViewport?.height||innerHeight;
         const visible=!!(r&&r.width>0&&r.height>0&&r.top>=0&&r.bottom<=height+1&&style.display!=='none'&&style.visibility!=='hidden');
         const hit=visible&&document.elementFromPoint(r.left+r.width/2,r.top+r.height/2)?.closest('nav')===nav;
         const report={nativeOrigin:location.protocol==='capacitor:',cookMounted:!!document.querySelector('.bb-cook-studio'),cookReady:document.documentElement.classList.contains('bb-cook-ready'),navPresent:!!nav,navVisible:visible,navHit:!!hit,legacyVisible:!!document.querySelector('.bb-meal-dashboard')&&getComputedStyle(document.querySelector('.bb-meal-dashboard')).display!=='none'};
-        if(report.cookMounted&&report.cookReady&&visible&&hit){sessionStorage.setItem(key+'_report',JSON.stringify(report));progress(report);sessionStorage.setItem(key,'back');nav.querySelector('a').click();return;}
+        if(report.cookMounted&&report.cookReady&&visible&&hit){navigationPending=true;sessionStorage.setItem(key+'_report',JSON.stringify(report));progress(report);sessionStorage.setItem(key,'back');nav.querySelector('a').click();return;}
         if(ticks>30)send({...report,passed:false});
       },100);
     })();
