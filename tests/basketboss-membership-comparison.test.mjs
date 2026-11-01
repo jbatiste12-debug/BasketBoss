@@ -49,7 +49,7 @@ function fixture({phase='checking',native=false}={}){
 
 test('header labels follow verified membership and never call an unknown account Free',()=>{
  const h=fixture();assert.equal(h.compare.textContent,'Checking membership…');assert.equal(h.pill.hidden,false);
- for(const [phase,label]of [['free','FREE · Upgrade to Premium'],['premium','PREMIUM'],['unavailable','Check membership'],['signed_out','Check membership'],['unexpected','Check membership']]){
+ for(const [phase,label]of [['free','FREE · Upgrade to Premium'],['premium','PREMIUM'],['unavailable','Check membership'],['signed_out','FREE · Upgrade to Premium'],['unexpected','Check membership']]){
   h.update(phase);assert.equal(h.compare.textContent,label);assert.equal(h.pill.textContent,label);assert.equal(h.compare.getAttribute('aria-label'),label);
  }
 });
@@ -75,7 +75,7 @@ test('unknown membership checks instead of presenting an upgrade or pretending F
 });
 
 test('signed-out membership check delegates to the existing account form',()=>{
- const h=fixture({phase:'signed_out'});h.clickHeader();const dialog=h.dialog();dialog.querySelector('.bb-membership-compare-actions').children[1].click();
+ const h=fixture({phase:'signed_out'});assert.equal(h.compare.textContent,'FREE · Upgrade to Premium');h.clickHeader();const dialog=h.dialog();assert.equal(dialog.querySelector('a').hidden,false);assert.match(dialog.textContent,/using Free access/);dialog.querySelector('.bb-membership-compare-actions').children[1].click();
  assert.equal(h.calls.signin,1);assert.equal(dialog.open,false);assert.equal(h.calls.destinations.length,0);
 });
 

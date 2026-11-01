@@ -58,21 +58,21 @@ test('Cook account link cleanup settles on the real Capacitor origin rather than
  const before=h.mutations;
  h.mutate();assert.deepEqual(h.flush(),{runs:1,pending:false});
  assert.equal(h.mutations,before,'an unrelated DOM change must not trigger cleanup writes');
- assert.equal(h.premium.textContent,'Check membership');
- assert.equal(h.premium.getAttribute('aria-label'),'Check membership');
+ assert.equal(h.premium.textContent,'FREE · Upgrade to Premium');
+ assert.equal(h.premium.getAttribute('aria-label'),'FREE · Upgrade to Premium');
  for(let i=0;i<4;i++){h.mutate();assert.deepEqual(h.flush(),{runs:1,pending:false});}
- assert.equal(h.premium.textContent,'Check membership');
+ assert.equal(h.premium.textContent,'FREE · Upgrade to Premium');
 }));
 
 test('native billing redirection, setup disclosures and late links stay guarded while the observer becomes idle',async()=>withFixture(h=>{
  assert.equal(h.provider.getAttribute('href'),'capacitor://localhost/pricing-sandbox.html');
- assert.equal(h.provider.textContent,'Check membership');
+ assert.equal(h.provider.textContent,'FREE · Upgrade to Premium');
  assert.equal(h.privacy.getAttribute('href'),'/privacy');assert.equal(h.privacy.textContent,'Privacy');
- assert.equal(h.shortcut.textContent,'Account');assert.equal(h.compare.textContent,'Check membership');assert.equal(h.pill.textContent,'Check membership');
+ assert.equal(h.shortcut.textContent,'Account');assert.equal(h.compare.textContent,'FREE · Upgrade to Premium');assert.equal(h.pill.textContent,'FREE · Upgrade to Premium');
  assert.equal(h.plan.dataset.nativeMembership,'true');assert.match(h.plan.textContent,/Purchases are not offered/);
  assert.match(h.footnote.textContent,/Purchases are not available/);
  const late=h.addBillingLink();assert.deepEqual(h.flush(),{runs:2,pending:false});
- assert.equal(late.getAttribute('href'),'capacitor://localhost/pricing-sandbox.html');assert.equal(late.textContent,'Check membership');
+ assert.equal(late.getAttribute('href'),'capacitor://localhost/pricing-sandbox.html');assert.equal(late.textContent,'FREE · Upgrade to Premium');
  const before=h.mutations;h.mutate();assert.deepEqual(h.flush(),{runs:1,pending:false});assert.equal(h.mutations,before);
 }));
 

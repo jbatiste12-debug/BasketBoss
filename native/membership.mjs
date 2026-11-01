@@ -7,7 +7,7 @@ export function installNativeMembership({apiURL,readSession,fetch:perform=global
  let observer,card,status,login,revision=0,unsubscribe,headerUnsubscribe,viewState='checking';
  const hide=node=>{if(node&&!node.classList.contains('bb-native-hidden'))node.classList.add('bb-native-hidden');};
  const text=(node,value)=>{if(node&&node.textContent!==value)node.textContent=value;};
- const memberLabel=()=>win.BasketBossMembershipUI?.label?.()||({free:'FREE · Upgrade to Premium',premium:'PREMIUM',checking:'Checking membership…'}[purchases?.state?.membershipState||viewState]||'Check membership');
+ const memberLabel=()=>win.BasketBossMembershipUI?.label?.()||({signed_out:'FREE · Upgrade to Premium',free:'FREE · Upgrade to Premium',premium:'PREMIUM',checking:'Checking membership…'}[purchases?.state?.membershipState||viewState]||'Check membership');
  function publishState(value){
   viewState=value;win.BasketBossNativeMembershipState=value;
   win.BasketBossMembershipUI?.setNativeState?.(value);

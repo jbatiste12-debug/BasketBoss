@@ -2,7 +2,7 @@
  * authoritative; this module never creates a checkout or changes an entitlement. */
 (()=>{'use strict';
  const native=()=>window.BBNative?.isNative===true||window.location.protocol==='capacitor:';
- const labels={free:'FREE · Upgrade to Premium',premium:'PREMIUM',checking:'Checking membership…'};
+ const labels={signed_out:'FREE · Upgrade to Premium',free:'FREE · Upgrade to Premium',premium:'PREMIUM',checking:'Checking membership…'};
  const rows=[
   ['Recipe collection','100 recipes','All 500 recipes'],
   ['Weekly meal planning','Basic weekly plan','Smart Auto-Fill and advanced filters'],
@@ -20,7 +20,7 @@
  const element=(tag,text,className)=>{const node=document.createElement(tag);if(text!==undefined)node.textContent=text;if(className)node.className=className;return node;};
  function state(){
   const value=native()?nativeState:window.BasketBossVerifiedPremium?.state?.();
-  return ['free','premium','checking'].includes(value)?value:'unavailable';
+  return ['free','premium','checking','signed_out'].includes(value)?value:'unavailable';
  }
  const label=()=>labels[state()]||'Check membership';
  function comparison(parent){
@@ -45,7 +45,7 @@
    if(node.id==='bbpolUpgradePill')node.hidden=false;
   }
   for(const mount of document.querySelectorAll('[data-bb-membership-comparison]')){comparison(mount);mount.hidden=value==='premium';}
-  if(dialogStatus){dialogStatus.textContent=value==='free'?'Your verified account has Free access. Choose Premium when you are ready.':value==='premium'?'Your Premium membership is already active.':value==='checking'?'Checking your membership…':'Sign in or check your membership before choosing an upgrade.';upgradeLink.hidden=value!=='free';checkButton.hidden=value==='free'||value==='premium';checkButton.textContent=value==='checking'?'Checking membership…':'Check membership';checkButton.disabled=value==='checking';}
+  if(dialogStatus){dialogStatus.textContent=value==='free'?'Your verified account has Free access. Choose Premium when you are ready.':value==='premium'?'Your Premium membership is already active.':value==='checking'?'Checking your membership…':value==='signed_out'?'You are using Free access. Sign in to check an existing membership or choose a Premium plan.':'Check your membership before choosing an upgrade.';upgradeLink.hidden=value!=='free'&&value!=='signed_out';checkButton.hidden=value==='free'||value==='premium';checkButton.textContent=value==='checking'?'Checking membership…':value==='signed_out'?'Sign in':'Check membership';checkButton.disabled=value==='checking';}
  }
  function settings(){
   const button=document.getElementById('bbuiOpenSettings');
