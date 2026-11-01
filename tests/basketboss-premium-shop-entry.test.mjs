@@ -5,7 +5,7 @@ import vm from 'node:vm';
 
 const code=fs.readFileSync(new URL('../bb-premium-features.js',import.meta.url),'utf8');
 function fixture(paid=false){
- let premium=paid,focus=null,starts=0;
+ let premium=paid,focus=null,starts=0,approvals=0;
  const listeners=new Map(),nodes=new Map(),buttons=[],microtasks=[];
  const matches=(node,selectors)=>selectors.split(',').some(value=>{const selector=value.trim();return selector.startsWith('#')?node.id===selector.slice(1):selector.startsWith('.')?node.className.split(' ').includes(selector.slice(1)):false;});
  class Node{
@@ -23,7 +23,7 @@ function fixture(paid=false){
   if(nodes.has('#bb173TierDialog'))return;
   const dialog=new Node('bb173TierDialog'),description=new Node(),status=new Node(),close=new Node();dialog.children.set('[data-bb173-close]',close);dialog.children.set('#bb173CheckoutStatus',status);nodes.set('#bb173TierDialog',dialog);nodes.set('#bb173TierDesc',description);nodes.set('#bb173CheckoutStatus',status);
  }}};
- const window={BasketBossVerifiedPremium:{isActive:()=>premium},addEventListener(){}};
+ const window={BBShoppingLaunch:{start:()=>{approvals++;}},BasketBossVerifiedPremium:{isActive:()=>premium},addEventListener(){}};
  vm.runInNewContext(code,{window,document,location:{hostname:'basketboss.co.uk',hash:''},queueMicrotask:fn=>microtasks.push(fn)});
  function button(id,className=''){
   const node=new Node(id,className);node.onclick=()=>{starts++;nodes.set('#bb172Storefront',new Node('bb172Storefront'));};buttons.push(node);return node;
@@ -34,18 +34,18 @@ function fixture(paid=false){
   for(const listener of listeners.get('click')||[]){if(listener.capture)listener.fn(event);if(event.stopped)break;}
   if(!event.stopped)node.onclick?.();return event;
  }
- return {desktop,main,mode,document,nodes,click,setPremium:value=>{premium=value;},get starts(){return starts;},get focus(){return focus;},boot(){for(const {fn}of listeners.get('DOMContentLoaded')||[])fn();while(microtasks.length)microtasks.shift()();}};
+ return {desktop,main,mode,document,nodes,click,setPremium:value=>{premium=value;},get starts(){return starts;},get approvals(){return approvals;},get focus(){return focus;},boot(){for(const {fn}of listeners.get('DOMContentLoaded')||[])fn();while(microtasks.length)microtasks.shift()();}};
 }
 
-test('all three advanced Shop launchers stop Free clicks before their original storefront handler',()=>{
+test('all three advanced Shop launchers delegate Free clicks before their original storefront handler',()=>{
  for(const name of ['desktop','main','mode']){
-  const h=fixture(),event=h.click(h[name],{child:true});assert.equal(event.prevented,true,name);assert.equal(event.stopped,true,name);assert.equal(h.starts,0,name);assert.equal(h.nodes.has('#bb172Storefront'),false,name);assert.equal(h.nodes.get('#bb173TierDialog').open,true,name);
+  const h=fixture(),event=h.click(h[name],{child:true});assert.equal(event.prevented,true,name);assert.equal(event.stopped,true,name);assert.equal(h.starts,0,name);assert.equal(h.nodes.has('#bb172Storefront'),false,name);assert.equal(h.approvals,1,name);assert.equal(h.nodes.has('#bb173TierDialog'),false,name);
  }
 });
 
-test('verified Premium desktop clicks retain the original Shop launch and check current membership each time',()=>{
- const h=fixture(true);let event=h.click(h.desktop,{child:true});assert.equal(event.prevented,false);assert.equal(event.stopped,false);assert.equal(h.starts,1);assert.equal(h.nodes.has('#bb173TierDialog'),false);
- h.setPremium(false);event=h.click(h.desktop);assert.equal(event.stopped,true);assert.equal(h.starts,1,'a later Free click cannot invoke the launch handler again');
+test('Premium and Free desktop clicks both use fresh central server approval',()=>{
+ const h=fixture(true);let event=h.click(h.desktop,{child:true});assert.equal(event.prevented,true);assert.equal(event.stopped,true);assert.equal(h.starts,0);assert.equal(h.approvals,1);assert.equal(h.nodes.has('#bb173TierDialog'),false);
+ h.setPremium(false);event=h.click(h.desktop);assert.equal(event.stopped,true);assert.equal(h.starts,0);assert.equal(h.approvals,2);
 });
 
 test('basic shopping checklist controls remain available to Free users',()=>{
@@ -54,7 +54,7 @@ test('basic shopping checklist controls remain available to Free users',()=>{
  const event=h.click(checkbox);assert.equal(checked,true);assert.equal(event.prevented,false);assert.equal(event.stopped,false);assert.equal(h.nodes.has('#bb173TierDialog'),false);
 });
 
-test('the desktop shortcut receives the same existing Premium marker as the other advanced launchers',()=>{
+test('the desktop shortcut describes the same weekly Free allowance as the other launchers',()=>{
  const h=fixture();h.boot();
- for(const node of [h.desktop,h.main,h.mode]){assert.equal(node.dataset.bb173Marked,'1');assert.equal(node.getAttribute('title'),'Advanced Shop Mode · Premium preview');}
+ for(const node of [h.desktop,h.main,h.mode]){assert.equal(node.dataset.bb173Marked,'1');assert.equal(node.getAttribute('title'),'Advanced Shop Mode · 1 Free trip per week. Unlimited with Premium.');}
 });

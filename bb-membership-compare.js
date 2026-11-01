@@ -6,7 +6,8 @@
  const rows=[
   ['Recipe collection','100 recipes','All 500 recipes'],
   ['Weekly meal planning','Basic weekly plan','Smart Auto-Fill and advanced filters'],
-  ['Shopping list','Included','Advanced Shop Mode and Trim My Basket'],
+  ['Shopping list','Included, without a limit','Included, plus Trim My Basket'],
+  ['Advanced shopping trips','1 per week with a Free account','Unlimited'],
   ['Pantry','Add and manage ingredients','Included, plus eligible AI receipt tools'],
   ['Ingredients to avoid','Preferences for future Auto-Fill','Preferences for future Auto-Fill'],
   ['Leftover Magic','—','Included'],
@@ -33,7 +34,7 @@
   head.append(headRow);const body=element('tbody');
   for(const row of rows){const line=element('tr');row.forEach((value,index)=>{const cell=element(index?'td':'th',value);if(!index)cell.setAttribute('scope','row');line.append(cell);});body.append(line);}
   table.append(caption,head,body);wrap.append(table);
-  const note=element('p','*AI tools depend on availability and daily usage limits. Voice Cook needs device support. Ingredient preferences apply to future Auto-Fill; they do not change existing meals or replace allergy checks.','bb-membership-compare-note');
+  const note=element('p','Free advanced shopping trips require sign-in and reset on Monday at 00:00 UTC. You can reopen an unfinished trip without using another allowance. *AI tools depend on availability and daily usage limits. Voice Cook needs device support. Ingredient preferences apply to future Auto-Fill; they do not change existing meals or replace allergy checks.','bb-membership-compare-note');
   parent.append(wrap,note);
  }
  function update(){

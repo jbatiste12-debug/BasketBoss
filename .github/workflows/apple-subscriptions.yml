@@ -105,7 +105,7 @@ jobs:
         run: npm run ios:sync
       - name: Compile Debug iPhone simulator app
         run: >-
-          xcodebuild
+          xcodebuild -quiet
           -workspace ios/App/App.xcworkspace
           -scheme App
           -configuration Debug
@@ -116,7 +116,7 @@ jobs:
           build
       - name: Compile Release without local StoreKit test code
         run: >-
-          xcodebuild
+          xcodebuild -quiet
           -workspace ios/App/App.xcworkspace
           -scheme App
           -configuration Release

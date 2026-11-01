@@ -3,8 +3,8 @@
 (()=>{'use strict';
  const selector=[
   '.bb81-pro-filters','.bb81-trim-button','.bb-manual-batch-btn',
-  '.bb-evening-pivot-open','.bbcv-toggle','#bb172ShopModeButton','#bb172StoreMode','.bb1745-go-button',
-  '.bbm-begin','.bb-r6-begin','[data-bbhs-trigger]','[data-bb-receipt-entry]',
+  '.bb-evening-pivot-open','.bbcv-toggle',
+  '[data-bbhs-trigger]','[data-bb-receipt-entry]',
   '[data-ai-scan-btn]','[data-ai-meal-btn]','[data-open-tool="scan"]','[data-open-tool="meal"]',
   '#scanBtn','#generate','label[for="ai-photo-input"]','.bb18-locked-recipe[data-bb18-premium]'
  ].join(',');

@@ -60,14 +60,13 @@
     const d=$('#bb173TierDialog');if(!d.open){if(typeof d.showModal==='function')d.showModal();else d.setAttribute('open','');}
     $('[data-bb173-close]',d)?.focus({preventScroll:true});
   }
-  // Block ONLY the advanced in-store experience in this sandbox UI demonstration.
-  // The underlying shopping list/checklist remains available as a free feature.
+  // Every advanced trip goes through the server-approved weekly allowance.
+  // The underlying shopping list/checklist remains available without a limit.
   document.addEventListener('click',event=>{
     const button=event.target.closest?.('#bb172ShopModeButton, #bb172StoreMode, .bb1745-go-button');
     if(!button)return;
-    if(qaPremiumPreview())return;
     event.preventDefault();event.stopImmediatePropagation();
-    showDialog(button,'Advanced Shop Mode is a proposed Premium feature. Your basic shopping list stays free.');
+    void window.BBShoppingLaunch?.start?.();
   },true);
   // Read the same QA view as the recipe gate. This changes presentation only, never billing rights.
   function qaPremiumPreview(){
@@ -106,20 +105,20 @@
     }
     if(!app.querySelector('.bb173-recipe-tier-banner')){
       const banner=document.createElement('section');banner.className='bb173-recipe-tier-banner';
-      banner.innerHTML='<div><strong>100 free recipes today · All 500 with Premium</strong><p>Explore family favourites and quick meals. Leftover Magic and advanced shopping require Premium. AI tools are early access and require service availability.</p></div><button type="button" data-bb173-upgrade>See Premium benefits →</button>';
+      banner.innerHTML='<div><strong>100 free recipes today · All 500 with Premium</strong><p>Explore family favourites and quick meals. Free accounts include one advanced shopping trip per week; Premium includes unlimited trips and Leftover Magic. AI tools require service availability.</p></div><button type="button" data-bb173-upgrade>See Premium benefits →</button>';
       const card=app.querySelector('.bb173-leftover-card');if(card)card.insertAdjacentElement('afterend',banner);else app.prepend(banner);
       banner.querySelector('[data-bb173-upgrade]').addEventListener('click',e=>showDialog(e.currentTarget));
     }
     if(!app.querySelector('.bb173-locked-teasers')){
       const teasers=document.createElement('section');teasers.className='bb173-locked-teasers';
-      teasers.innerHTML='<div><strong>🔒 400 more recipes in Premium</strong><p>Along with exclusive Leftover Magic recipes and Advanced Shop Mode. AI tools are early access and require service availability.</p></div><button type="button" data-bb173-upgrade>Explore plans</button>';
+      teasers.innerHTML='<div><strong>🔒 400 more recipes in Premium</strong><p>Along with exclusive Leftover Magic recipes and unlimited advanced shopping trips. AI tools require service availability.</p></div><button type="button" data-bb173-upgrade>Explore plans</button>';
       app.appendChild(teasers);
       teasers.querySelector('[data-bb173-upgrade]').addEventListener('click',e=>showDialog(e.currentTarget));
     }
   }
   let pending=false;
   function schedule(){if(pending)return;pending=true;queueMicrotask(()=>{pending=false;makeHomeCard();markShop();});}
-  function markShop(){document.querySelectorAll('#bb172ShopModeButton,#bb172StoreMode,.bb1745-go-button').forEach(el=>{if(el.dataset.bb173Marked)return;el.dataset.bb173Marked='1';el.setAttribute('title','Advanced Shop Mode · Premium preview');});}
+  function markShop(){document.querySelectorAll('#bb172ShopModeButton,#bb172StoreMode,.bb1745-go-button').forEach(el=>{if(el.dataset.bb173Marked)return;el.dataset.bb173Marked='1';el.setAttribute('title','Advanced Shop Mode · 1 Free trip per week. Unlimited with Premium.');});}
   function openLeftoversFromHash(){if(location.hash!=='#leftover-magic')return;
     const discover=$('button.tab[data-tab="discover"]');if(discover && !discover.classList.contains('active'))discover.click();
     setTimeout(()=>{$(selectFree)?.click();$('.bb173-leftover-card')?.scrollIntoView({block:'center',behavior:'smooth'});},50);

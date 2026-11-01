@@ -59,13 +59,14 @@ test('verified Free header opens a real Free/Premium comparison and preserves th
  const table=dialog.querySelector('table'),rows=table.querySelector('tbody').children.map(row=>row.children.map(cell=>cell.textContent));
  assert.deepEqual(rows.find(row=>row[0]==='Recipe collection'),['Recipe collection','100 recipes','All 500 recipes']);
  assert.deepEqual(rows.find(row=>row[0]==='Weekly meal planning'),['Weekly meal planning','Basic weekly plan','Smart Auto-Fill and advanced filters']);
+ assert.ok(rows.some(row=>row[0]==='Advanced shopping trips'&&row[1]==='1 per week with a Free account'&&row[2]==='Unlimited'));
  assert.ok(rows.some(row=>row[0]==='Pantry'&&row[1].includes('Add and manage')));
  assert.ok(rows.some(row=>row[0]==='Ingredients to avoid'&&row[1]==='Preferences for future Auto-Fill'));
  assert.ok(rows.some(row=>row[0]==='Evening Pivot'&&row[2]==='Included'));
  assert.ok(rows.some(row=>row[0]==='Voice Cook'&&row[2].includes('device')));
  assert.equal(rows.find(row=>row[0]==='AI photo scans')[2],'Up to 5 per day*');assert.equal(rows.find(row=>row[0]==='AI meal ideas')[2],'Up to 10 per day*');
  const link=dialog.querySelector('a');assert.equal(link.href,'pricing-sandbox.html#monthly');assert.equal(link.hidden,false);
- assert.doesNotMatch(dialog.textContent,/39\.99|annual|yearly|unlimited/i);assert.equal(h.calls.destinations.length,0);assert.equal(h.calls.settings,0);
+ assert.doesNotMatch(dialog.textContent,/39\.99|annual|yearly/i);assert.equal(h.calls.destinations.length,0);assert.equal(h.calls.settings,0);
 });
 
 test('unknown membership checks instead of presenting an upgrade or pretending Free',()=>{

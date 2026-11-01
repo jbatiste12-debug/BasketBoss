@@ -6,7 +6,7 @@
 <base href="../../">
 <link rel="stylesheet" href="bb-food-visuals.css?v=20261031-food2">
 <script src="bb-food-visuals.js?v=20261031-food2"></script>
-<link rel="stylesheet" href="bb-navigation-polish.css?v=20261101-recovery1">
+<link rel="stylesheet" href="bb-navigation-polish.css?v=20261101-stable2">
 <script defer src="bb-navigation-polish.js?v=20261101-polish1"></script>
 <link rel="stylesheet" href="bb-account-polish.css?v=20261101-header2">
 <script defer src="bb-account-polish.js?v=20261101-keyboard2"></script>
@@ -5640,8 +5640,8 @@ function bb175EnhanceUI(app){
     dlg.setAttribute('aria-labelledby','bb175TiersHeading');
     dlg.innerHTML=`<div class="bb175-tier-wrap"><button type="button" class="bb175-close" aria-label="Close comparison">×</button>
      <p class="bb175-eyebrow">BASKETBOSS · PLAN COMPARISON</p><h2 id="bb175TiersHeading">Free or Premium?</h2>
-     <div class="bb175-tier-grid"><section><h3>Free · £0</h3><ul><li>100 starter recipes</li><li>Basic meal planning &amp; shopping list</li><li>Leftover Magic locked (Premium only)</li><li>Manually add cupboard ingredients</li><li>No AI scan or AI meal ideas</li></ul></section>
-     <section class="bb175-tier-premium"><h3>✦ Premium</h3><ul><li>All 500 recipes</li><li>Complete Leftover Magic suggestions</li><li>Advanced Shop Mode</li><li>Up to 5 AI photo scans/day*</li><li>Up to 10 AI meal ideas/day*</li><li>🍲 Batch Cook (2 days) · Premium only</li><li>Founding Member: 7 days free, then £1.99/month · first 25</li><li>Standard Premium: 3 days free, then £4.99/month*</li></ul></section></div>
+     <div class="bb175-tier-grid"><section><h3>Free · £0</h3><ul><li>100 starter recipes</li><li>Basic meal planning &amp; unlimited shopping list</li><li>1 advanced shopping trip per week with a Free account</li><li>Leftover Magic locked (Premium only)</li><li>Manually add cupboard ingredients</li><li>No AI scan or AI meal ideas</li></ul></section>
+     <section class="bb175-tier-premium"><h3>✦ Premium</h3><ul><li>All 500 recipes</li><li>Complete Leftover Magic suggestions</li><li>Unlimited advanced shopping trips</li><li>Up to 5 AI photo scans/day*</li><li>Up to 10 AI meal ideas/day*</li><li>🍲 Batch Cook (2 days) · Premium only</li><li>Founding Member: 7 days free, then £1.99/month · first 25</li><li>Standard Premium: 3 days free, then £4.99/month*</li></ul></section></div>
      <p class="bb175-trial-note">*Founding Member: 7-day free trial, then £1.99/month, limited to 25 confirmed members. Standard Premium: 3-day free trial, then £4.99/month. Both plans renew monthly unless cancelled. Verify the trial dates and final amount in Paddle checkout; your Free features remain if Premium ends.</p>
      <p class="bb175-sandbox-note">Premium access requires an eligible subscription. AI tools have daily usage limits and are subject to availability.</p>
      <div class="bb175-tier-actions"><a href="pricing-sandbox.html" class="bb175-pricing">See Premium pricing &amp; trial</a><button type="button" class="bb175-done">Continue browsing</button></div></div>`;
@@ -8912,7 +8912,16 @@ function bb172ShopApplyView(app){
  const btn=app.querySelector('#bb172ShopModeButton');if(btn){btn.textContent='🛒 Open In-Store Experience  →';btn.setAttribute('aria-pressed',bb172ShopActive?'true':'false')}
  if(!bb172ShopActive||tab!=='shop')bb172ShopRemovePrompt();
 }
-function bb172ShopStart(){bb172ShopSetActive(true);bb172ShopLastReminder=0;bb172StorefrontOpen();}
+function bb172ShopStart(){
+ if(window.BBWeeklyShop?.start)return window.BBWeeklyShop.start();
+ notify('Shop Mode is loading. Your basic list is ready; please try again.');return Promise.resolve(false);
+}
+window.BBShoppingLaunch=Object.freeze({
+ start:bb172ShopStart,
+ sessionId:()=>bbShopV7Session().id,
+ open:()=>{bb172ShopSetActive(true);bb172ShopLastReminder=0;bb172StorefrontOpen();},
+ close:()=>bb172ShopSetActive(false)
+});
 function bb172ShopRefreshStatus(){
  const app=document.getElementById('app');if(!app)return;
  bb172ShopApplyView(app);
@@ -9088,8 +9097,9 @@ function bbShopV7Close(){
  // Retain historical snapshots for recovery; new session has a new ID.
  const next={version:7,id:bbShopV7New(),createdAt:new Date().toISOString(),checkboxUndo:{},shelfEdits:{},
   migration:{source:'explicit-finish-or-clear'},bought:{},purchases:{},choices:{},partials};
- return bbShopV7Write({[BB_SHOP_ARCHIVE_V7_KEY]:archive,[BB_SHOP_SESSION_V7_KEY]:next,
+ const saved=bbShopV7Write({[BB_SHOP_ARCHIVE_V7_KEY]:archive,[BB_SHOP_SESSION_V7_KEY]:next,
   [BB321_SHOP_TICKS_KEY]:{},[BB84_PURCHASED_KEY]:{},[BB_BETA_CHOICE_KEY]:{}});
+ if(saved)window.BBWeeklyShop?.end?.(session.id);return saved;
 }
 function bbShopV7Reconcile(items,essentials){
  const ticks=bbShopV7Read(BB321_SHOP_TICKS_KEY),purchased=bbShopV7Read(BB84_PURCHASED_KEY),partials=bbShopV7Read(BB_PARTIAL_PURCHASE_KEY),session=bbShopV7Session();
@@ -9706,7 +9716,7 @@ function bb172ShopRequestExit(after,finish=false){if(!bb172ShopActive&&!finish){
  if(bb172ShopActive&&tab!=='shop')setTimeout(()=>{
   if(bb172ShopActive&&tab!=='shop'&&typeof render==='function'){
    tab='shop';render();
-   setTimeout(()=>{if(bb172ShopActive&&tab==='shop'){bb172StorefrontOpen();if(bb172ShopUncheckedRows().length)bb172StorefrontRemind()}},650);
+   setTimeout(()=>{if(bb172ShopActive&&tab==='shop')void window.BBWeeklyShop?.resume?.();},650);
   }
  },400);
 })();
@@ -9786,6 +9796,7 @@ function bb172StorefrontAll(){
  }).filter(x=>x.box&&x.id);
 }
 function bb172StorefrontOpen(){
+ if(!window.BBWeeklyShop?.mayOpen?.(bbShopV7Session().id))return;
  if(!bb172ShopActive)bb172ShopSetActive(true);
  if(tab!=='shop'){
   tab='shop';render();
@@ -10803,7 +10814,7 @@ if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',
   <button type="button" class="bbtrial-free" data-bbtrial-free>Continue with BasketBoss Free →</button>
   <p class="bbtrial-foot">100 starter recipes, manual ingredients and basic planning remain available without subscribing.</p>
  </div>
-</dialog><script src="bb-intro-trial.js?v=bb-account-first-20261027-v1"></script><script defer src="bb-onboarding-v2.js?v=20261101-signin3"></script><script defer src="bb-cold-preview.js?v=20261028-conversion-1"></script><script defer src="bb-funnel.js?v=20261028-v1"></script><script defer src="bb-ux-cleanup.js?v=20261028-ux1"></script><script src="bb-us-market.js?v=173us1"></script><script defer src="bb-install.js?v=173install1"></script><script defer src="bb-welcome-splash.js?v=20261101-signin2"></script><script defer src="bb-premium-features.js?v=20261101-badge1"></script>
+</dialog><script src="bb-intro-trial.js?v=bb-account-first-20261027-v1"></script><script defer src="bb-onboarding-v2.js?v=20261101-signin3"></script><script defer src="bb-cold-preview.js?v=20261028-conversion-1"></script><script defer src="bb-funnel.js?v=20261028-v1"></script><script defer src="bb-ux-cleanup.js?v=20261028-ux1"></script><script src="bb-us-market.js?v=173us1"></script><script defer src="bb-install.js?v=173install1"></script><script defer src="bb-welcome-splash.js?v=20261101-signin2"></script><script defer src="bb-premium-features.js?v=20261101-weeklyshop1"></script>
 <style id="bb175-ux-fix">
 /* BasketBoss v17.4.2 premium-preview usability improvements */
 #app .swipe-action.yes{color:#c91e43!important;background:#fff2f4!important;border:3px solid #d92c50!important;box-shadow:0 5px 18px rgba(192,22,60,.22)!important;font-size:37px!important;font-weight:900!important}
@@ -11609,9 +11620,11 @@ body[data-bbnext-view="discover"] #app .bb175-discover-heading{padding-top:calc(
 <link rel="stylesheet" href="bb-mobile-three-20261027.css?v=20261027-mobile-3">
 <!-- BasketBoss isolated Plan / premium UI polish; original app handlers unchanged -->
 <link rel="stylesheet" href="bb-premium-feature-badges.css?v=20261101-badge1">
-<script defer src="bb-premium-feature-badges.js?v=20261101-badge1"></script>
+<script defer src="bb-premium-feature-badges.js?v=20261101-weeklyshop1"></script>
+<link rel="stylesheet" href="bb-weekly-shop.css?v=20261101-weeklyshop1">
+<script defer src="bb-weekly-shop.js?v=20261101-weeklyshop1"></script>
 <link rel="stylesheet" href="bb-membership-compare.css?v=20261101-member1">
-<script defer src="bb-membership-compare.js?v=20261101-member1"></script>
+<script defer src="bb-membership-compare.js?v=20261101-weeklyshop1"></script>
 <link rel="stylesheet" href="bb-plan-premium-polish.css?v=20261101-uniform4">
 <script defer src="bb-plan-premium-polish.js?v=20261101-autofill3"></script>
 <link rel="stylesheet" href="bb-ingredient-picker.css?v=20261101-avoid1">
@@ -11636,4 +11649,6 @@ body[data-bbnext-view="discover"] #app .bb175-discover-heading{padding-top:calc(
 <script defer src="bb-kitchen-essentials.js?v=20261101-kitchen1"></script>
 <link rel="stylesheet" href="bb-keyboard-layout.css?v=20261101-keyboard1">
 <script defer src="bb-keyboard-layout.js?v=20261101-keyboard1"></script>
+<link rel="stylesheet" href="bb-simple-layout.css?v=20261101-simple1">
+<script defer src="bb-simple-layout.js?v=20261101-simple1"></script>
 </body></html>
