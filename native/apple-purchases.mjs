@@ -1,15 +1,19 @@
 // Native StoreKit bridge controller. Only the server can grant Premium access.
+import {nativeMembershipURL} from './routing.mjs';
 const MONTHLY='uk.co.basketboss.premium.monthly',ANNUAL='uk.co.basketboss.premium.annual',FOUNDER='uk.co.basketboss.premium.founder.monthly';
 const PRODUCTS=Object.freeze([MONTHLY,ANNUAL,FOUNDER]);
 const UUID=/^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
 const accountChanged=()=>Object.assign(Error('Your account changed. Sign in to the account used for this purchase, then restore it.'),{code:'account_changed'});
 export function installNativeApplePurchases({plugin,apiURL,readSession,fetch:perform=globalThis.fetch,window:win=globalThis.window,isDeleting=()=>false}){
  const url=value=>typeof apiURL==='function'?apiURL(value):String(apiURL||'')+value;
- let destroyed=false,generation=0,viewRevision=0,busy=false,listenerHandle;
+ let destroyed=false,generation=0,viewRevision=0,busy=false;
+ const listenerHandles=[];
  const identity=()=>{const s=readSession();return JSON.stringify([s?.user?.id||null,s?.access_token||null,s?.expires_at||null]);};
  let lastIdentity=identity();
  const listeners=new Set(),requests=new Set(),queued=new Map();
- let state={available:false,authenticated:false,premiumAccess:false,provider:null,subscription:null,products:[],founderAvailable:false,busy:false,phase:'loading',message:'Checking Apple subscriptions…'};
+ let requestedProductId=null;
+ try{const requested=new URL(win?.location?.href).searchParams.get('appleIntent');if(PRODUCTS.includes(requested))requestedProductId=requested;}catch{}
+ let state={available:false,authenticated:false,premiumAccess:false,provider:null,subscription:null,products:[],founderAvailable:false,requestedProductId,busy:false,phase:'loading',message:'Checking Apple subscriptions…'};
  function emit(change){if(destroyed)return;state={...state,...change,busy};for(const listener of listeners)listener({...state,products:[...state.products]});}
  function pin(){const s=readSession();return s?.access_token&&s?.user?.id&&Number(s.expires_at)*1000>Date.now()+5000?{token:s.access_token,user:s.user.id,generation}:null;}
  function current(p){const now=pin();return !destroyed&&!isDeleting()&&p&&now&&now.generation===p.generation&&now.token===p.token&&now.user===p.user;}
@@ -48,7 +52,7 @@ export function installNativeApplePurchases({plugin,apiURL,readSession,fetch:per
    const premium=membership?.premiumAccess===true;
    const provider=membership?.provider||membership?.subscription?.provider||(membership?.householdRole==='partner'?'household':premium?'paddle':null);
    emit({...catalog,authenticated:!!actor,premiumAccess:premium,provider,subscription:membership?.subscription||null,phase:'ready',message:premium?(provider==='apple'?'Your Apple Premium subscription is available.':'Your existing Premium membership is available. You do not need another subscription.'):
-    !catalog.available?'Apple subscriptions are not available right now. Your Free recipes remain available.':actor?'Choose a plan to subscribe with Apple, or restore an existing Apple purchase.':'Use 100 recipes free. Sign in or create your BasketBoss account before subscribing.'});
+    !catalog.available?'Apple subscriptions are not available right now. Your Free recipes remain available.':requestedProductId?(actor?'Review the subscription options below, then choose a plan to continue your Apple purchase.':'Sign in or create your BasketBoss account, then choose a plan to continue your Apple purchase.'):actor?'Choose a plan to subscribe with Apple, or restore an existing Apple purchase.':'Use 100 recipes free. Sign in or create your BasketBoss account before subscribing.'});
   }catch(error){if(!destroyed&&revision===viewRevision&&epoch===generation&&(!actor||current(actor)))emit({available:false,authenticated:!!actor,premiumAccess:false,provider:null,subscription:null,phase:'error',message:error.message||'Membership could not be checked. Try again.'});}
   return {...state};
  }
@@ -117,14 +121,26 @@ export function installNativeApplePurchases({plugin,apiURL,readSession,fetch:per
   });
  }
  function enqueue(event){for(const transaction of event?.transactions||[])if(transaction?.id)queued.set(transaction.id,transaction);if(!busy&&queued.size)void drain();}
+ function receivePurchaseIntent(event){
+  if(destroyed||isDeleting()||!PRODUCTS.includes(event?.productId))return;
+  requestedProductId=event.productId;emit({requestedProductId});
+  // Navigation is only to a bundled page. The intent cannot select a price,
+  // grant access, or call subscribe; the user must choose a currently eligible
+  // plan after the same authenticated server checks as an in-app purchase.
+  try{
+   const currentURL=new URL(win?.location?.href),target=new URL(nativeMembershipURL(currentURL.href));
+   if(currentURL.pathname!==target.pathname){target.searchParams.set('appleIntent',requestedProductId);win.location.assign(target.href);return;}
+  }catch{}
+  void refresh();
+ }
  function invalidate(event){const next=identity();if(event?.type==='basketboss:session-changed'&&next===lastIdentity&&!isDeleting()){void refresh();return;}lastIdentity=next;generation++;viewRevision++;for(const request of requests)request.abort();queued.clear();emit({authenticated:!!pin(),premiumAccess:false,provider:null,subscription:null});void refresh().then(recoverPending);}
  const accountEvents=['basketboss:session-changed','basketboss:account-deletion-started','basketboss:account-deletion-cancelled','basketboss:account-deletion-deleted'];
  for(const event of accountEvents)win?.addEventListener?.(event,invalidate);
  const onStorage=event=>{if(event.key==='basketboss_cloud_session_v1')invalidate(event);};
  const onFocus=()=>{void refresh();};
  win?.addEventListener?.('storage',onStorage);win?.addEventListener?.('focus',onFocus);
- if(plugin?.addListener)Promise.resolve(plugin.addListener('transactionsUpdated',enqueue)).then(handle=>{if(destroyed)void handle?.remove?.();else listenerHandle=handle;}).catch(()=>{});
+ if(plugin?.addListener)for(const [name,listener]of [['purchaseIntentReceived',receivePurchaseIntent],['transactionsUpdated',enqueue]])Promise.resolve(plugin.addListener(name,listener)).then(handle=>{if(destroyed)void handle?.remove?.();else listenerHandles.push(handle);}).catch(()=>{});
  async function recoverPending(){const actor=pin();if(!destroyed&&actor&&!isDeleting()&&plugin?.getPendingTransactions){try{const result=await plugin.getPendingTransactions();if(current(actor))enqueue(result);}catch{}}}
  const ready=refresh().then(recoverPending);
- return {ready,subscribe,restore,manage,refresh,loadProducts,subscribeState(listener){listeners.add(listener);listener({...state,products:[...state.products]});return ()=>listeners.delete(listener);},get state(){return {...state,products:[...state.products]};},destroy(){destroyed=true;generation++;for(const request of requests)request.abort();requests.clear();queued.clear();listeners.clear();void listenerHandle?.remove?.();for(const event of accountEvents)win?.removeEventListener?.(event,invalidate);win?.removeEventListener?.('storage',onStorage);win?.removeEventListener?.('focus',onFocus);}};
+ return {ready,subscribe,restore,manage,refresh,loadProducts,subscribeState(listener){listeners.add(listener);listener({...state,products:[...state.products]});return ()=>listeners.delete(listener);},get state(){return {...state,products:[...state.products]};},destroy(){destroyed=true;generation++;for(const request of requests)request.abort();requests.clear();queued.clear();listeners.clear();for(const handle of listenerHandles)void handle?.remove?.();for(const event of accountEvents)win?.removeEventListener?.(event,invalidate);win?.removeEventListener?.('storage',onStorage);win?.removeEventListener?.('focus',onFocus);}};
 }

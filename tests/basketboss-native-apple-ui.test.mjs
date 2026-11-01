@@ -8,7 +8,7 @@ const deferred=()=>{let resolve;const promise=new Promise(r=>{resolve=r;});retur
 const tick=()=>new Promise(resolve=>setImmediate(resolve));
 function fixture(options={}){
  let session={access_token:'actor-A-token',expires_at:Math.floor(Date.now()/1000)+3600,user:{id:'actor-A'}},deleting=false,premium=false;
- const calls=[],order=[];
+ const calls=[],order=[],nativeListeners=new Map();
  const win=new EventTarget();win.Event=Event;
  const plugin={
   async getProducts(){if(options.products)return {products:options.products};return {products:[{id:MONTH,displayPrice:'€5,49',subscriptionPeriod:{unit:'month',value:1}},{id:YEAR,displayPrice:'€43,99',subscriptionPeriod:{unit:'year',value:1}},{id:FOUNDER,displayPrice:'€2,19',subscriptionPeriod:{unit:'month',value:1}}]};},
@@ -17,7 +17,7 @@ function fixture(options={}){
   async getPendingTransactions(){return {transactions:[]};},
   async finishTransaction(args){calls.push(['finish',args]);order.push('finish');},
   async manageSubscriptions(){calls.push(['manage']);},
-  async addListener(name,listener){calls.push(['listener',name]);plugin.listener=listener;return {remove(){}};}
+  async addListener(name,listener){calls.push(['listener',name]);nativeListeners.set(name,listener);return {remove(){nativeListeners.delete(name);calls.push(['removeListener',name]);}};}
  };
  const response=(body,status=200)=>({ok:status>=200&&status<300,status,json:async()=>body});
  const perform=async(address,args)=>{
@@ -30,7 +30,7 @@ function fixture(options={}){
   throw Error('Unexpected endpoint '+route);
  };
  const controller=installNativeApplePurchases({plugin,apiURL:path=>'https://basketboss.co.uk'+path,readSession:()=>session,fetch:perform,window:win,isDeleting:()=>deleting});
- return {controller,calls,order,plugin,win,response,setAccount(id){session=id?{...session,access_token:id+'-token',user:{id}}:null;win.dispatchEvent(new Event('basketboss:session-changed'));},deleteAccount(){deleting=true;win.dispatchEvent(new Event('basketboss:account-deletion-started'));},get session(){return session;}};
+ return {controller,calls,order,plugin,win,response,nativeListeners,receiveIntent(productId){nativeListeners.get('purchaseIntentReceived')?.({productId});},setAccount(id){session=id?{...session,access_token:id+'-token',expires_at:Math.floor(Date.now()/1000)+3600,user:{id}}:null;win.dispatchEvent(new Event('basketboss:session-changed'));},deleteAccount(){deleting=true;win.dispatchEvent(new Event('basketboss:account-deletion-started'));},get session(){return session;}};
 }
 async function withFixture(options,run){const h=fixture(options);try{await h.controller.ready;await run(h);}finally{h.controller.destroy();}}
 const purchases=h=>h.calls.filter(call=>call[0]==='purchase');
@@ -161,3 +161,36 @@ test('a misconfigured Apple billing period cannot be presented under a misleadin
  assert.equal(h.controller.state.available,false);assert.equal(h.controller.state.products.some(p=>p.id===YEAR),false);
  assert.equal((await h.controller.subscribe(YEAR)).ok,false);assert.equal(purchases(h).length,0);
 }));
+
+test('an external purchase intent only opens the bundled account page, requiring sign-in and a fresh explicit purchase',async()=>withFixture({},async h=>{
+ const destinations=[];h.win.location={href:'capacitor://localhost/index.html',assign:target=>destinations.push(target)};
+ h.setAccount(null);await tick();
+ h.receiveIntent(MONTH);await tick();
+ assert.deepEqual(destinations,['capacitor://localhost/pricing-sandbox.html?appleIntent='+MONTH]);
+ assert.equal(h.controller.state.requestedProductId,MONTH);
+ assert.equal(purchases(h).length,0);assert.equal(h.calls.filter(c=>c[1]==='/api/apple/purchase-context').length,0);
+ assert.equal((await h.controller.subscribe(MONTH)).reason,'signin_required');
+ h.setAccount('actor-A');await tick();
+ assert.equal(purchases(h).length,0);
+ await h.controller.subscribe(MONTH);
+ assert.equal(purchases(h).length,1);assert.equal(h.calls.filter(c=>c[1]==='/api/apple/purchase-context').length,1);
+}));
+
+test('unsupported external intents and intents during deletion cannot navigate or start billing',async()=>withFixture({},async h=>{
+ const destinations=[];h.win.location={href:'capacitor://localhost/index.html',assign:target=>destinations.push(target)};
+ h.receiveIntent('unapproved.sku');await tick();assert.equal(h.controller.state.requestedProductId,null);
+ h.deleteAccount();h.receiveIntent(YEAR);await tick();
+ assert.equal(destinations.length,0);assert.equal(purchases(h).length,0);assert.equal(verifications(h).length,0);
+}));
+
+test('an intent on the account page stays there and still cannot bypass sold-out Founder eligibility',async()=>withFixture({},async h=>{
+ const destinations=[];h.win.location={href:'capacitor://localhost/pricing-sandbox.html',assign:target=>destinations.push(target)};
+ h.receiveIntent(FOUNDER);await tick();
+ assert.equal(destinations.length,0);assert.equal(purchases(h).length,0);assert.equal(h.controller.state.founderAvailable,false);
+ assert.equal((await h.controller.subscribe(FOUNDER)).ok,false);assert.equal(purchases(h).length,0);
+}));
+
+test('destroying the purchase controller removes both retained native listeners',async()=>{
+ const h=fixture();await h.controller.ready;await tick();
+ assert.equal(h.nativeListeners.size,2);h.controller.destroy();await tick();assert.equal(h.nativeListeners.size,0);
+});

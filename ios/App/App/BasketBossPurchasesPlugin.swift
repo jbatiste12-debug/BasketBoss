@@ -32,8 +32,23 @@ public final class BasketBossPurchasesPlugin: CAPPlugin, CAPBridgedPlugin {
     private var interactiveOperation = false
     private var updatesTask: Task<Void, Never>?
     private var startupTask: Task<Void, Never>?
+    private var purchaseIntentsTask: Task<Void, Never>?
 
     override public func load() {
+        if #available(iOS 16.4, *) {
+            purchaseIntentsTask = Task { @MainActor [weak self] in
+                for await intent in PurchaseIntent.intents {
+                    guard !Task.isCancelled, let self = self else { break }
+                    let product = intent.product
+                    guard Self.productIDs.contains(product.id), product.type == .autoRenewable else { continue }
+                    self.products[product.id] = product
+                    // An external intent is only a request to show our account
+                    // flow. It never opens payment before confirmed sign-in and
+                    // a fresh server purchase-context/Founder reservation.
+                    self.notifyListeners("purchaseIntentReceived", data: ["productId": product.id], retainUntilConsumed: true)
+                }
+            }
+        }
         updatesTask = Task { @MainActor [weak self] in
             for await verification in Transaction.updates {
                 guard !Task.isCancelled else { break }
@@ -65,6 +80,7 @@ public final class BasketBossPurchasesPlugin: CAPPlugin, CAPBridgedPlugin {
     deinit {
         updatesTask?.cancel()
         startupTask?.cancel()
+        purchaseIntentsTask?.cancel()
     }
 
     private enum PurchaseBridgeError: Error {
