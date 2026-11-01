@@ -1,0 +1,31 @@
+name: Export BasketBoss App Store header artwork
+on:
+  push:
+    branches: [codex/app-store-header-assets-20261101]
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  artwork:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+      - name: Install image export tools
+        run: command -v convert >/dev/null || (sudo apt-get update && sudo apt-get install -y imagemagick)
+      - name: Export and verify exact sizes and opaque PNG format
+        run: node scripts/export-app-store-header.mjs
+      - uses: actions/upload-artifact@v4
+        id: artwork
+        with:
+          name: BasketBoss-App-Store-Header-and-Search-Artwork
+          path: dist/app-store-artwork/
+          if-no-files-found: error
+          retention-days: 30
+      - name: Link downloadable artwork
+        run: echo 'Download BasketBoss header artwork — ${{ steps.artwork.outputs.artifact-url }}' >> "$GITHUB_STEP_SUMMARY"

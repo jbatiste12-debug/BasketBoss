@@ -1,0 +1,20 @@
+BasketBoss — Dinner sorted.
+APP STORE HEADER AND SEARCH RESULTS ARTWORK
+
+QUICK START
+1. Unzip the downloaded bundle on your Mac.
+2. In App Store Connect > BasketBoss > Distribution > iOS App 1.0 > Product Page Information > Header, upload BasketBoss-Header-3840x1646.png.
+3. In the Search Results tab, upload BasketBoss-Search-Results-3840x2560.png.
+4. Use Preview to check Apple's crops, then Save.
+
+ALTERNATIVE: ONE FILE FOR BOTH PLACEMENTS
+Use BasketBoss-Universal-5244x2950.png as the Header asset and select "Use header asset in search results" if that option is shown. You do not need all three files in a single placement; each is a correctly sized alternative for the placement in its filename.
+
+These files are marketing artwork, separate from the nine actual iPhone screenshots and the App Preview video. Upload the iPhone screenshots in the appropriate iPhone screenshot size, not in Header.
+
+DESIGN AND EXPORT
+The composition was generated using existing BasketBoss recipe photographs (fajitas, chickpea/spinach curry, creamy chicken pasta) and the crowned basket icon as references. The master is 1672x941 pixels; the supplied exports are centre-cropped/resampled to Apple's exact upload sizes. PNGs are opaque, 8-bit RGB/sRGB with no alpha channel. The app and main branch have not been changed. Keep essential branding in view when checking the preview, as Apple's displayed crops vary.
+
+APPLE GUIDANCE
+https://developer.apple.com/app-store/asset-best-practices/
+https://developer.apple.com/help/app-store-connect/reference/app-information/creative-assets-specifications
