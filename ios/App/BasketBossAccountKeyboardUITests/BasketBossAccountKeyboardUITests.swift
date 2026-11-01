@@ -8,7 +8,7 @@ final class BasketBossAccountKeyboardUITests: XCTestCase {
         XCTAssertEqual(XCTWaiter.wait(for: [expectation], timeout: timeout), .completed, description)
     }
 
-    @MainActor private func assertLockedBackground(_ app: XCUIApplication, onboarding: Bool) {
+    @MainActor private func assertLockedBackground(_ app: XCUIApplication, onboarding: Bool, phase: String) {
         let scope = onboarding ? "onboarding" : "account"
         let prefix = "BB keyboard probe " + scope + " "
         let expected = prefix + "bodyFixed=true shellHidden=true shellInert=true viewportCovered=true rootLocked=true"
@@ -21,7 +21,7 @@ final class BasketBossAccountKeyboardUITests: XCTestCase {
         // than a stale first frame or "missing" captured before the wait.
         let actual = probe.exists ? String(probe.label.prefix(1800)) : "missing"
         print("BB keyboard geometry " + scope + " " + actual)
-        XCTAssertEqual(result, .completed, "The sign-in surface must cover the visible viewport and lock and hide the planner. Probe: \(actual)")
+        XCTAssertEqual(result, .completed, "The sign-in surface must cover the visible viewport and lock and hide the planner. Phase: \(phase). Probe: \(actual)")
     }
 
     @MainActor private func swipeForm(_ app: XCUIApplication, web: XCUIElement, close: XCUIElement, keyboard: XCUIElement, gentle: Bool = false) {
@@ -59,7 +59,7 @@ final class BasketBossAccountKeyboardUITests: XCTestCase {
         }
         let close = app.buttons.matching(identifier: onboarding ? "Exit onboarding and explore free recipes" : "Close account").firstMatch
         XCTAssertTrue(close.waitForExistence(timeout: 25), "The sign-in surface must open.")
-        assertLockedBackground(app, onboarding: onboarding)
+        assertLockedBackground(app, onboarding: onboarding, phase: "initial")
         let field = password ? app.secureTextFields.firstMatch : app.textFields.matching(NSPredicate(format: "label == %@ OR placeholderValue == %@", "Email", "you@example.com")).firstMatch
         XCTAssertTrue(field.waitForExistence(timeout: 8), "The signed-out account input must exist.")
         // Numeric accessibility diagnostics only: no input values, credentials,
@@ -74,7 +74,7 @@ final class BasketBossAccountKeyboardUITests: XCTestCase {
         waitFor("Close account must remain reachable with the keyboard open.") {
             close.isHittable && close.frame.minY >= web.frame.minY - 1 && close.frame.maxY <= keyboard.frame.minY + 1
         }
-        assertLockedBackground(app, onboarding: onboarding)
+        assertLockedBackground(app, onboarding: onboarding, phase: "keyboard")
         // A keyboard can cover the dock and make it unhittable even when the
         // planner has leaked behind the form. The DOM probe above additionally
         // requires computed hidden/inert and fixed-body/viewport coverage.
@@ -92,7 +92,7 @@ final class BasketBossAccountKeyboardUITests: XCTestCase {
         // Always exercise an actual swipe, including layouts where Sign in
         // already fits, then require the planner and document to remain locked.
         swipeForm(app, web: web, close: close, keyboard: keyboard, gentle: true)
-        assertLockedBackground(app, onboarding: onboarding)
+        assertLockedBackground(app, onboarding: onboarding, phase: "after swipe")
         XCTAssertTrue(keyboard.exists, "Reaching Sign in must not require dismissing the keyboard.")
         XCTAssertTrue(signIn.isHittable, "Sign in must be reachable within the account card.")
         XCTAssertGreaterThanOrEqual(signIn.frame.minY, web.frame.minY - 1)
