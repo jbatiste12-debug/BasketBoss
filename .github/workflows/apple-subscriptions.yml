@@ -1,7 +1,7 @@
 name: Verify BasketBoss Apple subscriptions
 on:
   push:
-    branches: [main, codex/apple-subscriptions-20261101]
+    branches: [main, codex/apple-*]
     paths:
       - .github/workflows/apple-subscriptions.yml
       - ios/**

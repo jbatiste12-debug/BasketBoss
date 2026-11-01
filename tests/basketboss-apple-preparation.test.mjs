@@ -43,10 +43,38 @@ test('production configuration validates encrypted key presence without reading 
   p=>{p.deployment_configs.production.env_vars.APPLE_APP_ID=plain('6829460963');},
   p=>{p.deployment_configs.production.env_vars.APPLE_SUBSCRIPTION_GROUP_ID=plain('123');},
   p=>{p.deployment_configs.production.env_vars.APPLE_PRIVATE_KEY={type:'plain_text',value:'not-secret'};},
-  p=>{p.deployment_configs.production.compatibility_flags=[];},
+  p=>{p.deployment_configs.production.compatibility_flags=['no_nodejs_compat'];},
+  p=>{p.deployment_configs.production.compatibility_flags=['no_nodejs_compat_v2'];},
   p=>{p.deployment_configs.production.compatibility_date='2024-01-01';},
   p=>{p.deployment_configs.production.env_vars.APPLE_MONTHLY_PRODUCT_ID=plain('uk.co.basketboss.premium.founder.monthly');}
  ]){const p=project();change(p);assert.throws(()=>validateAppleProductionProject(p,connection));}
+});
+test('tested current dates accept default Node compatibility without a positive flag',()=>{
+ for(const flags of [undefined,[],['nodejs_compat'],['nodejs_compat_v2']]){
+  const p=project();p.deployment_configs.production.compatibility_flags=flags;
+  assert.equal(validateAppleProductionProject(p,connection),true);
+ }
+ const older=project();delete older.deployment_configs.production.compatibility_flags;
+ older.deployment_configs.production.compatibility_date='2026-08-04';
+ assert.throws(()=>validateAppleProductionProject(older,connection),/2026-10-30/);
+});
+test('default Node compatibility prepares the real additive schema with purchases still disabled',async()=>{
+ for(const flags of [undefined,[]]){
+  const h=harness(),before=await legacyBillingSnapshot(h.query);
+  h.current.deployment_configs.production.compatibility_flags=flags;
+  const result=await prepareAppleBilling(env,h.dependencies);
+  assert.equal(result.schemaReady,true);assert.equal(result.billingEnabled,false);assert.equal(h.calls.import,1);
+  assert.deepEqual(await legacyBillingSnapshot(h.query),before);
+  assert.equal(h.current.deployment_configs.production.env_vars.APPLE_BILLING_ENABLED.value,'false');
+ }
+});
+test('explicit Node opt-outs stop preparation before any migration even beside positive flags',async()=>{
+ for(const flag of ['no_nodejs_compat','no_nodejs_compat_v2']){
+  const h=harness();h.current.deployment_configs.production.compatibility_flags=['nodejs_compat',flag];
+  await assert.rejects(()=>prepareAppleBilling(env,h.dependencies),/explicitly disable Node/);
+  assert.equal(h.calls.import,0);
+  assert.equal(h.db.prepare("SELECT COUNT(*) AS count FROM sqlite_master WHERE name='bb_apple_schema'").get().count,0);
+ }
 });
 test('atomic preparation adds Apple tables while preserving existing billing rows and never enabling billing',async()=>{
  const h=harness(),before=await legacyBillingSnapshot(h.query);

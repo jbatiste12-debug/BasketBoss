@@ -46,9 +46,15 @@ export function validateAppleProductionProject(project,connection){
  assert(plain('APPLE_APP_ID')==='6829160611'&&plain('APPLE_SUBSCRIPTION_GROUP_ID')==='22534568','The configured Apple app or Premium group ID does not match BasketBoss.');
  assert(/^[A-Z0-9]{10}$/.test(plain('APPLE_KEY_ID')||'')&&/^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(plain('APPLE_ISSUER_ID')||''),'The Apple key or issuer identifier is missing or malformed.');
  assert(vars.APPLE_PRIVATE_KEY?.type==='secret_text','Store APPLE_PRIVATE_KEY as an encrypted Cloudflare production secret.');
- assert(Array.isArray(production.compatibility_flags)&&production.compatibility_flags.includes('nodejs_compat'),'The production Functions runtime must include nodejs_compat.');
  const date=production.compatibility_date;
  assert(/^\d{4}-\d{2}-\d{2}$/.test(date||'')&&date>='2026-10-30'&&date<=new Date().toISOString().slice(0,10),'The production compatibility date must be 2026-10-30 or a later current date.');
+ // Cloudflare enables Node.js compatibility by default for dates from
+ // 2026-08-04. At our tested date, absent/empty positive flags are valid;
+ // explicit opt-outs still make Apple's Node crypto dependency unavailable.
+ // https://developers.cloudflare.com/changelog/post/2026-08-04-nodejs-compat-default/
+ const flags=production.compatibility_flags??[];
+ assert(Array.isArray(flags)&&flags.every(flag=>typeof flag==='string'),'The production compatibility flags are invalid.');
+ assert(!flags.includes('no_nodejs_compat')&&!flags.includes('no_nodejs_compat_v2'),'The production Functions runtime must not explicitly disable Node.js compatibility.');
  for(const [name,value] of [['APPLE_MONTHLY_PRODUCT_ID','uk.co.basketboss.premium.monthly'],['APPLE_ANNUAL_PRODUCT_ID','uk.co.basketboss.premium.annual']])
   assert(!vars[name]||plain(name)===value,'An optional Apple Product ID does not match the two launch plans.');
  return true;
