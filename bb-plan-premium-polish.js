@@ -96,6 +96,36 @@
      meta.replaceChildren(time);
    }
  }
+ function decorateAutofill(){
+   const app=$('#app.bbnext-plan');if(!app)return;
+   const actions=$('.bbnext-plan-actions',app),filters=$('.bb81-pro-filters',app);
+   if(!actions||!filters)return;
+   let card=$('#bbpolAutofillCard',app);
+   if(!card){
+     card=document.createElement('section');card.id='bbpolAutofillCard';card.className='bbpol-autofill-card';
+     card.setAttribute('aria-label','Plan your week');
+     filters.before(card);
+   }
+   const disclosure=$('#bbnextPlanAutofill',app);
+   // Re-parent the original controls. Their closures, IDs, input state and
+   // keyboard/native disclosure behavior remain with the original renderer.
+   // Only move a node when its position changes: the app observer must settle.
+   [filters,actions,disclosure].filter(Boolean).forEach((node,index)=>{
+     if(card.children[index]!==node)card.insertBefore(node,card.children[index]||null);
+   });
+   const heading=$('.bb81-pro-filters-heading strong',filters),badge=$('.bb81-pro-filters-heading span',filters);
+   if(heading&&heading.textContent!=='Smart Auto-Fill')heading.textContent='Smart Auto-Fill';
+   if(badge){
+     if(!badge.dataset.bbpolOriginalLabel){badge.dataset.bbpolOriginalLabel=badge.textContent;badge.setAttribute('title',badge.textContent);}
+     if(badge.textContent!=='Premium filters')badge.textContent='Premium filters';
+   }
+   // Keep the original explanatory note available in the original disclosure,
+   // leaving the everyday action area compact rather than repeating its copy.
+   const note=$('.bb81-pro-filter-note',filters);
+   if(note&&disclosure&&note.parentNode!==disclosure)disclosure.append(note);
+   const working=$('#bb172FillSixDinners',actions),pantry=$('#bbPantryPlannerButton',actions);
+   card.dataset.bbAutofillReady=working&&pantry&&disclosure?'true':'false';
+ }
  function enhanceExistingProDialog(){
    const dialog=$('#bb81PremiumPreviewDialog');if(!dialog||$('#bbpolDirectPlans',dialog)||premiumActive())return;
    const actions=$('.bb81-pro-modal-buttons',dialog);if(!actions)return;
@@ -107,9 +137,9 @@
    if(hint)hint.textContent='Your free plan stays available. Premium checkout requires an account, and eligibility and renewal terms are confirmed securely before payment.';
  }
  function start(){
-   setupHeader();decorateBudget();decorateMealRows();enhanceExistingProDialog();
+   setupHeader();decorateBudget();decorateMealRows();decorateAutofill();enhanceExistingProDialog();
    const app=$('#app');if(app){
-     const observer=new MutationObserver(()=>{decorateBudget();decorateMealRows();enhanceExistingProDialog();});
+     const observer=new MutationObserver(()=>{decorateBudget();decorateMealRows();decorateAutofill();enhanceExistingProDialog();});
      observer.observe(app,{childList:true,subtree:true});
    }
    // The original Smart Auto-Fill modal is attached to document.body.
