@@ -16,7 +16,7 @@ The app bundle identifier is `uk.co.basketboss.app`. Prices below are the agreed
 
 Monthly and annual belong to one group with the internal reference name **Premium Monthly**; it can be renamed **BasketBoss Premium**. The user deleted the prepared Apple Founder product after choosing web-only Founder pricing; its row above is a historical record, not a product to recreate or submit. Equal Premium benefits should have the same subscription level. Annual is a yearly upfront payment, not a monthly payment with a 12-month commitment. Leave Apple Family Sharing off: BasketBoss's separately verified household partner feature is not Apple Family Sharing, and this implementation rejects Apple's `FAMILY_SHARED` transactions.
 
-The three numeric IDs above identify subscription products. **None is `APPLE_APP_ID` or `APPLE_SUBSCRIPTION_GROUP_ID`.** Obtain the app's numeric Apple ID from App Information, and the numeric subscription group ID from its group details. Those two values were still unconfirmed when this guide was written.
+The three numeric IDs above identify subscription products. **None is `APPLE_APP_ID` or `APPLE_SUBSCRIPTION_GROUP_ID`.** The user confirmed **`APPLE_APP_ID=6829160611`** and **`APPLE_SUBSCRIPTION_GROUP_ID=22534568`** from [the Premium group URL](https://appstoreconnect.apple.com/apps/6829160611/distribution/subscription-groups/22534568). Configure those exact values in Cloudflare; the subscription product numbers are different.
 
 Complete UK localization, price/availability, subscription group display name, review screenshot and review notes for **monthly and annual only**. Do not recreate or submit an Apple Founder product. First subscriptions must be submitted together with the new app version; do not submit the older build 1.0 (1), which has no StoreKit integration. This source increments the build to 1.0 (2).
 
@@ -51,8 +51,8 @@ Configure server-side variables:
 | --- | --- |
 | `APPLE_BILLING_ENABLED` | `true` only after configuration and deployment checks |
 | `APPLE_ENVIRONMENT` | `Production` for the production deployment |
-| `APPLE_APP_ID` | Numeric ID of the **BasketBoss app**, not a subscription ID |
-| `APPLE_SUBSCRIPTION_GROUP_ID` | Numeric ID of the verified group |
+| `APPLE_APP_ID` | `6829160611` — BasketBoss app ID, not a subscription ID |
+| `APPLE_SUBSCRIPTION_GROUP_ID` | `22534568` — verified Premium group ID |
 | `APPLE_ISSUER_ID` | Issuer UUID associated with the In-App Purchase key |
 | `APPLE_KEY_ID` | The key's 10-character ID |
 | `APPLE_MONTHLY_PRODUCT_ID` | Optional; defaults to the exact monthly Product ID above |
