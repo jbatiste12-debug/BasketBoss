@@ -55,7 +55,11 @@ export function installNativeMembership({apiURL,readSession,fetch:perform=global
   for(const node of doc.querySelectorAll('.bb17513-meal-premium')){
    const target=nativeMembershipURL(win.location.href);
    if(node.getAttribute('href')!==target)node.setAttribute('href',target);
-   text(node,'Your account');node.setAttribute('aria-label','View your BasketBoss account status');
+   // This is also a billing anchor handled above. Both passes must agree:
+   // toggling two labels here creates an endless childList observer loop on
+   // capacitor://localhost and prevents timers, app scripts and taps running.
+   text(node,'Your account status');
+   if(node.getAttribute('aria-label')!=='View your BasketBoss account status')node.setAttribute('aria-label','View your BasketBoss account status');
   }
   for(const node of doc.querySelectorAll('#bb175Compare,button[data-bbob="premium"]'))text(node,'Your account status');
   const parent=doc.getElementById('bbNativeMembershipMount')||doc.getElementById('bbuiLinksSection');if(parent)mount(parent);
