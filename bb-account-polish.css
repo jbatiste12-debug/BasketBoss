@@ -73,3 +73,23 @@ html body .shell>header.top[data-bb-account-polish]>.bbui-header-actions{width:a
  html:not(.bb-native-ios) body .shell>header.top[data-bb-account-polish]>.brand{flex:1 0 100%!important;width:100%!important}
  html:not(.bb-native-ios) body .shell>header.top[data-bb-account-polish]>.bbui-header-actions{margin-left:auto!important}
 }
+/* Phone landscape: compact heading and aligned columns inside one scroll area. */
+@media(orientation:landscape) and (max-height:520px){
+ html body .bbui-settings-overlay:has([data-bb-account-polish]){padding:8px max(14px,env(safe-area-inset-right,0px)) 8px max(14px,env(safe-area-inset-left,0px))!important}
+ html body .bbui-settings-panel[data-bb-account-polish]{width:min(100%,740px)!important;max-width:740px!important;max-height:calc(100dvh - 16px)!important;border-radius:20px!important;padding:0 16px 16px!important}
+ html body .bbui-settings-panel[data-bb-account-polish] .bbui-settings-heading{padding:13px 17px!important;margin:0 -16px 12px!important;border-radius:19px 19px 0 0!important;align-items:center!important}
+ html body .bbui-settings-panel[data-bb-account-polish] #bbuiSettingsTitle{font-size:24px!important;margin-bottom:4px!important}
+ html body .bbui-settings-panel[data-bb-account-polish] .bbap-eyebrow{margin-bottom:4px!important}
+ html body .bbui-settings-panel[data-bb-account-polish] .bbap-heading-note{max-width:none!important}
+ html body .bbui-settings-panel[data-bb-account-polish] #bbuiSettingsGeneral:not([hidden]){display:grid!important;grid-template-columns:repeat(2,minmax(0,1fr))!important;gap:12px!important;align-items:start!important}
+ html body .bbui-settings-panel[data-bb-account-polish] #bbuiLinksSection{grid-column:1/-1!important}
+ html body .bbui-settings-panel[data-bb-account-polish] .bbui-settings-section{margin:0!important}
+ html body #cloud-card[data-bb-account-polish]{width:min(100%,600px)!important;max-width:600px!important;padding:18px 22px!important;border-radius:20px!important}
+ html body #cloud-card[data-bb-account-polish] .bbap-account-mark{display:none!important}
+ html body #cloud-card[data-bb-account-polish] h2{font-size:25px!important}
+ html body #cloud-card[data-bb-account-polish] #cloud-auth{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));column-gap:14px}
+ html body #cloud-card[data-bb-account-polish] #cloud-login,html body #cloud-card[data-bb-account-polish] #cloud-signup{grid-column:1/-1}
+}
+/* Keep the exit reachable while a keyboard or short viewport scrolls the form.
+   The existing close button stays in the card's own scroll area and focus order. */
+html body #cloud-card[data-bb-account-polish] #cloud-close{position:sticky!important;top:0!important;right:auto!important;float:right!important;margin:-9px -9px 0 10px!important;background:#f3f6e9!important}

@@ -8,7 +8,7 @@
 <script src="bb-food-visuals.js?v=20261031-food2"></script>
 <link rel="stylesheet" href="bb-navigation-polish.css?v=20261101-recovery1">
 <script defer src="bb-navigation-polish.js?v=20261101-polish1"></script>
-<link rel="stylesheet" href="bb-account-polish.css?v=20261101-polish1">
+<link rel="stylesheet" href="bb-account-polish.css?v=20261101-layout2">
 <script defer src="bb-account-polish.js?v=20261101-polish1"></script>
 <link rel="stylesheet" href="bb-onboarding-v2.css?v=20261101-signin2">
 <link rel="stylesheet" href="bb-ux-cleanup.css?v=20261028-ux1">
@@ -10950,7 +10950,7 @@ body{background:var(--bb17513-app-canvas)!important;background-image:none!import
   else start();
 })();
 </script>
-<script src="bb-real-app-tour-v82.js?v=20261025-choice-v2" defer></script>
+<script src="bb-real-app-tour-v82.js?v=20261101-receipts1" defer></script>
 <!-- BB17513 private QA membership switch: PRIVATE CODESPACES HOSTS ONLY. Not an entitlement. -->
 
 <script defer src="bb-cloudflare-qa.js?v=17513-owner1"></script>
@@ -10980,6 +10980,8 @@ function initialise(){
  <details class="bbui-tutorial-topic"><summary>🥛 Kitchen — Cupboard, Fridge &amp; Freezer</summary><div class="bbui-tutorial-body"><ol><li>Expand <strong>What's in your Cupboard?</strong>, <strong>What's in your Fridge?</strong> or <strong>What's in your Freezer?</strong>. Each heading shows how many foods you've selected.</li><li>Tap your foods, or use <strong>Add food</strong> inside that section. Open the other categories to continue.</li><li>Tap <strong>View PANTRY</strong>, or scroll just below the three sections. In the one <strong>PANTRY</strong> list, set quantities and units or remove foods.</li><li>Tap <strong>Confirm &amp; Reconcile Shopping List</strong> once. BasketBoss saves your measured food and shows the updated Shop list.</li><li>Only compatible measured amounts reduce shopping needs. Unknown quantities do not count as sufficient stock.</li></ol><p>In <strong>Cook → Make a Meal</strong>, confirming ingredients shows recipe ideas; it never automatically reconciles Shopping.</p></div></details>
  <details class="bbui-tutorial-topic"><summary>🛒 Shop — check what you need</summary><div class="bbui-tutorial-body"><ol><li>Shopping combines planned meals, School Lunches and essentials.</li><li>Reconcile your measured inventory to reduce quantities still required.</li><li>Use <strong>Shop Mode</strong> to follow aisle groups and tick items as they go into your basket.</li><li>Checking an item as bought is separate from marking it as already in your kitchen.</li></ol></div></details>
  <details class="bbui-tutorial-topic"><summary>🍳 Cook — Make a Meal and follow steps</summary><div class="bbui-tutorial-body"><ol><li>Select available ingredients from Fridge, Cupboard and Freezer.</li><li>Open Cupboard, Fridge and Freezer, choose the foods you have, then edit amounts in the one YOUR INGREDIENTS list below.</li><li>Tap <strong>Confirm — Make a Meal</strong> to show recipe suggestions. It does not reconcile Shopping.</li><li>Review missing ingredients and substitutions before choosing a recipe.</li><li>Use step-by-step cooking instructions and practical food-safety checks; always follow packaging and allergy information.</li></ol></div></details>
+ <details class="bbui-tutorial-topic"><summary>🧾 Receipt scanner — review before saving</summary><div class="bbui-tutorial-body"><ol><li>Open <strong>Shop</strong>, choose your region and supermarket, then tap <strong>Scan Receipt</strong>. This optional feature needs a confirmed Premium account, internet access and available scan allowance.</li><li>Take or choose a photo. Crop out personal/payment details and review it before agreeing to send it to Google Gemini.</li><li>Tap <strong>Scan receipt</strong>, then check the store, currency, total, discounts, names, amounts and food locations. Keep uncertain quantities unknown; non-food purchases stay separate from food stock.</li><li>Choose <strong>Confirm receipt &amp; add food</strong> when correct. Confirmed food updates Kitchen; a preview alone saves nothing.</li><li>Use <strong>Check receipt status</strong> after an interrupted confirmation. Review <strong>Confirm Your Pantry</strong> before the next shop to avoid counting the same purchase twice.</li></ol><p>Receipt photos are not saved by BasketBoss. Original photos remain in your own photo library. <a href="basketboss-latest-guide.html#receipts">Read the receipt scanner guide</a>.</p></div></details>
+ <details class="bbui-tutorial-topic"><summary>↗ How it all connects · PWA &amp; iPhone</summary><div class="bbui-tutorial-body"><p><strong>Discover → Plan → Kitchen → Shop → Cook.</strong> Choose recipes and portions, confirm measured food you have, buy what remains, then use your ingredients for dinner. Reviewed receipt food returns to Kitchen for the next week.</p><p>The PWA and iPhone share these five tabs. They store local data separately: sign in on each device, keep a backup and use explicit cloud upload/restore for your saved plan. AI, scanning and cloud actions need internet. The iPhone uses native Camera/Photos permission prompts and offers existing-account sign-in and account status.</p><p><a href="basketboss-latest-guide.html#flow">Read the complete app flow</a> · <a href="basketboss-latest-guide.html#devices">PWA &amp; iPhone guide</a></p></div></details>
  <div class="bbui-tutorial-help-links"><button type="button" id="bb82StartLiveTour" class="bb82-tour-launch">↻ Replay tutorial</button></div>
  </div></section>`;
  document.body.appendChild(overlay);
@@ -11493,8 +11495,8 @@ body[data-bbnext-view="discover"] #app .bb175-discover-heading{padding-top:calc(
 <link rel="stylesheet" href="bb-settings-premium-polish.css?v=20261026a">
 <link rel="stylesheet" href="bb-mobile-three-20261027.css?v=20261027-mobile-3">
 <!-- BasketBoss isolated Plan / premium UI polish; original app handlers unchanged -->
-<link rel="stylesheet" href="bb-plan-premium-polish.css?v=20261028-plan-convert-1">
-<script defer src="bb-plan-premium-polish.js?v=20261031-shop-prices"></script>
+<link rel="stylesheet" href="bb-plan-premium-polish.css?v=20261101-budget2">
+<script defer src="bb-plan-premium-polish.js?v=20261101-budget2"></script>
 <link rel="stylesheet" href="bb-shop-cook-clarity.css?v=20261028-r1">
 <link rel="stylesheet" href="bb-cook-plan-hotfix.css?v=20261028-cook-plan-v1">
 <link rel="stylesheet" href="bb-servings-mobile-polish.css?v=20261029-preview2">

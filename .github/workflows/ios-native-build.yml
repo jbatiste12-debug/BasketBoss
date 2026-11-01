@@ -18,6 +18,10 @@ on:
       - bb-meal-image.*
       - bb-navigation-polish.*
       - bb-account-polish.*
+      - bb-plan-premium-polish.*
+      - bb-real-app-tour-v82.js
+      - tutorial.html
+      - basketboss-latest-guide.html
       - food-thumbs/v2/**
       - shopping-inventory.js
       - make-a-meal.*

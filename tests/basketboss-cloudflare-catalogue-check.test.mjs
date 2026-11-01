@@ -13,10 +13,10 @@ test('polished interface deployment checks every script/style without invoking A
  const requests=[];
  const result=await verifyInterfaceDeployment(async(address,options)=>{
   requests.push(address);assert.equal(options.headers,undefined);assert.notEqual(options.method,'POST');assert.equal(options.redirect,'error');
-  assert.match(new URL(address).pathname,/^\/bb-(cook-studio|cook-result|meal-image|navigation-polish|account-polish)\.(js|css)$/);
-  return new Response('public asset',{headers:{'Content-Type':address.endsWith('.js')?'application/javascript':'text/css'}});
+  assert.match(new URL(address).pathname,/^\/(?:bb-(cook-studio|cook-result|meal-image|navigation-polish|account-polish|plan-premium-polish)\.(js|css)|tutorial\.html|basketboss-latest-guide\.html|bb-real-app-tour-v82\.js)$/);
+  return new Response('public asset',{headers:{'Content-Type':address.endsWith('.js')?'application/javascript':address.endsWith('.html')?'text/html':'text/css'}});
  });
- assert.deepEqual(result,{cookStudio:true,createdMeal:true,mealPictures:true,navigation:true,accountSettings:true});assert.equal(requests.length,10);
+ assert.deepEqual(result,{cookStudio:true,createdMeal:true,mealPictures:true,navigation:true,accountSettings:true,budget:true,guides:true});assert.equal(requests.length,15);
 });
 
 test('polished interface deployment rejects missing or HTML fallback assets and hides unexpected network text',async()=>{

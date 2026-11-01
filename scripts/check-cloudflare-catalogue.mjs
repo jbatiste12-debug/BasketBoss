@@ -128,7 +128,7 @@ export async function verifyFoodThumbnailDeployment(perform=fetch){
 
 // Verify the public interface bundle only; never requests an AI generation.
 export async function verifyInterfaceDeployment(perform=fetch){
- const modules={'cookStudio':'bb-cook-studio','createdMeal':'bb-cook-result','mealPictures':'bb-meal-image','navigation':'bb-navigation-polish','accountSettings':'bb-account-polish'};
+ const modules={'cookStudio':'bb-cook-studio','createdMeal':'bb-cook-result','mealPictures':'bb-meal-image','navigation':'bb-navigation-polish','accountSettings':'bb-account-polish','budget':'bb-plan-premium-polish'};
  const result={};
  try{
   for(const [label,module] of Object.entries(modules)){
@@ -139,6 +139,12 @@ export async function verifyInterfaceDeployment(perform=fetch){
    }
    result[label]=true;
   }
+  for(const file of ['tutorial.html','basketboss-latest-guide.html','bb-real-app-tour-v82.js']){
+   const response=await perform('https://basketboss.co.uk/'+file,{cache:'no-store',redirect:'error',signal:AbortSignal.timeout(15000)});
+   if(response.status!==200||!(file.endsWith('.js')?/javascript/i:/text\/html/i).test(response.headers.get('content-type')||''))throw Error();
+   await response.body?.cancel();
+  }
+  result.guides=true;
   return result;
  }catch{throw Error('The polished app interface assets could not be verified on production.');}
 }

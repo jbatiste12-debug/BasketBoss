@@ -53,12 +53,16 @@
  function decorateBudget(){
    const donut=$('#app.bbnext-plan .bbnext-plan-donut');
    if(!donut||donut.dataset.bbpolRing)return;
+   donut.closest('.bbnext-plan-budget')?.setAttribute('data-bb-budget-polish','premium');
    liveBudgetObserver?.disconnect();
    const svg=document.createElementNS('http://www.w3.org/2000/svg','svg');
    svg.setAttribute('viewBox','0 0 100 100');svg.classList.add('bbpol-ring-svg');svg.setAttribute('aria-hidden','true');
+   const defs=document.createElementNS('http://www.w3.org/2000/svg','defs');
+   defs.innerHTML='<linearGradient id="bbpolBudgetGradient" x1="0" y1="0" x2="1" y2="1"><stop offset="0%" stop-color="#72a987"/><stop offset="48%" stop-color="#2c7c55"/><stop offset="100%" stop-color="#174e38"/></linearGradient>';
    const make=(className)=>{const circle=document.createElementNS('http://www.w3.org/2000/svg','circle');circle.setAttribute('cx','50');circle.setAttribute('cy','50');circle.setAttribute('r','42');circle.classList.add(className);return circle;};
+   const detail=make('bbpol-ring-detail');detail.setAttribute('r','49');
    const track=make('bbpol-ring-track'),progress=make('bbpol-ring-progress');
-   svg.append(track,progress);
+   svg.append(defs,detail,track,progress);
    donut.insertBefore(svg,donut.firstChild);
    donut.dataset.bbpolRing='1';
    const update=()=>{
@@ -66,7 +70,9 @@
      // second calculation or storage key. It already caps aria-valuenow 0–100.
      const n=Math.max(0,Math.min(100,Number(donut.getAttribute('aria-valuenow'))||0));
      progress.style.strokeDashoffset=String(2*Math.PI*42*(1-n/100));
-     progress.style.stroke=donut.style.getPropertyValue('--bb77-budget-color')||'#287646';
+     progress.style.opacity=n>0?'1':'0';
+     const colour=donut.style.getPropertyValue('--bb77-budget-color')||'#287646';
+     progress.style.stroke=colour==='#287646'?'url(#bbpolBudgetGradient)':colour;
    };
    update();
    liveBudgetObserver=new MutationObserver(update);

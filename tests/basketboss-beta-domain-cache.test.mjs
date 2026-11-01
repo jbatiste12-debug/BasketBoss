@@ -18,7 +18,7 @@ function harness({offline=false}={}) {
   return {request,seen};
 }
 test('Beta cache is versioned past the production merge',()=>{
- assert.match(script,/basketboss-premium-secure-shell-20261101-v24-signin-flow/);
+ assert.match(script,/basketboss-premium-secure-shell-20261101-v25-cook-guides-layout/);
  assert.doesNotMatch(script,/20261028-v13-free-signup-funnel/);
 });
 test('Onboarding, partner sharing and per-day serving assets refresh from network',async()=>{
@@ -28,6 +28,15 @@ test('Onboarding, partner sharing and per-day serving assets refresh from networ
 });
 test('Release assets retain a cached offline fallback',async()=>{
  const h=harness({offline:true});assert.equal(await (await h.request('bb-onboarding-v2.js')).text(),'CACHED');
+});
+test('Receipt guides, live tour and budget presentation update online and remain available offline',async()=>{
+ const assets=['basketboss-latest-guide.html','tutorial.html','bb-real-app-tour-v82.js?v=20261101-receipts1','bb-plan-premium-polish.js?v=20261101-budget2','bb-plan-premium-polish.css?v=20261101-budget2','bb-account-polish.css?v=20261101-layout2'];
+ const online=harness(),offline=harness({offline:true});
+ for(const asset of assets){
+  assert.equal(await (await online.request(asset)).text(),'NEW',asset);
+  assert.equal(await (await offline.request(asset)).text(),'CACHED',asset);
+ }
+ assert.equal(online.seen.length,assets.length);
 });
 test('API and account data are never intercepted or cached',()=>{
  const h=harness();assert.equal(h.request('api/household?mode=status'),undefined);assert.equal(h.request('api/subscription/status'),undefined);

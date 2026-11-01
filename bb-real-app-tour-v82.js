@@ -1,25 +1,31 @@
-/* BasketBoss UI-NEXT 7.12 — Nine-step REAL BasketBoss Tour.
+/* BasketBoss app walkthrough — real controls, including receipt review.
    Does not write to localStorage, change meal plans, or touch shopping quantities.
-   Replaces the old 16-step tour loader for this development candidate only.
+   Uses the app's real controls without running a scan or saving an action.
 */
 (()=>{'use strict';
-const V='7.12';
+const V='2026.11';
 const STEPS=[
  {title:'Your five BasketBoss tabs',body:'Plan, Discover, Kitchen, Shop and Cook are always your main routes.',target:['.shell .tabs']},
  {title:'Plan your week',body:'Your seven-day dinner plan and budget are together under Plan.',tab:'week',target:['.tab[data-tab="week"]']},
  {title:'Your grocery budget',body:'Enter a target beside the donut. Estimates reflect the chosen region (UK, Guernsey, Jersey or United States).',tab:'week',target:['#app .bbnext-plan-budget','#app .bbnext-plan-donut']},
  {title:'Smart Auto-Fill Pro',body:'Premium filters can favour quick meals, high protein, kid-friendly options and Cook Once, Eat Twice. Trim My Basket suggests estimated savings when budget gets tight.',tab:'week',target:['#app .bb81-pro-filters','#app .bbnext-plan-actions']},
  {title:'Dinner and dessert cards',body:'Tap a weekday to expand its dinner and dessert. Cook, replace or remove meals; your shopping list recalculates.',tab:'week',target:['#app .bbnext-day']},
- {title:'Discover — find your meals',body:'Browse 100 Free recipes or unlock all 500 with Premium. Swipe the featured meal only to browse. Add to week is on the recipe cards below; Premium recipes stay locked in Free.',tab:'discover',target:['.tab[data-tab="discover"]','#app .grid-recipes']},
+ {title:'Discover — find your meals',body:'Browse 100 Free recipes; all 500 recipes with Premium are available to eligible signed-in members. Swipe the featured meal only to browse. Add to week is on the recipe cards below; Premium recipes stay locked in Free.',tab:'discover',target:['.tab[data-tab="discover"]','#app .grid-recipes']},
  {title:'Kitchen — choose what you have',body:'Open Cupboard, Fridge and Freezer; edit your quantities in one PANTRY summary and confirm to reconcile Shopping.',tab:'shop',target:['.tab[data-tab="shop"]']},
  {title:'Shop — buy only what you need',body:'Confirm Kitchen quantities first: those foods reduce the current To buy list. In Live Shop, tick Bought, then use ••• for a standard pack, exact amount, different amount or Already have enough. Finish Shop saves only confirmed unused amounts to Kitchen for next week. Fresh food needs safe-storage confirmation.',tab:'shop-list',target:['.tab[data-tab="shop-list"]']},
- {title:'Cook and get more help',body:'Make a Meal confirms the ingredients you choose without changing Shopping. Settings → Tutorials holds the section guides and a replay of this tour.',target:['#bbuiOpenSettings','.tab[data-tab="cook"]']}
+ {title:'Scan a receipt after shopping',body:'In Shop, choose your region and supermarket, then use Scan Receipt. Premium scanning needs internet access and your consent to send the photo to Google Gemini. Review names, amounts, food locations, currency and totals before Confirm receipt & add food. Check receipt status after an interrupted confirmation to avoid duplicate stock.',tab:'shop-list',target:['#bbReceiptToolbar','[data-bb-receipt-entry]','.tab[data-tab="shop-list"]']},
+ {title:'Cook and get more help',body:'Cook uses the ingredients you choose for recipe matches or optional Premium AI meal creation. Review suggestions before saving; meal pictures are illustrative. It does not automatically change Shopping. Settings → Guides explains the complete PWA and iPhone flow.',target:['.bb173-make-meal-link','#bbuiOpenSettings']}
 ];
 let current=-1,focused=null,card=null,previousFocus=null;
 function visible(node){if(!node||!node.isConnected||node.closest('[hidden]'))return false;const s=getComputedStyle(node);return s.display!=='none'&&s.visibility!=='hidden'&&node.getClientRects().length>0;}
+function blocked(allowSettings=false){
+ if(document.documentElement.classList.contains('bb-native-starting')||document.getElementById('bbNewOnboarding')||window.BBAccountDeletion?.isDeleting?.())return true;
+ if(visible(document.querySelector('#cloud-panel.open')))return true;
+ return [...document.querySelectorAll('dialog[open],[role="dialog"][aria-modal="true"]')].some(node=>visible(node)&&!(allowSettings&&node.closest('.bbui-settings-overlay')));
+}
 function target(selectors){for(const selector of selectors){try{const el=document.querySelector(selector);if(visible(el))return el;}catch(e){console.warn('Tour target not available',selector,e)}}return null;}
 function clear(){if(focused){focused.classList.remove('bb82-tour-highlight');focused=null;}}
-function close(){clear();current=-1;if(card){card.remove();card=null;}previousFocus?.focus?.({preventScroll:true});}
+function close(restoreFocus=true){clear();current=-1;if(card){card.remove();card=null;}if(restoreFocus)previousFocus?.focus?.({preventScroll:true});try{const url=new URL(location.href);url.searchParams.delete('bb_tour');url.searchParams.delete('bb_step');history.replaceState(history.state,'',url.pathname+url.search+url.hash);}catch{}}
 function show(i){
  if(i<0||i>=STEPS.length){close();return;}
  current=i;const s=STEPS[i];clear();
@@ -38,18 +44,20 @@ function show(i){
  };
  requestAnimationFrame(()=>requestAnimationFrame(paint));
 }
-function open(){
- if(card){show(0);return;}
+function open(start=0){
+ if(blocked(true))return false;
+ if(card){show(start);return;}
  // Close existing Settings before spotlight starts; do not alter any saved settings.
  const oldClose=document.querySelector('.bbui-settings-overlay:not([hidden]) .bbui-settings-close');if(oldClose)oldClose.click();
  previousFocus=document.activeElement;
- card=document.createElement('aside');card.id='bb82TourCard';card.setAttribute('role','dialog');card.setAttribute('aria-modal','false');card.setAttribute('aria-label','REAL BasketBoss Tour, version '+V);
- card.innerHTML='<div class="bb82-tour-top"><span id="bb82TourCount" tabindex="-1"></span><button type="button" id="bb82TourClose" aria-label="Exit live tour">✕ Exit</button></div><h2 id="bb82TourTitle"></h2><p id="bb82TourText"></p><div class="bb82-tour-buttons"><button type="button" id="bb82TourPrevious">← Back</button><button type="button" id="bb82TourNext">Next →</button></div><small>REAL BASKETBOSS TOUR · UI-NEXT '+V+' · no changes saved</small>';
+ card=document.createElement('aside');card.id='bb82TourCard';card.setAttribute('role','dialog');card.setAttribute('aria-modal','false');card.setAttribute('aria-label','BasketBoss app walkthrough');
+ card.innerHTML='<div class="bb82-tour-top"><span id="bb82TourCount" tabindex="-1"></span><button type="button" id="bb82TourClose" aria-label="Exit live tour">✕ Exit</button></div><h2 id="bb82TourTitle"></h2><p id="bb82TourText"></p><div class="bb82-tour-buttons"><button type="button" id="bb82TourPrevious">← Back</button><button type="button" id="bb82TourNext">Next →</button></div><small>BasketBoss walkthrough · no changes saved</small>';
  document.body.append(card);
  card.querySelector('#bb82TourClose').onclick=close;
  card.querySelector('#bb82TourPrevious').onclick=()=>show(current-1);
  card.querySelector('#bb82TourNext').onclick=()=>current===STEPS.length-1?close():show(current+1);
- show(0);
+ show(start);
+ return true;
 }
 function enhanceHub(){
  const pane=document.querySelector('#bbuiSettingsTutorials');if(!pane||pane.querySelector('#bb82TourTopics'))return;
@@ -60,7 +68,9 @@ function enhanceHub(){
  ['🔎 Discover','Browse and Add to week from recipe cards'],
  ['🥫 Kitchen','Confirm Cupboard, Fridge and Freezer quantities'],
  ['🛒 Shop','Kitchen deductions, Bought quantities and next-week leftovers'],
- ['🍳 Cook','Make a Meal and safe step-by-step cooking']
+ ['🧾 Receipts','Review a supermarket receipt before food is added to Kitchen'],
+ ['🍳 Cook','Ingredient ideas, optional AI meals and safe step-by-step cooking'],
+ ['📱 PWA & iPhone','The same five tabs, with separate local device storage']
  ].map(x=>'<div class="bb82-tour-topic"><strong>'+x[0]+'</strong><span>'+x[1]+'</span></div>').join('')+'</div>';
  links.parentNode.insertBefore(section,links);
 }
@@ -82,9 +92,14 @@ function init(){
  `;document.head.append(style);
  document.addEventListener('click',e=>{if(e.target.closest('#bb82StartLiveTour')){e.preventDefault();open();}},true);
  document.addEventListener('keydown',e=>{if(e.key==='Escape'&&card)close();});
- enhanceHub();const observer=new MutationObserver(()=>{if(document.querySelector('#bbuiSettingsTutorials')&&!document.querySelector('#bb82TourTopics'))enhanceHub();});
- observer.observe(document.body,{childList:true,subtree:true});
+ const params=new URLSearchParams(location.search);let requested=params.get('bb_tour')==='1';
+ function requestedTour(){if(!requested||blocked()||!document.getElementById('app')?.firstElementChild)return;requested=false;const step=Number(params.get('bb_step'));open(Number.isInteger(step)&&step>=0&&step<STEPS.length?step:0);}
+ function refresh(){if(document.querySelector('#bbuiSettingsTutorials')&&!document.querySelector('#bb82TourTopics'))enhanceHub();if(card&&blocked(true))close(false);requestedTour();}
+ enhanceHub();const observer=new MutationObserver(refresh);
+ observer.observe(document.body,{childList:true,subtree:true,attributes:true,attributeFilter:['open','hidden','aria-hidden']});
+ const account=document.getElementById('cloud-panel');if(account)new MutationObserver(refresh).observe(account,{attributes:true,attributeFilter:['class','hidden']});
  window.BBRealAppTour=Object.freeze({open,close,version:V,steps:STEPS.length});
+ window.addEventListener('basketboss:native-startup-ready',requestedTour);requestedTour();
 }
 if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',init,{once:true});else init();
 })();

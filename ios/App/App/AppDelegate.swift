@@ -68,7 +68,7 @@ class BasketBossViewController: CAPBridgeViewController {
     #if DEBUG
     override func instanceDescriptor() -> InstanceDescriptor {
         let descriptor = super.instanceDescriptor()
-        if ProcessInfo.processInfo.arguments.contains("--bb-native-cook-smoke") {
+        if ProcessInfo.processInfo.arguments.contains("--bb-native-cook-smoke-direct") {
             descriptor.appStartPath = "/make-a-meal.html"
         }
         return descriptor
