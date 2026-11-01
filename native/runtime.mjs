@@ -10,6 +10,7 @@ import {installNativeMembership} from './membership.mjs';
 import {installNativeApplePurchases} from './apple-purchases.mjs';
 import {installNativeStartup} from './startup.mjs';
 import {watchNativeEntryReadiness} from './entry-readiness.mjs';
+import {installNativeCookVoice} from './cook-voice.mjs';
 
 if(Capacitor.isNativePlatform()&&Capacitor.getPlatform()==='ios'){
  document.documentElement.classList.add('bb-native-ios');
@@ -36,6 +37,7 @@ if(Capacitor.isNativePlatform()&&Capacitor.getPlatform()==='ios'){
   await Browser.open({url:url.href,presentationStyle:'popover'});
  }
  window.BBNative=Object.freeze({isNative:true,platform:'ios',apiOrigin:PRODUCTION_ORIGIN,apiURL:path=>productionApiURL(path)||path,haptic,openExternal,clearTemporaryData});
+ const cookVoice=installNativeCookVoice({plugin:registerPlugin('BasketBossCookVoice'),window,isPremium:()=>window.BasketBossVerifiedPremium?.isActive?.()===true});
  // Preserve method/body/authentication. No cookie transport or native HTTP
  // patch is enabled: WKWebView uses the server's narrow native-origin CORS.
  installNativeXHR();
@@ -107,7 +109,7 @@ if(Capacitor.isNativePlatform()&&Capacitor.getPlatform()==='ios'){
   requestAnimationFrame(()=>startup.ready());
  }
  if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',ready,{once:true});else ready();
- void App.addListener('appStateChange',({isActive})=>{if(isActive){window.dispatchEvent(new Event('focus'));window.dispatchEvent(new Event('basketboss:native-resumed'));}});
+ void App.addListener('appStateChange',({isActive})=>{if(isActive){window.dispatchEvent(new Event('focus'));window.dispatchEvent(new Event('basketboss:native-resumed'));}else{void cookVoice.stop();}});
  void App.addListener('appUrlOpen',({url})=>{
   let link;try{link=new URL(url);}catch{return;}
   // Do not trust tokens in incoming URLs. Email/password auth remains the

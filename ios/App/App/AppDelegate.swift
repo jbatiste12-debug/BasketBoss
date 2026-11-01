@@ -79,6 +79,7 @@ class BasketBossViewController: CAPBridgeViewController {
         super.capacitorDidLoad()
         bridge?.registerPluginInstance(BasketBossNavigationPlugin())
         bridge?.registerPluginInstance(BasketBossPurchasesPlugin())
+        bridge?.registerPluginInstance(BasketBossCookVoicePlugin())
         #if DEBUG
         if #available(iOS 16.4, *) { webView?.isInspectable = true }
         if ProcessInfo.processInfo.arguments.contains("--bb-native-cook-smoke"), let webView = webView {
@@ -146,7 +147,7 @@ private final class BasketBossCookSmokeReporter: NSObject, WKScriptMessageHandle
     }
 
     func record(_ report: [String: Any]) {
-        let keys = ["complete", "passed", "nativeOrigin", "cookMounted", "cookReady", "navPresent", "navVisible", "navHit", "legacyVisible", "backToPlan", "dataKept", "mainReady", "startupReady", "phase", "readyState", "errorCount", "errorLine", "errorKind", "errorSource", "lastScript", "scriptCount", "ingredientClosed", "ingredientPhoto", "ingredientSaved", "ingredientAutofill", "ingredientExistingKept", "ingredientRestored"]
+        let keys = ["complete", "passed", "nativeOrigin", "cookMounted", "cookReady", "navPresent", "navVisible", "navHit", "legacyVisible", "backToPlan", "dataKept", "mainReady", "startupReady", "phase", "readyState", "errorCount", "errorLine", "errorKind", "errorSource", "lastScript", "scriptCount", "ingredientClosed", "ingredientPhoto", "ingredientSaved", "ingredientAutofill", "ingredientExistingKept", "ingredientRestored", "voiceFreeLocked", "voiceManualStart", "voiceNextStep", "voiceTimer", "voiceScaledAmount", "voiceExitStopped", "voiceRestored"]
         let safe = report.filter { keys.contains($0.key) }
         guard let data = try? JSONSerialization.data(withJSONObject: safe, options: [.sortedKeys]),
               let folder = FileManager.default.urls(for: .documentDirectory, in: .userDomainMask).first else { return }
@@ -161,7 +162,7 @@ private final class BasketBossCookSmokeReporter: NSObject, WKScriptMessageHandle
       addEventListener('error',e=>{errors.push({kind:e.error?.name||'ResourceError',line:e.lineno||0,source:String(e.filename||e.target?.src||'').split('/').pop().split('?')[0].replace(/[^A-Za-z0-9_.-]/g,'').slice(0,100)});},true);
       localStorage.setItem('bb_onboarding_fresh_once_20261028_v1',JSON.stringify({complete:true,step:10}));
       localStorage.setItem('basketboss_native_smoke_probe','keep');
-      let ticks=0,scrolled=false,navigationPending=false,ingredientRunning=false;
+      let ticks=0,scrolled=false,navigationPending=false,ingredientRunning=false,voiceRunning=false;
       function progress(report={},complete=false){const e=errors[0]||{},scripts=[...document.scripts],last=scripts.at(-1);window.webkit.messageHandlers.bbNativeCookSmoke.postMessage({...JSON.parse(sessionStorage.getItem(key+'_report')||'{}'),complete,nativeOrigin:location.protocol==='capacitor:',phase:location.pathname.endsWith('/make-a-meal.html')?'cook':sessionStorage.getItem(key)==='back'?'return':'main',readyState:document.readyState,mainReady:!!document.getElementById('app')?.firstElementChild,startupReady:window.BBNativeStartup?.phase==='ready',scriptCount:scripts.length,lastScript:String(last?.src||last?.id||'inline').split('/').pop().split('?')[0].replace(/[^A-Za-z0-9_.-]/g,'').slice(0,100),...report,errorCount:errors.length,errorLine:e.line||0,errorKind:e.kind||'',errorSource:e.source||''});}
       function send(report){progress(report,true);clearInterval(timer);}
       async function verifyIngredients(){
@@ -198,6 +199,43 @@ private final class BasketBossCookSmokeReporter: NSObject, WKScriptMessageHandle
         }
         return report;
       }
+      async function verifyVoiceCook(){
+        const report={},stateKey='basketboss_321_unified_state_v1',snapshot=localStorage.getItem(stateKey),recoveryKey='basketboss_321_unified_recovery_v1',recovery=localStorage.getItem(recoveryKey);
+        const originalPremium=window.BasketBossVerifiedPremium,originalVoice=window.BBNativeCookVoice;
+        const wait=async read=>{for(let n=0;n<60;n++){const value=read();if(value)return value;await new Promise(resolve=>setTimeout(resolve,100));}throw Error('VoiceCookSmokeTimeout');};
+        const refresh=()=>dispatchEvent(new StorageEvent('storage',{key:stateKey,newValue:localStorage.getItem(stateKey)}));
+        let starts=0,stops=0,onFinal=null;const spoken=[];
+        try{
+          window.BBNativeCookVoice={available:async()=>true,start:async(final,status)=>{starts++;onFinal=final;status({state:'listening'});},stop:async()=>{stops++;},speak:async text=>{spoken.push(text);}};
+          window.BasketBossVerifiedPremium={isActive:()=>false};
+          localStorage.setItem(stateKey,JSON.stringify({version:2,planned:[{recipeId:'fajitas',day:'Monday'}],servings:4,feedingSet:true}));refresh();
+          const day=await wait(()=>document.querySelector('.bbnext-day[data-bbnext-day="Monday"]'));day.open=true;
+          const cook=await wait(()=>day.querySelector('[data-cook]'));cook.click();
+          const begin=await wait(()=>document.getElementById('bbStart'));begin.click();
+          const toggle=await wait(()=>document.querySelector('.bb-cook-voice .bbcv-toggle'));
+          report.voiceFreeLocked=toggle.textContent.includes('Premium')&&starts===0;
+          window.BasketBossVerifiedPremium={isActive:()=>true};document.dispatchEvent(new Event('basketboss:premium-verified'));
+          report.voiceManualStart=starts===0&&toggle.getAttribute('aria-pressed')==='false';
+          toggle.click();await wait(()=>onFinal&&starts===1);
+          onFinal('How much cheddar?');await wait(()=>spoken.some(text=>text.startsWith('Cheddar:')));
+          const recipes=await fetch(new URL('recipes.json',location.href)).then(response=>response.json()),recipe=recipes.find(item=>item.id==='fajitas');
+          const cheddar=recipe.ingredients.find(item=>item[0]==='Cheddar'),quantity=BBServing.scaleText(cheddar[1],4/recipe.servings,cheddar[0]);
+          report.voiceScaledAmount=spoken.includes('Cheddar: '+quantity+'.');
+          onFinal('Next step');await wait(()=>/STEP 2 OF/.test(document.getElementById('bbBody').textContent));
+          report.voiceNextStep=/STEP 2 OF/.test(document.getElementById('bbBody').textContent);
+          onFinal('Start timer');await wait(()=>/Pause/.test(document.getElementById('bbTimerToggle').textContent));
+          onFinal('Start timer');report.voiceTimer=/Pause/.test(document.getElementById('bbTimerToggle').textContent);
+          const previousStops=stops;document.getElementById('bbExit').click();await wait(()=>!document.querySelector('.cook-overlay'));
+          report.voiceExitStopped=stops>previousStops;
+        }finally{
+          document.getElementById('bbExit')?.click();
+          window.BasketBossVerifiedPremium=originalPremium;window.BBNativeCookVoice=originalVoice;
+          if(snapshot===null)localStorage.removeItem(stateKey);else localStorage.setItem(stateKey,snapshot);
+          if(recovery===null)localStorage.removeItem(recoveryKey);else localStorage.setItem(recoveryKey,recovery);
+          refresh();report.voiceRestored=localStorage.getItem(stateKey)===snapshot&&window.BasketBossVerifiedPremium===originalPremium&&window.BBNativeCookVoice===originalVoice;
+        }
+        return report;
+      }
       addEventListener('load',()=>progress(),true);
       document.addEventListener('readystatechange',()=>progress());
       new MutationObserver(records=>{if(records.some(record=>[...record.addedNodes].some(node=>node.nodeName==='SCRIPT')))progress();}).observe(document.documentElement,{childList:true,subtree:true});
@@ -209,11 +247,15 @@ private final class BasketBossCookSmokeReporter: NSObject, WKScriptMessageHandle
           if(stage==='back'){
             const report=JSON.parse(sessionStorage.getItem(key+'_report')||'{}');
             report.backToPlan=document.body.dataset.bbnextView==='week';report.dataKept=localStorage.getItem('basketboss_native_smoke_probe')==='keep';
-            report.passed=!!(report.nativeOrigin&&report.cookMounted&&report.cookReady&&report.navVisible&&report.navHit&&report.backToPlan&&report.dataKept&&report.ingredientClosed&&report.ingredientPhoto&&report.ingredientSaved&&report.ingredientAutofill&&report.ingredientExistingKept&&report.ingredientRestored);send(report);return;
+            report.passed=!!(report.nativeOrigin&&report.cookMounted&&report.cookReady&&report.navVisible&&report.navHit&&report.backToPlan&&report.dataKept&&report.ingredientClosed&&report.ingredientPhoto&&report.ingredientSaved&&report.ingredientAutofill&&report.ingredientExistingKept&&report.ingredientRestored&&report.voiceFreeLocked&&report.voiceManualStart&&report.voiceNextStep&&report.voiceTimer&&report.voiceScaledAmount&&report.voiceExitStopped&&report.voiceRestored);send(report);return;
           }
           if(!sessionStorage.getItem(key+'_region')){const select=document.getElementById('bb307Island'),save=document.getElementById('bb307SaveMarket');if(select&&save){select.value='UK';select.dispatchEvent(new Event('change',{bubbles:true}));save.click();sessionStorage.setItem(key+'_region','1');return;}}
           if(!sessionStorage.getItem(key+'_ingredients')){
             if(!ingredientRunning){ingredientRunning=true;void verifyIngredients().then(report=>{sessionStorage.setItem(key+'_report',JSON.stringify(report));if(Object.values(report).some(value=>value!==true)){send({...report,passed:false});return;}sessionStorage.setItem(key+'_ingredients','1');ingredientRunning=false;}).catch(()=>send({passed:false}));}
+            return;
+          }
+          if(!sessionStorage.getItem(key+'_voice')){
+            if(!voiceRunning){voiceRunning=true;void verifyVoiceCook().then(report=>{sessionStorage.setItem(key+'_report',JSON.stringify({...JSON.parse(sessionStorage.getItem(key+'_report')||'{}'),...report}));if(Object.values(report).some(value=>value!==true)){send({...report,passed:false});return;}sessionStorage.setItem(key+'_voice','1');voiceRunning=false;}).catch(()=>send({passed:false,phase:'voice'}));}
             return;
           }
           const link=document.querySelector('.bb173-make-meal-link');if(link){navigationPending=true;sessionStorage.setItem(key,'cook');link.click();}if(ticks>200)send({passed:false,navPresent:!!link});return;

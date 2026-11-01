@@ -3,18 +3,18 @@
    Uses the app's real controls without running a scan or saving an action.
 */
 (()=>{'use strict';
-const V='2026.11';
+const V='2026.11-planning';
 const STEPS=[
  {title:'Your five BasketBoss tabs',body:'Plan, Discover, Kitchen, Shop and Cook are always your main routes.',target:['.shell .tabs']},
- {title:'Plan your week',body:'Your seven-day dinner plan and budget are together under Plan.',tab:'week',target:['.tab[data-tab="week"]']},
+ {title:'Plan your week',body:'Your seven-day dinner plan and budget are together under Plan. Tap Ingredients to avoid to open searchable food tiles for future Auto-fill. Your manually chosen meals stay in the plan.',tab:'week',target:['.tab[data-tab="week"]','#bbAvoidIngredientTab']},
  {title:'Your grocery budget',body:'Enter a target beside the donut. Estimates reflect the chosen region (UK, Guernsey, Jersey or United States).',tab:'week',target:['#app .bbnext-plan-budget','#app .bbnext-plan-donut']},
  {title:'Smart Auto-Fill Pro',body:'Premium filters can favour quick meals, high protein, kid-friendly options and Cook Once, Eat Twice. Trim My Basket suggests estimated savings when budget gets tight.',tab:'week',target:['#app .bb81-pro-filters','#app .bbnext-plan-actions']},
- {title:'Dinner and dessert cards',body:'Tap a weekday to expand its dinner and dessert. Cook, replace or remove meals; your shopping list recalculates.',tab:'week',target:['#app .bbnext-day']},
+ {title:'Dinner and dessert cards',body:'Tap a weekday to expand its meals. With Premium, Too tired / short on time? below tonight’s Cook button checks for a quicker dinner already planned later this week that confirmed PANTRY amounts can cover. Review both meals and packaging use-by dates before Swap these two meals.',tab:'week',target:['#app .bbnext-day']},
  {title:'Discover — find your meals',body:'Browse 100 Free recipes; all 500 recipes with Premium are available to eligible signed-in members. Swipe the featured meal only to browse. Add to week is on the recipe cards below; Premium recipes stay locked in Free.',tab:'discover',target:['.tab[data-tab="discover"]','#app .grid-recipes']},
  {title:'Kitchen — choose what you have',body:'Open Cupboard, Fridge and Freezer; edit your quantities in one PANTRY summary and confirm to reconcile Shopping.',tab:'shop',target:['.tab[data-tab="shop"]']},
  {title:'Shop — buy only what you need',body:'Confirm Kitchen quantities first: those foods reduce the current To buy list. In Live Shop, tick Bought, then use ••• for a standard pack, exact amount, different amount or Already have enough. Finish Shop saves only confirmed unused amounts to Kitchen for next week. Fresh food needs safe-storage confirmation.',tab:'shop-list',target:['.tab[data-tab="shop-list"]']},
  {title:'Scan a receipt after shopping',body:'In Shop, choose your region and supermarket, then use Scan Receipt. Premium scanning needs internet access and your consent to send the photo to Google Gemini. Review names, amounts, food locations, currency and totals before Confirm receipt & add food. Check receipt status after an interrupted confirmation to avoid duplicate stock.',tab:'shop-list',target:['#bbReceiptToolbar','[data-bb-receipt-entry]','.tab[data-tab="shop-list"]']},
- {title:'Cook and get more help',body:'Cook uses the ingredients you choose for recipe matches or optional Premium AI meal creation. Review suggestions before saving; meal pictures are illustrative. It does not automatically change Shopping. Plan → Settings → Guides explains the complete PWA and iPhone flow.',target:['.bb173-make-meal-link','#bbuiOpenSettings']}
+ {title:'Cook and get more help',body:'Cook uses your chosen ingredients for recipe matches or optional Premium AI tools. In step-by-step Cook, optional Premium Voice Cook can move through steps, start the visible timer or read an ingredient quantity aloud. Turn on voice when you want it; Stop listening switches it off. Device and browser support vary. Find full instructions in Plan → Settings → Guides.',target:['.bb173-make-meal-link','#bbuiOpenSettings']}
 ];
 let current=-1,focused=null,card=null,previousFocus=null;
 function visible(node){if(!node||!node.isConnected||node.closest('[hidden]'))return false;const s=getComputedStyle(node);return s.display!=='none'&&s.visibility!=='hidden'&&node.getClientRects().length>0;}
@@ -65,11 +65,14 @@ function enhanceHub(){
  const section=document.createElement('section');section.id='bb82TourTopics';section.setAttribute('aria-label','Learn BasketBoss by using BasketBoss');
  section.innerHTML='<h3>Learn BasketBoss by using BasketBoss</h3><div class="bb82-tour-topics">'+[
  ['📅 Plan','Regional weekly estimates, Smart Auto-Fill Pro and Trim My Basket'],
+ ['🥕 Ingredients to avoid','Open the food picker in Plan to choose what future Auto-fill leaves out'],
+ ['🌙 Tonight’s dinner · Premium','Review a quicker planned-meal swap, PANTRY amounts and packaging dates'],
  ['🔎 Discover','Browse and Add to week from recipe cards'],
  ['🥫 Kitchen','Confirm Cupboard, Fridge and Freezer quantities'],
  ['🛒 Shop','Kitchen deductions, Bought quantities and next-week leftovers'],
  ['🧾 Receipts','Review a supermarket receipt before food is added to Kitchen'],
  ['🍳 Cook','Ingredient ideas, optional AI meals and safe step-by-step cooking'],
+ ['🎙 Voice Cook · Premium','Opt-in voice commands for recipe steps, the shown timer and scaled quantities'],
  ['📱 PWA & iPhone','The same five tabs, with separate local device storage']
  ].map(x=>'<div class="bb82-tour-topic"><strong>'+x[0]+'</strong><span>'+x[1]+'</span></div>').join('')+'</div>';
  links.parentNode.insertBefore(section,links);

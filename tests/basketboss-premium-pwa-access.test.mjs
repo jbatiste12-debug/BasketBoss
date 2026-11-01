@@ -33,6 +33,7 @@ test('install succeeds without requesting Access-protected manifest',async()=>{
   listeners.install({waitUntil:p=>{work=p}});
   await work;
   assert.ok(requests.some(x=>x.endsWith('/index.html')),'offline shell still includes home page');
+  assert.equal(new Set(requests).size,requests.length,'Cache.addAll must not receive duplicate URLs');
   assert.ok(requests.every(x=>!x.includes('manifest.webmanifest')),'manifest must be excluded');
   assert.ok(requests.every(x=>!x.endsWith('/recipes.json')),'protected recipe catalogue never pre-cached');
   for(const name of ['bb-ingredient-preferences.js','bb-ingredient-picker.js','bb-ingredient-picker.css'])assert.ok(requests.includes(scope+name+'?v=20261101-avoid1'),'offline shell includes the versioned ingredient filter: '+name);
