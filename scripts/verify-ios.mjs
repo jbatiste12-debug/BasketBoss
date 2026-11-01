@@ -38,7 +38,7 @@ export function verifyIOS(directory=root){
  const {team}=verifyXcodeSettings(project);
  assert.match(project,/PrivacyInfo\.xcprivacy in Resources/);assert.match(read('ios/App/Podfile'),/platform :ios, '16\.0'/);
  const plist=read('ios/App/App/Info.plist');
- for(const value of ['NSCameraUsageDescription','NSPhotoLibraryUsageDescription','UIViewControllerBasedStatusBarAppearance','basketboss','ITSAppUsesNonExemptEncryption'])assert.ok(plist.includes(value));
+ for(const value of ['NSCameraUsageDescription','NSPhotoLibraryUsageDescription','NSMicrophoneUsageDescription','NSSpeechRecognitionUsageDescription','UIViewControllerBasedStatusBarAppearance','basketboss','ITSAppUsesNonExemptEncryption'])assert.ok(plist.includes(value));
  assert.doesNotMatch(plist,/NSAllowsArbitraryLoads/);
  assert.match(read('ios/App/App.xcworkspace/contents.xcworkspacedata'),/group:App\.xcodeproj/);
  const icon=fs.readFileSync(path.join(directory,'ios/App/App/Assets.xcassets/AppIcon.appiconset/AppIcon-512@2x.png'));

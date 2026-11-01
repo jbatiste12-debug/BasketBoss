@@ -1,7 +1,7 @@
 name: Verify BasketBoss Apple subscriptions
 on:
   push:
-    branches: [main, codex/apple-*, codex/ingredient-*]
+    branches: [main, codex/apple-*, codex/ingredient-*, codex/evening-*]
     paths:
       - .github/workflows/apple-subscriptions.yml
       - ios/**
@@ -18,6 +18,8 @@ on:
       - bb-account-deletion.js
       - bb-membership-settings.js
       - bb-ingredient-*
+      - bb-evening-*
+      - bb-cook-voice.*
       - index.html
       - app.html
       - privacy.html

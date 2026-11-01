@@ -14,6 +14,8 @@ on:
       - bb-account-deletion.*
       - bb-food-visuals.*
       - bb-ingredient-*
+      - bb-evening-*
+      - bb-cook-voice.*
       - bb-cook-studio.*
       - bb-cook-result.*
       - bb-meal-image.*

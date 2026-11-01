@@ -33,7 +33,7 @@ try{
  if(!raw?.complete)failure='report_timeout';else if(!raw.passed)failure='ui_failed';
 }catch(error){failure=error.code==='ETIMEDOUT'?'command_timeout':'command_failed';}
 const report={reportReceived:!!raw,runtimeVersion,failureStage:failure?stage:'',failure};
-for(const key of ['passed','nativeOrigin','cookMounted','cookReady','navPresent','navVisible','navHit','legacyVisible','backToPlan','dataKept','mainReady','startupReady','ingredientClosed','ingredientPhoto','ingredientSaved','ingredientAutofill','ingredientExistingKept','ingredientRestored'])report[key]=raw?.[key]===true;
+for(const key of ['passed','nativeOrigin','cookMounted','cookReady','navPresent','navVisible','navHit','legacyVisible','backToPlan','dataKept','mainReady','startupReady','ingredientClosed','ingredientPhoto','ingredientSaved','ingredientAutofill','ingredientExistingKept','ingredientRestored','voiceFreeLocked','voiceManualStart','voiceNextStep','voiceTimer','voiceScaledAmount','voiceExitStopped','voiceRestored'])report[key]=raw?.[key]===true;
 for(const key of ['errorCount','errorLine','scriptCount'])report[key]=Number.isInteger(raw?.[key])?Math.max(0,Math.min(raw[key],1000000)):0;
 for(const key of ['phase','readyState','errorKind','errorSource','lastScript'])report[key]=String(raw?.[key]||'').replace(/[^A-Za-z0-9_.-]/g,'').slice(0,100);
 console.log('::notice title=BasketBoss native Cook smoke::'+JSON.stringify({nativeCook:report}));
