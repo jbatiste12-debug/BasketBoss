@@ -176,6 +176,18 @@
       : !!document.querySelector('.bb-cook-studio') && document.documentElement.classList.contains('bb-cook-ready');
     if (!screenPresent) throw Error('Requested screen is not mounted: ' + target);
     if (missingVisibleImages.length) throw Error('Visible images failed to load: ' + missingVisibleImages.join(', '));
+    window.__BBPreviewAction = () => {
+      if (target === 'instructions') {
+        document.querySelector('#bbNext')?.click();
+        document.querySelector('#bbTimerToggle')?.click();
+      } else if (target === 'discover') {
+        document.querySelector('#skipRecipe')?.click();
+      } else if (target === 'kitchen') {
+        scrollBy({top: 220, behavior: 'smooth'});
+      } else if (target === 'plan' || target === 'shop' || target === 'cook') {
+        scrollBy({top: 220, behavior: 'smooth'});
+      }
+    };
     post({ ready: true, screenPresent: true, ...(budget ? { budget } : {}), phase: 'ready', nativeOrigin: location.protocol === 'capacitor:', heading: document.querySelector('#bbTitle, #app h2, #app h3, .bb-cook-studio h1')?.textContent || '', errors: errors.slice(0, 6), missingVisibleImages, width: innerWidth, height: innerHeight });
   })().catch(error => post({ ready: false, failed: true, phase: 'failed', error: String(error.stack || error), errors: errors.slice(0, 6) }));
 })();

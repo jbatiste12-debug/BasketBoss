@@ -12,7 +12,7 @@ const hook=`
             let target = ProcessInfo.processInfo.arguments[flag + 1]
             let allowed = ["plan", "discover", "recipe", "kitchen", "shop", "receipt", "cook", "budget", "instructions"]
             if allowed.contains(target) {
-                let reporter = BasketBossScreenshotReporter()
+                let reporter = BasketBossScreenshotReporter(webView: webView)
                 let content = webView.configuration.userContentController
                 content.add(reporter, name: "bbScreenshot")
                 content.addUserScript(WKUserScript(source: "window.__BB_SCREENSHOT_TARGET__='" + target + "';\\n" + script, injectionTime: .atDocumentStart, forMainFrameOnly: true))
@@ -24,6 +24,23 @@ source+=`
 #if DEBUG
 // Local simulator-only status bridge. No web UI, backend or user account changes.
 private final class BasketBossScreenshotReporter: NSObject, WKScriptMessageHandler {
+    private weak var previewWebView: WKWebView?
+    private var previewTimer: Timer?
+    init(webView: WKWebView) {
+        super.init()
+        previewWebView = webView
+        previewTimer = Timer.scheduledTimer(withTimeInterval: 0.25, repeats: true) { [weak self] _ in
+            guard let self = self,
+                  let folder = FileManager.default.urls(for: .documentDirectory, in: .userDomainMask).first else { return }
+            let command = folder.appendingPathComponent("bb-preview-action")
+            if FileManager.default.fileExists(atPath: command.path) {
+                try? FileManager.default.removeItem(at: command)
+                self.previewWebView?.evaluateJavaScript("window.__BBPreviewAction && window.__BBPreviewAction()", completionHandler: nil)
+            }
+        }
+    }
+    deinit { previewTimer?.invalidate() }
+
     func userContentController(_ userContentController: WKUserContentController, didReceive message: WKScriptMessage) {
         guard let report = message.body as? [String: Any],
               let data = try? JSONSerialization.data(withJSONObject: report, options: [.sortedKeys]),
