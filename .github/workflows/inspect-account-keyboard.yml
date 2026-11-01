@@ -1,0 +1,33 @@
+name: Inspect account keyboard test failure
+
+on:
+  push:
+    branches: [codex/ios-signin-keyboard-20261101]
+    paths: [.github/workflows/inspect-account-keyboard.yml]
+
+permissions:
+  contents: read
+  actions: read
+
+jobs:
+  inspect:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          github-token: ${{ github.token }}
+          run-id: 41347713045
+          name: BasketBoss-Account-Keyboard-Verification
+          path: keyboard-diagnostic
+      - name: Print the synthetic account test failure
+        shell: bash
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+          root = Path('keyboard-diagnostic')
+          for name, limit in [('report.json', 12000), ('tests.log', 40000)]:
+              for item in sorted(root.rglob(name)):
+                  print(str(item))
+                  print(item.read_text(errors='replace')[-limit:])
+          PY
