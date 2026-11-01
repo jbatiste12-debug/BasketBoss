@@ -26,6 +26,7 @@ jobs:
           python - <<'PY'
           from pathlib import Path
           import subprocess
+          import base64
           root = Path('keyboard-diagnostic')
           for name, limit in [('report.json', 12000), ('tests.log', 40000)]:
               for item in sorted(root.rglob(name)):
@@ -38,4 +39,24 @@ jobs:
                   process = subprocess.run(['xcrun', 'xcresulttool', 'get', 'test-results', kind, '--path', str(result)], capture_output=True, text=True)
                   print(process.stdout[-50000:])
                   print(process.stderr[-5000:])
+              test = 'BasketBossAccountKeyboardUITests/testPasswordKeyboardKeepsAccountReachable()'
+              for kind in ['test-details', 'activities']:
+                  print('Password XCResult ' + kind)
+                  process = subprocess.run(['xcrun', 'xcresulttool', 'get', 'test-results', kind, '--path', str(result), '--test-id', test], capture_output=True, text=True)
+                  print(process.stdout[-70000:])
+                  print(process.stderr[-5000:])
+              attachments = root / 'exported-attachments'
+              process = subprocess.run(['xcrun', 'xcresulttool', 'export', 'attachments', '--path', str(result), '--output-path', str(attachments), '--only-failures'], capture_output=True, text=True)
+              print(process.stdout[-5000:])
+              print(process.stderr[-5000:])
+              for item in sorted(attachments.rglob('manifest.json')):
+                  print(item.read_text(errors='replace')[-20000:])
+              images = sorted(item for item in attachments.rglob('*') if item.suffix.lower() in ['.png', '.jpg', '.jpeg'])
+              for index, item in enumerate(images[:4]):
+                  scaled = root / ('diagnostic-' + str(index) + '.png')
+                  subprocess.run(['sips', '-s', 'format', 'png', '-Z', '900', str(item), '--out', str(scaled)], capture_output=True)
+                  if scaled.exists():
+                      print('SCREENSHOT_BEGIN:' + item.name)
+                      print(base64.b64encode(scaled.read_bytes()).decode())
+                      print('SCREENSHOT_END')
           PY
