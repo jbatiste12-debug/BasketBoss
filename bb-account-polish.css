@@ -93,3 +93,10 @@ html body .shell>header.top[data-bb-account-polish]>.bbui-header-actions{width:a
 /* Keep the exit reachable while a keyboard or short viewport scrolls the form.
    The existing close button stays in the card's own scroll area and focus order. */
 html body #cloud-card[data-bb-account-polish] #cloud-close{position:sticky!important;top:0!important;right:auto!important;float:right!important;margin:-9px -9px 0 10px!important;background:#f3f6e9!important}
+/* The visual viewport shrinks and pans when the iOS keyboard opens. Keep one
+   scroll area inside the account card; the planner stays fixed behind it. */
+html.bb-account-open body{position:fixed!important;top:var(--bbap-page-top,0px)!important;left:0!important;right:0!important;width:100%!important;overflow:hidden!important;overscroll-behavior:none!important}
+html.bb-account-open body .shell,html.bb-account-open body .bbui-settings-overlay,html.bb-account-open body #bbNewOnboarding{visibility:hidden!important;pointer-events:none!important}
+html.bb-account-open body .shell .tabs,html.bb-account-open body nav.bb-r6-cook-nav{visibility:hidden!important;pointer-events:none!important}
+html body #cloud-panel.open:has([data-bb-account-polish]){inset:auto!important;top:var(--bbap-viewport-top,0px)!important;left:var(--bbap-viewport-left,0px)!important;width:var(--bbap-viewport-width,100%)!important;height:var(--bbap-viewport-height,100dvh)!important;min-height:0!important;overflow:hidden!important;background:#f5f7ef!important;backdrop-filter:none!important;-webkit-backdrop-filter:none!important}
+html body #cloud-panel #cloud-card[data-bb-account-polish]{max-height:calc(var(--bbap-viewport-height,100dvh) - 30px - env(safe-area-inset-top,0px) - env(safe-area-inset-bottom,0px))!important;min-height:0!important;scroll-padding:52px 12px 16px}

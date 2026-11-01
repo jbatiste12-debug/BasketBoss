@@ -92,8 +92,23 @@ test('speech responses stay within the active Premium Cook session',async()=>{
  const h=fixture();await h.api.speak('265 g');assert.equal(h.calls.length,0);
  await h.api.start(()=>{});await h.api.speak('265 g');
  assert.deepEqual(h.calls.at(-1),['speak',{sessionId:h.id(),text:'265 g'}]);
- const count=h.calls.length;await h.api.speak('x'.repeat(501));h.setPremium(false);await h.api.speak('Next step');
+ const count=h.calls.length;await assert.rejects(()=>h.api.speak('x'.repeat(4001)),{code:'BB_VOICE_TEXT'});h.setPremium(false);await h.api.speak('Next step');
  assert.equal(h.calls.length,count);await h.api.stop();await h.api.speak('265 g');assert.equal(h.calls.at(-1)[0],'stop');
+});
+
+test('native narration preserves long displayed instructions while recognised commands stay bounded',async()=>{
+ const h=fixture(),results=[];await h.api.start(value=>results.push(value));
+ const instruction='Read the complete recipe instruction. '.repeat(35);
+ assert.ok(instruction.length>500&&instruction.length<4000);
+ await h.api.speak(instruction);
+ assert.equal(h.calls.at(-1)[1].text,instruction.trim(),'all instruction text reaches speech without truncation');
+ await h.api.speak('x'.repeat(4000));assert.equal(h.calls.at(-1)[1].text.length,4000);
+ const count=h.calls.length;
+ await assert.rejects(()=>h.api.speak('x'.repeat(4001)),{code:'BB_VOICE_TEXT'});
+ assert.equal(h.calls.length,count,'an oversized instruction is rejected without queueing partial speech');
+ h.emit('voiceResult',{sessionId:h.id(),text:'x'.repeat(501),isFinal:true});
+ h.emit('voiceResult',{sessionId:h.id(),text:'Next step',isFinal:true});
+ assert.deepEqual(results,['Next step'],'long narration does not enlarge the command boundary');
 });
 
 test('native recognition errors clean up a failed start without logging audio or transcripts',async()=>{

@@ -1,7 +1,7 @@
 name: Verify BasketBoss Apple subscriptions
 on:
   push:
-    branches: [main, codex/apple-*, codex/ingredient-*, codex/evening-*]
+    branches: [main, codex/apple-*, codex/ingredient-*, codex/evening-*, codex/ios-signin-*]
     paths:
       - .github/workflows/apple-subscriptions.yml
       - ios/**
@@ -16,6 +16,7 @@ on:
       - package.json
       - package-lock.json
       - bb-account-deletion.js
+      - bb-account-polish.*
       - bb-membership-settings.js
       - bb-ingredient-*
       - bb-evening-*
@@ -138,10 +139,20 @@ jobs:
       - name: Keep existing Cook navigation working
         if: ${{ !cancelled() }}
         run: node scripts/test-ios-cook-smoke.mjs
+      - name: Check account inputs with the real iOS keyboard
+        if: ${{ !cancelled() }}
+        run: node scripts/test-ios-account-keyboard.mjs
       - uses: actions/upload-artifact@v4
         if: always()
         with:
           name: BasketBoss-Local-StoreKit-Verification
           path: artifacts/apple-iap-diagnostics/
+          if-no-files-found: ignore
+          retention-days: 14
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: BasketBoss-Account-Keyboard-Verification
+          path: artifacts/account-keyboard-diagnostics/
           if-no-files-found: ignore
           retention-days: 14

@@ -1,4 +1,4 @@
-/* Only the compact voice control inside the recipe's step-by-step Cook view. */
+/* The same compact voice control stays beside the recipe through Prep and Cook. */
 .bb-kitchen .bb-cook-voice{margin:10px 0 12px;padding:10px 11px;border:1px solid #bacebb;border-radius:12px;background:#f5f8ef;color:#28543a}
 .bb-kitchen .bb-cook-voice[hidden]{display:none!important}
 .bb-kitchen .bbcv-row{display:flex;align-items:center;gap:10px;flex-wrap:wrap}

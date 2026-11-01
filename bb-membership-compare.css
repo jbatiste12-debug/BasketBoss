@@ -1,0 +1,30 @@
+/* Shared membership comparison; no app navigation or billing controls are replaced. */
+.bb-membership-compare-dialog{width:min(720px,calc(100vw - 24px));max-height:calc(100dvh - 32px);padding:0;border:1px solid #d8e3d8;border-radius:22px;background:#fffdf7;color:#173e2b;box-shadow:0 22px 80px #153c3040;overflow:auto;box-sizing:border-box}
+.bb-membership-compare-dialog::backdrop{background:#102e266b;backdrop-filter:blur(3px)}
+.bb-membership-compare-body{position:relative;padding:28px}
+.bb-membership-compare-body h2{font-size:clamp(27px,6vw,38px);line-height:1.15;letter-spacing:-.04em;margin:6px 30px 12px 0}
+.bb-membership-compare-body p{line-height:1.6}
+.bb-membership-compare-close{position:absolute;right:14px;top:12px;display:grid;place-items:center;width:40px;height:40px;padding:0;border:1px solid #d3dfd2;border-radius:50%;background:#f0f5ec;color:#245a3c;font-size:25px;cursor:pointer}
+.bb-membership-compare-eyebrow{font-size:11px;font-weight:850;letter-spacing:.12em;color:#527048;margin:0}
+.bb-membership-table-wrap{overflow-x:auto;border:1px solid #d4e2d3;border-radius:15px;background:#fff;margin:18px 0 10px}
+.bb-membership-comparison table{width:100%;border-collapse:collapse;font-size:13px;line-height:1.5;text-align:left;table-layout:fixed}
+.bb-membership-comparison caption{padding:14px;text-align:left;font-weight:800;background:#eff6ea;color:#254a32}
+.bb-membership-comparison th,.bb-membership-comparison td{padding:11px 12px;border-bottom:1px solid #e5ece1;vertical-align:top;overflow-wrap:break-word}
+.bb-membership-comparison thead th{font-size:12px;font-weight:850;background:#f9fbf5}
+.bb-membership-comparison tr:last-child th,.bb-membership-comparison tr:last-child td{border-bottom:0}
+.bb-membership-comparison th:first-child{width:33%;font-weight:750}
+.bb-membership-comparison td:last-child,.bb-membership-comparison thead th:last-child{background:#eef6e8;color:#224f34}
+.bb-membership-compare-note{font-size:12px!important;line-height:1.65!important;color:#59705a}
+.bb-membership-compare-status{font-weight:700;font-size:14px}
+.bb-membership-compare-actions{display:flex;gap:9px;flex-wrap:wrap;margin:18px 0 8px}
+.bb-membership-compare-actions a,.bb-membership-compare-actions button{display:inline-flex;align-items:center;justify-content:center;min-height:44px;box-sizing:border-box;border:1px solid #cddcc9;border-radius:12px;padding:10px 14px;background:#f6f9f0;color:#24543b;font:750 13px/1.4 system-ui;text-decoration:none;cursor:pointer}
+.bb-membership-compare-actions .bb-membership-compare-upgrade{background:#195f3c;border-color:#195f3c;color:#fff}
+.bb-membership-compare-actions [hidden]{display:none!important}
+.bb-membership-compare-actions button:disabled{opacity:.65;cursor:wait}
+.bb-membership-compare-dialog button:focus-visible,.bb-membership-compare-dialog a:focus-visible{outline:3px solid #d4a43e;outline-offset:2px}
+.bb-membership-comparison[hidden]{display:none!important}
+/* Keep the existing upgrade touchpoints compact; no extra header row. */
+#bb175Compare[data-membership-state]{white-space:normal!important;line-height:1.3!important;min-height:44px!important;font-size:12px!important}
+body .shell>header.top #bbpolUpgradePill{white-space:normal!important;max-width:160px!important;min-width:84px!important;line-height:1.25!important}
+@media(max-width:520px){body .shell>header.top #bbpolUpgradePill{max-width:125px!important;padding:6px 8px!important;font-size:10px!important;min-height:40px!important}}
+@media(max-width:520px){.bb-membership-compare-body{padding:22px 16px}.bb-membership-comparison table{font-size:12px}.bb-membership-comparison th,.bb-membership-comparison td{padding:10px 8px}.bb-membership-compare-actions>*{flex:1 1 160px}}

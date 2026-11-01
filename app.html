@@ -8,8 +8,8 @@
 <script src="bb-food-visuals.js?v=20261031-food2"></script>
 <link rel="stylesheet" href="bb-navigation-polish.css?v=20261101-recovery1">
 <script defer src="bb-navigation-polish.js?v=20261101-polish1"></script>
-<link rel="stylesheet" href="bb-account-polish.css?v=20261101-layout2">
-<script defer src="bb-account-polish.js?v=20261101-polish1"></script>
+<link rel="stylesheet" href="bb-account-polish.css?v=20261101-keyboard1">
+<script defer src="bb-account-polish.js?v=20261101-keyboard1"></script>
 <link rel="stylesheet" href="bb-onboarding-v2.css?v=20261101-signin2">
 <link rel="stylesheet" href="bb-ux-cleanup.css?v=20261028-ux1">
 <meta charset="utf-8"><meta http-equiv="Content-Type" content="text/html; charset=utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
@@ -3583,7 +3583,7 @@ body.bbnext-plan-mode .shell > #bb175Toolbar{display:none!important}
 </style>
 <link rel="stylesheet" href="bb-membership-settings.css?v=bbsecure1">
 <script defer src="bb-membership-settings.js?v=20261101-apple1"></script>
-<script defer src="bb-verified-premium-ui.js?v=bbsecure20261026"></script>
+<script defer src="bb-verified-premium-ui.js?v=20261101-member1"></script>
 <style id="bb-mvp-four-items-20261027">
 /* Presentation only: plan actions and consistent food crops. Never change photo sources. */
 #app .day .planned .bb172-planner-controls [data-cook],
@@ -3783,8 +3783,8 @@ body[data-bbnext-view="discover"] #app .bb-featured-card #bbFeaturedBatch {
 <script src="bb-ingredient-preferences.js?v=20261101-avoid1"></script>
 <script src="bb-evening-pivot.js?v=20261101-pivot1"></script>
 <script src="bb-evening-pivot-app.js?v=20261101-pivot1"></script>
-<script src="bb-evening-pivot-ui.js?v=20261101-pivot1"></script>
-<script src="bb-cook-voice.js?v=20261101-voice1"></script>
+<script src="bb-evening-pivot-ui.js?v=20261101-pivot2"></script>
+<script src="bb-cook-voice.js?v=20261101-guided2"></script>
 <script defer src="bb-weekly-essentials.js?v=20261031-receipt-pantry"></script>
 <script defer src="bb-receipt-inventory.js?v=20261031-account-compliance"></script>
 <script defer src="bb-receipt-scanner.js?v=20261031-receipt-pantry"></script>
@@ -5332,6 +5332,7 @@ function bbRotationSession(){
 /* BASKETBOSS_EVENING_PIVOT_ADAPTER: read-only until a reviewed two-meal swap. */
 function bbVerifiedPremiumFeature(){return window.BasketBossVerifiedPremium?.isActive?.()===true;}
 function bbPremiumFeatureUpgrade(feature){
+ if(window.BasketBossMembershipUI?.open){window.BasketBossMembershipUI.open();return;}
  if(window.BBNative?.isNative===true){location.assign('pricing-sandbox.html');return;}
  if(window.BasketBossPremiumPreview?.show)window.BasketBossPremiumPreview.show(document.activeElement,feature+' is included with BasketBoss Premium.');
  else location.assign('pricing-sandbox.html#monthly');
@@ -6823,11 +6824,16 @@ function bbNextComposePlan(app){
    }else{
      subtitle.textContent=pendingUnloaded?'Your meal is still saved. Reconnect Premium to load its details.':available?'Tap to choose dinner':'Unlock Premium to see this meal';
    }
+   if(day===bbEveningToday()){
+     const tonight=document.createElement('span');tonight.className='bb77-tonight';tonight.textContent='Tonight';
+     desc.append(tonight);details.classList.add('is-tonight');
+   }
    desc.append(title,subtitle);
    const plannedSlot=state.planned.find(p=>p.day===day);
     if(plannedSlot){
       const clearDay=document.createElement('button');clearDay.type='button';
-      clearDay.className='bb77-clear-day';clearDay.textContent='Clear';
+      clearDay.className='bb77-clear-day bb77-clear-corner';clearDay.textContent='×';
+      clearDay.title='Clear only '+day+' dinner';
       clearDay.dataset.bb77ClearDay=day;
       clearDay.setAttribute('aria-label','Clear only '+day+' dinner');
       clearDay.addEventListener('pointerdown',e=>e.stopPropagation());
@@ -6836,9 +6842,8 @@ function bbNextComposePlan(app){
         e.preventDefault();e.stopPropagation();
         void bb77ClearSingleDinner(day,plannedSlot.recipeId);
       });
-      // Keep the action inside the already-wrapping metadata area on phones.
-      if(recipe&&available)subtitle.append(clearDay);
-      else desc.append(clearDay);
+      // A small corner icon keeps the summary compact with a full touch target.
+      toggle.append(clearDay);
     }
    const caret=document.createElement('span');caret.className='bbnext-day-caret';caret.textContent='⌄';caret.setAttribute('aria-hidden','true');
    if(recipe&&available){
@@ -7806,7 +7811,7 @@ function openCook(id,day){
  const r=getRecipe(id);if(!r)return;
  if(!bb176AllowedRecipe(id)){bb176OpenPremiumUpgrade();return;}
  if(timerHandle)clearInterval(timerHandle);timerHandle=null;timer=bbUICookStepSeconds(kitchenMethodFor(r)[0]);
- const root=document.getElementById('modalRoot');let phase='prep',step=0,checked=new Set(),tip=false;
+ const root=document.getElementById('modalRoot');let phase='prep',step=0,checked=new Set(),tip=false,voiceIngredientIndex=0;
  const steps=kitchenMethodFor(r).map(String);const equipment=kitchenEquipment(r);let equipmentChecked=new Set();let equipmentOpen=false;
  root.innerHTML=`<div class="cook-overlay" role="dialog" aria-modal="true" aria-label="BasketBoss Kitchen"><section class="cook-panel bb-kitchen"><div class="bb-head"><span class="eyebrow">\u2726 BASKETBOSS KITCHEN</span><button class="btn" id="bbExit">\u2715 Exit</button></div><h2 id="bbTitle"></h2><div class="muted" id="bbMeta"></div><div class="bb-phases"><div class="bb-phase" id="bbPhasePrep">PREP</div><div class="bb-phase" id="bbPhaseCook">COOK</div><div class="bb-phase" id="bbPhaseDone">DONE</div></div><div id="bbBody" aria-live="polite"></div></section></div>`;
  const $=id=>root.querySelector('#'+id);$('bbTitle').textContent=r.name;
@@ -7816,7 +7821,11 @@ function openCook(id,day){
  const ingredients=r.ingredients.map(i=>[i[0],BBServing.scaleText(i[1],cookFactor,i[0]),i[2],i[3]]);
  const voiceSlot=document.createElement('div');voiceSlot.className='bb-cook-voice-slot';$('bbBody').before(voiceSlot);
  const voice=window.BBCookVoice?.mount({container:voiceSlot,context:()=>({key:r.id+'|'+(day||'')+'|'+chosenServings,
-  active:phase==='cook',premium:bbVerifiedPremiumFeature(),ingredients:ingredients.map(item=>({name:item[0],quantity:item[1]})),
+  active:phase==='prep'||phase==='cook',premium:bbVerifiedPremiumFeature(),phase,ingredientIndex:voiceIngredientIndex,
+  prepComplete:voiceIngredientIndex>=ingredients.length,currentStep:steps[step],stepIndex:step,stepCount:steps.length,
+  ingredients:ingredients.map(item=>({name:item[0],quantity:item[1]})),
+  prepareNext:()=>{if(phase!=='prep'||voiceIngredientIndex>=ingredients.length)return false;checked.add(voiceIngredientIndex++);paint();return true;},
+  startCooking:()=>{if(phase!=='prep'||!$('bbStart'))return false;$('bbStart').click();return phase==='cook';},
   next:()=>{if(phase!=='cook')return false;advance();return true;},
   previous:()=>{if(phase!=='cook'||step<=0)return false;$('bbBack')?.click();return true;},
   startTimer:()=>{if(phase!=='cook'||timerHandle||!$('bbTimerToggle'))return false;$('bbTimerToggle').click();return !!timerHandle;},
@@ -7828,8 +7837,9 @@ function openCook(id,day){
  function paint(){
  ['Prep','Cook','Done'].forEach((p,i)=>$('bbPhase'+p).classList.toggle('active',['prep','cook','done'].indexOf(phase)>=i));
  if(phase==='prep'){
+ while(voiceIngredientIndex<ingredients.length&&checked.has(voiceIngredientIndex))voiceIngredientIndex++;
  $('bbBody').innerHTML=`<h3>\uD83E\uDD55 Prep your ingredients</h3><p class="muted">Make each ingredient work harder: prep for great flavour and texture.</p><div class="bb-progress"><div style="width:${(checked.size+equipmentChecked.size)/(ingredients.length+equipment.length)*100}%"></div></div><p class="muted">${checked.size} of ${ingredients.length} ingredients \u00B7 ${equipmentChecked.size} of ${equipment.length} tools ready</p>${batchCook?'<div class="bb81-batch-cook-note">🍲 Batch night: ingredient amounts already include the double batch. Reserve half for tomorrow, cool promptly and refrigerate safely.</div>':''}${ingredients.map((x,i)=>`<label class="bb-check"><input type="checkbox" data-prep="${i}" ${checked.has(i)?'checked':''}><span class="bb-item"><span class="bb-prep-top"><span class="bb-prep-name">${esc(x[0])}</span><span class="bb-prep-quantity">${esc(x[1])}</span></span><small class="bb-prep-note">${esc(kitchenPrepHint(x[0],r,i))}</small></span></label>`).join('')}<details class="bbui-equipment" id="bbuiEquipment" ${equipmentOpen?'open':''}><summary>\uD83D\uDD2A Equipment you'll need (${equipment.length})</summary><p class="muted">Suggested tools for this dish; alternatives are fine.</p>${equipment.map((x,i)=>`<label class="bb-check"><input type="checkbox" data-tool="${i}" ${equipmentChecked.has(i)?'checked':''}><span class="bb-item">${esc(x)}</span></label>`).join('')}</details><button class="btn primary" id="bbStart" style="width:100%;margin-top:12px">Start cooking \u2192</button>`;
- root.querySelectorAll('[data-prep]').forEach(el=>el.onchange=()=>{let i=Number(el.dataset.prep);el.checked?checked.add(i):checked.delete(i);paint()});
+ root.querySelectorAll('[data-prep]').forEach(el=>el.onchange=()=>{let i=Number(el.dataset.prep);if(el.checked)checked.add(i);else{checked.delete(i);voiceIngredientIndex=Math.min(voiceIngredientIndex,i);}paint()});
  $('bbuiEquipment')?.addEventListener('toggle',e=>{equipmentOpen=e.currentTarget.open});
  root.querySelectorAll('[data-tool]').forEach(el=>el.onchange=()=>{let i=Number(el.dataset.tool);el.checked?equipmentChecked.add(i):equipmentChecked.delete(i);paint()});
  $('bbStart').onclick=()=>{phase='cook';paint()};
@@ -11558,14 +11568,16 @@ body[data-bbnext-view="discover"] #app .bb175-discover-heading{padding-top:calc(
 <link rel="stylesheet" href="bb-settings-premium-polish.css?v=20261026a">
 <link rel="stylesheet" href="bb-mobile-three-20261027.css?v=20261027-mobile-3">
 <!-- BasketBoss isolated Plan / premium UI polish; original app handlers unchanged -->
+<link rel="stylesheet" href="bb-membership-compare.css?v=20261101-member1">
+<script defer src="bb-membership-compare.js?v=20261101-member1"></script>
 <link rel="stylesheet" href="bb-plan-premium-polish.css?v=20261101-budget2">
-<script defer src="bb-plan-premium-polish.js?v=20261101-budget2"></script>
+<script defer src="bb-plan-premium-polish.js?v=20261101-member1"></script>
 <link rel="stylesheet" href="bb-ingredient-picker.css?v=20261101-avoid1">
-<link rel="stylesheet" href="bb-evening-pivot-ui.css?v=20261101-pivot1">
-<link rel="stylesheet" href="bb-cook-voice.css?v=20261101-voice1">
+<link rel="stylesheet" href="bb-evening-pivot-ui.css?v=20261101-pivot2">
+<link rel="stylesheet" href="bb-cook-voice.css?v=20261101-guided2">
 <script defer src="bb-ingredient-picker.js?v=20261101-avoid1"></script>
 <link rel="stylesheet" href="bb-shop-cook-clarity.css?v=20261028-r1">
-<link rel="stylesheet" href="bb-cook-plan-hotfix.css?v=20261028-cook-plan-v1">
+<link rel="stylesheet" href="bb-cook-plan-hotfix.css?v=20261101-corner2">
 <link rel="stylesheet" href="bb-servings-mobile-polish.css?v=20261029-preview2">
 <link rel="stylesheet" href="bb-partner-signup-prompt.css?v=partner-main1">
 <script defer src="bb-partner-signup-prompt.js?v=partner-main1"></script>

@@ -14,7 +14,7 @@
  };
  function updateHeader(){
    const region=$('#bbpolRegionPill');if(region)region.textContent=regionValue()+' · Change';
-   const upgrade=$('#bbpolUpgradePill');if(upgrade)upgrade.hidden=premiumActive();
+   const upgrade=$('#bbpolUpgradePill');if(upgrade){upgrade.hidden=false;const status=window.BasketBossVerifiedPremium?.state?.();const label=window.BasketBossMembershipUI?.label?.()||(premiumActive()?'PREMIUM':status==='free'?'FREE · Upgrade to Premium':status==='checking'?'Checking membership…':'Check membership');if(upgrade.textContent!==label)upgrade.textContent=label;upgrade.setAttribute('aria-label',label);}
  }
  function setupHeader(){
    if(headerReady)return;
@@ -32,9 +32,10 @@
      if(existing) existing.click();
      else $('#bb307Island',card)?.focus({preventScroll:true});
    });
-   const upgrade=document.createElement('button');upgrade.type='button';upgrade.id='bbpolUpgradePill';upgrade.className='bbpol-header-pill bbpol-upgrade';upgrade.textContent='✦ Upgrade';
+   const upgrade=document.createElement('button');upgrade.type='button';upgrade.id='bbpolUpgradePill';upgrade.className='bbpol-header-pill bbpol-upgrade';upgrade.textContent=window.BasketBossMembershipUI?.label?.()||'Checking membership…';
    upgrade.addEventListener('click',()=>{
-     if(premiumActive())return;
+     if(window.BasketBossMembershipUI?.open){window.BasketBossMembershipUI.open();return;}
+     if(premiumActive()){$('#bbuiOpenSettings')?.click();return;}
      // Existing introductory Premium modal checks entitlement and provides
      // its configured route; never introduce a new checkout authorisation.
      if(window.BasketBossPremiumPreview?.show) window.BasketBossPremiumPreview.show(upgrade,'Discover 500 recipes, smarter Auto-Fill and more shopping tools.');
@@ -43,6 +44,7 @@
    });
    actions.insertBefore(region,card);actions.insertBefore(upgrade,card);
    window.addEventListener('basketboss:market-changed',updateHeader);
+   document.addEventListener('basketboss:premium-verified',updateHeader);
    $('#bb307SaveMarket',card)?.addEventListener('click',()=>queueMicrotask(updateHeader));
    $('#bb307Island',card)?.addEventListener('change',()=>queueMicrotask(updateHeader));
    updateHeader();

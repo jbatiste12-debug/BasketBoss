@@ -29,7 +29,7 @@ function fixture({premium=true,browser=false,available=true,nativeStartError=nul
    abort(){calls.push('abort');this.onend?.();}
   };
  }else{
-  host.BBNativeCookVoice={available:async()=>{calls.push('available');return available;},start:async(onFinal,onStatus)=>{calls.push('start');if(nativeStartError)throw Object.assign(Error('provider-message-not-for-ui'),{code:nativeStartError});final=onFinal;status=onStatus;status({state:'listening'});},stop:async()=>{calls.push('stop');},speak:async text=>{calls.push(['speak',text]);}};
+  host.BBNativeCookVoice={available:async()=>{calls.push('available');return available;},start:async(onFinal,onStatus)=>{calls.push('start');if(nativeStartError)throw Object.assign(Error('provider-message-not-for-ui'),{code:nativeStartError});final=onFinal;status=onStatus;status({state:'listening'});},stop:async()=>{calls.push('stop');},speak:async text=>{calls.push(['speak',text]);status?.({state:'paused'});status?.({state:'listening'});}};
  }
  const controller=voice.mount({container,context:()=>context,window:host,document:doc});
  const find=name=>{let result;const visit=node=>{if(node.className.split(' ').includes(name))result=node;for(const child of node.children)visit(child);};visit(container);return result;};
@@ -52,6 +52,65 @@ test('ingredient answers read the supplied scaled quantity and reject ambiguous 
  assert.equal(voice.ingredientAnswer(ingredients,'chard').ok,false);
  assert.equal(voice.ingredientAnswer([...ingredients,{name:'Parmesan',quantity:'30 g'}],'cheese').ok,false);
  assert.equal(voice.ingredientAnswer([{name:'Salt',quantity:'to taste'}],'salt').message,'Salt: to taste.');
+});
+
+test('ingredient queries normalize known food plurals symmetrically without loose substring matches',()=>{
+ for(const [single,plural]of [['Onion','onions'],['Carrot','carrots'],['Potato','potatoes'],['Tomato','tomatoes'],['Chickpea','chickpeas']]){
+  assert.equal(voice.ingredientAnswer([{name:single,quantity:'2'}],plural).ok,true,plural);
+  assert.equal(voice.ingredientAnswer([{name:plural,quantity:'2'}],single).ok,true,single);
+ }
+ assert.equal(voice.ingredientAnswer([{name:'Chicken breast',quantity:'665 g'}],'chickpeas').ok,false);
+ assert.equal(voice.ingredientAnswer([{name:'Onion',quantity:'1'},{name:'Onions',quantity:'2'}],'onions').ok,false,'ambiguous declarations still require a full name');
+});
+
+test('guided commands distinguish prep progression, repeat and starting the actual Cook view',()=>{
+ assert.deepEqual(voice.parseCommand('next ingredient'),{type:'nextIngredient'});
+ for(const phrase of ['Ready','Ready please','Please ready'])assert.deepEqual(voice.parseCommand(phrase),{type:'nextIngredient'});
+ assert.deepEqual(voice.parseCommand('Please start cooking'),{type:'startCooking'});
+ for(const phrase of ['repeat','repeat ingredient','repeat step','read this step','say that again'])assert.deepEqual(voice.parseCommand(phrase),{type:'repeat'},phrase);
+ for(const phrase of ['onions','I already have the onions','cooking starts soon'])assert.equal(voice.parseCommand(phrase),null,phrase);
+});
+
+test('Prep narration starts only after opt-in and checks ingredients only after an explicit next command',async()=>{
+ const h=fixture();h.context.phase='prep';h.context.ingredientIndex=0;h.context.ingredients=[{name:'Onion',quantity:'2 onions'},{name:'Cheddar',quantity:'265 g'}];
+ const checked=[];h.context.prepareNext=()=>{checked.push(h.context.ingredientIndex);h.context.ingredientIndex++;h.controller.refresh();return true;};
+ h.controller.refresh();assert.equal(h.find('bb-cook-voice').hidden,false);assert.deepEqual(h.calls,[]);assert.deepEqual(checked,[]);
+ h.button().click();await tick();const spoken=()=>h.calls.filter(call=>Array.isArray(call)&&call[0]==='speak').map(call=>call[1]);
+ assert.equal(spoken().length,1);assert.match(spoken()[0],/Onion: 2 onions/);assert.match(spoken()[0],/next ingredient/);assert.deepEqual(checked,[]);
+ h.transcript('onions');await tick();assert.equal(spoken().at(-1),'Onion: 2 onions.');assert.deepEqual(checked,[],'asking about stock does not mark an ingredient ready');
+ h.transcript('How many onions?');await tick();assert.equal(spoken().at(-1),'Onion: 2 onions.');assert.deepEqual(checked,[]);
+ h.transcript('Next ingredient');await tick();assert.deepEqual(checked,[0]);assert.match(spoken().at(-1),/Cheddar: 265 g/);
+ const before=spoken().length;h.controller.refresh();h.controller.refresh();assert.equal(spoken().length,before,'an unrelated repaint does not repeat the ingredient');
+ h.transcript('Repeat ingredient');await tick();assert.match(spoken().at(-1),/Cheddar: 265 g/);assert.deepEqual(checked,[0]);
+ h.controller.dispose();
+});
+
+test('one listening session follows Prep into real instructions and narrates changed steps once',async()=>{
+ const h=fixture(),steps=['Heat the pan. Add 10 ml oil and the sliced onion.','Add 265 g cheddar, then stir until melted.'];
+ h.context.phase='prep';h.context.ingredientIndex=0;
+ h.context.startCooking=()=>{h.calls.push('startCooking');h.context.phase='cook';h.context.stepIndex=0;h.context.stepCount=steps.length;h.context.currentStep=steps[0];h.controller.refresh();return true;};
+ h.context.next=()=>{h.calls.push('next');h.context.stepIndex++;h.context.currentStep=steps[h.context.stepIndex];h.controller.refresh();return true;};
+ h.context.previous=()=>{h.calls.push('previous');h.context.stepIndex--;h.context.currentStep=steps[h.context.stepIndex];h.controller.refresh();return true;};
+ const spoken=()=>h.calls.filter(call=>Array.isArray(call)&&call[0]==='speak').map(call=>call[1]);
+ h.button().click();await tick();h.transcript('Start cooking');await tick();
+ assert.equal(h.calls.filter(call=>call==='start').length,1,'moving phases keeps the explicitly opened session');assert.match(spoken().at(-1),/Step 1 of 2/);assert.ok(spoken().at(-1).includes(steps[0]));
+ let before=spoken().length;h.controller.refresh();assert.equal(spoken().length,before);
+ h.transcript('Next step');await tick();assert.equal(spoken().length,before+1);assert.ok(spoken().at(-1).includes(steps[1]));assert.notEqual(spoken().at(-1),'Next step.');
+ h.transcript('Previous step');await tick();assert.ok(spoken().at(-1).includes(steps[0]));
+ h.transcript('Repeat step');await tick();assert.ok(spoken().at(-1).includes(steps[0]));
+ before=spoken().length;h.context.stepIndex=1;h.context.currentStep=steps[1];h.controller.refresh();assert.equal(spoken().length,before+1,'a manual step change reads its actual instruction');h.controller.refresh();assert.equal(spoken().length,before+1);
+ h.context.active=false;h.context.phase='done';h.controller.refresh();h.transcript('Next step');await tick();assert.equal(h.button().getAttribute('aria-pressed'),'false');h.controller.dispose();
+});
+
+test('full instructions have a length-based reading window and no silent text truncation',async()=>{
+ const step=Array.from({length:100},()=> 'Stir gently, keeping the pan over a low heat.').join(' ');
+ assert.ok(voice.speechTimeoutMs(step)>15000);assert.ok(voice.speechTimeoutMs(step)<=360000);
+ const tooLong=voice.narrationFor({phase:'cook',stepIndex:1,stepCount:3,currentStep:step});assert.equal(tooLong.text,null);assert.match(tooLong.status,/complete step on screen/);
+ const full='Add 265 g cheddar. '+Array.from({length:35},()=> 'Stir gently until the sauce is smooth.').join(' ');
+ const h=fixture({browser:true,synthesis:true});h.context.phase='cook';h.context.stepIndex=0;h.context.stepCount=2;h.context.currentStep=full;
+ const uk={lang:'en-GB',name:'Kate (Enhanced)',localService:true},other={lang:'en-US',name:'Other',localService:true};h.host.speechSynthesis.getVoices=()=>[other,uk];
+ h.button().click();await tick();assert.equal(h.utterances.length,1);assert.ok(h.utterances[0].text.includes(full));assert.equal(h.utterances[0].voice,uk);assert.equal(h.utterances[0].rate,.92);assert.equal(h.utterances[0].lang,'en-GB');
+ assert.match(h.status(),/Reading step 1 of 2/);assert.ok(h.status().length<100,'spoken instructions do not expand the compact control');h.controller.dispose();
 });
 
 test('Free voice entry opens the existing upgrade flow without native permissions or listening',async()=>{

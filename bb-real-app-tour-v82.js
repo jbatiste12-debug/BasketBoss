@@ -14,7 +14,7 @@ const STEPS=[
  {title:'Kitchen — choose what you have',body:'Open Cupboard, Fridge and Freezer; edit your quantities in one PANTRY summary and confirm to reconcile Shopping.',tab:'shop',target:['.tab[data-tab="shop"]']},
  {title:'Shop — buy only what you need',body:'Confirm Kitchen quantities first: those foods reduce the current To buy list. In Live Shop, tick Bought, then use ••• for a standard pack, exact amount, different amount or Already have enough. Finish Shop saves only confirmed unused amounts to Kitchen for next week. Fresh food needs safe-storage confirmation.',tab:'shop-list',target:['.tab[data-tab="shop-list"]']},
  {title:'Scan a receipt after shopping',body:'In Shop, choose your region and supermarket, then use Scan Receipt. Premium scanning needs internet access and your consent to send the photo to Google Gemini. Review names, amounts, food locations, currency and totals before Confirm receipt & add food. Check receipt status after an interrupted confirmation to avoid duplicate stock.',tab:'shop-list',target:['#bbReceiptToolbar','[data-bb-receipt-entry]','.tab[data-tab="shop-list"]']},
- {title:'Cook and get more help',body:'Cook uses your chosen ingredients for recipe matches or optional Premium AI tools. In step-by-step Cook, optional Premium Voice Cook can move through steps, start the visible timer or read an ingredient quantity aloud. Turn on voice when you want it; Stop listening switches it off. Device and browser support vary. Find full instructions in Plan → Settings → Guides.',target:['.bb173-make-meal-link','#bbuiOpenSettings']}
+ {title:'Cook and get more help',body:'Cook uses your chosen ingredients for recipe matches or optional Premium AI tools. In step-by-step Cook, optional Premium Voice Cook stays available from Prep through Cook. It reads each scaled ingredient, then each full instruction. Say “Next ingredient”, “Ready”, “Start cooking”, “Next step”, “Repeat” or “How many onions?”. It can also start the visible timer. Turn on voice when you want it; Stop listening switches it off. Device and browser support vary. Find full instructions in Plan → Settings → Guides.',target:['.bb173-make-meal-link','#bbuiOpenSettings']}
 ];
 let current=-1,focused=null,card=null,previousFocus=null;
 function visible(node){if(!node||!node.isConnected||node.closest('[hidden]'))return false;const s=getComputedStyle(node);return s.display!=='none'&&s.visibility!=='hidden'&&node.getClientRects().length>0;}
@@ -72,7 +72,7 @@ function enhanceHub(){
  ['🛒 Shop','Kitchen deductions, Bought quantities and next-week leftovers'],
  ['🧾 Receipts','Review a supermarket receipt before food is added to Kitchen'],
  ['🍳 Cook','Ingredient ideas, optional AI meals and safe step-by-step cooking'],
- ['🎙 Voice Cook · Premium','Opt-in voice commands for recipe steps, the shown timer and scaled quantities'],
+ ['🎙 Voice Cook · Premium','A spoken guide through scaled ingredients and full recipe instructions, with optional voice commands'],
  ['📱 PWA & iPhone','The same five tabs, with separate local device storage']
  ].map(x=>'<div class="bb82-tour-topic"><strong>'+x[0]+'</strong><span>'+x[1]+'</span></div>').join('')+'</div>';
  links.parentNode.insertBefore(section,links);

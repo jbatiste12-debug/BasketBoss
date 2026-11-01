@@ -46,7 +46,10 @@ export function installNativeCookVoice({plugin,window:win=globalThis.window,isPr
  }
  async function speak(value){
   const text=String(value||'').trim(),session=current;
-  if(!text||text.length>500||!session?.active||!permitted())return;
+  // Instructions can be longer than a recognised command. Never silently
+  // truncate an instruction, especially its cooking or food-safety guidance.
+  if(text.length>4000)throw failure('BB_VOICE_TEXT');
+  if(!text||!session?.active||!permitted())return;
   await plugin.speak({sessionId:session.id,text});
  }
  const api=Object.freeze({

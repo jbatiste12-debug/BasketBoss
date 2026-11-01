@@ -204,3 +204,16 @@ test('destroying the purchase controller removes both retained native listeners'
  const h=fixture();await h.controller.ready;await tick();
  assert.equal(h.nativeListeners.size,2);h.controller.destroy();await tick();assert.equal(h.nativeListeners.size,0);
 });
+
+
+test('membership presentation distinguishes verified Free from malformed or unavailable account status',async()=>{
+ await withFixture({},async h=>assert.equal(h.controller.state.membershipState,'free'));
+ await withFixture({membership:{authenticated:true,premiumAccess:true,provider:'paddle'}},async h=>assert.equal(h.controller.state.membershipState,'premium'));
+ await withFixture({membership:{authenticated:true}},async h=>{assert.equal(h.controller.state.membershipState,'unavailable');assert.equal(h.controller.state.available,false);});
+ await withFixture({membership:{authenticated:true,premiumAccess:false,reason:'billing_not_enabled'}},async h=>assert.equal(h.controller.state.membershipState,'unavailable'));
+});
+
+test('signing out invalidates the previous membership presentation immediately',async()=>withFixture({membership:{authenticated:true,premiumAccess:true,provider:'paddle'}},async h=>{
+ assert.equal(h.controller.state.membershipState,'premium');h.setAccount(null);
+ assert.equal(h.controller.state.membershipState,'signed_out');assert.equal(h.controller.state.premiumAccess,false);
+}));
