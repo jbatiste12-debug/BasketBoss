@@ -1,0 +1,56 @@
+name: Capture seven App Store screenshots
+on:
+  push:
+    branches: [codex/app-store-screenshots-20261101]
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  capture:
+    runs-on: macos-latest
+    timeout-minutes: 25
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+          cache: npm
+      - name: Install pinned dependencies
+        run: npm ci --no-audit --no-fund
+      - name: Build and sync latest main native app
+        run: npm run ios:sync
+      - name: Install capture-only Debug instrumentation
+        run: node scripts/prepare-screenshot-build.mjs
+      - name: Build iPhone simulator app
+        run: >-
+          xcodebuild
+          -workspace ios/App/App.xcworkspace
+          -scheme App
+          -configuration Debug
+          -sdk iphonesimulator
+          -destination 'generic/platform=iOS Simulator'
+          -derivedDataPath /tmp/basketboss-ios-build
+          CODE_SIGNING_ALLOWED=NO
+          build
+      - name: Capture seven real iPhone 16 Pro Max screens
+        run: node scripts/capture-app-store-screenshots.mjs
+      - name: Upload seven App Store PNGs
+        id: screenshots
+        uses: actions/upload-artifact@v4
+        with:
+          name: BasketBoss-App-Store-iPhone-16-Pro-Max-1320x2868
+          path: artifacts/app-store-screenshots/*.png
+          if-no-files-found: error
+          retention-days: 30
+      - name: Upload capture provenance and diagnostics
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: BasketBoss-capture-diagnostics
+          path: artifacts/capture-diagnostics/
+          if-no-files-found: ignore
+          retention-days: 14
+      - name: Link downloadable screenshots
+        run: echo 'Seven native 1320×2868 PNGs — ${{ steps.screenshots.outputs.artifact-url }}' >> "$GITHUB_STEP_SUMMARY"
