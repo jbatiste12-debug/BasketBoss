@@ -7268,7 +7268,7 @@ function bb307PriceProvenance(quote){
  if(quote.userOverride)return '<small class="bb79-local-tag">Your saved price'+(quote.userBrand?' · '+esc(quote.userBrand):'')+'</small>';
  if(quote.priceKind==='receipt_regular')return '<small class="bb79-local-tag">Your reviewed receipt price · '+esc(quote.sourceRetailer||'selected shop')+'</small>';
  if(quote.priceKind==='public_online')return '<small class="bb79-local-tag"><a href="'+esc(quote.sourceUrl)+'" target="_blank" rel="noopener noreferrer" title="'+esc(quote.productName)+'">'+esc(quote.sourceRetailer)+' online · checked '+esc(quote.sourceDate)+'</a></small>';
- return '<small class="bb79-rough-tag">Regional estimate</small>';
+ return ''; // A single reminder below the shopping list covers regional estimates.
 }
 function bb15PriceLabel(quote){
  if(quote?.essential){
@@ -7646,7 +7646,7 @@ function renderShop(app){
     <div class="bb321-shop-main">
       <input id="bb321-buy-check-${i}" class="bb321-shop-checkbox" type="checkbox" data-bb321-tick="${esc(id)}" aria-label="Bought ${esc(item.key)}" ${ticks[id]?'checked':''}>
       <div class="bb321-shop-info"><label for="bb321-buy-check-${i}" class="bb321-shop-name">${esc(bb172Title(item.key))}</label>
-        <div class="bb321-shop-quantity"><strong>${esc(bb80ShoppingAction(item.key,ticks[id]?(bb84SavedPurchased(id)||item.toBuy):remaining,item.unit,bb307Market,!!ticks[id]))}${partial?.bought>0?' more':''}</strong>${partial?.bought>0?`<small class="bbpartial-progress">${partial.bought} ${esc(item.unit)} already purchased · ${remaining} left</small>`:''}<span class="bb321-shop-source">${source}</span>${item.pantryMismatch?.length?`<small class="bb-pantry-mismatch" style="color:#8b5727;font-weight:650" role="status">⚠ ${esc(item.pantryMismatch[0])}</small>`:''}</div><button type="button" class="small-btn bb172-got-it" data-bb172-have="${i}" aria-label="Already have enough ${esc(item.key)} in the pantry">Got it · In cupboard</button>
+        <div class="bb321-shop-quantity"><strong>${esc(bb80ShoppingAction(item.key,ticks[id]?(bb84SavedPurchased(id)||item.toBuy):remaining,item.unit,bb307Market,!!ticks[id]))}${partial?.bought>0?' more':''}</strong>${partial?.bought>0?`<small class="bbpartial-progress">${partial.bought} ${esc(item.unit)} already purchased · ${remaining} left</small>`:''}<span class="bb321-shop-source">${source}</span>${item.pantryMismatch?.length?`<small class="bb-pantry-mismatch" style="color:#8b5727;font-weight:650" role="status">⚠ ${esc(item.pantryMismatch[0])}</small>`:''}</div>
         <details class="bb321-shop-detail"><summary>Pack &amp; pantry details</summary>
          ${support.length?`<p class="muted bb321-shop-hint">${support.join(' · ')}</p>`:''}
          ${bb321StockControls(item,i,effective,units)}
@@ -7688,10 +7688,11 @@ function renderShop(app){
   ${toBuy.length||essentials.length?`<section class="list-group bb321-shopping-list" id="bb321Printable"><div class="bb321-shop-list-heading"><h4>What to buy (${toBuy.length+essentials.length})</h4><span class="muted">Tick each item once bought</span></div>${buyRows}${essentials.length?`<h4 class="bb321-shop-subheading">Weekly essentials (${essentials.length})</h4>${essentialsRows}`:''}</section>`:`<div class="empty">Plan dinners, school lunches or essentials to build your combined shopping list.</div>`}
   ${bb321LunchboxHTML()}
   ${covered.length?`<details class="list-group"><summary>Already covered by your pantry (${covered.length})</summary>${coveredRows}</details>`:''}
-  <section class="list-group"><h4>＋ Add or update pantry stock</h4><p class="muted" style="font-size:12px">You can enter ingredients before planning meals. Start with dinners and tap Got it on shopping items you already own. Or type a pantry ingredient and select a suggestion; kg and litres are converted safely. No automatic gram-to-spoon guesses.</p>
+  <section class="list-group"><h4>＋ Add or update pantry stock</h4><p class="muted" style="font-size:12px">You can enter ingredients before planning meals. Manage what you already own in At home, or enter a pantry ingredient here and select a suggestion; kg and litres are converted safely. No automatic gram-to-spoon guesses.</p>
   <form id="bb321ManualStock" style="display:flex;gap:7px;flex-wrap:wrap"><input class="field" id="bb321StockName" list="bb172StockOptions" placeholder="Ingredient name (e.g. rice)" maxlength="70" required style="flex:2;min-width:155px"><input class="field" id="bb321StockAmount" type="number" min="0" max="1000000" step="any" placeholder="Amount" required aria-label="Pantry amount" style="width:95px"><select class="field" id="bb321StockUnit" aria-label="Pantry unit"><option value="g">g</option><option value="kg">kg</option><option value="ml">ml</option><option value="l">litres</option><option value="each">each</option><option value="pack">pack</option><option value="clove">clove</option><option value="tsp">tsp</option><option value="tbsp">tbsp</option></select><button class="btn primary" type="submit">Save stock</button></form><datalist id="bb172StockOptions">${[...new Set(BB307_NORMALIZED.flatMap(r=>(r.ingredients||[]).map(i=>i.key)).filter(Boolean))].sort().map(n=>`<option value="${esc(n)}"></option>`).join('')}</datalist>
   ${extra?`<h4 style="margin-top:12px">Other stored pantry ingredients</h4>${extra}`:''}
   ${(state.customPantry||[]).length?`<details><summary>Older name-only pantry notes (${state.customPantry.length})</summary><p class="muted">These old notes have no measured amounts and do not reduce the recipe estimate until you enter stock above.</p>${state.customPantry.map((x,i)=>`<div class="shop-row"><label>${esc(x.name)}</label><button class="small-btn" data-bb307-custom-remove="${i}">Remove</button></div>`).join('')}</details>`:''}</section>
+  <p class="muted bb-shopping-price-reminder">Prices are regional estimates, not live supermarket prices. Actual pack prices may vary.</p>
   <section id="bb321PrintOnly" aria-hidden="true"><h2>BasketBoss · ${esc(bb307Market)} · weekly shopping list</h2><p>Estimated weekly basket: ${estimatedLabel}</p>${toBuy.map(i=>`<p>${ticks[pantryId(i)]?'☑':'☐'} ${esc(i.key)}: ${esc(bb80ShoppingQuantity(i.key,i.toBuy,i.unit,bb307Market))}${i.displaySpend!=null?` · Est. ${cash(i.displaySpend)}`:' · No sensible guide — save price paid'}</p>`).join('')}${essentials.map(i=>`<p>${ticks['ess:'+i.id]?'☑':'☐'} ${esc(i.name)}: ${esc(bb80ShoppingQuantity(i.name,i.qty,i.unit,bb307Market))}${i.displaySpend!=null?` · Est. ${cash(i.displaySpend)}`:' · No sensible guide — save price paid'}</p>`).join('')}<p>Indicative regional estimates only, not verified retailer quotes. Lunchbox groceries and selected essentials are included where costs are known.</p></section>`;
  bb84ExtraRows(app,toBuy,essentials,ticks,bb307Market);
  const purchaseMap=new Map([...toBuy.map(x=>[pantryId(x),{item:x,essential:false}]),...essentials.map(x=>['ess:'+x.id,{item:x,essential:true}])]);
@@ -11746,7 +11747,7 @@ body[data-bbnext-view="discover"] #app .bb175-discover-heading{padding-top:calc(
 <script defer src="bb-kitchen-essentials.js?v=20261102-fourchoices1"></script>
 <link rel="stylesheet" href="bb-keyboard-layout.css?v=20261101-keyboard1">
 <script defer src="bb-keyboard-layout.js?v=20261101-keyboard1"></script>
-<link rel="stylesheet" href="bb-simple-layout.css?v=20261101-simple1">
+<link rel="stylesheet" href="bb-simple-layout.css?v=20261102-shop2">
 <script defer src="bb-simple-layout.js?v=20261101-simple1"></script>
 <script defer src="bb-home.js?v=20261102-home1"></script>
 <link rel="stylesheet" href="bb-shared-shopping.css?v=20261102-shared1">
