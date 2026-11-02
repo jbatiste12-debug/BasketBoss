@@ -89,6 +89,13 @@ class BasketBossViewController: CAPBridgeViewController {
             content.add(reporter, name: "bbNativeCookSmoke")
             content.addUserScript(WKUserScript(source: BasketBossCookSmokeReporter.script, injectionTime: .atDocumentStart, forMainFrameOnly: true))
         }
+        #if targetEnvironment(simulator)
+        let keyboardArguments = ProcessInfo.processInfo.arguments
+        if (keyboardArguments.contains("--bb-native-account-keyboard-smoke") || keyboardArguments.contains("--bb-native-onboarding-keyboard-smoke")), let webView = webView {
+            let onboarding = keyboardArguments.contains("--bb-native-onboarding-keyboard-smoke")
+            webView.configuration.userContentController.addUserScript(WKUserScript(source: BasketBossAccountKeyboardSetup.script(onboarding: onboarding), injectionTime: .atDocumentStart, forMainFrameOnly: true))
+        }
+        #endif
         #endif
     }
 
@@ -138,6 +145,55 @@ class BasketBossViewController: CAPBridgeViewController {
 }
 
 #if DEBUG
+#if targetEnvironment(simulator)
+// Only the explicit XCUITest launch on a disposable simulator uses this setup.
+// XCTest itself taps real inputs; this script never focuses, types or signs in.
+private enum BasketBossAccountKeyboardSetup {
+    static func script(onboarding: Bool) -> String {
+        "window.bbKeyboardSmokeOnboarding=" + (onboarding ? "true;" : "false;") + #"""
+        (()=>{
+          const onboarding=window.bbKeyboardSmokeOnboarding===true;
+          localStorage.setItem('bb_onboarding_fresh_once_20261028_v1',JSON.stringify(onboarding?{complete:false,started:true,step:0,partnerStepV2:true}:{complete:true,step:10,house:'3–4 people',region:'UK',goals:['Plan dinners faster'],diets:['No specific preference'],partnerStepV2:true}));
+          localStorage.setItem('basketboss_onboarding_seen_v1','true');
+          sessionStorage.setItem('basketboss_welcome_splash_seen_v1','1');
+          sessionStorage.setItem('bb_funnel_nudge_dismissed_v1','1');
+          let attempts=0,opened=false,baselineScroll=null;
+          const check=setInterval(()=>{
+            if(++attempts>1800){clearInterval(check);return;}
+            if(!onboarding&&!opened){
+              const button=document.getElementById('cloud-open');
+              if(document.readyState!=='loading'&&window.BBNativeStartup?.phase==='ready'&&button){opened=true;button.click();}
+            }
+            const host=document.getElementById(onboarding?'bbNewOnboarding':'cloud-panel');
+            const form=document.getElementById('cloud-auth'),shell=document.querySelector('.shell');
+            if(!host||!host.getClientRects().length)return;
+            const fixed=getComputedStyle(document.body).position==='fixed';
+            const viewport=window.visualViewport,box=host.getBoundingClientRect();
+            // Compare document coordinates: WKWebView's DOM rect and scrollY
+            // include keyboard panning differently from Chromium. Visual-only
+            // panning must not be confused with moving the locked page.
+            const scrollY=Number(window.scrollY)||0,scrollX=Number(window.scrollX)||0;
+            const top=Number.isFinite(viewport?.pageTop)?viewport.pageTop:scrollY;
+            const left=Number.isFinite(viewport?.pageLeft)?viewport.pageLeft:scrollX;
+            const layoutY=top-(Number(viewport?.offsetTop)||0);
+            if(fixed&&baselineScroll===null)baselineScroll=layoutY;
+            const height=Math.min(Number(viewport?.height)||innerHeight,innerHeight),width=Math.min(Number(viewport?.width)||innerWidth,innerWidth);
+            const flags={bodyFixed:fixed,shellHidden:!!shell&&getComputedStyle(shell).visibility==='hidden',shellInert:!!shell?.closest('[inert]'),viewportCovered:Math.abs(box.top+scrollY-top)<3&&Math.abs(box.left+scrollX-left)<3&&Math.abs(box.bottom+scrollY-top-height)<3&&Math.abs(box.right+scrollX-left-width)<3,rootLocked:baselineScroll!==null&&Math.abs(layoutY-baselineScroll)<2};
+            let probe=document.getElementById('bbAccountKeyboardProbe');
+            if(!probe){probe=document.createElement('p');probe.id='bbAccountKeyboardProbe';probe.style.cssText='position:absolute;top:8px;left:8px;right:72px;height:30px;overflow:hidden;font-size:7px;line-height:10px;z-index:2147483647;background:#f5f7ef;margin:0;color:#385e45;pointer-events:none';host.appendChild(probe);}
+            // Numeric layout metadata only: never include input values, user
+            // text, account/session data, screenshots or recording bytes.
+            const number=value=>Number.isFinite(Number(value))?Math.round(Number(value)*10)/10:null;
+            const bodyStyle=getComputedStyle(document.body),hostStyle=getComputedStyle(host);
+            const metrics={formMounted:host.contains(form),vvH:number(viewport?.height),vvW:number(viewport?.width),vvTop:number(viewport?.offsetTop),vvLeft:number(viewport?.offsetLeft),vvPageTop:number(viewport?.pageTop),vvScale:number(viewport?.scale),innerH:number(innerHeight),innerW:number(innerWidth),hostT:number(box.top),hostL:number(box.left),hostB:number(box.bottom),hostR:number(box.right),hostH:number(box.height),hostW:number(box.width),cssT:number(parseFloat(hostStyle.top)),cssH:number(parseFloat(hostStyle.height)),bodyT:number(parseFloat(bodyStyle.top)),rootY:number(window.scrollY),baselineY:baselineScroll===null?null:number(baselineScroll),htmlY:number(document.documentElement.scrollTop),bodyY:number(document.body.scrollTop)};
+            const text='BB keyboard probe '+(onboarding?'onboarding':'account')+' '+Object.entries(flags).map(([name,value])=>name+'='+value).join(' ')+' metrics='+JSON.stringify(metrics);
+            if(probe.textContent!==text)probe.textContent=text;
+          },100);
+        })();
+        """#
+    }
+}
+#endif
 // A fresh CI simulator can exercise the actual capacitor:// WKWebView. This
 // hook is excluded from Release and never changes a user's normal installation.
 private final class BasketBossCookSmokeReporter: NSObject, WKScriptMessageHandler {
@@ -147,7 +203,7 @@ private final class BasketBossCookSmokeReporter: NSObject, WKScriptMessageHandle
     }
 
     func record(_ report: [String: Any]) {
-        let keys = ["complete", "passed", "nativeOrigin", "cookMounted", "cookReady", "navPresent", "navVisible", "navHit", "legacyVisible", "backToPlan", "dataKept", "mainReady", "startupReady", "phase", "readyState", "errorCount", "errorLine", "errorKind", "errorSource", "lastScript", "scriptCount", "ingredientClosed", "ingredientPhoto", "ingredientSaved", "ingredientAutofill", "ingredientExistingKept", "ingredientRestored", "voiceFreeLocked", "voiceManualStart", "voiceNextStep", "voiceTimer", "voiceScaledAmount", "voiceExitStopped", "voiceRestored"]
+        let keys = ["complete", "passed", "nativeOrigin", "cookMounted", "cookReady", "navPresent", "navVisible", "navHit", "legacyVisible", "backToPlan", "dataKept", "mainReady", "startupReady", "phase", "readyState", "errorCount", "errorLine", "errorKind", "errorSource", "lastScript", "scriptCount", "ingredientClosed", "ingredientPhoto", "ingredientSaved", "ingredientAutofill", "ingredientExistingKept", "ingredientRestored", "voiceFreeLocked", "voiceManualStart", "voiceNextStep", "voiceTimer", "voiceScaledAmount", "voiceExitStopped", "voiceRestored", "voicePrepAvailable", "voicePrepNarrated", "voicePrepAdvanced", "voiceCookNarrated", "voiceStepNarrated"]
         let safe = report.filter { keys.contains($0.key) }
         guard let data = try? JSONSerialization.data(withJSONObject: safe, options: [.sortedKeys]),
               let folder = FileManager.default.urls(for: .documentDirectory, in: .userDomainMask).first else { return }
@@ -204,25 +260,38 @@ private final class BasketBossCookSmokeReporter: NSObject, WKScriptMessageHandle
         const originalPremium=window.BasketBossVerifiedPremium,originalVoice=window.BBNativeCookVoice;
         const wait=async read=>{for(let n=0;n<60;n++){const value=read();if(value)return value;await new Promise(resolve=>setTimeout(resolve,100));}throw Error('VoiceCookSmokeTimeout');};
         const refresh=()=>dispatchEvent(new StorageEvent('storage',{key:stateKey,newValue:localStorage.getItem(stateKey)}));
-        let starts=0,stops=0,onFinal=null;const spoken=[];
+        let starts=0,stops=0,onFinal=null,onStatus=null,busy=false,active=false,utterance=0;const spoken=[];
         try{
-          window.BBNativeCookVoice={available:async()=>true,start:async(final,status)=>{starts++;onFinal=final;status({state:'listening'});},stop:async()=>{stops++;},speak:async text=>{spoken.push(text);}};
+          window.BBNativeCookVoice={available:async()=>true,start:async(final,status)=>{starts++;active=true;onFinal=final;onStatus=status;status({state:'listening'});},stop:async()=>{stops++;active=false;busy=false;utterance++;},speak:async text=>{if(!active||text.length>4000)throw Error('VoiceSmokeSpeech');const cycle=++utterance;spoken.push(text);busy=true;onStatus?.({state:'paused'});await new Promise(resolve=>setTimeout(resolve,20));if(active&&cycle===utterance){busy=false;onStatus?.({state:'listening'});}}};
           window.BasketBossVerifiedPremium={isActive:()=>false};
           localStorage.setItem(stateKey,JSON.stringify({version:2,planned:[{recipeId:'fajitas',day:'Monday'}],servings:4,feedingSet:true}));refresh();
           const day=await wait(()=>document.querySelector('.bbnext-day[data-bbnext-day="Monday"]'));day.open=true;
           const cook=await wait(()=>day.querySelector('[data-cook]'));cook.click();
-          const begin=await wait(()=>document.getElementById('bbStart'));begin.click();
+          await wait(()=>document.getElementById('bbStart'));
           const toggle=await wait(()=>document.querySelector('.bb-cook-voice .bbcv-toggle'));
+          report.voicePrepAvailable=!document.querySelector('.bb-cook-voice').hidden&&!document.getElementById('bbInstruction');
           report.voiceFreeLocked=toggle.textContent.includes('Premium')&&starts===0;
           window.BasketBossVerifiedPremium={isActive:()=>true};document.dispatchEvent(new Event('basketboss:premium-verified'));
           report.voiceManualStart=starts===0&&toggle.getAttribute('aria-pressed')==='false';
           toggle.click();await wait(()=>onFinal&&starts===1);
-          onFinal('How much cheddar?');await wait(()=>spoken.some(text=>text.startsWith('Cheddar:')));
           const recipes=await fetch(new URL('recipes.json',location.href)).then(response=>response.json()),recipe=recipes.find(item=>item.id==='fajitas');
+          const amount=ingredient=>BBServing.scaleText(ingredient[1],4/recipe.servings,ingredient[0]);
+          await wait(()=>spoken.some(text=>text.includes(recipe.ingredients[0][0])&&text.includes(amount(recipe.ingredients[0]))));
+          report.voicePrepNarrated=true;await wait(()=>!busy);
+          onFinal('Next ingredient');await wait(()=>document.querySelector('[data-prep="0"]')?.checked&&spoken.some(text=>text.includes(recipe.ingredients[1][0])&&text.includes(amount(recipe.ingredients[1]))));
+          report.voicePrepAdvanced=true;await wait(()=>!busy);
+          onFinal('Start cooking');await wait(()=>document.getElementById('bbInstruction'));
+          const firstInstruction=document.getElementById('bbInstruction').textContent;
+          await wait(()=>spoken.some(text=>text.includes(firstInstruction)));
+          report.voiceCookNarrated=spoken.filter(text=>text.includes(firstInstruction)).length===1;await wait(()=>!busy);
+          onFinal('How much cheddar?');await wait(()=>spoken.some(text=>text.startsWith('Cheddar:')));
           const cheddar=recipe.ingredients.find(item=>item[0]==='Cheddar'),quantity=BBServing.scaleText(cheddar[1],4/recipe.servings,cheddar[0]);
-          report.voiceScaledAmount=spoken.includes('Cheddar: '+quantity+'.');
+          report.voiceScaledAmount=spoken.includes('Cheddar: '+quantity+'.');await wait(()=>!busy);
           onFinal('Next step');await wait(()=>/STEP 2 OF/.test(document.getElementById('bbBody').textContent));
           report.voiceNextStep=/STEP 2 OF/.test(document.getElementById('bbBody').textContent);
+          const nextInstruction=document.getElementById('bbInstruction').textContent;
+          await wait(()=>spoken.some(text=>text.includes(nextInstruction)));
+          report.voiceStepNarrated=spoken.filter(text=>text.includes(nextInstruction)).length===1;await wait(()=>!busy);
           onFinal('Start timer');await wait(()=>/Pause/.test(document.getElementById('bbTimerToggle').textContent));
           onFinal('Start timer');report.voiceTimer=/Pause/.test(document.getElementById('bbTimerToggle').textContent);
           const previousStops=stops;document.getElementById('bbExit').click();await wait(()=>!document.querySelector('.cook-overlay'));
@@ -247,7 +316,7 @@ private final class BasketBossCookSmokeReporter: NSObject, WKScriptMessageHandle
           if(stage==='back'){
             const report=JSON.parse(sessionStorage.getItem(key+'_report')||'{}');
             report.backToPlan=document.body.dataset.bbnextView==='week';report.dataKept=localStorage.getItem('basketboss_native_smoke_probe')==='keep';
-            report.passed=!!(report.nativeOrigin&&report.cookMounted&&report.cookReady&&report.navVisible&&report.navHit&&report.backToPlan&&report.dataKept&&report.ingredientClosed&&report.ingredientPhoto&&report.ingredientSaved&&report.ingredientAutofill&&report.ingredientExistingKept&&report.ingredientRestored&&report.voiceFreeLocked&&report.voiceManualStart&&report.voiceNextStep&&report.voiceTimer&&report.voiceScaledAmount&&report.voiceExitStopped&&report.voiceRestored);send(report);return;
+            report.passed=!!(report.nativeOrigin&&report.cookMounted&&report.cookReady&&report.navVisible&&report.navHit&&report.backToPlan&&report.dataKept&&report.ingredientClosed&&report.ingredientPhoto&&report.ingredientSaved&&report.ingredientAutofill&&report.ingredientExistingKept&&report.ingredientRestored&&report.voiceFreeLocked&&report.voiceManualStart&&report.voiceNextStep&&report.voiceTimer&&report.voiceScaledAmount&&report.voiceExitStopped&&report.voiceRestored&&report.voicePrepAvailable&&report.voicePrepNarrated&&report.voicePrepAdvanced&&report.voiceCookNarrated&&report.voiceStepNarrated);send(report);return;
           }
           if(!sessionStorage.getItem(key+'_region')){const select=document.getElementById('bb307Island'),save=document.getElementById('bb307SaveMarket');if(select&&save){select.value='UK';select.dispatchEvent(new Event('change',{bubbles:true}));save.click();sessionStorage.setItem(key+'_region','1');return;}}
           if(!sessionStorage.getItem(key+'_ingredients')){

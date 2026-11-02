@@ -48,6 +48,23 @@
  function trimFounder(){return SHOW_FOUNDER_STORY;}
  let state=restoreState()||{step:0,house:'',goals:[],diets:[],region:'',started:false,complete:false,partnerStepV2:true,wantsPartnerInvite:false,partnerIntent:'none'};
  let host=null,form=null,message=null,formMarker=null,messageMarker=null,oldOverflow='',lastFocus=null,accountRequested=false,fullViewportHeight=0;
+ let background=[],pagePosition={x:0,y:0};
+ function lockWelcomeBackground(){
+   pagePosition={x:window.scrollX||0,y:window.scrollY||0};
+   document.documentElement.style.setProperty('--bbob-page-top',-pagePosition.y+'px');
+   document.documentElement.classList.add('bb-onboarding-open');
+   background=[...document.querySelectorAll('.shell,.bbui-settings-overlay')].filter(node=>!node.contains(host)).map(node=>({node,inert:node.hasAttribute('inert')}));
+   for(const {node} of background)node.setAttribute('inert','');
+ }
+ function unlockWelcomeBackground(){
+   if(host?.contains(document.activeElement))document.activeElement.blur?.();
+   for(const {node,inert} of background)if(!inert)node.removeAttribute('inert');
+   background=[];
+   document.documentElement.classList.remove('bb-onboarding-open');
+   document.documentElement.style.removeProperty('--bbob-page-top');
+   document.body.style.overflow=oldOverflow;
+   window.scrollTo(pagePosition.x,pagePosition.y);
+ }
  // Replay uses memory until Finish; closing or reloading keeps prior setup intact.
  let replaying=false,replayOriginal=null;
  const changedPreferences=new Set();
@@ -177,12 +194,21 @@
  function keepAuthFocusVisible(){
    const active=accountInput(),main=host?.querySelector('.bbob-main');if(!active||!main)return;
    const bounds=main.getBoundingClientRect(),field=active.getBoundingClientRect();
-   if(field.bottom>bounds.bottom-16)main.scrollTop+=field.bottom-bounds.bottom+16;
-   else if(field.top<bounds.top+16)main.scrollTop-=bounds.top+16-field.top;
+   const top=bounds.top+16,bottom=bounds.bottom-16;
+   let delta=field.top<top?field.top-top:field.bottom>bottom?field.bottom-bottom:0;
+   const login=id('cloud-login');
+   if(active.id==='cloud-password'&&login?.getClientRects().length){
+     delta+=Math.min(Math.max(0,login.getBoundingClientRect().bottom-delta-bottom),Math.max(0,field.top-delta-top));
+   }
+   if(delta)main.scrollTop+=delta;
  }
  function sizeWelcomeViewport(){
-   const height=window.visualViewport?.height||window.innerHeight;if(!host||!Number.isFinite(height)||height<=0)return;
-   host.style?.setProperty?.('--bbob-viewport-height',Math.round(height)+'px');
+   const view=window.visualViewport;
+   const height=Math.min(view?.height||window.innerHeight,window.innerHeight);
+   if(!host||!Number.isFinite(height)||height<=0)return;
+   for(const [name,value] of Object.entries({height,width:Math.min(view?.width||window.innerWidth,window.innerWidth),top:Math.max(0,view?.offsetTop||0),left:Math.max(0,view?.offsetLeft||0)})){
+     host.style?.setProperty?.('--bbob-viewport-'+name,value+'px');
+   }
    fullViewportHeight=Math.max(fullViewportHeight,height);
    // Keep this layout until the keyboard actually closes. Removing it on input
    // blur moves Sign in between touch-down and touch-up and loses the tap.
@@ -274,7 +300,7 @@
  }
  function dismiss(restoreReplay=true){
    const closeSettings=!restoreReplay&&replaying;
-   restoreAuth();host?.remove();host=null;document.body.style.overflow=oldOverflow;
+   unlockWelcomeBackground();restoreAuth();host?.remove();host=null;
    if(restoreReplay&&replaying&&replayOriginal)state=replayOriginal;
    replaying=false;replayOriginal=null;changedPreferences.clear();
    if(lastFocus?.isConnected)lastFocus.focus({preventScroll:true});
@@ -304,7 +330,7 @@
    if(!Number.isInteger(state.step)||state.step<0||state.step>STEP_MAX)state.step=0;
    oldOverflow=document.body.style.overflow;lastFocus=document.activeElement;
    host=document.createElement('div');host.id='bbNewOnboarding';host.setAttribute('role','dialog');host.setAttribute('aria-modal','true');host.setAttribute('aria-label','BasketBoss welcome and setup');
-   document.body.appendChild(host);document.body.style.overflow='hidden';
+   document.body.appendChild(host);document.body.style.overflow='hidden';lockWelcomeBackground();
    fullViewportHeight=window.visualViewport?.height||window.innerHeight||0;
    host.addEventListener('focusin',sizeWelcomeViewport);
    host.addEventListener('focusout',()=>queueMicrotask(sizeWelcomeViewport));
@@ -363,6 +389,8 @@
  }
  function start(){
    window.visualViewport?.addEventListener?.('resize',sizeWelcomeViewport);
+   window.visualViewport?.addEventListener?.('scroll',sizeWelcomeViewport);
+   window.addEventListener('resize',sizeWelcomeViewport);
    window.addEventListener('orientationchange',sizeWelcomeViewport);
    trimFounder();begin();replayLabel();
    document.addEventListener('click',event=>{

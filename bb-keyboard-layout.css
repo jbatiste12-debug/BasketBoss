@@ -1,0 +1,8 @@
+/* These docks are fixed and occupy no document flow. Keep their nodes and
+ * handlers intact; the keyboard gets the visible space until it closes. */
+html.bb-keyboard-open body nav#bbPrimaryNavigation[data-bb-navigation],
+html.bb-keyboard-open body .shell nav.tabs,
+html.bb-keyboard-open body nav.bb-r6-cook-nav,
+html.bb-keyboard-open body nav[aria-label="Bottom navigation"]{
+ display:none!important;
+}

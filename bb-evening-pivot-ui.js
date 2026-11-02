@@ -47,7 +47,7 @@
   view.chosen=null;view.dateFields=[];view.choices.replaceChildren();view.review.replaceChildren();view.review.hidden=true;
   view.submit.disabled=true;view.submit.hidden=true;
   setMessage(view,'Premium access could not be confirmed. Close this sheet and check your account.',true);
-  if(view.opener)view.opener.textContent='Too tired / short on time? · Premium';
+  if(view.opener)view.opener.textContent='Evening Pivot · Need a quicker dinner? · Premium';
   view.baseControls[0]?.focus?.({preventScroll:true});
  }
  function requestUpgrade(button){
@@ -144,7 +144,7 @@
  function buildDialog(context,opener){
   const dialog=element('dialog','bb-evening-pivot bb-evening-pivot-dialog');dialog.id='bbEveningPivotDialog';
   dialog.setAttribute('aria-labelledby','bbEveningPivotTitle');dialog.setAttribute('aria-describedby','bbEveningPivotIntro');dialog.setAttribute('aria-modal','true');
-  const header=element('div','bbep-header'),heading=element('h2','bbep-title','A quicker dinner tonight?');heading.id='bbEveningPivotTitle';
+  const header=element('div','bbep-header'),heading=element('h2','bbep-title','Evening Pivot');heading.id='bbEveningPivotTitle';
   const dismiss=element('button','bbep-dismiss','×');dismiss.type='button';dismiss.setAttribute('aria-label','Close dinner swap');dismiss.addEventListener('click',close);header.append(heading,dismiss);
   const intro=element('p','bbep-intro','Choose a quicker meal already in your plan. We’ll move tonight’s dinner to its day.');intro.id='bbEveningPivotIntro';
   const form=element('form','bbep-form'),choices=element('section','bbep-choices'),review=element('section','bbep-review');review.hidden=true;
@@ -198,7 +198,7 @@
   let today;
   try{today=adapter?.currentDay();}catch(_){return null;}
   if(!adapter||context.day!==today||typeof context.recipeId!=='string'||!context.recipeId)return null;
-  const holder=element('div','bb-evening-pivot bb-evening-pivot-control'),button=element('button','bb-evening-pivot-open','Too tired / short on time?'+(isPremium()?'':' · Premium'));
+  const holder=element('div','bb-evening-pivot bb-evening-pivot-control'),button=element('button','bb-evening-pivot-open','Evening Pivot · Need a quicker dinner?'+(isPremium()?'':' · Premium'));
   button.type='button';button.setAttribute('aria-haspopup','dialog');
   button.addEventListener('click',()=>void open({day:context.day,recipeId:context.recipeId},button));holder.append(button);return holder;
  }

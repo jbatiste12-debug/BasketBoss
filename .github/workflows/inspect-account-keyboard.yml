@@ -1,0 +1,74 @@
+name: Focused iOS account keyboard check
+
+on:
+  push:
+    branches: [codex/ios-signin-keyboard-20261101]
+    paths:
+      - .github/workflows/inspect-account-keyboard.yml
+      - bb-account-polish.*
+      - bb-onboarding-v2.*
+      - ios/App/App/AppDelegate.swift
+      - ios/App/BasketBossAccountKeyboardUITests/**
+      - scripts/test-ios-account-keyboard.mjs
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  keyboard:
+    runs-on: macos-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+          cache: npm
+      - run: npm ci --no-audit --no-fund
+      - run: npm run ios:sync
+      - name: Prepare the proven iOS simulator and software keyboard
+        run: |
+          node --input-type=module <<'JS'
+          import {execFileSync} from 'node:child_process';
+          const run=(...args)=>execFileSync('xcrun',args,{encoding:'utf8',timeout:120000}).trim();
+          const runtimes=JSON.parse(run('simctl','list','runtimes','--json')).runtimes.filter(r=>r.isAvailable&&r.name.startsWith('iOS'));
+          const devices=JSON.parse(run('simctl','list','devices','available','--json')).devices;
+          const runtime=runtimes.find(r=>r.version.startsWith('26.2'))||runtimes.find(r=>r.version.startsWith('18.6'));
+          if(!runtime)throw Error('proven_runtime_missing');
+          const phone=(devices[runtime.identifier]||[]).find(d=>d.isAvailable&&d.name.startsWith('iPhone'));
+          if(!phone)throw Error('iphone_missing');
+          execFileSync('defaults',['write','com.apple.iphonesimulator','ConnectHardwareKeyboard','-bool','NO']);
+          if(phone.state!=='Booted')run('simctl','boot',phone.udid);
+          execFileSync('open',['-a','Simulator','--args','-CurrentDeviceUDID',phone.udid]);
+          console.log('Booting '+phone.name+' / iOS '+runtime.version);
+          execFileSync('xcrun',['simctl','bootstatus',phone.udid,'-b'],{stdio:'inherit',timeout:540000});
+          JS
+      - name: Test real email and password taps and keyboard layout
+        run: node scripts/test-ios-account-keyboard.mjs
+      - name: Print text-only keyboard results
+        if: always()
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+          import subprocess
+          root=Path('artifacts/account-keyboard-diagnostics')
+          for name in ['report.json','summary.json','tests.log']:
+              item=root/name
+              if item.exists():
+                  print(name)
+                  print(item.read_text(errors='replace')[-24000:])
+          result=root/'AccountKeyboard.xcresult'
+          if result.exists():
+              done=subprocess.run(['xcrun','xcresulttool','get','test-results','summary','--path',str(result)],capture_output=True,text=True)
+              print(done.stdout[-20000:])
+          PY
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: BasketBoss-Focused-Keyboard-Verification
+          path: artifacts/account-keyboard-diagnostics/
+          if-no-files-found: ignore
+          retention-days: 7

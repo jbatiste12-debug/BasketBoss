@@ -44,12 +44,14 @@
       if(!response.ok){active=false;verifiedToken=null;phase=response.status===401?'signed_out':'unavailable';}
       else{
         const data=await response.json();
+        if(id!==sequence||accessToken()!==token)return false;
         const allowed=data?.authenticated===true && data?.premiumAccess===true &&
           (data.tier==='owner'||data.tier==='premium') &&
           (data.mode==='sandbox'||data.mode==='live');
+        const free=data?.authenticated===true&&data?.premiumAccess===false;
         active=allowed;
         verifiedToken=allowed?token:null;
-        phase=allowed?'premium':'free';
+        phase=allowed?'premium':free?'free':'unavailable';
       }
     }catch(_){
       if(id===sequence&&accessToken()===token){

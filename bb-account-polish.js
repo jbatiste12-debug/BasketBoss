@@ -10,7 +10,50 @@
     backup: '<svg viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M5 8a7 7 0 0 1 12-3l2 2M19 3v4h-4M19 16a7 7 0 0 1-12 3l-2-2M5 21v-4h4M12 8v8m-3-3 3 3 3-3"/></svg>',
     preferences: '<svg viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"><path d="M4 7h16M4 17h16"/><circle cx="8" cy="7" r="3" fill="var(--bbap-card,#fffdf7)"/><circle cx="16" cy="17" r="3" fill="var(--bbap-card,#fffdf7)"/></svg>'
   };
-  const state = { panel: null, opened: false, focusBack: null, queued: false };
+  const state = { panel: null, opened: false, focusBack: null, queued: false, viewportFrame: null, background: [], scrollX: 0, scrollY: 0 };
+  function fitAccountViewport() {
+    state.viewportFrame = null;
+    if (!state.opened || !state.panel?.classList.contains('open')) return;
+    const view = root.visualViewport;
+    const height = Math.max(1, Math.min(Number(view?.height) || root.innerHeight, root.innerHeight));
+    const width = Math.max(1, Math.min(Number(view?.width) || root.innerWidth, root.innerWidth));
+    for (const [name, value] of Object.entries({ height, width, top: Math.max(0, Number(view?.offsetTop) || 0), left: Math.max(0, Number(view?.offsetLeft) || 0) })) {
+      state.panel.style.setProperty('--bbap-viewport-' + name, value + 'px');
+    }
+    const card = doc.getElementById('cloud-card'), input = doc.activeElement;
+    if (!card?.contains(input) || !input.matches?.('input,textarea,select')) return;
+    const box = card.getBoundingClientRect(), field = input.getBoundingClientRect();
+    const close = doc.getElementById('cloud-close');
+    const closeBottom = close?.getClientRects().length ? close.getBoundingClientRect().bottom + 8 : 0;
+    const top = Math.max(box.top + 52, closeBottom), bottom = box.bottom - 12;
+    let delta = field.top < top ? field.top - top : field.bottom > bottom ? field.bottom - bottom : 0;
+    const login = doc.getElementById('cloud-login');
+    if (input.id === 'cloud-password' && login?.getClientRects().length) {
+      delta += Math.min(Math.max(0, login.getBoundingClientRect().bottom - delta - bottom), Math.max(0, field.top - delta - top));
+    }
+    if (delta) card.scrollTop += delta;
+  }
+  function scheduleViewport() {
+    if (state.opened && state.viewportFrame === null) state.viewportFrame = root.requestAnimationFrame(fitAccountViewport);
+  }
+  function holdAccountBackground() {
+    state.scrollX = root.scrollX || 0; state.scrollY = root.scrollY || 0;
+    doc.documentElement.style.setProperty('--bbap-page-top', -state.scrollY + 'px');
+    doc.documentElement.classList.add('bb-account-open');
+    state.background = [...doc.querySelectorAll('.shell,.bbui-settings-overlay,#bbNewOnboarding')].filter(node => !node.contains(state.panel)).map(node => ({ node, inert: node.hasAttribute('inert') }));
+    for (const { node } of state.background) node.setAttribute('inert', '');
+    fitAccountViewport();
+  }
+  function releaseAccountBackground() {
+    if (state.viewportFrame !== null) root.cancelAnimationFrame(state.viewportFrame);
+    state.viewportFrame = null;
+    if (state.panel?.contains(doc.activeElement)) doc.activeElement.blur?.();
+    for (const { node, inert } of state.background) if (!inert) node.removeAttribute('inert');
+    state.background = [];
+    doc.documentElement.classList.remove('bb-account-open');
+    doc.documentElement.style.removeProperty('--bbap-page-top');
+    root.scrollTo(state.scrollX, state.scrollY);
+  }
   function element(tag, className, text) {
     const node = doc.createElement(tag);
     if (className) node.className = className;
@@ -53,6 +96,14 @@
   function focusAccount() {
     const panel = state.panel;
     if (!panel?.classList.contains('open')) return;
+    // A deferred modal focus must never replace a field the user just tapped.
+    if (panel.contains(doc.activeElement) && doc.activeElement?.matches?.('input,textarea,select,button,a')) return;
+    // Let touch users choose their field with a trusted tap. Programmatically
+    // focusing email first can leave WKWebView's secure-input keyboard hidden.
+    if (root.BBNative?.isNative === true || root.matchMedia?.('(pointer: coarse)').matches) {
+      doc.getElementById('cloud-close')?.focus?.({ preventScroll: true });
+      return;
+    }
     const email = doc.getElementById('cloud-email');
     const first = email?.getClientRects().length && !email.disabled ? email : visibleControls(panel).find(node => node.id !== 'cloud-close');
     (first || doc.getElementById('cloud-close'))?.focus?.({ preventScroll: true });
@@ -89,6 +140,7 @@
           else if (!event.shiftKey && doc.activeElement === last) { event.preventDefault(); first.focus(); }
         }
       });
+      panel.addEventListener('focusin', scheduleViewport);
       state.panel = panel;
       const observer = new root.MutationObserver(schedule);
       observer.observe(panel, { attributes: true, attributeFilter: ['class', 'hidden'], subtree: true });
@@ -98,14 +150,18 @@
     setText(title, signedIn ? 'Your account.' : 'Welcome back.');
     setText(doc.getElementById('bbapAccountIntro'), signedIn ? 'Your plans, your account, your choices.' : 'Sign in to access your saved cloud plan.');
     const opened = panel.classList.contains('open');
-    if (opened && !state.opened) {
+    const wasOpened = state.opened;
+    state.opened = opened;
+    if (opened && !wasOpened) {
       state.focusBack = doc.activeElement;
+      holdAccountBackground();
       root.requestAnimationFrame(focusAccount);
-    } else if (!opened && state.opened && state.focusBack?.isConnected) {
-      state.focusBack.focus?.({ preventScroll: true });
+    } else if (!opened && wasOpened) {
+      releaseAccountBackground();
+      if (state.focusBack?.isConnected && !panel.contains(state.focusBack)) state.focusBack.focus?.({ preventScroll: true });
       state.focusBack = null;
     }
-    state.opened = opened;
+    if (opened) scheduleViewport();
   }
   function decorateHeader() {
     const header = doc.querySelector('.shell > header.top');
@@ -120,6 +176,9 @@
   function refresh() { state.queued = false; decorateHeader(); decorateSettings(); syncAccount(); }
   function schedule() { if (!state.queued) { state.queued = true; root.requestAnimationFrame(refresh); } }
   function start() {
+    root.visualViewport?.addEventListener('resize', scheduleViewport);
+    root.visualViewport?.addEventListener('scroll', scheduleViewport);
+    root.addEventListener('resize', scheduleViewport);
     refresh();
     // The legacy application mounts Settings after DOMContentLoaded. Watching
     // additions only avoids re-running on every plan, price or style mutation.

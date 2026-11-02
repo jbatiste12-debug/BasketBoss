@@ -13,7 +13,7 @@ export function installNativeApplePurchases({plugin,apiURL,readSession,fetch:per
  const listeners=new Set(),requests=new Set(),queued=new Map();
  let requestedProductId=null;
  try{const requested=new URL(win?.location?.href).searchParams.get('appleIntent');if(PRODUCTS.includes(requested))requestedProductId=requested;}catch{}
- let state={available:false,authenticated:false,premiumAccess:false,provider:null,subscription:null,products:[],requestedProductId,busy:false,phase:'loading',message:'Checking Apple subscriptions…'};
+ let state={available:false,authenticated:false,premiumAccess:false,provider:null,subscription:null,products:[],membershipState:'checking',requestedProductId,busy:false,phase:'loading',message:'Checking Apple subscriptions…'};
  function emit(change){if(destroyed)return;state={...state,...change,busy};for(const listener of listeners)listener({...state,products:[...state.products]});}
  function pin(){const s=readSession();return s?.access_token&&s?.user?.id&&Number(s.expires_at)*1000>Date.now()+5000?{token:s.access_token,user:s.user.id,generation}:null;}
  function current(p){const now=pin();return !destroyed&&!isDeleting()&&p&&now&&now.generation===p.generation&&now.token===p.token&&now.user===p.user;}
@@ -43,17 +43,18 @@ export function installNativeApplePurchases({plugin,apiURL,readSession,fetch:per
  async function refresh(){
   if(destroyed)return {...state};
   const revision=++viewRevision,actor=pin(),epoch=generation;
-  if(isDeleting()){emit({available:false,authenticated:!!actor,premiumAccess:false,phase:'paused',message:'Account deletion is in progress. Purchases are paused.'});return {...state};}
-  emit({authenticated:!!actor});
+  if(isDeleting()){emit({available:false,authenticated:!!actor,premiumAccess:false,membershipState:'unavailable',phase:'paused',message:'Account deletion is in progress. Purchases are paused.'});return {...state};}
+  emit({authenticated:!!actor,membershipState:actor?'checking':'signed_out'});
   try{
    const [catalog,membership]=await Promise.all([loadProducts().catch(()=>({available:false,products:[]})),actor?request('/api/subscription/status',{pin:actor}):Promise.resolve(null)]);
    if(destroyed||revision!==viewRevision||epoch!==generation||isDeleting()||(actor&&!current(actor)))return {...state};
-   if(actor&&membership?.authenticated!==true)throw Error('Sign in again to check your membership.');
+   if(actor&&(membership?.authenticated!==true||typeof membership.premiumAccess!=='boolean'))throw Error('Sign in again to check your membership.');
+   if(actor&&membership.reason==='billing_not_enabled')throw Error('Membership verification is not available right now.');
    const premium=membership?.premiumAccess===true;
    const provider=membership?.provider||membership?.subscription?.provider||(membership?.householdRole==='partner'?'household':premium?'paddle':null);
-   emit({...catalog,authenticated:!!actor,premiumAccess:premium,provider,subscription:membership?.subscription||null,phase:'ready',message:premium?(provider==='apple'?'Your Apple Premium subscription is available.':'Your existing Premium membership is available. You do not need another subscription.'):
+   emit({...catalog,authenticated:!!actor,premiumAccess:premium,membershipState:premium?'premium':actor?'free':'signed_out',provider,subscription:membership?.subscription||null,phase:'ready',message:premium?(provider==='apple'?'Your Apple Premium subscription is available.':'Your existing Premium membership is available. You do not need another subscription.'):
     !catalog.available?'Apple subscriptions are not available right now. Your Free recipes remain available.':requestedProductId?(actor?'Review the subscription options below, then choose a plan to continue your Apple purchase.':'Sign in or create your BasketBoss account, then choose a plan to continue your Apple purchase.'):actor?'Choose a plan to subscribe with Apple, or restore an existing Apple purchase.':'Use 100 recipes free. Sign in or create your BasketBoss account before subscribing.'});
-  }catch(error){if(!destroyed&&revision===viewRevision&&epoch===generation&&(!actor||current(actor)))emit({available:false,authenticated:!!actor,premiumAccess:false,provider:null,subscription:null,phase:'error',message:error.message||'Membership could not be checked. Try again.'});}
+  }catch(error){if(!destroyed&&revision===viewRevision&&epoch===generation&&(!actor||current(actor)))emit({available:false,authenticated:!!actor,premiumAccess:false,membershipState:actor?'unavailable':'signed_out',provider:null,subscription:null,phase:'error',message:error.message||'Membership could not be checked. Try again.'});}
   return {...state};
  }
  function notifyMembership(){if(win?.dispatchEvent&&win?.Event)win.dispatchEvent(new win.Event('basketboss:apple-membership-updated'));}
@@ -133,7 +134,7 @@ export function installNativeApplePurchases({plugin,apiURL,readSession,fetch:per
   }catch{}
   void refresh();
  }
- function invalidate(event){const next=identity();if(event?.type==='basketboss:session-changed'&&next===lastIdentity&&!isDeleting()){void refresh();return;}lastIdentity=next;generation++;viewRevision++;for(const request of requests)request.abort();queued.clear();emit({authenticated:!!pin(),premiumAccess:false,provider:null,subscription:null});void refresh().then(recoverPending);}
+ function invalidate(event){const next=identity();if(event?.type==='basketboss:session-changed'&&next===lastIdentity&&!isDeleting()){void refresh();return;}lastIdentity=next;generation++;viewRevision++;for(const request of requests)request.abort();queued.clear();emit({authenticated:!!pin(),premiumAccess:false,membershipState:pin()?'checking':'signed_out',provider:null,subscription:null});void refresh().then(recoverPending);}
  const accountEvents=['basketboss:session-changed','basketboss:account-deletion-started','basketboss:account-deletion-cancelled','basketboss:account-deletion-deleted'];
  for(const event of accountEvents)win?.addEventListener?.(event,invalidate);
  const onStorage=event=>{if(event.key==='basketboss_cloud_session_v1')invalidate(event);};

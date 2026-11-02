@@ -1,6 +1,7 @@
 import fs from 'node:fs';
 import path from 'node:path';
 import {execFileSync} from 'node:child_process';
+import {keyboardRuntimePlan} from './ios-keyboard-runtime.mjs';
 
 if(process.platform!=='darwin')throw Error('The native Cook smoke test needs a macOS iOS simulator.');
 const exec=(command,args,timeout=120000)=>execFileSync(command,args,{encoding:'utf8',stdio:['ignore','pipe','pipe'],timeout,killSignal:'SIGKILL'}).trim();
@@ -8,7 +9,9 @@ const run=(...args)=>exec('xcrun',args);
 let stage='devices',raw,failure='',runtimeVersion='';
 try{
  const devices=JSON.parse(run('simctl','list','devices','available','--json')).devices;
- const runtimes=JSON.parse(run('simctl','list','runtimes','--json')).runtimes.filter(runtime=>runtime.isAvailable&&runtime.name.startsWith('iOS')).sort((a,b)=>b.version.localeCompare(a.version,undefined,{numeric:true}));
+ // Share the proven-runtime ordering with the keyboard runner when no previous
+ // native check has booted a device (the standalone native build workflow).
+ const runtimes=keyboardRuntimePlan({runtimes:JSON.parse(run('simctl','list','runtimes','--json')).runtimes,devices}).runtimes;
  const bootedRuntime=runtimes.find(runtime=>(devices[runtime.identifier]||[]).some(device=>device.isAvailable&&device.name.startsWith('iPhone')&&device.state==='Booted'));
  const runtime=bootedRuntime||runtimes.find(runtime=>(devices[runtime.identifier]||[]).some(device=>device.isAvailable&&device.name.startsWith('iPhone')));
  runtimeVersion=runtime?.version||'';
@@ -16,7 +19,21 @@ try{
  const phone=available.find(device=>device.isAvailable&&device.name.startsWith('iPhone')&&device.state==='Booted')||available.find(device=>device.isAvailable&&device.name.startsWith('iPhone'));
  if(!phone)throw Error('no_simulator');
  console.log('Using '+phone.name+' on iOS '+runtimeVersion+' for Cook navigation verification.');
- stage='boot';if(phone.state!=='Booted')run('simctl','boot',phone.udid);
+ if(process.env.GITHUB_ACTIONS==='true'){
+  // Hosted XCTest leaves simulator services and its host process running.
+  // Start the standalone WKWebView check from a fresh boot of that same proven
+  // runtime, rather than reusing an indeterminate post-test process state.
+  stage='reset_test_simulator';try{run('simctl','shutdown',phone.udid);}catch{}
+  let stopped=false;
+  for(let attempt=0;attempt<60;attempt++){
+   const current=Object.values(JSON.parse(run('simctl','list','devices','available','--json')).devices).flat().find(device=>device.udid===phone.udid);
+   if(current?.state==='Shutdown'){stopped=true;break;}
+   await new Promise(resolve=>setTimeout(resolve,1000));
+  }
+  if(!stopped)throw Error('simulator_shutdown_timeout');
+  exec('defaults',['write','com.apple.iphonesimulator','ConnectHardwareKeyboard','-bool','NO'],10000);
+ }
+ stage='boot';if(process.env.GITHUB_ACTIONS==='true'||phone.state!=='Booted')run('simctl','boot',phone.udid);
  stage='simulator_app';exec('open',['-a','Simulator','--args','-CurrentDeviceUDID',phone.udid]);
  stage='bootstatus';exec('xcrun',['simctl','bootstatus',phone.udid,'-b'],360000);
  const app='/tmp/basketboss-ios-build/Build/Products/Debug-iphonesimulator/App.app';
@@ -33,7 +50,7 @@ try{
  if(!raw?.complete)failure='report_timeout';else if(!raw.passed)failure='ui_failed';
 }catch(error){failure=error.code==='ETIMEDOUT'?'command_timeout':'command_failed';}
 const report={reportReceived:!!raw,runtimeVersion,failureStage:failure?stage:'',failure};
-for(const key of ['passed','nativeOrigin','cookMounted','cookReady','navPresent','navVisible','navHit','legacyVisible','backToPlan','dataKept','mainReady','startupReady','ingredientClosed','ingredientPhoto','ingredientSaved','ingredientAutofill','ingredientExistingKept','ingredientRestored','voiceFreeLocked','voiceManualStart','voiceNextStep','voiceTimer','voiceScaledAmount','voiceExitStopped','voiceRestored'])report[key]=raw?.[key]===true;
+for(const key of ['passed','nativeOrigin','cookMounted','cookReady','navPresent','navVisible','navHit','legacyVisible','backToPlan','dataKept','mainReady','startupReady','ingredientClosed','ingredientPhoto','ingredientSaved','ingredientAutofill','ingredientExistingKept','ingredientRestored','voiceFreeLocked','voiceManualStart','voiceNextStep','voiceTimer','voiceScaledAmount','voiceExitStopped','voiceRestored','voicePrepAvailable','voicePrepNarrated','voicePrepAdvanced','voiceCookNarrated','voiceStepNarrated'])report[key]=raw?.[key]===true;
 for(const key of ['errorCount','errorLine','scriptCount'])report[key]=Number.isInteger(raw?.[key])?Math.max(0,Math.min(raw[key],1000000)):0;
 for(const key of ['phase','readyState','errorKind','errorSource','lastScript'])report[key]=String(raw?.[key]||'').replace(/[^A-Za-z0-9_.-]/g,'').slice(0,100);
 console.log('::notice title=BasketBoss native Cook smoke::'+JSON.stringify({nativeCook:report}));

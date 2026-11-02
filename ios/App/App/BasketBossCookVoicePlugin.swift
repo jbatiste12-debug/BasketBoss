@@ -133,7 +133,7 @@ public final class BasketBossCookVoicePlugin: CAPPlugin, CAPBridgedPlugin, AVSpe
     @objc public func speak(_ call: CAPPluginCall) {
         guard let id = call.getString("sessionId"), let raw = call.getString("text") else { call.reject("A voice response is required.", "BB_VOICE_SESSION"); return }
         let text = raw.trimmingCharacters(in: .whitespacesAndNewlines)
-        guard !text.isEmpty, text.count <= 500 else { call.reject("The voice response is too long.", "BB_VOICE_TEXT"); return }
+        guard !text.isEmpty, text.count <= 4000 else { call.reject("The voice response is too long.", "BB_VOICE_TEXT"); return }
         Task { @MainActor [weak self] in
             guard let self = self, self.intent, self.sessionId == id, UIApplication.shared.applicationState == .active else { call.resolve(["spoken": false]); return }
             self.stopCapture()
@@ -144,7 +144,13 @@ public final class BasketBossCookVoicePlugin: CAPPlugin, CAPBridgedPlugin, AVSpe
                 try audio.setCategory(.playback, mode: .spokenAudio, options: [.duckOthers])
                 try audio.setActive(true)
                 let utterance = AVSpeechUtterance(string: text)
-                utterance.voice = AVSpeechSynthesisVoice(language: "en-GB")
+                utterance.voice = Self.cookeryVoice()
+                // A neutral speaking pace preserves the installed voice's
+                // natural phrasing instead of stretching it into a slow drawl.
+                utterance.rate = AVSpeechUtteranceDefaultSpeechRate
+                utterance.pitchMultiplier = 1.0
+                utterance.preUtteranceDelay = 0.10
+                utterance.postUtteranceDelay = 0.12
                 self.spoken = utterance
                 self.status("paused")
                 self.speaker.speak(utterance)
@@ -160,6 +166,20 @@ public final class BasketBossCookVoicePlugin: CAPPlugin, CAPBridgedPlugin, AVSpe
         notifyListeners("voiceStatus", data: value)
     }
 
+    private static func cookeryVoice() -> AVSpeechSynthesisVoice? {
+        // Select an original installed system voice, never an imitation of a
+        // named person. An enhanced/premium voice must win over a compact
+        // female voice: quality matters more than gender for natural speech.
+        // Voice availability and quality depend on the device's downloads.
+        let voices = AVSpeechSynthesisVoice.speechVoices().filter { $0.language.lowercased() == "en-gb" }
+        return voices.sorted { left, right in
+            if left.quality != right.quality { return left.quality.rawValue > right.quality.rawValue }
+            let leftFemale = left.gender == .female, rightFemale = right.gender == .female
+            if leftFemale != rightFemale { return leftFemale }
+            return left.identifier < right.identifier
+        }.first ?? AVSpeechSynthesisVoice(language: "en-GB")
+    }
+
     @MainActor private func beginCapture() throws {
         guard intent, spoken == nil, UIApplication.shared.applicationState == .active,
               let recognizer = recognizer, recognizer.isAvailable else { throw NSError(domain: "CookVoice", code: 1) }
@@ -171,7 +191,7 @@ public final class BasketBossCookVoicePlugin: CAPPlugin, CAPBridgedPlugin, AVSpe
         request.shouldReportPartialResults = true
         request.taskHint = .confirmation
         if recognizer.supportsOnDeviceRecognition { request.requiresOnDeviceRecognition = true }
-        request.contextualStrings = ["Next step", "Previous step", "Start timer", "How much"]
+        request.contextualStrings = ["Next ingredient", "Read ingredients", "Start cooking", "Read step", "Repeat", "Next step", "Previous step", "Start timer", "How much"]
         self.request = request
         let format = engine.inputNode.outputFormat(forBus: 0)
         guard format.sampleRate > 0, format.channelCount > 0 else { throw NSError(domain: "CookVoice", code: 2) }

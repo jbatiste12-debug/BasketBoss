@@ -41,7 +41,7 @@ permissions:
 jobs:
   simulator-build:
     runs-on: macos-latest
-    timeout-minutes: 20
+    timeout-minutes: 25
     steps:
       - uses: actions/checkout@v4
         with:
@@ -71,3 +71,13 @@ jobs:
         run: echo '::notice title=BasketBoss iOS native build::{"simulatorBuild":true,"bundleId":"uk.co.basketboss.app","minimumIOS":"16.0","signingTested":false}'
       - name: Exercise Cook in the actual iOS WebView
         run: node scripts/test-ios-cook-smoke.mjs
+      - name: Check account inputs with the real iOS keyboard
+        if: ${{ !cancelled() }}
+        run: node scripts/test-ios-account-keyboard.mjs
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: BasketBoss-Account-Keyboard-Verification
+          path: artifacts/account-keyboard-diagnostics/
+          if-no-files-found: ignore
+          retention-days: 14

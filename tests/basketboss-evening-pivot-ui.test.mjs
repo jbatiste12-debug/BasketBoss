@@ -60,7 +60,7 @@ function fixture(options={}){
 }
 
 test('the compact tonight control creates no sheet or preview until clicked, and other days get no control',async()=>{
- const h=fixture();assert.ok(h.wrapper);assert.equal(h.dialog,null);assert.equal(h.calls.preview.length,0);assert.equal(h.calls.apply.length,0);assert.match(h.opener.textContent,/Too tired \/ short on time/);
+ const h=fixture();assert.ok(h.wrapper);assert.equal(h.dialog,null);assert.equal(h.calls.preview.length,0);assert.equal(h.calls.apply.length,0);assert.equal(h.opener.textContent,'Evening Pivot · Need a quicker dinner?');
  assert.equal(h.api.createButton({day:'Tuesday',recipeId:'pasta'}),null);
  await h.open();assert.equal(h.calls.preview.length,1);assert.equal(h.dialog.open,true);assert.equal(h.calls.apply.length,0);assert.match(h.dialog.textContent,/PANTRY amounts checked/);assert.match(h.dialog.textContent,/Tonight · Monday/);assert.match(h.dialog.textContent,/Wednesday,? 4 November/);assert.match(h.dialog.textContent,/3 servings/);assert.match(h.dialog.textContent,/4 servings/);assert.equal(h.submit.disabled,true);
 });

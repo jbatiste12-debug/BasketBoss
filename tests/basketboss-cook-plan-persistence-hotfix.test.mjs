@@ -63,7 +63,7 @@ test('unavailable saved dinner remains visibly reserved, not No meal planned',()
  assert.match(index,/Reconnect Premium to load its details/);
 });
 test('text overflow is scoped to real onboarding, Plan, and header',()=>{
- assert.match(index,/bb-cook-plan-hotfix\.css\?v=20261028-cook-plan-v1/);
+ assert.match(index,/bb-cook-plan-hotfix\.css\?v=20261101-corner2/);
  assert.match(css,/#bbNewOnboarding \.bbob-real-shop \.bbob-shop-item/);
  assert.match(css,/grid-template-columns:22px minmax\(0,1fr\) minmax\(0,104px\)/);
  assert.match(css,/overflow-wrap:break-word/);

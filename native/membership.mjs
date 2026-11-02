@@ -4,24 +4,33 @@ import {isNativeBillingURL,nativeMembershipURL} from './routing.mjs';
 // and access is always confirmed by the server.
 export function installNativeMembership({apiURL,readSession,fetch:perform=globalThis.fetch,document:doc=globalThis.document,window:win=globalThis.window,purchases=null}){
  const url=path=>typeof apiURL==='function'?apiURL(path):apiURL+path;
- let observer,card,status,login,revision=0,unsubscribe;
+ let observer,card,status,login,revision=0,unsubscribe,headerUnsubscribe,viewState='checking';
  const hide=node=>{if(node&&!node.classList.contains('bb-native-hidden'))node.classList.add('bb-native-hidden');};
  const text=(node,value)=>{if(node&&node.textContent!==value)node.textContent=value;};
+ const memberLabel=()=>win.BasketBossMembershipUI?.label?.()||({signed_out:'FREE · Upgrade to Premium',free:'FREE · Upgrade to Premium',premium:'PREMIUM',checking:'Checking membership…'}[purchases?.state?.membershipState||viewState]||'Check membership');
+ function publishState(value){
+  viewState=value;win.BasketBossNativeMembershipState=value;
+  win.BasketBossMembershipUI?.setNativeState?.(value);
+  const comparison=doc.getElementById('bbNativePlanComparison');if(comparison)comparison.hidden=value==='premium';
+  text(doc.getElementById('bbNativeMembershipHeading'),value==='premium'?'Your Premium membership':'Free or Premium?');
+ }
  const token=()=>{const s=readSession();return s?.access_token&&Number(s.expires_at)*1000>Date.now()+5000?s.access_token:null;};
  function signIn(){const open=doc.getElementById('cloud-open');if(open)open.click();else win.location.assign('index.html#account');}
  async function refresh(){
   if(purchases)return purchases.refresh();
   if(!status)return;const bearer=token(),current=++revision;login.hidden=Boolean(bearer);
-  if(!bearer){text(status,'Free recipes are ready to use. Sign in to access an existing BasketBoss account.');return;}
-  text(status,'Checking your membership…');
+  if(!bearer){publishState('signed_out');text(status,'Free recipes are ready to use. Sign in to access an existing BasketBoss account.');return;}
+  publishState('checking');text(status,'Checking your membership…');
   try{
    const result=await perform(url('/api/subscription/status'),{headers:{Authorization:'Bearer '+bearer,Accept:'application/json'},cache:'no-store',credentials:'omit'});
    if(token()!==bearer||current!==revision)return;
    if(!result.ok)throw Error('Membership could not be checked. Please sign in again or try later.');
    const data=await result.json();
-   if(data.authenticated!==true)throw Error('Sign in again to check your membership.');
+   if(token()!==bearer||current!==revision)return;
+   if(data.authenticated!==true||typeof data.premiumAccess!=='boolean')throw Error('Sign in again to check your membership.');
+   publishState(data.premiumAccess?'premium':'free');
    text(status,data.premiumAccess===true?'Your existing Premium membership is available.':'Your account currently has Free access.');
-  }catch(error){if(token()===bearer&&current===revision)text(status,error.message||'Membership is temporarily unavailable.');}
+  }catch(error){if(token()===bearer&&current===revision){publishState('unavailable');text(status,error.message||'Membership is temporarily unavailable.');}}
  }
  function mount(parent){
   if(card?.isConnected)return;
@@ -89,7 +98,7 @@ export function installNativeMembership({apiURL,readSession,fetch:perform=global
    if(!isNativeBillingURL(node.getAttribute('href'),win.location.href))continue;
    const target=nativeMembershipURL(win.location.href);
    if(node.getAttribute('href')!==target)node.setAttribute('href',target);
-   text(node,'Your account status');
+   text(node,memberLabel());
   }
   for(const node of doc.querySelectorAll('.bb17513-meal-premium')){
    const target=nativeMembershipURL(win.location.href);
@@ -97,15 +106,17 @@ export function installNativeMembership({apiURL,readSession,fetch:perform=global
    // This is also a billing anchor handled above. Both passes must agree:
    // toggling two labels here creates an endless childList observer loop on
    // capacitor://localhost and prevents timers, app scripts and taps running.
-   text(node,'Your account status');
-   if(node.getAttribute('aria-label')!=='View your BasketBoss account status')node.setAttribute('aria-label','View your BasketBoss account status');
+   text(node,memberLabel());
+   if(node.getAttribute('aria-label')!==memberLabel())node.setAttribute('aria-label',memberLabel());
   }
-  for(const node of doc.querySelectorAll('#bb175Compare,button[data-bbob="premium"]'))text(node,'Your account status');
+  for(const node of doc.querySelectorAll('#bb175Compare,#bbpolUpgradePill,button[data-bbob="premium"]'))text(node,memberLabel());
   const parent=doc.getElementById('bbNativeMembershipMount')||doc.getElementById('bbuiLinksSection');if(parent)mount(parent);
   doc.querySelectorAll('[data-native-signin]').forEach(node=>{if(!node.dataset.nativeReady){node.dataset.nativeReady='true';node.addEventListener('click',()=>win.location.assign('index.html#account'));}});
  }
+ if(purchases)headerUnsubscribe=purchases.subscribeState(state=>publishState(state.membershipState||'checking'));
+ else publishState(token()?'checking':'signed_out');
  tidy();observer=new MutationObserver(tidy);observer.observe(doc.body,{childList:true,subtree:true});
  win.addEventListener('basketboss:session-changed',refresh);win.addEventListener('focus',refresh);win.addEventListener('basketboss:apple-membership-updated',refresh);
  if(win.location.hash==='#account')doc.getElementById('cloud-open')?.click();
- return {refresh,destroy(){unsubscribe?.();observer.disconnect();win.removeEventListener('basketboss:session-changed',refresh);win.removeEventListener('focus',refresh);win.removeEventListener('basketboss:apple-membership-updated',refresh);}};
+ return {refresh,destroy(){unsubscribe?.();headerUnsubscribe?.();observer.disconnect();win.removeEventListener('basketboss:session-changed',refresh);win.removeEventListener('focus',refresh);win.removeEventListener('basketboss:apple-membership-updated',refresh);}};
 }

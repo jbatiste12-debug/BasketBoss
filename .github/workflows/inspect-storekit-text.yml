@@ -1,0 +1,137 @@
+name: Inspect existing native text results
+
+on:
+  push:
+    branches: [codex/ios-signin-keyboard-20261101]
+    paths:
+      - .github/workflows/inspect-storekit-text.yml
+  workflow_dispatch:
+    inputs:
+      run_id:
+        description: Completed Apple verification run in this repository
+        required: true
+        default: '41353829247'
+        type: string
+
+permissions:
+  actions: read
+  contents: read
+
+jobs:
+  text-results:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: Download the existing local StoreKit result
+        uses: actions/download-artifact@v4
+        with:
+          name: BasketBoss-Local-StoreKit-Verification
+          run-id: ${{ inputs.run_id || '41353829247' }}
+          github-token: ${{ github.token }}
+          path: existing-storekit-result
+      - name: Download the existing account keyboard result
+        uses: actions/download-artifact@v4
+        with:
+          name: BasketBoss-Account-Keyboard-Verification
+          run-id: ${{ inputs.run_id || '41353829247' }}
+          github-token: ${{ github.token }}
+          path: existing-keyboard-result
+      - name: Print only safe StoreKit status and bounded XCTest failures
+        shell: bash
+        run: |
+          python - <<'PY'
+          import json
+          import re
+          from pathlib import Path
+
+          root = Path('existing-storekit-result')
+          allowed = {
+              'reportReceived', 'runtimeVersion', 'runtimeSelection',
+              'availableRuntimeVersions', 'failureStage', 'failure',
+              'commandError', 'complete', 'passed', 'localStoreKit',
+              'productionBillingTested', 'backendPremiumGranted',
+              'productsLoaded', 'purchaseVerified', 'accountTokenPreserved',
+              'unfinishedBeforeServerAck', 'earlyFinishRejected',
+              'restoreVerified', 'duplicatePurchasePrevented',
+              'wrongAccountRejected', 'finishedAfterAcknowledgement',
+              'cancellationPreserved', 'pendingDoesNotGrantAccess',
+              'pendingApprovalDelivered', 'stage', 'error',
+          }
+          report = root / 'local-storekit-report.json'
+          if not report.is_file():
+              raise SystemExit('Expected StoreKit status JSON is missing.')
+          data = json.loads(report.read_text(encoding='utf-8'))
+          if not isinstance(data, dict):
+              raise SystemExit('Expected StoreKit status object is missing.')
+          print('local-storekit-report.json')
+          print(json.dumps({key: data[key] for key in sorted(allowed) if key in data}, indent=2))
+
+          # Never enumerate or print other attachments. Only inspect the known
+          # XCTest text file, and retain bounded failure/assertion lines.
+          log = root / 'hosted-xctest.log'
+          if log.is_file():
+              pattern = re.compile(
+                  r'XCTAssert\w*.*failed|Test Case .*failed|error:|'
+                  r'TEST FAILED|Testing failed|Timed out|timed out|'
+                  r'Failed to (?:launch|load|install|establish)|'
+                  r'Error Domain=|Simulator device failed',
+                  re.IGNORECASE,
+              )
+              with log.open('rb') as handle:
+                  handle.seek(max(0, log.stat().st_size - 2 * 1024 * 1024))
+                  lines = handle.read().decode('utf-8', errors='replace').splitlines()
+              matched = [line for line in lines if pattern.search(line)][-40:]
+              print('Bounded hosted XCTest failure lines')
+              for line in matched:
+                  line = re.sub(r'(?i)(bearer\s+|(?:token|secret|password)=)\S+', r'\1[redacted]', line)
+                  line = re.sub(r'[A-Za-z0-9_+./=-]{120,}', '[long value redacted]', line)
+                  print(line[:700])
+              if not matched:
+                  print('No matching XCTest failure lines in the bounded text tail.')
+
+          keyboard = Path('existing-keyboard-result')
+          keyboard_report = keyboard / 'report.json'
+          if keyboard_report.is_file():
+              data = json.loads(keyboard_report.read_text(encoding='utf-8'))
+              keys = {
+                  'passed', 'realSoftwareKeyboard', 'emailFocus', 'passwordFocus',
+                  'onboardingEmailFocus', 'onboardingPasswordFocus',
+                  'backgroundLocked', 'requiredTests', 'credentialsEntered',
+                  'signInSubmitted', 'runtimeVersion', 'deviceName',
+                  'reusedCIOnlySimulator', 'failureStage', 'failure',
+              }
+              print('Account keyboard report.json')
+              print(json.dumps({key: data[key] for key in sorted(keys) if key in data}, indent=2))
+
+          summary = keyboard / 'summary.json'
+          if summary.is_file():
+              data = json.loads(summary.read_text(encoding='utf-8'))
+              keys = {'passedTests', 'failedTests', 'skippedTests', 'expectedFailures', 'result'}
+              print('Account keyboard summary counts')
+              print(json.dumps({key: data[key] for key in sorted(keys) if key in data}, indent=2))
+              print('Account keyboard assertion failures')
+              for failure in data.get('testFailures', [])[:8]:
+                  name = str(failure.get('testName', ''))[:120]
+                  detail = str(failure.get('failureText', ''))
+                  detail = re.sub(r'(?i)(bearer\s+|(?:token|secret|password)=)\S+', r'\1[redacted]', detail)
+                  detail = re.sub(r'[A-Za-z0-9_+./=-]{120,}', '[long value redacted]', detail)
+                  print(name + ': ' + detail[:1000])
+
+          keyboard_log = keyboard / 'tests.log'
+          if keyboard_log.is_file():
+              pattern = re.compile(
+                  r'XCTAssert\w*.*failed|Test Case .*failed|error:|'
+                  r'TEST (?:EXECUTE )?FAILED|Testing failed|Timed out|timed out|'
+                  r'Failed to (?:launch|load|install|establish)|'
+                  r'Error Domain=|Simulator device failed',
+                  re.IGNORECASE,
+              )
+              with keyboard_log.open('rb') as handle:
+                  handle.seek(max(0, keyboard_log.stat().st_size - 2 * 1024 * 1024))
+                  lines = handle.read().decode('utf-8', errors='replace').splitlines()
+              print('Bounded account keyboard XCTest failure lines')
+              for line in [line for line in lines if pattern.search(line)][-40:]:
+                  line = re.sub(r'(?i)(bearer\s+|(?:token|secret|password)=)\S+', r'\1[redacted]', line)
+                  line = re.sub(r'[A-Za-z0-9_+./=-]{120,}', '[long value redacted]', line)
+                  print(line[:700])
+          PY
