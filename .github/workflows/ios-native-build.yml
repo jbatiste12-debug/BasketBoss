@@ -92,7 +92,6 @@ jobs:
       - name: Exercise Cook in the actual iOS WebView
         run: node scripts/test-ios-cook-smoke.mjs
       - name: Check account inputs with the real iOS keyboard
-        if: ${{ !cancelled() }}
         run: node scripts/test-ios-account-keyboard.mjs
       - name: Create the unsigned iPhone archive for build 4
         run: |
@@ -124,5 +123,13 @@ jobs:
         with:
           name: BasketBoss-Account-Keyboard-Verification
           path: artifacts/account-keyboard-diagnostics/
+          if-no-files-found: ignore
+          retention-days: 14
+
+      - uses: actions/upload-artifact@v6
+        if: always()
+        with:
+          name: BasketBoss-Cook-Verification
+          path: artifacts/cook-smoke-diagnostics/
           if-no-files-found: ignore
           retention-days: 14

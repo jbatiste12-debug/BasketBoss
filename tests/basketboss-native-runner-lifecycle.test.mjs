@@ -4,10 +4,10 @@ import fs from 'node:fs';
 import path from 'node:path';
 import vm from 'node:vm';
 import {keyboardRuntimePlan} from '../scripts/ios-keyboard-runtime.mjs';
-import {launchCookSmoke} from '../scripts/ios-cook-launch.mjs';
+import {cookRequiredFlags,cookReportFailure} from '../scripts/ios-cook-report.mjs';
 
-async function runScript(name,{ci=true,booted=true,includeLatest=false,failTests=false,bootTimeoutState=null,failReadiness=false,keepSimulator=false,cookLaunchTimeouts=0,cookReportAfter=0,cookBadReport=false}={}){
- const commands=[],executions=[],logs=[],written=new Map();let cookLaunches=0;
+async function runScript(name,{ci=true,booted=true,includeLatest=false,failTests=false,bootTimeoutState=null,failReadiness=false,keepSimulator=false,cookBadReport=false,cookIncompleteReport=false,cookMissingFlag=null,cookSummary=null,cookSummaryError=false,cookContainerChanges=false}={}){
+ const commands=[],executions=[],logs=[],written=new Map(),readFiles=[];let hostedCookRan=false;
  const processStub={platform:'darwin',env:ci?{GITHUB_ACTIONS:'true'}:{}};
  if(keepSimulator)processStub.env.BB_IAP_KEEP_SIMULATOR_BOOTED='true';
  let state=booted?'Booted':'Shutdown';
@@ -15,23 +15,23 @@ async function runScript(name,{ci=true,booted=true,includeLatest=false,failTests
  const runtime={identifier:'proven-runtime',name:'iOS 26.2',version:'26.2',isAvailable:true};
  const latestRuntime={identifier:'cold-latest-runtime',name:'iOS 26.5',version:'26.5',isAvailable:true};
  const source=fs.readFileSync(new URL('../scripts/'+name,import.meta.url),'utf8').replace(/^import .+;\r?\n/gm,'');
- const context={process:processStub,path,keyboardRuntimePlan,launchCookSmoke,console:{log:value=>logs.push(value)},setTimeout:fn=>{fn();return 1;},fs:{
+ const context={process:processStub,path,keyboardRuntimePlan,cookRequiredFlags,cookReportFailure,console:{log:value=>logs.push(value)},setTimeout:fn=>{fn();return 1;},fs:{
   mkdirSync(){},rmSync(){},existsSync(){return true;},writeFileSync:(file,value)=>written.set(file,value),
-  readFileSync:file=>JSON.stringify(String(file).endsWith('bb-native-iap-smoke.json')?{
+  readFileSync:file=>{readFiles.push(String(file));return JSON.stringify(String(file).endsWith('bb-native-iap-smoke.json')?{
    complete:true,passed:true,localStoreKit:true,productionBillingTested:false,backendPremiumGranted:false,
    productsLoaded:true,purchaseVerified:true,accountTokenPreserved:true,unfinishedBeforeServerAck:true,
    earlyFinishRejected:true,restoreVerified:true,duplicatePurchasePrevented:true,wrongAccountRejected:true,
    finishedAfterAcknowledgement:true,pendingDoesNotGrantAccess:true,pendingApprovalDelivered:true,cancellationPreserved:true
-  }:String(file).endsWith('bb-native-cook-smoke.json')?{complete:cookLaunches>=cookReportAfter,passed:!cookBadReport}:{complete:true,passed:true})
+  }:String(file).endsWith('bb-native-cook-smoke.json')?{complete:!cookIncompleteReport,passed:!cookBadReport,legacyVisible:false,...Object.fromEntries(cookRequiredFlags.map(key=>[key,key!==cookMissingFlag]))}:{complete:true,passed:true});}
  },execFileSync(command,args,options){
   executions.push({command,args,timeout:options?.timeout});commands.push([command,...args]);
+  if(name==='test-ios-cook-smoke.mjs'&&command==='xcodebuild'&&args.includes('test-without-building'))hostedCookRan=true;
   if(failTests&&command==='xcodebuild'&&args.includes('test-without-building')){
-   const error=Error('xcodebuild failed');error.stdout='XCTAssertTrue failed: real keyboard diagnostic';error.stderr='TEST FAILED';throw error;
+   const error=Error('xcodebuild failed');error.stdout=name==='test-ios-cook-smoke.mjs'?'XCTAssertTrue failed: full Cook report diagnostic':'XCTAssertTrue failed: real keyboard diagnostic';error.stderr='TEST FAILED';throw error;
   }
   if(command==='xcrun'){
-   if(args[0]==='xcresulttool')return JSON.stringify({passedTests:failTests?1:4,failedTests:failTests?1:0,skippedTests:0});
+   if(args[0]==='xcresulttool'){if(name==='test-ios-cook-smoke.mjs'){if(cookSummaryError)throw Error('missing Cook XCTest summary');return JSON.stringify(cookSummary||{passedTests:failTests?0:1,failedTests:failTests?1:0,skippedTests:0});}return JSON.stringify({passedTests:failTests?1:4,failedTests:failTests?1:0,skippedTests:0});}
    if(args[0]==='simctl'){
-    if(name==='test-ios-cook-smoke.mjs'&&args[1]==='launch'){cookLaunches++;if(cookLaunches<=cookLaunchTimeouts){const error=Error('simctl launch handshake timeout');error.code='ETIMEDOUT';throw error;}}
     if(args[1]==='list'&&args[2]==='devices')return JSON.stringify({devices:{[runtime.identifier]:[device()],...(includeLatest?{[latestRuntime.identifier]:[{udid:'cold-latest-phone',name:'iPhone SE (3rd generation)',state:'Shutdown',isAvailable:true}]}:{})}});
     if(args[1]==='list'&&args[2]==='runtimes')return JSON.stringify({runtimes:includeLatest?[latestRuntime,runtime]:[runtime]});
     if(args[1]==='list'&&args[2]==='devicetypes')return JSON.stringify({devicetypes:[{name:'iPhone SE (3rd generation)',identifier:'se'}]});
@@ -44,13 +44,13 @@ async function runScript(name,{ci=true,booted=true,includeLatest=false,failTests
      if(failReadiness){const error=Error('simulator never became ready');error.code='ETIMEDOUT';throw error;}
      state='Booted';
     }
-    if(args[1]==='get_app_container')return '/synthetic-ci-app';
+    if(args[1]==='get_app_container')return cookContainerChanges&&hostedCookRan?'/synthetic-ci-app-after-xctest':'/synthetic-ci-app';
    }
   }
   return '';
  }};
  await vm.runInNewContext('(async()=>{'+source+'\n})()',context,{filename:name});
- return {commands,executions,logs,written,process:processStub};
+ return {commands,executions,logs,written,readFiles,process:processStub};
 }
 
 test('CI Cook runner resets the proven simulator and configures its keyboard before reopening it',async()=>{
@@ -135,22 +135,49 @@ test('local StoreKit boot recovery does not reset a developer simulator or keybo
 });
 
 
-test('Cook launch recovery stays on the exact CI phone/app and bounds termination/readiness before its only retry',async()=>{
- const result=await runScript('test-ios-cook-smoke.mjs',{cookLaunchTimeouts:1,cookReportAfter:2});
+test('CI Cook uses a hosted XCTest launch on the exact selected phone, while local runs retain simctl',async()=>{
+ const result=await runScript('test-ios-cook-smoke.mjs');
  assert.equal(result.process.exitCode,undefined);
- const launches=result.executions.filter(call=>call.command==='xcrun'&&call.args[1]==='launch');
- assert.equal(launches.length,2);
- for(const call of launches){assert.deepEqual([...call.args],['simctl','launch','--terminate-running-process','proven-phone','uk.co.basketboss.app','--bb-native-cook-smoke']);assert.equal(call.timeout,120000);}
- const terminate=result.executions.find(call=>call.command==='xcrun'&&call.args[1]==='terminate');
- assert.deepEqual([...terminate.args],['simctl','terminate','proven-phone','uk.co.basketboss.app']);assert.equal(terminate.timeout,15000);
- assert.ok(result.executions.some(call=>call.command==='xcrun'&&call.args[1]==='bootstatus'&&call.args[2]==='proven-phone'&&call.timeout===60000));
- assert.ok(result.logs.some(line=>line.includes('"launchAttempts":2')&&line.includes('"passed":true')));
+ assert.ok(result.commands.some(command=>command[0]==='ruby'&&command[1]==='scripts/prepare-ios-cook-smoke-tests.rb'));
+ const tests=result.executions.find(call=>call.command==='xcodebuild'&&call.args.includes('test-without-building'));
+ assert.ok(tests.args.includes('BasketBossCookSmokeTests'));
+ assert.ok(tests.args.includes('platform=iOS Simulator,id=proven-phone'));
+ assert.equal(tests.timeout,180000);
+ assert.equal(result.commands.some(command=>command[1]==='simctl'&&command[2]==='launch'),false);
+ assert.ok(result.logs.some(line=>line.includes('"launcher":"hosted_xctest"')&&line.includes('"passed":true')));
+ const local=await runScript('test-ios-cook-smoke.mjs',{ci:false});
+ assert.equal(local.commands.some(command=>command[0]==='xcodebuild'),false);
+ assert.ok(local.commands.some(command=>command[1]==='simctl'&&command[2]==='launch'&&command.includes('--bb-native-cook-smoke')));
 });
 
-test('Cook launch handshake recovery never turns an actual failed app report into a passing test',async()=>{
- const result=await runScript('test-ios-cook-smoke.mjs',{cookLaunchTimeouts:1,cookBadReport:true});
+test('Cook reads the fresh host container after XCTest instead of a previous installation report',async()=>{
+ const result=await runScript('test-ios-cook-smoke.mjs',{cookContainerChanges:true});
+ assert.equal(result.process.exitCode,undefined);
+ assert.ok(result.readFiles.some(file=>file==='/synthetic-ci-app-after-xctest/Documents/bb-native-cook-smoke.json'));
+ assert.equal(result.readFiles.some(file=>file==='/synthetic-ci-app/Documents/bb-native-cook-smoke.json'),false);
+});
+
+test('a passing Cook app report cannot mask a failed XCTest session; its actual build diagnostic is retained',async()=>{
+ const result=await runScript('test-ios-cook-smoke.mjs',{failTests:true});
  assert.equal(result.process.exitCode,1);
- assert.equal(result.commands.filter(command=>command[1]==='simctl'&&command[2]==='launch').length,1);
- assert.equal(result.commands.some(command=>command[1]==='simctl'&&command[2]==='terminate'),false);
- assert.ok(result.logs.some(line=>line.includes('"failure":"ui_failed"')&&line.includes('"passed":false')));
+ assert.ok(result.logs.some(line=>line.includes('XCTAssertTrue failed: full Cook report diagnostic')));
+ assert.ok(result.logs.some(line=>line.includes('"reportReceived":true')&&line.includes('"failure":"hosted_xctest_failed"')&&line.includes('"failureStage":"hosted_tests"')&&line.includes('"passed":false')));
+ assert.ok([...result.written].some(([file,text])=>file.endsWith('tests.log')&&text.includes('TEST FAILED')));
+ assert.ok([...result.written].some(([file,text])=>file.endsWith('summary.json')&&JSON.parse(text).failedTests===1));
+});
+
+test('Cook requires exactly one passing hosted test, zero failures and zero skipped tests',async()=>{
+ for(const cookSummary of [{passedTests:0,failedTests:0,skippedTests:0},{passedTests:2,failedTests:0,skippedTests:0},{passedTests:1,failedTests:1,skippedTests:0},{passedTests:1,failedTests:0,skippedTests:1}]){
+  const result=await runScript('test-ios-cook-smoke.mjs',{cookSummary});
+  assert.equal(result.process.exitCode,1);
+  assert.ok(result.logs.some(line=>line.includes('"failure":"required_cook_test_missing"')&&line.includes('"failureStage":"hosted_test_summary"')));
+ }
+});
+
+test('Cook missing summaries, incomplete reports, failed UI and absent required checks all fail closed',async()=>{
+ for(const options of [{cookSummaryError:true},{cookIncompleteReport:true},{cookBadReport:true},{cookMissingFlag:'voicePrepNarrated'},{cookMissingFlag:'dataKept'}]){
+  const result=await runScript('test-ios-cook-smoke.mjs',options);
+  assert.equal(result.process.exitCode,1,JSON.stringify(options));
+  assert.ok(result.logs.some(line=>line.includes('"failure":')&&!line.includes('"failure":""')));
+ }
 });
