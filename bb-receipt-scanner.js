@@ -13,6 +13,7 @@
     const inventory = () => options.inventory || root.BBReceiptInventory;
     const core = () => options.core ? Promise.resolve(options.core) : (corePromise ||= import(sibling('bb-receipt-inventory-core.mjs')));
     const fetcher = () => options.fetch || root.fetch?.bind(root);
+    const quantities = () => options.quantities || root.BBReceiptQuantity;
     const context = () => options.getContext ? options.getContext() : { market: root.bb307ActiveMarket?.(), retailer: root.bb307ActiveRetailer?.() || null };
     function session() {
       let value;
@@ -102,7 +103,14 @@
       const result = await jsonRequest('/api/bb173/scan', captured, { signal, method: 'POST', body: { ...photo, scanKind: 'receipt_inventory', expectedCurrency: CURRENCIES[market], turnstileToken } });
       assertCurrent(captured, expected, signal);
       if (result.ok !== true || result.reviewRequired !== true || !result.receiptInventory || !Array.isArray(result.receiptInventory.items) || result.receiptInventory.items.length > 200) throw Error('The receipt reader did not return a reviewable receipt.');
-      return result.receiptInventory;
+      const raw = copy(result.receiptInventory), catalog = options.getCatalog?.() || root.BBPriceV19?.catalog, shoppingItems = options.getShoppingItems?.() || [];
+      raw.items = raw.items.map(line => {
+        let suggestion;try { suggestion = quantities()?.infer?.(line, {market, catalog, shoppingItems}); } catch {}
+        return suggestion ? {...line, quantity:suggestion.quantity, unit:suggestion.unit,
+          ...(suggestion.packQuantity ? {packQuantity:suggestion.packQuantity,packUnit:suggestion.packUnit,packCount:suggestion.packCount} : {}),
+          _quantitySuggestion:{source:suggestion.source,estimated:suggestion.estimated,note:suggestion.note}} : line;
+      });
+      return raw;
     }
     function element(tag, properties = {}, contents) {
       const node = doc().createElement(tag);
@@ -158,14 +166,15 @@
       const totalInput = element('input', { type: 'number', inputMode: 'decimal', min: '-100000', max: '100000', step: '.01' }); totalInput.dataset.receiptTop = 'receiptTotal';
       const totalUnknown = checkbox('The total is unreadable. Keep it unknown; save only the reviewed item subtotals.', 'totalUnknown');
       const totalReviewed = checkbox('I checked the receipt total and all included discounts, refunds and tax rows.', 'totalReviewed');
+      const addToPantry = checkbox('Also add bought items & essentials to At Home pantry', 'addToPantry', true);
       const trip = checkbox('This is the receipt for the same shopping trip already recorded in Shop.', 'shopLink', shopSessionConfirmed === true && !!shopSessionId);
       const tripHelp = element('p', { className: 'bb-receipt-muted' }, 'Link only the same purchases, so amounts already recorded are not counted twice.');
       if (!shopSessionId) { trip.label.hidden = true; tripHelp.hidden = true; }
       const totals = element('div', { className: 'bb-receipt-totals', 'aria-label': 'Reviewed receipt subtotals' });
       const rows = element('div', { className: 'bb-receipt-groups' }), list = element('datalist', { id: 'bb-receipt-ingredients' });
-      const save = element('button', { type: 'submit', disabled: true, className: 'bb-receipt-primary' }, 'Confirm receipt & add food'); save.dataset.receiptAction = 'save';
-      const saveHelp = element('p', { className: 'bb-receipt-muted' }, 'Measured food is added to Pantry. Non-food stays in Weekly essentials. Next, confirm Pantry in Shop before meals are reconciled.');
-      review.append(storeInfo, storeReviewed.label, currencyReviewed.label, field('Actual receipt total (' + (CURRENCIES[market] || '') + ')', totalInput), totalUnknown.label, totalReviewed.label, trip.label, tripHelp, totals, list, rows, saveHelp, save);
+      const save = element('button', { type: 'submit', disabled: true, className: 'bb-receipt-primary' }, 'Save prices & restock At home'); save.dataset.receiptAction = 'save';
+      const saveHelp = element('p', { className: 'bb-receipt-muted' }, 'Save reviewed prices and restock At home from the checked amounts. Estimated pack amounts can be edited before saving.');
+      review.append(storeInfo, addToPantry.label, storeReviewed.label, currencyReviewed.label, field('Actual receipt total (' + (CURRENCIES[market] || '') + ')', totalInput), totalUnknown.label, totalReviewed.label, trip.label, tripHelp, totals, list, rows, saveHelp, save);
       const recover = element('button', { type: 'button', hidden: true }, 'Check saved receipt'); recover.dataset.receiptAction = 'recover';
       const retry = element('button', { type: 'button', hidden: true }, 'Retry the same confirmation'); retry.dataset.receiptAction = 'retry';
       const recovery = element('div', { className: 'bb-receipt-recovery' }, [recover, retry]);
@@ -218,7 +227,9 @@
         }
         if (line.classification === 'pending') return ['Choose food, non-food, or exclude this item.'];
         const normalized = state.core.normalizeReceiptLine(line, { catalog: state.choices });
-        const issues = [...normalized.issues];
+        const stockIssues = new Set(['measured_quantity_required','pack_count_required','canonical_unit_not_in_catalog','invalid_pack_count','conflicting_pack_and_total','quantity_out_of_range']);
+        const issues = normalized.issues.filter(issue => addToPantry.input.checked || !stockIssues.has(issue));
+        if (addToPantry.input.checked && line.classification === 'essential' && !state.core.normalizePack(line).quantity) issues.push('Check the amount of this essential.');
         if (line.classification === 'food' && !state.choices.some(x => x.key === line.canonicalKey)) issues.push('Choose an exact recognised ingredient.');
         if (number(line.lineTotal) === null || number(line.lineTotal) < 0 || number(line.lineTotal) > 100000) issues.push('Enter the actual line price.');
         if (!line.reviewed) issues.push('Review this item.');
@@ -229,7 +240,7 @@
         file.disabled = !state.ready?.available || !editable;
         consent.input.disabled = !editable;
         scan.disabled = !state.ready?.available || !state.file || !consent.input.checked || !editable || state.ready.turnstileRequired && !state.challengeToken;
-        for (const control of [storeReviewed.input, currencyReviewed.input, totalUnknown.input, totalReviewed.input, trip.input]) control.disabled = !editable;
+        for (const control of [storeReviewed.input, currencyReviewed.input, totalUnknown.input, totalReviewed.input, trip.input, addToPantry.input]) control.disabled = !editable;
         totalInput.disabled = !editable || totalUnknown.input.checked;
         let valid = !!state.draft && state.draft.lines.some(line => line.sourceKind === 'purchase' && line.selected !== false && ['food', 'essential'].includes(line.classification)) && storeReviewed.input.checked && currencyReviewed.input.checked && totalReviewed.input.checked && (totalUnknown.input.checked || number(totalInput.value) !== null && Math.abs(number(totalInput.value)) <= 100000);
         if (state.draft && state.core) {
@@ -237,12 +248,15 @@
             const issues = validateLine(view.line); view.note.textContent = issues.length ? issues.map(x => String(x).replace(/_/g, ' ')).join(' · ') : 'Ready to confirm';
             for (const control of view.controls) control.disabled = !editable;
             if (view.reviewed) view.reviewed.checked = view.line.reviewed === true;
+            if (view.amountHint) {view.amountHint.hidden = !view.line._quantityHint;view.amountHint.textContent = view.line._quantityHint?.note || '';}
             if (issues.length) valid = false;
           }
           const actualTotal = totalUnknown.input.checked ? null : number(totalInput.value), summary = state.core.receiptTotals(state.draft.lines.filter(line => line.sourceKind === 'purchase' || line._includeAdjustment !== false), actualTotal);
           const format = value => new Intl.NumberFormat('en-GB', { style: 'currency', currency: CURRENCIES[market] }).format(value);
           totals.textContent = 'Food ' + format(summary.food) + ' · Weekly essentials ' + format(summary.essentials) + (summary.adjustments ? ' · Discounts/refunds ' + format(summary.adjustments) : '') + (summary.taxLines ? ' · Tax shown ' + format(summary.taxLines) : '') + ' · Receipt total ' + (actualTotal === null ? 'unknown' : format(actualTotal)) + (summary.difference && Math.abs(summary.difference) > .01 ? '. Check the difference of ' + format(summary.difference) + ', including any tax or omitted rows.' : '');
         }
+        save.textContent = addToPantry.input.checked ? 'Save prices & restock At home' : 'Save reviewed prices';
+        saveHelp.textContent = addToPantry.input.checked ? 'Reviewed amounts restock At home and matching current shopping items are marked bought. Check estimated pack amounts before saving.' : 'Save reviewed receipt prices without restocking At home or changing bought items.';
         save.disabled = !editable || !valid;
         recover.disabled = state.busy; retry.disabled = state.busy;
       }
@@ -250,6 +264,10 @@
         if (!guard() || state.busy || state.frozen || state.done) return;
         line[fieldName] = value;
         if (fieldName !== 'reviewed') line.reviewed = false;
+        if (['quantity','unit','packQuantity','packUnit','packCount'].includes(fieldName)) {
+          delete line._quantityHint;
+          if (line._measurementMode !== 'packs' && ['quantity','unit'].includes(fieldName)) {line.packQuantity=null;line.packUnit=null;line.packCount=null;}
+        }
         delete line.unitPrice;
         if (fieldName === 'lineTotal') line.pricePaid = value;
         if (fieldName === 'classification') {
@@ -260,7 +278,7 @@
       }
       function rowView(line) {
         const box = element('fieldset', { className: 'bb-receipt-row' }); box.dataset.receiptLine = line.id;
-        const controls = [], note = element('p', { className: 'bb-receipt-row-note' });
+        const controls = [], note = element('p', { className: 'bb-receipt-row-note' }), amountHint = element('p', { className:'bb-receipt-quantity-hint',hidden:!line._quantityHint },line._quantityHint?.note || '');
         const track = (control, key) => { control.dataset.receiptField = key; controls.push(control); return control; };
         box.append(element('legend', {}, line.description || 'Receipt item'));
         if (line.notes) box.append(element('p', { className: 'bb-receipt-muted' }, line.notes));
@@ -270,7 +288,7 @@
         selected.addEventListener('change', () => { if (adjustment) edit(line, '_includeAdjustment', selected.checked); else edit(line, 'selected', selected.checked); });
         box.append(element('label', { className: 'bb-receipt-check' }, [selected, document.createTextNode(adjustment ? 'Include this ' + line.sourceKind + ' in the reviewed record' : 'Include this item')]));
         if (!adjustment) {
-          const kind = track(select([['pending', 'Needs classification'], ['food', 'Food → Pantry'], ['essential', 'Non-food → Weekly essentials'], ['ignore', 'Exclude item']], line.classification), 'classification');
+          const kind = track(select([['pending', 'Needs classification'], ['food', 'Food → At home'], ['essential', 'Essentials → At home'], ['ignore', 'Exclude item']], line.classification), 'classification');
           if (line.hardExcluded) for (const option of kind.children) if (option.value === 'food') option.disabled = true;
           kind.addEventListener('change', () => { if (line.hardExcluded && kind.value === 'food') { kind.value = 'essential'; return; } edit(line, 'classification', kind.value, true); });
           box.append(field('Item type', kind));
@@ -283,19 +301,24 @@
             const match = track(element('input', { type: 'text', value: line.canonicalKey || '', autocomplete: 'off' }), 'canonicalKey'); match.setAttribute('list', list.id);
             match.addEventListener('change', () => { const value = match.value.trim().toLowerCase(), found = state.choices.find(x => x.key.toLowerCase() === value || x.name.toLowerCase() === value); edit(line, 'canonicalKey', found?.key || null); });
             box.append(field('Exact ingredient match', match, 'Choose a recognised ingredient. Unknown matches are not added to Pantry.'));
-          } else box.append(element('p', { className: 'bb-receipt-muted' }, 'This stays in Weekly essentials and is never added to food stock. Its amount may stay unknown.'));
+          } else box.append(element('p', { className: 'bb-receipt-muted' }, 'Essentials are kept separately from recipe food. Check the bought count or pack amount for At home.'));
           const mode = track(select([['total', 'Measured total amount'], ['packs', 'Pack size × number of packs']], line._measurementMode), 'measurementMode');
-          mode.addEventListener('change', () => { line._measurementMode = mode.value; line.reviewed = false; if (mode.value === 'packs') { line.quantity = null; line.unit = null; } else { line.packCount = null; line.packQuantity = null; line.packUnit = null; } renderRows(); });
+          mode.addEventListener('change', () => {
+            const amount = state.core.normalizePack(line);line._measurementMode = mode.value;line.reviewed = false;
+            if (mode.value === 'packs') {line.packQuantity ??= amount.quantity;line.packUnit ??= amount.unit;line.packCount ??= 1;line.quantity = null;line.unit = null;}
+            else {line.quantity = amount.quantity;line.unit = amount.unit;line.packCount = null;line.packQuantity = null;line.packUnit = null;}
+            renderRows();
+          });
           box.append(field('How is the quantity shown?', mode));
           const units = [['', 'Choose unit'], ['g', 'g'], ['kg', 'kg'], ['ml', 'ml'], ['l', 'litres'], ['each', 'each'], ['clove', 'cloves'], ['tin', 'tins'], ['pack', 'packs']];
           const quantityKey = line._measurementMode === 'packs' ? 'packQuantity' : 'quantity', unitKey = line._measurementMode === 'packs' ? 'packUnit' : 'unit';
           const quantity = track(element('input', { type: 'number', inputMode: 'decimal', min: '.001', max: '1000000', step: 'any', value: line[quantityKey] ?? '' }), quantityKey);
           const unit = track(select(units, line[unitKey] || ''), unitKey);
           quantity.addEventListener('input', () => edit(line, quantityKey, number(quantity.value))); unit.addEventListener('change', () => edit(line, unitKey, unit.value || null));
-          box.append(element('div', { className: 'bb-receipt-amount' }, [field(line._measurementMode === 'packs' ? 'Contents of one pack' : 'Actual total amount bought', quantity), field('Unit', unit)]));
+          box.append(element('div', { className: 'bb-receipt-amount' }, [field(line._measurementMode === 'packs' ? 'Contents of one pack' : 'Total amount bought', quantity), field('Unit', unit)]),amountHint);
           if (line._measurementMode === 'packs') {
             const count = track(element('input', { type: 'number', inputMode: 'numeric', min: '1', max: '10000', step: '1', value: line.packCount ?? '' }), 'packCount');
-            count.addEventListener('input', () => edit(line, 'packCount', number(count.value))); box.append(field('Number of packs', count, 'Enter the printed or checked count. No pack size is guessed.'));
+            count.addEventListener('input', () => edit(line, 'packCount', number(count.value))); box.append(field('Number of packs', count, 'Check the number of bought packs. Estimated contents are labelled above.'));
           }
           const type = track(select([['unknown', 'Price type unknown'], ['regular', 'Checked regular pack price'], ['promotion', 'Promotion / offer price']], line.priceType || 'unknown'), 'priceType');
           type.addEventListener('change', () => edit(line, 'priceType', type.value)); box.append(field('Price type', type, 'Regular prices are remembered only for this account, region, supermarket and exact pack.'));
@@ -303,11 +326,11 @@
         const reviewed = track(element('input', { type: 'checkbox', checked: line.reviewed === true }), 'reviewed');
         reviewed.addEventListener('change', () => edit(line, 'reviewed', reviewed.checked));
         box.append(element('label', { className: 'bb-receipt-check' }, [reviewed, document.createTextNode(adjustment ? 'I checked this adjustment.' : 'I checked this item, quantity and actual price.')]), note);
-        return { box, line, controls, note, reviewed };
+        return { box, line, controls, note, reviewed, amountHint };
       }
       function renderRows() {
         rows.replaceChildren(); state.rowViews = [];
-        const groups = [['food', 'Food for Pantry'], ['essential', 'Weekly essentials · non-food'], ['pending', 'Needs review / excluded items'], ['adjustment', 'Discounts, refunds and tax']];
+        const groups = [['food', 'Food for At home'], ['essential', 'At home essentials · non-food'], ['pending', 'Needs review / excluded items'], ['adjustment', 'Discounts, refunds and tax']];
         for (const [kind, label] of groups) {
           const own = state.draft.lines.filter(line => kind === 'adjustment' ? line.sourceKind !== 'purchase' : line.sourceKind === 'purchase' && (kind === 'pending' ? !['food', 'essential'].includes(line.classification) : line.classification === kind));
           if (!own.length) continue;
@@ -320,6 +343,7 @@
       for (const check of [storeReviewed.input, currencyReviewed.input, totalReviewed.input]) check.addEventListener('change', update);
       totalUnknown.input.addEventListener('change', () => { totalReviewed.input.checked = false; update(); });
       totalInput.addEventListener('input', () => { totalReviewed.input.checked = false; update(); });
+      addToPantry.input.addEventListener('change', () => {if(state.draft)state.draft.addToPantry=addToPantry.input.checked;update();});
       trip.input.addEventListener('change', () => { if (state.draft) state.draft.shopSessionId = trip.input.checked ? shopSessionId : null; update(); });
       consent.input.addEventListener('change', update);
       file.addEventListener('change', () => {
@@ -343,11 +367,11 @@
           if (!alive(revision) || !guard()) return;
           const draft = await inventory().normalizeDraft({ ...raw, shopSessionId: null }, { market, retailer });
           if (!alive(revision) || !guard()) { inventory().cancelDraft?.(draft); return; }
-          state.draft = draft; state.requestId = draft.receiptId + ':confirm';
-          for (const line of draft.lines) { line.reviewed = false; line.priceType = line.priceType === 'promotion' ? 'promotion' : 'unknown'; line._includeAdjustment = true; line._measurementMode = line.packQuantity !== null && line.packQuantity !== undefined ? 'packs' : 'total'; if (line._measurementMode === 'packs') { line.quantity = null; line.unit = null; } }
+          state.draft = draft;draft.addToPantry=addToPantry.input.checked;state.requestId = draft.receiptId + ':confirm';
+          for (const [index,line] of draft.lines.entries()) {const suggested=raw.items[index]?._quantitySuggestion;if(suggested)line._quantityHint=suggested;line.reviewed = false; line.priceType = line.priceType === 'promotion' ? 'promotion' : 'unknown'; line._includeAdjustment = true; line._measurementMode = line.packQuantity !== null && line.packQuantity !== undefined && (!suggested?.estimated || line.packCount>1) ? 'packs' : 'total'; if (line._measurementMode === 'packs') { line.quantity = null; line.unit = null; } }
           storeInfo.textContent = 'Shop: ' + (retailer || 'No supermarket selected') + ' · Region: ' + market + ' · Receipt says: ' + (raw.retailer || 'supermarket unreadable') + ' · Currency: ' + (raw.currency || 'unreadable—check it against ' + CURRENCIES[market]);
           totalInput.value = draft.receiptTotal ?? ''; totalUnknown.input.checked = false; totalReviewed.input.checked = false; storeReviewed.input.checked = false; currencyReviewed.input.checked = false; trip.input.checked = false;
-          review.hidden = false; renderRows(); status.textContent = 'Check food and non-food separately. Unknown amounts need a measurement, or exclude the item.';
+          review.hidden = false; renderRows(); status.textContent = 'Review the matched items, prices and bought amounts. Estimated packs are suggestions: correct them before saving.';
           review.scrollIntoView?.({ block: 'start', behavior: 'smooth' }); totalInput.focus?.();
         } catch (error) { if (alive(revision)) status.textContent = message(error); }
         finally { (options.clearTimeout || root.clearTimeout)(timer); if (alive(revision)) { state.busy = false; state.challengeToken = ''; if (state.widget !== null) root.turnstile?.reset?.(state.widget); update(); } }
@@ -355,7 +379,7 @@
       function finished(result) {
         if (result.localApplied === true) {
           state.done = true; state.frozen = true; recover.hidden = true; retry.hidden = true;
-          status.textContent = 'Receipt saved. Measured food is in Pantry; non-food stays in Weekly essentials. Confirm Pantry in Shop before reconciling meals.';
+          status.textContent = state.draft?.addToPantry===false ? 'Reviewed receipt prices saved. At home and bought items were not changed.' : 'Receipt saved. Reviewed food and essentials restocked At home; matching current shopping items are marked bought.';
         } else {
           state.frozen = true; recover.hidden = false; retry.hidden = true;
           status.textContent = 'Receipt saved online, but this device has not updated Pantry. Check the saved receipt before confirming again.';
@@ -367,8 +391,8 @@
         event.preventDefault(); update(); if (save.disabled || !guard() || !state.draft) return;
         const revision = state.revision; state.busy = true; update(); status.textContent = 'Saving the reviewed receipt…'; state.controller = new AbortController();
         try {
-          const cleanDraft = copy(state.draft); cleanDraft.receiptTotal = totalUnknown.input.checked ? null : number(totalInput.value); cleanDraft.shopSessionId = trip.input.checked ? shopSessionId : null;
-          for (const line of cleanDraft.lines) { if (line.sourceKind !== 'purchase') line.reviewed = line._includeAdjustment !== false && line.reviewed; delete line._includeAdjustment; delete line._measurementMode; }
+          const cleanDraft = copy(state.draft);cleanDraft.addToPantry=addToPantry.input.checked; cleanDraft.receiptTotal = totalUnknown.input.checked ? null : number(totalInput.value); cleanDraft.shopSessionId = trip.input.checked ? shopSessionId : null;
+          for (const line of cleanDraft.lines) { if (line.sourceKind !== 'purchase') line.reviewed = line._includeAdjustment !== false && line.reviewed; delete line._includeAdjustment; delete line._measurementMode;delete line._quantityHint; }
           const normalized = await inventory().normalizeDraft(cleanDraft, { market, retailer });
           if (!alive(revision) || !guard()) { inventory().cancelDraft?.(normalized); return; }
           const result = await inventory().commitReviewedReceipt(normalized, { idempotencyKey: state.requestId, signal: state.controller.signal });

@@ -40,7 +40,7 @@ test('real pantry consumption preserves units, never goes negative and does not 
 test('cooking commits once, supports another real cook, rejects another actor, and rolls failed commits back',async()=>{
  const map=new Map([['stock',JSON.stringify({'rice|g':1000})],['inventory',JSON.stringify({cupboard:{bb173StockKey:'rice|g',bb173StockValue:600,qty:600,unit:'g'},freezer:{bb173StockKey:'rice|g',bb173StockValue:400,qty:.4,unit:'kg'}})]]);let fail=false;
  const storage={getItem:k=>map.get(k)??null,setItem(k,v){if(fail&&k==='inventory'){fail=false;throw Error('disk full');}map.set(k,v);},removeItem:k=>map.delete(k)};
- const win={localStorage:storage,location:{search:''},document:{},BBHomeHost:{keys:()=>({stock:'stock',inventory:'inventory'}),stock:()=>JSON.parse(storage.getItem('stock')),recipeIngredients:(_,factor)=>[{key:'rice',unit:'g',required:300*factor}],consume:pantry.reconcileStock,refresh(){},occurrence:()=>null}};
+ const win={localStorage:storage,location:{search:''},document:{},BBHomeHost:{id:pantry.pantryId,keys:()=>({stock:'stock',inventory:'inventory'}),stock:()=>JSON.parse(storage.getItem('stock')),recipeIngredients:(_,factor)=>[{key:'rice',unit:'g',required:300*factor}],consume:pantry.reconcileStock,refresh(){},occurrence:()=>null}};
  const home=api.install(win);
  const event={sessionId:'first-cook',recipeId:'rice-dinner',factor:1,actorId:'guest'};
  assert.equal((await home.cooked(event)).ok,true);assert.equal(JSON.parse(storage.getItem('stock'))['rice|g'],700);

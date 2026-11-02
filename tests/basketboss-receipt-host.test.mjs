@@ -111,13 +111,15 @@ test('downgraded users can confirm local pantry without claiming cloud sync or c
   const h = harness({cached, status: {ok: true, available: false, premium: false}});
   h.store.setItem(keys.confirmed, JSON.stringify({version: 1, confirmedAt: '2026-10-31T12:00:00Z', items: [{name: 'rice', qty: 100, unit: 'g'}]}));
   assert.equal(h.host.requiresPantryReview(), true);assert.equal(h.host.confirmLocalPantryReview().ok, true);assert.equal(h.host.requiresPantryReview(), false);assert.equal(cached.pantryReview.required, true);assert.ok(!h.calls.some(x => typeof x === 'object'));
+  h.setContext({shopSessionId: 'shop-next'});assert.equal(h.host.requiresPantryReview(), false);
+  h.setCached({...cached, inventoryRevision: 3});assert.equal(h.host.requiresPantryReview(), true);
   h.setPending({receiptId: 'unresolved'});assert.equal(h.host.requiresPantryReview(), true);assert.equal(h.host.confirmLocalPantryReview().ok, false);
 });
-test('a new shopping session requires review of receipt-backed pantry and bounds legacy coverage by actor/scope', () => {
+test('a new shopping session carries measured pantry forward and bounds legacy coverage by actor/scope', () => {
   const scope = {kind: 'user', id: actorA};const h = harness({cached: {scope, inventoryRevision: 3, lastReceiptId: 'r1', pantryReview: {required: false, shopSessionId: 'shop-current'}}});
   const marker = {receiptPantryConfirmedActor: actorA, receiptPantryConfirmedScope: 'user:' + actorA, receiptPantryConfirmedRevision: 3, receiptPantryConfirmedShopSessionId: 'shop-current'};
   assert.equal(h.host.requiresPantryReview(), false);assert.equal(h.host.coversLegacyCredit(marker), true);assert.equal(h.host.coversLegacyCredit({...marker, receiptPantryConfirmedActor: actorB}), false);
-  h.setContext({shopSessionId: 'shop-next'});assert.equal(h.host.requiresPantryReview(), true);assert.equal(h.host.coversLegacyCredit(marker), false);
+  h.setContext({shopSessionId: 'shop-next'});assert.equal(h.host.requiresPantryReview(), false);assert.equal(h.host.coversLegacyCredit(marker), false);
 });
 
 function pantryHarness({scope = {kind: 'user', id: actorA}, revision = 2} = {}) {

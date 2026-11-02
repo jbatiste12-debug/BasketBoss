@@ -21,10 +21,11 @@
   return new Intl.DateTimeFormat('en-GB',{weekday:'long',day:'numeric',month:'long',timeZone:'UTC'}).format(new Date(value+'T12:00:00Z'));
  }
  const mealName=recipe=>String(recipe?.name||'Planned dinner');
+ const duration=minutes=>root.BBDuration?.format(minutes)??String(minutes)+'mins';
  const isPremium=()=>{try{return adapter?.isPremium?.()===true;}catch(_){return false;}};
  const mealMeta=(recipe,servings)=>{
   const minutes=Number(recipe?.mins),count=Number(servings),parts=[];
-  if(Number.isFinite(minutes)&&minutes>0)parts.push(minutes+' min');
+  if(Number.isFinite(minutes)&&minutes>0)parts.push(duration(minutes));
   if(Number.isInteger(count)&&count>0)parts.push(count+' serving'+(count===1?'':'s'));
   return parts.join(' · ');
  };
@@ -102,7 +103,7 @@
   const title=element('h3','bbep-section-title','Review the swap'),meals=element('div','bbep-meal-swap');
   meals.append(mealPreview('Tonight · '+view.context.day,suggestion.candidateRecipe,suggestion.candidateServings),mealPreview(dateLabel(suggestion.movedDateISO,suggestion.day),suggestion.currentRecipe,suggestion.currentServings));
   const saving=Number(suggestion.minsSaved);
-  const saved=element('p','bbep-saving',Number.isFinite(saving)&&saving>0?'Save '+saving+' minutes tonight. Both meals stay in your plan.':'Both meals stay in your plan.');
+  const saved=element('p','bbep-saving',Number.isFinite(saving)&&saving>0?'Save '+duration(saving)+' tonight. Both meals stay in your plan.':'Both meals stay in your plan.');
   const pantry=element('p','bbep-pantry','PANTRY amounts checked. Check the actual packaging dates below.');
   const checks=element('section','bbep-freshness');
   checks.append(element('h3','bbep-section-title','Check the meal moving to '+suggestion.day),element('p','bbep-explanation','Check the labels and storage of ingredients for '+mealName(suggestion.currentRecipe)+'. Their use-by dates must cover '+dateLabel(suggestion.movedDateISO,suggestion.day)+'.'));
@@ -185,7 +186,7 @@
   for(const suggestion of view.suggestions){
    const button=element('button','bbep-choice');button.type='button';button.setAttribute('aria-pressed','false');
    const summary=element('span','bbep-choice-summary');summary.append(element('strong','bbep-choice-name',mealName(suggestion.candidateRecipe)),element('span','bbep-choice-meta',suggestion.day+' · '+mealMeta(suggestion.candidateRecipe,suggestion.candidateServings)));
-   button.append(summary,element('span','bbep-choice-saving','Save '+suggestion.minsSaved+' min'));button.addEventListener('click',()=>choose(view,suggestion));
+   button.append(summary,element('span','bbep-choice-saving','Save '+duration(suggestion.minsSaved)));button.addEventListener('click',()=>choose(view,suggestion));
    view.choiceButtons.push(button);view.choices.append(button);
   }
   choose(view,view.suggestions[0]);

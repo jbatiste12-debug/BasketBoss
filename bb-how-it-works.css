@@ -1,0 +1,41 @@
+/* Compact weekly-loop guide: cream paper, forest green and a quiet gold accent. */
+html.bb-how-open,html.bb-how-open body{overscroll-behavior-y:none}
+.bb-how-dialog{width:min(94vw,820px);max-width:calc(100vw - 20px);max-height:calc(100dvh - env(safe-area-inset-top,0px) - env(safe-area-inset-bottom,0px) - 24px);box-sizing:border-box;margin:auto;padding:0;border:1px solid #c8dccb;border-radius:22px;background:#fffdf5;color:#214f36;box-shadow:0 20px 80px #173d3547;overflow:hidden}
+.bb-how-dialog[open]{display:grid;grid-template-rows:auto minmax(0,1fr) auto}
+.bb-how-dialog::backdrop{background:#153e357d;backdrop-filter:blur(3px)}
+.bb-how-dialog *{box-sizing:border-box}
+.bb-how-header{display:flex;align-items:flex-start;justify-content:space-between;gap:12px;padding:20px 20px 14px;border-bottom:1px solid #e0e9d7}
+.bb-how-heading{min-width:0}
+.bb-how-eyebrow{margin:0 0 6px;font:800 10px/1.4 system-ui,-apple-system,sans-serif;letter-spacing:.13em;text-transform:uppercase;color:#77905c}
+.bb-how-dialog h2{margin:0;color:#184e34;font:850 27px/1.08 system-ui,-apple-system,sans-serif;letter-spacing:-.7px}
+.bb-how-nutshell{display:block;margin-top:5px;font-size:16px;font-weight:600;letter-spacing:0;color:#5f785d}
+.bb-how-close{display:inline-flex;align-items:center;justify-content:center;flex:0 0 44px;width:44px;height:44px;min-width:44px;min-height:44px;margin:-4px -5px 0 0;padding:0;border:1px solid #d8e4d0;border-radius:12px;background:#f1f5e9;color:#44694d;font:500 25px/1 system-ui,-apple-system,sans-serif;cursor:pointer;box-shadow:none}
+.bb-how-content{overflow-y:auto;overscroll-behavior:contain;min-height:0;padding:16px 20px 20px;-webkit-overflow-scrolling:touch}
+.bb-how-intro{margin:0 0 14px;color:#60765b;font:500 14px/1.5 system-ui,-apple-system,sans-serif}
+.bb-how-cycle{display:flex;align-items:center;justify-content:space-between;gap:6px;margin:0 0 16px;padding:11px 12px;border:1px solid #d4e1c8;border-radius:12px;background:#edf4e4;font:800 11px/1.3 system-ui,-apple-system,sans-serif;color:#275b3a}
+.bb-how-cycle-label{min-width:0;text-align:center;overflow-wrap:normal}
+.bb-how-arrow{color:#9c7d34;font-size:16px;flex:0 0 auto}
+.bb-how-steps{display:grid;grid-template-columns:minmax(0,1fr);gap:10px;list-style:none;margin:0;padding:0}
+.bb-how-step{position:relative;min-width:0;padding:14px 15px 14px 61px;border:1px solid #d6e2cf;border-radius:15px;background:#fffef9}
+.bb-how-step-top{position:absolute;left:13px;top:15px;display:flex;flex-direction:column;align-items:center;gap:8px}
+.bb-how-number{display:grid;place-items:center;width:30px;height:30px;border-radius:50%;background:#286d47;color:#fffdf5;font:850 15px/1 system-ui,-apple-system,sans-serif}
+.bb-how-icon{display:inline-flex;align-items:center;justify-content:center;color:#738b5a;flex:0 0 auto}
+.bb-how-step h3{margin:0 0 6px;color:#265c3a;font:800 15px/1.25 system-ui,-apple-system,sans-serif;letter-spacing:-.15px}
+.bb-how-step p,.bb-how-tool p{margin:0;color:#61745a;font:500 12px/1.5 system-ui,-apple-system,sans-serif}
+.bb-how-step-note{display:block;margin-top:7px;font:650 10px/1.4 system-ui,-apple-system,sans-serif;color:#8a7035}
+.bb-how-bonus{margin-top:22px;padding-top:17px;border-top:1px solid #dce6d2}
+.bb-how-bonus>h3{margin:0 0 4px;color:#24583b;font:800 18px/1.2 system-ui,-apple-system,sans-serif;letter-spacing:-.3px}
+.bb-how-bonus-intro{margin:0 0 12px;color:#6e8063;font:500 12px/1.5 system-ui,-apple-system,sans-serif}
+.bb-how-tools{display:grid;grid-template-columns:minmax(0,1fr);gap:9px}
+.bb-how-tool{min-width:0;padding:12px;border:1px solid #dce5d2;border-radius:13px;background:#f1f6e9}
+.bb-how-tool-top{display:flex;align-items:center;justify-content:space-between;gap:7px;margin-bottom:8px}
+.bb-how-badge{padding:3px 6px;border:1px solid #e2d59c;border-radius:999px;background:#f9f0cd;color:#88703a;font:750 9px/1.3 system-ui,-apple-system,sans-serif;white-space:normal;text-align:center}
+.bb-how-tool h4{margin:0 0 5px;color:#35623e;font:800 13px/1.3 system-ui,-apple-system,sans-serif}
+.bb-how-price-note{margin:14px 0 0;color:#7a826c;font:500 10px/1.5 system-ui,-apple-system,sans-serif}
+.bb-how-footer{padding:13px 20px calc(13px + env(safe-area-inset-bottom,0px));border-top:1px solid #dce6d2;background:#fffdf5}
+.bb-how-plan{display:flex;align-items:center;justify-content:center;width:100%;min-height:48px;margin:0;padding:12px 18px;border:1px solid #1d6341;border-radius:13px;background:#256e47;color:#fffdf5;font:800 15px/1.3 system-ui,-apple-system,sans-serif;cursor:pointer;box-shadow:0 3px 10px #28573e16}
+.bb-how-close:focus-visible,.bb-how-plan:focus-visible{outline:3px solid #bb9844;outline-offset:3px}
+@media(min-width:600px){.bb-how-steps{grid-template-columns:repeat(2,minmax(0,1fr))}.bb-how-tools{grid-template-columns:repeat(3,minmax(0,1fr))}.bb-how-dialog h2{font-size:31px}.bb-how-content{padding:18px 22px 22px}.bb-how-header{padding:23px 22px 17px}.bb-how-cycle{font-size:13px;padding:13px 18px}}
+@media(min-width:800px){.bb-how-step{padding:14px}.bb-how-step-top{position:static;flex-direction:row;justify-content:space-between;margin-bottom:12px}.bb-how-steps{grid-template-columns:repeat(4,minmax(0,1fr))}}
+@media(max-width:359px){.bb-how-header{padding:17px 14px 12px}.bb-how-dialog h2{font-size:23px}.bb-how-content{padding:14px}.bb-how-footer{padding-left:14px;padding-right:14px}.bb-how-cycle{gap:4px;padding:10px 8px;font-size:10px}.bb-how-step{padding-left:55px}.bb-how-step-top{left:11px}.bb-how-step h3{font-size:14px}}
+@media(prefers-reduced-motion:reduce){.bb-how-dialog::backdrop{backdrop-filter:none}}

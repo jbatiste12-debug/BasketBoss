@@ -16,12 +16,12 @@ class MemoryStorage {
 }
 // This models the proposed atomic API contract, not an implemented production backend.
 class FullInventoryServer {
-  initialized = false; revision = 0; stock = {}; receipts = new Map(); claims = new Set(); afterPost = null; posts = 0;
+  initialized = false; revision = 0; stock = {}; essentials = []; receipts = new Map(); claims = new Set(); afterPost = null; posts = 0;
   scope = { kind: 'user', id: ACTOR };
   snapshot(extra = {}) {
     return { ok: true, initialized: this.initialized, inventoryRevision: this.revision, scope: clone(this.scope), stock: clone(this.stock),
       inventory: Object.entries(this.stock).map(([stockKey, quantity]) => { const i = stockKey.lastIndexOf('|'); return { stockKey, canonicalKey: stockKey.slice(0, i), unit: stockKey.slice(i + 1), quantity, location: 'cupboard', revision: this.revision }; }),
-      essentials: [], priceObservations: [], pantryReview: { required: true, shopSessionId: 'shop-1', confirmedAt: null }, ...extra };
+      essentials: clone(this.essentials), priceObservations: [], pantryReview: { required: true, shopSessionId: 'shop-1', confirmedAt: null }, ...extra };
   }
   fetch = async (url, options) => {
     assert.equal(options.credentials, 'same-origin'); assert.equal(options.cache, 'no-store');
@@ -51,7 +51,7 @@ class FullInventoryServer {
     if (inventoryBaseline.expectedRevision !== this.revision || inventoryBaseline.initialize !== !this.initialized) return response({ error: 'inventory_revision_conflict' }, 409);
     const next = clone(inventoryBaseline.stock), claims = new Set(), credits = [];
     for (const line of body.lines) {
-      if (line.kind !== 'food') continue;
+      if (line.kind !== 'food' || body.addToPantry === false) continue;
       const id = `${line.canonicalKey}|${line.unit}`, credit = line.legacyCredit;
       const priorCreditedQuantity = credit && !this.claims.has(credit.id) ? Math.min(line.quantity, credit.quantity) : 0;
       if (credit && priorCreditedQuantity) claims.add(credit.id);
@@ -59,6 +59,7 @@ class FullInventoryServer {
       next[id] = (next[id] || 0) + addedQuantity;
       credits.push({ lineId: line.lineId, purchasedQuantity: line.quantity, priorCreditedQuantity, addedQuantity });
     }
+    this.essentials.push(...body.lines.filter(x => x.kind === 'essential').map(x => ({...x, id: body.receiptId + ':' + x.lineId, receiptId: body.receiptId, addToPantry: body.addToPantry === true})));
     this.stock = next; this.initialized = true; this.revision++;
     for (const id of claims) this.claims.add(id);
     this.receipts.set(body.receiptId, { digest, revision: this.revision });
@@ -411,4 +412,92 @@ test('canceling a deletion does not revive a receipt response captured before th
   f.event('basketboss:account-deletion-started');f.event('basketboss:account-deletion-cancelled');release();
   await assert.rejects(pending, /receipt_context_changed/);
   assert.equal(f.store.data.size, 0);
+});
+
+test('legacy reviewed receipt atomically stocks metric food, measured essentials hook and FinishShop coverage once', async () => {
+  const f = fixture(), key = 'basketboss_receipt_test_app_values', seen = [];
+  f.store.setItem(f.keys.stock, JSON.stringify({'pasta|g': 250}));
+  f.adapter.configure({receiptSaveKeys: [key], prepareReceiptSave(packet) {
+    seen.push(packet);
+    return {changes: {[key]: {saved: packet.receiptId, essentialQuantity: packet.essentials[0]?.quantity}}, expected: {[key]: f.store.getItem(key)}};
+  }});
+  const packet = {receiptId: 'local-receipt-1', market: 'UK', retailer: 'Tesco', shopSessionId: 'shop-1', stockPantry: true, items: [
+    {key: 'pasta', name: 'Pasta', classification: 'food', quantity: 1, unit: 'kg', guidePackQuantity: 500, guidePackUnit: 'g', price: 2},
+    {key: 'soap', name: 'Soap', classification: 'essential', quantity: 6, unit: 'each', price: 3}
+  ], priceUpdates: [{name: 'pasta', price: 2, guidePackQuantity: 500, guidePackUnit: 'g'}]};
+  const result = await f.adapter.commitLocalReceipt(packet);
+  assert.equal(result.ok, true);assert.equal(result.stocked, 2);
+  assert.equal(JSON.parse(f.store.getItem(f.keys.stock))['pasta|g'], 1250);
+  assert.equal(seen[0].stockAfter['pasta|g'], 1250);assert.equal(seen[0].items[0].quantity, 1000);assert.equal(seen[0].essentials[0].quantity, 6);
+  const coverage = JSON.parse(f.store.getItem(f.keys.finishShop))['shop-1|pasta|g'];
+  assert.equal(coverage.receiptCoveredQuantity, 1000);assert.equal(coverage.mode, 'receipt_inventory');
+  const kitchen = Object.values(JSON.parse(f.store.getItem(f.keys.kitchen)));assert.equal(kitchen[0].qty, 1250);
+  f.store.setItem(f.keys.stock, JSON.stringify({'pasta|g': 650})); // Later Cook deduction must survive retry.
+  const replay = await f.adapter.commitLocalReceipt(packet);assert.equal(replay.duplicate, true);
+  assert.equal(JSON.parse(f.store.getItem(f.keys.stock))['pasta|g'], 650);assert.equal(seen.length, 1);
+  await assert.rejects(f.adapter.commitLocalReceipt({...packet, stockPantry: false}), /identity_conflict/);
+});
+
+test('legacy receipt opt-out learns reviewed prices without stock, essential or FinishShop updates', async () => {
+  const f = fixture(), key = 'basketboss_receipt_test_app_values';let seen;
+  f.store.setItem(f.keys.stock, JSON.stringify({'pasta|g': 250}));
+  f.adapter.configure({receiptSaveKeys: [key], prepareReceiptSave(packet) {seen = packet;return {changes: {[key]: {saved: true}}, expected: {[key]: null}};}});
+  await f.adapter.commitLocalReceipt({receiptId: 'local-price-only', market: 'UK', retailer: 'Tesco', shopSessionId: 'shop-1', stockPantry: false, items: [{key: 'pasta', name: 'Pasta', classification: 'food', quantity: null, unit: null, price: 2}]});
+  assert.equal(seen.stockPantry, false);assert.equal(seen.essentials.length, 0);assert.equal(JSON.parse(f.store.getItem(key)).saved, true);
+  assert.equal(JSON.parse(f.store.getItem(f.keys.stock))['pasta|g'], 250);assert.equal(f.store.getItem(f.keys.finishShop), null);assert.equal(f.store.getItem(f.keys.kitchen), null);
+});
+
+test('legacy receipt storage failure rolls back app prices, stock and replay checkpoint before retry', async () => {
+  const f = fixture(), key = 'basketboss_receipt_test_app_values';
+  f.adapter.configure({receiptSaveKeys: [key], prepareReceiptSave() {return {changes: {[key]: {saved: true}}, expected: {[key]: f.store.getItem(key)}};}});
+  const packet = {receiptId: 'local-receipt-rollback', market: 'UK', retailer: 'Tesco', shopSessionId: 'shop-1', stockPantry: true, items: [{key: 'pasta', name: 'Pasta', classification: 'food', quantity: 500, unit: 'g', price: 2}]};
+  f.store.failKey = f.keys.stock;
+  await assert.rejects(f.adapter.commitLocalReceipt(packet), /quota/);
+  assert.equal(f.store.getItem(key), null);assert.equal(f.store.getItem(f.keys.stock), null);assert.equal(f.store.getItem('basketboss_receipt_local_saves_v1:' + ACTOR), null);
+  assert.equal((await f.adapter.commitLocalReceipt(packet)).duplicate, undefined);assert.equal(JSON.parse(f.store.getItem(f.keys.stock))['pasta|g'], 500);
+});
+
+test('legacy receipt rejects app changes outside allowlist or account changes during preparation', async () => {
+  const f = fixture(), key = 'basketboss_receipt_test_app_values';
+  const packet = {receiptId: 'local-receipt-account', market: 'UK', retailer: 'Tesco', shopSessionId: 'shop-1', stockPantry: true, items: [{key: 'pasta', name: 'Pasta', classification: 'food', quantity: 500, unit: 'g', price: 2}]};
+  f.adapter.configure({receiptSaveKeys: [key], prepareReceiptSave() {return {changes: {[f.keys.session]: {access_token: 'forged'}}, expected: {[f.keys.session]: null}};}});
+  await assert.rejects(f.adapter.commitLocalReceipt(packet), /invalid_receipt_app_transaction/);assert.equal(f.store.getItem(f.keys.stock), null);
+  f.adapter.configure({prepareReceiptSave() {f.session.value = {...f.session.value, user: {id: 'user_00000002'}};return {changes: {[key]: {}}, expected: {[key]: null}};}});
+  await assert.rejects(f.adapter.commitLocalReceipt(packet), /receipt_account_changed/);assert.equal(f.store.getItem(key), null);assert.equal(f.store.getItem(f.keys.stock), null);
+});
+
+test('cloud stock policy opt-out remains price/spend only and essential projection credits the app once', async () => {
+  const f = fixture(), seen = [];
+  f.adapter.configure({prepareReceiptSave(packet) {seen.push(packet);return {changes: {}, expected: {}};}});
+  let value = await f.adapter.normalizeDraft({receiptId: 'cloud-policy-1', addToPantry: false, items: [{name: 'Pasta', kind: 'food', canonicalKey: 'pasta', quantity: 500, unit: 'g', pricePaid: 2}, {name: 'Soap', kind: 'essential', quantity: 6, unit: 'each', pricePaid: 3}]});
+  value.lines.forEach(x => x.reviewed = true);
+  let result = await f.adapter.commitReviewedReceipt(value);assert.equal(result.localApplied, true);
+  assert.deepEqual(f.server.stock, {});assert.equal(f.store.getItem(f.keys.finishShop), null);
+  assert.equal(seen.at(-1).stockPantry, false);assert.equal(seen.at(-1).essentials.length, 0);
+  value = await f.adapter.normalizeDraft({receiptId: 'cloud-policy-2', addToPantry: true, items: [{name: 'Pasta', kind: 'food', canonicalKey: 'pasta', quantity: 1, unit: 'kg', pricePaid: 2}, {name: 'Soap', kind: 'essential', quantity: 6, unit: 'each', pricePaid: 3}]});
+  value.lines.forEach(x => x.reviewed = true);
+  result = await f.adapter.commitReviewedReceipt(value);assert.equal(result.localApplied, true);
+  assert.equal(seen.at(-1).stockAfter['pasta|g'], 1000);assert.equal(seen.at(-1).essentials.length, 1);assert.equal(seen.at(-1).essentials[0].quantity, 6);
+  await f.adapter.synchronize();assert.equal(seen.at(-1).essentials.length, 0);assert.equal(seen.at(-1).items.length, 0);
+  result = await f.adapter.commitReviewedReceipt(value);assert.equal(result.duplicate, true);assert.equal(result.localApplied, true);assert.equal(seen.at(-1).items.length, 0);assert.equal(seen.at(-1).essentials.length, 0);
+  assert.equal(JSON.parse(f.store.getItem(f.keys.stock))['pasta|g'], 1000);
+});
+
+test('cloud projection merges duplicate kitchen locations into one authoritative measured balance', async () => {
+  const f = fixture();
+  f.store.setItem(f.keys.kitchen, JSON.stringify({cupboard: {name: 'pasta', qty: 200, unit: 'g', selected: true, loc: 'cupboard'}, freezer: {name: 'pasta', qty: 300, unit: 'g', selected: true, loc: 'freezer'}}));
+  const value = await draft(f);assert.equal((await f.adapter.commitReviewedReceipt(value)).localApplied, true);
+  const selected = Object.values(JSON.parse(f.store.getItem(f.keys.kitchen))).filter(x => x.selected);
+  assert.equal(selected.length, 1);assert.equal(selected[0].qty, 500);assert.equal(selected[0].bb173StockValue, 500);
+});
+
+test('a later receipt cannot reuse the first receipt netting of FinishShop surplus credit', async () => {
+  const f = fixture();
+  f.store.setItem(f.keys.stock, JSON.stringify({'pasta|g': 300}));
+  f.store.setItem(f.keys.finishShop, JSON.stringify({'shop-1|pasta|g': {name: 'pasta', unit: 'g', credited: 300, week: 'shop-1'}}));
+  const one = await draft(f, {receiptId: 'receipt-first'});assert.equal((await f.adapter.commitReviewedReceipt(one)).localApplied, true);
+  assert.equal(f.server.stock['pasta|g'], 500);
+  const two = await draft(f, {receiptId: 'receipt-second'});assert.equal((await f.adapter.commitReviewedReceipt(two)).localApplied, true);
+  assert.equal(f.server.stock['pasta|g'], 1000);
+  assert.equal((await f.adapter.commitReviewedReceipt(one)).duplicate, true);assert.equal(f.server.stock['pasta|g'], 1000);
 });

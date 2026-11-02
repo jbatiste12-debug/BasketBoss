@@ -123,5 +123,5 @@ test('Safari scanner modal hides Turnstile for verified Live accounts, preserves
   assert.match(html,/#aiSecurityBox:not\(\[hidden\]\)/);
   assert.match(html,/<label class="scan-upload-label" for="ai-photo-input">/);
   assert.match(html,/<input accept="image\/\*"[^>]+id="ai-photo-input" type="file"/);
-  assert.match(html,/make-a-meal\.js\?v=20261101-recovery1/);
+  assert.match(html,/make-a-meal\.js\?v=20261102-camera2/);
 });

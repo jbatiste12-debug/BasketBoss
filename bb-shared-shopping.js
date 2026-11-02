@@ -117,10 +117,10 @@
   function openSharing(){if(root.BBSharedShoppingHost?.openSharing)return root.BBSharedShoppingHost.openSharing();doc.querySelector('[data-bbhs-trigger]')?.click();}
   function make(){if(card)return;
    card=el('section',undefined,'bb-shared-shopping');card.id='bbSharedShopping';card.setAttribute('aria-labelledby','bbSharedShoppingTitle');
-   const header=el('div',undefined,'bbss-header'),copy=el('div'),title=el('h2','Shared shopping');title.id='bbSharedShoppingTitle';const count=el('span','', 'bbss-count');title.append(count);copy.append(title);
+   const header=el('div',undefined,'bbss-header'),copy=el('div'),title=el('h2','Shared Household Additions');title.id='bbSharedShoppingTitle';const count=el('span','', 'bbss-count');title.append(count);copy.append(title);
    const badge=el('span','PREMIUM','bbss-premium');
    const add=el('button','＋ Add item','bbss-add');add.type='button';add.setAttribute('aria-controls','bbSharedShoppingForm');add.setAttribute('aria-expanded','false');add.addEventListener('click',()=>{formOpen=!formOpen;render();if(formOpen)ui.name.focus();});header.append(copy,badge,add);
-   const intro=el('p','Extra items, added during the week. Quantities are in addition to your meal-plan list.','bbss-intro');
+   const intro=el('p','Add mid-week extras like toothpaste or eggs anytime. Everyone in your linked household sees them, with who added each item.','bbss-intro');
    const gate=el('div',undefined,'bbss-gate'),gateText=el('p'),connect=el('button','Partner Sharing');connect.type='button';connect.addEventListener('click',openSharing);gate.append(gateText,connect);
    const form=el('form',undefined,'bbss-form');form.id='bbSharedShoppingForm';form.hidden=true;
    const nameLabel=el('label','Item','bbss-name'),name=el('input');name.name='name';name.maxLength=70;name.required=true;name.placeholder='e.g. milk or washing-up liquid';name.autocomplete='off';nameLabel.append(name);
@@ -145,7 +145,7 @@
    if(state.household_id)draftHousehold=state.household_id;
    const ready=state.phase==='ready',pendingItems=state.items.filter(item=>!item.completed),completeItems=state.items.filter(item=>item.completed).sort((a,b)=>String(b.completed_at||'').localeCompare(String(a.completed_at||'')));
    card.classList.toggle('is-gated',!ready);
-   ui.count.textContent=ready?' · '+pendingItems.length:'';ui.badge.hidden=state.premium;ui.add.hidden=!ready;ui.intro.hidden=!ready||!pendingItems.length&&!formOpen;ui.gate.hidden=ready;ui.form.hidden=!ready||!formOpen;ui.add.setAttribute('aria-expanded',String(ready&&formOpen));ui.submit.disabled=submitting;ui.cancel.disabled=submitting;ui.name.disabled=submitting;ui.amount.disabled=submitting;ui.unit.disabled=submitting;
+   ui.count.textContent=ready?' · '+pendingItems.length:'';ui.badge.hidden=state.premium;ui.add.hidden=!ready;ui.intro.hidden=!ready;ui.gate.hidden=ready;ui.form.hidden=!ready||!formOpen;ui.add.setAttribute('aria-expanded',String(ready&&formOpen));ui.submit.disabled=submitting;ui.cancel.disabled=submitting;ui.name.disabled=submitting;ui.amount.disabled=submitting;ui.unit.disabled=submitting;
    ui.gateText.textContent=state.phase==='loading'?'Checking your shared household…':state.phase==='signed-out'?'Link a Premium household to add extras and see who added each item.':state.phase==='premium'?'Partner Sharing is included with Premium.':state.phase==='unlinked'?'Link your partner to share shopping extras.':state.phase==='unavailable'?'Partner Sharing is not available on this site yet.': 'Reconnect to refresh your shared shopping list.';
    ui.connect.hidden=state.phase==='loading';ui.connect.textContent=state.phase==='signed-out'?'Sign in & Partner Sharing':'Partner Sharing';
    const stamp=JSON.stringify([state.items,state.busyIds,state.pendingAdds,state.pendingCompletions]);
@@ -161,14 +161,14 @@
   function place(){
    scheduled=false;make();const visible=inView();card.hidden=!visible;if(!visible)return;
    const advanced=doc.body.classList.contains('bb172-storefront-visible')?doc.querySelector('#bb172Storefront .bb172-storefront-shell'):null;
-   if(advanced){const controls=advanced.querySelector('.bb172-storefront-controls');if(card.parentNode!==advanced||card.nextSibling!==controls){if(controls)advanced.insertBefore(card,controls);else advanced.append(card);}}
-   else{const app=doc.getElementById('app');if(app&&card.nextSibling!==app)app.before(card);}
+   if(advanced){if(advanced.firstElementChild!==card)advanced.prepend(card);}
+   else{const app=doc.getElementById('app'),anchor=doc.getElementById('bbReleaseShopOverview')||app;if(anchor&&card.nextSibling!==anchor)anchor.before(card);}
    render();if(Date.now()-lastFetchStarted>10000){lastFetchStarted=Date.now();void controller.refresh();}
   }
   function schedule(){if(!scheduled){scheduled=true;root.queueMicrotask?root.queueMicrotask(place):Promise.resolve().then(place);}}
   function isolate(){formOpen=false;lastFetchStarted=0;controller.invalidate();schedule();if(inView())void controller.refresh({force:true});}
   function start(){
-   schedule();const observer=new root.MutationObserver(records=>{if(records.some(record=>record.type==='attributes'&&record.target===doc.body||record.type==='childList'&&(record.target===doc.getElementById('app')||Array.from(record.addedNodes||[]).some(node=>node.nodeType===1&&(node.matches?.('#app,#bb172Storefront,.bb172-storefront-shell,.bb172-storefront-controls')||node.querySelector?.('#bb172Storefront,.bb172-storefront-controls'))))))schedule();});observer.observe(doc.body,{childList:true,subtree:true,attributes:true,attributeFilter:['class','data-bbnext-view']});
+   schedule();const observer=new root.MutationObserver(records=>{if(records.some(record=>record.type==='attributes'&&record.target===doc.body||record.type==='childList'&&(record.target===doc.getElementById('app')||Array.from(record.addedNodes||[]).some(node=>node.nodeType===1&&(node.matches?.('#app,#bbReleaseShopOverview,#bb172Storefront,.bb172-storefront-shell,.bb172-storefront-controls')||node.querySelector?.('#bb172Storefront,.bb172-storefront-controls'))))))schedule();});observer.observe(doc.body,{childList:true,subtree:true,attributes:true,attributeFilter:['class','data-bbnext-view']});
    root.addEventListener('basketboss:session-changed',isolate);root.addEventListener('storage',event=>{if(event.key===null||event.key==='basketboss_cloud_session_v1')isolate();});
    for(const name of ['basketboss:account-deletion-started','basketboss:account-deletion-deleted','basketboss:account-deletion-cancelled'])root.addEventListener(name,isolate);
    for(const name of ['focus','online'])root.addEventListener(name,()=>{if(inView())void controller.refresh({force:true});});

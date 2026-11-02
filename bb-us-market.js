@@ -45,7 +45,7 @@
   const n=Number(number.replaceAll(',',''));
   return Number.isFinite(n)?'≈'+new Intl.NumberFormat('en-US',{style:'currency',currency:'USD'}).format(n*fx.rate):'USD estimate unavailable';
  });}
- function ignore(el){return !el||el.closest('script,style,noscript,textarea,pre,code,option,[contenteditable],#bbIntroTrialDialog,#bbPremiumDialog,#bbPremiumUpgradeDialog,.bbpremium-modal,.bbp-modal,.premium-upgrade-modal,.test-info,.test-ribbon')||el.closest('input,select');}
+ function ignore(el){return !el||el.closest('script,style,noscript,textarea,pre,code,option,[contenteditable],[data-bb-measures],#bbIntroTrialDialog,#bbPremiumDialog,#bbPremiumUpgradeDialog,.bbpremium-modal,.bbp-modal,.premium-upgrade-modal,.test-info,.test-ribbon')||el.closest('input,select');}
  function localizeText(node){const parent=node.parentElement;if(ignore(parent))return;
   // Do not touch the Paddle price page: it uses authoritative Paddle.PricePreview values.
   if(IS_PRICE_PAGE)return;

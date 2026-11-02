@@ -110,3 +110,16 @@ html body #app.bbnext-plan .bbnext-day-toggle>button.bb77-clear-corner:active{
 html body #app.bbnext-plan .bbnext-day-toggle>button.bb77-clear-corner:focus-visible{
  outline:2px solid #b42318!important;outline-offset:2px!important;
 }
+
+/* Taller framing reveals more of portrait food photos on the swipe card.
+   Photo sources and the compact gallery/planner crops remain unchanged. */
+html body #app .bb-featured-card #swipeCard[data-bb-food-frame="portrait"]{
+ aspect-ratio:1/1!important;max-height:460px!important;
+}
+html body #app .bb-featured-card #swipeCard[data-bb-food-frame="square"]{
+ aspect-ratio:6/5!important;max-height:430px!important;
+}
+html body #app .bb-featured-card #swipeCard>img,
+html body #app .bb-featured-card #swipeCard:hover>img{
+ transform:none!important;filter:none!important;object-position:center!important;
+}

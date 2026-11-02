@@ -188,12 +188,12 @@
       const cached = projection(); if (!cached) return false;
       if (!availability.available && hasLocalReview(cached)) return false;
       if (issue?.includes('pantry_merge_required') || issue === 'receipt_household_scope_changed' || issue === 'receipt_refresh_required') return true;
-      return cached.pantryReview?.required === true || !!(cached.lastReceiptId || cached.receipts?.length) && cached.pantryReview?.shopSessionId !== (context().shopSessionId || null);
+      return cached.pantryReview?.required === true;
     }
     function hasLocalReview(cached) {
       try {
         const ack = read(KEYS.confirmed).receiptLocalReview;
-        return ack?.actorId === actor() && ack.shopSessionId === (context().shopSessionId || null) && ack.inventoryRevision === cached.inventoryRevision && ack.scope === cached.scope?.kind + ':' + cached.scope?.id;
+        return ack?.actorId === actor() && ack.inventoryRevision === cached.inventoryRevision && ack.scope === cached.scope?.kind + ':' + cached.scope?.id;
       } catch {return false;}
     }
     function confirmLocalPantryReview() {
@@ -259,9 +259,9 @@
     }
     function setupAdapter() {
       adapter()?.configure?.({getSession: session, getContext: context, getCatalog: options.getCatalog, canonicalize: options.canonicalize,
-        getFinishShopCredits: options.getFinishShopCredits,
+        getFinishShopCredits: options.getFinishShopCredits, receiptSaveKeys: options.receiptSaveKeys, prepareReceiptSave: options.prepareReceiptSave,
         onProjection: value => {if (blocked()) return;issue = null; options.onProjection?.(value); schedule();}});
-      scanner()?.configure?.({getSession: session, getContext: context, inventory: adapter()});
+      scanner()?.configure?.({getSession: session, getContext: context, getShoppingItems: options.getShoppingItems, inventory: adapter()});
     }
     function tripPin() {
       const active = context(), scope = projection()?.scope;
@@ -347,6 +347,15 @@
         notify(result.localApplied ? 'Receipt recovered. Review your pantry before the next shop.' : 'Receipt recovery is still pending. Keep this receipt and try again.');
         afterRender(); return result;
       } catch {issue = 'Receipt recovery could not complete. Its original confirmation is retained for retry.'; afterRender(); return {ok: false};}
+    }
+    async function saveLegacyReceipt(packet) {
+      if (blocked()) throw Error('account_deletion_in_progress');
+      isolate();
+      if (isolationError || hasPendingConfirmation() || reviewing || confirmingCurrent) throw Error('receipt_refresh_required');
+      if (issue?.includes('pantry_merge_required') || issue === 'receipt_household_scope_changed' || issue === 'receipt_refresh_required') throw Error('receipt_refresh_required');
+      if (!options.prepareReceiptSave) throw Error('receipt_app_transaction_unavailable');
+      const result = await adapter().commitLocalReceipt(packet);
+      afterRender();return result;
     }
     function element(tag, text, className) {const e = doc().createElement(tag);if (text !== undefined) e.textContent = text;if (className) e.className = className;return e;}
     function recordLegacyCoverage(snapshot, currentContext, id) {
@@ -544,7 +553,7 @@
       options.onProjection?.({externalStorage: true});schedule();
     }
     root.addEventListener?.('storage', externalChange);
-    const api = Object.freeze({configure, afterRender, refreshAvailability, open, reviewPantry, confirmCurrentPantry, confirmLocalPantryReview, recoverReceipt, requiresPantryReview, hasPendingConfirmation, allowLegacyTransfer, handlesInventorySync, coversLegacyCredit, switchActor, getAvailability: () => ({...availability}), getProjection: projection, weeklySummary: () => weeklyReceiptSummary(projection(), context(), clock()), keys: KEYS});
+    const api = Object.freeze({configure, afterRender, refreshAvailability, open, saveLegacyReceipt, reviewPantry, confirmCurrentPantry, confirmLocalPantryReview, recoverReceipt, requiresPantryReview, hasPendingConfirmation, allowLegacyTransfer, handlesInventorySync, coversLegacyCredit, switchActor, getAvailability: () => ({...availability}), getProjection: projection, weeklySummary: () => weeklyReceiptSummary(projection(), context(), clock()), keys: KEYS});
     return api;
   }
   root.BBReceiptHostFactory = createHost;

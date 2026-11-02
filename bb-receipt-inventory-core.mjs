@@ -139,6 +139,7 @@ export function receiptTotals(lines, receiptTotal = null) {
 }
 export function normalizeReceiptDraft(raw = {}, context = {}) {
   if (!object(raw) || !object(context)) throw new Error('invalid_receipt_draft');
+  if (raw.addToPantry !== undefined && typeof raw.addToPantry !== 'boolean') throw new Error('invalid_receipt_stock_policy');
   const market = context.market || context.region || raw.market;
   const expected = SUPPORTED_MARKETS[market];
   if (!expected) throw new Error('unsupported_market');
@@ -152,17 +153,24 @@ export function normalizeReceiptDraft(raw = {}, context = {}) {
   if (receiptTotal !== null && Math.abs(receiptTotal) > 100000) throw new Error('receipt_total_limit');
   return { version: 1, receiptId: clean(raw.receiptId, 120) || null, market, retailer: clean(context.retailer ?? context.store ?? raw.retailer, 100) || null, currency,
     purchasedAt: clean(raw.purchasedAt || raw.transactionAt, 50) || null, transactionAt: clean(raw.purchasedAt || raw.transactionAt, 50) || null,
-    shopSessionId: clean(raw.shopSessionId || context.shopSessionId, 120) || null, receiptTotal, lines,
+    shopSessionId: clean(raw.shopSessionId || context.shopSessionId, 120) || null, addToPantry: raw.addToPantry !== false, receiptTotal, lines,
     totals: receiptTotals(lines, receiptTotal), pendingLineIds: lines.filter(x => x.classification === 'pending' || x.issues.length).map(x => x.id) };
 }
-export function computeReceiptCredit(line, credits = [], { shopSessionId, claimedCreditIds = [], creditUsedById = {} } = {}) {
+export function computeReceiptCredit(line, credits = [], { shopSessionId, receiptId = null, claimedCreditIds = [], creditUsedById = {} } = {}) {
   const measured = normalizeMeasuredQuantity(line.quantity, line.unit), key = canonicalIngredientKey(line.canonicalKey || line.name);
   if (!measured || !key) throw new Error('invalid_measured_receipt_food');
   const claimed = new Set(claimedCreditIds), candidates = Array.isArray(credits) ? credits : Object.entries(credits).map(([id, x]) => ({ ...x, id }));
   let credit = null;
   for (const entry of candidates) {
     const id = clean(entry.id, 300), session = entry.shopSessionId || entry.week;
-    const name = canonicalIngredientKey(entry.canonicalKey || entry.name), amount = normalizeMeasuredQuantity(entry.credited ?? entry.quantity, entry.unit);
+    // FinishShop's original surplus credit can net against one physical receipt only.
+    // Its same-receipt retry keeps identical semantics; a later receipt adds new stock.
+    let availableCredit = entry.credited ?? entry.quantity;
+    if (entry.receiptInventoryReceiptId) {
+      if (receiptId && Object.hasOwn(entry.receiptLegacyCreditById || {}, receiptId)) availableCredit = entry.receiptLegacyCreditById[receiptId];
+      else if (entry.receiptInventoryReceiptId !== receiptId || Object.keys(entry.receiptCoverageById || {}).length > 1) continue;
+    }
+    const name = canonicalIngredientKey(entry.canonicalKey || entry.name), amount = normalizeMeasuredQuantity(availableCredit, entry.unit);
     if (!shopSessionId || session !== shopSessionId || id !== `${shopSessionId}|${key}|${measured.unit}` || claimed.has(id) || name !== key || !amount || amount.unit !== measured.unit) continue;
     const remaining = Math.max(0, amount.quantity - (finite(creditUsedById[id]) || 0));
     if (!remaining) continue;
@@ -182,18 +190,19 @@ export function prepareReceiptConfirmation(input, { requestId, catalog, canonica
     if (!line.selected || line.sourceKind !== 'purchase' || line.classification === 'ignore') continue;
     if (line.classification === 'pending') throw new Error('classify_or_deselect_pending_lines');
     if (!line.reviewed) throw new Error('review_receipt_line_first');
-    if (line.issues.length) throw new Error(`invalid_receipt_line:${line.id}:${line.issues.join(',')}`);
+    const issues = draft.addToPantry ? line.issues : line.issues.filter(x => !['measured_quantity_required', 'pack_count_required', 'canonical_unit_not_in_catalog'].includes(x));
+    if (issues.length) throw new Error(`invalid_receipt_line:${line.id}:${issues.join(',')}`);
     if (line.pricePaid === null || line.pricePaid < 0) throw new Error(`nonnegative_receipt_price_required:${line.id}`);
     acceptedSpend = money(acceptedSpend + line.pricePaid);
     if (acceptedSpend > 100000) throw new Error('receipt_total_limit');
     const out = { lineId: line.id, kind: line.classification, canonicalKey: line.classification === 'food' ? line.canonicalKey : null, name: line.description, brand: line.brand,
       quantity: line.quantity, unit: line.unit, packCount: line.packCount, packQuantity: line.packQuantity, packUnit: line.packUnit,
       pricePaid: line.pricePaid, priceType: line.priceType, location: line.location };
-    if (line.classification === 'food') {
+    if (line.classification === 'food' && draft.addToPantry) {
       const stockKey = `${line.canonicalKey}|${line.unit}`, total = round((quantitiesByStockKey.get(stockKey) || 0) + line.quantity);
       if (total > MAX_QUANTITY) throw new Error('receipt_food_quantity_limit');
       quantitiesByStockKey.set(stockKey, total);
-      const credit = computeReceiptCredit(line, finishShopCredits, { shopSessionId: draft.shopSessionId, creditUsedById });
+      const credit = computeReceiptCredit(line, finishShopCredits, { shopSessionId: draft.shopSessionId, receiptId: draft.receiptId, creditUsedById });
       if (credit.legacyCredit) { out.legacyCredit = credit.legacyCredit; creditUsedById[credit.legacyCredit.id] = round((creditUsedById[credit.legacyCredit.id] || 0) + credit.legacyCredit.quantity); }
     }
     accepted.push(out);
@@ -203,7 +212,7 @@ export function prepareReceiptConfirmation(input, { requestId, catalog, canonica
     if (line.lineTotal === null || Math.abs(line.lineTotal) > 100000) throw new Error('invalid_receipt_adjustment');
     return { lineId: line.id, kind: line.sourceKind, amount: line.lineTotal, description: line.description };
   });
-  return { action: 'confirm_receipt', requestId: id, receiptId, shopSessionId: draft.shopSessionId, market: draft.market, currency: draft.currency, retailer: draft.retailer, purchasedAt: draft.purchasedAt, receiptTotal: draft.receiptTotal, adjustments, lines: accepted };
+  return { action: 'confirm_receipt', addToPantry: draft.addToPantry, requestId: id, receiptId, shopSessionId: draft.shopSessionId, market: draft.market, currency: draft.currency, retailer: draft.retailer, purchasedAt: draft.purchasedAt, receiptTotal: draft.receiptTotal, adjustments, lines: accepted };
 }
 export function normalizeInventoryScope(value) {
   if (!object(value) || Object.keys(value).some(key => !['kind', 'id'].includes(key)) || !['user', 'household'].includes(value.kind) || typeof value.id !== 'string' || !/^[a-zA-Z0-9_-]{4,120}$/.test(value.id)) throw new Error('invalid_expected_inventory_scope');
@@ -221,7 +230,9 @@ export function validateReceiptConfirmation(input, { catalog, canonicalize } = {
     return value;
   };
   const amount = (value, max = 100000) => typeof value === 'number' && Number.isFinite(value) && Math.abs(value) <= max;
-  allow(input, ['action', 'requestId', 'receiptId', 'shopSessionId', 'market', 'currency', 'retailer', 'purchasedAt', 'receiptTotal', 'adjustments', 'expectedScope', 'inventoryBaseline', 'lines'], 'body');
+  allow(input, ['action', 'addToPantry', 'requestId', 'receiptId', 'shopSessionId', 'market', 'currency', 'retailer', 'purchasedAt', 'receiptTotal', 'adjustments', 'expectedScope', 'inventoryBaseline', 'lines'], 'body');
+  if (input.addToPantry !== undefined && typeof input.addToPantry !== 'boolean') throw new Error('invalid_receipt_stock_policy');
+  const addToPantry = input.addToPantry !== false;
   if (input.action !== 'confirm_receipt' || !Object.hasOwn(SUPPORTED_MARKETS, input.market) || input.currency !== SUPPORTED_MARKETS[input.market]) throw new Error('invalid_receipt_action_market_or_currency');
   if (!catalog) throw new Error('canonical_catalog_required');
   const requestId = text(input.requestId, 160, 'request_id'), receiptId = text(input.receiptId, 120, 'id');
@@ -245,16 +256,17 @@ export function validateReceiptConfirmation(input, { catalog, canonicalize } = {
     if (line.packCount !== null && line.packCount !== undefined && (!Number.isInteger(line.packCount) || line.packCount < 1 || line.packCount > 10000)) throw new Error('invalid_receipt_pack_count');
     const brand = line.brand === '' || line.brand === null || line.brand === undefined ? '' : text(line.brand, 80, 'brand');
     const normalized = normalizeReceiptLine({ ...line, id: lineId, reviewed: true }, { market: input.market, catalog, canonicalize }, index);
-    if (line.kind === 'food' && normalized.issues.length) throw new Error(`invalid_receipt_food:${normalized.issues.join(',')}`);
+    const issues = addToPantry ? normalized.issues : normalized.issues.filter(x => !['measured_quantity_required', 'pack_count_required', 'canonical_unit_not_in_catalog'].includes(x));
+    if (line.kind === 'food' && issues.length) throw new Error(`invalid_receipt_food:${issues.join(',')}`);
     if (line.kind === 'essential' && line.canonicalKey !== null && line.canonicalKey !== undefined) throw new Error('essential_cannot_claim_food_key');
     const out = { lineId, kind: line.kind, canonicalKey: line.kind === 'food' ? normalized.canonicalKey : null, name, brand, quantity: normalized.quantity, unit: normalized.unit, packCount: normalized.packCount, packQuantity: normalized.packQuantity, packUnit: normalized.packUnit, pricePaid: money(line.pricePaid), priceType: line.priceType, location: line.location };
-    if (line.kind === 'food') {
+    if (line.kind === 'food' && addToPantry) {
       const key = `${out.canonicalKey}|${out.unit}`, total = round((quantities.get(key) || 0) + out.quantity);
       if (total > MAX_QUANTITY) throw new Error('receipt_food_quantity_limit'); quantities.set(key, total);
     }
     if (line.legacyCredit !== null && line.legacyCredit !== undefined) {
       allow(line.legacyCredit, ['id', 'quantity', 'unit'], 'legacy_credit');
-      if (line.kind !== 'food' || !shopSessionId || line.legacyCredit.id !== `${shopSessionId}|${out.canonicalKey}|${out.unit}` || line.legacyCredit.unit !== out.unit || !amount(line.legacyCredit.quantity, MAX_QUANTITY) || line.legacyCredit.quantity <= 0 || line.legacyCredit.quantity > out.quantity) throw new Error('invalid_receipt_legacy_credit');
+      if (!addToPantry || line.kind !== 'food' || !shopSessionId || line.legacyCredit.id !== `${shopSessionId}|${out.canonicalKey}|${out.unit}` || line.legacyCredit.unit !== out.unit || !amount(line.legacyCredit.quantity, MAX_QUANTITY) || line.legacyCredit.quantity <= 0 || line.legacyCredit.quantity > out.quantity) throw new Error('invalid_receipt_legacy_credit');
       out.legacyCredit = { id: line.legacyCredit.id, quantity: line.legacyCredit.quantity, unit: out.unit };
     }
     spend = money(spend + out.pricePaid); if (spend > 100000) throw new Error('receipt_total_limit');
@@ -270,7 +282,7 @@ export function validateReceiptConfirmation(input, { catalog, canonicalize } = {
     return { lineId, kind: row.kind, amount: money(row.amount), description };
   });
   if (lines.length + adjustments.length > 200) throw new Error('too_many_receipt_lines');
-  return { action: 'confirm_receipt', requestId, receiptId, shopSessionId, market: input.market, currency: input.currency, retailer, purchasedAt, receiptTotal: input.receiptTotal ?? null, adjustments, expectedScope, inventoryBaseline, lines };
+  return { action: 'confirm_receipt', ...(input.addToPantry === undefined ? {} : {addToPantry}), requestId, receiptId, shopSessionId, market: input.market, currency: input.currency, retailer, purchasedAt, receiptTotal: input.receiptTotal ?? null, adjustments, expectedScope, inventoryBaseline, lines };
 }
 export function normalizePriceObservation(line, { scope, market, retailer, currency, receiptId } = {}) {
   if (!object(line)) return null;

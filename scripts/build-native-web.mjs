@@ -25,6 +25,7 @@ export const CLIENT_FILES=Object.freeze([
  'bb-meal-image.js','bb-meal-image.css','bb-navigation-polish.js','bb-navigation-polish.css',
  'bb-account-polish.js','bb-account-polish.css','bb-membership-compare.js','bb-membership-compare.css',
  'bb-premium-feature-badges.js','bb-premium-feature-badges.css',
+ 'bb-pantry-camera.js','bb-pantry-camera.css','bb-cook-experience.css','bb-featured-framing.js','bb-duration.js','bb-recipe-measures.js','bb-cook-step-layout.js','bb-cook-pantry.js','bb-cook-clarity.css','bb-receipt-quantity.js','bb-pantry-deduction.js','bb-how-it-works.js','bb-how-it-works.css',
  'bb-home.js','bb-kitchen-choice-rules.mjs','bb-shared-shopping.js','bb-shared-shopping.css',
  'bb-weekly-shop.js','bb-weekly-shop.css','bb-simple-layout.js','bb-simple-layout.css',
  'bb-funnel.js','bb-household-sharing.js','bb-install.js','bb-intro-trial.js',

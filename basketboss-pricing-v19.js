@@ -128,6 +128,24 @@ function receiptPackPrice({name,unit,market,retailer,entry,brand=''}){
     value.samples!==undefined&&(!Number.isSafeInteger(value.samples)||value.samples<1||value.samples>21))return null;
  return {packPrice:round2(value.packPrice),samples:value.samples||1,brand:request.brand};
 }
+/* Prepare price changes for the receipt journal without writing storage. A
+   measured purchase may differ from the guide pack; its price must not be
+   silently attached to that other pack. */
+function preparePriceOverrides(updates){
+ if(!Array.isArray(updates)||updates.length>200)throw Error('Review the receipt prices first');
+ const expected=root.localStorage?.getItem(OVERRIDE_KEY)??null;
+ let next;try{next=JSON.parse(expected||'{}');}catch{throw Error('Saved shelf prices need review');}
+ if(!next||typeof next!=='object'||Array.isArray(next))throw Error('Saved shelf prices need review');
+ for(const update of updates){
+  const {name,unit,market,price:localPackPrice,brand='',retailer=root.BBSupermarkets?.getSelected(market)||null}=update;
+  const entry=getPack(name,unit,market,retailer);if(!entry||!MARKET_FACTORS[market])throw Error('Unknown pack or market');
+  if(update.packQuantity!==undefined&&(Number(update.packQuantity)!==entry.standard_pack_size||update.packUnit!==entry.standard_pack_unit))throw Error('Receipt price needs its matching pack size');
+  const n=Number(localPackPrice);if(!Number.isFinite(n)||n<.01||n>10000)throw Error('Enter a local full-pack price between 0.01 and 10,000');
+  if(typeof brand!=='string'||brand.trim().length>80)throw Error('Enter a brand of up to 80 characters, or leave it blank');
+  next[keyForProductOverride(entry,market,retailer)]={price:round2(n),brand:brand.trim(),updatedAt:new Date().toISOString().slice(0,10)};
+ }
+ return {key:OVERRIDE_KEY,value:next,expected};
+}
 function setPriceOverride({name,unit,market,price:localPackPrice,brand='',retailer=root.BBSupermarkets?.getSelected(market)||null}){
  const entry=getPack(name,unit,market,retailer);if(!entry||!MARKET_FACTORS[market])throw Error('Unknown pack or market');
  const n=Number(localPackPrice);if(!Number.isFinite(n)||n<.01||n>10000)throw Error('Enter a local full-pack price between 0.01 and 10,000');
@@ -345,5 +363,5 @@ function repriceBasket(result,market){
 }
 root.BBPriceV19=Object.freeze({canonical,aisle,category,factor,price,mealPrice,getPack,repriceBasket,
  normalizeUnit,formatQuantity,money,CURRENCY,regionalMarkets,estimateMeal,isPantryStaple,findSourcedPrice,sourcedPrices,regionMultipliers:MARKET_FACTORS,catalog:PACKS,
- getPriceOverride,getProductOverride,setPriceOverride,clearPriceOverride,setReceiptPriceProvider});
+ getPriceOverride,getProductOverride,setPriceOverride,preparePriceOverrides,clearPriceOverride,setReceiptPriceProvider});
 })(typeof window!=='undefined'?window:globalThis);

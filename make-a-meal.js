@@ -49,21 +49,31 @@ window.addEventListener('focus',bbSecureCheckAccountChange);
 setInterval(bbSecureCheckAccountChange,2000);
 window.addEventListener('storage',event=>{
   if(event.key==='basketboss_cloud_session_v1')bbSecureCheckAccountChange();
+  if(event.key===null||event.key==='basketboss_321_v7_market')renderRecipes();
 });
+window.addEventListener('basketboss:market-changed',()=>renderRecipes());
 document.addEventListener('visibilitychange',()=>{
   if(!document.hidden)bbSecureCheckAccountChange();
 });
 
 let area='cupboard',mode='only',recipes=[],inventory={},results=[],suggestionOffset=0,photoFile=null;
  let bb5Confirmed=false;
+let scanReviewActor=null,pantryScanLocation=null;
 let aiEnabled=false, turnstileToken='',turnstileWidgetId=null,scanRevision=0,scanInFlight=false,generateInFlight=false;
 let generateRevision=0,generateActor=null,generatedView=null;
 const $=s=>document.querySelector(s), esc=x=>String(x??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+// Recipe presentation follows the saved shopping region. Inventory remains
+// in its original metric/count units for review, planning and reconciliation.
+function bbMealMarket(){try{return window.BasketBossMarket?.get?.()||localStorage.getItem('basketboss_321_v7_market')||'Jersey';}catch{return 'Jersey';}}
+function bbMealQuantity(text,name){return window.BBRecipeMeasures?.quantity(text,name,bbMealMarket())??String(text??'');}
+function bbMealStep(text){const value=window.BBRecipeMeasures?.step(text,bbMealMarket())??String(text??'');return window.BBDuration?.text(value)??value;}
+function bbMealDuration(minutes){return window.BBDuration?.format(minutes)??`${minutes}mins`;}
+function bbMealStepHTML(text){const value=bbMealStep(String(text).replace(/^\s*\d+[.)]\s*/,'')),actions=window.BBCookStepLayout?.actions(value)||[value];return `<li><ul class="bb-cook-actions" data-bb-measures>${actions.map(action=>`<li>${esc(action)}</li>`).join('')}</ul></li>`;}
 const alias={'cheddar cheese':'cheddar','mature cheddar':'cheddar','cheese (cheddar)':'cheddar','tinned kidney beans':'tinned beans','canned beans':'tinned beans','olive oil':'cooking oil','sunflower oil':'cooking oil','vegetable oil':'cooking oil','chopped tomatoes':'tinned tomatoes','canned tomatoes':'tinned tomatoes','eggs':'egg','tomatoes':'tomato','potatoes':'potato','peppers':'pepper','mushrooms':'mushroom','carrots':'carrot','onions':'onion','wraps':'wrap','peas':'pea','frozen peas':'pea','sweetcorn':'sweetcorn','frozen sweetcorn':'sweetcorn','yoghurts':'yoghurt','chickpeas':'chickpea'};
 function canon(s){let t=String(s||'').toLowerCase().normalize('NFKC').replace(/\([^)]*\)/g,' ').replace(/[–—-]/g,' ').replace(/[^\p{L}\s]/gu,' ').replace(/\s+/g,' ').trim();if(alias[t])return alias[t];t=t.replace(/^(fresh|cooked|raw|diced|chopped|sliced|grated|frozen)\s+/g,'').trim();if(alias[t])return alias[t];if(t.endsWith('ies'))t=t.slice(0,-3)+'y';else if(t.endsWith('s')&&!t.endsWith('ss'))t=t.slice(0,-1);return alias[t]||t}
 function load(){try{const v=JSON.parse(localStorage.getItem(STORE)||'{}');if(v&&typeof v==='object'&&!Array.isArray(v))inventory=v}catch(e){inventory={}};
 // Import measured pantry stock without modifying its original records.
-try{const measured=JSON.parse(localStorage.getItem(STOCK)||'{}');if(measured&&typeof measured==='object'){for(const [id,q] of Object.entries(measured)){if(!id.includes('|')||!(Number(q)>0))continue;const [name,unit]=[id.slice(0,id.lastIndexOf('|')),id.slice(id.lastIndexOf('|')+1)];const loc=Object.keys(FOODS).find(k=>FOODS[k].some(([,n])=>canon(n)===canon(name)))||'cupboard';const key=uid(name,loc);if(!inventory[key])inventory[key]={name,loc,selected:true,qty:Number(q),unit};}}}catch(e){}
+try{const measured=JSON.parse(localStorage.getItem(STOCK)||'{}');if(measured&&typeof measured==='object'){for(const [id,q] of Object.entries(measured)){if(!id.includes('|')||!(Number(q)>0))continue;const [name,unit]=[id.slice(0,id.lastIndexOf('|')),id.slice(id.lastIndexOf('|')+1)];const loc=Object.keys(FOODS).find(k=>FOODS[k].some(([,n])=>canon(n)===canon(name)))||'cupboard';const key=uid(name,loc);if(!inventory[key])inventory[key]={name,loc,selected:true,qty:Number(q),unit,bb173StockKey:id,bb173StockValue:Number(q),bb173ImportedStock:true};}}}catch(e){}
 // Legacy name-only ownership is displayed as unknown quantity, not unlimited stock.
 try{const state=JSON.parse(localStorage.getItem(STATE)||'{}');for(const [name,val] of Object.entries(state.pantry||{})){if(!val)continue;const loc=Object.keys(FOODS).find(k=>FOODS[k].some(([,n])=>canon(n)===canon(name)))||'cupboard';const key=uid(name,loc);if(!inventory[key])inventory[key]={name,loc,selected:true,qty:null,unit:'each'}}}catch(e){}
 }
@@ -294,7 +304,7 @@ function recipeCard(x,index){
  const anyRelated=x.related.length>0;
  const badge=ready?'✓ Ingredient names match':x.missing.length<=2?'1–2 extra ingredients':'More ingredients needed';
  const note=anyRelated?`<div class="related-note"><strong>Check substitutions:</strong> ${x.related.map(z=>`${esc(z.stock.name)} is related to ${esc(z.ingredient.name)}`).join('; ')}. They are not necessarily interchangeable. ${x.related.some(z=>/\bcooked chicken\b/i.test(z.stock.name))?'Cooked and raw chicken require different preparation.':''}</div>`:'';
- return `<article class="recipe" data-id="${esc(x.r.id)}"><h3>${esc(x.r.name)}</h3><p class="meta">⏱ ${Number(x.r.mins)||'?'} mins · ${Number(x.r.servings)||4} servings</p><span class="pill">${x.matched.length} matching ingredient${x.matched.length===1?'':'s'}</span>${x.related.length?`<span class="pill amber">${x.related.length} related item${x.related.length===1?'':'s'}</span>`:''}<span class="pill ${ready?'':'amber'}">${badge}</span>${x.missing.length?`<div class="warning"><strong>Still required or check substitution:</strong> ${x.missing.map(z=>esc(z.name)).join(', ')}</div>`:''}${note}<p class="hint">Confirm quantities, substitutions, allergies and freshness.</p><details><summary>See ingredients and cooking instructions</summary><ul>${x.ing.map(z=>`<li>${esc(z.name)} — ${esc(z.amount)}</li>`).join('')}</ul><ol>${(x.r.method||[]).map(z=>`<li>${esc(z)}</li>`).join('')}</ol><p class="hint">Allergen notes: ${esc(x.r.allergy_advice||'Check packaging and cross-contact risks.')}</p></details><div class="inline-actions"><a class="button" href="index.html?bbcook=${encodeURIComponent(x.r.id)}">Cook with guidance</a><button type="button" class="button" data-plan="${index}">Choose this meal</button></div></article>`;
+ return `<article class="recipe" data-id="${esc(x.r.id)}"><h3>${esc(x.r.name)}</h3><p class="meta">⏱ ${Number(x.r.mins)>0?esc(bbMealDuration(Number(x.r.mins))):'? mins'} · ${Number(x.r.servings)||4} servings</p><span class="pill">${x.matched.length} matching ingredient${x.matched.length===1?'':'s'}</span>${x.related.length?`<span class="pill amber">${x.related.length} related item${x.related.length===1?'':'s'}</span>`:''}<span class="pill ${ready?'':'amber'}">${badge}</span>${x.missing.length?`<div class="warning"><strong>Still required or check substitution:</strong> ${x.missing.map(z=>esc(z.name)).join(', ')}</div>`:''}${note}<p class="hint">Confirm quantities, substitutions, allergies and freshness.</p><details><summary>See ingredients and cooking instructions</summary><ul>${x.ing.map(z=>`<li>${esc(z.name)} — <span data-bb-measures>${esc(bbMealQuantity(z.amount,z.name))}</span></li>`).join('')}</ul><ol class="bb-recipe-method">${(x.r.method||x.r.steps||[]).map(bbMealStepHTML).join('')}</ol><p class="hint">Allergen notes: ${esc(x.r.allergy_advice||'Check packaging and cross-contact risks.')}</p></details><div class="inline-actions"><a class="button" href="index.html?bbcook=${encodeURIComponent(x.r.id)}">Cook with guidance</a><button type="button" class="button" data-plan="${index}">Choose this meal</button></div></article>`;
 }
 function renderRecipes(){
  const have=list(),dest=$('#recipes'),summary=$('#matchSummary');
@@ -439,10 +449,20 @@ function bbObserveAIHumanPanel(){
 }
 function likelyPerishable(name){return /\b(chicken|beef|pork|lamb|fish|prawns?|shrimp|salmon|raw meat|turkey|milk|yoghurt|cream|cheese|eggs?|ham|bacon)\b/i.test(name) && !/\b(tinned|canned|shelf.stable|dried|powdered)\b/i.test(name);}
 
+function bbScanActor(){try{return JSON.parse(localStorage.getItem('basketboss_cloud_session_v1')||'null')?.user?.id||null;}catch{return null;}}
 function renderScanResponse(scan){
+ scanReviewActor=bbScanActor();
  const items=Array.isArray(scan?.items)?scan.items.filter(x=>x&&typeof x.name==='string'&&x.name.trim()).slice(0,20):[];
  const seen=new Set();const unique=items.filter(x=>{const id=canon(x.name);if(!id||seen.has(id))return false;seen.add(id);return true});
- $('#scanResults').innerHTML=unique.length?`<div class="success">Gemini found possible ingredients. Tick only those you recognise, then choose where each one belongs before saving. AI estimates are not counted as measured stock.</div><form id="reviewFoods"><div class="scan-result-list">${unique.map(x=>`<div class="scan-result-row"><label class="scan-item-label"><input type="checkbox" name="food" value="${esc(x.name.trim().slice(0,70))}"><span><strong>${esc(x.name.trim().slice(0,70))}</strong><span class="scan-item-meta">Estimated ${esc(String(x.estimatedQuantity||'unknown').slice(0,60))} · ${esc(String(x.confidence||'uncertain').slice(0,15))} confidence</span><span class="scan-item-meta">${esc(String(x.notes||'').slice(0,150))}</span></span></label><label class="scan-destination">Store this item in<select class="field" data-scan-location aria-label="Choose storage location for ${esc(x.name.trim().slice(0,70))}"><option value="">Choose when saving…</option><option value="fridge">🥛 Fridge</option><option value="freezer">🧊 Freezer</option><option value="cupboard">🥫 Cupboard</option></select></label></div>`).join('')}</div><div class="scan-review-actions"><p id="scanSaveError" class="warning" role="alert" hidden></p><button class="button ai-primary-button" type="submit">✓ Save my confirmed foods</button><p class="hint">Choose an appropriate storage location for each selected food. Raw meat and other perishable foods must not go in the cupboard.</p></div></form>`:'<div class="warning">No foods identified. Use manual ingredient entry instead.</div>';
+ $('#scanResults').innerHTML=unique.length?`<div class="success">Gemini found possible ingredients. Tick only foods you recognise. Enter an amount you have checked to update At home; AI estimates are suggestions only.</div><form id="reviewFoods"><div class="scan-result-list">${unique.map(x=>{const name=x.name.trim().slice(0,70),location=pantryScanLocation&&!(pantryScanLocation==='cupboard'&&likelyPerishable(name))?pantryScanLocation:'';return `<div class="scan-result-row"><label class="scan-item-label"><input type="checkbox" name="food" value="${esc(name)}"><span><strong>${esc(name)}</strong><span class="scan-item-meta">Estimated ${esc(String(x.estimatedQuantity||'unknown').slice(0,60))} · ${esc(String(x.confidence||'uncertain').slice(0,15))} confidence</span><span class="scan-item-meta">${esc(String(x.notes||'').slice(0,150))}</span></span></label><label class="scan-destination">Store this item in<select class="field" data-scan-location aria-label="Choose storage location for ${esc(name)}"><option value="">Choose when saving…</option>${[['fridge','🥛 Fridge'],['freezer','🧊 Freezer'],['cupboard','🥫 Cupboard']].map(([value,label])=>`<option value="${value}" ${location===value?'selected':''}>${label}</option>`).join('')}</select></label><div class="bb-scan-measure"><label>Checked amount here<input type="number" data-scan-quantity min="0" max="1000000" step="any" inputmode="decimal" placeholder="Optional" aria-label="Checked amount of ${esc(name)}"></label><label>Unit<select data-scan-unit aria-label="Unit for ${esc(name)}">${BB5_MEAL_UNITS.map(unit=>`<option value="${unit}" ${unit===bb25SuggestedUnit(name)?'selected':''}>${unit}</option>`).join('')}</select></label></div></div>`;}).join('')}</div><div class="scan-review-actions"><p id="scanSaveError" class="warning" role="alert" hidden></p><button class="button ai-primary-button" type="submit">✓ Save my confirmed foods</button><p class="hint">A checked amount replaces the amount in this location; other confirmed locations are kept. Leave it blank to save a food name without changing measured stock. Check packaging before choosing storage for perishables.</p></div></form>`:'<div class="warning">No foods identified. Use manual ingredient entry instead.</div>';
+}
+function bbInstallPantryScanHandoff(){
+ const url=new URL(location.href);if(url.searchParams.get('bbscan')!=='pantry')return;
+ pantryScanLocation=['fridge','cupboard'].includes(url.searchParams.get('location'))?url.searchParams.get('location'):'fridge';bbChooseLocation(pantryScanLocation);
+ const notice=document.createElement('p');notice.className='bb-pantry-camera-context';notice.textContent='Scan your '+pantryScanLocation+'. Take a food-only photo, then review each food, storage location and checked amount before updating At home.';$('#aiScanner')?.prepend(notice);
+ const back=document.createElement('a');back.className='bb-scan-pantry-return';back.href='index.html?bbreturn=pantry';back.textContent='← Back to At home';notice.append(document.createElement('br'),back);
+ let opened=false;const open=()=>{if(opened||window.BasketBossVerifiedPremium?.isActive?.()!==true)return;opened=true;bbOpenTool('scan');$('#bbToolStage')?.classList.add('bb-ai-native-visible');$('#scanResults').textContent='Take Photo / Choose Image to start. Your camera opens only when you tap that button.';url.searchParams.delete('bbscan');url.searchParams.delete('location');history.replaceState(null,'',url);};
+ document.addEventListener('basketboss:premium-verified',open);open();
 }
 function bbPaidToken(){
  try{
@@ -474,7 +494,7 @@ async function requestBody(verb,body){
 }
 async function scanPhoto(){
  if(scanInFlight)return;
- const revision=++scanRevision;
+ const revision=++scanRevision,actor=bbScanActor();
  const f=photoFile;if(!f){$('#scanResults').innerHTML='<div class="warning">Choose a photo first.</div>';return}
  if(!f.type.startsWith('image/')||f.size>12*1024*1024){$('#scanResults').innerHTML='<div class="warning">Choose a food-only photo under 12 MB.</div>';return}
  if(!confirm('Send this resized food photograph to Cloudflare and Google Gemini to suggest ingredients? You will review every item before anything is saved. Cancel keeps it on this device.'))return;
@@ -487,7 +507,7 @@ async function scanPhoto(){
   const imageBase64=canvas.toDataURL('image/jpeg',.8).split(',')[1];
   if(!imageBase64||imageBase64.length>2500000)throw Error('Photo remains too large after resizing');
   const res=await requestBody('scan',{mimeType:'image/jpeg',imageBase64});
-  if(revision!==scanRevision)return;
+  if(revision!==scanRevision||bbScanActor()!==actor)return;
   if(!res.ok||!res.reviewRequired)throw Error('AI scan result is not ready for review');
   renderScanResponse(res.scan);
  }catch(e){if(revision===scanRevision)$('#scanResults').innerHTML='<div class="warning">'+esc(e.message)+'. No inventory was changed.</div>'}
@@ -539,7 +559,7 @@ function generate(){
    return;
   }
   const duration=(Number(r.prepMinutes)||0)+(Number(r.cookMinutes)||0),steps=r.steps.slice(0,15),allergens=Array.isArray(r.allergens)?r.allergens:[],safety=Array.isArray(r.safetyNotes)?r.safetyNotes:[];
-  $('#generated').innerHTML=`<article class="generated"><div class="eyebrow" style="color:var(--green)">Unverified AI recipe · early access</div><h3>${esc(r.title||'AI meal')}</h3><p>${esc(r.servings)} servings · ${esc(duration)} estimated minutes</p><p>${esc(r.summary||'')}</p><p class="hint">No cost estimate. This AI recipe is NOT automatically added to Planner or Shopping.</p><h4>Ingredients</h4><ul>${r.ingredients.map(a=>`<li>${esc(a.quantity||'Quantity unclear')} ${esc(a.name||'')} · ${a.fromHome===false?'<strong>To buy</strong>':'Have (check quantity)'}</li>`).join('')}</ul><h4>Method (review for food safety)</h4><ol>${steps.map(st=>`<li>${esc(String(st).replace(/^\s*\d+[.)]\s*/,''))}</li>`).join('')}</ol><h4>Possible allergens</h4><p>${esc(allergens.join(', ')||'Review packaged ingredients and allergens yourself')}</p><h4>Food safety reminders</h4><ul>${safety.map(s=>`<li>${esc(s)}</li>`).join('')||'<li>Check safe handling, storage and cooking temperatures.</li>'}</ul><div class="warning">AI-generated, not kitchen-tested or verified as safe for dietary requirements. Confirm all ingredients, allergens, quantities and cooking safety. BasketBoss never automatically adds AI drafts to the Planner.</div></article>`;
+  $('#generated').innerHTML=`<article class="generated"><div class="eyebrow" style="color:var(--green)">Unverified AI recipe · early access</div><h3>${esc(r.title||'AI meal')}</h3><p>${esc(r.servings)} servings · ${esc(bbMealDuration(duration))} estimated</p><p>${esc(r.summary||'')}</p><p class="hint">No cost estimate. This AI recipe is NOT automatically added to Planner or Shopping.</p><h4>Ingredients</h4><ul>${r.ingredients.map(a=>`<li><span data-bb-measures>${esc(bbMealQuantity(a.quantity||'Quantity unclear',a.name))}</span> ${esc(a.name||'')} · ${a.fromHome===false?'<strong>To buy</strong>':'Have (check quantity)'}</li>`).join('')}</ul><h4>Method (review for food safety)</h4><ol class="bb-recipe-method">${steps.map(bbMealStepHTML).join('')}</ol><h4>Possible allergens</h4><p>${esc(allergens.join(', ')||'Review packaged ingredients and allergens yourself')}</p><h4>Food safety reminders</h4><ul>${safety.map(s=>`<li data-bb-measures>${esc(bbMealStep(s))}</li>`).join('')||'<li>Check safe handling, storage and cooking temperatures.</li>'}</ul><div class="warning">AI-generated, not kitchen-tested or verified as safe for dietary requirements. Confirm all ingredients, allergens, quantities and cooking safety. BasketBoss never automatically adds AI drafts to the Planner.</div></article>`;
  }).catch(e=>{if(isCurrent())$('#generated').innerHTML='<div class="warning">'+esc(e.message+'. Your saved ingredients were not changed. The built-in recipes remain available.')+'</div>';}).finally(()=>{if(revision===generateRevision){generateInFlight=false;btn.disabled=false;}});
 }
 window.addEventListener('basketboss:account-deletion-started',bbClearGeneratedMeal);
@@ -836,23 +856,36 @@ $('#scanResults').addEventListener('submit',e=>{
  const checked=[...form.querySelectorAll('input[name="food"]:checked')];
  if(!checked.length){err.textContent='Tick at least one food you recognise before saving.';err.hidden=false;return;}
  const chosen=[];
+ if(!scanReviewActor||scanReviewActor!==bbScanActor()||window.BasketBossVerifiedPremium?.isActive?.()!==true){err.textContent='Your account or Premium access changed. Reopen the scan before saving.';err.hidden=false;return;}
  for(const control of checked){
   const row=control.closest('.scan-result-row'),loc=row?.querySelector('[data-scan-location]')?.value;
   if(!['fridge','freezer','cupboard'].includes(loc)){
    err.textContent='Choose Fridge, Freezer or Cupboard for each selected food before saving.';err.hidden=false;row?.querySelector('[data-scan-location]')?.focus();return;
   }
   if(loc==='cupboard'&&likelyPerishable(control.value)){err.textContent='This food is perishable. Choose Fridge or Freezer after checking its packaging and storage requirements.';err.hidden=false;row?.querySelector('[data-scan-location]')?.focus();return;}
-  chosen.push({name:control.value,loc});
+  const field=row.querySelector('[data-scan-quantity]'),raw=field?.value.trim()||'',unit=row.querySelector('[data-scan-unit]')?.value||bb25SuggestedUnit(control.value);
+  if(raw&&!field.checkValidity()){err.textContent='Check the amount for '+control.value+'.';err.hidden=false;field.focus();return;}
+  chosen.push({name:control.value,loc,qty:raw===''?null:Number(raw),unit});
  }
  err.hidden=true;
- const prior=JSON.stringify(inventory);
- for(const {name,loc} of chosen){
-  const key=uid(name,loc),previous=inventory[key];
-  inventory[key]={...previous,name,loc,selected:true,qty:previous?.qty??null,unit:previous?.unit||'each',source:'scan'};
- }
- if(!save()){inventory=JSON.parse(prior);return;}
- renderTiles();
- $('#scanResults').innerHTML='<div class="success">Your '+chosen.length+' reviewed ingredient'+(chosen.length===1?' was':'s were')+' saved to the locations you chose. <button type="button" data-open-tool="meal" class="bb-inline-link">Now make a meal with AI →</button></div>';
+ try{
+  if(window.BBAccountDeletion?.isDeleting?.()===true)throw Error('Finish account changes before updating your pantry.');
+  const deletion=JSON.parse(localStorage.getItem('basketboss_account_deletion_v1')||'null');if(['pending','deleting','deleted'].includes(deletion?.phase))throw Error('Account deletion is in progress.');
+  for(const key of ['basketboss_receipt_projection_owner_v1','basketboss_receipt_host_actor_v1']){const owner=JSON.parse(localStorage.getItem(key)||'{}');if(owner.actorId&&owner.actorId!==scanReviewActor)throw Error('Open At home with this account before saving pantry amounts.');}
+  const pending=JSON.parse(localStorage.getItem('basketboss_receipt_pending_confirmation_v1:'+encodeURIComponent(scanReviewActor))||'{}');if(pending.receiptId)throw Error('Finish your receipt confirmation before changing pantry amounts.');
+  const api=window.BBPantryCamera;if(!api)throw Error('Pantry saving is unavailable. Reload and try again.');
+  const expected=Object.fromEntries([STOCK,STORE,'basketboss_cloud_session_v1','basketboss_receipt_projection_owner_v1','basketboss_receipt_host_actor_v1','basketboss_account_deletion_v1','basketboss_receipt_pending_confirmation_v1:'+encodeURIComponent(scanReviewActor)].map(key=>[key,localStorage.getItem(key)]));
+  const saved=JSON.parse(expected[STORE]||'{}'),stock=JSON.parse(expected[STOCK]||'{}');
+  // Import-only rows carry an explicit snapshot of the existing stock, allowing
+  // a location amount to be replaced without crediting the same stock twice.
+  for(const [key,row]of Object.entries(inventory))if(row?.bb173ImportedStock&&!saved[key])saved[key]=row;
+  const result=api.prepare({stock,inventory:saved,foods:chosen,uid});
+  if(scanReviewActor!==bbScanActor())throw Error('Your account changed. Reopen the scan.');
+  api.commit(localStorage,result,expected);inventory=result.inventory;bb5Confirmed=false;renderTiles();
+  const measured=chosen.filter(food=>food.qty!==null).length;
+  $('#scanResults').innerHTML='<div class="success">Your '+chosen.length+' reviewed ingredient'+(chosen.length===1?' was':'s were')+' saved. '+(measured?measured+' checked amount'+(measured===1?' now updates':'s now update')+' At home and the shopping difference.':'No measured pantry amounts were changed.')+' <a class="bb-scan-pantry-return" href="index.html?bbreturn=pantry">Back to At home →</a></div>';
+ }catch(error){err.textContent=String(error.message||'Your pantry could not be saved.');err.hidden=false;}
+
 });
 $('#recipes').addEventListener('click',e=>{const a=e.target.closest('[data-plan]'),more=e.target.closest('#showMoreRecipes');if(a)openMealReview(Number(a.dataset.plan));if(more){suggestionOffset=(suggestionOffset+3)%results.length;renderRecipes();}});
 $('#mealReviewSave').addEventListener('click',confirmMeal);
@@ -870,6 +903,6 @@ fetch('recipes.json',{cache:'no-store'}).then(r=>{
   bbSecureFreeRecipes=data;
   void bbSecureRefreshPremiumRecipes();
 }).catch(e=>{message(e.message,'warning');renderTiles()});
-renderTiles();bb82UnifyMealLayout();bb15RestorePremiumEntry();document.documentElement.classList.add('bb-cook-ready')}
+renderTiles();bb82UnifyMealLayout();bb15RestorePremiumEntry();bbInstallPantryScanHandoff();document.documentElement.classList.add('bb-cook-ready')}
 if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',init,{once:true});else init();
 })();
