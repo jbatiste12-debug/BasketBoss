@@ -89,3 +89,24 @@ html body #app.bbnext-plan .bbnext-day-toggle{box-sizing:border-box!important;mi
 html body #app.bbnext-plan .bbnext-day.has-meal .bbnext-day-description{grid-template-columns:minmax(0,1fr)!important;min-width:0!important;max-width:100%!important}
 html body #app.bbnext-plan .bbnext-day.has-meal .bbnext-day-description strong{min-width:0!important;white-space:normal!important;overflow-wrap:anywhere!important}
 html body #app.bbnext-plan .bbnext-day.has-meal .bbfeed-meta{min-width:0!important;max-width:100%!important;flex-wrap:wrap!important}
+
+/* Compact removal boxes keep a full touch target beside each planned day. */
+html body #app.bbnext-plan .bbnext-day-toggle>button.bb77-clear-corner{
+ position:absolute!important;top:6px!important;right:6px!important;
+ display:inline-flex!important;align-items:center!important;justify-content:center!important;
+ box-sizing:border-box!important;flex:0 0 44px!important;
+ width:44px!important;min-width:44px!important;max-width:44px!important;
+ height:44px!important;min-height:44px!important;max-height:44px!important;
+ margin:0!important;padding:0!important;border:1px solid #efb5ae!important;
+ border-radius:10px!important;background:#fff1f0!important;box-shadow:none!important;
+ color:#b42318!important;-webkit-text-fill-color:#b42318!important;
+ font:600 20px/1 system-ui,-apple-system,sans-serif!important;
+}
+html body #app.bbnext-plan .bbnext-day-toggle>button.bb77-clear-corner:hover,
+html body #app.bbnext-plan .bbnext-day-toggle>button.bb77-clear-corner:active{
+ background:#ffe4e1!important;border-color:#d25346!important;
+ color:#981b10!important;-webkit-text-fill-color:#981b10!important;
+}
+html body #app.bbnext-plan .bbnext-day-toggle>button.bb77-clear-corner:focus-visible{
+ outline:2px solid #b42318!important;outline-offset:2px!important;
+}
