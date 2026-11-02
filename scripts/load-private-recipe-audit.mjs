@@ -153,6 +153,8 @@ function privateDirectory(directory, publicRoot = ROOT) {
   return resolved;
 }
 
+export { privateDirectory as ensurePrivateAuditDirectory, safeOutsidePath as privateAuditPath };
+
 export function validatePrivateRecipeExport(value) {
   if (!plain(value) || value.schemaVersion !== 1 || value.source?.kind !== 'cloudflare-d1-read-only' || value.source?.table !== TABLE || !UUID.test(value.source?.databaseId || '') || typeof value.source?.readAt !== 'string' || !Number.isFinite(Date.parse(value.source.readAt)) || !/^[a-f0-9]{64}$/.test(value.rowsSha256 || '')) fail('export_invalid');
   const checked = checkedRows(value.rows);
@@ -160,13 +162,14 @@ export function validatePrivateRecipeExport(value) {
   return checked;
 }
 
-export function writePrivateRecipeExport({ outputDirectory, rows, databaseId, publicRoot = ROOT }) {
+export function writePrivateRecipeExport({ outputDirectory, rows, databaseId, readAt = new Date().toISOString(), publicRoot = ROOT }) {
   if (!UUID.test(databaseId || '')) fail('database_invalid');
+  if (typeof readAt !== 'string' || !Number.isFinite(Date.parse(readAt))) fail('export_invalid');
   const checked = checkedRows(rows);
   const directory = privateDirectory(outputDirectory, publicRoot);
   const exportPath = path.join(directory, 'current-premium.json');
   safeOutsidePath(exportPath, publicRoot);
-  const value = { schemaVersion: 1, source: { kind: 'cloudflare-d1-read-only', table: TABLE, databaseId, readAt: new Date().toISOString() }, rowsSha256: checked.sha256, rows };
+  const value = { schemaVersion: 1, source: { kind: 'cloudflare-d1-read-only', table: TABLE, databaseId, readAt }, rowsSha256: checked.sha256, rows };
   const bytes = Buffer.from(JSON.stringify(value) + '\n');
   if (bytes.length > MAX_EXPORT_BYTES) fail('export_size');
   let descriptor;

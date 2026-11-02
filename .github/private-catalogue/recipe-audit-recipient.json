@@ -1,0 +1,6 @@
+{
+  "version": 1,
+  "suite": "X25519-HKDF-SHA256-AES-256-GCM",
+  "publicKey": "MCowBQYDK2VuAyEADbh1inQ/EMN7uUQ+YC5blYNoQZfW56CyZcyR5GQOaWQ=",
+  "fingerprint": "42a45e0fae9d18356056a299a0dcfae17159935d1feee90eb73d85b1fc225eae"
+}

@@ -49,6 +49,32 @@ The full snapshot is written exclusively to `current-premium.json` inside the us
 
 The audit CLI validates that private input remains outside the checkout with restrictive permissions, then screens the private rows alongside the public source. Its protected-source summary includes counts, the snapshot hash and rule codes/stable IDs, with no private recipe titles, methods, ingredient names or quantities. Current coverage rises from 100 to 500 only after an explicit valid 400-row current export is supplied. Historical source never raises that count. This is an automatic screen; manual inspection of flagged current records and ingredient/method review still follows. The observed coverage above remains 100 current full records until the live read actually succeeds.
 
+### GitHub Actions route when the task has no direct Cloudflare connection
+
+Putting a token into the production website's Cloudflare environment does not expose it to the task workspace or GitHub Actions. The prepared alternative is a separate job in the existing **Check Cloudflare catalogue connection** workflow. It runs only for a manual `workflow_dispatch` on `release/recipe-editorial-collections`; the existing `main` inspection job is unchanged. It does not use the deployment `github-pages` environment or the deployment token.
+
+In **GitHub repository Settings → Secrets and variables → Actions**, configure repository secret `CLOUDFLARE_RECIPE_AUDIT_READ_TOKEN` with the dedicated Account D1 Read token, and repository secret or variable `CLOUDFLARE_ACCOUNT_ID`. An optional repository variable `CLOUDFLARE_DATABASE_ID` selects a specific database UUID. These are separate from existing deployment credentials; do not replace the deployment token. After the workflow code is pushed, choose **Actions → Check Cloudflare catalogue connection → Run workflow**, select the release branch and run it.
+
+`scripts/recipe-audit-ci.mjs` verifies the repository, manual event, exact ref, commit, run ID and attempt; downloads the fixed 400-row table to a private runner-temporary directory; produces only a counts/hash summary; and encrypts the snapshot using the checked public recipient in `.github/private-catalogue/recipe-audit-recipient.json`. The existing X25519/HKDF/AES-GCM envelope implementation is reused. The high-entropy transport key remains in a `0600` file outside the checkout and is never sent to GitHub. The outer metadata binds `sourceCommit` and release ID `readonly-recipe-audit-RUN_ID-RUN_ATTEMPT`; all five run-context fields also appear inside the encrypted payload.
+
+Plaintext cleanup runs in a `finally` block and a separate `always()` workflow step. The only uploaded artifact is `readonly-recipe-audit-encrypted-RUN_ID-RUN_ATTEMPT`, containing the one explicitly named `basketboss-recipe-audit.sealed.json` file, retained for one day. Private snapshots, methods, ingredients, tokens and the transport key are never uploaded or printed. A missing read secret/account fails with a fixed configuration diagnostic before contacting Cloudflare. No activation, deployment or D1 write step is added.
+
+Download the artifact **from the selected trusted repository Actions run** into a directory outside the checkout. Confirm that run's commit SHA, run ID and attempt in GitHub, then open it locally with the corresponding expected values:
+
+```sh
+node scripts/open-private-recipe-audit.mjs \
+  --sealed /workspace/work/private-recipe-audit-download/basketboss-recipe-audit.sealed.json \
+  --key-file /workspace/work/private-recipe-audit-access/audit-transport.key \
+  --out-dir /workspace/work/private-recipe-audit-current \
+  --commit EXPECTED_COMMIT_SHA --run-id RUN_ID --run-attempt RUN_ATTEMPT
+node scripts/audit-recipe-instructions.mjs \
+  --current-private /workspace/work/private-recipe-audit-current/current-premium.json --json
+```
+
+Replace the three uppercase run placeholders with the verified values. The opener rejects wrong keys, tampered ciphertext, mismatched commit/ref/repository/run identity, permissive key files, public/symlink output paths and existing output files. It validates snapshot identity and integrity before writing a new `0600` private export, preserving the original query timestamp. Encryption authenticates the ciphertext but does not authenticate who created it: anyone with a public recipient can construct an envelope, so the trusted GitHub-run download is essential rather than treating the payload's own context as proof of its publisher.
+
+Eight synthetic integration checks verify the 100-public + 400-protected sealed roundtrip, fixed SELECT, full-500 automatic coverage, original read-timestamp preservation, plaintext cleanup including a post-download sealing failure, all run-context mismatches, wrong keys/tampering, exclusive private output and workflow isolation. No live GitHub/Cloudflare audit run is claimed by these checks.
+
 ## Historical findings requiring current-record comparison
 
 The historical 321-record screen found no duplicate IDs, empty methods or invalid numeric times. Its one `method`/`steps` drift is `pan-gnocchi-spinach`, already fixed in the current public source. The selected automatic regressions identify 24 historical consistency findings: 14 overlap current public records that have since been corrected, and 10 affect historical records outside the public 100. The script reports these separately and does not present them as new current errors.
