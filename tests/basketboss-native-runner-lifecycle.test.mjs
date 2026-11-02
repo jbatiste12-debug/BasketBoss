@@ -139,6 +139,9 @@ test('CI Cook uses a hosted XCTest launch on the exact selected phone, while loc
  const result=await runScript('test-ios-cook-smoke.mjs');
  assert.equal(result.process.exitCode,undefined);
  assert.ok(result.commands.some(command=>command[0]==='ruby'&&command[1]==='scripts/prepare-ios-cook-smoke-tests.rb'));
+ const prepare=result.executions.find(call=>call.command==='ruby');
+ assert.equal(prepare.timeout,120000,'cold setup receives the same bounded budget as keyboard setup');
+ assert.ok(result.commands.findIndex(command=>command[0]==='ruby')<result.commands.findIndex(command=>command[1]==='simctl'&&command[2]==='boot'));
  const tests=result.executions.find(call=>call.command==='xcodebuild'&&call.args.includes('test-without-building'));
  assert.ok(tests.args.includes('BasketBossCookSmokeTests'));
  assert.ok(tests.args.includes('platform=iOS Simulator,id=proven-phone'));

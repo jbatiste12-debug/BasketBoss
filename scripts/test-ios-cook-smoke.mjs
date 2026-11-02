@@ -13,6 +13,10 @@ const save=(name,value)=>{if(ci)fs.writeFileSync(path.join(output,name),value);}
 const saveFailure=(name,error)=>{const log=String(error.stdout||'')+'\n'+String(error.stderr||'');save(name,log);console.log(log.slice(-16000));};
 let stage='devices',raw,failure='',failedStage='',runtimeVersion='',launchAttempts=0,testSummary;
 try{
+ // Match the keyboard runner's setup budget and prepare before a cold iOS
+ // simulator starts competing for the hosted Mac's CPU and disk.
+ if(ci){stage='prepare_hosted_tests';exec('ruby',['scripts/prepare-ios-cook-smoke-tests.rb'],120000);}
+ stage='devices';
  const devices=JSON.parse(run('simctl','list','devices','available','--json')).devices;
  const runtimes=keyboardRuntimePlan({runtimes:JSON.parse(run('simctl','list','runtimes','--json')).runtimes,devices}).runtimes;
  const bootedRuntime=runtimes.find(runtime=>(devices[runtime.identifier]||[]).some(device=>device.isAvailable&&device.name.startsWith('iPhone')&&device.state==='Booted'));
@@ -39,7 +43,6 @@ try{
  const products='/tmp/basketboss-ios-build/Build/Products/Debug-iphonesimulator',app=path.join(products,'App.app');
  let testArguments;
  if(ci){
-  stage='prepare_hosted_tests';exec('ruby',['scripts/prepare-ios-cook-smoke-tests.rb'],30000);
   testArguments=['-quiet','-workspace','ios/App/App.xcworkspace','-scheme','BasketBossCookSmokeTests','-configuration','Debug','-sdk','iphonesimulator','-destination','platform=iOS Simulator,id='+phone.udid,'-derivedDataPath','/tmp/basketboss-ios-build','CODE_SIGNING_ALLOWED=NO'];
   stage='hosted_build';try{save('build.log',exec('xcodebuild',[...testArguments,'build-for-testing'],300000));}catch(error){saveFailure('build.log',error);throw error;}
   const bundle=path.join(products,'BasketBossCookSmokeTests.xctest');
