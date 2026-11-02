@@ -88,6 +88,7 @@
   }
   function decorate(container){
    checkDraftActor();if(!container)return;
+   if(householdDraft.size){const confirm=win.document.getElementById('bb5Reconcile');if(confirm)confirm.disabled=false;}
    for(const button of container.querySelectorAll('[data-bb307-skip]')){
     const id=button.dataset.bb307Skip,row=button.closest('.bb16-essential-row'),item=host()?.household()?.find(x=>x.id===id);
     if(!row||!item||row.querySelector('.bb-home-quantities'))continue;
