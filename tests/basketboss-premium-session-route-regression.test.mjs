@@ -32,10 +32,10 @@ globalThis.__bbBoundarySeat={
 const moduleFrom=code=>'data:text/javascript;base64,'+Buffer.from(code).toString('base64');
 const mw=await import(moduleFrom(input));
 const base={BB_PREMIUM_SINGLE_SESSION_ENABLED:'true',BB_BILLING_ENABLED:'true',BB_BILLING_MODE:'live',CF_PAGES_BRANCH:'main',SUPABASE_URL:'https://kbhyosxuvlcazyzzinqv.supabase.co'};
-const request=(path,host='https://basketboss.co.uk')=>new Request(host+path,{headers:{Authorization:'Bearer test-only'}});
-const invoke=async(path,override={},host)=>{
+const request=(path,host='https://basketboss.co.uk',method='GET')=>new Request(host+path,{method,headers:{Authorization:'Bearer test-only'}});
+const invoke=async(path,override={},host,method='GET')=>{
  let nextCalls=0;
- const response=await mw.onRequest({request:request(path,host),env:{...base,...override},next:()=>{nextCalls++;return new Response('NEXT',{status:200})}});
+ const response=await mw.onRequest({request:request(path,host,method),env:{...base,...override},next:()=>{nextCalls++;return new Response('NEXT',{status:200})}});
  return {response,nextCalls};
 };
 const reset=()=>{authCalls=0;seatCalls=0;accepted=true;sessionOk=false;throwSession=false;};
@@ -64,11 +64,27 @@ test('Subscription routes survive session RPC downtime but still authenticate',a
  }
  assert.equal(authCalls,0);assert.equal(seatCalls,0);
 });
-test('Paid recipes, AI, and household reject an older session',async()=>{
- reset();for(const p of ['/api/recipes/premium','/api/bb173/generate','/api/bb173/scan','/api/bb173/meal-image','/api/household']){
+test('Paid recipes, AI speech, and household reject an older session',async()=>{
+ reset();for(const p of ['/api/recipes/premium','/api/bb173/generate','/api/bb173/scan','/api/bb173/meal-image','/api/household','/api/tts?clip='+ 'a'.repeat(64)]){
   const r=await invoke(p);assert.equal(r.response.status,403,p);assert.equal(r.nextCalls,0,p);
  }
- assert.equal(seatCalls,5);assert.equal(authCalls,5);
+ assert.equal(seatCalls,6);assert.equal(authCalls,6);
+});
+test('TTS generation and cached MP3 GET/HEAD never reach audio storage from an older or unauthenticated session',async()=>{
+ const clip='/api/tts?clip='+'b'.repeat(64);
+ for(const [method,path]of [['POST','/api/tts'],['GET',clip],['HEAD',clip]]){
+  reset();let result=await invoke(path,{},undefined,method);
+  assert.equal(result.response.status,403,method+' rejects the older paid-device session');
+  assert.equal(result.nextCalls,0,method+' cannot reach the speech endpoint or its private audio cache');
+  assert.equal(authCalls,1);assert.equal(seatCalls,1);
+  accepted=false;result=await invoke(path,{},undefined,method);
+  assert.equal(result.response.status,401,method+' requires current authenticated identity');assert.equal(result.nextCalls,0);
+  assert.equal(seatCalls,1,'unauthenticated callers never invoke the seat RPC');
+  reset();throwSession=true;result=await invoke(path,{},undefined,method);
+  assert.equal(result.response.status,503,method+' fails closed when current-session verification is unavailable');assert.equal(result.nextCalls,0);
+  reset();sessionOk=true;result=await invoke(path,{},undefined,method);
+  assert.equal(result.response.status,200);assert.equal(result.nextCalls,1,'the independently guarded speech endpoint runs only after the current-session check');
+ }
 });
 test('Paid API requests fail closed on a session RPC outage',async()=>{
  reset();throwSession=true;
@@ -77,10 +93,10 @@ test('Paid API requests fail closed on a session RPC outage',async()=>{
 });
 test('Paid routes allow only newest verified session',async()=>{
  reset();sessionOk=true;
- for(const p of ['/api/recipes/premium','/api/bb173/scan','/api/bb173/meal-image','/api/household']){
+ for(const p of ['/api/recipes/premium','/api/bb173/scan','/api/bb173/meal-image','/api/household','/api/tts?clip='+ 'a'.repeat(64)]){
   const r=await invoke(p);assert.equal(r.response.status,200);assert.equal(r.nextCalls,1);
  }
- assert.equal(seatCalls,4);
+ assert.equal(seatCalls,5);
 });
 test('Paid endpoints deny missing authenticated identity',async()=>{
  reset();accepted=false;
@@ -104,7 +120,7 @@ test('Wrong Supabase tenant and QA preview cannot use paid session middleware',a
  assert.equal(seatCalls,0);
 });
 test('Explicit OFF brake bypasses session middleware for all existing routes',async()=>{
- reset();for(const p of ['/api/recipes/premium','/api/bb173/generate','/api/subscription/status','/api/subscription/portal','/api/household']){
+ reset();for(const p of ['/api/recipes/premium','/api/bb173/generate','/api/subscription/status','/api/subscription/portal','/api/household','/api/tts']){
   const r=await invoke(p,{BB_PREMIUM_SINGLE_SESSION_ENABLED:'false'});
   assert.equal(r.response.status,200);assert.equal(r.nextCalls,1);
  }

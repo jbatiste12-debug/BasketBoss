@@ -1,15 +1,15 @@
 // A session-bound bridge. Capability checks never request microphone access.
-// Native speech can use Apple's recognition service; nothing is sent to our API.
+// Recognition can use Apple's service. Only recipe narration uses the TTS API.
 export function installNativeCookVoice({plugin,window:win=globalThis.window,isPremium=()=>false}={}){
  if(!plugin||!win)throw Error('Native Cook voice requires the native plugin.');
- let current=null,sequence=0,requestGeneration=0;
+ let current=null,sequence=0,requestGeneration=0,speechGeneration=0,speechOperation=null;
  const permitted=()=>isPremium()===true&&win.document?.hidden!==true;
  const remove=async handles=>{for(const handle of handles)try{await handle.remove();}catch{}};
  const failure=(code)=>Object.assign(Error(code),{code});
  async function cleanup(session){
   if(!session)return;
   if(current===session)current=null;
-  session.active=false;
+  session.active=false;speechGeneration++;speechOperation=null;
   if(!session.cleanup)session.cleanup=Promise.allSettled([plugin.stop({sessionId:session.id}),remove(session.handles)]);
   await session.cleanup;
  }
@@ -44,17 +44,62 @@ export function installNativeCookVoice({plugin,window:win=globalThis.window,isPr
    throw error;
   }
  }
- async function speak(value){
+ const cancelled=()=>({spoken:false,cancelled:true});
+ const activeSpeech=(operation)=>operation&&speechOperation===operation&&current===operation.session&&operation.session.active&&operation.generation===speechGeneration&&permitted();
+ function trustedAudioURL(value){
+  try{
+   const url=new URL(value);
+   if(url.protocol!=='https:'||url.hostname!=='basketboss.co.uk'||url.port||url.username||url.password||url.hash||url.pathname!=='/api/tts')return null;
+   const entries=[...url.searchParams];
+   return entries.length===1&&entries[0][0]==='clip'&&/^[a-f0-9]{64}$/.test(entries[0][1])?url.href:null;
+  }catch{return null;}
+ }
+ async function prepareSpeech(){
+  const session=current,generation=++speechGeneration;speechOperation=null;
+  if(!session?.active||!permitted())return cancelled();
+  const result=await plugin.prepareSpeech({sessionId:session.id});
+  const speechId=result?.speechId;
+  if(typeof speechId!=='string'||!speechId||speechId.length>80)return cancelled();
+  if(current!==session||!session.active||!permitted()||generation!==speechGeneration){
+   try{await plugin.cancelSpeech({sessionId:session.id,speechId});}catch{}
+   return cancelled();
+  }
+  speechOperation={speechId,session,generation};
+  return {speechId};
+ }
+ async function cancelSpeech({speechId}={}){
+  const operation=speechOperation;
+  if(!operation||operation.speechId!==speechId)return cancelled();
+  speechGeneration++;speechOperation=null;
+  try{await plugin.cancelSpeech({sessionId:operation.session.id,speechId});}catch{}
+  return cancelled();
+ }
+ async function playAudio({url,token,speechId}={}){
+  const operation=speechOperation;
+  if(!activeSpeech(operation)||operation.speechId!==speechId)return cancelled();
+  const address=trustedAudioURL(url);
+  if(!address||typeof token!=='string'||!token||token.length>16384||!/^[A-Za-z0-9._~-]+$/.test(token))throw failure('BB_VOICE_AUDIO_URL');
+  try{
+   const result=await plugin.playAudio({sessionId:operation.session.id,speechId,url:address,token});
+   if(!activeSpeech(operation))return cancelled();
+   return result;
+  }catch(error){if(!activeSpeech(operation))return cancelled();throw error;}
+ }
+ async function speak(value,{speechId}={}){
   const text=String(value||'').trim(),session=current;
-  // Instructions can be longer than a recognised command. Never silently
-  // truncate an instruction, especially its cooking or food-safety guidance.
+  // Never truncate cooking or food-safety guidance.
   if(text.length>4000)throw failure('BB_VOICE_TEXT');
-  if(!text||!session?.active||!permitted())return;
-  await plugin.speak({sessionId:session.id,text});
+  if(!text||!session?.active||!permitted())return cancelled();
+  const operation=speechOperation;
+  if(speechId!==undefined&&(!activeSpeech(operation)||operation.speechId!==speechId))return cancelled();
+  if(speechId===undefined){speechGeneration++;speechOperation=null;}
+  const result=await plugin.speak({sessionId:session.id,text,...(speechId===undefined?{}:{speechId})});
+  if(current!==session||!session.active||!permitted())return cancelled();
+  return result;
  }
  const api=Object.freeze({
   async available(){try{return (await plugin.available())?.available===true;}catch{return false;}},
-  start,stop,speak
+  start,stop,speak,prepareSpeech,playAudio,cancelSpeech
  });
  win.document?.addEventListener?.('visibilitychange',()=>{if(win.document.hidden)void stop();});
  win.addEventListener?.('pagehide',()=>void stop());

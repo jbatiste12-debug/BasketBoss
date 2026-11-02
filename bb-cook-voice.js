@@ -2,10 +2,11 @@
  * actions; speech never creates recipes, timers or subscription permissions. */
 (function(root,factory){
  'use strict';
- const api=factory(root);
+ const common=typeof module==='object'&&module.exports;
+ const api=factory(root,root?.BBCookSpeechText||(common?require('./bb-cook-speech-text.js'):null),root?.BBCookTTS||(common?require('./bb-cook-tts.js'):null));
  if(typeof module==='object'&&module.exports)module.exports=api;
  if(root)root.BBCookVoice=api;
-})(typeof window==='undefined'?null:window,function(root){
+})(typeof window==='undefined'?null:window,function(root,spoken,ttsLibrary){
  'use strict';
  const normalize=value=>String(value??'').normalize('NFKD').replace(/[\u0300-\u036f]/g,'').toLowerCase().replace(/[’']/g,'').replace(/[^a-z0-9]+/g,' ').replace(/\s+/g,' ').trim();
  const singular=Object.freeze({onions:'onion',carrots:'carrot',potatoes:'potato',tomatoes:'tomato',chillies:'chilli',berries:'berry',leaves:'leaf',loaves:'loaf',eggs:'egg',cloves:'clove',peppers:'pepper',mushrooms:'mushroom',peas:'pea',beans:'bean',chickpeas:'chickpea',lentils:'lentil',fillets:'fillet',breasts:'breast',thighs:'thigh',sausages:'sausage',prawns:'prawn',wraps:'wrap',noodles:'noodle',nuts:'nut',almonds:'almond',walnuts:'walnut',cashews:'cashew',pistachios:'pistachio',olives:'olive',capers:'caper',lemons:'lemon',limes:'lime',apples:'apple',pears:'pear',bananas:'banana',oranges:'orange',grapes:'grape',cherries:'cherry',strawberries:'strawberry',raspberries:'raspberry',blueberries:'blueberry',courgettes:'courgette',aubergines:'aubergine',shallots:'shallot',leeks:'leek',cucumbers:'cucumber',parsnips:'parsnip',scallops:'scallop',mussels:'mussel',anchovies:'anchovy',herbs:'herb',cheeses:'cheese'});
@@ -34,7 +35,7 @@
   if(found.length>1)return {ok:false,message:'More than one ingredient matches. Say its full name.'};
   if(!found.length)return {ok:false,message:'I could not find that ingredient. Say its name from the recipe.'};
   const item=found[0],name=item.name.trim().slice(0,180),quantity=item.quantity.trim().slice(0,180);
-  return quantity?{ok:true,message:name+': '+quantity+'.',ingredient:item}:{ok:false,message:'Check the recipe for that ingredient’s amount.'};
+  return quantity?{ok:true,message:spoken?spoken.answer({name,quantity}):name+': '+quantity+'.',ingredient:item}:{ok:false,message:'Check the recipe for that ingredient’s amount.'};
  }
  function narrationFor(context={}){
   const phase=context.phase;
@@ -43,12 +44,12 @@
    if(context.prepComplete===true||index>=ingredients.length)return {key:'prep|ready',text:'That’s your ingredient list ready. When you’re ready to begin, say “start cooking”.',status:'Ingredients ready. Say “start cooking” when you’re ready.'};
    const ingredient=ingredients[index],name=String(ingredient?.name||'').trim(),quantity=String(ingredient?.quantity||'').trim();
    if(!name||!quantity)return {key:'prep|'+index+'|check',text:'Check the next ingredient and its amount on screen. Say “next ingredient” when you’re ready.',status:'Check the ingredient and amount on screen.'};
-   const text=(index===0?'Let’s start with ':'Next, ')+name+': '+quantity+'. Say “next ingredient” when you’re ready.';
+   const text=spoken?spoken.ingredient({name,quantity,index}):(index===0?'Let’s start with ':'Next, ')+name+': '+quantity+'. Say “next ingredient” when you’re ready.';
    return {key:'prep|'+index+'|'+name+'|'+quantity,text:text.length<=4000?text:null,status:text.length<=4000?'Reading ingredient '+(index+1)+' of '+ingredients.length+'.':'This ingredient entry is too long to read aloud. Check its complete amount on screen.'};
   }
   if(phase==='cook'&&typeof context.currentStep==='string'&&context.currentStep.trim()){
    const step=context.currentStep.trim(),index=Number.isInteger(context.stepIndex)&&context.stepIndex>=0?context.stepIndex:0,count=Number.isInteger(context.stepCount)&&context.stepCount>index?context.stepCount:null;
-   const text='Step '+(index+1)+(count?' of '+count:'')+'. '+step+' Say “next step” when you’re ready.';
+   const text=spoken?spoken.step({text:step,index,count}):'Step '+(index+1)+(count?' of '+count:'')+'. '+step+' Say “next step” when you’re ready.';
    return {key:'cook|'+index+'|'+step,text:text.length<=4000?text:null,status:text.length<=4000?'Reading step '+(index+1)+(count?' of '+count:'')+'.':'This instruction is too long to read aloud in one go. Follow the complete step on screen.'};
   }
   return null;
@@ -92,9 +93,14 @@
   const icon=create('span','bbcv-icon');icon.setAttribute('aria-hidden','true');icon.innerHTML='<svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.8"><rect x="8" y="2" width="8" height="13" rx="4"/><path d="M5 10v2a7 7 0 0 0 14 0v-2M12 19v3M8 22h8" stroke-linecap="round"/></svg>';
   button.append(icon,label);
   const status=create('p','bbcv-status',''),help=create('p','bbcv-help','Say “Next step”, “Previous step”, “Start timer” or “How much cheddar?”');
-  status.setAttribute('role','status');status.setAttribute('aria-live','polite');row.append(button,status);holder.append(row,help);container.append(holder);
+  const disclosure=create('p','bbcv-disclosure','Uses an AI-generated voice online and your device voice as backup.');
+  status.setAttribute('role','status');status.setAttribute('aria-live','polite');row.append(button,status);holder.append(row,help,disclosure);container.append(holder);
   let disposed=false,wanted=false,listening=false,starting=false,startPending=false,speaking=false,epoch=0,speechGeneration=0,instance=null,backend=null,available=null,currentKey=null,lastHandled=null,lastNarrated=null,spokenStatus='',restartTimer=null,speechTimer=null;
   const native=()=>host.BBNativeCookVoice;
+  const tts=options.tts||ttsLibrary?.create?.({window:host});
+  let output=null;
+  const actor=()=>{try{return host.BasketBossSession?.read?.()?.user?.id||JSON.parse(host.localStorage?.getItem('basketboss_cloud_session_v1')||'null')?.user?.id||null;}catch{return null;}};
+  let currentActor=actor();
   const Speech=()=>host.SpeechRecognition||host.webkitSpeechRecognition;
   function read(){try{return options.context()||{};}catch(_){return {};}}
   const allowed=()=>{const value=read();return !disposed&&value.active===true&&value.premium===true&&doc.visibilityState!=='hidden'&&container.isConnected!==false;};
@@ -106,6 +112,7 @@
    label.textContent=context.premium!==true?'Voice Cook · Premium':starting?'Starting microphone…':wanted?'Stop listening':available===false?'Voice unavailable':'Turn on voice';
    button.disabled=context.premium===true&&(starting||available===false);
    help.textContent=context.premium!==true?'A spoken guide through prep, cooking steps and ingredient amounts.':context.phase==='prep'?'Say “next ingredient”, “repeat”, “start cooking” or an ingredient’s name.':'Say “next step”, “previous step”, “repeat”, “start timer” or “how much cheddar?”';
+   disclosure.hidden=context.premium!==true;
   }
   async function capability(){
    if(native()){
@@ -115,8 +122,19 @@
    return available;
   }
   function clearTimers(){if(restartTimer!==null)host.clearTimeout(restartTimer);if(speechTimer!==null)host.clearTimeout(speechTimer);restartTimer=speechTimer=null;}
+  function cancelOutput(){
+   const old=output;output=null;try{old?.controller?.abort();}catch(_){}
+   if(old?.speechId)try{Promise.resolve(native()?.cancelSpeech?.({speechId:old.speechId})).catch(()=>{});}catch(_){}
+  }
+  function rejectedAccess(error){
+   if(!['BB_TTS_AUTH','BB_TTS_PREMIUM_REQUIRED','BB_TTS_DELETING'].includes(error?.code))return false;
+   stop(error.code==='BB_TTS_DELETING'?'Voice is off while account deletion is in progress.':'Check your signed-in Premium account, then reopen Cook to use voice.');
+   try{Promise.resolve(host.BasketBossMembershipUI?.refresh?.()).catch(()=>{});}catch(_){}
+   return true;
+  }
   function stop(reason='Voice is off.'){ 
    wanted=false;listening=false;starting=false;startPending=false;speaking=false;spokenStatus='';lastNarrated=null;epoch++;speechGeneration++;clearTimers();
+   cancelOutput();
    const old=instance;instance=null;try{old?.abort();}catch(_){}
    try{Promise.resolve(native()?.stop()).catch(()=>{});}catch(_){}
    try{host.speechSynthesis?.cancel();}catch(_){}
@@ -155,28 +173,63 @@
   }
   async function speak(text,session,statusText){
    if(session!==epoch||!wanted||!allowed())return;
-   spokenStatus=statusText||text;message(spokenStatus);
-   if(backend==='native'){
-    speaking=true;listening=false;render();
-    try{await native().speak(text);}catch(_){if(session===epoch&&wanted){speaking=false;message('Read the recipe on screen if audio is unavailable.');}}return;
-   }
-   if(!host.speechSynthesis||typeof host.SpeechSynthesisUtterance!=='function'){if(statusText)message('Spoken audio is unavailable. Follow the ingredient or step on screen.');return;}
-   const generation=++speechGeneration;
+   text=spoken?spoken.plain(text):text;
+   const generation=++speechGeneration;cancelOutput();
    if(speechTimer!==null)host.clearTimeout(speechTimer);speechTimer=null;
-   speaking=true;listening=false;const old=instance;instance=null;try{old?.abort();}catch(_){}render();
-   const utterance=new host.SpeechSynthesisUtterance(text);utterance.lang=read().lang||'en-GB';utterance.rate=1;utterance.pitch=1;
+   const Controller=host.AbortController||globalThis.AbortController;
+   const job={controller:Controller?new Controller():null,speechId:null};output=job;
+   const current=()=>session===epoch&&generation===speechGeneration&&wanted&&allowed()&&!job.controller?.signal.aborted;
+   const release=()=>{if(output===job)output=null;};
+   spokenStatus=statusText||text;message(spokenStatus);
+   speaking=true;listening=false;render();
+   if(backend==='native'){
+    try{
+     if(tts&&job.controller&&native()?.prepareSpeech&&native()?.playAudio){
+      try{
+       const prepared=await native().prepareSpeech();
+       if(prepared?.cancelled||!current())return;
+       job.speechId=prepared?.speechId;
+       if(!job.speechId)throw Error('Native voice preparation unavailable');
+       const clip=await tts.prepare(text,{signal:job.controller.signal,timeoutMs:20000});
+       if(!current())return;
+       const result=await native().playAudio({...clip,speechId:job.speechId});
+       if(result?.cancelled||!current())return;
+       if(result?.spoken!==true)throw Error('AI audio unavailable');
+       return;
+      }catch(error){if(!current()||error?.name==='AbortError'||rejectedAccess(error))return;}
+     }
+     if(current())await native().speak(text,job.speechId?{speechId:job.speechId}:undefined);
+    }catch(_){
+     if(current()){
+      if(job.speechId)try{await native().cancelSpeech?.({speechId:job.speechId});}catch(_){}
+      speaking=false;message('Read the recipe on screen if audio is unavailable.');
+     }
+    }finally{release();}
+    return;
+   }
+   // Hold recognition while preparing and playing either voice. No microphone
+   // audio or transcripts go to TTS; only this recipe-derived spoken response.
+   const old=instance;instance=null;try{old?.abort();}catch(_){}
+   if(tts&&job.controller&&(options.tts||typeof host.Audio==='function')){
+    try{
+     await tts.play(text,{signal:job.controller.signal,timeoutMs:speechTimeoutMs(text)});
+     if(current()){speaking=false;release();beginBrowser(session);}
+     return;
+    }catch(error){if(!current()||error?.name==='AbortError'||rejectedAccess(error)){release();return;}}
+   }
+   if(!current()){release();return;}
+   if(!host.speechSynthesis||typeof host.SpeechSynthesisUtterance!=='function'){
+    speaking=false;release();if(statusText)message('Spoken audio is unavailable. Follow the ingredient or step on screen.');beginBrowser(session);return;
+   }
+   const utterance=new host.SpeechSynthesisUtterance(text);utterance.lang='en-GB';utterance.rate=1;utterance.pitch=1;
    const voice=britishVoice(host.speechSynthesis);if(voice)utterance.voice=voice;
    let ended=false,watchdog=null;
-   const current=()=>session===epoch&&generation===speechGeneration;
    const finish=()=>{
     if(ended)return;ended=true;
-    // A cancelled utterance may finish after a new listening session starts.
-    // Only this session's current utterance owns its watchdog and speech state.
     if(!current())return;
     if(watchdog!==null)host.clearTimeout(watchdog);
     if(speechTimer===watchdog)speechTimer=null;
-    watchdog=null;speaking=false;
-    if(wanted&&allowed())beginBrowser(session);
+    watchdog=null;speaking=false;release();beginBrowser(session);
    };
    utterance.onend=finish;utterance.onerror=finish;
    try{
@@ -214,7 +267,7 @@
    const context=read();
    if(context.premium!==true){try{context.upgrade?.();}catch(_){}return;}
    if(!allowed()||starting)return;
-   wanted=true;starting=true;startPending=true;epoch++;const session=epoch;lastHandled=null;lastNarrated=null;message('Opening the microphone…');render();
+   wanted=true;starting=true;startPending=true;currentActor=actor();epoch++;const session=epoch;lastHandled=null;lastNarrated=null;message('Opening the microphone…');render();
    if(available===null&&!await capability()){if(session===epoch)stop('Voice recognition is not available on this device.');return;}
    if(session!==epoch||!wanted||!allowed())return;
    if(backend==='native'){
@@ -230,7 +283,7 @@
   }
   function pageHidden(){if(doc.visibilityState==='hidden')stop('Voice is off while the app is in the background.');}
   function leaving(){stop('Voice is off.');}
-  function accountChanged(){stop('Voice is off.');refresh();}
+  function accountChanged(){const next=actor();if(!next||next!==currentActor)stop('Voice is off.');currentActor=next;refresh();}
   button.addEventListener('click',()=>{if(wanted)stop();else void start();});
   doc.addEventListener('visibilitychange',pageHidden);doc.addEventListener('basketboss:premium-verified',refresh);
   host.addEventListener?.('pagehide',leaving);host.addEventListener?.('basketboss:session-changed',accountChanged);host.addEventListener?.('basketboss:account-deletion-started',leaving);

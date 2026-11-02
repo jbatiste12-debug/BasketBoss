@@ -7,6 +7,8 @@
 .bb-kitchen .bbcv-label{overflow-wrap:anywhere}
 .bb-kitchen .bbcv-status{flex:1 1 150px;min-width:0;margin:0;font-size:11px;line-height:1.4;overflow-wrap:anywhere;color:#4d6c50}
 .bb-kitchen .bbcv-help{margin:7px 0 0;font-size:10px;line-height:1.5;color:#61715a}
+.bb-kitchen .bbcv-disclosure{margin:5px 0 0;font-size:10px;line-height:1.5;color:#61715a}
+.bb-kitchen .bbcv-disclosure[hidden]{display:none!important}
 .bb-kitchen .bb-cook-voice.is-listening .bbcv-toggle{background:#2e7047;border-color:#2e7047;color:#fff}
 .bb-kitchen .bb-cook-voice.is-premium-locked{background:#fbf5df;border-color:#e4d29a}
 .bb-kitchen .bbcv-toggle:disabled{opacity:.65;cursor:default}

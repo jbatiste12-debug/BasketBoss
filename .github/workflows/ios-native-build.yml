@@ -16,6 +16,8 @@ on:
       - bb-ingredient-*
       - bb-evening-*
       - bb-cook-voice.*
+      - bb-cook-speech-text.js
+      - bb-cook-tts.js
       - bb-cook-studio.*
       - bb-cook-result.*
       - bb-meal-image.*

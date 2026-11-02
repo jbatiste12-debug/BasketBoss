@@ -12,7 +12,11 @@ function fixture(){
   addListener:async(event,fn)=>{listeners.set(event,fn);return {remove:async()=>{removed.push(event);if(listeners.get(event)===fn)listeners.delete(event);}};},
   start:async options=>{calls.push(['start',options]);return startResult(options);},
   stop:async options=>{calls.push(['stop',options]);},
-  speak:async options=>{calls.push(['speak',options]);}
+  speak:async options=>{calls.push(['speak',options]);return {spoken:true};},
+  prepareSpeech:async options=>{calls.push(['prepareSpeech',options]);return {speechId:'speech-'+calls.length};},
+  playAudio:async options=>{calls.push(['playAudio',options]);return {spoken:true};},
+  cancelSpeech:async options=>{calls.push(['cancelSpeech',options]);return {cancelled:true};}
+
  };
  const api=installNativeCookVoice({plugin,window,isPremium:()=>premium});
  return {api,window,plugin,calls,listeners,removed,emit:(event,value)=>listeners.get(event)?.(value),
@@ -115,7 +119,67 @@ test('native recognition errors clean up a failed start without logging audio or
  const h=fixture();h.setStart(async()=>{throw Object.assign(Error('Permission denied'),{code:'BB_VOICE_MICROPHONE_PERMISSION'});});
  await assert.rejects(()=>h.api.start(()=>{}),{code:'BB_VOICE_MICROPHONE_PERMISSION'});assert.equal(h.listeners.size,0);
  const native=fs.readFileSync(new URL('../ios/App/App/BasketBossCookVoicePlugin.swift',import.meta.url),'utf8');
- assert.doesNotMatch(native,/print\(|NSLog\(|UserDefaults|URLSession|write\(to:/);
+ assert.doesNotMatch(native,/print\(|NSLog\(|UserDefaults|write\(to:/);
+ assert.match(native,/configuration\.urlCache = nil/);
+ assert.match(native,/configuration\.httpShouldSetCookies = false/);
  const plist=fs.readFileSync(new URL('../ios/App/App/Info.plist',import.meta.url),'utf8');
  assert.match(plist,/NSMicrophoneUsageDescription/);assert.match(plist,/NSSpeechRecognitionUsageDescription/);
+});
+
+const clip='https://basketboss.co.uk/api/tts?clip='+'a'.repeat(64);
+
+test('stream preparation holds output in the current Premium session and passes only validated clip credentials',async()=>{
+ const h=fixture();assert.deepEqual(await h.api.prepareSpeech(),{spoken:false,cancelled:true});
+ await h.api.start(()=>{});const ticket=await h.api.prepareSpeech();
+ assert.match(ticket.speechId,/^speech-/);
+ assert.deepEqual(await h.api.playAudio({url:clip,token:'current.jwt-value',...ticket}),{spoken:true});
+ assert.deepEqual(h.calls.at(-1),['playAudio',{sessionId:h.id(),speechId:ticket.speechId,url:clip,token:'current.jwt-value'}]);
+ for(const url of [clip.replace('basketboss.co.uk','evil.example'),clip.replace('https:','http:'),clip+'&extra=1',clip.replace('/api/tts','/api/other'),clip+'#fragment']){
+  await assert.rejects(()=>h.api.playAudio({url,token:'current-token',...ticket}),{code:'BB_VOICE_AUDIO_URL'});
+ }
+ await assert.rejects(()=>h.api.playAudio({url:clip,token:'Bearer token\r\nInjected: header',...ticket}),{code:'BB_VOICE_AUDIO_URL'});
+});
+
+test('recoverable AI stream failure can fall back to native speech under the same held ticket',async()=>{
+ const h=fixture();await h.api.start(()=>{});const ticket=await h.api.prepareSpeech();
+ h.plugin.playAudio=async()=>{throw Object.assign(Error('offline'),{code:'BB_VOICE_AI_AUDIO'});};
+ await assert.rejects(()=>h.api.playAudio({url:clip,token:'token',...ticket}),{code:'BB_VOICE_AI_AUDIO'});
+ assert.deepEqual(await h.api.speak('First up, grab 250 grams of gnocchi.',ticket),{spoken:true});
+ assert.deepEqual(h.calls.at(-1),['speak',{sessionId:h.id(),speechId:ticket.speechId,text:'First up, grab 250 grams of gnocchi.'}]);
+});
+
+test('late prepare and stream results cannot revive Stop or replace a newer utterance',async()=>{
+ const h=fixture();await h.api.start(()=>{});let release;
+ h.plugin.prepareSpeech=()=>new Promise(resolve=>{release=resolve;});
+ const pending=h.api.prepareSpeech();await tick();await h.api.stop();release({speechId:'old-ticket'});
+ assert.deepEqual(await pending,{spoken:false,cancelled:true});assert.equal(h.calls.at(-1)[0],'cancelSpeech');
+ await h.api.start(()=>{});h.plugin.prepareSpeech=async()=>({speechId:'new-ticket'});const current=await h.api.prepareSpeech();
+ const count=h.calls.length;
+ assert.deepEqual(await h.api.playAudio({url:clip,token:'token',speechId:'old-ticket'}),{spoken:false,cancelled:true});
+ assert.deepEqual(await h.api.speak('Obsolete fallback',{speechId:'old-ticket'}),{spoken:false,cancelled:true});assert.equal(h.calls.length,count);
+ h.plugin.playAudio=()=>new Promise(resolve=>{release=resolve;});
+ const playing=h.api.playAudio({url:clip,token:'token',...current});await tick();await h.api.cancelSpeech(current);release({spoken:true});
+ assert.deepEqual(await playing,{spoken:false,cancelled:true});
+});
+
+test('superseded stream errors do not cause an obsolete offline fallback',async()=>{
+ const h=fixture();await h.api.start(()=>{});let reject;
+ const old=await h.api.prepareSpeech();h.plugin.playAudio=()=>new Promise((_,fail)=>{reject=fail;});
+ const playing=h.api.playAudio({url:clip,token:'token',...old});await tick();
+ const next=await h.api.prepareSpeech();reject(Error('late network error'));
+ assert.deepEqual(await playing,{spoken:false,cancelled:true});
+ assert.deepEqual(await h.api.speak('Obsolete',{speechId:old.speechId}),{spoken:false,cancelled:true});
+ await h.api.speak('New fallback',next);assert.equal(h.calls.at(-1)[1].text,'New fallback');
+});
+
+test('native streaming uses public resource loading with bounded private transport and best British fallback',()=>{
+ const native=fs.readFileSync(new URL('../ios/App/App/BasketBossCookVoicePlugin.swift',import.meta.url),'utf8');
+ assert.match(native,/AVAssetResourceLoaderDelegate/);assert.match(native,/URLSessionDataDelegate/);
+ assert.match(native,/request\.setValue\("Bearer " \+ token, forHTTPHeaderField: "Authorization"\)/);
+ assert.match(native,/didReceive data: Data/);assert.match(native,/respond\(with: data\.subdata/);
+ assert.match(native,/willPerformHTTPRedirection[\s\S]*completionHandler\(nil\)/);
+ assert.match(native,/case \.premium: return 3; case \.enhanced: return 2/);
+ assert.match(native,/\$0\.language\.lowercased\(\) == "en-gb"/);
+ assert.match(native,/guard intent, spoken == nil, !speechHeld/);
+ assert.doesNotMatch(native,/AVURLAssetHTTPHeaderFieldsKey|AVURLAssetHTTPHeaderFields|token=.*clip|write\(to:|UserDefaults|print\(|NSLog\(/);
 });
