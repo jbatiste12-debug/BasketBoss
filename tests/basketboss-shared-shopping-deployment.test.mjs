@@ -23,7 +23,7 @@ test('production shared shopping verifies assets, live household gates, native t
  assert.equal(h.calls.length,6);assert.deepEqual(h.calls.slice(0,3).map(call=>call.path),ASSETS);
  assert.equal(h.calls.at(-1).path,'/api/shopping/weekly-trip');
  for(const {url,options}of h.calls){assert.ok(url.startsWith(BASE+'/'));assert.equal(options.method,'GET');assert.equal(options.credentials,'omit');assert.equal(options.cache,'no-store');assert.equal(options.redirect,'error');assert.ok(options.signal instanceof AbortSignal);assert.equal(options.body,undefined);assert.equal(Object.keys(options.headers).some(name=>/authorization|cookie|apikey/i.test(name)),false);}
- assert.equal(h.calls.filter(call=>call.options.headers.Origin).length,1);
+ assert.equal(h.calls.filter(call=>call.options.headers.Origin===ORIGIN).length,1);assert.equal(h.calls.at(-1).options.headers.Origin,BASE);
 });
 for(const asset of ASSETS)test('a missing deployed '+asset+' cannot pass readiness',async()=>{
  const h=fixture((state,call)=>{if(call.path===asset)state.status=404;});await assert.rejects(verifySharedShoppingDeployment(h.perform),category('asset_unavailable'));
@@ -40,8 +40,8 @@ test('unexpected household responses cannot claim that sharing is active',async(
  const wrongType=fixture((state,call)=>{if(call.path==='/api/household?mode=status')state.type='text/html';});await assert.rejects(verifySharedShoppingDeployment(wrongType.perform),category('household_auth_boundary'));
 });
 test('native household requests require exact allowed Origin and no cookie credentials',async()=>{
- for(const [origin,credentials]of[[null,null],['capacitor://localhost.evil',null],[ORIGIN,'true']]){const h=fixture((state,call)=>{if(call.options.headers.Origin){state.origin=origin;state.credentials=credentials;}});await assert.rejects(verifySharedShoppingDeployment(h.perform),category('household_native_transport'));}
- const h=fixture((state,call)=>{if(call.options.headers.Origin)state.status=403;});await assert.rejects(verifySharedShoppingDeployment(h.perform),category('household_native_auth_boundary'));
+ for(const [origin,credentials]of[[null,null],['capacitor://localhost.evil',null],[ORIGIN,'true']]){const h=fixture((state,call)=>{if(call.options.headers.Origin===ORIGIN){state.origin=origin;state.credentials=credentials;}});await assert.rejects(verifySharedShoppingDeployment(h.perform),category('household_native_transport'));}
+ const h=fixture((state,call)=>{if(call.options.headers.Origin===ORIGIN)state.status=403;});await assert.rejects(verifySharedShoppingDeployment(h.perform),category('household_native_auth_boundary'));
 });
 test('the deployed weekly trip API must reject unauthenticated GET with JSON401',async()=>{
  for(const [status,type]of[[200,'application/json'],[404,'application/json'],[401,'text/html']]){const h=fixture((state,call)=>{if(call.path==='/api/shopping/weekly-trip'){state.status=status;state.type=type;}});await assert.rejects(verifySharedShoppingDeployment(h.perform),category('weekly_trip_auth_boundary'));}
