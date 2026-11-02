@@ -153,3 +153,16 @@ test('international special dishes share the occasional World quota without rela
  assert.equal(editorial.isWorldMeal(dish({id:'persian-herb-and-kidney-bean-beef-stew'})),true);
  assert.equal(editorial.isWorldMeal(dish({id:'persian-herb-and-kidney-bean-beef-stew',dinnerEligible:false})),false);
 });
+
+test('familiar Indian and Thai favourites stay everyday meals outside the occasional World quota',()=>{
+ for(const [id,mins] of [['extra-homemade-chicken-tikka-masala',30],['extra-thai-green-chicken-curry',30],['family-mild-chicken-korma-with-rice',40],['extra-thai-basil-turkey-mince',20],['family-mild-chickpea-tikka-masala',35]]){
+  const recipe=dish({id,mins});
+  assert.equal(editorial.isCurryThaiFavourite(recipe),true);
+  assert.equal(editorial.primaryCollection(recipe),'Everyday Favourites');
+  assert.equal(editorial.isWorldMeal(recipe),false);
+  assert.ok(editorial.collections(recipe).includes('Curry & Thai Favourites'));
+ }
+ for(const recipe of [dish({id:'new-thai-recipe'}),dish({id:'sri-lankan-beetroot-and-cashew-curry'}),dish({id:'extra-thai-green-chicken-curry',dinnerEligible:false})]){
+  assert.equal(editorial.isCurryThaiFavourite(recipe),false);
+ }
+});

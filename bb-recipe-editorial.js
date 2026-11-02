@@ -501,6 +501,20 @@ family-baked-cod-with-cheesy-breadcrumbs
     const savouryPancakes=/\bokonomiyaki\b|\bsavou?ry\b.*\bpancakes?\b|\b(?:potato|courgette|cabbage|chickpea|spinach)\b.*\bpancakes?\b/.test(name);
     return !(/\bpancakes?\b/.test(name)&&!savouryPancakes);
   }
+  // Familiar curry/takeaway choices already authored in the baseline.
+  const curryThaiIds=new Set(`
+    extra-homemade-chicken-tikka-masala
+    extra-thai-green-chicken-curry
+    family-mild-chicken-korma-with-rice
+    extra-thai-basil-turkey-mince
+    family-mild-chickpea-tikka-masala
+    extra-cauliflower-coconut-korma
+    family-mild-coconut-chicken-curry
+    family-mild-lentil-and-sweet-potato-dhal
+    coconut-lentil-dhal
+    chickpea-curry
+  `.trim().split(/\s+/));
+  function isCurryThaiFavourite(recipe){return dinner(recipe)&&curryThaiIds.has(recipe.id);}
   function isKidsMeal(recipe){
     return dinner(recipe)&&recipe.kidFriendly!==false&&
       (kidsIds.has(recipe.id)||recipe.kidFriendly===true||recipe.expansionGroup==='kid-friendly');
@@ -550,11 +564,12 @@ whole-bream-black-bean-ginger
     if(!dinner(recipe))return [];
     const primary=primaryCollection(recipe),result=primary?[primary]:[];
     if(isKidsMeal(recipe))result.push(KIDS_LABEL);
+    if(isCurryThaiFavourite(recipe))result.push('Curry & Thai Favourites');
     const minutes=totalMinutes(recipe);
     if(minutes!==null&&minutes<=60)result.push('60 Minutes or Less');
     const category=[recipe.category,recipe.tag,recipe.mealType].map(fold).join(' ');
     if((minutes!==null&&minutes>60)||/\bslow[ -]?cook(?:er|ing)?\b/.test(category))result.push('Weekend & Slow Cooking');
     return result;
   }
-  return Object.freeze({primaryCollection,collections,isSide,isKidsMeal,isWorldMeal,totalMinutes});
+  return Object.freeze({primaryCollection,collections,isSide,isKidsMeal,isWorldMeal,isCurryThaiFavourite,totalMinutes});
 });

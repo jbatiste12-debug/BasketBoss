@@ -8,7 +8,7 @@ This is a proposed next update. The current production release and TestFlight 1.
 
 ## Working targets for the review
 
-Use approximately 70% familiar everyday dinners, 20% Try the World, and 10% Special Occasion as an editorial target, not a verified statement about the current catalogue. Count dinners separately from desserts, breakfast, baking, snacks and sides. Roasts and slow-cooker meals remain available as familiar options with a Weekend & Slow Cooking label.
+Use approximately 80% familiar everyday dinners (including familiar Indian and Thai takeaway favourites), 10% Try the World, and 10% Special Occasion as an editorial target, not a verified statement about the current catalogue. Count dinners separately from desserts, breakfast, baking, snacks and sides. Roasts and slow-cooker meals remain available as familiar options with a Weekend & Slow Cooking label.
 
 Aim for at least 80% of dinner recipes to be ready within 60 minutes. Treat the time as elapsed preparation plus cooking and required waiting, rather than hands-on cooking alone. Use the recipe's recorded time; do not invent shorter times to meet the target. Longer dishes need clear elapsed time and weekend/slow-cooking presentation.
 
@@ -68,3 +68,29 @@ The user reported lateral page movement while swiping on the Plan list. Browser 
 The draft adds a compatible horizontal overflow fallback and root horizontal overscroll suppression, bounds Plan wrappers/cards/summaries to their container, and gives filled-row description grids a shrinkable minmax track with wrapping titles. Empty-day grids retain their existing layout. The native bridge disables always-on horizontal bounce and enables directional locking without changing vertical bounces or replacing WebView delegates. No global touch-action restriction or touch interception is added; Discover retains its intentional left/right pointer swipes.
 
 Validation: all 118 related native/viewport/persistence checks passed, as did native packaging and portable iOS verification. Twelve browser cases (PWA and native web bundle at six widths) confirmed root and card fit, visible controls, zero horizontal scrolling after attempted movement, vertical scrolling and working Discover swipes in both directions. Physical iPhone edge-bounce verification and a signed Xcode build remain outstanding for this next-build draft. The existing live PWA and TestFlight build are unchanged.
+
+
+## Stronger familiar-dinner balance
+
+The user requested fewer specialist international dishes, more regular Western meals, and more Indian/Thai favourites familiar to English households. The working dinner target is revised to roughly 80% Everyday Favourites, 10% Try the World and 10% Special Occasion; this is an authoring target, not a measured live-catalogue claim. British, Irish, Scottish and popular American dishes should still make up the majority of the overall dinner collection. Familiar Indian and Thai choices belong in Everyday Favourites and do not use the occasional World quota.
+
+The draft adds a Curry & Thai Favourites browse selection containing ten existing familiar curry/dhal/Thai recipes. These already have baseline records; their recipes, quantities, IDs and entitlement are unchanged. This is presentation/selection work, not ten newly authored recipes or a completed content rebalance.
+
+A concrete next authoring batch should favour six regular Western dinners and four familiar Indian/Thai dishes:
+
+| Candidate new dinner | Authoring direction |
+| --- | --- |
+| Sausages, mash and onion gravy | Complete familiar family meal; include vegetables |
+| Gammon steak, egg and chips | Practical ordinary supermarket ingredients; include vegetables |
+| Homemade beef cheeseburgers with wedges | Distinct from the existing chicken-burger recipe |
+| Chicken Kyiv with mash and green vegetables | Clear achievable method; explicit poultry cooking check |
+| Chicken chasseur with rice | Familiar chicken/mushroom/tomato family dinner |
+| Beef and onion pasties with vegetables | Account for filling preparation, cooling and baking time |
+| Butter chicken curry with rice | Distinguish the method/flavour from existing tikka masala; do not confuse with garlic-butter chicken noodles |
+| Chicken jalfrezi with rice | Adjustable chilli and accessible peppers/onions |
+| Chicken pad Thai | Use a practical complete noodle dish, with substitutions accurately described |
+| Chicken massaman curry with rice | Practical ingredients and honest elapsed time |
+
+These titles are authoring candidates, not newly shipped records. Aim for <=60 minutes total, but establish each duration from its complete method. Before adding/replacing records, compare full current Premium recipes for conceptual duplicates, write and normalise ingredients/methods/servings, commission matching images and validate shopping/portion scaling. Do not overwrite an existing saved recipe ID with an unrelated dish or delete meals from users' saved plans. The protected current Premium records remain unavailable locally beyond the historical baseline, so full replacements are still pending that review. Current production and TestFlight 1.0 (3) stay unchanged.
+
+Curry/Thai selection validation: all 33 relevant editorial, Discover and auto-fill tests passed. Native web packaging passed. Browser checks at 320/390/768px confirmed the new selection, kids/time filters, centred badge fit and actual auto-fill confirmation/cancellation. The user confirmed Indian and Thai favourites as the intended direction.
