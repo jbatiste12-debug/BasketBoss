@@ -7010,7 +7010,7 @@ function bb18GalleryCard(x){
  return `<article class="card mini-recipe${locked?' bb18-locked-recipe':''}" tabindex="0" role="button" ${action}>
  <div class="mini-img">${imageHTML(x)}<span class="pill">${esc(x.tag)}</span>${locked?'<span class="bb18-premium-crown" aria-hidden="true">♛ Premium</span><span class="bb18-premium-image-lock" aria-hidden="true"><span class="bb18-lock-icon"><svg viewBox="0 0 64 64" width="42" height="42" aria-hidden="true" fill="none"><path d="M22 18 18 10 27 14 32 6 37 14 46 10 42 18Z" fill="#44484B" stroke="#44484B" stroke-width="2" stroke-linejoin="round"/><path d="M21 21h22" stroke="#44484B" stroke-width="3" stroke-linecap="round"/><path d="M18 30 25 23M46 30 39 23" stroke="#44484B" stroke-width="4" stroke-linecap="round"/><path d="M11 31h42l-5 24H16l-5-24Z" fill="#44484B" stroke="#44484B" stroke-width="2" stroke-linejoin="round"/><path d="M22 38v10M32 38v10M42 38v10" stroke="#F8F8F8" stroke-width="4" stroke-linecap="round"/></svg></span><strong>BasketBoss</strong><span>Unlock with Premium</span></span>':''}</div>
  <div class="mini-content"><h4>${esc(x.name)}</h4><p class="bb18-recipe-meta"><span>◷ ${window.BBDuration?.format(x.mins)||"?"}</span></p>${bbDiscoverBenefitsHTML(x,locked)}
- <p class="muted">${collectionsFor(x).map(esc).join(' · ')}</p>${locked?'':`<button type="button" class="bb80-gallery-add" data-bb80-add-week="${esc(x.id)}" aria-label="Add ${esc(x.name)} to your week">＋ Add to week</button><button type="button" class="bb80-gallery-add bb-manual-batch-btn" data-bb-manual-batch="${esc(x.id)}" aria-label="Batch cook ${esc(x.name)} for two days">${bb176IsPremiumPreview()?'🍲 Batch cook (2 days)':'♛ Batch cook · Premium'}</button>`}${locked?'<span class="bb18-unlock-cta">♛ Unlock with Premium</span>':''}</div></article>`;
+ <div class="bb-discover-card-actions">${locked?'':`<button type="button" class="bb80-gallery-add" data-bb80-add-week="${esc(x.id)}" aria-label="Add ${esc(x.name)} to your week">＋ Add to week</button><button type="button" class="bb80-gallery-add bb-manual-batch-btn" data-bb-manual-batch="${esc(x.id)}" aria-label="Batch cook ${esc(x.name)} for two days">${bb176IsPremiumPreview()?'🍲 Batch cook (2 days)':'♛ Batch cook · Premium'}</button>`}${locked?'<span class="bb18-unlock-cta">♛ Unlock with Premium</span>':''}</div></div></article>`;
 }
 function bb80PromptAddRecipe(id){
  const recipe=getRecipe(id);if(!recipe)return;
@@ -11884,7 +11884,7 @@ body[data-bbnext-view="discover"] #app .bb175-discover-heading{padding-top:calc(
 <script defer src="bb-weekly-shop.js?v=20261101-weeklyshop1"></script>
 <link rel="stylesheet" href="bb-membership-compare.css?v=20261101-member1">
 <script defer src="bb-membership-compare.js?v=20261101-weeklyshop1"></script>
-<link rel="stylesheet" href="bb-plan-premium-polish.css?v=20261101-uniform4">
+<link rel="stylesheet" href="bb-plan-premium-polish.css?v=20261102-even-cards">
 <script defer src="bb-plan-premium-polish.js?v=20261101-autofill3"></script>
 <link rel="stylesheet" href="bb-ingredient-picker.css?v=20261101-avoid1">
 <link rel="stylesheet" href="bb-evening-pivot-ui.css?v=20261101-pivot2">

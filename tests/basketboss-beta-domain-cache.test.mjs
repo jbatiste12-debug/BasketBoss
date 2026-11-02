@@ -18,7 +18,7 @@ function harness({offline=false}={}) {
   return {request,seen};
 }
 test('Beta cache is versioned past the production merge',()=>{
- assert.match(script,/basketboss-premium-secure-shell-20261102-v39-recipe-audit/);
+ assert.match(script,/basketboss-premium-secure-shell-20261102-v40-even-cards/);
  assert.doesNotMatch(script,/20261028-v13-free-signup-funnel/);
 });
 test('Onboarding, partner sharing and per-day serving assets refresh from network',async()=>{
