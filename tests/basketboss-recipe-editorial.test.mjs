@@ -143,3 +143,13 @@ test('explicit kids metadata respects dinner and suitability vetoes',()=>{
     assert.equal(editorial.isKidsMeal({...recipe,...changed}),false);
   }
 });
+
+test('international special dishes share the occasional World quota without relabelling familiar favourites',()=>{
+ for(const id of ['freekeh-stuffed-quail-with-pomegranate-glaze','tea-smoked-duck-plum-soba','saffron-halibut-with-jeweled-barberry-rice']){
+  const recipe=dish({id});assert.equal(editorial.primaryCollection(recipe),'Special Occasion');assert.equal(editorial.isWorldMeal(recipe),true);
+ }
+ assert.equal(editorial.isWorldMeal(dish({id:'steak'})),false);
+ assert.equal(editorial.isWorldMeal(dish({id:'chicken-katsu-curry'})),false);
+ assert.equal(editorial.isWorldMeal(dish({id:'persian-herb-and-kidney-bean-beef-stew'})),true);
+ assert.equal(editorial.isWorldMeal(dish({id:'persian-herb-and-kidney-bean-beef-stew',dinnerEligible:false})),false);
+});

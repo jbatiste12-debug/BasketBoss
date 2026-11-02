@@ -28,7 +28,7 @@ The newer additions lean heavily toward international discovery. Labelling is th
 
 `bb-recipe-editorial.js` supplies explicit stable-ID browse membership. The client computes time labels from the actual accessible record: valid explicit prep + cook times take precedence over `mins`. Partial/invalid explicit times do not fall back to an apparently faster time. Unknown recipes are not automatically asserted to be familiar or reviewed.
 
-Discover adds Everyday Favourites, Try the World, Special Occasion, 60 Minutes or Less, Weekend & Slow Cooking, and Sides. Editorial labels remain visible alongside saved personal collections. They do not unlock Premium content or certify method quality. Existing automatic rotation and its full-pool/history contract are retained: this change does not claim to rebalance the automatic planner or the underlying catalogue.
+Discover adds Everyday Favourites, Try the World, Special Occasion, 60 Minutes or Less, Weekend & Slow Cooking, and Sides. Editorial labels remain visible alongside saved personal collections. They do not unlock Premium content or certify method quality. The auto-fill update below limits occasional international dishes while preserving independent rotation histories. Editorial group counts still need a complete ingredient/method review; this draft does not replace recipes to claim the target catalogue mix.
 
 Air-fryer garlic parmesan potatoes is corrected to Side dishes, excluded from automatic dinners, and its unrelated sauce instruction removed. Ingredients and quantities are preserved.
 
@@ -49,3 +49,14 @@ The user requested a separate kids' meal selection, including familiar fish-and-
 Examples include the existing fish fingers with wedges and peas, chicken goujons with wedges and peas, macaroni cheese, meatballs with spaghetti, mini cottage pies, tortilla pizzas, cheesy bean quesadillas, mild chicken korma with rice and chicken-and-rice bake. No exact fish-and-chips record exists in the locally available source; do not claim a new one has been authored. Use the existing complete fish-finger meal rather than relabelling an unrelated record. Keep adjustable household servings: no assumed age-based or child portion multiplier is introduced.
 
 This is an editorial browsing selection, not allergy, nutrition or age certification. An explicit `kidFriendly:false`, a non-dinner category or a side-dish flag blocks membership. A mild-sounding recipe name alone cannot grant the label. Method and portion review remains needed, including generic text in several historical records and the breadcrumb cod's listed timing. No Premium access changes are made.
+
+
+## Occasional international auto-fill policy
+
+The user requested dishes outside the everyday UK/US family selection only occasionally, with at most one across an automatically filled week. Each proposal gets a single 25% opportunity to include an occasional dish; retries do not reroll it, and inclusion is never forced. If the preceding confirmed auto-fill contained an occasional dish, the next proposal contains none. International Special Occasion additions share the quota, so their browse label cannot bypass it. Familiar popular curry/pizza dishes stay in the ordinary pool.
+
+Existing manually selected World meals count toward the cap. Filling remaining days cannot add a second; if a user manually chose multiple such meals, preserve those choices and add no further World meals. Users can continue choosing any accessible recipes manually in Discover.
+
+Familiar and occasional recipes rotate as independent cohorts in the existing account-scoped, single history record. An exhausted familiar cohort can restart without waiting for rarely chosen World dishes. Narrow ingredient/time/child filters cannot reset a cohort until all its eligible recipes are consumed. Ordinary swaps retain the original ungrouped behavior. Preview/cancellation writes nothing; confirmation retains plan snapshots, access/classification checks, concurrent-write checks and rollback if saving fails. Basic, Premium-filtered and older budget auto-fill use the same policy and confirmation safeguards.
+
+Policy validation: 1,074 automated checks passed, with two skips and two TODOs and no failures. Regression coverage includes rare allowance/cooldown, no rerolls across retries, at-most-one for ordinary and Premium filters, existing manual one/two World choices, unloaded known IDs, familiar-cohort exhaustion, cancellation, stale classification and optimistic history saves. Browser checks at 320/390/768 pixels confirmed actual auto-fill confirmation/cancellation as well as the browse filters. Native web packaging and portable iOS verification passed; no signed device build or live deployment is claimed.

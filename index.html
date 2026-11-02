@@ -1764,13 +1764,15 @@ const tab=window.bb172ActiveTab;
   const desired=Math.max(0,5-old.length-Object.keys(notes).length);let days=['Monday','Tuesday','Wednesday','Thursday','Friday','Saturday','Sunday'].filter(d=>!occupied.has(d)).slice(0,desired);
   if(!days.length){bb172Msg('Five or more dinners are already planned. Use Swap on a planned recipe to change one.');return}
   if(!bbPlanVarietyValid(old)){bb172Msg('Adjust the existing dinners to alternate proteins and use at most two cheese-heavy meals before Auto-fill.');return;}
-  const rotation=bbRotationSession();
-  const candidate=[...old];for(const day of days){const offer=bb172SuggestRecipe(day,candidate,goal,rotation);if(!offer)continue;candidate.push({day,recipeId:offer.recipeId});}
+  const selection=bbAfDraw(days,old);if(!selection)return;
+  const candidate=[...old,...selection.additions];
   if(candidate.length===old.length){bb172Msg('No recipes match your ingredient choices and available days. Try fewer ingredients to avoid.');return}
   let summary;try{const previous=state.planned;state.planned=candidate;try{summary=bb321WeeklySummary()}finally{state.planned=previous}}catch(e){bb172Msg('Could not calculate a safe shop estimate. No meals were changed.');return}
   const total=Number(summary.total)||0;const over=total>goal;
-  const approved=await bbQaConfirm((candidate.length-old.length)+' dinners will be added to your free days.\n\nEstimated full shop: £'+total.toFixed(2)+' vs £'+goal.toFixed(2)+' target'+(summary.pending?'\n⚠ '+summary.pending+' unpriced lines are not included.':'')+(over?'\n⚠ Over your target — this is the lowest-scoring combination found, not a budget guarantee.':'')+'\n\nUse these suggested meals?','Auto-Fill My Week','Add dinners');
-  if(!approved)return;bb172ApplyPlan(candidate,old,over?'Suggested dinners added. Basket is above your target; review or Swap meals.':'Suggested dinners added. Review your shopping estimate ✓',rotation);
+  const planSnapshot=JSON.stringify(old),notesSnapshot=JSON.stringify(notes);
+  const approved=await bbQaConfirm((candidate.length-old.length)+' dinners will be added to your free days.\n\nEstimated full shop: £'+total.toFixed(2)+' vs £'+goal.toFixed(2)+' target'+(summary.pending?'\n⚠ '+summary.pending+' unpriced lines are not included.':'')+(over?'\n⚠ Over your target — this is an estimate, not a budget guarantee.':'')+'\n\nUse these suggested meals?','Auto-Fill My Week','Add dinners');
+  if(!approved)return;
+  if(bbAfCommit(old,planSnapshot,notesSnapshot,null,selection))bb172Msg(over?'Suggested dinners added. Basket is above your target; review or Swap meals.':'Suggested dinners added. Review your shopping estimate ✓');
  };
  const first=app.querySelector('.day');if(first)first.before(container);else app.prepend(container);
  for(const row of app.querySelectorAll('.day')){
@@ -3779,8 +3781,8 @@ body[data-bbnext-view="discover"] #app .bb-featured-card #bbFeaturedBatch {
 <script src="bb-price-scan.js?v=bb-receipt-prices-20261031"></script>
 <script src="basketboss-pricing-v19.js?v=20261031-expanded-regional-prorata"></script>
 <script src="bb-serving-scale.js?v=20261029-preview1"></script>
-<script src="bb-recipe-planning.js?v=20261102-editorial1"></script>
-<script src="bb-recipe-editorial.js?v=20261102-editorial2"></script>
+<script src="bb-recipe-planning.js?v=20261102-editorial3"></script>
+<script src="bb-recipe-editorial.js?v=20261102-editorial3"></script>
 <script src="bb-ingredient-preferences.js?v=20261101-avoid1"></script>
 <script src="bb-evening-pivot.js?v=20261101-pivot1"></script>
 <script src="bb-evening-pivot-app.js?v=20261101-pivot1"></script>
@@ -5337,10 +5339,10 @@ function bbRecipeMealEstimate(recipe,servings){
  return BBPriceV19.estimateMeal({market:bb307Market,retailer:bb307ActiveRetailer(),ingredients:(normalized.ingredients||[]).map(i=>({...i,quantity:typeof i.quantity==='number'?i.quantity*factor:i.quantity}))});
 }
 window.BasketBossMealEstimate=(id,servings)=>bbRecipeMealEstimate(getRecipe(id),servings);
-function bbRotationSession(){
+function bbRotationSession({forAutoFill=false}={}){
  let account='guest';
  try{account=JSON.parse(localStorage.getItem('basketboss_cloud_session_v1')||'null')?.user?.id||'guest';}catch(_){}
- return BBRecipePlanning.createRotation({recipes:RECIPES,isAllowed:r=>bb176AllowedRecipe(r.id),isEligible:r=>bbAfIngredientAllowed(r)&&(typeof BBIngredientPreferences==='undefined'||BBIngredientPreferences.scope()===account),scope:account,legacyKey:'basketboss_autofill_seenRecipeIds_v1'});
+ return BBRecipePlanning.createRotation({recipes:RECIPES,isAllowed:r=>bb176AllowedRecipe(r.id),isEligible:r=>bbAfIngredientAllowed(r)&&(typeof BBIngredientPreferences==='undefined'||BBIngredientPreferences.scope()===account),scope:account,legacyKey:'basketboss_autofill_seenRecipeIds_v1',rotationGroup:forAutoFill&&typeof BBRecipeEditorial!=='undefined'?r=>BBRecipeEditorial.isWorldMeal(r)?'world':'everyday':undefined});
 }
 /* BASKETBOSS_EVENING_PIVOT_ADAPTER: read-only until a reviewed two-meal swap. */
 function bbVerifiedPremiumFeature(){return window.BasketBossVerifiedPremium?.isActive?.()===true;}
@@ -6177,6 +6179,7 @@ function bbNextAttachAutofill(app){
    const summary=document.createElement('summary');
    summary.textContent='How Auto-fill works';
    disclosure.append(summary);
+   const policy=document.createElement('p');policy.className='muted';policy.textContent='Familiar favourites lead your week. Auto-fill occasionally includes a Try the World meal, with no more than one across the week.';disclosure.append(policy);
    disclosure.open=bbNextAutofillOpen;
    actions.after(disclosure);
    disclosure.addEventListener('toggle',()=>{if(disclosure.isConnected)bbNextAutofillOpen=disclosure.open;});
@@ -8587,6 +8590,8 @@ function bbAfRead(key){
 }
 function bbAfIngredientAllowed(r){return typeof BBIngredientPreferences!=='undefined'&&BBIngredientPreferences.recipeAllowed(r);}
 function bbAfDinner(r){return BBRecipePlanning.isDinner(r);}
+function bbAfWorldMeal(r){return typeof BBRecipeEditorial!=='undefined'&&BBRecipeEditorial.isWorldMeal(r);}
+function bbAfWorldCount(plans){return plans.filter(p=>bbAfWorldMeal(getRecipe(p.recipeId)||{id:p.recipeId})).length;}
 function bbAfTags(r){
  const name=String(r.name||'').toLowerCase();
  const food=(r.ingredients||[]).map(x=>String(Array.isArray(x)?x[0]:(x?.name||'')).toLowerCase());
@@ -8619,6 +8624,11 @@ function bbAfFits(r,day,week,details){
  return proteinN<2&&primaryN<2&&styleN<2&&(!candidate.heavyDairy||cheeseN<2);
 }
 function bbAfDraw(days,previous,filters={},batch=false){
+ if(typeof BBRecipeEditorial==='undefined')return null;
+ // One allowance roll per proposal, never once per day or retry. Existing
+ // manually chosen world meals use the same weekly cap; they are never removed.
+ const recent=bbRotationSession({forAutoFill:true}).snapshot().last;
+ const worldAllowed=bbAfWorldCount(previous)===0&&!recent.some(id=>bbAfWorldMeal(getRecipe(id)||{id}))&&Math.random()<0.25;
  const all=RECIPES.filter(r=>bb176AllowedRecipe(r.id)&&bbAfIngredientAllowed(r)&&bbAfDinner(r)&&
   (!filters.quick||bb81Under30(r))&&(!filters.kids||bb81KidOK(r)));
  const byId=new Map(RECIPES.map(r=>[r.id,r])),cache=new Map();
@@ -8635,14 +8645,15 @@ function bbAfDraw(days,previous,filters={},batch=false){
   const proteinBoost=filters.protein?Math.min(5,bb81ProteinScore(r))*1.1:0;
   return Math.min(shared,5)*0.55+Math.min(stock,3)*1.2+proteinBoost+Math.random()*9;
  };
- // Each attempt is read-only until confirmation. The scoped tracker resets only
- // after every accessible dinner has been used, including when a week crosses
- // the cycle boundary. Filters never reset the underlying access-tier pool.
+ // Attempts stay read-only until confirmation. Familiar and world meals
+ // rotate independently so optional world meals cannot strand the familiar
+ // pool. Narrow time/ingredient filters cannot reset either cohort early.
  let best=null;
  for(let attempt=0;attempt<100;attempt++){
-  const rotation=bbRotationSession(),before=rotation.snapshot(),selected=[],week=[...previous];
+  const rotation=bbRotationSession({forAutoFill:true}),before=rotation.snapshot(),selected=[],week=[...previous];
   for(const day of days){
-   let options=rotation.filter(all,{day,planned:week}).filter(r=>bbAfFits(r,day,week,details)&&
+   const candidatesForDay=all.filter(r=>!bbAfWorldMeal(r)||(worldAllowed&&bbAfWorldCount(week)===0));
+   let options=rotation.filter(candidatesForDay,{day,planned:week}).filter(r=>bbAfFits(r,day,week,details)&&
      (!batch||day!=='Monday'&&day!=='Wednesday'||bb81BatchOK(r)));
    const reset=rotation.snapshot().cycle>before.cycle;
    const lessRecent=reset?options.filter(r=>!before.last.includes(r.id)):options;
@@ -8654,7 +8665,7 @@ function bbAfDraw(days,previous,filters={},batch=false){
    const item={day,recipeId:pick.id};selected.push(item);week.push(item);
   }
   if(selected.length&&(!best||selected.length>best.additions.length))best={
-   additions:selected,rotation,reset:rotation.snapshot().cycle>before.cycle,
+   additions:selected,rotation,worldAllowed,reset:rotation.snapshot().cycle>before.cycle,
    prior:before.seen,recent:before.last,seen:rotation.snapshot().seen,last:selected.map(x=>x.recipeId)
   };
   if(selected.length===days.length)return best;
@@ -8670,6 +8681,10 @@ function bbAfCommit(previous,planSnapshot,notesSnapshot,batchData,selection){
   notify('Your plan or access changed. Nothing was saved.');return false;
  }
  const next=[...previous,...selection.additions];
+ const addedWorld=bbAfWorldCount(selection.additions);
+ if(addedWorld>0&&(!selection.worldAllowed||bbAfWorldCount(previous)+addedWorld>1)){
+  notify('Auto-fill allows at most one Try the World meal. Nothing saved.');return false;
+ }
  if(!bbPlanVarietyValid(next)||new Set(next.map(x=>x.day)).size!==next.length||
   new Set(next.map(x=>x.recipeId)).size!==next.length){
   notify('Conflicting dinner detected. Nothing saved.');return false;

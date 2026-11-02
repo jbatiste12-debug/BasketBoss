@@ -4,6 +4,7 @@ import fs from 'node:fs';
 import vm from 'node:vm';
 import {createRequire} from 'node:module';
 const planning=createRequire(import.meta.url)('../bb-recipe-planning.js');
+const editorial=createRequire(import.meta.url)('../bb-recipe-editorial.js');
 
 const index=fs.readFileSync(new URL('../index.html',import.meta.url),'utf8');
 const app=fs.readFileSync(new URL('../app.html',import.meta.url),'utf8');
@@ -12,7 +13,7 @@ const end=index.indexOf('/* END_BASKETBOSS_AUTOFILL_VARIETY_ROTATION_V1 */',star
 assert.ok(start>0&&end>start,'Auto-fill code is present in the page');
 const code=index.match(/function bbPlanVarietyValid\(plans\)\{[\s\S]*?\n\}/)[0]+'\n'+index.slice(start,end);
 const DAYS=['Monday','Tuesday','Wednesday','Thursday','Friday','Saturday','Sunday'];
-function harness(catalog,freeIds=new Set(catalog.map(r=>r.id))){
+function harness(catalog,freeIds=new Set(catalog.map(r=>r.id)),options={}){
  const storage=new Map(),state={planned:[],bb81Batch:null};
  let canPersist=true,canStore=true,renders=0,notices=[];
  const localStorage={
@@ -21,9 +22,10 @@ function harness(catalog,freeIds=new Set(catalog.map(r=>r.id))){
   removeItem:k=>storage.delete(k)
  };
  const ctx={
+  Math:options.random?Object.assign(Object.create(Math),{random:options.random}):Math,BBRecipeEditorial:editorial,
   RECIPES:catalog,state,localStorage,console,BBRecipePlanning:planning,BBIngredientPreferences:{recipeAllowed:()=>true},DAYS,
   getRecipe:id=>catalog.find(r=>r.id===id),
-  bbRotationSession:()=>planning.createRotation({recipes:catalog,storage:localStorage,isAllowed:r=>freeIds.has(r.id),scope:'guest',legacyKey:'basketboss_autofill_seenRecipeIds_v1'}),
+  bbRotationSession:({forAutoFill=false}={})=>planning.createRotation({recipes:catalog,storage:localStorage,isAllowed:r=>freeIds.has(r.id),scope:'guest',legacyKey:'basketboss_autofill_seenRecipeIds_v1',rotationGroup:forAutoFill?r=>editorial.isWorldMeal(r)?'world':'everyday':undefined}),
   bb176AllowedRecipe:id=>freeIds.has(id),
   bb172IsDessertOrNonDinner:r=>/dessert|breakfast|brunch|lunch|snack|baking/i.test((r.category||'')+' '+(r.tag||'')),
   bb81Under30:()=>true,bb81KidOK:()=>true,bb81BatchOK:()=>true,
@@ -141,4 +143,85 @@ test('a completed Auto-fill cannot retain adjacent proteins or more than two che
  const selection={additions:[{day:'Friday',recipeId:'c'}],rotation:{commit(){throw Error('Invalid plan must never consume history')}}};
  assert.equal(h.api.commit(old,JSON.stringify(old),'{}',null,selection),false);
  assert.equal(h.state.planned,old);
+});
+
+function editorialFixture(){
+ const proteins=['chicken','beef','pork','fish','turkey','beans','tofu','lamb'];
+ const group=(prefix,collection)=>Array.from({length:40},(_,i)=>({
+  id:prefix+'-'+i,name:proteins[i%8]+' dinner '+i,category:'Family dinner',tag:'STYLE-'+Math.floor(i/8),
+  dinnerEligible:true,editorialCollection:collection,primaryProtein:proteins[i%8],cheeseHeavy:false,
+  servings:4,mins:35,ingredients:[[proteins[i%8],'500 g'],['Vegetables','300 g']]
+ }));
+ return [...group('world','Try the World'),...group('everyday','Everyday Favourites')];
+}
+const worldCount=(pool,plan)=>plan.filter(p=>editorial.isWorldMeal(pool.find(r=>r.id===p.recipeId)||{id:p.recipeId})).length;
+
+test('ordinary and Premium auto-fill allow at most one World dish on an occasional proposal',()=>{
+ for(const filters of [{},{quick:true,kids:true,protein:true}]){
+  const pool=editorialFixture(),h=harness(pool,undefined,{random:()=>0.01});h.recipes=pool;
+  const result=h.api.draw(DAYS,[],filters);
+  assert.equal(result.additions.length,7);assert.equal(worldCount(pool,result.additions),1);
+  verifyWeek(h,result.additions);
+ }
+});
+
+test('an ordinary proposal contains no World meals and retries never reroll the allowance',()=>{
+ const pool=editorialFixture(),h=harness(pool,undefined,{random:()=>0.9});h.recipes=pool;
+ const result=h.api.draw(DAYS,[]);assert.equal(result.additions.length,7);assert.equal(worldCount(pool,result.additions),0);
+ const onlyWorld=pool.filter(r=>r.editorialCollection==='Try the World');let calls=0;
+ const retry=harness(onlyWorld,undefined,{random:()=>++calls===1?0.9:0.01});
+ assert.equal(retry.api.draw(DAYS,[]),null,'never force World meals to complete a week');
+ assert.equal(calls,1,'sample once despite retrying incomplete proposals');
+});
+
+test('the allowance boundary is strict and a following confirmed proposal has no World meal',()=>{
+ const pool=editorialFixture(),off=harness(pool,undefined,{random:()=>0.25});
+ assert.equal(worldCount(pool,off.api.draw(DAYS,[]).additions),0);
+ const h=harness(pool,undefined,{random:()=>0.01});h.recipes=pool;
+ const previous=h.state.planned,first=h.api.draw(DAYS,previous);
+ assert.equal(worldCount(pool,first.additions),1);
+ assert.equal(h.api.commit(previous,JSON.stringify(previous),'{}',null,first),true);
+ h.state.planned=[];
+ const second=h.api.draw(DAYS,h.state.planned);
+ assert.equal(second.additions.length,7);assert.equal(worldCount(pool,second.additions),0,'no consecutive World-containing auto-fills');
+});
+
+test('manual World meals use the weekly limit and existing manual choices are preserved',()=>{
+ for(const previous of [
+  [{day:'Monday',recipeId:'world-0'}],
+  [{day:'Monday',recipeId:'world-0'},{day:'Wednesday',recipeId:'world-1'}]
+ ]){
+  const pool=editorialFixture(),h=harness(pool,undefined,{random:()=>0.01});h.state.planned=previous;
+  const saved=JSON.stringify(previous),days=DAYS.filter(d=>!previous.some(p=>p.day===d));
+  const result=h.api.draw(days,previous);assert.equal(result.additions.length,days.length);
+  assert.equal(worldCount(pool,result.additions),0);
+  assert.equal(h.api.commit(previous,saved,'{}',null,result),true);
+  assert.equal(JSON.stringify(h.state.planned.slice(0,previous.length)),saved);
+ }
+});
+
+test('familiar meals can rotate again while the optional World pool is still unseen',()=>{
+ const pool=editorialFixture(),h=harness(pool,undefined,{random:()=>0.9});h.recipes=pool;
+ const key=planning.STORAGE_KEY+':guest',worldId='world-0';
+ h.storage.set(key,JSON.stringify({version:1,cycle:0,seen:[...pool.filter(r=>!editorial.isWorldMeal(r)).map(r=>r.id),worldId],last:[]}));
+ const before=h.storage.get(key),old=h.state.planned,result=h.api.draw(DAYS,old);
+ assert.equal(result.additions.length,7);assert.equal(worldCount(pool,result.additions),0);
+ assert.equal(h.storage.get(key),before,'a preview must not consume or reset saved history');
+ assert.equal(h.api.commit(old,JSON.stringify(old),'{}',null,result),true);
+ assert.ok(JSON.parse(h.storage.get(key)).seen.includes(worldId),'keep the World rotation history');
+});
+
+test('known World IDs still use the quota when a saved Premium record is unloaded',()=>{
+ const pool=editorialFixture(),h=harness(pool,undefined,{random:()=>0.01});
+ const previous=[{day:'Monday',recipeId:'persian-herb-and-kidney-bean-beef-stew'}];
+ const result=h.api.draw(DAYS.slice(1),previous);
+ assert.equal(result.additions.length,6);assert.equal(worldCount(pool,result.additions),0);
+});
+
+test('changed classifications during confirmation cannot bypass the weekly cap or save history',()=>{
+ const pool=editorialFixture(),h=harness(pool,undefined,{random:()=>0.9});
+ const old=h.state.planned,result=h.api.draw(DAYS,old),before=[...h.storage];
+ pool.find(r=>r.id===result.additions[0].recipeId).editorialCollection='Try the World';
+ assert.equal(h.api.commit(old,JSON.stringify(old),'{}',null,result),false);
+ assert.equal(h.state.planned,old);assert.deepEqual([...h.storage],before);
 });

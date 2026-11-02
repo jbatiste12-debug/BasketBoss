@@ -198,3 +198,105 @@ test('published main history migrates without writes until a confirmed scoped co
  assert.equal(storage.getItem(legacyKey),JSON.stringify(['chicken']));
  assert.equal(JSON.parse(storage.getItem(rotation.key)).seen.length,2);
 });
+
+const cohortFixture=()=>[
+  dish('everyday-chicken','chicken',false,{editorialGroup:'everyday'}),
+  dish('everyday-beans','beans',false,{editorialGroup:'everyday'}),
+  dish('world-duck','duck',false,{editorialGroup:'world'}),
+  dish('world-tofu','tofu',false,{editorialGroup:'world'})
+];
+const cohortOptions={rotationGroup:recipe=>recipe.editorialGroup};
+function seedCohortHistory(recipes,storage,seen,extra={}){
+  const key=session(recipes,storage,extra).key;
+  const raw=JSON.stringify({version:1,cycle:0,seen,last:[]});storage.setItem(key,raw);
+  return {key,raw};
+}
+
+test('editorial cohorts let everyday dinners rotate without waiting for optional world recipes',()=>{
+  const recipes=cohortFixture(),storage=memory();
+  seedCohortHistory(recipes,storage,['everyday-chicken','everyday-beans','world-duck','unloaded-premium'],cohortOptions);
+  const everyday=session(recipes,storage,cohortOptions);
+  assert.equal(choose(everyday,'Monday',[],recipes.slice(0,2)).id,'everyday-chicken');
+  assert.equal(everyday.snapshot().cycle,1);
+  assert.deepEqual(new Set(everyday.snapshot().seen),new Set(['world-duck','unloaded-premium','everyday-chicken']));
+  assert.equal(everyday.commit(),true);
+  const nextWorld=session(recipes,storage,cohortOptions);
+  assert.equal(choose(nextWorld,'Monday',[],recipes.slice(2)).id,'world-tofu');
+  assert.equal(nextWorld.snapshot().cycle,1,'partly consumed world cohort cannot reset');
+  assert.ok(nextWorld.snapshot().seen.includes('world-duck'));
+});
+
+test('an unrequested fully consumed cohort retains its history until it is actually requested',()=>{
+  const recipes=cohortFixture(),storage=memory();
+  seedCohortHistory(recipes,storage,['world-duck','world-tofu','everyday-chicken'],cohortOptions);
+  const everyday=session(recipes,storage,cohortOptions);
+  assert.equal(choose(everyday,'Monday',[],recipes.slice(0,2)).id,'everyday-beans');
+  assert.equal(everyday.snapshot().cycle,0);
+  assert.ok(everyday.snapshot().seen.includes('world-duck'));
+  assert.ok(everyday.snapshot().seen.includes('world-tofu'));
+  assert.equal(everyday.commit(),true);
+  const world=session(recipes,storage,cohortOptions);
+  assert.equal(choose(world,'Monday',[],recipes.slice(2)).id,'world-duck');
+  assert.equal(world.snapshot().cycle,1);
+  assert.deepEqual(new Set(world.snapshot().seen),new Set(['everyday-chicken','everyday-beans','world-duck']));
+});
+
+test('narrow category or time candidates cannot prematurely reset an editorial cohort',()=>{
+  const recipes=cohortFixture(),storage=memory();
+  seedCohortHistory(recipes,storage,['everyday-chicken'],cohortOptions);
+  const rotation=session(recipes,storage,cohortOptions);
+  assert.equal(choose(rotation,'Monday',[],[recipes[0]]),null);
+  assert.equal(rotation.reason,'rotation-filter-exhausted');
+  assert.equal(rotation.snapshot().cycle,0);
+  assert.deepEqual(rotation.snapshot().seen,['everyday-chicken']);
+  assert.equal(choose(rotation,'Monday',[],recipes.slice(0,2)).id,'everyday-beans');
+});
+
+test('callers without rotationGroup retain the original full accessible pool boundary',()=>{
+  const recipes=cohortFixture(),storage=memory();
+  seedCohortHistory(recipes,storage,['everyday-chicken','everyday-beans']);
+  const global=session(recipes,storage);
+  assert.equal(choose(global,'Monday',[],recipes.slice(0,2)),null);
+  assert.equal(global.snapshot().cycle,0);
+  assert.equal(choose(global,'Monday',[],recipes.slice(2)).id,'world-duck');
+});
+
+test('cohort resets remain read-only until a confirmed single-record optimistic commit',()=>{
+  const recipes=cohortFixture(),storage=memory();
+  const {key,raw}=seedCohortHistory(recipes,storage,['everyday-chicken','everyday-beans','world-duck'],cohortOptions);
+  const cancelled=session(recipes,storage,cohortOptions);
+  assert.ok(choose(cancelled,'Monday',[],recipes.slice(0,2)));
+  assert.equal(storage.getItem(key),raw,'opening and reserving a reset cannot consume history');
+  const confirmed=session(recipes,storage,cohortOptions);
+  assert.ok(choose(confirmed,'Monday',[],recipes.slice(0,2)));
+  assert.equal(confirmed.commit(),true);
+  const saved=storage.getItem(key);
+  assert.deepEqual(Object.keys(JSON.parse(saved)).sort(),['cycle','last','seen','version']);
+  assert.equal(confirmed.commit(),true);
+  assert.equal(storage.getItem(key),saved);
+  assert.equal(cancelled.commit(),false,'a stale proposal cannot overwrite the confirmed one');
+  assert.equal(cancelled.reason,'rotation-changed');
+  assert.equal(storage.getItem(key),saved);
+});
+
+test('cohort resets never permit duplicate reservations within one weekly plan',()=>{
+  const recipes=cohortFixture(),storage=memory();
+  const rotation=session(recipes,storage,cohortOptions);
+  assert.equal(choose(rotation,'Monday',[],[recipes[0]]).id,'everyday-chicken');
+  assert.equal(choose(rotation,'Tuesday',[],[recipes[1]]).id,'everyday-beans');
+  assert.equal(choose(rotation,'Wednesday',[],recipes.slice(0,2)),null);
+  assert.deepEqual(rotation.snapshot().selected,['everyday-chicken','everyday-beans']);
+  assert.equal(rotation.snapshot().cycle,0,'reserved IDs do not request a fresh cohort');
+  assert.equal(choose(rotation,'Monday',[],recipes.slice(2)),null,'occupied reservation remains protected');
+});
+
+test('editorial cohort membership changes invalidate filtering and confirmation',()=>{
+  const recipes=cohortFixture(),storage=memory();
+  const rotation=session(recipes,storage,cohortOptions);
+  assert.ok(choose(rotation,'Monday',[],[recipes[0]]));
+  recipes[0].editorialGroup='world';
+  assert.equal(rotation.filter(recipes,{day:'Tuesday'}).length,0);
+  assert.equal(rotation.reason,'rotation-access-changed');
+  assert.equal(rotation.commit(),false);
+  assert.equal(storage.values.size,0);
+});

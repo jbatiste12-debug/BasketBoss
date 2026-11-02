@@ -84,7 +84,7 @@ const blockEnd=html.indexOf('/* END_BASKETBOSS_AUTOFILL_VARIETY_ROTATION_V1 */',
 const drawSource=html.match(/function bbPlanVarietyValid\(plans\)\{[\s\S]*?\n\}/)[0]+'\n'+html.slice(blockStart,blockEnd);
 function planner(recipes=real){
  const h=core(),state={planned:[],bb81Batch:null},notices=[];let saves=0;
- const context={RECIPES:recipes,state,localStorage:h.storage,console,BBRecipePlanning:planning,BBIngredientPreferences:h.api,DAYS,
+ const context={BBRecipeEditorial:require('../bb-recipe-editorial.js'),RECIPES:recipes,state,localStorage:h.storage,console,BBRecipePlanning:planning,BBIngredientPreferences:h.api,DAYS,
   getRecipe:id=>recipes.find(r=>r.id===id),bb176AllowedRecipe:()=>true,
   bb81Under30:()=>true,bb81KidOK:()=>true,bb81BatchOK:()=>true,bb81ProteinScore:()=>3,
   bb83FridgeStockKeys:()=>new Set(),bb172QuickDinners:()=>({}),persist:()=>{saves++;return true;},render:()=>{},notify:msg=>notices.push(msg)};

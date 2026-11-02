@@ -519,6 +519,33 @@ family-baked-cod-with-cheesy-breadcrumbs
     if(!dinner(recipe))return null;
     return allowedGroups.has(recipe.editorialCollection)?recipe.editorialCollection:(byId.get(recipe.id)||null);
   }
+  // The occasional-meal quota also covers the newer globally inspired
+  // specials. A Special Occasion browse label must not bypass the limit.
+  const worldSpecialIds=new Set(`
+beef-brioche-mushroom-tournedos
+charred-octopus-romesco
+cheese-souffle-broccoli
+crab-ravioli-sage-butter
+crisp-pork-belly-tamarind-relish
+duck-leg-confit-lentils
+fennel-rice-stuffed-squid
+freekeh-stuffed-quail-with-pomegranate-glaze
+juniper-venison-celeriac-puree
+langoustine-bisque-gruyere-croutons
+lobster-sweetcorn-chawanmushi
+lobster-thermidor-with-tarragon-mustard-sauce
+monkfish-bourride-aioli
+saffron-halibut-with-jeweled-barberry-rice
+saffron-mussels-fregola
+salt-baked-sea-bream-fennel-orange-salad
+tamarind-date-lamb-loin-with-cauliflower-pur-e
+tea-smoked-duck-plum-soba
+whole-bream-black-bean-ginger
+  `.trim().split(/\s+/));
+  function isWorldMeal(recipe){
+    const group=primaryCollection(recipe);
+    return group==='Try the World'||(group!==null&&worldSpecialIds.has(recipe.id));
+  }
   function collections(recipe){
     if(!dinner(recipe))return [];
     const primary=primaryCollection(recipe),result=primary?[primary]:[];
@@ -529,5 +556,5 @@ family-baked-cod-with-cheesy-breadcrumbs
     if((minutes!==null&&minutes>60)||/\bslow[ -]?cook(?:er|ing)?\b/.test(category))result.push('Weekend & Slow Cooking');
     return result;
   }
-  return Object.freeze({primaryCollection,collections,isSide,isKidsMeal,totalMinutes});
+  return Object.freeze({primaryCollection,collections,isSide,isKidsMeal,isWorldMeal,totalMinutes});
 });
