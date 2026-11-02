@@ -17,6 +17,12 @@ on:
       - package-lock.json
       - bb-account-deletion.js
       - bb-account-polish.*
+      - bb-home.js
+      - bb-shared-shopping.*
+      - bb-kitchen-*
+      - bb-simple-layout.*
+      - bb-weekly-shop.*
+      - bb-weekly-essentials.*
       - bb-membership-settings.js
       - bb-ingredient-*
       - bb-evening-*
@@ -52,7 +58,7 @@ jobs:
           if [[ "$BEFORE_SHA" =~ ^[0-9a-f]{40}$ ]] && git cat-file -e "$BEFORE_SHA^{commit}" 2>/dev/null; then
             native=false
             while IFS= read -r file; do
-              if [[ "$file" =~ ^(ios/|native/|scripts/(build-native|ios-|test-ios|prepare-ios)|capacitor\.config\.(ts|js|json)$|package(-lock)?\.json$|[^/]+\.(js|mjs|css|html)$) ]]; then
+              if [[ "$file" == ".github/workflows/apple-subscriptions.yml" || "$file" =~ ^(ios/|native/|scripts/(build-native|ios-|test-ios|prepare-ios)|capacitor\.config\.(ts|js|json)$|package(-lock)?\.json$|[^/]+\.(js|mjs|css|html)$) ]]; then
                 native=true
               fi
             done < <(git diff --name-only "$BEFORE_SHA" "$GITHUB_SHA")

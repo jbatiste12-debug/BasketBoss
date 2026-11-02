@@ -17,7 +17,7 @@ html body nav#bbPrimaryNavigation[data-bb-navigation="polished"]>[data-bb-nav-it
  box-shadow:none!important;text-decoration:none!important;text-align:center!important;line-height:1.2!important;
  font:650 10.5px/1.2 system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif!important;
  cursor:pointer!important;touch-action:manipulation!important;-webkit-tap-highlight-color:transparent;
- transition:background-color .16s ease,color .16s ease,transform .16s ease!important;
+ transition:background-color .16s ease,color .16s ease!important;
 }
 html body nav#bbPrimaryNavigation[data-bb-navigation="polished"]>[data-bb-nav-item]::after{display:none!important;content:none!important}
 html body nav#bbPrimaryNavigation[data-bb-navigation="polished"]>[data-bb-nav-item]::before{display:none!important;content:none!important}
@@ -45,7 +45,7 @@ html body nav#bbPrimaryNavigation[data-bb-navigation="polished"]>[data-bb-nav-cu
  content:""!important;display:block!important;position:absolute!important;top:4px!important;left:50%!important;
  transform:translateX(-50%)!important;width:16px!important;height:2px!important;background:#f5ce74!important;border-radius:2px!important;
 }
-html body nav#bbPrimaryNavigation[data-bb-navigation="polished"]>[data-bb-nav-item]:active{transform:translateY(1px)!important}
+html body nav#bbPrimaryNavigation[data-bb-navigation="polished"]>[data-bb-nav-item]:active{transform:none!important}
 html body nav#bbPrimaryNavigation[data-bb-navigation="polished"]>[data-bb-nav-item]:focus-visible{outline:3px solid #a77c2e!important;outline-offset:3px!important}
 html body .shell:has(>nav#bbPrimaryNavigation[data-bb-navigation="polished"]){padding-bottom:calc(106px + env(safe-area-inset-bottom,0px))!important}
 @media(hover:hover){html body nav#bbPrimaryNavigation[data-bb-navigation="polished"]>[data-bb-nav-current="false"]:hover{background:#edf3e5!important;color:#214f37!important}}
@@ -54,3 +54,35 @@ html body .shell:has(>nav#bbPrimaryNavigation[data-bb-navigation="polished"]){pa
  html body nav#bbPrimaryNavigation[data-bb-navigation="polished"]>[data-bb-nav-item]{font-size:10px!important;min-height:57px!important;gap:5px!important;border-radius:16px!important}
 }
 @media(prefers-reduced-motion:reduce){html body nav#bbPrimaryNavigation[data-bb-navigation="polished"]>[data-bb-nav-item]{transition:none!important}html body nav#bbPrimaryNavigation[data-bb-navigation="polished"]>[data-bb-nav-item]:active{transform:none!important}}
+/* Mobile content stays in its real document position while scrolling. The old
+   245px card estimate predates larger titles and recipe benefits; sizing those
+   cards only as they enter view can change the page length under a swipe. */
+/* The old compact-tab layer hid this entire banner after leaving Plan. Keep
+   one consistent account/settings entry across tabs, in normal page flow.
+   Full-screen shopping and cooking retain their existing overlay rules. */
+html body[data-bbnext-view]:not(.bb172-storefront-visible) .shell>header.top[data-bb-account-polish]{display:flex!important;position:relative!important;top:auto!important;inset-block-start:auto!important;transform:none!important;margin:0 auto 11px!important}
+html body[data-bbnext-view] .shell>header.top[data-bb-account-polish] #saveStatus{display:block!important}
+html body[data-bbnext-view] .shell:has(>header.top[data-bb-account-polish])>#bb175Toolbar,
+html body[data-bbnext-view]:has(.shell>header.top[data-bb-account-polish]) #bbR6QuickSettings{display:none!important}
+html body.bb172-storefront-visible .shell>header.top[data-bb-account-polish],
+html body.bb172-storefront-visible nav#bbPrimaryNavigation[data-bb-navigation]{display:none!important}
+@media(max-width:620px){
+ html body[data-bbnext-view]:not(.bb172-storefront-visible) .shell>header.top[data-bb-account-polish]{display:grid!important}
+}
+@media(max-width:700px){
+ html{scroll-behavior:auto!important}
+ html body #app.bb-stage-enter{animation:none!important;transform:none!important}
+ html body #app .grid-recipes .mini-recipe{content-visibility:visible!important;contain-intrinsic-size:none!important}
+ html body .shell>header.top{transition:none!important;animation:none!important}
+}
+/* Touch hover can remain latched after a swipe. Use colour feedback, keeping
+   the image and control geometry still; deliberate recipe swipes retain their
+   own drag transform and selected-card reveal keeps its explicit scroll. */
+@media(hover:none) and (pointer:coarse){
+ html body #app .mini-recipe:hover,
+ html body #app .mini-recipe:hover .mini-img img,
+ html body #app .recipe-image:hover img,
+ html body #app .stat:hover,
+ html body #app .btn:hover,html body #app .btn:active,
+ html body #app .small-btn:hover,html body #app .small-btn:active{transform:none!important}
+}

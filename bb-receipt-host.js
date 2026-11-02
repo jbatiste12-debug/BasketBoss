@@ -61,10 +61,52 @@
     if (!receipts.length) for (const row of essentials) { const n = amount(row.pricePaid); nonFood += n || 0; if (n === null) incomplete = true; }
     return {currency, receipts, essentials, food: Math.round(food * 100) / 100, nonFood: Math.round(nonFood * 100) / 100, paid: receipts.length && !knownTotals ? null : Math.round(paid * 100) / 100, unallocated, incomplete};
   }
+  function validTripId(value) {
+    return typeof value === 'string' && /^[A-Za-z0-9_-]{4,120}$/.test(value) && !['__proto__', 'prototype', 'constructor'].includes(value);
+  }
+  // A shop is selected by its recorded identity, never by inferred matching of
+  // product names, quantities or receipt totals. Only labels use the date.
+  function recordedTrips(credits, current = {}) {
+    if (!isObject(credits) || Array.isArray(credits)) return [];
+    const trips = new Map(), rawTotals = new Map();
+    const identity = (row, id) => {
+      const aliases = {eggs: 'egg', potatoes: 'potato', tomatoes: 'tomato', onions: 'onion', peppers: 'pepper', carrots: 'carrot', bananas: 'banana', apples: 'apple', lemons: 'lemon', limes: 'lime', mushrooms: 'mushroom', courgettes: 'courgette', scallops: 'scallop', wraps: 'wrap'};
+      let name = typeof (row?.canonicalKey || row?.name) === 'string' ? (row.canonicalKey || row.name).normalize('NFKC').replace(/[\u0000-\u001f\u007f]/g, ' ').replace(/\s+/g, ' ').trim().toLowerCase() : '';
+      name = aliases[name] || name;
+      const rawUnit = typeof row?.unit === 'string' ? row.unit.trim().toLowerCase() : '', unit = rawUnit === 'kg' ? 'g' : rawUnit === 'l' ? 'ml' : rawUnit;
+      if (!name || name.length > 160 || name.includes('|') || ['__proto__', 'prototype', 'constructor'].includes(name) || !['g', 'ml', 'each', 'clove', 'bulb', 'tin', 'pack', 'bag', 'bunch', 'loaf', 'slice', 'tsp', 'tbsp'].includes(unit)) return null;
+      return {key: id + '|' + name + '|' + unit, unit, quantity: row.credited * (rawUnit === 'kg' || rawUnit === 'l' ? 1000 : 1)};
+    };
+    for (const [key, row] of Object.entries(credits).slice(0, 5000)) {
+      if (!isObject(row) || typeof row.credited !== 'number' || !Number.isFinite(row.credited) || row.credited <= 0 || row.credited > 1000000) continue;
+      const id = row.shopSessionId || row.week;
+      if (!validTripId(id) || id === current.shopSessionId || row.market && row.market !== current.market || row.retailer && row.retailer !== current.retailer) continue;
+      const value = typeof row.purchasedAt === 'number' ? row.purchasedAt : typeof row.purchasedAt === 'string' && /^\d{4}-\d\d-\d\d(?:T[^\r\n]{1,60})?$/.test(row.purchasedAt) ? Date.parse(row.purchasedAt) : NaN;
+      const at = Number.isFinite(value) && Math.abs(value) <= 8640000000000000 ? value : 0;
+      const trip = trips.get(id) || {id, at: 0, count: 0, covered: true, linkable: true};trip.at = Math.max(trip.at, at);trips.set(id, trip);
+      const expected = identity(row, id);
+      if (row.canonicalCreditId && key !== row.canonicalCreditId) {
+        const aggregate = credits[row.canonicalCreditId], aggregateIdentity = identity(aggregate, id);
+        const aggregateTrip = aggregate?.shopSessionId || aggregate?.week;
+        if (!expected || row.canonicalCreditId !== expected.key || aggregateTrip !== id || aggregate?.market && aggregate.market !== current.market || aggregate?.retailer && aggregate.retailer !== current.retailer || !aggregateIdentity || aggregateIdentity.key !== expected.key || typeof aggregate.credited !== 'number' || !Number.isFinite(aggregate.credited) || aggregate.credited <= 0 || aggregate.credited > 1000000) trip.linkable = false;
+        else {
+          const total = (rawTotals.get(expected.key) || 0) + expected.quantity;rawTotals.set(expected.key, total);
+          if (total > aggregateIdentity.quantity + 0.000001) trip.linkable = false;
+        }
+        // Raw source rows remain an audit/replay record. Only the matching
+        // canonical aggregate participates in receipt credit and its UI count.
+        continue;
+      }
+      if (!expected || key !== expected.key || row.canonicalCreditId && row.canonicalCreditId !== expected.key) trip.linkable = false;
+      const covered = typeof row.receiptInventoryReceiptId === 'string' && !!row.receiptInventoryReceiptId || typeof row.receiptCoveredQuantity === 'number' && row.receiptCoveredQuantity >= row.credited;
+      trip.count++;trip.covered = trip.covered && !!covered;
+    }
+    return [...trips.values()].sort((a, b) => b.at - a.at || a.id.localeCompare(b.id)).slice(0, 20);
+  }
   function createHost(initial = {}) {
     let options = {...initial}, availability = {available: false, premium: false}, lastChecked = 0, checkedActor = null, statusPromise = null;
     let isolationError = null, issue = null, observer = null, scheduled = false, rendering = false, reviewing = false, confirmingCurrent = false, activeDialog = null, lastTab = null, generation = 0, configured = false;
-    let deletionPaused = false;
+    let deletionPaused = false, choosingTrip = false;
     const blocked = () => deletionPaused || root.BBAccountDeletion?.isDeleting?.() === true;
     const store = () => options.storage || root.localStorage;
     const doc = () => options.document || root.document;
@@ -221,19 +263,78 @@
         onProjection: value => {if (blocked()) return;issue = null; options.onProjection?.(value); schedule();}});
       scanner()?.configure?.({getSession: session, getContext: context, inventory: adapter()});
     }
+    function tripPin() {
+      const active = context(), scope = projection()?.scope;
+      return {actorId: actor(), token: session()?.access_token, market: active.market, retailer: active.retailer || null, shopSessionId: active.shopSessionId || null, scope: scope ? scope.kind + ':' + scope.id : null, generation};
+    }
+    function sameTripPin(pin) {
+      const active = tripPin();
+      return !blocked() && ['actorId', 'token', 'market', 'retailer', 'shopSessionId', 'scope', 'generation'].every(key => active[key] === pin[key]);
+    }
+    function chooseReceiptTrip(captured, trips) {
+      const document = doc();if (!document) {notify('Reopen receipt scanning to choose the recorded shopping trip.');return Promise.resolve(null);}
+      const pin = tripPin();choosingTrip = true;
+      return new Promise(resolve => {
+        const dialog = element('dialog', undefined, 'bb-receipt-pantry-dialog');dialog.id = 'bbReceiptTripChoice';activeDialog = dialog;
+        dialog.setAttribute('aria-labelledby', 'bbReceiptTripTitle');
+        const title = element('h2', 'Which shopping trip?');title.id = 'bbReceiptTripTitle';
+        const help = element('p', 'Choose the trip shown on this receipt. Purchases already added to At home are linked so they are not added twice.');
+        const form = element('form'), label = element('label', 'Receipt for'), select = element('select');select.dataset.bbReceiptTrip = 'select';select.required = true;select.setAttribute('aria-label', 'Shopping trip on this receipt');
+        select.style.cssText = 'display:block;box-sizing:border-box;width:100%;max-width:100%;min-height:44px;margin:8px 0 12px;padding:10px;border:1px solid #b6cdbf;border-radius:10px;background:#fff;color:#214e36;font:16px/1.4 system-ui';
+        const add = (value, text) => {const option = element('option', text);option.value = value;select.append(option);};
+        add('', 'Choose a trip');if (validTripId(captured.shopSessionId)) add('current', 'Current shopping trip');
+        for (const trip of trips) {
+          let date = 'date not available';if (trip.at) {try {date = new Date(trip.at).toLocaleDateString('en-GB', {day: 'numeric', month: 'short', year: 'numeric'});} catch {}}
+          add('recorded:' + trip.id, (!trip.linkable ? 'Stock review needed' : trip.covered ? 'Receipt already recorded' : 'Finished shop') + ' · ' + date);
+        }
+        add('unrecorded', 'Another purchase not recorded in Shop');select.value = '';label.append(select);
+        const message = element('p');message.setAttribute('role', 'status');message.setAttribute('aria-live', 'polite');
+        const actions = element('div', undefined, 'bb-receipt-host-actions'), proceed = element('button', 'Continue to receipt'), cancel = element('button', 'Cancel');
+        proceed.type = 'submit';proceed.disabled = true;proceed.dataset.bbReceiptTrip = 'continue';cancel.type = 'button';cancel.dataset.bbReceiptTrip = 'cancel';actions.append(proceed, cancel);
+        let finished = false;
+        const finish = value => {if (finished) return;finished = true;choosingTrip = false;if (activeDialog === dialog) activeDialog = null;if (dialog.open) dialog.close?.();dialog.remove();resolve(value);};
+        const selected = () => trips.find(trip => 'recorded:' + trip.id === select.value);
+        select.addEventListener('change', () => {const trip = selected();message.textContent = trip && !trip.linkable ? 'This older stock record needs review before receipt food can be added safely. Review At home or use receipt price learning only.' : trip?.covered ? 'A receipt has already been recorded for this trip. Review it in receipt history instead of adding the same purchase again.' : '';proceed.disabled = !select.value || !!trip?.covered || trip?.linkable === false;});
+        cancel.onclick = () => finish(null);dialog.addEventListener('close', () => finish(null));dialog.addEventListener('cancel', event => {event.preventDefault();finish(null);});
+        form.addEventListener('submit', event => {
+          event.preventDefault();if (finished) return;
+          if (!sameTripPin(pin)) {notify('Your account or shopping context changed. Reopen receipt scanning.');finish(null);return;}
+          if (select.value === 'current' && validTripId(captured.shopSessionId)) {finish({shopSessionId: captured.shopSessionId, shopSessionConfirmed: true});return;}
+          if (select.value === 'unrecorded') {finish({shopSessionId: null, shopSessionConfirmed: false});return;}
+          const trip = selected(), latest = recordedTrips(options.getFinishShopCredits?.() || read(KEYS.ledger), captured).find(row => row.id === trip?.id);
+          if (!trip || !latest || latest.covered || !latest.linkable) {message.textContent = 'This recorded trip changed. Close and reopen receipt scanning to review it.';proceed.disabled = true;return;}
+          finish({shopSessionId: trip.id, shopSessionConfirmed: true});
+        });
+        form.append(label, message, actions);dialog.append(title, help, form);document.body.append(dialog);
+        if (typeof dialog.showModal === 'function') dialog.showModal();else dialog.setAttribute('open', '');select.focus?.();
+      });
+    }
     async function open(value = {}) {
       if (blocked()) return null;
       const serial = generation;
       isolate(); if (isolationError) {notify(isolationError); return null;}
-      if (reviewing || confirmingCurrent) {notify('Finish or close your Pantry review before scanning another receipt.');return null;}
+      if (reviewing || confirmingCurrent || choosingTrip) {notify('Finish or close your receipt or Pantry review before scanning another receipt.');return null;}
+      const openingActor = actor(), openingToken = session()?.access_token;
       await refreshAvailability({synchronize: false});
-      if (blocked() || serial !== generation) return null;
+      if (blocked() || serial !== generation || actor() !== openingActor || session()?.access_token !== openingToken || choosingTrip) return null;
       if (!(availability.premium || options.isPremium?.())) {options.openUpgrade?.(); return null;}
       if (!availability.available) return options.openLegacy?.(value);
       if (hasPendingConfirmation()) {await recoverReceipt(); return null;}
-      const captured = context();
+      const captured = {...context()};
       if(!captured.retailer){notify('Choose your supermarket in Shop or region settings before scanning a receipt.');return null;}
-      return scanner()?.open?.({...captured, ...value, onSaved: result => {if (blocked() || serial !== generation) return;options.onProjection?.(result?.projection || {}); value.onSaved?.(result); schedule();}});
+      const explicitTrip = Object.hasOwn(value, 'shopSessionId') && value.shopSessionId !== undefined;
+      if (explicitTrip && value.shopSessionId !== null && !validTripId(value.shopSessionId)) {notify('The shopping trip could not be verified. Reopen receipt scanning.');return null;}
+      let trip = {shopSessionId: captured.shopSessionId || null, shopSessionConfirmed: false};
+      if (explicitTrip) {
+        let previous;try {previous = recordedTrips(options.getFinishShopCredits?.() || read(KEYS.ledger), {...captured, shopSessionId: null}).find(row => row.id === value.shopSessionId);} catch {notify('Your recorded shopping trips need review before scanning this receipt.');return null;}
+        if (previous && !previous.linkable) {notify('This older stock record needs review before receipt food can be added safely. Review At home or use receipt price learning only.');return null;}
+        if (previous?.covered) {notify('A receipt has already been recorded for this trip. Review it in receipt history instead of adding the same purchase again.');return null;}
+        trip = {shopSessionId: value.shopSessionId, shopSessionConfirmed: value.shopSessionId !== null};
+      } else {
+        let trips;try {trips = recordedTrips(options.getFinishShopCredits?.() || read(KEYS.ledger), captured);} catch {notify('Your recorded shopping trips need review before scanning this receipt.');return null;}
+        if (trips.length) {trip = await chooseReceiptTrip(captured, trips);if (!trip || blocked() || serial !== generation || actor() !== openingActor || session()?.access_token !== openingToken) return null;}
+      }
+      return scanner()?.open?.({...captured, ...value, ...trip, onSaved: result => {if (blocked() || serial !== generation) return;options.onProjection?.(result?.projection || {}); value.onSaved?.(result); schedule();}});
     }
     async function recoverReceipt({retry = false} = {}) {
       if (blocked()) return {ok: false};
@@ -259,7 +360,7 @@
     async function confirmCurrentPantry({stock} = {}) {
       if (blocked()) return {ok: false, needsReview: true};
       const serial = generation;
-      isolate();if (isolationError || hasPendingConfirmation() || reviewing || confirmingCurrent) return {ok: false, needsReview: true};
+      isolate();if (isolationError || hasPendingConfirmation() || reviewing || confirmingCurrent || choosingTrip) return {ok: false, needsReview: true};
       await refreshAvailability({synchronize: false});
       if (blocked() || serial !== generation) return {ok: false, needsReview: true};
       if (!availability.available) return confirmLocalPantryReview();
@@ -278,7 +379,7 @@
     async function reviewPantry() {
       if (blocked()) return null;
       const serial = generation;
-      if (reviewing) return null; isolate(); if (isolationError) {notify(isolationError);return null;}
+      if (reviewing || choosingTrip) return null; isolate(); if (isolationError) {notify(isolationError);return null;}
       if (hasPendingConfirmation()) {await recoverReceipt();return null;}
       reviewing = true;
       let data;
@@ -447,6 +548,6 @@
     return api;
   }
   root.BBReceiptHostFactory = createHost;
-  root.BBReceiptHostHelpers = Object.freeze({actorOf, weeklyReceiptSummary, weekBounds});
+  root.BBReceiptHostHelpers = Object.freeze({actorOf, weeklyReceiptSummary, weekBounds, recordedTrips});
   root.BBReceiptHost = createHost();
 })(typeof window !== 'undefined' ? window : globalThis);

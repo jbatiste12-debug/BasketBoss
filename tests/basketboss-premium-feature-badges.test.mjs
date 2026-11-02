@@ -73,6 +73,7 @@ function fixture({state='free',verifiedState=state,comparison=true}={}){
  const paid=[control('Trim my basket',{className:'bb81-trim-button'}),control('Batch cook',{className:'bb-manual-batch-btn'}),control('Evening Pivot',{className:'bb-evening-pivot-open'}),control('Voice Cook',{className:'bbcv-toggle'}),control('Shop mode',{id:'bb172ShopModeButton'}),control('Store mode',{id:'bb172StoreMode'}),control('Begin shop',{className:'bbm-begin'}),control('Begin trip',{className:'bb-r6-begin'}),control('Share with partner',{attrs:{'data-bbhs-trigger':''}}),control('Scan food',{attrs:{'data-ai-scan-btn':''}}),control('Create a meal',{attrs:{'data-ai-meal-btn':''}}),control('Open photo scan',{attrs:{'data-open-tool':'scan'}}),control('Open meal creator',{attrs:{'data-open-tool':'meal'}}),control('Scan',{id:'scanBtn'}),control('Create meal',{id:'generate'}),control('Choose food photo',{tag:'label',attrs:{for:'ai-photo-input'}})];
  const photoInput=new Element('input');photoInput.id='ai-photo-input';photoInput.setAttribute('type','file');paid.at(-1).append(photoInput);
  const begin=paid[6],arrow=new Element('span');arrow.className='begin-arrow';arrow.textContent='→';begin.append(arrow);
+ const shop=paid.splice(4,4);
  const free=[control('Auto-Fill week',{id:'basicAutoFill'}),control('Pantry',{id:'pantry'}),control('Ingredients to Avoid',{id:'ingredientsToAvoid'}),control('Upgrade to Premium',{id:'bb175Compare'}),control('Premium AI meal scan'),control('Diet option',{className:'bb81-pro-pill'})];
  const receipt=control('',{attrs:{'data-bb-receipt-entry':'1','aria-label':'Scan receipt'}}),receiptLabel=new Element('span'),receiptBadge=new Element('span');receiptLabel.textContent='Scan receipt';receiptBadge.textContent='Premium';receiptBadge.className='bb-receipt-entry-badge';receipt.append(receiptLabel,' · ',receiptBadge);
  const filterGroup=control('',{tag:'section',className:'bb81-pro-filters'}),filterHeading=new Element('div'),filterBadge=new Element('span');filterHeading.className='bb81-pro-filters-heading';filterBadge.textContent='Premium filters';filterHeading.append(filterBadge);filterGroup.append(filterHeading);
@@ -84,13 +85,13 @@ function fixture({state='free',verifiedState=state,comparison=true}={}){
  const flush=()=>{let runs=0;while((mutationRecords.length||microtasks.length)&&runs++<15){if(mutationRecords.length)callback(mutationRecords.splice(0));while(microtasks.length)microtasks.shift()();}assert.ok(runs<15,'decoration must settle instead of observing its own writes');};flush();
  const badges=node=>node.querySelectorAll('.bb-premium-feature-badge');
  const accessible=node=>node.getAttribute?.('aria-label')??(node.hidden||node.getAttribute?.('aria-hidden')==='true'?'':node.nodeType===3?node.textContent:node.childNodes.map(accessible).join(''));
- return {win,document,control,paid,free,receipt,receiptBadge,filterGroup,filterBadge,legacy,photoInput,begin,arrow,recipe,recipeCrown,badges,accessible,flush,get observer(){return observer;},get queryCount(){return queryCount;},setRawState(value){phase=value;},eventState(value,event,target='document'){phase=value;(target==='document'?document:win).dispatchEvent(new Event(event));flush();},setState(value){phase=value;win.BasketBossPremiumFeatureBadges.refresh();flush();},setFallback(value){fallback=value;win.BasketBossPremiumFeatureBadges.refresh();flush();}};
+ return {win,document,control,paid,shop,free,receipt,receiptBadge,filterGroup,filterBadge,legacy,photoInput,begin,arrow,recipe,recipeCrown,badges,accessible,flush,get observer(){return observer;},get queryCount(){return queryCount;},setRawState(value){phase=value;},eventState(value,event,target='document'){phase=value;(target==='document'?document:win).dispatchEvent(new Event(event));flush();},setState(value){phase=value;win.BasketBossPremiumFeatureBadges.refresh();flush();},setFallback(value){fallback=value;win.BasketBossPremiumFeatureBadges.refresh();flush();}};
 }
 
 for(const state of ['free','signed_out'])test(state+' receives decorative Premium badges only on known paid controls',()=>{
  const h=fixture({state});
  for(const node of h.paid){const badge=h.badges(node);assert.equal(badge.length,1,node.textContent);assert.equal(badge[0].textContent,'Premium');assert.equal(badge[0].getAttribute('aria-hidden'),'true');assert.equal(badge[0].hidden,false);}
- for(const node of h.free)assert.equal(h.badges(node).length,0,node.textContent);
+ for(const node of [...h.free,...h.shop])assert.equal(h.badges(node).length,0,node.textContent);
  assert.equal(h.badges(h.filterGroup).length,1);assert.equal(h.badges(h.filterGroup)[0],h.filterBadge);
 });
 
@@ -164,11 +165,8 @@ test('a newly inserted subtree containing a paid control is decorated, and nativ
  assert.equal(h.badges(button).length,0);assert.equal(h.badges(h.free[3]).length,0,'the header remains an undecorated membership action');
 });
 
-test('desktop Go Shopping receives one badge and adopts a late existing marker without duplication',()=>{
+test('all advanced shopping launchers stay outside Premium-only badges',()=>{
  const h=fixture(),button=h.control('Go Shopping →',{className:'bb1745-go-button'});let clicks=0;const click=()=>clicks++;button.onclick=click;h.flush();
- assert.equal(h.badges(button).length,1);assert.equal(h.badges(button)[0].dataset.bbPremiumBadgeKind,'added');assert.equal(h.accessible(button),'Go Shopping →');
- const marker=h.document.createElement('span');marker.className='bb-premium-tag';marker.textContent='Premium';marker.setAttribute('aria-hidden','true');button.append(marker);h.flush();
- assert.equal(h.badges(button).length,1);assert.equal(h.badges(button)[0],marker);assert.equal(h.accessible(button),'Go Shopping →');assert.equal(button.onclick,click);button.click();assert.equal(clicks,1);
- const before=h.queryCount;for(let i=0;i<4;i++){h.win.BasketBossPremiumFeatureBadges.refresh();h.flush();assert.equal(h.badges(button).length,1);}assert.equal(h.queryCount,before+4);
- h.setState('premium');assert.equal(marker.hidden,true);assert.equal(h.badges(button).filter(node=>!node.hidden).length,0);
+ for(const state of ['free','signed_out','premium']){h.setState(state);for(const node of [...h.shop,button])assert.equal(h.badges(node).length,0,'weekly allowance owns the launcher badge');}
+ assert.equal(h.accessible(button),'Go Shopping →');assert.equal(button.onclick,click);button.click();assert.equal(clicks,1);
 });

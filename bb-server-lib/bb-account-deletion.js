@@ -98,6 +98,7 @@ export async function eraseAccountD1(env,userId,billing){
    AND s.original_transaction_id=bb_apple_notifications.original_transaction_id)`).bind(userId));
  if(appleSubscriptions)statements.push(db.prepare('DELETE FROM bb_apple_subscriptions WHERE user_id=?').bind(userId));
  if(await tableExists('bb_apple_account_tokens'))statements.push(db.prepare('DELETE FROM bb_apple_account_tokens WHERE user_id=?').bind(userId));
+ if(await tableExists('bb_weekly_shop_trips'))statements.push(db.prepare('DELETE FROM bb_weekly_shop_trips WHERE actor_hash=?').bind(await digestDeletionActor(userId)));
  statements.push(
   db.prepare(`UPDATE bb_founder_slots SET state=CASE WHEN state='reserved' AND paddle_subscription_id IS NULL THEN 'available' ELSE 'retired' END,
    user_id=NULL,reservation_token_hash=NULL,paddle_subscription_id=NULL,reservation_expires_at_ms=NULL,updated_at_ms=? WHERE user_id=?`).bind(Date.now(),userId),

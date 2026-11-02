@@ -16,6 +16,12 @@ on:
       - bb-meal-image.*
       - bb-navigation-polish.*
       - bb-account-polish.*
+      - bb-home.js
+      - bb-shared-shopping.*
+      - bb-kitchen-*
+      - bb-simple-layout.*
+      - bb-weekly-shop.*
+      - bb-weekly-essentials.*
       - food-thumbs/v2/**
       - shopping-inventory.js
       - make-a-meal.*

@@ -7,6 +7,19 @@
   if(details&&!details.open){details.open=true;target.scrollIntoView({block:'start'});}
  }
  window.addEventListener('hashchange',revealLinkedDemo);revealLinkedDemo();
+ // A small public example, never connected to an account or the app's stock.
+ const owned=document.getElementById('at-home-owned');
+ const ownedOutput=document.getElementById('at-home-owned-output');
+ const buyOutput=document.getElementById('at-home-buy-output');
+ if(owned&&ownedOutput&&buyOutput){
+  const renderStockExample=()=>{
+   const quantity=Math.max(0,Math.min(5000,Number(owned.value)||0));
+   const display=new Intl.NumberFormat('en-GB',{maximumFractionDigits:2});
+   ownedOutput.textContent=display.format(quantity)+' g';
+   buyOutput.textContent=display.format(Math.max(500-quantity,0))+' g';
+  };
+  owned.addEventListener('input',renderStockExample);renderStockExample();
+ }
  const tabs=Array.from(document.querySelectorAll('[data-receipt-demo-step]'));
  const next=document.getElementById('receipt-demo-next');
  const status=document.getElementById('receipt-demo-status');

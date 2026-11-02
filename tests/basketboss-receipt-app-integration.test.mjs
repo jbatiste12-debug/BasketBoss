@@ -10,9 +10,9 @@ function namedFunction(name,next){
 }
 function planner({review=false,authoritative=false,stock={},legacy=true,assumed=false}={}){
  const item={key:'chicken breast',unit:'g',required:600,toBuy:600};
- const context=vm.createContext({
+ const context=vm.createContext({window:{},
   state:{pantry:legacy?{'chicken breast':true}:{}},bb307Market:'UK',bb307Stock:{},BB307_SOURCE_RECIPES:[],BB307_NORMALIZED:[],BB321_RESEARCH_QUOTES:[],
-  bb307Selections:()=>[],bb307ActiveRetailer:()=> 'Aldi',bb307ReadStock:()=>({...stock}),bb307NormaliseName:value=>value,
+  bbHomeLegacyPantry:()=>legacy?{'chicken breast':true}:{},bb307Selections:()=>[],bb307ActiveRetailer:()=> 'Aldi',bb307ReadStock:()=>({...stock}),bb307NormaliseName:value=>value,
   bbReceiptPantryReviewRequired:()=>review,bbReceiptHasAuthoritativePantry:()=>authoritative,bbBetaStockForCurrentWeek:value=>value,
   BB307Pantry:{pantryId:(name,unit)=>name+'|'+unit,stockForBasket:value=>({...value})},
   bb307EstimateBasket:args=>({items:[{...item,toBuy:Math.max(0,item.required-(args.pantry?.['chicken breast|g']||0))}]}),
@@ -41,7 +41,7 @@ test('unmeasured staple assumptions cannot override reviewed absolute stock or p
 });
 test('essential product and region metadata survive saved feature normalization and addition',()=>{
  const start=index.indexOf('const BB307Features=(()=>{'),marker='return {normaliseFeatures,toggleFavourite,storeMealBasket,addSavedMeals,addEssential,getRestockSuggestions,rankFridgeRecipes};',end=index.indexOf('\n})();',index.indexOf(marker,start))+6;
- assert.ok(start>=0&&end>start);const context=vm.createContext({});vm.runInContext(index.slice(start,end)+';globalThis.features=BB307Features',context);
+ assert.ok(start>=0&&end>start);const context=vm.createContext({window:{},});vm.runInContext(index.slice(start,end)+';globalThis.features=BB307Features',context);
  const raw={name:'Shampoo',qty:2,unit:'pack',estimatedPackPrice:3.49,productName:'Family shampoo250ml',brand:'Family',packQuantity:250,packUnit:'ml',priceMarket:'US',priceRetailer:'Walmart',priceCurrency:'USD',priceScope:'store'};
  const added=context.features.addEssential({},raw,[]).essentials[0],again=context.features.normaliseFeatures({essentials:[added]},[]).essentials[0];
  for(const key of Object.keys(raw))assert.equal(again[key],raw[key],key);

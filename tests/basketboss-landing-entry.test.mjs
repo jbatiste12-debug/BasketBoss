@@ -88,8 +88,8 @@ test('pack and pantry example requires a deliberate demo action, makes no custom
  assert.match(page,/Fresh food requires safe-storage confirmation/);
  assert.match(page,/No real purchases, pantry changes or account data/);
  assert.match(js,/confirm-pantry-demo/);
- assert.match(js,/300g in Kitchen/);
- assert.match(js,/0g to buy · 50g remains/);
+ assert.match(js,/300g At home/);
+ assert.match(js,/0g to buy · 50g after cooking/);
  assert.match(js,/render\(false\)/);
  assert.doesNotMatch(js,/localStorage|sessionStorage|Authorization|\/api\/|bb_paid_entitlements|\.setItem\(/);
 });

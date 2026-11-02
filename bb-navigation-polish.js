@@ -9,7 +9,7 @@
  };
  const selector='.shell nav.tabs,nav.bb-r6-cook-nav,nav[aria-label="Bottom navigation"]';
  const watched=new WeakSet();let scheduled=false;
- function nameOf(item){return (item.querySelector('.nav-label')?.textContent||item.textContent||'').trim().toLocaleLowerCase('en-GB');}
+ function nameOf(item){return (item.querySelector('.nav-label')?.textContent||item.textContent||'').trim().toLocaleLowerCase('en-GB').replace(/^at home$/,'kitchen');}
  function refresh(){
   scheduled=false;
   for(const nav of document.querySelectorAll(selector)){
@@ -39,6 +39,7 @@
     }
     // The standalone Cook page uses a plain label span; decorate it in place.
     const label=Array.from(item.children).find(node=>node!==icon&&node.tagName==='SPAN');
+    if(name==='kitchen'&&label&&label.textContent!=='At home'){label.textContent='At home';item.setAttribute('aria-label','At home');}
     if(label&&!label.classList.contains('nav-label'))label.classList.add('nav-label');
    });
    if(!watched.has(nav)){

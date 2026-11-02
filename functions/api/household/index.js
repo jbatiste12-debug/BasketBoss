@@ -5,6 +5,10 @@ import {livePaidBillingEnabled,readPersonalPaidAccess} from '../../../bb-server-
 import {json,authenticatedUser,isLive,expectedPrice,entitlementForStatus,requireSameOrigin} from '../../../bb-server-lib/bb-billing.js';
 import {isNewestVerifiedSession} from '../../../bb-server-lib/bb-premium-seat.js';
 const SECTIONS=new Set(['planned_day','servings','pantry_item','kitchen_item','shopping_checked','budget_target','household_servings']);
+const SHOP_UNITS=new Set(['g','kg','ml','l','each','pack','clove','tin','loaf','slice','bulb']);
+const SHOP_UUID=/^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
+function shoppingInput(data){return SHOP_UUID.test(data.id||'')&&typeof data.name==='string'&&data.name.trim().length>=1&&data.name.trim().length<=70&&!/[\u0000-\u001f\u007f]/.test(data.name)&&typeof data.quantity==='number'&&Number.isFinite(data.quantity)&&data.quantity>0&&data.quantity<=1000000&&Math.abs(data.quantity*1000000-Math.round(data.quantity*1000000))<0.0001&&SHOP_UNITS.has(data.unit)&&(data.unit!=='pack'||Number.isInteger(data.quantity));}
+function shoppingRow(row,household){return row&&typeof row==='object'&&!Array.isArray(row)&&row.household_id===household&&SHOP_UUID.test(row.id||'')&&shoppingInput(row)&&typeof row.completed==='boolean'&&Number.isSafeInteger(row.revision)&&row.revision>=1&&(row.created_by===null||SHOP_UUID.test(row.created_by||''))&&(row.completed_by===null||SHOP_UUID.test(row.completed_by||''))&&(row.added_by_name===null||typeof row.added_by_name==='string'&&row.added_by_name.length>=1&&row.added_by_name.length<=60);}
 function privateKey(env){return env.SUPABASE_SECRET_KEY||env.SUPABASE_SERVICE_ROLE_KEY||'';}
 // Four independent gates. This never accepts the QA tenant or test-owner entitlement.
 // "Configured" means permitted to attempt status reads, not that any user is paid.
@@ -86,6 +90,12 @@ export async function onRequestGet({request,env}){
   const {household,role}=await householdForUser(env,auth.user);
   const entitled=household?await premium(env,household.owner_user_id):await premium(env,auth.user.id);
   const mode=new URL(request.url).searchParams.get('mode')||'status';
+  if(mode==='shopping'){
+   if(!household||!entitled)return json({error:'Verified Premium shared household required'},403);
+   const result=await supa(env,'rpc/bb_hh_service_shopping_list','POST',{p_actor:auth.user.id,p_household:household.id});
+   if(result?.ok!==true||result.household_id!==household.id||!Array.isArray(result.items)||result.items.length>250||!result.items.every(row=>shoppingRow(row,household.id)))throw Error('shared_shopping_response_invalid');
+   return json({...result,configured:true,migration_ready:true,household_id:household.id,role});
+  }
   if(mode==='entries'){
    if(!household||!entitled)return json({error:'Verified Premium shared household required'},403);
    const rows=await supa(env,`bb_household_entries?select=section,entry_key,value,revision,updated_at&${eq('household_id',household.id)}&order=section.asc,entry_key.asc&limit=1000`);
@@ -124,6 +134,22 @@ export async function onRequestPost({request,env}){
   if(data.action==='unlink'){
    if(role!=='owner')return json({error:'Owner only'},403);
    return json(await supa(env,'rpc/bb_hh_service_unlink','POST',{p_owner:actor.id}));
+  }
+  if(data.action==='shopping_add'||data.action==='shopping_complete'){
+   if(!household||!await premium(env,household.owner_user_id))return json({error:'Verified Premium shared household required'},403);
+   if(!SHOP_UUID.test(data.id||''))return json({error:'Invalid shopping item ID'},400);
+   let result;
+   if(data.action==='shopping_add'){
+    if(!shoppingInput(data))return json({error:'Enter an item, valid extra quantity and unit'},400);
+    // Creator and display name always come from the verified server identity.
+    // No client household/creator/name attribution is forwarded to SQL.
+    result=await supa(env,'rpc/bb_hh_service_shopping_add','POST',{p_actor:actor.id,p_household:household.id,p_id:data.id,p_name:data.name.trim(),p_quantity:data.quantity,p_unit:data.unit});
+   }else{
+    if(!Number.isSafeInteger(data.expectedRevision)||data.expectedRevision<1||typeof data.completed!=='boolean')return json({error:'Invalid shopping completion'},400);
+    result=await supa(env,'rpc/bb_hh_service_shopping_complete','POST',{p_actor:actor.id,p_household:household.id,p_id:data.id,p_expected:data.expectedRevision,p_completed:data.completed});
+   }
+   if(!result||typeof result.ok!=='boolean'||result.household_id!==household.id||result.item&&!shoppingRow(result.item,household.id)||result.ok&&!result.item)throw Error('shared_shopping_response_invalid');
+   return json({...result,household_id:household.id},result?.conflict||result?.limit_reached?409:result?.not_found?404:200);
   }
   if(data.action==='patch'){
    if(!household||!await premium(env,household.owner_user_id))return json({error:'Verified Premium household required'},403);

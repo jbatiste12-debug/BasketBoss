@@ -53,6 +53,15 @@ final class BasketBossAccountKeyboardUITests: XCTestCase {
         let web = app.webViews.firstMatch
         XCTAssertTrue(web.waitForExistence(timeout: 25), "The native WKWebView must load.")
         if onboarding {
+            // WKWebView prepares Welcome underneath the native launch cover.
+            // Its accessibility nodes can exist before UIKit finishes fading.
+            // Wait for the production bridge's ready acknowledgement, then
+            // use one real tap; never advance onboarding from injected JS.
+            let readyProbe = app.staticTexts.matching(NSPredicate(format: "label BEGINSWITH %@", "BB keyboard probe onboarding ")).firstMatch
+            let ready = XCTNSPredicateExpectation(predicate: NSPredicate { _, _ in
+                readyProbe.exists && readyProbe.label.contains("\"startupReady\":true")
+            }, object: nil)
+            XCTAssertEqual(XCTWaiter.wait(for: [ready], timeout: 25), .completed, "The native launch cover must finish before tapping Welcome.")
             let next = app.buttons.matching(identifier: "Let’s get started").firstMatch
             XCTAssertTrue(next.waitForExistence(timeout: 25), "Fresh onboarding must start at its real welcome screen.")
             next.tap()
@@ -61,7 +70,11 @@ final class BasketBossAccountKeyboardUITests: XCTestCase {
         XCTAssertTrue(close.waitForExistence(timeout: 25), "The sign-in surface must open.")
         assertLockedBackground(app, onboarding: onboarding, phase: "initial")
         let field = password ? app.secureTextFields.firstMatch : app.textFields.matching(NSPredicate(format: "label == %@ OR placeholderValue == %@", "Email", "you@example.com")).firstMatch
-        XCTAssertTrue(field.waitForExistence(timeout: 8), "The signed-out account input must exist.")
+        let inputExists = field.waitForExistence(timeout: 8)
+        let prefix = "BB keyboard probe " + (onboarding ? "onboarding" : "account") + " "
+        let inputProbe = app.staticTexts.matching(NSPredicate(format: "label BEGINSWITH %@", prefix)).firstMatch
+        let inputState = inputProbe.exists ? String(inputProbe.label.prefix(1800)) : "missing"
+        XCTAssertTrue(inputExists, "The signed-out account input must exist. Probe: " + inputState)
         // Numeric accessibility diagnostics only: no input values, credentials,
         // screenshots or recordings are copied into the failure message.
         let targetBeforeTap = "target=\(password ? "password" : "email"), hittable=\(field.isHittable), field=\(field.frame), web=\(web.frame)"

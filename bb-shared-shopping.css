@@ -1,0 +1,56 @@
+/* A compact shared list beside the existing shopping flow. */
+html body #bbSharedShopping{box-sizing:border-box;width:100%;max-width:900px;margin:0 auto 14px;padding:16px;border:1px solid #d3e0ce;border-radius:20px;background:#fffdf6;color:#214e37;font-family:system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;box-shadow:0 6px 22px #25452b08}
+html body #bbSharedShopping[hidden],html body #bbSharedShopping [hidden]{display:none!important}
+#bbSharedShopping .bbss-header{display:flex;align-items:center;gap:9px;min-width:0}
+#bbSharedShopping .bbss-header>div{min-width:0;flex:1}
+#bbSharedShopping h2{margin:0;font-size:19px;line-height:1.25;letter-spacing:-.4px;color:#214e37}
+#bbSharedShopping .bbss-count{font-weight:600;color:#667b65;white-space:nowrap}
+#bbSharedShopping .bbss-premium{flex:none;padding:4px 7px;border:1px solid #dfc780;border-radius:999px;background:#f8edc8;color:#78602b;font-size:9px;font-weight:800;letter-spacing:.6px}
+#bbSharedShopping button{box-sizing:border-box;min-height:44px;border:1px solid #c7d9c2;border-radius:12px;padding:10px 12px;background:#f0f6ec;color:#295b3d;font:750 13px/1.3 system-ui;cursor:pointer;white-space:normal}
+#bbSharedShopping button:disabled{opacity:.55;cursor:progress}
+#bbSharedShopping button:focus-visible,#bbSharedShopping input:focus-visible,#bbSharedShopping select:focus-visible,#bbSharedShopping summary:focus-visible{outline:3px solid #cda74f;outline-offset:3px}
+#bbSharedShopping .bbss-add{flex:none;max-width:45%;background:#236646;border-color:#236646;color:#fffdf6}
+#bbSharedShopping p{margin:9px 0;font-size:12px;line-height:1.5;color:#657760}
+#bbSharedShopping .bbss-intro{margin-bottom:13px;max-width:560px}
+#bbSharedShopping .bbss-gate{display:flex;align-items:center;gap:12px;margin-top:8px}
+#bbSharedShopping .bbss-gate p{flex:1;margin:0}
+#bbSharedShopping .bbss-gate button{flex:none;max-width:45%;background:#fffdf8}
+#bbSharedShopping .bbss-form{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:10px;padding:13px;margin:12px 0;border:1px solid #d4e2d1;border-radius:14px;background:#f4f8f0}
+#bbSharedShopping .bbss-form label{display:grid;gap:6px;min-width:0;font-size:12px;font-weight:750}
+#bbSharedShopping .bbss-form .bbss-name,#bbSharedShopping .bbss-form-note,#bbSharedShopping .bbss-actions{grid-column:1/-1}
+#bbSharedShopping input:not([type=checkbox]),#bbSharedShopping select{box-sizing:border-box;width:100%;min-width:0;min-height:46px;padding:10px;border:1px solid #c5d8c5;border-radius:10px;background:#fff;color:#244e36;font:400 16px/1.3 system-ui}
+#bbSharedShopping .bbss-form-note{margin:0;font-size:11px}
+#bbSharedShopping .bbss-actions{display:flex;flex-wrap:wrap;gap:8px}
+#bbSharedShopping .bbss-submit{flex:1;background:#236646;border-color:#236646;color:#fffdf6}
+#bbSharedShopping .bbss-list{display:grid;gap:8px}
+#bbSharedShopping .bbss-item{display:flex;align-items:center;gap:12px;min-width:0;padding:12px;border:1px solid #dde6d8;border-radius:13px;background:#fffef9}
+#bbSharedShopping .bbss-check{display:grid;place-items:center;flex:none;min-width:40px;min-height:44px;cursor:pointer}
+#bbSharedShopping input[type=checkbox]{width:23px;height:23px;accent-color:#226a47;cursor:pointer}
+#bbSharedShopping .bbss-item-copy{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:4px 10px;min-width:0;flex:1}
+#bbSharedShopping .bbss-item-copy strong{font-size:15px;line-height:1.4;overflow-wrap:anywhere}
+#bbSharedShopping .bbss-quantity{align-self:start;font-size:13px;line-height:1.6;font-weight:750;white-space:nowrap}
+#bbSharedShopping .bbss-attribution{grid-column:1/-1;color:#70806b;font-size:11px;line-height:1.4;overflow-wrap:anywhere}
+#bbSharedShopping .bbss-history{margin-top:12px;border-top:1px solid #e2e8dc;padding-top:4px}
+#bbSharedShopping .bbss-history>summary{display:list-item;min-height:44px;padding:10px 4px;box-sizing:border-box;cursor:pointer;font-size:13px;font-weight:750;color:#587152}
+#bbSharedShopping .bbss-history .bbss-item{margin-top:7px;background:#f5f8f0}
+#bbSharedShopping .bbss-history strong{color:#678060;text-decoration:line-through}
+#bbSharedShopping .bbss-done{flex:none;color:#32714d;font-weight:800;padding:0 10px}
+#bbSharedShopping .bbss-retry{display:flex;align-items:center;gap:10px;margin-top:8px;padding:10px;border:1px solid #e2d5ac;border-radius:12px;background:#fbf6e8;font-size:12px;line-height:1.5}
+#bbSharedShopping .bbss-retry>span{flex:1;min-width:0;overflow-wrap:anywhere}
+#bbSharedShopping .bbss-retry button{max-width:48%;background:#fffdf5}
+#bbSharedShopping .bbss-status{padding:9px 0 0;margin-bottom:0;color:#6f693e;font-size:12px}
+#bbSharedShopping .bbss-footer{display:flex;justify-content:flex-end;margin-top:5px}
+#bbSharedShopping .bbss-refresh{padding:9px 5px;border:0;background:transparent;font-size:11px;color:#587751}
+#bb172Storefront #bbSharedShopping{max-width:none;margin:0 0 16px;box-shadow:none;background:#fffdf6}
+@media(max-width:360px){html body #bbSharedShopping{padding:13px;border-radius:17px}#bbSharedShopping h2{font-size:17px}#bbSharedShopping .bbss-header{gap:7px}#bbSharedShopping .bbss-add{font-size:12px;padding:9px}#bbSharedShopping .bbss-item{gap:6px;padding:9px}#bbSharedShopping .bbss-quantity{font-size:12px}#bbSharedShopping .bbss-gate{align-items:flex-start;flex-direction:column}#bbSharedShopping .bbss-gate button{max-width:100%}}
+
+/* Keep the entry small before a household is connected. */
+html body #bbSharedShopping.is-gated{display:grid;grid-template-columns:minmax(0,1fr) auto;align-items:center;gap:6px 10px;padding-top:11px;padding-bottom:11px}
+#bbSharedShopping.is-gated .bbss-header{flex-wrap:wrap;gap:4px 7px}
+#bbSharedShopping.is-gated h2{font-size:16px}
+#bbSharedShopping.is-gated .bbss-header>div{flex-basis:100%}
+#bbSharedShopping.is-gated .bbss-gate{margin:0;display:block}
+#bbSharedShopping.is-gated .bbss-gate p{position:absolute;width:1px;height:1px;padding:0;margin:-1px;overflow:hidden;clip:rect(0,0,0,0);white-space:nowrap;border:0}
+#bbSharedShopping.is-gated .bbss-gate button{max-width:none;max-width:150px;font-size:12px;background:#fffef9}
+#bbSharedShopping.is-gated .bbss-status,#bbSharedShopping.is-gated .bbss-footer{grid-column:1/-1}
+#bbSharedShopping.is-gated .bbss-footer:has(button[hidden]){display:none}

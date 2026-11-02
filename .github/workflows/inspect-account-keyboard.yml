@@ -2,7 +2,7 @@ name: Focused iOS account keyboard check
 
 on:
   push:
-    branches: [codex/ios-signin-keyboard-20261101]
+    branches: [codex/ios-signin-keyboard-20261101, codex/evening-*]
     paths:
       - .github/workflows/inspect-account-keyboard.yml
       - bb-account-polish.*

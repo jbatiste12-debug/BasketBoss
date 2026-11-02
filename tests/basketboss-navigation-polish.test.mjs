@@ -8,7 +8,7 @@ function fixture({cook=false,existingId='',unsupported=false}={}){
  const frames=[],watchers=[],windowEvents=new Map();let targets=[];
  class Node{
   constructor(tag,text=''){this.tagName=tag.toUpperCase();this._text=text;this.children=[];this.attributes=new Map();this.classes=new Set();this.id='';this.inner='';this.handlers=new Map();this.parent=null;}
-  get textContent(){return this._text+this.children.map(x=>x.textContent).join('');}
+  get textContent(){return this._text+this.children.map(x=>x.textContent).join('');}set textContent(value){this._text=value;this.children=[];}
   get className(){return [...this.classes].join(' ');}set className(value){this.classes=new Set(value.split(' '));}
   get classList(){return {contains:name=>this.classes.has(name),add:name=>this.classes.add(name),remove:name=>this.classes.delete(name)};}
   setAttribute(name,value){this.attributes.set(name,String(value));}getAttribute(name){return this.attributes.get(name)??null;}
@@ -39,7 +39,7 @@ test('polishing preserves real tab elements, targets, labels, aria and click han
  for(const cook of [false,true]){
   const h=fixture({cook});
   assert.equal(h.nav.getAttribute('data-bb-navigation'),'polished');assert.equal(h.items.length,5);
-  assert.deepEqual(h.items.map(node=>node.textContent),['Plan','Discover','Kitchen','Shop','Cook']);
+  assert.deepEqual(h.items.map(node=>node.textContent),['Plan','Discover','At home','Shop','Cook']);
   assert.deepEqual(h.items.map(node=>node.getAttribute('href')),cook?['index.html?bbview=week','index.html?bbview=discover','index.html?bbview=shop','index.html?bbview=shop-list','make-a-meal.html']:[null,null,null,null,'make-a-meal.html']);
   for(const item of h.items)item.handlers.get('click')();assert.deepEqual(h.targets,['Plan','Discover','Kitchen','Shop','Cook']);
   assert.equal(h.items[cook?4:1].getAttribute('aria-current'),'page');
