@@ -11,6 +11,7 @@ const execute=(command,args,timeout=120000)=>execFileSync(command,args,{encoding
 const run=(...args)=>execute('xcrun',args);
 let stage='prepare',phone=null,ownsSimulator=false,failure='',keyboardPreference=null,preferenceRead=false,runtimeVersion='',deviceName='',resetSyntheticCIApp=false;
 const githubActions=process.env.GITHUB_ACTIONS==='true';
+function mark(next){stage=next;console.log('Keyboard runner stage: '+next);}
 function save(name,value){fs.writeFileSync(path.join(output,name),value);}
 function saveFailure(name,error){
  const log=String(error.stdout||'')+'\n'+String(error.stderr||'');
@@ -26,7 +27,7 @@ function readTestSummary(result){
  return summary;
 }
 try{
- stage='prepare_ui_scheme';execute('ruby',['scripts/prepare-ios-account-keyboard-tests.rb'],120000);
+ mark('prepare_ui_scheme');execute('ruby',['scripts/prepare-ios-account-keyboard-tests.rb'],120000);
  stage='list_runtimes';
  const runtimes=JSON.parse(run('simctl','list','runtimes','--json')).runtimes;
  stage='list_devices';const devices=JSON.parse(run('simctl','list','devices','available','--json')).devices;
@@ -41,32 +42,38 @@ try{
  }
  if(!phone)throw Error('no_iphone_simulator');
  console.log('Checking real email and password keyboards in the account dialog and fresh onboarding on '+deviceName+' / iOS '+runtimeVersion+'.');
- stage='software_keyboard';
+ mark('software_keyboard');
  try{keyboardPreference=execute('defaults',['read','com.apple.iphonesimulator','ConnectHardwareKeyboard'],10000);preferenceRead=true;}catch{preferenceRead=true;}
  execute('defaults',['write','com.apple.iphonesimulator','ConnectHardwareKeyboard','-bool','NO'],10000);
- stage='boot';
- const state=Object.values(JSON.parse(run('simctl','list','devices','available','--json')).devices).flat().find(item=>item.udid===phone)?.state;
- if(state!=='Booted')run('simctl','boot',phone);
- execute('open',['-a','Simulator','--args','-CurrentDeviceUDID',phone]);
- // The preceding Cook check has already exercised this booted device. Killing
- // its GUI or re-waiting for boot bookkeeping can stall a healthy UI session.
- if(state!=='Booted')execute('xcrun',['simctl','bootstatus',phone,'-b'],180000);
- const argumentsForTests=['-quiet','-workspace','ios/App/App.xcworkspace','-scheme','BasketBossAccountKeyboardUITests','-configuration','Debug','-sdk','iphonesimulator','-destination','platform=iOS Simulator,id='+phone,'-derivedDataPath','/tmp/basketboss-ios-build','CODE_SIGNING_ALLOWED=NO'];
- stage='build_ui_tests';
+ // Prepare and sign before starting a new/cold simulator. An already exercised
+ // CI phone stays warm: never shut it down or restart its healthy GUI session.
+ const argumentsForTests=['-workspace','ios/App/App.xcworkspace','-scheme','BasketBossAccountKeyboardUITests','-configuration','Debug','-sdk','iphonesimulator','-destination','platform=iOS Simulator,id='+phone,'-derivedDataPath','/tmp/basketboss-ios-build','CODE_SIGNING_ALLOWED=NO'];
+ mark('build_ui_tests');
  try{save('build.log',execute('xcodebuild',[...argumentsForTests,'build-for-testing'],300000));}catch(error){saveFailure('build.log',error);throw error;}
- stage='sign_ui_runner';
+ mark('sign_ui_runner');
  const products='/tmp/basketboss-ios-build/Build/Products/Debug-iphonesimulator',app=path.join(products,'App.app'),runner=path.join(products,'BasketBossAccountKeyboardUITests-Runner.app');
  if(!fs.existsSync(runner))throw Error('ui_runner_missing');
- execute('codesign',['--force','--deep','--sign','-',app]);execute('codesign',['--force','--deep','--sign','-',runner]);
- stage='isolate_test_app';
+ execute('codesign',['--force','--deep','--sign','-','--timestamp=none',app],githubActions?300000:120000);
+ execute('codesign',['--force','--deep','--sign','-','--timestamp=none',runner],githubActions?300000:120000);
+ mark('boot');
+ const currentPhone=Object.values(JSON.parse(run('simctl','list','devices','available','--json')).devices).flat().find(item=>item.udid===phone);
+ if(!currentPhone?.isAvailable)throw Error('selected_simulator_unavailable');
+ const state=currentPhone.state;
+ if(state==='Shutdown')run('simctl','boot',phone);
+ else if(!['Booting','Booted'].includes(state))throw Error('unexpected_simulator_state');
+ execute('open',['-a','Simulator','--args','-CurrentDeviceUDID',phone]);
+ // The preceding Cook check has already exercised a reused booted device.
+ // Re-waiting for its boot bookkeeping can stall that healthy UI session.
+ if(state!=='Booted'){mark('bootstatus');execute('xcrun',['simctl','bootstatus',phone,'-b'],180000);}
+ mark('isolate_test_app');
  // This is the synthetic app installed by the preceding CI checks. Local runs
  // always use a new simulator and never uninstall a developer's saved app.
  if(resetSyntheticCIApp)try{run('simctl','uninstall',phone,'uk.co.basketboss.app');}catch{}
- run('simctl','install',phone,app);
- stage='real_keyboard_tests';
+ execute('xcrun',['simctl','install',phone,app],githubActions?300000:120000);
+ mark('real_keyboard_tests');
  const result=path.join(output,'AccountKeyboard.xcresult');
  try{save('tests.log',execute('xcodebuild',[...argumentsForTests,'-parallel-testing-enabled','NO','-test-timeouts-enabled','YES','-default-test-execution-time-allowance','90','-maximum-test-execution-time-allowance','120','-resultBundlePath',result,'test-without-building'],360000));}catch(error){saveFailure('tests.log',error);try{readTestSummary(result);}catch{}throw error;}
- stage='test_result';
+ mark('test_result');
  const summary=readTestSummary(result);
  if(summary.passedTests!==4||summary.failedTests!==0||summary.skippedTests!==0)throw Error('required_keyboard_tests_missing');
 }catch(error){failure=error.code==='ETIMEDOUT'?'command_timeout':String(error.message||'command_failed').replace(/[^A-Za-z0-9_.-]/g,'').slice(0,100);}

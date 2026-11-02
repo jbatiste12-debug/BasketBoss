@@ -55,7 +55,10 @@ try{
   if(!bundle)throw Object.assign(Error('cook_test_bundle_missing'),{code:'COOK_TEST_BUNDLE_MISSING'});
   testBundleLocation=bundle===candidates[0]?'products':'embedded';
   console.log('Cook hosted test bundle: '+testBundleLocation);
-  mark('sign_hosted_tests');exec('codesign',['--force','--deep','--sign','-',bundle]);
+  mark('sign_hosted_tests');exec('codesign',['--force','--deep','--sign','-','--timestamp=none',bundle]);
+  // Hash/sign the large app before simulator startup competes for the same
+  // hosted CPU and disk. Ad-hoc signing uses no remote timestamp service.
+  mark('adhoc_sign');exec('codesign',['--force','--deep','--sign','-','--timestamp=none',app],300000);
  }
  // Xcode may have started this exact destination during build-for-testing.
  // Refresh its state rather than issuing another boot from the earlier snapshot.
@@ -66,9 +69,9 @@ try{
  else if(!['Booting','Booted'].includes(currentPhone.state))throw Error('unexpected_simulator_state');
  mark('simulator_app');exec('open',['-a','Simulator','--args','-CurrentDeviceUDID',phone.udid]);
  mark('bootstatus');exec('xcrun',['simctl','bootstatus',phone.udid,'-b'],360000);
- // Simulator execution uses local ad-hoc signing, never a developer identity.
- mark('adhoc_sign');exec('codesign',['--force','--deep','--sign','-',app]);
- mark('install');run('simctl','install',phone.udid,app);
+ // Preserve the local manual check's signing order and original time budget.
+ if(!ci){mark('adhoc_sign');exec('codesign',['--force','--deep','--sign','-','--timestamp=none',app]);}
+ mark('install');exec('xcrun',['simctl','install',phone.udid,app],ci?300000:120000);
  mark('clear_previous_report');const previousContainer=run('simctl','get_app_container',phone.udid,'uk.co.basketboss.app','data');
  fs.rmSync(path.join(previousContainer,'Documents/bb-native-cook-smoke.json'),{force:true});
  if(ci){

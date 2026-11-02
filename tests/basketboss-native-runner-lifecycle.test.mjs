@@ -6,12 +6,13 @@ import vm from 'node:vm';
 import {keyboardRuntimePlan} from '../scripts/ios-keyboard-runtime.mjs';
 import {cookRequiredFlags,cookReportFailure} from '../scripts/ios-cook-report.mjs';
 
-async function runScript(name,{ci=true,booted=true,includeLatest=false,failTests=false,bootTimeoutState=null,failReadiness=false,keepSimulator=false,cookBadReport=false,cookIncompleteReport=false,cookMissingFlag=null,cookSummary=null,cookSummaryError=false,cookContainerChanges=false,cookBuildBoots=false,cookBundleLocation='products',cookBuildError=null}={}){
+async function runScript(name,{ci=true,booted=true,includeLatest=false,failTests=false,bootTimeoutState=null,failReadiness=false,keepSimulator=false,cookBadReport=false,cookIncompleteReport=false,cookMissingFlag=null,cookSummary=null,cookSummaryError=false,cookContainerChanges=false,cookBuildBoots=false,cookBundleLocation='products',cookBuildError=null,keyboardBuildBoots=false}={}){
  const commands=[],executions=[],logs=[],written=new Map(),readFiles=[];let hostedCookRan=false;
  const processStub={platform:'darwin',env:ci?{GITHUB_ACTIONS:'true'}:{}};
  if(keepSimulator)processStub.env.BB_IAP_KEEP_SIMULATOR_BOOTED='true';
- let state=booted?'Booted':'Shutdown';
+ let state=booted?'Booted':'Shutdown',createdPhone=false,createdState='Shutdown';
  const device=()=>({udid:'proven-phone',name:'iPhone 17 Pro',state,isAvailable:true});
+ const disposable=()=>({udid:'disposable-phone',name:'BasketBoss account keyboard checks',state:createdState,isAvailable:true});
  const runtime={identifier:'proven-runtime',name:'iOS 26.2',version:'26.2',isAvailable:true};
  const latestRuntime={identifier:'cold-latest-runtime',name:'iOS 26.5',version:'26.5',isAvailable:true};
  const source=fs.readFileSync(new URL('../scripts/'+name,import.meta.url),'utf8').replace(/^import .+;\r?\n/gm,'');
@@ -33,6 +34,7 @@ async function runScript(name,{ci=true,booted=true,includeLatest=false,failTests
   executions.push({command,args,timeout:options?.timeout});commands.push([command,...args]);
   if(name==='test-ios-cook-smoke.mjs'&&command==='xcodebuild'&&args.includes('build-for-testing')&&cookBuildError)throw Object.assign(Error(cookBuildError.message),{code:cookBuildError.code});
   if(name==='test-ios-cook-smoke.mjs'&&command==='xcodebuild'&&args.includes('build-for-testing')&&cookBuildBoots)state='Booted';
+  if(name==='test-ios-account-keyboard.mjs'&&command==='xcodebuild'&&args.includes('build-for-testing')&&keyboardBuildBoots&&createdPhone)createdState='Booted';
   if(name==='test-ios-cook-smoke.mjs'&&command==='xcodebuild'&&args.includes('test-without-building'))hostedCookRan=true;
   if(failTests&&command==='xcodebuild'&&args.includes('test-without-building')){
    const error=Error('xcodebuild failed');error.stdout=name==='test-ios-cook-smoke.mjs'?'XCTAssertTrue failed: full Cook report diagnostic':'XCTAssertTrue failed: real keyboard diagnostic';error.stderr='TEST FAILED';throw error;
@@ -40,17 +42,18 @@ async function runScript(name,{ci=true,booted=true,includeLatest=false,failTests
   if(command==='xcrun'){
    if(args[0]==='xcresulttool'){if(name==='test-ios-cook-smoke.mjs'){if(cookSummaryError)throw Error('missing Cook XCTest summary');return JSON.stringify(cookSummary||{passedTests:failTests?0:1,failedTests:failTests?1:0,skippedTests:0});}return JSON.stringify({passedTests:failTests?1:4,failedTests:failTests?1:0,skippedTests:0});}
    if(args[0]==='simctl'){
-    if(args[1]==='list'&&args[2]==='devices')return JSON.stringify({devices:{[runtime.identifier]:[device()],...(includeLatest?{[latestRuntime.identifier]:[{udid:'cold-latest-phone',name:'iPhone SE (3rd generation)',state:'Shutdown',isAvailable:true}]}:{})}});
+    if(args[1]==='list'&&args[2]==='devices')return JSON.stringify({devices:{[runtime.identifier]:[device(),...(createdPhone?[disposable()]:[])],...(includeLatest?{[latestRuntime.identifier]:[{udid:'cold-latest-phone',name:'iPhone SE (3rd generation)',state:'Shutdown',isAvailable:true}]}:{})}});
     if(args[1]==='list'&&args[2]==='runtimes')return JSON.stringify({runtimes:includeLatest?[latestRuntime,runtime]:[runtime]});
     if(args[1]==='list'&&args[2]==='devicetypes')return JSON.stringify({devicetypes:[{name:'iPhone SE (3rd generation)',identifier:'se'}]});
-    if(args[1]==='shutdown')state='Shutdown';
+    if(args[1]==='create'){createdPhone=true;createdState='Shutdown';return 'disposable-phone';}
+    if(args[1]==='shutdown'){if(args[2]==='disposable-phone')createdState='Shutdown';else state='Shutdown';}
     if(args[1]==='boot'){
-     state=bootTimeoutState||'Booted';
+     if(args[2]==='disposable-phone')createdState=bootTimeoutState||'Booted';else state=bootTimeoutState||'Booted';
      if(bootTimeoutState){const error=Error('initial simulator boot command timed out');error.code='ETIMEDOUT';throw error;}
     }
     if(args[1]==='bootstatus'){
      if(failReadiness){const error=Error('simulator never became ready');error.code='ETIMEDOUT';throw error;}
-     state='Booted';
+     if(args[2]==='disposable-phone')createdState='Booted';else state='Booted';
     }
     if(args[1]==='get_app_container')return cookContainerChanges&&hostedCookRan?'/synthetic-ci-app-after-xctest':'/synthetic-ci-app';
    }
@@ -94,6 +97,49 @@ test('keyboard CI reuses the exercised session without killing its GUI or re-wai
  assert.ok(result.commands.some(command=>command[1]==='simctl'&&command[2]==='uninstall'&&command[3]==='proven-phone'));
  assert.ok(result.commands.some(command=>command[0]==='xcodebuild'&&command.includes('test-without-building')));
  assert.ok(result.logs.some(line=>line.includes('"passed":true')));
+});
+
+test('keyboard prepares and signs a cold disposable CI destination before boot with bounded offline signatures',async()=>{
+ const result=await runScript('test-ios-account-keyboard.mjs',{booted:false});
+ assert.equal(result.process.exitCode,undefined);
+ const build=result.commands.findIndex(command=>command[0]==='xcodebuild'&&command.includes('build-for-testing'));
+ const boot=result.commands.findIndex(command=>command[1]==='simctl'&&command[2]==='boot');
+ const ready=result.commands.findIndex(command=>command[1]==='simctl'&&command[2]==='bootstatus');
+ const install=result.commands.findIndex(command=>command[1]==='simctl'&&command[2]==='install');
+ const signatures=result.executions.filter(call=>call.command==='codesign');
+ assert.equal(signatures.length,2);
+ for(const call of signatures){
+  assert.equal(call.timeout,300000);assert.ok(call.args.includes('--timestamp=none'));
+  const index=result.commands.findIndex(command=>command[0]==='codesign'&&command.at(-1)===call.args.at(-1));
+  assert.ok(build<index&&index<boot);
+ }
+ assert.ok(boot<ready&&ready<install);
+ assert.equal(result.commands[boot][3],'disposable-phone');
+ assert.equal(result.executions.find(call=>call.command==='xcrun'&&call.args[1]==='install').timeout,300000);
+ assert.equal(result.commands.some(command=>command[1]==='simctl'&&['shutdown','uninstall','delete'].includes(command[2])&&command[3]==='proven-phone'),false);
+ assert.ok(result.logs.some(line=>line.includes('"requiredTests":4')&&line.includes('"passed":true')));
+});
+
+test('keyboard refreshes a cold destination after Xcode builds without double booting an already started phone',async()=>{
+ const result=await runScript('test-ios-account-keyboard.mjs',{booted:false,keyboardBuildBoots:true});
+ assert.equal(result.process.exitCode,undefined);
+ assert.equal(result.commands.some(command=>command[1]==='simctl'&&['boot','bootstatus'].includes(command[2])),false);
+ const build=result.commands.findIndex(command=>command[0]==='xcodebuild'&&command.includes('build-for-testing'));
+ const refresh=result.commands.findIndex((command,index)=>index>build&&command[1]==='simctl'&&command[2]==='list'&&command[3]==='devices');
+ const tests=result.commands.findIndex(command=>command[0]==='xcodebuild'&&command.includes('test-without-building'));
+ assert.ok(build<refresh&&refresh<tests);
+});
+
+test('local keyboard checks retain disposable ownership and their original signing/install budgets',async()=>{
+ const result=await runScript('test-ios-account-keyboard.mjs',{ci:false});
+ assert.equal(result.process.exitCode,undefined);
+ const signatures=result.executions.filter(call=>call.command==='codesign');
+ assert.equal(signatures.length,2);
+ for(const call of signatures){assert.equal(call.timeout,120000);assert.ok(call.args.includes('--timestamp=none'));}
+ assert.equal(result.executions.find(call=>call.command==='xcrun'&&call.args[1]==='install').timeout,120000);
+ assert.ok(result.commands.some(command=>command[1]==='simctl'&&command[2]==='create'));
+ assert.ok(result.commands.some(command=>command[1]==='simctl'&&command[2]==='delete'&&command[3]==='disposable-phone'));
+ assert.equal(result.commands.some(command=>command[1]==='simctl'&&['shutdown','uninstall','delete'].includes(command[2])&&command[3]==='proven-phone'),false);
 });
 
 test('keyboard test failures retain the actual XCTest diagnostic in both artifacts and job output',async()=>{
@@ -162,11 +208,23 @@ test('CI Cook uses a hosted XCTest launch on the exact selected phone, while loc
  assert.ok(tests.args.includes('platform=iOS Simulator,id=proven-phone'));
  assert.equal(tests.timeout,180000);
  assert.equal(tests.args.includes('-quiet'),false);
+ const appSign=result.executions.find(call=>call.command==='codesign'&&call.args.at(-1).endsWith('/App.app'));
+ assert.equal(appSign.timeout,300000);
+ assert.ok(appSign.args.includes('--timestamp=none'));
+ const signIndex=result.commands.findIndex(command=>command[0]==='codesign'&&command.at(-1).endsWith('/App.app'));
+ assert.ok(buildIndex<signIndex&&signIndex<bootIndex,'finish large-app signing before the cold simulator starts');
+ const install=result.executions.find(call=>call.command==='xcrun'&&call.args[1]==='install');
+ assert.equal(install.timeout,300000);
  assert.equal(result.commands.some(command=>command[1]==='simctl'&&command[2]==='launch'),false);
  assert.ok(result.logs.some(line=>line.includes('"launcher":"hosted_xctest"')&&line.includes('"passed":true')));
  const local=await runScript('test-ios-cook-smoke.mjs',{ci:false});
  assert.equal(local.commands.some(command=>command[0]==='xcodebuild'),false);
  assert.ok(local.commands.some(command=>command[1]==='simctl'&&command[2]==='launch'&&command.includes('--bb-native-cook-smoke')));
+ const localSign=local.executions.find(call=>call.command==='codesign'&&call.args.at(-1).endsWith('/App.app'));
+ const localInstall=local.executions.find(call=>call.command==='xcrun'&&call.args[1]==='install');
+ assert.equal(localSign.timeout,120000);
+ assert.equal(localInstall.timeout,120000);
+ assert.ok(local.commands.findIndex(command=>command[1]==='simctl'&&command[2]==='bootstatus')<local.commands.findIndex(command=>command[0]==='codesign'));
 });
 
 test('Cook refreshes the selected phone state after building and never double-boots an Xcode-started destination',async()=>{
@@ -186,7 +244,7 @@ test('Cook requires and signs its exact XCTest bundle in either supported Xcode 
   assert.equal(result.process.exitCode,undefined,cookBundleLocation);
   const expected='/tmp/basketboss-ios-build/Build/Products/Debug-iphonesimulator/'+(cookBundleLocation==='embedded'?'App.app/PlugIns/':'')+'BasketBossCookSmokeTests.xctest';
   const signed=result.commands.filter(command=>command[0]==='codesign'&&command.at(-1).endsWith('.xctest'));
-  assert.deepEqual(signed,[['codesign','--force','--deep','--sign','-',expected]]);
+  assert.deepEqual(signed,[['codesign','--force','--deep','--sign','-','--timestamp=none',expected]]);
   assert.ok(result.commands.some(command=>command[0]==='codesign'&&command.at(-1).endsWith('/App.app')));
   assert.ok(result.logs.some(line=>line.includes('"testBundleLocation":"'+cookBundleLocation+'"')&&line.includes('"passed":true')));
  }
