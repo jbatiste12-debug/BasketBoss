@@ -6,7 +6,7 @@ import vm from 'node:vm';
 import {keyboardRuntimePlan} from '../scripts/ios-keyboard-runtime.mjs';
 import {cookRequiredFlags,cookReportFailure} from '../scripts/ios-cook-report.mjs';
 
-async function runScript(name,{ci=true,booted=true,includeLatest=false,failTests=false,bootTimeoutState=null,failReadiness=false,keepSimulator=false,cookBadReport=false,cookIncompleteReport=false,cookMissingFlag=null,cookSummary=null,cookSummaryError=false,cookContainerChanges=false,cookBuildBoots=false}={}){
+async function runScript(name,{ci=true,booted=true,includeLatest=false,failTests=false,bootTimeoutState=null,failReadiness=false,keepSimulator=false,cookBadReport=false,cookIncompleteReport=false,cookMissingFlag=null,cookSummary=null,cookSummaryError=false,cookContainerChanges=false,cookBuildBoots=false,cookBundleLocation='products',cookBuildError=null}={}){
  const commands=[],executions=[],logs=[],written=new Map(),readFiles=[];let hostedCookRan=false;
  const processStub={platform:'darwin',env:ci?{GITHUB_ACTIONS:'true'}:{}};
  if(keepSimulator)processStub.env.BB_IAP_KEEP_SIMULATOR_BOOTED='true';
@@ -16,7 +16,13 @@ async function runScript(name,{ci=true,booted=true,includeLatest=false,failTests
  const latestRuntime={identifier:'cold-latest-runtime',name:'iOS 26.5',version:'26.5',isAvailable:true};
  const source=fs.readFileSync(new URL('../scripts/'+name,import.meta.url),'utf8').replace(/^import .+;\r?\n/gm,'');
  const context={process:processStub,path,keyboardRuntimePlan,cookRequiredFlags,cookReportFailure,console:{log:value=>logs.push(value)},setTimeout:fn=>{fn();return 1;},fs:{
-  mkdirSync(){},rmSync(){},existsSync(){return true;},writeFileSync:(file,value)=>written.set(file,value),
+  mkdirSync(){},rmSync(){},existsSync(file){
+   if(name==='test-ios-cook-smoke.mjs'&&String(file).endsWith('/BasketBossCookSmokeTests.xctest')){
+    const embedded=String(file).includes('/App.app/PlugIns/');
+    return cookBundleLocation==='both'||(cookBundleLocation==='embedded'&&embedded)||(cookBundleLocation==='products'&&!embedded);
+   }
+   return true;
+  },writeFileSync:(file,value)=>written.set(file,value),
   readFileSync:file=>{readFiles.push(String(file));return JSON.stringify(String(file).endsWith('bb-native-iap-smoke.json')?{
    complete:true,passed:true,localStoreKit:true,productionBillingTested:false,backendPremiumGranted:false,
    productsLoaded:true,purchaseVerified:true,accountTokenPreserved:true,unfinishedBeforeServerAck:true,
@@ -25,6 +31,7 @@ async function runScript(name,{ci=true,booted=true,includeLatest=false,failTests
   }:String(file).endsWith('bb-native-cook-smoke.json')?{complete:!cookIncompleteReport,passed:!cookBadReport,legacyVisible:false,...Object.fromEntries(cookRequiredFlags.map(key=>[key,key!==cookMissingFlag]))}:{complete:true,passed:true});}
  },execFileSync(command,args,options){
   executions.push({command,args,timeout:options?.timeout});commands.push([command,...args]);
+  if(name==='test-ios-cook-smoke.mjs'&&command==='xcodebuild'&&args.includes('build-for-testing')&&cookBuildError)throw Object.assign(Error(cookBuildError.message),{code:cookBuildError.code});
   if(name==='test-ios-cook-smoke.mjs'&&command==='xcodebuild'&&args.includes('build-for-testing')&&cookBuildBoots)state='Booted';
   if(name==='test-ios-cook-smoke.mjs'&&command==='xcodebuild'&&args.includes('test-without-building'))hostedCookRan=true;
   if(failTests&&command==='xcodebuild'&&args.includes('test-without-building')){
@@ -171,6 +178,49 @@ test('Cook refreshes the selected phone state after building and never double-bo
  const ready=result.commands.findIndex(command=>command[1]==='simctl'&&command[2]==='bootstatus');
  const tests=result.commands.findIndex(command=>command[0]==='xcodebuild'&&command.includes('test-without-building'));
  assert.ok(build<refresh&&refresh<ready&&ready<tests,'real readiness still precedes the hosted test');
+});
+
+test('Cook requires and signs its exact XCTest bundle in either supported Xcode product layout',async()=>{
+ for(const cookBundleLocation of ['products','embedded']){
+  const result=await runScript('test-ios-cook-smoke.mjs',{cookBundleLocation});
+  assert.equal(result.process.exitCode,undefined,cookBundleLocation);
+  const expected='/tmp/basketboss-ios-build/Build/Products/Debug-iphonesimulator/'+(cookBundleLocation==='embedded'?'App.app/PlugIns/':'')+'BasketBossCookSmokeTests.xctest';
+  const signed=result.commands.filter(command=>command[0]==='codesign'&&command.at(-1).endsWith('.xctest'));
+  assert.deepEqual(signed,[['codesign','--force','--deep','--sign','-',expected]]);
+  assert.ok(result.commands.some(command=>command[0]==='codesign'&&command.at(-1).endsWith('/App.app')));
+  assert.ok(result.logs.some(line=>line.includes('"testBundleLocation":"'+cookBundleLocation+'"')&&line.includes('"passed":true')));
+ }
+});
+
+test('Cook fails explicitly when neither product layout contains the required XCTest bundle',async()=>{
+ const result=await runScript('test-ios-cook-smoke.mjs',{cookBundleLocation:'missing'});
+ assert.equal(result.process.exitCode,1);
+ assert.equal(result.commands.some(command=>command[0]==='codesign'),false);
+ assert.equal(result.commands.some(command=>command[1]==='simctl'&&command[2]==='boot'),false);
+ assert.equal(result.commands.some(command=>command[0]==='xcodebuild'&&command.includes('test-without-building')),false);
+ const report=JSON.parse([...result.written].find(([file])=>file.endsWith('/cook-smoke-diagnostics/report.json'))[1]);
+ assert.equal(report.failureStage,'hosted_build');
+ assert.equal(report.commandErrorCode,'COOK_TEST_BUNDLE_MISSING');
+ assert.equal(report.commandError,'cook_test_bundle_missing');
+ assert.equal(report.passed,false);
+});
+
+test('Cook preserves bounded first-line command diagnostics instead of only an opaque failure label',async()=>{
+ for(const cookBuildError of [{code:'EACCES',message:'Cannot read the hosted test product'},{code:'bad\ncode'.repeat(30),message:'x'.repeat(500)+'\nLater diagnostic context'}]){
+  const result=await runScript('test-ios-cook-smoke.mjs',{cookBuildError});
+  assert.equal(result.process.exitCode,1);
+  const report=JSON.parse([...result.written].find(([file])=>file.endsWith('/cook-smoke-diagnostics/report.json'))[1]);
+  assert.equal(report.failureStage,'hosted_build');
+  assert.equal(report.failure,'command_failed');
+  assert.ok(report.commandErrorCode.length>0&&report.commandErrorCode.length<=64);
+  assert.ok(report.commandError.length>0&&report.commandError.length<=240);
+  assert.doesNotMatch(report.commandErrorCode,/\n/);
+  assert.doesNotMatch(report.commandError,/\n|Later diagnostic context/);
+  if(cookBuildError.code==='EACCES'){
+   assert.equal(report.commandErrorCode,'EACCES');
+   assert.equal(report.commandError,cookBuildError.message);
+  }
+ }
 });
 
 test('Cook reads the fresh host container after XCTest instead of a previous installation report',async()=>{

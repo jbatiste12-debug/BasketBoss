@@ -11,8 +11,13 @@ const output=path.resolve('artifacts/cook-smoke-diagnostics');
 if(ci)fs.mkdirSync(output,{recursive:true});
 const save=(name,value)=>{if(ci)fs.writeFileSync(path.join(output,name),value);};
 const saveFailure=(name,error)=>{const log=String(error.stdout||'')+'\n'+String(error.stderr||'');save(name,log);console.log(log.slice(-16000));};
-let stage='devices',raw,failure='',failedStage='',runtimeVersion='',launchAttempts=0,testSummary;
+let stage='devices',raw,failure='',failedStage='',runtimeVersion='',launchAttempts=0,testSummary,commandErrorCode='',commandError='',testBundleLocation='';
 const mark=next=>{stage=next;console.log('Cook runner stage: '+next);};
+const rememberError=error=>{
+ if(commandErrorCode||commandError)return;
+ commandErrorCode=String(error?.code||error?.name||'Error').replace(/[^A-Za-z0-9_.-]/g,'').slice(0,64);
+ commandError=String(error?.message||'command_failed').split(/\r?\n/,1)[0].replace(/[^A-Za-z0-9_.:/ =()-]/g,'').slice(0,240);
+};
 try{
  // Match the keyboard runner's setup budget and prepare before a cold iOS
  // simulator starts competing for the hosted Mac's CPU and disk.
@@ -45,8 +50,11 @@ try{
   // competes with Swift compilation for the hosted Mac's CPU and disk.
   testArguments=['-workspace','ios/App/App.xcworkspace','-scheme','BasketBossCookSmokeTests','-configuration','Debug','-sdk','iphonesimulator','-destination','platform=iOS Simulator,id='+phone.udid,'-derivedDataPath','/tmp/basketboss-ios-build','CODE_SIGNING_ALLOWED=NO'];
   mark('hosted_build');try{save('build.log',exec('xcodebuild',[...testArguments,'build-for-testing'],600000));}catch(error){saveFailure('build.log',error);throw error;}
-  const bundle=path.join(products,'BasketBossCookSmokeTests.xctest');
-  if(!fs.existsSync(bundle))throw Error('cook_test_bundle_missing');
+  const candidates=[path.join(products,'BasketBossCookSmokeTests.xctest'),path.join(app,'PlugIns','BasketBossCookSmokeTests.xctest')];
+  const bundle=candidates.find(candidate=>fs.existsSync(candidate));
+  if(!bundle)throw Object.assign(Error('cook_test_bundle_missing'),{code:'COOK_TEST_BUNDLE_MISSING'});
+  testBundleLocation=bundle===candidates[0]?'products':'embedded';
+  console.log('Cook hosted test bundle: '+testBundleLocation);
   mark('sign_hosted_tests');exec('codesign',['--force','--deep','--sign','-',bundle]);
  }
  // Xcode may have started this exact destination during build-for-testing.
@@ -67,14 +75,14 @@ try{
   mark('hosted_tests');launchAttempts=1;
   const result=path.join(output,'CookSmoke.xcresult');
   try{save('tests.log',exec('xcodebuild',[...testArguments,'-parallel-testing-enabled','NO','-test-timeouts-enabled','YES','-default-test-execution-time-allowance','90','-maximum-test-execution-time-allowance','120','-resultBundlePath',result,'test-without-building'],180000));}
-  catch(error){failure='hosted_xctest_failed';failedStage=stage;saveFailure('tests.log',error);}
+  catch(error){failure='hosted_xctest_failed';failedStage=stage;rememberError(error);saveFailure('tests.log',error);}
   mark('hosted_test_summary');
   try{
    testSummary=JSON.parse(run('xcresulttool','get','test-results','summary','--path',result));
    save('summary.json',JSON.stringify(testSummary,null,2));
    console.log('::notice title=BasketBoss Cook XCTest summary::'+JSON.stringify(testSummary).slice(0,16000));
    if(!failure&&(testSummary.passedTests!==1||testSummary.failedTests!==0||testSummary.skippedTests!==0)){failure='required_cook_test_missing';failedStage=stage;}
-  }catch(error){if(!failure){failure='cook_test_summary_failed';failedStage=stage;}saveFailure('summary-error.log',error);}
+  }catch(error){if(!failure){failure='cook_test_summary_failed';failedStage=stage;}rememberError(error);saveFailure('summary-error.log',error);}
  }else{
   // Local manual checks preserve the existing simulator launch path.
   mark('launch');launchAttempts=1;run('simctl','launch','--terminate-running-process',phone.udid,'uk.co.basketboss.app','--bb-native-cook-smoke');
@@ -85,8 +93,8 @@ try{
  mark('report');raw=readReport();
  if(!failure)for(let tick=0;tick<200&&raw?.complete!==true;tick++){await new Promise(resolve=>setTimeout(resolve,250));raw=readReport();}
  failure=failure||cookReportFailure(raw);
-}catch(error){failure=failure||(error.code==='ETIMEDOUT'?'command_timeout':'command_failed');failedStage=failedStage||stage;saveFailure('runner-error.log',error);}
-const report={reportReceived:!!raw,runtimeVersion,launcher:ci?'hosted_xctest':'simctl',launchAttempts,failureStage:failure?(failedStage||stage):'',failure};
+}catch(error){failure=failure||(error.code==='ETIMEDOUT'?'command_timeout':'command_failed');failedStage=failedStage||stage;rememberError(error);saveFailure('runner-error.log',error);}
+const report={reportReceived:!!raw,runtimeVersion,launcher:ci?'hosted_xctest':'simctl',launchAttempts,testBundleLocation,failureStage:failure?(failedStage||stage):'',failure,commandErrorCode,commandError};
 for(const key of [...cookRequiredFlags,'legacyVisible'])report[key]=raw?.[key]===true;
 for(const key of ['errorCount','errorLine','scriptCount'])report[key]=Number.isInteger(raw?.[key])?Math.max(0,Math.min(raw[key],1000000)):0;
 for(const key of ['phase','readyState','errorKind','errorSource','lastScript','voiceFailure'])report[key]=String(raw?.[key]||'').replace(/[^A-Za-z0-9_.-]/g,'').slice(0,100);
