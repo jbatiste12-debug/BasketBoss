@@ -62,7 +62,7 @@ jobs:
   simulator-build:
     # Avoid the constrained ARM pool; this image includes the proven iOS 26.2 runtime.
     runs-on: macos-15-intel
-    timeout-minutes: 40
+    timeout-minutes: 60
     env:
       DEVELOPER_DIR: /Applications/Xcode_26.2.app/Contents/Developer
     steps:
@@ -92,10 +92,8 @@ jobs:
           build
       - name: Publish fixed build verification
         run: echo '::notice title=BasketBoss iOS native build::{"simulatorBuild":true,"bundleId":"uk.co.basketboss.app","minimumIOS":"16.0","signingTested":false}'
-      - name: Exercise Cook in the actual iOS WebView
-        run: node scripts/test-ios-cook-smoke.mjs
-      - name: Check account inputs with the real iOS keyboard
-        run: node scripts/test-ios-account-keyboard.mjs
+      # Finish device compilation before Simulator startup; Cook and keyboard
+      # checks still determine whether this verification run succeeds.
       - name: Create the unsigned iPhone archive for build 4
         run: |
           xcodebuild \
@@ -121,6 +119,10 @@ jobs:
           if-no-files-found: error
           retention-days: 7
           compression-level: 0
+      - name: Exercise Cook in the actual iOS WebView
+        run: node scripts/test-ios-cook-smoke.mjs
+      - name: Check account inputs with the real iOS keyboard
+        run: node scripts/test-ios-account-keyboard.mjs
       - uses: actions/upload-artifact@v6
         if: always()
         with:

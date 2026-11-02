@@ -1,6 +1,5 @@
 import Foundation
 import XCTest
-@testable import App
 
 // XCTest starts the real App host with --bb-native-cook-smoke. The existing
 // Debug-only WebView QA runs unchanged; no separate or shortened UI is used.

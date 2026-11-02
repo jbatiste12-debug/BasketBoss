@@ -6,7 +6,7 @@ import vm from 'node:vm';
 import {keyboardRuntimePlan} from '../scripts/ios-keyboard-runtime.mjs';
 import {cookRequiredFlags,cookReportFailure} from '../scripts/ios-cook-report.mjs';
 
-async function runScript(name,{ci=true,booted=true,includeLatest=false,failTests=false,bootTimeoutState=null,failReadiness=false,keepSimulator=false,cookBadReport=false,cookIncompleteReport=false,cookMissingFlag=null,cookSummary=null,cookSummaryError=false,cookContainerChanges=false}={}){
+async function runScript(name,{ci=true,booted=true,includeLatest=false,failTests=false,bootTimeoutState=null,failReadiness=false,keepSimulator=false,cookBadReport=false,cookIncompleteReport=false,cookMissingFlag=null,cookSummary=null,cookSummaryError=false,cookContainerChanges=false,cookBuildBoots=false}={}){
  const commands=[],executions=[],logs=[],written=new Map(),readFiles=[];let hostedCookRan=false;
  const processStub={platform:'darwin',env:ci?{GITHUB_ACTIONS:'true'}:{}};
  if(keepSimulator)processStub.env.BB_IAP_KEEP_SIMULATOR_BOOTED='true';
@@ -25,6 +25,7 @@ async function runScript(name,{ci=true,booted=true,includeLatest=false,failTests
   }:String(file).endsWith('bb-native-cook-smoke.json')?{complete:!cookIncompleteReport,passed:!cookBadReport,legacyVisible:false,...Object.fromEntries(cookRequiredFlags.map(key=>[key,key!==cookMissingFlag]))}:{complete:true,passed:true});}
  },execFileSync(command,args,options){
   executions.push({command,args,timeout:options?.timeout});commands.push([command,...args]);
+  if(name==='test-ios-cook-smoke.mjs'&&command==='xcodebuild'&&args.includes('build-for-testing')&&cookBuildBoots)state='Booted';
   if(name==='test-ios-cook-smoke.mjs'&&command==='xcodebuild'&&args.includes('test-without-building'))hostedCookRan=true;
   if(failTests&&command==='xcodebuild'&&args.includes('test-without-building')){
    const error=Error('xcodebuild failed');error.stdout=name==='test-ios-cook-smoke.mjs'?'XCTAssertTrue failed: full Cook report diagnostic':'XCTAssertTrue failed: real keyboard diagnostic';error.stderr='TEST FAILED';throw error;
@@ -142,15 +143,34 @@ test('CI Cook uses a hosted XCTest launch on the exact selected phone, while loc
  const prepare=result.executions.find(call=>call.command==='ruby');
  assert.equal(prepare.timeout,120000,'cold setup receives the same bounded budget as keyboard setup');
  assert.ok(result.commands.findIndex(command=>command[0]==='ruby')<result.commands.findIndex(command=>command[1]==='simctl'&&command[2]==='boot'));
+ const build=result.executions.find(call=>call.command==='xcodebuild'&&call.args.includes('build-for-testing'));
+ assert.equal(build.timeout,600000,'cold test compilation receives a bounded ten-minute budget');
+ assert.equal(build.args.includes('-quiet'),false,'real compilation diagnostics must be retained');
+ const buildIndex=result.commands.findIndex(command=>command[0]==='xcodebuild'&&command.includes('build-for-testing'));
+ const shutdownIndex=result.commands.findIndex(command=>command[1]==='simctl'&&command[2]==='shutdown');
+ const bootIndex=result.commands.findIndex(command=>command[1]==='simctl'&&command[2]==='boot');
+ assert.ok(shutdownIndex<buildIndex&&buildIndex<bootIndex,'build on the same shutdown destination before its cold boot');
  const tests=result.executions.find(call=>call.command==='xcodebuild'&&call.args.includes('test-without-building'));
  assert.ok(tests.args.includes('BasketBossCookSmokeTests'));
  assert.ok(tests.args.includes('platform=iOS Simulator,id=proven-phone'));
  assert.equal(tests.timeout,180000);
+ assert.equal(tests.args.includes('-quiet'),false);
  assert.equal(result.commands.some(command=>command[1]==='simctl'&&command[2]==='launch'),false);
  assert.ok(result.logs.some(line=>line.includes('"launcher":"hosted_xctest"')&&line.includes('"passed":true')));
  const local=await runScript('test-ios-cook-smoke.mjs',{ci:false});
  assert.equal(local.commands.some(command=>command[0]==='xcodebuild'),false);
  assert.ok(local.commands.some(command=>command[1]==='simctl'&&command[2]==='launch'&&command.includes('--bb-native-cook-smoke')));
+});
+
+test('Cook refreshes the selected phone state after building and never double-boots an Xcode-started destination',async()=>{
+ const result=await runScript('test-ios-cook-smoke.mjs',{cookBuildBoots:true});
+ assert.equal(result.process.exitCode,undefined);
+ assert.equal(result.commands.some(command=>command[1]==='simctl'&&command[2]==='boot'),false);
+ const build=result.commands.findIndex(command=>command[0]==='xcodebuild'&&command.includes('build-for-testing'));
+ const refresh=result.commands.findIndex((command,index)=>index>build&&command[1]==='simctl'&&command[2]==='list'&&command[3]==='devices');
+ const ready=result.commands.findIndex(command=>command[1]==='simctl'&&command[2]==='bootstatus');
+ const tests=result.commands.findIndex(command=>command[0]==='xcodebuild'&&command.includes('test-without-building'));
+ assert.ok(build<refresh&&refresh<ready&&ready<tests,'real readiness still precedes the hosted test');
 });
 
 test('Cook reads the fresh host container after XCTest instead of a previous installation report',async()=>{
