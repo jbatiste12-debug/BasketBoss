@@ -7,7 +7,7 @@ const source=fs.readFileSync(new URL('../bb-onboarding-v2.js',import.meta.url),'
 const KEY='bb_onboarding_fresh_once_20261028_v1';
 const PLAN='basketboss_321_unified_state_v1',SESSION='basketboss_cloud_session_v1';
 const completed={step:10,started:false,complete:true,house:'2 people',region:'UK',goals:['Plan dinners faster'],diets:['Vegetarian'],partnerStepV2:true,wantsPartnerInvite:false,partnerIntent:'none'};
-function harness({saved,store,deleted=false,startup=false,native=true,dialog=false}={}){
+function harness({saved,store,deleted=false,startup=false,native=true,dialog=false,remembered,withAuth=false}={}){
  const storage=store||new Map([[PLAN,'saved meal plan must survive'],[SESSION,JSON.stringify({user:{id:'existing-user-id'},access_token:'synthetic-token',expires_at:9999999999})]]);
  if(saved)storage.set(KEY,JSON.stringify(saved));
  const windowEvents=new Map(),documentEvents=new Map(),viewportEvents=new Map(),writes=[],preferences=[],nodes=[];
@@ -15,22 +15,24 @@ function harness({saved,store,deleted=false,startup=false,native=true,dialog=fal
  const on=(map,name,fn)=>{const callbacks=map.get(name)||[];callbacks.push(fn);map.set(name,callbacks);};
  const replayButton={id:'bbOnboardingReplay',textContent:'Replay welcome animation',isConnected:true,focus(){this.focused=true;}};
  const uiNodes=new Map([[replayButton.id,replayButton]]);
- const parent={appendChild(node){node.parentNode=this;uiNodes.set(node.id,node);}};replayButton.parentNode=parent;replayButton.setAttribute=()=>{};
+ const parent={appendChild(node){node.parentNode=this;uiNodes.set(node.id,node);},insertBefore(node){node.parentNode=this;}};replayButton.parentNode=parent;replayButton.setAttribute=()=>{};
+ if(withAuth){for(const name of ['cloud-auth','cloud-message','bbobAuthSlot','bbobMessageSlot'])uiNodes.set(name,{id:name,hidden:true,parentNode:parent,appendChild(node){node.parentNode=this;}});}
  const rootClasses=new Set(),rootStyle=new Map(),scrolls=[];
  const background=[false,true].map(inert=>({inert,contains:()=>false,hasAttribute(){return this.inert;},setAttribute(){this.inert=true;},removeAttribute(){this.inert=false;}}));
  const body={style:{overflow:''},appendChild(node){nodes.push(node);}};
- const document={body,readyState:'complete',activeElement:replayButton,documentElement:{style:{setProperty:(k,v)=>rootStyle.set(k,v),removeProperty:k=>rootStyle.delete(k)},classList:{contains:name=>rootClasses.has(name)||name==='bb-native-starting'&&starting,add:name=>rootClasses.add(name),remove:name=>rootClasses.delete(name)}},querySelectorAll:()=>background,
+ const document={body,createComment:()=>({}),readyState:'complete',activeElement:replayButton,documentElement:{style:{setProperty:(k,v)=>rootStyle.set(k,v),removeProperty:k=>rootStyle.delete(k)},classList:{contains:name=>rootClasses.has(name)||name==='bb-native-starting'&&starting,add:name=>rootClasses.add(name),remove:name=>rootClasses.delete(name)}},querySelectorAll:()=>background,
   getElementById(id){if(uiNodes.has(id))return uiNodes.get(id);if(id==='bbAccountDeletionDialog')return {open:dialogOpen};return null;},
   createElement(){const classes=new Set(),values=new Map();return {innerHTML:'',events:new Map(),style:{setProperty:(k,v)=>values.set(k,v),getPropertyValue:k=>values.get(k)},classList:{contains:name=>classes.has(name),toggle(name,enabled){enabled?classes.add(name):classes.delete(name);}},contains:node=>node?.inside===true,setAttribute(){},addEventListener(name,fn){on(this.events,name,fn);},querySelector(){return null;},remove(){this.removed=true;}};},
   querySelector:selector=>selector.includes('bbui-settings-close')?{click(){closed++;}}:null,addEventListener(name,fn){on(documentEvents,name,fn);}};
  const window={innerHeight:932,innerWidth:430,scrollX:3,scrollY:500,scrollTo(x,y){scrolls.push([x,y]);this.scrollX=x;this.scrollY=y;},visualViewport:{height:932,width:430,offsetTop:0,offsetLeft:0,addEventListener(name,fn){on(viewportEvents,name,fn);}},BBNative:native?{isNative:true}:undefined,BBAccountDeletion:{isDeleting:()=>deleting},matchMedia:()=>({matches:false}),addEventListener(name,fn){on(windowEvents,name,fn);},BasketBossSetOnboardingServings(count){preferences.push({house:count});return true;},bb307SwitchIsland(region){preferences.push({region});return true;}};
+ if(remembered!==undefined)window.BasketBossSession={state:()=>({remembered})};
  const context=vm.createContext({window,document,localStorage:{getItem:key=>storage.get(key)??null,setItem(key,value){writes.push([key,value]);storage.set(key,value);}},sessionStorage:{setItem(){}},location:{hostname:native?'localhost':'basketboss.co.uk',protocol:native?'capacitor:':'https:',search:''},navigator:{standalone:false},URLSearchParams,queueMicrotask,MutationObserver:class{constructor(fn){observer=fn;}observe(){}},console});
  vm.runInContext(source,context,{timeout:1000});
  const active=()=>nodes.findLast(node=>!node.removed);
  const dispatch=(name,event={})=>{for(const fn of windowEvents.get(name)||[])fn(event);};
  const tap=(action,option)=>{const node=active();assert.ok(node,'expected active onboarding');for(const fn of node.events.get('click')||[])fn({target:{closest(selector){if(selector==='[data-bbob-opt]'&&option!==undefined)return {dataset:{bbobOpt:String(option)}};if(selector==='[data-bbob]'&&action)return {dataset:{bbob:action}};return null;}}});};
  const through=step=>{for(let i=0;i<step;i++)tap('next');};
- return {window,document,storage,writes,preferences,replayButton,rootClasses,rootStyle,background,scrolls,settingsClosed:()=>closed,active,tap,through,dispatch,read:()=>JSON.parse(storage.get(KEY)||'null'),setDeleting:value=>{deleting=value;},setStartup:value=>{starting=value;},setDialog:value=>{dialogOpen=value;},
+ return {window,document,storage,node:id=>uiNodes.get(id),setRemembered:value=>{remembered=value;},writes,preferences,replayButton,rootClasses,rootStyle,background,scrolls,settingsClosed:()=>closed,active,tap,through,dispatch,read:()=>JSON.parse(storage.get(KEY)||'null'),setDeleting:value=>{deleting=value;},setStartup:value=>{starting=value;},setDialog:value=>{dialogOpen=value;},
   escape(){for(const fn of active()?.events.get('keydown')||[])fn({key:'Escape',preventDefault(){}});},
   resize(height){window.visualViewport.height=height;for(const fn of viewportEvents.get('resize')||[])fn();},
   region(value){for(const fn of active()?.events.get('change')||[])fn({target:{value,matches:()=>true}});},
@@ -142,4 +144,24 @@ test('fresh onboarding isolates the planner, follows keyboard panning and restor
  assert.equal(h.rootStyle.has('--bbob-page-top'),false);assert.deepEqual(h.background.map(node=>node.inert),[false,true]);
  assert.deepEqual(h.scrolls,[[3,500]]);assert.equal(h.document.body.style.overflow,'');
  assert.equal(h.storage.get(PLAN),'saved meal plan');assert.equal(h.read().complete,false);
+});
+
+test('a remembered expired session keeps onboarding credentials hidden, then shows them after definitive rejection',()=>{
+ const storage=new Map([[PLAN,'saved meal plan'],[SESSION,JSON.stringify({user:{id:'returning-person'},access_token:'expired',refresh_token:'renewable',expires_at:1})]]);
+ const h=harness({store:storage,remembered:true,withAuth:true});h.through(1);
+ assert.match(h.active().innerHTML,/You’re already signed in/);assert.equal(h.node('cloud-auth').hidden,true,'render must not unhide the original form behind onboarding');
+ assert.notEqual(h.node('cloud-auth').parentNode.id,'bbobAuthSlot');
+ h.setRemembered(false);h.storage.delete(SESSION);h.dispatch('basketboss:session-changed');
+ assert.match(h.active().innerHTML,/Create a free account or sign in/);assert.doesNotMatch(h.active().innerHTML,/You’re already signed in/);
+ assert.equal(h.node('cloud-auth').hidden,false);assert.equal(h.node('cloud-auth').parentNode.id,'bbobAuthSlot');
+ assert.equal(h.storage.get(PLAN),'saved meal plan');
+});
+
+test('remembered identity cannot finish a partner join until a fresh authenticated session arrives',()=>{
+ const storage=new Map([[PLAN,'saved meal plan'],[SESSION,JSON.stringify({user:{id:'returning-person'},access_token:'expired',refresh_token:'renewable',expires_at:1})]]);
+ const h=harness({store:storage,remembered:true,withAuth:true});h.through(2);h.tap('partner-join');
+ assert.equal(h.read().complete,false);assert.equal(h.read().step,1);assert.ok(h.active());assert.equal(h.node('cloud-auth').hidden,true);
+ h.dispatch('basketboss:session-changed');assert.equal(h.read().complete,false,'an unchanged remembered-session notification is not authentication');
+ h.storage.set(SESSION,JSON.stringify({user:{id:'returning-person'},access_token:'fresh',expires_at:9999999999}));h.dispatch('basketboss:session-changed');
+ assert.equal(h.read().complete,true);assert.equal(h.active(),undefined);assert.equal(h.storage.get(PLAN),'saved meal plan');
 });

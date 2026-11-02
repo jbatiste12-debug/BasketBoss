@@ -3783,6 +3783,7 @@ body[data-bbnext-view="discover"] #app .bb-featured-card #bbFeaturedBatch {
 <script src="bb-serving-scale.js?v=20261029-preview1"></script>
 <script src="bb-recipe-planning.js?v=20261102-editorial3"></script>
 <script src="bb-recipe-editorial.js?v=20261102-editorial4"></script>
+<script src="bb-plan-move.js?v=20261102-drag1"></script>
 <script src="bb-ingredient-preferences.js?v=20261101-avoid1"></script>
 <script src="bb-evening-pivot.js?v=20261101-pivot1"></script>
 <script src="bb-evening-pivot-app.js?v=20261101-pivot1"></script>
@@ -6770,7 +6771,7 @@ function bbNextComposePlan(app){
   const oldIntro=panel.querySelector('.bb1759-summary-heading');
   if(oldIntro){
     const h=oldIntro.querySelector('h3');if(h)h.textContent='Your dinner plan';
-    const sub=oldIntro.querySelector('p');if(sub)sub.textContent='Tap a day to expand its meal card, ingredients and editing controls.';
+    const sub=oldIntro.querySelector('p');if(sub)sub.textContent='Tap a day for details. Hold its day badge to move dinner; drop onto another meal to swap.';
     // Move the real Clear Week control out of the hidden legacy editor.
     const clear=originals.querySelector('#clearWeek');
     if(clear){
@@ -6827,6 +6828,7 @@ function bbNextComposePlan(app){
    details.open=bb80OpenPlanDays.has(day);
    const toggle=document.createElement('summary');toggle.className='bbnext-day-toggle';
    const label=document.createElement('span');label.className='bbnext-day-label';label.textContent=day.slice(0,3).toUpperCase();
+   if(state.planned.some(p=>p.day===day)){label.dataset.bbPlanHandle=day;label.title='Hold to move '+day+' dinner';}
    const desc=document.createElement('span');desc.className='bbnext-day-description';
    const title=document.createElement('strong');title.textContent=pendingUnloaded?'Saved dinner · waiting for recipe access':available?(recipe?.name||'No meal planned'):'🔒 Premium dinner saved';
    const subtitle=document.createElement('small');
@@ -6899,6 +6901,7 @@ function bbNextComposePlan(app){
       if(pivot)cookFromDay.parentNode.append(pivot);
     }
     if(recipe&&available){
+      const move=document.createElement('button');move.type='button';move.className='small-btn bb-plan-move-button';move.dataset.bbPlanMoveDay=day;move.textContent='Move dinner';move.setAttribute('aria-label','Move '+day+' dinner to another day');content.append(move);
       const remove=document.createElement('button');remove.type='button';
       remove.className='bb77-remove-meal';remove.textContent='Remove meal';
       remove.setAttribute('aria-label','Remove dinner from '+day);
@@ -7178,7 +7181,7 @@ function bbDessertForDay(day){
 }
 
 function addRecipe(id,day){if(!bb176AllowedRecipe(id)){bb176OpenPremiumUpgrade();return;}const dessertRecipe=getRecipe(id);if(bbIsDessert(dessertRecipe)){bbPlanDessert(id,day);return}if(state.planned.some(p=>p.recipeId===id)){notify('That recipe is already in your week.');return}const used=new Set(state.planned.map(p=>p.day));for(const day of bbBatchPairs().map(x=>x.leftoverDay))used.add(day);if(day&&used.has(day)){notify('That day already has a dinner or linked leftover night.');return}const assigned=day||DAYS.find(d=>!used.has(d));if(!assigned){notify('No free dinner slots; remove one first.');return}state.planned.push({recipeId:id,day:assigned});persist();notify('Added to '+assigned+' \u2713');render()}
-function renderWeek(app){const planned=getPlanned();app.innerHTML=`<div class="section-head"><div><h3>Your weekly game plan</h3><p>One dinner per day keeps the week simple.</p></div><button class="btn" id="clearWeek">Clear week</button></div><div class="notice">Tip: changing a meal's day updates your shopping list automatically. Duplicate recipe bookings are prevented.</div>${DAYS.map((d,i)=>{const p=planned.find(x=>x.day===d);return `<section class="day"><div class="day-head"><strong>${d}</strong><span>${p?'Dinner planned':'Open slot'}</span></div>${p?`<div class="planned"><div><strong>${esc(p.recipe.name)}</strong><div class="muted" style="font-size:10px;margin-top:3px">${p.recipe.mins} min</div></div><div class="small-actions"><select data-move="${p.recipeId}" aria-label="Move ${esc(p.recipe.name)} to another day">${DAYS.map(x=>`<option ${x===d?'selected':''}>${x}</option>`).join('')}</select><button class="small-btn" data-cook="${p.recipeId}">Cook</button><button class="small-btn" data-remove="${p.recipeId}" aria-label="Remove ${esc(p.recipe.name)}">\u2715</button></div></div>${bbLeftoverControls(p,planned)}`:`<button class="btn" data-add-day="${d}">\uFF0B Choose dinner</button>`}${bbDessertForDay(d)}</section>`}).join('')}`;app.querySelector('#clearWeek').onclick=async()=>{if(await bbQaConfirm('Clear all planned dinners and desserts? Your pantry checklist will stay saved.','Clear this week?','Clear week')){const old={planned:state.planned,plannedDesserts:state.plannedDesserts,leftoverSources:state.leftoverSources,leftoverConfirmed:state.leftoverConfirmed};state.planned=[];state.plannedDesserts=[];state.leftoverSources={};state.leftoverConfirmed={};if(!persist()||!bbShopV7Close()){Object.assign(state,old);persist();notify('Could not safely clear week');return;}render()}};app.querySelectorAll('[data-move]').forEach(el=>el.onchange=()=>{const p=state.planned.find(x=>x.recipeId===el.dataset.move);if(!p)return;const clash=state.planned.find(x=>x.day===el.value&&x.recipeId!==p.recipeId);if(clash){notify('That day already has a dinner. Remove or move it first.');render();return}p.day=el.value;persist();render()});app.querySelectorAll('[data-remove]').forEach(el=>el.onclick=()=>{state.planned=state.planned.filter(p=>p.recipeId!==el.dataset.remove);persist();render();notify('Meal removed')});app.querySelectorAll('[data-leftover-source]').forEach(el=>el.onchange=()=>{state.leftoverSources[el.dataset.leftoverSource]=el.checked;if(!el.checked){for(const r of bbLeftoverSuggestions(el.dataset.leftoverSource))state.leftoverConfirmed[r.id]=false}persist();render()});
+function renderWeek(app){const planned=getPlanned();app.innerHTML=`<div class="section-head"><div><h3>Your weekly game plan</h3><p>One dinner per day keeps the week simple.</p></div><button class="btn" id="clearWeek">Clear week</button></div><div class="notice">Tip: changing a meal's day updates your shopping list automatically. Duplicate recipe bookings are prevented.</div>${DAYS.map((d,i)=>{const p=planned.find(x=>x.day===d);return `<section class="day"><div class="day-head"><strong>${d}</strong><span>${p?'Dinner planned':'Open slot'}</span></div>${p?`<div class="planned"><div><strong>${esc(p.recipe.name)}</strong><div class="muted" style="font-size:10px;margin-top:3px">${p.recipe.mins} min</div></div><div class="small-actions"><select data-move="${p.recipeId}" aria-label="Move ${esc(p.recipe.name)} to another day">${DAYS.map(x=>`<option ${x===d?'selected':''}>${x}</option>`).join('')}</select><button class="small-btn" data-cook="${p.recipeId}">Cook</button><button class="small-btn" data-remove="${p.recipeId}" aria-label="Remove ${esc(p.recipe.name)}">\u2715</button></div></div>${bbLeftoverControls(p,planned)}`:`<button class="btn" data-add-day="${d}">\uFF0B Choose dinner</button>`}${bbDessertForDay(d)}</section>`}).join('')}`;app.querySelector('#clearWeek').onclick=async()=>{if(await bbQaConfirm('Clear all planned dinners and desserts? Your pantry checklist will stay saved.','Clear this week?','Clear week')){const old={planned:state.planned,plannedDesserts:state.plannedDesserts,leftoverSources:state.leftoverSources,leftoverConfirmed:state.leftoverConfirmed};state.planned=[];state.plannedDesserts=[];state.leftoverSources={};state.leftoverConfirmed={};if(!persist()||!bbShopV7Close()){Object.assign(state,old);persist();notify('Could not safely clear week');return;}render()}};app.querySelectorAll('[data-move]').forEach(el=>el.onchange=()=>{const from=el.closest('[data-bbnext-day]')?.dataset.bbnextDay||el.querySelector('option[selected]')?.value;const snapshot=bbPlanMoveSnapshot();const result=bbPlanMoveDinner({from,to:el.value,expected:snapshot.fingerprint,recipeId:el.dataset.move});if(!result.ok)render();notify(result.message);});app.querySelectorAll('[data-remove]').forEach(el=>el.onclick=()=>{state.planned=state.planned.filter(p=>p.recipeId!==el.dataset.remove);persist();render();notify('Meal removed')});app.querySelectorAll('[data-leftover-source]').forEach(el=>el.onchange=()=>{state.leftoverSources[el.dataset.leftoverSource]=el.checked;if(!el.checked){for(const r of bbLeftoverSuggestions(el.dataset.leftoverSource))state.leftoverConfirmed[r.id]=false}persist();render()});
 app.querySelectorAll('[data-leftover-confirm]').forEach(el=>el.onchange=()=>{state.leftoverConfirmed[el.dataset.leftoverConfirm]=el.checked;persist();render()});
 app.querySelectorAll('[data-leftover-add]').forEach(el=>el.onclick=()=>bbAddSuggestedLeftover(el.dataset.leftoverFrom,el.dataset.leftoverAdd));
 app.querySelectorAll('[data-dessert-add-day]').forEach(el=>el.onclick=()=>{bbDessertTargetDay=el.dataset.dessertAddDay;tab='discover';collectionFilter='Desserts';query='';recipeIndex=0;galleryPage=0;render();notify('Choose a dessert for '+bbDessertTargetDay)});
@@ -7994,6 +7997,75 @@ window.BBHomeHost=Object.freeze({needsLegacyReview:bbHomeNeedsLegacyReview,settl
  refresh:()=>{bb307Stock=bb307ReadStock();if(typeof render==='function')render();}
 });
 
+
+/* Dinner day moves preserve servings and never rewrite cooking receipts. */
+function bbPlanMoveSnapshot(){
+ let actor='guest',rawPlan=null,rawNotes=null,rawHome=null,home={},notes={},problem='';
+ try{
+  actor=JSON.parse(localStorage.getItem('basketboss_cloud_session_v1')||'null')?.user?.id||'guest';
+  rawPlan=localStorage.getItem(KEY);rawNotes=localStorage.getItem(BB172_QUICK_DINNER_KEY);
+  notes=rawNotes===null?{}:JSON.parse(rawNotes);
+  if(!notes||typeof notes!=='object'||Array.isArray(notes))throw Error('notes');
+  rawHome=localStorage.getItem('basketboss_at_home_requirements_v1');home=rawHome===null?{}:JSON.parse(rawHome);
+  if(!home||typeof home!=='object'||Array.isArray(home)||(rawHome!==null&&home.version!==1))throw Error('completion');
+  for(const value of [home.byActor?.[actor]?.planned,home.planned])if(value!==undefined&&(!value||typeof value!=='object'||Array.isArray(value)))throw Error('completion');
+ }catch(_){problem='Your saved week needs review before moving a dinner.';}
+ if(tab!=='week')problem='Open Plan before moving a dinner.';
+ if(!bbStorageSafe||window.BBAccountDeletion?.isDeleting?.()===true)problem='Your plan cannot be changed right now.';
+ if(document.querySelector('.cook-overlay'))problem='Finish or close cooking before moving a dinner.';
+ const linked=new Set();
+ for(const pair of state.bbManualBatch?.pairs||[])for(const day of [pair.sourceDay,pair.leftoverDay])linked.add(day);
+ if(state.bb81Batch?.version===1)for(const day of ['Monday','Tuesday','Wednesday','Thursday'])linked.add(day);
+ for(const pair of bbBatchPairs())for(const day of [pair.sourceDay,pair.leftoverDay])linked.add(day);
+ const leftoverRecipes=new Set();
+ for(const [recipeId,selected]of Object.entries(state.leftoverSources||{}))if(selected){
+  leftoverRecipes.add(recipeId);
+  for(const targetId of (typeof BB_LEFTOVER_LINKS==='undefined'?[]:BB_LEFTOVER_LINKS[recipeId]||[]))leftoverRecipes.add(targetId);
+ }
+ for(const [recipeId,confirmed]of Object.entries(state.leftoverConfirmed||{}))if(confirmed)leftoverRecipes.add(recipeId);
+ const completed=home.byActor?.[actor]?.planned||{},legacyCompleted=home.planned||{};
+ const days=DAYS.map(day=>{
+  const meal=(state.planned||[]).find(row=>row.day===day),recipe=meal?getRecipe(meal.recipeId):null;
+  let reason=problem;
+  if(!reason&&Object.hasOwn(notes,day))reason='This day has a custom dinner note. Change that note before moving a meal here.';
+  if(!reason&&linked.has(day))reason='This day is linked to batch cooking. Remove the batch link before moving its dinner.';
+  if(!reason&&meal&&leftoverRecipes.has(meal.recipeId))reason='This dinner is linked to saved leftovers. Remove the leftover link before moving it.';
+  if(!reason&&meal&&(!recipe||!bb176AllowedRecipe(meal.recipeId)))reason='Reconnect your account to load this dinner before moving it.';
+  if(!reason&&meal){
+   const occurrence=bbHomeOccurrence(meal.recipeId,day);
+   if(completed[occurrence]||legacyCompleted[occurrence]||window.BBHome?.isCooked?.(occurrence))reason='This dinner is marked cooked. Keep its day so At home stays correct.';
+  }
+  return {day,recipeId:meal?.recipeId||null,name:recipe?.name||'',blocked:!!reason,reason};
+ });
+ const fingerprint=JSON.stringify({actor,tab,rawPlan,rawNotes,rawHome,planned:state.planned,dayServings:state.dayServings,mealServings:state.mealServings,servings:state.servings,manual:state.bbManualBatch,batch:state.bb81Batch,leftoverSources:state.leftoverSources,leftoverConfirmed:state.leftoverConfirmed,days});
+ return {ready:!problem,message:problem,fingerprint,days};
+}
+function bbPlanMoveDinner({from,to,expected,recipeId}={}){
+ let snapshot;
+ try{snapshot=bbPlanMoveSnapshot();}catch(_){return {ok:false,message:'Could not read your week. Nothing was moved.'};}
+ if(!snapshot.ready)return {ok:false,message:snapshot.message};
+ if(typeof expected!=='string'||snapshot.fingerprint!==expected)return {ok:false,message:'Your week changed. Try moving the dinner again.'};
+ const source=snapshot.days.find(row=>row.day===from),target=snapshot.days.find(row=>row.day===to);
+ if(source?.blocked||target?.blocked)return {ok:false,message:source?.reason||target?.reason};
+ if(typeof BBPlanMove==='undefined')return {ok:false,message:'Moving dinners is still loading. Try again shortly.'};
+ const change=BBPlanMove.move(state,from,to,{expectedRecipeId:recipeId,blockedDays:snapshot.days.filter(row=>row.blocked).map(row=>row.day)});
+ if(!change.ok)return change;
+ const before={planned:state.planned,dayServings:state.dayServings,bbManualBatch:state.bbManualBatch,bb81Batch:state.bb81Batch};
+ let oldRaw;
+ try{oldRaw=localStorage.getItem(KEY);}catch(_){return {ok:false,message:'Could not save your week. Nothing was moved.'};}
+ state.planned=change.planned;state.dayServings=change.dayServings;
+ let saved=false;try{saved=persist()===true;}catch(_){}
+ if(!saved){
+  const attempted=JSON.stringify(state);
+  Object.assign(state,before);
+  // Restore only our own attempted write, never another tab's newer state.
+  try{if(localStorage.getItem(KEY)===attempted){if(oldRaw===null)localStorage.removeItem(KEY);else localStorage.setItem(KEY,oldRaw);}}catch(_){}
+  return {ok:false,message:'Could not save your week. Your dinners stay on their original days.'};
+ }
+ render();
+ return {ok:true,message:change.swapped?from+' and '+to+' dinners swapped.':'Dinner moved from '+from+' to '+to+'.'};
+}
+window.BBPlanMoveHost=Object.freeze({snapshot:bbPlanMoveSnapshot,move:bbPlanMoveDinner,notify});
 
 window.addEventListener('storage',e=>{if(e.key===KEY){state=loadState();bbFeedingApplyDefault();render();notify('Updated from another tab')}});window.addEventListener('beforeunload',()=>{if(timerHandle)clearInterval(timerHandle)});window.addEventListener('pageshow',e=>{if(e.persisted)window.scrollTo({top:0,behavior:'instant'})});queueMicrotask(render);
 /* BB SECURE PREMIUM: runtime hydration from D1 after verified membership. */
@@ -10388,6 +10460,7 @@ if (false && 'serviceWorker' in navigator && location.protocol==='https:') {
 <small id="cloud-message">Sync is optional. Your recipes and meal plan continue to work on this device without an account.</small>
 </div></div>
 <script src="./cloud-config.js"></script>
+<script src="bb-session.js?v=20261102-session1"></script>
 <script>
 (function(){
 'use strict';
@@ -10395,14 +10468,14 @@ const config=window.BASKETBOSS_CLOUD_CONFIG||{};
 const enabled=/^https:\/\//.test(config.url||'') && !!config.anonKey && !config.url.includes('YOUR_PROJECT');
 const panel=document.getElementById('cloud-panel'),status=document.getElementById('cloud-status'),msg=document.getElementById('cloud-message');
 const auth=document.getElementById('cloud-auth'),signed=document.getElementById('cloud-signed');
-let session=null,dirty=false,timer=null,loading=false,generation=0,deleting=false;
+let session=null,sessionRaw=null,dirty=false,timer=null,loading=false,generation=0,deleting=false;
 const sessionKey='basketboss_cloud_session_v1',stateKey='basketboss_321_unified_state_v1';
 const blocked=()=>deleting||window.BBAccountDeletion?.isDeleting?.()===true;
 const snapshot=()=>({generation,actor:session?.user?.id||null,token:session?.access_token||null});
 const current=pin=>!blocked()&&pin.generation===generation&&pin.actor===(session?.user?.id||null)&&pin.token===(session?.access_token||null);
 const setMessage=t=>{if(!blocked())msg.textContent=t;};
-function restoreStoredSession(){try{const saved=JSON.parse(localStorage.getItem(sessionKey)||'null');session=saved?.access_token?saved:null;}catch{session=null;}}
-function setStatus(){const connected=!!(session?.access_token&&Number(session.expires_at)*1000>Date.now()+5000),recovering=blocked()&&window.BBAccountDeletion?.canRecoverSignIn?.()===true;status.textContent=recovering?'An earlier account deletion needs checking. Sign in with the original account to recover access; cloud syncing stays paused during the check.':blocked()?'Account deletion is in progress. Cloud sync is paused.':!enabled?'Cloud sync needs setup by the site owner.':connected?'Signed in as '+(session.user?.email||'your account'):session?'Your session has expired. Sign in again to access your account.':'Sign in to sync your plan between devices.';auth.hidden=!enabled||(blocked()?!recovering:connected);signed.hidden=!connected||blocked();document.getElementById('cloud-signup').hidden=recovering||window.BBNative?.isNative===true;for(const id of ['cloud-upload','cloud-download','cloud-logout'])document.getElementById(id).disabled=blocked();}
+function restoreStoredSession(){try{sessionRaw=localStorage.getItem(sessionKey);const saved=JSON.parse(sessionRaw||'null');session=saved?.access_token?saved:null;}catch{sessionRaw=null;session=null;}}
+function setStatus(){const connected=!!(session?.access_token&&Number(session.expires_at)*1000>Date.now()+5000),remembered=window.BasketBossSession?.state().remembered===true,recovering=blocked()&&window.BBAccountDeletion?.canRecoverSignIn?.()===true;status.textContent=recovering?'An earlier account deletion needs checking. Sign in with the original account to recover access; cloud syncing stays paused during the check.':blocked()?'Account deletion is in progress. Cloud sync is paused.':!enabled?'Cloud sync needs setup by the site owner.':connected?'Signed in as '+(session.user?.email||'your account'):remembered?(window.BasketBossSession.state().needsConnection?'Your account is saved on this device. Reconnect to the internet to continue.':'Reconnecting to your account…'):session?'Your session has expired. Sign in again to access your account.':'Sign in to sync your plan between devices.';auth.hidden=!enabled||(blocked()?!recovering:(connected||remembered));signed.hidden=!(connected||remembered)||blocked();document.getElementById('cloud-signup').hidden=recovering||window.BBNative?.isNative===true;for(const id of ['cloud-upload','cloud-download','cloud-logout'])document.getElementById(id).disabled=blocked();}
 function headers(token){return {'apikey':config.anonKey,'Authorization':'Bearer '+(token||config.anonKey),'Content-Type':'application/json'};}
 async function api(path,method='GET',body=null,token=null,recovery=false){
  if(blocked()&&!(recovery&&path==='/auth/v1/token?grant_type=password'&&window.BBAccountDeletion?.canRecoverSignIn?.()===true))throw new Error('Account deletion is in progress.');
@@ -10411,15 +10484,13 @@ async function api(path,method='GET',body=null,token=null,recovery=false){
  if(!response.ok)throw new Error(data?.msg||data?.error_description||data?.message||data?.error||'Cloud request failed');
  return data;
 }
-function saveSession(s){if(blocked())return false;generation++;session=s;if(s)localStorage.setItem(sessionKey,JSON.stringify(s));else localStorage.removeItem(sessionKey);setStatus();window.dispatchEvent(new Event('basketboss:session-changed'));return true;}
+function saveSession(s){if(blocked()||!window.BasketBossSession?.remember(s))return false;generation++;session=s;setStatus();return true;}
 async function refresh(){
  if(blocked()||!session)return false;
- if(Date.now()/1000 < (session.expires_at||0)-90)return true;
- const pin=snapshot();
- try{const data=await api('/auth/v1/token?grant_type=refresh_token','POST',{refresh_token:session.refresh_token});
- if(!current(pin))return false;
- return saveSession({...data,expires_at:Math.floor(Date.now()/1000)+data.expires_in});
- }catch(e){if(current(pin)){saveSession(null);setMessage('Session expired. Please sign in again.');}return false;}
+ const actor=session.user?.id;
+ const fresh=await window.BasketBossSession.ensureFresh();
+ if(blocked()||!fresh||fresh.user?.id!==actor)return false;
+ restoreStoredSession();setStatus();return !!(session?.user?.id===actor&&Number(session.expires_at)*1000>Date.now()+5000);
 }
 async function getCloud(){
  if(blocked()||!await refresh()||blocked()||!session)return null;
@@ -10478,6 +10549,7 @@ window.BasketBossCloud={scheduleSave(){if(blocked()||loading||!session||!enabled
 window.addEventListener('basketboss:account-deletion-started',()=>{deleting=true;generation++;dirty=false;clearTimeout(timer);timer=null;setStatus();});
 window.addEventListener('basketboss:account-deletion-cancelled',()=>{deleting=false;generation++;restoreStoredSession();setStatus();});
 window.addEventListener('basketboss:account-deletion-deleted',()=>{deleting=true;generation++;session=null;dirty=false;clearTimeout(timer);timer=null;setStatus();});
+window.addEventListener('basketboss:session-changed',()=>{const before=sessionRaw;restoreStoredSession();if(sessionRaw!==before)generation++;setStatus();});
 window.addEventListener('storage',event=>{if(event.key!==sessionKey)return;generation++;if(blocked())return;try{const saved=JSON.parse(event.newValue||'null');session=saved?.access_token?saved:null;}catch{session=null;}setStatus();});
 document.getElementById('cloud-open').onclick=()=>{window.BBOnboard2026?.pauseForAccount?.();panel.classList.add('open');setStatus();if(window.BBAccountDeletion?.canRecoverSignIn?.())void window.BBAccountDeletion.checkPending();};
 document.getElementById('cloud-close').onclick=()=>panel.classList.remove('open');
@@ -10486,9 +10558,9 @@ document.getElementById('cloud-login').onclick=()=>signIn(false);
 document.getElementById('cloud-signup').onclick=()=>signIn(true);
 document.getElementById('cloud-upload').onclick=()=>push().catch(e=>setMessage(e.message));
 document.getElementById('cloud-download').onclick=()=>pull(true).catch(e=>setMessage(e.message));
-document.getElementById('cloud-logout').onclick=()=>{if(blocked())return;saveSession(null);setMessage('Signed out. Local data remains on this device.')};
+document.getElementById('cloud-logout').onclick=()=>{if(blocked())return;if(saveSession(null))setMessage('Signed out. Local data remains on this device.');else setMessage('Could not sign out on this device. Please try again.');};
 window.addEventListener('online',()=>{if(!blocked()&&dirty)push().catch(e=>setMessage(e.message))});
-try{const saved=JSON.parse(localStorage.getItem(sessionKey)||'null');if(saved?.access_token)session=saved;}catch{}
+restoreStoredSession();
 setStatus();
 if(location.hash==='#account')document.getElementById('cloud-open').click();
 })();
@@ -10944,7 +11016,7 @@ if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',
   <button type="button" class="bbtrial-free" data-bbtrial-free>Continue with BasketBoss Free →</button>
   <p class="bbtrial-foot">100 starter recipes, manual ingredients and basic planning remain available without subscribing.</p>
  </div>
-</dialog><script src="bb-intro-trial.js?v=bb-account-first-20261027-v1"></script><script defer src="bb-onboarding-v2.js?v=20261101-signin3"></script><script defer src="bb-cold-preview.js?v=20261028-conversion-1"></script><script defer src="bb-funnel.js?v=20261028-v1"></script><script defer src="bb-ux-cleanup.js?v=20261028-ux1"></script><script src="bb-us-market.js?v=173us1"></script><script defer src="bb-install.js?v=173install1"></script><script defer src="bb-welcome-splash.js?v=20261101-signin2"></script><script defer src="bb-premium-features.js?v=20261101-weeklyshop1"></script>
+</dialog><script src="bb-intro-trial.js?v=bb-account-first-20261027-v1"></script><script defer src="bb-onboarding-v2.js?v=20261102-session1"></script><script defer src="bb-cold-preview.js?v=20261028-conversion-1"></script><script defer src="bb-funnel.js?v=20261028-v1"></script><script defer src="bb-ux-cleanup.js?v=20261028-ux1"></script><script src="bb-us-market.js?v=173us1"></script><script defer src="bb-install.js?v=173install1"></script><script defer src="bb-welcome-splash.js?v=20261101-signin2"></script><script defer src="bb-premium-features.js?v=20261101-weeklyshop1"></script>
 <style id="bb175-ux-fix">
 /* BasketBoss v17.4.2 premium-preview usability improvements */
 #app .swipe-action.yes{color:#c91e43!important;background:#fff2f4!important;border:3px solid #d92c50!important;box-shadow:0 5px 18px rgba(192,22,60,.22)!important;font-size:37px!important;font-weight:900!important}
@@ -11784,4 +11856,6 @@ body[data-bbnext-view="discover"] #app .bb175-discover-heading{padding-top:calc(
 <script defer src="bb-home.js?v=20261102-home1"></script>
 <link rel="stylesheet" href="bb-shared-shopping.css?v=20261102-shared1">
 <script defer src="bb-shared-shopping.js?v=20261102-shared1"></script>
+<link rel="stylesheet" href="bb-plan-drag.css?v=20261102-drag1">
+<script defer src="bb-plan-drag.js?v=20261102-drag1"></script>
 </body></html>

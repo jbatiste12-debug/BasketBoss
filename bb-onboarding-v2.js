@@ -25,6 +25,8 @@
  const read=k=>{try{return localStorage.getItem(k)}catch(_){return null}};
  const write=(k,v)=>{try{localStorage.setItem(k,v);return localStorage.getItem(k)===v}catch(_){return false}};
  const validSession=()=>{try{const s=JSON.parse(read('basketboss_cloud_session_v1')||'null');return !!(s?.user?.id&&typeof s.access_token==='string'&&Number(s.expires_at)*1000>Date.now()+5000)}catch(_){return false}};
+ // Remembered identity only controls account presentation; invite actions still require a fresh token.
+ const accountRemembered=()=>validSession()||window.BasketBossSession?.state().remembered===true;
  const native=()=>window.BBNative?.isNative===true||location.protocol==='capacitor:';
  const installed=()=>{try{return native()||window.matchMedia('(display-mode: standalone)').matches||navigator.standalone===true}catch(_){return native()||navigator.standalone===true}};
  const deleting=()=>window.BBAccountDeletion?.isDeleting?.()===true;
@@ -106,7 +108,7 @@
        actions=btn('Let’s get started','next')+btn('Browse 100 free recipes instead','free','link');break;
      case 1:
        eyebrow='YOUR ACCOUNT';
-       if(validSession()){
+       if(accountRemembered()){
          headline='You’re already signed in.';
          description='Your existing BasketBoss account and saved meals are ready. There is no need to sign in again.';
          art='<div class="bbob-auth-ready" role="status">✓ Your account is connected</div>';
@@ -217,9 +219,9 @@
    window.requestAnimationFrame?.(keepAuthFocusVisible);
  }
  function render(){if(!host)return;restoreAuth();host.innerHTML=content();
-   if(state.step===1&&!validSession())mountAuth();
+   if(state.step===1&&!accountRemembered())mountAuth();
    sizeWelcomeViewport();host.scrollTop=0;
-   if(state.step===1&&!validSession()){
+   if(state.step===1&&!accountRemembered()){
      const heading=host.querySelector('#bbob-title');heading?.setAttribute('tabindex','-1');heading?.focus({preventScroll:true});
    }else host.querySelector('[data-bbob="next"]')?.focus({preventScroll:true});
  }
@@ -399,7 +401,8 @@
    },true);
    if(typeof MutationObserver==='function')new MutationObserver(replayLabel).observe(document.body,{childList:true,subtree:true});
    window.addEventListener('basketboss:session-changed',()=>{
-     if(!blocked()&&host&&state.step===1&&validSession()){if(state.partnerIntent==='join')finishJoinHandoff();else{state.step=2;persist();render();}}
+     if(blocked()||!host||state.step!==1)return;
+     if(validSession()){if(state.partnerIntent==='join')finishJoinHandoff();else{state.step=2;persist();render();}}else render();
    });
    window.addEventListener('basketboss:account-deletion-started',()=>{if(host)dismiss();replayLabel();});
    window.addEventListener('basketboss:account-deletion-deleted',()=>{if(host)dismiss();replayLabel();});

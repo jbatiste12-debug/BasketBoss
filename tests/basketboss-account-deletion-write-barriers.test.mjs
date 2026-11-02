@@ -2,6 +2,8 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import vm from 'node:vm';
+import {createRequire} from 'node:module';
+const {install:installSession}=createRequire(import.meta.url)('../bb-session.js');
 import {DatabaseSync} from 'node:sqlite';
 
 const html=fs.readFileSync(new URL('../index.html',import.meta.url),'utf8');
@@ -16,6 +18,9 @@ function harness({saved=session,fetchResult}={}){
  let timerId=0,reloads=0;
  function node(id){if(!nodes.has(id))nodes.set(id,{id,textContent:'',hidden:false,disabled:false,value:'',classList:{add(){},remove(){}}});return nodes.get(id);}
  const window={BASKETBOSS_CLOUD_CONFIG:{url:'https://example.supabase.co',anonKey:'public'},addEventListener(name,fn){const handlers=events.get(name)||[];handlers.push(fn);events.set(name,handlers);},dispatchEvent(event){for(const fn of events.get(event.type)||[])fn(event);}};
+ window.Event=Event;
+ window.localStorage={getItem:k=>store.get(k)??null,setItem(k,v){writes.push([k,v]);store.set(k,String(v));},removeItem(k){store.delete(k);}};
+ window.BasketBossSession=installSession(window,{fetch:async(url,options)=>{requests.push({url,options});return fetchResult?fetchResult(url,options):Response.json([]);}});
  const context={window,document:{getElementById:node},localStorage:{getItem:k=>store.get(k)??null,setItem(k,v){writes.push([k,v]);store.set(k,String(v));},removeItem(k){store.delete(k);}},navigator:{onLine:true},fetch:async(url,options)=>{requests.push({url,options});return fetchResult?fetchResult(url,options):Response.json([]);},confirm:()=>true,location:{reload(){reloads++;}},setTimeout(fn){const id=++timerId;timers.set(id,fn);return id;},clearTimeout(id){timers.delete(id);},Event,Date,JSON,console};
  vm.runInNewContext(cloudCode,context);
  const dispatch=(type,extra={})=>window.dispatchEvent({type,...extra});
@@ -23,11 +28,11 @@ function harness({saved=session,fetchResult}={}){
 }
 const tick=()=>new Promise(resolve=>setImmediate(resolve));
 
-test('an expired stored session shows real sign-in controls without deleting local data',()=>{
+test('an expired renewable session waits to reconnect without asking for credentials or deleting local data',()=>{
  const h=harness({saved:{...session,expires_at:1}});h.store.set(stateKey,'saved meal plan');
  let paused=0;h.window.BBOnboard2026={pauseForAccount(){paused++;}};
- h.node('cloud-open').onclick();assert.equal(paused,1);assert.equal(h.node('cloud-auth').hidden,false);assert.equal(h.node('cloud-signed').hidden,true);
- assert.match(h.node('cloud-status').textContent,/session has expired/);assert.equal(h.store.get(stateKey),'saved meal plan');assert.equal(h.requests.length,0);
+ h.node('cloud-open').onclick();assert.equal(paused,1);assert.equal(h.node('cloud-auth').hidden,true);assert.equal(h.node('cloud-signed').hidden,false);
+ assert.match(h.node('cloud-status').textContent,/Reconnecting/);assert.equal(h.store.get(stateKey),'saved meal plan');assert.equal(h.requests.length,0);
 });
 
 test('pending deletion exposes recovery sign-in without sending any saved plan to the cloud',async()=>{
@@ -81,6 +86,11 @@ test('switching accounts during a restore invalidates the earlier actor response
  h.dispatch('storage',{key:sessionKey,newValue:JSON.stringify(replacement)});
  response.resolve(Response.json([{data:{version:2,planned:[{recipeId:'old-account-meal'}]}}]));await pending;
  assert.equal(h.store.has(stateKey),false);assert.equal(h.reloads,0);
+});
+
+test('a failed device sign-out preserves credentials and reports that it did not complete',()=>{
+ const h=harness(),before=h.store.get(sessionKey);h.window.localStorage.removeItem=()=>{throw Error('storage denied');};
+ h.node('cloud-logout').onclick();assert.equal(h.store.get(sessionKey),before);assert.match(h.node('cloud-message').textContent,/Could not sign out/);assert.doesNotMatch(h.node('cloud-message').textContent,/Signed out/);assert.equal(h.node('cloud-signed').hidden,false);
 });
 
 test('both HTML entry points ship the same guarded cloud controller',()=>{
