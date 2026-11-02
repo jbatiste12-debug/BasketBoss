@@ -1,5 +1,7 @@
 # Recipe instruction audit — 2 November 2026
 
+> This file records the initial public-only pass and its access setup. The subsequent [current 500-recipe audit](RECIPE_CATALOGUE_AUDIT_20261102.md) supersedes its earlier coverage limits: all 400 current Premium records have now been read and reviewed.
+
 All 100 current public recipe methods were read against their ingredient lists and recorded times. This review corrected instructions in 39 records and aligned the four duplicate dessert records with their canonical public methods and times. It found no complete method belonging to an unrelated dish.
 
 This is a source consistency review, not kitchen testing. The public 100 include the four desserts; the scope is **100 distinct recipes**, not 104. The normalized file supplies 730 matching public ingredient lines. Protected current Premium methods were not accessed, exported, changed or certified. The historical 321-record snapshot does not establish the complete current 500-record catalogue, and was not substituted for a current Premium review. The 179 newer protected additions still need their complete authorized records reviewed.

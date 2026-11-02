@@ -48,7 +48,14 @@
   }
   // Editorial ingredient strings vary. Only modify a safely recognised leading amount;
   // leave vague or unparseable descriptions intact rather than inventing quantities.
-  function scaleText(raw,factor,name){
+  function exactCount(value){
+    const whole=Math.floor(value),part=value-whole;
+    const fractions=[[1/8,'⅛'],[1/6,'⅙'],[1/5,'⅕'],[1/4,'¼'],[1/3,'⅓'],[3/8,'⅜'],[2/5,'⅖'],[1/2,'½'],[3/5,'⅗'],[5/8,'⅝'],[2/3,'⅔'],[3/4,'¾'],[4/5,'⅘'],[5/6,'⅚'],[7/8,'⅞']];
+    if(part<1e-8)return String(whole);
+    const match=fractions.find(([amount])=>Math.abs(part-amount)<1e-8);
+    return match?(whole?whole+' ':'')+match[1]:String(Math.round(value*100)/100);
+  }
+  function scaleText(raw,factor,name,options={}){
     const original=String(raw??'').trim();
     const match=original.match(/^(\d+\/\d+|\d+(?:\.\d+)?)(?:\s+(\d+\/\d+))?(\s*)(.*)$/);
     if(!match||!(factor>0))return original;
@@ -62,12 +69,15 @@
     const isCountable=!isWeight&&/\b(eggs?|onions?|peppers?|tins?|cans?|cloves?|wraps?|fillets?|bananas?|apples?|lemons?|limes?)\b/i.test(rest+' '+String(name||''));
     const scaled=base*factor;
     // Countable ingredients cannot reliably be bought as fractional whole units.
-    const display=isCountable?String(Math.max(1,Math.ceil(scaled-1e-9))):formatAmount(scaled,isWeight?'g':'each');
+    // Recipe preparation can use part of an egg, onion or tin. Buying whole
+    // packs remains separate; Cook must agree with the scaled pantry amount.
+    const exact=options.roundCounts===false;
+    const display=exact&&!isWeight?exactCount(scaled):isCountable?String(Math.max(1,Math.ceil(scaled-1e-9))):formatAmount(scaled,isWeight?'g':'each');
     if(isCountable&&rest){
       const singular={eggs:'egg',onions:'onion',peppers:'pepper',tins:'tin',cans:'can',cloves:'clove',wraps:'wrap',fillets:'fillet',bananas:'banana',apples:'apple',lemons:'lemon',limes:'lime'};
       const plural=Object.fromEntries(Object.entries(singular).map(([p,s])=>[s,p]));
       rest=rest.replace(/\b(eggs?|onions?|peppers?|tins?|cans?|cloves?|wraps?|fillets?|bananas?|apples?|lemons?|limes?)\b/gi,w=>{
-        const lower=w.toLowerCase(),base=singular[lower]||lower;return display==='1'?base:(plural[base]||lower);
+        const lower=w.toLowerCase(),base=singular[lower]||lower;return exact?scaled<=1?base:(plural[base]||lower):display==='1'?base:(plural[base]||lower);
       });
     }
     if(unit==='kg')return formatAmount(scaled,'g')+' g'+rest.slice(unit.length);
