@@ -32,7 +32,7 @@ export const CLIENT_FILES=Object.freeze([
  'bb-partner-signup-prompt.js','bb-plan-premium-polish.js','bb-premium-features.js',
  'bb-premium-preview-config.js','bb-price-scan.js','bb-real-app-tour-v82.js',
  'bb-real-app-tour.js','bb-receipt-host.js','bb-receipt-inventory.js',
- 'bb-receipt-scanner.js','bb-recipe-planning.js','bb-serving-scale.js',
+ 'bb-receipt-scanner.js','bb-recipe-planning.js','bb-recipe-editorial.js','bb-serving-scale.js',
  'bb-supermarkets.js','bb-us-market.js','bb-ux-cleanup.js','bb-verified-premium-ui.js',
  'bb-weekly-essentials.js','bb-welcome-splash.js','bb174-trial-ux.js',
  'cloud-config.js','feedback-config.js','make-a-meal.js','premium-upgrade.js',

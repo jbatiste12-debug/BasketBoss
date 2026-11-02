@@ -10141,7 +10141,7 @@
   {
     "id": "extra-air-fryer-garlic-parmesan-potatoes",
     "name": "Air-fryer garlic parmesan potatoes",
-    "category": "Air Fryer · New recipe",
+    "category": "Side dishes · Air Fryer",
     "tag": "AIR FRYER",
     "mins": 30,
     "cost": 9.64,
@@ -10149,7 +10149,7 @@
     "tip": "A fuss-free air-fryer take on air-fryer garlic parmesan potatoes, starring baby potatoes.",
     "method": [
       "Dry the potato pieces thoroughly, then toss with garlic, olive oil and parmesan; keep them in one layer in the basket.",
-      "Halve any large baby potatoes and pat dry. Preheat the air fryer to 190°C. Cook the aromatic base until fragrant, then finish the sauce until it lightly coats the back of a spoon.",
+      "Halve any large baby potatoes and pat dry. Preheat the air fryer to 190°C.",
       "Toss potatoes with oil and crushed garlic. Spread in a single layer, cooking in batches if needed.",
       "Air-fry for approximately 18–25 minutes, shaking halfway. A knife should slide easily into the centre and the edges should be crisp.",
       "Finish the crispy potatoes with fine lemon zest to brighten the rich cheese and garlic.",
@@ -10255,7 +10255,7 @@
     "data_format_fixed_from": "STRUCTURED_ALREADY",
     "steps": [
       "Dry the potato pieces thoroughly, then toss with garlic, olive oil and parmesan; keep them in one layer in the basket.",
-      "Halve any large baby potatoes and pat dry. Preheat the air fryer to 190°C. Cook the aromatic base until fragrant, then finish the sauce until it lightly coats the back of a spoon.",
+      "Halve any large baby potatoes and pat dry. Preheat the air fryer to 190°C.",
       "Toss potatoes with oil and crushed garlic. Spread in a single layer, cooking in batches if needed.",
       "Air-fry for approximately 18–25 minutes, shaking halfway. A knife should slide easily into the centre and the edges should be crisp.",
       "Finish the crispy potatoes with fine lemon zest to brighten the rich cheese and garlic.",
@@ -10270,7 +10270,8 @@
       "Zest the skin before cutting; squeeze in juice at the stated stage so the dish finishes bright and fragrant."
     ],
     "culinary_data_version": "ingredient-sync-all321-v3",
-    "culinary_profile": "Italian/pasta"
+    "culinary_profile": "Italian/pasta",
+    "dinnerEligible": false
   },
   {
     "id": "extra-air-fryer-turkey-meatballs",

@@ -36,6 +36,8 @@
   }
   function isDinner(recipe){
     if(!recipe||!idOf(recipe))return false;
+    // A serving of potatoes is a side, not an automatic standalone dinner.
+    if(recipe.id==='extra-air-fryer-garlic-parmesan-potatoes')return false;
     const category=text(recipe.category)+' '+text(recipe.tag)+' '+text(recipe.mealType);
     const name=text(recipe.name);
     // A boolean flag cannot turn a labelled dessert into an Auto-fill dinner.
