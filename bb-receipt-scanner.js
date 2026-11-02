@@ -133,7 +133,7 @@
       const link = element('link', { id: 'bb-receipt-scanner-style', rel: 'stylesheet', href: sibling('bb-receipt-scanner.css') });
       (doc().head || doc().body).append(link);
     }
-    async function open({ market, retailer = null, shopSessionId = null, onSaved, onNeedsPantryReview } = {}) {
+    async function open({ market, retailer = null, shopSessionId = null, shopSessionConfirmed = false, onSaved, onNeedsPantryReview } = {}) {
       const document = doc(); if (!document || !inventory()) throw Error('Receipt inventory is not ready.');
       current?.close(); ensureStyles();
       const expected = { market, retailer }, captured = session(), opener = document.activeElement;
@@ -158,7 +158,7 @@
       const totalInput = element('input', { type: 'number', inputMode: 'decimal', min: '-100000', max: '100000', step: '.01' }); totalInput.dataset.receiptTop = 'receiptTotal';
       const totalUnknown = checkbox('The total is unreadable. Keep it unknown; save only the reviewed item subtotals.', 'totalUnknown');
       const totalReviewed = checkbox('I checked the receipt total and all included discounts, refunds and tax rows.', 'totalReviewed');
-      const trip = checkbox('This is the receipt for the same shopping trip already recorded in Shop.', 'shopLink');
+      const trip = checkbox('This is the receipt for the same shopping trip already recorded in Shop.', 'shopLink', shopSessionConfirmed === true && !!shopSessionId);
       const tripHelp = element('p', { className: 'bb-receipt-muted' }, 'Link only the same purchases, so amounts already recorded are not counted twice.');
       if (!shopSessionId) { trip.label.hidden = true; tripHelp.hidden = true; }
       const totals = element('div', { className: 'bb-receipt-totals', 'aria-label': 'Reviewed receipt subtotals' });

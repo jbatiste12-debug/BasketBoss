@@ -60,9 +60,17 @@
     const legacy=host().household().find(item=>item.selected&&!item.owned&&!Object.hasOwn(item,'targetQty')&&host().id(item.name,'g')===host().id(row.name,'g'));if(legacy)throw Error('Check the saved '+row.name+' food top-up first so it is not counted twice.');
     data.targets[id]={name:row.name,unit,targetQty,pending:row.targetChanged||!before?true:before.pending};
    }
+   for(const item of win.BBSharedShopping?.knownCompletedItems?.()||[]){if(item.completed&&item.completed_by===who&&chosen.some(row=>row.qty!==null&&row.qty!==undefined&&row.qty!==''&&host().id(row.name,row.unit)===host().id(item.name,item.unit))){data.sharedPurchases??={};const key=item.household_id+':'+item.id;if((data.sharedPurchases[key]?.revision||0)<item.revision)data.sharedPurchases[key]={revision:item.revision,checked:true};}}
    const featureChange=householdDraft.size?host().prepareHousehold([...householdDraft]):null;
    const shoppingChange=settle(data,[...chosen.filter(row=>row.qty!==null&&row.qty!==undefined&&row.qty!=='').map(row=>host().id(row.name,row.unit)),...[...householdDraft.keys()].map(id=>'ess:'+id)]);
    return {key:KEY,value:all,expected,who,featureChange,shoppingChange};
+  }
+  function prepareSharedPurchase(item,checked,pin){
+   if(!item||!!item.completed!==!!checked||checked&&item.completed_by!==pin?.actor||pin?.actor!==actor()||pin.actor==='guest'||item.household_id!==pin.household_id||!Number.isSafeInteger(item.revision)||item.revision<1)throw Error('Shared shopping account changed. Refresh the list.');
+   const {all,data}=own(),expected=store.getItem(KEY),key=item.household_id+':'+item.id;data.sharedPurchases??={};
+   if(Number(data.sharedPurchases[key]?.revision||0)>=item.revision)return {already:true};
+   data.sharedPurchases[key]={revision:item.revision,checked:!!checked};
+   return {updates:{[KEY]:all},expected:{[KEY]:expected}};
   }
   function completionChanges(id){
    if(id.startsWith('ess:'))return host()?.completeHousehold(id.slice(4))||{};
@@ -70,6 +78,7 @@
   }
   function complete(id){atomic(store,completionChanges(id));host()?.reload?.();}
 
+  function needsLegacyReview(id){try{return !!host()?.needsLegacyReview?.(host().recipeIngredients(id,1));}catch{return true;}}
   function isCooked(key){return !!own().data.planned?.[key];}
   async function cooked({sessionId,recipeId,day,factor,actorId,occurrence}){
    if(typeof sessionId!=='string'||!sessionId||!Number.isFinite(factor)||factor<=0||factor>100)return {ok:false,message:'Check the cooking servings before updating At home.'};
@@ -77,6 +86,7 @@
    const {all,data}=own();if(data.cooked[sessionId])return {ok:true,message:'At home already updated for this cooking session.'};
    const keys=host().keys(),oldStock=store.getItem(keys.stock),oldInv=store.getItem(keys.inventory),oldHome=store.getItem(KEY);
    const rows=host().recipeIngredients(recipeId,factor);if(!rows.length)return {ok:false,message:'Ingredient amounts need review in At home.'};
+   if(host().needsLegacyReview?.(rows))return {ok:false,message:'Review the ingredient amounts in At home before updating this older shopping record.'};
    const current=host().stock(),result=host().consume(current,rows),inventory=JSON.parse(oldInv||'{}');
    const groups=new Map();for(const row of Object.values(inventory)){if(!row?.bb173StockKey)continue;const rows=groups.get(row.bb173StockKey)||[];rows.push(row);groups.set(row.bb173StockKey,rows);}
    for(const [key,records]of groups){let left=Number(result.remainingStock[key]||0);records.forEach((row,index)=>{const amount=index===records.length-1?left:Math.min(left,Number(row.bb173StockValue)||0);left=Math.max(0,left-amount);row.bb173StockValue=amount;row.qty=amount/(row.unit==='kg'||row.unit==='l'?1000:1);});}
@@ -100,7 +110,7 @@
   }
   function reminders(){const list=win.document.getElementById('bb321Printable');if(!list)return;list.querySelector('.bb-home-covered')?.remove();const data=Object.values(targets()).filter(row=>row.pending&&row.targetQty>0);const needed=host().requirements();const covered=data.filter(row=>{const item=needed.find(x=>host().id(x.key,x.unit)===host().id(row.name,row.unit));const current=host().stock()[host().id(row.name,row.unit)]||0;return Math.max(row.targetQty,item?.required||0)<=current;});const households=host().household().filter(row=>Object.hasOwn(row,'targetQty')&&row.manualPending!==false&&row.targetQty>0&&row.ownedQty>=row.targetQty).map(row=>({...row,homeId:'ess:'+row.id}));if(!covered.length&&!households.length)return;const box=win.document.createElement('div');box.className='bb-home-covered';for(const row of [...covered,...households]){const label=win.document.createElement('label'),tick=win.document.createElement('input');tick.type='checkbox';tick.addEventListener('change',()=>{if(tick.checked){complete(row.homeId||host().id(row.name,row.unit));host().refresh();}});label.append(tick,win.document.createTextNode(row.name+' · covered at home'));box.append(label);}list.append(box);}
   function openRequested(){const id=new URLSearchParams(win.location.search).get('bbcook');if(id)host()?.openCook?.(id);}
-  const api={receiptGeneration,supersedesReceipt,addHousehold,openRequested,reminders,decorate,committed:()=>{householdDraft.clear();host()?.reload();},difference,augment,targets,requirement,total,prepare,completionChanges,complete,isCooked,cooked,actor,blocked,atomic};
+  const api={prepareSharedPurchase,needsLegacyReview,receiptGeneration,supersedesReceipt,addHousehold,openRequested,reminders,decorate,committed:()=>{householdDraft.clear();host()?.reload();},difference,augment,targets,requirement,total,prepare,completionChanges,complete,isCooked,cooked,actor,blocked,atomic};
   setTimeout(()=>{win.BBKitchenEssentials?.refresh?.();openRequested();},0);
   return Object.freeze(api);
  }

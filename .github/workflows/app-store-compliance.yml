@@ -17,6 +17,7 @@ on:
       - bb-navigation-polish.*
       - bb-account-polish.*
       - bb-home.js
+      - bb-shared-shopping.*
       - bb-kitchen-*
       - bb-simple-layout.*
       - bb-weekly-shop.*

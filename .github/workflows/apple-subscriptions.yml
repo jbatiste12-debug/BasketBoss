@@ -18,6 +18,7 @@ on:
       - bb-account-deletion.js
       - bb-account-polish.*
       - bb-home.js
+      - bb-shared-shopping.*
       - bb-kitchen-*
       - bb-simple-layout.*
       - bb-weekly-shop.*

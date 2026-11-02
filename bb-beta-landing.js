@@ -134,7 +134,7 @@
  function wirePantryDemo(){
   const confirm=$('confirm-pantry-demo'),reset=$('reset-pantry-demo'),available=$('pantry-available'),buy=$('pantry-to-buy'),note=$('pantry-demo-note');
   if(!confirm||!reset||!available||!buy||!note)return;
-  function render(done){available.textContent=done?'300g in Kitchen':'Not confirmed';buy.textContent=done?'0g to buy · 50g remains':'250g to buy';note.textContent=done?'After confirming the 500g pack and using 200g, the saved 300g can cover a 250g recipe next week (50g remains). Actual stock changes require Finish Shop and safe-storage confirmation.':'Tap confirm to see how 300g of unused food can count towards next week’s shopping.';confirm.disabled=done;}
+  function render(done){available.textContent=done?'300g At home':'Not confirmed';buy.textContent=done?'0g to buy · 50g after cooking':'250g to buy';note.textContent=done?'This example adds 500 g after Shop, deducts 200 g after Cook and leaves 300 g At home. That covers a 250 g recipe; 50 g would remain after cooking it.':'Try buying 500 g and cooking 200 g to see what remains for your next shop.';confirm.disabled=done;}
   confirm.addEventListener('click',()=>render(true));
   reset.addEventListener('click',()=>render(false));
   render(false);

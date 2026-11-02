@@ -92,3 +92,65 @@ test('settling shopping credit and stock rolls back together if storage fails',(
  const storage={...h.storage,setItem(key,value){if(key==='purchases'&&fail){fail=false;throw Error('storage full');}h.storage.setItem(key,value);}};
  assert.throws(()=>api.atomic(storage,{[change.key]:change.value,...change.shoppingChange.updates}));assert.equal(h.read('ticks')['rice|g'],true);assert.equal(h.read('purchases')['rice|g'].qty,400);assert.equal(h.storage.getItem(change.key),null);
 });
+
+
+function finishFixture(choice={mode:'pack',unit:'g',qty:400,size:500,count:1,keep:true},item={id:'rice|g',name:'Rice',qty:400,unit:'g',aisle:'Cupboard / Pantry'}){
+ const h=settlementFixture();h.storage.setItem('stock',JSON.stringify({'rice|g':200}));h.storage.setItem('inventory',JSON.stringify({rice:{name:'Rice',selected:true,loc:'cupboard',qty:200,unit:'g',bb173StockKey:'rice|g',bb173StockValue:200}}));
+ Object.assign(h.ctx,{BB83_KITCHEN_INVENTORY:'inventory',BB83_SHOP_STOCK_LEDGER:'legacy-ledger',BB307_STOCK_KEY:'stock',bb307Stock:h.read('stock'),bbBetaReceiptRead:()=>h.read('receipts'),bbBetaPendingBought:()=>h.read('receipts')['shop-session|'+item.id]?[]:[item],bbBetaChoiceInfo:()=>choice,bbBetaIsPerishable:aisle=>/Dairy/.test(aisle),bbBetaPackSpec:()=>({size:500,review:false}),bbBetaDryVolumeUnit:()=>false,bb83StockLoc:()=> 'cupboard',bb83KitchenName:name=>name.toLowerCase(),bb307SaveStock:stock=>{h.storage.setItem('stock',JSON.stringify(stock));h.ctx.bb307Stock=stock;return true;}});
+ const surplus=html.slice(html.indexOf('function bbBetaChoiceSurplus('),html.indexOf('function bbBetaPendingBought('));
+ const transfer=html.slice(html.indexOf('function bb83TransferBought('),html.indexOf('/* An item bought again after explicitly unchecking'));
+ vm.runInContext(surplus+transfer,h.ctx);
+ Object.assign(h.host,{keys:()=>({stock:'stock',inventory:'inventory'}),stock:()=>h.read('stock'),recipeIngredients:()=>[{key:'Rice',unit:'g',required:600}],consume:pantry.reconcileStock,refresh(){},occurrence:()=>null,needsLegacyReview:vm.runInContext('bbHomeNeedsLegacyReview',h.ctx)});
+ return {...h,finish:(defer=false)=>vm.runInContext('bb83TransferBought({defer:'+Boolean(defer)+'})',h.ctx)};
+}
+test('Finish adds the full confirmed pack, then Cook subtracts ingredients once and preserves the actual surplus',async()=>{
+ const h=finishFixture();assert.equal(h.finish().count,1);assert.equal(h.read('stock')['rice|g'],700,'200 owned + actual 500 g purchase');
+ assert.equal(h.finish().count,0);assert.equal(h.read('stock')['rice|g'],700,'repeated Finish cannot credit twice');
+ assert.equal(h.read('receipts')['shop-session|rice|g'].stockBasis,'full-purchase');
+ assert.equal((await h.win.BBHome.cooked({sessionId:'pack-cook',recipeId:'rice',factor:1,actorId:'guest'})).ok,true);assert.equal(h.read('stock')['rice|g'],100,'700 owned minus 600 used leaves 100, without deducting the surplus twice');
+});
+test('an unconfirmed automatic pack guide never invents extra stock',()=>{
+ const h=finishFixture({mode:'pack',unit:'g',qty:400,size:1000,count:1,implicit:true});h.finish();assert.equal(h.read('stock')['rice|g'],600,'only the listed 400 g is confirmed until an actual pack is chosen');
+});
+test('an exact purchase is recorded at home too, with no invented extra pack quantity',()=>{
+ const h=finishFixture({mode:'exact',unit:'g',qty:400});h.finish();assert.equal(h.read('stock')['rice|g'],600);
+});
+test('Finish preserves one physical total when the same ingredient is stored in two areas',()=>{
+ const h=finishFixture();h.storage.setItem('stock',JSON.stringify({'rice|g':300}));h.ctx.bb307Stock=h.read('stock');const inv=h.read('inventory');inv.second={name:'Rice',selected:true,loc:'freezer',qty:100,unit:'g',bb173StockKey:'rice|g',bb173StockValue:100};h.storage.setItem('inventory',JSON.stringify(inv));
+ h.finish();assert.equal(h.read('stock')['rice|g'],800);assert.equal(Object.values(h.read('inventory')).reduce((sum,row)=>sum+row.bb173StockValue,0),800);
+});
+test('fresh extras still require explicit safe-storage confirmation before purchase transfer',()=>{
+ const item={id:'milk|ml',name:'Milk',qty:400,unit:'ml',aisle:'Dairy'},h=finishFixture({mode:'pack',unit:'ml',qty:400,size:500,count:1,keep:false},item);h.storage.setItem('stock',JSON.stringify({'milk|ml':100}));h.ctx.bb307Stock=h.read('stock');assert.equal(h.finish().skipped,1);assert.equal(h.read('stock')['milk|ml'],100);assert.deepEqual(h.read('receipts'),{});
+});
+test('older surplus-only receipts require an absolute At home review before cooking, without guessing missing purchased stock',async()=>{
+ const h=finishFixture();h.storage.setItem('receipts',JSON.stringify({'old-shop|rice|g':{name:'Rice',unit:'g',qty:400,credited:100}}));
+ assert.equal(h.win.BBHome.needsLegacyReview('rice'),true);const event={sessionId:'legacy-cook',recipeId:'rice',factor:1,actorId:'guest'};assert.equal((await h.win.BBHome.cooked(event)).ok,false);assert.equal(h.read('stock')['rice|g'],200);
+ const change=h.win.BBHome.prepare([{name:'Rice',unit:'g',qty:200}]);api.atomic(h.storage,{[change.key]:change.value,...change.shoppingChange.updates});assert.equal(h.win.BBHome.needsLegacyReview('rice'),false);
+});
+
+test('Finish commits stock and the archived shopping session together, or preserves both for retry',()=>{
+ const h=finishFixture();let ended=0;h.win.BBWeeklyShop={end:()=>ended++};Object.assign(h.ctx,{BB_SHOP_ARCHIVE_V7_KEY:'archives',bbReceiptHostReady:false,bbShopV7Read:h.read,bbShopV7Snapshot:session=>({...session,purchases:h.read('purchases')}),bbShopV7New:()=> 'next-shop',bb307ReadStock:()=>h.read('stock')});
+ const write=html.slice(html.indexOf('function bbShopV7Write('),html.indexOf('function bbShopV7New('));
+ const close=html.slice(html.indexOf('function bbShopV7Close('),html.indexOf('function bbShopV7Reconcile('));vm.runInContext(write+close,h.ctx);
+ const transfer=h.finish(true);assert.equal(h.read('stock')['rice|g'],200,'preparing Finish does not change stock');
+ const put=h.storage.setItem;let fail=true;h.storage.setItem=(key,value)=>{if(fail&&key==='session'&&JSON.parse(value).id==='next-shop'){fail=false;throw Error('disk full');}put(key,value);};h.ctx.pendingTransfer=transfer;
+ assert.equal(vm.runInContext('bbShopV7Close(pendingTransfer)',h.ctx),false);assert.equal(h.read('stock')['rice|g'],200);assert.deepEqual(h.read('receipts'),{});assert.equal(h.read('session').id,'shop-session');assert.equal(ended,0);
+ assert.equal(vm.runInContext('bbShopV7Close(pendingTransfer)',h.ctx),true);assert.equal(h.read('stock')['rice|g'],700);assert.equal(h.read('session').id,'next-shop');assert.equal(h.read('archives')['shop-session'].purchases['rice|g'].qty,400);assert.equal(ended,1);
+});
+
+test('shared purchase origins retain replay proof and expose canonical receipt credit without adding food twice',async()=>{
+ const item={id:'shared:household:request',name:'Rice',qty:400,unit:'g',aisle:'Cupboard / Pantry'},h=finishFixture({mode:'exact',unit:'g',qty:400},item);
+ h.finish();assert.equal(h.read('stock')['rice|g'],600);const receipts=h.read('receipts');assert.equal(receipts['shop-session|shared:household:request'].canonicalCreditId,'shop-session|rice|g');assert.equal(receipts['shop-session|rice|g'].credited,400);
+ const {computeReceiptCredit}=await import('../bb-receipt-inventory-core.mjs');const credit=computeReceiptCredit({name:'Rice',canonicalKey:'rice',quantity:400,unit:'g'},receipts,{shopSessionId:'shop-session'});assert.equal(credit.addedQuantity,0);assert.equal(credit.priorCreditedQuantity,400);assert.equal(h.finish().count,0);
+});
+test('shared local purchase acknowledgements are actor-pinned and remain idempotent after shopping-session rotation',()=>{
+ const h=settlementFixture(),actor='11111111-1111-4111-8111-111111111111';h.storage.setItem('basketboss_cloud_session_v1',JSON.stringify({user:{id:actor}}));
+ const item={id:'request',household_id:'household',revision:2,completed:true,completed_by:actor,name:'Rice',unit:'g',completed_at:'2026-11-02T10:00:00Z'},pin={actor,household_id:'household'};
+ const change=h.win.BBHome.prepareSharedPurchase(item,true,pin);api.atomic(h.storage,change.updates,change.expected);h.storage.setItem('session',JSON.stringify({id:'another-shop'}));assert.equal(h.win.BBHome.prepareSharedPurchase(item,true,pin).already,true);
+ assert.throws(()=>h.win.BBHome.prepareSharedPurchase(item,true,{...pin,actor:'another-user'}));
+ const other={...item,id:'another-request'};h.storage.setItem('basketboss_ui_next_confirmed_pantry_v1',JSON.stringify({confirmedAt:'2030-11-02T10:10:00Z',items:[{name:'Rice',unit:'g',qty:200}]}));assert.ok(h.win.BBHome.prepareSharedPurchase(other,true,pin).updates,'device timestamps never suppress a new purchase');h.win.BBSharedShopping={knownCompletedItems:()=>[other]};const count=h.win.BBHome.prepare([{name:'Rice',unit:'g',qty:200}]);api.atomic(h.storage,{[count.key]:count.value,...count.shoppingChange.updates});assert.equal(h.win.BBHome.prepareSharedPurchase(other,true,pin).already,true,'an explicit count records known completed request revisions without comparing clocks');
+});
+
+test('a new shared purchase cannot make an older surplus-only stock basis look fully reviewed',()=>{
+ const h=finishFixture({mode:'exact',unit:'g',qty:100},{id:'shared:new-request',name:'Rice',qty:100,unit:'g',aisle:'Cupboard / Pantry'});h.storage.setItem('receipts',JSON.stringify({'shop-session|rice|g':{name:'Rice',unit:'g',qty:400,credited:100,week:'shop-session'}}));h.finish();assert.equal(h.read('receipts')['shop-session|rice|g'].stockBasis,'mixed-review-required');assert.equal(h.win.BBHome.needsLegacyReview('rice'),true);
+});
