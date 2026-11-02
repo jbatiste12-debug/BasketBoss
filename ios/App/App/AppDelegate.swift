@@ -77,6 +77,10 @@ class BasketBossViewController: CAPBridgeViewController {
 
     override func capacitorDidLoad() {
         super.capacitorDidLoad()
+        // Keep the vertical app page steady on sideways drags. Preserve
+        // vertical scrolling and the WebView's DOM-based recipe swipes.
+        webView?.scrollView.alwaysBounceHorizontal = false
+        webView?.scrollView.isDirectionalLockEnabled = true
         bridge?.registerPluginInstance(BasketBossNavigationPlugin())
         bridge?.registerPluginInstance(BasketBossPurchasesPlugin())
         bridge?.registerPluginInstance(BasketBossCookVoicePlugin())
