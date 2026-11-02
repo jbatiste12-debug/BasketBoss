@@ -10,8 +10,8 @@ function harness(){
  const rect={top:0,left:0,bottom:932,right:402,height:932,width:402};
  const host={contains:()=>true,getClientRects:()=>[rect],getBoundingClientRect:()=>rect,appendChild:n=>{probe=n;}};
  const shell={closest:()=>({})};
- const document={readyState:'complete',body:{scrollTop:0},documentElement:{scrollTop:0},querySelector:()=>shell,getElementById:id=>id==='bbAccountKeyboardProbe'?probe:id==='bbNewOnboarding'?host:id==='cloud-auth'?{}:null,createElement:()=>({style:{}})};
- const win={bbKeyboardSmokeOnboarding:true,visualViewport:viewport,scrollY:0,scrollX:0};
+ const document={readyState:'complete',body:{scrollTop:0},documentElement:{scrollTop:0},querySelector:()=>shell,getElementById:id=>id==='bbAccountKeyboardProbe'?probe:id==='bbNewOnboarding'?host:id==='cloud-auth'?{closest:()=>null}:null,createElement:()=>({style:{}})};
+ const win={BBNativeStartup:{phase:'handoff'},bbKeyboardSmokeOnboarding:true,visualViewport:viewport,scrollY:0,scrollX:0};
  vm.runInNewContext(script,{window:win,document,localStorage:{setItem(){}},sessionStorage:{setItem(){}},setInterval:fn=>{callback=fn;},clearInterval(){},getComputedStyle:n=>({position:'fixed',visibility:'hidden',top:'0px',height:'932px'}),innerHeight:932,innerWidth:402});
  const sample=()=>{callback();return probe.textContent;};sample();
  return {win,viewport,rect,sample};
@@ -26,4 +26,9 @@ test('Chromium visual-only offset also covers the same document viewport',()=>{
 test('the probe still rejects real page movement and an overlay that misses the visible viewport',()=>{
  const h=harness();h.win.scrollY=60;h.viewport.pageTop=60;assert.match(h.sample(),/rootLocked=false/);
  h.rect.top=70;h.rect.bottom=1002;assert.match(h.sample(),/viewportCovered=false/);
+});
+
+test('Welcome is ready for a trusted tap only after the native launch handoff completes',()=>{
+ const h=harness();assert.match(h.sample(),/"startupReady":false/);
+ h.win.BBNativeStartup.phase='ready';assert.match(h.sample(),/"startupReady":true/);
 });
