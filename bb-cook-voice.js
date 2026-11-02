@@ -241,7 +241,7 @@
    if(session!==epoch||!wanted||!allowed()||startPending)return false;
    const narration=narrationFor(read());if(!narration||!force&&lastNarrated===narration.key)return false;
    lastNarrated=narration.key;
-   if(narration.text)void speak(narration.text,session,narration.status);else message(narration.status);
+   if(narration.text)void speak(narration.text,session,narration.status);else stop(narration.status);
    return true;
   }
   function handle(transcript,session){

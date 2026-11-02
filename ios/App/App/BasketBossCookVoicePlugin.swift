@@ -213,7 +213,12 @@ public final class BasketBossCookVoicePlugin: CAPPlugin, CAPBridgedPlugin, AVSpe
                 var parts = URLComponents(url: url, resolvingAgainstBaseURL: false)!
                 parts.scheme = "bbcook-audio"
                 let asset = AVURLAsset(url: parts.url!)
-                let loader = BBCookAudioLoader(url: url, token: token)
+                let loader = BBCookAudioLoader(url: url, token: token) { [weak self] code in
+                    Task { @MainActor [weak self] in
+                        guard let self = self, self.active(id), self.speechId == ticket, self.playbackCall != nil else { return }
+                        self.audioFailed(code: code)
+                    }
+                }
                 loader.attach(to: asset)
                 let item = AVPlayerItem(asset: asset), player = AVPlayer(playerItem: item)
                 player.automaticallyWaitsToMinimizeStalling = false
@@ -306,11 +311,16 @@ public final class BasketBossCookVoicePlugin: CAPPlugin, CAPBridgedPlugin, AVSpe
         DispatchQueue.main.asyncAfter(deadline: .now() + delay, execute: timeout)
     }
 
-    @MainActor private func audioFailed() {
+    @MainActor private func audioFailed(code: String? = nil) {
+        // Resource failures can also arrive through AVPlayer's generic failure
+        // observer. Read the locked denial first so that race never downgrades
+        // a revoked membership to an ordinary offline-fallback error.
+        let reason = code ?? audioLoader?.accessFailureCode ?? "BB_VOICE_AI_AUDIO"
         let call = playbackCall; playbackCall = nil
         clearOutput()
-        // Keep speechHeld: the controller may now use AVSpeech as fallback.
-        call?.reject("AI audio is unavailable.", "BB_VOICE_AI_AUDIO")
+        // Keep the ticket held until the controller cancels definitive denials
+        // or starts installed speech for a recoverable connection failure.
+        call?.reject(reason == "BB_VOICE_AI_AUDIO" ? "AI audio is unavailable." : "Voice Cook access needs checking.", reason)
     }
 
     @MainActor private func audioFinished() {
@@ -464,6 +474,13 @@ private final class BBCookAudioLoader: NSObject, AVAssetResourceLoaderDelegate, 
     private static let maximumBytes: Int64 = 2 * 1024 * 1024
     private let url: URL
     private let token: String
+    private let onAccessDenied: (String) -> Void
+    private let failureLock = NSLock()
+    private var accessFailure: String?
+    var accessFailureCode: String? {
+        failureLock.lock(); defer { failureLock.unlock() }
+        return accessFailure
+    }
     private let queue = DispatchQueue(label: "uk.co.basketboss.cook-audio-loader")
     private var network: URLSession?
     private var cancelled = false
@@ -486,7 +503,9 @@ private final class BBCookAudioLoader: NSObject, AVAssetResourceLoaderDelegate, 
         }
     }
 
-    init(url: URL, token: String) { self.url = url; self.token = token; super.init() }
+    init(url: URL, token: String, onAccessDenied: @escaping (String) -> Void) {
+        self.url = url; self.token = token; self.onAccessDenied = onAccessDenied; super.init()
+    }
 
     func attach(to asset: AVURLAsset) { asset.resourceLoader.setDelegate(self, queue: queue) }
 
@@ -573,6 +592,22 @@ private final class BBCookAudioLoader: NSObject, AVAssetResourceLoaderDelegate, 
 
     func urlSession(_ session: URLSession, dataTask: URLSessionDataTask, didReceive response: URLResponse,
                     completionHandler: @escaping (URLSession.ResponseDisposition) -> Void) {
+        if !cancelled, let job = jobs[dataTask.taskIdentifier], let http = response as? HTTPURLResponse {
+            let code: String?
+            switch http.statusCode {
+            case 401: code = "BB_TTS_AUTH"
+            case 403: code = "BB_TTS_PREMIUM_REQUIRED"
+            case 409: code = "BB_TTS_DELETING"
+            default: code = nil
+            }
+            if let code = code {
+                // Store before finishing the resource, because AVPlayer may
+                // report its generic failure before the MainActor callback runs.
+                failureLock.lock(); accessFailure = code; failureLock.unlock()
+                onAccessDenied(code)
+                finish(job, error: true); completionHandler(.cancel); return
+            }
+        }
         guard !cancelled, let job = jobs[dataTask.taskIdentifier], let http = response as? HTTPURLResponse,
               [200, 206].contains(http.statusCode), http.mimeType?.lowercased() == "audio/mpeg",
               http.value(forHTTPHeaderField: "Content-Encoding").map({ $0.lowercased() == "identity" }) ?? true else {

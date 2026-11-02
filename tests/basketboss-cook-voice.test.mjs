@@ -335,3 +335,12 @@ test('browser temporary AI failure falls back to its best British voice and canc
  const h=fixture({browser:true,synthesis:true,tts:{play:async()=>{throw Error('offline');}}});h.context.phase='prep';h.button().click();await tick();assert.equal(h.utterances.length,1);assert.match(h.utterances[0].text,/grams of cheddar/);h.controller.dispose();
  const waiting=deferredSpeech(),cancelled=fixture({browser:true,synthesis:true,tts:{play:()=>waiting.promise}});cancelled.context.phase='prep';cancelled.button().click();await tick();cancelled.button().click();waiting.reject(Error('late failure'));await tick();assert.equal(cancelled.utterances.length,0);assert.equal(cancelled.button().getAttribute('aria-pressed'),'false');cancelled.controller.dispose();
 });
+
+test('an oversized new instruction cancels the previous pending narration instead of playing an old step',async()=>{
+ const waiting=deferredSpeech(),requests=[];
+ const h=fixture({nativeAI:true,tts:{prepare:(text,options)=>{requests.push(options);return waiting.promise;}}});
+ h.context.phase='cook';h.context.stepIndex=0;h.context.currentStep='Add 250 g gnocchi.';h.button().click();await tick();
+ h.context.stepIndex=1;h.context.currentStep='Keep the entire safety instruction on screen. '.repeat(110);h.controller.refresh();
+ assert.equal(requests[0].signal.aborted,true);assert.equal(h.button().getAttribute('aria-pressed'),'false');assert.match(h.status(),/complete step on screen/);
+ waiting.resolve(clip);await tick();assert.equal(h.calls.some(call=>Array.isArray(call)&&['speak','playAudio'].includes(call[0])),false);h.controller.dispose();
+});

@@ -183,3 +183,23 @@ test('native streaming uses public resource loading with bounded private transpo
  assert.match(native,/guard intent, spoken == nil, !speechHeld/);
  assert.doesNotMatch(native,/AVURLAssetHTTPHeaderFieldsKey|AVURLAssetHTTPHeaderFields|token=.*clip|write\(to:|UserDefaults|print\(|NSLog\(/);
 });
+
+
+test('native stream access denials propagate without being downgraded to offline errors',async()=>{
+ for(const code of ['BB_TTS_AUTH','BB_TTS_PREMIUM_REQUIRED','BB_TTS_DELETING']){
+  const h=fixture();await h.api.start(()=>{});const ticket=await h.api.prepareSpeech();
+  h.plugin.playAudio=async()=>{throw Object.assign(Error('Access denied'),{code});};
+  await assert.rejects(()=>h.api.playAudio({url:clip,token:'token',...ticket}),{code});
+  assert.equal(h.calls.some(call=>call[0]==='speak'),false,'the bridge must not start installed speech after a definitive denial');
+ }
+});
+
+test('native HTTP denial priority survives the player-observer race',()=>{
+ const source=fs.readFileSync(new URL('../ios/App/App/BasketBossCookVoicePlugin.swift',import.meta.url),'utf8');
+ assert.match(source,/case 401: code = "BB_TTS_AUTH"/);
+ assert.match(source,/case 403: code = "BB_TTS_PREMIUM_REQUIRED"/);
+ assert.match(source,/case 409: code = "BB_TTS_DELETING"/);
+ assert.match(source,/failureLock\.lock\(\); accessFailure = code; failureLock\.unlock\(\)[\s\S]*onAccessDenied\(code\)[\s\S]*finish\(job, error: true\)/);
+ assert.match(source,/let reason = code \?\? audioLoader\?\.accessFailureCode \?\? "BB_VOICE_AI_AUDIO"/);
+ assert.match(source,/self\.active\(id\), self\.speechId == ticket, self\.playbackCall != nil/);
+});

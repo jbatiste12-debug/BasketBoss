@@ -66,4 +66,11 @@ Implementation references checked on 2 November 2026:
 - [OpenAI text-to-speech guide](https://developers.openai.com/api/docs/guides/text-to-speech): model, MP3, accent/tone instructions, built-in `cedar` voice and chunked speech responses.
 - [Cloudflare R2 Workers API](https://developers.cloudflare.com/r2/api/workers/workers-api-reference/): private bucket bindings and streaming/ranged object reads.
 
-Portable validation: 1,159 automated checks passed with two skips and two TODOs and no failures. Native packaging and portable iOS verification passed with 880 bundled files and only the public 100 Free recipe records. Signed device playback, actual provider audio/accent listening and production activation remain outstanding.
+Portable validation: 1,162 automated checks passed with two skips and two TODOs and no failures. Native packaging and portable iOS verification passed with 880 bundled files and only the public 100 Free recipe records. Signed device playback, actual provider audio/accent listening and production activation remain outstanding.
+
+
+Integrated browser checks at 320, 390 and 768 pixels played a real synthetic MP3 through the Cook UI, verified the scaled “First up, grab 250 grams of gnocchi” prompt and natural quantity answers, and checked temporary-service fallback and cancellation before audio starts. The Free entry made no TTS request and did not start recognition. These checks verify decoding, streaming and control flow, not the sound of a live AI-generated voice.
+
+The final controller also cancels the previous narration if a new instruction is too long to speak in full. Native audio requests propagate HTTP 401/403/409 as definitive access failures, including an AVPlayer callback race, rather than falling back after a confirmed rejection.
+
+An unsigned GitHub Actions verification was attempted through a temporary verification branch, but GitHub reported no workflow run. No Mac compilation was verified. Run “Verify iOS native build” manually on the release branch, then complete physical-device streaming and offline-fallback checks before a signed TestFlight upload. Production and TestFlight 1.0 (3) remain unchanged.
