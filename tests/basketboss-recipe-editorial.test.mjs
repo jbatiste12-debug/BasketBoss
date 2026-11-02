@@ -118,3 +118,28 @@ test('browser export respects the shared planning guard and a conservative load-
   context.window.BBRecipePlanning={isDinner:()=>false};
   assert.equal(context.window.BBRecipeEditorial.primaryCollection(dish()),null);
 });
+
+
+test("Kids' Meals is a deliberate complete-meal collection, not a name or heat heuristic",()=>{
+  const ids=['family-homemade-crunchy-fish-fingers','family-crispy-oven-chicken-goujons','family-mac-cheese','family-mini-cottage-pies-with-peas','beef-meatballs'];
+  for(const id of ids){
+    const recipe=dish({id,servings:4,mins:35});
+    const before=JSON.stringify(recipe);
+    assert.equal(editorial.isKidsMeal(recipe),true);
+    assert.ok(editorial.collections(recipe).includes("Kids' Meals"));
+    assert.equal(JSON.stringify(recipe),before,'collection membership cannot silently change portions');
+    assert.equal(editorial.isKidsMeal({...recipe,kidFriendly:false}),false);
+  }
+  for(const id of ['extra-air-fryer-garlic-parmesan-potatoes','extra-air-fryer-crispy-chicken-tenders','persian-herb-and-kidney-bean-beef-stew','unknown-kids-dinner']){
+    assert.equal(editorial.isKidsMeal(dish({id,name:'Mild kids dinner',mins:20})),false,id);
+  }
+});
+
+test('explicit kids metadata respects dinner and suitability vetoes',()=>{
+  const recipe={id:'new-kids-dinner',name:'New dinner',dinnerEligible:true,expansionGroup:'kid-friendly',mins:45};
+  assert.equal(editorial.isKidsMeal(recipe),true);
+  assert.ok(editorial.collections(recipe).includes("Kids' Meals"));
+  for(const changed of [{kidFriendly:false},{dinnerEligible:false},{category:'Dessert'},{category:'Side dishes'}]){
+    assert.equal(editorial.isKidsMeal({...recipe,...changed}),false);
+  }
+});

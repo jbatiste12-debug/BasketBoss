@@ -3780,7 +3780,7 @@ body[data-bbnext-view="discover"] #app .bb-featured-card #bbFeaturedBatch {
 <script src="basketboss-pricing-v19.js?v=20261031-expanded-regional-prorata"></script>
 <script src="bb-serving-scale.js?v=20261029-preview1"></script>
 <script src="bb-recipe-planning.js?v=20261102-editorial1"></script>
-<script src="bb-recipe-editorial.js?v=20261102-editorial1"></script>
+<script src="bb-recipe-editorial.js?v=20261102-editorial2"></script>
 <script src="bb-ingredient-preferences.js?v=20261101-avoid1"></script>
 <script src="bb-evening-pivot.js?v=20261101-pivot1"></script>
 <script src="bb-evening-pivot-app.js?v=20261101-pivot1"></script>
@@ -5218,7 +5218,7 @@ function bb16PolishDiscover(app){
 }
 
 
-const COLLECTIONS=['Family Meals','Date Nights','Slow Cooker','One Pan','Air Fryer','Under 30 Minutes','Budget Meals','High Protein','Vegetarian','Sunday Roasts','Fakeaways','Breakfast & Brunch','Leftover Magic','Desserts','Baking','Kid Friendly','Everyday Favourites','Try the World','Special Occasion','60 Minutes or Less','Weekend & Slow Cooking','Sides'];
+const COLLECTIONS=['Family Meals','Date Nights','Slow Cooker','One Pan','Air Fryer','Under 30 Minutes','Budget Meals','High Protein','Vegetarian','Sunday Roasts','Fakeaways','Breakfast & Brunch','Leftover Magic','Desserts','Baking','Kid Friendly','Everyday Favourites','Try the World','Special Occasion','60 Minutes or Less','Weekend & Slow Cooking','Sides',"Kids' Meals"];
 function defaultCollections(r){
  if(typeof BBRecipeEditorial!=='undefined'&&BBRecipeEditorial.isSide(r))return ['Sides'];
  const t=(r.name+' '+r.category+' '+r.tag).toLowerCase().replace(/[–—-]/g,' '),out=[];
@@ -5233,7 +5233,7 @@ function defaultCollections(r){
  if(/one.pan|one.pot|traybake|sheet.pan|skillet|orzo/.test(t))out.push('One Pan');
  if(!dessert&&/family|crowd|comfort|burger|fajita|pasta|chilli|chicken|bake|taco/.test(t))out.push('Family Meals');
  const editorial=typeof BBRecipeEditorial==='undefined'?[]:BBRecipeEditorial.collections(r);
- return [...new Set([...(out.length?out:['Family Meals']),...editorial])];
+ return [...new Set([...(out.length?out:['Family Meals']),...editorial].map(c=>c==='Kid Friendly'?"Kids' Meals":c))];
 }
 const INGREDIENTS=[['Chicken breast','Meat'],['Beef mince','Meat'],['Pork sausages','Meat'],['Salmon','Meat'],['Eggs','Dairy'],['Milk','Dairy'],['Cheddar','Dairy'],['Butter','Dairy'],['Natural yoghurt','Dairy'],['Potatoes','Vegetables'],['Carrots','Vegetables'],['Onions','Vegetables'],['Bell peppers','Vegetables'],['Tomatoes','Vegetables'],['Spinach','Vegetables'],['Broccoli','Vegetables'],['Lettuce','Vegetables'],['Apples','Vegetables'],['Bananas','Vegetables'],['Lemons','Vegetables'],['Tortilla wraps','Grains'],['Rice','Grains'],['Pasta','Grains'],['Bread','Bakery'],['Brioche buns','Bakery'],['Beans','Grains'],['Chickpeas','Grains'],['Oats','Grains'],['Cream','Dairy'],['Cheese','Dairy'],['Garlic','Vegetables'],['Mushrooms','Vegetables'],['Cucumber','Vegetables'],['Frozen peas','Vegetables'],['Sweet potatoes','Vegetables']];
 const clone=x=>JSON.parse(JSON.stringify(x));
@@ -6956,7 +6956,7 @@ function collectionsFor(r){
  const saved=state.recipeCollections[r.id];
  const personal=Array.isArray(saved)?saved:defaultCollections(r);
  const editorial=typeof BBRecipeEditorial==='undefined'?[]:BBRecipeEditorial.collections(r);
- return [...new Set([...personal,...editorial])];
+ return [...new Set([...personal,...editorial].map(c=>c==='Kid Friendly'?"Kids' Meals":c))];
 }
 /* Small Discover facts come from the recipe record, never editable collections
    or the planner's child/protein preference heuristics. */
@@ -6983,8 +6983,9 @@ function bbDiscoverBenefitsHTML(recipe,locked=false){
  const editorial=typeof BBRecipeEditorial==='undefined'?null:BBRecipeEditorial.primaryCollection(recipe);
  const ready=typeof BBRecipeEditorial!=='undefined'&&BBRecipeEditorial.collections(recipe).includes('60 Minutes or Less');
  const side=typeof BBRecipeEditorial!=='undefined'&&BBRecipeEditorial.isSide(recipe);
- const editorialLabels=[...(editorial?[editorial]:side?['Side dish']:[]),...(ready&&!bb81Under30(recipe)?['60 mins or less']:[])];
- const badges=editorialLabels.map(label=>'<span class="bb-discover-benefit bb-discover-editorial">'+esc(label)+'</span>').join('')+labels.map(label=>'<span class="bb-discover-benefit">'+esc(label)+'</span>').join('');
+ const kids=typeof BBRecipeEditorial!=='undefined'&&BBRecipeEditorial.isKidsMeal(recipe);
+ const editorialLabels=[...(kids?["Kids' Meals"]:editorial?[editorial]:side?['Side dish']:[]),...(ready&&!bb81Under30(recipe)?['60 mins or less']:[])];
+ const badges=editorialLabels.map(label=>'<span class="bb-discover-benefit bb-discover-editorial">'+esc(label)+'</span>').join('')+labels.filter(label=>!kids||label!=='Kid-friendly').map(label=>'<span class="bb-discover-benefit">'+esc(label)+'</span>').join('');
  return badges?'<div class="bb-discover-benefits" aria-label="Recipe highlights">'+badges+'</div>':'';
 }
 /* BB-018: Premium tiles are an advertisement, not recipe entitlement.
@@ -7079,8 +7080,8 @@ galleryPage=Math.max(0,Math.min(galleryPage,Math.max(0,Math.ceil(galleryFiltered
 const r=filtered[Math.min(recipeIndex,Math.max(0,filtered.length-1))];
 app.innerHTML=`<div class="section-head"><div><h3>Swipe your way to dinner \u2726</h3><p>${bb176CanUseLeftovers()?(RECIPES.length+' Premium recipes'):'100 free recipes'} \u00B7 Swipe to browse</p></div><span class="chip">\u2726 ${bb176CanUseLeftovers()?(RECIPES.length+' Premium recipes'):'100 free recipes'}</span></div>
 <input class="field" id="recipeSearch" placeholder="Search recipes or ingredients\u2026" value="${esc(query)}" aria-label="Search recipes" style="margin-bottom:12px">
-<div class="chips" style="margin-bottom:16px">${['All',...COLLECTIONS.filter(c=>bb176CanUseLeftovers()||c!=='Leftover Magic')].map(c=>`<button class="btn ${collectionFilter===c?'primary':''}" data-collection="${esc(c)}">${esc(c)}</button>`).join('')}</div>
-<p class="muted bb-editorial-collections-intro">Choose Everyday Favourites, Try the World for new flavours, or Special Occasion for something extra.</p>
+<div class="chips" style="margin-bottom:16px">${['All',...COLLECTIONS.filter(c=>c!=='Kid Friendly'&&(bb176CanUseLeftovers()||c!=='Leftover Magic'))].map(c=>`<button class="btn ${collectionFilter===c?'primary':''}" data-collection="${esc(c)}">${esc(c)}</button>`).join('')}</div>
+<p class="muted bb-editorial-collections-intro">Choose Everyday Favourites, Kids’ Meals, Try the World for new flavours, or Special Occasion for something extra.</p>
 ${r?`<div class="layout"><section class="card bb-featured-card" data-bb-featured-recipe="${esc(r.id)}"><div class="recipe-image swipe-card" id="swipeCard" aria-label="Swipe left or right to browse recipe ideas">${imageHTML(r).replace('loading="lazy"','loading="eager"')}<div class="image-overlay"></div><span class="swipe-stamp no" id="swipeNo">SKIP</span><span class="swipe-stamp yes" id="swipeYes">NEXT</span><span class="pill">${esc(r.tag)}</span><span class="time-pill">\u25F7 ${r.mins} min</span></div><div class="recipe-body"><div class="eyebrow">${esc(r.category)} \u00B7 serves ${bbFeedingForRecipe(r)}</div><h3>${esc(r.name)}</h3><div class="chips"><span class="chip">${r.ingredients.length} ingredients</span></div>${bbDiscoverBenefitsHTML(r)}<div class="tip">\uD83D\uDCA1 ${esc(r.tip)}</div>
 <div class="swipe-guide">Tap the heart to save to Family Favourites, Add to week for your weekly planner, or ✕ to skip.</div><div class="swipe-actions"><button class="swipe-action no" id="skipRecipe" aria-label="Skip this recipe">\u2715</button><button class="swipe-action yes bb15-love" id="addRecipe" aria-label="Save this recipe to favourites and show another" title="Love this recipe · save to favourites">\u2665</button><button type="button" class="swipe-action bb-featured-add-week" id="bbFeaturedAddWeek" aria-label="Add featured recipe to your week"><span class="bb-featured-add-icon" aria-hidden="true">＋</span><span>Add to week</span></button></div><div class="actions"><div class="bb-cta-wrap"><button class="btn bb-premium-cta" id="cookRecipe"><span class="bb-cta-icon">✦</span><span>View Recipe &amp; Cook</span></button><button class="btn bb-manual-batch-btn" id="bbFeaturedBatch">${bb176IsPremiumPreview()?'🍲 Batch cook (2 days)':'♛ Batch cook · Premium'}</button></div></div>
 <details style="display:none!important;margin-top:15px" id="recipeEditor"><summary style="cursor:pointer;font-weight:800">\u270E Edit picture & categories</summary><p class="muted">Choose collections (a recipe can belong to more than one):</p><div class="chips">${COLLECTIONS.map(c=>`<label class="chip" style="cursor:pointer"><input type="checkbox" data-edit-collection="${esc(c)}" ${collectionsFor(r).includes(c)?'checked':''}> ${esc(c)}</label>`).join('')}</div><p class="muted" style="margin-top:14px">Photo URL (e.g. <code>images/recipes/my-dinner.jpg</code> from your GitHub repo):</p><input class="field" id="photoUrl" value="${esc(state.recipePhotos[r.id]||r.image)}" placeholder="https://\u2026 or images/recipes/\u2026"><div class="actions"><button class="btn primary" id="savePhoto">Save picture</button><button class="btn" id="resetPhoto">Restore default</button></div><p class="muted">For reliable pictures on all devices, upload your own JPG/WebP images to your GitHub repository and paste their relative paths here. Changes made in this editor are saved on this device only.</p></details>

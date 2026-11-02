@@ -41,3 +41,11 @@ Before describing the catalogue as fully reviewed, obtain all current authorised
 ## Draft validation
 
 1,057 automated checks passed with zero failures (two skips and two TODOs). Native web packaging and portable iOS verification passed; this does not establish a signed Mac/device build. Browser checks at 320, 390 and 768 pixels confirmed the 60-minute filter, side-dish routing, badge fit and no application errors. A separate integration check confirmed saved personal collections retain editorial labels. The native bundle remains Free records only; Premium methods and ingredients are not added to public assets.
+
+## Kids' Meals selection
+
+The user requested a separate kids' meal selection, including familiar fish-and-chips-style dinners. The draft adds one visible Kids' Meals collection and badge, backed by 23 existing complete-meal candidates plus explicit kid-friendly dinner metadata. The old Kid Friendly collection label is accepted for saved personal collections and mapped to the new visible name, without rewriting saved data or showing duplicate category buttons.
+
+Examples include the existing fish fingers with wedges and peas, chicken goujons with wedges and peas, macaroni cheese, meatballs with spaghetti, mini cottage pies, tortilla pizzas, cheesy bean quesadillas, mild chicken korma with rice and chicken-and-rice bake. No exact fish-and-chips record exists in the locally available source; do not claim a new one has been authored. Use the existing complete fish-finger meal rather than relabelling an unrelated record. Keep adjustable household servings: no assumed age-based or child portion multiplier is introduced.
+
+This is an editorial browsing selection, not allergy, nutrition or age certification. An explicit `kidFriendly:false`, a non-dinner category or a side-dish flag blocks membership. A mild-sounding recipe name alone cannot grant the label. Method and portion review remains needed, including generic text in several historical records and the breadcrumb cod's listed timing. No Premium access changes are made.

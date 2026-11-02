@@ -454,6 +454,34 @@
   };
   const byId=new Map(Object.entries(GROUPS).flatMap(([group,ids])=>ids.map(id=>[id,group])));
   const allowedGroups=new Set(Object.keys(GROUPS));
+  // Existing complete-meal candidates, selected from the historical full records.
+  // Familiar-flavour browsing, not an age, nutrition or allergy certification.
+  const KIDS_LABEL="Kids' Meals";
+  const kidsIds=new Set(`
+beef-meatballs
+family-homemade-crunchy-fish-fingers
+family-crispy-oven-chicken-goujons
+family-mini-cottage-pies-with-peas
+family-mac-cheese
+family-ham-and-pea-macaroni-cheese
+family-cheesy-cauliflower-macaroni
+family-15-minute-cheesy-broccoli-pasta
+family-15-minute-creamy-pea-pasta
+family-beef-and-tomato-macaroni
+family-meatballs
+family-pork-and-apple-meatballs
+family-tomato-basil-chicken-meatballs
+family-mini-turkey-meatloaves
+family-turkey-bolognese-spaghetti
+family-pizza-toast
+bbq-chicken-pizza
+family-cheesy-bean-quesadillas
+family-mild-chicken-korma-with-rice
+baked-potato-beans
+family-cheesy-chicken-and-rice-bake
+family-chicken-and-cheese-tortilla-bake
+family-baked-cod-with-cheesy-breadcrumbs
+  `.trim().split(/\s+/));
   const SIDE_ID='extra-air-fryer-garlic-parmesan-potatoes';
   const fold=value=>typeof value==='string'?value.toLowerCase():'';
   const own=(obj,key)=>Object.prototype.hasOwnProperty.call(obj,key);
@@ -473,6 +501,10 @@
     const savouryPancakes=/\bokonomiyaki\b|\bsavou?ry\b.*\bpancakes?\b|\b(?:potato|courgette|cabbage|chickpea|spinach)\b.*\bpancakes?\b/.test(name);
     return !(/\bpancakes?\b/.test(name)&&!savouryPancakes);
   }
+  function isKidsMeal(recipe){
+    return dinner(recipe)&&recipe.kidFriendly!==false&&
+      (kidsIds.has(recipe.id)||recipe.kidFriendly===true||recipe.expansionGroup==='kid-friendly');
+  }
   function totalMinutes(recipe){
     if(!recipe||typeof recipe!=='object')return null;
     const finite=value=>typeof value==='number'&&Number.isFinite(value)&&value>=0;
@@ -490,11 +522,12 @@
   function collections(recipe){
     if(!dinner(recipe))return [];
     const primary=primaryCollection(recipe),result=primary?[primary]:[];
+    if(isKidsMeal(recipe))result.push(KIDS_LABEL);
     const minutes=totalMinutes(recipe);
     if(minutes!==null&&minutes<=60)result.push('60 Minutes or Less');
     const category=[recipe.category,recipe.tag,recipe.mealType].map(fold).join(' ');
     if((minutes!==null&&minutes>60)||/\bslow[ -]?cook(?:er|ing)?\b/.test(category))result.push('Weekend & Slow Cooking');
     return result;
   }
-  return Object.freeze({primaryCollection,collections,isSide,totalMinutes});
+  return Object.freeze({primaryCollection,collections,isSide,isKidsMeal,totalMinutes});
 });
