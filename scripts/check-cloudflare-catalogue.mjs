@@ -178,7 +178,7 @@ export async function verifySharedShoppingDeployment(perform=fetch){
  if(native.status!==401||!jsonType(native))throw fail('household_native_auth_boundary');
  if(native.headers.get('Access-Control-Allow-Origin')!==origin||native.headers.get('Access-Control-Allow-Credentials')!==null)throw fail('household_native_transport');
  await discard(native);
- const weekly=await get('/api/shopping/weekly-trip',{Accept:'application/json'});
+ const weekly=await get('/api/shopping/weekly-trip',{Accept:'application/json',Origin:base});
  if(weekly.status!==401||!jsonType(weekly))throw fail('weekly_trip_auth_boundary');
  await discard(weekly);
  return {script:true,stylesheet:true,atHome:true,householdGatesEnabled:true,householdStatus:401,householdNativeStatus:401,nativeOrigin:true,weeklyTripRoute:true,weeklyTripStatus:401};
