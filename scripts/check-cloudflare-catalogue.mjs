@@ -150,6 +150,40 @@ export async function verifyInterfaceDeployment(perform=fetch){
  }catch{throw Error('The polished app interface assets could not be verified on production.');}
 }
 
+// Public unauthenticated probes only. A configured household route rejects
+// these requests with 401; a disabled release returns configured:false instead.
+// Never send an account token or expose a response body/provider error.
+export async function verifySharedShoppingDeployment(perform=fetch){
+ const origin='capacitor://localhost',base='https://basketboss.co.uk';
+ const fail=category=>{const error=Error('Shared shopping deployment check failed: '+category+'.');error.code=category;return error;};
+ const options=headers=>({method:'GET',headers,credentials:'omit',cache:'no-store',redirect:'error',signal:AbortSignal.timeout(15000)});
+ const get=async(path,headers)=>{try{return await perform(base+path,options(headers));}catch{throw fail('request_unavailable');}};
+ const discard=async response=>{try{await response.body?.cancel();}catch{throw fail('response_unavailable');}};
+ const jsonType=response=>/^application\/json(?:\s*;|$)/i.test(response.headers.get('content-type')||'');
+ for(const [path,type] of [['/bb-shared-shopping.js',/^(?:text|application)\/(?:javascript|ecmascript)(?:\s*;|$)/i],['/bb-shared-shopping.css',/^text\/css(?:\s*;|$)/i],['/bb-home.js',/^(?:text|application)\/(?:javascript|ecmascript)(?:\s*;|$)/i]]){
+  const response=await get(path,{Accept:path.endsWith('.css')?'text/css':'text/javascript'});
+  if(response.status!==200)throw fail('asset_unavailable');
+  if(!type.test(response.headers.get('content-type')||''))throw fail('asset_content_type');
+  await discard(response);
+ }
+ const household=await get('/api/household?mode=status',{Accept:'application/json'});
+ if(household.status===200&&jsonType(household)){
+  let readiness;try{readiness=await household.json();}catch{throw fail('household_status_invalid');}
+  if(readiness?.configured===false)throw fail('household_gates_disabled');
+  throw fail('household_auth_boundary');
+ }
+ if(household.status!==401||!jsonType(household))throw fail('household_auth_boundary');
+ await discard(household);
+ const native=await get('/api/household?mode=status',{Accept:'application/json',Origin:origin});
+ if(native.status!==401||!jsonType(native))throw fail('household_native_auth_boundary');
+ if(native.headers.get('Access-Control-Allow-Origin')!==origin||native.headers.get('Access-Control-Allow-Credentials')!==null)throw fail('household_native_transport');
+ await discard(native);
+ const weekly=await get('/api/shopping/weekly-trip',{Accept:'application/json'});
+ if(weekly.status!==401||!jsonType(weekly))throw fail('weekly_trip_auth_boundary');
+ await discard(weekly);
+ return {script:true,stylesheet:true,atHome:true,householdGatesEnabled:true,householdStatus:401,householdNativeStatus:401,nativeOrigin:true,weeklyTripRoute:true,weeklyTripStatus:401};
+}
+
 // Inspect schema only. Never select customer rows, identifiers or table SQL.
 export async function inspectDeletionSchema(query){
  const required={
@@ -263,6 +297,7 @@ if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) 
     result.reviewDeployment=await verifyReviewDeployment();
     result.foodThumbnailDeployment=await verifyFoodThumbnailDeployment();
     result.interfaceDeployment=await verifyInterfaceDeployment();
+    result.sharedShoppingDeployment=await verifySharedShoppingDeployment();
     const asset=await fetch('https://basketboss.co.uk/bb-receipt-host.js',{cache:'no-store',redirect:'error',signal:AbortSignal.timeout(15000)});
     if(!asset.ok||!/javascript/i.test(asset.headers.get('content-type')||''))throw Error('The receipt frontend asset is not available on production.');
     const receipt=await fetch('https://basketboss.co.uk/api/receipt-inventory?mode=status',{cache:'no-store',redirect:'error',signal:AbortSignal.timeout(15000)});
