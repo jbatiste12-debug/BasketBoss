@@ -208,7 +208,7 @@ private final class BasketBossCookSmokeReporter: NSObject, WKScriptMessageHandle
     }
 
     func record(_ report: [String: Any]) {
-        let keys = ["complete", "passed", "nativeOrigin", "cookMounted", "cookReady", "navPresent", "navVisible", "navHit", "legacyVisible", "backToPlan", "dataKept", "mainReady", "startupReady", "phase", "readyState", "errorCount", "errorLine", "errorKind", "errorSource", "lastScript", "scriptCount", "ingredientClosed", "ingredientPhoto", "ingredientSaved", "ingredientAutofill", "ingredientExistingKept", "ingredientRestored", "voiceFreeLocked", "voiceManualStart", "voiceNextStep", "voiceTimer", "voiceScaledAmount", "voiceExitStopped", "voiceRestored", "voicePrepAvailable", "voicePrepNarrated", "voicePrepAdvanced", "voiceCookNarrated", "voiceStepNarrated"]
+        let keys = ["complete", "passed", "nativeOrigin", "cookMounted", "cookReady", "navPresent", "navVisible", "navHit", "legacyVisible", "backToPlan", "dataKept", "mainReady", "startupReady", "phase", "readyState", "errorCount", "errorLine", "errorKind", "errorSource", "lastScript", "scriptCount", "ingredientClosed", "ingredientPhoto", "ingredientSaved", "ingredientAutofill", "ingredientExistingKept", "ingredientRestored", "voiceFreeLocked", "voiceManualStart", "voiceNextStep", "voiceTimer", "voiceScaledAmount", "voiceExitStopped", "voiceRestored", "voicePrepAvailable", "voicePrepNarrated", "voicePrepAdvanced", "voiceCookNarrated", "voiceStepNarrated", "voiceFailure"]
         let safe = report.filter { keys.contains($0.key) }
         guard let data = try? JSONSerialization.data(withJSONObject: safe, options: [.sortedKeys]),
               let folder = FileManager.default.urls(for: .documentDirectory, in: .userDomainMask).first else { return }
@@ -263,7 +263,8 @@ private final class BasketBossCookSmokeReporter: NSObject, WKScriptMessageHandle
       async function verifyVoiceCook(){
         const report={},stateKey='basketboss_321_unified_state_v1',snapshot=localStorage.getItem(stateKey),recoveryKey='basketboss_321_unified_recovery_v1',recovery=localStorage.getItem(recoveryKey);
         const originalPremium=window.BasketBossVerifiedPremium,originalVoice=window.BBNativeCookVoice;
-        const wait=async read=>{for(let n=0;n<60;n++){const value=read();if(value)return value;await new Promise(resolve=>setTimeout(resolve,100));}throw Error('VoiceCookSmokeTimeout');};
+        let voiceStage='mount';
+        const wait=async read=>{for(let n=0;n<60;n++){const value=read();if(value)return value;await new Promise(resolve=>setTimeout(resolve,100));}throw Error('VoiceCookSmokeTimeout_'+voiceStage);};
         const refresh=()=>dispatchEvent(new StorageEvent('storage',{key:stateKey,newValue:localStorage.getItem(stateKey)}));
         let starts=0,stops=0,onFinal=null,onStatus=null,busy=false,active=false,utterance=0;const spoken=[];
         try{
@@ -280,26 +281,38 @@ private final class BasketBossCookSmokeReporter: NSObject, WKScriptMessageHandle
           report.voiceManualStart=starts===0&&toggle.getAttribute('aria-pressed')==='false';
           toggle.click();await wait(()=>onFinal&&starts===1);
           const recipes=await fetch(new URL('recipes.json',location.href)).then(response=>response.json()),recipe=recipes.find(item=>item.id==='fajitas');
-          const amount=ingredient=>BBServing.scaleText(ingredient[1],4/recipe.servings,ingredient[0]);
-          await wait(()=>spoken.some(text=>text.includes(recipe.ingredients[0][0])&&text.includes(amount(recipe.ingredients[0]))));
+          // Pin the known four-serving fixture independently of the speech
+          // formatter: these assertions verify the words received by native audio.
+          const expectedSpeech={
+            firstIngredient:'First up, grab 665 grams of chicken breast. Say “next ingredient” when you’re ready.',
+            nextIngredient:'Next, get 2 mixed peppers. Say “next ingredient” when you’re ready.',
+            firstStep:'Step 1 of 5. First up, heat oven to 200 degrees Celsius (180 degrees Celsius fan). Slice chicken and peppers into strips. Say “next step” when you’re ready.',
+            nextStep:'Step 2 of 5. Next, toss chicken and peppers with oil, fajita seasoning, salt and pepper. Say “next step” when you’re ready.',
+            cheddar:'You’ll need 265 grams of cheddar.'
+          };
+          const cheddar=recipe.ingredients.find(item=>item[0]==='Cheddar');
+          const amount=ingredient=>BBServing.scaleText(ingredient[1],4/recipe.servings,ingredient[0],{roundCounts:false});
+          if(recipe.servings!==6||recipe.ingredients[0][0]!=='Chicken breast'||recipe.ingredients[0][1]!=='1 kg'||recipe.ingredients[1][0]!=='Mixed peppers'||recipe.ingredients[1][1]!=='3 peppers'||cheddar?.[1]!=='400 g'||recipe.method?.length!==5||amount(recipe.ingredients[0])!=='665 g'||amount(recipe.ingredients[1])!=='2 peppers'||amount(cheddar)!=='265 g')throw Error('VoiceCookFixtureChanged');
+          voiceStage='firstIngredient';await wait(()=>spoken.includes(expectedSpeech.firstIngredient));
           report.voicePrepNarrated=true;await wait(()=>!busy);
-          onFinal('Next ingredient');await wait(()=>document.querySelector('[data-prep="0"]')?.checked&&spoken.some(text=>text.includes(recipe.ingredients[1][0])&&text.includes(amount(recipe.ingredients[1]))));
+          voiceStage='nextIngredient';onFinal('Next ingredient');await wait(()=>document.querySelector('[data-prep="0"]')?.checked&&spoken.includes(expectedSpeech.nextIngredient));
           report.voicePrepAdvanced=true;await wait(()=>!busy);
-          onFinal('Start cooking');await wait(()=>document.getElementById('bbInstruction'));
+          voiceStage='startCooking';onFinal('Start cooking');await wait(()=>document.getElementById('bbInstruction'));
           const firstInstruction=document.getElementById('bbInstruction').textContent;
-          await wait(()=>spoken.some(text=>text.includes(firstInstruction)));
-          report.voiceCookNarrated=spoken.filter(text=>text.includes(firstInstruction)).length===1;await wait(()=>!busy);
-          onFinal('How much cheddar?');await wait(()=>spoken.some(text=>text.startsWith('Cheddar:')));
-          const cheddar=recipe.ingredients.find(item=>item[0]==='Cheddar'),quantity=BBServing.scaleText(cheddar[1],4/recipe.servings,cheddar[0]);
-          report.voiceScaledAmount=spoken.includes('Cheddar: '+quantity+'.');await wait(()=>!busy);
-          onFinal('Next step');await wait(()=>/STEP 2 OF/.test(document.getElementById('bbBody').textContent));
+          if(!firstInstruction.includes('200°C')||!firstInstruction.includes('180°C fan')||!firstInstruction.includes('Slice chicken and peppers into strips'))throw Error('VoiceCookFirstInstruction');
+          voiceStage='firstStep';await wait(()=>spoken.includes(expectedSpeech.firstStep));
+          report.voiceCookNarrated=spoken.filter(text=>text===expectedSpeech.firstStep).length===1;await wait(()=>!busy);
+          voiceStage='cheddar';onFinal('How much cheddar?');await wait(()=>spoken.includes(expectedSpeech.cheddar));
+          report.voiceScaledAmount=spoken.includes(expectedSpeech.cheddar);await wait(()=>!busy);
+          voiceStage='nextStep';onFinal('Next step');await wait(()=>/STEP 2 OF/.test(document.getElementById('bbBody').textContent));
           report.voiceNextStep=/STEP 2 OF/.test(document.getElementById('bbBody').textContent);
           const nextInstruction=document.getElementById('bbInstruction').textContent;
-          await wait(()=>spoken.some(text=>text.includes(nextInstruction)));
-          report.voiceStepNarrated=spoken.filter(text=>text.includes(nextInstruction)).length===1;await wait(()=>!busy);
-          onFinal('Start timer');await wait(()=>/Pause/.test(document.getElementById('bbTimerToggle').textContent));
+          if(!nextInstruction.includes(recipe.method[1]))throw Error('VoiceCookNextInstruction');
+          await wait(()=>spoken.includes(expectedSpeech.nextStep));
+          report.voiceStepNarrated=spoken.filter(text=>text===expectedSpeech.nextStep).length===1;await wait(()=>!busy);
+          voiceStage='timer';onFinal('Start timer');await wait(()=>/Pause/.test(document.getElementById('bbTimerToggle').textContent));
           onFinal('Start timer');report.voiceTimer=/Pause/.test(document.getElementById('bbTimerToggle').textContent);
-          const previousStops=stops;document.getElementById('bbExit').click();await wait(()=>!document.querySelector('.cook-overlay'));
+          voiceStage='exit';const previousStops=stops;document.getElementById('bbExit').click();await wait(()=>!document.querySelector('.cook-overlay'));
           report.voiceExitStopped=stops>previousStops;
         }finally{
           document.getElementById('bbExit')?.click();
@@ -329,7 +342,7 @@ private final class BasketBossCookSmokeReporter: NSObject, WKScriptMessageHandle
             return;
           }
           if(!sessionStorage.getItem(key+'_voice')){
-            if(!voiceRunning){voiceRunning=true;void verifyVoiceCook().then(report=>{sessionStorage.setItem(key+'_report',JSON.stringify({...JSON.parse(sessionStorage.getItem(key+'_report')||'{}'),...report}));if(Object.values(report).some(value=>value!==true)){send({...report,passed:false});return;}sessionStorage.setItem(key+'_voice','1');voiceRunning=false;}).catch(()=>send({passed:false,phase:'voice'}));}
+            if(!voiceRunning){voiceRunning=true;void verifyVoiceCook().then(report=>{sessionStorage.setItem(key+'_report',JSON.stringify({...JSON.parse(sessionStorage.getItem(key+'_report')||'{}'),...report}));if(Object.values(report).some(value=>value!==true)){send({...report,passed:false});return;}sessionStorage.setItem(key+'_voice','1');voiceRunning=false;}).catch(error=>send({passed:false,phase:'voice',voiceFailure:String(error.message||'VoiceCookSmokeError').replace(/[^A-Za-z0-9_.-]/g,'').slice(0,100)}));}
             return;
           }
           const link=document.querySelector('.bb173-make-meal-link');if(link){navigationPending=true;sessionStorage.setItem(key,'cook');link.click();}if(ticks>200)send({passed:false,navPresent:!!link});return;
