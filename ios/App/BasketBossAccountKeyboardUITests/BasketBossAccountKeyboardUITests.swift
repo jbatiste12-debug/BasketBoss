@@ -56,17 +56,19 @@ final class BasketBossAccountKeyboardUITests: XCTestCase {
         let app = XCUIApplication(bundleIdentifier: "uk.co.basketboss.app")
         app.launchArguments = uiTestLaunchArguments + [onboarding ? "--bb-native-onboarding-keyboard-smoke" : "--bb-native-account-keyboard-smoke"]
         app.launchEnvironment = uiTestLaunchEnvironment
+        // XCTest runs registered teardown even when continueAfterFailure stops
+        // a test through an Objective-C exception; Swift defer is not reliable
+        // across that boundary. Register before launch can fail as well.
+        addTeardownBlock {
+            await MainActor.run {
+                XCUIDevice.shared.press(.home)
+                app.terminate()
+            }
+        }
         // Clear any previous Simulator keyboard/focus state before launching
         // the app. Home must never be pressed after the input is focused.
         XCUIDevice.shared.press(.home)
         app.launch()
-        defer {
-            // End editing before terminating the app. Explicit screenshots
-            // can stall AX on headless runners; retain XCTest failure results
-            // and the runner's final diagnostic screenshot instead.
-            XCUIDevice.shared.press(.home)
-            app.terminate()
-        }
         XCTAssertTrue(app.wait(for: .runningForeground, timeout: 15), "The test app must reach the foreground before querying its UI.")
         // There is one WKWebView container. Cache that typed container; all
         // interactive controls and the probe below use exact DOM identifiers.
@@ -141,7 +143,11 @@ final class BasketBossAccountKeyboardUITests: XCTestCase {
         XCTAssertLessThanOrEqual(signInFrame.maxY, keyboardFrame.minY + 1, "Sign in must fit above the real keyboard.")
         XCTAssertTrue(close.isHittable, "Close must remain reachable after scrolling the form.")
         close.tap()
-        waitFor("Closing sign-in must dismiss the keyboard.") { !keyboard.exists }
+        if #available(iOS 18.0, *) {
+            XCTAssertTrue(keyboard.waitForNonExistence(timeout: 10), "Closing sign-in must dismiss the keyboard.")
+        } else {
+            waitFor("Closing sign-in must dismiss the keyboard.", timeout: 10) { !keyboard.exists }
+        }
         let planDock = app.buttons["bbPlanNav"]
         waitFor("Closing sign-in must restore the Plan dock.") { planDock.isHittable }
     }
