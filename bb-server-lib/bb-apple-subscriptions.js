@@ -22,6 +22,12 @@ let appleLibraryPromise;
 function loadAppleLibrary(){
  return appleLibraryPromise??=import('@apple/app-store-server-library').catch(error=>{appleLibraryPromise=undefined;throw error;});
 }
+// App acquisition proof does not require subscription products, an API signing
+// key, a paid purchase, or the separate subscription sandbox account allowlist.
+export async function getAppleAppTransactionVerifier(){
+ const {SignedDataVerifier}=await loadAppleLibrary();
+ return new SignedDataVerifier(appleRootCertificates(),true,Environment.SANDBOX,APPLE_BUNDLE_ID);
+}
 export async function isAppleRetryableVerificationFailure(error){
  const {VerificationStatus}=await loadAppleLibrary();
  return error?.status===VerificationStatus.RETRYABLE_VERIFICATION_FAILURE;

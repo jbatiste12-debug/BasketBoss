@@ -1,4 +1,4 @@
-import {livePaidBillingEnabled,readPersonalPaidAccess} from '../../bb-server-lib/bb-paid-access.js';
+import {livePaidBillingEnabled,readPersonalPaidAccess,testFlightBetaEnabled} from '../../bb-server-lib/bb-paid-access.js';
 /* Authenticated receipt inventory. Supabase is reached only with the server
  * service credential; the browser never chooses its user/household scope. */
 import {receiptCanonicalPairs} from '../../bb-server-lib/bb-receipt-canonical-pairs.js';
@@ -25,7 +25,7 @@ const canonicalCatalog = Object.fromEntries([...canonicalPairs].map(pair => [pai
 export function receiptInventoryConfigured(request, env) {
   const url = new URL(request.url);
   return env.BB_RECEIPT_INVENTORY_ENABLED === 'true' && url.protocol === 'https:' && LIVE_HOSTS.has(url.hostname) &&
-    (!env.CF_PAGES_BRANCH || env.CF_PAGES_BRANCH === 'main') && seatGateEnabled(env) && livePaidBillingEnabled(env) &&
+    (!env.CF_PAGES_BRANCH || env.CF_PAGES_BRANCH === 'main') && seatGateEnabled(env) && (livePaidBillingEnabled(env)||testFlightBetaEnabled(env)) &&
     env.SUPABASE_URL === LIVE_SUPABASE && typeof env.SUPABASE_PUBLISHABLE_KEY === 'string' && env.SUPABASE_PUBLISHABLE_KEY.length > 20 &&
     typeof serviceKey(env) === 'string' && serviceKey(env).length > 30 && typeof env.BILLING_DB?.prepare === 'function';
 }
@@ -49,7 +49,7 @@ async function authorized(request, env) {
   try{personal=await readPersonalPaidAccess(env,user.id);}
   catch(error){personalError=error;personal={premiumAccess:false};}
   const personalPaid = personal.premiumAccess;
-  const shareablePaid = personalPaid && (personal.provider==='paddle' || personal.apple?.environment==='Production');
+  const shareablePaid = personalPaid && (personal.provider==='paddle' || personal.provider==='testflight_beta' || personal.apple?.environment==='Production');
   // Match existing catalogue/AI owner access only for the authenticated server ID.
   // This exception is never inherited by a partner or accepted from the browser.
   const owner = typeof env.BB_OWNER_USER_ID === 'string' && user.id === env.BB_OWNER_USER_ID;

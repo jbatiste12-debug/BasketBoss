@@ -1,0 +1,58 @@
+name: Verify TestFlight Beta Premium
+
+on:
+  push:
+    branches: [main, feature/testflight-beta-premium]
+    paths:
+      - .github/workflows/testflight-beta-premium.yml
+      - bb-server-lib/**
+      - functions/api/**
+      - tests/*testflight*
+      - scripts/test-apple-worker.mjs
+      - sql/*testflight*
+      - package.json
+      - package-lock.json
+  pull_request:
+    paths:
+      - bb-server-lib/bb-testflight-beta.js
+      - functions/api/apple/testflight-beta.js
+      - tests/*testflight*
+      - .github/workflows/testflight-beta-premium.yml
+
+permissions:
+  contents: read
+
+concurrency:
+  group: basketboss-testflight-beta-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  verified-entitlements:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v5
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@v5
+        with:
+          node-version: '24'
+          cache: npm
+      - run: npm ci --no-audit --no-fund
+      - name: Verify beta claims, paid access, deletion and household isolation
+        run: >-
+          node --test --test-isolation=none
+          tests/*testflight*.test.mjs
+          tests/basketboss-apple-access.test.mjs
+          tests/basketboss-apple-deletion-checkout.test.mjs
+          tests/basketboss-premium-owner-ai.test.mjs
+          tests/basketboss-premium-session-route-regression.test.mjs
+          tests/basketboss-household-production.test.mjs
+          tests/basketboss-account-deletion-household-barriers.test.mjs
+          tests/basketboss-receipt-inventory-backend.test.mjs
+      - name: Install isolated Cloudflare runtime verification tools
+        run: npm install --prefix "$RUNNER_TEMP/bb-beta-worker" --package-lock=false --ignore-scripts --no-audit --no-fund wrangler@4.156.0
+      - name: Verify cold Worker startup and signed Apple proofs
+        env:
+          BB_WORKER_TEST_TOOLS: ${{ runner.temp }}/bb-beta-worker/node_modules
+        run: node scripts/test-apple-worker.mjs

@@ -4,8 +4,10 @@
  */
 import {isBillingEnabled,isLive,expectedPrice,entitlementForStatus} from './bb-billing.js';
 import {readAppleEntitlement} from './bb-apple-subscriptions.js';
+import {testFlightBetaEnabled,readTestFlightBetaGrant} from './bb-testflight-beta.js';
+export {testFlightBetaEnabled} from './bb-testflight-beta.js';
 export const appleBillingEnabled=env=>env.APPLE_BILLING_ENABLED==='true';
-export const paidBillingEnabled=env=>isBillingEnabled(env)||appleBillingEnabled(env);
+export const paidBillingEnabled=env=>isBillingEnabled(env)||appleBillingEnabled(env)||testFlightBetaEnabled(env);
 // This is only a feature/configuration gate. Every user still needs a verified
 // personal entitlement. Sandbox never enables production household sharing.
 export const livePaidBillingEnabled=env=>isLive(env)||(appleBillingEnabled(env)&&env.APPLE_ENVIRONMENT==='Production');
@@ -13,7 +15,7 @@ export function paddleAccess(env,row,{productionOnly=false}={}){
  const price=row?expectedPrice(env,row.plan):null;
  return !!row&&!!price&&(!productionOnly||isLive(env))&&price===row.price_id&&entitlementForStatus(row.status);
 }
-export async function readPersonalPaidAccess(env,userId,{productionOnly=false,paddleRow}={}){
+export async function readPersonalPaidAccess(env,userId,{productionOnly=false,includeTestFlightBeta=false,paddleRow}={}){
  let row=paddleRow;
  if(row===undefined&&isBillingEnabled(env))row=await env.BILLING_DB.prepare(
   'SELECT status,price_id,plan FROM bb_paid_entitlements WHERE user_id=? ORDER BY updated_at_ms DESC LIMIT 1'
@@ -30,6 +32,10 @@ export async function readPersonalPaidAccess(env,userId,{productionOnly=false,pa
    .bind(userId,expectedPrice(env,'founder'),expectedPrice(env,'standard')).first();
   if(paddleAccess(env,candidate,{productionOnly}))return {premiumAccess:true,provider:'paddle',paddleRow:candidate,apple:null};
  }
+ if(!productionOnly||includeTestFlightBeta){
+  const beta=await readTestFlightBetaGrant(env,userId);
+  if(beta)return {...beta,paddleRow:row||null,apple:null};
+ }
  const apple=await readAppleEntitlement(env,userId);
  const premiumAccess=!!apple?.premiumAccess&&(!productionOnly||apple.environment==='Production');
  return {premiumAccess,provider:premiumAccess?'apple':null,paddleRow:row||null,apple};
@@ -43,7 +49,10 @@ export async function readMemberPaidAccess(request,env,user,options={}){
  if(access?.premiumAccess)return {...access,householdOwnerId:null};
  const {sharedHouseholdPremiumOwner}=await import('./bb-household-premium.js');
  const householdOwnerId=await sharedHouseholdPremiumOwner(request,env,user);
- if(householdOwnerId)return {premiumAccess:true,provider:'household',householdOwnerId,apple:null,paddleRow:access?.paddleRow||null};
+ if(householdOwnerId){
+  const sharedBeta=await readTestFlightBetaGrant(env,householdOwnerId);
+  return {premiumAccess:true,provider:'household',householdOwnerId,apple:null,beta:sharedBeta?.beta||null,paddleRow:access?.paddleRow||null};
+ }
  if(error)throw error;
  return {...access,householdOwnerId:null};
 }

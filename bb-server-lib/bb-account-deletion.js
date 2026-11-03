@@ -98,6 +98,10 @@ export async function eraseAccountD1(env,userId,billing){
    AND s.original_transaction_id=bb_apple_notifications.original_transaction_id)`).bind(userId));
  if(appleSubscriptions)statements.push(db.prepare('DELETE FROM bb_apple_subscriptions WHERE user_id=?').bind(userId));
  if(await tableExists('bb_apple_account_tokens'))statements.push(db.prepare('DELETE FROM bb_apple_account_tokens WHERE user_id=?').bind(userId));
+ // Keep only a hash tombstone so a deleted installation proof cannot be
+ // replayed to mint a new beta grant for another or recreated account.
+ if(await tableExists('bb_testflight_beta_grants'))statements.push(db.prepare(`UPDATE bb_testflight_beta_grants
+  SET user_id=NULL,revoked_at_ms=?,application_version='',receipt_created_at_ms=0 WHERE user_id=?`).bind(Date.now(),userId));
  if(await tableExists('bb_weekly_shop_trips'))statements.push(db.prepare('DELETE FROM bb_weekly_shop_trips WHERE actor_hash=?').bind(await digestDeletionActor(userId)));
  statements.push(
   db.prepare(`UPDATE bb_founder_slots SET state=CASE WHEN state='reserved' AND paddle_subscription_id IS NULL THEN 'available' ELSE 'retired' END,

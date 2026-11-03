@@ -31,12 +31,13 @@ globalThis.__bbTestOrigin=requestOrigin;
 // Real cross-provider integration is exercised with SQLite in apple-access.
 globalThis.__bbTestPaid={
  livePaidBillingEnabled:lib.isLive,
+ testFlightBetaEnabled:()=>false,
  async readPersonalPaidAccess(e,userId){
   const row=await e.BILLING_DB.prepare('SELECT status,price_id,plan FROM bb_paid_entitlements WHERE user_id=?').bind(userId).first();
   return {premiumAccess:!!row&&lib.entitlementForStatus(row.status)&&lib.expectedPrice(e,row.plan)===row.price_id};
  }
 };
-const houseCode=HOUSE.replace(/import \{[^\n]+\} from '\.\.\/\.\.\/\.\.\/bb-server-lib\/bb-paid-access\.js';/,"const {livePaidBillingEnabled,readPersonalPaidAccess}=globalThis.__bbTestPaid;").replace(/import \{[^\n]+\} from '\.\.\/\.\.\/\.\.\/bb-server-lib\/bb-billing\.js';/,"const {json,authenticatedUser,isLive,expectedPrice,entitlementForStatus,requireSameOrigin}=globalThis.__bbTestLib;").replace(/import \{[^\n]+\} from '\.\.\/\.\.\/\.\.\/bb-server-lib\/bb-premium-seat\.js';/,"const {isNewestVerifiedSession}=globalThis.__bbTestSeat;");
+const houseCode=HOUSE.replace(/import \{[^\n]+\} from '\.\.\/\.\.\/\.\.\/bb-server-lib\/bb-paid-access\.js';/,"const {livePaidBillingEnabled,readPersonalPaidAccess,testFlightBetaEnabled}=globalThis.__bbTestPaid;").replace(/import \{[^\n]+\} from '\.\.\/\.\.\/\.\.\/bb-server-lib\/bb-billing\.js';/,"const {json,authenticatedUser,isLive,expectedPrice,entitlementForStatus,requireSameOrigin}=globalThis.__bbTestLib;").replace(/import \{[^\n]+\} from '\.\.\/\.\.\/\.\.\/bb-server-lib\/bb-premium-seat\.js';/,"const {isNewestVerifiedSession}=globalThis.__bbTestSeat;");
 const middleCode=MIDDLE.replace(/import \{[^\n]+\} from '\.\.\/\.\.\/bb-server-lib\/bb-paid-access\.js';/,"const {livePaidBillingEnabled}=globalThis.__bbTestPaid;").replace("import {ensureDeletionSchema,isAccountDeleting} from '../../bb-server-lib/bb-account-deletion.js';","const ensureDeletionSchema=async()=>{},isAccountDeleting=async()=>false;").replace(/import \{[^\n]+\} from '\.\.\/\.\.\/bb-server-lib\/bb-billing\.js';/,"const {authenticatedUser,json,isLive}=globalThis.__bbTestLib;").replace(/import \{[^\n]+\} from '\.\.\/\.\.\/bb-server-lib\/bb-premium-seat\.js';/,"const {seatGateEnabled,isNewestVerifiedSession}=globalThis.__bbTestSeat;").replace(/import \{[^\n]+\} from '\.\.\/\.\.\/bb-server-lib\/bb-request-origin\.js';/,"const {nativeCorsResponse,nativePreflightResponse}=globalThis.__bbTestOrigin;");
 assert.ok(!houseCode.includes(" from '../../../bb-server-lib/"),'backend import fixture did not resolve');
 assert.ok(!middleCode.includes(" from '../../bb-server-lib/"),'middleware import fixture did not resolve');
