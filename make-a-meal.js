@@ -584,6 +584,11 @@ function generate(){
  if(ingredients.length>12){message('Choose up to 12 ingredients for a single AI recipe. Your saved inventory is unchanged.','warning');return}
  const token=bbPaidToken();if(!token){message('Sign in to a verified Premium account first.','warning');return;}
  if(!confirm('Send these '+ingredients.length+' ingredient names (not stock quantities) to Cloudflare and Google Gemini for a recipe draft and an illustrative picture of the resulting meal? The picture uses the generated recipe, not your email or a personal photo. Cancel keeps everything local.'))return;
+ if(bbPaidToken()!==token||window.BBAccountDeletion?.isDeleting?.()===true||(bbPhotoMealMode&&bbPhotoReviewToken!==token)){
+  if(bbPhotoMealMode){bbClearPhotoMeal();$('#scanResults').textContent='Your account changed. Choose the photo again before creating a meal.';}
+  else message('Your account changed. Review your ingredients again before creating a meal.','warning');
+  return;
+ }
  const requestMode=bbPhotoMealMode?'only':mode,revision=++generateRevision;
  generatedView?.cancel?.();generatedView=null;window.BBMealImage?.cancelAll?.();
  generateActor=token;

@@ -46,7 +46,7 @@ function harness({pantry=false,deferResize=false}={}){
   });
   return {id:'reviewMealFoods',querySelector:()=>error,querySelectorAll(selector){if(selector.includes('bb-photo-food-row'))return rows.map(item=>item.row);if(selector.includes('photo-meal-name'))return rows.filter(item=>!selector.includes(':checked')||item.check.checked).map(item=>item.field);if(selector.includes('checkbox')||selector.includes('name="food"'))return rows.filter(item=>!selector.includes(':checked')||item.check.checked).map(item=>item.check);return [];},error,rows};
  }
- return {api,window,requests,rendered,controls,writes,dialogs,get,form,values,setToken(value,newActor=actor){token=value;actor=newActor;},setDeleting:value=>{deleting=value;},denyConsent:()=>{consent=false;},resolveResize:()=>resizeResolve(bitmap),emit(name){for(const listener of events.get(name)||[])listener({type:name});}};
+ return {api,window,requests,rendered,controls,writes,dialogs,get,form,values,setToken(value,newActor=actor){token=value;actor=newActor;},setDeleting:value=>{deleting=value;},denyConsent:()=>{consent=false;},duringConsent(callback){context.confirm=message=>{dialogs.push(message);callback();return true;};},resolveResize:()=>resizeResolve(bitmap),emit(name){for(const listener of events.get(name)||[])listener({type:name});}};
 }
 
 test('photo scan review contains editable deduplicated names without Pantry destinations or writes',()=>{
@@ -82,6 +82,22 @@ test('photo review validates ingredient count and length before making a recipe 
 test('declining the recipe purpose confirmation sends nothing and leaves food data unchanged',async()=>{
  const h=harness();h.api.renderScanResponse({items:[{name:'Rice'}]});h.denyConsent();h.api.bbConfirmPhotoMeal(h.form([{name:'Rice'}]));await tick();
  assert.equal(h.requests.length,0);assert.equal(h.dialogs.length,1);assert.match(h.dialogs[0],/illustrative picture/);assert.deepEqual(h.writes,[]);
+});
+
+test('account changes during the consent prompt cannot submit the old food selection under a new account',async()=>{
+ for(const mode of ['account','deletion']){
+  const h=harness();h.api.renderScanResponse({items:[{name:'Rice'}]});
+  h.duringConsent(()=>mode==='account'?h.setToken('member-B','actor-B'):h.setDeleting(true));
+  h.api.bbConfirmPhotoMeal(h.form([{name:'Rice'}]));await tick();
+  assert.equal(h.requests.length,0);assert.equal(h.api.state().names,null);assert.deepEqual(h.writes,[]);
+ }
+});
+
+test('repeated generation taps keep the original request and its recipe current',async()=>{
+ const h=harness();h.api.renderScanResponse({items:[{name:'Rice'}]});const form=h.form([{name:'Rice'}]);
+ h.api.bbConfirmPhotoMeal(form);await tick();h.api.bbConfirmPhotoMeal(form);await tick();assert.equal(h.requests.length,1);
+ h.requests[0].resolve({ok:true,reviewRequired:true,recipe:recipe(),mealImage:{ticket:'same-recipe-ticket'}});await tick();
+ assert.equal(h.rendered.length,1);assert.equal(h.rendered[0].options.isCurrent(),true);
 });
 
 test('account changes or deletion during photo resizing cannot send the previous account’s photo',async()=>{
