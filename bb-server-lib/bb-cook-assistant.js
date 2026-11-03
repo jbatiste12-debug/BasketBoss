@@ -1,6 +1,7 @@
 /* Recipe-scoped conversation. Provider settings and instructions are server
  * owned. Context/history are untrusted data and are never persisted here. */
 import {digestDeletionActor} from './bb-account-deletion.js';
+import {cookServiceError,cookProviderError} from './bb-cook-service-error.js';
 
 export const COOK_ASSISTANT_MODEL='gpt-4.1-mini';
 export const COOK_ASSISTANT_BODY_LIMIT=65536;
@@ -94,17 +95,23 @@ export function cookingProviderRequest(value){
 }
 export async function requestCookingAnswer(value,env,perform=fetch,signal){
  const deadline=AbortSignal.timeout(25000),combined=signal?AbortSignal.any([signal,deadline]):deadline;
- if(combined.aborted)throw Object.assign(Error('aborted'),{name:'AbortError'});
+ if(combined.aborted)throw signal?.aborted?Object.assign(Error('aborted'),{name:'AbortError'}):cookServiceError('BB_COOK_PROVIDER_UNAVAILABLE');
  // Workers does not implement redirect:'error'. Manual mode plus the status
  // check below rejects redirects without forwarding the provider credential.
- const response=await perform('https://api.openai.com/v1/responses',{method:'POST',headers:{Authorization:'Bearer '+env.OPENAI_API_KEY,'Content-Type':'application/json'},body:JSON.stringify(cookingProviderRequest(value)),redirect:'manual',signal:combined});
- if(!response.ok||!/^application\/json(?:;|$)/i.test(response.headers.get('Content-Type')||'')){void response.body?.cancel().catch(()=>{});throw Error('cook_provider_unavailable');}
- const result=await boundedJSON(response,PROVIDER_LIMIT,combined);
- if(combined.aborted)throw Object.assign(Error('aborted'),{name:'AbortError'});
- if(result?.status!=='completed'||!Array.isArray(result.output)||result.output.length!==1)throw Error('cook_provider_response');
+ let response;
+ try{response=await perform('https://api.openai.com/v1/responses',{method:'POST',headers:{Authorization:'Bearer '+env.OPENAI_API_KEY,'Content-Type':'application/json'},body:JSON.stringify(cookingProviderRequest(value)),redirect:'manual',signal:combined});}
+ catch{if(signal?.aborted)throw Object.assign(Error('aborted'),{name:'AbortError'});throw cookServiceError('BB_COOK_PROVIDER_UNAVAILABLE');}
+ if(!response.ok){void response.body?.cancel().catch(()=>{});throw cookProviderError(response.status);}
+ if(!/^application\/json(?:;|$)/i.test(response.headers.get('Content-Type')||'')){void response.body?.cancel().catch(()=>{});throw cookServiceError('BB_COOK_PROVIDER_RESPONSE');}
+ let result;
+ try{result=await boundedJSON(response,PROVIDER_LIMIT,combined);}
+ catch(error){if(signal?.aborted)throw Object.assign(Error('aborted'),{name:'AbortError'});throw cookServiceError(combined.aborted?'BB_COOK_PROVIDER_UNAVAILABLE':'BB_COOK_PROVIDER_RESPONSE');}
+ if(combined.aborted)throw signal?.aborted?Object.assign(Error('aborted'),{name:'AbortError'}):cookServiceError('BB_COOK_PROVIDER_UNAVAILABLE');
+ if(result?.status!=='completed'||!Array.isArray(result.output)||result.output.length!==1)throw cookServiceError('BB_COOK_PROVIDER_RESPONSE');
  const message=result.output[0],content=message?.content;
- if(message?.type!=='message'||message.role!=='assistant'||!Array.isArray(content)||content.length!==1||content[0]?.type!=='output_text'||typeof content[0].text!=='string')throw Error('cook_provider_response');
- const parsed=JSON.parse(content[0].text),answer=only(parsed,['answer'])?text(parsed.answer,COOK_ASSISTANT_ANSWER_LIMIT):null;
- if(!answer)throw Error('cook_provider_response');
+ if(message?.type!=='message'||message.role!=='assistant'||!Array.isArray(content)||content.length!==1||content[0]?.type!=='output_text'||typeof content[0].text!=='string')throw cookServiceError('BB_COOK_PROVIDER_RESPONSE');
+ let parsed;try{parsed=JSON.parse(content[0].text);}catch{throw cookServiceError('BB_COOK_PROVIDER_RESPONSE');}
+ const answer=only(parsed,['answer'])?text(parsed.answer,COOK_ASSISTANT_ANSWER_LIMIT):null;
+ if(!answer)throw cookServiceError('BB_COOK_PROVIDER_RESPONSE');
  return answer;
 }
