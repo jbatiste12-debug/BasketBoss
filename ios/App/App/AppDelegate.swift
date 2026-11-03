@@ -90,6 +90,12 @@ class BasketBossViewController: CAPBridgeViewController {
     private var startupFinished = false
 
     #if DEBUG
+    #if targetEnvironment(simulator)
+    private var keyboardSmokeReporter: BasketBossKeyboardProbeReporter?
+    #endif
+    #endif
+
+    #if DEBUG
     override func instanceDescriptor() -> InstanceDescriptor {
         let descriptor = super.instanceDescriptor()
         if ProcessInfo.processInfo.arguments.contains("--bb-native-cook-smoke-direct") {
@@ -122,7 +128,13 @@ class BasketBossViewController: CAPBridgeViewController {
         if BasketBossKeyboardUITestRuntime.isKeyboardSmokeLaunch, let webView = webView {
             let onboarding = keyboardArguments.contains("--bb-native-onboarding-keyboard-smoke")
             webView.accessibilityIdentifier = "bbKeyboardWebView"
-            webView.configuration.userContentController.addUserScript(WKUserScript(source: BasketBossAccountKeyboardSetup.script(onboarding: onboarding), injectionTime: .atDocumentStart, forMainFrameOnly: true))
+            let content = webView.configuration.userContentController
+            keyboardSmokeReporter?.invalidate()
+            content.removeScriptMessageHandler(forName: "bbNativeKeyboardProbe")
+            let reporter = BasketBossKeyboardProbeReporter(container: view, onboarding: onboarding)
+            keyboardSmokeReporter = reporter
+            content.add(reporter, name: "bbNativeKeyboardProbe")
+            content.addUserScript(WKUserScript(source: BasketBossAccountKeyboardSetup.script(onboarding: onboarding), injectionTime: .atDocumentStart, forMainFrameOnly: true))
         }
         #endif
         #endif
@@ -136,6 +148,19 @@ class BasketBossViewController: CAPBridgeViewController {
     override func viewDidAppear(_ animated: Bool) {
         super.viewDidAppear(animated)
         startupView?.startMotion()
+    }
+
+    override func viewDidDisappear(_ animated: Bool) {
+        super.viewDidDisappear(animated)
+        #if DEBUG
+        #if targetEnvironment(simulator)
+        if isBeingDismissed || isMovingFromParent {
+            webView?.configuration.userContentController.removeScriptMessageHandler(forName: "bbNativeKeyboardProbe")
+            keyboardSmokeReporter?.invalidate()
+            keyboardSmokeReporter = nil
+        }
+        #endif
+        #endif
     }
 
     private func showStartup() {
@@ -175,6 +200,58 @@ class BasketBossViewController: CAPBridgeViewController {
 
 #if DEBUG
 #if targetEnvironment(simulator)
+// WebKit did not expose the DOM probe's id as an XCUI StaticText identifier on
+// the CI runtime. Transport the real DOM measurements to one native label;
+// never synthesize readiness, geometry, focus or user actions in this bridge.
+private final class BasketBossKeyboardProbeReporter: NSObject, WKScriptMessageHandler {
+    private weak var container: UIView?
+    private weak var probe: UILabel?
+    private let prefix: String
+
+    init(container: UIView, onboarding: Bool) {
+        self.container = container
+        self.prefix = "BB keyboard probe " + (onboarding ? "onboarding" : "account") + " "
+        super.init()
+    }
+
+    func userContentController(_ userContentController: WKUserContentController, didReceive message: WKScriptMessage) {
+        guard message.frameInfo.isMainFrame,
+              let text = message.body as? String,
+              text.isEmpty || (text.count <= 4096 && text.hasPrefix(prefix)) else { return }
+        DispatchQueue.main.async { [weak self] in self?.display(text) }
+    }
+
+    private func display(_ text: String) {
+        guard !text.isEmpty else { invalidate(); return }
+        guard let container = container else { return }
+        let label: UILabel
+        if let current = probe {
+            label = current
+        } else {
+            label = UILabel()
+            label.isAccessibilityElement = true
+            label.accessibilityIdentifier = "bbAccountKeyboardProbe"
+            label.accessibilityTraits = .staticText
+            label.isUserInteractionEnabled = false
+            label.numberOfLines = 3
+            label.font = .monospacedSystemFont(ofSize: 7, weight: .regular)
+            label.textColor = UIColor(red: 0.22, green: 0.37, blue: 0.27, alpha: 1)
+            label.backgroundColor = UIColor(red: 0.96, green: 0.97, blue: 0.94, alpha: 1)
+            label.autoresizingMask = [.flexibleWidth]
+            container.addSubview(label)
+            probe = label
+        }
+        label.frame = CGRect(x: 8, y: container.safeAreaInsets.top + 8, width: max(1, container.bounds.width - 88), height: 30)
+        label.text = text
+        label.accessibilityLabel = text
+    }
+
+    func invalidate() {
+        probe?.removeFromSuperview()
+        probe = nil
+    }
+}
+
 // Only the explicit XCUITest launch on a disposable simulator uses this setup.
 // XCTest itself taps real inputs; this script never focuses, types or signs in.
 private enum BasketBossAccountKeyboardSetup {
@@ -186,12 +263,21 @@ private enum BasketBossAccountKeyboardSetup {
           localStorage.setItem('basketboss_onboarding_seen_v1','true');
           sessionStorage.setItem('basketboss_welcome_splash_seen_v1','1');
           sessionStorage.setItem('bb_funnel_nudge_dismissed_v1','1');
-          let attempts=0,opened=false,baselineScroll=null;
-          // WebKit's iOS accessibilityIdentifier reads the backing DOM id.
-          // Keep accessible names/values intact and give only otherwise-idless
-          // test controls stable identifiers, including after onboarding paints.
+          let attempts=0,opened=false,baselineScroll=null,lastProbeText='';
+          const reportProbe=text=>{
+            if(text===lastProbeText)return;
+            lastProbeText=text;
+            window.webkit?.messageHandlers?.bbNativeKeyboardProbe?.postMessage(text);
+          };
+          // Exact test-only accessible names also work on runtimes that do not
+          // forward DOM ids to XCTest. Visible labels, values, roles and actions
+          // stay intact. Normal Debug and Release launches never run this code.
           const identifyControls=()=>{
             for(const [selector,identifier] of [
+              ['#cloud-email','cloud-email'],
+              ['#cloud-password','cloud-password'],
+              ['#cloud-login','cloud-login'],
+              ['#cloud-close','cloud-close'],
               ['#bbNewOnboarding .bbob-footer button[data-bbob="next"]','bbobNext'],
               ['#bbNewOnboarding button.bbob-exit','bbobExit'],
               ['.tabs button[data-tab="week"]','bbPlanNav'],
@@ -201,7 +287,9 @@ private enum BasketBossAccountKeyboardSetup {
               ['.tabs a.bb173-make-meal-link','bbCookNav']
             ]){
               const control=document.querySelector(selector);
-              if(control&&!control.id)control.id=identifier;
+              if(!control)continue;
+              if(!control.id)control.id=identifier;
+              if(control.getAttribute('aria-label')!==identifier)control.setAttribute('aria-label',identifier);
             }
           };
           const check=setInterval(()=>{
@@ -213,7 +301,7 @@ private enum BasketBossAccountKeyboardSetup {
             }
             const host=document.getElementById(onboarding?'bbNewOnboarding':'cloud-panel');
             const form=document.getElementById('cloud-auth'),shell=document.querySelector('.shell');
-            if(!host||!host.getClientRects().length)return;
+            if(!host||!host.getClientRects().length){reportProbe('');return;}
             const fixed=getComputedStyle(document.body).position==='fixed';
             const viewport=window.visualViewport,box=host.getBoundingClientRect();
             // Compare document coordinates: WKWebView's DOM rect and scrollY
@@ -226,8 +314,6 @@ private enum BasketBossAccountKeyboardSetup {
             if(fixed&&baselineScroll===null)baselineScroll=layoutY;
             const height=Math.min(Number(viewport?.height)||innerHeight,innerHeight),width=Math.min(Number(viewport?.width)||innerWidth,innerWidth);
             const flags={bodyFixed:fixed,shellHidden:!!shell&&getComputedStyle(shell).visibility==='hidden',shellInert:!!shell?.closest('[inert]'),viewportCovered:Math.abs(box.top+scrollY-top)<3&&Math.abs(box.left+scrollX-left)<3&&Math.abs(box.bottom+scrollY-top-height)<3&&Math.abs(box.right+scrollX-left-width)<3,rootLocked:baselineScroll!==null&&Math.abs(layoutY-baselineScroll)<2};
-            let probe=document.getElementById('bbAccountKeyboardProbe');
-            if(!probe){probe=document.createElement('p');probe.id='bbAccountKeyboardProbe';probe.setAttribute('role','text');probe.style.cssText='position:absolute;top:8px;left:8px;right:72px;height:30px;overflow:hidden;font-size:7px;line-height:10px;z-index:2147483647;background:#f5f7ef;margin:0;color:#385e45;pointer-events:none';host.appendChild(probe);}
             // Numeric layout metadata only: never include input values, user
             // text, account/session data, screenshots or recording bytes.
             const number=value=>Number.isFinite(Number(value))?Math.round(Number(value)*10)/10:null;
@@ -235,8 +321,7 @@ private enum BasketBossAccountKeyboardSetup {
             const email=document.getElementById('cloud-email');
             const metrics={startupReady:window.BBNativeStartup?.phase==='ready',authSlot:!!document.getElementById('bbobAuthSlot'),formMounted:host.contains(form),emailVisible:!!email?.getClientRects().length,formHidden:!!form?.hidden,formInert:!!form?.closest('[inert]'),vvH:number(viewport?.height),vvW:number(viewport?.width),vvTop:number(viewport?.offsetTop),vvLeft:number(viewport?.offsetLeft),vvPageTop:number(viewport?.pageTop),vvScale:number(viewport?.scale),innerH:number(innerHeight),innerW:number(innerWidth),hostT:number(box.top),hostL:number(box.left),hostB:number(box.bottom),hostR:number(box.right),hostH:number(box.height),hostW:number(box.width),cssT:number(parseFloat(hostStyle.top)),cssH:number(parseFloat(hostStyle.height)),bodyT:number(parseFloat(bodyStyle.top)),rootY:number(window.scrollY),baselineY:baselineScroll===null?null:number(baselineScroll),htmlY:number(document.documentElement.scrollTop),bodyY:number(document.body.scrollTop)};
             const text='BB keyboard probe '+(onboarding?'onboarding':'account')+' '+Object.entries(flags).map(([name,value])=>name+'='+value).join(' ')+' metrics='+JSON.stringify(metrics);
-            if(probe.textContent!==text)probe.textContent=text;
-            if(probe.getAttribute('aria-label')!==text)probe.setAttribute('aria-label',text);
+            reportProbe(text);
           },100);
         })();
         """#
