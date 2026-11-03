@@ -18,7 +18,7 @@ permissions:
 jobs:
   keyboard:
     runs-on: macos-15-intel
-    timeout-minutes: 30
+    timeout-minutes: 45
     env:
       DEVELOPER_DIR: /Applications/Xcode_26.2.app/Contents/Developer
     steps:
@@ -36,6 +36,18 @@ jobs:
           cache: npm
       - run: npm ci --no-audit --no-fund
       - run: npm run ios:sync
+      - name: Compile the frozen app before starting Simulator
+        timeout-minutes: 15
+        run: >-
+          xcodebuild
+          -workspace ios/App/App.xcworkspace
+          -scheme App
+          -configuration Debug
+          -sdk iphonesimulator
+          -destination 'generic/platform=iOS Simulator'
+          -derivedDataPath /tmp/basketboss-ios-build
+          CODE_SIGNING_ALLOWED=NO
+          build
       - name: Prepare the proven iOS simulator and software keyboard
         run: |
           node --input-type=module <<'JS'
