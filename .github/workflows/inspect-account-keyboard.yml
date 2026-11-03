@@ -55,7 +55,7 @@ jobs:
           const run=(...args)=>execFileSync('xcrun',args,{encoding:'utf8',timeout:120000}).trim();
           const runtimes=JSON.parse(run('simctl','list','runtimes','--json')).runtimes.filter(r=>r.isAvailable&&r.name.startsWith('iOS'));
           const devices=JSON.parse(run('simctl','list','devices','available','--json')).devices;
-          const runtime=runtimes.find(r=>r.version.startsWith('18.6'));
+          const runtime=runtimes.find(r=>r.version.startsWith('26.2'));
           if(!runtime)throw Error('proven_runtime_missing');
           // This runner is disposable CI infrastructure. Keep only the chosen
           // supported runtime booted so the unchanged test runner selects it.
@@ -71,6 +71,27 @@ jobs:
           console.log('Booting '+phone.name+' / iOS '+runtime.version);
           execFileSync('xcrun',['simctl','bootstatus',phone.udid,'-b'],{stdio:'inherit',timeout:540000});
           JS
+      - name: Allow cold UI test assets to finish building
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+          import json
+          import subprocess
+          source_sha='ee2a589347dc146487104329f78b964babcae96b'
+          runner=Path('scripts/test-ios-account-keyboard.mjs')
+          original=runner.read_text()
+          pinned=subprocess.check_output(['git','show',source_sha+':'+str(runner)],text=True)
+          assert original==pinned, 'The keyboard runner must start at the pinned source.'
+          before="'build-for-testing'],300000)"
+          after="'build-for-testing'],900000)"
+          assert original.count(before)==1, 'Only the UI build timeout may be changed.'
+          cases='ios/App/BasketBossAccountKeyboardUITests/BasketBossAccountKeyboardUITests.swift'
+          expected_blob=subprocess.check_output(['git','rev-parse',source_sha+':'+cases],text=True).strip()
+          actual_blob=subprocess.check_output(['git','hash-object',cases],text=True).strip()
+          assert actual_blob==expected_blob=='f116dd09d9d8238e592d4d5341f2886c13be6f0b', 'The four UI tests must remain unchanged.'
+          runner.write_text(original.replace(before,after,1))
+          print('::notice title=BasketBoss keyboard build allowance::'+json.dumps({'uiBuildTimeoutMs':900000,'uiTestSourceBlob':actual_blob,'uiCasesUnchanged':True}))
+          PY
       - name: Test real email and password taps and keyboard layout
         run: node scripts/test-ios-account-keyboard.mjs
       - name: Print text-only keyboard results
