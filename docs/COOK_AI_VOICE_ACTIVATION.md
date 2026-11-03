@@ -1,12 +1,14 @@
 # Cook AI voice: focused production service patch
 
-Status: prepared locally; **not deployed or enabled**. Base: production/main `6495437339c8950128999d6dafe63ef2ed27f76e`.
+Status: focused server rollout prepared; **production deployment, schema readiness and actual provider audio are not yet verified**. Base: production/main `6495437339c8950128999d6dafe63ef2ed27f76e`. The user has enabled the production TTS flag; this change does not modify it.
 
 This patch adds the speech endpoint and its Premium-session guard without changing app HTML, recipes or the existing production UI. TestFlight 1.0 (4) already calls `https://basketboss.co.uk/api/tts`, so server activation does not require another signed app build. The last verified main source lacks this endpoint; an earlier settings screenshot showed `BB_TTS_ENABLED=false`. Current live settings have not been verified from this workspace.
 
 The endpoint uses OpenAI `gpt-4o-mini-tts`, voice `cedar`, British English delivery instructions and private cached MP3 clips. Server-owned auth, current Premium membership, account-deletion checks and existing native CORS remain required. Temporary failure uses the installed device voice; a successful native build does not establish that the AI voice is active or natural.
 
 ## Activation after review
+
+The main-only “Prepare Cook AI voice service” workflow runs portable checks before its `github-pages` preparation job. Relevant pushes to main explicitly prepare the reviewed additive schema; manual runs default to read-only `inspect`, with `prepare` available. It verifies configuration, the matching production deployment and the native sign-in boundary. It never changes flags, caps, secrets or R2 settings, and cannot certify real provider audio without a Premium listening check.
 
 1. Deploy this focused server patch through the existing production Pages process, retaining the current main frontend. Do not merge the wider recipe/UI release merely to publish this route.
 2. Review/apply `sql/basketboss_cook_tts_20261102.sql` to the existing production `BILLING_DB`. It adds the generation lease table and creates the existing AI usage table only if absent. No recipe payload or receipt-policy migration is needed.
@@ -26,5 +28,5 @@ TestFlight 4 has a 20-second preparation deadline versus the provider's 30-secon
 Portable checks (no provider requests):
 
 ```sh
-node --test --test-isolation=none tests/basketboss-tts.test.mjs tests/basketboss-native-api-origin.test.mjs tests/basketboss-premium-session-route-regression.test.mjs
+node --test --test-isolation=none tests/basketboss-tts.test.mjs tests/basketboss-native-api-origin.test.mjs tests/basketboss-premium-session-route-regression.test.mjs tests/basketboss-prepare-cook-ai-voice.test.mjs
 ```
