@@ -55,4 +55,4 @@ Focused cases cover real recipes, the reported 2-count/250 g pattern, serving fr
 
 Build 7 includes the earlier build 6 candidate changes plus ingredient standardisation. The native web bundle contains 100 Free recipes and no private Premium recipe bundle. A new Xcode archive/TestFlight upload is required to deliver these client changes. Server API-key corrections remain independent and can work with the existing TestFlight build.
 
-Latest full portable run: 1,533 pass, five pre-existing failures (four viewport fixture failures and one stale onboarding asset-version assertion), three skipped, two TODO. The full suite is not green. Native portable verification passes; signing, archive and device playback still require Xcode/device verification.
+Latest full portable run: 1,538 pass, zero failures, three skipped and two TODO. The viewport fixture now captures the current WebKit probe message, and the onboarding assertion uses the installed asset version. Native portable verification passes; signing and TestFlight upload require Xcode on the Mac.
