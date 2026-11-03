@@ -65,6 +65,59 @@ async function runScript(name,{ci=true,booted=true,includeLatest=false,failTests
  return {commands,executions,logs,delays,written,readFiles,removed,process:processStub};
 }
 
+function runKeyboardPreflight(failures={}){
+ const workflow=fs.readFileSync(new URL('../.github/workflows/inspect-account-keyboard.yml',import.meta.url),'utf8');
+ const match=workflow.match(/- name: Prepare the proven iOS simulator and software keyboard\s+run: \|\s+node --input-type=module <<'JS'\n([\s\S]*?)\n\s+JS\n/);
+ assert.ok(match,'the actual keyboard preflight must remain extractable');
+ const source=match[1].replace(/^\s*import .+;\r?\n/gm,'');
+ const commands=[],executions=[],logs=[],remaining=Object.fromEntries(Object.entries(failures).map(([key,values])=>[key,[...values]]));
+ let error=null;
+ try{vm.runInNewContext(source,{console:{log:value=>logs.push(value)},execFileSync(command,args,options){
+  commands.push([command,...args]);executions.push({command,args,timeout:options?.timeout});
+  const operation=command==='xcrun'&&args[0]==='simctl'?(args[1]==='list'?'list-'+args[2]:args[1]):command;
+  const code=remaining[operation]?.shift();if(code)throw Object.assign(Error('synthetic '+operation+' failure'),{code});
+  if(operation==='list-runtimes')return JSON.stringify({runtimes:[{identifier:'proven-runtime',name:'iOS 26.2',version:'26.2',isAvailable:true}]});
+  if(operation==='list-devices')return JSON.stringify({devices:{'proven-runtime':[{udid:'proven-phone',name:'iPhone 17 Pro',state:'Shutdown',isAvailable:true}]}});
+  return '';
+ }},{filename:'inspect-account-keyboard-preflight.js'});}catch(caught){error=caught;}
+ return {commands,executions,logs,error};
+}
+
+test('keyboard preflight retries one readonly list timeout before booting the proven phone once',()=>{
+ for(const operation of ['list-runtimes','list-devices']){
+  const result=runKeyboardPreflight({[operation]:['ETIMEDOUT']});
+  assert.equal(result.error,null);
+  const calls=result.executions.filter(call=>call.command==='xcrun'&&call.args[1]==='list'&&'list-'+call.args[2]===operation);
+  assert.equal(calls.length,2);assert.ok(calls.every(call=>call.timeout===120000));
+  assert.equal(result.commands.filter(command=>command[1]==='simctl'&&command[2]==='boot').length,1);
+  const preference=result.commands.findIndex(command=>command[0]==='defaults');
+  const open=result.commands.findIndex(command=>command[0]==='open');
+  assert.ok(preference>=0&&preference<open,'software keyboard preference must precede Simulator activation');
+  assert.ok(result.commands.some(command=>command[1]==='simctl'&&command[2]==='bootstatus'&&command[3]==='proven-phone'));
+ }
+});
+
+test('keyboard preflight fails closed after two readonly list timeouts without starting a simulator',()=>{
+ const result=runKeyboardPreflight({'list-runtimes':['ETIMEDOUT','ETIMEDOUT']});
+ assert.equal(result.error?.code,'ETIMEDOUT');
+ assert.equal(result.commands.length,2);
+ assert.equal(result.commands.some(command=>command[0]==='defaults'||command[0]==='open'||command[2]==='boot'),false);
+});
+
+test('keyboard preflight never retries a non-timeout readonly list error',()=>{
+ const result=runKeyboardPreflight({'list-runtimes':['EIO']});
+ assert.equal(result.error?.code,'EIO');
+ assert.equal(result.commands.length,1);
+});
+
+test('keyboard preflight never retries mutating boot, defaults or open commands after timeout',()=>{
+ for(const operation of ['boot','defaults','open']){
+  const result=runKeyboardPreflight({[operation]:['ETIMEDOUT']});
+  assert.equal(result.error?.code,'ETIMEDOUT',operation);
+  assert.equal(result.commands.filter(command=>operation==='boot'?command[1]==='simctl'&&command[2]==='boot':command[0]===operation).length,1,operation);
+ }
+});
+
 test('CI Cook runner resets the proven simulator and configures its keyboard before reopening it',async()=>{
  const result=await runScript('test-ios-cook-smoke.mjs');
  assert.equal(result.process.exitCode,undefined);

@@ -409,7 +409,9 @@
    if(typeof MutationObserver==='function')new MutationObserver(replayLabel).observe(document.body,{childList:true,subtree:true});
    window.addEventListener('basketboss:session-changed',()=>{
      if(blocked()||!host||state.step!==1)return;
-     if(validSession()){if(state.partnerIntent==='join')finishJoinHandoff();else{state.step=2;persist();render();}}else render();
+     // A late signed-out notification must not move the shared form while
+     // someone is editing: reparenting it blurs the input and hides iOS's keyboard.
+     if(validSession()){if(state.partnerIntent==='join')finishJoinHandoff();else{state.step=2;persist();render();}}else if(!accountInput())render();
    });
    window.addEventListener('basketboss:account-deletion-started',()=>{if(host)dismiss();replayLabel();});
    window.addEventListener('basketboss:account-deletion-deleted',()=>{if(host)dismiss();replayLabel();});

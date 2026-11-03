@@ -9,7 +9,7 @@ const style=fs.readFileSync('bb-onboarding-v2.css','utf8');
 const compare=fs.readFileSync('compare.html','utf8');
 
 test('new onboarding runs before legacy animation without modifying its artwork',()=>{
- assert.match(index,/bb-onboarding-v2\.js\?v=20261103-keyboard3/);
+ assert.match(index,/bb-onboarding-v2\.js\?v=20261103-keyboard4/);
  assert.match(index,/bb-onboarding-v2\.css\?v=20261101-signin3/);
  assert.ok(index.indexOf('bb-onboarding-v2.js')<index.indexOf('bb-welcome-splash.js'));
  assert.match(index,/if\(window\.BBOnboard2026\)return;/);

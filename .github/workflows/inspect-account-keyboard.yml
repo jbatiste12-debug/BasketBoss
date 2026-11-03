@@ -36,7 +36,16 @@ jobs:
         run: |
           node --input-type=module <<'JS'
           import {execFileSync} from 'node:child_process';
-          const run=(...args)=>execFileSync('xcrun',args,{encoding:'utf8',timeout:120000}).trim();
+          const run=(...args)=>{
+            const readOnlyList=args[0]==='simctl'&&args[1]==='list';
+            for(let attempt=0;;attempt++){
+              try{return execFileSync('xcrun',args,{encoding:'utf8',timeout:120000}).trim();}
+              catch(error){
+                if(!readOnlyList||error.code!=='ETIMEDOUT'||attempt!==0)throw error;
+                console.log('Retrying one timed-out readonly simulator list.');
+              }
+            }
+          };
           const runtimes=JSON.parse(run('simctl','list','runtimes','--json')).runtimes.filter(r=>r.isAvailable&&r.name.startsWith('iOS'));
           const devices=JSON.parse(run('simctl','list','devices','available','--json')).devices;
           const runtime=runtimes.find(r=>r.version.startsWith('26.2'))||runtimes.find(r=>r.version.startsWith('18.6'));

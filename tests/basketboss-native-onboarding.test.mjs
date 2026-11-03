@@ -127,6 +127,28 @@ test('keyboard layout stays steady when a sign-in field blurs onto its button',(
  h.resize(500);h.tap('next');assert.equal(h.active().classList.contains('bbob-keyboard'),false,'later setup screens keep their navigation');
 });
 
+test('signed-out session notifications preserve the mounted onboarding form while either credential field is focused',()=>{
+ for(const field of ['cloud-email','cloud-password']){
+  const h=harness({store:new Map([[PLAN,'saved meal plan']]),withAuth:true});h.tap('next');
+  const host=h.active(),form=h.node('cloud-auth'),parent=form.parentNode;
+  let html=host.innerHTML,renders=0;
+  Object.defineProperty(host,'innerHTML',{get:()=>html,set(value){renders++;html=value;}});
+  const input={id:field,inside:true,matches:selector=>selector.split(',').includes('#'+field)};
+  h.document.activeElement=input;
+  const saved=h.storage.get(KEY),writes=h.writes.length;
+  h.dispatch('basketboss:session-changed');h.dispatch('basketboss:session-changed');
+  assert.equal(renders,0,field+' must not be removed and remounted by unchanged signed-out state');
+  assert.equal(form.parentNode,parent);assert.equal(h.document.activeElement,input);
+  assert.equal(h.storage.get(KEY),saved);assert.equal(h.writes.length,writes);
+  assert.equal(h.storage.has(SESSION),false);assert.equal(h.storage.get(PLAN),'saved meal plan');
+
+  h.storage.set(SESSION,JSON.stringify({user:{id:'newly-authenticated'},access_token:'fresh',expires_at:9999999999}));
+  h.dispatch('basketboss:session-changed');
+  assert.equal(h.read().step,2,'a valid sign-in must still advance immediately while an input is focused');
+  assert.equal(renders,1);assert.match(host.innerHTML,/Would you like to share with a partner/);
+ }
+});
+
 test('fresh onboarding isolates the planner, follows keyboard panning and restores the page on exit',()=>{
  const h=harness({store:new Map([[PLAN,'saved meal plan']])});
  assert.equal(h.rootClasses.has('bb-onboarding-open'),true);
