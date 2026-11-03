@@ -286,7 +286,9 @@ test('CI Cook uses a hosted XCTest launch on the exact selected phone, while loc
  const tests=result.executions.find(call=>call.command==='xcodebuild'&&call.args.includes('test-without-building'));
  assert.ok(tests.args.includes('BasketBossCookSmokeTests'));
  assert.ok(tests.args.includes('platform=iOS Simulator,id=proven-phone'));
- assert.equal(tests.timeout,180000);
+ assert.equal(tests.timeout,600000,'hosted XCTest receives ten minutes for launch, execution and result-bundle finalization');
+ assert.equal(tests.args[tests.args.indexOf('-default-test-execution-time-allowance')+1],'90','the individual Cook case budget remains unchanged');
+ assert.equal(tests.args[tests.args.indexOf('-maximum-test-execution-time-allowance')+1],'120','the individual Cook case maximum remains unchanged');
  assert.equal(tests.args.includes('-quiet'),false);
  const appSign=result.executions.find(call=>call.command==='codesign'&&call.args.at(-1).endsWith('/App.app'));
  assert.equal(appSign.timeout,300000);
