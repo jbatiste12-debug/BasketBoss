@@ -11,24 +11,39 @@ on:
       - ios/App/BasketBossAccountKeyboardUITests/**
       - scripts/test-ios-account-keyboard.mjs
   workflow_dispatch:
+  workflow_call:
 
 permissions:
   contents: read
 
 jobs:
   keyboard:
-    runs-on: macos-latest
-    timeout-minutes: 30
+    runs-on: macos-15-intel
+    timeout-minutes: 45
+    env:
+      DEVELOPER_DIR: /Applications/Xcode_26.2.app/Contents/Developer
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
         with:
           persist-credentials: false
-      - uses: actions/setup-node@v4
+      - uses: actions/setup-node@v5
         with:
           node-version: '24'
           cache: npm
       - run: npm ci --no-audit --no-fund
       - run: npm run ios:sync
+      - name: Compile the app before starting Simulator
+        timeout-minutes: 15
+        run: >-
+          xcodebuild
+          -workspace ios/App/App.xcworkspace
+          -scheme App
+          -configuration Debug
+          -sdk iphonesimulator
+          -destination 'generic/platform=iOS Simulator'
+          -derivedDataPath /tmp/basketboss-ios-build
+          CODE_SIGNING_ALLOWED=NO
+          build
       - name: Prepare the proven iOS simulator and software keyboard
         run: |
           node --input-type=module <<'JS'
@@ -65,7 +80,7 @@ jobs:
               done=subprocess.run(['xcrun','xcresulttool','get','test-results','summary','--path',str(result)],capture_output=True,text=True)
               print(done.stdout[-20000:])
           PY
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v6
         if: always()
         with:
           name: BasketBoss-Focused-Keyboard-Verification

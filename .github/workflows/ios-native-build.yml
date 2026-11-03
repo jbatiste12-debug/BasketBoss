@@ -6,6 +6,7 @@ on:
     branches: [main, codex/native-cook-fix, release/recipe-editorial-collections, feature/conversational-voice-cook]
     paths:
       - .github/workflows/ios-native-build.yml
+      - .github/workflows/inspect-account-keyboard.yml
       - capacitor.config.json
       - package.json
       - package-lock.json
@@ -122,16 +123,6 @@ jobs:
           compression-level: 0
       - name: Exercise Cook in the actual iOS WebView
         run: node scripts/test-ios-cook-smoke.mjs
-      - name: Check account inputs with the real iOS keyboard
-        run: node scripts/test-ios-account-keyboard.mjs
-      - uses: actions/upload-artifact@v6
-        if: always()
-        with:
-          name: BasketBoss-Account-Keyboard-Verification
-          path: artifacts/account-keyboard-diagnostics/
-          if-no-files-found: ignore
-          retention-days: 14
-
       - uses: actions/upload-artifact@v6
         if: always()
         with:
@@ -139,3 +130,8 @@ jobs:
           path: artifacts/cook-smoke-diagnostics/
           if-no-files-found: ignore
           retention-days: 14
+
+  account-keyboard:
+    # Accessibility and keyboard checks get a fresh Mac and Simulator session,
+    # independent of the preceding Cook smoke test's process and graphics load.
+    uses: ./.github/workflows/inspect-account-keyboard.yml

@@ -49,7 +49,7 @@ try{
  // CI phone stays warm: never shut it down or restart its healthy GUI session.
  const argumentsForTests=['-workspace','ios/App/App.xcworkspace','-scheme','BasketBossAccountKeyboardUITests','-configuration','Debug','-sdk','iphonesimulator','-destination','platform=iOS Simulator,id='+phone,'-derivedDataPath','/tmp/basketboss-ios-build','CODE_SIGNING_ALLOWED=NO'];
  mark('build_ui_tests');
- try{save('build.log',execute('xcodebuild',[...argumentsForTests,'build-for-testing'],300000));}catch(error){saveFailure('build.log',error);throw error;}
+ try{save('build.log',execute('xcodebuild',[...argumentsForTests,'build-for-testing'],900000));}catch(error){saveFailure('build.log',error);throw error;}
  mark('sign_ui_runner');
  const products='/tmp/basketboss-ios-build/Build/Products/Debug-iphonesimulator',app=path.join(products,'App.app'),runner=path.join(products,'BasketBossAccountKeyboardUITests-Runner.app');
  if(!fs.existsSync(runner))throw Error('ui_runner_missing');
@@ -62,14 +62,22 @@ try{
  if(state==='Shutdown')run('simctl','boot',phone);
  else if(!['Booting','Booted'].includes(state))throw Error('unexpected_simulator_state');
  execute('open',['-a','Simulator','--args','-CurrentDeviceUDID',phone]);
- // The preceding Cook check has already exercised a reused booted device.
- // Re-waiting for its boot bookkeeping can stall that healthy UI session.
+ // A selected CI device may already be booted. Re-waiting for its boot
+ // bookkeeping can stall that healthy UI session.
  if(state!=='Booted'){mark('bootstatus');execute('xcrun',['simctl','bootstatus',phone,'-b'],180000);}
+ // Simulator may have read its preference while the GUI was starting. Reapply
+ // it to the active session before asking XCTest to focus real input fields.
+ mark('software_keyboard_ready');
+ execute('defaults',['write','com.apple.iphonesimulator','ConnectHardwareKeyboard','-bool','NO'],10000);
  mark('isolate_test_app');
- // This is the synthetic app installed by the preceding CI checks. Local runs
- // always use a new simulator and never uninstall a developer's saved app.
+ // This is a synthetic app on an isolated CI simulator. Local runs always use
+ // a new simulator and never uninstall a developer's saved app.
  if(resetSyntheticCIApp)try{run('simctl','uninstall',phone,'uk.co.basketboss.app');}catch{}
  execute('xcrun',['simctl','install',phone,app],githubActions?300000:120000);
+ // Give SpringBoard and the newly installed app's accessibility service time
+ // to settle on headless runners. No keyboard or layout assertion is skipped.
+ mark('settle_simulator');
+ await new Promise(resolve=>setTimeout(resolve,10000));
  mark('real_keyboard_tests');
  const result=path.join(output,'AccountKeyboard.xcresult');
  try{save('tests.log',execute('xcodebuild',[...argumentsForTests,'-parallel-testing-enabled','NO','-test-timeouts-enabled','YES','-default-test-execution-time-allowance','90','-maximum-test-execution-time-allowance','120','-resultBundlePath',result,'test-without-building'],360000));}catch(error){saveFailure('tests.log',error);try{readTestSummary(result);}catch{}throw error;}

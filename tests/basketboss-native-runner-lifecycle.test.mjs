@@ -7,7 +7,7 @@ import {keyboardRuntimePlan} from '../scripts/ios-keyboard-runtime.mjs';
 import {cookRequiredFlags,cookReportFailure} from '../scripts/ios-cook-report.mjs';
 
 async function runScript(name,{ci=true,booted=true,includeLatest=false,failTests=false,bootTimeoutState=null,failReadiness=false,keepSimulator=false,cookBadReport=false,cookIncompleteReport=false,cookMissingFlag=null,cookSummary=null,cookSummaryError=false,cookContainerChanges=false,cookBuildBoots=false,cookBundleLocation='products',cookBuildError=null,keyboardBuildBoots=false}={}){
- const commands=[],executions=[],logs=[],written=new Map(),readFiles=[];let hostedCookRan=false;
+ const commands=[],executions=[],logs=[],delays=[],written=new Map(),readFiles=[];let hostedCookRan=false;
  const processStub={platform:'darwin',env:ci?{GITHUB_ACTIONS:'true'}:{}};
  if(keepSimulator)processStub.env.BB_IAP_KEEP_SIMULATOR_BOOTED='true';
  let state=booted?'Booted':'Shutdown',createdPhone=false,createdState='Shutdown';
@@ -16,7 +16,7 @@ async function runScript(name,{ci=true,booted=true,includeLatest=false,failTests
  const runtime={identifier:'proven-runtime',name:'iOS 26.2',version:'26.2',isAvailable:true};
  const latestRuntime={identifier:'cold-latest-runtime',name:'iOS 26.5',version:'26.5',isAvailable:true};
  const source=fs.readFileSync(new URL('../scripts/'+name,import.meta.url),'utf8').replace(/^import .+;\r?\n/gm,'');
- const context={process:processStub,path,keyboardRuntimePlan,cookRequiredFlags,cookReportFailure,console:{log:value=>logs.push(value)},setTimeout:fn=>{fn();return 1;},fs:{
+ const context={process:processStub,path,keyboardRuntimePlan,cookRequiredFlags,cookReportFailure,console:{log:value=>logs.push(value)},setTimeout:(fn,ms)=>{delays.push(ms);fn();return 1;},fs:{
   mkdirSync(){},rmSync(){},existsSync(file){
    if(name==='test-ios-cook-smoke.mjs'&&String(file).endsWith('/BasketBossCookSmokeTests.xctest')){
     const embedded=String(file).includes('/App.app/PlugIns/');
@@ -61,7 +61,7 @@ async function runScript(name,{ci=true,booted=true,includeLatest=false,failTests
   return '';
  }};
  await vm.runInNewContext('(async()=>{'+source+'\n})()',context,{filename:name});
- return {commands,executions,logs,written,readFiles,process:processStub};
+ return {commands,executions,logs,delays,written,readFiles,process:processStub};
 }
 
 test('CI Cook runner resets the proven simulator and configures its keyboard before reopening it',async()=>{
@@ -96,6 +96,13 @@ test('keyboard CI reuses the exercised session without killing its GUI or re-wai
  assert.equal(result.commands.some(command=>command[0]==='killall'||(command[1]==='simctl'&&['boot','bootstatus','shutdown','delete'].includes(command[2]))),false);
  assert.ok(result.commands.some(command=>command[1]==='simctl'&&command[2]==='uninstall'&&command[3]==='proven-phone'));
  assert.ok(result.commands.some(command=>command[0]==='xcodebuild'&&command.includes('test-without-building')));
+ const open=result.commands.findIndex(command=>command[0]==='open');
+ const testRun=result.commands.findIndex(command=>command[0]==='xcodebuild'&&command.includes('test-without-building'));
+ const keyboardWrites=result.commands.map((command,index)=>({command,index})).filter(({command,index})=>index<testRun&&command[0]==='defaults'&&command[1]==='write'&&command.includes('ConnectHardwareKeyboard'));
+ assert.equal(keyboardWrites.length,2);
+ assert.ok(keyboardWrites[0].index<open&&keyboardWrites[1].index>open&&keyboardWrites[1].index<testRun,'software keyboard is configured before and after Simulator activation');
+ assert.ok(keyboardWrites.every(({command})=>command.at(-1)==='NO'));
+ assert.deepEqual(result.delays,[10000],'Simulator and installed accessibility services settle before XCTest launches');
  assert.ok(result.logs.some(line=>line.includes('"passed":true')));
 });
 
@@ -103,6 +110,7 @@ test('keyboard prepares and signs a cold disposable CI destination before boot w
  const result=await runScript('test-ios-account-keyboard.mjs',{booted:false});
  assert.equal(result.process.exitCode,undefined);
  const build=result.commands.findIndex(command=>command[0]==='xcodebuild'&&command.includes('build-for-testing'));
+ assert.equal(result.executions.find(call=>call.command==='xcodebuild'&&call.args.includes('build-for-testing')).timeout,900000);
  const boot=result.commands.findIndex(command=>command[1]==='simctl'&&command[2]==='boot');
  const ready=result.commands.findIndex(command=>command[1]==='simctl'&&command[2]==='bootstatus');
  const install=result.commands.findIndex(command=>command[1]==='simctl'&&command[2]==='install');
