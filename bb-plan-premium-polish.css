@@ -58,6 +58,33 @@ body .shell > header.top #bb17RegionCard .bb17513-region-summary{display:none!im
 #app.bbnext-plan .bbnext-day:not(.has-meal) .bbnext-day-description strong{grid-column:2!important;grid-row:1!important;align-self:end!important;}
 #app.bbnext-plan .bbnext-day:not(.has-meal) .bbnext-day-description small{grid-column:2!important;grid-row:2!important;align-self:start!important;}
 #app.bbnext-plan .bbnext-day-caret{flex:0 0 auto!important;font-size:20px!important;}
+/* Expanded dinners keep their summary above one compact set of actions. The
+   original controls stay in place so moving, cooking and saving still work. */
+#app.bbnext-plan .bbnext-day.has-meal[open]{border-color:#2d5a40!important;}
+#app.bbnext-plan .bbnext-day.has-meal[open]>.bbnext-day-toggle,
+#app.bbnext-plan .bbnext-day.has-meal>.bbnext-day-toggle:active{
+ background:#ebf3ee!important;color:#234b35!important;
+}
+#app.bbnext-plan .bbnext-day.has-meal[open]>.bbnext-day-toggle{border-bottom:1px solid #2d5a40!important;}
+#app.bbnext-plan .bbnext-day.has-meal[open]>.bbnext-day-toggle .bbnext-day-description strong{color:#234b35!important;}
+#app.bbnext-plan .bbnext-day.has-meal[open]>.bbnext-day-toggle .bb77-tonight{background:#d5e7db!important;color:#24563b!important;}
+#app.bbnext-plan .bbnext-day.has-meal[open]>.bbnext-day-toggle .bbpol-time{background:#f8fbf8!important;color:#405e4a!important;}
+#app.bbnext-plan .bbnext-day.has-meal[open]>.bbnext-day-toggle .bbfeed-control{background:#fffdf6!important;border-color:#b9cfbf!important;color:#24563b!important;}
+#app.bbnext-plan .bbnext-day-content{border-top:0!important;}
+#app.bbnext-plan .bbnext-day-content>.day{padding:0!important;border:0!important;box-shadow:none!important;background:transparent!important;}
+#app.bbnext-plan .bbnext-day-content>.day>.planned.bb14-meal-card{display:block!important;margin:0!important;padding:0!important;border:0!important;box-shadow:none!important;background:transparent!important;}
+#app.bbnext-plan .bbnext-day-content>.day>.planned.bb14-meal-card>.bb14-meal-heading,
+#app.bbnext-plan .bbnext-day-content>.day>.planned.bb14-meal-card>.bb14-meal-body>.bb14-meal-photo{display:none!important;}
+#app.bbnext-plan .bbnext-day-content>.day>.planned.bb14-meal-card>.bb14-meal-body,
+#app.bbnext-plan .bbnext-day-content>.day>.planned.bb14-meal-card .bb14-meal-commands{display:block!important;width:100%!important;min-width:0!important;}
+#app.bbnext-plan .bbnext-day-content>.day>.planned.bb14-meal-card .bb172-planner-controls{display:grid!important;grid-template-columns:minmax(0,1fr) minmax(0,1fr)!important;gap:8px!important;width:100%!important;margin:0!important;}
+#app.bbnext-plan .bbnext-day-content>.day>.planned.bb14-meal-card .bb172-planner-controls>select[data-move],
+#app.bbnext-plan .bbnext-day-content>.day>.planned.bb14-meal-card .bb172-planner-controls>[data-cook]{width:100%!important;min-width:0!important;min-height:48px!important;margin:0!important;padding:9px 12px!important;border-radius:12px!important;font-size:14px!important;line-height:1.3!important;box-shadow:none!important;}
+#app.bbnext-plan .bbnext-day-content>.day>.planned.bb14-meal-card .bb172-planner-controls>select[data-move]{grid-column:1!important;background:#f2f7f3!important;border:1px solid #b9cfbf!important;color:#234e36!important;-webkit-text-fill-color:#234e36!important;}
+#app.bbnext-plan .bbnext-day-content>.day>.planned.bb14-meal-card .bb172-planner-controls>[data-cook]{grid-column:2!important;background:#1d6848!important;border:1px solid #1d6848!important;color:#fffdf6!important;-webkit-text-fill-color:#fffdf6!important;}
+#app.bbnext-plan .bbnext-day-content>.day>.planned.bb14-meal-card .bb172-planner-controls>.bb-evening-pivot{grid-column:1/-1!important;width:100%!important;margin:0!important;}
+#app.bbnext-plan .bbnext-day-content>.day>.planned.bb14-meal-card .bb-evening-pivot-open{width:100%!important;min-height:48px!important;margin:0!important;padding:10px 12px!important;border:1px solid #c9d7c0!important;border-radius:12px!important;background:#eef5e8!important;color:#2d5a40!important;font-size:12px!important;line-height:1.35!important;box-shadow:none!important;}
+#app.bbnext-plan .bbnext-day-content .bb-leftover-panel{margin:10px 0 0!important;padding:11px 12px!important;border:1px solid #d5e2d7!important;border-radius:12px!important;background:#f7faf5!important;}
 /* Warm Pro feature strip and clean status pills for school lunches. */
 #app.bbnext-plan .bb81-pro-filters,#app.bbnext-plan .bbnext-plan-autofill,#app.bbnext-plan #bb172SixDinnerPanel{background:#fcfbf7!important;border:1px solid #e6e5da!important;border-radius:16px!important;box-shadow:none!important;}
 #app.bbnext-plan .bb81-pro-pill{border-radius:999px!important;background:#fff!important;border:1px solid #cfded1!important;min-height:39px!important;font-size:12px!important;padding:8px 13px!important;}
