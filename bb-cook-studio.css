@@ -1,78 +1,41 @@
-/* Approved Cook visual. Scoped to its page and its existing AI entry points. */
+/* Photo → reviewed ingredients → meal and matching picture. */
 body.bb-cook-studio-page{background:#fffdf6!important;color:#183f30}
-body.bb-cook-studio-page .shell{max-width:840px;padding-top:8px}
-body.bb-cook-studio-page .bb-meal-dashboard{padding:0!important;background:transparent!important;border:0!important;box-shadow:none!important}
-body.bb-cook-studio-page .bb-meal-dashboard>.bb-dashboard-heading,body.bb-cook-studio-page .bb-meal-dashboard>.bb-action-grid{display:none!important}
+body.bb-cook-studio-page .shell{max-width:780px;padding-top:8px;padding-bottom:110px}
 body.bb-cook-studio-page .bb17513-meal-topbar{background:transparent!important;border:0!important;box-shadow:none!important;margin:0 0 9px!important;padding:9px 4px!important;gap:8px!important}
-body.bb-cook-studio-page .bb17513-meal-brand{display:flex!important;width:auto!important;margin-right:auto;color:#183f30!important}
-body.bb-cook-studio-page .bb17513-meal-brand-copy strong{font-size:22px!important;color:#183f30!important;letter-spacing:-.8px!important}
+body.bb-cook-studio-page .bb17513-meal-brand{width:auto!important;margin-right:auto}
+body.bb-cook-studio-page .bb17513-meal-brand-copy strong{font-size:22px!important;color:#183f30!important}
 body.bb-cook-studio-page .bb17513-meal-brand-copy small{display:none!important}
-body.bb-cook-studio-page .bb17513-meal-mark{width:39px!important;height:39px!important;border:0!important;background:transparent!important;border-radius:11px!important}
-body.bb-cook-studio-page .bb17513-meal-mark svg{width:33px;height:33px}
-body.bb-cook-studio-page .bb17513-meal-topbar .back{font-size:10px!important;padding:7px 10px!important;min-height:36px!important}
-body.bb-cook-studio-page #bb15AiPremiumHub.bb-cook-studio{display:block!important;position:relative;isolation:isolate;background:transparent!important;border:0!important;border-radius:0!important;box-shadow:none!important;margin:0 0 20px!important;padding:0!important;color:#183f30;overflow:visible}
-body.bb-cook-studio-page #bb15AiPremiumHub.bb-cook-studio:before{content:none!important}
-#bb15AiPremiumHub.bb-cook-studio *{box-sizing:border-box}
-#bb15AiPremiumHub.bb-cook-studio svg{display:block;width:22px;height:22px;flex:none}
-#bb15AiPremiumHub.bb-cook-studio button,#bb15AiPremiumHub.bb-cook-studio label[role=button]{font-family:inherit;touch-action:manipulation;cursor:pointer}
-#bb15AiPremiumHub.bb-cook-studio button:focus-visible,#bb15AiPremiumHub.bb-cook-studio label[role=button]:focus-visible{outline:3px solid #b58a3f!important;outline-offset:4px!important}
-#bb15AiPremiumHub.bb-cook-studio .bbcs-intro{margin:14px 3px 21px}
-#bb15AiPremiumHub.bb-cook-studio .bbcs-eyebrow{font-size:10px!important;font-weight:750!important;letter-spacing:.16em;color:#7b846f!important;margin:0 0 8px!important}
-#bb15AiPremiumHub.bb-cook-studio .bbcs-intro h1{font-size:33px!important;line-height:1.1!important;letter-spacing:-1.4px!important;margin:0 0 9px!important;font-weight:800!important;color:#183f30!important}
-#bb15AiPremiumHub.bb-cook-studio .bbcs-intro>p:last-child{font-size:13px!important;line-height:1.5!important;margin:0!important;color:#6e7a70!important}
-#bb15AiPremiumHub.bb-cook-studio .bbcs-hero{position:relative;background:radial-gradient(ellipse at 90% 15%,#46785680,transparent 60%),linear-gradient(125deg,#153f2e,#285c40);color:white;border-radius:26px;padding:19px 16px 15px;isolation:isolate;box-shadow:0 12px 25px #204b3512;overflow:hidden}
-#bb15AiPremiumHub.bb-cook-studio .bbcs-hero-top{display:flex;align-items:center;justify-content:space-between;gap:8px;position:relative;z-index:2}
-#bb15AiPremiumHub.bb-cook-studio .bbcs-studio{display:inline-flex;align-items:center;gap:6px;font-size:9px;letter-spacing:.12em;font-weight:800;color:#f5d591}
-#bb15AiPremiumHub.bb-cook-studio .bbcs-studio svg{width:14px;height:14px;stroke-width:1.5}
-#bb15AiPremiumHub.bb-cook-studio .bbcs-premium{font-size:9px;font-weight:650;border:1px solid #dfca9550;color:#f6dca5;border-radius:30px;padding:5px 9px;background:#ffffff09;white-space:nowrap}
-#bb15AiPremiumHub.bb-cook-studio .bbcs-hero-body{height:182px;position:relative;display:flex;align-items:center}
-#bb15AiPremiumHub.bb-cook-studio .bbcs-hero-copy{z-index:2;position:relative;width:60%;pointer-events:none}
-#bb15AiPremiumHub.bb-cook-studio .bbcs-hero-copy h2{font-size:28px!important;line-height:1.13!important;letter-spacing:-.8px!important;font-weight:750!important;margin:0 0 10px!important;color:#fff!important;max-width:100%}
-#bb15AiPremiumHub.bb-cook-studio .bbcs-hero-copy h2 em{font-family:Georgia,serif;font-size:34px;font-weight:400;color:#f4d48f}
-#bb15AiPremiumHub.bb-cook-studio .bbcs-hero-copy p{font-size:11px!important;line-height:1.6!important;color:#d7e8d6!important;max-width:145px;margin:0!important}
-#bb15AiPremiumHub.bb-cook-studio .bbcs-food-orbit{position:absolute;right:-60px;top:9px;width:210px;height:210px;border:1px solid #e0e8bc24;border-radius:50%;display:grid;place-items:center}
-#bb15AiPremiumHub.bb-cook-studio .bbcs-food-orbit:before{content:"";position:absolute;inset:13px;border:1px dashed #e8dcb636;border-radius:50%}
-#bb15AiPremiumHub.bb-cook-studio .bbcs-hero-food{display:block;width:174px;height:174px;max-width:none;border:6px solid #f1e9d3;border-radius:50%;object-fit:cover;object-position:58% 50%;transform:rotate(-12deg);box-shadow:0 14px 30px #0c2f2b55}
-#bb15AiPremiumHub.bb-cook-studio .bbcs-spark{position:absolute;color:#f2ce7f;font-family:Georgia,serif;line-height:1;z-index:2;animation:bbcs-twinkle 4s ease-in-out infinite}
-#bb15AiPremiumHub.bb-cook-studio .bbcs-spark-one{font-size:35px;right:133px;top:3px}
-#bb15AiPremiumHub.bb-cook-studio .bbcs-spark-two{font-size:19px;right:3px;bottom:22px;animation-delay:1s}
-#bb15AiPremiumHub.bb-cook-studio .bbcs-orbit-caption{position:absolute;right:7px;bottom:9px;transform:rotate(-6deg);padding:7px 9px;border-radius:20px;background:#e9f0d8;color:#2f5940;font-size:9px;font-weight:750;box-shadow:0 4px 12px #062b1d22}
-#bb15AiPremiumHub.bb-cook-studio .bbcs-actions{position:relative;z-index:3;display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:9px}
-#bb15AiPremiumHub.bb-cook-studio .bbcs-action{position:relative!important;display:flex!important;flex-direction:column!important;align-items:flex-start!important;justify-content:center!important;gap:4px!important;min-width:0!important;width:100%!important;min-height:96px!important;margin:0!important;padding:12px 11px!important;border:0!important;border-radius:15px!important;text-align:left!important;text-decoration:none!important;box-shadow:none!important;transition:transform .18s,box-shadow .18s;overflow:hidden}
-#bb15AiPremiumHub.bb-cook-studio .bbcs-action:hover{transform:translateY(-3px);box-shadow:0 6px 15px #001c1626!important}
-#bb15AiPremiumHub.bb-cook-studio .bbcs-action:active{transform:translateY(0)}
-#bb15AiPremiumHub.bb-cook-studio .bbcs-action.bbcs-scan{background:#f6f8e9!important;color:#275c40!important}
-#bb15AiPremiumHub.bb-cook-studio .bbcs-action.bbcs-create{background:linear-gradient(135deg,#fbe0a1,#f4c96b)!important;color:#3d4026!important}
-#bb15AiPremiumHub.bb-cook-studio .bbcs-action-icon{display:block;margin-bottom:4px}
-#bb15AiPremiumHub.bb-cook-studio .bbcs-action-icon svg{width:25px;height:25px}
-#bb15AiPremiumHub.bb-cook-studio .bbcs-action strong{font-size:14px!important;line-height:1.2!important;font-weight:800!important;letter-spacing:-.25px!important;color:inherit!important}
-#bb15AiPremiumHub.bb-cook-studio .bbcs-action small{font-size:9px!important;line-height:1.3!important;font-weight:500!important;opacity:.8;color:inherit!important}
-#bb15AiPremiumHub.bb-cook-studio .bbcs-action-arrow{position:absolute;right:10px;top:12px}
-#bb15AiPremiumHub.bb-cook-studio .bbcs-action-arrow svg{width:16px;height:16px}
-#bb15AiPremiumHub.bb-cook-studio .bbcs-review-note{display:flex;align-items:center;justify-content:center;gap:6px;color:#7a8475!important;font-size:9px!important;line-height:1.4!important;margin:12px 0 24px!important;text-align:center}
-#bb15AiPremiumHub.bb-cook-studio .bbcs-review-note svg{width:12px;height:12px;color:#6b8a6b}
-#bb15AiPremiumHub.bb-cook-studio .bbcs-section-heading{display:flex;align-items:center;justify-content:space-between;gap:8px;margin:0 3px 14px}
-#bb15AiPremiumHub.bb-cook-studio .bbcs-section-heading h2{margin:0!important;font-size:17px!important;line-height:1.3!important;letter-spacing:-.45px!important;font-weight:780!important;color:#183f30!important}
-#bb15AiPremiumHub.bb-cook-studio .bbcs-section-heading h2 span{font-size:11px;font-weight:500;color:#8c9384;margin-left:5px;white-space:nowrap}
-#bb15AiPremiumHub.bb-cook-studio .bbcs-text-button{border:0!important;padding:7px 3px!important;min-height:32px!important;width:auto!important;margin:0!important;background:none!important;color:#1d6846!important;font-size:11px!important;font-weight:700!important;text-decoration:none!important;border-radius:5px!important;box-shadow:none!important}
-#bb15AiPremiumHub.bb-cook-studio .bbcs-ingredients{display:grid;grid-template-columns:repeat(var(--bbcs-columns,4),minmax(0,1fr));align-items:start;gap:8px;margin-bottom:22px;padding:0 3px}
-#bb15AiPremiumHub.bb-cook-studio .bbcs-ingredient{display:flex!important;align-items:center!important;flex-direction:column!important;gap:7px!important;min-width:0!important;min-height:0!important;background:transparent!important;border:0!important;padding:0!important;margin:0!important;box-shadow:none!important}
-#bb15AiPremiumHub.bb-cook-studio .bbcs-ingredient .bb-food-visual{width:60px;height:60px;border-radius:18px;flex:none}
-#bb15AiPremiumHub.bb-cook-studio .bbcs-ingredient strong{font-size:10px!important;line-height:1.3!important;letter-spacing:-.1px;font-weight:650!important;color:#183f30!important;max-width:100%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
-#bb15AiPremiumHub.bb-cook-studio .bbcs-plus,#bb15AiPremiumHub.bb-cook-studio .bbcs-fallback{display:grid;place-items:center;width:60px;height:60px;border:1.5px dashed #c9d4be;border-radius:18px;background:#f4f6ed;color:#4e7657}
-#bb15AiPremiumHub.bb-cook-studio .bbcs-plus svg{width:21px;height:21px}
-#bb15AiPremiumHub.bb-cook-studio .bbcs-empty{font-size:12px!important;line-height:1.6!important;color:#7b8773!important;margin:0!important;align-self:center}
-#bb15AiPremiumHub.bb-cook-studio .bbcs-ingredients:has(.bbcs-empty){grid-template-columns:minmax(0,1fr) 76px}
-#bb15AiPremiumHub.bb-cook-studio .bbcs-find-recipes{display:flex!important;justify-content:space-between!important;align-items:center!important;gap:12px!important;width:100%!important;min-height:78px!important;margin:0!important;padding:15px 16px!important;border:1px solid #e1e7d2!important;border-radius:18px!important;background:#f0f3e5!important;color:#244e37!important;text-align:left!important;box-shadow:none!important}
-#bb15AiPremiumHub.bb-cook-studio .bbcs-find-recipes>span{min-width:0}
-#bb15AiPremiumHub.bb-cook-studio .bbcs-find-recipes strong{font-size:13px;font-weight:750;line-height:1.4}
-#bb15AiPremiumHub.bb-cook-studio .bbcs-find-recipes small{display:block;margin-top:4px;font-size:10px;color:#78816c;line-height:1.4}
-#bb15AiPremiumHub.bb-cook-studio .bbcs-find-recipes svg{width:18px;height:18px}
-#bb15AiPremiumHub.bb-cook-studio .bbcs-limits{font-size:9px!important;line-height:1.65!important;color:#909486!important;margin:15px 7px 0!important;text-align:center}
-body.bb-cook-studio-page #bb82MealWorkspace{background:#fffdf9!important;border-color:#e0e6d9!important;box-shadow:none!important;border-radius:22px!important}
-body.bb-cook-studio-page .bb173-make-leftovers{background:#f0f3e5!important;border-color:#e1e7d2!important;box-shadow:none!important;color:#244e37!important}
-body.bb-cook-studio-page .bb173-make-leftovers h3{color:#244e37!important}
-@keyframes bbcs-twinkle{0%,100%{opacity:.65;transform:scale(.9) rotate(-8deg)}50%{opacity:1;transform:scale(1.12) rotate(8deg)}}
-@media(min-width:600px){#bb15AiPremiumHub.bb-cook-studio .bbcs-hero{padding:22px 24px 20px}#bb15AiPremiumHub.bb-cook-studio .bbcs-hero-body{height:210px}#bb15AiPremiumHub.bb-cook-studio .bbcs-hero-copy h2{font-size:36px!important}#bb15AiPremiumHub.bb-cook-studio .bbcs-hero-copy h2 em{font-size:43px}#bb15AiPremiumHub.bb-cook-studio .bbcs-hero-copy p{font-size:13px!important;max-width:230px}#bb15AiPremiumHub.bb-cook-studio .bbcs-food-orbit{right:10px;width:245px;height:245px}#bb15AiPremiumHub.bb-cook-studio .bbcs-hero-food{width:210px;height:210px}#bb15AiPremiumHub.bb-cook-studio .bbcs-orbit-caption{right:24px;bottom:18px}#bb15AiPremiumHub.bb-cook-studio .bbcs-action{min-height:103px!important;padding:14px 17px!important}#bb15AiPremiumHub.bb-cook-studio .bbcs-action strong{font-size:16px!important}#bb15AiPremiumHub.bb-cook-studio .bbcs-action small{font-size:11px!important}#bb15AiPremiumHub.bb-cook-studio .bbcs-ingredients{max-width:500px;margin-inline:auto}#bb15AiPremiumHub.bb-cook-studio .bbcs-ingredient .bb-food-visual,#bb15AiPremiumHub.bb-cook-studio .bbcs-plus,#bb15AiPremiumHub.bb-cook-studio .bbcs-fallback{width:72px;height:72px}}
-@media(max-width:350px){#bb15AiPremiumHub.bb-cook-studio .bbcs-intro h1{font-size:30px!important}#bb15AiPremiumHub.bb-cook-studio .bbcs-hero{padding:17px 12px 13px}#bb15AiPremiumHub.bb-cook-studio .bbcs-hero-copy h2{font-size:25px!important}#bb15AiPremiumHub.bb-cook-studio .bbcs-hero-copy h2 em{font-size:30px}#bb15AiPremiumHub.bb-cook-studio .bbcs-food-orbit{right:-75px;width:195px;height:195px}#bb15AiPremiumHub.bb-cook-studio .bbcs-hero-food{width:160px;height:160px}#bb15AiPremiumHub.bb-cook-studio .bbcs-hero-copy p{max-width:130px;font-size:10px!important}#bb15AiPremiumHub.bb-cook-studio .bbcs-action{padding:11px 9px!important}#bb15AiPremiumHub.bb-cook-studio .bbcs-action strong{font-size:12px!important}#bb15AiPremiumHub.bb-cook-studio .bbcs-action small{font-size:8px!important}#bb15AiPremiumHub.bb-cook-studio .bbcs-ingredient .bb-food-visual,#bb15AiPremiumHub.bb-cook-studio .bbcs-plus,#bb15AiPremiumHub.bb-cook-studio .bbcs-fallback{width:47px;height:47px}#bb15AiPremiumHub.bb-cook-studio .bbcs-section-heading h2{font-size:16px!important}}
-@media(prefers-reduced-motion:reduce){#bb15AiPremiumHub.bb-cook-studio *,#bb15AiPremiumHub.bb-cook-studio *:before{animation:none!important;transition:none!important;scroll-behavior:auto!important}}
+body.bb-cook-studio-page .bb17513-meal-mark{width:39px!important;height:39px!important;border:0!important;background:transparent!important}
+body.bb-cook-studio-page .bb17513-meal-topbar .back{font-size:11px!important;min-height:38px!important;padding:8px 11px!important}
+body.bb-photo-meal-page .bb-meal-dashboard,body.bb-photo-meal-page #bb82MealWorkspace,body.bb-photo-meal-page #bb74MealPeek{display:none!important}
+body.bb-photo-meal-page #bb15AiPremiumHub{display:block!important;position:relative;isolation:isolate;margin:0!important;padding:0!important;background:transparent!important;border:0!important;box-shadow:none!important;overflow:visible!important}
+body.bb-photo-meal-page #bb15AiPremiumHub *{box-sizing:border-box}
+.bbpm-intro{margin:20px 4px 25px}.bbpm-kicker{font-size:10px!important;letter-spacing:.16em;font-weight:800;color:#60816c!important;margin-bottom:12px!important}
+#bb15AiPremiumHub .bbpm-intro h1{font-size:clamp(32px,7vw,45px)!important;line-height:1.08!important;letter-spacing:-1.3px!important;color:#184c37!important;margin:0 0 15px!important}
+.bbpm-intro>p:last-child{max-width:450px;color:#607368!important;line-height:1.6!important;font-size:15px!important;margin:0!important}
+.bbpm-steps{display:flex;justify-content:space-between;gap:10px;list-style:none;padding:0;margin:0 0 24px;font-size:11px;font-weight:750;color:#40624d}
+.bbpm-steps li{display:flex;align-items:center;gap:6px;min-width:0}.bbpm-steps span{display:grid;place-items:center;width:24px;height:24px;flex:none;background:#e9f0e2;border:1px solid #d6e1cd;border-radius:50%;color:#28563d}
+body.bb-photo-meal-page #bbToolStage,body.bb-photo-meal-page #bbToolStage.bb-ai-native-visible{display:block!important;position:static!important;inset:auto!important;width:100%!important;max-width:none!important;max-height:none!important;margin:0!important;padding:0!important;overflow:visible!important;border:0!important;border-radius:0!important;background:transparent!important;box-shadow:none!important;z-index:auto!important}
+body.bb-photo-meal-page #bbToolStage>[hidden],body.bb-photo-meal-page #bbToolStage [hidden],body.bb-photo-meal-page #bbToolStage .bb-tool-close{display:none!important}
+body.bb-photo-meal-page #bbToolStage>.ai-feature{background:#fff!important;border:1px solid #dce5d7!important;border-radius:22px!important;padding:clamp(18px,4vw,28px)!important;margin:0 0 18px!important;box-shadow:0 6px 24px #193d2810!important}
+#bbToolStage .ai-feature-heading .feature-label{color:#68846b;font-size:10px;letter-spacing:.12em;font-weight:800}
+body.bb-photo-meal-page #bbToolStage h2{font-size:25px!important;line-height:1.2!important;color:#194f39!important;margin:8px 0 10px!important}
+body.bb-photo-meal-page #bbToolStage .ai-feature-heading p{color:#647669!important;font-size:14px!important;line-height:1.55!important}
+body.bb-photo-meal-page #bbToolStage .scan-upload-label{display:flex!important;justify-content:center;align-items:center;gap:8px;min-height:126px!important;padding:24px!important;margin:20px 0 12px!important;border:2px dashed #aabd9e!important;border-radius:16px!important;color:#255a3e!important;background:#f5f8ee!important;font-size:17px!important;font-weight:800!important;cursor:pointer;touch-action:manipulation}
+body.bb-photo-meal-page #ai-photo-input{position:absolute!important;width:1px!important;height:1px!important;opacity:0!important;overflow:hidden!important}
+body.bb-photo-meal-page #bbToolStage .scan-upload-label:focus-within{outline:3px solid #d4a343;outline-offset:3px}
+body.bb-photo-meal-page #photoPreview.show{display:block!important;width:100%!important;max-height:260px!important;height:auto!important;object-fit:contain!important;background:#f4f6f0;border-radius:14px!important;margin:0 auto 14px!important}
+body.bb-photo-meal-page #photoPreview:not(.show){display:none!important}
+body.bb-photo-meal-page #bbToolStage .ai-primary-button{display:block;width:100%;min-height:54px!important;border:0!important;border-radius:13px!important;background:#236543!important;color:#fff!important;padding:14px 18px!important;font:800 16px/1.4 system-ui!important;cursor:pointer;touch-action:manipulation}
+body.bb-photo-meal-page #bbToolStage button:disabled{opacity:.55;cursor:wait}
+body.bb-photo-meal-page #bbToolStage button:focus-visible,body.bb-photo-meal-page #bbToolStage label[for]:focus-visible,body.bb-photo-meal-page #bbToolStage input:focus-visible{outline:3px solid #d4a343!important;outline-offset:3px}
+body.bb-photo-meal-page #bbToolStage .disclosure,.bbpm-limits{color:#7b8373!important;font-size:11px!important;line-height:1.6!important;margin:15px 2px 0!important}
+.bbpm-limits{text-align:center;margin:19px 0!important}
+.bb-photo-review{margin-top:24px;border-top:1px solid #e4eadf;padding-top:20px}.bb-photo-review h3{font-size:21px;margin:0 0 8px;color:#22533d}.bb-photo-review>p{font-size:13px;line-height:1.5;color:#687a6b}
+.bb-photo-food-row{display:flex;gap:11px;align-items:center;margin:9px 0;background:#f7f9f2;border:1px solid #dfe6d7;border-radius:12px;padding:11px}
+.bb-photo-food-row>input[type=checkbox]{width:22px;height:22px;accent-color:#236543;flex:none}.bb-photo-food-row>label{flex:1;min-width:0;font-size:10px;color:#66755f}
+body.bb-photo-meal-page #bbToolStage .bb-photo-food-row input[type=text]{display:block;width:100%;min-height:40px;border:1px solid transparent;border-bottom-color:#d4dfcc;border-radius:5px;background:transparent;color:#254c37;font:700 15px system-ui;padding:7px 2px}
+.bb-photo-review .ai-primary-button{margin-top:19px}.bb-photo-empty{padding:16px;background:#f5f7ee;border-radius:12px}
+body.bb-photo-meal-page #aiMeal>#aiStatus{font-size:12px;color:#657b6b}
+body.bb-photo-meal-page #aiSecurityBox{margin:0 0 16px!important;background:#f6f8f0!important;padding:15px!important;border-radius:14px!important}
+@media(max-width:390px){.bbpm-steps{font-size:10px;gap:5px}.bbpm-steps span{width:21px;height:21px}.bbpm-steps li{gap:4px}}

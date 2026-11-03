@@ -4,68 +4,57 @@ import fs from 'node:fs';
 import vm from 'node:vm';
 
 const source=fs.readFileSync(new URL('../bb-cook-studio.js',import.meta.url),'utf8');
-function harness(initial=[]){
- let ingredients=initial;
- const observers=[],frames=[],visuals=[];
- const element=()=>({handlers:{},attributes:{},classList:{values:new Set(),add(value){this.values.add(value);}},style:{setProperty(key,value){this[key]=value;}},isConnected:true,innerHTML:'',textContent:'',focuses:0,scrolls:[],clicks:0,
-  addEventListener(type,listener){this.handlers[type]=listener;},setAttribute(key,value){this.attributes[key]=value;},focus(){this.focuses++;},scrollIntoView(options){this.scrolls.push(options);},click(){this.clicks++;}});
- const strip=element(),count=element(),summary=element(),confirm=element(),review=element(),workspace=element(),hub=element(),first={open:false,querySelector:()=>summary};
- hub.querySelector=selector=>selector==='[data-bbcs-ingredients]'?strip:selector==='[data-bbcs-count]'?count:null;
- workspace.querySelector=selector=>selector==='details.bb82-ingredient-location'?first:null;
- const document={body:element(),getElementById:id=>id==='bb5MealReview'?review:id==='bb5GenerateFromReview'?confirm:null};
- const window={document,requestAnimationFrame:callback=>frames.push(callback),matchMedia:()=>({matches:true}),MutationObserver:class{constructor(callback){this.callback=callback;observers.push(this);}observe(target,options){this.target=target;this.options=options;}},
-  BBFoodVisuals:{html(name,options){visuals.push({name,options});return '<span class="test-art"></span>';}},
-  fetch(){throw Error('Presentation must not send requests');}};
- Object.defineProperty(window,'localStorage',{get(){throw Error('Presentation must not read or write stored state');}});
- vm.runInNewContext(source,{window});
- const args={hub,workspace,getIngredients:()=>ingredients};
- const controller=window.BBCookStudio.mount(args);
- const click=attribute=>hub.handlers.click({target:{closest:selector=>selector===attribute?{}:null}});
- return {window,hub,workspace,review,confirm,summary,strip,count,first,visuals,observers,controller,args,click,setIngredients:items=>{ingredients=items;},flush(){while(frames.length)frames.shift()();}};
+function harness({pantry=false,missingStage=false}={}){
+ const element=()=>({attributes:{},classList:{values:new Set(),add(...values){for(const value of values)this.values.add(value);},remove(...values){for(const value of values)this.values.delete(value);}},isConnected:true,innerHTML:'',textContent:'',hidden:false,children:[],setAttribute(key,value){this.attributes[key]=value;},removeAttribute(key){delete this.attributes[key];},append(...nodes){for(const node of nodes){if(node.parentNode)node.parentNode.children=node.parentNode.children.filter(child=>child!==node);this.children.push(node);node.parentNode=this;}},querySelector(){return null;}});
+ const workspace=element(),hub=element(),stage=element(),scanner=element(),meal=element(),body=element(),close=element(),scan=element(),generate=element();
+ const scanHeading=element(),mealHeading=element(),upload=element(),disclosure=element(),warning=element(),input=element();
+ disclosure.textContent='Original Pantry disclosure';scanHeading.innerHTML='Original Pantry heading';
+ stage.attributes={role:'dialog','aria-modal':'true'};stage.hidden=true;stage.classList.add('bb-ai-native-visible');stage.append(scanner,meal);body.append(stage);
+ scanner.append(input);scanner.querySelector=selector=>selector==='.ai-feature-heading'?scanHeading:selector==='label[for="ai-photo-input"]'?upload:selector==='.disclosure'?disclosure:null;
+ meal.querySelector=selector=>selector==='.ai-feature-heading'?mealHeading:selector==='.warning'?warning:null;
+ stage.querySelector=selector=>selector==='[data-close-tool]'?close:null;
+ const nodes={bbToolStage:missingStage?null:stage,aiScanner:scanner,aiMeal:meal,scanBtn:scan,generate,'ai-photo-input':input};
+ const document={body,getElementById:id=>nodes[id]||null,createElement:element};hub.ownerDocument=document;
+ const window={document,location:{href:'http://localhost/make-a-meal.html'+(pantry?'?bbscan=pantry&location=fridge':'')},fetch(){throw Error('The presentation must not send requests');}};
+ Object.defineProperty(window,'localStorage',{get(){throw Error('The presentation must not read or write stored food');}});
+ vm.runInNewContext(source,{window,URL});
+ return {window,hub,workspace,stage,scanner,meal,close,scan,generate,scanHeading,mealHeading,upload,disclosure,warning,input,body,args:{hub,workspace},mount:()=>window.BBCookStudio.mount({hub,workspace})};
 }
 
-test('approved AI actions retain the real scanner label and meal trigger without bypassing membership or creating requests',()=>{
- const h=harness();
- assert.match(h.hub.innerHTML,/<label[^>]*data-ai-scan-btn[^>]*for="ai-photo-input"[^>]*role="button"/);
- assert.match(h.hub.innerHTML,/<button[^>]*data-ai-meal-btn[^>]*data-open-tool="meal"/);
- assert.match(h.hub.innerHTML,/Scan my food/);assert.match(h.hub.innerHTML,/Create a meal/);
- assert.match(h.hub.innerHTML,/AI tools require Premium and an internet connection/);
- assert.doesNotMatch(h.hub.innerHTML,/href="[^"]*(?:checkout|stripe|paddle|pricing)|AI ready|scans remaining/);
- assert.equal(h.count.textContent,'None selected');
+test('photo workspace has one inline photo flow and retains the original camera and output controls',()=>{
+ const h=harness(),controller=h.mount();assert(controller);
+ assert.match(h.hub.innerHTML,/Photo to meal steps/);assert.match(h.hub.innerHTML,/Check ingredients/);assert.match(h.hub.innerHTML,/Meal \+ picture/);
+ assert.doesNotMatch(h.hub.innerHTML,/Scan my food|Create a meal|Find recipes|bbcs-hero-food|<img/);
+ assert.equal(h.workspace.hidden,true);assert.equal(h.stage.parentNode,h.hub);assert.equal(h.stage.hidden,false);
+ assert.equal(h.stage.attributes.role,undefined);assert.equal(h.stage.attributes['aria-modal'],undefined);assert.equal(h.stage.classList.values.has('bb-ai-native-visible'),false);
+ assert.equal(h.close.hidden,true);assert.equal(h.scanner.hidden,false);assert.equal(h.meal.hidden,true);
+ assert.equal(h.input.parentNode,h.scanner);assert.equal(h.upload.textContent,'Take or choose a photo');assert.equal(h.scan.hidden,true);assert.equal(h.generate.hidden,true);
+ assert.equal(h.upload.attributes.role,'button');assert.equal(h.upload.tabIndex,0);assert.equal(h.upload.attributes['data-ai-scan-btn'],'');
+ assert.match(h.disclosure.textContent,/Nothing is added to At home or your shopping list/);
+ assert.equal(h.body.classList.values.has('bb-photo-meal-page'),true);
 });
 
-test('ingredient view reflects current unsaved choices and preparation states without changing names, quantities or confirmation',()=>{
- const selected=[{name:'Cooked chicken',qty:300,unit:'g',loc:'fridge'},{name:'Pasta',qty:null,unit:'g',loc:'cupboard'}];
- const before=JSON.stringify(selected),h=harness(selected);
- assert.equal(h.count.textContent,'2 selected');
- assert.deepEqual(h.visuals.map(call=>call.name),['Cooked chicken','Pasta']);
- assert.equal(h.visuals[0].options.context,'cook');assert.equal(JSON.stringify(selected),before);
- h.setIngredients([{name:'Frozen chicken',qty:500,unit:'g',loc:'freezer'}]);
- h.observers[0].callback();h.observers[0].callback();h.flush();
- assert.equal(h.count.textContent,'1 selected');assert.match(h.strip.innerHTML,/Frozen chicken/);assert.doesNotMatch(h.strip.innerHTML,/Cooked chicken/);
- assert.equal(h.visuals.at(-1).name,'Frozen chicken');
- assert.equal(h.observers[0].target,h.workspace);assert.equal(h.observers[0].options.attributes,undefined);
+test('ingredient dedupe normalizes case, Unicode, whitespace and safe plurals while preserving food forms',()=>{
+ const {window}=harness(),names=window.BBCookStudio.ingredientNames(['  Rice  ','Ｒｉｃｅ','rice','Red onions','red onion','Raw chicken','Cooked chicken','Frozen chicken','Chicken','Peppers','Black pepper','Tinned tomatoes','Fresh tomatoes','',null]);
+ assert.deepEqual(Array.from(names),['Rice','Red onions','Raw chicken','Cooked chicken','Frozen chicken','Chicken','Peppers','Black pepper','Tinned tomatoes','Fresh tomatoes']);
+ assert.deepEqual(Array.from(window.BBCookStudio.ingredientNames(['Lettuce','lettuce','Garlic','garlic'])),['Lettuce','Garlic']);
 });
 
-test('custom food names remain escaped and the compact preview never drops the complete selection count',()=>{
- const h=harness([{name:'Custom "food" <img onerror=alert(1)>'},...Array.from({length:5},(_,n)=>({name:'Food '+n}))]);
- assert.equal(h.count.textContent,'6 selected');
- assert.match(h.strip.innerHTML,/Custom &quot;food&quot; &lt;img onerror=alert\(1\)&gt;/);
- assert.doesNotMatch(h.strip.innerHTML,/<img|Food 3|Food 4/);
- assert.equal(h.strip.style['--bbcs-columns'],'5');
+test('the At home camera handoff retains storage review copy without extra meal actions',()=>{
+ const h=harness({pantry:true});h.mount();
+ assert.match(h.hub.innerHTML,/AT HOME · PHOTO SCAN/);assert.doesNotMatch(h.hub.innerHTML,/Photo to meal steps|Meal \+ picture/);
+ assert.equal(h.hub.attributes['aria-label'],'Scan food for At home');assert.equal(h.disclosure.textContent,'Original Pantry disclosure');assert.equal(h.scanHeading.innerHTML,'Original Pantry heading');
+ assert.equal(h.scanner.hidden,false);assert.equal(h.meal.hidden,true);assert.equal(h.input.parentNode,h.scanner);
 });
 
-test('Edit and local finder move focus to original controls without clicking confirm or saving data',()=>{
- const h=harness([{name:'Rice',qty:500,unit:'g'}]);
- h.click('[data-bbcs-edit]');assert.equal(h.first.open,true);assert.equal(h.summary.focuses,1);assert.equal(h.workspace.scrolls.length,1);
- h.click('[data-bbcs-find]');assert.equal(h.review.scrolls.length,1);assert.equal(h.confirm.focuses,1);assert.equal(h.confirm.clicks,0);
- assert.equal(h.review.scrolls[0].behavior,'auto');
- const empty=harness();empty.click('[data-bbcs-find]');assert.equal(empty.workspace.scrolls.length,1);assert.equal(empty.summary.focuses,1);assert.equal(empty.confirm.focuses,0);
+test('showing and clearing a meal only changes visibility and does not recreate the camera input',()=>{
+ const h=harness(),controller=h.mount();controller.showMeal();assert.equal(h.meal.hidden,false);controller.clearMeal();assert.equal(h.meal.hidden,true);
+ controller.refresh();assert.equal(h.stage.parentNode,h.hub);assert.equal(h.input.parentNode,h.scanner);assert.equal(h.hub.children.filter(child=>child===h.stage).length,1);
 });
 
-test('mounting twice does not duplicate observers, listeners or the existing entrypoint',()=>{
- const h=harness([{name:'Milk'}]);const listener=h.hub.handlers.click;
- assert.equal(h.window.BBCookStudio.mount(h.args),h.controller);
- assert.equal(h.observers.length,1);assert.equal(h.hub.handlers.click,listener);
- h.setIngredients([{name:'Milk'},{name:'Bread'}]);h.workspace.handlers.input();h.flush();assert.equal(h.count.textContent,'2 selected');
+test('repeated mounting is idempotent and an unavailable original panel fails without mutation',()=>{
+ const h=harness(),controller=h.mount(),before=h.hub.innerHTML,children=h.hub.children.length;
+ assert.equal(h.window.BBCookStudio.mount(h.args),controller);assert.equal(h.hub.innerHTML,before);assert.equal(h.hub.children.length,children);
+ assert.equal(h.window.BBCookStudio.mount({hub:h.hub}),null);
+ const absent=harness({missingStage:true});assert.equal(absent.mount(),null);assert.equal(absent.workspace.hidden,false);assert.equal(absent.hub.innerHTML,'');
 });

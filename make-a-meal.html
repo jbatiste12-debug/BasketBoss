@@ -62,8 +62,8 @@ html,body{background:#E9ECEF!important;background-image:none!important;min-heigh
 <link rel="stylesheet" href="bb-servings-mobile-polish.css?v=20261029-preview1">
 <link rel="stylesheet" href="bb-premium-feature-badges.css?v=20261101-badge1">
 <script defer src="bb-premium-feature-badges.js?v=20261101-badge1"></script>
-<link rel="stylesheet" href="bb-cook-studio.css?v=20261101-cook1">
-<script defer src="bb-cook-studio.js?v=20261101-cook1"></script>
+<link rel="stylesheet" href="bb-cook-studio.css?v=20261103-photo-meal1">
+<script defer src="bb-cook-studio.js?v=20261103-photo-meal1"></script>
 <link rel="stylesheet" href="bb-cook-result.css?v=20261101-cook1">
 <link rel="stylesheet" href="bb-cook-clarity.css?v=20261102-loop2">
 <script defer src="bb-duration.js?v=20261102-duration2"></script>
@@ -161,11 +161,12 @@ html,body{background:#E9ECEF!important;background-image:none!important;min-heigh
       if(!stage||!scanner||!meal){visibleError('AI panel is unavailable. Refresh the page and try again.');return;}
       // Move the existing panel out of any ancestor stacking/overflow context.
       // Its mounted file input and existing scan handlers remain the same nodes.
-      if(stage.parentNode!==document.body)document.body.appendChild(stage);
+      var inline=document.body.classList.contains('bb-photo-meal-page');
+      if(!inline&&stage.parentNode!==document.body)document.body.appendChild(stage);
       stage.hidden=false;
       scanner.hidden=tool!=='scan';
       meal.hidden=tool!=='meal';
-      stage.classList.add('bb-ai-native-visible');
+      if(inline)stage.classList.remove('bb-ai-native-visible');else stage.classList.add('bb-ai-native-visible');
       stage.scrollTop=0;
       document.querySelectorAll('[data-ai-scan-btn],[data-ai-meal-btn],[data-open-tool]')
         .forEach(function(el){el.setAttribute('aria-expanded',String((tool==='scan'&&el.matches('[data-ai-scan-btn]'))||(tool==='meal'&&el.matches('[data-ai-meal-btn]'))||el.dataset.openTool===tool));});
@@ -263,11 +264,12 @@ html,body{background:#E9ECEF!important;background-image:none!important;min-heigh
     if(event.target.id!=='ai-photo-input')return;
     var result=document.getElementById('scanResults');
     if(result)result.textContent=event.target.files?.length?
-      'Photo ready. Tap Scan my ingredients to start.':
+      'Photo ready. Tap Find my ingredients to scan.':
       'No photo selected. Take Photo / Choose Image to retry.';
   });
   document.addEventListener('cancel',function(event){
     if(event.target.id==='ai-photo-input'){
+      if(event.target.files?.length)return;
       var result=document.getElementById('scanResults');
       if(result)result.textContent='No photo selected. Take Photo / Choose Image to retry.';
     }
@@ -285,7 +287,7 @@ html,body{background:#E9ECEF!important;background-image:none!important;min-heigh
   });
 })();
 </script>
-<script src="bb-premium-preview-config.js?v=1743-premium-leftovers"></script><script defer="" src="make-a-meal.js?v=20261102-camera2"></script><script>if('serviceWorker' in navigator&&location.protocol==='https:')addEventListener('load',()=>navigator.serviceWorker.register('./service-worker.js').catch(()=>{}),{once:true})</script><script defer src="premium-upgrade.js?v=bb-native-ai-open-20261027-v1"></script><script src="bb-us-market.js?v=20261102-loop2"></script><script defer src="bb-install.js?v=173install1"></script><script src="bb-real-app-tour.js?v=17513real1" defer></script>
+<script src="bb-premium-preview-config.js?v=1743-premium-leftovers"></script><script defer="" src="make-a-meal.js?v=20261103-photo-meal1"></script><script>if('serviceWorker' in navigator&&location.protocol==='https:')addEventListener('load',()=>navigator.serviceWorker.register('./service-worker.js').catch(()=>{}),{once:true})</script><script defer src="premium-upgrade.js?v=bb-native-ai-open-20261027-v1"></script><script src="bb-us-market.js?v=20261102-loop2"></script><script defer src="bb-install.js?v=173install1"></script><script src="bb-real-app-tour.js?v=17513real1" defer></script>
 <!-- BB17513 private QA membership switch: PRIVATE CODESPACES HOSTS ONLY. Not an entitlement. -->
 <style id="bb17513-private-qa-toggle-css">
 #bb17513-qa-mode-bar{position:relative;z-index:3;max-width:1100px;margin:8px auto 12px;padding:9px 12px;display:flex;align-items:center;justify-content:space-between;gap:10px;flex-wrap:wrap;background:#fff7df;color:#3e3525;border:1px solid #d7be76;border-radius:15px;font:600 12px/1.35 system-ui,-apple-system,sans-serif;box-shadow:0 2px 9px #0000000a;box-sizing:border-box}

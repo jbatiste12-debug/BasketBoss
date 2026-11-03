@@ -62,6 +62,9 @@ on:
       - tests/basketboss-cook-voice.test.mjs
       - tests/basketboss-evening-pivot-app.test.mjs
       - tests/basketboss-landing-meal-pricing.test.mjs
+      - tests/basketboss-photo-meal*.test.mjs
+      - tests/basketboss-cook-studio.test.mjs
+      - tests/basketboss-cook-result.test.mjs
       - native/**
       - ios/**
       - scripts/*native*.mjs
@@ -106,6 +109,18 @@ jobs:
           tests/basketboss-landing-meal-pricing.test.mjs
       - name: Test native routing and permissions
         run: npm run test:native
+      - name: Verify photo review, recipe creation and matching meal pictures
+        run: >-
+          node --test --test-isolation=none
+          tests/basketboss-photo-meal-flow.test.mjs
+          tests/basketboss-photo-meal-ingredients.test.mjs
+          tests/basketboss-cook-studio.test.mjs
+          tests/basketboss-cook-result.test.mjs
+          tests/basketboss-meal-image-client.test.mjs
+          tests/basketboss-meal-image.test.mjs
+          tests/basketboss-pantry-camera.test.mjs
+          tests/basketboss-ai-quota-autoinit.test.mjs
+          tests/basketboss-ai-turnstile-safari-premium.test.mjs
       - name: Compile the iOS simulator app without signing credentials
         run: >-
           xcodebuild

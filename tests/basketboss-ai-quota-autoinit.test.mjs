@@ -114,7 +114,7 @@ test('Status marks Turnstile optional only for verified Live subscriber, require
   });
 });
 
-test('Safari scanner modal hides Turnstile for verified Live accounts, preserves camera label/input',async()=>{
+test('Safari inline scanner hides Turnstile for verified Live accounts and preserves the mounted camera input',async()=>{
   const script=await fs.readFile(new URL('../make-a-meal.js',import.meta.url),'utf8');
   const html=await fs.readFile(new URL('../make-a-meal.html',import.meta.url),'utf8');
   assert.match(script,/bbTurnstileRequired=\!\(aiEnabled&&data.turnstileRequired===false\)/);
@@ -123,5 +123,8 @@ test('Safari scanner modal hides Turnstile for verified Live accounts, preserves
   assert.match(html,/#aiSecurityBox:not\(\[hidden\]\)/);
   assert.match(html,/<label class="scan-upload-label" for="ai-photo-input">/);
   assert.match(html,/<input accept="image\/\*"[^>]+id="ai-photo-input" type="file"/);
-  assert.match(html,/make-a-meal\.js\?v=20261102-camera2/);
+  const asset=html.match(/<script[^>]+src="(make-a-meal\.js\?[^\"]+)"/)?.[1];
+  assert.ok(asset,'Make a Meal loads its versioned controller');
+  const version=new URL(asset,'https://basketboss.co.uk/').searchParams.get('v');
+  assert.ok(/^\d{8}-/.test(version||'')&&Number(version.slice(0,8))>=20261103,'the inline photo flow uses a current controller asset');
 });

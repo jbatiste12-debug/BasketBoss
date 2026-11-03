@@ -17,6 +17,7 @@ function bb176MakeMealAllowed(recipe){
 async function bbSecureRefreshPremiumRecipes(){
   const token=bbPaidToken();
   bbSecureLastToken=token;
+  if(bbPhotoMealMode)return;
   bbSecurePremiumIds=new Set();
   recipes=bbSecureFreeRecipes.slice();
   renderTiles();
@@ -61,6 +62,9 @@ let area='cupboard',mode='only',recipes=[],inventory={},results=[],suggestionOff
 let scanReviewActor=null,pantryScanLocation=null;
 let aiEnabled=false, turnstileToken='',turnstileWidgetId=null,scanRevision=0,scanInFlight=false,generateInFlight=false;
 let generateRevision=0,generateActor=null,generatedView=null;
+const bbPhotoMealMode=new URLSearchParams(location.search).get('bbscan')!=='pantry';
+let bbPhotoMealNames=null,bbPhotoReviewToken=null;
+let bbScanRequest=null;
 const $=s=>document.querySelector(s), esc=x=>String(x??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 // Recipe presentation follows the saved shopping region. Inventory remains
 // in its original metric/count units for review, planning and reconciliation.
@@ -452,6 +456,13 @@ function likelyPerishable(name){return /\b(chicken|beef|pork|lamb|fish|prawns?|s
 function bbScanActor(){try{return JSON.parse(localStorage.getItem('basketboss_cloud_session_v1')||'null')?.user?.id||null;}catch{return null;}}
 function renderScanResponse(scan){
  scanReviewActor=bbScanActor();
+ if(bbPhotoMealMode){
+  bbPhotoReviewToken=bbPaidToken();bbPhotoMealNames=null;
+  const names=window.BBCookStudio.ingredientNames((Array.isArray(scan?.items)?scan.items:[]).slice(0,20).map(item=>item?.name));
+  $('#scanBtn').hidden=true;
+  $('#scanResults').innerHTML=names.length?`<form id="reviewMealFoods" class="bb-photo-review"><h3>Check your ingredients</h3><p>Uncheck anything that isn’t there and correct any names. Choose up to 12 foods. We’ll use this list to create your meal and its picture.</p>${names.map((name,index)=>`<div class="bb-photo-food-row"><input type="checkbox" name="mealFood" checked aria-label="Use ingredient ${index+1}"><label>Ingredient ${index+1}<input type="text" data-photo-meal-name maxlength="60" value="${esc(name)}" aria-label="Ingredient ${index+1} name"></label></div>`).join('')}<p id="photoMealReviewMessage" class="warning" role="alert" hidden></p><button class="button ai-primary-button" type="submit">Generate meal &amp; picture</button></form>`:'<p class="bb-photo-empty" role="status">No ingredients were recognised. Try a clearer photo with the food or its packaging in view.</p>';
+  $('#scanResults').scrollIntoView({behavior:'smooth',block:'start'});return;
+ }
  const items=Array.isArray(scan?.items)?scan.items.filter(x=>x&&typeof x.name==='string'&&x.name.trim()).slice(0,20):[];
  const seen=new Set();const unique=items.filter(x=>{const id=canon(x.name);if(!id||seen.has(id))return false;seen.add(id);return true});
  $('#scanResults').innerHTML=unique.length?`<div class="success">Gemini found possible ingredients. Tick only foods you recognise. Enter an amount you have checked to update At home; AI estimates are suggestions only.</div><form id="reviewFoods"><div class="scan-result-list">${unique.map(x=>{const name=x.name.trim().slice(0,70),location=pantryScanLocation&&!(pantryScanLocation==='cupboard'&&likelyPerishable(name))?pantryScanLocation:'';return `<div class="scan-result-row"><label class="scan-item-label"><input type="checkbox" name="food" value="${esc(name)}"><span><strong>${esc(name)}</strong><span class="scan-item-meta">Estimated ${esc(String(x.estimatedQuantity||'unknown').slice(0,60))} · ${esc(String(x.confidence||'uncertain').slice(0,15))} confidence</span><span class="scan-item-meta">${esc(String(x.notes||'').slice(0,150))}</span></span></label><label class="scan-destination">Store this item in<select class="field" data-scan-location aria-label="Choose storage location for ${esc(name)}"><option value="">Choose when saving…</option>${[['fridge','🥛 Fridge'],['freezer','🧊 Freezer'],['cupboard','🥫 Cupboard']].map(([value,label])=>`<option value="${value}" ${location===value?'selected':''}>${label}</option>`).join('')}</select></label><div class="bb-scan-measure"><label>Checked amount here<input type="number" data-scan-quantity min="0" max="1000000" step="any" inputmode="decimal" placeholder="Optional" aria-label="Checked amount of ${esc(name)}"></label><label>Unit<select data-scan-unit aria-label="Unit for ${esc(name)}">${BB5_MEAL_UNITS.map(unit=>`<option value="${unit}" ${unit===bb25SuggestedUnit(name)?'selected':''}>${unit}</option>`).join('')}</select></label></div></div>`;}).join('')}</div><div class="scan-review-actions"><p id="scanSaveError" class="warning" role="alert" hidden></p><button class="button ai-primary-button" type="submit">✓ Save my confirmed foods</button><p class="hint">A checked amount replaces the amount in this location; other confirmed locations are kept. Leave it blank to save a food name without changing measured stock. Check packaging before choosing storage for perishables.</p></div></form>`:'<div class="warning">No foods identified. Use manual ingredient entry instead.</div>';
@@ -484,20 +495,24 @@ async function requestBody(verb,body){
  const token=turnstileToken||'';turnstileToken='';
  try{
   const controller=new AbortController();
+  if(verb==='scan')bbScanRequest=controller;
   const stop=setTimeout(()=>controller.abort(),verb==='scan'?25000:30000);
   let r;
   try{r=await fetch('/api/bb173/'+verb,{method:'POST',headers:{'Content-Type':'application/json','Authorization':'Bearer '+accessToken},body:JSON.stringify({...body,turnstileToken:token}),cache:'no-store',credentials:'same-origin',signal:controller.signal});}
   catch(err){if(controller.signal.aborted)throw Error('Request timed out. Your selections were not changed; try again or use local recipes.');throw err}
-  finally{clearTimeout(stop)}
+  finally{clearTimeout(stop);if(bbScanRequest===controller)bbScanRequest=null;}
   const j=await r.json().catch(()=>({}));if(!r.ok)throw Error(String(j.error||'AI is temporarily unavailable.').slice(0,200));return j;
  }finally{resetHumanCheck();}
 }
 async function scanPhoto(){
  if(scanInFlight)return;
- const revision=++scanRevision,actor=bbScanActor();
+ const revision=++scanRevision,actor=bbScanActor(),token=bbPaidToken();
+ const current=()=>revision===scanRevision&&bbScanActor()===actor&&bbPaidToken()===token&&window.BBAccountDeletion?.isDeleting?.()!==true;
  const f=photoFile;if(!f){$('#scanResults').innerHTML='<div class="warning">Choose a photo first.</div>';return}
  if(!f.type.startsWith('image/')||f.size>12*1024*1024){$('#scanResults').innerHTML='<div class="warning">Choose a food-only photo under 12 MB.</div>';return}
- if(!confirm('Send this resized food photograph to Cloudflare and Google Gemini to suggest ingredients? You will review every item before anything is saved. Cancel keeps it on this device.'))return;
+ if(!token){$('#scanResults').textContent='Sign in to your Premium account before scanning.';return;}
+ if(bbPhotoMealMode&&bbPhotoReviewToken!==token){$('#scanResults').textContent='Your account changed. Choose the photo again before scanning.';return;}
+ if(!confirm('Send this resized food photo to Cloudflare and Google Gemini to identify ingredients? You will check the results before using them. Cancel keeps the photo on this device.'))return;
  scanInFlight=true;
  const btn=$('#scanBtn');btn.disabled=true;$('#scanResults').innerHTML='<p class="notice" role="status">Scanning ingredients…</p>';
  try{
@@ -506,12 +521,13 @@ async function scanPhoto(){
   canvas.getContext('2d').drawImage(bitmap,0,0,canvas.width,canvas.height);bitmap.close();
   const imageBase64=canvas.toDataURL('image/jpeg',.8).split(',')[1];
   if(!imageBase64||imageBase64.length>2500000)throw Error('Photo remains too large after resizing');
+  if(!current())return;
   const res=await requestBody('scan',{mimeType:'image/jpeg',imageBase64});
-  if(revision!==scanRevision||bbScanActor()!==actor)return;
+  if(!current())return;
   if(!res.ok||!res.reviewRequired)throw Error('AI scan result is not ready for review');
   renderScanResponse(res.scan);
- }catch(e){if(revision===scanRevision)$('#scanResults').innerHTML='<div class="warning">'+esc(e.message)+'. No inventory was changed.</div>'}
- finally{scanInFlight=false;btn.disabled=false}
+ }catch(e){if(current())$('#scanResults').innerHTML='<div class="warning">'+esc(e.message)+'. No inventory was changed.</div>'}
+ finally{if(revision===scanRevision){scanInFlight=false;btn.disabled=false;}}
 }
 function bbClearGeneratedMeal(){
  generateRevision++;generateActor=null;generateInFlight=false;
@@ -519,9 +535,32 @@ function bbClearGeneratedMeal(){
  const host=$('#generated');
  if(window.BBCookResult?.clear)window.BBCookResult.clear(host);else host?.replaceChildren();
  const button=$('#generate');if(button)button.disabled=false;
+ const reviewButton=$('#reviewMealFoods button[type="submit"]');if(reviewButton)reviewButton.disabled=false;
 }
 function bbCheckGeneratedMealAccount(){
+ if(bbPhotoMealMode&&bbPhotoReviewToken&&bbPhotoReviewToken!==bbPaidToken())bbClearPhotoMeal();
  if(generateActor&&(bbPaidToken()!==generateActor||window.BBAccountDeletion?.isDeleting?.()===true))bbClearGeneratedMeal();
+}
+function bbClearPhotoMeal(){
+ scanRevision++;bbPhotoMealNames=null;bbPhotoReviewToken=null;photoFile=null;
+ bbScanRequest?.abort();bbScanRequest=null;scanInFlight=false;
+ bbClearGeneratedMeal();
+ const input=$('#ai-photo-input');if(input)input.value='';
+ const preview=$('#photoPreview');if(preview){if(preview.dataset.url)URL.revokeObjectURL(preview.dataset.url);preview.removeAttribute('src');delete preview.dataset.url;preview.classList.remove('show');}
+ $('#scanResults')?.replaceChildren();if($('#aiMeal'))$('#aiMeal').hidden=true;if($('#scanBtn'))$('#scanBtn').hidden=true;
+}
+function bbConfirmPhotoMeal(form){
+ if(generateInFlight)return;
+ const error=form.querySelector('#photoMealReviewMessage');
+ const fail=text=>{error.textContent=text;error.hidden=false;};
+ if(!bbPhotoReviewToken||bbPhotoReviewToken!==bbPaidToken()||window.BasketBossVerifiedPremium?.isActive?.()!==true||window.BBAccountDeletion?.isDeleting?.()===true){fail('Your account or Premium access changed. Scan the photo again.');return;}
+ const checked=[...form.querySelectorAll('.bb-photo-food-row')].filter(row=>row.querySelector('input[name="mealFood"]').checked);
+ const raw=checked.map(row=>row.querySelector('[data-photo-meal-name]').value);
+ if(raw.some(name=>!name.trim()||name.normalize('NFKC').trim().length>60)){fail('Give each selected ingredient a name of 1–60 characters.');return;}
+ const names=window.BBCookStudio.ingredientNames(raw);
+ if(!names.length||names.length>12){fail('Choose between 1 and 12 ingredients for this meal.');return;}
+ error.hidden=true;bbPhotoMealNames=Object.freeze(names);bbActiveTool='meal';
+ generate();if(generateInFlight){$('#aiMeal').hidden=false;$('#generated').scrollIntoView({behavior:'smooth',block:'start'});}
 }
 function bbValidGeneratedRecipe(recipe){
  const text=(value,max)=>typeof value==='string'&&value.trim().length>0&&value.length<=max;
@@ -538,17 +577,19 @@ function generate(){
  bbCheckGeneratedMealAccount();
  if(generateInFlight)return;
  if(window.BBAccountDeletion?.isDeleting?.()===true){message('Finish account deletion before creating a meal.','warning');return;}
- if(!bb5Confirmed){message('Confirm your ingredients using “Confirm — Make a Meal” before requesting a recipe.','warning');return}
- const ingredients=[...new Set(list().map(x=>String(x.name||'').trim()).filter(Boolean))];
+ if(bbPhotoMealMode?(!bbPhotoMealNames||bbPhotoReviewToken!==bbPaidToken()):!bb5Confirmed){message('Check and confirm your ingredients before requesting a recipe.','warning');return}
+ const confirmedNames=bbPhotoMealMode?bbPhotoMealNames:null;
+ const ingredients=bbPhotoMealMode?[...confirmedNames]:[...new Set(list().map(x=>String(x.name||'').trim()).filter(Boolean))];
  if(!ingredients.length){message('Select some ingredients first.','warning');return}
  if(ingredients.length>12){message('Choose up to 12 ingredients for a single AI recipe. Your saved inventory is unchanged.','warning');return}
  const token=bbPaidToken();if(!token){message('Sign in to a verified Premium account first.','warning');return;}
  if(!confirm('Send these '+ingredients.length+' ingredient names (not stock quantities) to Cloudflare and Google Gemini for a recipe draft and an illustrative picture of the resulting meal? The picture uses the generated recipe, not your email or a personal photo. Cancel keeps everything local.'))return;
- const requestMode=mode,revision=++generateRevision;
+ const requestMode=bbPhotoMealMode?'only':mode,revision=++generateRevision;
  generatedView?.cancel?.();generatedView=null;window.BBMealImage?.cancelAll?.();
  generateActor=token;
- const isCurrent=()=>revision===generateRevision&&generateActor===token&&bbPaidToken()===token&&window.BBAccountDeletion?.isDeleting?.()!==true;
+ const isCurrent=()=>revision===generateRevision&&generateActor===token&&bbPaidToken()===token&&(!bbPhotoMealMode||bbPhotoMealNames===confirmedNames)&&window.BBAccountDeletion?.isDeleting?.()!==true;
  const btn=$('#generate');generateInFlight=true;btn.disabled=true;$('#generated').innerHTML='<p class="notice" role="status">Creating your recipe draft… Your ingredients stay as they are.</p>';
+ const reviewButton=$('#reviewMealFoods button[type="submit"]');if(reviewButton)reviewButton.disabled=true;
  requestBody('generate',{ingredients,mode:requestMode==='only'?'only_have':'up_to_two',servings:4}).then(j=>{
   if(!isCurrent())return;
   const r=j.recipe;if(!j.ok||!j.reviewRequired||!bbValidGeneratedRecipe(r))throw Error('Incomplete recipe response');
@@ -560,11 +601,13 @@ function generate(){
   }
   const duration=(Number(r.prepMinutes)||0)+(Number(r.cookMinutes)||0),steps=r.steps.slice(0,15),allergens=Array.isArray(r.allergens)?r.allergens:[],safety=Array.isArray(r.safetyNotes)?r.safetyNotes:[];
   $('#generated').innerHTML=`<article class="generated"><div class="eyebrow" style="color:var(--green)">Unverified AI recipe · early access</div><h3>${esc(r.title||'AI meal')}</h3><p>${esc(r.servings)} servings · ${esc(bbMealDuration(duration))} estimated</p><p>${esc(r.summary||'')}</p><p class="hint">No cost estimate. This AI recipe is NOT automatically added to Planner or Shopping.</p><h4>Ingredients</h4><ul>${r.ingredients.map(a=>`<li><span data-bb-measures>${esc(bbMealQuantity(a.quantity||'Quantity unclear',a.name))}</span> ${esc(a.name||'')} · ${a.fromHome===false?'<strong>To buy</strong>':'Have (check quantity)'}</li>`).join('')}</ul><h4>Method (review for food safety)</h4><ol class="bb-recipe-method">${steps.map(bbMealStepHTML).join('')}</ol><h4>Possible allergens</h4><p>${esc(allergens.join(', ')||'Review packaged ingredients and allergens yourself')}</p><h4>Food safety reminders</h4><ul>${safety.map(s=>`<li data-bb-measures>${esc(bbMealStep(s))}</li>`).join('')||'<li>Check safe handling, storage and cooking temperatures.</li>'}</ul><div class="warning">AI-generated, not kitchen-tested or verified as safe for dietary requirements. Confirm all ingredients, allergens, quantities and cooking safety. BasketBoss never automatically adds AI drafts to the Planner.</div></article>`;
- }).catch(e=>{if(isCurrent())$('#generated').innerHTML='<div class="warning">'+esc(e.message+'. Your saved ingredients were not changed. The built-in recipes remain available.')+'</div>';}).finally(()=>{if(revision===generateRevision){generateInFlight=false;btn.disabled=false;}});
+ }).catch(e=>{if(isCurrent())$('#generated').innerHTML='<div class="warning">'+esc(e.message+'. Your saved ingredients were not changed. Try again when you are ready.')+'</div>';}).finally(()=>{if(revision===generateRevision){generateInFlight=false;btn.disabled=false;if(reviewButton)reviewButton.disabled=false;}});
 }
 window.addEventListener('basketboss:account-deletion-started',bbClearGeneratedMeal);
 window.addEventListener('basketboss:account-deletion-deleted',bbClearGeneratedMeal);
 window.addEventListener('pagehide',bbClearGeneratedMeal);
+window.addEventListener('basketboss:session-changed',bbCheckGeneratedMealAccount);
+window.addEventListener('basketboss:account-deletion-started',()=>{if(bbPhotoMealMode)bbClearPhotoMeal();});
 // One streamlined Make a Meal workspace. Keep the original controls and event hooks.
 let bbActiveTool=null,bbSiteKey=null,bbTurnstileLoading=false,bbTurnstileRequired=true;
 function bbChooseLocation(loc){
@@ -706,50 +749,11 @@ function bb82UnifyMealLayout(){
 // Batch 7.15: restore the prominent Premium AI entry points without duplicating
 // the scanner, generator, inventory, entitlement checks, or request handlers.
 function bb15RestorePremiumEntry(){
- const dashboard=document.querySelector('.bb-meal-dashboard');
- const workspace=document.getElementById('bb82MealWorkspace');
- if(document.getElementById('bb15AiPremiumHub')||(!dashboard&&!workspace))return;
- if(!document.getElementById('bb15AiPremiumStyles')){
-  const style=document.createElement('style');style.id='bb15AiPremiumStyles';
-  style.textContent=`
-  #bb15AiPremiumHub{display:block!important;visibility:visible!important;position:relative;isolation:isolate;margin:0 0 20px;padding:clamp(17px,3vw,27px);border-radius:23px;overflow:hidden;color:#fff;background:radial-gradient(ellipse at 90% -20%,#3c8e82a8,transparent 54%),linear-gradient(130deg,#103c52,#245b63 67%,#185746);border:1px solid #367c76;box-shadow:0 15px 35px #163d4730}
-  #bb15AiPremiumHub .bb15-ai-kicker{display:inline-flex;align-items:center;gap:6px;letter-spacing:.09em;font-size:10px;text-transform:uppercase;font-weight:900;color:#e5d7a2;background:#ffffff19;border:1px solid #ffffff33;border-radius:99px;padding:6px 10px}
-  #bb15AiPremiumHub h2{margin:11px 0 7px;color:#fff!important;font-size:clamp(25px,4vw,35px);letter-spacing:-.035em;line-height:1.1;font-weight:900}
-  #bb15AiPremiumHub .bb15-ai-intro{max-width:680px;margin:0 0 15px;font-size:13px;line-height:1.5;color:#d9ede8}
-  #bb15AiPremiumHub .bb15-ai-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px}
-  #bb15AiPremiumHub .bb15-ai-card{display:flex;flex-direction:column;align-items:flex-start;gap:7px;min-width:0;padding:17px;border:1px solid #ffffff48;border-radius:17px;background:#ffffff15;box-shadow:inset 0 1px #ffffff25;backdrop-filter:blur(4px)}
-  #bb15AiPremiumHub .bb15-ai-art{display:grid;place-items:center;border-radius:12px;width:46px;height:46px;background:linear-gradient(145deg,#ffffff32,#d4f0d820);font-size:25px}
-  #bb15AiPremiumHub h3{color:#fff!important;font-size:19px;line-height:1.2;margin:2px 0 0}
-  #bb15AiPremiumHub .bb15-ai-card p{color:#e4f0ec;font-size:12px;line-height:1.5;margin:0 0 auto}
-  #bb15AiPremiumHub .bb17-ai-service{margin:0 0 13px;padding:9px 11px;border:1px solid #ffffff39;border-radius:10px;background:#ffffff13;font-size:12px;color:#f4e4c5;line-height:1.45}
-  #bb15AiPremiumHub .bb17-ai-service span{color:#efce84;font-size:11px;margin-right:5px}
-  #bb15AiPremiumHub button{font-family:inherit;min-height:47px;width:100%;margin-top:8px;border:1px solid #cce4d4;border-radius:12px;background:#effaf2;color:#1e593d;font-size:14px;font-weight:900;cursor:pointer;padding:10px 12px;touch-action:manipulation}
-  #bb15AiPremiumHub button[aria-expanded=true]{background:#ccead6}
-  #bb15AiPremiumHub button:focus-visible{outline:3px solid #ffe1a8;outline-offset:3px}
-  #bb15AiPremiumHub .bb15-ai-footnote{margin:13px 1px 0;color:#d1e9e2;font-size:11px;line-height:1.45}
-  @media(max-width:520px){#bb15AiPremiumHub .bb15-ai-grid{grid-template-columns:1fr}#bb15AiPremiumHub .bb15-ai-card{padding:14px}#bb15AiPremiumHub .bb15-ai-card p{min-height:0}}
-  @media(prefers-reduced-motion:reduce){#bb15AiPremiumHub *{scroll-behavior:auto!important}}
-  `;document.head.append(style);
- }
- const section=document.createElement('section');section.id='bb15AiPremiumHub';
- section.setAttribute('aria-label','Premium AI tools');
- section.innerHTML=`<span class="bb15-ai-kicker">✦ BasketBoss Premium · AI Studio</span>
- <h2>Make something amazing from what you've got</h2>
- <p class="bb15-ai-intro">Choose your ingredients below for local recipe matches. Premium AI tools offer optional photo recognition or an AI recipe draft when the service is connected.</p>
- <p class="bb17-ai-service"><span aria-hidden="true">●</span> Premium tools are previewed here for everyone. AI requests need an active connection and service access; the local recipe finder still works offline.</p>
- <div class="bb15-ai-grid">
-  <article class="bb15-ai-card"><span class="bb15-ai-art" aria-hidden="true">📸</span><h3>Scan ingredients</h3><p>Take or upload a food photo. Review every AI suggestion before saving anything to Kitchen.</p><label class="bb-ai-native-trigger" data-ai-scan-btn for="ai-photo-input" role="button" tabindex="0" aria-controls="bbToolStage">Open AI Photo Scanner →</label></article>
-  <article class="bb15-ai-card"><span class="bb15-ai-art" aria-hidden="true">✨</span><h3>AI Create a Meal</h3><p>Use your confirmed ingredient names to request a draft recipe. The standard recipe finder still works offline.</p><button type="button" data-ai-meal-btn data-open-tool="meal" aria-controls="bbToolStage" aria-expanded="false">Open AI Meal Creator →</button></article>
- </div><p class="bb15-ai-footnote">Premium early access · AI features need a live connection and may be unavailable in the private Codespaces preview. Your local ingredients and recipes remain accessible.</p>`;
- // Keep AI Studio visibly above the three-section Kitchen workspace,
- // not inside a hidden legacy dashboard or behind the QA/install banners.
- // This is presentation only; existing scan/generate/entitlement handlers remain.
- // The promoted AI Studio is outside the original dashboard; the early,
- // document-level native opener in make-a-meal.html handles these controls.
- // Do not bind duplicate click handlers to a re-rendered AI Studio element.
- if(workspace&&workspace.parentNode)workspace.parentNode.insertBefore(section,workspace);
- else dashboard.prepend(section);
- window.BBCookStudio?.mount({hub:section,workspace,getIngredients:list});
+ const dashboard=document.querySelector('.bb-meal-dashboard'),workspace=$('#bb82MealWorkspace');
+ if($('#bb15AiPremiumHub')||!workspace||!window.BBCookStudio?.mount)return;
+ const hub=document.createElement('section');hub.id='bb15AiPremiumHub';
+ workspace.before(hub);window.BBCookStudio.mount({hub,workspace,getIngredients:list});
+ if(!bbPhotoMealMode&&dashboard)dashboard.hidden=true;
 }
 // Keep AI readiness tied to the CURRENT authenticated account, not the
 // browser that happened to load this page earlier. Server checks are authoritative.
@@ -757,6 +761,7 @@ let bbAIStatusRequest=0;
 async function bbRefreshAIStatus(){
   const token=bbPaidToken(),requestId=++bbAIStatusRequest;
   aiEnabled=false;bbSiteKey=null;
+  const initialSecurity=$('#aiSecurityBox');if(initialSecurity)initialSecurity.hidden=true;
   $('#aiStatus').textContent=token?'Checking Premium AI availability…':'Sign in to your Premium account to use AI.';
   $('#aiHumanStatus').textContent='Human check is not ready yet.';
   if(!token)return;
@@ -815,7 +820,7 @@ async function bbRefreshAIStatus(){
 }
 document.addEventListener('basketboss:premium-verified',()=>{void bbRefreshAIStatus();});
 window.addEventListener('focus',()=>{void bbRefreshAIStatus();});
-function init(){bbObserveAIHumanPanel();bb74InstallTileStyles();load();document.querySelectorAll('[data-mode]').forEach(b=>b.addEventListener('click',()=>{mode=b.dataset.mode;suggestionOffset=0;document.querySelectorAll('[data-mode]').forEach(t=>t.setAttribute('aria-pressed',String(t.dataset.mode===mode)));renderRecipes()}));
+function init(){bbObserveAIHumanPanel();bb74InstallTileStyles();if(!bbPhotoMealMode)load();document.querySelectorAll('[data-mode]').forEach(b=>b.addEventListener('click',()=>{mode=b.dataset.mode;suggestionOffset=0;document.querySelectorAll('[data-mode]').forEach(t=>t.setAttribute('aria-pressed',String(t.dataset.mode===mode)));renderRecipes()}));
 // Dashboard thumbnail controls reuse the existing inventory state and save pathway.
 // Keep the original synchronous click handler for the existing dashboard
 // controls and the scan-result link. No async gate runs before bbOpenTool.
@@ -847,10 +852,23 @@ for(const form of document.querySelectorAll('[data-add-area]')){
  form.addEventListener('reset',()=>{manuallyChanged=false});
 }
 for(const form of document.querySelectorAll('[data-add-area]'))form.addEventListener('submit',e=>{e.preventDefault();const location=form.dataset.addArea;const name=form.querySelector('[data-food-name]').value.trim();if(!name)return;const raw=form.querySelector('[data-food-qty]').value;const qty=raw?Number(raw):null;const unit=form.querySelector('[data-food-unit]').value;if(raw&&(!Number.isFinite(qty)||qty<=0)){message('Enter a positive stock quantity.','warning');return}if(qty&&['each','pack','clove'].includes(unit)&&!Number.isInteger(qty)){message('Use whole numbers for each, packs or cloves.','warning');return}inventory[uid(name,location)]={...inventory[uid(name,location)],name,loc:location,selected:true,qty,unit,source:'added'};bb5Confirmed=false;renderTiles();form.reset()});
-$('#ai-photo-input').addEventListener('change',e=>{scanRevision++;photoFile=e.target.files?.[0]||null;$('#scanResults').replaceChildren();const p=$('#photoPreview');if(p.dataset.url)URL.revokeObjectURL(p.dataset.url);p.classList.toggle('show',!!photoFile);if(photoFile){p.src=p.dataset.url=URL.createObjectURL(photoFile);$('#scanResults').textContent='Photo ready. Tap “Scan my ingredients” to start the scan.';}else{$('#scanResults').textContent='No photo selected. Tap “Take Photo / Choose Image” to try again.';}});
-$('#ai-photo-input').addEventListener('cancel',()=>{$('#scanResults').textContent='No photo selected. Tap “Take Photo / Choose Image” to try again.';});
+$('#ai-photo-input').addEventListener('change',e=>{
+ scanRevision++;bbScanRequest?.abort();bbScanRequest=null;scanInFlight=false;$('#scanBtn').disabled=false;
+ bbPhotoMealNames=null;bbPhotoReviewToken=null;bbClearGeneratedMeal();$('#aiMeal').hidden=true;
+ photoFile=e.target.files?.[0]||null;bbPhotoReviewToken=photoFile?bbPaidToken():null;$('#scanResults').replaceChildren();const p=$('#photoPreview');
+ if(p.dataset.url)URL.revokeObjectURL(p.dataset.url);delete p.dataset.url;p.classList.toggle('show',!!photoFile);
+ $('#scanBtn').hidden=!photoFile;
+ if(photoFile){p.src=p.dataset.url=URL.createObjectURL(photoFile);$('#scanResults').textContent='Photo ready. Tap “Find my ingredients” to scan.';}
+ else{p.removeAttribute('src');$('#scanResults').textContent='No photo selected. Take or choose a photo to try again.';}
+});
+$('#ai-photo-input').addEventListener('cancel',()=>{if(!photoFile)$('#scanResults').textContent='No photo selected. Take or choose a photo to try again.';});
 $('#scanBtn').addEventListener('click',scanPhoto);
+$('#scanResults').addEventListener('input',e=>{
+ if(!bbPhotoMealMode||!e.target.closest('#reviewMealFoods'))return;
+ bbPhotoMealNames=null;bbClearGeneratedMeal();$('#aiMeal').hidden=true;
+});
 $('#scanResults').addEventListener('submit',e=>{
+ if(e.target.id==='reviewMealFoods'){e.preventDefault();bbConfirmPhotoMeal(e.target);return;}
  if(e.target.id!=='reviewFoods')return;e.preventDefault();
  const form=e.target,err=form.querySelector('#scanSaveError');
  const checked=[...form.querySelectorAll('input[name="food"]:checked')];
@@ -892,7 +910,7 @@ $('#mealReviewSave').addEventListener('click',confirmMeal);
 $('#mealReviewCancel').addEventListener('click',()=>{pendingRecipe=null;$('#mealReviewError').hidden=true;});
 $('#mealReview').addEventListener('close',()=>{$('#mealReviewError').hidden=true;pendingRecipe=null;});
 $('#generate').addEventListener('click',generate);bbRefreshAIStatus();
-fetch('recipes.json',{cache:'no-store'}).then(r=>{
+if(!bbPhotoMealMode)fetch('recipes.json',{cache:'no-store'}).then(r=>{
   if(!r.ok)throw Error('Free recipe library unavailable');
   return r.json();
 }).then(data=>{
