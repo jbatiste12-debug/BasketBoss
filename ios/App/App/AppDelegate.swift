@@ -148,6 +148,11 @@ class BasketBossViewController: CAPBridgeViewController {
     override func viewDidAppear(_ animated: Bool) {
         super.viewDidAppear(animated)
         startupView?.startMotion()
+        #if DEBUG
+        #if targetEnvironment(simulator)
+        keyboardSmokeReporter?.refresh()
+        #endif
+        #endif
     }
 
     override func viewDidDisappear(_ animated: Bool) {
@@ -207,11 +212,17 @@ private final class BasketBossKeyboardProbeReporter: NSObject, WKScriptMessageHa
     private weak var container: UIView?
     private weak var probe: UILabel?
     private let prefix: String
+    private var latestText = ""
 
     init(container: UIView, onboarding: Bool) {
         self.container = container
         self.prefix = "BB keyboard probe " + (onboarding ? "onboarding" : "account") + " "
         super.init()
+    }
+
+    deinit {
+        let previousProbe = probe
+        DispatchQueue.main.async { previousProbe?.removeFromSuperview() }
     }
 
     func userContentController(_ userContentController: WKUserContentController, didReceive message: WKScriptMessage) {
@@ -222,8 +233,12 @@ private final class BasketBossKeyboardProbeReporter: NSObject, WKScriptMessageHa
     }
 
     private func display(_ text: String) {
+        latestText = text
         guard !text.isEmpty else { invalidate(); return }
-        guard let container = container else { return }
+        // Capacitor's controller root is the WKWebView itself. A window sibling
+        // keeps this native identifier outside WebKit's custom AX hierarchy.
+        // viewDidAppear replays the actual last measurement if it arrived early.
+        guard let container = container?.window else { return }
         let label: UILabel
         if let current = probe {
             label = current
@@ -249,7 +264,10 @@ private final class BasketBossKeyboardProbeReporter: NSObject, WKScriptMessageHa
     func invalidate() {
         probe?.removeFromSuperview()
         probe = nil
+        latestText = ""
     }
+
+    func refresh() { display(latestText) }
 }
 
 // Only the explicit XCUITest launch on a disposable simulator uses this setup.
