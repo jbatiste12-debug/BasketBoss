@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import {inspectCookService,requireCookInspectEnvironment,sanitizeCookTailEvent,validateCookTailURL,COOK_INSPECT_LIMITS} from '../scripts/inspect-cook-service.mjs';
+import {inspectCookService,requireCookInspectEnvironment,sanitizeCookTailEvent,validateCookTailURL,cookInspectionFailure,COOK_INSPECT_LIMITS} from '../scripts/inspect-cook-service.mjs';
 
 const COMMIT='a'.repeat(40),DEPLOYMENT='11111111-1111-4111-8111-111111111111',TAIL='22222222-2222-4222-8222-222222222222';
 const PRIVATE='PRIVATE_FIXTURE_MUST_NEVER_APPEAR';
@@ -8,7 +8,7 @@ const ENV={GITHUB_ACTIONS:'true',GITHUB_REPOSITORY:'jbatiste12-debug/BasketBoss'
 const diagnostic=(patch={})=>'BB_COOK_DIAGNOSTIC '+JSON.stringify({stage:'provider_request',code:'BB_COOK_PROVIDER_ACCESS',status:502,...patch});
 const trace=(patch={})=>({event:{request:{url:'https://old-canonical.pages.dev/api/tts?private='+PRIVATE,headers:{Origin:'capacitor://localhost',Authorization:PRIVATE,Cookie:PRIVATE},body:PRIVATE},response:{status:502,headers:{secret:PRIVATE}}},outcome:'exception',logs:[{level:'warn',message:[diagnostic()]},{level:'error',message:[PRIVATE]}],exceptions:[{name:PRIVATE,message:PRIVATE,stack:PRIVATE}],...patch});
 
-function fixture({projectPatch={},tailURL='wss://tail.developers.workers.dev/capability?token='+PRIVATE,publicResponse,onSocket,autoClose=true,socketFailure=false,deleteFailure=false,schemaColumns=['day_utc','actor','action','used'],schemaFailure=false}={}){
+function fixture({projectPatch={},tailURL='wss://tail.developers.workers.dev/capability?token='+PRIVATE,publicResponse,apiResponse,onSocket,autoClose=true,socketFailure=false,deleteFailure=false,schemaColumns=['day_utc','actor','action','used'],schemaFailure=false}={}){
  const calls=[],emitted=[],sockets=[],timers=[];
  const project={name:'basketboss-site',production_branch:'main',domains:['basketboss.co.uk','www.basketboss.co.uk'],
   canonical_deployment:{id:DEPLOYMENT,environment:'production',latest_stage:{name:'deploy',status:'success'},deployment_trigger:{metadata:{commit_hash:COMMIT}}},
@@ -16,6 +16,7 @@ function fixture({projectPatch={},tailURL='wss://tail.developers.workers.dev/cap
  const perform=async(address,options)=>{
   const url=new URL(address);calls.push({url,options,emissions:emitted.length});
   if(url.hostname==='api.cloudflare.com'){
+   const custom=apiResponse?.(url,options);if(custom!==undefined)return custom;
    if(url.pathname.includes('/d1/database/')){
     assert.equal(options.method,'POST');assert.deepEqual(JSON.parse(options.body),{sql:"SELECT name FROM pragma_table_info('bb_ai_daily_usage')"});
     return Response.json({success:!schemaFailure,result:[{success:true,results:schemaColumns.map(name=>({name}))}]},{status:schemaFailure?403:200});
@@ -160,6 +161,44 @@ test('connection failure still deletes tail and never propagates raw socket exce
  const h=fixture({socketFailure:true});await assert.rejects(()=>h.run('tail'),{code:'INSPECT_TAIL_SOCKET'});
  assert.equal(h.calls.at(-1).options.method,'DELETE');assert.equal(h.timers[0].cleared,true);
  const failedDelete=fixture({deleteFailure:true});await assert.rejects(()=>failedDelete.run('tail'),{code:'INSPECT_TAIL_CLEANUP'});
+});
+
+test('Cloudflare rejection preserves fixed operation, HTTP status and numeric codes without messages or credentials',async()=>{
+ const h=fixture({apiResponse:(url,options)=>{
+  if(options.method==='POST'&&url.pathname.endsWith('/tails'))return Response.json({success:false,errors:[
+   {code:10000,message:PRIVATE,documentation_url:'https://private.invalid/'+PRIVATE,source:{pointer:PRIVATE}},
+   {code:10013,message:PRIVATE},{code:10000,message:PRIVATE},{code:PRIVATE,message:PRIVATE},{code:'10001',message:PRIVATE},
+   {code:-1,message:PRIVATE},{code:999999999,message:PRIVATE}
+  ],messages:[{code:1234,message:PRIVATE}],result:{url:'wss://private.invalid/'+PRIVATE}},{status:403});
+ }});
+ let failure;
+ try{await h.run('tail');assert.fail('tail creation must fail');}catch(error){failure=cookInspectionFailure(error);}
+ assert.deepEqual(failure,{kind:'failure',code:'INSPECT_API',operation:'tail_create',status:403,cloudflareCodes:[10000,10013]});
+ assert.doesNotMatch(JSON.stringify(failure),new RegExp(PRIVATE));
+ assert.equal(h.sockets.length,0);assert.equal(h.calls.at(-1).options.method,'POST');
+ assert.equal(h.emitted.filter(value=>value.kind==='probe').length,8,'HTTP evidence survives a tail permission failure');
+});
+
+test('non-JSON and network API failures retain only response metadata, and tail cleanup retains its own operation',async()=>{
+ for(const [response,expectedStatus]of [[()=>new Response(PRIVATE,{status:502}),502],[()=>{throw Error(PRIVATE);},null]]){
+  const h=fixture({apiResponse:(url,options)=>options.method==='POST'&&url.pathname.endsWith('/tails')?response():undefined});
+  await assert.rejects(()=>h.run('tail'),error=>{
+   assert.deepEqual(cookInspectionFailure(error),{kind:'failure',code:'INSPECT_API',operation:'tail_create',status:expectedStatus,cloudflareCodes:[]});
+   assert.doesNotMatch(error.message,new RegExp(PRIVATE));return true;
+  });
+ }
+ const h=fixture({apiResponse:(_url,options)=>options.method==='DELETE'?Response.json({success:false,errors:[{code:10000,message:PRIVATE}]},{status:403}):undefined});
+ await assert.rejects(()=>h.run('tail'),error=>{
+  assert.deepEqual(cookInspectionFailure(error),{kind:'failure',code:'INSPECT_TAIL_CLEANUP',operation:'tail_delete',status:403,cloudflareCodes:[10000]});return true;
+ });
+});
+
+test('failure renderer rejects arbitrary operation/exception fields and caps numeric Cloudflare codes',()=>{
+ const error={code:'INSPECT_API',operation:'tail_create',status:403,cloudflareCodes:Array.from({length:20},(_,index)=>1000+index),message:PRIVATE,stack:PRIVATE,url:PRIVATE};
+ assert.deepEqual(cookInspectionFailure(error),{kind:'failure',code:'INSPECT_API',operation:'tail_create',status:403,cloudflareCodes:[1000,1001,1002,1003,1004,1005,1006,1007]});
+ assert.deepEqual(cookInspectionFailure({...error,operation:PRIVATE}),{kind:'failure',code:'INSPECT_API'});
+ assert.deepEqual(cookInspectionFailure(Error(PRIVATE)),{kind:'failure',code:'INSPECT_API'});
+ assert.doesNotMatch(JSON.stringify(cookInspectionFailure(error)),new RegExp(PRIVATE));
 });
 
 test('ninety-second deadline and fifty-frame cap cannot be overridden by caller options',async()=>{
