@@ -14,6 +14,8 @@ Requests use the existing authenticated `only_have` recipe API for four servings
 
 The At home camera handoff (`bbscan=pantry`) keeps its separate explicit storage/quantity review. It does not create a meal or change stock until the user confirms that pantry operation.
 
+The BasketBoss visual treatment uses a forest-green header, cream cards, gold details and a crowned camera illustration. Entrance/crown motion finishes once; scanning and meal-creation animations run only during the corresponding request. Ingredients, recipes and their pictures have short reveal transitions. Step progress follows real controller state, and picture availability keeps its own caption. Decorative motion pauses while the page is hidden. Reduce Motion disables animations, transitions and explicit smooth scrolling; the camera retains its original input and one-shot Enter/Space activation. Ingredient editing uses 16px text to avoid iPhone focus zoom.
+
 Validation: real-controller regressions cover edited/unchecked inputs, bounds, duplicate names, no stock writes, consent cancellation and stale/account/deletion paths. Chromium passed the full mocked photo → review → meal → decoded-picture flow at 390px and 768px, plus keyboard entry and both pantry handoffs, with no page errors or pantry changes. These are synthetic auth/AI fixtures; genuine iPhone camera behaviour and live Gemini recipe/image generation still require the TestFlight device check.
 
 The ingredient-matching backend is PR #35. This client remains version 1.0, build 6 and is included with the Premium beta unlock and earlier tester fixes in PR #33. The new source needs the final hosted native checks and a signed Xcode upload; earlier build artifacts do not contain this page update.

@@ -130,14 +130,14 @@ function bb5MealPanel(){
  // still requires the dedicated Reconcile action in BasketBoss Shopping.
  if(!save()){$('#bb5MealMessage').textContent='Could not confirm ingredients; device storage may be full.';return;}
  bb5Confirmed=true;suggestionOffset=0;renderTiles();$('#bb5MealMessage').textContent='✓ Ingredients confirmed. Your meal ideas are shown below. Shopping has not changed.';
- $('#recipes')?.scrollIntoView({behavior:'smooth',block:'start'});
+ $('#recipes')?.scrollIntoView({behavior:window.matchMedia?.('(prefers-reduced-motion: reduce)')?.matches?'auto':'smooth',block:'start'});
  });
  return panel;
 }
 function bb74MealOverview(items){
  const parent=$('#inventorySections');if(!parent)return;
  let peek=$('#bb74MealPeek');
- if(!peek){peek=document.createElement('aside');peek.id='bb74MealPeek';peek.setAttribute('aria-label','Overview of foods selected for Make a Meal');peek.innerHTML='<div class="bb74-meal-head"><strong>Your ingredients <span id="bb74MealPeekCount">(0)</span></strong><span class="bb74-meal-draft">Review before making a meal</span></div><div id="bb74MealPeekItems" class="bb74-meal-peek-items" aria-live="polite"></div><button id="bb74MealJump" type="button">↓ Review quantities &amp; confirm — Make a Meal</button>';parent.insertAdjacentElement('beforebegin',peek);peek.querySelector('#bb74MealJump').addEventListener('click',()=>{$('#bb5MealReview')?.scrollIntoView({behavior:'smooth',block:'start'})});}
+ if(!peek){peek=document.createElement('aside');peek.id='bb74MealPeek';peek.setAttribute('aria-label','Overview of foods selected for Make a Meal');peek.innerHTML='<div class="bb74-meal-head"><strong>Your ingredients <span id="bb74MealPeekCount">(0)</span></strong><span class="bb74-meal-draft">Review before making a meal</span></div><div id="bb74MealPeekItems" class="bb74-meal-peek-items" aria-live="polite"></div><button id="bb74MealJump" type="button">↓ Review quantities &amp; confirm — Make a Meal</button>';parent.insertAdjacentElement('beforebegin',peek);peek.querySelector('#bb74MealJump').addEventListener('click',()=>{$('#bb5MealReview')?.scrollIntoView({behavior:window.matchMedia?.('(prefers-reduced-motion: reduce)')?.matches?'auto':'smooth',block:'start'})});}
  peek.querySelector('#bb74MealPeekCount').textContent='('+items.length+')';
  peek.querySelector('.bb74-meal-draft').textContent=bb5Confirmed?'✓ Confirmed':'Not confirmed';
  peek.querySelector('#bb74MealPeekItems').innerHTML=items.length?items.map(x=>{
@@ -330,7 +330,7 @@ function renderRecipes(){
  const cards=shown.map((x,i)=>recipeCard(x,start+i)).join('');
  dest.innerHTML=`<div class="discovery-explainer">${mode==='only'?'Closest matches first.':'Meals needing up to two extras are prioritised.'} Some suggestions still need more shopping; see each recipe before choosing.</div><div class="recipe-grid">${cards}</div><div class="suggestion-footer"><span>Suggestions ${start+1}–${end} of ${matched.length}</span>${matched.length>3?'<button type="button" id="showMoreRecipes" class="button secondary">↻ Show another 3</button>':''}</div>`;
 }
-function message(msg,type='success'){const dest=bbActiveTool==='meal'&&!$('#bbToolStage').hidden?$('#generated'):$('#bbToast');dest.hidden=false;dest.innerHTML=`<div class="${type}">${esc(msg)}</div>`;dest.scrollIntoView({behavior:'smooth',block:'nearest'})}
+function message(msg,type='success'){const dest=bbActiveTool==='meal'&&!$('#bbToolStage').hidden?$('#generated'):$('#bbToast');dest.hidden=false;dest.innerHTML=`<div class="${type}">${esc(msg)}</div>`;dest.scrollIntoView({behavior:window.matchMedia?.('(prefers-reduced-motion: reduce)')?.matches?'auto':'smooth',block:'nearest'})}
 let pendingRecipe=null;
 function openMealReview(i){
  const x=results[i];if(!x)return;
@@ -461,7 +461,7 @@ function renderScanResponse(scan){
   const names=window.BBCookStudio.ingredientNames((Array.isArray(scan?.items)?scan.items:[]).slice(0,20).map(item=>item?.name));
   $('#scanBtn').hidden=true;
   $('#scanResults').innerHTML=names.length?`<form id="reviewMealFoods" class="bb-photo-review"><h3>Check your ingredients</h3><p>Uncheck anything that isn’t there and correct any names. Choose up to 12 foods. We’ll use this list to create your meal and its picture.</p>${names.map((name,index)=>`<div class="bb-photo-food-row"><input type="checkbox" name="mealFood" checked aria-label="Use ingredient ${index+1}"><label>Ingredient ${index+1}<input type="text" data-photo-meal-name maxlength="60" value="${esc(name)}" aria-label="Ingredient ${index+1} name"></label></div>`).join('')}<p id="photoMealReviewMessage" class="warning" role="alert" hidden></p><button class="button ai-primary-button" type="submit">Generate meal &amp; picture</button></form>`:'<p class="bb-photo-empty" role="status">No ingredients were recognised. Try a clearer photo with the food or its packaging in view.</p>';
-  $('#scanResults').scrollIntoView({behavior:'smooth',block:'start'});return;
+  $('#scanResults').scrollIntoView({behavior:window.matchMedia?.('(prefers-reduced-motion: reduce)')?.matches?'auto':'smooth',block:'start'});return;
  }
  const items=Array.isArray(scan?.items)?scan.items.filter(x=>x&&typeof x.name==='string'&&x.name.trim()).slice(0,20):[];
  const seen=new Set();const unique=items.filter(x=>{const id=canon(x.name);if(!id||seen.has(id))return false;seen.add(id);return true});
@@ -560,7 +560,7 @@ function bbConfirmPhotoMeal(form){
  const names=window.BBCookStudio.ingredientNames(raw);
  if(!names.length||names.length>12){fail('Choose between 1 and 12 ingredients for this meal.');return;}
  error.hidden=true;bbPhotoMealNames=Object.freeze(names);bbActiveTool='meal';
- generate();if(generateInFlight){$('#aiMeal').hidden=false;$('#generated').scrollIntoView({behavior:'smooth',block:'start'});}
+ generate();if(generateInFlight){$('#aiMeal').hidden=false;$('#generated').scrollIntoView({behavior:window.matchMedia?.('(prefers-reduced-motion: reduce)')?.matches?'auto':'smooth',block:'start'});}
 }
 function bbValidGeneratedRecipe(recipe){
  const text=(value,max)=>typeof value==='string'&&value.trim().length>0&&value.length<=max;
@@ -638,7 +638,7 @@ function bbOpenTool(tool){
  meal.hidden=tool!=='meal';
  document.querySelectorAll('[data-open-tool]').forEach(btn=>btn.setAttribute('aria-expanded',String(btn.dataset.openTool===tool)));
  if(aiEnabled&&bbSiteKey)setupHumanCheck(bbSiteKey);
- stage.scrollIntoView({behavior:'smooth',block:'start'});
+ stage.scrollIntoView({behavior:window.matchMedia?.('(prefers-reduced-motion: reduce)')?.matches?'auto':'smooth',block:'start'});
 }
 function bbCloseTool(){
  const stage=$('#bbToolStage');stage.hidden=true;bbActiveTool=null;
@@ -842,7 +842,7 @@ $('.bb-meal-dashboard').addEventListener('click',e=>{
  $('#bbIngredientsDrawer').open=true;
  bbChooseLocation(ingredient.loc);
  const section=document.querySelector('[data-location="'+ingredient.loc+'"]');
- section?.scrollIntoView({behavior:'smooth',block:'start'});
+ section?.scrollIntoView({behavior:window.matchMedia?.('(prefers-reduced-motion: reduce)')?.matches?'auto':'smooth',block:'start'});
  const tile=[...(section?.querySelectorAll('[data-food]')||[])].find(t=>canon(t.dataset.food)===canon(ingredient.name));
  if(tile)setTimeout(()=>tile.focus({preventScroll:true}),250);
 });
