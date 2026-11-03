@@ -11,6 +11,8 @@ on:
       - package.json
       - package-lock.json
       - basketboss-pricing-v19.js
+      - tests/basketboss-canonical-measure.test.mjs
+      - tests/basketboss-ingredient-standardisation.test.mjs
       - index.html
       - app.html
       - bb-account-deletion.*
@@ -96,10 +98,12 @@ jobs:
             echo 'Retrying iOS sync once after a dependency setup failure.'
             npm run ios:sync
           fi
-      - name: Verify build 6 basket, pantry, saved weeks and Cook regressions
+      - name: Verify build 7 ingredient units, basket, pantry, saved weeks and Cook regressions
         run: >-
           node --test --test-isolation=none
           tests/basketboss-garlic-basket.test.mjs
+          tests/basketboss-canonical-measure.test.mjs
+          tests/basketboss-ingredient-standardisation.test.mjs
           tests/basketboss-pantry-reconcile.test.mjs
           tests/basketboss-saved-weeks.test.mjs
           tests/basketboss-saved-week-host.test.mjs
