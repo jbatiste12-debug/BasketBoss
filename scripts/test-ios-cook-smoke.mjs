@@ -68,7 +68,7 @@ try{
  if(currentPhone.state==='Shutdown')run('simctl','boot',phone.udid);
  else if(!['Booting','Booted'].includes(currentPhone.state))throw Error('unexpected_simulator_state');
  mark('simulator_app');exec('open',['-a','Simulator','--args','-CurrentDeviceUDID',phone.udid]);
- mark('bootstatus');exec('xcrun',['simctl','bootstatus',phone.udid,'-b'],360000);
+ mark('bootstatus');exec('xcrun',['simctl','bootstatus',phone.udid,'-b'],540000);
  // Preserve the local manual check's signing order and original time budget.
  if(!ci){mark('adhoc_sign');exec('codesign',['--force','--deep','--sign','-','--timestamp=none',app]);}
  mark('install');exec('xcrun',['simctl','install',phone.udid,app],ci?300000:120000);

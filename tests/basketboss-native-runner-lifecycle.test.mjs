@@ -336,6 +336,8 @@ test('CI Cook uses a hosted XCTest launch on the exact selected phone, while loc
  const shutdownIndex=result.commands.findIndex(command=>command[1]==='simctl'&&command[2]==='shutdown');
  const bootIndex=result.commands.findIndex(command=>command[1]==='simctl'&&command[2]==='boot');
  assert.ok(shutdownIndex<buildIndex&&buildIndex<bootIndex,'build on the same shutdown destination before its cold boot');
+ const readiness=result.executions.find(call=>call.command==='xcrun'&&call.args[1]==='bootstatus');
+ assert.equal(readiness.timeout,540000,'cold simulator migrations receive the same bounded nine-minute readiness budget as keyboard preboot');
  const tests=result.executions.find(call=>call.command==='xcodebuild'&&call.args.includes('test-without-building'));
  assert.ok(tests.args.includes('BasketBossCookSmokeTests'));
  assert.ok(tests.args.includes('platform=iOS Simulator,id=proven-phone'));
