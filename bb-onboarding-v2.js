@@ -305,6 +305,10 @@
  }
  function dismiss(restoreReplay=true){
    const closeSettings=!restoreReplay&&replaying;
+   // WKWebView can keep the keyboard attached when its focused input is moved
+   // back to the account panel. End editing before restoring the shared form.
+   const active=document.activeElement;
+   if(active&&host?.contains(active))active.blur?.();
    unlockWelcomeBackground();restoreAuth();host?.remove();host=null;
    if(restoreReplay&&replaying&&replayOriginal)state=replayOriginal;
    replaying=false;replayOriginal=null;changedPreferences.clear();
