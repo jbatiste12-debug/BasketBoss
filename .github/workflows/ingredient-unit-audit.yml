@@ -3,7 +3,7 @@ name: Read-only ingredient and unit audit
 on:
   workflow_dispatch:
   push:
-    branches: [fix/ingredient-unit-standardisation]
+    branches: [main]
     paths:
       - .github/workflows/ingredient-unit-audit.yml
       - scripts/audit-ingredient-units.mjs
@@ -13,19 +13,32 @@ permissions:
   contents: read
 
 jobs:
+  portable:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v5
+        with:
+          persist-credentials: false
+          fetch-depth: 0
+      - uses: actions/setup-node@v5
+        with:
+          node-version: '24'
+      - run: node --test tests/basketboss-ingredient-unit-audit.test.mjs
   audit:
-    if: github.repository == 'jbatiste12-debug/BasketBoss' && github.ref == 'refs/heads/fix/ingredient-unit-standardisation'
+    needs: portable
+    if: github.repository == 'jbatiste12-debug/BasketBoss' && github.ref == 'refs/heads/main'
     runs-on: ubuntu-latest
     environment: github-pages
     timeout-minutes: 5
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
         with:
           persist-credentials: false
           fetch-depth: 0
-      - uses: actions/setup-node@v4
+      - uses: actions/setup-node@v5
         with:
-          node-version: '22'
+          node-version: '24'
       - name: Read production ingredients and aggregate units only
         env:
           CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}

@@ -27,15 +27,16 @@ function identity(name,canonical){
 export function auditCatalogue(name,recipes,normalized,p,{privateData=false}={}){
  const normalizedRows=Array.isArray(normalized)?normalized:normalized.recipes;
  const byId=new Map(normalizedRows.map(recipe=>[recipe.id,recipe]));
- const groups=new Map(),units=new Map(),statuses=new Map(),invalid=[],sourceUnitMismatches=[],withinRecipeDuplicates=[];
+ const groups=new Map(),units=new Map(),statuses=new Map(),invalid=[],sourceUnitMismatches=[],withinRecipeDuplicates=[],sourceIdentityMismatches=[],identityMismatchGroups=new Map();
  let lines=0;
  for(const recipe of recipes){
   const normalizedRecipe=byId.get(recipe.id);if(!normalizedRecipe||recipe.ingredients.length!==normalizedRecipe.ingredients.length)throw Error('ingredient_audit_alignment');
   const selected=new Map();
   for(const [index,row]of normalizedRecipe.ingredients.entries()){
    lines++;const source=recipe.ingredients[index],sourceName=source[0],sourceAmount=source[1];
-   const key=identity(row.key||row.name||sourceName,p.canonical),unit=String(row.unit??'unknown').trim().toLowerCase();
+   const key=identity(row.key||row.name||sourceName,p.canonical),sourceKey=identity(sourceName,p.canonical),unit=String(row.unit??'unknown').trim().toLowerCase();
    const entry={recipeId:recipe.id,name:sourceName,amount:sourceAmount,quantity:row.quantity,unit,status:row.status||null};
+   if(sourceKey!==key){sourceIdentityMismatches.push({...entry,sourceKey,normalizedKey:key});const pair=sourceKey+'|'+key,previous=identityMismatchGroups.get(pair);if(previous)previous.occurrences++;else identityMismatchGroups.set(pair,{sourceKey,normalizedKey:key,occurrences:1});}
    units.set(unit,(units.get(unit)||0)+1);statuses.set(row.status||'unspecified',(statuses.get(row.status||'unspecified')||0)+1);
    if(!Number.isFinite(row.quantity)||row.quantity<=0||!unit)invalid.push(entry);
    if(!groups.has(key))groups.set(key,{key,names:new Set(),units:new Set(),occurrences:0,examples:[],produce:p.category(key)==='Produce'});
@@ -50,7 +51,7 @@ export function auditCatalogue(name,recipes,normalized,p,{privateData=false}={})
  const compact=group=>({key:group.key,names:[...group.names].sort(),units:[...group.units].sort(),occurrences:group.occurrences,produce:group.produce,...(!privateData?{examples:group.examples}:{})});
  const mixedUnits=[...groups.values()].filter(group=>group.units.size>1).sort((a,b)=>b.occurrences-a.occurrences).map(compact);
  const namingVariants=[...groups.values()].filter(group=>group.names.size>1).sort((a,b)=>b.occurrences-a.occurrences).map(compact);
- return {name,recipes:recipes.length,ingredientLines:lines,unitCounts:Object.fromEntries([...units].sort()),statusCounts:Object.fromEntries([...statuses].sort()),canonicalGroups:groups.size,mixedUnitGroups:mixedUnits.length,mixedProduceGroups:mixedUnits.filter(group=>group.produce).length,namingVariantGroups:namingVariants.length,invalidQuantityLines:invalid.length,explicitSourceEachMismatches:sourceUnitMismatches.length,duplicateRecipeGroups:withinRecipeDuplicates.length,mixedUnits,namingVariants,...(!privateData?{invalid,sourceUnitMismatches,withinRecipeDuplicates}:{})};
+ return {name,recipes:recipes.length,ingredientLines:lines,unitCounts:Object.fromEntries([...units].sort()),statusCounts:Object.fromEntries([...statuses].sort()),canonicalGroups:groups.size,mixedUnitGroups:mixedUnits.length,mixedProduceGroups:mixedUnits.filter(group=>group.produce).length,namingVariantGroups:namingVariants.length,invalidQuantityLines:invalid.length,explicitSourceEachMismatches:sourceUnitMismatches.length,duplicateRecipeGroups:withinRecipeDuplicates.length,sourceIdentityMismatchLines:sourceIdentityMismatches.length,identityMismatchGroups:[...identityMismatchGroups.values()],mixedUnits,namingVariants,...(!privateData?{invalid,sourceUnitMismatches,withinRecipeDuplicates,sourceIdentityMismatches}:{})};
 }
 export function auditIngredientUnits({root=ROOT,privateSnapshot}={}){
  const p=auditPricing(root),free=json(path.join(root,'recipes.json')),normalized=json(path.join(root,'normalized-ingredient-database.json'));

@@ -7,7 +7,7 @@ import {auditCatalogue} from '../scripts/audit-ingredient-units.mjs';
 import {auditPrivateIngredientUnits} from '../scripts/audit-private-ingredient-units-ci.mjs';
 import {PRIVATE_RECIPE_SELECT} from '../scripts/load-private-recipe-audit.mjs';
 const root=path.resolve(path.dirname(fileURLToPath(import.meta.url)),'..');
-const env={GITHUB_REPOSITORY:'jbatiste12-debug/BasketBoss',GITHUB_REF:'refs/heads/fix/ingredient-unit-standardisation',GITHUB_EVENT_NAME:'push',CLOUDFLARE_API_TOKEN:'synthetic-token-'.repeat(4),CLOUDFLARE_ACCOUNT_ID:'a'.repeat(32)};
+const env={GITHUB_REPOSITORY:'jbatiste12-debug/BasketBoss',GITHUB_REF:'refs/heads/main',GITHUB_EVENT_NAME:'push',CLOUDFLARE_API_TOKEN:'synthetic-token-'.repeat(4),CLOUDFLARE_ACCOUNT_ID:'a'.repeat(32)};
 const database='01234567-89ab-cdef-0123-456789abcdef';
 const rows=()=>Array.from({length:400},(_,index)=>{
  const id='private_recipe_identity_'+index,recipe={id,premium:true,accessTier:'premium',name:'PRIVATE RECIPE TITLE',method:['PRIVATE METHOD TEXT'],ingredients:[['Carrots','PRIVATE ORIGINAL AMOUNT',0,'Produce']]},normalized={id,ingredients:[{name:'Carrots',key:'carrots',quantity:index%2?250:2,unit:index%2?'g':'each',status:'PARSED'}]};
@@ -34,7 +34,7 @@ test('read-only production audit makes only a fixed Pages GET and fixed catalogu
 });
 
 test('audit rejects foreign repository, branch and event contexts before any network request',async()=>{
- for(const change of [{GITHUB_REPOSITORY:'attacker/BasketBoss'},{GITHUB_REF:'refs/heads/main'},{GITHUB_EVENT_NAME:'pull_request'}]){
+ for(const change of [{GITHUB_REPOSITORY:'attacker/BasketBoss'},{GITHUB_REF:'refs/heads/untrusted'},{GITHUB_EVENT_NAME:'pull_request'}]){
   const h=harness();await assert.rejects(auditPrivateIngredientUnits({env:{...env,...change},perform:h.perform,root}),/ingredient_audit_context_invalid/);assert.equal(h.calls.length,0);
  }
 });
@@ -57,4 +57,11 @@ test('trusted audit workflow grants read-only repository access, uses existing e
  const workflow=fs.readFileSync(path.join(root,'.github/workflows/ingredient-unit-audit.yml'),'utf8');
  assert.match(workflow,/contents: read/);assert.match(workflow,/environment: github-pages/);assert.match(workflow,/persist-credentials: false/);assert.match(workflow,/fetch-depth: 0/);assert.match(workflow,/retention-days: 1/);
  assert.doesNotMatch(workflow,/pull_request_target|contents: write|wrangler|d1 execute|secrets: inherit/);
+});
+
+// An identity mismatch creates a false duplicate even when the unit matches.
+test('audit detects a source tomato line incorrectly recorded as Asparagus without exposing private recipe references',()=>{
+ const recipe={id:'private-fixture',ingredients:[['Sun-dried tomatoes, drained','60 g']]},normalized={recipes:[{id:recipe.id,ingredients:[{key:'asparagus',quantity:200,unit:'g'}]}]};
+ const result=auditCatalogue('fixture',[recipe],normalized,{canonical:name=>name.toLowerCase().replace(', drained',''),category:()=> 'Produce'},{privateData:true});
+ assert.equal(result.sourceIdentityMismatchLines,1);assert.deepEqual(result.identityMismatchGroups,[{sourceKey:'sun-dried tomato',normalizedKey:'asparagus',occurrences:1}]);assert(!JSON.stringify(result).includes('private-fixture'));assert.equal(result.sourceIdentityMismatches,undefined);
 });

@@ -7,12 +7,12 @@ import {fileURLToPath} from 'node:url';
 import {fetchPrivateRecipeRows} from './load-private-recipe-audit.mjs';
 import {auditCatalogue,auditPricing,auditIngredientUnits} from './audit-ingredient-units.mjs';
 const ROOT=path.resolve(path.dirname(fileURLToPath(import.meta.url)),'..');
-const REPOSITORY='jbatiste12-debug/BasketBoss',REF='refs/heads/fix/ingredient-unit-standardisation',PROJECT='basketboss-site';
+const REPOSITORY='jbatiste12-debug/BasketBoss',REF='refs/heads/main',PROJECT='basketboss-site';
 const fail=code=>{throw Error('ingredient_audit_'+code);};
 const plain=value=>value&&typeof value==='object'&&!Array.isArray(value);
 const uuid=/^[a-f0-9]{8}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{12}$/i;
 function aggregates(report){
- const {invalid,sourceUnitMismatches,withinRecipeDuplicates,...safe}=report;
+ const {invalid,sourceUnitMismatches,withinRecipeDuplicates,sourceIdentityMismatches,...safe}=report;
  for(const key of ['mixedUnits','namingVariants'])safe[key]=safe[key].map(({examples,...group})=>group);
  return safe;
 }
