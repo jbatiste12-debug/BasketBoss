@@ -31,7 +31,12 @@ jobs:
           node-version: '24'
           cache: npm
       - run: npm ci --no-audit --no-fund
-      - run: npm run ios:sync
+      - name: Build and sync iOS workspace
+        run: |
+          if ! npm run ios:sync; then
+            echo 'Retrying iOS sync once after a dependency setup failure.'
+            npm run ios:sync
+          fi
       - name: Prepare the proven iOS simulator and software keyboard
         run: |
           node --input-type=module <<'JS'

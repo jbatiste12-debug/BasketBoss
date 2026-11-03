@@ -88,7 +88,11 @@ jobs:
       - name: Install pinned native dependencies
         run: npm ci --no-audit --no-fund
       - name: Build and sync iOS workspace
-        run: npm run ios:sync
+        run: |
+          if ! npm run ios:sync; then
+            echo 'Retrying iOS sync once after a dependency setup failure.'
+            npm run ios:sync
+          fi
       - name: Verify build 6 basket, pantry, saved weeks and Cook regressions
         run: >-
           node --test --test-isolation=none
