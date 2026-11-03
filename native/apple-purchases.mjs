@@ -43,13 +43,14 @@ export function installNativeApplePurchases({plugin,apiURL,readSession,fetch:per
   const available=PRODUCTS.every(id=>products.some(product=>product.id===id));
   return {available,products,availabilityMessage:available?'':'Apple did not return both subscription plans. Check your App Store account, then refresh membership.'};
  }
- async function refresh(){
+ async function refresh(options={}){
   if(destroyed)return {...state};
   const revision=++viewRevision,actor=pin(),epoch=generation;
   if(isDeleting()){emit({available:false,authenticated:!!actor,premiumAccess:false,membershipState:'unavailable',phase:'paused',message:'Account deletion is in progress. Purchases are paused.'});return {...state};}
   emit({authenticated:!!actor,membershipState:actor?'checking':'signed_out'});
   try{
-   const [catalog,membership]=await Promise.all([loadProducts().catch(()=>({available:false,products:[]})),actor?request('/api/subscription/status',{pin:actor}):Promise.resolve(null)]);
+   const catalogRequest=options.membershipOnly===true?Promise.resolve({available:state.available,products:state.products,availabilityMessage:state.availabilityMessage}):loadProducts().catch(()=>({available:false,products:[]}));
+   const [catalog,membership]=await Promise.all([catalogRequest,actor?request('/api/subscription/status',{pin:actor}):Promise.resolve(null)]);
    if(destroyed||revision!==viewRevision||epoch!==generation||isDeleting()||(actor&&!current(actor)))return {...state};
    if(actor&&(membership?.authenticated!==true||typeof membership.premiumAccess!=='boolean'))throw Error('Sign in again to check your membership.');
    if(actor&&membership.reason==='billing_not_enabled')throw Error('Membership verification is not available right now.');
@@ -134,7 +135,8 @@ export function installNativeApplePurchases({plugin,apiURL,readSession,fetch:per
   if(result.ok!==true)throw Error('Beta Premium could not be activated. Refresh membership, then try again.');
   // A successful claim is not a local entitlement. Re-read the same account's
   // authoritative status before changing presentation or exposing Premium UI.
-  await refresh();requireCurrent(actor);
+  // StoreKit catalogue loading must never delay a purchase-free beta claim.
+  await refresh({membershipOnly:true});requireCurrent(actor);
   if(state.premiumAccess!==true)throw Error('Beta access was checked, but Premium could not be confirmed. Refresh membership to retry.');
   await win.BasketBossVerifiedPremium?.refresh?.(true);requireCurrent(actor);
   notifyMembership();

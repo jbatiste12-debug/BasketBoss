@@ -15,7 +15,7 @@ function fixture(options={}){
  win.BasketBossVerifiedPremium={refresh:async force=>{calls.push(['premiumRefresh',force]);return premium;}};
  win.addEventListener('basketboss:apple-membership-updated',()=>calls.push(['membershipUpdate']));
  const plugin={
-  async getProducts(args){calls.push(['products',args]);if(options.productsError)throw Error('StoreKit prices are unavailable.');if(options.products)return {products:options.products};return {products:[{id:MONTH,displayPrice:'€5,49',subscriptionPeriod:{unit:'month',value:1}},{id:YEAR,displayPrice:'€43,99',subscriptionPeriod:{unit:'year',value:1}}]};},
+  async getProducts(args){calls.push(['products',args]);if(options.productsWait)return options.productsWait; if(options.productsError)throw Error('StoreKit prices are unavailable.');if(options.products)return {products:options.products};return {products:[{id:MONTH,displayPrice:'€5,49',subscriptionPeriod:{unit:'month',value:1}},{id:YEAR,displayPrice:'€43,99',subscriptionPeriod:{unit:'year',value:1}}]};},
   async purchase(args){calls.push(['purchase',args]);return options.purchase?options.purchase(args):{status:'purchased',transaction};},
   async restorePurchases(){calls.push(['restore']);return options.restore?options.restore():{transactions:[transaction]};},
   async getPendingTransactions(){return {transactions:[]};},
@@ -239,6 +239,16 @@ test('claim acknowledgement alone cannot unlock beta UI without current authorit
  const result=await h.controller.claimBeta();assert.equal(result.ok,false);assert.equal(h.controller.state.premiumAccess,false);assert.equal(h.controller.state.beta,null);
  assert.match(h.controller.state.message,/Premium could not be confirmed/);assert.equal(h.calls.some(c=>c[0]==='premiumRefresh'||c[0]==='membershipUpdate'),false);
 }));
+
+test('a stalled initial StoreKit catalogue cannot block or later overwrite a beta claim',{timeout:1000},async()=>{
+ const products=deferred(),h=fixture({productsWait:products.promise});
+ try{
+  await tick();assert.equal(h.calls.filter(c=>c[0]==='products').length,1);
+  assert.equal((await h.controller.claimBeta()).ok,true);assert.equal(h.controller.state.provider,'testflight_beta');
+  assert.equal(h.calls.filter(c=>c[0]==='products').length,1,'claim does not start or await product loading');
+  products.resolve({products:[]});await h.controller.ready;assert.equal(h.controller.state.premiumAccess,true);assert.equal(h.controller.state.provider,'testflight_beta');
+ }finally{products.resolve({products:[]});h.controller.destroy();}
+});
 
 test('beta unlock requires signed-in native iOS and never calls purchase, restore or local entitlement setters',async()=>{
  for(const options of [{native:false},{platform:'android'}])await withFixture(options,async h=>{
