@@ -1,0 +1,127 @@
+import test from 'node:test';
+import assert from 'node:assert/strict';
+import fs from 'node:fs';
+import {DatabaseSync} from 'node:sqlite';
+import {createTTSHandler} from '../functions/api/tts.js';
+import {clipId,clipKey,spokenText,byteRange,TTS_PROFILE,TTS_INSTRUCTIONS,TTS_AUDIO_LIMIT,requestSpeech} from '../bb-server-lib/bb-tts.js';
+const actor='11111111-1111-4111-8111-111111111111',other='22222222-2222-4222-8222-222222222222';
+const origin='https://basketboss.co.uk',text='First up, grab 250 grams of gnocchi.';
+const audio=new TextEncoder().encode('ID3-test-mp3-audio-for-private-stream');
+const member={user:{id:actor,email:'cook@example.invalid'},ownerId:actor};
+function sqlite(db){
+ return {prepare(sql){let args=[];return {bind(...values){args=values;return this;},async first(){return db.prepare(sql).get(...args)||null;},async all(){return {results:db.prepare(sql).all(...args)};},async run(){return db.prepare(sql).run(...args);}};},async batch(statements){return Promise.all(statements.map(s=>s.run()));}};
+}
+function bucket(){
+ const values=new Map(),counts={get:0,head:0,put:0};
+ return {values,counts,async head(key){counts.head++;const value=values.get(key);return value?{size:value.bytes.length,httpMetadata:value.httpMetadata,customMetadata:value.customMetadata}:null;},async get(key,options){counts.get++;const value=values.get(key);if(!value)return null;const selected=options?.range,bytes=selected?value.bytes.slice(selected.offset,selected.offset+selected.length):value.bytes;return {size:value.bytes.length,httpMetadata:value.httpMetadata,customMetadata:value.customMetadata,body:new Response(bytes).body};},async put(key,value,options){counts.put++;values.set(key,{bytes:new Uint8Array(value),...options});return {key,size:value.byteLength};}};
+}
+function harness({who=member,provider,personal=3,global=20}={}){
+ const db=new DatabaseSync(':memory:');db.exec(fs.readFileSync(new URL('../sql/basketboss_cook_tts_20261102.sql',import.meta.url),'utf8'));
+ db.exec('CREATE TABLE bb_account_deletions(actor_hash TEXT PRIMARY KEY,retry_hash TEXT,user_id TEXT,email TEXT,started_at_ms INTEGER,completed_at_ms INTEGER,locked_until_ms INTEGER); CREATE TABLE bb_paid_entitlements(user_id TEXT,status TEXT,price_id TEXT,plan TEXT,updated_at_ms INTEGER);');
+ const r2=bucket(),calls=[],env={BB_TTS_ENABLED:'true',BB_TTS_AUDIO:r2,BB_TTS_DAILY_MISS_CAP:String(personal),BB_TTS_GLOBAL_DAILY_MISS_CAP:String(global),OPENAI_API_KEY:'synthetic-provider-key',SUPABASE_URL:'https://example.supabase.co',SUPABASE_PUBLISHABLE_KEY:'synthetic-public-key',BILLING_DB:sqlite(db)};
+ const perform=async(url,options)=>{calls.push({url,options});return provider?provider(url,options):new Response(audio,{headers:{'Content-Type':'audio/mpeg'}});};
+ const handle=createTTSHandler({authorizeMember:async()=>who,perform,wait:async()=>{},clock:()=>1800000000000});
+ const invoke=(body={text,prepare:true},options={})=>{
+  const request=new Request(origin+'/api/tts'+(options.query||''),{method:options.method||'POST',headers:{Authorization:'Bearer synthetic-valid-session',Origin:origin,'Content-Type':'application/json',...options.headers},...(options.method&&options.method!=='POST'?{}:{body:typeof body==='string'?body:JSON.stringify(body)})});
+  return handle({request,env,...options.context});
+ };
+ return {db,r2,calls,env,perform,handle,invoke,usage:()=>db.prepare("SELECT * FROM bb_ai_daily_usage ORDER BY actor").all(),close:()=>db.close()};
+}
+
+test('only enabled, configured private storage can start AI Cook voice',async()=>{
+ const h=harness();try{for(const change of [env=>{env.BB_TTS_ENABLED='false';},env=>{env.BB_TTS_AUDIO=null;},env=>{env.SUPABASE_URL='';}]){const env={...h.env};change(env);const response=await h.handle({env,request:new Request(origin+'/api/tts',{method:'GET'})});assert.equal(response.status,503);}assert.equal(h.calls.length,0);assert.equal(h.r2.counts.head,0);}finally{h.close();}
+});
+test('authentication, Premium and deletion denials apply before every cache lookup',async()=>{
+ for(const status of [401,403,409]){const h=harness({who:{error:'denied',status}});try{const id=await clipId(text);for(const options of [{method:'POST'},{method:'GET',query:'?clip='+id},{method:'HEAD',query:'?clip='+id}]){const response=await h.invoke({text,prepare:true},options);assert.equal(response.status,status);}assert.equal(h.r2.counts.head+h.r2.counts.get,0);assert.equal(h.calls.length,0);}finally{h.close();}}
+});
+test('POST origin, JSON type, bounded text and server-owned voice controls are enforced',async()=>{
+ const h=harness();try{
+  for(const [body,options,status]of [[{text},{headers:{Origin:'https://other.invalid'}},403],[{text},{headers:{'Content-Type':'text/plain'}},415],['{',{},400],[{text:'x'.repeat(1201)},{},400],[{text,voice:'untrusted'},{},400],[{text,prepare:'true'},{},400],[{text:'\u0000hidden'},{},400],[{text:'x'.repeat(9000)},{},413]])assert.equal((await h.invoke(body,options)).status,status);
+  assert.equal(h.calls.length,0);assert.equal(h.usage().length,0);
+ }finally{h.close();}
+});
+test('the content hash normalizes whitespace and includes the spoken quantities',async()=>{
+ assert.equal(await clipId(spokenText('  First up, grab\n250 grams of gnocchi. ')),await clipId(text));
+ assert.notEqual(await clipId(text),await clipId(text.replace('250','500')));
+ assert.match(clipKey(await clipId(text)),new RegExp('^cook-voice/'+TTS_PROFILE+'/[a-f0-9]{64}\\.mp3$'));
+});
+test('one generation persists MP3 and repeated prepared/audio requests never regenerate or consume allowance',async()=>{
+ const h=harness();try{
+  const first=await h.invoke(),data=await first.json();assert.equal(first.status,200);assert.equal(data.cached,false);assert.match(data.url,/^\/api\/tts\?clip=[a-f0-9]{64}$/);assert.equal(data.contentType,'audio/mpeg');
+  assert.equal(h.calls.length,1);const body=JSON.parse(h.calls[0].options.body);assert.equal(body.model,'gpt-4o-mini-tts');assert.equal(body.voice,'cedar');assert.equal(body.input,text);assert.equal(body.instructions,TTS_INSTRUCTIONS);assert.equal(body.response_format,'mp3');
+  const before=h.usage();delete h.env.OPENAI_API_KEY;delete h.env.BB_TTS_DAILY_MISS_CAP;delete h.env.BB_TTS_GLOBAL_DAILY_MISS_CAP;
+  assert.equal((await (await h.invoke()).json()).cached,true);
+  const streamed=await h.invoke(null,{method:'GET',query:'?clip='+data.clipId});assert.equal(streamed.status,200);assert.equal(streamed.headers.get('Content-Type'),'audio/mpeg');assert.equal(streamed.headers.get('Cache-Control'),'private, no-store');assert.equal(streamed.headers.get('Vary'),'Authorization, Origin');assert.deepEqual(new Uint8Array(await streamed.arrayBuffer()),audio);
+  const repeated=await h.invoke({text});assert.equal(repeated.status,200);assert.deepEqual(new Uint8Array(await repeated.arrayBuffer()),audio);
+  assert.equal(h.calls.length,1);assert.deepEqual(h.usage(),before);
+  const object=h.r2.values.get(clipKey(data.clipId));assert.deepEqual(object.customMetadata,{profile:TTS_PROFILE});assert(!JSON.stringify(object).includes(text));
+ }finally{h.close();}
+});
+test('cached GET/HEAD support byte ranges and never expose bearer tokens in a URL',async()=>{
+ const h=harness();try{const {clipId:id,url}=await (await h.invoke()).json();assert(!url.includes('synthetic-valid-session'));
+  const head=await h.invoke(null,{method:'HEAD',query:'?clip='+id});assert.equal(head.status,200);assert.equal(head.headers.get('Content-Length'),String(audio.length));assert.equal((await head.arrayBuffer()).byteLength,0);
+  for(const [range,expected]of [['bytes=0-1',audio.slice(0,2)],['bytes=3-',audio.slice(3)],['bytes=-5',audio.slice(-5)]]){const response=await h.invoke(null,{method:'GET',query:'?clip='+id,headers:{Range:range}});assert.equal(response.status,206);assert.equal(response.headers.get('Accept-Ranges'),'bytes');assert.equal(Number(response.headers.get('Content-Length')),expected.length);assert.match(response.headers.get('Content-Range'),/^bytes \d+-\d+\/\d+$/);assert.deepEqual(new Uint8Array(await response.arrayBuffer()),expected);}
+  assert.equal((await h.invoke(null,{method:'GET',query:'?clip='+id,headers:{Range:'bytes=9999-'}})).status,416);
+  assert.equal((await h.invoke(null,{method:'GET',query:'?clip='+id+'&token=secret'})).status,400);
+  assert.equal((await h.invoke(null,{method:'GET',query:'?clip='+'0'.repeat(64)})).status,404);assert.equal(h.calls.length,1);
+ }finally{h.close();}
+});
+test('a live generation response streams audio while its complete private copy is persisted',async()=>{
+ const h=harness(),pending=[];try{const response=await h.invoke({text},{context:{waitUntil:task=>pending.push(task)}});assert.equal(response.status,200);assert.equal(response.headers.get('X-BB-TTS-Cache'),'miss');assert.deepEqual(new Uint8Array(await response.arrayBuffer()),audio);await Promise.all(pending);assert.equal(h.r2.values.size,1);assert.equal(h.db.prepare('SELECT * FROM bb_tts_cache_leases').all().length,0);assert.equal((await (await h.invoke()).json()).cached,true);}finally{h.close();}
+});
+test('concurrent identical requests share a D1 lease and cannot create a second charged generation',async()=>{
+ let resolve,entered;const deferred=new Promise(r=>resolve=r),started=new Promise(r=>entered=r),h=harness({provider:()=>{entered();return deferred;}});try{
+  const first=h.invoke();await started;assert.equal(h.calls.length,1);
+  const concurrent=await h.invoke();assert.equal(concurrent.status,503);assert.equal(concurrent.headers.get('Retry-After'),'2');assert.equal(h.calls.length,1);
+  resolve(new Response(audio,{headers:{'Content-Type':'audio/mpeg'}}));assert.equal((await first).status,200);assert.equal((await (await h.invoke()).json()).cached,true);assert.equal(h.calls.length,1);assert.equal(h.usage().find(row=>row.actor==='user:'+actor).used,1);
+ }finally{h.close();}
+});
+test('only cache misses consume separate personal/global budgets, and the shared owner owns partner usage',async()=>{
+ const h=harness({who:{user:{id:other},ownerId:actor},personal:1});try{assert.equal((await h.invoke()).status,200);assert.equal((await h.invoke({text:'A different cooking instruction.',prepare:true})).status,429);assert.equal((await h.invoke()).status,200);assert.equal(h.calls.length,1);assert.equal(h.usage().find(row=>row.actor.startsWith('user:')).actor,'user:'+actor);}finally{h.close();}
+ const limited=harness({global:1});try{assert.equal((await limited.invoke()).status,200);assert.equal((await limited.invoke({text:'Next, stir gently.',prepare:true})).status,429);assert.equal(limited.calls.length,1);}finally{limited.close();}
+});
+test('provider failure and invalid audio cannot persist a broken clip, and the lease is released',async()=>{
+ for(const response of [new Response('upstream failure',{status:500}),Response.json({not:'audio'}),new Response('',{headers:{'Content-Type':'audio/mpeg'}}),new Response('too large',{headers:{'Content-Type':'audio/mpeg','Content-Length':String(TTS_AUDIO_LIMIT+1)}})]){
+  const h=harness({provider:()=>response});try{assert.equal((await h.invoke()).status,502);assert.equal(h.r2.values.size,0);assert.equal(h.db.prepare('SELECT * FROM bb_tts_cache_leases').all().length,0);}finally{h.close();}
+ }
+});
+test('a missing reviewed lease migration fails closed before contacting the speech provider',async()=>{
+ const h=harness();try{h.db.exec('DROP TABLE bb_tts_cache_leases');assert.equal((await h.invoke()).status,502);assert.equal(h.calls.length,0);}finally{h.close();}
+});
+test('a deletion beginning between membership check and lease claim cannot create speech or usage',async()=>{
+ const h=harness();try{
+  const hash=await crypto.subtle.digest('SHA-256',new TextEncoder().encode('basketboss:account-deletion:actor:'+actor));const hex=[...new Uint8Array(hash)].map(x=>x.toString(16).padStart(2,'0')).join('');
+  h.db.prepare('INSERT INTO bb_account_deletions(actor_hash) VALUES(?)').run(hex);
+  assert.equal((await h.invoke()).status,503);assert.equal(h.calls.length,0);assert.equal(h.usage().length,0);
+ }finally{h.close();}
+});
+test('the actual server boundary verifies confirmed Supabase identity and an active server-priced membership',async()=>{
+ const h=harness(),original=globalThis.fetch;let confirmed=true;globalThis.fetch=async()=>Response.json({id:actor,email:'cook@example.invalid',...(confirmed?{email_confirmed_at:'2026-01-01T00:00:00Z'}:{})});
+ const handle=createTTSHandler({perform:h.perform,wait:async()=>{}}),request=()=>new Request(origin+'/api/tts',{method:'POST',headers:{Origin:origin,Authorization:'Bearer verified-test-token','Content-Type':'application/json'},body:JSON.stringify({text,prepare:true})});
+ try{Object.assign(h.env,{BB_BILLING_ENABLED:'true',BB_BILLING_MODE:'live',PADDLE_LIVE_STANDARD_PRICE_ID:'pri_'+'a'.repeat(26)});
+  assert.equal((await handle({request:request(),env:h.env})).status,403);assert.equal(h.calls.length,0);
+  h.db.prepare('INSERT INTO bb_paid_entitlements VALUES(?,?,?,?,?)').run(actor,'active','pri_'+'a'.repeat(26),'standard',1);
+  assert.equal((await handle({request:request(),env:h.env})).status,200);assert.equal(h.calls.length,1);
+  confirmed=false;assert.equal((await handle({request:request(),env:h.env})).status,401);assert.equal(h.calls.length,1);
+ }finally{globalThis.fetch=original;h.close();}
+});
+test('range parsing rejects multiranges, backwards, unsafe and empty offsets',()=>{
+ for(const range of ['bytes=0-1,3-4','bytes=-','bytes=9-2','bytes=99999999999999999999-','other=0-2','bytes=-0'])assert.equal(byteRange(range,10),false);
+ assert.deepEqual(byteRange('bytes=0-999',10),{offset:0,length:10,end:9});
+});
+
+
+test('a lost final global slot refunds the personal reservation without generating speech',async()=>{
+ const h=harness({global:1});try{
+  const prepare=h.env.BILLING_DB.prepare.bind(h.env.BILLING_DB);
+  h.env.BILLING_DB.prepare=sql=>{
+   const statement=prepare(sql);
+   if(!sql.includes("VALUES(?,'global','cook-tts',1)"))return statement;
+   let values=[];
+   return {bind(...args){values=args;return this;},async first(){h.db.prepare("INSERT INTO bb_ai_daily_usage VALUES(?,'global','cook-tts',1)").run(values[0]);return null;}};
+  };
+  assert.equal((await h.invoke()).status,429);assert.equal(h.calls.length,0);
+  assert.equal(h.usage().find(row=>row.actor==='user:'+actor).used,0);
+  assert.equal(h.usage().find(row=>row.actor==='global').used,1);
+ }finally{h.close();}
+});
