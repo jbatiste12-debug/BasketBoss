@@ -16,6 +16,7 @@ public final class BasketBossPurchasesPlugin: CAPPlugin, CAPBridgedPlugin {
         CAPPluginMethod(name: "getProducts", returnType: CAPPluginReturnPromise),
         CAPPluginMethod(name: "purchase", returnType: CAPPluginReturnPromise),
         CAPPluginMethod(name: "restorePurchases", returnType: CAPPluginReturnPromise),
+        CAPPluginMethod(name: "getAppTransaction", returnType: CAPPluginReturnPromise),
         CAPPluginMethod(name: "getPendingTransactions", returnType: CAPPluginReturnPromise),
         CAPPluginMethod(name: "finishTransaction", returnType: CAPPluginReturnPromise),
         CAPPluginMethod(name: "manageSubscriptions", returnType: CAPPluginReturnPromise)
@@ -239,6 +240,29 @@ public final class BasketBossPurchasesPlugin: CAPPlugin, CAPBridgedPlugin {
                 try await AppStore.sync()
                 call.resolve(["transactions": await self.collectTransactions()])
             } catch { call.reject("Apple purchases could not be restored. Check your Apple Account and try again.", "BB_APPLE_RESTORE", error) }
+        }
+    }
+
+    @objc public func getAppTransaction(_ call: CAPPluginCall) {
+        Task { @MainActor in
+            guard #available(iOS 16.0, *) else {
+                call.reject("TestFlight beta access requires iOS 16 or later.", "BB_APPLE_APP_TRANSACTION_UNSUPPORTED"); return
+            }
+            do {
+                // This is proof of the app download, without an in-app purchase.
+                // Never refresh automatically: refresh() can prompt for App Store
+                // authentication. The server verifies the JWS and grants access.
+                let verification = try await AppTransaction.shared
+                guard case .verified(let transaction) = verification else {
+                    call.reject("Apple could not verify this app download. Try again from the TestFlight app.", "BB_APPLE_APP_TRANSACTION_UNVERIFIED"); return
+                }
+                guard transaction.environment == .sandbox else {
+                    call.reject("Beta access is available only in the TestFlight sandbox app.", "BB_APPLE_APP_TRANSACTION_ENVIRONMENT"); return
+                }
+                call.resolve(["signedAppTransaction": verification.jwsRepresentation])
+            } catch {
+                call.reject("Apple could not check this app download. Check your connection and App Store sign-in, then try again.", "BB_APPLE_APP_TRANSACTION_UNAVAILABLE", error)
+            }
         }
     }
 

@@ -103,6 +103,12 @@
           details.textContent='Your household owner manages the subscription. No separate subscription is needed.';
           return;
         }
+        if(raw.provider==='testflight_beta'&&raw.premiumAccess===true){
+          status.textContent='TestFlight Beta Premium — complimentary beta access';
+          const expiry=dateText(raw.beta?.expiresAt);
+          details.textContent=(expiry?'Beta access ends '+expiry+'. ':'')+'No paid subscription, automatic renewal or cancellation is required.';
+          return;
+        }
         const sub=raw.subscription;
         if(!sub){status.textContent='BasketBoss Free — no active paid subscription';upgrade.hidden=false;return;}
         if(raw.provider==='apple'||sub.provider==='apple'){

@@ -4,12 +4,16 @@ import {installNativeApplePurchases} from '../native/apple-purchases.mjs';
 const MONTH='uk.co.basketboss.premium.monthly',YEAR='uk.co.basketboss.premium.annual',DELETED_FOUNDER='uk.co.basketboss.premium.founder.monthly';
 const TOKEN='c6376990-2814-47bc-b66f-4d5b4ca09538';
 const transaction={id:'123456',originalId:'123000',productId:MONTH,appAccountToken:TOKEN,signedTransactionInfo:'server-verifies-this-signed-JWS'};
+const signedApp='eyJhbGciOiJFUzI1NiJ9.eyJidW5kbGVJZCI6InVrLmNvLmJhc2tldGJvc3MuYXBwIn0.c2lnbmF0dXJl';
+const beta={expiresAt:'2026-12-01T00:00:00.000Z',startedAt:'2026-11-03T00:00:00.000Z',applicationVersion:'6',environment:'Sandbox'};
 const deferred=()=>{let resolve;const promise=new Promise(r=>{resolve=r;});return {promise,resolve};};
 const tick=()=>new Promise(resolve=>setImmediate(resolve));
 function fixture(options={}){
- let session={access_token:'actor-A-token',expires_at:Math.floor(Date.now()/1000)+3600,user:{id:'actor-A'}},deleting=false,premium=false;
+ let session={access_token:'actor-A-token',expires_at:Math.floor(Date.now()/1000)+3600,user:{id:'actor-A'}},deleting=false,premium=false,provider='apple';
  const calls=[],order=[],nativeListeners=new Map();
- const win=new EventTarget();win.Event=Event;
+ const win=new EventTarget();win.Event=Event;win.BBNative=options.native===false?null:{isNative:true,platform:options.platform||'ios'};
+ win.BasketBossVerifiedPremium={refresh:async force=>{calls.push(['premiumRefresh',force]);return premium;}};
+ win.addEventListener('basketboss:apple-membership-updated',()=>calls.push(['membershipUpdate']));
  const plugin={
   async getProducts(args){calls.push(['products',args]);if(options.productsError)throw Error('StoreKit prices are unavailable.');if(options.products)return {products:options.products};return {products:[{id:MONTH,displayPrice:'€5,49',subscriptionPeriod:{unit:'month',value:1}},{id:YEAR,displayPrice:'€43,99',subscriptionPeriod:{unit:'year',value:1}}]};},
   async purchase(args){calls.push(['purchase',args]);return options.purchase?options.purchase(args):{status:'purchased',transaction};},
@@ -17,6 +21,7 @@ function fixture(options={}){
   async getPendingTransactions(){return {transactions:[]};},
   async finishTransaction(args){calls.push(['finish',args]);order.push('finish');},
   async manageSubscriptions(){calls.push(['manage']);},
+  async getAppTransaction(){calls.push(['appTransaction']);return options.appTransaction?options.appTransaction():{signedAppTransaction:signedApp};},
   async addListener(name,listener){calls.push(['listener',name]);nativeListeners.set(name,listener);return {remove(){nativeListeners.delete(name);calls.push(['removeListener',name]);}};}
  };
  const response=(body,status=200)=>({ok:status>=200&&status<300,status,json:async()=>body});
@@ -24,9 +29,10 @@ function fixture(options={}){
   const route=new URL(address).pathname;calls.push(['http',route,args]);
   if(options.fetch){const custom=await options.fetch(route,args,response);if(custom)return custom;}
   if(route==='/api/apple/config')return response(options.config||{available:true,productIds:[MONTH,YEAR]});
-  if(route==='/api/subscription/status')return response(options.membership||{authenticated:true,premiumAccess:premium,provider:premium?'apple':null});
+  if(route==='/api/subscription/status')return response(options.membership||{authenticated:true,premiumAccess:premium,provider:premium?provider:null,...(premium&&provider==='testflight_beta'?{beta}: {})});
   if(route==='/api/apple/purchase-context')return response({canPurchase:true,appAccountToken:TOKEN,productIds:[MONTH,YEAR]});
   if(route==='/api/apple/verify'){order.push('verified');premium=options.verifiedAccess!==false;return response({ok:true,acknowledged:options.ack!==false,premiumAccess:premium});}
+  if(route==='/api/apple/testflight-beta'){premium=true;provider='testflight_beta';return response({ok:true,premiumAccess:true,provider,beta});}
   throw Error('Unexpected endpoint '+route);
  };
  const controller=installNativeApplePurchases({plugin,apiURL:path=>'https://basketboss.co.uk'+path,readSession:()=>session,fetch:perform,window:win,isDeleting:()=>deleting});
@@ -216,4 +222,75 @@ test('membership presentation distinguishes verified Free from malformed or unav
 test('signing out invalidates the previous membership presentation immediately',async()=>withFixture({membership:{authenticated:true,premiumAccess:true,provider:'paddle'}},async h=>{
  assert.equal(h.controller.state.membershipState,'premium');h.setAccount(null);
  assert.equal(h.controller.state.membershipState,'signed_out');assert.equal(h.controller.state.premiumAccess,false);
+}));
+
+test('TestFlight beta unlock works without StoreKit products and trusts only refreshed server membership',async()=>withFixture({config:{available:false}},async h=>{
+ assert.equal(h.controller.state.available,false);assert.equal(h.controller.state.premiumAccess,false);
+ const result=await h.controller.claimBeta();assert.deepEqual(result,{ok:true,premiumAccess:true,provider:'testflight_beta'});
+ const claim=h.calls.find(c=>c[0]==='http'&&c[1]==='/api/apple/testflight-beta');
+ assert.deepEqual(JSON.parse(claim[2].body),{signedAppTransaction:signedApp});assert.equal(claim[2].headers.Authorization,'Bearer actor-A-token');
+ assert.equal(h.controller.state.provider,'testflight_beta');assert.deepEqual(h.controller.state.beta,beta);assert.equal(h.controller.state.membershipState,'premium');assert.match(h.controller.state.message,/without a subscription charge/);
+ assert.equal(h.calls.filter(c=>c[0]==='premiumRefresh'&&c[1]===true).length,1);assert.equal(h.calls.filter(c=>c[0]==='membershipUpdate').length,1);
+ const claimAt=h.calls.indexOf(claim),statusAt=h.calls.findIndex((c,i)=>i>claimAt&&c[0]==='http'&&c[1]==='/api/subscription/status'),refreshAt=h.calls.findIndex(c=>c[0]==='premiumRefresh');assert(statusAt>claimAt&&refreshAt>statusAt);
+ assert.equal((await h.controller.subscribe(MONTH)).reason,'already_premium');assert.equal(purchases(h).length,0);assert.equal(finishes(h).length,0);assert.equal(h.calls.some(c=>c[0]==='restore'),false);
+}));
+
+test('claim acknowledgement alone cannot unlock beta UI without current authoritative Premium status',async()=>withFixture({membership:{authenticated:true,premiumAccess:false}},async h=>{
+ const result=await h.controller.claimBeta();assert.equal(result.ok,false);assert.equal(h.controller.state.premiumAccess,false);assert.equal(h.controller.state.beta,null);
+ assert.match(h.controller.state.message,/Premium could not be confirmed/);assert.equal(h.calls.some(c=>c[0]==='premiumRefresh'||c[0]==='membershipUpdate'),false);
+}));
+
+test('beta unlock requires signed-in native iOS and never calls purchase, restore or local entitlement setters',async()=>{
+ for(const options of [{native:false},{platform:'android'}])await withFixture(options,async h=>{
+  assert.equal((await h.controller.claimBeta()).ok,false);assert.equal(h.calls.some(c=>c[0]==='appTransaction'||c[1]==='/api/apple/testflight-beta'),false);assert.equal(h.controller.state.premiumAccess,false);
+ });
+ await withFixture({},async h=>{
+  h.setAccount(null);assert.equal((await h.controller.claimBeta()).reason,'signin_required');assert.equal(h.calls.some(c=>c[0]==='appTransaction'),false);assert.match(h.controller.state.message,/Sign in/);
+ });
+});
+
+test('old native plugins and unverifiable app proof show actionable fixed errors without a server claim',async()=>{
+ for(const mode of ['missing','unimplemented','unverified','badProof'])await withFixture({appTransaction:async()=>{
+  if(mode==='badProof')return {signedAppTransaction:'not-a-signed-app'};
+  throw Object.assign(Error('private-Apple-error'),{code:mode==='unimplemented'?'UNIMPLEMENTED':'BB_APPLE_APP_TRANSACTION_UNVERIFIED'});
+ }},async h=>{
+  if(mode==='missing')delete h.plugin.getAppTransaction;
+  assert.equal((await h.controller.claimBeta()).ok,false);assert.equal(h.calls.some(c=>c[1]==='/api/apple/testflight-beta'),false);assert.equal(h.controller.state.premiumAccess,false);
+  assert.match(h.controller.state.message,/Update|latest|could not be verified/);assert.doesNotMatch(h.controller.state.message,/private-Apple/);
+ });
+});
+
+test('server beta proof, ownership, expiry and verification failures do not grant client Premium',async()=>{
+ for(const status of [401,403,409,410,503])await withFixture({fetch:(route,args,response)=>route==='/api/apple/testflight-beta'?response({ok:false,code:'testflight_beta_unavailable',error:'Beta access could not be verified. Try again.'},status):null},async h=>{
+  assert.equal((await h.controller.claimBeta()).ok,false);assert.equal(h.controller.state.premiumAccess,false);assert.equal(h.calls.some(c=>c[0]==='premiumRefresh'||c[0]==='membershipUpdate'),false);assert.match(h.controller.state.message,/could not be verified/);
+ });
+});
+
+test('account changes and deletion during native beta proof collection cannot submit or unlock another account',async()=>{
+ for(const change of ['account','deletion','signout']){
+  const proof=deferred();await withFixture({appTransaction:()=>proof.promise},async h=>{
+   const pending=h.controller.claimBeta();await tick();
+   if(change==='deletion')h.deleteAccount();else h.setAccount(change==='account'?'actor-B':null);
+   proof.resolve({signedAppTransaction:signedApp});assert.equal((await pending).ok,false);assert.equal(h.calls.some(c=>c[1]==='/api/apple/testflight-beta'),false);assert.equal(h.controller.state.premiumAccess,false);
+  });
+ }
+});
+
+test('a late beta acknowledgement after account switch is discarded and its request is aborted',async()=>{
+ const server=deferred();let claim;
+ await withFixture({fetch:async(route,args,response)=>{if(route==='/api/apple/testflight-beta'){claim=args;await server.promise;return response({ok:true,premiumAccess:true,provider:'testflight_beta',beta});}}},async h=>{
+  const pending=h.controller.claimBeta();while(!claim)await tick();h.setAccount('actor-B');assert.equal(claim.signal.aborted,true);server.resolve();assert.equal((await pending).ok,false);
+  assert.equal(h.controller.state.premiumAccess,false);assert.equal(h.calls.some(c=>c[0]==='premiumRefresh'||c[0]==='membershipUpdate'),false);
+ });
+});
+
+test('repeated beta taps share the existing busy boundary without requesting another app proof',async()=>{
+ const proof=deferred();await withFixture({appTransaction:()=>proof.promise},async h=>{
+  const pending=h.controller.claimBeta();await tick();assert.equal((await h.controller.claimBeta()).reason,'busy');assert.equal(h.calls.filter(c=>c[0]==='appTransaction').length,1);
+  proof.resolve({signedAppTransaction:signedApp});assert.equal((await pending).ok,true);assert.equal(h.calls.filter(c=>c[1]==='/api/apple/testflight-beta').length,1);
+ });
+});
+
+test('unavailable StoreKit products retain an informative fixed reason without native error details',async()=>withFixture({productsError:true},async h=>{
+ assert.equal(h.controller.state.available,false);assert.match(h.controller.state.message,/prices could not be loaded.*App Store connection/);assert.equal(h.controller.state.premiumAccess,false);
 }));
