@@ -1,4 +1,11 @@
-/* The day badge is the only gesture surface; the rest of Plan scrolls normally. */
+/* Header holds move dinners; ordinary swipes still scroll the planner. */
+#app.bbnext-plan summary.bbnext-day-toggle{
+ touch-action:pan-y;
+ -webkit-user-select:none!important;
+ user-select:none!important;
+ -webkit-touch-callout:none;
+ -webkit-tap-highlight-color:transparent;
+}
 #app.bbnext-plan [data-bb-plan-handle]{
  touch-action:none!important;
  -webkit-user-select:none!important;

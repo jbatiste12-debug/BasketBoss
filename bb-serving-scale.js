@@ -85,6 +85,57 @@
     if(isWeight)return display+' '+rest;
     return display+(rest?' '+rest:'');
   }
+  // Kitchen-facing counts are a presentation choice. Keep scaleText and the
+  // normalized ingredient quantities available for precise stock arithmetic.
+  const KITCHEN_FRACTIONS=Object.freeze({'⅛':1/8,'⅙':1/6,'⅕':1/5,'¼':1/4,'⅓':1/3,'⅜':3/8,'⅖':2/5,'½':1/2,'⅗':3/5,'⅝':5/8,'⅔':2/3,'¾':3/4,'⅘':4/5,'⅚':5/6,'⅞':7/8});
+  const KITCHEN_NUMBER='(?:\\d+\\/\\d+|\\d+(?:\\.\\d+)?(?:\\s+\\d+\\/\\d+)?(?:\\s*[⅛⅙⅕¼⅓⅜⅖½⅗⅝⅔¾⅘⅚⅞])?|[⅛⅙⅕¼⅓⅜⅖½⅗⅝⅔¾⅘⅚⅞])';
+  const KITCHEN_LEADING=new RegExp('^('+KITCHEN_NUMBER+')(?:\\s*(?:–|—|-|to)\\s*('+KITCHEN_NUMBER+'))?\\s*(.*)$','i');
+  const KITCHEN_NOUNS=Object.freeze({can:'cans',tin:'tins',punnet:'punnets',bunch:'bunches',egg:'eggs',onion:'onions',pepper:'peppers',carrot:'carrots',potato:'potatoes',tomato:'tomatoes',courgette:'courgettes',aubergine:'aubergines',banana:'bananas',apple:'apples',lemon:'lemons',lime:'limes',orange:'oranges',leek:'leeks',cucumber:'cucumbers',cabbage:'cabbages',avocado:'avocados',mushroom:'mushrooms',parsnip:'parsnips',clove:'cloves',bulb:'bulbs',wrap:'wraps',fillet:'fillets',breast:'breasts',thigh:'thighs',sausage:'sausages',muffin:'muffins',roll:'rolls'});
+  const KITCHEN_SINGULAR=Object.fromEntries(Object.entries(KITCHEN_NOUNS).map(([one,many])=>[many,one]));
+  const KITCHEN_NOUN_PATTERN=new RegExp('\\b('+[...Object.keys(KITCHEN_NOUNS),...Object.keys(KITCHEN_SINGULAR)].join('|')+')\\b','i');
+  function kitchenNumber(value){
+    let rest=String(value).trim(),total=0;
+    const fraction=KITCHEN_FRACTIONS[rest.slice(-1)];
+    if(fraction){total+=fraction;rest=rest.slice(0,-1).trim();}
+    for(const part of rest.split(/\s+/).filter(Boolean)){
+      const pair=part.split('/'),n=pair.length===2?Number(pair[0])/Number(pair[1]):Number(part);
+      if(!Number.isFinite(n))return NaN;total+=n;
+    }
+    return total;
+  }
+  function practicalCount(value){
+    const n=Number(value);return Number.isFinite(n)&&n>0?Math.max(.5,Math.round((n+Number.EPSILON)*2)/2):n;
+  }
+  function practicalText(raw,factor,name){
+    const original=String(raw??'').trim(),match=original.match(KITCHEN_LEADING);
+    if(!match||!Number.isFinite(Number(factor))||!(factor>0))return original;
+    const first=kitchenNumber(match[1]),last=match[2]===undefined?null:kitchenNumber(match[2]);
+    if(!(first>0)||(last!==null&&!(last>0)))return original;
+    let rest=match[3];
+    const weight=rest.match(/^(kg|g|grams?|ml|l|litres?)\b/i);
+    if(weight){
+      const unit=weight[1].toLowerCase(),multiplier=unit==='kg'||/^(?:l|litres?)$/.test(unit)?1000:1;
+      const label=unit==='kg'?'g':/^(?:l|litres?)$/.test(unit)?'ml':weight[1];
+      const values=[first,...(last===null?[]:[last])].map(n=>formatAmount(n*factor*multiplier,label));
+      return values.join('–')+' '+label+rest.slice(weight[1].length);
+    }
+    const leadingCount=rest.match(KITCHEN_NOUN_PATTERN)?.index===0||/^(?:each|whole)\b/i.test(rest);
+    const namedWhole=KITCHEN_NOUN_PATTERN.test(String(name||''))&&!/\b(?:powder|juice|stock|sauce|puree|purée|paste|flour|milk)\b/i.test(String(name||''));
+    const sizedUnit=/^(?:small|medium|large|whole)(?:\s*,.*)?$/i.test(rest);
+    const optionalWhole=namedWhole&&/^(?:\(optional\)|optional|for serving|to garnish)$/i.test(rest);
+    const plainCount=optionalWhole||sizedUnit||(!rest||/^(?:(?:small|medium|large|whole)(?:\s|,|$)|(?:peeled|sliced|chopped|diced)\b)/i.test(rest))&&namedWhole&&!/^(?:small|medium|large)\s+(?:handfuls?|pinches?|spoons?|cups?|bunches?)\b/i.test(rest);
+    const multipack=/^[x×]\s*\d+(?:\.\d+)?\s*(?:g|kg|ml|l)\b.*\b(?:cans?|tins?)\b/i.test(rest);
+    if(!leadingCount&&!plainCount&&!multipack)return scaleText(original,factor,name,{roundCounts:false});
+    const values=[first,...(last===null?[]:[last])].map(n=>practicalCount(n*factor));
+    const singular=values.every(n=>n<=1),tail=rest.search(/,|\bplus\b|\bextra\b/i);
+    rest=rest.replace(KITCHEN_NOUN_PATTERN,(word,_,offset)=>{
+      if(tail!==-1&&offset>=tail)return word;
+      const base=KITCHEN_SINGULAR[word.toLowerCase()]||word.toLowerCase();
+      return singular?base:KITCHEN_NOUNS[base];
+    });
+    const changed=Math.abs(values[0]-first*factor)>1e-8||(last!==null&&Math.abs(values[1]-last*factor)>1e-8);
+    return (changed?'≈ ':'')+values.map(exactCount).join('–')+(rest?' '+rest:'');
+  }
   function validOverrides(value){
     if(!value||typeof value!=='object'||Array.isArray(value))return {};
     const out={};
@@ -103,5 +154,5 @@
     }
     return out;
   }
-  return Object.freeze({count,onboardingHousehold,ratio,forMeal,moneyCost,formatAmount,scaleText,validOverrides,validDayOverrides});
+  return Object.freeze({count,onboardingHousehold,ratio,forMeal,moneyCost,formatAmount,scaleText,practicalCount,practicalText,validOverrides,validDayOverrides});
 });

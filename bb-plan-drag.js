@@ -9,9 +9,11 @@
  const connected=element=>!!element?.isConnected;
  const closest=(element,selector)=>element?.closest?.(selector)||null;
  const planHandle=element=>{
-  const handle=closest(element,'[data-bb-plan-handle]');
+  if(closest(element,'button,input,select,textarea,a,label,[role="button"],[contenteditable="true"]'))return null;
+  const handle=closest(element,'[data-bb-plan-handle],summary.bbnext-day-toggle');
   return handle&&closest(handle,'#app.bbnext-plan')?handle:null;
  };
+ const handleDay=handle=>handle?.dataset.bbPlanHandle||closest(handle,'details.bbnext-day[data-bbnext-day]')?.dataset.bbnextDay;
  function status(message){
   if(!doc.body)return;
   if(!connected(statusNode)){
@@ -45,7 +47,7 @@
   drag.row.classList.remove('bb-plan-drag-source');drag.handle.classList.remove('bb-plan-holding');
   drag.ghost.remove();doc.body?.classList.remove('bb-plan-is-dragging');
   doc.documentElement.style.scrollBehavior=drag.scrollBehavior;
-  try{if(drag.handle.hasPointerCapture?.(drag.pointerId))drag.handle.releasePointerCapture(drag.pointerId);}catch{}
+  if(drag.pointerType!=='touch')try{if(drag.handle.hasPointerCapture?.(drag.pointerId))drag.handle.releasePointerCapture(drag.pointerId);}catch{}
   if(suppress)suppressClick(drag.x,drag.y);
  }
  function cancelDrag(message='Move cancelled.'){
@@ -113,18 +115,23 @@
   active={...record,snapshot:fresh,row,ghost,hint,target:null,targetRow:null,targetKey:'',lastFrame:0,frame:0,scrollBehavior:doc.documentElement.style.scrollBehavior};
   row.classList.add('bb-plan-drag-source');record.handle.classList.add('bb-plan-holding');doc.body.classList.add('bb-plan-is-dragging');
   doc.documentElement.style.scrollBehavior='auto';
-  try{record.handle.setPointerCapture(record.pointerId);}catch{}
+  if(record.pointerType!=='touch')try{record.handle.setPointerCapture(record.pointerId);}catch{}
   status('Picked up '+(source.name||'dinner')+' from '+record.from+'. Move over another day and release.');
   placeGhost(active);updateTarget(active);active.frame=requestAnimationFrame(scrollFrame);
  }
  function onDown(event){
+  suppressed=null;
+  // Touch Events retain control of a held gesture on iPhone while allowing
+  // ordinary scrolling before the hold. Pointer cancellation during native
+  // panning must not turn the whole meal header into a permanent no-scroll area.
+  if(event.pointerType==='touch'&&'ontouchstart' in window)return;
   if(active&&active.pointerId!==event.pointerId){cancelDrag();return;}
   if(pending&&pending.pointerId!==event.pointerId){clearPending();return;}
   if(event.button!==0||event.isPrimary===false||dialogState)return;
   const handle=planHandle(event.target);if(!handle)return;
-  clearPending();const current=snapshot(),source=current?.days.find(day=>day.day===handle.dataset.bbPlanHandle);
+  clearPending();const current=snapshot(),source=current?.days.find(day=>day.day===handleDay(handle));
   if(!source?.recipeId)return;
-  const record={handle,from:source.day,recipeId:source.recipeId,snapshot:current,pointerId:event.pointerId,x:event.clientX,y:event.clientY,startX:event.clientX,startY:event.clientY,timer:0};
+  const record={handle,from:source.day,recipeId:source.recipeId,snapshot:current,pointerId:event.pointerId,pointerType:event.pointerType||'mouse',x:event.clientX,y:event.clientY,startX:event.clientX,startY:event.clientY,timer:0};
   record.timer=setTimeout(()=>startHold(record),HOLD_MS);pending=record;
  }
  function onMove(event){
@@ -156,6 +163,31 @@
   if(!target){status('Move cancelled.');return;}
   if(target.blocked){notify(target.reason||'This day is unavailable. Your plan is unchanged.');return;}
   void applyMove(request,fallback);
+ }
+ function onTouchStart(event){
+  suppressed=null;
+  if(event.touches.length!==1){cancelDrag();clearPending();return;}
+  if(active||dialogState)return;
+  const handle=planHandle(event.target);if(!handle)return;
+  clearPending();const current=snapshot(),source=current?.days.find(day=>day.day===handleDay(handle));
+  if(!source?.recipeId)return;
+  const touch=event.changedTouches[0];if(!touch)return;
+  const record={handle,from:source.day,recipeId:source.recipeId,snapshot:current,pointerId:'touch-'+touch.identifier,pointerType:'touch',touchId:touch.identifier,x:touch.clientX,y:touch.clientY,startX:touch.clientX,startY:touch.clientY,timer:0};
+  record.timer=setTimeout(()=>startHold(record),HOLD_MS);pending=record;
+ }
+ function onTouchMove(event){
+  const record=active?.pointerType==='touch'?active:pending?.pointerType==='touch'?pending:null;
+  if(!record)return;
+  if(event.touches.length!==1){cancelDrag();clearPending();return;}
+  const touch=[...event.touches].find(value=>value.identifier===record.touchId);if(!touch)return;
+  if(active===record&&!event.cancelable){cancelDrag();return;}
+  onMove({pointerId:record.pointerId,clientX:touch.clientX,clientY:touch.clientY,cancelable:event.cancelable,preventDefault:()=>event.preventDefault()});
+ }
+ function onTouchEnd(event){
+  const record=active?.pointerType==='touch'?active:pending?.pointerType==='touch'?pending:null;
+  if(!record)return;
+  const touch=[...event.changedTouches].find(value=>value.identifier===record.touchId);if(!touch)return;
+  onUp({pointerId:record.pointerId,clientX:touch.clientX,clientY:touch.clientY,cancelable:event.cancelable,preventDefault:()=>event.preventDefault()});
  }
  function closeDialog({restore=true}={}){
   const current=dialogState;if(!current)return;dialogState=null;
@@ -208,9 +240,15 @@
  doc.addEventListener('pointerdown',onDown);
  doc.addEventListener('pointermove',onMove,{passive:false});
  doc.addEventListener('pointerup',onUp,{passive:false});
+ doc.addEventListener('touchstart',onTouchStart,{passive:true});
+ doc.addEventListener('touchmove',onTouchMove,{passive:false});
+ doc.addEventListener('touchend',onTouchEnd,{passive:false});
+ doc.addEventListener('touchcancel',()=>{cancelDrag();clearPending();});
  doc.addEventListener('pointercancel',event=>{if(active?.pointerId===event.pointerId||pending?.pointerId===event.pointerId)cancelDrag();});
  doc.addEventListener('lostpointercapture',event=>{if(active?.pointerId===event.pointerId)cancelDrag();});
  doc.addEventListener('contextmenu',event=>{if(planHandle(event.target))event.preventDefault();});
+ doc.addEventListener('selectstart',event=>{if(planHandle(event.target))event.preventDefault();});
+ doc.addEventListener('dragstart',event=>{if(planHandle(event.target))event.preventDefault();});
  doc.addEventListener('click',event=>{
   if(suppressed){
    const cancel=Date.now()<suppressed.until&&event.detail!==0&&Math.hypot(event.clientX-suppressed.x,event.clientY-suppressed.y)<30;

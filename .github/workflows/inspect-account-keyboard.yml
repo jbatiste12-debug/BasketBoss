@@ -11,19 +11,22 @@ on:
       - ios/App/BasketBossAccountKeyboardUITests/**
       - scripts/test-ios-account-keyboard.mjs
   workflow_dispatch:
+  workflow_call:
 
 permissions:
   contents: read
 
 jobs:
   keyboard:
-    runs-on: macos-latest
-    timeout-minutes: 30
+    runs-on: macos-15-intel
+    timeout-minutes: 45
+    env:
+      DEVELOPER_DIR: /Applications/Xcode_26.2.app/Contents/Developer
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
         with:
           persist-credentials: false
-      - uses: actions/setup-node@v4
+      - uses: actions/setup-node@v5
         with:
           node-version: '24'
           cache: npm
@@ -33,7 +36,16 @@ jobs:
         run: |
           node --input-type=module <<'JS'
           import {execFileSync} from 'node:child_process';
-          const run=(...args)=>execFileSync('xcrun',args,{encoding:'utf8',timeout:120000}).trim();
+          const run=(...args)=>{
+            const readOnlyList=args[0]==='simctl'&&args[1]==='list';
+            for(let attempt=0;;attempt++){
+              try{return execFileSync('xcrun',args,{encoding:'utf8',timeout:120000}).trim();}
+              catch(error){
+                if(!readOnlyList||error.code!=='ETIMEDOUT'||attempt!==0)throw error;
+                console.log('Retrying one timed-out readonly simulator list.');
+              }
+            }
+          };
           const runtimes=JSON.parse(run('simctl','list','runtimes','--json')).runtimes.filter(r=>r.isAvailable&&r.name.startsWith('iOS'));
           const devices=JSON.parse(run('simctl','list','devices','available','--json')).devices;
           const runtime=runtimes.find(r=>r.version.startsWith('26.2'))||runtimes.find(r=>r.version.startsWith('18.6'));
@@ -46,26 +58,56 @@ jobs:
           console.log('Booting '+phone.name+' / iOS '+runtime.version);
           execFileSync('xcrun',['simctl','bootstatus',phone.udid,'-b'],{stdio:'inherit',timeout:540000});
           JS
-      - name: Test real email and password taps and keyboard layout
-        run: node scripts/test-ios-account-keyboard.mjs
-      - name: Print text-only keyboard results
-        if: always()
+      - name: Prepare the keyboard UI test target
+        run: node scripts/test-ios-account-keyboard.mjs --prepare
+      - name: Compile keyboard UI tests
+        id: compile_keyboard_tests
+        timeout-minutes: 15
+        shell: bash
         run: |
-          python - <<'PY'
-          from pathlib import Path
-          import subprocess
-          root=Path('artifacts/account-keyboard-diagnostics')
-          for name in ['report.json','summary.json','tests.log']:
-              item=root/name
-              if item.exists():
-                  print(name)
-                  print(item.read_text(errors='replace')[-24000:])
-          result=root/'AccountKeyboard.xcresult'
-          if result.exists():
-              done=subprocess.run(['xcrun','xcresulttool','get','test-results','summary','--path',str(result)],capture_output=True,text=True)
-              print(done.stdout[-20000:])
-          PY
-      - uses: actions/upload-artifact@v4
+          xcodebuild build-for-testing \
+            -workspace ios/App/App.xcworkspace \
+            -scheme BasketBossAccountKeyboardUITests \
+            -configuration Debug \
+            -sdk iphonesimulator \
+            -destination "platform=iOS Simulator,id=$BB_KEYBOARD_SIMULATOR" \
+            -derivedDataPath /tmp/basketboss-ios-build \
+            COMPILER_INDEX_STORE_ENABLE=NO \
+            CODE_SIGNING_ALLOWED=NO \
+            2>&1 | tee artifacts/account-keyboard-diagnostics/build.log
+      - name: Activate the keyboard test simulator
+        id: activate_keyboard_tests
+        run: node scripts/test-ios-account-keyboard.mjs --activate
+      - name: Execute keyboard UI tests
+        id: execute_keyboard_tests
+        timeout-minutes: 10
+        shell: bash
+        run: |
+          xcodebuild test-without-building \
+            -workspace ios/App/App.xcworkspace \
+            -scheme BasketBossAccountKeyboardUITests \
+            -configuration Debug \
+            -sdk iphonesimulator \
+            -destination "platform=iOS Simulator,id=$BB_KEYBOARD_SIMULATOR" \
+            -derivedDataPath /tmp/basketboss-ios-build \
+            -parallel-testing-enabled NO \
+            -test-timeouts-enabled YES \
+            -default-test-execution-time-allowance 180 \
+            -maximum-test-execution-time-allowance 300 \
+            -resultBundlePath artifacts/account-keyboard-diagnostics/AccountKeyboard.xcresult \
+            CODE_SIGNING_ALLOWED=NO \
+            2>&1 | tee artifacts/account-keyboard-diagnostics/tests.log
+      - name: Report strict keyboard test results
+        if: always()
+        env:
+          BB_KEYBOARD_COMPILE_OUTCOME: ${{ steps.compile_keyboard_tests.outcome }}
+          BB_KEYBOARD_ACTIVATE_OUTCOME: ${{ steps.activate_keyboard_tests.outcome }}
+          BB_KEYBOARD_EXECUTE_OUTCOME: ${{ steps.execute_keyboard_tests.outcome }}
+        run: node scripts/test-ios-account-keyboard.mjs --report
+      - name: Restore keyboard test simulator settings
+        if: always()
+        run: node scripts/test-ios-account-keyboard.mjs --cleanup
+      - uses: actions/upload-artifact@v6
         if: always()
         with:
           name: BasketBoss-Focused-Keyboard-Verification

@@ -5,11 +5,11 @@ import XCTest
 // Debug-only WebView QA runs unchanged; no separate or shortened UI is used.
 final class BasketBossCookSmokeTests: XCTestCase {
     @MainActor func testCookNavigationIngredientsVoiceAndDataRetention() async throws {
-        executionTimeAllowance = 90
+        executionTimeAllowance = 180
         continueAfterFailure = false
         let documents = try XCTUnwrap(FileManager.default.urls(for: .documentDirectory, in: .userDomainMask).first)
         let file = documents.appendingPathComponent("bb-native-cook-smoke.json")
-        let deadline = Date().addingTimeInterval(60)
+        let deadline = Date().addingTimeInterval(120)
         var latest: [String: Any]?
         while Date() < deadline {
             if let data = try? Data(contentsOf: file),
@@ -31,7 +31,10 @@ final class BasketBossCookSmokeTests: XCTestCase {
                         "ingredientPhoto", "ingredientSaved", "ingredientAutofill", "ingredientExistingKept",
                         "ingredientRestored", "voiceFreeLocked", "voiceManualStart", "voiceNextStep",
                         "voiceTimer", "voiceScaledAmount", "voiceExitStopped", "voiceRestored",
-                        "voicePrepAvailable", "voicePrepNarrated", "voicePrepAdvanced", "voiceCookNarrated", "voiceStepNarrated"]
+                        "voicePrepAvailable", "voicePrepNarrated", "voicePrepAdvanced", "voiceCookNarrated", "voiceStepNarrated",
+                        "mentorAvailable", "mentorRecipeContext", "mentorSpokenQuestion", "mentorTypedQuestion",
+                        "mentorFollowupHistory", "mentorPrivateAudio", "mentorAnswerVisible", "mentorNoAutonomousActions",
+                        "mentorCancelledAnswer", "mentorInterrupt", "mentorHistoryCleared", "mentorNoDeviceFallback", "mentorGreetingName"]
         for key in required { XCTAssertEqual(report[key] as? Bool, true, key + ": " + detail) }
     }
 }

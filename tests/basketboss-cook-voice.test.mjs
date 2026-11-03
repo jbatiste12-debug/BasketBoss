@@ -10,7 +10,7 @@ const assertInstruction=(spoken,original)=>{
 };
 const tick=()=>new Promise(resolve=>setImmediate(resolve));
 
-function fixture({premium=true,browser=false,available=true,nativeStartError=null,synthesis=false,nativeAI=false,tts=null,actorId=null}={}){
+function fixture({premium=true,browser=false,available=true,nativeStartError=null,synthesis=false,nativeAI=false,tts=null,actorId=null,mentor=false,assistant=null,mentorPlayback=null}={}){
  const events=()=>({handlers:new Map(),addEventListener(name,fn){if(!this.handlers.has(name))this.handlers.set(name,new Set());this.handlers.get(name).add(fn);},removeEventListener(name,fn){this.handlers.get(name)?.delete(fn);},fire(name,event={}){for(const fn of this.handlers.get(name)||[])fn(event);}});
  class Node{
   constructor(tag){Object.assign(this,events());this.tagName=tag.toUpperCase();this.children=[];this.parentNode=null;this.className='';this.textContent='';this.attributes={};this.hidden=false;this.disabled=false;this.classList={toggle:(name,on)=>{const classes=new Set(this.className.split(' ').filter(Boolean));on?classes.add(name):classes.delete(name);this.className=[...classes].join(' ');}};}
@@ -24,9 +24,11 @@ function fixture({premium=true,browser=false,available=true,nativeStartError=nul
  const doc=Object.assign(events(),{visibilityState:'visible',createElement:tag=>new Node(tag)});doc.body=new Node('body');
  const container=new Node('div');doc.body.append(container);
  const calls=[],timers=new Map();let timerId=0,final,status;
- const host=Object.assign(events(),{document:doc,navigator:{language:'en-GB'},setTimeout:fn=>{timers.set(++timerId,fn);return timerId;},clearTimeout:id=>timers.delete(id),fetch(){throw Error('Voice must not send data to BasketBoss.');}});
+ const preferences=new Map();
+ const host=Object.assign(events(),{document:doc,navigator:{language:'en-GB'},localStorage:{getItem:key=>preferences.get(key)??null,setItem:(key,value)=>preferences.set(key,String(value))},setTimeout:fn=>{timers.set(++timerId,fn);return timerId;},clearTimeout:id=>timers.delete(id),fetch(){throw Error('Voice must not send data to BasketBoss.');}});
  const sessionData={user:{id:actorId},access_token:'current-test-token'};if(actorId)host.BasketBossSession={read:()=>sessionData};
  const context={key:'fajitas|Monday',stepKey:0,active:true,premium,ingredients:[{name:'Cheddar',quantity:'265 g'},{name:'Chicken breast',quantity:'665 g'}],next:()=>{calls.push('next');context.stepKey++;return true;},previous:()=>{calls.push('previous');return true;},startTimer:()=>{calls.push('timer');return true;},upgrade:()=>calls.push('upgrade')};
+ if(mentor)Object.assign(context,{mentorEnabled:true,phase:'cook',stepIndex:0,stepCount:2,currentStep:'Cook the chicken until it reaches 75°C.',mentorRecipe:{id:'fajitas',title:'Chicken fajitas',servings:4,ingredients:context.ingredients,steps:['Cook the chicken until it reaches 75°C.','Stir in the peppers.'],currentStep:0,phase:'cook',region:'UK'}});
  const instances=[],utterances=[];
  if(synthesis){host.SpeechSynthesisUtterance=class{constructor(text){this.text=text;}};host.speechSynthesis={cancel:()=>calls.push('cancelSpeech'),speak:utterance=>{utterances.push(utterance);calls.push(['speak',utterance.text]);}};}
  if(browser){
@@ -41,11 +43,12 @@ function fixture({premium=true,browser=false,available=true,nativeStartError=nul
  if(nativeAI){let speechId=0;Object.assign(host.BBNativeCookVoice,{
   prepareSpeech:async()=>{const id='speech-'+(++speechId);calls.push(['prepareSpeech',id]);status?.({state:'paused'});return {speechId:id};},
   playAudio:async clip=>{calls.push(['playAudio',clip]);status?.({state:'listening'});return {spoken:true};},
-  cancelSpeech:async value=>{calls.push(['cancelNativeSpeech',value]);}
+  cancelSpeech:async value=>{calls.push(['cancelNativeSpeech',value]);if(mentor)status?.({state:'listening'});},
+  playAudioData:async value=>{calls.push(['playAudioData',value]);const result=mentorPlayback?await mentorPlayback(value):{spoken:true};status?.({state:'listening'});return result;}
  });}
- const controller=voice.mount({container,context:()=>context,window:host,document:doc,tts});
+ const controller=voice.mount({container,context:()=>context,window:host,document:doc,tts,assistant});
  const find=name=>{let result;const visit=node=>{if(node.className.split(' ').includes(name))result=node;for(const child of node.children)visit(child);};visit(container);return result;};
- return {host,doc,container,context,calls,timers,controller,sessionData,instances,utterances,find,button:()=>find('bbcv-toggle'),status:()=>find('bbcv-status').textContent,transcript:text=>final?.(text),nativeStatus:value=>status?.(value),runTimers(){const pending=[...timers.values()];timers.clear();for(const fn of pending)fn();}};
+ return {host,doc,container,context,calls,timers,controller,sessionData,instances,utterances,preferences,find,button:()=>find('bbcv-toggle'),status:()=>find('bbcv-status').textContent,transcript:text=>final?.(text),nativeStatus:value=>status?.(value),runTimers(){const pending=[...timers.values()];timers.clear();for(const fn of pending)fn();}};
 }
 
 test('only explicit Cook commands are recognized, including ingredient questions',()=>{
@@ -281,10 +284,13 @@ test('native AI holds recognition through preparation and streams only the natur
  const h=fixture({nativeAI:true,actorId:'account-a',tts:{prepare:(text,options)=>{prompts.push({text,options});return ready.promise;}}});
  h.context.phase='prep';h.context.ingredientIndex=0;h.button().click();await tick();
  assert.equal(prompts.length,1);assert.match(prompts[0].text,/First up, grab 265 grams of cheddar/);
+ assert.equal(prompts[0].options.timeoutMs,45000,'cold AI preparation has time to finish the bounded 30-second provider request');
+ assert.equal(h.find('bbcv-disclosure').textContent,'AI voice · Preparing narration…');
  assert.equal(h.calls.some(call=>Array.isArray(call)&&call[0]==='speak'),false);
  h.transcript('Next step');assert.equal(h.calls.includes('next'),false,'the AI fetch keeps the microphone command gate paused');
  ready.resolve(clip);await tick();
  const played=h.calls.find(call=>Array.isArray(call)&&call[0]==='playAudio');assert.equal(played[1].speechId,'speech-1');assert.equal(played[1].token,'test-token');
+ assert.equal(h.find('bbcv-disclosure').textContent,'AI voice · AI-generated narration.');
  assert.equal(h.calls.some(call=>Array.isArray(call)&&call[0]==='speak'),false);assert.equal(h.button().getAttribute('aria-pressed'),'true');h.controller.dispose();
 });
 test('temporary AI errors use the full installed voice fallback with the same held speech ticket',async()=>{
@@ -293,6 +299,7 @@ test('temporary AI errors use the full installed voice fallback with the same he
   h.context.phase='cook';h.context.currentStep='Cook for 10 min, until the chicken reaches 75°C.';h.context.stepIndex=0;
   h.button().click();await tick();
   const fallback=h.calls.find(call=>Array.isArray(call)&&call[0]==='speak');assert.ok(fallback,code);assert.match(fallback[1],/10 minutes/);assert.match(fallback[1],/75 degrees Celsius/);assert.equal(fallback[2].speechId,'speech-1');
+  assert.equal(h.find('bbcv-disclosure').textContent,code==='BB_TTS_OFFLINE'?'Device voice · AI voice unavailable while offline.':'Device voice · AI voice unavailable.');
   assert.equal(h.button().getAttribute('aria-pressed'),'true');h.controller.dispose();
  }
 });
@@ -312,7 +319,9 @@ test('Stop, leaving Cook, account switching and a superseding step discard pendi
   if(action==='account'){h.sessionData.user.id='account-b';h.host.fire('basketboss:session-changed');}
   if(action==='dispose')h.controller.dispose();
   if(action==='step'){h.context.stepIndex=1;h.context.currentStep='Add 100 ml water.';h.controller.refresh();await tick();}
+  const disclosure=h.find('bbcv-disclosure')?.textContent;
   assert.equal(requests[0].options.signal.aborted,true,action);ready.resolve(clip);await tick();
+  assert.equal(h.find('bbcv-disclosure')?.textContent,disclosure,'cancelled AI completion cannot change the active engine disclosure');
   assert.equal(h.calls.some(call=>Array.isArray(call)&&call[0]==='playAudio'),false,action);
   const fallbacks=h.calls.filter(call=>Array.isArray(call)&&call[0]==='speak');
   if(action==='step'){assert.equal(fallbacks.length,1);assert.match(fallbacks[0][1],/100 millilitres/);assert.doesNotMatch(fallbacks[0][1],/250 grams/);}else assert.equal(fallbacks.length,0,action);
@@ -328,8 +337,51 @@ test('browser AI pauses recognition until playback ends and ignores commands dur
  const played=deferredSpeech(),requests=[],h=fixture({browser:true,synthesis:true,tts:{play:(text,options)=>{requests.push({text,options});return played.promise;}}});
  h.context.phase='cook';h.context.currentStep='Add 100 ml water.';h.context.stepIndex=0;h.button().click();await tick();
  assert.equal(requests.length,1);assert.match(requests[0].text,/100 millilitres/);assert.equal(h.utterances.length,0);assert.equal(h.instances.length,1);
+ assert.equal(requests[0].options.timeoutMs,45000+voice.speechTimeoutMs(requests[0].text),'browser audio includes cold AI setup as well as the complete reading window');
  const result=[{transcript:'Next step'}];result.isFinal=true;h.instances[0].onresult({resultIndex:0,results:[result]});assert.equal(h.calls.includes('next'),false);
  played.resolve({played:true});await tick();assert.equal(h.instances.length,2);assert.equal(h.utterances.length,0);h.controller.dispose();
+});
+
+test('engine disclosure follows AI, device fallback and recovered AI, persisting while listening and resetting on Stop',async()=>{
+ for(const browser of [false,true]){
+  let fallback=false;
+  const respond=async()=>{if(fallback)throw Object.assign(Error('provider-message-not-for-ui'),{code:'BB_TTS_UNAVAILABLE'});return browser?{played:true}:clip;};
+  const h=fixture({browser,synthesis:browser,nativeAI:!browser,tts:browser?{play:respond}:{prepare:respond}});
+  const disclosure=()=>h.find('bbcv-disclosure').textContent;
+  h.context.phase='cook';h.context.stepIndex=0;h.context.currentStep='Add 250 g gnocchi.';h.button().click();await tick();
+  assert.equal(disclosure(),'AI voice · AI-generated narration.');
+  fallback=true;h.context.stepIndex=1;h.context.currentStep='Add 100 ml water.';h.controller.refresh();await tick();
+  assert.equal(disclosure(),'Device voice · AI voice unavailable.');
+  if(browser)h.utterances.at(-1).onend();else h.nativeStatus({state:'listening'});
+  assert.match(h.status(),/^Listening\./);assert.equal(disclosure(),'Device voice · AI voice unavailable.');
+  fallback=false;h.context.stepIndex=2;h.context.currentStep='Stir gently.';h.controller.refresh();await tick();
+  assert.equal(disclosure(),'AI voice · AI-generated narration.');
+  h.button().click();assert.equal(disclosure(),'Uses an AI-generated voice online and your device voice as backup.');
+  h.controller.dispose();
+ }
+});
+
+test('late AI failures cannot overwrite the source of a newer narration',async()=>{
+ for(const browser of [false,true]){
+  const old=deferredSpeech();let count=0;
+  const respond=()=>++count===1?old.promise:Promise.resolve(browser?{played:true}:clip);
+  const h=fixture({browser,synthesis:browser,nativeAI:!browser,tts:browser?{play:respond}:{prepare:respond}});
+  h.context.phase='cook';h.context.stepIndex=0;h.context.currentStep='Add 250 g gnocchi.';h.button().click();await tick();
+  h.context.stepIndex=1;h.context.currentStep='Add 100 ml water.';h.controller.refresh();await tick();
+  assert.equal(h.find('bbcv-disclosure').textContent,'AI voice · AI-generated narration.');
+  old.reject(Object.assign(Error('private-provider-message'),{code:'BB_TTS_OFFLINE'}));await tick();
+  assert.equal(h.find('bbcv-disclosure').textContent,'AI voice · AI-generated narration.');
+  assert.equal(h.calls.some(call=>Array.isArray(call)&&call[0]==='speak'),false);
+  h.controller.dispose();
+ }
+});
+
+test('browser setup plus long narration stays within the six-minute audio bound',async()=>{
+ const pending=deferredSpeech(),requests=[];
+ const h=fixture({browser:true,synthesis:true,tts:{play:(text,options)=>{requests.push({text,options});return pending.promise;}}});
+ h.context.phase='cook';h.context.stepIndex=0;h.context.currentStep='Stir '.repeat(780);h.button().click();await tick();
+ assert.equal(requests.length,1);assert.equal(voice.speechTimeoutMs(requests[0].text),360000);assert.equal(requests[0].options.timeoutMs,360000);
+ h.controller.dispose();pending.resolve({played:true});await tick();
 });
 test('browser temporary AI failure falls back to its best British voice and cancellation never queues fallback',async()=>{
  const h=fixture({browser:true,synthesis:true,tts:{play:async()=>{throw Error('offline');}}});h.context.phase='prep';h.button().click();await tick();assert.equal(h.utterances.length,1);assert.match(h.utterances[0].text,/grams of cheddar/);h.controller.dispose();
@@ -343,4 +395,83 @@ test('an oversized new instruction cancels the previous pending narration instea
  h.context.stepIndex=1;h.context.currentStep='Keep the entire safety instruction on screen. '.repeat(110);h.controller.refresh();
  assert.equal(requests[0].signal.aborted,true);assert.equal(h.button().getAttribute('aria-pressed'),'false');assert.match(h.status(),/complete step on screen/);
  waiting.resolve(clip);await tick();assert.equal(h.calls.some(call=>Array.isArray(call)&&['speak','playAudio'].includes(call[0])),false);h.controller.dispose();
+});
+
+function mentorFixture(options={}){
+ const questions=[],speech=[];
+ const assistant=options.assistant||{ask:async payload=>{questions.push(structuredClone(payload));return {answer:questions.length===1?'Keep the heat gentle and stir until the sauce coats the spoon.':'Add a little at a time, keeping the heat gentle.'};}};
+ const tts=options.tts||{prepareMentor:async(text,settings)=>{speech.push({text,settings});return {base64:'SUQzAAE=',contentType:'audio/mpeg'};},playMentor:async(text,settings)=>{speech.push({text,settings});return {played:true};}};
+ const h=fixture({mentor:true,nativeAI:!options.browser,actorId:'mentor-person-one',...options,assistant,tts});
+ return {...h,questions,speech,async typed(value){h.find('bbcv-question-input').value=value;h.find('bbcv-question-send').click();await tick();},async final(value){if(options.browser){const result=[{transcript:value}];result.isFinal=true;h.instances.at(-1).onresult({resultIndex:0,results:[result]});}else h.transcript(value);await tick();}};
+}
+test('mentor typed questions work without microphone opt-in and retain completed follow-up context',async()=>{
+ const h=mentorFixture();assert.match(h.find('bbcv-disclosure').textContent,/question and this recipe are sent to AI/);
+ await h.typed('What should the sauce look like?');assert.equal(h.questions.length,1);assert.equal(h.questions[0].question,'What should the sauce look like?');assert.equal(h.questions[0].recipe.servings,4);assert.equal(h.questions[0].mentorName,'Chef Boss');
+ assert.equal(h.calls.length,0,'typing never requests native capability, permissions or playback');assert.equal(h.speech.length,0);assert.match(h.find('bbcv-answer').textContent,/coats the spoon/);
+ await h.typed('And if it is still too thick?');assert.equal(h.questions[1].history.length,2);assert.equal(h.questions[1].history[0].text,'What should the sauce look like?');assert.match(h.questions[1].history[1].text,/coats the spoon/);h.controller.dispose();
+});
+test('mentor voice sends arbitrary raw questions and follow-ups through AI and speaks only private natural audio',async()=>{
+ for(const browser of [false,true]){
+  const h=mentorFixture({browser,synthesis:browser});h.button().click();await tick();assert.ok(h.speech.length>=1);assert.match(h.speech[0].text,/I’m Chef Boss/);assertInstruction(h.speech.map(s=>s.text).join(' '),h.context.currentStep);assert.doesNotMatch(h.speech.map(s=>s.text).join(' '),/Say “next step”/);
+  await h.final('Could I use MILK instead, please?');await h.final('How would that change the texture?');
+  assert.equal(h.questions.length,2);assert.equal(h.questions[0].question,'Could I use MILK instead, please?');assert.equal(h.questions[1].history.length,2);assert.match(h.find('bbcv-answer').textContent,/little at a time/);
+  assert.equal(h.calls.some(c=>Array.isArray(c)&&['speak','playAudio'].includes(c[0])),false);assert.equal(h.utterances.length,0);
+  if(!browser)assert(h.calls.some(c=>Array.isArray(c)&&c[0]==='playAudioData'));h.controller.dispose();
+ }
+});
+test('enabling mentor voice preserves a completed typed conversation for a spoken follow-up',async()=>{
+ const h=mentorFixture();await h.typed('The sauce looks thick. What now?');h.button().click();await tick();await h.final('Should I turn the heat down too?');assert.equal(h.questions[1].history[0].text,'The sauce looks thick. What now?');h.controller.dispose();
+});
+test('mentor keeps only the last three completed exchanges in memory and clears them at session end',async()=>{
+ const h=mentorFixture();for(let i=1;i<=5;i++)await h.typed('Question '+i+' about the sauce?');
+ assert.equal(h.questions[4].history.length,6);assert.equal(h.questions[4].history[0].text,'Question 2 about the sauce?');assert.equal(h.preferences.size,0,'chat is never written to the name preference store');
+ h.controller.stop();await h.typed('Start a fresh question?');assert.deepEqual(h.questions[5].history,[]);h.controller.dispose();
+});
+test('mentor keeps explicit navigation and timers local while quantities are conversational questions',async()=>{
+ const h=mentorFixture();h.context.next=()=>{h.calls.push('next');h.context.stepIndex=1;h.context.currentStep='Stir in the peppers.';h.context.mentorRecipe.currentStep=1;h.controller.refresh();return true;};
+ h.button().click();await tick();await h.final('Next step');assert.equal(h.calls.filter(c=>c==='next').length,1);assert.equal(h.questions.length,0);assertInstruction(h.speech.at(-1).text,'Stir in the peppers.');
+ await h.final('Start timer');assert.equal(h.calls.filter(c=>c==='timer').length,1);assert.equal(h.questions.length,0);await h.final('How much cheddar should I add?');assert.equal(h.questions.length,1);assert.equal(h.questions[0].recipe.currentStep,1);h.controller.dispose();
+});
+test('mentor cancels stale answers on a step change and never appends them to history',async()=>{
+ const pending=deferredSpeech(),requests=[];const h=mentorFixture({assistant:{ask:(payload,settings)=>{requests.push({payload:structuredClone(payload),settings});return requests.length===1?pending.promise:Promise.resolve({answer:'Use the instruction on the current step.'});}}});
+ h.find('bbcv-question-input').value='How brown should it be?';h.find('bbcv-question-send').click();await tick();h.context.stepIndex=1;h.context.currentStep='Stir in the peppers.';h.context.mentorRecipe.currentStep=1;h.controller.refresh();assert.equal(requests[0].settings.signal.aborted,true);
+ pending.resolve({answer:'OLD ANSWER'});await tick();assert.notEqual(h.find('bbcv-answer').textContent,'OLD ANSWER');await h.typed('What about this step?');assert.deepEqual(requests[1].payload.history,[]);assert.equal(requests[1].payload.recipe.currentStep,1);h.controller.dispose();
+});
+test('mentor clears all conversation on account, recipe, Premium and background changes',async()=>{
+ for(const reason of ['account','recipe','premium','hidden','deletion','dispose']){
+  const pending=deferredSpeech(),requests=[];const h=mentorFixture({assistant:{ask:(payload,settings)=>{requests.push({payload,settings});return pending.promise;}}});h.find('bbcv-question-input').value='Can I use milk?';h.find('bbcv-question-send').click();await tick();
+  if(reason==='account'){h.sessionData.user.id='another-person';h.host.fire('basketboss:session-changed');}
+  if(reason==='recipe'){h.context.key='another|4';h.controller.refresh();}if(reason==='premium'){h.context.premium=false;h.doc.fire('basketboss:premium-verified');}
+  if(reason==='hidden'){h.doc.visibilityState='hidden';h.doc.fire('visibilitychange');}if(reason==='deletion')h.host.fire('basketboss:account-deletion-started');if(reason==='dispose')h.controller.dispose();
+  assert.equal(requests[0].settings.signal.aborted,true,reason);pending.resolve({answer:'PRIVATE OLD ANSWER'});await tick();assert.notEqual(h.find('bbcv-answer')?.textContent,'PRIVATE OLD ANSWER',reason);
+  if(reason!=='dispose'){assert.equal(h.find('bbcv-answer').textContent,'',reason);h.controller.dispose();}
+ }
+});
+test('Ask a question interrupts a held native audio ticket and no old playback changes the new turn',async()=>{
+ const playing=deferredSpeech();let plays=0;const h=mentorFixture({mentorPlayback:()=>++plays===1?playing.promise:Promise.resolve({spoken:true})});h.button().click();await tick();
+ const ticket=h.calls.find(c=>Array.isArray(c)&&c[0]==='playAudioData')[1].speechId;assert.equal(h.find('bbcv-interrupt').hidden,false);h.find('bbcv-interrupt').click();await tick();assert(h.calls.some(c=>Array.isArray(c)&&c[0]==='cancelNativeSpeech'&&c[1].speechId===ticket));
+ await h.final('What should it look like?');const answer=h.find('bbcv-answer').textContent;playing.resolve({spoken:true});await tick();assert.equal(h.find('bbcv-answer').textContent,answer);assert.match(h.status(),/Listening/);h.controller.dispose();
+});
+test('interrupt cancels a pending model question without retaining an incomplete turn',async()=>{
+ const pending=deferredSpeech(),requests=[];const h=mentorFixture({assistant:{ask:(payload,settings)=>{requests.push({payload:structuredClone(payload),settings});return requests.length===1?pending.promise:Promise.resolve({answer:'Keep the heat gentle.'});}}});h.button().click();await tick();await h.final('Can I use milk instead?');h.find('bbcv-interrupt').click();await tick();assert.equal(requests[0].settings.signal.aborted,true);await h.final('What about oat milk?');pending.resolve({answer:'OLD ANSWER'});await tick();assert.deepEqual(requests[1].payload.history,[]);assert.equal(h.find('bbcv-answer').textContent,'Keep the heat gentle.');h.controller.dispose();
+});
+test('mentor audio failures remain visible and never silently use a robotic device voice',async()=>{
+ for(const browser of [false,true]){
+  const tts={prepareMentor:async()=>{throw Object.assign(Error('private-provider-error'),{code:'BB_TTS_UNAVAILABLE'});},playMentor:async()=>{throw Object.assign(Error('private-provider-error'),{code:'BB_TTS_UNAVAILABLE'});}};
+  const h=mentorFixture({browser,synthesis:browser,tts});h.button().click();await tick();assert.match(h.status(),/Natural mentor voice is unavailable/);assert.equal(h.find('bbcv-retry').hidden,false);assert.equal(h.utterances.length,0);assert.equal(h.calls.some(c=>Array.isArray(c)&&c[0]==='speak'),false);
+  await h.typed('Can I add milk?');assert.match(h.find('bbcv-answer').textContent,/coats the spoon/);assert.match(h.status(),/Natural mentor voice is unavailable/);assert.doesNotMatch(h.status(),/private-provider/);h.controller.dispose();
+ }
+});
+test('definitive mentor access rejection clears replies and stops voice without fallback',async()=>{
+ const h=mentorFixture({assistant:{ask:async()=>{throw Object.assign(Error('private-detail'),{code:'BB_MENTOR_PREMIUM_REQUIRED'});}}});h.button().click();await tick();await h.final('Can I use milk?');assert.match(h.status(),/signed-in Premium/);assert.equal(h.button().getAttribute('aria-pressed'),'false');assert.equal(h.find('bbcv-question').textContent,'');assert.equal(h.find('bbcv-answer').textContent,'');h.controller.dispose();
+});
+test('mentor preserves complete long instructions while splitting natural audio into bounded chunks',async()=>{
+ const h=mentorFixture();const step='Add 265 g cheddar. '+Array.from({length:42},()=> 'Stir gently until the sauce is smooth.').join(' ');h.context.currentStep=step;h.context.mentorRecipe.steps[0]=step;h.controller.refresh();h.button().click();await tick();assert(h.speech.length>1);assert(h.speech.every(s=>s.text.length<=1200));assertInstruction(h.speech.map(s=>s.text).join(' '),step);h.controller.dispose();
+});
+test('mentor name and start-cooking greeting respect opt-in, persist only per-account and safely render custom names',async()=>{
+ const h=mentorFixture();h.controller.startCookingGreeting();assert.match(h.find('bbcv-answer').textContent,/I’m Chef Boss\. Let’s make Chicken fajitas together/);assert.equal(h.calls.length+h.speech.length+h.questions.length,0);
+ h.find('bbcv-name-edit').click();h.find('bbcv-name-input').value='Pan Pal';h.find('bbcv-name-save').click();assert.equal(h.preferences.get('basketboss_cook_mentor_name_v1:mentor-person-one'),'Pan Pal');h.controller.startCookingGreeting();assert.match(h.find('bbcv-answer').textContent,/I’m Pan Pal/);
+ await h.typed('What is your name?');assert.equal(h.questions[0].mentorName,'Pan Pal');h.button().click();await tick();const count=h.speech.length;h.controller.startCookingGreeting();h.controller.startCookingGreeting();await tick();assert.equal(h.speech.length,count,'the same Cook session is not greeted twice');
+ h.sessionData.user.id='another-person';h.host.fire('basketboss:session-changed');assert.equal(h.find('bbcv-name-display').textContent,'Your mentor: Chef Boss');assert.equal(h.find('bbcv-answer').textContent,'');
+ h.sessionData.user.id='mentor-person-one';h.host.fire('basketboss:session-changed');assert.equal(h.find('bbcv-name-display').textContent,'Your mentor: Pan Pal');h.find('bbcv-name-edit').click();h.find('bbcv-name-input').value='<img src=x>';h.find('bbcv-name-save').click();assert.equal(h.find('bbcv-name-display').textContent,'Your mentor: Pan Pal');assert.match(h.status(),/24 letters/);assert.deepEqual([...h.preferences.keys()],['basketboss_cook_mentor_name_v1:mentor-person-one']);h.controller.dispose();
 });

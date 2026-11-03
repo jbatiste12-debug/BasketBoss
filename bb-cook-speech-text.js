@@ -16,12 +16,13 @@
  const one=value=>/^(?:1(?:\.0+)?|one)$/i.test(value.trim());
  function plain(value){
   return clean(value)
+   .replace(/≈\s*/g,'approximately ')
    .replace(/(\d(?:[\d.,]*\d)?)\s*°\s*([CF])\b/gi,(_,amount,scale)=>amount+(one(amount)?' degree ':' degrees ')+(scale.toUpperCase()==='C'?'Celsius':'Fahrenheit'))
    .replace(/(\d(?:[\d.,]*\d)?)\s*([CF])\b/g,(_,amount,scale)=>amount+(one(amount)?' degree ':' degrees ')+(scale==='C'?'Celsius':'Fahrenheit'))
    .replace(/\bgas\s+(?!mark\b)(\d+)\b/gi,(_,mark)=>'gas mark '+mark)
    .replace(/(\d+(?:[.,]\d+)?(?:\s*\/\s*\d+)?|[¼½¾⅐⅑⅒⅓⅔⅕⅖⅗⅘⅙⅚⅛⅜⅝⅞])\s*(kg|mg|ml|cl|tbsps?|tsps?|mins?|hrs?|secs?|g|l)\b/gi,(_,amount,unit)=>amount+' '+units[unit.toLowerCase()][one(amount)?0:1])
    .replace(/(\d)\s*[–—]\s*(?=\d)/g,'$1 to ')
-   .replace(/(\d)\s*[×x]\s*(?=\d)/gi,'$1 times ')
+   .replace(/([\d¼½¾⅓⅔⅛⅜⅝⅞])\s*[×x]\s*(?=\d)/gi,'$1 times ')
    .replace(/(\d)\s*%/g,'$1 per cent');
  }
  function inflectName(value,amount){
@@ -34,10 +35,11 @@
   if(!item||!amount)return '';
   // Counts such as “2 medium” use the actual ingredient noun, never an
   // invented package size. Only known count nouns are inflected.
-  const counted=amount.match(/^(\d+(?:\.\d+)?|[¼½¾⅓⅔⅛⅜⅝⅞])(?:\s+(small|medium|large))?$/i);
-  if(counted)return counted[1]+(counted[2]?' '+counted[2]:'')+' '+inflectName(item,counted[1]);
-  const pack=amount.match(/^(\d+) times (\d+(?:\.\d+)?) (grams|millilitres) (tin|tins|can|cans)$/);
-  if(pack)return pack[1]+' '+(one(pack[1])?pack[4].replace(/s$/,''):pack[4].replace(/s$/,'')+'s')+' of '+item+', '+pack[2]+' '+pack[3]+(one(pack[1])?'':' each');
+  const countNumber='(?:\\d+(?:\\.\\d+)?(?:\\s+\\d+\\/\\d+|\\s*[¼½¾⅓⅔⅛⅜⅝⅞])?|\\d+\\/\\d+|[¼½¾⅓⅔⅛⅜⅝⅞])';
+  const counted=amount.match(new RegExp('^(approximately )?('+countNumber+')(?:\\s+(small|medium|large|each|whole))?$','i'));
+  if(counted)return (counted[1]||'')+counted[2]+(counted[3]&&counted[3]!=='each'?' '+counted[3]:'')+' '+inflectName(item,counted[2]);
+  const pack=amount.match(new RegExp('^(approximately )?('+countNumber+') times (\\d+(?:\\.\\d+)?) (grams|millilitres) (tin|tins|can|cans)$'));
+  if(pack)return (pack[1]||'')+pack[2]+' '+(one(pack[2])?pack[5].replace(/s$/,''):pack[5].replace(/s$/,'')+'s')+' of '+item+', '+pack[3]+' '+pack[4]+(one(pack[2])?'':' each');
   if(/^(?:to taste|as needed|for (?:frying|greasing|dusting|serving))\b/i.test(amount))return item+', '+amount;
   const fullName=item.split(/\W+/).map(word=>singles[word]||word).join(' ');
   const quantityName=amount.split(/\W+/).map(word=>singles[word]||word).join(' ');

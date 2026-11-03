@@ -48,6 +48,14 @@ test('phrasing never truncates long instructions or invents missing amounts',()=
  assert.equal(speech.step({text:''}),'');
 });
 
+test('practical half counts sound natural without losing their approximation or pack weight',()=>{
+ assert.equal(speech.phrase({name:'Onion',quantity:'≈ 1 ½ medium'}),'approximately 1 ½ medium onions');
+ assert.equal(speech.phrase({name:'Aubergine',quantity:'≈ 1 ½ each'}),'approximately 1 ½ aubergines');
+ assert.equal(speech.phrase({name:'Tomatoes',quantity:'≈ 1 ½ × 400 g tins'}),'approximately 1 ½ tins of tomatoes, 400 grams each');
+ assert.equal(speech.phrase({name:'Onion',quantity:'1 medium'}),'1 medium onion');
+ assert.equal(speech.phrase({name:'Rice',quantity:'375 g dry rice'}),'375 grams of dry rice');
+});
+
 
 test('public catalogue quantities and every step number survive speech formatting',()=>{
  const recipes=JSON.parse(fs.readFileSync(new URL('../recipes.json',import.meta.url),'utf8'));

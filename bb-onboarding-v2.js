@@ -305,6 +305,15 @@
  }
  function dismiss(restoreReplay=true){
    const closeSettings=!restoreReplay&&replaying;
+   // WKWebView can keep the keyboard attached when its focused input is moved
+   // back to the account panel. End editing before restoring the shared form.
+   const active=document.activeElement;
+   if(active&&host?.contains(active))active.blur?.();
+   if(window.BBNative?.isNative===true&&form&&host?.contains(form)){
+     // DOM blur and UIKit keyboard dismissal can finish at different times
+     // when the shared form moves. Closing stays synchronous if native is absent.
+     try{Promise.resolve(window.BBNative.dismissKeyboard?.()).catch(()=>{});}catch(_){}
+   }
    unlockWelcomeBackground();restoreAuth();host?.remove();host=null;
    if(restoreReplay&&replaying&&replayOriginal)state=replayOriginal;
    replaying=false;replayOriginal=null;changedPreferences.clear();
@@ -405,7 +414,9 @@
    if(typeof MutationObserver==='function')new MutationObserver(replayLabel).observe(document.body,{childList:true,subtree:true});
    window.addEventListener('basketboss:session-changed',()=>{
      if(blocked()||!host||state.step!==1)return;
-     if(validSession()){if(state.partnerIntent==='join')finishJoinHandoff();else{state.step=2;persist();render();}}else render();
+     // A late signed-out notification must not move the shared form while
+     // someone is editing: reparenting it blurs the input and hides iOS's keyboard.
+     if(validSession()){if(state.partnerIntent==='join')finishJoinHandoff();else{state.step=2;persist();render();}}else if(!accountInput())render();
    });
    window.addEventListener('basketboss:account-deletion-started',()=>{if(host)dismiss();replayLabel();});
    window.addEventListener('basketboss:account-deletion-deleted',()=>{if(host)dismiss();replayLabel();});

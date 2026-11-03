@@ -1,5 +1,5 @@
-/* Premium Cook audio transport. Recipe text is the only provider input; the
- * server owns voices, credentials, membership checks and the private cache. */
+/* Premium Cook audio transport. The server owns voices, credentials and
+ * membership checks. Conversational audio stays in memory and bypasses caches. */
 (function(root,factory){
  'use strict';const api=factory();
  if(typeof module==='object'&&module.exports)module.exports=api;
@@ -52,10 +52,12 @@
    return pin;
   }
   function assertPin(pin,scope){scope.check();const current=read();if(!usable(current)||current.user.id!==pin.actor||current.access_token!==pin.token)throw failure('BB_TTS_SESSION_CHANGED');}
-  async function request(text,prepare,pin,scope){
+  async function request(text,prepare,pin,scope,privateAudio=false){
    if(typeof win.fetch!=='function')throw failure('BB_TTS_UNAVAILABLE');
-   const response=await win.fetch('/api/tts',{method:'POST',headers:{'Authorization':'Bearer '+pin.token,'Content-Type':'application/json','Accept':prepare?'application/json':'audio/mpeg'},body:JSON.stringify(prepare?{text,prepare:true}:{text}),signal:scope.signal,cache:'no-store',credentials:'omit',redirect:'error'});
-   scope.check();if(!response?.ok)throw failure(({401:'BB_TTS_AUTH',403:'BB_TTS_PREMIUM_REQUIRED',409:'BB_TTS_DELETING'})[response?.status]||'BB_TTS_UNAVAILABLE');return response;
+   const body=privateAudio?{text,private:true}:prepare?{text,prepare:true}:{text};
+   const response=await win.fetch('/api/tts',{method:'POST',headers:{'Authorization':'Bearer '+pin.token,'Content-Type':'application/json','Accept':prepare?'application/json':'audio/mpeg'},body:JSON.stringify(body),signal:scope.signal,cache:'no-store',credentials:'omit',redirect:'error'});
+   try{scope.check();}catch(error){try{await response?.body?.cancel?.();}catch{}throw error;}
+   if(!response?.ok){try{await response?.body?.cancel?.();}catch{}throw failure(({401:'BB_TTS_AUTH',403:'BB_TTS_PREMIUM_REQUIRED',409:'BB_TTS_DELETING'})[response?.status]||'BB_TTS_UNAVAILABLE');}return response;
   }
   async function prepare(text,options={}){
    let prompt;try{prompt=validate(text);}catch(error){return Promise.reject(error);}
@@ -85,6 +87,47 @@
   }
   function reader(response,scope){
    const value=response.body?.getReader?.();if(value)scope.add(()=>{try{Promise.resolve(value.cancel()).catch(()=>{});}catch{}});return value;
+  }
+  function audioResponse(response){
+   const type=(response.headers?.get?.('Content-Type')||'').split(';')[0].trim().toLowerCase(),length=Number(response.headers?.get?.('Content-Length')||0);
+   if(type!=='audio/mpeg'||!Number.isSafeInteger(length)||length<0||length>MAX_AUDIO)throw failure('BB_TTS_RESPONSE');
+  }
+  async function mentorBytes(response,pin,scope){
+   audioResponse(response);
+   const source=reader(response,scope),chunks=[];let size=0;
+   if(source){while(true){const item=await source.read();scope.check();if(item.done)break;size+=item.value.byteLength;if(size>MAX_AUDIO)throw failure('BB_TTS_AUDIO');chunks.push(item.value);}}
+   else{const data=await response.arrayBuffer();scope.check();size=data.byteLength;if(size>MAX_AUDIO)throw failure('BB_TTS_AUDIO');chunks.push(new Uint8Array(data));}
+   if(size<3)throw failure('BB_TTS_AUDIO');
+   const bytes=new Uint8Array(size);let offset=0;for(const chunk of chunks){bytes.set(chunk,offset);offset+=chunk.byteLength;}
+   if(!(bytes[0]===73&&bytes[1]===68&&bytes[2]===51)&&!(bytes[0]===255&&(bytes[1]&224)===224))throw failure('BB_TTS_AUDIO');
+   assertPin(pin,scope);return bytes;
+  }
+  async function privateBytes(text,scope){
+   const pin=await session(scope),response=await request(text,false,pin,scope,true);
+   return {pin,bytes:await mentorBytes(response,pin,scope)};
+  }
+  function base64(bytes){
+   const encode=win.btoa?.bind(win)||globalThis.btoa?.bind(globalThis);if(!encode)throw failure('BB_TTS_AUDIO');
+   let binary='';for(let offset=0;offset<bytes.length;offset+=32768)binary+=String.fromCharCode(...bytes.subarray(offset,offset+32768));
+   return encode(binary);
+  }
+  async function prepareMentor(text,options={}){
+   let prompt;try{prompt=validate(text);}catch(error){return Promise.reject(error);}
+   return operation({...options,timeoutMs:options.timeoutMs??45000},async scope=>{
+    const {pin,bytes}=await privateBytes(prompt,scope),encoded=base64(bytes);assertPin(pin,scope);
+    return {base64:encoded,contentType:'audio/mpeg'};
+   });
+  }
+  async function playMentor(text,options={}){
+   let prompt;try{prompt=validate(text);}catch(error){return Promise.reject(error);}
+   const words=prompt.split(/\s+/).length,timeoutMs=Math.min(360000,45000+Math.max(15000,Math.ceil(Math.max(words/2.1*1000,prompt.length*55)+8000)));
+   return operation({...options,timeoutMs:options.timeoutMs??timeoutMs},async scope=>{
+    const {pin,bytes}=await privateBytes(prompt,scope);
+    const BlobType=win.Blob||globalThis.Blob;if(!BlobType)throw failure('BB_TTS_AUDIO');
+    const player=audio(scope),done=completed(player,scope);player.src=objectURL(new BlobType([bytes],{type:'audio/mpeg'}),scope);
+    assertPin(pin,scope);try{await player.play();}catch{throw failure('BB_TTS_AUDIO');}await done.promise;
+    assertPin(pin,scope);return {played:true};
+   });
   }
   async function buffered(response,player,pin,scope){
    const source=reader(response,scope),chunks=[];let size=0;
@@ -131,7 +174,7 @@
     scope.check();return {played:true};
    });
   }
-  return Object.freeze({prepare,play});
+  return Object.freeze({prepare,play,prepareMentor,playMentor});
  }
  return Object.freeze({create,MAX_TEXT});
 });

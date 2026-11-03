@@ -3,10 +3,10 @@ import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import {installNativeCookVoice} from '../native/cook-voice.mjs';
 
-function fixture(){
- const listeners=new Map(),events=new Map(),calls=[],removed=[];let premium=true,startResult=async()=>({active:true});
+function fixture({actor=null}={}){
+ const listeners=new Map(),events=new Map(),calls=[],removed=[];let premium=true,actorId=actor,startResult=async()=>({active:true});
  const document={hidden:false,addEventListener:(event,fn)=>events.set('document:'+event,fn)};
- const window={document,addEventListener:(event,fn)=>events.set(event,fn)};
+ const window={document,BasketBossSession:{read:()=>actorId?{user:{id:actorId}}:null},addEventListener:(event,fn)=>events.set(event,fn)};
  const plugin={
   available:async()=>{calls.push(['available']);return {available:true};},
   addListener:async(event,fn)=>{listeners.set(event,fn);return {remove:async()=>{removed.push(event);if(listeners.get(event)===fn)listeners.delete(event);}};},
@@ -15,12 +15,13 @@ function fixture(){
   speak:async options=>{calls.push(['speak',options]);return {spoken:true};},
   prepareSpeech:async options=>{calls.push(['prepareSpeech',options]);return {speechId:'speech-'+calls.length};},
   playAudio:async options=>{calls.push(['playAudio',options]);return {spoken:true};},
+  playAudioData:async options=>{calls.push(['playAudioData',options]);return {spoken:true};},
   cancelSpeech:async options=>{calls.push(['cancelSpeech',options]);return {cancelled:true};}
 
  };
  const api=installNativeCookVoice({plugin,window,isPremium:()=>premium});
  return {api,window,plugin,calls,listeners,removed,emit:(event,value)=>listeners.get(event)?.(value),
-  event:name=>events.get(name)?.(),setPremium:value=>{premium=value;},setStart:fn=>{startResult=fn;},
+  event:name=>events.get(name)?.(),setPremium:value=>{premium=value;},setActor:value=>{actorId=value;},setStart:fn=>{startResult=fn;},
   id:()=>calls.filter(call=>call[0]==='start').at(-1)?.[1].sessionId};
 }
 const tick=()=>new Promise(resolve=>setTimeout(resolve,0));
@@ -202,4 +203,80 @@ test('native HTTP denial priority survives the player-observer race',()=>{
  assert.match(source,/failureLock\.lock\(\); accessFailure = code; failureLock\.unlock\(\)[\s\S]*onAccessDenied\(code\)[\s\S]*finish\(job, error: true\)/);
  assert.match(source,/let reason = code \?\? audioLoader\?\.accessFailureCode \?\? "BB_VOICE_AI_AUDIO"/);
  assert.match(source,/self\.active\(id\), self\.speechId == ticket, self\.playbackCall != nil/);
+});
+
+const memoryAudio=Buffer.from('ID3-private-cooking-answer').toString('base64');
+
+test('personalised MP3 playback requires a current held session and sends only in-memory bytes',async()=>{
+ const h=fixture({actor:'account-one'});
+ assert.deepEqual(await h.api.playAudioData({base64:memoryAudio,contentType:'audio/mpeg',speechId:'unused'}),{spoken:false,cancelled:true});
+ assert.equal(h.calls.length,0);
+ await h.api.start(()=>{});const ticket=await h.api.prepareSpeech();
+ assert.deepEqual(await h.api.playAudioData({base64:memoryAudio,contentType:'audio/mpeg',...ticket}),{spoken:true});
+ assert.deepEqual(h.calls.at(-1),['playAudioData',{sessionId:h.id(),speechId:ticket.speechId,base64:memoryAudio,contentType:'audio/mpeg'}]);
+ h.setActor('account-two');
+ const count=h.calls.length;
+ assert.deepEqual(await h.api.playAudioData({base64:memoryAudio,contentType:'audio/mpeg',...ticket}),{spoken:false,cancelled:true});
+ assert.equal(h.calls.length,count,'an account change blocks bytes even before its event is delivered');
+ await h.api.stop();
+});
+
+test('memory audio rejects malformed, oversized, non-MP3 and unsupported content before native playback',async()=>{
+ const h=fixture();await h.api.start(()=>{});const ticket=await h.api.prepareSpeech(),count=h.calls.length;
+ const tooLarge=Buffer.alloc(2*1024*1024+1);tooLarge.write('ID3');
+ for(const value of [
+  {base64:'',contentType:'audio/mpeg'},
+  {base64:'SUQ=',contentType:'audio/mpeg'},
+  {base64:'not base64!',contentType:'audio/mpeg'},
+  {base64:memoryAudio.slice(1),contentType:'audio/mpeg'},
+  {base64:'data:audio/mpeg;base64,'+memoryAudio,contentType:'audio/mpeg'},
+  {base64:Buffer.from('<html>error</html>').toString('base64'),contentType:'audio/mpeg'},
+  {base64:tooLarge.toString('base64'),contentType:'audio/mpeg'},
+  {base64:memoryAudio,contentType:'audio/mp3'},
+  {base64:memoryAudio,contentType:'audio/mpeg; charset=utf-8'}
+ ])await assert.rejects(h.api.playAudioData({...value,...ticket}),{code:'BB_VOICE_AI_AUDIO'});
+ assert.equal(h.calls.length,count,'invalid bytes never cross the native bridge');
+ const maximum=Buffer.alloc(2*1024*1024);maximum.write('ID3');
+ assert.deepEqual(await h.api.playAudioData({base64:maximum.toString('base64'),contentType:'audio/mpeg',...ticket}),{spoken:true});
+ const mpeg=Buffer.from([255,251,144,0,0,0]).toString('base64');
+ assert.deepEqual(await h.api.playAudioData({base64:mpeg,contentType:'audio/mpeg',...ticket}),{spoken:true});
+ await h.api.stop();
+});
+
+test('memory playback waits for completion and cancelled late replies cannot revive output',async()=>{
+ for(const action of ['finish','interrupt','stop','background','leave','account','delete','replace']){
+  const h=fixture({actor:'account-one'});await h.api.start(()=>{});const ticket=await h.api.prepareSpeech();let resolve,reject,settled=false;
+  h.plugin.playAudioData=options=>{h.calls.push(['playAudioData',options]);return new Promise((yes,no)=>{resolve=yes;reject=no;});};
+  const pending=h.api.playAudioData({base64:memoryAudio,contentType:'audio/mpeg',...ticket}).then(value=>{settled=true;return value;});
+  await tick();assert.equal(settled,false,'the bridge keeps the interrupt ticket until playback completes');
+  if(action==='interrupt')await h.api.cancelSpeech(ticket);
+  if(action==='stop')await h.api.stop();
+  if(action==='background'){h.window.document.hidden=true;h.event('document:visibilitychange');await tick();}
+  if(action==='leave'){h.event('pagehide');await tick();}
+  if(action==='account'){h.setActor('account-two');h.event('basketboss:session-changed');await tick();}
+  if(action==='delete'){h.event('basketboss:account-deletion-started');await tick();}
+  if(action==='replace')await h.api.prepareSpeech();
+  if(action==='replace')reject(Error('late decoder failure'));else resolve({spoken:true});
+  assert.deepEqual(await pending,action==='finish'?{spoken:true}:{spoken:false,cancelled:true},action);
+  if(['background','leave','account','delete'].includes(action))assert.equal(h.listeners.size,0,action);
+  assert.equal(h.calls.some(call=>call[0]==='speak'),false,'memory playback does not start an installed-voice fallback');
+  await h.api.stop();
+ }
+});
+
+test('native mentor audio uses a bounded memory player, completion delegate and cleanup instead of files or shared clip URLs',()=>{
+ const source=fs.readFileSync(new URL('../ios/App/App/BasketBossCookVoicePlugin.swift',import.meta.url),'utf8');
+ const memory=source.slice(source.indexOf('@objc public func playAudioData'),source.indexOf('private static func audioURL'));
+ assert.match(source,/CAPPluginMethod\(name: "playAudioData"/);
+ assert.match(memory,/Data\(base64Encoded: encoded\)/);
+ assert.match(memory,/AVAudioPlayer\(data: data, fileTypeHint: AVFileType\.mp3\.rawValue\)/);
+ assert.match(memory,/data\.count <= 2 \* 1024 \* 1024/);
+ assert.match(memory,/self\.active\(id\), self\.speechHeld, self\.speechId == ticket/);
+ assert.match(memory,/self\.playbackCall = call/);
+ assert.doesNotMatch(memory,/resolve\(\["spoken": true\]\)|URLSession|AVURLAsset|write\(to:|UserDefaults/);
+ assert.match(source,/memoryProgress\?\.invalidate\(\); memoryProgress = nil/);
+ assert.match(source,/memoryPlayer\?\.delegate = nil; memoryPlayer\?\.stop\(\); memoryPlayer = nil/);
+ assert.match(source,/audioPlayerDidFinishPlaying[\s\S]*self\.memoryPlayer === player[\s\S]*self\.audioFinished\(\)/);
+ assert.match(source,/request\.taskHint = \.dictation/);
+ assert.doesNotMatch(source,/request\.contextualStrings =/);
 });

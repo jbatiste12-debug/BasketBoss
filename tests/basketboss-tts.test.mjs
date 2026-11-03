@@ -3,7 +3,8 @@ import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import {DatabaseSync} from 'node:sqlite';
 import {createTTSHandler} from '../functions/api/tts.js';
-import {clipId,clipKey,spokenText,byteRange,TTS_PROFILE,TTS_INSTRUCTIONS,TTS_AUDIO_LIMIT,requestSpeech} from '../bb-server-lib/bb-tts.js';
+import {digestDeletionActor} from '../bb-server-lib/bb-account-deletion.js';
+import {clipId,clipKey,spokenText,byteRange,TTS_PROFILE,TTS_INSTRUCTIONS,TTS_MENTOR_VOICE,TTS_MENTOR_INSTRUCTIONS,TTS_AUDIO_LIMIT,requestSpeech} from '../bb-server-lib/bb-tts.js';
 const actor='11111111-1111-4111-8111-111111111111',other='22222222-2222-4222-8222-222222222222';
 const origin='https://basketboss.co.uk',text='First up, grab 250 grams of gnocchi.';
 const audio=new TextEncoder().encode('ID3-test-mp3-audio-for-private-stream');
@@ -123,5 +124,86 @@ test('a lost final global slot refunds the personal reservation without generati
   assert.equal((await h.invoke()).status,429);assert.equal(h.calls.length,0);
   assert.equal(h.usage().find(row=>row.actor==='user:'+actor).used,0);
   assert.equal(h.usage().find(row=>row.actor==='global').used,1);
+ }finally{h.close();}
+});
+
+test('mentor answers use natural server-owned speech and never read or write the shared recipe cache',async()=>{
+ const h=harness();try{
+  await h.invoke();const before={...h.r2.counts},stored=h.r2.values.size;
+  const response=await h.invoke({text,private:true});assert.equal(response.status,200);
+  assert.deepEqual(new Uint8Array(await response.arrayBuffer()),audio);
+  assert.equal(response.headers.get('Cache-Control'),'private, no-store');assert.equal(response.headers.get('X-BB-TTS-Cache'),'bypass');
+  assert.equal(response.headers.get('X-BB-TTS-Clip'),null);assert.equal(response.headers.get('Accept-Ranges'),null);
+  assert.deepEqual(h.r2.counts,before);assert.equal(h.r2.values.size,stored);assert.equal(h.db.prepare('SELECT COUNT(*) AS count FROM bb_tts_cache_leases').get().count,0);
+  const body=JSON.parse(h.calls.at(-1).options.body);assert.equal(body.voice,TTS_MENTOR_VOICE);assert.equal(body.voice,'marin');assert.equal(body.instructions,TTS_MENTOR_INSTRUCTIONS);assert.equal(body.input,text);assert.equal(body.model,'gpt-4o-mini-tts');
+  assert.equal(h.usage().find(row=>row.actor==='user:'+actor).used,2,'private speech shares the existing generation allowance');
+ }finally{h.close();}
+});
+
+test('mentor audio needs no R2 or lease table and is never cached on repeat',async()=>{
+ const h=harness();try{
+  h.env.BB_TTS_AUDIO=null;h.db.exec('DROP TABLE bb_tts_cache_leases');
+  for(let index=0;index<2;index++){const response=await h.invoke({text,private:true});assert.equal(response.status,200);assert.deepEqual(new Uint8Array(await response.arrayBuffer()),audio);}
+  assert.equal(h.calls.length,2);assert.deepEqual(h.r2.counts,{head:0,get:0,put:0});assert.equal(h.r2.values.size,0);
+ }finally{h.close();}
+});
+
+test('private mode cannot prepare a shared clip or override the server voice',async()=>{
+ const h=harness();try{
+  for(const body of [{text,private:true,prepare:true},{text,private:'true'},{text,private:true,voice:'cedar'},{text,private:true,model:'other'}])assert.equal((await h.invoke(body)).status,400);
+  assert.equal(h.calls.length,0);assert.equal(h.usage().length,0);assert.deepEqual(h.r2.counts,{head:0,get:0,put:0});
+ }finally{h.close();}
+});
+
+test('private speech retains Premium, deletion, per-owner and global quota boundaries before generation',async()=>{
+ for(const status of [401,403,409]){
+  const h=harness({who:{error:'not for the client',status}});try{assert.equal((await h.invoke({text,private:true})).status,status);assert.equal(h.calls.length,0);assert.equal(h.usage().length,0);assert.deepEqual(h.r2.counts,{head:0,get:0,put:0});}finally{h.close();}
+ }
+ for(const limits of [{personal:1},{global:1}]){
+  const h=harness({...limits,who:{user:{id:other},ownerId:actor}});try{assert.equal((await h.invoke({text,private:true})).status,200);assert.equal((await h.invoke({text,private:true})).status,429);assert.equal(h.calls.length,1);assert.equal(h.usage().find(row=>row.actor.startsWith('user:')).actor,'user:'+actor);assert.deepEqual(h.r2.counts,{head:0,get:0,put:0});}finally{h.close();}
+ }
+});
+
+test('invalid, empty, oversized or failed mentor audio returns no private clip and never persists anything',async()=>{
+ for(const provider of [()=>new Response('secret upstream message',{status:500}),()=>Response.json({private:'provider response'}),()=>new Response('',{headers:{'Content-Type':'audio/mpeg'}}),()=>new Response('not mp3',{headers:{'Content-Type':'audio/mpeg'}}),()=>new Response(new Uint8Array(TTS_AUDIO_LIMIT+1),{headers:{'Content-Type':'audio/mpeg'}})]){
+  const h=harness({provider});try{const response=await h.invoke({text,private:true});assert.equal(response.status,502);const body=await response.text();assert(!body.includes('secret upstream'));assert(!body.includes('provider response'));assert.deepEqual(h.r2.counts,{head:0,get:0,put:0});assert.equal(h.r2.values.size,0);}finally{h.close();}
+ }
+});
+
+test('cancelling private narration aborts the provider and cannot return a late successful answer',async()=>{
+ let release,entered;const ready=new Promise(resolve=>entered=resolve),waiting=new Promise(resolve=>release=resolve);
+ const h=harness({provider:(url,options)=>{entered(options.signal);return waiting;}}),controller=new AbortController();
+ try{
+  const request=new Request(origin+'/api/tts',{method:'POST',signal:controller.signal,headers:{Origin:origin,'Content-Type':'application/json'},body:JSON.stringify({text,private:true})});
+  const pending=h.handle({request,env:h.env}),providerSignal=await ready;controller.abort();assert.equal(providerSignal.aborted,true);
+  release(new Response(audio,{headers:{'Content-Type':'audio/mpeg'}}));assert.equal((await pending).status,502);assert.deepEqual(h.r2.counts,{head:0,get:0,put:0});
+ }finally{h.close();}
+});
+
+test('Cloudflare speech requests use supported manual redirects and never follow a provider redirect with credentials',async()=>{
+ for(const body of [{text,prepare:true},{text,private:true}]){
+  const h=harness({provider:()=>new Response(null,{status:307,headers:{Location:'https://other.invalid/collect'}})});
+  try{const response=await h.invoke(body);assert.equal(response.status,502);assert.equal(h.calls.length,1);assert.equal(h.calls[0].url,'https://api.openai.com/v1/audio/speech');assert.equal(h.calls[0].options.redirect,'manual','Workers does not implement error redirect mode');assert.equal(h.r2.values.size,0);assert(!JSON.stringify(await response.json()).includes('other.invalid'));}finally{h.close();}
+ }
+});
+
+test('deletion beginning during mentor generation prevents personalised audio from leaving the server',async()=>{
+ for(const deleting of [actor,other]){
+  const h=harness({who:{user:{id:other},ownerId:actor},provider:async()=>{
+   h.db.prepare('INSERT INTO bb_account_deletions(actor_hash) VALUES(?)').run(await digestDeletionActor(deleting));
+   return new Response(audio,{headers:{'Content-Type':'audio/mpeg'}});
+  }});
+  try{const response=await h.invoke({text,private:true});assert.equal(response.status,409);assert.match(response.headers.get('Content-Type'),/^application\/json/);assert.deepEqual(await response.json(),{error:'Account deletion is in progress'});assert.equal(h.calls.length,1);assert.deepEqual(h.r2.counts,{head:0,get:0,put:0});}finally{h.close();}
+ }
+});
+
+test('Workers speech requests use manual redirects and reject 3xx without forwarding provider credentials',async()=>{
+ const h=harness({provider:()=>new Response(null,{status:307,headers:{Location:'https://other.invalid/collect'}})});
+ try{
+  const response=await h.invoke();assert.equal(response.status,502);assert.equal(h.calls.length,1);
+  assert.equal(h.calls[0].url,'https://api.openai.com/v1/audio/speech');
+  assert.equal(h.calls[0].options.redirect,'manual','Cloudflare Workers does not implement error redirect mode');
+  assert.equal(h.r2.values.size,0);assert.equal(h.db.prepare('SELECT COUNT(*) AS count FROM bb_tts_cache_leases').get().count,0);
+  const error=JSON.stringify(await response.json());assert(!error.includes('other.invalid'));assert(!error.includes(h.env.OPENAI_API_KEY));
  }finally{h.close();}
 });
