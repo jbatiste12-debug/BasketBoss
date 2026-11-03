@@ -6,6 +6,7 @@
  */
 import {isLive,expectedPrice,entitlementForStatus} from './bb-billing.js';
 import {seatGateEnabled} from './bb-premium-seat.js';
+import {testFlightBetaEnabled} from './bb-paid-access.js';
 const PARTNER_PREMIUM_ARMED=true;
 const LIVE='https://kbhyosxuvlcazyzzinqv.supabase.co';
 const HOSTS=new Set(['basketboss.co.uk','www.basketboss.co.uk','basketboss-site.pages.dev']);
@@ -20,7 +21,8 @@ export function partnerBenefitsEnabled(request,env){
     env.BB_PREMIUM_SINGLE_SESSION_ENABLED==='true'&&
     ((env.BB_LIVE_WEBHOOK_ENABLED==='true'&&isLive(env)&&
       !!expectedPrice(env,'founder')&&!!expectedPrice(env,'standard'))||
-     (env.APPLE_BILLING_ENABLED==='true'&&env.APPLE_ENVIRONMENT==='Production'))&&
+     (env.APPLE_BILLING_ENABLED==='true'&&env.APPLE_ENVIRONMENT==='Production')||
+     testFlightBetaEnabled(env))&&
     env.SUPABASE_URL===LIVE&&
     typeof env.SUPABASE_PUBLISHABLE_KEY==='string'&&
     env.SUPABASE_PUBLISHABLE_KEY.length>20&&
@@ -57,8 +59,8 @@ export async function sharedHouseholdPremiumOwner(request,env,user){
   if(h?.partner_user_id!==user.id||h?.invite_status!=='accepted'||
      typeof h.partner_email!=='string'||h.partner_email.trim().toLowerCase()!==email||
      !UUID.test(h.owner_user_id||'')||h.owner_user_id===user.id)return null;
-  // Only a verified production payment is inherited. No BB_OWNER_USER_ID
-  // bypass, no pending checkout, no browser claim, and no Apple Sandbox access.
+  // Inherit production payments or the owner's current persisted TestFlight
+  // grant. No BB_OWNER_USER_ID bypass, browser claim, or Apple Sandbox payment.
   const row=isLive(env)?await env.BILLING_DB.prepare(
     `SELECT status,price_id,plan FROM bb_paid_entitlements WHERE user_id=?
      ORDER BY CASE WHEN status IN ('active','trialing') AND
@@ -67,8 +69,8 @@ export async function sharedHouseholdPremiumOwner(request,env,user){
   ).bind(h.owner_user_id,expectedPrice(env,'founder'),expectedPrice(env,'standard')).first():null;
   const expected=row?expectedPrice(env,row.plan):null;
   if(row&&expected&&entitlementForStatus(row.status)&&expected===row.price_id)return h.owner_user_id;
-  if(env.APPLE_BILLING_ENABLED!=='true')return null;
+  if(env.APPLE_BILLING_ENABLED!=='true'&&!testFlightBetaEnabled(env))return null;
   const {readPersonalPaidAccess}=await import('./bb-paid-access.js');
-  const access=await readPersonalPaidAccess(env,h.owner_user_id,{productionOnly:true,paddleRow:row});
+  const access=await readPersonalPaidAccess(env,h.owner_user_id,{productionOnly:true,includeTestFlightBeta:true,paddleRow:row});
   return access.premiumAccess?h.owner_user_id:null;
 }

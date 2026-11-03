@@ -16,6 +16,8 @@ export async function onRequestGet({request,env}) {
       trial_ends_at,current_period_ends_at,cancellation_effective_at,cancel_at_period_end
       FROM bb_paid_entitlements WHERE user_id=? ORDER BY updated_at_ms DESC LIMIT 1`).bind(user.id).first():null;
     const access=await readMemberPaidAccess(request,env,user,{paddleRow:row});
+    if(access.provider==='testflight_beta')return json({authenticated:true,mode:'sandbox',tier:'premium',
+      provider:'testflight_beta',premium:true,premiumAccess:true,beta:access.beta,subscription:null,portalUrl:null});
     if(access.householdOwnerId)return json({authenticated:true,mode:billingMode(env),tier:'premium',
       premium:true,premiumAccess:true,householdRole:'partner',subscription:null,portalUrl:null});
     const apple=access.apple;

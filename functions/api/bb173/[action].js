@@ -305,7 +305,10 @@ async function eligibleMember(request,env){
   try{access=await readMemberPaidAccess(request,env,user);}
   catch(error){verificationError=error;}
   // Quota remains on the verified paid owner, never another partner allocation.
-  if(access?.premiumAccess)return access.householdOwnerId?{...user,bbQuotaOwnerId:access.householdOwnerId}:user;
+  if(access?.premiumAccess){
+    const beta=access.provider==='testflight_beta'||!!access.beta;
+    return {...user,...(access.householdOwnerId?{bbQuotaOwnerId:access.householdOwnerId}:{}),...(beta?{bbTestFlightBeta:true}:{})};
+  }
   // Recover only a Paddle-verified, CURRENT paid/trial checkout, never a
   // pending D1 claim or a checkout window merely shown on screen.
   if(await verifiedPaddleCheckoutMember(user,env))return user;
@@ -444,7 +447,7 @@ export async function onRequest({request,env,params}){
         premium_ai:!!member,
         // Client presentation only. Live paid/Owner fallback is enforced
         // independently by eligibleMember() on every AI POST.
-        turnstileRequired:member?!livePaidBillingEnabled(env):true,
+        turnstileRequired:member?!(livePaidBillingEnabled(env)||member.bbTestFlightBeta===true):true,
         siteKey:member?env.TURNSTILE_SITE_KEY:null
       });
     }catch{
@@ -498,7 +501,7 @@ export async function onRequest({request,env,params}){
   // All per-user and global AI quotas are still enforced below.
   const hasChallenge=typeof body.turnstileToken==='string' && body.turnstileToken.length>0;
   const passedChallenge=hasChallenge && await siteVerify(body.turnstileToken,request,env);
-  if(!passedChallenge && !livePaidBillingEnabled(env))
+  if(!passedChallenge && !livePaidBillingEnabled(env)&&member.bbTestFlightBeta!==true)
     return respond({error:'Human verification failed'},403);
 
   try{
