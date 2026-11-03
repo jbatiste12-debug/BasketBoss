@@ -77,6 +77,15 @@
  background:#e9d6a4!important;color:var(--cook-deep)!important;
 }
 
+#modalRoot .cook-overlay .cook-panel.bb-kitchen button.bb-phase{
+ appearance:none;border:0;font:inherit;text-align:left;cursor:pointer;
+}
+#modalRoot .cook-overlay .cook-panel.bb-kitchen button.bb-phase:focus-visible{
+ outline:2px solid #e9d6a4;outline-offset:3px;
+}
+#modalRoot .cook-overlay .cook-panel.bb-kitchen button.bb-phase:disabled{cursor:default}
+#modalRoot .cook-overlay .cook-panel.bb-kitchen .bb-cook-review-prep{margin:0 0 14px;min-height:44px}
+
 /* Premium voice stays a visible, useful part of the meal, with honest live
    status supplied by the existing voice controller. The wave is decorative. */
 #modalRoot .cook-overlay .cook-panel.bb-kitchen .bb-cook-voice-slot{

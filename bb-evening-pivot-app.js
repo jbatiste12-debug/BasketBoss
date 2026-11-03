@@ -36,7 +36,7 @@
    const targets=new Map();
    const units=new Set(['g','kg','ml','l','each','pack','clove','bulb','tsp','tbsp','tin','can','loaf','slice','whole','item','piece']);
    for(const [index,ingredient]of ingredients.entries()){
-    const key=ingredient?.key||ingredient?.name,unit=ingredient?.unit,quantity=ingredient?.quantity;
+    const key=ingredient?.key||ingredient?.name,unit=c.recipeIngredientUnit?.(ingredient,recipe.ingredients)||ingredient?.unit,quantity=ingredient?.quantity;
     if(typeof key!=='string'||!key.trim()||typeof unit!=='string'||!unit.trim())return false;
     if(!units.has(unit))return false;
     const declared=recipe.ingredients[index],name=Array.isArray(declared)?declared[0]:typeof declared==='string'?declared:declared?.name;

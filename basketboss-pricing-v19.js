@@ -13,6 +13,17 @@ function canonical(s){let key=clean(s);
  if(key==='garlic cloves'||key==='garlic clove'||key==='small garlic clove')return 'garlic';
  return key;
 }
+/* Some legacy normalized garlic counts lost their explicit source unit. Recover
+   only an unambiguous recipe label; an unspecified 'each' may mean a whole bulb.
+   Quantities and saved pantry records are never converted by this helper. */
+function recipeIngredientUnit(ingredient,sourceIngredients){
+ const unit=ingredient?.unit;
+ if(canonical(ingredient?.key||ingredient?.name)!=='garlic'||String(unit||'').trim().toLowerCase()!=='each'||!Array.isArray(sourceIngredients))return unit;
+ const matches=sourceIngredients.filter(line=>Array.isArray(line)&&canonical(line[0])==='garlic');
+ if(matches.length!==1)return unit;
+ const explicit=String(matches[0][1]||'').match(/^\s*(?:\d+(?:\.\d+)?|\d+\s+\d+\/\d+|\d+\/\d+|\d*[¼½¾⅓⅔⅛⅜⅝⅞])\s*(cloves?|bulbs?)\s*$/i);
+ return explicit?(/^clove/i.test(explicit[1])?'clove':'bulb'):unit;
+}
 const CATALOG_AISLES=new Map(Object.values(PACKS).filter(x=>x.aisle).map(x=>[x.ingredient,x.aisle]));
 const CATALOG_MEAL_MODES=new Map(Object.values(PACKS).filter(x=>['pantry_usage','full_packs'].includes(x.meal_pricing_mode)).map(x=>[x.ingredient,x.meal_pricing_mode]));
 function aisle(raw){
@@ -297,10 +308,11 @@ function estimateMeal({recipe,normalized,servings,ingredients=null,market='UK',r
   const name=ingredient?.key||ingredient?.name,raw=ingredient?.quantity;
   const valid=['number','string'].includes(typeof raw)&&!(typeof raw==='string'&&!raw.trim());
   const quantity=valid?Number(raw)*(scaled?target/base:1):NaN;
-  const normalizedUnit=normalizeUnit(name,quantity,ingredient?.unit);
-  const item={name,quantity,unit:ingredient?.unit,ingredientIndex:index,amount:null};items.push(item);
-  const quote=mealPrice({name,quantity,unit:ingredient?.unit,market,retailer,asOf});
-  if(!quote||!Number.isFinite(quote.unroundedMealAmount)||!normalizedUnit){ordered.push({invalid:true,key:name,quantity,unit:ingredient?.unit,quote,sourceIndices:[index]});return;}
+  const unit=scaled?recipeIngredientUnit(ingredient,recipe?.ingredients):ingredient?.unit;
+  const normalizedUnit=normalizeUnit(name,quantity,unit);
+  const item={name,quantity,unit,ingredientIndex:index,amount:null};items.push(item);
+  const quote=mealPrice({name,quantity,unit,market,retailer,asOf});
+  if(!quote||!Number.isFinite(quote.unroundedMealAmount)||!normalizedUnit){ordered.push({invalid:true,key:name,quantity,unit,quote,sourceIndices:[index]});return;}
   const key=canonical(name),id=JSON.stringify([key,normalizedUnit.unit]);
   let group=groups.get(id);
   if(!group){group={key,quantity:0,unit:normalizedUnit.unit,sourceIndices:[],assumptions:new Set()};groups.set(id,group);ordered.push(group);}
@@ -361,7 +373,7 @@ function repriceBasket(result,market){
  result.priceDisclaimer='Illustrative regional pack and price guides, not live retailer quotes. Approximate units and pack assumptions require confirmation; shelf-price overrides are local to this device.';
  return result;
 }
-root.BBPriceV19=Object.freeze({canonical,aisle,category,factor,price,mealPrice,getPack,repriceBasket,
+root.BBPriceV19=Object.freeze({canonical,recipeIngredientUnit,aisle,category,factor,price,mealPrice,getPack,repriceBasket,
  normalizeUnit,formatQuantity,money,CURRENCY,regionalMarkets,estimateMeal,isPantryStaple,findSourcedPrice,sourcedPrices,regionMultipliers:MARKET_FACTORS,catalog:PACKS,
  getPriceOverride,getProductOverride,setPriceOverride,preparePriceOverrides,clearPriceOverride,setReceiptPriceProvider});
 })(typeof window!=='undefined'?window:globalThis);

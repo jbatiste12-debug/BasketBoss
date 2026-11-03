@@ -56,7 +56,7 @@
     const unit=row.unit==='kg'?'g':row.unit==='l'?'ml':row.unit;
     if(row.qty===null||row.qty===undefined||row.qty==='')throw Error('Enter how much '+row.name+' you already have; use 0 for none.');
     const targetQty=Number(row.totalNeeded)*(row.unit==='kg'||row.unit==='l'?1000:1);
-    if(!valid(targetQty)||!['g','ml','each','pack','clove','tin','loaf','slice','bulb'].includes(unit)||unit==='pack'&&!Number.isInteger(targetQty))throw Error('Check the total needed for '+row.name+'.');
+    if(!valid(targetQty)||!['g','ml','tsp','tbsp','each','pack','clove','tin','loaf','slice','bulb'].includes(unit)||unit==='pack'&&!Number.isInteger(targetQty))throw Error('Check the total needed for '+row.name+'.');
     const id=host().id(row.name,unit),before=data.targets[id];
     const legacy=host().household().find(item=>item.selected&&!item.owned&&!Object.hasOwn(item,'targetQty')&&host().id(item.name,'g')===host().id(row.name,'g'));if(legacy)throw Error('Check the saved '+row.name+' food top-up first so it is not counted twice.');
     data.targets[id]={name:row.name,unit,targetQty,pending:row.targetChanged||!before?true:before.pending};

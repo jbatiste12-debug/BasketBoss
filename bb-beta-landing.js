@@ -79,9 +79,10 @@
    for(const entry of source.ingredients){
     const name=entry.key||entry.name;
     const amount=entry.quantity==null?NaN:Number(entry.quantity)*ratio;
-    const normalized=api.normalizeUnit(name,amount,entry.unit);
-    const key=api.canonical(name)+'|'+(normalized?.unit||entry.unit);
-    if(!byName.has(key))byName.set(key,{key,name,unit:normalized?.unit||entry.unit,
+    const unit=api.recipeIngredientUnit?.(entry,r.ingredients)||entry.unit;
+    const normalized=api.normalizeUnit(name,amount,unit);
+    const key=api.canonical(name)+'|'+(normalized?.unit||unit);
+    if(!byName.has(key))byName.set(key,{key,name,unit:normalized?.unit||unit,
       aisle:AISLES[api.aisle(name)]||'Other',quantity:0,amounts:[],cost:null,unpriced:false});
     const row=byName.get(key);
     if(normalized)row.quantity+=normalized.quantity;else row.unpriced=true;

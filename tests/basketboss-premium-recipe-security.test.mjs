@@ -22,7 +22,7 @@ test('Make a Meal uses authenticated Premium delivery, not a 321-item public bun
 });
 test('service worker uses a fresh cache and avoids public full-catalogue caching',async()=>{
   const source=await read('service-worker.js');
-  assert.match(source,/basketboss-premium-secure-shell-20261103-v44-voice-recovery1/);
+  assert.match(source,/basketboss-premium-secure-shell-20261103-v45-weekly-feedback1/);
   const core=source.match(/const CORE\s*=\s*\[([\s\S]*?)\]\s*\.map\(/)?.[1];
   assert.ok(core,'precache declaration present');
   assert.doesNotMatch(core,/['"]manifest\.webmanifest['"]/);

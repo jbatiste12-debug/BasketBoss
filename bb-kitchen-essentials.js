@@ -61,7 +61,7 @@
    details.append(summary,list,edit);details.addEventListener('toggle',()=>{if(details.isConnected)state('selected-'+key).expanded=details.open;});body.append(details);
   }
   const rows=[...kitchen.querySelectorAll('#bb5SelectedRows [data-pantry-location="'+key+'"] .bb5-review-row')];
-  const values=rows.map(row=>{const name=row.querySelector('strong').textContent,amount=row.querySelector('[data-bb5-qty]').value,unit=row.querySelector('[data-bb5-unit]').value;const needed=row.querySelector('[data-bb5-needed]')?.value,buy=row.querySelector('output')?.textContent;return name+' · '+(amount.trim()?amount+' '+unit+' already got':'Amount unknown')+(needed!==undefined?' · '+needed+' '+unit+' needed':'')+(buy?' · '+buy+' '+unit:'');});
+  const values=rows.map(row=>{const name=row.querySelector('strong').textContent,amount=row.querySelector('[data-bb5-qty]').value,unit=row.querySelector('[data-bb5-unit]').value;const needed=row.querySelector('[data-bb5-needed]')?.value,buy=row.querySelector('output')?.textContent;return name+' · '+(amount.trim()?amount+' '+unit+' already got':'Amount unknown — enter an amount to reduce Shopping')+(needed!==undefined?' · '+needed+' '+unit+' needed':'')+(buy?' · '+buy:'');});
   const stamp=JSON.stringify(values);
   if(details.dataset.bbkeValues!==stamp){details.dataset.bbkeValues=stamp;text(details.querySelector('summary'),'Selected here ('+values.length+')');const list=details.querySelector('ul');list.replaceChildren();for(const value of values){const li=doc.createElement('li');li.textContent=value;list.append(li);}if(!values.length){const li=doc.createElement('li');li.textContent='Nothing selected here yet.';list.append(li);}}
  }
@@ -144,7 +144,7 @@
   if(!kitchen||!pantry)return;
   text(kitchen.querySelector('.bb76-eyebrow'),'AT HOME');
   text(kitchen.querySelector('.bb76-title h2'),'What have you already got?');
-  text(kitchen.querySelector('.bb76-title>div>p:last-child'),'Choose what you have in your cupboard, fridge and freezer. Review the amounts below, then confirm your pantry.');
+  text(kitchen.querySelector('.bb76-title>div>p:last-child'),'Choose food you have, then enter amounts or choose Enough for this week. Confirm your pantry to update Shopping.');
   const pantryTitle=kitchen.querySelector('#bb76PantryHeading');
   if(pantryTitle?.firstChild?.nodeType===3&&pantryTitle.firstChild.textContent!=='Review amounts ')pantryTitle.firstChild.textContent='Review amounts ';
   let essentials=app.querySelector('#bbKitchenEssentials');

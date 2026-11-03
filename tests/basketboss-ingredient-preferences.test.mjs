@@ -145,7 +145,7 @@ test('Pantry suggestions and the final Populate Planner recheck both respect ing
  const recipes=[{id:'chicken',name:'Chicken dinner',category:'Family',ingredients:[['Chicken breast','100 g']]},{id:'beans',name:'Bean dinner',category:'Family',ingredients:[['Kidney beans','100 g']]}];
  const state={planned:[],servings:4};let saves=0;
  const names=recipes.map(r=>({...r,ingredients:r.ingredients.map(i=>({name:i[0],key:i[0],quantity:100,unit:'g'}))}));
- const context={RECIPES:recipes,BB307_NORMALIZED:names,BBIngredientPreferences:h.api,state,DAYS,
+ const context={RECIPES:recipes,BB307_NORMALIZED:names,BBIngredientPreferences:h.api,BBPriceV19:require('../basketboss-pricing-v19.js'),state,DAYS,
   bb307ReadStock:()=>({'chicken breast|g':100,'kidney beans|g':100}),
   bb176AllowedRecipe:()=>true,bb172IsDessertOrNonDinner:()=>false,
   getRecipe:id=>recipes.find(r=>r.id===id),bb172QuickDinners:()=>({}),bbBatchPairs:()=>[],bbPartialRound:n=>n,

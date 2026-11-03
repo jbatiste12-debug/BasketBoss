@@ -24,7 +24,7 @@ function fixture(){
  let app;
  const context=()=>({planned:state.planned,dayServings:state.dayServings,recipes,normalized,stock,actor:control.actor,premium:control.premium,date:control.date,reviewRequired:control.reviewRequired,
   fingerprint:control.extra,isLinked:day=>control.linked.has(day),allowed:r=>!control.locked.has(r.id),recipeAllowed:r=>!control.avoided.has(r.id),
-  servingsForDay:(day,r)=>serving.forMeal(state,{day,recipeId:r?.id},r),reconcileStock:pantry.reconcileStock,pantryId:pantry.pantryId});
+  servingsForDay:(day,r)=>serving.forMeal(state,{day,recipeId:r?.id},r),reconcileStock:pantry.reconcileStock,pantryId:pantry.pantryId,recipeIngredientUnit:realm.BBPriceV19.recipeIngredientUnit});
  app=appFactory.create({core,context,commit:(stamp,next)=>{if(!control.canSave||stamp!==app.fingerprint())return false;control.commits++;state.planned=next.planned;state.dayServings=next.dayServings;return true;}});
  const preview=()=>app.preview({day:'Monday',recipeId:'slow'});
  const checks=s=>({confirmed:true,readyToCook:true,useBy:Object.fromEntries(s.requiresFreshness.map(x=>[x.key,s.movedDateISO]))});
@@ -48,6 +48,21 @@ test('the actual Pantry canonical aliases and mass-unit bridge are used without 
  assert.equal(h.preview().suggestions.length,1,'kg converts to matching g');
  delete h.stock['pasta|kg'];h.stock['pasta|ml']=200;
  assert.equal(h.preview().suggestions.length,0,'dry pasta volume never becomes grams');
+});
+
+test('source-proven Garlic units match measured Pantry amounts without treating ambiguous each as bulbs',()=>{
+ const h=fixture();h.recipes[1].ingredients=[['Garlic','3 cloves']];
+ h.normalized[1].ingredients=[{name:'Garlic',key:'garlic',quantity:3,unit:'each',status:'PARSED'}];
+ Object.keys(h.stock).forEach(key=>delete h.stock[key]);h.stock['garlic|clove']=1.5;
+ const before=JSON.stringify({recipes:h.recipes,normalized:h.normalized,stock:h.stock});
+ assert.equal(h.preview().suggestions.length,1,'three source cloves at half servings require 1.5 cloves');
+ assert.equal(JSON.stringify({recipes:h.recipes,normalized:h.normalized,stock:h.stock}),before,'readiness does not rewrite recipe or stock records');
+ h.stock['garlic|clove']=1;assert.equal(h.preview().suggestions.length,0,'insufficient clove stock cannot cover the scaled requirement');
+ delete h.stock['garlic|clove'];h.stock['garlic|each']=1;
+ h.recipes[1].ingredients=[['Garlic','1 bulb']];h.normalized[1].ingredients[0].quantity=1;
+ assert.equal(h.preview().suggestions.length,0,'historical each stock does not silently become a bulb');
+ delete h.stock['garlic|each'];h.stock['garlic|bulb']=.5;
+ assert.equal(h.preview().suggestions.length,1,'an explicitly measured half bulb covers half the source bulb');
 });
 
 test('duplicate ingredient rows aggregate requirements and cannot reuse the same quantity twice',()=>{
