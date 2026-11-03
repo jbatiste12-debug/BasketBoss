@@ -211,7 +211,7 @@ test('deletion beginning during mentor generation prevents personalised audio fr
    h.db.prepare('INSERT INTO bb_account_deletions(actor_hash) VALUES(?)').run(await digestDeletionActor(deleting));
    return new Response(audio,{headers:{'Content-Type':'audio/mpeg'}});
   }});
-  try{const response=await h.invoke({text,private:true});assert.equal(response.status,409);assert.match(response.headers.get('Content-Type'),/^application\/json/);assert.deepEqual(await response.json(),{error:'Account deletion is in progress'});assert.equal(h.calls.length,1);assert.deepEqual(h.r2.counts,{head:0,get:0,put:0});}finally{h.close();}
+  try{const response=await h.invoke({text,private:true});assert.equal(response.status,409);assert.match(response.headers.get('Content-Type'),/^application\/json/);assert.deepEqual(await response.json(),{error:'Account deletion is in progress',code:'BB_COOK_ACCOUNT_PENDING'});assert.equal(h.calls.length,1);assert.deepEqual(h.r2.counts,{head:0,get:0,put:0});}finally{h.close();}
  }
 });
 

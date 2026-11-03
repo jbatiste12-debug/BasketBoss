@@ -10,6 +10,7 @@ import {livePaidBillingEnabled,testFlightBetaEnabled} from '../../bb-server-lib/
 import {seatGateEnabled,isNewestVerifiedSession} from '../../bb-server-lib/bb-premium-seat.js';
 import {nativeCorsResponse,nativePreflightResponse} from '../../bb-server-lib/bb-request-origin.js';
 import {ensureDeletionSchema,isAccountDeleting} from '../../bb-server-lib/bb-account-deletion.js';
+import {logCookDiagnostic} from '../../bb-server-lib/bb-cook-service-error.js';
 const PROTECTED=[
  /^\/api\/apple\/testflight-beta\/?$/,
  /^\/api\/tts\/?$/,
@@ -19,6 +20,11 @@ const PROTECTED=[
  /^\/api\/household\/?$/,
  /^\/api\/receipt-inventory\/?$/
 ];
+function boundaryFailure(request,payload,status,stage,code){
+ if(!/^\/api\/(?:tts|cook-assistant)\/?$/.test(new URL(request.url).pathname))return json(payload,status);
+ if(code!=='BB_COOK_AUTH_REQUIRED'||/^Bearer [^\s]+$/.test(request.headers.get('Authorization')||''))logCookDiagnostic(stage,code,status);
+ return json({...payload,code},status);
+}
 async function enforcePremiumSession({request,env,next},verifiedUser){
  const url=new URL(request.url);
  // Availability exposes no inventory; the endpoint independently authenticates
@@ -30,13 +36,13 @@ async function enforcePremiumSession({request,env,next},verifiedUser){
  if(url.protocol!=='https:'||!liveHosts.has(url.hostname)||!(livePaidBillingEnabled(env)||testFlightBetaEnabled(env))||
     (env.CF_PAGES_BRANCH&&env.CF_PAGES_BRANCH!=='main')||
     env.SUPABASE_URL!=='https://kbhyosxuvlcazyzzinqv.supabase.co')
-  return json({error:'Premium session verification misconfigured'},503);
+  return boundaryFailure(request,{error:'Premium session verification misconfigured'},503,'session_config','BB_COOK_SESSION_MISCONFIGURED');
  const user=verifiedUser===undefined?await authenticatedUser(request,env):verifiedUser;
- if(!user)return json({error:'Sign in with a confirmed email'},401);
+ if(!user)return boundaryFailure(request,{error:'Sign in with a confirmed email'},401,'authorization','BB_COOK_AUTH_REQUIRED');
  try{
   if(!await isNewestVerifiedSession(request,env,user))
-   return json({error:'This Premium account has a newer sign-in on another device. Sign in here again to continue.'},403);
- }catch{return json({error:'Premium device verification temporarily unavailable'},503);}
+   return boundaryFailure(request,{error:'This Premium account has a newer sign-in on another device. Sign in here again to continue.'},403,'session_verification','BB_COOK_SESSION_REPLACED');
+ }catch{return boundaryFailure(request,{error:'Premium device verification temporarily unavailable'},503,'session_verification','BB_COOK_SESSION_UNAVAILABLE');}
  return next();
 }
 async function enforceDeletionState(context){
@@ -47,12 +53,12 @@ async function enforceDeletionState(context){
     !/^Bearer [^\s]+$/.test(request.headers.get('Authorization')||''))
   return enforcePremiumSession(context);
  const user=await authenticatedUser(request,env);
- if(!user)return json({error:'Sign in with a confirmed email'},401);
+ if(!user)return boundaryFailure(request,{error:'Sign in with a confirmed email'},401,'authorization','BB_COOK_AUTH_REQUIRED');
  try{
   await ensureDeletionSchema(env);
   if(await isAccountDeleting(env,user.id))
-   return json({ok:false,pending:true,error:'Account deletion is in progress. Retry Delete Account & Data to finish.'},409);
- }catch{return json({error:'Account state verification temporarily unavailable'},503);}
+   return boundaryFailure(request,{ok:false,pending:true,error:'Account deletion is in progress. Retry Delete Account & Data to finish.'},409,'authorization','BB_COOK_ACCOUNT_PENDING');
+ }catch{return boundaryFailure(request,{error:'Account state verification temporarily unavailable'},503,'authorization','BB_COOK_ACCOUNT_UNAVAILABLE');}
  return enforcePremiumSession(context,user);
 }
 export async function onRequest(context){
