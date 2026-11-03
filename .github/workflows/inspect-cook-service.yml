@@ -65,6 +65,8 @@ jobs:
       - uses: actions/checkout@v5
         with:
           persist-credentials: false
+          sparse-checkout: scripts/inspect-cook-service.mjs
+          sparse-checkout-cone-mode: false
       - uses: actions/setup-node@v5
         with:
           node-version: '24'
@@ -87,6 +89,8 @@ jobs:
       - uses: actions/checkout@v5
         with:
           persist-credentials: false
+          sparse-checkout: scripts/inspect-cook-service.mjs
+          sparse-checkout-cone-mode: false
       - uses: actions/setup-node@v5
         with:
           node-version: '24'

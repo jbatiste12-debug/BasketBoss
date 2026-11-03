@@ -23,12 +23,28 @@ const DIAGNOSTIC_CODES=new Set([
 const OUTCOMES=new Set(['ok','exception','exceededCpu','exceededMemory','canceled','unknown']);
 const FAILURES=new Set(['INSPECT_ENVIRONMENT','INSPECT_MODE','INSPECT_CREDENTIALS','INSPECT_API',
  'INSPECT_PROJECT','INSPECT_DEPLOYMENT','INSPECT_TAIL_RESPONSE','INSPECT_TAIL_URL','INSPECT_TAIL_SOCKET','INSPECT_TAIL_CLEANUP']);
-class InspectionError extends Error {constructor(code){super(code);this.code=code;}}
+const API_OPERATIONS=new Set(['project','quota_schema','tail_create','tail_delete']);
+class InspectionError extends Error {constructor(code,metadata={}){super(code);this.code=code;Object.assign(this,metadata);}}
 const requireThat=(value,code)=>{if(!value)throw new InspectionError(code);};
 const safeFailure=error=>FAILURES.has(error?.code)?error.code:'INSPECT_API';
 const object=value=>value!==null&&typeof value==='object'&&!Array.isArray(value);
 const status=value=>Number.isInteger(value)&&value>=100&&value<=599?value:null;
 const output=value=>console.log(JSON.stringify(value));
+
+function numericCodes(values){
+ const result=[];
+ for(const value of Array.isArray(values)?values.slice(0,32):[]){
+  if(!Number.isInteger(value)||value<1000||value>99999999||result.includes(value))continue;
+  result.push(value);if(result.length===8)break;
+ }
+ return result;
+}
+export function cookInspectionFailure(error){
+ const result={kind:'failure',code:safeFailure(error)};
+ // Only server-owned operation labels and bounded numeric API diagnostics can
+ // cross this boundary. Never expose CF messages, source pointers or URLs.
+ return API_OPERATIONS.has(error?.operation)?{...result,operation:error.operation,status:status(error.status),cloudflareCodes:numericCodes(error.cloudflareCodes)}:result;
+}
 
 export function requireCookInspectEnvironment(env,mode){
  requireThat(env.GITHUB_ACTIONS==='true'&&env.GITHUB_REPOSITORY===REPOSITORY&&env.GITHUB_REF==='refs/heads/main'&&/^[a-f0-9]{40}$/.test(env.GITHUB_SHA||''),'INSPECT_ENVIRONMENT');
@@ -64,12 +80,14 @@ async function publicProbe(perform,hostName,host,route,method){
   return {kind:'probe',host:hostName,route,method,status:status(response.status),contentType:type,nativeCors:cors,code:DIAGNOSTIC_CODES.has(value?.code)?value.code:null};
  }catch{return {kind:'probe',host:hostName,route,method,status:null,contentType:'missing',nativeCors:false,code:null};}
 }
-async function cloudflare(env,route,method,perform,body){
+async function cloudflare(env,route,method,perform,body,operation){
+ requireThat(API_OPERATIONS.has(operation),'INSPECT_API');
  let response;
  try{response=await perform(API+route,{method,headers:{Authorization:'Bearer '+env.CLOUDFLARE_API_TOKEN,'Content-Type':'application/json'},...(body===undefined?{}:{body:JSON.stringify(body)}),redirect:'manual',signal:AbortSignal.timeout(15000)});}
- catch{throw new InspectionError('INSPECT_API');}
+ catch{throw new InspectionError('INSPECT_API',{operation,status:null,cloudflareCodes:[]});}
  const value=await boundedJSON(response,1024*1024);
- requireThat(response.ok&&value?.success===true,'INSPECT_API');return value.result;
+ if(!response.ok||value?.success!==true)throw new InspectionError('INSPECT_API',{operation,status:status(response.status),cloudflareCodes:numericCodes(Array.isArray(value?.errors)?value.errors.map(error=>error?.code):[])});
+ return value.result;
 }
 
 function projectDetails(project,sha){
@@ -90,7 +108,7 @@ function projectDetails(project,sha){
 async function inspectQuotaSchema(env,databaseId,perform){
  if(!databaseId)return {kind:'schema',schemaInspectionAvailable:false,quotaSchemaReady:false};
  try{
-  const result=await cloudflare(env,'accounts/'+env.CLOUDFLARE_ACCOUNT_ID+'/d1/database/'+databaseId+'/query','POST',perform,{sql:QUOTA_SCHEMA_SQL});
+  const result=await cloudflare(env,'accounts/'+env.CLOUDFLARE_ACCOUNT_ID+'/d1/database/'+databaseId+'/query','POST',perform,{sql:QUOTA_SCHEMA_SQL},'quota_schema');
   if(!Array.isArray(result)||result.length!==1||result[0]?.success===false||!Array.isArray(result[0]?.results))return {kind:'schema',schemaInspectionAvailable:false,quotaSchemaReady:false};
   const names=new Set(result[0].results.map(row=>row?.name));
   return {kind:'schema',schemaInspectionAvailable:true,quotaSchemaReady:['day_utc','actor','action','used'].every(name=>names.has(name))};
@@ -170,12 +188,12 @@ export async function inspectCookService(env=process.env,options={}){
   ['/api/tts','OPTIONS'],['/api/cook-assistant','OPTIONS'],['/api/tts','GET'],['/api/cook-assistant','POST']
  ].map(async([route,method])=>{const result=await publicProbe(perform,name,host,route,method);emit(result);return result;})));
  const prefix='accounts/'+env.CLOUDFLARE_ACCOUNT_ID+'/pages/projects/'+PROJECT;
- const details=projectDetails(await cloudflare(env,prefix,'GET',perform),env.GITHUB_SHA);
+ const details=projectDetails(await cloudflare(env,prefix,'GET',perform,undefined,'project'),env.GITHUB_SHA);
  emit({kind:'configuration',matchingSha:details.matchingSha,canonicalProductionReady:true,configuration:details.configuration});
  emit(await inspectQuotaSchema(env,details.databaseId,perform));
  if(mode==='probe')return {mode,matchingSha:details.matchingSha,probes:probes.length};
  const tailRoute=prefix+'/deployments/'+details.deploymentId+'/tails';
- const tail=await cloudflare(env,tailRoute,'POST',perform,{filters:[]});
+ const tail=await cloudflare(env,tailRoute,'POST',perform,{filters:[]},'tail_create');
  requireThat(UUID.test(tail?.id||''),'INSPECT_TAIL_RESPONSE');
  try{
   const url=validateCookTailURL(tail.url);
@@ -183,7 +201,8 @@ export async function inspectCookService(env=process.env,options={}){
   const result=await listen(url,{WebSocket:options.WebSocket||globalThis.WebSocket,emit,setTimeout:options.setTimeout||setTimeout,clearTimeout:options.clearTimeout||clearTimeout});
   return {mode,matchingSha:details.matchingSha,...result};
  }finally{
-  try{await cloudflare(env,tailRoute+'/'+tail.id,'DELETE',perform);}catch{throw new InspectionError('INSPECT_TAIL_CLEANUP');}
+  try{await cloudflare(env,tailRoute+'/'+tail.id,'DELETE',perform,undefined,'tail_delete');}
+  catch(error){const safe=cookInspectionFailure(error);throw new InspectionError('INSPECT_TAIL_CLEANUP',{operation:'tail_delete',status:safe.status??null,cloudflareCodes:safe.cloudflareCodes||[]});}
  }
 }
 
@@ -191,5 +210,5 @@ if(process.argv[1]&&path.resolve(process.argv[1])===fileURLToPath(import.meta.ur
  try{
   const args=process.argv.slice(2);requireThat(args.length===0||args.length===1&&['--probe','--tail'].includes(args[0]),'INSPECT_MODE');
   const result=await inspectCookService(process.env,args.length?{mode:args[0].slice(2)}:{});output({kind:'complete',...result});
- }catch(error){output({kind:'failure',code:safeFailure(error)});process.exitCode=1;}
+ }catch(error){output(cookInspectionFailure(error));process.exitCode=1;}
 }
