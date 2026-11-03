@@ -1,0 +1,96 @@
+name: Inspect deployed Cook service
+
+on:
+  push:
+    branches: [main, fix/mentor-live-diagnostics]
+    paths:
+      - .github/workflows/inspect-cook-service.yml
+      - scripts/inspect-cook-service.mjs
+      - tests/basketboss-inspect-cook-service.test.mjs
+      - tests/basketboss-cook-diagnostic-logging.test.mjs
+      - bb-server-lib/bb-cook-service-error.js
+      - functions/api/tts.js
+      - functions/api/cook-assistant.js
+      - functions/api/_middleware.js
+  workflow_dispatch:
+    inputs:
+      mode:
+        description: Check native API boundaries or capture a bounded sanitized production trace
+        type: choice
+        options: [probe, tail, both]
+        default: probe
+        required: true
+
+permissions:
+  contents: read
+
+concurrency:
+  group: basketboss-cook-service-inspection
+  cancel-in-progress: false
+
+jobs:
+  portable:
+    runs-on: ubuntu-latest
+    timeout-minutes: 8
+    steps:
+      - uses: actions/checkout@v5
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@v5
+        with:
+          node-version: '24'
+          cache: npm
+      - run: npm ci --no-audit --no-fund
+      - name: Verify service errors, protected routes and diagnostic redaction
+        run: >-
+          node --test --test-isolation=none
+          tests/basketboss-cook-assistant.test.mjs
+          tests/basketboss-tts.test.mjs
+          tests/basketboss-cook-diagnostic-logging.test.mjs
+          tests/basketboss-premium-session-route-regression.test.mjs
+          tests/basketboss-native-api-origin.test.mjs
+          tests/basketboss-inspect-cook-service.test.mjs
+          tests/basketboss-household-production.test.mjs
+          tests/basketboss-prepare-cook-ai-voice.test.mjs
+  probe:
+    needs: portable
+    if: github.repository == 'jbatiste12-debug/BasketBoss' && github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    environment: github-pages
+    timeout-minutes: 5
+    env:
+      CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+      CLOUDFLARE_ACCOUNT_ID: ${{ vars.CLOUDFLARE_ACCOUNT_ID || secrets.CLOUDFLARE_ACCOUNT_ID }}
+    steps:
+      - uses: actions/checkout@v5
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@v5
+        with:
+          node-version: '24'
+      - name: Probe production native Cook API boundaries without account credentials
+        env:
+          BB_COOK_INSPECT_MODE: probe
+        run: node scripts/inspect-cook-service.mjs
+  tail:
+    needs: probe
+    if: >-
+      github.repository == 'jbatiste12-debug/BasketBoss' && github.ref == 'refs/heads/main' &&
+      (github.event_name == 'push' || inputs.mode == 'tail' || inputs.mode == 'both')
+    runs-on: ubuntu-latest
+    environment: github-pages
+    timeout-minutes: 5
+    env:
+      CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+      CLOUDFLARE_ACCOUNT_ID: ${{ vars.CLOUDFLARE_ACCOUNT_ID || secrets.CLOUDFLARE_ACCOUNT_ID }}
+    steps:
+      - uses: actions/checkout@v5
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@v5
+        with:
+          node-version: '24'
+      - name: Capture 90 seconds of sanitized Cook failure metadata
+        env:
+          BB_COOK_INSPECT_MODE: tail
+        run: node scripts/inspect-cook-service.mjs
