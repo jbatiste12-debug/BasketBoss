@@ -17,13 +17,20 @@ permissions:
 
 jobs:
   keyboard:
-    runs-on: macos-latest
+    runs-on: macos-15-intel
     timeout-minutes: 30
+    env:
+      DEVELOPER_DIR: /Applications/Xcode_26.2.app/Contents/Developer
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
         with:
           persist-credentials: false
-      - uses: actions/setup-node@v4
+          ref: ee2a589347dc146487104329f78b964babcae96b
+      - name: Verify the frozen build 5 app source
+        run: |
+          test "$(git rev-parse HEAD)" = 'ee2a589347dc146487104329f78b964babcae96b'
+          echo '::notice title=BasketBoss verified app source::{"sourceSha":"ee2a589347dc146487104329f78b964babcae96b","build":5}'
+      - uses: actions/setup-node@v5
         with:
           node-version: '24'
           cache: npm
@@ -65,7 +72,7 @@ jobs:
               done=subprocess.run(['xcrun','xcresulttool','get','test-results','summary','--path',str(result)],capture_output=True,text=True)
               print(done.stdout[-20000:])
           PY
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v6
         if: always()
         with:
           name: BasketBoss-Focused-Keyboard-Verification
