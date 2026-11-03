@@ -471,7 +471,7 @@ private final class BasketBossCookSmokeReporter: NSObject, WKScriptMessageHandle
           if(recipe.servings!==6||recipe.ingredients[0][0]!=='Chicken breast'||recipe.ingredients[0][1]!=='1 kg'||recipe.ingredients[1][0]!=='Mixed peppers'||recipe.ingredients[1][1]!=='3 peppers'||cheddar?.[1]!=='400 g'||recipe.method?.length!==5||amount(recipe.ingredients[0])!=='665 g'||amount(recipe.ingredients[1])!=='2 peppers'||amount(cheddar)!=='265 g')throw Error('VoiceCookFixtureChanged');
           voiceStage='firstIngredient';toggle.click();await wait(()=>onFinal&&starts===1&&spoken.some(text=>text.includes('665 grams of chicken breast')));
           report.voicePrepNarrated=spoken.some(text=>text.includes('665 grams of chicken breast'));await wait(()=>!busy);
-          voiceStage='nextIngredient';onFinal('Next ingredient');await wait(()=>document.querySelector('[data-prep="0"]')?.checked&&spoken.some(text=>text.includes('2 mixed peppers')));
+          voiceStage='nextIngredient';onFinal('Next ingredient');await wait(()=>document.querySelector('[data-prep="0"]')?.checked&&spoken.some(text=>text.includes('approximately 320 grams (2 peppers) of mixed peppers')));
           report.voicePrepAdvanced=document.querySelector('[data-prep="0"]').checked;await wait(()=>!busy);
           voiceStage='startCooking';onFinal('Start cooking');await wait(()=>document.getElementById('bbInstruction'));
           const firstInstruction=document.getElementById('bbInstruction').textContent;
@@ -489,7 +489,7 @@ private final class BasketBossCookSmokeReporter: NSObject, WKScriptMessageHandle
           report.mentorAnswerVisible=document.querySelector('.bbcv-answer').textContent.includes(answers.peppers);
           report.mentorNoAutonomousActions=document.getElementById('bbInstruction').textContent===beforeQuestion&&document.getElementById('bbTimerToggle').textContent===beforeTimer;
           const context=question?.recipe;
-          report.mentorRecipeContext=context?.id==='fajitas'&&context.title===recipe.name&&context.servings===4&&context.phase==='cook'&&context.region==='UK'&&context.currentStep===0&&context.steps.length===5&&context.steps[0]===recipe.method[0]&&context.ingredients.some(item=>item.name==='Chicken breast'&&item.quantity==='665 g')&&context.ingredients.some(item=>item.name==='Cheddar'&&item.quantity==='265 g');
+          report.mentorRecipeContext=context?.id==='fajitas'&&context.title===recipe.name&&context.servings===4&&context.phase==='cook'&&context.region==='UK'&&context.currentStep===0&&context.steps.length===5&&context.steps[0]===recipe.method[0]&&context.ingredients.some(item=>item.name==='Chicken breast'&&item.quantity==='665 g')&&context.ingredients.some(item=>item.name==='Cheddar'&&item.quantity==='265 g')&&context.ingredients.some(item=>item.name==='Mixed peppers'&&item.quantity==='≈ 320 g (2 peppers)');
           await wait(()=>!busy);
           voiceStage='cheddar';onFinal('How much cheddar?');await wait(()=>spoken.includes(answers.cheddar));
           report.voiceScaledAmount=spoken.includes(answers.cheddar)&&requests.at(-1)?.payload.recipe.ingredients.some(item=>item.name==='Cheddar'&&item.quantity==='265 g');await wait(()=>!busy);

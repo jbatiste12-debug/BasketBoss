@@ -3,7 +3,7 @@ import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import vm from 'node:vm';
 import {createRequire} from 'node:module';
-const require=createRequire(import.meta.url),serving=require('../bb-serving-scale.js');
+const require=createRequire(import.meta.url),serving=require('../bb-serving-scale.js'),speech=require('../bb-cook-speech-text.js');
 const read=file=>fs.readFileSync(new URL('../'+file,import.meta.url),'utf8');
 const plain=value=>JSON.parse(JSON.stringify(value));
 function harness(entry){
@@ -57,6 +57,11 @@ for(const entry of ['index.html','app.html']){
   const rows=ctx.bb321ShoppingSources().get('carrot|g');assert.equal(rows.length,2);assert.equal(rows.reduce((sum,row)=>sum+row.qty,0),510);assert.equal(rows[0].sourceQuantity,2);assert.equal(rows[0].sourceUnit,'each');assert.equal(rows[0].estimated,true);
   const recipe=ctx.getRecipe('lentil-bolognese'),line=recipe.ingredients.find(line=>line[0]==='Carrots');
   assert.equal(ctx.bbRecipeIngredientQuantity(recipe,line,1),'≈ 160 g (2)');assert.equal(ctx.bbRecipeIngredientQuantity(recipe,line,.5),'≈ 80 g (1)');
+ });
+ test(entry+': native mentor wording keeps the standardised pepper weight and original count together',()=>{
+  const h=harness(entry),recipe=h.context.recipes.find(row=>row.id==='fajitas'),line=recipe.ingredients.find(line=>line[0]==='Mixed peppers');
+  const quantity=h.context.bbRecipeIngredientQuantity(recipe,line,4/recipe.servings);
+  assert.equal(quantity,'≈ 320 g (2 peppers)');assert.equal(speech.phrase({name:line[0],quantity}),'approximately 320 grams (2 peppers) of mixed peppers');assert.equal(line[1],'3 peppers');
  });
  test(entry+': Tuscan salmon source tomatoes no longer become a second Asparagus row',()=>{
   const h=harness(entry),r=h.context.recipes.find(row=>row.id==='tuscan-salmon'),result=h.run([{id:r.id,servings:r.servings}]);
