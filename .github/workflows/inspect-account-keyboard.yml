@@ -55,8 +55,14 @@ jobs:
           const run=(...args)=>execFileSync('xcrun',args,{encoding:'utf8',timeout:120000}).trim();
           const runtimes=JSON.parse(run('simctl','list','runtimes','--json')).runtimes.filter(r=>r.isAvailable&&r.name.startsWith('iOS'));
           const devices=JSON.parse(run('simctl','list','devices','available','--json')).devices;
-          const runtime=runtimes.find(r=>r.version.startsWith('26.2'))||runtimes.find(r=>r.version.startsWith('18.6'));
+          const runtime=runtimes.find(r=>r.version.startsWith('18.6'));
           if(!runtime)throw Error('proven_runtime_missing');
+          // This runner is disposable CI infrastructure. Keep only the chosen
+          // supported runtime booted so the unchanged test runner selects it.
+          for(const [runtimeId,phones] of Object.entries(devices)){
+            if(runtimeId===runtime.identifier)continue;
+            for(const other of phones)if(other.isAvailable&&other.name.startsWith('iPhone')&&['Booted','Booting'].includes(other.state))run('simctl','shutdown',other.udid);
+          }
           const phone=(devices[runtime.identifier]||[]).find(d=>d.isAvailable&&d.name.startsWith('iPhone'));
           if(!phone)throw Error('iphone_missing');
           execFileSync('defaults',['write','com.apple.iphonesimulator','ConnectHardwareKeyboard','-bool','NO']);
