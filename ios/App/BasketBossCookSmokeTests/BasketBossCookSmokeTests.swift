@@ -31,7 +31,10 @@ final class BasketBossCookSmokeTests: XCTestCase {
                         "ingredientPhoto", "ingredientSaved", "ingredientAutofill", "ingredientExistingKept",
                         "ingredientRestored", "voiceFreeLocked", "voiceManualStart", "voiceNextStep",
                         "voiceTimer", "voiceScaledAmount", "voiceExitStopped", "voiceRestored",
-                        "voicePrepAvailable", "voicePrepNarrated", "voicePrepAdvanced", "voiceCookNarrated", "voiceStepNarrated"]
+                        "voicePrepAvailable", "voicePrepNarrated", "voicePrepAdvanced", "voiceCookNarrated", "voiceStepNarrated",
+                        "mentorAvailable", "mentorRecipeContext", "mentorSpokenQuestion", "mentorTypedQuestion",
+                        "mentorFollowupHistory", "mentorPrivateAudio", "mentorAnswerVisible", "mentorNoAutonomousActions",
+                        "mentorCancelledAnswer", "mentorInterrupt", "mentorHistoryCleared", "mentorNoDeviceFallback", "mentorGreetingName"]
         for key in required { XCTAssertEqual(report[key] as? Bool, true, key + ": " + detail) }
     }
 }

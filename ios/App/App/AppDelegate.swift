@@ -208,7 +208,7 @@ private final class BasketBossCookSmokeReporter: NSObject, WKScriptMessageHandle
     }
 
     func record(_ report: [String: Any]) {
-        let keys = ["complete", "passed", "nativeOrigin", "cookMounted", "cookReady", "navPresent", "navVisible", "navHit", "legacyVisible", "backToPlan", "dataKept", "mainReady", "startupReady", "phase", "readyState", "errorCount", "errorLine", "errorKind", "errorSource", "lastScript", "scriptCount", "ingredientClosed", "ingredientPhoto", "ingredientSaved", "ingredientAutofill", "ingredientExistingKept", "ingredientRestored", "voiceFreeLocked", "voiceManualStart", "voiceNextStep", "voiceTimer", "voiceScaledAmount", "voiceExitStopped", "voiceRestored", "voicePrepAvailable", "voicePrepNarrated", "voicePrepAdvanced", "voiceCookNarrated", "voiceStepNarrated", "voiceFailure"]
+        let keys = ["complete", "passed", "nativeOrigin", "cookMounted", "cookReady", "navPresent", "navVisible", "navHit", "legacyVisible", "backToPlan", "dataKept", "mainReady", "startupReady", "phase", "readyState", "errorCount", "errorLine", "errorKind", "errorSource", "lastScript", "scriptCount", "ingredientClosed", "ingredientPhoto", "ingredientSaved", "ingredientAutofill", "ingredientExistingKept", "ingredientRestored", "voiceFreeLocked", "voiceManualStart", "voiceNextStep", "voiceTimer", "voiceScaledAmount", "voiceExitStopped", "voiceRestored", "voicePrepAvailable", "voicePrepNarrated", "voicePrepAdvanced", "voiceCookNarrated", "voiceStepNarrated", "mentorAvailable", "mentorRecipeContext", "mentorSpokenQuestion", "mentorTypedQuestion", "mentorFollowupHistory", "mentorPrivateAudio", "mentorAnswerVisible", "mentorNoAutonomousActions", "mentorCancelledAnswer", "mentorInterrupt", "mentorHistoryCleared", "mentorNoDeviceFallback", "mentorGreetingName", "voiceFailure"]
         let safe = report.filter { keys.contains($0.key) }
         guard let data = try? JSONSerialization.data(withJSONObject: safe, options: [.sortedKeys]),
               let folder = FileManager.default.urls(for: .documentDirectory, in: .userDomainMask).first else { return }
@@ -262,64 +262,133 @@ private final class BasketBossCookSmokeReporter: NSObject, WKScriptMessageHandle
       }
       async function verifyVoiceCook(){
         const report={},stateKey='basketboss_321_unified_state_v1',snapshot=localStorage.getItem(stateKey),recoveryKey='basketboss_321_unified_recovery_v1',recovery=localStorage.getItem(recoveryKey);
-        const originalPremium=window.BasketBossVerifiedPremium,originalVoice=window.BBNativeCookVoice;
+        const originalPremium=window.BasketBossVerifiedPremium,originalVoice=window.BBNativeCookVoice,originalController=window.BBCookVoice;
+        const namePrefix='basketboss_cook_mentor_name_v1:',nameSnapshot=new Map();
+        for(let n=0;n<localStorage.length;n++){const key=localStorage.key(n);if(key?.startsWith(namePrefix))nameSnapshot.set(key,localStorage.getItem(key));}
         let voiceStage='mount';
         const wait=async read=>{for(let n=0;n<60;n++){const value=read();if(value)return value;await new Promise(resolve=>setTimeout(resolve,100));}throw Error('VoiceCookSmokeTimeout_'+voiceStage);};
+        const pause=milliseconds=>new Promise(resolve=>setTimeout(resolve,milliseconds));
         const refresh=()=>dispatchEvent(new StorageEvent('storage',{key:stateKey,newValue:localStorage.getItem(stateKey)}));
-        let starts=0,stops=0,onFinal=null,onStatus=null,busy=false,active=false,utterance=0;const spoken=[];
+        let starts=0,stops=0,onFinal=null,onStatus=null,busy=false,active=false,utterance=0,held=null,fallbacks=0,sharedAudio=0,privateAudio=0,failAudio=false,pendingAnswer=null,defaultGreeting=false;
+        const spoken=[],requests=[],prepared=[],playback=[],audioTexts=new Map();
+        const answers={prep:'Set out your chicken and peppers first, then keep a clean board ready for the vegetables.',peppers:'The peppers should soften and take on a little colour, while still holding their shape.',followup:'Yes, use a clean board for the peppers, and clean anything that touched raw chicken.',cheddar:'You’ll need 265 grams of cheddar.',yoghurt:'Plain yoghurt can be used as a topping here; add it when serving.'};
+        const assistant={ask:async(payload,options={})=>{
+          requests.push({payload:JSON.parse(JSON.stringify(payload)),signal:options.signal});
+          if(payload.question==='What if they start to stick?')return new Promise(resolve=>{pendingAnswer={resolve,signal:options.signal};});
+          const answer=payload.question==='What should I prepare first?'?answers.prep:payload.question==='And should I use a separate board?'?answers.followup:payload.question==='How much cheddar?'?answers.cheddar:payload.question==='Can I use yoghurt instead?'?answers.yoghurt:answers.peppers;
+          return {answer};
+        }};
+        const tts={prepareMentor:async(text,options={})=>{
+          prepared.push({text,signal:options.signal});
+          if(failAudio){failAudio=false;throw Object.assign(Error('synthetic-unavailable'),{code:'BB_TTS_UNAVAILABLE'});}
+          const base64=btoa('ID3'+prepared.length);audioTexts.set(base64,text);return {base64,contentType:'audio/mpeg'};
+        },playMentor:async()=>{throw Error('VoiceSmokeUnexpectedBrowserAudio');},prepare:async()=>{sharedAudio++;throw Error('VoiceSmokeSharedAudio');},play:async()=>{sharedAudio++;throw Error('VoiceSmokeSharedAudio');}};
+        const open=async()=>{
+          const day=await wait(()=>document.querySelector('.bbnext-day[data-bbnext-day="Monday"]'));day.open=true;
+          const cook=await wait(()=>day.querySelector('[data-cook]'));cook.click();await wait(()=>document.getElementById('bbStart'));
+          return wait(()=>document.querySelector('.bb-cook-voice .bbcv-toggle'));
+        };
+        const typed=async(question,answer)=>{
+          const input=await wait(()=>document.querySelector('.bbcv-question-input'));
+          input.value=question;input.dispatchEvent(new Event('input',{bubbles:true}));
+          const send=await wait(()=>{const button=document.querySelector('.bbcv-question-send');return button&&!button.disabled?button:null;});send.click();
+          await wait(()=>document.querySelector('.bbcv-answer')?.textContent.includes(answer));
+        };
         try{
-          window.BBNativeCookVoice={available:async()=>true,start:async(final,status)=>{starts++;active=true;onFinal=final;onStatus=status;status({state:'listening'});},stop:async()=>{stops++;active=false;busy=false;utterance++;},speak:async text=>{if(!active||text.length>4000)throw Error('VoiceSmokeSpeech');const cycle=++utterance;spoken.push(text);busy=true;onStatus?.({state:'paused'});await new Promise(resolve=>setTimeout(resolve,20));if(active&&cycle===utterance){busy=false;onStatus?.({state:'listening'});}}};
+          for(const key of nameSnapshot.keys())localStorage.removeItem(key);
+          // Stub only the external model/audio boundary. The real app still
+          // mounts its actual mentor context, controls and conversation logic.
+          window.BBCookVoice={...originalController,mount:options=>originalController.mount({...options,assistant,tts})};
+          window.BBNativeCookVoice={available:async()=>true,start:async(final,status)=>{starts++;active=true;onFinal=final;onStatus=status;status({state:'listening'});},stop:async()=>{stops++;active=false;busy=false;held=null;utterance++;},prepareSpeech:async()=>{if(!active)throw Error('VoiceSmokeInactive');held='mentor-'+(++utterance);busy=true;onStatus?.({state:'paused'});return {speechId:held};},cancelSpeech:async({speechId}={})=>{if(speechId===held){held=null;busy=false;utterance++;if(active)onStatus?.({state:'listening'});}return {spoken:false,cancelled:true};},playAudioData:async audio=>{
+            if(!active||audio.speechId!==held||audio.contentType!=='audio/mpeg'||typeof audio.base64!=='string'||audio.url||audio.token)throw Error('VoiceSmokePrivateAudio');
+            if(!audioTexts.has(audio.base64))throw Error('VoiceSmokeUnknownAudio');
+            const cycle=utterance;privateAudio++;playback.push({...audio});spoken.push(audioTexts.get(audio.base64));await pause(20);
+            if(active&&cycle===utterance){held=null;busy=false;onStatus?.({state:'listening'});return {spoken:true};}return {spoken:false,cancelled:true};
+          },speak:async()=>{fallbacks++;throw Error('VoiceSmokeDeviceFallback');},playAudio:async()=>{sharedAudio++;throw Error('VoiceSmokeSharedAudio');}};
           window.BasketBossVerifiedPremium={isActive:()=>false};
           localStorage.setItem(stateKey,JSON.stringify({version:2,planned:[{recipeId:'fajitas',day:'Monday'}],servings:4,feedingSet:true}));refresh();
-          const day=await wait(()=>document.querySelector('.bbnext-day[data-bbnext-day="Monday"]'));day.open=true;
-          const cook=await wait(()=>day.querySelector('[data-cook]'));cook.click();
-          await wait(()=>document.getElementById('bbStart'));
-          const toggle=await wait(()=>document.querySelector('.bb-cook-voice .bbcv-toggle'));
+          let toggle=await open();
           report.voicePrepAvailable=!document.querySelector('.bb-cook-voice').hidden&&!document.getElementById('bbInstruction');
+          report.mentorAvailable=document.querySelector('.bb-cook-voice').classList.contains('is-mentor');
           report.voiceFreeLocked=toggle.textContent.includes('Premium')&&starts===0;
           window.BasketBossVerifiedPremium={isActive:()=>true};document.dispatchEvent(new Event('basketboss:premium-verified'));
           report.voiceManualStart=starts===0&&toggle.getAttribute('aria-pressed')==='false';
-          toggle.click();await wait(()=>onFinal&&starts===1);
+          voiceStage='typedQuestion';await typed('What should I prepare first?',answers.prep);
+          report.mentorTypedQuestion=requests.at(-1)?.payload.question==='What should I prepare first?'&&starts===0&&privateAudio===0;
+          voiceStage='followup';await typed('And should I use a separate board?',answers.followup);
+          const followup=requests.at(-1)?.payload;
+          report.mentorFollowupHistory=followup?.history?.some(turn=>turn.role==='user'&&turn.text==='What should I prepare first?')&&followup.history.some(turn=>turn.role==='assistant'&&turn.text===answers.prep);
           const recipes=await fetch(new URL('recipes.json',location.href)).then(response=>response.json()),recipe=recipes.find(item=>item.id==='fajitas');
-          // Pin the known four-serving fixture independently of the speech
-          // formatter: these assertions verify the words received by native audio.
-          const expectedSpeech={
-            firstIngredient:'First up, grab 665 grams of chicken breast. Say “next ingredient” when you’re ready.',
-            nextIngredient:'Next, get 2 mixed peppers. Say “next ingredient” when you’re ready.',
-            firstStep:'Step 1 of 5. First up, heat oven to 200 degrees Celsius (180 degrees Celsius fan). Slice chicken and peppers into strips. Say “next step” when you’re ready.',
-            nextStep:'Step 2 of 5. Next, toss chicken and peppers with oil, fajita seasoning, salt and pepper. Say “next step” when you’re ready.',
-            cheddar:'You’ll need 265 grams of cheddar.'
-          };
           const cheddar=recipe.ingredients.find(item=>item[0]==='Cheddar');
           const amount=ingredient=>BBServing.scaleText(ingredient[1],4/recipe.servings,ingredient[0],{roundCounts:false});
           if(recipe.servings!==6||recipe.ingredients[0][0]!=='Chicken breast'||recipe.ingredients[0][1]!=='1 kg'||recipe.ingredients[1][0]!=='Mixed peppers'||recipe.ingredients[1][1]!=='3 peppers'||cheddar?.[1]!=='400 g'||recipe.method?.length!==5||amount(recipe.ingredients[0])!=='665 g'||amount(recipe.ingredients[1])!=='2 peppers'||amount(cheddar)!=='265 g')throw Error('VoiceCookFixtureChanged');
-          voiceStage='firstIngredient';await wait(()=>spoken.includes(expectedSpeech.firstIngredient));
-          report.voicePrepNarrated=true;await wait(()=>!busy);
-          voiceStage='nextIngredient';onFinal('Next ingredient');await wait(()=>document.querySelector('[data-prep="0"]')?.checked&&spoken.includes(expectedSpeech.nextIngredient));
-          report.voicePrepAdvanced=true;await wait(()=>!busy);
+          voiceStage='firstIngredient';toggle.click();await wait(()=>onFinal&&starts===1&&spoken.some(text=>text.includes('665 grams of chicken breast')));
+          report.voicePrepNarrated=spoken.some(text=>text.includes('665 grams of chicken breast'));await wait(()=>!busy);
+          voiceStage='nextIngredient';onFinal('Next ingredient');await wait(()=>document.querySelector('[data-prep="0"]')?.checked&&spoken.some(text=>text.includes('2 mixed peppers')));
+          report.voicePrepAdvanced=document.querySelector('[data-prep="0"]').checked;await wait(()=>!busy);
           voiceStage='startCooking';onFinal('Start cooking');await wait(()=>document.getElementById('bbInstruction'));
           const firstInstruction=document.getElementById('bbInstruction').textContent;
           if(!firstInstruction.includes('200°C')||!firstInstruction.includes('180°C fan')||!firstInstruction.includes('Slice chicken and peppers into strips'))throw Error('VoiceCookFirstInstruction');
-          voiceStage='firstStep';await wait(()=>spoken.includes(expectedSpeech.firstStep));
-          report.voiceCookNarrated=spoken.filter(text=>text===expectedSpeech.firstStep).length===1;await wait(()=>!busy);
-          voiceStage='cheddar';onFinal('How much cheddar?');await wait(()=>spoken.includes(expectedSpeech.cheddar));
-          report.voiceScaledAmount=spoken.includes(expectedSpeech.cheddar);await wait(()=>!busy);
+          const firstStep='Heat oven to 200 degrees Celsius (180 degrees Celsius fan). Slice chicken and peppers into strips.';
+          voiceStage='firstStep';const greeting='Hi, ready to get cooking? I’m Chef Boss. Let’s make '+recipe.name+' together.';
+          await wait(()=>document.querySelector('.bbcv-answer')?.textContent.includes(greeting)&&spoken.some(text=>text.includes(greeting)));
+          defaultGreeting=document.querySelector('.bbcv-name-display').textContent.includes('Chef Boss')&&spoken.filter(text=>text.includes(greeting)).length===1;
+          await wait(()=>spoken.some(text=>text.toLowerCase().includes(firstStep.toLowerCase())));
+          report.voiceCookNarrated=spoken.filter(text=>text.toLowerCase().includes(firstStep.toLowerCase())).length===1;await wait(()=>!busy);
+          voiceStage='spokenQuestion';const beforeQuestion=document.getElementById('bbInstruction').textContent,beforeTimer=document.getElementById('bbTimerToggle').textContent;
+          onFinal('What should the peppers look like?');await wait(()=>spoken.includes(answers.peppers)&&document.querySelector('.bbcv-answer')?.textContent.includes(answers.peppers));
+          const question=requests.at(-1)?.payload;
+          report.mentorSpokenQuestion=question?.question==='What should the peppers look like?';
+          report.mentorAnswerVisible=document.querySelector('.bbcv-answer').textContent.includes(answers.peppers);
+          report.mentorNoAutonomousActions=document.getElementById('bbInstruction').textContent===beforeQuestion&&document.getElementById('bbTimerToggle').textContent===beforeTimer;
+          const context=question?.recipe;
+          report.mentorRecipeContext=context?.id==='fajitas'&&context.title===recipe.name&&context.servings===4&&context.phase==='cook'&&context.region==='UK'&&context.currentStep===0&&context.steps.length===5&&context.steps[0]===recipe.method[0]&&context.ingredients.some(item=>item.name==='Chicken breast'&&item.quantity==='665 g')&&context.ingredients.some(item=>item.name==='Cheddar'&&item.quantity==='265 g');
+          await wait(()=>!busy);
+          voiceStage='cheddar';onFinal('How much cheddar?');await wait(()=>spoken.includes(answers.cheddar));
+          report.voiceScaledAmount=spoken.includes(answers.cheddar)&&requests.at(-1)?.payload.recipe.ingredients.some(item=>item.name==='Cheddar'&&item.quantity==='265 g');await wait(()=>!busy);
           voiceStage='nextStep';onFinal('Next step');await wait(()=>/STEP 2 OF/.test(document.getElementById('bbBody').textContent));
           report.voiceNextStep=/STEP 2 OF/.test(document.getElementById('bbBody').textContent);
-          const nextInstruction=document.getElementById('bbInstruction').textContent;
-          if(!nextInstruction.includes(recipe.method[1]))throw Error('VoiceCookNextInstruction');
-          await wait(()=>spoken.includes(expectedSpeech.nextStep));
-          report.voiceStepNarrated=spoken.filter(text=>text===expectedSpeech.nextStep).length===1;await wait(()=>!busy);
+          if(!document.getElementById('bbInstruction').textContent.includes(recipe.method[1]))throw Error('VoiceCookNextInstruction');
+          const nextStep='Toss chicken and peppers with oil, fajita seasoning, salt and pepper.';
+          await wait(()=>spoken.some(text=>text.toLowerCase().includes(nextStep.toLowerCase())));
+          report.voiceStepNarrated=spoken.filter(text=>text.toLowerCase().includes(nextStep.toLowerCase())).length===1;await wait(()=>!busy);
           voiceStage='timer';onFinal('Start timer');await wait(()=>/Pause/.test(document.getElementById('bbTimerToggle').textContent));
-          onFinal('Start timer');report.voiceTimer=/Pause/.test(document.getElementById('bbTimerToggle').textContent);
+          await wait(()=>!busy);onFinal('Start timer');report.voiceTimer=/Pause/.test(document.getElementById('bbTimerToggle').textContent);await wait(()=>!busy);
+          voiceStage='cancelQuestion';onFinal('What if they start to stick?');await wait(()=>pendingAnswer);
+          const interrupt=await wait(()=>{const button=document.querySelector('.bbcv-interrupt');return button&&!button.hidden&&!button.disabled?button:null;});interrupt.click();
+          await wait(()=>pendingAnswer.signal.aborted);const countBeforeCancel=privateAudio;
+          pendingAnswer.resolve({answer:'This cancelled answer must never be displayed or spoken.'});await pause(60);
+          report.mentorCancelledAnswer=!document.querySelector('.bbcv-answer').textContent.includes('cancelled answer')&&privateAudio===countBeforeCancel;
+          report.mentorInterrupt=pendingAnswer.signal.aborted&&toggle.getAttribute('aria-pressed')==='true';
+          voiceStage='naturalVoiceFailure';failAudio=true;onFinal('Can I use yoghurt instead?');await wait(()=>document.querySelector('.bbcv-answer')?.textContent.includes(answers.yoghurt));
+          const retry=await wait(()=>{const button=document.querySelector('.bbcv-retry');return button&&!button.hidden&&!button.disabled?button:null;});
+          report.mentorNoDeviceFallback=fallbacks===0&&sharedAudio===0&&!!retry;
+          if(requests.at(-1)?.payload.history.some(turn=>turn.text==='What if they start to stick?'))throw Error('MentorCancelledHistory');
+          retry.click();await wait(()=>spoken.includes(answers.yoghurt)&&!busy);
+          report.mentorPrivateAudio=privateAudio>0&&privateAudio===playback.length&&sharedAudio===0&&prepared.length>=privateAudio&&playback.every(audio=>audio.contentType==='audio/mpeg'&&!audio.url&&!audio.token);
           voiceStage='exit';const previousStops=stops;document.getElementById('bbExit').click();await wait(()=>!document.querySelector('.cook-overlay'));
           report.voiceExitStopped=stops>previousStops;
+          voiceStage='freshConversation';const startsBefore=starts;toggle=await open();await typed('How much cheddar?',answers.cheddar);
+          report.mentorHistoryCleared=requests.at(-1)?.payload.history.length===0&&starts===startsBefore;
+          voiceStage='mentorName';document.querySelector('.bbcv-name-edit').click();
+          const nameInput=await wait(()=>document.querySelector('.bbcv-name-input'));nameInput.value='<img src=x>';document.querySelector('.bbcv-name-save').click();
+          const invalidNameKept=document.querySelector('.bbcv-name-display').textContent.includes('Chef Boss')&&!document.querySelector('.bbcv-name-display img');
+          nameInput.value='Pan Pal';document.querySelector('.bbcv-name-save').click();await wait(()=>document.querySelector('.bbcv-name-display').textContent.includes('Pan Pal'));
+          const audioBeforeGreeting=privateAudio,questionsBeforeGreeting=requests.length;document.getElementById('bbStart').click();
+          const customGreeting='Hi, ready to get cooking? I’m Pan Pal. Let’s make '+recipe.name+' together.';
+          await wait(()=>document.querySelector('.bbcv-answer')?.textContent.includes(customGreeting));
+          const silentGreeting=starts===startsBefore&&privateAudio===audioBeforeGreeting&&requests.length===questionsBeforeGreeting;
+          await typed('How much cheddar?',answers.cheddar);
+          report.mentorGreetingName=defaultGreeting&&invalidNameKept&&silentGreeting&&requests.at(-1)?.payload.mentorName==='Pan Pal';
+          document.getElementById('bbExit').click();
         }finally{
           document.getElementById('bbExit')?.click();
-          window.BasketBossVerifiedPremium=originalPremium;window.BBNativeCookVoice=originalVoice;
+          window.BasketBossVerifiedPremium=originalPremium;window.BBNativeCookVoice=originalVoice;window.BBCookVoice=originalController;
+          const nameKeys=[];for(let n=0;n<localStorage.length;n++){const key=localStorage.key(n);if(key?.startsWith(namePrefix))nameKeys.push(key);}
+          for(const key of nameKeys)localStorage.removeItem(key);for(const [key,value] of nameSnapshot)localStorage.setItem(key,value);
           if(snapshot===null)localStorage.removeItem(stateKey);else localStorage.setItem(stateKey,snapshot);
           if(recovery===null)localStorage.removeItem(recoveryKey);else localStorage.setItem(recoveryKey,recovery);
-          refresh();report.voiceRestored=localStorage.getItem(stateKey)===snapshot&&window.BasketBossVerifiedPremium===originalPremium&&window.BBNativeCookVoice===originalVoice;
+          refresh();report.voiceRestored=localStorage.getItem(stateKey)===snapshot&&window.BasketBossVerifiedPremium===originalPremium&&window.BBNativeCookVoice===originalVoice&&window.BBCookVoice===originalController;
         }
         return report;
       }
@@ -334,7 +403,7 @@ private final class BasketBossCookSmokeReporter: NSObject, WKScriptMessageHandle
           if(stage==='back'){
             const report=JSON.parse(sessionStorage.getItem(key+'_report')||'{}');
             report.backToPlan=document.body.dataset.bbnextView==='week';report.dataKept=localStorage.getItem('basketboss_native_smoke_probe')==='keep';
-            report.passed=!!(report.nativeOrigin&&report.cookMounted&&report.cookReady&&report.navVisible&&report.navHit&&report.backToPlan&&report.dataKept&&report.ingredientClosed&&report.ingredientPhoto&&report.ingredientSaved&&report.ingredientAutofill&&report.ingredientExistingKept&&report.ingredientRestored&&report.voiceFreeLocked&&report.voiceManualStart&&report.voiceNextStep&&report.voiceTimer&&report.voiceScaledAmount&&report.voiceExitStopped&&report.voiceRestored&&report.voicePrepAvailable&&report.voicePrepNarrated&&report.voicePrepAdvanced&&report.voiceCookNarrated&&report.voiceStepNarrated);send(report);return;
+            report.passed=!!(report.nativeOrigin&&report.cookMounted&&report.cookReady&&report.navVisible&&report.navHit&&report.backToPlan&&report.dataKept&&report.ingredientClosed&&report.ingredientPhoto&&report.ingredientSaved&&report.ingredientAutofill&&report.ingredientExistingKept&&report.ingredientRestored&&report.voiceFreeLocked&&report.voiceManualStart&&report.voiceNextStep&&report.voiceTimer&&report.voiceScaledAmount&&report.voiceExitStopped&&report.voiceRestored&&report.voicePrepAvailable&&report.voicePrepNarrated&&report.voicePrepAdvanced&&report.voiceCookNarrated&&report.voiceStepNarrated&&report.mentorAvailable&&report.mentorRecipeContext&&report.mentorSpokenQuestion&&report.mentorTypedQuestion&&report.mentorFollowupHistory&&report.mentorPrivateAudio&&report.mentorAnswerVisible&&report.mentorNoAutonomousActions&&report.mentorCancelledAnswer&&report.mentorInterrupt&&report.mentorHistoryCleared&&report.mentorNoDeviceFallback&&report.mentorGreetingName);send(report);return;
           }
           if(!sessionStorage.getItem(key+'_region')){const select=document.getElementById('bb307Island'),save=document.getElementById('bb307SaveMarket');if(select&&save){select.value='UK';select.dispatchEvent(new Event('change',{bubbles:true}));save.click();sessionStorage.setItem(key+'_region','1');return;}}
           if(!sessionStorage.getItem(key+'_ingredients')){

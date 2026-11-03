@@ -4,11 +4,11 @@ import AVFoundation
 import Speech
 import Capacitor
 
-// Speech is explicitly started by the Cook microphone toggle. Audio and
-// recognition transcripts are neither persisted nor forwarded to the backend.
-// Only recipe narration text is sent by the web controller for AI speech.
+// Speech is explicitly started by the Cook microphone toggle. This bridge
+// never persists recording, transcripts or personalised reply audio. The web
+// controller sends opted-in cooking questions to the authenticated mentor.
 @objc(BasketBossCookVoicePlugin)
-public final class BasketBossCookVoicePlugin: CAPPlugin, CAPBridgedPlugin, AVSpeechSynthesizerDelegate {
+public final class BasketBossCookVoicePlugin: CAPPlugin, CAPBridgedPlugin, AVSpeechSynthesizerDelegate, AVAudioPlayerDelegate {
     public let identifier = "BasketBossCookVoicePlugin"
     public let jsName = "BasketBossCookVoice"
     public let pluginMethods: [CAPPluginMethod] = [
@@ -18,6 +18,7 @@ public final class BasketBossCookVoicePlugin: CAPPlugin, CAPBridgedPlugin, AVSpe
         CAPPluginMethod(name: "speak", returnType: CAPPluginReturnPromise),
         CAPPluginMethod(name: "prepareSpeech", returnType: CAPPluginReturnPromise),
         CAPPluginMethod(name: "playAudio", returnType: CAPPluginReturnPromise),
+        CAPPluginMethod(name: "playAudioData", returnType: CAPPluginReturnPromise),
         CAPPluginMethod(name: "cancelSpeech", returnType: CAPPluginReturnPromise)
     ]
     private let recognizer = SFSpeechRecognizer(locale: Locale(identifier: "en-GB"))
@@ -35,6 +36,8 @@ public final class BasketBossCookVoicePlugin: CAPPlugin, CAPBridgedPlugin, AVSpe
     private var speechId: String?
     private var speechHeld = false
     private var player: AVPlayer?
+    private var memoryPlayer: AVAudioPlayer?
+    private var memoryProgress: Timer?
     private var playerItem: AVPlayerItem?
     private var audioLoader: BBCookAudioLoader?
     private var playerStatus: NSKeyValueObservation?
@@ -81,6 +84,7 @@ public final class BasketBossCookVoicePlugin: CAPPlugin, CAPBridgedPlugin, AVSpe
         if let progress = playerProgress { player?.removeTimeObserver(progress) }
         playbackTimeout?.cancel(); playbackDeadline?.cancel()
         player?.pause(); audioLoader?.cancel()
+        memoryProgress?.invalidate(); memoryPlayer?.delegate = nil; memoryPlayer?.stop()
         if tapInstalled { engine.inputNode.removeTap(onBus: 0) }
     }
 
@@ -258,6 +262,64 @@ public final class BasketBossCookVoicePlugin: CAPPlugin, CAPBridgedPlugin, AVSpe
         }
     }
 
+    // Personalised mentor replies use bounded in-memory MP3 bytes. They never
+    // enter a shared recipe clip cache, a temporary file or a network player.
+    @objc public func playAudioData(_ call: CAPPluginCall) {
+        guard let id = call.getString("sessionId"), let ticket = call.getString("speechId"),
+              call.getString("contentType") == "audio/mpeg", let encoded = call.getString("base64"),
+              encoded.utf8.count <= ((2 * 1024 * 1024 + 2) / 3) * 4 else {
+            call.reject("A valid Cook audio response is required.", "BB_VOICE_AI_AUDIO"); return
+        }
+        Task { @MainActor [weak self] in
+            guard let self = self, self.active(id), self.speechHeld, self.speechId == ticket else { call.resolve(["spoken": false, "cancelled": true]); return }
+            guard let data = Data(base64Encoded: encoded), Self.validAudioData(data) else {
+                call.reject("The Cook audio response could not be read.", "BB_VOICE_AI_AUDIO"); return
+            }
+            self.clearOutput(); self.playbackCall = call
+            do {
+                try self.playbackCategory()
+                let player = try AVAudioPlayer(data: data, fileTypeHint: AVFileType.mp3.rawValue)
+                guard player.duration.isFinite, player.duration > 0, player.duration <= 360 else {
+                    self.audioFailed(); return
+                }
+                player.delegate = self; player.numberOfLoops = 0
+                self.memoryPlayer = player
+                guard player.prepareToPlay(), player.play() else { self.audioFailed(); return }
+                self.status("paused")
+                let progress = Timer(timeInterval: 1, repeats: true) { [weak self, weak player] _ in
+                    Task { @MainActor [weak self, weak player] in
+                        guard let self = self, let player = player, self.active(id), self.speechId == ticket,
+                              self.memoryPlayer === player, player.currentTime.isFinite,
+                              player.currentTime > self.lastPlaybackTime + 0.05 else { return }
+                        self.lastPlaybackTime = player.currentTime
+                        self.memoryPlaybackWatchdog(id: id, ticket: ticket, player: player)
+                    }
+                }
+                self.memoryProgress = progress
+                RunLoop.main.add(progress, forMode: .common)
+                self.memoryPlaybackWatchdog(id: id, ticket: ticket, player: player)
+                let deadline = DispatchWorkItem { [weak self, weak player] in
+                    Task { @MainActor [weak self, weak player] in
+                        guard let self = self, let player = player, self.active(id), self.speechId == ticket,
+                              self.memoryPlayer === player else { return }
+                        self.audioFailed()
+                    }
+                }
+                self.playbackDeadline = deadline
+                DispatchQueue.main.asyncAfter(deadline: .now() + 360, execute: deadline)
+                // Resolve only from completion, cancellation or failure. The
+                // controller retains this ticket so its interrupt control works.
+            } catch { self.audioFailed() }
+        }
+    }
+
+    private static func validAudioData(_ data: Data) -> Bool {
+        guard data.count >= 3, data.count <= 2 * 1024 * 1024 else { return false }
+        let head = Array(data.prefix(3))
+        return (head[0] == 73 && head[1] == 68 && head[2] == 51) ||
+            (head[0] == 255 && (head[1] & 224) == 224)
+    }
+
     private static func audioURL(_ value: String) -> URL? {
         guard let parts = URLComponents(string: value), parts.scheme == "https", parts.host == "basketboss.co.uk",
               parts.user == nil, parts.password == nil, parts.port == nil, parts.fragment == nil,
@@ -294,6 +356,8 @@ public final class BasketBossCookVoicePlugin: CAPPlugin, CAPBridgedPlugin, AVSpe
         playbackTimeout?.cancel(); playbackTimeout = nil
         playbackDeadline?.cancel(); playbackDeadline = nil; lastPlaybackTime = 0
         player?.pause(); player?.replaceCurrentItem(with: nil); player = nil; playerItem = nil
+        memoryProgress?.invalidate(); memoryProgress = nil
+        memoryPlayer?.delegate = nil; memoryPlayer?.stop(); memoryPlayer = nil
         audioLoader?.cancel(); audioLoader = nil
         let call = playbackCall; playbackCall = nil
         call?.resolve(["spoken": false, "cancelled": true])
@@ -309,6 +373,19 @@ public final class BasketBossCookVoicePlugin: CAPPlugin, CAPBridgedPlugin, AVSpe
         }
         playbackTimeout = timeout
         DispatchQueue.main.asyncAfter(deadline: .now() + delay, execute: timeout)
+    }
+
+    @MainActor private func memoryPlaybackWatchdog(id: String, ticket: String, player: AVAudioPlayer) {
+        playbackTimeout?.cancel()
+        let timeout = DispatchWorkItem { [weak self, weak player] in
+            Task { @MainActor [weak self, weak player] in
+                guard let self = self, let player = player, self.active(id), self.speechId == ticket,
+                      self.memoryPlayer === player else { return }
+                self.audioFailed()
+            }
+        }
+        playbackTimeout = timeout
+        DispatchQueue.main.asyncAfter(deadline: .now() + 15, execute: timeout)
     }
 
     @MainActor private func audioFailed(code: String? = nil) {
@@ -362,9 +439,8 @@ public final class BasketBossCookVoicePlugin: CAPPlugin, CAPBridgedPlugin, AVSpe
         try audio.setActive(true)
         let request = SFSpeechAudioBufferRecognitionRequest()
         request.shouldReportPartialResults = true
-        request.taskHint = .confirmation
+        request.taskHint = .dictation
         if recognizer.supportsOnDeviceRecognition { request.requiresOnDeviceRecognition = true }
-        request.contextualStrings = ["Next ingredient", "Read ingredients", "Start cooking", "Read step", "Repeat", "Next step", "Previous step", "Start timer", "How much"]
         self.request = request
         let format = engine.inputNode.outputFormat(forBus: 0)
         guard format.sampleRate > 0, format.channelCount > 0 else { throw NSError(domain: "CookVoice", code: 2) }
@@ -464,6 +540,20 @@ public final class BasketBossCookVoicePlugin: CAPPlugin, CAPBridgedPlugin, AVSpe
             guard let self = self, self.spoken === utterance else { return }
             self.spoken = nil; self.speechHeld = false; self.speechId = nil
             self.resumeAfterPause()
+        }
+    }
+
+    public func audioPlayerDidFinishPlaying(_ player: AVAudioPlayer, successfully flag: Bool) {
+        Task { @MainActor [weak self, weak player] in
+            guard let self = self, let player = player, self.memoryPlayer === player else { return }
+            if flag { self.audioFinished() } else { self.audioFailed() }
+        }
+    }
+
+    public func audioPlayerDecodeErrorDidOccur(_ player: AVAudioPlayer, error: Error?) {
+        Task { @MainActor [weak self, weak player] in
+            guard let self = self, let player = player, self.memoryPlayer === player else { return }
+            self.audioFailed()
         }
     }
 }

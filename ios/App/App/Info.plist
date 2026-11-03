@@ -69,9 +69,9 @@
 	<key>NSPhotoLibraryUsageDescription</key>
 	<string>BasketBoss lets you choose a supermarket receipt photo to review and scan into your pantry.</string>
 	<key>NSMicrophoneUsageDescription</key>
-	<string>Turn on the Cook microphone to control recipe steps and timers, or ask for ingredient amounts, while your hands are busy. Listening stops when you leave Cook or background the app.</string>
+	<string>BasketBoss uses your microphone when you turn on Voice Cook to hear cooking questions and recipe controls.</string>
 	<key>NSSpeechRecognitionUsageDescription</key>
-	<string>BasketBoss uses Apple Speech to recognise your optional Cook voice commands. Recognition uses your device when supported; otherwise Apple may process the audio. BasketBoss does not store the audio or transcript.</string>
+	<string>BasketBoss recognises your cooking questions and recipe controls when you turn on Voice Cook. Questions and the active recipe are sent to AI for mentor replies.</string>
 	<key>UIStatusBarStyle</key>
 	<string>UIStatusBarStyleDarkContent</string>
 	<key>ITSAppUsesNonExemptEncryption</key>

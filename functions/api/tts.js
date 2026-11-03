@@ -60,22 +60,46 @@ async function savedResponse(request,env,id){
  if(value.customMetadata?.profile!==TTS_PROFILE||value.httpMetadata?.contentType!==TTS_CONTENT_TYPE||!Number.isSafeInteger(value.size)||value.size<=0||value.size>TTS_AUDIO_LIMIT||!value.body)return json({error:'Speech audio is unavailable'},503);
  return new Response(value.body,{headers:audioHeaders(id,value.size)});
 }
+const hasStorage=env=>!!env.BB_TTS_AUDIO?.get&&!!env.BB_TTS_AUDIO?.put&&!!env.BB_TTS_AUDIO?.head;
+// Conversational replies may contain personal context. Keep their audio only
+// in the live request; never hash, lease, read or persist it in the recipe cache.
+async function mentorResponse(request,env,member,text,perform,now){
+ const unavailable=()=>json({error:'Natural Cook Mentor voice is unavailable. Try again shortly.'},503);
+ const limits=missLimits(env);
+ if(!limits||typeof env.OPENAI_API_KEY!=='string'||!env.OPENAI_API_KEY.trim())return unavailable();
+ try{
+  request.signal.throwIfAborted();
+  if(!await consumeMiss(env,member,limits,now))return json({error:'Natural Cook Mentor voice is temporarily limited. Try again later.'},429);
+  request.signal.throwIfAborted();
+  const speech=await requestSpeech(text,env,perform,{mentor:true,signal:request.signal});
+  // Validate and finish the bounded MP3 before returning it, so no partial or
+  // invalid private audio is ever handed to native playback.
+  const bytes=await new Response(speech).arrayBuffer();request.signal.throwIfAborted();
+  if(!bytes.byteLength||bytes.byteLength>TTS_AUDIO_LIMIT)throw Error('tts_audio_invalid');
+  if(await isAccountDeleting(env,member.user.id)||member.ownerId!==member.user.id&&await isAccountDeleting(env,member.ownerId))return json({error:'Account deletion is in progress'},409);
+  request.signal.throwIfAborted();
+  return new Response(bytes,{headers:{'Content-Type':TTS_CONTENT_TYPE,'Content-Length':String(bytes.byteLength),'Cache-Control':'private, no-store','Vary':'Authorization, Origin','X-Content-Type-Options':'nosniff','X-BB-TTS-Cache':'bypass'}});
+ }catch{return json({error:'Natural Cook Mentor voice could not be prepared. Try again shortly.'},502);}
+}
 export function createTTSHandler({authorizeMember=authorize,perform=fetch,clock=Date.now,randomId=()=>crypto.randomUUID(),wait=ms=>new Promise(resolve=>setTimeout(resolve,ms))}={}){
  return async function handle(context){
   const {request,env}=context;
   if(!['GET','HEAD','POST'].includes(request.method))return json({error:'Method not allowed'},405);
-  if(env.BB_TTS_ENABLED!=='true'||!isConfigured(env)||!env.BB_TTS_AUDIO?.get||!env.BB_TTS_AUDIO?.put||!env.BB_TTS_AUDIO?.head)return json({error:'AI Cook voice is unavailable'},503);
+  if(env.BB_TTS_ENABLED!=='true'||!isConfigured(env))return json({error:'AI Cook voice is unavailable'},503);
   if(request.method==='POST'&&!requireSameOrigin(request,true))return json({error:'Origin not permitted'},403);
   const origin=request.headers.get('Origin');if(origin&&!requireSameOrigin(request))return json({error:'Origin not permitted'},403);
   let member;try{member=await authorizeMember(request,env);}catch{return json({error:'Membership verification is unavailable'},503);}
   if(member?.error)return json({error:member.error},member.status);
   if(!member?.user?.id||!member.ownerId)return json({error:'Verified Premium membership required'},403);
   if(request.method!=='POST'){
+   if(!hasStorage(env))return json({error:'AI Cook voice is unavailable'},503);
    const url=new URL(request.url),id=url.searchParams.get('clip');
    if(!validClip(id)||[...url.searchParams.keys()].some(key=>key!=='clip'))return json({error:'Invalid speech clip'},400);
    try{return await savedResponse(request,env,id);}catch{return json({error:'Speech audio is unavailable'},503);}
   }
   const parsed=await limitedJSON(request);if(parsed.error)return json({error:parsed.error},parsed.status);
+  if(parsed.private)return mentorResponse(request,env,member,parsed.text,perform,clock());
+  if(!hasStorage(env))return json({error:'AI Cook voice is unavailable'},503);
   const id=await clipId(parsed.text),key=clipKey(id),prepared=cached=>json({clipId:id,url:'/api/tts?clip='+id,contentType:TTS_CONTENT_TYPE,cached});
   let token=null;
   try{

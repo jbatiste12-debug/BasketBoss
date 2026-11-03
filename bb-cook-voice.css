@@ -14,3 +14,26 @@
 .bb-kitchen .bbcv-toggle:disabled{opacity:.65;cursor:default}
 .bb-kitchen .bbcv-toggle:focus-visible{outline:3px solid #d7b455;outline-offset:2px}
 @media(max-width:360px){.bb-kitchen .bbcv-row{gap:7px}.bb-kitchen .bbcv-status{flex-basis:100%}.bb-kitchen .bbcv-toggle{width:100%}}
+.bb-kitchen .bb-cook-voice.is-mentor{padding:16px;border-radius:18px;border-color:#c8d6c3;background:#f7f7ee}
+.bb-kitchen .is-mentor .bbcv-toggle{min-height:44px;padding:10px 14px;border-radius:12px;background:#1d6145;border-color:#1d6145;color:#fffdf5;font-size:13px}
+.bb-kitchen .is-mentor .bbcv-status{font-size:12px;line-height:1.5}
+.bb-kitchen .is-mentor .bbcv-help{margin-top:10px;font-size:12px;line-height:1.6;color:#42644c}
+.bb-kitchen .is-mentor .bbcv-disclosure{margin-top:8px;font-size:11px;line-height:1.5;color:#687462}
+.bb-kitchen .bbcv-exchange{margin:12px 0;padding:13px 14px;border-radius:13px;background:#fffdf6;border:1px solid #dde4d5}
+.bb-kitchen .bbcv-question{margin:0 0 9px;color:#5b715c;font-size:12px;line-height:1.5;overflow-wrap:anywhere}
+.bb-kitchen .bbcv-answer{margin:0;color:#203f30;font-size:14px;line-height:1.65;white-space:pre-line;overflow-wrap:anywhere}
+.bb-kitchen .bbcv-question-form{display:flex;align-items:center;gap:8px;margin:13px 0 0}
+.bb-kitchen .bbcv-question-input{box-sizing:border-box;min-width:0;flex:1;width:100%;min-height:46px;padding:11px 12px;border:1px solid #bfceb8;border-radius:12px;background:#fffefa;color:#244c35;font:inherit;font-size:16px;line-height:1.4}
+.bb-kitchen .bbcv-question-send,.bb-kitchen .bbcv-interrupt,.bb-kitchen .bbcv-retry{min-height:44px;border:1px solid #adbea6;border-radius:11px;padding:10px 13px;background:#fffdf6;color:#28543a;font:inherit;font-size:12px;font-weight:700;cursor:pointer}
+.bb-kitchen .bbcv-question-send{background:#e7efdf;border-color:#b4c9a7;flex:0 0 auto}
+.bb-kitchen .bbcv-mentor-controls{display:flex;gap:8px;flex-wrap:wrap;margin-top:10px}
+.bb-kitchen .bbcv-name-row{display:flex;align-items:center;justify-content:space-between;gap:8px;margin-top:10px;font-size:11px;color:#65745e}
+.bb-kitchen .bbcv-name-edit{padding:5px 0;border:0;background:transparent;color:#346447;font:inherit;font-size:11px;text-decoration:underline;text-underline-offset:3px;cursor:pointer;min-height:32px}
+.bb-kitchen .bbcv-name-form{display:flex;gap:8px;align-items:center;margin-top:8px}
+.bb-kitchen .bbcv-name-input{box-sizing:border-box;flex:1;min-width:0;width:100%;min-height:44px;border:1px solid #bfceb8;border-radius:10px;padding:9px 11px;background:#fffefa;color:#244c35;font:inherit;font-size:16px}
+.bb-kitchen .bbcv-name-save{flex:0 0 auto;min-height:44px;padding:9px 11px;border:1px solid #b4c9a7;border-radius:10px;background:#e7efdf;color:#28543a;font:inherit;font-size:11px;font-weight:700;cursor:pointer}
+.bb-kitchen .bbcv-mentor-controls:has(> :not([hidden])){margin-top:10px}
+.bb-kitchen .is-mentor [hidden]{display:none!important}
+.bb-kitchen .is-mentor .bbcv-question-send:disabled{opacity:.5;cursor:default}
+.bb-kitchen .is-mentor .bbcv-question-input:focus-visible,.bb-kitchen .is-mentor .bbcv-question-send:focus-visible,.bb-kitchen .is-mentor .bbcv-interrupt:focus-visible,.bb-kitchen .is-mentor .bbcv-retry:focus-visible{outline:3px solid #d7b455;outline-offset:2px}
+@media(max-width:360px){.bb-kitchen .bb-cook-voice.is-mentor{padding:13px}.bb-kitchen .bbcv-question-form{gap:6px}.bb-kitchen .bbcv-question-send{padding-inline:10px}}

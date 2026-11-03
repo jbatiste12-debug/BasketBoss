@@ -3795,8 +3795,9 @@ body[data-bbnext-view="discover"] #app .bb-featured-card #bbFeaturedBatch {
 <script src="bb-evening-pivot-app.js?v=20261101-pivot1"></script>
 <script src="bb-evening-pivot-ui.js?v=20261102-loop2"></script>
 <script src="bb-cook-speech-text.js?v=20261102-ai1"></script>
-<script src="bb-cook-tts.js?v=20261102-ai1"></script>
-<script src="bb-cook-voice.js?v=20261102-ai1"></script>
+<script src="bb-cook-tts.js?v=20261103-mentor1"></script>
+<script src="bb-cook-assistant.js?v=20261103-mentor1"></script>
+<script src="bb-cook-voice.js?v=20261103-mentor1"></script>
 <script defer src="bb-weekly-essentials.js?v=20261031-receipt-pantry"></script>
 <script defer src="bb-receipt-inventory.js?v=20261102-loop2"></script>
 <script defer src="bb-receipt-scanner.js?v=20261102-loop2"></script>
@@ -7903,6 +7904,10 @@ function openCook(id,day){
  const ingredients=r.ingredients.map(i=>[i[0],BBServing.scaleText(i[1],cookFactor,i[0],{roundCounts:false}),i[2],i[3]]);
  const voiceSlot=document.createElement('div');voiceSlot.className='bb-cook-voice-slot';voiceSlot.innerHTML='<div class="bb-cook-companion-heading"><div><span class="bb-cook-companion-kicker">A HELPING VOICE</span><h3>Your kitchen companion</h3></div><span class="bb-cook-premium-pill">✦ Premium</span></div>';$('bbBody').before(voiceSlot);
  const voice=window.BBCookVoice?.mount({container:voiceSlot,context:()=>({key:r.id+'|'+(day||'')+'|'+chosenServings,
+  mentorEnabled:true,mentorRecipe:{id:String(r.id),title:String(r.name),servings:batchCook?chosenServings*2:chosenServings,
+   ingredients:ingredients.map(([name,quantity])=>({name,quantity:window.BBRecipeMeasures?.quantity(quantity,name,bb307Market)||quantity})),
+   steps:steps.map(text=>window.BBRecipeMeasures?.step(text,bb307Market)||text),currentStep:step,phase,
+   region:({US:'US',UnitedStates:'US',GG:'GG',Guernsey:'GG',JE:'JE',Jersey:'JE'})[bb307Market]||'UK'},
   active:phase==='prep'||phase==='cook',premium:bbVerifiedPremiumFeature(),phase,ingredientIndex:voiceIngredientIndex,
   prepComplete:voiceIngredientIndex>=ingredients.length,currentStep:window.BBRecipeMeasures?.step(steps[step],bb307Market)||steps[step],stepIndex:step,stepCount:steps.length,
   ingredients:ingredients.map(item=>({name:item[0],quantity:window.BBRecipeMeasures?.quantity(item[1],item[0],bb307Market)||item[1]})),
@@ -7926,7 +7931,7 @@ function openCook(id,day){
  root.querySelectorAll('[data-prep]').forEach(el=>el.onchange=()=>{let i=Number(el.dataset.prep);if(el.checked)checked.add(i);else{checked.delete(i);voiceIngredientIndex=Math.min(voiceIngredientIndex,i);}paint()});
  $('bbuiEquipment')?.addEventListener('toggle',e=>{equipmentOpen=e.currentTarget.open});
  root.querySelectorAll('[data-tool]').forEach(el=>el.onchange=()=>{let i=Number(el.dataset.tool);el.checked?equipmentChecked.add(i):equipmentChecked.delete(i);paint()});
- $('bbStart').onclick=()=>{phase='cook';paint()};
+ $('bbStart').onclick=()=>{phase='cook';paint();voice?.startCookingGreeting?.()};
  }else if(phase==='cook'){
  $('bbBody').innerHTML=`<div class="muted">STEP ${step+1} OF ${steps.length}</div><div class="bb-progress"><div style="width:${(step+1)/steps.length*100}%"></div></div><div class="bb-step" id="bbInstruction"></div><div class="bb-tip" id="bbStepDetail" style="margin-bottom:12px"></div><button class="btn" id="bbTipToggle">\uD83D\uDCA1 Kitchen tip</button><div id="bbTip" class="bb-tip hidden"></div><details class="bb-cook-timer" id="bbTimerPanel" ${timerOpen?'open':''}><summary id="bbTimerSummary">⏲ Set a timer</summary><div class="bb-clock"><div class="muted">Optional timer · adjust the duration you need</div><strong id="bbTime">${formatTime(timer)}</strong><div><button class="btn primary" id="bbTimerToggle">\u25B6 Start</button><button class="btn" id="bbMinus">\u22121m</button><button class="btn" id="bbPlus">+1m</button><button class="btn" id="bbReset">Reset</button></div></div></details><div class="bb-controls"><button class="btn" id="bbBack">\u2190 Back</button><button class="btn primary" id="bbNext">${step===steps.length-1?'Finish cooking \u2728':'Done \u00B7 Next step \u2192'}</button></div><p class="muted" style="font-size:11px;margin-top:12px">Cooking times are estimates. Check meat and fish are safely cooked; a timer cannot confirm doneness.</p>`;
  const displayStep=window.BBDuration?.text(window.BBRecipeMeasures?.step(steps[step],bb307Market)||steps[step])||steps[step];if(window.BBCookStepLayout)window.BBCookStepLayout.render($('bbInstruction'),displayStep);else $('bbInstruction').textContent=displayStep;$('bbStepDetail').textContent='';$('bbBack').disabled=step===0;$('bbBack').onclick=()=>{if(timerHandle)clearInterval(timerHandle);timerHandle=null;step--;timerOpen=false;timer=bbUICookStepSeconds(steps[step]);tip=false;paint()};$('bbNext').onclick=advance;
@@ -11888,7 +11893,7 @@ body[data-bbnext-view="discover"] #app .bb175-discover-heading{padding-top:calc(
 <script defer src="bb-plan-premium-polish.js?v=20261101-autofill3"></script>
 <link rel="stylesheet" href="bb-ingredient-picker.css?v=20261101-avoid1">
 <link rel="stylesheet" href="bb-evening-pivot-ui.css?v=20261101-pivot2">
-<link rel="stylesheet" href="bb-cook-voice.css?v=20261102-ai1">
+<link rel="stylesheet" href="bb-cook-voice.css?v=20261103-mentor1">
 <script defer src="bb-ingredient-picker.js?v=20261101-avoid1"></script>
 <link rel="stylesheet" href="bb-shop-cook-clarity.css?v=20261028-r1">
 <link rel="stylesheet" href="bb-cook-plan-hotfix.css?v=20261101-corner2">

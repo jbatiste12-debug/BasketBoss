@@ -12,6 +12,7 @@ import {nativeCorsResponse,nativePreflightResponse} from '../../bb-server-lib/bb
 import {ensureDeletionSchema,isAccountDeleting} from '../../bb-server-lib/bb-account-deletion.js';
 const PROTECTED=[
  /^\/api\/tts\/?$/,
+ /^\/api\/cook-assistant\/?$/,
  /^\/api\/recipes\/premium\/?$/,
  /^\/api\/bb173\/(?:generate|scan|meal-image)\/?$/,
  /^\/api\/household\/?$/,
