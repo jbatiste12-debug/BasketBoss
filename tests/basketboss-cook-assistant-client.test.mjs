@@ -67,6 +67,22 @@ test('only a bounded plain answer is accepted, never provider actions, HTML or o
   const h=fixture({response});await assert.rejects(h.api.ask(question()),{code:'BB_MENTOR_RESPONSE'});assert.equal(h.timers.size,0);
  }
 });
+test('service failures distinguish provider access and limits from the signed-in account',async()=>{
+ for(const [code,expected]of [['BB_COOK_PROVIDER_ACCESS','BB_MENTOR_SERVICE_ACCESS'],['BB_COOK_PROVIDER_LIMIT','BB_MENTOR_SERVICE_LIMIT'],['BB_COOK_SERVICE_UNAVAILABLE','BB_MENTOR_SERVICE_UNAVAILABLE'],['BB_COOK_PROVIDER_RESPONSE','BB_MENTOR_SERVICE_RESPONSE'],['arbitrary-private-code','BB_MENTOR_UNAVAILABLE'],['toString','BB_MENTOR_UNAVAILABLE']]){
+  const h=fixture({response:()=>Response.json({error:'private upstream text',code},{status:502})});
+  await assert.rejects(h.api.ask(question()),error=>error.code===expected&&error.message===expected);assert.equal(h.timers.size,0);
+ }
+ const auth=fixture({response:()=>Response.json({code:'BB_COOK_PROVIDER_ACCESS'},{status:401})});
+ await assert.rejects(auth.api.ask(question()),{code:'BB_MENTOR_AUTH'});
+});
+test('oversized and cancelled diagnostic bodies cannot leak details or delay cancellation',async()=>{
+ let cancelled=false;
+ const oversized=fixture({response:()=>new Response(new ReadableStream({start(c){c.enqueue(new TextEncoder().encode('x'.repeat(2049)));},cancel(){cancelled=true;}}),{status:502,headers:{'Content-Type':'application/json'}})});
+ await assert.rejects(oversized.api.ask(question()),{code:'BB_MENTOR_UNAVAILABLE'});assert.equal(cancelled,true);
+ const controller=new AbortController();
+ const stalled=fixture({response:()=>new Response(new ReadableStream({pull(){},cancel(){cancelled=true;}}),{status:502,headers:{'Content-Type':'application/json'}})});
+ cancelled=false;const pending=stalled.api.ask(question(),{signal:controller.signal});await tick();controller.abort();await assert.rejects(pending,{name:'AbortError'});assert.equal(cancelled,true);assert.equal(stalled.timers.size,0);
+});
 test('Stop cancels an in-flight request and a late answer cannot be returned',async()=>{
  let release;const h=fixture({response:()=>new Promise(resolve=>{release=resolve;})}),controller=new AbortController();
  const pending=h.api.ask(question(),{signal:controller.signal});await tick();controller.abort();await assert.rejects(pending,{name:'AbortError'});release(Response.json({answer:'Late reply'}));await tick();assert.equal(h.requests[0].options.signal.aborted,true);assert.equal(h.timers.size,0);

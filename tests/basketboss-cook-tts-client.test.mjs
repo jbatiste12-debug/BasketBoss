@@ -153,6 +153,23 @@ test('native mentor preparation returns only bounded in-memory MP3 data without 
  assert.deepEqual([...h.store.entries()],before);assert.equal(h.players.length+h.urls.size,0);assert.equal(h.timers.size,0);
  assert(!JSON.stringify(result).includes('bearer'));assert.equal('url'in result,false);
 });
+test('private speech reports only allowlisted service categories and preserves account errors',async()=>{
+ for(const [code,expected]of [['BB_COOK_PROVIDER_ACCESS','BB_TTS_SERVICE_ACCESS'],['BB_COOK_PROVIDER_LIMIT','BB_TTS_SERVICE_LIMIT'],['BB_COOK_SERVICE_FAILURE','BB_TTS_SERVICE_UNAVAILABLE'],['BB_COOK_PROVIDER_RESPONSE','BB_TTS_SERVICE_RESPONSE'],['private-code','BB_TTS_UNAVAILABLE'],['constructor','BB_TTS_UNAVAILABLE']]){
+  const h=fixture({response:()=>Response.json({error:'private upstream text',code},{status:502})});
+  await assert.rejects(h.api.prepareMentor('Stir gently.'),error=>error.code===expected&&error.message===expected);
+  assert.equal(h.players.length,0);assert.equal(h.timers.size,0);
+ }
+ const auth=fixture({response:()=>Response.json({code:'BB_COOK_PROVIDER_ACCESS'},{status:403})});
+ await assert.rejects(auth.api.prepareMentor('Stir gently.'),{code:'BB_TTS_PREMIUM_REQUIRED'});
+});
+test('private speech bounds diagnostic bodies and cancels a stalled error stream',async()=>{
+ let cancelled=false;
+ const large=fixture({response:()=>new Response(new ReadableStream({start(c){c.enqueue(new TextEncoder().encode('x'.repeat(2049)));},cancel(){cancelled=true;}}),{status:502,headers:{'Content-Type':'application/json'}})});
+ await assert.rejects(large.api.prepareMentor('Stir gently.'),{code:'BB_TTS_UNAVAILABLE'});assert.equal(cancelled,true);
+ cancelled=false;const controller=new AbortController(),h=fixture({response:()=>new Response(new ReadableStream({pull(){},cancel(){cancelled=true;}}),{status:502,headers:{'Content-Type':'application/json'}})});
+ const pending=h.api.prepareMentor('Stir gently.',{signal:controller.signal});await tick();controller.abort();
+ await assert.rejects(pending,{name:'AbortError'});assert.equal(cancelled,true);assert.equal(h.timers.size,0);assert.equal(h.players.length,0);
+});
 
 test('browser mentor playback uses uncached memory audio and revokes it after the full answer',async()=>{
  const h=fixture({response:mp3,autoEnd:false}),pending=h.api.playMentor('Keep the heat gentle.');let ended=false;pending.then(()=>ended=true);await tick();
