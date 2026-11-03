@@ -21,3 +21,9 @@ The current confirmed identity, Premium membership, newest paid-device session a
 Rollback: revert this focused merge through the normal production process. No schema rollback is needed. Existing recipe narration and its manual-redirect fix remain the baseline.
 
 Prepared validation: all 59 focused backend/auth checks passed. The unchanged main native packaging built successfully (873 public files, exactly 100 Free recipes); the full main suite then passed 1,099 checks with zero failures, two skips and two existing TODOs. These are isolated checks, not live provider generation or an iPhone listening test.
+
+## Prepared failure diagnostics
+
+Question and private-speech failures now include an optional fixed `code` alongside the existing error text and HTTP status. `BB_COOK_PROVIDER_ACCESS` means an upstream 401/403; `BB_COOK_PROVIDER_LIMIT` means upstream 429; `BB_COOK_PROVIDER_UNAVAILABLE` means upstream 5xx, connection failure or timeout. `BB_COOK_PROVIDER_REJECTED` covers other non-success upstream statuses, including rejected redirects, and `BB_COOK_PROVIDER_RESPONSE` covers invalid JSON, answer schema or audio. `BB_COOK_SERVICE_FAILURE` identifies a local database/runtime failure. Configuration and BasketBoss daily-limit denials use `BB_COOK_SERVICE_UNAVAILABLE` and `BB_COOK_DAILY_LIMIT`. No provider body, raw error, request identifier, credentials or recipe/conversation data is returned in these categories. Successful response shapes are unchanged, and generation is never retried automatically.
+
+This is a preparatory diagnostic change, not confirmation of the reported live failure's cause. Both routes succeeded under local Cloudflare workerd with synthetic provider/authentication and local D1. Actual production provider, membership and physical-iPhone playback evidence remains unavailable in this environment.

@@ -5,6 +5,7 @@ import {readMemberPaidAccess,paidBillingEnabled} from '../../bb-server-lib/bb-pa
 import {isAccountDeleting} from '../../bb-server-lib/bb-account-deletion.js';
 import {missLimits} from '../../bb-server-lib/bb-tts.js';
 import {readCookingQuestion,consumeCookingAllowance,requestCookingAnswer} from '../../bb-server-lib/bb-cook-assistant.js';
+import {cookServiceCode} from '../../bb-server-lib/bb-cook-service-error.js';
 
 async function authorize(request,env){
  const user=await authenticatedUser(request,env);if(!user)return {error:'Sign in with a verified account',status:401};
@@ -23,7 +24,7 @@ export function createCookAssistantHandler({authorizeMember=authorize,perform=fe
  return async function handle({request,env}){
   if(request.method!=='POST')return json({error:'Method not allowed'},405);
   const limits=missLimits(env);
-  if(env.BB_PREMIUM_AI_ENABLED!=='true'||!isConfigured(env)||!limits||typeof env.OPENAI_API_KEY!=='string'||!env.OPENAI_API_KEY.trim())return json({error:'Cooking questions are temporarily unavailable'},503);
+  if(env.BB_PREMIUM_AI_ENABLED!=='true'||!isConfigured(env)||!limits||typeof env.OPENAI_API_KEY!=='string'||!env.OPENAI_API_KEY.trim())return json({error:'Cooking questions are temporarily unavailable',code:'BB_COOK_SERVICE_UNAVAILABLE'},503);
   if(!requireSameOrigin(request,true))return json({error:'Origin not permitted'},403);
   if(request.signal.aborted)return json({error:'Cooking question cancelled'},499);
   let member;try{member=await authorizeMember(request,env);}catch{return json({error:'Membership verification is unavailable'},503);}
@@ -35,15 +36,15 @@ export function createCookAssistantHandler({authorizeMember=authorize,perform=fe
    if(request.signal.aborted)return json({error:'Cooking question cancelled'},499);
    const allowed=await consumeCookingAllowance(env,member,limits,clock());
    if(await deleting(env,member))return json({error:'Account deletion is in progress'},409);
-   if(!allowed)return json({error:'Cooking questions have reached their daily limit. The recipe and voice commands are still available.'},429);
+   if(!allowed)return json({error:'Cooking questions have reached their daily limit. The recipe and voice commands are still available.',code:'BB_COOK_DAILY_LIMIT'},429);
    if(request.signal.aborted)return json({error:'Cooking question cancelled'},499);
    const answer=await requestCookingAnswer(parsed.value,env,perform,request.signal);
    if(await deleting(env,member))return json({error:'Account deletion is in progress'},409);
    if(request.signal.aborted)return json({error:'Cooking question cancelled'},499);
    return json({answer});
-  }catch{
+  }catch(error){
    if(request.signal.aborted)return json({error:'Cooking question cancelled'},499);
-   return json({error:'I could not answer just now. Please try again, or follow the recipe on screen.'},502);
+   return json({error:'I could not answer just now. Please try again, or follow the recipe on screen.',code:cookServiceCode(error)},502);
   }
  };
 }

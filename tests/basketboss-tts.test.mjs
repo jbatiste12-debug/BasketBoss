@@ -170,6 +170,24 @@ test('invalid, empty, oversized or failed mentor audio returns no private clip a
  }
 });
 
+test('private speech failure diagnostics distinguish provider categories without returning private details',async()=>{
+ const privateDetail='SECRET synthetic-provider-key synthetic-valid-session private spoken reply email@example.invalid';
+ for(const [status,code] of [[401,'BB_COOK_PROVIDER_ACCESS'],[403,'BB_COOK_PROVIDER_ACCESS'],[429,'BB_COOK_PROVIDER_LIMIT'],[500,'BB_COOK_PROVIDER_UNAVAILABLE'],[503,'BB_COOK_PROVIDER_UNAVAILABLE'],[400,'BB_COOK_PROVIDER_REJECTED'],[307,'BB_COOK_PROVIDER_REJECTED']]){
+  const h=harness({provider:()=>new Response(privateDetail,{status,headers:{'X-Request-ID':privateDetail}})});
+  try{
+   const response=await h.invoke({text:privateDetail,private:true});assert.equal(response.status,502);
+   assert.deepEqual(await response.json(),{error:'Natural Cook Mentor voice could not be prepared. Try again shortly.',code});
+   assert.equal(h.calls.length,1);assert.deepEqual(h.r2.counts,{head:0,get:0,put:0});
+  }finally{h.close();}
+ }
+ const network=harness({provider:()=>{throw Object.assign(Error(privateDetail),{code:'SECRET'});}});
+ try{assert.equal((await (await network.invoke({text,private:true})).json()).code,'BB_COOK_PROVIDER_UNAVAILABLE');}finally{network.close();}
+ const local=harness();try{local.db.exec('DROP TABLE bb_ai_daily_usage');const response=await local.invoke({text,private:true});assert.equal(response.status,502);assert.equal((await response.json()).code,'BB_COOK_SERVICE_FAILURE');assert.equal(local.calls.length,0);}finally{local.close();}
+ for(const provider of [()=>new Response(privateDetail,{headers:{'Content-Type':'application/json'}}),()=>new Response(privateDetail,{headers:{'Content-Type':'audio/mpeg'}}),()=>new Response('',{headers:{'Content-Type':'audio/mpeg'}})]){
+  const malformed=harness({provider});try{assert.deepEqual(await (await malformed.invoke({text,private:true})).json(),{error:'Natural Cook Mentor voice could not be prepared. Try again shortly.',code:'BB_COOK_PROVIDER_RESPONSE'});}finally{malformed.close();}
+ }
+});
+
 test('cancelling private narration aborts the provider and cannot return a late successful answer',async()=>{
  let release,entered;const ready=new Promise(resolve=>entered=resolve),waiting=new Promise(resolve=>release=resolve);
  const h=harness({provider:(url,options)=>{entered(options.signal);return waiting;}}),controller=new AbortController();
