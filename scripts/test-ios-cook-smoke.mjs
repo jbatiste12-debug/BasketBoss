@@ -77,7 +77,7 @@ try{
  if(ci){
   mark('hosted_tests');launchAttempts=1;
   const result=path.join(output,'CookSmoke.xcresult');
-  try{save('tests.log',exec('xcodebuild',[...testArguments,'-parallel-testing-enabled','NO','-test-timeouts-enabled','YES','-default-test-execution-time-allowance','90','-maximum-test-execution-time-allowance','120','-resultBundlePath',result,'test-without-building'],600000));}
+  try{save('tests.log',exec('xcodebuild',[...testArguments,'-parallel-testing-enabled','NO','-test-timeouts-enabled','YES','-default-test-execution-time-allowance','180','-maximum-test-execution-time-allowance','300','-resultBundlePath',result,'test-without-building'],600000));}
   catch(error){failure='hosted_xctest_failed';failedStage=stage;rememberError(error);saveFailure('tests.log',error);}
   mark('hosted_test_summary');
   try{

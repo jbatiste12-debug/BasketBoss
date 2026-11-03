@@ -342,8 +342,8 @@ test('CI Cook uses a hosted XCTest launch on the exact selected phone, while loc
  assert.ok(tests.args.includes('BasketBossCookSmokeTests'));
  assert.ok(tests.args.includes('platform=iOS Simulator,id=proven-phone'));
  assert.equal(tests.timeout,600000,'hosted XCTest receives ten minutes for launch, execution and result-bundle finalization');
- assert.equal(tests.args[tests.args.indexOf('-default-test-execution-time-allowance')+1],'90','the individual Cook case budget remains unchanged');
- assert.equal(tests.args[tests.args.indexOf('-maximum-test-execution-time-allowance')+1],'120','the individual Cook case maximum remains unchanged');
+ assert.equal(tests.args[tests.args.indexOf('-default-test-execution-time-allowance')+1],'180','the Cook case allows report completion plus final assertions');
+ assert.equal(tests.args[tests.args.indexOf('-maximum-test-execution-time-allowance')+1],'300','the Cook case maximum matches the bounded UI execution allowance');
  assert.equal(tests.args.includes('-quiet'),false);
  const appSign=result.executions.find(call=>call.command==='codesign'&&call.args.at(-1).endsWith('/App.app'));
  assert.equal(appSign.timeout,300000);

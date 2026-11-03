@@ -17,6 +17,11 @@ test('every navigation, ingredients, voice and data-retention check is independe
 test('both the native report writer and hosted XCTest require every mentor check',()=>{
  const source=fs.readFileSync(new URL('../ios/App/App/AppDelegate.swift',import.meta.url),'utf8');
  const hosted=fs.readFileSync(new URL('../ios/App/BasketBossCookSmokeTests/BasketBossCookSmokeTests.swift',import.meta.url),'utf8');
+ const caseSeconds=Number(hosted.match(/executionTimeAllowance = (\d+)/)?.[1]);
+ const reportSeconds=Number(hosted.match(/let deadline = Date\(\)\.addingTimeInterval\((\d+)\)/)?.[1]);
+ assert.equal(caseSeconds,180,'the hosted case must allow the complete Cook navigation cycle');
+ assert.equal(reportSeconds,120,'report polling must allow the final return navigation to complete');
+ assert.ok(caseSeconds-reportSeconds>=60,'completion assertions retain a full minute after report polling');
  const writer=source.match(/let keys = \[([^\n]+)\]/)?.[1]||'';
  const required=hosted.match(/let required = \[([\s\S]*?)\]\n/)?.[1]||'';
  const mentor=cookRequiredFlags.filter(key=>key.startsWith('mentor'));
