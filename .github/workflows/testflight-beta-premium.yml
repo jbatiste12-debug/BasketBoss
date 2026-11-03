@@ -2,12 +2,13 @@ name: Verify TestFlight Beta Premium
 
 on:
   push:
-    branches: [main, feature/testflight-beta-premium]
+    branches: [main, feature/testflight-beta-premium, fix/photo-meal-ingredient-matching]
     paths:
       - .github/workflows/testflight-beta-premium.yml
       - bb-server-lib/**
       - functions/api/**
       - tests/*testflight*
+      - tests/*photo-meal*
       - scripts/test-apple-worker.mjs
       - sql/*testflight*
       - package.json
@@ -17,6 +18,8 @@ on:
       - bb-server-lib/bb-testflight-beta.js
       - functions/api/apple/testflight-beta.js
       - tests/*testflight*
+      - tests/*photo-meal*
+      - functions/api/bb173/**
       - .github/workflows/testflight-beta-premium.yml
 
 permissions:
@@ -43,6 +46,7 @@ jobs:
         run: >-
           node --test --test-isolation=none
           tests/*testflight*.test.mjs
+          tests/basketboss-photo-meal-ingredients.test.mjs
           tests/basketboss-apple-access.test.mjs
           tests/basketboss-apple-deletion-checkout.test.mjs
           tests/basketboss-premium-owner-ai.test.mjs
