@@ -70,11 +70,13 @@ function fixture(entry='index.html',assistant={ask:async()=>({answer:'Stir gentl
  const recipe={id:'test-stew',name:'Vegetable stew',servings:4,mins:15,ingredients:[['Onion','2 onions'],['Carrot','300 g'],['Stock','500 ml']],method:['Chop the onion for 2 minutes.','Simmer for 3 minutes.','Serve after 1 minute.']};
  const win=events({document:doc,AbortController,navigator:{onLine:true},setTimeout,clearTimeout,localStorage:{getItem:()=>null},BasketBossSession:{read:()=>({user:{id:'actor-one'}})},BBHome:{needsLegacyReview:()=>false,actor:()=> 'actor-one',cooked:event=>deductions.push(event)},BBCookPantry:{mount:options=>{pantry.push(options);return {dispose(){}};}}});
  win.BBCookVoice={mount(options){readVoice=options.context;voiceController=voice.mount({...options,window:win,document:doc,assistant,tts:{}});return voiceController;}};
- const context=vm.createContext({window:win,document:doc,crypto:{randomUUID:()=> 'cook-once'},BBServing:serving,state:{planned:[]},bb307Market:'UK',timerHandle:null,timer:0,
+ const context=vm.createContext({window:win,document:doc,crypto:{randomUUID:()=> 'cook-once'},BBServing:serving,BB307_NORMALIZED:[],state:{planned:[]},bb307Market:'UK',timerHandle:null,timer:0,
   getRecipe:()=>recipe,bb176AllowedRecipe:()=>true,bbFeedingForRecipe:()=>4,bbHomeOccurrence:()=>null,bbVerifiedPremiumFeature:()=>true,bbPremiumFeatureUpgrade(){throw Error('Unexpected upgrade');},
   kitchenMethodFor:r=>r.method,kitchenEquipment:()=>['Knife','Saucepan'],kitchenPrepHint:()=> 'Prepare safely.',bbUICookStepSeconds:text=>Number(text.match(/(\d+) minutes?/)?.[1]||5)*60,
   esc:text=>String(text).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/"/g,'&quot;'),notify:text=>notifications.push(text),requestAnimationFrame:fn=>fn(),
   setInterval:fn=>{intervals.set(++nextInterval,fn);return nextInterval;},clearInterval:id=>intervals.delete(id)});
+ const measureStart=source.indexOf('function bbRecipeIngredientQuantity('),measureEnd=source.indexOf('const BB307_SOURCE_RECIPES=',measureStart);
+ vm.runInContext(source.slice(measureStart,measureEnd),context);
  vm.runInContext(source.slice(start,end)+'\nopenCook("test-stew","Monday");',context);
  const get=id=>root.querySelector('#'+id),phase=()=>root.querySelector('.cook-panel')?.dataset.phase;
  return {doc,root,get,phase,context,recipe,pantry,deductions,notifications,intervals,voice:()=>readVoice(),dispose:()=>get('bbExit')?.click(),advance:()=>get('bbNext').click(),seconds:()=>vm.runInContext('timer',context),elapse(seconds){for(let i=0;i<seconds;i++)for(const callback of [...intervals.values()])callback();},check(selector,index=0,on=true){const node=root.querySelectorAll(selector)[index];node.checked=on;node.fire('change');},key(key,target=doc.body){let prevented=false;doc.fire('keydown',{key,target,preventDefault(){prevented=true;}});return prevented;},controller:()=>voiceController};

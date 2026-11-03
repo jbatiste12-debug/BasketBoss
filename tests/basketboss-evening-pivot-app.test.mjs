@@ -11,7 +11,7 @@ assert.ok(pantryStart>=0&&pantryEnd>pantryStart,'actual Pantry quantity reconcil
 const realm=vm.createContext({window:{},console});
 vm.runInContext(fs.readFileSync(new URL('../basketboss-pricing-v19.js',import.meta.url),'utf8'),realm);
 realm.BBPriceV19=realm.window.BBPriceV19;
-vm.runInContext(html.match(/const BB_WHOLE_PRODUCE_GRAMS=Object\.freeze\([^\n]+/)[0]+'\n'+html.slice(pantryStart,pantryEnd)+'\nglobalThis.testPantry=BB307Pantry;',realm);
+vm.runInContext(html.match(/const BB_WHOLE_PRODUCE_GRAMS=[^\n]+/)[0]+'\n'+html.slice(pantryStart,pantryEnd)+'\nglobalThis.testPantry=BB307Pantry;',realm);
 const pantry=realm.testPantry;
 const copy=x=>JSON.parse(JSON.stringify(x));
 
