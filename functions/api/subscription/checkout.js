@@ -1,6 +1,7 @@
 import {json,isBillingEnabled,isLive,billingMode,isConfigured,authenticatedUser,requireSameOrigin,expectedPrice,paddleApi,digestHex} from '../../../bb-server-lib/bb-billing.js';
 import {ensureDeletionSchema,digestDeletionActor,isAccountDeleting} from '../../../bb-server-lib/bb-account-deletion.js';
 import {readAppleEntitlement} from '../../../bb-server-lib/bb-apple-subscriptions.js';
+import {readTestFlightBetaGrant} from '../../../bb-server-lib/bb-testflight-beta.js';
 const MAX_BODY=1024;
 // A Founder seat is a temporary hold until Paddle confirms a subscription.
 // Release only AFTER Paddle confirms its unpaid transaction is canceled.
@@ -177,6 +178,7 @@ export async function onRequestPost({request,env}) {
       return json({released},released?200:409);
     }
     if(plan==='founder')await releaseExpiredFounderHolds(env,db);
+    if(await readTestFlightBetaGrant(env,user.id))return json({error:'Your Beta Premium access is already available. No purchase is needed.',provider:'testflight_beta'},409);
     const hasSub=await db.prepare("SELECT 1 AS found FROM bb_paid_entitlements WHERE user_id=? AND status IN ('trialing','active') LIMIT 1").bind(user.id).first();
     if(hasSub) return json({error:'You already have an eligible subscription'},409);
     // Apple purchases belong to the same BasketBoss account on the website.

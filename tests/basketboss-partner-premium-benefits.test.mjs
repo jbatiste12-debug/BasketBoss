@@ -21,7 +21,8 @@ function helperLoaded(armed){
   "import {isLive,expectedPrice,entitlementForStatus} from './bb-billing.js';",
   "const {isLive,expectedPrice,entitlementForStatus}=globalThis.__partnerTestBilling;"
  ).replace("import {seatGateEnabled} from './bb-premium-seat.js';",
-           "const {seatGateEnabled}=globalThis.__partnerTestSeat;");
+           "const {seatGateEnabled}=globalThis.__partnerTestSeat;")
+  .replace("import {testFlightBetaEnabled} from './bb-paid-access.js';","const testFlightBetaEnabled=()=>false;");
  if(typeof armed==='boolean')code=code.replace(brake,'const PARTNER_PREMIUM_ARMED='+String(armed)+';');
  assert.ok(!code.includes("from './bb-billing.js'"));
  return import(moduleFrom(code));
