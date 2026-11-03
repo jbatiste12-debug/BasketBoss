@@ -96,6 +96,9 @@ test('keyboard CI reuses the exercised session without killing its GUI or re-wai
  assert.equal(result.commands.some(command=>command[0]==='killall'||(command[1]==='simctl'&&['boot','bootstatus','shutdown','delete'].includes(command[2]))),false);
  assert.ok(result.commands.some(command=>command[1]==='simctl'&&command[2]==='uninstall'&&command[3]==='proven-phone'));
  assert.ok(result.commands.some(command=>command[0]==='xcodebuild'&&command.includes('test-without-building')));
+ const testProcess=result.executions.find(call=>call.command==='xcodebuild'&&call.args.includes('test-without-building'));
+ assert.equal(testProcess.timeout,600000,'the supervisor allows four 120-second cases plus startup/result overhead');
+ assert.equal(testProcess.args[testProcess.args.indexOf('-maximum-test-execution-time-allowance')+1],'120');
  const open=result.commands.findIndex(command=>command[0]==='open');
  const testRun=result.commands.findIndex(command=>command[0]==='xcodebuild'&&command.includes('test-without-building'));
  const keyboardWrites=result.commands.map((command,index)=>({command,index})).filter(({command,index})=>index<testRun&&command[0]==='defaults'&&command[1]==='write'&&command.includes('ConnectHardwareKeyboard'));

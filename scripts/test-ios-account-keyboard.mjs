@@ -80,7 +80,9 @@ try{
  await new Promise(resolve=>setTimeout(resolve,10000));
  mark('real_keyboard_tests');
  const result=path.join(output,'AccountKeyboard.xcresult');
- try{save('tests.log',execute('xcodebuild',[...argumentsForTests,'-parallel-testing-enabled','NO','-test-timeouts-enabled','YES','-default-test-execution-time-allowance','90','-maximum-test-execution-time-allowance','120','-resultBundlePath',result,'test-without-building'],360000));}catch(error){saveFailure('tests.log',error);try{readTestSummary(result);}catch{}throw error;}
+ // Four cases can each use 120 seconds. Leave another 120 seconds for runner
+ // startup and result processing without changing any individual case limit.
+ try{save('tests.log',execute('xcodebuild',[...argumentsForTests,'-parallel-testing-enabled','NO','-test-timeouts-enabled','YES','-default-test-execution-time-allowance','90','-maximum-test-execution-time-allowance','120','-resultBundlePath',result,'test-without-building'],600000));}catch(error){saveFailure('tests.log',error);try{readTestSummary(result);}catch{}throw error;}
  mark('test_result');
  const summary=readTestSummary(result);
  if(summary.passedTests!==4||summary.failedTests!==0||summary.skippedTests!==0)throw Error('required_keyboard_tests_missing');
