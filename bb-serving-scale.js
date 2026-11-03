@@ -90,7 +90,7 @@
   const KITCHEN_FRACTIONS=Object.freeze({'⅛':1/8,'⅙':1/6,'⅕':1/5,'¼':1/4,'⅓':1/3,'⅜':3/8,'⅖':2/5,'½':1/2,'⅗':3/5,'⅝':5/8,'⅔':2/3,'¾':3/4,'⅘':4/5,'⅚':5/6,'⅞':7/8});
   const KITCHEN_NUMBER='(?:\\d+\\/\\d+|\\d+(?:\\.\\d+)?(?:\\s+\\d+\\/\\d+)?(?:\\s*[⅛⅙⅕¼⅓⅜⅖½⅗⅝⅔¾⅘⅚⅞])?|[⅛⅙⅕¼⅓⅜⅖½⅗⅝⅔¾⅘⅚⅞])';
   const KITCHEN_LEADING=new RegExp('^('+KITCHEN_NUMBER+')(?:\\s*(?:–|—|-|to)\\s*('+KITCHEN_NUMBER+'))?\\s*(.*)$','i');
-  const KITCHEN_NOUNS=Object.freeze({can:'cans',tin:'tins',egg:'eggs',onion:'onions',pepper:'peppers',carrot:'carrots',potato:'potatoes',tomato:'tomatoes',courgette:'courgettes',aubergine:'aubergines',banana:'bananas',apple:'apples',lemon:'lemons',lime:'limes',orange:'oranges',leek:'leeks',cucumber:'cucumbers',cabbage:'cabbages',avocado:'avocados',mushroom:'mushrooms',parsnip:'parsnips',clove:'cloves',bulb:'bulbs',wrap:'wraps',fillet:'fillets',breast:'breasts',thigh:'thighs',sausage:'sausages',muffin:'muffins',roll:'rolls'});
+  const KITCHEN_NOUNS=Object.freeze({can:'cans',tin:'tins',punnet:'punnets',bunch:'bunches',egg:'eggs',onion:'onions',pepper:'peppers',carrot:'carrots',potato:'potatoes',tomato:'tomatoes',courgette:'courgettes',aubergine:'aubergines',banana:'bananas',apple:'apples',lemon:'lemons',lime:'limes',orange:'oranges',leek:'leeks',cucumber:'cucumbers',cabbage:'cabbages',avocado:'avocados',mushroom:'mushrooms',parsnip:'parsnips',clove:'cloves',bulb:'bulbs',wrap:'wraps',fillet:'fillets',breast:'breasts',thigh:'thighs',sausage:'sausages',muffin:'muffins',roll:'rolls'});
   const KITCHEN_SINGULAR=Object.fromEntries(Object.entries(KITCHEN_NOUNS).map(([one,many])=>[many,one]));
   const KITCHEN_NOUN_PATTERN=new RegExp('\\b('+[...Object.keys(KITCHEN_NOUNS),...Object.keys(KITCHEN_SINGULAR)].join('|')+')\\b','i');
   function kitchenNumber(value){
@@ -122,7 +122,8 @@
     const leadingCount=rest.match(KITCHEN_NOUN_PATTERN)?.index===0||/^(?:each|whole)\b/i.test(rest);
     const namedWhole=KITCHEN_NOUN_PATTERN.test(String(name||''))&&!/\b(?:powder|juice|stock|sauce|puree|purée|paste|flour|milk)\b/i.test(String(name||''));
     const sizedUnit=/^(?:small|medium|large|whole)(?:\s*,.*)?$/i.test(rest);
-    const plainCount=sizedUnit||(!rest||/^(?:(?:small|medium|large|whole)(?:\s|,|$)|(?:peeled|sliced|chopped|diced)\b)/i.test(rest))&&namedWhole&&!/^(?:small|medium|large)\s+(?:handfuls?|pinches?|spoons?|cups?|bunches?)\b/i.test(rest);
+    const optionalWhole=namedWhole&&/^(?:\(optional\)|optional|for serving|to garnish)$/i.test(rest);
+    const plainCount=optionalWhole||sizedUnit||(!rest||/^(?:(?:small|medium|large|whole)(?:\s|,|$)|(?:peeled|sliced|chopped|diced)\b)/i.test(rest))&&namedWhole&&!/^(?:small|medium|large)\s+(?:handfuls?|pinches?|spoons?|cups?|bunches?)\b/i.test(rest);
     const multipack=/^[x×]\s*\d+(?:\.\d+)?\s*(?:g|kg|ml|l)\b.*\b(?:cans?|tins?)\b/i.test(rest);
     if(!leadingCount&&!plainCount&&!multipack)return scaleText(original,factor,name,{roundCounts:false});
     const values=[first,...(last===null?[]:[last])].map(n=>practicalCount(n*factor));

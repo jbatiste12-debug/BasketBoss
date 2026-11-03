@@ -14,6 +14,9 @@ test('five-serving kitchen labels use half counts without changing source scalin
  assert.equal(serving.practicalText('1 large, chopped',factor,'Onion'),'≈ 1 ½ large, chopped');
  assert.equal(serving.practicalText('1 each',factor,'Aubergine'),'≈ 1 ½ each');
  assert.equal(serving.practicalText('1 large',factor,'Cauliflower'),'≈ 1 ½ large');
+ assert.equal(serving.practicalText('1 (optional)',factor,'Lime'),'≈ 1 ½ (optional)');
+ assert.equal(serving.practicalText('1 punnet',factor,'Cherry tomatoes'),'≈ 1 ½ punnets');
+ assert.equal(serving.practicalText('1 bunch',factor,'Spring onions'),'≈ 1 ½ bunches');
  assert.equal(serving.scaleText(recipe.quantity,factor,recipe.name,{roundCounts:false}),'1 ¼ medium');
  assert.equal(2-1*factor,.75,'stock arithmetic keeps the precise required count');
  assert.equal(recipe.quantity,'1 medium');
