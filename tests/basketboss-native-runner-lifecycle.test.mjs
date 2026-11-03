@@ -6,9 +6,9 @@ import vm from 'node:vm';
 import {keyboardRuntimePlan} from '../scripts/ios-keyboard-runtime.mjs';
 import {cookRequiredFlags,cookReportFailure} from '../scripts/ios-cook-report.mjs';
 
-async function runScript(name,{ci=true,booted=true,includeLatest=false,failTests=false,bootTimeoutState=null,failReadiness=false,keepSimulator=false,cookBadReport=false,cookIncompleteReport=false,cookMissingFlag=null,cookSummary=null,cookSummaryError=false,cookContainerChanges=false,cookBuildBoots=false,cookBundleLocation='products',cookBuildError=null,keyboardBuildBoots=false}={}){
- const commands=[],executions=[],logs=[],delays=[],written=new Map(),readFiles=[];let hostedCookRan=false;
- const processStub={platform:'darwin',env:ci?{GITHUB_ACTIONS:'true'}:{}};
+async function runScript(name,{ci=true,booted=true,includeLatest=false,failTests=false,bootTimeoutState=null,failReadiness=false,keepSimulator=false,cookBadReport=false,cookIncompleteReport=false,cookMissingFlag=null,cookSummary=null,cookSummaryError=false,cookContainerChanges=false,cookBuildBoots=false,cookBundleLocation='products',cookBuildError=null,keyboardBuildBoots=false,argv=[],env={},keyboardState=null,keyboardSummary=null,keyboardSummaryError=false,hardwareKeyboardPreference='1'}={}){
+ const commands=[],executions=[],logs=[],delays=[],written=new Map(),readFiles=[],removed=[];let hostedCookRan=false;
+ const processStub={platform:'darwin',argv:['node',name,...argv],env:{...(ci?{GITHUB_ACTIONS:'true'}:{}),...env}};
  if(keepSimulator)processStub.env.BB_IAP_KEEP_SIMULATOR_BOOTED='true';
  let state=booted?'Booted':'Shutdown',createdPhone=false,createdState='Shutdown';
  const device=()=>({udid:'proven-phone',name:'iPhone 17 Pro',state,isAvailable:true});
@@ -17,14 +17,14 @@ async function runScript(name,{ci=true,booted=true,includeLatest=false,failTests
  const latestRuntime={identifier:'cold-latest-runtime',name:'iOS 26.5',version:'26.5',isAvailable:true};
  const source=fs.readFileSync(new URL('../scripts/'+name,import.meta.url),'utf8').replace(/^import .+;\r?\n/gm,'');
  const context={process:processStub,path,keyboardRuntimePlan,cookRequiredFlags,cookReportFailure,console:{log:value=>logs.push(value)},setTimeout:(fn,ms)=>{delays.push(ms);fn();return 1;},fs:{
-  mkdirSync(){},rmSync(){},existsSync(file){
+  mkdirSync(){},rmSync:file=>removed.push(String(file)),existsSync(file){
    if(name==='test-ios-cook-smoke.mjs'&&String(file).endsWith('/BasketBossCookSmokeTests.xctest')){
     const embedded=String(file).includes('/App.app/PlugIns/');
     return cookBundleLocation==='both'||(cookBundleLocation==='embedded'&&embedded)||(cookBundleLocation==='products'&&!embedded);
    }
    return true;
-  },writeFileSync:(file,value)=>written.set(file,value),
-  readFileSync:file=>{readFiles.push(String(file));return JSON.stringify(String(file).endsWith('bb-native-iap-smoke.json')?{
+  },writeFileSync:(file,value)=>written.set(file,value),appendFileSync:(file,value)=>written.set(file,(written.get(file)||'')+value),
+  readFileSync:file=>{readFiles.push(String(file));if(String(file).endsWith('/account-keyboard-diagnostics/state.json')){if(written.has(file))return written.get(file);if(keyboardState)return JSON.stringify(keyboardState);throw Error('keyboard state file missing');}return JSON.stringify(String(file).endsWith('bb-native-iap-smoke.json')?{
    complete:true,passed:true,localStoreKit:true,productionBillingTested:false,backendPremiumGranted:false,
    productsLoaded:true,purchaseVerified:true,accountTokenPreserved:true,unfinishedBeforeServerAck:true,
    earlyFinishRejected:true,restoreVerified:true,duplicatePurchasePrevented:true,wrongAccountRejected:true,
@@ -32,6 +32,7 @@ async function runScript(name,{ci=true,booted=true,includeLatest=false,failTests
   }:String(file).endsWith('bb-native-cook-smoke.json')?{complete:!cookIncompleteReport,passed:!cookBadReport,legacyVisible:false,...Object.fromEntries(cookRequiredFlags.map(key=>[key,key!==cookMissingFlag]))}:{complete:true,passed:true});}
  },execFileSync(command,args,options){
   executions.push({command,args,timeout:options?.timeout});commands.push([command,...args]);
+  if(name==='test-ios-account-keyboard.mjs'&&command==='defaults'&&args[0]==='read'){if(hardwareKeyboardPreference===null)throw Error('preference does not exist');return hardwareKeyboardPreference;}
   if(name==='test-ios-cook-smoke.mjs'&&command==='xcodebuild'&&args.includes('build-for-testing')&&cookBuildError)throw Object.assign(Error(cookBuildError.message),{code:cookBuildError.code});
   if(name==='test-ios-cook-smoke.mjs'&&command==='xcodebuild'&&args.includes('build-for-testing')&&cookBuildBoots)state='Booted';
   if(name==='test-ios-account-keyboard.mjs'&&command==='xcodebuild'&&args.includes('build-for-testing')&&keyboardBuildBoots&&createdPhone)createdState='Booted';
@@ -40,7 +41,7 @@ async function runScript(name,{ci=true,booted=true,includeLatest=false,failTests
    const error=Error('xcodebuild failed');error.stdout=name==='test-ios-cook-smoke.mjs'?'XCTAssertTrue failed: full Cook report diagnostic':'XCTAssertTrue failed: real keyboard diagnostic';error.stderr='TEST FAILED';throw error;
   }
   if(command==='xcrun'){
-   if(args[0]==='xcresulttool'){if(name==='test-ios-cook-smoke.mjs'){if(cookSummaryError)throw Error('missing Cook XCTest summary');return JSON.stringify(cookSummary||{passedTests:failTests?0:1,failedTests:failTests?1:0,skippedTests:0});}return JSON.stringify({passedTests:failTests?1:4,failedTests:failTests?1:0,skippedTests:0});}
+   if(args[0]==='xcresulttool'){if(name==='test-ios-cook-smoke.mjs'){if(cookSummaryError)throw Error('missing Cook XCTest summary');return JSON.stringify(cookSummary||{passedTests:failTests?0:1,failedTests:failTests?1:0,skippedTests:0});}if(keyboardSummaryError)throw Error('missing keyboard XCTest summary');return JSON.stringify(keyboardSummary||{passedTests:failTests?1:4,failedTests:failTests?1:0,skippedTests:0});}
    if(args[0]==='simctl'){
     if(args[1]==='list'&&args[2]==='devices')return JSON.stringify({devices:{[runtime.identifier]:[device(),...(createdPhone?[disposable()]:[])],...(includeLatest?{[latestRuntime.identifier]:[{udid:'cold-latest-phone',name:'iPhone SE (3rd generation)',state:'Shutdown',isAvailable:true}]}:{})}});
     if(args[1]==='list'&&args[2]==='runtimes')return JSON.stringify({runtimes:includeLatest?[latestRuntime,runtime]:[runtime]});
@@ -61,7 +62,7 @@ async function runScript(name,{ci=true,booted=true,includeLatest=false,failTests
   return '';
  }};
  await vm.runInNewContext('(async()=>{'+source+'\n})()',context,{filename:name});
- return {commands,executions,logs,delays,written,readFiles,process:processStub};
+ return {commands,executions,logs,delays,written,readFiles,removed,process:processStub};
 }
 
 test('CI Cook runner resets the proven simulator and configures its keyboard before reopening it',async()=>{
@@ -97,8 +98,9 @@ test('keyboard CI reuses the exercised session without killing its GUI or re-wai
  assert.ok(result.commands.some(command=>command[1]==='simctl'&&command[2]==='uninstall'&&command[3]==='proven-phone'));
  assert.ok(result.commands.some(command=>command[0]==='xcodebuild'&&command.includes('test-without-building')));
  const testProcess=result.executions.find(call=>call.command==='xcodebuild'&&call.args.includes('test-without-building'));
- assert.equal(testProcess.timeout,600000,'the supervisor allows four 120-second cases plus startup/result overhead');
- assert.equal(testProcess.args[testProcess.args.indexOf('-maximum-test-execution-time-allowance')+1],'120');
+ assert.equal(testProcess.timeout,600000,'the execution step has its own ten-minute budget');
+ assert.equal(testProcess.args[testProcess.args.indexOf('-default-test-execution-time-allowance')+1],'180');
+ assert.equal(testProcess.args[testProcess.args.indexOf('-maximum-test-execution-time-allowance')+1],'300');
  const open=result.commands.findIndex(command=>command[0]==='open');
  const testRun=result.commands.findIndex(command=>command[0]==='xcodebuild'&&command.includes('test-without-building'));
  const keyboardWrites=result.commands.map((command,index)=>({command,index})).filter(({command,index})=>index<testRun&&command[0]==='defaults'&&command[1]==='write'&&command.includes('ConnectHardwareKeyboard'));
@@ -114,6 +116,7 @@ test('keyboard prepares and signs a cold disposable CI destination before boot w
  assert.equal(result.process.exitCode,undefined);
  const build=result.commands.findIndex(command=>command[0]==='xcodebuild'&&command.includes('build-for-testing'));
  assert.equal(result.executions.find(call=>call.command==='xcodebuild'&&call.args.includes('build-for-testing')).timeout,900000);
+ assert.ok(result.commands[build].includes('COMPILER_INDEX_STORE_ENABLE=NO'));
  const boot=result.commands.findIndex(command=>command[1]==='simctl'&&command[2]==='boot');
  const ready=result.commands.findIndex(command=>command[1]==='simctl'&&command[2]==='bootstatus');
  const install=result.commands.findIndex(command=>command[1]==='simctl'&&command[2]==='install');
@@ -161,6 +164,72 @@ test('keyboard test failures retain the actual XCTest diagnostic in both artifac
  assert.ok(result.logs.some(line=>line.includes('"failureStage":"real_keyboard_tests"')));
  assert.ok(result.logs.some(line=>line.includes('keyboard XCTest summary')&&line.includes('"failedTests":1')));
  assert.ok([...result.written].some(([file,text])=>file.endsWith('summary.json')&&JSON.parse(text).failedTests===1));
+});
+
+const keyboardReadyState=()=>({version:1,stage:'activated',phone:'proven-phone',ownsSimulator:false,failure:'',failureStage:'',keyboardPreference:'1',preferenceRead:true,runtimeVersion:'26.2',deviceName:'iPhone 17 Pro',resetSyntheticCIApp:true,prepared:true,activated:true});
+const keyboardSuccessfulOutcomes={BB_KEYBOARD_COMPILE_OUTCOME:'success',BB_KEYBOARD_ACTIVATE_OUTCOME:'success',BB_KEYBOARD_EXECUTE_OUTCOME:'success'};
+
+test('staged keyboard preparation persists ownership and the original preference without compiling or executing tests',async()=>{
+ const result=await runScript('test-ios-account-keyboard.mjs',{argv:['--prepare'],env:{GITHUB_ENV:'/synthetic/github-env'}});
+ assert.equal(result.process.exitCode,undefined);
+ assert.equal(result.commands.some(command=>['xcodebuild','codesign','open'].includes(command[0])||(command[1]==='simctl'&&['install','uninstall','shutdown','delete'].includes(command[2]))),false);
+ const state=JSON.parse([...result.written].find(([file])=>file.endsWith('/state.json'))[1]);
+ assert.equal(state.phone,'proven-phone');assert.equal(state.ownsSimulator,false);assert.equal(state.prepared,true);assert.equal(state.activated,false);
+ assert.equal(state.keyboardPreference,'1');assert.equal(state.preferenceRead,true);
+ assert.equal(result.written.get('/synthetic/github-env'),'BB_KEYBOARD_SIMULATOR=proven-phone\n');
+ assert.ok(result.removed.some(file=>file.endsWith('/AccountKeyboard.xcresult')),'a previous result cannot satisfy this session');
+ assert.equal(result.logs.some(line=>line.includes('native account keyboard::')),false,'preparation is not a passing test report');
+});
+
+test('staged keyboard activation only signs, activates and installs the already compiled UI runner',async()=>{
+ const keyboardState={...keyboardReadyState(),stage:'prepared',activated:false};
+ const result=await runScript('test-ios-account-keyboard.mjs',{argv:['--activate'],keyboardState});
+ assert.equal(result.process.exitCode,undefined);
+ assert.equal(result.commands.some(command=>['xcodebuild','ruby'].includes(command[0])),false);
+ assert.equal(result.commands.filter(command=>command[0]==='codesign').length,2);
+ assert.ok(result.commands.some(command=>command[1]==='simctl'&&command[2]==='install'&&command[3]==='proven-phone'));
+ assert.equal(result.commands.some(command=>command[1]==='simctl'&&['shutdown','delete'].includes(command[2])),false);
+ assert.deepEqual(result.delays,[10000]);
+ assert.equal(JSON.parse([...result.written].find(([file])=>file.endsWith('/state.json'))[1]).activated,true);
+});
+
+test('staged keyboard reporting requires all successful steps and exactly four passing, unskipped tests',async()=>{
+ const result=await runScript('test-ios-account-keyboard.mjs',{argv:['--report'],keyboardState:keyboardReadyState(),env:keyboardSuccessfulOutcomes});
+ assert.equal(result.process.exitCode,undefined);
+ assert.equal(result.commands.some(command=>['xcodebuild','ruby','codesign','defaults','open'].includes(command[0])||command[1]==='simctl'),false);
+ assert.ok(result.logs.some(line=>line.includes('native account keyboard::')&&line.includes('"passed":true')));
+ for(const keyboardSummary of [{passedTests:3,failedTests:0,skippedTests:0},{passedTests:5,failedTests:0,skippedTests:0},{passedTests:4,failedTests:1,skippedTests:0},{passedTests:4,failedTests:0,skippedTests:1}]){
+  const failed=await runScript('test-ios-account-keyboard.mjs',{argv:['--report'],keyboardState:keyboardReadyState(),env:keyboardSuccessfulOutcomes,keyboardSummary});
+  assert.equal(failed.process.exitCode,1);
+  assert.ok(failed.logs.some(line=>line.includes('"failure":"required_keyboard_tests_missing"')&&line.includes('"passed":false')));
+ }
+});
+
+test('staged keyboard reporting never lets a passing summary mask a failed, skipped or interrupted workflow step',async()=>{
+ for(const key of Object.keys(keyboardSuccessfulOutcomes))for(const outcome of ['failure','skipped','cancelled','timed_out','']){
+  const result=await runScript('test-ios-account-keyboard.mjs',{argv:['--report'],keyboardState:keyboardReadyState(),env:{...keyboardSuccessfulOutcomes,[key]:outcome}});
+  assert.equal(result.process.exitCode,1,key+' / '+outcome);
+  assert.ok(result.logs.some(line=>line.includes('native account keyboard::')&&line.includes('"passed":false')));
+ }
+ for(const options of [{keyboardState:null},{keyboardState:{...keyboardReadyState(),activated:false}},{keyboardState:keyboardReadyState(),keyboardSummaryError:true}]){
+  const result=await runScript('test-ios-account-keyboard.mjs',{argv:['--report'],env:keyboardSuccessfulOutcomes,...options});
+  assert.equal(result.process.exitCode,1,'missing state, activation or XCTest summary must fail');
+ }
+});
+
+test('staged keyboard cleanup restores the original preference and deletes only an owned disposable simulator',async()=>{
+ for(const ownsSimulator of [false,true]){
+  const keyboardState={...keyboardReadyState(),ownsSimulator,phone:ownsSimulator?'disposable-phone':'proven-phone'};
+  const result=await runScript('test-ios-account-keyboard.mjs',{argv:['--cleanup'],keyboardState});
+  assert.equal(result.process.exitCode,undefined);
+  assert.equal(result.commands.some(command=>command[0]==='xcodebuild'),false);
+  const deletes=result.commands.filter(command=>command[1]==='simctl'&&['shutdown','delete'].includes(command[2]));
+  assert.equal(deletes.length,ownsSimulator?2:0);
+  assert.ok(deletes.every(command=>command[3]==='disposable-phone'));
+  assert.ok(result.commands.some(command=>command[0]==='defaults'&&command[1]==='write'&&command.at(-1)==='YES'));
+ }
+ const unset=await runScript('test-ios-account-keyboard.mjs',{argv:['--cleanup'],keyboardState:{...keyboardReadyState(),keyboardPreference:null}});
+ assert.ok(unset.commands.some(command=>command[0]==='defaults'&&command[1]==='delete'&&command.includes('ConnectHardwareKeyboard')));
 });
 
 test('StoreKit boot timeout recovers only after the selected starting simulator proves ready',async()=>{

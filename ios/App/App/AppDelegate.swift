@@ -9,6 +9,13 @@ class AppDelegate: UIResponder, UIApplicationDelegate {
 
     func application(_ application: UIApplication, didFinishLaunchingWithOptions launchOptions: [UIApplication.LaunchOptionsKey: Any]?) -> Bool {
         // Override point for customization after application launch.
+        #if DEBUG
+        #if targetEnvironment(simulator)
+        if BasketBossKeyboardUITestRuntime.disablesAnimations {
+            UIView.setAnimationsEnabled(false)
+        }
+        #endif
+        #endif
         return true
     }
 
@@ -58,6 +65,23 @@ class AppDelegate: UIResponder, UIApplicationDelegate {
 
 }
 
+#if DEBUG
+#if targetEnvironment(simulator)
+// Explicit disposable-simulator UI tests only. Release and normal Debug app
+// launches retain the requested intro and animation behavior.
+private enum BasketBossKeyboardUITestRuntime {
+    static var isKeyboardSmokeLaunch: Bool {
+        let arguments = ProcessInfo.processInfo.arguments
+        return arguments.contains("--bb-native-account-keyboard-smoke") || arguments.contains("--bb-native-onboarding-keyboard-smoke")
+    }
+
+    static var disablesAnimations: Bool {
+        isKeyboardSmokeLaunch && ProcessInfo.processInfo.arguments.contains("--bb-ui-tests-disable-animations")
+    }
+}
+#endif
+#endif
+
 // Register before the first page load. Keep Capacitor's WKNavigationDelegate,
 // plugin lifecycle, authentication callbacks and media handling intact.
 class BasketBossViewController: CAPBridgeViewController {
@@ -95,8 +119,9 @@ class BasketBossViewController: CAPBridgeViewController {
         }
         #if targetEnvironment(simulator)
         let keyboardArguments = ProcessInfo.processInfo.arguments
-        if (keyboardArguments.contains("--bb-native-account-keyboard-smoke") || keyboardArguments.contains("--bb-native-onboarding-keyboard-smoke")), let webView = webView {
+        if BasketBossKeyboardUITestRuntime.isKeyboardSmokeLaunch, let webView = webView {
             let onboarding = keyboardArguments.contains("--bb-native-onboarding-keyboard-smoke")
+            webView.accessibilityIdentifier = "bbKeyboardWebView"
             webView.configuration.userContentController.addUserScript(WKUserScript(source: BasketBossAccountKeyboardSetup.script(onboarding: onboarding), injectionTime: .atDocumentStart, forMainFrameOnly: true))
         }
         #endif
@@ -162,8 +187,26 @@ private enum BasketBossAccountKeyboardSetup {
           sessionStorage.setItem('basketboss_welcome_splash_seen_v1','1');
           sessionStorage.setItem('bb_funnel_nudge_dismissed_v1','1');
           let attempts=0,opened=false,baselineScroll=null;
+          // WebKit's iOS accessibilityIdentifier reads the backing DOM id.
+          // Keep accessible names/values intact and give only otherwise-idless
+          // test controls stable identifiers, including after onboarding paints.
+          const identifyControls=()=>{
+            for(const [selector,identifier] of [
+              ['#bbNewOnboarding .bbob-footer button[data-bbob="next"]','bbobNext'],
+              ['#bbNewOnboarding button.bbob-exit','bbobExit'],
+              ['.tabs button[data-tab="week"]','bbPlanNav'],
+              ['.tabs button[data-tab="discover"]','bbDiscoverNav'],
+              ['.tabs button[data-tab="shop"]','bbPantryNav'],
+              ['.tabs button[data-tab="shop-list"]','bbShopNav'],
+              ['.tabs a.bb173-make-meal-link','bbCookNav']
+            ]){
+              const control=document.querySelector(selector);
+              if(control&&!control.id)control.id=identifier;
+            }
+          };
           const check=setInterval(()=>{
             if(++attempts>1800){clearInterval(check);return;}
+            identifyControls();
             if(!onboarding&&!opened){
               const button=document.getElementById('cloud-open');
               if(document.readyState!=='loading'&&window.BBNativeStartup?.phase==='ready'&&button){opened=true;button.click();}
@@ -184,7 +227,7 @@ private enum BasketBossAccountKeyboardSetup {
             const height=Math.min(Number(viewport?.height)||innerHeight,innerHeight),width=Math.min(Number(viewport?.width)||innerWidth,innerWidth);
             const flags={bodyFixed:fixed,shellHidden:!!shell&&getComputedStyle(shell).visibility==='hidden',shellInert:!!shell?.closest('[inert]'),viewportCovered:Math.abs(box.top+scrollY-top)<3&&Math.abs(box.left+scrollX-left)<3&&Math.abs(box.bottom+scrollY-top-height)<3&&Math.abs(box.right+scrollX-left-width)<3,rootLocked:baselineScroll!==null&&Math.abs(layoutY-baselineScroll)<2};
             let probe=document.getElementById('bbAccountKeyboardProbe');
-            if(!probe){probe=document.createElement('p');probe.id='bbAccountKeyboardProbe';probe.style.cssText='position:absolute;top:8px;left:8px;right:72px;height:30px;overflow:hidden;font-size:7px;line-height:10px;z-index:2147483647;background:#f5f7ef;margin:0;color:#385e45;pointer-events:none';host.appendChild(probe);}
+            if(!probe){probe=document.createElement('p');probe.id='bbAccountKeyboardProbe';probe.setAttribute('role','text');probe.style.cssText='position:absolute;top:8px;left:8px;right:72px;height:30px;overflow:hidden;font-size:7px;line-height:10px;z-index:2147483647;background:#f5f7ef;margin:0;color:#385e45;pointer-events:none';host.appendChild(probe);}
             // Numeric layout metadata only: never include input values, user
             // text, account/session data, screenshots or recording bytes.
             const number=value=>Number.isFinite(Number(value))?Math.round(Number(value)*10)/10:null;
@@ -193,6 +236,7 @@ private enum BasketBossAccountKeyboardSetup {
             const metrics={startupReady:window.BBNativeStartup?.phase==='ready',authSlot:!!document.getElementById('bbobAuthSlot'),formMounted:host.contains(form),emailVisible:!!email?.getClientRects().length,formHidden:!!form?.hidden,formInert:!!form?.closest('[inert]'),vvH:number(viewport?.height),vvW:number(viewport?.width),vvTop:number(viewport?.offsetTop),vvLeft:number(viewport?.offsetLeft),vvPageTop:number(viewport?.pageTop),vvScale:number(viewport?.scale),innerH:number(innerHeight),innerW:number(innerWidth),hostT:number(box.top),hostL:number(box.left),hostB:number(box.bottom),hostR:number(box.right),hostH:number(box.height),hostW:number(box.width),cssT:number(parseFloat(hostStyle.top)),cssH:number(parseFloat(hostStyle.height)),bodyT:number(parseFloat(bodyStyle.top)),rootY:number(window.scrollY),baselineY:baselineScroll===null?null:number(baselineScroll),htmlY:number(document.documentElement.scrollTop),bodyY:number(document.body.scrollTop)};
             const text='BB keyboard probe '+(onboarding?'onboarding':'account')+' '+Object.entries(flags).map(([name,value])=>name+'='+value).join(' ')+' metrics='+JSON.stringify(metrics);
             if(probe.textContent!==text)probe.textContent=text;
+            if(probe.getAttribute('aria-label')!==text)probe.setAttribute('aria-label',text);
           },100);
         })();
         """#
@@ -434,7 +478,12 @@ private final class BasketBossCookSmokeReporter: NSObject, WKScriptMessageHandle
 private final class BasketBossStartupView: UIView {
     private let presentedAt = CACurrentMediaTime()
     var remainingIntroDuration: TimeInterval {
-        UIAccessibility.isReduceMotionEnabled ? 0 : max(0, 4.0 - (CACurrentMediaTime() - presentedAt))
+        #if DEBUG
+        #if targetEnvironment(simulator)
+        if BasketBossKeyboardUITestRuntime.disablesAnimations { return 0 }
+        #endif
+        #endif
+        return UIAccessibility.isReduceMotionEnabled ? 0 : max(0, 4.0 - (CACurrentMediaTime() - presentedAt))
     }
     var retry: (() -> Void)?
     private let logo = UIImageView(image: UIImage(named: "Splash"))
@@ -533,6 +582,11 @@ private final class BasketBossStartupView: UIView {
     func startMotion() {
         guard !motionStarted else { return }
         motionStarted = true
+        #if DEBUG
+        #if targetEnvironment(simulator)
+        if BasketBossKeyboardUITestRuntime.disablesAnimations { return }
+        #endif
+        #endif
         guard !UIAccessibility.isReduceMotionEnabled else { return }
         logo.transform = CGAffineTransform(rotationAngle: -0.07).scaledBy(x: 0.88, y: 0.88)
         name.transform = CGAffineTransform(translationX: 0, y: 6).scaledBy(x: 0.98, y: 0.98)

@@ -32,18 +32,6 @@ jobs:
           cache: npm
       - run: npm ci --no-audit --no-fund
       - run: npm run ios:sync
-      - name: Compile the app before starting Simulator
-        timeout-minutes: 15
-        run: >-
-          xcodebuild
-          -workspace ios/App/App.xcworkspace
-          -scheme App
-          -configuration Debug
-          -sdk iphonesimulator
-          -destination 'generic/platform=iOS Simulator'
-          -derivedDataPath /tmp/basketboss-ios-build
-          CODE_SIGNING_ALLOWED=NO
-          build
       - name: Prepare the proven iOS simulator and software keyboard
         run: |
           node --input-type=module <<'JS'
@@ -61,25 +49,55 @@ jobs:
           console.log('Booting '+phone.name+' / iOS '+runtime.version);
           execFileSync('xcrun',['simctl','bootstatus',phone.udid,'-b'],{stdio:'inherit',timeout:540000});
           JS
-      - name: Test real email and password taps and keyboard layout
-        run: node scripts/test-ios-account-keyboard.mjs
-      - name: Print text-only keyboard results
-        if: always()
+      - name: Prepare the keyboard UI test target
+        run: node scripts/test-ios-account-keyboard.mjs --prepare
+      - name: Compile keyboard UI tests
+        id: compile_keyboard_tests
+        timeout-minutes: 15
+        shell: bash
         run: |
-          python - <<'PY'
-          from pathlib import Path
-          import subprocess
-          root=Path('artifacts/account-keyboard-diagnostics')
-          for name in ['report.json','summary.json','tests.log']:
-              item=root/name
-              if item.exists():
-                  print(name)
-                  print(item.read_text(errors='replace')[-24000:])
-          result=root/'AccountKeyboard.xcresult'
-          if result.exists():
-              done=subprocess.run(['xcrun','xcresulttool','get','test-results','summary','--path',str(result)],capture_output=True,text=True)
-              print(done.stdout[-20000:])
-          PY
+          xcodebuild build-for-testing \
+            -workspace ios/App/App.xcworkspace \
+            -scheme BasketBossAccountKeyboardUITests \
+            -configuration Debug \
+            -sdk iphonesimulator \
+            -destination "platform=iOS Simulator,id=$BB_KEYBOARD_SIMULATOR" \
+            -derivedDataPath /tmp/basketboss-ios-build \
+            COMPILER_INDEX_STORE_ENABLE=NO \
+            CODE_SIGNING_ALLOWED=NO \
+            2>&1 | tee artifacts/account-keyboard-diagnostics/build.log
+      - name: Activate the keyboard test simulator
+        id: activate_keyboard_tests
+        run: node scripts/test-ios-account-keyboard.mjs --activate
+      - name: Execute keyboard UI tests
+        id: execute_keyboard_tests
+        timeout-minutes: 10
+        shell: bash
+        run: |
+          xcodebuild test-without-building \
+            -workspace ios/App/App.xcworkspace \
+            -scheme BasketBossAccountKeyboardUITests \
+            -configuration Debug \
+            -sdk iphonesimulator \
+            -destination "platform=iOS Simulator,id=$BB_KEYBOARD_SIMULATOR" \
+            -derivedDataPath /tmp/basketboss-ios-build \
+            -parallel-testing-enabled NO \
+            -test-timeouts-enabled YES \
+            -default-test-execution-time-allowance 180 \
+            -maximum-test-execution-time-allowance 300 \
+            -resultBundlePath artifacts/account-keyboard-diagnostics/AccountKeyboard.xcresult \
+            CODE_SIGNING_ALLOWED=NO \
+            2>&1 | tee artifacts/account-keyboard-diagnostics/tests.log
+      - name: Report strict keyboard test results
+        if: always()
+        env:
+          BB_KEYBOARD_COMPILE_OUTCOME: ${{ steps.compile_keyboard_tests.outcome }}
+          BB_KEYBOARD_ACTIVATE_OUTCOME: ${{ steps.activate_keyboard_tests.outcome }}
+          BB_KEYBOARD_EXECUTE_OUTCOME: ${{ steps.execute_keyboard_tests.outcome }}
+        run: node scripts/test-ios-account-keyboard.mjs --report
+      - name: Restore keyboard test simulator settings
+        if: always()
+        run: node scripts/test-ios-account-keyboard.mjs --cleanup
       - uses: actions/upload-artifact@v6
         if: always()
         with:

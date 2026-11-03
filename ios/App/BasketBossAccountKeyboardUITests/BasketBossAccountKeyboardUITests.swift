@@ -3,16 +3,25 @@ import XCTest
 // Real UIKit keyboard + WKWebView accessibility frames. Empty input fields,
 // no account credentials, no sign-in submission and no production API writes.
 final class BasketBossAccountKeyboardUITests: XCTestCase {
+    private var uiTestLaunchArguments: [String] = []
+    private var uiTestLaunchEnvironment: [String: String] = [:]
+
+    override func setUpWithError() throws {
+        try super.setUpWithError()
+        continueAfterFailure = false
+        uiTestLaunchArguments = ["--bb-ui-tests-disable-animations"]
+        uiTestLaunchEnvironment = ["BB_UI_TESTS_DISABLE_ANIMATIONS": "1"]
+    }
+
     @MainActor private func waitFor(_ description: String, timeout: TimeInterval = 8, _ condition: @escaping () -> Bool) {
         let expectation = XCTNSPredicateExpectation(predicate: NSPredicate { _, _ in condition() }, object: nil)
         XCTAssertEqual(XCTWaiter.wait(for: [expectation], timeout: timeout), .completed, description)
     }
 
-    @MainActor private func assertLockedBackground(_ app: XCUIApplication, onboarding: Bool, phase: String) {
+    @MainActor private func assertLockedBackground(_ probe: XCUIElement, onboarding: Bool, phase: String) {
         let scope = onboarding ? "onboarding" : "account"
         let prefix = "BB keyboard probe " + scope + " "
         let expected = prefix + "bodyFixed=true shellHidden=true shellInert=true viewportCovered=true rootLocked=true"
-        let probe = app.staticTexts.matching(NSPredicate(format: "label BEGINSWITH %@", prefix)).firstMatch
         var lastLabel = "missing"
         let expectation = XCTNSPredicateExpectation(predicate: NSPredicate { _, _ in
             // Startup readiness already established the probe. Each AX read
@@ -43,10 +52,10 @@ final class BasketBossAccountKeyboardUITests: XCTestCase {
     }
 
     @MainActor private func assertAccountWithKeyboard(password: Bool, onboarding: Bool = false) throws {
-        executionTimeAllowance = 90
-        continueAfterFailure = false
+        executionTimeAllowance = 180
         let app = XCUIApplication(bundleIdentifier: "uk.co.basketboss.app")
-        app.launchArguments = [onboarding ? "--bb-native-onboarding-keyboard-smoke" : "--bb-native-account-keyboard-smoke"]
+        app.launchArguments = uiTestLaunchArguments + [onboarding ? "--bb-native-onboarding-keyboard-smoke" : "--bb-native-account-keyboard-smoke"]
+        app.launchEnvironment = uiTestLaunchEnvironment
         // Clear any previous Simulator keyboard/focus state before launching
         // the app. Home must never be pressed after the input is focused.
         XCUIDevice.shared.press(.home)
@@ -59,14 +68,15 @@ final class BasketBossAccountKeyboardUITests: XCTestCase {
             app.terminate()
         }
         XCTAssertTrue(app.wait(for: .runningForeground, timeout: 15), "The test app must reach the foreground before querying its UI.")
+        // There is one WKWebView container. Cache that typed container; all
+        // interactive controls and the probe below use exact DOM identifiers.
         let web = app.webViews.firstMatch
         XCTAssertTrue(web.waitForExistence(timeout: 25), "The native WKWebView must load.")
         // Both entry points wait for the real launch-cover acknowledgement.
         // A WKWebView can expose accessibility nodes before it is interactive.
-        let prefix = "BB keyboard probe " + (onboarding ? "onboarding" : "account") + " "
-        let readyProbe = app.staticTexts.matching(NSPredicate(format: "label BEGINSWITH %@", prefix)).firstMatch
+        let probe = app.staticTexts["bbAccountKeyboardProbe"]
         let ready = XCTNSPredicateExpectation(predicate: NSPredicate { _, _ in
-            readyProbe.exists && readyProbe.label.contains("\"startupReady\":true")
+            probe.exists && probe.label.contains("\"startupReady\":true")
         }, object: nil)
         XCTAssertEqual(XCTWaiter.wait(for: [ready], timeout: 25), .completed, "The native launch cover and sign-in entry point must be ready before interaction.")
         if onboarding {
@@ -74,14 +84,14 @@ final class BasketBossAccountKeyboardUITests: XCTestCase {
             // Its accessibility nodes can exist before UIKit finishes fading.
             // Wait for the production bridge's ready acknowledgement, then
             // use one real tap; never advance onboarding from injected JS.
-            let next = app.buttons.matching(identifier: "Let’s get started").firstMatch
+            let next = app.buttons["bbobNext"]
             XCTAssertTrue(next.waitForExistence(timeout: 25), "Fresh onboarding must start at its real welcome screen.")
             next.tap()
         }
-        let close = app.buttons.matching(identifier: onboarding ? "Exit onboarding and explore free recipes" : "Close account").firstMatch
+        let close = app.buttons[onboarding ? "bbobExit" : "cloud-close"]
         XCTAssertTrue(close.waitForExistence(timeout: 25), "The sign-in surface must open.")
-        assertLockedBackground(app, onboarding: onboarding, phase: "initial")
-        let field = password ? app.secureTextFields.firstMatch : app.textFields.matching(NSPredicate(format: "label == %@ OR placeholderValue == %@", "Email", "you@example.com")).firstMatch
+        assertLockedBackground(probe, onboarding: onboarding, phase: "initial")
+        let field = password ? app.secureTextFields["cloud-password"] : app.textFields["cloud-email"]
         let targetName = password ? "password" : "email"
         XCTAssertTrue(field.waitForExistence(timeout: 10), "The signed-out account \(targetName) input must exist.")
         field.tap()
@@ -97,16 +107,21 @@ final class BasketBossAccountKeyboardUITests: XCTestCase {
             let closeFrame = close.frame, webFrame = web.frame, keyboardFrame = keyboard.frame
             return closeFrame.minY >= webFrame.minY - 1 && closeFrame.maxY <= keyboardFrame.minY + 1
         }
-        assertLockedBackground(app, onboarding: onboarding, phase: "keyboard")
+        assertLockedBackground(probe, onboarding: onboarding, phase: "keyboard")
         // A keyboard can cover the dock and make it unhittable even when the
         // planner has leaked behind the form. The DOM probe above additionally
         // requires computed hidden/inert and fixed-body/viewport coverage.
-        let backgroundLabels = ["Plan my week", "Discover", "What Have I Already Got?", "Make My Shopping List", "Open Make a Meal"]
-        let backgroundItems = app.descendants(matching: .any).matching(NSPredicate(format: "label IN %@", backgroundLabels as NSArray)).allElementsBoundByIndex
-        for item in backgroundItems {
-            XCTAssertFalse(item.isHittable, "The background dock must not remain interactive: " + item.label)
+        let protectedNavigation: [(String, XCUIElement)] = [
+            ("Plan", app.buttons["bbPlanNav"]),
+            ("Discover", app.buttons["bbDiscoverNav"]),
+            ("At home", app.buttons["bbPantryNav"]),
+            ("Shop", app.buttons["bbShopNav"]),
+            ("Cook", app.links["bbCookNav"])
+        ]
+        for (name, item) in protectedNavigation {
+            XCTAssertFalse(item.exists && item.isHittable, "The background dock must not remain interactive: " + name)
         }
-        let signIn = app.buttons.matching(identifier: "Sign in").firstMatch
+        let signIn = app.buttons["cloud-login"]
         XCTAssertTrue(signIn.exists, "The existing Sign in action must remain present.")
         for _ in 0..<5 {
             if signIn.isHittable {
@@ -118,7 +133,7 @@ final class BasketBossAccountKeyboardUITests: XCTestCase {
         // Always exercise an actual swipe, including layouts where Sign in
         // already fits, then require the planner and document to remain locked.
         swipeForm(app, web: web, close: close, keyboard: keyboard, gentle: true)
-        assertLockedBackground(app, onboarding: onboarding, phase: "after swipe")
+        assertLockedBackground(probe, onboarding: onboarding, phase: "after swipe")
         XCTAssertTrue(keyboard.exists, "Reaching Sign in must not require dismissing the keyboard.")
         XCTAssertTrue(signIn.isHittable, "Sign in must be reachable within the account card.")
         let signInFrame = signIn.frame, webFrame = web.frame, keyboardFrame = keyboard.frame
@@ -127,7 +142,7 @@ final class BasketBossAccountKeyboardUITests: XCTestCase {
         XCTAssertTrue(close.isHittable, "Close must remain reachable after scrolling the form.")
         close.tap()
         waitFor("Closing sign-in must dismiss the keyboard.") { !keyboard.exists }
-        let planDock = app.buttons.matching(identifier: "Plan my week").firstMatch
+        let planDock = app.buttons["bbPlanNav"]
         waitFor("Closing sign-in must restore the Plan dock.") { planDock.isHittable }
     }
 
