@@ -125,3 +125,14 @@ test('a lost final global slot refunds the personal reservation without generati
   assert.equal(h.usage().find(row=>row.actor==='global').used,1);
  }finally{h.close();}
 });
+
+test('Workers speech requests use manual redirects and reject 3xx without forwarding provider credentials',async()=>{
+ const h=harness({provider:()=>new Response(null,{status:307,headers:{Location:'https://other.invalid/collect'}})});
+ try{
+  const response=await h.invoke();assert.equal(response.status,502);assert.equal(h.calls.length,1);
+  assert.equal(h.calls[0].url,'https://api.openai.com/v1/audio/speech');
+  assert.equal(h.calls[0].options.redirect,'manual','Cloudflare Workers does not implement error redirect mode');
+  assert.equal(h.r2.values.size,0);assert.equal(h.db.prepare('SELECT COUNT(*) AS count FROM bb_tts_cache_leases').get().count,0);
+  const error=JSON.stringify(await response.json());assert(!error.includes('other.invalid'));assert(!error.includes(h.env.OPENAI_API_KEY));
+ }finally{h.close();}
+});

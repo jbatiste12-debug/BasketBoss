@@ -52,7 +52,7 @@ export function byteRange(value,size){
  return {offset:from,length:to-from+1,end:to};
 }
 export async function requestSpeech(text,env,perform=fetch){
- const response=await perform('https://api.openai.com/v1/audio/speech',{method:'POST',headers:{Authorization:'Bearer '+env.OPENAI_API_KEY,'Content-Type':'application/json'},body:JSON.stringify({model:TTS_MODEL,voice:TTS_VOICE,input:text,instructions:TTS_INSTRUCTIONS,response_format:'mp3'}),redirect:'error',signal:AbortSignal.timeout(30000)});
+ const response=await perform('https://api.openai.com/v1/audio/speech',{method:'POST',headers:{Authorization:'Bearer '+env.OPENAI_API_KEY,'Content-Type':'application/json'},body:JSON.stringify({model:TTS_MODEL,voice:TTS_VOICE,input:text,instructions:TTS_INSTRUCTIONS,response_format:'mp3'}),redirect:'manual',signal:AbortSignal.timeout(30000)});
  if(!response.ok||!/^audio\/(?:mpeg|mp3)(?:;|$)/i.test(response.headers.get('Content-Type')||'')||Number(response.headers.get('Content-Length')||0)>TTS_AUDIO_LIMIT||!response.body){await response.body?.cancel().catch(()=>{});throw Error('tts_provider_unavailable');}
  const reader=response.body.getReader();let size=0;const header=[];
  return new ReadableStream({
