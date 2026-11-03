@@ -168,6 +168,41 @@ test('fresh onboarding isolates the planner, follows keyboard panning and restor
  assert.equal(h.storage.get(PLAN),'saved meal plan');assert.equal(h.read().complete,false);
 });
 
+test('leaving the mounted onboarding account form requests native dismissal once and immediately restores the form and saved data',async()=>{
+ for(const outcome of ['resolved','pending','rejected','throws','unavailable','web']){
+  const session=JSON.stringify({user:{id:'remembered-user'},access_token:'expired-preserved-token',expires_at:1});
+  const h=harness({store:new Map([[PLAN,'saved meal plan'],[SESSION,session]]),withAuth:true,native:outcome!=='web'});
+  h.tap('next');
+  const host=h.active(),form=h.node('cloud-auth'),slot=form.parentNode,originalParent=h.replayButton.parentNode;
+  const input={id:'cloud-email',matches:()=>true,inside:true,blur(){this.blurred=true;h.document.activeElement=h.replayButton;}};
+  host.contains=node=>node===input||node===form&&form.parentNode===slot;
+  h.document.activeElement=input;
+  let calls=0;const requests=[];
+  if(h.window.BBNative&&outcome!=='unavailable')h.window.BBNative.dismissKeyboard=()=>{
+   calls++;requests.push({blurred:input.blurred,parent:form.parentNode});
+   if(outcome==='throws')throw Error('Native bridge unavailable');
+   if(outcome==='rejected')return Promise.reject(Error('Native bridge unavailable'));
+   if(outcome==='pending')return new Promise(()=>{});
+   return Promise.resolve({ok:true});
+  };
+  assert.doesNotThrow(()=>h.tap('free'));
+  assert.equal(calls,['web','unavailable'].includes(outcome)?0:1);
+  for(const request of requests){assert.equal(request.blurred,true,'DOM input blurs before the native request');assert.equal(request.parent,slot,'the request precedes restoring the shared form');}
+  assert.equal(h.active(),undefined,'a pending or unavailable native bridge never delays closing');
+  assert.equal(form.parentNode,originalParent);assert.equal(h.replayButton.focused,true);
+  assert.equal(h.rootClasses.has('bb-onboarding-open'),false);assert.equal(h.read().complete,true);
+  assert.equal(h.storage.get(PLAN),'saved meal plan');assert.equal(h.storage.get(SESSION),session);assert.equal(h.preferences.length,0);
+  await new Promise(resolve=>setImmediate(resolve));
+ }
+});
+
+test('leaving Welcome without mounting credentials does not request native keyboard dismissal',()=>{
+ const h=harness({store:new Map([[PLAN,'saved meal plan']]),withAuth:true});let calls=0;
+ h.window.BBNative.dismissKeyboard=()=>{calls++;return Promise.resolve({ok:true});};
+ h.tap('free');assert.equal(calls,0);assert.equal(h.active(),undefined);assert.equal(h.read().complete,true);
+ assert.equal(h.storage.get(PLAN),'saved meal plan');
+});
+
 test('a remembered expired session keeps onboarding credentials hidden, then shows them after definitive rejection',()=>{
  const storage=new Map([[PLAN,'saved meal plan'],[SESSION,JSON.stringify({user:{id:'returning-person'},access_token:'expired',refresh_token:'renewable',expires_at:1})]]);
  const h=harness({store:storage,remembered:true,withAuth:true});h.through(1);

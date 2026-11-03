@@ -740,6 +740,7 @@ public class BasketBossNavigationPlugin: CAPPlugin, CAPBridgedPlugin {
     public let jsName = "BasketBossNavigation"
     public let pluginMethods: [CAPPluginMethod] = [
         CAPPluginMethod(name: "clearReceiptPhotos", returnType: CAPPluginReturnPromise),
+        CAPPluginMethod(name: "dismissKeyboard", returnType: CAPPluginReturnPromise),
         CAPPluginMethod(name: "finishStartup", returnType: CAPPluginReturnPromise)
     ]
 
@@ -792,6 +793,20 @@ public class BasketBossNavigationPlugin: CAPPlugin, CAPBridgedPlugin {
                 return
             }
             controller.finishStartup { call.resolve(["ok": true]) }
+        }
+    }
+
+    // WebKit can retain its native keyboard after a focused auth form is
+    // blurred and reparented. The actual onboarding Close flow requests this
+    // UIKit dismissal through the existing bridge, including on real devices.
+    @objc func dismissKeyboard(_ call: CAPPluginCall) {
+        DispatchQueue.main.async { [weak self] in
+            guard let webView = self?.webView else {
+                call.reject("Keyboard view is unavailable.", "BB_NATIVE_KEYBOARD")
+                return
+            }
+            webView.endEditing(true)
+            call.resolve(["ok": true])
         }
     }
 
