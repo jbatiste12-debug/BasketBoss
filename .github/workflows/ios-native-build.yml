@@ -3,13 +3,14 @@ name: Verify iOS native build
 on:
   workflow_dispatch:
   push:
-    branches: [main, codex/native-cook-fix, release/recipe-editorial-collections, feature/conversational-voice-cook]
+    branches: [main, codex/native-cook-fix, release/recipe-editorial-collections, feature/conversational-voice-cook, fix/cook-mentor-reply-failure]
     paths:
       - .github/workflows/ios-native-build.yml
       - .github/workflows/inspect-account-keyboard.yml
       - capacitor.config.json
       - package.json
       - package-lock.json
+      - basketboss-pricing-v19.js
       - index.html
       - app.html
       - bb-account-deletion.*
@@ -18,6 +19,7 @@ on:
       - bb-evening-*
       - bb-cook-voice.*
       - bb-cook-assistant.js
+      - bb-saved-weeks.*
       - bb-cook-speech-text.js
       - bb-cook-tts.js
       - bb-cook-experience.css
@@ -52,6 +54,14 @@ on:
       - make-a-meal.*
       - bb-onboarding-v2.*
       - tests/basketboss-native-*.test.mjs
+      - tests/basketboss-garlic-basket.test.mjs
+      - tests/basketboss-pantry-reconcile.test.mjs
+      - tests/basketboss-cook-phase-navigation.test.mjs
+      - tests/basketboss-saved-weeks.test.mjs
+      - tests/basketboss-saved-week-host.test.mjs
+      - tests/basketboss-cook-voice.test.mjs
+      - tests/basketboss-evening-pivot-app.test.mjs
+      - tests/basketboss-landing-meal-pricing.test.mjs
       - native/**
       - ios/**
       - scripts/*native*.mjs
@@ -79,6 +89,17 @@ jobs:
         run: npm ci --no-audit --no-fund
       - name: Build and sync iOS workspace
         run: npm run ios:sync
+      - name: Verify build 6 basket, pantry, saved weeks and Cook regressions
+        run: >-
+          node --test --test-isolation=none
+          tests/basketboss-garlic-basket.test.mjs
+          tests/basketboss-pantry-reconcile.test.mjs
+          tests/basketboss-saved-weeks.test.mjs
+          tests/basketboss-saved-week-host.test.mjs
+          tests/basketboss-cook-phase-navigation.test.mjs
+          tests/basketboss-cook-voice.test.mjs
+          tests/basketboss-evening-pivot-app.test.mjs
+          tests/basketboss-landing-meal-pricing.test.mjs
       - name: Test native routing and permissions
         run: npm run test:native
       - name: Compile the iOS simulator app without signing credentials
