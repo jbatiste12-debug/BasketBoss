@@ -1,6 +1,8 @@
 <!doctype html>
 <html lang="en">
 <head>
+<meta name="referrer" content="no-referrer">
+<script src="bb-auth-callback.js?v=20261104-auth1" referrerpolicy="no-referrer"></script>
 <link rel="stylesheet" href="bb-account-deletion.css?v=20261101-recovery1">
 <script defer src="bb-account-deletion.js?v=20261101-apple1"></script>
 <base href="../../">
@@ -9,7 +11,7 @@
 <link rel="stylesheet" href="bb-navigation-polish.css?v=20261102-loop3">
 <script defer src="bb-navigation-polish.js?v=20261101-polish1"></script>
 <link rel="stylesheet" href="bb-account-polish.css?v=20261101-header2">
-<script defer src="bb-account-polish.js?v=20261101-keyboard2"></script>
+<script defer src="bb-account-polish.js?v=20261104-auth1"></script>
 <link rel="stylesheet" href="bb-onboarding-v2.css?v=20261104-kitchen1">
 <link rel="stylesheet" href="bb-ux-cleanup.css?v=20261028-ux1">
 <meta charset="utf-8"><meta http-equiv="Content-Type" content="text/html; charset=utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
@@ -2251,7 +2253,7 @@ body.bb172-storefront-visible .shell nav.tabs{visibility:hidden!important;pointe
 @media(max-width:450px){.bb172-cupboard-card,.bb172-fridge-card{padding:13px}.bb172-cupboard-heading>span{font-size:25px}.bb172-cupboard-card .bb172-inline-fallback>.bb172-inline-choices,.bb172-fridge-card .bb172-inline-fallback>.bb172-inline-choices{grid-template-columns:repeat(3,minmax(0,1fr))}.bb172-shopping-break{padding:16px 13px}#bb172ShoppingBreak #bb172ShopModeButton{font-size:16px}}
 
 </style>
-<meta name="referrer" content="no-referrer">
+
 <style id="bb172-source-aligned-planner-css">
 /* BasketBoss v17.2 Planner polish — scoped to scheduled dinner cards only. */
 #app .day .planned .small-actions.bb172-planner-controls {
@@ -11041,7 +11043,7 @@ if (false && 'serviceWorker' in navigator && location.protocol==='https:') {
 <div id="cloud-auth">
 <label>Email<input id="cloud-email" type="email" autocomplete="email" placeholder="you@example.com"></label>
 <label>Password<input id="cloud-password" type="password" autocomplete="current-password" minlength="8" placeholder="At least 8 characters"></label>
-<button id="cloud-login">Sign in</button><button id="cloud-signup" class="secondary">Create account</button>
+<button id="cloud-login" disabled>Sign in</button><button id="cloud-signup" class="secondary" disabled>Create account</button>
 </div>
 <div id="cloud-signed" hidden>
 <button id="cloud-upload">Upload this device's plan</button>
@@ -11066,7 +11068,7 @@ const snapshot=()=>({generation,actor:session?.user?.id||null,token:session?.acc
 const current=pin=>!blocked()&&pin.generation===generation&&pin.actor===(session?.user?.id||null)&&pin.token===(session?.access_token||null);
 const setMessage=t=>{if(!blocked())msg.textContent=t;};
 function restoreStoredSession(){try{sessionRaw=localStorage.getItem(sessionKey);const saved=JSON.parse(sessionRaw||'null');session=saved?.access_token?saved:null;}catch{sessionRaw=null;session=null;}}
-function setStatus(){const connected=!!(session?.access_token&&Number(session.expires_at)*1000>Date.now()+5000),remembered=window.BasketBossSession?.state().remembered===true,recovering=blocked()&&window.BBAccountDeletion?.canRecoverSignIn?.()===true;status.textContent=recovering?'An earlier account deletion needs checking. Sign in with the original account to recover access; cloud syncing stays paused during the check.':blocked()?'Account deletion is in progress. Cloud sync is paused.':!enabled?'Cloud sync needs setup by the site owner.':connected?'Signed in as '+(session.user?.email||'your account'):remembered?(window.BasketBossSession.state().needsConnection?'Your account is saved on this device. Reconnect to the internet to continue.':'Reconnecting to your account…'):session?'Your session has expired. Sign in again to access your account.':'Sign in to sync your plan between devices.';auth.hidden=!enabled||(blocked()?!recovering:(connected||remembered));signed.hidden=!(connected||remembered)||blocked();document.getElementById('cloud-signup').hidden=recovering||window.BBNative?.isNative===true;for(const id of ['cloud-upload','cloud-download','cloud-logout'])document.getElementById(id).disabled=blocked();}
+function setStatus(){const connected=!!(session?.access_token&&Number(session.expires_at)*1000>Date.now()+5000),remembered=window.BasketBossSession?.state().remembered===true,recovering=blocked()&&window.BBAccountDeletion?.canRecoverSignIn?.()===true;status.textContent=recovering?'An earlier account deletion needs checking. Sign in with the original account to recover access; cloud syncing stays paused during the check.':blocked()?'Account deletion is in progress. Cloud sync is paused.':!enabled?'Cloud sync needs setup by the site owner.':connected?'Signed in as '+(session.user?.email||'your account'):remembered?(window.BasketBossSession.state().needsConnection?'Your account is saved on this device. Reconnect to the internet to continue.':'Reconnecting to your account…'):session?'Your session has expired. Sign in again to access your account.':'Sign in to sync your plan between devices.';auth.hidden=!enabled||(blocked()?!recovering:(connected||remembered));signed.hidden=!(connected||remembered)||blocked();document.getElementById('cloud-signup').hidden=recovering;for(const id of ['cloud-upload','cloud-download','cloud-logout'])document.getElementById(id).disabled=blocked();}
 function headers(token){return {'apikey':config.anonKey,'Authorization':'Bearer '+(token||config.anonKey),'Content-Type':'application/json'};}
 async function api(path,method='GET',body=null,token=null,recovery=false){
  if(blocked()&&!(recovery&&path==='/auth/v1/token?grant_type=password'&&window.BBAccountDeletion?.canRecoverSignIn?.()===true))throw new Error('Account deletion is in progress.');
@@ -11136,7 +11138,7 @@ async function signIn(signup){
  else{await push();if(current(cloud.pin))setMessage('Account connected and this device\u2019s plan backed up.');}
  }catch(e){if(current(pin))setMessage(e.message);}
 }
-window.BasketBossCloud={scheduleSave(){if(blocked()||loading||!session||!enabled)return;dirty=true;clearTimeout(timer);timer=setTimeout(()=>{if(!blocked()&&navigator.onLine)push().catch(e=>setMessage(e.message));},1400)}};
+window.BasketBossCloud={async connected(){const cloud=await getCloud();if(!cloud||!current(cloud.pin))return;if(cloud.row)setMessage('Cloud backup found. Choose Restore cloud plan to use it, or Upload to keep this device\u2019s plan.');else await push();},scheduleSave(){if(blocked()||loading||!session||!enabled)return;dirty=true;clearTimeout(timer);timer=setTimeout(()=>{if(!blocked()&&navigator.onLine)push().catch(e=>setMessage(e.message));},1400)}};
 window.addEventListener('basketboss:account-deletion-started',()=>{deleting=true;generation++;dirty=false;clearTimeout(timer);timer=null;setStatus();});
 window.addEventListener('basketboss:account-deletion-cancelled',()=>{deleting=false;generation++;restoreStoredSession();setStatus();});
 window.addEventListener('basketboss:account-deletion-deleted',()=>{deleting=true;generation++;session=null;dirty=false;clearTimeout(timer);timer=null;setStatus();});
@@ -12461,5 +12463,11 @@ body[data-bbnext-view="discover"] #app .bb175-discover-heading{padding-top:calc(
 <script defer src="bb-pantry-camera.js?v=20261102-camera1"></script>
 <link rel="stylesheet" href="bb-cook-experience.css?v=20261103-feedback1">
 <link rel="stylesheet" href="bb-tab-viewport.css?v=20261104-tabs1">
-<script defer src="bb-tab-viewport.js?v=20261104-tabs1"></script>
+<script defer src="bb-tab-viewport.js?v=20261104-swipe1"></script>
+
+<link rel="stylesheet" href="bb-auth-flow.css?v=20261104-auth1">
+<script defer src="bb-auth-sdk.js?v=20261104-auth1"></script>
+<script defer src="bb-auth-flow.js?v=20261104-auth1"></script>
+
+<script defer src="bb-tab-swipe.js?v=20261104-swipe1"></script>
 </body></html>

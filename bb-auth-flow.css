@@ -1,0 +1,12 @@
+#cloud-auth [hidden]{display:none!important}
+#bbAuthStates{padding-top:12px;color:#214b36}
+#bbAuthStates h3{margin:0 0 10px;font-size:23px;color:#194b36}
+#bbAuthStates p{line-height:1.5;overflow-wrap:anywhere}
+#bbAuthStates input{box-sizing:border-box;width:100%;min-height:48px;margin:8px 0;padding:12px;border:1px solid #bfcfbf;border-radius:12px;background:#fff;font-size:16px;color:#183d2c}
+#bbAuthStates button,#bbAuthForgot{min-height:44px;margin-top:8px;padding:10px 14px;border:1px solid #c4d4bf;border-radius:12px;background:#f0f5e9;color:#20583d;font:inherit;font-weight:750}
+#bbAuthSavePassword,#bbAuthReset{background:#205e43!important;color:#fff!important}
+#cloud-auth button:disabled{opacity:.6;cursor:wait}
+#bbAuthFeedback:empty{display:none}
+#bbAuthToast{position:fixed;z-index:2147482000;left:16px;right:16px;top:calc(20px + env(safe-area-inset-top));max-width:520px;margin:auto;padding:16px 20px;border-radius:16px;background:#1f5e43;color:#fff;box-shadow:0 8px 28px #173c3730;text-align:center}
+
+html body #cloud-card[data-bb-account-polish] #cloud-auth [hidden],html body #bbNewOnboarding #cloud-auth [hidden]{display:none!important}

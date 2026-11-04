@@ -46,7 +46,7 @@
    return restoreState()?.complete!==true;
  }
  // Returning and paying members keep their existing opening experience.
- window.BBOnboard2026={willShow,preview,open:replay,pauseForAccount,getPreferences:()=>({house:state.house,region:state.region,goals:[...state.goals],diets:[...state.diets]})};
+ window.BBOnboard2026={authenticated(){if(!validSession()||blocked())return false;state.complete=true;state.started=false;if(!persist(true))return false;dismiss();return true;},willShow,preview,open:replay,pauseForAccount,getPreferences:()=>({house:state.house,region:state.region,goals:[...state.goals],diets:[...state.diets]})};
  // Founder story is retained on compare.html; no homepage element is modified here.
  function trimFounder(){return SHOW_FOUNDER_STORY;}
  let state=restoreState()||{step:0,house:'',goals:[],diets:[],region:'',started:false,complete:false,partnerStepV2:true,wantsPartnerInvite:false,partnerIntent:'none'};

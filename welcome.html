@@ -1,6 +1,8 @@
 <!doctype html>
 <html lang="en-GB">
 <head>
+<meta name="referrer" content="no-referrer">
+<script src="bb-auth-callback.js?v=20261104-auth1" referrerpolicy="no-referrer"></script>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <meta name="theme-color" content="#f7faf5"><meta name="apple-mobile-web-app-capable" content="yes">
@@ -35,7 +37,7 @@
     var session=JSON.parse(localStorage.getItem('basketboss_cloud_session_v1')||'null');
     var active=!!(session&&session.user&&session.user.id&&typeof session.access_token==='string'&&Number(session.expires_at)*1000>Date.now()+5000);
     var onboarding=JSON.parse(localStorage.getItem('bb_onboarding_fresh_once_20261028_v1')||'null');
-    if(standalone||active||(onboarding&&onboarding.complete===true))location.replace('/app');
+    if(!window.BBAuthCallbackBridge?.pending?.()&&(standalone||active||(onboarding&&onboarding.complete===true)))location.replace('/app');
   }catch(_){/* First-time/private visitors see the landing page. */}})();
   </script>
   <script src="basketboss-aisles-v20.js?v=bb-meal-packs-20261031" defer></script>

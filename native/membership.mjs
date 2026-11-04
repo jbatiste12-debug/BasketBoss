@@ -98,7 +98,7 @@ export function installNativeMembership({apiURL,readSession,fetch:perform=global
  function tidy(){
   const shortcut=doc.getElementById('bb16AccountShortcut');text(shortcut,'Account');if(shortcut&&shortcut.getAttribute('aria-label')!=='Open BasketBoss account')shortcut.setAttribute('aria-label','Open BasketBoss account');
   const intro=doc.getElementById('bbIntroTrialDialog');if(intro?.open)intro.close();hide(intro);
-  doc.querySelectorAll((purchases?'':'#cloud-signup,')+'#bbMembershipSettings,.bbc-secondary,.bbc-note,.bb173-tier-plans,.bb173-tier-disclaimer,#bb175TierCompare,.bb175-tier-compare,.bbtrial-plans,.bbtrial-legal').forEach(node=>{if(node.tagName==='DIALOG'&&node.open)node.close();hide(node);});
+  doc.querySelectorAll('#bbMembershipSettings,.bbc-secondary,.bbc-note,.bb173-tier-plans,.bb173-tier-disclaimer,#bb175TierCompare,.bb175-tier-compare,.bbtrial-plans,.bbtrial-legal').forEach(node=>{if(node.tagName==='DIALOG'&&node.open)node.close();hide(node);});
   for(const node of doc.querySelectorAll('.bbob-plan-premium')){
    if(node.dataset.nativeMembership==='true')continue;
    node.dataset.nativeMembership='true';node.replaceChildren();

@@ -147,8 +147,9 @@
     }
     const signedIn = doc.getElementById('cloud-signed')?.hidden === false;
     const title = card.querySelector('h2');
-    setText(title, signedIn ? 'Your account.' : 'Welcome back.');
-    setText(doc.getElementById('bbapAccountIntro'), signedIn ? 'Your plans, your account, your choices.' : 'Sign in to access your saved cloud plan.');
+    const authView=doc.getElementById('cloud-auth')?.dataset.bbAuthView;const authTitles={'check-email':'Check your email.','forgot-password':'Reset your password.','reset-sent':'Check your email.','set-password':'Set a new password.','verifying':'Checking your link…','link-error':'This link couldn’t be used.'};
+    setText(title, authTitles[authView] || (signedIn ? 'Your account.' : 'Welcome back.'));
+    setText(doc.getElementById('bbapAccountIntro'), authTitles[authView] ? 'Your BasketBoss account.' : signedIn ? 'Your plans, your account, your choices.' : 'Sign in to access your saved cloud plan.');
     const opened = panel.classList.contains('open');
     const wasOpened = state.opened;
     state.opened = opened;
