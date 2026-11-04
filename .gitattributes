@@ -1,0 +1,2 @@
+# Bundled third-party SDK; literal template strings retain upstream whitespace.
+bb-auth-sdk.js -whitespace linguist-generated=true
