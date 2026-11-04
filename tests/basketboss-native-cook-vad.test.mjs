@@ -26,7 +26,9 @@ test('native recognition endpoints use PCM energy and invalidate old Apple callb
 });
 
 test('actual Swift endpoint detector handles quiet speech, room noise, natural pauses and late hypotheses',t=>{
- const compiler=spawnSync('swiftc',['--version'],{encoding:'utf8',timeout:15000});
+ // Cold Swift toolchain startup on hosted runners can exceed 15 seconds.
+ // Keep probing and compilation bounded without relaxing fixture execution.
+ const compiler=spawnSync('swiftc',['--version'],{encoding:'utf8',timeout:120000});
  if(compiler.error?.code==='ENOENT'&&process.platform!=='darwin')return t.skip('Swift is unavailable on this host; native macOS CI executes the same Swift fixtures.');
  assert.equal(compiler.status,0,compiler.stderr||compiler.error?.message);
  const directory=fs.mkdtempSync(path.join(os.tmpdir(),'basketboss-cook-vad-'));
@@ -35,7 +37,7 @@ test('actual Swift endpoint detector handles quiet speech, room noise, natural p
   const build=spawnSync('swiftc',[
    path.join(root,'ios/App/App/BBCookSpeechBoundary.swift'),
    path.join(root,'tests/fixtures/cook-speech-boundary/main.swift'),'-o',executable
-  ],{encoding:'utf8',timeout:60000});
+  ],{encoding:'utf8',timeout:120000});
   assert.equal(build.status,0,build.stderr||build.error?.message);
   const run=spawnSync(executable,[],{encoding:'utf8',timeout:10000});
   assert.equal(run.status,0,run.stderr||run.error?.message);
