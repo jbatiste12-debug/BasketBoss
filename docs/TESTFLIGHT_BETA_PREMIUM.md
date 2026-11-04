@@ -71,3 +71,29 @@ requests in the preceding 24 hours returned HTTP 200. These checks do not
 identify the cousin's individual activation or establish the production Apple
 verifier/D1 grant state. No account entitlements or production schema were
 changed by these checks.
+
+## Apple verifier runtime compatibility
+
+A production inspection after the tester reported `BB_BETA_APPLE_VERIFICATION`
+found Node.js compatibility disabled. Apple's server library uses Node crypto,
+including X.509 certificates. Cold library initialization can fail before it
+returns a normal Apple proof-verification error. Local cold-start checks pass
+with `nodejs_compat` and a compatibility date of 2024-09-23 or later.
+
+The main-only **Repair Apple verifier runtime compatibility** workflow enables
+`nodejs_compat` on the existing production `basketboss-site` project, preserving
+other flags and any compatibility date at or after that minimum. It retains
+database, storage, build and secret configuration, verifies the returned
+configuration, then requests a rebuild of the current successful deployment.
+If the project is already compatible, it makes no update or rebuild. An explicit
+conflicting flag or unexpected configuration change stops the operation.
+
+The workflow uses the existing `github-pages` environment credentials and prints
+only fixed readiness/result metadata. Missing Cloudflare write permission is
+reported without exposing credentials or provider response bodies. No accounts,
+payments or entitlements are changed by the runtime repair. Apple's signature,
+certificate and sandbox checks remain required.
+
+After a successful rebuild, retry the beta unlock in the existing TestFlight
+app. The runtime correction is server-only; a successful real activation and
+authoritative Premium status are still needed to confirm the issue is resolved.

@@ -1,0 +1,63 @@
+name: Repair Apple verifier runtime compatibility
+
+on:
+  pull_request:
+    paths:
+      - .github/workflows/repair-apple-runtime.yml
+      - scripts/repair-apple-runtime.mjs
+      - tests/basketboss-repair-apple-runtime.test.mjs
+  push:
+    branches: [main]
+    paths:
+      - .github/workflows/repair-apple-runtime.yml
+      - scripts/repair-apple-runtime.mjs
+      - tests/basketboss-repair-apple-runtime.test.mjs
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: basketboss-apple-runtime-repair
+  cancel-in-progress: false
+
+jobs:
+  portable:
+    runs-on: ubuntu-latest
+    timeout-minutes: 8
+    steps:
+      - uses: actions/checkout@v5
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@v5
+        with:
+          node-version: '24'
+          cache: npm
+      - run: npm ci --no-audit --no-fund
+      - name: Verify scoped runtime repair and beta authorization guards
+        run: >-
+          node --test --test-isolation=none
+          tests/basketboss-repair-apple-runtime.test.mjs
+          tests/basketboss-testflight-beta*.test.mjs
+          tests/basketboss-apple-access.test.mjs
+  repair:
+    needs: portable
+    if: github.repository == 'jbatiste12-debug/BasketBoss' && github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    environment: github-pages
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v5
+        with:
+          persist-credentials: false
+          sparse-checkout: scripts/repair-apple-runtime.mjs
+          sparse-checkout-cone-mode: false
+      - uses: actions/setup-node@v5
+        with:
+          node-version: '24'
+      - name: Enable production Node cryptography and rebuild the existing deployment
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ vars.CLOUDFLARE_ACCOUNT_ID || secrets.CLOUDFLARE_ACCOUNT_ID }}
+          BB_APPLE_RUNTIME_REPAIR: 'true'
+        run: node scripts/repair-apple-runtime.mjs
