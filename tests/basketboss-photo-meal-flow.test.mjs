@@ -5,14 +5,16 @@ import vm from 'node:vm';
 
 const app=fs.readFileSync(new URL('../make-a-meal.js',import.meta.url),'utf8');
 const studio=fs.readFileSync(new URL('../bb-cook-studio.js',import.meta.url),'utf8');
+const preferenceSources=['bb-dietary-preferences.js','bb-meal-preferences.js'].map(name=>fs.readFileSync(new URL('../'+name,import.meta.url),'utf8'));
 const tick=()=>new Promise(resolve=>setImmediate(resolve));
 const recipe=()=>({title:'Reviewed chicken and rice',summary:'A simple meal.',servings:4,prepMinutes:5,cookMinutes:20,ingredients:[{name:'Cooked chicken',quantity:'200 g',fromHome:true},{name:'Rice',quantity:'250 g',fromHome:true}],steps:['Review ingredient labels and cook safely.'],extraIngredients:[],allergens:[],safetyNotes:['Check safe handling and cooking temperatures.']});
 
-function harness({pantry=false,deferResize=false}={}){
+function harness({pantry=false,deferResize=false,diets=[],servings=4}={}){
  let token='member-A',actor='actor-A',deleting=false,consent=true;
  const values=new Map(),writes=[],requests=[],rendered=[],dialogs=[],events=new Map(),controls=new Map();
  values.set('basketboss_321_v7_measured_pantry','{"garlic|clove":7}');
  values.set('basketboss_makeameal_v1_inventory','{"cupboard|garlic":{"name":"Garlic","selected":true}}');
+ if(diets.length||servings!==4)values.set('basketboss_321_unified_state_v1',JSON.stringify({version:2,planned:[],servings,mealPreferences:{version:1,scope:actor,diets,goals:[]}}));
  const storage={getItem(key){if(key==='basketboss_cloud_session_v1')return token?JSON.stringify({access_token:token,expires_at:Date.now()/1000+3600,user:{id:actor}}):null;return values.get(key)??null;},setItem(key,value){writes.push({key,value});values.set(key,value);},removeItem(key){writes.push({key});values.delete(key);}};
  const element=()=>({innerHTML:'',textContent:'',hidden:false,disabled:false,dataset:{},style:{setProperty(){},removeProperty(){}},classList:{add(){},remove(){},toggle(){}},setAttribute(){},removeAttribute(){},replaceChildren(){this.innerHTML='';this.textContent='';},scrollIntoView(){},focus(){},querySelector(){return null;},querySelectorAll(){return [];}});
  const get=selector=>{if(!controls.has(selector))controls.set(selector,element());return controls.get(selector);};
@@ -28,10 +30,14 @@ function harness({pantry=false,deferResize=false}={}){
  const window={document,location:{href:'http://localhost/make-a-meal.html'+(pantry?'?bbscan=pantry&location=fridge':''),search:pantry?'?bbscan=pantry&location=fridge':''},BB173_FREE_RECIPE_IDS:[],BBAccountDeletion:{isDeleting:()=>deleting},BasketBossVerifiedPremium:{isActive:()=>!!token&&!deleting},localStorage:storage,addEventListener:on,BBMealImage:{cancelAll(){}},BBCookResult:{render(host,value,options){rendered.push({recipe:value,options});host.innerHTML='RECIPE READY';return{cancel(){host.innerHTML='';}};},clear:host=>host.replaceChildren()}};
  const context=vm.createContext({window,document,location:window.location,URL,URLSearchParams,localStorage:storage,Date,AbortController,fetch,confirm:message=>{dialogs.push(message);return consent;},setInterval:()=>1,clearInterval(){},setTimeout:()=>1,clearTimeout(){},requestAnimationFrame:fn=>fn(),MutationObserver:class{observe(){}},createImageBitmap:()=>deferResize?new Promise(resolve=>{resizeResolve=resolve;}):Promise.resolve(bitmap),console});
  vm.runInContext(studio,context);
+ for(const source of preferenceSources)vm.runInContext(source,context);
  const injection=`\nwindow.__photoTest={renderScanResponse,bbConfirmPhotoMeal,scanPhoto,generate,bbCheckGeneratedMealAccount,bbClearGeneratedMeal,
   choosePhoto(file){photoFile=file;bbPhotoReviewToken=bbPaidToken();scanRevision++;},
   configure(){aiEnabled=true;bbTurnstileRequired=false;inventory={'cupboard|garlic':{name:'Garlic',selected:true}};},
-  state(){return {names:bbPhotoMealNames,reviewToken:bbPhotoReviewToken,generateInFlight,scanInFlight};}
+  state(){return {names:bbPhotoMealNames,reviewToken:bbPhotoReviewToken,generateInFlight,scanInFlight};},
+  setLibrary(catalog){recipes=catalog;catalog.forEach(row=>bbSecureFreeIds.add(row.id));inventory={'cupboard|rice':{name:'Rice',selected:true}};bb5Confirmed=true;renderRecipes();},
+  libraryResults(){return results.map(row=>row.r.id);},
+  chooseLibrary(index){pendingRecipe=index;confirmMeal();}
  };\n`;
  const end=app.lastIndexOf('})();');
  assert(end>0,'the page controller must remain an enclosed module');
@@ -70,6 +76,60 @@ test('confirmed edits and checked photo names are the entire recipe payload and 
  const draft=recipe();h.requests[0].resolve({ok:true,reviewRequired:true,recipe:draft,mealImage:{ticket:'bound-to-reviewed-recipe'}});await tick();
  assert.equal(h.rendered.length,1);assert.equal(h.rendered[0].recipe,draft);assert.equal(h.rendered[0].options.mealImage.ticket,'bound-to-reviewed-recipe');
  assert.equal(h.rendered[0].options.getToken(),'member-A');assert.equal(h.get('#generated').innerHTML,'RECIPE READY');
+});
+
+test('Cook AI captures scoped dietary choices and the actual household serving count',async()=>{
+ const h=harness({diets:['Vegetarian','Dairy-free'],servings:2});h.api.renderScanResponse({items:[{name:'Rice'},{name:'Chickpeas'}]});
+ h.api.bbConfirmPhotoMeal(h.form([{name:'Rice'},{name:'Chickpeas'}]));await tick();
+ assert.equal(h.requests.length,1);assert.equal(h.requests[0].body.servings,2);
+ assert.deepEqual(Array.from(h.requests[0].body.dietaryPreferences),['vegetarian','dairy-free']);
+ assert.match(h.dialogs.at(-1),/serve 2 and follow Vegetarian, Dairy-free/);
+ const draft={...recipe(),servings:2,ingredients:[{name:'Rice',quantity:'100 g',fromHome:true},{name:'Chickpeas',quantity:'100 g',fromHome:true}]};
+ h.requests[0].resolve({ok:true,reviewRequired:true,recipe:draft});await tick();
+ assert.equal(h.rendered.length,1);assert.deepEqual(h.writes,[]);
+});
+
+test('conflicting selected foods and unsupported serving counts stop before a paid AI request',async()=>{
+ const vegetarian=harness({diets:['Vegetarian']});vegetarian.api.renderScanResponse({items:[{name:'Cooked chicken'}]});
+ vegetarian.api.bbConfirmPhotoMeal(vegetarian.form([{name:'Cooked chicken'}]));await tick();
+ assert.equal(vegetarian.requests.length,0);assert.equal(vegetarian.dialogs.length,0);
+ assert.match(vegetarian.get('#generated').innerHTML,/Cooked chicken.*Remove.*Meal preferences/);assert.deepEqual(vegetarian.writes,[]);
+ const large=harness({servings:10});large.api.renderScanResponse({items:[{name:'Rice'}]});large.api.bbConfirmPhotoMeal(large.form([{name:'Rice'}]));await tick();
+ assert.equal(large.requests.length,0);assert.match(large.get('#generated').innerHTML,/up to 8 servings/);
+});
+
+test('a returned meal cannot override the captured dietary or serving choices',async()=>{
+ for(const wrong of ['diet','servings']){
+  const h=harness({diets:['Dairy-free'],servings:2});h.api.renderScanResponse({items:[{name:'Rice'}]});h.api.bbConfirmPhotoMeal(h.form([{name:'Rice'}]));await tick();
+  const draft={...recipe(),servings:wrong==='servings'?4:2,ingredients:[{name:wrong==='diet'?'Cream':'Rice',quantity:'100 g',fromHome:true}]};
+  h.requests[0].resolve({ok:true,reviewRequired:true,recipe:draft,mealImage:{ticket:'must-not-render'}});await tick();
+  assert.equal(h.rendered.length,0);assert.match(h.get('#generated').innerHTML,wrong==='diet'?/dietary preferences/:/household serving count/);assert.deepEqual(h.writes,[]);
+ }
+});
+
+test('changed preferences invalidate an in-flight recipe and image without changing pantry',async()=>{
+ const h=harness({diets:['Vegetarian']});h.api.renderScanResponse({items:[{name:'Rice'}]});h.api.bbConfirmPhotoMeal(h.form([{name:'Rice'}]));await tick();
+ h.values.set('basketboss_321_unified_state_v1',JSON.stringify({version:2,planned:[],servings:4,mealPreferences:{version:1,scope:'actor-A',diets:['Vegan'],goals:[]}}));
+ h.api.bbCheckGeneratedMealAccount();h.requests[0].resolve({ok:true,reviewRequired:true,recipe:recipe(),mealImage:{ticket:'old-preferences'}});await tick();
+ assert.equal(h.rendered.length,0);assert.equal(h.get('#generated').innerHTML,'');assert.equal(h.api.state().generateInFlight,false);assert.deepEqual(h.writes,[]);
+});
+
+test('another account’s dietary profile is not inherited and changes during consent send nothing',async()=>{
+ const h=harness();h.values.set('basketboss_321_unified_state_v1',JSON.stringify({version:2,servings:4,mealPreferences:{version:1,scope:'actor-B',diets:['Vegan'],goals:[]}}));
+ h.api.renderScanResponse({items:[{name:'Cooked chicken'}]});h.api.bbConfirmPhotoMeal(h.form([{name:'Cooked chicken'}]));await tick();
+ assert.equal(h.requests.length,1);assert.equal(h.requests[0].body.dietaryPreferences,undefined);
+ const changed=harness({diets:['Vegetarian']});changed.api.renderScanResponse({items:[{name:'Rice'}]});
+ changed.duringConsent(()=>changed.values.set('basketboss_321_unified_state_v1',JSON.stringify({version:2,servings:2,mealPreferences:{version:1,scope:'actor-A',diets:['Vegan'],goals:[]}})));
+ changed.api.bbConfirmPhotoMeal(changed.form([{name:'Rice'}]));await tick();assert.equal(changed.requests.length,0);assert.match(changed.get('#generated').innerHTML,/meal preferences changed/);
+});
+
+test('Cook library suggestions and a delayed Choose this meal respect the current diet',()=>{
+ const h=harness({diets:['Vegetarian']});
+ const catalog=[{id:'chicken',name:'Chicken rice',category:'Family dinner',servings:4,ingredients:[['Rice','200 g'],['Chicken','200 g']],method:['Cook safely.']},{id:'veggie',name:'Cheesy rice',category:'Family dinner',servings:4,ingredients:[['Rice','200 g'],['Cheddar','100 g']],method:['Cook safely.']}];
+ h.api.setLibrary(catalog);assert.deepEqual(Array.from(h.api.libraryResults()),['veggie']);
+ h.values.set('basketboss_321_unified_state_v1',JSON.stringify({version:2,planned:[],servings:4,mealPreferences:{version:1,scope:'actor-A',diets:['Vegan'],goals:[]}}));
+ h.get('#mealReviewDay').value='Monday';h.api.chooseLibrary(0);
+ assert.match(h.get('#mealReviewError').textContent,/dietary preferences/);assert.deepEqual(h.writes,[]);
 });
 
 test('photo review validates ingredient count and length before making a recipe request',async()=>{

@@ -50,7 +50,7 @@ window.addEventListener('focus',bbSecureCheckAccountChange);
 setInterval(bbSecureCheckAccountChange,2000);
 window.addEventListener('storage',event=>{
   if(event.key==='basketboss_cloud_session_v1')bbSecureCheckAccountChange();
-  if(event.key===null||event.key==='basketboss_321_v7_market')renderRecipes();
+  if(event.key===null||event.key==='basketboss_321_v7_market'||event.key===STATE){bbCheckGeneratedMealAccount();renderRecipes();}
 });
 window.addEventListener('basketboss:market-changed',()=>renderRecipes());
 document.addEventListener('visibilitychange',()=>{
@@ -61,7 +61,7 @@ let area='cupboard',mode='only',recipes=[],inventory={},results=[],suggestionOff
  let bb5Confirmed=false;
 let scanReviewActor=null,pantryScanLocation=null;
 let aiEnabled=false, turnstileToken='',turnstileWidgetId=null,scanRevision=0,scanInFlight=false,generateInFlight=false;
-let generateRevision=0,generateActor=null,generatedView=null;
+let generateRevision=0,generateActor=null,generatePreferenceStamp=null,generatedView=null;
 const bbPhotoMealMode=new URLSearchParams(location.search).get('bbscan')!=='pantry';
 let bbPhotoMealNames=null,bbPhotoReviewToken=null;
 let bbScanRequest=null;
@@ -315,7 +315,7 @@ function renderRecipes(){
  if(!bb5Confirmed){results=[];suggestionOffset=0;dest.innerHTML='<div class="empty">Review your selected foods, then tap <strong>Confirm — Make a Meal</strong> to see suitable recipes.</div>';summary.textContent='Your ingredient selection is a draft until you confirm it.';return}
  if(!have.length){results=[];suggestionOffset=0;dest.innerHTML='<div class="empty">Start by selecting what you have.</div>';summary.textContent='Select a food to browse recipes containing it.';return}
  const matched=[];
- for(const r of recipes){if(!bb176MakeMealAllowed(r))continue;if(!isDinner(r))continue;const item=scoreRecipe(r,have);if(item)matched.push(item)}
+ for(const r of recipes){if(!bb176MakeMealAllowed(r)||!bbMealRecipeAllowed(r))continue;if(!isDinner(r))continue;const item=scoreRecipe(r,have);if(item)matched.push(item)}
  matched.sort((a,b)=>{
   const priority=mode==='only'?{ready:0,near:1,idea:2}:{near:0,ready:1,idea:2};
   return priority[groupRecipe(a)]-priority[groupRecipe(b)]||b.score-a.score||a.missing.length-b.missing.length||a.r.name.localeCompare(b.r.name);
@@ -324,7 +324,7 @@ function renderRecipes(){
  if(suggestionOffset>=results.length)suggestionOffset=0;
  const names=have.length<=3?have.map(x=>x.name).join(', '):have.length+' selected foods';
  summary.textContent=`Showing the 3 closest ideas from ${matched.length} related BasketBoss dinners for ${names}.`;
- if(!matched.length){dest.innerHTML='<div class="empty">No related dinner recipes found yet. Try another ingredient or add your own.</div>';return}
+ if(!matched.length){dest.innerHTML='<div class="empty">No dinners match these ingredients and your dietary preferences yet. Try another ingredient or review Meal preferences in Plan.</div>';return}
  const start=suggestionOffset,shown=matched.slice(start,start+3);
  const end=start+shown.length;
  const cards=shown.map((x,i)=>recipeCard(x,start+i)).join('');
@@ -334,6 +334,7 @@ function message(msg,type='success'){const dest=bbActiveTool==='meal'&&!$('#bbTo
 let pendingRecipe=null;
 function openMealReview(i){
  const x=results[i];if(!x)return;
+ if(!bb176MakeMealAllowed(x.r)||!bbMealRecipeAllowed(x.r)){message('This meal no longer matches your access or dietary preferences. Review the current suggestions.','warning');return;}
  const dialog=$('#mealReview');const title=$('#mealReviewTitle'),body=$('#mealReviewItems'),days=$('#mealReviewDay');
  let data=null;try{data=JSON.parse(localStorage.getItem(STATE)||'null')}catch(e){}
  if(!data||!Array.isArray(data.planned)){
@@ -358,6 +359,7 @@ function confirmMeal(){
  const day=$('#mealReviewDay').value;
  try{
   const saved=JSON.parse(localStorage.getItem(STATE)||'null');if(!saved||!Array.isArray(saved.planned))throw Error('Planner data unavailable');
+  if(!bb176MakeMealAllowed(x.r)||!bbMealRecipeAllowed(x.r))throw Error('This meal no longer matches your access or dietary preferences. Review the current suggestions.');
   if(saved.planned.some(p=>p.day===day)||!['Monday','Tuesday','Wednesday','Thursday','Friday','Saturday','Sunday'].includes(day))throw Error('That day is no longer free; reopen the meal selector.');
   if(saved.planned.some(p=>String(p.recipeId)===String(x.r.id)))throw Error('That recipe is already planned.');
   const next=JSON.parse(JSON.stringify(saved));next.planned.push({recipeId:x.r.id,day});
@@ -530,16 +532,34 @@ async function scanPhoto(){
  finally{if(revision===scanRevision){scanInFlight=false;btn.disabled=false;}}
 }
 function bbClearGeneratedMeal(){
- generateRevision++;generateActor=null;generateInFlight=false;
+ generateRevision++;generateActor=null;generatePreferenceStamp=null;generateInFlight=false;
  generatedView?.cancel?.();generatedView=null;window.BBMealImage?.cancelAll?.();
  const host=$('#generated');
  if(window.BBCookResult?.clear)window.BBCookResult.clear(host);else host?.replaceChildren();
  const button=$('#generate');if(button)button.disabled=false;
  const reviewButton=$('#reviewMealFoods button[type="submit"]');if(reviewButton)reviewButton.disabled=false;
 }
+function bbMealPreferenceSnapshot(){
+ const storage=window.localStorage||(typeof localStorage==='undefined'?null:localStorage);
+ let saved={},session=null;
+ try{saved=JSON.parse(storage?.getItem('basketboss_321_unified_state_v1')||'{}');session=JSON.parse(storage?.getItem('basketboss_cloud_session_v1')||'null');}
+ catch{throw Error('Your meal preferences could not be read. Open Plan to review them before creating a meal.');}
+ const scope=window.BBMealPreferences?.scope?.()||session?.user?.id||'guest';
+ const profile=window.BBMealPreferences?.get?.()||saved?.mealPreferences;
+ const choices=profile?.scope===scope&&Array.isArray(profile.diets)?profile.diets:[];
+ const rules=window.BBDietaryPreferences;
+ if(choices.length&&(!rules?.normalizeDiets||choices.some(choice=>rules.normalizeDiets([choice]).length!==1)))throw Error('Your dietary preferences could not load. Reload BasketBoss or review Meal preferences in Plan.');
+ const dietaryPreferences=choices.length?rules.normalizeDiets(choices):[];
+ const count=Number(saved?.servings),servings=Number.isInteger(count)&&count>=1&&count<=12?count:4;
+ return {scope,dietaryPreferences,servings};
+}
+function bbMealRecipeAllowed(recipe,preferences){
+ try{const current=preferences||bbMealPreferenceSnapshot();return !current.dietaryPreferences.length||window.BBDietaryPreferences?.recipeAllowed(recipe,current.dietaryPreferences)===true;}catch{return false;}
+}
+function bbMealPreferencesCurrent(stamp){try{return JSON.stringify(bbMealPreferenceSnapshot())===stamp;}catch{return false;}}
 function bbCheckGeneratedMealAccount(){
  if(bbPhotoMealMode&&bbPhotoReviewToken&&bbPhotoReviewToken!==bbPaidToken())bbClearPhotoMeal();
- if(generateActor&&(bbPaidToken()!==generateActor||window.BBAccountDeletion?.isDeleting?.()===true))bbClearGeneratedMeal();
+ if(generateActor&&(bbPaidToken()!==generateActor||window.BBAccountDeletion?.isDeleting?.()===true||generatePreferenceStamp&&!bbMealPreferencesCurrent(generatePreferenceStamp)))bbClearGeneratedMeal();
 }
 function bbClearPhotoMeal(){
  scanRevision++;bbPhotoMealNames=null;bbPhotoReviewToken=null;photoFile=null;
@@ -566,7 +586,7 @@ function bbValidGeneratedRecipe(recipe){
  const text=(value,max)=>typeof value==='string'&&value.trim().length>0&&value.length<=max;
  const strings=(value,maxItems,maxLength)=>Array.isArray(value)&&value.length<=maxItems&&value.every(item=>text(item,maxLength));
  return recipe&&typeof recipe==='object'&&!Array.isArray(recipe)&&text(recipe.title,160)&&text(recipe.summary,700)&&
-  recipe.servings===4&&Number.isInteger(recipe.prepMinutes)&&recipe.prepMinutes>=0&&recipe.prepMinutes<=240&&
+  Number.isInteger(recipe.servings)&&recipe.servings>=1&&recipe.servings<=8&&Number.isInteger(recipe.prepMinutes)&&recipe.prepMinutes>=0&&recipe.prepMinutes<=240&&
   Number.isInteger(recipe.cookMinutes)&&recipe.cookMinutes>=1&&recipe.cookMinutes<=360&&
   Array.isArray(recipe.ingredients)&&recipe.ingredients.length>=1&&recipe.ingredients.length<=25&&
   recipe.ingredients.every(item=>item&&text(item.name,120)&&text(item.quantity,120)&&typeof item.fromHome==='boolean')&&
@@ -582,22 +602,30 @@ function generate(){
  const ingredients=bbPhotoMealMode?[...confirmedNames]:[...new Set(list().map(x=>String(x.name||'').trim()).filter(Boolean))];
  if(!ingredients.length){message('Select some ingredients first.','warning');return}
  if(ingredients.length>12){message('Choose up to 12 ingredients for a single AI recipe. Your saved inventory is unchanged.','warning');return}
+ let preferences;try{preferences=bbMealPreferenceSnapshot();}catch(error){message(error.message,'warning');return;}
+ if(preferences.servings>8){message('AI meal drafts support up to 8 servings. Review your household size in Plan before creating this draft.','warning');return;}
+ const incompatible=ingredients.filter(name=>!bbMealRecipeAllowed({ingredients:[name]},preferences));
+ if(incompatible.length){message('These foods do not fit your dietary preferences: '+incompatible.join(', ')+'. Remove them from this meal or update Meal preferences in Plan.','warning');return;}
+ const preferenceStamp=JSON.stringify(preferences);
  const token=bbPaidToken();if(!token){message('Sign in to a verified Premium account first.','warning');return;}
- if(!confirm('Send these '+ingredients.length+' ingredient names (not stock quantities) to Cloudflare and Google Gemini for a recipe draft and an illustrative picture of the resulting meal? The picture uses the generated recipe, not your email or a personal photo. Cancel keeps everything local.'))return;
+ if(!confirm('Send these '+ingredients.length+' ingredient names (not stock quantities) to Cloudflare and Google Gemini for a recipe draft and an illustrative picture of the resulting meal? The draft will serve '+preferences.servings+(preferences.dietaryPreferences.length?' and follow '+preferences.dietaryPreferences.map(choice=>window.BBDietaryPreferences.LABELS[choice]).join(', '):'')+'. The picture uses the generated recipe, not your email or a personal photo. Cancel keeps everything local.'))return;
  if(bbPaidToken()!==token||window.BBAccountDeletion?.isDeleting?.()===true||(bbPhotoMealMode&&bbPhotoReviewToken!==token)){
   if(bbPhotoMealMode){bbClearPhotoMeal();$('#scanResults').textContent='Your account changed. Choose the photo again before creating a meal.';}
   else message('Your account changed. Review your ingredients again before creating a meal.','warning');
   return;
  }
+ if(!bbMealPreferencesCurrent(preferenceStamp)){message('Your meal preferences changed. Review your selected foods before creating a meal.','warning');return;}
  const requestMode=bbPhotoMealMode?'only':mode,revision=++generateRevision;
  generatedView?.cancel?.();generatedView=null;window.BBMealImage?.cancelAll?.();
- generateActor=token;
- const isCurrent=()=>revision===generateRevision&&generateActor===token&&bbPaidToken()===token&&(!bbPhotoMealMode||bbPhotoMealNames===confirmedNames)&&window.BBAccountDeletion?.isDeleting?.()!==true;
+ generateActor=token;generatePreferenceStamp=preferenceStamp;
+ const isCurrent=()=>revision===generateRevision&&generateActor===token&&bbPaidToken()===token&&(!bbPhotoMealMode||bbPhotoMealNames===confirmedNames)&&window.BBAccountDeletion?.isDeleting?.()!==true&&bbMealPreferencesCurrent(preferenceStamp);
  const btn=$('#generate');generateInFlight=true;btn.disabled=true;$('#generated').innerHTML='<p class="notice" role="status">Creating your recipe draft… Your ingredients stay as they are.</p>';
  const reviewButton=$('#reviewMealFoods button[type="submit"]');if(reviewButton)reviewButton.disabled=true;
- requestBody('generate',{ingredients,mode:requestMode==='only'?'only_have':'up_to_two',servings:4}).then(j=>{
-  if(!isCurrent())return;
+ requestBody('generate',{ingredients,mode:requestMode==='only'?'only_have':'up_to_two',servings:preferences.servings,...(preferences.dietaryPreferences.length?{dietaryPreferences:preferences.dietaryPreferences}:{})}).then(j=>{
+  if(!isCurrent()){if(revision===generateRevision&&generateActor===token)bbClearGeneratedMeal();return;}
   const r=j.recipe;if(!j.ok||!j.reviewRequired||!bbValidGeneratedRecipe(r))throw Error('Incomplete recipe response');
+  if(r.servings!==preferences.servings)throw Error('AI did not use your household serving count');
+  if(!bbMealRecipeAllowed(r,preferences))throw Error('AI returned a meal that does not match your dietary preferences');
   const extras=r.ingredients.filter(a=>a.fromHome===false);if(requestMode==='only'&&(extras.length||r.extraIngredients.length))throw Error('AI suggested ingredients you do not have');
   if(requestMode==='extras'&&(extras.length>2||r.extraIngredients.length>2))throw Error('AI exceeded the two-extra-ingredient rule');
   if(window.BBCookResult?.render){
@@ -612,6 +640,7 @@ window.addEventListener('basketboss:account-deletion-started',bbClearGeneratedMe
 window.addEventListener('basketboss:account-deletion-deleted',bbClearGeneratedMeal);
 window.addEventListener('pagehide',bbClearGeneratedMeal);
 window.addEventListener('basketboss:session-changed',bbCheckGeneratedMealAccount);
+window.BBMealPreferences?.subscribe?.(()=>{bbCheckGeneratedMealAccount();renderRecipes();});
 window.addEventListener('basketboss:account-deletion-started',()=>{if(bbPhotoMealMode)bbClearPhotoMeal();});
 // One streamlined Make a Meal workspace. Keep the original controls and event hooks.
 let bbActiveTool=null,bbSiteKey=null,bbTurnstileLoading=false,bbTurnstileRequired=true;

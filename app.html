@@ -3804,6 +3804,9 @@ body[data-bbnext-view="discover"] #app .bb-featured-card #bbFeaturedBatch {
 <script src="bb-plan-move.js?v=20261102-drag1"></script>
 <script src="bb-saved-weeks.js?v=20261104-compact-plan1"></script>
 <link rel="stylesheet" href="bb-saved-weeks.css?v=20261104-compact1">
+<script src="bb-dietary-preferences.js?v=20261104-diets1"></script>
+<script src="bb-meal-preferences.js?v=20261104-diets1"></script>
+<link rel="stylesheet" href="bb-meal-preferences.css?v=20261104-diets1">
 <script src="bb-ingredient-preferences.js?v=20261101-avoid1"></script>
 <script src="bb-evening-pivot.js?v=20261101-pivot1"></script>
 <script src="bb-evening-pivot-app.js?v=20261103-feedback1"></script>
@@ -4360,6 +4363,12 @@ window.BasketBossSetOnboardingServings=function(size){
  if(!persist()){state.servings=previous;return false;}
  render();
  return true;
+};
+window.BasketBossMealPreferenceFeedback=function(error){if(error)notify(error);else{render();notify('Meal preferences saved.');}};
+window.BasketBossSetOnboardingMealPreferences=function(patch){
+ if(typeof BBMealPreferences==='undefined')return false;
+ const next={...patch};if(Array.isArray(next.diets))next.diets=next.diets.filter(value=>value!=='No specific preference');
+ const result=BBMealPreferences.set(next);if(result.ok)render();return result.ok;
 };
 window.bb307SwitchIsland=bb307SwitchIsland;
 window.bb307ActiveMarket=()=>bb307Market;
@@ -5375,7 +5384,7 @@ function loadState(){
  let pantry={};try{const old=JSON.parse(localStorage.getItem(OLD_PANTRY)||'{}');for(const r of RECIPES)for(const ing of r.ingredients){if(old[ing[0]]||old[ing[0].toLowerCase()])pantry[norm(ing[0])]=true}}catch(e){}
  return normalize({version:2,planned,pantry,customPantry:[],dismissed:[],scanEndpoint:'',servings:4});
 }
-function normalize(s){return {version:2,pantryPlanGeneration:typeof s.pantryPlanGeneration==='string'&&/^[a-zA-Z0-9_-]{1,80}$/.test(s.pantryPlanGeneration)?s.pantryPlanGeneration:null,ingredientAvoidance:typeof BBIngredientPreferences==='undefined'?(s.ingredientAvoidance?.version===1&&typeof s.ingredientAvoidance.scope==='string'&&Array.isArray(s.ingredientAvoidance.excluded)?{version:1,scope:s.ingredientAvoidance.scope,excluded:s.ingredientAvoidance.excluded.filter(x=>typeof x==='string').slice(0,100)}:null):BBIngredientPreferences.normalize(s.ingredientAvoidance),planned:Array.isArray(s.planned)?s.planned.filter(p=>p&&typeof p.recipeId==='string'&&p.recipeId.length>0&&p.recipeId.length<=256&&DAYS.includes(p.day)).map(p=>({recipeId:p.recipeId,day:p.day})):[],pantry:s.pantry&&typeof s.pantry==='object'?s.pantry:{},customPantry:Array.isArray(s.customPantry)?s.customPantry:[],dismissed:Array.isArray(s.dismissed)?s.dismissed:[],scanEndpoint:'',servings:Number(s.servings)||4,feedingSet:s.feedingSet===true,mealServings:BBServing.validOverrides(s.mealServings),dayServings:BBServing.validDayOverrides(s.dayServings),recipePhotos:s.recipePhotos&&typeof s.recipePhotos==='object'?s.recipePhotos:{},recipeCollections:s.recipeCollections&&typeof s.recipeCollections==='object'?s.recipeCollections:{},leftoverSources:s.leftoverSources&&typeof s.leftoverSources==='object'?s.leftoverSources:{},leftoverConfirmed:s.leftoverConfirmed&&typeof s.leftoverConfirmed==='object'?s.leftoverConfirmed:{},plannedDesserts:Array.isArray(s.plannedDesserts)?s.plannedDesserts.filter(p=>p&&typeof p.recipeId==='string'&&p.recipeId.length>0&&p.recipeId.length<=256&&DAYS.includes(p.day)).map(p=>({recipeId:p.recipeId,day:p.day})):[],bbManualBatch:s.bbManualBatch?.version===1&&Array.isArray(s.bbManualBatch.pairs)?{version:1,pairs:s.bbManualBatch.pairs.slice(0,3).filter(x=>x&&typeof x.sourceDay==='string'&&typeof x.leftoverDay==='string'&&typeof x.recipeId==='string').map(x=>({sourceDay:x.sourceDay,leftoverDay:x.leftoverDay,recipeId:x.recipeId}))}:null,bb81Batch:s.bb81Batch?.version===1 && typeof s.bb81Batch.monday==='string' && typeof s.bb81Batch.wednesday==='string' ? {version:1,monday:s.bb81Batch.monday,wednesday:s.bb81Batch.wednesday}:null}}
+function normalize(s){return {version:2,mealPreferences:typeof BBMealPreferences==='undefined'?(s.mealPreferences||null):BBMealPreferences.normalize(s.mealPreferences),pantryPlanGeneration:typeof s.pantryPlanGeneration==='string'&&/^[a-zA-Z0-9_-]{1,80}$/.test(s.pantryPlanGeneration)?s.pantryPlanGeneration:null,ingredientAvoidance:typeof BBIngredientPreferences==='undefined'?(s.ingredientAvoidance?.version===1&&typeof s.ingredientAvoidance.scope==='string'&&Array.isArray(s.ingredientAvoidance.excluded)?{version:1,scope:s.ingredientAvoidance.scope,excluded:s.ingredientAvoidance.excluded.filter(x=>typeof x==='string').slice(0,100)}:null):BBIngredientPreferences.normalize(s.ingredientAvoidance),planned:Array.isArray(s.planned)?s.planned.filter(p=>p&&typeof p.recipeId==='string'&&p.recipeId.length>0&&p.recipeId.length<=256&&DAYS.includes(p.day)).map(p=>({recipeId:p.recipeId,day:p.day})):[],pantry:s.pantry&&typeof s.pantry==='object'?s.pantry:{},customPantry:Array.isArray(s.customPantry)?s.customPantry:[],dismissed:Array.isArray(s.dismissed)?s.dismissed:[],scanEndpoint:'',servings:Number(s.servings)||4,feedingSet:s.feedingSet===true,mealServings:BBServing.validOverrides(s.mealServings),dayServings:BBServing.validDayOverrides(s.dayServings),recipePhotos:s.recipePhotos&&typeof s.recipePhotos==='object'?s.recipePhotos:{},recipeCollections:s.recipeCollections&&typeof s.recipeCollections==='object'?s.recipeCollections:{},leftoverSources:s.leftoverSources&&typeof s.leftoverSources==='object'?s.leftoverSources:{},leftoverConfirmed:s.leftoverConfirmed&&typeof s.leftoverConfirmed==='object'?s.leftoverConfirmed:{},plannedDesserts:Array.isArray(s.plannedDesserts)?s.plannedDesserts.filter(p=>p&&typeof p.recipeId==='string'&&p.recipeId.length>0&&p.recipeId.length<=256&&DAYS.includes(p.day)).map(p=>({recipeId:p.recipeId,day:p.day})):[],bbManualBatch:s.bbManualBatch?.version===1&&Array.isArray(s.bbManualBatch.pairs)?{version:1,pairs:s.bbManualBatch.pairs.slice(0,3).filter(x=>x&&typeof x.sourceDay==='string'&&typeof x.leftoverDay==='string'&&typeof x.recipeId==='string').map(x=>({sourceDay:x.sourceDay,leftoverDay:x.leftoverDay,recipeId:x.recipeId}))}:null,bb81Batch:s.bb81Batch?.version===1 && typeof s.bb81Batch.monday==='string' && typeof s.bb81Batch.wednesday==='string' ? {version:1,monday:s.bb81Batch.monday,wednesday:s.bb81Batch.wednesday}:null}}
 function norm(s){return String(s||'').toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g,'').replace(/\b(pack|packs|fresh|large|small|medium|block|tub|bag|box|fillets|fillet)\b/g,'').replace(/[^a-z0-9]+/g,' ').trim()}
 let state=loadState();
 // Unified planner backups carry these personal choices between PWA and iOS.
@@ -5385,6 +5394,11 @@ if(typeof BBIngredientPreferences!=='undefined')BBIngredientPreferences.configur
  write:next=>{const previous=state.ingredientAvoidance;state.ingredientAvoidance=next;
   if(persist()===true)return true;state.ingredientAvoidance=previous;return false;}
 });
+if(typeof BBMealPreferences!=='undefined'){
+ BBMealPreferences.configure({read:()=>state.mealPreferences,write:next=>{const previous=state.mealPreferences;state.mealPreferences=next;if(persist()===true)return true;state.mealPreferences=previous;return false;}});
+ const applyLegacyMealPreferences=()=>{if(BBMealPreferences.migrateOnboarding())render();};
+ if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',applyLegacyMealPreferences,{once:true});else queueMicrotask(applyLegacyMealPreferences);
+}
 /* Onboarding is read-only here; no saved week or pantry writes on startup. */
 function bbFeedingOnboard(){try{return BBServing.onboardingHousehold(localStorage.getItem('bb_onboarding_fresh_once_20261028_v1'))}catch(_){return null}}
 function bbFeedingApplyDefault(){if(!state.feedingSet&&Number(state.servings)===4){const n=bbFeedingOnboard();if(n)state.servings=n}}
@@ -5484,7 +5498,7 @@ function bbEveningContext(){
   reviewRequired:bbReceiptPantryReviewRequired()||window.BBReceiptHost?.hasPendingConfirmation?.()===true,
   isLinked:bbEveningLinked,allowed:recipe=>bb176AllowedRecipe(recipe.id),recipeAllowed:recipe=>bbAfIngredientAllowed(recipe),
   servingsForDay:(day,recipe)=>bbFeedingForRecipe(recipe,day),reconcileStock:BB307Pantry.reconcileStock,pantryId:BB307Pantry.pantryId,recipeIngredientUnit:BBPriceV19.recipeIngredientUnit,
-  fingerprint:{servings:state.servings,mealServings:state.mealServings,choices:state.ingredientAvoidance,
+  fingerprint:{servings:state.servings,mealServings:state.mealServings,choices:state.ingredientAvoidance,mealPreferences:state.mealPreferences,
    manualBatch:state.bbManualBatch,batch:state.bb81Batch,notes:bb172QuickDinners(),
    confirmed:localStorage.getItem('basketboss_ui_next_confirmed_pantry_v1')}};
 }
@@ -5659,7 +5673,7 @@ function bb172OpenReplacePicker(currentId) {
   const currentRecipe = getRecipe(currentId);
   const isDate = r => /\bdate\s*night/i.test(String(r?.category || ''));
   const isFamily = r => /family|school.night|budget|under 30|one.pan|fakeaway/i.test(String(r?.category || ''));
-  const dinners = RECIPES.filter(r => r && r.id && !bbIsDessert(r));
+  const dinners = RECIPES.filter(r => r && r.id && !bbIsDessert(r) && bbAfIngredientAllowed(r));
   const originalFocus = document.activeElement;
   const previousOverflow = document.body.style.overflow;
   const veil = document.createElement('div');
@@ -5701,6 +5715,7 @@ function bb172OpenReplacePicker(currentId) {
     if (state.planned.some(p => p.recipeId === newId)) { notify('That recipe is already planned this week.'); return; }
     const candidate = getRecipe(newId);
     if (!candidate || bbIsDessert(candidate)) { notify('Choose a dinner recipe.'); return; }
+    if (!bbAfIngredientAllowed(candidate)) { notify('That meal does not match your current meal preferences.'); return; }
     const prior = state.planned.map(p => ({...p}));
     state.planned[idx] = {...state.planned[idx], recipeId:newId};
     if (!persist()) { state.planned = prior; notify('Could not save. Your original dinner was restored.'); return; }
@@ -6602,12 +6617,12 @@ async function bb81AutoFillPro(){
  let selection;
  try{selection=bbAfDraw(days,previous,bb81ProFilters,batch);}
  catch(_){notify('Unable to read rotation history. Nothing changed.');return false;}
- if(!selection){notify('No unused dinners match your ingredient choices, Premium filters and variety rules. Try fewer filters or another empty day. Nothing changed.');return false;}
+ if(!selection){notify('No unused dinners match your dietary preferences, ingredients to avoid, Premium filters and variety rules. Your preferences were kept. Add a suitable meal manually.');return false;}
  const confirmText=batch?
   'Add four different cooked dinners and two linked leftover nights? Monday and Wednesday are double batches; Sunday remains free.':
   'Add '+selection.additions.length+' different dinners to free days, keeping existing meals and notes?';
  const planSnapshot=JSON.stringify(previous),notesSnapshot=JSON.stringify(notes);
- if(!await bbQaConfirm(confirmText,'Auto-Fill My Week','Add dinners'))return false;
+ if(!await bbQaConfirm(confirmText+bbAfDietNotice(selection.additions.length,days.length),'Auto-Fill My Week','Add dinners'))return false;
  const mon=selection.additions.find(x=>x.day==='Monday')?.recipeId;
  const wed=selection.additions.find(x=>x.day==='Wednesday')?.recipeId;
  const batchData=batch?{version:1,monday:mon,wednesday:wed}:null;
@@ -7231,7 +7246,7 @@ function bbDiscoverRevealRecipe(recipeId){
  }));
 }
 function renderDiscover(app){
-const bb18MatchesSearch=r=>(collectionFilter==='All'||collectionsFor(r).includes(collectionFilter))&&(r.name+' '+r.category+' '+r.tag+' '+r.ingredients.map(i=>i[0]).join(' ')).toLowerCase().includes(query.toLowerCase());
+const bb18MatchesSearch=r=>(typeof BBMealPreferences!=='undefined'?BBMealPreferences.recipeAllowed(r):!state.mealPreferences?.diets?.length)&&(collectionFilter==='All'||collectionsFor(r).includes(collectionFilter))&&(r.name+' '+r.category+' '+r.tag+' '+r.ingredients.map(i=>i[0]).join(' ')).toLowerCase().includes(query.toLowerCase());
 const filtered=RECIPES.filter(r=>bb176AllowedRecipe(r.id)&&bb18MatchesSearch(r));
 const galleryFiltered=RECIPES.filter(bb18MatchesSearch);
 
@@ -9160,7 +9175,11 @@ function bbAfRead(key){
  if(!Array.isArray(ids)||ids.some(x=>typeof x!=='string'))throw Error('Invalid Auto-fill history');
  return [...new Set(ids)];
 }
-function bbAfIngredientAllowed(r){return typeof BBIngredientPreferences!=='undefined'&&BBIngredientPreferences.recipeAllowed(r);}
+function bbAfIngredientAllowed(r){return typeof BBIngredientPreferences!=='undefined'&&BBIngredientPreferences.recipeAllowed(r)&&(typeof BBMealPreferences!=='undefined'?BBMealPreferences.recipeAllowed(r):!state.mealPreferences?.diets?.length);}
+function bbAfDietNotice(added,requested){
+ const diets=typeof BBMealPreferences==='undefined'?[]:BBMealPreferences.get().diets;
+ return diets.length?' Keeping '+diets.join(' + ')+'.'+(added<requested?' '+(requested-added)+' days stay open because fewer dinners match your preferences and variety rules.':''):'';
+}
 function bbAfDinner(r){return BBRecipePlanning.isDinner(r);}
 function bbAfWorldMeal(r){return typeof BBRecipeEditorial!=='undefined'&&BBRecipeEditorial.isWorldMeal(r);}
 function bbAfWorldCount(plans){return plans.filter(p=>bbAfWorldMeal(getRecipe(p.recipeId)||{id:p.recipeId})).length;}
@@ -9247,6 +9266,13 @@ function bbAfDraw(days,previous,filters={},batch=false){
  const weighted=typeof BBPantryAutofill!=='undefined';
  let stock={};if(weighted&&window.BBHome?.blocked?.()!==true)try{stock=bbHomePhysicalStock();}catch{}
  const history=weighted?bbPlannedRecipeHistory():{};
+ const goalPreferences=typeof BBMealPreferences==='undefined'?null:BBMealPreferences.get(),goalCosts=new Map();
+ const goalScore=(recipe,preference)=>{
+  if(!goalPreferences)return 0;
+  if(!goalCosts.has(recipe.id)){let amount=null;try{amount=bbRecipeMealEstimate(recipe).amount;}catch{}goalCosts.set(recipe.id,amount);}
+  return BBMealPreferences.goalScore({goals:goalPreferences.goals,amount:goalCosts.get(recipe.id),servings:state.servings,pantryBonus:preference?.pantryBonus||0,previouslyPlanned:Object.hasOwn(history,recipe.id)});
+ };
+
  const ingredientRows=(recipe,day)=>bbHomeRecipeIngredients(recipe.id,BBServing.ratio(BBServing.forMeal(state,{recipeId:recipe.id,day},recipe),recipe)*(batch&&['Monday','Wednesday'].includes(day)?2:1));
  const scored=(r,week)=>{
   const d=details(r.id),used=new Set();
@@ -9273,7 +9299,7 @@ function bbAfDraw(days,previous,filters={},batch=false){
    if(!weighted&&lessRecent.length)options=lessRecent;
    if(!options.length)break;
    const previousProtein=weighted?bbAfPreviousProtein(week,day,batch):'';
-   const candidates=options.map(r=>{const preference=pantry?.assess(ingredientRows(r,day),{recipeId:r.id,protein:bbAfExactProtein(r),previousProtein,sourceIngredients:r.ingredients});return {r,score:scored(r,week)+(preference?.score||0)+(preference?.pantryCoverage||0)*0.01};});
+   const candidates=options.map(r=>{const preference=pantry?.assess(ingredientRows(r,day),{recipeId:r.id,protein:bbAfExactProtein(r),previousProtein,sourceIngredients:r.ingredients});return {r,score:scored(r,week)+(preference?.score||0)+(preference?.pantryCoverage||0)*0.01+goalScore(r,preference)};});
    const pick=bbAfWeightedPick(candidates);
    if(!rotation.take(pick,{day,planned:week}))break;
    if(pantry)pantry.reserve(ingredientRows(pick,day),{sourceIngredients:pick.ingredients});
@@ -9418,9 +9444,9 @@ async function bb172AutoFillSixDinners(){
  let selection;
  try{selection=bbAfDraw(days,previous);}
  catch(_){notify('Unable to read rotation history. Nothing changed.');return false;}
- if(!selection){notify('No unused dinners match your ingredient choices and variety rules. Try fewer ingredients to avoid or another empty day. Nothing changed.');return false;}
+ if(!selection){notify('No unused dinners match your dietary preferences, ingredients to avoid and variety rules. Your preferences were kept. Add a suitable meal manually.');return false;}
  const planSnapshot=JSON.stringify(previous),notesSnapshot=JSON.stringify(notes);
- if(!await bbQaConfirm('Add '+selection.additions.length+' varied family dinners? Existing meals and notes stay. Previously suggested recipes will be avoided until the eligible rotation resets.','Auto-Fill My Week','Add dinners'))return false;
+ if(!await bbQaConfirm('Add '+selection.additions.length+' varied family dinners? Existing meals and notes stay. Previously suggested recipes will be avoided until the eligible rotation resets.'+bbAfDietNotice(selection.additions.length,days.length),'Auto-Fill My Week','Add dinners'))return false;
  if(!bbAfCommit(previous,planSnapshot,notesSnapshot,null,selection))return false;
  notify(selection.additions.length+' varied dinners added.'+(selection.reset?' A new recipe rotation began.':''));
  return true;
@@ -11609,7 +11635,7 @@ if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',
   <button type="button" class="bbtrial-free" data-bbtrial-free>Continue with BasketBoss Free →</button>
   <p class="bbtrial-foot">100 starter recipes, manual ingredients and basic planning remain available without subscribing.</p>
  </div>
-</dialog><script src="bb-intro-trial.js?v=bb-account-first-20261027-v1"></script><link rel="stylesheet" href="bb-how-it-works.css?v=20261104-kitchen1"><script defer src="bb-how-it-works.js?v=20261104-regions2"></script><script defer src="bb-onboarding-v2.js?v=20261104-kitchen1"></script><script defer src="bb-cold-preview.js?v=20261028-conversion-1"></script><script defer src="bb-funnel.js?v=20261028-v1"></script><script defer src="bb-ux-cleanup.js?v=20261028-ux1"></script><script src="bb-us-market.js?v=20261102-loop2"></script><script defer src="bb-install.js?v=173install1"></script><script defer src="bb-welcome-splash.js?v=20261101-signin2"></script><script defer src="bb-premium-features.js?v=20261101-weeklyshop1"></script>
+</dialog><script src="bb-intro-trial.js?v=bb-account-first-20261027-v1"></script><link rel="stylesheet" href="bb-how-it-works.css?v=20261104-kitchen1"><script defer src="bb-how-it-works.js?v=20261104-regions2"></script><script defer src="bb-onboarding-v2.js?v=20261104-diets1"></script><script defer src="bb-cold-preview.js?v=20261028-conversion-1"></script><script defer src="bb-funnel.js?v=20261028-v1"></script><script defer src="bb-ux-cleanup.js?v=20261028-ux1"></script><script src="bb-us-market.js?v=20261102-loop2"></script><script defer src="bb-install.js?v=173install1"></script><script defer src="bb-welcome-splash.js?v=20261101-signin2"></script><script defer src="bb-premium-features.js?v=20261101-weeklyshop1"></script>
 <style id="bb175-ux-fix">
 /* BasketBoss v17.4.2 premium-preview usability improvements */
 #app .swipe-action.yes{color:#c91e43!important;background:#fff2f4!important;border:3px solid #d92c50!important;box-shadow:0 5px 18px rgba(192,22,60,.22)!important;font-size:37px!important;font-weight:900!important}
@@ -12447,13 +12473,13 @@ body[data-bbnext-view="discover"] #app .bb175-discover-heading{padding-top:calc(
 <script defer src="bb-household-amount.js?v=20261104-groups1"></script>
 <script defer src="bb-kitchen-essentials.js?v=20261104-home-ui1"></script>
 <link rel="stylesheet" href="bb-pantry-inline.css?v=20261104-home-ui1">
-<script defer src="bb-pantry-inline.js?v=20261104-home-ui1"></script>
+<script defer src="bb-pantry-inline.js?v=20261104-kitchen-review1"></script>
 <link rel="stylesheet" href="bb-keyboard-layout.css?v=20261101-keyboard1">
 <script defer src="bb-keyboard-layout.js?v=20261101-keyboard1"></script>
 <link rel="stylesheet" href="bb-simple-layout.css?v=20261104-plan-budget1">
-<script defer src="bb-simple-layout.js?v=20261104-plan-budget1"></script>
+<script defer src="bb-simple-layout.js?v=20261104-diets1"></script>
 <script defer src="bb-pantry-deduction.js?v=20261104-regions2"></script>
-<script defer src="bb-home.js?v=20261104-essentials1"></script><link rel="stylesheet" href="bb-day-done.css?v=20261104-cycle1"><script defer src="bb-day-done.js?v=20261104-regions2"></script><link rel="stylesheet" href="bb-shop-add.css?v=20261104-cycle1"><script defer src="bb-shop-add.js?v=20261104-cycle1"></script><script defer src="bb-cupboard-staples.js?v=20261104-cupboard2"></script><script src="bb-pantry-autofill.js?v=20261104-cycle1"></script>
+<script defer src="bb-home.js?v=20261104-kitchen-review1"></script><link rel="stylesheet" href="bb-day-done.css?v=20261104-cycle1"><script defer src="bb-day-done.js?v=20261104-regions2"></script><link rel="stylesheet" href="bb-shop-add.css?v=20261104-cycle1"><script defer src="bb-shop-add.js?v=20261104-cycle1"></script><script defer src="bb-cupboard-staples.js?v=20261104-cupboard2"></script><script src="bb-pantry-autofill.js?v=20261104-cycle1"></script>
 <link rel="stylesheet" href="bb-shared-shopping.css?v=20261102-loop2">
 <script defer src="bb-shared-shopping.js?v=20261102-loop2"></script>
 <link rel="stylesheet" href="bb-plan-drag.css?v=20261103-drag2">
@@ -12467,7 +12493,9 @@ body[data-bbnext-view="discover"] #app .bb175-discover-heading{padding-top:calc(
 
 <link rel="stylesheet" href="bb-auth-flow.css?v=20261104-auth1">
 <script defer src="bb-auth-sdk.js?v=20261104-auth1"></script>
-<script defer src="bb-auth-flow.js?v=20261104-auth1"></script>
+<script defer src="bb-auth-flow.js?v=20261104-auth2"></script>
 
 <script defer src="bb-tab-swipe.js?v=20261104-swipe1"></script>
+<link rel="stylesheet" href="bb-kitchen-review.css?v=20261104-kitchen-review1">
+<script defer src="bb-kitchen-review.js?v=20261104-kitchen-review1"></script>
 </body></html>

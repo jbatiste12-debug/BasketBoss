@@ -35,7 +35,13 @@
   if(filters&&pills){
    let details=filters.querySelector('#bbSimpleMealPreferences');
    if(!details){details=disclosure('bbSimpleMealPreferences','Meal preferences','meal-preferences');filters.append(details);details.append(pills);}
-   const count=pills.querySelectorAll('[aria-pressed="true"]').length;
+   let mealBody=details.querySelector(':scope > .bb-meal-preference-body');
+   if(!mealBody){mealBody=doc.createElement('div');mealBody.className='bb-meal-preference-body';mealBody.append(pills);details.append(mealBody);}
+   if(window.BBMealPreferences&&!details.querySelector('.bb-meal-preferences')){
+    const controls=window.BBMealPreferences.controls({onSave:()=>window.BasketBossMealPreferenceFeedback?.(),onError:message=>window.BasketBossMealPreferenceFeedback?.(message)});
+    if(controls)mealBody.insertBefore(controls,pills);
+   }
+   const count=pills.querySelectorAll('[aria-pressed="true"]').length+(window.BBMealPreferences?.get?.().diets.length||0);
    setText(details.firstElementChild,count?'Meal preferences · '+count+' active':'Meal preferences');
   }
   const settings=app.querySelector('#bbSimpleBudget'),status=settings?.querySelector('.bb77-budget-status');

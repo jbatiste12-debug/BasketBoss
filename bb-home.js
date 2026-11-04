@@ -71,6 +71,25 @@
    atomic(store,{[KEY]:all,[feature.key]:feature.value,...shopping?.updates},{[KEY]:expected,[feature.key]:feature.expected,...shopping?.expected,basketboss_cloud_session_v1:pin.session});
    host().reload();host().refresh();return {ok:true,message:'Amount saved in '+patch.unit+'. Matching purchases will add to this balance.'};
   }
+  // A weekly stock check replaces the owned balance, never its usual target,
+  // container contents or purchase ledger. Existing receipt settlement applies.
+  function setHouseholdBalance(id,ownedQty,pin){
+   checkDraftActor();
+   if(householdDraft.size)throw Error('Finish your other household quantity edits first.');
+   if(blocked())throw Error('Finish the pending account or receipt review before updating stock.');
+   if(!pin||pin.actor!==actor()||pin.session!==store.getItem('basketboss_cloud_session_v1'))throw Error('Your account changed. Reopen the weekly kitchen check.');
+   if(!valid(ownedQty))throw Error('Enter a valid non-negative amount up to 1,000,000.');
+   let features;try{features=JSON.parse(pin.features);}catch{throw Error('Review the saved household list before changing it.');}
+   if(!features||!Array.isArray(features.essentials)||!features.essentials.some(row=>row.id===id))throw Error('This household item changed. Reopen the weekly kitchen check.');
+   host().reload();
+   const {all,data,who}=own(),expected=store.getItem(KEY),feature=host().prepareHousehold([[id,{ownedQty}]]);
+   if(feature.expected!==pin.features)throw Error('Your household stock changed. Refresh the weekly kitchen check.');
+   const shopping=settle(data,['ess:'+id]);
+   if(actor()!==who||blocked())throw Error('Your account or pantry changed. Reopen the weekly kitchen check.');
+   atomic(store,{[KEY]:all,[feature.key]:feature.value,...shopping?.updates},{[KEY]:expected,[feature.key]:feature.expected,...shopping?.expected,basketboss_cloud_session_v1:pin.session});
+   host().reload();try{host().refresh();}catch{}
+   return {ok:true,message:'Remaining amount updated. Shopping uses the new balance.'};
+  }
   function requirement(name,unit){try{const base=unit==='kg'?'g':unit==='l'?'ml':unit;return (host()?.requirements()?.find(row=>host().id(row.key,row.unit)===host().id(name,base))?.required||0)/(unit==='kg'||unit==='l'?1000:1);}catch{return 0;}}
   function total(name,unit){const base=unit==='kg'?'g':unit==='l'?'ml':unit,row=targets()[host().id(name,base)];return Math.max(requirement(name,unit),row?.pending?row.targetQty/(unit==='kg'||unit==='l'?1000:1):0);}
   function prepare(chosen){
@@ -327,7 +346,7 @@
   }
   function reminders(){const list=win.document.getElementById('bb321Printable');if(!list)return;list.querySelector('.bb-home-covered')?.remove();const data=Object.values(targets()).filter(row=>row.pending&&row.targetQty>0);const needed=host().requirements();const covered=data.filter(row=>{const item=needed.find(x=>host().id(x.key,x.unit)===host().id(row.name,row.unit));const current=host().stock()[host().id(row.name,row.unit)]||0;return Math.max(row.targetQty,item?.required||0)<=current;});const households=host().household().filter(row=>Object.hasOwn(row,'targetQty')&&row.manualPending!==false&&row.targetQty>0&&row.ownedQty>=row.targetQty).map(row=>({...row,homeId:'ess:'+row.id}));if(!covered.length&&!households.length)return;const box=win.document.createElement('div');box.className='bb-home-covered';for(const row of [...covered,...households]){const label=win.document.createElement('label'),tick=win.document.createElement('input');tick.type='checkbox';tick.addEventListener('change',()=>{if(tick.checked){complete(row.homeId||host().id(row.name,row.unit));host().refresh();}});label.append(tick,win.document.createTextNode(row.name+' · covered at home'));box.append(label);}list.append(box);}
   function openRequested(){const id=new URLSearchParams(win.location.search).get('bbcook');if(id)host()?.openCook?.(id);}
-  const api={prepareSharedPurchase,needsLegacyReview,receiptGeneration,supersedesReceipt,addHousehold,setHouseholdAmount,openRequested,reminders,decorate,hasHouseholdDraft:()=>{checkDraftActor();return householdDraft.size>0;},committed:()=>{householdDraft.clear();host()?.reload();},difference,augment,targets,requirement,total,prepare,completionChanges,complete,isCooked,previewCook,cooked,previewDay,finishDay,shoppingBuys,addShoppingBuy,manualBuyItems,manualBuyEssentials,applyManualPurchases,actor,blocked,atomic};
+  const api={prepareSharedPurchase,needsLegacyReview,receiptGeneration,supersedesReceipt,addHousehold,setHouseholdAmount,setHouseholdBalance,openRequested,reminders,decorate,hasHouseholdDraft:()=>{checkDraftActor();return householdDraft.size>0;},committed:()=>{householdDraft.clear();host()?.reload();},difference,augment,targets,requirement,total,prepare,completionChanges,complete,isCooked,previewCook,cooked,previewDay,finishDay,shoppingBuys,addShoppingBuy,manualBuyItems,manualBuyEssentials,applyManualPurchases,actor,blocked,atomic};
   setTimeout(()=>{win.BBKitchenEssentials?.refresh?.();openRequested();},0);
   return Object.freeze(api);
  }

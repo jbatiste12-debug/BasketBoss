@@ -1,6 +1,6 @@
 /* At home presentation. Every quantity action uses the guarded pantry editor;
    this module owns no stock, receipts, meal requirements or account storage. */
-(function(root,factory){const helpers=factory();if(typeof module==='object'&&module.exports)module.exports=helpers;if(root&&!root.BBPantryInline)root.BBPantryInline=helpers.install(root);})(typeof window==='undefined'?null:window,function(){
+(function(root,factory){const helpers=factory();if(typeof module==='object'&&module.exports)module.exports=helpers;if(root&&!root.BBPantryInline)root.BBPantryInline=Object.freeze({...helpers,...helpers.install(root)});})(typeof window==='undefined'?null:window,function(){
  'use strict';
  const LOCATIONS=['cupboard','fridge','freezer'];
  const ROUND=value=>Math.round(value*1000000)/1000000;
