@@ -62,6 +62,13 @@ test('trusted audit workflow grants read-only repository access, uses existing e
  assert.match(compliance,/fetch-depth: 0/,'the full suite needs the fixed historical catalogue commit');
  assert.match(compliance,/persist-credentials: false/);assert.match(compliance,/contents: read/);
  assert.match(compliance,/node --test[^\n]*tests\/\*\.test\.mjs/);
+ // Apple billing's portable runner executes the full suite too. Its separate
+ // changed-files job deliberately keeps its two-commit checkout for diffing.
+ const apple=fs.readFileSync(path.join(root,'.github/workflows/apple-subscriptions.yml'),'utf8');
+ const portable=apple.split('  portable-verification:')[1]?.split('\n  local-storekit-simulator:')[0];
+ assert.ok(portable,'Apple portable verification job exists');assert.match(portable,/fetch-depth: 0/);
+ assert.match(portable,/persist-credentials: false/);assert.match(portable,/node --test[^\n]*tests\/\*\.test\.mjs/);
+ assert.match(apple,/contents: read/);
 });
 
 // An identity mismatch creates a false duplicate even when the unit matches.
