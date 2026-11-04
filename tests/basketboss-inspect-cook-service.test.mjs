@@ -233,3 +233,8 @@ test('public Apple startup probe sends no account or proof and retains only fixe
  const healthy=await inspectAppleVerifierHealth(async()=>Response.json({ready:true,private:PRIVATE}));assert.equal(healthy.ready,true);assert.equal(healthy.reference,null);
  const hostile=await inspectAppleVerifierHealth(async()=>Response.json({ready:false,reference:'BB_BETA_APPLE_MODULE_UNKNOWN '+PRIVATE}));assert.equal(hostile.reference,null);
 });
+
+
+test('Apple startup probe preserves extended fixed module failure categories',async()=>{
+ for(const cause of['DYNAMIC_IMPORT','UNDEFINED_PROTOTYPE','MISSING_GLOBAL','JSON_IMPORT','TYPE_ERROR']){const reference='BB_BETA_APPLE_MODULE_'+cause;const value=await inspectAppleVerifierHealth(async()=>Response.json({ready:false,reference},{status:503}));assert.equal(value.reference,reference);}
+});

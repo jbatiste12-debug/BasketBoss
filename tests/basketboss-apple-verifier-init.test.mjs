@@ -24,10 +24,17 @@ test('initialization failure classification uses a closed, non-sensitive vocabul
  for(const [message,stack,expected]of[
   ['Disallowed operation called within global scope. '+PRIVATE,'','GLOBAL_CONTEXT'],
   ['Cannot read properties of undefined (reading prototype) '+PRIVATE,'at buffer-equal-constant-time/index.js','BUFFER_COMPAT'],
+  ['Cannot read properties of undefined (reading prototype) '+PRIVATE,'','UNDEFINED_PROTOTYPE'],
+  ['Dynamic require of node:crypto is not supported '+PRIVATE,'','DYNAMIC_IMPORT'],
+  ['Cannot find module dependency '+PRIVATE,'','DYNAMIC_IMPORT'],
+  ['JSON module requires import attributes '+PRIVATE,'','JSON_IMPORT'],
   ['SignedDataVerifier is not a constructor '+PRIVATE,'','MISSING_EXPORT'],
   ['X509Certificate is not implemented '+PRIVATE,'','NODE_CRYPTO'],
   ['Apple trust anchor integrity check failed '+PRIVATE,'','ROOT_INTEGRITY'],
   [PRIVATE,'','UNKNOWN']
  ])assert.equal(classifyAppleVerifierInitFailure({message,stack}),expected);
+ assert.equal(classifyAppleVerifierInitFailure(new ReferenceError('Buffer is not defined '+PRIVATE)),'MISSING_GLOBAL');
+ assert.equal(classifyAppleVerifierInitFailure(new ReferenceError('process is not defined '+PRIVATE)),'MISSING_GLOBAL');
+ assert.equal(classifyAppleVerifierInitFailure(new TypeError(PRIVATE)),'TYPE_ERROR');
  const hostile={get message(){throw Error(PRIVATE);},get stack(){throw Error(PRIVATE);}};assert.equal(classifyAppleVerifierInitFailure(hostile),'UNKNOWN');
 });

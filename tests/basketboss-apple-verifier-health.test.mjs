@@ -22,7 +22,7 @@ test('trusted production aliases work and non-GET methods return 405 without ini
  for(const method of['POST','PUT','DELETE'])assert.equal((await handler({request:request(undefined,method),env:{}})).status,405);assert.equal(initialized,3);
 });
 test('known initialization failure references are strictly allowlisted and raw details never leave',async()=>{
- for(const reference of['BB_BETA_APPLE_MODULE_GLOBAL_CONTEXT','BB_BETA_APPLE_ROOTS_ROOT_INTEGRITY','BB_BETA_APPLE_CONSTRUCTOR_NODE_CRYPTO']){
+ for(const reference of['BB_BETA_APPLE_MODULE_GLOBAL_CONTEXT','BB_BETA_APPLE_MODULE_DYNAMIC_IMPORT','BB_BETA_APPLE_MODULE_UNDEFINED_PROTOTYPE','BB_BETA_APPLE_MODULE_MISSING_GLOBAL','BB_BETA_APPLE_MODULE_JSON_IMPORT','BB_BETA_APPLE_MODULE_TYPE_ERROR','BB_BETA_APPLE_ROOTS_ROOT_INTEGRITY','BB_BETA_APPLE_CONSTRUCTOR_NODE_CRYPTO']){
   const handler=createAppleVerifierHealthHandler({initialize:async()=>{throw new AppleBillingError('testflight_beta_unavailable',PRIVATE+' Reference: '+reference+'.');}});
   const result=await handler({request:request(),env:{}}),body=await result.json();assert.equal(result.status,503);assert.deepEqual(body,{ready:false,code:'testflight_beta_unavailable',reference});for(const secret of[PRIVATE,'private-bearer-token','signed.receipt.proof','tester@example.invalid'])assert.equal(JSON.stringify(body).includes(secret),false);
  }

@@ -3,11 +3,9 @@
 import {json} from '../../../bb-server-lib/bb-billing.js';
 import {AppleBillingError,getAppleAppTransactionVerifier} from '../../../bb-server-lib/bb-apple-subscriptions.js';
 const HOSTS=new Set(['basketboss.co.uk','www.basketboss.co.uk','basketboss-site.pages.dev']);
-const REFERENCE=/\b(BB_BETA_APPLE_(?:MODULE|ROOTS|CONSTRUCTOR)_(?:GLOBAL_CONTEXT|BUFFER_COMPAT|MISSING_EXPORT|NODE_CRYPTO|ROOT_INTEGRITY|UNKNOWN))(?=\.|\s|$)/;
+const REFERENCE=/\b(BB_BETA_APPLE_(?:MODULE|ROOTS|CONSTRUCTOR)_(?:GLOBAL_CONTEXT|BUFFER_COMPAT|UNDEFINED_PROTOTYPE|MISSING_GLOBAL|DYNAMIC_IMPORT|JSON_IMPORT|TYPE_ERROR|MISSING_EXPORT|NODE_CRYPTO|ROOT_INTEGRITY|UNKNOWN))(?=\.|\s|$)/;
 function safeReference(error){
- if(error instanceof AppleBillingError&&error.code==='testflight_beta_unavailable'){
-  try{const match=REFERENCE.exec(error.message);if(match)return match[1];}catch{}
- }
+ try{if(error instanceof AppleBillingError&&error.code==='testflight_beta_unavailable'){const match=REFERENCE.exec(error.message);if(match)return match[1];}}catch{}
  return 'BB_BETA_APPLE_MODULE_UNKNOWN';
 }
 export function createAppleVerifierHealthHandler({initialize=getAppleAppTransactionVerifier,setTimeout:schedule=setTimeout,clearTimeout:cancel=clearTimeout}={}){
