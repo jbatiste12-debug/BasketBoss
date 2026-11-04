@@ -12,7 +12,7 @@ function fixture({projectPatch={},tailURL='wss://tail.developers.workers.dev/cap
  const calls=[],emitted=[],sockets=[],timers=[];
  const project={name:'basketboss-site',production_branch:'main',domains:['basketboss.co.uk','www.basketboss.co.uk'],
   canonical_deployment:{id:DEPLOYMENT,environment:'production',latest_stage:{name:'deploy',status:'success'},deployment_trigger:{metadata:{commit_hash:COMMIT}}},
-  deployment_configs:{production:{env_vars:{BB_PREMIUM_AI_ENABLED:{type:'plain_text',value:'true'},BB_TTS_ENABLED:{type:'plain_text',value:'true'},OPENAI_API_KEY:{type:'secret_text',value:PRIVATE},BB_TTS_DAILY_MISS_CAP:{type:'plain_text',value:'50'},BB_TTS_GLOBAL_DAILY_MISS_CAP:{type:'plain_text',value:'500'}},d1_databases:{BILLING_DB:{id:'33333333-3333-4333-8333-333333333333'}},r2_buckets:{BB_TTS_AUDIO:{name:PRIVATE}}}},...projectPatch};
+  deployment_configs:{production:{compatibility_flags:['nodejs_compat'],compatibility_date:'2026-10-01',env_vars:{BB_PREMIUM_AI_ENABLED:{type:'plain_text',value:'true'},BB_TTS_ENABLED:{type:'plain_text',value:'true'},OPENAI_API_KEY:{type:'secret_text',value:PRIVATE},BB_TTS_DAILY_MISS_CAP:{type:'plain_text',value:'50'},BB_TTS_GLOBAL_DAILY_MISS_CAP:{type:'plain_text',value:'500'}},d1_databases:{BILLING_DB:{id:'33333333-3333-4333-8333-333333333333'}},r2_buckets:{BB_TTS_AUDIO:{name:PRIVATE}}}},...projectPatch};
  const perform=async(address,options)=>{
   const url=new URL(address);calls.push({url,options,emissions:emitted.length});
   if(url.hostname==='api.cloudflare.com'){
@@ -69,7 +69,7 @@ test('public probes run and emit before Cloudflare metadata, never authenticate 
  assert.equal(apiCalls.length,2);assert.equal(apiCalls[0].options.method,'GET');assert.equal(apiCalls[0].emissions,8);
  assert.equal(apiCalls[0].options.headers.Authorization,'Bearer '+ENV.CLOUDFLARE_API_TOKEN);
  assert.equal(h.sockets.length,0);assert.equal(h.emitted.filter(value=>value.kind==='probe').length,8);
- assert.deepEqual(h.emitted.find(value=>value.kind==='configuration'),{kind:'configuration',matchingSha:true,canonicalProductionReady:true,configuration:{aiEnabled:true,ttsEnabled:true,providerSecretBound:true,billingDatabaseBound:true,ttsStorageBound:true,ttsCapsReady:true}});
+ assert.deepEqual(h.emitted.find(value=>value.kind==='configuration'),{kind:'configuration',matchingSha:true,canonicalProductionReady:true,configuration:{aiEnabled:true,ttsEnabled:true,nodeCompatibilityEnabled:true,nodeCryptoCompatible:true,providerSecretBound:true,billingDatabaseBound:true,ttsStorageBound:true,ttsCapsReady:true}});
  assert.deepEqual(h.emitted.at(-1),{kind:'schema',schemaInspectionAvailable:true,quotaSchemaReady:true});
  assert.equal(h.emitted.filter(value=>value.kind==='probe').every(value=>value.nativeCors),true);
  assert.doesNotMatch(JSON.stringify(h.emitted),new RegExp(PRIVATE));
@@ -216,4 +216,12 @@ test('oversized UTF-8 and binary frames close immediately, while malformed bound
  }
  const h=fixture({onSocket:socket=>{socket.message(PRIVATE);socket.message(new TextEncoder().encode(JSON.stringify(trace())).buffer);}});
  const result=await h.run('tail');assert.equal(result.received,2);assert.equal(result.emitted,1);assert.doesNotMatch(JSON.stringify(h.emitted),new RegExp(PRIVATE));
+});
+
+
+test('production Node crypto readiness uses fixed flags/date booleans and never exposes arbitrary config',async()=>{
+ for(const [flags,date,enabled,ready]of [[[], '2026-10-01',false,false],[['nodejs_compat'],'2024-01-01',true,false],[['nodejs_compat'],'2026-10-01',true,true],[['nodejs_compat','no_nodejs_compat_v2'],'2026-10-01',true,false],[['nodejs_compat',PRIVATE],PRIVATE,true,false]]){
+  const h=fixture();h.project.deployment_configs.production.compatibility_flags=flags;h.project.deployment_configs.production.compatibility_date=date;await h.run('probe');
+  const value=h.emitted.find(row=>row.kind==='configuration');assert.equal(value.configuration.nodeCompatibilityEnabled,enabled);assert.equal(value.configuration.nodeCryptoCompatible,ready);assert.doesNotMatch(JSON.stringify(h.emitted),new RegExp(PRIVATE));
+ }
 });
