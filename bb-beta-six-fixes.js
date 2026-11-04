@@ -61,6 +61,29 @@
     if(!overview){overview=node('section');overview.id='bbReleaseShopOverview';overview.hidden=true;
       overview.setAttribute('aria-label','Shopping list overview');app.before(overview);}
   }
+  function appendWeeklyEssentials(container,rows){
+    const pending=rows.filter(box=>!box.checked&&box.closest('.bb321-essential-row'));
+    const section=node('section','bb-r6-list bb-r6-essentials');
+    section.id='bbShopWeeklyEssentials';section.setAttribute('aria-labelledby','bbShopWeeklyEssentialsTitle');
+    const heading=node('h3',null,'Weekly essentials');heading.id='bbShopWeeklyEssentialsTitle';
+    const count=node('span','bb-r6-essentials-count',pending.length+' to buy');
+    const head=node('div','bb-r6-essentials-heading');head.append(heading,count);section.append(head);
+    if(pending.length){
+      const list=node('ul');
+      for(const box of pending){
+        const original=box.closest('.bb321-essential-row'),name=safeText(original.querySelector('.bb321-shop-name')?.textContent);
+        const row=node('li','bb-r6-essential-row'),label=node('label'),check=node('input');
+        check.type='checkbox';check.setAttribute('aria-label','Mark bought: '+name);
+        check.addEventListener('change',()=>{if(box.isConnected&&!box.checked)box.click();});
+        label.append(check,node('strong',null,name));
+        row.append(label,node('small',null,safeText(original.querySelector('.bb321-shop-quantity strong')?.textContent)));list.append(row);
+      }
+      section.append(list);
+    }else section.append(node('p',null,'Nothing extra to buy.'));
+    const edit=node('button','bb-r6-essentials-edit','Update essentials');edit.type='button';
+    edit.addEventListener('click',()=>{navTo('shop');requestAnimationFrame(()=>{window.BBKitchenEssentials?.refresh?.();doc.getElementById('bbKitchenEssentialsTab')?.click();});});
+    section.append(edit);container.append(section);
+  }
   function updateOverview(){
     scheduled=false;
     enhancePlan();
@@ -75,6 +98,8 @@
     const original=doc.getElementById('bb321Printable');
     const rows=original?[...original.querySelectorAll('[data-bb321-tick]')]:[];
     const pending=rows.filter(b=>!b.checked);
+    const food=rows.filter(b=>!b.closest('.bb321-essential-row'));
+    const pendingFood=food.filter(b=>!b.checked);
     const checked=rows.length-pending.length;
     const pct=rows.length?Math.round(checked/rows.length*100):0;
     const totals=[doc.querySelector('.bb321-shop-total'),doc.getElementById('statSpend'),doc.getElementById('headerTotal')];
@@ -94,13 +119,13 @@
     const fill=node('span');fill.style.width=pct+'%';track.append(fill);
     hero.append(eyebrow,title,summary,metrics,track,node('p','bb-r6-progress',rows.length?pct+'% complete · '+rows.length+' items':'No items in the basket yet'));
     const list=node('section','bb-r6-list');list.append(node('h3',null,'Coming up in your basket'));
-    list.append(node('p',null,pending.length?'A preview of what’s still to buy.':rows.length?'Everything is ticked off.':'Build your list from Plan and Kitchen; nothing has been deleted.'));
-    if(pending.length){const ul=node('ul');for(const b of pending.slice(0,4)){
+    list.append(node('p',null,pendingFood.length?'A preview of food still to buy.':food.length?'Food shopping is covered.':'Plan meals to build your food list.'));
+    if(pendingFood.length){const ul=node('ul');for(const b of pendingFood.slice(0,4)){
       const row=b.closest('.bb321-buy-row')||b.closest('label')||b.parentElement;
       const name=safeText(row?.querySelector('.bb321-shop-name')?.textContent||b.getAttribute('aria-label')||'Shopping item');
       const quantity=safeText(row?.querySelector('.bb321-shop-quantity strong')?.textContent||'');
       const li=node('li');li.append(node('strong',null,name),node('small',null,quantity));ul.append(li);
-    }list.append(ul);if(pending.length>4)list.append(node('p',null,'Plus '+(pending.length-4)+' more items.'));}
+    }list.append(ul);if(pendingFood.length>4)list.append(node('p',null,'Plus '+(pendingFood.length-4)+' more food items.'));}
     const begin=node('button','bb-r6-begin');begin.type='button';
     begin.append(node('span',null,'Begin shop'),node('span',null,'→'));
     begin.disabled=!rows.length;
@@ -114,6 +139,7 @@
     const plan=node('button',null,'Plan meals');plan.type='button';plan.addEventListener('click',()=>navTo('week'));
     const kitchen=node('button',null,'Check kitchen');kitchen.type='button';kitchen.addEventListener('click',()=>navTo('shop'));
     secondary.append(plan,kitchen);overview.append(hero,list,begin,secondary);
+    appendWeeklyEssentials(overview,rows);
     overview.hidden=false;
     body.classList.add('bb-r6-shop-ready');
   }
