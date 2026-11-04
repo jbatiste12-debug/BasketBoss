@@ -4,7 +4,8 @@ import {json,authenticatedUser,isConfigured,requireSameOrigin} from '../../bb-se
 import {readMemberPaidAccess,paidBillingEnabled} from '../../bb-server-lib/bb-paid-access.js';
 import {isAccountDeleting,digestDeletionActor} from '../../bb-server-lib/bb-account-deletion.js';
 import {TTS_PROFILE,TTS_CONTENT_TYPE,TTS_AUDIO_LIMIT,validClip,clipId,clipKey,missLimits,limitedJSON,audioHeaders,byteRange,requestSpeech} from '../../bb-server-lib/bb-tts.js';
-import {cookServiceCode,cookAuthorizationCode,logCookDiagnostic} from '../../bb-server-lib/bb-cook-service-error.js';
+import {privateAudioResponse} from '../../bb-server-lib/bb-private-audio-stream.js';
+import {cookServiceError,cookServiceCode,cookAuthorizationCode,logCookDiagnostic} from '../../bb-server-lib/bb-cook-service-error.js';
 const LEASE_MS=120000;
 async function authorize(request,env){
  const user=await authenticatedUser(request,env);if(!user)return {error:'Sign in with a verified account',status:401};
@@ -64,17 +65,23 @@ async function savedResponse(request,env,id){
 const hasStorage=env=>!!env.BB_TTS_AUDIO?.get&&!!env.BB_TTS_AUDIO?.put&&!!env.BB_TTS_AUDIO?.head;
 // Conversational replies may contain personal context. Keep their audio only
 // in the live request; never hash, lease, read or persist it in the recipe cache.
-async function mentorResponse(request,env,member,text,perform,now,fail){
+async function mentorResponse(request,env,member,text,perform,now,fail,clock){
  const limits=missLimits(env);
  const config=!limits?'BB_COOK_CONFIG_LIMITS_UNAVAILABLE':typeof env.OPENAI_API_KEY!=='string'||!env.OPENAI_API_KEY.trim()?'BB_COOK_CONFIG_PROVIDER_UNAVAILABLE':null;
  if(config)return fail('Natural Cook Mentor voice is unavailable. Try again shortly.',503,config,'config','BB_COOK_SERVICE_UNAVAILABLE');
- let stage='quota_database';
+ let stage='quota_database';const controller=new AbortController(),signal=AbortSignal.any([request.signal,controller.signal]);
  try{
   request.signal.throwIfAborted();
   if(!await consumeMiss(env,member,limits,now))return fail('Natural Cook Mentor voice is temporarily limited. Try again later.',429,'BB_COOK_DAILY_LIMIT','quota');
   request.signal.throwIfAborted();
   stage='provider_request';
-  const speech=await requestSpeech(text,env,perform,{mentor:true,signal:request.signal});
+  const speech=await requestSpeech(text,env,perform,{mentor:true,signal});
+  if((request.headers.get('Accept')||'').split(',').some(value=>/^audio\/mpeg\s*;\s*streaming=1$/i.test(value.trim()))){
+   stage='provider_audio';
+   return await privateAudioResponse(speech,{signal,clock,cancel:()=>controller.abort(),
+    guard:async()=>{if(await isAccountDeleting(env,member.user.id)||member.ownerId!==member.user.id&&await isAccountDeleting(env,member.ownerId))throw cookServiceError('BB_COOK_ACCOUNT_PENDING');},
+    diagnostic:code=>{fail('Natural Cook Mentor voice could not be prepared. Try again shortly.',code==='BB_COOK_ACCOUNT_PENDING'?409:502,code,code==='BB_COOK_ACCOUNT_PENDING'?'account_state':'provider_audio');}});
+  }
   // Validate and finish the bounded MP3 before returning it, so no partial or
   // invalid private audio is ever handed to native playback.
   stage='provider_audio';
@@ -84,7 +91,7 @@ async function mentorResponse(request,env,member,text,perform,now,fail){
   if(await isAccountDeleting(env,member.user.id)||member.ownerId!==member.user.id&&await isAccountDeleting(env,member.ownerId))return fail('Account deletion is in progress',409,'BB_COOK_ACCOUNT_PENDING','account_state');
   request.signal.throwIfAborted();
   return new Response(bytes,{headers:{'Content-Type':TTS_CONTENT_TYPE,'Content-Length':String(bytes.byteLength),'Cache-Control':'private, no-store','Vary':'Authorization, Origin','X-Content-Type-Options':'nosniff','X-BB-TTS-Cache':'bypass'}});
- }catch(error){return fail('Natural Cook Mentor voice could not be prepared. Try again shortly.',502,cookServiceCode(error),request.signal.aborted?'request':stage);}
+ }catch(error){controller.abort();return fail('Natural Cook Mentor voice could not be prepared. Try again shortly.',cookServiceCode(error)==='BB_COOK_ACCOUNT_PENDING'?409:502,cookServiceCode(error),request.signal.aborted?'request':stage);}
 }
 export function createTTSHandler({authorizeMember=authorize,perform=fetch,clock=Date.now,randomId=()=>crypto.randomUUID(),wait=ms=>new Promise(resolve=>setTimeout(resolve,ms))}={}){
  return async function handle(context){
@@ -109,7 +116,7 @@ export function createTTSHandler({authorizeMember=authorize,perform=fetch,clock=
    try{return await savedResponse(request,env,id);}catch{return json({error:'Speech audio is unavailable'},503);}
   }
   const parsed=await limitedJSON(request);if(parsed.error)return fail(parsed.error,parsed.status,'BB_COOK_REQUEST_INVALID','request');
-  if(parsed.private)return mentorResponse(request,env,member,parsed.text,perform,clock(),fail);
+  if(parsed.private)return mentorResponse(request,env,member,parsed.text,perform,clock(),fail,clock);
   if(!hasStorage(env))return json({error:'AI Cook voice is unavailable'},503);
   const id=await clipId(parsed.text),key=clipKey(id),prepared=cached=>json({clipId:id,url:'/api/tts?clip='+id,contentType:TTS_CONTENT_TYPE,cached});
   let token=null;
