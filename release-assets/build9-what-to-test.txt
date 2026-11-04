@@ -1,3 +1,12 @@
+Faster Cook Mentor
+- Ask a recipe question and check that speech starts while the answer is still appearing.
+- Try two follow-up questions; ingredient quantities should match your selected servings.
+- Finish speaking naturally: the iOS microphone should submit after a short pause.
+- Try a quiet room and a noisy kitchen; report cut-off words or missed questions.
+- Interrupt the reply, change steps, or leave Cook: old audio must stop.
+- The microphone should not hear the mentor during pauses between spoken sentences.
+- Check typed replies and Retry voice on a slow connection.
+
 BasketBoss build 9
 
 Your pantry now works as a running balance: shopping adds to it and confirmed cooking uses it up. Remaining food and essentials stay there between weeks.

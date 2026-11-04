@@ -1,8 +1,36 @@
-# BasketBoss 1.0 (9) — compact header and live weekly budget
+# BasketBoss 1.0 (9) — faster conversational Cook Mentor
 
 Build 9 includes all build 8 functionality and the “Your kitchen, made simple”
-welcome. The latest source is `testflight-build9-budget-header` on
+welcome. The latest source is `testflight-build9-fast-mentor` on
 `fix/confirmed-cook-pantry` (PR #40). Earlier release tags remain unchanged.
+
+Cook Mentor now requests an opt-in text stream and starts natural speech after
+complete sentences become available, while the rest of the answer is still
+being generated. It prefetches one next sentence and plays clips in order.
+Stop, interruption, backgrounding, account changes and recipe changes cancel
+both the request and queued audio. An interrupted model answer is marked
+incomplete and is not added to follow-up history. Voice failure retains the
+written reply and offers the existing retry control.
+
+iOS detects about 550 ms of actual quiet microphone input after recognized
+speech, rather than waiting 950 ms after changed text plus Apple's finalization.
+Adaptive noise thresholds help distinguish kitchen background sound from speech.
+The microphone stays paused for the whole spoken answer, including network gaps.
+Browser recognition endpoint timing remains controlled by the browser.
+
+The provider prompt is 37% shorter; recent history keeps up to two complete
+exchanges within 1,800 characters. Exact serving-scaled ingredient quantities,
+all method steps and recipe safety constraints remain available. Private mentor
+text/audio stays uncached and is never persisted by this pipeline. Existing
+membership, deletion and generation allowance checks still apply to each
+synthesis request; sentence splitting can use multiple requests per reply.
+
+Supported browsers can play validated MP3 bytes progressively. Native iOS and
+unsupported browsers buffer each short sentence clip before playback. Legacy
+clients keep their JSON response, and the new client accepts an older server's
+JSON response using the same request. Production needs the matching server
+streaming deployment; the native VAD and playback changes require a new Apple
+build. Deterministic fixtures prove overlap, not a production latency guarantee.
 
 Plan uses a single branding row with BasketBoss, region, membership and Settings.
 Membership is still read from the verified account state; compact labels retain
@@ -154,10 +182,12 @@ from build 8. See BUILD_8_TESTFLIGHT.md for details.
 
 ## Verification
 
-Full automated suite: 1,894 passed, no failures or skipped tests, two existing
-TODO cases. Strict pantry TypeScript contracts passed. Native packaging and
-portable iOS checks passed: 914 assets, 100 Free recipes, no private Premium
-recipe bundle. The native Xcode compile/sign/upload is not performed here.
+Full automated suite: 1,942 passed, zero failures, one Swift-only fixture skipped
+on Linux, and two existing TODO cases. The fixture is required on macOS and
+executes the production Swift endpoint detector. Native packaging and portable
+iOS checks pass: 914 assets, 100 Free recipes, no private Premium recipe bundle.
+Actual microphone sensitivity, noisy kitchens and perceived response speed need
+device testing. Xcode compile/sign/upload is not performed in this Linux workspace.
 
 ## Mac upload
 
@@ -166,7 +196,7 @@ in previous folders:
 
 ```sh
 bb_release_dir="$(mktemp -d "$HOME/BasketBoss-build9-XXXXXX")" &&
-git clone --depth 1 --branch testflight-build9-budget-header \
+git clone --depth 1 --branch testflight-build9-fast-mentor \
   https://github.com/jbatiste12-debug/BasketBoss.git "$bb_release_dir" &&
 cd "$bb_release_dir" &&
 npm ci &&
@@ -203,6 +233,11 @@ post-deploy probe was queued at the earlier handoff; the successful user retry
 confirms the activation path.
 These server repairs work with existing clients that have the beta button. This
 client source tag does not redeploy that backend.
+
+The matching streaming server update is merged separately in PR #48 at
+`832594bd8ea54beb3f6b43c2ef8672ffc3e8cfe5`. It retains old JSON/native buffered
+responses. The production deployment and post-deploy CI are tracked on that
+merge; merging alone is not a live provider/device latency measurement.
 
 ## Backend prerequisite
 

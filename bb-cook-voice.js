@@ -100,6 +100,19 @@
   }
   if(text)chunks.push(text);return chunks;
  }
+ // Keep quantities, abbreviations and incomplete clauses together. At most
+ // four early clips plus a final remainder bounds synthesis work per answer.
+ function mentorSentence(value,final=false){
+  const text=String(value||'');if(final)return {sentence:text.trim(),rest:''};
+  const boundary=/[.!?]+[”"’')\]]*(?=\s+\S)/g;let match;
+  while((match=boundary.exec(text))){
+   const end=match.index+match[0].length,prefix=text.slice(0,end);
+   if(prefix.trim().length<32)continue;
+   if(match[0][0]==='.'&&/(?:\b(?:approx|tsp|tbsp|oz|lb|mr|mrs|dr|vs)|\be\.g|\bi\.e)\.$/i.test(prefix))continue;
+   return {sentence:prefix.trim(),rest:text.slice(end).trimStart()};
+  }
+  return {sentence:'',rest:text};
+ }
  function mentorNarration(context={}){
   if(context.phase==='prep'){
    const items=Array.isArray(context.ingredients)?context.ingredients:[],index=Number.isInteger(context.ingredientIndex)?context.ingredientIndex:0;
@@ -207,6 +220,48 @@
     }
    }
   }
+  function speechQueue(value){
+   const Controller=host.AbortController||globalThis.AbortController,controller=new Controller();
+   const pending=[];let running=null,active=null,prefetch=false,failed=false,closed=false;
+   const settings={signal:controller.signal,timeoutMs:AI_SETUP_TIMEOUT_MS};
+   const valid=()=>!closed&&!failed&&!controller.signal.aborted&&wanted&&current(value);
+   function prepare(entry){
+    if(!entry.audio)entry.audio=Promise.resolve().then(()=>{if(!valid())throw Object.assign(Error('cancelled'),{name:'AbortError'});return tts.prepareMentor(entry.text,settings);}).then(audio=>({audio}),error=>({error}));
+    return entry.audio;
+   }
+   function prime(){if(valid()&&prefetch&&active&&pending.length&&typeof tts?.prepareMentor==='function'&&(backend==='native'||typeof tts?.playPreparedMentor==='function'))prepare(pending[0]);}
+   function cancel(){
+    closed=true;pending.length=0;controller.abort();
+    if(value.speechId){const ticket=value.speechId;value.speechId=null;try{Promise.resolve(native()?.cancelSpeech?.({speechId:ticket})).catch(()=>{});}catch{}}
+    value.controller.signal.removeEventListener('abort',cancel);
+   }
+   value.controller.signal.addEventListener('abort',cancel,{once:true});
+   async function run(){
+    try{while(valid()&&pending.length){
+     active=pending.shift();mode='preparing';message('Preparing your mentor’s voice…');render();
+     if(backend==='native'){
+      if(!await holdNative(value)||!valid())break;
+      if(typeof tts?.prepareMentor!=='function'||typeof native()?.playAudioData!=='function')throw Error('mentor_audio_unavailable');
+      prefetch=true;const prepared=await prepare(active);if(prepared.error)throw prepared.error;if(!valid())break;
+      prime();mode='speaking';message('Your cooking mentor is speaking.');render();
+      const result=await native().playAudioData({...prepared.audio,speechId:value.speechId,keepHeld:true});if(!valid())break;
+      if(result?.spoken!==true)throw Error('mentor_audio_unavailable');
+     }else{
+      if(typeof tts?.playMentor!=='function')throw Error('mentor_audio_unavailable');
+      prefetch=true;prime();mode='speaking';message('Your cooking mentor is speaking.');render();
+      if(active.audio&&typeof tts.playPreparedMentor==='function'){
+       const prepared=await active.audio;if(prepared.error)throw prepared.error;if(!valid())break;
+       await tts.playPreparedMentor(prepared.audio,{...settings,timeoutMs:AI_SETUP_TIMEOUT_MS+speechTimeoutMs(active.text)});
+      }else await tts.playMentor(active.text,{...settings,timeoutMs:AI_SETUP_TIMEOUT_MS+speechTimeoutMs(active.text)});
+     }
+     active=null;
+    }}catch(error){
+     if(valid()&&error?.name!=='AbortError'){failed=true;pending.length=0;controller.abort();if(!accessFailure(error))voiceUnavailable(value,error);}
+    }finally{active=null;}
+   }
+   function start(){if(!running&&valid()&&pending.length){const task=Promise.resolve().then(run);running=task;void task.finally(()=>{if(running===task){running=null;if(valid()&&pending.length)start();}});}}
+   return {push(text){if(!valid()||!text)return;pending.push({text:spoken?.plain?.(text)||text,audio:null});prime();start();},async drain(){while(running)await running;},cancel,close(){value.controller.signal.removeEventListener('abort',cancel);closed=true;controller.abort();}};
+  }
   async function voiceReply(text){
    if(!wanted||!allowed())return;let value;try{value=beginJob('preparing');await playSpeech(text,value);}
    catch(error){if(value&&current(value)&&error?.name!=='AbortError'&&!accessFailure(error))voiceUnavailable(value,error);}
@@ -238,20 +293,30 @@
    const c=read();if(c.premium!==true){try{c.upgrade?.();}catch{}return;}
    if(!allowed())return;const prompt=String(raw||'').trim();
    if(!prompt||prompt.length>600){message('Ask a cooking question of up to 600 characters.');return;}
-   let value;try{
+   let value,queue,buffer='',received='',clips=0;try{
     value=beginJob('thinking');question.textContent=prompt;answer.textContent='';lastSpeech='';lastAnswerPosition=null;input.value='';message('Thinking about your recipe…');render();
     // Obtain the written answer independently of native audio setup. Busy
-    // suppresses recognition here; playSpeech holds the microphone before any
+    // suppresses recognition here; the queue holds the microphone before any
     // reply audio is prepared or played and reports audio-only failures.
     if(typeof assistant?.ask!=='function')throw Error('mentor_unavailable');
-    const result=await assistant.ask({question:prompt,recipe:c.mentorRecipe,history:history.map(h=>({...h})),mentorName},{signal:value.controller.signal,timeoutMs:45000});
+    queue=speechQueue(value);
+    const onDelta=(text)=>{
+     if(!current(value))return;
+     received+=text;if(received.length>1000)throw Error('mentor_response');
+     answer.textContent=received;buffer+=text;render();
+     while(clips<4){const part=mentorSentence(buffer);if(!part.sentence)break;buffer=part.rest;clips++;if(wanted)queue.push(part.sentence);}
+    };
+    const result=await assistant.ask({question:prompt,recipe:c.mentorRecipe,history:history.map(h=>({...h})),mentorName},{onDelta,signal:value.controller.signal,timeoutMs:45000});
     if(!current(value))return;if(typeof result?.answer!=='string'||!result.answer.trim()||result.answer.length>1000)throw Error('mentor_response');
-    const reply=result.answer.trim();history=[...history,{role:'user',text:prompt},{role:'assistant',text:reply}].slice(-6);answer.textContent=reply;lastAnswerPosition=value.position;message(wanted?'Preparing your mentor’s voice…':value.voiceFailed?'Your cooking mentor’s reply. Voice stopped; tap Turn on mentor voice to retry.':'Your cooking mentor’s reply.');render();
-    if(wanted){try{await playSpeech(reply,value);}catch(error){if(current(value)&&error?.name!=='AbortError'&&!accessFailure(error))voiceUnavailable(value,error);}}
-   }catch(error){if(value&&current(value)&&error?.name!=='AbortError'&&!accessFailure(error)){value.failed=true;failureNotice=questionFailure(error);message(failureNotice);}}
+    const reply=result.answer.trim();if(received&&received.trim()!==reply)throw Error('mentor_response');
+    history=[...history,{role:'user',text:prompt},{role:'assistant',text:reply}].slice(-4);answer.textContent=reply;lastSpeech=reply;lastAnswerPosition=value.position;
+    if(!received)buffer=reply;
+    if(wanted){queue.push(mentorSentence(buffer,true).sentence);await queue.drain();}
+    if(!wanted)message(value.voiceFailed?'Your cooking mentor’s reply. Voice stopped; tap Turn on mentor voice to retry.':'Your cooking mentor’s reply.');render();
+   }catch(error){if(value&&current(value)&&error?.name!=='AbortError'&&!accessFailure(error)){queue?.cancel();value.failed=true;retryVoice=false;lastSpeech='';lastAnswerPosition=null;failureNotice=(received?'This reply was interrupted. Please ask again. ':'')+questionFailure(error);message(failureNotice);}}
    finally{if(value){
     if(current(value)&&value.speechId){try{await native()?.cancelSpeech?.({speechId:value.speechId});}catch{}value.speechId=null;}
-    finish(value);
+    queue?.close();finish(value);
    }}
   }
   function narrate(){
@@ -550,5 +615,5 @@
   refresh();
   return Object.freeze({refresh,dispose,stop});
  }
- return Object.freeze({normalize,ingredientKey,parseCommand,ingredientAnswer,narrationFor,speechTimeoutMs,mount});
+ return Object.freeze({normalize,ingredientKey,parseCommand,ingredientAnswer,narrationFor,speechTimeoutMs,mentorSentence,mount});
 });

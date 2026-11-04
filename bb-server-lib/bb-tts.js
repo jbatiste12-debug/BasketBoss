@@ -1,5 +1,6 @@
 /* Private, deterministic Cook speech. Text is spoken verbatim: delivery style
  * cannot add ingredients, quantities, cooking times or food-safety advice. */
+import {cookServiceError,cookServiceCode,cookProviderError} from './bb-cook-service-error.js';
 export const TTS_PROFILE='bb-cook-en-gb-cedar-v1';
 export const TTS_MODEL='gpt-4o-mini-tts';
 export const TTS_VOICE='cedar';
@@ -54,14 +55,46 @@ export function byteRange(value,size){
  return {offset:from,length:to-from+1,end:to};
 }
 export async function requestSpeech(text,env,perform=fetch,{mentor=false,signal}={}){
- const deadline=AbortSignal.timeout(30000),requestSignal=signal?AbortSignal.any([deadline,signal]):deadline;
+ const local=new AbortController(),deadline=AbortSignal.timeout(30000),requestSignal=AbortSignal.any([local.signal,deadline,...(signal?[signal]:[])]);
+ const unavailable=()=>cookServiceError('BB_COOK_PROVIDER_UNAVAILABLE');
+ const abortable=async pending=>{
+  let onAbort;const aborted=new Promise((_,reject)=>{onAbort=()=>reject(unavailable());});
+  requestSignal.addEventListener('abort',onAbort,{once:true});
+  try{if(requestSignal.aborted)throw unavailable();return await Promise.race([pending,aborted]);}
+  finally{requestSignal.removeEventListener('abort',onAbort);}
+ };
  // Workers does not implement redirect:'error'. Manual redirects are never
  // followed; the non-2xx check below rejects them without forwarding the key.
- const response=await perform('https://api.openai.com/v1/audio/speech',{method:'POST',headers:{Authorization:'Bearer '+env.OPENAI_API_KEY,'Content-Type':'application/json'},body:JSON.stringify({model:TTS_MODEL,voice:mentor?TTS_MENTOR_VOICE:TTS_VOICE,input:text,instructions:mentor?TTS_MENTOR_INSTRUCTIONS:TTS_INSTRUCTIONS,response_format:'mp3'}),redirect:'manual',signal:requestSignal});
- if(!response.ok||!/^audio\/(?:mpeg|mp3)(?:;|$)/i.test(response.headers.get('Content-Type')||'')||Number(response.headers.get('Content-Length')||0)>TTS_AUDIO_LIMIT||!response.body){await response.body?.cancel().catch(()=>{});throw Error('tts_provider_unavailable');}
- const reader=response.body.getReader();let size=0;const header=[];
+ let response;
+ try{
+  requestSignal.throwIfAborted();
+  response=await abortable(perform('https://api.openai.com/v1/audio/speech',{method:'POST',headers:{Authorization:'Bearer '+env.OPENAI_API_KEY,'Content-Type':'application/json'},body:JSON.stringify({model:TTS_MODEL,voice:mentor?TTS_MENTOR_VOICE:TTS_VOICE,input:text,instructions:mentor?TTS_MENTOR_INSTRUCTIONS:TTS_INSTRUCTIONS,response_format:'mp3'}),redirect:'manual',signal:requestSignal}));
+ }catch{local.abort();throw unavailable();}
+ if(!response.ok){await response.body?.cancel().catch(()=>{});local.abort();throw cookProviderError(response.status);}
+ const declared=response.headers.get('Content-Length');
+ if(!/^audio\/(?:mpeg|mp3)(?:;|$)/i.test(response.headers.get('Content-Type')||'')||declared!==null&&(!/^\d+$/.test(declared)||Number(declared)>TTS_AUDIO_LIMIT)||!response.body){await response.body?.cancel().catch(()=>{});local.abort();throw cookServiceError('BB_COOK_PROVIDER_RESPONSE');}
+ const reader=response.body.getReader();let size=0,validated=false,ended=false;const header=[],prefix=[];
+ const cleanup=()=>{requestSignal.removeEventListener('abort',stop);local.abort();};
+ const stop=()=>{void reader.cancel().catch(()=>{});};
+ requestSignal.addEventListener('abort',stop,{once:true});
  return new ReadableStream({
-  async pull(controller){try{const {done,value}=await reader.read();if(done){if(size<3)throw Error('tts_empty_audio');controller.close();return;}size+=value.byteLength;if(size>TTS_AUDIO_LIMIT)throw Error('tts_audio_too_large');if(header.length<3){for(const byte of value){header.push(byte);if(header.length===3)break;}if(header.length===3&&!(header[0]===73&&header[1]===68&&header[2]===51)&&!(header[0]===255&&(header[1]&224)===224))throw Error('tts_audio_invalid');}controller.enqueue(value);}catch(error){await reader.cancel().catch(()=>{});controller.error(error);}},
-  cancel(reason){return reader.cancel(reason);}
+  async pull(controller){
+   try{
+    for(;;){
+     const {done,value}=await abortable(reader.read());
+     if(requestSignal.aborted)throw unavailable();
+     if(done){if(!validated)throw cookServiceError('BB_COOK_PROVIDER_RESPONSE');ended=true;cleanup();controller.close();return;}
+     size+=value.byteLength;if(size>TTS_AUDIO_LIMIT)throw cookServiceError('BB_COOK_PROVIDER_RESPONSE');
+     if(!validated){
+      prefix.push(value);for(const byte of value){if(header.length===3)break;header.push(byte);}
+      if(header.length<3)continue;
+      if(!(header[0]===73&&header[1]===68&&header[2]===51)&&!(header[0]===255&&(header[1]&224)===224))throw cookServiceError('BB_COOK_PROVIDER_RESPONSE');
+      validated=true;const bytes=new Uint8Array(size);let at=0;for(const chunk of prefix){bytes.set(chunk,at);at+=chunk.byteLength;}prefix.length=0;controller.enqueue(bytes);return;
+     }
+     controller.enqueue(value);return;
+    }
+   }catch(error){ended=true;cleanup();void reader.cancel().catch(()=>{});controller.error(cookServiceCode(error)==='BB_COOK_SERVICE_FAILURE'?unavailable():error);}
+  },
+  cancel(reason){if(!ended){ended=true;cleanup();}return reader.cancel(reason);}
  });
 }
