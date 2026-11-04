@@ -17,6 +17,13 @@
     const storage = () => options.storage || root.localStorage;
     const now = () => (options.now ? new Date(options.now()) : new Date()).toISOString();
     const clone = value => JSON.parse(JSON.stringify(value));
+    // A measured receipt must not replace an independent package source with
+    // the same display name. Keep both until their contents can be reviewed.
+    const kitchenRecordId = (kitchen, base, stockKey) => {
+      let id=base,index=0;
+      while(Object.hasOwn(kitchen,id)&&kitchen[id]?.bb173StockKey!==stockKey){id=base+'|'+stockKey+(index?'|'+index:'');index++;}
+      return id;
+    };
     const stable = value => Array.isArray(value) ? value.map(stable) : value && typeof value === 'object' ? Object.fromEntries(Object.keys(value).sort().map(key => [key, stable(value[key])])) : value;
     const json = (key, fallback) => {
       const raw = storage().getItem(key);
@@ -187,7 +194,7 @@
         const reviewConversion = previous => conversionConflict ? {...previous, packReviewed: false, measurementReviewed: false, conversionNeedsReview: true, conversionReviewSource: {quantity: previous.qty ?? null, unit: previous.unit ?? null, stockKey: previous.bb173StockKey ?? null, packQuantity: previous.packQuantity ?? null, packUnit: previous.packUnit ?? null, packReviewed: previous.packReviewed === true, measurementReviewed: previous.measurementReviewed === true, densityGPerMl: previous.densityGPerMl ?? null, gramsPerEach: previous.gramsPerEach ?? null}} : previous;
         for (const [oldId, previous] of matches.slice(1)) { kitchen[oldId] = {...reviewConversion(previous), selected: false, qty: null}; delete kitchen[oldId].bb173StockKey; delete kitchen[oldId].bb173StockValue; }
         const item = inventory.find(x => x.stockKey === stockKey), location = existing?.[1]?.loc || item?.location || 'cupboard';
-        const id = existing?.[0] || `${location}|${name}`, previous = reviewConversion(existing?.[1] || {});
+        const id = existing?.[0] || kitchenRecordId(kitchen,`${location}|${name}`,stockKey), previous = reviewConversion(existing?.[1] || {});
         const quantity = nextStock[stockKey] || 0;
         if (quantity > 0) kitchen[id] = { ...previous, name: previous.name || name, loc: location, selected: true, qty: quantity, unit, bb173StockKey: stockKey, bb173StockValue: quantity, receiptActorId: captured.actorId };
         else if (existing) { kitchen[id] = { ...previous, selected: false, qty: null }; delete kitchen[id].bb173StockKey; delete kitchen[id].bb173StockValue; }
@@ -267,7 +274,7 @@
         const prior = ledger[id] || {}, coverage = {...(prior.receiptCoverageById || {}), [packet.receiptId]: quantity};
         ledger[id] = {...prior, name, unit, qty: prior.qty ?? quantity, week: active.shopSessionId, mode: prior.mode || 'receipt_inventory', credited: prior.credited || 0, receiptInventoryReceiptId: packet.receiptId, receiptLegacyCreditById: {...(prior.receiptLegacyCreditById || {}), [packet.receiptId]: credit.priorCreditedQuantity}, receiptCoverageById: coverage, receiptCoveredQuantity: Object.values(coverage).reduce((n, x) => n + Number(x || 0), 0), purchasedAt: prior.purchasedAt || now()};
         const existing = Object.entries(kitchen).filter(([, x]) => x?.selected && c.canonicalIngredientKey(x.name, canonicalize) === name && c.normalizeStockQuantity(x.qty, x.unit)?.unit === unit);
-        const entry = existing[0], location = entry?.[1]?.loc || 'cupboard', kitchenId = entry?.[0] || location + '|' + name;
+        const entry = existing[0], location = entry?.[1]?.loc || 'cupboard', kitchenId = entry?.[0] || kitchenRecordId(kitchen,location+'|'+name,stockKey);
         for (const [oldId, row] of existing.slice(1)) { kitchen[oldId] = {...row, selected: false, qty: null}; delete kitchen[oldId].bb173StockKey; delete kitchen[oldId].bb173StockValue; }
         kitchen[kitchenId] = {...(entry?.[1] || {}), name: entry?.[1]?.name || name, loc: location, selected: true, qty: nextStock[stockKey], unit, bb173StockKey: stockKey, bb173StockValue: nextStock[stockKey], receiptActorId: captured.actorId};
       }

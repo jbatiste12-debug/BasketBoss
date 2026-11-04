@@ -1,7 +1,7 @@
-# BasketBoss 1.0 (9) — welcome and compact planning tools
+# BasketBoss 1.0 (9) — welcome, pantry subcategories and planning tools
 
 Build 9 includes all build 8 functionality and the “Your kitchen, made simple”
-welcome. The latest source is `testflight-build9-basketboss` on
+welcome. The latest source is `testflight-build9-subcategories` on
 `fix/confirmed-cook-pantry` (PR #40). Earlier release tags remain unchanged.
 
 The welcome uses the established BasketBoss crowned-basket branding, Cook-page
@@ -22,6 +22,35 @@ Existing completion state remains intact. Returning users can replay the welcome
 from Settings → Replay welcome & setup, or open How BasketBoss Works. Viewing
 these instructions does not change stock or meal plans.
 
+Cupboard, Fridge, Freezer and the existing Weekly essentials each have editable
+subcategories. Starter options include Tins & jars, Dairy & eggs, Batch meals,
+Cleaning products and Laundry. Use Edit groups to add, rename, reorder or remove
+groups. The Subcategory menu on an item changes its group; removing a group keeps
+its items in Other items. Filters only change the view. Food stays separate from
+household products, and quantities and shopping calculations remain with their
+existing owners. Groups are saved on this device for the current account.
+
+Manual At home quantities are actual remaining stock. Purchases add to that
+balance; confirmed meals deduct from it once; the next shopping list calculates
+the shortfall from the balance that remains. Category edits do not confirm,
+replace or reset quantities, including unconfirmed drafts. Known compatible
+units convert through the existing pipeline; unknown pack contents or conflicting
+units keep their saved data and require review rather than a guessed deduction.
+
+Weekly essentials now offers “Enter part of a bottle or pack” on a selected
+household item. Enter containers remaining, the full container size and the
+total containers needed. Saving converts ownership and its target together into
+ml or grams, retaining the reviewed capacity. For example, half a 750 ml cleaner
+is 375 ml; a reviewed 750 ml receipt adds once to give 1,125 ml. Half an older
+500 ml bottle plus a new 750 ml bottle gives 1,000 ml. Changed pack sizes never
+rescale existing measured ownership. Known conflicting brands/products stay
+separate. Unknown capacities leave the prior balance unchanged.
+
+Quantity checks also preserve fractional food pack balances and separate receipt
+source records. When the same ingredient has incompatible physical units in one
+location, confirmation stops with a review message instead of discarding a
+source. Purchase pack counts remain whole.
+
 Saved weeks and Saved meals remain compact tab-style buttons above the dinner
 plan. Both start closed. Switching preserves draft names and existing save/load
 and delete actions. The pantry balance, Day done, manual Shop, receipt handling,
@@ -35,7 +64,7 @@ in previous folders:
 
 ```sh
 bb_release_dir="$(mktemp -d "$HOME/BasketBoss-build9-XXXXXX")" &&
-git clone --depth 1 --branch testflight-build9-basketboss \
+git clone --depth 1 --branch testflight-build9-subcategories \
   https://github.com/jbatiste12-debug/BasketBoss.git "$bb_release_dir" &&
 cd "$bb_release_dir" &&
 npm ci &&
@@ -48,6 +77,8 @@ ID uk.co.basketboss.app. Select Any iOS Device (arm64), then Product → Archive
 In Organizer choose Distribute App → App Store Connect → Upload. After Apple
 processing, assign build 9 to the TestFlight group and use
 release-assets/build9-what-to-test.txt for tester notes.
+If Build 9 has already been uploaded to Apple, increase the Build field to the
+next unused number before archiving this updated source.
 
 GitHub checks and unsigned archives do not perform the signed Apple upload.
 Native CI for this source is tracked in PR #40. Local checks cover onboarding,

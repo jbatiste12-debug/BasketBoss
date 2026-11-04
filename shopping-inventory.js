@@ -13,7 +13,7 @@ function canon(s){let t=String(s||'').toLowerCase().normalize('NFKC').replace(/\
 const id=s=>'fridge|'+canon(s);
 function read(key){try{const x=JSON.parse(localStorage.getItem(key)||'{}');return x&&typeof x==='object'&&!Array.isArray(x)?x:{}}catch{return {}}}
 function saveBoth(inventory,measured){const oi=localStorage.getItem(INVENTORY),om=localStorage.getItem(MEASURED);try{const a=JSON.stringify(inventory),b=JSON.stringify(measured);localStorage.setItem(MEASURED,b);localStorage.setItem(INVENTORY,a);if(localStorage.getItem(INVENTORY)!==a||localStorage.getItem(MEASURED)!==b)throw Error('Save verification failed');return true}catch(e){try{if(oi===null)localStorage.removeItem(INVENTORY);else localStorage.setItem(INVENTORY,oi);if(om===null)localStorage.removeItem(MEASURED);else localStorage.setItem(MEASURED,om)}catch{}return false}}
-function amount(raw,unit){const n=Number(raw);if(!Number.isFinite(n)||n<0||n>1000000)return null;if(['pack'].includes(unit)&&!Number.isInteger(n))return null;return n}
+function amount(raw,unit){const n=Number(raw);if(!Number.isFinite(n)||n<0||n>1000000)return null;return n}
 function unitConversion(q,u){return {qty:(u==='kg'||u==='l')?q*1000:q,unit:u==='kg'?'g':u==='l'?'ml':['whole','item','piece'].includes(u)?'each':u==='can'?'tin':u}}
 function update(item,qty,unit,selected){const inv=read(INVENTORY),measured=read(MEASURED),key=id(item);const prior=inv[key];if(prior?.bb173StockKey&&Number(measured[prior.bb173StockKey])===Number(prior.bb173StockValue))delete measured[prior.bb173StockKey];const next={name:item,loc:'fridge',selected,qty:qty||null,unit:unit||'each'};
  if(qty){const p=unitConversion(qty,unit),stockKey=String(item).trim().toLowerCase().replace(/\s+/g,' ')+'|'+p.unit;next.bb173StockKey=stockKey;next.bb173StockValue=p.qty;measured[stockKey]=p.qty;}
@@ -216,7 +216,10 @@ function build(){
   if(!BB5_LOCATIONS.includes(loc)||!name||!canon(name))return;
   if(window.BBKitchenChoiceRules?.isHousehold(name)){note.textContent='Add household items in Weekly essentials instead.';return;}
   if(!staged.has(k))staged.set(k,{name,loc,qty:null,unit:bb5SuggestedUnit(name)});
-  f.reset();draftDirty=true;render();note.textContent='Food added to '+loc+'. Enter its amount in PANTRY below.';
+  let groupNote='';
+  const group=window.BBPantryGroupsUI?.active(loc);
+  if(group&&group!=='all'&&draftActor()===openedActor)try{const api=window.BBPantryGroups;api.assign(loc,api.itemKey(name),group,api.context());}catch{groupNote=' Choose its subcategory again in the item menu.';}
+  f.reset();draftDirty=true;render();note.textContent='Food added to '+loc+'. Enter its amount in PANTRY below.'+groupNote;
  });
  rows.addEventListener('input',e=>{const target=e.target.dataset.bb5Needed;if(target&&staged.has(target)){staged.get(target).totalNeeded=e.target.value;staged.get(target).targetChanged=true;draftDirty=true;drawAmount(target,e.target);drawOverview();return;}const k=e.target.dataset.bb5Qty;if(!k||!staged.has(k))return;staged.get(k).qty=e.target.value;draftDirty=true;drawAmount(k,e.target);drawOverview()});
  rows.addEventListener('change',e=>{const k=e.target.dataset.bb5Unit;if(!k||!staged.has(k))return;const row=staged.get(k);row.unit=e.target.value;delete row.totalNeeded;delete row.targetChanged;draftDirty=true;render()});
@@ -231,8 +234,15 @@ function build(){
    note.textContent='Recover the pending receipt in Shop before changing Pantry quantities.';return;
   }
   const originalInv=read(INVENTORY),originalStock=read(MEASURED),nextInv={...originalInv},nextStock={...originalStock};
+  // Different physical sources can share a displayed name. Keep both records
+  // intact until their units are reviewed instead of consolidating one away.
+  const sourceUnits=new Map();
+  for(const rec of Object.values(originalInv))if(rec?.selected&&rec.name&&BB5_LOCATIONS.includes(rec.loc)){
+   const identity=sid(rec.loc,rec.name),unit=unitConversion(1,rec.unit||'each').unit,units=sourceUnits.get(identity)||new Set();units.add(unit);sourceUnits.set(identity,units);
+  }
+  if([...sourceUnits.values()].some(units=>units.size>1)){note.textContent='Review the separate units for the same pantry item before confirming. All existing quantities have been kept; no changes saved.';return;}
   const chosen=[...staged.values()].map(x=>({...x}));
-  for(const x of chosen){const raw=x.qty==null?'':String(x.qty).trim();if(!BB5_UNITS.includes(x.unit)){note.textContent='Select a valid unit for '+x.name;return}x.qty=raw===''?null:amount(raw,x.unit);if(raw!==''&&x.qty===null){note.textContent='Check '+x.name+': non-negative quantities only; whole numbers for packs.';return}}
+  for(const x of chosen){const raw=x.qty==null?'':String(x.qty).trim();if(!BB5_UNITS.includes(x.unit)){note.textContent='Select a valid unit for '+x.name;return}x.qty=raw===''?null:amount(raw,x.unit);if(raw!==''&&x.qty===null){note.textContent='Check '+x.name+': enter a non-negative quantity.';return}}
   // Stop if another tool changed an external stock record while this panel was open.
   for(const [key,qty] of externalAtOpen){if(Number(originalStock[key])!==qty){note.textContent='Existing stock for '+key+' changed elsewhere. Refresh Kitchen to review it first.';return}}
   const originalOwned=new Map(),oldRecords=[];

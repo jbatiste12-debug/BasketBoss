@@ -3801,7 +3801,7 @@ body[data-bbnext-view="discover"] #app .bb-featured-card #bbFeaturedBatch {
 <script src="bb-cook-assistant.js?v=20261103-mentor2"></script>
 <script src="bb-cook-voice.js?v=20261103-mentor2"></script>
 <script defer src="bb-weekly-essentials.js?v=20261031-receipt-pantry"></script>
-<script defer src="bb-receipt-inventory.js?v=20261104-cycle1"></script>
+<script defer src="bb-receipt-inventory.js?v=20261104-groups1"></script>
 <script defer src="bb-receipt-scanner.js?v=20261102-loop2"></script>
 <script defer src="bb-receipt-host.js?v=20261104-cycle1"></script>
 <link rel="stylesheet" href="bb-receipt-scanner.css?v=20261031-receipt-pantry">
@@ -4383,6 +4383,7 @@ function normaliseFeatures(input,recipes){
   brand:typeof x?.brand==='string'?x.brand.trim().slice(0,80):'',
   packQuantity:Number.isFinite(Number(x?.packQuantity))&&Number(x.packQuantity)>0&&Number(x.packQuantity)<=1000000?Number(x.packQuantity):null,
   packUnit:['g','ml','each','pack','bag','tin','bunch','loaf'].includes(x?.packUnit)?x.packUnit:null,
+  packReviewed:x?.packReviewed===true,
   priceMarket:['UK','Guernsey','Jersey','US'].includes(x?.priceMarket)?x.priceMarket:null,
   priceRetailer:typeof x?.priceRetailer==='string'?x.priceRetailer.trim().slice(0,100):null,
   priceCurrency:['GBP','USD'].includes(x?.priceCurrency)?x.priceCurrency:null,
@@ -4490,7 +4491,7 @@ function bb1749EnhanceEssentials(region){
   const empty=document.createElement('p');empty.textContent='No essentials saved yet. Add one below or use a quick-add suggestion.';list.append(empty);
  }
  for(const essential of existing){
-  const row=document.createElement('div');row.className='bb1749-topup-row';
+  const row=document.createElement('div');row.className='bb1749-topup-row';row.dataset.bbpgEssentialId=essential.id;
   const details=document.createElement('div');
   const name=document.createElement('strong');name.className='bb1749-topup-name';name.textContent=essential.name;
   const status=document.createElement('small');status.className='bb1749-topup-status';
@@ -8206,6 +8207,8 @@ window.BBHomeHost=Object.freeze({needsLegacyReview:bbHomeNeedsLegacyReview,settl
  keys:()=>({stock:BB307_STOCK_KEY,inventory:'basketboss_makeameal_v1_inventory'}),
  requirements:()=>bb321UnifiedShop(bb307Plan().items,true),
  household:()=>bb307FeatureState.essentials,
+ householdAmountContext:()=>({actor:window.BBHome?.actor?.()||'guest',session:localStorage.getItem('basketboss_cloud_session_v1'),features:localStorage.getItem(BB307_FEATURE_KEY)}),
+ saveHouseholdAmount:(id,patch,pin)=>window.BBHome.setHouseholdAmount(id,patch,pin),
  prepareHousehold:entries=>{const before=localStorage.getItem(BB307_FEATURE_KEY),next=JSON.parse(JSON.stringify(bb307FeatureState));for(const [id,patch]of entries){const row=next.essentials.find(x=>x.id===id);if(!row)throw Error('Household list changed. Review it first.');const q=BBWeeklyEssentials.reconcile({...row,...patch,manualPending:true});if(!q.valid)throw Error('Check household amounts for '+row.name);Object.assign(row,patch,{manualPending:true});}return {key:BB307_FEATURE_KEY,value:next,expected:before};},
  completeHousehold:id=>{const next=JSON.parse(JSON.stringify(bb307FeatureState)),row=next.essentials.find(x=>x.id===id);if(!row||!Object.hasOwn(row,'targetQty'))return {};row.manualPending=false;row.ownedQty=Math.max(row.ownedQty,row.targetQty);return {[BB307_FEATURE_KEY]:next};},
  reload:()=>{bb307FeatureState=bb307ReadFeatures();},
@@ -10788,9 +10791,10 @@ function bbReceiptPrepareSave(packet){
  const automaticFood=hasManual?bb321UnifiedShop(bb307Plan().items,true):[];
  for(const item of packet.source==='legacy'?(packet.items||[]).filter(row=>row.classification==='essential'):packet.essentials||[]){
   const amount=measure(stockPantry?item.quantity:0,item.unit||item.guidePackUnit),name=String(item.name||item.description||'').trim().slice(0,70);if(!amount||!name)continue;
-  let row=features.essentials.find(row=>(canonical(row.name)===canonical(name)||row.productName&&canonical(row.productName)===canonical(name))&&measure(0,row.unit)?.unit===amount.unit);
-  if(!row){if(features.essentials.length>=60)throw Error('Your essentials list is full. Review it before adding receipt items.');let hash=2166136261;for(const char of canonical(name)+'|'+amount.unit)hash=Math.imul(hash^char.charCodeAt(0),16777619);row={id:'receipt-essential-'+(hash>>>0).toString(36),name,qty:1,unit:amount.unit,selected:false,owned:false,targetQty:0,ownedQty:0,manualPending:false,estimatedPackPrice:null};features.essentials.push(row);}
-  const pack=measure(item.guidePackQuantity??item.packQuantity,item.guidePackUnit??item.packUnit);if(pack){row.productName=String(item.productName||item.name||item.description||name).slice(0,160);row.brand=String(item.brand||'').slice(0,80);row.packQuantity=pack.quantity;row.packUnit=pack.unit;if(packet.source==='legacy'){row.estimatedPackPrice=Number(item.price);row.priceMarket=packet.market;row.priceRetailer=packet.retailer;row.priceCurrency=packet.market==='US'?'USD':'GBP';row.priceScope='store';}}
+  const brand=String(item.brand||'').trim(),product=String(item.productName||'').trim();
+  let row=features.essentials.find(row=>(canonical(row.name)===canonical(name)||row.productName&&canonical(row.productName)===canonical(name))&&measure(0,row.unit)?.unit===amount.unit&&!(brand&&row.brand&&canonical(brand)!==canonical(row.brand))&&!(product&&row.productName&&canonical(product)!==canonical(row.productName)));
+  if(!row){if(features.essentials.length>=60)throw Error('Your essentials list is full. Review it before adding receipt items.');let hash=2166136261;for(const char of canonical(name)+'|'+amount.unit+'|'+canonical(brand)+'|'+canonical(product))hash=Math.imul(hash^char.charCodeAt(0),16777619);row={id:'receipt-essential-'+(hash>>>0).toString(36),name,qty:1,unit:amount.unit,selected:false,owned:false,targetQty:0,ownedQty:0,manualPending:false,estimatedPackPrice:null};features.essentials.push(row);if(brand)row.brand=brand;if(product)row.productName=product;}
+  const pack=measure(item.guidePackQuantity??item.packQuantity,item.guidePackUnit??item.packUnit);if(pack){row.productName=String(item.productName||item.name||item.description||name).slice(0,160);row.brand=String(item.brand||'').slice(0,80);row.packQuantity=pack.quantity;row.packUnit=pack.unit;row.packReviewed=true;if(packet.source==='legacy'){row.estimatedPackPrice=Number(item.price);row.priceMarket=packet.market;row.priceRetailer=packet.retailer;row.priceCurrency=packet.market==='US'?'USD':'GBP';row.priceScope='store';}}
   if(!stockPantry){featureChanged=true;continue;}
   const automatic=window.BBWeeklyEssentials?.reconcile(row)?.toBuy||0;manualAdditions.push({id:BB307Pantry.pantryId(row.name,amount.unit),quantity:amount.quantity,automaticQuantity:automatic});
   const owned=measure(Number(row.ownedQty??(row.owned?row.qty:0)),row.unit);if(!owned)throw Error('Review the amount already at home for '+row.name+'.');
@@ -11406,7 +11410,7 @@ window.BB172Welcome={open:()=>open(true),completed:()=>read(SEEN)==='true'};
 }
 if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',patchPaths,{once:true});else patchPaths();})();
 </script>
-<script src="shopping-inventory.js?v=20261103-feedback1" defer></script><dialog id="bbIntroTrialDialog" aria-labelledby="bbIntroTrialTitle" aria-describedby="bbIntroTrialText">
+<script src="shopping-inventory.js?v=20261104-groups1" defer></script><dialog id="bbIntroTrialDialog" aria-labelledby="bbIntroTrialTitle" aria-describedby="bbIntroTrialText">
  <div class="bbtrial-hero">
   <button type="button" class="bbtrial-x" data-bbtrial-close aria-label="Close Premium offer">×</button>
   <p class="bbtrial-topline">🚀 FOUNDING MEMBER BETA · FIRST 25 PLACES</p>
@@ -12268,14 +12272,18 @@ body[data-bbnext-view="discover"] #app .bb175-discover-heading{padding-top:calc(
 #app.bbnext-plan .bbnext-day .bbpol-price,
 #app.bbnext-plan .bbnext-day .bbfeed-price{display:none!important}
 </style>
-<link rel="stylesheet" href="bb-kitchen-essentials.css?v=20261102-fourchoices1">
-<script defer src="bb-kitchen-essentials.js?v=20261103-feedback1"></script>
+<link rel="stylesheet" href="bb-kitchen-essentials.css?v=20261104-groups1">
+<link rel="stylesheet" href="bb-pantry-groups.css?v=20261104-groups1">
+<script defer src="bb-pantry-groups.js?v=20261104-groups1"></script>
+<script defer src="bb-pantry-groups-ui.js?v=20261104-groups1"></script>
+<script defer src="bb-household-amount.js?v=20261104-groups1"></script>
+<script defer src="bb-kitchen-essentials.js?v=20261104-groups1"></script>
 <link rel="stylesheet" href="bb-keyboard-layout.css?v=20261101-keyboard1">
 <script defer src="bb-keyboard-layout.js?v=20261101-keyboard1"></script>
 <link rel="stylesheet" href="bb-simple-layout.css?v=20261102-loop2">
 <script defer src="bb-simple-layout.js?v=20261101-simple1"></script>
 <script defer src="bb-pantry-deduction.js?v=20261104-cycle1"></script>
-<script defer src="bb-home.js?v=20261104-cycle1"></script><link rel="stylesheet" href="bb-day-done.css?v=20261104-cycle1"><script defer src="bb-day-done.js?v=20261104-cycle1"></script><link rel="stylesheet" href="bb-shop-add.css?v=20261104-cycle1"><script defer src="bb-shop-add.js?v=20261104-cycle1"></script><script src="bb-pantry-autofill.js?v=20261104-cycle1"></script>
+<script defer src="bb-home.js?v=20261104-groups1"></script><link rel="stylesheet" href="bb-day-done.css?v=20261104-cycle1"><script defer src="bb-day-done.js?v=20261104-cycle1"></script><link rel="stylesheet" href="bb-shop-add.css?v=20261104-cycle1"><script defer src="bb-shop-add.js?v=20261104-cycle1"></script><script src="bb-pantry-autofill.js?v=20261104-cycle1"></script>
 <link rel="stylesheet" href="bb-shared-shopping.css?v=20261102-loop2">
 <script defer src="bb-shared-shopping.js?v=20261102-loop2"></script>
 <link rel="stylesheet" href="bb-plan-drag.css?v=20261103-drag2">

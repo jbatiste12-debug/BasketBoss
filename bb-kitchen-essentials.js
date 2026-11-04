@@ -16,6 +16,12 @@
   });return node;
  }
  function state(key){if(!choices.has(key))choices.set(key,{expanded:false,search:''});return choices.get(key);}
+ const groupUI=()=>window.BBPantryGroupsUI;
+ const groupKey=(name)=>window.BBPantryGroups?.itemKey(name)||name.toLowerCase().trim();
+ const householdKey=(name)=>{
+  const saved=window.BBHomeHost?.household?.().find(row=>row.name.toLowerCase()===name.toLowerCase());
+  return saved?.id||'name:'+groupKey(name);
+ };
  function show(node,visible){if(node.hidden===visible)node.hidden=!visible;}
  function thumb(control,name,emoji){
   if(control.dataset.bbkeThumbnail)return;
@@ -41,14 +47,21 @@
    const current=state(key),items=[...grid.querySelectorAll('[data-bb5-food]')];
    const ordered=rules.previewOrder(items,rules.FOOD_PREVIEWS[key]||[],node=>node.dataset.bb5Food);
    ordered.forEach((node,index)=>{if(grid.children[index]!==node)grid.insertBefore(node,grid.children[index]||null);});
-   const query=current.search.trim().toLowerCase();let visible=0;
-   ordered.forEach((node,index)=>{const show=current.expanded?(!query||node.dataset.bb5Food.toLowerCase().includes(query)):index<4;node.toggleAttribute('data-bbke-choice-hidden',!show);if(show)visible++;});
+   const query=current.search.trim().toLowerCase();let visible=0,eligible=0;
+   ordered.forEach(node=>{
+    const name=node.dataset.bb5Food,inGroup=!groupUI()||groupUI().matches(key,groupKey(name),name);
+    const available=inGroup&&(!query||name.toLowerCase().includes(query));
+    const visibleHere=available&&(current.expanded||eligible<4);if(available)eligible++;
+    node.toggleAttribute('data-bbke-choice-hidden',!visibleHere);if(visibleHere)visible++;
+   });
    body.dataset.bbkeExpanded=String(current.expanded);grid.classList.add('bbke-choice-grid');
    const bar=body.querySelector(':scope>.bbke-picker-controls');if(!bar)return;
-   show(bar.querySelector('input'),current.expanded);show(bar.querySelector('.bbke-search-empty'),current.expanded&&!visible);
+   show(bar.querySelector('input'),current.expanded);show(bar.querySelector('.bbke-search-empty'),!visible);
    const add=bar.querySelector('.bbke-add-choice');text(add,current.expanded?'Done':'＋ Add');add.setAttribute('aria-expanded',String(current.expanded));
   };
-  controls(body,key,grid,draw);draw();
+  controls(body,key,grid,draw);
+  groupUI()?.mount(body,key,()=>{refresh();});
+  draw();
  }
  function selectedReadout(area,kitchen){
   const key=area.dataset.bb76Store,body=area.querySelector('.bb76-store-body');if(!body)return;
@@ -61,9 +74,37 @@
    details.append(summary,list,edit);details.addEventListener('toggle',()=>{if(details.isConnected)state('selected-'+key).expanded=details.open;});body.append(details);
   }
   const rows=[...kitchen.querySelectorAll('#bb5SelectedRows [data-pantry-location="'+key+'"] .bb5-review-row')];
-  const values=rows.map(row=>{const name=row.querySelector('strong').textContent,amount=row.querySelector('[data-bb5-qty]').value,unit=row.querySelector('[data-bb5-unit]').value;const needed=row.querySelector('[data-bb5-needed]')?.value,buy=row.querySelector('output')?.textContent;return name+' · '+(amount.trim()?amount+' '+unit+' already got':'Amount unknown — enter an amount to reduce Shopping')+(needed!==undefined?' · '+needed+' '+unit+' needed':'')+(buy?' · '+buy:'');});
-  const stamp=JSON.stringify(values);
-  if(details.dataset.bbkeValues!==stamp){details.dataset.bbkeValues=stamp;text(details.querySelector('summary'),'Selected here ('+values.length+')');const list=details.querySelector('ul');list.replaceChildren();for(const value of values){const li=doc.createElement('li');li.textContent=value;list.append(li);}if(!values.length){const li=doc.createElement('li');li.textContent='Nothing selected here yet.';list.append(li);}}
+  const values=rows.map(row=>{const name=row.querySelector('strong').textContent,amount=row.querySelector('[data-bb5-qty]').value,unit=row.querySelector('[data-bb5-unit]').value;const needed=row.querySelector('[data-bb5-needed]')?.value,buy=row.querySelector('output')?.textContent;return {name,description:(amount.trim()?amount+' '+unit+' already got':'Amount unknown — enter an amount to reduce Shopping')+(needed!==undefined?' · '+needed+' '+unit+' needed':'')+(buy?' · '+buy:'')};});
+  let groups=null,pin=null;try{groups=window.BBPantryGroups?.snapshot(key);pin=window.BBPantryGroups?.context();}catch{}
+  const stamp=JSON.stringify([values,pin,groupUI()?.active(key)]);
+  if(details.dataset.bbkeValues!==stamp){
+   details.dataset.bbkeValues=stamp;
+   const filtered=values.filter(value=>!groupUI()||groupUI().matches(key,groupKey(value.name),value.name));
+   text(details.querySelector('summary'),'Selected here ('+filtered.length+(filtered.length!==values.length?' of '+values.length:'')+')');
+   const list=details.querySelector('ul');list.replaceChildren();
+   const categories=groups?.groups||[{id:'all',name:''}];
+   for(const category of categories){
+    const own=filtered.filter(value=>!groups||window.BBPantryGroups.groupFor(key,groupKey(value.name),value.name)===category.id);if(!own.length)continue;
+    if(category.name){const title=doc.createElement('li');title.className='bbpg-group-title';const heading=doc.createElement('h4');heading.textContent=category.name;title.append(heading);list.append(title);}
+    for(const value of own){
+     const li=doc.createElement('li');li.className='bbpg-selected-item';const name=doc.createElement('strong');name.textContent=value.name;
+     const description=doc.createElement('small');description.textContent=value.description;li.append(name,description);
+     const picker=groupUI()?.picker(key,groupKey(value.name),value.name,()=>{refresh();});if(picker)li.append(picker);list.append(li);
+    }
+   }
+   if(!filtered.length){const li=doc.createElement('li');li.textContent=values.length?'No selected items in this subcategory. Choose items above or switch to All.':'Nothing selected here yet.';list.append(li);}
+  }
+ }
+ function refreshGroupPickers(kitchen){
+  if(!kitchen||!groupUI())return;
+  let pin;try{pin=JSON.stringify(window.BBPantryGroups.context());}catch{return;}
+  for(const row of kitchen.querySelectorAll('#bb5SelectedRows [data-bb5-row]')){
+   if(row.dataset.bbpgRevision===pin)continue;
+   const section=row.closest('[data-pantry-location]')?.dataset.pantryLocation,name=row.querySelector('strong')?.textContent;
+   if(!section||!name)continue;
+   const picker=groupUI().picker(section,groupKey(name),name,()=>{refresh();});if(!picker)continue;
+   row.querySelector('.bbpg-item-group')?.remove();row.append(picker);row.dataset.bbpgRevision=pin;
+  }
  }
  function householdChoices(region,kitchen){
   let full=region.querySelector('#bbkeHouseholdMore'),grid=region.querySelector('.bbke-household-choices');
@@ -95,22 +136,42 @@
    for(const node of grid.children){const item=rules.HOUSEHOLD_PREVIEWS.find(item=>item.name===node.dataset.bbkeName);thumb(node,node.dataset.bbkeName,item?.emoji||'🧼');node.setAttribute('aria-label','Add '+node.dataset.bbkeName+' to shopping list');}
    const selected=full.querySelector('.bb16-ess-selected');if(selected){const details=doc.createElement('details');details.className='bbke-selected-here';details.innerHTML='<summary>Selected household items</summary>';region.append(details);details.append(selected);}
    const draw=()=>{
-    const current=state('household'),query=current.search.trim().toLowerCase();let visible=0;
-    [...grid.children].forEach((node,index)=>{const on=current.expanded?(!query||node.dataset.bbkeName.toLowerCase().includes(query)):index<4;node.toggleAttribute('data-bbke-choice-hidden',!on);if(on)visible++;});
-    const bar=region.querySelector(':scope>.bbke-picker-controls');show(full,current.expanded);show(bar.querySelector('input'),current.expanded);show(bar.querySelector('.bbke-search-empty'),current.expanded&&!visible);
+    const current=state('household'),query=current.search.trim().toLowerCase();let visible=0,eligible=0;
+    [...grid.children].forEach(node=>{
+     const name=node.dataset.bbkeName,inGroup=!groupUI()||groupUI().matches('essentials',householdKey(name),name),available=inGroup&&(!query||name.toLowerCase().includes(query));
+     const on=available&&(current.expanded||eligible<4);if(available)eligible++;
+     node.toggleAttribute('data-bbke-choice-hidden',!on);if(on)visible++;
+    });
+    const bar=region.querySelector(':scope>.bbke-picker-controls');show(full,current.expanded);show(bar.querySelector('input'),current.expanded);show(bar.querySelector('.bbke-search-empty'),!visible);
     text(bar.querySelector('.bbke-add-choice'),current.expanded?'Done':'＋ Add');bar.querySelector('.bbke-add-choice').setAttribute('aria-expanded',String(current.expanded));
    };
-   controls(region,'household',grid,draw);draw();
+   region.bbGroupDraw=draw;controls(region,'household',grid,draw);draw();
    if(form){
     const name=form.querySelector('#bb307EssName');name.placeholder='e.g. shower gel, toothpaste';
     form.addEventListener('submit',event=>{
-     if(rules.isHousehold(name.value,form.querySelector('#bb307EssProduct').value))return;
+     if(rules.isHousehold(name.value,form.querySelector('#bb307EssProduct').value)){
+      const category=groupUI()?.active('essentials'),api=window.BBPantryGroups,typed=name.value.trim(),before=new Set(window.BBHomeHost?.household?.().map(item=>item.id));
+      if(api&&category&&category!=='all'){
+       let pin;try{pin=api.context();}catch{}
+       if(pin)requestAnimationFrame(()=>{
+        const added=window.BBHomeHost?.household?.().find(item=>!before.has(item.id)&&item.name.toLowerCase()===typed.toLowerCase());
+        if(!added)return;
+        try{api.assign('essentials',added.id,category,pin);}catch{const notice=doc.querySelector('#bbKitchenEssentials .bbpg-status');if(notice)notice.textContent='Item saved. Choose its subcategory again in the item menu.';}
+        schedule();
+       });
+      }
+      return;
+     }
      event.preventDefault();event.stopImmediatePropagation();let notice=form.querySelector('.bbke-household-error');
      if(!notice){notice=doc.createElement('p');notice.className='bbke-household-error';notice.setAttribute('role','status');form.prepend(notice);}
      notice.textContent='Weekly essentials are for household items, such as toiletries, cleaning products and nappies. Add food or drink in Cupboard, Fridge or Freezer.';name.focus();
     },true);
    }
   }
+  groupUI()?.mount(region,'essentials',()=>{region.bbGroupDraw?.();refresh();});
+  const heading=region.querySelector('.bb16-essentials-heading'),groupBar=region.querySelector(':scope>.bbpg-controls');
+  if(heading&&groupBar&&heading.nextElementSibling!==groupBar)heading.after(groupBar);
+  region.bbGroupDraw?.();
   // Older records have no kind field. Keep their ORIGINAL rows and actions
   // accessible in the food area; never delete records or credit pantry stock.
   const legacyRows=[...region.querySelectorAll('.bb1749-topup-row,.bb16-essential-row')].filter(row=>{
@@ -122,6 +183,23 @@
    legacy.append(summary,note);legacy.addEventListener('toggle',()=>{if(legacy.isConnected)legacyOpen.value=legacy.open;});kitchen.append(legacy);
   }
   if(legacy)for(const row of legacyRows){const skip=row.querySelector('[data-bb307-skip]');if(skip)text(skip,'Remove from list');legacy.append(row);}
+  if(groupUI()){
+   let pin;try{pin=JSON.stringify(window.BBPantryGroups.context());}catch{}
+   for(const row of region.querySelectorAll('.bb1749-topup-row,.bb16-essential-row')){
+    const name=row.querySelector('.bb1749-topup-name,.bb16-essential-info strong')?.textContent.trim(),source=row.querySelector('[data-bb307-skip],[data-bb307-owned],[data-bb307-select],[data-bb307-unown]');
+    const id=row.dataset.bbpgEssentialId||source?.dataset.bb307Skip||source?.dataset.bb307Owned||source?.dataset.bb307Select||source?.dataset.bb307Unown;
+    if(!name||!id)continue;
+    const item=window.BBHomeHost?.household?.().find(item=>item.id===id);
+    if(item&&Object.hasOwn(item,'ownedQty')){
+     text(row.querySelector('.bb16-essential-info small'),item.ownedQty+' '+item.unit+' at home · '+item.targetQty+' '+item.unit+' needed');
+     text(row.querySelector('.bb1749-topup-status'),item.ownedQty+' '+item.unit+' at home');
+    }
+    row.toggleAttribute('data-bbpg-hidden',!groupUI().matches('essentials',id,name));
+    if(pin&&row.dataset.bbpgRevision!==pin){
+     const picker=groupUI().picker('essentials',id,name,()=>{refresh();});if(picker){row.querySelector('.bbpg-item-group')?.remove();row.append(picker);row.dataset.bbpgRevision=pin;}
+    }
+   }
+  }
   const selected=region.querySelector('.bb16-ess-selected');if(selected)show(selected,!!selected.querySelector('.bb16-essential-row'));
   const count=region.querySelector('.bb16-ess-count');text(count,(selected?.querySelectorAll('.bb16-essential-row').length||0)+' household items');
   text(region.querySelector('.bb16-essentials-heading h3'),'Household essentials');
@@ -163,8 +241,9 @@
    original.removeAttribute('data-bb307-extras');original.setAttribute('data-bb-kitchen-essentials-controls','');
    essentials.append(original);
   }
-  if(rules){for(const area of kitchen.querySelectorAll('.bb76-store[data-bb76-store]')){foodChoices(area);selectedReadout(area,kitchen);}if(original)householdChoices(original,kitchen);}
+  if(rules){for(const area of kitchen.querySelectorAll('.bb76-store[data-bb76-store]')){foodChoices(area);selectedReadout(area,kitchen);}refreshGroupPickers(kitchen);if(original)householdChoices(original,kitchen);}
   window.BBHome?.decorate?.(original);
+  window.BBHouseholdAmount?.decorate?.(original);
   if(!kitchen.querySelector('#bbKitchenSections')){
    const nav=doc.createElement('nav');nav.id='bbKitchenSections';nav.setAttribute('aria-label','At home sections');
    nav.append(button('Choose food','bb76StorageSections'));
@@ -185,8 +264,12 @@
   app.addEventListener('input',event=>{if(event.target.matches('[data-bb5-qty],[data-bb5-needed]'))schedule();});
   app.addEventListener('change',event=>{if(event.target.matches('[data-bb5-unit]'))schedule();});
   new MutationObserver(records=>{
-   if(records.some(record=>record.target===app||record.target.matches?.('[data-bb76-tiles]')||[...record.addedNodes].some(node=>node.nodeType===1&&(node.matches?.('#bb173ShopFridge,[data-bb307-extras="shop"],#bb1756PlannerExtras,#bb1756Essentials,[data-bb5-food]')||node.querySelector?.('#bb173ShopFridge,#bb1756Essentials')))))schedule();
+   if(records.some(record=>record.target===app||record.target.matches?.('[data-bb76-tiles],#bb5SelectedRows')||[...record.addedNodes].some(node=>node.nodeType===1&&(node.matches?.('#bb173ShopFridge,[data-bb307-extras="shop"],#bb1756PlannerExtras,#bb1756Essentials,[data-bb5-food]')||node.querySelector?.('#bb173ShopFridge,#bb1756Essentials')))))schedule();
   }).observe(app,{childList:true,subtree:true});
+  const reset=()=>{choices.clear();window.BBPantryGroupsUI?.reset();app.querySelectorAll('[data-bbpg-revision],[data-bbke-values]').forEach(node=>{delete node.dataset.bbpgRevision;delete node.dataset.bbkeValues;});schedule();};
+  window.addEventListener('basketboss:session-changed',reset);
+  for(const event of ['basketboss:account-deletion-started','basketboss:account-deletion-deleted','basketboss:account-deletion-cancelled'])window.addEventListener(event,reset);
+  window.addEventListener('storage',event=>{if(event.key==='basketboss_cloud_session_v1'||event.key==='basketboss_pantry_groups_v1'||event.key===null)reset();});
  }
  window.BBKitchenEssentials=Object.freeze({refresh});
  if(doc.readyState==='loading')doc.addEventListener('DOMContentLoaded',start,{once:true});else start();
