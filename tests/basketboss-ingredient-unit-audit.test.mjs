@@ -57,6 +57,11 @@ test('trusted audit workflow grants read-only repository access, uses existing e
  const workflow=fs.readFileSync(path.join(root,'.github/workflows/ingredient-unit-audit.yml'),'utf8');
  assert.match(workflow,/contents: read/);assert.match(workflow,/environment: github-pages/);assert.match(workflow,/persist-credentials: false/);assert.match(workflow,/fetch-depth: 0/);assert.match(workflow,/retention-days: 1/);
  assert.doesNotMatch(workflow,/pull_request_target|contents: write|wrangler|d1 execute|secrets: inherit/);
+ // The complete compliance suite runs the same historical-catalogue audit.
+ const compliance=fs.readFileSync(path.join(root,'.github/workflows/app-store-compliance.yml'),'utf8');
+ assert.match(compliance,/fetch-depth: 0/,'the full suite needs the fixed historical catalogue commit');
+ assert.match(compliance,/persist-credentials: false/);assert.match(compliance,/contents: read/);
+ assert.match(compliance,/node --test[^\n]*tests\/\*\.test\.mjs/);
 });
 
 // An identity mismatch creates a false duplicate even when the unit matches.
