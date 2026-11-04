@@ -1,23 +1,33 @@
-# BasketBoss 1.0 (9) — compact Plan and simpler shopping
+# BasketBoss 1.0 (9) — compact header and live weekly budget
 
 Build 9 includes all build 8 functionality and the “Your kitchen, made simple”
-welcome. The latest source is `testflight-build9-compact-plan` on
+welcome. The latest source is `testflight-build9-budget-header` on
 `fix/confirmed-cook-pantry` (PR #40). Earlier release tags remain unchanged.
 
-Plan starts with a compact action card: Auto-fill My Week, Add a meal, and a
-single row of Meal preferences, Ingredients to avoid and Pantry auto-fill pills.
-Your dinner plan immediately follows, with its planned count and Clear week
-control. Saved weeks, Saved meals, Check At home and budget/household settings
-sit below the weekly schedule. The saved tools start closed when entering Plan;
-ordinary updates within Plan retain the active pane. Existing saved names,
-selections, restore rules and data remain with their original controls.
+Plan uses a single branding row with BasketBoss, region, membership and Settings.
+Membership is still read from the verified account state; compact labels retain
+full accessible descriptions and existing actions. The green My Week card is
+first, followed by a single row of Budget & household settings, Meal preferences
+and Ingredients to avoid pills, then Auto-fill My Week / Add a meal and the dinner
+schedule. Saved weeks, Saved meals and Check At home stay below the schedule.
+Saved tools close on Plan entry; ordinary Plan updates retain the active pane.
 
-Pantry auto-fill is a gold secondary pill that opens the existing pantry planner.
-How Auto-fill works is behind the accessible ⓘ control; filter and info popovers
-close with Escape or an outside tap and stay above the bottom dock. The original
-Auto-fill and ingredient-filter handlers still enforce their existing rules.
-Flow labels now say Plan → At home → Shop. On 390 × 844, the dinner heading moved
-from about 916 px down to about 300 px and the first dinners are visible at once.
+My Week describes a saved target directly, for example “£24.30 under your £150
+budget · 7/7 dinners planned”. It shows estimated At home savings only where stock
+avoids quoted shopping packs. The ring uses the full shopping estimate after
+usable pantry stock, including lunches and selected essentials; Bought ticks do
+not reduce it again. Partial ownership can reduce the required quantity without
+changing cost if the same number of packs must still be bought. An unset budget
+asks the user to set one, and genuinely incomplete prices/recipe amounts are
+labelled “priced so far” rather than claiming a guaranteed under-budget result.
+
+The original budget and household controls open from their pill. Original
+Auto-fill and ingredient-filter rules remain intact. How Auto-fill works and the
+gold pantry-only auto-fill action sit behind ⓘ. Popovers close with Escape or an
+outside tap and remain above the dock. Flow labels use Plan → At home → Shop.
+Phone and tablet browser checks verify one header row, accessible touch targets,
+working region/settings/membership controls, the weekly plan above the fold and
+unchanged plan/stock data from layout changes.
 
 At home now opens a compact quantity editor beside the food tile you tap.
 Use the amount, unit and −/+ controls there, then Done; valid amounts update
@@ -136,7 +146,7 @@ Quantity checks also preserve fractional food pack balances and separate receipt
 source records. Incompatible or unknown physical units remain intact with a
 review message; compatible edits can still save. Purchase pack counts remain whole.
 
-Saved weeks and Saved meals remain compact tab-style buttons above the dinner
+Saved weeks and Saved meals remain compact tab-style buttons below the dinner
 plan. Both start closed. Switching preserves draft names and existing save/load
 and delete actions. The pantry balance, Day done, manual Shop, receipt handling,
 weighted Auto-fill, unit conversion and earlier AI/Premium features are inherited
@@ -144,7 +154,7 @@ from build 8. See BUILD_8_TESTFLIGHT.md for details.
 
 ## Verification
 
-Full automated suite: 1,886 passed, no failures or skipped tests, two existing
+Full automated suite: 1,894 passed, no failures or skipped tests, two existing
 TODO cases. Strict pantry TypeScript contracts passed. Native packaging and
 portable iOS checks passed: 914 assets, 100 Free recipes, no private Premium
 recipe bundle. The native Xcode compile/sign/upload is not performed here.
@@ -156,7 +166,7 @@ in previous folders:
 
 ```sh
 bb_release_dir="$(mktemp -d "$HOME/BasketBoss-build9-XXXXXX")" &&
-git clone --depth 1 --branch testflight-build9-compact-plan \
+git clone --depth 1 --branch testflight-build9-budget-header \
   https://github.com/jbatiste12-debug/BasketBoss.git "$bb_release_dir" &&
 cd "$bb_release_dir" &&
 npm ci &&
@@ -188,8 +198,9 @@ The Apple SDK startup repair (PR #46) and online certificate-check transport
 repair (PR #47) are deployed separately on production main; the latter merge is
 `611970db12967aafa87921a6667a055674c1926e`. The official verifier keeps Apple
 roots, signature, revocation and certificate freshness checks. Signed fixtures
-pass in real workerd with online checks enabled. A tester retry is still required
-to confirm full Premium activation; the post-deploy live probe is queued.
+pass in real workerd with online checks enabled. The user has now confirmed that Premium works after deployment. The separate
+post-deploy probe was queued at the earlier handoff; the successful user retry
+confirms the activation path.
 These server repairs work with existing clients that have the beta button. This
 client source tag does not redeploy that backend.
 

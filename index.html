@@ -6752,6 +6752,53 @@ function bb81PlanBatchDecorate(app){
  }
 }
 
+// Budget presentation uses the same whole-pack quotes as Shop. Pantry savings
+// compare like-for-like purchase quantities, never raw recipe portion prices.
+function bbMyWeekPantrySavings(summary,{quote=bb15Quote,household=[]}={}){
+ let savings=0;
+ const add=(item,before,after,essential=false)=>{
+  if(!Number.isFinite(before)||!Number.isFinite(after)||before<=after||after<0)return;
+  const clean=qty=>{const row={...item,qty,toBuy:qty,owned:false};delete row.targetQty;delete row.ownedQty;delete row.manualPending;delete row.bbHomeTarget;return row;};
+  const raw=quote(clean(before),essential)?.amount,net=quote(clean(after),essential)?.amount;
+  if(Number.isFinite(raw)&&Number.isFinite(net)&&raw>=net&&raw>=0&&net>=0)savings+=raw-net;
+ };
+ for(const item of summary?.items||[]){
+  if(item.staple||item.cupboardCheck||item.bb172Assumed)continue;
+  const owned=Number(item.pantryUsed),needed=Number(item.toBuy);
+  if(owned>0&&Number.isFinite(needed)&&needed>=0)add(item,needed+owned,needed);
+ }
+ for(const row of household){
+  if(!row?.selected||row.manualPending===false)continue;
+  const target=Number(row.targetQty??row.qty),owned=Object.hasOwn(row,'ownedQty')?Number(row.ownedQty):row.owned?target:0;
+  if(!Number.isFinite(target)||target<=0||!Number.isFinite(owned)||owned<=0)continue;
+  const active=(summary?.essentials||[]).find(item=>item.id===row.id&&item.unit===row.unit),needed=active?Number(active.qty):0;
+  add({...row,...active},needed+Math.min(target,owned),needed,true);
+ }
+ return Math.round(Math.max(0,savings)*100)/100;
+}
+function bbMyWeekAmountReview(items,unloaded=false){
+ // Cupboard reminders and Low/Out container restocks are priced separately
+ // from recipe spoonfuls; their original culinary units cannot make this
+ // shopping budget incomplete. Unknown measured-food amounts still can.
+ return unloaded===true||(items||[]).some(item=>!item.staple&&!item.cupboardCheck&&(item.needsRecipeReview||item.pendingSources?.length));
+}
+function bbMyWeekDinnerCount(plan,notes={},pairs=[]){
+ const days=['Monday','Tuesday','Wednesday','Thursday','Friday','Saturday','Sunday'];
+ return new Set([...(plan||[]).map(row=>row?.day),...Object.keys(notes||{}),...(pairs||[]).map(row=>row?.leftoverDay)].filter(day=>days.includes(day))).size;
+}
+function bbMyWeekBudgetCopy({spend,target,dinners=0,pending=0,review=false,savings=0,money}){
+ const count=Math.max(0,Math.min(7,Number(dinners)||0))+'/7 dinners planned',saved=Number.isFinite(target)&&target>0;
+ const budget=saved?(Number.isInteger(target)?money(target).replace(/([.,])00(?=$|\s)/,''):money(target)):'';
+ let summary;
+ if(pending>0||review)summary=money(spend)+' priced so far · '+(saved?budget+' budget · ':'')+count;
+ else if(!saved)summary=count+' · Set a weekly budget';
+ else if(Math.abs(target-spend)<0.005)summary='At your '+budget+' budget · '+count;
+ else summary=money(Math.abs(target-spend))+(spend>target?' over':' under')+' your '+budget+' budget · '+count;
+ return {summary,budgetLine:saved?budget+' weekly target':'Set your weekly budget',
+  savings:savings>0?'At home stock saves an estimated '+money(savings)+'.':'',
+  priceNote:[pending>0?pending+' item'+(pending===1?'':'s')+' still need'+(pending===1?'s':'')+' a price.':'',review?'Some recipe amounts need checking.':''].filter(Boolean).join(' ')};
+}
+
 function bbNextComposePlan(app){
  if(tab!=='week'||!app)return;
  app.classList.add('bbnext-plan');
@@ -6771,8 +6818,11 @@ function bbNextComposePlan(app){
  const spend=Math.max(0,Number(basket?.total)||0);
  let target=budgetValue===null?150:Number(budgetValue);
  const bb77HasCustomTarget=budgetValue!==null; /* bb77-budget-autosave-and-ring-20261026 */
- const percent=target>0?Math.max(0,Math.min(100,spend/target*100)):0;
+ const percent=bb77HasCustomTarget&&target>0?Math.max(0,Math.min(100,spend/target*100)):0;
  const moneyValue=n=>BBPriceV19.money(n,bb307Market);
+ const dinnerCount=bbMyWeekDinnerCount(state.planned,bb172QuickDinners(),bbBatchPairs());
+ const pantrySavings=bbMyWeekPantrySavings(basket,{household:bb307FeatureState?.essentials||[]});
+ const amountReview=bbMyWeekAmountReview(basket?.items,(state.planned||[]).some(slot=>!getRecipe(slot.recipeId)));
  const budget=document.createElement('section');
  budget.className='bbnext-plan-budget';
  budget.setAttribute('aria-label','Weekly budget summary');
@@ -6795,9 +6845,9 @@ function bbNextComposePlan(app){
  const kicker=document.createElement('span');kicker.className='bbnext-plan-kicker';kicker.textContent='MY WEEK · MON–SUN';
  const heading=document.createElement('h2');heading.textContent='My Week';
  const budgetLine=document.createElement('strong');budgetLine.className='bbnext-plan-budget-line';
- budgetLine.textContent=bb77HasCustomTarget?moneyValue(target)+' weekly target':moneyValue(150)+' suggested weekly baseline';
  const note=document.createElement('p');
- note.textContent=spend>target?moneyValue(spend-target)+' over the '+(bb77HasCustomTarget?'saved target':'suggested baseline'):moneyValue(target-spend)+' estimated remaining against '+(bb77HasCustomTarget?'your target':'suggested baseline');
+ const savingsNote=document.createElement('p');savingsNote.className='bb77-pantry-savings';
+ const priceNote=document.createElement('small');priceNote.className='bb77-price-note';
  const disclaimer=document.createElement('small');disclaimer.textContent='Basket estimates, not supermarket checkout prices.';
  budgetText.append(kicker);
  const feed=document.createElement('div');feed.className='bbfeed-control bbfeed-global';feed.setAttribute('role','group');feed.setAttribute('aria-label','Household servings');
@@ -6809,20 +6859,26 @@ function bbNextComposePlan(app){
  feedMinus.addEventListener('click',e=>{e.stopPropagation();bbFeedingSave(state.servings-1);});
  feedPlus.addEventListener('click',e=>{e.stopPropagation();bbFeedingSave(state.servings+1);});
  feed.append(feedLabel,feedMinus,feedValue,feedPlus);
- budgetText.append(feed,heading,budgetLine,note,disclaimer);
+ budgetText.append(feed,heading,budgetLine,note,savingsNote,priceNote,disclaimer);
 
  function bb77SyncEstimateAndRing(budgetDenominator, custom){
    const d=Number(budgetDenominator)>0?Number(budgetDenominator):150;
-   const rawPercent=spend/d*100, used=Math.round(rawPercent);
+   const rawPercent=custom?spend/d*100:0, used=Math.round(rawPercent);
    const progress=Math.max(0,Math.min(100,rawPercent));
+   const copy=bbMyWeekBudgetCopy({spend,target:custom?d:null,dinners:dinnerCount,pending:Number(basket?.pending)||0,review:amountReview,savings:pantrySavings,money:moneyValue});
    estimate.textContent=moneyValue(spend);
    donut.style.setProperty('--bbnext-budget-pct',progress+'%');
-   donut.style.setProperty('--bb77-budget-color',spend>d?'#be4838':used>=85?'#c28a2a':'#287646');
-   donut.classList.toggle('bb77-budget-over',spend>d);
-   donut.setAttribute('aria-valuenow',String(Math.round(progress)));
-   donut.setAttribute('aria-valuetext',moneyValue(spend)+' estimated of '+moneyValue(d)+(custom?' saved target':' suggested baseline')+'; '+used+' percent used'+(spend>d?', over target':''));
-   budgetLine.textContent=moneyValue(d)+(custom?' weekly target':' suggested weekly baseline');
-   note.textContent=spend>d?moneyValue(spend-d)+' over '+(custom?'your target':'the suggested baseline'):moneyValue(d-spend)+' estimated remaining against '+(custom?'your target':'the suggested baseline');
+   donut.style.setProperty('--bb77-budget-color',custom&&spend>d?'#be4838':custom&&used>=85?'#c28a2a':'#287646');
+   donut.classList.toggle('bb77-budget-over',custom&&spend>d);
+   donut.setAttribute('role',custom?'progressbar':'img');
+   if(custom){donut.setAttribute('aria-valuemin','0');donut.setAttribute('aria-valuemax','100');donut.setAttribute('aria-valuenow',String(Math.round(progress)));}
+   else{donut.removeAttribute('aria-valuemin');donut.removeAttribute('aria-valuemax');donut.removeAttribute('aria-valuenow');}
+   const spoken=moneyValue(spend)+(Number(basket?.pending)>0||amountReview?' priced shopping so far':' estimated shopping')+(custom?' of '+moneyValue(d)+' budget; '+used+' percent used'+(spend>d?', over budget':'')+'; ':'; budget not set; ')+dinnerCount+'/7 dinners planned';
+   donut.setAttribute('aria-label',custom?'Estimated shopping spend against your weekly budget':spoken);
+   if(custom)donut.setAttribute('aria-valuetext',spoken);else donut.removeAttribute('aria-valuetext');
+   budgetLine.textContent=copy.budgetLine;note.textContent=copy.summary;
+   savingsNote.textContent=copy.savings;savingsNote.hidden=!copy.savings;
+   priceNote.textContent=copy.priceNote;priceNote.hidden=!copy.priceNote;
  }
  bb77SyncEstimateAndRing(target,bb77HasCustomTarget);
 
@@ -6832,7 +6888,7 @@ function bbNextComposePlan(app){
  const budgetForm=document.createElement('form');budgetForm.className='bb77-budget-form';budgetForm.noValidate=true;
  const goalLabel=document.createElement('label');goalLabel.htmlFor='bb77BudgetTarget';goalLabel.textContent='Weekly grocery target ('+BBPriceV19.CURRENCY[bb307Market]+')';
  const goalInput=document.createElement('input');goalInput.id='bb77BudgetTarget';goalInput.type='number';goalInput.inputMode='decimal';goalInput.min='1';goalInput.max='10000';goalInput.step='0.01';goalInput.placeholder='e.g. 150';goalInput.value=bb77HasCustomTarget?target.toFixed(2):'';
- const goalButton=document.createElement('button');goalButton.type='submit';goalButton.textContent=target===null?'Set budget':'Update budget';
+ const goalButton=document.createElement('button');goalButton.type='submit';goalButton.textContent=bb77HasCustomTarget?'Update budget':'Set budget';
  const goalStatus=document.createElement('p');goalStatus.className='bb77-budget-status';goalStatus.setAttribute('aria-live','polite');
  const goalControls=document.createElement('div');goalControls.className='bb77-budget-controls';goalControls.append(goalInput,goalButton);
  budgetForm.append(goalLabel,goalControls,goalStatus);
@@ -12358,8 +12414,8 @@ body[data-bbnext-view="discover"] #app .bb175-discover-heading{padding-top:calc(
 <script defer src="bb-weekly-shop.js?v=20261101-weeklyshop1"></script>
 <link rel="stylesheet" href="bb-membership-compare.css?v=20261101-member1">
 <script defer src="bb-membership-compare.js?v=20261101-weeklyshop1"></script>
-<link rel="stylesheet" href="bb-plan-premium-polish.css?v=20261104-compact-plan1">
-<script defer src="bb-plan-premium-polish.js?v=20261104-compact-plan1"></script>
+<link rel="stylesheet" href="bb-plan-premium-polish.css?v=20261104-plan-budget1">
+<script defer src="bb-plan-premium-polish.js?v=20261104-plan-budget1"></script>
 <link rel="stylesheet" href="bb-ingredient-picker.css?v=20261101-avoid1">
 <link rel="stylesheet" href="bb-evening-pivot-ui.css?v=20261101-pivot2">
 <link rel="stylesheet" href="bb-cook-voice.css?v=20261103-mentor1">
@@ -12388,8 +12444,8 @@ body[data-bbnext-view="discover"] #app .bb175-discover-heading{padding-top:calc(
 <script defer src="bb-pantry-inline.js?v=20261104-inline2"></script>
 <link rel="stylesheet" href="bb-keyboard-layout.css?v=20261101-keyboard1">
 <script defer src="bb-keyboard-layout.js?v=20261101-keyboard1"></script>
-<link rel="stylesheet" href="bb-simple-layout.css?v=20261102-loop2">
-<script defer src="bb-simple-layout.js?v=20261101-simple1"></script>
+<link rel="stylesheet" href="bb-simple-layout.css?v=20261104-plan-budget1">
+<script defer src="bb-simple-layout.js?v=20261104-plan-budget1"></script>
 <script defer src="bb-pantry-deduction.js?v=20261104-regions2"></script>
 <script defer src="bb-home.js?v=20261104-cupboard1"></script><link rel="stylesheet" href="bb-day-done.css?v=20261104-cycle1"><script defer src="bb-day-done.js?v=20261104-regions2"></script><link rel="stylesheet" href="bb-shop-add.css?v=20261104-cycle1"><script defer src="bb-shop-add.js?v=20261104-cycle1"></script><script defer src="bb-cupboard-staples.js?v=20261104-cupboard2"></script><script src="bb-pantry-autofill.js?v=20261104-cycle1"></script>
 <link rel="stylesheet" href="bb-shared-shopping.css?v=20261102-loop2">

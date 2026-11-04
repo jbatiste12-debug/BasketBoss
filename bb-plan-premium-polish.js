@@ -20,8 +20,9 @@
    return value==='US'?'United States':value||'Choose region';
  };
  function updateHeader(){
-   const region=$('#bbpolRegionPill');if(region)region.textContent=regionValue()+' · Change';
-   const upgrade=$('#bbpolUpgradePill');if(upgrade){upgrade.hidden=false;const status=window.BasketBossVerifiedPremium?.state?.();const label=window.BasketBossMembershipUI?.label?.()||(premiumActive()?'PREMIUM':status==='free'?'FREE · Upgrade to Premium':status==='checking'?'Checking membership…':'Check membership');if(upgrade.textContent!==label)upgrade.textContent=label;upgrade.setAttribute('aria-label',label);}
+   const compact=document.body.dataset.bbnextView==='week',name=regionValue(),regionLabel=(compact&&name==='United States'?'US':name)+' · Change';
+   const region=$('#bbpolRegionPill');if(region){if(region.textContent!==regionLabel)region.textContent=regionLabel;region.title=name+' · Change region';region.setAttribute('aria-label','Shopping region: '+name+'. Change region.');}
+   const upgrade=$('#bbpolUpgradePill');if(upgrade){upgrade.hidden=false;const status=window.BasketBossVerifiedPremium?.state?.();const label=window.BasketBossMembershipUI?.label?.()||(premiumActive()?'PREMIUM':status==='free'?'FREE · Upgrade to Premium':status==='checking'?'Checking membership…':'Check membership');const display=compact?(premiumActive()?'PREMIUM':status==='free'?'Upgrade':status==='checking'?'Checking':'Account'):label;if(upgrade.textContent!==display)upgrade.textContent=display;upgrade.setAttribute('aria-label',label);upgrade.title=label;}
  }
  function setupHeader(){
    if(headerReady)return;
@@ -119,13 +120,13 @@
    // Move original controls once; all existing entitlement checks, quantities,
    // form drafts and native disclosure handlers stay with their owners.
    const move=(parent,node,index)=>{if(node&&parent.children[index]!==node)parent.insertBefore(node,parent.children[index]||null);};
-   move(card,actions,0);move(card,row,1);move(row,filters,0);
-   const ingredients=$('#bbIngredientPicker',app),pantry=$('#bbPantryPlannerButton',app);
-   move(row,ingredients,1);move(row,pantry,ingredients?2:1);
+   move(card,row,0);move(card,actions,1);
+   const settings=$('#bbSimpleBudget',app),ingredients=$('#bbIngredientPicker',app),pantry=$('#bbPantryPlannerButton',app),budget=$('.bbnext-plan-budget',app);
+   const options=[settings,filters,ingredients].filter(Boolean);options.forEach((node,index)=>move(row,node,index));
    const avoid=ingredients?.querySelector('#bbAvoidIngredientTab'),count=ingredients?.querySelector('.bb-avoid-count')?.textContent||'None selected';
    if(avoid){const amount=count.match(/^\d+/)?.[0]||'0';if(avoid.dataset.bbpcCount!==amount)avoid.dataset.bbpcCount=amount;const label='Ingredients to avoid, '+count.toLowerCase();if(avoid.getAttribute('aria-label')!==label)avoid.setAttribute('aria-label',label);}
    if(pantry){
-     if(pantry.textContent!=='✨ Pantry auto-fill')pantry.textContent='✨ Pantry auto-fill';
+     if(pantry.textContent!=='✨ Autofill empty days using pantry stock')pantry.textContent='✨ Autofill empty days using pantry stock';
      pantry.setAttribute('aria-label','Autofill empty days using pantry stock');
      pantry.title='Autofill empty days using pantry stock';
    }
@@ -136,13 +137,15 @@
      let body=$('.bbpc-info-content',disclosure);
      if(!body){body=document.createElement('div');body.className='bbpc-info-content';disclosure.append(body);}
      for(const node of [...disclosure.children])if(node!==summary&&node!==body)body.append(node);
+     if(pantry&&body.firstElementChild!==pantry)body.prepend(pantry);
    }
    if(schedule){
      app.dataset.bbCompactPlan='true';
-     if(app.firstElementChild!==card)app.prepend(card);
+     if(budget){if(app.firstElementChild!==budget)app.prepend(budget);if(budget.nextElementSibling!==card)budget.after(card);}
+     else if(app.firstElementChild!==card)app.prepend(card);
      if(card.nextElementSibling!==schedule)card.after(schedule);
      let previous=schedule;
-     for(const node of[app.querySelector('[data-bb307-extras="week"]'),app.querySelector('.bbsw-next-step'),app.querySelector('.bbnext-plan-budget')].filter(Boolean)){
+     for(const node of[app.querySelector('[data-bb307-extras="week"]'),app.querySelector('.bbsw-next-step')].filter(Boolean)){
        if(previous.nextElementSibling!==node)previous.after(node);previous=node;
      }
    }
@@ -166,7 +169,7 @@
    const card=$('#app[data-bb-compact-plan="true"] #bbpolAutofillCard');if(!card)return;
    sizePlanPopovers(card);
    const escape=event.type==='keydown'&&event.key==='Escape';if(event.type==='keydown'&&!escape)return;
-   const details=[...card.querySelectorAll('#bbSimpleMealPreferences,#bbnextPlanAutofill')];
+   const details=[...card.querySelectorAll('#bbSimpleBudget,#bbSimpleMealPreferences,#bbnextPlanAutofill')];
    let focus;
    for(const node of details)if(node.open&&(escape||!node.contains(event.target))){node.open=false;if(escape)focus=node.querySelector('summary');}
    const ingredients=$('#bbIngredientPicker',card),toggle=$('#bbAvoidIngredientTab',ingredients||card);
@@ -186,7 +189,7 @@
  function start(){
    setupHeader();decorateBudget();decorateMealRows();decorateAutofill();enhanceExistingProDialog();
    const app=$('#app');if(app){
-     const observer=new MutationObserver(()=>{decorateBudget();decorateMealRows();decorateAutofill();enhanceExistingProDialog();});
+     const observer=new MutationObserver(()=>{updateHeader();decorateBudget();decorateMealRows();decorateAutofill();enhanceExistingProDialog();});
      observer.observe(app,{childList:true,subtree:true});
    }
    // The original Smart Auto-Fill modal is attached to document.body.
