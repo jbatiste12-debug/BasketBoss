@@ -26,3 +26,48 @@ The new isolated D1 table and index initialize additively on the first successfu
 Deploy the backend change to the existing production Cloudflare Pages project before distributing the client. **A new TestFlight build is required:** older installed apps do not include the AppTransaction bridge or these bundled buttons. The current candidate remains iOS build 6. GitHub's unsigned archive is compilation evidence, not a signed TestFlight upload.
 
 On a physical TestFlight device, sign in with a confirmed account, open Upgrade, tap **Unlock TestFlight Beta Premium**, and confirm the active/expiry message on both Paywall and Settings. Restart the app and verify Premium recipes, a Chef Boss question with spoken reply, and an AI feature. Check a second signed-in device with the same account follows existing session rules. App Store signing, TestFlight upload, real Apple Sandbox receipt verification and external AI provider responses require that device check; portable mocks and synthetic certificate fixtures do not prove those production paths.
+
+## Troubleshooting beta activation
+
+The message “Apple subscriptions are temporarily unavailable. Please try again.”
+after **Unlock TestFlight Beta Premium** was a generic server exception fallback.
+It does not identify a failed payment, and the static sign-in help sentence in
+Settings does not establish that the tester is signed out. The beta button is
+normally shown only to an authenticated native iOS account.
+
+The endpoint now records one safe `BB_BETA_DIAGNOSTIC` line for a caught error.
+Unexpected exceptions return a beta-specific message containing a fixed reference
+that existing installed clients already display. No raw exception, account ID,
+email, bearer token, request body or Apple receipt is logged. Existing known
+Apple errors retain their status, code and wording.
+
+| Reference | Failed step to inspect |
+|---|---|
+| BB_BETA_CONFIGURATION | Billing DB/auth configuration |
+| BB_BETA_ORIGIN | Production host/branch and request origin |
+| BB_BETA_AUTHENTICATION | Confirmed account authentication |
+| BB_BETA_DELETION | D1 deletion journal/readiness |
+| BB_BETA_SESSION | Newest-session RPC availability or result |
+| BB_BETA_REQUEST | Signed proof request shape |
+| BB_BETA_APPLE_VERIFICATION | Apple verifier setup, proof and certificate verification |
+| BB_BETA_GRANT_WRITE | D1 beta grant persistence/readback |
+| BB_BETA_CONFIRMATION | Account/session recheck after persistence |
+
+Deploy the backend commit to the production `basketboss-site` Pages project.
+This troubleshooting update changes server files only; the existing TestFlight
+app can display the returned reference without a new Apple build. Preview
+branches intentionally cannot activate beta grants.
+
+To collect the next failure: Cloudflare dashboard → Workers & Pages →
+`basketboss-site` → Deployments → latest successful Production deployment →
+View details → Functions → Real-time Logs. Start the stream, then ask the tester
+to tap **Unlock TestFlight Beta Premium** once. Copy only the
+`BB_BETA_DIAGNOSTIC` line or the `BB_BETA_...` reference shown in the app.
+
+Read-only production checks on 4 November 2026 confirmed that
+`bb_hh_service_session_ok(uuid,uuid)` exists, is executable by `service_role`
+and not by anon/authenticated, and rejects a nonexistent session. Its logged
+requests in the preceding 24 hours returned HTTP 200. These checks do not
+identify the cousin's individual activation or establish the production Apple
+verifier/D1 grant state. No account entitlements or production schema were
+changed by these checks.

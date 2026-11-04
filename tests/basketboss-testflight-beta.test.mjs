@@ -6,6 +6,7 @@ import {persistTestFlightBetaGrant,readTestFlightBetaGrant,validateTestFlightApp
 import {readPersonalPaidAccess} from '../bb-server-lib/bb-paid-access.js';
 import {createTestFlightBetaHandler} from '../functions/api/apple/testflight-beta.js';
 import {onRequestGet as subscriptionStatus} from '../functions/api/subscription/status.js';
+import {AppleBillingError} from '../bb-server-lib/bb-apple-subscriptions.js';
 
 const USER='11111111-1111-4111-8111-111111111111',OTHER='22222222-2222-4222-8222-222222222222';
 const NOW=Date.parse('2026-11-03T12:00:00Z');
@@ -104,4 +105,32 @@ test('successful claim survives a fresh reader and status identifies Premium wit
   const response=await subscriptionStatus({request:post(),env:f.env});assert.equal(response.status,200);const state=await response.json();
   assert.equal(state.authenticated,true);assert.equal(state.premiumAccess,true);assert.equal(state.tier,'premium');assert.equal(state.mode,'sandbox');assert.equal(state.provider,'testflight_beta');assert.equal(state.subscription,null);
  }finally{globalThis.fetch=originalFetch;Date.now=originalNow;f.close();}
+});
+
+test('unexpected session and Apple verification failures return safe beta references without leaking secrets',async()=>{
+ for(const stage of ['session','apple_verification']){
+  const f=fixture(),originalWarn=console.warn,logs=[];
+  const secret='Bearer private-token; signedAppleProof.private.signature; '+USER;
+  try{
+   console.warn=(...args)=>logs.push(args.join(' '));
+   const handler=createTestFlightBetaHandler({authenticate:async()=>({id:USER}),newestSession:async()=>{if(stage==='session')throw Object.assign(Error(secret),{code:secret,status:401});return true;},verify:async()=>{throw Error(secret);},clock:()=>NOW});
+   const response=await handler({request:post({signedAppTransaction:secret}),env:f.env}),body=await response.json();
+   assert.equal(response.status,503);assert.equal(body.ok,false);assert.equal(body.code,'testflight_beta_unavailable');
+   assert.equal(body.reference,'BB_BETA_'+stage.toUpperCase());assert.match(body.error,/TestFlight Beta Premium/);assert.ok(body.error.includes(body.reference),'installed clients display the reference in the existing error field');
+   assert.equal(logs.length,1);assert.deepEqual(JSON.parse(logs[0].slice('BB_BETA_DIAGNOSTIC '.length)),{stage,code:'testflight_beta_unavailable',status:503,reference:body.reference});
+   for(const sensitive of [secret,USER,'private-token','signedAppleProof'])assert.equal((logs.join('\n')+JSON.stringify(body)).includes(sensitive),false);
+   assert.equal(f.sql.prepare("SELECT count(*) AS n FROM sqlite_master WHERE name='bb_testflight_beta_grants'").get().n,0,'unexpected readiness/proof failure never persists a grant');
+  }finally{console.warn=originalWarn;f.close();}
+ }
+});
+
+test('known Apple errors retain their status and code while diagnostics use only safe fields',async()=>{
+ const f=fixture(),originalWarn=console.warn,logs=[];
+ try{
+  console.warn=(...args)=>logs.push(args.join(' '));
+  const handler=createTestFlightBetaHandler({authenticate:async()=>({id:USER}),newestSession:async()=>true,verify:async()=>{throw new AppleBillingError('testflight_beta_unverified','Apple could not verify this beta installation.',403);},clock:()=>NOW});
+  const response=await handler({request:post(),env:f.env});assert.equal(response.status,403);
+  assert.deepEqual(await response.json(),{ok:false,code:'testflight_beta_unverified',error:'Apple could not verify this beta installation.'});
+  assert.deepEqual(JSON.parse(logs[0].slice('BB_BETA_DIAGNOSTIC '.length)),{stage:'apple_verification',code:'testflight_beta_unverified',status:403,reference:'BB_BETA_APPLE_VERIFICATION'});
+ }finally{console.warn=originalWarn;f.close();}
 });
