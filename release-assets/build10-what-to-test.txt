@@ -1,0 +1,20 @@
+BasketBoss build 10 — At home layout
+
+Please check these changes on your iPhone:
+
+• At home: switch between Choose food and Weekly essentials. The selected tab should be clear, both labels readable and the relevant section easy to reach.
+• Manual food entry: add an item with its quantity and unit. Item name, quantity, unit and Add must stay readable without horizontal scrolling, including with the keyboard open.
+• Food tiles: tap an ingredient, change its amount/unit beside the tile and use the −/+ controls. Check the live Shop shortfall updates correctly.
+• Drafts and saved stock: switch the At home sections, leave the tab and return. Existing quantities and saved stock must stay intact; incomplete quantity edits must not replace the last valid balance.
+• Weekly essentials: check household targets and Already got amounts remain editable. Food stock and household items must stay separate.
+• Header: check BasketBoss, region, membership and Settings fit comfortably on the At home screen. Region and account actions should still open normally.
+• Small-screen layout: check controls and the final rows remain reachable above the bottom navigation. Try portrait, landscape and a larger text size.
+
+Also check the existing Build 9 features:
+• Plan a week, record what is already at home, and verify Shop shows only the remaining shortfall.
+• Confirm purchases through Finish Shop or a reviewed receipt, then confirm cooking/Day done. Stock should increase or decrease once and carry into next week.
+• Try UK/US units and counted produce. Changing a display unit must not change physical stock.
+• Ask Cook Mentor a typed question, then a spoken follow-up. Check ordered sentence playback, interruption and that the microphone does not hear the mentor's own reply.
+• Check the normal Premium gates and, on eligible TestFlight builds, the existing Beta Premium unlock.
+
+Report the screen, item/recipe name, quantities before and after, device and steps taken. Please do not include passwords or API keys.

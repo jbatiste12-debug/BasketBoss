@@ -1,20 +1,20 @@
 /* Compact Kitchen navigation and the same original weekly essentials form. */
-#app #bbKitchenSections{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:7px;margin:0 0 16px;padding:5px;border:1px solid #d5e3d6;border-radius:16px;background:#f2f7f0}
-#app #bbKitchenSections>button{box-sizing:border-box;width:100%;min-width:0;min-height:46px;margin:0;padding:9px 7px;border:1px solid transparent;border-radius:11px;background:#fff;color:#275d41;font:750 12px/1.3 system-ui;white-space:normal;cursor:pointer;box-shadow:0 2px 5px #26452f0a}
-#app #bbKitchenSections>button:focus-visible,#app #bbKitchenEssentials>summary:focus-visible{outline:3px solid #c89b39;outline-offset:3px}
+#app #bbKitchenSections{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:5px;margin:0 0 16px;padding:5px;border:1px solid #d5e3d6;border-radius:16px;background:#f2f7f0}
+#app #bbKitchenSections>button{box-sizing:border-box;width:100%;min-width:0;min-height:46px;margin:0;padding:9px 7px;border:1px solid transparent;border-radius:11px;background:transparent;color:#42614c;font:750 12px/1.3 system-ui;white-space:normal;cursor:pointer;box-shadow:none}
+#app #bbKitchenSections>button:focus-visible,#app #bbKitchenEssentials>.bbke-essentials-heading:focus-visible{outline:3px solid #c89b39;outline-offset:3px}
 #app #bbKitchenSections #bb76JumpCount{display:inline-flex;min-width:18px;height:18px;padding:0 3px;margin:0 2px;font-size:10px;background:#e5f0e5}
 #app #bbKitchenEssentials{display:block!important;min-width:0;margin:14px 0 0;border:1px solid #d1ddcb;border-radius:17px;background:#fffdf5;overflow:hidden;scroll-margin-top:20px}
-#app #bbKitchenEssentials>summary{display:flex;align-items:center;gap:12px;min-height:76px;padding:15px;cursor:pointer;list-style:none;color:#315c3e}
-#app #bbKitchenEssentials>summary::-webkit-details-marker{display:none}
-#app #bbKitchenEssentials>summary>span:nth-child(2){min-width:0;flex:1}
-#app #bbKitchenEssentials>summary strong{display:block;font-size:18px;line-height:1.3}
-#app #bbKitchenEssentials>summary small{display:block;margin-top:3px;color:#6f795e;font-size:12px;line-height:1.4}
+#app #bbKitchenEssentials>.bbke-essentials-heading{display:flex;align-items:center;gap:12px;min-height:76px;padding:15px;list-style:none;color:#315c3e}
+#app #bbKitchenEssentials>.bbke-essentials-heading::-webkit-details-marker{display:none}
+#app #bbKitchenEssentials>.bbke-essentials-heading>span:nth-child(2){min-width:0;flex:1}
+#app #bbKitchenEssentials>.bbke-essentials-heading strong{display:block;font-size:18px;line-height:1.3}
+#app #bbKitchenEssentials>.bbke-essentials-heading small{display:block;margin-top:3px;color:#6f795e;font-size:12px;line-height:1.4}
 #app #bbKitchenEssentials .bbke-essentials-icon{display:grid;place-items:center;flex:none;width:40px;height:40px;border-radius:12px;background:#f3ecd7;font-size:22px}
 #app #bbKitchenEssentials .bbke-chevron{font-size:23px;transition:transform .15s}
 #app #bbKitchenEssentials[open] .bbke-chevron{transform:rotate(180deg)}
 #app #bbKitchenEssentials[open]>summary{border-bottom:1px solid #e4e7d8}
 #app #bbKitchenEssentials>[data-bb-kitchen-essentials-controls].bb16-essentials{display:block!important;margin:0!important;padding:16px!important;max-width:100%;border:0!important;border-radius:0!important;background:#fffef9!important;box-shadow:none!important}
-#app #bbKitchenEssentials:not([open])>[data-bb-kitchen-essentials-controls].bb16-essentials{display:none!important}
+
 #app #bbKitchenEssentials .bb16-essentials-heading h3{font-size:17px!important;color:#315c3e!important}
 #app #bbKitchenEssentials .bb16-essentials-heading p{font-size:12px!important;line-height:1.6!important}
 #app #bbKitchenEssentials .bb1749-essentials-topup{padding:12px;margin:12px 0;border-radius:13px}
@@ -26,7 +26,7 @@
 #app #bbKitchenEssentials #bb307EssentialsForm button[type=submit]{width:100%;min-height:44px;justify-self:stretch}
 #app #bb173ShopFridge #bb76PantryHeading{font-size:23px;letter-spacing:-.35px}
 #app #bb76StorageSections,#app #bb8WhatIHave{scroll-margin-top:20px}
-@media(max-width:360px){#app #bbKitchenSections{gap:4px;padding:4px}#app #bbKitchenSections>button{font-size:11px;padding:8px 4px}#app #bbKitchenEssentials>summary{padding:12px;gap:9px}#app #bbKitchenEssentials>summary strong{font-size:17px}}
+@media(max-width:360px){#app #bbKitchenSections{gap:4px;padding:4px}#app #bbKitchenSections>button{font-size:11px;padding:8px 4px}#app #bbKitchenEssentials>.bbke-essentials-heading{padding:12px;gap:9px}#app #bbKitchenEssentials>.bbke-essentials-heading strong{font-size:17px}}
 @media(prefers-reduced-motion:reduce){#app #bbKitchenEssentials .bbke-chevron{transition:none}}
 
 /* The legacy Kitchen hides every sibling of its pantry card with :has/:not.
@@ -64,8 +64,8 @@ html body #app #bbKitchenLegacyTopups .bb1749-topup-row{margin:9px 0}
 html body #app #bbKitchenLegacyTopups .bb16-essential-row{margin:9px 0;padding:10px;border:1px solid #e0e7d8;border-radius:10px;font-size:13px}
 html body #app #bbKitchenLegacyTopups .bb16-essential-actions{display:flex;gap:7px;flex-wrap:wrap}
 html body #app #bbKitchenLegacyTopups .bb16-essential-actions>button{min-height:44px}
-html body #app #bb173ShopFridge>.bbke-reconcile-top{display:block!important;box-sizing:border-box;width:100%;min-height:54px!important;margin:0 0 15px!important;padding:12px 15px!important;border:1px solid #1e633d!important;border-radius:13px!important;background:#246e46!important;color:#fff!important;font:800 14px/1.35 system-ui!important}
-html body #app #bb173ShopFridge>.bbke-reconcile-top:disabled{opacity:.55}
+html body #app #bb173ShopFridge .bbke-reconcile-top{display:block!important;box-sizing:border-box;width:100%;min-height:54px!important;margin:0 0 15px!important;padding:12px 15px!important;border:1px solid #1e633d!important;border-radius:13px!important;background:#246e46!important;color:#fff!important;font:800 14px/1.35 system-ui!important}
+html body #app #bb173ShopFridge .bbke-reconcile-top:disabled{opacity:.55}
 html body #app #bb173ShopFridge .bbke-selected-readout{margin:14px 0 0;border-top:1px solid #e0e7db;padding-top:3px}
 html body #app #bb173ShopFridge .bbke-selected-readout>summary{min-height:44px;box-sizing:border-box;padding:12px 0;color:#4b7052;font:750 12px/1.5 system-ui;cursor:pointer}
 html body #app #bb173ShopFridge .bbke-selected-readout ul{padding-left:18px;font-size:12px;line-height:1.7;color:#506b55}
@@ -90,3 +90,16 @@ html body #app #bb173ShopFridge .bbke-selected-readout>button{min-height:44px;bo
 #app .bb-household-amount .bb-home-quantities :is(input,select){box-sizing:border-box;width:100%;min-width:0;min-height:44px;border:1px solid #c9dacf;border-radius:10px;padding:9px;background:#fff;color:#204b37;font:16px/1.4 system-ui}
 #app .bb-household-amount-form>button{box-sizing:border-box;min-height:44px;width:100%;padding:11px;border:1px solid #245b3e;border-radius:11px;background:#245b3e;color:#fffdf4;font-weight:750}
 #app .bb-household-amount :is(summary,input,select,button):focus-visible{outline:3px solid #c79d44;outline-offset:2px}
+
+/* Two real sections share one stable control row. The hidden panel keeps its
+   existing form controls in place; only a user navigation resets the viewport. */
+html body #app #bbKitchenSections>button[aria-selected="true"]{background:#245e43;border-color:#245e43;color:#fffef5;box-shadow:0 2px 5px #173c2512}
+html body #app #bbKitchenSections>button{min-height:46px;align-items:center;justify-content:center;font-size:12px;line-height:1.3}
+html body #app #bbKitchenFoodPanel{min-width:0;margin:0;padding:0;border:0;background:transparent;box-shadow:none}
+html body #app #bbKitchenFoodPanel[hidden],
+html body[data-bbnext-view="shop"] #app:has(> #bb173ShopFridge)>#bbKitchenEssentials[hidden]{display:none!important}
+html body #app #bbKitchenEssentials>.bbke-essentials-heading{cursor:default;min-height:64px;padding:13px 15px;gap:10px}
+html body #app #bbKitchenEssentials>.bbke-essentials-heading strong{font-size:17px}
+html body #app #bbKitchenEssentials>.bbke-essentials-heading small{font-size:12px}
+html body #app #bb173ShopFridge[data-bbke-section="essentials"] .bb76-title>div>p:last-child:not(.bb76-eyebrow){display:none}
+@media(max-width:360px){html body #app #bbKitchenSections>button{font-size:11px;padding-inline:5px}}
