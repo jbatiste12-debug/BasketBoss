@@ -143,7 +143,7 @@
   function remove(id){const before=read();if(!before.ok)return before;if(!before.weeks.some(row=>row.id===id))return {ok:false,message:'That saved week is no longer listed.'};return write(before,before.weeks.filter(row=>row.id!==id));}
   return Object.freeze({read,save,remove});
  }
- function mount({container,host,selections=null,selectionsCount=0,window:win=globalThis.window}={}){
+ function mount({container,host,selections=null,selectionsCount=0,collapseOnMount=false,window:win=globalThis.window}={}){
   if(!container||!host?.context||!host?.snapshot||!host?.restore||!host?.confirm||!win?.document)return null;
   const doc=win.document,create=(tag,name,text)=>{const node=doc.createElement(tag);node.className=name;if(text!==undefined)node.textContent=text;return node;};
   const store=createStore({storage:win.localStorage,context:host.context});
@@ -154,7 +154,9 @@
   let pending=false,disposed=false,layout=null;
   if(selections){
    const actor=()=>host.context()?.actor||'guest',pin=actor(),previous=layouts.get(win),prefix='bbSavedTools'+(++layoutSequence);
-   let active=previous?.actor===pin?previous.active:null,layoutActor=pin;
+   // Entering Plan starts with both secondary tools closed. Same-Plan updates
+   // keep the chosen pane available while its original form owns the draft.
+   let active=collapseOnMount===true?null:previous?.actor===pin?previous.active:null,layoutActor=pin;
    container.classList.add('bbsw-tools');
    const bar=create('div','bbsw-tabs');bar.setAttribute('role','group');bar.setAttribute('aria-label','Saved planning tools');
    const icon=(path)=>{const node=create('span','bbsw-tab-icon');node.setAttribute('aria-hidden','true');node.innerHTML='<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round">'+path+'</svg>';return node;};
@@ -207,7 +209,7 @@
      if(host.snapshot()?.fingerprint!==snapshot.fingerprint){message('Your meal plan changed. Review it before saving.');return;}
      result=store.save(input.value,week,{replaceId:result.duplicateId});
     }
-    message(result.ok?'Week saved. Plan → At home → Basket when you are ready to shop.':result.message);if(result.ok)input.value='';
+    message(result.ok?'Week saved. Plan → At home → Shop when you are ready to shop.':result.message);if(result.ok)input.value='';
    }catch{message('Could not save this week. Existing saved weeks have been kept.');}
    finally{pending=false;render();}
   });

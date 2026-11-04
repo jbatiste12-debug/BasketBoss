@@ -1,8 +1,23 @@
-# BasketBoss 1.0 (9) — inline pantry and simpler shopping
+# BasketBoss 1.0 (9) — compact Plan and simpler shopping
 
 Build 9 includes all build 8 functionality and the “Your kitchen, made simple”
-welcome. The latest source is `testflight-build9-inline-shop-regions` on
+welcome. The latest source is `testflight-build9-compact-plan` on
 `fix/confirmed-cook-pantry` (PR #40). Earlier release tags remain unchanged.
+
+Plan starts with a compact action card: Auto-fill My Week, Add a meal, and a
+single row of Meal preferences, Ingredients to avoid and Pantry auto-fill pills.
+Your dinner plan immediately follows, with its planned count and Clear week
+control. Saved weeks, Saved meals, Check At home and budget/household settings
+sit below the weekly schedule. The saved tools start closed when entering Plan;
+ordinary updates within Plan retain the active pane. Existing saved names,
+selections, restore rules and data remain with their original controls.
+
+Pantry auto-fill is a gold secondary pill that opens the existing pantry planner.
+How Auto-fill works is behind the accessible ⓘ control; filter and info popovers
+close with Escape or an outside tap and stay above the bottom dock. The original
+Auto-fill and ingredient-filter handlers still enforce their existing rules.
+Flow labels now say Plan → At home → Shop. On 390 × 844, the dinner heading moved
+from about 916 px down to about 300 px and the first dinners are visible at once.
 
 At home now opens a compact quantity editor beside the food tile you tap.
 Use the amount, unit and −/+ controls there, then Done; valid amounts update
@@ -129,7 +144,7 @@ from build 8. See BUILD_8_TESTFLIGHT.md for details.
 
 ## Verification
 
-Full automated suite: 1,882 passed, no failures or skipped tests, two existing
+Full automated suite: 1,886 passed, no failures or skipped tests, two existing
 TODO cases. Strict pantry TypeScript contracts passed. Native packaging and
 portable iOS checks passed: 914 assets, 100 Free recipes, no private Premium
 recipe bundle. The native Xcode compile/sign/upload is not performed here.
@@ -141,7 +156,7 @@ in previous folders:
 
 ```sh
 bb_release_dir="$(mktemp -d "$HOME/BasketBoss-build9-XXXXXX")" &&
-git clone --depth 1 --branch testflight-build9-inline-shop-regions \
+git clone --depth 1 --branch testflight-build9-compact-plan \
   https://github.com/jbatiste12-debug/BasketBoss.git "$bb_release_dir" &&
 cd "$bb_release_dir" &&
 npm ci &&

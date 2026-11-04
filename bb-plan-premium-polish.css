@@ -234,3 +234,49 @@ body[data-bbnext-view="discover"] #app .grid-recipes .bb-discover-card-actions .
  body[data-bbnext-view="discover"] #app .grid-recipes .mini-content>.bb-discover-card-actions{grid-row:4;align-self:stretch;margin-top:0!important}
 }
 @media(max-width:370px){body[data-bbnext-view="discover"] #app .grid-recipes .mini-content{padding:12px!important}}
+
+/* Compact Plan: original controls above the schedule, secondary tools below it. */
+html body #app.bbnext-plan[data-bb-compact-plan="true"] #bbpolAutofillCard{position:relative;padding:12px!important;margin:0 0 12px!important;border-radius:18px;overflow:visible!important}
+html body #app.bbnext-plan[data-bb-compact-plan="true"] #bbpolAutofillCard>.bbnext-plan-actions{display:grid!important;grid-template-columns:minmax(0,1.3fr) minmax(0,1fr);gap:8px;margin:0 34px 9px 0!important}
+html body #app.bbnext-plan[data-bb-compact-plan="true"] #bbpolAutofillCard .bbnext-plan-actions>button{min-height:46px!important;padding:9px 8px!important;font-size:12px!important}
+html body #app.bbnext-plan[data-bb-compact-plan="true"] #bbpolAutofillCard .bbpc-filter-row{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1.15fr) minmax(0,1fr);gap:6px;align-items:start}
+html body #app.bbnext-plan[data-bb-compact-plan="true"] #bbpolAutofillCard .bb81-pro-filters{display:contents!important}
+html body #app.bbnext-plan[data-bb-compact-plan="true"] #bbpolAutofillCard .bb81-pro-filters-heading{display:none!important}
+html body #app.bbnext-plan[data-bb-compact-plan="true"] #bbpolAutofillCard #bbSimpleMealPreferences,
+html body #app.bbnext-plan[data-bb-compact-plan="true"] #bbpolAutofillCard #bbIngredientPicker{position:static!important;margin:0!important;padding:0!important;border:0!important;border-radius:0!important;background:transparent!important;overflow:visible!important;min-width:0}
+html body #app.bbnext-plan[data-bb-compact-plan="true"] #bbpolAutofillCard #bbSimpleMealPreferences>summary,
+html body #app.bbnext-plan[data-bb-compact-plan="true"] #bbpolAutofillCard #bbAvoidIngredientTab,
+html body #app.bbnext-plan[data-bb-compact-plan="true"] #bbpolAutofillCard #bbPantryPlannerButton{display:flex!important;align-items:center;justify-content:center;gap:4px;box-sizing:border-box;width:100%;min-width:0;min-height:44px!important;height:44px;margin:0!important;padding:6px!important;border:1px solid #cbdcc5!important;border-radius:999px!important;background:#fffdf6!important;color:#365e42!important;box-shadow:none!important;font:750 11px/1.25 system-ui,-apple-system,sans-serif!important;text-align:center;white-space:normal!important;cursor:pointer}
+html body #app.bbnext-plan[data-bb-compact-plan="true"] #bbpolAutofillCard #bbSimpleMealPreferences>summary:after{font-size:12px;flex-shrink:0}
+html body #app.bbnext-plan[data-bb-compact-plan="true"] #bbpolAutofillCard #bbPantryPlannerButton{border-color:#d6bd78!important;background:#faf1d8!important;color:#6c5826!important}
+html body #app.bbnext-plan[data-bb-compact-plan="true"] #bbpolAutofillCard .bb-avoid-tab-icon,
+html body #app.bbnext-plan[data-bb-compact-plan="true"] #bbpolAutofillCard .bb-avoid-chevron{display:none!important}
+html body #app.bbnext-plan[data-bb-compact-plan="true"] #bbpolAutofillCard .bb-avoid-count{padding:2px 4px;font-size:9px}
+html body #app.bbnext-plan[data-bb-compact-plan="true"] #bbpolAutofillCard .bb-avoid-count:empty{display:none}
+html body #app.bbnext-plan[data-bb-compact-plan="true"] #bbpolAutofillCard .bb-avoid-panel,
+html body #app.bbnext-plan[data-bb-compact-plan="true"] #bbpolAutofillCard #bbSimpleMealPreferences>.bb81-pro-pills,
+html body #app.bbnext-plan[data-bb-compact-plan="true"] #bbpolAutofillCard .bbpc-info-content{position:absolute!important;top:calc(100% + 6px);left:0;right:0;z-index:50;box-sizing:border-box;margin:0!important;padding:14px!important;max-height:min(60dvh,var(--bbpc-popover-height,480px));overflow-y:auto;overscroll-behavior:contain;border:1px solid #cbdcc5!important;border-radius:16px!important;background:#fffdf6!important;box-shadow:0 12px 32px #183d2a26!important;color:#365e42}
+html body #app.bbnext-plan[data-bb-compact-plan="true"] #bbpolAutofillCard #bbSimpleMealPreferences>.bb81-pro-pills{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px}
+html body #app.bbnext-plan[data-bb-compact-plan="true"] #bbpolAutofillCard #bbSimpleMealPreferences:not([open])>.bb81-pro-pills{display:none!important}
+html body #app.bbnext-plan[data-bb-compact-plan="true"] #bbpolAutofillCard .bb-avoid-options{max-height:none;overflow:visible}
+html body #app.bbnext-plan[data-bb-compact-plan="true"] #bbpolAutofillCard>#bbnextPlanAutofill{position:static!important;margin:0!important;padding:0!important;border:0!important;background:transparent!important;min-height:0}
+html body #app.bbnext-plan[data-bb-compact-plan="true"] #bbpolAutofillCard>#bbnextPlanAutofill>summary{position:absolute;top:12px;right:8px;display:grid;place-items:center;box-sizing:border-box;width:32px;min-height:44px;height:44px;padding:0!important;list-style:none;border-radius:10px;color:#597450!important;font-size:22px!important;line-height:1;cursor:pointer}
+html body #app.bbnext-plan[data-bb-compact-plan="true"] #bbpolAutofillCard>#bbnextPlanAutofill>summary::-webkit-details-marker{display:none}
+html body #app.bbnext-plan[data-bb-compact-plan="true"] #bbpolAutofillCard>#bbnextPlanAutofill:not([open])>.bbpc-info-content{display:none!important}
+html body #app.bbnext-plan[data-bb-compact-plan="true"] #bbpolAutofillCard .bbpc-info-content>p{font-size:12px;line-height:1.5;margin:0 0 10px}
+html body #app.bbnext-plan[data-bb-compact-plan="true"] #bb1759MealsSummary{margin-top:0!important}
+html body #app.bbnext-plan[data-bb-compact-plan="true"] #bb1759MealsSummary .bb1759-summary-heading{display:grid!important;grid-template-columns:minmax(0,1fr) auto;gap:7px 8px!important;align-items:center;margin-bottom:12px!important}
+html body #app.bbnext-plan[data-bb-compact-plan="true"] #bb1759MealsSummary .bb1759-summary-heading>div{display:contents}
+html body #app.bbnext-plan[data-bb-compact-plan="true"] #bb1759MealsSummary .bb1759-summary-heading h3{grid-column:1;grid-row:1;font-size:20px!important;margin:0!important;line-height:1.25}
+html body #app.bbnext-plan[data-bb-compact-plan="true"] #bb1759MealsSummary .bb1759-summary-heading p{grid-column:1;grid-row:2;font-size:11px!important;line-height:1.35;margin:0!important}
+html body #app.bbnext-plan[data-bb-compact-plan="true"] #bb1759MealsSummary .bb1759-count{grid-column:2;grid-row:2;margin:0!important;padding:5px 8px!important;font-size:11px!important}
+html body #app.bbnext-plan[data-bb-compact-plan="true"] #bb1759MealsSummary .bb77-clear-week{grid-column:2;grid-row:1;min-height:36px!important;padding:5px 0!important;margin:0!important;font-size:12px!important}
+html body #app.bbnext-plan[data-bb-compact-plan="true"] .bbsw-next-step{padding:12px!important;flex-direction:row;align-items:center;gap:10px}
+html body #app.bbnext-plan[data-bb-compact-plan="true"] .bbsw-next-step p{font-size:11px}
+@media(max-width:360px){html body #app.bbnext-plan[data-bb-compact-plan="true"] #bbpolAutofillCard{padding:10px!important}html body #app.bbnext-plan[data-bb-compact-plan="true"] #bbpolAutofillCard #bbSimpleMealPreferences>summary,html body #app.bbnext-plan[data-bb-compact-plan="true"] #bbpolAutofillCard #bbAvoidIngredientTab,html body #app.bbnext-plan[data-bb-compact-plan="true"] #bbpolAutofillCard #bbPantryPlannerButton{font-size:10px!important;padding:5px!important}html body #app.bbnext-plan[data-bb-compact-plan="true"] #bb1759MealsSummary .bb1759-summary-heading h3{font-size:18px!important}}
+/* The picker keeps its full selection count for assistive technology; the
+   narrow pill uses a small numeric badge so its label remains two lines. */
+html body #app.bbnext-plan[data-bb-compact-plan="true"] #bbpolAutofillCard #bbAvoidIngredientTab{position:relative}
+html body #app.bbnext-plan[data-bb-compact-plan="true"] #bbpolAutofillCard .bb-avoid-count{display:none!important}
+html body #app.bbnext-plan[data-bb-compact-plan="true"] #bbpolAutofillCard #bbAvoidIngredientTab.has-selection{border-color:#bba35e!important;background:#faf1d8!important}
+html body #app.bbnext-plan[data-bb-compact-plan="true"] #bbpolAutofillCard #bbAvoidIngredientTab.has-selection:after{content:attr(data-bbpc-count);position:absolute;top:-6px;right:3px;display:grid;place-items:center;box-sizing:border-box;min-width:18px;height:18px;padding:0 3px;border:1px solid #fffdf6;border-radius:999px;background:#245e43;color:#fffdf6;font:750 10px/1 system-ui}

@@ -80,8 +80,10 @@ test('storage exceptions and corrupt content expose only fixed messages',()=>{
 });
 
 class Node{
- constructor(tag){this.tagName=tag;this.children=[];this.listeners={};this.className='';this.textContent='';this.isConnected=true;}
+ constructor(tag){this.tagName=tag;this.children=[];this.listeners={};this.className='';this.textContent='';this.isConnected=true;this.dataset={};}
+ get classList(){return {add:(...names)=>{this.className=[...new Set(this.className.split(' ').filter(Boolean).concat(names))].join(' ');}};}
  append(...nodes){this.children.push(...nodes);}prepend(...nodes){this.children.unshift(...nodes);}replaceChildren(...nodes){this.children=nodes;}setAttribute(name,value){this[name]=value;}addEventListener(name,fn){this.listeners[name]=fn;}remove(){this.isConnected=false;}
+ focus(){this.focused=true;}
 }
 const find=(root,className)=>{if(root.className.split(' ').includes(className))return root;for(const child of root.children){const value=find(child,className);if(value)return value;}return null;};
 function uiFixture(){
@@ -107,4 +109,35 @@ test('HTML-like week names render as text, and delete confirms without replacing
  const row=h.find('bbsw-list').children[1];assert.equal(row.children[0].children[0].textContent,'<b>Week 2</b>');
  h.confirm(async()=>false);await row.children[1].children[1].listeners.click();assert.equal(h.model.read().weeks.length,2);
  h.confirm(async()=>true);await h.find('bbsw-list').children[1].children[1].children[1].listeners.click();assert.equal(h.model.read().weeks.length,1);assert.equal(h.restores.length,0);h.controller.dispose();
+});
+
+function savedToolsFixture(){
+ const h=uiFixture(),win=new EventTarget();h.controller.dispose();Object.assign(win,{document:{createElement:tag=>new Node(tag)},localStorage:h.storage});
+ function mount(collapseOnMount=false){
+  const container=new Node('section'),selections=new Node('section');selections.className='bbsw-selections';const mealDraft=new Node('input');selections.append(mealDraft);container.append(selections);
+  const controller=weeks.mount({container,selections,selectionsCount:2,collapseOnMount,host:h.host,window:win});
+  return {container,selections,mealDraft,controller,week:find(container,'bb-saved-weeks'),weekDraft:find(container,'field'),buttons:find(container,'bbsw-tabs').children,status:find(container,'bbsw-status')};
+ }
+ return {...h,mount};
+}
+test('saved tools start collapsed and pane switches preserve both live draft inputs without changing saved data',()=>{
+ const h=savedToolsFixture(),view=h.mount(true),before=[...h.storage.values];
+ assert.deepEqual(view.buttons.map(button=>button['aria-expanded']),['false','false']);assert.equal(view.week.hidden,true);assert.equal(view.selections.hidden,true);
+ view.weekDraft.value='Draft week';view.mealDraft.value='Draft meals';
+ view.buttons[0].listeners.click();assert.equal(view.week.hidden,false);assert.equal(view.selections.hidden,true);
+ view.buttons[1].listeners.click();assert.equal(view.week.hidden,true);assert.equal(view.selections.hidden,false);
+ assert.equal(view.weekDraft.value,'Draft week');view.buttons[0].listeners.click();assert.equal(view.mealDraft.value,'Draft meals');
+ view.buttons[0].listeners.click();assert.equal(view.week.hidden,true);assert.equal(view.selections.hidden,true);assert.deepEqual([...h.storage.values],before);
+ view.controller.dispose();
+});
+test('same-Plan remount keeps the active saved pane while returning to Plan explicitly closes both',()=>{
+ const h=savedToolsFixture();let view=h.mount(true);view.buttons[1].listeners.click();view.controller.dispose();
+ view=h.mount();assert.deepEqual(view.buttons.map(button=>button['aria-expanded']),['false','true']);view.controller.dispose();
+ const before=[...h.storage.values];view=h.mount(true);assert.deepEqual(view.buttons.map(button=>button['aria-expanded']),['false','false']);assert.equal(view.week.hidden,true);assert.equal(view.selections.hidden,true);assert.deepEqual([...h.storage.values],before);view.controller.dispose();
+});
+test('saved pane state closes for a different account even during a same-Plan refresh',()=>{
+ const h=savedToolsFixture(),view=h.mount();view.buttons[0].listeners.click();h.actor('other-person');view.controller.refresh();assert.deepEqual(view.buttons.map(button=>button['aria-expanded']),['false','false']);view.controller.dispose();
+});
+test('saving a week names Shop in the next-step message',async()=>{
+ const h=savedToolsFixture(),view=h.mount(true);view.buttons[0].listeners.click();view.weekDraft.value='New week';await find(view.container,'bbsw-form').listeners.submit({preventDefault(){}});assert.equal(view.status.textContent,'Week saved. Plan → At home → Shop when you are ready to shop.');view.controller.dispose();
 });
