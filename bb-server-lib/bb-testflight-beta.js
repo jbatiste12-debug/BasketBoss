@@ -2,7 +2,7 @@
  * Keep only a hash of Apple's verified app transaction, not its signed payload.
  * A Sandbox app transaction proves Apple sandbox acquisition; Apple does not
  * include a distinct TestFlight claim. Native receipt checks are presentation. */
-import {APPLE_BUNDLE_ID,AppleBillingError,validateAppleJWS,getAppleAppTransactionVerifier,isAppleRetryableVerificationFailure} from './bb-apple-subscriptions.js';
+import {APPLE_BUNDLE_ID,AppleBillingError,validateAppleJWS,getAppleAppTransactionVerifier,classifyAppleVerificationFailure} from './bb-apple-subscriptions.js';
 import {digestHex} from './bb-billing.js';
 import {ensureDeletionSchema,isAccountDeleting,digestDeletionActor} from './bb-account-deletion.js';
 export const TESTFLIGHT_BETA_END_MS=Date.parse('2027-02-01T00:00:00.000Z');
@@ -11,6 +11,19 @@ const UUID=/^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]
 const initialized=new WeakSet();
 export const testFlightBetaEnabled=(env,now=Date.now())=>env.BB_TESTFLIGHT_BETA_ENABLED!=='false'&&Number.isSafeInteger(now)&&now<TESTFLIGHT_BETA_END_MS;
 const fail=(code,message,status=503)=>{throw new AppleBillingError(code,message,status);};
+const APPLE_VERIFY_REFERENCES=new Set([
+ ...['VERIFICATION_FAILURE','RETRYABLE_VERIFICATION_FAILURE','INVALID_APP_IDENTIFIER','INVALID_ENVIRONMENT','INVALID_CHAIN_LENGTH','INVALID_CERTIFICATE','FAILURE','UNEXPECTED','TIMEOUT','REQUEST_FORMAT'].map(label=>'BB_BETA_APPLE_VERIFY_'+label),
+ ...['CONFIGURATION','ENVIRONMENT','BUNDLE_ID','APP_ID','APP_TRANSACTION_ID','APPLICATION_VERSION','RECEIPT_CREATION_DATE'].map(label=>'BB_BETA_APPLE_CLAIM_'+label)
+]);
+export function testFlightBetaFailureReference(error){
+ let reference;try{reference=error?.betaReference;}catch{return null;}
+ return typeof reference==='string'&&APPLE_VERIFY_REFERENCES.has(reference)?reference:null;
+}
+function appleProofError(code,message,status,reference){
+ if(!APPLE_VERIFY_REFERENCES.has(reference))throw Error('Invalid fixed Apple proof diagnostic');
+ const error=new AppleBillingError(code,message+' Reference: '+reference+'.',status);
+ error.betaReference=reference;return error;
+}
 export async function ensureTestFlightBetaSchema(env){
  const db=env.BILLING_DB;
  if(!db?.prepare||!db?.batch)fail('testflight_beta_unavailable','Beta Premium is temporarily unavailable.');
@@ -29,26 +42,31 @@ export async function ensureTestFlightBetaSchema(env){
 }
 export function validateTestFlightAppClaims(env,claims,now=Date.now()){
  const configuredAppId=env.APPLE_APP_ID===undefined||env.APPLE_APP_ID===''?null:Number(env.APPLE_APP_ID);
- if(configuredAppId!==null&&(!Number.isSafeInteger(configuredAppId)||configuredAppId<=0))fail('testflight_beta_unavailable','Beta Premium is temporarily unavailable.');
- if(claims?.receiptType!=='Sandbox'||claims.bundleId!==APPLE_BUNDLE_ID||
-    configuredAppId!==null&&claims.appAppleId!==undefined&&claims.appAppleId!==configuredAppId||
-    claims.appAppleId!==undefined&&(!Number.isSafeInteger(claims.appAppleId)||claims.appAppleId<=0)||
-    typeof claims.appTransactionId!=='string'||!/^\d{1,80}$/.test(claims.appTransactionId)||
-    typeof claims.applicationVersion!=='string'||!/^[A-Za-z0-9][A-Za-z0-9._-]{0,79}$/.test(claims.applicationVersion)||
-    !Number.isSafeInteger(claims.receiptCreationDate)||claims.receiptCreationDate<=0||claims.receiptCreationDate>now+300000)
-  fail('testflight_beta_invalid_proof','This Apple app transaction is not eligible for Beta Premium.',403);
+ if(configuredAppId!==null&&(!Number.isSafeInteger(configuredAppId)||configuredAppId<=0))
+  throw appleProofError('testflight_beta_unavailable','Beta Premium is temporarily unavailable.',503,'BB_BETA_APPLE_CLAIM_CONFIGURATION');
+ let reason=null;
+ if(claims?.receiptType!=='Sandbox')reason='ENVIRONMENT';
+ else if(claims.bundleId!==APPLE_BUNDLE_ID)reason='BUNDLE_ID';
+ else if(configuredAppId!==null&&claims.appAppleId!==undefined&&claims.appAppleId!==configuredAppId||claims.appAppleId!==undefined&&(!Number.isSafeInteger(claims.appAppleId)||claims.appAppleId<=0))reason='APP_ID';
+ else if(typeof claims.appTransactionId!=='string'||!/^\d{1,80}$/.test(claims.appTransactionId))reason='APP_TRANSACTION_ID';
+ else if(typeof claims.applicationVersion!=='string'||!/^[A-Za-z0-9][A-Za-z0-9._-]{0,79}$/.test(claims.applicationVersion))reason='APPLICATION_VERSION';
+ else if(!Number.isSafeInteger(claims.receiptCreationDate)||claims.receiptCreationDate<=0||claims.receiptCreationDate>now+300000)reason='RECEIPT_CREATION_DATE';
+ if(reason)throw appleProofError('testflight_beta_invalid_proof','This Apple app transaction is not eligible for Beta Premium.',403,'BB_BETA_APPLE_CLAIM_'+reason);
  return claims;
 }
 export async function verifyTestFlightAppTransaction(env,signed,{verifier,now=Date.now()}={}){
- validateAppleJWS(signed);
+ try{validateAppleJWS(signed);}catch(error){
+  if(error instanceof AppleBillingError)throw appleProofError(error.code,error.message,error.status,'BB_BETA_APPLE_VERIFY_REQUEST_FORMAT');throw error;
+ }
  const service=verifier||await getAppleAppTransactionVerifier();
  let timer,claims;
  try{
-  claims=await Promise.race([service.verifyAndDecodeAppTransaction(signed),new Promise((_,reject)=>{timer=setTimeout(()=>reject(new AppleBillingError('testflight_beta_unavailable','Apple app verification is temporarily unavailable.')),22000);})]);
+  claims=await Promise.race([service.verifyAndDecodeAppTransaction(signed),new Promise((_,reject)=>{timer=setTimeout(()=>reject(appleProofError('testflight_beta_unavailable','Apple app verification is temporarily unavailable.',503,'BB_BETA_APPLE_VERIFY_TIMEOUT')),22000);})]);
  }catch(error){
   if(error instanceof AppleBillingError)throw error;
-  if(await isAppleRetryableVerificationFailure(error))fail('testflight_beta_unavailable','Apple app verification is temporarily unavailable.');
-  fail('testflight_beta_unverified','Apple could not verify this beta installation.',403);
+  const status=await classifyAppleVerificationFailure(error),reference='BB_BETA_APPLE_VERIFY_'+status;
+  if(status==='RETRYABLE_VERIFICATION_FAILURE')throw appleProofError('testflight_beta_unavailable','Apple app verification is temporarily unavailable.',503,reference);
+  throw appleProofError('testflight_beta_unverified','Apple could not verify this beta installation.',403,reference);
  }finally{clearTimeout(timer);}
  return validateTestFlightAppClaims(env,claims,now);
 }

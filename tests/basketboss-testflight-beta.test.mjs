@@ -2,11 +2,12 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import {DatabaseSync} from 'node:sqlite';
 import {ensureDeletionSchema,digestDeletionActor,eraseAccountD1} from '../bb-server-lib/bb-account-deletion.js';
-import {persistTestFlightBetaGrant,readTestFlightBetaGrant,validateTestFlightAppClaims,verifyTestFlightAppTransaction,TESTFLIGHT_BETA_END_MS} from '../bb-server-lib/bb-testflight-beta.js';
+import {persistTestFlightBetaGrant,readTestFlightBetaGrant,validateTestFlightAppClaims,verifyTestFlightAppTransaction,testFlightBetaFailureReference,TESTFLIGHT_BETA_END_MS} from '../bb-server-lib/bb-testflight-beta.js';
 import {readPersonalPaidAccess} from '../bb-server-lib/bb-paid-access.js';
 import {createTestFlightBetaHandler} from '../functions/api/apple/testflight-beta.js';
 import {onRequestGet as subscriptionStatus} from '../functions/api/subscription/status.js';
-import {AppleBillingError} from '../bb-server-lib/bb-apple-subscriptions.js';
+import {loadAppleServerSDK} from '../bb-server-lib/vendor/apple-server-sdk.mjs';
+import {AppleBillingError,classifyAppleVerificationFailure} from '../bb-server-lib/bb-apple-subscriptions.js';
 
 const USER='11111111-1111-4111-8111-111111111111',OTHER='22222222-2222-4222-8222-222222222222';
 const NOW=Date.parse('2026-11-03T12:00:00Z');
@@ -133,4 +134,54 @@ test('known Apple errors retain their status and code while diagnostics use only
   assert.deepEqual(await response.json(),{ok:false,code:'testflight_beta_unverified',error:'Apple could not verify this beta installation.'});
   assert.deepEqual(JSON.parse(logs[0].slice('BB_BETA_DIAGNOSTIC '.length)),{stage:'apple_verification',code:'testflight_beta_unverified',status:403,reference:'BB_BETA_APPLE_VERIFICATION'});
  }finally{console.warn=originalWarn;f.close();}
+});
+
+
+const PROOF_PRIVATE='private-bearer-token tester-private@example.invalid raw.signed.app.proof';
+const formattedProof=()=>Buffer.from(JSON.stringify({alg:'ES256',x5c:['fixture','fixture','fixture']})).toString('base64url')+'.'+Buffer.from(JSON.stringify({untrusted:PROOF_PRIVATE})).toString('base64url')+'.'+Buffer.alloc(64).toString('base64url');
+
+test('actual official SDK verification statuses produce closed safe diagnostic references and retain rejection status',async()=>{
+ const {VerificationStatus,VerificationException}=loadAppleServerSDK();
+ for(const label of ['VERIFICATION_FAILURE','RETRYABLE_VERIFICATION_FAILURE','INVALID_APP_IDENTIFIER','INVALID_ENVIRONMENT','INVALID_CHAIN_LENGTH','INVALID_CERTIFICATE','FAILURE']){
+  const sdkError=new VerificationException(VerificationStatus[label],Object.assign(Error(PROOF_PRIVATE),{code:PROOF_PRIVATE}));
+  assert.equal(await classifyAppleVerificationFailure(sdkError),label);
+  await assert.rejects(verifyTestFlightAppTransaction({},formattedProof(),{verifier:{verifyAndDecodeAppTransaction:async()=>{throw sdkError;}}}),error=>{
+   assert.equal(error.status,label==='RETRYABLE_VERIFICATION_FAILURE'?503:403);assert.equal(error.code,label==='RETRYABLE_VERIFICATION_FAILURE'?'testflight_beta_unavailable':'testflight_beta_unverified');
+   const reference='BB_BETA_APPLE_VERIFY_'+label;assert.equal(testFlightBetaFailureReference(error),reference);assert.ok(error.message.includes(reference));assert.equal(error.message.includes(PROOF_PRIVATE),false);return true;
+  });
+ }
+ for(const error of [Error(PROOF_PRIVATE),{status:999},{get status(){throw Error(PROOF_PRIVATE);}}])assert.equal(await classifyAppleVerificationFailure(error),'UNEXPECTED');
+ assert.equal(testFlightBetaFailureReference({betaReference:PROOF_PRIVATE}),null);assert.equal(testFlightBetaFailureReference({get betaReference(){throw Error(PROOF_PRIVATE);}}),null);
+});
+test('post-verification app claim diagnostics identify only the rejected field without exposing its value',async()=>{
+ for(const [patch,reason]of [[{receiptType:'Production'},'ENVIRONMENT'],[{bundleId:PROOF_PRIVATE},'BUNDLE_ID'],[{appAppleId:987654321},'APP_ID'],[{appTransactionId:undefined},'APP_TRANSACTION_ID'],[{appTransactionId:PROOF_PRIVATE},'APP_TRANSACTION_ID'],[{applicationVersion:PROOF_PRIVATE},'APPLICATION_VERSION'],[{receiptCreationDate:NOW+300001},'RECEIPT_CREATION_DATE']]){
+  let calls=0;await assert.rejects(verifyTestFlightAppTransaction({APPLE_APP_ID:'1234567890'},formattedProof(),{now:NOW,verifier:{verifyAndDecodeAppTransaction:async()=>{calls++;return claims(patch);}}}),error=>{
+   assert.equal(calls,1,'claim validation follows successful verifier completion');assert.equal(error.status,403);assert.equal(error.code,'testflight_beta_invalid_proof');assert.equal(testFlightBetaFailureReference(error),'BB_BETA_APPLE_CLAIM_'+reason);assert.equal(error.message.includes(PROOF_PRIVATE),false);return true;
+  });
+ }
+ assert.throws(()=>validateTestFlightAppClaims({APPLE_APP_ID:'invalid '+PROOF_PRIVATE},claims(),NOW),error=>testFlightBetaFailureReference(error)==='BB_BETA_APPLE_CLAIM_CONFIGURATION'&&!error.message.includes(PROOF_PRIVATE));
+});
+test('invalid proof formatting and bounded verification timeout retain safe distinct references',async t=>{
+ await assert.rejects(verifyTestFlightAppTransaction({},PROOF_PRIVATE),error=>error.code==='invalid_apple_transaction'&&error.status===400&&testFlightBetaFailureReference(error)==='BB_BETA_APPLE_VERIFY_REQUEST_FORMAT'&&!error.message.includes(PROOF_PRIVATE));
+ t.mock.timers.enable({apis:['setTimeout']});
+ try{
+  const verification=verifyTestFlightAppTransaction({},formattedProof(),{verifier:{verifyAndDecodeAppTransaction:()=>new Promise(()=>{})}});
+  const rejected=assert.rejects(verification,error=>error.status===503&&testFlightBetaFailureReference(error)==='BB_BETA_APPLE_VERIFY_TIMEOUT');
+  t.mock.timers.tick(22000);await rejected;
+ }finally{t.mock.timers.reset();}
+});
+test('real verification and claim diagnostic failures are logged as fixed references and never persist beta grants',async()=>{
+ const {VerificationStatus,VerificationException}=loadAppleServerSDK();
+ for(const mode of ['certificate','online','claim']){
+  const f=fixture(),originalWarn=console.warn,logs=[];
+  try{
+   console.warn=(...args)=>logs.push(args.join(' '));
+   const verifier={verifyAndDecodeAppTransaction:async()=>{if(mode==='claim')return claims({appTransactionId:undefined});throw new VerificationException(VerificationStatus[mode==='online'?'RETRYABLE_VERIFICATION_FAILURE':'INVALID_CERTIFICATE'],Error(PROOF_PRIVATE));}};
+   const handler=createTestFlightBetaHandler({authenticate:async()=>({id:USER}),newestSession:async()=>true,verify:(env,signed,options)=>verifyTestFlightAppTransaction(env,signed,{...options,verifier}),clock:()=>NOW});
+   const response=await handler({request:post({signedAppTransaction:formattedProof()}),env:f.env}),body=await response.json(),reference=mode==='claim'?'BB_BETA_APPLE_CLAIM_APP_TRANSACTION_ID':'BB_BETA_APPLE_VERIFY_'+(mode==='online'?'RETRYABLE_VERIFICATION_FAILURE':'INVALID_CERTIFICATE');
+   assert.equal(response.status,mode==='online'?503:403);assert.ok(body.error.includes(reference));assert.equal(logs.length,1);assert.equal(JSON.parse(logs[0].slice('BB_BETA_DIAGNOSTIC '.length)).reference,reference);
+   for(const value of [PROOF_PRIVATE,USER,'tester-private','raw.signed.app.proof'])assert.equal((logs.join('\n')+JSON.stringify(body)).includes(value),false);
+   assert.equal(f.sql.prepare("SELECT count(*) AS n FROM sqlite_master WHERE name='bb_testflight_beta_grants'").get().n,0);
+  }finally{console.warn=originalWarn;f.close();}
+ }
 });

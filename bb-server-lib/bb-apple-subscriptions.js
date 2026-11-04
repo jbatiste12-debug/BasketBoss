@@ -5,6 +5,7 @@
 import {Buffer} from 'node:buffer';
 import {createPrivateKey} from 'node:crypto';
 import {appleRootCertificates} from './bb-apple-roots.js';
+import {withAppleOCSPDateCompatibility} from './bb-apple-ocsp.js';
 import {expectedPrice,entitlementForStatus} from './bb-billing.js';
 import {ensureDeletionSchema,isAccountDeleting,digestDeletionActor} from './bb-account-deletion.js';
 export const APPLE_BUNDLE_ID='uk.co.basketboss.app';
@@ -48,18 +49,26 @@ function verifierInitFailure(stage,error,cause){
 }
 function isConstructor(value){if(typeof value!=='function')return false;try{Reflect.construct(Object,[],value);return true;}catch{return false;}}
 export async function createAppleAppTransactionVerifier({loadLibrary=loadAppleLibrary,rootCertificates=appleRootCertificates}={}){
- let Constructor,roots;
- try{const sdk=await loadLibrary();Constructor=isConstructor(sdk?.SignedDataVerifier)?sdk.SignedDataVerifier:isConstructor(sdk?.default?.SignedDataVerifier)?sdk.default.SignedDataVerifier:null;}
+ let sdk,Constructor,roots;
+ try{const library=await loadLibrary();sdk=isConstructor(library?.SignedDataVerifier)?library:isConstructor(library?.default?.SignedDataVerifier)?library.default:null;Constructor=sdk?.SignedDataVerifier;}
  catch(error){throw verifierInitFailure('MODULE',error);}
  if(!Constructor)throw verifierInitFailure('MODULE',null,'MISSING_EXPORT');
  try{roots=rootCertificates();}catch(error){throw verifierInitFailure('ROOTS',error);}
- try{return new Constructor(roots,true,Environment.SANDBOX,APPLE_BUNDLE_ID);}
+ try{return withAppleOCSPDateCompatibility(new Constructor(roots,true,Environment.SANDBOX,APPLE_BUNDLE_ID),sdk);}
  catch(error){throw verifierInitFailure('CONSTRUCTOR',error);}
 }
 export async function getAppleAppTransactionVerifier(){return createAppleAppTransactionVerifier();}
 export async function isAppleRetryableVerificationFailure(error){
  const {VerificationStatus}=await loadAppleLibrary();
  return error?.status===VerificationStatus.RETRYABLE_VERIFICATION_FAILURE;
+}
+// Fixed SDK status names are safe diagnostics. Neither exception text nor its
+// cause is returned: those may contain certificate, request or account data.
+export async function classifyAppleVerificationFailure(error,{loadLibrary=loadAppleLibrary}={}){
+ const {VerificationStatus}=await loadLibrary();
+ let status;try{status=error?.status;}catch{return 'UNEXPECTED';}
+ const labels=['VERIFICATION_FAILURE','RETRYABLE_VERIFICATION_FAILURE','INVALID_APP_IDENTIFIER','INVALID_ENVIRONMENT','INVALID_CHAIN_LENGTH','INVALID_CERTIFICATE','FAILURE'];
+ return labels.find(label=>Number.isInteger(VerificationStatus?.[label])&&status===VerificationStatus[label])||'UNEXPECTED';
 }
 export class AppleBillingError extends Error {
  constructor(code,message,status=503){super(message);this.name='AppleBillingError';this.code=code;this.status=status;}
@@ -113,8 +122,8 @@ export async function getAppleServices(env,config=getVerifiedAppleConfig(env)){
  const cached=cache.get(config.environment);
  const fingerprint=[config.environment,config.appId,config.groupId,config.issuerId,config.keyId,config.privateKey,JSON.stringify(config.products),config.sandboxUsers.join(',')].join('|');
  if(cached?.fingerprint===fingerprint)return cached;
- const {AppStoreServerAPIClient,SignedDataVerifier}=await loadAppleLibrary();
- const result={fingerprint,config,verifier:new SignedDataVerifier(appleRootCertificates(),true,config.environment,config.bundleId,config.environment===Environment.PRODUCTION?config.appId:undefined),client:new AppStoreServerAPIClient(config.privateKey,config.keyId,config.issuerId,config.bundleId,config.environment)};
+ const sdk=await loadAppleLibrary(),{AppStoreServerAPIClient,SignedDataVerifier}=sdk;
+ const result={fingerprint,config,verifier:withAppleOCSPDateCompatibility(new SignedDataVerifier(appleRootCertificates(),true,config.environment,config.bundleId,config.environment===Environment.PRODUCTION?config.appId:undefined),sdk),client:new AppStoreServerAPIClient(config.privateKey,config.keyId,config.issuerId,config.bundleId,config.environment)};
  cache.set(config.environment,result);services.set(env,cache);return result;
 }
 export function validateAppleJWS(value){

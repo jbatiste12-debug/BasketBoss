@@ -3,7 +3,7 @@ import {AppleBillingError} from '../../../bb-server-lib/bb-apple-subscriptions.j
 import {appleRequestJSON,appleErrorResponse} from '../../../bb-server-lib/bb-apple-http.js';
 import {ensureDeletionSchema,isAccountDeleting} from '../../../bb-server-lib/bb-account-deletion.js';
 import {isNewestVerifiedSession} from '../../../bb-server-lib/bb-premium-seat.js';
-import {testFlightBetaEnabled,verifyTestFlightAppTransaction,persistTestFlightBetaGrant} from '../../../bb-server-lib/bb-testflight-beta.js';
+import {testFlightBetaEnabled,verifyTestFlightAppTransaction,persistTestFlightBetaGrant,testFlightBetaFailureReference} from '../../../bb-server-lib/bb-testflight-beta.js';
 const diagnosticStages=new Set(['configuration','origin','authentication','deletion','session','request','apple_verification','grant_write','confirmation']);
 const diagnosticCodes=new Set(['testflight_beta_ended','testflight_beta_unavailable','origin_not_allowed','authentication_required','account_deletion_pending','testflight_beta_newer_session','testflight_beta_invalid_request','invalid_request','request_too_large','invalid_apple_transaction','testflight_beta_invalid_proof','testflight_beta_unverified','testflight_beta_account_mismatch','testflight_beta_cancelled']);
 function logBetaFailure(stage,error,{cancelled=false}={}){
@@ -11,7 +11,7 @@ function logBetaFailure(stage,error,{cancelled=false}={}){
  const known=error instanceof AppleBillingError;
  const code=cancelled?'testflight_beta_cancelled':known&&diagnosticCodes.has(error.code)?error.code:'testflight_beta_unavailable';
  const status=cancelled?499:known&&Number.isInteger(error.status)&&error.status>=400&&error.status<=599?error.status:503;
- const reference='BB_BETA_'+safeStage.toUpperCase();
+ const reference=testFlightBetaFailureReference(error)||'BB_BETA_'+safeStage.toUpperCase();
  // Only fixed stage/code values and an HTTP status are logged. Never include
  // exception messages, account identifiers, request data or Apple proofs.
  console.warn('BB_BETA_DIAGNOSTIC '+JSON.stringify({stage:safeStage,code,status,reference}));
