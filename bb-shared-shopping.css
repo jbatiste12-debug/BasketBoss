@@ -54,3 +54,5 @@ html body #bbSharedShopping.is-gated{display:grid;grid-template-columns:minmax(0
 #bbSharedShopping.is-gated .bbss-gate button{max-width:none;max-width:150px;font-size:12px;background:#fffef9}
 #bbSharedShopping.is-gated .bbss-status,#bbSharedShopping.is-gated .bbss-footer{grid-column:1/-1}
 #bbSharedShopping.is-gated .bbss-footer:has(button[hidden]){display:none}
+
+@media(max-width:480px){#bbSharedShopping .bbss-header{flex-wrap:wrap}#bbSharedShopping .bbss-header>div{flex-basis:100%}#bbSharedShopping h2{font-size:18px}#bbSharedShopping .bbss-add{max-width:100%;margin-left:auto}}

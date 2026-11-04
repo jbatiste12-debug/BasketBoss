@@ -25,7 +25,7 @@ function setup(options = {}) {
   let revision = 0, stock = {}, initialized = false;
   const receipts = new Map();
   function snapshot(scope, extras = {}) {
-    return {ok: true, scope, initialized, inventoryRevision: revision, stock: {...stock}, inventory: Object.entries(stock).map(([key, quantity]) => ({stockKey: key, canonicalKey: key.split('|')[0], unit: key.split('|')[1], quantity, location: 'cupboard', revision})), essentials: [], priceObservations: [], pantryReview: {required: true, shopSessionId: null, confirmedAt: null}, ...extras};
+    return {ok: true, autoStockReady: options.autoStockReady !== false, scope, initialized, inventoryRevision: revision, stock: {...stock}, inventory: Object.entries(stock).map(([key, quantity]) => ({stockKey: key, canonicalKey: key.split('|')[0], unit: key.split('|')[1], quantity, location: 'cupboard', revision})), essentials: [], priceObservations: [], pantryReview: {required: true, shopSessionId: null, confirmedAt: null}, ...extras};
   }
   globalThis.fetch = async (url, init) => {
     const address = String(url);
@@ -38,7 +38,7 @@ function setup(options = {}) {
       if (options.migrationMissing) return Response.json({code: 'PGRST202'}, {status: 404});
       if (options.rpcError) return Response.json(options.rpcError);
       const scope = {kind: body.p_scope_kind, id: body.p_scope_id};
-      if (body.p_action === 'status') return Response.json({ok: true});
+      if (body.p_action === 'status') return Response.json({ok: true, autoStockReady: options.autoStockReady !== false});
       if (body.p_action === 'get') {
         const saved = receipts.get(body.p_receipt_id);
         return Response.json(snapshot(scope, body.p_receipt_id ? {receiptFound: !!saved, ...(saved ? {receiptId: body.p_receipt_id, receiptRevision: saved.revision} : {})} : {}));
@@ -52,7 +52,7 @@ function setup(options = {}) {
       if (saved) return Response.json(saved.hash === body.p_payload_hash ? snapshot(scope, {duplicate: true, receiptId: body.p_receipt_id, receiptRevision: saved.revision}) : {ok: false, error: 'receipt_identity_conflict', conflict: true});
       if (body.p_payload.inventoryBaseline.expectedRevision !== revision) return Response.json({ok: false, error: 'receipt_revision_conflict', conflict: true});
       stock = {...body.p_payload.inventoryBaseline.stock};
-      for (const line of body.p_payload.lines) if (line.kind === 'food') stock[line.canonicalKey + '|' + line.unit] = (stock[line.canonicalKey + '|' + line.unit] || 0) + line.quantity - (line.legacyCredit?.quantity || 0);
+      for (const line of body.p_payload.lines) if (line.kind === 'food' && body.p_payload.addToPantry !== false) stock[line.canonicalKey + '|' + line.unit] = (stock[line.canonicalKey + '|' + line.unit] || 0) + line.quantity - (line.legacyCredit?.quantity || 0);
       revision++;initialized = true;receipts.set(body.p_receipt_id, {hash: body.p_payload_hash, revision});
       return Response.json(snapshot(scope, {duplicate: false, receiptId: body.p_receipt_id, receiptRevision: revision, essentials: body.p_payload.lines.filter(x => x.kind === 'essential').map(x => ({...x, receiptId: body.p_receipt_id, shopSessionId: body.p_payload.shopSessionId})), priceObservations: body.p_payload.priceObservations}));
     }
@@ -201,4 +201,32 @@ test('RPC scope denial and revision errors preserve proper HTTP semantics', asyn
 });
 test('semantic payload includes total and adjustments while excluding transport synchronization metadata', () => {
   const body = semanticReceiptPayload(draft());assert.equal(body.requestId, undefined);assert.equal(body.inventoryBaseline, undefined);assert.equal(body.receiptTotal, 3.75);assert.equal(body.adjustments.length, 1);
+});
+
+test('pre-auto-stock schema remains unavailable so the receipt UI uses the safe local flow', async () => {
+  const fixture = setup({autoStockReady: false});try {
+    const result = await (await onRequestGet({request: request('GET', undefined, '?mode=status'), env: fixture.env})).json();
+    assert.equal(result.available, false);assert.equal(result.migrationReady, false);assert.equal(result.reason, 'migration_unavailable');
+  } finally {fixture.restore();}
+});
+
+test('explicit receipt pantry policy is server-bound and malformed policy is rejected', async () => {
+  const fixture = setup();try {
+    const body = draft();body.addToPantry = false;delete body.lines[0].legacyCredit;
+    const response = await onRequestPost({request: request('POST', body), env: fixture.env});assert.equal(response.status, 200);
+    assert.equal((await response.json()).stock['dried pasta|g'], 300);assert.equal(fixture.rpc[0].p_payload.addToPantry, false);assert.equal(fixture.rpc[0].p_payload.priceObservations.length, 1);
+    const bad = draft();bad.addToPantry = 'false';assert.equal((await onRequestPost({request: request('POST', bad), env: fixture.env})).status, 400);
+    assert.equal(fixture.rpc.length, 1);
+  } finally {fixture.restore();}
+});
+
+test('API pantry sync round-trips partial packs and each balances without loosening receipt purchase counts', async () => {
+  const fixture=setup();try {
+    const body={action:'confirm_pantry',stock:{'eggs|each':1.5,'rice|packs':1/3,'herbs|g':1e-9},expectedRevision:0,expectedScope:{kind:'user',id:USER},shopSessionId:'next'};
+    const response=await onRequestPost({request:request('POST',body),env:fixture.env});
+    assert.equal(response.status,200);assert.deepEqual((await response.json()).stock,{'egg|each':1.5,'rice|pack':1/3,'herbs|g':1e-9});
+    const get=await onRequestGet({request:request('GET'),env:fixture.env});assert.equal(get.status,200);assert.deepEqual((await get.json()).stock,{'egg|each':1.5,'rice|pack':1/3,'herbs|g':1e-9});
+    const receipt=draft();Object.assign(receipt.lines[0],{quantity:1.5,unit:'pack',packQuantity:null,packUnit:null,packCount:null});
+    assert.equal((await onRequestPost({request:request('POST',receipt),env:fixture.env})).status,400);
+  } finally {fixture.restore();}
 });

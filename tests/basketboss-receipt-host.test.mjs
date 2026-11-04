@@ -111,13 +111,15 @@ test('downgraded users can confirm local pantry without claiming cloud sync or c
   const h = harness({cached, status: {ok: true, available: false, premium: false}});
   h.store.setItem(keys.confirmed, JSON.stringify({version: 1, confirmedAt: '2026-10-31T12:00:00Z', items: [{name: 'rice', qty: 100, unit: 'g'}]}));
   assert.equal(h.host.requiresPantryReview(), true);assert.equal(h.host.confirmLocalPantryReview().ok, true);assert.equal(h.host.requiresPantryReview(), false);assert.equal(cached.pantryReview.required, true);assert.ok(!h.calls.some(x => typeof x === 'object'));
+  h.setContext({shopSessionId: 'shop-next'});assert.equal(h.host.requiresPantryReview(), false);
+  h.setCached({...cached, inventoryRevision: 3});assert.equal(h.host.requiresPantryReview(), true);
   h.setPending({receiptId: 'unresolved'});assert.equal(h.host.requiresPantryReview(), true);assert.equal(h.host.confirmLocalPantryReview().ok, false);
 });
-test('a new shopping session requires review of receipt-backed pantry and bounds legacy coverage by actor/scope', () => {
+test('a new shopping session carries measured pantry forward and bounds legacy coverage by actor/scope', () => {
   const scope = {kind: 'user', id: actorA};const h = harness({cached: {scope, inventoryRevision: 3, lastReceiptId: 'r1', pantryReview: {required: false, shopSessionId: 'shop-current'}}});
   const marker = {receiptPantryConfirmedActor: actorA, receiptPantryConfirmedScope: 'user:' + actorA, receiptPantryConfirmedRevision: 3, receiptPantryConfirmedShopSessionId: 'shop-current'};
   assert.equal(h.host.requiresPantryReview(), false);assert.equal(h.host.coversLegacyCredit(marker), true);assert.equal(h.host.coversLegacyCredit({...marker, receiptPantryConfirmedActor: actorB}), false);
-  h.setContext({shopSessionId: 'shop-next'});assert.equal(h.host.requiresPantryReview(), true);assert.equal(h.host.coversLegacyCredit(marker), false);
+  h.setContext({shopSessionId: 'shop-next'});assert.equal(h.host.requiresPantryReview(), false);assert.equal(h.host.coversLegacyCredit(marker), false);
 });
 
 function pantryHarness({scope = {kind: 'user', id: actorA}, revision = 2} = {}) {
@@ -183,4 +185,91 @@ test('late Pantry confirmation cannot update receipt coverage after deletion sta
   const afterCancellation = projected;release();const result = await pending;
   assert.equal(result.ok, false);assert.equal(projected, afterCancellation);
   assert.deepEqual([...h.store.values], before);
+});
+
+test('verified receipt stock can be consumed while its next-shop review remains required', async () => {
+  const cached = {initialized: true, scope: {kind: 'user', id: actorA}, inventoryRevision: 2, pantryReview: {required: true}};
+  const h = harness({cached});
+  await h.host.refreshAvailability({synchronize: false});
+  assert.equal(h.host.requiresPantryReview(), true);
+  assert.equal(h.host.canConsumePantry(), true, 'routine shopping review does not block confirmed cooking');
+  h.setCached({...cached, initialized: false});assert.equal(h.host.canConsumePantry(), false, 'uninitialized stock still needs review');
+  h.setCached(cached);h.setPending({receiptId: 'unresolved'});assert.equal(h.host.canConsumePantry(), false);
+  h.setPending({});h.store.setItem('basketboss_receipt_inventory_journal_v1:' + actorA, '{}');assert.equal(h.host.canConsumePantry(), false);
+  h.store.removeItem('basketboss_receipt_inventory_journal_v1:' + actorA);
+  h.setCached({...cached, scope: {kind: 'user', id: actorB}});assert.equal(h.host.canConsumePantry(), false, 'another account projection never authorizes stock consumption');
+  h.setCached(cached);h.event('basketboss:account-deletion-started');assert.equal(h.host.canConsumePantry(), false);
+});
+
+test('local and Free pantry consumption does not depend on receipt service activation', async () => {
+  const local = harness({actor: 'guest', stock: {'rice|g': 500}});
+  assert.equal(local.host.canConsumePantry(), true);
+  const cached = {initialized: false, scope: {kind: 'user', id: actorA}, inventoryRevision: 0, pantryReview: {required: true}};
+  const free = harness({cached, stock: {'rice|g': 500}, status: {ok: true, available: false, premium: false}});
+  await free.host.refreshAvailability({synchronize: false});
+  assert.equal(free.host.canConsumePantry(), true, 'manual compatible stock remains consumable without online receipt access');
+  free.setPending({receiptId: 'unresolved'});assert.equal(free.host.canConsumePantry(), false);
+});
+
+test('cook sync preserves next-shop review until an explicit pantry confirmation', async () => {
+  let revision = 2;
+  const scope = {kind: 'user', id: actorA};
+  const cached = {initialized: true, scope, inventoryRevision: revision, pantryReview: {required: true}};
+  const h = harness({cached});let checks = 0;
+  h.inventory.confirmPantry = async value => {
+    checks++;
+    if (checks === 1) assert.equal(JSON.parse(h.store.getItem(keys.confirmed)).receiptCookReview.required, true, 'review intent must be durable before cloud confirmation');
+    h.setCached({initialized: true, scope, inventoryRevision: ++revision, pantryReview: {required: false}});
+    return {ok: true, committed: true, localApplied: true, projection: {stock: value.stock}};
+  };
+  const cooked = await h.host.confirmCookedPantry({stock: {'rice|g': 700}});
+  assert.equal(cooked.ok, true);assert.equal(cooked.weeklyReviewRequired, true);
+  assert.equal(h.host.requiresPantryReview(), true);assert.equal(h.host.canConsumePantry(), true);
+  assert.equal(JSON.parse(h.store.getItem(keys.confirmed)).receiptCookReview.scope, 'user:' + actorA);
+  const reviewed = await h.host.confirmCurrentPantry({stock: {'rice|g': 700}});
+  assert.equal(reviewed.ok, true);assert.equal(h.host.requiresPantryReview(), false);
+  assert.equal(JSON.parse(h.store.getItem(keys.confirmed)).receiptCookReview, undefined);
+  assert.equal(h.store.getItem(keys.confirmed).includes('synthetic-token'), false);
+});
+
+test('merge conflicts and failed cooking sync cannot authorize later consumption', async () => {
+  const cached = {initialized: true, scope: {kind: 'user', id: actorA}, inventoryRevision: 2, pantryReview: {required: true}};
+  const h = harness({cached});
+  h.inventory.confirmPantry = async () => {const error = Error('revision conflict');error.status = 409;throw error;};
+  const failed = await h.host.confirmCookedPantry({stock: {'rice|g': 700}});
+  assert.equal(failed.ok, false);assert.equal(failed.conflict, true);
+  assert.equal(h.host.requiresPantryReview(), true);assert.equal(h.host.canConsumePantry(), false);
+  const merge = harness({cached});merge.inventory.synchronize = async () => ({ok: false, localApplied: false, localError: 'receipt_initial_pantry_merge_required'});
+  await merge.host.refreshAvailability({force: true});assert.equal(merge.host.canConsumePantry(), false);
+});
+
+test('explicit offline pantry review clears a preserved cooking review without changing cloud stock', async () => {
+  const cached = {initialized: true, scope: {kind: 'user', id: actorA}, inventoryRevision: 2, pantryReview: {required: false}};
+  const h = harness({cached, status: {ok: true, available: false, premium: false}});
+  h.store.setItem(keys.confirmed, JSON.stringify({version: 1, confirmedAt: '2026-10-31T12:00:00Z', items: [], receiptCookReview: {required: true, actorId: actorA, scope: 'user:' + actorA}}));
+  assert.equal(h.host.requiresPantryReview(), true);
+  assert.equal(h.host.confirmLocalPantryReview().ok, true);
+  assert.equal(h.host.requiresPantryReview(), false);
+  assert.equal(JSON.parse(h.store.getItem(keys.confirmed)).receiptCookReview, undefined);
+  assert.equal(h.calls.some(value => typeof value === 'object'), false);
+});
+
+test('offline cook sync preserves the weekly review even when a recent manual acknowledgement exists', async () => {
+  const cached = {initialized: true, scope: {kind: 'user', id: actorA}, inventoryRevision: 2, pantryReview: {required: true}};
+  const h = harness({cached, status: {ok: true, available: false, premium: false}});
+  h.store.setItem(keys.confirmed, JSON.stringify({version: 1, confirmedAt: '2026-10-31T12:00:00Z', items: []}));
+  const result = await h.host.confirmCookedPantry({stock: {'rice|g': 700}});
+  assert.equal(result.ok, true);assert.equal(result.localOnly, true);assert.equal(result.weeklyReviewRequired, true);
+  assert.equal(h.host.requiresPantryReview(), true);assert.equal(h.host.canConsumePantry(), true);
+  assert.equal(JSON.parse(h.store.getItem(keys.confirmed)).receiptLocalReview, undefined, 'cooking is not a new pantry-review acknowledgement');
+});
+
+test('weekly pantry review accepts partial physical items and packs without rounding the balance', async () => {
+ const h=pantryHarness();h.data.stock={'egg|each':8.666667,'rice|pack':.5};
+ h.store.setItem(keys.stock,JSON.stringify(h.data.stock));
+ const dialog=await h.host.reviewPantry(),inputs=descendants(dialog).filter(x=>x.tagName==='INPUT');
+ assert.equal(inputs.length,2);assert.ok(inputs.every(input=>input.step==='any'));
+ await descendants(dialog).find(x=>x.tagName==='FORM').events.submit({preventDefault(){}});
+ const call=h.calls.find(x=>typeof x==='object');assert.deepEqual(JSON.parse(JSON.stringify(call.stock)),h.data.stock);
+ assert.deepEqual(JSON.parse(h.store.getItem(keys.stock)),h.data.stock);
 });

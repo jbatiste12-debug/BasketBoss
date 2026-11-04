@@ -86,3 +86,6 @@ html body.bb172-storefront-visible nav#bbPrimaryNavigation[data-bb-navigation]{d
  html body #app .btn:hover,html body #app .btn:active,
  html body #app .small-btn:hover,html body #app .small-btn:active{transform:none!important}
 }
+/* Cook is its own kitchen workspace, alongside the four weekly-loop tabs. */
+html body .shell>nav.tabs>a.bb173-make-meal-link{position:relative!important}
+html body .shell>nav.tabs>a.bb173-make-meal-link:before{content:"";position:absolute;left:0;top:19%;bottom:19%;width:2px;border-radius:2px;background:#216345;pointer-events:none}

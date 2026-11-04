@@ -1,6 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import fs from 'node:fs/promises';
+import vm from 'node:vm';
 import {onRequest} from '../functions/api/bb173/[action].js';
 
 const price='pri_'+'p'.repeat(26);
@@ -127,7 +128,7 @@ test('AI per-user quota still blocks requests after authentication',async()=>{
  const {calls}=await check({denyQuota:true},{},429);
  assert.ok(!calls.some(x=>x.url?.includes('generativelanguage.googleapis.com')));
 });
-test('Safari modal observer and cached script changes never touch camera label',async()=>{
+test('Safari panel observer preserves the camera input and loads the current photo-flow controller',async()=>{
  const js=await fs.readFile(new URL('../make-a-meal.js',import.meta.url),'utf8');
  const html=await fs.readFile(new URL('../make-a-meal.html',import.meta.url),'utf8');
  assert.match(js,/function bbObserveAIHumanPanel\(\)/);
@@ -138,5 +139,21 @@ test('Safari modal observer and cached script changes never touch camera label',
  assert.match(js,/const token=turnstileToken\|\|''/);
  assert.match(html,/<label class="scan-upload-label" for="ai-photo-input">/);
  assert.match(html,/<input accept="image\/\*"[^>]+id="ai-photo-input" type="file"/);
- assert.match(html,/make-a-meal\.js\?v=20261101-recovery1/);
+ const asset=html.match(/<script[^>]+src="(make-a-meal\.js\?[^\"]+)"/)?.[1];
+ assert.ok(asset,'the camera page loads its versioned controller');
+ const version=new URL(asset,'https://basketboss.co.uk/').searchParams.get('v');
+ assert.ok(/^\d{8}-/.test(version||'')&&Number(version.slice(0,8))>=20261103,'the controller is newer than the former modal-only camera release');
+});
+
+test('opening the inline scanner keeps its native file input mounted and does not restore a modal overlay',async()=>{
+ const html=await fs.readFile(new URL('../make-a-meal.html',import.meta.url),'utf8');
+ const start=html.indexOf('function openPanel(tool){'),end=html.indexOf('// Synchronous fail-closed gate.',start);
+ assert.ok(start>=0&&end>start,'the synchronous camera opener is present');
+ const source=html.slice(start,end),classes=new Set(['bb-ai-native-visible']),errors=[];
+ const originalParent={},stage={parentNode:originalParent,hidden:true,classList:{add:value=>classes.add(value),remove:value=>classes.delete(value)}},scanner={hidden:true},meal={hidden:false},input={isConnected:true,files:[]},result={textContent:''};
+ const nodes={bbToolStage:stage,aiScanner:scanner,aiMeal:meal,'ai-photo-input':input,scanResults:result};
+ const document={body:{classList:{contains:value=>value==='bb-photo-meal-page'},appendChild(){throw Error('The inline scanner must remain beside its original file input');}},getElementById:id=>nodes[id],querySelectorAll:()=>[]};
+ const context=vm.createContext({document,visibleError:message=>errors.push(message)});
+ vm.runInContext(source+'\nopenPanel("scan");',context);
+ assert.deepEqual(errors,[]);assert.equal(stage.parentNode,originalParent);assert.equal(stage.hidden,false);assert.equal(scanner.hidden,false);assert.equal(meal.hidden,true);assert.equal(classes.has('bb-ai-native-visible'),false);assert.equal(nodes['ai-photo-input'],input);
 });

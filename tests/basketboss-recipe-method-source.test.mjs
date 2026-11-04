@@ -1,0 +1,6 @@
+import test from 'node:test';import assert from 'node:assert/strict';import fs from 'node:fs';import vm from 'node:vm';
+const source=fs.readFileSync(new URL('../app.html',import.meta.url),'utf8');
+const start=source.indexOf('function kitchenMethodFor(recipe){'),end=source.indexOf('\nconst DETAILED_METHODS=',start);
+const context=vm.createContext({DETAILED_METHODS:{old:['Existing legacy direction.']},expandKitchenStep(){throw Error('Generic prose must not be appended to a complete recipe.');}});vm.runInContext(source.slice(start,end),context);
+test('current expansion methods remain authoritative even with a different culinary version',()=>{for(const version of ['ingredient-sync-all321-v3','expansion-500-batch4-20261031',undefined]){const recipe={id:'old',culinary_data_version:version,method:['Cook the listed ingredients.','Serve when safely cooked.']};const original=JSON.stringify(recipe);assert.deepEqual(Array.from(context.kitchenMethodFor(recipe)),recipe.method);assert.equal(JSON.stringify(recipe),original);}});
+test('only a recipe without supplied methods can use the existing legacy directions',()=>{assert.deepEqual(Array.from(context.kitchenMethodFor({id:'old'})),['Existing legacy direction.']);assert.deepEqual(Array.from(context.kitchenMethodFor({id:'unknown'})),[]);});

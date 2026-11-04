@@ -36,6 +36,8 @@
   }
   function isDinner(recipe){
     if(!recipe||!idOf(recipe))return false;
+    // A serving of potatoes is a side, not an automatic standalone dinner.
+    if(recipe.id==='extra-air-fryer-garlic-parmesan-potatoes')return false;
     const category=text(recipe.category)+' '+text(recipe.tag)+' '+text(recipe.mealType);
     const name=text(recipe.name);
     // A boolean flag cannot turn a labelled dessert into an Auto-fill dinner.
@@ -84,12 +86,27 @@
   function annotate(recipes){return (Array.isArray(recipes)?recipes:[]).map(recipe=>({...recipe,...metadata(recipe)}));}
   function defaultStorage(){try{return typeof window!=='undefined'?window.localStorage:null;}catch(_){return null;}}
   function createRotation(options={}){
+    // Auto-fill can score adjacency and dated recency instead of excluding
+    // those candidates. Ordinary/manual planning retains the strict defaults.
+    const softProteinAdjacency=options.softProteinAdjacency===true;
+    const softRecentRecipes=options.softRecentRecipes===true;
     const recipes=Array.isArray(options.recipes)?options.recipes:[];
     const byId=new Map(recipes.filter(r=>idOf(r)).map(r=>[r.id,r]));
     const allowed=typeof options.isAllowed==='function'?options.isAllowed:()=>false;
     const suitable=typeof options.isEligible==='function'?options.isEligible:()=>true;
     const eligible=recipes.filter(r=>isDinner(r)&&allowed(r)===true&&suitable(r)===true);
     const eligibleIds=new Set(eligible.map(r=>r.id));
+    // Optional editorial cohorts rotate independently while sharing the same
+    // optimistic, single-record commit. Ordinary callers retain whole-pool
+    // rotation; filtering alone can never create or shrink a cohort.
+    const rotationGroup=typeof options.rotationGroup==='function'?options.rotationGroup:null;
+    const groupOf=recipe=>{const group=rotationGroup?.(recipe);return typeof group==='string'?group:'';};
+    const groupsById=new Map(),groupIds=new Map();
+    if(rotationGroup)for(const recipe of eligible){
+      const group=groupOf(recipe);groupsById.set(recipe.id,group);
+      if(!groupIds.has(group))groupIds.set(group,new Set());
+      groupIds.get(group).add(recipe.id);
+    }
     const storage=options.storage===undefined?defaultStorage():options.storage;
     const scope=options.scope===undefined?'default':String(options.scope);
     const key=(options.key||STORAGE_KEY)+':'+encodeURIComponent(scope);
@@ -118,8 +135,10 @@
     const reserved=[];
     const selectedIds=new Set();
     function eligibilityChanged(){
-      const current=new Set(recipes.filter(r=>isDinner(r)&&allowed(r)===true&&suitable(r)===true).map(r=>r.id));
-      return current.size!==eligibleIds.size||[...current].some(id=>!eligibleIds.has(id));
+      const current=recipes.filter(r=>isDinner(r)&&allowed(r)===true&&suitable(r)===true);
+      const currentIds=new Set(current.map(r=>r.id));
+      return currentIds.size!==eligibleIds.size||current.some(recipe=>!eligibleIds.has(recipe.id)||
+        (rotationGroup&&groupsById.get(recipe.id)!==groupOf(recipe)));
     }
     const resolve=entry=>entry?.recipe||byId.get(entry?.recipeId||entry?.id)||null;
     function planEntries(planned){
@@ -138,21 +157,34 @@
       if(!eligibleIds.size){lastReason='no-eligible-dinners';return [];}
       if(eligibilityChanged()){lastReason='rotation-access-changed';return [];}
       if(!DAYS.includes(context.day)){lastReason='invalid-day';return [];}
+      // Without editorial cohorts, preserve the original complete-pool rule.
       // Category, time and protein constraints never cause an early reset.
-      // Only having seen every currently accessible eligible dinner does.
-      if([...eligibleIds].every(id=>seen.has(id))){seen=new Set([...seen].filter(id=>!eligibleIds.has(id)));cycle++;}
+      if(!softRecentRecipes&&!rotationGroup&&[...eligibleIds].every(id=>seen.has(id))){seen=new Set([...seen].filter(id=>!eligibleIds.has(id)));cycle++;}
       const plan=planEntries(context.planned),plannedIds=new Set(plan.map(row=>row.recipe.id));
       if(plan.some(row=>row.day===context.day)){lastReason='occupied-day';return [];}
       const dayIndex=DAYS.indexOf(context.day);
       const neighbours=plan.filter(row=>dayIndex>=0&&Math.abs(DAYS.indexOf(row.day)-dayIndex)===1&&DAYS.includes(row.day));
       const neighbouringProteins=new Set(neighbours.map(row=>metadata(row.recipe).primaryProtein));
       if(dayIndex===0&&typeof options.previousProtein==='string')neighbouringProteins.add(proteinAlias(options.previousProtein));
+      const proteinCounts=new Map();
+      if(softProteinAdjacency)for(const row of plan){const protein=metadata(row.recipe).primaryProtein;proteinCounts.set(protein,(proteinCounts.get(protein)||0)+1);}
       const heavy=plan.filter(row=>metadata(row.recipe).cheeseHeavy).length;
       const pool=(Array.isArray(candidates)?candidates:[]).filter(r=>idOf(r)&&eligibleIds.has(r.id)&&!plannedIds.has(r.id)&&!selectedIds.has(r.id));
-      const unseen=pool.filter(r=>!seen.has(r.id));
+      if(rotationGroup&&!softRecentRecipes){
+        const requestedGroups=new Set(pool.map(recipe=>groupsById.get(recipe.id)));
+        for(const group of requestedGroups){
+          const ids=groupIds.get(group);
+          if(ids?.size&&[...ids].every(id=>seen.has(id))){
+            for(const id of ids)seen.delete(id);
+            cycle++;
+          }
+        }
+      }
+      const unseen=softRecentRecipes?pool:pool.filter(r=>!seen.has(r.id));
       const result=unseen.filter(r=>{
         const m=metadata(r);
-        return !neighbouringProteins.has(m.primaryProtein)&&(!m.cheeseHeavy||heavy<2);
+        const proteinFits=softProteinAdjacency?(proteinCounts.get(m.primaryProtein)||0)<2:!neighbouringProteins.has(m.primaryProtein);
+        return proteinFits&&(!m.cheeseHeavy||heavy<2);
       });
       lastReason=result.length?'':!pool.length?'no-recipes-match':!unseen.length?'rotation-filter-exhausted':'variety-filter-exhausted';
       return result;

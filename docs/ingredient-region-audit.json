@@ -1,0 +1,2908 @@
+{
+  "version": 1,
+  "source": "recipes.json + normalized-ingredient-database.json (100 Free recipes)",
+  "recipeOrigin": "UK; preserved across regional display changes",
+  "cupDensityPolicy": "Approximate ingredient-specific 240 ml kitchen cup weights; preparation and packing require review.",
+  "modes": {
+    "UK": {
+      "recipes": 100,
+      "ingredientLines": 730,
+      "aggregatedIngredients": 221,
+      "simulatedIngredients": 186,
+      "duplicateRows": [],
+      "nonCanonicalRows": [],
+      "conversionFailures": [],
+      "needsRecipeReview": 12,
+      "canonicalTotals": [
+        {
+          "key": "chicken breast",
+          "unit": "g",
+          "required": 9400
+        },
+        {
+          "key": "mixed peppers",
+          "unit": "g",
+          "required": 960
+        },
+        {
+          "key": "tortilla wraps",
+          "unit": "each",
+          "required": 28
+        },
+        {
+          "key": "soured cream",
+          "unit": "g",
+          "required": 240
+        },
+        {
+          "key": "cheddar",
+          "unit": "g",
+          "required": 1300
+        },
+        {
+          "key": "fajita seasoning",
+          "unit": "each",
+          "required": 1
+        },
+        {
+          "key": "cooking oil",
+          "unit": "each",
+          "required": 1
+        },
+        {
+          "key": "lime",
+          "unit": "g",
+          "required": 1190
+        },
+        {
+          "key": "brioche buns",
+          "unit": "each",
+          "required": 12
+        },
+        {
+          "key": "cornflakes",
+          "unit": "g",
+          "required": 180
+        },
+        {
+          "key": "coleslaw",
+          "unit": "g",
+          "required": 300
+        },
+        {
+          "key": "egg",
+          "unit": "each",
+          "required": 55
+        },
+        {
+          "key": "paprika",
+          "unit": "each",
+          "required": 1
+        },
+        {
+          "key": "lettuce",
+          "unit": "g",
+          "required": 900
+        },
+        {
+          "key": "mayonnaise",
+          "unit": "each",
+          "required": 1
+        },
+        {
+          "key": "garlic",
+          "unit": "each",
+          "required": 127
+        },
+        {
+          "key": "penne pasta",
+          "unit": "g",
+          "required": 500
+        },
+        {
+          "key": "double cream",
+          "unit": "ml",
+          "required": 850
+        },
+        {
+          "key": "parmesan",
+          "unit": "g",
+          "required": 225
+        },
+        {
+          "key": "chicken stock",
+          "unit": "ml",
+          "required": 2400
+        },
+        {
+          "key": "lemon",
+          "unit": "g",
+          "required": 3200
+        },
+        {
+          "key": "pork sausages",
+          "unit": "each",
+          "required": 6
+        },
+        {
+          "key": "potato gnocchi",
+          "unit": "g",
+          "required": 1000
+        },
+        {
+          "key": "passata",
+          "unit": "g",
+          "required": 4200
+        },
+        {
+          "key": "mozzarella",
+          "unit": "each",
+          "required": 7
+        },
+        {
+          "key": "garlic baguette",
+          "unit": "each",
+          "required": 1
+        },
+        {
+          "key": "dried italian herbs",
+          "unit": "each",
+          "required": 1
+        },
+        {
+          "key": "pork shoulder",
+          "unit": "g",
+          "required": 1200
+        },
+        {
+          "key": "prepared coleslaw",
+          "unit": "g",
+          "required": 300
+        },
+        {
+          "key": "bbq sauce",
+          "unit": "each",
+          "required": 1
+        },
+        {
+          "key": "onion",
+          "unit": "g",
+          "required": 4650
+        },
+        {
+          "key": "smoked paprika",
+          "unit": "each",
+          "required": 1
+        },
+        {
+          "key": "apple cider vinegar",
+          "unit": "each",
+          "required": 1
+        },
+        {
+          "key": "lean beef mince",
+          "unit": "g",
+          "required": 750
+        },
+        {
+          "key": "canned mixed beans",
+          "unit": "g",
+          "required": 800
+        },
+        {
+          "key": "chopped tomatoes",
+          "unit": "g",
+          "required": 5600
+        },
+        {
+          "key": "long-grain rice",
+          "unit": "g",
+          "required": 450
+        },
+        {
+          "key": "ground cumin",
+          "unit": "each",
+          "required": 1
+        },
+        {
+          "key": "chilli powder",
+          "unit": "each",
+          "required": 1
+        },
+        {
+          "key": "egg noodles",
+          "unit": "g",
+          "required": 1050
+        },
+        {
+          "key": "stir-fry vegetables",
+          "unit": "g",
+          "required": 1200
+        },
+        {
+          "key": "light soy sauce",
+          "unit": "each",
+          "required": 1
+        },
+        {
+          "key": "sweet chilli sauce",
+          "unit": "each",
+          "required": 1
+        },
+        {
+          "key": "chinese five-spice powder",
+          "unit": "each",
+          "required": 1
+        },
+        {
+          "key": "cornflour",
+          "unit": "g",
+          "required": 33
+        },
+        {
+          "key": "fresh ginger",
+          "unit": "g",
+          "required": 162
+        },
+        {
+          "key": "salmon fillets",
+          "unit": "each",
+          "required": 22
+        },
+        {
+          "key": "tenderstem broccoli",
+          "unit": "g",
+          "required": 950
+        },
+        {
+          "key": "honey",
+          "unit": "each",
+          "required": 1
+        },
+        {
+          "key": "soy sauce",
+          "unit": "each",
+          "required": 1
+        },
+        {
+          "key": "sesame oil",
+          "unit": "each",
+          "required": 1
+        },
+        {
+          "key": "sirloin steaks",
+          "unit": "each",
+          "required": 2
+        },
+        {
+          "key": "peppercorn sauce",
+          "unit": "each",
+          "required": 1
+        },
+        {
+          "key": "potato",
+          "unit": "g",
+          "required": 11300
+        },
+        {
+          "key": "butter",
+          "unit": "g",
+          "required": 760
+        },
+        {
+          "key": "sun-dried tomatoes",
+          "unit": "g",
+          "required": 60
+        },
+        {
+          "key": "asparagus",
+          "unit": "g",
+          "required": 250
+        },
+        {
+          "key": "cherry tomatoes",
+          "unit": "g",
+          "required": 1950
+        },
+        {
+          "key": "sausages",
+          "unit": "each",
+          "required": 20
+        },
+        {
+          "key": "carrot",
+          "unit": "g",
+          "required": 2350
+        },
+        {
+          "key": "red onion",
+          "unit": "g",
+          "required": 900
+        },
+        {
+          "key": "mixed dried herbs",
+          "unit": "each",
+          "required": 1
+        },
+        {
+          "key": "prepared gravy",
+          "unit": "ml",
+          "required": 200
+        },
+        {
+          "key": "chickpeas",
+          "unit": "g",
+          "required": 2400
+        },
+        {
+          "key": "coconut milk",
+          "unit": "ml",
+          "required": 1600
+        },
+        {
+          "key": "spinach",
+          "unit": "g",
+          "required": 1700
+        },
+        {
+          "key": "rice",
+          "unit": "g",
+          "required": 6800
+        },
+        {
+          "key": "curry powder",
+          "unit": "each",
+          "required": 1
+        },
+        {
+          "key": "cooked salmon",
+          "unit": "each",
+          "required": 2
+        },
+        {
+          "key": "breadcrumbs",
+          "unit": "g",
+          "required": 580
+        },
+        {
+          "key": "frozen peas",
+          "unit": "g",
+          "required": 200
+        },
+        {
+          "key": "fresh parsley",
+          "unit": "g",
+          "required": 95
+        },
+        {
+          "key": "pesto",
+          "unit": "g",
+          "required": 340
+        },
+        {
+          "key": "hard cheese",
+          "unit": "g",
+          "required": 50
+        },
+        {
+          "key": "pasta",
+          "unit": "g",
+          "required": 1350
+        },
+        {
+          "key": "basil",
+          "unit": "g",
+          "required": 60
+        },
+        {
+          "key": "olive oil",
+          "unit": "each",
+          "required": 1
+        },
+        {
+          "key": "orzo",
+          "unit": "g",
+          "required": 1300
+        },
+        {
+          "key": "beef mince",
+          "unit": "g",
+          "required": 1650
+        },
+        {
+          "key": "spaghetti",
+          "unit": "g",
+          "required": 1500
+        },
+        {
+          "key": "frozen mixed vegetables",
+          "unit": "g",
+          "required": 400
+        },
+        {
+          "key": "spring onion",
+          "unit": "g",
+          "required": 205
+        },
+        {
+          "key": "green lentils",
+          "unit": "g",
+          "required": 700
+        },
+        {
+          "key": "vegetable stock",
+          "unit": "ml",
+          "required": 2300
+        },
+        {
+          "key": "dried oregano",
+          "unit": "each",
+          "required": 1
+        },
+        {
+          "key": "white fish fillets",
+          "unit": "each",
+          "required": 4
+        },
+        {
+          "key": "cabbage slaw",
+          "unit": "g",
+          "required": 200
+        },
+        {
+          "key": "natural yoghurt",
+          "unit": "g",
+          "required": 1125
+        },
+        {
+          "key": "plain flour",
+          "unit": "g",
+          "required": 440
+        },
+        {
+          "key": "risotto rice",
+          "unit": "g",
+          "required": 300
+        },
+        {
+          "key": "mushroom",
+          "unit": "g",
+          "required": 300
+        },
+        {
+          "key": "firm tofu",
+          "unit": "g",
+          "required": 400
+        },
+        {
+          "key": "cucumber",
+          "unit": "g",
+          "required": 1500
+        },
+        {
+          "key": "tomato",
+          "unit": "g",
+          "required": 1200
+        },
+        {
+          "key": "sweet potatoes",
+          "unit": "g",
+          "required": 1800
+        },
+        {
+          "key": "bread",
+          "unit": "each",
+          "required": 20
+        },
+        {
+          "key": "prawns",
+          "unit": "g",
+          "required": 300
+        },
+        {
+          "key": "linguine",
+          "unit": "g",
+          "required": 750
+        },
+        {
+          "key": "parsley",
+          "unit": "g",
+          "required": 52.5
+        },
+        {
+          "key": "chilli flakes",
+          "unit": "g",
+          "required": 1.5
+        },
+        {
+          "key": "turkey mince",
+          "unit": "g",
+          "required": 1500
+        },
+        {
+          "key": "kidney beans",
+          "unit": "g",
+          "required": 1200
+        },
+        {
+          "key": "sweetcorn",
+          "unit": "g",
+          "required": 800
+        },
+        {
+          "key": "halloumi",
+          "unit": "g",
+          "required": 250
+        },
+        {
+          "key": "couscous",
+          "unit": "g",
+          "required": 1200
+        },
+        {
+          "key": "flatbreads",
+          "unit": "each",
+          "required": 8
+        },
+        {
+          "key": "cooked chicken",
+          "unit": "g",
+          "required": 300
+        },
+        {
+          "key": "bell peppers",
+          "unit": "g",
+          "required": 1280
+        },
+        {
+          "key": "banana",
+          "unit": "g",
+          "required": 240
+        },
+        {
+          "key": "oats",
+          "unit": "g",
+          "required": 150
+        },
+        {
+          "key": "milk",
+          "unit": "ml",
+          "required": 1600
+        },
+        {
+          "key": "baking powder",
+          "unit": "g",
+          "required": 9
+        },
+        {
+          "key": "ground cinnamon",
+          "unit": "each",
+          "required": 1
+        },
+        {
+          "key": "baking potatoes",
+          "unit": "each",
+          "required": 4
+        },
+        {
+          "key": "baked beans",
+          "unit": "g",
+          "required": 800
+        },
+        {
+          "key": "chicken thighs",
+          "unit": "g",
+          "required": 3200
+        },
+        {
+          "key": "feta",
+          "unit": "g",
+          "required": 750
+        },
+        {
+          "key": "olives",
+          "unit": "g",
+          "required": 80
+        },
+        {
+          "key": "beef strips",
+          "unit": "g",
+          "required": 1600
+        },
+        {
+          "key": "teriyaki sauce",
+          "unit": "each",
+          "required": 1
+        },
+        {
+          "key": "pasta shells",
+          "unit": "g",
+          "required": 500
+        },
+        {
+          "key": "ricotta",
+          "unit": "g",
+          "required": 250
+        },
+        {
+          "key": "red lentils",
+          "unit": "g",
+          "required": 300
+        },
+        {
+          "key": "courgette",
+          "unit": "g",
+          "required": 400
+        },
+        {
+          "key": "fresh herbs",
+          "unit": "g",
+          "required": 5
+        },
+        {
+          "key": "pork chops",
+          "unit": "each",
+          "required": 4
+        },
+        {
+          "key": "apple",
+          "unit": "g",
+          "required": 1080
+        },
+        {
+          "key": "wholegrain mustard",
+          "unit": "each",
+          "required": 1
+        },
+        {
+          "key": "stock",
+          "unit": "ml",
+          "required": 0
+        },
+        {
+          "key": "celery",
+          "unit": "g",
+          "required": 380
+        },
+        {
+          "key": "chicken",
+          "unit": "g",
+          "required": 400
+        },
+        {
+          "key": "panko breadcrumbs",
+          "unit": "g",
+          "required": 100
+        },
+        {
+          "key": "tortilla chips",
+          "unit": "g",
+          "required": 360
+        },
+        {
+          "key": "salsa",
+          "unit": "g",
+          "required": 150
+        },
+        {
+          "key": "taco seasoning",
+          "unit": "each",
+          "required": 1
+        },
+        {
+          "key": "broccoli",
+          "unit": "g",
+          "required": 1400
+        },
+        {
+          "key": "tinned tuna",
+          "unit": "g",
+          "required": 580
+        },
+        {
+          "key": "salad leaves",
+          "unit": "g",
+          "required": 100
+        },
+        {
+          "key": "aubergine",
+          "unit": "g",
+          "required": 500
+        },
+        {
+          "key": "chorizo",
+          "unit": "g",
+          "required": 200
+        },
+        {
+          "key": "miso paste",
+          "unit": "g",
+          "required": 35
+        },
+        {
+          "key": "sesame seeds",
+          "unit": "g",
+          "required": 18
+        },
+        {
+          "key": "falafel",
+          "unit": "each",
+          "required": 12
+        },
+        {
+          "key": "pitta breads",
+          "unit": "each",
+          "required": 4
+        },
+        {
+          "key": "diced stewing beef",
+          "unit": "g",
+          "required": 800
+        },
+        {
+          "key": "beef stock",
+          "unit": "ml",
+          "required": 500
+        },
+        {
+          "key": "dried thyme",
+          "unit": "each",
+          "required": 1
+        },
+        {
+          "key": "curry paste",
+          "unit": "g",
+          "required": 40
+        },
+        {
+          "key": "diced lamb",
+          "unit": "g",
+          "required": 800
+        },
+        {
+          "key": "dried apricots",
+          "unit": "g",
+          "required": 150
+        },
+        {
+          "key": "lamb stock",
+          "unit": "ml",
+          "required": 250
+        },
+        {
+          "key": "mixed italian herbs",
+          "unit": "each",
+          "required": 1
+        },
+        {
+          "key": "mixed beans",
+          "unit": "g",
+          "required": 800
+        },
+        {
+          "key": "pepper",
+          "unit": "each",
+          "required": 8
+        },
+        {
+          "key": "raw prawns",
+          "unit": "g",
+          "required": 400
+        },
+        {
+          "key": "duck breasts",
+          "unit": "each",
+          "required": 2
+        },
+        {
+          "key": "orange",
+          "unit": "g",
+          "required": 360
+        },
+        {
+          "key": "gnocchi",
+          "unit": "g",
+          "required": 1000
+        },
+        {
+          "key": "burrata",
+          "unit": "each",
+          "required": 1
+        },
+        {
+          "key": "fresh basil",
+          "unit": "g",
+          "required": 0
+        },
+        {
+          "key": "capers",
+          "unit": "g",
+          "required": 15
+        },
+        {
+          "key": "baby potatoes",
+          "unit": "g",
+          "required": 1400
+        },
+        {
+          "key": "mixed herbs",
+          "unit": "each",
+          "required": 1
+        },
+        {
+          "key": "oregano",
+          "unit": "g",
+          "required": 3
+        },
+        {
+          "key": "wrap",
+          "unit": "each",
+          "required": 12
+        },
+        {
+          "key": "romaine lettuce",
+          "unit": "each",
+          "required": 1
+        },
+        {
+          "key": "caesar dressing",
+          "unit": "each",
+          "required": 1
+        },
+        {
+          "key": "pineapple chunks",
+          "unit": "g",
+          "required": 400
+        },
+        {
+          "key": "sweet sour sauce",
+          "unit": "each",
+          "required": 1
+        },
+        {
+          "key": "italian herbs",
+          "unit": "each",
+          "required": 1
+        },
+        {
+          "key": "cheese tortellini",
+          "unit": "g",
+          "required": 500
+        },
+        {
+          "key": "udon noodles",
+          "unit": "g",
+          "required": 300
+        },
+        {
+          "key": "penne",
+          "unit": "g",
+          "required": 350
+        },
+        {
+          "key": "cream cheese",
+          "unit": "g",
+          "required": 150
+        },
+        {
+          "key": "yoghurt",
+          "unit": "g",
+          "required": 300
+        },
+        {
+          "key": "butter beans",
+          "unit": "g",
+          "required": 800
+        },
+        {
+          "key": "greek yoghurt",
+          "unit": "g",
+          "required": 180
+        },
+        {
+          "key": "quinoa",
+          "unit": "g",
+          "required": 250
+        },
+        {
+          "key": "cottage cheese",
+          "unit": "g",
+          "required": 200
+        },
+        {
+          "key": "tuna steaks",
+          "unit": "each",
+          "required": 4
+        },
+        {
+          "key": "edamame",
+          "unit": "g",
+          "required": 200
+        },
+        {
+          "key": "whole chicken",
+          "unit": "g",
+          "required": 1500
+        },
+        {
+          "key": "gravy",
+          "unit": "ml",
+          "required": 300
+        },
+        {
+          "key": "beef roasting joint",
+          "unit": "g",
+          "required": 1000
+        },
+        {
+          "key": "parsnips",
+          "unit": "each",
+          "required": 3
+        },
+        {
+          "key": "mustard",
+          "unit": "each",
+          "required": 1
+        },
+        {
+          "key": "gammon joint",
+          "unit": "g",
+          "required": 1000
+        },
+        {
+          "key": "maple syrup",
+          "unit": "ml",
+          "required": 45
+        },
+        {
+          "key": "lamb shoulder",
+          "unit": "g",
+          "required": 1200
+        },
+        {
+          "key": "rosemary",
+          "unit": "each",
+          "required": 2
+        },
+        {
+          "key": "vegetable or lamb stock",
+          "unit": "ml",
+          "required": 200
+        },
+        {
+          "key": "orange juice",
+          "unit": "ml",
+          "required": 120
+        },
+        {
+          "key": "mixed stir-fry vegetables",
+          "unit": "g",
+          "required": 300
+        },
+        {
+          "key": "rolled oats",
+          "unit": "g",
+          "required": 500
+        },
+        {
+          "key": "blueberries",
+          "unit": "g",
+          "required": 150
+        },
+        {
+          "key": "smoked salmon",
+          "unit": "g",
+          "required": 160
+        },
+        {
+          "key": "chives",
+          "unit": "g",
+          "required": 6
+        },
+        {
+          "key": "cinnamon",
+          "unit": "each",
+          "required": 1
+        },
+        {
+          "key": "dark chocolate",
+          "unit": "g",
+          "required": 200
+        },
+        {
+          "key": "caster sugar",
+          "unit": "g",
+          "required": 600
+        },
+        {
+          "key": "cocoa powder",
+          "unit": "g",
+          "required": 30
+        },
+        {
+          "key": "chocolate chips",
+          "unit": "g",
+          "required": 200
+        },
+        {
+          "key": "pitted dates",
+          "unit": "g",
+          "required": 200
+        },
+        {
+          "key": "self-raising flour",
+          "unit": "g",
+          "required": 1005
+        },
+        {
+          "key": "soft brown sugar",
+          "unit": "g",
+          "required": 160
+        },
+        {
+          "key": "bicarbonate of soda",
+          "unit": "g",
+          "required": 4.583333
+        },
+        {
+          "key": "golden syrup",
+          "unit": "ml",
+          "required": 45
+        },
+        {
+          "key": "vanilla ice cream",
+          "unit": "g",
+          "required": 275
+        },
+        {
+          "key": "icing sugar",
+          "unit": "g",
+          "required": 250
+        },
+        {
+          "key": "cooking apples",
+          "unit": "g",
+          "required": 800
+        },
+        {
+          "key": "cold butter",
+          "unit": "g",
+          "required": 120
+        },
+        {
+          "key": "ready-to-serve custard",
+          "unit": "ml",
+          "required": 500
+        },
+        {
+          "key": "ripe bananas mashed",
+          "unit": "each",
+          "required": 3
+        },
+        {
+          "key": "light brown sugar",
+          "unit": "g",
+          "required": 400
+        },
+        {
+          "key": "vanilla extract",
+          "unit": "ml",
+          "required": 10
+        },
+        {
+          "key": "ripe bananas",
+          "unit": "g",
+          "required": 330
+        },
+        {
+          "key": "unsalted butter",
+          "unit": "g",
+          "required": 180
+        },
+        {
+          "key": "strong white bread flour",
+          "unit": "g",
+          "required": 450
+        },
+        {
+          "key": "instant dried yeast",
+          "unit": "g",
+          "required": 7
+        },
+        {
+          "key": "whole milk",
+          "unit": "ml",
+          "required": 250
+        },
+        {
+          "key": "fine salt",
+          "unit": "g",
+          "required": 0.75
+        }
+      ]
+    },
+    "US": {
+      "recipes": 100,
+      "ingredientLines": 730,
+      "aggregatedIngredients": 221,
+      "simulatedIngredients": 186,
+      "duplicateRows": [],
+      "nonCanonicalRows": [],
+      "conversionFailures": [],
+      "needsRecipeReview": 12,
+      "canonicalTotals": [
+        {
+          "key": "chicken breast",
+          "unit": "g",
+          "required": 9400
+        },
+        {
+          "key": "mixed peppers",
+          "unit": "g",
+          "required": 960
+        },
+        {
+          "key": "tortilla wraps",
+          "unit": "each",
+          "required": 28
+        },
+        {
+          "key": "soured cream",
+          "unit": "g",
+          "required": 240
+        },
+        {
+          "key": "cheddar",
+          "unit": "g",
+          "required": 1300
+        },
+        {
+          "key": "fajita seasoning",
+          "unit": "each",
+          "required": 1
+        },
+        {
+          "key": "cooking oil",
+          "unit": "each",
+          "required": 1
+        },
+        {
+          "key": "lime",
+          "unit": "g",
+          "required": 1190
+        },
+        {
+          "key": "brioche buns",
+          "unit": "each",
+          "required": 12
+        },
+        {
+          "key": "cornflakes",
+          "unit": "g",
+          "required": 180
+        },
+        {
+          "key": "coleslaw",
+          "unit": "g",
+          "required": 300
+        },
+        {
+          "key": "egg",
+          "unit": "each",
+          "required": 55
+        },
+        {
+          "key": "paprika",
+          "unit": "each",
+          "required": 1
+        },
+        {
+          "key": "lettuce",
+          "unit": "g",
+          "required": 900
+        },
+        {
+          "key": "mayonnaise",
+          "unit": "each",
+          "required": 1
+        },
+        {
+          "key": "garlic",
+          "unit": "each",
+          "required": 127
+        },
+        {
+          "key": "penne pasta",
+          "unit": "g",
+          "required": 500
+        },
+        {
+          "key": "double cream",
+          "unit": "ml",
+          "required": 850
+        },
+        {
+          "key": "parmesan",
+          "unit": "g",
+          "required": 225
+        },
+        {
+          "key": "chicken stock",
+          "unit": "ml",
+          "required": 2400
+        },
+        {
+          "key": "lemon",
+          "unit": "g",
+          "required": 3200
+        },
+        {
+          "key": "pork sausages",
+          "unit": "each",
+          "required": 6
+        },
+        {
+          "key": "potato gnocchi",
+          "unit": "g",
+          "required": 1000
+        },
+        {
+          "key": "passata",
+          "unit": "g",
+          "required": 4200
+        },
+        {
+          "key": "mozzarella",
+          "unit": "each",
+          "required": 7
+        },
+        {
+          "key": "garlic baguette",
+          "unit": "each",
+          "required": 1
+        },
+        {
+          "key": "dried italian herbs",
+          "unit": "each",
+          "required": 1
+        },
+        {
+          "key": "pork shoulder",
+          "unit": "g",
+          "required": 1200
+        },
+        {
+          "key": "prepared coleslaw",
+          "unit": "g",
+          "required": 300
+        },
+        {
+          "key": "bbq sauce",
+          "unit": "each",
+          "required": 1
+        },
+        {
+          "key": "onion",
+          "unit": "g",
+          "required": 4650
+        },
+        {
+          "key": "smoked paprika",
+          "unit": "each",
+          "required": 1
+        },
+        {
+          "key": "apple cider vinegar",
+          "unit": "each",
+          "required": 1
+        },
+        {
+          "key": "lean beef mince",
+          "unit": "g",
+          "required": 750
+        },
+        {
+          "key": "canned mixed beans",
+          "unit": "g",
+          "required": 800
+        },
+        {
+          "key": "chopped tomatoes",
+          "unit": "g",
+          "required": 5600
+        },
+        {
+          "key": "long-grain rice",
+          "unit": "g",
+          "required": 450
+        },
+        {
+          "key": "ground cumin",
+          "unit": "each",
+          "required": 1
+        },
+        {
+          "key": "chilli powder",
+          "unit": "each",
+          "required": 1
+        },
+        {
+          "key": "egg noodles",
+          "unit": "g",
+          "required": 1050
+        },
+        {
+          "key": "stir-fry vegetables",
+          "unit": "g",
+          "required": 1200
+        },
+        {
+          "key": "light soy sauce",
+          "unit": "each",
+          "required": 1
+        },
+        {
+          "key": "sweet chilli sauce",
+          "unit": "each",
+          "required": 1
+        },
+        {
+          "key": "chinese five-spice powder",
+          "unit": "each",
+          "required": 1
+        },
+        {
+          "key": "cornflour",
+          "unit": "g",
+          "required": 33
+        },
+        {
+          "key": "fresh ginger",
+          "unit": "g",
+          "required": 162
+        },
+        {
+          "key": "salmon fillets",
+          "unit": "each",
+          "required": 22
+        },
+        {
+          "key": "tenderstem broccoli",
+          "unit": "g",
+          "required": 950
+        },
+        {
+          "key": "honey",
+          "unit": "each",
+          "required": 1
+        },
+        {
+          "key": "soy sauce",
+          "unit": "each",
+          "required": 1
+        },
+        {
+          "key": "sesame oil",
+          "unit": "each",
+          "required": 1
+        },
+        {
+          "key": "sirloin steaks",
+          "unit": "each",
+          "required": 2
+        },
+        {
+          "key": "peppercorn sauce",
+          "unit": "each",
+          "required": 1
+        },
+        {
+          "key": "potato",
+          "unit": "g",
+          "required": 11300
+        },
+        {
+          "key": "butter",
+          "unit": "g",
+          "required": 760
+        },
+        {
+          "key": "sun-dried tomatoes",
+          "unit": "g",
+          "required": 60
+        },
+        {
+          "key": "asparagus",
+          "unit": "g",
+          "required": 250
+        },
+        {
+          "key": "cherry tomatoes",
+          "unit": "g",
+          "required": 1950
+        },
+        {
+          "key": "sausages",
+          "unit": "each",
+          "required": 20
+        },
+        {
+          "key": "carrot",
+          "unit": "g",
+          "required": 2350
+        },
+        {
+          "key": "red onion",
+          "unit": "g",
+          "required": 900
+        },
+        {
+          "key": "mixed dried herbs",
+          "unit": "each",
+          "required": 1
+        },
+        {
+          "key": "prepared gravy",
+          "unit": "ml",
+          "required": 200
+        },
+        {
+          "key": "chickpeas",
+          "unit": "g",
+          "required": 2400
+        },
+        {
+          "key": "coconut milk",
+          "unit": "ml",
+          "required": 1600
+        },
+        {
+          "key": "spinach",
+          "unit": "g",
+          "required": 1700
+        },
+        {
+          "key": "rice",
+          "unit": "g",
+          "required": 6800
+        },
+        {
+          "key": "curry powder",
+          "unit": "each",
+          "required": 1
+        },
+        {
+          "key": "cooked salmon",
+          "unit": "each",
+          "required": 2
+        },
+        {
+          "key": "breadcrumbs",
+          "unit": "g",
+          "required": 580
+        },
+        {
+          "key": "frozen peas",
+          "unit": "g",
+          "required": 200
+        },
+        {
+          "key": "fresh parsley",
+          "unit": "g",
+          "required": 95
+        },
+        {
+          "key": "pesto",
+          "unit": "g",
+          "required": 340
+        },
+        {
+          "key": "hard cheese",
+          "unit": "g",
+          "required": 50
+        },
+        {
+          "key": "pasta",
+          "unit": "g",
+          "required": 1350
+        },
+        {
+          "key": "basil",
+          "unit": "g",
+          "required": 60
+        },
+        {
+          "key": "olive oil",
+          "unit": "each",
+          "required": 1
+        },
+        {
+          "key": "orzo",
+          "unit": "g",
+          "required": 1300
+        },
+        {
+          "key": "beef mince",
+          "unit": "g",
+          "required": 1650
+        },
+        {
+          "key": "spaghetti",
+          "unit": "g",
+          "required": 1500
+        },
+        {
+          "key": "frozen mixed vegetables",
+          "unit": "g",
+          "required": 400
+        },
+        {
+          "key": "spring onion",
+          "unit": "g",
+          "required": 205
+        },
+        {
+          "key": "green lentils",
+          "unit": "g",
+          "required": 700
+        },
+        {
+          "key": "vegetable stock",
+          "unit": "ml",
+          "required": 2300
+        },
+        {
+          "key": "dried oregano",
+          "unit": "each",
+          "required": 1
+        },
+        {
+          "key": "white fish fillets",
+          "unit": "each",
+          "required": 4
+        },
+        {
+          "key": "cabbage slaw",
+          "unit": "g",
+          "required": 200
+        },
+        {
+          "key": "natural yoghurt",
+          "unit": "g",
+          "required": 1125
+        },
+        {
+          "key": "plain flour",
+          "unit": "g",
+          "required": 440
+        },
+        {
+          "key": "risotto rice",
+          "unit": "g",
+          "required": 300
+        },
+        {
+          "key": "mushroom",
+          "unit": "g",
+          "required": 300
+        },
+        {
+          "key": "firm tofu",
+          "unit": "g",
+          "required": 400
+        },
+        {
+          "key": "cucumber",
+          "unit": "g",
+          "required": 1500
+        },
+        {
+          "key": "tomato",
+          "unit": "g",
+          "required": 1200
+        },
+        {
+          "key": "sweet potatoes",
+          "unit": "g",
+          "required": 1800
+        },
+        {
+          "key": "bread",
+          "unit": "each",
+          "required": 20
+        },
+        {
+          "key": "prawns",
+          "unit": "g",
+          "required": 300
+        },
+        {
+          "key": "linguine",
+          "unit": "g",
+          "required": 750
+        },
+        {
+          "key": "parsley",
+          "unit": "g",
+          "required": 52.5
+        },
+        {
+          "key": "chilli flakes",
+          "unit": "g",
+          "required": 1.5
+        },
+        {
+          "key": "turkey mince",
+          "unit": "g",
+          "required": 1500
+        },
+        {
+          "key": "kidney beans",
+          "unit": "g",
+          "required": 1200
+        },
+        {
+          "key": "sweetcorn",
+          "unit": "g",
+          "required": 800
+        },
+        {
+          "key": "halloumi",
+          "unit": "g",
+          "required": 250
+        },
+        {
+          "key": "couscous",
+          "unit": "g",
+          "required": 1200
+        },
+        {
+          "key": "flatbreads",
+          "unit": "each",
+          "required": 8
+        },
+        {
+          "key": "cooked chicken",
+          "unit": "g",
+          "required": 300
+        },
+        {
+          "key": "bell peppers",
+          "unit": "g",
+          "required": 1280
+        },
+        {
+          "key": "banana",
+          "unit": "g",
+          "required": 240
+        },
+        {
+          "key": "oats",
+          "unit": "g",
+          "required": 150
+        },
+        {
+          "key": "milk",
+          "unit": "ml",
+          "required": 1600
+        },
+        {
+          "key": "baking powder",
+          "unit": "g",
+          "required": 9
+        },
+        {
+          "key": "ground cinnamon",
+          "unit": "each",
+          "required": 1
+        },
+        {
+          "key": "baking potatoes",
+          "unit": "each",
+          "required": 4
+        },
+        {
+          "key": "baked beans",
+          "unit": "g",
+          "required": 800
+        },
+        {
+          "key": "chicken thighs",
+          "unit": "g",
+          "required": 3200
+        },
+        {
+          "key": "feta",
+          "unit": "g",
+          "required": 750
+        },
+        {
+          "key": "olives",
+          "unit": "g",
+          "required": 80
+        },
+        {
+          "key": "beef strips",
+          "unit": "g",
+          "required": 1600
+        },
+        {
+          "key": "teriyaki sauce",
+          "unit": "each",
+          "required": 1
+        },
+        {
+          "key": "pasta shells",
+          "unit": "g",
+          "required": 500
+        },
+        {
+          "key": "ricotta",
+          "unit": "g",
+          "required": 250
+        },
+        {
+          "key": "red lentils",
+          "unit": "g",
+          "required": 300
+        },
+        {
+          "key": "courgette",
+          "unit": "g",
+          "required": 400
+        },
+        {
+          "key": "fresh herbs",
+          "unit": "g",
+          "required": 5
+        },
+        {
+          "key": "pork chops",
+          "unit": "each",
+          "required": 4
+        },
+        {
+          "key": "apple",
+          "unit": "g",
+          "required": 1080
+        },
+        {
+          "key": "wholegrain mustard",
+          "unit": "each",
+          "required": 1
+        },
+        {
+          "key": "stock",
+          "unit": "ml",
+          "required": 0
+        },
+        {
+          "key": "celery",
+          "unit": "g",
+          "required": 380
+        },
+        {
+          "key": "chicken",
+          "unit": "g",
+          "required": 400
+        },
+        {
+          "key": "panko breadcrumbs",
+          "unit": "g",
+          "required": 100
+        },
+        {
+          "key": "tortilla chips",
+          "unit": "g",
+          "required": 360
+        },
+        {
+          "key": "salsa",
+          "unit": "g",
+          "required": 150
+        },
+        {
+          "key": "taco seasoning",
+          "unit": "each",
+          "required": 1
+        },
+        {
+          "key": "broccoli",
+          "unit": "g",
+          "required": 1400
+        },
+        {
+          "key": "tinned tuna",
+          "unit": "g",
+          "required": 580
+        },
+        {
+          "key": "salad leaves",
+          "unit": "g",
+          "required": 100
+        },
+        {
+          "key": "aubergine",
+          "unit": "g",
+          "required": 500
+        },
+        {
+          "key": "chorizo",
+          "unit": "g",
+          "required": 200
+        },
+        {
+          "key": "miso paste",
+          "unit": "g",
+          "required": 35
+        },
+        {
+          "key": "sesame seeds",
+          "unit": "g",
+          "required": 18
+        },
+        {
+          "key": "falafel",
+          "unit": "each",
+          "required": 12
+        },
+        {
+          "key": "pitta breads",
+          "unit": "each",
+          "required": 4
+        },
+        {
+          "key": "diced stewing beef",
+          "unit": "g",
+          "required": 800
+        },
+        {
+          "key": "beef stock",
+          "unit": "ml",
+          "required": 500
+        },
+        {
+          "key": "dried thyme",
+          "unit": "each",
+          "required": 1
+        },
+        {
+          "key": "curry paste",
+          "unit": "g",
+          "required": 40
+        },
+        {
+          "key": "diced lamb",
+          "unit": "g",
+          "required": 800
+        },
+        {
+          "key": "dried apricots",
+          "unit": "g",
+          "required": 150
+        },
+        {
+          "key": "lamb stock",
+          "unit": "ml",
+          "required": 250
+        },
+        {
+          "key": "mixed italian herbs",
+          "unit": "each",
+          "required": 1
+        },
+        {
+          "key": "mixed beans",
+          "unit": "g",
+          "required": 800
+        },
+        {
+          "key": "pepper",
+          "unit": "each",
+          "required": 8
+        },
+        {
+          "key": "raw prawns",
+          "unit": "g",
+          "required": 400
+        },
+        {
+          "key": "duck breasts",
+          "unit": "each",
+          "required": 2
+        },
+        {
+          "key": "orange",
+          "unit": "g",
+          "required": 360
+        },
+        {
+          "key": "gnocchi",
+          "unit": "g",
+          "required": 1000
+        },
+        {
+          "key": "burrata",
+          "unit": "each",
+          "required": 1
+        },
+        {
+          "key": "fresh basil",
+          "unit": "g",
+          "required": 0
+        },
+        {
+          "key": "capers",
+          "unit": "g",
+          "required": 15
+        },
+        {
+          "key": "baby potatoes",
+          "unit": "g",
+          "required": 1400
+        },
+        {
+          "key": "mixed herbs",
+          "unit": "each",
+          "required": 1
+        },
+        {
+          "key": "oregano",
+          "unit": "g",
+          "required": 3
+        },
+        {
+          "key": "wrap",
+          "unit": "each",
+          "required": 12
+        },
+        {
+          "key": "romaine lettuce",
+          "unit": "each",
+          "required": 1
+        },
+        {
+          "key": "caesar dressing",
+          "unit": "each",
+          "required": 1
+        },
+        {
+          "key": "pineapple chunks",
+          "unit": "g",
+          "required": 400
+        },
+        {
+          "key": "sweet sour sauce",
+          "unit": "each",
+          "required": 1
+        },
+        {
+          "key": "italian herbs",
+          "unit": "each",
+          "required": 1
+        },
+        {
+          "key": "cheese tortellini",
+          "unit": "g",
+          "required": 500
+        },
+        {
+          "key": "udon noodles",
+          "unit": "g",
+          "required": 300
+        },
+        {
+          "key": "penne",
+          "unit": "g",
+          "required": 350
+        },
+        {
+          "key": "cream cheese",
+          "unit": "g",
+          "required": 150
+        },
+        {
+          "key": "yoghurt",
+          "unit": "g",
+          "required": 300
+        },
+        {
+          "key": "butter beans",
+          "unit": "g",
+          "required": 800
+        },
+        {
+          "key": "greek yoghurt",
+          "unit": "g",
+          "required": 180
+        },
+        {
+          "key": "quinoa",
+          "unit": "g",
+          "required": 250
+        },
+        {
+          "key": "cottage cheese",
+          "unit": "g",
+          "required": 200
+        },
+        {
+          "key": "tuna steaks",
+          "unit": "each",
+          "required": 4
+        },
+        {
+          "key": "edamame",
+          "unit": "g",
+          "required": 200
+        },
+        {
+          "key": "whole chicken",
+          "unit": "g",
+          "required": 1500
+        },
+        {
+          "key": "gravy",
+          "unit": "ml",
+          "required": 300
+        },
+        {
+          "key": "beef roasting joint",
+          "unit": "g",
+          "required": 1000
+        },
+        {
+          "key": "parsnips",
+          "unit": "each",
+          "required": 3
+        },
+        {
+          "key": "mustard",
+          "unit": "each",
+          "required": 1
+        },
+        {
+          "key": "gammon joint",
+          "unit": "g",
+          "required": 1000
+        },
+        {
+          "key": "maple syrup",
+          "unit": "ml",
+          "required": 45
+        },
+        {
+          "key": "lamb shoulder",
+          "unit": "g",
+          "required": 1200
+        },
+        {
+          "key": "rosemary",
+          "unit": "each",
+          "required": 2
+        },
+        {
+          "key": "vegetable or lamb stock",
+          "unit": "ml",
+          "required": 200
+        },
+        {
+          "key": "orange juice",
+          "unit": "ml",
+          "required": 120
+        },
+        {
+          "key": "mixed stir-fry vegetables",
+          "unit": "g",
+          "required": 300
+        },
+        {
+          "key": "rolled oats",
+          "unit": "g",
+          "required": 500
+        },
+        {
+          "key": "blueberries",
+          "unit": "g",
+          "required": 150
+        },
+        {
+          "key": "smoked salmon",
+          "unit": "g",
+          "required": 160
+        },
+        {
+          "key": "chives",
+          "unit": "g",
+          "required": 6
+        },
+        {
+          "key": "cinnamon",
+          "unit": "each",
+          "required": 1
+        },
+        {
+          "key": "dark chocolate",
+          "unit": "g",
+          "required": 200
+        },
+        {
+          "key": "caster sugar",
+          "unit": "g",
+          "required": 600
+        },
+        {
+          "key": "cocoa powder",
+          "unit": "g",
+          "required": 30
+        },
+        {
+          "key": "chocolate chips",
+          "unit": "g",
+          "required": 200
+        },
+        {
+          "key": "pitted dates",
+          "unit": "g",
+          "required": 200
+        },
+        {
+          "key": "self-raising flour",
+          "unit": "g",
+          "required": 1005
+        },
+        {
+          "key": "soft brown sugar",
+          "unit": "g",
+          "required": 160
+        },
+        {
+          "key": "bicarbonate of soda",
+          "unit": "g",
+          "required": 4.583333
+        },
+        {
+          "key": "golden syrup",
+          "unit": "ml",
+          "required": 45
+        },
+        {
+          "key": "vanilla ice cream",
+          "unit": "g",
+          "required": 275
+        },
+        {
+          "key": "icing sugar",
+          "unit": "g",
+          "required": 250
+        },
+        {
+          "key": "cooking apples",
+          "unit": "g",
+          "required": 800
+        },
+        {
+          "key": "cold butter",
+          "unit": "g",
+          "required": 120
+        },
+        {
+          "key": "ready-to-serve custard",
+          "unit": "ml",
+          "required": 500
+        },
+        {
+          "key": "ripe bananas mashed",
+          "unit": "each",
+          "required": 3
+        },
+        {
+          "key": "light brown sugar",
+          "unit": "g",
+          "required": 400
+        },
+        {
+          "key": "vanilla extract",
+          "unit": "ml",
+          "required": 10
+        },
+        {
+          "key": "ripe bananas",
+          "unit": "g",
+          "required": 330
+        },
+        {
+          "key": "unsalted butter",
+          "unit": "g",
+          "required": 180
+        },
+        {
+          "key": "strong white bread flour",
+          "unit": "g",
+          "required": 450
+        },
+        {
+          "key": "instant dried yeast",
+          "unit": "g",
+          "required": 7
+        },
+        {
+          "key": "whole milk",
+          "unit": "ml",
+          "required": 250
+        },
+        {
+          "key": "fine salt",
+          "unit": "g",
+          "required": 0.75
+        }
+      ]
+    }
+  },
+  "quickAdd": [
+    {
+      "location": "cupboard",
+      "name": "Rice",
+      "key": "rice",
+      "recipeMatch": true,
+      "mode": "measured-or-container-size",
+      "gramsPerPiece": null,
+      "review": "Enter actual weight/volume or reviewed container contents; do not infer a package size from each."
+    },
+    {
+      "location": "cupboard",
+      "name": "Pasta",
+      "key": "pasta",
+      "recipeMatch": true,
+      "mode": "measured-or-container-size",
+      "gramsPerPiece": null,
+      "review": "Enter actual weight/volume or reviewed container contents; do not infer a package size from each."
+    },
+    {
+      "location": "cupboard",
+      "name": "Tinned tomatoes",
+      "key": "chopped tomatoes",
+      "recipeMatch": true,
+      "mode": "measured-or-container-size",
+      "gramsPerPiece": null,
+      "review": "Enter actual weight/volume or reviewed container contents; do not infer a package size from each."
+    },
+    {
+      "location": "cupboard",
+      "name": "Tinned beans",
+      "key": "beans",
+      "recipeMatch": false,
+      "mode": "measured-or-container-size",
+      "gramsPerPiece": null,
+      "review": "Enter actual weight/volume or reviewed container contents; do not infer a package size from each."
+    },
+    {
+      "location": "cupboard",
+      "name": "Lentils",
+      "key": "lentils",
+      "recipeMatch": false,
+      "mode": "measured-or-container-size",
+      "gramsPerPiece": null,
+      "review": "Enter actual weight/volume or reviewed container contents; do not infer a package size from each."
+    },
+    {
+      "location": "cupboard",
+      "name": "Cooking oil",
+      "key": "cooking oil",
+      "recipeMatch": true,
+      "mode": "staple",
+      "gramsPerPiece": null,
+      "review": null
+    },
+    {
+      "location": "cupboard",
+      "name": "Salt",
+      "key": "salt",
+      "recipeMatch": false,
+      "mode": "staple",
+      "gramsPerPiece": null,
+      "review": null
+    },
+    {
+      "location": "cupboard",
+      "name": "Pepper",
+      "key": "pepper",
+      "recipeMatch": true,
+      "mode": "staple",
+      "gramsPerPiece": null,
+      "review": null
+    },
+    {
+      "location": "cupboard",
+      "name": "Garlic",
+      "key": "garlic",
+      "recipeMatch": true,
+      "mode": "piece-weight",
+      "gramsPerPiece": 5,
+      "review": null
+    },
+    {
+      "location": "cupboard",
+      "name": "Dried herbs",
+      "key": "dried herbs",
+      "recipeMatch": false,
+      "mode": "staple",
+      "gramsPerPiece": null,
+      "review": null
+    },
+    {
+      "location": "cupboard",
+      "name": "Soy sauce",
+      "key": "soy sauce",
+      "recipeMatch": true,
+      "mode": "staple",
+      "gramsPerPiece": null,
+      "review": null
+    },
+    {
+      "location": "cupboard",
+      "name": "Breadcrumbs",
+      "key": "breadcrumbs",
+      "recipeMatch": true,
+      "mode": "measured-or-container-size",
+      "gramsPerPiece": null,
+      "review": "Enter actual weight/volume or reviewed container contents; do not infer a package size from each."
+    },
+    {
+      "location": "cupboard",
+      "name": "Stock cubes",
+      "key": "stock cubes",
+      "recipeMatch": false,
+      "mode": "measured-or-container-size",
+      "gramsPerPiece": null,
+      "review": "Enter actual weight/volume or reviewed container contents; do not infer a package size from each."
+    },
+    {
+      "location": "cupboard",
+      "name": "Oats",
+      "key": "oats",
+      "recipeMatch": true,
+      "mode": "measured-or-container-size",
+      "gramsPerPiece": null,
+      "review": "Enter actual weight/volume or reviewed container contents; do not infer a package size from each."
+    },
+    {
+      "location": "cupboard",
+      "name": "Sugar",
+      "key": "sugar",
+      "recipeMatch": false,
+      "mode": "measured-or-container-size",
+      "gramsPerPiece": null,
+      "review": "Enter actual weight/volume or reviewed container contents; do not infer a package size from each."
+    },
+    {
+      "location": "cupboard",
+      "name": "Flour",
+      "key": "flour",
+      "recipeMatch": false,
+      "mode": "measured-or-container-size",
+      "gramsPerPiece": null,
+      "review": "Enter actual weight/volume or reviewed container contents; do not infer a package size from each."
+    },
+    {
+      "location": "cupboard",
+      "name": "Peanut butter",
+      "key": "peanut butter",
+      "recipeMatch": false,
+      "mode": "measured-or-container-size",
+      "gramsPerPiece": null,
+      "review": "Enter actual weight/volume or reviewed container contents; do not infer a package size from each."
+    },
+    {
+      "location": "cupboard",
+      "name": "Honey",
+      "key": "honey",
+      "recipeMatch": true,
+      "mode": "staple",
+      "gramsPerPiece": null,
+      "review": null
+    },
+    {
+      "location": "cupboard",
+      "name": "Potatoes",
+      "key": "potato",
+      "recipeMatch": true,
+      "mode": "piece-weight",
+      "gramsPerPiece": 180,
+      "review": null
+    },
+    {
+      "location": "cupboard",
+      "name": "Tuna",
+      "key": "tuna",
+      "recipeMatch": false,
+      "mode": "measured-or-container-size",
+      "gramsPerPiece": null,
+      "review": "Enter actual weight/volume or reviewed container contents; do not infer a package size from each."
+    },
+    {
+      "location": "cupboard",
+      "name": "Chickpeas",
+      "key": "chickpeas",
+      "recipeMatch": true,
+      "mode": "measured-or-container-size",
+      "gramsPerPiece": null,
+      "review": "Enter actual weight/volume or reviewed container contents; do not infer a package size from each."
+    },
+    {
+      "location": "cupboard",
+      "name": "Noodles",
+      "key": "noodles",
+      "recipeMatch": false,
+      "mode": "measured-or-container-size",
+      "gramsPerPiece": null,
+      "review": "Enter actual weight/volume or reviewed container contents; do not infer a package size from each."
+    },
+    {
+      "location": "cupboard",
+      "name": "Paprika",
+      "key": "paprika",
+      "recipeMatch": true,
+      "mode": "staple",
+      "gramsPerPiece": null,
+      "review": null
+    },
+    {
+      "location": "cupboard",
+      "name": "Ketchup",
+      "key": "ketchup",
+      "recipeMatch": false,
+      "mode": "staple",
+      "gramsPerPiece": null,
+      "review": null
+    },
+    {
+      "location": "cupboard",
+      "name": "Mayonnaise",
+      "key": "mayonnaise",
+      "recipeMatch": true,
+      "mode": "staple",
+      "gramsPerPiece": null,
+      "review": null
+    },
+    {
+      "location": "fridge",
+      "name": "Milk",
+      "key": "milk",
+      "recipeMatch": true,
+      "mode": "measured-or-container-size",
+      "gramsPerPiece": null,
+      "review": "Enter actual weight/volume or reviewed container contents; do not infer a package size from each."
+    },
+    {
+      "location": "fridge",
+      "name": "Cheddar",
+      "key": "cheddar",
+      "recipeMatch": true,
+      "mode": "measured-or-container-size",
+      "gramsPerPiece": null,
+      "review": "Enter actual weight/volume or reviewed container contents; do not infer a package size from each."
+    },
+    {
+      "location": "fridge",
+      "name": "Yoghurt",
+      "key": "yoghurt",
+      "recipeMatch": true,
+      "mode": "measured-or-container-size",
+      "gramsPerPiece": null,
+      "review": "Enter actual weight/volume or reviewed container contents; do not infer a package size from each."
+    },
+    {
+      "location": "fridge",
+      "name": "Ham",
+      "key": "ham",
+      "recipeMatch": false,
+      "mode": "measured-or-container-size",
+      "gramsPerPiece": null,
+      "review": "Enter actual weight/volume or reviewed container contents; do not infer a package size from each."
+    },
+    {
+      "location": "fridge",
+      "name": "Butter",
+      "key": "butter",
+      "recipeMatch": true,
+      "mode": "measured-or-container-size",
+      "gramsPerPiece": null,
+      "review": "Enter actual weight/volume or reviewed container contents; do not infer a package size from each."
+    },
+    {
+      "location": "fridge",
+      "name": "Eggs",
+      "key": "egg",
+      "recipeMatch": true,
+      "mode": "piece-weight",
+      "gramsPerPiece": 50,
+      "review": null
+    },
+    {
+      "location": "fridge",
+      "name": "Cooked chicken",
+      "key": "cooked chicken",
+      "recipeMatch": true,
+      "mode": "measured-or-container-size",
+      "gramsPerPiece": null,
+      "review": "Enter actual weight/volume or reviewed container contents; do not infer a package size from each."
+    },
+    {
+      "location": "fridge",
+      "name": "Cream",
+      "key": "cream",
+      "recipeMatch": false,
+      "mode": "measured-or-container-size",
+      "gramsPerPiece": null,
+      "review": "Enter actual weight/volume or reviewed container contents; do not infer a package size from each."
+    },
+    {
+      "location": "fridge",
+      "name": "Mozzarella",
+      "key": "mozzarella",
+      "recipeMatch": true,
+      "mode": "measured-or-container-size",
+      "gramsPerPiece": null,
+      "review": "Enter actual weight/volume or reviewed container contents; do not infer a package size from each."
+    },
+    {
+      "location": "fridge",
+      "name": "Spinach",
+      "key": "spinach",
+      "recipeMatch": true,
+      "mode": "measured-or-container-size",
+      "gramsPerPiece": null,
+      "review": "Enter actual weight/volume or reviewed container contents; do not infer a package size from each."
+    },
+    {
+      "location": "fridge",
+      "name": "Cucumber",
+      "key": "cucumber",
+      "recipeMatch": true,
+      "mode": "piece-weight",
+      "gramsPerPiece": 300,
+      "review": null
+    },
+    {
+      "location": "fridge",
+      "name": "Lettuce",
+      "key": "lettuce",
+      "recipeMatch": true,
+      "mode": "piece-weight",
+      "gramsPerPiece": 300,
+      "review": null
+    },
+    {
+      "location": "fridge",
+      "name": "Bacon",
+      "key": "bacon",
+      "recipeMatch": false,
+      "mode": "measured-or-container-size",
+      "gramsPerPiece": null,
+      "review": "Enter actual weight/volume or reviewed container contents; do not infer a package size from each."
+    },
+    {
+      "location": "fridge",
+      "name": "Mushrooms",
+      "key": "mushroom",
+      "recipeMatch": true,
+      "mode": "piece-weight",
+      "gramsPerPiece": 20,
+      "review": null
+    },
+    {
+      "location": "fridge",
+      "name": "Tomatoes",
+      "key": "tomato",
+      "recipeMatch": true,
+      "mode": "piece-weight",
+      "gramsPerPiece": 120,
+      "review": null
+    },
+    {
+      "location": "fridge",
+      "name": "Carrots",
+      "key": "carrot",
+      "recipeMatch": true,
+      "mode": "piece-weight",
+      "gramsPerPiece": 80,
+      "review": null
+    },
+    {
+      "location": "fridge",
+      "name": "Onion",
+      "key": "onion",
+      "recipeMatch": true,
+      "mode": "piece-weight",
+      "gramsPerPiece": 150,
+      "review": null
+    },
+    {
+      "location": "fridge",
+      "name": "Peppers",
+      "key": "pepper",
+      "recipeMatch": true,
+      "mode": "measured-or-container-size",
+      "gramsPerPiece": null,
+      "review": "Enter actual weight/volume or reviewed container contents; do not infer a package size from each."
+    },
+    {
+      "location": "fridge",
+      "name": "Broccoli",
+      "key": "broccoli",
+      "recipeMatch": true,
+      "mode": "piece-weight",
+      "gramsPerPiece": 350,
+      "review": null
+    },
+    {
+      "location": "fridge",
+      "name": "Cheese strings",
+      "key": "cheese strings",
+      "recipeMatch": false,
+      "mode": "measured-or-container-size",
+      "gramsPerPiece": null,
+      "review": "Enter actual weight/volume or reviewed container contents; do not infer a package size from each."
+    },
+    {
+      "location": "freezer",
+      "name": "Frozen peas",
+      "key": "frozen peas",
+      "recipeMatch": true,
+      "mode": "measured-or-container-size",
+      "gramsPerPiece": null,
+      "review": "Enter actual weight/volume or reviewed container contents; do not infer a package size from each."
+    },
+    {
+      "location": "freezer",
+      "name": "Frozen sweetcorn",
+      "key": "frozen sweetcorn",
+      "recipeMatch": false,
+      "mode": "measured-or-container-size",
+      "gramsPerPiece": null,
+      "review": "Enter actual weight/volume or reviewed container contents; do not infer a package size from each."
+    },
+    {
+      "location": "freezer",
+      "name": "Frozen broccoli",
+      "key": "frozen broccoli",
+      "recipeMatch": false,
+      "mode": "measured-or-container-size",
+      "gramsPerPiece": null,
+      "review": "Enter actual weight/volume or reviewed container contents; do not infer a package size from each."
+    },
+    {
+      "location": "freezer",
+      "name": "Frozen chicken",
+      "key": "frozen chicken",
+      "recipeMatch": false,
+      "mode": "measured-or-container-size",
+      "gramsPerPiece": null,
+      "review": "Enter actual weight/volume or reviewed container contents; do not infer a package size from each."
+    },
+    {
+      "location": "freezer",
+      "name": "Frozen fish",
+      "key": "frozen fish",
+      "recipeMatch": false,
+      "mode": "measured-or-container-size",
+      "gramsPerPiece": null,
+      "review": "Enter actual weight/volume or reviewed container contents; do not infer a package size from each."
+    },
+    {
+      "location": "freezer",
+      "name": "Frozen prawns",
+      "key": "frozen prawns",
+      "recipeMatch": false,
+      "mode": "measured-or-container-size",
+      "gramsPerPiece": null,
+      "review": "Enter actual weight/volume or reviewed container contents; do not infer a package size from each."
+    },
+    {
+      "location": "freezer",
+      "name": "Frozen chips",
+      "key": "frozen chips",
+      "recipeMatch": false,
+      "mode": "measured-or-container-size",
+      "gramsPerPiece": null,
+      "review": "Enter actual weight/volume or reviewed container contents; do not infer a package size from each."
+    },
+    {
+      "location": "freezer",
+      "name": "Frozen spinach",
+      "key": "frozen spinach",
+      "recipeMatch": false,
+      "mode": "measured-or-container-size",
+      "gramsPerPiece": null,
+      "review": "Enter actual weight/volume or reviewed container contents; do not infer a package size from each."
+    },
+    {
+      "location": "freezer",
+      "name": "Frozen mince",
+      "key": "frozen mince",
+      "recipeMatch": false,
+      "mode": "measured-or-container-size",
+      "gramsPerPiece": null,
+      "review": "Enter actual weight/volume or reviewed container contents; do not infer a package size from each."
+    },
+    {
+      "location": "freezer",
+      "name": "Frozen bread",
+      "key": "frozen bread",
+      "recipeMatch": false,
+      "mode": "measured-or-container-size",
+      "gramsPerPiece": null,
+      "review": "Enter actual weight/volume or reviewed container contents; do not infer a package size from each."
+    },
+    {
+      "location": "freezer",
+      "name": "Frozen berries",
+      "key": "frozen berries",
+      "recipeMatch": false,
+      "mode": "measured-or-container-size",
+      "gramsPerPiece": null,
+      "review": "Enter actual weight/volume or reviewed container contents; do not infer a package size from each."
+    },
+    {
+      "location": "freezer",
+      "name": "Frozen sausages",
+      "key": "frozen sausages",
+      "recipeMatch": false,
+      "mode": "measured-or-container-size",
+      "gramsPerPiece": null,
+      "review": "Enter actual weight/volume or reviewed container contents; do not infer a package size from each."
+    },
+    {
+      "location": "freezer",
+      "name": "Frozen leftovers",
+      "key": "frozen leftovers",
+      "recipeMatch": false,
+      "mode": "measured-or-container-size",
+      "gramsPerPiece": null,
+      "review": "Enter actual weight/volume or reviewed container contents; do not infer a package size from each."
+    },
+    {
+      "location": "freezer",
+      "name": "Frozen mixed vegetables",
+      "key": "frozen mixed vegetables",
+      "recipeMatch": true,
+      "mode": "measured-or-container-size",
+      "gramsPerPiece": null,
+      "review": "Enter actual weight/volume or reviewed container contents; do not infer a package size from each."
+    },
+    {
+      "location": "freezer",
+      "name": "Frozen potato wedges",
+      "key": "frozen potato wedges",
+      "recipeMatch": false,
+      "mode": "measured-or-container-size",
+      "gramsPerPiece": null,
+      "review": "Enter actual weight/volume or reviewed container contents; do not infer a package size from each."
+    }
+  ],
+  "recipeReview": [
+    {
+      "name": "Parmesan",
+      "key": "parmesan",
+      "recipeId": "creamy-pasta",
+      "ingredientIndex": 3,
+      "source": "1 block",
+      "sourceQuantity": 1,
+      "sourceUnit": "each",
+      "reason": "Recipe amount or container size needs review; the source has been kept."
+    },
+    {
+      "name": "Parmesan",
+      "key": "parmesan",
+      "recipeId": "mushroom-risotto",
+      "ingredientIndex": 3,
+      "source": "1 block",
+      "sourceQuantity": 1,
+      "sourceUnit": "each",
+      "reason": "Recipe amount or container size needs review; the source has been kept."
+    },
+    {
+      "name": "Parmesan",
+      "key": "parmesan",
+      "recipeId": "aubergine-parmigiana",
+      "ingredientIndex": 3,
+      "source": "1 block",
+      "sourceQuantity": 1,
+      "sourceUnit": "each",
+      "reason": "Recipe amount or container size needs review; the source has been kept."
+    },
+    {
+      "name": "Chicken stock",
+      "key": "chicken stock",
+      "recipeId": "lemon-chicken-orzo",
+      "ingredientIndex": 2,
+      "source": "1 carton",
+      "sourceQuantity": 1,
+      "sourceUnit": "pack",
+      "reason": "Recipe amount or container size needs review; the source has been kept."
+    },
+    {
+      "name": "Fresh ginger",
+      "key": "fresh ginger",
+      "recipeId": "coconut-lentil-dhal",
+      "ingredientIndex": 6,
+      "source": "2 cm piece",
+      "sourceQuantity": 2,
+      "sourceUnit": "each",
+      "reason": "This source unit needs a checked conversion before it can join the canonical total."
+    },
+    {
+      "name": "Fresh parsley",
+      "key": "fresh parsley",
+      "recipeId": "fishcakes",
+      "ingredientIndex": 5,
+      "source": "1 small handful",
+      "sourceQuantity": 1,
+      "sourceUnit": "each",
+      "reason": "Recipe amount or container size needs review; the source has been kept."
+    },
+    {
+      "name": "Vegetable stock",
+      "key": "vegetable stock",
+      "recipeId": "mushroom-risotto",
+      "ingredientIndex": 2,
+      "source": "1 carton",
+      "sourceQuantity": 1,
+      "sourceUnit": "pack",
+      "reason": "Recipe amount or container size needs review; the source has been kept."
+    },
+    {
+      "name": "Vegetable stock",
+      "key": "vegetable stock",
+      "recipeId": "sweet-potato-soup",
+      "ingredientIndex": 2,
+      "source": "1 carton",
+      "sourceQuantity": 1,
+      "sourceUnit": "pack",
+      "reason": "Recipe amount or container size needs review; the source has been kept."
+    },
+    {
+      "name": "Vegetable stock",
+      "key": "vegetable stock",
+      "recipeId": "extra-lentil-shepherdless-pie",
+      "ingredientIndex": 3,
+      "source": "1 standard pack (check recipe)",
+      "sourceQuantity": 1,
+      "sourceUnit": "each",
+      "reason": "Recipe amount or container size needs review; the source has been kept."
+    },
+    {
+      "name": "Stock",
+      "key": "stock",
+      "recipeId": "sausage-lentil-stew",
+      "ingredientIndex": 4,
+      "source": "1 carton",
+      "sourceQuantity": 1,
+      "sourceUnit": "pack",
+      "reason": "Recipe amount or container size needs review; the source has been kept."
+    },
+    {
+      "name": "Stock",
+      "key": "stock",
+      "recipeId": "chicken-noodle-soup",
+      "ingredientIndex": 3,
+      "source": "1 carton",
+      "sourceQuantity": 1,
+      "sourceUnit": "pack",
+      "reason": "Recipe amount or container size needs review; the source has been kept."
+    },
+    {
+      "name": "Fresh basil",
+      "key": "fresh basil",
+      "recipeId": "date-pesto-gnocchi",
+      "ingredientIndex": 5,
+      "source": "1 handful",
+      "sourceQuantity": 1,
+      "sourceUnit": "each",
+      "reason": "Recipe amount or container size needs review; the source has been kept."
+    }
+  ],
+  "ingredientLines": 730,
+  "aggregatedIngredients": 221
+}

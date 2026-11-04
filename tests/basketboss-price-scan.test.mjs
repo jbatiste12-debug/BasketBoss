@@ -85,7 +85,7 @@ function harness({result=receipt,premium=true,challenge=false,token=true}={}){
  const saved=new Map(),writes=[],fetches=[],overrides=[],body=new Element('body');
  if(token)saved.set('basketboss_cloud_session_v1',JSON.stringify({access_token:'token',expires_at:Date.now()/1000+3600}));
  const document={body,createElement:tag=>new Element(tag),createTextNode:text=>{const node=new Element('#text');node.textContent=text;return node;},getElementById:id=>descendants(body).find(x=>x.id===id)||null};
- const env={document,console,AbortController,Date,setTimeout,clearTimeout,
+ const env={document,console,AbortController,Date,setTimeout,clearTimeout,crypto:globalThis.crypto,TextEncoder,
   localStorage:{getItem:key=>saved.get(key)??null,setItem:(key,value)=>{writes.push(key);saved.set(key,value);}},
   bb307ActiveMarket:()=> 'UK',bb307ActiveRetailer:()=> 'Aldi',
   BBPriceV19:{setPriceOverride:row=>overrides.push(row)},
@@ -125,10 +125,10 @@ test('authenticated receipt read submits same-origin scan with no persistence an
 
 test('receipt dialog never saves or finishes Shopping until a product is explicitly reviewed',async()=>{
  const h=harness();let callbacks=0;const dialog=h.api.openReceipt({items:context,market:'UK',retailer:'Aldi',onSaved:()=>callbacks++});
- let nodes=descendants(dialog);const file=nodes.find(x=>x.type==='file'),scan=nodes.find(x=>x.textContent==='Scan receipt'),save=nodes.find(x=>x.tagName==='button'&&x.textContent==='Save reviewed prices');
+ let nodes=descendants(dialog);const file=nodes.find(x=>x.type==='file'),scan=nodes.find(x=>x.textContent==='Scan receipt'),save=nodes.find(x=>x.tagName==='button'&&x.textContent==='Save reviewed receipt');
  assert.equal(h.fetches.length,0);assert.equal(save.disabled,true);file.files=[{type:'image/jpeg',size:100}];await file.emit('change');assert.equal(h.fetches.length,0);
  await scan.emit('click');assert.equal(h.fetches.length,2);assert.equal(h.overrides.length,0);assert.equal(save.disabled,true);
- nodes=descendants(dialog);const check=nodes.find(x=>x.type==='checkbox');assert.equal(check.checked,false);check.checked=true;await check.emit('change');assert.equal(save.disabled,false);
+ nodes=descendants(dialog);const check=nodes.find(x=>x.dataset.bbReceiptReviewRow);nodes.find(x=>x.dataset.bbReceiptStockToggle).checked=false;assert.equal(check.checked,false);check.checked=true;await check.emit('change');assert.equal(save.disabled,false);
  await nodes.find(x=>x.tagName==='form').emit('submit');
  assert.equal(h.overrides.length,1);assert.equal(h.overrides[0].name,'potato');assert.equal(h.overrides[0].market,'UK');assert.equal(h.overrides[0].retailer,'Aldi');assert.equal(h.overrides[0].brand,'Usual brand');assert.equal(h.overrides[0].price,1.32);assert.equal(callbacks,1);
  assert.deepEqual(h.writes,[],'no plan, pantry, purchase or photo persistence');
@@ -136,17 +136,58 @@ test('receipt dialog never saves or finishes Shopping until a product is explici
 
 test('receipt dialog rejects scope changes and invalid edited prices before saving',async()=>{
  const h=harness();const dialog=h.api.openReceipt({items:context,market:'UK',retailer:'Aldi'});let nodes=descendants(dialog);const file=nodes.find(x=>x.type==='file');file.files=[{type:'image/jpeg',size:100}];await file.emit('change');await nodes.find(x=>x.textContent==='Scan receipt').emit('click');
- nodes=descendants(dialog);const check=nodes.find(x=>x.type==='checkbox');check.checked=true;const price=nodes.find(x=>x.type==='number');price.value='0';await nodes.find(x=>x.tagName==='form').emit('submit');assert.equal(h.overrides.length,0);
+ nodes=descendants(dialog);const check=nodes.find(x=>x.dataset.bbReceiptReviewRow);nodes.find(x=>x.dataset.bbReceiptStockToggle).checked=false;check.checked=true;const price=nodes.find(x=>x.type==='number');price.value='0';await nodes.find(x=>x.tagName==='form').emit('submit');assert.equal(h.overrides.length,0);
  price.value='1.32';h.env.bb307ActiveRetailer=()=> 'Tesco';await nodes.find(x=>x.tagName==='form').emit('submit');assert.equal(h.overrides.length,0);
 });
 
 test('receipt pack sizes missing from a receipt stay visible for explicit product confirmation',async()=>{
  const h=harness({result:{...receipt,items:[{...line,packQuantity:null,packUnit:'unknown',confidence:'low'}]}});
  const dialog=h.api.openReceipt({items:context,market:'UK',retailer:'Aldi'});let nodes=descendants(dialog);const file=nodes.find(x=>x.type==='file');file.files=[{type:'image/jpeg',size:100}];await file.emit('change');await nodes.find(x=>x.textContent==='Scan receipt').emit('click');
- nodes=descendants(dialog);const check=nodes.find(x=>x.type==='checkbox'),price=nodes.find(x=>x.type==='number'),form=nodes.find(x=>x.tagName==='form');
+ nodes=descendants(dialog);nodes.find(x=>x.dataset.bbReceiptStockToggle).checked=false;const check=nodes.find(x=>x.dataset.bbReceiptReviewRow),price=nodes.find(x=>x.type==='number'),form=nodes.find(x=>x.tagName==='form');
  assert.ok(check);assert.equal(check.checked,false);assert.equal(price.value,'');assert.match(dialog.textContent,/Pack size was not read from the receipt/);
  await form.emit('submit');assert.equal(h.overrides.length,0);
  check.checked=true;price.value='1.50';h.saved.delete('basketboss_cloud_session_v1');await form.emit('submit');assert.equal(h.overrides.length,0,'account change after preview cannot save');
  h.saved.set('basketboss_cloud_session_v1',JSON.stringify({access_token:'token',expires_at:Date.now()/1000+3600}));await form.emit('submit');assert.equal(h.overrides.length,1);assert.equal(h.overrides[0].price,1.5);
- file.files=[{type:'image/jpeg',size:100}];await file.emit('change');assert.equal(descendants(dialog).filter(x=>x.type==='checkbox').length,0,'new photo clears old draft rows');
+ file.files=[{type:'image/jpeg',size:100}];await file.emit('change');assert.equal(descendants(dialog).filter(x=>x.dataset.bbReceiptReviewRow).length,0,'new photo clears old draft rows');
+});
+
+
+async function reviewed(h,options={}){
+ const dialog=h.api.openReceipt({items:context,market:'UK',retailer:'Aldi',...options});let nodes=descendants(dialog);
+ const file=nodes.find(x=>x.type==='file');file.files=[{type:'image/jpeg',size:100}];await file.emit('change');await nodes.find(x=>x.textContent==='Scan receipt').emit('click');nodes=descendants(dialog);
+ const check=nodes.find(x=>x.dataset.bbReceiptReviewRow);check.checked=true;await check.emit('change');
+ return {dialog,nodes,stock:nodes.find(x=>x.dataset.bbReceiptStockToggle),quantity:nodes.find(x=>x.dataset.bbReceiptBoughtQuantity),unit:nodes.find(x=>x.dataset.bbReceiptBoughtUnit),form:nodes.find(x=>x.tagName==='form')};
+}
+test('legacy receipt review defaults to restocking and delegates the reviewed amounts and learned prices to one save',async()=>{
+ const h=harness(),packets=[],callbacks=[];
+ const review=await reviewed(h,{shopSessionId:'trip-1234',onSaveReviewedReceipt:async packet=>{packets.push(packet);return {ok:true,saved:1,stocked:1,message:'Saved receipt and restocked pantry.'};},onSaved:(count,result)=>callbacks.push({count,result})});
+ assert.equal(review.stock.checked,true);assert.match(review.dialog.textContent,/Also add bought items & essentials to At Home pantry/);assert.equal(review.quantity.value,'2000');assert.equal(review.unit.value,'g');
+ review.quantity.value='1';review.unit.value='kg';await review.form.emit('submit');
+ assert.equal(packets.length,1);assert.equal(packets[0].stockPantry,true);assert.equal(packets[0].shopSessionId,'trip-1234');assert.match(packets[0].receiptId,/^legacy-[a-f0-9]{64}$/);
+ assert.equal(packets[0].items[0].quantity,1000);assert.equal(packets[0].items[0].unit,'g');assert.equal(packets[0].items[0].guidePackQuantity,2000);assert.equal(packets[0].priceUpdates[0].price,1.32);
+ assert.equal(h.overrides.length,0,'the host owns prices and stock in the same transaction');assert.equal(review.dialog.open,false);assert.equal(callbacks[0].count,1);assert.equal(callbacks[0].result.stocked,1);
+});
+test('unticking legacy restock delegates prices only and ignores an unused invalid bought amount',async()=>{
+ const h=harness(),packets=[];const review=await reviewed(h,{onSaveReviewedReceipt:async packet=>{packets.push(packet);return {ok:true,saved:1,stocked:0};}});
+ review.stock.checked=false;review.quantity.value='';await review.form.emit('submit');assert.equal(packets.length,1);assert.equal(packets[0].stockPantry,false);assert.equal(packets[0].items[0].quantity,null);assert.equal(h.overrides.length,0);
+});
+test('legacy restock failures retain the same receipt identity and reviewed fields for a safe retry',async()=>{
+ const h=harness(),packets=[];let succeed=false;
+ const review=await reviewed(h,{onSaveReviewedReceipt:async packet=>{packets.push(packet);return succeed?{ok:true,saved:1,stocked:1}:{ok:false,message:'Could not save. Retry the receipt.'};}});
+ await review.form.emit('submit');assert.equal(review.dialog.open,true);assert.equal(h.overrides.length,0);assert.match(review.dialog.textContent,/Could not save/);
+ succeed=true;await review.form.emit('submit');assert.equal(packets.length,2);assert.equal(packets[0].receiptId,packets[1].receiptId);assert.equal(review.dialog.open,false);
+});
+test('a selected legacy receipt item requires an explicit positive compatible amount before stock save',async()=>{
+ const h=harness(),packets=[];const review=await reviewed(h,{onSaveReviewedReceipt:async packet=>{packets.push(packet);return {ok:true};}});
+ for(const [quantity,unit]of [['0','g'],['-1','g'],['1.2','each'],['5','unknown'],['1000001','g']]){review.quantity.value=quantity;review.unit.value=unit;await review.form.emit('submit');assert.equal(packets.length,0);}
+ assert.equal(h.overrides.length,0);assert.equal(review.dialog.open,true);
+});
+test('household essentials retain their classification through the legacy reviewed save',async()=>{
+ const h=harness({result:{currency:'GBP',items:[{...line,ingredientKey:'washing up liquid',name:'Washing up liquid 500ml',packQuantity:500,packUnit:'ml'}],notes:''}}),packets=[];
+ const review=await reviewed(h,{items:[{key:'washing up liquid',name:'Washing up liquid',unit:'ml',packQuantity:500,classification:'essential'}],onSaveReviewedReceipt:async packet=>{packets.push(packet);return {ok:true,saved:1,stocked:1};}});
+ await review.form.emit('submit');assert.equal(packets[0].items[0].classification,'essential');assert.equal(packets[0].items[0].quantity,500);assert.equal(packets[0].items[0].unit,'ml');
+});
+test('rescanning an identical resized receipt yields the same non-image replay identity',async()=>{
+ const h=harness(),options={file:{},items:context,market:'UK',preparePhoto:async()=>photo};
+ const first=await h.api.readReceipt(options),second=await h.api.readReceipt(options);assert.equal(first.receiptId,second.receiptId);assert.match(first.receiptId,/^legacy-[a-f0-9]{64}$/);assert.doesNotMatch(first.receiptId,/data:|base64/);
 });

@@ -5,13 +5,13 @@ import vm from 'node:vm';
 
 const code=fs.readFileSync('bb-us-market.js','utf8');
 
-function harness({native=true,path='/index.html',text='$12.34 · Courgette · 100 g'}={}){
+function harness({native=true,path='/index.html',text='$12.34 · Courgette · 100 g',formattedMeasure=false}={}){
  const values=new Map([
   ['basketboss_321_v7_market','US'],
   ['bb_us_fx_gbp_usd_v1',JSON.stringify({rate:1.25,date:'2026-10-30'})]
  ]);
  const listeners={},classes=new Map();let fetches=0;
- const node={nodeValue:text,parentElement:{closest(){return null;}}};
+ const node={nodeValue:text,parentElement:{closest(selector){return formattedMeasure&&selector.includes('[data-bb-measures]')?{}:null;}}};
  function input(disabled){const attrs=new Map();return {disabled,hasAttribute:k=>attrs.has(k),setAttribute:(k,v)=>attrs.set(k,v),getAttribute:k=>attrs.get(k),removeAttribute:k=>attrs.delete(k)};}
  const control=input(false),disabledControl=input(true);
  const note={hidden:true};
@@ -73,4 +73,10 @@ test('subscription price page leaves authoritative checkout currency untouched',
  assert.equal(h.node.nodeValue,'£4.99 monthly');
  assert.equal(h.fetches,0);
  assert.match(h.note.textContent,/Final subscription charges and currency are set by Paddle/);
+});
+
+test('explicit recipe measurement nodes retain their metric source without a second conversion',()=>{
+ const text='≈ 1 US cup (120 g)';
+ const h=harness({text,formattedMeasure:true});
+ assert.equal(h.node.nodeValue,text);
 });

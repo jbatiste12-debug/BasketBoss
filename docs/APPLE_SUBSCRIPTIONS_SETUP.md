@@ -17,7 +17,7 @@ Monthly and annual belong to one group with the internal reference name **Premiu
 
 The two numeric IDs above identify subscription products. **Neither is `APPLE_APP_ID` or `APPLE_SUBSCRIPTION_GROUP_ID`.** The user confirmed **`APPLE_APP_ID=6829160611`** and **`APPLE_SUBSCRIPTION_GROUP_ID=22534568`** from [the Premium group URL](https://appstoreconnect.apple.com/apps/6829160611/distribution/subscription-groups/22534568). Configure those exact values in Cloudflare; the subscription product numbers are different.
 
-Complete UK localization, price/availability, subscription group display name, review screenshot and review notes for **monthly and annual only**. Do not recreate or submit an Apple Founder product. First subscriptions must be submitted together with the new app version; do not submit the older build 1.0 (1), which has no StoreKit integration. This source increments the build to 1.0 (3).
+Complete UK localization, price/availability, subscription group display name, review screenshot and review notes for **monthly and annual only**. Do not recreate or submit an Apple Founder product. First subscriptions must be submitted together with the new app version; do not submit the older build 1.0 (1), which has no StoreKit integration. This source prepares build 1.0 (4); the last uploaded TestFlight build remains 1.0 (3).
 
 ## Founding Member stays web-only
 
@@ -92,7 +92,7 @@ The Apple workflow also compiles Debug/Release on macOS and exercises real Store
 
 Recorded verification: [run 41326736655](https://github.com/jbatiste12-debug/BasketBoss/actions/runs/41326736655) passed on 1 November 2026. The portable suite passed 752 tests with zero failures and two existing TODOs. The hosted XCTest run on iOS 26.2 passed all 12 purchase/restore/ownership/cancellation/pending/acknowledgement checks; Debug/Release builds, Release fixture/framework exclusion and Cook navigation also passed. [Diagnostics](https://github.com/jbatiste12-debug/BasketBoss/actions/runs/41326736655/artifacts/13091797015). These results explicitly report `productionBillingTested=false` and `backendPremiumGranted=false`.
 
-Before selecting build 1.0 (3) for App Review, validate on a signed physical iPhone/TestFlight using disposable, allowlisted BasketBoss accounts and Apple's sandbox:
+Before selecting build 1.0 (4) for App Review, validate on a signed physical iPhone/TestFlight using disposable, allowlisted BasketBoss accounts and Apple's sandbox:
 
 - Monthly and yearly localized products load; the Apple sheet charges the selected test product and the server grants the correct account only.
 - Relaunch during/after purchase, pending Ask to Buy, cancellation, duplicate taps, offline verification and Restore Purchases preserve transactions safely and recover once online.

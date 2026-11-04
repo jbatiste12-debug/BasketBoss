@@ -30,7 +30,7 @@ import fs from 'node:fs';
 import vm from 'node:vm';
 const html=fs.readFileSync('index.html','utf8');
 const pantryText=html.slice(html.indexOf('const BB307Pantry=(()=>{'),html.indexOf('// BasketBoss 321 v7 original-design PREVIEW'));
-const pantryContext=vm.createContext({BB_WHOLE_PRODUCE_GRAMS:{},BBPriceV19:{canonical:s=>String(s).toLowerCase().trim()}});vm.runInContext(pantryText,pantryContext);
+const pantryContext=vm.createContext({BB_WHOLE_PRODUCE_GRAMS:{}});vm.runInContext(fs.readFileSync('basketboss-pricing-v19.js','utf8'),pantryContext);vm.runInContext(pantryText,pantryContext);
 const pantry=vm.runInContext('BB307Pantry',pantryContext);
 test('real pantry consumption preserves units, never goes negative and does not guess incompatible stock',()=>{
  const result=pantry.reconcileStock({'rice|g':1000,'milk|ml':2000,'onion|each':2},[{key:'Rice',unit:'g',required:600},{key:'Milk',unit:'ml',required:500},{key:'Onion',unit:'each',required:.5}]);
@@ -40,7 +40,7 @@ test('real pantry consumption preserves units, never goes negative and does not 
 test('cooking commits once, supports another real cook, rejects another actor, and rolls failed commits back',async()=>{
  const map=new Map([['stock',JSON.stringify({'rice|g':1000})],['inventory',JSON.stringify({cupboard:{bb173StockKey:'rice|g',bb173StockValue:600,qty:600,unit:'g'},freezer:{bb173StockKey:'rice|g',bb173StockValue:400,qty:.4,unit:'kg'}})]]);let fail=false;
  const storage={getItem:k=>map.get(k)??null,setItem(k,v){if(fail&&k==='inventory'){fail=false;throw Error('disk full');}map.set(k,v);},removeItem:k=>map.delete(k)};
- const win={localStorage:storage,location:{search:''},document:{},BBHomeHost:{keys:()=>({stock:'stock',inventory:'inventory'}),stock:()=>JSON.parse(storage.getItem('stock')),recipeIngredients:(_,factor)=>[{key:'rice',unit:'g',required:300*factor}],consume:pantry.reconcileStock,refresh(){},occurrence:()=>null}};
+ const win={localStorage:storage,location:{search:''},document:{},BBHomeHost:{id:pantry.pantryId,keys:()=>({stock:'stock',inventory:'inventory'}),stock:()=>JSON.parse(storage.getItem('stock')),recipeIngredients:(_,factor)=>[{key:'rice',unit:'g',required:300*factor}],consume:pantry.reconcileStock,refresh(){},occurrence:()=>null}};
  const home=api.install(win);
  const event={sessionId:'first-cook',recipeId:'rice-dinner',factor:1,actorId:'guest'};
  assert.equal((await home.cooked(event)).ok,true);assert.equal(JSON.parse(storage.getItem('stock'))['rice|g'],700);
@@ -98,7 +98,7 @@ function finishFixture(choice={mode:'pack',unit:'g',qty:400,size:500,count:1,kee
  const h=settlementFixture();h.storage.setItem('stock',JSON.stringify({'rice|g':200}));h.storage.setItem('inventory',JSON.stringify({rice:{name:'Rice',selected:true,loc:'cupboard',qty:200,unit:'g',bb173StockKey:'rice|g',bb173StockValue:200}}));
  Object.assign(h.ctx,{BB83_KITCHEN_INVENTORY:'inventory',BB83_SHOP_STOCK_LEDGER:'legacy-ledger',BB307_STOCK_KEY:'stock',bb307Stock:h.read('stock'),bbBetaReceiptRead:()=>h.read('receipts'),bbBetaPendingBought:()=>h.read('receipts')['shop-session|'+item.id]?[]:[item],bbBetaChoiceInfo:()=>choice,bbBetaIsPerishable:aisle=>/Dairy/.test(aisle),bbBetaPackSpec:()=>({size:500,review:false}),bbBetaDryVolumeUnit:()=>false,bb83StockLoc:()=> 'cupboard',bb83KitchenName:name=>name.toLowerCase(),bb307SaveStock:stock=>{h.storage.setItem('stock',JSON.stringify(stock));h.ctx.bb307Stock=stock;return true;}});
  const surplus=html.slice(html.indexOf('function bbBetaChoiceSurplus('),html.indexOf('function bbBetaPendingBought('));
- const transfer=html.slice(html.indexOf('function bb83TransferBought('),html.indexOf('/* An item bought again after explicitly unchecking'));
+ const transfer=html.slice(html.indexOf('function bbHomePendingHouseholdPurchases('),html.indexOf('/* An item bought again after explicitly unchecking'));
  vm.runInContext(surplus+transfer,h.ctx);
  Object.assign(h.host,{keys:()=>({stock:'stock',inventory:'inventory'}),stock:()=>h.read('stock'),recipeIngredients:()=>[{key:'Rice',unit:'g',required:600}],consume:pantry.reconcileStock,refresh(){},occurrence:()=>null,needsLegacyReview:vm.runInContext('bbHomeNeedsLegacyReview',h.ctx)});
  return {...h,finish:(defer=false)=>vm.runInContext('bb83TransferBought({defer:'+Boolean(defer)+'})',h.ctx)};

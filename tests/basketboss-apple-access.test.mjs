@@ -41,7 +41,7 @@ async function fixture(options={}){
    return Response.json([h]);
   }
   if(u.pathname.endsWith('/bb_household_invites'))return Response.json([]);
-  if(u.pathname.endsWith('/rpc/bb_receipt_inventory_service'))return Response.json({ok:true});
+  if(u.pathname.endsWith('/rpc/bb_receipt_inventory_service'))return Response.json({ok:true,autoStockReady:true});
   throw Error('Unexpected outbound request '+u.origin+u.pathname);
  };
  return {env,db,calls,restore(){globalThis.fetch=realFetch;db.sql.close();}};

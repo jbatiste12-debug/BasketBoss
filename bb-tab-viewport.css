@@ -1,0 +1,87 @@
+/* Main tabs share the document scroller. The companion controller marks only
+   primary app pages and suspends these rules while a task owns the viewport.
+   Keep the legacy DOM intact: renderers still address #app and .shell directly. */
+html[data-bb-tab-viewport="document"] {
+  --bb-tab-bottom-gap: calc(110px + env(safe-area-inset-bottom, 0px));
+  --bb-tab-action-clearance: 0px;
+  --bb-tab-storefront-clearance: 0px;
+}
+
+html[data-bb-tab-viewport="document"]:not([data-bb-tab-scroll-lock]):not(.bb-account-open):not(.bb-onboarding-open):not(.bb172-welcome-open) {
+  height: auto !important;
+  max-height: none !important;
+  min-height: 100%;
+  /* hidden + visible computes to a second auto scroller; clip does not. */
+  overflow-x: clip !important;
+  overflow-y: visible !important;
+  scroll-padding-bottom: calc(var(--bb-tab-bottom-gap) + var(--bb-tab-action-clearance));
+  overscroll-behavior-y: auto;
+}
+
+html[data-bb-tab-viewport="document"]:not([data-bb-tab-scroll-lock]):not(.bb-account-open):not(.bb-onboarding-open):not(.bb172-welcome-open) body {
+  position: static !important;
+  inset: auto !important;
+  height: auto !important;
+  max-height: none !important;
+  min-height: 100dvh;
+  padding-bottom: 0 !important;
+  overflow-x: clip !important;
+  overflow-y: visible !important;
+  overscroll-behavior-y: auto;
+}
+
+/* Clear height/overflow constraints only on the actual primary-page wrappers.
+   Cards, horizontal recipe swipes, dialogs and the guided Cook panel keep their
+   own presentation and interaction rules. */
+html[data-bb-tab-viewport="document"]:not([data-bb-tab-scroll-lock]):not(.bb-account-open):not(.bb-onboarding-open):not(.bb172-welcome-open) body > .shell,
+html[data-bb-tab-viewport="document"]:not([data-bb-tab-scroll-lock]):not(.bb-account-open):not(.bb-onboarding-open):not(.bb172-welcome-open) body > .shell > #app,
+html[data-bb-tab-viewport="document"]:not([data-bb-tab-scroll-lock]):not(.bb-account-open):not(.bb-onboarding-open):not(.bb172-welcome-open) #bbReleaseShopOverview,
+html[data-bb-tab-viewport="document"]:not([data-bb-tab-scroll-lock]):not(.bb-account-open):not(.bb-onboarding-open):not(.bb172-welcome-open) #app > #bbMobileShopPreview {
+  height: auto !important;
+  min-height: 0 !important;
+  max-height: none !important;
+  overflow: visible !important;
+}
+
+/* One end-of-page gap, including the page footer. Applying the same padding to
+   #app and its .shell would double it and leave excessive empty scroll space.
+   JS adds measured clearance for any extra fixed/sticky primary action bar. */
+html[data-bb-tab-viewport="document"]:not([data-bb-tab-scroll-lock]):not(.bb-account-open):not(.bb-onboarding-open):not(.bb172-welcome-open) body > .shell,
+html[data-bb-tab-viewport="document"]:not([data-bb-tab-scroll-lock]):not(.bb-account-open):not(.bb-onboarding-open):not(.bb172-welcome-open) body > .shell:has(> nav#bbPrimaryNavigation[data-bb-navigation="polished"]) {
+  padding-bottom: calc(var(--bb-tab-bottom-gap) + var(--bb-tab-action-clearance)) !important;
+}
+
+/* These two measured lists were the remaining in-page vertical scroll boxes.
+   Their contents now grow the document, including the Cook page's fallback
+   stock list; no fullscreen recipe or receipt-review surface is targeted. */
+html[data-bb-tab-viewport="document"]:not([data-bb-tab-scroll-lock]):not(.bb-account-open):not(.bb-onboarding-open):not(.bb172-welcome-open) #app aside.bb321-need-box,
+html[data-bb-tab-viewport="document"]:not([data-bb-tab-scroll-lock]):not(.bb-account-open):not(.bb-onboarding-open):not(.bb172-welcome-open) body.bb-r6-cook-page > .shell .stock-table,
+html[data-bb-tab-viewport="document"]:not([data-bb-tab-scroll-lock]):not(.bb-account-open):not(.bb-onboarding-open):not(.bb172-welcome-open) body.bb-photo-meal-page > .shell .stock-table {
+  height: auto !important;
+  max-height: none !important;
+  overflow: visible !important;
+}
+
+html[data-bb-tab-viewport="document"]:not([data-bb-tab-scroll-lock]):not(.bb-account-open):not(.bb-onboarding-open):not(.bb172-welcome-open) #app aside.bb321-need-box > h3 {
+  position: static !important;
+  top: auto !important;
+}
+
+/* In-store mode deliberately owns one fullscreen scroller and hides the dock.
+   Lock the background document, while preserving its scroll position. This is
+   separate from account/onboarding locks, which own their existing body styles. */
+html[data-bb-tab-viewport="document"][data-bb-tab-scroll-lock]:has(body.bb172-storefront-visible),
+html[data-bb-tab-viewport="document"][data-bb-tab-scroll-lock] body.bb172-storefront-visible {
+  overflow: hidden !important;
+}
+
+html[data-bb-tab-viewport="document"] #bb172Storefront.bb172-storefront {
+  padding-bottom: max(var(--bb-tab-bottom-gap), var(--bb-tab-storefront-clearance)) !important;
+  scroll-padding-bottom: max(var(--bb-tab-bottom-gap), var(--bb-tab-storefront-clearance));
+}
+
+@media (prefers-reduced-motion: reduce) {
+  html[data-bb-tab-viewport="document"] {
+    scroll-behavior: auto !important;
+  }
+}

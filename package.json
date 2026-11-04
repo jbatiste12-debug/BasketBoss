@@ -11,6 +11,7 @@
     "ios:sync": "node scripts/ios-sync.mjs",
     "ios:open": "cap open ios",
     "ios:verify": "node scripts/verify-ios.mjs",
+    "audit:pantry": "node scripts/audit-pantry-regions.mjs",
     "test:native": "node --test --test-isolation=none tests/basketboss-native-*.test.mjs"
   },
   "dependencies": {

@@ -1,0 +1,70 @@
+# Generate a separate hosted XCTest target for the existing Debug-only Cook QA.
+# The shipping App scheme and Release sources remain unchanged.
+$stdout.sync = true
+puts 'Cook XCTest setup: loading libraries'
+require 'xcodeproj'
+require 'rexml/document'
+
+puts 'Cook XCTest setup: opening project'
+project_path = File.expand_path('../ios/App/App.xcodeproj', __dir__)
+project = Xcodeproj::Project.open(project_path)
+app = project.targets.find { |target| target.name == 'App' }
+abort 'The BasketBoss App target is missing.' unless app
+puts 'Cook XCTest setup: configuring hosted target'
+tests = project.targets.find { |target| target.name == 'BasketBossCookSmokeTests' } ||
+  project.new_target(:unit_test_bundle, 'BasketBossCookSmokeTests', :ios, '16.0', nil, :swift)
+group = project.main_group['BasketBossCookSmokeTests'] ||
+  project.main_group.new_group('BasketBossCookSmokeTests', 'BasketBossCookSmokeTests')
+source = group.files.find { |ref| ref.path == 'BasketBossCookSmokeTests.swift' } ||
+  group.new_file('BasketBossCookSmokeTests.swift')
+tests.source_build_phase.add_file_reference(source, true)
+tests.add_dependency(app) unless tests.dependencies.any? { |dependency| dependency.target == app }
+# Xcodeproj's built-in SDK version can lag the selected Xcode. Resolve the
+# generated Foundation reference through the actual SDK instead of that version.
+tests.frameworks_build_phase.files.each do |build_file|
+  reference = build_file.file_ref
+  next unless reference && reference.path.end_with?('Foundation.framework')
+  reference.path = 'System/Library/Frameworks/Foundation.framework'
+  reference.source_tree = 'SDKROOT'
+end
+tests.build_configurations.each do |config|
+  host_config = app.build_configurations.find { |candidate| candidate.name == config.name }
+  config.base_configuration_reference = host_config.base_configuration_reference
+  config.build_settings.merge!(
+    'PRODUCT_NAME' => '$(TARGET_NAME)',
+    'PRODUCT_BUNDLE_IDENTIFIER' => 'uk.co.basketboss.app.cooksmoketests',
+    'GENERATE_INFOPLIST_FILE' => 'YES',
+    'SWIFT_VERSION' => '5.0',
+    'TEST_HOST' => '$(BUILT_PRODUCTS_DIR)/App.app/App',
+    'BUNDLE_LOADER' => '$(TEST_HOST)',
+    'SKIP_INSTALL' => 'YES',
+    'TARGETED_DEVICE_FAMILY' => '1,2',
+    'ENABLE_TESTING_SEARCH_PATHS' => 'YES',
+    'FRAMEWORK_SEARCH_PATHS' => ['$(inherited)', '$(PLATFORM_DIR)/Developer/Library/Frameworks'],
+    'LD_RUNPATH_SEARCH_PATHS' => ['$(inherited)', '@executable_path/Frameworks',
+                               '@loader_path/Frameworks', '$(PLATFORM_DIR)/Developer/Library/Frameworks']
+  )
+end
+attributes = project.root_object.attributes['TargetAttributes'] ||= {}
+attributes[tests.uuid] = { 'TestTargetID' => app.uuid }
+puts 'Cook XCTest setup: saving project'
+project.save
+scheme = Xcodeproj::XCScheme.new
+scheme.configure_with_targets(app, tests, launch_target: true)
+scheme.test_action.build_configuration = 'Debug'
+scheme.test_action.testables.each { |testable| testable.parallelizable = false }
+puts 'Cook XCTest setup: saving test scheme'
+scheme.save_as(project.path, 'BasketBossCookSmokeTests', true)
+# TestAction owns these arguments so xcodebuild starts the exact same QA hook.
+# No shipping App scheme, StoreKit configuration or app permission is changed.
+scheme_path = File.join(project.path.to_s, 'xcshareddata/xcschemes/BasketBossCookSmokeTests.xcscheme')
+puts 'Cook XCTest setup: configuring test launch arguments'
+document = REXML::Document.new(File.read(scheme_path))
+test_action = document.root.elements['TestAction']
+abort 'The generated Cook test action is missing.' unless test_action
+test_action.attributes['shouldUseLaunchSchemeArgsEnv'] = 'NO'
+test_action.elements.delete_all('CommandLineArguments')
+arguments = test_action.add_element('CommandLineArguments')
+arguments.add_element('CommandLineArgument', { 'argument' => '--bb-native-cook-smoke', 'isEnabled' => 'YES' })
+File.write(scheme_path, document.to_s)
+puts 'Hosted BasketBoss Cook XCTest target is ready.'

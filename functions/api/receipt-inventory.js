@@ -143,7 +143,7 @@ export async function onRequestGet({request, env}) {
     auth = await authorized(request, env);
     if (auth.error) return checking ? status({configured: true, reason: auth.error.status === 401 ? 'sign_in_required' : 'premium_or_current_session_required'}) : auth.error;
     const result = await rpc(env, auth, checking ? 'status' : 'get', {}, receiptId);
-    if (checking) return result?.ok === true ? status({configured: true, available: true, premium: true, migrationReady: true}) : status({premium: true, reason: 'migration_unavailable'});
+    if (checking) return result?.ok === true && result.autoStockReady === true ? status({configured: true, available: true, premium: true, migrationReady: true}) : status({premium: true, reason: 'migration_unavailable'});
     return rpcResponse(result, auth);
   } catch {return checking ? status({premium: !!auth?.user, reason: auth?.user ? 'migration_unavailable' : 'temporarily_unavailable'}) : unavailable();}
 }

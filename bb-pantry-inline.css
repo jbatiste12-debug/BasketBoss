@@ -1,0 +1,69 @@
+/* Food editing stays beside the selected item. Legacy controllers remain in
+   the DOM and become visible again if the guarded enhancement cannot mount. */
+#app #bb173ShopFridge.bbpi-enhanced #bb8WhatIHave,
+#app #bb173ShopFridge.bbpi-enhanced #bbSimplePantry,
+#app #bb173ShopFridge.bbpi-enhanced .bbke-selected-readout,
+#app #bb173ShopFridge.bbpi-enhanced .bb76-add-food,
+#app #bb173ShopFridge.bbpi-enhanced #bb76JumpPantry,
+#app #bb173ShopFridge.bbpi-enhanced #bb5Reconcile{display:none!important}
+#app #bb173ShopFridge.bbpi-enhanced [data-bb5-food][data-bbpi-active=true]{display:grid!important;outline:2px solid #d5ad54;outline-offset:2px}
+#app #bb173ShopFridge .bbpi-ui{box-sizing:border-box;min-width:0;font-family:inherit;color:#244d3c}
+#app #bb173ShopFridge .bbpi-ui *{box-sizing:border-box;min-width:0}
+#app #bb173ShopFridge .bbpi-manual{display:grid;grid-template-columns:minmax(70px,1fr) 54px 64px 46px;gap:7px;margin:0 0 16px;padding:12px;background:#faf8ef;border:1px solid #e7dfc8;border-radius:16px}
+#app #bb173ShopFridge .bbpi-manual h4,#app #bb173ShopFridge .bbpi-manual>.bbpi-notice{grid-column:1/-1}
+#app #bb173ShopFridge .bbpi-manual h4{margin:0;color:#1d593f;font-size:15px;font-weight:850}
+#app #bb173ShopFridge .bbpi-ui label{display:grid;gap:6px;font-size:12px;font-weight:750;color:#365e4b;text-align:left}
+#app #bb173ShopFridge .bbpi-ui input,#app #bb173ShopFridge .bbpi-ui select{width:100%;min-height:44px;border:1px solid #bfd0c0;border-radius:10px;background:#fffdf7;color:#204b39;font-family:inherit;font-size:16px;padding:9px 10px}
+#app #bb173ShopFridge .bbpi-ui input:focus,#app #bb173ShopFridge .bbpi-ui select:focus{outline:2px solid #b99242;outline-offset:2px}
+#app #bb173ShopFridge .bbpi-manual-add{align-self:end;min-height:44px;padding:9px 16px;border:0;border-radius:11px;background:#245e43;color:white;font-weight:850;font-size:14px}
+#app #bb173ShopFridge .bbpi-editor{grid-column:1/-1!important;display:block!important;padding:16px;margin:5px 0 10px;border:1px solid #d7c69b;border-radius:16px;background:linear-gradient(135deg,#fffdf4,#f0f5e9);box-shadow:0 7px 20px #163d2c12;text-align:left}
+#app #bb173ShopFridge .bbpi-editor-heading{display:grid;gap:4px;margin-bottom:14px}
+#app #bb173ShopFridge .bbpi-eyebrow{font-size:10px;letter-spacing:.12em;text-transform:uppercase;color:#73825f;font-weight:850}
+#app #bb173ShopFridge .bbpi-editor h4{margin:0;font-size:20px;line-height:1.25;font-weight:850;color:#174b35;overflow-wrap:anywhere}
+#app #bb173ShopFridge .bbpi-editor-controls{display:grid;grid-template-columns:minmax(0,1.6fr) minmax(74px,1fr);gap:10px;align-items:end}
+#app #bb173ShopFridge .bbpi-stepper{display:grid;grid-template-columns:42px minmax(0,1fr) 42px;gap:4px;align-items:center}
+#app #bb173ShopFridge .bbpi-stepper input{text-align:center;padding-left:3px;padding-right:3px;appearance:textfield;-moz-appearance:textfield}
+#app #bb173ShopFridge .bbpi-stepper input::-webkit-inner-spin-button,#app #bb173ShopFridge .bbpi-stepper input::-webkit-outer-spin-button{-webkit-appearance:none;margin:0}
+#app #bb173ShopFridge .bbpi-ui .bbpi-step{display:inline-flex;align-items:center;justify-content:center;min-width:40px;min-height:44px;padding:2px;border:1px solid #bdd0bb;border-radius:11px;color:#215b3d;background:#eef4e8;font-size:23px;font-weight:650;line-height:1;cursor:pointer}
+#app #bb173ShopFridge .bbpi-readout{font-size:12px;font-weight:550;line-height:1.5;color:#5a735e;margin:12px 0 8px;overflow-wrap:anywhere}
+#app #bb173ShopFridge .bbpi-notice{margin:0;font-size:12px;line-height:1.5;color:#54755f;font-weight:500;overflow-wrap:anywhere}
+#app #bb173ShopFridge .bbpi-notice:empty{display:none}
+#app #bb173ShopFridge .bbpi-notice.is-error{color:#8c4430}
+#app #bb173ShopFridge .bbpi-status-label{margin-bottom:12px}
+#app #bb173ShopFridge .bbpi-pack{margin:12px 0;border-top:1px solid #dfe5d4;padding-top:10px}
+#app #bb173ShopFridge .bbpi-pack summary{font-size:12px;font-weight:750;cursor:pointer;min-height:32px;line-height:32px}
+#app #bb173ShopFridge .bbpi-pack p{font-size:12px;line-height:1.5;color:#6b7c68;margin:4px 0 10px}
+#app #bb173ShopFridge .bbpi-pack-fields{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:10px}
+#app #bb173ShopFridge .bbpi-editor .bbpg-item-group{margin-top:10px}
+#app #bb173ShopFridge .bbpi-editor-actions{display:flex;gap:10px;justify-content:space-between;margin-top:14px;padding-top:12px;border-top:1px solid #dde5d4}
+#app #bb173ShopFridge .bbpi-editor-actions button{min-height:44px;border-radius:11px;padding:10px 17px;font-size:14px;font-family:inherit;font-weight:800;cursor:pointer}
+#app #bb173ShopFridge .bbpi-remove{border:1px solid #e3d8c9;background:#fffaf2;color:#895b46}
+#app #bb173ShopFridge .bbpi-done{border:1px solid #245d42;background:#245d42;color:#fff;min-width:100px}
+#app #bb173ShopFridge .bbpi-done:disabled{opacity:.55}
+#app #bb173ShopFridge .bbpi-summary{margin-top:16px;border:1px solid #dce6d8;background:#f7faf3;border-radius:15px;overflow:hidden}
+#app #bb173ShopFridge .bbpi-summary>header{display:flex;align-items:center;justify-content:space-between;padding:12px 13px;gap:10px;background:#edf4e9}
+#app #bb173ShopFridge .bbpi-summary h4{margin:0;font-size:14px;font-weight:850;color:#245d41}
+#app #bb173ShopFridge .bbpi-count{font-size:11px;color:#668365;white-space:nowrap}
+#app #bb173ShopFridge .bbpi-summary-list{padding:0 12px;margin:0;list-style:none}
+#app #bb173ShopFridge .bbpi-summary-row{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:8px;align-items:center;border-bottom:1px solid #e0e9da;padding:10px 0}
+#app #bb173ShopFridge .bbpi-summary-row:last-child{border-bottom:0}
+#app #bb173ShopFridge .bbpi-summary-main{display:grid;gap:3px;overflow-wrap:anywhere}
+#app #bb173ShopFridge .bbpi-summary-main strong{font-size:13px;line-height:1.3;color:#244f37}
+#app #bb173ShopFridge .bbpi-summary-amount{font-size:12px;color:#6c8068;line-height:1.3}
+#app #bb173ShopFridge .bbpi-summary-actions{display:flex;gap:4px;align-items:center}
+#app #bb173ShopFridge .bbpi-summary-actions .bbpi-step{min-width:34px;min-height:40px;font-size:20px}
+#app #bb173ShopFridge .bbpi-edit{min-height:40px;min-width:42px;border:0;background:transparent;color:#286444;font-size:12px;font-weight:850;text-decoration:underline;text-underline-offset:3px;padding:5px}
+#app #bb173ShopFridge .bbpi-empty{font-size:12px;line-height:1.5;color:#6f836b;padding:12px 0}
+@media(max-width:350px){#app #bb173ShopFridge .bbpi-editor{padding:12px}#app #bb173ShopFridge .bbpi-editor-controls{grid-template-columns:minmax(0,1fr)}#app #bb173ShopFridge .bbpi-stepper{grid-template-columns:44px minmax(0,1fr) 44px}#app #bb173ShopFridge .bbpi-summary-actions{gap:2px}#app #bb173ShopFridge .bbpi-summary-actions .bbpi-step{min-width:30px}#app #bb173ShopFridge .bbpi-manual{padding:11px;gap:8px}}
+@media(prefers-reduced-motion:no-preference){#app #bb173ShopFridge .bbpi-editor{animation:bbpi-appear .16s ease-out}@keyframes bbpi-appear{from{opacity:.4;transform:translateY(-4px)}to{opacity:1;transform:translateY(0)}}}
+
+#app #bb173ShopFridge .bbpi-save-status{font-size:12px;line-height:1.5;padding:10px 12px;margin:10px 0;background:#f2f7ed;border:1px solid #dce7d4;border-radius:12px;color:#4e7155;overflow-wrap:anywhere}
+
+/* Tile rules predate inline controls and use !important on descendants. Only
+   the editor's buttons need the reset; the food tiles retain their styling. */
+html body #app #bb173ShopFridge #bb76StorageSections .bbpi-ui button{aspect-ratio:auto!important;height:44px!important;min-height:44px!important;max-height:none!important;display:inline-flex!important;flex-direction:row!important;align-items:center!important;justify-content:center!important;gap:4px!important;padding:6px 10px!important;line-height:1.2!important;text-align:center!important;flex:none!important}
+html body #app #bb173ShopFridge #bb76StorageSections .bbpi-ui .bbpi-step{padding:0!important;width:40px!important;min-width:40px!important;font-size:23px!important}
+html body #app #bb173ShopFridge #bb76StorageSections .bbpi-summary-actions .bbpi-step{width:34px!important;min-width:34px!important;font-size:20px!important}
+html body #app #bb173ShopFridge #bb76StorageSections .bbpi-manual-add{padding:6px 7px!important;width:100%!important}
+@media(max-width:350px){#app #bb173ShopFridge .bbpi-manual{grid-template-columns:minmax(64px,1fr) minmax(74px,1fr) 46px}#app #bb173ShopFridge .bbpi-manual-name{grid-column:1/-1}}
+html body #app #bb173ShopFridge #bb76StorageSections .bbpi-ui select{padding:9px 24px 9px 8px!important}

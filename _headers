@@ -15,3 +15,25 @@
 /guides/*
   Content-Type: text/html; charset=utf-8
   X-Content-Type-Options: nosniff
+
+/service-worker.js
+  Cache-Control: no-cache, max-age=0, must-revalidate
+  X-Content-Type-Options: nosniff
+
+/app.html
+  X-Robots-Tag: noindex, nofollow
+  Cache-Control: no-cache, max-age=0, must-revalidate
+
+/index.html
+  X-Robots-Tag: noindex, nofollow
+  Cache-Control: no-cache, max-age=0, must-revalidate
+
+/index
+  X-Robots-Tag: noindex, nofollow
+  Cache-Control: no-cache, max-age=0, must-revalidate
+
+/welcome
+  Cache-Control: no-cache, max-age=0, must-revalidate
+
+/welcome.html
+  Cache-Control: no-cache, max-age=0, must-revalidate

@@ -33,7 +33,7 @@ export async function verifyLandingDeployment(perform = fetch) {
   catch { throw Error('The public landing page could not be read.'); }
   if(html.length>262144)throw Error('The public landing page response is invalid.');
   const heading=(html.match(/<h1\b[^>]*>([\s\S]*?)<\/h1>/i)?.[1]||'').replace(/<[^>]*>/g,' ').replace(/\s+/g,' ').trim();
-  if(heading!=='Less dinner stress. More family time.')
+  if(heading!=='Your kitchen. Made simple.')
     throw Error('The new family landing headline is not present on production.');
   const sources=[
     {pattern:/<link\b[^>]*\bhref=["'](\/?bb-family-landing\.css(?:\?[^"']*)?)["'][^>]*>/i,type:/text\/css/i},

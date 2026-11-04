@@ -5,6 +5,7 @@
  */
 (()=>{'use strict';
  const SHOW_FOUNDER_STORY=false;
+ const duration=minutes=>window.BBDuration?.format(minutes)??String(minutes)+'mins';
  const KEY='bb_onboarding_fresh_once_20261028_v1'; // New rollout only: never clear earlier state or credentials.
  const PREVIEW_HOST='basketboss-preview.basketboss-site.pages.dev';
  const LOGO='icons/basketboss-crowned-v1766-512.png';
@@ -25,6 +26,8 @@
  const read=k=>{try{return localStorage.getItem(k)}catch(_){return null}};
  const write=(k,v)=>{try{localStorage.setItem(k,v);return localStorage.getItem(k)===v}catch(_){return false}};
  const validSession=()=>{try{const s=JSON.parse(read('basketboss_cloud_session_v1')||'null');return !!(s?.user?.id&&typeof s.access_token==='string'&&Number(s.expires_at)*1000>Date.now()+5000)}catch(_){return false}};
+ // Remembered identity only controls account presentation; invite actions still require a fresh token.
+ const accountRemembered=()=>validSession()||window.BasketBossSession?.state().remembered===true;
  const native=()=>window.BBNative?.isNative===true||location.protocol==='capacitor:';
  const installed=()=>{try{return native()||window.matchMedia('(display-mode: standalone)').matches||navigator.standalone===true}catch(_){return native()||navigator.standalone===true}};
  const deleting=()=>window.BBAccountDeletion?.isDeleting?.()===true;
@@ -76,11 +79,11 @@
  const esc=s=>String(s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
  // Real BasketBoss Discover DOM class names, not the fake cards from the mockup.
  // There are no active buttons, data-recipe, add-to-plan or shopping handlers.
- const recipeCard=(r,featured=false)=>`<article class="card ${featured?'bb-featured-card':'mini-recipe'} bbob-recipe-card" aria-label="Example recipe: ${esc(r.name)}"><div class="recipe-image"><img src="${esc(r.image)}" alt="${esc(r.name)}" loading="lazy" decoding="async"><span class="pill">${esc(r.tag)}</span><span class="time-pill">◷ ${r.mins} min</span></div><div class="recipe-body"><div class="eyebrow">${esc(r.category)} · serves ${r.servings}</div><h3>${esc(r.name)}</h3><div class="chips">${r.ingredientCount?`<span class="chip">${r.ingredientCount} ingredients</span>`:''}</div>${r.tip?`<div class="tip">${esc(r.tip)}</div>`:''}</div></article>`;
+ const recipeCard=(r,featured=false)=>`<article class="card ${featured?'bb-featured-card':'mini-recipe'} bbob-recipe-card" aria-label="Example recipe: ${esc(r.name)}"><div class="recipe-image"><img src="${esc(r.image)}" alt="${esc(r.name)}" loading="lazy" decoding="async"><span class="pill">${esc(r.tag)}</span><span class="time-pill">◷ ${duration(r.mins)}</span></div><div class="recipe-body"><div class="eyebrow">${esc(r.category)} · serves ${r.servings}</div><h3>${esc(r.name)}</h3><div class="chips">${r.ingredientCount?`<span class="chip">${r.ingredientCount} ingredients</span>`:''}</div>${r.tip?`<div class="tip">${esc(r.tip)}</div>`:''}</div></article>`;
  function figure(key){
    const lead=RECIPES[0];
    if(key==='discover')return `<div class="bbob-figure bbob-recipe-gallery" aria-label="Read-only examples from the actual BasketBoss Free recipe catalogue"><div class="bbob-mock-top">REAL BASKETBOSS RECIPE CARDS <span>100 FREE</span></div>${recipeCard(lead,true)}<div class="bbob-more-recipes">${RECIPES.slice(1).map(r=>recipeCard(r)).join('')}</div><p class="bbob-preview-disclaimer">Example cards only. No recipe has been opened, saved or added to your plan.</p></div>`;
-   if(key==='plan')return `<div class="bbob-figure bbob-real-plan" aria-label="Read-only sample weekly meal plan"><div class="bbob-mock-top">YOUR WEEK · EXAMPLE ONLY <span>7 DAYS</span></div><div class="bbob-days"><span>MON</span><span>TUE</span><span>WED</span><span>THU</span><span>FRI</span></div><div class="bbob-sample-day"><img src="${lead.image}" alt="${esc(lead.name)}" loading="lazy"><div><small>Monday · Dinner planned</small><strong>${esc(lead.name)}</strong><span>${lead.mins} min · serves ${lead.servings}</span></div></div><div class="bbob-mealrow">Tuesday <strong>Open dinner slot</strong></div><div class="bbob-mealrow">Wednesday <strong>Open dinner slot</strong></div><p class="bbob-preview-disclaimer">Illustration only. Your saved week is never changed by this tour.</p></div>`;
+   if(key==='plan')return `<div class="bbob-figure bbob-real-plan" aria-label="Read-only sample weekly meal plan"><div class="bbob-mock-top">YOUR WEEK · EXAMPLE ONLY <span>7 DAYS</span></div><div class="bbob-days"><span>MON</span><span>TUE</span><span>WED</span><span>THU</span><span>FRI</span></div><div class="bbob-sample-day"><img src="${lead.image}" alt="${esc(lead.name)}" loading="lazy"><div><small>Monday · Dinner planned</small><strong>${esc(lead.name)}</strong><span>${duration(lead.mins)} · serves ${lead.servings}</span></div></div><div class="bbob-mealrow">Tuesday <strong>Open dinner slot</strong></div><div class="bbob-mealrow">Wednesday <strong>Open dinner slot</strong></div><p class="bbob-preview-disclaimer">Illustration only. Your saved week is never changed by this tour.</p></div>`;
    // The eight rows below exactly reproduce the Free "fajitas" catalogue item's
    // names, quantities and indicative per-item prices (total £22.60). No writes.
    const groups=[
@@ -95,7 +98,7 @@
  }
 
  function options(items,selected,multiple){return `<div class="bbob-options ${multiple?'bbob-goals':''}">${items.map((v,i)=>`<button type="button" class="bbob-option ${selected.includes(v)?'chosen':''}" data-bbob-opt="${i}" aria-pressed="${selected.includes(v)}"><span class="bbob-choice-mark" aria-hidden="true">${selected.includes(v)?'✓':' '}</span><span>${v}</span></button>`).join('')}</div>`;}
- const titles=['Welcome','Account','Partner sharing','Household','Goals','Preferences','Discover','Plan','Shop','All set','Membership'];
+ const titles=['Welcome','Account','Partner sharing','Household','Goals','Preferences','Discover','Plan','Shop','You’re all set','Membership'];
  function content(){
    let headline='',eyebrow='',description='',art='',foot='',actions='';
    switch(state.step){
@@ -106,7 +109,7 @@
        actions=btn('Let’s get started','next')+btn('Browse 100 free recipes instead','free','link');break;
      case 1:
        eyebrow='YOUR ACCOUNT';
-       if(validSession()){
+       if(accountRemembered()){
          headline='You’re already signed in.';
          description='Your existing BasketBoss account and saved meals are ready. There is no need to sign in again.';
          art='<div class="bbob-auth-ready" role="status">✓ Your account is connected</div>';
@@ -156,10 +159,20 @@
        foot='Dated online guides cover selected UK products; regional estimates fill gaps. Meal estimates count the share of staples used, while Shopping includes full replacement packs when needed.';
        art=figure('shop');actions=btn('Finish the tour','next')+btn('Back','back','link');break;
      case 9:
-       eyebrow='READY WHEN YOU ARE';headline='You’re all set.';
-       description='Less time wondering what’s for dinner. More time enjoying it.';
-       art='<div class="bbob-finish-art">'+originalCrownAnimation()+'<span class="bbob-sheen" aria-hidden="true"></span></div>';
-       actions=btn('Choose how to get started','next');break;
+       eyebrow='THE BASKETBOSS WAY';headline='Your kitchen, <em>made simple.</em>';
+       description='Plan your meals. Use what you have. Top up what you need.';
+       const kitchenIcon=path=>`<span class="bbob-kitchen-icon" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round">${path}</svg></span>`;
+       art=`<div class="bbob-kitchen-routine">
+         <ol class="bbob-kitchen-steps">
+           <li>${kitchenIcon('<rect x="3" y="5" width="18" height="16" rx="3"/><path d="M7 3v4m10-4v4M3 10h18"/>')}<div><strong>Plan</strong><p>Auto-fill, or choose meals in Discover. Set servings.</p></div><span class="bbob-kitchen-order" aria-hidden="true">01</span></li>
+           <li>${kitchenIcon('<path d="m3 10 2 10h14l2-10H3Zm5 0V7a4 4 0 0 1 8 0v3m-7 4v3m6-3v3"/>')}<div><strong>At home</strong><p>Check what you have, then confirm the amounts.</p></div><span class="bbob-kitchen-order" aria-hidden="true">02</span></li>
+           <li>${kitchenIcon('<path d="M10 5h11M10 12h11M10 19h11M3 5l1 1 2-3m-3 9 1 1 2-3m-3 9 1 1 2-3"/>')}<div><strong>Shop</strong><p>Buy what’s missing. Finish shop or confirm a receipt to restock.</p></div><span class="bbob-kitchen-order" aria-hidden="true">03</span></li>
+           <li>${kitchenIcon('<path d="M5 10h14v7a3 3 0 0 1-3 3H8a3 3 0 0 1-3-3v-7ZM3 10h18M9 7h6v3M2 13h3m14 0h3M8 3v1m8-1v1"/>')}<div><strong>Cook</strong><p>Tap Confirm cooked or Day done to record what you used.</p></div><span class="bbob-kitchen-order" aria-hidden="true">04</span></li>
+           <li class="bbob-kitchen-repeat">${kitchenIcon('<path d="M19 8a8 8 0 0 0-13-3L3 8m0-5v5h5m-3 8a8 8 0 0 0 13 3l3-3m0 5v-5h-5"/>')}<div><strong>Next week starts with what’s left.</strong><p>Review leftovers and essentials, then plan again.</p></div></li>
+         </ol>
+       </div>`;
+       foot='';
+       actions=btn('Let’s get started','next')+btn('Back','back','link');break;
      default:
        if(native()){
          eyebrow='READY TO GET STARTED';headline='Your BasketBoss is ready.';
@@ -176,7 +189,9 @@
        actions=btn('Explore Premium plans','premium')+btn('Continue with BasketBoss Free','free-complete','outline');
    }
    const counter=state.step===0?'':`<div class="bbob-progress" aria-label="Onboarding step ${state.step+1} of ${STEP_MAX+1}"><span style="width:${Math.min(100,Math.round(100*state.step/STEP_MAX))}%"></span></div>`;
-   return `<div class="bbob-shell"><header class="bbob-header"><div class="bbob-brand"><img src="${LOGO}" alt=""><span>Basket<span>Boss</span></span></div><button type="button" class="bbob-exit" data-bbob="${replaying?'replay-cancel':'free'}" aria-label="${replaying?'Cancel setup and keep existing preferences':'Exit onboarding and explore free recipes'}">${replaying?'Cancel setup':'Explore Free'} <span aria-hidden="true">×</span></button></header>${counter}<section class="bbob-main" aria-labelledby="bbob-title"><p class="bbob-eyebrow">${eyebrow}</p><h1 id="bbob-title">${headline}</h1><p class="bbob-description">${description}</p>${art}${foot?`<p class="bbob-footnote">${foot}</p>`:''}<p id="bbobSaveError" role="alert" class="bbob-save-error"></p></section><footer class="bbob-footer">${actions}<div class="bbob-stepname">${titles[state.step]} · ${state.step+1} of 11</div></footer></div>`;
+   const headingMarkup=`<p class="bbob-eyebrow">${eyebrow}</p><h1 id="bbob-title">${headline}</h1>`;
+   const intro=state.step===9?`<div class="bbob-kitchen-hero"><div class="bbob-kitchen-hero-copy">${headingMarkup}</div><img class="bbob-kitchen-meal" src="release-assets/basketboss-v17/images/existing/creamy-pasta.webp" alt="" width="360" height="360"><span class="bbob-kitchen-ribbon">Plan. Shop. Cook. Repeat.</span></div><p class="bbob-description">${description}</p>`:`${headingMarkup}<p class="bbob-description">${description}</p>`;
+   return `<div class="bbob-shell"><header class="bbob-header"><div class="bbob-brand"><img src="${LOGO}" alt=""><span>Basket<span>Boss</span></span></div><button type="button" class="bbob-exit" data-bbob="${replaying?'replay-cancel':'free'}" aria-label="${replaying?'Cancel setup and keep existing preferences':'Exit onboarding and explore free recipes'}">${replaying?'Cancel setup':'Explore Free'} <span aria-hidden="true">×</span></button></header>${counter}<section class="bbob-main" aria-labelledby="bbob-title">${intro}${art}${foot?`<p class="bbob-footnote">${foot}</p>`:''}<p id="bbobSaveError" role="alert" class="bbob-save-error"></p></section><footer class="bbob-footer">${actions}<div class="bbob-stepname">${titles[state.step]} · ${state.step+1} of 11</div></footer></div>`;
  }
  function restoreAuth(){
    if(form&&formMarker?.parentNode)formMarker.parentNode.insertBefore(form,formMarker);
@@ -216,10 +231,10 @@
    host.classList?.toggle('bbob-keyboard',state.step===1&&editing&&height<fullViewportHeight-100);
    window.requestAnimationFrame?.(keepAuthFocusVisible);
  }
- function render(){if(!host)return;restoreAuth();host.innerHTML=content();
-   if(state.step===1&&!validSession())mountAuth();
+ function render(){if(!host)return;host.classList?.toggle('bbob-kitchen-slide',state.step===9);restoreAuth();host.innerHTML=content();
+   if(state.step===1&&!accountRemembered())mountAuth();
    sizeWelcomeViewport();host.scrollTop=0;
-   if(state.step===1&&!validSession()){
+   if(state.step===1&&!accountRemembered()){
      const heading=host.querySelector('#bbob-title');heading?.setAttribute('tabindex','-1');heading?.focus({preventScroll:true});
    }else host.querySelector('[data-bbob="next"]')?.focus({preventScroll:true});
  }
@@ -241,6 +256,7 @@
  }
  function complete(goPremium=false){
    if(!host||blocked())return;
+   const firstSetup=!replaying;
    if(!persist()){
      host.querySelector('#bbobSaveError')?.replaceChildren(document.createTextNode('Unable to save your setup on this device. Please check browser storage and retry.'));
      return;
@@ -268,6 +284,7 @@
      else if(window.BBIntroTrialOffer?.open)void window.BBIntroTrialOffer.open();
    }else{
      document.querySelector('.shell .tabs [data-tab="discover"]')?.click();
+     if(firstSetup)window.BBHowItWorks?.setupFinished?.();
    }
  }
 
@@ -300,11 +317,35 @@
  }
  function dismiss(restoreReplay=true){
    const closeSettings=!restoreReplay&&replaying;
+   const closingHost=host;
+   const dismissNative=window.BBNative?.isNative===true&&form&&host?.contains(form)&&typeof window.BBNative.dismissKeyboard==='function'
+     ?window.BBNative.dismissKeyboard.bind(window.BBNative):null;
+   const editable=node=>node?.matches?.('input,textarea,select,[contenteditable]:not([contenteditable="false"])')===true;
+   // WKWebView can keep the keyboard attached when its focused input is moved
+   // back to the account panel. End editing before restoring the shared form.
+   const active=document.activeElement;
+   if(active&&host?.contains(active))active.blur?.();
    unlockWelcomeBackground();restoreAuth();host?.remove();host=null;
    if(restoreReplay&&replaying&&replayOriginal)state=replayOriginal;
    replaying=false;replayOriginal=null;changedPreferences.clear();
-   if(lastFocus?.isConnected)lastFocus.focus({preventScroll:true});
+   // Restoring a credential field would immediately reopen the keyboard.
+   if(lastFocus?.isConnected&&!editable(lastFocus))lastFocus.focus({preventScroll:true});
    if(closeSettings)document.querySelector('.bbui-settings-overlay:not([hidden]) .bbui-settings-close')?.click();
+   if(dismissNative){
+     // Let WebKit apply the restored form's hidden parent before UIKit ends
+     // editing. Calling the bridge before this move races its responder update.
+     const finishDismissal=()=>{
+       if(host||closingHost?.isConnected===true)return;
+       const current=document.activeElement;
+       // A different visible field can belong to a newly opened form. The
+       // original input retaining focus is the responder we still must dismiss.
+       if(current!==active&&editable(current)&&current.getClientRects?.().length)return;
+       if(editable(current))current.blur?.();
+       try{Promise.resolve(dismissNative()).catch(()=>{});}catch(_){}
+     };
+     if(typeof window.requestAnimationFrame==='function')window.requestAnimationFrame(finishDismissal);
+     else queueMicrotask(finishDismissal);
+   }
  }
  function replay(){
    if(host||blocked())return false;
@@ -399,7 +440,10 @@
    },true);
    if(typeof MutationObserver==='function')new MutationObserver(replayLabel).observe(document.body,{childList:true,subtree:true});
    window.addEventListener('basketboss:session-changed',()=>{
-     if(!blocked()&&host&&state.step===1&&validSession()){if(state.partnerIntent==='join')finishJoinHandoff();else{state.step=2;persist();render();}}
+     if(blocked()||!host||state.step!==1)return;
+     // A late signed-out notification must not move the shared form while
+     // someone is editing: reparenting it blurs the input and hides iOS's keyboard.
+     if(validSession()){if(state.partnerIntent==='join')finishJoinHandoff();else{state.step=2;persist();render();}}else if(!accountInput())render();
    });
    window.addEventListener('basketboss:account-deletion-started',()=>{if(host)dismiss();replayLabel();});
    window.addEventListener('basketboss:account-deletion-deleted',()=>{if(host)dismiss();replayLabel();});

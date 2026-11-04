@@ -13,7 +13,7 @@ export function installNativeApplePurchases({plugin,apiURL,readSession,fetch:per
  const listeners=new Set(),requests=new Set(),queued=new Map();
  let requestedProductId=null;
  try{const requested=new URL(win?.location?.href).searchParams.get('appleIntent');if(PRODUCTS.includes(requested))requestedProductId=requested;}catch{}
- let state={available:false,authenticated:false,premiumAccess:false,provider:null,subscription:null,products:[],membershipState:'checking',requestedProductId,busy:false,phase:'loading',message:'Checking Apple subscriptions…'};
+ let state={available:false,authenticated:false,premiumAccess:false,provider:null,subscription:null,beta:null,products:[],membershipState:'checking',requestedProductId,busy:false,phase:'loading',message:'Checking Apple subscriptions…'};
  function emit(change){if(destroyed)return;state={...state,...change,busy};for(const listener of listeners)listener({...state,products:[...state.products]});}
  function pin(){const s=readSession();return s?.access_token&&s?.user?.id&&Number(s.expires_at)*1000>Date.now()+5000?{token:s.access_token,user:s.user.id,generation}:null;}
  function current(p){const now=pin();return !destroyed&&!isDeleting()&&p&&now&&now.generation===p.generation&&now.token===p.token&&now.user===p.user;}
@@ -32,29 +32,33 @@ export function installNativeApplePurchases({plugin,apiURL,readSession,fetch:per
   }finally{requests.delete(controller);}
  }
  async function loadProducts(){
-  const config=await request('/api/apple/config',{pin:pin(),authenticated:false});
-  if(config.available!==true||!Array.isArray(config.productIds)||PRODUCTS.some(id=>!config.productIds.includes(id)))return {available:false,products:[]};
+  let config;try{config=await request('/api/apple/config',{pin:pin(),authenticated:false});}
+  catch{return {available:false,products:[],availabilityMessage:'Apple subscription verification could not be reached. Check your connection, then refresh membership.'};}
+  if(config.available!==true||!Array.isArray(config.productIds)||PRODUCTS.some(id=>!config.productIds.includes(id)))return {available:false,products:[],availabilityMessage:'Apple subscriptions are not ready for this account. Refresh membership or use TestFlight beta access if eligible.'};
   // The web-only Founding Member offer cannot become an Apple plan through
   // stale server configuration or an unexpected StoreKit catalogue entry.
-  const result=await plugin.getProducts({productIds:[...PRODUCTS]});
+  let result;try{result=await plugin.getProducts({productIds:[...PRODUCTS]});}
+  catch{return {available:false,products:[],availabilityMessage:'Apple subscription prices could not be loaded. Check your App Store connection, then refresh membership.'};}
   const products=PRODUCTS.map(id=>(result.products||[]).find(product=>product.id===id)).filter(product=>product&&typeof product.displayPrice==='string'&&product.displayPrice.length>0&&product.displayPrice.length<80&&Number(product.subscriptionPeriod?.value)===1&&product.subscriptionPeriod?.unit===(product.id===ANNUAL?'year':'month'));
-  return {available:PRODUCTS.every(id=>products.some(product=>product.id===id)),products};
+  const available=PRODUCTS.every(id=>products.some(product=>product.id===id));
+  return {available,products,availabilityMessage:available?'':'Apple did not return both subscription plans. Check your App Store account, then refresh membership.'};
  }
- async function refresh(){
+ async function refresh(options={}){
   if(destroyed)return {...state};
   const revision=++viewRevision,actor=pin(),epoch=generation;
   if(isDeleting()){emit({available:false,authenticated:!!actor,premiumAccess:false,membershipState:'unavailable',phase:'paused',message:'Account deletion is in progress. Purchases are paused.'});return {...state};}
   emit({authenticated:!!actor,membershipState:actor?'checking':'signed_out'});
   try{
-   const [catalog,membership]=await Promise.all([loadProducts().catch(()=>({available:false,products:[]})),actor?request('/api/subscription/status',{pin:actor}):Promise.resolve(null)]);
+   const catalogRequest=options.membershipOnly===true?Promise.resolve({available:state.available,products:state.products,availabilityMessage:state.availabilityMessage}):loadProducts().catch(()=>({available:false,products:[]}));
+   const [catalog,membership]=await Promise.all([catalogRequest,actor?request('/api/subscription/status',{pin:actor}):Promise.resolve(null)]);
    if(destroyed||revision!==viewRevision||epoch!==generation||isDeleting()||(actor&&!current(actor)))return {...state};
    if(actor&&(membership?.authenticated!==true||typeof membership.premiumAccess!=='boolean'))throw Error('Sign in again to check your membership.');
    if(actor&&membership.reason==='billing_not_enabled')throw Error('Membership verification is not available right now.');
    const premium=membership?.premiumAccess===true;
    const provider=membership?.provider||membership?.subscription?.provider||(membership?.householdRole==='partner'?'household':premium?'paddle':null);
-   emit({...catalog,authenticated:!!actor,premiumAccess:premium,membershipState:premium?'premium':actor?'free':'signed_out',provider,subscription:membership?.subscription||null,phase:'ready',message:premium?(provider==='apple'?'Your Apple Premium subscription is available.':'Your existing Premium membership is available. You do not need another subscription.'):
-    !catalog.available?'Apple subscriptions are not available right now. Your Free recipes remain available.':requestedProductId?(actor?'Review the subscription options below, then choose a plan to continue your Apple purchase.':'Sign in or create your BasketBoss account, then choose a plan to continue your Apple purchase.'):actor?'Choose a plan to subscribe with Apple, or restore an existing Apple purchase.':'Use 100 recipes free. Sign in or create your BasketBoss account before subscribing.'});
-  }catch(error){if(!destroyed&&revision===viewRevision&&epoch===generation&&(!actor||current(actor)))emit({available:false,authenticated:!!actor,premiumAccess:false,membershipState:actor?'unavailable':'signed_out',provider:null,subscription:null,phase:'error',message:error.message||'Membership could not be checked. Try again.'});}
+   emit({...catalog,authenticated:!!actor,premiumAccess:premium,membershipState:premium?'premium':actor?'free':'signed_out',provider,subscription:membership?.subscription||null,beta:provider==='testflight_beta'?membership?.beta||null:null,phase:'ready',message:premium?(provider==='testflight_beta'?'TestFlight Beta Premium is active. Premium features are available for beta testing without a subscription charge.':provider==='apple'?'Your Apple Premium subscription is available.':'Your existing Premium membership is available. You do not need another subscription.'):
+    !catalog.available?(catalog.availabilityMessage||'Apple subscriptions are not available right now. Your Free recipes remain available.'):requestedProductId?(actor?'Review the subscription options below, then choose a plan to continue your Apple purchase.':'Sign in or create your BasketBoss account, then choose a plan to continue your Apple purchase.'):actor?'Choose a plan to subscribe with Apple, or restore an existing Apple purchase.':'Use 100 recipes free. Sign in or create your BasketBoss account before subscribing.'});
+  }catch(error){if(!destroyed&&revision===viewRevision&&epoch===generation&&(!actor||current(actor)))emit({available:false,authenticated:!!actor,premiumAccess:false,membershipState:actor?'unavailable':'signed_out',provider:null,subscription:null,beta:null,phase:'error',message:error.message||'Membership could not be checked. Try again.'});}
   return {...state};
  }
  function notifyMembership(){if(win?.dispatchEvent&&win?.Event)win.dispatchEvent(new win.Event('basketboss:apple-membership-updated'));}
@@ -74,7 +78,7 @@ export function installNativeApplePurchases({plugin,apiURL,readSession,fetch:per
  async function run(operation){
   if(busy)return {ok:false,reason:'busy'};
   const actor=pin();
-  if(!actor){emit({authenticated:false,phase:'error',message:'Sign in to your BasketBoss account before purchasing or restoring.'});return {ok:false,reason:'signin_required'};}
+  if(!actor){emit({authenticated:false,phase:'error',message:'Sign in to your BasketBoss account to continue.'});return {ok:false,reason:'signin_required'};}
   if(isDeleting())return {ok:false,reason:'account_deleting'};
   busy=true;emit({phase:'busy',message:'Please wait…'});
   try{return await operation(actor);}
@@ -114,6 +118,30 @@ export function installNativeApplePurchases({plugin,apiURL,readSession,fetch:per
   return {ok:true,restored:transactions.length,premiumAccess:active||state.premiumAccess};
  });}
  async function manage(){return run(async actor=>{requireCurrent(actor);if(state.provider!=='apple')throw Error('This account does not have an Apple subscription to manage.');await plugin.manageSubscriptions();requireCurrent(actor);await refresh();return {ok:true};});}
+ async function claimBeta(){return run(async actor=>{
+  if(win?.BBNative?.isNative!==true||win.BBNative.platform!=='ios')throw Error('TestFlight Beta Premium is available in the iPhone or iPad app from TestFlight.');
+  if(typeof plugin?.getAppTransaction!=='function')throw Error('Update BasketBoss to the latest TestFlight build, then try unlocking Beta Premium again.');
+  emit({message:'Verifying your TestFlight app…'});
+  let proof;
+  try{proof=await plugin.getAppTransaction();}
+  catch(error){
+   requireCurrent(actor);
+   throw Error(['UNIMPLEMENTED','UNAVAILABLE'].includes(error?.code)?'Update BasketBoss to the latest TestFlight build, then try unlocking Beta Premium again.':'Your beta app could not be verified. Open the latest BasketBoss build from TestFlight, then try again.');
+  }
+  requireCurrent(actor);
+  const signed=proof?.signedAppTransaction;
+  if(typeof signed!=='string'||signed.length<50||signed.length>65536||!/^[A-Za-z0-9_-]+\.[A-Za-z0-9_-]+\.[A-Za-z0-9_-]+$/.test(signed))throw Error('Your beta app could not be verified. Update BasketBoss through TestFlight, then try again.');
+  const result=await request('/api/apple/testflight-beta',{pin:actor,body:{signedAppTransaction:signed}});requireCurrent(actor);
+  if(result.ok!==true)throw Error('Beta Premium could not be activated. Refresh membership, then try again.');
+  // A successful claim is not a local entitlement. Re-read the same account's
+  // authoritative status before changing presentation or exposing Premium UI.
+  // StoreKit catalogue loading must never delay a purchase-free beta claim.
+  await refresh({membershipOnly:true});requireCurrent(actor);
+  if(state.premiumAccess!==true)throw Error('Beta access was checked, but Premium could not be confirmed. Refresh membership to retry.');
+  await win.BasketBossVerifiedPremium?.refresh?.(true);requireCurrent(actor);
+  notifyMembership();
+  return {ok:true,premiumAccess:true,provider:state.provider};
+ });}
  async function drain(){
   if(busy||destroyed||isDeleting()||!pin()||!queued.size)return;
   await run(async actor=>{
@@ -134,7 +162,7 @@ export function installNativeApplePurchases({plugin,apiURL,readSession,fetch:per
   }catch{}
   void refresh();
  }
- function invalidate(event){const next=identity();if(event?.type==='basketboss:session-changed'&&next===lastIdentity&&!isDeleting()){void refresh();return;}lastIdentity=next;generation++;viewRevision++;for(const request of requests)request.abort();queued.clear();emit({authenticated:!!pin(),premiumAccess:false,membershipState:pin()?'checking':'signed_out',provider:null,subscription:null});void refresh().then(recoverPending);}
+ function invalidate(event){const next=identity();if(event?.type==='basketboss:session-changed'&&next===lastIdentity&&!isDeleting()){void refresh();return;}lastIdentity=next;generation++;viewRevision++;for(const request of requests)request.abort();queued.clear();emit({authenticated:!!pin(),premiumAccess:false,membershipState:pin()?'checking':'signed_out',provider:null,subscription:null,beta:null});void refresh().then(recoverPending);}
  const accountEvents=['basketboss:session-changed','basketboss:account-deletion-started','basketboss:account-deletion-cancelled','basketboss:account-deletion-deleted'];
  for(const event of accountEvents)win?.addEventListener?.(event,invalidate);
  const onStorage=event=>{if(event.key==='basketboss_cloud_session_v1')invalidate(event);};
@@ -143,5 +171,5 @@ export function installNativeApplePurchases({plugin,apiURL,readSession,fetch:per
  if(plugin?.addListener)for(const [name,listener]of [['purchaseIntentReceived',receivePurchaseIntent],['transactionsUpdated',enqueue]])Promise.resolve(plugin.addListener(name,listener)).then(handle=>{if(destroyed)void handle?.remove?.();else listenerHandles.push(handle);}).catch(()=>{});
  async function recoverPending(){const actor=pin();if(!destroyed&&actor&&!isDeleting()&&plugin?.getPendingTransactions){try{const result=await plugin.getPendingTransactions();if(current(actor))enqueue(result);}catch{}}}
  const ready=refresh().then(recoverPending);
- return {ready,subscribe,restore,manage,refresh,loadProducts,subscribeState(listener){listeners.add(listener);listener({...state,products:[...state.products]});return ()=>listeners.delete(listener);},get state(){return {...state,products:[...state.products]};},destroy(){destroyed=true;generation++;for(const request of requests)request.abort();requests.clear();queued.clear();listeners.clear();for(const handle of listenerHandles)void handle?.remove?.();for(const event of accountEvents)win?.removeEventListener?.(event,invalidate);win?.removeEventListener?.('storage',onStorage);win?.removeEventListener?.('focus',onFocus);}};
+ return {ready,subscribe,restore,manage,claimBeta,refresh,loadProducts,subscribeState(listener){listeners.add(listener);listener({...state,products:[...state.products]});return ()=>listeners.delete(listener);},get state(){return {...state,products:[...state.products]};},destroy(){destroyed=true;generation++;for(const request of requests)request.abort();requests.clear();queued.clear();listeners.clear();for(const handle of listenerHandles)void handle?.remove?.();for(const event of accountEvents)win?.removeEventListener?.(event,invalidate);win?.removeEventListener?.('storage',onStorage);win?.removeEventListener?.('focus',onFocus);}};
 }

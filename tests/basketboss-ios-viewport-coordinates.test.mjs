@@ -5,15 +5,16 @@ import vm from 'node:vm';
 const swift=fs.readFileSync('ios/App/App/AppDelegate.swift','utf8');
 const script=swift.slice(swift.indexOf('private enum BasketBossAccountKeyboardSetup')).match(/#"""\n([\s\S]*?)\n\s*"""#/)[1];
 function harness(){
- let callback,probe;
+ let callback,probe='';
  const viewport={height:932,width:402,offsetTop:0,offsetLeft:0,pageTop:0,pageLeft:0,scale:1};
  const rect={top:0,left:0,bottom:932,right:402,height:932,width:402};
- const host={contains:()=>true,getClientRects:()=>[rect],getBoundingClientRect:()=>rect,appendChild:n=>{probe=n;}};
+ const host={contains:()=>true,getClientRects:()=>[rect],getBoundingClientRect:()=>rect};
  const shell={closest:()=>({})};
- const document={readyState:'complete',body:{scrollTop:0},documentElement:{scrollTop:0},querySelector:()=>shell,getElementById:id=>id==='bbAccountKeyboardProbe'?probe:id==='bbNewOnboarding'?host:id==='cloud-auth'?{closest:()=>null}:null,createElement:()=>({style:{}})};
- const win={BBNativeStartup:{phase:'handoff'},bbKeyboardSmokeOnboarding:true,visualViewport:viewport,scrollY:0,scrollX:0};
+ const document={readyState:'complete',body:{scrollTop:0},documentElement:{scrollTop:0},querySelector:selector=>selector==='.shell'?shell:null,getElementById:id=>id==='bbNewOnboarding'?host:id==='cloud-auth'?{closest:()=>null}:null,createElement:()=>({style:{}})};
+ // The native runner receives probe text through the WebKit message handler.
+ const win={webkit:{messageHandlers:{bbNativeKeyboardProbe:{postMessage:text=>{probe=text;}}}},BBNativeStartup:{phase:'handoff'},bbKeyboardSmokeOnboarding:true,visualViewport:viewport,scrollY:0,scrollX:0};
  vm.runInNewContext(script,{window:win,document,localStorage:{setItem(){}},sessionStorage:{setItem(){}},setInterval:fn=>{callback=fn;},clearInterval(){},getComputedStyle:n=>({position:'fixed',visibility:'hidden',top:'0px',height:'932px'}),innerHeight:932,innerWidth:402});
- const sample=()=>{callback();return probe.textContent;};sample();
+ const sample=()=>{callback();return probe;};sample();
  return {win,viewport,rect,sample};
 }
 test('WKWebView keyboard pan uses document coordinates without counting it as page scroll',()=>{

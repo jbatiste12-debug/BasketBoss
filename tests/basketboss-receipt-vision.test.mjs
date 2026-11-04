@@ -36,7 +36,7 @@ test('receipt prompt enforces privacy, no inferred packs and the distinction fro
   assert.deepEqual(request.parts[1].inline_data, {mime_type: photo.mimeType, data: photo.imageBase64});
 });
 
-function setup({enabled = true, migrated = true, quota = true} = {}) {
+function setup({enabled = true, migrated = true, autoStockReady = true, quota = true} = {}) {
   const original = globalThis.fetch, calls = [], bindings = [];
   const env = {BB_RECEIPT_INVENTORY_ENABLED: String(enabled), BB_PREMIUM_SINGLE_SESSION_ENABLED: 'true', BB_PREMIUM_AI_ENABLED: 'true', BB_BILLING_MODE: 'live', BB_BILLING_ENABLED: 'true', BB_OWNER_USER_ID: user, CF_PAGES_BRANCH: 'main', SUPABASE_URL: 'https://kbhyosxuvlcazyzzinqv.supabase.co', SUPABASE_PUBLISHABLE_KEY: 'public_' + 'p'.repeat(30), SUPABASE_SECRET_KEY: 'sb_secret_' + 's'.repeat(40), GEMINI_API_KEY: 'test-secret', TURNSTILE_SECRET_KEY: 'test-secret', TURNSTILE_SITE_KEY: 'test-site', BB_AI_GLOBAL_DAILY_CAP: '20',
     BILLING_DB: {prepare(sql) {return {bind(...values) {bindings.push({sql, values});return this;}, async first() {return sql.includes('bb_paid_entitlements') ? null : quota ? {used: 1} : null;}};}}};
@@ -44,7 +44,7 @@ function setup({enabled = true, migrated = true, quota = true} = {}) {
     calls.push(String(address));
     if (String(address).endsWith('/auth/v1/user')) return Response.json({id: user, email: 'owner@example.test', email_confirmed_at: '2026-10-31T00:00:00Z'});
     if (String(address).endsWith('/rpc/bb_hh_service_session_ok')) return Response.json(true);
-    if (String(address).endsWith('/rpc/bb_receipt_inventory_service')) return migrated ? Response.json({ok: true}) : Response.json({code: 'PGRST202'}, {status: 404});
+    if (String(address).endsWith('/rpc/bb_receipt_inventory_service')) return migrated ? Response.json({ok: true, autoStockReady}) : Response.json({code: 'PGRST202'}, {status: 404});
     if (String(address).includes('generativelanguage')) {
       const body = JSON.parse(options.body);assert.equal(body.generationConfig.responseSchema.required.includes('receiptTotal'), true);
       return Response.json({candidates: [{content: {parts: [{text: JSON.stringify(receipt)}]}}]});
@@ -63,7 +63,7 @@ test('full receipt request retains the existing five-scan quota and returns a se
   } finally {fixture.restore();}
 });
 test('disabled or missing inventory migration prevents quota use and sending any photograph', async () => {
-  for (const options of [{enabled: false}, {migrated: false}]) {
+  for (const options of [{enabled: false}, {migrated: false}, {autoStockReady: false}]) {
     const fixture = setup(options);try {
       assert.equal((await onRequest({request: fixture.make(), env: fixture.env, params: {action: 'scan'}})).status, 503);
       assert.equal(fixture.calls.some(url => url.includes('generativelanguage')), false);
