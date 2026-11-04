@@ -6,11 +6,12 @@
  * Enforces at most one CURRENT server-authorized paid-device session per user.
  */
 import {authenticatedUser,json,isLive} from '../../bb-server-lib/bb-billing.js';
-import {livePaidBillingEnabled} from '../../bb-server-lib/bb-paid-access.js';
+import {livePaidBillingEnabled,testFlightBetaEnabled} from '../../bb-server-lib/bb-paid-access.js';
 import {seatGateEnabled,isNewestVerifiedSession} from '../../bb-server-lib/bb-premium-seat.js';
 import {nativeCorsResponse,nativePreflightResponse} from '../../bb-server-lib/bb-request-origin.js';
 import {ensureDeletionSchema,isAccountDeleting} from '../../bb-server-lib/bb-account-deletion.js';
 const PROTECTED=[
+ /^\/api\/apple\/testflight-beta\/?$/,
  /^\/api\/tts\/?$/,
  /^\/api\/cook-assistant\/?$/,
  /^\/api\/recipes\/premium\/?$/,
@@ -26,7 +27,7 @@ async function enforcePremiumSession({request,env,next},verifiedUser){
  if(!PROTECTED.some(re=>re.test(url.pathname))||!seatGateEnabled(env))return next();
  // Prevent a session-setting mistake from enabling this on QA/sandbox tenants.
  const liveHosts=new Set(['basketboss.co.uk','www.basketboss.co.uk','basketboss-site.pages.dev']);
- if(url.protocol!=='https:'||!liveHosts.has(url.hostname)||!livePaidBillingEnabled(env)||
+ if(url.protocol!=='https:'||!liveHosts.has(url.hostname)||!(livePaidBillingEnabled(env)||testFlightBetaEnabled(env))||
     (env.CF_PAGES_BRANCH&&env.CF_PAGES_BRANCH!=='main')||
     env.SUPABASE_URL!=='https://kbhyosxuvlcazyzzinqv.supabase.co')
   return json({error:'Premium session verification misconfigured'},503);

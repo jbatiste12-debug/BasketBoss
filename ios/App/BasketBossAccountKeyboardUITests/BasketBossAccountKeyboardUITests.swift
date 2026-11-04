@@ -55,6 +55,7 @@ final class BasketBossAccountKeyboardUITests: XCTestCase {
         executionTimeAllowance = 180
         let app = XCUIApplication(bundleIdentifier: "uk.co.basketboss.app")
         app.launchArguments = uiTestLaunchArguments + [onboarding ? "--bb-native-onboarding-keyboard-smoke" : "--bb-native-account-keyboard-smoke"]
+        app.launchArguments.append(password ? "--bb-keyboard-password" : "--bb-keyboard-email")
         app.launchEnvironment = uiTestLaunchEnvironment
         // XCTest runs registered teardown even when continueAfterFailure stops
         // a test through an Objective-C exception; Swift defer is not reliable

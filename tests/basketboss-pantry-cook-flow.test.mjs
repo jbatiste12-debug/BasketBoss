@@ -111,7 +111,8 @@ function namedFunction(name, next) {
 }
 
 function actualPlanner(h) {
-  const price = {canonical, regionMultipliers: {UK: 1}, price: () => null, repriceBasket: value => value};
+  const pricing=vm.createContext({});vm.runInContext(fs.readFileSync(new URL('../basketboss-pricing-v19.js',import.meta.url),'utf8'),pricing);
+  const price = {...pricing.BBPriceV19,canonical, regionMultipliers: {UK: 1}, price: () => null, repriceBasket: value => value};
   const recipes = [{id: 'rice-dinner', servings: 2, ingredients: [['Rice', '600g', 1]]}];
   const normalized = [{id: 'rice-dinner', ingredients: [{name: 'Rice', key: 'rice', quantity: 600, unit: 'g', status: 'PARSED'}]}];
   let week = 'first-shop';

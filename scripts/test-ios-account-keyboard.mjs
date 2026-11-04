@@ -36,6 +36,26 @@ function readTestSummary(){
  return summary;
 }
 function requireFourPassingTests(summary){if(summary.passedTests!==4||summary.failedTests!==0||summary.skippedTests!==0)throw Error('required_keyboard_tests_missing');}
+function collectDismissalDiagnostics(){
+ // The native writer exists only in DEBUG simulator UI-test launches. Missing
+ // diagnostics never substitute for the four real software-keyboard tests.
+ if(!activated)return;
+ try{
+  const container=run('simctl','get_app_container',phone,'uk.co.basketboss.app','data'),diagnostics={};
+  for(const scope of ['account','onboarding'])for(const target of ['email','password']){
+   const file=path.join(container,'Documents','bb-keyboard-dismissal-'+scope+'-'+target+'.json');
+   if(fs.existsSync(file)){
+    const raw=JSON.parse(fs.readFileSync(file,'utf8'));
+    if(!Number.isInteger(raw.requests)||raw.requests<0||raw.requests>100)continue;
+    const entry={requests:raw.requests};
+    for(const key of ['webViewEnded','windowEnded','responderActionSent'])if(typeof raw[key]==='boolean')entry[key]=raw[key];
+    diagnostics[scope+'-'+target]=entry;
+   }
+  }
+  save('keyboard-dismissals.json',JSON.stringify(diagnostics,null,2));
+  console.log('::notice title=BasketBoss UIKit dismissal diagnostics::'+JSON.stringify(diagnostics));
+ }catch{console.log('UIKit dismissal diagnostics unavailable.');}
+}
 function report(){
  const report={passed:!failure,realSoftwareKeyboard:!failure,emailFocus:!failure,passwordFocus:!failure,onboardingEmailFocus:!failure,onboardingPasswordFocus:!failure,backgroundLocked:!failure,requiredTests:4,credentialsEntered:false,signInSubmitted:false,runtimeVersion,deviceName,reusedCIOnlySimulator:resetSyntheticCIApp,failureStage:failure?failureStage:'',failure};
  save('report.json',JSON.stringify(report,null,2));console.log('::notice title=BasketBoss native account keyboard::'+JSON.stringify(report));
@@ -103,6 +123,7 @@ function executeTests(){
  mark('test_result');requireFourPassingTests(readTestSummary());
 }
 function verifyWorkflow(){
+ collectDismissalDiagnostics();
  const outcomes=[['BB_KEYBOARD_COMPILE_OUTCOME','build_ui_tests'],['BB_KEYBOARD_ACTIVATE_OUTCOME',failureStage||'activate_ui_runner'],['BB_KEYBOARD_EXECUTE_OUTCOME','real_keyboard_tests']];
  // Read any available result for diagnostics, but never let a partial/stale
  // summary mask a failed, skipped, cancelled or timed-out workflow step.

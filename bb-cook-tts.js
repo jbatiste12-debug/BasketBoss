@@ -9,6 +9,32 @@
  const KEY='basketboss_cloud_session_v1',MAX_TEXT=1200,MAX_AUDIO=2*1024*1024;
  const failure=code=>Object.assign(new Error(code),{code});
  const cancelled=()=>Object.assign(new Error('Speech cancelled'),{name:'AbortError',code:'BB_TTS_CANCELLED'});
+ // Error bodies are untrusted. Read only a small JSON envelope and retain
+ // allowlisted categories, never the provider's text or arbitrary codes.
+ const serviceCodes=Object.freeze({
+  BB_COOK_PROVIDER_ACCESS:'BB_TTS_SERVICE_ACCESS',
+  BB_COOK_PROVIDER_LIMIT:'BB_TTS_SERVICE_LIMIT',
+  BB_COOK_PROVIDER_UNAVAILABLE:'BB_TTS_SERVICE_UNAVAILABLE',
+  BB_COOK_PROVIDER_RESPONSE:'BB_TTS_SERVICE_RESPONSE',
+  BB_COOK_PROVIDER_REJECTED:'BB_TTS_SERVICE_RESPONSE',
+  BB_COOK_SERVICE_FAILURE:'BB_TTS_SERVICE_UNAVAILABLE',
+  BB_COOK_SERVICE_UNAVAILABLE:'BB_TTS_SERVICE_UNAVAILABLE',
+  BB_COOK_DAILY_LIMIT:'BB_TTS_LIMIT'
+ });
+ async function serviceCode(response,check,add){
+  let reader;
+  try{
+   if(!/^application\/json(?:;|$)/i.test(response.headers?.get?.('Content-Type')||'')||Number(response.headers?.get?.('Content-Length')||0)>2048)return null;
+   reader=response.body?.getReader?.();if(!reader)return null;
+   const cancel=()=>{try{Promise.resolve(reader.cancel()).catch(()=>{});}catch{}};
+   add(cancel);const chunks=[];let size=0;
+   for(;;){const part=await reader.read();check();if(part.done)break;size+=part.value.byteLength;if(size>2048)return null;chunks.push(part.value);}
+   const bytes=new Uint8Array(size);let offset=0;for(const chunk of chunks){bytes.set(chunk,offset);offset+=chunk.byteLength;}
+   const value=JSON.parse(new TextDecoder('utf-8',{fatal:true}).decode(bytes));
+   return Object.hasOwn(serviceCodes,value?.code)?serviceCodes[value.code]:null;
+  }catch{return null;}
+  finally{try{Promise.resolve(reader?reader.cancel():response.body?.cancel?.()).catch(()=>{});}catch{}}
+ }
  function create({window:win=globalThis.window}={}){
   if(!win)throw failure('BB_TTS_UNAVAILABLE');
   const later=win.setTimeout?.bind(win)||setTimeout,clear=win.clearTimeout?.bind(win)||clearTimeout;
@@ -57,7 +83,12 @@
    const body=privateAudio?{text,private:true}:prepare?{text,prepare:true}:{text};
    const response=await win.fetch('/api/tts',{method:'POST',headers:{'Authorization':'Bearer '+pin.token,'Content-Type':'application/json','Accept':prepare?'application/json':'audio/mpeg'},body:JSON.stringify(body),signal:scope.signal,cache:'no-store',credentials:'omit',redirect:'error'});
    try{scope.check();}catch(error){try{await response?.body?.cancel?.();}catch{}throw error;}
-   if(!response?.ok){try{await response?.body?.cancel?.();}catch{}throw failure(({401:'BB_TTS_AUTH',403:'BB_TTS_PREMIUM_REQUIRED',409:'BB_TTS_DELETING'})[response?.status]||'BB_TTS_UNAVAILABLE');}return response;
+   if(!response?.ok){
+    const definitive=({401:'BB_TTS_AUTH',403:'BB_TTS_PREMIUM_REQUIRED',409:'BB_TTS_DELETING'})[response?.status];
+    if(definitive){try{Promise.resolve(response.body?.cancel?.()).catch(()=>{});}catch{}throw failure(definitive);}
+    const code=await serviceCode(response,scope.check,scope.add);scope.check();
+    throw failure(code||'BB_TTS_UNAVAILABLE');
+   }return response;
   }
   async function prepare(text,options={}){
    let prompt;try{prompt=validate(text);}catch(error){return Promise.reject(error);}

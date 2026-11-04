@@ -30,7 +30,7 @@ import fs from 'node:fs';
 import vm from 'node:vm';
 const html=fs.readFileSync('index.html','utf8');
 const pantryText=html.slice(html.indexOf('const BB307Pantry=(()=>{'),html.indexOf('// BasketBoss 321 v7 original-design PREVIEW'));
-const pantryContext=vm.createContext({BB_WHOLE_PRODUCE_GRAMS:{},BBPriceV19:{canonical:s=>String(s).toLowerCase().trim()}});vm.runInContext(pantryText,pantryContext);
+const pantryContext=vm.createContext({BB_WHOLE_PRODUCE_GRAMS:{}});vm.runInContext(fs.readFileSync('basketboss-pricing-v19.js','utf8'),pantryContext);vm.runInContext(pantryText,pantryContext);
 const pantry=vm.runInContext('BB307Pantry',pantryContext);
 test('real pantry consumption preserves units, never goes negative and does not guess incompatible stock',()=>{
  const result=pantry.reconcileStock({'rice|g':1000,'milk|ml':2000,'onion|each':2},[{key:'Rice',unit:'g',required:600},{key:'Milk',unit:'ml',required:500},{key:'Onion',unit:'each',required:.5}]);

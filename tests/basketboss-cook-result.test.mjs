@@ -99,9 +99,9 @@ const tick=()=>new Promise(resolve=>setImmediate(resolve));
 function generation(){
  const requests=[],rendered=[],messages=[],consents=[],events=new Map();let token='member-A',deleting=false,allowConsent=true,cancelled=0;
  const controls={'#generated':{innerHTML:'',replaceChildren(){this.innerHTML='';}},'#generate':{disabled:false}};
- const window={BBAccountDeletion:{isDeleting:()=>deleting},BBMealImage:{cancelAll(){cancelled++;}},addEventListener:(name,callback)=>events.set(name,callback),BBCookResult:{render(host,recipe,options){rendered.push({recipe,options});host.innerHTML='RECIPE READY';return{cancel(){cancelled++;}};},clear(host){host.replaceChildren();}}};
+ const window={BBAccountDeletion:{isDeleting:()=>deleting},BBMealImage:{cancelAll(){cancelled++;}},addEventListener(name,callback){const prior=events.get(name);events.set(name,prior?()=>{prior();callback();}:callback);},BBCookResult:{render(host,recipe,options){rendered.push({recipe,options});host.innerHTML='RECIPE READY';return{cancel(){cancelled++;}};},clear(host){host.replaceChildren();}}};
  const context=vm.createContext({window,bbPaidToken:()=>token,list:()=>[{name:'Cooked chicken'},{name:'Pasta'}],message:(...values)=>messages.push(values),confirm:text=>{consents.push(text);return allowConsent;},$:selector=>controls[selector],esc:value=>String(value??'').replace(/[&<>"']/g,char=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[char])),requestBody:(verb,body)=>new Promise((resolve,reject)=>requests.push({verb,body,resolve,reject}))});
- vm.runInContext('let bb5Confirmed=true,mode="only",generateInFlight=false,generateRevision=0,generateActor=null,generatedView=null;\n'+generationSource,context);
+ vm.runInContext('const bbPhotoMealMode=false;let bbPhotoMealNames=null,bbPhotoReviewToken=null,bb5Confirmed=true,mode="only",generateInFlight=false,generateRevision=0,generateActor=null,generatedView=null;\n'+generationSource,context);
  return {context,requests,rendered,messages,consents,events,controls,run:script=>vm.runInContext(script,context),setToken:value=>{token=value;},setDeleting:value=>{deleting=value;},denyConsent:()=>{allowConsent=false;},get cancelled(){return cancelled;}};
 }
 

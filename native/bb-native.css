@@ -22,6 +22,7 @@ html.bb-native-ios:not(.bb-cook-ready) body .bb17513-meal-back{display:inline-fl
 .bb-native-ios .bb-native-membership h4{font-size:22px;line-height:1.25;margin:20px 0 8px;letter-spacing:-.025em}
 .bb-native-ios .bb-native-apple-plans{display:grid;grid-template-columns:repeat(auto-fit,minmax(190px,1fr));gap:12px;margin:16px 0}
 .bb-native-ios .bb-native-membership .bb-native-apple-plan{display:grid;text-align:left;gap:7px;width:100%;margin:0;padding:17px;border-radius:14px;background:#195f3c;color:#fff;min-height:130px}
+.bb-native-ios .bb-native-membership .bb-native-beta-unlock{display:block;min-height:56px;text-align:center;font:inherit;font-weight:750;line-height:1.35}
 .bb-native-ios .bb-native-apple-plan strong{font-size:17px}.bb-native-ios .bb-native-apple-plan span{font-size:23px;line-height:1.2;font-weight:800}.bb-native-ios .bb-native-apple-plan small{font-size:13px;line-height:1.4;color:#e9f4df}
 .bb-native-ios .bb-native-membership .bb-native-apple-secondary{background:#fffdf7;color:#195f3c}
 .bb-native-ios .bb-native-membership button:disabled{opacity:.55;cursor:wait}

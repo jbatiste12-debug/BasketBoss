@@ -3,13 +3,16 @@ name: Verify iOS native build
 on:
   workflow_dispatch:
   push:
-    branches: [main, codex/native-cook-fix, release/recipe-editorial-collections, feature/conversational-voice-cook]
+    branches: [main, codex/native-cook-fix, release/recipe-editorial-collections, feature/conversational-voice-cook, fix/cook-mentor-reply-failure]
     paths:
       - .github/workflows/ios-native-build.yml
       - .github/workflows/inspect-account-keyboard.yml
       - capacitor.config.json
       - package.json
       - package-lock.json
+      - basketboss-pricing-v19.js
+      - tests/basketboss-canonical-measure.test.mjs
+      - tests/basketboss-ingredient-standardisation.test.mjs
       - index.html
       - app.html
       - bb-account-deletion.*
@@ -18,6 +21,7 @@ on:
       - bb-evening-*
       - bb-cook-voice.*
       - bb-cook-assistant.js
+      - bb-saved-weeks.*
       - bb-cook-speech-text.js
       - bb-cook-tts.js
       - bb-cook-experience.css
@@ -52,6 +56,17 @@ on:
       - make-a-meal.*
       - bb-onboarding-v2.*
       - tests/basketboss-native-*.test.mjs
+      - tests/basketboss-garlic-basket.test.mjs
+      - tests/basketboss-pantry-reconcile.test.mjs
+      - tests/basketboss-cook-phase-navigation.test.mjs
+      - tests/basketboss-saved-weeks.test.mjs
+      - tests/basketboss-saved-week-host.test.mjs
+      - tests/basketboss-cook-voice.test.mjs
+      - tests/basketboss-evening-pivot-app.test.mjs
+      - tests/basketboss-landing-meal-pricing.test.mjs
+      - tests/basketboss-photo-meal*.test.mjs
+      - tests/basketboss-cook-studio.test.mjs
+      - tests/basketboss-cook-result.test.mjs
       - native/**
       - ios/**
       - scripts/*native*.mjs
@@ -78,9 +93,38 @@ jobs:
       - name: Install pinned native dependencies
         run: npm ci --no-audit --no-fund
       - name: Build and sync iOS workspace
-        run: npm run ios:sync
+        run: |
+          if ! npm run ios:sync; then
+            echo 'Retrying iOS sync once after a dependency setup failure.'
+            npm run ios:sync
+          fi
+      - name: Verify build 7 ingredient units, basket, pantry, saved weeks and Cook regressions
+        run: >-
+          node --test --test-isolation=none
+          tests/basketboss-garlic-basket.test.mjs
+          tests/basketboss-canonical-measure.test.mjs
+          tests/basketboss-ingredient-standardisation.test.mjs
+          tests/basketboss-pantry-reconcile.test.mjs
+          tests/basketboss-saved-weeks.test.mjs
+          tests/basketboss-saved-week-host.test.mjs
+          tests/basketboss-cook-phase-navigation.test.mjs
+          tests/basketboss-cook-voice.test.mjs
+          tests/basketboss-evening-pivot-app.test.mjs
+          tests/basketboss-landing-meal-pricing.test.mjs
       - name: Test native routing and permissions
         run: npm run test:native
+      - name: Verify photo review, recipe creation and matching meal pictures
+        run: >-
+          node --test --test-isolation=none
+          tests/basketboss-photo-meal-flow.test.mjs
+          tests/basketboss-photo-meal-ingredients.test.mjs
+          tests/basketboss-cook-studio.test.mjs
+          tests/basketboss-cook-result.test.mjs
+          tests/basketboss-meal-image-client.test.mjs
+          tests/basketboss-meal-image.test.mjs
+          tests/basketboss-pantry-camera.test.mjs
+          tests/basketboss-ai-quota-autoinit.test.mjs
+          tests/basketboss-ai-turnstile-safari-premium.test.mjs
       - name: Compile the iOS simulator app without signing credentials
         run: >-
           xcodebuild
@@ -96,7 +140,7 @@ jobs:
         run: echo '::notice title=BasketBoss iOS native build::{"simulatorBuild":true,"bundleId":"uk.co.basketboss.app","minimumIOS":"16.0","signingTested":false}'
       # Finish device compilation before Simulator startup; Cook and keyboard
       # checks still determine whether this verification run succeeds.
-      - name: Create the unsigned iPhone archive for build 5
+      - name: Create the unsigned iPhone archive for build 7
         run: |
           xcodebuild \
             -workspace ios/App/App.xcworkspace \
@@ -105,19 +149,19 @@ jobs:
             -sdk iphoneos \
             -destination 'generic/platform=iOS' \
             -derivedDataPath /tmp/basketboss-ios-device-build \
-            -archivePath "$RUNNER_TEMP/BasketBoss-1.0-build5.xcarchive" \
+            -archivePath "$RUNNER_TEMP/BasketBoss-1.0-build7.xcarchive" \
             CODE_SIGNING_ALLOWED=NO \
             archive
-          test "$(/usr/libexec/PlistBuddy -c 'Print CFBundleVersion' "$RUNNER_TEMP/BasketBoss-1.0-build5.xcarchive/Products/Applications/App.app/Info.plist")" = '5'
-          test "$(/usr/libexec/PlistBuddy -c 'Print CFBundleIdentifier' "$RUNNER_TEMP/BasketBoss-1.0-build5.xcarchive/Products/Applications/App.app/Info.plist")" = 'uk.co.basketboss.app'
+          test "$(/usr/libexec/PlistBuddy -c 'Print CFBundleVersion' "$RUNNER_TEMP/BasketBoss-1.0-build7.xcarchive/Products/Applications/App.app/Info.plist")" = '7'
+          test "$(/usr/libexec/PlistBuddy -c 'Print CFBundleIdentifier' "$RUNNER_TEMP/BasketBoss-1.0-build7.xcarchive/Products/Applications/App.app/Info.plist")" = 'uk.co.basketboss.app'
           ditto -c -k --sequesterRsrc --keepParent \
-            "$RUNNER_TEMP/BasketBoss-1.0-build5.xcarchive" \
-            "$RUNNER_TEMP/BasketBoss-1.0-build5-unsigned.xcarchive.zip"
+            "$RUNNER_TEMP/BasketBoss-1.0-build7.xcarchive" \
+            "$RUNNER_TEMP/BasketBoss-1.0-build7-unsigned.xcarchive.zip"
       - name: Retain the unsigned iPhone archive
         uses: actions/upload-artifact@v6
         with:
-          name: BasketBoss-1.0-build5-unsigned-iPhone-archive
-          path: ${{ runner.temp }}/BasketBoss-1.0-build5-unsigned.xcarchive.zip
+          name: BasketBoss-1.0-build7-unsigned-iPhone-archive
+          path: ${{ runner.temp }}/BasketBoss-1.0-build7-unsigned.xcarchive.zip
           if-no-files-found: error
           retention-days: 7
           compression-level: 0

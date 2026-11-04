@@ -26,6 +26,32 @@
   if(value.mentorName!==undefined&&!validName(value.mentorName))throw failure('BB_MENTOR_CONTEXT');
   return {question:value.question.trim(),recipe:{id:r.id,title:r.title,servings:r.servings,ingredients:r.ingredients.map(i=>({name:i.name,quantity:i.quantity})),steps:[...r.steps],currentStep,phase:r.phase||'cook',region:r.region||'UK'},history:history.map(h=>({role:h.role,text:h.text})),...(value.mentorName===undefined?{}:{mentorName:value.mentorName.trim()})};
  }
+ // Error bodies are untrusted. Read only a small JSON envelope and retain
+ // allowlisted categories, never the provider's text or arbitrary codes.
+ const serviceCodes=Object.freeze({
+  BB_COOK_PROVIDER_ACCESS:'BB_MENTOR_SERVICE_ACCESS',
+  BB_COOK_PROVIDER_LIMIT:'BB_MENTOR_SERVICE_LIMIT',
+  BB_COOK_PROVIDER_UNAVAILABLE:'BB_MENTOR_SERVICE_UNAVAILABLE',
+  BB_COOK_PROVIDER_RESPONSE:'BB_MENTOR_SERVICE_RESPONSE',
+  BB_COOK_PROVIDER_REJECTED:'BB_MENTOR_SERVICE_RESPONSE',
+  BB_COOK_SERVICE_FAILURE:'BB_MENTOR_SERVICE_UNAVAILABLE',
+  BB_COOK_SERVICE_UNAVAILABLE:'BB_MENTOR_SERVICE_UNAVAILABLE',
+  BB_COOK_DAILY_LIMIT:'BB_MENTOR_LIMIT'
+ });
+ async function serviceCode(response,check,add){
+  let reader;
+  try{
+   if(!/^application\/json(?:;|$)/i.test(response.headers?.get?.('Content-Type')||'')||Number(response.headers?.get?.('Content-Length')||0)>2048)return null;
+   reader=response.body?.getReader?.();if(!reader)return null;
+   const cancel=()=>{try{Promise.resolve(reader.cancel()).catch(()=>{});}catch{}};
+   add(cancel);const chunks=[];let size=0;
+   for(;;){const part=await reader.read();check();if(part.done)break;size+=part.value.byteLength;if(size>2048)return null;chunks.push(part.value);}
+   const bytes=new Uint8Array(size);let offset=0;for(const chunk of chunks){bytes.set(chunk,offset);offset+=chunk.byteLength;}
+   const value=JSON.parse(new TextDecoder('utf-8',{fatal:true}).decode(bytes));
+   return Object.hasOwn(serviceCodes,value?.code)?serviceCodes[value.code]:null;
+  }catch{return null;}
+  finally{try{Promise.resolve(reader?reader.cancel():response.body?.cancel?.()).catch(()=>{});}catch{}}
+ }
  function create({window:win=globalThis.window}={}){
   if(!win)throw failure('BB_MENTOR_UNAVAILABLE');
   const read=()=>{try{return win.BasketBossSession?.read?.()||JSON.parse(win.localStorage?.getItem(KEY)||'null');}catch{return null;}};
@@ -52,7 +78,12 @@
     for(const name of ['basketboss:session-changed','basketboss:account-deletion-started']){win.addEventListener?.(name,changed);cleanups.push(()=>win.removeEventListener?.(name,changed));}
     if(typeof win.fetch!=='function')throw failure('BB_MENTOR_UNAVAILABLE');
     const response=await win.fetch('/api/cook-assistant',{method:'POST',headers:{Authorization:'Bearer '+pin.token,'Content-Type':'application/json',Accept:'application/json'},body,signal:controller.signal,credentials:'omit',cache:'no-store',redirect:'error'});
-    check();if(!response?.ok)throw failure(({401:'BB_MENTOR_AUTH',403:'BB_MENTOR_PREMIUM_REQUIRED',409:'BB_MENTOR_DELETING',429:'BB_MENTOR_LIMIT',400:'BB_MENTOR_CONTEXT',413:'BB_MENTOR_CONTEXT'})[response?.status]||'BB_MENTOR_UNAVAILABLE');
+    check();if(!response?.ok){
+     const definitive=({401:'BB_MENTOR_AUTH',403:'BB_MENTOR_PREMIUM_REQUIRED',409:'BB_MENTOR_DELETING',400:'BB_MENTOR_CONTEXT',413:'BB_MENTOR_CONTEXT'})[response?.status];
+     if(definitive){try{Promise.resolve(response.body?.cancel?.()).catch(()=>{});}catch{}throw failure(definitive);}
+     const code=await serviceCode(response,check,fn=>cleanups.push(fn));check();
+     throw failure(code||(response?.status===429?'BB_MENTOR_LIMIT':'BB_MENTOR_UNAVAILABLE'));
+    }
     if(!/^application\/json(?:;|$)/i.test(response.headers?.get?.('Content-Type')||'')||Number(response.headers?.get?.('Content-Length')||0)>MAX_REPLY)throw failure('BB_MENTOR_RESPONSE');
     let raw='',size=0;const reader=response.body?.getReader?.();
     if(reader){

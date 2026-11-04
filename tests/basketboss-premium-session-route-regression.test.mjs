@@ -3,14 +3,15 @@ import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import path from 'node:path';
 import * as requestOrigin from '../bb-server-lib/bb-request-origin.js';
+import {testFlightBetaEnabled} from '../bb-server-lib/bb-testflight-beta.js';
 const ROOT=process.env.BB_RC_TEST_ROOT||process.cwd();
 const read=f=>fs.readFileSync(path.join(ROOT,f),'utf8');
 const middlewareCode=read('functions/api/_middleware.js');
 const input=middlewareCode
  .replace("import {authenticatedUser,json,isLive} from '../../bb-server-lib/bb-billing.js';",
    'const {authenticatedUser,json,isLive}=globalThis.__bbBoundaryBilling;')
- .replace("import {livePaidBillingEnabled} from '../../bb-server-lib/bb-paid-access.js';",
-   "const livePaidBillingEnabled=env=>globalThis.__bbBoundaryBilling.isLive(env)||(env.APPLE_BILLING_ENABLED==='true'&&env.APPLE_ENVIRONMENT==='Production');")
+ .replace("import {livePaidBillingEnabled,testFlightBetaEnabled} from '../../bb-server-lib/bb-paid-access.js';",
+   "const testFlightBetaEnabled=globalThis.__bbBoundaryBeta;const livePaidBillingEnabled=env=>globalThis.__bbBoundaryBilling.isLive(env)||(env.APPLE_BILLING_ENABLED==='true'&&env.APPLE_ENVIRONMENT==='Production');")
  .replace("import {seatGateEnabled,isNewestVerifiedSession} from '../../bb-server-lib/bb-premium-seat.js';",
    'const {seatGateEnabled,isNewestVerifiedSession}=globalThis.__bbBoundarySeat;')
  .replace("import {nativeCorsResponse,nativePreflightResponse} from '../../bb-server-lib/bb-request-origin.js';",
@@ -20,6 +21,7 @@ const input=middlewareCode
 assert.ok(!input.includes("from '../../bb-server-lib/"),'middleware imports did not resolve');
 let authCalls=0,seatCalls=0,accepted=true,sessionOk=false,throwSession=false;
 globalThis.__bbBoundaryOrigin=requestOrigin;
+globalThis.__bbBoundaryBeta=testFlightBetaEnabled;
 globalThis.__bbBoundaryBilling={
  authenticatedUser:async(req)=>{authCalls++;return accepted?{id:'11111111-1111-4111-8111-111111111111',email:'member@example.com'}:null},
  json:(obj,status=200)=>new Response(JSON.stringify(obj),{status}),
@@ -31,7 +33,7 @@ globalThis.__bbBoundarySeat={
 };
 const moduleFrom=code=>'data:text/javascript;base64,'+Buffer.from(code).toString('base64');
 const mw=await import(moduleFrom(input));
-const base={BB_PREMIUM_SINGLE_SESSION_ENABLED:'true',BB_BILLING_ENABLED:'true',BB_BILLING_MODE:'live',CF_PAGES_BRANCH:'main',SUPABASE_URL:'https://kbhyosxuvlcazyzzinqv.supabase.co'};
+const base={BB_TESTFLIGHT_BETA_ENABLED:'false',BB_PREMIUM_SINGLE_SESSION_ENABLED:'true',BB_BILLING_ENABLED:'true',BB_BILLING_MODE:'live',CF_PAGES_BRANCH:'main',SUPABASE_URL:'https://kbhyosxuvlcazyzzinqv.supabase.co'};
 const request=(path,host='https://basketboss.co.uk',method='GET')=>new Request(host+path,{method,headers:{Authorization:'Bearer test-only'}});
 const invoke=async(path,override={},host,method='GET')=>{
  let nextCalls=0;
@@ -90,6 +92,11 @@ test('Paid API requests fail closed on a session RPC outage',async()=>{
  reset();throwSession=true;
  const r=await invoke('/api/recipes/premium');
  assert.equal(r.response.status,503);assert.equal(r.nextCalls,0);
+});
+test('Beta activation retains the current-session boundary independently of paid billing configuration',async()=>{
+ reset();const beta={BB_TESTFLIGHT_BETA_ENABLED:'true',BB_BILLING_ENABLED:'false',APPLE_BILLING_ENABLED:'false'};
+ let result=await invoke('/api/apple/testflight-beta',beta);assert.equal(result.response.status,403);assert.equal(result.nextCalls,0);
+ sessionOk=true;result=await invoke('/api/apple/testflight-beta',beta);assert.equal(result.response.status,200);assert.equal(result.nextCalls,1);
 });
 test('Paid routes allow only newest verified session',async()=>{
  reset();sessionOk=true;

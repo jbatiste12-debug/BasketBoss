@@ -209,16 +209,27 @@
   }
   async function voiceReply(text){
    if(!wanted||!allowed())return;let value;try{value=beginJob('preparing');await playSpeech(text,value);}
-   catch(error){if(value&&current(value)&&error?.name!=='AbortError'&&!accessFailure(error))voiceUnavailable(value);}
+   catch(error){if(value&&current(value)&&error?.name!=='AbortError'&&!accessFailure(error))voiceUnavailable(value,error);}
    finally{if(value)finish(value);}
   }
-  function voiceUnavailable(value){
+  function voiceUnavailable(value,error){
    if(!current(value))return;
    if(value.speechId){try{Promise.resolve(native()?.cancelSpeech?.({speechId:value.speechId})).catch(()=>{});}catch{}value.speechId=null;}
-   retryVoice=true;failureNotice='Natural mentor voice is unavailable. Read the reply below or retry voice.';message(failureNotice);render();
+   retryVoice=true;
+   failureNotice=error?.code==='BB_TTS_SERVICE_ACCESS'?'The AI voice service needs attention from BasketBoss (voice access). Read the reply below.':
+    error?.code==='BB_TTS_SERVICE_LIMIT'?'The AI voice service has reached its usage limit. Read the reply below and try voice later.':
+    error?.code==='BB_TTS_LIMIT'?'Your voice allowance is used for now. Read the reply below.':
+    error?.code==='BB_TTS_SERVICE_RESPONSE'?'The AI voice service could not prepare this reply (voice response). Read it below or retry voice.':
+    error?.code==='BB_TTS_SERVICE_UNAVAILABLE'?'The AI voice service is temporarily unavailable. Read the reply below or retry voice.':
+    'Natural mentor voice is unavailable. Read the reply below or retry voice.';
+   message(failureNotice);render();
   }
   function questionFailure(error){
-   return error?.code==='BB_MENTOR_LIMIT'?'Your cooking help allowance is used for now. Follow the recipe on screen.':
+   return error?.code==='BB_MENTOR_SERVICE_ACCESS'?'The cooking AI service needs attention from BasketBoss (AI access). Follow the recipe on screen.':
+    error?.code==='BB_MENTOR_SERVICE_LIMIT'?'The cooking AI service has reached its usage limit. Please try later.':
+    error?.code==='BB_MENTOR_SERVICE_RESPONSE'?'The cooking AI service could not complete this reply (AI response). Please try again.':
+    error?.code==='BB_MENTOR_SERVICE_UNAVAILABLE'?'The cooking AI service is temporarily unavailable. Follow the recipe on screen or try again later.':
+    error?.code==='BB_MENTOR_LIMIT'?'Your cooking help allowance is used for now. Follow the recipe on screen.':
     error?.code==='BB_MENTOR_OFFLINE'?'You’re offline. Reconnect to ask your cooking mentor.':
     error?.code==='BB_MENTOR_CONTEXT'?'This recipe’s details could not be sent. Follow the complete recipe on screen.':
     'Your cooking mentor could not answer just now. Please try your question again.';
@@ -229,12 +240,14 @@
    if(!prompt||prompt.length>600){message('Ask a cooking question of up to 600 characters.');return;}
    let value;try{
     value=beginJob('thinking');question.textContent=prompt;answer.textContent='';lastSpeech='';lastAnswerPosition=null;input.value='';message('Thinking about your recipe…');render();
-    if(wanted&&backend==='native'&&!await holdNative(value))return;
+    // Obtain the written answer independently of native audio setup. Busy
+    // suppresses recognition here; playSpeech holds the microphone before any
+    // reply audio is prepared or played and reports audio-only failures.
     if(typeof assistant?.ask!=='function')throw Error('mentor_unavailable');
     const result=await assistant.ask({question:prompt,recipe:c.mentorRecipe,history:history.map(h=>({...h})),mentorName},{signal:value.controller.signal,timeoutMs:45000});
     if(!current(value))return;if(typeof result?.answer!=='string'||!result.answer.trim()||result.answer.length>1000)throw Error('mentor_response');
-    const reply=result.answer.trim();history=[...history,{role:'user',text:prompt},{role:'assistant',text:reply}].slice(-6);answer.textContent=reply;lastAnswerPosition=value.position;message(wanted?'Preparing your mentor’s voice…':'Your cooking mentor’s reply.');render();
-    if(wanted){try{await playSpeech(reply,value);}catch(error){if(current(value)&&error?.name!=='AbortError'&&!accessFailure(error))voiceUnavailable(value);}}
+    const reply=result.answer.trim();history=[...history,{role:'user',text:prompt},{role:'assistant',text:reply}].slice(-6);answer.textContent=reply;lastAnswerPosition=value.position;message(wanted?'Preparing your mentor’s voice…':value.voiceFailed?'Your cooking mentor’s reply. Voice stopped; tap Turn on mentor voice to retry.':'Your cooking mentor’s reply.');render();
+    if(wanted){try{await playSpeech(reply,value);}catch(error){if(current(value)&&error?.name!=='AbortError'&&!accessFailure(error))voiceUnavailable(value,error);}}
    }catch(error){if(value&&current(value)&&error?.name!=='AbortError'&&!accessFailure(error)){value.failed=true;failureNotice=questionFailure(error);message(failureNotice);}}
    finally{if(value){
     if(current(value)&&value.speechId){try{await native()?.cancelSpeech?.({speechId:value.speechId});}catch{}value.speechId=null;}
@@ -266,6 +279,13 @@
   }
   function nativeStatus(value,session){
    if(session!==epoch||!wanted)return;const state=typeof value==='string'?value:value?.state;
+   // A microphone failure must not cancel an independent written question.
+   // Explicit Stop, backgrounding and account changes still use stop().
+   if((state==='error'||state==='stopped')&&job&&mode==='thinking'){
+    job.voiceFailed=true;wanted=false;starting=false;clearRestart();
+    try{Promise.resolve(native()?.stop()).catch(()=>{});}catch{}
+    message('Voice stopped. Still getting your written answer…');render();return;
+   }
    if(state==='error'){stop(errorMessages[value?.code]||'Voice recognition stopped. You can type your question below.');return;}
    if(state==='stopped'){stop();return;}
    if(state==='listening'&&!busy){mode='listening';message(failureNotice||'Listening. What would you like to know?');render();}

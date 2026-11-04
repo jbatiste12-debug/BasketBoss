@@ -79,6 +79,35 @@ private enum BasketBossKeyboardUITestRuntime {
         isKeyboardSmokeLaunch && ProcessInfo.processInfo.arguments.contains("--bb-ui-tests-disable-animations")
     }
 }
+
+// Disposable UI-test diagnostics only. No input values, credentials or user
+// identifiers are recorded. A zero count distinguishes a missed bridge call.
+@MainActor private enum BasketBossKeyboardDismissalDiagnostics {
+    private static var report: [String: Any] = [:]
+    private static var file: URL? {
+        guard BasketBossKeyboardUITestRuntime.isKeyboardSmokeLaunch else { return nil }
+        let arguments = ProcessInfo.processInfo.arguments
+        let scope = arguments.contains("--bb-native-onboarding-keyboard-smoke") ? "onboarding" : "account"
+        let target = arguments.contains("--bb-keyboard-password") ? "password" : "email"
+        return FileManager.default.urls(for: .documentDirectory, in: .userDomainMask).first?
+            .appendingPathComponent("bb-keyboard-dismissal-\(scope)-\(target).json")
+    }
+
+    static func reset() { report = ["requests": 0]; save() }
+
+    static func record(webViewEnded: Bool, windowEnded: Bool, responderActionSent: Bool) {
+        guard file != nil else { return }
+        report = ["requests": (report["requests"] as? Int ?? 0) + 1,
+                  "webViewEnded": webViewEnded, "windowEnded": windowEnded,
+                  "responderActionSent": responderActionSent]
+        save()
+    }
+
+    private static func save() {
+        guard let file = file, let data = try? JSONSerialization.data(withJSONObject: report) else { return }
+        try? data.write(to: file, options: .atomic)
+    }
+}
 #endif
 #endif
 
@@ -127,6 +156,7 @@ class BasketBossViewController: CAPBridgeViewController {
         let keyboardArguments = ProcessInfo.processInfo.arguments
         if BasketBossKeyboardUITestRuntime.isKeyboardSmokeLaunch, let webView = webView {
             let onboarding = keyboardArguments.contains("--bb-native-onboarding-keyboard-smoke")
+            BasketBossKeyboardDismissalDiagnostics.reset()
             webView.accessibilityIdentifier = "bbKeyboardWebView"
             let content = webView.configuration.userContentController
             keyboardSmokeReporter?.invalidate()
@@ -471,7 +501,7 @@ private final class BasketBossCookSmokeReporter: NSObject, WKScriptMessageHandle
           if(recipe.servings!==6||recipe.ingredients[0][0]!=='Chicken breast'||recipe.ingredients[0][1]!=='1 kg'||recipe.ingredients[1][0]!=='Mixed peppers'||recipe.ingredients[1][1]!=='3 peppers'||cheddar?.[1]!=='400 g'||recipe.method?.length!==5||amount(recipe.ingredients[0])!=='665 g'||amount(recipe.ingredients[1])!=='2 peppers'||amount(cheddar)!=='265 g')throw Error('VoiceCookFixtureChanged');
           voiceStage='firstIngredient';toggle.click();await wait(()=>onFinal&&starts===1&&spoken.some(text=>text.includes('665 grams of chicken breast')));
           report.voicePrepNarrated=spoken.some(text=>text.includes('665 grams of chicken breast'));await wait(()=>!busy);
-          voiceStage='nextIngredient';onFinal('Next ingredient');await wait(()=>document.querySelector('[data-prep="0"]')?.checked&&spoken.some(text=>text.includes('2 mixed peppers')));
+          voiceStage='nextIngredient';onFinal('Next ingredient');await wait(()=>document.querySelector('[data-prep="0"]')?.checked&&spoken.some(text=>text.includes('approximately 320 grams (2 peppers) of mixed peppers')));
           report.voicePrepAdvanced=document.querySelector('[data-prep="0"]').checked;await wait(()=>!busy);
           voiceStage='startCooking';onFinal('Start cooking');await wait(()=>document.getElementById('bbInstruction'));
           const firstInstruction=document.getElementById('bbInstruction').textContent;
@@ -489,7 +519,7 @@ private final class BasketBossCookSmokeReporter: NSObject, WKScriptMessageHandle
           report.mentorAnswerVisible=document.querySelector('.bbcv-answer').textContent.includes(answers.peppers);
           report.mentorNoAutonomousActions=document.getElementById('bbInstruction').textContent===beforeQuestion&&document.getElementById('bbTimerToggle').textContent===beforeTimer;
           const context=question?.recipe;
-          report.mentorRecipeContext=context?.id==='fajitas'&&context.title===recipe.name&&context.servings===4&&context.phase==='cook'&&context.region==='UK'&&context.currentStep===0&&context.steps.length===5&&context.steps[0]===recipe.method[0]&&context.ingredients.some(item=>item.name==='Chicken breast'&&item.quantity==='665 g')&&context.ingredients.some(item=>item.name==='Cheddar'&&item.quantity==='265 g');
+          report.mentorRecipeContext=context?.id==='fajitas'&&context.title===recipe.name&&context.servings===4&&context.phase==='cook'&&context.region==='UK'&&context.currentStep===0&&context.steps.length===5&&context.steps[0]===recipe.method[0]&&context.ingredients.some(item=>item.name==='Chicken breast'&&item.quantity==='665 g')&&context.ingredients.some(item=>item.name==='Cheddar'&&item.quantity==='265 g')&&context.ingredients.some(item=>item.name==='Mixed peppers'&&item.quantity==='≈ 320 g (2 peppers)');
           await wait(()=>!busy);
           voiceStage='cheddar';onFinal('How much cheddar?');await wait(()=>spoken.includes(answers.cheddar));
           report.voiceScaledAmount=spoken.includes(answers.cheddar)&&requests.at(-1)?.payload.recipe.ingredients.some(item=>item.name==='Cheddar'&&item.quantity==='265 g');await wait(()=>!busy);
@@ -805,8 +835,20 @@ public class BasketBossNavigationPlugin: CAPPlugin, CAPBridgedPlugin {
                 call.reject("Keyboard view is unavailable.", "BB_NATIVE_KEYBOARD")
                 return
             }
-            webView.endEditing(true)
-            call.resolve(["ok": true])
+            let webViewEnded = webView.endEditing(true)
+            // Secure text entry can retain a responder outside WebKit's view
+            // subtree. End editing in the app window and its responder chain.
+            let windowEnded = webView.window?.endEditing(true) ?? false
+            let responderActionSent = UIApplication.shared.sendAction(
+                #selector(UIResponder.resignFirstResponder), to: nil, from: nil, for: nil)
+            #if DEBUG
+            #if targetEnvironment(simulator)
+            BasketBossKeyboardDismissalDiagnostics.record(webViewEnded: webViewEnded,
+                windowEnded: windowEnded, responderActionSent: responderActionSent)
+            #endif
+            #endif
+            call.resolve(["ok": true, "webViewEnded": webViewEnded,
+                          "windowEnded": windowEnded, "responderActionSent": responderActionSent])
         }
     }
 

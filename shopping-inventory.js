@@ -65,9 +65,42 @@ const BB5_FOODS={
 };
 const BB5_LOCATIONS=['cupboard','fridge','freezer'];
 const BB5_UNITS=['each','g','kg','ml','l','pack','clove','bulb','tin','can','tbsp','tsp','loaf','slice','whole','item','piece'];
+let bb5RequirementsCache=null;
+function bb5PlannedRequirements(name){
+ const wanted=pantryStockId(name,''),groups=new Map();
+ if(!bb5RequirementsCache){bb5RequirementsCache=window.BBHomeHost?.requirements?.()||[];queueMicrotask(()=>{bb5RequirementsCache=null;});}
+ for(const row of bb5RequirementsCache){
+  if(pantryStockId(row.key||row.name,'')!==wanted)continue;
+  const measured=unitConversion(Number(row.required),String(row.unit||'').trim().toLowerCase());
+  if(!BB5_UNITS.includes(measured.unit)||!Number.isFinite(measured.qty)||measured.qty<=0)continue;
+  groups.set(measured.unit,(groups.get(measured.unit)||0)+measured.qty);
+ }
+ return [...groups].map(([unit,qty])=>({unit,qty}));
+}
+function bb5WeekCoverage(row){
+ const needed=bb5PlannedRequirements(row.name),current=unitConversion(1,row.unit);
+ const matching=needed.find(x=>x.unit===current.unit);
+ const coverage=matching?{qty:matching.qty/current.qty,unit:row.unit}:needed.length===1?needed[0]:null;
+ // A sole known recipe unit is safe to offer explicitly. Never combine unlike units.
+ if(!coverage||needed.length!==1)return null;
+ const target=Number((coverage.unit===row.unit?row.totalNeeded:undefined)??window.BBHome?.total?.(row.name,coverage.unit));
+ if(Number.isFinite(target)&&target>=0)coverage.qty=Math.max(coverage.qty,target);
+ // Online Pantry accepts whole counts. State the full amount the user is declaring.
+ const count=['each','pack','clove','bulb','tin','loaf','slice'].includes(unitConversion(1,coverage.unit).unit);
+ return {...coverage,qty:count?Math.ceil(coverage.qty):coverage.qty,count};
+}
+function bb5CoverageText(coverage){return coverage.count?'I have '+coverage.qty+' '+coverage.unit+' · enough for this week':'Enough for this week ('+coverage.qty+' '+coverage.unit+')';}
+function bb5AlreadyEnough(row,coverage){return coverage&&row.qty!==null&&row.qty!==''&&Number(row.qty)>=coverage.qty&&row.unit===coverage.unit;}
+function bb5AmountReadout(row){
+ const coverage=bb5WeekCoverage(row),current=unitConversion(1,row.unit);
+ if(coverage&&unitConversion(1,coverage.unit).unit!==current.unit)return 'Shopping uses '+coverage.unit+'; check the unit';
+ const needed=Math.max(Number(row.totalNeeded??window.BBHome?.total?.(row.name,row.unit)??0),window.BBHome?.requirement?.(row.name,row.unit)||0);
+ return 'To buy: '+Math.max(0,needed-Number(row.qty||0))+(row.qty===null||row.qty===undefined||row.qty===''?' (amount unknown)':'');
+}
 /* Beta QA: unit suggestions apply ONLY to new/unmeasured Kitchen selections.
    Preserve all existing saved units and quantities, including manual changes. */
 function bb5SuggestedUnit(name){
+ const needed=bb5PlannedRequirements(name);if(needed.length===1)return needed[0].unit;
  const n=String(name||'').toLowerCase();
  /* BB-DAIRY-DEFAULTS-20261026-V2 */
  if(/\bparmesan\b/.test(n))return 'g';
@@ -93,7 +126,7 @@ function build(){
  <details class="bb76-store" data-bb76-store="fridge"><summary><span class="bb76-store-icon">🥛</span><span class="bb76-store-heading"><strong>What's in your Fridge?</strong><small>Fresh foods, dairy and chilled items</small></span><span class="bb76-store-right"><span data-bb76-count="fridge">0 selected</span><span class="bb76-chevron" aria-hidden="true">⌄</span></span></summary><div class="bb76-store-body"><div class="bb173-shop-tiles" data-bb76-tiles="fridge" aria-label="Choose fridge foods"></div><form class="bb173-shop-add bb76-add-food" data-bb76-add="fridge"><label class="wide">Can't see it? Add a fridge food<input name="name" maxlength="70" placeholder="e.g. Hummus" required></label><button type="submit">＋ Add food</button></form></div></details>
  <details class="bb76-store" data-bb76-store="freezer"><summary><span class="bb76-store-icon">❄️</span><span class="bb76-store-heading"><strong>What's in your Freezer?</strong><small>Frozen foods and leftovers</small></span><span class="bb76-store-right"><span data-bb76-count="freezer">0 selected</span><span class="bb76-chevron" aria-hidden="true">⌄</span></span></summary><div class="bb76-store-body"><div class="bb173-shop-tiles" data-bb76-tiles="freezer" aria-label="Choose freezer foods"></div><form class="bb173-shop-add bb76-add-food" data-bb76-add="freezer"><label class="wide">Can't see it? Add a freezer food<input name="name" maxlength="70" placeholder="e.g. Frozen berries" required></label><button type="submit">＋ Add food</button></form></div></details>
  </div>
- <section class="bb174-fridge-review" id="bb8WhatIHave" aria-label="Pantry: all selected foods"><div class="bb174-fridge-review-head"><div class="bb75-pantry-head"><h3 tabindex="-1" id="bb76PantryHeading">PANTRY <span id="bb5SelectedCount"></span></h3><span id="bb75DraftIndicator">Review quantities</span></div><p><strong>What you've selected</strong> from Cupboard, Fridge and Freezer. Enter an amount for each food, or leave it unknown. Everything is saved together when you confirm.</p></div>
+ <section class="bb174-fridge-review" id="bb8WhatIHave" aria-label="Pantry: all selected foods"><div class="bb174-fridge-review-head"><div class="bb75-pantry-head"><h3 tabindex="-1" id="bb76PantryHeading">PANTRY <span id="bb5SelectedCount"></span></h3><span id="bb75DraftIndicator">Review quantities</span></div><p><strong>What you've selected</strong> from Cupboard, Fridge and Freezer. Enter what you have, or choose <strong>Enough for this week</strong> to record the amount your planned meals need. Unknown amounts are saved but do not reduce Shopping.</p></div>
  <div id="bb5SelectedRows" aria-live="polite"></div><button type="button" id="bb5Reconcile" class="bb174-fridge-reconcile">✓ Confirm &amp; Reconcile Shopping List</button>
  <p class="bb174-fridge-explain">Only recognised measured quantities reduce what's left to buy. Other foods stay in PANTRY. Nothing is marked as bought.</p>
  <p id="bb5StockStatus" class="bb173-shop-note" role="status" aria-live="polite">Select your food above, review the quantities, then confirm.</p>
@@ -128,6 +161,11 @@ function build(){
   if(draftDirty)pendingFoodDraft={actor:openedActor,revision:openedRevision,rows:[...staged].map(([key,value])=>[key,{...value}])};
   review.querySelector('#bb75DraftIndicator').textContent=draftDirty?'Not confirmed yet':'Review and confirm';
  }
+ function drawAmount(key,input){
+  const value=staged.get(key),row=input.closest('[data-bb5-row]');row.querySelector('output').textContent=bb5AmountReadout(value);
+  const coverage=bb5WeekCoverage(value),action=row.querySelector('[data-bb5-enough]');
+  if(action&&coverage){action.textContent=bb5CoverageText(coverage);action.hidden=bb5AlreadyEnough(value,coverage);}
+ }
  function render(){
   const existing=Object.values(read(INVENTORY));
   for(const loc of BB5_LOCATIONS){
@@ -148,8 +186,9 @@ function build(){
    if(!own.length)return '';
    const label=loc==='cupboard'?'🥫 Cupboard':loc==='fridge'?'🥛 Fridge':'❄️ Freezer';
    return `<div class="bb75-pantry-group" data-pantry-location="${loc}"><h4>${label} <small>${own.length} item${own.length===1?'':'s'}</small></h4>${own.map(x=>{
-    const k=sid(x.loc,x.name),opts=BB5_UNITS.map(u=>`<option value="${u}" ${x.unit===u?'selected':''}>${u==='l'?'litres':u}</option>`).join('');
-    return `<div class="bb174-fridge-row bb5-review-row" data-bb5-row="${esc(k)}"><strong>${esc(x.name)}</strong><label>Already got<input type="number" inputmode="decimal" data-bb5-qty="${esc(k)}" min="0" max="1000000" step="any" placeholder="Unknown" value="${esc(x.qty??'')}"></label><label>Total needed<input type="number" inputmode="decimal" min="0" max="1000000" step="any" data-bb5-needed="${esc(k)}" value="${esc(x.totalNeeded??window.BBHome?.total?.(x.name,x.unit)??0)}"></label><output data-bb5-buy="${esc(k)}">To buy: ${Math.max(0,Math.max(Number(x.totalNeeded??window.BBHome?.total?.(x.name,x.unit)??0),window.BBHome?.requirement?.(x.name,x.unit)||0)-Number(x.qty||0))}</output><label>Unit<select data-bb5-unit="${esc(k)}">${opts}</select></label><button type="button" data-bb5-remove="${esc(k)}" aria-label="Remove ${esc(x.name)}">Remove</button></div>`;
+    const k=sid(x.loc,x.name),coverage=bb5WeekCoverage(x),opts=BB5_UNITS.map(u=>`<option value="${u}" ${x.unit===u?'selected':''}>${u==='l'?'litres':u}</option>`).join('');
+    const enough=coverage?`<button type="button" class="bb5-week-coverage" data-bb5-enough="${esc(k)}"${bb5AlreadyEnough(x,coverage)?' hidden':''}>${esc(bb5CoverageText(coverage))}</button>`:'';
+    return `<div class="bb174-fridge-row bb5-review-row" data-bb5-row="${esc(k)}"><strong>${esc(x.name)}</strong><label>Already got<input type="number" inputmode="decimal" data-bb5-qty="${esc(k)}" min="0" max="1000000" step="any" placeholder="Unknown" value="${esc(x.qty??'')}"></label>${enough}<label>Total needed<input type="number" inputmode="decimal" min="0" max="1000000" step="any" data-bb5-needed="${esc(k)}" value="${esc(x.totalNeeded??window.BBHome?.total?.(x.name,x.unit)??0)}"></label><output data-bb5-buy="${esc(k)}">${esc(bb5AmountReadout(x))}</output><label>Unit<select data-bb5-unit="${esc(k)}">${opts}</select></label><button type="button" data-bb5-remove="${esc(k)}" aria-label="Remove ${esc(x.name)}">Remove</button></div>`;
    }).join('')}</div>`;
   }).join(''):'<p class="bb174-fridge-empty">Nothing selected yet. Open a section above and tap the foods you have.</p>';
   reconcile.disabled=!all.length&&!Object.values(read(INVENTORY)).some(x=>x?.selected&&BB5_LOCATIONS.includes(x.loc))&&!externalAtOpen.size;
@@ -179,9 +218,13 @@ function build(){
   if(!staged.has(k))staged.set(k,{name,loc,qty:null,unit:bb5SuggestedUnit(name)});
   f.reset();draftDirty=true;render();note.textContent='Food added to '+loc+'. Enter its amount in PANTRY below.';
  });
- rows.addEventListener('input',e=>{const target=e.target.dataset.bb5Needed;if(target&&staged.has(target)){staged.get(target).totalNeeded=e.target.value;staged.get(target).targetChanged=true;draftDirty=true;const row=e.target.closest('[data-bb5-row]');row.querySelector('output').textContent='To buy: '+Math.max(0,Math.max(Number(e.target.value),window.BBHome?.requirement?.(staged.get(target).name,staged.get(target).unit)||0)-Number(staged.get(target).qty||0));drawOverview();return;}const k=e.target.dataset.bb5Qty;if(!k||!staged.has(k))return;staged.get(k).qty=e.target.value;draftDirty=true;const row=e.target.closest('[data-bb5-row]');if(row?.querySelector('output'))row.querySelector('output').textContent='To buy: '+Math.max(0,Math.max(Number(row.querySelector('[data-bb5-needed]').value),window.BBHome?.requirement?.(staged.get(k).name,staged.get(k).unit)||0)-Number(e.target.value||0));drawOverview()});
- rows.addEventListener('change',e=>{const k=e.target.dataset.bb5Unit;if(!k||!staged.has(k))return;staged.get(k).unit=e.target.value;draftDirty=true;drawOverview()});
- rows.addEventListener('click',e=>{const btn=e.target.closest('[data-bb5-remove]');if(!btn)return;staged.delete(btn.dataset.bb5Remove);draftDirty=true;render();note.textContent='Item removed from draft; Reconcile to save.'});
+ rows.addEventListener('input',e=>{const target=e.target.dataset.bb5Needed;if(target&&staged.has(target)){staged.get(target).totalNeeded=e.target.value;staged.get(target).targetChanged=true;draftDirty=true;drawAmount(target,e.target);drawOverview();return;}const k=e.target.dataset.bb5Qty;if(!k||!staged.has(k))return;staged.get(k).qty=e.target.value;draftDirty=true;drawAmount(k,e.target);drawOverview()});
+ rows.addEventListener('change',e=>{const k=e.target.dataset.bb5Unit;if(!k||!staged.has(k))return;const row=staged.get(k);row.unit=e.target.value;delete row.totalNeeded;delete row.targetChanged;draftDirty=true;render()});
+ rows.addEventListener('click',e=>{
+  const enough=e.target.closest('[data-bb5-enough]');
+  if(enough){const row=staged.get(enough.dataset.bb5Enough),coverage=row&&bb5WeekCoverage(row);if(!coverage)return;const changedUnit=row.unit!==coverage.unit;row.qty=coverage.qty;row.unit=coverage.unit;if(changedUnit){delete row.totalNeeded;delete row.targetChanged;}draftDirty=true;render();note.textContent=row.name+': '+coverage.qty+' '+coverage.unit+' recorded for this week. Confirm to update Shopping, or edit the amount.';return;}
+  const btn=e.target.closest('[data-bb5-remove]');if(!btn)return;staged.delete(btn.dataset.bb5Remove);draftDirty=true;render();note.textContent='Item removed from draft; Reconcile to save.';
+ });
  reconcile.addEventListener('click',async()=>{
   if(draftActor()!==openedActor||physicalRevision()!==openedRevision){note.textContent='At home changed elsewhere. Reopen At home and review the latest amounts first.';return;}
   if(window.BBReceiptHost?.hasPendingConfirmation?.()){
@@ -252,16 +295,26 @@ function build(){
    note.textContent='Could not save safely. Review storage and try again.';return;
   }
   pendingFoodDraft=null;openedRevision=physicalRevision();window.BBHome?.committed?.();externalAtOpen.clear();draftDirty=false;
+  const unknown=chosen.filter(x=>x.qty===null);
+  const requirements=window.BBHomeHost?.requirements?.()||[],mismatches=window.BBHomeHost?.consume?.(nextStock,requirements)?.mismatches||{};
+  const incompatible=chosen.filter(x=>x.qty>0&&requirements.some(row=>pantryStockId(row.key||row.name,'')===pantryStockId(x.name,'')&&mismatches[pantryStockId(row.key||row.name,row.unit)]?.length));
+  const reviewText=unknown.length||incompatible.length?'PANTRY saved. '+(unknown.length?'Amount unknown for '+unknown.map(x=>x.name).join(', ')+': these selections have not reduced To buy. Enter an amount or choose Enough for this week. ':'')+(incompatible.length?'Check the units for '+incompatible.map(x=>x.name).join(', ')+': those shopping amounts still need review.':''):'';
+  if(reviewText){
+   note.textContent=reviewText;drawOverview();const first=unknown[0]||incompatible[0],key=sid(first.loc,first.name);
+   const pantry=document.getElementById('bbSimplePantry');if(pantry)pantry.open=true;
+   rows.querySelectorAll('[data-bb5-qty]').forEach(input=>{if(input.dataset.bb5Qty===key){input.focus({preventScroll:true});input.closest('[data-bb5-row]').scrollIntoView({behavior:'smooth',block:'center'});}});
+  }
   if(window.BBReceiptHost?.confirmCurrentPantry){
    let synced;reconcile.disabled=true;
    try{synced=await window.BBReceiptHost.confirmCurrentPantry({stock:nextStock});}
-   catch{note.textContent='Your amounts are saved on this device. Online Pantry confirmation needs another attempt.';return;}
+   catch{note.textContent=reviewText+' Your amounts are saved on this device. Online Pantry confirmation needs another attempt.';return;}
    finally{reconcile.disabled=false;}
    if(!synced?.ok||synced.needsReview){
-    note.textContent='Your amounts are saved on this device. Review the saved online pantry before reconciling Shopping.';
+    note.textContent=reviewText+' Your amounts are saved on this device. Review the saved online pantry before reconciling Shopping.';
     void window.BBReceiptHost.reviewPantry();return;
    }
   }
+  if(reviewText)return;
   note.textContent='✓ PANTRY confirmed. '+chosen.filter(x=>x.qty!==null).length+' measured item(s) saved. Shopping needs have been recalculated.';
   const shopTab=document.querySelector('.tab[data-tab="shop-list"]');
   if(shopTab){shopTab.click();window.scrollTo({top:0,behavior:'instant'})}
@@ -292,6 +345,8 @@ css.textContent+=`
 .bb174-fridge-row label{display:grid;gap:4px;font-size:11px;font-weight:700}
 .bb174-fridge-row input,.bb174-fridge-row select{width:100%;min-width:0;background:#fff;border:1px solid #adcdb6;border-radius:9px;padding:9px;color:#173c36;font-size:16px}
 .bb174-fridge-row button{border:1px solid #ebc6ba;border-radius:9px;background:#fff0ea;color:#833c25;padding:10px;font-size:12px;font-weight:800}
+.bb174-fridge-row .bb5-week-coverage{grid-column:1/-1;border-color:#b5d3bc;background:#edf7ee;color:#205b39;min-height:44px;text-align:left}
+.bb174-fridge-row .bb5-week-coverage[hidden]{display:none}
 .bb174-fridge-reconcile{display:block;width:100%;margin-top:14px;border:0;border-radius:12px;background:#246b42;color:#fff;padding:15px;font-weight:850;font-size:14px;min-height:50px}
 .bb174-fridge-reconcile:disabled{opacity:.4;cursor:not-allowed}
 .bb174-fridge-empty{font-size:13px;color:#668074;padding:12px 0}

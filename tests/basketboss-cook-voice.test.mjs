@@ -462,8 +462,62 @@ test('mentor audio failures remain visible and never silently use a robotic devi
   await h.typed('Can I add milk?');assert.match(h.find('bbcv-answer').textContent,/coats the spoon/);assert.match(h.status(),/Natural mentor voice is unavailable/);assert.doesNotMatch(h.status(),/private-provider/);h.controller.dispose();
  }
 });
+test('failed native audio preparation preserves the typed reply and can retry that exact answer',async()=>{
+ const h=mentorFixture();h.button().click();await tick();
+ const prepare=h.host.BBNativeCookVoice.prepareSpeech,played=h.calls.filter(c=>Array.isArray(c)&&c[0]==='playAudioData').length,speech=h.speech.length;
+ h.host.BBNativeCookVoice.prepareSpeech=async()=>{throw Error('private-native-audio-failure');};
+ await h.typed('Can I use milk instead?');
+ assert.equal(h.questions.length,1,'native audio preparation cannot prevent the question request');
+ const reply=h.find('bbcv-answer').textContent;assert.match(reply,/coats the spoon/);
+ assert.match(h.status(),/Natural mentor voice is unavailable/);assert.doesNotMatch(h.status(),/private-native|could not answer/);assert.equal(h.find('bbcv-retry').hidden,false);
+ assert.equal(h.speech.length,speech,'no audio generation without holding native recognition');
+ assert.equal(h.calls.filter(c=>Array.isArray(c)&&c[0]==='playAudioData').length,played,'no playback without holding native recognition');
+ h.host.BBNativeCookVoice.prepareSpeech=prepare;h.find('bbcv-retry').click();await tick();
+ assert.equal(h.questions.length,1,'retrying voice does not spend another question');assert.equal(h.speech.at(-1).text,reply);assert.equal(h.find('bbcv-retry').hidden,true);assert.match(h.status(),/Listening/);h.controller.dispose();
+});
+test('a pending native audio hold cannot delay the written answer and stop discards late audio preparation',async()=>{
+ const h=mentorFixture();h.button().click();await tick();const preparing=deferredSpeech();
+ const played=h.calls.filter(c=>Array.isArray(c)&&c[0]==='playAudioData').length,speech=h.speech.length;
+ h.host.BBNativeCookVoice.prepareSpeech=()=>preparing.promise;
+ await h.typed('What should the sauce look like?');assert.equal(h.questions.length,1);assert.match(h.find('bbcv-answer').textContent,/coats the spoon/);
+ h.transcript('Next step');await tick();assert.equal(h.calls.includes('next'),false,'busy recognition cannot move the recipe while audio is being prepared');
+ assert.equal(h.speech.length,speech);assert.equal(h.calls.filter(c=>Array.isArray(c)&&c[0]==='playAudioData').length,played);
+ h.controller.stop();preparing.resolve({speechId:'late-native-ticket'});await tick();
+ assert.equal(h.find('bbcv-answer').textContent,'');assert.equal(h.speech.length,speech);assert.equal(h.calls.filter(c=>Array.isArray(c)&&c[0]==='playAudioData').length,played);
+ assert(h.calls.some(c=>Array.isArray(c)&&c[0]==='cancelNativeSpeech'&&c[1].speechId==='late-native-ticket'));h.controller.dispose();
+});
+test('native audio failure cannot replace the real question error or offer retry for a missing answer',async()=>{
+ const h=mentorFixture({assistant:{ask:async()=>{throw Object.assign(Error('private-provider-error'),{code:'BB_MENTOR_LIMIT'});}}});h.button().click();await tick();let preparations=0;
+ h.host.BBNativeCookVoice.prepareSpeech=async()=>{preparations++;throw Error('private-native-audio-failure');};
+ await h.typed('Can I add milk?');
+ assert.equal(preparations,0,'a rejected question never prepares native audio');assert.match(h.status(),/allowance is used/);assert.doesNotMatch(h.status(),/Natural mentor voice|private-provider|private-native/);
+ assert.equal(h.find('bbcv-answer').textContent,'');assert.equal(h.find('bbcv-retry').hidden,true);h.controller.dispose();
+});
 test('definitive mentor access rejection clears replies and stops voice without fallback',async()=>{
  const h=mentorFixture({assistant:{ask:async()=>{throw Object.assign(Error('private-detail'),{code:'BB_MENTOR_PREMIUM_REQUIRED'});}}});h.button().click();await tick();await h.final('Can I use milk?');assert.match(h.status(),/signed-in Premium/);assert.equal(h.button().getAttribute('aria-pressed'),'false');assert.equal(h.find('bbcv-question').textContent,'');assert.equal(h.find('bbcv-answer').textContent,'');h.controller.dispose();
+});
+test('service access errors identify the AI service without clearing the signed-in voice session',async()=>{
+ const h=mentorFixture({assistant:{ask:async()=>{throw Object.assign(Error('private provider detail'),{code:'BB_MENTOR_SERVICE_ACCESS'});}}});
+ h.button().click();await tick();await h.final('Can I use milk?');
+ assert.match(h.status(),/AI service.*BasketBoss.*AI access/);assert.doesNotMatch(h.status(),/private provider detail|signed-in Premium/);
+ assert.equal(h.button().getAttribute('aria-pressed'),'true');h.controller.dispose();
+});
+test('native recognition failure cannot abort an independent written question',async()=>{
+ for(const state of ['error','stopped']){
+  const pending=deferredSpeech(),requests=[];
+  const h=mentorFixture({assistant:{ask:(payload,settings)=>{requests.push(settings);return pending.promise;}}});
+  h.button().click();await tick();await h.final('How do I soften the onion?');
+  h.nativeStatus({state,code:'BB_VOICE_RECOGNITION'});await tick();
+  assert.equal(requests[0].signal.aborted,false);assert.equal(h.button().getAttribute('aria-pressed'),'false');
+  pending.resolve({answer:'Cook it gently, stirring until softened.'});await tick();
+  assert.match(h.find('bbcv-answer').textContent,/stirring until softened/);assert.match(h.status(),/Voice stopped/);h.controller.dispose();
+ }
+});
+test('speech service limits retain the written answer and report the service limit accurately',async()=>{
+ const h=mentorFixture({tts:{prepareMentor:async()=>{throw Object.assign(Error('private provider detail'),{code:'BB_TTS_SERVICE_LIMIT'});}}});
+ h.button().click();await tick();await h.final('Can I use milk?');
+ assert.match(h.find('bbcv-answer').textContent,/coats the spoon/);assert.match(h.status(),/AI voice service.*usage limit/);assert.doesNotMatch(h.status(),/private provider detail|Your voice allowance/);
+ assert.equal(h.button().getAttribute('aria-pressed'),'true');h.controller.dispose();
 });
 test('mentor preserves complete long instructions while splitting natural audio into bounded chunks',async()=>{
  const h=mentorFixture();const step='Add 265 g cheddar. '+Array.from({length:42},()=> 'Stir gently until the sauce is smooth.').join(' ');h.context.currentStep=step;h.context.mentorRecipe.steps[0]=step;h.controller.refresh();h.button().click();await tick();assert(h.speech.length>1);assert(h.speech.every(s=>s.text.length<=1200));assertInstruction(h.speech.map(s=>s.text).join(' '),step);h.controller.dispose();
