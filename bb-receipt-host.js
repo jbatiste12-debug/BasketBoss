@@ -186,9 +186,36 @@
     function requiresPantryReview() {
       if (isolationError || hasPendingConfirmation()) return true;
       const cached = projection(); if (!cached) return false;
+      if (hasCookReview(cached)) return true;
       if (!availability.available && hasLocalReview(cached)) return false;
       if (issue?.includes('pantry_merge_required') || issue === 'receipt_household_scope_changed' || issue === 'receipt_refresh_required') return true;
       return cached.pantryReview?.required === true;
+    }
+    function hasCookReview(cached = projection()) {
+      if (!cached?.scope) return false;
+      try {
+        const marker = read(KEYS.confirmed).receiptCookReview;
+        return marker?.required === true && marker.actorId === actor() && marker.scope === cached.scope.kind + ':' + cached.scope.id;
+      } catch { return true; }
+    }
+    function clearCookReview() {
+      const confirmed = read(KEYS.confirmed);
+      if (!Object.hasOwn(confirmed, 'receiptCookReview')) return;
+      delete confirmed.receiptCookReview;writeAtomic({[KEYS.confirmed]: confirmed});
+    }
+    function canConsumePantry() {
+      if (blocked() || isolationError || hasPendingConfirmation() || reviewing || confirmingCurrent || choosingTrip) return false;
+      if (issue?.includes('pantry_merge_required') || issue === 'receipt_household_scope_changed' || issue === 'receipt_refresh_required') return false;
+      try {
+        const cached = projection(), owner = read(KEYS.owner), marker = read(KEYS.actor);
+        read(KEYS.confirmed);
+        if (owner.actorId && owner.actorId !== actor() || marker.actorId && marker.actorId !== actor()) return false;
+        if (cached?.scope?.kind === 'user' && cached.scope.id !== actor()) return false;
+        // A confirmed receipt already supplies measured stock. Its routine next-
+        // shop review must not prevent using that stock for a confirmed meal.
+        if (availability.available && cached?.pantryReview?.required === true && cached.initialized !== true) return false;
+        return true;
+      } catch { return false; }
     }
     function hasLocalReview(cached) {
       try {
@@ -202,6 +229,7 @@
       const cached = projection();if (!cached) return {ok: true, localOnly: true};
       const confirmed = read(KEYS.confirmed), reviewedAt = Date.parse(confirmed.confirmedAt || '');
       if (confirmed.version !== 1 || !Array.isArray(confirmed.items) || !Number.isFinite(reviewedAt) || Math.abs(clock() - reviewedAt) > 60000) return {ok: false, localOnly: true};
+      delete confirmed.receiptCookReview;
       writeAtomic({[KEYS.confirmed]: {...confirmed, receiptLocalReview: {actorId: actor(), shopSessionId: context().shopSessionId || null, inventoryRevision: cached.inventoryRevision, scope: cached.scope.kind + ':' + cached.scope.id, confirmedAt: confirmed.confirmedAt}}});
       schedule();return {ok: true, localOnly: true};
     }
@@ -366,13 +394,15 @@
       }
       writeAtomic({[KEYS.ledger]: ledger});
     }
-    async function confirmCurrentPantry({stock} = {}) {
+    async function confirmCurrentPantry({stock, preserveCookReview = false} = {}) {
       if (blocked()) return {ok: false, needsReview: true};
       const serial = generation;
       isolate();if (isolationError || hasPendingConfirmation() || reviewing || confirmingCurrent || choosingTrip) return {ok: false, needsReview: true};
       await refreshAvailability({synchronize: false});
       if (blocked() || serial !== generation) return {ok: false, needsReview: true};
-      if (!availability.available) return confirmLocalPantryReview();
+      // Cooking has already committed its measured local deduction. It is not
+      // an explicit weekly review and must not acknowledge that review offline.
+      if (!availability.available) return preserveCookReview ? {ok: true, localOnly: true, needsReview: false} : confirmLocalPantryReview();
       const cached = projection();
       if (!cached?.scope || !Number.isSafeInteger(cached.inventoryRevision) || issue?.includes('pantry_merge_required') || issue === 'receipt_household_scope_changed') return {ok: false, needsReview: true};
       const id = actor(), active = context(), ledger = read(KEYS.ledger);
@@ -381,9 +411,25 @@
         const result = await adapter().confirmPantry({stock: clone(stock), expectedRevision: cached.inventoryRevision, expectedScope: clone(cached.scope), shopSessionId: active.shopSessionId || null});
         if (blocked() || serial !== generation || id !== actor()) return {ok: false, committed: result.committed === true, needsReview: true};
         if (!result.localApplied) {issue = 'receipt_refresh_required';return {...result, needsReview: true};}
-        recordLegacyCoverage(ledger, active, id);issue = null;options.onProjection?.(result.projection);schedule();return {...result, needsReview: false, localOnly: false};
-      } catch (error) {issue = error.status === 409 ? 'receipt_local_remote_pantry_merge_required' : 'receipt_refresh_required';schedule();return {ok: false, needsReview: true, conflict: error.status === 409};}
+        recordLegacyCoverage(ledger, active, id);
+        if (!preserveCookReview) clearCookReview();
+        issue = null;options.onProjection?.(result.projection);schedule();return {...result, needsReview: false, localOnly: false};
+      } catch (error) {issue = error.status === 409 ? 'receipt_local_remote_pantry_merge_required' : 'receipt_refresh_required';schedule();return {ok: false, needsReview: true, conflict: error.status === 409,...(error.message==='inventory_ambiguous_package_sources'?{code:error.message}:{})};}
       finally {confirmingCurrent = false;}
+    }
+    async function confirmCookedPantry({stock} = {}) {
+      if (!canConsumePantry()) return {ok: false, needsReview: true};
+      const cached = projection(), keepReview = !!cached && requiresPantryReview();
+      if (keepReview) {
+        // Persist before the server call: a successful stock sync clears its
+        // review flag, but cannot replace the user's next-shop pantry review.
+        const confirmed = read(KEYS.confirmed);
+        writeAtomic({[KEYS.confirmed]: {...confirmed, receiptCookReview: {
+          required: true, actorId: actor(), scope: cached.scope.kind + ':' + cached.scope.id
+        }}});
+      }
+      const result = await confirmCurrentPantry({stock, preserveCookReview: true});
+      return {...result, weeklyReviewRequired: !!projection() && requiresPantryReview()};
     }
     async function reviewPantry() {
       if (blocked()) return null;
@@ -410,7 +456,7 @@
         const split = key.lastIndexOf('|'); if (split < 1 || key.length > 180) continue;
         const unit = key.slice(split + 1), label = element('label', undefined, 'bb-receipt-pantry-row'), title = element('strong', key.slice(0, split));
         const detail = element('small', 'Online: ' + (data.stock[key] || 0) + ' ' + unit + ' · This device: ' + (local[key] || 0) + ' ' + unit);
-        const input = element('input');input.type = 'number';input.min = '0';input.max = '1000000';input.step = ['g', 'ml'].includes(unit) ? 'any' : '1';input.value = String((data.initialized ? data.stock[key] : local[key]) || 0);input.setAttribute('aria-label', key.slice(0, split) + ' amount in ' + unit);input.dataset.stockKey = key;
+        const input = element('input');input.type = 'number';input.min = '0';input.max = '1000000';input.step = 'any';input.value = String((data.initialized ? data.stock[key] : local[key]) || 0);input.setAttribute('aria-label', key.slice(0, split) + ' amount in ' + unit);input.dataset.stockKey = key;
         label.append(title, detail, input, element('span', unit));rows.append(label);inputs.set(key, input);
       }
       if (!inputs.size) rows.append(element('p', 'No measured foods are saved. Confirm an empty pantry to continue.'));
@@ -427,7 +473,7 @@
         const stock = {};
         for (const [key, input] of inputs) {
           const value = Number(input.value), unit = key.slice(key.lastIndexOf('|') + 1);
-          if (input.value.trim() === '' || !Number.isFinite(value) || value < 0 || value > 1000000 || !['g', 'ml'].includes(unit) && !Number.isInteger(value)) {message.textContent = 'Check the amount for ' + key.slice(0, key.lastIndexOf('|')) + '.';input.focus();return;}
+          if (input.value.trim() === '' || !Number.isFinite(value) || value < 0 || value > 1000000) {message.textContent = 'Check the amount for ' + key.slice(0, key.lastIndexOf('|')) + '.';input.focus();return;}
           if (value > 0) stock[key] = value;
         }
         busy = true;confirm.disabled = cancel.disabled = true;message.textContent = 'Saving your confirmed pantry…';
@@ -437,6 +483,7 @@
           const result = await adapter().confirmPantry({stock, expectedRevision: data.inventoryRevision, expectedScope: clone(data.scope), shopSessionId: currentContext.shopSessionId || null});
           if (blocked() || serial !== generation || id !== actor()) return;
           if (!result.localApplied) {message.textContent = 'Pantry saved online. Refresh it before shopping on this device.';issue = 'receipt_refresh_required';return;}
+          clearCookReview();
           recordLegacyCoverage(ledgerAtReview, currentContext, id);
           issue = null;notify('Pantry confirmed. Your shopping list now includes only what is still needed.');close();options.onProjection?.(result.projection);schedule();
         } catch (error) {
@@ -553,7 +600,7 @@
       options.onProjection?.({externalStorage: true});schedule();
     }
     root.addEventListener?.('storage', externalChange);
-    const api = Object.freeze({configure, afterRender, refreshAvailability, open, saveLegacyReceipt, reviewPantry, confirmCurrentPantry, confirmLocalPantryReview, recoverReceipt, requiresPantryReview, hasPendingConfirmation, allowLegacyTransfer, handlesInventorySync, coversLegacyCredit, switchActor, getAvailability: () => ({...availability}), getProjection: projection, weeklySummary: () => weeklyReceiptSummary(projection(), context(), clock()), keys: KEYS});
+    const api = Object.freeze({configure, afterRender, refreshAvailability, open, saveLegacyReceipt, reviewPantry, confirmCurrentPantry, confirmCookedPantry, canConsumePantry, confirmLocalPantryReview, recoverReceipt, requiresPantryReview, hasPendingConfirmation, allowLegacyTransfer, handlesInventorySync, coversLegacyCredit, switchActor, getAvailability: () => ({...availability}), getProjection: projection, weeklySummary: () => weeklyReceiptSummary(projection(), context(), clock()), keys: KEYS});
     return api;
   }
   root.BBReceiptHostFactory = createHost;

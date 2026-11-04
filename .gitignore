@@ -14,3 +14,5 @@ ios/App/App/config.xml
 *.mobileprovision
 *.ipa
 *.dSYM/
+
+supabase/.temp/

@@ -4,6 +4,7 @@ export const SUPPORTED_MARKETS = Object.freeze({ UK: 'GBP', Guernsey: 'GBP', Jer
 const MAX_QUANTITY = 1_000_000;
 const COUNT_UNITS = new Set(['each', 'clove', 'bulb', 'tin', 'pack', 'bag', 'bunch', 'loaf', 'slice']);
 const BASE_UNITS = new Set(['g', 'ml', 'tsp', 'tbsp', ...COUNT_UNITS]);
+const PACKAGE_UNITS = new Set(['tin', 'pack', 'bag', 'bunch', 'loaf']);
 const ALIASES = Object.freeze({ eggs: 'egg', potatoes: 'potato', tomatoes: 'tomato', onions: 'onion', peppers: 'pepper', carrots: 'carrot', bananas: 'banana', apples: 'apple', lemons: 'lemon', limes: 'lime', mushrooms: 'mushroom', courgettes: 'courgette', scallops: 'scallop', wraps: 'wrap' });
 const HOUSEHOLD = /\b(?:soap|detergent|washing[ -]up|washing[ -]powder|laundry|fabric[ -](?:softener|conditioner)|dishwasher|dish[ -]?soap|toilet|loo[ -]roll|kitchen[ -](?:roll|towel)|paper[ -]towels?|facial[ -]tissues?|tissues|razors?|shaving[ -](?:foam|gel|cream)|sanitary[ -](?:pads|towels|products)|tampons?|panty[ -]liners?|menstrual[ -](?:pads|cups)|bleach|cleaner|cleaning|disinfectant|saniti[sz]er|shampoo|conditioner|toothpaste|toothbrush|deodorant|shower[ -]gel|body[ -]wash|hand[ -]wash|face[ -]cream|hand[ -]cream|moisturi[sz]er|napp(?:y|ies)|diapers?|wipes|bin[ -](?:bags?|liners?)|foil|cling[ -]film|baking[ -]paper|batter(?:y|ies)|light[ -]bulb|pet[ -]food|cat[ -]food|dog[ -]food|litter|cigarettes?|tobacco)\b/i;
 const ADJUSTMENT = /\b(?:refund|returned?|discount|coupon|voucher|loyalty|saving|promotion[ -]discount|subtotal|sub[ -]total|grand[ -]total|vat|tax|change[ -]due|cash[ -]back|deposit[ -]return)\b/i;
@@ -296,6 +297,15 @@ export function normalizePriceObservation(line, { scope, market, retailer, curre
     packQuantity: pack.packQuantity, packUnit: pack.packUnit, packCount: pack.packCount, packPrice: money(price / pack.packCount), priceType,
     eligibleForRegularPrice: priceType === 'regular', source: 'reviewed_receipt' };
 }
+// Stock balances differ from purchase lines: partial physical items are valid.
+export function normalizeStockQuantity(quantity, inputUnit) {
+  if (typeof quantity !== 'number' || !Number.isFinite(quantity) || quantity <= 0 || quantity > MAX_QUANTITY) return null;
+  const rawUnit = normalizeUnit(inputUnit);
+  if (!rawUnit) return null;
+  const unit = rawUnit === 'kg' ? 'g' : rawUnit === 'l' ? 'ml' : rawUnit;
+  const amount = quantity * (rawUnit === 'kg' || rawUnit === 'l' ? 1000 : 1);
+  return Number.isFinite(amount) && amount > 0 && amount <= MAX_QUANTITY ? {quantity: amount, unit} : null;
+}
 export function normalizeStockMap(value, { canonicalize, maxEntries = 2000 } = {}) {
   if (!object(value)) throw new Error('invalid_inventory_stock_map');
   const entries = Object.entries(value);
@@ -308,10 +318,15 @@ export function normalizeStockMap(value, { canonicalize, maxEntries = 2000 } = {
     const name = canonicalIngredientKey(id.slice(0, split), canonicalize), rawUnit = normalizeUnit(id.slice(split + 1));
     if (!name || !rawUnit || HOUSEHOLD.test(name)) throw new Error('invalid_inventory_food_or_unit');
     if (quantity === 0) continue;
-    const measured = normalizeMeasuredQuantity(quantity, rawUnit);
+    const measured = normalizeStockQuantity(quantity, rawUnit);
     if (!measured) throw new Error('invalid_inventory_quantity');
-    const key = `${name}|${measured.unit}`, total = round((out[key] || 0) + measured.quantity);
-    if (total > MAX_QUANTITY) throw new Error('inventory_quantity_limit');
+    const key = `${name}|${measured.unit}`;
+    // Distinct physical packages can have different reviewed contents. Cloud stock
+    // has one value per canonical key and cannot retain both package identities.
+    // Refuse consolidation before a write; measured metric aliases remain safe.
+    if (PACKAGE_UNITS.has(measured.unit) && Object.hasOwn(out, key)) throw new Error('inventory_ambiguous_package_sources');
+    const total = (out[key] || 0) + measured.quantity;
+    if (!Number.isFinite(total) || total > MAX_QUANTITY) throw new Error('inventory_quantity_limit');
     out[key] = total;
   }
   return { ...out };
@@ -326,7 +341,7 @@ export function projectReceiptInventory(currentStock = {}, previousServerStock =
     if (key.length > 180 || !key.includes('|') || /^(?:__proto__|constructor|prototype)\|/.test(key)) throw new Error('invalid_inventory_stock_key');
     const previous = finite(previousServerStock[key]) ?? 0, next = finite(nextServerStock[key]) ?? 0, local = finite(currentStock[key]) ?? 0;
     if ([previous, next, local].some(x => x < 0 || x > MAX_QUANTITY)) throw new Error('invalid_inventory_quantity');
-    const quantity = round(Math.max(0, local + next - previous));
+    const quantity = Math.max(0, next === previous ? local : local === previous ? next : local + (next - previous));
     if (quantity > MAX_QUANTITY) throw new Error('inventory_quantity_limit');
     if (quantity > 0) out[key] = quantity; else delete out[key];
   }

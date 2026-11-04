@@ -11,28 +11,29 @@ const shopCode=block('function bbShopV7Read(key){','function bbShopV7Reconcile('
 const persistCode=block('function persist(){','function notify(');
 const lunchCode=block('const BB321Lunch=(()=>{','const BB321_LUNCH_KEY=');
 const storeLunchCode=block('function bb321StoreLunch(next){','function bb321LunchboxRequirements(');
+const recipeHistoryCode=block('function bbRecordPlannedRecipes(ids){','function bbAfExactProtein(');
 const plain=value=>JSON.parse(JSON.stringify(value));
 const keys={KEY:'plan',BB_SNAPSHOT:'backup',BB321_LUNCH_KEY:'lunch',BB172_QUICK_DINNER_KEY:'notes',BB_SHOP_SESSION_V7_KEY:'shop',BB_SHOP_ARCHIVE_V7_KEY:'archive',BB321_SHOP_TICKS_KEY:'ticks',BB84_PURCHASED_KEY:'purchases',BB_BETA_CHOICE_KEY:'choices',BB_PARTIAL_PURCHASE_KEY:'partials',BB_BETA_RECEIPT_KEY:'receipts'};
 const ACTOR='person-one';
 function harness(){
- const values=new Map(),writes=[],notices=[],ended=[];let onWrite=null,onRead=null,renders=0,deleting=false,cookOpen=false,pending=false,pantryReview=false;
+ const values=new Map(),writes=[],notices=[],ended=[];let onWrite=null,onRead=null,renders=0,deleting=false,cookOpen=false,pending=false,pantryReview=false,cycles=0;
  const storage={getItem(key){onRead?.(key);return values.get(key)??null;},setItem(key,value){onWrite?.(key,String(value));values.set(key,String(value));writes.push(key);},removeItem(key){values.delete(key);writes.push(key);}};
- const state={version:2,planned:[{day:'Monday',recipeId:'old-dinner'}],plannedDesserts:[{day:'Sunday',recipeId:'old-dessert'}],servings:4,feedingSet:true,mealServings:{'old-dinner':3},dayServings:{Monday:{recipeId:'old-dinner',count:6}},leftoverSources:{},leftoverConfirmed:{},bbManualBatch:null,bb81Batch:null,
+ const state={version:2,pantryPlanGeneration:'cycle-before',planned:[{day:'Monday',recipeId:'old-dinner'}],plannedDesserts:[{day:'Sunday',recipeId:'old-dessert'}],servings:4,feedingSet:true,mealServings:{'old-dinner':3},dayServings:{Monday:{recipeId:'old-dinner',count:6}},leftoverSources:{},leftoverConfirmed:{},bbManualBatch:null,bb81Batch:null,
   pantry:{honey:true},recipePhotos:{'old-dinner':'existing-photo.webp'},ingredientAvoidance:{version:1,scope:ACTOR,excluded:['mushroom']},customPantry:['Rice'],dismissed:['old-skip']};
  const oldLunch={version:1,children:1,days:{Monday:[{name:'Pear',qty:1,unit:'each'}],Tuesday:[],Wednesday:[],Thursday:[],Friday:[]},menus:{Monday:'Pear',Tuesday:'',Wednesday:'',Thursday:'',Friday:''}};
  const allowed=new Set(['old-dinner','old-dessert','new-dinner','new-dessert','soup']);
  const ctx={...keys,state,bb321LunchState:oldLunch,tab:'week',bbStorageSafe:true,bbReceiptHostReady:true,BB307_STOCK_KEY:'stock',bb307Stock:{rice:600},bb80OpenPlanDays:new Set(['Monday']),bbNextExpandedPlanDay:'Monday',
-  console:{warn(){},error(){}},localStorage:storage,document:{querySelector:selector=>selector==='.cook-overlay'&&cookOpen?{}:null,getElementById:()=>null},
+  console:{warn(){},error(){}},crypto:{randomUUID:()=> 'restored-cycle-'+(++cycles)},localStorage:storage,document:{querySelector:selector=>selector==='.cook-overlay'&&cookOpen?{}:null,getElementById:()=>null},
   bb172QuickDinners:()=>JSON.parse(storage.getItem('notes')||'{}'),getRecipe:id=>allowed.has(id)?{id}:null,bb176AllowedRecipe:id=>allowed.has(id),
   bb80RememberPlanDays:()=>{},render:()=>{renders++;},notify:text=>notices.push(text),bbQaConfirm:async()=>true,
-  window:{BBSavedWeeks:model,BBAccountDeletion:{isDeleting:()=>deleting},BBReceiptHost:{hasPendingConfirmation:()=>pending,requiresPantryReview:()=>pantryReview,allowLegacyTransfer:()=>true},BBWeeklyShop:{end:id=>ended.push(id)}}
+  window:{BBSavedWeeks:model,BBHome:{actor:()=>JSON.parse(storage.getItem('basketboss_cloud_session_v1')||'null')?.user?.id||'guest'},BBAccountDeletion:{isDeleting:()=>deleting},BBReceiptHost:{hasPendingConfirmation:()=>pending,requiresPantryReview:()=>pantryReview,allowLegacyTransfer:()=>true},BBWeeklyShop:{end:id=>ended.push(id)}}
  };
  values.set('basketboss_cloud_session_v1',JSON.stringify({user:{id:ACTOR},access_token:'kept-private-token'}));
  values.set('plan',JSON.stringify(state));values.set('backup',JSON.stringify({...state,planned:[{day:'Saturday',recipeId:'old-dinner'}]}));values.set('lunch',JSON.stringify(oldLunch));values.set('notes',JSON.stringify({Thursday:'Eating out'}));
  values.set('shop',JSON.stringify({version:7,id:'shop-before',createdAt:'2026-11-01T00:00:00Z',checkboxUndo:{'rice|g':{value:true}},shelfEdits:{}}));
  values.set('archive',JSON.stringify({'shop-history':{version:7,id:'shop-history'}}));values.set('ticks',JSON.stringify({'rice|g':true}));values.set('purchases',JSON.stringify({'rice|g':{qty:500,unit:'g'}}));values.set('choices',JSON.stringify({'rice|g':{qty:500,unit:'g'}}));values.set('partials',JSON.stringify({'shop-before|rice|g':{bought:500,unit:'g'}}));values.set('receipts',JSON.stringify({'shop-before|rice|g':{qty:500,unit:'g',stockBasis:'full-purchase'}}));
  values.set('stock',JSON.stringify({'rice|g':600}));values.set('basketboss_at_home_requirements_v1',JSON.stringify({version:1,byActor:{[ACTOR]:{planned:{'shop-before|old-dinner|Monday':true}}}}));values.set('unrelated-setting','keep me');
- vm.createContext(ctx);vm.runInContext(lunchCode+'\n'+storeLunchCode+'\n'+persistCode+'\n'+shopCode+'\n'+hostCode,ctx);
+ vm.createContext(ctx);vm.runInContext(lunchCode+'\n'+storeLunchCode+'\n'+persistCode+'\n'+shopCode+'\n'+recipeHistoryCode+'\n'+hostCode,ctx);
  return {ctx,values,writes,notices,ended,storage,allowed,get renders(){return renders;},host:ctx.window.BBSavedWeeksHost,
   writeHook:fn=>{onWrite=fn;},readHook:fn=>{onRead=fn;},deleting:value=>{deleting=value;},cook:value=>{cookOpen=value;},pending:value=>{pending=value;},review:value=>{pantryReview=value;}};
 }
@@ -42,6 +43,7 @@ const request=h=>({week:week(),expected:h.host.snapshot().fingerprint,actor:ACTO
 test('restoring an exact named week preserves days, portions, school lunches and stock using the actual shopping transition',()=>{
  const h=harness(),before=plain(h.ctx.state),stock=h.values.get('stock'),history=h.values.get('basketboss_at_home_requirements_v1'),auth=h.values.get('basketboss_cloud_session_v1'),receipts=h.values.get('receipts'),partials=h.values.get('partials'),originalShop=h.values.get('shop');
  const result=h.host.restore(request(h));assert.equal(result.ok,true);
+ assert.equal(h.ctx.state.pantryPlanGeneration,'restored-cycle-1');assert.notEqual(h.ctx.state.pantryPlanGeneration,before.pantryPlanGeneration);assert.equal(JSON.parse(h.values.get('plan')).pantryPlanGeneration,'restored-cycle-1');
  assert.deepEqual(plain(h.ctx.state.planned),week().planned);assert.deepEqual(plain(h.ctx.state.plannedDesserts),week().plannedDesserts);assert.deepEqual(plain(h.ctx.state.dayServings),week().dayServings);assert.equal(h.ctx.state.servings,5);assert.deepEqual(plain(h.ctx.state.mealServings),{soup:2});
  assert.deepEqual(plain(h.ctx.bb321LunchState),week().lunch);assert.deepEqual(JSON.parse(h.values.get('notes')),{Sunday:'Freezer dinner'});
  for(const field of ['pantry','recipePhotos','ingredientAvoidance','customPantry','dismissed'])assert.deepEqual(plain(h.ctx.state[field]),before[field],field);
@@ -49,6 +51,15 @@ test('restoring an exact named week preserves days, portions, school lunches and
  assert.deepEqual(JSON.parse(h.values.get('ticks')),{});assert.deepEqual(JSON.parse(h.values.get('purchases')),{});assert.deepEqual(JSON.parse(h.values.get('choices')),{});
  const active=JSON.parse(h.values.get('shop')),archive=JSON.parse(h.values.get('archive'));assert.notEqual(active.id,'shop-before');assert.equal(active.version,7);assert.equal(archive['shop-before'].id,'shop-before');assert.deepEqual(archive['shop-before'].bought,{'rice|g':true});assert.equal(archive['shop-history'].id,'shop-history');
  assert.deepEqual(h.ended,['shop-before']);assert.equal(h.renders,1);assert.notEqual(h.values.get('shop'),originalShop);assert.deepEqual(JSON.parse(h.values.get('backup')),before);
+});
+test('loading the same saved week again starts a fresh cooking cycle without removing stock or completion history',()=>{
+ const h=harness(),stock=h.values.get('stock'),history=h.values.get('basketboss_at_home_requirements_v1');
+ assert.equal(h.host.restore(request(h)).ok,true);const first=h.ctx.state.pantryPlanGeneration;
+ assert.equal(h.host.restore(request(h)).ok,true);assert.equal(first,'restored-cycle-1');assert.equal(h.ctx.state.pantryPlanGeneration,'restored-cycle-2');
+ assert.equal(JSON.parse(h.values.get('plan')).pantryPlanGeneration,'restored-cycle-2');assert.equal(h.values.get('stock'),stock);assert.equal(h.values.get('basketboss_at_home_requirements_v1'),history);
+ const plannedHistory=JSON.parse(h.values.get('basketboss_planned_recipe_dates_v1'));
+ assert.deepEqual(Object.keys(plannedHistory.byActor),[ACTOR]);assert.deepEqual(Object.keys(plannedHistory.byActor[ACTOR]).sort(),['new-dessert','new-dinner','soup']);assert.ok(Object.values(plannedHistory.byActor[ACTOR]).every(Number.isFinite));
+ assert.equal(Object.hasOwn(week(),'pantryPlanGeneration'),false,'saved meal choices do not carry a consumed cycle into the new plan');
 });
 test('pending receipts, pantry review, cooking, deletion and unavailable recipes reject before any write',()=>{
  for(const setup of [h=>h.pending(true),h=>h.review(true),h=>h.cook(true),h=>h.deleting(true),h=>{h.ctx.bbStorageSafe=false;},h=>h.allowed.delete('new-dinner'),h=>{h.ctx.tab='shop';}]){

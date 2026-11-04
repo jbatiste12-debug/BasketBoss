@@ -27,7 +27,11 @@
   function checkDraftActor(){const who=actor();if(who!==householdActor){householdDraft.clear();householdActor=who;}}
   const store=win.localStorage,read=()=>{try{const value=JSON.parse(store.getItem(KEY)||'{}');return value&&value.version===1?value:{version:1,targets:{},cooked:{},planned:{}};}catch{return {version:1,targets:{},cooked:{},planned:{}};}};
   const actor=()=>{try{return JSON.parse(store.getItem('basketboss_cloud_session_v1')||'null')?.user?.id||'guest';}catch{return 'guest';}};
-  const blocked=()=>win.BBAccountDeletion?.isDeleting?.()||win.BBReceiptHost?.hasPendingConfirmation?.()||win.BBReceiptHost?.requiresPantryReview?.();
+  const blocked=()=>{
+   const receipt=win.BBReceiptHost;
+   if(win.BBAccountDeletion?.isDeleting?.()||receipt?.hasPendingConfirmation?.())return true;
+   try{return typeof receipt?.canConsumePantry==='function'?receipt.canConsumePantry()!==true:!!receipt?.requiresPantryReview?.();}catch{return true;}
+  };
   const host=()=>win.BBHomeHost;
   function own(){const all=read();const who=actor();all.byActor??={};all.byActor[who]??={targets:{},cooked:{},planned:{}};return {all,data:all.byActor[who],who};}
   function targets(){return own().data.targets||{};}
@@ -81,56 +85,210 @@
 
   function needsLegacyReview(id){try{return !!host()?.needsLegacyReview?.(host().recipeIngredients(id,1));}catch{return true;}}
   function isCooked(key){return !!own().data.planned?.[key];}
-  function cookSnapshot(event={}){
-   const {sessionId,recipeId,day,factor,actorId,occurrence}=event;
-   if(typeof sessionId!=='string'||!sessionId||sessionId.length>160||typeof recipeId!=='string'||!recipeId||recipeId.length>256||!Number.isFinite(factor)||factor<=0||factor>100)throw Error('Check the cooking servings before updating At home.');
+  const object=value=>value&&typeof value==='object'&&!Array.isArray(value);
+  function completionHome(actorId){
    const who=actor();if(actorId!==who)throw Error('Your account changed. Reopen Cook before updating At home.');
-   const oldHome=store.getItem(KEY),all=oldHome===null?{version:1,byActor:{}}:JSON.parse(oldHome),object=value=>value&&typeof value==='object'&&!Array.isArray(value);
+   const oldHome=store.getItem(KEY),all=oldHome===null?{version:1,byActor:{}}:JSON.parse(oldHome);
    if(!object(all)||all.version!==1||all.byActor!==undefined&&!object(all.byActor))throw Error('Review your saved At home records before updating stock.');
    all.byActor??={};all.byActor[who]??={targets:{},cooked:{},planned:{}};
    const data=all.byActor[who];if(!object(data))throw Error('Review your saved At home records before updating stock.');
    for(const key of ['targets','cooked','planned']){data[key]??={};if(!object(data[key]))throw Error('Review your saved At home records before updating stock.');}
-   if(data.cooked[sessionId]||occurrence&&data.planned[occurrence])return {already:true,all,data,who};
+   return {all,data,who,oldHome};
+  }
+  function pantrySnapshot(state,ingredients,identity){
    if(blocked())throw Error('Review At home before updating these ingredients.');
    if(!deduction)throw Error('Pantry quantities are still loading. Reopen Cook to try again.');
-   const currentOccurrence=host().occurrence?.(recipeId,day)||null;
-   if(occurrence&&occurrence!==currentOccurrence)throw Error('Your planned dinner changed. Reopen Cook before updating At home.');
-   const keys=host().keys(),oldStock=store.getItem(keys.stock),oldInv=store.getItem(keys.inventory),oldOwner=store.getItem('basketboss_receipt_projection_owner_v1'),oldPlan=store.getItem('basketboss_321_unified_state_v1'),oldSession=store.getItem('basketboss_cloud_session_v1');
-   const ingredients=host().recipeIngredients(recipeId,factor);if(!ingredients?.length)throw Error('Ingredient amounts need review in At home.');
    if(host().needsLegacyReview?.(ingredients))throw Error('Review the ingredient amounts in At home before updating this older shopping record.');
-   const stock=host().stock(),result=deduction.proposal({stock,ingredients,id:host().id});
+   const keys=host().keys();if(typeof keys?.stock!=='string'||typeof keys?.inventory!=='string')throw Error('Pantry storage is still loading.');
+   const oldStock=store.getItem(keys.stock),oldInv=store.getItem(keys.inventory),oldOwner=store.getItem('basketboss_receipt_projection_owner_v1'),oldPlan=store.getItem('basketboss_321_unified_state_v1'),oldSession=store.getItem('basketboss_cloud_session_v1');
+   const stock=host().stock(),conversion=host().conversionContext?.(),result=deduction.proposal({stock,ingredients,id:host().id,conversion});
    const inventory=oldInv===null?{}:JSON.parse(oldInv);if(!object(inventory))throw Error('Review your saved pantry inventory before updating stock.');
-   const fingerprint=JSON.stringify({who,sessionId,recipeId,day,factor,occurrence,currentOccurrence,oldHome,oldStock,oldInv,oldOwner,oldPlan,ingredients,stock});
-   return {keys,all,data,who,stock,ingredients,inventory,result,fingerprint,expected:{[keys.stock]:oldStock,[keys.inventory]:oldInv,[KEY]:oldHome,basketboss_receipt_projection_owner_v1:oldOwner,basketboss_321_unified_state_v1:oldPlan,basketboss_cloud_session_v1:oldSession}};
+   const extraKeys=host().completionKeys?.()||[];if(!Array.isArray(extraKeys)||extraKeys.length>30||extraKeys.some(key=>typeof key!=='string'||!key||key.length>200))throw Error('Review your saved meal plan before updating stock.');
+   const extra=Object.fromEntries(extraKeys.map(key=>[key,store.getItem(key)]));
+   const fingerprint=JSON.stringify({who:state.who,...identity,oldHome:state.oldHome,oldStock,oldInv,oldOwner,oldPlan,oldSession,extra,ingredients,stock,conversion});
+   return {...state,keys,stock,ingredients,inventory,conversion,result,fingerprint,expected:{...extra,[keys.stock]:oldStock,[keys.inventory]:oldInv,[KEY]:state.oldHome,basketboss_receipt_projection_owner_v1:oldOwner,basketboss_321_unified_state_v1:oldPlan,basketboss_cloud_session_v1:oldSession}};
+  }
+  function cookSnapshot(event={}){
+   const {sessionId,recipeId,day,factor,actorId,occurrence,kind}=event;
+   if(typeof sessionId!=='string'||!sessionId||sessionId.length>160||typeof recipeId!=='string'||!recipeId||recipeId.length>256||!Number.isFinite(factor)||factor<=0||factor>100)throw Error('Check the cooking servings before updating At home.');
+   const state=completionHome(actorId);
+   if(state.data.cooked[sessionId]||occurrence&&state.data.planned[occurrence])return {...state,already:true};
+   const currentOccurrence=host().occurrence?.(recipeId,day,kind)||null;
+   if(occurrence&&occurrence!==currentOccurrence)throw Error('Your planned '+(kind==='dessert'?'dessert':'dinner')+' changed. Reopen Cook before updating At home.');
+   const ingredients=host().recipeIngredients(recipeId,factor);if(!ingredients?.length)throw Error('Ingredient amounts need review in At home.');
+   return pantrySnapshot(state,ingredients,{sessionId,recipeId,day,factor,occurrence,currentOccurrence,kind});
   }
   function previewCook(event){
    try{const state=cookSnapshot(event);if(state.already)return {ok:true,already:true,rows:[],issues:[],fingerprint:null,message:'At home already updated for this cooked meal.'};return {ok:true,already:false,rows:state.result.rows,issues:state.result.issues,fingerprint:state.fingerprint};}
    catch(error){return {ok:false,rows:[],issues:[],message:error?.message||'Review your pantry amounts before updating At home.'};}
   }
-  async function cooked(event={}){
-   let state;try{state=cookSnapshot(event);}catch(error){return {ok:false,message:error?.message||'Review At home before updating these ingredients.'};}
-   if(state.already)return {ok:true,already:true,message:'At home already updated for this cooked meal.'};
-   if(event.expected!==undefined&&(typeof event.expected!=='string'||event.expected!==state.fingerprint))return {ok:false,needsReview:true,message:'Your pantry or recipe changed. Review the latest amounts before deducting.'};
-   let result;try{result=deduction.proposal({stock:state.stock,ingredients:state.ingredients,amounts:event.amounts,id:host().id});}catch(error){return {ok:false,needsReview:true,message:error?.message||'Review the used ingredient amounts.'};}
-   const groups=new Map();
+  function projectKitchen(state,result){
+   if(result.preservesSourceUnits){
+    const groups=new Map();
+    for(const row of Object.values(state.inventory)){const key=row?.bb173StockKey;if(typeof key!=='string'||!Object.hasOwn(state.stock,key))continue;const records=groups.get(key)||[];records.push(row);groups.set(key,records);}
+    for(const [key,records]of groups){
+     const source=deduction.measure(key.slice(key.lastIndexOf('|')+1));let left=result.remainingStock[key]||0;
+     records.forEach((row,index)=>{const amount=index===records.length-1?left:Math.min(left,Math.max(0,Number(row.bb173StockValue)||0));left=Math.max(0,left-amount);row.bb173StockValue=amount;const display=deduction.measure(row.unit);if(display.unit===source.unit)row.qty=amount*source.factor/display.factor;else{row.unit=key.slice(key.lastIndexOf('|')+1);row.qty=amount;}});
+    }
+    return;
+   }
+   const groups=new Map(),remaining=deduction.stockData(result.remainingStock,host().id).values;
    for(const row of Object.values(state.inventory)){
     if(!row?.bb173StockKey)continue;const at=row.bb173StockKey.lastIndexOf('|');if(at<1)continue;
     const info=deduction.measure(row.bb173StockKey.slice(at+1)),key=host().id(row.bb173StockKey.slice(0,at),info.unit),records=groups.get(key)||[];
     records.push({row,value:(Number(row.bb173StockValue)||0)*info.factor});groups.set(key,records);
    }
    for(const [key,records]of groups){
-    let left=Number(result.remainingStock[key]||0);const base=key.slice(key.lastIndexOf('|')+1);
+    let left=Number(remaining[key]||0);const base=key.slice(key.lastIndexOf('|')+1);
     records.forEach(({row,value},index)=>{const amount=index===records.length-1?left:Math.min(left,Math.max(0,value));left=Math.max(0,left-amount);row.bb173StockKey=key;row.bb173StockValue=amount;const display=deduction.measure(row.unit);if(display.unit!==base)row.unit=base;row.qty=amount/(display.unit===base?display.factor:1);});
    }
-   const {sessionId,recipeId,day,factor,occurrence}=event;
-   state.data.cooked[sessionId]={recipeId,day:day||null,factor,at:Date.now(),ingredients:result.used.map(row=>({key:row.key,unit:row.unit,quantity:row.required})),skipped:result.issues.map(row=>row.id)};
-   if(occurrence)state.data.planned[occurrence]=true;
-   const shopping=settle(state.data,result.used.map(row=>row.id),true);
-   if(actor()!==state.who||blocked())return {ok:false,message:'Your account or pantry changed. Review the latest amounts first.'};
-   atomic(store,{[state.keys.stock]:result.remainingStock,[state.keys.inventory]:state.inventory,[KEY]:state.all,...shopping?.updates},{...state.expected,...shopping?.expected});host().refresh();
+  }
+  function commitConsumption(state,result){
+   projectKitchen(state,result);
+   const physical=result.used.flatMap(row=>(row.allocations||[]).map(allocation=>{const at=allocation.stockKey.lastIndexOf('|');return host().id(allocation.stockKey.slice(0,at),deduction.measure(allocation.stockKey.slice(at+1)).unit);}));
+   const shopping=settle(state.data,[...result.used.map(row=>row.id),...physical],true);
+   if(actor()!==state.who||blocked())return false;
+   atomic(store,{[state.keys.stock]:result.remainingStock,[state.keys.inventory]:state.inventory,[KEY]:state.all,...shopping?.updates},{...state.expected,...shopping?.expected});host().refresh();return true;
+  }
+  async function syncConsumption(result){
    const review=result.issues.length?' Some amounts need review in At home; those units were not guessed.':'';
-   if(win.BBReceiptHost?.confirmCurrentPantry){try{const sync=await win.BBReceiptHost.confirmCurrentPantry({stock:result.remainingStock});if(!sync?.ok||sync.needsReview)return {ok:true,issues:result.issues,message:'At home updated on this device. Review online pantry confirmation.'+review};}catch{return {ok:true,issues:result.issues,message:'At home updated on this device; online confirmation can be retried.'+review};}}
+   const receipt=win.BBReceiptHost,sync=receipt?.confirmCookedPantry||receipt?.confirmCurrentPantry;
+   if(sync){try{
+    const response=await sync.call(receipt,{stock:result.remainingStock});
+    if(response?.code==='inventory_ambiguous_package_sources')return {ok:true,issues:result.issues,message:'Different pack sizes need review in At home. Your amounts remain saved on this device.'+review};
+    if(!response?.ok||response.needsReview)return {ok:true,issues:result.issues,message:'At home updated on this device. Review online pantry confirmation.'+review};
+    if(response.weeklyReviewRequired)return {ok:true,issues:result.issues,weeklyReviewRequired:true,message:'At home updated. Review your remaining food and essentials before the next shop.'+review};
+   }catch{return {ok:true,issues:result.issues,message:'At home updated on this device; online confirmation can be retried.'+review};}}
    return {ok:true,issues:result.issues,message:'At home updated. Your shopping list now uses the remaining stock.'+review};
+  }
+  async function cooked(event={}){
+   let state;try{state=cookSnapshot(event);}catch(error){return {ok:false,message:error?.message||'Review At home before updating these ingredients.'};}
+   if(state.already)return {ok:true,already:true,message:'At home already updated for this cooked meal.'};
+   if(event.expected!==undefined&&(typeof event.expected!=='string'||event.expected!==state.fingerprint))return {ok:false,needsReview:true,message:'Your pantry or recipe changed. Review the latest amounts before deducting.'};
+   let result;try{result=deduction.proposal({stock:state.stock,ingredients:state.ingredients,amounts:event.amounts,id:host().id,conversion:state.conversion});}catch(error){return {ok:false,needsReview:true,message:error?.message||'Review the used ingredient amounts.'};}
+   const {sessionId,recipeId,day,factor,occurrence,kind}=event;
+   state.data.cooked[sessionId]={recipeId,day:day||null,factor,...(kind?{kind}:{}),at:Date.now(),ingredients:result.used.map(row=>({key:row.key,unit:row.unit,quantity:row.required})),skipped:result.issues.map(row=>row.id)};
+   if(occurrence)state.data.planned[occurrence]=true;
+   if(!commitConsumption(state,result))return {ok:false,message:'Your account or pantry changed. Review the latest amounts first.'};
+   return syncConsumption(result);
+  }
+  function daySnapshot(event={}){
+   const {day,actorId}=event;if(typeof day!=='string'||!day.trim()||day.length>16)throw Error('Choose a planned day before confirming its food.');
+   const state=completionHome(actorId),contexts=host()?.dayMeals?.(day);
+   if(!Array.isArray(contexts)||!contexts.length||contexts.length>30)throw Error('There is no planned food to confirm for this day.');
+   const seen=new Set(),items=contexts.map(context=>{
+    const {kind,recipeId,factor,occurrence}=context||{};
+    if(!['dinner','dessert','lunch','leftover','note'].includes(kind)||typeof recipeId!=='string'||!recipeId||recipeId.length>256||!Number.isFinite(factor)||factor<=0||factor>100||context.day!==day||typeof occurrence!=='string'||!occurrence||occurrence.length>2000||['__proto__','constructor','prototype'].includes(occurrence)||seen.has(occurrence))throw Error('The day’s food changed. Review the planned meals before confirming.');
+    seen.add(occurrence);
+    if(!Array.isArray(context.ingredients)||context.ingredients.length>500||!context.ingredients.length&&!['leftover','note'].includes(kind))throw Error('Review the ingredient amounts for '+(context.name||recipeId)+' before confirming this day.');
+    const item={kind,recipeId,name:String(context.name||recipeId).slice(0,240),day,factor,occurrence,ingredients:context.ingredients.map(row=>({...row})),already:!!state.data.planned[occurrence],manualReview:context.manualReview===true};
+    if(kind==='leftover'&&context.sourceOccurrence===undefined)throw Error('Review the original batch before confirming leftovers.');
+    if(context.sourceOccurrence!==undefined){if(typeof context.sourceOccurrence!=='string'||!context.sourceOccurrence||context.sourceOccurrence.length>2000||['__proto__','constructor','prototype'].includes(context.sourceOccurrence))throw Error('Review the original batch before confirming leftovers.');item.sourceOccurrence=context.sourceOccurrence;}
+    return item;
+   });
+   const pending=items.filter(item=>!item.already);
+   if(!pending.length)return {...state,items,already:true};
+   for(const item of pending)if(item.sourceOccurrence&&!state.data.planned[item.sourceOccurrence])throw Error('Confirm the original batch cooked before marking these leftovers done.');
+   const ingredients=pending.flatMap(item=>item.ingredients),snapshot=pantrySnapshot(state,ingredients,{day,items});
+   const manualIssues=pending.filter(item=>item.manualReview).map(item=>({id:'manual:'+item.occurrence,message:item.name+' has no measured ingredient list. Check its remaining amounts in At home.'}));
+   return {...snapshot,day,items,pending,manualIssues};
+  }
+  function previewDay(event){
+   try{
+    const state=daySnapshot(event),items=state.items.map(({kind,name,already})=>({kind,name,already}));
+    if(state.already)return {ok:true,already:true,items,rows:[],issues:[],fingerprint:null,message:'All planned food for this day is already confirmed.'};
+    return {ok:true,already:false,items,rows:state.result.rows,issues:[...state.result.issues,...state.manualIssues],fingerprint:state.fingerprint};
+   }catch(error){return {ok:false,already:false,items:[],rows:[],issues:[],needsReview:true,message:error?.message||'Review this day’s food and pantry amounts first.'};}
+  }
+  async function finishDay(event={}){
+   let state;try{state=daySnapshot(event);}catch(error){return {ok:false,needsReview:true,message:error?.message||'Review this day’s food and pantry amounts first.'};}
+   if(state.already)return {ok:true,already:true,completedCount:0,issues:[],message:'All planned food for this day is already confirmed.'};
+   if(typeof event.expected!=='string'||event.expected!==state.fingerprint)return {ok:false,needsReview:true,message:'Your day’s food or pantry changed. Review the latest amounts before confirming.'};
+   const result={...state.result,issues:[...state.result.issues,...state.manualIssues]},available=new Map(result.used.map(row=>[row.id,row.required]));
+   for(const item of state.pending){
+    const rows=deduction.proposal({stock:state.stock,ingredients:item.ingredients,id:host().id,conversion:state.conversion}).rows,ingredients=[];
+    for(const row of rows){const amount=Math.min(available.get(row.id)||0,row.required||0);if(amount>0){ingredients.push({key:row.name,unit:row.unit,quantity:amount});available.set(row.id,(available.get(row.id)||0)-amount);}}
+    state.data.cooked['day:'+item.occurrence]={kind:item.kind,recipeId:item.recipeId,day:item.day,factor:item.factor,at:Date.now(),ingredients,skipped:result.issues.filter(issue=>issue.id==='manual:'+item.occurrence||rows.some(row=>row.id===issue.id)).map(issue=>issue.id)};
+    state.data.planned[item.occurrence]=true;
+   }
+   if(!commitConsumption(state,result))return {ok:false,needsReview:true,message:'Your account or pantry changed. Review the latest amounts first.'};
+   const response={...await syncConsumption(result),completedCount:state.pending.length};
+   if(actor()===state.who&&!win.BBAccountDeletion?.isDeleting?.())try{host().notify?.(response.message);}catch{}
+   return response;
+  }
+  function shoppingBuys(){
+   const data=own().data;return Object.entries(object(data.manualBuys)?data.manualBuys:{}).filter(([,row])=>row?.pending!==false&&valid(row.quantity)&&row.quantity>0).map(([id,row])=>({...row,id}));
+  }
+  function shoppingBuyId(row){
+   if(row.kind!=='household')return host().id(row.name,row.unit);
+   const saved=(host().household?.()||[]).find(item=>host().id(item.name,item.unit)===host().id(row.name,row.unit));
+   return 'ess:'+(saved?.id||'manual-'+row.id);
+  }
+  function addShoppingBuy(request={}){
+   let state;
+   try{
+    const name=typeof request.name==='string'?request.name.trim().replace(/\s+/g,' '):'',text=String(request.quantityText??'').trim();
+    if(!name||name.length>70||name.includes('|')||['__proto__','constructor','prototype'].includes(name.toLowerCase()))throw Error('Enter an item name of up to 70 characters.');
+    const number='(\\d+(?:\\.\\d+)?|\\.\\d+)',contents='(kg|g|ml|l|each|items?)',containers='(bags?|packs?|packets?|bottles?|cartons?|tins?|cans?|boxes?|tubs?)';
+    const sized=text.match(new RegExp('^'+number+'\\s*[x×]\\s*'+number+'\\s*'+contents+'$','i'))||text.match(new RegExp('^'+number+'\\s*'+containers+'\\s*\\(\\s*'+number+'\\s*'+contents+'\\s*(?:each)?\\s*\\)$','i'));
+    const match=sized?null:text.match(/^(\d+(?:\.\d+)?|\.\d+)\s*([a-zA-Z]*)$/);if(!match&&!sized)throw Error('Enter 2, 500 g, or a known pack amount such as 1 pack (500 g).');
+    const aliases={pcs:'each',pc:'each',bottle:'each',bottles:'each',box:'pack',boxes:'pack'},packCount=sized?Number(sized[1]):null,contentQuantity=sized?Number(sized.length===4?sized[2]:sized[3]):null,contentUnit=sized?(sized.length===4?sized[3]:sized[4]).toLowerCase():null;
+    if(sized&&(!Number.isInteger(packCount)||packCount<1||packCount>10000||!(contentQuantity>0)))throw Error('Check the number of packs and their contents.');
+    const rawUnit=sized?(sized.length===4?'pack':sized[2].toLowerCase()):match[2].toLowerCase()||'each',raw=sized?packCount:Number(match[1]),info=deduction.measure(sized?contentUnit:aliases[rawUnit]||rawUnit),purchaseQuantity=sized?packCount*contentQuantity:raw;
+    if(!info.known||!valid(purchaseQuantity)||!valid(purchaseQuantity*info.factor)||!['g','ml','tsp','tbsp','cup'].includes(info.unit)&&!Number.isInteger(purchaseQuantity))throw Error('Check the quantity and unit; use whole numbers for items and packs.');
+    if(typeof request.requestId!=='string'||!request.requestId||request.requestId.length>180||['__proto__','constructor','prototype'].includes(request.requestId))throw Error('Reopen Add item to save this request safely.');
+    state=completionHome(request.actorId);if(blocked())throw Error('Finish the pending pantry or receipt review before changing this list.');
+    state.data.manualBuys??={};state.data.manualRequests??={};if(!object(state.data.manualBuys)||!object(state.data.manualRequests))throw Error('Review your saved manual shopping items first.');
+    const kind=host().shoppingKind?.(name)||'food',measured=kind==='food'&&host().shoppingMeasure?host().shoppingMeasure(name,purchaseQuantity,sized?contentUnit:aliases[rawUnit]||rawUnit):{key:name,quantity:purchaseQuantity*info.factor,unit:info.unit};
+    if(!measured?.key||!valid(measured.quantity)||!measured.unit)throw Error('Review this item’s quantity and unit.');
+    const id=kind+':'+host().id(measured.key,measured.unit),intent=JSON.stringify({id,quantity:measured.quantity}),prior=state.data.manualRequests[request.requestId];
+    if(prior){if(prior!==intent)throw Error('This saved request has changed. Reopen Add item.');return {ok:true,already:true,message:'This manual shopping request was already saved.'};}
+    const candidate={id,name:measured.key,displayName:name,kind,quantity:measured.quantity,unit:measured.unit,sourceQuantity:raw,sourceUnit:aliases[rawUnit]||rawUnit,estimated:measured.estimated===true,pending:measured.quantity>0,...(sized?{packCount,packQuantity:contentQuantity,packUnit:contentUnit,packReviewed:true}:{})};
+    const context=host().shoppingPurchaseContext?.(shoppingBuyId(candidate))||{};
+    candidate.shopSessionId=context.shopSessionId||null;candidate.boughtAtRequest=valid(context.quantity)?context.quantity:0;
+    state.data.manualBuys[id]=candidate;state.data.manualRequests[request.requestId]=intent;
+    for(const old of Object.keys(state.data.manualRequests).slice(0,-200))delete state.data.manualRequests[old];
+    const keys=host().keys(),expected={[KEY]:state.oldHome,[keys.stock]:store.getItem(keys.stock),basketboss_receipt_projection_owner_v1:store.getItem('basketboss_receipt_projection_owner_v1'),basketboss_cloud_session_v1:store.getItem('basketboss_cloud_session_v1')};
+    if(actor()!==state.who||blocked())throw Error('Your account or pantry changed. Reopen Add item.');
+    atomic(store,{[KEY]:state.all},expected);
+    const message=measured.quantity>0?name+' added to buy: '+raw+' '+(aliases[rawUnit]||rawUnit)+'.':name+' removed from manual top-ups.';
+    // The intent is committed even if a later repaint cannot complete.
+    try{host().refresh();}catch{}try{host().notify?.(message);}catch{}
+    return {ok:true,message};
+   }catch(error){return {ok:false,message:error?.message||'Could not save this manual shopping item.'};}
+  }
+  function manualBuyItems(items){
+   const output=items.map(row=>({...row})),map=new Map(output.map(row=>[host().id(row.key,row.unit),row]));
+   for(const buy of shoppingBuys().filter(row=>row.kind!=='household')){
+    const id=host().id(buy.name,buy.unit),context=host().shoppingPurchaseContext?.(id)||{},base=map.get(id)||{key:buy.name,unit:buy.unit,required:0,toBuy:0,pantryUsed:0,spend:null,sharedAcrossRecipes:0};
+    if(!map.has(id)){map.set(id,base);output.push(base);}
+    const automatic=Number(base.toBuy)||0,baseline=buy.shopSessionId===context.shopSessionId?Number(buy.boughtAtRequest)||0:0,next=Math.max(automatic,baseline)+buy.quantity;
+    base.required=(Number(base.required)||0)+next-automatic;base.toBuy=next;base.manualBuyQty=buy.quantity;base.manualBuyId=buy.id;base.quantityEstimated=!!base.quantityEstimated||buy.estimated;
+   }
+   return output;
+  }
+  function manualBuyEssentials(items){
+   const output=items.map(row=>({...row}));
+   for(const buy of shoppingBuys().filter(row=>row.kind==='household')){
+    let item=output.find(row=>host().id(row.name,row.unit)===host().id(buy.name,buy.unit));
+    if(!item){const saved=(host().household?.()||[]).find(row=>host().id(row.name,row.unit)===host().id(buy.name,buy.unit));item={...(saved||{}),id:saved?.id||'manual-'+buy.id,name:buy.displayName||buy.name,unit:buy.unit,qty:0,selected:true,owned:false,estimatedPackPrice:saved?.estimatedPackPrice??null};output.push(item);}
+    const context=host().shoppingPurchaseContext?.('ess:'+item.id)||{},baseline=buy.shopSessionId===context.shopSessionId?Number(buy.boughtAtRequest)||0:0;
+    item.qty=Math.max(Number(item.qty)||0,baseline)+buy.quantity;item.manualBuyQty=buy.quantity;item.manualBuyId=buy.id;
+    delete item.targetQty;delete item.ownedQty;delete item.manualPending;
+   }
+   return output;
+  }
+  function applyManualPurchases(home,{shopSessionId,additions}={}){
+   const rows=home?.byActor?.[actor()]?.manualBuys;if(!object(rows)||!Array.isArray(additions))return false;
+   let changed=false;
+   for(const row of Object.values(rows)){
+    if(!row?.pending||row.shopSessionId!==shopSessionId)continue;
+    const addition=additions.find(value=>value.id===host().id(row.name,row.unit));
+    if(!addition||!valid(addition.quantity)||!valid(addition.automaticQuantity))continue;
+    const credit=Math.min(row.quantity,Math.max(0,addition.quantity-addition.automaticQuantity));if(!(credit>0))continue;
+    row.quantity=Math.round((row.quantity-credit)*1000000)/1000000;row.pending=row.quantity>0;row.boughtAtRequest=0;changed=true;
+   }
+   return changed;
   }
   function decorate(container){
    checkDraftActor();if(!container)return;
@@ -146,7 +304,7 @@
   }
   function reminders(){const list=win.document.getElementById('bb321Printable');if(!list)return;list.querySelector('.bb-home-covered')?.remove();const data=Object.values(targets()).filter(row=>row.pending&&row.targetQty>0);const needed=host().requirements();const covered=data.filter(row=>{const item=needed.find(x=>host().id(x.key,x.unit)===host().id(row.name,row.unit));const current=host().stock()[host().id(row.name,row.unit)]||0;return Math.max(row.targetQty,item?.required||0)<=current;});const households=host().household().filter(row=>Object.hasOwn(row,'targetQty')&&row.manualPending!==false&&row.targetQty>0&&row.ownedQty>=row.targetQty).map(row=>({...row,homeId:'ess:'+row.id}));if(!covered.length&&!households.length)return;const box=win.document.createElement('div');box.className='bb-home-covered';for(const row of [...covered,...households]){const label=win.document.createElement('label'),tick=win.document.createElement('input');tick.type='checkbox';tick.addEventListener('change',()=>{if(tick.checked){complete(row.homeId||host().id(row.name,row.unit));host().refresh();}});label.append(tick,win.document.createTextNode(row.name+' · covered at home'));box.append(label);}list.append(box);}
   function openRequested(){const id=new URLSearchParams(win.location.search).get('bbcook');if(id)host()?.openCook?.(id);}
-  const api={prepareSharedPurchase,needsLegacyReview,receiptGeneration,supersedesReceipt,addHousehold,openRequested,reminders,decorate,committed:()=>{householdDraft.clear();host()?.reload();},difference,augment,targets,requirement,total,prepare,completionChanges,complete,isCooked,previewCook,cooked,actor,blocked,atomic};
+  const api={prepareSharedPurchase,needsLegacyReview,receiptGeneration,supersedesReceipt,addHousehold,openRequested,reminders,decorate,committed:()=>{householdDraft.clear();host()?.reload();},difference,augment,targets,requirement,total,prepare,completionChanges,complete,isCooked,previewCook,cooked,previewDay,finishDay,shoppingBuys,addShoppingBuy,manualBuyItems,manualBuyEssentials,applyManualPurchases,actor,blocked,atomic};
   setTimeout(()=>{win.BBKitchenEssentials?.refresh?.();openRequested();},0);
   return Object.freeze(api);
  }

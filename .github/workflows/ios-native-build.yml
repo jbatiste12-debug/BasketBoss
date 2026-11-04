@@ -3,7 +3,7 @@ name: Verify iOS native build
 on:
   workflow_dispatch:
   push:
-    branches: [main, codex/native-cook-fix, release/recipe-editorial-collections, feature/conversational-voice-cook, fix/cook-mentor-reply-failure]
+    branches: [main, codex/native-cook-fix, release/recipe-editorial-collections, feature/conversational-voice-cook, fix/cook-mentor-reply-failure, fix/confirmed-cook-pantry]
     paths:
       - .github/workflows/ios-native-build.yml
       - .github/workflows/inspect-account-keyboard.yml
@@ -32,6 +32,12 @@ on:
       - bb-featured-framing.js
       - bb-how-it-works.*
       - bb-pantry-camera.*
+      - bb-pantry-autofill.js
+      - bb-day-done.*
+      - bb-shop-add.*
+      - bb-receipt-inventory*
+      - bb-receipt-host.js
+      - bb-recipe-planning.js
       - bb-pantry-deduction.js
       - bb-receipt-quantity.js
       - bb-recipe-measures.js
@@ -98,13 +104,23 @@ jobs:
             echo 'Retrying iOS sync once after a dependency setup failure.'
             npm run ios:sync
           fi
-      - name: Verify build 7 ingredient units, basket, pantry, saved weeks and Cook regressions
+      - name: Verify ingredient units, basket, pantry, saved weeks and Cook regressions
         run: >-
           node --test --test-isolation=none
           tests/basketboss-garlic-basket.test.mjs
           tests/basketboss-canonical-measure.test.mjs
           tests/basketboss-ingredient-standardisation.test.mjs
           tests/basketboss-pantry-reconcile.test.mjs
+          tests/basketboss-pantry-conversion.test.mjs
+          tests/basketboss-pantry-cook-flow.test.mjs
+          tests/basketboss-pantry-conversion-cook-flow.test.mjs
+          tests/basketboss-day-completion-core.test.mjs
+          tests/basketboss-day-done.test.mjs
+          tests/basketboss-shop-add.test.mjs
+          tests/basketboss-manual-buy-core.test.mjs
+          tests/basketboss-manual-purchase-app.test.mjs
+          tests/basketboss-pantry-autofill.test.mjs
+          tests/basketboss-pantry-autofill-app.test.mjs
           tests/basketboss-saved-weeks.test.mjs
           tests/basketboss-saved-week-host.test.mjs
           tests/basketboss-cook-phase-navigation.test.mjs

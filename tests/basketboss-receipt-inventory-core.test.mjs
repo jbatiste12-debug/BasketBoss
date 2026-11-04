@@ -217,7 +217,8 @@ test('stock normalization rejects prototype keys, non-food, coercion tricks and 
   assert.throws(() => Core.normalizeStockMap(polluted), /invalid_inventory/);
   assert.throws(() => Core.normalizeStockMap({ 'laundry detergent|ml': 500 }), /invalid_inventory/);
   assert.throws(() => Core.normalizeStockMap({ 'pasta|g': '500' }), /invalid_inventory/);
-  assert.throws(() => Core.normalizeStockMap({ 'egg|each': 1.5 }), /invalid_inventory/);
+  assert.deepEqual(Core.normalizeStockMap({ 'egg|each': 1.5 }), { 'egg|each': 1.5 });
+  assert.equal(Core.normalizeMeasuredQuantity(1.5, 'each'), null);
   assert.throws(() => Core.normalizeStockMap({ 'pasta|g': 1000001 }), /invalid_inventory/);
   assert.equal(Core.normalizeMeasuredQuantity([500], 'g'), null);
   assert.equal(Core.normalizeMeasuredQuantity('0x100', 'g'), null);
@@ -500,4 +501,62 @@ test('a later receipt cannot reuse the first receipt netting of FinishShop surpl
   const two = await draft(f, {receiptId: 'receipt-second'});assert.equal((await f.adapter.commitReviewedReceipt(two)).localApplied, true);
   assert.equal(f.server.stock['pasta|g'], 1000);
   assert.equal((await f.adapter.commitReviewedReceipt(one)).duplicate, true);assert.equal(f.server.stock['pasta|g'], 1000);
+});
+
+test('pantry balances preserve partial items, fractional packs and tiny residuals while purchase counts stay strict', () => {
+  const stock = {'eggs|pieces': 1.5, 'rice|packs': 1/3, 'milk|litres': .0000001, 'herbs|g': 1e-9};
+  const normalized = Core.normalizeStockMap(stock);
+  assert.equal(normalized['egg|each'], 1.5);assert.equal(normalized['rice|pack'], 1/3);assert.equal(normalized['herbs|g'], 1e-9);
+  assert.ok(Math.abs(normalized['milk|ml']-.0001)<1e-19);
+  assert.deepEqual(Core.normalizeStockMap(normalized), normalized);
+  assert.equal(Core.normalizeMeasuredQuantity(1.5, 'each'), null);
+  assert.equal(Core.normalizePack({quantity: .5, unit: 'pack'}).quantity, null);
+  assert.deepEqual(Core.normalizeStockQuantity(.5, 'packs'), {quantity: .5, unit: 'pack'});
+  assert.equal(Core.normalizeStockQuantity(.5, 'unknown'), null);
+  assert.deepEqual(Core.projectReceiptInventory(normalized, normalized, normalized), normalized);
+  assert.deepEqual(Core.projectReceiptInventory({'rice|pack': .5}, {'rice|pack': .5}, {'rice|pack': 1/3}), {'rice|pack': 1/3});
+});
+
+test('cloud pantry confirmation and later receipts retain fractional physical balances and Kitchen location', async () => {
+  const f = fixture();
+  f.store.setItem(f.keys.stock, JSON.stringify({'egg|each': 1.5, 'rice|pack': .5, 'herbs|g': 1e-9}));
+  f.store.setItem(f.keys.kitchen, JSON.stringify({'fridge|egg': {name:'Eggs',qty:1.5,unit:'each',loc:'fridge',selected:true}}));
+  const result = await f.adapter.confirmPantry({stock: {'egg|each':1.5,'rice|pack':.5,'herbs|g':1e-9}, expectedRevision:0, expectedScope:f.server.scope, shopSessionId:'shop-1'});
+  assert.equal(result.localApplied, true);
+  const expected = {'egg|each':1.5,'rice|pack':.5,'herbs|g':1e-9};
+  assert.deepEqual(JSON.parse(f.store.getItem(f.keys.stock)), expected);assert.deepEqual(f.server.stock, expected);
+  assert.equal(JSON.parse(f.store.getItem(f.keys.kitchen))['fridge|egg'].qty, 1.5);
+  await f.adapter.commitReviewedReceipt(await draft(f));
+  assert.deepEqual(JSON.parse(f.store.getItem(f.keys.stock)), {...expected,'pasta|g':500});
+  assert.equal(JSON.parse(f.store.getItem(f.keys.kitchen))['fridge|egg'].selected, true);
+});
+
+test('unsupported pantry units fail sync without removing local stock or writing a server replacement', async () => {
+  const f = fixture();const stock={'herbs|handful':2,'rice|pack':.5};f.store.setItem(f.keys.stock,JSON.stringify(stock));
+  await assert.rejects(f.adapter.confirmPantry({stock,expectedRevision:0,expectedScope:f.server.scope}), /invalid_inventory/);
+  assert.deepEqual(JSON.parse(f.store.getItem(f.keys.stock)),stock);assert.deepEqual(f.server.stock,{});assert.equal(f.server.posts,0);
+});
+
+test('canonical package-source collisions fail before pantry POST and preserve original physical data', async () => {
+ const stock={'rice|pack':1,'Rice|packs':1,'rice|g':20};
+ assert.throws(()=>Core.normalizeStockMap(stock),/ambiguous_package_sources/);
+ const f=fixture();f.store.setItem(f.keys.stock,JSON.stringify(stock));
+ const kitchen={a:{name:'Rice',qty:1,unit:'pack',selected:true,packReviewed:true,packQuantity:500,packUnit:'g'},b:{name:'Rice',qty:1,unit:'packs',selected:true,packReviewed:true,packQuantity:250,packUnit:'g'}};
+ f.store.setItem(f.keys.kitchen,JSON.stringify(kitchen));
+ await assert.rejects(f.adapter.confirmPantry({stock,expectedRevision:0,expectedScope:f.server.scope}),/ambiguous_package_sources/);
+ assert.equal(f.server.posts,0);assert.deepEqual(JSON.parse(f.store.getItem(f.keys.stock)),stock);assert.deepEqual(JSON.parse(f.store.getItem(f.keys.kitchen)),kitchen);
+ await assert.rejects(f.adapter.commitReviewedReceipt(await draft(f)),/ambiguous_package_sources/);assert.equal(f.server.posts,0);assert.deepEqual(JSON.parse(f.store.getItem(f.keys.stock)),stock);
+ assert.deepEqual(Core.normalizeStockMap({'rice|kg':1,'Rice|grams':250}),{'rice|g':1250});
+ assert.deepEqual(Core.normalizeStockMap({'eggs|pieces':2,'egg|each':1}),{'egg|each':3});
+});
+
+test('cloud projection invalidates conflicting duplicate Kitchen conversion reviews without dropping the balance', async () => {
+ for(const second of [{packReviewed:true,packQuantity:250,packUnit:'g',measurementReviewed:true,gramsPerEach:90},{packReviewed:false,packQuantity:500,packUnit:'g',measurementReviewed:false}]){
+  const f=fixture(),stock={'rice|pack':2};f.store.setItem(f.keys.stock,JSON.stringify(stock));
+  f.store.setItem(f.keys.kitchen,JSON.stringify({a:{name:'Rice',qty:1,unit:'pack',loc:'cupboard',selected:true,packReviewed:true,packQuantity:500,packUnit:'g',measurementReviewed:true,gramsPerEach:80},b:{name:'Rice',qty:1,unit:'pack',loc:'freezer',selected:true,...second}}));
+  const result=await f.adapter.confirmPantry({stock,expectedRevision:0,expectedScope:f.server.scope});assert.equal(result.localApplied,true);
+  assert.deepEqual(JSON.parse(f.store.getItem(f.keys.stock)),stock);
+  const entries=Object.values(JSON.parse(f.store.getItem(f.keys.kitchen))),selected=entries.filter(x=>x.selected);assert.equal(selected.length,1);assert.equal(selected[0].qty,2);
+  assert.ok(entries.every(x=>x.packReviewed===false&&x.measurementReviewed===false&&x.conversionNeedsReview===true));assert.equal(selected[0].packQuantity,500);assert.ok(entries.every(x=>x.conversionReviewSource.quantity===1));assert.equal(entries[1].conversionReviewSource.packQuantity,second.packQuantity);
+ }
 });

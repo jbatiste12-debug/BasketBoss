@@ -174,11 +174,20 @@
       }
       for (const stockKey of new Set([...Object.keys(priorServerStock), ...Object.keys(nextServerStock)])) {
         const split = stockKey.lastIndexOf('|'), name = stockKey.slice(0, split), unit = stockKey.slice(split + 1);
-        const matches = Object.entries(kitchen).filter(([, x]) => x?.selected && x.name && c.canonicalIngredientKey(x.name, canonicalize) === name && c.normalizeMeasuredQuantity(x.qty, x.unit)?.unit === unit);
+        const matches = Object.entries(kitchen).filter(([, x]) => x?.selected && x.name && c.canonicalIngredientKey(x.name, canonicalize) === name && c.normalizeStockQuantity(x.qty, x.unit)?.unit === unit);
         const existing = matches[0];
-        for (const [oldId, previous] of matches.slice(1)) { kitchen[oldId] = {...previous, selected: false, qty: null}; delete kitchen[oldId].bb173StockKey; delete kitchen[oldId].bb173StockValue; }
+        // A merged cloud balance cannot inherit whichever reviewed conversion
+        // happened to be first when the local physical entries disagree.
+        const conversionSignature = entry => {
+          const pack = entry.packReviewed === true ? c.normalizeStockQuantity(entry.packQuantity, entry.packUnit) : null;
+          const food = entry.measurementReviewed === true ? [entry.densityGPerMl ?? null, entry.gramsPerEach ?? null] : null;
+          return JSON.stringify([pack, food]);
+        };
+        const conversionConflict = matches.length > 1 && new Set(matches.map(([, entry]) => conversionSignature(entry))).size > 1;
+        const reviewConversion = previous => conversionConflict ? {...previous, packReviewed: false, measurementReviewed: false, conversionNeedsReview: true, conversionReviewSource: {quantity: previous.qty ?? null, unit: previous.unit ?? null, stockKey: previous.bb173StockKey ?? null, packQuantity: previous.packQuantity ?? null, packUnit: previous.packUnit ?? null, packReviewed: previous.packReviewed === true, measurementReviewed: previous.measurementReviewed === true, densityGPerMl: previous.densityGPerMl ?? null, gramsPerEach: previous.gramsPerEach ?? null}} : previous;
+        for (const [oldId, previous] of matches.slice(1)) { kitchen[oldId] = {...reviewConversion(previous), selected: false, qty: null}; delete kitchen[oldId].bb173StockKey; delete kitchen[oldId].bb173StockValue; }
         const item = inventory.find(x => x.stockKey === stockKey), location = existing?.[1]?.loc || item?.location || 'cupboard';
-        const id = existing?.[0] || `${location}|${name}`, previous = existing?.[1] || {};
+        const id = existing?.[0] || `${location}|${name}`, previous = reviewConversion(existing?.[1] || {});
         const quantity = nextStock[stockKey] || 0;
         if (quantity > 0) kitchen[id] = { ...previous, name: previous.name || name, loc: location, selected: true, qty: quantity, unit, bb173StockKey: stockKey, bb173StockValue: quantity, receiptActorId: captured.actorId };
         else if (existing) { kitchen[id] = { ...previous, selected: false, qty: null }; delete kitchen[id].bb173StockKey; delete kitchen[id].bb173StockValue; }
@@ -253,11 +262,11 @@
       for (const [stockKey, quantity] of purchased) {
         const split = stockKey.lastIndexOf('|'), name = stockKey.slice(0, split), unit = stockKey.slice(split + 1), id = active.shopSessionId + '|' + stockKey;
         const credit = c.computeReceiptCredit({canonicalKey: name, quantity, unit}, ledger, {shopSessionId: active.shopSessionId, receiptId: packet.receiptId});
-        nextStock[stockKey] = Math.round(((nextStock[stockKey] || 0) + credit.addedQuantity) * 1000) / 1000;
+        nextStock[stockKey] = (nextStock[stockKey] || 0) + credit.addedQuantity;
         if (nextStock[stockKey] > 1000000) throw Error('inventory_quantity_limit');
         const prior = ledger[id] || {}, coverage = {...(prior.receiptCoverageById || {}), [packet.receiptId]: quantity};
         ledger[id] = {...prior, name, unit, qty: prior.qty ?? quantity, week: active.shopSessionId, mode: prior.mode || 'receipt_inventory', credited: prior.credited || 0, receiptInventoryReceiptId: packet.receiptId, receiptLegacyCreditById: {...(prior.receiptLegacyCreditById || {}), [packet.receiptId]: credit.priorCreditedQuantity}, receiptCoverageById: coverage, receiptCoveredQuantity: Object.values(coverage).reduce((n, x) => n + Number(x || 0), 0), purchasedAt: prior.purchasedAt || now()};
-        const existing = Object.entries(kitchen).filter(([, x]) => x?.selected && c.canonicalIngredientKey(x.name, canonicalize) === name && c.normalizeMeasuredQuantity(x.qty, x.unit)?.unit === unit);
+        const existing = Object.entries(kitchen).filter(([, x]) => x?.selected && c.canonicalIngredientKey(x.name, canonicalize) === name && c.normalizeStockQuantity(x.qty, x.unit)?.unit === unit);
         const entry = existing[0], location = entry?.[1]?.loc || 'cupboard', kitchenId = entry?.[0] || location + '|' + name;
         for (const [oldId, row] of existing.slice(1)) { kitchen[oldId] = {...row, selected: false, qty: null}; delete kitchen[oldId].bb173StockKey; delete kitchen[oldId].bb173StockValue; }
         kitchen[kitchenId] = {...(entry?.[1] || {}), name: entry?.[1]?.name || name, loc: location, selected: true, qty: nextStock[stockKey], unit, bb173StockKey: stockKey, bb173StockValue: nextStock[stockKey], receiptActorId: captured.actorId};

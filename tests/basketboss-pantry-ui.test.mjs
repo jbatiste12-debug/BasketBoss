@@ -104,27 +104,85 @@ function cookFixture(home) {
   const h = environment();h.win.BBHome = home;vm.runInNewContext(cookSource, {window: h.win});
   const container = h.doc.createElement('div');h.doc.body.append(container);
   const row = {id: 'rice|g', name: 'Rice', unit: 'g', required: 300, owned: 1000, deduct: 300, canDeduct: true, issueLabel: ''};
-  return {...h, row, mount: () => h.win.BBCookPantry.mount({container, event: {sessionId: 'cook'}})};
+  return {...h, row, mount: options => h.win.BBCookPantry.mount({container, event: {sessionId: 'cook'}, ...options})};
 }
 
-test('Done never deducts automatically and double taps share one explicit confirmation', async () => {
+const confirmCooked = h => h.buttons().find(node => node.textContent === 'Confirm cooked & update pantry');
+
+test('reaching completion review never deducts and one cooked confirmation records the meal', async () => {
+  const confirmations = [];
   let calls = 0, resolve;const h = cookFixture({previewCook: () => ({ok: true, rows: [h.row], issues: [], fingerprint: 'first'}), cooked: event => {calls++;assert.equal(event.expected, 'first');assert.equal(event.amounts[0].quantity, 300);return new Promise(done => {resolve = done;});}});
-  h.mount();assert.equal(calls, 0);const button = h.buttons().find(node => node.textContent === 'Yes, deduct ingredients');
+  h.mount({onConfirmed: result => confirmations.push(result)});assert.equal(calls, 0);assert.deepEqual(confirmations, []);
+  assert.match(h.text(h.doc.body), /Confirm this meal is cooked/);assert.equal(h.doc.body.querySelector('details').open, false, 'amount adjustment is optional for known quantities');
+  const button = confirmCooked(h);
   const first = button.onclick();await button.onclick();assert.equal(calls, 1);assert.equal(button.disabled, true);
-  resolve({ok: true, message: 'At home updated.'});await first;assert.equal(h.buttons().some(node => node.textContent === 'Yes, deduct ingredients'), false);
+  const result = {ok: true, message: 'At home updated.'};resolve(result);await first;
+  assert.equal(confirmCooked(h), undefined);assert.match(h.text(h.doc.body), /Meal confirmed/);assert.equal(confirmations.length, 1);assert.equal(confirmations[0], result);
+  await button.onclick();assert.equal(calls, 1, 'a stale button reference cannot confirm twice');assert.equal(confirmations.length, 1);
 });
 
 test('stale Done amounts require an explicit refreshed review before a new confirmation', async () => {
   const seen = [];let previews = 0;const h = cookFixture({previewCook: () => ({ok: true, rows: [{...h.row, required: ++previews === 1 ? 300 : 400}], issues: [], fingerprint: 'preview-' + previews}), cooked: async event => {seen.push(event);return seen.length === 1 ? {ok: false, needsReview: true, message: 'Pantry changed.'} : {ok: true, message: 'At home updated.'};}});
-  h.mount();await h.buttons().find(node => node.textContent === 'Yes, deduct ingredients').onclick();
+  const confirmations = [];h.mount({onConfirmed: result => confirmations.push(result)});await confirmCooked(h).onclick();
   assert.equal(seen.length, 1);const refresh = h.buttons().find(node => node.textContent === 'Review latest amounts');assert.ok(refresh);
+  assert.deepEqual(confirmations, [], 'a changed pantry cannot mark the meal confirmed');
   refresh.onclick();assert.equal(seen.length, 1, 'refresh itself does not deduct');
-  await h.buttons().find(node => node.textContent === 'Yes, deduct ingredients').onclick();
+  await confirmCooked(h).onclick();
   assert.equal(seen[1].expected, 'preview-2');assert.equal(seen[1].amounts[0].quantity, 400);
+  assert.equal(confirmations.length, 1);
 });
 
 test('blank edited Cook amounts are rejected before deduction rather than treated as zero', async () => {
   let calls = 0;const h = cookFixture({previewCook: () => ({ok: true, rows: [h.row], issues: [], fingerprint: 'first'}), cooked: async () => {calls++;return {ok: true};}});
   h.mount();const input = h.doc.body.querySelector('input');input.value = '';
-  await h.buttons().find(node => node.textContent === 'Yes, deduct ingredients').onclick();assert.equal(calls, 0);assert.equal(h.doc.activeElement, input);
+  await confirmCooked(h).onclick();assert.equal(calls, 0);assert.equal(h.doc.activeElement, input);
+});
+
+test('an already confirmed meal shows its recorded completion without another pantry write', () => {
+  let calls = 0;const confirmations = [];
+  const h = cookFixture({previewCook: () => ({ok: true, already: true, message: 'At home already updated for this cooked meal.'}), cooked: () => {calls++;}});
+  h.mount({onConfirmed: result => confirmations.push(result)});
+  assert.equal(calls, 0);assert.equal(confirmCooked(h), undefined);assert.match(h.text(h.doc.body), /Meal already confirmed/);
+  assert.equal(confirmations.length, 1);assert.equal(confirmations[0].already, true);
+});
+
+test('failed cooked confirmation preserves reviewed edits and supports an explicit retry', async () => {
+  let calls = 0;const confirmations = [];
+  const h = cookFixture({previewCook: () => ({ok: true, rows: [h.row], issues: [], fingerprint: 'first'}), cooked: async event => {
+    calls++;assert.equal(event.amounts[0].quantity, 250);if (calls === 1) throw Error('Storage unavailable');return {ok: true, message: 'At home updated on this device. Review online pantry confirmation.'};
+  }});
+  h.mount({onConfirmed: result => confirmations.push(result)});const input = h.doc.body.querySelector('input');input.value = '250';
+  await confirmCooked(h).onclick();assert.equal(calls, 1);assert.equal(input.disabled, false);assert.equal(input.value, '250');assert.deepEqual(confirmations, []);
+  await confirmCooked(h).onclick();assert.equal(calls, 2);assert.equal(confirmations.length, 1);assert.match(h.text(h.doc.body), /Review online pantry confirmation/);
+});
+
+test('flagged ingredient amounts stay visible for review and compatible use can still be confirmed', async () => {
+  const confirmations = [];let opened = 0, seen;
+  const issue = {id: 'salt|pinch', message: 'Amount or unit needs review.'};
+  const h = cookFixture({previewCook: () => ({ok: true, rows: [h.row, {id: 'salt|pinch', name: 'Salt', unit: 'pinch', required: 1, owned: 0, deduct: 0, canDeduct: false, issueLabel: issue.message}], issues: [issue], fingerprint: 'first'}), cooked: async event => {seen = event;return {ok: true, issues: [issue], message: 'At home updated. Some amounts need review.'};}});
+  h.mount({onConfirmed: result => confirmations.push(result), onOpenAtHome: () => opened++});
+  assert.equal(h.doc.body.querySelector('details').open, true);assert.match(h.text(h.doc.body), /flagged units stay unchanged/);
+  await confirmCooked(h).onclick();assert.equal(seen.amounts.length, 1);assert.equal(seen.amounts[0].id, 'rice|g');assert.equal(confirmations.length, 1);
+  h.buttons().find(node => node.textContent === 'Review remaining amounts in At home').onclick();assert.equal(opened, 1);
+});
+
+test('closing completion review during a saved confirmation suppresses stale UI callbacks', async () => {
+  let resolve, calls = 0;const confirmations = [];
+  const h = cookFixture({previewCook: () => ({ok: true, rows: [h.row], issues: [], fingerprint: 'first'}), cooked: () => {calls++;return new Promise(done => {resolve = done;});}});
+  const view = h.mount({onConfirmed: result => confirmations.push(result)}), button = confirmCooked(h), pending = button.onclick();view.dispose();
+  resolve({ok: true, message: 'At home updated.'});await pending;await button.onclick();
+  assert.equal(calls, 1);assert.deepEqual(confirmations, []);assert.equal(h.doc.body.querySelector('.bb-cook-pantry'), null);
+});
+
+test('a completion callback failure never reopens an already committed meal for deduction', async () => {
+  let calls = 0;
+  const h = cookFixture({previewCook: () => ({ok: true, rows: [h.row], issues: [], fingerprint: 'first'}), cooked: async () => {calls++;return {ok: true, message: 'At home updated.'};}});
+  h.mount({onConfirmed: () => {throw Error('Parent view closed');}});const button = confirmCooked(h);await button.onclick();await button.onclick();
+  assert.equal(calls, 1);assert.equal(confirmCooked(h), undefined);assert.match(h.text(h.doc.body), /Meal confirmed/);
+});
+
+test('estimated count conversions disclose the basis before cooked confirmation', () => {
+ const h=cookFixture({previewCook:()=>({ok:true,rows:[{...h.row,estimated:true,assumptions:['80 g per whole item']}],issues:[],fingerprint:'estimate'})});
+ h.mount();assert.equal(h.doc.body.querySelector('details').open,true);
+ assert.match(h.text(h.doc.body),/estimated ingredient weights/);assert.match(h.text(h.doc.body),/80 g per whole item/);assert.ok(confirmCooked(h));
 });

@@ -300,3 +300,71 @@ test('editorial cohort membership changes invalidate filtering and confirmation'
   assert.equal(rotation.commit(),false);
   assert.equal(storage.values.size,0);
 });
+
+test('Auto-fill may score adjacent proteins while ordinary planning still excludes them',()=>{
+  const recipes=[dish('one-chicken','chicken'),dish('two-chicken','chicken'),dish('beans','beans')];
+  const planned=[{day:'Monday',recipeId:'one-chicken'}];
+  const strict=session(recipes),soft=session(recipes,memory(),{softProteinAdjacency:true});
+  assert.equal(strict.filter(recipes,{day:'Tuesday',planned}).some(recipe=>recipe.id==='two-chicken'),false);
+  assert.equal(soft.filter(recipes,{day:'Tuesday',planned}).some(recipe=>recipe.id==='two-chicken'),true);
+  assert.equal(soft.take(recipes[1],{day:'Tuesday',planned}),true);
+  assert.equal(soft.take(recipes[1],{day:'Thursday',planned}),false,'soft scoring never permits the same recipe twice in a proposal');
+  const truthy=session(recipes,memory(),{softProteinAdjacency:'true'});
+  assert.equal(truthy.filter(recipes,{day:'Tuesday',planned}).some(recipe=>recipe.id==='two-chicken'),false,'only an explicit boolean opts in');
+});
+
+test('soft adjacency still caps a protein at two and cheese-heavy dinners at two across reservations',()=>{
+  const recipes=[dish('chicken-one','chicken'),dish('chicken-two','chicken'),dish('chicken-three','chicken'),
+    dish('heavy-beans','beans',true),dish('heavy-tofu','tofu',true),dish('heavy-fish','fish',true)];
+  const rotation=session(recipes,memory(),{softProteinAdjacency:true,softRecentRecipes:true});
+  assert.equal(rotation.take(recipes[0],{day:'Monday'}),true);
+  assert.equal(rotation.take(recipes[1],{day:'Tuesday'}),true);
+  assert.equal(rotation.take(recipes[2],{day:'Friday'}),false,'a third same-protein dinner remains excluded');
+  assert.equal(rotation.take(recipes[3],{day:'Wednesday'}),true);
+  assert.equal(rotation.take(recipes[4],{day:'Thursday'}),true);
+  assert.equal(rotation.take(recipes[5],{day:'Saturday'}),false,'a third cheese-heavy dinner remains excluded');
+});
+
+test('the previous week protein becomes a scoring input only for opted-in Auto-fill',()=>{
+  const recipes=[dish('chicken','chicken'),dish('beans','beans')];
+  const strict=session(recipes,memory(),{previousProtein:'chicken'});
+  const soft=session(recipes,memory(),{previousProtein:'chicken',softProteinAdjacency:true});
+  assert.equal(strict.filter(recipes,{day:'Monday'}).some(recipe=>recipe.id==='chicken'),false);
+  assert.equal(soft.filter(recipes,{day:'Monday'}).some(recipe=>recipe.id==='chicken'),true);
+});
+
+test('soft recent history leaves seen recipes eligible without faking a new cycle or allowing same-week repeats',()=>{
+  const storage=memory(),recipes=[dish('chicken','chicken'),dish('beans','beans'),dish('tofu','tofu')];
+  const initial=session(recipes,storage);assert.equal(initial.take(recipes[0],{day:'Monday'}),true);assert.equal(initial.commit(),true);
+  const strict=session(recipes,storage),soft=session(recipes,storage,{softProteinAdjacency:true,softRecentRecipes:true});
+  assert.equal(strict.filter(recipes,{day:'Monday'}).some(recipe=>recipe.id==='chicken'),false);
+  assert.equal(soft.filter(recipes,{day:'Monday'}).some(recipe=>recipe.id==='chicken'),true);
+  assert.equal(soft.take(recipes[0],{day:'Monday'}),true);
+  assert.equal(soft.filter(recipes,{day:'Tuesday'}).some(recipe=>recipe.id==='chicken'),false);
+  assert.equal(soft.snapshot().cycle,0);assert.equal(soft.commit(),true);
+  const allSeen=session(recipes,storage,{softRecentRecipes:true});
+  assert.equal(allSeen.take(recipes[1],{day:'Monday'}),true);assert.equal(allSeen.take(recipes[2],{day:'Tuesday'}),true);assert.equal(allSeen.commit(),true);
+  const next=session(recipes,storage,{softRecentRecipes:true});
+  assert.equal(next.filter(recipes,{day:'Monday'}).length,3);
+  assert.equal(next.snapshot().cycle,0,'soft recency retains dated history without synthesizing a rotation reset');
+  assert.equal(new Set(next.snapshot().seen).size,3);
+});
+
+test('soft scoring options cannot bypass locked, unsuitable, non-dinner or occupied-day restrictions',()=>{
+  const recipes=[dish('allowed','chicken'),dish('locked','beans'),dish('excluded','tofu'),dish('cake','eggs',false,{tag:'DESSERT'})];
+  const rotation=session(recipes,memory(),{softProteinAdjacency:true,softRecentRecipes:true,isAllowed:recipe=>recipe.id!=='locked',isEligible:recipe=>recipe.id!=='excluded'});
+  assert.deepEqual(rotation.filter(recipes,{day:'Monday'}).map(recipe=>recipe.id),['allowed']);
+  assert.equal(rotation.filter(recipes,{day:'Monday',planned:[{day:'Monday',recipeId:'allowed'}]}).length,0);
+  assert.equal(rotation.filter(recipes,{day:'not-a-day'}).length,0);
+});
+
+test('soft recency keeps editorial cohort history intact and only considers the caller-supplied pool',()=>{
+  const recipes=cohortFixture(),storage=memory();
+  const before=seedCohortHistory(recipes,storage,recipes.map(recipe=>recipe.id),cohortOptions);
+  const soft=session(recipes,storage,{...cohortOptions,softRecentRecipes:true,softProteinAdjacency:true});
+  const candidates=soft.filter(recipes.slice(0,2),{day:'Monday'});
+  assert.deepEqual(candidates.map(recipe=>recipe.id),['everyday-chicken','everyday-beans']);
+  assert.equal(soft.snapshot().cycle,0);assert.equal(storage.getItem(before.key),before.raw,'opening or scoring does not write or clear rotation history');
+  assert.equal(soft.take(candidates[0],{day:'Monday'}),true);assert.equal(soft.commit(),true);
+  assert.deepEqual(new Set(JSON.parse(storage.getItem(before.key)).seen),new Set(recipes.map(recipe=>recipe.id)));
+});
