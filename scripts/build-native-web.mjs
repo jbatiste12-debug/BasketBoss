@@ -23,7 +23,7 @@ export const CLIENT_FILES=Object.freeze([
  'bb-saved-weeks.js','bb-saved-weeks.css',
  'bb-kitchen-essentials.js','bb-kitchen-essentials.css','bb-pantry-inline.js','bb-pantry-inline.css','bb-pantry-groups.js','bb-pantry-groups-ui.js','bb-pantry-groups.css','bb-household-amount.js','bb-keyboard-layout.js','bb-keyboard-layout.css',
  'bb-cook-studio.js','bb-cook-studio.css','bb-cook-result.js','bb-cook-result.css',
- 'bb-meal-image.js','bb-meal-image.css','bb-navigation-polish.js','bb-navigation-polish.css','bb-tab-viewport.js','bb-tab-viewport.css',
+ 'bb-meal-image.js','bb-meal-image.css','bb-navigation-polish.js','bb-navigation-polish.css','bb-tab-viewport.js','bb-tab-viewport.css','bb-tab-swipe.js',
  'bb-account-polish.js','bb-account-polish.css','bb-membership-compare.js','bb-membership-compare.css',
  'bb-premium-feature-badges.js','bb-premium-feature-badges.css',
  'bb-pantry-camera.js','bb-pantry-camera.css','bb-cook-experience.css','bb-featured-framing.js','bb-duration.js','bb-recipe-measures.js','bb-cook-step-layout.js','bb-cook-pantry.js','bb-cook-clarity.css','bb-receipt-quantity.js','bb-pantry-deduction.js','bb-how-it-works.js','bb-how-it-works.css',
@@ -38,7 +38,7 @@ export const CLIENT_FILES=Object.freeze([
  'bb-receipt-scanner.js','bb-recipe-planning.js','bb-recipe-editorial.js','bb-plan-move.js','bb-plan-drag.js','bb-plan-drag.css','bb-serving-scale.js',
  'bb-supermarkets.js','bb-us-market.js','bb-ux-cleanup.js','bb-verified-premium-ui.js',
  'bb-weekly-essentials.js','bb-welcome-splash.js','bb174-trial-ux.js',
- 'cloud-config.js','bb-session.js','feedback-config.js','make-a-meal.js','premium-upgrade.js',
+ 'bb-auth-callback.js','bb-auth-flow.js','bb-auth-flow.css','bb-auth-sdk.js','cloud-config.js','bb-session.js','feedback-config.js','make-a-meal.js','premium-upgrade.js',
  'shopping-inventory.js','bb-receipt-inventory-core.mjs',
  'bb-beta-five.css','bb-beta-launch-polish.css','bb-beta-six-fixes.css',
  'bb-cold-preview.css','bb-consolidated-qa.css','bb-cook-plan-hotfix.css',
@@ -204,8 +204,8 @@ export async function buildNativeWeb({root=DEFAULT_ROOT,bundleRuntime=defaultBun
    if(name==='bb-receipt-scanner.js')bytes=Buffer.from(bytes.toString().replace('function finished(result) {',"function finished(result) { document.dispatchEvent(new Event('basketboss:receipt-confirmed'));"));
    if(name==='bb-partner-signup-prompt.js')bytes=Buffer.from(bytes.toString().replace("if(!['basketboss.co.uk'","if(window.BBNative?.isNative!==true&&!['basketboss.co.uk'"));
    if(name==='bb-onboarding-v2.js')bytes=Buffer.from(bytes.toString()
-    .replace('Create a free account or sign in using the existing secure email form. No card needed.','Sign in to your existing account, or continue with Free recipes without signing in.')
-    .replace('If you create an account, you may need to confirm your email before signing in.','Use your existing confirmed email and password. This iOS build does not create new accounts.'));
+    .replace('Create a free account or sign in using the existing secure email form. No card needed.','Create an account, sign in, or continue with Free recipes without signing in.')
+    .replace('If you create an account, you may need to confirm your email before signing in.','Confirm your email to finish creating your account. Return to BasketBoss to continue.'));
    write(name,bytes);
   }
   for(const name of HTML_FILES)write(name,transformNativeHtml(readSource(root,name).toString('utf8')));

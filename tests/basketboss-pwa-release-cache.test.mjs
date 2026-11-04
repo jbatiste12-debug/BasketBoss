@@ -90,3 +90,13 @@ test('PWA worker and app HTML entrypoints require HTTP revalidation',async()=>{
   assert.ok(block,route);assert.match(block,/Cache-Control: [^\n]*no-cache[^\n]*must-revalidate/,route);
  }
 });
+
+
+test('Auth callback query credentials are network-only and never enter Cache Storage',async()=>{
+ const h=harness();await h.install();const writes=h.writes.length;
+ for(const query of ['code=sample','token_hash=sample&type=recovery','access_token=sample&refresh_token=sample','error_code=otp_expired']){
+  await h.request('app?'+query,{navigate:true}).complete();
+  assert.equal(h.fetched.at(-1).options.cache,'no-store');assert.equal(h.fetched.at(-1).options.referrerPolicy,'no-referrer');
+ }
+ assert.equal(h.writes.length,writes);
+});

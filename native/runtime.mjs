@@ -111,13 +111,17 @@ if(Capacitor.isNativePlatform()&&Capacitor.getPlatform()==='ios'){
  }
  if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',ready,{once:true});else ready();
  void App.addListener('appStateChange',({isActive})=>{if(isActive){window.dispatchEvent(new Event('focus'));window.dispatchEvent(new Event('basketboss:native-resumed'));}else{void cookVoice.stop();}});
- void App.addListener('appUrlOpen',({url})=>{
+ let lastAuthURL=null;
+ async function authLink(url,cold=false){
   let link;try{link=new URL(url);}catch{return;}
-  // Do not trust tokens in incoming URLs. Email/password auth remains the
-  // existing verified Supabase flow; confirmation links just reopen sign-in.
-  if(link.protocol==='basketboss:'&&link.hostname==='auth'&&link.pathname==='/callback'){
-   document.getElementById('cloud-open')?.click();
-   const message=document.getElementById('cloud-message');if(message)message.textContent='If your email is confirmed, sign in to continue.';
+  if(link.protocol!=='basketboss:'||link.hostname!=='auth'||link.pathname!=='/callback'||url===lastAuthURL)return;lastAuthURL=url;
+  try{const digest=await crypto.subtle.digest('SHA-256',new TextEncoder().encode(url)),fingerprint=Array.from(new Uint8Array(digest),n=>n.toString(16).padStart(2,'0')).join('');if(cold&&sessionStorage.getItem('basketboss_last_auth_launch_v1')===fingerprint)return;sessionStorage.setItem('basketboss_last_auth_launch_v1',fingerprint);}catch{}
+  const receive=()=>{void window.BBAuthFlow?.handleCallbackURL?.(url);};
+  if(window.BBAuthFlow)receive();else{
+   const ready=()=>{if(window.BBAuthFlow)receive();else if(document.getElementById('cloud-auth'))window.addEventListener('basketboss:auth-ready',receive,{once:true});else if(window.BBAuthCallbackBridge?.capture?.(url))window.location.assign(new URL('index.html?bb_auth_callback=1',window.location.href).href);};
+   if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',ready,{once:true});else ready();
   }
- });
+ }
+ void App.addListener('appUrlOpen',({url})=>authLink(url));
+ void App.getLaunchUrl().then(value=>{if(value?.url)void authLink(value.url,true);}).catch(()=>{});
 }

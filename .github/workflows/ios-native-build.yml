@@ -3,7 +3,7 @@ name: Verify iOS native build
 on:
   workflow_dispatch:
   push:
-    branches: [main, codex/native-cook-fix, release/recipe-editorial-collections, feature/conversational-voice-cook, fix/cook-mentor-reply-failure, fix/confirmed-cook-pantry, fix/at-home-layout, fix/weekly-essentials-shop]
+    branches: [main, codex/native-cook-fix, release/recipe-editorial-collections, feature/conversational-voice-cook, fix/cook-mentor-reply-failure, fix/confirmed-cook-pantry, fix/at-home-layout, fix/weekly-essentials-shop, fix/auth-flow]
     paths:
       - .github/workflows/ios-native-build.yml
       - .github/workflows/inspect-account-keyboard.yml
@@ -61,6 +61,10 @@ on:
       - release-assets/basketboss-v17/images/**
       - make-a-meal.*
       - bb-onboarding-v2.*
+      - bb-auth-*
+      - bb-tab-swipe.js
+      - tests/basketboss-auth-flow.test.mjs
+      - tests/basketboss-tab-swipe.test.mjs
       - tests/basketboss-native-*.test.mjs
       - tests/basketboss-garlic-basket.test.mjs
       - tests/basketboss-home-household-topup.test.mjs
@@ -119,6 +123,8 @@ jobs:
           tests/basketboss-day-completion-core.test.mjs
           tests/basketboss-day-done.test.mjs
           tests/basketboss-shop-add.test.mjs
+          tests/basketboss-auth-flow.test.mjs
+          tests/basketboss-tab-swipe.test.mjs
           tests/basketboss-home-household-topup.test.mjs
           tests/basketboss-shop-essentials-section.test.mjs
           tests/basketboss-manual-buy-core.test.mjs
@@ -164,7 +170,7 @@ jobs:
         run: echo '::notice title=BasketBoss iOS native build::{"simulatorBuild":true,"bundleId":"uk.co.basketboss.app","minimumIOS":"16.0","signingTested":false}'
       # Finish device compilation before Simulator startup; Cook and keyboard
       # checks still determine whether this verification run succeeds.
-      - name: Create the unsigned iPhone archive for build 11
+      - name: Create the unsigned iPhone archive for build 12
         run: |
           xcodebuild \
             -workspace ios/App/App.xcworkspace \
@@ -173,19 +179,19 @@ jobs:
             -sdk iphoneos \
             -destination 'generic/platform=iOS' \
             -derivedDataPath /tmp/basketboss-ios-device-build \
-            -archivePath "$RUNNER_TEMP/BasketBoss-1.0-build11.xcarchive" \
+            -archivePath "$RUNNER_TEMP/BasketBoss-1.0-build12.xcarchive" \
             CODE_SIGNING_ALLOWED=NO \
             archive
-          test "$(/usr/libexec/PlistBuddy -c 'Print CFBundleVersion' "$RUNNER_TEMP/BasketBoss-1.0-build11.xcarchive/Products/Applications/App.app/Info.plist")" = '11'
-          test "$(/usr/libexec/PlistBuddy -c 'Print CFBundleIdentifier' "$RUNNER_TEMP/BasketBoss-1.0-build11.xcarchive/Products/Applications/App.app/Info.plist")" = 'uk.co.basketboss.app'
+          test "$(/usr/libexec/PlistBuddy -c 'Print CFBundleVersion' "$RUNNER_TEMP/BasketBoss-1.0-build12.xcarchive/Products/Applications/App.app/Info.plist")" = '12'
+          test "$(/usr/libexec/PlistBuddy -c 'Print CFBundleIdentifier' "$RUNNER_TEMP/BasketBoss-1.0-build12.xcarchive/Products/Applications/App.app/Info.plist")" = 'uk.co.basketboss.app'
           ditto -c -k --sequesterRsrc --keepParent \
-            "$RUNNER_TEMP/BasketBoss-1.0-build11.xcarchive" \
-            "$RUNNER_TEMP/BasketBoss-1.0-build11-unsigned.xcarchive.zip"
+            "$RUNNER_TEMP/BasketBoss-1.0-build12.xcarchive" \
+            "$RUNNER_TEMP/BasketBoss-1.0-build12-unsigned.xcarchive.zip"
       - name: Retain the unsigned iPhone archive
         uses: actions/upload-artifact@v6
         with:
-          name: BasketBoss-1.0-build11-unsigned-iPhone-archive
-          path: ${{ runner.temp }}/BasketBoss-1.0-build11-unsigned.xcarchive.zip
+          name: BasketBoss-1.0-build12-unsigned-iPhone-archive
+          path: ${{ runner.temp }}/BasketBoss-1.0-build12-unsigned.xcarchive.zip
           if-no-files-found: error
           retention-days: 7
           compression-level: 0

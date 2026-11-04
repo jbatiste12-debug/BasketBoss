@@ -1,0 +1,10 @@
+BasketBoss Build 12 — smoother accounts and swipe navigation
+
+• Create an account: one tap shows Creating account, then Check your email with your actual address and a timed Resend button. Repeated taps should not submit again.
+• Confirm your email: return to BasketBoss, see the welcome message and land on Plan. Check both a running app and a fully closed app.
+• Forgot your password? Choose Forgot password on Sign in, request the email, then follow its link. You should see Set a new password. Save it and return to Plan.
+• Check an expired confirmation/reset link gives a clear way to request another email. Never share reset links or passwords in feedback.
+• Swipe left/right between Plan, Discover, At home, Shop and Cook. Recipe-card swipes, horizontal filters, quantity editors and open dialogs should keep their usual behavior.
+• Build 11's Weekly essentials section remains at the bottom of Shop. Check essentials-only shops, partial purchases and Finish shop adding stock once.
+
+Please report your build number, screen and steps. Premium access still uses the existing verified membership checks.
