@@ -11,7 +11,8 @@ function harness({saved,store,deleted=false,startup=false,native=true,dialog=fal
  const storage=store||new Map([[PLAN,'saved meal plan must survive'],[SESSION,JSON.stringify({user:{id:'existing-user-id'},access_token:'synthetic-token',expires_at:9999999999})]]);
  if(saved)storage.set(KEY,JSON.stringify(saved));
  const windowEvents=new Map(),documentEvents=new Map(),viewportEvents=new Map(),writes=[],preferences=[],nodes=[];
- let deleting=deleted,starting=startup,dialogOpen=dialog,observer,closed=0;
+ let deleting=deleted,starting=startup,dialogOpen=dialog,observer,closed=0,mealSave=true;
+ const saveStatus={textContent:''};
  const on=(map,name,fn)=>{const callbacks=map.get(name)||[];callbacks.push(fn);map.set(name,callbacks);};
  const replayButton={id:'bbOnboardingReplay',textContent:'Replay welcome animation',isConnected:true,focus(){this.focused=true;}};
  const uiNodes=new Map([[replayButton.id,replayButton]]);
@@ -22,9 +23,9 @@ function harness({saved,store,deleted=false,startup=false,native=true,dialog=fal
  const body={style:{overflow:''},appendChild(node){nodes.push(node);}};
  const document={body,createComment:()=>({}),readyState:'complete',activeElement:replayButton,documentElement:{style:{setProperty:(k,v)=>rootStyle.set(k,v),removeProperty:k=>rootStyle.delete(k)},classList:{contains:name=>rootClasses.has(name)||name==='bb-native-starting'&&starting,add:name=>rootClasses.add(name),remove:name=>rootClasses.delete(name)}},querySelectorAll:()=>background,
   getElementById(id){if(uiNodes.has(id))return uiNodes.get(id);if(id==='bbAccountDeletionDialog')return {open:dialogOpen};return null;},
-  createElement(){const classes=new Set(),values=new Map();return {innerHTML:'',events:new Map(),style:{setProperty:(k,v)=>values.set(k,v),getPropertyValue:k=>values.get(k)},classList:{contains:name=>classes.has(name),toggle(name,enabled){enabled?classes.add(name):classes.delete(name);}},contains:node=>node?.inside===true,setAttribute(){},addEventListener(name,fn){on(this.events,name,fn);},querySelector(){return null;},remove(){this.removed=true;}};},
+  createElement(){const classes=new Set(),values=new Map();return {innerHTML:'',events:new Map(),style:{setProperty:(k,v)=>values.set(k,v),getPropertyValue:k=>values.get(k)},classList:{contains:name=>classes.has(name),toggle(name,enabled){enabled?classes.add(name):classes.delete(name);}},contains:node=>node?.inside===true,setAttribute(){},addEventListener(name,fn){on(this.events,name,fn);},querySelector(selector){return selector==='#bbobSaveError'?saveStatus:null;},remove(){this.removed=true;}};},
   querySelector:selector=>selector.includes('bbui-settings-close')?{click(){closed++;}}:null,addEventListener(name,fn){on(documentEvents,name,fn);}};
- const window={innerHeight:932,innerWidth:430,scrollX:3,scrollY:500,scrollTo(x,y){scrolls.push([x,y]);this.scrollX=x;this.scrollY=y;},visualViewport:{height:932,width:430,offsetTop:0,offsetLeft:0,addEventListener(name,fn){on(viewportEvents,name,fn);}},BBNative:native?{isNative:true}:undefined,BBAccountDeletion:{isDeleting:()=>deleting},matchMedia:()=>({matches:false}),addEventListener(name,fn){on(windowEvents,name,fn);},BasketBossSetOnboardingServings(count){preferences.push({house:count});return true;},bb307SwitchIsland(region){preferences.push({region});return true;}};
+ const window={innerHeight:932,innerWidth:430,scrollX:3,scrollY:500,scrollTo(x,y){scrolls.push([x,y]);this.scrollX=x;this.scrollY=y;},visualViewport:{height:932,width:430,offsetTop:0,offsetLeft:0,addEventListener(name,fn){on(viewportEvents,name,fn);}},BBNative:native?{isNative:true}:undefined,BBAccountDeletion:{isDeleting:()=>deleting},matchMedia:()=>({matches:false}),addEventListener(name,fn){on(windowEvents,name,fn);},BasketBossSetOnboardingServings(count){preferences.push({house:count});return true;},bb307SwitchIsland(region){preferences.push({region});return true;},BasketBossSetOnboardingMealPreferences(meals){preferences.push({meals:JSON.parse(JSON.stringify(meals))});return mealSave;}};
  if(remembered!==undefined)window.BasketBossSession={state:()=>({remembered})};
  const context=vm.createContext({window,document,localStorage:{getItem:key=>storage.get(key)??null,setItem(key,value){writes.push([key,value]);storage.set(key,value);}},sessionStorage:{setItem(){}},location:{hostname:native?'localhost':'basketboss.co.uk',protocol:native?'capacitor:':'https:',search:''},navigator:{standalone:false},URLSearchParams,queueMicrotask,MutationObserver:class{constructor(fn){observer=fn;}observe(){}},console});
  vm.runInContext(source,context,{timeout:1000});
@@ -32,7 +33,7 @@ function harness({saved,store,deleted=false,startup=false,native=true,dialog=fal
  const dispatch=(name,event={})=>{for(const fn of windowEvents.get(name)||[])fn(event);};
  const tap=(action,option)=>{const node=active();assert.ok(node,'expected active onboarding');for(const fn of node.events.get('click')||[])fn({target:{closest(selector){if(selector==='[data-bbob-opt]'&&option!==undefined)return {dataset:{bbobOpt:String(option)}};if(selector==='[data-bbob]'&&action)return {dataset:{bbob:action}};return null;}}});};
  const through=step=>{for(let i=0;i<step;i++)tap('next');};
- return {window,document,storage,node:id=>uiNodes.get(id),setRemembered:value=>{remembered=value;},writes,preferences,replayButton,rootClasses,rootStyle,background,scrolls,settingsClosed:()=>closed,active,tap,through,dispatch,read:()=>JSON.parse(storage.get(KEY)||'null'),setDeleting:value=>{deleting=value;},setStartup:value=>{starting=value;},setDialog:value=>{dialogOpen=value;},
+ return {window,document,storage,node:id=>uiNodes.get(id),setRemembered:value=>{remembered=value;},writes,preferences,saveStatus,setMealSave:value=>{mealSave=value;},replayButton,rootClasses,rootStyle,background,scrolls,settingsClosed:()=>closed,active,tap,through,dispatch,read:()=>JSON.parse(storage.get(KEY)||'null'),setDeleting:value=>{deleting=value;},setStartup:value=>{starting=value;},setDialog:value=>{dialogOpen=value;},
   escape(){for(const fn of active()?.events.get('keydown')||[])fn({key:'Escape',preventDefault(){}});},
   resize(height){window.visualViewport.height=height;for(const fn of viewportEvents.get('resize')||[])fn();},
   region(value){for(const fn of active()?.events.get('change')||[])fn({target:{value,matches:()=>true}});},
@@ -274,4 +275,73 @@ test('remembered identity cannot finish a partner join until a fresh authenticat
  h.dispatch('basketboss:session-changed');assert.equal(h.read().complete,false,'an unchanged remembered-session notification is not authentication');
  h.storage.set(SESSION,JSON.stringify({user:{id:'returning-person'},access_token:'fresh',expires_at:9999999999}));h.dispatch('basketboss:session-changed');
  assert.equal(h.read().complete,true);assert.equal(h.active(),undefined);assert.equal(h.storage.get(PLAN),'saved meal plan');
+});
+
+test('first setup applies selected goals and diet through the planner only after Finish',()=>{
+ const h=harness();h.through(4);h.tap(null,1);h.tap('next');h.tap(null,1);
+ assert.equal(h.preferences.length,0,'answering a question must not alter the active planner');
+ h.through(5);h.tap('free-complete');
+ assert.deepEqual(h.preferences,[{meals:{diets:['Vegetarian'],goals:['Plan dinners faster']}}]);
+ assert.equal(h.read().complete,true);assert.equal(h.active(),undefined);
+});
+
+test('replay changes only its edited diet and preserves unrelated planner goals',()=>{
+ const h=harness({saved:completed});h.window.BBOnboard2026.open();h.through(5);
+ h.tap(null,1);h.tap(null,2);h.through(5);h.tap('free-complete');
+ assert.deepEqual(h.preferences,[{meals:{diets:['Vegan']}}]);
+ assert.deepEqual(h.read().goals,['Plan dinners faster']);
+});
+
+test('explicitly clearing a replay field clears only that planner field',()=>{
+ for(const [field,step,index] of [['goals',4,1],['diets',5,1]]){
+  const h=harness({saved:completed});h.window.BBOnboard2026.open();h.through(step);
+  h.tap(null,index);h.through(10-step);h.tap('free-complete');
+  assert.deepEqual(h.preferences,[{meals:{[field]:[]}}]);
+ }
+});
+
+test('skipping edited replay questions restores their original answers without applying a patch',()=>{
+ const h=harness({saved:completed});h.window.BBOnboard2026.open();h.through(4);
+ h.tap(null,0);h.tap('skip');h.tap(null,2);h.tap('skip');h.through(4);h.tap('free-complete');
+ assert.deepEqual(h.preferences,[]);
+ assert.deepEqual(h.read().diets,['Vegetarian']);assert.deepEqual(h.read().goals,['Plan dinners faster']);
+});
+
+test('skipping a first-setup question does not clear an existing planner preference',()=>{
+ const h=harness();h.through(5);h.tap(null,1);h.tap('skip');h.through(4);h.tap('free-complete');
+ assert.deepEqual(h.preferences,[]);assert.equal(h.read().complete,true);
+});
+
+test('authentication applies previously selected first-setup choices before completing',()=>{
+ const h=harness({saved:{...completed,complete:false,started:true},withAuth:true});
+ h.window.BBOnboard2026.pauseForAccount();
+ assert.equal(h.window.BBOnboard2026.authenticated(),true);
+ assert.deepEqual(h.preferences,[{house:2},{region:'UK'},{meals:{diets:['Vegetarian'],goals:['Plan dinners faster']}}]);
+ assert.equal(h.read().complete,true);assert.equal(h.active(),undefined);
+});
+
+test('later sign-in never reapplies a completed survey over newer planner edits',()=>{
+ const h=harness({saved:completed}),before=h.storage.get(KEY),writes=h.writes.length;
+ assert.equal(h.window.BBOnboard2026.authenticated(),true);
+ assert.equal(h.preferences.length,0);assert.equal(h.storage.get(KEY),before);assert.equal(h.writes.length,writes);
+});
+
+test('authentication cancels replay drafts without changing the committed survey or planner',()=>{
+ const h=harness({saved:completed}),before=h.storage.get(KEY);
+ h.window.BBOnboard2026.open();h.through(5);h.tap(null,2);
+ assert.equal(h.window.BBOnboard2026.authenticated(),true);
+ assert.equal(h.preferences.length,0);assert.equal(h.storage.get(KEY),before);assert.equal(h.active(),undefined);
+});
+
+test('meal preference failures keep setup retryable during Finish and after authentication',()=>{
+ for(const auth of [false,true]){
+  const h=harness({saved:{...completed,house:'',region:'',goals:[],complete:false,started:true},withAuth:true});
+  h.setMealSave(false);
+  if(auth){h.window.BBOnboard2026.pauseForAccount();assert.equal(h.window.BBOnboard2026.authenticated(),false);assert.match(h.node('cloud-message').textContent,/Could not save your meal preferences/);}
+  else{h.tap('free-complete');assert.match(h.saveStatus.textContent,/Could not save your meal preferences/);assert.ok(h.active());}
+  assert.equal(h.read().complete,false);
+  h.setMealSave(true);
+  if(auth)assert.equal(h.window.BBOnboard2026.authenticated(),true);else h.tap('free-complete');
+  assert.equal(h.read().complete,true);assert.equal(h.active(),undefined);
+ }
 });

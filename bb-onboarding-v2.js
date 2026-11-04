@@ -46,7 +46,7 @@
    return restoreState()?.complete!==true;
  }
  // Returning and paying members keep their existing opening experience.
- window.BBOnboard2026={authenticated(){if(!validSession()||blocked())return false;state.complete=true;state.started=false;if(!persist(true))return false;dismiss();return true;},willShow,preview,open:replay,pauseForAccount,getPreferences:()=>({house:state.house,region:state.region,goals:[...state.goals],diets:[...state.diets]})};
+ window.BBOnboard2026={authenticated,willShow,preview,open:replay,pauseForAccount,getPreferences:()=>({house:state.house,region:state.region,goals:[...state.goals],diets:[...state.diets]})};
  // Founder story is retained on compare.html; no homepage element is modified here.
  function trimFounder(){return SHOW_FOUNDER_STORY;}
  let state=restoreState()||{step:0,house:'',goals:[],diets:[],region:'',started:false,complete:false,partnerStepV2:true,wantsPartnerInvite:false,partnerIntent:'none'};
@@ -139,11 +139,11 @@
        actions=btn('Continue','next')+btn('Skip question','skip','link');break;
      case 4:
        eyebrow='WHAT MATTERS MOST';headline='What would make dinner easier?';
-       description='Choose up to three. We save your answers on this device; this does not silently change recipes or meal plans.';
+       description='Choose up to three. Your choices guide Auto-fill suggestions and can be changed later in Plan.';
        art=options(GOALS,state.goals,true);actions=btn('Continue','next')+btn('Skip question','skip','link');break;
      case 5:
        eyebrow='YOUR PREFERENCES';headline='Any dietary preferences?';
-       description='Optional. Saved on this device for future reference; recipes are NOT automatically filtered and allergens must always be checked on packaging.';
+       description='Auto-fill uses these choices when suggesting meals. You can change them later in Plan. Always check ingredient labels and allergens.';
        art=options(DIETS,state.diets,true);actions=btn('Show me BasketBoss','next')+btn('Skip question','skip','link');break;
      case 6:
        eyebrow='STEP 1 OF 3 · DISCOVER';headline='Dinner ideas without the endless scrolling.';
@@ -252,7 +252,37 @@
      if(typeof window.bb307SwitchIsland!=='function'||window.bb307SwitchIsland(state.region)!==true)
        return 'Could not save shopping region. Please retry or edit it later in Settings.';
    }
+   const meals={};
+   for(const key of ['diets','goals']){
+     const selected=Array.isArray(state[key])?state[key]:[];
+     if(replaying?changedPreferences.has(key):(selected.length>0||changedPreferences.has(key)))meals[key]=selected.slice();
+   }
+   if(Object.keys(meals).length){
+     if(typeof window.BasketBossSetOnboardingMealPreferences!=='function')return 'Meal preference controls are unavailable. Please refresh and retry.';
+     if(window.BasketBossSetOnboardingMealPreferences(meals)!==true)return 'Could not save your meal preferences. Please retry; your choices are kept.';
+   }
    return '';
+ }
+ function authenticated(){
+   if(!validSession()||blocked())return false;
+   // Signing in must not commit a Settings replay draft or overwrite later
+   // planner edits from an already completed survey.
+   if(replaying){dismiss();return true;}
+   if(state.complete)return true;
+   const error=applyChosenPreferences();
+   if(error){
+     const status=host?.querySelector('#bbobSaveError')||id('cloud-message');
+     if(status)status.textContent=error;
+     return false;
+   }
+   state.complete=true;state.started=false;
+   if(!persist(true)){
+     state.complete=false;state.started=true;
+     const status=host?.querySelector('#bbobSaveError')||id('cloud-message');
+     if(status)status.textContent='Could not save your setup. Please retry; your choices are kept.';
+     return false;
+   }
+   dismiss(false);return true;
  }
  function complete(goPremium=false){
    if(!host||blocked())return;
@@ -272,7 +302,7 @@
      const status=host.querySelector('#bbobSaveError');
      if(status)status.textContent='Could not save onboarding completion. Please retry.';
      return;
-   } // Goals and diets stay in the existing local onboarding app state.
+   } // Selected meal choices were saved through the planner preference setter.
    write('basketboss_onboarding_seen_v1','true');
    try{sessionStorage.setItem('basketboss_welcome_splash_seen_v1','1')}catch(_){}
    dismiss(false);
@@ -310,9 +340,9 @@
    const items=state.step===3?HOUSE:state.step===4?GOALS:DIETS;
    const v=items[i];if(v===undefined)return;
    if(state.step===3){state.house=v;changedPreferences.add('house');}
-   if(state.step===4){const set=new Set(state.goals);set.has(v)?set.delete(v):(set.size<3&&set.add(v));state.goals=[...set];}
+   if(state.step===4){const set=new Set(state.goals);set.has(v)?set.delete(v):(set.size<3&&set.add(v));state.goals=[...set];changedPreferences.add('goals');}
    if(state.step===5){const set=new Set(state.diets);if(v===DIETS[0]){state.diets=[v];}
-     else{set.delete(DIETS[0]);set.has(v)?set.delete(v):set.add(v);state.diets=[...set];}}
+     else{set.delete(DIETS[0]);set.has(v)?set.delete(v):set.add(v);state.diets=[...set];}changedPreferences.add('diets');}
    persist();render();
  }
  function dismiss(restoreReplay=true){
@@ -400,8 +430,8 @@
      }
      if(action==='skip'){
        if(state.step===3){state.house=replaying?(replayOriginal.house||''):'';state.region=replaying?(replayOriginal.region||''):'';changedPreferences.delete('house');changedPreferences.delete('region');}
-       if(state.step===4)state.goals=replaying?[...(replayOriginal.goals||[])]:[];
-       if(state.step===5)state.diets=replaying?[...(replayOriginal.diets||[])]:[];
+       if(state.step===4){state.goals=replaying?[...(replayOriginal.goals||[])]:[];changedPreferences.delete('goals');}
+       if(state.step===5){state.diets=replaying?[...(replayOriginal.diets||[])]:[];changedPreferences.delete('diets');}
        state.step=Math.min(STEP_MAX,state.step+1);persist();render();return;
      }
      if(action==='back'){state.step=Math.max(0,state.step-1);persist();render();}

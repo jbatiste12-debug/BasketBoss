@@ -1,0 +1,12 @@
+BasketBoss Build 13 — your preferences, your kitchen
+
+• Choose Vegetarian during setup. Auto-fill a week and browse Discover: new suggestions should all match that choice. Check the Meal preferences button shows it selected.
+• Try Vegan, Gluten-free and Dairy-free, including combinations. If suitable dinners run short, some days should remain open. The app must keep your dietary choices.
+• Change or clear a choice in Plan → Meal preferences. It should save immediately and survive reopening the app. Existing meals stay in your week.
+• Choose household size and region during setup, then check servings and shopping estimates. Budget, waste and variety goals guide suggestions without overruling your diet.
+• In At home, open Weekly kitchen check. Update what's left after other use, including cupboard food and household essentials. Shop should use the new balances.
+• Choose Restock for something you want to buy. Check the existing shopping need is shown clearly and the same need is not added twice. Finishing the shop should still add purchases once.
+• Confirm cooked meals still deduct ingredients once; everyday use can be updated in the kitchen check between shops.
+• Build 12 account confirmation, password reset and swipe navigation remain available.
+
+Please report your build number, the food/item, chosen diet, quantities and steps. Do not share passwords, email confirmation links or API keys.

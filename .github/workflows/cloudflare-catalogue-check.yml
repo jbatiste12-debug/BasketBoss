@@ -14,6 +14,8 @@ on:
       - bb-navigation-polish.*
       - bb-account-polish.*
       - bb-auth-*
+      - bb-dietary-preferences.js
+      - bb-meal-preferences.*
       - bb-tab-swipe.js
       - bb-tab-viewport.*
       - bb-home.js

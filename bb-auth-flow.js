@@ -611,7 +611,9 @@
       resend.hidden = !waiting;
       save.hidden = !setting;
       back.hidden = normal || s.busy;
-      back.textContent = setting ? "Request a new reset link" : "Back to sign in";
+      back.textContent = setting
+        ? "Request a new reset link"
+        : "Back to sign in";
       const remaining = Math.max(
         0,
         Math.ceil((s.cooldownUntil - Date.now()) / 1000),
@@ -659,20 +661,25 @@
     function route(type) {
       password.value = newPassword.value = repeat.value = "";
       doc.getElementById("cloud-close")?.click();
-      win.BBOnboard2026?.authenticated?.();
+      const setupSaved = win.BBOnboard2026?.authenticated?.();
+      const setupWarning =
+        setupSaved === false
+          ? "Signed in. Your setup could not be saved. Please retry setup in Settings."
+          : "";
       doc.querySelector('.shell nav.tabs [data-tab="week"]')?.click();
       win.BBTabViewport?.reset?.({ view: "week" });
       const message = doc.getElementById("cloud-message");
       if (message) {
-        message.textContent = "";
+        message.textContent = setupWarning;
         message.hidden = false;
       }
       toast(
-        type === "confirmation"
-          ? "Email confirmed — welcome to BasketBoss!"
-          : type === "password"
-            ? "Password updated — welcome back!"
-            : "Welcome to BasketBoss!",
+        setupWarning ||
+          (type === "confirmation"
+            ? "Email confirmed — welcome to BasketBoss!"
+            : type === "password"
+              ? "Password updated — welcome back!"
+              : "Welcome to BasketBoss!"),
       );
       void Promise.resolve(win.BasketBossCloud?.connected?.()).catch(() => {});
     }
