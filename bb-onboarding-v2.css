@@ -158,23 +158,31 @@ html.bb-onboarding-open body .shell .tabs,html.bb-onboarding-open body nav.bb-r6
 @media(prefers-reduced-motion:reduce){#bbNewOnboarding .bbob-original-logo-motion,#bbNewOnboarding .bbob-motion-crown{animation:none!important;transform:none!important}#bbNewOnboarding .bbob-original-logo-motion::before,#bbNewOnboarding .bbob-original-logo-motion::after{animation:none!important;display:none}}
 @media(max-height:600px){#bbNewOnboarding .bbob-restored-animation{min-height:145px;padding:8px;gap:6px;margin-bottom:8px}#bbNewOnboarding .bbob-original-logo-motion{width:90px;height:90px}#bbNewOnboarding .bbob-motion-square{width:86px;height:86px}#bbNewOnboarding .bbob-motion-mark{width:68px;height:68px}#bbNewOnboarding .bbob-restored-animation>span{display:none}}
 
-/* A kitchen balance: one welcome slide, using the existing tour navigation. */
-#bbNewOnboarding .bbob-balance-intro{display:grid;gap:17px;margin-top:0}
-#bbNewOnboarding .bbob-balance-card{padding:17px;border:1px solid #326a4c;border-radius:22px;background:linear-gradient(135deg,#164b38,#2e6a4d);color:#fffdf4;box-shadow:0 10px 26px #214e3914}
-#bbNewOnboarding .bbob-balance-heading{display:flex;align-items:center;gap:12px}
-#bbNewOnboarding .bbob-balance-heading img{width:49px;height:49px;border-radius:15px;background:#fffdf4;padding:4px;flex:none}
-#bbNewOnboarding .bbob-balance-heading div{min-width:0;display:grid;gap:2px}
-#bbNewOnboarding .bbob-balance-heading span{font-size:9px;font-weight:800;letter-spacing:.15em;color:#ead899}
-#bbNewOnboarding .bbob-balance-heading strong{font-size:19px;line-height:1.2;letter-spacing:-.03em}
-#bbNewOnboarding .bbob-balance-heading small{font-size:11px;line-height:1.4;color:#dce9d9}
-#bbNewOnboarding .bbob-balance-movements{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:14px}
-#bbNewOnboarding .bbob-balance-movements span{display:flex;align-items:center;justify-content:center;gap:7px;padding:7px 5px;border-radius:10px;border:1px solid #ffffff25;background:#ffffff12;font-size:11px;font-weight:750}
-#bbNewOnboarding .bbob-balance-movements b{display:grid;place-items:center;width:20px;height:20px;border-radius:50%;background:#d9eac9;color:#24563e;font-size:15px;line-height:1}
-#bbNewOnboarding .bbob-balance-movements span+span b{background:#f1dfa6;color:#68521e}
-#bbNewOnboarding .bbob-balance-steps{list-style:none;margin:0;padding:0;display:grid;gap:12px}
-#bbNewOnboarding .bbob-balance-steps li{display:flex;align-items:flex-start;gap:11px;min-width:0}
-#bbNewOnboarding .bbob-balance-steps li>span{flex:none;display:grid;place-items:center;width:25px;height:25px;margin-top:1px;border:1px solid #d3e0cb;border-radius:9px;background:#eaf2e5;color:#2e6245;font-size:11px;font-weight:850}
-#bbNewOnboarding .bbob-balance-steps strong{display:block;color:#224e38;font-size:13px;line-height:1.3}
-#bbNewOnboarding .bbob-balance-steps p{margin:3px 0 0;color:#5c7362;font-size:12px;line-height:1.45}
-@media(max-height:720px){#bbNewOnboarding .bbob-balance-intro{gap:13px}#bbNewOnboarding .bbob-balance-card{padding:13px}#bbNewOnboarding .bbob-balance-steps{gap:9px}}
-@media(max-width:359px){#bbNewOnboarding .bbob-balance-heading strong{font-size:17px}#bbNewOnboarding .bbob-balance-card{padding:13px}#bbNewOnboarding .bbob-balance-movements span{font-size:10px;gap:4px}}
+/* Illustrated kitchen balance, isolated from account and other tour screens. */
+#bbNewOnboarding.bbob-bank-slide .bbob-main{padding-top:15px;padding-bottom:8px}
+#bbNewOnboarding.bbob-bank-slide h1{font-size:clamp(27px,7vw,34px);line-height:1.12}
+#bbNewOnboarding.bbob-bank-slide .bbob-eyebrow{margin-bottom:7px}
+#bbNewOnboarding.bbob-bank-slide .bbob-description{font-size:14px;line-height:1.4;margin:10px 0 14px}
+#bbNewOnboarding .bbob-balance-intro{display:grid;gap:12px}
+#bbNewOnboarding .bbob-balance-scene{position:relative;margin:0;min-width:0}
+#bbNewOnboarding .bbob-balance-scene>svg{display:block;width:100%;height:clamp(145px,43vw,180px);overflow:visible}
+#bbNewOnboarding .bbob-balance-scene figcaption{display:flex;align-items:center;justify-content:space-between;gap:5px;margin-top:1px;padding:0 9px;font-size:10px;line-height:1.3;color:#728064}
+#bbNewOnboarding .bbob-balance-scene figcaption strong{font-size:12px;font-weight:850;color:#2d6046}
+#bbNewOnboarding .bbob-balance-steps{display:grid;grid-template-columns:1fr 1fr;gap:9px;list-style:none;margin:0;padding:0}
+#bbNewOnboarding .bbob-balance-steps li{display:flex;align-items:flex-start;gap:9px;min-width:0;min-height:81px;padding:12px 10px;border:1px solid #dce7d7;border-radius:16px;background:#fffef8;box-shadow:0 3px 9px #36583a05}
+#bbNewOnboarding .bbob-balance-icon{display:grid;place-items:center;flex:none;width:31px;height:31px;border-radius:10px;color:#346c4b;background:#e8f0df}
+#bbNewOnboarding .bbob-balance-icon svg{width:21px;height:21px}
+#bbNewOnboarding .bbob-balance-steps li:nth-child(3) .bbob-balance-icon{background:#f6ebc9;color:#8b7036}
+#bbNewOnboarding .bbob-balance-steps li:nth-child(4) .bbob-balance-icon{background:#f3e5d6;color:#986b47}
+#bbNewOnboarding .bbob-balance-steps strong{display:block;font-size:13px;line-height:1.25;letter-spacing:-.15px;color:#27563d}
+#bbNewOnboarding .bbob-balance-steps p{margin:4px 0 0;font-size:11px;line-height:1.4;color:#63785f}
+#bbNewOnboarding .bbob-balance-steps .bbob-balance-repeat{grid-column:1/-1;min-height:0;align-items:center;background:#edf3e6;border-color:#d4e1c8;box-shadow:none;padding:10px 12px}
+#bbNewOnboarding .bbob-balance-repeat .bbob-balance-icon{background:#dce9d2;color:#43704b}
+#bbNewOnboarding .bbob-balance-repeat strong{font-size:12px}#bbNewOnboarding .bbob-balance-repeat p{margin-top:3px;font-size:10.5px}
+#bbNewOnboarding .bbob-balance-steam{animation:bbobPanSteam 2s ease-in-out 3;transform-origin:center}
+#bbNewOnboarding .bbob-balance-sparkle{animation:bbobPanTwinkle 2s ease-in-out .4s 3;transform-box:fill-box;transform-origin:center}
+@keyframes bbobPanSteam{0%,100%{opacity:.45;transform:translateY(0)}50%{opacity:.9;transform:translateY(-3px)}}
+@keyframes bbobPanTwinkle{0%,100%{opacity:.45;transform:scale(.85)}50%{opacity:1;transform:scale(1.12)}}
+@media(max-width:359px){#bbNewOnboarding .bbob-balance-steps li{padding:10px 8px;gap:7px}#bbNewOnboarding .bbob-balance-icon{width:26px;height:28px;border-radius:8px}#bbNewOnboarding .bbob-balance-icon svg{width:19px;height:19px}#bbNewOnboarding .bbob-balance-steps p{font-size:10.5px}#bbNewOnboarding .bbob-balance-scene>svg{height:145px}}
+@media(prefers-reduced-motion:reduce){#bbNewOnboarding .bbob-balance-steam,#bbNewOnboarding .bbob-balance-sparkle{animation:none!important;transform:none!important}}
+#bbNewOnboarding.bbob-bank-slide .bbob-primary:focus-visible{outline:2px solid #9c7a32;outline-offset:3px}

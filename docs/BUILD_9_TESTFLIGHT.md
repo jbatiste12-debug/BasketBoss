@@ -1,8 +1,14 @@
 # BasketBoss 1.0 (9) — welcome and compact planning tools
 
 Build 9 includes all build 8 functionality plus the kitchen-balance welcome slide.
-The release source is `testflight-build9` on `fix/confirmed-cook-pantry` (PR #40).
+The illustrated release source is `testflight-build9-illustrated` on `fix/confirmed-cook-pantry` (PR #40).
 The earlier build 8 tags remain unchanged.
+
+The welcome slide uses an illustrated pantry between a shopping basket and a
+cooking pot, four compact icon cards and a weekly-review banner. It fits a
+390 × 844 phone viewport without scrolling; the main content can scroll on
+shorter phones while the primary action stays visible. Motion stops after three
+cycles and respects Reduce Motion.
 
 The welcome tour explains the pantry like a bank account: planning is the budget,
 At home is the balance, shopping tops it up, confirmed cooking deducts meal
@@ -23,7 +29,7 @@ in previous folders:
 
 ```sh
 bb_release_dir="$(mktemp -d "$HOME/BasketBoss-build9-XXXXXX")" &&
-git clone --depth 1 --branch testflight-build9 \
+git clone --depth 1 --branch testflight-build9-illustrated \
   https://github.com/jbatiste12-debug/BasketBoss.git "$bb_release_dir" &&
 cd "$bb_release_dir" &&
 npm ci &&
