@@ -3,12 +3,16 @@ name: Verify iOS native build
 on:
   workflow_dispatch:
   push:
-    branches: [main, codex/native-cook-fix]
+    branches: [main, codex/native-cook-fix, release/recipe-editorial-collections, feature/conversational-voice-cook, fix/cook-mentor-reply-failure, fix/confirmed-cook-pantry]
     paths:
       - .github/workflows/ios-native-build.yml
+      - .github/workflows/inspect-account-keyboard.yml
       - capacitor.config.json
       - package.json
       - package-lock.json
+      - basketboss-pricing-v19.js
+      - tests/basketboss-canonical-measure.test.mjs
+      - tests/basketboss-ingredient-standardisation.test.mjs
       - index.html
       - app.html
       - bb-account-deletion.*
@@ -16,6 +20,27 @@ on:
       - bb-ingredient-*
       - bb-evening-*
       - bb-cook-voice.*
+      - bb-cook-assistant.js
+      - bb-saved-weeks.*
+      - bb-cook-speech-text.js
+      - bb-cook-tts.js
+      - bb-cook-experience.css
+      - bb-cook-clarity.css
+      - bb-cook-pantry.js
+      - bb-cook-step-layout.js
+      - bb-duration.js
+      - bb-featured-framing.js
+      - bb-how-it-works.*
+      - bb-pantry-camera.*
+      - bb-pantry-autofill.js
+      - bb-day-done.*
+      - bb-shop-add.*
+      - bb-receipt-inventory*
+      - bb-receipt-host.js
+      - bb-recipe-planning.js
+      - bb-pantry-deduction.js
+      - bb-receipt-quantity.js
+      - bb-recipe-measures.js
       - bb-cook-studio.*
       - bb-cook-result.*
       - bb-meal-image.*
@@ -33,9 +58,21 @@ on:
       - basketboss-latest-guide.html
       - food-thumbs/v2/**
       - shopping-inventory.js
+      - release-assets/basketboss-v17/images/**
       - make-a-meal.*
       - bb-onboarding-v2.*
       - tests/basketboss-native-*.test.mjs
+      - tests/basketboss-garlic-basket.test.mjs
+      - tests/basketboss-pantry-reconcile.test.mjs
+      - tests/basketboss-cook-phase-navigation.test.mjs
+      - tests/basketboss-saved-weeks.test.mjs
+      - tests/basketboss-saved-week-host.test.mjs
+      - tests/basketboss-cook-voice.test.mjs
+      - tests/basketboss-evening-pivot-app.test.mjs
+      - tests/basketboss-landing-meal-pricing.test.mjs
+      - tests/basketboss-photo-meal*.test.mjs
+      - tests/basketboss-cook-studio.test.mjs
+      - tests/basketboss-cook-result.test.mjs
       - native/**
       - ios/**
       - scripts/*native*.mjs
@@ -46,22 +83,68 @@ permissions:
 
 jobs:
   simulator-build:
-    runs-on: macos-latest
-    timeout-minutes: 25
+    # Avoid the constrained ARM pool; this image includes the proven iOS 26.2 runtime.
+    runs-on: macos-15-intel
+    timeout-minutes: 60
+    env:
+      DEVELOPER_DIR: /Applications/Xcode_26.2.app/Contents/Developer
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
         with:
           persist-credentials: false
-      - uses: actions/setup-node@v4
+      - uses: actions/setup-node@v5
         with:
           node-version: '24'
           cache: npm
       - name: Install pinned native dependencies
         run: npm ci --no-audit --no-fund
       - name: Build and sync iOS workspace
-        run: npm run ios:sync
+        run: |
+          if ! npm run ios:sync; then
+            echo 'Retrying iOS sync once after a dependency setup failure.'
+            npm run ios:sync
+          fi
+      - name: Verify ingredient units, basket, pantry, saved weeks and Cook regressions
+        run: >-
+          node --test --test-isolation=none
+          tests/basketboss-garlic-basket.test.mjs
+          tests/basketboss-canonical-measure.test.mjs
+          tests/basketboss-ingredient-standardisation.test.mjs
+          tests/basketboss-pantry-reconcile.test.mjs
+          tests/basketboss-pantry-conversion.test.mjs
+          tests/basketboss-pantry-cook-flow.test.mjs
+          tests/basketboss-pantry-conversion-cook-flow.test.mjs
+          tests/basketboss-day-completion-core.test.mjs
+          tests/basketboss-day-done.test.mjs
+          tests/basketboss-shop-add.test.mjs
+          tests/basketboss-manual-buy-core.test.mjs
+          tests/basketboss-manual-purchase-app.test.mjs
+          tests/basketboss-pantry-autofill.test.mjs
+          tests/basketboss-pantry-autofill-app.test.mjs
+          tests/basketboss-saved-weeks.test.mjs
+          tests/basketboss-saved-week-host.test.mjs
+          tests/basketboss-cook-phase-navigation.test.mjs
+          tests/basketboss-cook-voice.test.mjs
+          tests/basketboss-evening-pivot-app.test.mjs
+          tests/basketboss-landing-meal-pricing.test.mjs
+      - name: Audit all recipe units in UK and US and verify pantry policy
+        run: |
+          npm run audit:pantry
+          node --test --test-isolation=none tests/basketboss-pantry-policy*.test.mjs tests/basketboss-pantry-regions-audit.test.mjs tests/basketboss-receipt-pantry-policy.test.mjs tests/basketboss-staple-app-flow.test.mjs
       - name: Test native routing and permissions
         run: npm run test:native
+      - name: Verify photo review, recipe creation and matching meal pictures
+        run: >-
+          node --test --test-isolation=none
+          tests/basketboss-photo-meal-flow.test.mjs
+          tests/basketboss-photo-meal-ingredients.test.mjs
+          tests/basketboss-cook-studio.test.mjs
+          tests/basketboss-cook-result.test.mjs
+          tests/basketboss-meal-image-client.test.mjs
+          tests/basketboss-meal-image.test.mjs
+          tests/basketboss-pantry-camera.test.mjs
+          tests/basketboss-ai-quota-autoinit.test.mjs
+          tests/basketboss-ai-turnstile-safari-premium.test.mjs
       - name: Compile the iOS simulator app without signing credentials
         run: >-
           xcodebuild
@@ -75,15 +158,44 @@ jobs:
           build
       - name: Publish fixed build verification
         run: echo '::notice title=BasketBoss iOS native build::{"simulatorBuild":true,"bundleId":"uk.co.basketboss.app","minimumIOS":"16.0","signingTested":false}'
+      # Finish device compilation before Simulator startup; Cook and keyboard
+      # checks still determine whether this verification run succeeds.
+      - name: Create the unsigned iPhone archive for build 9
+        run: |
+          xcodebuild \
+            -workspace ios/App/App.xcworkspace \
+            -scheme App \
+            -configuration Release \
+            -sdk iphoneos \
+            -destination 'generic/platform=iOS' \
+            -derivedDataPath /tmp/basketboss-ios-device-build \
+            -archivePath "$RUNNER_TEMP/BasketBoss-1.0-build9.xcarchive" \
+            CODE_SIGNING_ALLOWED=NO \
+            archive
+          test "$(/usr/libexec/PlistBuddy -c 'Print CFBundleVersion' "$RUNNER_TEMP/BasketBoss-1.0-build9.xcarchive/Products/Applications/App.app/Info.plist")" = '9'
+          test "$(/usr/libexec/PlistBuddy -c 'Print CFBundleIdentifier' "$RUNNER_TEMP/BasketBoss-1.0-build9.xcarchive/Products/Applications/App.app/Info.plist")" = 'uk.co.basketboss.app'
+          ditto -c -k --sequesterRsrc --keepParent \
+            "$RUNNER_TEMP/BasketBoss-1.0-build9.xcarchive" \
+            "$RUNNER_TEMP/BasketBoss-1.0-build9-unsigned.xcarchive.zip"
+      - name: Retain the unsigned iPhone archive
+        uses: actions/upload-artifact@v6
+        with:
+          name: BasketBoss-1.0-build9-unsigned-iPhone-archive
+          path: ${{ runner.temp }}/BasketBoss-1.0-build9-unsigned.xcarchive.zip
+          if-no-files-found: error
+          retention-days: 7
+          compression-level: 0
       - name: Exercise Cook in the actual iOS WebView
         run: node scripts/test-ios-cook-smoke.mjs
-      - name: Check account inputs with the real iOS keyboard
-        if: ${{ !cancelled() }}
-        run: node scripts/test-ios-account-keyboard.mjs
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v6
         if: always()
         with:
-          name: BasketBoss-Account-Keyboard-Verification
-          path: artifacts/account-keyboard-diagnostics/
+          name: BasketBoss-Cook-Verification
+          path: artifacts/cook-smoke-diagnostics/
           if-no-files-found: ignore
           retention-days: 14
+
+  account-keyboard:
+    # Accessibility and keyboard checks get a fresh Mac and Simulator session,
+    # independent of the preceding Cook smoke test's process and graphics load.
+    uses: ./.github/workflows/inspect-account-keyboard.yml

@@ -893,14 +893,14 @@
         },
         {
           "name": "Sun-dried tomatoes, drained",
-          "key": "asparagus",
-          "quantity": 200,
+          "key": "sun-dried tomatoes",
+          "quantity": 60,
           "unit": "g",
           "price_hint": 1.554,
-          "status": "PARSED_EDITORIAL_UNVERIFIED",
+          "status": "PARSED_FROM_EXPLICIT_TEXT",
           "recipe_id": "tuscan-salmon",
           "ingredient_index": 2,
-          "quantity_basis": "EDITORIAL_ASSUMPTION_UNVERIFIED",
+          "quantity_basis": "EXPLICIT_RECIPE_SOURCE_60_G",
           "price_basis": "PROPORTIONAL_ALLOCATION_OF_UNVERIFIED_OLD_BUNDLE_ESTIMATE"
         },
         {

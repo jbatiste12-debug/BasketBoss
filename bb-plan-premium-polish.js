@@ -8,13 +8,21 @@
  const checkoutPage='pricing-sandbox.html#monthly';
  let headerReady=false;
  let liveBudgetObserver=null;
+ let closingPlanPopover=false;
+ function sizePlanPopovers(card){
+   if(!card)return;
+   const bottom=window.visualViewport?window.visualViewport.height+window.visualViewport.offsetTop:window.innerHeight;
+   const space=Math.max(120,Math.min(480,Math.floor(bottom-card.getBoundingClientRect().bottom-116)));
+   const value=space+'px';if(card.style.getPropertyValue('--bbpc-popover-height')!==value)card.style.setProperty('--bbpc-popover-height',value);
+ }
  const regionValue=()=>{
    const value=typeof window.bb307ActiveMarket==='function'?window.bb307ActiveMarket():$('#bb307Island')?.value;
    return value==='US'?'United States':value||'Choose region';
  };
  function updateHeader(){
-   const region=$('#bbpolRegionPill');if(region)region.textContent=regionValue()+' · Change';
-   const upgrade=$('#bbpolUpgradePill');if(upgrade){upgrade.hidden=false;const status=window.BasketBossVerifiedPremium?.state?.();const label=window.BasketBossMembershipUI?.label?.()||(premiumActive()?'PREMIUM':status==='free'?'FREE · Upgrade to Premium':status==='checking'?'Checking membership…':'Check membership');if(upgrade.textContent!==label)upgrade.textContent=label;upgrade.setAttribute('aria-label',label);}
+   const compact=document.body.dataset.bbnextView==='week',name=regionValue(),regionLabel=(compact&&name==='United States'?'US':name)+' · Change';
+   const region=$('#bbpolRegionPill');if(region){if(region.textContent!==regionLabel)region.textContent=regionLabel;region.title=name+' · Change region';region.setAttribute('aria-label','Shopping region: '+name+'. Change region.');}
+   const upgrade=$('#bbpolUpgradePill');if(upgrade){upgrade.hidden=false;const status=window.BasketBossVerifiedPremium?.state?.();const label=window.BasketBossMembershipUI?.label?.()||(premiumActive()?'PREMIUM':status==='free'?'FREE · Upgrade to Premium':status==='checking'?'Checking membership…':'Check membership');const display=compact?(premiumActive()?'PREMIUM':status==='free'?'Upgrade':status==='checking'?'Checking':'Account'):label;if(upgrade.textContent!==display)upgrade.textContent=display;upgrade.setAttribute('aria-label',label);upgrade.title=label;}
  }
  function setupHeader(){
    if(headerReady)return;
@@ -106,13 +114,41 @@
      card.setAttribute('aria-label','Plan your week');
      filters.before(card);
    }
-   const disclosure=$('#bbnextPlanAutofill',app);
-   // Re-parent the original controls. Their closures, IDs, input state and
-   // keyboard/native disclosure behavior remain with the original renderer.
-   // Only move a node when its position changes: the app observer must settle.
-   [filters,actions,disclosure].filter(Boolean).forEach((node,index)=>{
-     if(card.children[index]!==node)card.insertBefore(node,card.children[index]||null);
-   });
+   const disclosure=$('#bbnextPlanAutofill',app),schedule=$('#bb1759MealsSummary',app);
+   let row=$('.bbpc-filter-row',card);
+   if(!row){row=document.createElement('div');row.className='bbpc-filter-row';row.setAttribute('role','group');row.setAttribute('aria-label','Planning options');card.append(row);}
+   // Move original controls once; all existing entitlement checks, quantities,
+   // form drafts and native disclosure handlers stay with their owners.
+   const move=(parent,node,index)=>{if(node&&parent.children[index]!==node)parent.insertBefore(node,parent.children[index]||null);};
+   move(card,row,0);move(card,actions,1);
+   const settings=$('#bbSimpleBudget',app),ingredients=$('#bbIngredientPicker',app),pantry=$('#bbPantryPlannerButton',app),budget=$('.bbnext-plan-budget',app);
+   const options=[settings,filters,ingredients].filter(Boolean);options.forEach((node,index)=>move(row,node,index));
+   const avoid=ingredients?.querySelector('#bbAvoidIngredientTab'),count=ingredients?.querySelector('.bb-avoid-count')?.textContent||'None selected';
+   if(avoid){const amount=count.match(/^\d+/)?.[0]||'0';if(avoid.dataset.bbpcCount!==amount)avoid.dataset.bbpcCount=amount;const label='Ingredients to avoid, '+count.toLowerCase();if(avoid.getAttribute('aria-label')!==label)avoid.setAttribute('aria-label',label);}
+   if(pantry){
+     if(pantry.textContent!=='✨ Autofill empty days using pantry stock')pantry.textContent='✨ Autofill empty days using pantry stock';
+     pantry.setAttribute('aria-label','Autofill empty days using pantry stock');
+     pantry.title='Autofill empty days using pantry stock';
+   }
+   if(disclosure){
+     move(card,disclosure,2);
+     const summary=$(':scope > summary',disclosure);
+     if(summary){if(summary.textContent!=='ⓘ')summary.textContent='ⓘ';summary.setAttribute('aria-label','How Auto-fill works');summary.title='How Auto-fill works';}
+     let body=$('.bbpc-info-content',disclosure);
+     if(!body){body=document.createElement('div');body.className='bbpc-info-content';disclosure.append(body);}
+     for(const node of [...disclosure.children])if(node!==summary&&node!==body)body.append(node);
+     if(pantry&&body.firstElementChild!==pantry)body.prepend(pantry);
+   }
+   if(schedule){
+     app.dataset.bbCompactPlan='true';
+     if(budget){if(app.firstElementChild!==budget)app.prepend(budget);if(budget.nextElementSibling!==card)budget.after(card);}
+     else if(app.firstElementChild!==card)app.prepend(card);
+     if(card.nextElementSibling!==schedule)card.after(schedule);
+     let previous=schedule;
+     for(const node of[app.querySelector('[data-bb307-extras="week"]'),app.querySelector('.bbsw-next-step')].filter(Boolean)){
+       if(previous.nextElementSibling!==node)previous.after(node);previous=node;
+     }
+   }
    const heading=$('.bb81-pro-filters-heading strong',filters),badge=$('.bb81-pro-filters-heading span',filters);
    if(heading&&heading.textContent!=='Smart Auto-Fill')heading.textContent='Smart Auto-Fill';
    if(badge){
@@ -122,9 +158,23 @@
    // Keep the original explanatory note available in the original disclosure,
    // leaving the everyday action area compact rather than repeating its copy.
    const note=$('.bb81-pro-filter-note',filters);
-   if(note&&disclosure&&note.parentNode!==disclosure)disclosure.append(note);
-   const working=$('#bb172FillSixDinners',actions),pantry=$('#bbPantryPlannerButton',actions);
+   const infoBody=disclosure?.querySelector('.bbpc-info-content');
+   if(note&&infoBody&&note.parentNode!==infoBody)infoBody.append(note);
+   const working=$('#bb172FillSixDinners',actions);
    card.dataset.bbAutofillReady=working&&pantry&&disclosure?'true':'false';
+   sizePlanPopovers(card);
+ }
+ function closePlanPopovers(event){
+   if(closingPlanPopover)return;
+   const card=$('#app[data-bb-compact-plan="true"] #bbpolAutofillCard');if(!card)return;
+   sizePlanPopovers(card);
+   const escape=event.type==='keydown'&&event.key==='Escape';if(event.type==='keydown'&&!escape)return;
+   const details=[...card.querySelectorAll('#bbSimpleBudget,#bbSimpleMealPreferences,#bbnextPlanAutofill')];
+   let focus;
+   for(const node of details)if(node.open&&(escape||!node.contains(event.target))){node.open=false;if(escape)focus=node.querySelector('summary');}
+   const ingredients=$('#bbIngredientPicker',card),toggle=$('#bbAvoidIngredientTab',ingredients||card);
+   if(toggle?.getAttribute('aria-expanded')==='true'&&(escape||!ingredients.contains(event.target))){closingPlanPopover=true;try{toggle.click();}finally{closingPlanPopover=false;}if(escape)focus=toggle;}
+   if(escape&&focus){event.preventDefault();focus.focus({preventScroll:true});}
  }
  function enhanceExistingProDialog(){
    const dialog=$('#bb81PremiumPreviewDialog');if(!dialog||$('#bbpolDirectPlans',dialog)||premiumActive())return;
@@ -139,12 +189,17 @@
  function start(){
    setupHeader();decorateBudget();decorateMealRows();decorateAutofill();enhanceExistingProDialog();
    const app=$('#app');if(app){
-     const observer=new MutationObserver(()=>{decorateBudget();decorateMealRows();decorateAutofill();enhanceExistingProDialog();});
+     const observer=new MutationObserver(()=>{updateHeader();decorateBudget();decorateMealRows();decorateAutofill();enhanceExistingProDialog();});
      observer.observe(app,{childList:true,subtree:true});
    }
    // The original Smart Auto-Fill modal is attached to document.body.
    const dialogObserver=new MutationObserver(enhanceExistingProDialog);
    dialogObserver.observe(document.body,{childList:true});
+   document.addEventListener('click',closePlanPopovers);
+   document.addEventListener('keydown',closePlanPopovers);
+   let sizeFrame=null;
+   const resizePlan=()=>{if(sizeFrame!==null)return;sizeFrame=requestAnimationFrame(()=>{sizeFrame=null;sizePlanPopovers($('#app[data-bb-compact-plan="true"] #bbpolAutofillCard'));});};
+   window.addEventListener('resize',resizePlan,{passive:true});window.addEventListener('scroll',resizePlan,{passive:true});window.visualViewport?.addEventListener('resize',resizePlan,{passive:true});
  }
  if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',()=>setTimeout(start,0),{once:true});
  else setTimeout(start,0);

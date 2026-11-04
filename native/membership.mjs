@@ -36,7 +36,7 @@ export function installNativeMembership({apiURL,readSession,fetch:perform=global
   if(card?.isConnected)return;
   card=doc.createElement('section');card.className='bb-native-membership';card.setAttribute('aria-label','BasketBoss membership');
   const title=doc.createElement('h3');title.textContent=purchases?'Your membership':'Your BasketBoss account';
-  const note=doc.createElement('p');note.textContent=purchases?'Use 100 recipes free. Sign in or create an account to choose Apple Premium, or restore a subscription you already bought.':'Use 100 recipes free, or sign in to an existing account. Purchases and account creation are not available in this iOS build.';
+  const note=doc.createElement('p');note.textContent=purchases?'Use 100 recipes free. Sign in or create an account for Apple Premium, an existing membership or eligible TestFlight beta access.':'Use 100 recipes free, or sign in to an existing account. Purchases and account creation are not available in this iOS build.';
   status=doc.createElement('p');status.setAttribute('role','status');status.setAttribute('aria-live','polite');
   login=doc.createElement('button');login.type='button';login.textContent='Sign in';login.addEventListener('click',signIn);
   const legal=doc.createElement('p');legal.className='bb-native-membership-legal';
@@ -47,6 +47,13 @@ export function installNativeMembership({apiURL,readSession,fetch:perform=global
   if(purchases)mountPurchases(card,legal);else void refresh();
  }
  function mountPurchases(parent,legal){
+  const beta=doc.createElement('button');beta.type='button';beta.className='bb-native-apple-plan bb-native-beta-unlock';beta.textContent='Unlock TestFlight Beta Premium';
+  const betaNote=doc.createElement('p');betaNote.className='bb-native-apple-disclosure';
+  beta.addEventListener('click',()=>{
+   if(!token()){signIn();return;}
+   if(typeof purchases.claimBeta!=='function'){text(status,'Update BasketBoss to the latest TestFlight build to unlock Beta Premium.');return;}
+   void purchases.claimBeta();
+  });
   const heading=doc.createElement('h4');heading.textContent='BasketBoss Premium';
   const benefits=doc.createElement('p');benefits.textContent='Explore the full recipe collection, batch cooking and eligible AI meal tools.';
   const plans=doc.createElement('div');plans.className='bb-native-apple-plans';
@@ -57,12 +64,17 @@ export function installNativeMembership({apiURL,readSession,fetch:perform=global
   const retry=doc.createElement('button');retry.type='button';retry.className='bb-native-apple-secondary';retry.textContent='Refresh membership';retry.addEventListener('click',()=>{void purchases.refresh();});
   controls.append(restore,manage,retry);
   const recurring=doc.createElement('p');recurring.className='bb-native-apple-disclosure';recurring.textContent='Payment is charged to your Apple Account when you confirm. Subscriptions renew automatically unless cancelled before renewal. You can manage or cancel in your Apple Account subscription settings. Apple shows your local price and billing period before you confirm.';
-  parent.append(heading,benefits,plans,controls,recurring);
+  parent.append(beta,betaNote,heading,benefits,plans,controls,recurring);
   // Keep the same privacy/terms links beside the Apple recurring-payment terms.
   parent.append(legal);
   let productKey='';
   unsubscribe=purchases.subscribeState(state=>{
    text(status,state.message);login.hidden=state.authenticated;login.disabled=state.busy;
+   const nativeIOS=win.BBNative?.isNative===true&&win.BBNative.platform==='ios';
+   beta.hidden=!nativeIOS||!state.authenticated;beta.disabled=state.busy||state.premiumAccess;
+   betaNote.hidden=beta.hidden;
+   let betaExpiry=null;try{if(typeof state.beta?.expiresAt==='string'&&Number.isFinite(Date.parse(state.beta.expiresAt)))betaExpiry=new Date(state.beta.expiresAt).toLocaleDateString('en-GB');}catch{}
+   text(betaNote,state.provider==='testflight_beta'&&state.premiumAccess?'TestFlight Beta Premium is active'+(betaExpiry?' until '+betaExpiry:'')+'. No subscription or renewal charge.':state.premiumAccess?'Your existing membership already provides Premium access.':'For eligible TestFlight builds. Unlock Premium for beta testing without starting a subscription. Your signed-in account and Apple-signed app are verified securely.');
    restore.disabled=state.busy;retry.disabled=state.busy;manage.disabled=state.busy;manage.hidden=state.provider!=='apple';
    plans.hidden=state.premiumAccess||!state.products.length||!state.available;
    recurring.hidden=state.premiumAccess||!state.available;

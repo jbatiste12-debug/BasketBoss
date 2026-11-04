@@ -83,6 +83,22 @@ test('public shopping preview shares packs after aggregating normalized ingredie
   assert.equal(oil.cost,h.api.price({name:oil.name,quantity:oil.quantity,unit:oil.unit,market:'UK'}).packAmount);
 });
 
+test('public shopping combines source-proven Garlic cloves and keeps explicit bulbs separate',async()=>{
+  const h=await demo();
+  h.controller.select(['creamy-pasta','salmon'],[2,2]);
+  const cloves=h.controller.rowsForShopping().filter(row=>h.api.canonical(row.name)==='garlic');
+  assert.equal(cloves.length,1);
+  assert.equal(cloves[0].unit,'clove');
+  assert.equal(cloves[0].quantity,2.5,'legacy 1.5 each and one explicit clove combine before pricing');
+  assert.equal(cloves[0].cost,h.api.price({name:'garlic',quantity:2.5,unit:'clove',market:'UK'}).packAmount);
+  h.controller.select(['creamy-pasta','tomato-mozzarella-pasta'],[2,4]);
+  const distinct=h.controller.rowsForShopping().filter(row=>h.api.canonical(row.name)==='garlic');
+  assert.equal(distinct.length,2);
+  assert.equal(distinct.find(row=>row.unit==='clove').quantity,1.5);
+  assert.equal(distinct.find(row=>row.unit==='bulb').quantity,1);
+  assert.equal(distinct.find(row=>row.unit==='bulb').cost,null,'a missing bulb pack stays unavailable instead of pricing the bulb as a clove');
+});
+
 test('failed or mismatched public quantity data shows unavailable instead of a false price',async()=>{
   const bad=structuredClone(normalized);bad.recipes[0].id='unexpected-source';
   for(const options of [{failQuantities:true},{quantityData:bad}]){

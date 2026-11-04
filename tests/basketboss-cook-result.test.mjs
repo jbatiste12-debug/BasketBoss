@@ -6,16 +6,18 @@ import vm from 'node:vm';
 const source=fs.readFileSync(new URL('../bb-cook-result.js',import.meta.url),'utf8');
 const app=fs.readFileSync(new URL('../make-a-meal.js',import.meta.url),'utf8');
 const validRecipe=()=>({title:'Chicken & broccoli pasta',summary:'A simple dinner.',servings:4,prepMinutes:10,cookMinutes:20,ingredients:[{name:'Cooked chicken',quantity:'200 g',fromHome:true},{name:'Pasta',quantity:'300 g',fromHome:true}],steps:['1. Review cooking instructions.'],extraIngredients:[],allergens:['Wheat'],safetyNotes:['Check ingredient labels and safe handling.']});
-function renderer({imageAvailable=true,attachError=false}={}){
- const calls=[],events=new Map();let cancellations=0,again=0,current=true;
+function renderer({imageAvailable=true,attachError=false,market='Jersey'}={}){
+ const calls=[],events=new Map(),globalEvents=new Map();let cancellations=0,again=0,current=true;
  const image={textContent:'',classList:{add(name){this.name=name;}}};
  const button={addEventListener:(name,callback)=>events.set(name,callback),removeEventListener:name=>events.delete(name)};
- const host={isConnected:true,innerHTML:'',querySelector:selector=>selector==='[data-bb-meal-image]'?image:selector==='[data-bb-meal-again]'?button:null,replaceChildren(){this.innerHTML='';}};
- const window={localStorage:{setItem(){throw Error('Rendering must not save data');}},fetch(){throw Error('Renderer must not send requests');}};
+ const panels={'[data-bb-result-ingredients]':{innerHTML:''},'[data-bb-result-method]':{innerHTML:''},'[data-bb-result-safety]':{innerHTML:''}};
+ const host={isConnected:true,innerHTML:'',querySelector:selector=>selector==='[data-bb-meal-image]'?image:selector==='[data-bb-meal-again]'?button:panels[selector]||null,replaceChildren(){this.innerHTML='';}};
+ const window={localStorage:{getItem:key=>key==='basketboss_321_v7_market'?market:null,setItem(){throw Error('Rendering must not save data');}},fetch(){throw Error('Renderer must not send requests');},addEventListener:(event,listener)=>globalEvents.set(event,listener),removeEventListener:event=>globalEvents.delete(event)};
+ for(const file of ['bb-duration.js','bb-recipe-measures.js','bb-cook-step-layout.js'])vm.runInNewContext(fs.readFileSync(new URL('../'+file,import.meta.url),'utf8'),{window,globalThis:window});
  if(imageAvailable)window.BBMealImage={attach(imageHost,options){calls.push({imageHost,options,textBeforeImage:host.innerHTML});if(attachError)throw Error('image provider failed');return {cancel(){cancellations++;}};}};
  vm.runInNewContext(source,{window});
  const options={mealImage:{ticket:'signed-recipe-ticket'},getToken:()=> 'member-token',isCurrent:()=>current,onTryAgain:()=>again++};
- return {api:window.BBCookResult,host,image,events,calls,options,setCurrent:value=>{current=value;},get cancellations(){return cancellations;},get again(){return again;}};
+ return {api:window.BBCookResult,host,image,events,calls,options,panels,globalEvents,setMarket:value=>{market=value;globalEvents.get('storage')?.({type:'storage',key:'basketboss_321_v7_market'});},setCurrent:value=>{current=value;},get cancellations(){return cancellations;},get again(){return again;}};
 }
 
 test('created recipe text and review controls render before asynchronous picture work starts',()=>{
@@ -23,7 +25,7 @@ test('created recipe text and review controls render before asynchronous picture
  assert.equal(h.calls.length,1);assert.match(h.calls[0].textBeforeImage,/Chicken &amp; broccoli pasta/);
  assert.match(h.calls[0].textBeforeImage,/<details class="bb-cook-result__review">/);
  assert.match(h.calls[0].textBeforeImage,/Review ingredients &amp; steps/);
- assert.match(h.calls[0].textBeforeImage,/30 estimated minutes/);
+ assert.match(h.calls[0].textBeforeImage,/30mins estimated/);
  assert.match(h.calls[0].textBeforeImage,/Wheat/);assert.match(h.calls[0].textBeforeImage,/not added to Planner or Shopping/);
  assert.equal(h.calls[0].options.recipe,recipe);assert.equal(h.calls[0].options.ticket,'signed-recipe-ticket');
  assert.equal(h.calls[0].options.getToken(),'member-token');
@@ -35,6 +37,43 @@ test('recipe fields are escaped and cannot supply an arbitrary image or executab
  h.api.render(h.host,recipe,h.options);
  assert.ok(!h.host.innerHTML.includes(attack));assert.match(h.host.innerHTML,/&lt;img src=x onerror=alert\(1\)&gt;/);
  assert.doesNotMatch(h.host.innerHTML,/<img|untrusted\.invalid|onclick=|onerror="/);
+});
+
+test('AI recipe review uses American measures only for the saved US region and keeps actions scannable',()=>{
+ for(const market of ['US','UK','Jersey','Guernsey']){
+  const h=renderer({market}),recipe=validRecipe();recipe.ingredients[0]={name:'Plain flour',quantity:'120 g',fromHome:true};recipe.steps=['1. Heat oven to 200°C. Stir in flour; Bake for 90 minutes.'];
+  recipe.safetyNotes=['Check chicken reaches 75°C.'];const original=JSON.stringify(recipe);h.api.render(h.host,recipe,h.options);
+  assert.match(h.host.innerHTML,/<ul class="bb-cook-actions" data-bb-measures><li>Heat oven/);
+  assert.match(h.host.innerHTML,/<li>Stir in flour;<\/li><li>Bake for 1hr 30mins\./);
+  if(market==='US'){
+   assert.match(h.host.innerHTML,/≈ 1 US cup \(120 g\)/);assert.match(h.host.innerHTML,/392°F \(200°C\)/);assert.match(h.host.innerHTML,/167°F \(75°C\)/);
+  }else{
+   assert.match(h.host.innerHTML,/>120 g<\/span>/);assert.match(h.host.innerHTML,/200°C/);assert.doesNotMatch(h.host.innerHTML,/US cup|°F/);
+  }
+  assert.equal(JSON.stringify(recipe),original);
+ }
+});
+
+test('changing region updates recipe text without requesting another generated image or mutating stock',()=>{
+ const h=renderer({market:'US'}),recipe=validRecipe();recipe.ingredients[0]={name:'Plain flour',quantity:'120 g',fromHome:true};recipe.steps=['Bake at 200°C.'];
+ h.api.render(h.host,recipe,h.options);assert.match(h.host.innerHTML,/US cup/);
+ h.setMarket('UK');assert.match(h.panels['[data-bb-result-ingredients]'].innerHTML,/>120 g<\/span>/);assert.doesNotMatch(h.panels['[data-bb-result-method]'].innerHTML,/°F/);
+ h.setMarket('US');assert.match(h.panels['[data-bb-result-ingredients]'].innerHTML,/US cup/);assert.match(h.panels['[data-bb-result-method]'].innerHTML,/392°F/);
+ assert.equal(h.calls.length,1);h.api.clear(h.host);assert.equal(h.globalEvents.size,0);
+});
+
+test('Make a Meal catalogue cards use the same region setting, safe quantities, action bullets and duration display',()=>{
+ const helpers=app.slice(app.indexOf('function bbMealMarket(){'),app.indexOf('const alias='));
+ const card=app.slice(app.indexOf('function recipeCard('),app.indexOf('function renderRecipes(){'));
+ for(const market of ['US','UK','Jersey','Guernsey']){
+  const window={},input={r:{id:'flour-test',name:'Bread',mins:90,servings:4,method:['Heat oven to 200°C. Mix the ingredients; Bake for 90 minutes.']},matched:[],related:[],missing:[],ing:[{name:'Plain flour',amount:'120 g'}]};
+  for(const file of ['bb-duration.js','bb-recipe-measures.js','bb-cook-step-layout.js'])vm.runInNewContext(fs.readFileSync(new URL('../'+file,import.meta.url),'utf8'),{window,globalThis:window});
+  const esc=value=>String(value??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+  const html=vm.runInNewContext(helpers+'\n'+card+'\nrecipeCard(input,0)',{window,input,esc,localStorage:{getItem:key=>key==='basketboss_321_v7_market'?market:null}});
+  assert.match(html,/1hr 30mins/);assert.match(html,/<ul class="bb-cook-actions" data-bb-measures>/);
+  if(market==='US'){assert.match(html,/US cup/);assert.match(html,/392°F/);}else assert.doesNotMatch(html,/US cup|°F/);
+  assert.equal(input.ing[0].amount,'120 g');
+ }
 });
 
 test('missing or failed picture support preserves the complete usable recipe without stock substitution',()=>{
@@ -60,9 +99,9 @@ const tick=()=>new Promise(resolve=>setImmediate(resolve));
 function generation(){
  const requests=[],rendered=[],messages=[],consents=[],events=new Map();let token='member-A',deleting=false,allowConsent=true,cancelled=0;
  const controls={'#generated':{innerHTML:'',replaceChildren(){this.innerHTML='';}},'#generate':{disabled:false}};
- const window={BBAccountDeletion:{isDeleting:()=>deleting},BBMealImage:{cancelAll(){cancelled++;}},addEventListener:(name,callback)=>events.set(name,callback),BBCookResult:{render(host,recipe,options){rendered.push({recipe,options});host.innerHTML='RECIPE READY';return{cancel(){cancelled++;}};},clear(host){host.replaceChildren();}}};
+ const window={BBAccountDeletion:{isDeleting:()=>deleting},BBMealImage:{cancelAll(){cancelled++;}},addEventListener(name,callback){const prior=events.get(name);events.set(name,prior?()=>{prior();callback();}:callback);},BBCookResult:{render(host,recipe,options){rendered.push({recipe,options});host.innerHTML='RECIPE READY';return{cancel(){cancelled++;}};},clear(host){host.replaceChildren();}}};
  const context=vm.createContext({window,bbPaidToken:()=>token,list:()=>[{name:'Cooked chicken'},{name:'Pasta'}],message:(...values)=>messages.push(values),confirm:text=>{consents.push(text);return allowConsent;},$:selector=>controls[selector],esc:value=>String(value??'').replace(/[&<>"']/g,char=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[char])),requestBody:(verb,body)=>new Promise((resolve,reject)=>requests.push({verb,body,resolve,reject}))});
- vm.runInContext('let bb5Confirmed=true,mode="only",generateInFlight=false,generateRevision=0,generateActor=null,generatedView=null;\n'+generationSource,context);
+ vm.runInContext('const bbPhotoMealMode=false;let bbPhotoMealNames=null,bbPhotoReviewToken=null,bb5Confirmed=true,mode="only",generateInFlight=false,generateRevision=0,generateActor=null,generatedView=null;\n'+generationSource,context);
  return {context,requests,rendered,messages,consents,events,controls,run:script=>vm.runInContext(script,context),setToken:value=>{token=value;},setDeleting:value=>{deleting=value;},denyConsent:()=>{allowConsent=false;},get cancelled(){return cancelled;}};
 }
 

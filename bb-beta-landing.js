@@ -3,6 +3,7 @@
  * The authoritative app remains at /index.html.
  */
 (()=>{'use strict';
+ const duration=minutes=>window.BBDuration?.format(minutes)??String(minutes)+'mins';
  const $=id=>document.getElementById(id);
  const FALLBACK=[
   {id:'fajitas',name:'Sheet-pan chicken fajitas',category:'Mexican · Family favourite',mins:30,servings:6,cost:22.6,image:'release-assets/basketboss-v17/images/existing/fajitas.webp',ingredients:[['Chicken breast'],['Mixed peppers'],['Tortilla wraps'],['Soured cream'],['Cheddar'],['Fajita seasoning']]},
@@ -36,7 +37,7 @@
   shown.forEach((r,i)=>{
    const row=elem('article','meal-row');
    const img=document.createElement('img');img.src=safeSrc(r);img.alt='';img.loading='lazy';row.append(img);
-   const description=elem('div');description.append(elem('span','day',dayNames[i]),elem('h4','',r.name),elem('p','meta',String(Number(r.mins)||'—')+' min · '+(r.category||'Family meal')));row.append(description);
+   const description=elem('div');description.append(elem('span','day',dayNames[i]),elem('h4','',r.name),elem('p','meta',duration(Number(r.mins)||'?')+' · '+(r.category||'Family meal')));row.append(description);
    const controls=elem('div','meal-controls');
    const stepper=elem('div','stepper');stepper.setAttribute('aria-label','Servings for '+r.name);
    const minus=elem('button','','−');minus.type='button';minus.setAttribute('aria-label','Remove a serving of '+r.name);
@@ -78,9 +79,10 @@
    for(const entry of source.ingredients){
     const name=entry.key||entry.name;
     const amount=entry.quantity==null?NaN:Number(entry.quantity)*ratio;
-    const normalized=api.normalizeUnit(name,amount,entry.unit);
-    const key=api.canonical(name)+'|'+(normalized?.unit||entry.unit);
-    if(!byName.has(key))byName.set(key,{key,name,unit:normalized?.unit||entry.unit,
+    const unit=api.recipeIngredientUnit?.(entry,r.ingredients)||entry.unit;
+    const normalized=api.normalizeUnit(name,amount,unit);
+    const key=api.canonical(name)+'|'+(normalized?.unit||unit);
+    if(!byName.has(key))byName.set(key,{key,name,unit:normalized?.unit||unit,
       aisle:AISLES[api.aisle(name)]||'Other',quantity:0,amounts:[],cost:null,unpriced:false});
     const row=byName.get(key);
     if(normalized)row.quantity+=normalized.quantity;else row.unpriced=true;
@@ -161,7 +163,7 @@
  function renderRecipes(){
   const box=$('landing-recipes');if(!box)return;box.replaceChildren();
   const featured=['fajitas','creamy-pasta','chickpea-curry'].map(id=>publicRecipes.find(x=>x.id===id)||FALLBACK.find(x=>x.id===id));
-  for(const r of featured){const card=elem('article','recipe-card');const img=document.createElement('img');img.src=safeSrc(r);img.loading='lazy';img.alt=r.name;const body=elem('div','recipe-body');body.append(elem('p','','BASKETBOSS FREE RECIPE'),elem('h3','',r.name),elem('div','recipe-meta',`${r.mins} min · ${portionsFor(r)} servings`));const link=elem('a','view-link','Explore recipes in the app →');link.href='/app';body.append(link);card.append(img,body);box.append(card)}
+  for(const r of featured){const card=elem('article','recipe-card');const img=document.createElement('img');img.src=safeSrc(r);img.loading='lazy';img.alt=r.name;const body=elem('div','recipe-body');body.append(elem('p','','BASKETBOSS FREE RECIPE'),elem('h3','',r.name),elem('div','recipe-meta',`${duration(r.mins)} · ${portionsFor(r)} servings`));const link=elem('a','view-link','Explore recipes in the app →');link.href='/app';body.append(link);card.append(img,body);box.append(card)}
  }
  $('tab-plan')?.addEventListener('click',()=>switchTab('plan'));
  $('tab-shop')?.addEventListener('click',()=>switchTab('shop'));

@@ -25,7 +25,7 @@ test('polished interface deployment rejects missing or HTML fallback assets and 
  }
 });
 
-function landingFixture({hidden=false,assetType,assetStatus=200,headline='Less dinner stress.<br><em>More family time.</em>'}={}){
+function landingFixture({hidden=false,assetType,assetStatus=200,headline='Your kitchen.<br><em>Made simple.</em>'}={}){
  const requests=[];
  const perform=async(address,options)=>{
   requests.push({address,options});

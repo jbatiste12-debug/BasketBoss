@@ -15,19 +15,19 @@
  }
  function plan(app){
   const budget=app.querySelector('.bbnext-plan-budget');
-  if(budget&&!budget.querySelector('#bbSimpleBudget')){
+  if(budget&&!app.querySelector('#bbSimpleBudget')){
    const form=budget.querySelector('.bb77-budget-form'),copy=budget.querySelector('.bbnext-plan-budget-text'),emblem=budget.querySelector('.bb-myweek-emblem');
    if(form&&copy&&emblem){
-    const details=disclosure('bbSimpleBudget','', 'budget'),summary=details.firstElementChild;
+    const details=disclosure('bbSimpleBudget','Budget & household settings', 'budget');
     const content=doc.createElement('div');content.className='bbs-budget-body';
-    const feed=copy.querySelector('.bbfeed-global'),line=copy.querySelector('.bbnext-plan-budget-line'),note=copy.querySelector(':scope>small');
+    const feed=copy.querySelector('.bbfeed-global'),line=copy.querySelector('.bbnext-plan-budget-line'),note=copy.querySelector(':scope>small:not(.bb77-price-note)');
     for(const node of[feed,line,form,note].filter(Boolean))content.append(node);
-    const hint=doc.createElement('small');hint.className='bbs-budget-hint';hint.textContent='Budget & household settings';copy.append(hint);
-    summary.append(emblem,copy);details.append(content);budget.prepend(details);
+    const overview=doc.createElement('div');overview.className='bbpc-budget-overview';overview.append(emblem,copy);
+    details.append(content);budget.prepend(overview);budget.append(details);
     // The old presentation-only edit pill toggles this same form. Its new
     // details summary replaces that duplicate toggle; original save stays.
     budget.querySelector('.bb-r7-budget-pill')?.remove();form.hidden=false;
-    form.addEventListener('keydown',event=>{if(event.key==='Escape'){form.hidden=false;details.open=false;summary.focus({preventScroll:true});}});
+    form.addEventListener('keydown',event=>{if(event.key==='Escape'){form.hidden=false;details.open=false;details.firstElementChild.focus({preventScroll:true});}});
     budget.dataset.bbSimpleBudget='true';
    }
   }
@@ -38,8 +38,8 @@
    const count=pills.querySelectorAll('[aria-pressed="true"]').length;
    setText(details.firstElementChild,count?'Meal preferences · '+count+' active':'Meal preferences');
   }
-  const status=budget?.querySelector('.bb77-budget-status');
-  if(status&&/could not|not verified|enter a target|unchanged|try again/i.test(status.textContent||''))budget.querySelector('#bbSimpleBudget')?.setAttribute('open','');
+  const settings=app.querySelector('#bbSimpleBudget'),status=settings?.querySelector('.bb77-budget-status');
+  if(status&&/could not|not verified|enter a target|unchanged|try again/i.test(status.textContent||''))settings.setAttribute('open','');
  }
  function kitchen(app){
   const card=app.querySelector('#bb173ShopFridge');if(!card)return;

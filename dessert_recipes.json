@@ -4,7 +4,7 @@
     "name": "Chocolate brownies",
     "category": "Desserts · Sweet treats",
     "tag": "DESSERT",
-    "mins": 45,
+    "mins": 90,
     "cost": 7.1,
     "image": "photos/desserts/chocolate-brownies.webp",
     "tip": "A rich chocolate bake with a crackly top and fudgy centre; cool before cutting for neat squares.",
@@ -12,7 +12,7 @@
       "Heat the oven to 180°C (160°C fan) and line a 20 cm square tin with parchment.",
       "Melt the butter with dark chocolate gently; cool for a few minutes.",
       "Whisk sugar and eggs together for 2 minutes, then stir in the melted chocolate.",
-      "Fold in flour and cocoa powder, then chocolate chips; avoid overmixing.",
+      "Fold in flour and cocoa powder, then chocolate chips; avoid overmixing. Once the flour is added, fold gently just until no dry pockets remain so the crumb stays tender.",
       "Bake for 25–30 minutes until the top is set but the centre still has a slight wobble.",
       "Cool fully in the tin before slicing into nine squares. Store chilled if adding a dairy topping."
     ],
@@ -74,7 +74,7 @@
     "method": [
       "Heat the oven to 180°C (160°C fan). Grease a six-portion muffin tin or a small 20 cm baking dish.",
       "Cover the chopped dates with 180 ml boiling water, leave 10 minutes, then stir in the bicarbonate of soda and mash until soft.",
-      "Cream 75 g of butter with 100 g of brown sugar; beat in the eggs one at a time. Fold in the flour and date mixture.",
+      "Cream 75 g of butter with 100 g of brown sugar; beat in the eggs one at a time. Fold in the flour and date mixture. Once the flour is added, fold gently just until no dry pockets remain so the crumb stays tender.",
       "Spoon into the tin and bake for 25–30 minutes, or until risen and a skewer comes out clean.",
       "For the sauce, gently simmer the remaining 35 g butter, 60 g brown sugar, cream and golden syrup for 3–5 minutes until glossy.",
       "Serve the warm sponge with toffee sauce and ice cream. Refrigerate any dairy leftovers promptly."
@@ -142,14 +142,14 @@
     "name": "Lemon drizzle cake",
     "category": "Desserts · Sweet treats",
     "tag": "DESSERT",
-    "mins": 70,
+    "mins": 100,
     "cost": 5.6,
     "image": "photos/desserts/lemon-drizzle-cake.webp",
     "tip": "A buttery lemon sponge soaked with citrus syrup and finished with a simple glaze.",
     "method": [
       "Heat the oven to 180°C (160°C fan). Grease and line a 900 g loaf tin.",
       "Beat softened butter with 160 g caster sugar until pale and fluffy. Add eggs one at a time.",
-      "Fold in flour, baking powder and finely grated zest of two lemons; loosen with the milk.",
+      "Fold in flour, baking powder and finely grated zest of two lemons; loosen with the milk. Once the flour is added, fold gently just until no dry pockets remain so the crumb stays tender.",
       "Bake for 45–50 minutes until a skewer inserted in the centre comes out clean.",
       "Warm the juice of two lemons with the remaining 40 g caster sugar; prick the warm loaf and pour over.",
       "When cool, mix icing sugar with enough juice from the third lemon to make a thick drizzle and spoon over the cake."

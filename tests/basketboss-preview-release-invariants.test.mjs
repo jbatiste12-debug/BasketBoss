@@ -42,7 +42,8 @@ test('All locally pre-cached PWA assets exist, without manifest or API paths', a
     const path = url.replace(/^\.\//, '').split('?')[0];
     assert.ok(!path.startsWith('api/') && path !== 'manifest.webmanifest' && path !== 'recipes.json',
       `${path} must not be pre-cached`);
-    await fs.access(new URL(path, root));
+    const sourcePath=path==='app'?'app.html':path==='welcome'?'welcome.html':path;
+    await fs.access(new URL(sourcePath, root));
   }
 });
 

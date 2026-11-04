@@ -17,6 +17,7 @@ if(Capacitor.isNativePlatform()&&Capacitor.getPlatform()==='ios'){
  const originalFetch=installNativeFetch();
  const nativeData=registerPlugin('BasketBossNavigation');
  const startup=installNativeStartup({finishNative:()=>nativeData.finishStartup()});
+ const dismissKeyboard=()=>nativeData.dismissKeyboard();
  const clearTemporaryData=async()=>{
   const result=await nativeData.clearReceiptPhotos();
   if(result?.ok!==true)throw Object.assign(Error('Temporary receipt photos could not be cleared.'),{code:'BB_NATIVE_CLEANUP'});
@@ -36,7 +37,7 @@ if(Capacitor.isNativePlatform()&&Capacitor.getPlatform()==='ios'){
   if(url.protocol!=='https:')throw Error('This link is not available in the iOS app.');
   await Browser.open({url:url.href,presentationStyle:'popover'});
  }
- window.BBNative=Object.freeze({isNative:true,platform:'ios',apiOrigin:PRODUCTION_ORIGIN,apiURL:path=>productionApiURL(path)||path,haptic,openExternal,clearTemporaryData});
+ window.BBNative=Object.freeze({isNative:true,platform:'ios',apiOrigin:PRODUCTION_ORIGIN,apiURL:path=>productionApiURL(path)||path,haptic,openExternal,clearTemporaryData,dismissKeyboard});
  const cookVoice=installNativeCookVoice({plugin:registerPlugin('BasketBossCookVoice'),window,isPremium:()=>window.BasketBossVerifiedPremium?.isActive?.()===true});
  // Preserve method/body/authentication. No cookie transport or native HTTP
  // patch is enabled: WKWebView uses the server's narrow native-origin CORS.

@@ -7,7 +7,7 @@ const source=fs.readFileSync(new URL('../bb-onboarding-v2.js',import.meta.url),'
 const KEY='bb_onboarding_fresh_once_20261028_v1';
 const PLAN='basketboss_321_unified_state_v1',SESSION='basketboss_cloud_session_v1';
 const completed={step:10,started:false,complete:true,house:'2 people',region:'UK',goals:['Plan dinners faster'],diets:['Vegetarian'],partnerStepV2:true,wantsPartnerInvite:false,partnerIntent:'none'};
-function harness({saved,store,deleted=false,startup=false,native=true,dialog=false}={}){
+function harness({saved,store,deleted=false,startup=false,native=true,dialog=false,remembered,withAuth=false}={}){
  const storage=store||new Map([[PLAN,'saved meal plan must survive'],[SESSION,JSON.stringify({user:{id:'existing-user-id'},access_token:'synthetic-token',expires_at:9999999999})]]);
  if(saved)storage.set(KEY,JSON.stringify(saved));
  const windowEvents=new Map(),documentEvents=new Map(),viewportEvents=new Map(),writes=[],preferences=[],nodes=[];
@@ -15,22 +15,24 @@ function harness({saved,store,deleted=false,startup=false,native=true,dialog=fal
  const on=(map,name,fn)=>{const callbacks=map.get(name)||[];callbacks.push(fn);map.set(name,callbacks);};
  const replayButton={id:'bbOnboardingReplay',textContent:'Replay welcome animation',isConnected:true,focus(){this.focused=true;}};
  const uiNodes=new Map([[replayButton.id,replayButton]]);
- const parent={appendChild(node){node.parentNode=this;uiNodes.set(node.id,node);}};replayButton.parentNode=parent;replayButton.setAttribute=()=>{};
+ const parent={appendChild(node){node.parentNode=this;uiNodes.set(node.id,node);},insertBefore(node){node.parentNode=this;}};replayButton.parentNode=parent;replayButton.setAttribute=()=>{};
+ if(withAuth){for(const name of ['cloud-auth','cloud-message','bbobAuthSlot','bbobMessageSlot'])uiNodes.set(name,{id:name,hidden:true,parentNode:parent,appendChild(node){node.parentNode=this;}});}
  const rootClasses=new Set(),rootStyle=new Map(),scrolls=[];
  const background=[false,true].map(inert=>({inert,contains:()=>false,hasAttribute(){return this.inert;},setAttribute(){this.inert=true;},removeAttribute(){this.inert=false;}}));
  const body={style:{overflow:''},appendChild(node){nodes.push(node);}};
- const document={body,readyState:'complete',activeElement:replayButton,documentElement:{style:{setProperty:(k,v)=>rootStyle.set(k,v),removeProperty:k=>rootStyle.delete(k)},classList:{contains:name=>rootClasses.has(name)||name==='bb-native-starting'&&starting,add:name=>rootClasses.add(name),remove:name=>rootClasses.delete(name)}},querySelectorAll:()=>background,
+ const document={body,createComment:()=>({}),readyState:'complete',activeElement:replayButton,documentElement:{style:{setProperty:(k,v)=>rootStyle.set(k,v),removeProperty:k=>rootStyle.delete(k)},classList:{contains:name=>rootClasses.has(name)||name==='bb-native-starting'&&starting,add:name=>rootClasses.add(name),remove:name=>rootClasses.delete(name)}},querySelectorAll:()=>background,
   getElementById(id){if(uiNodes.has(id))return uiNodes.get(id);if(id==='bbAccountDeletionDialog')return {open:dialogOpen};return null;},
   createElement(){const classes=new Set(),values=new Map();return {innerHTML:'',events:new Map(),style:{setProperty:(k,v)=>values.set(k,v),getPropertyValue:k=>values.get(k)},classList:{contains:name=>classes.has(name),toggle(name,enabled){enabled?classes.add(name):classes.delete(name);}},contains:node=>node?.inside===true,setAttribute(){},addEventListener(name,fn){on(this.events,name,fn);},querySelector(){return null;},remove(){this.removed=true;}};},
   querySelector:selector=>selector.includes('bbui-settings-close')?{click(){closed++;}}:null,addEventListener(name,fn){on(documentEvents,name,fn);}};
  const window={innerHeight:932,innerWidth:430,scrollX:3,scrollY:500,scrollTo(x,y){scrolls.push([x,y]);this.scrollX=x;this.scrollY=y;},visualViewport:{height:932,width:430,offsetTop:0,offsetLeft:0,addEventListener(name,fn){on(viewportEvents,name,fn);}},BBNative:native?{isNative:true}:undefined,BBAccountDeletion:{isDeleting:()=>deleting},matchMedia:()=>({matches:false}),addEventListener(name,fn){on(windowEvents,name,fn);},BasketBossSetOnboardingServings(count){preferences.push({house:count});return true;},bb307SwitchIsland(region){preferences.push({region});return true;}};
+ if(remembered!==undefined)window.BasketBossSession={state:()=>({remembered})};
  const context=vm.createContext({window,document,localStorage:{getItem:key=>storage.get(key)??null,setItem(key,value){writes.push([key,value]);storage.set(key,value);}},sessionStorage:{setItem(){}},location:{hostname:native?'localhost':'basketboss.co.uk',protocol:native?'capacitor:':'https:',search:''},navigator:{standalone:false},URLSearchParams,queueMicrotask,MutationObserver:class{constructor(fn){observer=fn;}observe(){}},console});
  vm.runInContext(source,context,{timeout:1000});
  const active=()=>nodes.findLast(node=>!node.removed);
  const dispatch=(name,event={})=>{for(const fn of windowEvents.get(name)||[])fn(event);};
  const tap=(action,option)=>{const node=active();assert.ok(node,'expected active onboarding');for(const fn of node.events.get('click')||[])fn({target:{closest(selector){if(selector==='[data-bbob-opt]'&&option!==undefined)return {dataset:{bbobOpt:String(option)}};if(selector==='[data-bbob]'&&action)return {dataset:{bbob:action}};return null;}}});};
  const through=step=>{for(let i=0;i<step;i++)tap('next');};
- return {window,document,storage,writes,preferences,replayButton,rootClasses,rootStyle,background,scrolls,settingsClosed:()=>closed,active,tap,through,dispatch,read:()=>JSON.parse(storage.get(KEY)||'null'),setDeleting:value=>{deleting=value;},setStartup:value=>{starting=value;},setDialog:value=>{dialogOpen=value;},
+ return {window,document,storage,node:id=>uiNodes.get(id),setRemembered:value=>{remembered=value;},writes,preferences,replayButton,rootClasses,rootStyle,background,scrolls,settingsClosed:()=>closed,active,tap,through,dispatch,read:()=>JSON.parse(storage.get(KEY)||'null'),setDeleting:value=>{deleting=value;},setStartup:value=>{starting=value;},setDialog:value=>{dialogOpen=value;},
   escape(){for(const fn of active()?.events.get('keydown')||[])fn({key:'Escape',preventDefault(){}});},
   resize(height){window.visualViewport.height=height;for(const fn of viewportEvents.get('resize')||[])fn();},
   region(value){for(const fn of active()?.events.get('change')||[])fn({target:{value,matches:()=>true}});},
@@ -125,6 +127,28 @@ test('keyboard layout stays steady when a sign-in field blurs onto its button',(
  h.resize(500);h.tap('next');assert.equal(h.active().classList.contains('bbob-keyboard'),false,'later setup screens keep their navigation');
 });
 
+test('signed-out session notifications preserve the mounted onboarding form while either credential field is focused',()=>{
+ for(const field of ['cloud-email','cloud-password']){
+  const h=harness({store:new Map([[PLAN,'saved meal plan']]),withAuth:true});h.tap('next');
+  const host=h.active(),form=h.node('cloud-auth'),parent=form.parentNode;
+  let html=host.innerHTML,renders=0;
+  Object.defineProperty(host,'innerHTML',{get:()=>html,set(value){renders++;html=value;}});
+  const input={id:field,inside:true,matches:selector=>selector.split(',').includes('#'+field)};
+  h.document.activeElement=input;
+  const saved=h.storage.get(KEY),writes=h.writes.length;
+  h.dispatch('basketboss:session-changed');h.dispatch('basketboss:session-changed');
+  assert.equal(renders,0,field+' must not be removed and remounted by unchanged signed-out state');
+  assert.equal(form.parentNode,parent);assert.equal(h.document.activeElement,input);
+  assert.equal(h.storage.get(KEY),saved);assert.equal(h.writes.length,writes);
+  assert.equal(h.storage.has(SESSION),false);assert.equal(h.storage.get(PLAN),'saved meal plan');
+
+  h.storage.set(SESSION,JSON.stringify({user:{id:'newly-authenticated'},access_token:'fresh',expires_at:9999999999}));
+  h.dispatch('basketboss:session-changed');
+  assert.equal(h.read().step,2,'a valid sign-in must still advance immediately while an input is focused');
+  assert.equal(renders,1);assert.match(host.innerHTML,/Would you like to share with a partner/);
+ }
+});
+
 test('fresh onboarding isolates the planner, follows keyboard panning and restores the page on exit',()=>{
  const h=harness({store:new Map([[PLAN,'saved meal plan']])});
  assert.equal(h.rootClasses.has('bb-onboarding-open'),true);
@@ -142,4 +166,112 @@ test('fresh onboarding isolates the planner, follows keyboard panning and restor
  assert.equal(h.rootStyle.has('--bbob-page-top'),false);assert.deepEqual(h.background.map(node=>node.inert),[false,true]);
  assert.deepEqual(h.scrolls,[[3,500]]);assert.equal(h.document.body.style.overflow,'');
  assert.equal(h.storage.get(PLAN),'saved meal plan');assert.equal(h.read().complete,false);
+});
+
+test('leaving onboarding restores the shared form before requesting native dismissal, without waiting for the bridge',async()=>{
+ for(const outcome of ['resolved','pending','rejected','throws','unavailable','web']){
+  const session=JSON.stringify({user:{id:'remembered-user'},access_token:'expired-preserved-token',expires_at:1});
+  const h=harness({store:new Map([[PLAN,'saved meal plan'],[SESSION,session]]),withAuth:true,native:outcome!=='web'});
+  h.tap('next');
+  const host=h.active(),form=h.node('cloud-auth'),slot=form.parentNode,originalParent=h.replayButton.parentNode;
+  const input={id:'cloud-email',matches:()=>true,inside:true,blur(){this.blurred=true;h.document.activeElement=h.replayButton;}};
+  host.contains=node=>node===input||node===form&&form.parentNode===slot;
+  h.document.activeElement=input;
+  let calls=0;const requests=[];
+  if(h.window.BBNative&&outcome!=='unavailable')h.window.BBNative.dismissKeyboard=()=>{
+   calls++;requests.push({blurred:input.blurred,parent:form.parentNode});
+   if(outcome==='throws')throw Error('Native bridge unavailable');
+   if(outcome==='rejected')return Promise.reject(Error('Native bridge unavailable'));
+   if(outcome==='pending')return new Promise(()=>{});
+   return Promise.resolve({ok:true});
+  };
+  assert.doesNotThrow(()=>h.tap('free'));
+  assert.equal(calls,0,'native editing ends after the DOM close has settled');
+  assert.equal(h.active(),undefined,'a pending or unavailable native bridge never delays closing');
+  assert.equal(form.parentNode,originalParent);assert.equal(h.replayButton.focused,true);
+  assert.equal(h.rootClasses.has('bb-onboarding-open'),false);assert.equal(h.read().complete,true);
+  assert.equal(h.storage.get(PLAN),'saved meal plan');assert.equal(h.storage.get(SESSION),session);assert.equal(h.preferences.length,0);
+  await new Promise(resolve=>setImmediate(resolve));
+  assert.equal(calls,['web','unavailable'].includes(outcome)?0:1);
+  for(const request of requests){assert.equal(request.blurred,true,'DOM input blurs before the native request');assert.equal(request.parent,originalParent,'UIKit sees the form in its restored, hidden account panel');}
+ }
+});
+
+test('native close waits one layout frame and cannot dismiss a newly opened credential field',()=>{
+ for(const next of ['none','field','onboarding']){
+  const h=harness({store:new Map([[PLAN,'saved meal plan']]),withAuth:true});h.tap('next');
+  const host=h.active(),form=h.node('cloud-auth'),slot=form.parentNode,frames=[];
+  const input={id:'cloud-email',matches:()=>true,inside:true,blur(){this.blurred=true;h.document.activeElement=h.replayButton;}};
+  host.contains=node=>node===input||node===form&&form.parentNode===slot;
+  h.document.activeElement=input;h.window.requestAnimationFrame=fn=>{frames.push(fn);return frames.length;};
+  let calls=0;h.window.BBNative.dismissKeyboard=()=>{calls++;assert.notEqual(form.parentNode,slot);assert.equal(host.removed,true);assert.equal(input.blurred,true);return Promise.resolve({ok:true});};
+  h.tap('free');assert.equal(calls,0);assert.equal(h.active(),undefined);assert.equal(frames.length,1);
+  let fresh;
+  if(next==='field'){fresh={matches:()=>true,getClientRects:()=>[{}],blur(){this.blurred=true;}};h.document.activeElement=fresh;}
+  if(next==='onboarding')h.window.BBOnboard2026.open();
+  for(const frame of frames.splice(0))frame();
+  assert.equal(calls,next==='none'?1:0,'an old close never cancels new editing');
+  if(fresh)assert.notEqual(fresh.blurred,true);
+ }
+});
+
+test('native close still dismisses the original credential input when WebKit retains visible focus',()=>{
+ for(const field of ['cloud-email','cloud-password']){
+  const h=harness({store:new Map([[PLAN,'saved meal plan']]),withAuth:true});h.tap('next');
+  const host=h.active(),form=h.node('cloud-auth'),slot=form.parentNode,frames=[];
+  // Secure input can keep its WKWebView responder even after DOM blur and
+  // portal restoration. A retained original field is not a new user action.
+  let blurs=0,keyboardVisible=true,calls=0;
+  const input={id:field,matches:()=>true,inside:true,getClientRects:()=>[{}],blur(){blurs++;}};
+  host.contains=node=>node===input||node===form&&form.parentNode===slot;
+  h.document.activeElement=input;h.window.requestAnimationFrame=fn=>{frames.push(fn);return frames.length;};
+  h.window.BBNative.dismissKeyboard=()=>{
+   calls++;assert.notEqual(form.parentNode,slot);assert.equal(host.removed,true);
+   keyboardVisible=false;h.document.activeElement=h.replayButton;return Promise.resolve({ok:true});
+  };
+  h.tap('free');assert.equal(h.active(),undefined);assert.ok(blurs>0);assert.equal(keyboardVisible,true);
+  assert.equal(h.document.activeElement,input,'the original field can retain focus until UIKit resigns it');
+  for(const frame of frames.splice(0))frame();
+  assert.equal(calls,1,field+' must still reach native dismissal when the original focus survives');
+  assert.equal(keyboardVisible,false);assert.equal(h.document.activeElement,h.replayButton);
+ }
+});
+
+test('closing onboarding never restores focus to an editable opener',async()=>{
+ const h=harness({saved:completed,store:new Map([[PLAN,'saved meal plan']]),withAuth:true});
+ const opener={isConnected:true,matches:()=>true,focus(){this.focused=true;}};h.document.activeElement=opener;
+ assert.equal(h.window.BBOnboard2026.open(),true);h.tap('next');
+ const host=h.active(),form=h.node('cloud-auth'),slot=form.parentNode;
+ const input={inside:true,matches:()=>true,blur(){h.document.activeElement=h.replayButton;}};
+ host.contains=node=>node===input||node===form&&form.parentNode===slot;h.document.activeElement=input;
+ let calls=0;h.window.BBNative.dismissKeyboard=()=>{calls++;return Promise.resolve({ok:true});};
+ h.tap('replay-cancel');assert.notEqual(opener.focused,true,'restoring an input would reopen the software keyboard');
+ await new Promise(resolve=>setImmediate(resolve));assert.equal(calls,1);
+});
+
+test('leaving Welcome without mounting credentials does not request native keyboard dismissal',()=>{
+ const h=harness({store:new Map([[PLAN,'saved meal plan']]),withAuth:true});let calls=0;
+ h.window.BBNative.dismissKeyboard=()=>{calls++;return Promise.resolve({ok:true});};
+ h.tap('free');assert.equal(calls,0);assert.equal(h.active(),undefined);assert.equal(h.read().complete,true);
+ assert.equal(h.storage.get(PLAN),'saved meal plan');
+});
+
+test('a remembered expired session keeps onboarding credentials hidden, then shows them after definitive rejection',()=>{
+ const storage=new Map([[PLAN,'saved meal plan'],[SESSION,JSON.stringify({user:{id:'returning-person'},access_token:'expired',refresh_token:'renewable',expires_at:1})]]);
+ const h=harness({store:storage,remembered:true,withAuth:true});h.through(1);
+ assert.match(h.active().innerHTML,/You’re already signed in/);assert.equal(h.node('cloud-auth').hidden,true,'render must not unhide the original form behind onboarding');
+ assert.notEqual(h.node('cloud-auth').parentNode.id,'bbobAuthSlot');
+ h.setRemembered(false);h.storage.delete(SESSION);h.dispatch('basketboss:session-changed');
+ assert.match(h.active().innerHTML,/Create a free account or sign in/);assert.doesNotMatch(h.active().innerHTML,/You’re already signed in/);
+ assert.equal(h.node('cloud-auth').hidden,false);assert.equal(h.node('cloud-auth').parentNode.id,'bbobAuthSlot');
+ assert.equal(h.storage.get(PLAN),'saved meal plan');
+});
+
+test('remembered identity cannot finish a partner join until a fresh authenticated session arrives',()=>{
+ const storage=new Map([[PLAN,'saved meal plan'],[SESSION,JSON.stringify({user:{id:'returning-person'},access_token:'expired',refresh_token:'renewable',expires_at:1})]]);
+ const h=harness({store:storage,remembered:true,withAuth:true});h.through(2);h.tap('partner-join');
+ assert.equal(h.read().complete,false);assert.equal(h.read().step,1);assert.ok(h.active());assert.equal(h.node('cloud-auth').hidden,true);
+ h.dispatch('basketboss:session-changed');assert.equal(h.read().complete,false,'an unchanged remembered-session notification is not authentication');
+ h.storage.set(SESSION,JSON.stringify({user:{id:'returning-person'},access_token:'fresh',expires_at:9999999999}));h.dispatch('basketboss:session-changed');
+ assert.equal(h.read().complete,true);assert.equal(h.active(),undefined);assert.equal(h.storage.get(PLAN),'saved meal plan');
 });

@@ -121,7 +121,7 @@
         "per_serving_high_gbp": 4.13,
         "confidence": "INDICATIVE_UNVERIFIED",
         "source": "Derived from Jersey provisional recipe estimate using its assumed 1.10 island factor (UK = Jersey / 1.10); NOT a survey of UK supermarket prices",
-        "uplift_assumption": 1.0,
+        "uplift_assumption": 1,
         "baseline_from": "Jersey indicative estimate divided by 1.10; provisional UK guide",
         "ingredient_addition_estimate_gbp": 0.33,
         "ingredient_addition_price_source": "Existing indicative canonical price catalogue; retailer verification still required"
@@ -161,7 +161,7 @@
       "Heat oven to 200°C (180°C fan). Crush cornflakes and season with paprika.",
       "Dip chicken in beaten egg, then press into the crumbs.",
       "Bake on a rack for 20–25 minutes, until thoroughly cooked through in the centre. Before serving, cut into the thickest piece: it should be steaming hot throughout with no pink meat, and the juices should run clear. If unsure, continue cooking. Check for a gently golden surface as well as the stated cooking time; the food should look and feel cooked through.",
-      "Finely chop or grate the garlic and add with the softened aromatics so their fragrance runs through the sauce.",
+      "Crush the garlic and stir it into the mayonnaise for serving.",
       "Toast buns and serve chicken with lettuce, mayo and coleslaw."
     ],
     "ingredients": [
@@ -255,7 +255,7 @@
       },
       "Guernsey": {
         "estimate_gbp": 21.47,
-        "range_low_gbp": 17.0,
+        "range_low_gbp": 17,
         "range_high_gbp": 25.94,
         "per_serving_estimate_gbp": 3.58,
         "per_serving_low_gbp": 2.83,
@@ -277,7 +277,7 @@
         "per_serving_high_gbp": 3.6,
         "confidence": "INDICATIVE_UNVERIFIED",
         "source": "Derived from Jersey provisional recipe estimate using its assumed 1.10 island factor (UK = Jersey / 1.10); NOT a survey of UK supermarket prices",
-        "uplift_assumption": 1.0,
+        "uplift_assumption": 1,
         "baseline_from": "Jersey indicative estimate divided by 1.10; provisional UK guide",
         "ingredient_addition_estimate_gbp": 0.1,
         "ingredient_addition_price_source": "Existing indicative canonical price catalogue; retailer verification still required"
@@ -288,7 +288,7 @@
       "Heat oven to 200°C (180°C fan). Crush cornflakes and season with paprika.",
       "Dip chicken in beaten egg, then press into the crumbs.",
       "Bake on a rack for 20–25 minutes, until thoroughly cooked through in the centre. Before serving, cut into the thickest piece: it should be steaming hot throughout with no pink meat, and the juices should run clear. If unsure, continue cooking. Check for a gently golden surface as well as the stated cooking time; the food should look and feel cooked through.",
-      "Finely chop or grate the garlic and add with the softened aromatics so their fragrance runs through the sauce.",
+      "Crush the garlic and stir it into the mayonnaise for serving.",
       "Toast buns and serve chicken with lettuce, mayo and coleslaw."
     ],
     "culinary_prep_notes": [
@@ -427,7 +427,7 @@
         "per_serving_high_gbp": 4.13,
         "confidence": "INDICATIVE_UNVERIFIED",
         "source": "Derived from Jersey provisional recipe estimate using its assumed 1.10 island factor (UK = Jersey / 1.10); NOT a survey of UK supermarket prices",
-        "uplift_assumption": 1.0,
+        "uplift_assumption": 1,
         "baseline_from": "Jersey indicative estimate divided by 1.10; provisional UK guide",
         "ingredient_addition_estimate_gbp": 0.33,
         "ingredient_addition_price_source": "Existing indicative canonical price catalogue; retailer verification still required"
@@ -465,7 +465,7 @@
     "tip": "Soft gnocchi cooks right in the tomato sauce.",
     "method": [
       "Slice sausages and brown in a large oven-safe pan.",
-      "Add passata, Italian herbs and gnocchi; stir well. Reserve a little starchy cooking water, then toss the pasta and sauce together until the coating is glossy rather than watery.",
+      "Add passata, Italian herbs and gnocchi; stir well.",
       "Simmer according to the gnocchi pack instructions until tender and sausages are cooked through.",
       "Top with mozzarella and grill until bubbling. Heat the listed garlic baguette separately following its packet instructions, and serve alongside."
     ],
@@ -557,14 +557,14 @@
         "per_serving_high_gbp": 4.1,
         "confidence": "INDICATIVE_UNVERIFIED",
         "source": "Derived from Jersey provisional recipe estimate using its assumed 1.10 island factor (UK = Jersey / 1.10); NOT a survey of UK supermarket prices",
-        "uplift_assumption": 1.0,
+        "uplift_assumption": 1,
         "baseline_from": "Jersey indicative estimate divided by 1.10; provisional UK guide"
       }
     },
     "data_format_fixed_from": "STRUCTURED_ALREADY",
     "steps": [
       "Slice sausages and brown in a large oven-safe pan.",
-      "Add passata, Italian herbs and gnocchi; stir well. Reserve a little starchy cooking water, then toss the pasta and sauce together until the coating is glossy rather than watery.",
+      "Add passata, Italian herbs and gnocchi; stir well.",
       "Simmer according to the gnocchi pack instructions until tender and sausages are cooked through.",
       "Top with mozzarella and grill until bubbling. Heat the listed garlic baguette separately following its packet instructions, and serve alongside."
     ],
@@ -701,7 +701,7 @@
         "per_serving_high_gbp": 3.3,
         "confidence": "INDICATIVE_UNVERIFIED",
         "source": "Derived from Jersey provisional recipe estimate using its assumed 1.10 island factor (UK = Jersey / 1.10); NOT a survey of UK supermarket prices",
-        "uplift_assumption": 1.0,
+        "uplift_assumption": 1,
         "baseline_from": "Jersey indicative estimate divided by 1.10; provisional UK guide",
         "ingredient_addition_estimate_gbp": 0.51,
         "ingredient_addition_price_source": "Existing indicative canonical price catalogue; retailer verification still required"
@@ -740,7 +740,7 @@
     "tip": "Make extra and freeze portions for an easy future dinner.",
     "method": [
       "Brown beef mince with diced onion and garlic. Drain excess fat if needed.",
-      "Add cumin, smoked paprika and chilli powder, then stir in one 400 g tin of chopped tomatoes and beans drained and rinsed from two 400 g tins (about 480 g drained in total). Cook the spices with the vegetables until fragrant, then let the rice absorb the seasoned stock until tender and separate.",
+      "Add cumin, smoked paprika and chilli powder, then stir in one 400 g tin of chopped tomatoes and beans drained and rinsed from two 400 g tins (about 480 g drained in total).",
       "Simmer gently for 25 minutes, stirring occasionally. Ensure mince is thoroughly cooked.",
       "Cook 450 g dry rice (75 g per serving) following packet instructions while the chilli simmers. Serve the chilli over the cooked rice, with soured cream if desired. Keep the remaining dry rice from the purchased bag for another meal.",
       "Finish with lime off the heat, tasting in small additions until the finished dish tastes bright and balanced.",
@@ -872,7 +872,7 @@
         "per_serving_high_gbp": 3.43,
         "confidence": "INDICATIVE_UNVERIFIED",
         "source": "Derived from Jersey provisional recipe estimate using its assumed 1.10 island factor (UK = Jersey / 1.10); NOT a survey of UK supermarket prices",
-        "uplift_assumption": 1.0,
+        "uplift_assumption": 1,
         "baseline_from": "Jersey indicative estimate divided by 1.10; provisional UK guide",
         "ingredient_addition_estimate_gbp": 0.33,
         "ingredient_addition_price_source": "Existing indicative canonical price catalogue; retailer verification still required"
@@ -881,7 +881,7 @@
     "data_format_fixed_from": "STRUCTURED_ALREADY",
     "steps": [
       "Brown beef mince with diced onion and garlic. Drain excess fat if needed.",
-      "Add cumin, smoked paprika and chilli powder, then stir in one 400 g tin of chopped tomatoes and beans drained and rinsed from two 400 g tins (about 480 g drained in total). Cook the spices with the vegetables until fragrant, then let the rice absorb the seasoned stock until tender and separate.",
+      "Add cumin, smoked paprika and chilli powder, then stir in one 400 g tin of chopped tomatoes and beans drained and rinsed from two 400 g tins (about 480 g drained in total).",
       "Simmer gently for 25 minutes, stirring occasionally. Ensure mince is thoroughly cooked.",
       "Cook 450 g dry rice (75 g per serving) following packet instructions while the chilli simmers. Serve the chilli over the cooked rice, with soured cream if desired. Keep the remaining dry rice from the purchased bag for another meal.",
       "Finish with lime off the heat, tasting in small additions until the finished dish tastes bright and balanced.",
@@ -1041,7 +1041,7 @@
         "per_serving_high_gbp": 4.6,
         "confidence": "INDICATIVE_UNVERIFIED",
         "source": "Derived from Jersey provisional recipe estimate using its assumed 1.10 island factor (UK = Jersey / 1.10); NOT a survey of UK supermarket prices",
-        "uplift_assumption": 1.0,
+        "uplift_assumption": 1,
         "baseline_from": "Jersey indicative estimate divided by 1.10; provisional UK guide",
         "ingredient_addition_estimate_gbp": 0.35,
         "ingredient_addition_price_source": "Existing indicative canonical price catalogue; retailer verification still required"
@@ -1081,12 +1081,11 @@
     "image": "release-assets/basketboss-v17/images/existing/salmon.webp",
     "tip": "A sweet-savoury glaze does all the heavy lifting.",
     "method": [
-      "Finely grate the fresh ginger, crush the garlic, and whisk them with the honey, soy sauce and sesame oil to make a glossy glaze. Pat the salmon dry; keep most of the glaze for basting toward the end.",
-      "Heat oven to 200°C (180°C fan). Place salmon and broccoli on a lined tray. Give the glaze its final two minutes under close watch, spooning over the juices so it turns glossy without burning.",
-      "Mix 2 tbsp soy sauce, 2 tbsp runny honey and two minced garlic cloves; brush the sauce over the four salmon fillets. Toss the 400 g broccoli with a spoonful of the sauce, if desired.",
-      "Bake for 12–18 minutes, depending on thickness, until salmon is opaque and flakes easily.",
-      "Spoon the bubbling tray juices over the salmon for the final 2 minutes, watching the honey so it caramelises rather than burns. Finish off the heat with fresh lime juice.",
-      "Serve salmon and greens together; rice or potatoes are optional extra purchases, not included in this recipe’s ingredient estimate."
+      "Heat oven to 200°C (180°C fan). Finely grate the ginger and crush the garlic.",
+      "Whisk the ginger, garlic, honey, soy sauce and sesame oil together. Pat the salmon dry and place it with the broccoli on a lined tray.",
+      "Brush some glaze over the salmon and toss the broccoli with a spoonful. Keep the remaining glaze separate from the raw fish.",
+      "Bake for 12–18 minutes in total, depending on thickness. Brush on the reserved glaze for the final 2 minutes, watching closely so the honey does not burn. Check the salmon is opaque and flakes easily and the broccoli is tender.",
+      "Finish with lime juice off the heat. Serve the salmon and greens together; rice or potatoes are optional extra purchases, not included in this recipe’s ingredient estimate."
     ],
     "ingredients": [
       [
@@ -1195,7 +1194,7 @@
         "per_serving_high_gbp": 5.32,
         "confidence": "INDICATIVE_UNVERIFIED",
         "source": "Derived from Jersey provisional recipe estimate using its assumed 1.10 island factor (UK = Jersey / 1.10); NOT a survey of UK supermarket prices",
-        "uplift_assumption": 1.0,
+        "uplift_assumption": 1,
         "baseline_from": "Jersey indicative estimate divided by 1.10; provisional UK guide",
         "ingredient_addition_estimate_gbp": 0.48,
         "ingredient_addition_price_source": "Existing indicative canonical price catalogue; retailer verification still required"
@@ -1203,12 +1202,11 @@
     },
     "data_format_fixed_from": "STRUCTURED_ALREADY",
     "steps": [
-      "Finely grate the fresh ginger, crush the garlic, and whisk them with the honey, soy sauce and sesame oil to make a glossy glaze. Pat the salmon dry; keep most of the glaze for basting toward the end.",
-      "Heat oven to 200°C (180°C fan). Place salmon and broccoli on a lined tray. Give the glaze its final two minutes under close watch, spooning over the juices so it turns glossy without burning.",
-      "Mix 2 tbsp soy sauce, 2 tbsp runny honey and two minced garlic cloves; brush the sauce over the four salmon fillets. Toss the 400 g broccoli with a spoonful of the sauce, if desired.",
-      "Bake for 12–18 minutes, depending on thickness, until salmon is opaque and flakes easily.",
-      "Spoon the bubbling tray juices over the salmon for the final 2 minutes, watching the honey so it caramelises rather than burns. Finish off the heat with fresh lime juice.",
-      "Serve salmon and greens together; rice or potatoes are optional extra purchases, not included in this recipe’s ingredient estimate."
+      "Heat oven to 200°C (180°C fan). Finely grate the ginger and crush the garlic.",
+      "Whisk the ginger, garlic, honey, soy sauce and sesame oil together. Pat the salmon dry and place it with the broccoli on a lined tray.",
+      "Brush some glaze over the salmon and toss the broccoli with a spoonful. Keep the remaining glaze separate from the raw fish.",
+      "Bake for 12–18 minutes in total, depending on thickness. Brush on the reserved glaze for the final 2 minutes, watching closely so the honey does not burn. Check the salmon is opaque and flakes easily and the broccoli is tender.",
+      "Finish with lime juice off the heat. Serve the salmon and greens together; rice or potatoes are optional extra purchases, not included in this recipe’s ingredient estimate."
     ],
     "culinary_prep_notes": [
       "Pat dry before searing or glazing; use a hot surface for colour while keeping the centre moist and tender.",
@@ -1329,7 +1327,7 @@
         "per_serving_high_gbp": 12.18,
         "confidence": "INDICATIVE_UNVERIFIED",
         "source": "Derived from Jersey provisional recipe estimate using its assumed 1.10 island factor (UK = Jersey / 1.10); NOT a survey of UK supermarket prices",
-        "uplift_assumption": 1.0,
+        "uplift_assumption": 1,
         "baseline_from": "Jersey indicative estimate divided by 1.10; provisional UK guide",
         "ingredient_addition_estimate_gbp": 0.3,
         "ingredient_addition_price_source": "Existing indicative canonical price catalogue; retailer verification still required"
@@ -1470,14 +1468,14 @@
       },
       "UK": {
         "estimate_gbp": 21.01,
-        "range_low_gbp": 17.0,
+        "range_low_gbp": 17,
         "range_high_gbp": 25.02,
         "per_serving_estimate_gbp": 10.51,
         "per_serving_low_gbp": 8.5,
         "per_serving_high_gbp": 12.51,
         "confidence": "INDICATIVE_UNVERIFIED",
         "source": "Derived from Jersey provisional recipe estimate using its assumed 1.10 island factor (UK = Jersey / 1.10); NOT a survey of UK supermarket prices",
-        "uplift_assumption": 1.0,
+        "uplift_assumption": 1,
         "baseline_from": "Jersey indicative estimate divided by 1.10; provisional UK guide",
         "ingredient_addition_estimate_gbp": 0.33,
         "ingredient_addition_price_source": "Existing indicative canonical price catalogue; retailer verification still required"
@@ -1517,7 +1515,7 @@
       "Prepare your ingredients: Cut the potatoes into small, even pieces and the carrots into similar-sized chunks. Spread everything over a large tray rather than piling it up. Leave space between the ingredients so hot air reaches the edges and they roast golden rather than steaming.",
       "Heat oven to 200°C (180°C fan). Cut 1 kg potatoes and 350 g carrots into small, even pieces and slice two medium red onions. Spread on a large tray.",
       "Toss the vegetables and eight sausages with 1 tbsp cooking oil and 1 tsp mixed dried herbs. Leave space between ingredients so they roast, not steam.",
-      "Finely chop or grate the garlic and add with the softened aromatics so their fragrance runs through the sauce.",
+      "Crush the garlic and toss it through the vegetables before roasting.",
       "Roast for 30–40 minutes, turning once, until vegetables are tender and sausages cooked through.",
       "Prepare approximately 200 ml gravy following the packet instructions while the tray finishes roasting; serve separately, if desired.",
       "Finish with lemon off the heat, tasting in small additions until the finished dish tastes bright and balanced.",
@@ -1633,7 +1631,7 @@
         "per_serving_high_gbp": 3.93,
         "confidence": "INDICATIVE_UNVERIFIED",
         "source": "Derived from Jersey provisional recipe estimate using its assumed 1.10 island factor (UK = Jersey / 1.10); NOT a survey of UK supermarket prices",
-        "uplift_assumption": 1.0,
+        "uplift_assumption": 1,
         "baseline_from": "Jersey indicative estimate divided by 1.10; provisional UK guide",
         "ingredient_addition_estimate_gbp": 0.43,
         "ingredient_addition_price_source": "Existing indicative canonical price catalogue; retailer verification still required"
@@ -1644,7 +1642,7 @@
       "Prepare your ingredients: Cut the potatoes into small, even pieces and the carrots into similar-sized chunks. Spread everything over a large tray rather than piling it up. Leave space between the ingredients so hot air reaches the edges and they roast golden rather than steaming.",
       "Heat oven to 200°C (180°C fan). Cut 1 kg potatoes and 350 g carrots into small, even pieces and slice two medium red onions. Spread on a large tray.",
       "Toss the vegetables and eight sausages with 1 tbsp cooking oil and 1 tsp mixed dried herbs. Leave space between ingredients so they roast, not steam.",
-      "Finely chop or grate the garlic and add with the softened aromatics so their fragrance runs through the sauce.",
+      "Crush the garlic and toss it through the vegetables before roasting.",
       "Roast for 30–40 minutes, turning once, until vegetables are tender and sausages cooked through.",
       "Prepare approximately 200 ml gravy following the packet instructions while the tray finishes roasting; serve separately, if desired.",
       "Finish with lemon off the heat, tasting in small additions until the finished dish tastes bright and balanced.",
@@ -1679,7 +1677,7 @@
       "Finely chop or grate the fresh ginger and add with the softened aromatics so their fragrance runs through the sauce. Warm the spices briefly with the softened aromatics before adding liquid, then gently reduce until the sauce coats the ingredients.",
       "Add drained chickpeas, chopped tomatoes and coconut milk. Simmer for 15 minutes.",
       "Stir in spinach until wilted and season with salt and lemon juice.",
-      "Serve with rice or flatbreads.",
+      "Cook the listed rice separately following its packet directions while the curry simmers. Serve the curry over the cooked rice.",
       "Before serving: The curry should be gently bubbling and slightly thickened, with the spinach just wilted. Taste before adding extra salt."
     ],
     "ingredients": [
@@ -1773,7 +1771,7 @@
         "estimate_gbp": 12.01,
         "range_low_gbp": 9.55,
         "range_high_gbp": 14.47,
-        "per_serving_estimate_gbp": 3.0,
+        "per_serving_estimate_gbp": 3,
         "per_serving_low_gbp": 2.39,
         "per_serving_high_gbp": 3.62,
         "confidence": "INDICATIVE_UNVERIFIED",
@@ -1808,7 +1806,7 @@
         "per_serving_high_gbp": 3.29,
         "confidence": "INDICATIVE_UNVERIFIED",
         "source": "Derived from Jersey provisional recipe estimate using its assumed 1.10 island factor (UK = Jersey / 1.10); NOT a survey of UK supermarket prices",
-        "uplift_assumption": 1.0,
+        "uplift_assumption": 1,
         "baseline_from": "Jersey indicative estimate divided by 1.10; provisional UK guide",
         "ingredient_addition_estimate_gbp": 0.02,
         "ingredient_addition_price_source": "Existing indicative canonical price catalogue; retailer verification still required"
@@ -1821,7 +1819,7 @@
       "Finely chop or grate the fresh ginger and add with the softened aromatics so their fragrance runs through the sauce. Warm the spices briefly with the softened aromatics before adding liquid, then gently reduce until the sauce coats the ingredients.",
       "Add drained chickpeas, chopped tomatoes and coconut milk. Simmer for 15 minutes.",
       "Stir in spinach until wilted and season with salt and lemon juice.",
-      "Serve with rice or flatbreads.",
+      "Cook the listed rice separately following its packet directions while the curry simmers. Serve the curry over the cooked rice.",
       "Before serving: The curry should be gently bubbling and slightly thickened, with the spinach just wilted. Taste before adding extra salt."
     ],
     "culinary_prep_notes": [
@@ -1953,7 +1951,7 @@
         "per_serving_high_gbp": 4.23,
         "confidence": "INDICATIVE_UNVERIFIED",
         "source": "Derived from Jersey provisional recipe estimate using its assumed 1.10 island factor (UK = Jersey / 1.10); NOT a survey of UK supermarket prices",
-        "uplift_assumption": 1.0,
+        "uplift_assumption": 1,
         "baseline_from": "Jersey indicative estimate divided by 1.10; provisional UK guide"
       }
     },
@@ -2090,7 +2088,7 @@
         "per_serving_high_gbp": 2.9,
         "confidence": "INDICATIVE_UNVERIFIED",
         "source": "Derived from Jersey provisional recipe estimate using its assumed 1.10 island factor (UK = Jersey / 1.10); NOT a survey of UK supermarket prices",
-        "uplift_assumption": 1.0,
+        "uplift_assumption": 1,
         "baseline_from": "Jersey indicative estimate divided by 1.10; provisional UK guide",
         "ingredient_addition_estimate_gbp": 0.43,
         "ingredient_addition_price_source": "Existing indicative canonical price catalogue; retailer verification still required"
@@ -2128,11 +2126,11 @@
     "image": "release-assets/basketboss-v17/images/existing/tomato-mozzarella-pasta.webp",
     "tip": "Use pasta water to make the sauce glossy.",
     "method": [
-      "Prepare your ingredients: Halve the tomatoes, mince the garlic, tear the basil and drain the mozzarella before starting the pasta. Reserve a little starchy cooking water, then toss the pasta and sauce together until the coating is glossy rather than watery.",
+      "Prepare your ingredients: Halve the tomatoes, mince the garlic, tear the basil and drain the mozzarella before starting the pasta.",
       "Boil pasta in salted water until just tender.",
       "Warm cherry tomatoes with garlic and olive oil until softened.",
       "Toss pasta with tomatoes, mozzarella and a splash of pasta water.",
-      "Finish with basil, black pepper and parmesan.",
+      "Finish with basil and black pepper.",
       "Before serving: The sauce should cling to the pasta. Add reserved pasta water a tablespoon at a time if it looks dry."
     ],
     "ingredients": [
@@ -2223,17 +2221,17 @@
         "per_serving_high_gbp": 2.18,
         "confidence": "INDICATIVE_UNVERIFIED",
         "source": "Derived from Jersey provisional recipe estimate using its assumed 1.10 island factor (UK = Jersey / 1.10); NOT a survey of UK supermarket prices",
-        "uplift_assumption": 1.0,
+        "uplift_assumption": 1,
         "baseline_from": "Jersey indicative estimate divided by 1.10; provisional UK guide"
       }
     },
     "data_format_fixed_from": "STRUCTURED_ALREADY",
     "steps": [
-      "Prepare your ingredients: Halve the tomatoes, mince the garlic, tear the basil and drain the mozzarella before starting the pasta. Reserve a little starchy cooking water, then toss the pasta and sauce together until the coating is glossy rather than watery.",
+      "Prepare your ingredients: Halve the tomatoes, mince the garlic, tear the basil and drain the mozzarella before starting the pasta.",
       "Boil pasta in salted water until just tender.",
       "Warm cherry tomatoes with garlic and olive oil until softened.",
       "Toss pasta with tomatoes, mozzarella and a splash of pasta water.",
-      "Finish with basil, black pepper and parmesan.",
+      "Finish with basil and black pepper.",
       "Before serving: The sauce should cling to the pasta. Add reserved pasta water a tablespoon at a time if it looks dry."
     ],
     "culinary_prep_notes": [
@@ -2258,10 +2256,10 @@
     "tip": "Add lemon zest right at the end for a brighter flavour.",
     "method": [
       "Prepare your ingredients: Dice the chicken into even pieces. Wash the spinach and zest or juice the lemon before heating the pan.",
-      "Season diced chicken with salt, pepper and oregano.",
+      "Season diced chicken with salt and pepper.",
       "Brown chicken in a deep pan, then add garlic and orzo.",
       "Pour in hot stock and simmer, stirring, until orzo is tender and chicken is cooked through. Cook the aromatic base until fragrant, then finish the sauce until it lightly coats the back of a spoon.",
-      "Stir through lemon juice, spinach and a little grated cheese.",
+      "Stir through lemon juice and spinach until the leaves wilt.",
       "Before serving: Check the orzo is tender and the chicken is cooked through in the thickest piece. Add a splash of stock if the pan dries out. Before serving, cut into the thickest piece: it should be steaming hot throughout with no pink meat, and the juices should run clear. If unsure, continue cooking."
     ],
     "ingredients": [
@@ -2318,7 +2316,7 @@
     "ci_estimates": {
       "Jersey": {
         "estimate_gbp": 12.58,
-        "range_low_gbp": 10.0,
+        "range_low_gbp": 10,
         "range_high_gbp": 15.15,
         "per_serving_estimate_gbp": 3.15,
         "per_serving_low_gbp": 2.5,
@@ -2351,17 +2349,17 @@
         "per_serving_high_gbp": 3.44,
         "confidence": "INDICATIVE_UNVERIFIED",
         "source": "Derived from Jersey provisional recipe estimate using its assumed 1.10 island factor (UK = Jersey / 1.10); NOT a survey of UK supermarket prices",
-        "uplift_assumption": 1.0,
+        "uplift_assumption": 1,
         "baseline_from": "Jersey indicative estimate divided by 1.10; provisional UK guide"
       }
     },
     "data_format_fixed_from": "STRUCTURED_ALREADY",
     "steps": [
       "Prepare your ingredients: Dice the chicken into even pieces. Wash the spinach and zest or juice the lemon before heating the pan.",
-      "Season diced chicken with salt, pepper and oregano.",
+      "Season diced chicken with salt and pepper.",
       "Brown chicken in a deep pan, then add garlic and orzo.",
       "Pour in hot stock and simmer, stirring, until orzo is tender and chicken is cooked through. Cook the aromatic base until fragrant, then finish the sauce until it lightly coats the back of a spoon.",
-      "Stir through lemon juice, spinach and a little grated cheese.",
+      "Stir through lemon juice and spinach until the leaves wilt.",
       "Before serving: Check the orzo is tender and the chicken is cooked through in the thickest piece. Add a splash of stock if the pan dries out. Before serving, cut into the thickest piece: it should be steaming hot throughout with no pink meat, and the juices should run clear. If unsure, continue cooking."
     ],
     "culinary_prep_notes": [
@@ -2488,7 +2486,7 @@
         "per_serving_high_gbp": 3.14,
         "confidence": "INDICATIVE_UNVERIFIED",
         "source": "Derived from Jersey provisional recipe estimate using its assumed 1.10 island factor (UK = Jersey / 1.10); NOT a survey of UK supermarket prices",
-        "uplift_assumption": 1.0,
+        "uplift_assumption": 1,
         "baseline_from": "Jersey indicative estimate divided by 1.10; provisional UK guide"
       }
     },
@@ -2633,7 +2631,7 @@
         "per_serving_high_gbp": 2.23,
         "confidence": "INDICATIVE_UNVERIFIED",
         "source": "Derived from Jersey provisional recipe estimate using its assumed 1.10 island factor (UK = Jersey / 1.10); NOT a survey of UK supermarket prices",
-        "uplift_assumption": 1.0,
+        "uplift_assumption": 1,
         "baseline_from": "Jersey indicative estimate divided by 1.10; provisional UK guide",
         "ingredient_addition_estimate_gbp": 0.1,
         "ingredient_addition_price_source": "Existing indicative canonical price catalogue; retailer verification still required"
@@ -2674,8 +2672,7 @@
     "method": [
       "Prepare your ingredients: Finely dice the onion and carrot, mince the garlic and rinse the lentils in a sieve.",
       "Soften onion, carrot and garlic in olive oil.",
-      "Add rinsed lentils, chopped tomatoes, stock.",
-      "Fold the dried oregano into the seasoning or aromatic base before adding the main liquid; warm briefly to release fragrance without scorching.",
+      "Stir the dried oregano into the softened vegetables, then add the rinsed lentils, chopped tomatoes and stock.",
       "Simmer until lentils are tender, adding water if needed. Cook the aromatic base until fragrant, then finish the sauce until it lightly coats the back of a spoon.",
       "Cook the listed spaghetti in boiling water according to packet directions while the lentils simmer; drain and serve the bolognese sauce over it. If adding your own cheese or nutritional yeast, allow for it separately in the shopping basket.",
       "Before serving: Taste a lentil: it should be soft all the way through. The sauce should be thick enough to coat the spaghetti."
@@ -2792,7 +2789,7 @@
         "per_serving_high_gbp": 1.91,
         "confidence": "INDICATIVE_UNVERIFIED",
         "source": "Derived from Jersey provisional recipe estimate using its assumed 1.10 island factor (UK = Jersey / 1.10); NOT a survey of UK supermarket prices",
-        "uplift_assumption": 1.0,
+        "uplift_assumption": 1,
         "baseline_from": "Jersey indicative estimate divided by 1.10; provisional UK guide",
         "ingredient_addition_estimate_gbp": 0.1,
         "ingredient_addition_price_source": "Existing indicative canonical price catalogue; retailer verification still required"
@@ -2802,8 +2799,7 @@
     "steps": [
       "Prepare your ingredients: Finely dice the onion and carrot, mince the garlic and rinse the lentils in a sieve.",
       "Soften onion, carrot and garlic in olive oil.",
-      "Add rinsed lentils, chopped tomatoes, stock.",
-      "Fold the dried oregano into the seasoning or aromatic base before adding the main liquid; warm briefly to release fragrance without scorching.",
+      "Stir the dried oregano into the softened vegetables, then add the rinsed lentils, chopped tomatoes and stock.",
       "Simmer until lentils are tender, adding water if needed. Cook the aromatic base until fragrant, then finish the sauce until it lightly coats the back of a spoon.",
       "Cook the listed spaghetti in boiling water according to packet directions while the lentils simmer; drain and serve the bolognese sauce over it. If adding your own cheese or nutritional yeast, allow for it separately in the shopping basket.",
       "Before serving: Taste a lentil: it should be soft all the way through. The sauce should be thick enough to coat the spaghetti."
@@ -2957,7 +2953,7 @@
         "per_serving_high_gbp": 4.78,
         "confidence": "INDICATIVE_UNVERIFIED",
         "source": "Derived from Jersey provisional recipe estimate using its assumed 1.10 island factor (UK = Jersey / 1.10); NOT a survey of UK supermarket prices",
-        "uplift_assumption": 1.0,
+        "uplift_assumption": 1,
         "baseline_from": "Jersey indicative estimate divided by 1.10; provisional UK guide"
       }
     },
@@ -3109,7 +3105,7 @@
         "per_serving_high_gbp": 3.12,
         "confidence": "INDICATIVE_UNVERIFIED",
         "source": "Derived from Jersey provisional recipe estimate using its assumed 1.10 island factor (UK = Jersey / 1.10); NOT a survey of UK supermarket prices",
-        "uplift_assumption": 1.0,
+        "uplift_assumption": 1,
         "baseline_from": "Jersey indicative estimate divided by 1.10; provisional UK guide",
         "ingredient_addition_estimate_gbp": 0.43,
         "ingredient_addition_price_source": "Existing indicative canonical price catalogue; retailer verification still required"
@@ -3149,11 +3145,10 @@
     "image": "release-assets/basketboss-v17/images/existing/honey-garlic-tofu.webp",
     "tip": "Press tofu first for a better golden crust.",
     "method": [
-      "Prepare your ingredients: Drain and press the tofu, then cut into even cubes. Mix the sauce ingredients in a small bowl before frying. Cook in batches in a properly hot pan so the protein colours and the vegetables stay crisp-tender instead of steaming.",
-      "Finely chop or grate the fresh ginger and add with the softened aromatics so their fragrance runs through the sauce.",
+      "Cook the listed rice following its packet directions. While it cooks, drain and press the tofu, then cut it into even cubes. Finely grate the ginger and crush the garlic.",
       "Press tofu and cut into cubes; toss with cornflour.",
       "Pan-fry until crisp on several sides.",
-      "Add garlic, soy, honey and a splash of water; simmer until glossy.",
+      "Add garlic and ginger, stir briefly until fragrant, then add soy, honey and a splash of water. Simmer until glossy.",
       "Serve over rice with cucumber and shredded carrots.",
       "Finish with lime off the heat, tasting in small additions until the finished dish tastes bright and balanced.",
       "Before serving: The tofu should have crisp edges and a shiny coating. Let the sauce bubble briefly rather than boiling it dry."
@@ -3277,7 +3272,7 @@
         "per_serving_high_gbp": 2.87,
         "confidence": "INDICATIVE_UNVERIFIED",
         "source": "Derived from Jersey provisional recipe estimate using its assumed 1.10 island factor (UK = Jersey / 1.10); NOT a survey of UK supermarket prices",
-        "uplift_assumption": 1.0,
+        "uplift_assumption": 1,
         "baseline_from": "Jersey indicative estimate divided by 1.10; provisional UK guide",
         "ingredient_addition_estimate_gbp": 0.35,
         "ingredient_addition_price_source": "Existing indicative canonical price catalogue; retailer verification still required"
@@ -3285,11 +3280,10 @@
     },
     "data_format_fixed_from": "STRUCTURED_ALREADY",
     "steps": [
-      "Prepare your ingredients: Drain and press the tofu, then cut into even cubes. Mix the sauce ingredients in a small bowl before frying. Cook in batches in a properly hot pan so the protein colours and the vegetables stay crisp-tender instead of steaming.",
-      "Finely chop or grate the fresh ginger and add with the softened aromatics so their fragrance runs through the sauce.",
+      "Cook the listed rice following its packet directions. While it cooks, drain and press the tofu, then cut it into even cubes. Finely grate the ginger and crush the garlic.",
       "Press tofu and cut into cubes; toss with cornflour.",
       "Pan-fry until crisp on several sides.",
-      "Add garlic, soy, honey and a splash of water; simmer until glossy.",
+      "Add garlic and ginger, stir briefly until fragrant, then add soy, honey and a splash of water. Simmer until glossy.",
       "Serve over rice with cucumber and shredded carrots.",
       "Finish with lime off the heat, tasting in small additions until the finished dish tastes bright and balanced.",
       "Before serving: The tofu should have crisp edges and a shiny coating. Let the sauce bubble briefly rather than boiling it dry."
@@ -3414,7 +3408,7 @@
         "per_serving_high_gbp": 3.5,
         "confidence": "INDICATIVE_UNVERIFIED",
         "source": "Derived from Jersey provisional recipe estimate using its assumed 1.10 island factor (UK = Jersey / 1.10); NOT a survey of UK supermarket prices",
-        "uplift_assumption": 1.0,
+        "uplift_assumption": 1,
         "baseline_from": "Jersey indicative estimate divided by 1.10; provisional UK guide"
       }
     },
@@ -3450,9 +3444,8 @@
     "method": [
       "Prepare your ingredients: Peel and cut the sweet potatoes into even chunks. Cut the onion into wedges and preheat the oven before roasting. Leave space between the ingredients so hot air reaches the edges and they roast golden rather than steaming.",
       "Roast chopped sweet potatoes and onion with oil at 200°C until soft.",
-      "Tip into a saucepan with vegetable stock and cumin.",
+      "Tip the roasted vegetables into a saucepan with the vegetable stock, cumin and finely chopped garlic. Simmer until the garlic has softened.",
       "Blend until smooth, adding extra stock to loosen.",
-      "Finely chop or grate the garlic and add with the softened aromatics so their fragrance runs through the sauce.",
       "Serve with yoghurt and warm crusty bread.",
       "Finish with lemon off the heat, tasting in small additions until the finished dish tastes bright and balanced.",
       "Before serving: The vegetables should mash easily with a fork before blending. Blend hot soup cautiously in batches if needed."
@@ -3570,7 +3563,7 @@
         "per_serving_high_gbp": 2.53,
         "confidence": "INDICATIVE_UNVERIFIED",
         "source": "Derived from Jersey provisional recipe estimate using its assumed 1.10 island factor (UK = Jersey / 1.10); NOT a survey of UK supermarket prices",
-        "uplift_assumption": 1.0,
+        "uplift_assumption": 1,
         "baseline_from": "Jersey indicative estimate divided by 1.10; provisional UK guide",
         "ingredient_addition_estimate_gbp": 0.43,
         "ingredient_addition_price_source": "Existing indicative canonical price catalogue; retailer verification still required"
@@ -3580,9 +3573,8 @@
     "steps": [
       "Prepare your ingredients: Peel and cut the sweet potatoes into even chunks. Cut the onion into wedges and preheat the oven before roasting. Leave space between the ingredients so hot air reaches the edges and they roast golden rather than steaming.",
       "Roast chopped sweet potatoes and onion with oil at 200°C until soft.",
-      "Tip into a saucepan with vegetable stock and cumin.",
+      "Tip the roasted vegetables into a saucepan with the vegetable stock, cumin and finely chopped garlic. Simmer until the garlic has softened.",
       "Blend until smooth, adding extra stock to loosen.",
-      "Finely chop or grate the garlic and add with the softened aromatics so their fragrance runs through the sauce.",
       "Serve with yoghurt and warm crusty bread.",
       "Finish with lemon off the heat, tasting in small additions until the finished dish tastes bright and balanced.",
       "Before serving: The vegetables should mash easily with a fork before blending. Blend hot soup cautiously in batches if needed."
@@ -3712,7 +3704,7 @@
         "per_serving_high_gbp": 3.77,
         "confidence": "INDICATIVE_UNVERIFIED",
         "source": "Derived from Jersey provisional recipe estimate using its assumed 1.10 island factor (UK = Jersey / 1.10); NOT a survey of UK supermarket prices",
-        "uplift_assumption": 1.0,
+        "uplift_assumption": 1,
         "baseline_from": "Jersey indicative estimate divided by 1.10; provisional UK guide"
       }
     },
@@ -3749,9 +3741,9 @@
     "method": [
       "Prepare your ingredients: Finely chop the onion and garlic, rinse the beans and drain the sweetcorn. Keep raw turkey separate from ready-to-eat foods.",
       "Brown turkey mince with onion and garlic.",
-      "Add cumin, smoked paprika, chopped tomatoes and drained beans. Cook the spices with the vegetables until fragrant, then let the rice absorb the seasoned stock until tender and separate.",
+      "Add cumin, smoked paprika, chopped tomatoes and drained beans.",
       "Simmer for 20 minutes, breaking up the mince as it cooks.",
-      "Stir through sweetcorn and serve with rice and yoghurt.",
+      "Cook the listed rice separately following its packet directions while the chilli simmers. Stir the sweetcorn into the chilli, heat through and serve over the cooked rice, with yoghurt if desired.",
       "Finish with lime off the heat, tasting in small additions until the finished dish tastes bright and balanced.",
       "Before serving: The turkey mince should be fully cooked with no pink areas; check that the thickest portion is thoroughly cooked. Before serving, cut into the thickest piece: it should be steaming hot throughout with no pink meat, and the juices should run clear. If unsure, continue cooking."
     ],
@@ -3881,7 +3873,7 @@
         "per_serving_high_gbp": 3.85,
         "confidence": "INDICATIVE_UNVERIFIED",
         "source": "Derived from Jersey provisional recipe estimate using its assumed 1.10 island factor (UK = Jersey / 1.10); NOT a survey of UK supermarket prices",
-        "uplift_assumption": 1.0,
+        "uplift_assumption": 1,
         "baseline_from": "Jersey indicative estimate divided by 1.10; provisional UK guide",
         "ingredient_addition_estimate_gbp": 0.33,
         "ingredient_addition_price_source": "Existing indicative canonical price catalogue; retailer verification still required"
@@ -3891,9 +3883,9 @@
     "steps": [
       "Prepare your ingredients: Finely chop the onion and garlic, rinse the beans and drain the sweetcorn. Keep raw turkey separate from ready-to-eat foods.",
       "Brown turkey mince with onion and garlic.",
-      "Add cumin, smoked paprika, chopped tomatoes and drained beans. Cook the spices with the vegetables until fragrant, then let the rice absorb the seasoned stock until tender and separate.",
+      "Add cumin, smoked paprika, chopped tomatoes and drained beans.",
       "Simmer for 20 minutes, breaking up the mince as it cooks.",
-      "Stir through sweetcorn and serve with rice and yoghurt.",
+      "Cook the listed rice separately following its packet directions while the chilli simmers. Stir the sweetcorn into the chilli, heat through and serve over the cooked rice, with yoghurt if desired.",
       "Finish with lime off the heat, tasting in small additions until the finished dish tastes bright and balanced.",
       "Before serving: The turkey mince should be fully cooked with no pink areas; check that the thickest portion is thoroughly cooked. Before serving, cut into the thickest piece: it should be steaming hot throughout with no pink meat, and the juices should run clear. If unsure, continue cooking."
     ],
@@ -4032,7 +4024,7 @@
         "per_serving_high_gbp": 3.23,
         "confidence": "INDICATIVE_UNVERIFIED",
         "source": "Derived from Jersey provisional recipe estimate using its assumed 1.10 island factor (UK = Jersey / 1.10); NOT a survey of UK supermarket prices",
-        "uplift_assumption": 1.0,
+        "uplift_assumption": 1,
         "baseline_from": "Jersey indicative estimate divided by 1.10; provisional UK guide"
       }
     },
@@ -4069,9 +4061,8 @@
     "tip": "Use naan or flatbreads for a fast crisp base.",
     "method": [
       "Prepare your ingredients: Thinly slice the onion and grate the cheese. Use only chicken that is already fully cooked.",
-      "Fold the smoked paprika into the seasoning or aromatic base before adding the main liquid; warm briefly to release fragrance without scorching.",
       "Heat oven to 220°C. Put flatbreads on a baking tray.",
-      "Spread with barbecue sauce and scatter cooked chicken, onion and cheese.",
+      "Mix the smoked paprika into the barbecue sauce. Spread over the flatbreads, then scatter over the cooked chicken, onion and cheese.",
       "Bake for 8–12 minutes until crisp and bubbling. Check for a gently golden surface as well as the stated cooking time; the food should look and feel cooked through.",
       "Top with a little sliced spring onion and serve hot.",
       "Finish with apple cider vinegar off the heat, tasting in small additions until the finished dish tastes bright and balanced.",
@@ -4161,10 +4152,10 @@
       "Guernsey": {
         "estimate_gbp": 13.27,
         "range_low_gbp": 10.55,
-        "range_high_gbp": 16.0,
+        "range_high_gbp": 16,
         "per_serving_estimate_gbp": 3.32,
         "per_serving_low_gbp": 2.64,
-        "per_serving_high_gbp": 4.0,
+        "per_serving_high_gbp": 4,
         "confidence": "INDICATIVE_UNVERIFIED",
         "source": "Previous recipe draft cost/range × explicit provisional island factor; not observed retailer prices",
         "source_base_low_gbp": 8.59,
@@ -4182,7 +4173,7 @@
         "per_serving_high_gbp": 3.33,
         "confidence": "INDICATIVE_UNVERIFIED",
         "source": "Derived from Jersey provisional recipe estimate using its assumed 1.10 island factor (UK = Jersey / 1.10); NOT a survey of UK supermarket prices",
-        "uplift_assumption": 1.0,
+        "uplift_assumption": 1,
         "baseline_from": "Jersey indicative estimate divided by 1.10; provisional UK guide",
         "ingredient_addition_estimate_gbp": 0.2,
         "ingredient_addition_price_source": "Existing indicative canonical price catalogue; retailer verification still required"
@@ -4191,9 +4182,8 @@
     "data_format_fixed_from": "STRUCTURED_ALREADY",
     "steps": [
       "Prepare your ingredients: Thinly slice the onion and grate the cheese. Use only chicken that is already fully cooked.",
-      "Fold the smoked paprika into the seasoning or aromatic base before adding the main liquid; warm briefly to release fragrance without scorching.",
       "Heat oven to 220°C. Put flatbreads on a baking tray.",
-      "Spread with barbecue sauce and scatter cooked chicken, onion and cheese.",
+      "Mix the smoked paprika into the barbecue sauce. Spread over the flatbreads, then scatter over the cooked chicken, onion and cheese.",
       "Bake for 8–12 minutes until crisp and bubbling. Check for a gently golden surface as well as the stated cooking time; the food should look and feel cooked through.",
       "Top with a little sliced spring onion and serve hot.",
       "Finish with apple cider vinegar off the heat, tasting in small additions until the finished dish tastes bright and balanced.",
@@ -4315,7 +4305,7 @@
         "range_high_gbp": 12.01,
         "per_serving_estimate_gbp": 2.48,
         "per_serving_low_gbp": 1.96,
-        "per_serving_high_gbp": 3.0,
+        "per_serving_high_gbp": 3,
         "confidence": "INDICATIVE_UNVERIFIED",
         "source": "Previous recipe draft cost/range × explicit provisional island factor; not observed retailer prices",
         "source_base_low_gbp": 6.53,
@@ -4331,7 +4321,7 @@
         "per_serving_high_gbp": 2.5,
         "confidence": "INDICATIVE_UNVERIFIED",
         "source": "Derived from Jersey provisional recipe estimate using its assumed 1.10 island factor (UK = Jersey / 1.10); NOT a survey of UK supermarket prices",
-        "uplift_assumption": 1.0,
+        "uplift_assumption": 1,
         "baseline_from": "Jersey indicative estimate divided by 1.10; provisional UK guide"
       }
     },
@@ -4367,11 +4357,11 @@
     "image": "release-assets/basketboss-v17/images/existing/banana-oat-pancakes.webp",
     "tip": "Very ripe bananas make these naturally sweet.",
     "method": [
-      "Prepare your ingredients: Mash the banana until mostly smooth. Measure the oats and prepare the batter before heating a non-stick pan. Once the flour is added, fold gently just until no dry pockets remain so the crumb stays tender.",
+      "Prepare your ingredients: Mash the banana until mostly smooth. Measure the oats and prepare the batter before heating a non-stick pan.",
       "Mash bananas in a bowl and whisk with eggs and milk.",
       "Stir in oats, baking powder and cinnamon.",
       "Spoon batter into a lightly oiled pan and cook until bubbles form.",
-      "Flip and cook through; serve with fruit or yoghurt.",
+      "Flip and cook through; serve with the listed yoghurt.",
       "Before serving: Flip when the edges look set and small bubbles appear; the centre should be cooked through, not wet."
     ],
     "ingredients": [
@@ -4470,17 +4460,17 @@
         "per_serving_high_gbp": 2.44,
         "confidence": "INDICATIVE_UNVERIFIED",
         "source": "Derived from Jersey provisional recipe estimate using its assumed 1.10 island factor (UK = Jersey / 1.10); NOT a survey of UK supermarket prices",
-        "uplift_assumption": 1.0,
+        "uplift_assumption": 1,
         "baseline_from": "Jersey indicative estimate divided by 1.10; provisional UK guide"
       }
     },
     "data_format_fixed_from": "STRUCTURED_ALREADY",
     "steps": [
-      "Prepare your ingredients: Mash the banana until mostly smooth. Measure the oats and prepare the batter before heating a non-stick pan. Once the flour is added, fold gently just until no dry pockets remain so the crumb stays tender.",
+      "Prepare your ingredients: Mash the banana until mostly smooth. Measure the oats and prepare the batter before heating a non-stick pan.",
       "Mash bananas in a bowl and whisk with eggs and milk.",
       "Stir in oats, baking powder and cinnamon.",
       "Spoon batter into a lightly oiled pan and cook until bubbles form.",
-      "Flip and cook through; serve with fruit or yoghurt.",
+      "Flip and cook through; serve with the listed yoghurt.",
       "Before serving: Flip when the edges look set and small bubbles appear; the centre should be cooked through, not wet."
     ],
     "culinary_prep_notes": [
@@ -4501,7 +4491,7 @@
     "category": "Budget · Vegetarian",
     "tag": "BUDGET HERO",
     "mins": 55,
-    "cost": 8.0,
+    "cost": 8,
     "image": "release-assets/basketboss-v17/images/existing/baked-potato-beans.webp",
     "tip": "Microwave first, then oven-bake for crisp skin.",
     "method": [
@@ -4570,7 +4560,7 @@
         "estimate_gbp": 8.02,
         "range_low_gbp": 6.41,
         "range_high_gbp": 9.62,
-        "per_serving_estimate_gbp": 2.0,
+        "per_serving_estimate_gbp": 2,
         "per_serving_low_gbp": 1.6,
         "per_serving_high_gbp": 2.4,
         "confidence": "INDICATIVE_UNVERIFIED",
@@ -4583,7 +4573,7 @@
       },
       "Guernsey": {
         "estimate_gbp": 8.75,
-        "range_low_gbp": 7.0,
+        "range_low_gbp": 7,
         "range_high_gbp": 10.5,
         "per_serving_estimate_gbp": 2.19,
         "per_serving_low_gbp": 1.75,
@@ -4605,7 +4595,7 @@
         "per_serving_high_gbp": 2.19,
         "confidence": "INDICATIVE_UNVERIFIED",
         "source": "Derived from Jersey provisional recipe estimate using its assumed 1.10 island factor (UK = Jersey / 1.10); NOT a survey of UK supermarket prices",
-        "uplift_assumption": 1.0,
+        "uplift_assumption": 1,
         "baseline_from": "Jersey indicative estimate divided by 1.10; provisional UK guide",
         "ingredient_addition_estimate_gbp": 0.1,
         "ingredient_addition_price_source": "Existing indicative canonical price catalogue; retailer verification still required"
@@ -4732,7 +4722,7 @@
         "per_serving_high_gbp": 5.12,
         "confidence": "INDICATIVE_UNVERIFIED",
         "source": "Previous recipe draft cost/range × explicit provisional island factor; not observed retailer prices",
-        "source_base_low_gbp": 12.0,
+        "source_base_low_gbp": 12,
         "source_base_high_gbp": 18.36,
         "uplift_assumption": 1.1
       },
@@ -4745,7 +4735,7 @@
         "per_serving_high_gbp": 5.58,
         "confidence": "INDICATIVE_UNVERIFIED",
         "source": "Previous recipe draft cost/range × explicit provisional island factor; not observed retailer prices",
-        "source_base_low_gbp": 12.0,
+        "source_base_low_gbp": 12,
         "source_base_high_gbp": 18.36,
         "uplift_assumption": 1.2
       },
@@ -4758,7 +4748,7 @@
         "per_serving_high_gbp": 4.65,
         "confidence": "INDICATIVE_UNVERIFIED",
         "source": "Derived from Jersey provisional recipe estimate using its assumed 1.10 island factor (UK = Jersey / 1.10); NOT a survey of UK supermarket prices",
-        "uplift_assumption": 1.0,
+        "uplift_assumption": 1,
         "baseline_from": "Jersey indicative estimate divided by 1.10; provisional UK guide"
       }
     },
@@ -4896,7 +4886,7 @@
         "per_serving_high_gbp": 4.15,
         "confidence": "INDICATIVE_UNVERIFIED",
         "source": "Derived from Jersey provisional recipe estimate using its assumed 1.10 island factor (UK = Jersey / 1.10); NOT a survey of UK supermarket prices",
-        "uplift_assumption": 1.0,
+        "uplift_assumption": 1,
         "baseline_from": "Jersey indicative estimate divided by 1.10; provisional UK guide",
         "ingredient_addition_estimate_gbp": 0.36,
         "ingredient_addition_price_source": "Existing indicative canonical price catalogue; retailer verification still required"
@@ -4934,10 +4924,9 @@
     "image": "release-assets/basketboss-v17/images/existing/spinach-ricotta-shells.webp",
     "tip": "Let the bake rest for five minutes before serving.",
     "method": [
-      "Prepare your ingredients: Drain the ricotta, squeeze excess moisture from cooked spinach and set out a baking dish. Reserve a little starchy cooking water, then toss the pasta and sauce together until the coating is glossy rather than watery.",
-      "Fold the dried oregano into the seasoning or aromatic base before adding the main liquid; warm briefly to release fragrance without scorching.",
+      "Prepare your ingredients: Drain the ricotta, squeeze excess moisture from cooked spinach and set out a baking dish.",
       "Cook pasta shells until just shy of tender.",
-      "Mix ricotta with wilted spinach, garlic and seasoning.",
+      "Mix ricotta with wilted spinach, garlic, dried oregano and seasoning.",
       "Fill shells and arrange in a dish with tomato sauce.",
       "Top with mozzarella and bake at 190°C until bubbling and hot.",
       "Before serving: The pasta should be tender and the filling hot throughout, with the cheese bubbling at the edges."
@@ -5041,7 +5030,7 @@
         "per_serving_high_gbp": 2.74,
         "confidence": "INDICATIVE_UNVERIFIED",
         "source": "Derived from Jersey provisional recipe estimate using its assumed 1.10 island factor (UK = Jersey / 1.10); NOT a survey of UK supermarket prices",
-        "uplift_assumption": 1.0,
+        "uplift_assumption": 1,
         "baseline_from": "Jersey indicative estimate divided by 1.10; provisional UK guide",
         "ingredient_addition_estimate_gbp": 0.1,
         "ingredient_addition_price_source": "Existing indicative canonical price catalogue; retailer verification still required"
@@ -5049,10 +5038,9 @@
     },
     "data_format_fixed_from": "STRUCTURED_ALREADY",
     "steps": [
-      "Prepare your ingredients: Drain the ricotta, squeeze excess moisture from cooked spinach and set out a baking dish. Reserve a little starchy cooking water, then toss the pasta and sauce together until the coating is glossy rather than watery.",
-      "Fold the dried oregano into the seasoning or aromatic base before adding the main liquid; warm briefly to release fragrance without scorching.",
+      "Prepare your ingredients: Drain the ricotta, squeeze excess moisture from cooked spinach and set out a baking dish.",
       "Cook pasta shells until just shy of tender.",
-      "Mix ricotta with wilted spinach, garlic and seasoning.",
+      "Mix ricotta with wilted spinach, garlic, dried oregano and seasoning.",
       "Fill shells and arrange in a dish with tomato sauce.",
       "Top with mozzarella and bake at 190°C until bubbling and hot.",
       "Before serving: The pasta should be tender and the filling hot throughout, with the cheese bubbling at the edges."
@@ -5162,7 +5150,7 @@
       "Jersey": {
         "estimate_gbp": 8.27,
         "range_low_gbp": 6.53,
-        "range_high_gbp": 10.0,
+        "range_high_gbp": 10,
         "per_serving_estimate_gbp": 2.07,
         "per_serving_low_gbp": 1.63,
         "per_serving_high_gbp": 2.5,
@@ -5194,7 +5182,7 @@
         "per_serving_high_gbp": 2.27,
         "confidence": "INDICATIVE_UNVERIFIED",
         "source": "Derived from Jersey provisional recipe estimate using its assumed 1.10 island factor (UK = Jersey / 1.10); NOT a survey of UK supermarket prices",
-        "uplift_assumption": 1.0,
+        "uplift_assumption": 1,
         "baseline_from": "Jersey indicative estimate divided by 1.10; provisional UK guide"
       }
     },
@@ -5346,7 +5334,7 @@
         "per_serving_high_gbp": 1.98,
         "confidence": "INDICATIVE_UNVERIFIED",
         "source": "Derived from Jersey provisional recipe estimate using its assumed 1.10 island factor (UK = Jersey / 1.10); NOT a survey of UK supermarket prices",
-        "uplift_assumption": 1.0,
+        "uplift_assumption": 1,
         "baseline_from": "Jersey indicative estimate divided by 1.10; provisional UK guide"
       }
     },
@@ -5490,7 +5478,7 @@
         "per_serving_high_gbp": 4.2,
         "confidence": "INDICATIVE_UNVERIFIED",
         "source": "Derived from Jersey provisional recipe estimate using its assumed 1.10 island factor (UK = Jersey / 1.10); NOT a survey of UK supermarket prices",
-        "uplift_assumption": 1.0,
+        "uplift_assumption": 1,
         "baseline_from": "Jersey indicative estimate divided by 1.10; provisional UK guide",
         "ingredient_addition_estimate_gbp": 0.43,
         "ingredient_addition_price_source": "Existing indicative canonical price catalogue; retailer verification still required"
@@ -5534,7 +5522,7 @@
       "Brown sausages in a deep pan and set aside.",
       "Soften onion, carrot and celery in the same pan.",
       "Add lentils, stock and sausages; simmer until lentils are tender and sausages cooked through.",
-      "Season and serve with crusty bread.",
+      "Season and serve the sausage and lentil stew hot. Bread is an optional extra purchase, not included in this recipe’s ingredient estimate.",
       "Before serving: The lentils should be tender and the sausages thoroughly cooked. The stew should be thick but spoonable."
     ],
     "ingredients": [
@@ -5635,7 +5623,7 @@
         "per_serving_high_gbp": 2.54,
         "confidence": "INDICATIVE_UNVERIFIED",
         "source": "Derived from Jersey provisional recipe estimate using its assumed 1.10 island factor (UK = Jersey / 1.10); NOT a survey of UK supermarket prices",
-        "uplift_assumption": 1.0,
+        "uplift_assumption": 1,
         "baseline_from": "Jersey indicative estimate divided by 1.10; provisional UK guide",
         "ingredient_addition_estimate_gbp": 0.33,
         "ingredient_addition_price_source": "Existing indicative canonical price catalogue; retailer verification still required"
@@ -5648,7 +5636,7 @@
       "Brown sausages in a deep pan and set aside.",
       "Soften onion, carrot and celery in the same pan.",
       "Add lentils, stock and sausages; simmer until lentils are tender and sausages cooked through.",
-      "Season and serve with crusty bread.",
+      "Season and serve the sausage and lentil stew hot. Bread is an optional extra purchase, not included in this recipe’s ingredient estimate.",
       "Before serving: The lentils should be tender and the sausages thoroughly cooked. The stew should be thick but spoonable."
     ],
     "culinary_prep_notes": [
@@ -5679,7 +5667,7 @@
       "Finely chop or grate the fresh ginger and add with the softened aromatics so their fragrance runs through the sauce.",
       "Add noodles and chicken; simmer until noodles are tender and chicken is piping hot.",
       "Season with pepper and parsley and serve immediately.",
-      "Before serving: The chicken must be cooked through and the noodles should be tender without becoming mushy. Before serving, cut into the thickest piece: it should be steaming hot throughout with no pink meat, and the juices should run clear. If unsure, continue cooking. Cook in batches in a properly hot pan so the protein colours and the vegetables stay crisp-tender instead of steaming.",
+      "Before serving: The chicken must be cooked through and the noodles should be tender without becoming mushy. Before serving, cut into the thickest piece: it should be steaming hot throughout with no pink meat, and the juices should run clear. If unsure, continue cooking.",
       "Finish with lime off the heat, tasting in small additions until the finished dish tastes bright and balanced.",
       "If the chicken is raw, cook it thoroughly until fully cooked at the centre (or equivalent safe time–temperature); if precooked, reheat until steaming hot. The advertised time depends on chicken piece size. Before serving, cut into the thickest piece: it should be steaming hot throughout with no pink meat, and the juices should run clear. If unsure, continue cooking."
     ],
@@ -5797,7 +5785,7 @@
         "per_serving_high_gbp": 3.11,
         "confidence": "INDICATIVE_UNVERIFIED",
         "source": "Derived from Jersey provisional recipe estimate using its assumed 1.10 island factor (UK = Jersey / 1.10); NOT a survey of UK supermarket prices",
-        "uplift_assumption": 1.0,
+        "uplift_assumption": 1,
         "baseline_from": "Jersey indicative estimate divided by 1.10; provisional UK guide",
         "ingredient_addition_estimate_gbp": 0.35,
         "ingredient_addition_price_source": "Existing indicative canonical price catalogue; retailer verification still required"
@@ -5811,7 +5799,7 @@
       "Finely chop or grate the fresh ginger and add with the softened aromatics so their fragrance runs through the sauce.",
       "Add noodles and chicken; simmer until noodles are tender and chicken is piping hot.",
       "Season with pepper and parsley and serve immediately.",
-      "Before serving: The chicken must be cooked through and the noodles should be tender without becoming mushy. Before serving, cut into the thickest piece: it should be steaming hot throughout with no pink meat, and the juices should run clear. If unsure, continue cooking. Cook in batches in a properly hot pan so the protein colours and the vegetables stay crisp-tender instead of steaming.",
+      "Before serving: The chicken must be cooked through and the noodles should be tender without becoming mushy. Before serving, cut into the thickest piece: it should be steaming hot throughout with no pink meat, and the juices should run clear. If unsure, continue cooking.",
       "Finish with lime off the heat, tasting in small additions until the finished dish tastes bright and balanced.",
       "If the chicken is raw, cook it thoroughly until fully cooked at the centre (or equivalent safe time–temperature); if precooked, reheat until steaming hot. The advertised time depends on chicken piece size. Before serving, cut into the thickest piece: it should be steaming hot throughout with no pink meat, and the juices should run clear. If unsure, continue cooking."
     ],
@@ -5840,10 +5828,9 @@
     "tip": "Stir the feta through at the end for a creamy sauce.",
     "method": [
       "Prepare your ingredients: Halve the tomatoes and measure the orzo and put a pan of water on to boil. Set out an ovenproof baking dish.",
-      "Place cherry tomatoes, garlic and feta in a baking dish with olive oil.",
+      "Place cherry tomatoes, garlic and feta in a baking dish with olive oil and the dried oregano.",
       "Bake at 200°C until tomatoes burst and feta softens.",
       "Meanwhile cook orzo in salted water until tender. Cook the aromatic base until fragrant, then finish the sauce until it lightly coats the back of a spoon.",
-      "Fold the dried oregano into the seasoning or aromatic base before adding the main liquid; warm briefly to release fragrance without scorching.",
       "Stir orzo into the tomato-feta dish with spinach and black pepper.",
       "Before serving: The orzo should be tender and the feta creamy enough to stir into the tomatoes; add liquid if it looks dry."
     ],
@@ -5946,7 +5933,7 @@
         "per_serving_high_gbp": 3.49,
         "confidence": "INDICATIVE_UNVERIFIED",
         "source": "Derived from Jersey provisional recipe estimate using its assumed 1.10 island factor (UK = Jersey / 1.10); NOT a survey of UK supermarket prices",
-        "uplift_assumption": 1.0,
+        "uplift_assumption": 1,
         "baseline_from": "Jersey indicative estimate divided by 1.10; provisional UK guide",
         "ingredient_addition_estimate_gbp": 0.1,
         "ingredient_addition_price_source": "Existing indicative canonical price catalogue; retailer verification still required"
@@ -5955,10 +5942,9 @@
     "data_format_fixed_from": "STRUCTURED_ALREADY",
     "steps": [
       "Prepare your ingredients: Halve the tomatoes and measure the orzo and put a pan of water on to boil. Set out an ovenproof baking dish.",
-      "Place cherry tomatoes, garlic and feta in a baking dish with olive oil.",
+      "Place cherry tomatoes, garlic and feta in a baking dish with olive oil and the dried oregano.",
       "Bake at 200°C until tomatoes burst and feta softens.",
       "Meanwhile cook orzo in salted water until tender. Cook the aromatic base until fragrant, then finish the sauce until it lightly coats the back of a spoon.",
-      "Fold the dried oregano into the seasoning or aromatic base before adding the main liquid; warm briefly to release fragrance without scorching.",
       "Stir orzo into the tomato-feta dish with spinach and black pepper.",
       "Before serving: The orzo should be tender and the feta creamy enough to stir into the tomatoes; add liquid if it looks dry."
     ],
@@ -5986,7 +5972,7 @@
     "method": [
       "Prepare your ingredients: Set out flour, beaten egg and breadcrumbs in separate dishes. Flatten chicken to an even thickness before coating.",
       "Flatten chicken breasts to an even thickness.",
-      "Coat in flour, beaten egg and breadcrumbs; bake or shallow-fry until cooked through. Give the glaze its final two minutes under close watch, spooning over the juices so it turns glossy without burning.",
+      "Coat in flour, beaten egg and breadcrumbs; bake or shallow-fry until cooked through.",
       "Finely chop or grate the fresh ginger and add with the softened aromatics so their fragrance runs through the sauce.",
       "Simmer onion, carrot, curry powder and stock; blend until smooth.",
       "Cook the listed rice according to its packet directions while the chicken and curry sauce cook. Serve sliced crispy chicken over the cooked rice with curry sauce.",
@@ -6093,7 +6079,7 @@
         "range_low_gbp": 12.01,
         "range_high_gbp": 18.36,
         "per_serving_estimate_gbp": 3.79,
-        "per_serving_low_gbp": 3.0,
+        "per_serving_low_gbp": 3,
         "per_serving_high_gbp": 4.59,
         "confidence": "INDICATIVE_UNVERIFIED",
         "source": "Previous recipe draft cost/range × explicit provisional island factor; not observed retailer prices",
@@ -6112,7 +6098,7 @@
         "per_serving_high_gbp": 3.83,
         "confidence": "INDICATIVE_UNVERIFIED",
         "source": "Derived from Jersey provisional recipe estimate using its assumed 1.10 island factor (UK = Jersey / 1.10); NOT a survey of UK supermarket prices",
-        "uplift_assumption": 1.0,
+        "uplift_assumption": 1,
         "baseline_from": "Jersey indicative estimate divided by 1.10; provisional UK guide",
         "ingredient_addition_estimate_gbp": 0.02,
         "ingredient_addition_price_source": "Existing indicative canonical price catalogue; retailer verification still required"
@@ -6122,7 +6108,7 @@
     "steps": [
       "Prepare your ingredients: Set out flour, beaten egg and breadcrumbs in separate dishes. Flatten chicken to an even thickness before coating.",
       "Flatten chicken breasts to an even thickness.",
-      "Coat in flour, beaten egg and breadcrumbs; bake or shallow-fry until cooked through. Give the glaze its final two minutes under close watch, spooning over the juices so it turns glossy without burning.",
+      "Coat in flour, beaten egg and breadcrumbs; bake or shallow-fry until cooked through.",
       "Finely chop or grate the fresh ginger and add with the softened aromatics so their fragrance runs through the sauce.",
       "Simmer onion, carrot, curry powder and stock; blend until smooth.",
       "Cook the listed rice according to its packet directions while the chicken and curry sauce cook. Serve sliced crispy chicken over the cooked rice with curry sauce.",
@@ -6153,7 +6139,7 @@
     "image": "release-assets/basketboss-v17/images/existing/loaded-nachos.webp",
     "tip": "Bake the toppings in layers so every chip gets some cheese.",
     "method": [
-      "Prepare your ingredients: Drain the beans, grate the cheese and chop toppings before assembling the tray. Spread the seasoned ingredients across the tray rather than piling them up so the edges roast golden.",
+      "Prepare your ingredients: Grate the cheese and chop the tomatoes and spring onions before assembling the tray. Spread the seasoned ingredients across the tray rather than piling them up so the edges roast golden.",
       "Brown beef mince with taco seasoning until cooked through.",
       "Spread tortilla chips on a tray and scatter over beef and grated cheese.",
       "Bake at 200°C for 5–8 minutes until cheese melts.",
@@ -6274,7 +6260,7 @@
         "per_serving_high_gbp": 4.44,
         "confidence": "INDICATIVE_UNVERIFIED",
         "source": "Derived from Jersey provisional recipe estimate using its assumed 1.10 island factor (UK = Jersey / 1.10); NOT a survey of UK supermarket prices",
-        "uplift_assumption": 1.0,
+        "uplift_assumption": 1,
         "baseline_from": "Jersey indicative estimate divided by 1.10; provisional UK guide",
         "ingredient_addition_estimate_gbp": 0.33,
         "ingredient_addition_price_source": "Existing indicative canonical price catalogue; retailer verification still required"
@@ -6282,7 +6268,7 @@
     },
     "data_format_fixed_from": "STRUCTURED_ALREADY",
     "steps": [
-      "Prepare your ingredients: Drain the beans, grate the cheese and chop toppings before assembling the tray. Spread the seasoned ingredients across the tray rather than piling them up so the edges roast golden.",
+      "Prepare your ingredients: Grate the cheese and chop the tomatoes and spring onions before assembling the tray. Spread the seasoned ingredients across the tray rather than piling them up so the edges roast golden.",
       "Brown beef mince with taco seasoning until cooked through.",
       "Spread tortilla chips on a tray and scatter over beef and grated cheese.",
       "Bake at 200°C for 5–8 minutes until cheese melts.",
@@ -6428,7 +6414,7 @@
         "per_serving_high_gbp": 2.94,
         "confidence": "INDICATIVE_UNVERIFIED",
         "source": "Derived from Jersey provisional recipe estimate using its assumed 1.10 island factor (UK = Jersey / 1.10); NOT a survey of UK supermarket prices",
-        "uplift_assumption": 1.0,
+        "uplift_assumption": 1,
         "baseline_from": "Jersey indicative estimate divided by 1.10; provisional UK guide",
         "ingredient_addition_estimate_gbp": 0.33,
         "ingredient_addition_price_source": "Existing indicative canonical price catalogue; retailer verification still required"
@@ -6468,9 +6454,8 @@
     "tip": "A little lemon zest makes this simple pasta taste fresh.",
     "method": [
       "Prepare your ingredients: Drain the tuna and sweetcorn, and have the sauce ingredients ready while the pasta cooks. Reserve a little starchy cooking water, then toss the pasta and sauce together until the coating is glossy rather than watery.",
-      "Fold the garlic, dried oregano into the seasoning or aromatic base before adding the main liquid; warm briefly to release fragrance without scorching.",
       "Cook pasta and reserve a mug of the cooking water.",
-      "Mix drained tuna, sweetcorn, yoghurt or crème fraîche and lemon zest.",
+      "Mix the drained tuna, sweetcorn, listed yoghurt and lemon zest with finely crushed garlic and dried oregano.",
       "Toss with hot pasta and enough cooking water to coat.",
       "Season well and serve with salad leaves.",
       "Before serving: The pasta should be tender and the tuna mixture heated through if serving warm; add pasta water to loosen."
@@ -6582,7 +6567,7 @@
         "per_serving_high_gbp": 2.46,
         "confidence": "INDICATIVE_UNVERIFIED",
         "source": "Derived from Jersey provisional recipe estimate using its assumed 1.10 island factor (UK = Jersey / 1.10); NOT a survey of UK supermarket prices",
-        "uplift_assumption": 1.0,
+        "uplift_assumption": 1,
         "baseline_from": "Jersey indicative estimate divided by 1.10; provisional UK guide",
         "ingredient_addition_estimate_gbp": 0.2,
         "ingredient_addition_price_source": "Existing indicative canonical price catalogue; retailer verification still required"
@@ -6591,9 +6576,8 @@
     "data_format_fixed_from": "STRUCTURED_ALREADY",
     "steps": [
       "Prepare your ingredients: Drain the tuna and sweetcorn, and have the sauce ingredients ready while the pasta cooks. Reserve a little starchy cooking water, then toss the pasta and sauce together until the coating is glossy rather than watery.",
-      "Fold the garlic, dried oregano into the seasoning or aromatic base before adding the main liquid; warm briefly to release fragrance without scorching.",
       "Cook pasta and reserve a mug of the cooking water.",
-      "Mix drained tuna, sweetcorn, yoghurt or crème fraîche and lemon zest.",
+      "Mix the drained tuna, sweetcorn, listed yoghurt and lemon zest with finely crushed garlic and dried oregano.",
       "Toss with hot pasta and enough cooking water to coat.",
       "Season well and serve with salad leaves.",
       "Before serving: The pasta should be tender and the tuna mixture heated through if serving warm; add pasta water to loosen."
@@ -6728,7 +6712,7 @@
         "per_serving_high_gbp": 3.87,
         "confidence": "INDICATIVE_UNVERIFIED",
         "source": "Derived from Jersey provisional recipe estimate using its assumed 1.10 island factor (UK = Jersey / 1.10); NOT a survey of UK supermarket prices",
-        "uplift_assumption": 1.0,
+        "uplift_assumption": 1,
         "baseline_from": "Jersey indicative estimate divided by 1.10; provisional UK guide",
         "ingredient_addition_estimate_gbp": 0.26,
         "ingredient_addition_price_source": "Existing indicative canonical price catalogue; retailer verification still required"
@@ -6771,7 +6755,7 @@
       "Roast diced potatoes with oil and seasoning at 210°C for 15 minutes.",
       "Add broccoli and roast for another 8 minutes.",
       "Add salmon fillets, spread with pesto and bake until opaque and flaky.",
-      "Serve with lemon wedges. Cook the aromatic base until fragrant, then finish the sauce until it lightly coats the back of a spoon.",
+      "Serve with lemon wedges.",
       "Before serving: The potatoes should be tender and the salmon opaque and flaking easily; check the thickest part."
     ],
     "ingredients": [
@@ -6861,7 +6845,7 @@
         "per_serving_high_gbp": 4.83,
         "confidence": "INDICATIVE_UNVERIFIED",
         "source": "Derived from Jersey provisional recipe estimate using its assumed 1.10 island factor (UK = Jersey / 1.10); NOT a survey of UK supermarket prices",
-        "uplift_assumption": 1.0,
+        "uplift_assumption": 1,
         "baseline_from": "Jersey indicative estimate divided by 1.10; provisional UK guide"
       }
     },
@@ -6871,7 +6855,7 @@
       "Roast diced potatoes with oil and seasoning at 210°C for 15 minutes.",
       "Add broccoli and roast for another 8 minutes.",
       "Add salmon fillets, spread with pesto and bake until opaque and flaky.",
-      "Serve with lemon wedges. Cook the aromatic base until fragrant, then finish the sauce until it lightly coats the back of a spoon.",
+      "Serve with lemon wedges.",
       "Before serving: The potatoes should be tender and the salmon opaque and flaking easily; check the thickest part."
     ],
     "culinary_prep_notes": [
@@ -7010,7 +6994,7 @@
         "per_serving_high_gbp": 3.4,
         "confidence": "INDICATIVE_UNVERIFIED",
         "source": "Derived from Jersey provisional recipe estimate using its assumed 1.10 island factor (UK = Jersey / 1.10); NOT a survey of UK supermarket prices",
-        "uplift_assumption": 1.0,
+        "uplift_assumption": 1,
         "baseline_from": "Jersey indicative estimate divided by 1.10; provisional UK guide"
       }
     },
@@ -7048,9 +7032,8 @@
     "tip": "Mix miso with honey and a little warm water to make a brushable glaze.",
     "method": [
       "Prepare your ingredients: Rinse the rice, mix the miso glaze and pat the salmon dry. Prepare the vegetables before cooking. Give the glaze its final two minutes under close watch, spooning over the juices so it turns glossy without burning.",
-      "Finely chop or grate the fresh ginger and add with the softened aromatics so their fragrance runs through the sauce.",
       "Cook rice and steam greens until just tender.",
-      "Mix miso, honey and a little water; brush over salmon.",
+      "Mix miso, honey, finely grated ginger and a little water; brush over salmon.",
       "Bake or grill salmon until cooked through and flaky.",
       "Serve salmon over rice with greens and sesame seeds.",
       "Finish with lime off the heat, tasting in small additions until the finished dish tastes bright and balanced.",
@@ -7163,7 +7146,7 @@
         "per_serving_high_gbp": 5.78,
         "confidence": "INDICATIVE_UNVERIFIED",
         "source": "Derived from Jersey provisional recipe estimate using its assumed 1.10 island factor (UK = Jersey / 1.10); NOT a survey of UK supermarket prices",
-        "uplift_assumption": 1.0,
+        "uplift_assumption": 1,
         "baseline_from": "Jersey indicative estimate divided by 1.10; provisional UK guide",
         "ingredient_addition_estimate_gbp": 0.35,
         "ingredient_addition_price_source": "Existing indicative canonical price catalogue; retailer verification still required"
@@ -7172,9 +7155,8 @@
     "data_format_fixed_from": "STRUCTURED_ALREADY",
     "steps": [
       "Prepare your ingredients: Rinse the rice, mix the miso glaze and pat the salmon dry. Prepare the vegetables before cooking. Give the glaze its final two minutes under close watch, spooning over the juices so it turns glossy without burning.",
-      "Finely chop or grate the fresh ginger and add with the softened aromatics so their fragrance runs through the sauce.",
       "Cook rice and steam greens until just tender.",
-      "Mix miso, honey and a little water; brush over salmon.",
+      "Mix miso, honey, finely grated ginger and a little water; brush over salmon.",
       "Bake or grill salmon until cooked through and flaky.",
       "Serve salmon over rice with greens and sesame seeds.",
       "Finish with lime off the heat, tasting in small additions until the finished dish tastes bright and balanced.",
@@ -7305,7 +7287,7 @@
         "per_serving_high_gbp": 2.63,
         "confidence": "INDICATIVE_UNVERIFIED",
         "source": "Derived from Jersey provisional recipe estimate using its assumed 1.10 island factor (UK = Jersey / 1.10); NOT a survey of UK supermarket prices",
-        "uplift_assumption": 1.0,
+        "uplift_assumption": 1,
         "baseline_from": "Jersey indicative estimate divided by 1.10; provisional UK guide"
       }
     },
@@ -7430,7 +7412,7 @@
         "per_serving_high_gbp": 3.23,
         "confidence": "INDICATIVE_UNVERIFIED",
         "source": "Derived from Jersey provisional recipe estimate using its assumed 1.10 island factor (UK = Jersey / 1.10); NOT a survey of UK supermarket prices",
-        "uplift_assumption": 1.0,
+        "uplift_assumption": 1,
         "baseline_from": "Jersey indicative estimate divided by 1.10; provisional UK guide"
       }
     },
@@ -7554,7 +7536,7 @@
         "per_serving_high_gbp": 4.48,
         "confidence": "INDICATIVE_UNVERIFIED",
         "source": "Derived from Jersey provisional recipe estimate using its assumed 1.10 island factor (UK = Jersey / 1.10); NOT a survey of UK supermarket prices",
-        "uplift_assumption": 1.0,
+        "uplift_assumption": 1,
         "baseline_from": "Jersey indicative estimate divided by 1.10; provisional UK guide"
       }
     },
@@ -7698,7 +7680,7 @@
         "per_serving_high_gbp": 5.95,
         "confidence": "INDICATIVE_UNVERIFIED",
         "source": "Derived from Jersey provisional recipe estimate using its assumed 1.10 island factor (UK = Jersey / 1.10); NOT a survey of UK supermarket prices",
-        "uplift_assumption": 1.0,
+        "uplift_assumption": 1,
         "baseline_from": "Jersey indicative estimate divided by 1.10; provisional UK guide",
         "ingredient_addition_estimate_gbp": 0.33,
         "ingredient_addition_price_source": "Existing indicative canonical price catalogue; retailer verification still required"
@@ -7817,7 +7799,7 @@
       },
       "Guernsey": {
         "estimate_gbp": 13.81,
-        "range_low_gbp": 11.0,
+        "range_low_gbp": 11,
         "range_high_gbp": 16.62,
         "per_serving_estimate_gbp": 2.3,
         "per_serving_low_gbp": 1.83,
@@ -7839,7 +7821,7 @@
         "per_serving_high_gbp": 2.31,
         "confidence": "INDICATIVE_UNVERIFIED",
         "source": "Derived from Jersey provisional recipe estimate using its assumed 1.10 island factor (UK = Jersey / 1.10); NOT a survey of UK supermarket prices",
-        "uplift_assumption": 1.0,
+        "uplift_assumption": 1,
         "baseline_from": "Jersey indicative estimate divided by 1.10; provisional UK guide",
         "ingredient_addition_estimate_gbp": 0.33,
         "ingredient_addition_price_source": "Existing indicative canonical price catalogue; retailer verification still required"
@@ -7980,7 +7962,7 @@
         "per_serving_high_gbp": 3.69,
         "confidence": "INDICATIVE_UNVERIFIED",
         "source": "Derived from Jersey provisional recipe estimate using its assumed 1.10 island factor (UK = Jersey / 1.10); NOT a survey of UK supermarket prices",
-        "uplift_assumption": 1.0,
+        "uplift_assumption": 1,
         "baseline_from": "Jersey indicative estimate divided by 1.10; provisional UK guide",
         "ingredient_addition_estimate_gbp": 0.08,
         "ingredient_addition_price_source": "Existing indicative canonical price catalogue; retailer verification still required"
@@ -8107,7 +8089,7 @@
         "per_serving_high_gbp": 2.72,
         "confidence": "INDICATIVE_UNVERIFIED",
         "source": "Derived from Jersey provisional recipe estimate using its assumed 1.10 island factor (UK = Jersey / 1.10); NOT a survey of UK supermarket prices",
-        "uplift_assumption": 1.0,
+        "uplift_assumption": 1,
         "baseline_from": "Jersey indicative estimate divided by 1.10; provisional UK guide"
       }
     },
@@ -8239,7 +8221,7 @@
         "per_serving_high_gbp": 9.14,
         "confidence": "INDICATIVE_UNVERIFIED",
         "source": "Derived from Jersey provisional recipe estimate using its assumed 1.10 island factor (UK = Jersey / 1.10); NOT a survey of UK supermarket prices",
-        "uplift_assumption": 1.0,
+        "uplift_assumption": 1,
         "baseline_from": "Jersey indicative estimate divided by 1.10; provisional UK guide"
       }
     },
@@ -8362,7 +8344,7 @@
         "per_serving_high_gbp": 13.36,
         "confidence": "INDICATIVE_UNVERIFIED",
         "source": "Derived from Jersey provisional recipe estimate using its assumed 1.10 island factor (UK = Jersey / 1.10); NOT a survey of UK supermarket prices",
-        "uplift_assumption": 1.0,
+        "uplift_assumption": 1,
         "baseline_from": "Jersey indicative estimate divided by 1.10; provisional UK guide",
         "ingredient_addition_estimate_gbp": 0.06,
         "ingredient_addition_price_source": "Existing indicative canonical price catalogue; retailer verification still required"
@@ -8399,8 +8381,8 @@
     "tip": "Tear burrata over the hot gnocchi at the table so it stays soft and creamy.",
     "method": [
       "Pan-fry gnocchi in olive oil until golden. Leave space between gnocchi in the pan so the surfaces brown rather than steam.",
-      "Finely chop or grate the garlic and add with the softened aromatics so their fragrance runs through the sauce.",
-      "Stir through pesto and a splash of water. Lower the heat before adding pesto to keep its fresh flavour. Reserve a little starchy cooking water, then toss the pasta and sauce together until the coating is glossy rather than watery.",
+      "Lower the heat, add the finely chopped garlic and stir briefly until fragrant, keeping it pale.",
+      "Stir through pesto and a splash of water. Lower the heat before adding pesto to keep its fresh flavour.",
       "Add cherry tomatoes and warm through. Warm through gently and add a splash of water if the sauce is too thick.",
       "Top with burrata and fresh basil. Tear burrata over the hot gnocchi just before serving."
     ],
@@ -8502,7 +8484,7 @@
         "per_serving_high_gbp": 7.43,
         "confidence": "INDICATIVE_UNVERIFIED",
         "source": "Derived from Jersey provisional recipe estimate using its assumed 1.10 island factor (UK = Jersey / 1.10); NOT a survey of UK supermarket prices",
-        "uplift_assumption": 1.0,
+        "uplift_assumption": 1,
         "baseline_from": "Jersey indicative estimate divided by 1.10; provisional UK guide",
         "ingredient_addition_estimate_gbp": 0.1,
         "ingredient_addition_price_source": "Existing indicative canonical price catalogue; retailer verification still required"
@@ -8511,8 +8493,8 @@
     "data_format_fixed_from": "STRUCTURED_ALREADY",
     "steps": [
       "Pan-fry gnocchi in olive oil until golden. Leave space between gnocchi in the pan so the surfaces brown rather than steam.",
-      "Finely chop or grate the garlic and add with the softened aromatics so their fragrance runs through the sauce.",
-      "Stir through pesto and a splash of water. Lower the heat before adding pesto to keep its fresh flavour. Reserve a little starchy cooking water, then toss the pasta and sauce together until the coating is glossy rather than watery.",
+      "Lower the heat, add the finely chopped garlic and stir briefly until fragrant, keeping it pale.",
+      "Stir through pesto and a splash of water. Lower the heat before adding pesto to keep its fresh flavour.",
       "Add cherry tomatoes and warm through. Warm through gently and add a splash of water if the sauce is too thick.",
       "Top with burrata and fresh basil. Tear burrata over the hot gnocchi just before serving."
     ],
@@ -8538,12 +8520,11 @@
     "image": "release-assets/basketboss-v17/images/existing/date-lemon-chicken.webp",
     "tip": "Add capers and lemon off the heat for a lively, bright pan sauce.",
     "method": [
+      "Halve the listed baby potatoes and boil in water until easily pierced, about 15–20 minutes; drain and keep warm while you cook the chicken and lemon-caper sauce.",
       "Flatten chicken fillets and season lightly. Flatten fillets to a similar thickness for even cooking; wash hands after handling raw chicken.",
-      "Finely chop or grate the garlic and add with the softened aromatics so their fragrance runs through the sauce.",
       "Pan-sear until golden and fully cooked; set aside. Cook until golden and the centre is cooked through, then transfer to a clean plate. Before serving, cut into the thickest piece: it should be steaming hot throughout with no pink meat, and the juices should run clear. If unsure, continue cooking. Give the first side time to turn golden before stirring; a crowded pan steams instead of sears.",
-      "Simmer lemon juice, stock, capers and butter. Add lemon and capers to the pan juices, scraping up the browned bits.",
-      "Return chicken to coat and serve with potatoes. Return chicken briefly to coat in sauce without overcooking.",
-      "Halve the listed baby potatoes and boil in water until easily pierced, about 15–20 minutes; drain and serve with chicken and lemon-caper sauce."
+      "Lower the heat after removing the cooked chicken. Add finely chopped garlic and stir briefly until fragrant, then add the lemon juice, stock, capers and butter. Simmer, scraping up the browned bits.",
+      "Return chicken to coat and serve with potatoes. Return chicken briefly to coat in sauce without overcooking."
     ],
     "ingredients": [
       [
@@ -8643,7 +8624,7 @@
         "per_serving_high_gbp": 7.07,
         "confidence": "INDICATIVE_UNVERIFIED",
         "source": "Derived from Jersey provisional recipe estimate using its assumed 1.10 island factor (UK = Jersey / 1.10); NOT a survey of UK supermarket prices",
-        "uplift_assumption": 1.0,
+        "uplift_assumption": 1,
         "baseline_from": "Jersey indicative estimate divided by 1.10; provisional UK guide",
         "ingredient_addition_estimate_gbp": 0.1,
         "ingredient_addition_price_source": "Existing indicative canonical price catalogue; retailer verification still required"
@@ -8651,12 +8632,11 @@
     },
     "data_format_fixed_from": "STRUCTURED_ALREADY",
     "steps": [
+      "Halve the listed baby potatoes and boil in water until easily pierced, about 15–20 minutes; drain and keep warm while you cook the chicken and lemon-caper sauce.",
       "Flatten chicken fillets and season lightly. Flatten fillets to a similar thickness for even cooking; wash hands after handling raw chicken.",
-      "Finely chop or grate the garlic and add with the softened aromatics so their fragrance runs through the sauce.",
       "Pan-sear until golden and fully cooked; set aside. Cook until golden and the centre is cooked through, then transfer to a clean plate. Before serving, cut into the thickest piece: it should be steaming hot throughout with no pink meat, and the juices should run clear. If unsure, continue cooking. Give the first side time to turn golden before stirring; a crowded pan steams instead of sears.",
-      "Simmer lemon juice, stock, capers and butter. Add lemon and capers to the pan juices, scraping up the browned bits.",
-      "Return chicken to coat and serve with potatoes. Return chicken briefly to coat in sauce without overcooking.",
-      "Halve the listed baby potatoes and boil in water until easily pierced, about 15–20 minutes; drain and serve with chicken and lemon-caper sauce."
+      "Lower the heat after removing the cooked chicken. Add finely chopped garlic and stir briefly until fragrant, then add the lemon juice, stock, capers and butter. Simmer, scraping up the browned bits.",
+      "Return chicken to coat and serve with potatoes. Return chicken briefly to coat in sauce without overcooking."
     ],
     "culinary_prep_notes": [
       "Pat dry and season before cooking; give the surface time to brown before moving or turning.",
@@ -8773,7 +8753,7 @@
         "per_serving_high_gbp": 5.43,
         "confidence": "INDICATIVE_UNVERIFIED",
         "source": "Derived from Jersey provisional recipe estimate using its assumed 1.10 island factor (UK = Jersey / 1.10); NOT a survey of UK supermarket prices",
-        "uplift_assumption": 1.0,
+        "uplift_assumption": 1,
         "baseline_from": "Jersey indicative estimate divided by 1.10; provisional UK guide"
       }
     },
@@ -8901,7 +8881,7 @@
         "per_serving_high_gbp": 3.58,
         "confidence": "INDICATIVE_UNVERIFIED",
         "source": "Derived from Jersey provisional recipe estimate using its assumed 1.10 island factor (UK = Jersey / 1.10); NOT a survey of UK supermarket prices",
-        "uplift_assumption": 1.0,
+        "uplift_assumption": 1,
         "baseline_from": "Jersey indicative estimate divided by 1.10; provisional UK guide",
         "ingredient_addition_estimate_gbp": 0.15,
         "ingredient_addition_price_source": "Existing indicative canonical price catalogue; retailer verification still required"
@@ -9027,7 +9007,7 @@
         "per_serving_high_gbp": 2.93,
         "confidence": "INDICATIVE_UNVERIFIED",
         "source": "Derived from Jersey provisional recipe estimate using its assumed 1.10 island factor (UK = Jersey / 1.10); NOT a survey of UK supermarket prices",
-        "uplift_assumption": 1.0,
+        "uplift_assumption": 1,
         "baseline_from": "Jersey indicative estimate divided by 1.10; provisional UK guide"
       }
     },
@@ -9159,7 +9139,7 @@
         "per_serving_high_gbp": 2.57,
         "confidence": "INDICATIVE_UNVERIFIED",
         "source": "Derived from Jersey provisional recipe estimate using its assumed 1.10 island factor (UK = Jersey / 1.10); NOT a survey of UK supermarket prices",
-        "uplift_assumption": 1.0,
+        "uplift_assumption": 1,
         "baseline_from": "Jersey indicative estimate divided by 1.10; provisional UK guide"
       }
     },
@@ -9293,7 +9273,7 @@
         "per_serving_high_gbp": 5.06,
         "confidence": "INDICATIVE_UNVERIFIED",
         "source": "Derived from Jersey provisional recipe estimate using its assumed 1.10 island factor (UK = Jersey / 1.10); NOT a survey of UK supermarket prices",
-        "uplift_assumption": 1.0,
+        "uplift_assumption": 1,
         "baseline_from": "Jersey indicative estimate divided by 1.10; provisional UK guide",
         "ingredient_addition_estimate_gbp": 0.1,
         "ingredient_addition_price_source": "Existing indicative canonical price catalogue; retailer verification still required"
@@ -9329,12 +9309,11 @@
     "image": "release-assets/basketboss-v17/images/existing/pan-gnocchi-spinach.webp",
     "tip": "Brown the gnocchi before adding cream, then fold in spinach just until wilted.",
     "method": [
-      "Pan-fry the gnocchi until golden in patches before adding cream; stir garlic gently so it perfumes the sauce without catching.",
-      "Brown gnocchi in a large frying pan. Let the gnocchi sit undisturbed briefly to develop golden edges.",
-      "Add garlic, cream and a splash of water. Lower heat before adding cream so the sauce simmers rather than boils hard.",
-      "Simmer until gnocchi is tender. Stir spinach in gradually until wilted. Reserve a little starchy cooking water, then toss the pasta and sauce together until the coating is glossy rather than watery.",
-      "Fold in the spinach until just wilted and finish off the heat with a little lemon zest and juice to cut through the cream.",
-      "Fold through the parmesan, then serve when the gnocchi is tender and the sauce coats it evenly."
+      "Brown the gnocchi in a large non-stick frying pan. Let it sit undisturbed briefly to develop golden edges.",
+      "Add finely chopped garlic, stir briefly until fragrant, then lower the heat and add the cream with a splash of water.",
+      "Simmer gently, stirring, until the gnocchi is tender. Add a splash of water if the sauce becomes too thick.",
+      "Fold in the spinach gradually until just wilted.",
+      "Take the pan off the heat. Stir in the Parmesan, then add a little lemon zest and juice to taste and serve."
     ],
     "ingredients": [
       [
@@ -9428,7 +9407,7 @@
         "per_serving_high_gbp": 2.91,
         "confidence": "INDICATIVE_UNVERIFIED",
         "source": "Derived from Jersey provisional recipe estimate using its assumed 1.10 island factor (UK = Jersey / 1.10); NOT a survey of UK supermarket prices",
-        "uplift_assumption": 1.0,
+        "uplift_assumption": 1,
         "baseline_from": "Jersey indicative estimate divided by 1.10; provisional UK guide",
         "ingredient_addition_estimate_gbp": 0.33,
         "ingredient_addition_price_source": "Existing indicative canonical price catalogue; retailer verification still required"
@@ -9436,12 +9415,11 @@
     },
     "data_format_fixed_from": "STRUCTURED_ALREADY",
     "steps": [
-      "Pan-fry the gnocchi until golden in patches before adding cream; stir garlic gently so it perfumes the sauce without catching.",
-      "Brown gnocchi in a large frying pan. Let the gnocchi sit undisturbed briefly to develop golden edges.",
-      "Add garlic, cream and a splash of water. Lower heat before adding cream so the sauce simmers rather than boils hard.",
-      "Simmer until gnocchi is tender. Stir spinach in gradually until wilted. Reserve a little starchy cooking water, then toss the pasta and sauce together until the coating is glossy rather than watery.",
-      "Fold in the spinach until just wilted and finish off the heat with a little lemon zest and juice to cut through the cream.",
-      "Stir through spinach and parmesan. Serve when gnocchi is tender and the sauce coats it evenly."
+      "Brown the gnocchi in a large non-stick frying pan. Let it sit undisturbed briefly to develop golden edges.",
+      "Add finely chopped garlic, stir briefly until fragrant, then lower the heat and add the cream with a splash of water.",
+      "Simmer gently, stirring, until the gnocchi is tender. Add a splash of water if the sauce becomes too thick.",
+      "Fold in the spinach gradually until just wilted.",
+      "Take the pan off the heat. Stir in the Parmesan, then add a little lemon zest and juice to taste and serve."
     ],
     "culinary_prep_notes": [
       "Cook until just tender and handle gently; toss with sauce rather than over-stirring.",
@@ -9566,7 +9544,7 @@
         "per_serving_high_gbp": 3.77,
         "confidence": "INDICATIVE_UNVERIFIED",
         "source": "Derived from Jersey provisional recipe estimate using its assumed 1.10 island factor (UK = Jersey / 1.10); NOT a survey of UK supermarket prices",
-        "uplift_assumption": 1.0,
+        "uplift_assumption": 1,
         "baseline_from": "Jersey indicative estimate divided by 1.10; provisional UK guide",
         "ingredient_addition_estimate_gbp": 0.33,
         "ingredient_addition_price_source": "Existing indicative canonical price catalogue; retailer verification still required"
@@ -9604,7 +9582,7 @@
     "method": [
       "Coat chicken strips in seasoned breadcrumbs. Press breadcrumbs firmly onto chicken so the coating stays in place.",
       "Bake until crisp and chicken is cooked through. Space strips apart on the tray so hot air can crisp them. Before serving, cut into the thickest piece: it should be steaming hot throughout with no pink meat, and the juices should run clear. If unsure, continue cooking. Check for a gently golden surface as well as the stated cooking time; the food should look and feel cooked through.",
-      "Finely chop or grate the garlic and add with the softened aromatics so their fragrance runs through the sauce.",
+      "Crush the garlic and stir it into the Caesar dressing.",
       "Toss lettuce with Caesar dressing. Check the thickest strip is cooked through before slicing. Before serving, cut into the thickest piece: it should be steaming hot throughout with no pink meat, and the juices should run clear. If unsure, continue cooking.",
       "Fill wraps with chicken, lettuce and parmesan. Dress lettuce lightly and assemble wraps immediately to keep them crunchy."
     ],
@@ -9707,7 +9685,7 @@
         "per_serving_high_gbp": 3.62,
         "confidence": "INDICATIVE_UNVERIFIED",
         "source": "Derived from Jersey provisional recipe estimate using its assumed 1.10 island factor (UK = Jersey / 1.10); NOT a survey of UK supermarket prices",
-        "uplift_assumption": 1.0,
+        "uplift_assumption": 1,
         "baseline_from": "Jersey indicative estimate divided by 1.10; provisional UK guide",
         "ingredient_addition_estimate_gbp": 0.1,
         "ingredient_addition_price_source": "Existing indicative canonical price catalogue; retailer verification still required"
@@ -9717,7 +9695,7 @@
     "steps": [
       "Coat chicken strips in seasoned breadcrumbs. Press breadcrumbs firmly onto chicken so the coating stays in place.",
       "Bake until crisp and chicken is cooked through. Space strips apart on the tray so hot air can crisp them. Before serving, cut into the thickest piece: it should be steaming hot throughout with no pink meat, and the juices should run clear. If unsure, continue cooking. Check for a gently golden surface as well as the stated cooking time; the food should look and feel cooked through.",
-      "Finely chop or grate the garlic and add with the softened aromatics so their fragrance runs through the sauce.",
+      "Crush the garlic and stir it into the Caesar dressing.",
       "Toss lettuce with Caesar dressing. Check the thickest strip is cooked through before slicing. Before serving, cut into the thickest piece: it should be steaming hot throughout with no pink meat, and the juices should run clear. If unsure, continue cooking.",
       "Fill wraps with chicken, lettuce and parmesan. Dress lettuce lightly and assemble wraps immediately to keep them crunchy."
     ],
@@ -9743,12 +9721,12 @@
     "image": "release-assets/basketboss-v17/images/existing/family-sweet-sour.webp",
     "tip": "Add pineapple and peppers towards the end to keep their bite.",
     "method": [
+      "Cook the listed rice separately following its packet directions while you prepare and cook the chicken.",
       "Grate the fresh ginger; quickly sauté it before adding peppers and chicken so the sweet-and-sour sauce gains a fresh aromatic base.",
       "Cook diced chicken in a large pan until golden. Cut chicken into even pieces and cook until the centre is cooked through. Before serving, cut into the thickest piece: it should be steaming hot throughout with no pink meat, and the juices should run clear. If unsure, continue cooking. Cook in batches in a properly hot pan so the protein colours and the vegetables stay crisp-tender instead of steaming.",
       "Add peppers and pineapple pieces. Add vegetables in stages so they stay slightly crisp.",
       "Pour in sweet-and-sour sauce and simmer until chicken is fully cooked. Stir sauce ingredients together before adding to avoid lumps.",
-      "Reduce the sauce briefly until glossy and lightly coats the chicken, then serve immediately over the rice.",
-      "Serve with fluffy rice. Simmer until sauce thickens and coats the chicken; serve immediately."
+      "Reduce the sauce briefly until glossy and lightly coats the chicken, then serve immediately over the rice."
     ],
     "ingredients": [
       [
@@ -9839,7 +9817,7 @@
         "per_serving_high_gbp": 4.23,
         "confidence": "INDICATIVE_UNVERIFIED",
         "source": "Derived from Jersey provisional recipe estimate using its assumed 1.10 island factor (UK = Jersey / 1.10); NOT a survey of UK supermarket prices",
-        "uplift_assumption": 1.0,
+        "uplift_assumption": 1,
         "baseline_from": "Jersey indicative estimate divided by 1.10; provisional UK guide",
         "ingredient_addition_estimate_gbp": 0.02,
         "ingredient_addition_price_source": "Existing indicative canonical price catalogue; retailer verification still required"
@@ -9847,12 +9825,12 @@
     },
     "data_format_fixed_from": "STRUCTURED_ALREADY",
     "steps": [
+      "Cook the listed rice separately following its packet directions while you prepare and cook the chicken.",
       "Grate the fresh ginger; quickly sauté it before adding peppers and chicken so the sweet-and-sour sauce gains a fresh aromatic base.",
       "Cook diced chicken in a large pan until golden. Cut chicken into even pieces and cook until the centre is cooked through. Before serving, cut into the thickest piece: it should be steaming hot throughout with no pink meat, and the juices should run clear. If unsure, continue cooking. Cook in batches in a properly hot pan so the protein colours and the vegetables stay crisp-tender instead of steaming.",
       "Add peppers and pineapple pieces. Add vegetables in stages so they stay slightly crisp.",
       "Pour in sweet-and-sour sauce and simmer until chicken is fully cooked. Stir sauce ingredients together before adding to avoid lumps.",
-      "Reduce the sauce briefly until glossy and lightly coats the chicken, then serve immediately over the rice.",
-      "Serve with fluffy rice. Simmer until sauce thickens and coats the chicken; serve immediately."
+      "Reduce the sauce briefly until glossy and lightly coats the chicken, then serve immediately over the rice."
     ],
     "culinary_prep_notes": [
       "Pat dry and season before cooking; give the surface time to brown before moving or turning.",
@@ -9967,7 +9945,7 @@
         "per_serving_high_gbp": 3.17,
         "confidence": "INDICATIVE_UNVERIFIED",
         "source": "Derived from Jersey provisional recipe estimate using its assumed 1.10 island factor (UK = Jersey / 1.10); NOT a survey of UK supermarket prices",
-        "uplift_assumption": 1.0,
+        "uplift_assumption": 1,
         "baseline_from": "Jersey indicative estimate divided by 1.10; provisional UK guide",
         "ingredient_addition_estimate_gbp": 0.1,
         "ingredient_addition_price_source": "Existing indicative canonical price catalogue; retailer verification still required"
@@ -10110,7 +10088,7 @@
         "per_serving_high_gbp": 3.39,
         "confidence": "INDICATIVE_UNVERIFIED",
         "source": "Derived from Jersey provisional recipe estimate using its assumed 1.10 island factor (UK = Jersey / 1.10); NOT a survey of UK supermarket prices",
-        "uplift_assumption": 1.0,
+        "uplift_assumption": 1,
         "baseline_from": "Jersey indicative estimate divided by 1.10; provisional UK guide",
         "ingredient_addition_estimate_gbp": 0.1,
         "ingredient_addition_price_source": "Existing indicative canonical price catalogue; retailer verification still required"
@@ -10141,15 +10119,14 @@
   {
     "id": "extra-air-fryer-garlic-parmesan-potatoes",
     "name": "Air-fryer garlic parmesan potatoes",
-    "category": "Air Fryer · New recipe",
+    "category": "Side dishes · Air Fryer",
     "tag": "AIR FRYER",
     "mins": 30,
     "cost": 9.64,
     "image": "release-assets/basketboss-v17/images/existing/extra-air-fryer-garlic-parmesan-potatoes.webp",
     "tip": "A fuss-free air-fryer take on air-fryer garlic parmesan potatoes, starring baby potatoes.",
     "method": [
-      "Dry the potato pieces thoroughly, then toss with garlic, olive oil and parmesan; keep them in one layer in the basket.",
-      "Halve any large baby potatoes and pat dry. Preheat the air fryer to 190°C. Cook the aromatic base until fragrant, then finish the sauce until it lightly coats the back of a spoon.",
+      "Halve any large baby potatoes and pat dry. Preheat the air fryer to 190°C.",
       "Toss potatoes with oil and crushed garlic. Spread in a single layer, cooking in batches if needed.",
       "Air-fry for approximately 18–25 minutes, shaking halfway. A knife should slide easily into the centre and the edges should be crisp.",
       "Finish the crispy potatoes with fine lemon zest to brighten the rich cheese and garlic.",
@@ -10239,14 +10216,14 @@
       },
       "UK": {
         "estimate_gbp": 8.76,
-        "range_low_gbp": 7.0,
+        "range_low_gbp": 7,
         "range_high_gbp": 10.52,
         "per_serving_estimate_gbp": 2.19,
         "per_serving_low_gbp": 1.75,
         "per_serving_high_gbp": 2.63,
         "confidence": "INDICATIVE_UNVERIFIED",
         "source": "Derived from Jersey provisional recipe estimate using its assumed 1.10 island factor (UK = Jersey / 1.10); NOT a survey of UK supermarket prices",
-        "uplift_assumption": 1.0,
+        "uplift_assumption": 1,
         "baseline_from": "Jersey indicative estimate divided by 1.10; provisional UK guide",
         "ingredient_addition_estimate_gbp": 0.33,
         "ingredient_addition_price_source": "Existing indicative canonical price catalogue; retailer verification still required"
@@ -10254,8 +10231,7 @@
     },
     "data_format_fixed_from": "STRUCTURED_ALREADY",
     "steps": [
-      "Dry the potato pieces thoroughly, then toss with garlic, olive oil and parmesan; keep them in one layer in the basket.",
-      "Halve any large baby potatoes and pat dry. Preheat the air fryer to 190°C. Cook the aromatic base until fragrant, then finish the sauce until it lightly coats the back of a spoon.",
+      "Halve any large baby potatoes and pat dry. Preheat the air fryer to 190°C.",
       "Toss potatoes with oil and crushed garlic. Spread in a single layer, cooking in batches if needed.",
       "Air-fry for approximately 18–25 minutes, shaking halfway. A knife should slide easily into the centre and the edges should be crisp.",
       "Finish the crispy potatoes with fine lemon zest to brighten the rich cheese and garlic.",
@@ -10270,7 +10246,8 @@
       "Zest the skin before cutting; squeeze in juice at the stated stage so the dish finishes bright and fragrant."
     ],
     "culinary_data_version": "ingredient-sync-all321-v3",
-    "culinary_profile": "Italian/pasta"
+    "culinary_profile": "Italian/pasta",
+    "dinnerEligible": false
   },
   {
     "id": "extra-air-fryer-turkey-meatballs",
@@ -10375,7 +10352,7 @@
         "per_serving_high_gbp": 3.29,
         "confidence": "INDICATIVE_UNVERIFIED",
         "source": "Derived from Jersey provisional recipe estimate using its assumed 1.10 island factor (UK = Jersey / 1.10); NOT a survey of UK supermarket prices",
-        "uplift_assumption": 1.0,
+        "uplift_assumption": 1,
         "baseline_from": "Jersey indicative estimate divided by 1.10; provisional UK guide"
       }
     },
@@ -10498,7 +10475,7 @@
         "per_serving_high_gbp": 2.58,
         "confidence": "INDICATIVE_UNVERIFIED",
         "source": "Derived from Jersey provisional recipe estimate using its assumed 1.10 island factor (UK = Jersey / 1.10); NOT a survey of UK supermarket prices",
-        "uplift_assumption": 1.0,
+        "uplift_assumption": 1,
         "baseline_from": "Jersey indicative estimate divided by 1.10; provisional UK guide",
         "ingredient_addition_estimate_gbp": 0.33,
         "ingredient_addition_price_source": "Existing indicative canonical price catalogue; retailer verification still required"
@@ -10646,7 +10623,7 @@
         "per_serving_high_gbp": 3.35,
         "confidence": "INDICATIVE_UNVERIFIED",
         "source": "Derived from Jersey provisional recipe estimate using its assumed 1.10 island factor (UK = Jersey / 1.10); NOT a survey of UK supermarket prices",
-        "uplift_assumption": 1.0,
+        "uplift_assumption": 1,
         "baseline_from": "Jersey indicative estimate divided by 1.10; provisional UK guide",
         "ingredient_addition_estimate_gbp": 0.35,
         "ingredient_addition_price_source": "Existing indicative canonical price catalogue; retailer verification still required"
@@ -10777,7 +10754,7 @@
         "per_serving_high_gbp": 3.23,
         "confidence": "INDICATIVE_UNVERIFIED",
         "source": "Derived from Jersey provisional recipe estimate using its assumed 1.10 island factor (UK = Jersey / 1.10); NOT a survey of UK supermarket prices",
-        "uplift_assumption": 1.0,
+        "uplift_assumption": 1,
         "baseline_from": "Jersey indicative estimate divided by 1.10; provisional UK guide",
         "ingredient_addition_estimate_gbp": 0.33,
         "ingredient_addition_price_source": "Existing indicative canonical price catalogue; retailer verification still required"
@@ -10813,7 +10790,7 @@
     "tip": "Bring garlic chickpea flatbreads to the table with chickpeas and flatbreads.",
     "method": [
       "Drain, rinse and dry chickpeas. Crush garlic and warm the flatbreads according to their packet.",
-      "Heat oil in a frying pan and cook chickpeas with cumin for 4–6 minutes, stirring until hot and lightly golden. Check near the end for set edges and the intended texture, then cool before slicing so the finish stays neat.",
+      "Heat oil in a frying pan and cook chickpeas with cumin for 4–6 minutes, stirring until hot and lightly golden.",
       "Add garlic for the final 30–60 seconds, stirring so it does not burn.",
       "Spoon chickpeas over warm flatbreads, add yoghurt and serve while hot."
     ],
@@ -10904,14 +10881,14 @@
         "per_serving_high_gbp": 2.59,
         "confidence": "INDICATIVE_UNVERIFIED",
         "source": "Derived from Jersey provisional recipe estimate using its assumed 1.10 island factor (UK = Jersey / 1.10); NOT a survey of UK supermarket prices",
-        "uplift_assumption": 1.0,
+        "uplift_assumption": 1,
         "baseline_from": "Jersey indicative estimate divided by 1.10; provisional UK guide"
       }
     },
     "data_format_fixed_from": "STRUCTURED_ALREADY",
     "steps": [
       "Drain, rinse and dry chickpeas. Crush garlic and warm the flatbreads according to their packet.",
-      "Heat oil in a frying pan and cook chickpeas with cumin for 4–6 minutes, stirring until hot and lightly golden. Check near the end for set edges and the intended texture, then cool before slicing so the finish stays neat.",
+      "Heat oil in a frying pan and cook chickpeas with cumin for 4–6 minutes, stirring until hot and lightly golden.",
       "Add garlic for the final 30–60 seconds, stirring so it does not burn.",
       "Spoon chickpeas over warm flatbreads, add yoghurt and serve while hot."
     ],
@@ -11026,7 +11003,7 @@
         "per_serving_high_gbp": 2.63,
         "confidence": "INDICATIVE_UNVERIFIED",
         "source": "Derived from Jersey provisional recipe estimate using its assumed 1.10 island factor (UK = Jersey / 1.10); NOT a survey of UK supermarket prices",
-        "uplift_assumption": 1.0,
+        "uplift_assumption": 1,
         "baseline_from": "Jersey indicative estimate divided by 1.10; provisional UK guide"
       }
     },
@@ -11170,7 +11147,7 @@
         "per_serving_high_gbp": 2.83,
         "confidence": "INDICATIVE_UNVERIFIED",
         "source": "Derived from Jersey provisional recipe estimate using its assumed 1.10 island factor (UK = Jersey / 1.10); NOT a survey of UK supermarket prices",
-        "uplift_assumption": 1.0,
+        "uplift_assumption": 1,
         "baseline_from": "Jersey indicative estimate divided by 1.10; provisional UK guide",
         "ingredient_addition_estimate_gbp": 0.33,
         "ingredient_addition_price_source": "Existing indicative canonical price catalogue; retailer verification still required"
@@ -11311,7 +11288,7 @@
         "per_serving_high_gbp": 3.51,
         "confidence": "INDICATIVE_UNVERIFIED",
         "source": "Derived from Jersey provisional recipe estimate using its assumed 1.10 island factor (UK = Jersey / 1.10); NOT a survey of UK supermarket prices",
-        "uplift_assumption": 1.0,
+        "uplift_assumption": 1,
         "baseline_from": "Jersey indicative estimate divided by 1.10; provisional UK guide",
         "ingredient_addition_estimate_gbp": 0.33,
         "ingredient_addition_price_source": "Existing indicative canonical price catalogue; retailer verification still required"
@@ -11464,7 +11441,7 @@
         "per_serving_high_gbp": 3.48,
         "confidence": "INDICATIVE_UNVERIFIED",
         "source": "Derived from Jersey provisional recipe estimate using its assumed 1.10 island factor (UK = Jersey / 1.10); NOT a survey of UK supermarket prices",
-        "uplift_assumption": 1.0,
+        "uplift_assumption": 1,
         "baseline_from": "Jersey indicative estimate divided by 1.10; provisional UK guide",
         "ingredient_addition_estimate_gbp": 0.48,
         "ingredient_addition_price_source": "Existing indicative canonical price catalogue; retailer verification still required"
@@ -11503,12 +11480,11 @@
     "image": "release-assets/basketboss-v17/images/existing/extra-cottage-cheese-egg-muffins.webp",
     "tip": "A tempting homemade cottage cheese egg muffins featuring eggs.",
     "method": [
-      "Finely chop parsley and fold into the whisked eggs and cottage cheese with diced peppers for a fresh savoury note.",
-      "Heat oven to 180°C (160°C fan). Grease a 12-hole muffin tin. Finely chop spinach and peppers.",
-      "Whisk eggs in a bowl until combined. Stir in cottage cheese, vegetables and a pinch of seasoning.",
-      "Divide evenly among muffin holes, filling each about three-quarters full. Bake for 18–23 minutes until risen and lightly golden.",
-      "Bake until the muffins are just set and gently golden; cool briefly before loosening them from the tin. Once the flour is added, fold gently just until no dry pockets remain so the crumb stays tender.",
-      "Check the centres are firm with no liquid egg remaining. Leave in the tin for 5 minutes before lifting out."
+      "Heat oven to 180°C (160°C fan). Grease a 12-hole muffin tin. Finely chop the spinach, peppers and parsley.",
+      "Whisk the eggs in a bowl until combined. Stir in the cottage cheese, spinach, peppers and parsley, with a pinch of seasoning.",
+      "Divide the mixture evenly among the muffin holes, filling each about three-quarters full.",
+      "Bake for 18–23 minutes until lightly golden and set in the centre, with no liquid egg remaining.",
+      "Leave in the tin for 5 minutes before gently loosening and lifting out."
     ],
     "ingredients": [
       [
@@ -11595,7 +11571,7 @@
         "per_serving_high_gbp": 2.58,
         "confidence": "INDICATIVE_UNVERIFIED",
         "source": "Derived from Jersey provisional recipe estimate using its assumed 1.10 island factor (UK = Jersey / 1.10); NOT a survey of UK supermarket prices",
-        "uplift_assumption": 1.0,
+        "uplift_assumption": 1,
         "baseline_from": "Jersey indicative estimate divided by 1.10; provisional UK guide",
         "ingredient_addition_estimate_gbp": 0.33,
         "ingredient_addition_price_source": "Existing indicative canonical price catalogue; retailer verification still required"
@@ -11603,12 +11579,11 @@
     },
     "data_format_fixed_from": "STRUCTURED_ALREADY",
     "steps": [
-      "Finely chop parsley and fold into the whisked eggs and cottage cheese with diced peppers for a fresh savoury note.",
-      "Heat oven to 180°C (160°C fan). Grease a 12-hole muffin tin. Finely chop spinach and peppers.",
-      "Whisk eggs in a bowl until combined. Stir in cottage cheese, vegetables and a pinch of seasoning.",
-      "Divide evenly among muffin holes, filling each about three-quarters full. Bake for 18–23 minutes until risen and lightly golden.",
-      "Bake until the muffins are just set and gently golden; cool briefly before loosening them from the tin. Once the flour is added, fold gently just until no dry pockets remain so the crumb stays tender.",
-      "Check the centres are firm with no liquid egg remaining. Leave in the tin for 5 minutes before lifting out."
+      "Heat oven to 180°C (160°C fan). Grease a 12-hole muffin tin. Finely chop the spinach, peppers and parsley.",
+      "Whisk the eggs in a bowl until combined. Stir in the cottage cheese, spinach, peppers and parsley, with a pinch of seasoning.",
+      "Divide the mixture evenly among the muffin holes, filling each about three-quarters full.",
+      "Bake for 18–23 minutes until lightly golden and set in the centre, with no liquid egg remaining.",
+      "Leave in the tin for 5 minutes before gently loosening and lifting out."
     ],
     "culinary_prep_notes": [
       "Crack into a separate bowl, then beat or fold in as the method requires for a light, even texture.",
@@ -11707,7 +11682,7 @@
         "ingredient_addition_price_source": "Existing indicative canonical price catalogue; retailer verification still required"
       },
       "Guernsey": {
-        "estimate_gbp": 13.0,
+        "estimate_gbp": 13,
         "range_low_gbp": 10.39,
         "range_high_gbp": 15.62,
         "per_serving_estimate_gbp": 3.25,
@@ -11730,7 +11705,7 @@
         "per_serving_high_gbp": 3.25,
         "confidence": "INDICATIVE_UNVERIFIED",
         "source": "Derived from Jersey provisional recipe estimate using its assumed 1.10 island factor (UK = Jersey / 1.10); NOT a survey of UK supermarket prices",
-        "uplift_assumption": 1.0,
+        "uplift_assumption": 1,
         "baseline_from": "Jersey indicative estimate divided by 1.10; provisional UK guide",
         "ingredient_addition_estimate_gbp": 0.41,
         "ingredient_addition_price_source": "Existing indicative canonical price catalogue; retailer verification still required"
@@ -11769,9 +11744,9 @@
       "Pat the chicken skin dry and rub all over with crushed garlic and dried thyme; tuck the seasoned wings under before roasting.",
       "Pat chicken dry, prepare roasting vegetables and heat oven to 190°C (170°C fan). Leave space between the ingredients so hot air reaches the edges and they roast golden rather than steaming.",
       "Season chicken and roast according to its actual weight and packaging guidance. Cut listed potatoes into wedges and carrots into thick batons; add them to a roomy tray for the final 40–50 minutes of roasting, checking both vegetables are fully tender. Allow extra time if the joint is large.",
-      "Rest the bird before carving; serve with tender roasted vegetables and pan juices.",
-      "Rest the roast chicken before carving and spoon the savoury roasting juices over the vegetables.",
-      "Check the thickest part is cooked through without touching bone; juices should run clear. Before serving, cut into the thickest piece: it should be steaming hot throughout with no pink meat, and the juices should run clear. If unsure, continue cooking."
+      "Check the thickest part is cooked through without touching bone; juices should run clear. Before serving, cut into the thickest piece: it should be steaming hot throughout with no pink meat, and the juices should run clear. If unsure, continue cooking.",
+      "Rest the cooked bird before carving. While it rests, prepare and heat the listed 300 ml gravy according to its packet instructions.",
+      "Serve the carved chicken with the tender roasted vegetables and hot gravy."
     ],
     "ingredients": [
       [
@@ -11862,7 +11837,7 @@
         "per_serving_high_gbp": 3.22,
         "confidence": "INDICATIVE_UNVERIFIED",
         "source": "Derived from Jersey provisional recipe estimate using its assumed 1.10 island factor (UK = Jersey / 1.10); NOT a survey of UK supermarket prices",
-        "uplift_assumption": 1.0,
+        "uplift_assumption": 1,
         "baseline_from": "Jersey indicative estimate divided by 1.10; provisional UK guide",
         "ingredient_addition_estimate_gbp": 0.29,
         "ingredient_addition_price_source": "Existing indicative canonical price catalogue; retailer verification still required"
@@ -11873,9 +11848,9 @@
       "Pat the chicken skin dry and rub all over with crushed garlic and dried thyme; tuck the seasoned wings under before roasting.",
       "Pat chicken dry, prepare roasting vegetables and heat oven to 190°C (170°C fan). Leave space between the ingredients so hot air reaches the edges and they roast golden rather than steaming.",
       "Season chicken and roast according to its actual weight and packaging guidance. Cut listed potatoes into wedges and carrots into thick batons; add them to a roomy tray for the final 40–50 minutes of roasting, checking both vegetables are fully tender. Allow extra time if the joint is large.",
-      "Rest the bird before carving; serve with tender roasted vegetables and pan juices.",
-      "Rest the roast chicken before carving and spoon the savoury roasting juices over the vegetables.",
-      "Check the thickest part is cooked through without touching bone; juices should run clear. Before serving, cut into the thickest piece: it should be steaming hot throughout with no pink meat, and the juices should run clear. If unsure, continue cooking."
+      "Check the thickest part is cooked through without touching bone; juices should run clear. Before serving, cut into the thickest piece: it should be steaming hot throughout with no pink meat, and the juices should run clear. If unsure, continue cooking.",
+      "Rest the cooked bird before carving. While it rests, prepare and heat the listed 300 ml gravy according to its packet instructions.",
+      "Serve the carved chicken with the tender roasted vegetables and hot gravy."
     ],
     "culinary_prep_notes": [
       "Pat the joint dry, season its surface and keep it whole for even roasting; allow it to rest before carving.",
@@ -11996,7 +11971,7 @@
         "per_serving_high_gbp": 3.27,
         "confidence": "INDICATIVE_UNVERIFIED",
         "source": "Derived from Jersey provisional recipe estimate using its assumed 1.10 island factor (UK = Jersey / 1.10); NOT a survey of UK supermarket prices",
-        "uplift_assumption": 1.0,
+        "uplift_assumption": 1,
         "baseline_from": "Jersey indicative estimate divided by 1.10; provisional UK guide",
         "ingredient_addition_estimate_gbp": 0.15,
         "ingredient_addition_price_source": "Existing indicative canonical price catalogue; retailer verification still required"
@@ -12035,7 +12010,7 @@
       "Check whether the gammon needs soaking or pre-cooking according to the pack. Heat the oven to 180°C (160°C fan). Leave space between the ingredients so hot air reaches the edges and they roast golden rather than steaming.",
       "Place the gammon in a roasting dish with a little water, cover with foil and cook for the time specified for its weight on the packaging.",
       "Mix the listed maple syrup, honey and mustard for the glaze. Uncover for the last 20–30 minutes, brush the glaze over the gammon and return to the oven until glossy, watching so it does not burn.",
-      "Check the centre is fully cooked according to the pack and thermometer guidance; rest for 10–15 minutes before slicing thinly. Before serving, check the thickest part is steaming hot throughout, with no pink meat and clear juices; follow the pack instructions for the actual cut and weight.",
+      "Check the centre is fully cooked using the pack’s cooking-time and food-thermometer guidance for the actual cut and weight. Cured gammon can remain pink when cooked, so colour alone is not a doneness check. Rest for 10–15 minutes before slicing thinly.",
       "Prepare the listed potatoes and carrots as bite-sized pieces and roast on a separate tray at 180°C (160°C fan) for approximately 35–50 minutes until cooked through, allowing for the gammon resting time. Serve with sliced gammon."
     ],
     "ingredients": [
@@ -12125,7 +12100,7 @@
         "per_serving_high_gbp": 3.54,
         "confidence": "INDICATIVE_UNVERIFIED",
         "source": "Derived from Jersey provisional recipe estimate using its assumed 1.10 island factor (UK = Jersey / 1.10); NOT a survey of UK supermarket prices",
-        "uplift_assumption": 1.0,
+        "uplift_assumption": 1,
         "baseline_from": "Jersey indicative estimate divided by 1.10; provisional UK guide"
       }
     },
@@ -12134,7 +12109,7 @@
       "Check whether the gammon needs soaking or pre-cooking according to the pack. Heat the oven to 180°C (160°C fan). Leave space between the ingredients so hot air reaches the edges and they roast golden rather than steaming.",
       "Place the gammon in a roasting dish with a little water, cover with foil and cook for the time specified for its weight on the packaging.",
       "Mix the listed maple syrup, honey and mustard for the glaze. Uncover for the last 20–30 minutes, brush the glaze over the gammon and return to the oven until glossy, watching so it does not burn.",
-      "Check the centre is fully cooked according to the pack and thermometer guidance; rest for 10–15 minutes before slicing thinly. Before serving, check the thickest part is steaming hot throughout, with no pink meat and clear juices; follow the pack instructions for the actual cut and weight.",
+      "Check the centre is fully cooked using the pack’s cooking-time and food-thermometer guidance for the actual cut and weight. Cured gammon can remain pink when cooked, so colour alone is not a doneness check. Rest for 10–15 minutes before slicing thinly.",
       "Prepare the listed potatoes and carrots as bite-sized pieces and roast on a separate tray at 180°C (160°C fan) for approximately 35–50 minutes until cooked through, allowing for the gammon resting time. Serve with sliced gammon."
     ],
     "culinary_prep_notes": [
@@ -12268,7 +12243,7 @@
         "per_serving_high_gbp": 3.59,
         "confidence": "INDICATIVE_UNVERIFIED",
         "source": "Derived from Jersey provisional recipe estimate using its assumed 1.10 island factor (UK = Jersey / 1.10); NOT a survey of UK supermarket prices",
-        "uplift_assumption": 1.0,
+        "uplift_assumption": 1,
         "baseline_from": "Jersey indicative estimate divided by 1.10; provisional UK guide",
         "ingredient_addition_estimate_gbp": 0.33,
         "ingredient_addition_price_source": "Existing indicative canonical price catalogue; retailer verification still required"
@@ -12307,10 +12282,9 @@
     "tip": "Bring sticky orange chicken to the table with chicken breast and orange juice.",
     "method": [
       "Cut chicken into even bite-sized pieces and pat dry. Mix the listed orange juice, soy sauce and honey; do not require fresh orange zest unless separately purchased.",
-      "Finely chop or grate the garlic and add with the softened aromatics so their fragrance runs through the sauce.",
       "Heat a frying pan with oil over medium-high heat. Brown the chicken in batches rather than overcrowding the pan. Give the first side time to turn golden before stirring; a crowded pan steams instead of sears.",
-      "Return all chicken to the pan, pour in the orange sauce and simmer for 5–8 minutes, stirring until the chicken is cooked through at its thickest point. For a thicker sauce, mix cornflour with a little cold water and stir in for the final minute. Before serving, cut into the thickest piece: it should be steaming hot throughout with no pink meat, and the juices should run clear. If unsure, continue cooking.",
-      "Check the thickest chicken pieces be cooked through. Taste and balance with more orange or soy, then cook the listed rice separately according to its packet and serve the chicken over the cooked rice. Before serving, cut into the thickest piece: it should be steaming hot throughout with no pink meat, and the juices should run clear. If unsure, continue cooking."
+      "Return all chicken to the pan, stir in the finely chopped garlic briefly, then pour in the orange sauce and simmer for 5–8 minutes, stirring until the chicken is cooked through at its thickest point. For a thicker sauce, mix cornflour with a little cold water and stir in for the final minute. Before serving, cut into the thickest piece: it should be steaming hot throughout with no pink meat, and the juices should run clear. If unsure, continue cooking.",
+      "Check the thickest chicken pieces are cooked through. Taste and balance with more orange or soy, then cook the listed rice separately according to its packet and serve the chicken over the cooked rice. Before serving, cut into the thickest piece: it should be steaming hot throughout with no pink meat, and the juices should run clear. If unsure, continue cooking."
     ],
     "ingredients": [
       [
@@ -12417,7 +12391,7 @@
         "per_serving_high_gbp": 3.38,
         "confidence": "INDICATIVE_UNVERIFIED",
         "source": "Derived from Jersey provisional recipe estimate using its assumed 1.10 island factor (UK = Jersey / 1.10); NOT a survey of UK supermarket prices",
-        "uplift_assumption": 1.0,
+        "uplift_assumption": 1,
         "baseline_from": "Jersey indicative estimate divided by 1.10; provisional UK guide",
         "ingredient_addition_estimate_gbp": 0.1,
         "ingredient_addition_price_source": "Existing indicative canonical price catalogue; retailer verification still required"
@@ -12426,10 +12400,9 @@
     "data_format_fixed_from": "STRUCTURED_ALREADY",
     "steps": [
       "Cut chicken into even bite-sized pieces and pat dry. Mix the listed orange juice, soy sauce and honey; do not require fresh orange zest unless separately purchased.",
-      "Finely chop or grate the garlic and add with the softened aromatics so their fragrance runs through the sauce.",
       "Heat a frying pan with oil over medium-high heat. Brown the chicken in batches rather than overcrowding the pan. Give the first side time to turn golden before stirring; a crowded pan steams instead of sears.",
-      "Return all chicken to the pan, pour in the orange sauce and simmer for 5–8 minutes, stirring until the chicken is cooked through at its thickest point. For a thicker sauce, mix cornflour with a little cold water and stir in for the final minute. Before serving, cut into the thickest piece: it should be steaming hot throughout with no pink meat, and the juices should run clear. If unsure, continue cooking.",
-      "Check the thickest chicken pieces be cooked through. Taste and balance with more orange or soy, then cook the listed rice separately according to its packet and serve the chicken over the cooked rice. Before serving, cut into the thickest piece: it should be steaming hot throughout with no pink meat, and the juices should run clear. If unsure, continue cooking."
+      "Return all chicken to the pan, stir in the finely chopped garlic briefly, then pour in the orange sauce and simmer for 5–8 minutes, stirring until the chicken is cooked through at its thickest point. For a thicker sauce, mix cornflour with a little cold water and stir in for the final minute. Before serving, cut into the thickest piece: it should be steaming hot throughout with no pink meat, and the juices should run clear. If unsure, continue cooking.",
+      "Check the thickest chicken pieces are cooked through. Taste and balance with more orange or soy, then cook the listed rice separately according to its packet and serve the chicken over the cooked rice. Before serving, cut into the thickest piece: it should be steaming hot throughout with no pink meat, and the juices should run clear. If unsure, continue cooking."
     ],
     "culinary_prep_notes": [
       "Pat dry and season before cooking; give the surface time to brown before moving or turning.",
@@ -12454,9 +12427,10 @@
     "image": "release-assets/basketboss-v17/images/existing/extra-korean-beef-bulgogi-bowls.webp",
     "tip": "Bring korean beef bulgogi bowls to the table with beef strips and rice.",
     "method": [
-      "Slice beef thinly across the grain. Mix soy sauce, a little sugar or honey, garlic and sesame oil, then coat the beef for 10–20 minutes.",
+      "Slice beef thinly across the grain. Mix the listed soy sauce, honey, garlic and sesame oil, then coat the beef for 10–20 minutes.",
       "Cook rice according to its packet and prepare the vegetables while it simmers.",
       "Heat a large pan until hot. Stir-fry the beef in small batches for 2–4 minutes, until browned and cooked to your preference; avoid steaming it. Give the first side time to turn golden before stirring; a crowded pan steams instead of sears.",
+      "Remove the browned beef to a clean plate. Stir-fry the listed mixed vegetables in the same pan until piping hot and cooked according to their packet directions.",
       "Return the beef to the pan with the marinade and cook until the sauce is bubbling and the beef is cooked through. Spoon over rice with the prepared vegetables and sesame seeds."
     ],
     "ingredients": [
@@ -12561,15 +12535,16 @@
         "per_serving_high_gbp": 3.8,
         "confidence": "INDICATIVE_UNVERIFIED",
         "source": "Derived from Jersey provisional recipe estimate using its assumed 1.10 island factor (UK = Jersey / 1.10); NOT a survey of UK supermarket prices",
-        "uplift_assumption": 1.0,
+        "uplift_assumption": 1,
         "baseline_from": "Jersey indicative estimate divided by 1.10; provisional UK guide"
       }
     },
     "data_format_fixed_from": "STRUCTURED_ALREADY",
     "steps": [
-      "Slice beef thinly across the grain. Mix soy sauce, a little sugar or honey, garlic and sesame oil, then coat the beef for 10–20 minutes.",
+      "Slice beef thinly across the grain. Mix the listed soy sauce, honey, garlic and sesame oil, then coat the beef for 10–20 minutes.",
       "Cook rice according to its packet and prepare the vegetables while it simmers.",
       "Heat a large pan until hot. Stir-fry the beef in small batches for 2–4 minutes, until browned and cooked to your preference; avoid steaming it. Give the first side time to turn golden before stirring; a crowded pan steams instead of sears.",
+      "Remove the browned beef to a clean plate. Stir-fry the listed mixed vegetables in the same pan until piping hot and cooked according to their packet directions.",
       "Return the beef to the pan with the marinade and cook until the sauce is bubbling and the beef is cooked through. Spoon over rice with the prepared vegetables and sesame seeds."
     ],
     "culinary_prep_notes": [
@@ -12595,7 +12570,7 @@
     "image": "release-assets/basketboss-v17/images/existing/extra-blueberry-overnight-oats.webp",
     "tip": "Bring blueberry overnight oats to the table with rolled oats and milk.",
     "method": [
-      "Put rolled oats into a lidded jar or container. Add milk or yoghurt and stir thoroughly so no dry oats remain. Watch the final texture and serve as soon as the crisp or creamy elements reach their best point.",
+      "Put rolled oats into a lidded jar or container. Add the listed milk and yoghurt and stir thoroughly so no dry oats remain.",
       "Fold through half the blueberries and a little honey or cinnamon only if already in your cupboard (neither is included in the estimated ingredient cost).",
       "Cover and refrigerate for at least 4 hours, preferably overnight, until the oats have softened.",
       "Stir before eating, loosen with a splash of milk if needed and top with the remaining blueberries. Keep chilled until serving."
@@ -12658,7 +12633,7 @@
         "range_high_gbp": 11.99,
         "per_serving_estimate_gbp": 2.48,
         "per_serving_low_gbp": 1.96,
-        "per_serving_high_gbp": 3.0,
+        "per_serving_high_gbp": 3,
         "confidence": "INDICATIVE_UNVERIFIED",
         "source": "Previous recipe draft cost/range × explicit provisional island factor; not observed retailer prices",
         "source_base_low_gbp": 6.54,
@@ -12674,13 +12649,13 @@
         "per_serving_high_gbp": 2.5,
         "confidence": "INDICATIVE_UNVERIFIED",
         "source": "Derived from Jersey provisional recipe estimate using its assumed 1.10 island factor (UK = Jersey / 1.10); NOT a survey of UK supermarket prices",
-        "uplift_assumption": 1.0,
+        "uplift_assumption": 1,
         "baseline_from": "Jersey indicative estimate divided by 1.10; provisional UK guide"
       }
     },
     "data_format_fixed_from": "STRUCTURED_ALREADY",
     "steps": [
-      "Put rolled oats into a lidded jar or container. Add milk or yoghurt and stir thoroughly so no dry oats remain. Watch the final texture and serve as soon as the crisp or creamy elements reach their best point.",
+      "Put rolled oats into a lidded jar or container. Add the listed milk and yoghurt and stir thoroughly so no dry oats remain.",
       "Fold through half the blueberries and a little honey or cinnamon only if already in your cupboard (neither is included in the estimated ingredient cost).",
       "Cover and refrigerate for at least 4 hours, preferably overnight, until the oats have softened.",
       "Stir before eating, loosen with a splash of milk if needed and top with the remaining blueberries. Keep chilled until serving."
@@ -12705,7 +12680,7 @@
     "tip": "A flavour-packed smoked salmon scrambled eggs with smoked salmon in the spotlight.",
     "method": [
       "Crack eggs into a bowl, beat lightly with a fork. Slice the chives and toast the bread.",
-      "Melt a little butter in a non-stick pan over low heat. Pour in the eggs and stir gently with a spatula. Pat the fish or seafood dry before searing and cook just until opaque and tender, without letting the edges dry out.",
+      "Melt a little butter in a non-stick pan over low heat. Pour in the eggs and stir gently with a spatula.",
       "Cook over low heat, stirring gently for 3–5 minutes until the eggs are softly set with no visible runny liquid; remove from the heat before they dry out.",
       "Finish with lemon off the heat, tasting in small additions until the finished dish tastes bright and balanced.",
       "For a family dish, heat the smoked salmon until steaming hot throughout before folding it into the fully cooked eggs; serve immediately on toast with chives. Cold-smoked salmon is a ready-to-eat fish that needs extra care for vulnerable people."
@@ -12804,7 +12779,7 @@
         "per_serving_high_gbp": 3.4,
         "confidence": "INDICATIVE_UNVERIFIED",
         "source": "Derived from Jersey provisional recipe estimate using its assumed 1.10 island factor (UK = Jersey / 1.10); NOT a survey of UK supermarket prices",
-        "uplift_assumption": 1.0,
+        "uplift_assumption": 1,
         "baseline_from": "Jersey indicative estimate divided by 1.10; provisional UK guide",
         "ingredient_addition_estimate_gbp": 0.33,
         "ingredient_addition_price_source": "Existing indicative canonical price catalogue; retailer verification still required"
@@ -12813,7 +12788,7 @@
     "data_format_fixed_from": "STRUCTURED_ALREADY",
     "steps": [
       "Crack eggs into a bowl, beat lightly with a fork. Slice the chives and toast the bread.",
-      "Melt a little butter in a non-stick pan over low heat. Pour in the eggs and stir gently with a spatula. Pat the fish or seafood dry before searing and cook just until opaque and tender, without letting the edges dry out.",
+      "Melt a little butter in a non-stick pan over low heat. Pour in the eggs and stir gently with a spatula.",
       "Cook over low heat, stirring gently for 3–5 minutes until the eggs are softly set with no visible runny liquid; remove from the heat before they dry out.",
       "Finish with lemon off the heat, tasting in small additions until the finished dish tastes bright and balanced.",
       "For a family dish, heat the smoked salmon until steaming hot throughout before folding it into the fully cooked eggs; serve immediately on toast with chives. Cold-smoked salmon is a ready-to-eat fish that needs extra care for vulnerable people."
@@ -12939,7 +12914,7 @@
         "per_serving_high_gbp": 2.74,
         "confidence": "INDICATIVE_UNVERIFIED",
         "source": "Derived from Jersey provisional recipe estimate using its assumed 1.10 island factor (UK = Jersey / 1.10); NOT a survey of UK supermarket prices",
-        "uplift_assumption": 1.0,
+        "uplift_assumption": 1,
         "baseline_from": "Jersey indicative estimate divided by 1.10; provisional UK guide",
         "ingredient_addition_estimate_gbp": 0.33,
         "ingredient_addition_price_source": "Existing indicative canonical price catalogue; retailer verification still required"
@@ -12975,8 +12950,8 @@
     "image": "release-assets/basketboss-v17/images/existing/extra-apple-cinnamon-baked-oats.webp",
     "tip": "Oven-baked apple cinnamon baked oats with rolled oats for a hearty, hands-off dinner.",
     "method": [
-      "Heat the oven to 180°C (160°C fan). Grease a small baking dish and dice the apples into 1 cm pieces. Leave space between the ingredients so hot air reaches the edges and they roast golden rather than steaming.",
-      "Mix oats, cinnamon, milk and a little sweetener in a bowl. Fold in most of the apple pieces.",
+      "Heat the oven to 180°C (160°C fan). Grease a small baking dish and dice the apples into 1 cm pieces.",
+      "Mix oats, cinnamon and milk in a bowl. Fold in most of the apple pieces.",
       "Pour into the dish and scatter the remaining apple on top. Bake for 25–35 minutes until the centre is set and the top lightly golden.",
       "Leave to stand for 5 minutes before serving; it will firm up slightly as it cools."
     ],
@@ -13061,14 +13036,14 @@
         "per_serving_high_gbp": 2.66,
         "confidence": "INDICATIVE_UNVERIFIED",
         "source": "Derived from Jersey provisional recipe estimate using its assumed 1.10 island factor (UK = Jersey / 1.10); NOT a survey of UK supermarket prices",
-        "uplift_assumption": 1.0,
+        "uplift_assumption": 1,
         "baseline_from": "Jersey indicative estimate divided by 1.10; provisional UK guide"
       }
     },
     "data_format_fixed_from": "STRUCTURED_ALREADY",
     "steps": [
-      "Heat the oven to 180°C (160°C fan). Grease a small baking dish and dice the apples into 1 cm pieces. Leave space between the ingredients so hot air reaches the edges and they roast golden rather than steaming.",
-      "Mix oats, cinnamon, milk and a little sweetener in a bowl. Fold in most of the apple pieces.",
+      "Heat the oven to 180°C (160°C fan). Grease a small baking dish and dice the apples into 1 cm pieces.",
+      "Mix oats, cinnamon and milk in a bowl. Fold in most of the apple pieces.",
       "Pour into the dish and scatter the remaining apple on top. Bake for 25–35 minutes until the centre is set and the top lightly golden.",
       "Leave to stand for 5 minutes before serving; it will firm up slightly as it cools."
     ],
@@ -13195,7 +13170,7 @@
         "per_serving_high_gbp": 1.03,
         "confidence": "INDICATIVE_UNVERIFIED",
         "source": "Derived from Jersey provisional recipe estimate using its assumed 1.10 island factor (UK = Jersey / 1.10); NOT a survey of UK supermarket prices",
-        "uplift_assumption": 1.0,
+        "uplift_assumption": 1,
         "baseline_from": "Jersey indicative estimate divided by 1.10; provisional UK guide"
       }
     },
@@ -13347,7 +13322,7 @@
         "per_serving_high_gbp": 1.77,
         "confidence": "INDICATIVE_UNVERIFIED",
         "source": "Derived from Jersey provisional recipe estimate using its assumed 1.10 island factor (UK = Jersey / 1.10); NOT a survey of UK supermarket prices",
-        "uplift_assumption": 1.0,
+        "uplift_assumption": 1,
         "baseline_from": "Jersey indicative estimate divided by 1.10; provisional UK guide"
       }
     },
@@ -13465,7 +13440,7 @@
         "range_high_gbp": 8.01,
         "per_serving_estimate_gbp": 0.83,
         "per_serving_low_gbp": 0.66,
-        "per_serving_high_gbp": 1.0,
+        "per_serving_high_gbp": 1,
         "confidence": "INDICATIVE_UNVERIFIED",
         "source": "Previous recipe draft cost/range × explicit provisional island factor; not observed retailer prices",
         "source_base_low_gbp": 4.77,
@@ -13494,7 +13469,7 @@
         "per_serving_high_gbp": 0.91,
         "confidence": "INDICATIVE_UNVERIFIED",
         "source": "Derived from Jersey provisional recipe estimate using its assumed 1.10 island factor (UK = Jersey / 1.10); NOT a survey of UK supermarket prices",
-        "uplift_assumption": 1.0,
+        "uplift_assumption": 1,
         "baseline_from": "Jersey indicative estimate divided by 1.10; provisional UK guide"
       }
     },
@@ -13532,7 +13507,7 @@
     "method": [
       "Heat oven to 190°C (170°C fan). Peel, core and slice the apples.",
       "Toss apples with 40 g sugar and cinnamon in a medium baking dish; add 2 tbsp water.",
-      "Rub flour and cold cubed butter together with fingertips until breadcrumb-like, then stir in oats and remaining 90 g sugar. Once the flour is added, fold gently just until no dry pockets remain so the crumb stays tender.",
+      "Rub flour and cold cubed butter together with fingertips until breadcrumb-like, then stir in oats and remaining 90 g sugar.",
       "Scatter the crumble over the fruit without pressing it down.",
       "Bake for 30–35 minutes, until golden and bubbling at the edges.",
       "Allow 5 minutes to settle; warm the custard separately and serve alongside."
@@ -13632,7 +13607,7 @@
         "per_serving_high_gbp": 1.4,
         "confidence": "INDICATIVE_UNVERIFIED",
         "source": "Derived from Jersey provisional recipe estimate using its assumed 1.10 island factor (UK = Jersey / 1.10); NOT a survey of UK supermarket prices",
-        "uplift_assumption": 1.0,
+        "uplift_assumption": 1,
         "baseline_from": "Jersey indicative estimate divided by 1.10; provisional UK guide"
       }
     },
@@ -13640,7 +13615,7 @@
     "steps": [
       "Heat oven to 190°C (170°C fan). Peel, core and slice the apples.",
       "Toss apples with 40 g sugar and cinnamon in a medium baking dish; add 2 tbsp water.",
-      "Rub flour and cold cubed butter together with fingertips until breadcrumb-like, then stir in oats and remaining 90 g sugar. Once the flour is added, fold gently just until no dry pockets remain so the crumb stays tender.",
+      "Rub flour and cold cubed butter together with fingertips until breadcrumb-like, then stir in oats and remaining 90 g sugar.",
       "Scatter the crumble over the fruit without pressing it down.",
       "Bake for 30–35 minutes, until golden and bubbling at the edges.",
       "Allow 5 minutes to settle; warm the custard separately and serve alongside."
@@ -13768,7 +13743,7 @@
         "per_serving_high_gbp": 1.27,
         "confidence": "LOW_UNVERIFIED",
         "source": "Derived from Jersey provisional recipe estimate using its assumed 1.10 island factor (UK = Jersey / 1.10); NOT a survey of UK supermarket prices",
-        "uplift_assumption": 1.0,
+        "uplift_assumption": 1,
         "baseline_from": "Jersey indicative estimate divided by 1.10; provisional UK guide"
       }
     },
@@ -13918,7 +13893,7 @@
         "per_serving_high_gbp": 1.61,
         "confidence": "LOW_UNVERIFIED",
         "source": "Derived from Jersey provisional recipe estimate using its assumed 1.10 island factor (UK = Jersey / 1.10); NOT a survey of UK supermarket prices",
-        "uplift_assumption": 1.0,
+        "uplift_assumption": 1,
         "baseline_from": "Jersey indicative estimate divided by 1.10; provisional UK guide"
       }
     },
@@ -14070,7 +14045,7 @@
         "per_serving_high_gbp": 0.46,
         "confidence": "INDICATIVE_UNVERIFIED",
         "source": "Derived from Jersey provisional recipe estimate using its assumed 1.10 island factor (UK = Jersey / 1.10); NOT a survey of UK supermarket prices",
-        "uplift_assumption": 1.0,
+        "uplift_assumption": 1,
         "baseline_from": "Jersey indicative estimate divided by 1.10; provisional UK guide"
       }
     },
@@ -14235,7 +14210,7 @@
         "per_serving_high_gbp": 0.56,
         "confidence": "INDICATIVE_UNVERIFIED",
         "source": "Derived from Jersey provisional recipe estimate using its assumed 1.10 island factor (UK = Jersey / 1.10); NOT a survey of UK supermarket prices",
-        "uplift_assumption": 1.0,
+        "uplift_assumption": 1,
         "baseline_from": "Jersey indicative estimate divided by 1.10; provisional UK guide"
       }
     },

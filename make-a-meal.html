@@ -1,6 +1,6 @@
 <!DOCTYPE html>
 
-<html lang="en"><head><meta charset="utf-8"/><meta content="width=device-width,initial-scale=1,viewport-fit=cover" name="viewport"/><meta content="#E9ECEF" name="theme-color"/><meta content="no-referrer" name="referrer"/><title>Make a Meal · BasketBoss</title><link rel="stylesheet" href="bb-account-deletion.css?v=20261101-recovery1"><script defer src="bb-account-deletion.js?v=20261101-recovery1"></script><link rel="stylesheet" href="bb-food-visuals.css?v=20261031-food2"><script src="bb-food-visuals.js?v=20261031-food2"></script><link rel="stylesheet" href="bb-ux-cleanup.css?v=20261028-ux1"><link href="make-a-meal.css?v=17.3-unified3" rel="stylesheet"/><link href="manifest.webmanifest?v=1766" rel="manifest"/>
+<html lang="en"><head><script src="cloud-config.js"></script><script src="bb-session.js?v=20261102-session1"></script><meta charset="utf-8"/><meta content="width=device-width,initial-scale=1,viewport-fit=cover" name="viewport"/><meta content="#E9ECEF" name="theme-color"/><meta content="no-referrer" name="referrer"/><title>Make a Meal · BasketBoss</title><link rel="stylesheet" href="bb-account-deletion.css?v=20261101-recovery1"><script defer src="bb-account-deletion.js?v=20261101-recovery1"></script><link rel="stylesheet" href="bb-food-visuals.css?v=20261031-food2"><script src="bb-food-visuals.js?v=20261031-food2"></script><link rel="stylesheet" href="bb-ux-cleanup.css?v=20261028-ux1"><link href="make-a-meal.css?v=17.3-unified3" rel="stylesheet"/><link href="manifest.webmanifest?v=1766" rel="manifest"/>
 <link rel="stylesheet" href="premium-upgrade.css?v=bb173premium1"><link rel="stylesheet" href="bb-light-meal.css?v=173-light-1"><link rel="stylesheet" href="bb-us-market.css?v=173us1"><link rel="stylesheet" href="bb-install.css?v=173install1"><link rel="apple-touch-icon" sizes="180x180" href="icons/basketboss-crowned-v1766-180.png"><!-- bb173-PremiumFreePreview-v1: client-side preview ONLY; access not secured -->
 <link rel="stylesheet" href="bb-premium-features.css?v=173premiumfree1">
 <script src="bb-premium-preview-config.js?v=173premiumfree1"></script>
@@ -62,10 +62,16 @@ html,body{background:#E9ECEF!important;background-image:none!important;min-heigh
 <link rel="stylesheet" href="bb-servings-mobile-polish.css?v=20261029-preview1">
 <link rel="stylesheet" href="bb-premium-feature-badges.css?v=20261101-badge1">
 <script defer src="bb-premium-feature-badges.js?v=20261101-badge1"></script>
-<link rel="stylesheet" href="bb-cook-studio.css?v=20261101-cook1">
-<script defer src="bb-cook-studio.js?v=20261101-cook1"></script>
+<link rel="stylesheet" href="bb-cook-studio.css?v=20261103-photo-premium1">
+<script defer src="bb-cook-studio.js?v=20261103-photo-premium1"></script>
 <link rel="stylesheet" href="bb-cook-result.css?v=20261101-cook1">
-<script defer src="bb-cook-result.js?v=20261101-cook1"></script>
+<link rel="stylesheet" href="bb-cook-clarity.css?v=20261102-loop2">
+<script defer src="bb-duration.js?v=20261102-duration2"></script>
+<script defer src="bb-recipe-measures.js?v=20261102-measures1"></script>
+<script defer src="bb-cook-step-layout.js?v=20261102-clarity1"></script>
+<link rel="stylesheet" href="bb-pantry-camera.css?v=20261102-camera1">
+<script defer src="bb-pantry-camera.js?v=20261102-camera1"></script>
+<script defer src="bb-cook-result.js?v=20261102-loop2"></script>
 <link rel="stylesheet" href="bb-meal-image.css?v=20261101-cook1">
 <script defer src="bb-meal-image.js?v=20261101-cook1"></script>
 <link rel="stylesheet" href="bb-navigation-polish.css?v=20261101-stable2">
@@ -155,11 +161,12 @@ html,body{background:#E9ECEF!important;background-image:none!important;min-heigh
       if(!stage||!scanner||!meal){visibleError('AI panel is unavailable. Refresh the page and try again.');return;}
       // Move the existing panel out of any ancestor stacking/overflow context.
       // Its mounted file input and existing scan handlers remain the same nodes.
-      if(stage.parentNode!==document.body)document.body.appendChild(stage);
+      var inline=document.body.classList.contains('bb-photo-meal-page');
+      if(!inline&&stage.parentNode!==document.body)document.body.appendChild(stage);
       stage.hidden=false;
       scanner.hidden=tool!=='scan';
       meal.hidden=tool!=='meal';
-      stage.classList.add('bb-ai-native-visible');
+      if(inline)stage.classList.remove('bb-ai-native-visible');else stage.classList.add('bb-ai-native-visible');
       stage.scrollTop=0;
       document.querySelectorAll('[data-ai-scan-btn],[data-ai-meal-btn],[data-open-tool]')
         .forEach(function(el){el.setAttribute('aria-expanded',String((tool==='scan'&&el.matches('[data-ai-scan-btn]'))||(tool==='meal'&&el.matches('[data-ai-meal-btn]'))||el.dataset.openTool===tool));});
@@ -257,11 +264,12 @@ html,body{background:#E9ECEF!important;background-image:none!important;min-heigh
     if(event.target.id!=='ai-photo-input')return;
     var result=document.getElementById('scanResults');
     if(result)result.textContent=event.target.files?.length?
-      'Photo ready. Tap Scan my ingredients to start.':
+      'Photo ready. Tap Find my ingredients to scan.':
       'No photo selected. Take Photo / Choose Image to retry.';
   });
   document.addEventListener('cancel',function(event){
     if(event.target.id==='ai-photo-input'){
+      if(event.target.files?.length)return;
       var result=document.getElementById('scanResults');
       if(result)result.textContent='No photo selected. Take Photo / Choose Image to retry.';
     }
@@ -273,13 +281,15 @@ html,body{background:#E9ECEF!important;background-image:none!important;min-heigh
   document.addEventListener('keydown',function(event){
     var label=event.target.closest?.('[data-ai-scan-btn]');
     if(label&&(event.key==='Enter'||event.key===' ')){
+      event.preventDefault();
+      if(event.repeat)return;
       openPanel('scan');
       document.getElementById('ai-photo-input')?.click();
     }
   });
 })();
 </script>
-<script src="bb-premium-preview-config.js?v=1743-premium-leftovers"></script><script defer="" src="make-a-meal.js?v=20261101-recovery1"></script><script>if('serviceWorker' in navigator&&location.protocol==='https:')addEventListener('load',()=>navigator.serviceWorker.register('./service-worker.js').catch(()=>{}),{once:true})</script><script defer src="premium-upgrade.js?v=bb-native-ai-open-20261027-v1"></script><script src="bb-us-market.js?v=173us1"></script><script defer src="bb-install.js?v=173install1"></script><script src="bb-real-app-tour.js?v=17513real1" defer></script>
+<script src="bb-premium-preview-config.js?v=1743-premium-leftovers"></script><script defer="" src="make-a-meal.js?v=20261103-photo-premium1"></script><script>if('serviceWorker' in navigator&&location.protocol==='https:')addEventListener('load',()=>navigator.serviceWorker.register('./service-worker.js').catch(()=>{}),{once:true})</script><script defer src="premium-upgrade.js?v=bb-native-ai-open-20261027-v1"></script><script src="bb-us-market.js?v=20261102-loop2"></script><script defer src="bb-install.js?v=173install1"></script><script src="bb-real-app-tour.js?v=17513real1" defer></script>
 <!-- BB17513 private QA membership switch: PRIVATE CODESPACES HOSTS ONLY. Not an entitlement. -->
 <style id="bb17513-private-qa-toggle-css">
 #bb17513-qa-mode-bar{position:relative;z-index:3;max-width:1100px;margin:8px auto 12px;padding:9px 12px;display:flex;align-items:center;justify-content:space-between;gap:10px;flex-wrap:wrap;background:#fff7df;color:#3e3525;border:1px solid #d7be76;border-radius:15px;font:600 12px/1.35 system-ui,-apple-system,sans-serif;box-shadow:0 2px 9px #0000000a;box-sizing:border-box}
@@ -361,4 +371,6 @@ html,body{background:#E9ECEF!important;background-image:none!important;min-heigh
 <script defer src="bb-beta-six-fixes.js?v=1767"></script>
 <link rel="stylesheet" href="bb-keyboard-layout.css?v=20261101-keyboard1">
 <script defer src="bb-keyboard-layout.js?v=20261101-keyboard1"></script>
+<link rel="stylesheet" href="bb-tab-viewport.css?v=20261104-tabs1">
+<script defer src="bb-tab-viewport.js?v=20261104-tabs1"></script>
 </body></html>
