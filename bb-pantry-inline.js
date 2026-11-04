@@ -115,7 +115,7 @@
   }}
   function refresh(){queued=false;if(destroyed)return;const api=win.BBPantryEditor;if(!valid(api)){teardown();return;}
    if(current!==api){teardown();current=api;const node=current.card.querySelector('.bb76-title>div>p:last-child');if(node)originalIntro={node,value:node.textContent};const status=current.card.querySelector('#bb5StockStatus');if(status){originalStatus={node:status,parent:status.parentNode,next:status.nextSibling};status.classList.add('bbpi-save-status');current.card.querySelector('.bb76-kitchen-intro')?.after(status);}}
-   try{if(originalIntro)text(originalIntro.node,'Tap a food to enter how much you have beside it, or add your own below. Shopping updates automatically.');for(const area of current.card.querySelectorAll('[data-bb76-store]'))mountSection(area);summaries(current.list());displayEditor();current.card.classList.add('bbpi-enhanced');}
+   try{if(originalIntro)text(originalIntro.node,'Tap a food to enter what you have, or add your own below.');for(const area of current.card.querySelectorAll('[data-bb76-store]'))mountSection(area);summaries(current.list());displayEditor();current.card.classList.add('bbpi-enhanced');}
    catch{teardown();}
   }
   function click(event){const tile=event.target.closest?.('[data-bb5-food]');if(!tile||!valid(current)||!current.card.contains(tile))return;const loc=tile.closest('[data-bb76-store]')?.dataset.bb76Store;if(!LOCATIONS.includes(loc))return;event.preventDefault();event.stopImmediatePropagation?.();event.stopPropagation();

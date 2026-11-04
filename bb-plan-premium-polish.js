@@ -20,9 +20,10 @@
    return value==='US'?'United States':value||'Choose region';
  };
  function updateHeader(){
-   const compact=document.body.dataset.bbnextView==='week',name=regionValue(),regionLabel=(compact&&name==='United States'?'US':name)+' · Change';
+   const compact=['week','shop'].includes(document.body.dataset.bbnextView),name=regionValue(),regionLabel=(compact&&name==='United States'?'US':name)+' · Change';
+   document.body.classList.toggle('bbpol-compact-header',compact);
    const region=$('#bbpolRegionPill');if(region){if(region.textContent!==regionLabel)region.textContent=regionLabel;region.title=name+' · Change region';region.setAttribute('aria-label','Shopping region: '+name+'. Change region.');}
-   const upgrade=$('#bbpolUpgradePill');if(upgrade){upgrade.hidden=false;const status=window.BasketBossVerifiedPremium?.state?.();const label=window.BasketBossMembershipUI?.label?.()||(premiumActive()?'PREMIUM':status==='free'?'FREE · Upgrade to Premium':status==='checking'?'Checking membership…':'Check membership');const display=compact?(premiumActive()?'PREMIUM':status==='free'?'Upgrade':status==='checking'?'Checking':'Account'):label;if(upgrade.textContent!==display)upgrade.textContent=display;upgrade.setAttribute('aria-label',label);upgrade.title=label;}
+   const upgrade=$('#bbpolUpgradePill');if(upgrade){upgrade.hidden=false;const status=window.BasketBossVerifiedPremium?.state?.();const label=window.BasketBossMembershipUI?.label?.()||(premiumActive()?'PREMIUM':status==='free'?'FREE · Upgrade to Premium':status==='checking'?'Checking membership…':'Check membership');const display=compact?(premiumActive()?'PREMIUM':['free','signed_out'].includes(status)?'Upgrade':status==='checking'?'Checking':'Account'):label;if(upgrade.textContent!==display)upgrade.textContent=display;upgrade.setAttribute('aria-label',label);upgrade.title=label;}
  }
  function setupHeader(){
    if(headerReady)return;

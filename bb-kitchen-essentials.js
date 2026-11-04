@@ -2,18 +2,46 @@
    handlers; pantry quantities, prices and shopping state keep their owners. */
 (()=>{'use strict';
  if(window.BBKitchenEssentials)return;
- const doc=document;let queued=false,essentialsOpen=false,rules=null;
+ const doc=document;let queued=false,selectedSection='food',rules=null;
  const choices=new Map(),legacyOpen={value:false};
  const helperURL=new URL('./bb-kitchen-choice-rules.mjs',doc.currentScript?.src||location.href).href;
  import(helperURL).then(value=>{rules=value;window.BBKitchenChoiceRules=value;schedule();}).catch(()=>{});
  const text=(node,value)=>{if(node&&node.textContent!==value)node.textContent=value;};
- function button(label,target){
+ function sectionButton(label,key,panel){
   const node=doc.createElement('button');node.type='button';node.textContent=label;
-  node.addEventListener('click',()=>{
-   const destination=doc.getElementById(target);if(!destination)return;
-   if(destination.tagName==='DETAILS')destination.open=true;
-   destination.scrollIntoView({block:'start',behavior:window.matchMedia('(prefers-reduced-motion: reduce)').matches?'instant':'smooth'});
+  node.id=key==='food'?'bbKitchenFoodTab':'bbKitchenEssentialsTab';node.dataset.bbkeSection=key;
+  node.setAttribute('role','tab');node.setAttribute('aria-controls',panel);
+  const select=()=>{
+   selectedSection=key;void window.BBPantryLive?.flush?.();refresh();
+   if(window.BBTabViewport?.reset)window.BBTabViewport.reset({view:'shop'});
+   else{window.scrollTo?.({top:0,left:0,behavior:'instant'});if(doc.scrollingElement)doc.scrollingElement.scrollTop=0;}
+  };
+  node.addEventListener('click',select);
+  node.addEventListener('keydown',event=>{
+   const keys=['ArrowLeft','ArrowRight','Home','End'];if(!keys.includes(event.key))return;
+   event.preventDefault();const target=event.key==='Home'?'food':event.key==='End'?'essentials':key==='food'?'essentials':'food';
+   doc.getElementById(target==='food'?'bbKitchenFoodTab':'bbKitchenEssentialsTab')?.click();
+   doc.getElementById(target==='food'?'bbKitchenFoodTab':'bbKitchenEssentialsTab')?.focus({preventScroll:true});
   });return node;
+ }
+ function sections(kitchen,essentials){
+  let nav=kitchen.querySelector('#bbKitchenSections');
+  if(!nav){
+   nav=doc.createElement('nav');nav.id='bbKitchenSections';nav.setAttribute('aria-label','At home sections');nav.setAttribute('role','tablist');
+   nav.append(sectionButton('Choose food','food','bbKitchenFoodPanel'),sectionButton('Weekly essentials','essentials','bbKitchenEssentials'));
+   kitchen.querySelector('.bb76-kitchen-intro').after(nav);
+  }
+  let food=kitchen.querySelector('#bbKitchenFoodPanel');
+  if(!food){food=doc.createElement('section');food.id='bbKitchenFoodPanel';food.setAttribute('role','tabpanel');food.setAttribute('aria-labelledby','bbKitchenFoodTab');nav.after(food);}
+  // Reuse the original controls. Hiding a panel never removes its draft input,
+  // handlers or selected foods, and later legacy renders can be adopted again.
+  for(const node of [...kitchen.children])if(node!==food&&node!==nav&&!node.classList.contains('bb76-kitchen-intro'))food.append(node);
+  const pantryJump=kitchen.querySelector('#bb76JumpPantry');
+  if(pantryJump?.firstChild?.nodeType===3)pantryJump.firstChild.textContent='Your pantry ';
+  food.hidden=selectedSection!=='food';essentials.hidden=selectedSection!=='essentials';
+  kitchen.dataset.bbkeSection=selectedSection;
+  essentials.setAttribute('role','tabpanel');essentials.setAttribute('aria-labelledby','bbKitchenEssentialsTab');
+  for(const control of nav.querySelectorAll('[role="tab"]')){const active=control.dataset.bbkeSection===selectedSection;control.setAttribute('aria-selected',String(active));control.tabIndex=active?0:-1;}
  }
  function state(key){if(!choices.has(key))choices.set(key,{expanded:false,search:''});return choices.get(key);}
  const groupUI=()=>window.BBPantryGroupsUI;
@@ -213,6 +241,7 @@
  function refresh(){
   queued=false;const app=doc.getElementById('app');if(!app)return;
   const tab=doc.body.dataset.bbnextView||doc.querySelector('.shell .tab.active')?.dataset.tab;
+  if(tab!=='shop')selectedSection='food';
   if(tab==='week'){
    app.querySelector('#bb1756Essentials')?.remove();
    app.querySelectorAll('[data-bb1756-jump="bb1756Essentials"],[data-bb1759-jump="bb1756Essentials"]').forEach(node=>node.remove());
@@ -231,10 +260,9 @@
   if(pantryTitle?.firstChild?.nodeType===3&&pantryTitle.firstChild.textContent!=='Review amounts ')pantryTitle.firstChild.textContent='Review amounts ';
   let essentials=app.querySelector('#bbKitchenEssentials');
   if(!essentials){
-   essentials=doc.createElement('details');essentials.id='bbKitchenEssentials';essentials.open=essentialsOpen;
-   const summary=doc.createElement('summary');summary.innerHTML='<span class="bbke-essentials-icon" aria-hidden="true">🧺</span><span><strong>Weekly essentials</strong><small>Toiletries, cleaning & baby essentials</small></span><span class="bbke-chevron" aria-hidden="true">⌄</span>';
+   essentials=doc.createElement('section');essentials.id='bbKitchenEssentials';
+   const summary=doc.createElement('header');summary.className='bbke-essentials-heading';summary.innerHTML='<span class="bbke-essentials-icon" aria-hidden="true">🧺</span><span><strong>Weekly essentials</strong><small>Toiletries, cleaning & baby essentials</small></span>';
    essentials.append(summary);
-   essentials.addEventListener('toggle',()=>{if(essentials.isConnected)essentialsOpen=essentials.open;});
    essentials.setAttribute('data-bb307-extras','shop');
    kitchen.after(essentials);
   }
@@ -248,19 +276,8 @@
   if(rules){for(const area of kitchen.querySelectorAll('.bb76-store[data-bb76-store]')){foodChoices(area);selectedReadout(area,kitchen);}refreshGroupPickers(kitchen);if(original)householdChoices(original,kitchen);}
   window.BBHome?.decorate?.(original);
   window.BBHouseholdAmount?.decorate?.(original);
-  if(!kitchen.querySelector('#bbKitchenSections')){
-   const nav=doc.createElement('nav');nav.id='bbKitchenSections';nav.setAttribute('aria-label','At home sections');
-   nav.append(button('Choose food','bb76StorageSections'));
-   const pantryJump=kitchen.querySelector('#bb76JumpPantry');
-   if(pantryJump){
-    if(pantryJump.firstChild?.nodeType===3)pantryJump.firstChild.textContent='Your pantry ';
-    nav.append(pantryJump);
-   }else nav.append(button('Your pantry','bb8WhatIHave'));
-   nav.append(button('Weekly essentials','bbKitchenEssentials'));
-   kitchen.querySelector('.bb76-kitchen-intro').after(nav);
-  }
-  const reconcile=kitchen.querySelector('#bb5Reconcile'),nav=kitchen.querySelector('#bbKitchenSections');
-  if(reconcile&&nav&&nav.nextElementSibling!==reconcile){nav.after(reconcile);reconcile.classList.add('bbke-reconcile-top');}
+  kitchen.querySelector('#bb5Reconcile')?.classList.add('bbke-reconcile-top');
+  sections(kitchen,essentials);
  }
  function schedule(){if(!queued){queued=true;requestAnimationFrame(refresh);}}
  function start(){
@@ -270,7 +287,8 @@
   new MutationObserver(records=>{
    if(records.some(record=>record.target===app||record.target.matches?.('[data-bb76-tiles],#bb5SelectedRows')||[...record.addedNodes].some(node=>node.nodeType===1&&(node.matches?.('#bb173ShopFridge,[data-bb307-extras="shop"],#bb1756PlannerExtras,#bb1756Essentials,[data-bb5-food]')||node.querySelector?.('#bb173ShopFridge,#bb1756Essentials')))))schedule();
   }).observe(app,{childList:true,subtree:true});
-  const reset=()=>{choices.clear();window.BBPantryGroupsUI?.reset();app.querySelectorAll('[data-bbpg-revision],[data-bbke-values]').forEach(node=>{delete node.dataset.bbpgRevision;delete node.dataset.bbkeValues;});schedule();};
+  new MutationObserver(schedule).observe(doc.body,{attributes:true,attributeFilter:['data-bbnext-view']});
+  const reset=()=>{selectedSection='food';choices.clear();window.BBPantryGroupsUI?.reset();app.querySelectorAll('[data-bbpg-revision],[data-bbke-values]').forEach(node=>{delete node.dataset.bbpgRevision;delete node.dataset.bbkeValues;});schedule();};
   window.addEventListener('basketboss:session-changed',reset);
   for(const event of ['basketboss:account-deletion-started','basketboss:account-deletion-deleted','basketboss:account-deletion-cancelled'])window.addEventListener(event,reset);
   window.addEventListener('storage',event=>{if(event.key==='basketboss_cloud_session_v1'||event.key==='basketboss_pantry_groups_v1'||event.key===null)reset();});
