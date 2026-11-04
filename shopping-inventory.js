@@ -94,7 +94,7 @@ function bb5WeekCoverage(row){
  const coverage=matching?{qty:matching.qty/current.qty,unit:row.unit}:needed.length===1?needed[0]:null;
  // A sole known recipe unit is safe to offer explicitly. Never combine unlike units.
  if(!coverage||needed.length!==1)return null;
- const target=Number((coverage.unit===row.unit?row.totalNeeded:undefined)??window.BBHome?.total?.(row.name,coverage.unit));
+ const target=Number(window.BBHome?.total?.(row.name,coverage.unit));
  if(Number.isFinite(target)&&target>=0)coverage.qty=Math.max(coverage.qty,target);
  // Online Pantry accepts whole counts. State the full amount the user is declaring.
  const count=['each','pack','clove','bulb','tin','loaf','slice'].includes(unitConversion(1,coverage.unit).unit);
@@ -102,11 +102,6 @@ function bb5WeekCoverage(row){
 }
 function bb5CoverageText(coverage){return coverage.count?'I have '+coverage.qty+' '+coverage.unit+' · enough for this week':'Enough for this week ('+regionalAmount(coverage.name,coverage.qty,coverage.unit)+')';}
 function bb5AlreadyEnough(row,coverage){return coverage&&row.qty!==null&&row.qty!==''&&Number(row.qty)>=coverage.qty&&row.unit===coverage.unit;}
-function bb5NeededInUnit(row){
- const needed=bb5PlannedRequirements(row.name),one=policy()?.normalize(row.name,1,row.unit,policyOptions(row));
- if(one){const matching=needed.filter(item=>item.unit===one.unit);if(matching.length)return matching.reduce((sum,item)=>sum+item.qty,0)/one.quantity;}
- return window.BBHome?.total?.(row.name,row.unit)??0;
-}
 function bb5AmountReadout(row){
  if(isStapleRow(row)){
   const status=policy().stapleStatus(row),label=policy().containerLabel(row.name);
@@ -114,9 +109,9 @@ function bb5AmountReadout(row){
  }
  if(policy()){
   const actual=row.qty===null||row.qty===undefined||row.qty===''?null:policy().normalize(row.name,Number(row.qty),row.unit,policyOptions(row));
-  const needed=bb5PlannedRequirements(row.name),manual=row.totalNeeded===undefined?null:policy().normalize(row.name,Number(row.totalNeeded),row.unit,policyOptions(row));
+  const needed=bb5PlannedRequirements(row.name);
   if(actual){
-   const target=Math.max(needed.find(value=>value.unit===actual.unit)?.qty||0,manual?.unit===actual.unit?manual.quantity:0,window.BBHome?.total?.(row.name,actual.unit)||0);
+   const target=Math.max(needed.find(value=>value.unit===actual.unit)?.qty||0,window.BBHome?.total?.(row.name,actual.unit)||0);
    const quantity=Math.max(0,Math.round((target-actual.quantity)*1000000)/1000000),hint=actual.estimated?' · '+actual.assumption:row.packEstimated&&row.packAssumption?' · '+row.packAssumption:'';
    const containers=row.containerUnit&&row.packQuantity>0&&row.packUnit===actual.unit?' · '+Math.round(actual.quantity/row.packQuantity*1000000)/1000000+' '+row.containerUnit+(actual.quantity/row.packQuantity===1?'':'s')+' ('+actual.quantity+' '+actual.unit+')':'';
    return 'At home: '+regionalAmount(row.name,actual.quantity,actual.unit)+' · To buy: '+regionalAmount(row.name,quantity,actual.unit)+containers+hint;
@@ -125,7 +120,7 @@ function bb5AmountReadout(row){
  }
  const coverage=bb5WeekCoverage(row),current=unitConversion(1,row.unit);
  if(coverage&&unitConversion(1,coverage.unit).unit!==current.unit)return 'Shopping uses '+coverage.unit+'; check the unit';
- const needed=Math.max(Number(row.totalNeeded??window.BBHome?.total?.(row.name,row.unit)??0),window.BBHome?.requirement?.(row.name,row.unit)||0);
+ const needed=Math.max(Number(window.BBHome?.total?.(row.name,row.unit)??0),window.BBHome?.requirement?.(row.name,row.unit)||0);
  return 'To buy: '+Math.max(0,needed-Number(row.qty||0))+(row.qty===null||row.qty===undefined||row.qty===''?' (amount unknown)':'');
 }
 /* Beta QA: unit suggestions apply ONLY to new/unmeasured Kitchen selections.
@@ -190,6 +185,9 @@ async function build(){
  const draftKeys=(loc,name)=>[...staged].filter(([,row])=>sid(row.loc,row.name)===sid(loc,name)).map(([key])=>key);
  function stageValue(rec,inventoryId){
   const row={...rec,name:String(rec.name),loc:rec.loc,qty:rec.qty??null,unit:rec.unit||'each',inventoryId,inputMarket:rec.inputMarket||policyMarket()};
+  // Food records describe stock on hand. New demand comes from planned meals
+  // and explicit Shop top-ups; only Weekly essentials edits a target.
+  delete row.totalNeeded;delete row.targetChanged;
   if(policy()&&!isStapleRow(row)){
    const source=row.containerUnit||[...(row.pantrySourceHistory||[])].reverse().find(value=>['tin','can','bag','pack','pint'].includes(value.unit))?.unit;
    if(source){
@@ -263,10 +261,10 @@ async function build(){
     const enough=coverage?`<button type="button" class="bb5-week-coverage" data-bb5-enough="${esc(k)}"${bb5AlreadyEnough(x,coverage)?' hidden':''}>${esc(bb5CoverageText(coverage))}</button>`:'';
     if(isStapleRow(x)){
      const status=x.stapleStatus||policy().stapleStatus(x),label=policy().containerLabel(x.name),statusOptions=(status==='unknown'?[['unknown','Review status']]:[]).concat([['in','In Stock'],['low','Low'],['out','Out']]).map(([value,title])=>`<option value="${value}" ${status===value?'selected':''}>${title}</option>`).join('');
-     return `<div class="bb174-fridge-row bb5-review-row" data-bb5-row="${esc(k)}" data-bb5-staple="true"><strong>${esc(x.name)}</strong><label>Stock status<select data-bb5-staple-status="${esc(k)}" aria-label="Stock status for ${esc(x.name)}">${statusOptions}</select></label><label>${esc(label.charAt(0).toUpperCase()+label.slice(1))} count (optional)<input type="number" inputmode="numeric" data-bb5-qty="${esc(k)}" min="0" max="10000" step="1" placeholder="Status only" value="${esc(x.qty??'')}"></label><label hidden>Total needed<input type="number" data-bb5-needed="${esc(k)}" value="0"></label><label hidden>Unit<select data-bb5-unit="${esc(k)}"><option value="each" selected>each</option></select></label><output data-bb5-buy="${esc(k)}">${esc(bb5AmountReadout(x))}</output><small class="bb5-staple-note">Container tracking. Small recipe amounts check the status; they do not measure this ${esc(label)}.</small><button type="button" data-bb5-remove="${esc(k)}" aria-label="Remove ${esc(x.name)}">Remove</button></div>`;
+     return `<div class="bb174-fridge-row bb5-review-row" data-bb5-row="${esc(k)}" data-bb5-staple="true"><strong>${esc(x.name)}</strong><label>Stock status<select data-bb5-staple-status="${esc(k)}" aria-label="Stock status for ${esc(x.name)}">${statusOptions}</select></label><label>${esc(label.charAt(0).toUpperCase()+label.slice(1))} count (optional)<input type="number" inputmode="numeric" data-bb5-qty="${esc(k)}" min="0" max="10000" step="1" placeholder="Status only" value="${esc(x.qty??'')}"></label><label hidden>Unit<select data-bb5-unit="${esc(k)}"><option value="each" selected>each</option></select></label><output data-bb5-buy="${esc(k)}">${esc(bb5AmountReadout(x))}</output><small class="bb5-staple-note">Container tracking. Small recipe amounts check the status; they do not measure this ${esc(label)}.</small><button type="button" data-bb5-remove="${esc(k)}" aria-label="Remove ${esc(x.name)}">Remove</button></div>`;
     }
     const packEditor=policy()?`<details class="bb5-pack-editor"><summary>Set container contents</summary><p>Use the size on your pack to replace a regional default or review an unknown container.</p><label>One container contains<input type="number" inputmode="decimal" min="0.000001" max="1000000" step="any" data-bb5-pack-quantity="${esc(k)}" value="${esc(x.packReviewed?x.packQuantity??'':'')}"></label><label>Contents unit<select data-bb5-pack-unit="${esc(k)}"><option value="">Choose unit</option>${(policyMarket()==='US'?BB5_CONTENT_UNITS:['g','ml','each']).map(unit=>`<option value="${unit}" ${x.packReviewed&&x.packUnit===unit?'selected':''}>${unit}</option>`).join('')}</select></label></details>`:'';
-    return `<div class="bb174-fridge-row bb5-review-row" data-bb5-row="${esc(k)}"><strong>${esc(x.name)}</strong><label>Already got<input type="number" inputmode="decimal" data-bb5-qty="${esc(k)}" min="0" max="1000000" step="any" placeholder="Unknown" value="${esc(x.qty??'')}"></label>${enough}<label>Total needed<input type="number" inputmode="decimal" min="0" max="1000000" step="any" data-bb5-needed="${esc(k)}" value="${esc(x.totalNeeded??bb5NeededInUnit(x))}"></label><output data-bb5-buy="${esc(k)}">${esc(bb5AmountReadout(x))}</output><label>Unit<select data-bb5-unit="${esc(k)}">${opts}</select></label>${packEditor}<button type="button" data-bb5-remove="${esc(k)}" aria-label="Remove ${esc(x.name)}">Remove</button></div>`;
+    return `<div class="bb174-fridge-row bb5-review-row" data-bb5-row="${esc(k)}"><strong>${esc(x.name)}</strong><label>Already got<input type="number" inputmode="decimal" data-bb5-qty="${esc(k)}" min="0" max="1000000" step="any" placeholder="Unknown" value="${esc(x.qty??'')}"></label><label>Unit<select data-bb5-unit="${esc(k)}">${opts}</select></label>${enough}<output data-bb5-buy="${esc(k)}">${esc(bb5AmountReadout(x))}</output>${packEditor}<button type="button" data-bb5-remove="${esc(k)}" aria-label="Remove ${esc(x.name)}">Remove</button></div>`;
    }).join('')}</div>`;
   }).join(''):'<p class="bb174-fridge-empty">Nothing selected yet. Open a section above and tap the foods you have.</p>';
   reconcile.disabled=!all.length&&!Object.values(read(INVENTORY)).some(x=>x?.selected&&BB5_LOCATIONS.includes(x.loc))&&!externalAtOpen.size;
@@ -301,7 +299,6 @@ async function build(){
  });
  rows.addEventListener('input',e=>{
   const pack=e.target.dataset.bb5PackQuantity;if(pack&&staged.has(pack)){const row=staged.get(pack);row.packQuantity=e.target.value===''?null:Number(e.target.value);row.packReviewed=Number(row.packQuantity)>0&&BB5_CONTENT_UNITS.includes(row.packUnit);draftDirty=true;drawAmount(pack,e.target);drawOverview();return;}
-  const target=e.target.dataset.bb5Needed;if(target&&staged.has(target)){if(!staged.get(target).staple){staged.get(target).totalNeeded=e.target.value;staged.get(target).targetChanged=true;}draftDirty=true;drawAmount(target,e.target);drawOverview();return;}
   const k=e.target.dataset.bb5Qty;if(!k||!staged.has(k))return;const row=staged.get(k);row.qty=e.target.value;
   if(row.staple&&row.qty!==''){if(Number(row.qty)===0)row.stapleStatus='out';else if(row.stapleStatus==='out'||row.stapleStatus==='unknown')row.stapleStatus='in';const status=e.target.closest('[data-bb5-row]').querySelector('[data-bb5-staple-status]');if(status)status.value=row.stapleStatus;}
   draftDirty=true;drawAmount(k,e.target);drawOverview();
@@ -317,12 +314,7 @@ async function build(){
     e.target.value=row.unit;note.textContent='That unit needs a compatible amount or checked container contents. Your amount and unit have been kept. Clear the amount first to enter a different kind of measure.';return;
    }
    row.qty=previous.quantity/next.quantity;
-   if(row.totalNeeded!==undefined&&row.totalNeeded!==''){
-    const target=policy().normalize(row.name,Number(row.totalNeeded),row.unit,policyOptions(row));
-    if(target&&target.unit===next.unit)row.totalNeeded=target.quantity/next.quantity;
-    else{delete row.totalNeeded;delete row.targetChanged;}
-   }
-  }else{delete row.totalNeeded;delete row.targetChanged;}
+  }
   row.unit=nextUnit;row.inputMarket=policyMarket();if(['tin','can','bag','pack','bottle','jar','pint'].includes(row.unit))row.containerUnit=row.unit;draftDirty=true;render();
  });
  rows.addEventListener('click',e=>{
@@ -361,10 +353,6 @@ async function build(){
    if(policy()&&x.qty!==null){
     const from=x.unit,normalized=policy().normalize(x.name,x.qty,x.unit,policyOptions(x));
     if(normalized){
-     if(x.totalNeeded!==undefined&&x.totalNeeded!==''){
-      const target=policy().normalize(x.name,Number(x.totalNeeded),from,policyOptions(x));
-      if(target&&target.unit===normalized.unit)x.totalNeeded=target.quantity;else{delete x.totalNeeded;delete x.targetChanged;}
-     }
      x.qty=normalized.quantity;x.unit=normalized.unit;
      if(['tin','can','pack','bag','pint','bottle','jar'].includes(from))x.containerUnit=from==='can'?'tin':from;
      if(normalized.packQuantity){x.packQuantity=normalized.packQuantity;x.packUnit=normalized.packUnit;x.packReviewed=true;x.packEstimated=normalized.estimated===true;x.packAssumption=normalized.assumption;}

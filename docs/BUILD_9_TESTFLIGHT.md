@@ -1,8 +1,15 @@
 # BasketBoss 1.0 (9) — live pantry sync and regional ingredient matching
 
 Build 9 includes all build 8 functionality and the “Your kitchen, made simple”
-welcome. The latest source is `testflight-build9-pantry-sync` on
+welcome. The latest source is `testflight-build9-food-amounts` on
 `fix/confirmed-cook-pantry` (PR #40). Earlier release tags remain unchanged.
+
+Cupboard, Fridge and Freezer food rows now ask only for the amount already at
+home and its unit (or staple stock status/container count). “Total needed” is
+editable only in Weekly essentials. Food requirements continue to come from the
+meal plan; additional purchases use Shop → Add item to buy. Editing owned food
+amounts does not create a new manual food target. Existing explicitly saved
+requests, stock, receipts and household targets are retained.
 
 The latest update shares one grams-per-piece table between pantry calculations
 and shopping display. Counted produce such as carrots and courgettes reduces
@@ -85,7 +92,7 @@ from build 8. See BUILD_8_TESTFLIGHT.md for details.
 
 ## Verification
 
-Full automated suite: 1,820 passed, no failures or skipped tests, two existing
+Full automated suite: 1,821 passed, no failures or skipped tests, two existing
 TODO cases. Strict pantry TypeScript contracts passed. Native packaging and
 portable iOS checks passed: 909 assets, 100 Free recipes, no private Premium
 recipe bundle. The native Xcode compile/sign/upload is not performed here.
@@ -97,7 +104,7 @@ in previous folders:
 
 ```sh
 bb_release_dir="$(mktemp -d "$HOME/BasketBoss-build9-XXXXXX")" &&
-git clone --depth 1 --branch testflight-build9-pantry-sync \
+git clone --depth 1 --branch testflight-build9-food-amounts \
   https://github.com/jbatiste12-debug/BasketBoss.git "$bb_release_dir" &&
 cd "$bb_release_dir" &&
 npm ci &&

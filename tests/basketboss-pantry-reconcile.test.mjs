@@ -109,10 +109,10 @@ test('partial measured Honey remains to buy while unit mismatches keep review fe
  assert.deepEqual(h.stock(),{'honey|tbsp':1,'lettuce|g':100});assert.deepEqual(h.needed().map(row=>row.toBuy),[1,.5]);assert.equal(h.visits(),0);assert.match(h.status(),/Check the units for Lettuce/);
 });
 
-test('edited spoon totals pass Home validation and failed online confirmation never claims Shopping is reconciled',async()=>{
+test('recorded owned quantities pass Home validation and failed online confirmation never claims Shopping is reconciled',async()=>{
  const h=fixture({requirements:[{key:'Honey',unit:'tbsp',required:2}],onlineError:true});await h.choose('Honey','cupboard');await h.enough('cupboard|honey');
- const total=h.control('data-bb5-needed','cupboard|honey');total.value='3';await total.dispatch('input');await h.confirm();
- assert.equal(h.win.BBHome.targets()['honey|tbsp'].targetQty,3);assert.deepEqual(h.stock(),{'honey|tbsp':2});assert.equal(h.visits(),0);assert.match(h.status(),/Review the saved online pantry/);
+ assert.equal(h.control('data-bb5-needed','cupboard|honey'),null);await h.confirm();
+ assert.deepEqual(h.win.BBHome.targets(),{});assert.deepEqual(h.stock(),{'honey|tbsp':2});assert.equal(h.visits(),0);assert.match(h.status(),/Review the saved online pantry/);
 });
 
 test('the weekly action offers no invented conversion for multiple incompatible recipe measures',async()=>{
@@ -120,11 +120,26 @@ test('the weekly action offers no invented conversion for multiple incompatible 
  assert.equal(h.control('data-bb5-enough','cupboard|honey'),null);await h.confirm();assert.deepEqual(h.stock(),{});assert.deepEqual(h.needed().map(row=>row.toBuy),[20,2]);
 });
 
-test('an edited needed amount updates the visible declaration before it can be chosen and keeps that target',async()=>{
- const h=fixture({requirements:[{key:'Honey',unit:'tbsp',required:2}]});await h.choose('Honey','cupboard');
- const total=h.control('data-bb5-needed','cupboard|honey');total.value='3';await total.dispatch('input');
- assert.match(h.control('data-bb5-enough','cupboard|honey').textContent,/3 tbsp/);await h.enough('cupboard|honey');await h.confirm();
- assert.deepEqual(h.stock(),{'honey|tbsp':3});assert.equal(h.win.BBHome.targets()['honey|tbsp'].targetQty,3);
+test('Cupboard, Fridge and Freezer foods have no editable total and owned amounts reduce recipe-generated shortfalls',async()=>{
+ const h=fixture({requirements:[{key:'Rice',unit:'g',required:1000},{key:'Milk',unit:'ml',required:1000},{key:'Frozen peas',unit:'g',required:500}]});
+ for(const [name,location,key,owned]of [['Rice','cupboard','rice',250],['Milk','fridge','milk',300],['Frozen peas','freezer','pea',125]]){
+  await h.choose(name,location);const row=location+'|'+key;
+  assert.equal(h.control('data-bb5-needed',row),null,location+' food has no Total needed input');
+  assert.ok(h.control('data-bb5-unit',row),location+' keeps its amount unit editable');
+  const input=h.control('data-bb5-qty',row);input.value=String(owned);await input.dispatch('input');
+ }
+ assert.doesNotMatch(h.selected().textContent,/Total needed/);await h.confirm();
+ assert.deepEqual(h.stock(),{'rice|g':250,'milk|ml':300,'frozen peas|g':125});
+ assert.deepEqual(h.needed().map(row=>row.toBuy),[750,700,375]);
+ assert.deepEqual(h.win.BBHome.targets(),{},'recording ownership does not create manual food requirements');
+});
+
+test('stale total fields on a saved pantry item do not create new requirements when ownership is edited',async()=>{
+ const h=fixture({requirements:[{key:'Rice',unit:'g',required:1000}],inventory:{'cupboard|rice':{name:'Rice',loc:'cupboard',selected:true,qty:100,unit:'g',totalNeeded:5000,targetChanged:true,bb173StockKey:'rice|g',bb173StockValue:100}},stock:{'rice|g':100}});
+ assert.equal(h.control('data-bb5-needed','cupboard|rice'),null);
+ const input=h.control('data-bb5-qty','cupboard|rice');input.value='250';await input.dispatch('input');await h.confirm();
+ assert.deepEqual(h.stock(),{'rice|g':250});assert.equal(h.needed()[0].toBuy,750);assert.deepEqual(h.win.BBHome.targets(),{});
+ assert.equal(h.inventory()['cupboard|rice'].totalNeeded,undefined);assert.equal(h.inventory()['cupboard|rice'].targetChanged,undefined);
 });
 
 test('unknown amounts remain explained when online confirmation is unavailable',async()=>{

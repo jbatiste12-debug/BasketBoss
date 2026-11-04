@@ -3,6 +3,7 @@ BasketBoss build 9
 Your pantry now works as a running balance: shopping adds to it and confirmed cooking uses it up. Remaining food and essentials stay there between weeks.
 
 Please test:
+• Food quantities: Cupboard, Fridge and Freezer must show Already got and Unit without a Total needed field. Set a food amount and check the meal-plan shortfall updates. Weekly essentials must still let you edit Total needed.
 • Live At home → Shop: plan a recipe using carrots, enter 2 carrots as each at home and check the Shop shortfall falls by 2 carrots using the same estimated weight. Try courgettes too. Edit again and switch straight to Shop, or tap Done in the quick-add picker: the latest valid amount must save immediately. Briefly clear a quantity while typing: the previous saved stock must remain.
 • Staples: set honey, oil, soy sauce or ketchup In Stock; recipe spoonfuls should be covered without subtracting ml. Set Low/Out and check one restock row. Review a ketchup 800 ml receipt line: it should match the existing staple as +1 container, with the count editable.
 • UK/US: enter known cups/oz/lb/fl oz, then switch region. Display changes but the stored physical amount must stay the same. One tin of chopped tomatoes plus 400 g should merge into one measured row. Unknown packs and vague recipe amounts should remain visible for review.
