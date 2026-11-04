@@ -7,7 +7,7 @@
     "UK": {
       "recipes": 100,
       "ingredientLines": 730,
-      "aggregatedIngredients": 222,
+      "aggregatedIngredients": 221,
       "simulatedIngredients": 186,
       "duplicateRows": [],
       "nonCanonicalRows": [],
@@ -255,7 +255,7 @@
           "required": 950
         },
         {
-          "key": "runny honey",
+          "key": "honey",
           "unit": "each",
           "required": 1
         },
@@ -473,11 +473,6 @@
           "key": "firm tofu",
           "unit": "g",
           "required": 400
-        },
-        {
-          "key": "honey",
-          "unit": "each",
-          "required": 1
         },
         {
           "key": "cucumber",
@@ -1129,7 +1124,7 @@
     "US": {
       "recipes": 100,
       "ingredientLines": 730,
-      "aggregatedIngredients": 222,
+      "aggregatedIngredients": 221,
       "simulatedIngredients": 186,
       "duplicateRows": [],
       "nonCanonicalRows": [],
@@ -1377,7 +1372,7 @@
           "required": 950
         },
         {
-          "key": "runny honey",
+          "key": "honey",
           "unit": "each",
           "required": 1
         },
@@ -1595,11 +1590,6 @@
           "key": "firm tofu",
           "unit": "g",
           "required": 400
-        },
-        {
-          "key": "honey",
-          "unit": "each",
-          "required": 1
         },
         {
           "key": "cucumber",
@@ -2914,5 +2904,5 @@
     }
   ],
   "ingredientLines": 730,
-  "aggregatedIngredients": 222
+  "aggregatedIngredients": 221
 }

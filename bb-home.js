@@ -263,7 +263,8 @@
     if(!measured?.key||!valid(measured.quantity)||!measured.unit)throw Error('Review this item’s quantity and unit.');
     const id=kind+':'+host().id(measured.key,measured.unit),intent=JSON.stringify({id,quantity:measured.quantity}),prior=state.data.manualRequests[request.requestId];
     if(prior){if(prior!==intent)throw Error('This saved request has changed. Reopen Add item.');return {ok:true,already:true,message:'This manual shopping request was already saved.'};}
-    const candidate={id,name:measured.key,displayName:name,kind,quantity:measured.quantity,unit:measured.unit,sourceQuantity:raw,sourceUnit:aliases[rawUnit]||rawUnit,estimated:measured.estimated===true,needsReview:measured.needsReview===true,assumption:measured.assumption||'',pending:measured.quantity>0,...(sized?{packCount,packQuantity:contentQuantity,packUnit:contentUnit,packReviewed:true}:{})};
+    if(request.source==='cupboard'&&(kind!=='food'||!win.BBPantryPolicy?.isStaple(name)||measured.unit!=='each'||measured.quantity!==1))throw Error('Choose one cupboard staple to add to the list.');
+    const candidate={id,name:measured.key,displayName:name,kind,quantity:measured.quantity,unit:measured.unit,sourceQuantity:raw,sourceUnit:aliases[rawUnit]||rawUnit,estimated:measured.estimated===true,needsReview:measured.needsReview===true,assumption:measured.assumption||'',pending:measured.quantity>0,...(request.source==='cupboard'?{source:'cupboard'}:{}),...(sized?{packCount,packQuantity:contentQuantity,packUnit:contentUnit,packReviewed:true}:{})};
     const context=host().shoppingPurchaseContext?.(shoppingBuyId(candidate))||{};
     candidate.shopSessionId=context.shopSessionId||null;candidate.boughtAtRequest=valid(context.quantity)?context.quantity:0;
     state.data.manualBuys[id]=candidate;state.data.manualRequests[request.requestId]=intent;
@@ -282,8 +283,10 @@
    for(const buy of shoppingBuys().filter(row=>row.kind!=='household')){
     const id=host().id(buy.name,buy.unit),context=host().shoppingPurchaseContext?.(id)||{},base=map.get(id)||{key:buy.name,unit:buy.unit,required:0,toBuy:0,pantryUsed:0,spend:null,sharedAcrossRecipes:0};
     if(!map.has(id)){map.set(id,base);output.push(base);}
-    const automatic=Number(base.toBuy)||0,baseline=buy.shopSessionId===context.shopSessionId?Number(buy.boughtAtRequest)||0:0,next=Math.max(automatic,baseline)+buy.quantity;
+    const automatic=Number(base.toBuy)||0,baseline=buy.shopSessionId===context.shopSessionId?Number(buy.boughtAtRequest)||0:0,next=buy.source==='cupboard'?Math.max(automatic,baseline+buy.quantity):Math.max(automatic,baseline)+buy.quantity;
     base.required=(Number(base.required)||0)+next-automatic;base.toBuy=next;base.manualBuyQty=buy.quantity;base.manualBuyId=buy.id;base.quantityEstimated=!!base.quantityEstimated||buy.estimated;
+    const policy=win.BBPantryPolicy,label=buy.displayName||buy.name,wholePepper=/^peppers?$/i.test(String(label||'').trim())&&buy.source!=='cupboard'&&base.staple!==true;
+    if(policy?.isStaple(label)&&['each','pack','bottle','jar'].includes(String(buy.unit||'').toLowerCase())&&!wholePepper){base.staple=true;base.stapleContainer=policy.containerLabel(label);}
    }
    return output;
   }
@@ -305,7 +308,7 @@
     if(!row?.pending||row.shopSessionId!==shopSessionId)continue;
     const addition=additions.find(value=>value.id===host().id(row.name,row.unit));
     if(!addition||!valid(addition.quantity)||!valid(addition.automaticQuantity))continue;
-    const credit=Math.min(row.quantity,Math.max(0,addition.quantity-addition.automaticQuantity));if(!(credit>0))continue;
+    const credit=Math.min(row.quantity,row.source==='cupboard'?addition.quantity:Math.max(0,addition.quantity-addition.automaticQuantity));if(!(credit>0))continue;
     row.quantity=Math.round((row.quantity-credit)*1000000)/1000000;row.pending=row.quantity>0;row.boughtAtRequest=0;changed=true;
    }
    return changed;

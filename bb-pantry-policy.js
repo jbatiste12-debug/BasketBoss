@@ -18,7 +18,7 @@
   if(!safeName(raw))return '';
   const states=originalStates;
   const cannedTomatoes=!states.includes('fresh')&&/^(?:(?:tinned|canned|tin) (?:chopped |whole |plum )?tomato(?:es)?|chopped (?:tinned |canned )?tomato(?:es)?)$/.test(raw);
-  const alias=label=>cannedTomatoes?'chopped tomatoes':label.replace(/^(?:tinned|canned) ((?:(?:red |white |black |kidney |baked |butter |cannellini |borlotti )?beans?|chickpeas?|lentils?))$/,'$1').replace(/^tomato ketchup$/,'ketchup');
+  const alias=label=>cannedTomatoes?'chopped tomatoes':label.replace(/^(?:tinned|canned) ((?:(?:red |white |black |kidney |baked |butter |cannellini |borlotti )?beans?|chickpeas?|lentils?))$/,'$1').replace(/^tomato ketchup$/,'ketchup').replace(/^(?:runny|clear) honey$/,'honey');
   let result=alias(raw).replace(/\bground beef\b/g,'beef mince').replace(/\bground turkey\b/g,'turkey mince').replace(/\bzucchini\b/g,'courgette').replace(/\beggplant\b/g,'aubergine').replace(/\bscallions?\b/g,'spring onion');
   if(typeof canonicalize==='function')try{const mapped=clean(canonicalize(result));if(safeName(mapped))result=alias(mapped);}catch{}
   const plurals={potatoes:'potato',carrots:'carrot',onions:'onion','red onions':'red onion','spring onions':'spring onion',courgettes:'courgette',aubergines:'aubergine',cucumbers:'cucumber',shallots:'shallot',eggs:'egg',apples:'apple',bananas:'banana',lemons:'lemon',limes:'lime',oranges:'orange'};result=plurals[result]||result;

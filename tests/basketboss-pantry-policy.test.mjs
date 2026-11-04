@@ -91,3 +91,8 @@ test('browser installation and native Node import expose the same pure rules wit
 test('oversized piece and container conversions remain reviewable instead of producing invalid stock',()=>{
  for(const [name,unit]of [['Carrots','each'],['Bread','loaf'],['Garlic','bulb'],['Celery','stalk']])assert.equal(policy.normalize(name,1000000,unit),null);
 });
+
+
+test('runny and clear honey use the same cupboard identity as pantry Honey',()=>{
+ for(const name of['Runny honey','Clear honey','Honey'])assert.equal(policy.canonicalName(name),'honey');
+});

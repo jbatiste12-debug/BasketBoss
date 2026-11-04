@@ -1,8 +1,22 @@
 # BasketBoss 1.0 (9) — live pantry sync and regional ingredient matching
 
 Build 9 includes all build 8 functionality and the “Your kitchen, made simple”
-welcome. The latest source is `testflight-build9-food-amounts` on
+welcome. The latest source is `testflight-build9-cupboard-check` on
 `fix/confirmed-cook-pantry` (PR #40). Earlier release tags remain unchanged.
+
+Shop now ends with a collapsed **Check your cupboard** section for culinary
+staples required by the planned week. Unknown/in-stock staples do not add an
+active item or budget cost by default. Explicit Low/Out or **+ Add to list** adds
+one bottle/jar/pack, using a full-container regional price guide. Promoting then
+marking the same item Low still produces one restock; ordinary manual top-ups
+remain additional purchases. Promoted items leave the reminder section, and
+actual purchases fulfil the request once.
+
+Shop meal labels use clean days such as “For: Mon · Thu”, with “Pantry top-up”
+when there is no meal attribution. Developer/source-review wording is removed
+from those labels and quantity names; unresolved source quantities remain
+available in the existing review/details flow rather than being discarded.
+Runny/clear honey now matches pantry Honey, preserving a single cupboard identity.
 
 Cupboard, Fridge and Freezer food rows now ask only for the amount already at
 home and its unit (or staple stock status/container count). “Total needed” is
@@ -92,9 +106,9 @@ from build 8. See BUILD_8_TESTFLIGHT.md for details.
 
 ## Verification
 
-Full automated suite: 1,821 passed, no failures or skipped tests, two existing
+Full automated suite: 1,844 passed, no failures or skipped tests, two existing
 TODO cases. Strict pantry TypeScript contracts passed. Native packaging and
-portable iOS checks passed: 909 assets, 100 Free recipes, no private Premium
+portable iOS checks passed: 910 assets, 100 Free recipes, no private Premium
 recipe bundle. The native Xcode compile/sign/upload is not performed here.
 
 ## Mac upload
@@ -104,7 +118,7 @@ in previous folders:
 
 ```sh
 bb_release_dir="$(mktemp -d "$HOME/BasketBoss-build9-XXXXXX")" &&
-git clone --depth 1 --branch testflight-build9-food-amounts \
+git clone --depth 1 --branch testflight-build9-cupboard-check \
   https://github.com/jbatiste12-debug/BasketBoss.git "$bb_release_dir" &&
 cd "$bb_release_dir" &&
 npm ci &&

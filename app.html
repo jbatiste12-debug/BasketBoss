@@ -2618,7 +2618,7 @@ body.bb172-storefront-visible .shell nav.tabs{visibility:hidden!important;pointe
 </style>
 <style id="bb1754-focus-css">
 /* BasketBoss v17.5.4 — focused shopping list. Only the shop-list tab. */
-#app.bb1754-focused-list > :not(.bb1745-list-launch):not(#bb321Printable):not(.bb1753-reconciliation):not(.bb1754-empty-list):not(.bb-receipt-host-section){display:none!important}
+#app.bb1754-focused-list > :not(.bb1745-list-launch):not(#bb321Printable):not(.bb1753-reconciliation):not(.bb1754-empty-list):not(.bb-receipt-host-section):not(#bbCupboardStaples){display:none!important}
 #app.bb1754-focused-list > .bb1745-list-launch{display:flex!important;margin:4px 0 18px!important}
 #app.bb1754-focused-list > #bb321Printable{display:block!important;margin:0 0 16px!important}
 #app.bb1754-focused-list > .bb1753-reconciliation{display:block!important;margin:0 0 22px!important;padding:17px 19px!important;background:#fbfdf9!important;border:1px solid #c6dcca!important}
@@ -3784,7 +3784,7 @@ body[data-bbnext-view="discover"] #app .bb-featured-card #bbFeaturedBatch {
 <div id="modalRoot"></div><div id="toastRoot" aria-live="polite"></div>
 <script src="basketboss-aisles-v20.js?v=bb82-aisle-20261024"></script>
 <script src="bb-supermarkets.js?v=bb-stores-20261031"></script>
-<script src="bb-pantry-policy.js?v=20261104-regions2"></script>
+<script src="bb-pantry-policy.js?v=20261104-cupboard1"></script>
 <script src="bb-pantry-display.js?v=20261104-regions2"></script>
 <script src="bb-recipe-canonical.js?v=20261104-regions2"></script>
 <script type="module" src="bb-pantry-runtime.mjs?v=20261104-regions2"></script>
@@ -4835,7 +4835,8 @@ function bb321UnifiedShop(recipeItems,ignoreManual=false){
   return {...item,needsRecipeReview:!!original?.needsReview,pendingSources:original?.pendingSources||[],pantryMismatch:reconciliation.mismatches[key]||[],quantityEstimated:!!item.quantityEstimated||!!estimate?.estimated,quantityAssumptions:[...new Set([...(item.quantityAssumptions||[]),...(estimate?.assumptions||[])])]};
  });
  const withStaples=window.BBPantryPolicy?bbHomeApplyStapleShopping(merged,{reviewRequired}):merged;
- return !ignoreManual&&window.BBHome?.manualBuyItems?window.BBHome.manualBuyItems(withStaples):withStaples;
+ const shopping=!ignoreManual&&window.BBHome?.manualBuyItems?window.BBHome.manualBuyItems(withStaples):withStaples;
+ return shopping.map(item=>item.staple?{...item,cupboardCheck:!(Number(item.toBuy)>0)}:item);
 }
 function bb321LunchboxHTML(){
  const saved=bb321LunchState,days=BB321Lunch.LUNCH_DAYS;
@@ -7324,7 +7325,7 @@ function bb172Title(s){return String(s||'').replace(/\b[a-z]/g,x=>x.toUpperCase(
 function bb172Checklist(items,essentials,ticks,pantryId,market){
  const sorted=[...items.filter(i=>!ticks[pantryId(i)])].sort((a,b)=>bb172AisleRank(a)-bb172AisleRank(b)||String(a.key).localeCompare(String(b.key)));
  let out='🛒 BASKETBOSS · '+market+' · SHOPPING LIST\n';let group='';
- for(const i of sorted){const a=bb172Aisle(i);if(a!==group){out+='\n'+a.toUpperCase()+'\n';group=a}out+='☐ '+bb172Title(i.key)+' — '+bb80ShoppingQuantity(i.key,i.toBuy,i.unit,market)+'\n'}
+ for(const i of sorted){const a=bb172Aisle(i);if(a!==group){out+='\n'+a.toUpperCase()+'\n';group=a}out+='☐ '+bb172Title(i.key)+' — '+bb80ShoppingQuantity(i.key,i.toBuy,i.unit,market,i)+'\n'}
  const remaining=essentials.filter(i=>!ticks['ess:'+i.id]);if(remaining.length){out+='\nWEEKLY ESSENTIALS\n';for(const i of remaining)out+='☐ '+bb172Title(i.name)+' — '+bb80ShoppingQuantity(i.name,i.qty,i.unit,market)+'\n'}
  if(!sorted.length&&!remaining.length)out+='\nEverything is covered!\n';
  return out+'\nShared list is a snapshot, not live syncing. Estimates are not supermarket quotes.';
@@ -7396,8 +7397,24 @@ function bb15Quote(item,essential=false){
   return window.BBWeeklyEssentials?.quote?.(item,{market:bb307Market,retailer:bb307ActiveRetailer(),paidRecord:bb15PaidPrice(item,true),receiptObservations})
    || {essential:true,amount:null,portionAmount:null,packAmount:null,source:'price_needed',priceNeeded:true};
  }
+ const stapleQuote=bb15StapleContainerQuote(item,quantity);
+ if(stapleQuote)return stapleQuote;
  return BBPriceV19.price({name:item.key||item.name,unit:item.unit||'each',quantity,market:bb307Market,retailer:bb307ActiveRetailer()})
   || {amount:null,portionAmount:null,packAmount:null,source:'unmatched'};
+}
+function bb15StapleContainerQuote(item,quantity){
+ if(!item.staple||!['each','pack','bottle','jar'].includes(item.unit)||!Number.isFinite(quantity)||quantity<0)return null;
+ const name=item.key||item.name,retailer=bb307ActiveRetailer();
+ const own=BBPriceV19.price({name,unit:item.unit,quantity,market:bb307Market,retailer});
+ if(own?.userOverride||own?.receiptLearned)return own;
+ const container=item.stapleContainer||window.BBPantryPolicy?.containerLabel(name)||'pack';
+ const pricingName=/^(?:pepper|black pepper|ground pepper)$/.test(String(name).toLowerCase())?'ground black pepper':name;
+ const unit=container==='bottle'?'ml':'g';
+ const baseline=BBPriceV19.price({name:pricingName,unit,quantity:1,market:bb307Market,retailer});
+ if(!baseline||!Number.isFinite(baseline.amount)||baseline.amount<0)return own;
+ const amount=Math.round(baseline.amount*quantity*100)/100;
+ // This is a full-container price estimate, not a measured pantry conversion.
+ return {...baseline,amount,portionAmount:amount,packAmount:amount,packCount:quantity,packQty:1,packUnit:'each',costBasis:'containers',stapleContainer:container};
 }
 function bb321LunchEstimate(item){return bb15Quote(item).amount;}
 function bb321DisplaySpend(item){return bb15Quote(item).amount;}
@@ -7529,11 +7546,24 @@ function bbWholeProduceCount(name,qty,unit){
 }
 
 /* Pricing sanity: every countable food gets a noun; sliced bread and loaves stay distinct. */
-function bb80ShoppingQuantity(name,quantity,unit,market=bb307Market){
- if(market==='US'&&window.BBPantryDisplay)return window.BBPantryDisplay.format(name,quantity,unit,market,{staple:!!window.BBPantryPolicy?.isStaple(name)&&!(name==='pepper'&&unit==='each'&&!bbHomeStapleState()[name])});
+function bb80ShoppingQuantity(name,quantity,unit,market=bb307Market,options={}){
  const n=Number(quantity), u=String(unit||'').toLowerCase();
  if(!Number.isFinite(n)||n<0)return BBPriceV19.formatQuantity(quantity,unit,market);
  const fmt=x=>new Intl.NumberFormat(market==='US'?'en-US':'en-GB',{maximumFractionDigits:2}).format(x);
+ const policy=typeof window!=='undefined'?window.BBPantryPolicy:null;
+ const key=policy?.canonicalName?.(name)||String(name||'').toLowerCase().trim();
+ let staple=!!policy?.isStaple(name);
+ // The catalogue also uses "pepper" for a whole counted vegetable. Only an
+ // explicit saved staple status makes that counted row a spice container.
+ if(staple&&key==='pepper'&&['each','count','whole','piece'].includes(u)){
+  let saved;try{saved=typeof bbHomeStapleState==='function'?bbHomeStapleState()[key]:null;}catch{}
+  staple=options.staple===true||!!saved;
+ }
+ if(staple&&['each','count','pack','bottle','jar','unit'].includes(u)){
+  const count=Math.max(0,Math.ceil(n-1e-9)),label=policy.containerLabel(name)||'pack';
+  return fmt(count)+' '+label+(count===1?'':'s');
+ }
+ if(market==='US'&&['g','kg','ml','l'].includes(u)&&typeof window!=='undefined'&&window.BBPantryDisplay)return window.BBPantryDisplay.format(name,quantity,unit,market);
  const wholeVeg=bbWholeProduceCount(name,n,u);
  if(wholeVeg)return wholeVeg.text+(u==='g'||u==='kg'?' (approx. '+fmt(u==='kg'?n*1000:n)+' g)':'');
  const k=String(name||'').toLowerCase().trim();
@@ -7575,13 +7605,13 @@ function bb80ShoppingQuantity(name,quantity,unit,market=bb307Market){
   const named=countable.find(([one,many])=>new RegExp('\\b(?:'+one+'|'+many+')\\b').test(k));
   if(named)return noun(named[0],named[1]);
   // Unknown each-units must NEVER appear as a misleading bare number.
-  return noun('item')+' (check unit)';
+  return noun('item');
  }
  return BBPriceV19.formatQuantity(quantity,unit,market);
 }
 /* BB-INGREDIENT-ANOMALY-QA-20261025-R1: shopping presentation + verified recipe source correction */
-function bb80ShoppingAction(name,quantity,unit,market,bought){
- const label=bb80ShoppingQuantity(name,quantity,unit,market);
+function bb80ShoppingAction(name,quantity,unit,market,bought,options={}){
+ const label=bb80ShoppingQuantity(name,quantity,unit,market,options);
  const k=String(name||'').toLowerCase();
  if(String(unit||'').toLowerCase()==='each'&&/\b(?:bread|toast)\b/.test(k)&&!/\b(?:bread loaf|loaf of bread|garlic baguette|bread rolls?|flatbread|pitta bread|bread flour|breadcrumbs?)\b/.test(k)){
   const count=Number(quantity);const packs=Math.max(1,Math.ceil(count/18));
@@ -7748,18 +7778,21 @@ function bb321ShoppingSources(){
  return byId;
 }
 function bb321UsedInLine(item,byId){
- const id=BB307Pantry.pantryId(item.key,item.unit);
- const sources=byId.get(id)||[];
- if(!sources.length)return item.manualBuyQty?'<small class="bb321-shop-used-in">Added manually</small>':'<small class="bb321-shop-used-in">For: source needs review</small>';
- const short={Monday:'Mon',Tuesday:'Tue',Wednesday:'Wed',Thursday:'Thu',Friday:'Fri',Saturday:'Sat',Sunday:'Sun'};
- const exactFmt=(n,unit)=>new Intl.NumberFormat('en-GB',{maximumFractionDigits:2}).format(n)+' '+unit;
- const fmt=(n,unit)=>/^(?:each|cloves?|cans?|tins?|small|medium|large)$/.test(unit)?BBServing.practicalText(n+' '+unit,1,item.key):exactFmt(n,unit);
- const parts=sources.map(s=>s.batchLeftoverDay?(short[s.day]||s.day)+' & '+(short[s.batchLeftoverDay]||s.batchLeftoverDay)+' (Batch cook · '+fmt(s.qty,s.unit)+')':(short[s.day]||s.day)+' ('+(s.estimated?'≈ ':'')+fmt(s.qty,s.unit)+')');
- const exact=sources.map(s=>(short[s.day]||s.day)+(s.batchLeftoverDay?' & '+(short[s.batchLeftoverDay]||s.batchLeftoverDay)+' (Batch cook)':'')+' — '+s.recipeName+': '+(s.estimated?'≈ ':'')+exactFmt(s.qty,s.unit)+(s.assumption?' — '+s.assumption:'')).join(' • ');
- const total=sources.reduce((v,s)=>v+s.qty,0);
- const ok=Math.abs(total-Number(item.required))<=0.02;
- const text='For: '+parts.slice(0,4).join(' • ')+(parts.length>4?' • +'+(parts.length-4)+' more':'')+(ok?'':' • Review total');
- return '<small class="bb321-shop-used-in" title="'+esc(exact)+'">'+esc(text)+'</small>';
+ const identity=name=>BB307Pantry.pantryId(name,''),wanted=identity(item.key||item.name),sources=[];
+ // Attribution follows the ingredient, not its display unit: staples become
+ // container counts while their recipe sources can still be teaspoons or ml.
+ for(const [id,rows]of byId?.entries?.()||[]){
+  if(typeof id!=='string'||!Array.isArray(rows))continue;
+  const at=id.lastIndexOf('|');if(at<1||identity(id.slice(0,at))!==wanted)continue;
+  sources.push(...rows);
+ }
+ const days=[['Monday','Mon'],['Tuesday','Tue'],['Wednesday','Wed'],['Thursday','Thu'],['Friday','Fri'],['Saturday','Sat'],['Sunday','Sun']],used=new Set();
+ for(const source of sources)for(const value of [source?.day,source?.batchLeftoverDay]){
+  const day=days.find(([full,short])=>String(value||'').toLowerCase()===full.toLowerCase()||String(value||'').toLowerCase()===short.toLowerCase());
+  if(day)used.add(day[0]);
+ }
+ const labels=days.filter(([day])=>used.has(day)).map(([,short])=>short);
+ return '<small class="bb321-shop-used-in">'+esc(labels.length?'For: '+labels.join(' • '):'Pantry top-up')+'</small>';
 }
 
 function renderShop(app){
@@ -7774,7 +7807,7 @@ function renderShop(app){
    const aTick=!!ticks[pantryId(a)],bTick=!!ticks[pantryId(b)];
    return bb172AisleRank(a)-bb172AisleRank(b)||Number(aTick)-Number(bTick)||String(a.key).localeCompare(String(b.key));
  });
- const covered=items.filter(item=>!(item.toBuy>0)).sort((a,b)=>String(a.key).localeCompare(String(b.key)));
+ const covered=items.filter(item=>!(item.toBuy>0)&&!item.staple&&!item.cupboardCheck).sort((a,b)=>String(a.key).localeCompare(String(b.key)));
  const estimatedWeeklyTotal=summary.total;
  const estimatedLabel='Approx. Est. '+cash(estimatedWeeklyTotal)+(summary.pending?' +':'');
  const pendingEstimateCount=summary.pending;
@@ -7800,7 +7833,7 @@ function renderShop(app){
     <div class="bb321-shop-main">
       <input id="bb321-buy-check-${i}" class="bb321-shop-checkbox" type="checkbox" data-bb321-tick="${esc(id)}" aria-label="Bought ${esc(item.key)}" ${ticks[id]?'checked':''}>
       <div class="bb321-shop-info"><label for="bb321-buy-check-${i}" class="bb321-shop-name">${esc(bb172Title(item.key))}</label>
-        <div class="bb321-shop-quantity"><strong>${esc(bb80ShoppingAction(item.key,ticks[id]?(bb84SavedPurchased(id)||item.toBuy):remaining,item.unit,bb307Market,!!ticks[id]))}${partial?.bought>0?' more':''}</strong>${partial?.bought>0?`<small class="bbpartial-progress">${partial.bought} ${esc(item.unit)} already purchased · ${remaining} left</small>`:''}<span class="bb321-shop-source">${source}</span>${item.pantryMismatch?.length?`<small class="bb-pantry-mismatch" style="color:#8b5727;font-weight:650" role="status">⚠ ${esc(item.pantryMismatch[0])}</small>`:''}</div>
+        <div class="bb321-shop-quantity"><strong>${esc(bb80ShoppingAction(item.key,ticks[id]?(bb84SavedPurchased(id)||item.toBuy):remaining,item.unit,bb307Market,!!ticks[id],item))}${partial?.bought>0?' more':''}</strong>${partial?.bought>0?`<small class="bbpartial-progress">${partial.bought} ${esc(item.unit)} already purchased · ${remaining} left</small>`:''}<span class="bb321-shop-source">${source}</span></div>
         <details class="bb321-shop-detail"><summary>Pack &amp; pantry details</summary>
          ${support.length?`<p class="muted bb321-shop-hint">${support.join(' · ')}</p>`:''}
          ${bb321StockControls(item,i,effective,units)}
@@ -7835,7 +7868,7 @@ function renderShop(app){
    return `<div class="shop-row"><label>${esc(name)}<small>${number(q)} ${esc(unit)} saved in pantry · not required by this meal plan</small></label><button type="button" class="small-btn" data-bb321-stock-remove="${esc(id)}">Remove</button></div>`;
  }).join('');
  app.innerHTML=`<div class="bbfeed-shop-status" role="status">👥 Feeding ${BBServing.count(state.servings)||4} · ${Object.keys(state.mealServings||{}).filter(id=>(state.planned||[]).some(p=>p.recipeId===id)).length} dinner override(s) · shopping quantities reflect your plan</div><div class="section-head"><div><h3>Smart shared shopping basket</h3><p>${chosen.length} planned recipes · Dinner and lunchbox ingredients combined</p></div><div class="bb321-shop-toolbar"><button class="btn" id="bb321ClearTicks" type="button">Reset bought ticks</button><button class="btn" id="bb307Reset" type="button">Clear pantry quantities</button></div></div>
-  <section class="card side bb321-shop-summary"><div class="bb321-shop-summary-top"><div><div class="muted bb321-shop-summary-label">Your whole weekly shop · ${esc(bb307Market)}</div><div class="bb321-shop-total">${estimatedLabel}</div><div class="bb321-shop-summary-stats"><strong>${remainingCount} still to buy</strong><span>${checkedCount} bought</span>${pendingEstimateCount?`<span>${pendingEstimateCount} unpriced</span>`:''}</div><p class="muted bb321-shop-summary-caption">Estimated basket of items to purchase; full packs may cost more than recipe portions. Leftovers and your selected cupboard staples are assumed on hand until you choose “Need to buy this”. Check actual supplies regularly. <strong>Not a verified supermarket total.</strong></p></div><div class="bb321-shop-actions"><button class="btn primary" id="bb307Copy" type="button">Copy checklist</button><button class="btn bb172-whatsapp" id="bb172WhatsApp" type="button">Share to WhatsApp</button><button class="btn" id="bb321Share" type="button">More sharing…</button><button class="btn" id="bb172StoreMode" type="button" aria-pressed="${bb172StoreMode()}">${bb172StoreMode()?'Exit In-Store Mode':'In-Store Mode'}</button><button class="btn" id="bb321Print" type="button">Print</button></div></div>
+  <section class="card side bb321-shop-summary"><div class="bb321-shop-summary-top"><div><div class="muted bb321-shop-summary-label">Your whole weekly shop · ${esc(bb307Market)}</div><div class="bb321-shop-total">${estimatedLabel}</div><div class="bb321-shop-summary-stats"><strong>${remainingCount} still to buy</strong><span>${checkedCount} bought</span>${pendingEstimateCount?`<span>${pendingEstimateCount} unpriced</span>`:''}</div><p class="muted bb321-shop-summary-caption">Estimated basket of items to purchase; full packs may cost more than recipe portions. Check the cupboard section below for this week’s staples. Only items you add or mark Low/Out count towards this basket. <strong>Not a verified supermarket total.</strong></p></div><div class="bb321-shop-actions"><button class="btn primary" id="bb307Copy" type="button">Copy checklist</button><button class="btn bb172-whatsapp" id="bb172WhatsApp" type="button">Share to WhatsApp</button><button class="btn" id="bb321Share" type="button">More sharing…</button><button class="btn" id="bb172StoreMode" type="button" aria-pressed="${bb172StoreMode()}">${bb172StoreMode()?'Exit In-Store Mode':'In-Store Mode'}</button><button class="btn" id="bb321Print" type="button">Print</button></div></div>
    <div class="bb321-shop-remaining">Remaining estimated spend: <strong>${cash(summary.remainingTotal)}${summary.remainingPending?' · manual price review needed':''}</strong></div>
    <details class="bb321-shop-estimate-details"><summary>About these approximate prices</summary><p class="muted">Illustrative UK pack baselines adjusted by category for the selected region. Brands, packs and real shop totals vary. No retailer prices have been verified.</p><p class="muted">Prices are indicative; some lunchbox or essential items are unpriced, and delivery is excluded. Pantry stock only changes when you edit it.</p></details>
   </section>
@@ -7847,7 +7880,7 @@ function renderShop(app){
   ${extra?`<h4 style="margin-top:12px">Other stored pantry ingredients</h4>${extra}`:''}
   ${(state.customPantry||[]).length?`<details><summary>Older name-only pantry notes (${state.customPantry.length})</summary><p class="muted">These old notes have no measured amounts and do not reduce the recipe estimate until you enter stock above.</p>${state.customPantry.map((x,i)=>`<div class="shop-row"><label>${esc(x.name)}</label><button class="small-btn" data-bb307-custom-remove="${i}">Remove</button></div>`).join('')}</details>`:''}</section>
   <p class="muted bb-shopping-price-reminder">Prices are regional estimates, not live supermarket prices. Actual pack prices may vary.</p>
-  <section id="bb321PrintOnly" aria-hidden="true"><h2>BasketBoss · ${esc(bb307Market)} · weekly shopping list</h2><p>Estimated weekly basket: ${estimatedLabel}</p>${toBuy.map(i=>`<p>${ticks[pantryId(i)]?'☑':'☐'} ${esc(i.key)}: ${esc(bb80ShoppingQuantity(i.key,i.toBuy,i.unit,bb307Market))}${i.displaySpend!=null?` · Est. ${cash(i.displaySpend)}`:' · No sensible guide — save price paid'}</p>`).join('')}${essentials.map(i=>`<p>${ticks['ess:'+i.id]?'☑':'☐'} ${esc(i.name)}: ${esc(bb80ShoppingQuantity(i.name,i.qty,i.unit,bb307Market))}${i.displaySpend!=null?` · Est. ${cash(i.displaySpend)}`:' · No sensible guide — save price paid'}</p>`).join('')}<p>Indicative regional estimates only, not verified retailer quotes. Lunchbox groceries and selected essentials are included where costs are known.</p></section>`;
+  <section id="bb321PrintOnly" aria-hidden="true"><h2>BasketBoss · ${esc(bb307Market)} · weekly shopping list</h2><p>Estimated weekly basket: ${estimatedLabel}</p>${toBuy.map(i=>`<p>${ticks[pantryId(i)]?'☑':'☐'} ${esc(i.key)}: ${esc(bb80ShoppingQuantity(i.key,i.toBuy,i.unit,bb307Market,i))}${i.displaySpend!=null?` · Est. ${cash(i.displaySpend)}`:' · No sensible guide — save price paid'}</p>`).join('')}${essentials.map(i=>`<p>${ticks['ess:'+i.id]?'☑':'☐'} ${esc(i.name)}: ${esc(bb80ShoppingQuantity(i.name,i.qty,i.unit,bb307Market))}${i.displaySpend!=null?` · Est. ${cash(i.displaySpend)}`:' · No sensible guide — save price paid'}</p>`).join('')}<p>Indicative regional estimates only, not verified retailer quotes. Lunchbox groceries and selected essentials are included where costs are known.</p></section>`;
  bb84ExtraRows(app,toBuy,essentials,ticks,bb307Market);
  const purchaseMap=new Map([...toBuy.map(x=>[pantryId(x),{item:x,essential:false}]),...essentials.map(x=>['ess:'+x.id,{item:x,essential:true}])]);
  const listText=()=>{
@@ -8163,18 +8196,45 @@ function bbHomeStapleState(stock,inventory){
 }
 function bbHomeApplyStapleShopping(items,{reviewRequired=false}={}){
  const policy=window.BBPantryPolicy;if(!policy)return items;
- const states=bbHomeStapleState(),out=[],seen=new Set();
+ const states=bbHomeStapleState(),out=[],seen=new Set(),explicitRestocks=new Set();
+ // An absent pantry record is a cupboard reminder, not a declaration that a
+ // bottle is empty. Only a saved Low/Out choice automatically creates demand.
+ try{for(const row of Object.values(JSON.parse(localStorage.getItem('basketboss_makeameal_v1_inventory')||'{}'))){
+  const marked=row?.stapleStatus??row?.stockStatus??row?.status;
+  if(typeof marked==='string'&&policy.isStaple(row.name)&&['low','out'].includes(policy.stapleStatus(row)))explicitRestocks.add(BB307Pantry.pantryName(row.name));
+ }}catch{}
  for(const item of items||[]){
   const key=BB307Pantry.pantryName(item.key||item.name),state=states[key];
-  const wholePepper=key==='pepper'&&['each','whole','piece','pieces'].includes(item.unit)&&!state;
+  const wholePepper=item.staple!==true&&key==='pepper'&&['each','whole','piece','pieces'].includes(item.unit)&&!state;
   if(!policy.isStaple(item.key||item.name)||wholePepper){out.push(item);continue;}
   if(seen.has(key))continue;seen.add(key);
-  const covered=!reviewRequired&&state?.status==='in';
-  out.push({...item,key,unit:'each',required:1,pantryUsed:covered?1:0,toBuy:covered?0:1,staple:true,stapleStatus:state?.status||'out',stapleContainer:policy.containerLabel(key),pantryMismatch:reviewRequired?['Confirm the saved pantry before using staple status.']:state?.status==='unknown'?['Review this staple’s stock status in At home.']:[],quantityEstimated:false,quantityAssumptions:[]});
+  const covered=!reviewRequired&&state?.status==='in',restock=!reviewRequired&&explicitRestocks.has(key)&&['low','out'].includes(state?.status);
+  out.push({...item,key,unit:'each',required:1,pantryUsed:covered?1:0,toBuy:restock?1:0,staple:true,cupboardRequired:true,cupboardCheck:!restock,stapleStatus:state?.status||'unknown',stapleContainer:policy.containerLabel(key),pantryMismatch:reviewRequired?['Confirm the saved pantry before using staple status.']:state?.status==='unknown'?['Review this staple’s stock status in At home.']:[],quantityEstimated:false,quantityAssumptions:[]});
  }
- if(!reviewRequired)for(const [key,state]of Object.entries(states))if(!seen.has(key)&&['low','out'].includes(state.status))out.push({key,unit:'each',required:1,pantryUsed:0,toBuy:1,staple:true,stapleStatus:state.status,stapleContainer:policy.containerLabel(key),pantryMismatch:[],quantityAssumptions:[]});
+ if(!reviewRequired)for(const [key,state]of Object.entries(states))if(!seen.has(key)&&explicitRestocks.has(key)&&['low','out'].includes(state.status))out.push({key,unit:'each',required:1,pantryUsed:0,toBuy:1,staple:true,cupboardRequired:false,cupboardCheck:false,stapleStatus:state.status,stapleContainer:policy.containerLabel(key),pantryMismatch:[],quantityAssumptions:[]});
  return out;
 }
+function bbHomeCupboardStapleItems(){
+ if(!window.BBPantryPolicy||typeof bb307Plan!=='function')return [];
+ const rows=bb321UnifiedShop(bb307Plan().items||[]),sources=typeof bb321ShoppingSources==='function'?bb321ShoppingSources():new Map();
+ const order=typeof DAYS==='undefined'?['Monday','Tuesday','Wednesday','Thursday','Friday','Saturday','Sunday']:DAYS;
+ return rows.filter(row=>row.staple&&row.cupboardRequired).map(row=>{
+  const key=BB307Pantry.pantryName(row.key),days=new Set();
+  for(const [id,entries]of sources){const divider=String(id).lastIndexOf('|');if(BB307Pantry.pantryName(String(id).slice(0,divider))!==key)continue;
+   for(const source of entries||[])for(const day of [source.day,source.batchLeftoverDay])if(order.includes(day))days.add(day);
+  }
+  return {key,name:typeof bb172Title==='function'?bb172Title(key):key,unit:'each',container:row.stapleContainer||window.BBPantryPolicy.containerLabel(key),status:row.stapleStatus||'unknown',days:order.filter(day=>days.has(day)),active:Number(row.toBuy)>0};
+ });
+}
+function bbHomePromoteCupboardStaple(key){
+ const canonical=BB307Pantry.pantryName(key),item=bbHomeCupboardStapleItems().find(row=>row.key===canonical);
+ if(!item)return {ok:false,message:'This staple is no longer needed by your planned meals.'};
+ if(item.active)return {ok:true,already:true,message:item.name+' is already on your shopping list.'};
+ if(typeof window.BBHome?.addShoppingBuy!=='function')return {ok:false,message:'Shopping is still loading. Try again shortly.'};
+ const suffix=window.crypto?.randomUUID?.()||Date.now().toString(36)+'-'+(bbHomePromoteCupboardStaple.sequence=(bbHomePromoteCupboardStaple.sequence||0)+1);
+ return window.BBHome.addShoppingBuy({name:item.key,quantityText:'1 each',source:'cupboard',actorId:window.BBHome.actor(),requestId:'cupboard-'+suffix});
+}
+window.BBCupboardStaples=Object.freeze({items:bbHomeCupboardStapleItems,promote:bbHomePromoteCupboardStaple,refresh:()=>window.BBHomeHost?.refresh?.()});
 function bbHomeShoppingMeasure(name,quantity,unit,options={}){
  const policy=window.BBPantryPolicy,key=BB307Pantry.pantryName(name);
  if(policy?.isStaple(name)){
@@ -12382,7 +12442,7 @@ body[data-bbnext-view="discover"] #app .bb175-discover-heading{padding-top:calc(
 <link rel="stylesheet" href="bb-simple-layout.css?v=20261102-loop2">
 <script defer src="bb-simple-layout.js?v=20261101-simple1"></script>
 <script defer src="bb-pantry-deduction.js?v=20261104-regions2"></script>
-<script defer src="bb-home.js?v=20261104-regions2"></script><link rel="stylesheet" href="bb-day-done.css?v=20261104-cycle1"><script defer src="bb-day-done.js?v=20261104-regions2"></script><link rel="stylesheet" href="bb-shop-add.css?v=20261104-cycle1"><script defer src="bb-shop-add.js?v=20261104-cycle1"></script><script src="bb-pantry-autofill.js?v=20261104-cycle1"></script>
+<script defer src="bb-home.js?v=20261104-cupboard1"></script><link rel="stylesheet" href="bb-day-done.css?v=20261104-cycle1"><script defer src="bb-day-done.js?v=20261104-regions2"></script><link rel="stylesheet" href="bb-shop-add.css?v=20261104-cycle1"><script defer src="bb-shop-add.js?v=20261104-cycle1"></script><script defer src="bb-cupboard-staples.js?v=20261104-cupboard2"></script><script src="bb-pantry-autofill.js?v=20261104-cycle1"></script>
 <link rel="stylesheet" href="bb-shared-shopping.css?v=20261102-loop2">
 <script defer src="bb-shared-shopping.js?v=20261102-loop2"></script>
 <link rel="stylesheet" href="bb-plan-drag.css?v=20261103-drag2">

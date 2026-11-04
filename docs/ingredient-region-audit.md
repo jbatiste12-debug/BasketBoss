@@ -2,7 +2,7 @@
 
 Audited **100 recipes / 730 ingredient lines** in both UK and US modes.
 
-Aggregates contain **222 ingredients, zero duplicate keys**. Canonical storage uses g, ml and each (count); staples use container/status tracking.
+Aggregates contain **221 ingredients, zero duplicate keys**. Canonical storage uses g, ml and each (count); staples use container/status tracking.
 
 **12 source amounts need recipe review.** These are not silently assigned weights.
 

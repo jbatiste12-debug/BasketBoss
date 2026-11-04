@@ -26,7 +26,7 @@ function fixture({stock={},inventory={},ingredients=[],entrypoint='index.html'}=
  const lunchStart=html.indexOf('const BB321Lunch=(()=>{'),lunchEnd=html.indexOf('/* BasketBoss 321 v8 — School Lunchboxes',lunchStart);
  vm.runInContext(html.slice(lunchStart,lunchEnd),ctx);
  Object.assign(ctx,{bb307Stock:{...stock},bb307ReadStock:()=>JSON.parse(storage.getItem(STOCK)),bbReceiptPantryReviewRequired:()=>false,bbReceiptHasAuthoritativePantry:()=>true,bbBetaStockForCurrentWeek:value=>value,bbHomeLegacyPantry:()=>({}),bb321LunchboxRequirements:()=>[]});
- for(const name of ['bbHomePhysicalStock','bbHomeStapleState','bbHomeApplyStapleShopping','bbHomeShoppingMeasure','bbHomeConversionContext','bbPantryReconcileStock','bb321UnifiedShop'])vm.runInContext(actualFunction(html,name),ctx);
+ for(const name of ['bbHomePhysicalStock','bbHomeStapleState','bbHomeApplyStapleShopping','bbHomeCupboardStapleItems','bbHomePromoteCupboardStaple','bbHomeShoppingMeasure','bbHomeConversionContext','bbPantryReconcileStock','bb321UnifiedShop'])vm.runInContext(actualFunction(html,name),ctx);
  const bridge=html.split('\n').find(line=>line.startsWith('window.BBPantryState='));if(bridge)vm.runInContext(bridge,ctx);
  ctx.BB172_STAPLES_KEY='basketboss_v172_assumed_staples_v1';
  for(const name of ['bb172StapleSaved','bb172StapleAssumesOnHand'])vm.runInContext(actualFunction(html,name),ctx);
@@ -34,6 +34,7 @@ function fixture({stock={},inventory={},ingredients=[],entrypoint='index.html'}=
  const host={id:pantry.pantryId,keys:()=>({stock:STOCK,inventory:INVENTORY}),stock:ctx.bbHomePhysicalStock,conversionContext:ctx.bbHomeConversionContext,
   recipeIngredients:(_id,factor)=>state.ingredients.map(value=>({...value,required:value.required*factor})),occurrence,refresh(){},household:()=>[],requirements:()=>state.ingredients,
   shoppingKind:()=> 'food',shoppingMeasure:ctx.bbHomeShoppingMeasure,shoppingPurchaseContext:()=>({shopSessionId:'policy-trip',quantity:0})};
+ ctx.bb307Plan=()=>({items:state.ingredients});ctx.bb321ShoppingSources=()=>new Map();
  win.BBHomeHost=host;win.BBHome=homeModule.install(win);
  vm.runInNewContext(read('bb-receipt-inventory.js'),{window:win,console});
  const catalog={'ketchup|ml':{},'soy sauce|ml':{},'olive oil|ml':{},'honey|g':{},'rice|g':{},'chopped tomatoes|g':{},'spinach|g':{},'beef mince|g':{},'milk|ml':{},'garlic|clove':{}};
@@ -182,4 +183,53 @@ test('a historical Finish measured ketchup purchase nets to one container and la
  assert.equal((await h.receipt('historical-ketchup-receipt-2','Ketchup',800,'ml')).ok,true);assert.deepEqual(h.stock(),{'ketchup|each':2});
  assert.equal((await h.receipt('historical-ketchup-receipt-3','Ketchup',800,'ml')).ok,true);assert.deepEqual(h.stock(),{'ketchup|each':3});
  const history=JSON.parse(h.storage.getItem(ledgerKey))[legacyId];assert.equal(history.credited,800);assert.equal(history.unit,'ml');assert.equal(h.shopping()[0].toBuy,0);
+});
+
+test('planned cupboard staples stay out of active shopping until the user requests a container',()=>{
+ const ingredients=[{key:'soy sauce',required:15,unit:'ml'},{key:'olive oil',required:2,unit:'tbsp'},{key:'salt',required:1,unit:'pinch'},{key:'pepper',required:1,unit:'each',staple:true},{key:'rice',required:200,unit:'g'}];
+ const h=fixture({ingredients}),rows=h.shopping();assert.equal(rows.filter(row=>row.toBuy>0).length,1);assert.equal(rows.find(row=>row.key==='rice').toBuy,200);
+ for(const key of ['soy sauce','olive oil','salt','pepper']){const row=rows.find(row=>row.key===key);assert.equal(row.toBuy,0,key);assert.equal(row.staple,true,key);assert.equal(row.cupboardRequired,true);assert.equal(row.cupboardCheck,true);assert.equal(row.stapleStatus,'unknown');}
+ assert.deepEqual(h.stock(),{});assert.equal(h.home.shoppingBuys().length,0,'opening reminders is read-only');
+});
+
+test('weekly cupboard reminders retain meal days across culinary and container units',()=>{
+ const h=fixture({ingredients:[{key:'soy sauce',required:15,unit:'ml'}]});h.ctx.bb321ShoppingSources=()=>new Map([['soy sauce|ml',[{day:'Thursday'},{day:'Monday',batchLeftoverDay:'Wednesday'}]],['rice|g',[{day:'Friday'}]]]);
+ assert.deepEqual(copy(h.ctx.bbHomeCupboardStapleItems()),[{key:'soy sauce',name:'soy sauce',unit:'each',container:'bottle',status:'unknown',days:['Monday','Wednesday','Thursday'],active:false}]);
+});
+
+test('legacy zero balances do not manufacture a Low or Out declaration',()=>{
+ const h=fixture({stock:{'honey|each':0},ingredients:[{key:'honey',required:15,unit:'g'}]});assert.equal(h.shopping()[0].toBuy,0);
+ const unknown=fixture({inventory:{honey:entry('Honey',null,'each',{staple:true,stapleStatus:'unknown'})},ingredients:[{key:'honey',required:15,unit:'g'}]});assert.equal(unknown.shopping()[0].toBuy,0);
+});
+
+test('one-tap cupboard promotion is idempotent and a later Low choice still requests only one bottle',()=>{
+ const h=fixture({ingredients:[{key:'soy sauce',required:15,unit:'ml'}]});assert.equal(h.ctx.bbHomePromoteCupboardStaple('soy sauce').ok,true);const writes=h.writes.length;
+ assert.equal(h.shopping()[0].toBuy,1);assert.equal(h.home.shoppingBuys()[0].source,'cupboard');assert.equal(h.ctx.bbHomePromoteCupboardStaple('soy sauce').already,true);assert.equal(h.writes.length,writes);
+ h.storage.setItem(STOCK,JSON.stringify({'soy sauce|each':1}));h.storage.setItem(INVENTORY,JSON.stringify({soy:entry('Soy sauce',1,'each',{staple:true,stapleStatus:'low'})}));assert.equal(h.shopping()[0].toBuy,1,'the explicit Low restock and promotion refer to one container');
+ assert.equal(h.home.addShoppingBuy({name:'soy sauce',quantityText:'1 each',actorId:ACTOR,requestId:'deliberate-extra-bottle'}).ok,true);assert.equal(h.shopping()[0].toBuy,2,'ordinary manual Shop top-ups remain additional');
+});
+
+test('a cupboard promotion purchased alongside an automatic restock is fulfilled by that actual container',()=>{
+ const h=fixture({ingredients:[{key:'soy sauce',required:15,unit:'ml'}]});assert.equal(h.ctx.bbHomePromoteCupboardStaple('soy sauce').ok,true);
+ h.storage.setItem(STOCK,JSON.stringify({'soy sauce|each':1}));h.storage.setItem(INVENTORY,JSON.stringify({soy:entry('Soy sauce',1,'each',{staple:true,stapleStatus:'low'})}));assert.equal(h.shopping()[0].toBuy,1);
+ const transfer=finish(h,{id:'soy sauce|each',name:'soy sauce',qty:1,unit:'each',aisle:'Cupboard / Pantry'});assert.equal(transfer().count,1);assert.equal(h.home.shoppingBuys().length,0);assert.equal(h.shopping()[0].toBuy,0);assert.equal(h.stock()['soy sauce|each'],2);
+});
+
+test('cupboard promotion cannot mutate an unrelated ingredient or bypass a pending pantry review',()=>{
+ const h=fixture({ingredients:[{key:'soy sauce',required:15,unit:'ml'}]}),before=[...h.values];assert.equal(h.ctx.bbHomePromoteCupboardStaple('rice').ok,false);assert.deepEqual([...h.values],before);
+ h.win.BBReceiptHost.canConsumePantry=()=>false;assert.equal(h.ctx.bbHomePromoteCupboardStaple('soy sauce').ok,false);assert.deepEqual([...h.values],before);
+});
+
+test('counted whole pepper remains food while projected culinary pepper is a cupboard staple',()=>{
+ const whole=fixture({ingredients:[{key:'pepper',required:2,unit:'each'}]});assert.equal(whole.shopping()[0].toBuy,2);assert.equal(whole.shopping()[0].staple,undefined);
+ const spice=fixture({ingredients:[{key:'pepper',required:1,unit:'each',staple:true}]});assert.equal(spice.shopping()[0].toBuy,0);assert.equal(spice.shopping()[0].staple,true);
+});
+
+test('manual-only condiment counts retain bottle or jar metadata while whole peppers stay produce',()=>{
+ for(const [name,quantityText,container]of [['Honey','1 jar','jar'],['Olive oil','1 bottle','bottle'],['Black pepper','1 jar','jar'],['Ground Pepper','1 jar','jar']]){
+  const h=fixture();assert.equal(h.home.addShoppingBuy({name,quantityText,actorId:ACTOR,requestId:'manual-'+name}).ok,true,name);const rows=h.shopping();assert.equal(rows.length,1,name);assert.equal(rows[0].toBuy,1,name);assert.equal(rows[0].staple,true,name);assert.equal(rows[0].stapleContainer,container,name);assert.equal(rows[0].cupboardRequired,undefined,'unplanned purchases do not become weekly reminders');
+ }
+ for(const name of ['Pepper','Peppers','Red peppers','Bell peppers']){
+  const h=fixture();assert.equal(h.home.addShoppingBuy({name,quantityText:'2 each',actorId:ACTOR,requestId:'manual-'+name}).ok,true,name);const rows=h.shopping();assert.equal(rows.length,1,name);assert.notEqual(rows[0].staple,true,name+' is whole produce');assert.equal(rows[0].stapleContainer,undefined,name);
+ }
 });
