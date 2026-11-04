@@ -215,6 +215,28 @@ test('native close waits one layout frame and cannot dismiss a newly opened cred
  }
 });
 
+test('native close still dismisses the original credential input when WebKit retains visible focus',()=>{
+ for(const field of ['cloud-email','cloud-password']){
+  const h=harness({store:new Map([[PLAN,'saved meal plan']]),withAuth:true});h.tap('next');
+  const host=h.active(),form=h.node('cloud-auth'),slot=form.parentNode,frames=[];
+  // Secure input can keep its WKWebView responder even after DOM blur and
+  // portal restoration. A retained original field is not a new user action.
+  let blurs=0,keyboardVisible=true,calls=0;
+  const input={id:field,matches:()=>true,inside:true,getClientRects:()=>[{}],blur(){blurs++;}};
+  host.contains=node=>node===input||node===form&&form.parentNode===slot;
+  h.document.activeElement=input;h.window.requestAnimationFrame=fn=>{frames.push(fn);return frames.length;};
+  h.window.BBNative.dismissKeyboard=()=>{
+   calls++;assert.notEqual(form.parentNode,slot);assert.equal(host.removed,true);
+   keyboardVisible=false;h.document.activeElement=h.replayButton;return Promise.resolve({ok:true});
+  };
+  h.tap('free');assert.equal(h.active(),undefined);assert.ok(blurs>0);assert.equal(keyboardVisible,true);
+  assert.equal(h.document.activeElement,input,'the original field can retain focus until UIKit resigns it');
+  for(const frame of frames.splice(0))frame();
+  assert.equal(calls,1,field+' must still reach native dismissal when the original focus survives');
+  assert.equal(keyboardVisible,false);assert.equal(h.document.activeElement,h.replayButton);
+ }
+});
+
 test('closing onboarding never restores focus to an editable opener',async()=>{
  const h=harness({saved:completed,store:new Map([[PLAN,'saved meal plan']]),withAuth:true});
  const opener={isConnected:true,matches:()=>true,focus(){this.focused=true;}};h.document.activeElement=opener;

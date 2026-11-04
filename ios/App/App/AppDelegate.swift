@@ -79,6 +79,35 @@ private enum BasketBossKeyboardUITestRuntime {
         isKeyboardSmokeLaunch && ProcessInfo.processInfo.arguments.contains("--bb-ui-tests-disable-animations")
     }
 }
+
+// Disposable UI-test diagnostics only. No input values, credentials or user
+// identifiers are recorded. A zero count distinguishes a missed bridge call.
+@MainActor private enum BasketBossKeyboardDismissalDiagnostics {
+    private static var report: [String: Any] = [:]
+    private static var file: URL? {
+        guard BasketBossKeyboardUITestRuntime.isKeyboardSmokeLaunch else { return nil }
+        let arguments = ProcessInfo.processInfo.arguments
+        let scope = arguments.contains("--bb-native-onboarding-keyboard-smoke") ? "onboarding" : "account"
+        let target = arguments.contains("--bb-keyboard-password") ? "password" : "email"
+        return FileManager.default.urls(for: .documentDirectory, in: .userDomainMask).first?
+            .appendingPathComponent("bb-keyboard-dismissal-\(scope)-\(target).json")
+    }
+
+    static func reset() { report = ["requests": 0]; save() }
+
+    static func record(webViewEnded: Bool, windowEnded: Bool, responderActionSent: Bool) {
+        guard file != nil else { return }
+        report = ["requests": (report["requests"] as? Int ?? 0) + 1,
+                  "webViewEnded": webViewEnded, "windowEnded": windowEnded,
+                  "responderActionSent": responderActionSent]
+        save()
+    }
+
+    private static func save() {
+        guard let file = file, let data = try? JSONSerialization.data(withJSONObject: report) else { return }
+        try? data.write(to: file, options: .atomic)
+    }
+}
 #endif
 #endif
 
@@ -127,6 +156,7 @@ class BasketBossViewController: CAPBridgeViewController {
         let keyboardArguments = ProcessInfo.processInfo.arguments
         if BasketBossKeyboardUITestRuntime.isKeyboardSmokeLaunch, let webView = webView {
             let onboarding = keyboardArguments.contains("--bb-native-onboarding-keyboard-smoke")
+            BasketBossKeyboardDismissalDiagnostics.reset()
             webView.accessibilityIdentifier = "bbKeyboardWebView"
             let content = webView.configuration.userContentController
             keyboardSmokeReporter?.invalidate()
@@ -805,8 +835,20 @@ public class BasketBossNavigationPlugin: CAPPlugin, CAPBridgedPlugin {
                 call.reject("Keyboard view is unavailable.", "BB_NATIVE_KEYBOARD")
                 return
             }
-            webView.endEditing(true)
-            call.resolve(["ok": true])
+            let webViewEnded = webView.endEditing(true)
+            // Secure text entry can retain a responder outside WebKit's view
+            // subtree. End editing in the app window and its responder chain.
+            let windowEnded = webView.window?.endEditing(true) ?? false
+            let responderActionSent = UIApplication.shared.sendAction(
+                #selector(UIResponder.resignFirstResponder), to: nil, from: nil, for: nil)
+            #if DEBUG
+            #if targetEnvironment(simulator)
+            BasketBossKeyboardDismissalDiagnostics.record(webViewEnded: webViewEnded,
+                windowEnded: windowEnded, responderActionSent: responderActionSent)
+            #endif
+            #endif
+            call.resolve(["ok": true, "webViewEnded": webViewEnded,
+                          "windowEnded": windowEnded, "responderActionSent": responderActionSent])
         }
     }
 

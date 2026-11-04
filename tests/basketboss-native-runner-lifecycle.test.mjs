@@ -249,7 +249,8 @@ test('staged keyboard activation only signs, activates and installs the already 
 test('staged keyboard reporting requires all successful steps and exactly four passing, unskipped tests',async()=>{
  const result=await runScript('test-ios-account-keyboard.mjs',{argv:['--report'],keyboardState:keyboardReadyState(),env:keyboardSuccessfulOutcomes});
  assert.equal(result.process.exitCode,undefined);
- assert.equal(result.commands.some(command=>['xcodebuild','ruby','codesign','defaults','open'].includes(command[0])||command[1]==='simctl'),false);
+ assert.equal(result.commands.some(command=>['xcodebuild','ruby','codesign','defaults','open'].includes(command[0])||(command[1]==='simctl'&&command[2]!=='get_app_container')),false,'reporting may read the installed app diagnostics but cannot mutate or launch the simulator');
+ assert.deepEqual(result.commands.filter(command=>command[1]==='simctl'),[['xcrun','simctl','get_app_container','proven-phone','uk.co.basketboss.app','data']]);
  assert.ok(result.logs.some(line=>line.includes('native account keyboard::')&&line.includes('"passed":true')));
  for(const keyboardSummary of [{passedTests:3,failedTests:0,skippedTests:0},{passedTests:5,failedTests:0,skippedTests:0},{passedTests:4,failedTests:1,skippedTests:0},{passedTests:4,failedTests:0,skippedTests:1}]){
   const failed=await runScript('test-ios-account-keyboard.mjs',{argv:['--report'],keyboardState:keyboardReadyState(),env:keyboardSuccessfulOutcomes,keyboardSummary});

@@ -325,8 +325,9 @@
      const finishDismissal=()=>{
        if(host||closingHost?.isConnected===true)return;
        const current=document.activeElement;
-       // A new trusted interaction may already have opened another form.
-       if(editable(current)&&current.getClientRects?.().length)return;
+       // A different visible field can belong to a newly opened form. The
+       // original input retaining focus is the responder we still must dismiss.
+       if(current!==active&&editable(current)&&current.getClientRects?.().length)return;
        if(editable(current))current.blur?.();
        try{Promise.resolve(dismissNative()).catch(()=>{});}catch(_){}
      };
