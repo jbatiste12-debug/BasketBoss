@@ -181,6 +181,19 @@ test("password reset uses correct redirect and a non-enumerating completion mess
   assert.match(h.core.state().message, /If an account exists/);
   assert.equal(h.success.length, 0);
 });
+test("restarting recovery drops the old lease and requests a fresh link without signing in", async () => {
+  const h = fixture();
+  await h.core.callback({ token_hash: "sample-hash", type: "recovery" });
+  const email = h.core.state().email;
+  h.core.invalidate();
+  h.core.open("forgot-password");
+  assert.equal(await h.core.updatePassword("password123", "password123"), false);
+  assert.equal(h.data.has("basketboss_password_recovery_v1"), false);
+  assert.equal(await h.core.requestReset(email), true);
+  assert.equal(h.calls.at(-1).name, "resetPasswordForEmail");
+  assert.equal(h.core.state().view, "reset-sent");
+  assert.equal(h.success.length, 0);
+});
 for (const fields of [
   { code: "sample-code", bb_auth: "signup", sb_flow_id: "flow-id" },
   { token_hash: "sample-hash", type: "signup" },
