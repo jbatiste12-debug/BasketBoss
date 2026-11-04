@@ -23,7 +23,7 @@ The campaign ends **1 February 2027 at 00:00 UTC**. Each grant lasts at most 90 
 
 The new isolated D1 table and index initialize additively on the first successful claim using the existing `BILLING_DB` binding. The reviewed equivalent SQL is in `sql/basketboss_testflight_beta_20261103.sql`; no subscription migration, IAP product configuration or new secret is required for beta access. Existing Supabase authentication/current-session service configuration remains required.
 
-Deploy the backend change to the existing production Cloudflare Pages project before distributing the client. **A new TestFlight build is required:** older installed apps do not include the AppTransaction bridge or these bundled buttons. The current candidate remains iOS build 6. GitHub's unsigned archive is compilation evidence, not a signed TestFlight upload.
+Deploy the backend change to the existing production Cloudflare Pages project before distributing the client. **A new TestFlight build is required for clients that lack the AppTransaction bridge or bundled beta buttons.** Once those are installed, the server-only compatibility repairs below do not require another Apple build. GitHub's unsigned archive is compilation evidence, not a signed TestFlight upload.
 
 On a physical TestFlight device, sign in with a confirmed account, open Upgrade, tap **Unlock TestFlight Beta Premium**, and confirm the active/expiry message on both Paywall and Settings. Restart the app and verify Premium recipes, a Chef Boss question with spoken reply, and an AI feature. Check a second signed-in device with the same account follows existing session rules. App Store signing, TestFlight upload, real Apple Sandbox receipt verification and external AI provider responses require that device check; portable mocks and synthetic certificate fixtures do not prove those production paths.
 
@@ -39,7 +39,8 @@ The endpoint now records one safe `BB_BETA_DIAGNOSTIC` line for a caught error.
 Unexpected exceptions return a beta-specific message containing a fixed reference
 that existing installed clients already display. No raw exception, account ID,
 email, bearer token, request body or Apple receipt is logged. Existing known
-Apple errors retain their status, code and wording.
+Apple errors retain their status and code. Proof verification and signed-claim
+failures add a fixed reference to the message that installed clients display.
 
 | Reference | Failed step to inspect |
 |---|---|
@@ -134,3 +135,64 @@ fixtures and reject tampering, incorrect bundle/environment and untrusted roots.
 After production deployment, the public verifier readiness route must report
 ready on both domains. A tester must then activate Beta Premium and verify the
 authoritative membership status before considering the user-facing issue fixed.
+
+
+## OCSP transport and strict UTC date compatibility
+
+SDK startup readiness does not exercise the verifier's online OCSP requests.
+A second real-workerd regression reproduces a separate failure after startup:
+`node-fetch` reaches a Node HTTP header compatibility error before either OCSP
+request leaves the Worker. The SDK classifies it as a retryable verification
+failure. This is a confirmed runtime incompatibility; it does not alone establish
+which step rejected an individual tester's request.
+
+The reproducible bundle now supplies Workers-native Fetch for the official
+SDK's HTTP transport. Requests preserve exact DER bytes and headers. Responses
+support the SDK's JSON methods and Node `Buffer`-returning `buffer()` method.
+The SDK's request timeout covers reading the whole response body; aborts,
+network failures and non-success HTTP responses still reject verification.
+No new credential, entitlement, database or Cloudflare setting is required.
+
+The pinned SDK 3.1.0 also parses OCSP dates using a regex that omits the trailing
+`Z` in ASN.1 GeneralizedTime. `Invalid Date` can then bypass its freshness
+comparisons. Our explicitly documented instance wrapper replaces only
+`parseX509Date()`, on both app-proof and paid-purchase verifiers, with a strict,
+calendar-validated UTC parser. It accepts 14 digits, optional bounded fractional
+seconds and optional `Z`; impossible or malformed values throw the official
+SDK's `VerificationException(FAILURE)`. Certificate chains, signature checks,
+revocation status and the SDK's existing clock-skew comparisons stay in place.
+The vendored SDK source is generated from the unchanged pinned release; it is
+not patched to disable or replace verification.
+
+The real-workerd fixture now verifies an ES256 AppTransaction with online
+checks enabled and two signed, valid OCSP responses. The legacy transport
+fails before sending a request; the native transport makes both OCSP POSTs.
+Revoked, stale, future-dated, malformed-date, tampered and malformed responses
+remain rejected, as do network errors and non-success HTTP responses. These
+are synthetic keys and certificates confined to the isolated test process.
+Production continues to use pinned Apple roots and real online checks.
+
+Actual verification failures now expose only fixed diagnostic references:
+
+| Reference | Meaning |
+|---|---|
+| `BB_BETA_APPLE_VERIFY_RETRYABLE_VERIFICATION_FAILURE` | Online certificate verification could not complete; inspect runtime transport or provider availability |
+| `BB_BETA_APPLE_VERIFY_VERIFICATION_FAILURE` | Signature or trusted-chain verification failed |
+| `BB_BETA_APPLE_VERIFY_INVALID_CERTIFICATE` | Certificate decoding, validity or certificate-purpose check failed |
+| `BB_BETA_APPLE_VERIFY_INVALID_APP_IDENTIFIER` | The verified proof belongs to a different app |
+| `BB_BETA_APPLE_VERIFY_INVALID_ENVIRONMENT` | The verified proof is not Sandbox |
+| `BB_BETA_APPLE_VERIFY_INVALID_CHAIN_LENGTH` | The SDK rejected the certificate-chain shape |
+| `BB_BETA_APPLE_VERIFY_FAILURE` | The SDK rejected proof/OCSP contents, including invalid freshness dates |
+| `BB_BETA_APPLE_VERIFY_TIMEOUT` | The existing bounded verifier timed out |
+| `BB_BETA_APPLE_VERIFY_REQUEST_FORMAT` | The signed proof has an invalid envelope |
+| `BB_BETA_APPLE_VERIFY_UNEXPECTED` | An unclassified verifier exception occurred; no raw detail is disclosed |
+| `BB_BETA_APPLE_CLAIM_APP_TRANSACTION_ID` | A successfully verified payload lacks a valid app transaction identity |
+| `BB_BETA_APPLE_CLAIM_APP_ID` | A successfully verified payload contains an invalid or conflicting Apple app ID |
+| `BB_BETA_APPLE_CLAIM_BUNDLE_ID` / `..._ENVIRONMENT` | A successfully verified payload fails the exact app/environment requirement |
+| `BB_BETA_APPLE_CLAIM_APPLICATION_VERSION` / `..._RECEIPT_CREATION_DATE` | A successfully verified payload fails a required version/date check |
+| `BB_BETA_APPLE_CLAIM_CONFIGURATION` | The configured Apple app ID is invalid |
+
+No proof fields, identifiers, certificate bodies, exception text, bearer tokens
+or account details appear in these references or diagnostic logs. Failed
+verification and claims do not persist a beta grant. A valid tester's successful
+activation and authoritative Premium status remain the final production check.

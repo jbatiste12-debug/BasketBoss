@@ -23,6 +23,13 @@ on:
       - functions/api/apple/testflight-beta.js
       - functions/api/apple/verifier-health.js
       - bb-server-lib/bb-apple-subscriptions.js
+      - bb-server-lib/bb-apple-fetch.js
+      - bb-server-lib/bb-apple-ocsp.js
+      - bb-server-lib/vendor/**
+      - scripts/build-apple-sdk.mjs
+      - scripts/test-apple-worker.mjs
+      - scripts/test-apple-sdk-worker.mjs
+      - tests/basketboss-apple-sdk-bundle.test.mjs
       - tests/*testflight*
       - tests/*apple-verifier*
       - tests/*photo-meal*

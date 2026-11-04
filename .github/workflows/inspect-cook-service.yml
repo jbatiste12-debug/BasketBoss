@@ -10,6 +10,8 @@ on:
       - tests/basketboss-cook-diagnostic-logging.test.mjs
       - bb-server-lib/bb-cook-service-error.js
       - bb-server-lib/bb-apple-subscriptions.js
+      - bb-server-lib/bb-apple-fetch.js
+      - bb-server-lib/bb-apple-ocsp.js
       - bb-server-lib/vendor/**
       - functions/api/apple/verifier-health.js
       - functions/api/tts.js
