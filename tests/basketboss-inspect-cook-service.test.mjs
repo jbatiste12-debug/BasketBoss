@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import {inspectCookService,requireCookInspectEnvironment,sanitizeCookTailEvent,validateCookTailURL,cookInspectionFailure,COOK_INSPECT_LIMITS} from '../scripts/inspect-cook-service.mjs';
+import {inspectCookService,requireCookInspectEnvironment,sanitizeCookTailEvent,validateCookTailURL,cookInspectionFailure,COOK_INSPECT_LIMITS,inspectAppleVerifierHealth} from '../scripts/inspect-cook-service.mjs';
 
 const COMMIT='a'.repeat(40),DEPLOYMENT='11111111-1111-4111-8111-111111111111',TAIL='22222222-2222-4222-8222-222222222222';
 const PRIVATE='PRIVATE_FIXTURE_MUST_NEVER_APPEAR';
@@ -69,7 +69,7 @@ test('public probes run and emit before Cloudflare metadata, never authenticate 
  assert.equal(apiCalls.length,2);assert.equal(apiCalls[0].options.method,'GET');assert.equal(apiCalls[0].emissions,8);
  assert.equal(apiCalls[0].options.headers.Authorization,'Bearer '+ENV.CLOUDFLARE_API_TOKEN);
  assert.equal(h.sockets.length,0);assert.equal(h.emitted.filter(value=>value.kind==='probe').length,8);
- assert.deepEqual(h.emitted.find(value=>value.kind==='configuration'),{kind:'configuration',matchingSha:true,canonicalProductionReady:true,configuration:{aiEnabled:true,ttsEnabled:true,nodeCompatibilityEnabled:true,nodeCryptoCompatible:true,providerSecretBound:true,billingDatabaseBound:true,ttsStorageBound:true,ttsCapsReady:true}});
+ assert.deepEqual(h.emitted.find(value=>value.kind==='configuration'),{kind:'configuration',matchingSha:true,canonicalProductionReady:true,configuration:{aiEnabled:true,ttsEnabled:true,nodeCompatibilityEnabled:true,nodeCryptoCompatible:true,nodeCompatibilityExplicit:true,compatibilityDate:'2026-10-01',providerSecretBound:true,billingDatabaseBound:true,ttsStorageBound:true,ttsCapsReady:true}});
  assert.deepEqual(h.emitted.at(-1),{kind:'schema',schemaInspectionAvailable:true,quotaSchemaReady:true});
  assert.equal(h.emitted.filter(value=>value.kind==='probe').every(value=>value.nativeCors),true);
  assert.doesNotMatch(JSON.stringify(h.emitted),new RegExp(PRIVATE));
@@ -220,8 +220,16 @@ test('oversized UTF-8 and binary frames close immediately, while malformed bound
 
 
 test('production Node crypto readiness uses fixed flags/date booleans and never exposes arbitrary config',async()=>{
- for(const [flags,date,enabled,ready]of [[[], '2026-10-01',false,false],[['nodejs_compat'],'2024-01-01',true,false],[['nodejs_compat'],'2026-10-01',true,true],[['nodejs_compat','no_nodejs_compat_v2'],'2026-10-01',true,false],[['nodejs_compat',PRIVATE],PRIVATE,true,false]]){
+ for(const [flags,date,enabled,ready]of [[[], '2026-10-01',true,true],[[], '2026-08-03',false,false],[['no_nodejs_compat'], '2026-10-01',false,false],[['nodejs_compat'],'2024-01-01',true,false],[['nodejs_compat'],'2026-10-01',true,true],[['nodejs_compat','no_nodejs_compat_v2'],'2026-10-01',true,false],[['nodejs_compat',PRIVATE],PRIVATE,true,false]]){
   const h=fixture();h.project.deployment_configs.production.compatibility_flags=flags;h.project.deployment_configs.production.compatibility_date=date;await h.run('probe');
-  const value=h.emitted.find(row=>row.kind==='configuration');assert.equal(value.configuration.nodeCompatibilityEnabled,enabled);assert.equal(value.configuration.nodeCryptoCompatible,ready);assert.doesNotMatch(JSON.stringify(h.emitted),new RegExp(PRIVATE));
+  const value=h.emitted.find(row=>row.kind==='configuration');assert.equal(value.configuration.nodeCompatibilityEnabled,enabled);assert.equal(value.configuration.nodeCryptoCompatible,ready);assert.equal(value.configuration.nodeCompatibilityExplicit,flags.includes('nodejs_compat'));assert.equal(value.configuration.compatibilityDate,date===PRIVATE?null:date);assert.doesNotMatch(JSON.stringify(h.emitted),new RegExp(PRIVATE));
  }
+});
+
+
+test('public Apple startup probe sends no account or proof and retains only fixed readiness metadata',async()=>{
+ let request;const perform=async(address,options)=>{request={address,options};return Response.json({ready:false,reference:'BB_BETA_APPLE_MODULE_GLOBAL_CONTEXT',error:PRIVATE,proof:PRIVATE},{status:503});};
+ const result=await inspectAppleVerifierHealth(perform);assert.deepEqual(result,{kind:'apple_verifier',host:'apex',status:503,ready:false,reference:'BB_BETA_APPLE_MODULE_GLOBAL_CONTEXT'});assert.equal(request.address,'https://basketboss.co.uk/api/apple/verifier-health');assert.equal(request.options.headers.Authorization,undefined);assert.equal(request.options.body,undefined);assert.equal(JSON.stringify(result).includes(PRIVATE),false);
+ const healthy=await inspectAppleVerifierHealth(async()=>Response.json({ready:true,private:PRIVATE}));assert.equal(healthy.ready,true);assert.equal(healthy.reference,null);
+ const hostile=await inspectAppleVerifierHealth(async()=>Response.json({ready:false,reference:'BB_BETA_APPLE_MODULE_UNKNOWN '+PRIVATE}));assert.equal(hostile.reference,null);
 });

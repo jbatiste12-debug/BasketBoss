@@ -8,6 +8,7 @@ on:
       - bb-server-lib/**
       - functions/api/**
       - tests/*testflight*
+      - tests/*apple-verifier*
       - tests/*photo-meal*
       - scripts/test-apple-worker.mjs
       - sql/*testflight*
@@ -17,7 +18,10 @@ on:
     paths:
       - bb-server-lib/bb-testflight-beta.js
       - functions/api/apple/testflight-beta.js
+      - functions/api/apple/verifier-health.js
+      - bb-server-lib/bb-apple-subscriptions.js
       - tests/*testflight*
+      - tests/*apple-verifier*
       - tests/*photo-meal*
       - functions/api/bb173/**
       - .github/workflows/testflight-beta-premium.yml
@@ -46,6 +50,7 @@ jobs:
         run: >-
           node --test --test-isolation=none
           tests/*testflight*.test.mjs
+          tests/basketboss-apple-verifier-*.test.mjs
           tests/basketboss-photo-meal-ingredients.test.mjs
           tests/basketboss-apple-access.test.mjs
           tests/basketboss-apple-deletion-checkout.test.mjs

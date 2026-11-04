@@ -24,10 +24,32 @@ function loadAppleLibrary(){
 }
 // App acquisition proof does not require subscription products, an API signing
 // key, a paid purchase, or the separate subscription sandbox account allowlist.
-export async function getAppleAppTransactionVerifier(){
- const {SignedDataVerifier}=await loadAppleLibrary();
- return new SignedDataVerifier(appleRootCertificates(),true,Environment.SANDBOX,APPLE_BUNDLE_ID);
+// Classify locally into fixed labels only. Raw exception text/stack can contain
+// account or infrastructure details and must never enter responses or logs.
+export function classifyAppleVerifierInitFailure(error){
+ let message='',stack='';try{if(typeof error?.message==='string')message=error.message.slice(0,2000);if(typeof error?.stack==='string')stack=error.stack.slice(0,6000);}catch{}
+ if(/global[- ]scope|outside.{0,50}(?:request|handler)|(?:I\/O|random).{0,80}(?:global|request context)/i.test(message))return 'GLOBAL_CONTEXT';
+ if(/SlowBuffer|buffer-equal-constant-time/i.test(message+' '+stack))return 'BUFFER_COMPAT';
+ if(/SignedDataVerifier.{0,60}(?:not a constructor|not a function|undefined|missing)|does not provide an export/i.test(message))return 'MISSING_EXPORT';
+ if(/(?:crypto|X509|createHash|node:buffer)/i.test(message)&&/(?:not implemented|not supported|unsupported|not a constructor|not a function|undefined|unrecognized)/i.test(message))return 'NODE_CRYPTO';
+ if(/Apple trust anchor integrity check failed/i.test(message))return 'ROOT_INTEGRITY';
+ return 'UNKNOWN';
 }
+function verifierInitFailure(stage,error,cause){
+ const reference='BB_BETA_APPLE_'+stage+'_'+(cause||classifyAppleVerifierInitFailure(error));
+ return new AppleBillingError('testflight_beta_unavailable','Apple app verification could not start. Please try again. Reference: '+reference+'.');
+}
+function isConstructor(value){if(typeof value!=='function')return false;try{Reflect.construct(Object,[],value);return true;}catch{return false;}}
+export async function createAppleAppTransactionVerifier({loadLibrary=loadAppleLibrary,rootCertificates=appleRootCertificates}={}){
+ let Constructor,roots;
+ try{const sdk=await loadLibrary();Constructor=isConstructor(sdk?.SignedDataVerifier)?sdk.SignedDataVerifier:isConstructor(sdk?.default?.SignedDataVerifier)?sdk.default.SignedDataVerifier:null;}
+ catch(error){throw verifierInitFailure('MODULE',error);}
+ if(!Constructor)throw verifierInitFailure('MODULE',null,'MISSING_EXPORT');
+ try{roots=rootCertificates();}catch(error){throw verifierInitFailure('ROOTS',error);}
+ try{return new Constructor(roots,true,Environment.SANDBOX,APPLE_BUNDLE_ID);}
+ catch(error){throw verifierInitFailure('CONSTRUCTOR',error);}
+}
+export async function getAppleAppTransactionVerifier(){return createAppleAppTransactionVerifier();}
 export async function isAppleRetryableVerificationFailure(error){
  const {VerificationStatus}=await loadAppleLibrary();
  return error?.status===VerificationStatus.RETRYABLE_VERIFICATION_FAILURE;
