@@ -1,8 +1,28 @@
-# BasketBoss 1.0 (9) — live pantry sync and regional ingredient matching
+# BasketBoss 1.0 (9) — inline pantry and simpler shopping
 
 Build 9 includes all build 8 functionality and the “Your kitchen, made simple”
-welcome. The latest source is `testflight-build9-cupboard-check` on
+welcome. The latest source is `testflight-build9-inline-shop` on
 `fix/confirmed-cook-pantry` (PR #40). Earlier release tags remain unchanged.
+
+At home now opens a compact quantity editor beside the food tile you tap.
+Use the amount, unit and −/+ controls there, then Done; valid amounts update
+Shopping automatically. Each Cupboard, Fridge and Freezer section ends with a
+compact item count and editable stock summary. Custom foods use one inline
+Item name + Qty + Unit + Add row. Existing subcategories and container-content
+review remain available; quantities use the same guarded pantry ledger.
+
+Shop's main circle marks the displayed purchase amount as bought in one tap.
+The ••• drawer contains Enter different amount, Already have enough and My usual
+product. Its amount field appears only when requested. A smaller amount leaves
+the rest to buy; a larger purchase credits the full actual amount to At home
+when Finish shop completes. Separate partial-purchase inputs and provisional-pack
+warnings have been removed from the aisle flow.
+
+Plan, Discover, At home, Shop and Cook open at the top on navigation, including
+the separate Cook page. Main screens use the document scroller, with 110 px plus
+the device safe area below their content. In-store and guided-Cook overlays keep
+their own scrolling and action clearance. Ordinary quantity saves do not reset
+scroll position or steal keyboard focus.
 
 Shop now ends with a collapsed **Check your cupboard** section for culinary
 staples required by the planned week. Unknown/in-stock staples do not add an
@@ -106,9 +126,9 @@ from build 8. See BUILD_8_TESTFLIGHT.md for details.
 
 ## Verification
 
-Full automated suite: 1,844 passed, no failures or skipped tests, two existing
+Full automated suite: 1,877 passed, no failures or skipped tests, two existing
 TODO cases. Strict pantry TypeScript contracts passed. Native packaging and
-portable iOS checks passed: 910 assets, 100 Free recipes, no private Premium
+portable iOS checks passed: 914 assets, 100 Free recipes, no private Premium
 recipe bundle. The native Xcode compile/sign/upload is not performed here.
 
 ## Mac upload
@@ -118,7 +138,7 @@ in previous folders:
 
 ```sh
 bb_release_dir="$(mktemp -d "$HOME/BasketBoss-build9-XXXXXX")" &&
-git clone --depth 1 --branch testflight-build9-cupboard-check \
+git clone --depth 1 --branch testflight-build9-inline-shop \
   https://github.com/jbatiste12-debug/BasketBoss.git "$bb_release_dir" &&
 cd "$bb_release_dir" &&
 npm ci &&
@@ -137,8 +157,22 @@ next unused number before archiving this updated source.
 GitHub checks and unsigned archives do not perform the signed Apple upload.
 Native CI for this source is tracked in PR #40. Local checks cover the full regression suite, strict pantry type contracts,
 UK/US recipe audits and native packaging. Live quantity/Done/navigation checks
-passed at 320 and 390 px; UK/US pantry and receipt review flows passed at 390 px.
+passed at 320 and 390 px. Browser checks cover all five tabs, cross-page Cook
+navigation, a single main scroller, in-store action clearance, inline editing,
+partial and larger purchases, and the displayed tin quantity. Repeated UK/US
+checks verify canonical container merges, incomplete drafts and stale-account
+guards. Existing UK/US receipt-review checks remain unchanged.
 Signing and actual iOS WebView/device checks remain for the Mac/CI.
+
+## Premium server repair
+
+The Apple SDK packaging repair is deployed separately on production main
+(`4d36c254b7c86d516c0b29baee920a10ed90dfde`, PR #46). Both production
+verifier-health endpoints return HTTP 200 with `ready: true`. The authenticated
+tester retry still fails. A second incompatibility in the certificate-check
+network request has been reproduced and is being repaired separately. Premium
+activation is not yet confirmed. This client source tag does not redeploy that
+server; backend repairs can be tested in the existing TestFlight app.
 
 ## Backend prerequisite
 

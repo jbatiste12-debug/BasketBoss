@@ -50,7 +50,7 @@ function finish(h,item){
  const receiptKey='basketboss_purchase_receipts_v1',read=key=>JSON.parse(h.storage.getItem(key)||'{}'),ledger='basketboss_shop_stock_ledger_v1';
  const ctx=vm.createContext({window:h.win,console,localStorage:h.storage,BB307Pantry:h.pantry,BBPriceV19:h.ctx.BBPriceV19,bb307Market:'UK',BB83_KITCHEN_INVENTORY:INVENTORY,BB83_SHOP_STOCK_LEDGER:ledger,BB307_STOCK_KEY:STOCK,BB_BETA_RECEIPT_KEY:receiptKey,bb307FeatureState:{essentials:[]},bb307Stock:h.stock(),
   bbHomePhysicalStock:()=>h.stock(),bb83ReadObject:read,bbBetaReceiptRead:()=>read(receiptKey),bbBetaShopWeek:()=> 'policy-trip',bbBetaReceiptId:id=>'policy-trip|'+id,
-  bb321ReadShopTicks:()=>({}),bb84ReadPurchased:()=>({}),bbBetaPurchaseChoices:()=>({}),bb307Plan:()=>({items:h.state.ingredients}),bb321UnifiedShop:()=>h.shopping(),
+  bb321ReadShopTicks:()=>({}),bb84ReadPurchased:()=>({}),bbPartialAll:()=>({}),bbBetaPurchaseChoices:()=>({}),bb307Plan:()=>({items:h.state.ingredients}),bb321UnifiedShop:()=>h.shopping(),
   bbBetaPendingBought:()=>read(receiptKey)['policy-trip|'+item.id]?[]:[item],bbBetaChoiceInfo:()=>({mode:'exact',unit:item.unit,qty:item.qty}),bbBetaDryVolumeUnit:()=>false,bbBetaIsPerishable:()=>false,bb83StockLoc:()=> 'cupboard',bb83KitchenName:name=>name.toLowerCase()});
  for(const name of ['bbHomePendingHouseholdPurchases','bb83TransferBought'])vm.runInContext(actualFunction(h.html,name),ctx);
  return ()=>ctx.bb83TransferBought();

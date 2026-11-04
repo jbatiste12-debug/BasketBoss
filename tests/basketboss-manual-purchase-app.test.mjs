@@ -19,7 +19,7 @@ function fixture({owned=10,required=0,essentials=[]}={}){
   bb307Selections:()=>[],bb307ActiveRetailer:()=> 'Tesco',bb307EstimateBasket:()=>({items:required?[{key:'rice',unit:'g',required}]:[]}),
   bb307ReadStock:()=>read(STOCK),bbHomePlanningStock:copy,bb307Plan:()=>({items:required?[{key:'rice',unit:'g',required}]:[]}),
   bb307ReadFeatures:()=>read(FEATURE),bb83ReadObject:read,bbBetaReceiptRead:()=>read('receipts'),bbBetaShopWeek:()=>read('session').id,bbBetaReceiptId:id=>read('session').id+'|'+id,
-  bbBetaPurchaseChoices:()=>read('choices'),bb321ReadShopTicks:()=>read('ticks'),bb84ReadPurchased:()=>read('purchases'),
+  bbPartialAll:()=>read('partials'),bbBetaPurchaseChoices:()=>read('choices'),bb321ReadShopTicks:()=>read('ticks'),bb84ReadPurchased:()=>read('purchases'),
   bb172Aisle:item=>/soap|detergent/i.test(item.key)?'Household & Other':'Cupboard / Pantry',bb83StockLoc:()=> 'cupboard',bb83KitchenName:name=>name.toLowerCase(),bbBetaDryVolumeUnit:()=>false,bbBetaIsPerishable:()=>false,
   bbBetaChoiceInfo:item=>({mode:'exact',unit:item.unit,qty:item.qty}),bb84DetailFor:item=>({name:item.key||item.name,unit:item.unit}),
   bbShopV7Session:()=>read('session'),bbShopV7Snapshot:copy,bbShopV7Read:read,bbShopV7New:()=> 'trip-next'});

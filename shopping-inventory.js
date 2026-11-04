@@ -176,7 +176,7 @@ async function build(){
   if(autoTimer!==null)clearTimeout(autoTimer);autoTimer=null;
   if(automatic&&(!live()||!draftDirty||!card.isConnected||document.querySelector('.tab.active')?.dataset.tab!=='shop'))return Promise.resolve();
   if(saving)return saving.then(()=>draftDirty&&card.isConnected?runSave(automatic):undefined);
-  if(automatic&&[...staged.values()].some(row=>row.qty!==null&&row.qty!==undefined&&(String(row.qty).trim()===''||!Number.isFinite(Number(row.qty))||Number(row.qty)<0))){note.textContent='Enter a valid amount to update Shopping. Existing stock has been kept.';return Promise.resolve();}
+  if(automatic&&[...staged.values()].some(row=>row.qty!==null&&row.qty!==undefined&&(String(row.qty).trim()===''||!Number.isFinite(Number(row.qty))||Number(row.qty)<0||Number(row.qty)>1000000||row.staple&&(!Number.isInteger(Number(row.qty))||Number(row.qty)>10000)))){note.textContent='Enter a valid amount to update Shopping. Existing stock has been kept.';return Promise.resolve();}
   const savedDraft=JSON.stringify([...staged]);
   saving=reconcilePantry(automatic).finally(()=>{saving=null;if(draftDirty&&card.isConnected&&JSON.stringify([...staged])!==savedDraft)scheduleAuto();});return saving;
  }
@@ -231,6 +231,10 @@ async function build(){
   if(draftDirty)pendingFoodDraft={actor:openedActor,revision:openedRevision,rows:[...staged].map(([key,value])=>[key,{...value}])};
   review.querySelector('#bb75DraftIndicator').textContent=live()?(draftDirty?'Updating Shopping…':'Shopping up to date'):(draftDirty?'Not confirmed yet':'Review and confirm');
   if(draftDirty)scheduleAuto();
+  editorEvent('amount');
+ }
+ function editorEvent(type,key){
+  if(typeof window.dispatchEvent==='function'&&typeof window.CustomEvent==='function')window.dispatchEvent(new window.CustomEvent('bb:pantry-editor',{detail:{type,key}}));
  }
  function drawAmount(key,input){
   const value=staged.get(key),row=input.closest('[data-bb5-row]');row.querySelector('output').textContent=bb5AmountReadout(value);
@@ -451,6 +455,119 @@ async function build(){
 
  }
  reconcile.addEventListener('click',()=>runSave(false));
+ // Inline controls use the same staged ledger and atomic save as the original
+ // review form. No second inventory, conversion path or shopping balance exists.
+ const editorGuard=()=>{
+  if(!card.isConnected||document.querySelector('.tab.active')?.dataset.tab!=='shop'||draftActor()!==openedActor||physicalRevision()!==openedRevision)return 'At home changed. Reopen it to edit the latest amounts.';
+  if(window.BBAccountDeletion?.isDeleting?.())return 'Finish the account review before changing pantry quantities.';
+  if(window.BBReceiptHost?.hasPendingConfirmation?.())return 'Recover the pending receipt in Shop before changing pantry quantities.';
+  return '';
+ };
+ const editorFail=message=>{note.textContent=message;editorEvent('status');return {ok:false,message};};
+ const editorRow=key=>{const value=staged.get(key);return value?{...value,key,staple:isStapleRow(value),readout:bb5AmountReadout(value)}:null;};
+ function editorUpdate(key,patch={}){
+  const blocked=editorGuard();if(blocked)return editorFail(blocked);
+  const previous=staged.get(key);if(!previous)return editorFail('This item changed. Choose it again.');
+  const next={...previous},hasQuantity=Object.hasOwn(patch,'qty');
+  if(Object.hasOwn(patch,'packQuantity')){
+   const raw=patch.packQuantity===null||patch.packQuantity===undefined?'':String(patch.packQuantity).trim();
+   if(raw==='')return editorFail('Enter a container size. Your reviewed contents and saved amount have been kept.');
+   next.packQuantity=Number(raw);
+  }
+  if(Object.hasOwn(patch,'packUnit')){
+   if(!BB5_CONTENT_UNITS.includes(String(patch.packUnit)))return editorFail('Choose a contents unit. Your reviewed contents and saved amount have been kept.');
+   next.packUnit=String(patch.packUnit);
+  }
+  if(Object.hasOwn(patch,'packQuantity')||Object.hasOwn(patch,'packUnit')){
+   if(next.packQuantity!==null&&(!Number.isFinite(next.packQuantity)||next.packQuantity<=0||next.packQuantity>1000000))return editorFail('Enter a valid container size. Your saved amount has been kept.');
+   if(next.packUnit&&!BB5_CONTENT_UNITS.includes(next.packUnit))return editorFail('Choose a contents unit.');
+   next.packReviewed=Number(next.packQuantity)>0&&BB5_CONTENT_UNITS.includes(next.packUnit);next.packEstimated=false;
+  }
+  if(Object.hasOwn(patch,'unit')){
+   const unit=String(patch.unit);if(!BB5_UNITS.includes(unit))return editorFail('Choose a valid unit.');
+   if(isStapleRow(previous)&&unit!=='each')return editorFail('Use the container count for this cupboard staple.');
+   if(unit!==previous.unit&&!hasQuantity&&previous.qty!==null&&previous.qty!==undefined&&previous.qty!==''){
+    const before=policy()?.normalize(previous.name,Number(previous.qty),previous.unit,policyOptions(previous));
+    const after=policy()?.normalize(previous.name,1,unit,{...policyOptions(next),market:policyMarket()});
+    if(!before||!after||before.unit!==after.unit||!(after.quantity>0))return editorFail('Enter the amount with its new unit together, or set the container contents first. Your saved amount has been kept.');
+    next.qty=Math.round(before.quantity/after.quantity*1000000)/1000000;
+   }
+   next.unit=unit;next.inputMarket=policyMarket();
+   if(['tin','can','bag','pack','bottle','jar','pint'].includes(unit))next.containerUnit=unit;
+  }
+  function incompleteQuantity(raw,message){
+   next.qty=raw;staged.set(key,next);draftDirty=true;
+   const input=[...card.querySelectorAll('[data-bb5-qty]')].find(node=>node.dataset.bb5Qty===key);
+   if(input){input.value=raw;drawAmount(key,input);}drawOverview();
+   return editorFail(message);
+  }
+  if(hasQuantity){
+   const raw=patch.qty===null||patch.qty===undefined?'':String(patch.qty).trim();
+   // Keep incomplete/invalid raw edits in the draft, so a queued previous
+   // valid keystroke cannot autosave after the user clears or mistypes it.
+   // New selections may still be unknown; explicit zero means none at home.
+   if(raw==='')return incompleteQuantity(raw,'Enter a quantity, or use 0 for none. Your saved amount has been kept.');
+   next.qty=amount(raw,next.unit);
+   if(next.qty===null)return incompleteQuantity(raw,'Enter a non-negative quantity up to 1,000,000. Your saved amount has been kept.');
+  }
+  if(isStapleRow(next)){
+   if(Object.hasOwn(patch,'stapleStatus')){
+    if(!['in','low','out'].includes(patch.stapleStatus))return editorFail('Choose In Stock, Low or Out.');
+    next.stapleStatus=patch.stapleStatus;
+    if(next.stapleStatus==='out')next.qty=0;else if(!(Number(next.qty)>0))next.qty=1;
+   }else if(hasQuantity&&next.qty!==null){if(Number(next.qty)===0)next.stapleStatus='out';else if(!['in','low'].includes(next.stapleStatus))next.stapleStatus='in';}
+   if(next.qty!==null&&(!Number.isInteger(Number(next.qty))||Number(next.qty)>10000))return hasQuantity?incompleteQuantity(String(patch.qty).trim(),'Enter a whole container count, or choose a stock status.'):editorFail('Enter a whole container count, or choose a stock status.');
+   next.unit='each';next.staple=true;
+  }
+  staged.set(key,next);draftDirty=true;
+  const input=[...card.querySelectorAll('[data-bb5-qty]')].find(node=>node.dataset.bb5Qty===key);
+  if(Object.keys(patch).every(field=>field==='qty')&&input){input.value=next.qty??'';drawAmount(key,input);drawOverview();}
+  else render();
+  editorEvent('update',key);return {ok:true,key,row:editorRow(key)};
+ }
+ function editorSelect(name,loc,options={}){
+  const blocked=editorGuard();if(blocked){editorFail(blocked);return null;}
+  if(!BB5_LOCATIONS.includes(loc)||!String(name||'').trim()||!canon(name))return null;
+  const matching=draftKeys(loc,name);if(matching.length)return matching[0];
+  const key=sid(loc,name),staple=policy()?.isStaple(name),unit=BB5_UNITS.includes(options.unit)?options.unit:bb5SuggestedUnit(name);
+  staged.set(key,stageValue({name:String(name).trim(),loc,qty:staple?1:null,unit:staple?'each':unit,...(staple?{staple:true,stapleStatus:'in'}:{})},key));
+  draftDirty=true;render();editorEvent('select',key);return key;
+ }
+ function editorAdd({name,loc,qty,unit}={}){
+  const blocked=editorGuard();if(blocked)return editorFail(blocked);
+  name=String(name||'').trim();unit=String(unit||'each');
+  if(!BB5_LOCATIONS.includes(loc)||!name||name.length>70||!canon(name))return editorFail('Enter the food name.');
+  if(window.BBKitchenChoiceRules?.isHousehold(name))return editorFail('Add household items in Weekly essentials.');
+  if(qty===null||qty===undefined||String(qty).trim()===''||amount(qty,unit)===null||!BB5_UNITS.includes(unit))return editorFail('Enter a quantity and unit to add.');
+  const staple=policy()?.isStaple(name),countUnits=['each','bottle','jar','pack','bag','tin','can'];
+  const entered={name,loc,qty:staple&&!countUnits.includes(unit)?1:Number(qty),unit:staple?'each':unit,inputMarket:policyMarket(),...(staple?{staple:true,stapleStatus:Number(qty)===0?'out':'in'}:{})};
+  if(staple&&(!Number.isInteger(entered.qty)||entered.qty>10000))return editorFail('Enter a whole container count for this staple.');
+  const incoming=policy()?.normalize(name,entered.qty,entered.unit,policyOptions(entered));
+  if(draftKeys(loc,name).some(key=>{const value=staged.get(key);return value.qty!==null&&value.qty!==undefined&&(String(value.qty).trim()===''||amount(value.qty,value.unit)===null||value.staple&&(!Number.isInteger(Number(value.qty))||Number(value.qty)>10000));}))return editorFail('Finish the quantity you are editing before adding more of this food. Your saved amount has been kept.');
+  let key=null;
+  for(const candidate of draftKeys(loc,name)){
+   const current=staged.get(candidate),normalized=current.qty===null?null:policy()?.normalize(current.name,Number(current.qty),current.unit,policyOptions(current));
+   if(incoming&&normalized&&incoming.unit===normalized.unit){
+    const combined=Math.round((normalized.quantity+incoming.quantity)*1000000)/1000000;
+    if(combined>1000000)return editorFail('The combined amount is too large. Your saved amount has been kept.');
+    // Sum canonical balances directly. Rounding back to fractional cans/pints
+    // first would lose stock when their contents do not divide evenly.
+    key=candidate;entered.qty=combined;entered.unit=normalized.unit;break;
+   }
+   if(current.unit===entered.unit){key=candidate;entered.qty=Number(current.qty||0)+entered.qty;break;}
+  }
+  if(key){const result=editorUpdate(key,{qty:entered.qty,unit:entered.unit,...(staple?{stapleStatus:entered.stapleStatus}:{})});if(!result.ok)return result;}
+  else{
+   key=sid(loc,name);let suffix=1;while(staged.has(key))key=sid(loc,name)+'::manual:'+suffix++;
+   staged.set(key,stageValue(entered,key));draftDirty=true;render();
+  }
+  const group=window.BBPantryGroupsUI?.active(loc);
+  if(group&&group!=='all')try{const api=window.BBPantryGroups;api.assign(loc,api.itemKey(name),group,api.context());}catch{note.textContent='Food saved. Choose its subcategory again in the item menu.';}
+  editorEvent('add',key);return {ok:true,key,row:editorRow(key)};
+ }
+ window.BBPantryEditor=Object.freeze({card,list:()=>[...staged.keys()].map(editorRow),read:editorRow,isCurrent:()=>!editorGuard(),select:editorSelect,update:editorUpdate,add:editorAdd,
+  remove:key=>{const blocked=editorGuard();if(blocked)return editorFail(blocked);if(!staged.has(key))return {ok:false};staged.delete(key);draftDirty=true;render();editorEvent('remove',key);return {ok:true};},
+  flush:()=>runSave(true),status:()=>note.textContent,units:entryUnits});
  // One Kitchen picker and one Pantry list. Keep legacy controllers in the DOM
  // for their saved data, but do not expose duplicate editing forms or banners.
  app.prepend(card);render();

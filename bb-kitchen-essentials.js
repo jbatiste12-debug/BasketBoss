@@ -46,7 +46,7 @@
   const draw=()=>{
    const current=state(key),items=[...grid.querySelectorAll('[data-bb5-food]')];
    const ordered=rules.previewOrder(items,rules.FOOD_PREVIEWS[key]||[],node=>node.dataset.bb5Food);
-   ordered.forEach((node,index)=>{if(grid.children[index]!==node)grid.insertBefore(node,grid.children[index]||null);});
+   ordered.forEach((node,index)=>{const tiles=[...grid.children].filter(child=>child.matches('[data-bb5-food]'));if(tiles[index]!==node)grid.insertBefore(node,tiles[index]||null);});
    const query=current.search.trim().toLowerCase();let visible=0,eligible=0;
    ordered.forEach(node=>{
     const name=node.dataset.bb5Food,inGroup=!groupUI()||groupUI().matches(key,groupKey(name),name);

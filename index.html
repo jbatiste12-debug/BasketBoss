@@ -7629,7 +7629,7 @@ function bb84ReadPurchased(){
 }
 function bb84SavedPurchased(id){
  const entry=bb84ReadPurchased()[id];
- const n=Number(typeof entry==='object'&&entry!==null?entry.qty:entry);
+ const n=Number(typeof entry==='object'&&entry!==null?entry.actualQty??entry.qty:entry);
  return Number.isFinite(n)&&n>0?n:0;
 }
 function bb84WritePurchased(next){
@@ -7652,17 +7652,31 @@ function bb84SeedPreviouslyBought(items,essentials,ticks){
  }
  if(changed)bb84WritePurchased(next);
 }
+function bb84DisplayedPurchase(item,required,already=0){
+ const name=String(item.key||item.name||''),unit=String(item.unit||'each').toLowerCase(),remaining=Math.max(0,Number(required)-Number(already));
+ if(!Number.isFinite(remaining)||!(remaining>0))return Number(already)||0;
+ let quantity=remaining;
+ // Use the same pack contract as the primary quantity label. A shelf-price
+ // guide is not evidence that the shopper bought that pack.
+ const tin=bb307Market==='US'&&['g','kg','ml','l'].includes(unit)?null:bb321TinSpec(name,unit);
+ if(tin)quantity=Math.ceil((remaining-0.000001)/tin.size)*tin.size;
+ else if(unit==='each'&&/\b(?:bread|toast)\b/i.test(name)&&!/\b(?:bread loaf|loaf of bread|garlic baguette|bread rolls?|flatbread|pitta bread|bread flour|breadcrumbs?)\b/i.test(name))quantity=Math.ceil(remaining/18)*18;
+ else if(['each','pack','clove','cloves','can','cans','tin','tins'].includes(unit))quantity=Math.ceil(remaining-1e-9);
+ return Number(already)+quantity;
+}
 function bb84SetPrimaryPurchase(id,checked,item,essential=false,additional={}){
  try{
   const session=bbShopV7Session(),ticks=bb321ReadShopTicks(),purchases=bb84ReadPurchased();
-  const partials=bbPartialAll(),undo={...session.checkboxUndo},key=bbPartialKey({id});
+  const partials=bbPartialAll(),choices=bbBetaPurchaseChoices(),undo={...session.checkboxUndo},key=bbPartialKey({id});
   const qty=Number(essential?item.qty:item.toBuy),old=partials[key],oldBought=Number(old?.bought||0);
-  if(checked){if(!(qty>0))return false;
+  if(checked){if(!(qty>0)||oldBought>0&&old.unit!==String(item.unit||'each'))return false;
+   const actualQty=bb84DisplayedPurchase(item,qty,oldBought);if(!Number.isFinite(actualQty)||actualQty<qty||actualQty>1000000)return false;
    undo[id]=old&&oldBought>0?{...old}:null;
-   purchases[id]={qty,...bb84DetailFor(item,essential),...additional.detail,legacySnapshot:false,bbBetaSelectedWeek:session.id};
+   purchases[id]={qty,actualQty,...bb84DetailFor(item,essential),...additional.detail,legacySnapshot:false,bbBetaSelectedWeek:session.id};
    ticks[id]=true;
+   choices[id]={week:session.id,mode:actualQty>qty?'custom':'exact',qty,name:String(item.key||item.name||''),unit:String(item.unit||'each'),aisle:bb172Aisle({key:item.key||item.name||''}),...(actualQty>qty?{actualQty,keep:true}:{})};
   }else{
-   delete purchases[id];delete ticks[id];
+   delete purchases[id];delete ticks[id];delete choices[id];
    if(Object.prototype.hasOwnProperty.call(undo,id)){
     if(undo[id]?.bought>0)partials[key]=undo[id];else delete partials[key];
     delete undo[id];
@@ -7671,7 +7685,7 @@ function bb84SetPrimaryPurchase(id,checked,item,essential=false,additional={}){
   const completion=checked?window.BBHome?.completionChanges?.(id)||{}:{};
   for(const [key,value]of Object.entries(additional.expected||{}))if(localStorage.getItem(key)!==value)return false;
   const saved=bbShopV7Write({...completion,...additional.updates,[BB321_SHOP_TICKS_KEY]:ticks,[BB84_PURCHASED_KEY]:purchases,
-   [BB_PARTIAL_PURCHASE_KEY]:partials,[BB_SHOP_SESSION_V7_KEY]:{...session,checkboxUndo:undo,bought:ticks,purchases,partials}});
+   [BB_PARTIAL_PURCHASE_KEY]:partials,[BB_BETA_CHOICE_KEY]:choices,[BB_SHOP_SESSION_V7_KEY]:{...session,checkboxUndo:undo,bought:ticks,purchases,partials,choices}});
   if(saved&&checked)window.BBHomeHost?.reload?.();return saved;
  }catch(e){console.error('Cannot save purchase checkbox',e);return false}
 }
@@ -7682,12 +7696,13 @@ function bb84ExtraNeeded(id,needed,ticks){
 }
 function bb84RecordExtra(id,needed){
  const current=bb84ReadPurchased(),row=current[id];
- const prior=Number(row?.qty||0),n=Number(needed);
+ const prior=Number(row?.actualQty??row?.qty)||0,n=Number(needed);
  if(!Number.isFinite(n)||n<=prior)return false;
  // Checking 'Buy the extra' confirms the outstanding portion of the current
  // requirement. Repeated events cannot double-count the same extra quantity.
- current[id]={...row,qty:n,legacySnapshot:false};
- return bb84WritePurchased(current);
+ current[id]={...row,qty:n,actualQty:n,legacySnapshot:false};
+ const session=bbShopV7Session(),choices=bbBetaPurchaseChoices();choices[id]={week:session.id,mode:'exact',qty:n,name:row.name,unit:row.unit,aisle:row.aisle};
+ return bbShopV7Write({[BB84_PURCHASED_KEY]:current,[BB_BETA_CHOICE_KEY]:choices,[BB_SHOP_SESSION_V7_KEY]:{...session,purchases:current,choices}});
 }
 function bb84ExtraRows(app,items,essentials,ticks,market){
  const list=app.querySelector('#bb321Printable');if(!list)return;
@@ -9773,13 +9788,13 @@ function bbShopV7Reconcile(items,essentials){
  for(const [id,required,unit] of [...items.map(x=>[BB307Pantry.pantryId(x.key,x.unit),Number(x.toBuy),x.unit]),...essentials.map(x=>['ess:'+x.id,Number(x.qty),x.unit])]){
   if(!ticks[id]||!(required>0))continue;
   const purchase=purchased[id];if(purchase?.legacySnapshot)continue;
-  const measured=Number(purchase?.qty)||0;
+  const measured=Number(purchase?.actualQty??purchase?.qty)||0;
   const record=nextPartials[session.id+'|'+id],partial=record?.unit===unit?Number(record.bought||record.boughtQty)||0:0;
   const bought=Math.max(measured,partial);
   if(!(bought>0)||bought+0.00001>=required)continue;
   // New meals expand the need without rewriting or losing the amount already purchased.
   delete nextTicks[id];delete nextPurchased[id];delete nextUndo[id];
-  if(bought>0)nextPartials[session.id+'|'+id]={bought,unit,required,week:session.id};
+  if(bought>0)nextPartials[session.id+'|'+id]={bought,unit,required,week:session.id,name:purchase.name,aisle:purchase.aisle,essential:purchase.essential===true};
   changed=true;
  }
  if(!changed)return true;
@@ -9912,9 +9927,21 @@ function bbBetaChoiceSurplus(item,record){
  const leftoverSurplus=Math.max(0,Math.round((totalPurchased-qty)*1000)/1000);
  return {size,packsToBuy,needed:qty,totalPurchased,leftoverSurplus,unit,custom:record.mode==='custom'};
 }
+function bbBetaPendingPartials(){
+ const week=bbBetaShopWeek(),partials=bbPartialAll(),ticks=bb321ReadShopTicks(),summary=bb321WeeklySummary(),visible=new Map();
+ for(const row of summary.items||[])visible.set(BB307Pantry.pantryId(row.key,row.unit),{name:row.key,unit:row.unit,aisle:bb172Aisle(row)});
+ const result=[];
+ for(const [key,row]of Object.entries(partials)){
+  if(!key.startsWith(week+'|'))continue;
+  const id=key.slice(week.length+1),known=visible.get(id)||{},qty=Number(row?.bought),unit=String(row?.unit||''),name=String(row?.name||known.name||''),aisle=row?.aisle||known.aisle||bb172Aisle({key:name});
+  if(ticks[id]||id.startsWith('ess:')||aisle==='Household & Other'||!name||!(qty>0)||!Number.isFinite(qty)||qty>1000000||!['each','g','kg','ml','l','pack','clove'].includes(unit))continue;
+  result.push({id,name,qty,unit,aisle,partialPurchase:true});
+ }
+ return result;
+}
 function bbBetaPendingBought(){
  const receipts=bbBetaReceiptRead();if(!receipts)return [];
- return bb83BoughtCandidates().map(bbBetaReceiptCandidate).filter(Boolean)
+ return [...bb83BoughtCandidates().map(bbBetaReceiptCandidate).filter(Boolean),...bbBetaPendingPartials()]
   .filter(item=>!receipts[bbBetaReceiptId(item.id)]);
 }
 /* The item remains in Shop until its normal checkbox is ticked; nothing is added to
@@ -9976,65 +10003,33 @@ function bbPartialDetails(item){
  return {needed,unit,bought:bbPartialRound(bought),remaining:bbPartialRound(Math.max(0,needed-bought))};
 }
 function bbPartialSet(item,boughtTotal){
- const details=bbPartialDetails(item),total=Number(boughtTotal);
- if(!details||item.checked||!Number.isFinite(total)||total<0||total>1000000)return false;
- if(['each','pack','clove'].includes(details.unit)&&!Number.isInteger(total))return false;
+ if(!item?.id)return false;
+ const valid=bbBetaReceiptCandidate(item),basket=item.basketItem;
+ const required=Number(basket?.toBuy??valid?.qty),unit=String(basket?.unit||valid?.unit||''),total=Number(boughtTotal);
+ if(!(required>0)||!['each','g','kg','ml','l','pack','clove'].includes(unit)||!Number.isFinite(total)||total<0||total>1000000)return false;
+ if(['each','pack','clove'].includes(unit)&&!Number.isInteger(total))return false;
  if(bbBetaReceiptRead()?.[bbBetaReceiptId(item.id)])return false;
- const partials=bbPartialAll(),key=bbPartialKey(item),required=details.needed;
- const ticks=bb321ReadShopTicks(),purchased=bb84ReadPurchased(),choices=bbBetaPurchaseChoices();
- const nextPartials={...partials};
- if(total>0&&total<required)nextPartials[key]={bought:bbPartialRound(total),unit:details.unit,required,week:bbBetaShopWeek()};
+ const session=bbShopV7Session(),partials=bbPartialAll(),key=bbPartialKey(item),prior=partials[key];
+ if(prior?.bought>0&&prior.unit!==unit)return false;
+ const ticks=bb321ReadShopTicks(),purchased=bb84ReadPurchased(),choices=bbBetaPurchaseChoices(),undo={...session.checkboxUndo};
+ const nextPartials={...partials},detail=bb84DetailFor(basket||{key:item.name,unit},item.id.startsWith('ess:'));
+ if(total>0&&total<required)nextPartials[key]={bought:bbPartialRound(total),unit,required,week:session.id,name:item.name,aisle:item.aisle,essential:item.id.startsWith('ess:')};
  else delete nextPartials[key];
  if(total>=required){
   ticks[item.id]=true;
-  purchased[item.id]={qty:required,...bb84DetailFor(item.basketItem,item.id.startsWith('ess:')),legacySnapshot:false,bbBetaSelectedWeek:bbBetaShopWeek()};
-  choices[item.id]={week:bbBetaShopWeek(),mode:total>required?'custom':'exact',qty:required,name:item.name,unit:details.unit,aisle:item.aisle,...(total>required?{actualQty:total,keep:false}:{})};
- }
- const session=bbShopV7Session(),undo={...session.checkboxUndo};
- if(total>=required)undo[item.id]=details.bought>0?{bought:details.bought,unit:details.unit,required,week:session.id}:null;
- const changed={[BB_PARTIAL_PURCHASE_KEY]:nextPartials,...(total>=required?{[BB321_SHOP_TICKS_KEY]:ticks,[BB84_PURCHASED_KEY]:purchased,[BB_BETA_CHOICE_KEY]:choices}:{}),
- [BB_SHOP_SESSION_V7_KEY]:{...session,partials:nextPartials,checkboxUndo:undo,...(total>=required?{bought:ticks,purchases:purchased,choices}:{})}};
- const before=Object.fromEntries(Object.keys(changed).map(k=>[k,localStorage.getItem(k)]));
- try{
-  for(const [k,v] of Object.entries(changed)){const raw=JSON.stringify(v);localStorage.setItem(k,raw);if(localStorage.getItem(k)!==raw)throw Error('Partial purchase write failed');}
- }catch(err){for(const [k,old] of Object.entries(before))try{if(old===null)localStorage.removeItem(k);else localStorage.setItem(k,old);}catch(e){console.error('Partial purchase rollback failed',k,e)}notify('Purchase could not be saved. Nothing was credited to At home.');return false;}
+  purchased[item.id]={qty:required,actualQty:total,...detail,legacySnapshot:false,bbBetaSelectedWeek:session.id};
+  choices[item.id]={week:session.id,mode:total>required?'custom':'exact',qty:required,name:item.name,unit,aisle:item.aisle,...(total>required?{actualQty:total,keep:true}:{})};
+  undo[item.id]=prior?.bought>0?{...prior}:null;
+ }else{delete ticks[item.id];delete purchased[item.id];delete choices[item.id];delete undo[item.id];}
+ const completion=total>=required?window.BBHome?.completionChanges?.(item.id)||{}:{};
+ const changed={...completion,[BB_PARTIAL_PURCHASE_KEY]:nextPartials,[BB321_SHOP_TICKS_KEY]:ticks,[BB84_PURCHASED_KEY]:purchased,[BB_BETA_CHOICE_KEY]:choices,
+  [BB_SHOP_SESSION_V7_KEY]:{...session,partials:nextPartials,checkboxUndo:undo,bought:ticks,purchases:purchased,choices}};
+ const before=Object.fromEntries([...Object.keys(changed),'basketboss_cloud_session_v1'].map(k=>[k,localStorage.getItem(k)]));
+ if(!bbShopV7Write(changed,before)){notify('Purchase could not be saved. Nothing was credited to At home.');return false;}
+ if(total>=required)window.BBHomeHost?.reload?.();
  render();bb172StorefrontRefresh();
- const extra=Math.max(0,bbPartialRound(total-required));
- notify(total<required?item.name+': '+bbPartialRound(required-total)+' '+details.unit+' still to buy.':
-  item.name+' complete ✓'+(extra?' '+extra+' '+details.unit+' extra recorded for Finish Shop.':'') );
+ notify(total<required?item.name+': '+bbPartialRound(required-total)+' '+unit+' still to buy.':item.name+' marked bought ✓');
  return true;
-}
-function bbPartialPurchaseControls(item){
- const detail=bbPartialDetails(item);
- if(!detail||bbBetaReceiptRead()?.[bbBetaReceiptId(item.id)])return null;
- const panel=bb172StorefrontEl('div','bbpartial-panel');
- panel.style.cssText='border-top:1px solid #cfe0d1;padding:12px 0;display:grid;gap:8px';
- panel.append(bb172StorefrontEl('strong','','🛒 Bought part of this item?'));
- const count=bb172StorefrontEl('small','',detail.bought?
-  detail.bought+' / '+detail.needed+' '+detail.unit+' purchased · '+detail.remaining+' still needed':
-  'Log a partial purchase; the row stays in To buy until the full amount is covered.');
- panel.append(count);
- const line=bb172StorefrontEl('div','');line.style.cssText='display:flex;gap:8px;flex-wrap:wrap;align-items:center';
- const input=bb172StorefrontEl('input','');input.type='number';input.min='0';input.max='1000000';
- input.step=['each','pack','clove'].includes(detail.unit)?'1':'any';
- input.placeholder='Bought now ('+detail.unit+')';input.setAttribute('aria-label','Additional '+item.name+' bought in '+detail.unit);
- input.style.cssText='flex:1 1 145px;max-width:250px;min-height:44px;padding:9px;border:1px solid #accdb7;border-radius:10px';
- const add=bb172StorefrontButton('＋ Record amount','bb-beta-purchase-pill',()=>{
-  const n=Number(input.value);if(!input.value.trim()||!(n>0)){notify('Enter a positive amount bought.');return;}
-  bbPartialSet(item,bbPartialRound(detail.bought+n));
- });
- line.append(input,add);panel.append(line);
- if(detail.bought>0){
-  const correction=bb172StorefrontButton('↶ Correct / undo ('+detail.bought+' bought)','bb-beta-purchase-pill',()=>{
-   const area=bb172StorefrontEl('div','');area.style.cssText='display:flex;gap:8px;align-items:center;flex-wrap:wrap';
-   const edit=bb172StorefrontEl('input','');edit.type='number';edit.min='0';edit.max='1000000';edit.value=String(detail.bought);edit.step=input.step;
-   edit.style.cssText='width:112px;padding:8px;border:1px solid #aacbb6;border-radius:8px';
-   const save=bb172StorefrontButton('Save total','bb-beta-purchase-pill',()=>bbPartialSet(item,Number(edit.value)));
-   area.append(edit,save);correction.replaceWith(area);edit.focus();
-  });panel.append(correction);
- }
- const hint=bb172StorefrontEl('small','','Finish shopping to add confirmed purchases to At home. Cooking subtracts what you use; any safely stored extra remains for later.');panel.append(hint);
- return panel;
 }
 const BB_PANTRY_PLANNER_DRAFT='basketboss_pantry_plan_suggestions_v1';
 function bbPantryRecipeMatches(){
@@ -10125,79 +10120,34 @@ function bbPantryPlannerAttach(app){
 function bbBetaShopChoiceRow(item){
  const wrap=bb172StorefrontEl('section','bb-beta-choice-panel');
  wrap.append(bb172StorefrontEl('strong','','What did you buy?'));
- const valid=bbBetaReceiptCandidate(item),saved=bbBetaChoiceInfo(item);
+ const valid=bbBetaReceiptCandidate(item),saved=bbBetaChoiceInfo(item),partial=bbPartialDetails(item);
  const locked=!!bbBetaReceiptRead()?.[bbBetaReceiptId(item.id)];
- const unit=item.basketItem?.unit||valid?.unit||'';
- const needed=Number(valid?.qty||item.basketItem?.toBuy||0);
- const pack=bbBetaPackSpec(item.name,unit),packEligible=pack&&!pack.review&&['g','ml'].includes(unit)&&needed>0;
- const current=saved?.mode||'';
- if(bbBetaDryVolumeUnit(item.name,unit)){
-  wrap.append(bb172StorefrontEl('small','bb-beta-choice-status',
-   '⚠ Dry seeds are measured as ml in this recipe. Choose Bought exact amount; correct the weight in the recipe before saving surplus.'));
- }else if(pack&&pack.review){
-  wrap.append(bb172StorefrontEl('small','bb-beta-choice-status',
-   '⚠ Standard pack not verified. Use the exact amount or enter an actual measured quantity.'));
- }
- if(locked){wrap.append(bb172StorefrontEl('small','','✓ Already processed this shopping week. At home stock will not be credited twice.'));return wrap}
- const buttons=bb172StorefrontEl('div','bb-beta-purchase-pills');
- const details=bb172StorefrontEl('div','bb-beta-choice-pack-details');
+ if(locked){wrap.append(bb172StorefrontEl('small','','✓ Added to At home'));return wrap;}
+ const unit=item.basketItem?.unit||valid?.unit||'',needed=Number(item.basketItem?.toBuy??valid?.qty??0);
+ const buttons=bb172StorefrontEl('div','bb-beta-purchase-pills'),details=bb172StorefrontEl('div','bb-beta-choice-pack-details');
  const status=bb172StorefrontEl('small','bb-beta-choice-status','');status.setAttribute('role','status');
- const pill=(label,mode,action)=>{
-  const b=bb172StorefrontButton(label,'bb-beta-purchase-pill'+(current===mode?' is-active':''),action);
-  b.setAttribute('aria-pressed',String(current===mode));buttons.append(b);
-  return b;
- };
- const rerender=()=>bb172StorefrontRefresh();
- if(packEligible){pill('📦 Standard '+pack.size+' '+unit+' pack','pack',()=>{
-  const qty=Number(valid?.qty||item.basketItem?.toBuy||0);const count=Math.ceil((qty-1e-9)/pack.size);
-  if(bbBetaChoiceSave(item,'pack',{size:pack.size,count,keep:false}))rerender();
- });}
- pill('⚖️ Bought exact amount','exact',()=>{
-  if(bbBetaChoiceSave(item,'exact'))rerender();
- });
- pill('✏️ Enter different amount','custom',()=>{
-  if(!needed||!unit){notify('Review this item’s quantity in At home before changing it.');return;}
+ const pin={account:localStorage.getItem('basketboss_cloud_session_v1'),week:bbBetaShopWeek()};
+ const current=()=>pin.account===localStorage.getItem('basketboss_cloud_session_v1')&&pin.week===bbBetaShopWeek();
+ const edit=bb172StorefrontButton('Enter different amount','bb-beta-purchase-pill',()=>{
+  if(!current()){status.textContent='Shopping changed. Reopen this item to edit it.';return;}
+  if(!needed||!unit){status.textContent='Set this item’s amount in At home first.';return;}
+  if(bbBetaDryVolumeUnit(item.name,unit)){status.textContent='Check this item’s measured unit in At home first.';return;}
   details.replaceChildren();
-  const label=bb172StorefrontEl('label','','Quantity actually bought ('+unit+')');
-  const input=bb172StorefrontEl('input','');input.type='number';input.step=['each','pack','clove'].includes(unit)?'1':'any';
-  input.min=String(needed);input.max='1000000';input.value=String(saved?.mode==='custom'?saved.actualQty:needed);
+  const label=bb172StorefrontEl('label','','Total bought ('+unit+')');
+  const input=bb172StorefrontEl('input','');input.type='number';input.step=['each','pack','clove'].includes(unit)?'1':'any';input.min='0';input.max='1000000';
+  input.value=String(partial?.bought||saved?.actualQty||valid?.qty||needed);input.setAttribute('aria-label','Total '+item.name+' bought in '+unit);
   label.append(input);details.append(label);
-  const keepLine=bb172StorefrontEl('label','bb-beta-perishable-keep');
-  const keep=bb172StorefrontEl('input','');keep.type='checkbox';keep.checked=!!saved?.keep;
-  keepLine.append(keep,bb172StorefrontEl('span','','I can safely keep the unused fresh food for next week'));
-  if(bbBetaIsPerishable(item.aisle))details.append(keepLine);
-  const save=bb172StorefrontButton('Save actual amount','bb-beta-save-actual',()=>{
-   if(!bbBetaChoiceSave(item,'custom',{actualQty:Number(input.value),keep:keep.checked})){
-    status.textContent='Enter the amount you actually bought (at least '+needed+' '+unit+').';return;
-   }rerender();
-  });details.append(save);input.focus();
- });
- if(item.basketItem)pill('🏠 Already have enough','pantry',()=>bbBetaAlreadyHave(item));
- wrap.append(buttons);
- const choice=current==='pack'&&packEligible&&saved?.implicit?{...saved}:saved;
- const info=bbBetaChoiceSurplus(item,choice);
- if(info&&info.leftoverSurplus>0){
-  const badge=bb172StorefrontEl('div','bb-beta-surplus-badge',
-   '📦 '+(choice.mode==='pack'?info.packsToBuy+' × '+info.size+unit+' pack':'Bought '+info.totalPurchased+unit)+
-   ' • +'+info.leftoverSurplus+unit+' leftover'+(bbBetaIsPerishable(item.aisle)&&!choice.keep?' (needs safe-storage confirmation)':' for At home after Finish Shop'));
-  wrap.append(badge);
-  if(bbBetaIsPerishable(item.aisle)&&!choice.keep){
-   const keepButton=bb172StorefrontButton('✓ I can safely store the leftover','bb-beta-purchase-pill',()=>{
-    if(bbBetaChoiceSave(item,choice.mode,choice.mode==='pack'?{size:choice.size,count:choice.count,keep:true}:{actualQty:choice.actualQty,keep:true}))rerender();
-   });wrap.append(keepButton);
-   wrap.append(bb172StorefrontEl('small','','Fresh food must be kept safely within its use-by date. If unsure, choose exact amount instead.'));
-  }
- }else if(current==='exact')wrap.append(bb172StorefrontEl('small','','Exact amount selected — no extra stock credited.'));
- else if(!current&&packEligible)wrap.append(bb172StorefrontEl('small','','Pack guide only. Tick Bought to confirm the listed amount. Choose the actual pack or quantity in ••• to save any extra.'));
- if(current==='custom'){
-  /* Render the current saved choice as editable instead of hiding its value. */
-  const edit=bb172StorefrontButton('Change saved amount: '+choice.actualQty+' '+unit,'bb-beta-change-actual',()=>{
-   buttons.querySelectorAll('button')[packEligible?2:1]?.click();
-  });details.append(edit);
- }
- if(pack?.review)wrap.append(bb172StorefrontEl('small','','Pack size is provisional; choose actual amount or confirm pack size.'));
- if(item.checked&&!valid)wrap.append(bb172StorefrontEl('small','','Old Bought tick: untick and tick again to confirm the current purchase.'));
- wrap.append(details,status);return wrap;
+  const save=bb172StorefrontButton('Save amount','bb-beta-save-actual',()=>{
+   if(!current()){status.textContent='Shopping changed. Reopen this item to edit it.';return;}
+   if(!input.value.trim()||!bbPartialSet(item,Number(input.value))){status.textContent='Enter a valid amount bought.';return;}
+  });details.append(save);input.focus({preventScroll:true});
+ });buttons.append(edit);
+ if(item.basketItem)buttons.append(bb172StorefrontButton('Already have enough','bb-beta-purchase-pill',()=>{
+  if(current())bbBetaAlreadyHave(item);else status.textContent='Shopping changed. Reopen this item to edit it.';
+ }));
+ if(partial?.bought>0)wrap.append(bb172StorefrontEl('small','bbpartial-progress',partial.bought+' '+unit+' bought · '+partial.remaining+' '+unit+' to buy'));
+ else if(saved?.mode==='custom')wrap.append(bb172StorefrontEl('small','',saved.actualQty+' '+unit+' bought'));
+ wrap.append(buttons,details,status);return wrap;
 }
 function bbBetaDrawSurplusTab(content,rows){
  const q=bb172ShopNormalize(bb172StorefrontQuery);
@@ -10207,7 +10157,7 @@ function bbBetaDrawSurplusTab(content,rows){
  content.replaceChildren();
  content.append(bb172StorefrontEl('h2','bb-beta-surplus-title','Leftovers for next week'));
  content.append(bb172StorefrontEl('p','bb-beta-surplus-explain',
-  'Confirm At home stock before shopping, tick Bought, then choose the standard pack, exact amount or a different quantity in •••. Confirmed purchases update At home once when you finish; cooking subtracts what you use. Review actual packs and safe storage for extras.'));
+  'Extra food you have recorded buying is added to At home when you finish shopping.'));
  content.append(bb172StorefrontEl('p','bb172-storefront-list-label',results.length+' potential leftover'+(results.length===1?'':'s')));
  if(!results.length){content.append(bb172StorefrontEl('div','bb172-storefront-empty',
   'No measured leftovers yet. Tick Bought and open an item’s ••• drawer to review the amount.'));return;}
@@ -10230,12 +10180,17 @@ function bbHomePendingHouseholdPurchases(){
  const home=window.BBHome,features=typeof bb307FeatureState==='undefined'?null:bb307FeatureState;
  if(!home||!Array.isArray(features?.essentials))return [];
  const ticks=bb321ReadShopTicks(),purchases=bb84ReadPurchased(),receipts=bbBetaReceiptRead();if(!receipts)return [];
- const manual=home.shoppingBuys?.()||[],week=bbBetaShopWeek(),result=[];
- for(const [id,purchase]of Object.entries(purchases)){
-  if(!id.startsWith('ess:')||!ticks[id]||!purchase||purchase.legacySnapshot||purchase.receiptInventoryReceiptId||purchase.bbBetaSelectedWeek!==week||receipts[bbBetaReceiptId(id)])continue;
+ const manual=home.shoppingBuys?.()||[],week=bbBetaShopWeek(),result=[],pending={...purchases},choices=bbBetaPurchaseChoices();
+ for(const [key,partial]of Object.entries(bbPartialAll()))if(key.startsWith(week+'|ess:')){
+  const id=key.slice(week.length+1);if(!ticks[id]&&Number(partial?.bought)>0)pending[id]={...partial,qty:Number(partial.bought),partialPurchase:true,bbBetaSelectedWeek:week};
+ }
+ for(const [id,purchase]of Object.entries(pending)){
+  if(!id.startsWith('ess:')||!ticks[id]&&!purchase?.partialPurchase||!purchase||purchase.legacySnapshot||purchase.receiptInventoryReceiptId||purchase.bbBetaSelectedWeek!==week||receipts[bbBetaReceiptId(id)])continue;
   const row=features.essentials.find(row=>'ess:'+row.id===id),request=manual.find(row=>row.kind==='household'&&('ess:manual-'+row.id===id||BB307Pantry.pantryId(row.name,row.unit)===BB307Pantry.pantryId(purchase.name,purchase.unit)));
   const name=String(row?.name||request?.name||purchase.name||'');if(!name||!request&&bb172Aisle({key:name})!=='Household & Other')continue;
-  const amount=window.BBReceiptQuantity?.measured?.(Number(purchase.qty),purchase.unit||row?.unit||request?.unit);
+  let bought=Number(purchase.qty);const choice=choices[id];
+  if(!purchase.partialPurchase&&choice?.week===week&&choice.mode==='custom'&&Number(choice.actualQty)>=bought)bought=Number(choice.actualQty);
+  const amount=window.BBReceiptQuantity?.measured?.(bought,purchase.unit||row?.unit||request?.unit);
   if(!amount)continue;
   result.push({id,name,quantity:amount.quantity,unit:amount.unit,row,request});
  }
@@ -10256,7 +10211,7 @@ function bb83TransferBought({defer=false}={}){
  const legacy=bb83ReadObject(BB83_SHOP_STOCK_LEDGER),nextLegacy={...legacy};
  const nextReceipts={...receipts},creditAdditions=[];let count=0,skipped=0,consumed=0;
  for(const item of eligible){
-  let choice=bbBetaChoiceInfo(item);
+  let choice=item.partialPurchase?{mode:'exact',qty:item.qty,unit:item.unit}:bbBetaChoiceInfo(item);
   if(bbBetaDryVolumeUnit(item.name,item.unit)){skipped++;continue;}
   if(!choice||choice.implicit){if(!choice&&bbBetaPurchaseChoices()[item.id]){skipped++;continue;}choice={mode:'exact',qty:item.qty,unit:item.unit};}
   const receiptId=bbBetaReceiptId(item.id);
@@ -10393,7 +10348,7 @@ function bb172ShopPrompt(kind,after){
  if(newlyBought.length){
   leave.textContent='Finish & update At home';leave.className='btn primary';
   const note=document.createElement('p');note.className='muted';
-  note.textContent='Confirmed purchases update At home when you finish. Food and household essentials keep separate balances. Check food packs or amounts in •••; fresh food with extras needs safe-storage confirmation. Each purchase is added once, and cooking subtracts the food you use.';
+  note.textContent='Your recorded purchases will be added to At home once, including any part purchases.';
   dialog.append(note);
   leave.onclick=()=>{const result=bb83TransferBought({defer:true});
    if(result.error){notify('At home transfer could not be saved safely. Shop remains open.');return;}
@@ -10523,7 +10478,8 @@ function bb172StorefrontButton(txt,cl,fn){
  const b=bb172StorefrontEl('button',cl,txt);b.type='button';b.addEventListener('click',fn);return b;
 }
 function bb172StorefrontAll(){
- const basketById=new Map((bb321WeeklySummary().items||[]).map(item=>[BB307Pantry.pantryId(item.key,item.unit),item]));
+ const summary=bb321WeeklySummary(),basketById=new Map((summary.items||[]).map(item=>[BB307Pantry.pantryId(item.key,item.unit),item]));
+ for(const item of summary.essentials||[])basketById.set('ess:'+item.id,{...item,key:item.name,toBuy:Number(item.qty)});
  return bb172ShopAllRows().map(row=>{
   const box=row.querySelector('[data-bb321-tick]');
   const price=row.querySelector('.bb321-shop-price');
@@ -10674,7 +10630,6 @@ function bb172StorefrontMakeRow(item){
  const priceText=(needle)=>{const found=rawLines.find(el=>el.querySelector('span')?.textContent?.toLowerCase().includes(needle));return found?.querySelector('strong,button')?.textContent?.trim()||''};
  const rawPrice=item.price||'';
  const currencyValue=(label)=>{const match=rawPrice.match(new RegExp(label+'\\s*(?:est\\.?\\s*:?)?\\s*([~]?[£$]\\s*[0-9]+(?:\\.[0-9]{1,2})?)','i'));return match?.[1]||''};
- const portion=priceText('portion')||currencyValue('portion')||'Check estimate';
  const full=priceText('full pack')||currencyValue('full pack')||'Check estimate';
  const shelf=bb172StorefrontEl('span','bbcompact-price',full);
  shelf.title='Estimated full-pack shelf price';
@@ -10682,21 +10637,10 @@ function bb172StorefrontMakeRow(item){
  toggle.setAttribute('aria-expanded','false');toggle.setAttribute('aria-label','Show item details');
  const main=bb172StorefrontEl('div','bbcompact-main');main.append(check,info,amount,shelf,toggle);
  const drawer=bb172StorefrontEl('div','bbcompact-drawer');drawer.hidden=true;
- const prices=bb172StorefrontEl('div','bbcompact-breakdown');
- const portionBox=bb172StorefrontEl('div','bbcompact-breakdown-line');portionBox.append(bb172StorefrontEl('span','','Portion est.'),bb172StorefrontEl('strong','',portion));
- const packBox=bb172StorefrontEl('div','bbcompact-breakdown-line');packBox.append(bb172StorefrontEl('span','','Full pack est.'),bb172StorefrontEl('strong','',full));
- prices.append(portionBox,packBox);
  const actions=bb172StorefrontEl('div','bbcompact-actions');
- if(item.row?.querySelector('.bb79-rough-tag'))actions.append(bb172StorefrontEl('span','bb15-shop-rough','~ Rough est.'));
- const provenance=item.row?.querySelector('.bb79-local-tag');if(provenance)actions.append(provenance.cloneNode(true));
  const editor=item.row?.querySelector('[data-bb79-name][data-bb79-unit]');
- if(editor){actions.append(bb172StorefrontButton('My usual product','bb79-storefront-price-edit',()=>bb79OpenShelfPriceEditor(editor.dataset.bb79Name,editor.dataset.bb79Unit)))}
- const choose=bb172StorefrontEl('select','bb172-storefront-change-aisle');choose.setAttribute('aria-label','Change aisle for '+item.name);
- BB172_AISLES.forEach(([id,,label])=>{const option=document.createElement('option');option.value=id;option.textContent=label;if(id===item.aisle)option.selected=true;choose.append(option)});
- choose.addEventListener('change',e=>bb172StorefrontReroute(item,e.target.value));actions.append(choose);
- if(bb172ShopNormalize(item.name)==='kidney beans')drawer.append(bb172StorefrontEl('small','',
-  'Turkey and sweetcorn chilli currently uses 2 × 400 g tins for 4 servings. If planning 6 servings, the scaled quantity is 3 tins (1,200 g). Review the recipe or serving count before changing it.'));
- drawer.append(bbBetaShopChoiceRow(item));const partialControls=bbPartialPurchaseControls(item);if(partialControls)drawer.append(partialControls);drawer.append(prices,actions);row.append(main,drawer);return row;
+ if(editor)actions.append(bb172StorefrontButton('My usual product','bb79-storefront-price-edit',()=>bb79OpenShelfPriceEditor(editor.dataset.bb79Name,editor.dataset.bb79Unit)));
+ drawer.append(bbBetaShopChoiceRow(item),actions);row.append(main,drawer);return row;
 }
 /* Original BasketBoss crowned-basket mark — actual logo paths from v17.1, not an emoji or stock icon. */
 function bb172StorefrontLogo(){
@@ -11569,7 +11513,7 @@ window.BB172Welcome={open:()=>open(true),completed:()=>read(SEEN)==='true'};
 }
 if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',patchPaths,{once:true});else patchPaths();})();
 </script>
-<script src="shopping-inventory.js?v=20261104-food-amounts1" defer></script><dialog id="bbIntroTrialDialog" aria-labelledby="bbIntroTrialTitle" aria-describedby="bbIntroTrialText">
+<script src="shopping-inventory.js?v=20261104-inline1" defer></script><dialog id="bbIntroTrialDialog" aria-labelledby="bbIntroTrialTitle" aria-describedby="bbIntroTrialText">
  <div class="bbtrial-hero">
   <button type="button" class="bbtrial-x" data-bbtrial-close aria-label="Close Premium offer">×</button>
   <p class="bbtrial-topline">🚀 FOUNDING MEMBER BETA · FIRST 25 PLACES</p>
@@ -12436,7 +12380,9 @@ body[data-bbnext-view="discover"] #app .bb175-discover-heading{padding-top:calc(
 <script defer src="bb-pantry-groups.js?v=20261104-groups1"></script>
 <script defer src="bb-pantry-groups-ui.js?v=20261104-groups1"></script>
 <script defer src="bb-household-amount.js?v=20261104-groups1"></script>
-<script defer src="bb-kitchen-essentials.js?v=20261104-regions2"></script>
+<script defer src="bb-kitchen-essentials.js?v=20261104-inline1"></script>
+<link rel="stylesheet" href="bb-pantry-inline.css?v=20261104-inline1">
+<script defer src="bb-pantry-inline.js?v=20261104-inline1"></script>
 <link rel="stylesheet" href="bb-keyboard-layout.css?v=20261101-keyboard1">
 <script defer src="bb-keyboard-layout.js?v=20261101-keyboard1"></script>
 <link rel="stylesheet" href="bb-simple-layout.css?v=20261102-loop2">
@@ -12451,4 +12397,6 @@ body[data-bbnext-view="discover"] #app .bb175-discover-heading{padding-top:calc(
 <link rel="stylesheet" href="bb-pantry-camera.css?v=20261102-camera1">
 <script defer src="bb-pantry-camera.js?v=20261102-camera1"></script>
 <link rel="stylesheet" href="bb-cook-experience.css?v=20261103-feedback1">
+<link rel="stylesheet" href="bb-tab-viewport.css?v=20261104-tabs1">
+<script defer src="bb-tab-viewport.js?v=20261104-tabs1"></script>
 </body></html>
