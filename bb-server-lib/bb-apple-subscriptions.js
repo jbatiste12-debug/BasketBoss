@@ -27,12 +27,17 @@ function loadAppleLibrary(){
 // Classify locally into fixed labels only. Raw exception text/stack can contain
 // account or infrastructure details and must never enter responses or logs.
 export function classifyAppleVerifierInitFailure(error){
- let message='',stack='';try{if(typeof error?.message==='string')message=error.message.slice(0,2000);if(typeof error?.stack==='string')stack=error.stack.slice(0,6000);}catch{}
+ let message='',stack='',name='';try{if(typeof error?.message==='string')message=error.message.slice(0,2000);if(typeof error?.stack==='string')stack=error.stack.slice(0,6000);if(typeof error?.name==='string')name=error.name;}catch{}
  if(/global[- ]scope|outside.{0,50}(?:request|handler)|(?:I\/O|random).{0,80}(?:global|request context)/i.test(message))return 'GLOBAL_CONTEXT';
  if(/SlowBuffer|buffer-equal-constant-time/i.test(message+' '+stack))return 'BUFFER_COMPAT';
+ if(/(?:undefined|null).{0,80}(?:reading|accessing).{0,20}prototype|prototype.{0,50}(?:undefined|null)/i.test(message))return 'UNDEFINED_PROTOTYPE';
+ if(/\bJSON\b.{0,100}(?:import|attribute|assert)|import.{0,120}(?:assertion|attribute)/i.test(message))return 'JSON_IMPORT';
+ if(name==='ReferenceError'&&/\b(?:Buffer|process|navigator|window|self)\b/.test(message))return 'MISSING_GLOBAL';
+ if(/dynamic import|dynamic require|require is not defined|cannot find (?:module|package)|no such module|cannot resolve module|unsupported.{0,60}(?:require|import)|(?:require|import).{0,80}not supported/i.test(message))return 'DYNAMIC_IMPORT';
  if(/SignedDataVerifier.{0,60}(?:not a constructor|not a function|undefined|missing)|does not provide an export/i.test(message))return 'MISSING_EXPORT';
  if(/(?:crypto|X509|createHash|node:buffer)/i.test(message)&&/(?:not implemented|not supported|unsupported|not a constructor|not a function|undefined|unrecognized)/i.test(message))return 'NODE_CRYPTO';
  if(/Apple trust anchor integrity check failed/i.test(message))return 'ROOT_INTEGRITY';
+ if(name==='TypeError')return 'TYPE_ERROR';
  return 'UNKNOWN';
 }
 function verifierInitFailure(stage,error,cause){

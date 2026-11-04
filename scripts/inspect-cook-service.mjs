@@ -87,7 +87,7 @@ export async function inspectAppleVerifierHealth(perform=fetch,hostName='apex',h
   const response=await perform(host+'/api/apple/verifier-health',{headers:{Origin:NATIVE,Accept:'application/json'},redirect:'manual',credentials:'omit',cache:'no-store',signal:AbortSignal.timeout(15000)});
   result.status=status(response.status);const value=contentType(response.headers)==='application/json'?await boundedJSON(response,2048):null;
   result.ready=response.status===200&&value?.ready===true;
-  const reference=value?.reference;if(typeof reference==='string'&&/^BB_BETA_APPLE_(?:MODULE|ROOTS|CONSTRUCTOR)_(?:GLOBAL_CONTEXT|BUFFER_COMPAT|MISSING_EXPORT|NODE_CRYPTO|ROOT_INTEGRITY|UNKNOWN)$/.test(reference))result.reference=reference;
+  const reference=value?.reference;if(typeof reference==='string'&&/^BB_BETA_APPLE_(?:MODULE|ROOTS|CONSTRUCTOR)_(?:GLOBAL_CONTEXT|BUFFER_COMPAT|MISSING_EXPORT|NODE_CRYPTO|ROOT_INTEGRITY|DYNAMIC_IMPORT|UNDEFINED_PROTOTYPE|MISSING_GLOBAL|JSON_IMPORT|TYPE_ERROR|UNKNOWN)$/.test(reference))result.reference=reference;
   return result;
  }catch{return result;}
 }
