@@ -95,10 +95,13 @@ function projectDetails(project,sha){
  const deployed=project.canonical_deployment;
  requireThat(UUID.test(deployed?.id||'')&&deployed.environment==='production'&&deployed.latest_stage?.name==='deploy'&&deployed.latest_stage.status==='success'&&/^[a-f0-9]{40}$/.test(deployed.deployment_trigger?.metadata?.commit_hash||''),'INSPECT_DEPLOYMENT');
  const config=project.deployment_configs?.production,vars=config?.env_vars||{};
+ const flags=Array.isArray(config?.compatibility_flags)?config.compatibility_flags:[],date=config?.compatibility_date;
+ const nodeCryptoCompatible=flags.includes('nodejs_compat')&&!flags.includes('no_nodejs_compat_v2')&&typeof date==='string'&&/^\d{4}-\d{2}-\d{2}$/.test(date)&&date>='2024-09-23';
  const plain=name=>vars[name]?.type==='plain_text'?vars[name].value:undefined;
  const cap=(name,maximum)=>{const value=Number(plain(name));return Number.isInteger(value)&&value>=1&&value<=maximum;};
  return {deploymentId:deployed.id,databaseId:UUID.test(config?.d1_databases?.BILLING_DB?.id||'')?config.d1_databases.BILLING_DB.id:null,matchingSha:deployed.deployment_trigger.metadata.commit_hash===sha,configuration:{
   aiEnabled:plain('BB_PREMIUM_AI_ENABLED')==='true',ttsEnabled:plain('BB_TTS_ENABLED')==='true',
+  nodeCompatibilityEnabled:flags.includes('nodejs_compat'),nodeCryptoCompatible,
   providerSecretBound:vars.OPENAI_API_KEY?.type==='secret_text',
   billingDatabaseBound:UUID.test(config?.d1_databases?.BILLING_DB?.id||''),
   ttsStorageBound:typeof config?.r2_buckets?.BB_TTS_AUDIO?.name==='string'&&config.r2_buckets.BB_TTS_AUDIO.name.length>0,
