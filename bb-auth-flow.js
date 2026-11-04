@@ -610,7 +610,8 @@
       reset.hidden = !resetting;
       resend.hidden = !waiting;
       save.hidden = !setting;
-      back.hidden = normal || setting || s.busy;
+      back.hidden = normal || s.busy;
+      back.textContent = setting ? "Request a new reset link" : "Back to sign in";
       const remaining = Math.max(
         0,
         Math.ceil((s.cooldownUntil - Date.now()) / 1000),
@@ -744,7 +745,13 @@
     reset.onclick = () => core.requestReset(recoveryEmail.value);
     resend.onclick = () => core.resend();
     save.onclick = () => core.updatePassword(newPassword.value, repeat.value);
-    back.onclick = () => core.open();
+    back.onclick = () => {
+      if (core.state().view === "set-password") {
+        recoveryEmail.value = core.state().email;
+        invalidate();
+        core.open("forgot-password");
+      } else core.open();
+    };
     form.addEventListener("keydown", (event) => {
       if (event.key !== "Enter" || event.isComposing) return;
       event.preventDefault();
