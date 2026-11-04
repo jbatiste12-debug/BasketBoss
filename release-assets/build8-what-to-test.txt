@@ -3,6 +3,7 @@ BasketBoss build 8
 Your pantry now works as a running balance: shopping adds to it and confirmed cooking uses it up. Remaining food and essentials stay there between weeks.
 
 Please test:
+• Compact Saved weeks / Saved meals buttons: open either panel, switch without losing a typed name, then close it to keep the dinner plan visible.
 • Confirm cooked: check the amount used, then confirm once. Reopening the meal should not deduct again.
 • Day done: confirm the day's planned dinner, lunches and dessert together. Already confirmed meals and linked batch leftovers should not use ingredients twice.
 • Shop → Add item to buy: enter an item and the additional quantity you want, even if you already have some at home. Try 4, 500 g, 2 packs or 1 bag (500 g).

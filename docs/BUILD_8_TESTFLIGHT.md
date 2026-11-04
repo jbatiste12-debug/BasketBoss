@@ -7,6 +7,10 @@ do not upload a build to Apple; signing and upload use Xcode on the owner's Mac.
 
 ## Added in build 8
 
+- **Compact saved-plan controls.** Saved weeks and Saved meals share a small
+  button row. Both start closed; tap to open one panel or close it again. Draft
+  names stay intact while switching.
+
 - **A persistent pantry balance.** Food and essentials stay in At home between
   weeks. Reviewed receipts and Finish Shop add confirmed purchases. Weekly
   review can correct what remains without clearing the pantry.
@@ -106,6 +110,9 @@ GitHub's archive is unsigned and cannot by itself replace this signed upload.
 Keep the installed app when updating so its saved pantry and plan remain.
 
 ## Acceptance checks
+
+- Check the compact Saved weeks / Saved meals controls above the dinner plan.
+  Open and close each, switch with a draft name entered, and save/load a week.
 
 - Start with food and essentials already in At home. Plan a meal and verify
   Shop shows only the automatic shortfall.

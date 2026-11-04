@@ -8,3 +8,27 @@
 .bbsw-form{display:flex;align-items:end;gap:8px;flex-wrap:wrap}.bbsw-name-label{flex:1;min-width:160px;font-size:12px;font-weight:750}.bbsw-name-label input{display:block;width:100%;margin-top:5px}.bbsw-form button{min-height:44px}
 .bbsw-item{display:flex;gap:10px;align-items:center;justify-content:space-between;padding:12px 0;border-top:1px solid #dce7dc}.bbsw-list{margin-top:10px}.bbsw-copy{min-width:0}.bbsw-copy strong{display:block;overflow-wrap:anywhere}.bbsw-copy small{display:block;font-size:11px;line-height:1.5;margin-top:3px;color:#506b5a}.bbsw-actions{display:flex;gap:6px;flex-shrink:0}.bbsw-actions button{min-height:44px;padding:8px 11px;font-size:12px}
 @media(max-width:430px){.bbsw-item{align-items:start;flex-direction:column}.bbsw-actions{width:100%}.bbsw-actions button{flex:1}.bbsw-form button{width:100%}}
+
+/* Saved planning tools stay a single small row until requested. */
+html body #app [data-bb307-extras="week"].bbsw-tools{padding:6px!important;margin:12px 0!important;border:1px solid #d7e3d7!important;border-radius:18px!important;background:#fffdf7!important;box-shadow:0 3px 12px #204a3510!important}
+#app .bbsw-tools [hidden]{display:none!important}
+#app .bbsw-tabs{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:6px;min-width:0}
+html body #app .bbsw-tabs .bbsw-tab{display:flex!important;align-items:center;justify-content:center;gap:7px;box-sizing:border-box;min-width:0;min-height:46px!important;margin:0!important;padding:10px!important;border:1px solid transparent!important;border-radius:13px!important;background:#edf4eb!important;color:#285640!important;box-shadow:none!important;font:750 13px/1.2 system-ui,-apple-system,sans-serif!important;white-space:nowrap!important;cursor:pointer;transition:background .16s,color .16s}
+html body #app .bbsw-tabs .bbsw-tab[aria-expanded="true"]{background:#205f47!important;color:#fffdf5!important;border-color:#205f47!important;box-shadow:0 2px 6px #205f4720!important}
+#app .bbsw-tab-icon{display:inline-flex;flex:none;width:18px;height:18px}#app .bbsw-tab-icon svg{width:100%;height:100%}
+#app .bbsw-tab-label{min-width:0}#app .bbsw-tab-count{display:grid;place-items:center;min-width:18px;height:18px;padding:0 3px;box-sizing:border-box;border-radius:6px;background:#dce9d8;font-size:10px;font-weight:800;color:#285640}
+#app .bbsw-tab[aria-expanded="true"] .bbsw-tab-count{background:#ffffff24;color:#fffdf5}
+#app .bbsw-tab-arrow{width:13px;height:13px;transition:transform .16s}#app .bbsw-tab[aria-expanded="true"] .bbsw-tab-arrow{transform:rotate(180deg)}
+html body #app .bbsw-tools .bb-saved-weeks,html body #app .bbsw-tools .bbsw-selections{padding:14px 8px 6px!important;margin:8px 0 0!important;border:0!important;border-top:1px solid #dce7db!important;border-radius:0!important;background:transparent!important;box-shadow:none!important}
+html body #app .bbsw-tools h3{margin:0 0 6px!important;font-size:18px!important;color:#24533d!important}
+#app .bbsw-tools .bbsw-hint{margin-bottom:12px}#app .bbsw-tools .bbsw-status{margin:8px 0;font-size:12px}
+#app .bbsw-tools .bbsw-form,#app .bbsw-tools #bb307SavePlan{display:grid!important;grid-template-columns:minmax(0,1fr) auto;align-items:end;gap:8px!important;min-width:0}
+#app .bbsw-tools .bbsw-name-label{min-width:0;font-size:12px}
+html body #app .bbsw-tools input.field{box-sizing:border-box;min-width:0!important;width:100%!important;min-height:44px!important;height:44px!important;padding:10px 12px!important;border-radius:11px!important;font-size:16px!important}
+html body #app .bbsw-tools .bbsw-form button,html body #app .bbsw-tools #bb307SavePlan button{width:auto!important;min-height:44px!important;padding:10px 13px!important;border-radius:11px!important;font-size:12px!important;white-space:normal!important}
+#app .bbsw-tools .bbsw-list{margin-top:12px}#app .bbsw-tools .bbsw-item{flex-direction:row;align-items:center;gap:10px;padding:12px 0}
+#app .bbsw-tools .bbsw-copy{flex:1;font-size:14px}#app .bbsw-tools .bbsw-copy small{font-size:10px}
+#app .bbsw-tools .bbsw-actions{width:auto;flex:none;gap:6px}html body #app .bbsw-tools .bbsw-actions button{flex:none;min-height:44px!important;padding:8px 10px!important;border-radius:10px!important;font-size:11px!important}
+#app .bbsw-tools :focus-visible{outline:3px solid #c5a64c!important;outline-offset:3px}
+@media(max-width:360px){html body #app .bbsw-tabs .bbsw-tab{gap:4px;padding:9px 6px!important;font-size:12px!important}#app .bbsw-tab-icon{width:16px;height:16px}#app .bbsw-tab-arrow{width:10px;height:10px}#app .bbsw-tools #bb307SavePlan{grid-template-columns:1fr}#app .bbsw-tools .bbsw-item{flex-wrap:wrap}}
+@media(prefers-reduced-motion:reduce){#app .bbsw-tab,#app .bbsw-tab-arrow{transition:none!important}}

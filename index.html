@@ -3790,8 +3790,8 @@ body[data-bbnext-view="discover"] #app .bb-featured-card #bbFeaturedBatch {
 <script src="bb-recipe-planning.js?v=20261104-cycle1"></script>
 <script src="bb-recipe-editorial.js?v=20261102-editorial4"></script>
 <script src="bb-plan-move.js?v=20261102-drag1"></script>
-<script src="bb-saved-weeks.js?v=20261103-weeks1"></script>
-<link rel="stylesheet" href="bb-saved-weeks.css?v=20261103-weeks1">
+<script src="bb-saved-weeks.js?v=20261104-compact1"></script>
+<link rel="stylesheet" href="bb-saved-weeks.css?v=20261104-compact1">
 <script src="bb-ingredient-preferences.js?v=20261101-avoid1"></script>
 <script src="bb-evening-pivot.js?v=20261101-pivot1"></script>
 <script src="bb-evening-pivot-app.js?v=20261103-feedback1"></script>
@@ -4581,9 +4581,8 @@ function bb307FeaturesRender(app){
    bb307StoreFeatures();bb307FeaturesRefresh();
   });
   if(window.BBSavedWeeks&&window.BBSavedWeeksHost){
-   const legacy=document.createElement('details');legacy.className='bbsw-legacy';const summary=document.createElement('summary');summary.textContent='Saved meal selections';
-   legacy.append(summary,...Array.from(region.childNodes));region.append(legacy);
-   bbSavedWeeksUI?.dispose();bbSavedWeeksUI=window.BBSavedWeeks.mount({container:region,host:window.BBSavedWeeksHost});
+   const selections=document.createElement('section');selections.className='bbsw-selections';selections.append(...Array.from(region.childNodes));region.append(selections);
+   bbSavedWeeksUI?.dispose();bbSavedWeeksUI=window.BBSavedWeeks.mount({container:region,host:window.BBSavedWeeksHost,selections,selectionsCount:saved.length});
   }
  }else if(tab==='shop'){
   const all=bb307FeatureState.essentials,selected=all.filter(x=>x.selected&&!x.owned),quotes=selected.map(x=>bb15Quote(x,true)),spent=quotes.reduce((n,x)=>n+(x.amount||0),0);
