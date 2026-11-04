@@ -5,7 +5,8 @@ import {readMemberPaidAccess,paidBillingEnabled} from '../../bb-server-lib/bb-pa
 import {isAccountDeleting} from '../../bb-server-lib/bb-account-deletion.js';
 import {missLimits} from '../../bb-server-lib/bb-tts.js';
 import {readCookingQuestion,consumeCookingAllowance,requestCookingAnswer} from '../../bb-server-lib/bb-cook-assistant.js';
-import {cookServiceCode,cookAuthorizationCode,logCookDiagnostic} from '../../bb-server-lib/bb-cook-service-error.js';
+import {cookingAnswerStreamResponse} from '../../bb-server-lib/bb-cook-stream.js';
+import {cookServiceError,cookServiceCode,cookAuthorizationCode,logCookDiagnostic} from '../../bb-server-lib/bb-cook-service-error.js';
 
 async function authorize(request,env){
  const user=await authenticatedUser(request,env);if(!user)return {error:'Sign in with a verified account',status:401};
@@ -50,6 +51,11 @@ export function createCookAssistantHandler({authorizeMember=authorize,perform=fe
    if(!allowed)return fail('Cooking questions have reached their daily limit. The recipe and voice commands are still available.',429,'BB_COOK_DAILY_LIMIT','quota');
    if(request.signal.aborted)return cancelled();
    stage='provider_request';
+   if((request.headers.get('Accept')||'').split(',').some(type=>type.trim().toLowerCase()==='application/x-ndjson')){
+    return cookingAnswerStreamResponse(parsed.value,env,{perform,signal:request.signal,clock,
+     guard:async()=>{if(await deleting(env,member))throw cookServiceError('BB_COOK_ACCOUNT_PENDING');},
+     diagnostic:code=>{if(diagnostic)logCookDiagnostic(code==='BB_COOK_ACCOUNT_PENDING'?'account_state':'provider_request',code,code==='BB_COOK_ACCOUNT_PENDING'?409:code==='BB_COOK_REQUEST_CANCELLED'?499:502);}});
+   }
    const answer=await requestCookingAnswer(parsed.value,env,perform,request.signal);
    stage='account_state';
    if(await deleting(env,member))return pending();
