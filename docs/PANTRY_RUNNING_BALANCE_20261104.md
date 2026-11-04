@@ -55,8 +55,7 @@ The fractional migration changes stock validation without rewriting inventory,
 while keeping receipt purchase validation and service authorization strict.
 
 The new UI needs a new iOS build; the existing immutable `testflight-build7`
-tag does not contain this feature. This branch retains the current native
-version until the next release is cut. Xcode signing and TestFlight upload
+tag does not contain this feature. The release is now version 1.0 (8). Xcode signing and TestFlight upload
 remain on the owner's Mac.
 
 Tests cover shared conversion, physical allocations, unknown/conflicting facts,
