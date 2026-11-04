@@ -75,7 +75,9 @@ changed by these checks.
 ## Apple verifier runtime compatibility
 
 A production inspection after the tester reported `BB_BETA_APPLE_VERIFICATION`
-found Node.js compatibility disabled. Apple's server library uses Node crypto,
+found no explicit Node.js compatibility flag. Newer Cloudflare dates enable Node
+automatically, so this alone does not establish a runtime failure. Apple's
+server library uses Node crypto,
 including X.509 certificates. Cold library initialization can fail before it
 returns a normal Apple proof-verification error. Local cold-start checks pass
 with `nodejs_compat` and a compatibility date of 2024-09-23 or later.
@@ -97,3 +99,18 @@ certificate and sandbox checks remain required.
 After a successful rebuild, retry the beta unlock in the existing TestFlight
 app. The runtime correction is server-only; a successful real activation and
 authoritative Premium status are still needed to confirm the issue is resolved.
+
+The readiness inspector now reports the validated compatibility date and accounts
+for Cloudflare's implicit Node default from 2026-08-04 and explicit opt-outs.
+The attempted automatic explicit-flag update was rejected with HTTP 403 by the
+Pages read-only token; that attempt made no settings change. Verifier startup
+failures are further separated into fixed import, trust-root and constructor
+references without exposing raw exception messages or signed proofs.
+
+`GET /api/apple/verifier-health` is a production-only, public startup readiness
+check. It constructs the pinned-root Sandbox verifier with online checks enabled;
+it does not accept proofs or read/write accounts, payments or entitlements. It
+returns only readiness or a fixed initialization reference. The existing main-only
+inspection workflow probes this route without account credentials, allowing
+startup failures to be investigated without asking a tester to resubmit a receipt.
+A ready verifier does not prove a particular tester has Premium access.

@@ -80,6 +80,17 @@ async function publicProbe(perform,hostName,host,route,method){
   return {kind:'probe',host:hostName,route,method,status:status(response.status),contentType:type,nativeCors:cors,code:DIAGNOSTIC_CODES.has(value?.code)?value.code:null};
  }catch{return {kind:'probe',host:hostName,route,method,status:null,contentType:'missing',nativeCors:false,code:null};}
 }
+// Public startup readiness only: no account credentials, proof or AI request.
+export async function inspectAppleVerifierHealth(perform=fetch,hostName='apex',host='https://basketboss.co.uk'){
+ const result={kind:'apple_verifier',host:hostName,status:null,ready:false,reference:null};
+ try{
+  const response=await perform(host+'/api/apple/verifier-health',{headers:{Origin:NATIVE,Accept:'application/json'},redirect:'manual',credentials:'omit',cache:'no-store',signal:AbortSignal.timeout(15000)});
+  result.status=status(response.status);const value=contentType(response.headers)==='application/json'?await boundedJSON(response,2048):null;
+  result.ready=response.status===200&&value?.ready===true;
+  const reference=value?.reference;if(typeof reference==='string'&&/^BB_BETA_APPLE_(?:MODULE|ROOTS|CONSTRUCTOR)_(?:GLOBAL_CONTEXT|BUFFER_COMPAT|MISSING_EXPORT|NODE_CRYPTO|ROOT_INTEGRITY|UNKNOWN)$/.test(reference))result.reference=reference;
+  return result;
+ }catch{return result;}
+}
 async function cloudflare(env,route,method,perform,body,operation){
  requireThat(API_OPERATIONS.has(operation),'INSPECT_API');
  let response;
@@ -96,12 +107,17 @@ function projectDetails(project,sha){
  requireThat(UUID.test(deployed?.id||'')&&deployed.environment==='production'&&deployed.latest_stage?.name==='deploy'&&deployed.latest_stage.status==='success'&&/^[a-f0-9]{40}$/.test(deployed.deployment_trigger?.metadata?.commit_hash||''),'INSPECT_DEPLOYMENT');
  const config=project.deployment_configs?.production,vars=config?.env_vars||{};
  const flags=Array.isArray(config?.compatibility_flags)?config.compatibility_flags:[],date=config?.compatibility_date;
- const nodeCryptoCompatible=flags.includes('nodejs_compat')&&!flags.includes('no_nodejs_compat_v2')&&typeof date==='string'&&/^\d{4}-\d{2}-\d{2}$/.test(date)&&date>='2024-09-23';
+ const compatibilityDate=typeof date==='string'&&/^\d{4}-\d{2}-\d{2}$/.test(date)&&Number.isFinite(Date.parse(date))&&new Date(date).toISOString().slice(0,10)===date?date:null;
+ // Cloudflare enables Node by default from 2026-08-04. Absence of an explicit
+ // flag is not sufficient evidence that Node cryptography is disabled.
+ const nodeCompatibilityExplicit=flags.includes('nodejs_compat');
+ const nodeCompatibilityEnabled=!flags.includes('no_nodejs_compat')&&(nodeCompatibilityExplicit||compatibilityDate!==null&&compatibilityDate>='2026-08-04');
+ const nodeCryptoCompatible=nodeCompatibilityEnabled&&!flags.includes('no_nodejs_compat_v2')&&compatibilityDate!==null&&compatibilityDate>='2024-09-23';
  const plain=name=>vars[name]?.type==='plain_text'?vars[name].value:undefined;
  const cap=(name,maximum)=>{const value=Number(plain(name));return Number.isInteger(value)&&value>=1&&value<=maximum;};
  return {deploymentId:deployed.id,databaseId:UUID.test(config?.d1_databases?.BILLING_DB?.id||'')?config.d1_databases.BILLING_DB.id:null,matchingSha:deployed.deployment_trigger.metadata.commit_hash===sha,configuration:{
   aiEnabled:plain('BB_PREMIUM_AI_ENABLED')==='true',ttsEnabled:plain('BB_TTS_ENABLED')==='true',
-  nodeCompatibilityEnabled:flags.includes('nodejs_compat'),nodeCryptoCompatible,
+  nodeCompatibilityEnabled,nodeCryptoCompatible,nodeCompatibilityExplicit,compatibilityDate,
   providerSecretBound:vars.OPENAI_API_KEY?.type==='secret_text',
   billingDatabaseBound:UUID.test(config?.d1_databases?.BILLING_DB?.id||''),
   ttsStorageBound:typeof config?.r2_buckets?.BB_TTS_AUDIO?.name==='string'&&config.r2_buckets.BB_TTS_AUDIO.name.length>0,
@@ -212,6 +228,6 @@ export async function inspectCookService(env=process.env,options={}){
 if(process.argv[1]&&path.resolve(process.argv[1])===fileURLToPath(import.meta.url)){
  try{
   const args=process.argv.slice(2);requireThat(args.length===0||args.length===1&&['--probe','--tail'].includes(args[0]),'INSPECT_MODE');
-  const result=await inspectCookService(process.env,args.length?{mode:args[0].slice(2)}:{});output({kind:'complete',...result});
+  const result=await inspectCookService(process.env,args.length?{mode:args[0].slice(2)}:{});if(result.mode==='probe')for(const [name,host]of HOSTS)output(await inspectAppleVerifierHealth(fetch,name,host));output({kind:'complete',...result});
  }catch(error){output(cookInspectionFailure(error));process.exitCode=1;}
 }
