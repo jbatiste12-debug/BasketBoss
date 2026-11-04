@@ -98,7 +98,7 @@
  }
 
  function options(items,selected,multiple){return `<div class="bbob-options ${multiple?'bbob-goals':''}">${items.map((v,i)=>`<button type="button" class="bbob-option ${selected.includes(v)?'chosen':''}" data-bbob-opt="${i}" aria-pressed="${selected.includes(v)}"><span class="bbob-choice-mark" aria-hidden="true">${selected.includes(v)?'✓':' '}</span><span>${v}</span></button>`).join('')}</div>`;}
- const titles=['Welcome','Account','Partner sharing','Household','Goals','Preferences','Discover','Plan','Shop','All set','Membership'];
+ const titles=['Welcome','Account','Partner sharing','Household','Goals','Preferences','Discover','Plan','Shop','You’re all set','Membership'];
  function content(){
    let headline='',eyebrow='',description='',art='',foot='',actions='';
    switch(state.step){
@@ -159,10 +159,20 @@
        foot='Dated online guides cover selected UK products; regional estimates fill gaps. Meal estimates count the share of staples used, while Shopping includes full replacement packs when needed.';
        art=figure('shop');actions=btn('Finish the tour','next')+btn('Back','back','link');break;
      case 9:
-       eyebrow='READY WHEN YOU ARE';headline='You’re all set.';
-       description='Less time wondering what’s for dinner. More time enjoying it.';
-       art='<div class="bbob-finish-art">'+originalCrownAnimation()+'<span class="bbob-sheen" aria-hidden="true"></span></div>';
-       actions=btn('Choose how to get started','next');break;
+       eyebrow='THE BASKETBOSS WAY';headline='Your kitchen, <em>made simple.</em>';
+       description='Plan your meals. Use what you have. Top up what you need.';
+       const kitchenIcon=path=>`<span class="bbob-kitchen-icon" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round">${path}</svg></span>`;
+       art=`<div class="bbob-kitchen-routine">
+         <ol class="bbob-kitchen-steps">
+           <li>${kitchenIcon('<rect x="3" y="5" width="18" height="16" rx="3"/><path d="M7 3v4m10-4v4M3 10h18"/>')}<div><strong>Plan</strong><p>Auto-fill, or choose meals in Discover. Set servings.</p></div><span class="bbob-kitchen-order" aria-hidden="true">01</span></li>
+           <li>${kitchenIcon('<path d="m3 10 2 10h14l2-10H3Zm5 0V7a4 4 0 0 1 8 0v3m-7 4v3m6-3v3"/>')}<div><strong>At home</strong><p>Check what you have, then confirm the amounts.</p></div><span class="bbob-kitchen-order" aria-hidden="true">02</span></li>
+           <li>${kitchenIcon('<path d="M10 5h11M10 12h11M10 19h11M3 5l1 1 2-3m-3 9 1 1 2-3m-3 9 1 1 2-3"/>')}<div><strong>Shop</strong><p>Buy what’s missing. Finish shop or confirm a receipt to restock.</p></div><span class="bbob-kitchen-order" aria-hidden="true">03</span></li>
+           <li>${kitchenIcon('<path d="M5 10h14v7a3 3 0 0 1-3 3H8a3 3 0 0 1-3-3v-7ZM3 10h18M9 7h6v3M2 13h3m14 0h3M8 3v1m8-1v1"/>')}<div><strong>Cook</strong><p>Tap Confirm cooked or Day done to record what you used.</p></div><span class="bbob-kitchen-order" aria-hidden="true">04</span></li>
+           <li class="bbob-kitchen-repeat">${kitchenIcon('<path d="M19 8a8 8 0 0 0-13-3L3 8m0-5v5h5m-3 8a8 8 0 0 0 13 3l3-3m0 5v-5h-5"/>')}<div><strong>Next week starts with what’s left.</strong><p>Review leftovers and essentials, then plan again.</p></div></li>
+         </ol>
+       </div>`;
+       foot='';
+       actions=btn('Let’s get started','next')+btn('Back','back','link');break;
      default:
        if(native()){
          eyebrow='READY TO GET STARTED';headline='Your BasketBoss is ready.';
@@ -179,7 +189,9 @@
        actions=btn('Explore Premium plans','premium')+btn('Continue with BasketBoss Free','free-complete','outline');
    }
    const counter=state.step===0?'':`<div class="bbob-progress" aria-label="Onboarding step ${state.step+1} of ${STEP_MAX+1}"><span style="width:${Math.min(100,Math.round(100*state.step/STEP_MAX))}%"></span></div>`;
-   return `<div class="bbob-shell"><header class="bbob-header"><div class="bbob-brand"><img src="${LOGO}" alt=""><span>Basket<span>Boss</span></span></div><button type="button" class="bbob-exit" data-bbob="${replaying?'replay-cancel':'free'}" aria-label="${replaying?'Cancel setup and keep existing preferences':'Exit onboarding and explore free recipes'}">${replaying?'Cancel setup':'Explore Free'} <span aria-hidden="true">×</span></button></header>${counter}<section class="bbob-main" aria-labelledby="bbob-title"><p class="bbob-eyebrow">${eyebrow}</p><h1 id="bbob-title">${headline}</h1><p class="bbob-description">${description}</p>${art}${foot?`<p class="bbob-footnote">${foot}</p>`:''}<p id="bbobSaveError" role="alert" class="bbob-save-error"></p></section><footer class="bbob-footer">${actions}<div class="bbob-stepname">${titles[state.step]} · ${state.step+1} of 11</div></footer></div>`;
+   const headingMarkup=`<p class="bbob-eyebrow">${eyebrow}</p><h1 id="bbob-title">${headline}</h1>`;
+   const intro=state.step===9?`<div class="bbob-kitchen-hero"><div class="bbob-kitchen-hero-copy">${headingMarkup}</div><img class="bbob-kitchen-meal" src="release-assets/basketboss-v17/images/existing/creamy-pasta.webp" alt="" width="360" height="360"><span class="bbob-kitchen-ribbon">Plan. Shop. Cook. Repeat.</span></div><p class="bbob-description">${description}</p>`:`${headingMarkup}<p class="bbob-description">${description}</p>`;
+   return `<div class="bbob-shell"><header class="bbob-header"><div class="bbob-brand"><img src="${LOGO}" alt=""><span>Basket<span>Boss</span></span></div><button type="button" class="bbob-exit" data-bbob="${replaying?'replay-cancel':'free'}" aria-label="${replaying?'Cancel setup and keep existing preferences':'Exit onboarding and explore free recipes'}">${replaying?'Cancel setup':'Explore Free'} <span aria-hidden="true">×</span></button></header>${counter}<section class="bbob-main" aria-labelledby="bbob-title">${intro}${art}${foot?`<p class="bbob-footnote">${foot}</p>`:''}<p id="bbobSaveError" role="alert" class="bbob-save-error"></p></section><footer class="bbob-footer">${actions}<div class="bbob-stepname">${titles[state.step]} · ${state.step+1} of 11</div></footer></div>`;
  }
  function restoreAuth(){
    if(form&&formMarker?.parentNode)formMarker.parentNode.insertBefore(form,formMarker);
@@ -219,7 +231,7 @@
    host.classList?.toggle('bbob-keyboard',state.step===1&&editing&&height<fullViewportHeight-100);
    window.requestAnimationFrame?.(keepAuthFocusVisible);
  }
- function render(){if(!host)return;restoreAuth();host.innerHTML=content();
+ function render(){if(!host)return;host.classList?.toggle('bbob-kitchen-slide',state.step===9);restoreAuth();host.innerHTML=content();
    if(state.step===1&&!accountRemembered())mountAuth();
    sizeWelcomeViewport();host.scrollTop=0;
    if(state.step===1&&!accountRemembered()){

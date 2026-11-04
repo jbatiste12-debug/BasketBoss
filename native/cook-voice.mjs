@@ -100,12 +100,12 @@ export function installNativeCookVoice({plugin,window:win=globalThis.window,isPr
    return head==='ID3'||head.charCodeAt(0)===255&&(head.charCodeAt(1)&224)===224;
   }catch{return false;}
  }
- async function playAudioData({base64,contentType,speechId}={}){
+ async function playAudioData({base64,contentType,speechId,keepHeld=false}={}){
   const operation=speechOperation;
   if(!activeSpeech(operation)||operation.speechId!==speechId)return cancelled();
   if(contentType!=='audio/mpeg'||!validAudioData(base64)||typeof plugin.playAudioData!=='function')throw failure('BB_VOICE_AI_AUDIO');
   try{
-   const result=await plugin.playAudioData({sessionId:operation.session.id,speechId,base64,contentType});
+   const result=await plugin.playAudioData({sessionId:operation.session.id,speechId,base64,contentType,...(keepHeld===true?{keepHeld:true}:{})});
    if(!activeSpeech(operation))return cancelled();
    return result;
   }catch(error){if(!activeSpeech(operation))return cancelled();throw error;}

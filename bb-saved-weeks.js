@@ -8,6 +8,7 @@
  'use strict';
  const DAYS=Object.freeze(['Monday','Tuesday','Wednesday','Thursday','Friday','Saturday','Sunday']);
  const WEEKDAYS=DAYS.slice(0,5),KEY='basketboss_saved_weeks_v1:',MAX=25;
+ const layouts=new WeakMap();let layoutSequence=0;
  const object=v=>v!==null&&typeof v==='object'&&!Array.isArray(v);
  const own=(v,k)=>Object.prototype.hasOwnProperty.call(v,k);
  class SavedWeekError extends Error{}
@@ -142,20 +143,35 @@
   function remove(id){const before=read();if(!before.ok)return before;if(!before.weeks.some(row=>row.id===id))return {ok:false,message:'That saved week is no longer listed.'};return write(before,before.weeks.filter(row=>row.id!==id));}
   return Object.freeze({read,save,remove});
  }
- function mount({container,host,window:win=globalThis.window}={}){
+ function mount({container,host,selections=null,selectionsCount=0,collapseOnMount=false,window:win=globalThis.window}={}){
   if(!container||!host?.context||!host?.snapshot||!host?.restore||!host?.confirm||!win?.document)return null;
   const doc=win.document,create=(tag,name,text)=>{const node=doc.createElement(tag);node.className=name;if(text!==undefined)node.textContent=text;return node;};
   const store=createStore({storage:win.localStorage,context:host.context});
-  const panel=create('section','bb-saved-weeks'),heading=create('h3','','Saved weeks'),hint=create('p','bbsw-hint','Save this meal plan as “Week 1” and reuse the same days and servings later. Saved on this device for your current account.');
+  const panel=create('section','bb-saved-weeks'),heading=create('h3','','Saved weeks'),hint=create('p','bbsw-hint','Reuse a full week with its days and servings. Saved on this device.');
   const form=create('form','bbsw-form'),label=create('label','bbsw-name-label','Week name'),input=create('input','field'),save=create('button','btn primary','Save this week');
   input.type='text';input.maxLength=60;input.placeholder='e.g. Week 1';input.required=true;label.append(input);save.type='submit';form.append(label,save);
   const status=create('p','bbsw-status'),list=create('div','bbsw-list');status.setAttribute('role','status');status.setAttribute('aria-live','polite');panel.append(heading,hint,form,status,list);container.prepend(panel);
-  let pending=false,disposed=false;
+  let pending=false,disposed=false,layout=null;
+  if(selections){
+   const actor=()=>host.context()?.actor||'guest',pin=actor(),previous=layouts.get(win),prefix='bbSavedTools'+(++layoutSequence);
+   // Entering Plan starts with both secondary tools closed. Same-Plan updates
+   // keep the chosen pane available while its original form owns the draft.
+   let active=collapseOnMount===true?null:previous?.actor===pin?previous.active:null,layoutActor=pin;
+   container.classList.add('bbsw-tools');
+   const bar=create('div','bbsw-tabs');bar.setAttribute('role','group');bar.setAttribute('aria-label','Saved planning tools');
+   const icon=(path)=>{const node=create('span','bbsw-tab-icon');node.setAttribute('aria-hidden','true');node.innerHTML='<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round">'+path+'</svg>';return node;};
+   const toggle=(key,title,path)=>{const button=create('button','bbsw-tab');button.type='button';button.dataset.bbswTab=key;button.setAttribute('aria-controls',prefix+'-'+key);button.setAttribute('aria-expanded','false');const badge=create('span','bbsw-tab-count');badge.setAttribute('aria-hidden','true');const arrow=icon('<path d="m8 10 4 4 4-4"/>');arrow.classList.add('bbsw-tab-arrow');button.append(icon(path),create('span','bbsw-tab-label',title),badge,arrow);bar.append(button);return {key,title,button,badge,pane:key==='weeks'?panel:selections};};
+   const tools=[toggle('weeks','Saved weeks','<rect x="4" y="5" width="16" height="16" rx="3"/><path d="M8 3v4m8-4v4M4 11h16m-11 4h2m3 0h2m-7 3h2"/>'),toggle('meals','Saved meals','<path d="M7 4h10a1 1 0 0 1 1 1v16l-6-4-6 4V5a1 1 0 0 1 1-1Z"/>')];
+   for(const tool of tools){tool.pane.id=prefix+'-'+tool.key;tool.pane.setAttribute('aria-label',tool.title);tool.button.addEventListener('click',()=>{active=active===tool.key?null:tool.key;apply();});tool.pane.addEventListener('keydown',event=>{if(event.key==='Escape'){event.preventDefault();event.stopPropagation();active=null;apply();tool.button.focus();}});}
+   function apply(){for(const tool of tools){const open=active===tool.key;tool.pane.hidden=!open;tool.button.setAttribute('aria-expanded',String(open));}layouts.set(win,{actor:layoutActor,active});}
+   layout={refresh(count){const nextActor=actor();if(nextActor!==layoutActor){layoutActor=nextActor;active=null;}for(const tool of tools){const amount=tool.key==='weeks'?count:selectionsCount;tool.badge.textContent=String(amount);tool.badge.hidden=!(amount>0);tool.button.setAttribute('aria-label',tool.title+(amount>0?', '+amount+' saved':''));}apply();},dispose(){bar.remove();}};
+   container.prepend(bar);apply();
+  }
   const message=value=>{if(!disposed)status.textContent=value;};
   const current=pin=>{try{const next=host.context();return !disposed&&container.isConnected!==false&&next.ready===true&&(next.actor||'guest')===pin;}catch{return false;}};
   async function confirm(messageText,headingText,action){try{return await host.confirm(messageText,headingText,action)===true;}catch{return false;}}
   function render(){
-   if(disposed)return;const state=store.read();list.replaceChildren();save.disabled=pending||!state.ok;
+   if(disposed)return;const state=store.read();layout?.refresh(state.ok?state.weeks.length:0);list.replaceChildren();save.disabled=pending||!state.ok;
    if(!state.ok){message(state.message);return;}
    if(!state.weeks.length){list.append(create('p','bbsw-empty','No saved weeks yet.'));return;}
    for(const row of state.weeks){
@@ -193,14 +209,14 @@
      if(host.snapshot()?.fingerprint!==snapshot.fingerprint){message('Your meal plan changed. Review it before saving.');return;}
      result=store.save(input.value,week,{replaceId:result.duplicateId});
     }
-    message(result.ok?'Week saved. Plan → At home → Basket when you are ready to shop.':result.message);if(result.ok)input.value='';
+    message(result.ok?'Week saved. Plan → At home → Shop when you are ready to shop.':result.message);if(result.ok)input.value='';
    }catch{message('Could not save this week. Existing saved weeks have been kept.');}
    finally{pending=false;render();}
   });
   const refresh=()=>{if(!pending)render();};
   for(const name of ['basketboss:session-changed','basketboss:account-deletion-started'])win.addEventListener?.(name,refresh);
   const storage=event=>{if(event.key?.startsWith(KEY))refresh();};win.addEventListener?.('storage',storage);render();
-  return Object.freeze({refresh,dispose(){disposed=true;for(const name of ['basketboss:session-changed','basketboss:account-deletion-started'])win.removeEventListener?.(name,refresh);win.removeEventListener?.('storage',storage);panel.remove();}});
+  return Object.freeze({refresh,dispose(){disposed=true;for(const name of ['basketboss:session-changed','basketboss:account-deletion-started'])win.removeEventListener?.(name,refresh);win.removeEventListener?.('storage',storage);layout?.dispose();panel.remove();}});
  }
  return Object.freeze({capture,validateWeek,summary,createStore,mount,KEY});
 });

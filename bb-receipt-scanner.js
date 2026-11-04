@@ -103,9 +103,13 @@
       const result = await jsonRequest('/api/bb173/scan', captured, { signal, method: 'POST', body: { ...photo, scanKind: 'receipt_inventory', expectedCurrency: CURRENCIES[market], turnstileToken } });
       assertCurrent(captured, expected, signal);
       if (result.ok !== true || result.reviewRequired !== true || !result.receiptInventory || !Array.isArray(result.receiptInventory.items) || result.receiptInventory.items.length > 200) throw Error('The receipt reader did not return a reviewable receipt.');
-      const raw = copy(result.receiptInventory), catalog = options.getCatalog?.() || root.BBPriceV19?.catalog, shoppingItems = options.getShoppingItems?.() || [];
+      const raw = copy(result.receiptInventory), catalog = options.getCatalog?.() || root.BBPriceV19?.catalog, shoppingItems = options.getShoppingItems?.() || [],kitchen=options.getKitchen?.()||{},policy=root.BBPantryPolicy;
       raw.items = raw.items.map(line => {
-        let suggestion;try { suggestion = quantities()?.infer?.(line, {market, catalog, shoppingItems}); } catch {}
+        if(options.pantryPolicy===true&&policy){
+          const name=policy.canonicalName(line.canonicalKey||line.key||line.name||line.description),existing=Object.values(kitchen).find(row=>row?.selected!==false&&policy.canonicalName(row.name)===name);
+          if(existing&&line.classification!=='essential')line={...line,canonicalKey:policy.canonicalName(existing.name),location:existing.loc||line.location};
+        }
+        let suggestion;try { suggestion = quantities()?.infer?.(line, {market, catalog, shoppingItems,inventory:kitchen,pantryPolicy:options.pantryPolicy===true}); } catch {}
         return suggestion ? {...line, quantity:suggestion.quantity, unit:suggestion.unit,
           ...(suggestion.packQuantity ? {packQuantity:suggestion.packQuantity,packUnit:suggestion.packUnit,packCount:suggestion.packCount} : {}),
           _quantitySuggestion:{source:suggestion.source,estimated:suggestion.estimated,note:suggestion.note}} : line;
@@ -302,20 +306,22 @@
             match.addEventListener('change', () => { const value = match.value.trim().toLowerCase(), found = state.choices.find(x => x.key.toLowerCase() === value || x.name.toLowerCase() === value); edit(line, 'canonicalKey', found?.key || null); });
             box.append(field('Exact ingredient match', match, 'Choose a recognised ingredient. Unknown matches are not added to Pantry.'));
           } else box.append(element('p', { className: 'bb-receipt-muted' }, 'Essentials are kept separately from recipe food. Check the bought count or pack amount for At home.'));
-          const mode = track(select([['total', 'Measured total amount'], ['packs', 'Pack size × number of packs']], line._measurementMode), 'measurementMode');
+          const staple=options.pantryPolicy===true&&root.BBPantryPolicy?.isStaple(line.canonicalKey||line.description),container=staple?root.BBPantryPolicy.containerLabel(line.canonicalKey||line.description):null;
+          if(staple){const bought=root.BBPantryPolicy.staplePurchase({name:line.canonicalKey||line.description,quantity:line.quantity,unit:line.unit,packCount:line.packCount,packQuantity:line.packQuantity,packUnit:line.packUnit});line.quantity=bought?.quantity??null;line.unit='each';line._measurementMode='total';line.packQuantity=null;line.packUnit=null;line.packCount=null;}
+          const mode = track(select(staple?[['total','Containers bought']]:[['total', 'Measured total amount'], ['packs', 'Pack size × number of packs']], line._measurementMode), 'measurementMode');
           mode.addEventListener('change', () => {
-            const amount = state.core.normalizePack(line);line._measurementMode = mode.value;line.reviewed = false;
+            const amount = state.core.normalizePack(line,{market,pantryPolicy:options.pantryPolicy===true});line._measurementMode = mode.value;line.reviewed = false;
             if (mode.value === 'packs') {line.packQuantity ??= amount.quantity;line.packUnit ??= amount.unit;line.packCount ??= 1;line.quantity = null;line.unit = null;}
             else {line.quantity = amount.quantity;line.unit = amount.unit;line.packCount = null;line.packQuantity = null;line.packUnit = null;}
             renderRows();
           });
           box.append(field('How is the quantity shown?', mode));
-          const units = [['', 'Choose unit'], ['g', 'g'], ['kg', 'kg'], ['ml', 'ml'], ['l', 'litres'], ['each', 'each'], ['clove', 'cloves'], ['tin', 'tins'], ['pack', 'packs']];
+          const units = staple?[['each',container+'s']]:[['', 'Choose unit'], ['g', 'g'], ['kg', 'kg'], ['ml', 'ml'], ['l', 'litres'], ['each', 'each'], ['clove', 'cloves'], ['tin', market==='US'?'cans':'tins'], ['pack', 'packs'],...(options.pantryPolicy===true?[['bag','bags'],['pint',market==='US'?'US pints':'UK pints'],['tbsp','tablespoons'],['tsp','teaspoons'],...(market==='US'?[['cup','US cups'],['fl oz','US fl oz'],['oz','ounces'],['lb','pounds']]:[])]:[])];
           const quantityKey = line._measurementMode === 'packs' ? 'packQuantity' : 'quantity', unitKey = line._measurementMode === 'packs' ? 'packUnit' : 'unit';
-          const quantity = track(element('input', { type: 'number', inputMode: 'decimal', min: '.001', max: '1000000', step: 'any', value: line[quantityKey] ?? '' }), quantityKey);
+          const quantity = track(element('input', { type: 'number', inputMode: staple?'numeric':'decimal', min: staple?'1':'.001', max: '1000000', step: staple?'1':'any', value: line[quantityKey] ?? '' }), quantityKey);
           const unit = track(select(units, line[unitKey] || ''), unitKey);
           quantity.addEventListener('input', () => edit(line, quantityKey, number(quantity.value))); unit.addEventListener('change', () => edit(line, unitKey, unit.value || null));
-          box.append(element('div', { className: 'bb-receipt-amount' }, [field(line._measurementMode === 'packs' ? 'Contents of one pack' : 'Total amount bought', quantity), field('Unit', unit)]),amountHint);
+          box.append(element('div', { className: 'bb-receipt-amount' }, [field(staple?'Containers bought':line._measurementMode === 'packs' ? 'Contents of one pack' : 'Total amount bought', quantity), field('Unit', unit)]),amountHint);
           if (line._measurementMode === 'packs') {
             const count = track(element('input', { type: 'number', inputMode: 'numeric', min: '1', max: '10000', step: '1', value: line.packCount ?? '' }), 'packCount');
             count.addEventListener('input', () => edit(line, 'packCount', number(count.value))); box.append(field('Number of packs', count, 'Check the number of bought packs. Estimated contents are labelled above.'));

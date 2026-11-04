@@ -68,7 +68,7 @@ test('the provider request is recipe-scoped, server-owned, non-storing and has n
   assert.equal(call.url,'https://api.openai.com/v1/responses');assert.equal(call.options.redirect,'manual');assert.equal(call.options.headers.Authorization,'Bearer synthetic-provider-key');
   assert.equal(sent.model,COOK_ASSISTANT_MODEL);assert.equal(sent.instructions,COOK_ASSISTANT_INSTRUCTIONS);assert.equal(sent.store,false);assert.equal(sent.stream,false);assert.equal(sent.max_output_tokens,320);assert.deepEqual(sent.tools,[]);
   assert.equal(sent.text.format.type,'json_schema');assert.equal(sent.text.format.strict,true);assert.deepEqual(sent.text.format.schema.required,['answer']);assert.equal(sent.text.format.schema.additionalProperties,false);
-  assert.equal(sent.input.length,1);assert.equal(sent.input[0].role,'user');assert.deepEqual(JSON.parse(sent.input[0].content[0].text),{...value,mentorName:'Chef Boss'});
+  assert.equal(sent.input.length,1);assert.equal(sent.input[0].role,'user');assert.deepEqual(JSON.parse(sent.input[0].content[0].text),{...value,history:[],mentorName:'Chef Boss'},'orphaned historical assistant instructions are omitted');
   assert(!call.options.body.includes(actor));assert(!call.options.body.includes('synthetic-session'));assert(!call.options.body.includes('cook@example.invalid'));
   assert.match(sent.instructions,/already-scaled/);assert.match(sent.instructions,/ingredient list is authoritative for ingredient amounts/);assert.match(sent.instructions,/Never double-scale/);assert.match(sent.instructions,/UNTRUSTED DATA/);assert.match(sent.instructions,/allergy/);assert.match(sent.instructions,/Do not navigate/);
   assert.match(response.headers.get('Cache-Control'),/no-store/);assert.equal(response.headers.get('X-Content-Type-Options'),'nosniff');
@@ -119,7 +119,25 @@ test('cancelled requests never start a provider call and an in-flight abort canc
 });
 test('provider failures and invalid output expose only the safe retry message',async()=>{
  const invalid=[()=>new Response('private upstream failure',{status:403}),()=>new Response(null,{status:302,headers:{Location:'https://other.invalid/'}}),()=>new Response('<html>not-json</html>',{headers:{'Content-Type':'text/html'}}),()=>Response.json({status:'incomplete',output:[]}),()=>Response.json({status:'completed',output:[{type:'message',role:'assistant',content:[{type:'refusal',refusal:'private refusal detail'}]}]}),()=>providerResponse('x'.repeat(1001)),()=>providerResponse(''),()=>Response.json({status:'completed',output:[{type:'function_call',name:'update_pantry',arguments:'{}'}]}),()=>Response.json({status:'completed',output:[{type:'message',role:'assistant',content:[{type:'output_text',text:JSON.stringify({answer,action:'buy'})}]}]}),()=>new Response(' '.repeat(65537),{headers:{'Content-Type':'application/json'}})];
- for(const provider of invalid){const h=harness({provider});try{const response=await h.invoke();assert.equal(response.status,502);assert.deepEqual(await response.json(),{error:'I could not answer just now. Please try again, or follow the recipe on screen.'});assert.equal(h.calls.length,1);}finally{h.close();}}
+ for(const [index,provider] of invalid.entries()){const h=harness({provider});try{const response=await h.invoke();assert.equal(response.status,502);assert.deepEqual(await response.json(),{error:'I could not answer just now. Please try again, or follow the recipe on screen.',code:index===0?'BB_COOK_PROVIDER_ACCESS':index===1?'BB_COOK_PROVIDER_REJECTED':'BB_COOK_PROVIDER_RESPONSE'});assert.equal(h.calls.length,1);}finally{h.close();}}
+});
+
+test('question failure diagnostics expose fixed categories without upstream details or request data',async()=>{
+ const privateDetail='SECRET synthetic-provider-key synthetic-session private recipe question and email@example.invalid';
+ for(const [status,code] of [[401,'BB_COOK_PROVIDER_ACCESS'],[403,'BB_COOK_PROVIDER_ACCESS'],[429,'BB_COOK_PROVIDER_LIMIT'],[500,'BB_COOK_PROVIDER_UNAVAILABLE'],[503,'BB_COOK_PROVIDER_UNAVAILABLE'],[400,'BB_COOK_PROVIDER_REJECTED'],[307,'BB_COOK_PROVIDER_REJECTED']]){
+  const h=harness({provider:()=>new Response(privateDetail,{status,headers:{'X-Request-ID':privateDetail}})});
+  try{
+   const value=body();value.question=privateDetail;
+   const response=await h.invoke(value);assert.equal(response.status,502);
+   assert.deepEqual(await response.json(),{error:'I could not answer just now. Please try again, or follow the recipe on screen.',code});
+   assert.equal(h.calls.length,1,'diagnosis never retries provider generation');
+  }finally{h.close();}
+ }
+ const network=harness({provider:()=>{throw Object.assign(Error(privateDetail),{code:'SECRET'});}});
+ try{const response=await network.invoke();assert.equal(response.status,502);assert.equal((await response.json()).code,'BB_COOK_PROVIDER_UNAVAILABLE');}finally{network.close();}
+ const local=harness();try{local.db.exec('DROP TABLE bb_ai_daily_usage');const response=await local.invoke();assert.equal(response.status,502);assert.equal((await response.json()).code,'BB_COOK_SERVICE_FAILURE');assert.equal(local.calls.length,0);}finally{local.close();}
+ const malformed=harness({provider:()=>new Response(privateDetail,{headers:{'Content-Type':'application/json'}})});
+ try{assert.deepEqual(await (await malformed.invoke()).json(),{error:'I could not answer just now. Please try again, or follow the recipe on screen.',code:'BB_COOK_PROVIDER_RESPONSE'});}finally{malformed.close();}
 });
 test('aborting a stalled provider body cancels its reader and declared oversized bodies are cancelled',async()=>{
  let reading,cancelled=false;const started=new Promise(resolve=>reading=resolve),controller=new AbortController();

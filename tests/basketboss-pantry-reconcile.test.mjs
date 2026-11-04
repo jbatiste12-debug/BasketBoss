@@ -6,6 +6,7 @@ import {createRequire} from 'node:module';
 import {normalizeStockMap} from '../bb-receipt-inventory-core.mjs';
 
 const homeModule=createRequire(import.meta.url)('../bb-home.js');
+const pantryPolicy=createRequire(import.meta.url)('../bb-pantry-policy.js');
 const source=fs.readFileSync(new URL('../shopping-inventory.js',import.meta.url),'utf8');
 const html=fs.readFileSync(new URL('../index.html',import.meta.url),'utf8');
 const pantrySource=html.match(/const BB307Pantry=\(\(\)=>\{[\s\S]*?\n\}\)\(\);/)[0];
@@ -15,12 +16,14 @@ const dataKey=name=>name.slice(5).replace(/-([a-z])/g,(_,char)=>char.toUpperCase
 
 // Small DOM fixture: run the real picker handlers, persistence, Home contract,
 // pantry allocator and online stock validator without depending on a browser.
-function fixture({requirements=[{key:'Honey',unit:'tbsp',required:2},{key:'Lettuce',unit:'each',required:.5}],inventory={},stock={},onlineError=false}={}){
+function fixture({requirements=[{key:'Honey',unit:'tbsp',required:2},{key:'Lettuce',unit:'each',required:.5}],inventory={},stock={},onlineError=false,live=false}={}){
  const values=new Map([[INVENTORY,JSON.stringify(inventory)],[STOCK,JSON.stringify(stock)]]);
  let doc,shopVisits=0,syncs=0;
  function matches(node,selector){
   return selector.split(',').some(part=>{
-   part=part.trim();const attr=[...part.matchAll(/\[([^=\]]+)(?:="([^"]*)")?\]/g)];
+   part=part.trim();const pieces=part.match(/(?:[^\s[]|\[[^\]]*\])+/g)||[];
+   if(pieces.length>1){if(!matches(node,pieces.at(-1)))return false;for(let parent=node.parentNode;parent;parent=parent.parentNode)if(matches(parent,pieces.slice(0,-1).join(' ')))return true;return false;}
+   const attr=[...part.matchAll(/\[([^=\]]+)(?:="([^"]*)")?\]/g)];
    if(attr.some(([,key,value])=>!node.attributes.has(key)||(value!==undefined&&node.attributes.get(key)!==value)))return false;
    part=part.replace(/\[[^\]]*\]/g,'');const id=part.match(/#([\w-]+)/)?.[1];if(id&&node.id!==id)return false;
    for(const [,name]of part.matchAll(/\.([\w-]+)/g))if(!node.className.split(' ').includes(name))return false;
@@ -42,6 +45,7 @@ function fixture({requirements=[{key:'Honey',unit:'tbsp',required:2},{key:'Lettu
   focus(){doc.activeElement=this;}
   scrollIntoView(){this.scrolled=true;}
   get firstElementChild(){return this.children[0]||null;}
+  get isConnected(){for(let node=this;node;node=node.parentNode)if(node===doc.body||node===doc.head)return true;return false;}
   get textContent(){return this._text+this.children.map(node=>node.textContent).join('');}
   set textContent(value){this._text=String(value);this.children=[];}
   set innerHTML(markup){
@@ -61,8 +65,8 @@ function fixture({requirements=[{key:'Honey',unit:'tbsp',required:2},{key:'Lettu
  const app=new Element('main');app.id='app';const panel=new Element('section');panel.id='bb172StaplesPanel';app.append(panel);doc.body.append(app);
  for(const tab of ['shop','shop-list']){const button=new Element('button');button.setAttribute('class',tab==='shop'?'tab active':'tab');button.setAttribute('data-tab',tab);if(tab==='shop-list')button.addEventListener('click',()=>shopVisits++);doc.body.append(button);}
  const storage={getItem:key=>values.get(key)??null,setItem:(key,value)=>values.set(key,String(value)),removeItem:key=>values.delete(key)};
- const win={document:doc,localStorage:storage,location:{search:''},scrollTo(){},BBReceiptHost:{confirmCurrentPantry:async({stock})=>{syncs++;if(onlineError)return {ok:false,needsReview:true};normalizeStockMap(stock);return {ok:true};},reviewPantry:async()=>{}}};
- const context=vm.createContext({window:win,document:doc,localStorage:storage,MutationObserver:class{observe(){}},requestAnimationFrame:fn=>fn(),queueMicrotask,console});
+ const win={document:doc,localStorage:storage,location:{search:''},BBPantryLiveSync:live,scrollTo(){},BBReceiptHost:{confirmCurrentPantry:async({stock})=>{syncs++;if(onlineError)return {ok:false,needsReview:true};normalizeStockMap(stock);return {ok:true};},reviewPantry:async()=>{}}};
+ const context=vm.createContext({window:win,document:doc,localStorage:storage,MutationObserver:class{observe(){}},requestAnimationFrame:fn=>fn(),queueMicrotask,setTimeout,clearTimeout,console});
  for(const file of ['basketboss-aisles-v20.js','basketboss-pricing-v19.js'])vm.runInContext(fs.readFileSync(new URL('../'+file,import.meta.url),'utf8'),context);
  context.BBPriceV19=win.BBPriceV19;context.BB_WHOLE_PRODUCE_GRAMS={};vm.runInContext(pantrySource+'\nthis.pantry=BB307Pantry;',context);const pantry=context.pantry;
  const readStock=()=>JSON.parse(storage.getItem(STOCK)||'{}');
@@ -109,10 +113,10 @@ test('partial measured Honey remains to buy while unit mismatches keep review fe
  assert.deepEqual(h.stock(),{'honey|tbsp':1,'lettuce|g':100});assert.deepEqual(h.needed().map(row=>row.toBuy),[1,.5]);assert.equal(h.visits(),0);assert.match(h.status(),/Check the units for Lettuce/);
 });
 
-test('edited spoon totals pass Home validation and failed online confirmation never claims Shopping is reconciled',async()=>{
+test('recorded owned quantities pass Home validation and failed online confirmation never claims Shopping is reconciled',async()=>{
  const h=fixture({requirements:[{key:'Honey',unit:'tbsp',required:2}],onlineError:true});await h.choose('Honey','cupboard');await h.enough('cupboard|honey');
- const total=h.control('data-bb5-needed','cupboard|honey');total.value='3';await total.dispatch('input');await h.confirm();
- assert.equal(h.win.BBHome.targets()['honey|tbsp'].targetQty,3);assert.deepEqual(h.stock(),{'honey|tbsp':2});assert.equal(h.visits(),0);assert.match(h.status(),/Review the saved online pantry/);
+ assert.equal(h.control('data-bb5-needed','cupboard|honey'),null);await h.confirm();
+ assert.deepEqual(h.win.BBHome.targets(),{});assert.deepEqual(h.stock(),{'honey|tbsp':2});assert.equal(h.visits(),0);assert.match(h.status(),/Review the saved online pantry/);
 });
 
 test('the weekly action offers no invented conversion for multiple incompatible recipe measures',async()=>{
@@ -120,11 +124,26 @@ test('the weekly action offers no invented conversion for multiple incompatible 
  assert.equal(h.control('data-bb5-enough','cupboard|honey'),null);await h.confirm();assert.deepEqual(h.stock(),{});assert.deepEqual(h.needed().map(row=>row.toBuy),[20,2]);
 });
 
-test('an edited needed amount updates the visible declaration before it can be chosen and keeps that target',async()=>{
- const h=fixture({requirements:[{key:'Honey',unit:'tbsp',required:2}]});await h.choose('Honey','cupboard');
- const total=h.control('data-bb5-needed','cupboard|honey');total.value='3';await total.dispatch('input');
- assert.match(h.control('data-bb5-enough','cupboard|honey').textContent,/3 tbsp/);await h.enough('cupboard|honey');await h.confirm();
- assert.deepEqual(h.stock(),{'honey|tbsp':3});assert.equal(h.win.BBHome.targets()['honey|tbsp'].targetQty,3);
+test('Cupboard, Fridge and Freezer foods have no editable total and owned amounts reduce recipe-generated shortfalls',async()=>{
+ const h=fixture({requirements:[{key:'Rice',unit:'g',required:1000},{key:'Milk',unit:'ml',required:1000},{key:'Frozen peas',unit:'g',required:500}]});
+ for(const [name,location,key,owned]of [['Rice','cupboard','rice',250],['Milk','fridge','milk',300],['Frozen peas','freezer','pea',125]]){
+  await h.choose(name,location);const row=location+'|'+key;
+  assert.equal(h.control('data-bb5-needed',row),null,location+' food has no Total needed input');
+  assert.ok(h.control('data-bb5-unit',row),location+' keeps its amount unit editable');
+  const input=h.control('data-bb5-qty',row);input.value=String(owned);await input.dispatch('input');
+ }
+ assert.doesNotMatch(h.selected().textContent,/Total needed/);await h.confirm();
+ assert.deepEqual(h.stock(),{'rice|g':250,'milk|ml':300,'frozen peas|g':125});
+ assert.deepEqual(h.needed().map(row=>row.toBuy),[750,700,375]);
+ assert.deepEqual(h.win.BBHome.targets(),{},'recording ownership does not create manual food requirements');
+});
+
+test('stale total fields on a saved pantry item do not create new requirements when ownership is edited',async()=>{
+ const h=fixture({requirements:[{key:'Rice',unit:'g',required:1000}],inventory:{'cupboard|rice':{name:'Rice',loc:'cupboard',selected:true,qty:100,unit:'g',totalNeeded:5000,targetChanged:true,bb173StockKey:'rice|g',bb173StockValue:100}},stock:{'rice|g':100}});
+ assert.equal(h.control('data-bb5-needed','cupboard|rice'),null);
+ const input=h.control('data-bb5-qty','cupboard|rice');input.value='250';await input.dispatch('input');await h.confirm();
+ assert.deepEqual(h.stock(),{'rice|g':250});assert.equal(h.needed()[0].toBuy,750);assert.deepEqual(h.win.BBHome.targets(),{});
+ assert.equal(h.inventory()['cupboard|rice'].totalNeeded,undefined);assert.equal(h.inventory()['cupboard|rice'].targetChanged,undefined);
 });
 
 test('unknown amounts remain explained when online confirmation is unavailable',async()=>{
@@ -144,4 +163,95 @@ test('built-in salmon Honey and half-serving burger Lettuce reconcile using thei
 test('existing measured quantities survive confirmation and are never reduced to the weekly requirement',async()=>{
  const h=fixture({inventory:{'cupboard|honey':{name:'Honey',loc:'cupboard',selected:true,qty:10,unit:'tbsp',bb173StockKey:'honey|tbsp',bb173StockValue:10}},stock:{'honey|tbsp':10},requirements:[{key:'honey',unit:'tbsp',required:2}]});
  assert.equal(h.control('data-bb5-qty','cupboard|honey').value,'10');await h.confirm();assert.deepEqual(h.stock(),{'honey|tbsp':10});assert.equal(h.inventory()['cupboard|honey'].qty,10);assert.equal(h.visits(),1);
+});
+
+test('inline quantity edit saves through the existing pantry ledger and immediately reduces Shopping',async()=>{
+ const h=fixture({live:true,requirements:[{key:'Rice',unit:'g',required:500}]});
+ const editor=h.win.BBPantryEditor,key=editor.select('Rice','cupboard',{unit:'g'});
+ assert.equal(key,'cupboard|rice');assert.equal(editor.update(key,{qty:250}).ok,true);
+ await editor.flush();assert.deepEqual(h.stock(),{'rice|g':250});assert.equal(h.needed()[0].toBuy,250);
+ assert.equal(editor.select('Rice','cupboard'),key,'a second tile tap opens the existing amount');assert.equal(editor.list().length,1);
+ assert.equal(h.visits(),0,'inline saving keeps the user at the food tile');
+});
+
+test('one-step manual food entry adds the exact amount and merges compatible stock',async()=>{
+ const h=fixture({live:true,requirements:[{key:'Rice',unit:'g',required:1000}]});
+ const editor=h.win.BBPantryEditor;
+ assert.equal(editor.add({name:'Rice',loc:'cupboard',qty:250,unit:'g'}).ok,true);await editor.flush();
+ assert.equal(editor.add({name:'Rice',loc:'cupboard',qty:150,unit:'g'}).ok,true);await editor.flush();
+ assert.deepEqual(h.stock(),{'rice|g':400});assert.equal(editor.list().length,1);assert.equal(h.needed()[0].toBuy,600);
+});
+
+test('manual entry with an incompatible unit preserves both physical sources',async()=>{
+ const h=fixture({live:true,requirements:[{key:'Rice',unit:'g',required:1000}]});
+ const editor=h.win.BBPantryEditor;
+ editor.add({name:'Rice',loc:'cupboard',qty:250,unit:'g'});await editor.flush();
+ assert.equal(editor.add({name:'Rice',loc:'cupboard',qty:1,unit:'pack'}).ok,true);await editor.flush();
+ assert.equal(editor.list().length,2);assert.deepEqual(h.stock(),{'rice|g':250,'rice|pack':1});
+ assert.equal(Object.values(h.inventory()).filter(row=>row.selected).length,2,'unknown package data cannot overwrite the grams source');
+});
+
+test('invalid inline edits and incompatible unit switches keep the recorded amount intact',async()=>{
+ const h=fixture({live:true,requirements:[{key:'Rice',unit:'g',required:1000}]}),editor=h.win.BBPantryEditor;
+ const {key}=editor.add({name:'Rice',loc:'cupboard',qty:250,unit:'g'});await editor.flush();
+ assert.equal(editor.update(key,{unit:'ml'}).ok,false);assert.equal(editor.read(key).qty,250);assert.equal(editor.read(key).unit,'g');
+ for(const qty of [-1,'bad',Infinity,1000001,'','   ',null,undefined]){
+  assert.equal(editor.update(key,{qty:300}).ok,true);assert.equal(editor.update(key,{qty}).ok,false);await editor.flush();assert.deepEqual(h.stock(),{'rice|g':250},'the invalid latest input blocks a queued prior valid value');
+ }
+ assert.equal(editor.update(key,{qty:250}).ok,true);await editor.flush();
+ assert.equal(editor.add({name:'Milk',loc:'fridge',qty:'',unit:'ml'}).ok,false,'the one-step form requires an amount');
+});
+
+test('stale inline editors cannot write over receipts or another account',async()=>{
+ const h=fixture({live:true,requirements:[]}),editor=h.win.BBPantryEditor;
+ const {key}=editor.add({name:'Rice',loc:'cupboard',qty:250,unit:'g'});await editor.flush();
+ h.storage.setItem(STOCK,JSON.stringify({'rice|g':700}));
+ assert.equal(editor.isCurrent(),false);assert.equal(editor.update(key,{qty:1}).ok,false);assert.equal(editor.remove(key).ok,false);
+ assert.equal(editor.select('Milk','fridge'),null);assert.deepEqual(h.stock(),{'rice|g':700});
+ const second=fixture({live:true,requirements:[]}),other=second.win.BBPantryEditor;
+ second.storage.setItem('basketboss_cloud_session_v1',JSON.stringify({user:{id:'someone-else'}}));
+ assert.equal(other.add({name:'Rice',loc:'cupboard',qty:1,unit:'g'}).ok,false);assert.deepEqual(second.stock(),{});
+});
+
+test('explicit inline remove updates Shopping without using selection taps to erase stock',async()=>{
+ const h=fixture({live:true,requirements:[{key:'Rice',unit:'g',required:500}]}),editor=h.win.BBPantryEditor;
+ const {key}=editor.add({name:'Rice',loc:'cupboard',qty:250,unit:'g'});await editor.flush();
+ assert.equal(editor.remove(key).ok,true);await editor.flush();assert.deepEqual(h.stock(),{});assert.equal(h.needed()[0].toBuy,500);
+});
+
+
+test('incomplete inline quantity editing preserves the last staged and saved balance until a valid amount arrives',async()=>{
+ const h=fixture({live:true,requirements:[{key:'Rice',unit:'g',required:1000}]}),editor=h.win.BBPantryEditor;
+ const {key}=editor.add({name:'Rice',loc:'cupboard',qty:250,unit:'g'});await editor.flush();
+ assert.equal(editor.update(key,{qty:300}).ok,true);assert.equal(editor.update(key,{qty:''}).ok,false);assert.equal(editor.read(key).qty,'','the incomplete edit remains visible as a draft');
+ assert.equal(editor.add({name:'Rice',loc:'cupboard',qty:100,unit:'g'}).ok,false,'a manual addition cannot treat an incomplete amount as zero');
+ await new Promise(resolve=>setTimeout(resolve,420));await editor.flush();assert.deepEqual(h.stock(),{'rice|g':250});assert.equal(h.needed()[0].toBuy,750,'neither the queued 300 g nor an unknown amount replaces saved stock');
+ assert.equal(editor.update(key,{qty:350}).ok,true);await editor.flush();assert.deepEqual(h.stock(),{'rice|g':350});
+ assert.equal(editor.update(key,{qty:0}).ok,true);await editor.flush();assert.equal(h.stock()['rice|g']??0,0);assert.equal(h.needed()[0].toBuy,1000,'explicit zero remains a valid out-of-stock declaration');
+ const unknown=editor.select('Milk','fridge',{unit:'ml'});assert.equal(editor.read(unknown).qty,null);await editor.flush();assert.equal(h.inventory()[unknown].qty,null,'new unmeasured selections may remain unknown');
+});
+
+
+test('inline manual merges sum canonical US can and pint balances without fractional-container roundtrip loss',async()=>{
+ const h=fixture({live:true,requirements:[]});h.win.BBPantryPolicy=pantryPolicy;h.win.bb307ActiveMarket=()=> 'US';const editor=h.win.BBPantryEditor;
+ assert.equal(editor.add({name:'Chopped tomatoes',loc:'cupboard',qty:1,unit:'tin'}).ok,true);await editor.flush();assert.equal(h.stock()['chopped tomatoes|g'],411);
+ assert.equal(editor.add({name:'Tinned tomatoes',loc:'cupboard',qty:400,unit:'g'}).ok,true);await editor.flush();assert.equal(h.stock()['chopped tomatoes|g'],811);
+ assert.equal(editor.add({name:'Milk',loc:'fridge',qty:1,unit:'pint'}).ok,true);await editor.flush();assert.equal(h.stock()['milk|ml'],473);
+ assert.equal(editor.add({name:'Milk',loc:'fridge',qty:1,unit:'ml'}).ok,true);await editor.flush();assert.equal(h.stock()['milk|ml'],474);
+ assert.equal(editor.add({name:'Carrots',loc:'fridge',qty:2,unit:'each'}).ok,true);await editor.flush();assert.equal(h.stock()['carrot|g'],160);
+ assert.equal(editor.add({name:'Carrot',loc:'fridge',qty:1,unit:'g'}).ok,true);await editor.flush();assert.equal(h.stock()['carrot|g'],161);
+ assert.equal(editor.list().length,3,'compatible aliases and source measures do not create duplicate pantry rows');
+});
+
+
+test('incomplete API container-content edits cannot erase a reviewed pack capacity or its measured stock',async()=>{
+ const h=fixture({live:true,requirements:[]});h.win.BBPantryPolicy=pantryPolicy;const editor=h.win.BBPantryEditor;
+ const {key}=editor.add({name:'Rice',loc:'cupboard',qty:1,unit:'pack'});
+ assert.equal(editor.update(key,{packQuantity:500,packUnit:'g'}).ok,true);await editor.flush();assert.deepEqual(h.stock(),{'rice|g':500});
+ for(const patch of [{packQuantity:''},{packQuantity:'   '},{packQuantity:null},{packQuantity:undefined},{packUnit:''},{packUnit:null},{packUnit:undefined}]){
+  assert.equal(editor.update(key,patch).ok,false);await editor.flush();
+  assert.equal(editor.read(key).packQuantity,500);assert.equal(editor.read(key).packUnit,'g');assert.equal(editor.read(key).packReviewed,true);
+  assert.deepEqual(h.stock(),{'rice|g':500},'the known pack stays measured instead of reverting to an unknown count');
+ }
+ assert.equal(h.inventory()[key].packQuantity,500);assert.equal(h.inventory()[key].packReviewed,true);
 });

@@ -19,7 +19,7 @@ function canonical(s){let key=clean(s);
 /* Estimated whole-item planning weights, not measured stock or retail packs.
    The first ten preserve the existing disclosed Pantry/shopping assumptions.
    Carrot and potato extend that same policy; source recipe counts stay intact. */
-const wholeProduceGrams=Object.freeze({aubergine:250,courgette:200,pepper:160,'mixed peppers':160,onion:150,'red onion':150,cucumber:300,'sweet potato':200,'baking potato':200,avocado:150,carrot:80,potato:180,tomato:120,'spring onion':15,shallot:40,lettuce:300});
+const wholeProduceGrams=Object.freeze({aubergine:250,courgette:200,pepper:160,'mixed peppers':160,onion:150,'red onion':150,cucumber:300,'sweet potato':200,'baking potato':200,avocado:150,carrot:80,potato:180,tomato:120,'spring onion':15,shallot:40,lettuce:300,...(root.BBPantryPolicy?.countGrams||{})});
 // Existing whole-produce bridge aliases apply only to the planning projection,
 // leaving persistent receipt ingredient identifiers unchanged.
 const WHOLE_PRODUCE_ALIASES=Object.freeze({aubergines:'aubergine',cucumbers:'cucumber',avocados:'avocado','red onions':'red onion','sweet potatoes':'sweet potato','baking potatoes':'baking potato','spring onions':'spring onion',shallots:'shallot','onion finely':'onion','small onion finely':'onion','carrot finely':'carrot','courgette finely':'courgette','spring onions finely':'spring onion','small spring onion finely':'spring onion','potatoes peeled and':'potato','sweet potatoes peeled and':'sweet potato'});
@@ -384,6 +384,7 @@ function estimateMeal({recipe,normalized,servings,ingredients=null,market='UK',r
  return {amount:pending?null:round2(total),knownAmount:round2(total),pending,unpriced:pending,lines,items,servings:scaled?target:undefined,baseServings:scaled?base:undefined,market,currency:CURRENCY[market]};
 }
 function formatQuantity(quantity,unit,market='UK'){
+ if(root.BBPantryDisplay)return root.BBPantryDisplay.format('',quantity,unit,market);
  const n=Number(quantity);if(!Number.isFinite(n))return String(quantity)+' '+unit;
  const u=String(unit||'each');let val=n,label=u;
  if(market==='US'){

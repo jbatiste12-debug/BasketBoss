@@ -10,17 +10,17 @@
  'use strict';
  const KEY='basketboss_how_it_works_v1',SETUP='bb_onboarding_fresh_once_20261028_v1';
  const steps=[
-  ['Plan Your Meals','Auto-fill your week or swipe recipe cards in Discover, and watch your grocery budget estimate update.','plan'],
-  ['Check Your Pantry (“At Home”)','Check your cupboard, fridge and freezer. Total needed − already got = to buy, so you only shop for the difference.','pantry'],
-  ['Go to the Shop','Tick off your list by aisle with UK pack price estimates. With Premium, your family can use the same shared list.','shop'],
-  ['Scan & Cook (Then Repeat!)','Review your till receipt to learn local prices and restock At home. Cook your meals, confirm what you used, then repeat for a smarter next week.','scan']
+  ['Plan Your Meals','Start in Plan. Auto-fill your week, or choose recipes in Discover. Set the servings for everyone eating.','plan'],
+  ['Confirm What’s At Home','Open At home and check your cupboard, fridge and freezer. Staples such as oil and ketchup use In Stock, Low or Out. Other ingredients use measured quantities. Valid changes update Shop automatically: if meals need 6 eggs and you have 4, Shop lists 2.','pantry'],
+  ['Shop for the Gaps','Shop shows what’s missing and any extras you add. Use Add item to buy for manual top-ups; these are additional buys. Tick purchases, then choose Finish shop to restock At home. You can also review and confirm a receipt.','shop'],
+  ['Cook & Confirm','Open your meal in Cook. When it’s finished, tap Confirm cooked & update pantry. Or open a day in Plan and use Day done for all planned food that day. Used ingredients leave At home; linked batch leftovers are not counted twice.','cook']
  ];
  const tools=[
   ['Hands-Free Voice Cook','Hear ingredients and steps. Say “Next step” or ask how much you need.','Premium','voice'],
   ['Shared Family List','See household extras during the week, including who added each item.','Premium','family'],
   ['Smart Filters & Leftovers','Exclude ingredients you dislike. Use pantry-based auto-fill and leftover ideas when they suit your week.','Some Premium tools','filters']
  ];
- const icons={plan:'<rect x="3" y="5" width="18" height="16" rx="3"/><path d="M7 3v4m10-4v4M3 11h18m-13 4h3m-3 3h7"/>',pantry:'<rect x="5" y="3" width="14" height="18" rx="3"/><path d="M5 11h14M9 7v1m0 7v2"/>',shop:'<path d="m4 9 2 11h12l2-11H4Zm3 0 3-6m7 6-3-6M9 13v3m6-3v3"/>',scan:'<path d="M6 3h12v18l-3-2-3 2-3-2-3 2V3Zm3 5h6m-6 4h6m-6 4h3"/>',voice:'<rect x="9" y="3" width="6" height="12" rx="3"/><path d="M6 11v1a6 6 0 0 0 12 0v-1m-6 7v3m-3 0h6"/>',family:'<circle cx="9" cy="7" r="3"/><path d="M3 21v-4a6 6 0 0 1 12 0v4m1-16a3 3 0 0 1 0 6m2 3a5 5 0 0 1 3 5v2"/>',filters:'<path d="M4 6h16M4 12h16M4 18h16"/><circle cx="9" cy="6" r="2"/><circle cx="16" cy="12" r="2"/><circle cx="8" cy="18" r="2"/>'};
+ const icons={cook:'<path d="M5 10h14v7a3 3 0 0 1-3 3H8a3 3 0 0 1-3-3v-7ZM3 10h18M9 7h6v3M2 13h3m14 0h3M8 3v1m8-1v1"/>',plan:'<rect x="3" y="5" width="18" height="16" rx="3"/><path d="M7 3v4m10-4v4M3 11h18m-13 4h3m-3 3h7"/>',pantry:'<rect x="5" y="3" width="14" height="18" rx="3"/><path d="M5 11h14M9 7v1m0 7v2"/>',shop:'<path d="m4 9 2 11h12l2-11H4Zm3 0 3-6m7 6-3-6M9 13v3m6-3v3"/>',scan:'<path d="M6 3h12v18l-3-2-3 2-3-2-3 2V3Zm3 5h6m-6 4h6m-6 4h3"/>',voice:'<rect x="9" y="3" width="6" height="12" rx="3"/><path d="M6 11v1a6 6 0 0 0 12 0v-1m-6 7v3m-3 0h6"/>',family:'<circle cx="9" cy="7" r="3"/><path d="M3 21v-4a6 6 0 0 1 12 0v4m1-16a3 3 0 0 1 0 6m2 3a5 5 0 0 1 3 5v2"/>',filters:'<path d="M4 6h16M4 12h16M4 18h16"/><circle cx="9" cy="6" r="2"/><circle cx="16" cy="12" r="2"/><circle cx="8" cy="18" r="2"/>'};
  function install(win){
   const doc=win.document;
   const read=key=>{try{return win.localStorage.getItem(key);}catch{return null;}};
@@ -70,13 +70,13 @@
    heading.append(create('p','bb-how-eyebrow','Your week, made simpler'));
    const title=create('h2','', 'How BasketBoss Works ');title.id='bbHowItWorksTitle';title.append(create('span','bb-how-nutshell','(In a Nutshell)'));heading.append(title);
    const dismiss=create('button','bb-how-close','×');dismiss.type='button';dismiss.setAttribute('aria-label','Close How BasketBoss Works');dismiss.addEventListener('click',close);header.append(heading,dismiss);
-   const content=create('div','bb-how-content'),intro=create('p','bb-how-intro','A simple weekly loop. Each shop and each meal helps you plan the next one.');intro.id='bbHowItWorksIntro';content.append(intro);
-   const cycle=create('p','bb-how-cycle');cycle.setAttribute('aria-label','Repeating cycle: Plan, Pantry, Shop, Scan and Repeat');
-   ['Plan','Pantry','Shop','Scan & Repeat'].forEach((name,index)=>{cycle.append(create('span','bb-how-cycle-label',name));const arrow=create('span','bb-how-arrow',index===3?'↻':'→');arrow.setAttribute('aria-hidden','true');cycle.append(arrow);});content.append(cycle);
+   const content=create('div','bb-how-content'),intro=create('p','bb-how-intro','Start in Plan and follow the tabs along the bottom. You stay in control of what you buy and use.');intro.id='bbHowItWorksIntro';content.append(intro);
+   const cycle=create('p','bb-how-cycle');cycle.setAttribute('aria-label','Repeating cycle: Plan, At home, Shop, Cook and repeat');
+   ['Plan','At home','Shop','Cook'].forEach((name,index)=>{cycle.append(create('span','bb-how-cycle-label',name));const arrow=create('span','bb-how-arrow',index===3?'↻':'→');arrow.setAttribute('aria-hidden','true');cycle.append(arrow);});content.append(cycle);
    const list=create('ol','bb-how-steps');steps.forEach(([name,description,symbol],index)=>{
     const item=create('li','bb-how-step'),top=create('div','bb-how-step-top'),number=create('span','bb-how-number',String(index+1));number.setAttribute('aria-hidden','true');top.append(number,icon(symbol));item.append(top,create('h3','',name),create('p','',description));
-    if(index===3)item.append(create('small','bb-how-step-note','Receipt scanning is included with Premium.'));list.append(item);
-   });content.append(list);
+    if(index===2)item.append(create('small','bb-how-step-note','Receipt scanning is included with Premium.'));list.append(item);
+   });content.append(list,create('p','bb-how-weekly','Next week, review leftovers and essentials in At home. Your remaining stock carries forward; then plan again.'));
    const bonus=create('section','bb-how-bonus');bonus.setAttribute('aria-labelledby','bbHowBonusTitle');const bonusTitle=create('h3','','When You Need Them');bonusTitle.id='bbHowBonusTitle';bonus.append(bonusTitle,create('p','bb-how-bonus-intro','A few extra tools for the busier weeks.'));
    const grid=create('div','bb-how-tools');tools.forEach(([name,description,badge,symbol])=>{const item=create('article','bb-how-tool'),top=create('div','bb-how-tool-top');top.append(icon(symbol),create('span','bb-how-badge',badge));item.append(top,create('h4','',name),create('p','',description));grid.append(item);});bonus.append(grid);content.append(bonus,create('p','bb-how-price-note','Prices are estimates and reviewed local prices, rather than live supermarket checkout totals.'));
    const footer=create('footer','bb-how-footer'),cta=create('button','bb-how-plan','Got it, let’s plan');cta.type='button';cta.addEventListener('click',()=>{close();try{win.BBHowItWorksHost?.openPlan?.();}catch{}});footer.append(cta);dialog.append(header,content,footer);

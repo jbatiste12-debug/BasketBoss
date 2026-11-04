@@ -219,3 +219,14 @@ test('explicit receipt pantry policy is server-bound and malformed policy is rej
     assert.equal(fixture.rpc.length, 1);
   } finally {fixture.restore();}
 });
+
+test('API pantry sync round-trips partial packs and each balances without loosening receipt purchase counts', async () => {
+  const fixture=setup();try {
+    const body={action:'confirm_pantry',stock:{'eggs|each':1.5,'rice|packs':1/3,'herbs|g':1e-9},expectedRevision:0,expectedScope:{kind:'user',id:USER},shopSessionId:'next'};
+    const response=await onRequestPost({request:request('POST',body),env:fixture.env});
+    assert.equal(response.status,200);assert.deepEqual((await response.json()).stock,{'egg|each':1.5,'rice|pack':1/3,'herbs|g':1e-9});
+    const get=await onRequestGet({request:request('GET'),env:fixture.env});assert.equal(get.status,200);assert.deepEqual((await get.json()).stock,{'egg|each':1.5,'rice|pack':1/3,'herbs|g':1e-9});
+    const receipt=draft();Object.assign(receipt.lines[0],{quantity:1.5,unit:'pack',packQuantity:null,packUnit:null,packCount:null});
+    assert.equal((await onRequestPost({request:request('POST',receipt),env:fixture.env})).status,400);
+  } finally {fixture.restore();}
+});

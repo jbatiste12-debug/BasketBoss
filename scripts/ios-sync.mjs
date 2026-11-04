@@ -20,5 +20,5 @@ try{
  run(process.execPath,[path.join(root,'node_modules/@capacitor/cli/bin/capacitor'),'sync','ios']);
  run(process.execPath,[path.join(root,'scripts/verify-ios.mjs')]);
  const {team}=verifyXcodeSettings(fs.readFileSync(path.join(root,'ios/App/App.xcodeproj/project.pbxproj'),'utf8'));
- console.log('\nReady for Xcode. Signing team: '+team+'.\nOpen: open ios/App/App.xcworkspace\nSelect your connected iPhone and press Run.');
+ console.log('\nReady for Xcode. Signing team: '+team+'.\nOpen: open ios/App/App.xcworkspace\nFor TestFlight, select Any iOS Device (arm64), then Product > Archive. In Organizer choose Distribute App > App Store Connect > Upload. To test directly, select your connected iPhone and press Run.');
 }catch(error){console.error('iOS sync: '+error.message);process.exitCode=1;}

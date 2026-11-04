@@ -44,7 +44,7 @@ function fixture({premium=true,browser=false,available=true,nativeStartError=nul
   prepareSpeech:async()=>{const id='speech-'+(++speechId);calls.push(['prepareSpeech',id]);status?.({state:'paused'});return {speechId:id};},
   playAudio:async clip=>{calls.push(['playAudio',clip]);status?.({state:'listening'});return {spoken:true};},
   cancelSpeech:async value=>{calls.push(['cancelNativeSpeech',value]);if(mentor)status?.({state:'listening'});},
-  playAudioData:async value=>{calls.push(['playAudioData',value]);const result=mentorPlayback?await mentorPlayback(value):{spoken:true};status?.({state:'listening'});return result;}
+  playAudioData:async value=>{calls.push(['playAudioData',value]);const result=mentorPlayback?await mentorPlayback(value):{spoken:true};if(!value.keepHeld)status?.({state:'listening'});return result;}
  });}
  const controller=voice.mount({container,context:()=>context,window:host,document:doc,tts,assistant});
  const find=name=>{let result;const visit=node=>{if(node.className.split(' ').includes(name))result=node;for(const child of node.children)visit(child);};visit(container);return result;};
@@ -422,10 +422,46 @@ test('mentor voice sends arbitrary raw questions and follow-ups through AI and s
 test('enabling mentor voice preserves a completed typed conversation for a spoken follow-up',async()=>{
  const h=mentorFixture();await h.typed('The sauce looks thick. What now?');h.button().click();await tick();await h.final('Should I turn the heat down too?');assert.equal(h.questions[1].history[0].text,'The sauce looks thick. What now?');h.controller.dispose();
 });
-test('mentor keeps only the last three completed exchanges in memory and clears them at session end',async()=>{
+test('mentor keeps only the last two completed exchanges in memory and clears them at session end',async()=>{
  const h=mentorFixture();for(let i=1;i<=5;i++)await h.typed('Question '+i+' about the sauce?');
- assert.equal(h.questions[4].history.length,6);assert.equal(h.questions[4].history[0].text,'Question 2 about the sauce?');assert.equal(h.preferences.size,0,'chat is never written to the name preference store');
+ assert.equal(h.questions[4].history.length,4);assert.equal(h.questions[4].history[0].text,'Question 3 about the sauce?');assert.equal(h.preferences.size,0,'chat is never written to the name preference store');
  h.controller.stop();await h.typed('Start a fresh question?');assert.deepEqual(h.questions[5].history,[]);h.controller.dispose();
+});
+
+test('mentor starts first sentence before model completion and prefetches just one next sentence',async()=>{
+ const model=deferredSpeech(),playing=deferredSpeech(),requests=[];let plays=0;
+ const h=mentorFixture({assistant:{ask:(payload,settings)=>{requests.push({payload,settings});return model.promise;}},mentorPlayback:()=>++plays===2?playing.promise:Promise.resolve({spoken:true})});
+ h.button().click();await tick();const speechCount=h.speech.length;
+ await h.final('How should I cook it?');const emit=requests[0].settings.onDelta;
+ const a='Cook the fish until the centre reaches 75°C.',b='Keep the heat gentle so the outside stays moist.',c='Then rest it briefly before you serve it.';
+ emit(a+' Keep');await tick();assert.equal(h.speech.length,speechCount+1);assert.equal(h.speech.at(-1).text,speechText.plain(a),'synthesis starts with a complete first sentence while model remains open');assert.equal(plays,2,'first sentence playback has started');
+ emit(b.slice(4)+' Then');await tick();assert.equal(h.speech.length,speechCount+2,'next sentence is synthesized while first audio is still playing');
+ emit(c.slice(4));await tick();model.resolve({answer:a+' '+b+' '+c});await tick();assert.equal(h.speech.length,speechCount+2,'only one next clip is prefetched');
+ playing.resolve({spoken:true});await tick();assert.deepEqual(h.speech.slice(speechCount).map(s=>s.text),[a,b,c].map(speechText.plain));assert.equal(plays,4,'each sentence is spoken once, in order');
+ const clips=h.calls.filter(c=>Array.isArray(c)&&c[0]==='playAudioData').slice(-3).map(c=>c[1]);assert(clips.every(c=>c.keepHeld===true));assert.equal(new Set(clips.map(c=>c.speechId)).size,1,'one native hold covers all sentences and model gaps');assert.match(h.status(),/Listening/);h.controller.dispose();
+});
+
+test('a failed text stream cancels speech, labels its partial reply and retains no incomplete history',async()=>{
+ const model=deferredSpeech(),playing=deferredSpeech(),requests=[];let plays=0;
+ const h=mentorFixture({assistant:{ask:(payload,settings)=>{requests.push({payload,settings});return requests.length===1?model.promise:Promise.resolve({answer:'Follow the current recipe instruction.'});}},mentorPlayback:()=>++plays===2?playing.promise:Promise.resolve({spoken:true})});
+ h.button().click();await tick();await h.final('How should I cook it?');
+ requests[0].settings.onDelta('Cook the fish until the centre reaches 75°C. Keep');await tick();const ticket=h.calls.filter(c=>Array.isArray(c)&&c[0]==='playAudioData').at(-1)[1].speechId;
+ model.reject(Object.assign(Error('secret provider detail'),{code:'BB_MENTOR_SERVICE_RESPONSE'}));await tick();
+ assert.match(h.status(),/reply was interrupted/);assert.doesNotMatch(h.status(),/secret provider/);assert.equal(h.find('bbcv-retry').hidden,true);assert(h.calls.some(c=>Array.isArray(c)&&c[0]==='cancelNativeSpeech'&&c[1].speechId===ticket));
+ await h.typed('What about now?');assert.deepEqual(requests[1].payload.history,[]);playing.resolve({spoken:true});await tick();assert.equal(h.find('bbcv-answer').textContent,'Follow the current recipe instruction.');h.controller.dispose();
+});
+
+test('stream callbacks after stop cannot reveal old text or start more synthesis',async()=>{
+ const model=deferredSpeech(),requests=[];const h=mentorFixture({assistant:{ask:(payload,settings)=>{requests.push(settings);return model.promise;}}});
+ h.button().click();await tick();await h.final('How should I cook it?');h.controller.stop();const count=h.speech.length;
+ requests[0].onDelta('PRIVATE OLD ANSWER. Keep stirring.');model.resolve({answer:'PRIVATE OLD ANSWER. Keep stirring.'});await tick();
+ assert.equal(h.speech.length,count);assert.equal(h.find('bbcv-answer').textContent,'');assert.equal(requests[0].signal.aborted,true);h.controller.dispose();
+});
+
+test('sentence boundaries preserve decimals, cooking abbreviations and a final unterminated instruction',()=>{
+ const source='Add 1.5 tbsp. of oil and approx. 2.5 g of spice. Then stir until smooth';
+ const part=voice.mentorSentence(source);assert.equal(part.sentence,'Add 1.5 tbsp. of oil and approx. 2.5 g of spice.');assert.equal(voice.mentorSentence(part.rest,true).sentence,'Then stir until smooth');
+ assert.equal(voice.mentorSentence('Check it reaches 75°C').sentence,'');assert.equal(voice.mentorSentence('Yes.').sentence,'');
 });
 test('mentor keeps explicit navigation and timers local while quantities are conversational questions',async()=>{
  const h=mentorFixture();h.context.next=()=>{h.calls.push('next');h.context.stepIndex=1;h.context.currentStep='Stir in the peppers.';h.context.mentorRecipe.currentStep=1;h.controller.refresh();return true;};

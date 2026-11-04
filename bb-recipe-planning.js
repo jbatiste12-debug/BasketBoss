@@ -86,6 +86,10 @@
   function annotate(recipes){return (Array.isArray(recipes)?recipes:[]).map(recipe=>({...recipe,...metadata(recipe)}));}
   function defaultStorage(){try{return typeof window!=='undefined'?window.localStorage:null;}catch(_){return null;}}
   function createRotation(options={}){
+    // Auto-fill can score adjacency and dated recency instead of excluding
+    // those candidates. Ordinary/manual planning retains the strict defaults.
+    const softProteinAdjacency=options.softProteinAdjacency===true;
+    const softRecentRecipes=options.softRecentRecipes===true;
     const recipes=Array.isArray(options.recipes)?options.recipes:[];
     const byId=new Map(recipes.filter(r=>idOf(r)).map(r=>[r.id,r]));
     const allowed=typeof options.isAllowed==='function'?options.isAllowed:()=>false;
@@ -155,16 +159,18 @@
       if(!DAYS.includes(context.day)){lastReason='invalid-day';return [];}
       // Without editorial cohorts, preserve the original complete-pool rule.
       // Category, time and protein constraints never cause an early reset.
-      if(!rotationGroup&&[...eligibleIds].every(id=>seen.has(id))){seen=new Set([...seen].filter(id=>!eligibleIds.has(id)));cycle++;}
+      if(!softRecentRecipes&&!rotationGroup&&[...eligibleIds].every(id=>seen.has(id))){seen=new Set([...seen].filter(id=>!eligibleIds.has(id)));cycle++;}
       const plan=planEntries(context.planned),plannedIds=new Set(plan.map(row=>row.recipe.id));
       if(plan.some(row=>row.day===context.day)){lastReason='occupied-day';return [];}
       const dayIndex=DAYS.indexOf(context.day);
       const neighbours=plan.filter(row=>dayIndex>=0&&Math.abs(DAYS.indexOf(row.day)-dayIndex)===1&&DAYS.includes(row.day));
       const neighbouringProteins=new Set(neighbours.map(row=>metadata(row.recipe).primaryProtein));
       if(dayIndex===0&&typeof options.previousProtein==='string')neighbouringProteins.add(proteinAlias(options.previousProtein));
+      const proteinCounts=new Map();
+      if(softProteinAdjacency)for(const row of plan){const protein=metadata(row.recipe).primaryProtein;proteinCounts.set(protein,(proteinCounts.get(protein)||0)+1);}
       const heavy=plan.filter(row=>metadata(row.recipe).cheeseHeavy).length;
       const pool=(Array.isArray(candidates)?candidates:[]).filter(r=>idOf(r)&&eligibleIds.has(r.id)&&!plannedIds.has(r.id)&&!selectedIds.has(r.id));
-      if(rotationGroup){
+      if(rotationGroup&&!softRecentRecipes){
         const requestedGroups=new Set(pool.map(recipe=>groupsById.get(recipe.id)));
         for(const group of requestedGroups){
           const ids=groupIds.get(group);
@@ -174,10 +180,11 @@
           }
         }
       }
-      const unseen=pool.filter(r=>!seen.has(r.id));
+      const unseen=softRecentRecipes?pool:pool.filter(r=>!seen.has(r.id));
       const result=unseen.filter(r=>{
         const m=metadata(r);
-        return !neighbouringProteins.has(m.primaryProtein)&&(!m.cheeseHeavy||heavy<2);
+        const proteinFits=softProteinAdjacency?(proteinCounts.get(m.primaryProtein)||0)<2:!neighbouringProteins.has(m.primaryProtein);
+        return proteinFits&&(!m.cheeseHeavy||heavy<2);
       });
       lastReason=result.length?'':!pool.length?'no-recipes-match':!unseen.length?'rotation-filter-exhausted':'variety-filter-exhausted';
       return result;

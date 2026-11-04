@@ -207,6 +207,26 @@ test('native HTTP denial priority survives the player-observer race',()=>{
 
 const memoryAudio=Buffer.from('ID3-private-cooking-answer').toString('base64');
 
+test('sentence audio retains one held native ticket across network gaps until the controller releases it',async()=>{
+ const h=fixture({actor:'account-one'});await h.api.start(()=>{});const ticket=await h.api.prepareSpeech();
+ for(let sentence=0;sentence<3;sentence++){
+  assert.deepEqual(await h.api.playAudioData({base64:memoryAudio,contentType:'audio/mpeg',keepHeld:true,...ticket}),{spoken:true});
+  assert.deepEqual(h.calls.at(-1),['playAudioData',{sessionId:h.id(),speechId:ticket.speechId,base64:memoryAudio,contentType:'audio/mpeg',keepHeld:true}]);
+  await tick();
+ }
+ assert.equal(h.calls.filter(call=>call[0]==='prepareSpeech').length,1,'the sequence does not replace its interruption ticket');
+ await h.api.cancelSpeech(ticket);
+ const count=h.calls.length;
+ assert.deepEqual(await h.api.playAudioData({base64:memoryAudio,contentType:'audio/mpeg',keepHeld:true,...ticket}),{spoken:false,cancelled:true});
+ assert.equal(h.calls.length,count,'cancelled sentences cannot restart output');
+ const native=fs.readFileSync(new URL('../ios/App/App/BasketBossCookVoicePlugin.swift',import.meta.url),'utf8');
+ const finish=native.slice(native.indexOf('@MainActor private func audioFinished'),native.indexOf('@MainActor private func status'));
+ assert.match(native,/playbackKeepHeld = call\.getBool\("keepHeld"\) == true/);
+ assert.match(finish,/let keepHeld = playbackKeepHeld[\s\S]*if !keepHeld \{ speechHeld = false; speechId = nil \}/);
+ assert.match(finish,/if !keepHeld \{ resumeAfterPause\(\) \}/);
+ await h.api.stop();
+});
+
 test('personalised MP3 playback requires a current held session and sends only in-memory bytes',async()=>{
  const h=fixture({actor:'account-one'});
  assert.deepEqual(await h.api.playAudioData({base64:memoryAudio,contentType:'audio/mpeg',speechId:'unused'}),{spoken:false,cancelled:true});

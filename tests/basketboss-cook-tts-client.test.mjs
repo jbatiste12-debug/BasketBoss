@@ -175,6 +175,7 @@ test('browser mentor playback uses uncached memory audio and revokes it after th
  const h=fixture({response:mp3,autoEnd:false}),pending=h.api.playMentor('Keep the heat gentle.');let ended=false;pending.then(()=>ended=true);await tick();
  assert.equal(h.players.length,1);assert.equal(h.players[0].played,1);assert.equal(ended,false);
  assert.deepEqual(JSON.parse(h.calls[0].options.body),{text:'Keep the heat gentle.',private:true});
+ assert.equal(h.calls[0].options.headers.Accept,'audio/mpeg');
  h.players[0].dispatchEvent(new Event('ended'));assert.deepEqual(await pending,{played:true});assert.equal(ended,true);
  assert.equal(h.players[0].paused,1);assert.equal(h.revoked.length,1);assert.equal(h.timers.size,0);
 });
@@ -214,4 +215,63 @@ test('mentor operations preserve definitive account errors and use a 45-second p
  }
  const h=fixture({response:()=>new Promise(()=>{})}),pending=h.api.prepareMentor('Stir gently.');await tick();
  assert.equal([...h.timers.values()][0].delay,45000);[...h.timers.values()][0].fn();await assert.rejects(pending,{code:'BB_TTS_TIMEOUT'});
+});
+
+test('private mentor starts validated MP3 playback before the sentence synthesis stream finishes',async()=>{
+ const tail=deferred();let reads=0,cancels=0,finished=false;
+ const h=fixture({media:true,response:()=>({ok:true,headers:new Headers({'Content-Type':'audio/mpeg'}),body:{getReader:()=>({read:async()=>++reads===1?{done:false,value:new Uint8Array([73,68,51,0])}:tail.promise,cancel:async()=>{cancels++;}})}})});
+ const pending=h.api.playMentor('Turn the heat down gently.').then(value=>{finished=true;return value;});await tick();
+ assert.equal(h.players[0].played,1);assert.equal(reads,2);assert.equal(finished,false);
+ assert.deepEqual(h.appends,[[73,68,51,0]]);
+ assert.deepEqual(JSON.parse(h.calls[0].options.body),{text:'Turn the heat down gently.',private:true});
+ assert.equal(h.calls[0].options.headers.Accept,'audio/mpeg; streaming=1');
+ tail.resolve({done:true});assert.deepEqual(await pending,{played:true});assert.equal(cancels,1);assert.equal(h.revoked.length,1);assert.equal(h.timers.size,0);
+});
+
+test('private progressive playback waits only for a valid fragmented MP3 prefix',async()=>{
+ const tail=deferred();let reads=0;
+ const h=fixture({media:true,response:()=>({ok:true,headers:new Headers({'Content-Type':'audio/mpeg'}),body:{getReader:()=>({read:async()=>++reads<=3?{done:false,value:new Uint8Array([[73],[68],[51]][reads-1])}:tail.promise,cancel:async()=>{}})}})});
+ const pending=h.api.playMentor('Stir gently.');await tick();
+ assert.equal(h.players[0].played,1);assert.deepEqual(h.appends,[[73],[68],[51]]);assert.equal(reads,4);
+ tail.resolve({done:true});await pending;
+ for(const response of [()=>new Response('bad MP3',{headers:{'Content-Type':'audio/mpeg'}}),()=>new Response(new Uint8Array([73,68]),{headers:{'Content-Type':'audio/mpeg'}}),()=>new Response(new Uint8Array([73,68,51]),{headers:{'Content-Type':'audio/mpeg','Content-Length':String(2*1024*1024+1)}})]){
+  const invalid=fixture({media:true,response});await assert.rejects(invalid.api.playMentor('Stir gently.'));assert.equal(invalid.players.length,0);assert.equal(invalid.timers.size,0);
+ }
+});
+
+test('private progressive playback cancels bytes, audio and URLs on interruption or token replacement',async()=>{
+ for(const change of ['interrupt','token','deletion']){
+  const tail=deferred(),controller=new AbortController();let reads=0,cancels=0;
+  const h=fixture({media:true,autoEnd:false,response:()=>({ok:true,headers:new Headers({'Content-Type':'audio/mpeg'}),body:{getReader:()=>({read:async()=>++reads===1?{done:false,value:new Uint8Array([73,68,51])}:tail.promise,cancel:async()=>{cancels++;}})}})});
+  const pending=h.api.playMentor('Stir gently.',{signal:controller.signal});await tick();assert.equal(h.players[0].played,1);
+  if(change==='interrupt')controller.abort();
+  if(change==='token'){h.setSession({...fresh(),access_token:'replaced-bearer'});h.event('basketboss:session-changed');}
+  if(change==='deletion'){h.store.set('basketboss_account_deletion_v1',JSON.stringify({phase:'deleting'}));h.event('basketboss:account-deletion-started');}
+  await assert.rejects(pending,change==='interrupt'?{name:'AbortError'}:{code:'BB_TTS_SESSION_CHANGED'});
+  assert.equal(cancels,1);assert.equal(h.players[0].paused,1);assert.equal(h.revoked.length,1);assert.equal(h.timers.size,0);
+  tail.resolve({done:false,value:new Uint8Array([255,251,0])});await tick();assert.equal(h.appends.length,1);assert.equal(h.players[0].played,1);
+ }
+});
+
+test('prefetched private sentence plays once without a second request and releases browser audio',async()=>{
+ const h=fixture({response:mp3}),before=[...h.store.entries()];
+ const prepared=await h.api.prepareMentor('The sauce is ready.');assert.equal(h.players.length,0);
+ assert.deepEqual(await h.api.playPreparedMentor(prepared),{played:true});assert.equal(h.calls.length,1);assert.equal(h.players[0].played,1);
+ assert.equal(h.players[0].paused,1);assert.equal(h.revoked.length,1);assert.equal(h.timers.size,0);assert.deepEqual([...h.store.entries()],before);
+ await assert.rejects(h.api.playPreparedMentor(prepared),{code:'BB_TTS_AUDIO'});assert.equal(h.players.length,1);
+ await assert.rejects(h.api.playPreparedMentor({...prepared}),{code:'BB_TTS_AUDIO'});
+});
+
+test('prefetched private audio cannot cross transport instances, accounts, token refreshes or deletion',async()=>{
+ for(const reason of ['instance','account','token','expired','deletion','abort']){
+  const h=fixture({response:mp3}),prepared=await h.api.prepareMentor('Stir gently.'),controller=new AbortController();
+  let api=h.api;
+  if(reason==='instance')api=create({window:h.win});
+  if(reason==='account')h.setSession({...fresh(),user:{id:'different-person'}});
+  if(reason==='token')h.setSession({...fresh(),access_token:'replacement-bearer'});
+  if(reason==='expired')h.expire();
+  if(reason==='deletion')h.store.set('basketboss_account_deletion_v1',JSON.stringify({phase:'deleting'}));
+  if(reason==='abort')controller.abort();
+  await assert.rejects(api.playPreparedMentor(prepared,{signal:controller.signal}));assert.equal(h.players.length,0);assert.equal(h.calls.length,1);assert.equal(h.timers.size,0);
+ }
 });

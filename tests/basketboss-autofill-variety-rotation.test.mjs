@@ -11,7 +11,7 @@ const app=fs.readFileSync(new URL('../app.html',import.meta.url),'utf8');
 const start=index.indexOf("const BB_AF_DAYS=['Monday'");
 const end=index.indexOf('/* END_BASKETBOSS_AUTOFILL_VARIETY_ROTATION_V1 */',start);
 assert.ok(start>0&&end>start,'Auto-fill code is present in the page');
-const code=index.match(/function bbPlanVarietyValid\(plans\)\{[\s\S]*?\n\}/)[0]+'\n'+index.slice(start,end);
+const code=index.match(/function bbPlanVarietyValid\(plans(?:,softProteinAdjacency=false)?\)\{[\s\S]*?\n\}/)[0]+'\n'+index.slice(start,end);
 const DAYS=['Monday','Tuesday','Wednesday','Thursday','Friday','Saturday','Sunday'];
 function harness(catalog,freeIds=new Set(catalog.map(r=>r.id)),options={}){
  const storage=new Map(),state={planned:[],bb81Batch:null};
@@ -33,6 +33,9 @@ function harness(catalog,freeIds=new Set(catalog.map(r=>r.id)),options={}){
   bb172QuickDinners:()=>({}),persist:()=>canPersist,render:()=>{renders++},
   notify:msg=>notices.push(msg)
  };
+ // This legacy fixture exercises the no-weighted-module fallback. The actual
+ // weighted module and source helpers are covered by pantry-autofill-app.
+ ctx.window=ctx;ctx.BBHome={actor:()=> 'guest'};
  vm.createContext(ctx);vm.runInContext(code,ctx);
  const api=vm.runInContext('({draw:bbAfDraw,commit:bbAfCommit,dinner:bbAfDinner,tags:bbAfTags,read:bbAfRead,SEEN:BB_AF_SEEN,LAST:BB_AF_LAST,valid:bbPlanVarietyValid,snapshot:()=>bbRotationSession().snapshot()})',ctx);
  return {api,state,storage,localStorage,setPersist:x=>canPersist=x,setStore:x=>canStore=x,notices,get renders(){return renders}};

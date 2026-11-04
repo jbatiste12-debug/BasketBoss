@@ -46,10 +46,11 @@ public final class BasketBossCookVoicePlugin: CAPPlugin, CAPBridgedPlugin, AVSpe
     private var playbackCall: CAPPluginCall?
     private var playbackTimeout: DispatchWorkItem?
     private var playbackDeadline: DispatchWorkItem?
+    private var playbackKeepHeld = false
     private var lastPlaybackTime = 0.0
-    private var silence: DispatchWorkItem?
     private var rollover: DispatchWorkItem?
     private var finalTimeout: DispatchWorkItem?
+    private var speechBoundary = BBCookSpeechBoundary()
     private var lastPartial = ""
     private var endingAudio = false
     private var previousAudio: (AVAudioSession.Category, AVAudioSession.Mode, AVAudioSession.CategoryOptions)?
@@ -77,7 +78,7 @@ public final class BasketBossCookVoicePlugin: CAPPlugin, CAPBridgedPlugin, AVSpe
 
     deinit {
         for observer in observers { NotificationCenter.default.removeObserver(observer) }
-        silence?.cancel(); rollover?.cancel(); finalTimeout?.cancel()
+        rollover?.cancel(); finalTimeout?.cancel()
         recognition?.cancel(); engine.stop()
         playerStatus?.invalidate()
         for observer in playbackObservers { NotificationCenter.default.removeObserver(observer) }
@@ -276,6 +277,7 @@ public final class BasketBossCookVoicePlugin: CAPPlugin, CAPBridgedPlugin, AVSpe
                 call.reject("The Cook audio response could not be read.", "BB_VOICE_AI_AUDIO"); return
             }
             self.clearOutput(); self.playbackCall = call
+            self.playbackKeepHeld = call.getBool("keepHeld") == true
             do {
                 try self.playbackCategory()
                 let player = try AVAudioPlayer(data: data, fileTypeHint: AVFileType.mp3.rawValue)
@@ -355,6 +357,7 @@ public final class BasketBossCookVoicePlugin: CAPPlugin, CAPBridgedPlugin, AVSpe
         if let progress = playerProgress { player?.removeTimeObserver(progress) }; playerProgress = nil
         playbackTimeout?.cancel(); playbackTimeout = nil
         playbackDeadline?.cancel(); playbackDeadline = nil; lastPlaybackTime = 0
+        playbackKeepHeld = false
         player?.pause(); player?.replaceCurrentItem(with: nil); player = nil; playerItem = nil
         memoryProgress?.invalidate(); memoryProgress = nil
         memoryPlayer?.delegate = nil; memoryPlayer?.stop(); memoryPlayer = nil
@@ -402,8 +405,13 @@ public final class BasketBossCookVoicePlugin: CAPPlugin, CAPBridgedPlugin, AVSpe
 
     @MainActor private func audioFinished() {
         let call = playbackCall; playbackCall = nil
-        clearOutput(); speechHeld = false; speechId = nil
-        call?.resolve(["spoken": true]); resumeAfterPause()
+        let keepHeld = playbackKeepHeld
+        clearOutput()
+        if !keepHeld { speechHeld = false; speechId = nil }
+        call?.resolve(["spoken": true])
+        // A sentence sequence owns one ticket until cancelSpeech releases it.
+        // Even a long network gap must never capture the speaker's own reply.
+        if !keepHeld { resumeAfterPause() }
     }
 
     @MainActor private func status(_ state: String, code: String? = nil) {
@@ -444,31 +452,37 @@ public final class BasketBossCookVoicePlugin: CAPPlugin, CAPBridgedPlugin, AVSpe
         self.request = request
         let format = engine.inputNode.outputFormat(forBus: 0)
         guard format.sampleRate > 0, format.channelCount > 0 else { throw NSError(domain: "CookVoice", code: 2) }
-        engine.inputNode.installTap(onBus: 0, bufferSize: 1024, format: format) { buffer, _ in request.append(buffer) }
+        let cycle = capture
+        engine.inputNode.installTap(onBus: 0, bufferSize: 1024, format: format) { [weak self] buffer, _ in
+            request.append(buffer)
+            // Read samples on the audio callback. Never move an AVAudioPCMBuffer
+            // across queues: the engine reuses its storage after this returns.
+            guard let energy = Self.decibels(buffer) else { return }
+            let duration = Double(buffer.frameLength) / format.sampleRate
+            Task { @MainActor [weak self] in
+                guard let self = self, self.intent, self.capture == cycle, !self.endingAudio else { return }
+                if self.speechBoundary.append(decibels: energy, duration: duration), !self.lastPartial.isEmpty {
+                    self.endUtterance(cycle: cycle)
+                }
+            }
+        }
         tapInstalled = true
         engine.prepare(); try engine.start()
-        let cycle = capture
         recognition = recognizer.recognitionTask(with: request) { [weak self] result, error in
             Task { @MainActor [weak self] in
                 guard let self = self, self.intent, self.capture == cycle else { return }
                 if let result = result {
                     let text = result.bestTranscription.formattedString.trimmingCharacters(in: .whitespacesAndNewlines)
                     if result.isFinal {
-                        self.stopCapture()
-                        if !text.isEmpty, text.count <= 500, let id = self.sessionId {
-                            self.notifyListeners("voiceResult", data: ["sessionId": id, "text": text, "isFinal": true])
-                        }
-                        self.resumeAfterPause()
+                        self.finishUtterance(text: text, cycle: cycle)
                         return
                     }
-                    // Partial text only identifies an utterance boundary. Only
-                    // Apple's final result is ever delivered as a command.
-                    if text != self.lastPartial, !text.isEmpty {
+                    if !text.isEmpty {
                         self.lastPartial = text
-                        self.silence?.cancel()
-                        let end = DispatchWorkItem { [weak self] in Task { @MainActor [weak self] in self?.endUtterance(cycle: cycle) } }
-                        self.silence = end
-                        DispatchQueue.main.asyncAfter(deadline: .now() + 0.95, execute: end)
+                        if self.endingAudio || self.speechBoundary.recognized() {
+                            self.finishUtterance(text: text, cycle: cycle)
+                            return
+                        }
                     }
                 }
                 if error != nil {
@@ -485,6 +499,13 @@ public final class BasketBossCookVoicePlugin: CAPPlugin, CAPBridgedPlugin, AVSpe
 
     @MainActor private func endUtterance(cycle: Int) {
         guard intent, capture == cycle, !endingAudio else { return }
+        // Once real microphone silence establishes the boundary, dispatch the
+        // latest bounded hypothesis immediately. Apple final/error callbacks
+        // from the cancelled capture are invalidated by finishUtterance.
+        if !lastPartial.isEmpty {
+            finishUtterance(text: lastPartial, cycle: cycle)
+            return
+        }
         endingAudio = true
         engine.stop()
         if tapInstalled { engine.inputNode.removeTap(onBus: 0); tapInstalled = false }
@@ -499,14 +520,38 @@ public final class BasketBossCookVoicePlugin: CAPPlugin, CAPBridgedPlugin, AVSpe
         DispatchQueue.main.asyncAfter(deadline: .now() + 3, execute: timeout)
     }
 
+    @MainActor private func finishUtterance(text: String, cycle: Int) {
+        guard intent, capture == cycle else { return }
+        let id = sessionId
+        stopCapture()
+        if !text.isEmpty, text.count <= 500, let id = id {
+            notifyListeners("voiceResult", data: ["sessionId": id, "text": text, "isFinal": true])
+        }
+        resumeAfterPause()
+    }
+
+    private static func decibels(_ buffer: AVAudioPCMBuffer) -> Double? {
+        let count = Int(buffer.frameLength)
+        guard count > 0, let channels = buffer.floatChannelData else { return nil }
+        var sum = 0.0
+        // The input node supplies Float32 PCM. Read one channel; speech input
+        // is mono, while a multichannel route's first channel is sufficient.
+        for index in 0..<count {
+            let sample = Double(channels[0][index])
+            sum += sample * sample
+        }
+        return 10 * log10(max(sum / Double(count), 1e-12))
+    }
+
     @MainActor private func stopCapture() {
         capture += 1
-        silence?.cancel(); rollover?.cancel(); finalTimeout?.cancel()
-        silence = nil; rollover = nil; finalTimeout = nil
+        rollover?.cancel(); finalTimeout?.cancel()
+        rollover = nil; finalTimeout = nil
         engine.stop()
         if tapInstalled { engine.inputNode.removeTap(onBus: 0); tapInstalled = false }
         request?.endAudio(); recognition?.cancel()
         request = nil; recognition = nil; lastPartial = ""; endingAudio = false
+        speechBoundary = BBCookSpeechBoundary()
     }
 
     @MainActor private func resumeAfterPause() {

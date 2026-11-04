@@ -1,0 +1,41 @@
+Faster Cook Mentor
+- Ask a recipe question and check that speech starts while the answer is still appearing.
+- Try two follow-up questions; ingredient quantities should match your selected servings.
+- Finish speaking naturally: the iOS microphone should submit after a short pause.
+- Try a quiet room and a noisy kitchen; report cut-off words or missed questions.
+- Interrupt the reply, change steps, or leave Cook: old audio must stop.
+- The microphone should not hear the mentor during pauses between spoken sentences.
+- Check typed replies and Retry voice on a slow connection.
+
+BasketBoss build 9
+
+Your pantry now works as a running balance: shopping adds to it and confirmed cooking uses it up. Remaining food and essentials stay there between weeks.
+
+Please test:
+• Compact Plan and budget: check the single-row branding/region/membership/settings header. My Week should come first, followed by Budget & household settings / Meal preferences / Ingredients to avoid pills, Auto-fill / Add a meal, then Your dinner plan. Save a budget and check under/over-budget copy plus dinner count. Save usable At home quantities and verify the ring uses the reduced whole-pack shopping cost; owning part of a pack may leave the price unchanged until a pack is avoided. Bought ticks must not discount the budget again. Test the displayed At home saving, an unset budget and missing-price states. Open the original household/budget controls and ⓘ → pantry auto-fill. Saved tools and Check At home should remain below the schedule.
+• Inline pantry: tap a food tile, set its quantity/unit beside the tile and tap Done. Try −/+ on the compact section summary. Add a custom food with Item name + Qty + Unit + Add in one step. Check Shop updates immediately without scrolling to a separate editor. Clearing an amount while typing must preserve previously saved stock.
+• Fast Shop: tap a row's main circle and check it marks the displayed purchase as bought immediately. Open ••• → Enter different amount: enter less than needed and check the remainder stays To buy; enter a larger pack and check the full bought amount reaches At home once after Finish shop. The amount input should appear only after choosing it.
+• Tab scrolling: scroll down in each of Plan, Discover, At home, Shop and Cook, then switch tabs. Each newly opened screen should start at the top. Check the last rows remain reachable above the bottom navigation and Finish shop actions, including on a smaller iPhone.
+• Check your cupboard: the collapsed section at the bottom of Shop should contain this week’s condiments with meal days. They must not increase the active item count or estimate until marked Low/Out at home or added with + Add to list. Add Soy sauce once: check one bottle, one extra active row and its full-container estimate. Mark the same item Low: it must remain one restock. Normal manual Shop top-ups stay additional purchases. Complete a purchase and check it does not reappear twice.
+• Shop labels: check simple For: Mon / Thu or Pantry top-up labels and normal quantity/container names, without source needs review or check unit wording. Unknown physical quantities must still be preserved for review.
+• Food quantities: Cupboard, Fridge and Freezer must show Already got and Unit without a Total needed field. Set a food amount and check the meal-plan shortfall updates. Weekly essentials must still let you edit Total needed.
+• Live At home → Shop: plan a recipe using carrots, enter 2 carrots as each at home and check the Shop shortfall falls by 2 carrots using the same estimated weight. Try courgettes too. Edit again and switch straight to Shop, or tap Done in the quick-add picker: the latest valid amount must save immediately. Briefly clear a quantity while typing: the previous saved stock must remain.
+• Staples: set honey, oil, soy sauce or ketchup In Stock; recipe spoonfuls should be covered without subtracting ml. Set Low/Out and check one restock row. Review a ketchup 800 ml receipt line: it should match the existing staple as +1 container, with the count editable.
+• UK/US: pantry summaries should show regional units after reopening. Opening an editor or changing its display unit must not alter the stock balance. Check a pounds/cups stepper adds the exact physical amount without rounding the existing balance. Enter known cups/oz/lb/fl oz, then switch region. Display changes but the stored physical amount must stay the same. One tin of chopped tomatoes plus 400 g should merge into one measured row. Unknown packs and vague recipe amounts should remain visible for review.
+• At home subcategories: use the options in Cupboard, Fridge, Freezer and Weekly essentials. Add, rename and reorder a group; move an item with its Subcategory menu. Remove a group and check its items remain in Other items. Reopen the app and check your groups remain. Quantity drafts and confirmed stock must not change from organising items.
+• Welcome and guide: check “Your kitchen, made simple”, then follow Plan → At home → Shop → Cook. The guide should name the real confirmation buttons and lead into Plan. Returning users can replay setup in Settings. Viewing instructions must keep plans and pantry intact.
+• Compact Saved weeks / Saved meals buttons: open either panel, switch without losing a typed name, then close it to keep the dinner plan visible.
+• Confirm cooked: check the amount used, then confirm once. Reopening the meal should not deduct again.
+• Day done: confirm the day's planned dinner, lunches and dessert together. Already confirmed meals and linked batch leftovers should not use ingredients twice.
+• Shop → Add item to buy: enter an item and the additional quantity you want, even if you already have some at home. Try 4, 500 g, 2 packs or 1 bag (500 g).
+• Partial shopping: purchase part of a manual top-up, finish the trip and check that the unpurchased amount carries over.
+• Receipts and Finish Shop: check purchased food and household essentials increase once, including after reopening the same receipt.
+• Units: try grams/kilograms, millilitres/litres, counted produce and known pack contents. Unknown pack sizes should stay unchanged with a review message.
+• Running quantities: manually enter actual stock and let it save automatically, add purchases through Finish shop or a reviewed receipt, then confirm a cooked meal. Check the remaining amount and the next shopping shortfall. Repeat the same receipt/meal confirmation to check stock is not credited or deducted twice.
+• Part bottles/packs: in a selected Weekly essential, open Enter part of a bottle or pack. Try 0.5 remaining, 750 ml capacity and 2 containers needed: the saved amounts should be 375 ml at home and 1,500 ml needed. A matching 750 ml receipt should leave 1,125 ml at home and 375 ml to buy. Unknown capacities must not change the old stock; different old/new bottle sizes must add by actual ml.
+• Auto-fill: see whether it suggests meals using food already at home while still offering a varied week.
+• Reopen the app and plan a new week: your remaining pantry balance should still be there.
+
+Also check the existing Beta Premium unlock, Chef Boss typed and voice replies, and photo scan → meal → matching picture. AI needs an internet connection.
+
+When reporting a problem, include the screen, item or recipe name, quantities before and after, and the steps you took. Please do not include passwords or API keys.
