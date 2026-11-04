@@ -66,7 +66,7 @@ test('the first-use weekly guide waits for completed setup and is then shown onl
   const h = environment(), api = guide.install(h.win);api.start();await next();
   assert.equal(api.isOpen(), false);
   h.store.setItem(SETUP, JSON.stringify({complete: true}));api.setupFinished();await next();assert.equal(api.isOpen(), true);
-  assert.match(h.text(h.doc.body), /Plan Your Meals/);assert.match(h.text(h.doc.body), /Scan & Cook/);
+  assert.match(h.text(h.doc.body), /Plan Your Meals/);assert.match(h.text(h.doc.body), /Cook & Confirm/);
   h.dispatch('keydown', {key: 'Escape'});assert.equal(api.isOpen(), false);
   api.setupFinished();h.dispatch('focus');await next();assert.equal(api.isOpen(), false);
   assert.equal(JSON.parse(h.store.getItem(guide.KEY)).seen, true);

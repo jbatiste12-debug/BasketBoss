@@ -97,42 +97,6 @@
    return `<div class="bbob-figure bbob-real-shop" aria-label="Read-only BasketBoss aisle shopping example"><div class="bbob-mock-top">FAJITAS SHOPPING LIST · EXAMPLE <span>BY AISLE</span></div><div class="bbob-shop-total"><span>Indicative basket estimate</span><strong>£${total.toFixed(2)}</strong></div>${rows}<p class="bbob-preview-disclaimer">Example ingredient quantities and prices for ${esc(lead.name)} (6 servings). Your actual list recalculates quantities, packs and pantry deductions for your region and supermarket. This example does not change your shopping list.</p></div>`;
  }
 
- function kitchenBalanceArt(){return `<svg viewBox="0 0 360 190" fill="none" aria-hidden="true" focusable="false">
-  <defs><linearGradient id="bbobPantryBackdrop" x1="20" y1="10" x2="340" y2="180" gradientUnits="userSpaceOnUse"><stop stop-color="#E7F1E2"/><stop offset="1" stop-color="#F6EFD9"/></linearGradient><linearGradient id="bbobPantryWood" x1="120" y1="30" x2="245" y2="174" gradientUnits="userSpaceOnUse"><stop stop-color="#347454"/><stop offset="1" stop-color="#194C39"/></linearGradient></defs>
-  <rect x="1" y="4" width="358" height="182" rx="28" fill="url(#bbobPantryBackdrop)"/>
-  <circle cx="304" cy="35" r="50" fill="#FFFDF4" fill-opacity=".48"/><circle cx="36" cy="156" r="48" fill="#D6E7CF" fill-opacity=".55"/>
-  <ellipse cx="181" cy="171" rx="83" ry="10" fill="#B9CBB0" fill-opacity=".35"/>
-  <path d="M79 124h33m-8-6 8 6-8 6" stroke="#77A17B" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/>
-  <path d="M249 124h29m-8-6 8 6-8 6" stroke="#BAA15D" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/>
-  <path d="M276 158c-26 24-160 29-189 3" stroke="#A7B99A" stroke-width="1.5" stroke-linecap="round" stroke-dasharray="3 5"/><path d="m87 161 1 8m-1-8 8 1" stroke="#A7B99A" stroke-width="1.5" stroke-linecap="round"/>
-  <rect x="116" y="23" width="130" height="143" rx="14" fill="url(#bbobPantryWood)"/>
-  <rect x="126" y="36" width="110" height="119" rx="7" fill="#FFF8E7"/>
-  <path d="M124 77h114m-114 40h114" stroke="#D4BB7F" stroke-width="5" stroke-linecap="round"/>
-  <rect x="128" y="28" width="106" height="5" rx="2.5" fill="#659170"/>
-  <rect x="134" y="48" width="13" height="26" rx="4" fill="#E6BC57"/><rect x="137" y="43" width="7" height="7" rx="2" fill="#37664B"/><path d="M138 54v13" stroke="#FBE3A2" stroke-width="2" stroke-linecap="round"/>
-  <rect x="154" y="49" width="22" height="25" rx="5" fill="#D68964"/><rect x="154" y="45" width="22" height="6" rx="2" fill="#A66C4F"/><rect x="159" y="57" width="12" height="9" rx="2" fill="#FAE8CB"/>
-  <rect x="184" y="43" width="23" height="31" rx="5" fill="#E8D2A3"/><rect x="183" y="41" width="25" height="5" rx="2" fill="#A98C55"/><path d="M190 51h11m-11 5h11m-11 5h8" stroke="#C0A36B" stroke-width="2" stroke-linecap="round"/>
-  <rect x="215" y="50" width="13" height="24" rx="4" fill="#8DAB72"/><rect x="214" y="46" width="15" height="6" rx="2" fill="#507C50"/>
-  <path d="M134 106c-4-12 4-16 9-10 1-11 14-9 12 0 11-4 14 11 2 13" fill="#51865A"/><path d="m144 100 3 14" stroke="#719C5B" stroke-width="4" stroke-linecap="round"/>
-  <path d="m166 96 11-3-4 20c-1 4-3 4-4 0l-3-17Z" fill="#E6A05F"/><path d="m170 94-3-6m5 5 4-7m-4 8 8-2" stroke="#739D5B" stroke-width="3" stroke-linecap="round"/>
-  <path d="M187 105h38l-3 10h-32l-3-10Z" fill="#D4BC93"/><ellipse cx="195" cy="103" rx="6" ry="8" fill="#F6E7CA"/><ellipse cx="206" cy="102" rx="6" ry="8" fill="#FFFDF3"/><ellipse cx="217" cy="103" rx="6" ry="8" fill="#EED9B7"/>
-  <path d="m135 131 6-8h10l5 8v22h-21v-22Z" fill="#E2ECD9"/><path d="M135 132h21v9h-21" fill="#8CAC79"/><path d="M141 123v8h15" stroke="#6A916A" stroke-width="1.6"/><rect x="140" y="145" width="10" height="2" rx="1" fill="#9EBD8B"/>
-  <path d="m169 124-4 8v20h27v-20l-5-8h-18Z" fill="#E5CAA2"/><rect x="171" y="134" width="15" height="12" rx="3" fill="#FFF7DF"/><path d="M178 136v8m-3-5h6" stroke="#C7A56A" stroke-width="1.4" stroke-linecap="round"/>
-  <rect x="205" y="127" width="21" height="26" rx="5" fill="#E3A377"/><rect x="204" y="124" width="23" height="6" rx="2" fill="#A76F4D"/><rect x="210" y="136" width="11" height="10" rx="3" fill="#F9DEAE"/>
-  <path d="M124 166v5m114-5v5" stroke="#194C39" stroke-width="5" stroke-linecap="round"/>
-  <ellipse cx="49" cy="150" rx="32" ry="5" fill="#B1C5A4" fill-opacity=".35"/>
-  <path d="m31 107 4-31c1-9 12-8 13 0l-2 34" fill="#E3B568"/><path d="m37 82 7 1m-8 6 7 1m-8 6 7 1" stroke="#F5D99D" stroke-width="2.5" stroke-linecap="round"/>
-  <path d="M54 110V96" stroke="#719950" stroke-width="5"/><circle cx="54" cy="92" r="11" fill="#6C9D63"/><circle cx="65" cy="98" r="9" fill="#8BAF6F"/><circle cx="48" cy="101" r="8" fill="#578D5D"/>
-  <circle cx="37" cy="111" r="10" fill="#D58460"/><path d="m36 102 4-4m-4 4-4-3" stroke="#698452" stroke-width="2" stroke-linecap="round"/>
-  <path d="m20 112 5 31c1 4 3 5 7 5h31c4 0 6-1 7-5l5-31H20Z" fill="#E9CF92"/><path d="m27 113 11-17m30 17L58 98" stroke="#A48950" stroke-width="3.5" stroke-linecap="round"/><path d="m32 123 2 16m13-16v16m13-16-2 16" stroke="#FFF7DD" stroke-width="4" stroke-linecap="round"/>
-  <circle cx="26" cy="67" r="12" fill="#28664A"/><path d="M26 62v10m-5-5h10" stroke="#FFF8E5" stroke-width="2" stroke-linecap="round"/>
-  <ellipse cx="308" cy="150" rx="33" ry="5" fill="#B1C5A4" fill-opacity=".35"/>
-  <path class="bbob-balance-steam" d="M297 108c-8-9 6-10 0-19m13 19c-8-9 6-10 0-19m13 19c-8-9 6-10 0-19" stroke="#8BA789" stroke-width="2.2" stroke-linecap="round"/>
-  <path d="M281 123h52v11c0 9-8 13-16 13h-20c-9 0-16-4-16-13v-11Z" fill="#3D7959"/><path d="M333 127h11c5 0 5 7 0 7h-11m-52-7h-7" stroke="#295D45" stroke-width="4" stroke-linecap="round"/>
-  <path d="M279 121h56m-48-3c5-10 37-10 42 0" stroke="#D2BA77" stroke-width="3.5" stroke-linecap="round"/><path d="M305 111h5" stroke="#9B824C" stroke-width="3" stroke-linecap="round"/>
-  <circle cx="334" cy="68" r="12" fill="#D9BD72"/><path d="M329 68h10" stroke="#6F582D" stroke-width="2" stroke-linecap="round"/>
-  <path class="bbob-balance-sparkle" d="m261 42 2 5 5 2-5 2-2 5-2-5-5-2 5-2 2-5Z" fill="#C5A85F"/><circle cx="101" cy="46" r="3" fill="#96B489"/><circle cx="270" cy="161" r="3" fill="#C9B475"/>
- </svg>`;}
  function options(items,selected,multiple){return `<div class="bbob-options ${multiple?'bbob-goals':''}">${items.map((v,i)=>`<button type="button" class="bbob-option ${selected.includes(v)?'chosen':''}" data-bbob-opt="${i}" aria-pressed="${selected.includes(v)}"><span class="bbob-choice-mark" aria-hidden="true">${selected.includes(v)?'✓':' '}</span><span>${v}</span></button>`).join('')}</div>`;}
  const titles=['Welcome','Account','Partner sharing','Household','Goals','Preferences','Discover','Plan','Shop','You’re all set','Membership'];
  function content(){
@@ -195,17 +159,16 @@
        foot='Dated online guides cover selected UK products; regional estimates fill gaps. Meal estimates count the share of staples used, while Shopping includes full replacement packs when needed.';
        art=figure('shop');actions=btn('Finish the tour','next')+btn('Back','back','link');break;
      case 9:
-       eyebrow='YOUR KITCHEN, MADE SIMPLE';headline='A bank account for your kitchen.';
-       description='Shop tops it up. Cooking uses it up.';
-       const balanceIcon=path=>`<span class="bbob-balance-icon" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round">${path}</svg></span>`;
-       art=`<div class="bbob-balance-intro">
-         <figure class="bbob-balance-scene" aria-label="Shopping adds to your pantry; cooking uses ingredients. Leftovers carry into the next week.">${kitchenBalanceArt()}<figcaption><span>＋ Shop adds</span><strong>Your pantry</strong><span>Cooking uses −</span></figcaption></figure>
-         <ol class="bbob-balance-steps">
-           <li>${balanceIcon('<rect x="4" y="5" width="16" height="16" rx="3"/><path d="M8 3v4m8-4v4M4 11h16m-11 4h2m3 0h2"/>')}<div><strong>Plan</strong><p>Your weekly food budget.</p></div></li>
-           <li>${balanceIcon('<rect x="5" y="3" width="14" height="18" rx="3"/><path d="M5 11h14M9 7v1m0 7v2"/>')}<div><strong>At home</strong><p>The food and essentials you have.</p></div></li>
-           <li>${balanceIcon('<path d="m4 9 2 11h12l2-11H4Zm3 0 3-6m7 6-3-6M9 13v3m6-3v3"/>')}<div><strong>Shop</strong><p>Buy what’s missing. Confirm to restock.</p></div></li>
-           <li>${balanceIcon('<path d="M5 12h14v4a4 4 0 0 1-4 4H9a4 4 0 0 1-4-4v-4Zm-2 2h2m14 0h2M4 10h16m-9-2h2M9 3v2m6-2v2"/>')}<div><strong>Cook</strong><p>Confirm cooked or Day done to use ingredients.</p></div></li>
-           <li class="bbob-balance-repeat">${balanceIcon('<path d="M19 8a8 8 0 0 0-13-3L3 8m0-5v5h5m-3 8a8 8 0 0 0 13 3l3-3m0 5v-5h-5"/>')}<div><strong>A little check. A fresh week.</strong><p>Review leftovers and essentials. Anything left carries forward.</p></div></li>
+       eyebrow='THE BASKETBOSS WAY';headline='Your kitchen, <em>made simple.</em>';
+       description='Plan your meals. Use what you have. Top up what you need.';
+       const kitchenIcon=path=>`<span class="bbob-kitchen-icon" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round">${path}</svg></span>`;
+       art=`<div class="bbob-kitchen-routine">
+         <ol class="bbob-kitchen-steps">
+           <li>${kitchenIcon('<rect x="3" y="5" width="18" height="16" rx="3"/><path d="M7 3v4m10-4v4M3 10h18"/>')}<div><strong>Plan</strong><p>Auto-fill, or choose meals in Discover. Set servings.</p></div><span class="bbob-kitchen-order" aria-hidden="true">01</span></li>
+           <li>${kitchenIcon('<path d="m3 10 2 10h14l2-10H3Zm5 0V7a4 4 0 0 1 8 0v3m-7 4v3m6-3v3"/>')}<div><strong>At home</strong><p>Check what you have, then confirm the amounts.</p></div><span class="bbob-kitchen-order" aria-hidden="true">02</span></li>
+           <li>${kitchenIcon('<path d="M10 5h11M10 12h11M10 19h11M3 5l1 1 2-3m-3 9 1 1 2-3m-3 9 1 1 2-3"/>')}<div><strong>Shop</strong><p>Buy what’s missing. Finish shop or confirm a receipt to restock.</p></div><span class="bbob-kitchen-order" aria-hidden="true">03</span></li>
+           <li>${kitchenIcon('<path d="M5 10h14v7a3 3 0 0 1-3 3H8a3 3 0 0 1-3-3v-7ZM3 10h18M9 7h6v3M2 13h3m14 0h3M8 3v1m8-1v1"/>')}<div><strong>Cook</strong><p>Tap Confirm cooked or Day done to record what you used.</p></div><span class="bbob-kitchen-order" aria-hidden="true">04</span></li>
+           <li class="bbob-kitchen-repeat">${kitchenIcon('<path d="M19 8a8 8 0 0 0-13-3L3 8m0-5v5h5m-3 8a8 8 0 0 0 13 3l3-3m0 5v-5h-5"/>')}<div><strong>Next week starts with what’s left.</strong><p>Review leftovers and essentials, then plan again.</p></div></li>
          </ol>
        </div>`;
        foot='';
@@ -226,7 +189,9 @@
        actions=btn('Explore Premium plans','premium')+btn('Continue with BasketBoss Free','free-complete','outline');
    }
    const counter=state.step===0?'':`<div class="bbob-progress" aria-label="Onboarding step ${state.step+1} of ${STEP_MAX+1}"><span style="width:${Math.min(100,Math.round(100*state.step/STEP_MAX))}%"></span></div>`;
-   return `<div class="bbob-shell"><header class="bbob-header"><div class="bbob-brand"><img src="${LOGO}" alt=""><span>Basket<span>Boss</span></span></div><button type="button" class="bbob-exit" data-bbob="${replaying?'replay-cancel':'free'}" aria-label="${replaying?'Cancel setup and keep existing preferences':'Exit onboarding and explore free recipes'}">${replaying?'Cancel setup':'Explore Free'} <span aria-hidden="true">×</span></button></header>${counter}<section class="bbob-main" aria-labelledby="bbob-title"><p class="bbob-eyebrow">${eyebrow}</p><h1 id="bbob-title">${headline}</h1><p class="bbob-description">${description}</p>${art}${foot?`<p class="bbob-footnote">${foot}</p>`:''}<p id="bbobSaveError" role="alert" class="bbob-save-error"></p></section><footer class="bbob-footer">${actions}<div class="bbob-stepname">${titles[state.step]} · ${state.step+1} of 11</div></footer></div>`;
+   const headingMarkup=`<p class="bbob-eyebrow">${eyebrow}</p><h1 id="bbob-title">${headline}</h1>`;
+   const intro=state.step===9?`<div class="bbob-kitchen-hero"><div class="bbob-kitchen-hero-copy">${headingMarkup}</div><img class="bbob-kitchen-meal" src="release-assets/basketboss-v17/images/existing/creamy-pasta.webp" alt="" width="360" height="360"><span class="bbob-kitchen-ribbon">Plan. Shop. Cook. Repeat.</span></div><p class="bbob-description">${description}</p>`:`${headingMarkup}<p class="bbob-description">${description}</p>`;
+   return `<div class="bbob-shell"><header class="bbob-header"><div class="bbob-brand"><img src="${LOGO}" alt=""><span>Basket<span>Boss</span></span></div><button type="button" class="bbob-exit" data-bbob="${replaying?'replay-cancel':'free'}" aria-label="${replaying?'Cancel setup and keep existing preferences':'Exit onboarding and explore free recipes'}">${replaying?'Cancel setup':'Explore Free'} <span aria-hidden="true">×</span></button></header>${counter}<section class="bbob-main" aria-labelledby="bbob-title">${intro}${art}${foot?`<p class="bbob-footnote">${foot}</p>`:''}<p id="bbobSaveError" role="alert" class="bbob-save-error"></p></section><footer class="bbob-footer">${actions}<div class="bbob-stepname">${titles[state.step]} · ${state.step+1} of 11</div></footer></div>`;
  }
  function restoreAuth(){
    if(form&&formMarker?.parentNode)formMarker.parentNode.insertBefore(form,formMarker);
@@ -266,7 +231,7 @@
    host.classList?.toggle('bbob-keyboard',state.step===1&&editing&&height<fullViewportHeight-100);
    window.requestAnimationFrame?.(keepAuthFocusVisible);
  }
- function render(){if(!host)return;host.classList?.toggle('bbob-bank-slide',state.step===9);restoreAuth();host.innerHTML=content();
+ function render(){if(!host)return;host.classList?.toggle('bbob-kitchen-slide',state.step===9);restoreAuth();host.innerHTML=content();
    if(state.step===1&&!accountRemembered())mountAuth();
    sizeWelcomeViewport();host.scrollTop=0;
    if(state.step===1&&!accountRemembered()){
