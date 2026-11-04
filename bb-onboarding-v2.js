@@ -159,10 +159,23 @@
        foot='Dated online guides cover selected UK products; regional estimates fill gaps. Meal estimates count the share of staples used, while Shopping includes full replacement packs when needed.';
        art=figure('shop');actions=btn('Finish the tour','next')+btn('Back','back','link');break;
      case 9:
-       eyebrow='READY WHEN YOU ARE';headline='You’re all set.';
-       description='Less time wondering what’s for dinner. More time enjoying it.';
-       art='<div class="bbob-finish-art">'+originalCrownAnimation()+'<span class="bbob-sheen" aria-hidden="true"></span></div>';
-       actions=btn('Choose how to get started','next');break;
+       eyebrow='YOUR KITCHEN, MADE SIMPLE';headline='A bank account for your kitchen.';
+       description='Shop tops it up. Cooking uses it up. BasketBoss helps you keep track.';
+       art=`<div class="bbob-balance-intro">
+         <div class="bbob-balance-card" aria-label="At home is your kitchen balance. Shopping adds to it and cooking uses it.">
+           <div class="bbob-balance-heading"><img src="${LOGO}" alt=""><div><span>AT HOME</span><strong>Your kitchen balance</strong><small>The food and essentials you already have</small></div></div>
+           <div class="bbob-balance-movements" aria-hidden="true"><span><b>＋</b> Shopping adds</span><span><b>−</b> Cooking uses</span></div>
+         </div>
+         <ol class="bbob-balance-steps">
+           <li><span aria-hidden="true">1</span><div><strong>Plan your week</strong><p>Your meal plan is your food budget.</p></div></li>
+           <li><span aria-hidden="true">2</span><div><strong>Check your balance</strong><p>Review At home. Your shopping list shows what’s missing.</p></div></li>
+           <li><span aria-hidden="true">3</span><div><strong>Top it up</strong><p>Confirm your shopping to add food and essentials.</p></div></li>
+           <li><span aria-hidden="true">4</span><div><strong>Use it up</strong><p>Confirm cooked or Day done to deduct meal ingredients.</p></div></li>
+           <li><span aria-hidden="true">5</span><div><strong>Check and repeat</strong><p>Update leftovers and essentials each week. Anything left carries forward.</p></div></li>
+         </ol>
+       </div>`;
+       foot='You’re all set. Plan → At home → Shop → Cook → Repeat.';
+       actions=btn('Let’s get started','next')+btn('Back','back','link');break;
      default:
        if(native()){
          eyebrow='READY TO GET STARTED';headline='Your BasketBoss is ready.';

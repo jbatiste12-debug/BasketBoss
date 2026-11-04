@@ -1,8 +1,9 @@
 # BasketBoss 1.0 (8) — TestFlight handoff
 
 Build 8 carries forward the build 7 release and adds the pantry running-balance
-workflow. The build 8 source branch is `fix/confirmed-cook-pantry`; the release
-can be frozen as `testflight-build8` after verification. Source preparation and an unsigned CI archive
+workflow. Build 8 with the compact saved-plan controls is frozen as
+`testflight-build8-plan-tabs`. Build 9 adds the kitchen-balance welcome slide;
+see `BUILD_9_TESTFLIGHT.md` for the latest upload. Source preparation and an unsigned CI archive
 do not upload a build to Apple; signing and upload use Xcode on the owner's Mac.
 
 ## Added in build 8
@@ -79,7 +80,7 @@ build 8 commit has been pushed, paste this into Terminal:
 
 ```sh
 bb_release_dir="$(mktemp -d "$HOME/BasketBoss-build8-XXXXXX")" &&
-git clone --depth 1 --branch fix/confirmed-cook-pantry \
+git clone --depth 1 --branch testflight-build8-plan-tabs \
   https://github.com/jbatiste12-debug/BasketBoss.git "$bb_release_dir" &&
 cd "$bb_release_dir" &&
 npm ci &&
