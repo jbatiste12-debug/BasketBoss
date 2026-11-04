@@ -19,8 +19,10 @@ let appleLibraryPromise;
 // module initializes. Workers disallow that during global-scope evaluation.
 // Keep initialization inside the first request that actually needs Apple;
 // disabled billing and existing web access must not load it at Worker startup.
+// The generated ESM bridge makes native imports static for Pages bundlers; its
+// factory delays SDK evaluation even when ESM module initialisation is global.
 function loadAppleLibrary(){
- return appleLibraryPromise??=import('@apple/app-store-server-library').catch(error=>{appleLibraryPromise=undefined;throw error;});
+ return appleLibraryPromise??=import('./vendor/apple-server-sdk.mjs').then(module=>module.loadAppleServerSDK()).catch(error=>{appleLibraryPromise=undefined;throw error;});
 }
 // App acquisition proof does not require subscription products, an API signing
 // key, a paid purchase, or the separate subscription sandbox account allowlist.

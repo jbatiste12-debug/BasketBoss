@@ -114,3 +114,23 @@ returns only readiness or a fixed initialization reference. The existing main-on
 inspection workflow probes this route without account credentials, allowing
 startup failures to be investigated without asking a tester to resubmit a receipt.
 A ready verifier does not prove a particular tester has Premium access.
+
+## Pages SDK module loading
+
+The production readiness probe isolated an SDK module-loading failure. A legacy
+ESM bundle reproduces `Dynamic require of "stream" is not supported` in real
+workerd. The official Apple SDK now ships as a reproducible ESM bundle whose
+Node built-ins use static native imports. Its SDK body remains behind an explicit
+request-time `loadAppleServerSDK()` factory, keeping random initialization out of
+Worker global scope. The official SDK version, cryptography, pinned roots and
+online checks are unchanged. No dependency or runtime-setting change is needed.
+
+Run `node scripts/build-apple-sdk.mjs --check` to verify the checked-in bundle and
+license notices against the pinned dependency tree. The workerd regression
+`node scripts/test-apple-sdk-worker.mjs` proves legacy failure versus a ready
+fixed bundle. The full existing Apple worker tests continue to verify signed
+fixtures and reject tampering, incorrect bundle/environment and untrusted roots.
+
+After production deployment, the public verifier readiness route must report
+ready on both domains. A tester must then activate Beta Premium and verify the
+authoritative membership status before considering the user-facing issue fixed.

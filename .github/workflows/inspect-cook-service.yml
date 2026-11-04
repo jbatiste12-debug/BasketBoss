@@ -9,6 +9,9 @@ on:
       - tests/basketboss-inspect-cook-service.test.mjs
       - tests/basketboss-cook-diagnostic-logging.test.mjs
       - bb-server-lib/bb-cook-service-error.js
+      - bb-server-lib/bb-apple-subscriptions.js
+      - bb-server-lib/vendor/**
+      - functions/api/apple/verifier-health.js
       - functions/api/tts.js
       - functions/api/cook-assistant.js
       - functions/api/_middleware.js

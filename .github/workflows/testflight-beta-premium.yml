@@ -11,6 +11,9 @@ on:
       - tests/*apple-verifier*
       - tests/*photo-meal*
       - scripts/test-apple-worker.mjs
+      - scripts/test-apple-sdk-worker.mjs
+      - scripts/build-apple-sdk.mjs
+      - tests/basketboss-apple-sdk-bundle.test.mjs
       - sql/*testflight*
       - package.json
       - package-lock.json
@@ -51,6 +54,7 @@ jobs:
           node --test --test-isolation=none
           tests/*testflight*.test.mjs
           tests/basketboss-apple-verifier-*.test.mjs
+          tests/basketboss-apple-sdk-bundle.test.mjs
           tests/basketboss-photo-meal-ingredients.test.mjs
           tests/basketboss-apple-access.test.mjs
           tests/basketboss-apple-deletion-checkout.test.mjs
@@ -59,9 +63,13 @@ jobs:
           tests/basketboss-household-production.test.mjs
           tests/basketboss-account-deletion-household-barriers.test.mjs
           tests/basketboss-receipt-inventory-backend.test.mjs
+      - name: Verify reproducible request-lazy Apple SDK packaging
+        run: node scripts/build-apple-sdk.mjs --check
       - name: Install isolated Cloudflare runtime verification tools
         run: npm install --prefix "$RUNNER_TEMP/bb-beta-worker" --package-lock=false --ignore-scripts --no-audit --no-fund wrangler@4.156.0
       - name: Verify cold Worker startup and signed Apple proofs
         env:
           BB_WORKER_TEST_TOOLS: ${{ runner.temp }}/bb-beta-worker/node_modules
-        run: node scripts/test-apple-worker.mjs
+        run: |
+          node scripts/test-apple-sdk-worker.mjs
+          node scripts/test-apple-worker.mjs
