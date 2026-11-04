@@ -1,7 +1,7 @@
 # BasketBoss 1.0 (9) — inline pantry and simpler shopping
 
 Build 9 includes all build 8 functionality and the “Your kitchen, made simple”
-welcome. The latest source is `testflight-build9-inline-shop` on
+welcome. The latest source is `testflight-build9-inline-shop-regions` on
 `fix/confirmed-cook-pantry` (PR #40). Earlier release tags remain unchanged.
 
 At home now opens a compact quantity editor beside the food tile you tap.
@@ -9,7 +9,10 @@ Use the amount, unit and −/+ controls there, then Done; valid amounts update
 Shopping automatically. Each Cupboard, Fridge and Freezer section ends with a
 compact item count and editable stock summary. Custom foods use one inline
 Item name + Qty + Unit + Add row. Existing subcategories and container-content
-review remain available; quantities use the same guarded pantry ledger.
+review remain available; quantities use the same guarded pantry ledger. UK/US
+summaries use regional display units, while opening an editor or choosing a
+display unit leaves physical stock untouched. Steppers add a canonical converted
+delta, avoiding roundtrip loss through a rounded pounds/cups display.
 
 Shop's main circle marks the displayed purchase amount as bought in one tap.
 The ••• drawer contains Enter different amount, Already have enough and My usual
@@ -126,7 +129,7 @@ from build 8. See BUILD_8_TESTFLIGHT.md for details.
 
 ## Verification
 
-Full automated suite: 1,877 passed, no failures or skipped tests, two existing
+Full automated suite: 1,882 passed, no failures or skipped tests, two existing
 TODO cases. Strict pantry TypeScript contracts passed. Native packaging and
 portable iOS checks passed: 914 assets, 100 Free recipes, no private Premium
 recipe bundle. The native Xcode compile/sign/upload is not performed here.
@@ -138,7 +141,7 @@ in previous folders:
 
 ```sh
 bb_release_dir="$(mktemp -d "$HOME/BasketBoss-build9-XXXXXX")" &&
-git clone --depth 1 --branch testflight-build9-inline-shop \
+git clone --depth 1 --branch testflight-build9-inline-shop-regions \
   https://github.com/jbatiste12-debug/BasketBoss.git "$bb_release_dir" &&
 cd "$bb_release_dir" &&
 npm ci &&
@@ -166,13 +169,14 @@ Signing and actual iOS WebView/device checks remain for the Mac/CI.
 
 ## Premium server repair
 
-The Apple SDK packaging repair is deployed separately on production main
-(`4d36c254b7c86d516c0b29baee920a10ed90dfde`, PR #46). Both production
-verifier-health endpoints return HTTP 200 with `ready: true`. The authenticated
-tester retry still fails. A second incompatibility in the certificate-check
-network request has been reproduced and is being repaired separately. Premium
-activation is not yet confirmed. This client source tag does not redeploy that
-server; backend repairs can be tested in the existing TestFlight app.
+The Apple SDK startup repair (PR #46) and online certificate-check transport
+repair (PR #47) are deployed separately on production main; the latter merge is
+`611970db12967aafa87921a6667a055674c1926e`. The official verifier keeps Apple
+roots, signature, revocation and certificate freshness checks. Signed fixtures
+pass in real workerd with online checks enabled. A tester retry is still required
+to confirm full Premium activation; the post-deploy live probe is queued.
+These server repairs work with existing clients that have the beta button. This
+client source tag does not redeploy that backend.
 
 ## Backend prerequisite
 

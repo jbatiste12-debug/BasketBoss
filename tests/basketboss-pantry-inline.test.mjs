@@ -16,3 +16,33 @@ test('unknown or invalid amounts stay unknown instead of fabricating a conversio
 test('a missing document leaves the existing pantry unmodified and safely disables enhancement',()=>{
  const fallback=ui.install({});assert.equal(typeof fallback.refresh,'function');assert.equal(typeof fallback.destroy,'function');fallback.refresh();fallback.destroy();
 });
+
+
+test('UK and US default view units use regional weight and volume preferences while produce stays counted',()=>{
+ for(const [row,expected]of[[{name:'Rice',qty:500,unit:'g'},'lb'],[{name:'Rice',qty:400,unit:'g'},'oz'],[{name:'Rice',qty:.5,unit:'kg'},'lb'],[{name:'Milk',qty:240,unit:'ml'},'cup'],[{name:'Milk',qty:30,unit:'ml'},'fl oz'],[{name:'Milk',qty:60,unit:'ml'},'cup'],[{name:'Carrots',qty:160,unit:'g'},'each'],[{name:'Rice',qty:1,unit:'bag'},'bag']])assert.equal(ui.displayUnit(row,'US',policy),expected);
+ assert.equal(ui.displayUnit({name:'Rice',qty:500,unit:'g'},'UK',policy),'g');assert.equal(ui.displayUnit({name:'Milk',qty:240,unit:'ml'},'UK',policy),'ml');assert.equal(ui.displayUnit({name:'Rice',qty:1,unit:'lb'},'UK',policy),'g');
+});
+test('measured summaries use the shared two-decimal formatter without changing quantities',()=>{
+ const display=require('../bb-pantry-display.js'),row=Object.freeze({name:'Rice',qty:500,unit:'g'}),before=JSON.stringify(row);
+ assert.equal(ui.summaryAmount(row,'US',policy,display),'1.1 lb');assert.equal(ui.summaryAmount(row,'UK',policy,display),'500 g');assert.equal(ui.summaryAmount({name:'Milk',qty:240,unit:'ml'},'US',policy,display),'1 US cups');assert.equal(ui.summaryAmount({name:'Carrots',qty:160,unit:'g'},'US',policy,display),'2 each');assert.equal(JSON.stringify(row),before);
+});
+test('US steppers add physical base-unit deltas exactly without display-rounding drift',()=>{
+ const rice=Object.freeze({name:'Rice',qty:500,unit:'g'}),before=JSON.stringify(rice);assert.deepEqual(ui.stepPatch(rice,'lb',1,policy,'US'),{qty:613.4,unit:'g'});assert.deepEqual(ui.stepPatch(rice,'lb',-1,policy,'US'),{qty:386.6,unit:'g'});assert.deepEqual(ui.stepPatch({name:'Milk',qty:240,unit:'ml'},'cup',1,policy,'US'),{qty:300,unit:'ml'});assert.deepEqual(ui.stepPatch({name:'Carrots',qty:160,unit:'g'},'each',1,policy,'US'),{qty:240,unit:'g'});assert.deepEqual(ui.stepPatch({name:'Rice',qty:1,unit:'bag'},'bag',1,policy,'US'),{qty:2,unit:'bag'});assert.equal(JSON.stringify(rice),before);
+});
+
+
+test('source-region containers keep their physical quantity while target units use the active region',()=>{
+ const uk={name:'Milk',qty:1,unit:'pint',inputMarket:'UK'},us={name:'Milk',qty:1,unit:'pint',inputMarket:'US'},display=require('../bb-pantry-display.js');
+ assert.equal(ui.displayUnit(uk,'US',policy),'cup');assert.equal(ui.converted(uk,'ml',policy,'US'),568);assert.equal(ui.converted(uk,'pint',policy,'US'),1.200846,'the source UK pint remains568ml while a targetUSpint is473ml');
+ assert.equal(ui.converted({name:'Milk',qty:568,unit:'ml',inputMarket:'UK'},'pint',policy,'US'),1.200846);
+ assert.deepEqual(ui.stepPatch({name:'Milk',qty:568,unit:'ml',inputMarket:'UK'},'pint',1,policy,'US'),{qty:686.25,unit:'ml'});
+ assert.deepEqual(ui.stepPatch(uk,'pint',1,policy,'US'),{qty:686.25,unit:'ml'});
+ assert.equal(ui.displayUnit(us,'UK',policy),'ml');assert.equal(ui.converted(us,'ml',policy,'UK'),473);assert.equal(ui.summaryAmount(us,'UK',policy,display),'473 ml');assert.equal(ui.summaryAmount(uk,'US',policy,display),'2.37 US cups');
+ assert.equal(ui.displayUnit({name:'Ground beef',qty:1,unit:'pack',inputMarket:'UK'},'US',policy),'lb');assert.equal(ui.summaryAmount({name:'Ground beef',qty:1,unit:'pack',inputMarket:'UK'},'US',policy,display),'1.1 lb');
+});
+
+
+test('regional pint display and steps ignore container capacity while preserving its saved source quantity',()=>{
+ const row={name:'Milk',qty:568,unit:'ml',inputMarket:'UK',packReviewed:true,packQuantity:568,packUnit:'ml'};const before=JSON.stringify(row);assert.equal(ui.converted(row,'pint',policy,'US'),1.200846);assert.deepEqual(ui.stepPatch(row,'pint',1,policy,'US'),{qty:686.25,unit:'ml'});assert.equal(JSON.stringify(row),before);
+ const tomato={name:'Chopped tomatoes',qty:800,unit:'g',inputMarket:'UK',packReviewed:true,packQuantity:400,packUnit:'g'};assert.equal(ui.converted(tomato,'tin',policy,'US'),2,'reviewed contents retain actual container size');
+});
