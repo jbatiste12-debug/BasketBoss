@@ -305,20 +305,34 @@
  }
  function dismiss(restoreReplay=true){
    const closeSettings=!restoreReplay&&replaying;
+   const closingHost=host;
+   const dismissNative=window.BBNative?.isNative===true&&form&&host?.contains(form)&&typeof window.BBNative.dismissKeyboard==='function'
+     ?window.BBNative.dismissKeyboard.bind(window.BBNative):null;
+   const editable=node=>node?.matches?.('input,textarea,select,[contenteditable]:not([contenteditable="false"])')===true;
    // WKWebView can keep the keyboard attached when its focused input is moved
    // back to the account panel. End editing before restoring the shared form.
    const active=document.activeElement;
    if(active&&host?.contains(active))active.blur?.();
-   if(window.BBNative?.isNative===true&&form&&host?.contains(form)){
-     // DOM blur and UIKit keyboard dismissal can finish at different times
-     // when the shared form moves. Closing stays synchronous if native is absent.
-     try{Promise.resolve(window.BBNative.dismissKeyboard?.()).catch(()=>{});}catch(_){}
-   }
    unlockWelcomeBackground();restoreAuth();host?.remove();host=null;
    if(restoreReplay&&replaying&&replayOriginal)state=replayOriginal;
    replaying=false;replayOriginal=null;changedPreferences.clear();
-   if(lastFocus?.isConnected)lastFocus.focus({preventScroll:true});
+   // Restoring a credential field would immediately reopen the keyboard.
+   if(lastFocus?.isConnected&&!editable(lastFocus))lastFocus.focus({preventScroll:true});
    if(closeSettings)document.querySelector('.bbui-settings-overlay:not([hidden]) .bbui-settings-close')?.click();
+   if(dismissNative){
+     // Let WebKit apply the restored form's hidden parent before UIKit ends
+     // editing. Calling the bridge before this move races its responder update.
+     const finishDismissal=()=>{
+       if(host||closingHost?.isConnected===true)return;
+       const current=document.activeElement;
+       // A new trusted interaction may already have opened another form.
+       if(editable(current)&&current.getClientRects?.().length)return;
+       if(editable(current))current.blur?.();
+       try{Promise.resolve(dismissNative()).catch(()=>{});}catch(_){}
+     };
+     if(typeof window.requestAnimationFrame==='function')window.requestAnimationFrame(finishDismissal);
+     else queueMicrotask(finishDismissal);
+   }
  }
  function replay(){
    if(host||blocked())return false;
