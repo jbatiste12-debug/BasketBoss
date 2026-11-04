@@ -1,6 +1,6 @@
 /* Reviewed receipt quantity suggestions. Estimates never write stock and never
  * convert between dimensions or guess clove/bulb, pack/count or spoon density. */
-(function(root,factory){'use strict';const api=factory();if(typeof module==='object'&&module.exports)module.exports=api;if(root)root.BBReceiptQuantity=api;})(typeof window==='undefined'?null:window,function(){
+(function(root,factory){'use strict';const common=typeof module==='object'&&module.exports,api=factory(root?.BBPantryPolicy||(common?require('./bb-pantry-policy.js'):null));if(common)module.exports=api;if(root)root.BBReceiptQuantity=api;})(typeof window==='undefined'?null:window,function(/** @type {typeof import('./bb-pantry-policy')|null} */ policy){
  'use strict';
  /** @typedef {import('./types/pantry-workflow').ReceiptLine} ReceiptLine */
  /** @typedef {import('./types/pantry-workflow').QuantityContext} QuantityContext */
@@ -15,25 +15,27 @@
  /** @param {unknown} value @returns {string|null} */
  const key=value=>{const text=clean(value).toLowerCase();return !text||text.includes('|')||['__proto__','prototype','constructor'].includes(text)?null:aliases[text]||text;};
  /** @param {unknown} value @returns {string} */
- const unit=value=>(/** @type {Record<string,string>} */ ({gram:'g',grams:'g',kilogram:'kg',kilograms:'kg',litre:'l',litres:'l',liter:'l',liters:'l',millilitre:'ml',millilitres:'ml',milliliter:'ml',milliliters:'ml',pcs:'each',pc:'each',pieces:'each',piece:'each',items:'each',item:'each',eggs:'each',cloves:'clove',bulbs:'bulb',tins:'tin',can:'tin',cans:'tin',packs:'pack',bags:'bag',bunches:'bunch',loaves:'loaf',slices:'slice'}))[clean(value).toLowerCase()]||clean(value).toLowerCase();
+ const unit=value=>(/** @type {Record<string,string>} */ ({gram:'g',grams:'g',kilogram:'kg',kilograms:'kg',litre:'l',litres:'l',liter:'l',liters:'l',millilitre:'ml',millilitres:'ml',milliliter:'ml',milliliters:'ml',pcs:'each',pc:'each',pieces:'each',piece:'each',items:'each',item:'each',eggs:'each',cloves:'clove',bulbs:'bulb',tins:'tin',can:'tin',cans:'tin',packs:'pack',bags:'bag',bunches:'bunch',loaves:'loaf',slices:'slice',cups:'cup',pints:'pint',floz:'fl oz','fl. oz.':'fl oz','fluid ounce':'fl oz','fluid ounces':'fl oz',ounces:'oz',ounce:'oz',lbs:'lb',pound:'lb',pounds:'lb'}))[clean(value).toLowerCase()]||clean(value).toLowerCase();
  /** @param {unknown} value @returns {number|null} */
  const numeric=value=>value!==null&&value!==undefined&&value!==''&&typeof value!=='boolean'&&Number.isFinite(Number(value))?Number(value):null;
  /** @param {unknown} value @param {unknown} rawUnit @returns {MeasuredQuantity|null} */
  function measured(value,rawUnit){const n=numeric(value),u=unit(rawUnit),base=u==='kg'?'g':u==='l'?'ml':u,amount=Math.round(/** @type {number} */ (n)*(u==='kg'||u==='l'?1000:1)*1000)/1000;return n!==null&&n>0&&n<=LIMIT&&['g','ml','tsp','tbsp',...COUNT].includes(base)&&amount>0&&amount<=LIMIT&&(!COUNT.has(base)||Number.isInteger(amount))?{quantity:amount,unit:/** @type {import('./types/pantry-workflow').ReceiptUnit} */ (base)}:null;}
  /** @param {MeasuredQuantity} amount @param {import('./types/pantry-workflow').ReceiptSource} source @param {boolean} estimated @param {string} note @param {Partial<import('./types/pantry-workflow').ReceiptPack>} [pack] @returns {ReceiptSuggestion} */
  const result=(amount,source,estimated,note,pack={})=>({...amount,...pack,source,estimated,note});
- /** @param {ReceiptLine} line @returns {ReceiptSuggestion|{invalid:true}|null} */
- function explicit(line){
-  const rawUnit=unit(line.unit),direct=rawUnit==='pack'&&(line.packQuantity||line.packSize)?null:measured(line.quantity,line.unit);
-  const pack=measured(line.packQuantity??line.packSize,line.packUnit??line.packSizeUnit??(line.packQuantity!==undefined?line.unit:null));
+ /** @param {ReceiptLine} line @param {QuantityContext} context @returns {ReceiptSuggestion|{invalid:true}|null} */
+ function explicit(line,context){
+  /** @param {unknown} quantity @param {unknown} units @returns {MeasuredQuantity|null} */
+  const convert=(quantity,units)=>context.pantryPolicy===true&&policy?policy.normalize(line.canonicalKey||line.ingredientKey||line.key||line.name||line.description,quantity,unit(units).replace(/^fl\.?\s*oz\.?$/,'fl oz'),{market:context.market}):measured(quantity,units);
+  const rawUnit=unit(line.unit),direct=rawUnit==='pack'&&(line.packQuantity||line.packSize)?null:convert(line.quantity,line.unit);
+  const pack=convert(line.packQuantity??line.packSize,line.packUnit??line.packSizeUnit??(line.packQuantity!==undefined?line.unit:null));
   const rawCount=line.packCount??line.count??(rawUnit==='pack'?line.quantity:null),count=numeric(rawCount);
   if(count!==null&&(!Number.isInteger(count)||count<=0||count>10000))return {invalid:true};
   if(pack){const actual=count??1,total=measured(pack.quantity*actual,pack.unit);if(!total)return {invalid:true};if(direct&&(direct.unit!==total.unit||Math.abs(direct.quantity-total.quantity)>.001))return {invalid:true};return result(total,'receipt',count===null,'Pack amount read from receipt'+(count===null?'; assumes one pack — check it.':'.'),{packQuantity:pack.quantity,packUnit:pack.unit,packCount:actual});}
   if(direct&&rawUnit!=='pack')return result(direct,'receipt',false,'Amount read from receipt.');
   const description=clean(line.packText||line.description||line.name);
-  const multi=description.match(/(?:^|\s)(\d{1,4})\s*[x×]\s*(\d+(?:\.\d+)?)\s*(kg|g|ml|litres?|liters?|l)\b/i);
-  const single=multi||description.match(/(?:^|\s)(\d+(?:\.\d+)?)\s*(kg|g|ml|litres?|liters?|l)\b/i);
-  if(single){const contents=measured(multi?multi[2]:single[1],multi?multi[3]:single[2]),packs=multi?Number(multi[1]):count??1,total=contents&&measured(contents.quantity*packs,contents.unit);if(!total)return {invalid:true};return result(total,'receipt',!multi&&count===null,'Pack amount read from receipt'+(!multi&&count===null?'; assumes one pack — check it.':'.'),{packQuantity:contents.quantity,packUnit:contents.unit,packCount:packs});}
+  const multi=description.match(/(?:^|\s)(\d{1,4})\s*[x×]\s*(\d+(?:\.\d+)?)\s*(fl\.?\s*oz\.?|fluid\s+ounces?|floz|lbs?|pounds?|oz|ounces?|cups?|pints?|kg|g|ml|litres?|liters?|l)\b/i);
+  const single=multi||description.match(/(?:^|\s)(\d+(?:\.\d+)?)\s*(fl\.?\s*oz\.?|fluid\s+ounces?|floz|lbs?|pounds?|oz|ounces?|cups?|pints?|kg|g|ml|litres?|liters?|l)\b/i);
+  if(single){const contents=convert(multi?multi[2]:single[1],multi?multi[3]:single[2]),packs=multi?Number(multi[1]):count??1,total=contents&&measured(contents.quantity*packs,contents.unit);if(!total)return {invalid:true};return result(total,'receipt',!multi&&count===null,'Pack amount read from receipt'+(!multi&&count===null?'; assumes one pack — check it.':'.'),{packQuantity:contents.quantity,packUnit:contents.unit,packCount:packs});}
   const countText=description.match(/(?:^|\s)(\d{1,4})\s*(?:eggs?|each|pcs?|pieces?|rolls?)\b/i)||description.match(/\b(?:eggs?|rolls?)\s*(\d{1,4})\s*(?:pack|pk)\b/i);
   if(countText){const amount=measured(Number(countText[1]),'each');if(amount)return result(amount,'receipt',false,'Count read from receipt.');}
   return null;
@@ -44,8 +46,25 @@
  function infer(line={},context={}){
   if(!line||typeof line!=='object'||Array.isArray(line))return null;
   const kind=line.classification||line.kind;if(line.sourceKind&&line.sourceKind!=='purchase'||['discount','refund','tax','total','ignore'].includes(/** @type {string} */ (kind))||line.selected===false)return null;
-  const found=explicit(line);if(found)return found.invalid?null:found;
   const name=key(line.canonicalKey||line.ingredientKey||line.key||line.name||line.description),essential=kind==='essential';
+  const found=explicit(line,context);
+  if(context.pantryPolicy===true&&policy&&name&&!essential){
+   const canonical=policy.canonicalName(name),saved=Object.values(context.inventory||{}).filter(row=>row?.selected!==false&&policy.canonicalName(row?.name)===canonical),existing=saved[0];
+   if(policy.isStaple(canonical)){
+    const source=found&&!found.invalid?found:line,purchase=policy.staplePurchase({name:canonical,quantity:source.quantity??line.quantity,unit:source.unit??line.unit,packCount:line.packCount??source.packCount,packQuantity:source.packQuantity,packUnit:source.packUnit});
+    if(purchase)return result({quantity:purchase.quantity,unit:'each'},'receipt',purchase.estimated,canonical+' → +'+purchase.quantity+' '+purchase.label+(purchase.quantity===1?'':'s')+(existing?' (matches your pantry)':' · container tracking')+'. Check the bought container count.');
+   }
+   const source=found&&!found.invalid?found:line,normalized=policy.normalize(canonical,source.quantity??line.quantity,source.unit??line.unit,{market:context.market,reviewed:line.packReviewed===true,packQuantity:line.packQuantity,packUnit:line.packUnit});
+   if(normalized){
+    const currentUnit=existing&&policy.normalize(canonical,existing.qty,existing.unit,{market:context.market,reviewed:existing.packReviewed===true,packQuantity:existing.packQuantity,packUnit:existing.packUnit});
+    let amount=normalized,note=normalized.assumption||'Amount read from receipt.';
+    // Prefer the existing measured display unit only when it is the same
+    // physical dimension. Containers are converted to the canonical amount.
+    if(existing&&currentUnit?.unit===normalized.unit)note=canonical+' → +'+normalized.quantity+' '+normalized.unit+' (matches your pantry). '+note;
+    return result(amount,'receipt',normalized.estimated,note);
+   }
+  }
+  if(found)return found.invalid?null:found;
   if(!name&&!essential)return null;
   const choices=Array.isArray(context.choices)?context.choices:[],choice=choices.find(row=>key(row.key||row.name)===name);
   /** @param {MeasuredQuantity} amount */

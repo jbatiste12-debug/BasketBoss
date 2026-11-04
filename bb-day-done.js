@@ -32,7 +32,7 @@
     for(const row of value.rows){
      const line=make('div','bb-day-done-amount');line.append(make('strong','',row.name||'Ingredient'));
      const unit=row.unit?' '+row.unit:'';
-     line.append(make('span','',Number.isFinite(row.deduct)?'Use up to '+row.deduct+unit:'Amount needs review'));
+     line.append(make('span','',row.staple?(row.stockLabel||'Staple status kept; no spoonful deduction'):Number.isFinite(row.deduct)?'Use up to '+row.deduct+unit:'Amount needs review'));
      if(row.issueLabel)line.append(make('small','bb-day-done-issue',row.issueLabel));
      for(const assumption of row.assumptions||[])line.append(make('small','',assumption));details.append(line);
     }

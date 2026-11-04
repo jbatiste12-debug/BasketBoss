@@ -32,6 +32,13 @@ export interface FoodConversion {
   assumption?: string;
 }
 export interface PantryConversionContext {
+  /** Enables status/container staples and labelled UK pack defaults. */
+  pantryMode?: boolean;
+  staples?: Record<string, 'in' | 'in_stock' | 'low' | 'out' | 'unknown' | {
+    status?: 'in' | 'in_stock' | 'low' | 'out' | 'unknown';
+    stapleStatus?: 'in' | 'in_stock' | 'low' | 'out' | 'unknown';
+    count?: number;
+  }>;
   stock?: Record<string, ReviewedStockConversion>;
   foods?: Record<string, FoodConversion>;
   canonicalMeasure?: (name: string, quantity: number, unit: string, context?: { market?: string }) => {
@@ -78,6 +85,13 @@ export interface DeductionRow {
   estimated?: boolean;
   assumptions?: string[];
   allocations?: StockAllocation[];
+  staple?: boolean;
+  stapleStatus?: 'in' | 'low' | 'out' | 'unknown';
+  stapleRestock?: boolean;
+  stapleCount?: number;
+  /** Status coverage for a culinary staple amount; never a measured deduction. */
+  covered?: boolean;
+  stockLabel?: string;
 }
 export interface UsedIngredient { id: string; key: string; unit: string; required: number; estimated?: boolean; assumptions?: string[]; allocations?: StockAllocation[] }
 export interface DeductionResult {
@@ -125,6 +139,7 @@ export interface ReceiptLine {
   packUnit?: string | null;
   packSizeUnit?: string | null;
   packText?: string;
+  packReviewed?: boolean;
 }
 export interface CatalogueEntry {
   ingredient?: string;
@@ -150,6 +165,8 @@ export interface ShoppingQuantity {
   unit?: string;
 }
 export interface QuantityContext {
+  pantryPolicy?: boolean;
+  inventory?: Record<string, Record<string, unknown>>;
   market?: 'UK' | 'Guernsey' | 'Jersey' | 'US';
   choices?: Array<{ key?: string; name?: string; units?: string[] }>;
   shoppingItems?: ShoppingQuantity[];
@@ -164,6 +181,7 @@ export interface ReceiptQuantityAPI {
 declare global {
   const module: { exports: unknown };
   interface Window {
+    BBPantryPolicy?: typeof import('../bb-pantry-policy');
     BBPantryDeduction?: DeductionAPI;
     BBReceiptQuantity?: ReceiptQuantityAPI;
   }

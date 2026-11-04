@@ -1612,6 +1612,12 @@ function bb172StapleSaved(){
 }
 function bb172StapleAssumesOnHand(item){
  const name=String(item?.key||item?.name||'').trim().toLowerCase();
+ if(window.BBPantryPolicy){
+  if(!window.BBPantryPolicy.isStaple(name)||item?.stapleStatus&&item.stapleStatus!=='in')return false;
+  const status=window.BBPantryState?.stapleState?.()?.[window.BBPantryPolicy.canonicalName(name,window.BBPriceV19?.canonical)]?.status;
+  if(status)return status==='in';
+  return false;
+ }
  const active=bb172StapleSaved();
  return BB172_STAPLES.some(([key,,pattern])=>active[key]===true&&pattern.test(name));
 }
@@ -3778,14 +3784,18 @@ body[data-bbnext-view="discover"] #app .bb-featured-card #bbFeaturedBatch {
 <div id="modalRoot"></div><div id="toastRoot" aria-live="polite"></div>
 <script src="basketboss-aisles-v20.js?v=bb82-aisle-20261024"></script>
 <script src="bb-supermarkets.js?v=bb-stores-20261031"></script>
-<script src="bb-receipt-quantity.js?v=20261102-pantry1"></script>
+<script src="bb-pantry-policy.js?v=20261104-regions2"></script>
+<script src="bb-pantry-display.js?v=20261104-regions2"></script>
+<script src="bb-recipe-canonical.js?v=20261104-regions2"></script>
+<script type="module" src="bb-pantry-runtime.mjs?v=20261104-regions2"></script>
+<script src="bb-receipt-quantity.js?v=20261104-regions2"></script>
 <script src="bb-duration.js?v=20261102-duration2"></script>
 <script src="bb-price-scan.js?v=20261102-loop2"></script>
-<script src="basketboss-pricing-v19.js?v=20261103-units1"></script>
+<script src="basketboss-pricing-v19.js?v=20261104-regions2"></script>
 <script src="bb-serving-scale.js?v=20261103-kitchen2"></script>
-<script src="bb-recipe-measures.js?v=20261102-measures1"></script>
+<script src="bb-recipe-measures.js?v=20261104-regions2"></script>
 <script src="bb-cook-step-layout.js?v=20261102-clarity1"></script>
-<script src="bb-cook-pantry.js?v=20261104-cycle1"></script>
+<script src="bb-cook-pantry.js?v=20261104-regions2"></script>
 <link rel="stylesheet" href="bb-cook-clarity.css?v=20261102-loop2">
 <script src="bb-recipe-planning.js?v=20261104-cycle1"></script>
 <script src="bb-recipe-editorial.js?v=20261102-editorial4"></script>
@@ -3801,9 +3811,9 @@ body[data-bbnext-view="discover"] #app .bb-featured-card #bbFeaturedBatch {
 <script src="bb-cook-assistant.js?v=20261103-mentor2"></script>
 <script src="bb-cook-voice.js?v=20261103-mentor2"></script>
 <script defer src="bb-weekly-essentials.js?v=20261031-receipt-pantry"></script>
-<script defer src="bb-receipt-inventory.js?v=20261104-groups1"></script>
-<script defer src="bb-receipt-scanner.js?v=20261102-loop2"></script>
-<script defer src="bb-receipt-host.js?v=20261104-cycle1"></script>
+<script defer src="bb-receipt-inventory.js?v=20261104-regions2"></script>
+<script defer src="bb-receipt-scanner.js?v=20261104-regions2"></script>
+<script defer src="bb-receipt-host.js?v=20261104-regions2"></script>
 <link rel="stylesheet" href="bb-receipt-scanner.css?v=20261031-receipt-pantry">
 <link rel="stylesheet" href="bb-receipt-host.css?v=20261101-receipt-tab1">
 <script>
@@ -3996,7 +4006,7 @@ const BB307Pantry=(()=>{
    base units. Never convert masses to volumes or infer packaging contents. */
 const units = Object.freeze({g:{g:1,kg:1000}, ml:{ml:1,l:1000}, each:{each:1}, pack:{pack:1}, clove:{clove:1}, tsp:{tsp:1}, tbsp:{tbsp:1}});
 const aliases = Object.freeze({potatoes:'potato',eggs:'egg',tomatoes:'tomato',onions:'onion',peppers:'pepper',carrots:'carrot',bananas:'banana',apples:'apple',lemons:'lemon',limes:'lime',courgettes:'courgette',mushrooms:'mushroom',scallops:'scallop',wraps:'wrap'});
-function pantryName(name){const key=BBPriceV19.canonical(name);return BBPriceV19.canonical(aliases[key]||key);}
+function pantryName(name){const key=BBPriceV19.canonical(name),base=BBPriceV19.canonical(aliases[key]||key);return typeof window!=='undefined'&&window.BBPantryPolicy?window.BBPantryPolicy.canonicalName(base,BBPriceV19.canonical):base;}
 function pantryId(name,baseUnit){return pantryName(name)+'|'+String(baseUnit||'').trim();}
 function stockUnits(baseUnit){return Object.keys(units[baseUnit]||{[baseUnit]:1});}
 function stockToBase(quantity,inputUnit,baseUnit){
@@ -4263,7 +4273,7 @@ function bbPantryReconcileStock(stock,items){
  const unavailable=()=>{for(const req of reqs){const key=BB307Pantry.pantryId(req.key,req.unit);pantry[key]=0;mismatches[key]=['Review your saved pantry amounts and units in At home.'];}return {pantry,mismatches,estimates,remainingStock:{...(stock||{})}};};
  if(stock===null)return unavailable();
  if(!window.BBPantryDeduction?.proposal||typeof bbHomeConversionContext!=='function')return BB307Pantry.reconcileStock(stock||{},items);
- if(!Object.keys(stock||{}).length)return {pantry:{},mismatches:{},estimates:{},remainingStock:{}};
+ if(!Object.keys(stock||{}).length&&!window.BBPantryPolicy)return {pantry:{},mismatches:{},estimates:{},remainingStock:{}};
  try{
   const conversion=bbHomeConversionContext(),id=BB307Pantry.pantryId;
   const project=(source,ingredients)=>window.BBPantryDeduction.proposal({stock:{...source},ingredients:ingredients.map(row=>({...row})),id,conversion});
@@ -4271,6 +4281,7 @@ function bbPantryReconcileStock(stock,items){
   const rows=new Map(result.rows.map(row=>[row.id,row])),available=new Map(result.rows.map(row=>[row.id,Math.max(0,Math.min(row.required||0,row.deduct||0))]));
   for(const [index,req]of reqs.entries()){
    const target=targets[index],row=target&&rows.get(target.id.startsWith('unmeasured-')?'unmeasured-'+index:target.id),key=id(req.key,req.unit);
+   if(row?.staple&&row.covered){pantry[key]=req.required;continue;}
    if(!row||!(req.required>0)||!(target.required>0))continue;
    const ratio=target.required/req.required,used=Math.min(target.required,available.get(row.id)||0),credited=Math.min(req.required,used/ratio);
    available.set(row.id,Math.max(0,(available.get(row.id)||0)-used));
@@ -4801,11 +4812,12 @@ function bb321StoreLunch(next){
 function bb321LunchboxRequirements(){return BB321Lunch.lunchRequirements(bbHomeLunchForShopping()).map(item=>{const measured=BBPriceV19.canonicalMeasure(item.name,item.qty,item.unit);return measured?{...item,name:measured.key,qty:measured.quantity,unit:measured.unit,quantityEstimated:measured.estimated,quantityAssumptions:measured.assumption?[measured.assumption]:[]}:item;});}
 function bb321UnifiedShop(recipeItems,ignoreManual=false){
  bb307Stock=bb307ReadStock(); // same-tab At home changes must be visible immediately
+ if(window.BBRecipeCanonical&&typeof bb307Selections==='function'&&typeof state!=='undefined')recipeItems=bbHomeCanonicalRecipeNeeds(recipeItems);
  const lunch=bb321LunchboxRequirements(),byId=new Map();
  if(window.BBHome&&!ignoreManual)recipeItems=window.BBHome.augment(recipeItems||[],lunch,window.BBHome.targets(),BB307Pantry.pantryId);
  for(const item of recipeItems||[]){
   const id=BB307Pantry.pantryId(item.key,item.unit);
-  byId.set(id,{key:item.key,unit:item.unit,required:Number(item.required)||0});
+  byId.set(id,{...item,key:item.key,unit:item.unit,required:Number(item.required)||0});
  }
  for(const l of lunch){
   const id=BB307Pantry.pantryId(l.name,l.unit),found=byId.get(id);
@@ -4819,9 +4831,11 @@ function bb321UnifiedShop(recipeItems,ignoreManual=false){
  for(const item of byId.values())if(reconciliation.mismatches[BB307Pantry.pantryId(item.key,item.unit)]?.length)delete legacy[String(item.key).toLowerCase()];
  const merged=BB321Lunch.mergeLunchShopping(recipeItems,lunch,reconciliation.pantry,BB307Pantry.pantryId,legacy).map(item=>{
   const key=BB307Pantry.pantryId(item.key,item.unit),estimate=reconciliation.estimates?.[key];
-  return {...item,pantryMismatch:reconciliation.mismatches[key]||[],quantityEstimated:!!item.quantityEstimated||!!estimate?.estimated,quantityAssumptions:[...new Set([...(item.quantityAssumptions||[]),...(estimate?.assumptions||[])])]};
+  const original=byId.get(key);
+  return {...item,needsRecipeReview:!!original?.needsReview,pendingSources:original?.pendingSources||[],pantryMismatch:reconciliation.mismatches[key]||[],quantityEstimated:!!item.quantityEstimated||!!estimate?.estimated,quantityAssumptions:[...new Set([...(item.quantityAssumptions||[]),...(estimate?.assumptions||[])])]};
  });
- return !ignoreManual&&window.BBHome?.manualBuyItems?window.BBHome.manualBuyItems(merged):merged;
+ const withStaples=window.BBPantryPolicy?bbHomeApplyStapleShopping(merged,{reviewRequired}):merged;
+ return !ignoreManual&&window.BBHome?.manualBuyItems?window.BBHome.manualBuyItems(withStaples):withStaples;
 }
 function bb321LunchboxHTML(){
  const saved=bb321LunchState,days=BB321Lunch.LUNCH_DAYS;
@@ -7516,6 +7530,7 @@ function bbWholeProduceCount(name,qty,unit){
 
 /* Pricing sanity: every countable food gets a noun; sliced bread and loaves stay distinct. */
 function bb80ShoppingQuantity(name,quantity,unit,market=bb307Market){
+ if(market==='US'&&window.BBPantryDisplay)return window.BBPantryDisplay.format(name,quantity,unit,market,{staple:!!window.BBPantryPolicy?.isStaple(name)&&!(name==='pepper'&&unit==='each'&&!bbHomeStapleState()[name])});
  const n=Number(quantity), u=String(unit||'').toLowerCase();
  if(!Number.isFinite(n)||n<0)return BBPriceV19.formatQuantity(quantity,unit,market);
  const fmt=x=>new Intl.NumberFormat(market==='US'?'en-US':'en-GB',{maximumFractionDigits:2}).format(x);
@@ -8079,10 +8094,25 @@ function bbHomeOccurrence(id,day,kind='dinner'){
 }
 function bbHomeRecipeIngredients(id,factor){
  const normalized=BB307_NORMALIZED.find(row=>row.id===id),source=getRecipe(id);
- const rows=(normalized?.ingredients||[]).map(row=>({key:row.key||row.name,name:row.name||row.key,unit:BBPriceV19.recipeIngredientUnit?.(row,source?.ingredients)||row.unit||null,required:Number(row.quantity)>0?Number(row.quantity)*factor:null}));
+ const rows=(normalized?.ingredients||[]).map((row,index)=>{
+  const original={key:row.key||row.name,name:row.name||row.key,unit:BBPriceV19.recipeIngredientUnit?.(row,source?.ingredients)||row.unit||null,required:Number(row.quantity)>0?Number(row.quantity)*factor:null};
+  if(!window.BBRecipeCanonical)return original;
+  const projected=window.BBRecipeCanonical.project(row,{sourceLine:source?.ingredients?.[index],canonicalize:BBPriceV19.canonical,canonicalMeasure:BBPriceV19.canonicalMeasure,recipeIngredientUnit:BBPriceV19.recipeIngredientUnit,factor});
+  return projected.staple?original:{...original,key:projected.key,unit:projected.unit,required:projected.required,estimated:projected.estimated,assumption:projected.assumption,sourceFact:projected.source,needsReview:projected.needsReview};
+ });
  const names=new Set(rows.map(row=>BB307Pantry.pantryName(row.key)));
  for(const raw of source?.ingredients||[]){const name=String(raw[0]||'');if(name&&!names.has(BB307Pantry.pantryName(name)))rows.push({key:name,name,unit:null,required:null});}
  return rows;
+}
+function bbHomeCanonicalRecipeNeeds(fallback=[]){
+ if(!window.BBRecipeCanonical)return fallback;
+ const rows=[];
+ for(const selection of bb307Selections()){
+  const recipe=getRecipe(selection.id),normalized=BB307_NORMALIZED.find(row=>row.id===selection.id);if(!recipe||!normalized)continue;
+  const factor=selection.servings/(Number(recipe.servings)||4);
+  normalized.ingredients.forEach((row,index)=>rows.push(window.BBRecipeCanonical.project(row,{sourceLine:recipe.ingredients[index],canonicalize:BBPriceV19.canonical,canonicalMeasure:BBPriceV19.canonicalMeasure,recipeIngredientUnit:BBPriceV19.recipeIngredientUnit,factor})));
+ }
+ return window.BBRecipeCanonical.aggregate(rows);
 }
 function bbHomeDayMeals(day){
  if(!DAYS.includes(day))return [];
@@ -8104,6 +8134,58 @@ function bbHomeDayMeals(day){
 function bbHomeLunchForShopping(){
  const days={};for(const day of BB321Lunch.LUNCH_DAYS)days[day]=window.BBHome?.isCooked?.(bbHomeOccurrence('lunchbox:'+day,day,'lunch'))?[]:(bb321LunchState.days?.[day]||[]);
  return {...bb321LunchState,days};
+}
+function bbHomeStapleState(stock,inventory){
+ const policy=window.BBPantryPolicy;if(!policy)return {};
+ try{stock=stock||bbHomePhysicalStock();if(!inventory)inventory=JSON.parse(localStorage.getItem('basketboss_makeameal_v1_inventory')||'{}');}catch{return {};}
+ const grouped=new Map(),represented=new Set();
+ const add=(name,status,count)=>{const key=BB307Pantry.pantryName(name),old=grouped.get(key)||[];old.push({status,count});grouped.set(key,old);};
+ for(const row of Object.values(inventory||{})){
+  if(!row?.name||!policy.isStaple(row.name)||row.selected===false&&!row.stapleStatus)continue;
+  const source=row.bb173StockKey||row.stockKey,unit=row.unit||source?.slice(source.lastIndexOf('|')+1);
+  if(!row.staple&&BB307Pantry.pantryName(row.name)==='pepper'&&unit==='each')continue;
+  if(source)represented.add(source);
+  const status=policy.stapleStatus(row,source?stock[source]:undefined),count=unit==='each'?Number(row.qty??0):status==='in'||status==='low'?1:0;
+  add(row.name,status,Number.isFinite(count)&&count>=0?count:0);
+ }
+ for(const [id,qty]of Object.entries(stock||{})){
+  if(represented.has(id))continue;const at=id.lastIndexOf('|'),name=id.slice(0,at),unit=id.slice(at+1);
+  if(!policy.isStaple(name)||name==='pepper'&&unit==='each')continue;
+  add(name,qty>0?'in':'out',unit==='each'?qty:qty>0?1:0);
+ }
+ // Older on-hand choices are usable only for actual condiments/staples.
+ const assumed=typeof bb172StapleSaved==='function'?bb172StapleSaved():{};
+ for(const [key,label]of typeof BB172_STAPLES==='undefined'?[]:BB172_STAPLES){
+  const name=String(label).replace(/^[^\p{L}\p{N}]+/u,'').trim(),canonical=BB307Pantry.pantryName(name);
+  if(assumed[key]===true&&policy.isStaple(name)&&!grouped.has(canonical))add(name,'in',1);
+ }
+ return Object.fromEntries([...grouped].map(([key,entries])=>[key,{status:entries.some(x=>x.status==='in')?'in':entries.some(x=>x.status==='low')?'low':entries.every(x=>x.status==='out')?'out':'unknown',count:entries.reduce((sum,x)=>sum+x.count,0)}]));
+}
+function bbHomeApplyStapleShopping(items,{reviewRequired=false}={}){
+ const policy=window.BBPantryPolicy;if(!policy)return items;
+ const states=bbHomeStapleState(),out=[],seen=new Set();
+ for(const item of items||[]){
+  const key=BB307Pantry.pantryName(item.key||item.name),state=states[key];
+  const wholePepper=key==='pepper'&&['each','whole','piece','pieces'].includes(item.unit)&&!state;
+  if(!policy.isStaple(item.key||item.name)||wholePepper){out.push(item);continue;}
+  if(seen.has(key))continue;seen.add(key);
+  const covered=!reviewRequired&&state?.status==='in';
+  out.push({...item,key,unit:'each',required:1,pantryUsed:covered?1:0,toBuy:covered?0:1,staple:true,stapleStatus:state?.status||'out',stapleContainer:policy.containerLabel(key),pantryMismatch:reviewRequired?['Confirm the saved pantry before using staple status.']:state?.status==='unknown'?['Review this staple’s stock status in At home.']:[],quantityEstimated:false,quantityAssumptions:[]});
+ }
+ if(!reviewRequired)for(const [key,state]of Object.entries(states))if(!seen.has(key)&&['low','out'].includes(state.status))out.push({key,unit:'each',required:1,pantryUsed:0,toBuy:1,staple:true,stapleStatus:state.status,stapleContainer:policy.containerLabel(key),pantryMismatch:[],quantityAssumptions:[]});
+ return out;
+}
+function bbHomeShoppingMeasure(name,quantity,unit,options={}){
+ const policy=window.BBPantryPolicy,key=BB307Pantry.pantryName(name);
+ if(policy?.isStaple(name)){
+  if(quantity===0)return {key,quantity:0,unit:'each'};
+  const purchase=policy.staplePurchase({name,quantity,unit,packCount:options.packCount});return purchase?{...purchase,key}:null;
+ }
+ const measured=policy?.normalize(name,quantity,unit,{...options,market:bb307Market,canonicalize:BBPriceV19.canonical});
+ if(measured)return {...measured,key};
+ // Preserve a named but unknown container as a physical source for review.
+ if(policy&&['bag','pack','tin','bunch','jar','bottle','pouch'].includes(unit))return {key,quantity,unit,needsReview:true,assumption:'Container contents are unknown. Review the size in At home.'};
+ return BBPriceV19.canonicalMeasure(name,quantity,unit);
 }
 function bbHomeConversionContext(){
  const stock={},foods={},stockConflicts=new Set(),foodConflicts=new Set();
@@ -8128,7 +8210,7 @@ function bbHomeConversionContext(){
  }
  const disputedFoods=new Set([...foodConflicts,...[...stockConflicts].map(key=>BB307Pantry.pantryName(key.slice(0,key.lastIndexOf('|'))))]);
  const canonicalMeasure=(name,...args)=>disputedFoods.has(BB307Pantry.pantryName(name))?null:BBPriceV19.canonicalMeasure(name,...args);
- return {stock,foods,canonicalMeasure,basis:{wholeProduce:true,spoons:true},market:bb307Market};
+ return {stock,foods,canonicalMeasure,basis:{wholeProduce:true,spoons:true},market:bb307Market,pantryMode:!!window.BBPantryPolicy,staples:typeof bbHomeStapleState==='function'?bbHomeStapleState(physical,inventory):{}};
 }
 function bbHomePlanningStock(input){
  const stock=window.BBPantryDeduction.stockData(input||bb307ReadStock(),BB307Pantry.pantryId).values,out={};
@@ -8146,6 +8228,10 @@ function bbMountShopAdd(app){
  const region=document.createElement('section');region.className='bb-manual-shop-region';region.style.gridColumn='1 / -1';(document.getElementById('bbReleaseShopOverview')||app).before(region);
  const mounted=window.BBShopAdd.mount({container:region});bbShopAddUI={dispose(){mounted?.dispose();region.remove();}};
  const buys=window.BBHome?.shoppingBuys?.()||[];
+ if(window.BBRecipeCanonical){
+  const pending=bbHomeCanonicalRecipeNeeds().filter(row=>row.pendingSources?.length);
+  if(pending.length){const notice=document.createElement('aside');notice.className='bb-recipe-quantity-review';notice.setAttribute('role','status');const title=document.createElement('strong');title.textContent='Review recipe amounts';const note=document.createElement('p');note.textContent='These source amounts do not give a usable weight or volume. Known quantities are kept; check these before shopping.';const list=document.createElement('ul');for(const row of pending){const item=document.createElement('li');item.textContent=row.name+': '+row.pendingSources.map(source=>source.source||source.sourceQuantity+' '+source.sourceUnit).join(' · ');list.append(item);}notice.append(title,note,list);region.append(notice);}
+ }
  if(buys.length){const details=document.createElement('details'),summary=document.createElement('summary');summary.textContent='Edit manual top-ups';details.append(summary);
   for(const buy of buys){const row=document.createElement('p'),label=document.createElement('span'),remove=document.createElement('button');label.textContent=(buy.displayName||buy.name)+' · '+buy.quantity+' '+buy.unit+' ';remove.type='button';remove.className='small-btn';remove.textContent='Remove';remove.setAttribute('aria-label','Remove manual top-up '+(buy.displayName||buy.name));remove.onclick=()=>{const result=window.BBHome.addShoppingBuy({name:buy.displayName||buy.name,quantityText:'0 '+buy.unit,actorId:window.BBHome.actor(),requestId:crypto.randomUUID()});if(!result.ok)notify(result.message);};row.append(label,remove);details.append(row);}region.append(details);
  }
@@ -8201,6 +8287,7 @@ window.BBSharedShoppingHost=Object.freeze({
  openSharing:()=>{const trigger=document.querySelector('[data-bbhs-trigger]');if(trigger)trigger.click();else document.getElementById('cloud-open')?.click();},
  refresh:()=>{if(typeof render==='function')render();}
 });
+window.BBPantryState=Object.freeze({stapleState:()=>bbHomeStapleState()});
 window.BBHomeHost=Object.freeze({needsLegacyReview:bbHomeNeedsLegacyReview,settlePurchases:bbHomeSettlePurchases,
  id:BB307Pantry.pantryId,stock:bbHomePhysicalStock,
  openCook:id=>{if(getRecipe(id)&&bb176AllowedRecipe(id)){openCook(id);const url=new URL(location.href);url.searchParams.delete('bbcook');history.replaceState(null,'',url);return true;}return false;},
@@ -8215,7 +8302,7 @@ window.BBHomeHost=Object.freeze({needsLegacyReview:bbHomeNeedsLegacyReview,settl
  occurrence:bbHomeOccurrence,
  recipeIngredients:bbHomeRecipeIngredients,conversionContext:bbHomeConversionContext,
  dayMeals:bbHomeDayMeals,completionKeys:()=>[BB321_LUNCH_KEY,BB172_QUICK_DINNER_KEY,BB307_FEATURE_KEY],notify,
- planningStock:bbHomePlanningStock,shoppingMeasure:BBPriceV19.canonicalMeasure,shoppingKind:bbHomeShoppingKind,shoppingPurchaseContext:bbHomePurchaseContext,
+ planningStock:bbHomePlanningStock,shoppingMeasure:bbHomeShoppingMeasure,shoppingKind:bbHomeShoppingKind,shoppingPurchaseContext:bbHomePurchaseContext,
  openAtHome:()=>{tab='shop';render();},
  reviewDay:day=>{const pair=bbBatchPairs().find(row=>row.leftoverDay===day);if(pair)openCook(pair.recipeId,pair.sourceDay);else{tab='shop';render();}},
  consume:BB307Pantry.reconcileStock,
@@ -10099,8 +10186,13 @@ function bb83TransferBought({defer=false}={}){
  const receipts=bbBetaReceiptRead();
  if(!receipts)return {count:0,error:true};
  const eligible=bbBetaPendingBought(),household=bbHomePendingHouseholdPurchases();if(!eligible.length&&!household.length)return {count:0,skipped:0,consumed:0};
- const records=bb83ReadObject(BB83_KITCHEN_INVENTORY),nextRecords={...records};
+ let records=bb83ReadObject(BB83_KITCHEN_INVENTORY);
  let newStock;try{newStock={...(typeof bbHomePhysicalStock==='function'?bbHomePhysicalStock():bb307Stock)};}catch{return {count:0,error:true,needsPantryReview:true};}
+ if(window.BBPantryPolicy){
+  if(typeof window.BBPantryNormalize!=='function')return {count:0,error:true,needsPantryReview:true};
+  try{const normalized=window.BBPantryNormalize(newStock,records,{canonicalize:BBPriceV19.canonical,market:bb307Market});newStock=normalized.stock;records=normalized.inventory;}catch{return {count:0,error:true,needsPantryReview:true};}
+ }
+ const nextRecords={...records};
  const legacy=bb83ReadObject(BB83_SHOP_STOCK_LEDGER),nextLegacy={...legacy};
  const nextReceipts={...receipts},creditAdditions=[];let count=0,skipped=0,consumed=0;
  for(const item of eligible){
@@ -10118,7 +10210,13 @@ function bb83TransferBought({defer=false}={}){
    if(info.leftoverSurplus>0&&bbBetaIsPerishable(item.aisle)&&!choice.keep){skipped++;continue;}
    amount=info.totalPurchased;
   }
-  const factor=choice.unit==='kg'||choice.unit==='l'?1000:1,unit=choice.unit==='kg'?'g':choice.unit==='l'?'ml':choice.unit;amount*=factor;
+  const factor=choice.unit==='kg'||choice.unit==='l'?1000:1;let unit=choice.unit==='kg'?'g':choice.unit==='l'?'ml':choice.unit;amount*=factor;
+  let creditedQuantity=item.qty*factor;
+  const policy=window.BBPantryPolicy,staple=policy?.isStaple(item.name);
+  if(policy&&amount>0){
+   const resolved=staple?policy.staplePurchase({name:item.name,quantity:amount,unit}):policy.normalize(item.name,amount,unit,{market:bb307Market});
+   if(resolved){const before=amount;amount=resolved.quantity;creditedQuantity=before>0?creditedQuantity*amount/before:0;unit=resolved.unit;}
+  }
   if(amount>0){
    const name=item.name;
    const stockId=BB307Pantry.pantryId(name,unit);
@@ -10135,14 +10233,14 @@ function bb83TransferBought({defer=false}={}){
    const otherOwned=Object.entries(nextRecords).filter(([key,row])=>key!==inventoryId&&row?.selected&&row.bb173StockKey===stockId).reduce((sum,[,row])=>sum+(Number(row.bb173StockValue)||0),0);
    if(otherOwned>updated){skipped++;continue;}
    const recordAmount=updated-otherOwned;newStock[stockId]=updated;
-   nextRecords[inventoryId]={...previous,name,loc,selected:true,qty:recordAmount,unit,
+   nextRecords[inventoryId]={...previous,name,loc,selected:true,qty:recordAmount,unit,...(staple?{staple:true,stapleStatus:'in',stapleCount:recordAmount,containerLabel:policy.containerLabel(name)}:{}),
     bb173StockKey:stockId,bb173StockValue:recordAmount};
    count++;
   }else consumed++;
   const canonicalKey=BB307Pantry.pantryName(item.name),canonicalCreditId=bbBetaShopWeek()+'|'+canonicalKey+'|'+unit;
-  nextReceipts[receiptId]={name:item.name,canonicalKey,canonicalCreditId,qty:item.qty*factor,unit,mode:choice.mode,credited:amount,stockBasis:'full-purchase',
+  nextReceipts[receiptId]={name:item.name,canonicalKey,canonicalCreditId,qty:creditedQuantity,unit,mode:choice.mode,credited:amount,stockBasis:'full-purchase',
    purchasedAt:new Date().toISOString(),week:bbBetaShopWeek()};
-  creditAdditions.push({receiptId,canonicalCreditId,canonicalKey,name:item.name,unit,qty:item.qty*factor,credited:amount});
+  creditAdditions.push({receiptId,canonicalCreditId,canonicalKey,name:item.name,unit,qty:creditedQuantity,credited:amount});
   nextLegacy[item.id]=item.qty;
  }
  // Receipt review uses one canonical credit pool per food/unit/trip. Keep raw
@@ -10824,6 +10922,7 @@ function bbReceiptConfigureHost(){
  const readObject=key=>{const raw=localStorage.getItem(key);if(raw===null)return {};const value=JSON.parse(raw);if(!value||typeof value!=='object'||Array.isArray(value))throw Error('Receipt app data needs review');return value;};
  const saveObject=(key,value)=>{const text=JSON.stringify(value);localStorage.setItem(key,text);if(localStorage.getItem(key)!==text)throw Error('Receipt app data could not be saved');return true;};
  host.configure({
+  pantryPolicy:true,
   getSession:()=>{try{return readObject('basketboss_cloud_session_v1')}catch(_){return null}},
   getContext:()=>({market:bb307Market,retailer:bb307ActiveRetailer(),shopSessionId:bbBetaShopWeek()}),
   isPremium:()=>bbVerifiedPaidRecipes||bb176IsPremiumPreview(),
@@ -11410,7 +11509,7 @@ window.BB172Welcome={open:()=>open(true),completed:()=>read(SEEN)==='true'};
 }
 if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',patchPaths,{once:true});else patchPaths();})();
 </script>
-<script src="shopping-inventory.js?v=20261104-groups1" defer></script><dialog id="bbIntroTrialDialog" aria-labelledby="bbIntroTrialTitle" aria-describedby="bbIntroTrialText">
+<script src="shopping-inventory.js?v=20261104-regions2" defer></script><dialog id="bbIntroTrialDialog" aria-labelledby="bbIntroTrialTitle" aria-describedby="bbIntroTrialText">
  <div class="bbtrial-hero">
   <button type="button" class="bbtrial-x" data-bbtrial-close aria-label="Close Premium offer">×</button>
   <p class="bbtrial-topline">🚀 FOUNDING MEMBER BETA · FIRST 25 PLACES</p>
@@ -11441,7 +11540,7 @@ if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',
   <button type="button" class="bbtrial-free" data-bbtrial-free>Continue with BasketBoss Free →</button>
   <p class="bbtrial-foot">100 starter recipes, manual ingredients and basic planning remain available without subscribing.</p>
  </div>
-</dialog><script src="bb-intro-trial.js?v=bb-account-first-20261027-v1"></script><link rel="stylesheet" href="bb-how-it-works.css?v=20261104-kitchen1"><script defer src="bb-how-it-works.js?v=20261104-kitchen1"></script><script defer src="bb-onboarding-v2.js?v=20261104-kitchen1"></script><script defer src="bb-cold-preview.js?v=20261028-conversion-1"></script><script defer src="bb-funnel.js?v=20261028-v1"></script><script defer src="bb-ux-cleanup.js?v=20261028-ux1"></script><script src="bb-us-market.js?v=20261102-loop2"></script><script defer src="bb-install.js?v=173install1"></script><script defer src="bb-welcome-splash.js?v=20261101-signin2"></script><script defer src="bb-premium-features.js?v=20261101-weeklyshop1"></script>
+</dialog><script src="bb-intro-trial.js?v=bb-account-first-20261027-v1"></script><link rel="stylesheet" href="bb-how-it-works.css?v=20261104-kitchen1"><script defer src="bb-how-it-works.js?v=20261104-regions2"></script><script defer src="bb-onboarding-v2.js?v=20261104-kitchen1"></script><script defer src="bb-cold-preview.js?v=20261028-conversion-1"></script><script defer src="bb-funnel.js?v=20261028-v1"></script><script defer src="bb-ux-cleanup.js?v=20261028-ux1"></script><script src="bb-us-market.js?v=20261102-loop2"></script><script defer src="bb-install.js?v=173install1"></script><script defer src="bb-welcome-splash.js?v=20261101-signin2"></script><script defer src="bb-premium-features.js?v=20261101-weeklyshop1"></script>
 <style id="bb175-ux-fix">
 /* BasketBoss v17.4.2 premium-preview usability improvements */
 #app .swipe-action.yes{color:#c91e43!important;background:#fff2f4!important;border:3px solid #d92c50!important;box-shadow:0 5px 18px rgba(192,22,60,.22)!important;font-size:37px!important;font-weight:900!important}
@@ -12277,13 +12376,13 @@ body[data-bbnext-view="discover"] #app .bb175-discover-heading{padding-top:calc(
 <script defer src="bb-pantry-groups.js?v=20261104-groups1"></script>
 <script defer src="bb-pantry-groups-ui.js?v=20261104-groups1"></script>
 <script defer src="bb-household-amount.js?v=20261104-groups1"></script>
-<script defer src="bb-kitchen-essentials.js?v=20261104-groups1"></script>
+<script defer src="bb-kitchen-essentials.js?v=20261104-regions2"></script>
 <link rel="stylesheet" href="bb-keyboard-layout.css?v=20261101-keyboard1">
 <script defer src="bb-keyboard-layout.js?v=20261101-keyboard1"></script>
 <link rel="stylesheet" href="bb-simple-layout.css?v=20261102-loop2">
 <script defer src="bb-simple-layout.js?v=20261101-simple1"></script>
-<script defer src="bb-pantry-deduction.js?v=20261104-cycle1"></script>
-<script defer src="bb-home.js?v=20261104-groups1"></script><link rel="stylesheet" href="bb-day-done.css?v=20261104-cycle1"><script defer src="bb-day-done.js?v=20261104-cycle1"></script><link rel="stylesheet" href="bb-shop-add.css?v=20261104-cycle1"><script defer src="bb-shop-add.js?v=20261104-cycle1"></script><script src="bb-pantry-autofill.js?v=20261104-cycle1"></script>
+<script defer src="bb-pantry-deduction.js?v=20261104-regions2"></script>
+<script defer src="bb-home.js?v=20261104-regions2"></script><link rel="stylesheet" href="bb-day-done.css?v=20261104-cycle1"><script defer src="bb-day-done.js?v=20261104-regions2"></script><link rel="stylesheet" href="bb-shop-add.css?v=20261104-cycle1"><script defer src="bb-shop-add.js?v=20261104-cycle1"></script><script src="bb-pantry-autofill.js?v=20261104-cycle1"></script>
 <link rel="stylesheet" href="bb-shared-shopping.css?v=20261102-loop2">
 <script defer src="bb-shared-shopping.js?v=20261102-loop2"></script>
 <link rel="stylesheet" href="bb-plan-drag.css?v=20261103-drag2">

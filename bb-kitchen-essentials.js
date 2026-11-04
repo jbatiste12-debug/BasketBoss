@@ -38,7 +38,7 @@
   const id='bbke-catalogue-'+key;grid.id=id;add.setAttribute('aria-controls',id);
   const empty=doc.createElement('p');empty.className='bbke-search-empty';empty.textContent='No matching choices. Add your own below.';empty.hidden=true;
   search.addEventListener('input',()=>{state(key).search=search.value;draw();});
-  add.addEventListener('click',()=>{const current=state(key);current.expanded=!current.expanded;current.search='';search.value='';draw();if(current.expanded)search.focus();});
+  add.addEventListener('click',()=>{const current=state(key);current.expanded=!current.expanded;current.search='';search.value='';draw();if(current.expanded)search.focus();else void window.BBPantryLive?.flush?.();});
   grid.before(bar);bar.append(search,grid,add,empty);return bar;
  }
  function foodChoices(area){
@@ -74,7 +74,11 @@
    details.append(summary,list,edit);details.addEventListener('toggle',()=>{if(details.isConnected)state('selected-'+key).expanded=details.open;});body.append(details);
   }
   const rows=[...kitchen.querySelectorAll('#bb5SelectedRows [data-pantry-location="'+key+'"] .bb5-review-row')];
-  const values=rows.map(row=>{const name=row.querySelector('strong').textContent,amount=row.querySelector('[data-bb5-qty]').value,unit=row.querySelector('[data-bb5-unit]').value;const needed=row.querySelector('[data-bb5-needed]')?.value,buy=row.querySelector('output')?.textContent;return {name,description:(amount.trim()?amount+' '+unit+' already got':'Amount unknown — enter an amount to reduce Shopping')+(needed!==undefined?' · '+needed+' '+unit+' needed':'')+(buy?' · '+buy:'')};});
+  const values=rows.map(row=>{
+   const name=row.querySelector('strong').textContent,amount=row.querySelector('[data-bb5-qty]').value,unit=row.querySelector('[data-bb5-unit]').value,needed=row.querySelector('[data-bb5-needed]')?.value,buy=row.querySelector('output')?.textContent;
+   const status=row.querySelector('[data-bb5-staple-status]')?.value,container=window.BBPantryPolicy?.containerLabel(name)||'unit';
+   return {name,description:status?({in:'In Stock',low:'Low',out:'Out',unknown:'Review status'}[status]||'Review status')+(amount.trim()?' · '+amount+' '+container+(Number(amount)===1?'':'s'):'')+' · container tracking':(amount.trim()?amount+' '+unit+' already got':'Amount unknown — enter an amount to reduce Shopping')+(needed!==undefined?' · '+needed+' '+unit+' needed':'')+(buy?' · '+buy:'')};
+  });
   let groups=null,pin=null;try{groups=window.BBPantryGroups?.snapshot(key);pin=window.BBPantryGroups?.context();}catch{}
   const stamp=JSON.stringify([values,pin,groupUI()?.active(key)]);
   if(details.dataset.bbkeValues!==stamp){
@@ -222,7 +226,7 @@
   if(!kitchen||!pantry)return;
   text(kitchen.querySelector('.bb76-eyebrow'),'AT HOME');
   text(kitchen.querySelector('.bb76-title h2'),'What have you already got?');
-  text(kitchen.querySelector('.bb76-title>div>p:last-child'),'Choose food you have, then enter amounts or choose Enough for this week. Confirm your pantry to update Shopping.');
+  text(kitchen.querySelector('.bb76-title>div>p:last-child'),'Choose food you have. Set staple status or measured quantities. Valid changes update Shopping automatically.');
   const pantryTitle=kitchen.querySelector('#bb76PantryHeading');
   if(pantryTitle?.firstChild?.nodeType===3&&pantryTitle.firstChild.textContent!=='Review amounts ')pantryTitle.firstChild.textContent='Review amounts ';
   let essentials=app.querySelector('#bbKitchenEssentials');
@@ -262,7 +266,7 @@
  function start(){
   refresh();const app=doc.getElementById('app');if(!app)return;
   app.addEventListener('input',event=>{if(event.target.matches('[data-bb5-qty],[data-bb5-needed]'))schedule();});
-  app.addEventListener('change',event=>{if(event.target.matches('[data-bb5-unit]'))schedule();});
+  app.addEventListener('change',event=>{if(event.target.matches('[data-bb5-unit],[data-bb5-staple-status],[data-bb5-pack-unit]'))schedule();});
   new MutationObserver(records=>{
    if(records.some(record=>record.target===app||record.target.matches?.('[data-bb76-tiles],#bb5SelectedRows')||[...record.addedNodes].some(node=>node.nodeType===1&&(node.matches?.('#bb173ShopFridge,[data-bb307-extras="shop"],#bb1756PlannerExtras,#bb1756Essentials,[data-bb5-food]')||node.querySelector?.('#bb173ShopFridge,#bb1756Essentials')))))schedule();
   }).observe(app,{childList:true,subtree:true});

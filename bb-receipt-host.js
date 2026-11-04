@@ -287,9 +287,10 @@
     }
     function setupAdapter() {
       adapter()?.configure?.({getSession: session, getContext: context, getCatalog: options.getCatalog, canonicalize: options.canonicalize,
+        pantryPolicy:options.pantryPolicy===true,
         getFinishShopCredits: options.getFinishShopCredits, receiptSaveKeys: options.receiptSaveKeys, prepareReceiptSave: options.prepareReceiptSave,
         onProjection: value => {if (blocked()) return;issue = null; options.onProjection?.(value); schedule();}});
-      scanner()?.configure?.({getSession: session, getContext: context, getShoppingItems: options.getShoppingItems, inventory: adapter()});
+      scanner()?.configure?.({getSession: session, getContext: context, getShoppingItems: options.getShoppingItems, getKitchen:options.getKitchen, pantryPolicy:options.pantryPolicy===true, inventory: adapter()});
     }
     function tripPin() {
       const active = context(), scope = projection()?.scope;

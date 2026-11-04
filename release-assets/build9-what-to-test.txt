@@ -3,6 +3,9 @@ BasketBoss build 9
 Your pantry now works as a running balance: shopping adds to it and confirmed cooking uses it up. Remaining food and essentials stay there between weeks.
 
 Please test:
+• Live At home → Shop: plan a recipe using carrots, enter 2 carrots as each at home and check the Shop shortfall falls by 2 carrots using the same estimated weight. Try courgettes too. Edit again and switch straight to Shop, or tap Done in the quick-add picker: the latest valid amount must save immediately. Briefly clear a quantity while typing: the previous saved stock must remain.
+• Staples: set honey, oil, soy sauce or ketchup In Stock; recipe spoonfuls should be covered without subtracting ml. Set Low/Out and check one restock row. Review a ketchup 800 ml receipt line: it should match the existing staple as +1 container, with the count editable.
+• UK/US: enter known cups/oz/lb/fl oz, then switch region. Display changes but the stored physical amount must stay the same. One tin of chopped tomatoes plus 400 g should merge into one measured row. Unknown packs and vague recipe amounts should remain visible for review.
 • At home subcategories: use the options in Cupboard, Fridge, Freezer and Weekly essentials. Add, rename and reorder a group; move an item with its Subcategory menu. Remove a group and check its items remain in Other items. Reopen the app and check your groups remain. Quantity drafts and confirmed stock must not change from organising items.
 • Welcome and guide: check “Your kitchen, made simple”, then follow Plan → At home → Shop → Cook. The guide should name the real confirmation buttons and lead into Plan. Returning users can replay setup in Settings. Viewing instructions must keep plans and pantry intact.
 • Compact Saved weeks / Saved meals buttons: open either panel, switch without losing a typed name, then close it to keep the dinner plan visible.
@@ -12,7 +15,7 @@ Please test:
 • Partial shopping: purchase part of a manual top-up, finish the trip and check that the unpurchased amount carries over.
 • Receipts and Finish Shop: check purchased food and household essentials increase once, including after reopening the same receipt.
 • Units: try grams/kilograms, millilitres/litres, counted produce and known pack contents. Unknown pack sizes should stay unchanged with a review message.
-• Running quantities: manually enter actual stock, confirm it, add purchases through Finish shop or a reviewed receipt, then confirm a cooked meal. Check the remaining amount and the next shopping shortfall. Repeat the same receipt/meal confirmation to check stock is not credited or deducted twice.
+• Running quantities: manually enter actual stock and let it save automatically, add purchases through Finish shop or a reviewed receipt, then confirm a cooked meal. Check the remaining amount and the next shopping shortfall. Repeat the same receipt/meal confirmation to check stock is not credited or deducted twice.
 • Part bottles/packs: in a selected Weekly essential, open Enter part of a bottle or pack. Try 0.5 remaining, 750 ml capacity and 2 containers needed: the saved amounts should be 375 ml at home and 1,500 ml needed. A matching 750 ml receipt should leave 1,125 ml at home and 375 ml to buy. Unknown capacities must not change the old stock; different old/new bottle sizes must add by actual ml.
 • Auto-fill: see whether it suggests meals using food already at home while still offering a varied week.
 • Reopen the app and plan a new week: your remaining pantry balance should still be there.

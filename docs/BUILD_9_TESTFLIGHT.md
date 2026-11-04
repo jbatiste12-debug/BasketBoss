@@ -1,8 +1,35 @@
-# BasketBoss 1.0 (9) — welcome, pantry subcategories and planning tools
+# BasketBoss 1.0 (9) — live pantry sync and regional ingredient matching
 
 Build 9 includes all build 8 functionality and the “Your kitchen, made simple”
-welcome. The latest source is `testflight-build9-subcategories` on
+welcome. The latest source is `testflight-build9-pantry-sync` on
 `fix/confirmed-cook-pantry` (PR #40). Earlier release tags remain unchanged.
+
+The latest update shares one grams-per-piece table between pantry calculations
+and shopping display. Counted produce such as carrots and courgettes reduces
+measured recipe requirements automatically. Valid At home quantity edits save
+automatically; the quick-add picker's Done action and switching to Shop flush
+pending edits. Incomplete/invalid input keeps the last saved balance intact.
+
+Staples and condiments use In Stock / Low / Out plus container counts. Small
+recipe spoonfuls check availability rather than deducting ml. Low/Out creates a
+single restock requirement. A reviewed measured receipt line such as ketchup
+800 ml matches the existing staple as one purchased container, editable before
+confirmation. Explicit manual Shop top-ups remain additional purchases.
+
+Measured ingredients use canonical grams, millilitres or count. UK/US recipe
+presentation never rescales an existing balance. New informal purchases use
+labelled regional pack estimates; reviewed contents override defaults. US cups
+use ingredient-specific approximate weights for solids, not a generic liquid
+density. Receipt review matches existing pantry names and preserves unknown
+units/sources for review. Compatible sources merge into one active pantry row.
+
+The repeatable audit (`npm run audit:pantry`) covers all 100 public recipes and
+730 ingredient lines in UK and US modes, with no duplicate ingredient keys or
+conversion failures among known quantities. Twelve ambiguous source amounts
+(e.g. blocks, cartons and handfuls) remain explicit review items. See
+[ingredient-region-audit.md](ingredient-region-audit.md) for the exact sources
+and a full audit of At home quick-add tiles. An unknown amount is never silently
+set to zero or assigned a made-up package size.
 
 The welcome uses the established BasketBoss crowned-basket branding, Cook-page
 forest/cream/gold styling and an existing recipe photograph. The four numbered
@@ -47,15 +74,21 @@ rescale existing measured ownership. Known conflicting brands/products stay
 separate. Unknown capacities leave the prior balance unchanged.
 
 Quantity checks also preserve fractional food pack balances and separate receipt
-source records. When the same ingredient has incompatible physical units in one
-location, confirmation stops with a review message instead of discarding a
-source. Purchase pack counts remain whole.
+source records. Incompatible or unknown physical units remain intact with a
+review message; compatible edits can still save. Purchase pack counts remain whole.
 
 Saved weeks and Saved meals remain compact tab-style buttons above the dinner
 plan. Both start closed. Switching preserves draft names and existing save/load
 and delete actions. The pantry balance, Day done, manual Shop, receipt handling,
 weighted Auto-fill, unit conversion and earlier AI/Premium features are inherited
 from build 8. See BUILD_8_TESTFLIGHT.md for details.
+
+## Verification
+
+Full automated suite: 1,820 passed, no failures or skipped tests, two existing
+TODO cases. Strict pantry TypeScript contracts passed. Native packaging and
+portable iOS checks passed: 909 assets, 100 Free recipes, no private Premium
+recipe bundle. The native Xcode compile/sign/upload is not performed here.
 
 ## Mac upload
 
@@ -64,7 +97,7 @@ in previous folders:
 
 ```sh
 bb_release_dir="$(mktemp -d "$HOME/BasketBoss-build9-XXXXXX")" &&
-git clone --depth 1 --branch testflight-build9-subcategories \
+git clone --depth 1 --branch testflight-build9-pantry-sync \
   https://github.com/jbatiste12-debug/BasketBoss.git "$bb_release_dir" &&
 cd "$bb_release_dir" &&
 npm ci &&
@@ -81,8 +114,10 @@ If Build 9 has already been uploaded to Apple, increase the Build field to the
 next unused number before archiving this updated source.
 
 GitHub checks and unsigned archives do not perform the signed Apple upload.
-Native CI for this source is tracked in PR #40. Local checks cover onboarding,
-saved weeks, native packaging and browser layouts at 320, 390 and 768 px.
+Native CI for this source is tracked in PR #40. Local checks cover the full regression suite, strict pantry type contracts,
+UK/US recipe audits and native packaging. Live quantity/Done/navigation checks
+passed at 320 and 390 px; UK/US pantry and receipt review flows passed at 390 px.
+Signing and actual iOS WebView/device checks remain for the Mac/CI.
 
 ## Backend prerequisite
 

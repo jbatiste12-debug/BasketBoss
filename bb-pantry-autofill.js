@@ -16,6 +16,7 @@
  function isStaple(name,{wholeFood=false}={}){
   const key=text(name);
   if(key==='pepper'&&wholeFood)return false;
+  if(typeof window!=='undefined'&&window.BBPantryPolicy?.isStaple(key))return true;
   return key==='salt and pepper'||/^(?:(?:fine|coarse|flaky|sea|table|kosher|rock|pink|himalayan|smoked|celery|garlic|onion) )*salt$/.test(key)||
    /^(?:(?:ground|cracked|freshly ground|freshly cracked) )?(?:(?:black|white|pink) )?(?:pepper|peppercorns)$/.test(key)||
    /^(?:(?:cooking|olive|extra virgin olive|vegetable|sunflower|rapeseed|canola|sesame|groundnut|peanut|coconut|corn|avocado|grapeseed|chilli|garlic|truffle) )?oil$/.test(key)||

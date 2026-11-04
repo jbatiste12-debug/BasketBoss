@@ -23,6 +23,11 @@
    const edits=[];
    for(const row of preview.rows||[]){
     const line=make('div','bb-cook-pantry-row'),label=make('label','',row.name);line.append(label);
+    if(row.staple){
+     line.append(make('span','muted',row.stockLabel||({in:'In Stock',low:'Low — restock',out:'Out — restock'}[row.stapleStatus])||'Check stock status'));
+     line.append(make('small','muted','Staple: container/status tracking. Recipe spoonfuls do not reduce its saved stock.'));
+     if(row.issueLabel)line.append(make('small','bb-cook-pantry-issue',row.issueLabel));review.append(line);continue;
+    }
     if(row.canDeduct&&row.required!==null){const field=make('input');field.type='number';field.min='0';field.max='1000000';field.step='any';field.inputMode='decimal';field.value=String(row.required);field.setAttribute('aria-label','Amount used: '+row.name);label.append(field,doc.createTextNode(' '+row.unit));edits.push({row,field});}
     else line.append(make('span','muted',row.required===null?'Amount unknown':String(row.required)+' '+(row.unit||'')));
     line.append(make('small','muted','At home: '+row.owned+' '+(row.unit||'')+' · deduct up to '+row.deduct+' '+(row.unit||'')));

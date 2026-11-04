@@ -1,6 +1,6 @@
 /* BasketBoss recipe presentation only. Never use these rounded strings for
    serving arithmetic, pantry balances, prices, or shopping reconciliation.
-   US customary volume: 1 cup = 8 US fl oz = 236.5882365 ml.
+   BasketBoss kitchen volume: 1 cup = 8 fl oz = 240 ml.
    Ingredient-specific approximate cup weights: King Arthur Baking's chart
    https://www.kingarthurbaking.com/learn/ingredient-weight-chart
    Flour 120 g/cup; granulated sugar 198; caster sugar 190; butter 226;
@@ -13,7 +13,7 @@
   if(root)root.BBRecipeMeasures=api;
 })(typeof window!=='undefined'?window:null,function(){
   'use strict';
-  const CUP_ML=236.5882365,OUNCE_G=28.349523125,POUND_G=453.59237;
+  const CUP_ML=240,OUNCE_G=28.35,POUND_G=453.6;
   const FRACTIONS=Object.freeze({'¼':1/4,'½':1/2,'¾':3/4,'⅓':1/3,'⅔':2/3,'⅛':1/8,'⅜':3/8,'⅝':5/8,'⅞':7/8});
   const NUMBER='(?:\\d+\\/\\d+|(?:\\d{1,3}(?:,\\d{3})+|\\d+)(?:\\.\\d+)?(?:\\s+\\d+\\/\\d+)?[¼½¾⅓⅔⅛⅜⅝⅞]?|[¼½¾⅓⅔⅛⅜⅝⅞])';
   const AMOUNTS=new RegExp('(^|[^\\w./-])('+NUMBER+')(?:\\s*(?:–|—|-|to)\\s*('+NUMBER+'))?\\s*(kilograms?|kg|grams?|g|millilitres?|milliliters?|ml|litres?|liters?|l)\\b','gi');
@@ -42,6 +42,7 @@
     return decimal(value);
   }
   function density(name){
+    const shared=typeof window!=='undefined'&&window.BBPantryPolicy?.cupGrams(name);if(shared)return shared.grams;
     const n=original(name).toLowerCase().replace(/[‐‑–—-]/g,' ').replace(/\s+/g,' ').trim();
     // Anchoring avoids confusing flour with flour tortillas, butter with
     // peanut butter, or dry oats with prepared porridge / oat milk.
@@ -59,7 +60,7 @@
     return decimal(grams/(pounds?POUND_G:OUNCE_G))+(pounds?' lb':' oz');
   }
   function volume(ml){
-    // Exact US factors; rounded kitchen displays are explicitly approximate.
+    // Configured kitchen factors; rounded displays remain approximate.
     if(ml>=CUP_ML/4){
       const amount=ml/CUP_ML,display=familiar(amount);
       // Liquid measuring jugs also carry fl oz; avoid an awkward decimal

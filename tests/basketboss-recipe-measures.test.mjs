@@ -27,18 +27,18 @@ test('cup weights depend on the exact ingredient and preparation form',()=>{
 });
 
 test('liquids use US customary cups and spoons, independent of food density',()=>{
-  assert.equal(measures.quantity('236.5882365 ml','water','US'),'≈ 1 US cup (236.5882365 ml)');
-  assert.equal(measures.quantity('14.78676478125 ml','oil','US'),'≈ 1 tbsp (14.78676478125 ml)');
-  assert.equal(measures.quantity('4.92892159375 ml','vanilla','US'),'≈ 1 tsp (4.92892159375 ml)');
-  assert.equal(measures.quantity('250 ml','milk','US'),'≈ 1.06 US cups (250 ml)');
-  assert.equal(measures.quantity('100 ml','milk','US'),'≈ 3.38 US fl oz (100 ml)');
+  assert.equal(measures.quantity('240 ml','water','US'),'≈ 1 US cup (240 ml)');
+  assert.equal(measures.quantity('15 ml','oil','US'),'≈ 1 tbsp (15 ml)');
+  assert.equal(measures.quantity('5 ml','vanilla','US'),'≈ 1 tsp (5 ml)');
+  assert.equal(measures.quantity('250 ml','milk','US'),'≈ 1.04 US cups (250 ml)');
+  assert.equal(measures.quantity('100 ml','milk','US'),'≈ 3.33 US fl oz (100 ml)');
   assert.equal(measures.quantity('0.5 l','stock','US'),measures.quantity('500 ml','stock','US').replace('(500 ml)','(0.5 l)'));
   assert.equal(measures.quantity('250 ml','milk','US'),measures.quantity('250 ml','oil','US'));
 });
 
-test('weights retain precise source quantities and scale pounds by the US definition',()=>{
-  assert.equal(measures.quantity('28.349523125 g','chicken','US'),'≈ 1 oz (28.349523125 g)');
-  assert.equal(measures.quantity('453.59237 g','chicken','US'),'≈ 1 lb (453.59237 g)');
+test('weights retain precise source quantities and use the configured US kitchen factors',()=>{
+  assert.equal(measures.quantity('28.35 g','chicken','US'),'≈ 1 oz (28.35 g)');
+  assert.equal(measures.quantity('453.6 g','chicken','US'),'≈ 1 lb (453.6 g)');
   assert.equal(measures.quantity('1 kg','chicken','US'),'≈ 2.2 lb (1 kg)');
   assert.equal(measures.quantity('1,000 g','chicken','US'),'≈ 2.2 lb (1,000 g)');
   assert.equal(measures.quantity('0.1 g','saffron','US'),'≈ <0.01 oz (0.1 g)');
@@ -47,7 +47,7 @@ test('weights retain precise source quantities and scale pounds by the US defini
 test('fractions, ranges, multipacks and whole-item counts preserve their meaning',()=>{
   assert.equal(measures.quantity('1½ kg','chicken','US'),'≈ 3.31 lb (1½ kg)');
   assert.equal(measures.quantity('1 1/2 kg','chicken','US'),'≈ 3.31 lb (1 1/2 kg)');
-  assert.equal(measures.quantity('1/2 litre','milk','US'),'≈ 2.11 US cups (1/2 litre)');
+  assert.equal(measures.quantity('1/2 litre','milk','US'),'≈ 2.08 US cups (1/2 litre)');
   assert.equal(measures.quantity('250–300 g','chicken','US'),'≈ 8.82 oz–10.58 oz (250–300 g)');
   assert.equal(measures.quantity('2 x 500 g bags','plain flour','US'),'2 x ≈ 1.1 lb (500 g) bags');
   for(const text of ['2 eggs','6 each','2 cloves','1 bulb','a pinch','to taste','2 tbsp','3 tsp','0 g','-5 g','250mg'])assert.equal(measures.quantity(text,'','US'),text);

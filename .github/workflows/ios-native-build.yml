@@ -127,6 +127,10 @@ jobs:
           tests/basketboss-cook-voice.test.mjs
           tests/basketboss-evening-pivot-app.test.mjs
           tests/basketboss-landing-meal-pricing.test.mjs
+      - name: Audit all recipe units in UK and US and verify pantry policy
+        run: |
+          npm run audit:pantry
+          node --test --test-isolation=none tests/basketboss-pantry-policy*.test.mjs tests/basketboss-pantry-regions-audit.test.mjs tests/basketboss-receipt-pantry-policy.test.mjs tests/basketboss-staple-app-flow.test.mjs
       - name: Test native routing and permissions
         run: npm run test:native
       - name: Verify photo review, recipe creation and matching meal pictures
