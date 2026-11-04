@@ -3397,7 +3397,7 @@ body.bbnext-plan-mode .shell > #bb175Toolbar{display:none!important}
 
 </style>
 <style id="bb321-used-in-style">.bb321-shop-used-in{display:block;color:#65716c;font-size:.76rem;line-height:1.4;margin:5px 0 6px;overflow-wrap:anywhere}.bb321-shop-used-in:hover{color:#253f35}</style>
-<link rel="stylesheet" href="bb-beta-six-fixes.css?v=1767" data-bb-r6="bb-r7-iphone-20261025">
+<link rel="stylesheet" href="bb-beta-six-fixes.css?v=20261104-essentials1" data-bb-r6="bb-r7-iphone-20261025">
 <link rel="stylesheet" href="bb-beta-launch-polish.css?v=1768" data-bb-qa-polish="bb-qa-final-five-v1768-20261025">
 <style>
 /* BB-LIVESHOP-COMPACT-20261025: presentation only; no pricing or state changes */
@@ -8430,7 +8430,7 @@ window.BBHomeHost=Object.freeze({needsLegacyReview:bbHomeNeedsLegacyReview,settl
  household:()=>bb307FeatureState.essentials,
  householdAmountContext:()=>({actor:window.BBHome?.actor?.()||'guest',session:localStorage.getItem('basketboss_cloud_session_v1'),features:localStorage.getItem(BB307_FEATURE_KEY)}),
  saveHouseholdAmount:(id,patch,pin)=>window.BBHome.setHouseholdAmount(id,patch,pin),
- prepareHousehold:entries=>{const before=localStorage.getItem(BB307_FEATURE_KEY),next=JSON.parse(JSON.stringify(bb307FeatureState));for(const [id,patch]of entries){const row=next.essentials.find(x=>x.id===id);if(!row)throw Error('Household list changed. Review it first.');const q=BBWeeklyEssentials.reconcile({...row,...patch,manualPending:true});if(!q.valid)throw Error('Check household amounts for '+row.name);Object.assign(row,patch,{manualPending:true});}return {key:BB307_FEATURE_KEY,value:next,expected:before};},
+ prepareHousehold:entries=>{const before=localStorage.getItem(BB307_FEATURE_KEY),next=JSON.parse(JSON.stringify(bb307FeatureState));for(const [id,patch]of entries){const row=next.essentials.find(x=>x.id===id);if(!row)throw Error('Household list changed. Review it first.');const q=BBWeeklyEssentials.reconcile({...row,...patch,manualPending:true});if(!q.valid)throw Error('Check household amounts for '+row.name);Object.assign(row,patch,{manualPending:true,selected:true,...(q.toBuy>0?{owned:false}:{})});}return {key:BB307_FEATURE_KEY,value:next,expected:before};},
  completeHousehold:id=>{const next=JSON.parse(JSON.stringify(bb307FeatureState)),row=next.essentials.find(x=>x.id===id);if(!row||!Object.hasOwn(row,'targetQty'))return {};row.manualPending=false;row.ownedQty=Math.max(row.ownedQty,row.targetQty);return {[BB307_FEATURE_KEY]:next};},
  reload:()=>{bb307FeatureState=bb307ReadFeatures();},
  occurrence:bbHomeOccurrence,
@@ -9478,6 +9478,9 @@ const BB172_AISLES=[
  ['dry','🥫','Cupboard / Pantry'],
  ['household','🧻','Household & Other']
 ];
+// Essentials keep their purchase IDs and stock logic, with a clear final group.
+const BB172_SHOP_GROUPS=[...BB172_AISLES,['essentials','🧻','Weekly essentials']];
+function bb172ShopGroupFor(row){return row.classList.contains('bb321-essential-row')?'essentials':bb172ShopCategoryFor(row);}
 let bb172ShopActive=false;
 let bb172ShopLastInteraction=Date.now();
 let bb172ShopLastReminder=0;
@@ -9534,10 +9537,11 @@ function bb172ShopOrganize(){
   section.remove();
  });
  const oldHeading=list.querySelector('.bb321-shop-subheading');
- if(oldHeading)oldHeading.hidden=true; // 'Weekly essentials' are now included by aisle.
- const groups=new Map(BB172_AISLES.map(([id])=>[id,[]]));
+ oldHeading?.remove();
+ const groups=new Map(BB172_SHOP_GROUPS.map(([id])=>[id,[]]));
  rows.forEach(row=>{
-  const id=bb172ShopCategoryFor(row);groups.get(id).push(row);
+  const id=bb172ShopCategoryFor(row);groups.get(bb172ShopGroupFor(row)).push(row);
+  if(bb172ShopGroupFor(row)==='essentials'){row.querySelector('.bb172-aisle-edit')?.remove();return;}
   if(!row.querySelector('.bb172-aisle-edit')){
    const holder=document.createElement('details');holder.className='bb172-aisle-edit';
    const summary=document.createElement('summary');summary.textContent='Change aisle';
@@ -9550,7 +9554,7 @@ function bb172ShopOrganize(){
   }
  });
  const fragment=document.createDocumentFragment();
- BB172_AISLES.forEach(([id,emoji,label])=>{
+ BB172_SHOP_GROUPS.forEach(([id,emoji,label])=>{
   const items=groups.get(id);if(!items.length)return;
   const remain=items.filter(x=>!x.querySelector('[data-bb321-tick]')?.checked).length;
   const block=document.createElement('details');block.className='bb172-aisle-section';block.dataset.bb172Aisle=id;
@@ -9590,8 +9594,8 @@ function bb172ShopOutstandingText(){
  const lines=['BASKETBOSS · OUTSTANDING SHOPPING ITEMS'];
  const rows=bb172ShopUncheckedRows();
  if(!rows.length)return 'BASKETBOSS · SHOPPING COMPLETE\nAll shopping items are ticked off.';
- BB172_AISLES.forEach(([id,,label])=>{
-  const group=rows.filter(row=>bb172ShopCategoryFor(row)===id);if(!group.length)return;
+ BB172_SHOP_GROUPS.forEach(([id,,label])=>{
+  const group=rows.filter(row=>bb172ShopGroupFor(row)===id);if(!group.length)return;
   lines.push('',label.toUpperCase());
   for(const row of group){
    const name=bb172ShopRowName(row);
@@ -10543,7 +10547,7 @@ function bb172StorefrontAll(){
   const box=row.querySelector('[data-bb321-tick]');
   const price=row.querySelector('.bb321-shop-price');
   return {row,box,id:box?.dataset.bb321Tick||'',basketItem:basketById.get(box?.dataset.bb321Tick||'')||null,checked:!!box?.checked,
-   name:bb172ShopRowName(row),aisle:bb172ShopCategoryFor(row),
+   name:bb172ShopRowName(row),aisle:bb172ShopCategoryFor(row),essential:row.classList.contains('bb321-essential-row'),
    qty:row.querySelector('.bb321-shop-quantity strong')?.textContent?.trim()||'',
    price:price?.innerText?.trim()||price?.textContent?.trim()||''};
  }).filter(x=>x.box&&x.id);
@@ -10812,8 +10816,8 @@ function bb172StorefrontDrawAisles(allRows){
   content.append(bb172StorefrontEl('div','bb172-storefront-empty',query?'No matching items — try another search.':bb172StorefrontFilter==='left'?'All done! Everything on your list is ticked off.':'No items in this view.'));
   return;
  }
- for(const [id,emoji,label] of BB172_AISLES){
-  const entries=filtered.filter(x=>x.aisle===id);
+ for(const [id,emoji,label] of BB172_SHOP_GROUPS){
+  const entries=filtered.filter(x=>(x.essential?'essentials':x.aisle)===id);
   if(!entries.length)continue;
   const section=bb172StorefrontEl('details','bb172-storefront-aisle');
   section.dataset.aisle=id;
@@ -12306,7 +12310,7 @@ if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',
 </style>
 
 <!-- bb-r7-iphone-20261025 -->
-<script defer src="bb-beta-six-fixes.js?v=1767"></script>
+<script defer src="bb-beta-six-fixes.js?v=20261104-essentials1"></script>
 <!-- bb-qa-final-five-v1768-20261025 -->
 <script defer src="bb-beta-launch-polish.js?v=1768"></script>
 
@@ -12447,7 +12451,7 @@ body[data-bbnext-view="discover"] #app .bb175-discover-heading{padding-top:calc(
 <link rel="stylesheet" href="bb-simple-layout.css?v=20261104-plan-budget1">
 <script defer src="bb-simple-layout.js?v=20261104-plan-budget1"></script>
 <script defer src="bb-pantry-deduction.js?v=20261104-regions2"></script>
-<script defer src="bb-home.js?v=20261104-cupboard1"></script><link rel="stylesheet" href="bb-day-done.css?v=20261104-cycle1"><script defer src="bb-day-done.js?v=20261104-regions2"></script><link rel="stylesheet" href="bb-shop-add.css?v=20261104-cycle1"><script defer src="bb-shop-add.js?v=20261104-cycle1"></script><script defer src="bb-cupboard-staples.js?v=20261104-cupboard2"></script><script src="bb-pantry-autofill.js?v=20261104-cycle1"></script>
+<script defer src="bb-home.js?v=20261104-essentials1"></script><link rel="stylesheet" href="bb-day-done.css?v=20261104-cycle1"><script defer src="bb-day-done.js?v=20261104-regions2"></script><link rel="stylesheet" href="bb-shop-add.css?v=20261104-cycle1"><script defer src="bb-shop-add.js?v=20261104-cycle1"></script><script defer src="bb-cupboard-staples.js?v=20261104-cupboard2"></script><script src="bb-pantry-autofill.js?v=20261104-cycle1"></script>
 <link rel="stylesheet" href="bb-shared-shopping.css?v=20261102-loop2">
 <script defer src="bb-shared-shopping.js?v=20261102-loop2"></script>
 <link rel="stylesheet" href="bb-plan-drag.css?v=20261103-drag2">

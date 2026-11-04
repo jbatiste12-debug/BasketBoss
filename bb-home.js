@@ -51,7 +51,7 @@
    checkDraftActor();const item=host()?.household()?.find(row=>row.id===id);if(!item)return false;
    const {all,data}=own(),expected=store.getItem(KEY),ownedQty=Number(householdDraft.get(id)?.ownedQty??item.ownedQty??(item.owned?item.qty:0));
    const targetQty=Math.max(householdDraft.get(id)?.targetQty??(item.manualPending!==false?Number(item.targetQty??item.qty):0),ownedQty)+1;
-   const drafts=new Map(householdDraft);drafts.set(id,{targetQty,ownedQty});
+   const drafts=new Map(householdDraft);drafts.set(id,{targetQty,ownedQty,selected:true,owned:false});
    const feature=host().prepareHousehold([...drafts]),shopping=settle(data,[...drafts.keys()].map(key=>'ess:'+key));
    atomic(store,{[KEY]:all,[feature.key]:feature.value,...shopping?.updates},{[KEY]:expected,[feature.key]:feature.expected,...shopping?.expected});householdDraft.clear();host().reload();host().refresh();return true;
   }

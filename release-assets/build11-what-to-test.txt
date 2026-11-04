@@ -1,0 +1,14 @@
+BasketBoss build 11 — Weekly essentials in Shop
+
+• At home → Weekly essentials: select an item such as toilet rolls or washing-up liquid and enter Total needed / Already got. Shop should show only the amount still needed.
+• In Shop, find Weekly essentials at the bottom of the shopping list. Check the section also appears on the Shop overview and in full-screen Shop Mode.
+• Tap a saved essential again, including an item previously marked as owned or skipped. It should return to Shop with the new top-up amount.
+• Tick an essential as bought. The item count and remaining estimate should update once. Untick it and confirm the amount returns.
+• Finish Shop and check the purchased quantity is added to the household balance once. Food and household stock must stay separate.
+• When Already got covers Total needed, the essential should not appear in To buy. Changing the target to need more should bring back only the shortfall.
+• Check an essentials-only shop with no meals planned. The list should still be usable.
+• Check the final rows stay visible above the bottom navigation and Shop action bar on your phone.
+
+Normal Premium subscriptions and eligible TestFlight Beta Premium access are unchanged.
+
+Please report the screen, item name, Total needed, Already got, To buy, and the steps taken. Do not include passwords or API keys.
