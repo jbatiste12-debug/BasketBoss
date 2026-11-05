@@ -46,3 +46,22 @@ test('regional pint display and steps ignore container capacity while preserving
  const row={name:'Milk',qty:568,unit:'ml',inputMarket:'UK',packReviewed:true,packQuantity:568,packUnit:'ml'};const before=JSON.stringify(row);assert.equal(ui.converted(row,'pint',policy,'US'),1.200846);assert.deepEqual(ui.stepPatch(row,'pint',1,policy,'US'),{qty:686.25,unit:'ml'});assert.equal(JSON.stringify(row),before);
  const tomato={name:'Chopped tomatoes',qty:800,unit:'g',inputMarket:'UK',packReviewed:true,packQuantity:400,packUnit:'g'};assert.equal(ui.converted(tomato,'tin',policy,'US'),2,'reviewed contents retain actual container size');
 });
+
+test('inventory search and status filters are read-only views across storage areas',()=>{
+ const rows=Object.freeze([
+  Object.freeze({name:'Crème fraîche',loc:'fridge',qty:200,unit:'g'}),
+  Object.freeze({name:'Rice',loc:'cupboard',qty:0,unit:'g'}),
+  Object.freeze({name:'Salt',loc:'cupboard',qty:1,unit:'each',stapleStatus:'low'}),
+  Object.freeze({name:'Frozen peas',loc:'freezer',qty:null,unit:'g'})
+ ]),before=JSON.stringify(rows);
+ assert.deepEqual(rows.filter(row=>ui.matchesInventory(row,{query:' CREME '})),[rows[0]]);
+ assert.deepEqual(rows.filter(row=>ui.matchesInventory(row,{filter:'low'})),[rows[1],rows[2]]);
+ assert.deepEqual(rows.filter(row=>ui.matchesInventory(row,{filter:'use-soon',useSoon:row===rows[0]})),[rows[0]]);
+ assert.equal(ui.matchesInventory(rows[0],{query:'rice',filter:'use-soon',useSoon:true}),false);
+ assert.equal(JSON.stringify(rows),before,'search and filtering never change stock or location');
+});
+test('unknown balances are never presented as Out merely because the quantity is blank',()=>{
+ for(const qty of [null,undefined,'','unknown'])assert.equal(ui.matchesInventory({name:'Rice',qty},{filter:'low'}),false);
+ assert.equal(ui.matchesInventory({name:'Honey',qty:null,stapleStatus:'out'},{filter:'low'}),true);
+ assert.equal(ui.matchesInventory({name:'Chicken',qty:500},{filter:'use-soon',useSoon:false}),false);
+});

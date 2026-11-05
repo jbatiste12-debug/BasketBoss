@@ -1,0 +1,122 @@
+{
+  "date": "2026-11-05",
+  "build": 19,
+  "scope": "Pantry presentation, search, filtering, category jumps, inline cards and safe-area clearance; no stock database or math changes",
+  "corePreservation": {
+    "baseCommit": "097c4f911cfdf480470f0c987916a3f661b32661",
+    "core": [
+      {
+        "file": "shopping-inventory.js",
+        "sha256": "b965bed325e8eb14fa7edbc23973bedacefddc91c8713ad19b46e3790fe8c654",
+        "unchanged": true
+      },
+      {
+        "file": "bb-home.js",
+        "sha256": "6c66908ebfe46c3dedc6a6385531e88d09a9d5aeae46e4c7e21b809b9858e52b",
+        "unchanged": true
+      },
+      {
+        "file": "bb-pantry-policy.js",
+        "sha256": "147e9ee18517f6711d2188791101840820d2ecc676c0e61dc39e431d6adfc2ec",
+        "unchanged": true
+      },
+      {
+        "file": "bb-pantry-deduction.js",
+        "sha256": "4cf4e1527665d48169b3641828e5d9714c8c4d77e76b840af5815b802ffb18a4",
+        "unchanged": true
+      },
+      {
+        "file": "bb-receipt-inventory-core.mjs",
+        "sha256": "5b21baa076d441686cae00dcb51e8287c7771564ec4659c02e6ce6ab965e064f",
+        "unchanged": true
+      },
+      {
+        "file": "bb-pantry-runtime.mjs",
+        "sha256": "7c6a7711e53a34960b4515c4d805ef49b142a1e546312f733cd20a804a5ec373",
+        "unchanged": true
+      },
+      {
+        "file": "bb-reduced-stock.js",
+        "sha256": "63182534991217398cf829415e49250e02f45415fd0382fd722d21f22685c08d",
+        "unchanged": true
+      },
+      {
+        "file": "bb-recipe-canonical.js",
+        "sha256": "2fe20bc6af8069624e33fd1267a946168c83a2b101f305569b300e944e48a114",
+        "unchanged": true
+      },
+      {
+        "file": "recipes.json",
+        "sha256": "3d5c4f7ea08a0dd6117ac7b3198f3be24c07e03a5a77a881e6eb9702d2c2fa50",
+        "unchanged": true
+      },
+      {
+        "file": "normalized-ingredient-database.json",
+        "sha256": "d1d71230ba59a8e0106a66ef0d9704dd57426b1a1907a76ec4ba3139a18dd648",
+        "unchanged": true
+      }
+    ],
+    "inlineMathHelpersUnchanged": [
+      "stepFor",
+      "stepped",
+      "preferredUnit",
+      "converted",
+      "displayUnit",
+      "summaryAmount",
+      "stepPatch"
+    ]
+  },
+  "presentationHashes": {
+    "bb-pantry-inline.js": "6e35b1c0d07533b79496d00f8ddabd4344376d47ad5e215b209ff581ae8e2caf",
+    "bb-pantry-inline.css": "9b30b541bce9ecf8bea107ced82b81657c2873db8835c63faf1da5cc6a4214b7"
+  },
+  "automated": {
+    "cases": 2530,
+    "passed": 2527,
+    "failed": 0,
+    "platformSkipped": 1,
+    "existingTodo": 2
+  },
+  "mobile": {
+    "viewports": [
+      [
+        375,
+        812
+      ],
+      [
+        320,
+        812
+      ]
+    ],
+    "passed": true,
+    "seededInventoryItems": 28,
+    "storageAreas": 3,
+    "horizontalOverflow": 0,
+    "nestedVerticalScrollers": 0,
+    "pageErrors": 0,
+    "consoleErrors": 0,
+    "minimumInteractiveTargetPx": 44,
+    "checks": [
+      "Sticky Search/Add item/View filters and storage jump bar",
+      "Search/filter/category actions preserve the inventory and canonical stock exactly",
+      "Filtered results begin below the sticky header and clear the floating dock",
+      "Carrots plus/minus uses existing piece weights and immediately changes Shop shortfall",
+      "Add item focuses the original quantity form and saves an exact amount without opening another editor",
+      "Low/Out typing 2 -> 20 -> 200 keeps its caret and persists 200 g; Done updates filtering",
+      "All food refreshes the confirmed amount after inline editing",
+      "Reduced priority, use-soon badges and Move to Freezer preserve existing feature gates",
+      "Weekly essentials stays separate and hides pantry tools",
+      "Last pantry card remains fully visible above the bottom navigation",
+      "Done adding appears only during Add mode"
+    ]
+  },
+  "native": {
+    "clientFiles": 935,
+    "freeRecipes": 100,
+    "privateRecipeBundle": false,
+    "presentationAssetsMatchWorkingSource": true,
+    "portableVerificationPassed": true,
+    "physicalDeviceAndSignedUpload": "Requires owner Mac/Xcode; not performed here"
+  },
+  "network": "Browser verification intercepts all HTTP and uses sample local data; no production customer stock or paid AI requests."
+}
