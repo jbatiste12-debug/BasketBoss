@@ -13,8 +13,8 @@ import { COOK_CORRECTION_SOURCE, COOK_CORRECTION_RECIPIENT_FINGERPRINT, COOK_COR
 // Filled only after the complete private review has produced its exact sealed
 // candidate. Public-key encryption alone does not authenticate a publisher.
 export const APPROVED_COOK_CORRECTION = Object.freeze({
-  manifestSha256: 'unprepared', payloadSha256: 'unprepared',
-  sealedSha256: 'unprepared', reviewSourceCommit: 'unprepared',
+  manifestSha256: '2dcb219f4340bd6e73db81381bae7939daea63578e31ae63726db5544a071d5f', payloadSha256: '31e742d7d42e7f9beb59f55b5a89594e48c6052aae4d6712244aae62bb767258',
+  sealedSha256: '6b7aa05aae1edebdda95a0872d674c4af9e7e521556bdec30ad4b1f93eb48639', reviewSourceCommit: 'be6c99e57f98de828dc5b57089ac03c8c0109cc2',
   beforeRowsSha256: COOK_CORRECTION_SOURCE.sourceRowsSha256,
   recipientFingerprint: COOK_CORRECTION_RECIPIENT_FINGERPRINT
 });
@@ -35,7 +35,7 @@ function rowsChecked(rows, digest, source) {
 }
 function content(recipe) {
   if (!Array.isArray(recipe.method) || !recipe.method.length || recipe.method.length > 40 || !same(recipe.method, recipe.steps) || recipe.method.some(step => typeof step !== 'string' || !step.trim() || step.length > 8000 || /[\u0000-\u0008\u000b\u000c\u000e-\u001f]/.test(step))) fail('method');
-  if (Object.hasOwn(recipe, 'culinary_prep_notes') && (!Array.isArray(recipe.culinary_prep_notes) || recipe.culinary_prep_notes.length !== recipe.ingredients.length || recipe.culinary_prep_notes.some(note => typeof note !== 'string' || !note.trim() || note.length > 8000 || /[\u0000-\u0008\u000b\u000c\u000e-\u001f]/.test(note)))) fail('notes');
+  if (Object.hasOwn(recipe, 'culinary_prep_notes') && (!Array.isArray(recipe.culinary_prep_notes) || recipe.culinary_prep_notes.length !== recipe.ingredients.length || recipe.culinary_prep_notes.some(note => typeof note !== 'string' || note.length > 8000 || /[\u0000-\u0008\u000b\u000c\u000e-\u001f]/.test(note)))) fail('notes');
 }
 
 /** Validate the entire current catalogue before generating any writable SQL. */
@@ -66,6 +66,9 @@ export function validateCookContentTransition(payload, currentRows) {
     const allowed = new Set(['method', 'steps', 'culinary_prep_notes']);
     const protectedFields = value => Object.fromEntries(Object.entries(value).filter(([key]) => !allowed.has(key)));
     if (!same(protectedFields(before), protectedFields(after))) fail('protected_recipe');
+    // Some source rows already use blank placeholders. A method-only patch
+    // preserves them; a correction must never erase an existing preparation.
+    if (after.culinary_prep_notes?.some((note, ingredientIndex) => !note.trim() && (typeof before.culinary_prep_notes?.[ingredientIndex] !== 'string' || before.culinary_prep_notes[ingredientIndex].trim()))) fail('new_blank_note');
     if (same(before.method, after.method) && same(before.steps, after.steps) && same(before.culinary_prep_notes, after.culinary_prep_notes)) fail('empty_change');
   }
   return { alreadyApplied, beforeRows: currentRows, afterRows: payload.rows, changes: [...changes.values()] };

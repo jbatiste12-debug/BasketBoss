@@ -6,6 +6,9 @@ on:
     branches: [main]
     paths:
       - .github/workflows/cloudflare-catalogue-check.yml
+      - .github/private-catalogue/cook-content-corrections.sealed.json
+      - .github/private-catalogue/cook-content-corrections.manifest.json
+      - docs/COOK_FULL_500_AUDIT_20261105.json
       - scripts/check-cloudflare-catalogue.mjs
       - scripts/audit-cook-method-private-summary.mjs
       - scripts/load-private-recipe-audit.mjs
