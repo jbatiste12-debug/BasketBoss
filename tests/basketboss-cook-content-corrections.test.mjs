@@ -297,6 +297,36 @@ test('transition validation checks current catalogue hash and all protected valu
   }
 });
 
+test('method-only corrections preserve existing blank preparation placeholders and remain idempotent', t => {
+  const input = fixture(), original = JSON.parse(input.snapshot.rows[0].recipe_json);
+  original.culinary_prep_notes = [''];
+  input.snapshot.rows[0].recipe_json = JSON.stringify(original);
+  input.snapshot.rowsSha256 = sha(JSON.stringify(input.snapshot.rows));
+  input.reviews.forEach(review => { review.sourceRowsSha256 = input.snapshot.rowsSha256; });
+  const patch = input.reviews[0].patches[0];
+  patch.recipeSha256 = sha(input.snapshot.rows[0].recipe_json);
+  delete patch.culinary_prep_notes;
+  const { payload } = buildCookContentCorrections(input);
+  assert.deepEqual(JSON.parse(payload.rows[0].recipe_json).culinary_prep_notes, ['']);
+  assert.equal(validateCookContentTransition(payload, input.snapshot.rows).alreadyApplied, false);
+  const db = sqliteFixture(t, input.snapshot.rows);
+  atomicImport(db, buildCookContentCorrectionSql(payload, input.snapshot.rows));
+  assert.deepEqual(readRows(db), payload.rows);
+  assert.equal(validateCookContentTransition(payload, readRows(db)).alreadyApplied, true);
+});
+
+test('transition validation rejects newly blank preparation notes even with self-consistent row hashes', () => {
+  for (const blank of ['', '   ']) {
+    const input = fixture(), { payload } = buildCookContentCorrections(input);
+    const recipe = JSON.parse(payload.rows[0].recipe_json);
+    recipe.culinary_prep_notes = [blank];
+    payload.rows[0].recipe_json = JSON.stringify(recipe);
+    payload.afterRowsSha256 = sha(JSON.stringify(payload.rows));
+    payload.changes[0].newRecipeSha256 = sha(payload.rows[0].recipe_json);
+    assert.throws(() => validateCookContentTransition(payload, input.snapshot.rows), /new_blank_note/);
+  }
+});
+
 test('D1 correction SQL changes only reviewed recipe JSON and round-trips quoted content', t => {
   const input = fixture();
   input.reviews[0].patches[0].method = input.reviews[0].patches[0].steps = ["Cook chef's beans; keep café texture. '); DROP TABLE bb_private_premium_recipes; --"];
