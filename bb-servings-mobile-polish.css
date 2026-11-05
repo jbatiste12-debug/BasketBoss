@@ -99,3 +99,37 @@ body:has(#bbpolRegionPill) .shell > #bb17RegionCard.bb17513-region-collapsed{dis
 #app.bbnext-plan .bbfeed-night-row {
   display: none !important;
 }
+
+/* One quiet control surface. The buttons retain full 44px touch targets;
+   only their visible circular face is smaller than the surrounding pill. */
+html body #app.bbnext-plan .bbfeed-meta .bbfeed-meal{
+ display:inline-grid!important;grid-template-columns:44px minmax(40px,auto) 44px;
+ align-items:center;gap:0!important;width:136px;min-width:136px!important;flex:0 0 auto!important;
+ height:48px;padding:1px 3px!important;
+ border:1px solid #ccddcd;border-radius:999px;background:#f2f6ef;
+ box-shadow:inset 0 1px 0 #ffffffb3;vertical-align:middle;
+}
+html body #app.bbnext-plan .bbfeed-meta .bbfeed-meal button{
+ position:relative;isolation:isolate;display:inline-grid;place-items:center;
+ width:44px;height:44px;min-width:44px!important;min-height:44px!important;
+ padding:0;border:0!important;border-radius:50%!important;background:transparent!important;
+ box-shadow:none!important;color:#245b40;font:650 21px/1 system-ui,sans-serif;
+}
+html body #app.bbnext-plan .bbfeed-meta .bbfeed-meal button::before{
+ content:'';position:absolute;inset:6px;z-index:-1;border:1px solid #d0ddcb;
+ border-radius:50%;background:#fffdf7;box-shadow:0 1px 2px #173f2b0a;
+ transition:background-color .15s ease,border-color .15s ease,transform .15s ease;
+}
+html body #app.bbnext-plan .bbfeed-meta .bbfeed-meal button:not(:disabled):active::before{
+ transform:scale(.92);background:#e5efdf;border-color:#9ab594;
+}
+html body #app.bbnext-plan .bbfeed-meta .bbfeed-meal button:focus-visible{
+ outline:2px solid #b28d3f;outline-offset:-2px;
+}
+html body #app.bbnext-plan .bbfeed-meta .bbfeed-value{
+ display:inline-flex;align-items:center;justify-content:center;gap:5px;min-width:40px;
+ color:#244f38;font:700 14px/1 system-ui,sans-serif;font-variant-numeric:tabular-nums;
+}
+html body #app.bbnext-plan .bbfeed-value svg{width:15px;height:15px;flex:none;color:#55775c}
+@media(hover:hover){html body #app.bbnext-plan .bbfeed-meta .bbfeed-meal button:not(:disabled):hover::before{background:#edf4e7;border-color:#a9c0a0}}
+@media(prefers-reduced-motion:reduce){html body #app.bbnext-plan .bbfeed-meta .bbfeed-meal button::before{transition:none}}
