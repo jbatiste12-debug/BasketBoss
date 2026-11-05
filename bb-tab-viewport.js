@@ -11,7 +11,7 @@
  function install(win){
   if(win.BBTabViewport?.version===1)return win.BBTabViewport;
   const doc=win.document,html=doc.documentElement,raf=fn=>(win.requestAnimationFrame||win.setTimeout||setTimeout).call(win,fn),caf=id=>(win.cancelAnimationFrame||win.clearTimeout||clearTimeout).call(win,id);
-  let destroyed=false,pending=null,serial=0,manual=0,frames=[],modeFrame=null,observer=null,treeObserver=null;
+  let destroyed=false,pending=null,serial=0,commits=0,manual=0,frames=[],modeFrame=null,observer=null,treeObserver=null;
   const has=(node,name)=>node?.classList?.contains(name)||String(node?.className||'').split(/\s+/).includes(name);
   const locationURL=()=>{try{return new URL(win.location.href);}catch{return null;}};
   function view(){const saved=normal(doc.body?.dataset?.bbnextView);if(saved)return saved;const current=doc.querySelector('.tab.active,[data-bb-nav-current="true"]');const found=normal(current?.dataset?.tab)||NAV_ITEMS[current?.dataset?.bbNavItem];if(found)return found;return /(?:^|\/)make-a-meal\.html$/.test(locationURL()?.pathname||'')?'cook':null;}
@@ -54,7 +54,7 @@
   function perform(intent){
    frames=[];if(destroyed||pending!==intent||manual!==intent.manual)return;
    mode(false);
-   if(intent.view&&view()!==intent.view)return;
+   if(intent.view&&view()!==intent.view){if(!overlay())pending=null;return;}
    if(intent.kind==='panel'){
     const panel=intent.panel&&intent.panel.isConnected!==false?intent.panel:doc.querySelector(intent.selector);
     pending=null;if(visible(panel))top(panel);return;
@@ -69,6 +69,17 @@
    frames.push(raf(()=>{if(pending!==intent||manual!==intent.manual)return;frames.push(raf(()=>perform(intent)));}));
   }
   function reset(options={}){for(const frame of frames)caf(frame);frames=[];pending={kind:options.kind||'primary',view:normal(options.view)||null,panel:options.panel||null,selector:options.selector||null,manual,id:++serial};queueFrames();}
+  // The renderer commits a real destination before the browser paints it.
+  // Reuse the captured tap intent, rather than restoring an old position and
+  // resetting it again on a later frame.
+  function commit(target){
+   if(destroyed)return false;
+   const current=normal(target)||view();if(!current||view()!==current)return false;
+   for(const frame of frames)caf(frame);frames=[];
+   if(!pending||pending.kind!=='primary'||pending.manual!==manual||pending.view&&pending.view!==current)
+    pending={kind:'primary',view:current,panel:null,selector:null,manual,id:++serial};
+   commits++;lastView=current;perform(pending);return true;
+  }
   function cancelManual(event){
    if(event?.isTrusted===false)return;
    if(event?.type==='keydown'&&(!['ArrowDown','ArrowUp','PageDown','PageUp','Home','End',' '].includes(event.key)||event.target?.closest?.('input,textarea,select,[contenteditable="true"]')))return;
@@ -107,7 +118,7 @@
   // Keep references for teardown, including passive manual-scroll intent hooks.
   doc.addEventListener('keydown',keyHandler,true);
   win.addEventListener('wheel',cancelManual,{passive:true});win.addEventListener('touchmove',cancelManual,{passive:true});win.addEventListener('resize',scheduleMode,{passive:true});win.addEventListener('pageshow',consumeMarker);win.visualViewport?.addEventListener?.('resize',scheduleMode);
-  const controller={version:1,activate(control){if(!control||!control.closest?.(NAV)||control.disabled||control.getAttribute?.('aria-disabled')==='true')return false;const target=primary(control);if(!target)return false;remember(control,target);control.click();reset({view:target});return true;},reset,refresh:scheduleMode,destroy(){if(destroyed)return;destroyed=true;observer?.disconnect();treeObserver?.disconnect();for(const frame of frames)caf(frame);if(modeFrame!==null)caf(modeFrame);frames=[];pending=null;doc.removeEventListener('click',click,true);doc.removeEventListener('close',scheduleMode,true);doc.removeEventListener('keydown',keyHandler,true);win.removeEventListener('wheel',cancelManual);win.removeEventListener('touchmove',cancelManual);win.removeEventListener('resize',scheduleMode);win.removeEventListener('pageshow',consumeMarker);win.visualViewport?.removeEventListener?.('resize',scheduleMode);}};
+  const controller={version:1,activate(control){if(!control||!control.closest?.(NAV)||control.disabled||control.getAttribute?.('aria-disabled')==='true')return false;const target=primary(control);if(!target)return false;remember(control,target);const before=serial,beforeCommit=commits;control.click();if(serial===before&&commits===beforeCommit)reset({view:target});return true;},reset,commit,refresh:scheduleMode,destroy(){if(destroyed)return;destroyed=true;observer?.disconnect();treeObserver?.disconnect();for(const frame of frames)caf(frame);if(modeFrame!==null)caf(modeFrame);frames=[];pending=null;doc.removeEventListener('click',click,true);doc.removeEventListener('close',scheduleMode,true);doc.removeEventListener('keydown',keyHandler,true);win.removeEventListener('wheel',cancelManual);win.removeEventListener('touchmove',cancelManual);win.removeEventListener('resize',scheduleMode);win.removeEventListener('pageshow',consumeMarker);win.visualViewport?.removeEventListener?.('resize',scheduleMode);}};
   win.BBTabViewport=controller;if(doc.readyState==='loading')doc.addEventListener('DOMContentLoaded',start,{once:true});else start();return controller;
  }
  return Object.freeze({install});

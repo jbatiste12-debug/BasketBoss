@@ -18,11 +18,11 @@
     const params = new URLSearchParams(location.search);
     const view=params.get('bbview');
     if(!['week','discover','shop','shop-list'].includes(view))return;
-    requestAnimationFrame(()=>{
-      navTo(view);
-      const url=new URL(location.href); url.searchParams.delete('bbview');
-      history.replaceState(history.state,'',url.pathname+url.search+url.hash);
-    });
+    const clean=()=>{const url=new URL(location.href);url.searchParams.delete('bbview');history.replaceState(history.state,'',url.pathname+url.search+url.hash);};
+    // Current app entrypoints render this target before their first paint.
+    // Replaying its click later would override a newer tap or rebuild it twice.
+    if(doc.documentElement.dataset.bbInitialView===view){clean();return;}
+    requestAnimationFrame(()=>{navTo(view);clean();});
   }
   function moveMarketSetting() {
     if(isCook)return;

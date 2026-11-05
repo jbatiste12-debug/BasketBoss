@@ -204,19 +204,19 @@ jobs:
             -sdk iphoneos \
             -destination 'generic/platform=iOS' \
             -derivedDataPath /tmp/basketboss-ios-device-build \
-            -archivePath "$RUNNER_TEMP/BasketBoss-1.0-build22.xcarchive" \
+            -archivePath "$RUNNER_TEMP/BasketBoss-1.0-build23.xcarchive" \
             CODE_SIGNING_ALLOWED=NO \
             archive
-          test "$(/usr/libexec/PlistBuddy -c 'Print CFBundleVersion' "$RUNNER_TEMP/BasketBoss-1.0-build22.xcarchive/Products/Applications/App.app/Info.plist")" = '22'
-          test "$(/usr/libexec/PlistBuddy -c 'Print CFBundleIdentifier' "$RUNNER_TEMP/BasketBoss-1.0-build22.xcarchive/Products/Applications/App.app/Info.plist")" = 'uk.co.basketboss.app'
+          test "$(/usr/libexec/PlistBuddy -c 'Print CFBundleVersion' "$RUNNER_TEMP/BasketBoss-1.0-build23.xcarchive/Products/Applications/App.app/Info.plist")" = '23'
+          test "$(/usr/libexec/PlistBuddy -c 'Print CFBundleIdentifier' "$RUNNER_TEMP/BasketBoss-1.0-build23.xcarchive/Products/Applications/App.app/Info.plist")" = 'uk.co.basketboss.app'
           ditto -c -k --sequesterRsrc --keepParent \
-            "$RUNNER_TEMP/BasketBoss-1.0-build22.xcarchive" \
-            "$RUNNER_TEMP/BasketBoss-1.0-build22-unsigned.xcarchive.zip"
+            "$RUNNER_TEMP/BasketBoss-1.0-build23.xcarchive" \
+            "$RUNNER_TEMP/BasketBoss-1.0-build23-unsigned.xcarchive.zip"
       - name: Retain the unsigned iPhone archive
         uses: actions/upload-artifact@v6
         with:
-          name: BasketBoss-1.0-build22-unsigned-iPhone-archive
-          path: ${{ runner.temp }}/BasketBoss-1.0-build22-unsigned.xcarchive.zip
+          name: BasketBoss-1.0-build23-unsigned-iPhone-archive
+          path: ${{ runner.temp }}/BasketBoss-1.0-build23-unsigned.xcarchive.zip
           if-no-files-found: error
           retention-days: 7
           compression-level: 0
