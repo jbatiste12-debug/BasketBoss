@@ -1,0 +1,14 @@
+BasketBoss Build 19 — quicker pantry updates
+
+At home now puts your saved food first, in compact cards with quantity controls beside each item. Search, Add item, View filters and the Cupboard, Fridge and Freezer buttons stay within reach while you scroll.
+
+Please try:
+- Search your pantry and jump between storage areas without scrolling back to the top.
+- Use + and - beside a food, and check the Shop shortfall updates immediately.
+- Add a food with its quantity and unit, then amend its amount inline.
+- Check Use soon and Reduced badges, filters and Move to Freezer.
+- Scroll to the last item and check it clears the bottom navigation on your iPhone.
+- Switch between UK and US units, and check quantities still reconcile with Shop.
+- Check Weekly essentials still works separately and preserves confirmed top-ups.
+
+The existing stock calculations and database logic are unchanged. Please report the item name, unit, storage area and what happened, with a screenshot where possible.
