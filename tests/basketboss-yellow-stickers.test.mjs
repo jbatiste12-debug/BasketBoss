@@ -130,3 +130,11 @@ test('a late read cannot erase a more recent successful sighting',async()=>{
  f.setHandler(async(_url,request)=>request.method==='GET'?new Promise(resolve=>{release=()=>resolve({ok:true,status:200,json:async()=>({ok:true,region:'UK',store:'waitrose',lastSpottedAt:null})});}):{ok:true,status:200,json:async()=>({ok:true,region:'UK',store:'waitrose',lastSpottedAt:new Date(f.at).toISOString()})});
  const read=f.controller.refresh();await new Promise(resolve=>setImmediate(resolve));await f.controller.report('spotted');release();await read;assert.equal(f.controller.snapshot().live,true);
 });
+
+test('a stalled crowd report times out to explicit local state and releases the tap lock',async()=>{
+ let expire;const cleared=[],f=fixture({setTimeout:(fn,delay)=>{assert.equal(delay,12000);expire=fn;return 3;},clearTimeout:id=>cleared.push(id)});
+ f.setHandler((_url,input)=>new Promise((_resolve,reject)=>input.signal.addEventListener('abort',()=>reject(Error('synthetic no signal')),{once:true})));
+ const first=f.controller.report('spotted');assert.equal(f.controller.snapshot().busy,true);assert.equal((await f.controller.report('not_yet')).busy,true);
+ await new Promise(resolve=>setImmediate(resolve));expire();const result=await first;
+ assert.equal(result.local,true);assert.equal(f.controller.snapshot().busy,false);assert.equal(f.controller.snapshot().live,false);assert.match(f.controller.snapshot().label,/^On this device:/);assert.deepEqual(cleared,[3]);assert.equal(f.calls.length,1);
+});

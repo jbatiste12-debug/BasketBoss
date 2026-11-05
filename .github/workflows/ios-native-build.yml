@@ -3,7 +3,7 @@ name: Verify iOS native build
 on:
   workflow_dispatch:
   push:
-    branches: [main, codex/native-cook-fix, release/recipe-editorial-collections, feature/conversational-voice-cook, fix/cook-mentor-reply-failure, fix/confirmed-cook-pantry, fix/at-home-layout, fix/weekly-essentials-shop, fix/auth-flow, fix/onboarding-meal-preferences, fix/shop-essentials-flow, feature/reduced-food]
+    branches: [main, codex/native-cook-fix, release/recipe-editorial-collections, feature/conversational-voice-cook, fix/cook-mentor-reply-failure, fix/confirmed-cook-pantry, fix/at-home-layout, fix/weekly-essentials-shop, fix/auth-flow, fix/onboarding-meal-preferences, fix/shop-essentials-flow, feature/reduced-food, fix/mobile-preflight-build16]
     paths:
       - .github/workflows/ios-native-build.yml
       - .github/workflows/inspect-account-keyboard.yml
@@ -195,7 +195,7 @@ jobs:
         run: echo '::notice title=BasketBoss iOS native build::{"simulatorBuild":true,"bundleId":"uk.co.basketboss.app","minimumIOS":"16.0","signingTested":false}'
       # Finish device compilation before Simulator startup; Cook and keyboard
       # checks still determine whether this verification run succeeds.
-      - name: Create the unsigned iPhone archive for build 14
+      - name: Create the unsigned iPhone archive for build 16
         run: |
           xcodebuild \
             -workspace ios/App/App.xcworkspace \
@@ -204,19 +204,19 @@ jobs:
             -sdk iphoneos \
             -destination 'generic/platform=iOS' \
             -derivedDataPath /tmp/basketboss-ios-device-build \
-            -archivePath "$RUNNER_TEMP/BasketBoss-1.0-build15.xcarchive" \
+            -archivePath "$RUNNER_TEMP/BasketBoss-1.0-build16.xcarchive" \
             CODE_SIGNING_ALLOWED=NO \
             archive
-          test "$(/usr/libexec/PlistBuddy -c 'Print CFBundleVersion' "$RUNNER_TEMP/BasketBoss-1.0-build15.xcarchive/Products/Applications/App.app/Info.plist")" = '15'
-          test "$(/usr/libexec/PlistBuddy -c 'Print CFBundleIdentifier' "$RUNNER_TEMP/BasketBoss-1.0-build15.xcarchive/Products/Applications/App.app/Info.plist")" = 'uk.co.basketboss.app'
+          test "$(/usr/libexec/PlistBuddy -c 'Print CFBundleVersion' "$RUNNER_TEMP/BasketBoss-1.0-build16.xcarchive/Products/Applications/App.app/Info.plist")" = '16'
+          test "$(/usr/libexec/PlistBuddy -c 'Print CFBundleIdentifier' "$RUNNER_TEMP/BasketBoss-1.0-build16.xcarchive/Products/Applications/App.app/Info.plist")" = 'uk.co.basketboss.app'
           ditto -c -k --sequesterRsrc --keepParent \
-            "$RUNNER_TEMP/BasketBoss-1.0-build15.xcarchive" \
-            "$RUNNER_TEMP/BasketBoss-1.0-build15-unsigned.xcarchive.zip"
+            "$RUNNER_TEMP/BasketBoss-1.0-build16.xcarchive" \
+            "$RUNNER_TEMP/BasketBoss-1.0-build16-unsigned.xcarchive.zip"
       - name: Retain the unsigned iPhone archive
         uses: actions/upload-artifact@v6
         with:
-          name: BasketBoss-1.0-build15-unsigned-iPhone-archive
-          path: ${{ runner.temp }}/BasketBoss-1.0-build15-unsigned.xcarchive.zip
+          name: BasketBoss-1.0-build16-unsigned-iPhone-archive
+          path: ${{ runner.temp }}/BasketBoss-1.0-build16-unsigned.xcarchive.zip
           if-no-files-found: error
           retention-days: 7
           compression-level: 0

@@ -9,8 +9,8 @@
   const actor=()=>{try{return win.BBHome?.actor?.()||null;}catch{return null;}};
   const identity=()=>{try{if(win.crypto?.randomUUID)return win.crypto.randomUUID();}catch{}return 'manual-buy-'+Date.now()+'-'+(++sequence);};
   function close(state){
-   if(!state||state.closed)return;state.closed=true;state.cleanup?.();state.dialog.close?.();state.dialog.remove();doc.body.style.overflow=state.overflow;
-   if(active===state)active=null;if(!disposed&&open.isConnected)open.focus?.();
+   if(!state||state.closed)return;state.closed=true;state.cleanup?.();if(state.dialog.contains(doc.activeElement))doc.activeElement.blur?.();state.dialog.close?.();state.dialog.remove();doc.body.style.overflow=state.overflow;
+   if(active===state)active=null;win.BBKeyboardLayout?.releaseAfterDismissal?.();if(!disposed&&open.isConnected)open.focus?.({preventScroll:true});
   }
   function openDialog(){
    if(disposed||active)return;const home=win.BBHome,who=actor();
@@ -38,11 +38,12 @@
    const viewport=win.visualViewport;
    const fit=()=>{
     if(!alive()||!Number.isFinite(viewport?.height))return;
-    const keyboard=Number.isFinite(win.innerHeight)&&viewport.height+80<win.innerHeight;
+    const keyboard=Math.abs(Number(viewport.scale||1)-1)<.05&&Number.isFinite(win.innerHeight)&&viewport.height+80<win.innerHeight;
     dialog.style.maxHeight=keyboard?Math.max(160,viewport.height-24)+'px':'';dialog.style.top=keyboard?Math.max(12,(viewport.offsetTop||0)+12)+'px':'';dialog.style.bottom=keyboard?'auto':'';dialog.style.margin=keyboard?'0 auto':'';
+    const input=doc.activeElement;if(keyboard&&dialog.contains(input)&&input.matches?.('input,select,textarea')){const box=dialog.getBoundingClientRect(),field=input.getBoundingClientRect();if(field.bottom>box.bottom-12)dialog.scrollTop+=field.bottom-box.bottom+12;else if(field.top<box.top+12)dialog.scrollTop+=field.top-box.top-12;}
    };
-   viewport?.addEventListener?.('resize',fit);viewport?.addEventListener?.('scroll',fit);
-   state.cleanup=()=>{viewport?.removeEventListener?.('resize',fit);viewport?.removeEventListener?.('scroll',fit);};
+   viewport?.addEventListener?.('resize',fit);viewport?.addEventListener?.('scroll',fit);win.addEventListener?.('resize',fit);dialog.addEventListener('focusin',fit);
+   state.cleanup=()=>{viewport?.removeEventListener?.('resize',fit);viewport?.removeEventListener?.('scroll',fit);win.removeEventListener?.('resize',fit);};
    const current=()=>alive()&&!state.invalid&&actor()===who&&win.BBAccountDeletion?.isDeleting?.()!==true;
    const freeze=()=>{if(!alive())return;state.invalid=true;inputs.forEach(node=>node.disabled=true);save.disabled=true;status.textContent='Your account changed. Close this form and reopen Add item to buy.';cancel.disabled=state.busy;};
    state.checkContext=()=>{if(alive()&&(actor()!==who||win.BBAccountDeletion?.isDeleting?.()===true))freeze();};

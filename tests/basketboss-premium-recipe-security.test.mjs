@@ -15,14 +15,16 @@ test('only 100 unique Free recipe contents are public',()=>{
 });
 test('Make a Meal uses authenticated Premium delivery, not a 321-item public bundle',async()=>{
   const source=await read('make-a-meal.js');
-  assert.match(source,/fetch\('\/api\/recipes\/premium\?catalogue=500'/);
+  assert.match(source,/bbMealJSON\('\/api\/recipes\/premium\?catalogue=500',\{\s*cache:'no-store',credentials:'same-origin',redirect:'manual',\s*headers:\{'Accept':'application\/json','Authorization':'Bearer '\+token\}/);
+  assert.match(source,/fetch\(url,\{\.\.\.options,signal:controller\.signal\}\)/);
+  assert.match(source,/if\(bbPaidToken\(\)!==token\)return/,'a changed account cannot adopt a delayed private catalogue');
   assert.match(source,/bbSecurePremiumIds/);
   assert.doesNotMatch(source,/data\.length!==321/);
   assert.doesNotMatch(source,/bb174_premium_local_demo_v1/);
 });
 test('service worker uses a fresh cache and avoids public full-catalogue caching',async()=>{
   const source=await read('service-worker.js');
-  assert.match(source,/basketboss-premium-secure-shell-20261105-v56-reduced1/);
+  assert.match(source,/basketboss-premium-secure-shell-20261105-v57-preflight1/);
   const core=source.match(/const CORE\s*=\s*\[([\s\S]*?)\]\s*\.map\(/)?.[1];
   assert.ok(core,'precache declaration present');
   assert.doesNotMatch(core,/['"]manifest\.webmanifest['"]/);

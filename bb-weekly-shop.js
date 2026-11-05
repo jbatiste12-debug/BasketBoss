@@ -31,6 +31,7 @@
    if(options.storage.getItem(KEY)!==bytes)throw Error('storage_unavailable');
   }
   function publish(){options.onState?.(snapshot());}
+  function isPending(){const pin=session();return !!(pending&&pin?.actor===pending.actor&&pin?.token===pending.token&&shopSession()===pending.shop);}
   function snapshot(){const pin=session();return status&&pin?.actor===status.actor&&pin?.token===status.token?{...status.data}:null;}
   function mayOpen(shop=shopSession()){
    const pin=session();return !!(pin&&grant&&pin.actor===grant.actor&&pin.token===grant.token&&shop===grant.shopSessionId);
@@ -38,9 +39,12 @@
   function invalidate(){generation++;statusVersion++;grant=null;pending=null;status=null;statusRequest=null;lastRead=null;options.closeShop?.();publish();}
   function notice(kind,data,interactive){if(interactive)options.onNotice?.(kind,data||{});}
   async function request(pin,method,body){
-   const response=await options.fetch(ENDPOINT,{method,headers:{Accept:'application/json',Authorization:'Bearer '+pin.token,...(body?{'Content-Type':'application/json'}:{})},...(body?{body:JSON.stringify(body)}:{}),credentials:'same-origin',redirect:'manual',cache:'no-store'});
-   let data=null;try{data=await response.json();}catch{}
-   return {response,data};
+   const controller=new AbortController(),timer=(options.setTimeout||setTimeout)(()=>controller.abort(),15000);
+   try{
+    const response=await options.fetch(ENDPOINT,{method,headers:{Accept:'application/json',Authorization:'Bearer '+pin.token,...(body?{'Content-Type':'application/json'}:{})},...(body?{body:JSON.stringify(body)}:{}),signal:controller.signal,credentials:'same-origin',redirect:'manual',cache:'no-store'});
+    let data=null;try{data=await response.json();}catch{}
+    return {response,data};
+   }finally{(options.clearTimeout||clearTimeout)(timer);}
   }
   async function refresh(){
    const pin=session(),serial=generation,version=statusVersion;
@@ -87,16 +91,16 @@
      grant={...pin,shopSessionId:shop};statusVersion++;status={...pin,data};lastRead={...pin,time:Date.now()};publish();options.openShop();return true;
     }catch{
      if(current(pin,serial,shop)){grant=null;options.closeShop?.();notice('unavailable',null,interactive);}return false;
-    }finally{if(pending?.promise===job)pending=null;}
+    }finally{if(pending?.promise===job){pending=null;publish();}}
    };
    // Promise scheduling also makes two synchronous proxy clicks share one POST.
-   const job=Promise.resolve().then(run);pending={...pin,shop,promise:job};return job;
+   const job=Promise.resolve().then(run);pending={...pin,shop,promise:job};publish();return job;
   }
   function end(shop){
    if(grant?.shopSessionId===shop)grant=null;
    generation++;pending=null;options.closeShop?.();publish();
   }
-  return Object.freeze({start,resume:()=>start({interactive:false,resumeOnly:true}),refresh,mayOpen,invalidate,end,snapshot});
+  return Object.freeze({start,resume:()=>start({interactive:false,resumeOnly:true}),refresh,mayOpen,invalidate,end,snapshot,isPending});
  }
  function install(root){
   const doc=root.document;if(!doc||root.BBWeeklyShop)return;
@@ -130,11 +134,19 @@
    if(!dialog.open){if(typeof dialog.showModal==='function')dialog.showModal();else dialog.setAttribute('open','');}
    (kind==='sign-in'?signIn:kind==='limit'?upgrade:dialog.querySelector('button:not([hidden])'))?.focus?.({preventScroll:true});
   }
-  const controller=create({getSession:session,getShopSessionId:()=>bridge()?.sessionId?.(),openShop:()=>bridge()?.open?.(),closeShop:()=>bridge()?.close?.(),storage:root.localStorage,fetch:(...args)=>root.fetch(...args),uuid,isBlocked:blocked,onNotice:showNotice,onState:()=>schedule()});
+  const controller=create({getSession:session,getShopSessionId:()=>bridge()?.sessionId?.(),openShop:()=>bridge()?.open?.(),closeShop:()=>bridge()?.close?.(),storage:root.localStorage,fetch:(...args)=>root.fetch(...args),uuid,isBlocked:blocked,onNotice:showNotice,onState:()=>{syncLaunchers();schedule();}});
   root.BBWeeklyShop=controller;
+  function syncLaunchers(){
+   const busy=controller.isPending();
+   for(const control of doc.querySelectorAll(LAUNCHERS)){
+    if(busy){if(!control.hasAttribute('data-bb-weekly-pending'))control.dataset.bbWeeklyPending=control.disabled?'disabled':'enabled';control.disabled=true;control.setAttribute('aria-busy','true');}
+    else if(control.hasAttribute('data-bb-weekly-pending')){control.disabled=control.dataset.bbWeeklyPending==='disabled';delete control.dataset.bbWeeklyPending;control.removeAttribute('aria-busy');}
+   }
+  }
   function decorate(){
    scheduled=false;observer?.disconnect();
    try{
+    syncLaunchers();
     const state=root.BasketBossMembershipUI?.state?.()||root.BasketBossVerifiedPremium?.state?.();
     const verified=controller.snapshot(),paid=verified?verified.premium===true:state==='premium';
     for(const control of doc.querySelectorAll(LAUNCHERS)){

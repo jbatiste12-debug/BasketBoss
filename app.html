@@ -10,8 +10,8 @@
 <script src="bb-food-visuals.js?v=20261031-food2"></script>
 <link rel="stylesheet" href="bb-navigation-polish.css?v=20261102-loop3">
 <script defer src="bb-navigation-polish.js?v=20261101-polish1"></script>
-<link rel="stylesheet" href="bb-account-polish.css?v=20261101-header2">
-<script defer src="bb-account-polish.js?v=20261104-auth1"></script>
+<link rel="stylesheet" href="bb-account-polish.css?v=20261105-preflight1">
+<script defer src="bb-account-polish.js?v=20261105-preflight1"></script>
 <link rel="stylesheet" href="bb-onboarding-v2.css?v=20261104-kitchen1">
 <link rel="stylesheet" href="bb-ux-cleanup.css?v=20261028-ux1">
 <meta charset="utf-8"><meta http-equiv="Content-Type" content="text/html; charset=utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
@@ -1768,7 +1768,7 @@ const tab=window.bb172ActiveTab;
  const container=document.createElement('section');container.id='bb172AutoPlanner';container.className='bb172-quick-card';
  const goal=bb172BudgetValue()||60;
  container.innerHTML='<div class="bb172-quick-head"><div><h3>🎲 Auto-fill my week</h3><p>Suggest five dinners using shared ingredients and your estimated shopping budget.</p></div><button type="button" class="btn primary" id="bb172GenerateDinners">Auto-fill · aim under £'+Number(goal).toFixed(0)+'</button></div><p class="bb172-quick-hint">Fills empty days only. Review the recipes before shopping. £'+Number(goal).toFixed(0)+' is a <strong>target, not a guarantee</strong>; lunchboxes and existing shopping items also count towards the estimate.</p>';
- container.querySelector('button').onclick=async()=>{
+ container.querySelector('button').onclick=()=>bbAfWithLock(async()=>{
   const old=state.planned||[],notes=bb172QuickDinners(),occupied=new Set(old.map(x=>x.day).concat(Object.keys(notes)));
   const desired=Math.max(0,5-old.length-Object.keys(notes).length);let days=['Monday','Tuesday','Wednesday','Thursday','Friday','Saturday','Sunday'].filter(d=>!occupied.has(d)).slice(0,desired);
   if(!days.length){bb172Msg('Five or more dinners are already planned. Use Swap on a planned recipe to change one.');return}
@@ -1782,7 +1782,7 @@ const tab=window.bb172ActiveTab;
   const approved=await bbQaConfirm((candidate.length-old.length)+' dinners will be added to your free days.\n\nEstimated full shop: £'+total.toFixed(2)+' vs £'+goal.toFixed(2)+' target'+(summary.pending?'\n⚠ '+summary.pending+' unpriced lines are not included.':'')+(over?'\n⚠ Over your target — this is an estimate, not a budget guarantee.':'')+'\n\nUse these suggested meals?','Auto-Fill My Week','Add dinners');
   if(!approved)return;
   if(bbAfCommit(old,planSnapshot,notesSnapshot,null,selection))bb172Msg(over?'Suggested dinners added. Basket is above your target; review or Swap meals.':'Suggested dinners added. Review your shopping estimate ✓');
- };
+ });
  const first=app.querySelector('.day');if(first)first.before(container);else app.prepend(container);
  for(const row of app.querySelectorAll('.day')){
   const days=BB172_WEEK_DAYS;const idx=[...app.querySelectorAll('.day')].indexOf(row);const day=days[idx];if(!day)continue;
@@ -3822,8 +3822,8 @@ body[data-bbnext-view="discover"] #app .bb-featured-card #bbFeaturedBatch {
 <script src="bb-cook-assistant.js?v=20261104-mentor-stream1"></script>
 <script src="bb-cook-voice.js?v=20261104-mentor-stream1"></script>
 <script defer src="bb-weekly-essentials.js?v=20261105-shop-confirm1"></script>
-<script defer src="bb-receipt-inventory.js?v=20261105-reduced1"></script>
-<script defer src="bb-receipt-scanner.js?v=20261105-reduced1"></script>
+<script defer src="bb-receipt-inventory.js?v=20261105-preflight1"></script>
+<script defer src="bb-receipt-scanner.js?v=20261105-preflight1"></script>
 <script defer src="bb-receipt-host.js?v=20261104-regions2"></script>
 <link rel="stylesheet" href="bb-receipt-scanner.css?v=20261031-receipt-pantry">
 <link rel="stylesheet" href="bb-receipt-host.css?v=20261101-receipt-tab1">
@@ -6303,6 +6303,7 @@ function bb80RememberPlanDays(){try{sessionStorage.setItem(BB80_OPEN_DAYS_KEY,JS
 let bbNextExpandedPlanDay=null;
 let bbNextBudgetOpen=false;
 let bbNextAutofillOpen=false;
+let bbAfBusy=false;
 function bbNextAttachAutofill(app){
  // UI-NEXT Batch 7.5: move the ONE original Auto-fill action
  // action prominently on Plan. Move its actual button, never clone it or
@@ -6335,7 +6336,8 @@ function bbNextAttachAutofill(app){
  else if(working.parentNode!==actions)actions.prepend(working);
  working.classList.add('bbnext-plan-primary');
  working.textContent='✦ Auto-fill My Week';
- working.disabled=false;
+ working.disabled=bbAfBusy;
+ working.setAttribute('aria-busy',String(bbAfBusy));
  // Leave the original explanatory panel below, but without a second button.
  if(source.parentNode!==disclosure)disclosure.append(source);
 }
@@ -6606,7 +6608,20 @@ function bbQaConfirm(message,title='Please confirm',confirmLabel='Continue'){
   cancel.focus();
  });
 }
-async function bb81AutoFillPro(){
+function bbAfSetBusy(busy){
+ for(const button of document.querySelectorAll('#bb172FillSixDinners,#bb172GenerateDinners')){
+  button.disabled=busy;button.setAttribute('aria-busy',String(busy));
+ }
+}
+function bbAfWithLock(action){
+ if(bbAfBusy)return Promise.resolve(false);
+ bbAfBusy=true;bbAfSetBusy(true);
+ return Promise.resolve().then(action).catch(()=>{
+  notify('Could not finish Auto-fill. Your saved plan is safe; please try again.');return false;
+ }).finally(()=>{bbAfBusy=false;bbAfSetBusy(false);});
+}
+async function bb81AutoFillPro(){return bbAfWithLock(bb81AutoFillProRun);}
+async function bb81AutoFillProRun(){
  if(!bb176IsPremiumPreview()){bb81ProUpgradePreview('auto');return false;}
  if(!BB81_PRO_FILTERS.some(k=>bb81ProFilters[k]))return false;
  if(!Array.isArray(state.planned)){notify('Saved plan format not recognised. Nothing changed.');return false;}
@@ -9498,9 +9513,10 @@ function bb172BuildSixDinners(allRecipes){
  }
  return {plans,family:chosen.slice(0,5),date:chosen[5],rotation};
 }
-async function bb172AutoFillSixDinners(){
+async function bb172AutoFillSixDinners(){return bbAfWithLock(bb172AutoFillSixDinnersRun);}
+async function bb172AutoFillSixDinnersRun(){
  if(bbBatchPairs().length){notify('Linked batch nights are planned. Remove those links before another Auto-fill.');return false;}
- if(bb176IsPremiumPreview()&&BB81_PRO_FILTERS.some(k=>bb81ProFilters[k]))return bb81AutoFillPro();
+ if(bb176IsPremiumPreview()&&BB81_PRO_FILTERS.some(k=>bb81ProFilters[k]))return bb81AutoFillProRun();
  if(!Array.isArray(state.planned)){notify('Saved plan format not recognised. Nothing changed.');return false;}
  const previous=state.planned;
  if(!bbPlanVarietyValid(previous,true)){notify('Adjust the existing dinners to alternate proteins and use at most two cheese-heavy meals before Auto-fill.');return false;}
@@ -10528,6 +10544,7 @@ function bb307OpenReceiptPrices(context=bb307ReceiptPriceContext()){
 }
 function bb172ShopPrompt(kind,after){
  if(bb172ShopDialogOpen)return;
+ const previous=document.activeElement;
  const rows=bb172ShopUncheckedRows(),n=rows.length;
  bb172ShopDialogOpen=true;
  const overlay=document.createElement('div');overlay.id='bb172ShopConfirm';overlay.className='bb172-shop-overlay';
@@ -10537,7 +10554,8 @@ function bb172ShopPrompt(kind,after){
  const buttons=document.createElement('div');buttons.className='bb172-shop-dialog-actions';
  const stay=document.createElement('button');stay.type='button';stay.className='btn primary';stay.textContent=kind==='reminder'?'I’ve checked — keep shopping':'Keep shopping';
  const leave=document.createElement('button');leave.type='button';leave.className='btn';leave.textContent=kind==='finish'?'Finish shopping (archive session)':'Exit shop (keep progress)';
- const close=()=>{overlay.remove();bb172ShopDialogOpen=false;bb172ShopLastInteraction=Date.now();};
+ let closed=false,committing=false;
+ const close=()=>{if(closed)return;closed=true;overlay.remove();bb172ShopDialogOpen=false;bb172ShopLastInteraction=Date.now();if(previous?.isConnected)previous.focus?.({preventScroll:true});};
  stay.onclick=()=>{close();const first=bb172ShopUncheckedRows()[0];if(kind==='reminder'&&first){const section=first.closest('.bb172-aisle-section');if(section)section.open=true}};
  leave.onclick=()=>{if(kind==='finish'&&!bbShopV7Close()){notify('Shopping session could not be archived; progress preserved');return;}close();bb172ShopSetActive(false);if(typeof after==='function')after()};
  const newlyBought=kind==='finish'?[...bbBetaPendingBought(),...bbHomePendingHouseholdPurchases()]:[];
@@ -10556,10 +10574,22 @@ function bb172ShopPrompt(kind,after){
  buttons.append(stay,leave);
  if(kind==='finish'){
   const scanReceipt=document.createElement('button');scanReceipt.type='button';scanReceipt.className='btn';scanReceipt.textContent='Finish & scan receipt (optional)';
-  scanReceipt.onclick=()=>{const context=bb307ReceiptPriceContext();leave.click();if(!overlay.isConnected)bb307OpenReceiptPrices(context);};
+  const complete=leave.onclick;
+  scanReceipt.onclick=()=>{const context=bb307ReceiptPriceContext();complete();if(!overlay.isConnected)bb307OpenReceiptPrices(context);};
   buttons.append(scanReceipt);
  }
+ // A detached confirmation button must never settle the same shop twice.
+ for(const button of buttons.children){
+  if(button===stay)continue;
+  const action=button.onclick;
+  button.onclick=()=>{if(closed||committing)return;committing=true;
+   for(const control of buttons.children){control.disabled=true;control.setAttribute('aria-busy','true');}
+   try{action();}catch{notify('Could not finish shopping. Your saved progress is safe; please try again.');}
+   finally{if(!closed){committing=false;for(const control of buttons.children){control.disabled=false;control.removeAttribute('aria-busy');}}}
+  };
+ }
  dialog.append(title,message,buttons);overlay.append(dialog);document.body.appendChild(overlay);stay.focus();
+ overlay.addEventListener('click',e=>{if(e.target===overlay&&!committing)close();});
  // Escape keeps the list open rather than silently confirming unfinished shopping.
  overlay.addEventListener('keydown',e=>{if(e.key==='Escape'){e.preventDefault();close()}});
 }
@@ -11768,7 +11798,7 @@ if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',
   <button type="button" class="bbtrial-free" data-bbtrial-free>Continue with BasketBoss Free →</button>
   <p class="bbtrial-foot">100 starter recipes, manual ingredients and basic planning remain available without subscribing.</p>
  </div>
-</dialog><script src="bb-intro-trial.js?v=bb-account-first-20261027-v1"></script><link rel="stylesheet" href="bb-how-it-works.css?v=20261104-kitchen1"><script defer src="bb-how-it-works.js?v=20261105-reduced1"></script><script defer src="bb-onboarding-v2.js?v=20261104-diets1"></script><script defer src="bb-cold-preview.js?v=20261028-conversion-1"></script><script defer src="bb-funnel.js?v=20261028-v1"></script><script defer src="bb-ux-cleanup.js?v=20261028-ux1"></script><script src="bb-us-market.js?v=20261102-loop2"></script><script defer src="bb-install.js?v=173install1"></script><script defer src="bb-welcome-splash.js?v=20261101-signin2"></script><script defer src="bb-premium-features.js?v=20261105-reduced1"></script>
+</dialog><script src="bb-intro-trial.js?v=bb-account-first-20261027-v1"></script><link rel="stylesheet" href="bb-how-it-works.css?v=20261104-kitchen1"><script defer src="bb-how-it-works.js?v=20261105-reduced1"></script><script defer src="bb-onboarding-v2.js?v=20261104-diets1"></script><script defer src="bb-cold-preview.js?v=20261028-conversion-1"></script><script defer src="bb-funnel.js?v=20261028-v1"></script><script defer src="bb-ux-cleanup.js?v=20261028-ux1"></script><script src="bb-us-market.js?v=20261102-loop2"></script><script defer src="bb-install.js?v=173install1"></script><script defer src="bb-welcome-splash.js?v=20261101-signin2"></script><script defer src="bb-premium-features.js?v=20261105-preflight1"></script>
 <style id="bb175-ux-fix">
 /* BasketBoss v17.4.2 premium-preview usability improvements */
 #app .swipe-action.yes{color:#c91e43!important;background:#fff2f4!important;border:3px solid #d92c50!important;box-shadow:0 5px 18px rgba(192,22,60,.22)!important;font-size:37px!important;font-weight:900!important}
@@ -12576,7 +12606,7 @@ body[data-bbnext-view="discover"] #app .bb175-discover-heading{padding-top:calc(
 <link rel="stylesheet" href="bb-premium-feature-badges.css?v=20261101-badge1">
 <script defer src="bb-premium-feature-badges.js?v=20261101-weeklyshop1"></script>
 <link rel="stylesheet" href="bb-weekly-shop.css?v=20261101-weeklyshop1">
-<script defer src="bb-weekly-shop.js?v=20261101-weeklyshop1"></script>
+<script defer src="bb-weekly-shop.js?v=20261105-preflight1"></script>
 <link rel="stylesheet" href="bb-membership-compare.css?v=20261101-member1">
 <script defer src="bb-membership-compare.js?v=20261105-reduced1"></script>
 <link rel="stylesheet" href="bb-plan-premium-polish.css?v=20261104-home-ui1">
@@ -12608,12 +12638,12 @@ body[data-bbnext-view="discover"] #app .bb175-discover-heading{padding-top:calc(
 <script defer src="bb-kitchen-prices.js?v=20261105-shop-confirm1"></script>
 <link rel="stylesheet" href="bb-pantry-inline.css?v=20261105-reduced1">
 <script defer src="bb-pantry-inline.js?v=20261105-reduced1"></script>
-<link rel="stylesheet" href="bb-keyboard-layout.css?v=20261101-keyboard1">
-<script defer src="bb-keyboard-layout.js?v=20261101-keyboard1"></script>
+<link rel="stylesheet" href="bb-keyboard-layout.css?v=20261105-preflight1">
+<script defer src="bb-keyboard-layout.js?v=20261105-preflight1"></script>
 <link rel="stylesheet" href="bb-simple-layout.css?v=20261104-plan-budget1">
 <script defer src="bb-simple-layout.js?v=20261104-diets1"></script>
 <script defer src="bb-pantry-deduction.js?v=20261104-regions2"></script>
-<script defer src="bb-home.js?v=20261105-reduced1"></script><link rel="stylesheet" href="bb-day-done.css?v=20261104-cycle1"><script defer src="bb-day-done.js?v=20261104-regions2"></script><link rel="stylesheet" href="bb-shop-add.css?v=20261105-reduced1"><script defer src="bb-shop-add.js?v=20261105-reduced1"></script><script defer src="bb-cupboard-staples.js?v=20261104-cupboard2"></script><script src="bb-pantry-autofill.js?v=20261105-reduced1"></script>
+<script defer src="bb-home.js?v=20261105-reduced1"></script><link rel="stylesheet" href="bb-day-done.css?v=20261104-cycle1"><script defer src="bb-day-done.js?v=20261104-regions2"></script><link rel="stylesheet" href="bb-shop-add.css?v=20261105-reduced1"><script defer src="bb-shop-add.js?v=20261105-preflight1"></script><script defer src="bb-cupboard-staples.js?v=20261104-cupboard2"></script><script src="bb-pantry-autofill.js?v=20261105-reduced1"></script>
 <link rel="stylesheet" href="bb-shared-shopping.css?v=20261102-loop2">
 <script defer src="bb-shared-shopping.js?v=20261102-loop2"></script>
 <link rel="stylesheet" href="bb-plan-drag.css?v=20261103-drag2">
@@ -12622,18 +12652,18 @@ body[data-bbnext-view="discover"] #app .bb175-discover-heading{padding-top:calc(
 <link rel="stylesheet" href="bb-pantry-camera.css?v=20261102-camera1">
 <script defer src="bb-pantry-camera.js?v=20261102-camera1"></script>
 <link rel="stylesheet" href="bb-cook-experience.css?v=20261103-feedback1">
-<link rel="stylesheet" href="bb-tab-viewport.css?v=20261104-tabs1">
-<script defer src="bb-tab-viewport.js?v=20261104-swipe1"></script>
+<link rel="stylesheet" href="bb-tab-viewport.css?v=20261105-preflight1">
+<script defer src="bb-tab-viewport.js?v=20261105-preflight1"></script>
 
 <link rel="stylesheet" href="bb-auth-flow.css?v=20261104-auth1">
 <script defer src="bb-auth-sdk.js?v=20261104-auth1"></script>
-<script defer src="bb-auth-flow.js?v=20261104-auth2"></script>
+<script defer src="bb-auth-flow.js?v=20261105-preflight1"></script>
 
 <script defer src="bb-tab-swipe.js?v=20261104-swipe1"></script>
 <link rel="stylesheet" href="bb-kitchen-review.css?v=20261105-shop-confirm1">
-<script defer src="bb-kitchen-review.js?v=20261105-shop-confirm1"></script>
+<script defer src="bb-kitchen-review.js?v=20261105-preflight1"></script>
 <link rel="stylesheet" href="bb-essentials-confirm.css?v=20261105-shop-confirm1">
-<script defer src="bb-essentials-confirm.js?v=20261105-shop-confirm1"></script>
+<script defer src="bb-essentials-confirm.js?v=20261105-preflight1"></script>
 <link rel="stylesheet" href="bb-yellow-stickers-ui.css?v=20261105-reduced1">
-<script defer src="bb-yellow-stickers-ui.js?v=20261105-reduced1"></script>
+<script defer src="bb-yellow-stickers-ui.js?v=20261105-preflight1"></script>
 </body></html>

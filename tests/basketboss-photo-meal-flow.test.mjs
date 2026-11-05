@@ -9,9 +9,9 @@ const preferenceSources=['bb-dietary-preferences.js','bb-meal-preferences.js'].m
 const tick=()=>new Promise(resolve=>setImmediate(resolve));
 const recipe=()=>({title:'Reviewed chicken and rice',summary:'A simple meal.',servings:4,prepMinutes:5,cookMinutes:20,ingredients:[{name:'Cooked chicken',quantity:'200 g',fromHome:true},{name:'Rice',quantity:'250 g',fromHome:true}],steps:['Review ingredient labels and cook safely.'],extraIngredients:[],allergens:[],safetyNotes:['Check safe handling and cooking temperatures.']});
 
-function harness({pantry=false,deferResize=false,diets=[],servings=4}={}){
+function harness({pantry=false,deferResize=false,diets=[],servings=4,responseBodyHangs=false,availabilityHangs=false,offline=false}={}){
  let token='member-A',actor='actor-A',deleting=false,consent=true;
- const values=new Map(),writes=[],requests=[],rendered=[],dialogs=[],events=new Map(),controls=new Map();
+ const values=new Map(),writes=[],requests=[],rendered=[],dialogs=[],events=new Map(),controls=new Map(),timers=new Map();let timerId=0;
  values.set('basketboss_321_v7_measured_pantry','{"garlic|clove":7}');
  values.set('basketboss_makeameal_v1_inventory','{"cupboard|garlic":{"name":"Garlic","selected":true}}');
  if(diets.length||servings!==4)values.set('basketboss_321_unified_state_v1',JSON.stringify({version:2,planned:[],servings,mealPreferences:{version:1,scope:actor,diets,goals:[]}}));
@@ -24,15 +24,16 @@ function harness({pantry=false,deferResize=false,diets=[],servings=4}={}){
  const bitmap={width:640,height:480,close(){}};
  const fetch=async(url,options)=>{
   const action=String(url).split('/').pop();
-  if(action==='status')return {ok:true,json:async()=>({status:'available',premium_ai:true,siteKey:'fixture-key',turnstileRequired:false})};
-  return new Promise((resolve,reject)=>requests.push({action,body:JSON.parse(options.body),options,resolve:payload=>resolve({ok:true,json:async()=>payload}),reject}));
+  if(action==='status'){if(availabilityHangs)return new Promise(()=>{});return {ok:true,json:async()=>({status:'available',premium_ai:true,siteKey:'fixture-key',turnstileRequired:false})};}
+  return new Promise((resolve,reject)=>requests.push({action,body:JSON.parse(options.body),options,resolve:payload=>resolve({ok:true,json:async()=>responseBodyHangs?new Promise(()=>{}):payload}),reject}));
  };
- const window={document,location:{href:'http://localhost/make-a-meal.html'+(pantry?'?bbscan=pantry&location=fridge':''),search:pantry?'?bbscan=pantry&location=fridge':''},BB173_FREE_RECIPE_IDS:[],BBAccountDeletion:{isDeleting:()=>deleting},BasketBossVerifiedPremium:{isActive:()=>!!token&&!deleting},localStorage:storage,addEventListener:on,BBMealImage:{cancelAll(){}},BBCookResult:{render(host,value,options){rendered.push({recipe:value,options});host.innerHTML='RECIPE READY';return{cancel(){host.innerHTML='';}};},clear:host=>host.replaceChildren()}};
- const context=vm.createContext({window,document,location:window.location,URL,URLSearchParams,localStorage:storage,Date,AbortController,fetch,confirm:message=>{dialogs.push(message);return consent;},setInterval:()=>1,clearInterval(){},setTimeout:()=>1,clearTimeout(){},requestAnimationFrame:fn=>fn(),MutationObserver:class{observe(){}},createImageBitmap:()=>deferResize?new Promise(resolve=>{resizeResolve=resolve;}):Promise.resolve(bitmap),console});
+ const window={document,navigator:{onLine:!offline},location:{href:'http://localhost/make-a-meal.html'+(pantry?'?bbscan=pantry&location=fridge':''),search:pantry?'?bbscan=pantry&location=fridge':''},BB173_FREE_RECIPE_IDS:[],BBAccountDeletion:{isDeleting:()=>deleting},BasketBossVerifiedPremium:{isActive:()=>!!token&&!deleting},localStorage:storage,addEventListener:on,BBMealImage:{cancelAll(){}},BBCookResult:{render(host,value,options){rendered.push({recipe:value,options});host.innerHTML='RECIPE READY';return{cancel(){host.innerHTML='';}};},clear:host=>host.replaceChildren()}};
+ const context=vm.createContext({window,document,location:window.location,URL,URLSearchParams,localStorage:storage,Date,AbortController,fetch,confirm:message=>{dialogs.push(message);return consent;},setInterval:()=>1,clearInterval(){},setTimeout:(fn,wait)=>{const id=++timerId;timers.set(id,{fn,wait});return id;},clearTimeout:id=>timers.delete(id),requestAnimationFrame:fn=>fn(),MutationObserver:class{observe(){}},createImageBitmap:()=>deferResize?new Promise(resolve=>{resizeResolve=resolve;}):Promise.resolve(bitmap),console});
  vm.runInContext(studio,context);
  for(const source of preferenceSources)vm.runInContext(source,context);
  const injection=`\nwindow.__photoTest={renderScanResponse,bbConfirmPhotoMeal,scanPhoto,generate,bbCheckGeneratedMealAccount,bbClearGeneratedMeal,
   choosePhoto(file){photoFile=file;bbPhotoReviewToken=bbPaidToken();scanRevision++;},
+  disableAI(){aiEnabled=false;},
   configure(){aiEnabled=true;bbTurnstileRequired=false;inventory={'cupboard|garlic':{name:'Garlic',selected:true}};},
   state(){return {names:bbPhotoMealNames,reviewToken:bbPhotoReviewToken,generateInFlight,scanInFlight};},
   setLibrary(catalog){recipes=catalog;catalog.forEach(row=>bbSecureFreeIds.add(row.id));inventory={'cupboard|rice':{name:'Rice',selected:true}};bb5Confirmed=true;renderRecipes();},
@@ -52,7 +53,7 @@ function harness({pantry=false,deferResize=false,diets=[],servings=4}={}){
   });
   return {id:'reviewMealFoods',querySelector:()=>error,querySelectorAll(selector){if(selector.includes('bb-photo-food-row'))return rows.map(item=>item.row);if(selector.includes('photo-meal-name'))return rows.filter(item=>!selector.includes(':checked')||item.check.checked).map(item=>item.field);if(selector.includes('checkbox')||selector.includes('name="food"'))return rows.filter(item=>!selector.includes(':checked')||item.check.checked).map(item=>item.check);return [];},error,rows};
  }
- return {api,window,requests,rendered,controls,writes,dialogs,get,form,values,setToken(value,newActor=actor){token=value;actor=newActor;},setDeleting:value=>{deleting=value;},denyConsent:()=>{consent=false;},duringConsent(callback){context.confirm=message=>{dialogs.push(message);callback();return true;};},resolveResize:()=>resizeResolve(bitmap),emit(name){for(const listener of events.get(name)||[])listener({type:name});}};
+ return {api,window,requests,rendered,controls,writes,dialogs,get,form,values,timers,expireRequest(){const entry=[...timers.entries()].at(-1);assert(entry,'a bounded request must have a timer');timers.delete(entry[0]);entry[1].fn();},setToken(value,newActor=actor){token=value;actor=newActor;},setDeleting:value=>{deleting=value;},denyConsent:()=>{consent=false;},duringConsent(callback){context.confirm=message=>{dialogs.push(message);callback();return true;};},resolveResize:()=>resizeResolve(bitmap),emit(name){for(const listener of events.get(name)||[])listener({type:name});}};
 }
 
 test('photo scan review contains editable deduplicated names without Pantry destinations or writes',()=>{
@@ -187,4 +188,32 @@ test('account switching and deletion discard a delayed generated recipe and its 
 test('At home camera handoff keeps its explicit storage review instead of the meal-only flow',()=>{
  const h=harness({pantry:true});h.api.renderScanResponse({items:[{name:'Rice',estimatedQuantity:'unknown',confidence:'high',notes:''}]});
  const html=h.get('#scanResults').innerHTML;assert.match(html,/id="reviewFoods"/);assert.match(html,/data-scan-location/);assert.doesNotMatch(html,/id="reviewMealFoods"/);assert.deepEqual(h.writes,[]);
+});
+
+
+test('a stalled scan response body releases its lock and preserves saved stock',async()=>{
+ const h=harness({responseBodyHangs:true});h.api.choosePhoto({type:'image/png',size:100});
+ const work=h.api.scanPhoto();await tick();assert.equal(h.requests.length,1);
+ assert.equal(h.api.state().scanInFlight,true);assert.equal(h.get('#scanBtn').disabled,true);
+ h.requests[0].resolve({ok:true,reviewRequired:true,scan:{items:[{name:'Rice'}]}});await tick();
+ assert.equal(h.api.state().scanInFlight,true,'receiving headers alone does not finish the scan');
+ h.expireRequest();await work;
+ assert.equal(h.api.state().scanInFlight,false);assert.equal(h.get('#scanBtn').disabled,false);
+ assert.match(h.get('#scanResults').innerHTML,/timed out/);assert.deepEqual(h.writes,[]);assert.equal(h.timers.size,0);
+});
+
+test('a stalled availability check cannot leave recipe generation busy forever',async()=>{
+ const h=harness({availabilityHangs:true});h.api.disableAI();h.api.renderScanResponse({items:[{name:'Rice'}]});
+ h.api.bbConfirmPhotoMeal(h.form([{name:'Rice'}]));await tick();
+ assert.equal(h.api.state().generateInFlight,true);assert.equal(h.get('#generate').disabled,true);
+ h.expireRequest();await tick();
+ assert.equal(h.api.state().generateInFlight,false);assert.equal(h.get('#generate').disabled,false);
+ assert.equal(h.requests.length,0,'no paid generation runs without a completed readiness check');
+ assert.match(h.get('#generated').innerHTML,/availability could not be checked.*connection/);assert.deepEqual(h.writes,[]);assert.equal(h.timers.size,0);
+});
+
+test('offline scans fail locally and release controls without sending photos or losing pantry stock',async()=>{
+ const h=harness({offline:true});h.api.choosePhoto({type:'image/png',size:100});await h.api.scanPhoto();
+ assert.equal(h.requests.length,0);assert.equal(h.api.state().scanInFlight,false);assert.equal(h.get('#scanBtn').disabled,false);
+ assert.match(h.get('#scanResults').innerHTML,/offline/);assert.deepEqual(h.writes,[]);assert.equal(h.values.get('basketboss_321_v7_measured_pantry'),'{"garlic|clove":7}');
 });

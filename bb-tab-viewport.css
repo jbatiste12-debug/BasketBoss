@@ -15,7 +15,8 @@ html[data-bb-tab-viewport="document"]:not([data-bb-tab-scroll-lock]):not(.bb-acc
   overflow-x: clip !important;
   overflow-y: visible !important;
   scroll-padding-bottom: calc(var(--bb-tab-bottom-gap) + var(--bb-tab-action-clearance));
-  overscroll-behavior-y: auto;
+  overscroll-behavior-y: contain;
+  -webkit-overflow-scrolling: touch;
 }
 
 html[data-bb-tab-viewport="document"]:not([data-bb-tab-scroll-lock]):not(.bb-account-open):not(.bb-onboarding-open):not(.bb172-welcome-open) body {
@@ -27,7 +28,8 @@ html[data-bb-tab-viewport="document"]:not([data-bb-tab-scroll-lock]):not(.bb-acc
   padding-bottom: 0 !important;
   overflow-x: clip !important;
   overflow-y: visible !important;
-  overscroll-behavior-y: auto;
+  overscroll-behavior-y: contain;
+  -webkit-overflow-scrolling: touch;
 }
 
 /* Clear height/overflow constraints only on the actual primary-page wrappers.
@@ -78,6 +80,88 @@ html[data-bb-tab-viewport="document"][data-bb-tab-scroll-lock] body.bb172-storef
 html[data-bb-tab-viewport="document"] #bb172Storefront.bb172-storefront {
   padding-bottom: max(var(--bb-tab-bottom-gap), var(--bb-tab-storefront-clearance)) !important;
   scroll-padding-bottom: max(var(--bb-tab-bottom-gap), var(--bb-tab-storefront-clearance));
+  overscroll-behavior-y: contain;
+  -webkit-overflow-scrolling: touch;
+}
+
+/* The old Cook food chooser capped its tile list inside the page. Keep its
+   horizontal category strip, but let the food tiles use the document scroll. */
+html[data-bb-tab-viewport="document"] body.bb-photo-meal-page > .shell .bb-inline-section .tile-grid,
+html[data-bb-tab-viewport="document"] body.bb-r6-cook-page > .shell .bb-inline-section .tile-grid {
+  max-height: none !important;
+  overflow: visible !important;
+}
+
+/* Horizontal category strips must not become a competing vertical scroller
+   when mobile text wraps. They retain native sideways swiping. */
+html[data-bb-tab-viewport="document"] body #app .bbpg-tabs {
+  overflow-x: auto;
+  overflow-y: hidden;
+  -webkit-overflow-scrolling: touch;
+}
+
+/* Remove double-tap zoom delays without cancelling native scrolling, pinch
+   zoom, keyboard selection or the deliberate Plan drag handle's own rules. */
+html body :is(button, a[href], summary, label, [role="button"], [role="tab"], [role="switch"], input[type="checkbox"], input[type="radio"]) {
+  touch-action: manipulation;
+}
+
+@media (max-width: 700px) {
+  /* Keep existing colours, fonts and component arrangements. Compact controls
+     get real, non-overlapping hit boxes rather than invisible overlapping
+     extensions; normal full-width actions are already at least this size. */
+  html body :is(button, [role="button"], [role="tab"], [role="switch"]),
+  html body #app :is(.btn, .small-btn) {
+    min-height: 44px;
+    min-width: 44px;
+  }
+  html body #app.bbnext-plan .bbfeed-meta .bbfeed-meal button,
+  html body #app.bbnext-plan .bbfeed-control button {
+    min-height: 44px !important;
+    min-width: 44px !important;
+  }
+  html body #app :is(.bb174-day-ideas, .bb16-toggle-filters, #bbFeaturedBatch),
+  html body[data-bbnext-view="discover"] #app .bb-featured-card #bbFeaturedBatch,
+  html body #bbRealTourCookLaunch {
+    min-height: 44px !important;
+  }
+  html body #app summary {
+    min-height: 44px;
+  }
+  html body #app :is(.bb172-inline-all-days, .bb172-day-toggle) {
+    display: flex;
+    align-items: center;
+    min-height: 44px;
+  }
+  html body #app.bbnext-plan[data-bb-compact-plan="true"] #bb1759MealsSummary .bb1759-summary-heading .bb77-clear-week {
+    min-height: 44px !important;
+  }
+  /* The reserved action gutter already has enough room for the info target. */
+  html body #app.bbnext-plan[data-bb-compact-plan="true"] #bbpolAutofillCard > #bbnextPlanAutofill > summary {
+    width: 44px;
+    right: 0;
+  }
+  html body #app #bb173ShopFridge #bb76StorageSections .bbpi-ui .bbpi-step,
+  html body #app #bb173ShopFridge #bb76StorageSections .bbpi-summary-actions .bbpi-step,
+  html body #app #bb173ShopFridge #bb76StorageSections .bbpi-ui .bbpi-edit {
+    width: 44px !important;
+    min-width: 44px !important;
+    min-height: 44px !important;
+  }
+  html body #app #bb173ShopFridge .bbpi-stepper {
+    grid-template-columns: 44px minmax(0, 1fr) 44px;
+  }
+  html body #app #bb173ShopFridge .bbpi-reduced-row .bbpi-summary-actions {
+    grid-template-columns: 44px 44px 44px;
+  }
+  html body .shell > .foot a,
+  html body .shell > footer a,
+  html body .shell .topbar a.back.bb17513-meal-premium {
+    display: inline-flex;
+    align-items: center;
+    min-height: 44px !important;
+    min-width: 44px;
+  }
 }
 
 @media (prefers-reduced-motion: reduce) {

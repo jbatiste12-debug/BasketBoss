@@ -60,7 +60,7 @@
   const button=(label,fn,cls='')=>{const n=make('button',cls,label);n.type='button';n.addEventListener('click',fn);return n;};
   const groups=()=>win.BBPantryGroups,groupUI=()=>win.BBPantryGroupsUI;
   function notice(text,error=false){const region=doc.getElementById('bbKitchenEssentials');if(!region)return;let n=region.querySelector('.bbec-notice');if(!n){n=make('p','bbec-notice');n.setAttribute('role','status');region.append(n);}n.textContent=text;n.setAttribute('role',error?'alert':'status');}
-  function close(){if(!dialog)return;const state=active;state?.cleanup?.();dialog.remove();dialog=null;active=null;doc.body.style.overflow=state?.overflow||'';state?.focus?.focus?.({preventScroll:true});}
+  function close(){if(!dialog)return;const state=active;state?.cleanup?.();if(dialog.contains(doc.activeElement))doc.activeElement.blur?.();dialog.remove();dialog=null;active=null;doc.body.style.overflow=state?.overflow||'';win.BBKeyboardLayout?.releaseAfterDismissal?.();state?.focus?.focus?.({preventScroll:true});}
   function freeze(value){if(!active||!dialog)return;active.busy=value;dialog.setAttribute('aria-busy',String(value));for(const n of dialog.querySelectorAll('button,input,select'))n.disabled=value;if(!value){active.fields.name.readOnly=!active.allowNameChange;active.fields.unit.disabled=!!active.view.item;}}
   function status(text,error=false){if(!active)return;active.status.textContent=text;active.status.setAttribute('role',error?'alert':'status');}
   function fill(item){if(!active)return;active.view.item=item?{...item}:null;const values=defaults(item||{name:active.fields.name.value,unit:'each'});for(const key of ['name','targetQty','ownedQty','unit'])active.fields[key].value=values[key];active.fields.name.readOnly=!active.allowNameChange;active.fields.unit.disabled=!!item;draw();}
@@ -110,8 +110,11 @@
     if(/account|changed|reopen|close and reopen|pending|review/i.test(result.message||'')){state.invalid=true;confirm.disabled=true;}
    });
    dialog.addEventListener('cancel',event=>{event.preventDefault();if(!active?.busy)close();});
-   const fit=()=>{if(!dialog||!Number.isFinite(win.visualViewport?.height))return;const viewport=win.visualViewport,keyboard=viewport.height+80<win.innerHeight;dialog.style.maxHeight=keyboard?Math.max(160,viewport.height-24)+'px':'';dialog.style.top=keyboard?Math.max(12,(viewport.offsetTop||0)+12)+'px':'';dialog.style.bottom=keyboard?'auto':'';dialog.style.margin=keyboard?'0 auto':'';};
-   win.visualViewport?.addEventListener?.('resize',fit);win.visualViewport?.addEventListener?.('scroll',fit);active.cleanup=()=>{win.visualViewport?.removeEventListener?.('resize',fit);win.visualViewport?.removeEventListener?.('scroll',fit);};
+   dialog.addEventListener('close',close);
+   const fit=()=>{if(!dialog||!active||!Number.isFinite(win.visualViewport?.height))return;const viewport=win.visualViewport,keyboard=Math.abs(Number(viewport.scale||1)-1)<.05&&viewport.height+80<win.innerHeight;dialog.style.maxHeight=keyboard?Math.max(160,viewport.height-24)+'px':'';dialog.style.top=keyboard?Math.max(12,(viewport.offsetTop||0)+12)+'px':'';dialog.style.bottom=keyboard?'auto':'';dialog.style.margin=keyboard?'0 auto':'';
+    const input=doc.activeElement;if(keyboard&&body.contains(input)&&input.matches?.('input,select,textarea')){const box=body.getBoundingClientRect(),field=input.getBoundingClientRect();if(field.bottom>box.bottom-12)body.scrollTop+=field.bottom-box.bottom+12;else if(field.top<box.top+12)body.scrollTop+=field.top-box.top-12;}
+   };
+   win.visualViewport?.addEventListener?.('resize',fit);win.visualViewport?.addEventListener?.('scroll',fit);win.addEventListener?.('resize',fit);dialog.addEventListener('focusin',fit);active.cleanup=()=>{win.visualViewport?.removeEventListener?.('resize',fit);win.visualViewport?.removeEventListener?.('scroll',fit);win.removeEventListener?.('resize',fit);};
    try{dialog.showModal();}catch{dialog.setAttribute('open','');}fit();draw();title.focus?.({preventScroll:true});
   }
   function renderConfirmed(region){

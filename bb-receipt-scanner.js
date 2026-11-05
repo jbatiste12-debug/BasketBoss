@@ -49,10 +49,16 @@
     }
     async function jsonRequest(path, captured, { signal, method = 'GET', body } = {}) {
       const perform = fetcher(); if (!perform) throw Error('Receipt scanning is unavailable.');
-      const response = await perform(path, { method, headers: { Accept: 'application/json', Authorization: 'Bearer ' + captured.token, ...(body ? { 'Content-Type': 'application/json' } : {}) }, body: body ? JSON.stringify(body) : undefined, credentials: 'same-origin', redirect: 'manual', cache: 'no-store', signal });
-      const data = await response.json().catch(() => ({}));
-      if (!response.ok) { const error = Error(response.status === 429 ? 'Daily receipt scan limit reached (429).' : String(data.error || 'Receipt service unavailable.').slice(0, 220)); error.status = response.status; throw error; }
-      return data;
+      const controller = new AbortController(), abort = () => controller.abort();
+      if (signal?.aborted) abort(); else signal?.addEventListener?.('abort', abort, { once: true });
+      const timer = (options.setTimeout || root.setTimeout)(abort, method === 'POST' ? 65000 : 15000);
+      try {
+        const response = await perform(path, { method, headers: { Accept: 'application/json', Authorization: 'Bearer ' + captured.token, ...(body ? { 'Content-Type': 'application/json' } : {}) }, body: body ? JSON.stringify(body) : undefined, credentials: 'same-origin', redirect: 'manual', cache: 'no-store', signal: controller.signal });
+        const data = await response.json().catch(() => ({}));
+        if (controller.signal.aborted) throw Error('receipt_scan_cancelled');
+        if (!response.ok) { const error = Error(response.status === 429 ? 'Daily receipt scan limit reached (429).' : String(data.error || 'Receipt service unavailable.').slice(0, 220)); error.status = response.status; throw error; }
+        return data;
+      } finally { (options.clearTimeout || root.clearTimeout)(timer); signal?.removeEventListener?.('abort', abort); }
     }
     async function availability({ market, retailer, signal } = {}) {
       const captured = session(), active = context(), expected = { market: market || active?.market, retailer: retailer ?? active?.retailer ?? null };
@@ -149,10 +155,12 @@
     }
     async function open({ market, retailer = null, shopSessionId = null, shopSessionConfirmed = false, onSaved, onNeedsPantryReview } = {}) {
       const document = doc(); if (!document || !inventory()) throw Error('Receipt inventory is not ready.');
+      const opening = { market, retailer, shopSessionId, shopSessionConfirmed };
+      if (current && !current.closed && Object.keys(opening).every(key => current.opening[key] === opening[key])) { current.dialog.focus?.(); return current.dialog; }
       current?.close(); ensureStyles();
       const expected = { market, retailer }, captured = session(), opener = document.activeElement;
       const dialog = element('dialog', { className: 'bb-receipt-scanner', id: 'bb-receipt-scanner', 'aria-labelledby': 'bb-receipt-title', 'aria-modal': 'true' });
-      const state = { dialog, closed: false, busy: false, done: false, frozen: false, revision: 0, file: null, draft: null, ready: null, core: null, choices: [], controller: null, previewURL: null, widget: null, challengeToken: '', rowViews: [], requestId: null };
+      const state = { dialog, opening, closed: false, busy: false, done: false, frozen: false, revision: 0, file: null, draft: null, ready: null, core: null, choices: [], controller: null, previewURL: null, widget: null, challengeToken: '', rowViews: [], requestId: null };
       const closeButton = element('button', { type: 'button', className: 'bb-receipt-close', 'aria-label': 'Close receipt scanner' }, 'Close'); closeButton.dataset.receiptAction = 'close';
       const title = element('h2', { id: 'bb-receipt-title' }, 'Scan a receipt');
       const status = element('p', { className: 'bb-receipt-status', role: 'status', 'aria-live': 'polite' }, 'Checking receipt availability…');
@@ -436,7 +444,8 @@
       if (typeof dialog.showModal === 'function') dialog.showModal(); else { dialog.open = true; dialog.setAttribute('open', ''); }
       closeButton.focus?.();
       try {
-        const result = await Promise.all([availability({ market, retailer }), core(), inventory().canonicalOptions()]);
+        state.controller = new AbortController();
+        const result = await Promise.all([availability({ market, retailer, signal: state.controller.signal }), core(), inventory().canonicalOptions()]);
         if (!alive()) return dialog;
         state.ready = result[0]; state.core = result[1]; state.choices = result[2].slice(0, 5000);
         for (const choice of state.choices) list.append(element('option', { value: choice.key }, choice.name));

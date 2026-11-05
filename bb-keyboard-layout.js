@@ -12,9 +12,25 @@
   if(!node||node.disabled||node.readOnly)return false;
   return node.tagName==='TEXTAREA'||node.tagName==='SELECT'||node.tagName==='INPUT'&&textTypes.has(String(node.type||'text').toLowerCase())||node.isContentEditable===true;
  }
+ function outsideDialog(event){
+  const node=event?.target;
+  if(node?.tagName!=='DIALOG'||!node.open||typeof node.getBoundingClientRect!=='function'||!Number.isFinite(event.clientX)||!Number.isFinite(event.clientY))return false;
+  const box=node.getBoundingClientRect();
+  return event.clientX<box.left||event.clientX>box.right||event.clientY<box.top||event.clientY>box.bottom;
+ }
+ function dismissBackdrop(win,event){
+  if(event.defaultPrevented||!outsideDialog(event))return false;
+  const dialog=event.target;
+  // Owners keep control of in-flight purchases, scans and guarded stock writes.
+  if(dialog.getAttribute?.('aria-busy')==='true')return false;
+  event.preventDefault();
+  if(typeof dialog.requestClose==='function')dialog.requestClose();
+  else if(dialog.dispatchEvent(new win.Event('cancel',{cancelable:true})))dialog.close?.();
+  return true;
+ }
  function install(win){
   const doc=win.document,classes=doc.documentElement.classList;
-  let restingHeight=0,lastWidth=0,opened=false,rotatingFrom=0,frame=null;
+  let restingHeight=0,lastWidth=0,opened=false,rotatingFrom=0,frame=null,backdropStart=null;
   function measure(){
    const viewport=win.visualViewport,scale=Number(viewport?.scale)||1;
    // Normalise pinch zoom so zooming a page cannot masquerade as a keyboard.
@@ -47,14 +63,33 @@
    classes.toggle('bb-keyboard-open',opened);
   }
   function schedule(){if(frame===null)frame=win.requestAnimationFrame(refresh);}
+  function releaseAfterDismissal(){
+   // WKWebView may keep a shorter layout viewport after a modal's keyboard
+   // closes. Its old resting height must not leave the app dock hidden forever.
+   // A field still being edited belongs to another surface and retains its lock.
+   if(editable(doc.activeElement))return false;
+   opened=false;rotatingFrom=0;restingHeight=measure().height;
+   classes.toggle('bb-keyboard-open',false);
+   schedule();return true;
+  }
   doc.addEventListener('focusin',schedule);
   doc.addEventListener('focusout',schedule);
+  doc.addEventListener('pointerdown',event=>{backdropStart=outsideDialog(event)?event.target:null;},true);
+  doc.addEventListener('pointercancel',()=>{backdropStart=null;},true);
+  doc.addEventListener('click',event=>{
+   const started=backdropStart;backdropStart=null;
+   // A thumb swipe that starts in the form and ends beyond its edge is not
+   // a backdrop tap. Older browsers without pointer events retain click support.
+   if(win.PointerEvent&&event.detail>0&&started!==event.target)return;
+   dismissBackdrop(win,event);
+  });
+  doc.addEventListener('close',releaseAfterDismissal,true);
   win.visualViewport?.addEventListener('resize',schedule);
   win.visualViewport?.addEventListener('scroll',schedule);
   win.addEventListener('resize',schedule);
   win.addEventListener('pageshow',schedule);
   refresh();
-  return Object.freeze({refresh});
+  return Object.freeze({refresh,releaseAfterDismissal});
  }
- return Object.freeze({editable,install});
+ return Object.freeze({editable,outsideDialog,dismissBackdrop,install});
 });

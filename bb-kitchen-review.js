@@ -93,7 +93,7 @@
    if(!kitchen?.isConnected||!intro){card?.remove();card=null;return;}
    if(!card?.isConnected){card=make('section','bb-kitchen-review-card');card.id='bbKitchenWeeklyReview';const text=make('div'),heading=make('strong','','Weekly kitchen check'),copy=make('p','','Update what’s left, then choose what to restock.');text.append(heading,copy);const open=button('Review & restock →',openDialog,'bb-kitchen-review-open');open.id='bbKitchenReviewOpen';card.append(text,open);intro.after(card);}
   }
-  function close(){if(!dialog)return;const previous=state;previous?.cleanup?.();dialog.remove();dialog=null;state=null;doc.body.style.overflow=previous?.overflow||'';card?.querySelector('button')?.focus?.({preventScroll:true});}
+  function close(){if(!dialog)return;const previous=state;previous?.cleanup?.();if(dialog.contains(doc.activeElement))doc.activeElement.blur?.();dialog.remove();dialog=null;state=null;doc.body.style.overflow=previous?.overflow||'';win.BBKeyboardLayout?.releaseAfterDismissal?.();card?.querySelector('button')?.focus?.({preventScroll:true});}
   function format(row,quantity=amount(row.qty),unit=row.unit){
    if(quantity===null)return 'Amount unknown';if(!finite(quantity))return 'Amount needs review';
    if(arguments.length===1&&row.kind==='food'&&!row.staple&&win.BBPantryInline?.summaryAmount)try{return win.BBPantryInline.summaryAmount(row,win.bb307ActiveMarket?.()||'UK',win.BBPantryPolicy,win.BBPantryDisplay);}catch{}
