@@ -1,6 +1,6 @@
 #!/usr/bin/env node
-// Trusted-main read-only Cook audit. Private rows remain in memory; only fixed
-// aggregate fields, issue counts, hashes and the source commit can be emitted.
+// Trusted-main read-only Cook audit. Private plaintext remains in memory. Logs
+// contain aggregate fields and, only when explicitly requested, ciphertext.
 import fs from 'node:fs';
 import path from 'node:path';
 import { createHash } from 'node:crypto';
@@ -84,7 +84,7 @@ function auditCatalogue(recipes, api) {
   return summary;
 }
 
-export async function auditCookMethodSummary({ env, perform = fetch, root = ROOT, publicRecipes, methodApi = method, reviewRecipientPath, sealedReviewOutput } = {}) {
+export async function auditCookMethodSummary({ env, perform = fetch, root = ROOT, publicRecipes, methodApi = method, reviewRecipientPath, sealedReviewOutput, reviewTransportLog = false, writeReviewTransport } = {}) {
   const sourceCommit = trustedContext(env);
   // Deliberately do not accept the general Cloudflare token as a fallback.
   const token = env.CLOUDFLARE_RECIPE_AUDIT_READ_TOKEN;
@@ -100,7 +100,7 @@ export async function auditCookMethodSummary({ env, perform = fetch, root = ROOT
   const ids = new Set(recipes.map(recipe => recipe.id));
   if (ids.size !== 100) fail('catalogue_identity_invalid');
   const publicSha256 = digest(JSON.stringify(recipes));
-  const sealReview = prepareCookReviewSnapshot({ env, root, recipientPath: reviewRecipientPath, outputPath: sealedReviewOutput });
+  const sealReview = prepareCookReviewSnapshot({ env, root, recipientPath: reviewRecipientPath, outputPath: sealedReviewOutput, transportLog: reviewTransportLog, writeTransport: writeReviewTransport });
   let fetched;
   try {
     fetched = await fetchPrivateRecipeRows({ env: {
@@ -131,7 +131,7 @@ export async function auditCookMethodSummary({ env, perform = fetch, root = ROOT
 
 export async function runCookMethodSummary({ write = line => console.log(line), ...options } = {}) {
   try {
-    const summary = await auditCookMethodSummary(options);
+    const summary = await auditCookMethodSummary({ ...options, writeReviewTransport: options.reviewTransportLog ? write : undefined });
     write(JSON.stringify(summary));
     return summary.affectedRecipes ? 1 : 0;
   } catch (error) {
@@ -142,5 +142,5 @@ export async function runCookMethodSummary({ write = line => console.log(line), 
 
 if (process.argv[1] && path.resolve(process.argv[1]) === fileURLToPath(import.meta.url)) {
   const argument = name => { const index = process.argv.indexOf(name); return index === -1 ? undefined : process.argv[index + 1] || ''; };
-  process.exitCode = await runCookMethodSummary({ env: process.env, reviewRecipientPath: argument('--review-recipient'), sealedReviewOutput: argument('--sealed-review-output') });
+  process.exitCode = await runCookMethodSummary({ env: process.env, reviewRecipientPath: argument('--review-recipient'), sealedReviewOutput: argument('--sealed-review-output'), reviewTransportLog: process.argv.includes('--review-transport-log') });
 }

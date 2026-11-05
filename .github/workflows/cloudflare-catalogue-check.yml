@@ -132,7 +132,7 @@ jobs:
           CLOUDFLARE_RECIPE_AUDIT_READ_TOKEN: ${{ secrets.CLOUDFLARE_RECIPE_AUDIT_READ_TOKEN }}
           CLOUDFLARE_ACCOUNT_ID: ${{ vars.CLOUDFLARE_ACCOUNT_ID || secrets.CLOUDFLARE_ACCOUNT_ID }}
           CLOUDFLARE_DATABASE_ID: ${{ vars.CLOUDFLARE_DATABASE_ID }}
-        run: node scripts/audit-cook-method-private-summary.mjs --review-recipient .github/private-catalogue/cook-review-recipient.json --sealed-review-output "$RUNNER_TEMP/basketboss-cook-review.sealed.json"
+        run: node scripts/audit-cook-method-private-summary.mjs --review-recipient .github/private-catalogue/cook-review-recipient.json --sealed-review-output "$RUNNER_TEMP/basketboss-cook-review.sealed.json" --review-transport-log
       - name: Retain only the encrypted snapshot for the requested content review
         if: always()
         uses: actions/upload-artifact@v4
