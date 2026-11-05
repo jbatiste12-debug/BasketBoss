@@ -125,8 +125,9 @@ export function auditRecipeInstructions({ recipes, normalized, desserts = [] }) 
       }
     }
     if (id === 'extra-lentil-shepherdless-pie' && recipe.mins === 35) add(review, 'sequential-timing', id, '35 minutes does not allow preparation, dried-lentil cooking and the stated 15–20-minute potato boil followed by a 20–25-minute bake. Re-time with the author; no replacement total has been invented.');
-    if (id === 'extra-15-minute-pesto-tortellini' && recipe.mins !== 15) add(review, 'title-time', id, `Title says 15-minute; recorded total is ${recipe.mins} minutes.`);
-    if (id === 'spinach-ricotta-shells' && recipe.ingredients.some(line => /^pasta shells$/i.test(line[0]))) add(review, 'stuffing-shell-size', id, 'Method fills shells, but the ingredient does not specify large stuffing shells. Confirm intended shape without changing quantities.');
+    const titleMinutes = String(recipe.name || '').match(/\b(\d+)[ -]minute\b/i);
+    if (titleMinutes && Number(titleMinutes[1]) !== recipe.mins) add(review, 'title-time', id, `Title says ${titleMinutes[1]}-minute; recorded total is ${recipe.mins} minutes.`);
+    if (id === 'spinach-ricotta-shells' && recipe.ingredients.some(line => /^pasta shells$/i.test(line[0]) && !/\b(?:large|jumbo)\s+(?:stuffing\s+)?shells\b|\bconchiglioni\b/i.test(String(line[1])))) add(review, 'stuffing-shell-size', id, 'Method fills shells, but the ingredient does not specify large stuffing shells. Confirm the intended shape.');
     if (['family-chicken-wraps', 'chicken-katsu-curry', 'miso-salmon-rice'].includes(id) && /\bbake\b/i.test(method) && !/\d+\s*°\s*[cf]/i.test(method)) add(review, 'cooking-settings', id, 'The baking option supplies no oven temperature. An author-tested setting is needed; no temperature or cooking duration has been invented.');
   }
   if (normalized) {

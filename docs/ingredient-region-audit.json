@@ -8,11 +8,11 @@
       "recipes": 100,
       "ingredientLines": 730,
       "aggregatedIngredients": 221,
-      "simulatedIngredients": 186,
+      "simulatedIngredients": 187,
       "duplicateRows": [],
       "nonCanonicalRows": [],
       "conversionFailures": [],
-      "needsRecipeReview": 12,
+      "needsRecipeReview": 3,
       "canonicalTotals": [
         {
           "key": "chicken breast",
@@ -107,12 +107,12 @@
         {
           "key": "parmesan",
           "unit": "g",
-          "required": 225
+          "required": 415
         },
         {
           "key": "chicken stock",
           "unit": "ml",
-          "required": 2400
+          "required": 3600
         },
         {
           "key": "lemon",
@@ -432,7 +432,7 @@
         {
           "key": "vegetable stock",
           "unit": "ml",
-          "required": 2300
+          "required": 4900
         },
         {
           "key": "dried oregano",
@@ -617,7 +617,7 @@
         {
           "key": "pasta shells",
           "unit": "g",
-          "required": 500
+          "required": 250
         },
         {
           "key": "ricotta",
@@ -657,7 +657,7 @@
         {
           "key": "stock",
           "unit": "ml",
-          "required": 0
+          "required": 2500
         },
         {
           "key": "celery",
@@ -1125,11 +1125,11 @@
       "recipes": 100,
       "ingredientLines": 730,
       "aggregatedIngredients": 221,
-      "simulatedIngredients": 186,
+      "simulatedIngredients": 187,
       "duplicateRows": [],
       "nonCanonicalRows": [],
       "conversionFailures": [],
-      "needsRecipeReview": 12,
+      "needsRecipeReview": 3,
       "canonicalTotals": [
         {
           "key": "chicken breast",
@@ -1224,12 +1224,12 @@
         {
           "key": "parmesan",
           "unit": "g",
-          "required": 225
+          "required": 415
         },
         {
           "key": "chicken stock",
           "unit": "ml",
-          "required": 2400
+          "required": 3600
         },
         {
           "key": "lemon",
@@ -1549,7 +1549,7 @@
         {
           "key": "vegetable stock",
           "unit": "ml",
-          "required": 2300
+          "required": 4900
         },
         {
           "key": "dried oregano",
@@ -1734,7 +1734,7 @@
         {
           "key": "pasta shells",
           "unit": "g",
-          "required": 500
+          "required": 250
         },
         {
           "key": "ricotta",
@@ -1774,7 +1774,7 @@
         {
           "key": "stock",
           "unit": "ml",
-          "required": 0
+          "required": 2500
         },
         {
           "key": "celery",
@@ -2783,46 +2783,6 @@
   ],
   "recipeReview": [
     {
-      "name": "Parmesan",
-      "key": "parmesan",
-      "recipeId": "creamy-pasta",
-      "ingredientIndex": 3,
-      "source": "1 block",
-      "sourceQuantity": 1,
-      "sourceUnit": "each",
-      "reason": "Recipe amount or container size needs review; the source has been kept."
-    },
-    {
-      "name": "Parmesan",
-      "key": "parmesan",
-      "recipeId": "mushroom-risotto",
-      "ingredientIndex": 3,
-      "source": "1 block",
-      "sourceQuantity": 1,
-      "sourceUnit": "each",
-      "reason": "Recipe amount or container size needs review; the source has been kept."
-    },
-    {
-      "name": "Parmesan",
-      "key": "parmesan",
-      "recipeId": "aubergine-parmigiana",
-      "ingredientIndex": 3,
-      "source": "1 block",
-      "sourceQuantity": 1,
-      "sourceUnit": "each",
-      "reason": "Recipe amount or container size needs review; the source has been kept."
-    },
-    {
-      "name": "Chicken stock",
-      "key": "chicken stock",
-      "recipeId": "lemon-chicken-orzo",
-      "ingredientIndex": 2,
-      "source": "1 carton",
-      "sourceQuantity": 1,
-      "sourceUnit": "pack",
-      "reason": "Recipe amount or container size needs review; the source has been kept."
-    },
-    {
       "name": "Fresh ginger",
       "key": "fresh ginger",
       "recipeId": "coconut-lentil-dhal",
@@ -2840,56 +2800,6 @@
       "source": "1 small handful",
       "sourceQuantity": 1,
       "sourceUnit": "each",
-      "reason": "Recipe amount or container size needs review; the source has been kept."
-    },
-    {
-      "name": "Vegetable stock",
-      "key": "vegetable stock",
-      "recipeId": "mushroom-risotto",
-      "ingredientIndex": 2,
-      "source": "1 carton",
-      "sourceQuantity": 1,
-      "sourceUnit": "pack",
-      "reason": "Recipe amount or container size needs review; the source has been kept."
-    },
-    {
-      "name": "Vegetable stock",
-      "key": "vegetable stock",
-      "recipeId": "sweet-potato-soup",
-      "ingredientIndex": 2,
-      "source": "1 carton",
-      "sourceQuantity": 1,
-      "sourceUnit": "pack",
-      "reason": "Recipe amount or container size needs review; the source has been kept."
-    },
-    {
-      "name": "Vegetable stock",
-      "key": "vegetable stock",
-      "recipeId": "extra-lentil-shepherdless-pie",
-      "ingredientIndex": 3,
-      "source": "1 standard pack (check recipe)",
-      "sourceQuantity": 1,
-      "sourceUnit": "each",
-      "reason": "Recipe amount or container size needs review; the source has been kept."
-    },
-    {
-      "name": "Stock",
-      "key": "stock",
-      "recipeId": "sausage-lentil-stew",
-      "ingredientIndex": 4,
-      "source": "1 carton",
-      "sourceQuantity": 1,
-      "sourceUnit": "pack",
-      "reason": "Recipe amount or container size needs review; the source has been kept."
-    },
-    {
-      "name": "Stock",
-      "key": "stock",
-      "recipeId": "chicken-noodle-soup",
-      "ingredientIndex": 3,
-      "source": "1 carton",
-      "sourceQuantity": 1,
-      "sourceUnit": "pack",
       "reason": "Recipe amount or container size needs review; the source has been kept."
     },
     {

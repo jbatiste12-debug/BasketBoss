@@ -311,14 +311,15 @@
     "category": "Italian · Comfort food",
     "tag": "ONE-PAN",
     "mins": 30,
-    "cost": 15.11,
+    "cost": 12.97,
     "image": "release-assets/basketboss-v17/images/existing/creamy-pasta.webp",
     "tip": "A deep pan keeps washing-up to a minimum.",
     "method": [
-      "Dice chicken and sauté in a little oil until lightly golden. Add garlic.",
-      "Add penne and hot chicken stock. Simmer, stirring often, until pasta is nearly tender; add a splash of water if needed.",
-      "Stir in cream and simmer gently until chicken is cooked through and sauce thickens.",
-      "Turn off the heat, stir through parmesan and finish with lemon in small additions. Season to taste and serve."
+      "Cut the chicken into even 2 cm pieces, finely chop the garlic, grate the Parmesan and zest the lemon before starting. Prepare the listed chicken stock.",
+      "Heat the listed oil in a deep pan. Sauté the chicken for 4–5 minutes until lightly golden, then stir in the garlic for 30 seconds.",
+      "Add the penne and hot chicken stock. Simmer for the pasta packet time, stirring often and adding water in small splashes whenever the pasta is no longer mostly covered; the pasta should be nearly tender before adding the cream.",
+      "Stir in the cream and simmer gently until the pasta is tender, the sauce coats it and the chicken is fully cooked. Check the thickest chicken piece reaches 75°C for 30 seconds; continue cooking if needed.",
+      "Turn off the heat and stir through the measured Parmesan. Finish with lemon zest and a little juice, tasting as you go, then season and serve."
     ],
     "ingredients": [
       [
@@ -341,8 +342,8 @@
       ],
       [
         "Parmesan",
-        "1 block",
-        4.49,
+        "80 g",
+        2.35,
         "Dairy"
       ],
       [
@@ -380,7 +381,7 @@
       "Chicken breast — 500 g",
       "Penne pasta — 500 g",
       "Double cream — 300 ml",
-      "Parmesan — 1 block",
+      "Parmesan — 80 g",
       "Garlic — 3 cloves",
       "Chicken stock — 600 ml",
       "Cooking oil — 1 tbsp",
@@ -388,12 +389,12 @@
     ],
     "ci_estimates": {
       "Jersey": {
-        "estimate_gbp": 15.13,
-        "range_low_gbp": 12.09,
-        "range_high_gbp": 18.18,
-        "per_serving_estimate_gbp": 3.78,
-        "per_serving_low_gbp": 3.02,
-        "per_serving_high_gbp": 4.54,
+        "estimate_gbp": 12.99,
+        "range_low_gbp": 10.38,
+        "range_high_gbp": 15.61,
+        "per_serving_estimate_gbp": 3.25,
+        "per_serving_low_gbp": 2.6,
+        "per_serving_high_gbp": 3.9,
         "confidence": "INDICATIVE_UNVERIFIED",
         "source": "Previous recipe draft cost/range × explicit provisional island factor; not observed retailer prices",
         "source_base_low_gbp": 10.45,
@@ -403,12 +404,12 @@
         "ingredient_addition_price_source": "Existing indicative canonical price catalogue; retailer verification still required"
       },
       "Guernsey": {
-        "estimate_gbp": 16.5,
-        "range_low_gbp": 13.18,
-        "range_high_gbp": 19.83,
-        "per_serving_estimate_gbp": 4.12,
-        "per_serving_low_gbp": 3.29,
-        "per_serving_high_gbp": 4.96,
+        "estimate_gbp": 14.16,
+        "range_low_gbp": 11.31,
+        "range_high_gbp": 17.02,
+        "per_serving_estimate_gbp": 3.54,
+        "per_serving_low_gbp": 2.83,
+        "per_serving_high_gbp": 4.26,
         "confidence": "INDICATIVE_UNVERIFIED",
         "source": "Previous recipe draft cost/range × explicit provisional island factor; not observed retailer prices",
         "source_base_low_gbp": 10.45,
@@ -418,12 +419,12 @@
         "ingredient_addition_price_source": "Existing indicative canonical price catalogue; retailer verification still required"
       },
       "UK": {
-        "estimate_gbp": 13.75,
-        "range_low_gbp": 10.98,
-        "range_high_gbp": 16.52,
-        "per_serving_estimate_gbp": 3.44,
-        "per_serving_low_gbp": 2.75,
-        "per_serving_high_gbp": 4.13,
+        "estimate_gbp": 11.8,
+        "range_low_gbp": 9.42,
+        "range_high_gbp": 14.18,
+        "per_serving_estimate_gbp": 2.95,
+        "per_serving_low_gbp": 2.36,
+        "per_serving_high_gbp": 3.55,
         "confidence": "INDICATIVE_UNVERIFIED",
         "source": "Derived from Jersey provisional recipe estimate using its assumed 1.10 island factor (UK = Jersey / 1.10); NOT a survey of UK supermarket prices",
         "uplift_assumption": 1,
@@ -434,16 +435,17 @@
     },
     "data_format_fixed_from": "STRUCTURED_ALREADY",
     "steps": [
-      "Dice chicken and sauté in a little oil until lightly golden. Add garlic.",
-      "Add penne and hot chicken stock. Simmer, stirring often, until pasta is nearly tender; add a splash of water if needed.",
-      "Stir in cream and simmer gently until chicken is cooked through and sauce thickens.",
-      "Turn off the heat, stir through parmesan and finish with lemon in small additions. Season to taste and serve."
+      "Cut the chicken into even 2 cm pieces, finely chop the garlic, grate the Parmesan and zest the lemon before starting. Prepare the listed chicken stock.",
+      "Heat the listed oil in a deep pan. Sauté the chicken for 4–5 minutes until lightly golden, then stir in the garlic for 30 seconds.",
+      "Add the penne and hot chicken stock. Simmer for the pasta packet time, stirring often and adding water in small splashes whenever the pasta is no longer mostly covered; the pasta should be nearly tender before adding the cream.",
+      "Stir in the cream and simmer gently until the pasta is tender, the sauce coats it and the chicken is fully cooked. Check the thickest chicken piece reaches 75°C for 30 seconds; continue cooking if needed.",
+      "Turn off the heat and stir through the measured Parmesan. Finish with lemon zest and a little juice, tasting as you go, then season and serve."
     ],
     "culinary_prep_notes": [
       "Pat dry and season before cooking; give the surface time to brown before moving or turning.",
       "Measure the penne before adding it to the chicken and stock; this is a one-pot method.",
       "Incorporate gradually while stirring to keep the sauce smooth; lower the heat if it starts to split.",
-      "Grate, crumble or spoon as appropriate; add at the final stage so it melts or softens without turning grainy.",
+      "Finely grate the listed Parmesan and stir in off the heat so it melts smoothly.",
       "Crush or grate finely and stir in with the aromatics; stop it catching and turning bitter.",
       "Prepare the stock according to its packet and have the recipe amount ready before cooking.",
       "Coat the surface lightly and heat before adding ingredients; keep space between pieces to encourage browning.",
@@ -2225,15 +2227,15 @@
     "category": "Mediterranean · One pot",
     "tag": "ONE-POT",
     "mins": 30,
-    "cost": 12.55,
+    "cost": 12.91,
     "image": "release-assets/basketboss-v17/images/existing/lemon-chicken-orzo.webp",
     "tip": "Add lemon zest right at the end for a brighter flavour.",
     "method": [
-      "Dice the chicken into even pieces, wash the spinach and zest or juice the lemon before heating the pan.",
-      "Season chicken with salt and pepper. Brown in a deep pan, then add garlic and orzo.",
-      "Pour in hot stock and simmer, stirring, until orzo is tender and chicken is cooked through. Add a splash of stock if the pan dries out.",
-      "Stir through lemon juice and spinach until the leaves wilt.",
-      "Cut into the thickest chicken piece: it should be steaming hot throughout with no pink meat, and the juices should run clear. If unsure, continue cooking before serving."
+      "Cut the chicken into even 2 cm pieces, finely chop the garlic, wash the spinach and zest the lemon. Prepare the listed hot chicken stock.",
+      "Put a small splash of the listed stock in a deep non-stick pan and bring to a simmer. Add the chicken and garlic and stir for 3–4 minutes until the chicken surface turns opaque; this stock-based method does not need frying oil.",
+      "Stir in the orzo and remaining stock. Simmer gently for 12–15 minutes or the packet time, stirring often, until the orzo is tender. Add water in small splashes if it thickens before the orzo is cooked.",
+      "Stir through the spinach until wilted. Check the thickest chicken piece reaches 75°C for 30 seconds, cooking longer if needed.",
+      "Take off the heat, add lemon zest and juice gradually, season to taste and serve while the orzo is creamy."
     ],
     "ingredients": [
       [
@@ -2250,8 +2252,8 @@
       ],
       [
         "Chicken stock",
-        "1 carton",
-        1.3,
+        "1200 ml",
+        1.66,
         "Other"
       ],
       [
@@ -2281,19 +2283,19 @@
     "ingredient_display_lines": [
       "Chicken breast — 600 g",
       "Orzo — 500 g",
-      "Chicken stock — 1 carton",
+      "Chicken stock — 1200 ml",
       "Spinach — 150 g",
       "Lemon — 1",
       "Garlic — 2 cloves"
     ],
     "ci_estimates": {
       "Jersey": {
-        "estimate_gbp": 12.58,
-        "range_low_gbp": 10,
-        "range_high_gbp": 15.15,
-        "per_serving_estimate_gbp": 3.15,
-        "per_serving_low_gbp": 2.5,
-        "per_serving_high_gbp": 3.79,
+        "estimate_gbp": 12.94,
+        "range_low_gbp": 10.29,
+        "range_high_gbp": 15.58,
+        "per_serving_estimate_gbp": 3.24,
+        "per_serving_low_gbp": 2.57,
+        "per_serving_high_gbp": 3.9,
         "confidence": "INDICATIVE_UNVERIFIED",
         "source": "Previous recipe draft cost/range × explicit provisional island factor; not observed retailer prices",
         "source_base_low_gbp": 8.84,
@@ -2301,12 +2303,12 @@
         "uplift_assumption": 1.1
       },
       "Guernsey": {
-        "estimate_gbp": 13.72,
-        "range_low_gbp": 10.91,
-        "range_high_gbp": 16.52,
-        "per_serving_estimate_gbp": 3.43,
-        "per_serving_low_gbp": 2.73,
-        "per_serving_high_gbp": 4.13,
+        "estimate_gbp": 14.11,
+        "range_low_gbp": 11.22,
+        "range_high_gbp": 16.99,
+        "per_serving_estimate_gbp": 3.53,
+        "per_serving_low_gbp": 2.81,
+        "per_serving_high_gbp": 4.25,
         "confidence": "INDICATIVE_UNVERIFIED",
         "source": "Previous recipe draft cost/range × explicit provisional island factor; not observed retailer prices",
         "source_base_low_gbp": 8.84,
@@ -2314,12 +2316,12 @@
         "uplift_assumption": 1.2
       },
       "UK": {
-        "estimate_gbp": 11.44,
-        "range_low_gbp": 9.09,
-        "range_high_gbp": 13.77,
-        "per_serving_estimate_gbp": 2.86,
-        "per_serving_low_gbp": 2.27,
-        "per_serving_high_gbp": 3.44,
+        "estimate_gbp": 11.77,
+        "range_low_gbp": 9.35,
+        "range_high_gbp": 14.16,
+        "per_serving_estimate_gbp": 2.94,
+        "per_serving_low_gbp": 2.34,
+        "per_serving_high_gbp": 3.54,
         "confidence": "INDICATIVE_UNVERIFIED",
         "source": "Derived from Jersey provisional recipe estimate using its assumed 1.10 island factor (UK = Jersey / 1.10); NOT a survey of UK supermarket prices",
         "uplift_assumption": 1,
@@ -2328,16 +2330,16 @@
     },
     "data_format_fixed_from": "STRUCTURED_ALREADY",
     "steps": [
-      "Dice the chicken into even pieces, wash the spinach and zest or juice the lemon before heating the pan.",
-      "Season chicken with salt and pepper. Brown in a deep pan, then add garlic and orzo.",
-      "Pour in hot stock and simmer, stirring, until orzo is tender and chicken is cooked through. Add a splash of stock if the pan dries out.",
-      "Stir through lemon juice and spinach until the leaves wilt.",
-      "Cut into the thickest chicken piece: it should be steaming hot throughout with no pink meat, and the juices should run clear. If unsure, continue cooking before serving."
+      "Cut the chicken into even 2 cm pieces, finely chop the garlic, wash the spinach and zest the lemon. Prepare the listed hot chicken stock.",
+      "Put a small splash of the listed stock in a deep non-stick pan and bring to a simmer. Add the chicken and garlic and stir for 3–4 minutes until the chicken surface turns opaque; this stock-based method does not need frying oil.",
+      "Stir in the orzo and remaining stock. Simmer gently for 12–15 minutes or the packet time, stirring often, until the orzo is tender. Add water in small splashes if it thickens before the orzo is cooked.",
+      "Stir through the spinach until wilted. Check the thickest chicken piece reaches 75°C for 30 seconds, cooking longer if needed.",
+      "Take off the heat, add lemon zest and juice gradually, season to taste and serve while the orzo is creamy."
     ],
     "culinary_prep_notes": [
       "Pat dry and season before cooking; give the surface time to brown before moving or turning.",
       "Add the orzo to the pan before the stock; stir as it simmers so it does not stick.",
-      "Prepare the stock according to its packet and have the recipe amount ready before cooking.",
+      "Make up the listed stock according to its packet; use a small splash to start the chicken, then add the rest with the orzo.",
       "Wash and dry thoroughly; add tender leaves toward the end to preserve their colour and texture.",
       "Zest the skin before cutting; squeeze in juice at the stated stage so the dish finishes bright and fragrant.",
       "Crush or grate finely and stir in with the aromatics; stop it catching and turning bitter."
@@ -2947,15 +2949,15 @@
     "category": "Italian · Vegetarian",
     "tag": "DATE NIGHT",
     "mins": 35,
-    "cost": 11.43,
+    "cost": 8.57,
     "image": "release-assets/basketboss-v17/images/existing/mushroom-risotto.webp",
     "tip": "Add warm stock gradually and keep stirring for creamy rice.",
     "method": [
-      "Slice the mushrooms, finely dice the onion and chop the garlic. Warm stock in a separate small pan.",
-      "Sauté mushrooms and onion in butter until softened. Add garlic and cook until fragrant.",
-      "Stir in risotto rice until the grains look glossy.",
-      "Add warm stock a ladle at a time, stirring until absorbed before adding more.",
-      "When the rice is tender with a little bite and the risotto flows slowly from a spoon, stir in parmesan and black pepper. Take off the heat and finish with lemon in small additions."
+      "Slice the mushrooms, finely dice the onion and chop the garlic. Grate the Parmesan and zest the lemon. Make up the listed vegetable stock and keep it warm in a small pan.",
+      "Melt the butter in a wide pan and sauté the mushrooms and onion for 6–8 minutes until softened. Add the garlic and stir for 30 seconds.",
+      "Stir in the risotto rice for 1 minute until the grains look glossy.",
+      "Add warm stock a ladle at a time, stirring frequently and letting each addition absorb before adding more. Cook for about 18–22 minutes, using the measured stock as needed; add hot water if the rice still needs liquid.",
+      "When the rice is tender with a little bite and the risotto flows slowly from a spoon, take off the heat and stir in the measured Parmesan and black pepper. Finish with lemon zest and a little juice to taste."
     ],
     "ingredients": [
       [
@@ -2972,14 +2974,14 @@
       ],
       [
         "Vegetable stock",
-        "1 carton",
-        1.3,
+        "1000 ml",
+        1.18,
         "Other"
       ],
       [
         "Parmesan",
-        "1 block",
-        4.5,
+        "60 g",
+        1.76,
         "Dairy"
       ],
       [
@@ -3015,8 +3017,8 @@
     "ingredient_display_lines": [
       "Risotto rice — 300 g",
       "Mushrooms — 300 g",
-      "Vegetable stock — 1 carton",
-      "Parmesan — 1 block",
+      "Vegetable stock — 1000 ml",
+      "Parmesan — 60 g",
       "Onion — 1",
       "Butter — 30 g",
       "Garlic — 2 cloves",
@@ -3024,12 +3026,12 @@
     ],
     "ci_estimates": {
       "Jersey": {
-        "estimate_gbp": 11.43,
-        "range_low_gbp": 9.14,
-        "range_high_gbp": 13.71,
-        "per_serving_estimate_gbp": 2.86,
-        "per_serving_low_gbp": 2.29,
-        "per_serving_high_gbp": 3.43,
+        "estimate_gbp": 8.57,
+        "range_low_gbp": 6.85,
+        "range_high_gbp": 10.28,
+        "per_serving_estimate_gbp": 2.14,
+        "per_serving_low_gbp": 1.71,
+        "per_serving_high_gbp": 2.57,
         "confidence": "INDICATIVE_UNVERIFIED",
         "source": "Previous recipe draft cost/range × explicit provisional island factor; not observed retailer prices",
         "source_base_low_gbp": 7.87,
@@ -3039,12 +3041,12 @@
         "ingredient_addition_price_source": "Existing indicative canonical price catalogue; retailer verification still required"
       },
       "Guernsey": {
-        "estimate_gbp": 12.46,
-        "range_low_gbp": 9.96,
-        "range_high_gbp": 14.96,
-        "per_serving_estimate_gbp": 3.12,
-        "per_serving_low_gbp": 2.49,
-        "per_serving_high_gbp": 3.74,
+        "estimate_gbp": 9.34,
+        "range_low_gbp": 7.47,
+        "range_high_gbp": 11.22,
+        "per_serving_estimate_gbp": 2.34,
+        "per_serving_low_gbp": 1.87,
+        "per_serving_high_gbp": 2.81,
         "confidence": "INDICATIVE_UNVERIFIED",
         "source": "Previous recipe draft cost/range × explicit provisional island factor; not observed retailer prices",
         "source_base_low_gbp": 7.87,
@@ -3054,12 +3056,12 @@
         "ingredient_addition_price_source": "Existing indicative canonical price catalogue; retailer verification still required"
       },
       "UK": {
-        "estimate_gbp": 10.38,
-        "range_low_gbp": 8.3,
-        "range_high_gbp": 12.46,
-        "per_serving_estimate_gbp": 2.6,
-        "per_serving_low_gbp": 2.08,
-        "per_serving_high_gbp": 3.12,
+        "estimate_gbp": 7.78,
+        "range_low_gbp": 6.22,
+        "range_high_gbp": 9.34,
+        "per_serving_estimate_gbp": 1.95,
+        "per_serving_low_gbp": 1.56,
+        "per_serving_high_gbp": 2.34,
         "confidence": "INDICATIVE_UNVERIFIED",
         "source": "Derived from Jersey provisional recipe estimate using its assumed 1.10 island factor (UK = Jersey / 1.10); NOT a survey of UK supermarket prices",
         "uplift_assumption": 1,
@@ -3070,17 +3072,17 @@
     },
     "data_format_fixed_from": "STRUCTURED_ALREADY",
     "steps": [
-      "Slice the mushrooms, finely dice the onion and chop the garlic. Warm stock in a separate small pan.",
-      "Sauté mushrooms and onion in butter until softened. Add garlic and cook until fragrant.",
-      "Stir in risotto rice until the grains look glossy.",
-      "Add warm stock a ladle at a time, stirring until absorbed before adding more.",
-      "When the rice is tender with a little bite and the risotto flows slowly from a spoon, stir in parmesan and black pepper. Take off the heat and finish with lemon in small additions."
+      "Slice the mushrooms, finely dice the onion and chop the garlic. Grate the Parmesan and zest the lemon. Make up the listed vegetable stock and keep it warm in a small pan.",
+      "Melt the butter in a wide pan and sauté the mushrooms and onion for 6–8 minutes until softened. Add the garlic and stir for 30 seconds.",
+      "Stir in the risotto rice for 1 minute until the grains look glossy.",
+      "Add warm stock a ladle at a time, stirring frequently and letting each addition absorb before adding more. Cook for about 18–22 minutes, using the measured stock as needed; add hot water if the rice still needs liquid.",
+      "When the rice is tender with a little bite and the risotto flows slowly from a spoon, take off the heat and stir in the measured Parmesan and black pepper. Finish with lemon zest and a little juice to taste."
     ],
     "culinary_prep_notes": [
       "Measure the rice quantity stated in the ingredients and cook according to the method and packet directions.",
       "Keep slices evenly sized and cook in a wide pan so the surfaces colour instead of steaming.",
-      "Prepare the stock according to its packet and have the recipe amount ready before cooking.",
-      "Grate, crumble or spoon as appropriate; add at the final stage so it melts or softens without turning grainy.",
+      "Make up and warm the listed stock; add gradually to the rice and use hot water only if it needs more liquid.",
+      "Finely grate the listed Parmesan and stir into the finished risotto off the heat.",
       "Slice evenly; sweat gently for sweetness, or add at the end if the dish needs fresh crunch.",
       "Cut into small pieces and melt gently; for a sauce, whisk off the heat to make it glossy.",
       "Crush or grate finely and stir in with the aromatics; stop it catching and turning bitter.",
@@ -3383,16 +3385,16 @@
     "name": "Roasted sweet potato soup",
     "category": "Vegetarian · Freezer-friendly",
     "tag": "BATCH COOK",
-    "mins": 40,
-    "cost": 9.31,
+    "mins": 50,
+    "cost": 9.19,
     "image": "release-assets/basketboss-v17/images/existing/sweet-potato-soup.webp",
     "tip": "Roasting the sweet potatoes first adds extra depth.",
     "method": [
-      "Peel and cut the sweet potatoes into even chunks, cut the onion into wedges and preheat the oven to 200°C.",
-      "Toss the vegetables with oil and roast in a single layer until soft enough to mash easily with a fork.",
-      "Tip the roasted vegetables into a saucepan with the vegetable stock, cumin and finely chopped garlic. Simmer until the garlic has softened.",
-      "Blend until smooth, adding extra stock to loosen. Blend hot soup cautiously in batches if needed.",
-      "Take off the heat and finish with lemon in small additions. Serve with yoghurt and warm crusty bread."
+      "Heat the oven to 200°C (180°C fan). Peel the sweet potatoes and cut into 2 cm chunks, cut the onions into slim wedges and finely chop the garlic.",
+      "Toss the sweet potatoes and onions with the listed oil and spread across a large roasting tray in one layer. Roast for 25–30 minutes, turning once, until soft enough to mash easily with a fork.",
+      "Tip the roasted vegetables into a saucepan with the prepared vegetable stock, cumin and garlic. Bring to a simmer and cook for 5 minutes until the garlic has softened.",
+      "Blend until smooth, adding a little water if a thinner soup is preferred. Use a stick blender or blend hot soup cautiously in small batches according to the blender instructions.",
+      "Take off the heat and add lemon juice gradually to taste. Warm the bread and serve with the soup and yoghurt."
     ],
     "ingredients": [
       [
@@ -3409,8 +3411,8 @@
       ],
       [
         "Vegetable stock",
-        "1 carton",
-        1.3,
+        "1000 ml",
+        1.18,
         "Other"
       ],
       [
@@ -3459,7 +3461,7 @@
     "ingredient_display_lines": [
       "Sweet potatoes — 1 kg",
       "Onions — 2",
-      "Vegetable stock — 1 carton",
+      "Vegetable stock — 1000 ml",
       "Natural yoghurt — 150 g",
       "Bread — 1 loaf",
       "Ground cumin — 1 tsp",
@@ -3469,12 +3471,12 @@
     ],
     "ci_estimates": {
       "Jersey": {
-        "estimate_gbp": 9.33,
-        "range_low_gbp": 7.53,
-        "range_high_gbp": 11.14,
-        "per_serving_estimate_gbp": 2.33,
-        "per_serving_low_gbp": 1.88,
-        "per_serving_high_gbp": 2.79,
+        "estimate_gbp": 9.21,
+        "range_low_gbp": 7.43,
+        "range_high_gbp": 11.0,
+        "per_serving_estimate_gbp": 2.3,
+        "per_serving_low_gbp": 1.86,
+        "per_serving_high_gbp": 2.75,
         "confidence": "INDICATIVE_UNVERIFIED",
         "source": "Previous recipe draft cost/range × explicit provisional island factor; not observed retailer prices",
         "source_base_low_gbp": 6.21,
@@ -3484,12 +3486,12 @@
         "ingredient_addition_price_source": "Existing indicative canonical price catalogue; retailer verification still required"
       },
       "Guernsey": {
-        "estimate_gbp": 10.18,
-        "range_low_gbp": 8.21,
-        "range_high_gbp": 12.15,
-        "per_serving_estimate_gbp": 2.54,
-        "per_serving_low_gbp": 2.05,
-        "per_serving_high_gbp": 3.04,
+        "estimate_gbp": 10.05,
+        "range_low_gbp": 8.1,
+        "range_high_gbp": 11.99,
+        "per_serving_estimate_gbp": 2.51,
+        "per_serving_low_gbp": 2.03,
+        "per_serving_high_gbp": 3.0,
         "confidence": "INDICATIVE_UNVERIFIED",
         "source": "Previous recipe draft cost/range × explicit provisional island factor; not observed retailer prices",
         "source_base_low_gbp": 6.21,
@@ -3499,12 +3501,12 @@
         "ingredient_addition_price_source": "Existing indicative canonical price catalogue; retailer verification still required"
       },
       "UK": {
-        "estimate_gbp": 8.48,
-        "range_low_gbp": 6.84,
-        "range_high_gbp": 10.12,
-        "per_serving_estimate_gbp": 2.12,
-        "per_serving_low_gbp": 1.71,
-        "per_serving_high_gbp": 2.53,
+        "estimate_gbp": 8.37,
+        "range_low_gbp": 6.75,
+        "range_high_gbp": 9.99,
+        "per_serving_estimate_gbp": 2.09,
+        "per_serving_low_gbp": 1.69,
+        "per_serving_high_gbp": 2.5,
         "confidence": "INDICATIVE_UNVERIFIED",
         "source": "Derived from Jersey provisional recipe estimate using its assumed 1.10 island factor (UK = Jersey / 1.10); NOT a survey of UK supermarket prices",
         "uplift_assumption": 1,
@@ -3515,16 +3517,16 @@
     },
     "data_format_fixed_from": "STRUCTURED_ALREADY",
     "steps": [
-      "Peel and cut the sweet potatoes into even chunks, cut the onion into wedges and preheat the oven to 200°C.",
-      "Toss the vegetables with oil and roast in a single layer until soft enough to mash easily with a fork.",
-      "Tip the roasted vegetables into a saucepan with the vegetable stock, cumin and finely chopped garlic. Simmer until the garlic has softened.",
-      "Blend until smooth, adding extra stock to loosen. Blend hot soup cautiously in batches if needed.",
-      "Take off the heat and finish with lemon in small additions. Serve with yoghurt and warm crusty bread."
+      "Heat the oven to 200°C (180°C fan). Peel the sweet potatoes and cut into 2 cm chunks, cut the onions into slim wedges and finely chop the garlic.",
+      "Toss the sweet potatoes and onions with the listed oil and spread across a large roasting tray in one layer. Roast for 25–30 minutes, turning once, until soft enough to mash easily with a fork.",
+      "Tip the roasted vegetables into a saucepan with the prepared vegetable stock, cumin and garlic. Bring to a simmer and cook for 5 minutes until the garlic has softened.",
+      "Blend until smooth, adding a little water if a thinner soup is preferred. Use a stick blender or blend hot soup cautiously in small batches according to the blender instructions.",
+      "Take off the heat and add lemon juice gradually to taste. Warm the bread and serve with the soup and yoghurt."
     ],
     "culinary_prep_notes": [
       "Cut to the size specified and dry before roasting or frying to develop a crisp golden outside.",
       "Slice evenly; sweat gently for sweetness, or add at the end if the dish needs fresh crunch.",
-      "Prepare the stock according to its packet and have the recipe amount ready before cooking.",
+      "Make up the listed stock for blending with the roasted vegetables; use water to thin the finished soup if needed.",
       "Keep chilled until needed and add at the serving or mixing stage specified in the method.",
       "Warm or toast only at assembly time so the outside stays crisp instead of absorbing the sauce.",
       "Mix into the savoury base and warm briefly in the fat to bloom the spices without scorching them.",
@@ -4829,23 +4831,22 @@
     "name": "Spinach ricotta pasta bake",
     "category": "Italian · Vegetarian",
     "tag": "COMFORT FOOD",
-    "mins": 40,
-    "cost": 9.98,
+    "mins": 45,
+    "cost": 9.1,
     "image": "release-assets/basketboss-v17/images/existing/spinach-ricotta-shells.webp",
     "tip": "Let the bake rest for five minutes before serving.",
     "method": [
-      "Drain the ricotta, wilt the spinach and squeeze out excess moisture. Prepare the garlic and set out a baking dish.",
-      "Cook pasta shells until just shy of tender.",
-      "Mix ricotta with the wilted spinach, garlic, dried oregano and seasoning.",
-      "Fill shells and arrange in a dish with tomato sauce.",
-      "Top with mozzarella and bake at 190°C until bubbling and hot.",
-      "Before serving: The pasta should be tender and the filling hot throughout, with the cheese bubbling at the edges."
+      "Heat the oven to 190°C (170°C fan) and bring a large pan of water to the boil. Drain the ricotta, finely chop the garlic and tear the mozzarella.",
+      "Cook the large stuffing shells (conchiglioni) for 1–2 minutes less than the packet time. While they cook, wilt the spinach in a covered pan with a splash of water, then cool, squeeze dry and chop finely.",
+      "Stir the garlic and dried oregano into the passata and simmer for 5 minutes. Mix the drained ricotta with the chopped spinach and season to taste.",
+      "Spread the tomato sauce in an ovenproof dish. Drain the shells, cool briefly until safe to handle, divide the ricotta mixture between them and arrange them open-side up in the sauce.",
+      "Top with mozzarella and bake for about 20 minutes, until the sauce bubbles at the edges, the pasta is tender and the filling is steaming hot throughout. Stand briefly before serving."
     ],
     "ingredients": [
       [
         "Pasta shells",
-        "500 g",
-        1.77,
+        "250 g large stuffing shells (conchiglioni)",
+        0.89,
         "Grains"
       ],
       [
@@ -4892,7 +4893,7 @@
       "Milk"
     ],
     "ingredient_display_lines": [
-      "Pasta shells — 500 g",
+      "Pasta shells — 250 g large stuffing shells (conchiglioni)",
       "Ricotta — 250 g",
       "Spinach — 150 g",
       "Passata — 500 g",
@@ -4902,12 +4903,12 @@
     ],
     "ci_estimates": {
       "Jersey": {
-        "estimate_gbp": 9.98,
-        "range_low_gbp": 7.9,
-        "range_high_gbp": 12.06,
-        "per_serving_estimate_gbp": 2.5,
-        "per_serving_low_gbp": 1.98,
-        "per_serving_high_gbp": 3.02,
+        "estimate_gbp": 9.1,
+        "range_low_gbp": 7.2,
+        "range_high_gbp": 11.0,
+        "per_serving_estimate_gbp": 2.28,
+        "per_serving_low_gbp": 1.8,
+        "per_serving_high_gbp": 2.75,
         "confidence": "INDICATIVE_UNVERIFIED",
         "source": "Previous recipe draft cost/range × explicit provisional island factor; not observed retailer prices",
         "source_base_low_gbp": 7.08,
@@ -4917,12 +4918,12 @@
         "ingredient_addition_price_source": "Existing indicative canonical price catalogue; retailer verification still required"
       },
       "Guernsey": {
-        "estimate_gbp": 10.88,
-        "range_low_gbp": 8.62,
-        "range_high_gbp": 13.15,
-        "per_serving_estimate_gbp": 2.72,
-        "per_serving_low_gbp": 2.15,
-        "per_serving_high_gbp": 3.29,
+        "estimate_gbp": 9.92,
+        "range_low_gbp": 7.86,
+        "range_high_gbp": 11.99,
+        "per_serving_estimate_gbp": 2.48,
+        "per_serving_low_gbp": 1.97,
+        "per_serving_high_gbp": 3.0,
         "confidence": "INDICATIVE_UNVERIFIED",
         "source": "Previous recipe draft cost/range × explicit provisional island factor; not observed retailer prices",
         "source_base_low_gbp": 7.08,
@@ -4932,12 +4933,12 @@
         "ingredient_addition_price_source": "Existing indicative canonical price catalogue; retailer verification still required"
       },
       "UK": {
-        "estimate_gbp": 9.07,
-        "range_low_gbp": 7.18,
-        "range_high_gbp": 10.96,
-        "per_serving_estimate_gbp": 2.27,
-        "per_serving_low_gbp": 1.79,
-        "per_serving_high_gbp": 2.74,
+        "estimate_gbp": 8.27,
+        "range_low_gbp": 6.55,
+        "range_high_gbp": 9.99,
+        "per_serving_estimate_gbp": 2.07,
+        "per_serving_low_gbp": 1.64,
+        "per_serving_high_gbp": 2.5,
         "confidence": "INDICATIVE_UNVERIFIED",
         "source": "Derived from Jersey provisional recipe estimate using its assumed 1.10 island factor (UK = Jersey / 1.10); NOT a survey of UK supermarket prices",
         "uplift_assumption": 1,
@@ -4948,21 +4949,20 @@
     },
     "data_format_fixed_from": "STRUCTURED_ALREADY",
     "steps": [
-      "Drain the ricotta, wilt the spinach and squeeze out excess moisture. Prepare the garlic and set out a baking dish.",
-      "Cook pasta shells until just shy of tender.",
-      "Mix ricotta with the wilted spinach, garlic, dried oregano and seasoning.",
-      "Fill shells and arrange in a dish with tomato sauce.",
-      "Top with mozzarella and bake at 190°C until bubbling and hot.",
-      "Before serving: The pasta should be tender and the filling hot throughout, with the cheese bubbling at the edges."
+      "Heat the oven to 190°C (170°C fan) and bring a large pan of water to the boil. Drain the ricotta, finely chop the garlic and tear the mozzarella.",
+      "Cook the large stuffing shells (conchiglioni) for 1–2 minutes less than the packet time. While they cook, wilt the spinach in a covered pan with a splash of water, then cool, squeeze dry and chop finely.",
+      "Stir the garlic and dried oregano into the passata and simmer for 5 minutes. Mix the drained ricotta with the chopped spinach and season to taste.",
+      "Spread the tomato sauce in an ovenproof dish. Drain the shells, cool briefly until safe to handle, divide the ricotta mixture between them and arrange them open-side up in the sauce.",
+      "Top with mozzarella and bake for about 20 minutes, until the sauce bubbles at the edges, the pasta is tender and the filling is steaming hot throughout. Stand briefly before serving."
     ],
     "culinary_prep_notes": [
-      "Cook until just tender and keep a splash of starchy liquid to loosen the sauce for a glossy finish.",
+      "Use large stuffing shells (conchiglioni), not small soup shells; boil just shy of the packet time, drain and let cool enough to fill.",
       "Drain the ricotta before mixing with the wilted, squeezed spinach for the filling.",
-      "Wash and dry thoroughly; add tender leaves toward the end to preserve their colour and texture.",
+      "Wilt while the pasta cooks, cool, squeeze out excess water and chop finely before mixing with the ricotta.",
       "Simmer the passata until its raw tomato edge mellows and the sauce coats the other ingredients.",
       "Grate, crumble or spoon as appropriate; add at the final stage so it melts or softens without turning grainy.",
       "Crush or grate finely and stir in with the aromatics; stop it catching and turning bitter.",
-      "Mix into the savoury base and warm briefly in the fat to bloom the spices without scorching them."
+      "Stir into the passata with the garlic and simmer before filling the shells."
     ],
     "culinary_data_version": "ingredient-sync-all321-v3",
     "culinary_profile": "Italian/pasta"
@@ -5410,16 +5410,16 @@
     "name": "Sausage & lentil stew",
     "category": "Hearty · One pot",
     "tag": "ONE-POT",
-    "mins": 35,
-    "cost": 9.3,
+    "mins": 50,
+    "cost": 9.18,
     "image": "release-assets/basketboss-v17/images/existing/sausage-lentil-stew.webp",
     "tip": "A splash of vinegar at the end balances the richness.",
     "method": [
-      "Slice onion, carrot and celery, rinse the lentils if needed and measure the stock. Chop the parsley.",
-      "Brown sausages in a deep pan and set aside.",
-      "Soften onion, carrot and celery in the same pan.",
-      "Add lentils, stock and sausages. Simmer until the lentils are tender, sausages thoroughly cooked and the stew is thick but spoonable.",
-      "Stir through parsley, season and serve hot. Bread is an optional extra purchase, not included in this recipe’s ingredient estimate."
+      "Finely dice the onion, carrot and celery. Rinse the dried lentils, prepare the listed stock and chop the parsley.",
+      "Brown the sausages in a deep non-stick pan for 6–8 minutes, turning regularly, then set aside. Leave their rendered fat in the pan.",
+      "Add the onion, carrot and celery and soften for 5 minutes, adding a small splash of the measured stock if the pan is dry.",
+      "Add the lentils, remaining stock and sausages. Bring to a simmer and cook gently, partly covered, for 25–30 minutes or the lentil packet time, until the lentils are fully tender. Add water if needed, then uncover briefly if the stew needs to thicken.",
+      "Check the centre of the thickest sausage reaches 75°C for 30 seconds, cooking longer if needed. Stir through the parsley, season and serve hot. Bread is an optional extra purchase, not included in this recipe’s ingredient estimate."
     ],
     "ingredients": [
       [
@@ -5448,8 +5448,8 @@
       ],
       [
         "Stock",
-        "1 carton",
-        1.3,
+        "1000 ml",
+        1.18,
         "Other"
       ],
       [
@@ -5475,18 +5475,18 @@
       "Green lentils — 250 g",
       "Carrots — 3",
       "Onions — 2",
-      "Stock — 1 carton",
+      "Stock — 1000 ml",
       "Celery — 2 sticks",
       "Fresh parsley — 10 g"
     ],
     "ci_estimates": {
       "Jersey": {
-        "estimate_gbp": 9.3,
-        "range_low_gbp": 7.43,
-        "range_high_gbp": 11.17,
-        "per_serving_estimate_gbp": 2.33,
-        "per_serving_low_gbp": 1.86,
-        "per_serving_high_gbp": 2.79,
+        "estimate_gbp": 9.18,
+        "range_low_gbp": 7.33,
+        "range_high_gbp": 11.03,
+        "per_serving_estimate_gbp": 2.3,
+        "per_serving_low_gbp": 1.83,
+        "per_serving_high_gbp": 2.76,
         "confidence": "INDICATIVE_UNVERIFIED",
         "source": "Previous recipe draft cost/range × explicit provisional island factor; not observed retailer prices",
         "source_base_low_gbp": 6.42,
@@ -5496,12 +5496,12 @@
         "ingredient_addition_price_source": "Existing indicative canonical price catalogue; retailer verification still required"
       },
       "Guernsey": {
-        "estimate_gbp": 10.14,
-        "range_low_gbp": 8.1,
-        "range_high_gbp": 12.18,
-        "per_serving_estimate_gbp": 2.54,
-        "per_serving_low_gbp": 2.02,
-        "per_serving_high_gbp": 3.04,
+        "estimate_gbp": 10.01,
+        "range_low_gbp": 8.0,
+        "range_high_gbp": 12.02,
+        "per_serving_estimate_gbp": 2.5,
+        "per_serving_low_gbp": 2.0,
+        "per_serving_high_gbp": 3.01,
         "confidence": "INDICATIVE_UNVERIFIED",
         "source": "Previous recipe draft cost/range × explicit provisional island factor; not observed retailer prices",
         "source_base_low_gbp": 6.42,
@@ -5511,12 +5511,12 @@
         "ingredient_addition_price_source": "Existing indicative canonical price catalogue; retailer verification still required"
       },
       "UK": {
-        "estimate_gbp": 8.45,
-        "range_low_gbp": 6.75,
-        "range_high_gbp": 10.15,
-        "per_serving_estimate_gbp": 2.11,
-        "per_serving_low_gbp": 1.69,
-        "per_serving_high_gbp": 2.54,
+        "estimate_gbp": 8.34,
+        "range_low_gbp": 6.66,
+        "range_high_gbp": 10.02,
+        "per_serving_estimate_gbp": 2.09,
+        "per_serving_low_gbp": 1.67,
+        "per_serving_high_gbp": 2.51,
         "confidence": "INDICATIVE_UNVERIFIED",
         "source": "Derived from Jersey provisional recipe estimate using its assumed 1.10 island factor (UK = Jersey / 1.10); NOT a survey of UK supermarket prices",
         "uplift_assumption": 1,
@@ -5527,18 +5527,18 @@
     },
     "data_format_fixed_from": "STRUCTURED_ALREADY",
     "steps": [
-      "Slice onion, carrot and celery, rinse the lentils if needed and measure the stock. Chop the parsley.",
-      "Brown sausages in a deep pan and set aside.",
-      "Soften onion, carrot and celery in the same pan.",
-      "Add lentils, stock and sausages. Simmer until the lentils are tender, sausages thoroughly cooked and the stew is thick but spoonable.",
-      "Stir through parsley, season and serve hot. Bread is an optional extra purchase, not included in this recipe’s ingredient estimate."
+      "Finely dice the onion, carrot and celery. Rinse the dried lentils, prepare the listed stock and chop the parsley.",
+      "Brown the sausages in a deep non-stick pan for 6–8 minutes, turning regularly, then set aside. Leave their rendered fat in the pan.",
+      "Add the onion, carrot and celery and soften for 5 minutes, adding a small splash of the measured stock if the pan is dry.",
+      "Add the lentils, remaining stock and sausages. Bring to a simmer and cook gently, partly covered, for 25–30 minutes or the lentil packet time, until the lentils are fully tender. Add water if needed, then uncover briefly if the stew needs to thicken.",
+      "Check the centre of the thickest sausage reaches 75°C for 30 seconds, cooking longer if needed. Stir through the parsley, season and serve hot. Bread is an optional extra purchase, not included in this recipe’s ingredient estimate."
     ],
     "culinary_prep_notes": [
       "Brown the outside first for a savoury crust; slice only where the method calls for it.",
       "Rinse the dried lentils before cooking and simmer until fully tender as directed in the method.",
       "Cut into even pieces and give them enough space and heat to soften with a little colour at the edges.",
       "Slice evenly; sweat gently for sweetness, or add at the end if the dish needs fresh crunch.",
-      "Prepare the stock according to its packet and have the recipe amount ready before cooking.",
+      "Make up the listed stock; use a small splash to soften the vegetables and add the rest with the dried lentils.",
       "Cut into even pieces and give them enough space and heat to soften with a little colour at the edges.",
       "Pick, finely chop or tear just before serving so the fresh herbal fragrance and colour stand out."
     ],
@@ -5551,20 +5551,20 @@
     "category": "Comfort · Family",
     "tag": "ONE-POT",
     "mins": 30,
-    "cost": 11.38,
+    "cost": 12.17,
     "image": "release-assets/basketboss-v17/images/existing/chicken-noodle-soup.webp",
     "tip": "Shred leftover roast chicken for a shortcut.",
     "method": [
-      "Dice the vegetables evenly, finely chop or grate the ginger and prepare the stock. Keep raw chicken separate from ready-to-eat ingredients.",
-      "Sauté carrot, celery and onion until softened, then stir in ginger.",
-      "Add stock and chicken and bring to a simmer. If the chicken is raw, cook until fully cooked at the centre (or equivalent safe time–temperature); if precooked, reheat until steaming hot. The advertised time depends on chicken piece size.",
-      "Add noodles and simmer until tender. Check the thickest chicken piece is steaming hot throughout with no pink meat and clear juices; if unsure, continue cooking.",
-      "Take off the heat, season with pepper and parsley and finish with lime in small additions. Serve immediately before the noodles become mushy."
+      "Finely dice the carrots, celery and onion and grate the ginger. Cut the boneless chicken into 2 cm pieces, keeping raw chicken and its utensils separate from ready-to-eat ingredients. Prepare the listed stock.",
+      "Put a small splash of the listed stock in a deep saucepan with the carrot, celery and onion. Cover and simmer for 5 minutes to soften, then stir in the ginger.",
+      "Add the remaining stock and chicken. Bring back to a gentle simmer and cook for about 10 minutes.",
+      "Add the dry egg noodles and simmer for their packet time, usually 4–6 minutes, until tender. Check the thickest chicken piece reaches 75°C for 30 seconds; continue cooking if needed. Add a little boiling water if the noodles absorb more broth than expected.",
+      "Take off the heat, add pepper and the optional parsley and finish with lime juice to taste. Serve immediately before the noodles become mushy."
     ],
     "ingredients": [
       [
         "Chicken",
-        "400 g",
+        "400 g boneless chicken, cut into 2 cm pieces",
         4.73,
         "Meat"
       ],
@@ -5582,13 +5582,13 @@
       ],
       [
         "Stock",
-        "1 carton",
-        1.3,
+        "1500 ml",
+        2.08,
         "Other"
       ],
       [
         "Celery",
-        "1 bunch",
+        "300 g",
         1.42,
         "Vegetables"
       ],
@@ -5625,11 +5625,11 @@
       "Gluten-containing cereals"
     ],
     "ingredient_display_lines": [
-      "Chicken — 400 g",
+      "Chicken — 400 g boneless chicken, cut into 2 cm pieces",
       "Egg noodles — 250 g dry egg noodles",
       "Carrots — 3",
-      "Stock — 1 carton",
-      "Celery — 1 bunch",
+      "Stock — 1500 ml",
+      "Celery — 300 g",
       "Onion — 1 medium",
       "Fresh parsley — 5 g (optional)",
       "Fresh Ginger — 10 g",
@@ -5637,12 +5637,12 @@
     ],
     "ci_estimates": {
       "Jersey": {
-        "estimate_gbp": 11.38,
-        "range_low_gbp": 9.08,
-        "range_high_gbp": 13.68,
-        "per_serving_estimate_gbp": 2.85,
-        "per_serving_low_gbp": 2.27,
-        "per_serving_high_gbp": 3.42,
+        "estimate_gbp": 12.16,
+        "range_low_gbp": 9.7,
+        "range_high_gbp": 14.62,
+        "per_serving_estimate_gbp": 3.04,
+        "per_serving_low_gbp": 2.43,
+        "per_serving_high_gbp": 3.66,
         "confidence": "INDICATIVE_UNVERIFIED",
         "source": "Previous recipe draft cost/range × explicit provisional island factor; not observed retailer prices",
         "source_base_low_gbp": 7.91,
@@ -5652,12 +5652,12 @@
         "ingredient_addition_price_source": "Existing indicative canonical price catalogue; retailer verification still required"
       },
       "Guernsey": {
-        "estimate_gbp": 12.42,
-        "range_low_gbp": 9.91,
-        "range_high_gbp": 14.93,
-        "per_serving_estimate_gbp": 3.1,
-        "per_serving_low_gbp": 2.48,
-        "per_serving_high_gbp": 3.73,
+        "estimate_gbp": 13.27,
+        "range_low_gbp": 10.59,
+        "range_high_gbp": 15.95,
+        "per_serving_estimate_gbp": 3.32,
+        "per_serving_low_gbp": 2.65,
+        "per_serving_high_gbp": 3.99,
         "confidence": "INDICATIVE_UNVERIFIED",
         "source": "Previous recipe draft cost/range × explicit provisional island factor; not observed retailer prices",
         "source_base_low_gbp": 7.91,
@@ -5667,12 +5667,12 @@
         "ingredient_addition_price_source": "Existing indicative canonical price catalogue; retailer verification still required"
       },
       "UK": {
-        "estimate_gbp": 10.35,
-        "range_low_gbp": 8.26,
-        "range_high_gbp": 12.44,
-        "per_serving_estimate_gbp": 2.59,
-        "per_serving_low_gbp": 2.06,
-        "per_serving_high_gbp": 3.11,
+        "estimate_gbp": 11.06,
+        "range_low_gbp": 8.83,
+        "range_high_gbp": 13.29,
+        "per_serving_estimate_gbp": 2.77,
+        "per_serving_low_gbp": 2.21,
+        "per_serving_high_gbp": 3.32,
         "confidence": "INDICATIVE_UNVERIFIED",
         "source": "Derived from Jersey provisional recipe estimate using its assumed 1.10 island factor (UK = Jersey / 1.10); NOT a survey of UK supermarket prices",
         "uplift_assumption": 1,
@@ -5683,18 +5683,18 @@
     },
     "data_format_fixed_from": "STRUCTURED_ALREADY",
     "steps": [
-      "Dice the vegetables evenly, finely chop or grate the ginger and prepare the stock. Keep raw chicken separate from ready-to-eat ingredients.",
-      "Sauté carrot, celery and onion until softened, then stir in ginger.",
-      "Add stock and chicken and bring to a simmer. If the chicken is raw, cook until fully cooked at the centre (or equivalent safe time–temperature); if precooked, reheat until steaming hot. The advertised time depends on chicken piece size.",
-      "Add noodles and simmer until tender. Check the thickest chicken piece is steaming hot throughout with no pink meat and clear juices; if unsure, continue cooking.",
-      "Take off the heat, season with pepper and parsley and finish with lime in small additions. Serve immediately before the noodles become mushy."
+      "Finely dice the carrots, celery and onion and grate the ginger. Cut the boneless chicken into 2 cm pieces, keeping raw chicken and its utensils separate from ready-to-eat ingredients. Prepare the listed stock.",
+      "Put a small splash of the listed stock in a deep saucepan with the carrot, celery and onion. Cover and simmer for 5 minutes to soften, then stir in the ginger.",
+      "Add the remaining stock and chicken. Bring back to a gentle simmer and cook for about 10 minutes.",
+      "Add the dry egg noodles and simmer for their packet time, usually 4–6 minutes, until tender. Check the thickest chicken piece reaches 75°C for 30 seconds; continue cooking if needed. Add a little boiling water if the noodles absorb more broth than expected.",
+      "Take off the heat, add pepper and the optional parsley and finish with lime juice to taste. Serve immediately before the noodles become mushy."
     ],
     "culinary_prep_notes": [
-      "Pat dry and season before cooking; give the surface time to brown before moving or turning.",
+      "Use boneless chicken cut into even 2 cm pieces; keep raw chicken and its utensils separate from ready-to-eat ingredients.",
       "Prepare the noodles according to their packet and drain before tossing into the pan.",
       "Cut into even pieces and give them enough space and heat to soften with a little colour at the edges.",
-      "Prepare the stock according to its packet and have the recipe amount ready before cooking.",
-      "Cut into even pieces and give them enough space and heat to soften with a little colour at the edges.",
+      "Make up the listed stock; use a small splash to soften the vegetables and add the rest with the chicken.",
+      "Wash and finely slice the listed celery before softening it with the carrot and onion.",
       "Slice evenly; sweat gently for sweetness, or add at the end if the dish needs fresh crunch.",
       "Pick, finely chop or tear just before serving so the fresh herbal fragrance and colour stand out.",
       "Peel with a teaspoon and finely grate; warm briefly with the aromatics to release its bright fragrance.",
@@ -5852,11 +5852,11 @@
     "image": "release-assets/basketboss-v17/images/existing/chicken-katsu-curry.webp",
     "tip": "Panko breadcrumbs give the chicken a lighter, crunchier coating.",
     "method": [
-      "Flatten chicken to an even thickness. Set out flour, beaten egg and breadcrumbs in separate dishes. Prepare onion, carrot and finely chopped or grated ginger for the sauce.",
-      "Coat chicken in flour, beaten egg and breadcrumbs; bake or shallow-fry until the crumb is golden and crisp and the chicken is cooked through.",
-      "Simmer onion, carrot, ginger, curry powder and stock until the vegetables are soft; blend until smooth.",
-      "While the chicken and sauce cook, prepare the listed rice according to its packet directions.",
-      "Before slicing the chicken, cut into the thickest piece: it should be steaming hot throughout with no pink meat, and the juices should run clear. If unsure, continue cooking. Serve over rice with the curry sauce."
+      "Heat the oven to 200°C (180°C fan). Divide the chicken into one portion per serving and flatten to an even thickness of about 1.5 cm. Finely chop the onion and carrots and grate the ginger. Set out the flour, beaten egg and breadcrumbs in separate dishes.",
+      "Coat the chicken in flour, then beaten egg, then breadcrumbs, pressing them on firmly. Place on a baking tray lined with baking paper and bake for 20–25 minutes, turning once, until the coating is crisp and the chicken is cooked through.",
+      "Meanwhile, put the onion, carrots, ginger, curry powder and the listed chicken stock in a saucepan. Simmer for 15–20 minutes until the vegetables are soft, then blend until smooth. Discard any leftover coating flour, egg or crumbs that touched raw chicken.",
+      "While the chicken and sauce cook, cook the listed dry rice according to its packet directions so it is ready to serve hot.",
+      "Check the thickest part of the chicken reaches 75°C for 30 seconds; continue baking if needed. Slice the chicken and serve over the rice with the hot curry sauce."
     ],
     "ingredients": [
       [
@@ -5873,7 +5873,7 @@
       ],
       [
         "Rice",
-        "500 g dry rice (cook fresh; allow extra time if not already prepared)",
+        "500 g dry rice",
         1.77,
         "Grains"
       ],
@@ -5929,7 +5929,7 @@
     "ingredient_display_lines": [
       "Chicken breast — 600 g",
       "Panko breadcrumbs — 100 g",
-      "Rice — 500 g dry rice (cook fresh; allow extra time if not already prepared)",
+      "Rice — 500 g dry rice",
       "Carrots — 2",
       "Curry powder — 15 g",
       "Plain flour — 80 g",
@@ -5958,8 +5958,8 @@
         "estimate_gbp": 15.18,
         "range_low_gbp": 12.01,
         "range_high_gbp": 18.36,
-        "per_serving_estimate_gbp": 3.79,
-        "per_serving_low_gbp": 3,
+        "per_serving_estimate_gbp": 3.8,
+        "per_serving_low_gbp": 3.0,
         "per_serving_high_gbp": 4.59,
         "confidence": "INDICATIVE_UNVERIFIED",
         "source": "Previous recipe draft cost/range × explicit provisional island factor; not observed retailer prices",
@@ -5986,18 +5986,18 @@
     },
     "data_format_fixed_from": "STRUCTURED_ALREADY",
     "steps": [
-      "Flatten chicken to an even thickness. Set out flour, beaten egg and breadcrumbs in separate dishes. Prepare onion, carrot and finely chopped or grated ginger for the sauce.",
-      "Coat chicken in flour, beaten egg and breadcrumbs; bake or shallow-fry until the crumb is golden and crisp and the chicken is cooked through.",
-      "Simmer onion, carrot, ginger, curry powder and stock until the vegetables are soft; blend until smooth.",
-      "While the chicken and sauce cook, prepare the listed rice according to its packet directions.",
-      "Before slicing the chicken, cut into the thickest piece: it should be steaming hot throughout with no pink meat, and the juices should run clear. If unsure, continue cooking. Serve over rice with the curry sauce."
+      "Heat the oven to 200°C (180°C fan). Divide the chicken into one portion per serving and flatten to an even thickness of about 1.5 cm. Finely chop the onion and carrots and grate the ginger. Set out the flour, beaten egg and breadcrumbs in separate dishes.",
+      "Coat the chicken in flour, then beaten egg, then breadcrumbs, pressing them on firmly. Place on a baking tray lined with baking paper and bake for 20–25 minutes, turning once, until the coating is crisp and the chicken is cooked through.",
+      "Meanwhile, put the onion, carrots, ginger, curry powder and the listed chicken stock in a saucepan. Simmer for 15–20 minutes until the vegetables are soft, then blend until smooth. Discard any leftover coating flour, egg or crumbs that touched raw chicken.",
+      "While the chicken and sauce cook, cook the listed dry rice according to its packet directions so it is ready to serve hot.",
+      "Check the thickest part of the chicken reaches 75°C for 30 seconds; continue baking if needed. Slice the chicken and serve over the rice with the hot curry sauce."
     ],
     "culinary_prep_notes": [
-      "Pat dry and season before cooking; give the surface time to brown before moving or turning.",
+      "Divide into one portion per serving and flatten to 1.5 cm so the breaded chicken bakes evenly; check the thickest part is fully cooked.",
       "Set the breadcrumbs in a shallow dish for coating; keep them separate from the egg until needed.",
       "Measure the rice quantity stated in the ingredients and cook according to the method and packet directions.",
       "Cut into even pieces and give them enough space and heat to soften with a little colour at the edges.",
-      "Mix into the savoury base and warm briefly in the fat to bloom the spices without scorching them.",
+      "Stir into the stock with the finely chopped vegetables and simmer before blending the curry sauce.",
       "Place flour in a separate shallow dish for coating, alongside the beaten egg and breadcrumbs.",
       "Crack into a separate bowl and beat when the method calls for beaten egg.",
       "Slice evenly; sweat gently for sweetness, or add at the end if the dish needs fresh crunch.",
@@ -6466,15 +6466,15 @@
     "name": "Aubergine parmigiana",
     "category": "Italian · Vegetarian",
     "tag": "MEAT-FREE",
-    "mins": 45,
-    "cost": 14.12,
+    "mins": 55,
+    "cost": 11.1,
     "image": "release-assets/basketboss-v17/images/existing/aubergine-parmigiana.webp",
     "tip": "Salt aubergine slices briefly and pat dry for better browning.",
     "method": [
-      "Slice aubergines into even rounds, prepare the cheeses and preheat the oven.",
-      "Brush aubergine with olive oil and roast or pan-sear until golden and soft throughout. Simmer passata with crushed garlic until the garlic softens.",
-      "Layer aubergine with the garlic tomato sauce, basil and mozzarella in a baking dish. Repeat layers and finish with parmesan.",
-      "Bake at 190°C until bubbling and golden. Rest briefly before serving so the molten mozzarella settles."
+      "Heat the oven to 220°C (200°C fan). Cut the aubergines into even 1 cm rounds, crush the garlic, drain and tear the mozzarella and grate the Parmesan.",
+      "Brush the aubergine with the listed olive oil and spread over two trays. Roast for 20–25 minutes, turning halfway, until golden and soft throughout. Meanwhile, simmer the passata and garlic for 8–10 minutes.",
+      "Reduce the oven to 190°C (170°C fan). Layer the aubergine, garlic tomato sauce, basil and mozzarella in a baking dish, then finish with the measured Parmesan.",
+      "Bake for 15–20 minutes until bubbling and golden, then rest for 5 minutes before serving so the molten mozzarella settles."
     ],
     "ingredients": [
       [
@@ -6497,8 +6497,8 @@
       ],
       [
         "Parmesan",
-        "1 block",
-        4.49,
+        "50 g",
+        1.47,
         "Dairy"
       ],
       [
@@ -6529,19 +6529,19 @@
       "Aubergines — 2",
       "Passata — 500 g",
       "Mozzarella — 2 balls",
-      "Parmesan — 1 block",
+      "Parmesan — 50 g",
       "Basil — 15 g",
       "Garlic — 2 cloves",
       "Olive Oil — 20 ml"
     ],
     "ci_estimates": {
       "Jersey": {
-        "estimate_gbp": 14.12,
-        "range_low_gbp": 11.22,
-        "range_high_gbp": 17.02,
-        "per_serving_estimate_gbp": 3.53,
-        "per_serving_low_gbp": 2.81,
-        "per_serving_high_gbp": 4.25,
+        "estimate_gbp": 11.1,
+        "range_low_gbp": 8.82,
+        "range_high_gbp": 13.38,
+        "per_serving_estimate_gbp": 2.78,
+        "per_serving_low_gbp": 2.21,
+        "per_serving_high_gbp": 3.35,
         "confidence": "INDICATIVE_UNVERIFIED",
         "source": "Previous recipe draft cost/range × explicit provisional island factor; not observed retailer prices",
         "source_base_low_gbp": 9.94,
@@ -6551,12 +6551,12 @@
         "ingredient_addition_price_source": "Existing indicative canonical price catalogue; retailer verification still required"
       },
       "Guernsey": {
-        "estimate_gbp": 15.4,
-        "range_low_gbp": 12.24,
-        "range_high_gbp": 18.56,
-        "per_serving_estimate_gbp": 3.85,
-        "per_serving_low_gbp": 3.06,
-        "per_serving_high_gbp": 4.64,
+        "estimate_gbp": 12.11,
+        "range_low_gbp": 9.62,
+        "range_high_gbp": 14.59,
+        "per_serving_estimate_gbp": 3.03,
+        "per_serving_low_gbp": 2.41,
+        "per_serving_high_gbp": 3.65,
         "confidence": "INDICATIVE_UNVERIFIED",
         "source": "Previous recipe draft cost/range × explicit provisional island factor; not observed retailer prices",
         "source_base_low_gbp": 9.94,
@@ -6566,12 +6566,12 @@
         "ingredient_addition_price_source": "Existing indicative canonical price catalogue; retailer verification still required"
       },
       "UK": {
-        "estimate_gbp": 12.83,
-        "range_low_gbp": 10.2,
-        "range_high_gbp": 15.47,
-        "per_serving_estimate_gbp": 3.21,
-        "per_serving_low_gbp": 2.55,
-        "per_serving_high_gbp": 3.87,
+        "estimate_gbp": 10.09,
+        "range_low_gbp": 8.02,
+        "range_high_gbp": 12.16,
+        "per_serving_estimate_gbp": 2.52,
+        "per_serving_low_gbp": 2.01,
+        "per_serving_high_gbp": 3.04,
         "confidence": "INDICATIVE_UNVERIFIED",
         "source": "Derived from Jersey provisional recipe estimate using its assumed 1.10 island factor (UK = Jersey / 1.10); NOT a survey of UK supermarket prices",
         "uplift_assumption": 1,
@@ -6582,16 +6582,16 @@
     },
     "data_format_fixed_from": "STRUCTURED_ALREADY",
     "steps": [
-      "Slice aubergines into even rounds, prepare the cheeses and preheat the oven.",
-      "Brush aubergine with olive oil and roast or pan-sear until golden and soft throughout. Simmer passata with crushed garlic until the garlic softens.",
-      "Layer aubergine with the garlic tomato sauce, basil and mozzarella in a baking dish. Repeat layers and finish with parmesan.",
-      "Bake at 190°C until bubbling and golden. Rest briefly before serving so the molten mozzarella settles."
+      "Heat the oven to 220°C (200°C fan). Cut the aubergines into even 1 cm rounds, crush the garlic, drain and tear the mozzarella and grate the Parmesan.",
+      "Brush the aubergine with the listed olive oil and spread over two trays. Roast for 20–25 minutes, turning halfway, until golden and soft throughout. Meanwhile, simmer the passata and garlic for 8–10 minutes.",
+      "Reduce the oven to 190°C (170°C fan). Layer the aubergine, garlic tomato sauce, basil and mozzarella in a baking dish, then finish with the measured Parmesan.",
+      "Bake for 15–20 minutes until bubbling and golden, then rest for 5 minutes before serving so the molten mozzarella settles."
     ],
     "culinary_prep_notes": [
-      "Keep slices evenly sized and cook in a wide pan so the surfaces colour instead of steaming.",
+      "Cut into even 1 cm rounds, brush with the listed oil and roast in a single layer until golden and soft.",
       "Simmer the passata until its raw tomato edge mellows and the sauce coats the other ingredients.",
       "Grate, crumble or spoon as appropriate; add at the final stage so it melts or softens without turning grainy.",
-      "Grate, crumble or spoon as appropriate; add at the final stage so it melts or softens without turning grainy.",
+      "Finely grate the listed Parmesan for the top layer before the final bake.",
       "Pick, finely chop or tear just before serving so the fresh herbal fragrance and colour stand out.",
       "Crush or grate finely and stir in with the aromatics; stop it catching and turning bitter.",
       "Coat the surface lightly and heat before adding ingredients; keep space between pieces to encourage browning."
@@ -6881,14 +6881,14 @@
     "category": "Japanese-inspired · Balanced",
     "tag": "QUICK FIX",
     "mins": 25,
-    "cost": 21.07,
+    "cost": 21.08,
     "image": "release-assets/basketboss-v17/images/existing/miso-salmon-rice.webp",
     "tip": "Mix miso with honey and a little warm water to make a brushable glaze.",
     "method": [
-      "Rinse the rice, prepare the broccoli and pat the salmon dry. Finely grate the ginger and mix with miso, honey and a little water to make the glaze.",
-      "Cook rice and steam broccoli until just tender.",
-      "Brush glaze over the salmon, keeping any remaining glaze separate from the raw fish. Bake or grill, brushing on reserved glaze for the final two minutes and watching closely so the honey does not burn. Check the salmon is cooked through and flakes easily.",
-      "Take off the heat, finish with lime in small additions and serve over steaming-hot rice with broccoli and sesame seeds."
+      "Heat the oven to 200°C (180°C fan). Rinse the rice if its packet directs, trim the broccoli and pat the salmon dry. Finely grate the ginger and mix with the miso, honey and a little water to make a brushable glaze.",
+      "Cook the rice according to its packet directions. While it cooks, steam the broccoli for 4–6 minutes until tender.",
+      "Set aside a little glaze in a clean bowl before brushing the rest over the salmon. Put the salmon on a baking tray lined with baking paper and bake for about 12–15 minutes, depending on thickness. Brush with the reserved clean glaze for the final 2 minutes and watch so the honey does not burn.",
+      "Check the thickest part of each fillet is opaque, cooked through and flakes easily; bake longer if needed. Finish with lime juice to taste and serve over the hot rice with broccoli and sesame seeds."
     ],
     "ingredients": [
       [
@@ -7005,19 +7005,19 @@
     },
     "data_format_fixed_from": "STRUCTURED_ALREADY",
     "steps": [
-      "Rinse the rice, prepare the broccoli and pat the salmon dry. Finely grate the ginger and mix with miso, honey and a little water to make the glaze.",
-      "Cook rice and steam broccoli until just tender.",
-      "Brush glaze over the salmon, keeping any remaining glaze separate from the raw fish. Bake or grill, brushing on reserved glaze for the final two minutes and watching closely so the honey does not burn. Check the salmon is cooked through and flakes easily.",
-      "Take off the heat, finish with lime in small additions and serve over steaming-hot rice with broccoli and sesame seeds."
+      "Heat the oven to 200°C (180°C fan). Rinse the rice if its packet directs, trim the broccoli and pat the salmon dry. Finely grate the ginger and mix with the miso, honey and a little water to make a brushable glaze.",
+      "Cook the rice according to its packet directions. While it cooks, steam the broccoli for 4–6 minutes until tender.",
+      "Set aside a little glaze in a clean bowl before brushing the rest over the salmon. Put the salmon on a baking tray lined with baking paper and bake for about 12–15 minutes, depending on thickness. Brush with the reserved clean glaze for the final 2 minutes and watch so the honey does not burn.",
+      "Check the thickest part of each fillet is opaque, cooked through and flakes easily; bake longer if needed. Finish with lime juice to taste and serve over the hot rice with broccoli and sesame seeds."
     ],
     "culinary_prep_notes": [
-      "Pat dry before searing or glazing; use a hot surface for colour while keeping the centre moist and tender.",
+      "Pat dry, brush with the glaze and bake; check the thickest part is opaque, cooked through and flakes easily.",
       "Measure the rice quantity stated in the ingredients and cook according to the method and packet directions.",
       "Whisk into the glaze or sauce before the heat rises; taste before adding more salt.",
       "Trim any woody ends and cut thicker stems lengthways so they finish tender with just a little bite.",
       "Whisk into the sauce until dissolved; add the glaze late enough that sugars caramelise without burning.",
-      "Toast briefly in a dry pan just until fragrant, then scatter over the finished dish for crunch.",
-      "Peel with a teaspoon and finely grate; warm briefly with the aromatics to release its bright fragrance.",
+      "Scatter the measured sesame seeds over the rice bowls just before serving.",
+      "Peel and finely grate, then whisk into the miso and honey glaze before brushing the salmon.",
       "Zest the skin before cutting; squeeze in juice at the stated stage so the dish finishes bright and fragrant."
     ],
     "culinary_data_version": "ingredient-sync-all321-v3",
@@ -9401,15 +9401,16 @@
     "name": "Crispy chicken Caesar wraps",
     "category": "Family · Quick",
     "tag": "FAMILY FAVOURITE",
-    "mins": 25,
+    "mins": 30,
     "cost": 13.17,
     "image": "release-assets/basketboss-v17/images/existing/family-chicken-wraps.webp",
     "tip": "Toss the lettuce with dressing just before filling the wraps to keep it crisp.",
     "method": [
-      "Coat the chicken strips in seasoned breadcrumbs, pressing the crumbs on firmly.",
-      "Space the strips apart on a baking tray and bake until crisp and the chicken is cooked through. Before serving, cut into the thickest piece: it should be steaming hot throughout with no pink meat, and the juices should run clear. If unsure, continue cooking.",
-      "Crush the garlic and stir it into the Caesar dressing. Toss the lettuce lightly with the dressing.",
-      "Slice the cooked chicken and fill the wraps with chicken, lettuce and Parmesan. Assemble immediately to keep the lettuce crunchy."
+      "Heat the oven to 200°C (180°C fan). Cut the chicken into even strips about 1.5 cm thick. Wash and dry the lettuce, grate the Parmesan and crush the garlic.",
+      "Keep three quarters of the Caesar dressing in a clean bowl for the salad. In a separate bowl, coat the raw chicken with the remaining quarter of the dressing, then press on the breadcrumbs. Keep raw-chicken utensils separate from the reserved dressing and lettuce.",
+      "Space the strips apart on a baking tray lined with baking paper and bake for 18–20 minutes, turning halfway, until crisp. Check the thickest strip reaches 75°C for 30 seconds; continue baking if needed.",
+      "Stir the garlic into the reserved dressing and toss with the lettuce just before serving. Warm the wraps according to their packet instructions.",
+      "Fill the wraps with the cooked chicken strips, dressed lettuce and Parmesan. Serve immediately to keep the lettuce crunchy."
     ],
     "ingredients": [
       [
@@ -9518,19 +9519,20 @@
     },
     "data_format_fixed_from": "STRUCTURED_ALREADY",
     "steps": [
-      "Coat the chicken strips in seasoned breadcrumbs, pressing the crumbs on firmly.",
-      "Space the strips apart on a baking tray and bake until crisp and the chicken is cooked through. Before serving, cut into the thickest piece: it should be steaming hot throughout with no pink meat, and the juices should run clear. If unsure, continue cooking.",
-      "Crush the garlic and stir it into the Caesar dressing. Toss the lettuce lightly with the dressing.",
-      "Slice the cooked chicken and fill the wraps with chicken, lettuce and Parmesan. Assemble immediately to keep the lettuce crunchy."
+      "Heat the oven to 200°C (180°C fan). Cut the chicken into even strips about 1.5 cm thick. Wash and dry the lettuce, grate the Parmesan and crush the garlic.",
+      "Keep three quarters of the Caesar dressing in a clean bowl for the salad. In a separate bowl, coat the raw chicken with the remaining quarter of the dressing, then press on the breadcrumbs. Keep raw-chicken utensils separate from the reserved dressing and lettuce.",
+      "Space the strips apart on a baking tray lined with baking paper and bake for 18–20 minutes, turning halfway, until crisp. Check the thickest strip reaches 75°C for 30 seconds; continue baking if needed.",
+      "Stir the garlic into the reserved dressing and toss with the lettuce just before serving. Warm the wraps according to their packet instructions.",
+      "Fill the wraps with the cooked chicken strips, dressed lettuce and Parmesan. Serve immediately to keep the lettuce crunchy."
     ],
     "culinary_prep_notes": [
-      "Cut into strips, coat firmly with breadcrumbs and space apart for baking; check the thickest strip is fully cooked.",
+      "Cut into 1.5 cm strips, coat with a quarter of the dressing, then breadcrumbs; space apart for baking and check the thickest strip is fully cooked.",
       "Warm or toast only at assembly time so the outside stays crisp instead of absorbing the sauce.",
       "Wash, dry and tear or slice before dressing just before assembly.",
-      "Spoon onto the finished filling or salad just before serving so it stays fresh instead of making the base soggy.",
-      "Press firmly onto the chicken before baking to make the crisp coating.",
-      "Grate, crumble or spoon as appropriate; add at the final stage so it melts or softens without turning grainy.",
-      "Crush and stir into the Caesar dressing before dressing the lettuce."
+      "Reserve three quarters in a clean bowl for the garlic and lettuce; use the other quarter to bind the breadcrumb coating on the raw chicken.",
+      "Press firmly onto the dressing-coated chicken; discard any loose crumbs that touched raw chicken.",
+      "Finely grate and scatter into the wraps with the cooked chicken and dressed lettuce.",
+      "Crush and stir into the reserved Caesar dressing before dressing the lettuce."
     ],
     "culinary_data_version": "ingredient-sync-all321-v3",
     "culinary_profile": "everyday"
@@ -10186,7 +10188,7 @@
   },
   {
     "id": "extra-15-minute-pesto-tortellini",
-    "name": "15-minute pesto tortellini",
+    "name": "20-minute pesto tortellini",
     "category": "Under 30 Minutes · New recipe",
     "tag": "UNDER 30 MINUTES",
     "mins": 20,
@@ -10706,15 +10708,15 @@
     "name": "Lentil shepherdless pie",
     "category": "Budget Meals · New recipe",
     "tag": "BUDGET MEALS",
-    "mins": 35,
-    "cost": 9.57,
+    "mins": 65,
+    "cost": 8.8,
     "image": "release-assets/basketboss-v17/images/existing/extra-lentil-shepherdless-pie.webp",
     "tip": "Bring lentil shepherdless pie to the table with green lentils and potatoes.",
     "method": [
-      "Peel and chop the potatoes and carrots. Finely dice the onion and rinse the dried lentils.",
-      "Boil the potatoes for 15–20 minutes until tender. Meanwhile, soften the onion and carrots in oil, then add the lentils and vegetable stock.",
-      "Simmer the dried lentils according to packet directions until fully tender, adding water as needed; the filling should be thick, not watery. Drain and mash the potatoes.",
-      "Spoon the lentil filling into an ovenproof dish, top with mash and bake at 200°C (180°C fan) for about 20–25 minutes until bubbling and golden."
+      "Peel the potatoes and cut into 2 cm chunks. Finely dice the onion and carrots, rinse the dried lentils and prepare the listed vegetable stock. Allow about 65 minutes overall; cook the potatoes alongside the lentil filling.",
+      "Heat the oil in a saucepan and soften the onion and carrots for 5 minutes. Add the lentils and measured stock, bring to a simmer and cook gently for about 25–30 minutes or the packet time, until the lentils are fully tender. Stir occasionally and add water if the pan dries out; uncover near the end so the filling is thick enough to hold its shape.",
+      "As soon as the lentils are simmering, put the potatoes in a separate pan of boiling water and cook for 15–20 minutes until tender. Drain well and mash, adding a little reserved potato cooking water if needed. Heat the oven to 200°C (180°C fan) while the filling finishes cooking.",
+      "Spoon the hot lentil filling into an ovenproof dish, spread the mash over the top and roughen with a fork. Bake for about 20 minutes until the filling bubbles at the edges and the top is golden. Stand briefly before serving; older lentils may need extra simmering time."
     ],
     "ingredients": [
       [
@@ -10737,8 +10739,8 @@
       ],
       [
         "Vegetable stock",
-        "1 standard pack (check recipe)",
-        1.48,
+        "600 ml",
+        0.71,
         "Other"
       ],
       [
@@ -10761,18 +10763,18 @@
       "Green lentils — 200 g dry",
       "Potatoes — 800 g",
       "Carrots — 3 medium",
-      "Vegetable stock — 1 standard pack (check recipe)",
+      "Vegetable stock — 600 ml",
       "Onion — 1 medium",
       "Oil — 1 tbsp"
     ],
     "ci_estimates": {
       "Jersey": {
-        "estimate_gbp": 9.57,
-        "range_low_gbp": 7.57,
-        "range_high_gbp": 11.57,
-        "per_serving_estimate_gbp": 2.39,
-        "per_serving_low_gbp": 1.89,
-        "per_serving_high_gbp": 2.89,
+        "estimate_gbp": 8.8,
+        "range_low_gbp": 6.96,
+        "range_high_gbp": 10.64,
+        "per_serving_estimate_gbp": 2.2,
+        "per_serving_low_gbp": 1.74,
+        "per_serving_high_gbp": 2.66,
         "confidence": "INDICATIVE_UNVERIFIED",
         "source": "Previous recipe draft cost/range × explicit provisional island factor; not observed retailer prices",
         "source_base_low_gbp": 6.88,
@@ -10780,12 +10782,12 @@
         "uplift_assumption": 1.1
       },
       "Guernsey": {
-        "estimate_gbp": 10.44,
-        "range_low_gbp": 8.26,
-        "range_high_gbp": 12.62,
-        "per_serving_estimate_gbp": 2.61,
-        "per_serving_low_gbp": 2.06,
-        "per_serving_high_gbp": 3.15,
+        "estimate_gbp": 9.6,
+        "range_low_gbp": 7.6,
+        "range_high_gbp": 11.6,
+        "per_serving_estimate_gbp": 2.4,
+        "per_serving_low_gbp": 1.9,
+        "per_serving_high_gbp": 2.9,
         "confidence": "INDICATIVE_UNVERIFIED",
         "source": "Previous recipe draft cost/range × explicit provisional island factor; not observed retailer prices",
         "source_base_low_gbp": 6.88,
@@ -10793,12 +10795,12 @@
         "uplift_assumption": 1.2
       },
       "UK": {
-        "estimate_gbp": 8.7,
-        "range_low_gbp": 6.88,
-        "range_high_gbp": 10.52,
-        "per_serving_estimate_gbp": 2.18,
-        "per_serving_low_gbp": 1.72,
-        "per_serving_high_gbp": 2.63,
+        "estimate_gbp": 8.0,
+        "range_low_gbp": 6.33,
+        "range_high_gbp": 9.67,
+        "per_serving_estimate_gbp": 2.0,
+        "per_serving_low_gbp": 1.58,
+        "per_serving_high_gbp": 2.42,
         "confidence": "INDICATIVE_UNVERIFIED",
         "source": "Derived from Jersey provisional recipe estimate using its assumed 1.10 island factor (UK = Jersey / 1.10); NOT a survey of UK supermarket prices",
         "uplift_assumption": 1,
@@ -10807,16 +10809,16 @@
     },
     "data_format_fixed_from": "STRUCTURED_ALREADY",
     "steps": [
-      "Peel and chop the potatoes and carrots. Finely dice the onion and rinse the dried lentils.",
-      "Boil the potatoes for 15–20 minutes until tender. Meanwhile, soften the onion and carrots in oil, then add the lentils and vegetable stock.",
-      "Simmer the dried lentils according to packet directions until fully tender, adding water as needed; the filling should be thick, not watery. Drain and mash the potatoes.",
-      "Spoon the lentil filling into an ovenproof dish, top with mash and bake at 200°C (180°C fan) for about 20–25 minutes until bubbling and golden."
+      "Peel the potatoes and cut into 2 cm chunks. Finely dice the onion and carrots, rinse the dried lentils and prepare the listed vegetable stock. Allow about 65 minutes overall; cook the potatoes alongside the lentil filling.",
+      "Heat the oil in a saucepan and soften the onion and carrots for 5 minutes. Add the lentils and measured stock, bring to a simmer and cook gently for about 25–30 minutes or the packet time, until the lentils are fully tender. Stir occasionally and add water if the pan dries out; uncover near the end so the filling is thick enough to hold its shape.",
+      "As soon as the lentils are simmering, put the potatoes in a separate pan of boiling water and cook for 15–20 minutes until tender. Drain well and mash, adding a little reserved potato cooking water if needed. Heat the oven to 200°C (180°C fan) while the filling finishes cooking.",
+      "Spoon the hot lentil filling into an ovenproof dish, spread the mash over the top and roughen with a fork. Bake for about 20 minutes until the filling bubbles at the edges and the top is golden. Stand briefly before serving; older lentils may need extra simmering time."
     ],
     "culinary_prep_notes": [
       "Rinse the dried lentils, then simmer in stock until fully tender before assembling the pie.",
       "Peel and chop, boil until tender, then drain and mash for the topping.",
       "Cut into even pieces and give them enough space and heat to soften with a little colour at the edges.",
-      "Add with the dried lentils as their cooking liquid, adding water if needed.",
+      "Make up the listed stock and add with the dried lentils; add water only if needed while they become fully tender.",
       "Finely dice and soften with the carrots before adding the lentils and stock.",
       "Coat the surface lightly and heat before adding ingredients; keep space between pieces to encourage browning."
     ],
