@@ -5354,7 +5354,7 @@ function bb16PolishDiscover(app){
  const open=(collectionFilter!=='All');browse.hidden=!open;toggle.textContent=open?'Hide categories':'Browse categories';toggle.setAttribute('aria-expanded',String(open));
  toggle.onclick=()=>{browse.hidden=!browse.hidden;toggle.setAttribute('aria-expanded',String(!browse.hidden));toggle.textContent=browse.hidden?'Browse categories':'Hide categories';};
  panel.append(field,browse);
- const head=app.querySelector('.section-head');if(head)head.insertAdjacentElement('afterend',panel);else app.prepend(panel);
+ app.prepend(panel);
 }
 
 
@@ -7308,8 +7308,7 @@ if (
 }
 galleryPage=Math.max(0,Math.min(galleryPage,Math.max(0,Math.ceil(galleryFiltered.length/24)-1)));
 const r=filtered[Math.min(recipeIndex,Math.max(0,filtered.length-1))];
-app.innerHTML=`<div class="section-head"><div><h3>Swipe your way to dinner \u2726</h3><p>${bb176CanUseLeftovers()?(RECIPES.length+' Premium recipes'):'100 free recipes'} \u00B7 Swipe to browse</p></div><span class="chip">\u2726 ${bb176CanUseLeftovers()?(RECIPES.length+' Premium recipes'):'100 free recipes'}</span></div>
-<input class="field" id="recipeSearch" placeholder="Search recipes or ingredients\u2026" value="${esc(query)}" aria-label="Search recipes" style="margin-bottom:12px">
+app.innerHTML=`<input class="field" id="recipeSearch" placeholder="Search recipes or ingredients\u2026" value="${esc(query)}" aria-label="Search recipes" style="margin-bottom:12px">
 <div class="chips" style="margin-bottom:16px">${['All',...COLLECTIONS.filter(c=>c!=='Kid Friendly'&&(bb176CanUseLeftovers()||c!=='Leftover Magic'))].map(c=>`<button class="btn ${collectionFilter===c?'primary':''}" data-collection="${esc(c)}">${esc(c)}</button>`).join('')}</div>
 <p class="muted bb-editorial-collections-intro">Choose familiar Everyday Favourites, Kids’ Meals or Curry &amp; Thai Favourites. Try the World and Special Occasion offer something different.</p>
 ${r?`<div class="layout"><section class="card bb-featured-card" data-bb-featured-recipe="${esc(r.id)}"><div class="recipe-image swipe-card" id="swipeCard" aria-label="Swipe left or right to browse recipe ideas">${imageHTML(r).replace('loading="lazy"','loading="eager"')}<div class="image-overlay"></div><span class="swipe-stamp no" id="swipeNo">SKIP</span><span class="swipe-stamp yes" id="swipeYes">NEXT</span><span class="pill">${esc(r.tag)}</span><span class="time-pill">\u25F7 ${window.BBDuration?.format(r.mins)||"?"}</span></div><div class="recipe-body"><div class="eyebrow">${esc(r.category)} \u00B7 serves ${bbFeedingForRecipe(r)}</div><h3>${esc(r.name)}</h3><div class="chips"><span class="chip">${r.ingredients.length} ingredients</span></div>${bbDiscoverBenefitsHTML(r)}<div class="tip">\uD83D\uDCA1 ${esc(r.tip)}</div>
@@ -12807,12 +12806,12 @@ body[data-bbnext-view="discover"] #app .bb175-discover-heading{padding-top:calc(
 <script defer src="bb-weekly-shop.js?v=20261105-preflight1"></script>
 <link rel="stylesheet" href="bb-membership-compare.css?v=20261101-member1">
 <script defer src="bb-membership-compare.js?v=20261105-reduced1"></script>
-<link rel="stylesheet" href="bb-plan-premium-polish.css?v=20261105-options1">
+<link rel="stylesheet" href="bb-plan-premium-polish.css?v=20261105-avoid-modal1">
 <script defer src="bb-plan-premium-polish.js?v=20261104-home-ui1"></script>
-<link rel="stylesheet" href="bb-ingredient-picker.css?v=20261101-avoid1">
+<link rel="stylesheet" href="bb-ingredient-picker.css?v=20261105-avoid-modal1">
 <link rel="stylesheet" href="bb-evening-pivot-ui.css?v=20261101-pivot2">
 <link rel="stylesheet" href="bb-cook-voice.css?v=20261103-mentor1">
-<script defer src="bb-ingredient-picker.js?v=20261105-options1"></script>
+<script defer src="bb-ingredient-picker.js?v=20261105-avoid-modal1"></script>
 <link rel="stylesheet" href="bb-shop-cook-clarity.css?v=20261028-r1">
 <link rel="stylesheet" href="bb-cook-plan-hotfix.css?v=20261101-corner2">
 <link rel="stylesheet" href="bb-servings-mobile-polish.css?v=20261105-servings2">
