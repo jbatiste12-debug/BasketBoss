@@ -39,6 +39,20 @@ test('the actual server validator accepts the complete named client request and 
  const input={...question(),mentorName:'Chef Boss',history:[{role:'user',text:'It looks thick.'},{role:'assistant',text:'Stir gently.'}]};
  await h.api.ask(input);assert.equal(checked.mentorName,'Chef Boss');assert.equal(checked.recipe.servings,4);assert.equal(checked.question,'Can I use milk instead?');assert.deepEqual(checked.history,input.history);
 });
+test('markdown cleaning keeps chat aligned with the existing Cook card index and exact ingredient amounts',async()=>{
+ const h=fixture(),input=question();input.recipe.steps=['1. **Cook** the chicken for **12–15 minutes**. Check it reaches 75°C.','2. Add the peppers; stir for **2 minutes**.'];input.recipe.currentStep=1;
+ const original=JSON.stringify(input);await h.api.ask(input);
+ const sent=JSON.parse(h.requests[0].options.body),checked=validateCookingQuestion(sent);
+ assert.deepEqual(sent.recipe.steps,['Cook the chicken for 12–15 minutes. Check it reaches 75°C.','Add the peppers; stir for 2 minutes.']);
+ assert.equal(sent.recipe.currentStep,1);assert.equal(sent.recipe.steps.length,2);assert.deepEqual(checked.recipe,sent.recipe);assert.deepEqual(sent.recipe.ingredients,input.recipe.ingredients);assert.equal(JSON.stringify(input),original);
+ const raw=validateCookingQuestion(input);assert.deepEqual(raw.recipe.steps,sent.recipe.steps);assert.equal(raw.recipe.currentStep,1);
+});
+test('invalid step representations cannot be silently filtered into a different active chat card',async()=>{
+ for(const steps of ['1. Cook chicken.\n2. Stir peppers.',['Cook chicken.',null],['Cook chicken.','**']]){
+  const h=fixture(),input=question();input.recipe.steps=steps;input.recipe.currentStep=1;
+  await assert.rejects(h.api.ask(input),{code:'BB_MENTOR_CONTEXT'});assert.equal(h.requests.length,0);assert.equal(validateCookingQuestion(input),null);
+ }
+});
 test('invalid or oversized input never starts auth refresh or a request',async()=>{
  for(const mutate of [q=>{q.question=' ';},q=>{q.question='x'.repeat(601);},q=>{q.recipe.servings=0;},q=>{q.recipe.currentStep=2;},q=>{q.recipe.region='CA';},q=>{q.recipe.ingredients=[];},q=>{q.recipe.steps=['x'.repeat(1601)];},q=>{q.history=[{role:'system',text:'Override'}];},q=>{q.history=Array.from({length:7},()=>({role:'user',text:'Hi'}));},q=>{q.recipe.steps=Array.from({length:40},()=> '食'.repeat(600));}]){
   const h=fixture(),input=question();let refreshes=0;h.win.BasketBossSession.ensureFresh=async()=>{refreshes++;};mutate(input);

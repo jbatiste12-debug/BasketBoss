@@ -9,6 +9,60 @@ import { readPrivateRecipeExport } from './load-private-recipe-audit.mjs';
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 const same = (a, b) => JSON.stringify(a) === JSON.stringify(b);
 const words = value => String(value || '').toLowerCase();
+const instructionKey = value => words(value).replace(/[^\p{L}\p{N}]+/gu, ' ').trim();
+
+// These rules identify concrete instruction defects, not culinary similarity.
+// Legitimate separate phases (brown, remove, return and simmer) stay separate.
+export function auditCookMethodContent(recipe) {
+  const findings = [];
+  if (!Array.isArray(recipe?.method)) return findings;
+  const seenSteps = new Set(), seenSentences = new Set();
+  const method = recipe.method.join(' ');
+  let cookingStarted = false;
+  for (const [index, step] of recipe.method.entries()) {
+    const key = instructionKey(step);
+    if (seenSteps.has(key)) findings.push({ code: 'duplicate-method-step', id: recipe.id, detail: `Step ${index + 1} repeats an earlier instruction.` });
+    seenSteps.add(key);
+    for (const sentence of String(step).split(/(?<=[.!?])\s+/)) {
+      const sentenceKey = instructionKey(sentence);
+      // Short stock phrases such as "Serve hot" are not duplicate actions.
+      if (sentenceKey.split(' ').length < 7) continue;
+      if (seenSentences.has(sentenceKey)) findings.push({ code: 'duplicate-method-sentence', id: recipe.id, detail: `Step ${index + 1} repeats an earlier sentence.` });
+      seenSentences.add(sentenceKey);
+    }
+    if (cookingStarted && /^prepare your ingredients:/i.test(step)) findings.push({ code: 'prep-after-cooking', id: recipe.id, detail: `Step ${index + 1} introduces initial ingredient preparation after cooking has started.` });
+    if (/\b(?:sear|brown|pan-fry|stir-fry)\b[^.]*\.\s*Pat\b[^.]*\bdry before (?:searing|browning|cooking)\b/i.test(step)) findings.push({ code: 'prep-after-cooking', id: recipe.id, detail: `Step ${index + 1} puts drying advice after the cooking action it prepares for.` });
+    if (/^(?:brown|sear|pan-fry|stir-fry|boil|simmer|roast|bake)\b/i.test(step)) cookingStarted = true;
+  }
+  const pastaCook = method.search(/\b(?:cook|boil)\b[^.]*\b(?:pasta|gnocchi|tortellini|linguine|spaghetti|penne|shells)\b/i);
+  const reserveWater = method.search(/\b(?:reserve|save)\b[^.]*\b(?:pasta|cooking) water\b/i);
+  if (reserveWater !== -1 && pastaCook !== -1 && reserveWater < pastaCook) findings.push({ code: 'cooking-water-before-cooking', id: recipe.id, detail: 'Cooking water is reserved before the pasta or gnocchi has been cooked.' });
+  if (/\b(?:grate the fresh parsley|grate (?:the )?parsley)\b/i.test(method)) findings.push({ code: 'unsuitable-herb-preparation', id: recipe.id, detail: 'Fresh parsley is treated as a root aromatic to grate.' });
+  const ingredients = recipe.ingredients?.map(line => String(line[0])).join(' ') || '';
+  if (/\bcornflour\b/i.test(method) && !/\bcornflour\b/i.test(ingredients)) findings.push({ code: 'unlisted-cornflour', id: recipe.id, detail: 'Method suggests cornflour absent from the ingredients.' });
+  if (/\bcooked salmon\b/i.test(ingredients) && /pat the fish or seafood dry before searing/i.test(method)) findings.push({ code: 'unrelated-seafood-searing', id: recipe.id, detail: 'Cooked-salmon fishcakes include advice for searing raw seafood.' });
+  if (/\bpenne and hot chicken stock\b/i.test(method) && /reserve a little starchy cooking water/i.test(method)) findings.push({ code: 'one-pot-cooking-water', id: recipe.id, detail: 'One-pot pasta cooked in its sauce is told to reserve separate cooking water.' });
+  return findings;
+}
+
+export function auditIngredientPrepNotes(recipe) {
+  const findings = [], notes = recipe?.culinary_prep_notes;
+  if (!Array.isArray(notes)) return findings;
+  if (notes.length !== recipe.ingredients?.length) findings.push({ code: 'prep-note-alignment', id: recipe.id, detail: 'Ingredient prep notes do not align with the ingredient list.' });
+  for (const [index, note] of notes.entries()) {
+    const name = words(recipe.ingredients?.[index]?.[0]);
+    const mismatch = /stock/.test(name) && /pat dry|brown before|surface time to brown/i.test(note)
+      || /flour|breadcrumbs/.test(name) && /warm or toast only at assembly/i.test(note)
+      || /cold butter/.test(name) && /melt gently/i.test(note)
+      || /(?:cooked|smoked) salmon/.test(name) && /before searing|hot surface for colour/i.test(note)
+      || /garlic baguette/.test(name) && /crush or grate/i.test(note)
+      || /orange juice/.test(name) && /zest the skin/i.test(note)
+      || /oats/.test(name) && /overnight/.test(recipe.id) && /batter or dough/i.test(note)
+      || name === 'pesto' && ['date-pesto-gnocchi', 'pan-gnocchi-spinach', 'pesto-salmon-potatoes', 'chicken-pesto-wraps'].includes(recipe.id) && /pasta water/i.test(note);
+    if (mismatch) findings.push({ code: 'unrelated-ingredient-prep', id: recipe.id, detail: `Ingredient ${index + 1} has prep advice for a different ingredient or cooking method.` });
+  }
+  return findings;
+}
 
 export function auditRecipeInstructions({ recipes, normalized, desserts = [] }) {
   const errors = [], review = [];
@@ -38,6 +92,8 @@ export function auditRecipeInstructions({ recipes, normalized, desserts = [] }) 
       continue;
     }
     if (recipe.steps && !same(recipe.method, recipe.steps)) add(errors, 'method-steps-drift', id, 'method and steps differ.');
+    errors.push(...auditCookMethodContent(recipe));
+    errors.push(...auditIngredientPrepNotes(recipe));
     if (!Number.isFinite(recipe.mins) || recipe.mins <= 0) add(errors, 'time-invalid', id, 'Total minutes must be positive.');
     const method = words(recipe.method.join(' '));
     const ingredients = words(recipe.ingredients.map(line => line[0]).join(' '));
@@ -71,6 +127,7 @@ export function auditRecipeInstructions({ recipes, normalized, desserts = [] }) 
     if (id === 'extra-lentil-shepherdless-pie' && recipe.mins === 35) add(review, 'sequential-timing', id, '35 minutes does not allow preparation, dried-lentil cooking and the stated 15–20-minute potato boil followed by a 20–25-minute bake. Re-time with the author; no replacement total has been invented.');
     if (id === 'extra-15-minute-pesto-tortellini' && recipe.mins !== 15) add(review, 'title-time', id, `Title says 15-minute; recorded total is ${recipe.mins} minutes.`);
     if (id === 'spinach-ricotta-shells' && recipe.ingredients.some(line => /^pasta shells$/i.test(line[0]))) add(review, 'stuffing-shell-size', id, 'Method fills shells, but the ingredient does not specify large stuffing shells. Confirm intended shape without changing quantities.');
+    if (['family-chicken-wraps', 'chicken-katsu-curry', 'miso-salmon-rice'].includes(id) && /\bbake\b/i.test(method) && !/\d+\s*°\s*[cf]/i.test(method)) add(review, 'cooking-settings', id, 'The baking option supplies no oven temperature. An author-tested setting is needed; no temperature or cooking duration has been invented.');
   }
   if (normalized) {
     const rows = normalized.recipes;
@@ -98,11 +155,12 @@ export function auditRecipeInstructions({ recipes, normalized, desserts = [] }) 
     if (dessertIds.has(dessert.id)) add(errors, 'dessert-duplicate', dessert.id, 'Dessert ID is duplicated.');
     dessertIds.add(dessert.id);
     const amounts = record => record.ingredients.map(line => line.slice(0, 2));
-    if (!canonical || !same(dessert.method, canonical.method) || dessert.mins !== canonical.mins || !same(amounts(dessert), amounts(canonical))) add(errors, 'dessert-source-drift', dessert.id, 'Duplicate dessert method, time or ingredient amounts differ from canonical public record.');
+    if (!canonical || !same(dessert.method, canonical.method) || dessert.steps && !same(dessert.steps, canonical.method) || dessert.mins !== canonical.mins || !same(amounts(dessert), amounts(canonical)) || dessert.culinary_prep_notes && !same(dessert.culinary_prep_notes, canonical.culinary_prep_notes)) add(errors, 'dessert-source-drift', dessert.id, 'Duplicate dessert method, prep notes, time or ingredient amounts differ from canonical public record.');
   }
   return {
     scope: 'Supplied public JSON files only; no protected methods or kitchen testing.',
     recipes: recipes.length,
+    methodsScreened: recipes.filter(recipe => Array.isArray(recipe.method) && recipe.method.length).length,
     ingredientLines,
     duplicateDesserts: desserts.length,
     normalizedReviewFlags: normalized?.recipes.reduce((count, row) => count + row.ingredients.filter(line => line.needs_review).length, 0) || 0,

@@ -39,6 +39,11 @@ test('output validation intersects diets with selected and extra ingredient chec
  assert.equal(validateGeminiResult('generate',plant,body),true);
  assert.equal(validateGeminiResult('generate',plant,{...body,dietaryPreferences:['unsupported']}),false);
 });
+test('generated AI methods retain the structured card contract and require usable instruction text',()=>{
+ const prompt=geminiRequest('generate',input()).parts[0].text;assert.match(prompt,/one complete chronological cooking stage/);assert.match(prompt,/without headings, markdown, embedded step numbers or ingredient-list rows/);
+ assert.equal(validateGeminiResult('generate',recipe({steps:['1. **Cook** rice for 15 minutes.']}),input()),true,'presentation markup can be normalized without losing a valid instruction');
+ for(const steps of ['1. Cook rice.\n2. Serve.',[{text:'Cook rice.'}],['**'],['Cook rice.',null]])assert.equal(validateGeminiResult('generate',recipe({steps}),input()),false);
+});
 
 function routeHarness(output=recipe()){
  const db=new DatabaseSync(':memory:'),calls=[],previous=globalThis.fetch;

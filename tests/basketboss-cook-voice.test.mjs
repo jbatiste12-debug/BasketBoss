@@ -3,6 +3,8 @@ import assert from 'node:assert/strict';
 import {createRequire} from 'node:module';
 const voice=createRequire(import.meta.url)('../bb-cook-voice.js');
 const speechText=createRequire(import.meta.url)('../bb-cook-speech-text.js');
+const cookMethod=createRequire(import.meta.url)('../bb-cook-method.js');
+const duration=createRequire(import.meta.url)('../bb-duration.js');
 const assertInstruction=(spoken,original)=>{
  const expected=speechText.plain(original).toLowerCase();
  assert.ok(spoken.toLowerCase().includes(expected),'the entire instruction is read, with spoken units');
@@ -117,11 +119,24 @@ test('one listening session follows Prep into real instructions and narrates cha
  h.context.active=false;h.context.phase='done';h.controller.refresh();h.transcript('Next step');await tick();assert.equal(h.button().getAttribute('aria-pressed'),'false');h.controller.dispose();
 });
 
+test('normalized method stages keep voice navigation, spoken card counts and optional timers on the same instruction',async()=>{
+ const source={method:'1. **Cook** chicken for **12 minutes**. Check it reaches 75°C.\n2. Add peppers; stir for **2 minutes**.\n3. Rest for **5 minutes**; serve hot.'},before=JSON.stringify(source),steps=cookMethod.normalizeMethod(source);
+ const h=fixture(),started=[];Object.assign(h.context,{phase:'cook',stepIndex:0,stepCount:steps.length,currentStep:steps[0]});
+ const go=direction=>{const index=h.context.stepIndex+direction;if(index<0||index>=steps.length)return false;h.context.stepIndex=index;h.context.currentStep=steps[index];h.controller.refresh();return true;};
+ h.context.next=()=>go(1);h.context.previous=()=>go(-1);h.context.startTimer=()=>{started.push({index:h.context.stepIndex,seconds:duration.seconds(h.context.currentStep)});return true;};
+ const spoken=()=>h.calls.filter(call=>Array.isArray(call)&&call[0]==='speak').at(-1)?.[1];
+ h.button().click();await tick();assert.match(spoken(),/Step 1 of 3/);assert.match(spoken(),/12 minutes/);assert.doesNotMatch(spoken(),/\*\*/);
+ h.transcript('Start timer');await tick();h.transcript('Next step');await tick();assert.equal(h.context.stepIndex,1);assert.match(spoken(),/Step 2 of 3/);assert.match(spoken(),/stir for 2 minutes/);
+ h.transcript('Start timer');await tick();h.transcript('Next step');await tick();assert.match(spoken(),/Step 3 of 3/);h.transcript('Start timer');await tick();
+ h.transcript('Previous step');await tick();assert.equal(h.context.stepIndex,1);assert.match(spoken(),/Step 2 of 3/);assert.match(spoken(),/stir for 2 minutes/);
+ assert.deepEqual(started,[{index:0,seconds:720},{index:1,seconds:120},{index:2,seconds:300}]);assert.equal(JSON.stringify(source),before);h.controller.dispose();
+});
+
 test('full instructions have a length-based reading window and no silent text truncation',async()=>{
- const step=Array.from({length:100},()=> 'Stir gently, keeping the pan over a low heat.').join(' ');
+ const step=Array.from({length:100},(_,index)=> 'Stir gently, keeping the pan over a low heat; check '+(index+1)+'.').join(' ');
  assert.ok(voice.speechTimeoutMs(step)>15000);assert.ok(voice.speechTimeoutMs(step)<=360000);
  const tooLong=voice.narrationFor({phase:'cook',stepIndex:1,stepCount:3,currentStep:step});assert.equal(tooLong.text,null);assert.match(tooLong.status,/complete step on screen/);
- const full='Add 265 g cheddar. '+Array.from({length:35},()=> 'Stir gently until the sauce is smooth.').join(' ');
+ const full='Add 265 g cheddar. '+Array.from({length:35},(_,index)=> 'Stir gently until the sauce is smooth; check '+(index+1)+'.').join(' ');
  const h=fixture({browser:true,synthesis:true});h.context.phase='cook';h.context.stepIndex=0;h.context.stepCount=2;h.context.currentStep=full;
  const uk={lang:'en-GB',name:'Kate (Enhanced)',localService:true},other={lang:'en-US',name:'Other',localService:true};h.host.speechSynthesis.getVoices=()=>[other,uk];
  h.button().click();await tick();assert.equal(h.utterances.length,1);assertInstruction(h.utterances[0].text,full);assert.equal(h.utterances[0].voice,uk);assert.equal(h.utterances[0].rate,1);assert.equal(h.utterances[0].pitch,1);assert.equal(h.utterances[0].lang,'en-GB');
@@ -392,7 +407,7 @@ test('an oversized new instruction cancels the previous pending narration instea
  const waiting=deferredSpeech(),requests=[];
  const h=fixture({nativeAI:true,tts:{prepare:(text,options)=>{requests.push(options);return waiting.promise;}}});
  h.context.phase='cook';h.context.stepIndex=0;h.context.currentStep='Add 250 g gnocchi.';h.button().click();await tick();
- h.context.stepIndex=1;h.context.currentStep='Keep the entire safety instruction on screen. '.repeat(110);h.controller.refresh();
+ h.context.stepIndex=1;h.context.currentStep=Array.from({length:110},(_,index)=>'Keep the entire safety instruction on screen; check '+(index+1)+'.').join(' ');h.controller.refresh();
  assert.equal(requests[0].signal.aborted,true);assert.equal(h.button().getAttribute('aria-pressed'),'false');assert.match(h.status(),/complete step on screen/);
  waiting.resolve(clip);await tick();assert.equal(h.calls.some(call=>Array.isArray(call)&&['speak','playAudio'].includes(call[0])),false);h.controller.dispose();
 });

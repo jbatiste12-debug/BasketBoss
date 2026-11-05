@@ -8,17 +8,19 @@
  const durationText=value=>root.BBDuration?.text(value)??String(value??'');
  function market(){try{return root.BasketBossMarket?.get?.()||root.localStorage?.getItem('basketboss_321_v7_market')||'Jersey';}catch{return 'Jersey';}}
  const quantity=item=>root.BBRecipeMeasures?.quantity(item?.quantity||'Quantity unclear',item?.name,market())??String(item?.quantity||'Quantity unclear');
- const stepText=value=>durationText(root.BBRecipeMeasures?.step(value,market())??String(value??''));
+ const cleanStep=value=>root.BBCookMethod?.normalizeStep(value)??String(value??'').replace(/^\s*\d+[.)]\s*/,'');
+ const stepText=value=>durationText(root.BBRecipeMeasures?.step(cleanStep(value),market())??cleanStep(value));
+ const recipeMethod=recipe=>root.BBCookMethod?.normalizeMethod(recipe)??items(recipe.steps);
  function ingredientsMarkup(ingredients){return ingredients.map(item=>`<li><span><span data-bb-measures>${escape(quantity(item))}</span> ${escape(item?.name||'')}</span><small>${item?.fromHome===false?'To buy':'Selected food · check quantity'}</small></li>`).join('');}
  function methodMarkup(steps){return steps.map(step=>{
-  const text=stepText(String(step).replace(/^\s*\d+[.)]\s*/,'')),actions=root.BBCookStepLayout?.actions(text)||[text];
+  const text=stepText(step),actions=root.BBCookStepLayout?.actions(text)||[text];
   return `<li><ul class="bb-cook-actions" data-bb-measures>${actions.map(action=>`<li>${escape(action)}</li>`).join('')}</ul></li>`;
  }).join('');}
  const safetyMarkup=safety=>safety.map(note=>`<li data-bb-measures>${escape(stepText(note))}</li>`).join('')||'<li>Check safe handling, storage and cooking temperatures.</li>';
  function markup(recipe,id){
   const prep=Number(recipe.prepMinutes),cook=Number(recipe.cookMinutes);
   const duration=Number.isFinite(prep)&&Number.isFinite(cook)?prep+cook:null;
-  const ingredients=items(recipe.ingredients),steps=items(recipe.steps).slice(0,15);
+  const ingredients=items(recipe.ingredients),steps=recipeMethod(recipe).slice(0,15);
   const allergens=items(recipe.allergens),safety=items(recipe.safetyNotes);
   return `<article class="generated bb-cook-result" aria-labelledby="${id}-title">
    <div class="bb-cook-result__image" data-bb-meal-image aria-label="Illustrative meal picture"></div>
@@ -58,7 +60,7 @@
    if(!isCurrent()||(event?.type==='storage'&&event.key!==null&&event.key!=='basketboss_321_v7_market'))return;
    const ingredients=host.querySelector('[data-bb-result-ingredients]'),method=host.querySelector('[data-bb-result-method]'),safety=host.querySelector('[data-bb-result-safety]');
    if(ingredients)ingredients.innerHTML=ingredientsMarkup(items(recipe.ingredients));
-   if(method)method.innerHTML=methodMarkup(items(recipe.steps).slice(0,15));
+   if(method)method.innerHTML=methodMarkup(recipeMethod(recipe).slice(0,15));
    if(safety)safety.innerHTML=safetyMarkup(items(recipe.safetyNotes));
   };
   root.addEventListener?.('basketboss:market-changed',changeMarket);root.addEventListener?.('storage',changeMarket);

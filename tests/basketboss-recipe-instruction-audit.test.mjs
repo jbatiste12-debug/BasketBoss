@@ -1,7 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
-import { auditRecipeInstructions, auditRecipeCoverage, summarizePrivateRecipeAudit } from '../scripts/audit-recipe-instructions.mjs';
+import { auditRecipeInstructions, auditRecipeCoverage, summarizePrivateRecipeAudit, auditCookMethodContent, auditIngredientPrepNotes } from '../scripts/audit-recipe-instructions.mjs';
 
 const read = name => JSON.parse(fs.readFileSync(new URL('../' + name, import.meta.url), 'utf8'));
 const recipes = read('recipes.json');
@@ -12,11 +12,89 @@ const oneRecipe = (id, ingredients, method, mins = 30) => ({ id, ingredients, me
 test('current public instructions, normalized identities and dessert copies agree', () => {
   const result = auditRecipeInstructions({ recipes, normalized, desserts });
   assert.equal(result.recipes, 100);
+  assert.equal(result.methodsScreened, 100);
   assert.equal(result.ingredientLines, 730);
   assert.equal(result.duplicateDesserts, 4);
   assert.deepEqual(result.errors, []);
   assert(result.review.some(finding => finding.code === 'sequential-timing'), 'unresolved timing must remain visible');
   assert(result.review.some(finding => finding.code === 'pack-quantity'), 'unspecified pack amounts must remain visible');
+  assert(result.review.some(finding => finding.code === 'cooking-settings'), 'missing author-tested oven settings must remain visible');
+});
+
+test('visible ingredient prep notes cannot tell cooks to dry stock, toast flour or melt crumble butter', () => {
+  const recipe = oneRecipe('prep-note-test', [['Chicken stock', '200 ml'], ['Strong white bread flour', '200 g'], ['Cold butter', '50 g']], ['Prepare ingredients.', 'Cook as directed.']);
+  recipe.culinary_prep_notes = [
+    'Pat dry and season before cooking; give the surface time to brown before moving or turning.',
+    'Warm or toast only at assembly time so the outside stays crisp.',
+    'Cut into small pieces and melt gently.'
+  ];
+  assert.equal(auditIngredientPrepNotes(recipe).filter(finding => finding.code === 'unrelated-ingredient-prep').length, 3);
+  recipe.culinary_prep_notes = ['Prepare the stock according to its packet.', 'Measure the flour before mixing the dough.', 'Keep the butter cold and cube before rubbing into the flour.'];
+  assert.deepEqual(auditIngredientPrepNotes(recipe), []);
+});
+
+test('Cook content screen detects duplicate actions, late prep and unrelated seafood advice', () => {
+  const duplicate = oneRecipe('duplicate', [['Prawns', '200 g']], [
+    'Pat the prawns dry before adding them to the hot pan.',
+    'Pat the prawns dry before adding them to the hot pan.',
+    'Cook until opaque and firm throughout.'
+  ]);
+  assert(auditCookMethodContent(duplicate).some(finding => finding.code === 'duplicate-method-step'));
+  const latePrep = oneRecipe('late-prep', [['Salmon', '200 g']], [
+    'Sear salmon in a hot pan. Pat the fish dry before searing.',
+    'Prepare your ingredients: Crush the garlic before starting.'
+  ]);
+  assert.equal(auditCookMethodContent(latePrep).filter(finding => finding.code === 'prep-after-cooking').length, 2);
+  const fishcakes = oneRecipe('fishcake-test', [['Cooked salmon', '200 g']], [
+    'Flake the cooked salmon into mashed potato.',
+    'Pat the fish or seafood dry before searing and cook just until opaque and tender.'
+  ]);
+  assert(auditCookMethodContent(fishcakes).some(finding => finding.code === 'unrelated-seafood-searing'));
+});
+
+test('pasta-water chronology and unrelated additions fail without rejecting legitimate multiple cooking phases', () => {
+  const earlyWater = oneRecipe('early-water', [['Linguine', '200 g']], [
+    'Mince the garlic and save a mug of pasta water.', 'Cook linguine until tender and drain.'
+  ]);
+  assert(auditCookMethodContent(earlyWater).some(finding => finding.code === 'cooking-water-before-cooking'));
+  const unlisted = oneRecipe('unlisted', [['Beef', '200 g']], ['Brown beef.', 'Thicken with cornflour if desired.']);
+  assert(auditCookMethodContent(unlisted).some(finding => finding.code === 'unlisted-cornflour'));
+  const phases = oneRecipe('phases', [['Beef', '200 g']], [
+    'Pat the beef dry, then brown in batches and set aside.',
+    'Soften the vegetables, then return beef to the pan and simmer until tender.',
+    'Serve hot.'
+  ]);
+  assert.deepEqual(auditCookMethodContent(phases), []);
+  const water = oneRecipe('valid-water', [['Linguine', '200 g']], [
+    'Cook linguine until tender. Reserve a mug of pasta water before draining.',
+    'Toss pasta with sauce and a splash of reserved water.'
+  ]);
+  assert.deepEqual(auditCookMethodContent(water), []);
+});
+
+test('public seafood methods prepare before cooking and describe each main cooking phase once', () => {
+  const method = id => recipes.find(recipe => recipe.id === id).method.join(' ');
+  const prawn = method('prawn-linguine');
+  assert(prawn.indexOf('pat them dry') < prawn.indexOf('Add prawns and cook'));
+  assert(prawn.indexOf('Cook linguine') < prawn.indexOf('Reserve a mug'));
+  assert.equal((prawn.match(/Add prawns and cook/g) || []).length, 1);
+  assert(!prawn.includes('Pat the fish or seafood dry before searing'));
+  const salmon = method('tuscan-salmon');
+  assert(salmon.indexOf('Pat salmon dry') < salmon.indexOf('Sear the salmon'));
+  assert.equal((salmon.match(/Sear the salmon/g) || []).length, 1);
+  assert(salmon.includes('check the thickest part following food-safety guidance'));
+  const rice = method('veggie-fried-rice');
+  assert(rice.includes('cooled within one hour'));
+  assert(rice.includes('no longer than 24 hours'));
+  assert(rice.includes('do not repeatedly reheat'));
+  const prep = (id, name) => {
+    const recipe = recipes.find(recipe => recipe.id === id);
+    return recipe.culinary_prep_notes[recipe.ingredients.findIndex(line => line[0] === name)];
+  };
+  assert.match(prep('beef-meatballs', 'Breadcrumbs'), /mix.*mince/i);
+  assert(!/coating|shallow dish/i.test(prep('beef-meatballs', 'Breadcrumbs')));
+  assert.match(prep('honey-garlic-tofu', 'Cornflour'), /tofu/i);
+  assert(!/chicken/i.test(prep('honey-garlic-tofu', 'Cornflour')));
 });
 
 test('phantom flour, unrelated katsu glaze and cured-gammon colour criteria fail the audit', () => {
