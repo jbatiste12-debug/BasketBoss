@@ -8,7 +8,8 @@ test('all 100 recipes aggregate once per ingredient in UK and US, preserving eve
  const report=auditRegions();assert.equal(report.rows.length,730);assert.equal(report.modes.UK.recipes,100);
  for(const mode of Object.values(report.modes)){assert.deepEqual(mode.duplicateRows,[]);assert.deepEqual(mode.nonCanonicalRows,[]);assert.deepEqual(mode.conversionFailures,[]);}
  assert.deepEqual(report.modes.UK.canonicalTotals,report.modes.US.canonicalTotals,'region changes presentation and new purchase defaults, never saved recipe quantities');
- assert.ok(report.recipeReview.some(row=>/block/.test(row.source)));assert.ok(report.recipeReview.some(row=>/carton/.test(row.source)));assert.ok(report.recipeReview.every(row=>row.reason&&row.recipeId&&row.source));
+ assert.ok(report.recipeReview.some(row=>/handful/.test(row.source)));assert.ok(report.recipeReview.some(row=>/2 cm piece/.test(row.source)));assert.ok(report.recipeReview.every(row=>row.reason&&row.recipeId&&row.source));
+ assert.equal(report.recipeReview.some(row=>/block|carton/.test(row.source)),false,'accepted measured Parmesan and stock amounts no longer need package-size review');
 });
 test('US kitchen factors and ingredient cup weights are explicit and do not give unknown solids a liquid density',()=>{
  for(const [name,unit,qty,expected,base]of [['Milk','cup',1,240,'ml'],['Milk','fl oz',1,30,'ml'],['Rice','oz',1,28.35,'g'],['Rice','lb',1,453.6,'g'],['Plain flour','cup',1,120,'g'],['Rice','cup',1,185,'g'],['Rolled oats','cup',1,90,'g'],['Grated cheddar','cup',1,113,'g'],['Spinach','cup',1,30,'g']]){const amount=policy.normalize(name,qty,unit,{market:'US'});assert.equal(amount.quantity,expected);assert.equal(amount.unit,base);}
