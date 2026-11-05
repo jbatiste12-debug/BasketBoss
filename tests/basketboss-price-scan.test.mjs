@@ -191,3 +191,16 @@ test('rescanning an identical resized receipt yields the same non-image replay i
  const h=harness(),options={file:{},items:context,market:'UK',preparePhoto:async()=>photo};
  const first=await h.api.readReceipt(options),second=await h.api.readReceipt(options);assert.equal(first.receiptId,second.receiptId);assert.match(first.receiptId,/^legacy-[a-f0-9]{64}$/);assert.doesNotMatch(first.receiptId,/data:|base64/);
 });
+
+test('legacy receipt review distinguishes markdown labels from nutritional wording and ordinary offers',()=>{
+ const h=harness();
+ for(const [name,expected]of[['Potatoes REDUCED',true],['Yellow sticker potatoes',true],['Reduced-fat potatoes',false],['Reduced-salt potatoes',false],['Clubcard potatoes',false]]){
+  const draft=h.api.receiptDraft({...receipt,items:[{...line,name,priceType:'promotion'}]},{items:context,market:'UK'});assert.equal(draft.rows[0].reducedSuggested,expected,name);assert.equal(draft.rows[0].priceType,'promotion');
+ }
+});
+
+test('legacy reduced review records actual paid total through its host and never overwrites the usual shelf price',async()=>{
+ const h=harness({result:{...receipt,items:[{...line,name:'Potatoes REDUCED',price:0.40}]}}),packets=[];h.env.BBReducedFoodHost={isPremium:()=>true};
+ const view=await reviewed(h,{onSaveReviewedReceipt:async packet=>{packets.push(packet);return {ok:true,saved:1,stocked:1};}}),reduced=descendants(view.dialog).find(node=>node.dataset?.bbReceiptReduced);
+ assert.equal(reduced.checked,true);assert.match(view.dialog.textContent,/Actual total paid for this bought amount/);await view.form.emit('submit');assert.equal(packets.length,1);assert.equal(packets[0].priceUpdates.length,0);assert.equal(packets[0].items[0].reduced,true);assert.equal(packets[0].items[0].priceType,'promotion');assert.equal(packets[0].items[0].price,0.40);assert.equal(h.overrides.length,0);
+});

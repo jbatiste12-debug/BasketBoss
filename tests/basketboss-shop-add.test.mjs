@@ -9,7 +9,7 @@ const next=()=>new Promise(resolve=>setImmediate(resolve));
 const {install}=createRequire(import.meta.url)('../bb-home.js');
 
 function fixture(options={}){
- let doc,currentActor='alice',deleting=false;
+ let doc,currentActor='alice',deleting=false,currentPremium=options.premium===true;
  const previews=[],writes=[],saved=[],listeners=new Map();
  const walk=node=>[node,...node.children.flatMap(walk)];
  class Node{
@@ -34,7 +34,7 @@ function fixture(options={}){
   checkValidity(){const n=Number(this.value);return this.value!==''&&Number.isFinite(n)&&n>=Number(this.min||0)&&n<=Number(this.max||Infinity);}
  }
  doc={createElement:tag=>new Node(tag),querySelector:selector=>doc.body.querySelector(selector)};doc.body=new Node('body');doc.body.style.overflow='auto';doc.activeElement=doc.body;
- const win={document:doc,BBAccountDeletion:{isDeleting:()=>deleting},
+ const win={document:doc,BBReducedFoodHost:{isPremium:()=>currentPremium},BBAccountDeletion:{isDeleting:()=>deleting},
   addEventListener(name,fn){const handlers=listeners.get(name)||[];handlers.push(fn);listeners.set(name,handlers);},removeEventListener(name,fn){listeners.set(name,(listeners.get(name)||[]).filter(handler=>handler!==fn));},
   BBHome:{actor:()=>currentActor,previewShoppingNeed:request=>{previews.push(request);throw Error('Direct shopping entry must not preview pantry stock');},
    addShoppingBuy:request=>{writes.push(request);return options.add?options.add(request,writes.length):{ok:true,message:'Item added to shopping.'};}}
@@ -44,7 +44,7 @@ function fixture(options={}){
  return {doc,win,view,previews,writes,saved,field,button,dialog,text:()=>doc.body.textContent,
   async open(){await button('Add item to buy').fire('click');await next();},
   async fill(name,qty='1'){field('name').value=name;field('quantityText').value=String(qty);await field('quantityText').fire('input');await next();},
-  submit:()=>doc.body.querySelector('form').fire('submit'),setActor:value=>{currentActor=value;},setDeleting:value=>{deleting=value;},
+  submit:()=>doc.body.querySelector('form').fire('submit'),setPremium:value=>{currentPremium=value;},setActor:value=>{currentActor=value;},setDeleting:value=>{deleting=value;},
   dispatch(name){for(const fn of listeners.get(name)||[])fn();}
  };
 }
@@ -147,4 +147,15 @@ test('real BBHome: household type is inferred and the entered buy amount ignores
 test('real BBHome: a repaint failure after commit still closes the form as saved',async()=>{
  const h=realHomeFixture();h.win.BBHomeHost.refresh=()=>{throw Error('View replaced');};await h.open();await h.fill('Eggs','4');await h.submit();
  assert.equal(h.saved.length,1);assert.equal(h.dialog(),null);assert.equal(h.win.BBHome.shoppingBuys().length,1);assert.equal(h.win.BBHome.manualBuyItems([])[0].toBuy,4);
+});
+
+test('Premium quick-add reveals only an optional reduced-price field and submits one paid purchase',async()=>{
+ const h=fixture({premium:true});await h.open();await h.fill('Rice','500 g');assert.ok(h.field('boughtReduced'));assert.equal(h.field('reducedPrice').parentNode.hidden,true);h.field('boughtReduced').checked=true;await h.field('boughtReduced').fire('change');assert.equal(h.field('reducedPrice').parentNode.hidden,false);assert.equal(h.button('Record reduced purchase').disabled,true);
+ h.field('reducedPrice').value='1.25';await h.field('reducedPrice').fire('input');await h.submit();assert.equal(h.writes.length,1);assert.equal(h.writes[0].reduced.pricePaid,1.25);assert.equal(h.writes[0].quantityText,'500 g');assert.equal(h.dialog(),null);
+});
+test('losing Premium while the optional reduced form is open prevents a paid purchase commit',async()=>{
+ const h=fixture({premium:true});await h.open();await h.fill('Rice','500 g');h.field('boughtReduced').checked=true;await h.field('boughtReduced').fire('change');h.field('reducedPrice').value='1';h.setPremium(false);await h.submit();assert.equal(h.writes.length,0);assert.match(h.text(),/Premium/);
+});
+test('an unused Premium reduced toggle leaves the ordinary two-field request unchanged',async()=>{
+ const h=fixture({premium:true});await h.open();await h.fill('Milk','1 l');await h.submit();assert.equal(h.writes.length,1);assert.equal(Object.hasOwn(h.writes[0],'reduced'),false);
 });

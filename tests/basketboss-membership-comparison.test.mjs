@@ -63,6 +63,7 @@ test('verified Free header opens a real Free/Premium comparison and preserves th
  assert.ok(rows.some(row=>row[0]==='Pantry'&&row[1].includes('Add and manage')));
  assert.ok(rows.some(row=>row[0]==='Ingredients to avoid'&&row[1]==='Preferences for future Auto-Fill'));
  assert.ok(rows.some(row=>row[0]==='Evening Pivot'&&row[2]==='Included'));
+ const reduced=rows.find(row=>row[0]==='Yellow sticker & reduced-food tools');assert.equal(reduced[1],'—');assert.match(reduced[2],/UK, Guernsey & Jersey/);assert.match(reduced[2],/Use soon/);
  assert.ok(rows.some(row=>row[0]==='Voice Cook'&&row[2].includes('device')));
  assert.equal(rows.find(row=>row[0]==='AI photo scans')[2],'Up to 5 per day*');assert.equal(rows.find(row=>row[0]==='AI meal ideas')[2],'Up to 10 per day*');
  const link=dialog.querySelector('a');assert.equal(link.href,'pricing-sandbox.html#monthly');assert.equal(link.hidden,false);

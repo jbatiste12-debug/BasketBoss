@@ -1,0 +1,13 @@
+.bb-supermarket-picker>.bb-yellow-stickers{margin:0;padding:0;border:1px solid #e1cb8e;border-radius:15px;background:#f5e6bb;color:#5a471e;overflow:hidden;text-align:left}
+.bb-yellow-stickers>summary{min-height:44px;display:flex;align-items:center;gap:7px;padding:10px 12px;font:700 12px/1.45 system-ui;cursor:pointer;list-style:none;min-width:0;white-space:nowrap}
+.bb-yellow-stickers>summary::-webkit-details-marker{display:none}.bb-yellow-stickers>summary:after{content:'⌄';margin-left:auto;flex:none;font-size:16px}.bb-yellow-stickers[open]>summary:after{content:'⌃'}
+.bb-yellow-stickers.is-live{background:#eef6e8;border-color:#cddcc9;color:#245a3c}
+.bb-yellow-stickers-copy{margin:0;padding:0 12px 8px;color:#59705a;font:400 11px/1.5 system-ui}
+.bb-yellow-stickers-actions{display:grid;grid-template-columns:auto minmax(0,1fr) minmax(0,1fr);align-items:center;gap:7px;padding:0 12px 10px;font:600 11px system-ui}
+.bb-yellow-stickers-actions button{min-height:44px;padding:7px;border:1px solid #cddcc9;border-radius:10px;background:#fffdf7;color:#245a3c;font:750 12px system-ui;cursor:pointer}
+.bb-yellow-stickers-actions button:disabled{opacity:.55;cursor:wait}.bb-yellow-stickers-actions button:focus-visible,.bb-yellow-stickers>summary:focus-visible{outline:3px solid #d4a43e;outline-offset:2px}
+.bb-yellow-stickers-status{margin:0;padding:0 12px 11px;color:#59705a;font:400 11px/1.45 system-ui;overflow-wrap:anywhere}.bb-yellow-stickers-status:empty{display:none}
+.bb-yellow-stickers [hidden]{display:none!important}
+@media(max-width:340px){.bb-yellow-stickers-actions{grid-template-columns:minmax(0,1fr) minmax(0,1fr)}.bb-yellow-stickers-actions>span{grid-column:1/-1}}
+
+.bb-yellow-stickers-label{min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}

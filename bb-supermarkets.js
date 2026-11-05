@@ -4,8 +4,8 @@
  const PREFIX='basketboss_321_v10_price_retailer_';
  const stores=Object.freeze({
   UK:Object.freeze(['Tesco','Sainsbury’s','Asda','Morrisons','Aldi','Lidl','Waitrose & Partners','M&S Food','Co-op','Iceland','Ocado']),
-  Jersey:Object.freeze(['Channel Islands Coop','Waitrose & Partners','Alliance','Morrisons Daily','M&S Food']),
-  Guernsey:Object.freeze(['Channel Islands Coop','Waitrose & Partners','Alliance','Morrisons Daily','M&S Food']),
+  Jersey:Object.freeze(['Channel Islands Coop','Waitrose & Partners','Alliance','Morrisons Daily','M&S Food','Iceland']),
+  Guernsey:Object.freeze(['Channel Islands Coop','Waitrose & Partners','Alliance','Morrisons Daily','M&S Food','Iceland']),
   US:Object.freeze(['Walmart','Kroger','Aldi','Lidl','Target','Costco','Trader Joe’s','Safeway','Publix','Whole Foods Market','H-E-B'])
  });
  const aliases=Object.freeze({'Waitrose':'Waitrose & Partners',"Sainsbury's":'Sainsbury’s',"Trader Joe's":'Trader Joe’s'});

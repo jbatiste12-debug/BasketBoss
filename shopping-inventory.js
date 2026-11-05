@@ -9,7 +9,7 @@ const isStapleRow=row=>!!policy()?.isStaple(row?.name)&&!(policy().canonicalName
 const policyMarket=()=>window.bb307ActiveMarket?.()||'UK';
 const policyOptions=row=>({market:row?.inputMarket||policyMarket(),canonicalize:window.BBPriceV19?.canonical,packReviewed:row?.packReviewed===true,reviewed:row?.packReviewed===true,packQuantity:row?.packQuantity,packUnit:row?.packUnit});
 const regionalAmount=(name,quantity,unit)=>window.BBPantryDisplay?.format(name,quantity,unit,policyMarket())||quantity+' '+unit;
-const pantryModuleURL=document.currentScript?.src?new URL('./bb-receipt-inventory-core.mjs',document.currentScript.src).href:'./bb-receipt-inventory-core.mjs';
+const pantryModuleURL=document.currentScript?.src?new URL('./bb-receipt-inventory-core.mjs?v=20261105-reduced1',document.currentScript.src).href:'./bb-receipt-inventory-core.mjs?v=20261105-reduced1';
 let pantryModulePromise;
 const pantryModule=()=>pantryModulePromise??=(window.BBReceiptInventoryCore?Promise.resolve(window.BBReceiptInventoryCore):import(pantryModuleURL));
 let pendingFoodDraft=null;
@@ -169,7 +169,7 @@ async function build(){
  <details class="bb8-inventory-help"><summary>How does Pantry work?</summary><ol><li>Expand Cupboard, Fridge or Freezer and tap the foods you already have.</li><li>See every selected food together in the <strong>PANTRY</strong> list.</li><li>Set actual quantities in PANTRY, or leave an amount unknown.</li><li>Tap <strong>Confirm &amp; Reconcile Shopping List</strong>. BasketBoss saves measured stock and calculates what's left to buy.</li><li>For meal ideas instead, go to Cook → Make a Meal.</li></ol><a href="basketboss-latest-guide.html">Full BasketBoss guide →</a></details></section>`;
  const review=card.querySelector('#bb8WhatIHave'),rows=review.querySelector('#bb5SelectedRows'),note=review.querySelector('#bb5StockStatus'),reconcile=review.querySelector('#bb5Reconcile');
  const staged=new Map();let draftDirty=false;let openedRevision=physicalRevision();const openedActor=draftActor();
- let autoTimer=null,saving=null;
+ let autoTimer=null,saving=null,movingReduced=false;
  const live=()=>window.BBPantryLiveSync===true;
  function scheduleAuto(){if(!live()||!draftDirty)return;clearTimeout(autoTimer);autoTimer=setTimeout(()=>{autoTimer=null;void runSave(true);},350);}
  function runSave(automatic=false){
@@ -400,6 +400,7 @@ async function build(){
    const p=unitConversion(x.qty,x.unit),key=pantryStockId(x.name,p.unit);
    if(needsOwner.has(key)){nextInv[x.inventoryId||sid(x.loc,x.name)].bb173StockKey=key;nextInv[x.inventoryId||sid(x.loc,x.name)].bb173StockValue=p.qty}
   }
+  if(window.BBReducedStock?.settleInventory){const annotated=window.BBReducedStock.settleInventory({before:originalInv,after:nextInv,actor:openedActor,policy:policy(),canonicalize:window.BBPriceV19?.canonical,market:policyMarket()});for(const key of Object.keys(nextInv))nextInv[key]=annotated[key];}
   let homeChange;try{homeChange=window.BBHome?.prepare?.(chosen);}catch(error){note.textContent=error.message;return;}
   const shoppingChange=homeChange?.shoppingChange,shoppingBefore=Object.fromEntries(Object.keys(shoppingChange?.updates||{}).map(key=>[key,localStorage.getItem(key)]));
   const originalHomeRaw=homeChange?localStorage.getItem(homeChange.key):null;const featureChange=homeChange?.featureChange,originalFeatures=featureChange?localStorage.getItem(featureChange.key):null;
@@ -565,7 +566,30 @@ async function build(){
   if(group&&group!=='all')try{const api=window.BBPantryGroups;api.assign(loc,api.itemKey(name),group,api.context());}catch{note.textContent='Food saved. Choose its subcategory again in the item menu.';}
   editorEvent('add',key);return {ok:true,key,row:editorRow(key)};
  }
+ async function editorMoveToFreezer(key){
+  if(movingReduced)return {ok:false,message:'Wait for this item to finish moving.'};
+  if(window.BBReducedFoodHost?.isPremium?.()!==true)return editorFail('Premium is needed to move reduced food with one tap.');
+  let blocked=editorGuard();if(blocked)return editorFail(blocked);movingReduced=true;
+  try{
+   // Finish valid amount edits through the ordinary save before relocating.
+   if(saving)await saving;if(draftDirty)await runSave(true);
+   blocked=editorGuard();if(blocked)return editorFail(blocked);
+   if(draftDirty)return editorFail('Finish the amount you are editing before moving this food.');
+   if(window.BBReducedFoodHost?.isPremium?.()!==true)return editorFail('Refresh Premium before moving this item.');
+   const previous=staged.get(key),helper=window.BBReducedStock;if(!previous||!helper?.isUrgent(previous,{actor:openedActor}))return editorFail('This reduced item changed. Reopen At home to review it.');
+   const snapshot=new Map([...staged].map(([id,row])=>[id,{...row}])),next=helper.freeze(previous,{actor:openedActor});
+   let target=sid('freezer',next.name),suffix=1;while(staged.has(target))target=sid('freezer',next.name)+'::moved:'+suffix++;
+   next.inventoryId=target;staged.delete(key);staged.set(target,next);draftDirty=true;render();
+   await runSave(true);
+   const persisted=read(INVENTORY)[target];
+   if(persisted?.loc==='freezer'&&persisted?.bbReduced?.actor===openedActor&&persisted.bbReduced.urgent===false){editorEvent('move',target);return {ok:true,key:target,row:editorRow(target),message:'Moved to Freezer. Your stock amount is unchanged.'};}
+   if(draftActor()===openedActor){staged.clear();for(const [id,row]of snapshot)staged.set(id,row);draftDirty=false;pendingFoodDraft=null;render();}
+   return editorFail(note.textContent||'The move could not be saved. Your stock has been kept.');
+  }catch(error){return editorFail(error?.message||'The move could not be saved. Your stock has been kept.');}
+  finally{movingReduced=false;}
+ }
  window.BBPantryEditor=Object.freeze({card,list:()=>[...staged.keys()].map(editorRow),read:editorRow,isCurrent:()=>!editorGuard(),select:editorSelect,update:editorUpdate,add:editorAdd,
+  moveToFreezer:editorMoveToFreezer,
   remove:key=>{const blocked=editorGuard();if(blocked)return editorFail(blocked);if(!staged.has(key))return {ok:false};staged.delete(key);draftDirty=true;render();editorEvent('remove',key);return {ok:true};},
   flush:()=>runSave(true),status:()=>note.textContent,units:entryUnits});
  // One Kitchen picker and one Pantry list. Keep legacy controllers in the DOM

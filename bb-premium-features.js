@@ -18,7 +18,7 @@
     </header>
     <div class="bb173-tier-body">
       <div class="bb173-tier-stat"><span>🧺 100 recipes stay free</span><span>✨ 500 with Premium</span></div>
-      <p>Enjoy Premium recipes, Leftover Magic and advanced shopping. AI features are subject to service availability and daily usage limits.</p>
+      <p>Enjoy Premium recipes, Leftover Magic, advanced shopping and the Yellow sticker helper for UK, Guernsey and Jersey. Log reduced prices and put Use soon food first. AI features are subject to service availability and daily usage limits.</p>
       <div class="bb173-tier-plans">
         <a href="${PRICING}#monthly"><strong>Monthly Standard</strong><span>£4.99 / month</span><small>3-day free trial · Cancel anytime</small></a>
         <a href="${PRICING}#founder"><strong>Founding Member</strong><span>£1.99 / month</span><small>7-day free trial · First 25 confirmed members only</small></a>

@@ -18,19 +18,19 @@ class Element{
  set textContent(value){this.ownText=String(value);this.children=[];}
  all(tag){return this.children.flatMap(node=>[...(node.tagName===tag?[node]:[]),...node.all(tag)]);}
 }
-function fixture({name='Rice',unit='g',needed=400,aisle='Cupboard / Pantry',household=false}={}){
+function fixture({name='Rice',unit='g',needed=400,aisle='Cupboard / Pantry',household=false,premium=false}={}){
  const values=new Map(),read=key=>JSON.parse(values.get(key)||'{}'),storage={getItem:key=>values.get(key)??null,setItem:(key,value)=>values.set(key,String(value)),removeItem:key=>values.delete(key)};
  const id=household?'ess:cleaner':name.toLowerCase()+'|'+unit,item={id,name,unit,aisle,checked:false,basketItem:{key:name,name,unit,toBuy:needed}};
  for(const [key,value]of Object.entries({session:{version:7,id:'shop-test',checkboxUndo:{}},stock:{},inventory:{},receipts:{},ticks:{},purchases:{},choices:{},partials:{},features:{version:1,essentials:household?[{id:'cleaner',name,unit,qty:needed,targetQty:needed,ownedQty:0,selected:true}]:[]},basketboss_cloud_session_v1:{user:{id:'tester'}}}))storage.setItem(key,JSON.stringify(value));
- const win={BBReceiptQuantity:quantity,BBHome:{shoppingBuys:()=>[],completionChanges:()=>({})},BBHomeHost:{reload(){}},localStorage:storage};
+ const win={BBReceiptQuantity:quantity,BBReducedPurchases:require('../bb-reduced-purchases.js'),BBReducedFoodHost:{isPremium:()=>premium},BBHome:{actor:()=> 'tester',shoppingBuys:()=>[],completionChanges:()=>({})},BBHomeHost:{reload(){}},localStorage:storage};
  const ctx=vm.createContext({...keys,window:win,localStorage:storage,console:{error(){},warn(){}},BBPriceV19:{canonical:value=>value.toLowerCase()},BB307Pantry:{pantryId:(name,unit)=>name.toLowerCase()+'|'+unit,pantryName:name=>name.toLowerCase(),normaliseStock:copy},bb307Market:'UK',bb307Stock:{},bb307FeatureState:read('features'),
   bb83ReadObject:read,bb321ReadShopTicks:()=>read('ticks'),bb84ReadPurchased:()=>read('purchases'),bbBetaPurchaseChoices:()=>read('choices'),bbPartialAll:()=>read('partials'),bbShopV7Session:()=>read('session'),bbBetaShopWeek:()=>read('session').id,bbBetaReceiptRead:()=>read('receipts'),bbBetaReceiptId:id=>read('session').id+'|'+id,
   bb172Aisle:()=>aisle,bbBetaDryVolumeUnit:()=>false,bbBetaPackSpec:()=>({size:500,review:false}),bbBetaAutomaticPack:()=>null,bb321TinSpec:()=>null,bb307ReadStock:()=>read('stock'),bb307ReadFeatures:()=>read('features'),bb83StockLoc:()=>household?'cupboard':'fridge',bb83KitchenName:name=>name.toLowerCase(),bbHomePhysicalStock:()=>read('stock'),
   bb321WeeklySummary:()=>({items:household?[]:[item.basketItem],essentials:household?[{id:'cleaner',name,unit,qty:needed}]:[]}),
   bb83BoughtCandidates:()=>Object.entries(read('purchases')).filter(([id])=>!id.startsWith('ess:')&&read('ticks')[id]).map(([id,row])=>({id,...row})),bb307Plan:()=>({items:[]}),render(){},bb172StorefrontRefresh(){},notify(){},
   bb172StorefrontEl:(tag,cl,text)=>new Element(tag,cl,text),bb172StorefrontButton:(text,cl,fn)=>Object.assign(new Element('button',cl,text),{click:fn})});
- for(const name of ['bbShopV7Write','bb84DetailFor','bb84DisplayedPurchase','bb84SavedPurchased','bb84RecordExtra','bb84SetPrimaryPurchase','bbBetaReceiptCandidate','bbBetaChoiceInfo','bbBetaChoiceSurplus','bbBetaPendingPartials','bbBetaPendingBought','bbBetaIsPerishable','bbPartialRound','bbPartialKey','bbPartialDetails','bbPartialSet','bbBetaShopChoiceRow','bbHomePendingHouseholdPurchases','bb83TransferBought'])vm.runInContext(actual(name),ctx);
- return {values,read,storage,ctx,win,item,id,amount:total=>ctx.bbPartialSet({...item,checked:!!read('ticks')[id]},total),check:on=>ctx.bb84SetPrimaryPurchase(id,on,item.basketItem,household),pending:()=>copy(ctx.bbBetaPendingBought()),finish:()=>copy(ctx.bb83TransferBought()),drawer:()=>ctx.bbBetaShopChoiceRow({...item,checked:!!read('ticks')[id]})};
+ for(const name of ['bbReducedContext','bbReducedPremium','bbReducedProgress','bbShopV7Write','bb84DetailFor','bb84DisplayedPurchase','bb84SavedPurchased','bb84RecordExtra','bb84SetPrimaryPurchase','bbBetaReceiptCandidate','bbBetaChoiceInfo','bbBetaChoiceSurplus','bbBetaPendingPartials','bbBetaPendingBought','bbBetaIsPerishable','bbPartialRound','bbPartialKey','bbPartialDetails','bbPartialSet','bbBetaShopChoiceRow','bbHomePendingHouseholdPurchases','bb83TransferBought'])vm.runInContext(actual(name),ctx);
+ return {values,read,storage,ctx,win,item,id,setPremium:value=>{premium=value;},reduced:(amount,price)=>ctx.bbPartialSet({...item,checked:!!read('ticks')[id]},amount,price),amount:total=>ctx.bbPartialSet({...item,checked:!!read('ticks')[id]},total),check:on=>ctx.bb84SetPrimaryPurchase(id,on,item.basketItem,household),pending:()=>copy(ctx.bbBetaPendingBought()),finish:()=>copy(ctx.bb83TransferBought()),drawer:()=>ctx.bbBetaShopChoiceRow({...item,checked:!!read('ticks')[id]})};
 }
 
 test('one checkbox tap confirms the displayed amount directly and unticking preserves the prior partial purchase',()=>{
@@ -80,4 +80,15 @@ test('an already open amount drawer cannot write into another account or another
  for(const mode of ['account','trip']){
   const h=fixture(),drawer=h.drawer();drawer.all('button')[0].click();const input=drawer.all('input')[0];input.value='500';if(mode==='account')h.storage.setItem('basketboss_cloud_session_v1',JSON.stringify({user:{id:'other'}}));else h.storage.setItem('session',JSON.stringify({...h.read('session'),id:'shop-other'}));const before=[...h.values];drawer.all('button').find(x=>x.textContent==='Save amount').click();assert.deepEqual([...h.values],before);assert.match(drawer.textContent,/Shopping changed/);
  }
+});
+
+test('Premium drawer records reduced quantity and price together while retaining the remaining shortfall',()=>{
+ const h=fixture({needed:1000,premium:true}),drawer=h.drawer(),section=drawer.children.find(node=>node.className==='bb-reduced-purchase');assert.ok(section);assert.equal(section.tagName,'details');const inputs=section.all('input');inputs[0].value='500';inputs[1].value='1.25';section.all('button')[0].click();
+ assert.equal(h.ctx.bbPartialDetails(h.item).remaining,500);assert.equal(h.read('session').reducedPurchases[h.id].pricePaid,1.25);assert.equal(h.read('ticks')[h.id],undefined);assert.deepEqual(h.read('stock'),{});assert.equal(h.finish().count,1);assert.equal(h.read('stock')['rice|g'],500);
+});
+test('checkbox completion and undo keep the known reduced partial purchase cost',()=>{
+ const h=fixture({needed:1000,premium:true});assert.equal(h.reduced(500,1),true);assert.equal(h.check(true),true);assert.equal(h.read('session').reducedPurchases[h.id].quantity,500);assert.equal(h.check(false),true);assert.equal(h.read('partials')['shop-test|'+h.id].bought,500);assert.equal(h.read('session').reducedPurchases[h.id].pricePaid,1);assert.equal(h.amount(0),true);assert.equal(h.read('session').reducedPurchases[h.id],undefined);
+});
+test('Premium must still be active when the reduced drawer purchase is committed',()=>{
+ const h=fixture({premium:true}),drawer=h.drawer(),section=drawer.children.find(node=>node.className==='bb-reduced-purchase'),inputs=section.all('input');inputs[0].value='100';inputs[1].value='1';h.setPremium(false);const before=[...h.values];section.all('button')[0].click();assert.deepEqual([...h.values],before);assert.match(drawer.textContent,/Premium/);
 });

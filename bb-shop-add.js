@@ -23,12 +23,18 @@
    const field=(text,control)=>{const label=make('label','bb-shop-add-field',text);label.append(control);form.append(label);return control;};
    const name=make('input');name.type='text';name.name='name';name.required=true;name.maxLength=70;name.autocomplete='off';name.placeholder='e.g. milk or bin bags';field('Item',name);
    const quantity=make('input');quantity.type='text';quantity.name='quantityText';quantity.required=true;quantity.maxLength=60;quantity.autocomplete='off';quantity.value='1';quantity.placeholder='e.g. 2, 2 packs or 500 g';field('Quantity to buy',quantity);
+   let reduced=null,reducedPrice=null;
+   if(win.BBReducedFoodHost?.isPremium?.()===true){
+    const choice=make('label','bb-shop-add-reduced-toggle'),toggle=make('input');toggle.type='checkbox';toggle.name='boughtReduced';choice.append(toggle,make('span','','🏷️ Bought reduced'));
+    const paid=make('label','bb-shop-add-field bb-shop-add-reduced-price','Total yellow-sticker price paid'),price=make('input');price.type='number';price.name='reducedPrice';price.min='0.01';price.max='100000';price.step='0.01';price.inputMode='decimal';price.placeholder='e.g. 1.25';paid.hidden=true;paid.append(price);form.append(choice,paid);reduced=toggle;reducedPrice=price;
+    toggle.addEventListener('change',()=>{paid.hidden=!toggle.checked;price.required=toggle.checked;save.textContent=toggle.checked?'Record reduced purchase':'Add item';update();});
+   }
    const hint=make('p','bb-shop-add-hint','Enter 500 g, 2 packs, or known contents such as 1 bag (500 g).');
    const status=make('p','bb-shop-add-status');status.setAttribute('role','status');status.setAttribute('aria-live','polite');
    const actions=make('div','bb-shop-add-actions'),cancel=make('button','btn','Cancel'),save=make('button','btn primary','Add item');cancel.type='button';save.type='submit';save.disabled=true;actions.append(cancel,save);
    form.append(hint,status,actions);dialog.append(title,intro,form);doc.body.append(dialog);
    const state={dialog,who,closed:false,busy:false,invalid:false,intent:null,overflow:doc.body.style.overflow};active=state;doc.body.style.overflow='hidden';
-   const inputs=[name,quantity],alive=()=>!disposed&&!state.closed&&active===state;
+   const inputs=[name,quantity,...(reduced?[reduced,reducedPrice]:[])],alive=()=>!disposed&&!state.closed&&active===state;
    const viewport=win.visualViewport;
    const fit=()=>{
     if(!alive()||!Number.isFinite(viewport?.height))return;
@@ -40,21 +46,23 @@
    const current=()=>alive()&&!state.invalid&&actor()===who&&win.BBAccountDeletion?.isDeleting?.()!==true;
    const freeze=()=>{if(!alive())return;state.invalid=true;inputs.forEach(node=>node.disabled=true);save.disabled=true;status.textContent='Your account changed. Close this form and reopen Add item to buy.';cancel.disabled=state.busy;};
    state.checkContext=()=>{if(alive()&&(actor()!==who||win.BBAccountDeletion?.isDeleting?.()===true))freeze();};
-   const update=()=>{if(!alive()||state.busy)return;state.checkContext();if(!current())return;status.textContent='';save.disabled=!name.value.trim()||!quantity.value.trim();};
+   const update=()=>{if(!alive()||state.busy)return;state.checkContext();if(!current())return;status.textContent='';save.disabled=!name.value.trim()||!quantity.value.trim()||(reduced?.checked&&(!(Number(reducedPrice.value)>0)||Number(reducedPrice.value)>100000));};
    for(const node of inputs)node.addEventListener('input',update);
    cancel.onclick=()=>{if(!state.busy)close(state);};
    form.addEventListener('submit',async event=>{
     event.preventDefault();if(state.busy||!alive())return;state.checkContext();if(!current())return;
     const item=name.value.trim(),amount=quantity.value.trim();
     if(!item||!amount){status.textContent='Enter an item and the quantity you want to buy.';save.disabled=true;return;}
-    if(!state.intent||state.intent.name!==item||state.intent.quantityText!==amount)state.intent={name:item,quantityText:amount,actorId:who,requestId:identity()};
-    const request={...state.intent};state.busy=true;dialog.setAttribute('aria-busy','true');inputs.forEach(node=>node.disabled=true);save.disabled=cancel.disabled=true;status.textContent='Adding item…';
+    const reducedValue=reduced?.checked?Number(reducedPrice.value):null;
+    if(reducedValue!==null&&(win.BBReducedFoodHost?.isPremium?.()!==true||!(reducedValue>=.01)||reducedValue>100000||!Number.isFinite(reducedValue))){status.textContent='Premium and a valid total paid are required for a reduced purchase.';return;}
+    if(!state.intent||state.intent.name!==item||state.intent.quantityText!==amount||state.intent.reduced?.pricePaid!== (reducedValue??undefined))state.intent={name:item,quantityText:amount,actorId:who,requestId:identity(),...(reducedValue!==null?{reduced:{pricePaid:reducedValue}}:{})};
+    const request={...state.intent};state.busy=true;dialog.setAttribute('aria-busy','true');inputs.forEach(node=>node.disabled=true);save.disabled=cancel.disabled=true;status.textContent=reducedValue!==null?'Recording reduced purchase…':'Adding item…';
     try{
      const result=await home.addShoppingBuy(request);if(!alive())return;state.checkContext();if(!current())return;
      if(result?.ok===true){notice.textContent=result.message||'Item added to shopping.';close(state);try{onSaved(result);}catch{}return;}
      status.textContent=result?.message||'The item could not be added. Check the name and quantity, then try again.';
     }catch{if(alive()&&current())status.textContent='Your shopping update needs checking. Try adding the same item again.';}
-    finally{state.busy=false;if(alive()){dialog.removeAttribute('aria-busy');cancel.disabled=false;if(!state.invalid){inputs.forEach(node=>node.disabled=false);save.disabled=!name.value.trim()||!quantity.value.trim();}}}
+    finally{state.busy=false;if(alive()){dialog.removeAttribute('aria-busy');cancel.disabled=false;if(!state.invalid){inputs.forEach(node=>node.disabled=false);save.disabled=!name.value.trim()||!quantity.value.trim()||(reduced?.checked&&(!(Number(reducedPrice.value)>0)||Number(reducedPrice.value)>100000));}}}
    });
    dialog.addEventListener('cancel',event=>{event.preventDefault();if(!state.busy)close(state);});dialog.addEventListener('close',()=>close(state));
    dialog.addEventListener('keydown',event=>{

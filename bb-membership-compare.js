@@ -10,6 +10,7 @@
   ['Advanced shopping trips','1 per week with a Free account','Unlimited'],
   ['Pantry','Add and manage ingredients','Included, plus eligible AI receipt tools'],
   ['Ingredients to avoid','Preferences for future Auto-Fill','Preferences for future Auto-Fill'],
+  ['Yellow sticker & reduced-food tools','—','UK, Guernsey & Jersey: store reports, reduced prices and Use soon priority'],
   ['Leftover Magic','—','Included'],
   ['Batch cooking','—','Included'],
   ['Evening Pivot','—','Included'],

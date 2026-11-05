@@ -1,0 +1,14 @@
+BasketBoss Build 15 — Good finds. Used first.
+
+New in Premium:
+• Choose a supermarket in Shop. Open the small amber Yellow sticker helper for estimated reduction windows.
+• Spotted / Not yet shares what is happening at that supermarket chain in your region. Tap Spotted when reduced food is actually available. Live reports expire after 90 minutes; offline reports are labelled On this device.
+• In the item drawer or Add item to buy, choose Bought reduced and enter the total paid for that quantity. This week's budget uses the actual price; your usual future price stays unchanged.
+• Finish shop to add bought food to Kitchen. Reduced foods appear first in Fridge or Cupboard with Use soon (Reduced).
+• Move to Freezer keeps the same quantity and clears urgency. Pantry Auto-fill prefers food marked Use soon while respecting your dietary choices.
+
+Please check a partial purchase, a larger pack, reopening the app and a later receipt. Look for duplicate rows, repeated costs or quantities that change unexpectedly.
+
+The landing page, Premium descriptions and tutorials explain the new flow. Existing Free recipes and normal Premium paywalls remain available as before.
+
+If something looks wrong, send the build number, region, supermarket, item name, entered amounts and a screenshot.

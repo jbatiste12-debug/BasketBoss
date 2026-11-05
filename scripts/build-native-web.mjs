@@ -21,6 +21,7 @@ export const CLIENT_FILES=Object.freeze([
  'bb-evening-pivot.js','bb-evening-pivot-app.js','bb-evening-pivot-ui.js','bb-evening-pivot-ui.css',
  'bb-cook-voice.js','bb-cook-voice.css','bb-cook-speech-text.js','bb-cook-tts.js','bb-cook-assistant.js',
  'bb-saved-weeks.js','bb-saved-weeks.css',
+ 'bb-yellow-stickers.js','bb-yellow-stickers-ui.js','bb-yellow-stickers-ui.css','bb-reduced-stock.js','bb-reduced-purchases.js',
  'bb-kitchen-prices.js',
  'bb-shop-subcategories.js','bb-shop-subcategories.css','bb-essentials-confirm.js','bb-essentials-confirm.css',
  'bb-dietary-preferences.js','bb-meal-preferences.js','bb-meal-preferences.css','bb-kitchen-review.js','bb-kitchen-review.css',

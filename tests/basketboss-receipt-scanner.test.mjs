@@ -419,3 +419,16 @@ test('no selected purchases means confirmation stays disabled even when totals w
   await setValue(field(line(dialog), 'selected'), false); assert.equal(action(dialog, 'save').disabled, true);
   await submit(dialog); assert.equal(h.commits.length, 0);
 });
+
+test('Premium receipt review suggests explicit markdown food but still requires a checked item before saving', async () => {
+  const h=harness({receipt:{...RECEIPT,items:[{...PRODUCT,name:'Pasta REDUCED'}]}});h.root.BBReducedFoodHost={isPremium:()=>true};
+  const dialog=await scanReceipt(h),row=line(dialog);assert.equal(field(row,'reduced').checked,true);assert.equal(field(row,'priceType').value,'promotion');assert.equal(field(row,'priceType').disabled,true);assert.equal(field(row,'reviewed').checked,false);assert.equal(h.commits.length,0);
+  await setValue(field(row,'reduced'),false);let next=line(dialog);assert.equal(field(next,'priceType').value,'unknown');assert.equal(field(next,'priceType').disabled,false);
+  await setValue(field(next,'reduced'),true);next=line(dialog);await reviewTop(dialog);await setValue(field(next,'reviewed'),true);await submit(dialog);
+  assert.equal(h.commits.length,1);assert.equal(h.commits[0].draft.lines[0].reduced,true);assert.equal(h.commits[0].draft.lines[0].priceType,'promotion');
+});
+
+test('receipt markdown controls are hidden without Premium and nutrition labels are never preselected as reduced', async () => {
+  const h=harness({receipt:{...RECEIPT,items:[{...PRODUCT,name:'Pasta REDUCED'}]}}),dialog=await scanReceipt(h);assert.equal(descendants(dialog).some(x=>x.dataset?.receiptField==='reduced'),false);
+  const g=harness({receipt:{...RECEIPT,items:[{...PRODUCT,name:'Reduced-salt pasta'}]}});g.root.BBReducedFoodHost={isPremium:()=>true};const other=await scanReceipt(g);assert.equal(field(line(other),'reduced').checked,false);
+});

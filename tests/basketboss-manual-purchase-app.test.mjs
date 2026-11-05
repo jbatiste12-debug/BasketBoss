@@ -9,12 +9,12 @@ const HOME='basketboss_at_home_requirements_v1',STOCK='stock',FEATURE='features'
 const keys={BB307_FEATURE_KEY:FEATURE,BB321_SHOP_TICKS_KEY:'ticks',BB84_PURCHASED_KEY:'purchases',BB_PARTIAL_PURCHASE_KEY:'partials',BB_BETA_CHOICE_KEY:'choices',BB_SHOP_SESSION_V7_KEY:'session',BB_SHOP_ARCHIVE_V7_KEY:'archives',BB_BETA_RECEIPT_KEY:'receipts',BB83_KITCHEN_INVENTORY:'inventory',BB83_SHOP_STOCK_LEDGER:'legacy-ledger',BB307_STOCK_KEY:STOCK};
 const copy=value=>JSON.parse(JSON.stringify(value));
 const section=(start,end)=>html.slice(html.indexOf(start),html.indexOf(end,html.indexOf(start)));
-function fixture({owned=10,required=0,essentials=[]}={}){
+function fixture({owned=10,required=0,essentials=[],premium=false}={}){
  const values=new Map(),read=key=>JSON.parse(values.get(key)||'{}');
  const storage={getItem:key=>values.get(key)??null,setItem:(key,value)=>values.set(key,String(value)),removeItem:key=>values.delete(key)};
  for(const [key,value]of Object.entries({stock:{'rice|g':owned},features:{version:1,essentials},inventory:{rice:{name:'Rice',unit:'g',qty:owned,selected:true,loc:'cupboard',bb173StockKey:'rice|g',bb173StockValue:owned}},session:{version:7,id:'trip-one',checkboxUndo:{}},ticks:{},purchases:{},partials:{},choices:{},receipts:{},basketboss_cloud_session_v1:{user:{id:'alice'}}}))storage.setItem(key,JSON.stringify(value));
  const pantry={pantryId:(name,unit)=>name.toLowerCase()+'|'+unit,pantryName:name=>name.toLowerCase(),normaliseStock:copy};
- const win={localStorage:storage,location:{search:''},document:{},BBReceiptQuantity:quantity};
+ const win={localStorage:storage,location:{search:''},document:{},BBReceiptQuantity:quantity,BBReducedPurchases:require('../bb-reduced-purchases.js'),BBReducedFoodHost:{isPremium:()=>premium}};
  const context=vm.createContext({...keys,window:win,console,localStorage:storage,BB307Pantry:pantry,BBPriceV19:{canonical:name=>name.toLowerCase()},BB307_SOURCE_RECIPES:[],BB307_NORMALIZED:[],BB321_RESEARCH_QUOTES:{},bb307Market:'UK',bb307FeatureState:read(FEATURE),bb307Stock:read(STOCK),bbReceiptHostReady:false,
   bb307Selections:()=>[],bb307ActiveRetailer:()=> 'Tesco',bb307EstimateBasket:()=>({items:required?[{key:'rice',unit:'g',required}]:[]}),
   bb307ReadStock:()=>read(STOCK),bbHomePlanningStock:copy,bb307Plan:()=>({items:required?[{key:'rice',unit:'g',required}]:[]}),
@@ -24,25 +24,25 @@ function fixture({owned=10,required=0,essentials=[]}={}){
   bbBetaChoiceInfo:item=>({mode:'exact',unit:item.unit,qty:item.qty}),bb84DetailFor:item=>({name:item.key||item.name,unit:item.unit}),
   bbShopV7Session:()=>read('session'),bbShopV7Snapshot:copy,bbShopV7Read:read,bbShopV7New:()=> 'trip-next'});
  vm.runInContext(fs.readFileSync(new URL('../bb-weekly-essentials.js',import.meta.url),'utf8'),context);
- const host={id:pantry.pantryId,keys:()=>({stock:STOCK,inventory:'inventory'}),stock:()=>read(STOCK),household:()=>context.bb307FeatureState.essentials,shoppingKind:name=>/soap|detergent/i.test(name)?'household':'food',shoppingPurchaseContext:id=>({shopSessionId:read('session').id,quantity:Number(read('purchases')[id]?.qty)||0}),refresh(){}};
+ const host={prepareManualPurchase:value=>context.bbReducedPrepareQuickPurchase(value),id:pantry.pantryId,keys:()=>({stock:STOCK,inventory:'inventory'}),stock:()=>read(STOCK),household:()=>context.bb307FeatureState.essentials,shoppingKind:name=>/soap|detergent/i.test(name)?'household':'food',shoppingPurchaseContext:id=>({shopSessionId:read('session').id,quantity:Number(read('purchases')[id]?.qty)||0}),refresh(){}};
  win.BBHomeHost=host;win.BBHome=install(win);
  context.bb321UnifiedShop=(items,ignoreManual=false)=>{
   const rows=items.map(row=>({...row,pantryUsed:Math.min(row.required,read(STOCK)[pantry.pantryId(row.key,row.unit)]||0),toBuy:Math.max(0,row.required-(read(STOCK)[pantry.pantryId(row.key,row.unit)]||0))}));
   return ignoreManual?rows:win.BBHome.manualBuyItems(rows);
  };
- context.bbBetaPendingBought=()=>Object.entries(read('purchases')).filter(([id,row])=>!id.startsWith('ess:')&&read('ticks')[id]&&!read('receipts')['trip-one|'+id]&&!row.receiptInventoryReceiptId).map(([id,row])=>({id,name:row.name,unit:row.unit,qty:row.qty,aisle:'Cupboard / Pantry'}));
+ context.bbBetaPendingBought=()=>[...Object.entries(read('purchases')).filter(([id,row])=>!id.startsWith('ess:')&&read('ticks')[id]&&!read('receipts')['trip-one|'+id]&&!row.receiptInventoryReceiptId).map(([id,row])=>({id,name:row.name,unit:row.unit,qty:row.qty,aisle:'Cupboard / Pantry'})),...Object.entries(read('partials')).filter(([key,row])=>key.startsWith(read('session').id+'|')&&!key.includes('|ess:')&&!read('ticks')[key.slice(read('session').id.length+1)]&&row.bought>0).map(([key,row])=>({id:key.slice(read('session').id.length+1),name:row.name,unit:row.unit,qty:row.bought,aisle:'Cupboard / Pantry',partialPurchase:true}))];
  const transfer=section('function bbHomePendingHouseholdPurchases(){','/* An item bought again after explicitly unchecking');
  const receiptRows=section('function bbReceiptShoppingRows(){','function bb307ReceiptPriceContext(');
  const prepare=section('function bbReceiptPrepareSave(packet){','function bbReceiptConfigureHost(');
  const write=section('function bbShopV7Write(','function bbShopV7New('),close=section('function bbShopV7Close(','function bbShopV7Reconcile(');
- vm.runInContext(transfer+receiptRows+prepare+write+close,context);
+ vm.runInContext(section('function bbReducedContext(){','function bb84SetPrimaryPurchase(')+transfer+receiptRows+section('function bbReducedPrepareReceiptPrice(packet){','function bbReceiptPrepareSave(packet){')+prepare+write+close,context);
  const add=(name,quantityText)=>{const result=win.BBHome.addShoppingBuy({name,quantityText,requestId:'request-'+name,actorId:'alice'});assert.equal(result.ok,true,result.message);};
  const packet=(amount,extra={})=>({source:'cloud',receiptId:'receipt-'+amount,shopSessionId:'trip-one',addToPantry:true,stockAfter:{'rice|g':read(STOCK)['rice|g']+amount},items:amount?[{key:'rice',classification:'food',quantity:amount,unit:'g'}]:[],essentials:[],...extra});
  const preparePacket=packet=>copy(context.bbReceiptPrepareSave(packet));
  const commit=(result,stockAfter)=>{for(const [key,value]of Object.entries(result.changes))storage.setItem(key,JSON.stringify(value));if(stockAfter)storage.setItem(STOCK,JSON.stringify(stockAfter));context.bb307FeatureState=read(FEATURE);context.bb307Stock=read(STOCK);};
  const buy=(id,name,qty,unit='g')=>{storage.setItem('ticks',JSON.stringify({...read('ticks'),[id]:true}));storage.setItem('purchases',JSON.stringify({...read('purchases'),[id]:{name,qty,unit,bbBetaSelectedWeek:'trip-one'}}));};
  const manual=()=>Object.values(read(HOME).byActor?.alice?.manualBuys||{})[0];
- return {values,storage,read,win,context,add,packet,prepare:preparePacket,commit,buy,manual,rows:()=>copy(context.bbReceiptShoppingRows()),finish:defer=>copy(context.bb83TransferBought({defer})),close:transfer=>context.bbShopV7Close(transfer)};
+ return {values,storage,read,win,context,add,buyReduced:(name,quantityText,pricePaid,requestId='reduced-request')=>win.BBHome.addShoppingBuy({name,quantityText,reduced:{pricePaid},requestId,actorId:'alice'}),packet,prepare:preparePacket,commit,buy,manual,rows:()=>copy(context.bbReceiptShoppingRows()),finish:defer=>copy(context.bb83TransferBought({defer})),close:transfer=>context.bbShopV7Close(transfer)};
 }
 
 test('real receipt context includes direct manual food quantities despite ample existing pantry',()=>{
@@ -137,4 +137,46 @@ test('household purchases already deposited by a receipt are never credited agai
 test('Finish refuses an unreadable saved physical balance without replacing any pantry data',()=>{
  const h=fixture();h.add('Rice','4 g');h.buy('rice|g','Rice',4);h.context.bbHomePhysicalStock=()=>{throw Error('Review your saved pantry amounts.');};const before=[...h.values];
  const result=h.finish();assert.equal(result.error,true);assert.equal(result.needsPantryReview,true);assert.deepEqual([...h.values],before);
+});
+
+test('a reduced quick purchase overlaps planned demand and Finish settles its buying marker',()=>{
+ const h=fixture({owned:0,required:1000,premium:true}),result=h.buyReduced('Rice','500 g',1);assert.equal(result.ok,true,result.message);
+ assert.equal(h.rows()[0].toBuy,1000);assert.equal(h.read('partials')['trip-one|rice|g'].bought,500);assert.equal(h.rows()[0].toBuy-h.read('partials')['trip-one|rice|g'].bought,500,'Shop shows only500gstilltobuy');
+ const transfer=h.finish(true);assert.equal(transfer.updates[STOCK]['rice|g'],500);assert.equal(h.close(transfer),true);assert.equal(h.manual().pending,false,'actualboughtintentdoesnotcarryasextrademand');
+ const archive=h.read('archives')['trip-one'];assert.equal(archive.reducedPurchases['rice|g'].pricePaid,1);assert.equal(h.read('session').reducedPurchases,undefined,'newtripdoesnotreusetheoffer');
+});
+test('ordinary manual top-ups remain additive when a reduced purchase is logged',()=>{
+ const h=fixture({owned:0,required:1000,premium:true});h.add('Rice','400 g');const result=h.buyReduced('Rice','500 g',1);assert.equal(result.ok,true,result.message);
+ assert.equal(h.rows()[0].toBuy,1400);assert.equal(h.read('partials')['trip-one|rice|g'].bought,500);assert.equal(h.close(h.finish(true)),true);assert.equal(h.manual().quantity,400);assert.equal(h.rows()[0].toBuy,900,'500plannedremainingplus400manualextra');
+});
+test('a reduced off-plan quick purchase is bought once, idempotent and never added to pantry before Finish',()=>{
+ const h=fixture({owned:0,premium:true});const before=h.values.get(STOCK),first=h.buyReduced('Rice','500 g',1),snapshot=[...h.values];assert.equal(first.ok,true,first.message);assert.equal(h.read('ticks')['rice|g'],true);assert.equal(h.values.get(STOCK),before);
+ assert.equal(h.buyReduced('Rice','500 g',1).already,true);assert.deepEqual([...h.values],snapshot);
+ assert.equal(h.close(h.finish(true)),true);assert.equal(h.read(STOCK)['rice|g'],500);assert.equal(h.manual().pending,false);
+});
+test('reduced quick purchase and direct buying intent roll back together on a failed write',()=>{
+ const h=fixture({owned:0,required:1000,premium:true}),before=[...h.values],put=h.storage.setItem;let fail=true;h.storage.setItem=(key,value)=>{if(key==='session'&&fail){fail=false;throw Error('quota');}put(key,value);};
+ assert.equal(h.buyReduced('Rice','500 g',1).ok,false);assert.deepEqual([...h.values],before);assert.equal(h.buyReduced('Rice','500 g',1).ok,true);assert.equal(h.read('partials')['trip-one|rice|g'].bought,500);
+});
+test('reduced purchase logging needs current Premium while ordinary additions stay available',()=>{
+ const h=fixture({owned:0,required:1000}),before=[...h.values];assert.equal(h.buyReduced('Rice','500 g',1).ok,false);assert.deepEqual([...h.values],before);h.add('Rice','500 g');assert.equal(h.rows()[0].toBuy,1500);
+});
+
+test('a reduced receipt only replaces the covered part of manual cost history and retries safely',()=>{
+ const h=fixture({owned:0,required:1000,premium:true});assert.equal(h.buyReduced('Rice','1000 g',2).ok,true);
+ const packet=h.packet(500,{actorId:'alice',market:'UK',purchasedAt:'2026-11-05',reducedItems:[{lineId:'rice-reduced',key:'rice',name:'Rice',unit:'g',quantity:500,pricePaid:.5,classification:'food'}]});
+ const first=h.prepare(packet);h.commit(first,packet.stockAfter);assert.equal(h.read('session').reducedPurchases['rice|g'].pricePaid,2);assert.equal(h.read('session').reducedPurchases['rice|g'].depositedQuantity,500);
+ const before=JSON.stringify(h.read('session')),retry=h.prepare(packet);h.commit(retry,packet.stockAfter);assert.equal(JSON.stringify(h.read('session')),before);
+ const second=h.packet(500,{actorId:'alice',market:'UK',purchasedAt:'2026-11-05',receiptId:'receipt-rest',reducedItems:[{...packet.reducedItems[0],pricePaid:.7}]});h.commit(h.prepare(second),second.stockAfter);
+ const state=h.read('session');assert.equal(state.reducedPurchases['rice|g'],undefined);assert.equal(Object.keys(state.reducedPurchases).length,2);assert.equal(state.reducedSuperseded['rice|g'].pricePaid,2);
+});
+test('a receipt for a completed known trip updates its archive without changing the active trip',()=>{
+ const h=fixture({owned:0,premium:true});h.buyReduced('Rice','500 g',2);assert.equal(h.close(h.finish(true)),true);const active=h.values.get('session');
+ const packet=h.packet(500,{actorId:'alice',market:'UK',purchasedAt:'2026-11-05',reducedItems:[{lineId:'reduced-rice',key:'rice',name:'Rice',unit:'g',quantity:500,pricePaid:1,legacyCreditQuantity:500}],addToPantry:false});const prepared=h.prepare(packet);
+ assert.equal(prepared.changes.session,undefined);assert.ok(prepared.changes.archives);h.commit(prepared);assert.equal(h.values.get('session'),active);assert.equal(h.read('archives')['trip-one'].reducedPurchases['rice|g'],undefined);assert.equal(Object.values(h.read('archives')['trip-one'].reducedPurchases)[0].pricePaid,1);
+});
+test('missing receipt purchase dates and another actor cannot turn historical prices into current spending',()=>{
+ for(const extra of [{actorId:'other',purchasedAt:'2026-11-05'},{actorId:'alice',purchasedAt:null,confirmedAt:'2026-11-05T12:00:00Z'}]){
+  const h=fixture({owned:0,premium:true});h.buyReduced('Rice','500 g',2);const before=h.values.get('session'),packet=h.packet(500,{market:'UK',reducedItems:[{lineId:'reduced-rice',key:'rice',unit:'g',quantity:500,pricePaid:1}],addToPantry:false,...extra});h.commit(h.prepare(packet));assert.equal(h.values.get('session'),before);
+ }
 });

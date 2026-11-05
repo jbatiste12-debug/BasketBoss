@@ -127,6 +127,19 @@ export async function verifyFoodThumbnailDeployment(perform=fetch){
 }
 
 // Verify the public interface bundle only; never requests an AI generation.
+export async function verifyYellowStickerDeployment(perform=fetch){
+ try{
+  for(const file of ['bb-yellow-stickers.js','bb-yellow-stickers-ui.js','bb-yellow-stickers-ui.css','bb-reduced-stock.js','bb-reduced-purchases.js']){
+   const response=await perform('https://basketboss.co.uk/'+file,{cache:'no-store',redirect:'error',signal:AbortSignal.timeout(15000)});
+   if(response.status!==200||!(file.endsWith('.css')?/text\/css/i:/javascript/i).test(response.headers.get('content-type')||''))throw Error();
+   await response.body?.cancel();
+  }
+  const response=await perform('https://basketboss.co.uk/api/yellow-stickers?region=Guernsey&store=waitrose',{headers:{Origin:'capacitor://localhost',Accept:'application/json'},cache:'no-store',redirect:'error',signal:AbortSignal.timeout(15000)});
+  if(response.status!==401||!/application\/json/i.test(response.headers.get('content-type')||''))throw Error();
+  await response.body?.cancel();return {assets:5,authenticationRequired:true};
+ }catch{throw Error('Premium yellow-sticker assets or authentication boundary could not be verified.');}
+}
+
 export async function verifyInterfaceDeployment(perform=fetch){
  const modules={'cookStudio':'bb-cook-studio','createdMeal':'bb-cook-result','mealPictures':'bb-meal-image','navigation':'bb-navigation-polish','accountSettings':'bb-account-polish','budget':'bb-plan-premium-polish'};
  const result={};
@@ -297,6 +310,7 @@ if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) 
     result.reviewDeployment=await verifyReviewDeployment();
     result.foodThumbnailDeployment=await verifyFoodThumbnailDeployment();
     result.interfaceDeployment=await verifyInterfaceDeployment();
+    result.yellowStickerDeployment=await verifyYellowStickerDeployment();
     result.sharedShoppingDeployment=await verifySharedShoppingDeployment();
     const asset=await fetch('https://basketboss.co.uk/bb-receipt-host.js',{cache:'no-store',redirect:'error',signal:AbortSignal.timeout(15000)});
     if(!asset.ok||!/javascript/i.test(asset.headers.get('content-type')||''))throw Error('The receipt frontend asset is not available on production.');

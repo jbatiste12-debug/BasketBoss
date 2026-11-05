@@ -20,7 +20,7 @@ test('supermarkets are specific to each supported region',()=>{
  const {api}=preferences();
  assert.deepEqual([...api.forRegion('UK')],['Tesco','Sainsbury’s','Asda','Morrisons','Aldi','Lidl','Waitrose & Partners','M&S Food','Co-op','Iceland','Ocado']);
  for(const market of ['Jersey','Guernsey']){
-  assert.deepEqual([...api.forRegion(market)],['Channel Islands Coop','Waitrose & Partners','Alliance','Morrisons Daily','M&S Food']);
+  assert.deepEqual([...api.forRegion(market)],['Channel Islands Coop','Waitrose & Partners','Alliance','Morrisons Daily','M&S Food','Iceland']);
   for(const absent of ['Walmart','Tesco','Sainsbury’s','Asda','Aldi','Lidl','Ocado'])assert.equal(api.forRegion(market).includes(absent),false);
  }
  assert.ok(api.forRegion('US').includes('Walmart'));

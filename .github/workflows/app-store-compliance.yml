@@ -19,6 +19,9 @@ on:
       - bb-home.js
       - bb-shared-shopping.*
       - bb-kitchen-*
+      - bb-yellow-stickers*
+      - bb-reduced-*
+      - supabase/migrations/**
       - bb-simple-layout.*
       - bb-weekly-shop.*
       - bb-weekly-essentials.*
@@ -60,4 +63,5 @@ jobs:
       - name: Verify account deletion, SQL permissions and native billing boundaries
         env:
           BB_PGLITE_MODULE: ${{ runner.temp }}/bb-deletion-pg/node_modules/@electric-sql/pglite
+          BB_RECEIPT_PGLITE_PATH: ${{ runner.temp }}/bb-deletion-pg/node_modules/@electric-sql/pglite/dist/index.js
         run: node --test --test-isolation=none tests/*.test.mjs

@@ -24,6 +24,9 @@ on:
       - bb-home.js
       - bb-shared-shopping.*
       - bb-kitchen-*
+      - bb-yellow-stickers*
+      - bb-reduced-*
+      - supabase/migrations/**
       - bb-simple-layout.*
       - bb-weekly-shop.*
       - bb-weekly-essentials.*
@@ -48,6 +51,7 @@ on:
       - sql/basketboss_account_deletion_20261031.sql
       - functions/api/subscription/**
       - functions/api/receipt-inventory.js
+      - functions/api/yellow-stickers.js
       - functions/api/bb173/**
       - bb-server-lib/bb-receipt-canonical-pairs.js
       - bb-server-lib/bb-request-origin.js
