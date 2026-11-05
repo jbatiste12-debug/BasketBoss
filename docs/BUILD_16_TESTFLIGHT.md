@@ -5,7 +5,7 @@ Build 16 includes Build 15 and addresses the mobile scrolling, input and network
 ## What changed
 
 - Main pages share the document scroller, with momentum scrolling, scroll containment and 110px plus safe-area clearance. The in-store screen keeps its own single scroller and reserves the measured Finish shop footer height. A legacy Cook food grid no longer traps vertical scrolling.
-- Small actions and quantity steppers have real 44px touch areas. Buttons, labels, tabs and disclosure controls use touch manipulation. Mobile editing fields use at least 16px type.
+- Small actions, secondary-dialog links and quantity steppers have real 44px touch areas. Buttons, labels, tabs and disclosure controls use touch manipulation. Mobile editing fields use at least 16px type.
 - Closing account sign-in releases the background lock, keyboard state and bottom navigation immediately. Native dialogs accept backdrop taps through their existing cancellation handlers; busy writes remain protected. Essential and manual-purchase dialogs keep the focused field inside their visible scrolling body.
 - Cloud Upload and Restore lock immediately. Uploads serialize and keep newer edits pending until their own snapshot is saved. A slow Restore cannot overwrite edits made while it was loading.
 - Auto-fill, Finish shop, Begin shop, receipt actions and crowd reports guard rapid taps. Finish and scan performs the same guarded shopping settlement before opening the scanner.
@@ -22,13 +22,17 @@ The 375px browser audit covers all five main screens, scroll ownership and conta
 
 The UK/US pantry audit also passed across all 100 recipes and 730 ingredient lines: zero duplicate rows, non-canonical rows or conversion failures in either mode.
 
+Additional 375px checks passed for Settings, Premium, Saved weeks, Custom dinner and My usual product: every measured field is at least 16px, targets are at least 44×44px, and no horizontal overflow was found.
+
+Native verification passed for the application logic: iOS simulator compilation, unsigned Build 16 archive, Cook WebView smoke test, and all four real software-keyboard tests. See [native build and Cook verification](https://github.com/jbatiste12-debug/BasketBoss/actions/runs/42022238015) and [keyboard verification](https://github.com/jbatiste12-debug/BasketBoss/actions/runs/42021962510). The final r2 follow-up contains only Settings touch-area CSS, cache references and this validation record; its targeted browser and full regression checks passed.
+
 ## Open in Xcode
 
 Use Node 22+, CocoaPods and Xcode 26+ on your Mac:
 
 ```sh
 bb_release_dir="$(mktemp -d "$HOME/BasketBoss-build16-XXXXXX")" &&
-git clone --depth 1 --branch testflight-build16-mobile-preflight \
+git clone --depth 1 --branch testflight-build16-mobile-preflight-r2 \
   https://github.com/jbatiste12-debug/BasketBoss.git "$bb_release_dir" &&
 cd "$bb_release_dir" &&
 npm ci &&

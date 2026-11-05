@@ -41,5 +41,28 @@
       "nonCanonicalRows": 0,
       "conversionFailures": 0
     }
+  },
+  "secondaryDialogs": {
+    "width": 375,
+    "checks": [
+      "Premium membership Settings",
+      "Premium paywall",
+      "Saved weeks",
+      "Custom dinner",
+      "My usual product"
+    ],
+    "minimumTarget": 44,
+    "minimumInputFont": 16,
+    "errors": []
+  },
+  "nativeVerification": {
+    "applicationCommit": "09f981294058b9ea7292ae2f87f71ce1ffebafbb",
+    "compileArchiveCookCommit": "2d2ecba4d22fe5d6674a7356f5d7bc2e5291b6dd",
+    "keyboardTestsPassed": 4,
+    "keyboardTestsFailed": 0,
+    "cookTestsPassed": 1,
+    "unsignedArchiveBuild": 16,
+    "signingVerified": false,
+    "finalFollowup": "Settings hit-area CSS and cache references; full suite and targeted 375px checks passed"
   }
 }
