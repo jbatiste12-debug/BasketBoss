@@ -13,7 +13,7 @@ import { COOK_AUTHOR_SOURCE, COOK_AUTHOR_RECIPIENT_FINGERPRINT, COOK_AUTHOR_SEAL
 // Filled only after the complete private review has produced its exact sealed
 // candidate. Public-key encryption alone does not authenticate a publisher.
 export const APPROVED_COOK_AUTHOR_RECOMMENDATIONS = Object.freeze({
-  manifestSha256: '', payloadSha256: '', sealedSha256: '', reviewSourceCommit: '',
+  manifestSha256: '1d36111222be511dd3ba719d9a906dc156cd3c0f86ea823aa9bacaf1e4e0c928', payloadSha256: '9b03fa0ccf10e41ca605a2a721e9c2c18b100f95193802db73d012df42480112', sealedSha256: '11dc016ad6e8ac3b31aa45d1df0b239bd99c2eed546d732b8665f9896f693674', reviewSourceCommit: '20b93678f546c78eee647ce474a09ea0c8210d45',
   beforeRowsSha256: COOK_AUTHOR_SOURCE.sourceRowsSha256,
   recipientFingerprint: COOK_AUTHOR_RECIPIENT_FINGERPRINT
 });
