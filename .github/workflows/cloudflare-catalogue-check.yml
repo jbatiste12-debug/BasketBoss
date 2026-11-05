@@ -7,6 +7,14 @@ on:
     paths:
       - .github/workflows/cloudflare-catalogue-check.yml
       - scripts/check-cloudflare-catalogue.mjs
+      - scripts/audit-cook-method-private-summary.mjs
+      - scripts/load-private-recipe-audit.mjs
+      - scripts/seal-cook-review-snapshot.mjs
+      - .github/private-catalogue/cook-review-recipient.json
+      - tests/basketboss-cook-method-private-summary.test.mjs
+      - tests/basketboss-cook-review-snapshot.test.mjs
+      - bb-cook-method.js
+      - recipes.json
       - bb-food-visuals.*
       - bb-cook-studio.*
       - bb-cook-result.*
@@ -107,6 +115,32 @@ jobs:
           CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
           CLOUDFLARE_ACCOUNT_ID: ${{ vars.CLOUDFLARE_ACCOUNT_ID || secrets.CLOUDFLARE_ACCOUNT_ID }}
         run: node scripts/check-cloudflare-catalogue.mjs
+
+  cook_method_readonly_summary:
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main' && github.repository == 'jbatiste12-debug/BasketBoss'
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Audit Cook normalization for 100 public and 400 protected recipes in memory
+        env:
+          CLOUDFLARE_RECIPE_AUDIT_READ_TOKEN: ${{ secrets.CLOUDFLARE_RECIPE_AUDIT_READ_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ vars.CLOUDFLARE_ACCOUNT_ID || secrets.CLOUDFLARE_ACCOUNT_ID }}
+          CLOUDFLARE_DATABASE_ID: ${{ vars.CLOUDFLARE_DATABASE_ID }}
+        run: node scripts/audit-cook-method-private-summary.mjs --review-recipient .github/private-catalogue/cook-review-recipient.json --sealed-review-output "$RUNNER_TEMP/basketboss-cook-review.sealed.json"
+      - name: Retain only the encrypted snapshot for the requested content review
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: cook-content-review-encrypted-${{ github.run_id }}-${{ github.run_attempt }}
+          path: ${{ runner.temp }}/basketboss-cook-review.sealed.json
+          if-no-files-found: ignore
+          retention-days: 1
 
   readonly_recipe_audit:
     if: github.event_name == 'workflow_dispatch' && github.ref == 'refs/heads/release/recipe-editorial-collections'
