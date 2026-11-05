@@ -13,6 +13,10 @@ html.bb-keyboard-open body nav[aria-label="Bottom navigation"]{
 }
 /* A readable editing size prevents Safari/WKWebView's automatic field zoom. */
 @media(max-width:780px){
+ /* These legacy Settings controls declare narrower !important widths. Give
+    their existing buttons/links a full hit area without changing their type. */
+ html body .bbui-settings-overlay .bbui-settings-panel[data-bb-account-polish] .bbui-settings-close,
+ html body .bbui-settings-overlay .bbui-settings-panel[data-bb-account-polish] a{min-width:44px!important;}
  html body #app.bbnext-plan .bbnext-day-content>.day>.planned.bb14-meal-card .bb172-planner-controls>select[data-move],
  html body input:not([type=checkbox]):not([type=radio]):not([type=range]):not([type=file]):not([type=color]):not([type=hidden]),
  html body textarea,html body select{font-size:16px!important;}
