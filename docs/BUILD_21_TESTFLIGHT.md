@@ -14,7 +14,7 @@ Verification: the complete suite passed with 2,542 passing tests, zero failures,
 
 ```bash
 bb_release_dir="$(mktemp -d "$HOME/BasketBoss-build21-XXXXXX")" &&
-git -c http.version=HTTP/1.1 clone --depth 1 --branch testflight-build21-plan-polish \
+git -c http.version=HTTP/1.1 clone --depth 1 --branch testflight-build21-premium-controls \
   https://github.com/jbatiste12-debug/BasketBoss.git "$bb_release_dir" &&
 cd "$bb_release_dir" &&
 npm ci &&

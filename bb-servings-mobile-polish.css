@@ -133,3 +133,12 @@ html body #app.bbnext-plan .bbfeed-meta .bbfeed-value{
 html body #app.bbnext-plan .bbfeed-value svg{width:15px;height:15px;flex:none;color:#55775c}
 @media(hover:hover){html body #app.bbnext-plan .bbfeed-meta .bbfeed-meal button:not(:disabled):hover::before{background:#edf4e7;border-color:#a9c0a0}}
 @media(prefers-reduced-motion:reduce){html body #app.bbnext-plan .bbfeed-meta .bbfeed-meal button::before{transition:none}}
+@media(min-width:360px){html body #app.bbnext-plan .bbnext-day.has-meal>.bbnext-day-toggle>.bbnext-day-caret{position:relative;left:8px}}
+/* Narrow screens keep the decorative expansion caret below the full-width
+   touch controls, so it cannot sit inside the servings pill. */
+@media(max-width:359px){
+ html body #app.bbnext-plan .bbnext-day.has-meal>.bbnext-day-toggle{padding-bottom:28px!important}
+ html body #app.bbnext-plan .bbnext-day.has-meal>.bbnext-day-toggle>.bbnext-day-caret{
+  position:absolute;right:12px;bottom:6px;margin:0!important;font-size:18px;line-height:18px;
+ }
+}
