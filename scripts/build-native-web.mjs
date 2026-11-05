@@ -21,6 +21,8 @@ export const CLIENT_FILES=Object.freeze([
  'bb-evening-pivot.js','bb-evening-pivot-app.js','bb-evening-pivot-ui.js','bb-evening-pivot-ui.css',
  'bb-cook-voice.js','bb-cook-voice.css','bb-cook-speech-text.js','bb-cook-tts.js','bb-cook-assistant.js',
  'bb-saved-weeks.js','bb-saved-weeks.css',
+ 'bb-kitchen-prices.js',
+ 'bb-shop-subcategories.js','bb-shop-subcategories.css','bb-essentials-confirm.js','bb-essentials-confirm.css',
  'bb-dietary-preferences.js','bb-meal-preferences.js','bb-meal-preferences.css','bb-kitchen-review.js','bb-kitchen-review.css',
  'bb-kitchen-essentials.js','bb-kitchen-essentials.css','bb-pantry-inline.js','bb-pantry-inline.css','bb-pantry-groups.js','bb-pantry-groups-ui.js','bb-pantry-groups.css','bb-household-amount.js','bb-keyboard-layout.js','bb-keyboard-layout.css',
  'bb-cook-studio.js','bb-cook-studio.css','bb-cook-result.js','bb-cook-result.css',

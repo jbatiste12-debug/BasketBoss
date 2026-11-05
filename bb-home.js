@@ -90,6 +90,54 @@
    host().reload();try{host().refresh();}catch{}
    return {ok:true,message:'Remaining amount updated. Shopping uses the new balance.'};
   }
+  function householdConfirmationContext(pin){
+   checkDraftActor();
+   if(win.BBAccountDeletion?.isDeleting?.()||win.BBReceiptHost?.hasPendingConfirmation?.())throw Error('Finish the pending account or receipt review before confirming Weekly essentials.');
+   if(!pin||pin.actor!==actor()||pin.session!==store.getItem('basketboss_cloud_session_v1'))throw Error('Your account changed. Close and reopen this confirmation.');
+   if(pin.features!==null&&typeof pin.features!=='string')throw Error('Review your saved Weekly essentials before confirming.');
+   let features=null;try{features=pin.features===null?null:JSON.parse(pin.features);}catch{throw Error('Review your saved Weekly essentials before confirming.');}
+   if(features!==null&&(!object(features)||!Array.isArray(features.essentials)))throw Error('Review your saved Weekly essentials before confirming.');
+   return {features,who:actor(),session:pin.session};
+  }
+  function householdConfirmationPatch(patch){
+   if(!object(patch)||Object.keys(patch).some(key=>!['targetQty','ownedQty','unit','packQuantity','packUnit','packReviewed'].includes(key))||!valid(patch.targetQty)||!valid(patch.ownedQty))throw Error('Enter valid Total needed and Already at home amounts.');
+   const measured=['unit','packQuantity','packUnit','packReviewed'].some(key=>Object.hasOwn(patch,key));
+   if(measured&&(!['g','ml'].includes(patch.unit)||patch.packUnit!==patch.unit||patch.packReviewed!==true||!valid(patch.packQuantity)||patch.packQuantity<=0))throw Error('Review the full container size and amounts before confirming.');
+   return {...patch};
+  }
+  function commitHouseholdConfirmation(feature,pin,context,{remove=false}={}){
+   if(!feature||typeof feature.key!=='string'||feature.expected!==pin.features||!object(feature.value)||!Array.isArray(feature.value.essentials)||typeof feature.id!=='string')throw Error('Your Weekly essentials changed. Close and reopen this confirmation.');
+   const item=feature.value.essentials.find(row=>row.id===feature.id);if(!item)throw Error('This essential changed. Close and reopen this confirmation.');
+   const before=context.features?.essentials.find(row=>row.id===feature.id);
+   // A larger target alone must retain this shop's checked/partial purchases.
+   // An explicit replacement of stock, or a new weekly request, uses the same
+   // receipt settlement as the existing absolute-amount editor.
+   const ownedBefore=before?.ownedQty??(before?.owned?before.qty:0),ownedAfter=item.ownedQty??(item.owned?item.qty:0);
+   const resetCredit=!remove&&(!before||before.selected===false||before.manualPending===false||before.unit!==item.unit||ownedBefore!==ownedAfter);
+   let homeChange=null,shopping=null;
+   if(resetCredit){const {all,data,who}=own(),expected=store.getItem(KEY);if(who!==context.who)throw Error('Your account changed. Reopen this confirmation.');shopping=settle(data,['ess:'+feature.id]);homeChange={all,expected};}
+   if(actor()!==context.who||store.getItem('basketboss_cloud_session_v1')!==context.session||win.BBAccountDeletion?.isDeleting?.()||win.BBReceiptHost?.hasPendingConfirmation?.())throw Error('Your account or receipt review changed. Reopen this confirmation.');
+   atomic(store,{...(homeChange?{[KEY]:homeChange.all}:{}),[feature.key]:feature.value,...shopping?.updates},{...(homeChange?{[KEY]:homeChange.expected}:{}),[feature.key]:feature.expected,...shopping?.expected,basketboss_cloud_session_v1:context.session});
+   householdDraft.delete(feature.id);
+   try{host().reload();}catch{}try{host().refresh();}catch{}
+   return {ok:true,id:feature.id,item:{...item},message:remove?'Weekly requirement removed. Your stock has been kept.':'Weekly essential confirmed. Shop is up to date.'};
+  }
+  function confirmHousehold(id,patch,pin){
+   const context=householdConfirmationContext(pin),next=householdConfirmationPatch(patch);
+   if(typeof id!=='string'||!context.features?.essentials.some(row=>row.id===id))throw Error('This essential changed. Reopen its confirmation.');
+   host().reload();const feature=host().prepareHousehold([[id,next]]);return commitHouseholdConfirmation({...feature,id},pin,context);
+  }
+  function confirmHouseholdEntry(entry,pin){
+   const context=householdConfirmationContext(pin);
+   if(!object(entry)||typeof entry.name!=='string'||!entry.name.trim()||entry.name.length>70||typeof entry.unit!=='string'||!valid(entry.targetQty)||!valid(entry.ownedQty))throw Error('Enter the item, unit and valid household amounts.');
+   if(typeof host()?.prepareHouseholdEntry!=='function')throw Error('Weekly essentials are still loading. Close and reopen this confirmation.');
+   host().reload();return commitHouseholdConfirmation(host().prepareHouseholdEntry({...entry}),pin,context);
+  }
+  function removeHousehold(id,pin){
+   const context=householdConfirmationContext(pin);
+   if(typeof id!=='string'||!context.features?.essentials.some(row=>row.id===id)||typeof host()?.prepareHouseholdRemoval!=='function')throw Error('This essential changed. Reopen Weekly essentials.');
+   host().reload();return commitHouseholdConfirmation(host().prepareHouseholdRemoval(id),pin,context,{remove:true});
+  }
   function requirement(name,unit){try{const base=unit==='kg'?'g':unit==='l'?'ml':unit;return (host()?.requirements()?.find(row=>host().id(row.key,row.unit)===host().id(name,base))?.required||0)/(unit==='kg'||unit==='l'?1000:1);}catch{return 0;}}
   function total(name,unit){const base=unit==='kg'?'g':unit==='l'?'ml':unit,row=targets()[host().id(name,base)];return Math.max(requirement(name,unit),row?.pending?row.targetQty/(unit==='kg'||unit==='l'?1000:1):0);}
   function prepare(chosen){
@@ -346,7 +394,7 @@
   }
   function reminders(){const list=win.document.getElementById('bb321Printable');if(!list)return;list.querySelector('.bb-home-covered')?.remove();const data=Object.values(targets()).filter(row=>row.pending&&row.targetQty>0);const needed=host().requirements();const covered=data.filter(row=>{const item=needed.find(x=>host().id(x.key,x.unit)===host().id(row.name,row.unit));const current=host().stock()[host().id(row.name,row.unit)]||0;return Math.max(row.targetQty,item?.required||0)<=current;});const households=host().household().filter(row=>Object.hasOwn(row,'targetQty')&&row.manualPending!==false&&row.targetQty>0&&row.ownedQty>=row.targetQty).map(row=>({...row,homeId:'ess:'+row.id}));if(!covered.length&&!households.length)return;const box=win.document.createElement('div');box.className='bb-home-covered';for(const row of [...covered,...households]){const label=win.document.createElement('label'),tick=win.document.createElement('input');tick.type='checkbox';tick.addEventListener('change',()=>{if(tick.checked){complete(row.homeId||host().id(row.name,row.unit));host().refresh();}});label.append(tick,win.document.createTextNode(row.name+' · covered at home'));box.append(label);}list.append(box);}
   function openRequested(){const id=new URLSearchParams(win.location.search).get('bbcook');if(id)host()?.openCook?.(id);}
-  const api={prepareSharedPurchase,needsLegacyReview,receiptGeneration,supersedesReceipt,addHousehold,setHouseholdAmount,setHouseholdBalance,openRequested,reminders,decorate,hasHouseholdDraft:()=>{checkDraftActor();return householdDraft.size>0;},committed:()=>{householdDraft.clear();host()?.reload();},difference,augment,targets,requirement,total,prepare,completionChanges,complete,isCooked,previewCook,cooked,previewDay,finishDay,shoppingBuys,addShoppingBuy,manualBuyItems,manualBuyEssentials,applyManualPurchases,actor,blocked,atomic};
+  const api={prepareSharedPurchase,needsLegacyReview,receiptGeneration,supersedesReceipt,addHousehold,setHouseholdAmount,setHouseholdBalance,confirmHousehold,confirmHouseholdEntry,removeHousehold,openRequested,reminders,decorate,hasHouseholdDraft:()=>{checkDraftActor();return householdDraft.size>0;},committed:()=>{householdDraft.clear();host()?.reload();},difference,augment,targets,requirement,total,prepare,completionChanges,complete,isCooked,previewCook,cooked,previewDay,finishDay,shoppingBuys,addShoppingBuy,manualBuyItems,manualBuyEssentials,applyManualPurchases,actor,blocked,atomic};
   setTimeout(()=>{win.BBKitchenEssentials?.refresh?.();openRequested();},0);
   return Object.freeze(api);
  }

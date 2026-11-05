@@ -1,0 +1,22 @@
+BasketBoss Build 14 — Weekly essentials, made clearer
+
+In At home → Weekly essentials, tap a thumbnail or Add.
+Enter the total you need this week and what you already have.
+Check the amount to buy, then tap Confirm & update Shop. That's it — Shop updates immediately.
+
+Your confirmed list shows what's on Shop and what's already covered at home. Use Amend to change an amount, or Delete to remove the weekly request.
+
+In Shop and Begin shop, essentials now keep their subcategories, including your custom groups. Food quantities stay in At home.
+
+Reviewed receipt prices appear discreetly beneath Kitchen items as Last paid, with the pack, shop and date. These are historical prices; future shop totals remain estimates.
+
+Please test:
+• Need 3 packs, already have 1 → Shop should show 2 packs.
+• Amend an amount → one updated row, no duplicate.
+• Already have enough → nothing extra to buy.
+• Add a household item and choose a subcategory → find it under the same group in Begin shop.
+• Delete an essential → its weekly Shop request disappears; the amount at home is kept.
+• Tick an item only after buying it, then Finish shop as usual.
+• After reviewing a receipt, check the Last paid line in Kitchen. Switching regions or accounts must not show another region's or account's prices.
+
+If something looks wrong, send the build number, item name, amounts and a screenshot.

@@ -368,10 +368,33 @@ test('pending retry preserves old expected scope and cannot migrate into a newly
 });
 test('approved essential pack/session fields and actual receipt summaries survive safe projection', async () => {
   const f = fixture(), base = f.server.snapshot.bind(f.server);
-  f.server.snapshot = extra => base({ essentials: [{ id: 'e1', name: 'Soap', productName: 'Soap 4 pack', brand: 'Own label', packQuantity: 4, packUnit: 'each', packCount: 1, pricePaid: 2, shopSessionId: 'shop-1', confirmedAt: '2026-10-31T12:00:00Z', purchasedAt: '2026-10-31', imageBase64: 'discard me' }], receipts: [{ receiptId: 'receipt-1', market: 'UK', currency: 'GBP', retailer: 'Tesco', shopSessionId: 'shop-1', foodSubtotal: 1.5, essentialsSubtotal: 2, receiptTotal: 3.5, adjustmentTotal: 0, photo: 'discard me' }], ...extra });
+  f.server.snapshot = extra => base({ essentials: [{ id: 'e1', kind:'essential', name: 'Soap', productName: 'Soap 4 pack', brand: 'Own label', packQuantity: 4, packUnit: 'each', packCount: 1, pricePaid: 2, priceType:'regular',eligibleForRegularPrice:true,shopSessionId: 'shop-1', confirmedAt: '2026-10-31T12:00:00Z', purchasedAt: '2026-10-31', imageBase64: 'discard me' }], receipts: [{ receiptId: 'receipt-1', market: 'UK', currency: 'GBP', retailer: 'Tesco', shopSessionId: 'shop-1', foodSubtotal: 1.5, essentialsSubtotal: 2, receiptTotal: 3.5, adjustmentTotal: 0, photo: 'discard me' }], ...extra });
   await f.adapter.commitReviewedReceipt(await draft(f)); const cached = f.adapter.getCachedProjection();
   assert.equal(cached.essentials[0].packQuantity, 4); assert.equal(cached.essentials[0].shopSessionId, 'shop-1'); assert.equal(cached.essentials[0].brand, 'Own label');
   assert.equal(cached.receipts[0].receiptTotal, 3.5); assert.equal(cached.essentials[0].imageBase64, undefined); assert.equal(cached.receipts[0].photo, undefined);
+  assert.equal(cached.essentials[0].kind,'essential');assert.equal(cached.essentials[0].priceType,'regular');assert.equal(cached.essentials[0].eligibleForRegularPrice,true);
+});
+
+test('learned food prices use the newest matching regular observations, not the oldest projection tail',async()=>{
+ const f=fixture(),base=f.server.snapshot.bind(f.server);
+ const observations=Array.from({length:46},(_,index)=>({id:'price-'+index,scopeId:ACTOR,canonicalKey:'pasta',brand:'',packQuantity:500,packUnit:'g',packCount:1,packPrice:index>=25?5:1,priceType:'regular',eligibleForRegularPrice:true,source:'reviewed_receipt',market:'UK',retailer:'Tesco',currency:'GBP',observedAt:new Date(Date.UTC(2026,8,1)+index*86400000).toISOString()})).reverse();
+ observations.unshift({...observations[0],id:'promotion',priceType:'promotion',eligibleForRegularPrice:false,packPrice:.5,observedAt:'2026-12-01T00:00:00Z'});
+ f.server.snapshot=extra=>base({priceObservations:observations,...extra});
+ await f.adapter.commitReviewedReceipt(await draft(f));
+ const request={canonicalKey:'pasta',market:'UK',retailer:'Tesco',currency:'GBP',packQuantity:500,packUnit:'g'};
+ const price=f.adapter.getLearnedPrice(request);assert.equal(price.packPrice,5);assert.equal(price.samples,21);
+ for(const patch of[{market:'US'},{retailer:'Aldi'},{currency:'USD'},{packQuantity:1000},{packUnit:'ml'},{brand:'Other'}])assert.equal(f.adapter.getLearnedPrice({...request,...patch}),null);
+ f.session.value={...f.session.value,user:{id:'user_00000002'}};assert.equal(f.adapter.getLearnedPrice(request),null);
+});
+
+test('classified household receipt metadata reaches the real future-pack estimator',async()=>{
+ const f=fixture(),base=f.server.snapshot.bind(f.server),context=vm.createContext({});
+ vm.runInContext(await readFile(new URL('../bb-weekly-essentials.js',import.meta.url),'utf8'),context);
+ f.server.snapshot=extra=>base({essentials:[{id:'shampoo-price',kind:'essential',name:'Family Shampoo 250ml',productName:'Family Shampoo 250ml',brand:'Family',quantity:500,unit:'ml',packQuantity:250,packUnit:'ml',packCount:2,pricePaid:7.98,priceType:'regular',eligibleForRegularPrice:true,market:'UK',retailer:'Tesco',currency:'GBP',purchasedAt:'2026-10-31'}],...extra});
+ await f.adapter.commitReviewedReceipt(await draft(f));
+ const observations=f.adapter.getCachedProjection().essentials,item={name:'Shampoo',productName:'Family Shampoo 250ml',brand:'Family',qty:1,unit:'pack',packQuantity:250,packUnit:'ml'};
+ const quote=context.BBWeeklyEssentials.quote(item,{market:'UK',retailer:'Tesco',receiptObservations:observations});assert.equal(quote.amount,3.99);assert.equal(quote.receiptLearned,true);
+ for(const priceType of['promotion','unknown',null,undefined])assert.equal(context.BBWeeklyEssentials.quote(item,{market:'UK',retailer:'Tesco',receiptObservations:observations.map(row=>({...row,priceType}))}).amount,null);
 });
 
 

@@ -1624,6 +1624,7 @@ function bb172StapleAssumesOnHand(item){
  return BB172_STAPLES.some(([key,,pattern])=>active[key]===true&&pattern.test(name));
 }
 function bb172StaplesPanel(app){
+ if(document.body.dataset.bbnextView!=='shop')return;
 const tab=window.bb172ActiveTab;
 
  if(tab!=='shop'||document.getElementById('bb172StaplesPanel'))return;
@@ -3804,6 +3805,8 @@ body[data-bbnext-view="discover"] #app .bb-featured-card #bbFeaturedBatch {
 <script src="bb-plan-move.js?v=20261102-drag1"></script>
 <script src="bb-saved-weeks.js?v=20261104-compact-plan1"></script>
 <link rel="stylesheet" href="bb-saved-weeks.css?v=20261104-compact1">
+<script src="bb-shop-subcategories.js?v=20261105-shop-confirm1"></script>
+<link rel="stylesheet" href="bb-shop-subcategories.css?v=20261105-shop-confirm1">
 <script src="bb-dietary-preferences.js?v=20261104-diets1"></script>
 <script src="bb-meal-preferences.js?v=20261104-diets1"></script>
 <link rel="stylesheet" href="bb-meal-preferences.css?v=20261104-diets1">
@@ -3815,8 +3818,8 @@ body[data-bbnext-view="discover"] #app .bb-featured-card #bbFeaturedBatch {
 <script src="bb-cook-tts.js?v=20261104-mentor-stream1"></script>
 <script src="bb-cook-assistant.js?v=20261104-mentor-stream1"></script>
 <script src="bb-cook-voice.js?v=20261104-mentor-stream1"></script>
-<script defer src="bb-weekly-essentials.js?v=20261031-receipt-pantry"></script>
-<script defer src="bb-receipt-inventory.js?v=20261104-regions2"></script>
+<script defer src="bb-weekly-essentials.js?v=20261105-shop-confirm1"></script>
+<script defer src="bb-receipt-inventory.js?v=20261105-shop-confirm1"></script>
 <script defer src="bb-receipt-scanner.js?v=20261104-regions2"></script>
 <script defer src="bb-receipt-host.js?v=20261104-regions2"></script>
 <link rel="stylesheet" href="bb-receipt-scanner.css?v=20261031-receipt-pantry">
@@ -8439,6 +8442,25 @@ window.BBSharedShoppingHost=Object.freeze({
  refresh:()=>{if(typeof render==='function')render();}
 });
 window.BBPantryState=Object.freeze({stapleState:()=>bbHomeStapleState()});
+function bbHomePrepareHouseholdEntry(entry){
+ if(!entry||typeof entry!=='object'||Array.isArray(entry)||!['each','pack','bag','tin','bunch','loaf','g','ml','kg','l'].includes(entry.unit))throw Error('Choose a supported household unit.');
+ const factor=['kg','l'].includes(entry.unit)?1000:1,unit=entry.unit==='kg'?'g':entry.unit==='l'?'ml':entry.unit;
+ const normalized={...entry,unit,targetQty:entry.targetQty*factor,ownedQty:entry.ownedQty*factor};
+ const q=BBWeeklyEssentials.reconcile({...normalized,manualPending:true});
+ if(!q.valid)throw Error('Check the needed and already-at-home amounts.');
+ const before=localStorage.getItem(BB307_FEATURE_KEY);
+ const next=BB307Features.addEssential(bb307FeatureState,{...normalized,qty:Math.min(999,Math.max(1,Math.ceil(normalized.targetQty)))},RECIPES);
+ const row=next.essentials[next.essentials.length-1];
+ Object.assign(row,{unit,targetQty:normalized.targetQty,ownedQty:normalized.ownedQty,selected:true,owned:false,manualPending:true});
+ return {key:BB307_FEATURE_KEY,value:next,expected:before,id:row.id};
+}
+function bbHomePrepareHouseholdRemoval(id){
+ const before=localStorage.getItem(BB307_FEATURE_KEY),next=JSON.parse(JSON.stringify(bb307FeatureState));
+ const row=next.essentials.find(item=>item.id===id);
+ if(!row)throw Error('This household item changed. Reopen Weekly essentials.');
+ row.selected=false;row.manualPending=false;
+ return {key:BB307_FEATURE_KEY,value:next,expected:before,id:row.id};
+}
 window.BBHomeHost=Object.freeze({needsLegacyReview:bbHomeNeedsLegacyReview,settlePurchases:bbHomeSettlePurchases,
  id:BB307Pantry.pantryId,stock:bbHomePhysicalStock,
  openCook:id=>{if(getRecipe(id)&&bb176AllowedRecipe(id)){openCook(id);const url=new URL(location.href);url.searchParams.delete('bbcook');history.replaceState(null,'',url);return true;}return false;},
@@ -8447,6 +8469,7 @@ window.BBHomeHost=Object.freeze({needsLegacyReview:bbHomeNeedsLegacyReview,settl
  household:()=>bb307FeatureState.essentials,
  householdAmountContext:()=>({actor:window.BBHome?.actor?.()||'guest',session:localStorage.getItem('basketboss_cloud_session_v1'),features:localStorage.getItem(BB307_FEATURE_KEY)}),
  saveHouseholdAmount:(id,patch,pin)=>window.BBHome.setHouseholdAmount(id,patch,pin),
+ prepareHouseholdEntry:bbHomePrepareHouseholdEntry,prepareHouseholdRemoval:bbHomePrepareHouseholdRemoval,
  prepareHousehold:entries=>{const before=localStorage.getItem(BB307_FEATURE_KEY),next=JSON.parse(JSON.stringify(bb307FeatureState));for(const [id,patch]of entries){const row=next.essentials.find(x=>x.id===id);if(!row)throw Error('Household list changed. Review it first.');const q=BBWeeklyEssentials.reconcile({...row,...patch,manualPending:true});if(!q.valid)throw Error('Check household amounts for '+row.name);Object.assign(row,patch,{manualPending:true,selected:true,...(q.toBuy>0?{owned:false}:{})});}return {key:BB307_FEATURE_KEY,value:next,expected:before};},
  completeHousehold:id=>{const next=JSON.parse(JSON.stringify(bb307FeatureState)),row=next.essentials.find(x=>x.id===id);if(!row||!Object.hasOwn(row,'targetQty'))return {};row.manualPending=false;row.ownedQty=Math.max(row.ownedQty,row.targetQty);return {[BB307_FEATURE_KEY]:next};},
  reload:()=>{bb307FeatureState=bb307ReadFeatures();},
@@ -9550,7 +9573,7 @@ function bb172ShopMoveAisle(e){
  }
 }
 function bb172ShopOrganize(){
- if(tab!=='shop')return;
+ if(tab!=='shop'&&tab!=='shop-list')return;
  const app=document.getElementById('app'),list=app?.querySelector('#bb321Printable');
  if(!app)return;
  // Even a zero-item week needs an obvious way to open the in-store screen.
@@ -9561,7 +9584,7 @@ function bb172ShopOrganize(){
  const oldSections=list.querySelectorAll('.bb172-aisle-section');
  oldSections.forEach(section=>{
   const body=section.querySelector('.bb172-aisle-body');
-  if(body)list.append(...body.querySelectorAll(':scope > .bb321-buy-row'));
+  if(body)list.append(...body.querySelectorAll('.bb321-buy-row'));
   section.remove();
  });
  const oldHeading=list.querySelector('.bb321-shop-subheading');
@@ -9591,7 +9614,16 @@ function bb172ShopOrganize(){
   const name=document.createElement('span');name.textContent=emoji+' '+label;
   const count=document.createElement('span');count.className='bb172-aisle-count';count.textContent=remain+' left of '+items.length;
   head.append(name,count);
-  const body=document.createElement('div');body.className='bb172-aisle-body';body.append(...items);
+  const body=document.createElement('div');body.className='bb172-aisle-body';
+  if(id==='essentials'&&typeof BBShopSubcategories!=='undefined'){
+   const subgroups=BBShopSubcategories.group(items,{pantryGroups:typeof BBPantryGroups==='undefined'?null:BBPantryGroups,keyFor:row=>row.querySelector('[data-bb321-tick]')?.dataset.bb321Tick,nameFor:bb172ShopRowName});
+   for(const group of subgroups){
+    const subsection=document.createElement('section');subsection.className='bb-shop-subcategory';subsection.dataset.bbSubcategory=group.id;
+    const subheading=document.createElement('h4');subheading.className='bb-shop-subcategory-heading';subheading.textContent=group.name;
+    const subcount=document.createElement('span');subcount.className='bb-shop-subcategory-count';subcount.textContent=group.items.length+' item'+(group.items.length===1?'':'s');subheading.append(subcount);
+    subsection.append(subheading,...group.items);body.append(subsection);
+   }
+  }else body.append(...items);
   block.append(head,body);
   block.addEventListener('toggle',()=>{bb172ShopAisleOpen[id]=block.open});
   fragment.appendChild(block);
@@ -9625,7 +9657,10 @@ function bb172ShopOutstandingText(){
  BB172_SHOP_GROUPS.forEach(([id,,label])=>{
   const group=rows.filter(row=>bb172ShopGroupFor(row)===id);if(!group.length)return;
   lines.push('',label.toUpperCase());
-  for(const row of group){
+  const subgroups=id==='essentials'&&typeof BBShopSubcategories!=='undefined'?BBShopSubcategories.group(group,{pantryGroups:typeof BBPantryGroups==='undefined'?null:BBPantryGroups,keyFor:row=>row.querySelector('[data-bb321-tick]')?.dataset.bb321Tick,nameFor:bb172ShopRowName}):[{name:'',items:group}];
+  for(const subgroup of subgroups){
+   if(subgroup.name)lines.push(subgroup.name);
+   for(const row of subgroup.items){
    const name=bb172ShopRowName(row);
    const quantity=row.querySelector('.bb321-shop-quantity strong')?.textContent?.trim()||'';
    const itemId=row.querySelector('[data-bb321-tick]')?.dataset.bb321Tick,summary=bb321WeeklySummary();
@@ -9633,6 +9668,7 @@ function bb172ShopOutstandingText(){
    const partial=basket?bbPartialDetails({id:itemId,basketItem:{toBuy:basket.toBuy??basket.qty,unit:basket.unit},checked:false}):null;
    const remaining=partial?.bought>0?'Buy '+bb80ShoppingQuantity(name,partial.remaining,partial.unit,bb307Market)+' more':quantity;
    lines.push('☐ '+name+(remaining?' — '+remaining:''));
+   }
   }
  });
  lines.push('','Items still to buy: '+rows.length,'.Estimate only; prices may be incomplete.');
@@ -10467,7 +10503,7 @@ function bb172ShopRequestExit(after,finish=false){if(!bb172ShopActive&&!finish){
   if(queued)return;queued=true;
   queueMicrotask(()=>{
    queued=false;
-   try{if(tab==='shop')bb172ShopOrganize();else bb172ShopApplyView(app)}
+   try{if(tab==='shop'||tab==='shop-list')bb172ShopOrganize();else bb172ShopApplyView(app)}
    catch(e){console.error('BasketBoss aisle grouping/Shop Mode failed',e)}
   });
  };
@@ -10855,7 +10891,14 @@ function bb172StorefrontDrawAisles(allRows){
   const count=bb172StorefrontEl('span','bb172-storefront-aisle-counter',entries.length+' item'+(entries.length===1?'':'s'));
   heading.append(name,count);
   const body=bb172StorefrontEl('div','bb172-storefront-aisle-rows');
-  entries.forEach(item=>body.append(bb172StorefrontMakeRow(item)));
+  if(id==='essentials'&&typeof BBShopSubcategories!=='undefined'){
+   const subgroups=BBShopSubcategories.group(entries,{pantryGroups:typeof BBPantryGroups==='undefined'?null:BBPantryGroups});
+   for(const group of subgroups){
+    const subsection=bb172StorefrontEl('section','bb-shop-subcategory');subsection.dataset.bbSubcategory=group.id;
+    const subheading=bb172StorefrontEl('h4','bb-shop-subcategory-heading',group.name),subcount=bb172StorefrontEl('span','bb-shop-subcategory-count',group.items.length+' item'+(group.items.length===1?'':'s'));
+    subheading.append(subcount);subsection.append(subheading);group.items.forEach(item=>subsection.append(bb172StorefrontMakeRow(item)));body.append(subsection);
+   }
+  }else entries.forEach(item=>body.append(bb172StorefrontMakeRow(item)));
   section.append(heading,body);
   section.addEventListener('toggle',()=>{bb172StorefrontOpenedAisles[id]=section.open});
   content.append(section);
@@ -12338,7 +12381,7 @@ if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',
 </style>
 
 <!-- bb-r7-iphone-20261025 -->
-<script defer src="bb-beta-six-fixes.js?v=20261104-essentials1"></script>
+<script defer src="bb-beta-six-fixes.js?v=20261105-shop-confirm1"></script>
 <!-- bb-qa-final-five-v1768-20261025 -->
 <script defer src="bb-beta-launch-polish.js?v=1768"></script>
 
@@ -12472,14 +12515,15 @@ body[data-bbnext-view="discover"] #app .bb175-discover-heading{padding-top:calc(
 <script defer src="bb-pantry-groups-ui.js?v=20261104-groups1"></script>
 <script defer src="bb-household-amount.js?v=20261104-groups1"></script>
 <script defer src="bb-kitchen-essentials.js?v=20261104-home-ui1"></script>
-<link rel="stylesheet" href="bb-pantry-inline.css?v=20261104-home-ui1">
-<script defer src="bb-pantry-inline.js?v=20261104-kitchen-review1"></script>
+<script defer src="bb-kitchen-prices.js?v=20261105-shop-confirm1"></script>
+<link rel="stylesheet" href="bb-pantry-inline.css?v=20261105-shop-confirm1">
+<script defer src="bb-pantry-inline.js?v=20261105-shop-confirm1"></script>
 <link rel="stylesheet" href="bb-keyboard-layout.css?v=20261101-keyboard1">
 <script defer src="bb-keyboard-layout.js?v=20261101-keyboard1"></script>
 <link rel="stylesheet" href="bb-simple-layout.css?v=20261104-plan-budget1">
 <script defer src="bb-simple-layout.js?v=20261104-diets1"></script>
 <script defer src="bb-pantry-deduction.js?v=20261104-regions2"></script>
-<script defer src="bb-home.js?v=20261104-kitchen-review1"></script><link rel="stylesheet" href="bb-day-done.css?v=20261104-cycle1"><script defer src="bb-day-done.js?v=20261104-regions2"></script><link rel="stylesheet" href="bb-shop-add.css?v=20261104-cycle1"><script defer src="bb-shop-add.js?v=20261104-cycle1"></script><script defer src="bb-cupboard-staples.js?v=20261104-cupboard2"></script><script src="bb-pantry-autofill.js?v=20261104-cycle1"></script>
+<script defer src="bb-home.js?v=20261105-shop-confirm1"></script><link rel="stylesheet" href="bb-day-done.css?v=20261104-cycle1"><script defer src="bb-day-done.js?v=20261104-regions2"></script><link rel="stylesheet" href="bb-shop-add.css?v=20261104-cycle1"><script defer src="bb-shop-add.js?v=20261104-cycle1"></script><script defer src="bb-cupboard-staples.js?v=20261104-cupboard2"></script><script src="bb-pantry-autofill.js?v=20261104-cycle1"></script>
 <link rel="stylesheet" href="bb-shared-shopping.css?v=20261102-loop2">
 <script defer src="bb-shared-shopping.js?v=20261102-loop2"></script>
 <link rel="stylesheet" href="bb-plan-drag.css?v=20261103-drag2">
@@ -12496,6 +12540,8 @@ body[data-bbnext-view="discover"] #app .bb175-discover-heading{padding-top:calc(
 <script defer src="bb-auth-flow.js?v=20261104-auth2"></script>
 
 <script defer src="bb-tab-swipe.js?v=20261104-swipe1"></script>
-<link rel="stylesheet" href="bb-kitchen-review.css?v=20261104-kitchen-review1">
-<script defer src="bb-kitchen-review.js?v=20261104-kitchen-review1"></script>
+<link rel="stylesheet" href="bb-kitchen-review.css?v=20261105-shop-confirm1">
+<script defer src="bb-kitchen-review.js?v=20261105-shop-confirm1"></script>
+<link rel="stylesheet" href="bb-essentials-confirm.css?v=20261105-shop-confirm1">
+<script defer src="bb-essentials-confirm.js?v=20261105-shop-confirm1"></script>
 </body></html>

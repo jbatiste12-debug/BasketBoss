@@ -3,7 +3,7 @@ name: Verify iOS native build
 on:
   workflow_dispatch:
   push:
-    branches: [main, codex/native-cook-fix, release/recipe-editorial-collections, feature/conversational-voice-cook, fix/cook-mentor-reply-failure, fix/confirmed-cook-pantry, fix/at-home-layout, fix/weekly-essentials-shop, fix/auth-flow, fix/onboarding-meal-preferences]
+    branches: [main, codex/native-cook-fix, release/recipe-editorial-collections, feature/conversational-voice-cook, fix/cook-mentor-reply-failure, fix/confirmed-cook-pantry, fix/at-home-layout, fix/weekly-essentials-shop, fix/auth-flow, fix/onboarding-meal-preferences, fix/shop-essentials-flow]
     paths:
       - .github/workflows/ios-native-build.yml
       - .github/workflows/inspect-account-keyboard.yml
@@ -62,6 +62,11 @@ on:
       - make-a-meal.*
       - bb-onboarding-v2.*
       - bb-auth-*
+      - bb-essentials-confirm.*
+      - bb-shop-subcategories.*
+      - tests/basketboss-essentials-confirm*.test.mjs
+      - tests/basketboss-shop-subcategories.test.mjs
+      - tests/basketboss-shop-thumbnail-scope.test.mjs
       - bb-dietary-preferences.js
       - bb-meal-preferences.*
       - tests/basketboss-dietary*.test.mjs
@@ -133,6 +138,11 @@ jobs:
           tests/basketboss-dietary-autofill.test.mjs
           tests/basketboss-meal-preferences.test.mjs
           tests/basketboss-kitchen-review.test.mjs
+          tests/basketboss-essentials-confirm-core.test.mjs
+          tests/basketboss-essentials-confirm-ui.test.mjs
+          tests/basketboss-kitchen-prices.test.mjs
+          tests/basketboss-shop-subcategories.test.mjs
+          tests/basketboss-shop-thumbnail-scope.test.mjs
           tests/basketboss-dietary-ai.test.mjs
           tests/basketboss-tab-swipe.test.mjs
           tests/basketboss-home-household-topup.test.mjs
@@ -180,7 +190,7 @@ jobs:
         run: echo '::notice title=BasketBoss iOS native build::{"simulatorBuild":true,"bundleId":"uk.co.basketboss.app","minimumIOS":"16.0","signingTested":false}'
       # Finish device compilation before Simulator startup; Cook and keyboard
       # checks still determine whether this verification run succeeds.
-      - name: Create the unsigned iPhone archive for build 13
+      - name: Create the unsigned iPhone archive for build 14
         run: |
           xcodebuild \
             -workspace ios/App/App.xcworkspace \
@@ -189,19 +199,19 @@ jobs:
             -sdk iphoneos \
             -destination 'generic/platform=iOS' \
             -derivedDataPath /tmp/basketboss-ios-device-build \
-            -archivePath "$RUNNER_TEMP/BasketBoss-1.0-build13.xcarchive" \
+            -archivePath "$RUNNER_TEMP/BasketBoss-1.0-build14.xcarchive" \
             CODE_SIGNING_ALLOWED=NO \
             archive
-          test "$(/usr/libexec/PlistBuddy -c 'Print CFBundleVersion' "$RUNNER_TEMP/BasketBoss-1.0-build13.xcarchive/Products/Applications/App.app/Info.plist")" = '13'
-          test "$(/usr/libexec/PlistBuddy -c 'Print CFBundleIdentifier' "$RUNNER_TEMP/BasketBoss-1.0-build13.xcarchive/Products/Applications/App.app/Info.plist")" = 'uk.co.basketboss.app'
+          test "$(/usr/libexec/PlistBuddy -c 'Print CFBundleVersion' "$RUNNER_TEMP/BasketBoss-1.0-build14.xcarchive/Products/Applications/App.app/Info.plist")" = '14'
+          test "$(/usr/libexec/PlistBuddy -c 'Print CFBundleIdentifier' "$RUNNER_TEMP/BasketBoss-1.0-build14.xcarchive/Products/Applications/App.app/Info.plist")" = 'uk.co.basketboss.app'
           ditto -c -k --sequesterRsrc --keepParent \
-            "$RUNNER_TEMP/BasketBoss-1.0-build13.xcarchive" \
-            "$RUNNER_TEMP/BasketBoss-1.0-build13-unsigned.xcarchive.zip"
+            "$RUNNER_TEMP/BasketBoss-1.0-build14.xcarchive" \
+            "$RUNNER_TEMP/BasketBoss-1.0-build14-unsigned.xcarchive.zip"
       - name: Retain the unsigned iPhone archive
         uses: actions/upload-artifact@v6
         with:
-          name: BasketBoss-1.0-build13-unsigned-iPhone-archive
-          path: ${{ runner.temp }}/BasketBoss-1.0-build13-unsigned.xcarchive.zip
+          name: BasketBoss-1.0-build14-unsigned-iPhone-archive
+          path: ${{ runner.temp }}/BasketBoss-1.0-build14-unsigned.xcarchive.zip
           if-no-files-found: error
           retention-days: 7
           compression-level: 0
