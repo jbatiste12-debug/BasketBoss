@@ -92,7 +92,7 @@
    if(!same(row.productName||row.name,product)||!same(row.brand||'',item.brand||''))return false;
    const actual=measured(row.packQuantity,row.packUnit);
    return actual&&actual.quantity===pack.quantity&&actual.unit===pack.unit;
-  }).slice(-21).map(row=>{
+  }).map((value,index)=>({value,index,time:Date.parse(value.purchasedAt||value.confirmedAt||value.observedAt||'')||0})).sort((a,b)=>b.time-a.time||a.index-b.index).slice(0,21).map(({value:row})=>{
    if(number(row.packPrice)!==null)return row.packPrice;
    return number(row.pricePaid)!==null&&Number.isInteger(row.packCount)&&row.packCount>0?row.pricePaid/row.packCount:null;
   }).filter(price=>number(price)!==null&&price>0&&price<=10000).sort((a,b)=>a-b);

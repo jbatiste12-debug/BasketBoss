@@ -51,3 +51,10 @@ test('selected and owned filters preserve an honest known subtotal',()=>{
  const items=[{...shampoo,...scope,estimatedPackPrice:4},{...shampoo,owned:true},{...shampoo,selected:false}];
  const result=api.summarize(items,options);assert.equal(result.amount,4);assert.equal(result.pending,0);assert.equal(result.lines.length,1);assert.equal(result.complete,true);
 });
+test('future household estimates use the newest 21 regular receipt packs and retain exact matching',()=>{
+ const item={...shampoo,productName:'Family Shampoo 250ml',brand:'Family',packQuantity:250,packUnit:'ml'};
+ const observations=Array.from({length:46},(_,index)=>({kind:'essential',name:item.productName,brand:'Family',packQuantity:250,packUnit:'ml',packCount:1,pricePaid:index>=25?5:1,priceType:'regular',market:'UK',retailer:'Aldi',currency:'GBP',purchasedAt:new Date(Date.UTC(2026,8,1)+index*86400000).toISOString()})).reverse();
+ const actual=api.quote(item,{...options,receiptObservations:observations});assert.equal(actual.amount,5);assert.equal(actual.receiptSamples,21);
+ assert.equal(api.quote(item,{...options,receiptObservations:[...observations].reverse()}).amount,5,'purchase date takes priority over caller array order');
+ assert.equal(api.quote(item,{...options,receiptObservations:observations.map(row=>({...row,priceType:'promotion'}))}).amount,null);
+});

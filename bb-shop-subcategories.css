@@ -1,0 +1,6 @@
+.bb-shop-subcategory{margin:0;padding:0}
+.bb-shop-subcategory-heading{display:flex;align-items:center;justify-content:space-between;gap:12px;margin:0;padding:11px 16px;border-top:1px solid #dce5d9;border-bottom:1px solid #e6ece2;background:#f6f8f0;color:#345d41;font:800 13px/1.4 system-ui}
+.bb-shop-subcategory-count{flex:none;color:#73846e;font-size:11px;font-weight:700}
+#bbReleaseShopOverview .bb-shop-subcategory-heading{margin:11px 0 0;padding:9px 0;border-top:1px solid #e0e7d9;border-bottom:0;background:transparent;font-size:13px}
+#bbReleaseShopOverview .bb-r6-essentials ul{margin-top:0}
+@media print{.bb-shop-subcategory-heading{break-after:avoid}.bb-shop-subcategory{break-inside:auto}}

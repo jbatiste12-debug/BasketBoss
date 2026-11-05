@@ -1,0 +1,25 @@
+html body #app #bbKitchenEssentials.bbec-enabled .bbke-selected-here,
+html body #app #bbKitchenEssentials.bbec-enabled .bb16-essentials-heading,
+html body #app #bbKitchenEssentials.bbec-enabled #bbkeHouseholdMore,
+html body #app #bbKitchenEssentials.bbec-enabled .bb16-ess-selected{display:none!important}
+.bbec-confirmed{margin:16px 0 0;padding:14px 0 0;border-top:1px solid #dbe4d4;color:#28513b}
+.bbec-confirmed h3{margin:0 0 10px;font:800 15px/1.4 system-ui}
+.bbec-list{display:grid;gap:8px;margin:0;padding:0;list-style:none}
+.bbec-list>li{display:flex;align-items:center;justify-content:space-between;gap:10px;padding:12px;border:1px solid #dbe5d6;border-radius:13px;background:#fff}
+.bbec-item-info{min-width:0}.bbec-item-info strong{display:block;font:750 14px/1.4 system-ui;overflow-wrap:anywhere}.bbec-item-info small{display:block;margin-top:4px;color:#657b68;font:400 12px/1.5 system-ui}
+.bbec-item-actions{display:flex;flex:none;gap:6px}.bbec-item-actions button{min-height:44px;padding:8px 10px;border:1px solid #c9d9c3;border-radius:10px;background:#f0f5ea;color:#285b40;font:750 12px system-ui;cursor:pointer}
+.bbec-item-actions .bbec-delete{color:#8d4b39;border-color:#e4d0c6;background:#fff7f1}
+.bbec-item-info .bb-kitchen-last-price{font-size:11px;color:#77836f}
+.bbec-empty,.bbec-notice{font:400 12px/1.5 system-ui;color:#5e7563}.bbec-notice{margin:10px 0 0}.bbec-notice[role=alert]{color:#954d37}
+.bb-essentials-confirm-dialog{box-sizing:border-box;width:calc(100% - 24px);max-width:500px;max-height:calc(100dvh - 32px - env(safe-area-inset-top) - env(safe-area-inset-bottom));margin:auto;padding:0;overflow:hidden;border:1px solid #cbdcc7;border-radius:22px;background:#fbfaf3;color:#254e39;box-shadow:0 20px 70px #17382d45}
+.bb-essentials-confirm-dialog[open]{display:flex;flex-direction:column}.bb-essentials-confirm-dialog::backdrop{background:#163d3099;backdrop-filter:blur(4px)}
+.bb-essentials-confirm-dialog *{box-sizing:border-box;min-width:0}.bb-essentials-confirm-dialog>header{display:flex;align-items:center;justify-content:space-between;gap:12px;padding:16px 18px;background:#245f43;color:#fff}
+.bb-essentials-confirm-dialog h2{margin:0;font:800 20px/1.3 system-ui;letter-spacing:-.02em}.bbec-cancel{flex:none;min-height:44px;padding:8px 11px;border:1px solid #ffffff55;border-radius:11px;background:#ffffff14;color:#fff;font:750 13px system-ui;cursor:pointer}
+.bb-essentials-confirm-dialog>form{display:flex;flex-direction:column;min-height:0;margin:0}.bbec-body{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px;min-height:0;padding:16px 18px;overflow-y:auto;overscroll-behavior:contain}
+.bbec-intro{grid-column:1/-1;margin:0;color:#637760;font:400 13px/1.5 system-ui}.bbec-body>label{display:grid;gap:6px;color:#3c6247;font:750 12px/1.4 system-ui}.bbec-body>label:first-of-type{grid-column:1/-1}
+.bbec-body :is(input,select){display:block;width:100%;min-height:46px;padding:10px;border:1px solid #bfd2bb;border-radius:11px;background:#fff;color:#224b35;font:400 16px system-ui}.bbec-body input[readonly],.bbec-body select:disabled{background:#f0f3e9;color:#536a54;opacity:1}
+.bbec-measured{grid-column:1/-1;padding:0 0 10px;border-top:1px solid #dce4d4}.bbec-measured>summary{min-height:44px;padding:12px 0;color:#3e6748;font:750 12px/1.4 system-ui;cursor:pointer}.bbec-measured>label{display:grid;gap:6px;margin-bottom:10px;font:750 12px/1.4 system-ui}
+.bbec-preview{grid-column:1/-1;padding:11px;border:1px solid #d5e2cc;border-radius:12px;background:#eff5e8;color:#2d6441;font:750 13px/1.5 system-ui}
+.bb-essentials-confirm-dialog footer{flex:none;display:grid;gap:8px;padding:12px 18px calc(12px + env(safe-area-inset-bottom));border-top:1px solid #dbe3d2;background:#f6f6ec}.bbec-status{margin:0;color:#426c4b;font:400 12px/1.5 system-ui;overflow-wrap:anywhere}.bbec-status:empty{display:none}.bbec-status[role=alert]{color:#934b37}
+.bbec-confirm{width:100%;min-height:48px;padding:12px;border:0;border-radius:12px;background:#245f43;color:#fff;font:800 14px system-ui;cursor:pointer}.bbec-confirm:disabled{opacity:.55;cursor:wait}.bb-essentials-confirm-dialog :is(button,input,select):focus-visible{outline:3px solid #c7a047;outline-offset:2px}
+@media(max-width:380px){.bbec-list>li{align-items:stretch;flex-direction:column}.bbec-item-actions{align-self:flex-end}.bb-essentials-confirm-dialog h2{font-size:18px}}

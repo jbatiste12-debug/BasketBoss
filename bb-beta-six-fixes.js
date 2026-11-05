@@ -69,8 +69,11 @@
     const count=node('span','bb-r6-essentials-count',pending.length+' to buy');
     const head=node('div','bb-r6-essentials-heading');head.append(heading,count);section.append(head);
     if(pending.length){
-      const list=node('ul');
-      for(const box of pending){
+      const groups=typeof BBShopSubcategories==='undefined'?[{name:'',items:pending}]:BBShopSubcategories.group(pending,{pantryGroups:window.BBPantryGroups,keyFor:box=>box.dataset.bb321Tick,nameFor:box=>safeText(box.closest('.bb321-essential-row')?.querySelector('.bb321-shop-name')?.textContent)});
+      for(const group of groups){
+       if(group.name)section.append(node('h4','bb-shop-subcategory-heading',group.name));
+       const list=node('ul');
+       for(const box of group.items){
         const original=box.closest('.bb321-essential-row'),name=safeText(original.querySelector('.bb321-shop-name')?.textContent);
         const row=node('li','bb-r6-essential-row'),label=node('label'),check=node('input');
         check.type='checkbox';check.setAttribute('aria-label','Mark bought: '+name);
@@ -78,7 +81,8 @@
         label.append(check,node('strong',null,name));
         row.append(label,node('small',null,safeText(original.querySelector('.bb321-shop-quantity strong')?.textContent)));list.append(row);
       }
-      section.append(list);
+       section.append(list);
+      }
     }else section.append(node('p',null,'Nothing extra to buy.'));
     const edit=node('button','bb-r6-essentials-edit','Update essentials');edit.type='button';
     edit.addEventListener('click',()=>{navTo('shop');requestAnimationFrame(()=>{window.BBKitchenEssentials?.refresh?.();doc.getElementById('bbKitchenEssentialsTab')?.click();});});

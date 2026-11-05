@@ -2,6 +2,8 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import vm from 'node:vm';
+import {createRequire} from 'node:module';
+const require=createRequire(import.meta.url),shopSubcategories=require('../bb-shop-subcategories.js'),pantryGroups=require('../bb-pantry-groups.js');
 const html=fs.readFileSync(new URL('../app.html',import.meta.url),'utf8');
 function actual(name){const start=html.indexOf('function '+name+'(');assert.ok(start>=0,name);const lineEnd=html.indexOf('\n',start);if(html.slice(start,lineEnd).endsWith('}'))return html.slice(start,lineEnd);const end=html.indexOf('\n}',start);assert.ok(end>start,name);return html.slice(start,end+2);}
 const dataKey=name=>name.slice(5).replace(/-([a-z])/g,(_,c)=>c.toUpperCase());
@@ -85,4 +87,66 @@ test('mobile overview shows only needed essentials with live quantities and dele
 });
 test('empty weekly essentials overview offers a direct route to the At home essentials section',()=>{
  const h=fixture(rows().filter(x=>!x.essential)),v=overview(h),section=v.render();assert.match(section.textContent,/Weekly essentials0 to buyNothing extra to buy/);assert.equal(section.querySelectorAll('input').length,0);const edit=section.querySelector('button');assert.equal(edit.textContent,'Update essentials');edit.events.click();assert.deepEqual(v.navigation,['shop']);assert.equal(v.refreshed(),1);assert.equal(v.selected(),1);
+});
+
+function groupedFixture(records){
+ const h=fixture(records),values=new Map();
+ const storage={getItem:key=>values.get(key)??null,setItem:(key,value)=>values.set(key,String(value)),removeItem:key=>values.delete(key)};
+ const groups=pantryGroups.install({localStorage:storage,crypto:{randomUUID:()=>String(values.size+1)}});
+ h.context.BBShopSubcategories=shopSubcategories;h.context.BBPantryGroups=groups;
+ return {...h,groups,values};
+}
+const groupedRows=()=>[
+ {id:'rice|g',name:'Rice',qty:'Buy 500 g',aisle:'dry'},
+ {id:'ess:cleaner',name:'All-purpose cleaner',qty:'Buy 1 bottle',unit:'each',required:1,aisle:'household',essential:true},
+ {id:'ess:rolls',name:'Toilet rolls',qty:'Buy 4 each',unit:'each',required:4,aisle:'household',essential:true},
+ {id:'ess:detergent',name:'Laundry detergent',qty:'Buy 1 bottle',unit:'each',required:1,aisle:'household',essential:true,checked:true},
+ {id:'ess:dog',name:'Dog food',qty:'Buy 2 packs',unit:'each',required:2,aisle:'household',essential:true},
+ {id:'ess:spare',name:'Spare household item',qty:'Buy 1 each',unit:'each',required:1,aisle:'household',essential:true}
+];
+test('the actual Shop list tab groups essentials without depending on the At home tab alias',()=>{
+ const h=groupedFixture(groupedRows());h.context.tab='shop-list';h.organize();
+ const section=h.sections().at(-1);
+ assert.equal(section.dataset.bb172Aisle,'essentials');
+ assert.deepEqual(section.querySelectorAll('.bb-shop-subcategory').map(node=>node.dataset.bbSubcategory),['cleaning','toiletries','laundry','care','other']);
+ assert.equal(h.list.querySelectorAll('[data-bb321-tick]').length,6);
+});
+test('default household subcategories carry into Begin shop and keep original checkbox ownership',()=>{
+ const h=groupedFixture(groupedRows()),boxes=h.inputs.map(row=>row.box);h.organize();
+ const section=h.sections().at(-1);
+ assert.deepEqual(section.querySelectorAll('.bb-shop-subcategory').map(node=>node.dataset.bbSubcategory),['cleaning','toiletries','laundry','care','other']);
+ let projected=h.draw().at(-1);
+ assert.deepEqual(projected.querySelectorAll('.bb-shop-subcategory').map(node=>node.dataset.bbSubcategory),['cleaning','toiletries','laundry','care','other']);
+ assert.equal(h.content.querySelectorAll('.projected-row').length,6);
+ for(const [i,row]of h.inputs.entries())assert.equal(row.row.querySelector('[data-bb321-tick]'),boxes[i]);
+ h.list.dataset.bb172Aisled='';h.organize();
+ assert.equal(h.list.querySelectorAll('.bb321-buy-row').length,6,'regrouping does not discard nested source rows');
+ assert.equal(h.list.querySelectorAll('.bb-shop-subcategory').length,5,'regrouping never duplicates headings');
+ projected=h.draw('left').at(-1);
+ assert.equal(projected.querySelectorAll('.bb-shop-subcategory').some(node=>node.dataset.bbSubcategory==='laundry'),false);
+ assert.deepEqual(h.draw('bought')[0].querySelectorAll('.projected-row').map(row=>row.sourceId),['ess:detergent']);
+});
+test('custom assignments, renamed groups and saved order appear in both list and Shop Mode',()=>{
+ const h=groupedFixture(groupedRows()),id=h.groups.create('essentials','My weekly cupboard');
+ h.groups.assign('essentials','rolls',id);h.groups.rename('essentials','cleaning','Surface care');h.groups.move('essentials',id,-1);
+ h.organize();
+ let list=h.sections().at(-1);
+ assert.match(list.textContent,/Surface care/);assert.match(list.textContent,/My weekly cupboard/);
+ assert.equal(list.querySelectorAll('.bb-shop-subcategory').find(node=>node.dataset.bbSubcategory===id).querySelector('.bb321-buy-row'),h.inputs.find(row=>row.record.id==='ess:rolls').row);
+ const mode=h.draw().at(-1);assert.deepEqual(mode.querySelectorAll('.bb-shop-subcategory').map(node=>node.dataset.bbSubcategory),list.querySelectorAll('.bb-shop-subcategory').map(node=>node.dataset.bbSubcategory));
+ h.groups.remove('essentials',id);h.list.dataset.bb172Aisled='';h.organize();list=h.sections().at(-1);
+ const fallback=list.querySelectorAll('.bb-shop-subcategory').find(node=>node.dataset.bbSubcategory==='other');assert.match(fallback.textContent,/Toilet rolls/);assert.doesNotMatch(list.textContent,/My weekly cupboard/);
+});
+test('overview, copied checklist and searches use confirmed subcategories without changing quantities',()=>{
+ const h=groupedFixture(groupedRows());h.groups.rename('essentials','cleaning','Surface care');h.organize();
+ const v=overview(h);h.context.window.BBPantryGroups=h.groups;
+ const section=v.render();assert.match(section.textContent,/Surface care/);assert.match(section.textContent,/Toiletries/);assert.doesNotMatch(section.textContent,/Laundry detergent/);
+ assert.equal(section.querySelectorAll('input').length,4);
+ const text=h.context.bb172ShopOutstandingText();assert.match(text,/WEEKLY ESSENTIALS\nSurface care\n☐ All-purpose cleaner — Buy 1 bottle/);assert.match(text,/Toiletries\n☐ Toilet rolls — Buy 4 each/);assert.doesNotMatch(text,/Laundry detergent/);assert.match(text,/Items still to buy: 5/);
+ const filtered=h.draw('all','toilet').at(-1);assert.deepEqual(filtered.querySelectorAll('.bb-shop-subcategory').map(node=>node.dataset.bbSubcategory),['toiletries']);assert.equal(filtered.querySelectorAll('.projected-row').length,1);
+});
+test('unavailable or malformed saved groups leave all shopping items visible under Other items',()=>{
+ const h=groupedFixture(groupedRows());h.values.set(pantryGroups.KEY,'{bad');h.organize();
+ const section=h.sections().at(-1);assert.equal(section.querySelectorAll('.bb-shop-subcategory').length,1);assert.match(section.textContent,/Other items/);assert.equal(section.querySelectorAll('.bb321-buy-row').length,5);
+ assert.equal(h.draw().at(-1).querySelectorAll('.projected-row').length,5);
 });

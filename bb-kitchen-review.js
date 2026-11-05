@@ -108,12 +108,14 @@
    if(!dialog||state.busy)return;
    let snapshot;try{snapshot=controller.snapshot();}catch{message('Your saved stock could not be read. Close and reopen this check.',true);return;}
    if(snapshot.context.actor!==state.actor){close();return;}
+   let prices=()=>null;try{prices=win.BBKitchenPrices?.read?.()||prices;}catch{}
    const query=state.search.value.trim().toLowerCase(),rows=snapshot.rows.filter(row=>(state.section==='all'||state.section===row.kind)&&(!query||row.name.toLowerCase().includes(query)));
    state.list.replaceChildren();state.count.textContent=rows.length+' item'+(rows.length===1?'':'s');
    for(const row of rows){
     const item=make('details','bb-kitchen-review-item');item.dataset.reviewItem=row.kind+':'+row.key;item.open=state.expanded.has(item.dataset.reviewItem);
     item.addEventListener('toggle',()=>{if(item.open)state?.expanded.add(item.dataset.reviewItem);else state?.expanded.delete(item.dataset.reviewItem);});
     const summary=make('summary'),name=make('strong','',row.name),balance=make('span','bb-kitchen-review-balance',format(row)),kind=make('small','',row.kind==='food'?(row.loc||'Food'):'Weekly essentials');summary.append(name,balance,kind);item.append(summary);
+    const paid=win.BBKitchenPrices?.label?.(prices(row.name));if(paid)item.append(make('p','bb-kitchen-last-price',paid));
     let inputUnit=row.unit,inputAmount=row.qty;
     if(row.kind==='food'&&!row.staple&&win.BBPantryInline?.displayUnit&&win.BBPantryInline?.converted)try{const unit=win.BBPantryInline.displayUnit(row,win.bb307ActiveMarket?.()||'UK',win.BBPantryPolicy),converted=win.BBPantryInline.converted(row,unit,win.BBPantryPolicy,win.bb307ActiveMarket?.()||'UK');if(converted!==null){inputUnit=unit;inputAmount=converted;}}catch{}
     const form=make('form','bb-kitchen-review-amount'),quantity=make('input');quantity.type='number';quantity.inputMode='decimal';quantity.min='0';quantity.max=row.staple?'10000':'1000000';quantity.step=row.staple?'1':'any';quantity.value=inputAmount??'';quantity.placeholder='Amount left';quantity.setAttribute('aria-label','Amount left of '+row.name);const quantityLabel=field(row.staple?'Containers left (optional)':'Current amount left · '+(inputUnit||'each'),quantity);form.append(quantityLabel);
