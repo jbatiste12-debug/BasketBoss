@@ -12,3 +12,5 @@ Please try:
 • Create a meal from ingredients and review its ordered steps.
 
 Please report the recipe name, step number and what happened, with a screenshot where possible.
+
+All 500 recipes have been reviewed. Accepted recipe fixes include clear ingredient amounts, oven settings, prep order, cooking oil and more realistic timing estimates. Please check that changing servings keeps the ingredient list, shopping list and cooking instructions consistent.

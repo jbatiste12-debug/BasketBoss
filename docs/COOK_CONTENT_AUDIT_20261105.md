@@ -1,4 +1,6 @@
-# Cook content audit — 5 November 2026
+# Initial Cook content audit — 5 November 2026
+
+This ledger records the initial editorial pass. All 15 public author findings below were subsequently resolved with the owner-accepted recommendations; see [accepted public recommendations](PUBLIC_RECIPE_RECOMMENDATIONS_ACCEPTED_20261105.md) and the [final all-500 audit](COOK_FULL_500_AUDIT_20261105.md) for the current outcome.
 
 Every complete public recipe in `recipes.json` was reviewed against its ingredient names, all ordered method instructions, and the ingredient notes exposed by Cook. This is an editorial and consistency review, not kitchen testing. Baseline: `fecb5ce041e9`.
 
@@ -14,7 +16,7 @@ The reported prawn problem is corrected in both `prawn-linguine` and `date-garli
 
 ## Verification and concrete unresolved content
 
-The current source audit reports **0 consistency/content errors**, **15 author-review findings**, and **77 existing normalized quantity-review flags**. Missing oven settings were exposed without inventing temperatures or cooking durations. Existing pack/quantity questions remain outside this content-only correction.
+At this initial pass, the source audit reported **0 consistency/content errors**, **15 author-review findings**, and **77 existing normalized quantity-review flags**. Missing oven settings were exposed without inventing temperatures or cooking durations. Existing pack/quantity questions remain outside this content-only correction.
 
 | Rule | Recipe | Author decision still needed |
 | --- | --- | --- |

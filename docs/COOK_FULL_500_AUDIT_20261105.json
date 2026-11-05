@@ -1,0 +1,124 @@
+{
+  "date": "2026-11-05",
+  "build": 18,
+  "scope": "Individual recipe, ingredient-mapping, prep-note and step-flow review of all 500 current recipes; not kitchen testing",
+  "public": {
+    "reviewed": 100,
+    "changedRecipes": 98,
+    "changedMethods": 90,
+    "prepNotesChanged": 270,
+    "ingredientLines": 730,
+    "authorReview": 0,
+    "resolvedAuthorFindings": 15
+  },
+  "protected": {
+    "reviewed": 400,
+    "changedRecipes": 267,
+    "changedMethods": 264,
+    "prepNotesChanged": 1295,
+    "ingredientLines": 3502,
+    "authorReview": 0,
+    "resolvedAuthorFindings": 18
+  },
+  "total": {
+    "reviewed": 500,
+    "changedRecipes": 365,
+    "changedMethods": 354,
+    "prepNotesChanged": 1565,
+    "ingredientLines": 4232,
+    "authorReview": 0,
+    "resolvedAuthorFindings": 33
+  },
+  "protectedBeforeRowsSha256": "61733dd3cbb63f56dabad75572b54739c8fd39edf90bea0e468e24db3be2be68",
+  "protectedAfterRowsSha256": "f89eaecc9b2ca71fbd8018c7f733e51c630f6992e5ad5def902f609a71fcbc2e",
+  "full500NormalizationIssues": {
+    "source_invalid": 0,
+    "source_card_count_changed": 0,
+    "normalized_invalid": 0,
+    "normalized_card_count_changed": 0,
+    "measurement_changed": 0,
+    "not_idempotent": 0,
+    "ingredients_mutated": 0,
+    "recipe_mutated": 0,
+    "method_exception": 0
+  },
+  "actual400RowAtomicSqlDryRun": true,
+  "sqlSha256": "7805e9e7fed5bd2975b0cfe59608128ab93758f6e4bc3996045ad8f6ab8b5a02",
+  "regression": {
+    "cases": 2528,
+    "passed": 2525,
+    "failed": 0,
+    "skipped": 1,
+    "existingTodo": 2
+  },
+  "mobile375": {
+    "cookStates": 6,
+    "horizontalOverflow": 0,
+    "pageErrors": 0,
+    "controlDimensionsChanged": false
+  },
+  "native": {
+    "clientFiles": 935,
+    "freeRecipes": 100,
+    "privateRecipeBundle": false,
+    "currentVerificationRun": 42087938798,
+    "signedTestFlightUpload": "Requires owner Mac/Xcode; not performed here"
+  },
+  "productionPrivateActivation": {
+    "initialContentCorrections": {
+      "run": 42080854115,
+      "verified": true,
+      "normalizedUnchanged": true
+    },
+    "acceptedRecommendations": {
+      "run": 42087938810,
+      "job": 127457984058,
+      "mergeCommit": "f8b0f2740a673f7e6c8ca8686074061d58776b40",
+      "verified": true,
+      "imported": true,
+      "correctedRecipes": 18,
+      "unchangedRowsPreserved": 382,
+      "legacyUnchanged": true,
+      "afterRowsSha256": "f89eaecc9b2ca71fbd8018c7f733e51c630f6992e5ad5def902f609a71fcbc2e"
+    }
+  },
+  "all500BrowserVerification": {
+    "recipes": 500,
+    "viewport": [
+      375,
+      812
+    ],
+    "cards": 2477,
+    "bullets": 4866,
+    "timerSourceChecks": 2477,
+    "timerControlActions": 12385,
+    "navigationActions": 14385,
+    "mentorContextChecks": 3477,
+    "ingredientLines": 4232,
+    "issues": 0,
+    "horizontalOverflow": 0,
+    "pageErrors": 0,
+    "consoleErrors": 0,
+    "apiWriteAttempts": 0,
+    "network": "Mocked; actual native-bundle controllers and final accepted data",
+    "candidateRowsSha256": "f89eaecc9b2ca71fbd8018c7f733e51c630f6992e5ad5def902f609a71fcbc2e"
+  },
+  "ingredientLines": 4232,
+  "acceptedRecommendations": {
+    "findings": 33,
+    "distinctRecipes": 31,
+    "publicRecipes": 13,
+    "protectedRecipes": 18,
+    "basis": "User explicitly accepted the editorial recommendations",
+    "kitchenTested": false,
+    "initialIngredientLines": 4227,
+    "addedMeasuredIngredients": 5
+  },
+  "protectedInitialCorrectionRowsSha256": "1e54c10834b144142fab94b0fca88d12fc904c6ea3da1137d8307b7f5a887eb8",
+  "acceptedCandidateVerification": {
+    "exact400RowAtomicSqlReadback": true,
+    "sourceAmountAndNormalizedQuantityConsistent": true,
+    "changedSourceAndNormalizedPricesConsistent": true,
+    "unchangedRowsPreserved": 382
+  }
+}
