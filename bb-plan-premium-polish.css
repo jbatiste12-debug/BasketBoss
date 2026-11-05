@@ -253,7 +253,6 @@ html body #app.bbnext-plan[data-bb-compact-plan="true"] #bbpolAutofillCard .bb-a
 html body #app.bbnext-plan[data-bb-compact-plan="true"] #bbpolAutofillCard .bb-avoid-chevron{display:none!important}
 html body #app.bbnext-plan[data-bb-compact-plan="true"] #bbpolAutofillCard .bb-avoid-count{padding:2px 4px;font-size:9px}
 html body #app.bbnext-plan[data-bb-compact-plan="true"] #bbpolAutofillCard .bb-avoid-count:empty{display:none}
-html body #app.bbnext-plan[data-bb-compact-plan="true"] #bbpolAutofillCard .bb-avoid-panel,
 html body #app.bbnext-plan[data-bb-compact-plan="true"] #bbpolAutofillCard #bbSimpleMealPreferences>.bb81-pro-pills,
 html body #app.bbnext-plan[data-bb-compact-plan="true"] #bbpolAutofillCard .bbpc-info-content{position:absolute!important;top:calc(100% + 6px);left:0;right:0;z-index:50;box-sizing:border-box;margin:0!important;padding:14px!important;max-height:min(60dvh,var(--bbpc-popover-height,480px));overflow-y:auto;overscroll-behavior:contain;border:1px solid #cbdcc5!important;border-radius:16px!important;background:#fffdf6!important;box-shadow:0 12px 32px #183d2a26!important;color:#365e42}
 html body #app.bbnext-plan[data-bb-compact-plan="true"] #bbpolAutofillCard #bbSimpleMealPreferences>.bb81-pro-pills{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px}
