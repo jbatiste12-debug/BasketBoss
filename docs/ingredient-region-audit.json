@@ -781,8 +781,8 @@
         },
         {
           "key": "pepper",
-          "unit": "each",
-          "required": 8
+          "unit": "g",
+          "required": 1280
         },
         {
           "key": "raw prawns",
@@ -1898,8 +1898,8 @@
         },
         {
           "key": "pepper",
-          "unit": "each",
-          "required": 8
+          "unit": "g",
+          "required": 1280
         },
         {
           "key": "raw prawns",

@@ -94,13 +94,16 @@
    if(row?.selected===false)continue;const physical=measure(row,options);
    if(physical?.key===stockKey)entries.push({id,row:clone(row),quantity:physical.quantity});
   }
-  const frozen=entry=>entry.row.loc==='freezer'&&!!metadata(entry.row,actor)?.frozenAt;
+  // Ordinary freezer food is a physical reserve too. A receipt must not move
+  // it into a fridge/cupboard merely because it has no reduced-food annotation.
+  if(entries.some(entry=>object(entry.row.bbReduced)&&entry.row.bbReduced.actor!==actor))return null;
+  const frozen=entry=>entry.row.loc==='freezer';
   if(!entries.some(frozen)||Math.abs(entries.reduce((sum,entry)=>sum+entry.quantity,0)-currentQuantity)>.000001)return null;
   let decrease=Math.max(0,currentQuantity-nextQuantity);
   for(const entry of [...entries].sort((a,b)=>Number(a.row.loc==='freezer')-Number(b.row.loc==='freezer'))){const used=Math.min(decrease,entry.quantity);entry.quantity=round(entry.quantity-used);decrease=round(decrease-used);}
   const increase=Math.max(0,round(nextQuantity-currentQuantity));
   if(increase>0){
-   const loc=['cupboard','fridge','freezer'].includes(location)?location:'cupboard';let target=entries.find(entry=>entry.row.loc===loc&&!frozen(entry));
+   const loc=['cupboard','fridge','freezer'].includes(location)?location:'cupboard';let target=entries.find(entry=>entry.row.loc===loc&&(loc==='freezer'||!frozen(entry)));
    if(!target){let id=loc+'|'+name+'|purchase',suffix=0;while(Object.hasOwn(inventory,id))id=loc+'|'+name+'|purchase-'+(++suffix);target={id,row:{name,loc,selected:true},quantity:0};entries.push(target);}
    target.quantity=round(target.quantity+increase);
   }

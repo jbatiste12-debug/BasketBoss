@@ -32,7 +32,7 @@ function fixture({stock={},requirements=[{key:'rice',unit:'g',required:1500}],lu
  const physical=ctx.bbHomePhysicalStock;ctx.bbHomePhysicalStock=()=>{physicalReads++;return physical();};
  const lunchBegin=html.indexOf('const BB321Lunch=(()=>{'),lunchEnd=html.indexOf('/* BasketBoss 321 v8 —',lunchBegin);
  vm.runInContext(html.slice(lunchBegin,lunchEnd),ctx);
- vm.runInContext(named('bbHomeConversionContext','bbHomePlanningStock')+'\n'+wrapper+'\n'+planner+'\n'+unified,ctx);
+ vm.runInContext(named('bbHomeExcludedStockKeys','bbHomePlanningStock')+'\n'+wrapper+'\n'+planner+'\n'+unified,ctx);
  return {ctx,values,writes,before:JSON.stringify([...values]),stock:()=>JSON.parse(values.get(STOCK)),plan:()=>ctx.bb307Plan(),shop:()=>ctx.bb321UnifiedShop(ctx.bb307Plan().items),project:rows=>ctx.bbPantryReconcileStock(JSON.parse(values.get(STOCK)),rows),physicalReads:()=>physicalReads};
 }
 const approx=(actual,expected)=>assert.ok(Math.abs(actual-expected)<1e-8,actual+' should equal '+expected);

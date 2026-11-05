@@ -11,7 +11,7 @@
     let options = { ...initial }, corePromise, current = null;
     const doc = () => options.document || root.document;
     const inventory = () => options.inventory || root.BBReceiptInventory;
-    const core = () => options.core ? Promise.resolve(options.core) : (corePromise ||= import(sibling('bb-receipt-inventory-core.mjs?v=20261105-reduced1')));
+    const core = () => options.core ? Promise.resolve(options.core) : (corePromise ||= import(sibling('bb-receipt-inventory-core.mjs?v=20261105-business1')));
     const fetcher = () => options.fetch || root.fetch?.bind(root);
     const quantities = () => options.quantities || root.BBReceiptQuantity;
     const reducedEnabled = () => root.BBReducedFoodHost?.isPremium?.() === true;

@@ -185,6 +185,7 @@ function setPriceOverride({name,unit,market,price:localPackPrice,brand='',retail
  if(typeof brand!=='string'||brand.trim().length>80)throw Error('Enter a brand of up to 80 characters, or leave it blank');
  const next=loadOverrides();next[keyForProductOverride(entry,market,retailer)]={price:round2(n),brand:brand.trim(),updatedAt:new Date().toISOString().slice(0,10)};
  try{root.localStorage.setItem(OVERRIDE_KEY,JSON.stringify(next));}catch(e){throw Error('Could not save shelf price in this browser');}
+ try{root.BasketBossCloud?.scheduleSave?.();}catch{/* The reviewed local price remains saved while cloud sync is unavailable. */}
  return round2(n);
 }
 function clearPriceOverride({name,unit,market,retailer=root.BBSupermarkets?.getSelected(market)||null}){
@@ -193,6 +194,7 @@ function clearPriceOverride({name,unit,market,retailer=root.BBSupermarkets?.getS
  // An explicit reset for one shop must not reactivate an older region-wide price.
  if(retailer)next[key]=null;else delete next[key];
  try{root.localStorage.setItem(OVERRIDE_KEY,JSON.stringify(next));}catch(e){throw Error('Could not clear shelf price');}
+ try{root.BasketBossCloud?.scheduleSave?.();}catch{/* The reviewed local reset remains saved while cloud sync is unavailable. */}
  return true;
 }
 /* Unmatched standard foods use a clearly flagged category fallback rather than an unpriced line.
@@ -256,14 +258,14 @@ const UNIT_ALIASES=Object.freeze({gram:'g',grams:'g',kilogram:'kg',kilograms:'kg
 function unitName(unit){const value=String(unit||'each').trim().toLowerCase();return Object.hasOwn(UNIT_ALIASES,value)?UNIT_ALIASES[value]:value;}
 function normalizeUnit(name,quantity,unit){
  const q=Number(quantity);if(!Number.isFinite(q)||q<0)return null;
- const u=unitName(unit);const d=isDry(name);
- if(['none','item','items','piece','pieces'].includes(u))return {quantity:q,unit:'each',needsReview:true};
- if(['cloves','clove'].includes(u))return {quantity:q,unit:'clove',needsReview:false};
- if(u==='tsp'||u==='teaspoon'||u==='teaspoons')return {quantity:q*(d?3:5),unit:d?'g':'ml',needsReview:d};
- if(u==='tbsp'||u==='tablespoon'||u==='tablespoons')return {quantity:q*(d?10:15),unit:d?'g':'ml',needsReview:d};
- if(u==='kg')return {quantity:q*1000,unit:'g',needsReview:false};
- if(u==='l'||u==='litre'||u==='litres')return {quantity:q*1000,unit:'ml',needsReview:false};
- return {quantity:q,unit:u,needsReview:false};
+ const u=unitName(unit),d=isDry(name);let amount=q,base=u,needsReview=false;
+ if(['none','item','items','piece','pieces'].includes(u)){base='each';needsReview=true;}
+ else if(['cloves','clove'].includes(u))base='clove';
+ else if(['tsp','teaspoon','teaspoons'].includes(u)){amount=q*(d?3:5);base=d?'g':'ml';needsReview=d;}
+ else if(['tbsp','tablespoon','tablespoons'].includes(u)){amount=q*(d?10:15);base=d?'g':'ml';needsReview=d;}
+ else if(u==='kg'){amount=q*1000;base='g';}
+ else if(['l','litre','litres'].includes(u)){amount=q*1000;base='ml';}
+ return Number.isFinite(amount)?{quantity:amount,unit:base,needsReview}:null;
 }
 function measureAssumption(name,sourceUnit,normalized){
  if(!normalized?.needsReview)return null;
@@ -283,7 +285,7 @@ function canonicalMeasure(name,quantity,unit,{sourceIngredients}={}){
   const weight=wholeProduceGrams[key];amount*=weight;base='g';estimated=needsReview=true;
   assumption='Estimated '+weight+' g per whole item for '+key;
  }
- return {key,quantity:amount,unit:base,estimated,needsReview,assumption,sourceQuantity,sourceUnit};
+ return Number.isFinite(amount)?{key,quantity:amount,unit:base,estimated,needsReview,assumption,sourceQuantity,sourceUnit}:null;
 }
 function convertToPackUnits(name,quantity,inputUnit,entry){
  const norm=normalizeUnit(name,quantity,inputUnit);if(!norm)return null;
@@ -322,6 +324,9 @@ function price({name,unit,quantity,market='UK',mode='shop',retailer=root.BBSuper
   checkout=round2(Math.ceil((portion-1e-9)*20)/20);
  }
  const pantryStaple=isPantryStaple(name,norm.unit),unroundedMealAmount=pantryStaple?rawPortion:checkout;
+ // Corrupt saved quantities cannot turn a basket into Infinity or lose cents
+ // beyond JavaScript's safe integer range. The caller keeps the line unpriced.
+ if(!Number.isSafeInteger(packs)||![rawPortion,portion,checkout,unroundedMealAmount].every(value=>Number.isFinite(value)&&value>=0&&Number.isSafeInteger(Math.round(value*100))))return null;
  return {amount:mode==='meal'?round2(unroundedMealAmount):checkout,portionAmount:portion,packAmount:checkout,packCount:packs,
   unroundedMealAmount,pantryStaple,costBasis:mode==='meal'&&pantryStaple?'pantry_usage':'full_packs',mode,
   source:localShelf!==null?'user_shelf_price':learned?'account_store_receipt_regular_price':entry.sourced_price?'public_online_price':'catalog',userOverride:localShelf!==null,

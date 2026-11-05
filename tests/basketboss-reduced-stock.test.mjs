@@ -40,6 +40,18 @@ test('projecting a cloud balance keeps frozen buckets while fresh purchases rema
  assert.equal(project(inventory,999,1000),null,'unreconciled quantities retain the existing safe projection path');
  assert.equal(api.projectFrozenBuckets({inventory,stockKey:'carrot|g',currentQuantity:300,nextQuantity:500,actor:'other-account'}),null);
 });
+test('ordinary freezer stock keeps its location when a receipt adds the same unfrozen food',()=>{
+ const inventory={frozen:row(200,'freezer'),fresh:row(100,'cupboard')};
+ const increased=api.projectFrozenBuckets({inventory,stockKey:'carrot|g',currentQuantity:300,nextQuantity:600,location:'cupboard',...opts});
+ assert.equal(increased.frozen.qty,200);assert.equal(increased.frozen.loc,'freezer');assert.equal(increased.fresh.qty,400);
+ const decreased=api.projectFrozenBuckets({inventory:increased,stockKey:'carrot|g',currentQuantity:600,nextQuantity:150,location:'cupboard',...opts});
+ assert.equal(decreased.fresh.selected,false);assert.equal(decreased.frozen.qty,150);assert.equal(decreased.frozen.loc,'freezer');
+});
+test('new freezer purchases merge into the existing freezer row without an extra bucket',()=>{
+ const inventory={frozen:row(200,'freezer'),fresh:row(100,'fridge')};
+ const result=api.projectFrozenBuckets({inventory,stockKey:'carrot|g',currentQuantity:300,nextQuantity:500,location:'freezer',...opts});
+ assert.deepEqual(Object.keys(result),Object.keys(inventory));assert.equal(result.frozen.qty,400);assert.equal(result.fresh.qty,100);
+});
 test('zero stock clears urgency so an ordinary refill or manual edit cannot resurrect the old reduced tag',()=>{
  const first=bought({}, {carrots:row(300)});
  const used=api.settleInventory({before:first,after:{carrots:{...first.carrots,qty:0}},...opts});assert.equal(used.carrots.bbReduced.urgent,false);

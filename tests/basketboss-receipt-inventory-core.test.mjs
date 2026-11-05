@@ -78,6 +78,27 @@ function fixture({ store = new MemoryStorage(), server = new FullInventoryServer
   const adapter = root.BBReceiptInventoryFactory({ core: Core, storage: store, fetch: fetch || server.fetch, getSession: () => session.value, getContext: () => context.value, getCatalog: () => CATALOG, createId: () => 'test-random-id' });
   return { adapter, store, server, session, context, keys: adapter.keys, root, event(name) {for (const handler of events.get(name) || []) handler();} };
 }
+
+test('legacy Finish then scan accepts only the verified archived trip and nets its original stock once',async()=>{
+ const f=fixture(),closed='shop-1';f.context.value.shopSessionId='shop-next';f.store.setItem(f.keys.stock,JSON.stringify({'pasta|g':500}));
+ f.store.setItem(f.keys.finishShop,JSON.stringify({[closed+'|pasta|g']:{name:'pasta',unit:'g',credited:500,week:closed}}));
+ f.adapter.configure({getArchivedShop:id=>id===closed?{version:7,id,closedAt:'2026-11-05T12:00:00Z',receiptContext:{actorId:ACTOR,market:'UK',retailer:'Tesco'}}:null});
+ const packet={receiptId:'after-finish-archived',market:'UK',retailer:'Tesco',shopSessionId:closed,stockPantry:true,items:[{key:'pasta',name:'Pasta',classification:'food',quantity:500,unit:'g',price:2}]};
+ assert.equal((await f.adapter.commitLocalReceipt(packet)).ok,true);assert.equal(JSON.parse(f.store.getItem(f.keys.stock))['pasta|g'],500);
+ const credits=JSON.parse(f.store.getItem(f.keys.finishShop));assert.equal(credits[closed+'|pasta|g'].receiptInventoryReceiptId,packet.receiptId);assert.equal(credits['shop-next|pasta|g'],undefined);
+ assert.equal((await f.adapter.commitLocalReceipt(packet)).duplicate,true);assert.equal(JSON.parse(f.store.getItem(f.keys.stock))['pasta|g'],500);
+});
+test('legacy archived receipt rejects unknown or different actor, region and store proofs without writes',async()=>{
+ for(const invalid of [null,{}, {actorId:'other-user',market:'UK',retailer:'Tesco'},{actorId:ACTOR,market:'US',retailer:'Tesco'},{actorId:ACTOR,market:'UK',retailer:'Aldi'}]){
+  const f=fixture();f.context.value.shopSessionId='shop-next';f.adapter.configure({getArchivedShop:id=>invalid===null?null:{version:7,id,closedAt:'2026-11-05T12:00:00Z',receiptContext:invalid}});const before=new Map(f.store.data);
+  await assert.rejects(f.adapter.commitLocalReceipt({receiptId:'unverified-old-trip',market:'UK',retailer:'Tesco',shopSessionId:'shop-1',items:[{key:'pasta',name:'Pasta',classification:'food',quantity:500,unit:'g',price:2}]}),/receipt_context_changed/);assert.deepEqual(f.store.data,before);
+ }
+});
+test('an explicitly unlinked legacy receipt adds new stock without spending another trip credit',async()=>{
+ const f=fixture();f.store.setItem(f.keys.stock,JSON.stringify({'pasta|g':500}));const credits={'shop-1|pasta|g':{name:'pasta',unit:'g',credited:500,week:'shop-1'}};f.store.setItem(f.keys.finishShop,JSON.stringify(credits));
+ await f.adapter.commitLocalReceipt({receiptId:'unlinked-new-purchase',market:'UK',retailer:'Tesco',shopSessionId:null,items:[{key:'pasta',name:'Pasta',classification:'food',quantity:500,unit:'g',price:2}]});
+ assert.equal(JSON.parse(f.store.getItem(f.keys.stock))['pasta|g'],1000);assert.deepEqual(JSON.parse(f.store.getItem(f.keys.finishShop)),credits);
+});
 async function draft(f, { receiptId = 'receipt-1', quantity = 500 } = {}) {
   const value = await f.adapter.normalizeDraft({ receiptId, currency: 'GBP', retailer: 'Tesco', shopSessionId: 'shop-1', items: [{ lineId: 'line-1', name: 'Pasta', kind: 'food', canonicalKey: 'pasta', quantity, unit: 'g', packCount: 1, packQuantity: quantity, packUnit: 'g', pricePaid: 1.5, priceType: 'regular' }] });
   value.lines[0].reviewed = true; return value;
@@ -99,9 +120,46 @@ test('actual receipt projection preserves freezer buckets across refresh, new pu
  assert.equal(JSON.parse(f.store.getItem(f.keys.stock))['pasta|g'],150);
 });
 
+test('a normal receipt preserves ordinary freezer stock without requiring reduced-food metadata',async()=>{
+ const f=fixture();f.root.BBReducedStock=reducedStock;f.server.stock={'pasta|g':300};f.server.initialized=true;await f.adapter.synchronize();
+ f.store.setItem(f.keys.kitchen,JSON.stringify({
+  frozen:{name:'Pasta',loc:'freezer',qty:200,unit:'g',selected:true,bb173StockKey:'pasta|g',bb173StockValue:200},
+  fresh:{name:'Pasta',loc:'cupboard',qty:100,unit:'g',selected:true,bb173StockKey:'pasta|g',bb173StockValue:100}
+ }));
+ const value=await draft(f,{receiptId:'ordinary-freezer-receipt',quantity:300});assert.equal((await f.adapter.commitReviewedReceipt(value)).localApplied,true);
+ const rows=Object.values(JSON.parse(f.store.getItem(f.keys.kitchen))).filter(row=>row.selected);
+ assert.equal(rows.filter(row=>row.loc==='freezer').reduce((sum,row)=>sum+row.qty,0),200);
+ assert.equal(rows.filter(row=>row.loc==='cupboard').reduce((sum,row)=>sum+row.qty,0),400);
+ assert.equal(JSON.parse(f.store.getItem(f.keys.stock))['pasta|g'],600);
+});
+
 test('the receipt transaction passes the verified actor to the shared price journal',async()=>{
  const f=fixture();let received;f.adapter.configure({prepareReceiptSave:packet=>{received=packet;return {changes:{},expected:{}};}});
  await f.adapter.commitReviewedReceipt(await draft(f));assert.equal(received.actorId,ACTOR);
+});
+
+for(const source of ['cloud','legacy'])test(source+' household reconciliation receives the prepared food credit ledger without altering HTTP payloads',async()=>{
+ const f=fixture(),householdId='shop-1|ess:soap',foodId='shop-1|pasta|g',prior={[householdId]:{name:'Soap',unit:'each',credited:2,stockBasis:'household-purchase',week:'shop-1'}};
+ f.store.setItem(f.keys.finishShop,JSON.stringify(prior));let received;
+ f.adapter.configure({receiptSaveKeys:[f.keys.finishShop],prepareReceiptSave(packet){
+  if(!packet.receiptId)return {changes:{},expected:{}};
+  received=packet;
+  assert.deepEqual(JSON.parse(f.store.getItem(f.keys.finishShop)),prior,'receipt preparation must not publish food proofs early');
+  assert.equal(packet.finishShopCredits[foodId].receiptInventoryReceiptId,'receipt-household-journal');
+  const credits=clone(packet.finishShopCredits);credits[householdId].receiptLegacyCreditById={'receipt-household-journal':2};
+  return {changes:{[f.keys.finishShop]:credits},expected:{[f.keys.finishShop]:f.store.getItem(f.keys.finishShop)}};
+ }});
+ if(source==='cloud'){
+  f.adapter.configure({fetch:async(address,input)=>{if(input.body)assert.equal(Object.hasOwn(JSON.parse(input.body),'finishShopCredits'),false,'internal ledger does not become receipt HTTP input');return f.server.fetch(address,input);}});
+  const value=await draft(f,{receiptId:'receipt-household-journal'});
+  value.lines.push(Core.normalizeReceiptLine({description:'Soap',classification:'essential',quantity:2,unit:'each',pricePaid:3,reviewed:true},{market:'UK'},1));
+  assert.equal((await f.adapter.commitReviewedReceipt(value)).localApplied,true);
+ }else{
+  const value={receiptId:'receipt-household-journal',market:'UK',retailer:'Tesco',shopSessionId:'shop-1',stockPantry:true,items:[{key:'pasta',name:'Pasta',classification:'food',quantity:500,unit:'g',price:1.5},{key:'soap',name:'Soap',classification:'essential',quantity:2,unit:'each',price:3}]};
+  assert.equal((await f.adapter.commitLocalReceipt(value)).ok,true);
+ }
+ assert.equal(received.finishShopCredits[householdId].credited,2);
+ const saved=JSON.parse(f.store.getItem(f.keys.finishShop));assert.equal(saved[foodId].receiptInventoryReceiptId,'receipt-household-journal');assert.equal(saved[householdId].receiptLegacyCreditById['receipt-household-journal'],2);
 });
 test('a Premium change after cloud confirmation retains the already reviewed stock annotation',async()=>{
  const f=fixture();let premium=true;f.root.BBReducedStock=reducedStock;f.root.BBReducedFoodHost={isPremium:()=>premium};
@@ -638,6 +696,41 @@ test('reviewed reduced receipts stay outside standard-price learning and the str
 function enableReduced(f){
   const reports=[];f.root.BBReducedFoodHost={isPremium:()=>true};f.root.BBReducedStock=reducedStock;f.root.BBYellowStickersUI={reportReceipt:value=>{reports.push(clone(value));return Promise.resolve({ok:true});}};return reports;
 }
+
+test('normal receipt costs include all accepted food and free household lines without changing baseline observations',async()=>{
+ const f=fixture(),packets=[];f.adapter.configure({prepareReceiptSave:packet=>{if(packet.receiptId)packets.push(packet);return {changes:{},expected:{}};}});
+ const value=await draft(f,{receiptId:'all-purchase-costs'});value.lines.push(Core.normalizeReceiptLine({description:'Soap',classification:'essential',quantity:1,unit:'each',pricePaid:0,reviewed:true},{market:'UK'},1));
+ assert.equal((await f.adapter.commitReviewedReceipt(value)).localApplied,true);
+ assert.deepEqual(clone(packets[0].purchaseCosts.map(line=>[line.classification,line.pricePaid,line.reduced])),[['food',1.5,false],['essential',0,false]]);
+ assert.equal(packets[0].purchaseCosts[0].priceType,'regular');assert.equal(packets[0].reducedItems.length,0);
+});
+test('legacy cost uses bought pack count while its saved usual guide-pack price stays unchanged',async()=>{
+ for(const [priceFields,expected]of [[{price:2},4],[{price:'2'},4],[{price:2,lineTotal:3},3],[{price:2,pricePaid:3},3]]){
+  const f=fixture();let packet;f.adapter.configure({prepareReceiptSave:value=>{packet=value;return {changes:{},expected:{}};}});
+  await f.adapter.commitLocalReceipt({receiptId:'legacy-pack-total',market:'UK',retailer:'Tesco',shopSessionId:'shop-1',items:[{key:'pasta',name:'Pasta',classification:'food',quantity:1000,unit:'g',guidePackQuantity:500,guidePackUnit:'g',...priceFields}],priceUpdates:[{name:'pasta',price:2,unit:'g'}]});
+  assert.equal(packet.purchaseCosts[0].pricePaid,expected);assert.equal(packet.priceUpdates[0].price,2);assert.equal(packet.items[0].price,priceFields.price);assert.equal(packet.purchaseCosts[0].reduced,false);
+ }
+});
+test('a prior yellow-sticker purchase protects the baseline while excess receipt lines remain ordinary',async()=>{
+ const f=fixture();enableReduced(f);let body,packet;
+ f.adapter.configure({getPurchaseCosts:()=>[{name:'Pasta',quantity:500,unit:'g',pricePaid:1,kind:'manual',shopSessionId:'shop-1'}],prepareReceiptSave:value=>{if(value.receiptId)packet=value;return {changes:{},expected:{}};}});f.server.afterPost=value=>{body=value;};
+ const value=await draft(f,{receiptId:'mixed-reduced-and-normal'});Object.assign(value.lines[0],{pricePaid:3,lineTotal:3});value.lines.push({...value.lines[0],id:'line-2',pricePaid:1,lineTotal:1});
+ assert.equal((await f.adapter.commitReviewedReceipt(value)).localApplied,true);
+ assert.equal(body.lines[0].priceType,'promotion','ambiguous linked line cannot teach a discounted baseline');assert.equal(body.lines[1].priceType,'promotion');
+ assert.deepEqual(clone(packet.purchaseCosts.map(line=>[line.pricePaid,line.reduced])),[[3,false],[1,true]]);assert.deepEqual(clone(packet.reducedItems.map(line=>line.lineId)),['line-2']);
+});
+test('inferred reduced receipt annotations survive an uncertain commit after manual price coverage changes',async()=>{
+ const f=fixture();enableReduced(f);let known=[{name:'Pasta',quantity:500,unit:'g',pricePaid:1,kind:'manual'}],lost=false,packet;
+ f.adapter.configure({getPurchaseCosts:()=>known,prepareReceiptSave:value=>{if(value.receiptId)packet=value;return {changes:{},expected:{}};},fetch:async(address,input)=>{const response=await f.server.fetch(address,input);if(input.method==='POST'&&!lost){lost=true;known=[];throw Error('response lost after commit');}return response;}});
+ const value=await draft(f,{receiptId:'inferred-pending-retry'});Object.assign(value.lines[0],{pricePaid:1,lineTotal:1});
+ await assert.rejects(f.adapter.commitReviewedReceipt(value),/response lost/);const journal=f.adapter.getPendingConfirmation();assert.equal(journal.body.lines[0].priceType,'promotion');assert.deepEqual(clone(journal.inferredReducedLineIds),['line-1']);
+ const result=await f.adapter.commitReviewedReceipt(value);assert.equal(result.localApplied,true);assert.equal(result.duplicate,true);assert.equal(JSON.parse(f.store.getItem(f.keys.stock))['pasta|g'],500);assert.equal(packet.purchaseCosts[0].reduced,true);assert.equal(f.server.receipts.size,1);
+});
+test('legacy linked reduced receipt cannot overwrite standard price when its reduced toggle was omitted',async()=>{
+ const f=fixture();enableReduced(f);let packet;f.adapter.configure({getPurchaseCosts:()=>[{name:'Pasta',quantity:500,unit:'g',pricePaid:.75,kind:'manual'}],prepareReceiptSave:value=>{packet=value;return {changes:{},expected:{}};}});
+  await f.adapter.commitLocalReceipt({receiptId:'legacy-linked-reduced',market:'UK',retailer:'Tesco',shopSessionId:'shop-1',items:[{key:'pasta',name:'Pasta',classification:'food',quantity:500,unit:'g',price:.75}],priceUpdates:[{name:'Pasta',unit:'g',price:.75}]});
+ assert.equal(packet.priceUpdates.length,0);assert.equal(packet.purchaseCosts[0].priceType,'promotion');assert.equal(packet.purchaseCosts[0].reduced,true);
+});
 
 test('only confirmed reduced-food stock becomes urgent, while the atomic packet carries the actual paid amount', async () => {
   const f=fixture(),reports=enableReduced(f),packets=[];f.adapter.configure({prepareReceiptSave:packet=>{packets.push(clone(packet));return {changes:{},expected:{}};}});

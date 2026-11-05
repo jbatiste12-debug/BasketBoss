@@ -11,7 +11,7 @@
  /** @typedef {ConversionPath & {to:string}} ConversionEdge */
  /** @typedef {ConversionPath & {unit:string,invalid?:false}} PackageMeasure */
  /** @typedef {{invalid:true}} InvalidPackage */
- /** @typedef {{stockKey:string,food:string,canonicalKey:string,state:string,sourceUnit:string,info:import('./types/pantry-workflow').MeasureInfo,pack:PackageMeasure|InvalidPackage|null}} ConversionSource */
+ /** @typedef {{stockKey:string,food:string,canonicalKey:string,state:string,sourceUnit:string,info:import('./types/pantry-workflow').MeasureInfo,pack:PackageMeasure|InvalidPackage|null,excluded:boolean}} ConversionSource */
  /** @typedef {DeductionRow & {canonicalKey:string|null,estimated:boolean,assumptions:string[],allocations:import('./types/pantry-workflow').StockAllocation[],_conversion:{food:string|null,state:string,measurable:boolean,invalid:boolean,stateConflict?:boolean,smallStaple?:boolean,reviewEdit?:boolean}}} ConversionRow */
  const MAX=1000000;
  /** @type {Record<string,string>} */
@@ -62,6 +62,8 @@
  /** @param {DeductionInput & {id:CanonicalId,conversion:PantryConversionContext}} input @returns {import('./types/pantry-workflow').DeductionResult} */
  function convertedProposal({stock,ingredients,amounts,id,conversion}){
   if(!object(conversion)||!object(stock)||!Array.isArray(ingredients)||ingredients.length>500)throw Error('Review the pantry conversion details before cooking.');
+  if(conversion.excludedStockKeys!==undefined&&(!Array.isArray(conversion.excludedStockKeys)||conversion.excludedStockKeys.length>2000||conversion.excludedStockKeys.some(key=>typeof key!=='string'||!key||key.length>240)))throw Error('Review excluded pantry sources before cooking.');
+  const excludedStockKeys=new Set(conversion.excludedStockKeys||[]);
   const physical=/** @type {StockMap} */ ({...stock}),sources=/** @type {ConversionSource[]} */ ([]),rows=/** @type {ConversionRow[]} */ ([]),byId=/** @type {Map<string,ConversionRow>} */ (new Map()),ruleCache=/** @type {Map<string,Map<string,ConversionEdge[]>>} */ (new Map());
   const mode=conversion.pantryMode===true&&!!policy;
   /** @param {string} value */
@@ -137,7 +139,7 @@
   for(const [stockKey,quantity]of Object.entries(stock)){
    const at=stockKey.lastIndexOf('|'),food=name(stockKey.slice(0,at)),sourceUnit=stockKey.slice(at+1),info=measure(sourceUnit);
    if(at<1||!food||!sourceUnit||sourceUnit.length>40||!valid(quantity)||!valid(quantity*info.factor))throw Error('Review your saved pantry amounts and units before cooking.');
-   sources.push({stockKey,food,canonicalKey:foodId(food),state:stateFor(food),sourceUnit,info,pack:packageMeasure(food,sourceUnit,stockMetadata[stockKey],stockKey)});
+   sources.push({stockKey,food,canonicalKey:foodId(food),state:stateFor(food),sourceUnit,info,pack:packageMeasure(food,sourceUnit,stockMetadata[stockKey],stockKey),excluded:excludedStockKeys.has(stockKey)});
   }
   for(const [index,ingredient]of ingredients.entries()){
    const food=name(ingredient?.key||ingredient?.name),display=name(ingredient?.name)||food||'Ingredient '+(index+1),info=measure(ingredient?.unit);
@@ -187,12 +189,18 @@
    // The main ingredient catalogue singularises whole peppers to "pepper".
    // A counted recipe pepper stays produce unless the user explicitly tracks
    // that same identity as a condiment container/status item.
-   const wholePepper=mode&&context.food&&policy.canonicalName(context.food)==='pepper'&&row.unit==='each'&&!Object.keys(conversion.staples||{}).some(food=>name(food)&&foodId(food)===row.canonicalKey&&stateFor(food)===context.state);
+   const pepperIdentity=mode&&context.food&&policy.canonicalName(context.food)==='pepper';
+   const explicitPepperStaple=pepperIdentity&&Object.keys(conversion.staples||{}).some(food=>name(food)&&foodId(food)===row.canonicalKey&&stateFor(food)===context.state);
+   // Keep the source description: canonical "pepper" can mean counted/weighted
+   // whole peppers or a seasoning jar. An aggregate legacy staple map cannot
+   // override an unambiguous produce description such as "Peppers".
+   const wholePepper=pepperIdentity&&(policy.isWholePepper?
+    policy.isWholePepper(row.name,row.unit,{staple:explicitPepperStaple&&/^pepper$/i.test(row.name.trim())?true:undefined}):row.unit==='each'&&!explicitPepperStaple);
    if(mode&&context.food&&policy.isStaple(context.food)&&!wholePepper){
     row.staple=true;
     const records=Object.entries(conversion.staples||{}).filter(([food])=>name(food)&&foodId(food)===row.canonicalKey&&stateFor(food)===context.state).map(([,entry])=>entry);
     const statuses=records.map(entry=>{const raw=typeof entry==='string'?entry:entry?.status||entry?.stapleStatus;return raw==='in_stock'?'in':raw==='in'||raw==='low'||raw==='out'?raw:'unknown';});
-    const matching=sources.filter(source=>source.canonicalKey===row.canonicalKey&&source.state===context.state);
+    const matching=sources.filter(source=>!source.excluded&&source.canonicalKey===row.canonicalKey&&source.state===context.state);
     const status=statuses.length?statuses.every(value=>value===statuses[0])?statuses[0]:'unknown':matching.some(source=>physical[source.stockKey]>0)?'in':'out';
     row.stapleStatus=status;row.stapleRestock=status==='low'||status==='out';row.covered=context.smallStaple===true&&status==='in';
     const count=records.filter(entry=>typeof entry==='object'&&entry!==null).map(entry=>entry.count).filter(valid);
@@ -211,7 +219,7 @@
    for(const source of sources){
     const quantity=physical[source.stockKey]||0;if(!(quantity>0)||source.canonicalKey!==row.canonicalKey)continue;
     let relation=null;
-    if(source.state!==context.state)unconverted.push(source);
+    if(source.excluded||source.state!==context.state)unconverted.push(source);
     else if(source.pack?.invalid)unconverted.push(source);
     else{
      // Matching literal units need no package-size assumption. Otherwise use
@@ -226,7 +234,7 @@
     }
    }
    row.canDeduct=row.owned>0||unconverted.length===0;
-   if(unconverted.length&&wanted!==null&&wanted>0){row.issue='unit_mismatch';row.issueLabel='At home has '+unconverted.map(source=>physical[source.stockKey]+' '+source.sourceUnit+' of '+source.food).join(', ')+'. Reviewed pack contents or a food-specific conversion are needed. This stock stays unchanged; review At home.';}
+   if(unconverted.length&&wanted!==null&&wanted>0){row.issue='unit_mismatch';row.issueLabel=unconverted.some(source=>source.excluded)?'Some At home amounts need ingredient identity review. Those quantities stay unchanged; review them in At home.':'At home has '+unconverted.map(source=>physical[source.stockKey]+' '+source.sourceUnit+' of '+source.food).join(', ')+'. Reviewed pack contents or a food-specific conversion are needed. This stock stays unchanged; review At home.';}
    if(!mode&&edits.has(row.id)&&!row.canDeduct&&wanted!==null&&wanted>0)throw Error('Review the pantry unit for '+row.name+' before deducting it.');
    let needed=Math.min(row.owned,Math.max(0,wanted||0));
    for(const {source,relation}of candidates){

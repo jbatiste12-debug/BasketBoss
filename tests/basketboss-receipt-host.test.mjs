@@ -2,6 +2,8 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import fs from 'node:fs/promises';
 import vm from 'node:vm';
+import {createRequire} from 'node:module';
+const require = createRequire(import.meta.url), reduced = require('../bb-reduced-purchases.js'), reducedStock = require('../bb-reduced-stock.js');
 
 const source = await fs.readFile(new URL('../bb-receipt-host.js', import.meta.url), 'utf8');
 const actorA = '11111111-1111-4111-8111-111111111111';
@@ -70,15 +72,105 @@ test('US Sunday evening remains in the local shopping week after UTC has reached
     assert.equal(result.receipts.length, 1);assert.equal(result.receipts[0].receiptId, 'sunday');
   } finally {if (previous === undefined) delete process.env.TZ;else process.env.TZ = previous;}
 });
-test('guest and two signed-in accounts restore their own pantry and essentials without token snapshots', () => {
+test('the first account claims guest stock once, while later accounts restore their own pantry and essentials', () => {
   const h = harness({stock: {'rice|g': 100}, actor: 'guest'});h.setEssentials([{name: 'Guest soap'}]);
-  h.setActor(actorA);h.host.switchActor();assert.equal(h.store.getItem(keys.stock), null);assert.equal(h.getEssentials().length, 0);
+  h.setActor(actorA);h.host.switchActor();assert.equal(JSON.parse(h.store.getItem(keys.stock))['rice|g'], 100);assert.equal(h.getEssentials()[0].name, 'Guest soap');
   h.store.setItem(keys.stock, JSON.stringify({'pasta|g': 500}));h.setEssentials([{name: 'A shampoo'}]);
   h.setActor(actorB);h.host.switchActor();assert.equal(h.store.getItem(keys.stock), null);assert.equal(h.getEssentials().length, 0);
   h.store.setItem(keys.stock, JSON.stringify({'lentils|g': 200}));
   h.setActor(actorA);h.host.switchActor();assert.equal(JSON.parse(h.store.getItem(keys.stock))['pasta|g'], 500);assert.equal(h.getEssentials()[0].name, 'A shampoo');
-  h.setActor('guest');h.host.switchActor();assert.equal(JSON.parse(h.store.getItem(keys.stock))['rice|g'], 100);assert.equal(h.getEssentials()[0].name, 'Guest soap');
+  h.setActor('guest');h.host.switchActor();assert.equal(h.store.getItem(keys.stock), null);assert.equal(h.getEssentials().length, 0,'claimed guest amounts cannot be credited to another account again');
   assert.ok([...h.store.values].every(([key, value]) => !key.startsWith('basketboss_receipt_host_snapshot_') || !value.includes('synthetic-token')));
+});
+test('first sign-in retains completed guest meals, manual requests, paid-price baselines and the same purchase identity', () => {
+  const h = harness({stock: {'rice|g': 500}, actor: 'guest'}), own = h.host.keys;
+  const home = {version: 1, byActor: {guest: {targets: {'rice|g': {pending: true, targetQty: 800}}, cooked: {'cook-one': {at: 100}}, planned: {'week|Monday|rice': {at: 100}}, manualBuys: {topup: {pending: true, quantity: 300}}}}};
+  const prices = JSON.stringify({'UK|Tesco|rice|g': {packPrice: 1.25}}), trip = JSON.stringify({version: 7, id: 'same-trip', reducedPurchases: {}}), ticks = JSON.stringify({'rice|g': true});
+  h.store.setItem('basketboss_at_home_requirements_v1', JSON.stringify(home));h.store.setItem(own.prices, prices);h.store.setItem(own.shop, trip);h.store.setItem(own.ticks, ticks);
+  h.setActor(actorA);assert.equal(h.host.switchActor(), true);
+  assert.equal(h.store.getItem(own.prices), prices);assert.equal(h.store.getItem(own.shop), trip);assert.equal(h.store.getItem(own.ticks), ticks);assert.equal(JSON.parse(h.store.getItem(keys.stock))['rice|g'], 500);
+  const adopted = JSON.parse(h.store.getItem('basketboss_at_home_requirements_v1'));assert.deepEqual(adopted.byActor[actorA], home.byActor.guest);assert.equal(adopted.byActor.guest, undefined);
+  assert.equal(h.host.switchActor(), false,'repeated session refresh must not re-adopt anything');
+  h.setActor('guest');h.host.switchActor();assert.equal(h.store.getItem(own.shop), null);assert.equal(h.store.getItem(own.prices), null);assert.equal(h.store.getItem(own.ticks), null);
+  h.setActor(actorB);h.host.switchActor();assert.equal(h.store.getItem(keys.stock), null);assert.equal(h.store.getItem(own.prices), null);
+  h.setActor(actorA);h.host.switchActor();assert.equal(h.store.getItem(own.shop), trip);assert.equal(h.store.getItem(own.prices), prices);assert.equal(h.store.getItem(own.ticks), ticks);
+});
+test('a first account with server pantry keeps the unowned guest baseline pending the existing merge review', () => {
+  const h = harness({stock: {'rice|g': 500}, actor: 'guest', cached: {actorId: actorA, initialized: true, scope: {kind: 'user', id: actorA}, serverStock: {'rice|g': 700}, pantryReview: {required: true}}});
+  h.setActor(actorA);h.host.switchActor();assert.equal(JSON.parse(h.store.getItem(keys.stock))['rice|g'], 500);assert.equal(h.store.getItem(keys.owner), null,'claiming local stock must not forge a confirmed cloud projection');
+  assert.equal(h.host.getProjection().serverStock['rice|g'], 700);assert.equal(h.host.getProjection().pantryReview.required, true);
+});
+test('signing out or switching accounts isolates unfinished purchases, reduced history and usual prices', () => {
+  const h = harness(), own = h.host.keys, fields = ['prices','paidPrices','packSizes','shop','shopArchive','ticks','purchases','choices','partials'];
+  const original = Object.fromEntries(fields.map(key=>[key, JSON.stringify({savedFor: actorA, key})]));
+  for(const key of fields)h.store.setItem(own[key],original[key]);
+  h.setActor(actorB);h.host.switchActor();for(const key of fields)assert.equal(h.store.getItem(own[key]),null,key+' cannot leak into another account');
+  h.setActor(actorA);h.host.switchActor();for(const key of fields)assert.equal(h.store.getItem(own[key]),original[key],key+' must survive returning to its account');
+});
+test('guest adoption rolls back its household and completion records if any scoped stock write fails', () => {
+  const h = harness({stock: {'rice|g': 500}, actor: 'guest'});h.setEssentials([{name:'Guest soap'}]);
+  const home = JSON.stringify({version:1,byActor:{guest:{planned:{already:true},cooked:{},targets:{}}}});h.store.setItem('basketboss_at_home_requirements_v1',home);
+  h.store.setItem(keys.kitchen,'{}');const before = [...h.store.values];h.store.failNext(keys.kitchen);h.setActor(actorA);assert.throws(()=>h.host.switchActor(),/quota/);
+  assert.deepEqual([...h.store.values],before);assert.equal(h.getEssentials()[0].name,'Guest soap');assert.equal(h.store.getItem('basketboss_at_home_requirements_v1'),home);
+});
+test('claiming the first guest profile rebinds cost and urgency ownership without rewriting purchase identities', () => {
+  const h = harness({stock: {'carrot|g':200}, actor:'guest'}), own = h.host.keys, at = Date.parse('2026-10-31T12:00:00Z');
+  const cost = reduced.record({actor:'guest',market:'UK',shopSessionId:'guest-trip',id:'paid-carrots',purchaseId:'carrot|g',name:'Carrots',unit:'g',quantity:200,pricePaid:.5,at});
+  h.store.setItem(own.shop, JSON.stringify({version:7,id:'guest-trip',reducedPurchases:{[cost.id]:cost},receiptContext:{actorId:'guest',market:'UK',retailer:'Tesco'}}));
+  h.store.setItem(own.shopArchive, JSON.stringify({'finished-guest-trip':{version:7,id:'finished-guest-trip',receiptContext:{actorId:'guest',market:'UK',retailer:'Tesco'}}}));
+  h.store.setItem(own.kitchen, JSON.stringify({carrots:{name:'Carrots',qty:200,unit:'g',loc:'fridge',selected:true,bb173StockKey:'carrot|g',bb173StockValue:200,bbReduced:{version:1,actor:'guest',urgent:true,at,sources:['reduced:guest:guest-trip:paid-carrots']}}}));
+  h.setActor(actorA);h.host.switchActor();const trip = JSON.parse(h.store.getItem(own.shop)), item = JSON.parse(h.store.getItem(own.kitchen)).carrots;
+  assert.equal(trip.reducedPurchases[cost.id].actor,actorA);assert.equal(trip.reducedPurchases[cost.id].id,cost.id);assert.equal(trip.receiptContext.actorId,actorA);
+  const archived=JSON.parse(h.store.getItem(own.shopArchive))['finished-guest-trip'];assert.equal(archived.id,'finished-guest-trip');assert.equal(archived.receiptContext.actorId,actorA,'a guest Finish then sign-in retains the same own-account receipt link');
+  assert.equal(reduced.eligible(trip,{actor:actorA,market:'UK'},{ticks:{'carrot|g':true},purchases:{'carrot|g':{qty:200,unit:'g',bbBetaSelectedWeek:'guest-trip'}}}).length,1);
+  assert.equal(reducedStock.isUrgent(item,{actor:actorA}),true);assert.equal(item.bbReduced.sources[0],'reduced:guest:guest-trip:paid-carrots');
+});
+test('account switching isolates the meal plan, school lunches and custom dinners before the reload callback', () => {
+  const h = harness(), own = h.host.keys, previous = {plan:{version:2,planned:[{day:'Monday',recipeId:'rice'}]},lunch:{version:1,days:{Monday:[{name:'Apple',qty:1,unit:'each'}]}},notes:{Tuesday:'Custom dinner'}};
+  for (const [key,value] of Object.entries(previous)) h.store.setItem(own[key],JSON.stringify(value));
+  const changes=[];h.host.configure({onActorChanged:value=>{changes.push(value);assert.equal(JSON.parse(h.store.getItem(own.actor)).actorId,value.actor);return true;}});
+  h.setActor(actorB);h.host.switchActor();for(const key of Object.keys(previous))assert.equal(h.store.getItem(own[key]),null);
+  h.setActor(actorA);h.host.switchActor();for(const [key,value] of Object.entries(previous))assert.deepEqual(JSON.parse(h.store.getItem(own[key])),value);
+  assert.deepEqual(changes.map(value=>value.previous),[actorA,actorB]);
+});
+test('another tab or a BFCache restore reloads stale account memory without archiving the new account under the old identity', () => {
+  for(const event of ['basketboss:session-changed','pageshow']){
+    const h=harness(), own=h.host.keys, changes=[];h.host.configure({onActorChanged:value=>{changes.push(value);return true;}});
+    const otherProfile=JSON.stringify({'pasta|g':900});h.store.setItem(own.stock,otherProfile);h.store.setItem(own.actor,JSON.stringify({version:1,actorId:actorB,localAccountSeen:true}));
+    h.setActor(actorB);h.event(event);
+    assert.equal(changes.length,1,event);assert.equal(changes[0].previous,actorA);assert.equal(changes[0].actor,actorB);
+    assert.equal(h.store.getItem(own.stock),otherProfile);assert.equal(h.store.getItem('basketboss_receipt_host_snapshot_v1:'+actorA),null,'the other tab already isolated its profile; do not archive its stock as ours');
+  }
+});
+test('a versioned account backup contains stock, prices, quantities and completion identity without auth or server ownership', () => {
+  const h = harness({stock:{'rice|g':500}}), own = h.host.keys;
+  h.store.setItem(own.prices,JSON.stringify({'rice|g':{packPrice:1.25}}));h.store.setItem(own.plan,JSON.stringify({version:2,planned:[{recipeId:'rice',day:'Monday'}]}));
+  h.store.setItem('basketboss_cloud_session_v1','secret-session-that-must-never-be-backed-up');
+  h.store.setItem('basketboss_at_home_requirements_v1',JSON.stringify({version:1,byActor:{[actorA]:{targets:{},cooked:{one:{recipeId:'rice',at:100}},planned:{completed:true}}}}));
+  const backup = h.host.exportBackup();assert.equal(backup.version,1);assert.equal(backup.actorId,actorA);assert.equal(backup.hasData,true);
+  assert.equal(backup.values[own.stock]['rice|g'],500);assert.equal(backup.values[own.prices]['rice|g'].packPrice,1.25);assert.equal(backup.home.planned.completed,true);
+  assert.equal(Object.hasOwn(backup.values,own.plan),false);assert.equal(Object.hasOwn(backup.values,own.owner),false);assert.ok(!JSON.stringify(backup).includes('secret-session'));
+  backup.values[own.stock]['rice|g']=999;assert.equal(JSON.parse(h.store.getItem(own.stock))['rice|g'],500,'export returns an independent snapshot');
+});
+test('a fresh device restores the exact account backup once, retaining stock and usual price rather than adding quantities', () => {
+  const source = harness({stock:{'rice|g':500}}), own = source.host.keys;source.setEssentials([{name:'Soap',ownedQty:1,targetQty:2}]);source.store.setItem(own.prices,JSON.stringify({'rice|g':{packPrice:1.25}}));
+  const backup = source.host.exportBackup(), fresh = harness();fresh.store.setItem(own.lunch,JSON.stringify({version:1,children:1,days:{Monday:[],Tuesday:[],Wednesday:[],Thursday:[],Friday:[]},menus:{}}));fresh.store.setItem(own.shop,JSON.stringify({version:7,id:'empty-local-trip',bought:{},purchases:{}}));
+  assert.equal(fresh.host.hasLocalData(),false);const before=[...fresh.store.values],proposal=fresh.host.prepareBackupRestore(backup);
+  assert.equal(proposal.restored,true);assert.equal(proposal.requiresReview,false);assert.deepEqual([...fresh.store.values],before,'preparing is read-only');assert.equal(proposal.updates[own.owner],null);
+  for(const [key,value]of Object.entries(proposal.updates))value===null?fresh.store.removeItem(key):fresh.store.setItem(key,JSON.stringify(value));fresh.setEssentials(backup.essentials);
+  assert.equal(JSON.parse(fresh.store.getItem(own.stock))['rice|g'],500);assert.equal(JSON.parse(fresh.store.getItem(own.prices))['rice|g'].packPrice,1.25);assert.equal(fresh.getEssentials()[0].ownedQty,1);
+  const repeated=fresh.host.prepareBackupRestore(backup);assert.equal(repeated.restored,false);assert.equal(repeated.requiresReview,false);assert.deepEqual(Object.keys(repeated.updates),[]);
+});
+test('remote backups cannot overwrite local pantry, import another actor or smuggle credentials', () => {
+  const source=harness({stock:{'rice|g':500}}), backup=source.host.exportBackup(), local=harness({stock:{'rice|g':300}}), before=[...local.store.values];
+  const proposal=local.host.prepareBackupRestore(backup);assert.equal(proposal.requiresReview,true);assert.equal(proposal.restored,false);assert.deepEqual(Object.keys(proposal.updates),[]);assert.deepEqual([...local.store.values],before);
+  for(const alter of [value=>{value.actorId=actorB;},value=>{value.values.basketboss_cloud_session_v1={access_token:'forbidden'};},value=>{value.values[local.host.keys.kitchen]={food:{name:'Rice',access_token:'forbidden'}};},value=>{value.values[local.host.keys.stock]['rice|g']=-100;},value=>{value.values[local.host.keys.kitchen]={food:{name:'Rice',qty:-100,unit:'g'}};}]){
+    const malformed=structuredClone(backup);alter(malformed);assert.throws(()=>local.host.prepareBackupRestore(malformed),/backup_/);assert.deepEqual([...local.store.values],before);
+  }
+});
+test('an unresolved receipt journal cannot be exported as a trustworthy cloud pantry snapshot', () => {
+  const h=harness({stock:{'rice|g':500}}), before=[...h.store.values];h.setPending({receiptId:'uncertain-receipt'});
+  assert.throws(()=>h.host.exportBackup(),/backup_paused/);assert.deepEqual([...h.store.values],before);
 });
 test('quota failure rolls account switch back without clearing the previous pantry', () => {
   const h = harness({stock: {'rice|g': 100}});h.setEssentials([{name: 'Keep me'}]);

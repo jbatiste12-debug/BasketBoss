@@ -3,7 +3,7 @@
 (function (root) {
   'use strict';
   const scriptURL = root.document?.currentScript?.src;
-  const moduleURL = scriptURL ? new URL('./bb-receipt-inventory-core.mjs?v=20261105-reduced1', scriptURL).href : './bb-receipt-inventory-core.mjs?v=20261105-reduced1';
+  const moduleURL = scriptURL ? new URL('./bb-receipt-inventory-core.mjs?v=20261105-business1', scriptURL).href : './bb-receipt-inventory-core.mjs?v=20261105-business1';
   const KEYS = Object.freeze({ stock: 'basketboss_321_v7_measured_pantry', kitchen: 'basketboss_makeameal_v1_inventory', confirmed: 'basketboss_ui_next_confirmed_pantry_v1', finishShop: 'basketboss_purchase_receipts_v1', owner: 'basketboss_receipt_projection_owner_v1', session: 'basketboss_cloud_session_v1' });
   function createReceiptInventoryAdapter(initial = {}) {
     let options = { ...initial }, corePromise, memoryDrafts = new Map();
@@ -74,6 +74,56 @@
       const selected = new Set(reducedLineIds(body, values));
       return (body?.lines || []).filter(line => selected.has(line.lineId)).map(line => ({...line, key: line.canonicalKey, classification: 'food', reduced: true, legacyCreditQuantity: Number(line.legacyCredit?.quantity || 0)}));
     }
+    function acceptedPurchaseCosts(body, reduced = []) {
+      const selected = new Set(reduced);
+      return (body?.lines || []).filter(line => ['food','essential'].includes(line.kind) && Number.isFinite(line.pricePaid) && line.pricePaid >= 0).map(line => ({...line, key: line.canonicalKey || line.name, classification: line.kind, reduced: selected.has(line.lineId), legacyCreditQuantity: Number(line.legacyCredit?.quantity || 0)}));
+    }
+    function archivedReceiptContext(packet, captured, active) {
+      const id = packet.shopSessionId || null;
+      if (id === active.shopSessionId) return true;
+      // Explicitly unlinked, reviewed receipts are new purchases, with no
+      // old-trip quantity credit to spend.
+      if (id === null) return Object.hasOwn(packet,'shopSessionId');
+      if (typeof id !== 'string' || !/^[A-Za-z0-9_-]{4,120}$/.test(id)) return false;
+      const archive = options.getArchivedShop?.(id), proof = archive?.receiptContext;
+      return !!archive && archive.version === 7 && archive.id === id && typeof archive.closedAt === 'string' && Number.isFinite(Date.parse(archive.closedAt)) && proof?.actorId === captured.actorId && proof.market === active.market && (proof.retailer || null) === active.retailer;
+    }
+    function inferPurchaseAnnotations(lines, receiptId, shopSessionId, c, pending = null) {
+      const result = lines.map(line => ({...line})), inferredPromotionLineIds = [], inferredReducedLineIds = [];
+      const savedPromotion = new Set(pending?.inferredPromotionLineIds || []), savedReduced = new Set(pending?.inferredReducedLineIds || []);
+      const known = options.getPurchaseCosts?.(shopSessionId) || [];
+      const measure = line => c.normalizeMeasuredQuantity(line.quantity,line.unit);
+      const name = line => c.canonicalIngredientKey(line.canonicalKey || line.key || line.name || line.description,canonicalize);
+      const pools = [];
+      for(const row of Array.isArray(known)?known:[]){
+        if(!row||typeof row!=='object'||Array.isArray(row))continue;
+        if(row?.reduced === false || row?.receiptId && row.receiptId !== receiptId)continue;
+        const amount=measure(row);if(!amount)continue;
+        const remaining=row.kind==='receipt'?amount.quantity:Math.max(0,amount.quantity-(Number(row.receiptCoveredQuantity)||0));
+        if(remaining>0)pools.push({name:name(row),unit:amount.unit,quantity:remaining,original:amount.quantity,price:row.pricePaid,lineId:row.receiptId===receiptId?row.lineId:null});
+      }
+      const eligible=line=>line.selected!==false&&line.sourceKind==='purchase'&&['food','essential'].includes(line.classification);
+      // Spend explicit reduced annotations first; a later ordinary line cannot
+      // inherit the same reduced quantity a second time.
+      const ordered=[...result.filter(line=>line.reduced===true),...result.filter(line=>line.reduced!==true)];
+      for(const line of ordered){
+        if(!eligible(line))continue;
+        const amount=measure(line),key=name(line),id=line.id;if(!amount||!key)continue;
+        if(savedPromotion.has(id)){
+          line.priceType='promotion';if(savedReduced.has(id))line.reduced=true;
+          inferredPromotionLineIds.push(id);if(savedReduced.has(id))inferredReducedLineIds.push(id);continue;
+        }
+        const matching=pools.filter(pool=>pool.name===key&&pool.unit===amount.unit&&pool.quantity>0);
+        if(!matching.length)continue;
+        const wasReduced=line.reduced===true, paid=Number(line.pricePaid??line.lineTotal);
+        const proof=matching.find(pool=>(!pool.lineId||pool.lineId===id)&&pool.quantity+1e-7>=amount.quantity&&(wasReduced||Number.isFinite(pool.price)&&Number.isFinite(paid)&&Math.abs(paid-pool.price*amount.quantity/pool.original)<.011));
+        // A partial/ambiguous match still must not teach a discounted price as
+        // the future standard price. It does not mark the full line Use soon.
+        if(line.priceType!=='promotion'){line.priceType='promotion';inferredPromotionLineIds.push(id);}
+        if(proof){proof.quantity=Math.max(0,proof.quantity-amount.quantity);if(!wasReduced&&line.classification==='food'&&reducedEnabled()){line.reduced=true;inferredReducedLineIds.push(id);if(!inferredPromotionLineIds.includes(id))inferredPromotionLineIds.push(id);}}
+      }
+      return {lines:result,inferredPromotionLineIds,inferredReducedLineIds};
+    }
     function receiptConfirmedAt(response, receiptId, fallback) {
       const value = response.receipts?.find(row => row?.receiptId === receiptId)?.confirmedAt;
       return typeof value === 'string' && Number.isFinite(Date.parse(value)) ? value : response.duplicate === true ? null : fallback;
@@ -89,6 +139,7 @@
       if (!Object.keys(value).length) return value;
       if (value.version !== 1 || value.actorId !== actorId || typeof value.receiptId !== 'string' || !value.receiptId || value.receiptId.length > 120 || typeof value.requestId !== 'string' || value.requestId.length > 160 || !value.body || value.body.action !== 'confirm_receipt' || value.body.receiptId !== value.receiptId || value.body.requestId !== value.requestId || JSON.stringify(value).length > 750000) throw Error('invalid_pending_receipt_confirmation');
       reducedLineIds(value.body, value.reducedLineIds || []);
+      for(const ids of [value.inferredPromotionLineIds,value.inferredReducedLineIds])if(ids!==undefined&&(!Array.isArray(ids)||ids.length>200||new Set(ids).size!==ids.length||ids.some(id=>typeof id!=='string'||!value.body.lines.some(line=>line.lineId===id&&line.priceType==='promotion'))))throw Error('invalid_pending_receipt_annotations');
       return value;
     }
     function equalStock(left, right) {
@@ -194,7 +245,15 @@
       const rawServerStock = c.normalizeStockMap(response.projectionMode === 'patch' ? { ...(cached.serverStock || {}), ...response.stock } : response.stock, { canonicalize });
       const currentKitchen=json(KEYS.kitchen,{}),tracking=options.pantryPolicy===true;
       const local=tracking?c.normalizePantryState(json(KEYS.stock,{}),currentKitchen,{canonicalize,market:activeContext().market}):{stock:json(KEYS.stock,{}),inventory:currentKitchen};
-      const nextServerStock = tracking?c.normalizePantryState(rawServerStock,currentKitchen,{canonicalize,market:activeContext().market}).stock:rawServerStock;
+      const serverKitchen=clone(currentKitchen),pepperLines=tracking&&body?.action==='confirm_receipt'&&body.addToPantry!==false?(body.lines||[]).filter(line=>line.kind==='food'&&c.canonicalIngredientKey(line.canonicalKey,canonicalize)==='pepper'):[];
+      // The confirmed receipt carries the description that distinguishes whole
+      // peppers from a spice jar. Old local unit metadata predates this receipt.
+      for(const line of pepperLines){const stockKey='pepper|'+line.unit,quantity=rawServerStock[stockKey];if(!(quantity>0))continue;
+        for(const [id,row]of Object.entries(serverKitchen))if(row?.bb173StockKey===stockKey)delete serverKitchen[id];
+        const whole=c.pantryTrackingPolicy.isWholePepper(line.name,line.unit,line);
+        serverKitchen['receipt-context|'+stockKey]={name:whole?'Peppers':line.name||'Pepper',unit:line.unit,qty:quantity,bb173StockKey:stockKey,bb173StockValue:quantity,selected:true,staple:!whole,loc:line.location||'cupboard'};
+      }
+      const nextServerStock = tracking?c.normalizePantryState(rawServerStock,serverKitchen,{canonicalize,market:activeContext().market}).stock:rawServerStock;
       const currentStock = c.normalizeStockMap(local.stock, { canonicalize });
       if (!owner.actorId && response.initialized === true && Object.keys(currentStock).length && !body?.localProjectionBaseline) throw Error('receipt_initial_pantry_merge_required');
       const normalizedPrior=tracking?c.normalizePantryState(owner.serverStock||{},currentKitchen,{canonicalize,market:activeContext().market}).stock:owner.serverStock||{};
@@ -233,8 +292,14 @@
         const item = inventory.find(x => x.stockKey === stockKey), location = existing?.[1]?.loc || item?.location || 'cupboard';
         const id = existing?.[0] || kitchenRecordId(kitchen,`${location}|${name}`,stockKey), previous = reviewConversion(existing?.[1] || {});
         const quantity = nextStock[stockKey] || 0;
+        const pepperLine=pepperLines.find(line=>line.canonicalKey===name&&line.unit===unit);
+        const ambiguousPepper=name==='pepper'&&unit==='each'&&!pepperLine&&!existing;
+        const wholePepper=name==='pepper'&&!ambiguousPepper&&(unit==='g'||c.pantryTrackingPolicy.isWholePepper(pepperLine?.name||previous.name||name,unit,pepperLine||previous));
         const purchasedStaple=tracking&&body?.action==='confirm_receipt'&&!cached.appliedReceiptIds?.[body.receiptId]&&(body.lines||[]).some(line=>line.kind==='food'&&c.pantryTrackingPolicy.canonicalName(line.canonicalKey,canonicalize)===c.pantryTrackingPolicy.canonicalName(name,canonicalize)&&line.quantity>0);
-        if (quantity > 0) kitchen[id] = { ...previous, name: previous.name || name, loc: location, selected: true, qty: quantity, unit, bb173StockKey: stockKey, bb173StockValue: quantity, receiptActorId: captured.actorId,...(tracking&&c.pantryTrackingPolicy.isStaple(name)?{staple:true,stapleCount:quantity,stapleStatus:purchasedStaple?'in':previous.stapleStatus||'in',containerLabel:c.pantryTrackingPolicy.containerLabel(name)}:{}) };
+        if (quantity > 0) {kitchen[id] = { ...previous, name: wholePepper?'Peppers':previous.name || name, loc: location, selected: true, qty: quantity, unit, bb173StockKey: stockKey, bb173StockValue: quantity, receiptActorId: captured.actorId,...(tracking&&c.pantryTrackingPolicy.isStaple(name)&&!wholePepper&&!ambiguousPepper?{staple:true,stapleCount:quantity,stapleStatus:purchasedStaple?'in':previous.stapleStatus||'in',containerLabel:c.pantryTrackingPolicy.containerLabel(name)}:{}) };
+          if(wholePepper){kitchen[id].staple=false;delete kitchen[id].stapleStatus;delete kitchen[id].stapleCount;delete kitchen[id].containerLabel;}
+          if(ambiguousPepper){kitchen[id].conversionNeedsReview=true;kitchen[id].staple=true;kitchen[id].stapleStatus='unknown';}
+        }
         else if (existing) { kitchen[id] = { ...previous, selected: false, qty: null }; delete kitchen[id].bb173StockKey; delete kitchen[id].bb173StockValue; }
       }
       if (root.BBReducedStock?.settleInventory) kitchen = root.BBReducedStock.settleInventory({before: currentKitchen, after: kitchen, actor: captured.actorId});
@@ -276,6 +341,11 @@
         changes[KEYS.kitchen] = kitchen;
       }
       const packet = {actorId: captured.actorId, source: 'cloud', stockAfter: nextStock, priceUpdates: newPrices, receiptId: body?.receiptId || response.receiptId || null, stockPantry: body?.addToPantry !== false, addToPantry: body?.addToPantry !== false, market: body?.market, retailer: body?.retailer, shopSessionId: body?.shopSessionId || null, purchasedAt: body?.purchasedAt || null, confirmedAt: body ? receiptConfirmedAt(response, body.receiptId, reducedReview.confirmedAt) : null, reducedItems: reduced, items: (freshReceipt ? body.lines || [] : []).filter(x => x.kind === 'food').map(x => ({...x, key: x.canonicalKey, classification: x.kind})), essentials: newEssentials};
+      packet.purchaseCosts = freshReceipt ? acceptedPurchaseCosts(body,reducedReview.reducedLineIds || []) : [];
+      // The app's household reconciliation joins this same atomic transaction.
+      // Pass the prepared food proof rather than making it reread an older
+      // ledger and overwrite this receipt's coverage when it nets essentials.
+      packet.finishShopCredits = clone(ledger);
       Object.assign(changes, preparedChanges(packet));
       for (const row of newEssentials) appliedEssentialIds[row.id] = true;
       for (const row of newPrices) appliedPriceIds[row.id] = true;
@@ -292,7 +362,8 @@
     async function commitLocalReceiptInternal(packet) {
       const c = await core(), captured = session(), active = activeContext();
       if (!packet || typeof packet !== 'object' || typeof packet.receiptId !== 'string' || !/^[A-Za-z0-9_-]{8,120}$/.test(packet.receiptId) || !Array.isArray(packet.items) || !packet.items.length || packet.items.length > 200) throw Error('invalid_local_receipt');
-      if (packet.market !== active.market || packet.retailer !== active.retailer || (packet.shopSessionId || null) !== active.shopSessionId) throw Error('receipt_context_changed');
+      if (packet.market !== active.market || packet.retailer !== active.retailer || !archivedReceiptContext(packet,captured,active)) throw Error('receipt_context_changed');
+      const receiptShopSessionId=packet.shopSessionId||null;
       const owner = json(KEYS.owner, {});
       if (owner.actorId && owner.actorId !== captured.actorId) throw Error('receipt_projection_belongs_to_other_account');
       if (pendingConfirmation(captured.actorId).receiptId) throw Error('another_receipt_confirmation_pending');
@@ -307,8 +378,19 @@
       const currentStock = c.normalizeStockMap(initial.stock, {canonicalize}), nextStock = {...currentStock}, ledger = options.pantryPolicy===true?c.normalizeFinishShopCredits(json(KEYS.finishShop,{}),{canonicalize,market:active.market,inventory:currentKitchen}):json(KEYS.finishShop, {});
       let kitchen = clone(initial.inventory);
       const items = [], purchased = new Map(), credited = new Map();
+      const normalizedLines=packet.items.map((raw,index)=>{
+        const line=c.normalizeReceiptLine({...raw,id:'line-'+index,...(options.pantryPolicy===true?{}:{packQuantity:null,packUnit:null,packCount:null}),canonicalKey:raw.key||raw.canonicalKey,reviewed:true},{catalog:catalog(),canonicalize,market:active.market,pantryPolicy:options.pantryPolicy===true});
+        const guide=c.normalizeMeasuredQuantity(raw.guidePackQuantity,raw.guidePackUnit||raw.unit),bought=c.normalizeMeasuredQuantity(line.quantity,line.unit);
+        // The legacy editor labels price per guide pack; keep that baseline
+        // untouched while recording the cost of all packs actually bought.
+        const guidePrice=typeof raw.price==='number'||typeof raw.price==='string'&&/^(?:\d+(?:\.\d*)?|\.\d+)$/.test(raw.price.trim())?Number(raw.price):null;
+        if(raw.pricePaid===undefined&&raw.lineTotal===undefined&&guide&&bought&&guide.unit===bought.unit&&guidePrice!==null&&Number.isFinite(guidePrice))line.pricePaid=Math.round((guidePrice*bought.quantity/guide.quantity+Number.EPSILON)*100)/100;
+        if(line.pricePaid!==null&&(!Number.isFinite(line.pricePaid)||line.pricePaid<0||line.pricePaid>100000))throw Error('invalid_local_receipt_price');
+        return line;
+      });
+      const annotated=inferPurchaseAnnotations(normalizedLines,packet.receiptId,receiptShopSessionId,c);
       for (const [index, raw] of packet.items.entries()) {
-        const line = c.normalizeReceiptLine({...raw, id: 'line-' + index, ...(options.pantryPolicy===true?{}:{packQuantity:null,packUnit:null,packCount:null}), canonicalKey: raw.key || raw.canonicalKey, reviewed: true}, {catalog: catalog(), canonicalize,market:active.market,pantryPolicy:options.pantryPolicy===true});
+        const line = annotated.lines[index];
         if (!['food', 'essential'].includes(line.classification) || line.sourceKind !== 'purchase') throw Error('invalid_local_receipt_item');
         if (line.reduced && !reducedEnabled()) throw Error('premium_reduced_food_required');
         const issues = stockPantry ? line.issues : line.issues.filter(x => !['measured_quantity_required', 'pack_count_required', 'canonical_unit_not_in_catalog'].includes(x));
@@ -319,19 +401,20 @@
         purchased.set(stockKey, (purchased.get(stockKey) || 0) + line.quantity);
       }
       for (const [stockKey, quantity] of purchased) {
-        const split = stockKey.lastIndexOf('|'), name = stockKey.slice(0, split), unit = stockKey.slice(split + 1), id = active.shopSessionId + '|' + stockKey;
-        const credit = c.computeReceiptCredit({canonicalKey: name, quantity, unit}, ledger, {shopSessionId: active.shopSessionId, receiptId: packet.receiptId});
+        const split = stockKey.lastIndexOf('|'), name = stockKey.slice(0, split), unit = stockKey.slice(split + 1), id = receiptShopSessionId + '|' + stockKey;
+        const credit = c.computeReceiptCredit({canonicalKey: name, quantity, unit}, ledger, {shopSessionId: receiptShopSessionId, receiptId: packet.receiptId});
         credited.set(stockKey, credit);
         nextStock[stockKey] = (nextStock[stockKey] || 0) + credit.addedQuantity;
         if (nextStock[stockKey] > 1000000) throw Error('inventory_quantity_limit');
         const prior = ledger[id] || {}, coverage = {...(prior.receiptCoverageById || {}), [packet.receiptId]: quantity};
-        ledger[id] = {...prior, name, unit, qty: prior.qty ?? quantity, week: active.shopSessionId, mode: prior.mode || 'receipt_inventory', credited: prior.credited || 0,...(Object.hasOwn(prior,'policyAvailableCredit')?{policyAvailableCredit:0}:{}), receiptInventoryReceiptId: packet.receiptId, receiptLegacyCreditById: {...(prior.receiptLegacyCreditById || {}), [packet.receiptId]: credit.priorCreditedQuantity}, receiptCoverageById: coverage, receiptCoveredQuantity: Object.values(coverage).reduce((n, x) => n + Number(x || 0), 0), purchasedAt: prior.purchasedAt || now()};
+        if(receiptShopSessionId)ledger[id] = {...prior, name, unit, qty: prior.qty ?? quantity, week: receiptShopSessionId, mode: prior.mode || 'receipt_inventory', credited: prior.credited || 0,...(Object.hasOwn(prior,'policyAvailableCredit')?{policyAvailableCredit:0}:{}), receiptInventoryReceiptId: packet.receiptId, receiptLegacyCreditById: {...(prior.receiptLegacyCreditById || {}), [packet.receiptId]: credit.priorCreditedQuantity}, receiptCoverageById: coverage, receiptCoveredQuantity: Object.values(coverage).reduce((n, x) => n + Number(x || 0), 0), purchasedAt: prior.purchasedAt || now()};
         const existing = Object.entries(kitchen).filter(([, x]) => x?.selected && (x.bb173StockKey===stockKey||c.canonicalIngredientKey(x.name, canonicalize) === name && c.normalizeStockQuantity(x.qty, x.unit)?.unit === unit));
         const bucketed=root.BBReducedStock?.projectFrozenBuckets?.({inventory:kitchen,stockKey,currentQuantity:nextStock[stockKey]-credit.addedQuantity,nextQuantity:nextStock[stockKey],location:items.find(line=>line.key+'|'+line.unit===stockKey)?.location||'cupboard',actor:captured.actorId,canonicalize,market:active.market});
         if(bucketed){kitchen=bucketed;continue;}
         const entry = existing[0], location = entry?.[1]?.loc || 'cupboard', kitchenId = entry?.[0] || kitchenRecordId(kitchen,location+'|'+name,stockKey);
         for (const [oldId, row] of existing.slice(1)) { kitchen[oldId] = {...row, selected: false, qty: null}; delete kitchen[oldId].bb173StockKey; delete kitchen[oldId].bb173StockValue; }
-        kitchen[kitchenId] = {...(entry?.[1] || {}), name: entry?.[1]?.name || name, loc: location, selected: true, qty: nextStock[stockKey], unit, bb173StockKey: stockKey, bb173StockValue: nextStock[stockKey], receiptActorId: captured.actorId,...(options.pantryPolicy===true&&c.pantryTrackingPolicy.isStaple(name)?{staple:true,stapleCount:nextStock[stockKey],stapleStatus:'in',containerLabel:c.pantryTrackingPolicy.containerLabel(name)}:{})};
+        const incoming=items.find(line=>line.key+'|'+line.unit===stockKey),wholePepper=c.pantryTrackingPolicy.isWholePepper?.(incoming?.name||name,unit,incoming||{})===true;
+        kitchen[kitchenId] = {...(entry?.[1] || {}), name: wholePepper?'Peppers':entry?.[1]?.name || name, loc: location, selected: true, qty: nextStock[stockKey], unit, bb173StockKey: stockKey, bb173StockValue: nextStock[stockKey], receiptActorId: captured.actorId,...(wholePepper?{staple:false,containerLabel:undefined,stapleCount:undefined,stapleStatus:undefined}:options.pantryPolicy===true&&c.pantryTrackingPolicy.isStaple(name)?{staple:true,stapleCount:nextStock[stockKey],stapleStatus:'in',containerLabel:c.pantryTrackingPolicy.containerLabel(name)}:{})};
       }
       if (root.BBReducedStock?.settleInventory) kitchen = root.BBReducedStock.settleInventory({before: currentKitchen, after: kitchen, actor: captured.actorId});
       const reduced = items.filter(line => line.classification === 'food' && line.reduced === true), savedAt = now();
@@ -343,12 +426,19 @@
       }
       // A one-off yellow sticker (or other known promotion) is never saved as
       // the standard shelf price for following weeks, even on the local path.
-      const priceUpdates = (packet.priceUpdates || []).filter(update => !items.some(line => line.key === update.name && (line.reduced || line.priceType === 'promotion')));
+      const priceUpdates = (packet.priceUpdates || []).filter(update => !items.some(line => c.canonicalIngredientKey(line.key||line.name,canonicalize) === c.canonicalIngredientKey(update.name,canonicalize) && (line.reduced || line.priceType === 'promotion')));
       const normalizedPacket = {...packet, actorId: captured.actorId, source: 'legacy', stockPantry, addToPantry: stockPantry, stockAfter: nextStock, items, priceUpdates, reducedItems: reduced, confirmedAt: savedAt, essentials: stockPantry ? items.filter(x => x.classification === 'essential') : []};
+      normalizedPacket.purchaseCosts=items.filter(line=>Number.isFinite(line.pricePaid)&&line.pricePaid>=0).map(line=>({...line,legacyCreditQuantity:credited.get(line.key+'|'+line.unit)?.priorCreditedQuantity||0}));
+      normalizedPacket.finishShopCredits = clone(ledger);
       const changes = preparedChanges(normalizedPacket);
       saves[packet.receiptId] = {signature, savedAt, stocked: stockPantry};
       Object.assign(changes, {[savesKey]: saves});
-      if (stockPantry) Object.assign(changes, {[KEYS.stock]: c.normalizeStockMap(nextStock, {canonicalize}), [KEYS.kitchen]: kitchen, [KEYS.finishShop]: ledger});
+      if (stockPantry) {
+        Object.assign(changes, {[KEYS.stock]: c.normalizeStockMap(nextStock, {canonicalize}), [KEYS.kitchen]: kitchen});
+        // A reviewed household credit may have augmented the prepared food
+        // ledger through the app hook. Keep that combined journal on commit.
+        if (!Object.hasOwn(changes, KEYS.finishShop)) changes[KEYS.finishShop] = ledger;
+      }
       if (!sameSession(captured) || !sameContext(active)) throw Error('receipt_account_changed');
       atomicWrite(changes, captured.actorId);
       reportReducedReceipt({receiptId: packet.receiptId, market: packet.market, retailer: packet.retailer, purchasedAt: packet.purchasedAt}, reduced.map(line => line.lineId), captured, active, savedAt);
@@ -376,11 +466,11 @@
       if (owner.actorId && owner.actorId !== captured.actorId) throw Error('receipt_projection_belongs_to_other_account');
       let requestId = idempotencyKey || `${draft.receiptId}:confirm`;
       const rawCredits = options.getFinishShopCredits ? options.getFinishShopCredits() : json(KEYS.finishShop, {}),credits=options.pantryPolicy===true?c.normalizeFinishShopCredits(rawCredits,{canonicalize,market:context.market,inventory:json(KEYS.kitchen,{})}):rawCredits;
-      let body = c.prepareReceiptConfirmation(draft, { requestId, catalog: catalog(), canonicalize, finishShopCredits: credits,pantryPolicy:options.pantryPolicy===true });
-      const reviewedReducedIds = reducedLineIds(body, (draft.lines || []).filter(line => line.reduced === true && line.reviewed === true && line.selected !== false && line.classification === 'food' && line.sourceKind === 'purchase').map(line => line.id));
+      const pending = pendingConfirmation(captured.actorId),annotations=inferPurchaseAnnotations(draft.lines||[],draft.receiptId,draft.shopSessionId,c,pending.receiptId===draft.receiptId?pending:null);
+      let body = c.prepareReceiptConfirmation({...draft,lines:annotations.lines}, { requestId, catalog: catalog(), canonicalize, finishShopCredits: credits,pantryPolicy:options.pantryPolicy===true });
+      const reviewedReducedIds = reducedLineIds(body, annotations.lines.filter(line => line.reduced === true && line.reviewed === true && line.selected !== false && line.classification === 'food' && line.sourceKind === 'purchase').map(line => line.id));
       if (reviewedReducedIds.length && !reducedEnabled()) throw Error('premium_reduced_food_required');
       requestId = body.requestId;
-      const pending = pendingConfirmation(captured.actorId);
       if (pending.receiptId && pending.receiptId !== draft.receiptId) throw Error('another_receipt_confirmation_pending');
       if (!owner.actorId) {
         const initial = await request('GET', captured, null, signal);
@@ -405,7 +495,7 @@
       if (inFlight.has(operationKey)) { const other = inFlight.get(operationKey); if (other.digest !== digest) throw Error('receipt_request_in_progress_with_different_payload'); return other.promise; }
       if ([...inFlight.keys()].some(key => key.startsWith(captured.actorId + '|'))) throw Error('another_receipt_confirmation_in_progress');
       if (!pending.receiptId) {
-        const value = JSON.stringify({ version: 1, actorId: captured.actorId, receiptId: body.receiptId, requestId, context, body, createdAt: now(), ...(reviewedReducedIds.length ? {reducedLineIds: reviewedReducedIds} : {}) });
+        const value = JSON.stringify({ version: 1, actorId: captured.actorId, receiptId: body.receiptId, requestId, context, body, createdAt: now(), ...(reviewedReducedIds.length ? {reducedLineIds: reviewedReducedIds} : {}),...(annotations.inferredPromotionLineIds.length?{inferredPromotionLineIds:annotations.inferredPromotionLineIds}:{}),...(annotations.inferredReducedLineIds.length?{inferredReducedLineIds:annotations.inferredReducedLineIds}:{}) });
         storage().setItem(pendingKey(captured.actorId), value);
         if (storage().getItem(pendingKey(captured.actorId)) !== value) throw Error('receipt_pending_confirmation_save_failed');
       }

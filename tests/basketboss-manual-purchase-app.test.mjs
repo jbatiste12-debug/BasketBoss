@@ -133,6 +133,66 @@ test('household purchases already deposited by a receipt are never credited agai
  assert.equal(h.context.bbHomePendingHouseholdPurchases().length,0);assert.equal(h.finish(true).count,0);assert.equal(h.read(FEATURE).essentials[0].ownedQty,5);
 });
 
+test('a receipt after Finish does not deposit the same household purchase twice',()=>{
+ const h=fixture({essentials:[{id:'soap',name:'Soap',unit:'each',qty:3,targetQty:3,ownedQty:1,manualPending:true,selected:true}]});
+ h.buy('ess:soap','Soap',2,'each');assert.equal(h.close(h.finish(true)),true);
+ assert.equal(h.read(FEATURE).essentials[0].ownedQty,3);
+ const packet=h.packet(0,{receiptId:'household-after-finish',shopSessionId:'trip-one',essentials:[{name:'Soap',quantity:2,unit:'each',receiptId:'household-after-finish',shopSessionId:'trip-one'}]});
+ const result=h.prepare(packet);h.commit(result,packet.stockAfter);
+ assert.equal(h.read(FEATURE).essentials[0].ownedQty,3,'the receipt describes the two items already deposited by Finish');
+});
+
+test('the real household checkbox records a purchase without pre-crediting At home, including undo',()=>{
+ const h=fixture({essentials:[{id:'soap',name:'Soap',unit:'each',qty:3,targetQty:3,ownedQty:1,manualPending:true,selected:true}]});let completionCalls=0;
+ h.win.BBHomeHost.completeHousehold=id=>{completionCalls++;const features=h.read(FEATURE);const row=features.essentials.find(value=>value.id===id);row.ownedQty=row.targetQty;return {[FEATURE]:features};};
+ h.context.bb321TinSpec=()=>null;
+ vm.runInContext(section('function bb84DisplayedPurchase(','/* Reduced purchase costs')+section('function bbPartialKey(','function bbPartialAll(')+section('function bb84SetPrimaryPurchase(','function bb84ExtraNeeded('),h.context);
+ const item={key:'Soap',name:'Soap',qty:2,unit:'each'};
+ assert.equal(h.context.bb84SetPrimaryPurchase('ess:soap',true,item,true),true);assert.equal(h.read(FEATURE).essentials[0].ownedQty,1);assert.equal(completionCalls,0);
+ assert.equal(h.context.bb84SetPrimaryPurchase('ess:soap',false,item,true),true);assert.equal(h.read(FEATURE).essentials[0].ownedQty,1);assert.equal(h.rows().find(row=>row.classification==='essential').required,2);
+ assert.equal(h.context.bb84SetPrimaryPurchase('ess:soap',true,item,true),true);assert.equal(h.close(h.finish(true)),true);assert.equal(h.read(FEATURE).essentials[0].ownedQty,3);assert.equal(completionCalls,0);
+});
+
+test('split household receipt lines and replay consume their Finish credit only once',()=>{
+ const h=fixture({essentials:[{id:'soap',name:'Soap',unit:'each',qty:3,targetQty:3,ownedQty:1,manualPending:true,selected:true}]});h.buy('ess:soap','Soap',2,'each');assert.equal(h.close(h.finish(true)),true);
+ const packet=h.packet(0,{receiptId:'split-household-receipt',shopSessionId:'trip-one',essentials:[{name:'Soap',quantity:1,unit:'each'},{name:'Soap',quantity:1,unit:'each'}]});
+ h.commit(h.prepare(packet),packet.stockAfter);assert.equal(h.read(FEATURE).essentials[0].ownedQty,3);
+ h.commit(h.prepare(packet),packet.stockAfter);assert.equal(h.read(FEATURE).essentials[0].ownedQty,3,'the same reviewed receipt is not a second purchase');
+ const additional=h.packet(0,{receiptId:'second-real-household-receipt',shopSessionId:'trip-one',essentials:[{name:'Soap',quantity:1,unit:'each'}]});h.commit(h.prepare(additional),additional.stockAfter);assert.equal(h.read(FEATURE).essentials[0].ownedQty,4,'a later real receipt adds its own purchase');
+});
+
+test('household receipt credit matches equivalent litres and millilitres after Finish',()=>{
+ const h=fixture({essentials:[{id:'soap',name:'Soap',unit:'ml',qty:1000,targetQty:1000,ownedQty:500,manualPending:true,selected:true}]});h.buy('ess:soap','Soap',500,'ml');assert.equal(h.close(h.finish(true)),true);
+ const packet=h.packet(0,{receiptId:'measured-household-receipt',shopSessionId:'trip-one',essentials:[{name:'Soap',quantity:.5,unit:'l'}]});h.commit(h.prepare(packet),packet.stockAfter);assert.equal(h.read(FEATURE).essentials[0].ownedQty,1000);
+});
+
+test('a household receipt using the saved product name replaces its original purchase cost instead of charging twice',()=>{
+ const h=fixture({essentials:[{id:'soap',name:'Soap',productName:'Dove soap',brand:'Dove',unit:'each',qty:2,targetQty:2,ownedQty:0,manualPending:true,selected:true}]});h.buy('ess:soap','Soap',2,'each');
+ const api=h.win.BBReducedPurchases,session=api.putCost(h.read('session'),{id:'cost:ess:soap',purchaseId:'ess:soap',actor:'alice',market:'UK',shopSessionId:'trip-one',name:'Soap',unit:'each',quantity:2,at:Date.now()},{amount:3,packQty:2,packUnit:'each',shelfPrice:3});h.storage.setItem('session',JSON.stringify(session));
+ assert.equal(h.close(h.finish(true)),true);assert.equal(h.read(FEATURE).essentials[0].ownedQty,2);
+ const packet=h.packet(0,{actorId:'alice',receiptId:'branded-household-cost',shopSessionId:'trip-one',market:'UK',retailer:'Tesco',purchasedAt:new Date().toISOString(),finishShopCredits:h.read('receipts'),purchaseCosts:[{lineId:'soap-line',classification:'essential',name:'Dove soap',key:'Dove soap',brand:'Dove',quantity:2,unit:'each',pricePaid:3,reduced:false}],essentials:[{name:'Dove soap',brand:'Dove',quantity:2,unit:'each'}]});
+ h.commit(h.prepare(packet),packet.stockAfter);const archive=h.read('archives')['trip-one'],costs=Object.values(archive.reducedPurchases);
+ assert.equal(costs.length,1,'receipt and Finish represent the same purchase');assert.equal(costs[0].purchaseId,'ess:soap');assert.equal(costs[0].pricePaid,3);assert.equal(h.read(FEATURE).essentials[0].ownedQty,2);
+ assert.equal(api.budget({total:0,lines:[],session:h.read('session'),archives:h.read('archives'),context:{actor:'alice',market:'UK'},progress:{ticks:{},purchases:{},partials:{}},now:Date.now()}).total,3);
+});
+
+test('an expense-only receipt resolves a unique saved household product without changing its stock',()=>{
+ const h=fixture({essentials:[{id:'soap',name:'Soap',productName:'Dove soap',brand:'Dove',unit:'each',qty:2,targetQty:2,ownedQty:0,manualPending:true,selected:true}]});h.buy('ess:soap','Soap',2,'each');
+ const api=h.win.BBReducedPurchases,session=api.putCost(h.read('session'),{id:'cost:ess:soap',purchaseId:'ess:soap',actor:'alice',market:'UK',shopSessionId:'trip-one',name:'Soap',unit:'each',quantity:2,at:Date.now()},{amount:3,packQty:2,packUnit:'each',shelfPrice:3});h.storage.setItem('session',JSON.stringify(session));assert.equal(h.close(h.finish(true)),true);
+ const beforeStock=h.values.get(STOCK),beforeFeatures=h.values.get(FEATURE),packet=h.packet(0,{actorId:'alice',receiptId:'branded-expense-only',shopSessionId:'trip-one',market:'UK',retailer:'Tesco',purchasedAt:new Date().toISOString(),addToPantry:false,stockPantry:false,purchaseCosts:[{lineId:'soap-line',classification:'essential',name:'Dove soap',key:'Dove soap',brand:'Dove',quantity:null,unit:null,pricePaid:3,reduced:false}],essentials:[]});h.commit(h.prepare(packet));
+ assert.equal(h.values.get(STOCK),beforeStock);assert.equal(h.values.get(FEATURE),beforeFeatures);assert.equal(h.read(FEATURE).essentials[0].ownedQty,2);
+ const result=api.budget({total:0,lines:[],session:h.read('session'),archives:h.read('archives'),context:{actor:'alice',market:'UK'},progress:{ticks:{},purchases:{},partials:{}},now:Date.now()});assert.equal(result.total,3);assert.ok(Object.values(h.read('archives')['trip-one'].reducedPurchases).some(row=>row.expenseOnly&&row.coveredPurchaseId==='ess:soap'));
+});
+
+test('a fresh purchase does not silently join an older freezer-only portion',()=>{
+ const h=fixture({owned:400});h.storage.setItem('inventory',JSON.stringify({frozen:{name:'Rice',unit:'g',qty:400,selected:true,loc:'freezer',bb173StockKey:'rice|g',bb173StockValue:400}}));
+ h.context.bb83StockLoc=()=> 'cupboard';h.buy('rice|g','Rice',500);
+ const transfer=h.finish(true),rows=Object.values(transfer.updates.inventory).filter(row=>row.selected);
+ assert.equal(transfer.updates[STOCK]['rice|g'],900);
+ assert.equal(rows.filter(row=>row.loc==='freezer').reduce((sum,row)=>sum+row.qty,0),400,'existing frozen stock stays frozen');
+ assert.equal(rows.filter(row=>row.loc==='cupboard').reduce((sum,row)=>sum+row.qty,0),500,'new groceries use their storage category');
+});
+
 
 test('Finish refuses an unreadable saved physical balance without replacing any pantry data',()=>{
  const h=fixture();h.add('Rice','4 g');h.buy('rice|g','Rice',4);h.context.bbHomePhysicalStock=()=>{throw Error('Review your saved pantry amounts.');};const before=[...h.values];

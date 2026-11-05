@@ -38,6 +38,13 @@
   if(!/^fresh /.test(name)&&(/\b(?:dressing|herbs?)$/.test(name)))return true;
   return /\bsauce$/.test(name)&&!/^fresh /.test(name);
  }
+ function isWholePepper(value,rawUnit,metadata={}){
+  if(metadata?.staple===true)return false;
+  const label=clean(value).replace(/([a-z])(\d)/g,'$1 $2');
+  if(!/\b(?:peppers?|capsicums?)\b/.test(label)||/\b(?:black|white|ground|cracked|corns?|peppercorns?|powder|dried|flakes?|seasoning|sauce|spice)\b/.test(label))return false;
+  if(metadata?.staple===false||unit(rawUnit)==='each')return true;
+  return /\b(?:peppers|capsicums?)\b|\b(?:bell|red|green|yellow|orange|sweet|fresh|whole)\s+pepper\b/.test(label);
+ }
  function containerLabel(value){
   const name=canonicalName(value);
   if(/\b(?:salt|pepper|paprika|cumin|turmeric|coriander powder|cinnamon|nutmeg|allspice|masala|powder|spice|herb|honey|mustard|jam|paste|peanut butter|pesto)\b/.test(name))return 'jar';
@@ -71,6 +78,7 @@
  function normalizeRaw(value,quantity,rawUnit,options={}){
   options=object(options)?options:{};
   const name=canonicalName(value,options.canonicalize),from=unit(rawUnit),count=number(quantity);if(!name||count===null)return null;
+  if(from==='each'&&(name==='pepper'||name==='peppers')&&(options.wholePepper===true||isWholePepper(value,'g',options)))return {quantity:round(count*countGrams.peppers),unit:'g',estimated:true,assumption:'Estimated '+countGrams.peppers+' g per whole pepper. Review the actual size.'};
   if(from==='cup'){
    const density=cupGrams(name);if(density)return count*density.grams<=MAX?{quantity:round(count*density.grams),unit:'g',estimated:true,assumption:density.assumption}:null;
    if(baseUnit(name)==='ml'||isStaple(name))return count*240<=MAX?{quantity:round(count*240),unit:'ml',estimated:false,assumption:'US kitchen cup: 1 cup = 240 ml.'}:null;
@@ -125,11 +133,12 @@
   if(['in','in stock','available','on hand'].includes(status))return 'in';
   if(['low','running low'].includes(status))return 'low';
   if(['out','out of stock','empty'].includes(status))return 'out';
+  if(['unknown','review','needs review'].includes(status))return 'unknown';
   const count=number(record.stapleCount??record.containerCount??record.count??record.qty);
   if(count!==null)return count>0?'in':'out';
   if(typeof stock==='number'){const amount=number(stock);if(amount!==null)return amount>0?'in':'out';}
   if(stock&&typeof stock==='object'&&record.bb173StockKey&&Object.hasOwn(stock,record.bb173StockKey)){const amount=number(stock[record.bb173StockKey]);if(amount!==null)return amount>0?'in':'out';}
   return 'unknown';
  }
- return Object.freeze({canonicalName,isStaple,containerLabel,defaultPack,normalize,smallUse,staplePurchase,stapleStatus,baseUnit,cupGrams,cupTable,countGrams});
+ return Object.freeze({canonicalName,isStaple,isWholePepper,containerLabel,defaultPack,normalize,smallUse,staplePurchase,stapleStatus,baseUnit,cupGrams,cupTable,countGrams});
 });

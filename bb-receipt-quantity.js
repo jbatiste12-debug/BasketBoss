@@ -50,11 +50,11 @@
   const found=explicit(line,context);
   if(context.pantryPolicy===true&&policy&&name&&!essential){
    const canonical=policy.canonicalName(name),saved=Object.values(context.inventory||{}).filter(row=>row?.selected!==false&&policy.canonicalName(row?.name)===canonical),existing=saved[0];
-   if(policy.isStaple(canonical)){
+   if(policy.isStaple(canonical)&&!policy.isWholePepper(line.description||line.name||canonical,line.unit,line)){
     const source=found&&!found.invalid?found:line,purchase=policy.staplePurchase({name:canonical,quantity:source.quantity??line.quantity,unit:source.unit??line.unit,packCount:line.packCount??source.packCount,packQuantity:source.packQuantity,packUnit:source.packUnit});
     if(purchase)return result({quantity:purchase.quantity,unit:'each'},'receipt',purchase.estimated,canonical+' → +'+purchase.quantity+' '+purchase.label+(purchase.quantity===1?'':'s')+(existing?' (matches your pantry)':' · container tracking')+'. Check the bought container count.');
    }
-   const source=found&&!found.invalid?found:line,normalized=policy.normalize(canonical,source.quantity??line.quantity,source.unit??line.unit,{market:context.market,reviewed:line.packReviewed===true,packQuantity:line.packQuantity,packUnit:line.packUnit});
+   const source=found&&!found.invalid?found:line,normalized=policy.normalize(canonical,source.quantity??line.quantity,source.unit??line.unit,{market:context.market,wholePepper:policy.isWholePepper(line.description||line.name||canonical,source.unit??line.unit,line),reviewed:line.packReviewed===true,packQuantity:line.packQuantity,packUnit:line.packUnit});
    if(normalized){
     const currentUnit=existing&&policy.normalize(canonical,existing.qty,existing.unit,{market:context.market,reviewed:existing.packReviewed===true,packQuantity:existing.packQuantity,packUnit:existing.packUnit});
     let amount=normalized,note=normalized.assumption||'Amount read from receipt.';

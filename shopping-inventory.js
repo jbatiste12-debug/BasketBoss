@@ -9,7 +9,7 @@ const isStapleRow=row=>!!policy()?.isStaple(row?.name)&&!(policy().canonicalName
 const policyMarket=()=>window.bb307ActiveMarket?.()||'UK';
 const policyOptions=row=>({market:row?.inputMarket||policyMarket(),canonicalize:window.BBPriceV19?.canonical,packReviewed:row?.packReviewed===true,reviewed:row?.packReviewed===true,packQuantity:row?.packQuantity,packUnit:row?.packUnit});
 const regionalAmount=(name,quantity,unit)=>window.BBPantryDisplay?.format(name,quantity,unit,policyMarket())||quantity+' '+unit;
-const pantryModuleURL=document.currentScript?.src?new URL('./bb-receipt-inventory-core.mjs?v=20261105-reduced1',document.currentScript.src).href:'./bb-receipt-inventory-core.mjs?v=20261105-reduced1';
+const pantryModuleURL=document.currentScript?.src?new URL('./bb-receipt-inventory-core.mjs?v=20261105-business1',document.currentScript.src).href:'./bb-receipt-inventory-core.mjs?v=20261105-business1';
 let pantryModulePromise;
 const pantryModule=()=>pantryModulePromise??=(window.BBReceiptInventoryCore?Promise.resolve(window.BBReceiptInventoryCore):import(pantryModuleURL));
 let pendingFoodDraft=null;
@@ -427,6 +427,7 @@ async function build(){
    note.textContent='Could not save safely. Review storage and try again.';return;
   }
   pendingFoodDraft=null;openedRevision=physicalRevision();window.BBHome?.committed?.();externalAtOpen.clear();draftDirty=false;
+  window.BasketBossCloud?.scheduleSave?.();
   const unknown=chosen.filter(x=>x.qty===null);
   const requirements=window.BBHomeHost?.requirements?.()||[],mismatches=window.BBHomeHost?.consume?.(nextStock,requirements)?.mismatches||{};
   const incompatible=chosen.filter(x=>!x.staple&&(x.conversionNeedsReview||x.qty>0&&requirements.some(row=>pantryStockId(row.key||row.name,'')===pantryStockId(x.name,'')&&mismatches[pantryStockId(row.key||row.name,row.unit)]?.length)));

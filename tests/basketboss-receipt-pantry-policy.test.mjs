@@ -66,7 +66,7 @@ test('the actual receipt reader matches a measured condiment scan to its existin
 
 test('whole Peppers and explicitly tagged ground pepper containers keep their distinct tracking modes',()=>{
  const whole=normalizePantryState({'pepper|each':2},{produce:row('Peppers',2,'each',{bb173StockKey:'pepper|each'})});
- assert.deepEqual(whole.stock,{'pepper|each':2});assert.notEqual(whole.inventory.produce.staple,true);
+ assert.deepEqual(whole.stock,{'pepper|g':320});assert.equal(whole.inventory.produce.qty,320);assert.notEqual(whole.inventory.produce.staple,true);
  const ground=normalizePantryState({'pepper|each':1},{spice:row('Pepper',1,'each',{staple:true,stapleStatus:'low'})});
  assert.equal(ground.inventory.spice.staple,true);assert.equal(ground.inventory.spice.stapleStatus,'low');
 });
