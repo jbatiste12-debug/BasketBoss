@@ -335,3 +335,24 @@ html body #app.bbnext-plan[data-bb-compact-plan="true"] .bbnext-plan-budget[data
 html body #app.bbnext-plan[data-bb-compact-plan="true"] .bbnext-plan-budget[data-bb-budget-polish="premium"] .bbpc-budget-overview .bb-myweek-emblem .bbnext-plan-donut-core strong{font-size:12px!important}
 html body #app.bbnext-plan[data-bb-compact-plan="true"] .bbnext-plan-budget[data-bb-budget-polish="premium"] .bbpc-budget-overview .bb-myweek-emblem .bbnext-plan-donut-core small{font-size:8px!important}
 @media(max-width:350px){html body #app.bbnext-plan[data-bb-compact-plan="true"] .bbnext-plan-budget[data-bb-budget-polish="premium"] .bbpc-budget-overview .bb-myweek-emblem .bbnext-plan-donut-core{width:48px!important;height:48px!important}html body #app.bbnext-plan[data-bb-compact-plan="true"] .bbnext-plan-budget[data-bb-budget-polish="premium"] .bbpc-budget-overview .bb-myweek-emblem .bbnext-plan-donut-core strong{font-size:10px!important}}
+
+/* Highlight the three planning controls with the existing warm gold palette. */
+html body #app.bbnext-plan[data-bb-compact-plan="true"] #bbpolAutofillCard :is(#bbSimpleBudget>summary,#bbSimpleMealPreferences>summary,#bbAvoidIngredientTab){
+ background:#f5e6bb!important;border:1px solid #d6bd78!important;color:#244d3c!important;
+ min-height:44px!important;height:44px;padding:6px 7px!important;gap:4px;
+ font-size:11px!important;font-weight:750!important;line-height:1.15!important;
+ text-align:center;text-wrap:balance;box-shadow:0 1px 2px #58471f0d!important;
+}
+html body #app.bbnext-plan[data-bb-compact-plan="true"] #bbpolAutofillCard :is(#bbSimpleBudget[open]>summary,#bbSimpleMealPreferences[open]>summary,#bbAvoidIngredientTab[aria-expanded=true]){
+ background:#ead495!important;border-color:#b99242!important;
+}
+html body #app.bbnext-plan[data-bb-compact-plan="true"] #bbpolAutofillCard :is(#bbSimpleBudget>summary,#bbSimpleMealPreferences>summary,#bbAvoidIngredientTab):focus-visible{
+ outline:2px solid #245e43;outline-offset:3px;
+}
+@media(hover:hover){html body #app.bbnext-plan[data-bb-compact-plan="true"] #bbpolAutofillCard :is(#bbSimpleBudget>summary,#bbSimpleMealPreferences>summary,#bbAvoidIngredientTab):hover{background:#ead495!important}}
+html body #app.bbnext-plan[data-bb-compact-plan="true"] #bbpolAutofillCard #bbSimpleMealPreferences>summary{position:relative}
+html body #app.bbnext-plan[data-bb-compact-plan="true"] #bbpolAutofillCard #bbSimpleMealPreferences>summary[data-bb-choice-count]:not([data-bb-choice-count="0"]):before{
+ content:attr(data-bb-choice-count);position:absolute;top:-6px;right:3px;display:grid;place-items:center;
+ min-width:18px;height:18px;padding:0 3px;box-sizing:border-box;border:1px solid #fffdf6;border-radius:999px;
+ background:#245e43;color:#fffdf6;font:750 10px/1 system-ui;
+}

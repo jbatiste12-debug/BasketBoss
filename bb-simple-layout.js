@@ -18,7 +18,7 @@
   if(budget&&!app.querySelector('#bbSimpleBudget')){
    const form=budget.querySelector('.bb77-budget-form'),copy=budget.querySelector('.bbnext-plan-budget-text'),emblem=budget.querySelector('.bb-myweek-emblem');
    if(form&&copy&&emblem){
-    const details=disclosure('bbSimpleBudget','Budget & household settings', 'budget');
+    const details=disclosure('bbSimpleBudget','Budget & household', 'budget');
     const content=doc.createElement('div');content.className='bbs-budget-body';
     const feed=copy.querySelector('.bbfeed-global'),line=copy.querySelector('.bbnext-plan-budget-line'),note=copy.querySelector(':scope>small:not(.bb77-price-note)');
     for(const node of[feed,line,form,note].filter(Boolean))content.append(node);
@@ -42,7 +42,10 @@
     if(controls)mealBody.insertBefore(controls,pills);
    }
    const count=pills.querySelectorAll('[aria-pressed="true"]').length+(window.BBMealPreferences?.get?.().diets.length||0);
-   setText(details.firstElementChild,count?'Meal preferences · '+count+' active':'Meal preferences');
+   setText(details.firstElementChild,'Meal preferences');
+   if(details.firstElementChild.dataset.bbChoiceCount!==String(count))details.firstElementChild.dataset.bbChoiceCount=String(count);
+   const label=count?'Meal preferences, '+count+' active':'Meal preferences';
+   for(const attribute of ['aria-label','title'])if(details.firstElementChild.getAttribute(attribute)!==label)details.firstElementChild.setAttribute(attribute,label);
   }
   const settings=app.querySelector('#bbSimpleBudget'),status=settings?.querySelector('.bb77-budget-status');
   if(status&&/could not|not verified|enter a target|unchanged|try again/i.test(status.textContent||''))settings.setAttribute('open','');
