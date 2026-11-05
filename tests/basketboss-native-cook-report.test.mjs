@@ -39,4 +39,6 @@ test('Debug WebView QA remains valid JavaScript and checks the real mentor with 
  assert.match(script,/originalController\.mount\(\{\.\.\.options,assistant,tts\}\)/,'inject model/audio transports without switching off mentor mode');
  assert.match(script,/payload\.history\.length===0/,'a newly opened Cook session must have no retained conversation');
  assert.match(script,/pendingAnswer\.signal\.aborted/,'the actual question request must be aborted on interruption');
+ assert.match(script,/JSON\.stringify\(actualNextActions\)!==JSON\.stringify\(expectedNextActions\)/,'verify every rendered action in order after normalized method parsing');
+ assert.doesNotMatch(script,/textContent\.includes\(recipe\.method\[1\]\)/,'separate bullet nodes do not preserve source sentence whitespace');
 });

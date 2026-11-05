@@ -8,6 +8,8 @@ on:
       - .github/workflows/cloudflare-catalogue-check.yml
       - .github/private-catalogue/cook-content-corrections.sealed.json
       - .github/private-catalogue/cook-content-corrections.manifest.json
+      - .github/private-catalogue/cook-author-recommendations.sealed.json
+      - .github/private-catalogue/cook-author-recommendations.manifest.json
       - docs/COOK_FULL_500_AUDIT_20261105.json
       - scripts/check-cloudflare-catalogue.mjs
       - scripts/audit-cook-method-private-summary.mjs

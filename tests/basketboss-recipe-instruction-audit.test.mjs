@@ -16,9 +16,27 @@ test('current public instructions, normalized identities and dessert copies agre
   assert.equal(result.ingredientLines, 730);
   assert.equal(result.duplicateDesserts, 4);
   assert.deepEqual(result.errors, []);
-  assert(result.review.some(finding => finding.code === 'sequential-timing'), 'unresolved timing must remain visible');
-  assert(result.review.some(finding => finding.code === 'pack-quantity'), 'unspecified pack amounts must remain visible');
-  assert(result.review.some(finding => finding.code === 'cooking-settings'), 'missing author-tested oven settings must remain visible');
+  assert.deepEqual(result.review, [], 'accepted public recommendations must resolve their original findings');
+});
+
+test('the audit retains pack, oven, elapsed-time and stuffing-shape checks after recommendations', () => {
+  const shells = oneRecipe('spinach-ricotta-shells', [['Pasta shells', '250 g']], ['Cook the shells.', 'Fill the shells and bake.']);
+  assert(auditRecipeInstructions({ recipes: [shells] }).review.some(finding => finding.code === 'stuffing-shell-size'));
+  shells.ingredients[0][1] = '250 g large stuffing shells (conchiglioni)';
+  assert(!auditRecipeInstructions({ recipes: [shells] }).review.some(finding => finding.code === 'stuffing-shell-size'));
+  shells.ingredients[0][1] = '250 g small shells';
+  assert(auditRecipeInstructions({ recipes: [shells] }).review.some(finding => finding.code === 'stuffing-shell-size'));
+  const tortellini = oneRecipe('extra-15-minute-pesto-tortellini', [['Tortellini', '500 g']], ['Boil tortellini.', 'Serve with pesto.'], 20);
+  tortellini.name = '15-minute pesto tortellini';
+  assert(auditRecipeInstructions({ recipes: [tortellini] }).review.some(finding => finding.code === 'title-time'));
+  tortellini.name = '20-minute pesto tortellini';
+  assert(!auditRecipeInstructions({ recipes: [tortellini] }).review.some(finding => finding.code === 'title-time'));
+  const result = auditRecipeInstructions({ recipes: [
+    oneRecipe('pack-test', [['Vegetable stock', '1 carton']], ['Prepare stock.', 'Simmer vegetables.']),
+    oneRecipe('chicken-katsu-curry', [['Chicken breast', '600 g']], ['Coat chicken.', 'Bake until cooked.']),
+    oneRecipe('extra-lentil-shepherdless-pie', [['Dried lentils', '200 g']], ['Simmer lentils.', 'Bake the pie.'], 35)
+  ] });
+  for (const code of ['pack-quantity', 'cooking-settings', 'sequential-timing']) assert(result.review.some(finding => finding.code === code), code);
 });
 
 test('visible ingredient prep notes cannot tell cooks to dry stock, toast flour or melt crumble butter', () => {

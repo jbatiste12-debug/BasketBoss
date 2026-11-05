@@ -4,21 +4,12 @@ Audited **100 recipes / 730 ingredient lines** in both UK and US modes.
 
 Aggregates contain **221 ingredients, zero duplicate keys**. Canonical storage uses g, ml and each (count); staples use container/status tracking.
 
-**12 source amounts need recipe review.** These are not silently assigned weights.
+**3 source amounts need recipe review.** These are not silently assigned weights.
 
 | Recipe | Ingredient | Original amount |
 |---|---|---|
-| creamy-pasta | Parmesan | 1 block |
-| mushroom-risotto | Parmesan | 1 block |
-| aubergine-parmigiana | Parmesan | 1 block |
-| lemon-chicken-orzo | Chicken stock | 1 carton |
 | coconut-lentil-dhal | Fresh ginger | 2 cm piece |
 | fishcakes | Fresh parsley | 1 small handful |
-| mushroom-risotto | Vegetable stock | 1 carton |
-| sweet-potato-soup | Vegetable stock | 1 carton |
-| extra-lentil-shepherdless-pie | Vegetable stock | 1 standard pack (check recipe) |
-| sausage-lentil-stew | Stock | 1 carton |
-| chicken-noodle-soup | Stock | 1 carton |
 | date-pesto-gnocchi | Fresh basil | 1 handful |
 
 Regional conversions use the requested rounded kitchen factors. Cup weights are ingredient-specific estimates; reviewed package contents override regional defaults.

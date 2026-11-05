@@ -236,12 +236,14 @@
         {
           "name": "Parmesan",
           "key": "parmesan",
-          "quantity": 1.0,
-          "unit": "each",
-          "price_hint": 3.8,
+          "quantity": 80,
+          "unit": "g",
+          "price_hint": 2.0,
           "status": "PARSED",
           "recipe_id": "creamy-pasta",
-          "ingredient_index": 3
+          "ingredient_index": 3,
+          "needs_review": false,
+          "quantity_basis": "USER_ACCEPTED_CULINARY_RECOMMENDATION_20261105_NOT_KITCHEN_TESTED"
         },
         {
           "name": "Garlic",
@@ -1446,12 +1448,14 @@
         {
           "name": "Chicken stock",
           "key": "chicken stock",
-          "quantity": 1.0,
-          "unit": "pack",
-          "price_hint": 1.1,
-          "status": "NEEDS_PACK_SPEC",
+          "quantity": 1200,
+          "unit": "ml",
+          "price_hint": 1.4,
+          "status": "PARSED",
           "recipe_id": "lemon-chicken-orzo",
-          "ingredient_index": 2
+          "ingredient_index": 2,
+          "needs_review": false,
+          "quantity_basis": "USER_ACCEPTED_CULINARY_RECOMMENDATION_20261105_NOT_KITCHEN_TESTED"
         },
         {
           "name": "Spinach",
@@ -1889,22 +1893,26 @@
         {
           "name": "Vegetable stock",
           "key": "vegetable stock",
-          "quantity": 1.0,
-          "unit": "pack",
-          "price_hint": 1.1,
-          "status": "NEEDS_PACK_SPEC",
+          "quantity": 1000,
+          "unit": "ml",
+          "price_hint": 1.0,
+          "status": "PARSED",
           "recipe_id": "mushroom-risotto",
-          "ingredient_index": 2
+          "ingredient_index": 2,
+          "needs_review": false,
+          "quantity_basis": "USER_ACCEPTED_CULINARY_RECOMMENDATION_20261105_NOT_KITCHEN_TESTED"
         },
         {
           "name": "Parmesan",
           "key": "parmesan",
-          "quantity": 1.0,
-          "unit": "each",
-          "price_hint": 3.8,
+          "quantity": 60,
+          "unit": "g",
+          "price_hint": 1.5,
           "status": "PARSED",
           "recipe_id": "mushroom-risotto",
-          "ingredient_index": 3
+          "ingredient_index": 3,
+          "needs_review": false,
+          "quantity_basis": "USER_ACCEPTED_CULINARY_RECOMMENDATION_20261105_NOT_KITCHEN_TESTED"
         },
         {
           "name": "Onion",
@@ -2156,12 +2164,14 @@
         {
           "name": "Vegetable stock",
           "key": "vegetable stock",
-          "quantity": 1.0,
-          "unit": "pack",
-          "price_hint": 1.1,
-          "status": "NEEDS_PACK_SPEC",
+          "quantity": 1000,
+          "unit": "ml",
+          "price_hint": 1.0,
+          "status": "PARSED",
           "recipe_id": "sweet-potato-soup",
-          "ingredient_index": 2
+          "ingredient_index": 2,
+          "needs_review": false,
+          "quantity_basis": "USER_ACCEPTED_CULINARY_RECOMMENDATION_20261105_NOT_KITCHEN_TESTED"
         },
         {
           "name": "Natural yoghurt",
@@ -3040,12 +3050,14 @@
         {
           "name": "Pasta shells",
           "key": "pasta shells",
-          "quantity": 500.0,
+          "quantity": 250,
           "unit": "g",
-          "price_hint": 1.5,
+          "price_hint": 0.75,
           "status": "PARSED",
           "recipe_id": "spinach-ricotta-shells",
-          "ingredient_index": 0
+          "ingredient_index": 0,
+          "needs_review": false,
+          "quantity_basis": "USER_ACCEPTED_CULINARY_RECOMMENDATION_20261105_NOT_KITCHEN_TESTED"
         },
         {
           "name": "Ricotta",
@@ -3439,12 +3451,14 @@
         {
           "name": "Stock",
           "key": "stock",
-          "quantity": 1.0,
-          "unit": "pack",
-          "price_hint": 1.1,
-          "status": "NEEDS_PACK_SPEC",
+          "quantity": 1000,
+          "unit": "ml",
+          "price_hint": 1.0,
+          "status": "PARSED",
           "recipe_id": "sausage-lentil-stew",
-          "ingredient_index": 4
+          "ingredient_index": 4,
+          "needs_review": false,
+          "quantity_basis": "USER_ACCEPTED_CULINARY_RECOMMENDATION_20261105_NOT_KITCHEN_TESTED"
         },
         {
           "name": "Celery",
@@ -3476,12 +3490,14 @@
         {
           "name": "Chicken",
           "key": "chicken",
-          "quantity": 400.0,
+          "quantity": 400,
           "unit": "g",
           "price_hint": 4,
           "status": "PARSED",
           "recipe_id": "chicken-noodle-soup",
-          "ingredient_index": 0
+          "ingredient_index": 0,
+          "needs_review": false,
+          "quantity_basis": "USER_ACCEPTED_CULINARY_RECOMMENDATION_20261105_NOT_KITCHEN_TESTED"
         },
         {
           "name": "Egg noodles",
@@ -3507,24 +3523,26 @@
         {
           "name": "Stock",
           "key": "stock",
-          "quantity": 1.0,
-          "unit": "pack",
-          "price_hint": 1.1,
-          "status": "NEEDS_PACK_SPEC",
+          "quantity": 1500,
+          "unit": "ml",
+          "price_hint": 1.75,
+          "status": "PARSED",
           "recipe_id": "chicken-noodle-soup",
-          "ingredient_index": 3
+          "ingredient_index": 3,
+          "needs_review": false,
+          "quantity_basis": "USER_ACCEPTED_CULINARY_RECOMMENDATION_20261105_NOT_KITCHEN_TESTED"
         },
         {
           "name": "Celery",
           "key": "celery",
-          "quantity": 300.0,
+          "quantity": 300,
           "unit": "g",
           "price_hint": 1.2,
-          "status": "NEEDS_PACK_SPEC",
+          "status": "PARSED",
           "recipe_id": "chicken-noodle-soup",
           "ingredient_index": 4,
-          "unit_assumption": "300 g celery bunch assumption",
-          "needs_review": true
+          "needs_review": false,
+          "quantity_basis": "USER_ACCEPTED_CULINARY_RECOMMENDATION_20261105_NOT_KITCHEN_TESTED"
         },
         {
           "name": "Onion",
@@ -4080,12 +4098,14 @@
         {
           "name": "Parmesan",
           "key": "parmesan",
-          "quantity": 1.0,
-          "unit": "each",
-          "price_hint": 3.8,
+          "quantity": 50,
+          "unit": "g",
+          "price_hint": 1.25,
           "status": "PARSED",
           "recipe_id": "aubergine-parmigiana",
-          "ingredient_index": 3
+          "ingredient_index": 3,
+          "needs_review": false,
+          "quantity_basis": "USER_ACCEPTED_CULINARY_RECOMMENDATION_20261105_NOT_KITCHEN_TESTED"
         },
         {
           "name": "Basil",
@@ -6158,7 +6178,7 @@
     },
     {
       "id": "extra-15-minute-pesto-tortellini",
-      "name": "15-minute pesto tortellini",
+      "name": "20-minute pesto tortellini",
       "servings": 4,
       "ingredients": [
         {
@@ -6478,14 +6498,14 @@
         {
           "name": "Vegetable stock",
           "key": "vegetable stock",
-          "quantity": 1.0,
-          "unit": "each",
-          "price_hint": 1.25,
+          "quantity": 600,
+          "unit": "ml",
+          "price_hint": 0.6,
           "status": "PARSED",
           "recipe_id": "extra-lentil-shepherdless-pie",
           "ingredient_index": 3,
-          "needs_review": true,
-          "unit_assumption": "Unspecified pack: no safe weight assumption"
+          "needs_review": false,
+          "quantity_basis": "USER_ACCEPTED_CULINARY_RECOMMENDATION_20261105_NOT_KITCHEN_TESTED"
         },
         {
           "name": "Onion",

@@ -525,7 +525,9 @@ private final class BasketBossCookSmokeReporter: NSObject, WKScriptMessageHandle
           report.voiceScaledAmount=spoken.includes(answers.cheddar)&&requests.at(-1)?.payload.recipe.ingredients.some(item=>item.name==='Cheddar'&&item.quantity==='265 g');await wait(()=>!busy);
           voiceStage='nextStep';onFinal('Next step');await wait(()=>/STEP 2 OF/.test(document.getElementById('bbBody').textContent));
           report.voiceNextStep=/STEP 2 OF/.test(document.getElementById('bbBody').textContent);
-          if(!document.getElementById('bbInstruction').textContent.includes(recipe.method[1]))throw Error('VoiceCookNextInstruction');
+          const expectedNextActions=window.BBCookStepLayout.actions(window.BBCookMethod.normalizeMethod(recipe,recipe)[1]);
+          const actualNextActions=[...document.querySelectorAll('#bbInstruction li')].map(node=>node.textContent.trim());
+          if(!expectedNextActions.length||JSON.stringify(actualNextActions)!==JSON.stringify(expectedNextActions))throw Error('VoiceCookNextInstruction');
           const nextStep='Toss chicken and peppers with oil, fajita seasoning, salt and pepper.';
           await wait(()=>spoken.some(text=>text.toLowerCase().includes(nextStep.toLowerCase())));
           report.voiceStepNarrated=spoken.filter(text=>text.toLowerCase().includes(nextStep.toLowerCase())).length===1;await wait(()=>!busy);
