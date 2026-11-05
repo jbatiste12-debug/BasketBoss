@@ -16,3 +16,6 @@ ios/App/App/config.xml
 *.dSYM/
 
 supabase/.temp/
+
+# Generated native bundle may use a local temporary staging link.
+/dist
