@@ -25,6 +25,10 @@ test('polished interface deployment rejects missing or HTML fallback assets and 
  }
 });
 
+test('review readiness rejects an outdated privacy revision even when it is a valid public HTML page',async()=>{
+ await assert.rejects(verifyReviewDeployment(async()=>new Response('Last updated 1 November 2026.',{headers:{'Content-Type':'text/html'}})),/App review compliance routes/);
+});
+
 function landingFixture({hidden=false,assetType,assetStatus=200,headline='Your kitchen.<br><em>Made simple.</em>'}={}){
  const requests=[];
  const perform=async(address,options)=>{
@@ -199,7 +203,7 @@ test('review verification reports public legal/native checkout readiness without
  const calls=[];
  const check=async ready=>verifyReviewDeployment(async(address,options)=>{
   calls.push({address,options});assert.notEqual(options.method,'POST');assert.equal(options.headers?.Authorization,undefined);
-  if(/\/(privacy|terms)$/.test(address))return new Response('Last updated 1 November 2026.',{headers:{'Content-Type':'text/html'}});
+  if(/\/(privacy|terms)$/.test(address))return new Response(address.endsWith('/privacy')?'Last updated 5 November 2026.':'Last updated 1 November 2026.',{headers:{'Content-Type':'text/html'}});
   if(address.endsWith('checkout-config'))return Response.json({enabled:false});
   return Response.json({ok:true,available:true,migrationReady:ready},{headers:{'Access-Control-Allow-Origin':'capacitor://localhost'}});
  });

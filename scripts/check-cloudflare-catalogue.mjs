@@ -1,6 +1,6 @@
 // Read-only Cloudflare check. Never prints credentials, bindings, recipe content
 // or provider error bodies. The private import is deliberately a separate step.
-import {appendFileSync} from 'node:fs';
+import {appendFileSync,readFileSync} from 'node:fs';
 import {pathToFileURL} from 'node:url';
 import {recipientForToken} from './private-catalogue-envelope.mjs';
 
@@ -77,7 +77,8 @@ export async function verifyReviewDeployment(perform=fetch){
   for(const path of ['/privacy','/terms']){
    const page=await perform('https://basketboss.co.uk'+path,options);
    if(page.status!==200||!/text\/html/i.test(page.headers.get('content-type')||''))throw Error();
-   const html=await page.text();if(!html.includes('1 November 2026'))throw Error();
+   const expectedVersion=readFileSync(new URL('..'+path+'.html',import.meta.url),'utf8').match(/Last updated (\d{1,2} [A-Za-z]+ \d{4})/)?.[1];
+   const html=await page.text();if(!expectedVersion||!html.includes('Last updated '+expectedVersion))throw Error();
   }
   const response=await perform('https://basketboss.co.uk/api/account/delete',{...options,headers:{Origin:'capacitor://localhost'}});
   const status=await response.json();
