@@ -1,0 +1,14 @@
+BasketBoss Build 18 — clearer cooking, step by step
+
+Cook instructions have been cleaned up, with preparation in the right order and less repeated advice. Chef Boss, spoken steps and the screen now share the same recipe instructions.
+
+The Cook screen also has a more polished recipe card, clearer text, a smoother progress indicator and matching Kitchen tip and timer controls.
+
+Please try:
+• A fish or prawn recipe: check preparation appears before cooking and instructions do not repeat.
+• Prep → Cook → Back to Prep → Continue: your current step and checks should stay intact.
+• Start, pause, reset and adjust a timer, then move between steps.
+• Ask Chef Boss a question about the current step.
+• Create a meal from ingredients and review its ordered steps.
+
+Please report the recipe name, step number and what happened, with a screenshot where possible.

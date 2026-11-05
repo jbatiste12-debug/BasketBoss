@@ -62,21 +62,24 @@ function documentFixture(){
  return {doc,root};
 }
 
-function fixture(entry='index.html',assistant={ask:async()=>({answer:'Stir gently.'})}){
+function fixture(entry='index.html',assistant={ask:async()=>({answer:'Stir gently.'})},overrides={}){
  const source=fs.readFileSync(new URL('../'+entry,import.meta.url),'utf8');
  const start=source.indexOf('function openCook('),end=source.indexOf('\nfunction bbHomeOccurrence(',start);
  assert.ok(start>0&&end>start,'test must execute the real Cook controller');
  const {doc,root}=documentFixture(),intervals=new Map(),pantry=[],deductions=[],notifications=[];let nextInterval=0,voiceController,readVoice;
  const recipe={id:'test-stew',name:'Vegetable stew',servings:4,mins:15,ingredients:[['Onion','2 onions'],['Carrot','300 g'],['Stock','500 ml']],method:['Chop the onion for 2 minutes.','Simmer for 3 minutes.','Serve after 1 minute.']};
- const win=events({document:doc,AbortController,navigator:{onLine:true},setTimeout,clearTimeout,localStorage:{getItem:()=>null},BasketBossSession:{read:()=>({user:{id:'actor-one'}})},BBHome:{needsLegacyReview:()=>false,actor:()=> 'actor-one',cooked:event=>deductions.push(event)},BBCookPantry:{mount:options=>{pantry.push(options);return {dispose(){}};}}});
+ Object.assign(recipe,overrides);
+ const win=events({BBCookMethod:require('../bb-cook-method.js'),document:doc,AbortController,navigator:{onLine:true},setTimeout,clearTimeout,localStorage:{getItem:()=>null},BasketBossSession:{read:()=>({user:{id:'actor-one'}})},BBHome:{needsLegacyReview:()=>false,actor:()=> 'actor-one',cooked:event=>deductions.push(event)},BBCookPantry:{mount:options=>{pantry.push(options);return {dispose(){}};}}});
  win.BBCookVoice={mount(options){readVoice=options.context;voiceController=voice.mount({...options,window:win,document:doc,assistant,tts:{}});return voiceController;}};
  const context=vm.createContext({window:win,document:doc,crypto:{randomUUID:()=> 'cook-once'},BBServing:serving,BB307_NORMALIZED:[],state:{planned:[]},bb307Market:'UK',timerHandle:null,timer:0,
   getRecipe:()=>recipe,bb176AllowedRecipe:()=>true,bbFeedingForRecipe:()=>4,bbHomeOccurrence:()=>null,bbVerifiedPremiumFeature:()=>true,bbPremiumFeatureUpgrade(){throw Error('Unexpected upgrade');},
-  kitchenMethodFor:r=>r.method,kitchenEquipment:()=>['Knife','Saucepan'],kitchenPrepHint:()=> 'Prepare safely.',bbUICookStepSeconds:text=>Number(text.match(/(\d+) minutes?/)?.[1]||5)*60,
+  DETAILED_METHODS:{},kitchenEquipment:()=>['Knife','Saucepan'],kitchenPrepHint:()=> 'Prepare safely.',bbUICookStepSeconds:text=>Number(text.match(/(\d+) minutes?/)?.[1]||5)*60,
   esc:text=>String(text).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/"/g,'&quot;'),notify:text=>notifications.push(text),requestAnimationFrame:fn=>fn(),
   setInterval:fn=>{intervals.set(++nextInterval,fn);return nextInterval;},clearInterval:id=>intervals.delete(id)});
  const measureStart=source.indexOf('function bbRecipeIngredientQuantity('),measureEnd=source.indexOf('const BB307_SOURCE_RECIPES=',measureStart);
  vm.runInContext(source.slice(measureStart,measureEnd),context);
+ const methodStart=source.indexOf('function kitchenMethodFor(recipe){'),methodEnd=source.indexOf('\nconst DETAILED_METHODS=',methodStart);
+ vm.runInContext(source.slice(methodStart,methodEnd),context);
  vm.runInContext(source.slice(start,end)+'\nopenCook("test-stew","Monday");',context);
  const get=id=>root.querySelector('#'+id),phase=()=>root.querySelector('.cook-panel')?.dataset.phase;
  return {doc,root,get,phase,context,recipe,pantry,deductions,notifications,intervals,voice:()=>readVoice(),dispose:()=>get('bbExit')?.click(),advance:()=>get('bbNext').click(),seconds:()=>vm.runInContext('timer',context),elapse(seconds){for(let i=0;i<seconds;i++)for(const callback of [...intervals.values()])callback();},check(selector,index=0,on=true){const node=root.querySelectorAll(selector)[index];node.checked=on;node.fire('change');},key(key,target=doc.body){let prevented=false;doc.fire('keydown',{key,target,preventDefault(){prevented=true;}});return prevented;},controller:()=>voiceController};
@@ -95,6 +98,25 @@ for(const entry of ['index.html','app.html'])test(entry+': Prep navigation prese
   h.advance();assert.equal(h.phase(),'done');assert.equal(h.pantry.length,1,'only explicit Finish opens pantry review');assert.equal(h.deductions.length,0,'rendering Done does not deduct stock');assert.equal(h.intervals.size,0);
   assert.equal(h.get('bbPhasePrep').disabled,true);h.get('bbPhasePrep').click();assert.equal(h.phase(),'done');
  }finally{h.dispose();}
+});
+
+test('normalized prep order reaches the screen and mentor while each timer retains its source-card duration',()=>{
+ const h=fixture('app.html',undefined,{name:'Salmon',ingredients:[['Salmon','2 fillets']],method:['Sear salmon for 3 minutes and set aside. Pat salmon dry before searing for 1 minute.','Simmer for 7 minutes.']});
+ try{
+  h.get('bbStart').click();assert.match(h.get('bbInstruction').textContent,/^Pat salmon dry/);
+  assert.equal(h.voice().mentorRecipe.steps.length,2);assert.equal(h.voice().mentorRecipe.currentStep,0);
+  assert.match(h.voice().mentorRecipe.steps[0],/^Pat salmon dry/);assert.equal(h.seconds(),180,'prep reorder must not replace the source cooking timer with one minute');
+  h.get('bbTimerToggle').click();h.elapse(5);assert.equal(h.seconds(),175);h.get('bbReset').click();assert.equal(h.seconds(),180);
+  h.advance();assert.equal(h.seconds(),420);assert.equal(h.voice().mentorRecipe.currentStep,1);
+  h.get('bbBack').click();assert.equal(h.seconds(),180);assert.equal(h.voice().mentorRecipe.currentStep,0);assert.match(h.get('bbInstruction').textContent,/^Pat salmon dry/);
+  assert.equal(h.deductions.length,0);
+ }finally{h.dispose();}
+});
+
+test('an unusable imported card is rejected before Cook opens rather than shifting its step indices',()=>{
+ const h=fixture('app.html',undefined,{method:['***','Cook for 3 minutes.']});
+ try{assert.equal(h.phase(),undefined);assert.equal(h.get('bbStart'),null);assert.equal(h.notifications.length,1);assert.match(h.notifications[0],/needs cooking instructions/);assert.equal(h.doc.body.style.overflow,undefined);assert.equal(h.intervals.size,0);assert.equal(h.pantry.length,0);}
+ finally{h.dispose();}
 });
 
 test('Back, keyboard and voice can return from the first cooking step to Prep, while text editing keeps arrow keys',()=>{

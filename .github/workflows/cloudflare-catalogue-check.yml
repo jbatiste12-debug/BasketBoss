@@ -10,7 +10,6 @@ on:
       - scripts/audit-cook-method-private-summary.mjs
       - scripts/load-private-recipe-audit.mjs
       - scripts/seal-cook-review-snapshot.mjs
-      - .github/private-catalogue/cook-review-recipient.json
       - tests/basketboss-cook-method-private-summary.test.mjs
       - tests/basketboss-cook-review-snapshot.test.mjs
       - bb-cook-method.js
@@ -132,15 +131,7 @@ jobs:
           CLOUDFLARE_RECIPE_AUDIT_READ_TOKEN: ${{ secrets.CLOUDFLARE_RECIPE_AUDIT_READ_TOKEN }}
           CLOUDFLARE_ACCOUNT_ID: ${{ vars.CLOUDFLARE_ACCOUNT_ID || secrets.CLOUDFLARE_ACCOUNT_ID }}
           CLOUDFLARE_DATABASE_ID: ${{ vars.CLOUDFLARE_DATABASE_ID }}
-        run: node scripts/audit-cook-method-private-summary.mjs --review-recipient .github/private-catalogue/cook-review-recipient.json --sealed-review-output "$RUNNER_TEMP/basketboss-cook-review.sealed.json" --review-transport-log
-      - name: Retain only the encrypted snapshot for the requested content review
-        if: always()
-        uses: actions/upload-artifact@v4
-        with:
-          name: cook-content-review-encrypted-${{ github.run_id }}-${{ github.run_attempt }}
-          path: ${{ runner.temp }}/basketboss-cook-review.sealed.json
-          if-no-files-found: ignore
-          retention-days: 1
+        run: node scripts/audit-cook-method-private-summary.mjs
 
   readonly_recipe_audit:
     if: github.event_name == 'workflow_dispatch' && github.ref == 'refs/heads/release/recipe-editorial-collections'

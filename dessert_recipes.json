@@ -10,9 +10,9 @@
     "tip": "A rich chocolate bake with a crackly top and fudgy centre; cool before cutting for neat squares.",
     "method": [
       "Heat the oven to 180°C (160°C fan) and line a 20 cm square tin with parchment.",
-      "Melt the butter with dark chocolate gently; cool for a few minutes.",
-      "Whisk sugar and eggs together for 2 minutes, then stir in the melted chocolate.",
-      "Fold in flour and cocoa powder, then chocolate chips; avoid overmixing. Once the flour is added, fold gently just until no dry pockets remain so the crumb stays tender.",
+      "Melt the butter with dark chocolate gently and cool for a few minutes.",
+      "Whisk the sugar and eggs together for 2 minutes, then stir in the melted chocolate.",
+      "Fold in the flour and cocoa powder just until no dry pockets remain, then fold in the chocolate chips without overmixing.",
       "Bake for 25–30 minutes until the top is set but the centre still has a slight wobble.",
       "Cool fully in the tin before slicing into nine squares. Store chilled if adding a dairy topping."
     ],
@@ -60,7 +60,24 @@
         "Other"
       ]
     ],
-    "servings": 9
+    "servings": 9,
+    "steps": [
+      "Heat the oven to 180°C (160°C fan) and line a 20 cm square tin with parchment.",
+      "Melt the butter with dark chocolate gently and cool for a few minutes.",
+      "Whisk the sugar and eggs together for 2 minutes, then stir in the melted chocolate.",
+      "Fold in the flour and cocoa powder just until no dry pockets remain, then fold in the chocolate chips without overmixing.",
+      "Bake for 25–30 minutes until the top is set but the centre still has a slight wobble.",
+      "Cool fully in the tin before slicing into nine squares. Store chilled if adding a dairy topping."
+    ],
+    "culinary_prep_notes": [
+      "Melt gently with the butter, then cool for a few minutes before mixing into the eggs.",
+      "Cut into small pieces and melt gently; for a sauce, whisk off the heat to make it glossy.",
+      "Whisk with the eggs before stirring in the melted chocolate.",
+      "Crack into a separate bowl, then beat or fold in as the method requires for a light, even texture.",
+      "Sift or whisk through the dry mixture so there are no pockets and the crumb cooks evenly.",
+      "Sift or whisk through the dry mixture so there are no pockets and the crumb cooks evenly.",
+      "Chop or fold through at the indicated stage, keeping distinct pieces for texture in the finished bake."
+    ]
   },
   {
     "id": "dessert-sticky-toffee-pudding",
@@ -74,7 +91,7 @@
     "method": [
       "Heat the oven to 180°C (160°C fan). Grease a six-portion muffin tin or a small 20 cm baking dish.",
       "Cover the chopped dates with 180 ml boiling water, leave 10 minutes, then stir in the bicarbonate of soda and mash until soft.",
-      "Cream 75 g of butter with 100 g of brown sugar; beat in the eggs one at a time. Fold in the flour and date mixture. Once the flour is added, fold gently just until no dry pockets remain so the crumb stays tender.",
+      "Cream 75 g of butter with 100 g of brown sugar; beat in the eggs one at a time. Gently fold in the flour and date mixture just until no dry pockets remain.",
       "Spoon into the tin and bake for 25–30 minutes, or until risen and a skewer comes out clean.",
       "For the sauce, gently simmer the remaining 35 g butter, 60 g brown sugar, cream and golden syrup for 3–5 minutes until glossy.",
       "Serve the warm sponge with toffee sauce and ice cream. Refrigerate any dairy leftovers promptly."
@@ -135,7 +152,26 @@
         "Dairy"
       ]
     ],
-    "servings": 6
+    "servings": 6,
+    "steps": [
+      "Heat the oven to 180°C (160°C fan). Grease a six-portion muffin tin or a small 20 cm baking dish.",
+      "Cover the chopped dates with 180 ml boiling water, leave 10 minutes, then stir in the bicarbonate of soda and mash until soft.",
+      "Cream 75 g of butter with 100 g of brown sugar; beat in the eggs one at a time. Gently fold in the flour and date mixture just until no dry pockets remain.",
+      "Spoon into the tin and bake for 25–30 minutes, or until risen and a skewer comes out clean.",
+      "For the sauce, gently simmer the remaining 35 g butter, 60 g brown sugar, cream and golden syrup for 3–5 minutes until glossy.",
+      "Serve the warm sponge with toffee sauce and ice cream. Refrigerate any dairy leftovers promptly."
+    ],
+    "culinary_prep_notes": [
+      "Chop, soak in the boiling water and mash after adding the bicarbonate of soda.",
+      "Sift or whisk through the dry mixture so there are no pockets and the crumb cooks evenly.",
+      "Use the stated portion to cream with the butter and the remaining portion for the toffee sauce.",
+      "Soften the sponge portion for creaming; gently simmer the remaining butter in the sauce.",
+      "Crack into a separate bowl, then beat or fold in as the method requires for a light, even texture.",
+      "Stir into the soaked dates before mashing them.",
+      "Incorporate gradually while stirring to keep the sauce smooth; lower the heat if it starts to split.",
+      "Add to the toffee sauce with the cream, butter and sugar.",
+      "Keep frozen until serving and spoon alongside the warm pudding."
+    ]
   },
   {
     "id": "dessert-lemon-drizzle-cake",
@@ -149,7 +185,7 @@
     "method": [
       "Heat the oven to 180°C (160°C fan). Grease and line a 900 g loaf tin.",
       "Beat softened butter with 160 g caster sugar until pale and fluffy. Add eggs one at a time.",
-      "Fold in flour, baking powder and finely grated zest of two lemons; loosen with the milk. Once the flour is added, fold gently just until no dry pockets remain so the crumb stays tender.",
+      "Gently fold in flour, baking powder and finely grated zest of two lemons just until no dry pockets remain; loosen with the milk.",
       "Bake for 45–50 minutes until a skewer inserted in the centre comes out clean.",
       "Warm the juice of two lemons with the remaining 40 g caster sugar; prick the warm loaf and pour over.",
       "When cool, mix icing sugar with enough juice from the third lemon to make a thick drizzle and spoon over the cake."
@@ -204,7 +240,25 @@
         "Other"
       ]
     ],
-    "servings": 8
+    "servings": 8,
+    "steps": [
+      "Heat the oven to 180°C (160°C fan). Grease and line a 900 g loaf tin.",
+      "Beat softened butter with 160 g caster sugar until pale and fluffy. Add eggs one at a time.",
+      "Gently fold in flour, baking powder and finely grated zest of two lemons just until no dry pockets remain; loosen with the milk.",
+      "Bake for 45–50 minutes until a skewer inserted in the centre comes out clean.",
+      "Warm the juice of two lemons with the remaining 40 g caster sugar; prick the warm loaf and pour over.",
+      "When cool, mix icing sugar with enough juice from the third lemon to make a thick drizzle and spoon over the cake."
+    ],
+    "culinary_prep_notes": [
+      "Sift or whisk through the dry mixture so there are no pockets and the crumb cooks evenly.",
+      "Soften before beating with the caster sugar; do not melt for this cake.",
+      "Use the stated portion to cream with the butter and the remaining portion in the warm lemon drizzle.",
+      "Crack into a separate bowl, then beat or fold in as the method requires for a light, even texture.",
+      "Zest the skin before cutting; squeeze in juice at the stated stage so the dish finishes bright and fragrant.",
+      "Mix with juice from the third lemon to make the icing for the cooled cake.",
+      "Fold into the cake mixture to loosen it before baking.",
+      "Sift or whisk through the dry mixture so there are no pockets and the crumb cooks evenly."
+    ]
   },
   {
     "id": "dessert-apple-crumble",
@@ -267,6 +321,23 @@
         "Dairy"
       ]
     ],
-    "servings": 6
+    "servings": 6,
+    "steps": [
+      "Heat oven to 190°C (170°C fan). Peel, core and slice the apples.",
+      "Toss apples with 40 g sugar and cinnamon in a medium baking dish; add 2 tbsp water.",
+      "Rub flour and cold cubed butter together with fingertips until breadcrumb-like, then stir in oats and remaining 90 g sugar.",
+      "Scatter the crumble over the fruit without pressing it down.",
+      "Bake for 30–35 minutes, until golden and bubbling at the edges.",
+      "Allow 5 minutes to settle; warm the custard separately and serve alongside."
+    ],
+    "culinary_prep_notes": [
+      "Peel, core and slice before tossing with the sugar and cinnamon in the baking dish.",
+      "Sift or whisk through the dry mixture so there are no pockets and the crumb cooks evenly.",
+      "Keep cold, cube and rub into the flour with fingertips until breadcrumb-like; do not melt.",
+      "Stir into the rubbed-in flour and butter to make the crumble topping.",
+      "Use the stated portion with the apples and stir the remaining portion into the crumble topping.",
+      "Toss with the sliced apples and sugar before adding the topping.",
+      "Warm separately and serve alongside the baked crumble."
+    ]
   }
 ]

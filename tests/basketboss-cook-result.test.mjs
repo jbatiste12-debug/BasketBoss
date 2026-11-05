@@ -13,7 +13,7 @@ function renderer({imageAvailable=true,attachError=false,market='Jersey'}={}){
  const panels={'[data-bb-result-ingredients]':{innerHTML:''},'[data-bb-result-method]':{innerHTML:''},'[data-bb-result-safety]':{innerHTML:''}};
  const host={isConnected:true,innerHTML:'',querySelector:selector=>selector==='[data-bb-meal-image]'?image:selector==='[data-bb-meal-again]'?button:panels[selector]||null,replaceChildren(){this.innerHTML='';}};
  const window={localStorage:{getItem:key=>key==='basketboss_321_v7_market'?market:null,setItem(){throw Error('Rendering must not save data');}},fetch(){throw Error('Renderer must not send requests');},addEventListener:(event,listener)=>globalEvents.set(event,listener),removeEventListener:event=>globalEvents.delete(event)};
- for(const file of ['bb-duration.js','bb-recipe-measures.js','bb-cook-step-layout.js'])vm.runInNewContext(fs.readFileSync(new URL('../'+file,import.meta.url),'utf8'),{window,globalThis:window});
+ for(const file of ['bb-cook-method.js','bb-duration.js','bb-recipe-measures.js','bb-cook-step-layout.js'])vm.runInNewContext(fs.readFileSync(new URL('../'+file,import.meta.url),'utf8'),{window,globalThis:window});
  if(imageAvailable)window.BBMealImage={attach(imageHost,options){calls.push({imageHost,options,textBeforeImage:host.innerHTML});if(attachError)throw Error('image provider failed');return {cancel(){cancellations++;}};}};
  vm.runInNewContext(source,{window});
  const options={mealImage:{ticket:'signed-recipe-ticket'},getToken:()=> 'member-token',isCurrent:()=>current,onTryAgain:()=>again++};
@@ -67,12 +67,35 @@ test('Make a Meal catalogue cards use the same region setting, safe quantities, 
  const card=app.slice(app.indexOf('function recipeCard('),app.indexOf('function renderRecipes(){'));
  for(const market of ['US','UK','Jersey','Guernsey']){
   const window={},input={r:{id:'flour-test',name:'Bread',mins:90,servings:4,method:['Heat oven to 200°C. Mix the ingredients; Bake for 90 minutes.']},matched:[],related:[],missing:[],ing:[{name:'Plain flour',amount:'120 g'}]};
-  for(const file of ['bb-duration.js','bb-recipe-measures.js','bb-cook-step-layout.js'])vm.runInNewContext(fs.readFileSync(new URL('../'+file,import.meta.url),'utf8'),{window,globalThis:window});
+  for(const file of ['bb-cook-method.js','bb-duration.js','bb-recipe-measures.js','bb-cook-step-layout.js'])vm.runInNewContext(fs.readFileSync(new URL('../'+file,import.meta.url),'utf8'),{window,globalThis:window});
   const esc=value=>String(value??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
   const html=vm.runInNewContext(helpers+'\n'+card+'\nrecipeCard(input,0)',{window,input,esc,localStorage:{getItem:key=>key==='basketboss_321_v7_market'?market:null}});
   assert.match(html,/1hr 30mins/);assert.match(html,/<ul class="bb-cook-actions" data-bb-measures>/);
   if(market==='US'){assert.match(html,/US cup/);assert.match(html,/392°F/);}else assert.doesNotMatch(html,/US cup|°F/);
   assert.equal(input.ing[0].amount,'120 g');
+ }
+});
+
+test('generated method text renders complete numbered stages and repaints the same stages after a region change',()=>{
+ const h=renderer(),recipe=validRecipe();recipe.steps='1. **Heat** the oven to 200°C.\n2. Roast for **20–25 minutes**; check the centre is steaming hot.';
+ const original=JSON.stringify(recipe);h.api.render(h.host,recipe,h.options);
+ const method=h.host.innerHTML.match(/data-bb-result-method>([\s\S]*?)<\/ol>/)?.[1];
+ assert.equal((method.match(/<ul class="bb-cook-actions"/g)||[]).length,2);
+ assert.match(method,/Heat the oven to 200°C\./);assert.match(method,/20mins–25mins/);assert.match(method,/check the centre is steaming hot\./);
+ assert.doesNotMatch(method,/\*\*|>1\.|>2\./);
+ h.setMarket('US');const repainted=h.panels['[data-bb-result-method]'].innerHTML;
+ assert.equal((repainted.match(/<ul class="bb-cook-actions"/g)||[]).length,2);assert.match(repainted,/392°F/);assert.match(repainted,/20mins–25mins/);
+ assert.equal(JSON.stringify(recipe),original);assert.equal(h.calls.length,1);
+});
+
+test('Make a Meal handles markdown text and empty method arrays without losing the valid steps source',()=>{
+ const helpers=app.slice(app.indexOf('function bbMealMarket(){'),app.indexOf('const alias='));
+ const card=app.slice(app.indexOf('function recipeCard('),app.indexOf('function renderRecipes(){'));
+ const window={};for(const file of ['bb-cook-method.js','bb-cook-step-layout.js'])vm.runInNewContext(fs.readFileSync(new URL('../'+file,import.meta.url),'utf8'),{window,globalThis:window});
+ for(const source of [{method:'1. **Heat** the pan.\n2. Add chicken; cook for 12 minutes.'},{method:[],steps:['Heat the pan.','Add chicken; cook for 12 minutes.']}]){
+  const input={r:{id:'source-test',name:'Chicken',mins:15,servings:4,...source},matched:[],related:[],missing:[],ing:[]};
+  const before=JSON.stringify(input),html=vm.runInNewContext(helpers+'\n'+card+'\nrecipeCard(input,0)',{window,input,esc:String,localStorage:{getItem:()=>null}});
+  assert.equal((html.match(/<ul class="bb-cook-actions"/g)||[]).length,2);assert.match(html,/Heat the pan\./);assert.match(html,/cook for 12 minutes\./);assert.doesNotMatch(html,/\*\*/);assert.equal(JSON.stringify(input),before);
  }
 });
 

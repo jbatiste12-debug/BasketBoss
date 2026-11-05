@@ -227,3 +227,102 @@
 #modalRoot .cook-overlay .cook-panel.bb-kitchen .bb-cook-timer>summary{display:list-item;cursor:pointer;min-height:44px;padding:12px 15px;box-sizing:border-box;color:var(--cook-forest);font-size:14px;font-weight:700;line-height:1.5}
 #modalRoot .cook-overlay .cook-panel.bb-kitchen .bb-cook-timer>summary:focus-visible{outline:3px solid var(--cook-gold);outline-offset:2px;border-radius:12px}
 #modalRoot .cook-overlay .cook-panel.bb-kitchen .bb-cook-timer .bb-clock{margin:0;border:0!important;border-radius:0 0 14px 14px}
+
+/* Cook surface refinement: paint and type only. Existing card spacing, control
+   dimensions, phase layout and scrolling remain owned by the rules above. */
+#modalRoot .cook-overlay .cook-panel.bb-kitchen #bbInstruction{
+ border-color:#dce3d3;border-left-color:#d1ae62;border-radius:17px;
+ background:linear-gradient(145deg,#fffefb 0%,#fffdf8 62%,#faf6eb 100%);
+ box-shadow:inset 0 1px 0 #ffffff,0 1px 2px #183e2c06,0 7px 20px #183e2c08,0 18px 36px #183e2c04;
+ color:var(--cook-deep);font-weight:550;line-height:1.56;
+}
+#modalRoot .cook-overlay .cook-panel.bb-kitchen .bb-cook-actions li{
+ color:#244c38;font-weight:550;line-height:1.56;letter-spacing:-.012em;
+}
+#modalRoot .cook-overlay .cook-panel.bb-kitchen .bb-cook-actions li::marker{color:#7d945c}
+#modalRoot .cook-overlay .cook-panel.bb-kitchen .bb-cook-actions strong{
+ color:#174c36;font-weight:800;background:#f2e9cf;
+ box-shadow:inset 0 -1px 0 #d9c18540;
+}
+#modalRoot .cook-overlay .cook-panel.bb-kitchen[data-phase="cook"] #bbBody>.muted{
+ color:#6b795f!important;font-weight:450;
+}
+#modalRoot .cook-overlay .cook-panel.bb-kitchen[data-phase="cook"] #bbBody>div.muted:first-of-type{
+ color:#57704e!important;font-weight:750;letter-spacing:.075em;
+}
+#modalRoot .cook-overlay .cook-panel.bb-kitchen .bb-progress{
+ background:#e4e9dc!important;box-shadow:inset 0 1px 2px #284b3220,0 1px 0 #ffffffc7;
+}
+#modalRoot .cook-overlay .cook-panel.bb-kitchen .bb-progress>div{
+ border-radius:inherit;background:linear-gradient(90deg,#255f43,#43805a)!important;
+ box-shadow:inset 0 1px 0 #ffffff30,1px 0 3px #265a3b1a;
+}
+#modalRoot .cook-overlay .cook-panel.bb-kitchen #bbTipToggle{
+ --cook-tool-surface:#f1f3e8;position:relative;
+ border-color:#d4dec8!important;border-radius:999px!important;
+ background:var(--cook-tool-surface)!important;color:#3c6143!important;
+ box-shadow:inset 0 1px 0 #ffffffb3,0 1px 2px #284b3206!important;
+ transition:background-color .16s ease,border-color .16s ease,box-shadow .16s ease;
+}
+#modalRoot .cook-overlay .cook-panel.bb-kitchen #bbTip{
+ border-color:#e1ddbf!important;background:#f6f2e2!important;color:#66704f!important;
+ box-shadow:inset 0 1px 0 #fffdf780;font-weight:450;line-height:1.6;
+}
+#modalRoot .cook-overlay .cook-panel.bb-kitchen #bbTimerPanel{
+ --cook-tool-surface:#f8f7ef;border-color:#d8dfcb;
+ background:var(--cook-tool-surface);
+ box-shadow:inset 0 1px 0 #ffffff,0 2px 4px #284b3204,0 6px 16px #284b3204;
+ transition:border-color .16s ease,box-shadow .16s ease;
+}
+#modalRoot .cook-overlay .cook-panel.bb-kitchen #bbTimerSummary{
+ position:relative;color:#3c6143;font-weight:750;letter-spacing:-.01em;
+ transition:color .16s ease;
+}
+#modalRoot .cook-overlay .cook-panel.bb-kitchen #bbTimerSummary::marker{color:#79905f}
+#modalRoot .cook-overlay .cook-panel.bb-kitchen #bbTimerPanel[open]{
+ border-color:#ccd8bd;box-shadow:inset 0 1px 0 #ffffff,0 3px 8px #284b3205,0 8px 20px #284b3205;
+}
+#modalRoot .cook-overlay .cook-panel.bb-kitchen #bbTimerPanel .bb-clock{
+ background:linear-gradient(145deg,#f5f2e5,#f1efdf)!important;
+ box-shadow:inset 0 1px 0 #e7e3d0;
+}
+#modalRoot .cook-overlay .cook-panel.bb-kitchen .bb-clock #bbTime{
+ color:#194f39!important;font-weight:700;letter-spacing:-1.5px;
+ text-shadow:0 1px 0 #ffffffb3;font-feature-settings:"tnum";
+}
+/* The source labels retain their accessible names. These paint-only masks
+   replace the two existing emoji glyphs without changing text or button size. */
+@supports ((mask-image:linear-gradient(#000,#000)) or (-webkit-mask-image:linear-gradient(#000,#000))){
+ #modalRoot .cook-overlay .cook-panel.bb-kitchen :is(#bbTipToggle,#bbTimerSummary)::before{
+  content:"";position:absolute;top:50%;width:19px;height:21px;
+  background:var(--cook-tool-surface);transform:translateY(-50%);pointer-events:none;
+ }
+ #modalRoot .cook-overlay .cook-panel.bb-kitchen :is(#bbTipToggle,#bbTimerSummary)::after{
+  content:"";position:absolute;top:50%;width:16px;height:16px;
+  background:currentColor;transform:translateY(-50%);pointer-events:none;
+  -webkit-mask:var(--cook-tool-icon) center/contain no-repeat;
+  mask:var(--cook-tool-icon) center/contain no-repeat;
+ }
+ #modalRoot .cook-overlay .cook-panel.bb-kitchen #bbTipToggle{
+  --cook-tool-icon:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Cpath d='M8.5 17h7M9 20h6M9 14.5c0-1.6-3-2.2-3-6a6 6 0 0 1 12 0c0 3.8-3 4.4-3 6V17H9z' fill='none' stroke='black' stroke-width='1.7' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E");
+ }
+ #modalRoot .cook-overlay .cook-panel.bb-kitchen #bbTimerSummary{
+  --cook-tool-icon:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Cpath d='M9 2h6M12 2v3m6 1 1.5-1.5M12 9v4l2.5 1.5' fill='none' stroke='black' stroke-width='1.7' stroke-linecap='round' stroke-linejoin='round'/%3E%3Ccircle cx='12' cy='13' r='8' fill='none' stroke='black' stroke-width='1.7'/%3E%3C/svg%3E");
+ }
+ #modalRoot .cook-overlay .cook-panel.bb-kitchen #bbTipToggle::before{left:15px}
+ #modalRoot .cook-overlay .cook-panel.bb-kitchen #bbTipToggle::after{left:16px}
+ #modalRoot .cook-overlay .cook-panel.bb-kitchen #bbTimerSummary::before{left:30px}
+ #modalRoot .cook-overlay .cook-panel.bb-kitchen #bbTimerSummary::after{left:31px}
+}
+@media(hover:hover){
+ #modalRoot .cook-overlay .cook-panel.bb-kitchen #bbTipToggle:hover{
+  --cook-tool-surface:#e9efdf;border-color:#bfcfb1!important;
+  box-shadow:inset 0 1px 0 #ffffffb3,0 2px 5px #284b3210!important;
+ }
+ #modalRoot .cook-overlay .cook-panel.bb-kitchen #bbTimerPanel:hover{border-color:#becdb0}
+ #modalRoot .cook-overlay .cook-panel.bb-kitchen #bbTimerSummary:hover{color:#244f34}
+}
+#modalRoot .cook-overlay .cook-panel.bb-kitchen #bbTipToggle:active{
+ --cook-tool-surface:#e5ecd9;box-shadow:inset 0 1px 3px #284b3212!important;
+}
+#modalRoot .cook-overlay .cook-panel.bb-kitchen #bbTimerSummary:active{color:#17462f}

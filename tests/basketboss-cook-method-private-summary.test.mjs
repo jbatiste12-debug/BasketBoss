@@ -163,11 +163,6 @@ test('workflow adds a separate trusted-main-push summary job and preserves the m
   assert.match(job, /persist-credentials:\s*false/);
   assert.match(job, /run:\s*node scripts\/audit-cook-method-private-summary\.mjs/);
   assert.doesNotMatch(job, /secrets\.CLOUDFLARE_API_TOKEN\b|GITHUB_STEP_SUMMARY|wrangler|deploy|--out/);
-  assert.equal((job.match(/uses:\s*actions\/upload-artifact@/g) || []).length, 1);
-  assert.match(job, /--review-recipient \.github\/private-catalogue\/cook-review-recipient\.json/);
-  assert.match(job, /--sealed-review-output "\$RUNNER_TEMP\/basketboss-cook-review\.sealed\.json"/);
-  assert.match(job, /path:\s*\$\{\{ runner\.temp \}\}\/basketboss-cook-review\.sealed\.json\s*(?:\n|$)/);
-  assert.match(job, /retention-days:\s*1\b/);
-  assert.doesNotMatch(job, /path:\s*[^\n]*(?:\*|current-premium|\.key)/);
+  assert.doesNotMatch(job, /upload-artifact|--review-recipient|--sealed-review-output|--review-transport-log/);
   for (const file of ['bb-cook-method.js', 'recipes.json', 'scripts/load-private-recipe-audit.mjs', 'scripts/audit-cook-method-private-summary.mjs']) assert(workflow.split('\npermissions:')[0].includes('      - ' + file));
 });

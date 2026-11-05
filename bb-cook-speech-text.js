@@ -2,10 +2,10 @@
  * or infer cooking advice: the recipe's numbers and safety wording stay intact. */
 (function(root,factory){
  'use strict';
- const api=factory();
+ const api=factory(typeof module==='object'&&module.exports?require('./bb-cook-method.js'):root?.BBCookMethod);
  if(typeof module==='object'&&module.exports)module.exports=api;
  if(root)root.BBCookSpeechText=api;
-})(typeof window==='undefined'?null:window,function(){
+})(typeof window==='undefined'?null:window,function(method){
  'use strict';
  const units={g:['gram','grams'],kg:['kilogram','kilograms'],mg:['milligram','milligrams'],ml:['millilitre','millilitres'],cl:['centilitre','centilitres'],l:['litre','litres'],tsp:['teaspoon','teaspoons'],tsps:['teaspoon','teaspoons'],tbsp:['tablespoon','tablespoons'],tbsps:['tablespoon','tablespoons'],min:['minute','minutes'],mins:['minute','minutes'],hr:['hour','hours'],hrs:['hour','hours'],sec:['second','seconds'],secs:['second','seconds']};
  const plurals={onion:'onions',carrot:'carrots',potato:'potatoes',tomato:'tomatoes',egg:'eggs',clove:'cloves',pepper:'peppers',mushroom:'mushrooms',pea:'peas',bean:'beans',chickpea:'chickpeas',lentil:'lentils',fillet:'fillets',breast:'breasts',thigh:'thighs',sausage:'sausages',prawn:'prawns',wrap:'wraps',noodle:'noodles',nut:'nuts',olive:'olives',lemon:'lemons',lime:'limes',apple:'apples',pear:'pears',banana:'bananas',orange:'oranges',courgette:'courgettes',aubergine:'aubergines',shallot:'shallots',leek:'leeks',cucumber:'cucumbers',parsnip:'parsnips',flatbread:'flatbreads',chop:'chops',baguette:'baguettes',leaf:'leaves',loaf:'loaves'};
@@ -62,7 +62,7 @@
   const food=phrase(value);return food?finish('You’ll need '+food):'Check the recipe for that ingredient’s amount.';
  }
  function step(value={}){
-  const text=plain(value.text);if(!text)return '';
+  const text=plain(method?.normalizeStep(value.text)??value.text);if(!text)return '';
   const index=Number.isInteger(value.index)&&value.index>=0?value.index:0,count=Number.isInteger(value.count)&&value.count>index?value.count:null;
   const cue='Step '+(index+1)+(count?' of '+count:'')+'. ';
   const transition=index===0?'First up, ':count&&index===count-1?'To finish, ':index%2?'Next, ':'Now, ';

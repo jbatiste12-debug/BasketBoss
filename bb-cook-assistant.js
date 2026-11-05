@@ -1,10 +1,10 @@
 /* A recipe-bound conversation transport. Questions and replies stay in memory;
  * verified membership, model choice and provider credentials are server-owned. */
 (function(root,factory){
- 'use strict';const api=factory();
+ 'use strict';const api=factory(typeof module==='object'&&module.exports?require('./bb-cook-method.js'):root?.BBCookMethod);
  if(typeof module==='object'&&module.exports)module.exports=api;
  if(root)root.BBCookAssistant=api;
-})(typeof window==='undefined'?null:window,function(){
+})(typeof window==='undefined'?null:window,function(method){
  'use strict';
  const KEY='basketboss_cloud_session_v1',MAX_BODY=65536,MAX_REPLY=16384,MAX_STREAM_BYTES=65536,MAX_STREAM_FRAME=4096,MAX_STREAM_EVENTS=1024;
  const failure=code=>Object.assign(new Error(code),{code});
@@ -21,10 +21,14 @@
    !['prep','cook'].includes(r.phase||'cook')||!['UK','US','GG','JE'].includes(r.region||'UK'))throw failure('BB_MENTOR_CONTEXT');
   const currentStep=r.phase==='prep'&&r.currentStep==null?0:r.currentStep;
   if(!Number.isInteger(currentStep)||currentStep<0||currentStep>=r.steps.length)throw failure('BB_MENTOR_CONTEXT');
+  // Clean each existing card in place. Splitting/filtering this array would
+  // move currentStep onto a different instruction from the visible Cook card.
+  const steps=r.steps.map(step=>method?.normalizeStep(step,r)??step);
+  if(steps.some(step=>!text(step,1600)))throw failure('BB_MENTOR_CONTEXT');
   const history=value.history===undefined?[]:value.history;
   if(!Array.isArray(history)||history.length>6||history.some(h=>!record(h)||!['user','assistant'].includes(h.role)||!text(h.text,1200)))throw failure('BB_MENTOR_CONTEXT');
   if(value.mentorName!==undefined&&!validName(value.mentorName))throw failure('BB_MENTOR_CONTEXT');
-  return {question:value.question.trim(),recipe:{id:r.id,title:r.title,servings:r.servings,ingredients:r.ingredients.map(i=>({name:i.name,quantity:i.quantity})),steps:[...r.steps],currentStep,phase:r.phase||'cook',region:r.region||'UK'},history:history.map(h=>({role:h.role,text:h.text})),...(value.mentorName===undefined?{}:{mentorName:value.mentorName.trim()})};
+  return {question:value.question.trim(),recipe:{id:r.id,title:r.title,servings:r.servings,ingredients:r.ingredients.map(i=>({name:i.name,quantity:i.quantity})),steps,currentStep,phase:r.phase||'cook',region:r.region||'UK'},history:history.map(h=>({role:h.role,text:h.text})),...(value.mentorName===undefined?{}:{mentorName:value.mentorName.trim()})};
  }
  // Keep recent, completed turns whole. The recipe and its exact ingredient
  // quantities remain untouched; old conversation is the expendable context.

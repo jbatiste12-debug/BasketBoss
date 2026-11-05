@@ -42,10 +42,14 @@ test('step phrasing retains full safety, allergen and temperature instructions',
 });
 
 test('phrasing never truncates long instructions or invents missing amounts',()=>{
- const text=Array.from({length:150},()=> 'Keep checking the centre is steaming hot.').join(' ');
+ const text=Array.from({length:150},(_,index)=> 'Keep checking the centre is steaming hot; check '+(index+1)+'.').join(' ');
  const result=speech.step({text,index:0,count:1});assert.ok(result.includes(text.slice(text.indexOf(' ')+1)));assert.ok(result.length>4000);
  assert.equal(speech.phrase({name:'Salt',quantity:''}),'');assert.match(speech.ingredient({name:'Salt'}),/Check the ingredient and its amount on screen/);
  assert.equal(speech.step({text:''}),'');
+});
+test('spoken steps use cleaned instruction text while retaining the displayed card number, timings and safety checks',()=>{
+ const spoken=speech.step({text:'2. **Simmer** for **12–15 minutes**. Check the chicken reaches **75°C** before serving.',index:1,count:4});
+ assert.match(spoken,/^Step 2 of 4\. Next, simmer for 12 to 15 minutes\./);assert.match(spoken,/Check the chicken reaches 75 degrees Celsius before serving\./);assert.doesNotMatch(spoken,/\*\*|Next, 2\./);
 });
 
 test('practical half counts sound natural without losing their approximation or pack weight',()=>{

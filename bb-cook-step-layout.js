@@ -11,7 +11,10 @@
    const character=text[i],tail=text.slice(i+1),prefix=text.slice(start,i+1);
    const abbreviation=/(?:\b(?:e\.g|i\.e|Mr|Mrs|Dr|approx|min|mins|hr|hrs|tsp|tbsp)|\b[A-Z])\.$/.test(prefix)&&!(/\d\s*°?\s*[CF]\.$/.test(prefix));
    const sentence=/[.!?]/.test(character)&&/^\s+[A-Z“"(]/.test(tail)&&!abbreviation;
-   const semicolon=character===';'&&/^\s+\S/.test(tail);
+   // Keep a qualification with its action: it should never become a detached
+   // bullet such as “avoid prolonged cooking” or “until piping hot”.
+   const qualifier=/^\s+(?:avoid\b|without\b|until\b|so that\b|taking care\b|being careful\b)/i.test(tail);
+   const semicolon=character===';'&&/^\s+\S/.test(tail)&&!qualifier;
    if(sentence||semicolon){out.push(text.slice(start,i+1).trim());start=i+1;}
   }
   if(text.slice(start).trim())out.push(text.slice(start).trim());return out;
