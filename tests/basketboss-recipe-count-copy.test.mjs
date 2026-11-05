@@ -59,8 +59,7 @@ test('pricing, onboarding and tours describe the same 500-recipe Premium access'
 test('landing visible copy and metadata retain 100 Free and disclose 500 with Premium',()=>{
  const page=read('welcome.html');
  assert.match(page,/<strong>100 free recipes<\/strong>/);
- assert.match(page,/<strong>500 with Premium<\/strong>/);
- assert.match(page,/<strong>All 500 recipes<\/strong>/);
+ assert.match(page,/<h3>Premium<\/h3>[\s\S]*?<strong>All 500 recipes<\/strong>/);
  const schema=JSON.parse(page.match(/<script type="application\/ld\+json">([\s\S]*?)<\/script>/)[1]);
  assert.match(schema.description,/100 free recipes, all 500 with Premium/);
  assert.ok(schema.featureList.includes('100 free recipes; all 500 with Premium'));

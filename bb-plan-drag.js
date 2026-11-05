@@ -2,8 +2,8 @@
 (()=>{'use strict';
  if(window.BBPlanDrag)return;
  const doc=document,DAYS=['Monday','Tuesday','Wednesday','Thursday','Friday','Saturday','Sunday'];
- const HOLD_MS=450,MOVE_TOLERANCE=8;
- let pending=null,active=null,dialogState=null,statusNode=null,suppressed=null;
+ const HOLD_MS=450,MOVE_TOLERANCE=8,DOUBLE_TAP_MS=320;
+ let pending=null,active=null,dialogState=null,statusNode=null,suppressed=null,lastTap=null,tapPointer=null,tapCancelled=false;
  let viewportWidth=innerWidth;
  const host=()=>window.BBPlanMoveHost;
  const connected=element=>!!element?.isConnected;
@@ -14,6 +14,24 @@
   return handle&&closest(handle,'#app.bbnext-plan')?handle:null;
  };
  const handleDay=handle=>handle?.dataset.bbPlanHandle||closest(handle,'details.bbnext-day[data-bbnext-day]')?.dataset.bbnextDay;
+ const dayBadge=element=>{
+  if(closest(element,'button,input,select,textarea,a,label,[role="button"],[contenteditable="true"]'))return null;
+  const badge=closest(element,'.bbnext-day-badge,.bbnext-day-label');
+  return badge&&closest(badge,'#app.bbnext-plan')&&closest(badge,'summary.bbnext-day-toggle')?badge:null;
+ };
+ function resetTap(){lastTap=null;tapPointer=null;tapCancelled=true;}
+ function beginTap(target,pointerId,x,y,pointerType,touchId){
+  tapCancelled=false;const badge=dayBadge(target);
+  tapPointer=badge?{badge,pointerId,x,y,at:Date.now(),pointerType,touchId}:null;
+ }
+ function moveTap(event){
+  if(tapPointer?.pointerId===event.pointerId&&Math.hypot(event.clientX-tapPointer.x,event.clientY-tapPointer.y)>MOVE_TOLERANCE)resetTap();
+ }
+ function endTap(event){
+  if(tapPointer?.pointerId!==event.pointerId)return;
+  if(Date.now()-tapPointer.at>=HOLD_MS||Math.hypot(event.clientX-tapPointer.x,event.clientY-tapPointer.y)>MOVE_TOLERANCE)resetTap();
+  tapPointer=null;
+ }
  function status(message){
   if(!doc.body)return;
   if(!connected(statusNode)){
@@ -35,7 +53,7 @@
    return value;
   }catch{return null;}
  }
- function suppressClick(x,y){suppressed={until:Date.now()+900,x,y};}
+ function suppressClick(x,y){resetTap();suppressed={until:Date.now()+900,x,y};}
  function clearPending(){if(pending){clearTimeout(pending.timer);pending=null;}}
  function clearTarget(drag){
   drag.targetRow?.classList.remove('bb-plan-drop-target','bb-plan-drop-blocked');
@@ -51,7 +69,7 @@
   if(suppress)suppressClick(drag.x,drag.y);
  }
  function cancelDrag(message='Move cancelled.'){
-  const hadDrag=!!active;cleanDrag({suppress:hadDrag});if(hadDrag)status(message);
+  resetTap();const hadDrag=!!active;cleanDrag({suppress:hadDrag});if(hadDrag)status(message);
  }
  function blockingUI(element){return closest(element,'nav,.tabs,dialog,[role="dialog"],[aria-modal="true"]');}
  function placeGhost(drag){
@@ -101,7 +119,7 @@
   if(active===drag)drag.frame=requestAnimationFrame(scrollFrame);
  }
  function startHold(record){
-  if(pending!==record)return;pending=null;
+  if(pending!==record)return;pending=null;resetTap();
   if(!connected(record.handle)||!closest(record.handle,'#app.bbnext-plan'))return;
   const fresh=snapshot(),source=fresh?.days.find(day=>day.day===record.from);
   if(!fresh||fresh.fingerprint!==record.snapshot.fingerprint||source?.recipeId!==record.recipeId){
@@ -128,6 +146,7 @@
   if(active&&active.pointerId!==event.pointerId){cancelDrag();return;}
   if(pending&&pending.pointerId!==event.pointerId){clearPending();return;}
   if(event.button!==0||event.isPrimary===false||dialogState)return;
+  beginTap(event.target,event.pointerId,event.clientX,event.clientY,event.pointerType||'mouse');
   const handle=planHandle(event.target);if(!handle)return;
   clearPending();const current=snapshot(),source=current?.days.find(day=>day.day===handleDay(handle));
   if(!source?.recipeId)return;
@@ -135,6 +154,7 @@
   record.timer=setTimeout(()=>startHold(record),HOLD_MS);pending=record;
  }
  function onMove(event){
+  moveTap(event);
   if(pending?.pointerId===event.pointerId){
    pending.x=event.clientX;pending.y=event.clientY;
    if(Math.hypot(event.clientX-pending.startX,event.clientY-pending.startY)>MOVE_TOLERANCE)clearPending();
@@ -155,6 +175,7 @@
   focusDay(result?.ok?request.to:request.from,fallback);
  }
  function onUp(event){
+  endTap(event);
   if(pending?.pointerId===event.pointerId){clearPending();return;}
   const drag=active;if(!drag||drag.pointerId!==event.pointerId)return;
   if(event.cancelable)event.preventDefault();drag.x=event.clientX;drag.y=event.clientY;updateTarget(drag);
@@ -168,15 +189,16 @@
   suppressed=null;
   if(event.touches.length!==1){cancelDrag();clearPending();return;}
   if(active||dialogState)return;
+  const touch=event.changedTouches[0];if(!touch)return;
+  beginTap(event.target,'touch-'+touch.identifier,touch.clientX,touch.clientY,'touch',touch.identifier);
   const handle=planHandle(event.target);if(!handle)return;
   clearPending();const current=snapshot(),source=current?.days.find(day=>day.day===handleDay(handle));
   if(!source?.recipeId)return;
-  const touch=event.changedTouches[0];if(!touch)return;
   const record={handle,from:source.day,recipeId:source.recipeId,snapshot:current,pointerId:'touch-'+touch.identifier,pointerType:'touch',touchId:touch.identifier,x:touch.clientX,y:touch.clientY,startX:touch.clientX,startY:touch.clientY,timer:0};
   record.timer=setTimeout(()=>startHold(record),HOLD_MS);pending=record;
  }
  function onTouchMove(event){
-  const record=active?.pointerType==='touch'?active:pending?.pointerType==='touch'?pending:null;
+  const record=active?.pointerType==='touch'?active:pending?.pointerType==='touch'?pending:tapPointer?.pointerType==='touch'?tapPointer:null;
   if(!record)return;
   if(event.touches.length!==1){cancelDrag();clearPending();return;}
   const touch=[...event.touches].find(value=>value.identifier===record.touchId);if(!touch)return;
@@ -184,7 +206,7 @@
   onMove({pointerId:record.pointerId,clientX:touch.clientX,clientY:touch.clientY,cancelable:event.cancelable,preventDefault:()=>event.preventDefault()});
  }
  function onTouchEnd(event){
-  const record=active?.pointerType==='touch'?active:pending?.pointerType==='touch'?pending:null;
+  const record=active?.pointerType==='touch'?active:pending?.pointerType==='touch'?pending:tapPointer?.pointerType==='touch'?tapPointer:null;
   if(!record)return;
   const touch=[...event.changedTouches].find(value=>value.identifier===record.touchId);if(!touch)return;
   onUp({pointerId:record.pointerId,clientX:touch.clientX,clientY:touch.clientY,cancelable:event.cancelable,preventDefault:()=>event.preventDefault()});
@@ -244,7 +266,7 @@
  doc.addEventListener('touchmove',onTouchMove,{passive:false});
  doc.addEventListener('touchend',onTouchEnd,{passive:false});
  doc.addEventListener('touchcancel',()=>{cancelDrag();clearPending();});
- doc.addEventListener('pointercancel',event=>{if(active?.pointerId===event.pointerId||pending?.pointerId===event.pointerId)cancelDrag();});
+ doc.addEventListener('pointercancel',event=>{resetTap();if(active?.pointerId===event.pointerId||pending?.pointerId===event.pointerId)cancelDrag();});
  doc.addEventListener('lostpointercapture',event=>{if(active?.pointerId===event.pointerId)cancelDrag();});
  doc.addEventListener('contextmenu',event=>{if(planHandle(event.target))event.preventDefault();});
  doc.addEventListener('selectstart',event=>{if(planHandle(event.target))event.preventDefault();});
@@ -255,7 +277,17 @@
    suppressed=null;if(cancel){event.preventDefault();event.stopImmediatePropagation();return;}
   }
   const button=closest(event.target,'[data-bb-plan-move-day]');
-  if(button&&closest(button,'#app.bbnext-plan')){event.preventDefault();event.stopPropagation();openDialog(button);}
+  if(button&&closest(button,'#app.bbnext-plan')){resetTap();event.preventDefault();event.stopPropagation();openDialog(button);return;}
+  const badge=dayBadge(event.target);
+  if(tapCancelled||!badge||event.detail===0||dialogState){lastTap=null;tapCancelled=false;return;}
+  const previous=lastTap;lastTap={badge,at:Date.now(),x:event.clientX,y:event.clientY};
+  if(previous?.badge!==badge||Date.now()-previous.at>DOUBLE_TAP_MS||Math.hypot(event.clientX-previous.x,event.clientY-previous.y)>30)return;
+  lastTap=null;
+  if(typeof window.BBDayDone?.quickComplete!=='function')return;
+  event.preventDefault();event.stopImmediatePropagation();
+  // All quantities, account guards and completion identities belong to Day done.
+  // The first click retains the summary's native expand/collapse behavior.
+  void window.BBDayDone.quickComplete(handleDay(badge));
  },true);
  doc.addEventListener('keydown',event=>{
   if(event.key==='Escape'&&(active||pending)){const wasActive=!!active;cancelDrag();if(wasActive){event.preventDefault();event.stopPropagation();}}

@@ -86,17 +86,24 @@
   function chooseMatchingLocation(){
    if(!valid(current))return;const rows=current.list().filter(inventoryMatches);
    if(!rows.some(row=>row.loc===location)&&rows.length)location=rows[0].loc;
-   const area=current.card.querySelector('[data-bb76-store="'+location+'"]');if(area){area.open=true;pendingReveal=location;}syncLocation();
+   const area=current.card.querySelector('[data-bb76-store="'+location+'"]');if(area){openArea(area);pendingReveal=location;}syncLocation();
   }
-  function reveal(node){node?.scrollIntoView?.({block:'start',behavior:'instant'});}
+  // Close the previous section in the same layout transaction. Waiting for
+  // native toggle events would scroll to the old position, then move it again.
+  function openArea(area){for(const other of current.card.querySelectorAll('[data-bb76-store]'))if(other!==area)other.open=false;area.open=true;}
+  function reveal(node){
+   if(!node?.isConnected)return;
+   const inset=toolbar?.isConnected?toolbar.getBoundingClientRect().height+12:12;
+   win.scrollTo({top:Math.max(0,win.scrollY+node.getBoundingClientRect().top-inset),behavior:'auto'});
+  }
   function jump(loc){
    if(!valid(current)||!LOCATIONS.includes(loc))return;location=loc;
-   const area=current.card.querySelector('[data-bb76-store="'+loc+'"]');if(!area)return;area.open=true;reveal(area);syncLocation();
+   const area=current.card.querySelector('[data-bb76-store="'+loc+'"]');if(!area)return;openArea(area);reveal(area);syncLocation();
   }
   function addFood(loc){
    const view=sections.get(loc);if(!view||!valid(current))return;location=loc;query='';stockFilter='all';
    if(toolbar){toolbar.querySelector('#bbpiSearch').value='';for(const control of toolbar.querySelectorAll('[data-bbpi-filter]'))control.setAttribute('aria-pressed',String(control.dataset.bbpiFilter==='all'));}
-   view.body.dataset.bbpiAdding='true';view.body.closest('[data-bb76-store]').open=true;schedule();reveal(view.form);view.form.querySelector('input')?.focus({preventScroll:true});syncLocation();
+   view.body.dataset.bbpiAdding='true';openArea(view.body.closest('[data-bb76-store]'));schedule();reveal(view.form);view.form.querySelector('input')?.focus({preventScroll:true});syncLocation();
   }
   function mountToolbar(){
    const panel=current.card.querySelector('#bbKitchenFoodPanel');if(!panel)return;
@@ -182,8 +189,9 @@
    // its caret on iOS even when focus is restored to the same DOM node.
    const active=editor?.anchor==='summary'&&editor.loc===view.loc?[...view.list.children].find(node=>node.dataset.bbpiKey===editor.key):null;
    const activeIndex=active?[...view.list.children].indexOf(active):-1;
+   const existing=new Map([...view.list.children].filter(node=>node.dataset.bbpiKey).map(node=>[node.dataset.bbpiKey,node]));
    const items=own.map(row=>{
-    const item=active?.dataset.bbpiKey===row.key?active:el('li','bbpi-summary-row');
+    const item=existing.get(row.key)||el('li','bbpi-summary-row');
     const main=el('div','bbpi-summary-main'),name=el('strong','',row.name),unit=rowUnit(row),value=rowAmount(row,unit);
     const amount=el('span','bbpi-summary-amount',row.staple?({in:'In Stock',low:'Low',out:'Out'}[row.stapleStatus]||'Review status')+(value!==''?' · '+value+' '+unitLabel(row,unit):''):summaryAmount(row,market(),win.BBPantryPolicy,win.BBPantryDisplay));
     item.dataset.bbpiKey=row.key;item.classList.toggle('bbpi-reduced-row',urgent(row));main.append(name,amount);
@@ -201,9 +209,11 @@
     // Temporarily pin the edited card's position too: urgent sorting must not
     // move its focused ancestor. A later refresh restores the ordinary order.
     items.splice(items.indexOf(active),1);items.splice(Math.min(activeIndex,items.length),0,active);
-    const keep=new Set(items);for(const child of [...view.list.children])if(!keep.has(child))child.remove();
-    for(const [index,item]of items.entries())if(view.list.children[index]!==item)view.list.insertBefore(item,view.list.children[index]||null);
-   }else view.list.replaceChildren(...items);
+   }
+   // Keep unchanged cards mounted while quantities/prices refresh, so WebKit
+   // does not repeatedly discard the item beneath the user's thumb.
+   const keep=new Set(items);for(const child of [...view.list.children])if(!keep.has(child))child.remove();
+   for(const [index,item]of items.entries())if(view.list.children[index]!==item)view.list.insertBefore(item,view.list.children[index]||null);
    if(!items.length)view.list.append(el('li','bbpi-empty',all.length?'No food matches these filters.':'Add food to start your pantry.'));
   }}
   function refresh(){queued=false;if(destroyed)return;const api=win.BBPantryEditor;if(!valid(api)){teardown();return;}
@@ -211,7 +221,21 @@
    try{if(originalIntro)text(originalIntro.node,'Update your quantities here. Shopping updates automatically.');for(const area of current.card.querySelectorAll('[data-bb76-store]'))mountSection(area);summaries(current.list());displayEditor();mountToolbar();current.card.classList.add('bbpi-enhanced');if(pendingReveal){const target=sections.get(pendingReveal)?.summary||current.card.querySelector('[data-bb76-store="'+pendingReveal+'"]');pendingReveal=null;measureToolbar();reveal(target);}}
    catch{teardown();}
   }
-  function click(event){const tile=event.target.closest?.('[data-bb5-food]');if(!tile||!valid(current)||!current.card.contains(tile))return;const loc=tile.closest('[data-bb76-store]')?.dataset.bb76Store;if(!LOCATIONS.includes(loc))return;event.preventDefault();event.stopImmediatePropagation?.();event.stopPropagation();
+  function click(event){
+   if(!valid(current))return;
+   const summary=event.target.closest?.('[data-bb76-store]>summary');
+   if(summary&&current.card.contains(summary)&&!event.target.closest?.('button,input,select,a')){
+    event.preventDefault();const area=summary.parentElement,opening=!area.open;
+    const before=summary.getBoundingClientRect().top;
+    if(opening){openArea(area);location=area.dataset.bb76Store;syncLocation();}else area.open=false;
+    // Preserve the tapped heading, rather than anchoring an unrelated item
+    // below the accordion. There is no animation or deferred scroll to fight.
+    const minimum=toolbar?.isConnected?Math.max(0,toolbar.getBoundingClientRect().bottom)+12:12;
+    const delta=summary.getBoundingClientRect().top-Math.max(before,minimum);
+    if(Math.abs(delta)>1)win.scrollTo({top:Math.max(0,win.scrollY+delta),behavior:'auto'});
+    return;
+   }
+   const tile=event.target.closest?.('[data-bb5-food]');if(!tile||!current.card.contains(tile))return;const loc=tile.closest('[data-bb76-store]')?.dataset.bb76Store;if(!LOCATIONS.includes(loc))return;event.preventDefault();event.stopImmediatePropagation?.();event.stopPropagation();
    const preferred=preferredUnit(tile.dataset.bb5Food,win.BBPantryPolicy,undefined),key=safe(()=>current.select(tile.dataset.bb5Food,loc,preferred?{unit:preferred}:{}));if(key)openEditor(key,preferred);else teardown();
   }
   const reset=()=>{teardown();schedule();};

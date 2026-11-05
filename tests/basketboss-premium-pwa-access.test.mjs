@@ -36,7 +36,12 @@ test('install succeeds without requesting Access-protected manifest',async()=>{
   assert.equal(new Set(requests).size,requests.length,'Cache.addAll must not receive duplicate URLs');
   assert.ok(requests.every(x=>!x.includes('manifest.webmanifest')),'manifest must be excluded');
   assert.ok(requests.every(x=>!x.endsWith('/recipes.json')),'protected recipe catalogue never pre-cached');
-  for(const name of ['bb-ingredient-preferences.js','bb-ingredient-picker.js','bb-ingredient-picker.css'])assert.ok(requests.includes(scope+name+'?v=20261101-avoid1'),'offline shell includes the versioned ingredient filter: '+name);
+  const app=await fs.readFile(new URL('../app.html',import.meta.url),'utf8');
+  for(const name of ['bb-ingredient-preferences.js','bb-ingredient-picker.js','bb-ingredient-picker.css']){
+    const source=[...app.matchAll(/(?:src|href)=["']([^"']+)["']/g)].map(match=>match[1]).find(source=>source.startsWith(name+'?v='));
+    assert.ok(source,'app references the versioned ingredient filter: '+name);
+    assert.ok(requests.includes(scope+source),'offline shell includes the current versioned ingredient filter: '+name);
+  }
 });
 
 test('manifest and API routes bypass service-worker caching',()=>{
