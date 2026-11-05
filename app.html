@@ -6994,7 +6994,7 @@ function bbNextComposePlan(app){
   const oldIntro=panel.querySelector('.bb1759-summary-heading');
   if(oldIntro){
     const h=oldIntro.querySelector('h3');if(h)h.textContent='Your dinner plan';
-    const sub=oldIntro.querySelector('p');if(sub)sub.textContent='Tap a day to view or change dinner.';
+    const sub=oldIntro.querySelector('p');if(sub)sub.textContent='Tap a day to view dinner. Hold the day badge to move it. Double-tap it to mark the day done.';
     // Move the real Clear Week control out of the hidden legacy editor.
     const clear=originals.querySelector('#clearWeek');
     if(clear){
@@ -7051,7 +7051,7 @@ function bbNextComposePlan(app){
    details.open=bb80OpenPlanDays.has(day);
    const toggle=document.createElement('summary');toggle.className='bbnext-day-toggle';
    const label=document.createElement('span');label.className='bbnext-day-label';label.textContent=day.slice(0,3).toUpperCase();
-   if(state.planned.some(p=>p.day===day)){label.dataset.bbPlanHandle=day;label.title='Hold to move '+day+' dinner';}
+   if(state.planned.some(p=>p.day===day)){label.dataset.bbPlanHandle=day;label.title='Hold to move '+day+' dinner. Double-tap to mark all planned food for '+day+' done.';}
    const desc=document.createElement('span');desc.className='bbnext-day-description';
    const title=document.createElement('strong');title.textContent=pendingUnloaded?'Saved dinner · waiting for recipe access':available?(recipe?.name||'No meal planned'):'🔒 Premium dinner saved';
    const subtitle=document.createElement('small');
@@ -12834,19 +12834,19 @@ body[data-bbnext-view="discover"] #app .bb175-discover-heading{padding-top:calc(
 <script defer src="bb-household-amount.js?v=20261104-groups1"></script>
 <script defer src="bb-kitchen-essentials.js?v=20261104-home-ui1"></script>
 <script defer src="bb-kitchen-prices.js?v=20261105-shop-confirm1"></script>
-<link rel="stylesheet" href="bb-pantry-inline.css?v=20261105-pantry2">
-<script defer src="bb-pantry-inline.js?v=20261105-pantry2"></script>
+<link rel="stylesheet" href="bb-pantry-inline.css?v=20261105-scroll1">
+<script defer src="bb-pantry-inline.js?v=20261105-scroll1"></script>
 <link rel="stylesheet" href="bb-keyboard-layout.css?v=20261105-preflight2">
 <script defer src="bb-keyboard-layout.js?v=20261105-preflight1"></script>
 <link rel="stylesheet" href="bb-simple-layout.css?v=20261104-plan-budget1">
 <script defer src="bb-simple-layout.js?v=20261105-options1"></script>
 <script defer src="bb-pantry-deduction.js?v=20261105-business1"></script>
-<script defer src="bb-home.js?v=20261105-business1"></script><link rel="stylesheet" href="bb-day-done.css?v=20261104-cycle1"><script defer src="bb-day-done.js?v=20261104-regions2"></script><link rel="stylesheet" href="bb-shop-add.css?v=20261105-reduced1"><script defer src="bb-shop-add.js?v=20261105-preflight1"></script><script defer src="bb-cupboard-staples.js?v=20261104-cupboard2"></script><script src="bb-pantry-autofill.js?v=20261105-reduced1"></script>
+<script defer src="bb-home.js?v=20261105-business1"></script><link rel="stylesheet" href="bb-day-done.css?v=20261105-daydone1"><script defer src="bb-day-done.js?v=20261105-daydone1"></script><link rel="stylesheet" href="bb-shop-add.css?v=20261105-reduced1"><script defer src="bb-shop-add.js?v=20261105-preflight1"></script><script defer src="bb-cupboard-staples.js?v=20261104-cupboard2"></script><script src="bb-pantry-autofill.js?v=20261105-reduced1"></script>
 <link rel="stylesheet" href="bb-shared-shopping.css?v=20261102-loop2">
 <script defer src="bb-shared-shopping.js?v=20261102-loop2"></script>
-<link rel="stylesheet" href="bb-plan-drag.css?v=20261103-drag2">
+<link rel="stylesheet" href="bb-plan-drag.css?v=20261105-daydone1">
 <script defer src="bb-featured-framing.js?v=20261102-frame1"></script>
-<script defer src="bb-plan-drag.js?v=20261103-drag2"></script>
+<script defer src="bb-plan-drag.js?v=20261105-daydone1"></script>
 <link rel="stylesheet" href="bb-pantry-camera.css?v=20261102-camera1">
 <script defer src="bb-pantry-camera.js?v=20261102-camera1"></script>
 <link rel="stylesheet" href="bb-cook-experience.css?v=20261105-cook1">

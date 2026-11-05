@@ -1,51 +1,16 @@
-/* Public examples only. No account reads, writes, uploads or network requests. */
+/* Public-page navigation only. No account access, storage or network requests. */
 (()=>{'use strict';
- function revealLinkedDemo(){
-  if(!location.hash)return;
-  let target;try{target=document.getElementById(decodeURIComponent(location.hash.slice(1)));}catch(_){return;}
-  const details=target?.closest('details.bb-more-demos');
-  if(details&&!details.open){details.open=true;target.scrollIntoView({block:'start'});}
- }
- window.addEventListener('hashchange',revealLinkedDemo);revealLinkedDemo();
- // A small public example, never connected to an account or the app's stock.
- const owned=document.getElementById('at-home-owned');
- const ownedOutput=document.getElementById('at-home-owned-output');
- const buyOutput=document.getElementById('at-home-buy-output');
- if(owned&&ownedOutput&&buyOutput){
-  const renderStockExample=()=>{
-   const quantity=Math.max(0,Math.min(5000,Number(owned.value)||0));
-   const display=new Intl.NumberFormat('en-GB',{maximumFractionDigits:2});
-   ownedOutput.textContent=display.format(quantity)+' g';
-   buyOutput.textContent=display.format(Math.max(500-quantity,0))+' g';
-  };
-  owned.addEventListener('input',renderStockExample);renderStockExample();
- }
- const tabs=Array.from(document.querySelectorAll('[data-receipt-demo-step]'));
- const next=document.getElementById('receipt-demo-next');
- const status=document.getElementById('receipt-demo-status');
- const messages=['Start with a receipt, then see what carries forward.','Food into your pantry. Household goods kept separate.','Check what remains, then buy the missing ingredients.'];
- const labels=['See your pantry','See the next shop','Back to the receipt'];
- let current=0;
- function select(index,focus=false){
-  current=index;
-  tabs.forEach((tab,i)=>{tab.setAttribute('aria-selected',String(i===index));tab.tabIndex=i===index?0:-1;const panel=document.getElementById(tab.getAttribute('aria-controls'));if(panel)panel.hidden=i!==index;});
-  if(status)status.textContent=messages[index];if(next)next.textContent=labels[index]+' →';if(focus)tabs[index]?.focus();
- }
- tabs.forEach((tab,i)=>{
-  tab.addEventListener('click',()=>select(i));
-  tab.addEventListener('keydown',event=>{
-   let index;if(event.key==='ArrowRight')index=(i+1)%tabs.length;if(event.key==='ArrowLeft')index=(i+tabs.length-1)%tabs.length;if(event.key==='Home')index=0;if(event.key==='End')index=tabs.length-1;
-   if(index!==undefined){event.preventDefault();select(index,true);}
-  });
- });
- if(tabs.length===3&&next)next.addEventListener('click',()=>select((current+1)%3));
- const mealTabs=['tab-plan','tab-shop'].map(id=>document.getElementById(id)).filter(Boolean);
- mealTabs.forEach((tab,i)=>{
-  tab.tabIndex=tab.getAttribute('aria-selected')==='true'?0:-1;
-  tab.addEventListener('click',()=>mealTabs.forEach(item=>{item.tabIndex=item===tab?0:-1;}));
-  tab.addEventListener('keydown',event=>{
-   const index=event.key==='Home'?0:event.key==='End'?mealTabs.length-1:['ArrowLeft','ArrowRight'].includes(event.key)?(i+1)%mealTabs.length:undefined;
-   if(index!==undefined){event.preventDefault();mealTabs[index].click();mealTabs[index].focus();}
-  });
- });
+  const previousSections={'demo':'at-home','cook-demo':'at-home','cook-ideas':'premium','recipes':'premium','about-founder':'site-footer'};
+  function revealLinkedSection(){
+    if(!location.hash)return;
+    let id;try{id=decodeURIComponent(location.hash.slice(1));}catch(_){return;}
+    const direct=document.getElementById(id);
+    const target=direct||document.getElementById(previousSections[id]);
+    if(!target)return;
+    const details=target.closest('details');
+    if(details)details.open=true;
+    if(!direct)target.scrollIntoView({block:'start',behavior:'auto'});
+  }
+  window.addEventListener('hashchange',revealLinkedSection);
+  revealLinkedSection();
 })();
