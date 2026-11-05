@@ -1,0 +1,45 @@
+{
+  "viewport": {
+    "width": 375,
+    "height": 812
+  },
+  "allNetworkMocked": true,
+  "checks": [
+    "all five tabs have one page scroller, top resets, safe-area gap, 44px targets and16px inputs",
+    "Spotted and Not yet disable on first tap and rapid taps send one request",
+    "Shop Add native dialog dismisses via backdrop and Cancel without stuck overlay",
+    "manual top-up saves locally while network is offline and survives rapid tabs/reload",
+    "valid inline pantry edit immediately reconciles Shop and survives rapid tabs/reload",
+    "fullscreen Cook ignores content taps and Exit restores Plan",
+    "weekly essentials dialog backdrop and Cancel dismiss without changing state",
+    "receipt scanner remains dismissible when offline/unavailable",
+    "closing account after field focus restores body and Plan navigation",
+    "Begin Shop disables immediately during slow approval and requests once",
+    "shopping tick survives exit, rapid tabs and reload; last row clears sticky footer"
+  ],
+  "notes": [
+    "At375px Cook is intentionally fullscreen; corner is content, Exit dismisses. Desktop backdrop checked separately."
+  ],
+  "browserErrors": [],
+  "fullSuite": {
+    "cases": 2333,
+    "passed": 2330,
+    "failed": 0,
+    "skipped": 1,
+    "todo": 2
+  },
+  "pantryAudit": {
+    "recipes": 100,
+    "ingredientLines": 730,
+    "UK": {
+      "duplicateRows": 0,
+      "nonCanonicalRows": 0,
+      "conversionFailures": 0
+    },
+    "US": {
+      "duplicateRows": 0,
+      "nonCanonicalRows": 0,
+      "conversionFailures": 0
+    }
+  }
+}

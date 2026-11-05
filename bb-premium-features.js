@@ -7,7 +7,7 @@
   'use strict';
   const PRICING = 'pricing-sandbox.html';
   const selectFree = 'button[data-collection="Leftover Magic"]';
-  let lastOpener = null;
+  let lastOpener = null, checkoutRequest = null;
   const $ = (sel,root=document) => root.querySelector(sel);
   const html = `
   <dialog id="bb173TierDialog" class="bb173-tier-dialog" aria-labelledby="bb173TierHeading" aria-describedby="bb173TierDesc">
@@ -38,22 +38,31 @@
       const link=e.target.closest('.bb173-tier-plans a');
       if(!link)return;
       e.preventDefault();
+      if(checkoutRequest)return;
+      const request={controller:new AbortController(),dialog,links:[...dialog.querySelectorAll('.bb173-tier-plans a')]};
+      checkoutRequest=request;dialog.setAttribute('aria-busy','true');
+      for(const plan of request.links)plan.setAttribute('aria-disabled','true');
+      const timer=setTimeout(()=>request.controller.abort(),15000);
       const message=$('#bb173CheckoutStatus',dialog);
       message.hidden=false;
       message.textContent='Checking checkout availability…';
       try {
-        const response=await fetch('/api/subscription/checkout-config',{cache:'no-store',credentials:'same-origin'});
+        const response=await fetch('/api/subscription/checkout-config',{cache:'no-store',credentials:'same-origin',signal:request.controller.signal});
         const config=response.ok?await response.json():null;
+        if(checkoutRequest!==request||request.controller.signal.aborted||!dialog.open)return;
         if(config?.enabled===true && config.mode==='live'){
           location.assign(link.href);return;
         }
       }catch(_){/* Checkout remains unavailable on a network error. */}
+      finally{clearTimeout(timer);if(checkoutRequest===request)releaseCheckout(request);}
+      if(!dialog.open||request.dismissed)return;
       message.textContent=link.hash==='#founder'
         ? 'Founding Member checkout is not available yet. Please check back soon.'
         : 'Standard Premium checkout is not available yet. Please check back soon.';
     });
   }
-  function hideDialog(){const d=$('#bb173TierDialog');if(d?.open)d.close();else d?.removeAttribute('open');lastOpener?.focus({preventScroll:true});}
+  function releaseCheckout(request,abort=false){if(!request||checkoutRequest!==request)return;checkoutRequest=null;if(abort){request.dismissed=true;request.controller.abort();}request.dialog.removeAttribute('aria-busy');for(const plan of request.links)plan.removeAttribute('aria-disabled');}
+  function hideDialog(){releaseCheckout(checkoutRequest,true);const d=$('#bb173TierDialog');if(d?.open)d.close();else d?.removeAttribute('open');lastOpener?.focus({preventScroll:true});}
   function showDialog(trigger,context){installDialog();lastOpener=trigger||document.activeElement;
     $('#bb173TierDesc').textContent='Includes 500 recipes, Smart Auto-Fill, 1-Tap Batch Cooking, 5 AI photo scans & 10 AI meal ideas per day.';
     const checkoutStatus=$('#bb173CheckoutStatus');if(checkoutStatus){checkoutStatus.hidden=true;checkoutStatus.textContent='';}

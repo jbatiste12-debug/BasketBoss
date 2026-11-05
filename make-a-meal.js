@@ -11,6 +11,26 @@ const bbSecureFreeIds=new Set(Array.isArray(window.BB173_FREE_RECIPE_IDS)?window
 let bbSecurePremiumIds=new Set();
 let bbSecureFreeRecipes=[];
 let bbSecureLastToken=null;
+// Include both the response headers and JSON body in the network deadline. A
+// weak store connection can deliver headers then stall without ever finishing
+// its body; none of the photo/generate controls may remain locked indefinitely.
+async function bbMealJSON(url,options={},timeoutMs=12000){
+ if(window.navigator?.onLine===false)throw Error('You are offline. Your saved ingredients were not changed; reconnect to use AI.');
+ const controller=new AbortController(),external=options.signal;
+ let timeout=false,stop;
+ const abort=()=>controller.abort();
+ const stopped=new Promise((_,reject)=>controller.signal.addEventListener('abort',()=>reject(Error(timeout?'Request timed out. Your selections were not changed; try again or use local recipes.':'Request cancelled. Your selections were not changed.')),{once:true}));
+ if(external?.aborted)abort();else external?.addEventListener?.('abort',abort,{once:true});
+ stop=setTimeout(()=>{timeout=true;abort();},timeoutMs);
+ const request=Promise.resolve().then(async()=>{
+  if(controller.signal.aborted)throw Error('Request cancelled.');
+  const response=await fetch(url,{...options,signal:controller.signal});
+  const data=await response.json();return {response,data};
+ });
+ try{return await Promise.race([request,stopped]);}
+ catch(error){if(controller.signal.aborted)throw error;throw Error('Connection interrupted. Your selections were not changed; check your signal and try again.');}
+ finally{clearTimeout(stop);external?.removeEventListener?.('abort',abort);}
+}
 function bb176MakeMealAllowed(recipe){
   return !!recipe?.id && (bbSecureFreeIds.has(recipe.id)||bbSecurePremiumIds.has(recipe.id));
 }
@@ -23,12 +43,11 @@ async function bbSecureRefreshPremiumRecipes(){
   renderTiles();
   if(!token)return;
   try {
-    const response=await fetch('/api/recipes/premium?catalogue=500',{
+    const {response,data}=await bbMealJSON('/api/recipes/premium?catalogue=500',{
       cache:'no-store',credentials:'same-origin',redirect:'manual',
       headers:{'Accept':'application/json','Authorization':'Bearer '+token}
     });
     if(!response.ok)return; // Free, expired, canceled and unverified users stay Free.
-    const data=await response.json();
     if(![221,400].includes(data?.count)||!Array.isArray(data.recipes)||data.recipes.length!==data.count)return;
     const ids=new Set();
     for(const recipe of data.recipes){
@@ -491,19 +510,17 @@ async function requestBody(verb,body){
  // Refresh the server check once at the user's explicit AI request.
  if(!aiEnabled)await bbRefreshAIStatus();
  if(bbPaidToken()!==accessToken)throw Error('Account changed. Please try again.');
- if(!aiEnabled)throw Error('Premium AI is not enabled for this account.');
+ if(!aiEnabled)throw Error(bbAIStatusFailure||'Premium AI is not enabled for this account.');
  // The server independently verifies the Supabase bearer and current Live
  // Paddle/D1 entitlement before allowing a request without Turnstile.
  const token=turnstileToken||'';turnstileToken='';
  try{
   const controller=new AbortController();
   if(verb==='scan')bbScanRequest=controller;
-  const stop=setTimeout(()=>controller.abort(),verb==='scan'?25000:30000);
-  let r;
-  try{r=await fetch('/api/bb173/'+verb,{method:'POST',headers:{'Content-Type':'application/json','Authorization':'Bearer '+accessToken},body:JSON.stringify({...body,turnstileToken:token}),cache:'no-store',credentials:'same-origin',signal:controller.signal});}
-  catch(err){if(controller.signal.aborted)throw Error('Request timed out. Your selections were not changed; try again or use local recipes.');throw err}
-  finally{clearTimeout(stop);if(bbScanRequest===controller)bbScanRequest=null;}
-  const j=await r.json().catch(()=>({}));if(!r.ok)throw Error(String(j.error||'AI is temporarily unavailable.').slice(0,200));return j;
+  try{
+   const {response:r,data:j}=await bbMealJSON('/api/bb173/'+verb,{method:'POST',headers:{'Content-Type':'application/json','Authorization':'Bearer '+accessToken},body:JSON.stringify({...body,turnstileToken:token}),cache:'no-store',credentials:'same-origin',signal:controller.signal},verb==='scan'?25000:30000);
+   if(!r.ok)throw Error(String(j?.error||'AI is temporarily unavailable.').slice(0,200));return j;
+  }finally{if(bbScanRequest===controller)bbScanRequest=null;}
  }finally{resetHumanCheck();}
 }
 async function scanPhoto(){
@@ -791,19 +808,19 @@ function bb15RestorePremiumEntry(){
 }
 // Keep AI readiness tied to the CURRENT authenticated account, not the
 // browser that happened to load this page earlier. Server checks are authoritative.
-let bbAIStatusRequest=0;
+let bbAIStatusRequest=0,bbAIStatusFailure=null;
 async function bbRefreshAIStatus(){
   const token=bbPaidToken(),requestId=++bbAIStatusRequest;
-  aiEnabled=false;bbSiteKey=null;
+  aiEnabled=false;bbSiteKey=null;bbAIStatusFailure=null;
   const initialSecurity=$('#aiSecurityBox');if(initialSecurity)initialSecurity.hidden=true;
   $('#aiStatus').textContent=token?'Checking Premium AI availability…':'Sign in to your Premium account to use AI.';
   $('#aiHumanStatus').textContent='Human check is not ready yet.';
   if(!token)return;
   try{
-    const response=await fetch('/api/bb173/status',{
+    const {response,data}=await bbMealJSON('/api/bb173/status',{
       cache:'no-store',headers:{Authorization:'Bearer '+token}
     });
-    const data=await response.json();
+    if(!response.ok)throw Error('AI availability could not be checked.');
     if(requestId!==bbAIStatusRequest||bbPaidToken()!==token)return;
     aiEnabled=data?.status==='available'&&data?.premium_ai===true&&!!data?.siteKey;
     // Only authenticated entitlement-backed Live accounts receive false.
@@ -847,7 +864,8 @@ async function bbRefreshAIStatus(){
     $('#aiHumanStatus').textContent='The human check cannot start until AI is available.';
   }catch(_){
     if(requestId===bbAIStatusRequest&&bbPaidToken()===token){
-      $('#aiStatus').textContent='AI status could not be checked. Check your connection and try again.';
+      bbAIStatusFailure='AI availability could not be checked. Check your connection and try again.';
+      $('#aiStatus').textContent=bbAIStatusFailure;
       $('#aiHumanStatus').textContent='Human check is unavailable.';
     }
   }
@@ -944,9 +962,9 @@ $('#mealReviewSave').addEventListener('click',confirmMeal);
 $('#mealReviewCancel').addEventListener('click',()=>{pendingRecipe=null;$('#mealReviewError').hidden=true;});
 $('#mealReview').addEventListener('close',()=>{$('#mealReviewError').hidden=true;pendingRecipe=null;});
 $('#generate').addEventListener('click',generate);bbRefreshAIStatus();
-if(!bbPhotoMealMode)fetch('recipes.json',{cache:'no-store'}).then(r=>{
-  if(!r.ok)throw Error('Free recipe library unavailable');
-  return r.json();
+if(!bbPhotoMealMode)bbMealJSON('recipes.json',{cache:'no-store'}).then(({response,data})=>{
+  if(!response.ok)throw Error('Free recipe library unavailable');
+  return data;
 }).then(data=>{
   if(!Array.isArray(data)||data.length!==100||bbSecureFreeIds.size!==100||
       data.some(r=>!r?.id||!bbSecureFreeIds.has(r.id))||

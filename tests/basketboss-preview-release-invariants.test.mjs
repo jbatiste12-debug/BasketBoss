@@ -52,7 +52,8 @@ test('Complete legacy and 400-record Premium releases still pass through authent
   assert.match(api, /authenticatedUser\(request,env\)/);
   assert.match(api, /bb_private_premium_recipes/);
   assert.match(api, /\[221,400\]\.includes\(rows\.results\.length\)/);
-  assert.match(app, /fetch\('\/api\/recipes\/premium\?catalogue=500'/);
+  assert.match(app, /bbMealJSON\('\/api\/recipes\/premium\?catalogue=500',\{\s*cache:'no-store',credentials:'same-origin',redirect:'manual',\s*headers:\{'Accept':'application\/json','Authorization':'Bearer '\+token\}/);
+  assert.match(app, /bbSecureFreeIds\.has\(recipe\.id\)\|\|bbSecurePremiumIds\.has\(recipe\.id\)/);
   assert.doesNotMatch(app, /data\.length!==321/);
 });
 

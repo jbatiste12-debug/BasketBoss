@@ -1,0 +1,10 @@
+BasketBoss Build 16 — smoother shopping and mobile controls
+
+• Move between Plan, Discover, At home, Shop and Cook. Each opens at the top; your saved quantities and shopping ticks stay put.
+• Try pantry quantities and weekly essentials. Shopping should update immediately.
+• Scroll to the last item, including inside Begin shop. The bottom controls should leave it visible.
+• Open sign-in, type an email, then close it. The keyboard and overlay should clear and the navigation should work again.
+• Try manual purchases, receipt review and dialog close/backdrop controls.
+• With a weak connection, actions should finish or show a retry message rather than remain stuck. Your saved progress should stay safe.
+
+Includes the Build 15 Premium reduced-food, Use soon and freezer tools. No change to your membership or usual product prices.

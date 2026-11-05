@@ -52,7 +52,14 @@ test('unauthenticated requests never read private recipes',async()=>{
 });
 
 test('both new recipe clients explicitly request the expanded catalogue',()=>{
- for(const file of ['index.html','app.html','make-a-meal.js'])assert.match(fs.readFileSync(file,'utf8'),/fetch\('\/api\/recipes\/premium\?catalogue=500'/,file);
+ for(const file of ['index.html','app.html','make-a-meal.js']){
+  const source=fs.readFileSync(file,'utf8');
+  assert.match(source,file==='make-a-meal.js'?/bbMealJSON\('\/api\/recipes\/premium\?catalogue=500'/:/fetch\('\/api\/recipes\/premium\?catalogue=500'/,file);
+  if(file==='make-a-meal.js'){
+   assert.match(source,/fetch\(url,\{\.\.\.options,signal:controller\.signal\}\)/,'bounded transport preserves the supplied authenticated options');
+   assert.match(source,/headers:\{'Accept':'application\/json','Authorization':'Bearer '\+token\}/);
+  }
+ }
 });
 
 test('the expanded opt-in never grants access to an unentitled signed-in user',async()=>{

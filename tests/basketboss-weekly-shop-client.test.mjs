@@ -200,3 +200,14 @@ test('blocked account deletion starts neither authentication nor allowance consu
  const h=fixture();h.blocked=true;assert.equal(await h.controller.start(),false);
  assert.equal(h.requests.length,0);assert.equal(h.writes.length,0);assert.equal(h.notices[0].kind,'unavailable');
 });
+
+test('a stalled trip approval releases its loading lock and retries the persisted ID',async()=>{
+ const h=fixture();let expire;const cleared=[];
+ h.options.setTimeout=(fn,delay)=>{assert.equal(delay,15000);expire=fn;return 9;};h.options.clearTimeout=id=>cleared.push(id);
+ h.replies.push((_url,request)=>new Promise((_resolve,reject)=>request.signal.addEventListener('abort',()=>reject(Error('synthetic lost supermarket signal')),{once:true})));
+ const first=h.controller.start();assert.equal(h.controller.isPending(),true);assert.equal(h.controller.start(),first);
+ await Promise.resolve();assert.equal(h.requests.length,1);expire();assert.equal(await first,false);
+ assert.equal(h.controller.isPending(),false);assert.equal(h.record().approved,false);assert.equal(h.notices.at(-1).kind,'unavailable');assert.deepEqual(cleared,[9]);
+ h.replies.push(response(allowed()));assert.equal(await h.controller.start(),true);assert.equal(h.uuidCount,1);
+ assert.deepEqual(h.requests.map(row=>JSON.parse(row.init.body).sessionId),[IDS[0],IDS[0]]);assert.equal(h.controller.isPending(),false);
+});

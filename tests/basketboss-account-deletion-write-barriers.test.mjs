@@ -21,7 +21,7 @@ function harness({saved=session,fetchResult}={}){
  window.Event=Event;
  window.localStorage={getItem:k=>store.get(k)??null,setItem(k,v){writes.push([k,v]);store.set(k,String(v));},removeItem(k){store.delete(k);}};
  window.BasketBossSession=installSession(window,{fetch:async(url,options)=>{requests.push({url,options});return fetchResult?fetchResult(url,options):Response.json([]);}});
- const context={window,document:{getElementById:node},localStorage:{getItem:k=>store.get(k)??null,setItem(k,v){writes.push([k,v]);store.set(k,String(v));},removeItem(k){store.delete(k);}},navigator:{onLine:true},fetch:async(url,options)=>{requests.push({url,options});return fetchResult?fetchResult(url,options):Response.json([]);},confirm:()=>true,location:{reload(){reloads++;}},setTimeout(fn){const id=++timerId;timers.set(id,fn);return id;},clearTimeout(id){timers.delete(id);},Event,Date,JSON,console};
+ const context={window,document:{getElementById:node},localStorage:{getItem:k=>store.get(k)??null,setItem(k,v){writes.push([k,v]);store.set(k,String(v));},removeItem(k){store.delete(k);}},navigator:{onLine:true},fetch:async(url,options)=>{requests.push({url,options});return fetchResult?fetchResult(url,options):Response.json([]);},confirm:()=>true,location:{reload(){reloads++;}},setTimeout(fn){const id=++timerId;timers.set(id,fn);return id;},clearTimeout(id){timers.delete(id);},Event,AbortController,Date,JSON,console};
  vm.runInNewContext(cloudCode,context);
  const dispatch=(type,extra={})=>window.dispatchEvent({type,...extra});
  return {window,node,store,writes,dispatch,requests,timers,get reloads(){return reloads;}};

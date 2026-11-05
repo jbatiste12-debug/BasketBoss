@@ -432,3 +432,23 @@ test('receipt markdown controls are hidden without Premium and nutrition labels 
   const h=harness({receipt:{...RECEIPT,items:[{...PRODUCT,name:'Pasta REDUCED'}]}}),dialog=await scanReceipt(h);assert.equal(descendants(dialog).some(x=>x.dataset?.receiptField==='reduced'),false);
   const g=harness({receipt:{...RECEIPT,items:[{...PRODUCT,name:'Reduced-salt pasta'}]}});g.root.BBReducedFoodHost={isPremium:()=>true};const other=await scanReceipt(g);assert.equal(field(line(other),'reduced').checked,false);
 });
+
+test('stalled receipt readiness times out and leaves the scanner closable with no writes',async()=>{
+ const h=harness(),timers=new Map();let serial=0;
+ h.api.configure({setTimeout:(fn,delay)=>{assert.equal(delay,15000);timers.set(++serial,fn);return serial;},clearTimeout:id=>timers.delete(id),fetch:(_url,input)=>new Promise((_resolve,reject)=>input.signal.addEventListener('abort',()=>reject(Error('receipt_scan_cancelled')),{once:true}))});
+ const opening=h.open();await tick();assert.equal(timers.size,2);for(const expire of [...timers.values()])expire();const dialog=await opening;
+ assert.match(dialog.textContent,/cancelled/);assert.equal(action(dialog,'scan').disabled,true);assert.equal(h.commits.length,0);assert.equal(h.writes.length,0);assert.equal(timers.size,0);
+ await action(dialog,'close').emit('click');assert.equal(dialog.isConnected,false);assert.equal(h.document.activeElement,h.opener);
+});
+
+test('a second scanner launch preserves the existing reviewed draft instead of discarding it',async()=>{
+ const h=harness(),dialog=await scanReceipt(h);await setValue(field(line(dialog),'lineTotal'),'2.25','input');
+ const again=await h.open();assert.equal(again,dialog);assert.equal(field(line(dialog),'lineTotal').value,'2.25');assert.equal(h.cancels.length,0);assert.equal(scanPosts(h).length,1);
+});
+
+test('rapid receipt scan taps start only one paid image request',async()=>{
+ let release;const deferred=new Promise(resolve=>{release=resolve;}),h=harness({scanDeferred:deferred}),dialog=await h.open();
+ await selectPhoto(dialog);await setValue(top(dialog,'consent'),true);const button=action(dialog,'scan'),first=button.emit('click');
+ assert.equal(button.disabled,true);await button.emit('click');await tick();assert.equal(scanPosts(h).length,1);
+ release();await first;assert.equal(scanPosts(h).length,1);assert.equal(h.commits.length,0);
+});

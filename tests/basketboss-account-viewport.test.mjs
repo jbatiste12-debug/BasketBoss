@@ -22,7 +22,7 @@ function fixture({viewport=true,preInert=true,mobile=false}={}){
   getBoundingClientRect(){const delta=this!==nodes.card&&nodes.card.contains(this)?nodes.card.scrollTop:0;return{top:this.base.top-delta,bottom:this.base.bottom-delta};}
   focus(){doc.activeElement=this;nodes.panel.fire('focusin',{target:this});}
   blur(){this.blurred=true;if(doc.activeElement===this)doc.activeElement=nodes.body;}
-  click(){if(this.id==='cloud-close'){nodes.panel.classList.remove('open');root.BBAccountPolish.refresh();}}
+  click(){if(this.id==='cloud-close'){nodes.panel.classList.remove('open');this.fire('click',{target:this});}}
  }
  const nodes={};for(const [key,id,tag]of[['panel','cloud-panel'],['card','cloud-card'],['email','cloud-email','INPUT'],['password','cloud-password','INPUT'],['login','cloud-login','BUTTON'],['close','cloud-close','BUTTON'],['signed','cloud-signed'],['status','cloud-status'],['message','cloud-message'],['shell','shell'],['settings','settings'],['onboarding','onboarding'],['body','body'],['opener','opener','BUTTON']])nodes[key]=new Node(id,tag);
  nodes.signed.hidden=true;if(preInert)nodes.settings.setAttribute('inert','');
@@ -69,6 +69,11 @@ test('keeping a focused password reachable preserves its value, selection and fo
 
 test('closing during a queued viewport update cancels adjustment and blurs the keyboard field',()=>{
  const h=fixture();h.open();h.nodes.password.value='synthetic-local-input';h.nodes.password.focus();assert.ok(h.frames.size>0);h.close();assert.equal(h.nodes.password.value,'synthetic-local-input');assert.equal(h.nodes.password.blurred,true);assert.equal(h.frames.size,0);const old=h.nodes.panel.style.getPropertyValue('--bbap-viewport-height');h.resize({height:300});assert.equal(h.nodes.panel.style.getPropertyValue('--bbap-viewport-height'),old,'closed account ignores keyboard changes');
+});
+test('the close tap restores fixed-body and inert state immediately and releases the stale keyboard dock lock',()=>{
+ const h=fixture({mobile:true});let released=0;h.root.BBKeyboardLayout={releaseAfterDismissal(){released++;assert.equal(h.doc.activeElement,h.nodes.body,'blur happens before releasing keyboard protection');}};
+ h.open();h.nodes.email.focus();h.resize({height:417,offsetTop:164});h.nodes.close.click();
+ assert.equal(h.doc.documentElement.classList.contains('bb-account-open'),false);assert.equal(h.nodes.shell.hasAttribute('inert'),false);assert.equal(released,1);assert.equal(h.frames.size,0);assert.equal(h.doc.activeElement,h.nodes.opener);
 });
 
 test('reopening account uses the current full viewport rather than stale keyboard dimensions',()=>{

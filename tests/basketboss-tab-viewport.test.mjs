@@ -20,11 +20,11 @@ function fixture({view='week',href='https://basketboss.co.uk/index.html',session
  const body=new Node('body','BODY');body.dataset.bbnextView=view;const html=new Node('html','HTML'),app=new Node('app'),nav=new Node('nav','NAV'),panel=new Node('cook-panel'),storefront=new Node('bb172Storefront'),overview=new Node('bbReleaseShopOverview');storefront.hidden=true;overview.hidden=true;
  const overlays=[],bars=[],byId=new Map([html,body,app,storefront,overview].map(node=>[node.id,node]));
  const doc={...events(),readyState:'complete',documentElement:html,body,scrollingElement:html,getElementById:id=>byId.get(id)||null,querySelector:selector=>selector==='main,.page'?app:null,querySelectorAll:selector=>selector.includes('dialog[open]')?overlays:selector.includes('[data-bb-tab-action-bar]')?bars:[]};
- const win={...events(),document:doc,location:{href},innerHeight:844,scrollY:500,sessionStorage:{getItem:key=>session.get(key)??null,setItem:(key,value)=>session.set(key,value),removeItem:key=>session.delete(key)},getComputedStyle:node=>node.computed,requestAnimationFrame(fn){const id=++frameId;frames.set(id,fn);return id;},cancelAnimationFrame:id=>frames.delete(id),scrollTo(options){scrolls.push(options);win.scrollY=options.top;},MutationObserver:class{constructor(fn){watchers.push(fn);}observe(){}disconnect(){}}};
+ const win={...events(),document:doc,location:{href},innerHeight:844,scrollY:500,sessionStorage:{getItem:key=>session.get(key)??null,setItem:(key,value)=>session.set(key,value),removeItem:key=>session.delete(key)},getComputedStyle:node=>node.computed,requestAnimationFrame(fn){const id=++frameId;frames.set(id,fn);return id;},cancelAnimationFrame:id=>frames.delete(id),scrollTo(options){scrolls.push(options);win.scrollY=options.top;},MutationObserver:class{constructor(fn){this.fn=fn;watchers.push(this);}observe(target,options){this.options=options;}disconnect(){this.disconnected=true;}}};
  const controller=install(win);
  const flush=()=>{for(let count=0;frames.size&&count<20;count++){const pending=[...frames.values()];frames.clear();for(const fn of pending)fn();}assert.equal(frames.size,0,'scheduled viewport work settles');};
  const button=(tab,tag='BUTTON',target=null)=>{const node=new Node('',tag);node.dataset.tab=tab;if(target)node.setAttribute('href',target);nav.append(node);return node;};
- return {win,doc,html,app,nav,panel,body,storefront,overview,overlays,bars,scrolls,controller,session,Node,button,flush,change(next){body.dataset.bbnextView=next;for(const fn of watchers)fn();},click(node){doc.fire('click',{isTrusted:true,button:0,target:{closest:()=>node}});}};
+ return {win,doc,html,app,nav,panel,body,storefront,overview,overlays,bars,scrolls,controller,session,Node,button,flush,change(next){body.dataset.bbnextView=next;for(const watcher of watchers)if(!watcher.disconnected&&watcher.options?.attributeFilter?.includes('data-bbnext-view'))watcher.fn();},mutate(){for(const watcher of watchers)if(!watcher.disconnected&&watcher.options?.childList)watcher.fn();},click(node){doc.fire('click',{isTrusted:true,button:0,target:{closest:()=>node}});}};
 }
 
 test('each primary view starts at the document top, while an ordinary rerender preserves scroll',()=>{
@@ -57,6 +57,13 @@ test('cross-page Cook navigation carries one short-lived reset marker into the d
 test('fixed bottom actions and the in-store footer reserve their measured clearance',()=>{
  const h=fixture(),bar=new h.Node('action');bar.computed.position='fixed';bar.rect={top:744,bottom:844,width:390,height:100};h.bars.push(bar);h.controller.refresh();h.flush();assert.equal(h.html.style.getPropertyValue('--bb-tab-action-clearance'),'116px');
  h.storefront.hidden=false;h.storefront.footer=new h.Node('footer');h.storefront.footer.rect={top:684,bottom:844,width:390,height:160};h.overlays.push(h.storefront);h.controller.refresh();h.flush();assert.equal(h.html.style.getPropertyValue('--bb-tab-storefront-clearance'),'176px');assert.equal(h.html.getAttribute('data-bb-tab-scroll-lock'),'overlay');
+});
+
+test('late dialogs and asynchronously inserted footers refresh scroll ownership without another tap',()=>{
+ const h=fixture(),modal=new h.Node('late-dialog');h.overlays.push(modal);h.mutate();h.flush();assert.equal(h.html.getAttribute('data-bb-tab-scroll-lock'),'overlay');
+ modal.hidden=true;h.mutate();h.flush();assert.equal(h.html.hasAttribute('data-bb-tab-scroll-lock'),false);
+ const bar=new h.Node('late-action');bar.computed.position='fixed';bar.rect={top:764,bottom:844,width:390,height:80};h.bars.push(bar);h.mutate();h.flush();assert.equal(h.html.style.getPropertyValue('--bb-tab-action-clearance'),'96px');assert.equal(h.win.scrollY,500,'ordinary asynchronous updates retain the current page position');
+ h.controller.destroy();h.bars.length=0;h.mutate();h.flush();assert.equal(h.html.style.getPropertyValue('--bb-tab-action-clearance'),'96px','destroy disconnects late DOM observation');
 });
 
 test('controller installation is idempotent and destroy removes navigation hooks',()=>{

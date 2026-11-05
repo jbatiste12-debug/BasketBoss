@@ -53,6 +53,7 @@
     doc.documentElement.classList.remove('bb-account-open');
     doc.documentElement.style.removeProperty('--bbap-page-top');
     root.scrollTo(state.scrollX, state.scrollY);
+    root.BBKeyboardLayout?.releaseAfterDismissal?.();
   }
   function element(tag, className, text) {
     const node = doc.createElement(tag);
@@ -125,6 +126,10 @@
       }
       const close = doc.getElementById('cloud-close');
       close?.setAttribute('aria-label', 'Close account');
+      // Release fixed-body/inert state in the same tap that closes the form.
+      // The observer remains a fallback for programmatic closes and auth success.
+      close?.addEventListener('click', syncAccount);
+      panel.addEventListener('click',event=>{if(event.target===panel)syncAccount();});
       const email = doc.getElementById('cloud-email');
       email?.setAttribute('inputmode', 'email'); email?.setAttribute('autocapitalize', 'none'); email?.setAttribute('spellcheck', 'false');
       const status = doc.getElementById('cloud-status'); status?.setAttribute('role', 'status'); status?.setAttribute('aria-live', 'polite');

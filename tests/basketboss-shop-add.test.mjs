@@ -13,7 +13,7 @@ function fixture(options={}){
  const previews=[],writes=[],saved=[],listeners=new Map();
  const walk=node=>[node,...node.children.flatMap(walk)];
  class Node{
-  constructor(tag){Object.assign(this,{tagName:tag.toUpperCase(),children:[],parentNode:null,ownerDocument:doc,className:'',attributes:new Map(),events:new Map(),style:{},value:'',disabled:false,hidden:false,open:false,_text:''});}
+  constructor(tag){Object.assign(this,{tagName:tag.toUpperCase(),children:[],parentNode:null,ownerDocument:doc,className:'',attributes:new Map(),events:new Map(),style:{},value:'',disabled:false,hidden:false,open:false,scrollTop:0,_text:''});}
   set textContent(value){this._text=String(value);this.children.forEach(child=>child.parentNode=null);this.children=[];}
   get textContent(){return this._text+this.children.map(child=>child.textContent).join('');}
   append(...nodes){for(const node of nodes){node.remove();node.parentNode=this;this.children.push(node);}}
@@ -29,6 +29,8 @@ function fixture(options={}){
   contains(node){return walk(this).includes(node);}
   get isConnected(){return this===doc.body||!!this.parentNode?.isConnected;}
   focus(){doc.activeElement=this;}
+  blur(){if(doc.activeElement===this)doc.activeElement=doc.body;}
+  getBoundingClientRect(){return this.rect||(this.tagName==='DIALOG'?{left:12,right:363,top:parseFloat(this.style.top)||20,bottom:(parseFloat(this.style.top)||20)+(parseFloat(this.style.maxHeight)||780)}:{left:28,right:347,top:100,bottom:146});}
   showModal(){this.setAttribute('open','');}
   close(){this.removeAttribute('open');void this.fire('close');}
   checkValidity(){const n=Number(this.value);return this.value!==''&&Number.isFinite(n)&&n>=Number(this.min||0)&&n<=Number(this.max||Infinity);}
@@ -111,6 +113,12 @@ test('the two-field form stays inside the visible keyboard viewport and removes 
  await h.open();assert.equal(h.dialog().style.maxHeight,'');h.win.visualViewport.height=480;h.win.visualViewport.offsetTop=40;handlers.get('resize')();
  assert.equal(h.dialog().style.maxHeight,'456px');assert.equal(h.dialog().style.top,'52px');assert.equal(h.previews.length,0);assert.equal(h.writes.length,0);
  h.win.visualViewport.height=844;h.win.visualViewport.offsetTop=0;handlers.get('resize')();assert.equal(h.dialog().style.maxHeight,'');assert.equal(h.dialog().style.top,'');await h.button('Cancel').fire('click');assert.equal(handlers.size,0);
+});
+test('keyboard viewport changes bring the focused quantity into the dialog scroll area without clearing its draft',async()=>{
+ const h=fixture(),handlers=new Map();h.win.innerHeight=844;h.win.visualViewport={height:844,offsetTop:0,scale:1,addEventListener(name,fn){handlers.set(name,fn);},removeEventListener(name){handlers.delete(name);}};
+ await h.open();await h.fill('Rice','500 g');const input=h.field('quantityText');input.focus();input.rect={left:28,right:347,top:510,bottom:556};h.win.visualViewport.height=480;handlers.get('resize')();
+ assert.equal(h.dialog().scrollTop,100);assert.equal(input.value,'500 g');assert.equal(h.doc.activeElement,input);
+ await h.button('Cancel').fire('click');assert.equal(h.doc.activeElement,h.button('Add item to buy'));assert.equal(h.doc.body.style.overflow,'auto');assert.equal(handlers.size,0);
 });
 
 function realHomeFixture(){

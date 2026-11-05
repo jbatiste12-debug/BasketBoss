@@ -2,7 +2,7 @@ import test from "node:test";
 import assert from "node:assert/strict";
 import { createRequire } from "node:module";
 const require = createRequire(import.meta.url),
-  { create, validEmail } = require("../bb-auth-flow.js"),
+  { create, validEmail, timedFetch } = require("../bb-auth-flow.js"),
   bridge = require("../bb-auth-callback.js");
 const deferred = () => {
   let resolve;
@@ -134,6 +134,17 @@ test("request failures release the lock and retain a meaningful error", async ()
   assert.equal(await h.core.signIn(h.user.email, "password123"), false);
   assert.equal(h.core.state().busy, false);
   assert.match(h.core.state().message, /Network/);
+});
+test('the auth transport deadline remains active after headers until the response body arrives',async()=>{
+ let deadline,cleared=0,bodyReady;const body=new Promise(resolve=>{bodyReady=resolve;}),response={clone:()=>({arrayBuffer:()=>body})};
+ const win={setTimeout(fn,ms){assert.equal(ms,20000);deadline=fn;return 1;},clearTimeout(){cleared++;},fetch:async()=>response};
+ let settled=false;const pending=timedFetch(win,'https://auth.invalid/request').then(value=>{settled=true;return value;});await Promise.resolve();await Promise.resolve();
+ assert.equal(cleared,0);assert.equal(settled,false);bodyReady(new ArrayBuffer(0));assert.equal(await pending,response);assert.equal(cleared,1);assert.equal(typeof deadline,'function');
+});
+test('a stalled auth response body aborts, releases the submission lock and permits a retry',async()=>{
+ let deadline,aborts=0;const h=fixture();const win={setTimeout(fn){deadline=fn;return 1;},clearTimeout(){},fetch:async(_url,{signal})=>({clone:()=>({arrayBuffer:()=>new Promise((_resolve,reject)=>signal.addEventListener('abort',()=>{aborts++;reject(Object.assign(Error('Offline body'),{name:'AbortError'}));},{once:true}))})})};
+ h.auth.signInWithPassword=()=>timedFetch(win,'https://auth.invalid/request');const pending=h.core.signIn(h.user.email,'password123');await Promise.resolve();await Promise.resolve();assert.equal(h.core.state().busy,true);deadline();assert.equal(await pending,false);assert.equal(aborts,1);assert.equal(h.core.state().busy,false);assert.match(h.core.state().message,/connection/);
+ h.auth.signInWithPassword=async()=>({data:{session:h.session},error:null});assert.equal(await h.core.signIn(h.user.email,'password123'),true);
 });
 test("sign-in locks concurrent submissions before the first request resolves", async () => {
   const h = fixture(),

@@ -29,6 +29,23 @@
           : /rate|too_many|over_email/.test(error?.code || "")
             ? "Too many requests. Wait before trying again."
             : error?.message || "Unable to connect. Please try again.";
+  async function timedFetch(win, input, init = {}) {
+    const controller = new AbortController(),
+      timer = win.setTimeout(() => controller.abort(), 20000);
+    const abort = () => controller.abort();
+    if (init.signal?.aborted) abort();
+    else init.signal?.addEventListener("abort", abort, { once: true });
+    try {
+      const response = await win.fetch(input, { ...init, signal: controller.signal });
+      // Fetch resolves at headers. Keep the deadline through the small Auth
+      // response body too, so a stalled supermarket connection releases the form.
+      await response.clone().arrayBuffer();
+      return response;
+    } finally {
+      win.clearTimeout(timer);
+      init.signal?.removeEventListener("abort", abort);
+    }
+  }
   function create(options) {
     const auth = options.auth,
       store = options.storage,
@@ -458,22 +475,7 @@
         flowType: "pkce",
       },
       global: {
-        fetch: async (input, init = {}) => {
-          const controller = new AbortController(),
-            timer = win.setTimeout(() => controller.abort(), 20000);
-          const abort = () => controller.abort();
-          if (init.signal?.aborted) abort();
-          else init.signal?.addEventListener("abort", abort, { once: true });
-          try {
-            return await win.fetch(input, {
-              ...init,
-              signal: controller.signal,
-            });
-          } finally {
-            win.clearTimeout(timer);
-            init.signal?.removeEventListener("abort", abort);
-          }
-        },
+        fetch: (input, init) => timedFetch(win, input, init),
       },
     }).auth;
     const make = (tag, id, text) => {
@@ -848,5 +850,5 @@
     });
     return api;
   }
-  return Object.freeze({ create, install, validEmail });
+  return Object.freeze({ create, install, validEmail, timedFetch });
 });

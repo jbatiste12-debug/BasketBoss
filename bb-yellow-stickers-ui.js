@@ -32,8 +32,11 @@
   }
   async function request(pin,method,body,token){
    const path='/api/yellow-stickers'+(method==='GET'?'?region='+encodeURIComponent(pin.region)+'&store='+encodeURIComponent(pin.id):'');
-   const response=await options.fetch(path,{method,headers:{Accept:'application/json',...(body?{'Content-Type':'application/json'}:{}),...(token?{Authorization:'Bearer '+token}:{})},...(body?{body:JSON.stringify(body)}:{}),credentials:'same-origin',redirect:'error',cache:'no-store',...(typeof AbortSignal!=='undefined'&&AbortSignal.timeout?{signal:AbortSignal.timeout(12000)}:{})});
-   let data;try{data=await response.json();}catch{}return {response,data};
+   const controller=new AbortController(),timer=(options.setTimeout||setTimeout)(()=>controller.abort(),12000);
+   try{
+    const response=await options.fetch(path,{method,headers:{Accept:'application/json',...(body?{'Content-Type':'application/json'}:{}),...(token?{Authorization:'Bearer '+token}:{})},...(body?{body:JSON.stringify(body)}:{}),credentials:'same-origin',redirect:'error',cache:'no-store',signal:controller.signal});
+    let data;try{data=await response.json();}catch{}if(controller.signal.aborted)throw Error('yellow_sticker_request_cancelled');return {response,data};
+   }finally{(options.clearTimeout||clearTimeout)(timer);}
   }
   function refresh({force=false}={}){
    const pin=sync();if(!pin||!pin.premium||deniedPremium||options.isBlocked?.()||options.isOffline?.())return Promise.resolve(snapshot());if(flight)return flight;
@@ -77,7 +80,12 @@
   const text=(node,value)=>{if(node.textContent!==value)node.textContent=value;};
   function session(){try{return win.BasketBossSession?.read?.()||JSON.parse(win.localStorage.getItem('basketboss_cloud_session_v1')||'null');}catch{return null;}}
   function context(){const region=win.bb307ActiveMarket?.(),retailer=win.BBSupermarkets?.getSelected?.(region);return {region,retailer,actor:session()?.user?.id||'guest'};}
-  function ensure(){if(!controller&&win.BBYellowStickers)controller=createController({api:win.BBYellowStickers,storage:win.localStorage,fetch:win.fetch.bind(win),getContext:context,getSession:async()=>win.BasketBossSession?.ensureFresh?await win.BasketBossSession.ensureFresh():session(),isPremium:()=>host.isPremium?host.isPremium()===true:win.BasketBossVerifiedPremium?.isActive?.()===true,isBlocked:()=>win.BBAccountDeletion?.isDeleting?.()===true,isOffline:()=>win.navigator?.onLine===false,uuid:()=>win.crypto.randomUUID(),onState:schedule});return controller;}
+  function ensure(){if(!controller&&win.BBYellowStickers)controller=createController({api:win.BBYellowStickers,storage:win.localStorage,fetch:win.fetch.bind(win),getContext:context,getSession:async()=>win.BasketBossSession?.ensureFresh?await win.BasketBossSession.ensureFresh():session(),isPremium:()=>host.isPremium?host.isPremium()===true:win.BasketBossVerifiedPremium?.isActive?.()===true,isBlocked:()=>win.BBAccountDeletion?.isDeleting?.()===true,isOffline:()=>win.navigator?.onLine===false,uuid:()=>win.crypto.randomUUID(),onState:stateChanged});return controller;}
+  function stateChanged(state){
+   // Apply the submission lock in this tap, before the next animation frame.
+   for(const banner of banners){const e=banner.bbElements;if(e){e.spotted.disabled=e.notYet.disabled=!!state?.busy;banner.setAttribute('aria-busy',String(!!state?.busy));}}
+   schedule();
+  }
   function schedule(){if(queued||destroyed)return;queued=true;(win.requestAnimationFrame||win.setTimeout).call(win,render);}
   function build(picker){
    const details=make('details','bb-yellow-stickers'),summary=make('summary'),summaryLabel=make('span','bb-yellow-stickers-label'),copy=make('p','bb-yellow-stickers-copy'),buttons=make('div','bb-yellow-stickers-actions'),prompt=make('span','','Out now?'),spotted=make('button','','👍 Spotted'),notYet=make('button','','🕒 Not yet'),status=make('p','bb-yellow-stickers-status');

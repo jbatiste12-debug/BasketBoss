@@ -54,7 +54,7 @@ test('receipt review hints match existing staple containers and use known measur
 
 test('the actual receipt reader matches a measured condiment scan to its existing editable pantry container',async()=>{
  const policy=require('../bb-pantry-policy.js'),inventory={ketchup:row('Ketchup',1,'each',{staple:true,stapleStatus:'low'})},before=JSON.stringify(inventory);
- const win={BBPantryPolicy:policy,BBReceiptQuantity:quantity},requests=[];vm.runInNewContext(fs.readFileSync(new URL('../bb-receipt-scanner.js',import.meta.url),'utf8'),{window:win,console});
+ const win={BBPantryPolicy:policy,BBReceiptQuantity:quantity,AbortController,setTimeout,clearTimeout},requests=[];vm.runInNewContext(fs.readFileSync(new URL('../bb-receipt-scanner.js',import.meta.url),'utf8'),{window:win,console,AbortController});
  const scanner=win.BBReceiptScannerFactory({pantryPolicy:true,getKitchen:()=>inventory,getSession:()=>({user:{id:'test-reader-account'},access_token:'test-token'}),getContext:()=>({market:'UK',retailer:'Tesco'}),getCatalog:()=>catalog,preparePhoto:async()=>({mimeType:'image/jpeg',imageBase64:'test-photo'}),fetch:async path=>{
   requests.push(path);const value=path==='/api/receipt-inventory?mode=status'?{ok:true,available:true,premium:true,migrationReady:true}:path==='/api/bb173/status'?{status:'available',premium_ai:true,turnstileRequired:false}:{ok:true,reviewRequired:true,receiptInventory:{currency:'GBP',items:[{description:'KETCHUP 800ML',canonicalKey:'ketchup',classification:'food',quantity:800,unit:'ml',lineTotal:2}]}};
   return {ok:true,json:async()=>value};

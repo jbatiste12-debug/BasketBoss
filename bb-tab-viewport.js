@@ -11,7 +11,7 @@
  function install(win){
   if(win.BBTabViewport?.version===1)return win.BBTabViewport;
   const doc=win.document,html=doc.documentElement,raf=fn=>(win.requestAnimationFrame||win.setTimeout||setTimeout).call(win,fn),caf=id=>(win.cancelAnimationFrame||win.clearTimeout||clearTimeout).call(win,id);
-  let destroyed=false,pending=null,serial=0,manual=0,frames=[],modeFrame=null,observer=null;
+  let destroyed=false,pending=null,serial=0,manual=0,frames=[],modeFrame=null,observer=null,treeObserver=null;
   const has=(node,name)=>node?.classList?.contains(name)||String(node?.className||'').split(/\s+/).includes(name);
   const locationURL=()=>{try{return new URL(win.location.href);}catch{return null;}};
   function view(){const saved=normal(doc.body?.dataset?.bbnextView);if(saved)return saved;const current=doc.querySelector('.tab.active,[data-bb-nav-current="true"]');const found=normal(current?.dataset?.tab)||NAV_ITEMS[current?.dataset?.bbNavItem];if(found)return found;return /(?:^|\/)make-a-meal\.html$/.test(locationURL()?.pathname||'')?'cook':null;}
@@ -97,13 +97,17 @@
   function consumeMarker(){
    try{const raw=win.sessionStorage?.getItem(KEY);if(!raw)return;const marker=JSON.parse(raw),now=Date.now();if(marker?.version!==1||!Number.isFinite(marker.createdAt)||marker.createdAt>now+1000||now-marker.createdAt>TTL){win.sessionStorage.removeItem(KEY);return;}const here=locationURL();if(!here||marker.target!==here.pathname+here.search||!normal(marker.view))return;win.sessionStorage.removeItem(KEY);reset({view:marker.view});}catch{try{win.sessionStorage?.removeItem(KEY);}catch{}}
   }
-  function start(){if(destroyed)return;lastView=view();mode();consumeMarker();if(win.MutationObserver&&doc.body){observer=new win.MutationObserver(bodyChanged);observer.observe(doc.body,{attributes:true,attributeFilter:['data-bbnext-view','class','style']});}}
+  function start(){if(destroyed)return;lastView=view();mode();consumeMarker();if(win.MutationObserver&&doc.body){observer=new win.MutationObserver(bodyChanged);observer.observe(doc.body,{attributes:true,attributeFilter:['data-bbnext-view','class','style']});
+   // Async dialogs and late shopping footers can appear after the navigation
+   // click's animation frame. Observe their presence/open state as well as the
+   // body's tab marker, coalescing DOM work into one layout read per frame.
+   treeObserver=new win.MutationObserver(scheduleMode);treeObserver.observe(doc.body,{childList:true,subtree:true,attributes:true,attributeFilter:['open','hidden','aria-modal']});}}
   doc.addEventListener('click',click,true);doc.addEventListener('close',scheduleMode,true);
   const keyHandler=event=>{cancelManual(event);if(event.key==='Escape')scheduleMode();};
   // Keep references for teardown, including passive manual-scroll intent hooks.
   doc.addEventListener('keydown',keyHandler,true);
   win.addEventListener('wheel',cancelManual,{passive:true});win.addEventListener('touchmove',cancelManual,{passive:true});win.addEventListener('resize',scheduleMode,{passive:true});win.addEventListener('pageshow',consumeMarker);win.visualViewport?.addEventListener?.('resize',scheduleMode);
-  const controller={version:1,activate(control){if(!control||!control.closest?.(NAV)||control.disabled||control.getAttribute?.('aria-disabled')==='true')return false;const target=primary(control);if(!target)return false;remember(control,target);control.click();reset({view:target});return true;},reset,refresh:scheduleMode,destroy(){if(destroyed)return;destroyed=true;observer?.disconnect();for(const frame of frames)caf(frame);if(modeFrame!==null)caf(modeFrame);frames=[];pending=null;doc.removeEventListener('click',click,true);doc.removeEventListener('close',scheduleMode,true);doc.removeEventListener('keydown',keyHandler,true);win.removeEventListener('wheel',cancelManual);win.removeEventListener('touchmove',cancelManual);win.removeEventListener('resize',scheduleMode);win.removeEventListener('pageshow',consumeMarker);win.visualViewport?.removeEventListener?.('resize',scheduleMode);}};
+  const controller={version:1,activate(control){if(!control||!control.closest?.(NAV)||control.disabled||control.getAttribute?.('aria-disabled')==='true')return false;const target=primary(control);if(!target)return false;remember(control,target);control.click();reset({view:target});return true;},reset,refresh:scheduleMode,destroy(){if(destroyed)return;destroyed=true;observer?.disconnect();treeObserver?.disconnect();for(const frame of frames)caf(frame);if(modeFrame!==null)caf(modeFrame);frames=[];pending=null;doc.removeEventListener('click',click,true);doc.removeEventListener('close',scheduleMode,true);doc.removeEventListener('keydown',keyHandler,true);win.removeEventListener('wheel',cancelManual);win.removeEventListener('touchmove',cancelManual);win.removeEventListener('resize',scheduleMode);win.removeEventListener('pageshow',consumeMarker);win.visualViewport?.removeEventListener?.('resize',scheduleMode);}};
   win.BBTabViewport=controller;if(doc.readyState==='loading')doc.addEventListener('DOMContentLoaded',start,{once:true});else start();return controller;
  }
  return Object.freeze({install});

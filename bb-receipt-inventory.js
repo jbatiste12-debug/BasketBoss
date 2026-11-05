@@ -153,10 +153,20 @@
       const perform = options.fetch || root.fetch?.bind(root);
       if (!perform) throw Error('receipt_network_unavailable');
       const path = '/api/receipt-inventory' + (query?.receiptId ? '?receiptId=' + encodeURIComponent(query.receiptId) : '');
-      const response = await perform(path, { method, headers: { Accept: 'application/json', 'Content-Type': 'application/json', Authorization: `Bearer ${captured.token}` }, body: body ? JSON.stringify(body) : undefined, signal, credentials: 'same-origin', redirect: 'manual', cache: 'no-store' });
-      const data = await response.json().catch(() => ({}));
-      if (!response.ok || data.ok !== true) { const error = Error(String(data.error || 'receipt_cloud_request_failed').slice(0, 200)); error.status = response.status; throw error; }
-      return data;
+      // A lost supermarket connection must release the form's busy state.
+      // POST timeouts keep the existing pending journal for same-ID recovery.
+      const Controller = options.AbortController || root.AbortController || globalThis.AbortController;
+      const controller = typeof Controller === 'function' ? new Controller() : null, abort = () => controller?.abort();
+      if (signal?.aborted) abort(); else signal?.addEventListener?.('abort', abort, { once: true });
+      const schedule = options.setTimeout || root.setTimeout || globalThis.setTimeout;
+      const timer = controller && schedule ? schedule(abort, 20000) : null;
+      try {
+        const response = await perform(path, { method, headers: { Accept: 'application/json', 'Content-Type': 'application/json', Authorization: `Bearer ${captured.token}` }, body: body ? JSON.stringify(body) : undefined, signal: controller?.signal || signal, credentials: 'same-origin', redirect: 'manual', cache: 'no-store' });
+        const data = await response.json().catch(() => ({}));
+        if (controller?.signal.aborted) throw Error('receipt_request_cancelled');
+        if (!response.ok || data.ok !== true) { const error = Error(String(data.error || 'receipt_cloud_request_failed').slice(0, 200)); error.status = response.status; throw error; }
+        return data;
+      } finally { if (timer !== null) (options.clearTimeout || root.clearTimeout || globalThis.clearTimeout)?.(timer); signal?.removeEventListener?.('abort', abort); }
     }
     function safeServerRecord(value, fields) {
       const out = {};

@@ -707,3 +707,26 @@ test('canonical reduced metadata merges never mix actor source IDs or make freez
  let active=Object.values(Core.normalizePantryState({'carrots|g':100,'carrot|each':1},records,{market:'UK'}).inventory).find(row=>row.selected);assert.equal(active.bbReduced.actor,ACTOR);assert.deepEqual(active.bbReduced.sources,['actor-a-source']);assert.equal(reducedStock.isUrgent(active,{actor:'user_00000002'}),false);
  records.two.bbReduced=clone(a);records.one.loc=records.two.loc='freezer';active=Object.values(Core.normalizePantryState({'carrots|g':100,'carrot|each':1},records,{market:'UK'}).inventory).find(row=>row.selected);assert.equal(active.qty,180);assert.equal(active.bbReduced.urgent,false);assert.equal(reducedStock.isUrgent(active,{actor:ACTOR}),false);
 });
+
+test('a receipt POST timeout releases the lock and preserves one recoverable same-ID confirmation',async()=>{
+ const f=fixture(),timers=new Map();let serial=0,posted;
+ f.adapter.configure({AbortController,setTimeout:(fn,delay)=>{assert.equal(delay,20000);const id=++serial;timers.set(id,fn);return id;},clearTimeout:id=>timers.delete(id),fetch:async(url,input)=>{
+  if(input.method!=='POST')return f.server.fetch(url,input);
+  posted=JSON.parse(input.body);return new Promise((_resolve,reject)=>input.signal.addEventListener('abort',()=>reject(Error('synthetic slow supermarket network')),{once:true}));
+ }});
+ const reviewed=await draft(f),save=f.adapter.commitReviewedReceipt(reviewed);
+ await new Promise(resolve=>setImmediate(resolve));assert.ok(posted);assert.equal(timers.size,1);[...timers.values()][0]();
+ await assert.rejects(save,error=>error.commitUnknown===true&&error.recoveryRequired===true);
+ assert.equal(timers.size,0);assert.equal(f.adapter.getPendingConfirmation().receiptId,reviewed.receiptId);
+ assert.equal(f.store.getItem(f.keys.stock),'{}','an uncertain save cannot invent purchased stock');
+ f.adapter.configure({fetch:f.server.fetch});const recovered=await f.adapter.retryPendingConfirmation();
+ assert.equal(recovered.committed,true);assert.equal(recovered.localApplied,true);assert.equal(f.server.posts,1);assert.equal(f.server.stock['pasta|g'],500);
+ assert.equal(f.adapter.getPendingConfirmation().receiptId,undefined);assert.equal(timers.size,0);
+});
+
+test('receipt inventory reads compose caller cancellation without replacing local stock',async()=>{
+ const f=fixture();f.store.setItem(f.keys.stock,JSON.stringify({'pasta|g':250}));const controller=new AbortController(),timers=new Map();let serial=0,received;
+ f.adapter.configure({AbortController,setTimeout:fn=>{timers.set(++serial,fn);return serial;},clearTimeout:id=>timers.delete(id),fetch:(_url,input)=>{received=input.signal;return new Promise((_resolve,reject)=>input.signal.addEventListener('abort',()=>reject(Error('synthetic cancelled refresh')),{once:true}));}});
+ const refresh=f.adapter.synchronize({signal:controller.signal});await new Promise(resolve=>setImmediate(resolve));assert.notEqual(received,controller.signal);
+ controller.abort();await assert.rejects(refresh,/cancelled refresh/);assert.equal(received.aborted,true);assert.equal(timers.size,0);assert.deepEqual(JSON.parse(f.store.getItem(f.keys.stock)),{'pasta|g':250});
+});
