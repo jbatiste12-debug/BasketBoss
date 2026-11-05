@@ -195,7 +195,7 @@ jobs:
         run: echo '::notice title=BasketBoss iOS native build::{"simulatorBuild":true,"bundleId":"uk.co.basketboss.app","minimumIOS":"16.0","signingTested":false}'
       # Finish device compilation before Simulator startup; Cook and keyboard
       # checks still determine whether this verification run succeeds.
-      - name: Create the unsigned iPhone archive for build 19
+      - name: Create the unsigned iPhone archive for build 20
         run: |
           xcodebuild \
             -workspace ios/App/App.xcworkspace \
@@ -204,19 +204,19 @@ jobs:
             -sdk iphoneos \
             -destination 'generic/platform=iOS' \
             -derivedDataPath /tmp/basketboss-ios-device-build \
-            -archivePath "$RUNNER_TEMP/BasketBoss-1.0-build19.xcarchive" \
+            -archivePath "$RUNNER_TEMP/BasketBoss-1.0-build20.xcarchive" \
             CODE_SIGNING_ALLOWED=NO \
             archive
-          test "$(/usr/libexec/PlistBuddy -c 'Print CFBundleVersion' "$RUNNER_TEMP/BasketBoss-1.0-build19.xcarchive/Products/Applications/App.app/Info.plist")" = '19'
-          test "$(/usr/libexec/PlistBuddy -c 'Print CFBundleIdentifier' "$RUNNER_TEMP/BasketBoss-1.0-build19.xcarchive/Products/Applications/App.app/Info.plist")" = 'uk.co.basketboss.app'
+          test "$(/usr/libexec/PlistBuddy -c 'Print CFBundleVersion' "$RUNNER_TEMP/BasketBoss-1.0-build20.xcarchive/Products/Applications/App.app/Info.plist")" = '20'
+          test "$(/usr/libexec/PlistBuddy -c 'Print CFBundleIdentifier' "$RUNNER_TEMP/BasketBoss-1.0-build20.xcarchive/Products/Applications/App.app/Info.plist")" = 'uk.co.basketboss.app'
           ditto -c -k --sequesterRsrc --keepParent \
-            "$RUNNER_TEMP/BasketBoss-1.0-build19.xcarchive" \
-            "$RUNNER_TEMP/BasketBoss-1.0-build19-unsigned.xcarchive.zip"
+            "$RUNNER_TEMP/BasketBoss-1.0-build20.xcarchive" \
+            "$RUNNER_TEMP/BasketBoss-1.0-build20-unsigned.xcarchive.zip"
       - name: Retain the unsigned iPhone archive
         uses: actions/upload-artifact@v6
         with:
-          name: BasketBoss-1.0-build19-unsigned-iPhone-archive
-          path: ${{ runner.temp }}/BasketBoss-1.0-build19-unsigned.xcarchive.zip
+          name: BasketBoss-1.0-build20-unsigned-iPhone-archive
+          path: ${{ runner.temp }}/BasketBoss-1.0-build20-unsigned.xcarchive.zip
           if-no-files-found: error
           retention-days: 7
           compression-level: 0

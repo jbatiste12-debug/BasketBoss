@@ -120,7 +120,7 @@
   const holder=create('section','bb-ingredient-picker');holder.id='bbIngredientPicker';
   const button=create('button','bb-avoid-tab');button.type='button';button.id='bbAvoidIngredientTab';button.setAttribute('aria-controls','bbAvoidIngredientPanel');button.setAttribute('aria-expanded','false');
   const icon=create('span','bb-avoid-tab-icon');icon.setAttribute('aria-hidden','true');icon.innerHTML='<svg viewBox="0 0 24 24" width="20" height="20" fill="none"><path d="M4 7h16M7 12h10M10 17h4" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>';
-  const label=create('span','bb-avoid-tab-label','Ingredients to avoid'),count=create('span','bb-avoid-count'),chevron=create('span','bb-avoid-chevron','⌄');chevron.setAttribute('aria-hidden','true');
+  const label=create('span','bb-avoid-tab-label','Foods to avoid'),count=create('span','bb-avoid-count'),chevron=create('span','bb-avoid-chevron','⌄');chevron.setAttribute('aria-hidden','true');
   button.append(icon,label,count,chevron);
   const panel=create('div','bb-avoid-panel');panel.id='bbAvoidIngredientPanel';panel.hidden=true;panel.setAttribute('role','region');panel.setAttribute('aria-labelledby',button.id);
   const clear=create('button','bb-avoid-clear','Clear all');clear.type='button';clear.disabled=true;clear.addEventListener('click',()=>save([],'All ingredients can be used in future Auto-fill.'));
