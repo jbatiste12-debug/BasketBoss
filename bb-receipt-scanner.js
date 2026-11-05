@@ -11,9 +11,10 @@
     let options = { ...initial }, corePromise, current = null;
     const doc = () => options.document || root.document;
     const inventory = () => options.inventory || root.BBReceiptInventory;
-    const core = () => options.core ? Promise.resolve(options.core) : (corePromise ||= import(sibling('bb-receipt-inventory-core.mjs')));
+    const core = () => options.core ? Promise.resolve(options.core) : (corePromise ||= import(sibling('bb-receipt-inventory-core.mjs?v=20261105-reduced1')));
     const fetcher = () => options.fetch || root.fetch?.bind(root);
     const quantities = () => options.quantities || root.BBReceiptQuantity;
+    const reducedEnabled = () => root.BBReducedFoodHost?.isPremium?.() === true;
     const context = () => options.getContext ? options.getContext() : { market: root.bb307ActiveMarket?.(), retailer: root.bb307ActiveRetailer?.() || null };
     function session() {
       let value;
@@ -35,6 +36,7 @@
       const key = String(error?.message || error || '');
       if (/context_changed|account_changed|session_expired|draft_not_owned/.test(key)) return 'Your account, region or supermarket changed. Close and reopen the receipt scanner.';
       if (/currency_mismatch/.test(key)) return 'The receipt currency does not match your Shop region. Choose the correct region and reopen the scanner.';
+      if (/premium_reduced_food_required/.test(key)) return 'Premium is needed to save reduced-food tracking. Refresh your membership, or turn off Reduced food before saving.';
       if (/initial_pantry_merge|local_remote_pantry_merge|revision_conflict|household_scope_changed|projection_belongs/.test(key)) return 'Your Pantry needs a review before this receipt can be added. Review Pantry in Shop, then retry this receipt.';
       if (/quota|daily|limit reached|429/i.test(key)) return 'Your receipt scan allowance has been reached. Try another day, or enter items manually.';
       if (/cancelled|AbortError|aborted/i.test(key)) return 'Receipt scan cancelled. Nothing new was confirmed.';
@@ -250,7 +252,7 @@
         if (state.draft && state.core) {
           for (const view of state.rowViews) {
             const issues = validateLine(view.line); view.note.textContent = issues.length ? issues.map(x => String(x).replace(/_/g, ' ')).join(' · ') : 'Ready to confirm';
-            for (const control of view.controls) control.disabled = !editable;
+            for (const control of view.controls) control.disabled = !editable || control.dataset.receiptField === 'priceType' && view.line.reduced === true;
             if (view.reviewed) view.reviewed.checked = view.line.reviewed === true;
             if (view.amountHint) {view.amountHint.hidden = !view.line._quantityHint;view.amountHint.textContent = view.line._quantityHint?.note || '';}
             if (issues.length) valid = false;
@@ -276,7 +278,7 @@
         if (fieldName === 'lineTotal') line.pricePaid = value;
         if (fieldName === 'classification') {
           if (value === 'ignore') line.selected = false;
-          if (value !== 'food') line.canonicalKey = null;
+          if (value !== 'food') {line.canonicalKey = null; line.reduced = false;}
         }
         if (rerender) renderRows(); else update();
       }
@@ -328,6 +330,12 @@
           }
           const type = track(select([['unknown', 'Price type unknown'], ['regular', 'Checked regular pack price'], ['promotion', 'Promotion / offer price']], line.priceType || 'unknown'), 'priceType');
           type.addEventListener('change', () => edit(line, 'priceType', type.value)); box.append(field('Price type', type, 'Regular prices are remembered only for this account, region, supermarket and exact pack.'));
+          if (line.classification === 'food' && reducedEnabled()) {
+            const reduced = track(element('input', {type: 'checkbox', checked: line.reduced === true}), 'reduced');
+            reduced.addEventListener('change', () => {line.priceType = reduced.checked ? 'promotion' : 'unknown'; edit(line, 'reduced', reduced.checked, true);});
+            box.append(element('label', {className: 'bb-receipt-check'}, [reduced, document.createTextNode('🏷️ Reduced food · Use soon')]));
+            if (line.reducedSuggested) box.append(element('small', {className: 'bb-receipt-muted'}, 'The receipt may show a reduced label. Check this item before confirming.'));
+          }
         }
         const reviewed = track(element('input', { type: 'checkbox', checked: line.reviewed === true }), 'reviewed');
         reviewed.addEventListener('change', () => edit(line, 'reviewed', reviewed.checked));
@@ -374,7 +382,7 @@
           const draft = await inventory().normalizeDraft({ ...raw, shopSessionId: null }, { market, retailer });
           if (!alive(revision) || !guard()) { inventory().cancelDraft?.(draft); return; }
           state.draft = draft;draft.addToPantry=addToPantry.input.checked;state.requestId = draft.receiptId + ':confirm';
-          for (const [index,line] of draft.lines.entries()) {const suggested=raw.items[index]?._quantitySuggestion;if(suggested)line._quantityHint=suggested;line.reviewed = false; line.priceType = line.priceType === 'promotion' ? 'promotion' : 'unknown'; line._includeAdjustment = true; line._measurementMode = line.packQuantity !== null && line.packQuantity !== undefined && (!suggested?.estimated || line.packCount>1) ? 'packs' : 'total'; if (line._measurementMode === 'packs') { line.quantity = null; line.unit = null; } }
+          for (const [index,line] of draft.lines.entries()) {const suggested=raw.items[index]?._quantitySuggestion;if(suggested)line._quantityHint=suggested;line.reduced = reducedEnabled() && line.classification === 'food' && line.reducedSuggested === true;line.reviewed = false; line.priceType = line.reduced || line.priceType === 'promotion' ? 'promotion' : 'unknown'; line._includeAdjustment = true; line._measurementMode = line.packQuantity !== null && line.packQuantity !== undefined && (!suggested?.estimated || line.packCount>1) ? 'packs' : 'total'; if (line._measurementMode === 'packs') { line.quantity = null; line.unit = null; } }
           storeInfo.textContent = 'Shop: ' + (retailer || 'No supermarket selected') + ' · Region: ' + market + ' · Receipt says: ' + (raw.retailer || 'supermarket unreadable') + ' · Currency: ' + (raw.currency || 'unreadable—check it against ' + CURRENCIES[market]);
           totalInput.value = draft.receiptTotal ?? ''; totalUnknown.input.checked = false; totalReviewed.input.checked = false; storeReviewed.input.checked = false; currencyReviewed.input.checked = false; trip.input.checked = false;
           review.hidden = false; renderRows(); status.textContent = 'Review the matched items, prices and bought amounts. Estimated packs are suggestions: correct them before saving.';

@@ -50,6 +50,10 @@
 #app #bb173ShopFridge .bbpi-summary-main{display:grid;gap:3px;overflow-wrap:anywhere}
 #app #bb173ShopFridge .bbpi-summary-main strong{font-size:13px;line-height:1.3;color:#244f37}
 #app #bb173ShopFridge .bbpi-summary-amount{font-size:12px;color:#6c8068;line-height:1.3}
+#app #bb173ShopFridge .bbpi-use-soon{justify-self:start;font:750 10px/1.4 system-ui;color:#5a471e;background:#f5e6bb;border:1px solid #e1cb8e;border-radius:7px;padding:3px 6px}
+#app #bb173ShopFridge .bbpi-reduced-row{background:#fffdf7}
+#app #bb173ShopFridge .bbpi-reduced-row .bbpi-summary-actions{display:grid;grid-template-columns:34px 34px 42px;gap:4px}
+html body #app #bb173ShopFridge #bb76StorageSections .bbpi-ui .bbpi-freeze{grid-column:1/-1;min-height:44px!important;height:44px!important;width:100%!important;min-width:0!important;border:1px solid #cddcc9;border-radius:10px;background:#f0f5ec;color:#245a3c;font:750 10px/1.2 system-ui;padding:5px!important;white-space:normal}
 #app #bb173ShopFridge .bbpi-summary-main .bb-kitchen-last-price{font:400 11px/1.45 system-ui;color:#6c8068;text-transform:none}
 #app #bb173ShopFridge .bbpi-summary-actions{display:flex;gap:4px;align-items:center}
 #app #bb173ShopFridge .bbpi-summary-actions .bbpi-step{min-width:34px;min-height:40px;font-size:20px}

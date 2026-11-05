@@ -308,7 +308,8 @@
   function shoppingBuyId(row){
    if(row.kind!=='household')return host().id(row.name,row.unit);
    const saved=(host().household?.()||[]).find(item=>host().id(item.name,item.unit)===host().id(row.name,row.unit));
-   return 'ess:'+(saved?.id||'manual-'+row.id);
+   const prior=row.purpose==='bought'?shoppingBuys().find(item=>item.kind==='household'&&item.id!==row.id&&host().id(item.name,item.unit)===host().id(row.name,row.unit)):null;
+   return 'ess:'+(saved?.id||'manual-'+(prior?.id||row.id));
   }
   function addShoppingBuy(request={}){
    let state;
@@ -328,18 +329,26 @@
     state.data.manualBuys??={};state.data.manualRequests??={};if(!object(state.data.manualBuys)||!object(state.data.manualRequests))throw Error('Review your saved manual shopping items first.');
     const kind=host().shoppingKind?.(name)||'food',measured=kind==='food'&&host().shoppingMeasure?host().shoppingMeasure(name,purchaseQuantity,sized?contentUnit:aliases[rawUnit]||rawUnit,sized?{packCount,packQuantity:contentQuantity,packUnit:contentUnit,reviewed:true}:{}):{key:name,quantity:purchaseQuantity*info.factor,unit:info.unit};
     if(!measured?.key||!valid(measured.quantity)||!measured.unit)throw Error('Review this item’s quantity and unit.');
-    const id=kind+':'+host().id(measured.key,measured.unit),intent=JSON.stringify({id,quantity:measured.quantity}),prior=state.data.manualRequests[request.requestId];
+    const id=kind+(request.reduced!==undefined?':bought:':':')+host().id(measured.key,measured.unit),intent=JSON.stringify({id,quantity:measured.quantity}),prior=state.data.manualRequests[request.requestId];
     if(prior){if(prior!==intent)throw Error('This saved request has changed. Reopen Add item.');return {ok:true,already:true,message:'This manual shopping request was already saved.'};}
     if(request.source==='cupboard'&&(kind!=='food'||!win.BBPantryPolicy?.isStaple(name)||measured.unit!=='each'||measured.quantity!==1))throw Error('Choose one cupboard staple to add to the list.');
-    const candidate={id,name:measured.key,displayName:name,kind,quantity:measured.quantity,unit:measured.unit,sourceQuantity:raw,sourceUnit:aliases[rawUnit]||rawUnit,estimated:measured.estimated===true,needsReview:measured.needsReview===true,assumption:measured.assumption||'',pending:measured.quantity>0,...(request.source==='cupboard'?{source:'cupboard'}:{}),...(sized?{packCount,packQuantity:contentQuantity,packUnit:contentUnit,packReviewed:true}:{})};
+    const candidate={id,name:measured.key,displayName:name,kind,quantity:measured.quantity,unit:measured.unit,sourceQuantity:raw,sourceUnit:aliases[rawUnit]||rawUnit,estimated:measured.estimated===true,needsReview:measured.needsReview===true,assumption:measured.assumption||'',pending:measured.quantity>0,...(request.source==='cupboard'?{source:'cupboard'}:{}),...(request.reduced!==undefined?{purpose:'bought'}:{}),...(sized?{packCount,packQuantity:contentQuantity,packUnit:contentUnit,packReviewed:true}:{})};
     const context=host().shoppingPurchaseContext?.(shoppingBuyId(candidate))||{};
     candidate.shopSessionId=context.shopSessionId||null;candidate.boughtAtRequest=valid(context.quantity)?context.quantity:0;
     state.data.manualBuys[id]=candidate;state.data.manualRequests[request.requestId]=intent;
     for(const old of Object.keys(state.data.manualRequests).slice(0,-200))delete state.data.manualRequests[old];
     const keys=host().keys(),expected={[KEY]:state.oldHome,[keys.stock]:store.getItem(keys.stock),basketboss_receipt_projection_owner_v1:store.getItem('basketboss_receipt_projection_owner_v1'),basketboss_cloud_session_v1:store.getItem('basketboss_cloud_session_v1')};
     if(actor()!==state.who||blocked())throw Error('Your account or pantry changed. Reopen Add item.');
-    atomic(store,{[KEY]:state.all},expected);
-    const message=measured.quantity>0?name+' added to buy: '+raw+' '+(aliases[rawUnit]||rawUnit)+'.':name+' removed from manual top-ups.';
+    let purchase={};
+    if(request.reduced!==undefined){
+     if(win.BBReducedFoodHost?.isPremium?.()!==true)throw Error('Premium is required to log a reduced purchase.');
+     if(typeof host().prepareManualPurchase!=='function')throw Error('Reduced purchases are still loading. Reopen Add item.');
+     purchase=host().prepareManualPurchase({request,candidate,id:shoppingBuyId(candidate),context});
+     if(!object(purchase)||!object(purchase.updates)||!object(purchase.expected)||Object.hasOwn(purchase.updates,KEY))throw Error('The reduced purchase could not be prepared safely.');
+     for(const [key,value]of Object.entries(expected))if(Object.hasOwn(purchase.expected,key)&&purchase.expected[key]!==value)throw Error('Your account or shopping changed. Reopen Add item.');
+    }
+    atomic(store,{[KEY]:state.all,...purchase.updates},{...purchase.expected,...expected});
+    const message=request.reduced!==undefined?name+' recorded as a reduced purchase. Finish shop to add it to At home.':measured.quantity>0?name+' added to buy: '+raw+' '+(aliases[rawUnit]||rawUnit)+'.':name+' removed from manual top-ups.';
     // The intent is committed even if a later repaint cannot complete.
     try{host().refresh();}catch{}try{host().notify?.(message);}catch{}
     return {ok:true,message};
@@ -350,7 +359,7 @@
    for(const buy of shoppingBuys().filter(row=>row.kind!=='household')){
     const id=host().id(buy.name,buy.unit),context=host().shoppingPurchaseContext?.(id)||{},base=map.get(id)||{key:buy.name,unit:buy.unit,required:0,toBuy:0,pantryUsed:0,spend:null,sharedAcrossRecipes:0};
     if(!map.has(id)){map.set(id,base);output.push(base);}
-    const automatic=Number(base.toBuy)||0,baseline=buy.shopSessionId===context.shopSessionId?Number(buy.boughtAtRequest)||0:0,next=buy.source==='cupboard'?Math.max(automatic,baseline+buy.quantity):Math.max(automatic,baseline)+buy.quantity;
+    const automatic=Number(base.toBuy)||0,baseline=buy.shopSessionId===context.shopSessionId?Number(buy.boughtAtRequest)||0:0,next=buy.source==='cupboard'||buy.purpose==='bought'?Math.max(automatic,baseline+buy.quantity):Math.max(automatic,baseline)+buy.quantity;
     base.required=(Number(base.required)||0)+next-automatic;base.toBuy=next;base.manualBuyQty=buy.quantity;base.manualBuyId=buy.id;base.quantityEstimated=!!base.quantityEstimated||buy.estimated;
     const policy=win.BBPantryPolicy,label=buy.displayName||buy.name,wholePepper=/^peppers?$/i.test(String(label||'').trim())&&buy.source!=='cupboard'&&base.staple!==true;
     if(policy?.isStaple(label)&&['each','pack','bottle','jar'].includes(String(buy.unit||'').toLowerCase())&&!wholePepper){base.staple=true;base.stapleContainer=policy.containerLabel(label);}
@@ -363,7 +372,7 @@
     let item=output.find(row=>host().id(row.name,row.unit)===host().id(buy.name,buy.unit));
     if(!item){const saved=(host().household?.()||[]).find(row=>host().id(row.name,row.unit)===host().id(buy.name,buy.unit));item={...(saved||{}),id:saved?.id||'manual-'+buy.id,name:buy.displayName||buy.name,unit:buy.unit,qty:0,selected:true,owned:false,estimatedPackPrice:saved?.estimatedPackPrice??null};output.push(item);}
     const context=host().shoppingPurchaseContext?.('ess:'+item.id)||{},baseline=buy.shopSessionId===context.shopSessionId?Number(buy.boughtAtRequest)||0:0;
-    item.qty=Math.max(Number(item.qty)||0,baseline)+buy.quantity;item.manualBuyQty=buy.quantity;item.manualBuyId=buy.id;
+    item.qty=buy.purpose==='bought'?Math.max(Number(item.qty)||0,baseline+buy.quantity):Math.max(Number(item.qty)||0,baseline)+buy.quantity;item.manualBuyQty=buy.quantity;item.manualBuyId=buy.id;
     delete item.targetQty;delete item.ownedQty;delete item.manualPending;
    }
    return output;
@@ -375,7 +384,7 @@
     if(!row?.pending||row.shopSessionId!==shopSessionId)continue;
     const addition=additions.find(value=>value.id===host().id(row.name,row.unit));
     if(!addition||!valid(addition.quantity)||!valid(addition.automaticQuantity))continue;
-    const credit=Math.min(row.quantity,row.source==='cupboard'?addition.quantity:Math.max(0,addition.quantity-addition.automaticQuantity));if(!(credit>0))continue;
+    const credit=Math.min(row.quantity,row.source==='cupboard'||row.purpose==='bought'?addition.quantity:Math.max(0,addition.quantity-addition.automaticQuantity));if(!(credit>0))continue;
     row.quantity=Math.round((row.quantity-credit)*1000000)/1000000;row.pending=row.quantity>0;row.boughtAtRequest=0;changed=true;
    }
    return changed;

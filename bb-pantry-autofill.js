@@ -4,7 +4,7 @@
  'use strict';
  const UNITS=new Set(['g','ml','each','clove','bulb','tin','pack','bag','bunch','loaf','slice']);
  const RESERVED=new Set(['__proto__','constructor','prototype']);
- const WEIGHTS=Object.freeze({pantryMatch:3,recent7Days:6,recent14Days:3,sameProtein:4});
+ const WEIGHTS=Object.freeze({pantryMatch:3,useSoonMatch:40,recent7Days:6,recent14Days:3,sameProtein:4});
  const DAY=86400000;
  const LIMIT=1000000,round=value=>Math.round(value*1000000)/1000000;
  const positive=value=>typeof value==='number'&&Number.isFinite(value)&&value>0&&value<=LIMIT;
@@ -31,11 +31,11 @@
  }
  // lastPlannedAt is an actual per-recipe timestamp map, never undated seen IDs.
  // now can be an epoch-millisecond value or an injected clock function.
- function create({stock={},canonicalMeasure,lastPlannedAt={},now=Date.now,proposal}={}){
+ function create({stock={},canonicalMeasure,lastPlannedAt={},now=Date.now,proposal,priorityStockKeys=[]}={}){
   const physical=typeof proposal==='function';
   if(!physical&&typeof canonicalMeasure!=='function')throw Error('Canonical pantry measurements are required.');
   let capturedNow;try{capturedNow=timestamp(typeof now==='function'?now():now);}catch{capturedNow=null;}
-  const ledger=new Map(),invalid=new Set();
+  const ledger=new Map(),invalid=new Set(),prioritySources=new Set((priorityStockKeys instanceof Set?[...priorityStockKeys]:Array.isArray(priorityStockKeys)?priorityStockKeys:[]).filter(physicalKey)),priorityCanonical=new Set();
   const proposedStock=new WeakMap();let physicalStock={};
   function measure(name,quantity,unit,sourceIngredients){
    if(typeof name!=='string'||!name.trim()||name.includes('|')||RESERVED.has(name.trim().toLowerCase())||!positive(quantity)||typeof unit!=='string'||!unit.trim())return null;
@@ -57,6 +57,7 @@
    if(!positive(total)){ledger.delete(value.id);invalid.add(value.id);continue;}
    ledger.set(value.id,{...value,quantity:total,estimated:!!previous?.estimated||value.estimated,wholeFood:!!previous?.wholeFood||value.wholeFood,
     assumptions:new Set([...(previous?.assumptions||[]),...(value.assumption?[value.assumption]:[])])});
+   if(prioritySources.has(id))priorityCanonical.add(value.id);
   }
   function finishAssessment(details,{recipeId='',protein='',previousProtein='',lastPlannedAt:history=lastPlannedAt}={}){
    let plannedAt=null;
@@ -65,8 +66,8 @@
    const recentPenalty=ageDays!==null&&ageDays<=7?WEIGHTS.recent7Days:ageDays!==null&&ageDays<=14?WEIGHTS.recent14Days:0;
    const currentProtein=text(protein),yesterdayProtein=text(previousProtein);
    const sameProteinPenalty=currentProtein&&currentProtein!=='unknown'&&currentProtein===yesterdayProtein?WEIGHTS.sameProtein:0;
-   const pantryBonus=details.pantryMatches*WEIGHTS.pantryMatch;
-   return {...details,score:pantryBonus-recentPenalty-sameProteinPenalty,pantryBonus,recentPenalty,sameProteinPenalty,ageDays};
+   const pantryBonus=details.pantryMatches*WEIGHTS.pantryMatch,useSoonMatches=new Set(details.used.filter(row=>row.priority&&!row.staple&&row.quantity>0).map(row=>row.key)).size,useSoonBonus=useSoonMatches*WEIGHTS.useSoonMatch;
+   return {...details,score:pantryBonus+useSoonBonus-recentPenalty-sameProteinPenalty,pantryBonus,useSoonMatches,useSoonBonus,recentPenalty,sameProteinPenalty,ageDays};
   }
   function wholePepper(row,sourceIngredients){
    if(row.canonicalKey!=='pepper')return false;
@@ -123,7 +124,7 @@
      coverageSum+=row.deduct/row.required;stockUsedFraction+=row.deduct/row.owned;
      if(!staple){matched.add(key);pantryCoverageSum+=row.deduct/row.required;}
      estimated||=row.estimated===true;for(const note of notes)assumptions.add(note);
-     used.push({id:row.id,key,unit:row.unit,quantity:row.deduct,required:row.required,available:row.owned,estimated:row.estimated===true,staple});
+     used.push({id:row.id,key,unit:row.unit,quantity:row.deduct,required:row.required,available:row.owned,estimated:row.estimated===true,staple,...(parts.some(part=>prioritySources.has(part.stockKey))?{priority:true}:{})});
     }
     let changed=false;
     for(const [id,quantity]of Object.entries(before)){
@@ -165,7 +166,7 @@
     if(!staple){matchedPantryKeys.add(required.key);pantryCoverageSum+=quantity/required.quantity;}
     const approximation=required.estimated||available.estimated;estimated||=approximation;
     for(const assumption of [...required.assumptions,...available.assumptions])assumptions.add(assumption);
-    used.push({id,key:required.key,unit:required.unit,quantity,required:required.quantity,available:available.quantity,estimated:approximation,staple});
+    used.push({id,key:required.key,unit:required.unit,quantity,required:required.quantity,available:available.quantity,estimated:approximation,staple,...(priorityCanonical.has(id)?{priority:true}:{})});
    }
    const requiredIngredients=requirements.size+unmeasuredIngredients,coverage=requiredIngredients?coverageSum/requiredIngredients:0;
    // Coverage remains a tie-breaker, never an age claim or a hard eligibility rule.

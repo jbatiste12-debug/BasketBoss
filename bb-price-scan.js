@@ -48,11 +48,13 @@
    const inferred=root.BBReceiptQuantity?.infer?.({description:line.name,canonicalKey:item.key,classification:item.classification||'food',packQuantity:line.packQuantity,packUnit:line.packUnit},{market,shoppingItems,catalog})||
     (guide?{quantity:guide.quantity,unit:guide.unit,estimated:packUnverified,note:packUnverified?'Estimated guide pack — check the amount bought.':'Pack amount read from receipt; check the number bought.'}:null);
    rows.push({key:item.key,name:item.name,classification:item.classification==='essential'?'essential':'food',brand:typeof line.brand==='string'?line.brand.trim().slice(0,80):'',price,
+    reducedSuggested:item.classification!=='essential'&&/\b(?:reduced(?:[ -]to[ -]clear)?|yellow[ -]stickers?|clearance|mark(?:ed)?[ -]down|markdown)\b/i.test(String(line.name||line.description||'').replace(/\breduced[ -]+(?:fat|salt|sodium|sugar|calories?|carbs?|cholesterol)\b|\b(?:fat|salt|sodium|sugar|calories?|carbs?|cholesterol)[ -]+reduced\b/ig,'')),priceType:line.priceType==='promotion'?'promotion':'unknown',
     packQuantity:item.packQuantity,unit:item.unit,confidence:['high','medium','low'].includes(line.confidence)?line.confidence:'low',
     boughtQuantity:inferred?.quantity??null,boughtUnit:inferred?.unit||'',quantitySource:inferred?.source||'guide-pack',quantityEstimated:inferred?.estimated!==false,quantityNote:inferred?.note||'Check the amount bought before adding it to At home.',
     packUnverified,notes:(packUnverified?'Pack size was not read from the receipt. Check it against the product before selecting this row. ':'')+(typeof line.notes==='string'?line.notes.slice(0,500):'')});
   }
-  return {rows,unmatched:result.items.length-rows.length,message:rows.length?'Check each product, price and pack size before selecting it to save.':'No products had a clear matching pack size. You can still save your usual prices manually.'};
+  const purchasedAt=typeof result.purchasedAt==='string'&&result.purchasedAt.length<=50&&Number.isFinite(Date.parse(result.purchasedAt))?result.purchasedAt:null;
+  return {rows,purchasedAt,unmatched:result.items.length-rows.length,message:rows.length?'Check each product, price and pack size before selecting it to save.':'No products had a clear matching pack size. You can still save your usual prices manually.'};
  }
  async function readReceipt({file,items,market,signal,preparePhoto=resizedPhoto,shoppingItems=[],catalog=root.BBPriceV19?.catalog}){
   const token=accessToken();if(!token)throw Error('Sign in to a verified Premium account to scan, or enter your usual prices manually.');
@@ -95,7 +97,7 @@
   const close=doc.createElement('button');close.type='button';close.className='btn';close.textContent='Done';close.addEventListener('click',()=>dialog.close());
   const style=doc.createElement('style');style.textContent='#bb-receipt-prices{font:14px/1.5 system-ui,sans-serif}#bb-receipt-prices h2{font-size:22px;line-height:1.3;margin:0 0 14px}#bb-receipt-prices label{display:block;margin:10px 0}#bb-receipt-prices input:not([type=checkbox]){box-sizing:border-box;width:100%;min-height:44px;padding:9px 10px;border:1px solid #b9ccbf;border-radius:9px;background:#fff;color:#173c2b;font:inherit}#bb-receipt-prices input[type=checkbox]{width:18px;height:18px;vertical-align:middle;margin:0 8px 0 0;accent-color:#16623e}#bb-receipt-prices button{min-height:44px;padding:10px 14px;border:1px solid #b9ccbf;border-radius:10px;margin:5px 8px 5px 0;background:#f3f8f2;color:#173c2b;font:600 14px system-ui;cursor:pointer}#bb-receipt-prices button.primary{background:#16623e;color:white;border-color:#16623e}#bb-receipt-prices button:disabled{opacity:.5;cursor:default}#bb-receipt-prices :focus-visible{outline:3px solid #268252;outline-offset:2px}#bb-receipt-prices fieldset p{font-size:13px;color:#526758}#bb-receipt-prices select{box-sizing:border-box;width:100%;min-height:44px;padding:9px 10px;border:1px solid #b9ccbf;border-radius:9px;background:#fff;color:#173c2b;font:inherit}#bb-receipt-prices .bb-receipt-restock-toggle{padding:12px;border:1px solid #c4d8c8;border-radius:10px;background:#f3f8ee}';
   form.append(stockLabel,rowsBox,save);dialog.append(style,title,helper,photoLabel,consent,scan,message,form,close);doc.body.append(dialog);
-  let revision=0,busy=false,controller=null,rows=[],reviewToken=null,reviewReceiptId=null;const openingToken=accessToken();
+  let revision=0,busy=false,controller=null,rows=[],reviewToken=null,reviewReceiptId=null,reviewPurchasedAt=null;const openingToken=accessToken();
   const contextCurrent=()=>accessToken()===openingToken&&
    (typeof root.bb307ActiveMarket!=='function'||root.bb307ActiveMarket()===market)&&
    (typeof root.bb307ActiveRetailer!=='function'||(root.bb307ActiveRetailer()||null)===retailer);
@@ -111,19 +113,21 @@
    try{
     const draft=await readReceipt({file:photo.files[0],items:contexts,market,signal:controller.signal,shoppingItems:typeof getShoppingItems==='function'?getShoppingItems():items});
     if(id!==revision||!dialog.isConnected||!contextCurrent())return;
-    rows=[];reviewToken=accessToken();reviewReceiptId=draft.receiptId;rowsBox.replaceChildren();message.textContent=draft.message+(draft.unmatched?' '+draft.unmatched+' unclear or different-pack item(s) were left out.':'');
+    rows=[];reviewToken=accessToken();reviewReceiptId=draft.receiptId;reviewPurchasedAt=draft.purchasedAt;rowsBox.replaceChildren();message.textContent=draft.message+(draft.unmatched?' '+draft.unmatched+' unclear or different-pack item(s) were left out.':'');
     for(const value of draft.rows){
      const field=doc.createElement('fieldset');field.style.cssText='margin:12px 0;padding:12px;min-width:0;border:1px solid #dce7df;border-radius:10px';
      const legend=doc.createElement('legend');legend.textContent=value.name;
      const product=doc.createElement('p');product.textContent='Guide pack: '+value.packQuantity+' '+value.unit+'. Confidence: '+value.confidence+'. '+value.notes;
      const brandLabel=doc.createElement('label');brandLabel.textContent='Brand (optional)';const brand=doc.createElement('input');brand.type='text';brand.maxLength=80;brand.value=value.brand;brand.style.width='100%';brandLabel.append(brand);
-     const priceLabel=doc.createElement('label');priceLabel.textContent='Price for one guide pack ('+currency(market)+')';const price=doc.createElement('input');price.type='number';price.min='.01';price.max='10000';price.step='.01';price.value=value.price===null?'':value.price.toFixed(2);price.style.width='100%';priceLabel.append(price);
+     const priceLabel=doc.createElement('label'),priceTitle=doc.createElement('span');priceTitle.textContent='Price for one guide pack ('+currency(market)+')';priceLabel.append(priceTitle);const price=doc.createElement('input');price.type='number';price.min='.01';price.max='10000';price.step='.01';price.value=value.price===null?'':value.price.toFixed(2);price.style.width='100%';priceLabel.append(price);
+     let reduced=null,reducedLabel=null;
+     if(value.classification==='food'&&root.BBReducedFoodHost?.isPremium?.()===true){reduced=doc.createElement('input');reduced.type='checkbox';reduced.checked=value.reducedSuggested===true;reduced.dataset.bbReceiptReduced=value.key;reducedLabel=doc.createElement('label');reducedLabel.append(reduced,doc.createTextNode('🏷️ Reduced food · Use soon'));const showReduced=()=>{priceTitle.textContent=(reduced.checked?'Actual total paid for this bought amount':'Price for one guide pack')+' ('+currency(market)+')';};reduced.addEventListener('change',()=>{check.checked=false;showReduced();updateSave();});showReduced();}
      const quantityLabel=doc.createElement('label');quantityLabel.textContent='Total amount bought';const quantity=doc.createElement('input');quantity.type='number';quantity.min='.001';quantity.max='1000000';quantity.step='any';quantity.value=value.boughtQuantity===null?'':String(value.boughtQuantity);quantity.dataset.bbReceiptBoughtQuantity=value.key;quantityLabel.append(quantity);
      const unitLabel=doc.createElement('label');unitLabel.textContent='Unit';const unit=doc.createElement('select');unit.dataset.bbReceiptBoughtUnit=value.key;
      for(const label of ['g','kg','ml','l','each','clove','bulb','tin','pack','bag','bunch','loaf','slice','tsp','tbsp']){const option=doc.createElement('option');option.value=label;option.textContent=label;unit.append(option);}unit.value=value.boughtUnit||value.unit;unitLabel.append(unit);
      const quantityNote=doc.createElement('p');quantityNote.className='bb-receipt-quantity-note';quantityNote.textContent=value.quantityNote;
      const confirm=doc.createElement('label');const check=doc.createElement('input');check.type='checkbox';check.dataset.bbReceiptReviewRow=value.key;confirm.append(check,doc.createTextNode(' I checked this product, price, guide pack and amount bought. Save this item.'));
-     check.addEventListener('change',updateSave);field.append(legend,product,brandLabel,priceLabel,quantityLabel,unitLabel,quantityNote,confirm);rowsBox.append(field);rows.push({value,brand,price,quantity,unit,check});
+     check.addEventListener('change',updateSave);field.append(legend,product,brandLabel,priceLabel,...(reducedLabel?[reducedLabel]:[]),quantityLabel,unitLabel,quantityNote,confirm);rowsBox.append(field);rows.push({value,brand,price,quantity,unit,check,reduced});
     }
    }catch(error){if(id===revision&&dialog.isConnected)message.textContent=controller.signal.aborted?'Receipt scan cancelled or timed out. No prices were saved.':String(error.message||'Receipt scan unavailable.');}
    finally{root.clearTimeout(stop);busy=false;scan.disabled=!photo.files?.[0]||!contexts.length;updateSave();}
@@ -132,6 +136,8 @@
    event.preventDefault();if(busy||!selected().length)return;
    if(!contextCurrent()||reviewToken!==accessToken()){message.textContent='Your account, region or supermarket changed. Reopen the receipt scanner.';return;}
    const chosen=selected();
+   if(chosen.some(row=>row.reduced?.checked)&&root.BBReducedFoodHost?.isPremium?.()!==true){message.textContent='Refresh your Premium membership, or turn off Reduced food before saving.';return;}
+   if(chosen.some(row=>row.reduced?.checked)&&typeof onSaveReviewedReceipt!=='function'){message.textContent='Open Scan receipt from Shop to save reduced-food prices without changing your usual prices.';return;}
    if(chosen.some(row=>!Number.isFinite(Number(row.price.value))||Number(row.price.value)<.01||Number(row.price.value)>10000||row.brand.value.trim().length>80)){
     message.textContent='Check the selected brands and positive full-pack prices before saving.';return;
    }
@@ -141,16 +147,16 @@
    busy=true;scan.disabled=true;updateSave();
    try{
     if(typeof onSaveReviewedReceipt==='function'){
-     const serial=revision,packet={receiptId:reviewReceiptId,stockPantry:stock.checked,market,retailer,shopSessionId,
-      items:chosen.map(row=>{const bought=boughtAmount(row.quantity.value,row.unit.value);return {key:row.value.key,name:row.value.name,classification:row.value.classification,quantity:bought?.quantity??null,unit:bought?.unit||null,guidePackQuantity:row.value.packQuantity,guidePackUnit:row.value.unit,price:Number(row.price.value),brand:row.brand.value.trim()};}),
-      priceUpdates:chosen.map(row=>({name:row.value.key,unit:row.value.unit,market,retailer,price:Number(row.price.value),brand:row.brand.value.trim()}))};
+     const serial=revision,packet={receiptId:reviewReceiptId,stockPantry:stock.checked,market,retailer,shopSessionId,purchasedAt:reviewPurchasedAt,
+      items:chosen.map(row=>{const bought=boughtAmount(row.quantity.value,row.unit.value);return {key:row.value.key,name:row.value.name,classification:row.value.classification,quantity:bought?.quantity??null,unit:bought?.unit||null,guidePackQuantity:row.value.packQuantity,guidePackUnit:row.value.unit,price:Number(row.price.value),brand:row.brand.value.trim(),reduced:row.reduced?.checked===true,priceType:row.reduced?.checked===true?'promotion':row.value.priceType};}),
+      priceUpdates:chosen.filter(row=>!row.reduced?.checked&&row.value.priceType!=='promotion').map(row=>({name:row.value.key,unit:row.value.unit,market,retailer,price:Number(row.price.value),brand:row.brand.value.trim()}))};
      const result=await onSaveReviewedReceipt(packet);
      if(serial!==revision||!dialog.isConnected||!contextCurrent())return;
      if(result?.ok!==true)throw Error(result?.message||'The reviewed receipt could not be saved. Your quantities are kept for retry.');
      saved=Number.isSafeInteger(result.saved)?result.saved:chosen.length;
      if(typeof onSaved==='function')onSaved(saved,result);dialog.close();return;
     }
-    for(const row of chosen){root.BBPriceV19.setPriceOverride({name:row.value.key,unit:row.value.unit,market,retailer,price:Number(row.price.value),brand:row.brand.value});row.check.checked=false;saved++;}
+    for(const row of chosen){if(row.value.priceType==='promotion')continue;root.BBPriceV19.setPriceOverride({name:row.value.key,unit:row.value.unit,market,retailer,price:Number(row.price.value),brand:row.brand.value});row.check.checked=false;saved++;}
     message.textContent=saved+' usual price'+(saved===1?'':'s')+' saved for future estimates on this device.';updateSave();if(typeof onSaved==='function')onSaved(saved);
    }catch(error){message.textContent=(saved?saved+' price(s) saved. ':'')+String(error.message||'Could not save prices.');if(saved&&typeof onSaved==='function')onSaved(saved);}
    finally{busy=false;scan.disabled=!photo.files?.[0]||!contexts.length;updateSave();}

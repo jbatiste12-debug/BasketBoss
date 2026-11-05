@@ -2,7 +2,9 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import { readFile } from 'node:fs/promises';
 import vm from 'node:vm';
+import {createRequire} from 'node:module';
 import * as Core from '../bb-receipt-inventory-core.mjs';
+const reducedStock = createRequire(import.meta.url)('../bb-reduced-stock.js');
 
 const adapterSource = await readFile(new URL('../bb-receipt-inventory.js', import.meta.url), 'utf8');
 const CATALOG = { 'pasta|g': {}, 'rice|g': {}, 'milk|ml': {}, 'egg|each': {} };
@@ -80,6 +82,34 @@ async function draft(f, { receiptId = 'receipt-1', quantity = 500 } = {}) {
   const value = await f.adapter.normalizeDraft({ receiptId, currency: 'GBP', retailer: 'Tesco', shopSessionId: 'shop-1', items: [{ lineId: 'line-1', name: 'Pasta', kind: 'food', canonicalKey: 'pasta', quantity, unit: 'g', packCount: 1, packQuantity: quantity, packUnit: 'g', pricePaid: 1.5, priceType: 'regular' }] });
   value.lines[0].reviewed = true; return value;
 }
+
+test('actual receipt projection preserves freezer buckets across refresh, new purchases and later usage',async()=>{
+ const f=fixture();f.root.BBReducedStock=reducedStock;
+ f.server.stock={'pasta|g':300};f.server.initialized=true;await f.adapter.synchronize();
+ f.store.setItem(f.keys.kitchen,JSON.stringify({
+  frozen:{name:'Pasta',loc:'freezer',qty:200,unit:'g',selected:true,bb173StockKey:'pasta|g',bb173StockValue:200,bbReduced:{version:1,actor:ACTOR,urgent:false,at:1,frozenAt:2,sources:['prior']}},
+  fresh:{name:'Pasta',loc:'cupboard',qty:100,unit:'g',selected:true,bb173StockKey:'pasta|g',bb173StockValue:100}
+ }));
+ const rows=()=>JSON.parse(f.store.getItem(f.keys.kitchen));
+ await f.adapter.synchronize();assert.equal(rows().frozen.qty,200);assert.equal(rows().frozen.loc,'freezer');assert.equal(rows().fresh.qty,100);
+ f.server.stock={'pasta|g':500};f.server.revision++;await f.adapter.synchronize();assert.equal(rows().frozen.qty,200);assert.equal(rows().fresh.qty,300);
+ f.root.BBReducedFoodHost={isPremium:()=>true};const reduced=await draft(f,{receiptId:'fresh-reduced-after-freezing'});reduced.lines[0].reduced=true;reduced.lines[0].priceType='promotion';
+ await f.adapter.commitReviewedReceipt(reduced);assert.equal(rows().frozen.qty,200);assert.equal(rows().frozen.bbReduced.urgent,false);assert.equal(rows().fresh.qty,800);assert.equal(rows().fresh.bbReduced.urgent,true,'only the fresh location is urgent after a new reduced purchase');
+ f.server.stock={'pasta|g':150};f.server.revision++;await f.adapter.synchronize();assert.equal(rows().frozen.qty,150);assert.equal(rows().fresh.selected,false);
+ assert.equal(JSON.parse(f.store.getItem(f.keys.stock))['pasta|g'],150);
+});
+
+test('the receipt transaction passes the verified actor to the shared price journal',async()=>{
+ const f=fixture();let received;f.adapter.configure({prepareReceiptSave:packet=>{received=packet;return {changes:{},expected:{}};}});
+ await f.adapter.commitReviewedReceipt(await draft(f));assert.equal(received.actorId,ACTOR);
+});
+test('a Premium change after cloud confirmation retains the already reviewed stock annotation',async()=>{
+ const f=fixture();let premium=true;f.root.BBReducedStock=reducedStock;f.root.BBReducedFoodHost={isPremium:()=>premium};
+ const value=await draft(f);value.lines[0].reduced=true;value.lines[0].priceType='promotion';f.server.afterPost=()=>{premium=false;};
+ const saved=await f.adapter.commitReviewedReceipt(value);assert.equal(saved.ok,true);
+ const owned=Object.values(JSON.parse(f.store.getItem(f.keys.kitchen))).find(row=>row.selected!==false&&row.name.toLowerCase()==='pasta');
+ assert.equal(owned.bbReduced.urgent,true);assert.equal(owned.bbReduced.actor,ACTOR);
+});
 
 test('explicit pack counts, measured totals and metric units normalize without inventing unknown contents', () => {
   assert.deepEqual(Core.normalizePack({ packCount: 2, packQuantity: .5, packUnit: 'kg' }), { quantity: 1000, unit: 'g', packCount: 2, packQuantity: 500, packUnit: 'g', issue: null });
@@ -582,4 +612,98 @@ test('cloud projection invalidates conflicting duplicate Kitchen conversion revi
   const entries=Object.values(JSON.parse(f.store.getItem(f.keys.kitchen))),selected=entries.filter(x=>x.selected);assert.equal(selected.length,1);assert.equal(selected[0].qty,2);
   assert.ok(entries.every(x=>x.packReviewed===false&&x.measurementReviewed===false&&x.conversionNeedsReview===true));assert.equal(selected[0].packQuantity,500);assert.ok(entries.every(x=>x.conversionReviewSource.quantity===1));assert.equal(entries[1].conversionReviewSource.packQuantity,second.packQuantity);
  }
+});
+
+test('markdown suggestions exclude nutritional labels, loyalty offers, essentials and receipt adjustments', () => {
+  const item = {kind: 'food', canonicalKey: 'pasta', pricePaid: 1};
+  for (const name of ['Pasta REDUCED', 'Yellow sticker pasta', 'Pasta clearance', 'Pasta marked down']) assert.equal(Core.reducedReceiptSuggestion({...item, name}), true, name);
+  for (const name of ['Reduced-salt soy sauce', 'Reduced sugar yoghurt', 'Reduced fat cheese', 'Sugar-reduced cereal', 'Pasta multibuy', 'Pasta Clubcard offer', 'Coupon discount', 'Laundry detergent REDUCED']) assert.equal(Core.reducedReceiptSuggestion({...item, name}), false, name);
+  assert.equal(Core.reducedReceiptSuggestion({...item, name: 'Reduced-fat cheese yellow sticker'}), true);
+  const scanned = Core.normalizeReceiptLine({...item, name: 'Pasta REDUCED', quantity: 500, unit: 'g', priceType: 'regular'}, {catalog: CATALOG});
+  assert.equal(scanned.reducedSuggested, true);assert.equal(scanned.reduced, false);assert.equal(scanned.reviewed, false);
+  const ordinary = Core.normalizeReceiptLine({...item, name: 'Pasta', quantity: 500, unit: 'g', priceType: 'promotion'}, {catalog: CATALOG});
+  assert.equal(ordinary.reducedSuggested, false);assert.equal(ordinary.reduced, false);
+});
+
+test('reviewed reduced receipts stay outside standard-price learning and the strict HTTP shape remains unchanged', async () => {
+  const f=fixture();const value=await draft(f);value.lines[0].reduced=true;value.lines[0].priceType='regular';
+  const body=Core.prepareReceiptConfirmation(value,{requestId:'reduced-confirm',catalog:CATALOG});
+  assert.equal(body.lines[0].priceType,'promotion');assert.equal(Object.hasOwn(body.lines[0],'reduced'),false);assert.equal(Object.hasOwn(body.lines[0],'reducedSuggested'),false);
+  const observation=Core.normalizePriceObservation(body.lines[0],{scope:f.server.scope,market:'UK',retailer:'Tesco',currency:'GBP',receiptId:value.receiptId});
+  assert.equal(observation.priceType,'promotion');assert.equal(observation.eligibleForRegularPrice,false);
+  await assert.rejects(f.adapter.commitReviewedReceipt(value),/premium_reduced_food_required/);
+  assert.equal(f.server.posts,0);assert.equal(f.store.getItem(f.keys.stock),null);
+});
+
+function enableReduced(f){
+  const reports=[];f.root.BBReducedFoodHost={isPremium:()=>true};f.root.BBReducedStock=reducedStock;f.root.BBYellowStickersUI={reportReceipt:value=>{reports.push(clone(value));return Promise.resolve({ok:true});}};return reports;
+}
+
+test('only confirmed reduced-food stock becomes urgent, while the atomic packet carries the actual paid amount', async () => {
+  const f=fixture(),reports=enableReduced(f),packets=[];f.adapter.configure({prepareReceiptSave:packet=>{packets.push(clone(packet));return {changes:{},expected:{}};}});
+  const value=await draft(f);value.lines[0].reduced=true;value.lines[0].location='fridge';value.purchasedAt='2026-11-05';
+  assert.equal(reports.length,0);assert.equal(f.store.getItem(f.keys.kitchen),null);
+  const result=await f.adapter.commitReviewedReceipt(value);assert.equal(result.localApplied,true);
+  const rows=Object.values(JSON.parse(f.store.getItem(f.keys.kitchen)));assert.equal(rows.length,1);assert.equal(rows[0].qty,500);assert.equal(reducedStock.isUrgent(rows[0],{actor:ACTOR}),true);
+  const packet=packets.find(x=>x.reducedItems?.length);assert.equal(packet.reducedItems[0].pricePaid,1.5);assert.equal(packet.reducedItems[0].priceType,'promotion');assert.equal(packet.purchasedAt,'2026-11-05');
+  assert.equal(reports.length,1);assert.equal(reports[0].receiptId,value.receiptId);assert.equal(reports[0].purchasedAt,'2026-11-05');assert.ok(reports[0].confirmedAt);
+});
+
+test('ordinary promotional food and price-only reduced receipts do not create urgent stock', async () => {
+  const f=fixture();enableReduced(f);const value=await draft(f);value.lines[0].priceType='promotion';await f.adapter.commitReviewedReceipt(value);
+  assert.equal(Object.values(JSON.parse(f.store.getItem(f.keys.kitchen))).some(x=>reducedStock.isUrgent(x,{actor:ACTOR})),false);
+  const g=fixture();enableReduced(g);const onlyPrices=await draft(g,{receiptId:'receipt-price-only'});onlyPrices.addToPantry=false;onlyPrices.lines[0].reduced=true;
+  const result=await g.adapter.commitReviewedReceipt(onlyPrices);assert.equal(result.localApplied,true);assert.deepEqual(JSON.parse(g.store.getItem(g.keys.stock)),{});
+  assert.equal(Object.values(JSON.parse(g.store.getItem(g.keys.kitchen))).some(x=>x.bbReduced),false);
+});
+
+test('reduced metadata survives pending confirmation recovery and a replay cannot revive frozen food', async () => {
+  const f=fixture();enableReduced(f);const value=await draft(f);value.lines[0].reduced=true;
+  await f.adapter.synchronize();
+  f.store.failKey=f.keys.kitchen;const first=await f.adapter.commitReviewedReceipt(value);assert.equal(first.localApplied,false);
+  const pending=f.adapter.getPendingConfirmation();assert.deepEqual(clone(pending.reducedLineIds),['line-1']);
+  const retried=await f.adapter.retryPendingConfirmation();assert.equal(retried.localApplied,true);assert.equal(retried.duplicate,true);
+  const kitchen=JSON.parse(f.store.getItem(f.keys.kitchen)),id=Object.keys(kitchen)[0];assert.equal(reducedStock.isUrgent(kitchen[id],{actor:ACTOR}),true);
+  kitchen[id]=reducedStock.freeze(kitchen[id],{actor:ACTOR});f.store.setItem(f.keys.kitchen,JSON.stringify(kitchen));
+  const replay=await f.adapter.commitReviewedReceipt(value);assert.equal(replay.localApplied,true);const row=JSON.parse(f.store.getItem(f.keys.kitchen))[id];assert.equal(row.loc,'freezer');assert.equal(row.bbReduced.urgent,false);assert.equal(JSON.parse(f.store.getItem(f.keys.stock))['pasta|g'],500);
+});
+
+test('local reviewed reduced receipts preserve usual prices and stock credit exactly once', async () => {
+  const f=fixture(),reports=enableReduced(f);let packet;
+  f.adapter.configure({prepareReceiptSave:value=>{packet=clone(value);return {changes:{},expected:{}};}});
+  const input={receiptId:'local-reduced-001',market:'UK',retailer:'Tesco',shopSessionId:'shop-1',purchasedAt:'2026-11-05',stockPantry:true,items:[{key:'pasta',name:'Pasta',classification:'food',quantity:500,unit:'g',price:0.75,reduced:true}],priceUpdates:[{name:'pasta',price:0.75}]};
+  const result=await f.adapter.commitLocalReceipt(input);assert.equal(result.ok,true);assert.equal(packet.priceUpdates.length,0);assert.equal(packet.reducedItems[0].pricePaid,0.75);assert.equal(packet.reducedItems[0].priceType,'promotion');
+  assert.equal(Object.values(JSON.parse(f.store.getItem(f.keys.kitchen))).some(x=>reducedStock.isUrgent(x,{actor:ACTOR})),true);assert.equal(reports.length,1);
+  const repeat=await f.adapter.commitLocalReceipt(input);assert.equal(repeat.duplicate,true);assert.equal(reports.length,1);assert.equal(JSON.parse(f.store.getItem(f.keys.stock))['pasta|g'],500);
+});
+
+test('receipt reduced labels can annotate still-present Finish-shop stock without crediting it twice',async()=>{
+ const f=fixture();enableReduced(f);f.store.setItem(f.keys.stock,JSON.stringify({'pasta|g':500}));f.store.setItem(f.keys.kitchen,JSON.stringify({pasta:{name:'Pasta',loc:'fridge',selected:true,qty:500,unit:'g'}}));
+ f.store.setItem(f.keys.finishShop,JSON.stringify({'shop-1|pasta|g':{name:'pasta',unit:'g',credited:500,week:'shop-1'}}));let seen;f.adapter.configure({prepareReceiptSave:packet=>{if(packet.reducedItems?.length)seen=packet;return {changes:{},expected:{}};}});
+ const value=await draft(f);value.lines[0].reduced=true;const result=await f.adapter.commitReviewedReceipt(value);assert.equal(result.localApplied,true);
+ assert.equal(JSON.parse(f.store.getItem(f.keys.stock))['pasta|g'],500);const row=Object.values(JSON.parse(f.store.getItem(f.keys.kitchen)))[0];assert.equal(reducedStock.isUrgent(row,{actor:ACTOR}),true);assert.equal(seen.reducedItems[0].legacyCreditQuantity,500);
+});
+
+test('using all reduced stock then buying a normal replacement does not resurrect urgency',async()=>{
+ const f=fixture();enableReduced(f);const first=await draft(f);first.lines[0].reduced=true;await f.adapter.commitReviewedReceipt(first);
+ await f.adapter.confirmPantry({stock:{},expectedRevision:1,shopSessionId:'shop-1',expectedScope:f.server.scope});
+ assert.equal(Object.values(JSON.parse(f.store.getItem(f.keys.kitchen))).some(row=>row.bbReduced?.urgent),false);
+ const next=await draft(f,{receiptId:'normal-replacement'});await f.adapter.commitReviewedReceipt(next);
+ assert.equal(JSON.parse(f.store.getItem(f.keys.stock))['pasta|g'],500);assert.equal(Object.values(JSON.parse(f.store.getItem(f.keys.kitchen))).some(row=>reducedStock.isUrgent(row,{actor:ACTOR})),false);
+});
+
+test('canonical alias and piece-weight merges retain the reduced annotation from any positive contribution',()=>{
+ const meta=(actor,source,urgent=true)=>({version:1,actor,urgent,at:'2026-11-05T12:00:00Z',sources:[source]});
+ const inventory={regular:{name:'Carrots',loc:'fridge',selected:true,qty:100,unit:'g',bb173StockKey:'carrots|g',bb173StockValue:100},reduced:{name:'Carrot',loc:'fridge',selected:true,qty:1,unit:'each',bb173StockKey:'carrot|each',bb173StockValue:1,bbReduced:meta(ACTOR,'receipt:carrot:one')}};
+ const input=JSON.stringify(inventory),normalized=Core.normalizePantryState({'carrots|g':100,'carrot|each':1},inventory,{market:'UK'}),active=Object.values(normalized.inventory).filter(row=>row.selected);
+ assert.equal(JSON.stringify(inventory),input);assert.equal(active.length,1);assert.equal(active[0].qty,180);assert.equal(active[0].unit,'g');assert.equal(reducedStock.isUrgent(active[0],{actor:ACTOR}),true);assert.deepEqual(active[0].bbReduced.sources,['receipt:carrot:one']);
+ const mergedAgain=Core.normalizePantryState(normalized.stock,normalized.inventory,{market:'UK'});assert.equal(Object.values(mergedAgain.inventory).filter(row=>row.selected).length,1);assert.equal(Object.values(mergedAgain.inventory).find(row=>row.selected).bbReduced.sources.length,1);
+ const two=clone(inventory);two.regular.bbReduced=meta(ACTOR,'receipt:carrot:regular',false);const both=Object.values(Core.normalizePantryState({'carrots|g':100,'carrot|each':1},two,{market:'UK'}).inventory).find(row=>row.selected);assert.equal(both.bbReduced.urgent,true);assert.deepEqual(new Set(both.bbReduced.sources),new Set(['receipt:carrot:regular','receipt:carrot:one']));
+});
+
+test('canonical reduced metadata merges never mix actor source IDs or make freezer stock urgent',()=>{
+ const a={version:1,actor:ACTOR,urgent:true,at:'2026-11-05T12:00:00Z',sources:['actor-a-source']},b={...a,actor:'user_00000002',sources:['actor-b-source']};
+ const records={one:{name:'Carrots',loc:'fridge',selected:true,qty:100,unit:'g',bb173StockKey:'carrots|g',bb173StockValue:100,bbReduced:a},two:{name:'Carrot',loc:'fridge',selected:true,qty:1,unit:'each',bb173StockKey:'carrot|each',bb173StockValue:1,bbReduced:b}};
+ let active=Object.values(Core.normalizePantryState({'carrots|g':100,'carrot|each':1},records,{market:'UK'}).inventory).find(row=>row.selected);assert.equal(active.bbReduced.actor,ACTOR);assert.deepEqual(active.bbReduced.sources,['actor-a-source']);assert.equal(reducedStock.isUrgent(active,{actor:'user_00000002'}),false);
+ records.two.bbReduced=clone(a);records.one.loc=records.two.loc='freezer';active=Object.values(Core.normalizePantryState({'carrots|g':100,'carrot|each':1},records,{market:'UK'}).inventory).find(row=>row.selected);assert.equal(active.qty,180);assert.equal(active.bbReduced.urgent,false);assert.equal(reducedStock.isUrgent(active,{actor:ACTOR}),false);
 });

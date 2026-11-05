@@ -12,6 +12,7 @@ const REGIONAL_UNITS = new Set(['cup','fl oz','oz','lb','pint']);
 const ALIASES = Object.freeze({ eggs: 'egg', potatoes: 'potato', tomatoes: 'tomato', onions: 'onion', peppers: 'pepper', carrots: 'carrot', bananas: 'banana', apples: 'apple', lemons: 'lemon', limes: 'lime', mushrooms: 'mushroom', courgettes: 'courgette', scallops: 'scallop', wraps: 'wrap' });
 const HOUSEHOLD = /\b(?:soap|detergent|washing[ -]up|washing[ -]powder|laundry|fabric[ -](?:softener|conditioner)|dishwasher|dish[ -]?soap|toilet|loo[ -]roll|kitchen[ -](?:roll|towel)|paper[ -]towels?|facial[ -]tissues?|tissues|razors?|shaving[ -](?:foam|gel|cream)|sanitary[ -](?:pads|towels|products)|tampons?|panty[ -]liners?|menstrual[ -](?:pads|cups)|bleach|cleaner|cleaning|disinfectant|saniti[sz]er|shampoo|conditioner|toothpaste|toothbrush|deodorant|shower[ -]gel|body[ -]wash|hand[ -]wash|face[ -]cream|hand[ -]cream|moisturi[sz]er|napp(?:y|ies)|diapers?|wipes|bin[ -](?:bags?|liners?)|foil|cling[ -]film|baking[ -]paper|batter(?:y|ies)|light[ -]bulb|pet[ -]food|cat[ -]food|dog[ -]food|litter|cigarettes?|tobacco)\b/i;
 const ADJUSTMENT = /\b(?:refund|returned?|discount|coupon|voucher|loyalty|saving|promotion[ -]discount|subtotal|sub[ -]total|grand[ -]total|vat|tax|change[ -]due|cash[ -]back|deposit[ -]return)\b/i;
+const REDUCED_FOOD = /\b(?:reduced(?:[ -]to[ -]clear)?|yellow[ -]stickers?|clearance|mark(?:ed)?[ -]down|markdown)\b/i;
 const clean = (v, max = 160) => typeof v === 'string' ? v.normalize('NFKC').replace(/[\u0000-\u001f\u007f]/g, ' ').replace(/\s+/g, ' ').trim().slice(0, max) : '';
 const finite = v => {
   if (typeof v === 'number') return Number.isFinite(v) ? v : null;
@@ -87,6 +88,14 @@ export function classifyReceiptLine(line = {}) {
   const kind = line.classification || line.kind;
   return { classification: ['food', 'essential', 'ignore', 'pending'].includes(kind) ? kind : kind === 'unknown' ? 'pending' : line.canonicalKey || line.ingredientKey ? 'food' : 'pending', sourceKind: 'purchase', hardExcluded: false };
 }
+// OCR is only a suggestion. Loyalty discounts and ordinary promotions are not
+// evidence that a food should be eaten soon, and adjustments never become food.
+export function reducedReceiptSuggestion(line = {}) {
+  if (!object(line)) return false;
+  const kind = classifyReceiptLine(line);
+  const description = clean(line.description || line.name || line.rawName, 300).replace(/\breduced[ -]+(?:fat|salt|sodium|sugar|calories?|calorie|carbs?|cholesterol)\b|\b(?:fat|salt|sodium|sugar|calories?|carbs?|cholesterol)[ -]+reduced\b/ig, '');
+  return kind.sourceKind === 'purchase' && kind.classification === 'food' && REDUCED_FOOD.test(description);
+}
 function catalogHas(catalog, key, unit, canonicalize) {
   if (!catalog) return true;
   const values = catalog.ingredients || catalog;
@@ -139,7 +148,9 @@ export function normalizeReceiptLine(raw = {}, context = {}, index = 0) {
     brand: clean(raw.brand, 80), classification: classified.classification, sourceKind: classified.sourceKind, hardExcluded: classified.hardExcluded,
     canonicalKey, quantity: pack.quantity, unit: pack.unit, packCount: pack.packCount, packQuantity: pack.packQuantity, packUnit: pack.packUnit,
     unitPrice: unitPaid !== null ? money(unitPaid) : pricePaid !== null && pack.packCount > 0 ? money(pricePaid / pack.packCount) : null,
-    lineTotal: pricePaid, pricePaid, priceType: ['regular', 'promotion', 'unknown'].includes(raw.priceType) ? raw.priceType : 'unknown',
+    lineTotal: pricePaid, pricePaid, priceType: classified.classification === 'food' && raw.reduced === true ? 'promotion' : ['regular', 'promotion', 'unknown'].includes(raw.priceType) ? raw.priceType : 'unknown',
+    reduced: classified.classification === 'food' && classified.sourceKind === 'purchase' && raw.reduced === true,
+    reducedSuggested: classified.classification === 'food' && (raw.reducedSuggested === true || reducedReceiptSuggestion(raw)),
     location: ['cupboard', 'fridge', 'freezer'].includes(raw.location || raw.loc) ? raw.location || raw.loc : 'cupboard',
     confidence: ['high', 'medium', 'low'].includes(raw.confidence) ? raw.confidence : 'low', notes: clean(raw.notes, 500),
     selected: raw.selected !== false && classified.sourceKind === 'purchase', reviewed: raw.reviewed === true, issues
@@ -357,6 +368,23 @@ export function normalizeStockMap(value, { canonicalize, maxEntries = 2000 } = {
 
 // Explicit policy migration used by pantry confirmation and receipt commits.
 // It changes representation, never invents a conversion for an unknown source.
+function mergeReducedMetadata(contributions, previous, location) {
+  const valid = value => object(value) && value.version === 1 && typeof value.actor === 'string' && /^[A-Za-z0-9_-]{1,120}$/.test(value.actor) && typeof value.urgent === 'boolean' && Array.isArray(value.sources) && value.sources.length > 0 && value.sources.length <= 128 && value.sources.every(id => typeof id === 'string' && id.length > 0 && id.length <= 300 && !/[\u0000-\u001f\u007f]/.test(id)) && (typeof value.at === 'number' && Number.isFinite(value.at) || typeof value.at === 'string' && Number.isFinite(Date.parse(value.at)));
+  const rows = contributions.filter(item => item.quantity > 0 && item.row.selected !== false && valid(item.row.bbReduced));
+  if (!rows.length) return previous.bbReduced?.version === 1 ? null : previous.bbReduced;
+  const actors = new Set(rows.map(item => item.row.bbReduced.actor));
+  // A merge cannot assign another account's annotation to this account. In an
+  // ambiguous legacy merge, keep only a valid original owner's annotations.
+  const actor = valid(previous.bbReduced) ? previous.bbReduced.actor : actors.size === 1 ? rows[0].row.bbReduced.actor : null;
+  if (!actor) return null;
+  const own = rows.filter(item => item.row.bbReduced.actor === actor);
+  if (!own.length) return previous.bbReduced;
+  const time = value => typeof value === 'number' ? value : Date.parse(value);
+  own.sort((a, b) => time(b.row.bbReduced.at) - time(a.row.bbReduced.at));
+  const result = {...own[0].row.bbReduced, actor, urgent: location !== 'freezer' && own.some(item => item.row.bbReduced.urgent === true), sources: [...new Set(own.flatMap(item => item.row.bbReduced.sources))].slice(-128)};
+  if (result.urgent) delete result.frozenAt;
+  return result;
+}
 export function normalizePantryState(stock = {}, inventory = {}, {canonicalize, market = 'UK'} = {}) {
   if(!object(stock)||!object(inventory))throw Error('invalid_inventory_stock_map');
   const records=JSON.parse(JSON.stringify(inventory)),out={},issues=[],contributions=[];
@@ -399,6 +427,8 @@ export function normalizePantryState(stock = {}, inventory = {}, {canonicalize, 
     const quantity=list.reduce((sum,item)=>sum+item.quantity,0),previous=records[id]||first.row;
     const sources=list.filter(item=>item.source.stockKey!==item.key).map(item=>item.source),history=[...(Array.isArray(previous.pantrySourceHistory)?previous.pantrySourceHistory:[]),...sources].slice(-30);
     const row={...previous,name:previous.name||first.name,loc:first.loc,selected:true,qty:quantity,unit:first.unit,bb173StockKey:first.key,bb173StockValue:quantity};
+    const reduced = mergeReducedMetadata(list, previous, first.loc);
+    if (reduced) row.bbReduced = reduced; else if (reduced === null) delete row.bbReduced;
     if(history.length)row.pantrySourceHistory=history;
     if(first.staple){row.staple=true;row.stapleStatus=list.some(item=>item.status==='low')?'low':list.some(item=>item.status==='in')?'in':'out';row.stapleCount=quantity;row.containerLabel=pantryPolicy.containerLabel(first.name);}
     else if(list.some(item=>item.estimated)){row.packEstimated=true;row.packAssumption=list.filter(item=>item.estimated).map(item=>item.source.assumption).filter(Boolean).join(' ');}
