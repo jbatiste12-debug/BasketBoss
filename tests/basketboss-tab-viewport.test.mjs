@@ -69,3 +69,41 @@ test('late dialogs and asynchronously inserted footers refresh scroll ownership 
 test('controller installation is idempotent and destroy removes navigation hooks',()=>{
  const h=fixture();assert.equal(install(h.win),h.controller);h.controller.destroy();h.click(h.button('week'));h.flush();assert.deepEqual(h.scrolls,[]);
 });
+
+test('committing the rendered destination resets before paint and cancels queued duplicates',()=>{
+ const h=fixture();h.change('discover');assert.equal(h.win.scrollY,500);
+ assert.equal(h.controller.commit('discover'),true);assert.equal(h.win.scrollY,0);assert.equal(h.scrolls.length,1);
+ h.flush();assert.equal(h.scrolls.length,1,'body observation and captured frames cannot reset twice');
+ h.win.scrollY=270;h.change('discover');h.flush();assert.equal(h.win.scrollY,270,'ordinary updates keep the current position');
+});
+
+test('rapid return to a tab cannot reuse an earlier reset after the user scrolls',()=>{
+ const h=fixture();h.change('discover');h.change('shop');h.change('discover');h.controller.commit('discover');
+ h.win.scrollY=220;h.win.fire('wheel',{isTrusted:true});h.flush();
+ assert.equal(h.win.scrollY,220);assert.equal(h.scrolls.length,1);
+});
+
+test('tapping the current tab commits one top reset and leaves no late jump',()=>{
+ const h=fixture();h.click(h.button('week'));h.controller.commit('week');
+ assert.equal(h.win.scrollY,0);h.win.scrollY=180;h.flush();assert.equal(h.win.scrollY,180);assert.equal(h.scrolls.length,1);
+});
+
+test('a blocked navigation commits only the latest accepted destination after its modal closes',()=>{
+ const h=fixture(),modal=new h.Node('dialog');h.overlays.push(modal);
+ h.change('discover');h.controller.commit('discover');h.change('shop');h.controller.commit('shop');
+ h.flush();assert.equal(h.win.scrollY,500);modal.hidden=true;h.controller.refresh();h.flush();
+ assert.equal(h.win.scrollY,0);assert.equal(h.scrolls.length,1);
+ assert.equal(h.controller.commit('week'),false,'an unrendered destination cannot be committed');
+});
+
+test('swipe activation reuses a renderer commit rather than adding another reset',()=>{
+ const h=fixture(),control=h.button('discover');control.click=()=>{h.change('discover');h.controller.commit('discover');};
+ assert.equal(h.controller.activate(control),true);h.flush();assert.equal(h.scrolls.length,1);
+ h.controller.destroy();assert.equal(h.controller.commit('discover'),false);
+});
+
+test('activation with an already pending destination also keeps its commit single',()=>{
+ const h=fixture({view:'discover'}),control=h.button('discover');h.controller.reset({view:'discover'});
+ control.click=()=>h.controller.commit('discover');assert.equal(h.controller.activate(control),true);
+ h.win.scrollY=190;h.flush();assert.equal(h.scrolls.length,1);assert.equal(h.win.scrollY,190);
+});

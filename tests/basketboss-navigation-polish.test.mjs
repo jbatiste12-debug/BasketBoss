@@ -7,7 +7,7 @@ const source=fs.readFileSync(new URL('../bb-navigation-polish.js',import.meta.ur
 function fixture({cook=false,existingId='',unsupported=false}={}){
  const frames=[],watchers=[],windowEvents=new Map();let targets=[];
  class Node{
-  constructor(tag,text=''){this.tagName=tag.toUpperCase();this._text=text;this.children=[];this.attributes=new Map();this.classes=new Set();this.id='';this.inner='';this.handlers=new Map();this.parent=null;}
+  constructor(tag,text=''){this.tagName=tag.toUpperCase();this._text=text;this.children=[];this.attributes=new Map();this.classes=new Set();this.id='';this.inner='';this.handlers=new Map();this.parent=null;this.dataset={};this.hidden=false;this.isConnected=true;this.computed={display:'block',visibility:'visible'};}
   get textContent(){return this._text+this.children.map(x=>x.textContent).join('');}set textContent(value){this._text=value;this.children=[];}
   get className(){return [...this.classes].join(' ');}set className(value){this.classes=new Set(value.split(' '));}
   get classList(){return {contains:name=>this.classes.has(name),add:name=>this.classes.add(name),remove:name=>this.classes.delete(name)};}
@@ -15,6 +15,7 @@ function fixture({cook=false,existingId='',unsupported=false}={}){
   prepend(node){node.parent=this;this.children.unshift(node);}remove(){if(this.parent)this.parent.children=this.parent.children.filter(node=>node!==this);}
   querySelector(selector){if(selector==='.nav-label')return this.children.find(x=>x.classes.has('nav-label'))||null;if(selector==='.nav-icon')return this.children.find(x=>x.classes.has('nav-icon'))||null;if(selector==='svg')return this.children.find(x=>x.tagName==='SVG')||this.children.map(x=>x.querySelector('svg')).find(Boolean)||null;return null;}
   set innerHTML(value){this.inner=value;this.children=[];if(value.startsWith('<svg')){const svg=new Node('svg');svg.parent=this;this.children=[svg];}}
+  getClientRects(){return this.hidden||!this.isConnected?[]:[{width:375,height:812}];}
  }
  const names=['Plan','Discover','Kitchen','Shop','Cook'];if(unsupported)names.pop();
  const nav=new Node('nav');nav.id=existingId;
@@ -28,11 +29,12 @@ function fixture({cook=false,existingId='',unsupported=false}={}){
   item.handlers.set('click',()=>targets.push(name));return item;
  });
  const body=new Node('body');
- const doc={readyState:'complete',body,querySelectorAll:()=>[nav],createElement:tag=>new Node(tag)};
- const win={addEventListener:(name,fn)=>windowEvents.set(name,fn)};
+ const storefront=new Node('section');storefront.id='bb172Storefront';storefront.hidden=true;
+ const doc={readyState:'complete',body,querySelectorAll:()=>[nav],createElement:tag=>new Node(tag),getElementById:id=>id===storefront.id?storefront:id===nav.id?nav:null};
+ const win={addEventListener:(name,fn)=>windowEvents.set(name,fn),getComputedStyle:node=>node.computed};
  const context=vm.createContext({document:doc,window:win,MutationObserver:class{constructor(fn){this.fn=fn;watchers.push(this);}observe(node,options){this.node=node;this.options=options;}},requestAnimationFrame:fn=>frames.push(fn)});
  vm.runInContext(source,context);
- return {nav,items:nav.children,body,win,frames,watchers,windowEvents,targets,refresh:()=>win.BBNavigationPolish.refresh()};
+ return {nav,items:nav.children,body,storefront,win,frames,watchers,windowEvents,targets,refresh:()=>win.BBNavigationPolish.refresh()};
 }
 
 test('polishing preserves real tab elements, targets, labels, aria and click handlers',()=>{
@@ -48,12 +50,37 @@ test('polishing preserves real tab elements, targets, labels, aria and click han
  }
 });
 
-test('Shop overview presentation follows its actual body state without rewriting Kitchen handlers',()=>{
+test('an actual visible shopping workspace highlights Shop without rewriting Kitchen handlers',()=>{
  const h=fixture();h.items[1].classes.delete('active');h.items[1].attributes.delete('aria-current');h.items[2].classes.add('active');h.items[2].setAttribute('aria-current','page');
- h.body.classes.add('bb-qa-shop-nav-active');h.refresh();
+ h.body.dataset.bbnextView='shop';h.body.classes.add('bb172-storefront-visible');h.storefront.hidden=false;h.refresh();
  assert.equal(h.items[3].getAttribute('data-bb-nav-current'),'true');assert.equal(h.items[2].getAttribute('data-bb-nav-current'),'false');
  assert.equal(h.items[2].getAttribute('data-tab'),'shop');assert.equal(h.items[2].getAttribute('aria-current'),'page','existing app state remains authoritative');
- h.body.classes.delete('bb-qa-shop-nav-active');h.refresh();assert.equal(h.items[2].getAttribute('data-bb-nav-current'),'true');
+ h.body.classes.delete('bb172-storefront-visible');h.refresh();assert.equal(h.items[2].getAttribute('data-bb-nav-current'),'true');
+});
+
+test('committed destinations take precedence over stale active and aria markers',()=>{
+ const h=fixture();
+ for(const [view,index] of [['week',0],['shop',2],['shop-list',3],['discover',1],['week',0]]){
+  h.body.dataset.bbnextView=view;h.refresh();
+  assert.equal(h.items[index].getAttribute('data-bb-nav-current'),'true',view);
+  assert.equal(h.items.filter(item=>item.getAttribute('data-bb-nav-current')==='true').length,1);
+ }
+ assert.equal(h.items[1].getAttribute('aria-current'),'page','polish leaves original accessibility state to its renderer');
+});
+
+test('stale Shop presentation cannot override another committed tab or a hidden workspace',()=>{
+ const h=fixture();h.body.classes.add('bb-qa-shop-nav-active');h.body.classes.add('bb172-storefront-visible');h.storefront.hidden=false;
+ for(const [view,index] of [['week',0],['discover',1],['cook',4]]){
+  h.body.dataset.bbnextView=view;h.refresh();assert.equal(h.items[index].getAttribute('data-bb-nav-current'),'true',view);
+ }
+ h.body.dataset.bbnextView='shop';h.storefront.hidden=true;h.refresh();assert.equal(h.items[2].getAttribute('data-bb-nav-current'),'true');
+ h.storefront.hidden=false;h.storefront.isConnected=false;h.refresh();assert.equal(h.items[2].getAttribute('data-bb-nav-current'),'true');
+ h.storefront.isConnected=true;h.storefront.computed.display='none';h.refresh();assert.equal(h.items[2].getAttribute('data-bb-nav-current'),'true');
+});
+
+test('standalone Cook retains its current marker without an app view dataset',()=>{
+ const h=fixture();h.body.classes.add('bb-r6-cook-page');h.refresh();assert.equal(h.items[4].getAttribute('data-bb-nav-current'),'true');
+ assert.equal(h.items.filter(item=>item.getAttribute('data-bb-nav-current')==='true').length,1);
 });
 
 test('refresh is stable and observers stay scoped to navigation and body state',()=>{

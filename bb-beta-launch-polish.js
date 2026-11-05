@@ -17,20 +17,8 @@
     new MutationObserver(schedule).observe(body,{attributes:true,attributeFilter:['class']});
     const app=document.getElementById('app');
     if(app)new MutationObserver(schedule).observe(app,{childList:true});
-    // Pages can be deeply scrolled: every *actual bottom-nav switch* starts at top.
-    nav.addEventListener('click',event=>{
-      const tab=event.target.closest('button[data-tab]');if(!tab || !nav.contains(tab))return;
-      const previous=body.dataset.bbnextView;
-      const expected=tab.dataset.tab;
-      const top=()=>{
-        if(body.dataset.bbnextView!==expected && !body.classList.contains('bb172-storefront-visible'))return;
-        window.scrollTo({top:0,left:0,behavior:'instant'});
-        document.documentElement.scrollTop=0;body.scrollTop=0;
-        const shell=document.getElementById('bb172Storefront');if(shell && shell.isConnected)shell.scrollTop=0;
-      };
-      // A dialog can prevent switching away from an active shop; don't scroll until accepted.
-      if(expected!==previous){requestAnimationFrame(()=>requestAnimationFrame(top));setTimeout(top,120);}
-    });
+    // BBTabViewport owns navigation resets and cancels stale navigation work.
+    // This visual decorator must not schedule a second, delayed scroll.
     refresh();
   }
   // Recover visibly from invalid personal photo URLs and genuine asset load failures.

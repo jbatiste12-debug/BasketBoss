@@ -78,7 +78,7 @@ html,body{background:#E9ECEF!important;background-image:none!important;min-heigh
 <link rel="stylesheet" href="bb-meal-image.css?v=20261101-cook1">
 <script defer src="bb-meal-image.js?v=20261101-cook1"></script>
 <link rel="stylesheet" href="bb-navigation-polish.css?v=20261101-stable2">
-<script defer src="bb-navigation-polish.js?v=20261101-polish1"></script>
+<script defer src="bb-navigation-polish.js?v=20261105-nav1"></script>
 <link rel="stylesheet" href="bb-account-polish.css?v=20261105-preflight1">
 <script defer src="bb-account-polish.js?v=20261105-preflight1"></script>
 </head>
@@ -370,11 +370,11 @@ html,body{background:#E9ECEF!important;background-image:none!important;min-heigh
 <a href="index.html?bbview=shop-list" aria-label="Open shopping overview"><svg viewBox="0 0 24 24"><path d="M8 5h12M8 12h12M8 19h12M3 5h1M3 12h1M3 19h1"/></svg><span>Shop</span></a>
 <a href="make-a-meal.html" aria-current="page" aria-label="Cook"><svg viewBox="0 0 24 24"><path d="M4 10h16l-2 11H6L4 10ZM8 10V7a4 4 0 0 1 8 0v3"/></svg><span>Cook</span></a>
 </nav>
-<script>document.querySelectorAll(".bb-r6-cook-nav a").forEach(a=>a.addEventListener("click",()=>window.scrollTo({top:0,behavior:"instant"})))</script>
-<script defer src="bb-beta-six-fixes.js?v=1767"></script>
+<!-- Destination entrypoints reset their own scroll; keep Cook still while links open. -->
+<script defer src="bb-beta-six-fixes.js?v=20261105-nav1"></script>
 <link rel="stylesheet" href="bb-keyboard-layout.css?v=20261105-preflight2">
 <script defer src="bb-keyboard-layout.js?v=20261105-preflight1"></script>
 <link rel="stylesheet" href="bb-tab-viewport.css?v=20261105-preflight1">
-<script defer src="bb-tab-viewport.js?v=20261105-preflight1"></script>
+<script defer src="bb-tab-viewport.js?v=20261105-nav1"></script>
 <script defer src="bb-tab-swipe.js?v=20261104-swipe1"></script>
 </body></html>

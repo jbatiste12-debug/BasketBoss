@@ -8,8 +8,14 @@
   cook:'<path d="M5 10h14v7a3 3 0 0 1-3 3H8a3 3 0 0 1-3-3v-7ZM3 10h18M9 7h6v3M2 13h3m14 0h3M8 3v1m8-1v1"/>'
  };
  const selector='.shell nav.tabs,nav.bb-r6-cook-nav,nav[aria-label="Bottom navigation"]';
+ const views={week:'plan',discover:'discover',shop:'kitchen','shop-list':'shop',cook:'cook'};
  const watched=new WeakSet();let scheduled=false;
  function nameOf(item){return (item.querySelector('.nav-label')?.textContent||item.textContent||'').trim().toLocaleLowerCase('en-GB').replace(/^at home$/,'kitchen');}
+ function visible(node){
+  if(!node||node.hidden||node.isConnected===false)return false;
+  const style=window.getComputedStyle?.(node);
+  return style?.display!=='none'&&style?.visibility!=='hidden'&&(!node.getClientRects||Array.from(node.getClientRects()).some(rect=>rect.width>0&&rect.height>0));
+ }
  function refresh(){
   scheduled=false;
   for(const nav of document.querySelectorAll(selector)){
@@ -18,8 +24,12 @@
    if(items.length!==5||names.some(name=>!Object.hasOwn(vectors,name))||new Set(names).size!==5)continue;
    if(!nav.id)nav.id='bbPrimaryNavigation';
    nav.setAttribute('data-bb-navigation','polished');
-   const shopOverview=document.body.classList.contains('bb-qa-shop-nav-active');
-   const current=shopOverview&&names.includes('shop')?items[names.indexOf('shop')]:
+   // The renderer commits the destination before older decorators update
+   // aria/classes. Never briefly paint one of those stale intermediate tabs.
+   const committed=views[document.body.dataset?.bbnextView]||(document.body.classList.contains('bb-r6-cook-page')?'cook':null);
+   const shopping=committed==='kitchen'&&document.body.classList.contains('bb172-storefront-visible')&&visible(document.getElementById?.('bb172Storefront'));
+   const destination=shopping?'shop':committed;
+   const current=destination?items[names.indexOf(destination)]:
     items.find(item=>item.getAttribute('aria-current')==='page')||
     items.find(item=>item.classList.contains('active'))||
     items.find(item=>item.getAttribute('aria-selected')==='true');
