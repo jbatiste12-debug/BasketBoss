@@ -7,6 +7,7 @@ Build 16 includes Build 15 and addresses the mobile scrolling, input and network
 - Main pages share the document scroller, with momentum scrolling, scroll containment and 110px plus safe-area clearance. The in-store screen keeps its own single scroller and reserves the measured Finish shop footer height. A legacy Cook food grid no longer traps vertical scrolling.
 - Small actions and quantity steppers have real 44px touch areas. Buttons, labels, tabs and disclosure controls use touch manipulation. Mobile editing fields use at least 16px type.
 - Closing account sign-in releases the background lock, keyboard state and bottom navigation immediately. Native dialogs accept backdrop taps through their existing cancellation handlers; busy writes remain protected. Essential and manual-purchase dialogs keep the focused field inside their visible scrolling body.
+- Cloud Upload and Restore lock immediately. Uploads serialize and keep newer edits pending until their own snapshot is saved. A slow Restore cannot overwrite edits made while it was loading.
 - Auto-fill, Finish shop, Begin shop, receipt actions and crowd reports guard rapid taps. Finish and scan performs the same guarded shopping settlement before opening the scanner.
 - Shopping, authentication, receipt and Cook requests have bounded waits. Receipt confirmation retains its pending journal after an uncertain network result and recovers using the same receipt ID. Reopening the same receipt review preserves the draft; intentionally selecting another trip changes context normally.
 - Valid pantry quantities and shopping ticks remain local and survive navigation. Tab selection retains the established scroll-to-top behaviour; ordinary quantity edits and rerenders preserve their current scroll position.
@@ -15,9 +16,11 @@ These checks use synthetic accounts, mocked HTTP and isolated PostgreSQL. They s
 
 ## Automated verification
 
-The complete Node regression suite reports 2,327 cases: 2,324 passed, zero failed, one skipped and two existing TODOs. PostgreSQL receipt, report, sharing and deletion checks ran with isolated PGlite. Native web packaging and portable iOS verification passed with 934 client files and exactly 100 free recipes; the private Premium catalogue remains authenticated.
+The complete Node regression suite reports 2,333 cases: 2,330 passed, zero failed, one skipped and two existing TODOs. PostgreSQL receipt, report, sharing and deletion checks ran with isolated PGlite. Native web packaging and portable iOS verification passed with 934 client files and exactly 100 free recipes; the private Premium catalogue remains authenticated.
 
-The 375px browser audit covers all five main screens, scroll ownership and containment, safe-area clearance, touch targets and input sizes. Separate modal checks verify backdrop dismissal, guarded busy states, draft retention after failed saves and account-close restoration. Simulator software-keyboard verification is tracked separately from browser emulation.
+The 375px browser audit covers all five main screens, scroll ownership and containment, safe-area clearance, touch targets and input sizes. Separate modal checks verify backdrop dismissal, guarded busy states, draft retention after failed saves and account-close restoration. All 11 end-to-end mobile checks passed with zero browser errors, including immediate pantry-to-Shop reconciliation and shopping ticks surviving exit, rapid navigation and reload. At 375px the recipe Cook surface is fullscreen: content taps retain it and Exit dismisses it; the desktop backdrop dismisses normally. Simulator software-keyboard verification is tracked separately from browser emulation.
+
+The UK/US pantry audit also passed across all 100 recipes and 730 ingredient lines: zero duplicate rows, non-canonical rows or conversion failures in either mode.
 
 ## Open in Xcode
 

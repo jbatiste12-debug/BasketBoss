@@ -79,3 +79,27 @@ test('Finish backdrop dismisses without purchases and an inside tap does not dis
  h.overlay.listeners.click({target:h.overlay});assert.equal(h.overlay.isConnected,false);
  assert.equal(h.context.bb172ShopDialogOpen,false);assert.equal(h.counts().transferred,0);assert.ok(h.counts().focused>0);
 });
+
+test('legacy add-food dialogs release Escape handlers on cancel, backdrop and replacement',()=>{
+ const handlers=new Set(),nodes=new Map();let focusRestored=0;
+ class Node{
+  constructor(tag){this.tagName=tag;this.children=[];this.listeners={};this.isConnected=false;}
+  append(...children){for(const child of children){this.children.push(child);child.parent=this;child.isConnected=this.isConnected;if(child.id)nodes.set(child.id,child);}}
+  setAttribute(){}
+  addEventListener(name,handler){this.listeners[name]=handler;}
+  querySelector(){return null;}
+  reportValidity(){return true;}
+  contains(node){return this===node||this.children.some(child=>child.contains(node));}
+  remove(){this.isConnected=false;if(this.id)nodes.delete(this.id);if(this.parent)this.parent.children=this.parent.children.filter(node=>node!==this);}
+ }
+ const body=new Node('body');body.isConnected=true;
+ const context={document:{body,activeElement:{isConnected:true,focus(){focusRestored++;}},createElement:tag=>new Node(tag),getElementById:id=>nodes.get(id),addEventListener:(_name,handler)=>handlers.add(handler),removeEventListener:(_name,handler)=>handlers.delete(handler)},window:{},bb172Msg(){}};
+ const start=source.indexOf('function bb172Modal(');vm.createContext(context);vm.runInContext(source.slice(start,source.indexOf('\nfunction bb172Input(',start)),context);
+ const open=()=>{context.bb172Modal('Food',()=>{},'Save',()=>false);return nodes.get('bb172PlusOverlay');};
+ let modal=open();assert.equal(handlers.size,1);
+ modal.children[0].children[1].children[0].children[1].onclick();assert.equal(handlers.size,0);
+ modal=open();modal.listeners.click({target:modal});assert.equal(handlers.size,0);
+ open();modal=open();assert.equal(handlers.size,1,'replacement removes the old global handler');
+ for(const handler of [...handlers])handler({key:'Escape',preventDefault(){}});
+ assert.equal(handlers.size,0);assert.equal(modal.isConnected,false);assert.ok(focusRestored>=4);
+});

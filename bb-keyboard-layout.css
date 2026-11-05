@@ -13,7 +13,7 @@ html.bb-keyboard-open body nav[aria-label="Bottom navigation"]{
 }
 /* A readable editing size prevents Safari/WKWebView's automatic field zoom. */
 @media(max-width:780px){
- html body #app .small-actions.bb172-planner-controls select[data-move],
+ html body #app.bbnext-plan .bbnext-day-content>.day>.planned.bb14-meal-card .bb172-planner-controls>select[data-move],
  html body input:not([type=checkbox]):not([type=radio]):not([type=range]):not([type=file]):not([type=color]):not([type=hidden]),
  html body textarea,html body select{font-size:16px!important;}
 }

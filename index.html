@@ -1341,7 +1341,8 @@ function bb172Msg(message){if(typeof notify==='function')notify(message);else al
 function bb172QuickDinners(){const saved=bb172LocalObject(BB172_QUICK_DINNER_KEY);const clean={};for(const day of BB172_WEEK_DAYS){if(typeof saved[day]==='string'&&saved[day].trim())clean[day]=saved[day].trim().slice(0,110)}return clean}
 function bb172UniquePlanCount(){const planned=new Set((state.planned||[]).map(x=>x.day));for(const day of Object.keys(bb172QuickDinners()))planned.add(day);return Math.min(planned.size,7)}
 function bb172Modal(title,body,submit,onSave){
- const old=document.getElementById('bb172PlusOverlay');if(old)old.remove();
+ const old=document.getElementById('bb172PlusOverlay');if(old){if(old.bbDismiss)old.bbDismiss();else old.remove();}
+ const previous=document.activeElement;
  const outer=document.createElement('div');outer.id='bb172PlusOverlay';outer.className='bb172-plus-overlay';
  const panel=document.createElement('div');panel.className='bb172-plus-panel';panel.setAttribute('role','dialog');panel.setAttribute('aria-modal','true');panel.setAttribute('aria-labelledby','bb172PlusTitle');
  const heading=document.createElement('h2');heading.id='bb172PlusTitle';heading.textContent=title;
@@ -1349,12 +1350,15 @@ function bb172Modal(title,body,submit,onSave){
  body(form);
  const buttons=document.createElement('div');buttons.className='bb172-plus-actions';
  const save=document.createElement('button');save.type='submit';save.textContent=submit;
- const cancel=document.createElement('button');cancel.type='button';cancel.className='bb172-plain';cancel.textContent='Cancel';cancel.onclick=()=>outer.remove();
+ let closed=false;
+ function close(){if(closed)return;closed=true;if(outer.contains(document.activeElement))document.activeElement.blur?.();outer.remove();document.removeEventListener('keydown',escapeKey);window.BBKeyboardLayout?.releaseAfterDismissal?.();if(previous?.isConnected)previous.focus?.({preventScroll:true});}
+ const escapeKey=event=>{if(event.key==='Escape'){event.preventDefault();close();}};
+ outer.bbDismiss=close;
+ const cancel=document.createElement('button');cancel.type='button';cancel.className='bb172-plain';cancel.textContent='Cancel';cancel.onclick=close;
  buttons.append(save,cancel);form.append(buttons);panel.append(heading,form);outer.append(panel);document.body.append(outer);
- outer.addEventListener('click',event=>{if(event.target===outer)outer.remove()});
- const escapeKey=event=>{if(event.key==='Escape'){outer.remove();document.removeEventListener('keydown',escapeKey)}};
+  outer.addEventListener('click',event=>{if(event.target===outer)close()});
  document.addEventListener('keydown',escapeKey);
- form.addEventListener('submit',event=>{event.preventDefault();if(!form.reportValidity())return;try{if(onSave(form)!==false){outer.remove();document.removeEventListener('keydown',escapeKey)}}catch(err){bb172Msg(err.message)}});
+  form.addEventListener('submit',event=>{event.preventDefault();if(closed||!form.reportValidity())return;try{if(onSave(form)!==false)close()}catch(err){bb172Msg(err.message)}});
  const first=form.querySelector('input,textarea,button');if(first)first.focus();
 }
 function bb172Input(form,label,name,kind,value='',max=120){
@@ -8231,6 +8235,7 @@ function openCook(id,day,kind){
  function close(){pantryCard?.dispose();voice?.dispose();if(timerHandle)clearInterval(timerHandle);timerHandle=null;root.innerHTML='';document.body.style.overflow=cookOverflow;document.removeEventListener('keydown',keys);cookFocusBack?.focus?.({preventScroll:true})}
  function keys(e){if(e.key==='Tab'){const list=[...root.querySelectorAll('button:not(:disabled),input:not(:disabled),select:not(:disabled),summary,a[href]')].filter(node=>node.getClientRects().length);const first=list[0],last=list.at(-1);if(e.shiftKey&&(document.activeElement===first||!root.contains(document.activeElement))){e.preventDefault();last?.focus();}else if(!e.shiftKey&&(document.activeElement===last||!root.contains(document.activeElement))){e.preventDefault();first?.focus();}}if(e.key==='Escape')close();if(e.target?.closest?.('input,textarea,select,[contenteditable=true]'))return;if(phase==='cook'&&e.key==='ArrowRight')advance();if(phase==='cook'&&e.key==='ArrowLeft'){e.preventDefault();$('bbBack')?.click();}}
  document.addEventListener('keydown',keys);$('bbExit').onclick=close;
+ root.querySelector('.cook-overlay').addEventListener('click',event=>{if(event.target===event.currentTarget)close();});
  $('bbPhasePrep').onclick=()=>showCookPhase('prep');$('bbPhaseCook').onclick=()=>showCookPhase('cook');
  function showCookPhase(next){
   if(phase==='done'||!['prep','cook'].includes(next)||phase===next)return;
@@ -11250,21 +11255,25 @@ const config=window.BASKETBOSS_CLOUD_CONFIG||{};
 const enabled=/^https:\/\//.test(config.url||'') && !!config.anonKey && !config.url.includes('YOUR_PROJECT');
 const panel=document.getElementById('cloud-panel'),status=document.getElementById('cloud-status'),msg=document.getElementById('cloud-message');
 const auth=document.getElementById('cloud-auth'),signed=document.getElementById('cloud-signed');
-let session=null,sessionRaw=null,dirty=false,timer=null,loading=false,generation=0,deleting=false;
+let session=null,sessionRaw=null,dirty=false,timer=null,loading=false,generation=0,deleting=false,syncFlight=null;
 const sessionKey='basketboss_cloud_session_v1',stateKey='basketboss_321_unified_state_v1';
 const blocked=()=>deleting||window.BBAccountDeletion?.isDeleting?.()===true;
 const snapshot=()=>({generation,actor:session?.user?.id||null,token:session?.access_token||null});
 const current=pin=>!blocked()&&pin.generation===generation&&pin.actor===(session?.user?.id||null)&&pin.token===(session?.access_token||null);
 const setMessage=t=>{if(!blocked())msg.textContent=t;};
 function restoreStoredSession(){try{sessionRaw=localStorage.getItem(sessionKey);const saved=JSON.parse(sessionRaw||'null');session=saved?.access_token?saved:null;}catch{sessionRaw=null;session=null;}}
-function setStatus(){const connected=!!(session?.access_token&&Number(session.expires_at)*1000>Date.now()+5000),remembered=window.BasketBossSession?.state().remembered===true,recovering=blocked()&&window.BBAccountDeletion?.canRecoverSignIn?.()===true;status.textContent=recovering?'An earlier account deletion needs checking. Sign in with the original account to recover access; cloud syncing stays paused during the check.':blocked()?'Account deletion is in progress. Cloud sync is paused.':!enabled?'Cloud sync needs setup by the site owner.':connected?'Signed in as '+(session.user?.email||'your account'):remembered?(window.BasketBossSession.state().needsConnection?'Your account is saved on this device. Reconnect to the internet to continue.':'Reconnecting to your account…'):session?'Your session has expired. Sign in again to access your account.':'Sign in to sync your plan between devices.';auth.hidden=!enabled||(blocked()?!recovering:(connected||remembered));signed.hidden=!(connected||remembered)||blocked();document.getElementById('cloud-signup').hidden=recovering;for(const id of ['cloud-upload','cloud-download','cloud-logout'])document.getElementById(id).disabled=blocked();}
+function setStatus(){const connected=!!(session?.access_token&&Number(session.expires_at)*1000>Date.now()+5000),remembered=window.BasketBossSession?.state().remembered===true,recovering=blocked()&&window.BBAccountDeletion?.canRecoverSignIn?.()===true;status.textContent=recovering?'An earlier account deletion needs checking. Sign in with the original account to recover access; cloud syncing stays paused during the check.':blocked()?'Account deletion is in progress. Cloud sync is paused.':!enabled?'Cloud sync needs setup by the site owner.':connected?'Signed in as '+(session.user?.email||'your account'):remembered?(window.BasketBossSession.state().needsConnection?'Your account is saved on this device. Reconnect to the internet to continue.':'Reconnecting to your account…'):session?'Your session has expired. Sign in again to access your account.':'Sign in to sync your plan between devices.';auth.hidden=!enabled||(blocked()?!recovering:(connected||remembered));signed.hidden=!(connected||remembered)||blocked();document.getElementById('cloud-signup').hidden=recovering;for(const id of ['cloud-upload','cloud-download','cloud-logout'])document.getElementById(id).disabled=blocked()||(id!=='cloud-logout'&&!!syncFlight);}
 function headers(token){return {'apikey':config.anonKey,'Authorization':'Bearer '+(token||config.anonKey),'Content-Type':'application/json'};}
-async function api(path,method='GET',body=null,token=null,recovery=false){
+async function api(path,method='GET',body=null,token=null,recovery=false,extraHeaders={}){
  if(blocked()&&!(recovery&&path==='/auth/v1/token?grant_type=password'&&window.BBAccountDeletion?.canRecoverSignIn?.()===true))throw new Error('Account deletion is in progress.');
- const response=await fetch(config.url.replace(/\/$/,'')+path,{method,headers:headers(token),body:body?JSON.stringify(body):undefined});
- const raw=await response.text();let data;try{data=raw?JSON.parse(raw):null}catch{data={message:raw}}
- if(!response.ok)throw new Error(data?.msg||data?.error_description||data?.message||data?.error||'Cloud request failed');
- return data;
+ const controller=new AbortController(),deadline=setTimeout(()=>controller.abort(),20000);
+ try{
+  const response=await fetch(config.url.replace(/\/$/,'')+path,{method,headers:{...headers(token),...extraHeaders},body:body?JSON.stringify(body):undefined,signal:controller.signal});
+  const raw=await response.text();if(controller.signal.aborted)throw new Error('Cloud connection timed out. Your plan is saved on this device.');let data;try{data=raw?JSON.parse(raw):null}catch{data={message:raw}}
+  if(!response.ok)throw new Error(data?.msg||data?.error_description||data?.message||data?.error||'Cloud request failed');
+  return data;
+ }catch(error){if(controller.signal.aborted)throw new Error('Cloud connection timed out. Your plan is saved on this device.');throw error;}
+ finally{clearTimeout(deadline);}
 }
 function saveSession(s){if(blocked()||!window.BasketBossSession?.remember(s))return false;generation++;session=s;setStatus();return true;}
 async function refresh(){
@@ -11281,25 +11290,44 @@ async function getCloud(){
  if(!current(pin))return null;
  return {row:rows?.[0]||null,pin};
 }
-async function push(){
- if(blocked()||!session||!await refresh()||blocked()||!session)return;
- const pin=snapshot(),raw=localStorage.getItem(stateKey);if(!raw)return;
- const data=JSON.parse(raw);
- const response=await fetch(config.url.replace(/\/$/,'')+'/rest/v1/basketboss_data?on_conflict=user_id',{method:'POST',headers:{...headers(pin.token),'Prefer':'resolution=merge-duplicates,return=minimal'},body:JSON.stringify({user_id:pin.actor,data,updated_at:new Date().toISOString()})});
- if(!current(pin))return;
- if(!response.ok)throw new Error('Cloud save failed ('+response.status+'). Check database setup.');
- dirty=false;setMessage('\u2713 Synced securely to your account');
+function queueCloudSave(){clearTimeout(timer);timer=setTimeout(()=>{timer=null;if(!blocked()&&navigator.onLine)push().catch(e=>setMessage(e.message));},1400);}
+function cloudOperation(kind,work){
+ if(syncFlight)return syncFlight.kind===kind?syncFlight.promise:Promise.resolve(false);
+ if(blocked())return Promise.resolve(false);
+ const operation={kind,promise:null,drain:false};syncFlight=operation;setStatus();
+ const upload=document.getElementById('cloud-upload'),download=document.getElementById('cloud-download');
+ upload.textContent=kind==='upload'?'Uploading…':"Upload this device's plan";download.textContent=kind==='restore'?'Restoring…':'Restore cloud plan';
+ operation.promise=Promise.resolve().then(()=>work(operation)).finally(()=>{
+  if(syncFlight!==operation)return;syncFlight=null;upload.textContent="Upload this device's plan";download.textContent='Restore cloud plan';setStatus();
+  if(operation.drain&&dirty&&!blocked()&&session&&navigator.onLine)queueCloudSave();
+ });return operation.promise;
 }
-async function pull(confirmReplace=true){
- if(blocked()||!session)return;
- if(confirmReplace&&!confirm('Replace this device\u2019s current meal plan and preferences with your cloud copy?'))return;
- const result=await getCloud();if(!result||!current(result.pin))return;
- const row=result.row;if(!row){setMessage('No cloud backup yet. Use Upload this device\u2019s plan first.');return;}
+function push(){return cloudOperation('upload',async operation=>{
+ if(blocked()||!session||!enabled)return false;
+ if(!navigator.onLine){dirty=true;setMessage('You’re offline. Your plan is saved on this device and will sync when connected.');return false;}
+ for(let attempt=0;attempt<2;attempt++){
+  if(!await refresh()||blocked()||!session)return false;
+  const pin=snapshot(),raw=localStorage.getItem(stateKey);if(!raw)return false;
+  const data=JSON.parse(raw);dirty=true;
+  await api('/rest/v1/basketboss_data?on_conflict=user_id','POST',{user_id:pin.actor,data,updated_at:new Date().toISOString()},pin.token,false,{'Prefer':'resolution=merge-duplicates,return=minimal'});
+  if(!current(pin))return false;
+  dirty=localStorage.getItem(stateKey)!==raw;
+  if(!dirty){setMessage('\u2713 Synced securely to your account');return true;}
+ }
+ operation.drain=dirty;setMessage('Your latest changes are saved on this device. Finishing cloud sync…');return true;
+});}
+function pull(confirmReplace=true){return cloudOperation('restore',async operation=>{
+ if(blocked()||!session)return false;
+ if(confirmReplace&&!confirm('Replace this device\u2019s current meal plan and preferences with your cloud copy?'))return false;
+ if(!navigator.onLine){setMessage('You’re offline. Your current plan is saved on this device. Reconnect before restoring.');return false;}
+ const before=localStorage.getItem(stateKey),result=await getCloud();if(!result||!current(result.pin))return false;
+ const row=result.row;if(!row){setMessage('No cloud backup yet. Use Upload this device\u2019s plan first.');return false;}
  const remote=row.data;if(!remote||remote.version!==2||!Array.isArray(remote.planned))throw new Error('Cloud data format is not supported.');
- if(!current(result.pin))return;
- loading=true;try{localStorage.setItem(stateKey,JSON.stringify(remote));}finally{loading=false;}
- setMessage('\u2713 Cloud plan restored. Reloading\u2026');location.reload();
-}
+ if(!current(result.pin))return false;
+ if(localStorage.getItem(stateKey)!==before){dirty=true;operation.drain=true;setMessage('Your plan changed while the cloud copy was loading. Your latest changes have been kept. Try Restore again when ready.');return false;}
+ loading=true;try{localStorage.setItem(stateKey,JSON.stringify(remote));dirty=false;clearTimeout(timer);timer=null;}finally{loading=false;}
+ setMessage('\u2713 Cloud plan restored. Reloading\u2026');location.reload();return true;
+});}
 async function signIn(signup){
  const recovery=blocked()&&window.BBAccountDeletion?.canRecoverSignIn?.()===true;
  if(!enabled||(blocked()&&!recovery)||(signup&&recovery))return;
@@ -11327,7 +11355,7 @@ async function signIn(signup){
  else{await push();if(current(cloud.pin))setMessage('Account connected and this device\u2019s plan backed up.');}
  }catch(e){if(current(pin))setMessage(e.message);}
 }
-window.BasketBossCloud={async connected(){const cloud=await getCloud();if(!cloud||!current(cloud.pin))return;if(cloud.row)setMessage('Cloud backup found. Choose Restore cloud plan to use it, or Upload to keep this device\u2019s plan.');else await push();},scheduleSave(){if(blocked()||loading||!session||!enabled)return;dirty=true;clearTimeout(timer);timer=setTimeout(()=>{if(!blocked()&&navigator.onLine)push().catch(e=>setMessage(e.message));},1400)}};
+window.BasketBossCloud={async connected(){try{const cloud=await getCloud();if(!cloud||!current(cloud.pin))return;if(cloud.row)setMessage('Cloud backup found. Choose Restore cloud plan to use it, or Upload to keep this device\u2019s plan.');else await push();}catch(error){setMessage(error.message);}},scheduleSave(){if(blocked()||loading||!session||!enabled)return;dirty=true;queueCloudSave();}};
 window.addEventListener('basketboss:account-deletion-started',()=>{deleting=true;generation++;dirty=false;clearTimeout(timer);timer=null;setStatus();});
 window.addEventListener('basketboss:account-deletion-cancelled',()=>{deleting=false;generation++;restoreStoredSession();setStatus();});
 window.addEventListener('basketboss:account-deletion-deleted',()=>{deleting=true;generation++;session=null;dirty=false;clearTimeout(timer);timer=null;setStatus();});
