@@ -123,9 +123,9 @@ test('a counted whole Pepper stays a measured produce row when another pantry am
  const inventory={'fridge|pepper':{name:'Pepper',loc:'fridge',unit:'each',qty:2,selected:true,bb173StockKey:'pepper|each',bb173StockValue:2}};
  const h=await fixture({requirements:[{key:'Milk',unit:'ml',required:500}],inventory,stock:{'pepper|each':2}});
  assert.equal(h.control('data-bb5-staple-status','fridge|pepper'),null);
- assert.equal(h.control('data-bb5-qty','fridge|pepper').value,'2');
+ assert.equal(h.control('data-bb5-qty','fridge|pepper').value,'320','two whole peppers retain their 160 g per-piece canonical balance');
  await h.choose('Milk','fridge');const qty=h.control('data-bb5-qty','fridge|milk');qty.value='250';await qty.dispatch('input');await h.confirm();
- assert.equal(h.stock()['pepper|each'],2);assert.equal(h.stock()['milk|ml'],250);assert.equal(h.inventory()['fridge|pepper'].unit,'each');assert.notEqual(h.inventory()['fridge|pepper'].staple,true);
+ assert.equal(h.stock()['pepper|g'],320);assert.equal(h.stock()['milk|ml'],250);assert.equal(h.inventory()['fridge|pepper'].unit,'g');assert.notEqual(h.inventory()['fridge|pepper'].staple,true);
 });
 
 test('an explicitly tagged Pepper container remains a staple',async()=>{

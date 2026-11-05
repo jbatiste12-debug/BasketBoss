@@ -1,6 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import {onRequestGet, onRequestPost, semanticReceiptPayload, validatePantryConfirmation} from '../functions/api/receipt-inventory.js';
+import {prepareReceiptConfirmation} from '../bb-receipt-inventory-core.mjs';
 
 const USER = '11111111-1111-4111-8111-111111111111';
 const OWNER = '22222222-2222-4222-8222-222222222222';
@@ -93,6 +94,33 @@ test('confirmation sends measured net credit, separate essentials and scoped exa
     assert.equal(call.p_payload.priceObservations.length, 1);assert.equal(call.p_payload.priceObservations[0].scopeId, USER);assert.equal(call.p_payload.priceObservations[0].packPrice, 1.25);assert.equal(call.p_payload.priceObservations[0].packQuantity, 500);
     assert.match(call.p_payload_hash, /^[a-f0-9]{64}$/);assert.equal(JSON.stringify(call).includes('imageBase64'), false);
   } finally {fixture.restore();}
+});
+test('the authenticated endpoint keeps whole-pepper grams distinct from culinary pepper containers and nets each Finish shop credit once',async()=>{
+ for(const [market,currency]of [['UK','GBP'],['US','USD']]){
+  const fixture=setup();try{
+   const body=prepareReceiptConfirmation({receiptId:'pepper-receipt-'+market,shopSessionId:'shop-test',market,currency,retailer:'Test Store',purchasedAt:'2026-11-05T12:00:00Z',receiptTotal:3,lines:[
+    {lineId:'whole-peppers',description:'Peppers',classification:'food',canonicalKey:'pepper',quantity:2,unit:'each',lineTotal:2,location:'fridge',reviewed:true},
+    {lineId:'culinary-pepper',description:'Ground pepper',classification:'food',canonicalKey:'pepper',quantity:50,unit:'g',lineTotal:1,location:'cupboard',reviewed:true}
+   ]},{requestId:'pepper-request-'+market,catalog:{'pepper|each':{}},pantryPolicy:true});
+   body.expectedScope={kind:'user',id:USER};
+   body.inventoryBaseline={stock:{'pepper|g':160,'pepper|each':1},expectedRevision:0,initialize:true};
+   const foodLine=body.lines.find(line=>line.lineId==='whole-peppers'),spiceLine=body.lines.find(line=>line.lineId==='culinary-pepper');
+   assert.equal(foodLine.quantity,320);assert.equal(foodLine.unit,'g');
+   assert.equal(spiceLine.quantity,1);assert.equal(spiceLine.unit,'each');
+   foodLine.legacyCredit={id:'shop-test|pepper|g',quantity:160,unit:'g'};
+   spiceLine.legacyCredit={id:'shop-test|pepper|each',quantity:1,unit:'each'};
+   const response=await onRequestPost({request:request('POST',body),env:fixture.env});
+   assert.equal(response.status,200,market);const saved=await response.json();
+   assert.deepEqual(saved.stock,{'pepper|g':320,'pepper|each':1});assert.equal(saved.inventory.length,2);
+   assert.equal(fixture.rpc[0].p_actor,USER);assert.equal(fixture.rpc[0].p_scope_id,USER);
+   const lines=fixture.rpc[0].p_payload.lines;
+   assert.equal(lines.find(line=>line.unit==='g').quantity,320,'the backend cannot reinterpret whole-food grams as a jar');
+   assert.equal(lines.find(line=>line.unit==='each').quantity,1,'the spice retains one purchased container');
+   const retry={...body,requestId:'retry-'+market,inventoryBaseline:{stock:saved.stock,expectedRevision:1,initialize:false}};
+   const repeated=await onRequestPost({request:request('POST',retry),env:fixture.env});assert.equal(repeated.status,200);
+   const duplicate=await repeated.json();assert.equal(duplicate.duplicate,true);assert.deepEqual(duplicate.stock,saved.stock);
+  }finally{fixture.restore();}
+ }
 });
 test('native iOS receipt confirmation keeps the same authenticated scope and net pantry transaction', async () => {
   const fixture = setup();try {

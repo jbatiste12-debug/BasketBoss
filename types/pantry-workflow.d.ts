@@ -32,6 +32,8 @@ export interface FoodConversion {
   assumption?: string;
 }
 export interface PantryConversionContext {
+  /** Exact physical stock keys requiring identity review; retain but do not allocate. */
+  excludedStockKeys?: string[];
   /** Enables status/container staples and labelled UK pack defaults. */
   pantryMode?: boolean;
   staples?: Record<string, 'in' | 'in_stock' | 'low' | 'out' | 'unknown' | {
@@ -121,6 +123,7 @@ export interface ReceiptSuggestion extends MeasuredQuantity, Partial<ReceiptPack
   invalid?: false;
 }
 export interface ReceiptLine {
+  staple?: boolean;
   name?: string;
   description?: string;
   canonicalKey?: string;

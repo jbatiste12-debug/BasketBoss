@@ -1,11 +1,12 @@
 declare namespace policy {
  type BaseUnit = 'g' | 'ml' | 'each';
  type Status = 'in' | 'low' | 'out' | 'unknown';
- interface Options {market?:string|null;canonicalize?:(name:string)=>string;reviewed?:boolean;packReviewed?:boolean;packQuantity?:unknown;packUnit?:unknown;[key:string]:unknown;}
+ interface Options {market?:string|null;canonicalize?:(name:string)=>string;reviewed?:boolean;packReviewed?:boolean;packQuantity?:unknown;packUnit?:unknown;wholePepper?:boolean;staple?:boolean;[key:string]:unknown;}
  interface Amount {quantity:number;unit:BaseUnit;estimated:boolean;assumption:string;packQuantity?:number;packUnit?:BaseUnit;}
  interface Purchase {name?:unknown;canonicalKey?:unknown;key?:unknown;description?:unknown;quantity?:unknown;unit?:unknown;packCount?:unknown;packQuantity?:unknown;packUnit?:unknown;[key:string]:unknown;}
  function canonicalName(name:unknown,canonicalize?:(name:string)=>string):string;
  function isStaple(name:unknown):boolean;
+ function isWholePepper(name:unknown,unit:unknown,metadata?:{staple?:boolean}):boolean;
  function containerLabel(name:unknown):'bottle'|'jar'|'unit';
  function defaultPack(name:unknown,unit:unknown,options?:Options):Amount|null;
  function normalize(name:unknown,quantity:unknown,unit:unknown,options?:Options):Amount|null;

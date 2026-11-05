@@ -12,7 +12,7 @@ const helpers=extract('bbRotationSession','/* BASKETBOSS_EVENING_PIVOT_ADAPTER')
  extract('bbPlanVarietyValid','\nfunction bbRotationMessage')+'\n'+
  extract('bbHomeRecipeIngredients','\nfunction bbHomeDayMeals')+'\n'+
  extract('bbHomeDayMeals','\nfunction bbHomeLunchForShopping')+'\n'+
- extract('bbHomeConversionContext','\nfunction bbHomePlanningStock');
+ extract('bbHomeExcludedStockKeys','\nfunction bbHomePlanningStock');
 const start=index.indexOf("const BB_AF_DAYS=['Monday'"),end=index.indexOf('/* END_BASKETBOSS_AUTOFILL_VARIETY_ROTATION_V1 */',start);
 assert.ok(start>0&&end>start);
 const auto=index.slice(start,end);

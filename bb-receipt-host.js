@@ -7,9 +7,25 @@
     kitchen: 'basketboss_makeameal_v1_inventory',
     confirmed: 'basketboss_ui_next_confirmed_pantry_v1',
     ledger: 'basketboss_purchase_receipts_v1',
-    owner: 'basketboss_receipt_projection_owner_v1'
+    owner: 'basketboss_receipt_projection_owner_v1',
+    prices: 'basketboss_ui_next_local_shelf_prices_v1',
+    paidPrices: 'basketboss_321_v15_recorded_prices_v1',
+    packSizes: 'basketboss_beta_actual_pack_sizes_v1',
+    shop: 'basketboss_active_shop_session_v7',
+    shopArchive: 'basketboss_shop_session_archive_v7',
+    ticks: 'basketboss_321_v11_shop_ticks',
+    purchases: 'basketboss_ui_next_bought_quantity_v1',
+    choices: 'basketboss_purchase_choices_v1',
+    partials: 'basketboss_partial_purchases_v1',
+    plan: 'basketboss_321_unified_state_v1',
+    lunch: 'basketboss_321_v8_school_lunchboxes_v1',
+    notes: 'basketboss_v172_custom_dinners_v1'
   });
-  const ACTIVE_KEYS = [KEYS.stock, KEYS.kitchen, KEYS.confirmed, KEYS.ledger, KEYS.owner];
+  const LEGACY_ACTIVE_KEYS = [KEYS.stock, KEYS.kitchen, KEYS.confirmed, KEYS.ledger, KEYS.owner];
+  const ACTIVE_KEYS = [...LEGACY_ACTIVE_KEYS, KEYS.prices, KEYS.paidPrices, KEYS.packSizes, KEYS.shop, KEYS.shopArchive, KEYS.ticks, KEYS.purchases, KEYS.choices, KEYS.partials, KEYS.plan, KEYS.lunch, KEYS.notes];
+  const BACKUP_KEYS = ACTIVE_KEYS.filter(key => ![KEYS.owner, KEYS.plan].includes(key));
+  const HOME_KEY = 'basketboss_at_home_requirements_v1';
+  const FEATURES_KEY = 'basketboss_321_features_v1';
   const CURRENCIES = {UK: 'GBP', Guernsey: 'GBP', Jersey: 'GBP', US: 'USD'};
   const clone = value => JSON.parse(JSON.stringify(value));
   const isObject = value => value && typeof value === 'object' && !Array.isArray(value);
@@ -106,7 +122,7 @@
   function createHost(initial = {}) {
     let options = {...initial}, availability = {available: false, premium: false}, lastChecked = 0, checkedActor = null, statusPromise = null;
     let isolationError = null, issue = null, observer = null, scheduled = false, rendering = false, reviewing = false, confirmingCurrent = false, activeDialog = null, lastTab = null, generation = 0, configured = false;
-    let deletionPaused = false, choosingTrip = false;
+    let deletionPaused = false, choosingTrip = false, observedActor = null;
     const blocked = () => deletionPaused || root.BBAccountDeletion?.isDeleting?.() === true;
     const store = () => options.storage || root.localStorage;
     const doc = () => options.document || root.document;
@@ -142,28 +158,123 @@
       }
     }
     function archiveKey(id) { return 'basketboss_receipt_host_snapshot_v1:' + encodeURIComponent(id); }
+    function backupJSON(value) {
+      const bytes = JSON.stringify(value);
+      if (typeof bytes !== 'string' || bytes.length > 2500000) throw Error('pantry_backup_too_large');
+      let count = 0;
+      const visit = (item, depth = 0) => {
+        if (++count > 60000 || depth > 22) throw Error('pantry_backup_invalid');
+        if (typeof item === 'number' && !Number.isFinite(item)) throw Error('pantry_backup_invalid');
+        if (typeof item === 'string' && item.length > 500000) throw Error('pantry_backup_invalid');
+        if (item && typeof item === 'object') {
+          if (Array.isArray(item)) {if (item.length > 5000) throw Error('pantry_backup_invalid');for (const row of item) visit(row, depth + 1);}
+          else for (const [key, row] of Object.entries(item)) {if (['__proto__','prototype','constructor','access_token','refresh_token','authorization','service_role','anonkey','premiumaccess','entitlement'].includes(key.toLowerCase())) throw Error('pantry_backup_private_field');visit(row, depth + 1);}
+        }
+      };
+      visit(value);return JSON.parse(bytes);
+    }
+    function backupHasData(snapshot) {
+      const values = snapshot.values || {}, nonempty = value => isObject(value) && Object.keys(value).length > 0;
+      if (Object.values(values[KEYS.stock] || {}).some(amount => typeof amount === 'number' && Number.isFinite(amount) && amount > 0)) return true;
+      if (Object.values(values[KEYS.kitchen] || {}).some(row => isObject(row) && row.selected !== false && (Number(row.qty) > 0 || row.qty == null && typeof row.name === 'string' && row.name.trim() || ['in','low','out','in_stock'].includes(row.stapleStatus)))) return true;
+      if (snapshot.essentials.some(row => row?.selected !== false && (Number(row.ownedQty) > 0 || Number(row.targetQty) > 0 || row.manualPending !== false && Number(row.qty) > 0))) return true;
+      if ([KEYS.prices, KEYS.paidPrices, KEYS.packSizes, KEYS.ledger, KEYS.shopArchive, KEYS.purchases, KEYS.choices, KEYS.partials].some(key => nonempty(values[key]))) return true;
+      if (Object.values(values[KEYS.lunch]?.days || {}).some(rows => Array.isArray(rows) && rows.length) || Object.values(values[KEYS.notes] || {}).some(value => typeof value === 'string' && value.trim())) return true;
+      if (Object.values(values[KEYS.ticks] || {}).some(Boolean)) return true;
+      if (['bought','purchases','partials','reducedPurchases','reducedSuperseded'].some(key => nonempty(values[KEYS.shop]?.[key]))) return true;
+      return Object.values(snapshot.home || {}).some(value => isObject(value) ? Object.keys(value).length > 0 : Array.isArray(value) ? value.length > 0 : value !== null && value !== undefined);
+    }
+    function validateBackupBalances(snapshot) {
+      const validAmount = value => typeof value === 'number' && Number.isFinite(value) && value >= 0 && value <= 1000000;
+      const stock = snapshot.values[KEYS.stock];
+      if (stock !== null && (!isObject(stock) || Object.entries(stock).some(([key,value]) => !key || key.length > 240 || !validAmount(value)))) throw Error('pantry_backup_invalid_quantity');
+      const kitchen = snapshot.values[KEYS.kitchen];
+      if (kitchen !== null && (!isObject(kitchen) || Object.values(kitchen).some(row => !isObject(row) || ['qty','bb173StockValue'].some(key => row[key] !== undefined && row[key] !== null && (!['number','string'].includes(typeof row[key]) || String(row[key]).trim() === '' || !validAmount(Number(row[key]))))))) throw Error('pantry_backup_invalid_quantity');
+      if (snapshot.essentials.some(row => !isObject(row) || ['qty','ownedQty','targetQty'].some(key => row[key] !== undefined && row[key] !== null && (!['number','string'].includes(typeof row[key]) || String(row[key]).trim() === '' || !validAmount(Number(row[key])))))) throw Error('pantry_backup_invalid_quantity');
+    }
+    function exportBackup() {
+      if (blocked() || isolationError || hasPendingConfirmation()) throw Error('pantry_backup_paused');
+      const who = actor(), marker = read(KEYS.actor), owner = read(KEYS.owner);
+      if (marker.actorId && marker.actorId !== who || owner.actorId && owner.actorId !== who) throw Error('pantry_backup_account_changed');
+      const values = Object.fromEntries(BACKUP_KEYS.map(key => {const raw = store().getItem(key);return [key, raw === null ? null : JSON.parse(raw)];}));
+      const all = read(HOME_KEY), home = all.byActor?.[who] || {};
+      if (!isObject(home)) throw Error('pantry_backup_invalid');
+      const result = backupJSON({version: 1, actorId: who, values, essentials: clone(options.getEssentials?.() || []), home});
+      if (!Array.isArray(result.essentials) || result.essentials.length > 60) throw Error('pantry_backup_invalid');
+      validateBackupBalances(result);
+      result.hasData = backupHasData(result);return result;
+    }
+    function hasLocalData() {return exportBackup().hasData;}
+    function prepareBackupRestore(payload) {
+      if (blocked() || isolationError || hasPendingConfirmation()) throw Error('pantry_backup_paused');
+      const who = actor(), saved = backupJSON(payload);
+      if (who === 'guest' || !isObject(saved) || saved.version !== 1 || saved.actorId !== who || !isObject(saved.values) || !isObject(saved.home) || !Array.isArray(saved.essentials) || saved.essentials.length > 60 || Object.keys(saved.values).some(key => !BACKUP_KEYS.includes(key))) throw Error('pantry_backup_account_invalid');
+      for (const key of BACKUP_KEYS) if (!Object.hasOwn(saved.values, key) || saved.values[key] !== null && !isObject(saved.values[key])) throw Error('pantry_backup_invalid');
+      validateBackupBalances(saved);
+      const local = exportBackup(), comparable = value => JSON.stringify(stableBackup(value));
+      const desired = {values: saved.values, essentials: saved.essentials, home: saved.home}, current = {values: local.values, essentials: local.essentials, home: local.home};
+      if (comparable(desired) === comparable(current)) return {updates: {}, expected: {}, requiresReview: false, restored: false};
+      if (local.hasData) return {updates: {}, expected: {}, requiresReview: true, restored: false};
+      const expected = Object.fromEntries([...BACKUP_KEYS, KEYS.owner, HOME_KEY, FEATURES_KEY, 'basketboss_cloud_session_v1'].map(key => [key, store().getItem(key)]));
+      const all = read(HOME_KEY), features = read(FEATURES_KEY);all.version ??= 1;all.byActor ??= {};all.byActor[who] = clone(saved.home);
+      features.essentials = clone(saved.essentials);features.version ??= 1;
+      const updates = {...clone(saved.values), [KEYS.owner]: null, [HOME_KEY]: all, [FEATURES_KEY]: features};
+      return {updates, expected, requiresReview: false, restored: true};
+    }
+    function stableBackup(value) {return Array.isArray(value) ? value.map(stableBackup) : isObject(value) ? Object.fromEntries(Object.keys(value).sort().map(key => [key, stableBackup(value[key])])) : value;}
+    function claimGuestMetadata(value, who) {
+      if (Array.isArray(value)) return value.map(row => claimGuestMetadata(row, who));
+      if (!isObject(value)) return value;
+      return Object.fromEntries(Object.entries(value).map(([key, row]) => [key, ['actor','actorId'].includes(key) && row === 'guest' ? who : claimGuestMetadata(row, who)]));
+    }
     function switchActor() {
       if (blocked()) return false;
       const next = actor();
       const marker = read(KEYS.actor), receiptOwner = read(KEYS.owner);
       const previous = marker.actorId || receiptOwner.actorId || next;
       if (previous === next) {
-        if (!marker.actorId) writeAtomic({[KEYS.actor]: {version: 1, actorId: next}});
+        if (!marker.actorId) writeAtomic({[KEYS.actor]: {version: 1, actorId: next, ...(next !== 'guest' ? {localAccountSeen: true} : {})}});
+        const previousView = observedActor;observedActor = next;
+        // Another tab may have completed the shared-storage profile switch
+        // before this tab receives its session event. Its in-memory plan still
+        // needs replacement even though the persisted marker is already right.
+        if (previousView !== null && previousView !== next) {
+          const handled = options.onActorChanged?.({previous: previousView, actor: next, guestClaimed: false}) === true;
+          if (!handled) options.onProjection?.({actorChanged: true});
+        }
         return false;
       }
       if (typeof previous !== 'string' || !/^(?:guest|[A-Za-z0-9_-]{8,120})$/.test(previous)) throw Error('receipt_host_actor_invalid');
       const saved = Object.fromEntries(ACTIVE_KEYS.map(key => [key, store().getItem(key)]));
       const savedEssentials = options.getEssentials ? clone(options.getEssentials() || []) : [];
       const destination = read(archiveKey(next));
-      if (Object.keys(destination).length && (destination.version !== 1 || destination.actorId !== next || !isObject(destination.values) || Object.keys(destination.values).length !== ACTIVE_KEYS.length || ACTIVE_KEYS.some(key => !Object.hasOwn(destination.values, key) || destination.values[key] !== null && typeof destination.values[key] !== 'string'))) throw Error('receipt_host_snapshot_invalid');
-      const values = destination.values || Object.fromEntries(ACTIVE_KEYS.map(key => [key, null]));
+      if (Object.keys(destination).length && (destination.version !== 1 || destination.actorId !== next || !isObject(destination.values) || LEGACY_ACTIVE_KEYS.some(key => !Object.hasOwn(destination.values, key)) || Object.keys(destination.values).some(key => !ACTIVE_KEYS.includes(key) || destination.values[key] !== null && typeof destination.values[key] !== 'string'))) throw Error('receipt_host_snapshot_invalid');
       if (destination.essentials !== undefined && (!Array.isArray(destination.essentials) || destination.essentials.length > 60)) throw Error('receipt_host_snapshot_invalid');
-      const changes = {[archiveKey(previous)]: {version: 1, actorId: previous, values: saved, essentials: savedEssentials}, [KEYS.actor]: {version: 1, actorId: next}};
-      for (const key of ACTIVE_KEYS) changes[key] = values[key] === null ? null : JSON.parse(values[key]);
-      if (options.setEssentials && options.setEssentials(clone(destination.essentials || [])) === false) throw Error('receipt_host_essentials_switch_failed');
+      const home = read(HOME_KEY), actorHome = home.byActor?.[next];
+      const hasAccountHistory = isObject(actorHome) && Object.values(actorHome).some(value => isObject(value) ? Object.keys(value).length > 0 : value !== null && value !== undefined);
+      // Only the first unclaimed guest profile moves into a signed-in account.
+      // Later account switches restore their own snapshots; no quantities or
+      // previous-account purchase ledgers are silently summed together.
+      const claimGuest = previous === 'guest' && next !== 'guest' && marker.localAccountSeen !== true && !marker.guestClaimedBy && !receiptOwner.actorId && !Object.keys(destination).length && store().getItem(archiveKey('guest')) === null && !hasAccountHistory;
+      const values = claimGuest ? saved : destination.values || {};
+      const nextEssentials = claimGuest ? savedEssentials : clone(destination.essentials || []);
+      const archived = {version: 1, actorId: previous, values: saved, essentials: savedEssentials};
+      if (claimGuest) {
+        archived.claimedBy = next;archived.claimedValues = saved;archived.claimedEssentials = savedEssentials;
+        archived.values = Object.fromEntries(ACTIVE_KEYS.map(key => [key, null]));archived.essentials = [];
+      }
+      const changes = {[archiveKey(previous)]: archived, [KEYS.actor]: {version: 1, actorId: next, localAccountSeen: marker.localAccountSeen === true || previous !== 'guest' || next !== 'guest', ...(claimGuest ? {guestClaimedBy: next} : marker.guestClaimedBy ? {guestClaimedBy: marker.guestClaimedBy} : {})}};
+      if (claimGuest && isObject(home.byActor?.guest)) {
+        archived.claimedHome = clone(home.byActor.guest);
+        home.byActor[next] = claimGuestMetadata(home.byActor.guest, next);delete home.byActor.guest;changes[HOME_KEY] = home;
+      }
+      for (const key of ACTIVE_KEYS) {const value = values[key] === null || values[key] === undefined ? null : JSON.parse(values[key]);changes[key] = claimGuest ? claimGuestMetadata(value, next) : value;}
+      if (options.setEssentials && options.setEssentials(nextEssentials) === false) throw Error('receipt_host_essentials_switch_failed');
       try {writeAtomic(changes);} catch (error) {try {options.setEssentials?.(savedEssentials);} catch {} throw error;}
+      observedActor = next;
       availability = {available: false, premium: false}; lastChecked = 0; checkedActor = null; statusPromise = null;generation++;
-      options.onProjection?.({actorChanged: true});
+      const handled = options.onActorChanged?.({previous, actor: next, guestClaimed: claimGuest}) === true;
+      if (!handled) options.onProjection?.({actorChanged: true});
       return true;
     }
     function isolate() {
@@ -288,7 +399,7 @@
     function setupAdapter() {
       adapter()?.configure?.({getSession: session, getContext: context, getCatalog: options.getCatalog, canonicalize: options.canonicalize,
         pantryPolicy:options.pantryPolicy===true,
-        getFinishShopCredits: options.getFinishShopCredits, receiptSaveKeys: options.receiptSaveKeys, prepareReceiptSave: options.prepareReceiptSave,
+        getFinishShopCredits: options.getFinishShopCredits, getArchivedShop:options.getArchivedShop,getPurchaseCosts:options.getPurchaseCosts,receiptSaveKeys: options.receiptSaveKeys, prepareReceiptSave: options.prepareReceiptSave,
         onProjection: value => {if (blocked()) return;issue = null; options.onProjection?.(value); schedule();}});
       scanner()?.configure?.({getSession: session, getContext: context, getShoppingItems: options.getShoppingItems, getKitchen:options.getKitchen, pantryPolicy:options.pantryPolicy===true, inventory: adapter()});
     }
@@ -587,6 +698,7 @@
     root.addEventListener?.('basketboss:account-deletion-deleted', pauseDeletion);
     root.addEventListener?.('basketboss:account-deletion-cancelled', () => {deletionPaused = false;accountChanged();});
     root.addEventListener?.('basketboss:session-changed', accountChanged);
+    root.addEventListener?.('pageshow', () => {if (configured && observedActor !== actor()) accountChanged();});
     root.addEventListener?.('basketboss:supermarket-changed', () => {if (!configured) return;activeDialog?.close?.();activeDialog?.remove();activeDialog = null;reviewing = false;lastChecked = 0;schedule();});
     let externalTimer = null;
     function externalChange(event) {
@@ -601,7 +713,7 @@
       options.onProjection?.({externalStorage: true});schedule();
     }
     root.addEventListener?.('storage', externalChange);
-    const api = Object.freeze({configure, afterRender, refreshAvailability, open, saveLegacyReceipt, reviewPantry, confirmCurrentPantry, confirmCookedPantry, canConsumePantry, confirmLocalPantryReview, recoverReceipt, requiresPantryReview, hasPendingConfirmation, allowLegacyTransfer, handlesInventorySync, coversLegacyCredit, switchActor, getAvailability: () => ({...availability}), getProjection: projection, weeklySummary: () => weeklyReceiptSummary(projection(), context(), clock()), keys: KEYS});
+    const api = Object.freeze({configure, afterRender, refreshAvailability, open, saveLegacyReceipt, reviewPantry, confirmCurrentPantry, confirmCookedPantry, canConsumePantry, confirmLocalPantryReview, recoverReceipt, requiresPantryReview, hasPendingConfirmation, allowLegacyTransfer, handlesInventorySync, coversLegacyCredit, switchActor, exportBackup, prepareBackupRestore, hasLocalData, getAvailability: () => ({...availability}), getProjection: projection, weeklySummary: () => weeklyReceiptSummary(projection(), context(), clock()), keys: KEYS});
     return api;
   }
   root.BBReceiptHostFactory = createHost;

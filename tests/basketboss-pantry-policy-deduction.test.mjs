@@ -82,6 +82,28 @@ test('a canonical whole pepper count stays produce unless explicitly tracked as 
  assert.deepEqual(explicit.remainingStock,stock);assert.equal(explicit.rows[0].staple,true);assert.equal(explicit.rows[0].deduct,0);assert.equal(explicit.rows[0].covered,false);assert.match(explicit.issues[0].message,/larger/);
  const black=proposal({stock:{'black pepper|each':1},ingredients:[food('black pepper',1,'tsp')],conversion:context()});assert.equal(black.rows[0].staple,true);assert.equal(black.rows[0].covered,true);assert.deepEqual(black.remainingStock,{'black pepper|each':1});
 });
+test('a measured whole-peppers recipe consumes produce rather than treating it as a spice jar',()=>{
+ for(const staples of [{},{pepper:'in'}]){
+  const result=proposal({stock:{'pepper|g':400},ingredients:[food('pepper',250,'g',{name:'Peppers'})],conversion:context({staples})});
+  assert.equal(result.rows[0].staple,undefined);assert.equal(result.rows[0].deduct,250);assert.deepEqual(result.remainingStock,{'pepper|g':150});assert.equal(result.issues.length,0);
+ }
+});
+test('ground pepper stays a culinary staple when the underlying catalogue key is generic pepper',()=>{
+ const result=proposal({stock:{'pepper|g':50},ingredients:[food('pepper',2,'g',{name:'Ground pepper'})],conversion:context()});
+ assert.equal(result.rows[0].staple,true);assert.equal(result.rows[0].covered,true);assert.equal(result.rows[0].deduct,0);assert.deepEqual(result.remainingStock,{'pepper|g':50});
+});
+test('excluded ambiguous count stock stays intact and cannot cover a whole-pepper requirement',()=>{
+ const stock={'pepper|each':3},conversion=context({excludedStockKeys:['pepper|each'],staples:{pepper:{status:'in',count:1}},canonicalMeasure:()=>({key:'pepper',quantity:160,unit:'g'}),basis:{wholeProduce:true}});
+ const result=proposal({stock,ingredients:[food('pepper',250,'g',{name:'Peppers'})],conversion}),row=result.rows[0];
+ assert.deepEqual(result.remainingStock,stock);assert.equal(row.owned,0);assert.equal(row.deduct,0);assert.equal(Math.max(0,row.required-row.owned),250);assert.equal(row.issue,'unit_mismatch');assert.match(row.issueLabel,/ingredient identity review/);assert.equal(result.issues.length,1);
+});
+test('review exclusions preserve a spice jar while known whole-pepper grams still deduct normally',()=>{
+ const stock={'pepper|each':1,'pepper|g':400},conversion=context({excludedStockKeys:['pepper|each'],staples:{pepper:{status:'in',count:1}},canonicalMeasure:()=>({key:'pepper',quantity:160,unit:'g'}),basis:{wholeProduce:true}});
+ const whole=proposal({stock,ingredients:[food('pepper',250,'g',{name:'Peppers'})],conversion});
+ assert.deepEqual(whole.remainingStock,{'pepper|each':1,'pepper|g':150});assert.equal(whole.rows[0].owned,400);assert.equal(whole.rows[0].deduct,250);assert.equal(whole.rows[0].issue,'unit_mismatch');
+ const spice=proposal({stock,ingredients:[food('pepper',1,'tsp',{name:'Ground pepper'})],conversion});assert.equal(spice.rows[0].covered,true);assert.deepEqual(spice.remainingStock,stock,'an explicit seasoning status remains valid without consuming the jar');
+ const unambiguous=proposal({stock:{'pepper|g':400},ingredients:[food('pepper',250,'g',{name:'Peppers'})],conversion:context()});assert.equal(unambiguous.issues.length,0);assert.deepEqual(unambiguous.remainingStock,{'pepper|g':150});
+});
 
 test('legacy callers retain strict measured deduction and opt in independently',()=>{
  const stock={'ketchup|ml':800};

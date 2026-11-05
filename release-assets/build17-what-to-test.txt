@@ -1,0 +1,11 @@
+BasketBoss Build 17 — stock and shopping that stay in sync
+
+• Change a meal in Plan, then check At home and Shop. Your existing ingredients should reduce what you need to buy.
+• Buy only part of your list and Finish shop. Purchased food and essentials should appear at home once; unbought items should stay on the list.
+• Scan and confirm a receipt for that shop. Stock and spending should reconcile without doubling. Please check the reviewed quantities and shop date.
+• Log a reduced purchase. This week's spend should use the reduced price while your usual price stays saved for next week.
+• Cook a meal or mark Day done. Used ingredients should go down once; unused and frozen stock should remain.
+• Start a new week. Your remaining pantry stock and usual prices should still be there.
+• Sign in and check your saved plan and kitchen. If cloud and device amounts differ, review the choice before restoring.
+
+Please report the steps, item/quantity, device and a screenshot if anything looks wrong. Includes the previous mobile scrolling, keyboard, Premium and reduced-food improvements.

@@ -26,7 +26,7 @@ function fixture({stock={},inventory={},ingredients=[],entrypoint='index.html'}=
  const lunchStart=html.indexOf('const BB321Lunch=(()=>{'),lunchEnd=html.indexOf('/* BasketBoss 321 v8 — School Lunchboxes',lunchStart);
  vm.runInContext(html.slice(lunchStart,lunchEnd),ctx);
  Object.assign(ctx,{bb307Stock:{...stock},bb307ReadStock:()=>JSON.parse(storage.getItem(STOCK)),bbReceiptPantryReviewRequired:()=>false,bbReceiptHasAuthoritativePantry:()=>true,bbBetaStockForCurrentWeek:value=>value,bbHomeLegacyPantry:()=>({}),bb321LunchboxRequirements:()=>[]});
- for(const name of ['bbHomePhysicalStock','bbHomeStapleState','bbHomeApplyStapleShopping','bbHomeCupboardStapleItems','bbHomePromoteCupboardStaple','bbHomeShoppingMeasure','bbHomeConversionContext','bbPantryReconcileStock','bb321UnifiedShop'])vm.runInContext(actualFunction(html,name),ctx);
+ for(const name of ['bbHomePhysicalStock','bbHomeStapleState','bbHomeApplyStapleShopping','bbHomeCupboardStapleItems','bbHomePromoteCupboardStaple','bbHomeShoppingMeasure','bbHomeExcludedStockKeys','bbHomeConversionContext','bbPantryReconcileStock','bb321UnifiedShop'])vm.runInContext(actualFunction(html,name),ctx);
  const bridge=html.split('\n').find(line=>line.startsWith('window.BBPantryState='));if(bridge)vm.runInContext(bridge,ctx);
  ctx.BB172_STAPLES_KEY='basketboss_v172_assumed_staples_v1';
  for(const name of ['bb172StapleSaved','bb172StapleAssumesOnHand'])vm.runInContext(actualFunction(html,name),ctx);
@@ -207,6 +207,20 @@ test('one-tap cupboard promotion is idempotent and a later Low choice still requ
  assert.equal(h.shopping()[0].toBuy,1);assert.equal(h.home.shoppingBuys()[0].source,'cupboard');assert.equal(h.ctx.bbHomePromoteCupboardStaple('soy sauce').already,true);assert.equal(h.writes.length,writes);
  h.storage.setItem(STOCK,JSON.stringify({'soy sauce|each':1}));h.storage.setItem(INVENTORY,JSON.stringify({soy:entry('Soy sauce',1,'each',{staple:true,stapleStatus:'low'})}));assert.equal(h.shopping()[0].toBuy,1,'the explicit Low restock and promotion refer to one container');
  assert.equal(h.home.addShoppingBuy({name:'soy sauce',quantityText:'1 each',actorId:ACTOR,requestId:'deliberate-extra-bottle'}).ok,true);assert.equal(h.shopping()[0].toBuy,2,'ordinary manual Shop top-ups remain additional');
+});
+
+test('marking a promoted cupboard staple In stock clears its reminder without removing intentional Shop top-ups',()=>{
+ const h=fixture({ingredients:[{key:'soy sauce',required:15,unit:'ml'}]});
+ assert.equal(h.ctx.bbHomePromoteCupboardStaple('soy sauce').ok,true);assert.equal(h.shopping()[0].toBuy,1);
+ h.storage.setItem(STOCK,JSON.stringify({'soy sauce|each':1}));
+ h.storage.setItem(INVENTORY,JSON.stringify({soy:entry('Soy sauce',1,'each',{staple:true,stapleStatus:'in'})}));
+ const before=[...h.values],covered=h.shopping()[0];
+ assert.equal(covered.toBuy,0,'the cupboard reminder is covered by the updated pantry status');
+ assert.equal(covered.pantryUsed,1);assert.deepEqual([...h.values],before,'planning must not mutate or delete the saved reminder');
+ assert.equal(h.home.addShoppingBuy({name:'Soy sauce',quantityText:'1 bottle',actorId:ACTOR,requestId:'intentional-top-up'}).ok,true);
+ assert.equal(h.shopping()[0].toBuy,1,'an explicit manual Shop top-up stays additional');
+ h.storage.setItem(INVENTORY,JSON.stringify({soy:entry('Soy sauce',1,'each',{staple:true,stapleStatus:'low'})}));
+ assert.equal(h.shopping()[0].toBuy,2,'one automatic low-stock restock plus one intentional top-up');
 });
 
 test('a cupboard promotion purchased alongside an automatic restock is fulfilled by that actual container',()=>{

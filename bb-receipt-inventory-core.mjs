@@ -113,6 +113,9 @@ function catalogHas(catalog, key, unit, canonicalize) {
     if(!matched)return false;
     if(base===unit)return true;
     if(unit==='each'&&pantryPolicy?.isStaple(key))return true;
+    // The legacy catalogue spells whole peppers as a count, while measured
+    // produce receipts retain grams. Ground pepper uses its staple identity.
+    if(key==='pepper'&&unit==='g'&&base==='each')return true;
     const normalized=pantryPolicy?.normalize(key,1,declared,{market:'UK'});
     return !!normalized&&normalized.unit===unit;
   });
@@ -124,11 +127,12 @@ export function normalizeReceiptLine(raw = {}, context = {}, index = 0) {
   let canonicalKey = canonicalIngredientKey(raw.canonicalKey || raw.ingredientKey, context.canonicalize);
   if(context.pantryPolicy===true&&canonicalKey){
     canonicalKey=canonicalIngredientKey(pantryPolicy.canonicalName(canonicalKey,context.canonicalize),context.canonicalize);
-    if(classified.classification==='food'&&pantryPolicy.isStaple(canonicalKey)){
+    const wholePepper=pantryPolicy.isWholePepper(description,pack.unit??raw.unit,raw);
+    if(classified.classification==='food'&&pantryPolicy.isStaple(canonicalKey)&&!wholePepper){
       const container=pantryPolicy.staplePurchase({name:canonicalKey,quantity:pack.quantity??raw.quantity??pack.packQuantity,unit:pack.unit??raw.unit??pack.packUnit,packCount:raw.packCount??pack.packCount,packQuantity:pack.packQuantity,packUnit:pack.packUnit});
       if(container)pack={quantity:container.quantity,unit:'each',packCount:null,packQuantity:null,packUnit:null,issue:null};
     }else if(classified.classification==='food'){
-      const amount=pantryPolicy.normalize(canonicalKey,pack.quantity??raw.quantity,pack.unit??raw.unit,{market:context.market,packQuantity:raw.packQuantity,packUnit:raw.packUnit,reviewed:raw.packReviewed===true||raw.reviewed===true&&raw.packQuantity>0&&!!raw.packUnit});
+      const amount=pantryPolicy.normalize(canonicalKey,pack.quantity??raw.quantity,pack.unit??raw.unit,{market:context.market,wholePepper,packQuantity:raw.packQuantity,packUnit:raw.packUnit,reviewed:raw.packReviewed===true||raw.reviewed===true&&raw.packQuantity>0&&!!raw.packUnit});
       if(amount)pack={...pack,quantity:amount.quantity,unit:amount.unit,issue:null};
     }
   }
@@ -399,13 +403,16 @@ export function normalizePantryState(stock = {}, inventory = {}, {canonicalize, 
     const reviewed=linked.filter(([,row])=>row.packReviewed===true),signatures=new Set(reviewed.map(([,row])=>JSON.stringify([row.packQuantity,row.packUnit])));
     const conflict=signatures.size>1||reviewed.length>0&&reviewed.length!==linked.length;
     const metadata=reviewed[0]?.[1];
-    const wholePepper=name==='pepper'&&normalizeUnit(rawUnit)==='each'&&!linked.some(([,row])=>row.staple===true);
-    const staple=pantryPolicy.isStaple(name)&&!wholePepper,status=linked.some(([,row])=>pantryPolicy.stapleStatus(row)==='low')?'low':linked.some(([,row])=>pantryPolicy.stapleStatus(row)==='out')?'out':'in';
+    if(name==='pepper'&&normalizeUnit(rawUnit)==='each'&&!linked.length){add(stockKey,quantity);issues.push({stockKey,name,unit:rawUnit,message:'This pepper count could describe whole produce or spice containers. The saved quantity has been kept for review.'});continue;}
+    if(name==='pepper'&&linked.some(([,row])=>row.staple===true)&&linked.some(([,row])=>pantryPolicy.isWholePepper(row.name,rawUnit,row))){add(stockKey,quantity);issues.push({stockKey,name,unit:rawUnit,message:'Whole peppers and a pepper spice container share this saved balance. Their quantities have been kept for review.'});continue;}
+    const wholePepper=name==='pepper'&&!linked.some(([,row])=>row.staple===true)&&(['each','g','kg'].includes(normalizeUnit(rawUnit))||linked.some(([,row])=>pantryPolicy.isWholePepper(row.name,rawUnit,row)));
+    const statuses=linked.map(([,row])=>pantryPolicy.stapleStatus(row,quantity));
+    const staple=pantryPolicy.isStaple(name)&&!wholePepper,status=statuses.includes('in')?'in':statuses.includes('low')?'low':statuses.includes('out')?'out':statuses.length?'unknown':'in';
     let normalized;
     if(staple){
       const purchase=pantryPolicy.staplePurchase({name,quantity,unit:rawUnit});
       normalized=purchase||(['each','pack'].includes(normalizeUnit(rawUnit))&&quantity>0?{quantity:Math.ceil(quantity),unit:'each',estimated:true,assumption:'Partly used staple containers kept in stock; review the container count.'}:null);
-    }else if(!conflict)normalized=pantryPolicy.normalize(name,quantity,rawUnit,{market,canonicalize,reviewed:metadata?.packReviewed===true,packQuantity:metadata?.packQuantity,packUnit:metadata?.packUnit});
+    }else if(!conflict)normalized=pantryPolicy.normalize(name,quantity,rawUnit,{market,canonicalize,wholePepper,reviewed:metadata?.packReviewed===true,packQuantity:metadata?.packQuantity,packUnit:metadata?.packUnit});
     if(!normalized){
       add(stockKey,quantity);issues.push({stockKey,name,unit:rawUnit,message:conflict?'Container sizes disagree. Existing stock has been kept for review.':'Unknown container or unit. Existing stock has been kept for review.'});continue;
     }
@@ -416,7 +423,7 @@ export function normalizePantryState(stock = {}, inventory = {}, {canonicalize, 
     const entries=linked.length?linked:[[null,{name:rawName,loc:'cupboard',selected:true}]];
     for(const [id,row]of entries){
       const amount=linked.length>1?(Number(row.bb173StockValue??row.qty)||0)/quantity*normalized.quantity:normalized.quantity;
-      contributions.push({id,row,name,key:nextKey,unit:normalized.unit,quantity:amount,source:{stockKey,quantity:linked.length>1?Number(row.bb173StockValue??row.qty)||0:quantity,unit:rawUnit,assumption:normalized.assumption||''},estimated:normalized.estimated===true,staple,status});
+      contributions.push({id,row,name,key:nextKey,unit:normalized.unit,quantity:amount,source:{stockKey,quantity:linked.length>1?Number(row.bb173StockValue??row.qty)||0:quantity,unit:rawUnit,assumption:normalized.assumption||''},estimated:normalized.estimated===true,staple,status,wholePepper});
     }
   }
   const grouped=new Map();
@@ -430,7 +437,8 @@ export function normalizePantryState(stock = {}, inventory = {}, {canonicalize, 
     const reduced = mergeReducedMetadata(list, previous, first.loc);
     if (reduced) row.bbReduced = reduced; else if (reduced === null) delete row.bbReduced;
     if(history.length)row.pantrySourceHistory=history;
-    if(first.staple){row.staple=true;row.stapleStatus=list.some(item=>item.status==='low')?'low':list.some(item=>item.status==='in')?'in':'out';row.stapleCount=quantity;row.containerLabel=pantryPolicy.containerLabel(first.name);}
+    if(first.staple){row.staple=true;row.stapleStatus=list.some(item=>item.status==='in')?'in':list.some(item=>item.status==='low')?'low':list.some(item=>item.status==='unknown')?'unknown':'out';row.stapleCount=quantity;row.containerLabel=pantryPolicy.containerLabel(first.name);}
+    else if(first.wholePepper){if(pantryPolicy.canonicalName(row.name)==='pepper')row.name='Peppers';row.staple=false;delete row.stapleStatus;delete row.stapleCount;delete row.containerLabel;}
     else if(list.some(item=>item.estimated)){row.packEstimated=true;row.packAssumption=list.filter(item=>item.estimated).map(item=>item.source.assumption).filter(Boolean).join(' ');}
     records[id]=row;
     for(const item of list)if(item.id&&item.id!==id){records[item.id]={...records[item.id],selected:false,qty:null,policyMergedInto:id};delete records[item.id].bb173StockKey;delete records[item.id].bb173StockValue;}
@@ -450,7 +458,9 @@ export function normalizeFinishShopCredits(credits = {}, {canonicalize,market='U
     if(!(available>0))continue;
     const canonical=pantryPolicy.canonicalName(name,canonicalize),facts=Object.values(inventory).filter(record=>record?.packReviewed===true&&pantryPolicy.canonicalName(record.name,canonicalize)===canonical),signatures=new Set(facts.map(record=>JSON.stringify([record.packQuantity,record.packUnit])));
     if(signatures.size>1)continue;
-    const metadata=facts[0],converted=pantryPolicy.isStaple(canonical)?pantryPolicy.staplePurchase({name:canonical,quantity:available,unit}):pantryPolicy.normalize(canonical,available,unit,{market,canonicalize,reviewed:metadata?.packReviewed===true,packQuantity:metadata?.packQuantity,packUnit:metadata?.packUnit});
+    const related=Object.values(inventory).filter(record=>pantryPolicy.canonicalName(record?.name,canonicalize)===canonical&&(normalizeUnit(record.unit)===unit||Array.isArray(record.pantrySourceHistory)&&record.pantrySourceHistory.some(source=>source?.stockKey===name+'|'+unit)));
+    const wholePepper=canonical==='pepper'&&row.staple!==true&&(['g','kg'].includes(unit)||pantryPolicy.isWholePepper(row.name,'g',row)||related.some(record=>pantryPolicy.isWholePepper(record.name,record.unit,record))&&!related.some(record=>record.staple===true));
+    const metadata=facts[0],converted=pantryPolicy.isStaple(canonical)&&!wholePepper?pantryPolicy.staplePurchase({name:canonical,quantity:available,unit}):pantryPolicy.normalize(canonical,available,unit,{market,canonicalize,wholePepper,reviewed:metadata?.packReviewed===true,packQuantity:metadata?.packQuantity,packUnit:metadata?.packUnit});
     if(!converted)continue;
     const stockKey=canonical+'|'+converted.unit,quantity=converted.quantity,at=stockKey.lastIndexOf('|'),nextId=session+'|'+stockKey;if(nextId===id)continue;
     const target=out[nextId],sources=Array.isArray(target?.policyCreditSourceIds)?target.policyCreditSourceIds:[];

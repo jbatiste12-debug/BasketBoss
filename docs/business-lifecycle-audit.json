@@ -1,0 +1,76 @@
+{
+  "schemaVersion": 1,
+  "date": "2026-11-05",
+  "build": 17,
+  "baseCommit": "dd6c6be6d4d5e1672235e4fa658766b845df6534",
+  "scope": "Business logic, math and cross-tab state; no visual redesign",
+  "fullRegressionSuite": {
+    "command": "node --test --test-isolation=none tests/*.test.mjs",
+    "isolatedPostgres": true,
+    "tests": 2433,
+    "pass": 2430,
+    "fail": 0,
+    "cancelled": 0,
+    "skipped": 1,
+    "todo": 2
+  },
+  "browser": {
+    "viewport": {
+      "width": 375,
+      "height": 812
+    },
+    "groups": 14,
+    "failures": 0,
+    "checks": [
+      "real Plan/At home/Shop recalculates compatible mince units through add/remove/swap",
+      "kg and count stock aliases satisfy a single canonical shopping row",
+      "partial real shop transfers purchased food and household amounts once while unticked food stays needed",
+      "normal purchased estimates remain in My Week after Finish instead of disappearing",
+      "linked archived-trip receipt nets Finish stock and household credit, applies actual spending and replays safely",
+      "reduced paid spend survives Finish and a linked reduced receipt without overwriting baseline",
+      "Cook never borrows an ambiguous legacy Pepper container for whole pepper requirements",
+      "cooking consumes urgent fresh stock before freezer stock, floors zero and replays once",
+      "Day done consumes dinner, dessert and planned lunch exactly once",
+      "Clear week and calendar rollover retain pantry and baseline prices while completion identity changes",
+      "first confirmed account preserves guest pantry, baseline and manual shopping input",
+      "switching to another account isolates pantry, baseline and pending shopping; returning restores them",
+      "fresh signed-in device loads cloud pantry, prices and pending inputs without overwriting it with empty data",
+      "cloud Restore with newer local pantry keeps local stock and baseline for review"
+    ],
+    "http": "Mocked; no production writes, auth emails, purchases or paid AI calls",
+    "javascriptErrors": 0
+  },
+  "ingredients": {
+    "recipes": 100,
+    "ingredientLines": 730,
+    "existingAmountsRequiringReview": 12,
+    "modes": {
+      "UK": {
+        "duplicateRows": 0,
+        "nonCanonicalRows": 0,
+        "conversionFailures": 0
+      },
+      "US": {
+        "duplicateRows": 0,
+        "nonCanonicalRows": 0,
+        "conversionFailures": 0
+      }
+    }
+  },
+  "contracts": {
+    "typescript": "5.9.3",
+    "strict": true,
+    "checkJs": true,
+    "noEmit": true,
+    "passed": true
+  },
+  "native": {
+    "portableVerification": true,
+    "clientFiles": 934,
+    "freeRecipes": 100,
+    "privatePremiumBundle": false,
+    "signedArchiveOrUploadPerformed": false,
+    "macOSVerification": "See GitHub Actions for the release commit"
+  },
+  "schemaChanges": false
+}

@@ -23,7 +23,7 @@ function fixture(entry,{stock,inventory,ingredients}){
  const context=vm.createContext({localStorage:storage,BB307_STOCK_KEY:STOCK,bb307Market:'UK',console:{warn(){}}});vm.runInContext(read('basketboss-pricing-v19.js'),context);
  const pantryStart=html.indexOf('const BB307Pantry=(()=>{'),pantryEnd=html.indexOf('// BasketBoss 321 v7 original-design',pantryStart);assert.ok(pantryStart>0&&pantryEnd>pantryStart);vm.runInContext(html.slice(pantryStart,pantryEnd),context);
  const pantry=vm.runInContext('BB307Pantry',context);context.window=win;
- for(const name of ['bbHomePhysicalStock','bbHomeConversionContext'])vm.runInContext(actualFunction(html,name),context);
+ for(const name of ['bbHomePhysicalStock','bbHomeExcludedStockKeys','bbHomeConversionContext'])vm.runInContext(actualFunction(html,name),context);
  const hostCode=html.slice(html.indexOf('window.BBHomeHost=Object.freeze('),html.indexOf('window.BBPantryCameraHost='));assert.match(hostCode,/stock:\s*bbHomePhysicalStock/,'Cook must read raw physical balances, not the legacy normalized projection');
  const occurrence=(recipeId,day)=>'cycle-one|dinner|'+day+'|'+recipeId;
  const host={id:pantry.pantryId,keys:()=>({stock:STOCK,inventory:INVENTORY}),stock:context.bbHomePhysicalStock,conversionContext:context.bbHomeConversionContext,
