@@ -5,7 +5,7 @@ import os from 'node:os';
 import path from 'node:path';
 import { createHash, randomBytes } from 'node:crypto';
 import { auditCookMethodSummary, runCookMethodSummary } from '../scripts/audit-cook-method-private-summary.mjs';
-import { prepareCookReviewSnapshot, COOK_REVIEW_FILENAME } from '../scripts/seal-cook-review-snapshot.mjs';
+import { prepareCookReviewSnapshot, COOK_REVIEW_FILENAME, COOK_REVIEW_TRANSPORT_CHUNK_CHARS } from '../scripts/seal-cook-review-snapshot.mjs';
 import { recipientForToken, openPayload } from '../scripts/private-catalogue-envelope.mjs';
 import { validatePrivateRecipeExport, writePrivateRecipeExport, PRIVATE_RECIPE_SELECT } from '../scripts/load-private-recipe-audit.mjs';
 
@@ -150,4 +150,54 @@ test('exclusive output rejects symlinks or a file created after preparation and 
   } finally { fs.writeFileSync = originalWrite; }
   assert.deepEqual(fs.readdirSync(runnerTemp), []);
   assert(!fs.existsSync(path.join(root, 'forbidden-plaintext.json')));
+}));
+
+test('explicit ciphertext log transport reconstructs the exact sealed file and decrypts without exposing plaintext or credentials', async () => withFixture(async ({ env, root, recipientPath, outputPath, rows, key }) => {
+  const output = [];
+  assert.equal(await runCookMethodSummary({ env, root, publicRecipes: publicFixture(), reviewRecipientPath: recipientPath, sealedReviewOutput: outputPath, reviewTransportLog: true, perform: async () => response(rows), write: line => output.push(line) }), 0);
+  safe(output);
+  assert(!output.join('\n').includes(key));
+  const chunks = output.filter(line => line.startsWith('BB_COOK_REVIEW_CIPHER '));
+  assert(chunks.length > 1);
+  const parts = chunks.map(line => {
+    const match = line.match(/^BB_COOK_REVIEW_CIPHER ([1-9][0-9]*)\/([1-9][0-9]*) ([a-f0-9]{64}) ([A-Za-z0-9+/]+={0,2})$/);
+    assert(match);
+    return { index: Number(match[1]), count: Number(match[2]), hash: match[3], part: match[4] };
+  });
+  assert(parts.every((part, index) => part.index === index + 1 && part.count === parts.length && part.hash === parts[0].hash));
+  assert(parts.every(part => part.part.length <= COOK_REVIEW_TRANSPORT_CHUNK_CHARS));
+  assert(parts.slice(0, -1).every(part => part.part.length === 12288));
+  const reconstructed = Buffer.from(parts.map(part => part.part).join(''), 'base64');
+  assert.deepEqual(reconstructed, fs.readFileSync(outputPath));
+  assert.equal(createHash('sha256').update(reconstructed).digest('hex'), parts[0].hash);
+  let plaintext;
+  try {
+    plaintext = openPayload(JSON.parse(reconstructed.toString('utf8')), key);
+    const payload = JSON.parse(plaintext.toString('utf8'));
+    assert.deepEqual(payload.snapshot.rows, rows);
+    assert.equal(payload.context.commit, env.GITHUB_SHA);
+    assert.equal(payload.context.runId, env.GITHUB_RUN_ID);
+    assert.equal(validatePrivateRecipeExport(payload.snapshot).sha256, digest(rows));
+  } finally { plaintext?.fill(0); }
+  const summary = JSON.parse(output.at(-1));
+  assert.equal(summary.sealedReviewSnapshot.sealed, true);
+  assert.equal(summary.protectedRecipes, 400);
+}));
+
+test('ciphertext log flag requires the full explicit snapshot options and trusted context before any read', async () => withFixture(async ({ env, root, recipientPath, outputPath }) => {
+  for (const change of [
+    { reviewRecipientPath: undefined, sealedReviewOutput: undefined },
+    { reviewRecipientPath: undefined }, { sealedReviewOutput: undefined },
+    { env: { ...env, GITHUB_EVENT_NAME: 'workflow_dispatch' } },
+    { env: { ...env, GITHUB_RUN_ID: '' } },
+    { reviewTransportLog: 'true' }
+  ]) {
+    const output = [];
+    let called = false;
+    assert.equal(await runCookMethodSummary({ env, root, publicRecipes: publicFixture(), reviewRecipientPath: recipientPath, sealedReviewOutput: outputPath, reviewTransportLog: true, ...change, perform: async () => { called = true; throw Error(marker); }, write: line => output.push(line) }), 1);
+    assert.equal(called, false);
+    assert.equal(output.length, 1);
+    assert(!output[0].startsWith('BB_COOK_REVIEW_CIPHER '));
+    safe(output);
+  }
 }));
