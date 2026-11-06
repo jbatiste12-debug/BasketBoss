@@ -11,7 +11,7 @@
  const KEY='basketboss_how_it_works_v1',SETUP='bb_onboarding_fresh_once_20261028_v1';
  const steps=[
   ['Plan Your Meals','Start in Plan. Auto-fill your week, or choose recipes in Discover. Set the servings for everyone eating.','plan'],
-  ['Confirm What’s At Home','Open At home and check your cupboard, fridge and freezer. Staples such as oil and ketchup use In Stock, Low or Out. Other ingredients use measured quantities. Valid changes update Shop automatically: if meals need 6 eggs and you have 4, Shop lists 2.','pantry'],
+  ['Confirm What’s At Home','In At home, use Add item or Edit to open a separate panel. Enter At home and check Total needed, which starts from your meal plan. Increase it for extra stock. Confirm Add to Shop, or Done when nothing is missing. Shop gets only the difference; the list’s + / − controls still save immediately.','pantry'],
   ['Shop for the Gaps','Shop shows what’s missing and any extras you add. Confirm Weekly essentials once to update Shop, or use Add item to buy for an extra quantity. Tick actual purchases, then choose Finish shop to restock At home. You can also review and confirm a receipt.','shop'],
   ['Cook & Confirm','Open your meal in Cook. When it’s finished, tap Confirm cooked & update pantry. Or open a day in Plan and use Day done for all planned food that day. Used ingredients leave At home; linked batch leftovers are not counted twice.','cook']
  ];

@@ -92,8 +92,9 @@
    if(destroyed)return;const kitchen=doc.getElementById('bb173ShopFridge'),intro=kitchen?.querySelector('.bb76-kitchen-intro');
    if(!kitchen?.isConnected||!intro){card?.remove();card=null;return;}
    if(!card?.isConnected){card=make('section','bb-kitchen-review-card');card.id='bbKitchenWeeklyReview';const text=make('div'),heading=make('strong','','Weekly kitchen check'),copy=make('p','','Update what’s left, then choose what to restock.');text.append(heading,copy);const open=button('Review & restock →',openDialog,'bb-kitchen-review-open');open.id='bbKitchenReviewOpen';card.append(text,open);intro.after(card);}
+   if(dialog&&!state?.busy&&!state?.child)paintRows();
   }
-  function close(){if(!dialog)return;const previous=state;previous?.cleanup?.();if(dialog.contains(doc.activeElement))doc.activeElement.blur?.();dialog.remove();dialog=null;state=null;doc.body.style.overflow=previous?.overflow||'';win.BBKeyboardLayout?.releaseAfterDismissal?.();card?.querySelector('button')?.focus?.({preventScroll:true});}
+  function close(){if(!dialog)return;const previous=state;previous?.cleanup?.();if(dialog.contains(doc.activeElement))doc.activeElement.blur?.();dialog.remove();dialog=null;state=null;doc.body.style.overflow=previous?.overflow||'';doc.documentElement.classList.remove('bb-kitchen-check-open');doc.documentElement.style.removeProperty('--bb-kitchen-review-scroll-top');win.scrollTo?.({top:previous?.scrollY||0,left:previous?.scrollX||0,behavior:'instant'});win.BBKeyboardLayout?.releaseAfterDismissal?.();card?.querySelector('button')?.focus?.({preventScroll:true});}
   function format(row,quantity=amount(row.qty),unit=row.unit){
    if(quantity===null)return 'Amount unknown';if(!finite(quantity))return 'Amount needs review';
    if(arguments.length===1&&row.kind==='food'&&!row.staple&&win.BBPantryInline?.summaryAmount)try{return win.BBPantryInline.summaryAmount(row,win.bb307ActiveMarket?.()||'UK',win.BBPantryPolicy,win.BBPantryDisplay);}catch{}
@@ -101,39 +102,53 @@
    try{if(['g','ml'].includes(unit)&&win.BBPantryDisplay?.format)return win.BBPantryDisplay.format(row.name,quantity,unit,win.bb307ActiveMarket?.()||'UK');}catch{}
    return new Intl.NumberFormat('en-GB',{maximumFractionDigits:2}).format(quantity)+' '+(unit||'each');
   }
-  function freeze(value){if(!dialog)return;state.busy=value;dialog.setAttribute('aria-busy',String(value));for(const n of dialog.querySelectorAll('button,input,select'))n.disabled=value;}
+  function freeze(value){if(!dialog)return;state.busy=value;dialog.setAttribute('aria-busy',String(value));if(value){state.lockedControls=[...dialog.querySelectorAll('button,input,select')].map(node=>({node,disabled:node.disabled}));state.lockedControls.forEach(({node})=>node.disabled=true);}else{for(const {node,disabled}of state.lockedControls||[])if(node.isConnected)node.disabled=disabled;state.lockedControls=null;}}
   function message(value,error=false){if(!dialog)return;state.status.textContent=value;state.status.setAttribute('role',error?'alert':'status');}
   function field(label,input){const tag=make('label','',label);tag.append(input);return tag;}
   function paintRows(){
-   if(!dialog||state.busy)return;
+   if(!dialog||state.busy||state.child)return;
    let snapshot;try{snapshot=controller.snapshot();}catch{message('Your saved stock could not be read. Close and reopen this check.',true);return;}
    if(snapshot.context.actor!==state.actor){close();return;}
+   if(!snapshot.foodReady&&state.list.querySelector('[data-review-item^="food:"]'))return;
    let prices=()=>null;try{prices=win.BBKitchenPrices?.read?.()||prices;}catch{}
    const query=state.search.value.trim().toLowerCase(),rows=snapshot.rows.filter(row=>(state.section==='all'||state.section===row.kind)&&(!query||row.name.toLowerCase().includes(query)));
-   state.list.replaceChildren();state.count.textContent=rows.length+' item'+(rows.length===1?'':'s');
+   const top=state.body.scrollTop;state.list.replaceChildren();state.count.textContent=rows.length+' item'+(rows.length===1?'':'s');
    for(const row of rows){
-    const item=make('details','bb-kitchen-review-item');item.dataset.reviewItem=row.kind+':'+row.key;item.open=state.expanded.has(item.dataset.reviewItem);
-    item.addEventListener('toggle',()=>{if(item.open)state?.expanded.add(item.dataset.reviewItem);else state?.expanded.delete(item.dataset.reviewItem);});
-    const summary=make('summary'),name=make('strong','',row.name),balance=make('span','bb-kitchen-review-balance',format(row)),kind=make('small','',row.kind==='food'?(row.loc||'Food'):'Weekly essentials');summary.append(name,balance,kind);item.append(summary);
+    const item=make('section','bb-kitchen-review-item');item.dataset.reviewItem=row.kind+':'+row.key;
+    const open=button('',()=>editItem(row),'bb-kitchen-review-item-open');open.setAttribute('aria-label','Edit '+row.name+' in weekly kitchen check');open.disabled=row.readOnly===true;
+    open.append(make('strong','',row.name),make('span','bb-kitchen-review-balance',format(row)),make('small','',row.kind==='food'?(row.loc||'Food'):'Weekly essentials'));item.append(open);
     const paid=win.BBKitchenPrices?.label?.(prices(row.name));if(paid)item.append(make('p','bb-kitchen-last-price',paid));
-    let inputUnit=row.unit,inputAmount=row.qty;
-    if(row.kind==='food'&&!row.staple&&win.BBPantryInline?.displayUnit&&win.BBPantryInline?.converted)try{const unit=win.BBPantryInline.displayUnit(row,win.bb307ActiveMarket?.()||'UK',win.BBPantryPolicy),converted=win.BBPantryInline.converted(row,unit,win.BBPantryPolicy,win.bb307ActiveMarket?.()||'UK');if(converted!==null){inputUnit=unit;inputAmount=converted;}}catch{}
-    const form=make('form','bb-kitchen-review-amount'),quantity=make('input');quantity.type='number';quantity.inputMode='decimal';quantity.min='0';quantity.max=row.staple?'10000':'1000000';quantity.step=row.staple?'1':'any';quantity.value=inputAmount??'';quantity.placeholder='Amount left';quantity.setAttribute('aria-label','Amount left of '+row.name);const quantityLabel=field(row.staple?'Containers left (optional)':'Current amount left · '+(inputUnit||'each'),quantity);form.append(quantityLabel);
-    let status;if(row.staple){status=make('select');status.setAttribute('aria-label','Stock status for '+row.name);for(const [value,label]of[['in','In stock'],['low','Low'],['out','Out']]){const option=make('option','',label);option.value=value;option.selected=row.stapleStatus===value;status.append(option);}form.append(field('Stock status',status));}
-    const update=make('button','bb-kitchen-review-primary','Update amount');update.type='submit';const used=button('Used up',()=>save('0',row.staple?'out':undefined),'bb-kitchen-review-used');form.append(update,used);
-    async function save(raw=quantity.value,value=status?.value){if(state?.busy)return;freeze(true);message('Updating '+row.name+'…');const result=await controller.remaining(row,raw,value,inputUnit);if(!dialog)return;freeze(false);message(result.message,!result.ok);if(result.ok){const top=state.body.scrollTop;paintRows();state.body.scrollTop=top;}}
-    form.onsubmit=event=>{event.preventDefault();void save();};if(row.readOnly){const note=make('p','bb-kitchen-review-shop-note','This saved unit needs review in At home. Its original amount is kept.');item.append(note);}else item.append(form);
-    const shopping=controller.shopping(row),buy=make('div','bb-kitchen-review-buy');
-    if(shopping.onList){const current=make('p','bb-kitchen-review-shop-note','Already on Shop'+(shopping.automatic.length?' · '+shopping.automatic.map(x=>format({...row,staple:false},x.quantity,x.unit)).join(' + '):''));buy.append(current,button('View Shop',goShop,'bb-kitchen-review-view'));}
-    const restock=make('details','bb-kitchen-review-restock'),toggle=make('summary','',shopping.onList?'Set an extra top-up':'Restock this item');restock.append(toggle);
-    const buyForm=make('form'),buyQuantity=make('input');buyQuantity.type='text';buyQuantity.maxLength=60;buyQuantity.autocomplete='off';const prior=shopping.manual[0],knownPack=row.packReviewed&&Number(row.packQuantity)>0&&['g','ml','each'].includes(row.packUnit),defaultBuy=row.readOnly?'':row.staple?'1 each':knownPack?'1 pack ('+row.packQuantity+' '+row.packUnit+')':!['g','kg','ml','l','oz','lb','fl oz','cup'].includes(inputUnit)?'1 '+(inputUnit||'each'):'';buyQuantity.value=prior?(prior.sourceQuantity??prior.quantity)+' '+(prior.sourceUnit||prior.unit):defaultBuy;buyQuantity.placeholder='e.g. 2 each, 500 g or 1 pack (500 g)';buyQuantity.setAttribute('aria-label','Quantity to buy of '+row.name);buyForm.append(field(shopping.onList?'Extra to buy beyond meal needs':'Quantity to buy',buyQuantity));
-    const add=make('button','bb-kitchen-review-primary',shopping.onList?'Save extra amount':'Add to Shop');add.type='submit';buyForm.append(add);restock.append(buyForm);buy.append(restock);item.append(buy);
-    buyForm.onsubmit=async event=>{event.preventDefault();if(state?.busy)return;freeze(true);message('Updating Shop…');const result=await controller.restock(row,buyQuantity.value,{extra:shopping.onList});if(!dialog)return;freeze(false);message(result.message,!result.ok);if(result.ok){const top=state.body.scrollTop;paintRows();state.body.scrollTop=top;}};
+    if(!row.readOnly){
+     let unit=row.unit,qty=amount(row.qty);
+     if(row.kind==='food'&&!row.staple&&win.BBPantryInline?.displayUnit)try{unit=win.BBPantryInline.displayUnit(row,win.bb307ActiveMarket?.()||'UK',win.BBPantryPolicy);qty=win.BBPantryInline.converted(row,unit,win.BBPantryPolicy,win.bb307ActiveMarket?.()||'UK');}catch{}
+     const controls=make('div','bb-kitchen-review-quick'),less=button('−',()=>step(-1),'bb-kitchen-review-step'),more=button('+',()=>step(1),'bb-kitchen-review-step'),out=button('Out',()=>save(0,row.staple?'out':undefined),'bb-kitchen-review-used');less.disabled=qty===null||qty===0;less.setAttribute('aria-label','Less '+row.name+' remaining');more.setAttribute('aria-label','More '+row.name+' remaining');out.setAttribute('aria-label',row.name+' is used up');controls.append(less,more,out);item.append(controls);
+     function step(direction){const next=win.BBPantryInline?.stepped?.(qty,unit,direction);if(next!==null&&next!==undefined)void save(next,row.staple?(next===0?'out':row.stapleStatus==='low'?'low':'in'):undefined);}
+     async function save(quantity,status){
+      if(state?.busy||state?.child)return;const review=state;freeze(true);message('Updating '+row.name+'…');const result=await controller.remaining(row,String(quantity),status,unit);
+      if(!dialog||state!==review)return;freeze(false);message(result.message,!result.ok);if(result.ok)paintRows();
+     }
+    }
     state.list.append(item);
    }
-   if(!rows.length){const empty=make('p','bb-kitchen-review-empty',snapshot.foodReady?'No matching stock yet. Add foods or essentials in At home, then review them here.':'Your food amounts are still loading. Refresh this check in a moment.');state.list.append(empty);}
+   if(!rows.length)state.list.append(make('p','bb-kitchen-review-empty',snapshot.foodReady?'No matching stock yet. Add foods or essentials in At home, then review them here.':'Your food amounts are still loading. Refresh this check in a moment.'));
+   state.body.scrollTop=top;
   }
-  function goShop(){if(state?.busy)return;close();doc.querySelector('.shell nav.tabs [data-tab="shop-list"]')?.click();win.BBTabViewport?.reset?.({view:'shop-list'});}
+  function editItem(row){
+   if(!dialog||state.busy||state.child||row.readOnly)return;
+   const parent=dialog,review=state,top=review.body.scrollTop;
+   const options={returnTo:parent,doneLabel:'Save & back to check',onClose:result=>{
+    if(dialog!==parent||state!==review||actor()!==review.actor)return;
+    review.child=false;paintRows();review.body.scrollTop=top;
+    const fresh=[...review.list.querySelectorAll('[data-review-item]')].find(node=>node.dataset.reviewItem===row.kind+':'+row.key);
+    (fresh?.querySelector('button')||parent.querySelector('.bb-kitchen-review-close'))?.focus({preventScroll:true});
+    if(result?.saved)message(row.name+' saved. Shop is up to date.');
+   }};
+   review.child=true;let opened=false;
+   if(row.kind==='food')opened=win.BBPantryInline?.open?.(row.key,options)===true;
+   else opened=win.BBEssentialsConfirm?.open?.({id:row.key,...options})===true;
+   if(!opened){review.child=false;message('The item editor is still loading. Close and reopen this check.',true);}
+  }
+  function goShop(){if(state?.busy)return;close();doc.querySelector('.shell nav.tabs [data-tab="shop-list"]')?.click();}
   function openDialog(){
    if(dialog||destroyed)return;let snapshot;try{snapshot=controller.snapshot();}catch{return;}
    if(doc.querySelector('dialog[open]'))return;
@@ -144,7 +159,7 @@
    const body=make('div','bb-kitchen-review-body'),intro=make('p','bb-kitchen-review-intro','Meals marked cooked are already deducted. Enter what’s left after snacks, cleaning and other use.');
    const toolbar=make('div','bb-kitchen-review-toolbar'),search=make('input');search.type='search';search.placeholder='Find an item';search.setAttribute('aria-label','Find stock to review');const section=make('select');section.setAttribute('aria-label','Stock section');for(const [value,label]of[['all','All stock'],['food','Food'],['household','Weekly essentials']]){const option=make('option','',label);option.value=value;section.append(option);}const refresh=button('Refresh amounts',()=>{controller.beginReview();paintRows();},'bb-kitchen-review-refresh');toolbar.append(search,section,refresh);
    const count=make('p','bb-kitchen-review-count'),list=make('div','bb-kitchen-review-list'),status=make('p','bb-kitchen-review-status');status.setAttribute('role','status');status.setAttribute('aria-live','polite');body.append(intro,toolbar,count,list);const footer=make('footer');footer.append(status,button('Continue to Shop →',goShop,'bb-kitchen-review-primary'));
-   dialog.append(header,body,footer);state={actor:snapshot.context.actor,session:snapshot.context.session,body,search,section:'all',list,count,status,expanded:new Set(),busy:false,overflow:previousOverflow};doc.body.append(dialog);doc.body.style.overflow='hidden';
+   dialog.append(header,body,footer);state={actor:snapshot.context.actor,session:snapshot.context.session,body,search,section:'all',list,count,status,expanded:new Set(),busy:false,overflow:previousOverflow,scrollY:win.scrollY||0,scrollX:win.scrollX||0,child:false};dialog.id='bbKitchenReviewDialog';doc.body.append(dialog);doc.documentElement.style.setProperty('--bb-kitchen-review-scroll-top',-state.scrollY+'px');doc.documentElement.classList.add('bb-kitchen-check-open');doc.body.style.overflow='hidden';
    search.oninput=paintRows;section.onchange=()=>{state.section=section.value;paintRows();};dialog.addEventListener('cancel',event=>{event.preventDefault();if(!state?.busy)close();});dialog.addEventListener('close',close);
    const viewport=win.visualViewport;
    const fit=()=>{
@@ -160,7 +175,7 @@
    };
    viewport?.addEventListener?.('resize',fit);viewport?.addEventListener?.('scroll',fit);win.addEventListener?.('resize',fit);
    dialog.addEventListener('focusin',fit);state.cleanup=()=>{viewport?.removeEventListener?.('resize',fit);viewport?.removeEventListener?.('scroll',fit);win.removeEventListener?.('resize',fit);};
-   try{dialog.showModal();}catch{dialog.setAttribute('open','');}paintRows();search.focus?.();fit();
+   try{dialog.showModal();}catch{dialog.setAttribute('open','');}paintRows();dismiss.focus?.({preventScroll:true});fit();
   }
   const changed=()=>{if(dialog&&(actor()!==state.actor||win.BBAccountDeletion?.isDeleting?.()))close();schedule();};
   for(const event of['bb:pantry-editor','basketboss:market-changed'])win.addEventListener?.(event,schedule);

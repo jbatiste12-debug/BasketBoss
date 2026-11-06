@@ -255,7 +255,7 @@
   if(!kitchen||!pantry)return;
   text(kitchen.querySelector('.bb76-eyebrow'),'AT HOME');
   text(kitchen.querySelector('.bb76-title h2'),'What have you already got?');
-  text(kitchen.querySelector('.bb76-title>div>p:last-child'),'Choose food you have. Set staple status or measured quantities. Valid changes update Shopping automatically.');
+  text(kitchen.querySelector('.bb76-title>div>p:last-child'),kitchen.classList.contains('bbpi-enhanced')?'Enter what you have and what you need, then confirm.':'Choose food you have. Set staple status or measured quantities. Valid changes update Shopping automatically.');
   const pantryTitle=kitchen.querySelector('#bb76PantryHeading');
   if(pantryTitle?.firstChild?.nodeType===3&&pantryTitle.firstChild.textContent!=='Review amounts ')pantryTitle.firstChild.textContent='Review amounts ';
   let essentials=app.querySelector('#bbKitchenEssentials');

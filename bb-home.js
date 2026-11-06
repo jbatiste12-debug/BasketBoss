@@ -138,14 +138,65 @@
    if(typeof id!=='string'||!context.features?.essentials.some(row=>row.id===id)||typeof host()?.prepareHouseholdRemoval!=='function')throw Error('This essential changed. Reopen Weekly essentials.');
    host().reload();return commitHouseholdConfirmation(host().prepareHouseholdRemoval(id),pin,context,{remove:true});
   }
+  function foodTarget(row,{requirements,otherRows=[]}={}){
+   const problem=message=>({totalNeeded:null,mealNeeded:null,minimumNeeded:null,manualNeeded:null,targetProblem:message});
+   if(!row?.name||!row.unit)return problem('Choose an item and unit first.');
+   const market=row.inputMarket||win.bb307ActiveMarket?.()||'UK',policy=win.BBPantryPolicy;
+   const options=value=>({market:value?.inputMarket||market,canonicalize:win.BBPriceV19?.canonical,packReviewed:value?.packReviewed===true,packQuantity:value?.packQuantity,packUnit:value?.packUnit,wholePepper:policy?.isWholePepper?.(value?.name||value?.key,value?.unit,value)});
+   const measure=(value,quantity)=>{
+    if(value.staple===true)return value.unit==='each'&&valid(quantity)&&Number.isInteger(quantity)&&quantity<=10000?{quantity,unit:'each'}:null;
+    if(policy)return policy.normalize(value.name||value.key,quantity,value.unit,options(value));
+    const unit=value.unit==='kg'?'g':value.unit==='l'?'ml':value.unit,factor=['kg','l'].includes(value.unit)?1000:1;
+    return ['g','ml','each'].includes(unit)&&valid(quantity*factor)?{quantity:Math.round(quantity*factor*1000000)/1000000,unit}:null;
+   };
+   const one=measure(row,1);if(!one||!(one.quantity>0))return problem('Set compatible container contents before adding this item to Shop. Your saved stock has been kept.');
+   const nameId=host().id(row.name,''),matching=name=>host().id(name,'')===nameId;
+   const raw=row.qty===null||row.qty===undefined||row.qty===''?null:Number(row.qty),owned=raw===null?{quantity:0,unit:one.unit}:measure(row,raw);
+   if(!owned||owned.unit!==one.unit||!valid(owned.quantity))return problem('Review the amount at home before adding this item to Shop.');
+   let planned=0,prior=0,manual=0,otherOwned=0,otherOwnedNeedsReview=false,defaultRestock=0,hasPrior=false;
+   for(const item of otherRows){
+    if(!matching(item?.name||item?.key)||item.qty===null||item.qty===undefined||item.qty==='')continue;
+    const value=measure(item,Number(item.qty));
+    if(!value||value.unit!==one.unit){if(Number(item.qty)>0)otherOwnedNeedsReview=true;continue;}otherOwned+=value.quantity;
+   }
+   for(const item of requirements||host()?.requirements?.()||[]){
+    if(!matching(item.key||item.name)||!(Number(item.required)>0))continue;
+    if(row.staple===true){if(item.cupboardRequired===false){defaultRestock=1;continue;}planned=1;continue;}
+    const value=measure(item,Number(item.required));if(!value||value.unit!==one.unit)return problem('Review the planned ingredient units before adding this item to Shop.');planned+=value.quantity;
+   }
+   for(const target of Object.values(targets())){
+    if(!target?.pending||!matching(target.name)||!valid(target.targetQty))continue;
+    const value=measure({...target,staple:row.staple===true},target.targetQty);if(!value||value.unit!==one.unit)return problem('Review the saved shopping target unit before changing it.');hasPrior=true;prior=Math.max(prior,value.quantity);
+   }
+   for(const buy of shoppingBuys()){
+    if(buy.kind==='household'||buy.source==='cupboard'||buy.purpose==='bought'||!matching(buy.name))continue;
+    const value=measure({...buy,staple:row.staple===true},buy.quantity);if(!value||value.unit!==one.unit)return problem('Review this item’s existing Shop unit before changing its total.');manual+=value.quantity;
+   }
+   const totalOwned=owned.quantity+otherOwned,minimum=(manual>0?Math.max(planned,totalOwned):planned)+manual,total=Math.max(planned,prior,hasPrior?0:defaultRestock,manual>0?totalOwned:0)+manual;
+   if(![planned,prior,manual,minimum,total,totalOwned].every(valid))return problem('Review the combined amount needed before adding this item to Shop.');
+   const view=value=>Math.round(value/one.quantity*1000000)/1000000;
+   return {totalNeeded:view(total),totalQuantity:total,mealNeeded:view(planned),minimumNeeded:view(minimum),manualNeeded:view(manual),otherOwned:view(otherOwned),otherOwnedNeedsReview,shortfall:view(Math.max(0,total-totalOwned)),targetProblem:'',canonicalUnit:one.unit,quantityPerUnit:one.quantity,quantityTolerance:Math.max(0.000001,one.quantity*0.0000005+0.0000005),mealQuantity:planned,manualQuantity:manual,minimumQuantity:minimum};
+  }
   function requirement(name,unit){try{const base=unit==='kg'?'g':unit==='l'?'ml':unit;return (host()?.requirements()?.find(row=>host().id(row.key,row.unit)===host().id(name,base))?.required||0)/(unit==='kg'||unit==='l'?1000:1);}catch{return 0;}}
   function total(name,unit){const base=unit==='kg'?'g':unit==='l'?'ml':unit,row=targets()[host().id(name,base)];return Math.max(requirement(name,unit),row?.pending?row.targetQty/(unit==='kg'||unit==='l'?1000:1):0);}
   function prepare(chosen){
    checkDraftActor();const {all,data,who}=own();const expected=store.getItem(KEY);
-   for(const row of chosen){if(row.totalNeeded===undefined||row.totalNeeded===''||row.totalNeeded===null)continue;
-    const unit=row.unit==='kg'?'g':row.unit==='l'?'ml':row.unit;
+   for(const [index,row]of chosen.entries()){if(row.totalNeeded===undefined||row.totalNeeded===''||row.totalNeeded===null)continue;
+    let unit=row.unit==='kg'?'g':row.unit==='l'?'ml':row.unit;
     if(row.qty===null||row.qty===undefined||row.qty==='')throw Error('Enter how much '+row.name+' you already have; use 0 for none.');
-    const targetQty=Number(row.totalNeeded)*(row.unit==='kg'||row.unit==='l'?1000:1);
+    let targetQty=Number(row.totalNeeded)*(row.unit==='kg'||row.unit==='l'?1000:1);
+    if(row.pantryTarget===true){
+     const info=foodTarget(row,{otherRows:chosen.filter((_,at)=>at!==index)});if(info.targetProblem)throw Error(info.targetProblem);
+     targetQty=Math.round(Number(row.totalNeeded)*info.quantityPerUnit*1000000)/1000000;unit=info.canonicalUnit;
+     if(Number(row.totalNeeded)===info.totalNeeded)targetQty=info.totalQuantity;
+     if(row.staple===true&&(!Number.isInteger(targetQty)||targetQty>10000))throw Error('Use whole container counts for this staple.');
+     if(!valid(targetQty)||targetQty+info.quantityTolerance<info.minimumQuantity)throw Error(info.manualQuantity>0?'This item already has an extra amount on Shop. Keep its current total or amend that Shop item first.':'Total needed cannot be less than your planned meals need.');
+     targetQty=Math.abs(targetQty-info.minimumQuantity)<=info.quantityTolerance?info.minimumQuantity:Math.max(targetQty,info.minimumQuantity);
+     // Direct Shop top-ups already contribute after pantry deduction. Keep
+     // them intact and add only the remainder of this absolute stock target.
+     targetQty=Math.round(Math.max(0,targetQty-info.manualQuantity)*1000000)/1000000;
+     for(const buy of Object.values(data.manualBuys||{}))if(buy?.pending!==false&&buy.kind!=='household'&&buy.source!=='cupboard'&&buy.purpose!=='bought'&&host().id(buy.name,'')===host().id(row.name,''))buy.boughtAtRequest=0;
+    }
     if(!valid(targetQty)||!['g','ml','tsp','tbsp','each','pack','clove','tin','loaf','slice','bulb'].includes(unit)||unit==='pack'&&!Number.isInteger(targetQty))throw Error('Check the total needed for '+row.name+'.');
     const id=host().id(row.name,unit),before=data.targets[id];
     const legacy=host().household().find(item=>item.selected&&!item.owned&&!Object.hasOwn(item,'targetQty')&&host().id(item.name,'g')===host().id(row.name,'g'));if(legacy)throw Error('Check the saved '+row.name+' food top-up first so it is not counted twice.');
@@ -447,7 +498,7 @@
   }
   function reminders(){const list=win.document.getElementById('bb321Printable');if(!list)return;list.querySelector('.bb-home-covered')?.remove();const data=Object.values(targets()).filter(row=>row.pending&&row.targetQty>0);const needed=host().requirements();const covered=data.filter(row=>{const item=needed.find(x=>host().id(x.key,x.unit)===host().id(row.name,row.unit));const current=host().stock()[host().id(row.name,row.unit)]||0;return Math.max(row.targetQty,item?.required||0)<=current;});const households=host().household().filter(row=>Object.hasOwn(row,'targetQty')&&row.manualPending!==false&&row.targetQty>0&&row.ownedQty>=row.targetQty).map(row=>({...row,homeId:'ess:'+row.id}));if(!covered.length&&!households.length)return;const box=win.document.createElement('div');box.className='bb-home-covered';for(const row of [...covered,...households]){const label=win.document.createElement('label'),tick=win.document.createElement('input');tick.type='checkbox';tick.addEventListener('change',()=>{if(tick.checked){complete(row.homeId||host().id(row.name,row.unit));host().refresh();}});label.append(tick,win.document.createTextNode(row.name+' · covered at home'));box.append(label);}list.append(box);}
   function openRequested(){const id=new URLSearchParams(win.location.search).get('bbcook');if(id)host()?.openCook?.(id);}
-  const api={prepareSharedPurchase,needsLegacyReview,receiptGeneration,supersedesReceipt,addHousehold,setHouseholdAmount,setHouseholdBalance,confirmHousehold,confirmHouseholdEntry,removeHousehold,openRequested,reminders,decorate,hasHouseholdDraft:()=>{checkDraftActor();return householdDraft.size>0;},committed:()=>{householdDraft.clear();host()?.reload();},difference,augment,targets,requirement,total,prepare,completionChanges,complete,isCooked,previewCook,cooked,previewDay,finishDay,shoppingBuys,addShoppingBuy,manualBuyItems,manualBuyEssentials,applyManualPurchases,actor,blocked,atomic};
+  const api={prepareSharedPurchase,needsLegacyReview,receiptGeneration,supersedesReceipt,addHousehold,setHouseholdAmount,setHouseholdBalance,confirmHousehold,confirmHouseholdEntry,removeHousehold,openRequested,reminders,decorate,hasHouseholdDraft:()=>{checkDraftActor();return householdDraft.size>0;},committed:()=>{householdDraft.clear();host()?.reload();},difference,augment,targets,foodTarget,requirement,total,prepare,completionChanges,complete,isCooked,previewCook,cooked,previewDay,finishDay,shoppingBuys,addShoppingBuy,manualBuyItems,manualBuyEssentials,applyManualPurchases,actor,blocked,atomic};
   setTimeout(()=>{win.BBKitchenEssentials?.refresh?.();openRequested();},0);
   return Object.freeze(api);
  }
