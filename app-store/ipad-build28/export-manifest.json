@@ -1,0 +1,425 @@
+{
+  "createdAt": "2026-11-06T17:28:48.313Z",
+  "release": "BasketBoss1.0(28)",
+  "releaseTag": "appstore-build28-submission",
+  "sourceCommit": "627b5d9cdaebe4fa4cbee0389e750b3376a839a9",
+  "size": "2064x2752",
+  "display": "iPad13-inch",
+  "sampleData": true,
+  "actualNativeUI": true,
+  "physicalDeviceCapture": false,
+  "liveWrites": 0,
+  "paidCalls": 0,
+  "screens": [
+    {
+      "file": "exports/01-your-week-sorted.png",
+      "raw": "raw/01-plan.png",
+      "rawSha256": "69787f6c3451fef1c4cd51ef3b727225c009550e5e23cfc7daf1e333ab0f137a",
+      "captureReport": "source/capture-core-report.json",
+      "headline": "Your week. Sorted.",
+      "premium": false,
+      "width": 2064,
+      "height": 2752,
+      "pngColorType": 2,
+      "bytes": 805887,
+      "sha256": "cdc53fd3f47a39a4e3f8dd6d69efdea98f2fb40bfda9a50b02322028abd386fc",
+      "layout": {
+        "width": 1032,
+        "height": 1376,
+        "bodyWidth": 1032,
+        "bodyHeight": 1376,
+        "headline": [
+          {
+            "scroll": 860,
+            "client": 860
+          },
+          {
+            "scroll": 860,
+            "client": 860
+          }
+        ],
+        "frame": {
+          "x": 104,
+          "y": 258,
+          "bottom": 1351.328125,
+          "right": 928
+        },
+        "image": {
+          "width": 2064,
+          "height": 2752,
+          "bottom": 1343.328125,
+          "right": 920
+        }
+      }
+    },
+    {
+      "file": "exports/02-find-your-next-favourite.png",
+      "raw": "raw/02-discover.png",
+      "rawSha256": "f7db682684b4d25baca37aece8bb629956e2d6a63d5e1228d39d0a62e9323e6b",
+      "captureReport": "source/capture-core-report.json",
+      "headline": "Find your next favourite.",
+      "premium": false,
+      "width": 2064,
+      "height": 2752,
+      "pngColorType": 2,
+      "bytes": 1612738,
+      "sha256": "54cbd15f32daa9a6702a87a7d857c7a54b43677e35a1ab4ad2a87973e92b531c",
+      "layout": {
+        "width": 1032,
+        "height": 1376,
+        "bodyWidth": 1032,
+        "bodyHeight": 1376,
+        "headline": [
+          {
+            "scroll": 860,
+            "client": 860
+          },
+          {
+            "scroll": 860,
+            "client": 860
+          }
+        ],
+        "frame": {
+          "x": 110,
+          "y": 276,
+          "bottom": 1353.328125,
+          "right": 922
+        },
+        "image": {
+          "width": 2064,
+          "height": 2752,
+          "bottom": 1345.328125,
+          "right": 914
+        }
+      }
+    },
+    {
+      "file": "exports/03-meals-that-fit-your-family.png",
+      "raw": "raw/03-meal-preferences.png",
+      "rawSha256": "9cc70d1564a630b2adfaa6aef1b644144e0fa11c983cc0044cf312f72085719f",
+      "captureReport": "source/capture-core-report.json",
+      "headline": "Meals that fit your family.",
+      "premium": false,
+      "width": 2064,
+      "height": 2752,
+      "pngColorType": 2,
+      "bytes": 683132,
+      "sha256": "cdb1344025eaf9d55a4d1bbc7f21409949812a45bf86613d97b5e817bace426b",
+      "layout": {
+        "width": 1032,
+        "height": 1376,
+        "bodyWidth": 1032,
+        "bodyHeight": 1376,
+        "headline": [
+          {
+            "scroll": 860,
+            "client": 860
+          },
+          {
+            "scroll": 860,
+            "client": 860
+          }
+        ],
+        "frame": {
+          "x": 104,
+          "y": 258,
+          "bottom": 1351.328125,
+          "right": 928
+        },
+        "image": {
+          "width": 2064,
+          "height": 2752,
+          "bottom": 1343.328125,
+          "right": 920
+        }
+      }
+    },
+    {
+      "file": "exports/04-use-what-you-have.png",
+      "raw": "raw/04-pantry.png",
+      "rawSha256": "9c27cb47d198341beb2f36c614f7df190648dcfb6e1ee1120a08c000de19e9de",
+      "captureReport": "source/capture-core-report.json",
+      "headline": "Use what you already have.",
+      "premium": false,
+      "width": 2064,
+      "height": 2752,
+      "pngColorType": 2,
+      "bytes": 403892,
+      "sha256": "47e897cf0221ec85986eea867adc3b3dcb9ed964891174788b7828d1813bfd65",
+      "layout": {
+        "width": 1032,
+        "height": 1376,
+        "bodyWidth": 1032,
+        "bodyHeight": 1376,
+        "headline": [
+          {
+            "scroll": 860,
+            "client": 860
+          },
+          {
+            "scroll": 860,
+            "client": 860
+          }
+        ],
+        "frame": {
+          "x": 104,
+          "y": 258,
+          "bottom": 1351.328125,
+          "right": 928
+        },
+        "image": {
+          "width": 2064,
+          "height": 2752,
+          "bottom": 1343.328125,
+          "right": 920
+        }
+      }
+    },
+    {
+      "file": "exports/05-know-what-to-restock.png",
+      "raw": "raw/05-kitchen-check.png",
+      "rawSha256": "cb07eaefe9c7dd3a2b29dac3a3d974cea6698461da98d05ef53a8cb64e5f982e",
+      "captureReport": "source/capture-core-report.json",
+      "headline": "Know what to restock.",
+      "premium": false,
+      "width": 2064,
+      "height": 2752,
+      "pngColorType": 2,
+      "bytes": 354067,
+      "sha256": "29f8e3003601314feffe1507746837770a022cf059e062e19762c4c57809eabb",
+      "layout": {
+        "width": 1032,
+        "height": 1376,
+        "bodyWidth": 1032,
+        "bodyHeight": 1376,
+        "headline": [
+          {
+            "scroll": 860,
+            "client": 860
+          },
+          {
+            "scroll": 860,
+            "client": 860
+          }
+        ],
+        "frame": {
+          "x": 104,
+          "y": 258,
+          "bottom": 1351.328125,
+          "right": 928
+        },
+        "image": {
+          "width": 2064,
+          "height": 2752,
+          "bottom": 1343.328125,
+          "right": 920
+        }
+      }
+    },
+    {
+      "file": "exports/06-buy-whats-missing.png",
+      "raw": "raw/06-shop.png",
+      "rawSha256": "712689242a719b039698ed2e4054fd562b5b667e6a09b067b847753aae149847",
+      "captureReport": "source/capture-core-report.json",
+      "headline": "Buy only what’s missing.",
+      "premium": false,
+      "width": 2064,
+      "height": 2752,
+      "pngColorType": 2,
+      "bytes": 643937,
+      "sha256": "3f05bab6ecf67c1575a3734ca6b846781548ed1fd66cc6638dfabd29b0cc7ec9",
+      "layout": {
+        "width": 1032,
+        "height": 1376,
+        "bodyWidth": 1032,
+        "bodyHeight": 1376,
+        "headline": [
+          {
+            "scroll": 860,
+            "client": 860
+          },
+          {
+            "scroll": 860,
+            "client": 860
+          }
+        ],
+        "frame": {
+          "x": 104,
+          "y": 258,
+          "bottom": 1351.328125,
+          "right": 928
+        },
+        "image": {
+          "width": 2064,
+          "height": 2752,
+          "bottom": 1343.328125,
+          "right": 920
+        }
+      }
+    },
+    {
+      "file": "exports/07-make-yellow-stickers-count.png",
+      "raw": "raw/07-yellow-sticker-use-soon.png",
+      "rawSha256": "27bfe213346663606af630c82f82670447dfaa703577ceebfe629b18517721a5",
+      "captureReport": "source/features-report.json",
+      "headline": "Make yellow stickers count.",
+      "premium": true,
+      "width": 2064,
+      "height": 2752,
+      "pngColorType": 2,
+      "bytes": 422655,
+      "sha256": "04d8551314628404e400787b17329d4892e9b38578e8e8ed0505153df0823e6f",
+      "layout": {
+        "width": 1032,
+        "height": 1376,
+        "bodyWidth": 1032,
+        "bodyHeight": 1376,
+        "headline": [
+          {
+            "scroll": 860,
+            "client": 860
+          },
+          {
+            "scroll": 860,
+            "client": 860
+          }
+        ],
+        "frame": {
+          "x": 104,
+          "y": 258,
+          "bottom": 1351.328125,
+          "right": 928
+        },
+        "image": {
+          "width": 2064,
+          "height": 2752,
+          "bottom": 1343.328125,
+          "right": 920
+        }
+      }
+    },
+    {
+      "file": "exports/08-scan-check-restock.png",
+      "raw": "raw/08-receipt-review.png",
+      "rawSha256": "1a90a16f5c7eda2451c91ba151e6ca52f54c4c751328a99dc82f4410dabd806d",
+      "captureReport": "source/receipt-top-provenance.json",
+      "headline": "Scan. Check. Restock.",
+      "premium": true,
+      "width": 2064,
+      "height": 2752,
+      "pngColorType": 2,
+      "bytes": 433439,
+      "sha256": "5c48595fe46205654ec5f70923558257f43bd262e72bf0728dc6634971370303",
+      "layout": {
+        "width": 1032,
+        "height": 1376,
+        "bodyWidth": 1032,
+        "bodyHeight": 1376,
+        "headline": [
+          {
+            "scroll": 860,
+            "client": 860
+          },
+          {
+            "scroll": 860,
+            "client": 860
+          }
+        ],
+        "frame": {
+          "x": 104,
+          "y": 258,
+          "bottom": 1351.328125,
+          "right": 928
+        },
+        "image": {
+          "width": 2064,
+          "height": 2752,
+          "bottom": 1343.328125,
+          "right": 920
+        }
+      }
+    },
+    {
+      "file": "exports/09-dinner-step-by-step.png",
+      "raw": "raw/09-guided-cook.png",
+      "rawSha256": "ef42ff7d64cfb6fb80245568f2252cb4bb38746bdfbbfb95f3b7209b3d6668af",
+      "captureReport": "source/features-report.json",
+      "headline": "Dinner, step by step.",
+      "premium": false,
+      "width": 2064,
+      "height": 2752,
+      "pngColorType": 2,
+      "bytes": 646995,
+      "sha256": "f839b7ed14efae22a6984a36723f23e75cc50f461d8731b28eb7ccf368ae14c1",
+      "layout": {
+        "width": 1032,
+        "height": 1376,
+        "bodyWidth": 1032,
+        "bodyHeight": 1376,
+        "headline": [
+          {
+            "scroll": 860,
+            "client": 860
+          },
+          {
+            "scroll": 860,
+            "client": 860
+          }
+        ],
+        "frame": {
+          "x": 104,
+          "y": 258,
+          "bottom": 1351.328125,
+          "right": 928
+        },
+        "image": {
+          "width": 2064,
+          "height": 2752,
+          "bottom": 1343.328125,
+          "right": 920
+        }
+      }
+    },
+    {
+      "file": "exports/10-your-cooking-sidekick.png",
+      "raw": "raw/10-cook-mentor.png",
+      "rawSha256": "99e59246d0b89a2f9fcde962c8490f2d0960c9a732fce47feefe803cb4568052",
+      "captureReport": "source/features-report.json",
+      "headline": "Meet your cooking sidekick.",
+      "premium": true,
+      "width": 2064,
+      "height": 2752,
+      "pngColorType": 2,
+      "bytes": 509452,
+      "sha256": "a8953087311c04caac6b973fd9f519d854e0749ee98ac254f60797b5ce8fecad",
+      "layout": {
+        "width": 1032,
+        "height": 1376,
+        "bodyWidth": 1032,
+        "bodyHeight": 1376,
+        "headline": [
+          {
+            "scroll": 860,
+            "client": 860
+          },
+          {
+            "scroll": 860,
+            "client": 860
+          }
+        ],
+        "frame": {
+          "x": 104,
+          "y": 258,
+          "bottom": 1351.328125,
+          "right": 928
+        },
+        "image": {
+          "width": 2064,
+          "height": 2752,
+          "bottom": 1343.328125,
+          "right": 920
+        }
+      }
+    }
+  ]
+}
