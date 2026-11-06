@@ -21,6 +21,95 @@ final class BasketBossStoreKitTests: XCTestCase {
         return (resolved, rejected)
     }
 
+    @MainActor func testCurrentEntitlementsRestoreSkipsSyncAndUnfinishedCollection() async throws {
+        var operations: [String] = []
+        let result = try await BasketBossPurchasesPlugin.restoreTransactions(
+            currentEntitlements: { operations.append("current"); return [["id": "current"]] },
+            synchronize: { operations.append("sync"); throw StoreKitError.unknown },
+            collectAfterSync: { operations.append("unfinished"); return [["id": "old-unfinished"]] })
+        XCTAssertEqual(operations, ["current"])
+        XCTAssertEqual(result["restoreSource"] as? String, "currentEntitlements")
+        let transactions = try XCTUnwrap(result["transactions"] as? [JSObject])
+        XCTAssertEqual(transactions.compactMap { $0["id"] as? String }, ["current"])
+    }
+
+    @MainActor func testMissingCurrentEntitlementsSyncBeforeCollectingTransactions() async throws {
+        var operations: [String] = []
+        let result = try await BasketBossPurchasesPlugin.restoreTransactions(
+            currentEntitlements: { operations.append("current"); return [] },
+            synchronize: { operations.append("sync") },
+            collectAfterSync: { operations.append("collected"); return [["id": "synced"]] })
+        XCTAssertEqual(operations, ["current", "sync", "collected"])
+        XCTAssertEqual(result["restoreSource"] as? String, "appStoreSync")
+        let transactions = try XCTUnwrap(result["transactions"] as? [JSObject])
+        XCTAssertEqual(transactions.compactMap { $0["id"] as? String }, ["synced"])
+    }
+
+    @MainActor func testMissingCurrentEntitlementsPropagateSyncFailureWithoutCollecting() async {
+        var operations: [String] = []
+        do {
+            _ = try await BasketBossPurchasesPlugin.restoreTransactions(
+                currentEntitlements: { operations.append("current"); return [] },
+                synchronize: { operations.append("sync"); throw StoreKitError.unknown },
+                collectAfterSync: { operations.append("collected"); return [["id": "cached"]] })
+            XCTFail("A failed App Store sync must reject restoration")
+        } catch {
+            guard case .unknown? = error as? StoreKitError else { return XCTFail("Unexpected error: \(type(of: error))") }
+        }
+        XCTAssertEqual(operations, ["current", "sync"])
+    }
+
+    func testCurrentRestoreCandidatesPermitGraceButRequireSupportedUnrevokedSubscriptions() {
+        let now = Date(timeIntervalSince1970: 1_700_000_000)
+        let future = now.addingTimeInterval(60)
+        for productID in ["uk.co.basketboss.premium.monthly", "uk.co.basketboss.premium.annual"] {
+            // Membership in the CURRENT stream is the entitlement signal,
+            // including billing grace with a past signed transaction expiry.
+            for expirationDate in [future, now, now.addingTimeInterval(-1), nil] as [Date?] {
+                XCTAssertTrue(BasketBossPurchasesPlugin.isEligibleCurrentRestoreCandidate(
+                    productID: productID, productType: .autoRenewable, revocationDate: nil, expirationDate: expirationDate))
+            }
+        }
+        let ineligible: [(String, Product.ProductType, Date?, Date?)] = [
+            ("uk.co.basketboss.premium.monthly.extra", .autoRenewable, nil, future),
+            ("uk.co.basketboss.premium.founder", .autoRenewable, nil, future),
+            ("uk.co.basketboss.premium.monthly", .nonConsumable, nil, future),
+            ("uk.co.basketboss.premium.monthly", .nonRenewable, nil, future),
+            ("uk.co.basketboss.premium.monthly", .autoRenewable, now, future)
+        ]
+        for (productID, productType, revoked, expires) in ineligible {
+            XCTAssertFalse(BasketBossPurchasesPlugin.isEligibleCurrentRestoreCandidate(
+                productID: productID, productType: productType, revocationDate: revoked, expirationDate: expires), productID)
+        }
+    }
+
+    func testRestoreClassifiesOnlyTypedUnknownWithoutNumericHeuristics() throws {
+        let unknown = StoreKitError.unknown
+        let native = unknown as NSError
+        let diagnostics = ["\(native.domain):\(native.code)"]
+        XCTAssertEqual(BasketBossPurchasesPlugin.classifyRestoreFailure(unknown),
+                       .failed(code: "BB_APPLE_RESTORE_UNKNOWN", diagnostics: diagnostics))
+        let wrapped = restoreError("ASDErrorDomain", 500, underlying: unknown)
+        XCTAssertEqual(BasketBossPurchasesPlugin.classifyRestoreFailure(wrapped),
+                       .failed(code: "BB_APPLE_RESTORE_UNKNOWN", diagnostics: ["ASDErrorDomain:500"] + diagnostics))
+        let network = restoreError(NSURLErrorDomain, NSURLErrorTimedOut, underlying: unknown)
+        XCTAssertEqual(BasketBossPurchasesPlugin.classifyRestoreFailure(network),
+                       .failed(code: "BB_APPLE_RESTORE_NETWORK", diagnostics: ["NSURLErrorDomain:-1001"] + diagnostics))
+        let cancellation = restoreError(SKErrorDomain, SKError.Code.paymentCancelled.rawValue, underlying: unknown)
+        XCTAssertEqual(BasketBossPurchasesPlugin.classifyRestoreFailure(cancellation), .cancelled)
+        for domain in ["StoreKit.StoreKitError", "StoreKitErrorDomain", "ASDErrorDomain", "AMSErrorDomain"] {
+            XCTAssertEqual(BasketBossPurchasesPlugin.classifyRestoreFailure(restoreError(domain, 2)),
+                           .failed(code: "BB_APPLE_RESTORE", diagnostics: ["\(domain):2"]))
+        }
+        let response = try restoreResponse(unknown)
+        XCTAssertNil(response.resolved)
+        let rejected = try XCTUnwrap(response.rejected)
+        XCTAssertNil(rejected.error)
+        XCTAssertEqual(rejected.code, "BB_APPLE_RESTORE_UNKNOWN")
+        let data = try XCTUnwrap(rejected.data?["data"] as? [String: Any])
+        XCTAssertEqual(data["restoreDiagnostics"] as? [String], diagnostics)
+    }
+
     func testRestoreClassifiesDocumentedCancellationIncludingNestedErrors() {
         XCTAssertEqual(BasketBossPurchasesPlugin.classifyRestoreFailure(StoreKitError.userCancelled), .cancelled)
         let cancellation = restoreError(SKErrorDomain, SKError.Code.paymentCancelled.rawValue)
@@ -203,8 +292,11 @@ final class BasketBossStoreKitTests: XCTestCase {
         XCTAssertEqual(report["backendPremiumGranted"] as? Bool, false, detail)
         var required = ["productsLoaded", "purchaseVerified", "productIdRetryVerified", "accountTokenPreserved",
                         "unfinishedBeforeServerAck", "earlyFinishRejected", "restoreVerified",
+                        "restoreCurrentEntitlementsVerified", "restoreStillUnfinishedBeforeServerAck", "emptyRestoreVerified",
                         "duplicatePurchasePrevented", "wrongAccountRejected",
                         "finishedAfterAcknowledgement", "pendingDoesNotGrantAccess", "pendingApprovalDelivered"]
+        XCTAssertEqual(report["restoreSource"] as? String, "currentEntitlements", detail)
+        XCTAssertEqual(report["emptyRestoreSource"] as? String, "appStoreSync", detail)
         if #available(iOS 17.0, *) { required.append(contentsOf: ["cancellationPreserved", "cancellationHasNoTransaction", "cancellationReleasesBusy"]) }
         for key in required { XCTAssertEqual(report[key] as? Bool, true, key + ": " + detail) }
     }

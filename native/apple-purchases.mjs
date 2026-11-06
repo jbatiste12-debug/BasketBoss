@@ -6,9 +6,13 @@ const PRODUCT_ERRORS=new Map([
  ['BB_APPLE_PRODUCT_UNAVAILABLE','Apple did not return this subscription, so its purchase sheet could not be opened. Refresh prices or try again later.'],
  ['BB_APPLE_PRODUCT_LOOKUP','Apple could not load this subscription, so its purchase sheet could not be opened. Check your App Store connection, then try again.']
 ]);
+const RESTORE_ERRORS=new Map([
+ ['BB_APPLE_RESTORE_NETWORK','Apple could not restore purchases because the App Store connection is unavailable. Check your connection, then try Restore Purchases again.'],
+ ['BB_APPLE_RESTORE_UNKNOWN','Apple could not restore purchases because the App Store reported an unknown error. Try Restore Purchases again. If it continues, contact support with the support code.']
+]);
 const RESTORE_DIAGNOSTIC=/^(?:SKErrorDomain|StoreKitErrorDomain|StoreKit\.StoreKitError|ASDErrorDomain|AMSErrorDomain|NSURLErrorDomain|NSCocoaErrorDomain):(?:0|-?[1-9]\d{0,18})$/;
 function restoreErrorMessage(error){
- const message=error?.code==='BB_APPLE_RESTORE_NETWORK'?'Apple could not restore purchases because the App Store connection is unavailable. Check your connection, then try Restore Purchases again.':'Apple purchases could not be restored. Please try again.';
+ const message=RESTORE_ERRORS.get(error?.code)||'Apple purchases could not be restored. Please try again.';
  // Only the explicit native domain/code payload is suitable for display. Never
  // expose StoreKit descriptions, userInfo or arbitrary provider error text.
  const supplied=error?.data?.restoreDiagnostics;
@@ -169,7 +173,7 @@ export function installNativeApplePurchases({plugin,apiURL,readSession,fetch:per
    requireCurrent(actor);
    const message=restoreErrorMessage(error);
    if(identity()===actorIdentity)nativeRestoreFailure={identity:actorIdentity,message};
-   throw Object.assign(Error(message),{code:error?.code==='BB_APPLE_RESTORE_NETWORK'?'BB_APPLE_RESTORE_NETWORK':'BB_APPLE_RESTORE'});
+   throw Object.assign(Error(message),{code:RESTORE_ERRORS.has(error?.code)?error.code:'BB_APPLE_RESTORE'});
   }
   requireCurrent(actor);
   if(restored?.status==='cancelled'){emit({phase:'ready',message:'Restore cancelled. Your access has not changed.'});return {ok:true,status:'cancelled'};}
@@ -177,8 +181,12 @@ export function installNativeApplePurchases({plugin,apiURL,readSession,fetch:per
   let active=false;
   for(const transaction of transactions){const result=await verify(transaction,actor);active=active||result.premiumAccess===true;}
   await refresh();requireCurrent(actor);
-  emit({phase:'ready',message:active?'Your Apple Premium subscription has been restored.':state.premiumAccess?'Your existing Premium membership is available.':'No active Apple subscription was found for this BasketBoss account. Check that you are signed in to the account used for the original purchase.'});
-  return {ok:true,restored:transactions.length,premiumAccess:active||state.premiumAccess};
+  // A delivered transaction and existing membership are separate outcomes.
+  // Only active verification plus a fresh Premium status confirms restoration.
+  if(!['premium','free'].includes(state.membershipState))return {ok:false,status:'unavailable',reason:'membership_unavailable',error:state.message,restored:transactions.length,restoredActive:false,premiumAccess:false};
+  const premiumAccess=state.premiumAccess===true,restoredActive=active&&premiumAccess;
+  emit({phase:'ready',message:restoredActive?'Your Apple Premium subscription has been restored.':premiumAccess?'Your existing Premium membership is available.':'No active Apple subscription was found for this BasketBoss account. Check that you are signed in to the account used for the original purchase.'});
+  return {ok:true,status:restoredActive?'restored':'no_active_purchases',restored:transactions.length,restoredActive,premiumAccess};
  });}
  async function manage(){return run(async actor=>{requireCurrent(actor);if(state.provider!=='apple')throw Error('This account does not have an Apple subscription to manage.');await plugin.manageSubscriptions();requireCurrent(actor);await refresh();return {ok:true};});}
  async function claimBeta(){return run(async actor=>{
