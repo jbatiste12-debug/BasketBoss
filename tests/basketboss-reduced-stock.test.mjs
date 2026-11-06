@@ -6,10 +6,10 @@ const actor='tester-account',at='2026-11-05T12:00:00Z',opts={actor,at,policy};
 const row=(qty,loc='fridge',extra={})=>({name:'Carrots',qty,unit:'g',loc,selected:true,...extra});
 const bought=(before,after,extra={})=>api.prepareInventory({before,after,credits:[{name:'Carrots',quantity:300,unit:'g'}],sourceId:'shop:one',...opts,...extra});
 
-test('only a confirmed reduced stock credit annotates the existing pantry row without changing balances',()=>{
+test('a confirmed reduced credit annotates only the purchased portion without changing balances',()=>{
  const before={carrots:row(200)},after={carrots:row(500)},original=JSON.stringify([before,after]);
  const result=bought(before,after);
- assert.equal(result.carrots.qty,500);assert.equal(result.carrots.loc,'fridge');assert.equal(api.isUrgent(result.carrots,{actor}),true);
+ assert.equal(result.carrots.qty,200);assert.equal(result.carrots.loc,'fridge');assert.equal(result.carrots.bbReduced,undefined);assert.equal(result['carrots|reduced'].qty,300);assert.equal(api.isUrgent(result['carrots|reduced'],{actor}),true);
  assert.equal(JSON.stringify([before,after]),original,'the caller commits the prepared copy atomically');
  const ordinary=api.prepareInventory({before,after,credits:[],sourceId:'shop:ordinary',...opts});assert.equal(ordinary.carrots.bbReduced,undefined);
  const intention=bought(before,before);assert.equal(intention.carrots.bbReduced,undefined,'a shopping intent or tick without stock credit is insufficient');
@@ -17,17 +17,17 @@ test('only a confirmed reduced stock credit annotates the existing pantry row wi
 test('receipt credit netting can mark a reviewed previously credited purchase, without crediting stock again',()=>{
  const current={carrots:row(500)},credit={name:'Carrots',unit:'g',quantity:300,previouslyCreditedQuantity:300,legacyCreditId:'shop-one-carrots'};
  const result=api.prepareInventory({before:current,after:current,credits:[credit],sourceId:'receipt:one',...opts});
- assert.equal(result.carrots.qty,500);assert.equal(api.isUrgent(result.carrots,{actor}),true);
+ assert.equal(result.carrots.qty,200);assert.equal(result.carrots.bbReduced,undefined);assert.equal(result['carrots|reduced'].qty,300);assert.equal(api.isUrgent(result['carrots|reduced'],{actor}),true);
  for(const patch of [{sourceId:'shop:one'},{credits:[{...credit,legacyCreditId:''}]},{credits:[{...credit,previouslyCreditedQuantity:301}]}]){
   const rejected=api.prepareInventory({before:current,after:current,credits:[credit],sourceId:'receipt:one',...opts,...patch});assert.equal(rejected.carrots.bbReduced,undefined);
  }
 });
 test('freezing conserves the full saved amount and replay cannot reactivate its urgency',()=>{
- const marked=bought({carrots:row(200)},{carrots:row(500)}),frozen=api.freeze(marked.carrots,opts);
- assert.equal(frozen.qty,500);assert.equal(frozen.unit,'g');assert.equal(frozen.loc,'freezer');assert.equal(api.isUrgent(frozen,{actor}),false);
+ const marked=bought({}, {carrots:row(300)}),frozen=api.freeze(marked.carrots,opts);
+ assert.equal(frozen.qty,300);assert.equal(frozen.unit,'g');assert.equal(frozen.loc,'freezer');assert.equal(api.isUrgent(frozen,{actor}),false);
  assert.deepEqual(frozen.bbReduced.sources,marked.carrots.bbReduced.sources);
- const replay=bought({carrots:frozen},{carrots:{...frozen,qty:800,loc:'fridge'}});
- assert.equal(replay.carrots.qty,800);assert.equal(api.isUrgent(replay.carrots,{actor}),false);
+ const replay=bought({carrots:frozen},{carrots:{...frozen,qty:600,loc:'fridge'}});
+ assert.equal(replay.carrots.qty,600);assert.equal(api.isUrgent(replay.carrots,{actor}),false);
  assert.throws(()=>api.freeze(frozen,opts),/changed/);
 });
 test('projecting a cloud balance keeps frozen buckets while fresh purchases remain outside the freezer',()=>{
@@ -63,7 +63,75 @@ test('regular additions preserve a still-present reduced warning and account cha
  assert.equal(api.isUrgent(more.carrots,{actor}),true);assert.equal(api.isUrgent(more.carrots,{actor:'other-account'}),false);
  assert.throws(()=>api.freeze(more.carrots,{actor:'other-account'}),/changed/);
  const other=api.prepareInventory({before:marked,after:{carrots:{...marked.carrots,qty:500}},credits:[{name:'Carrots',quantity:200,unit:'g'}],sourceId:'shop:other',...opts,actor:'other-account'});
- assert.equal(api.isUrgent(other.carrots,{actor:'other-account'}),true);assert.equal(api.isUrgent(other.carrots,{actor}),false);
+ assert.equal(api.isUrgent(other.carrots,{actor}),true);assert.equal(api.isUrgent(other.carrots,{actor:'other-account'}),false);assert.equal(other.carrots.qty,300);assert.equal(api.isUrgent(other['carrots|reduced'],{actor:'other-account'}),true);assert.equal(other['carrots|reduced'].qty,200);
+});
+
+test('a new ordinary portion never inherits another same-food row’s reduced source or urgency',()=>{
+ const marked=bought({}, {reduced:row(300)}),after={...marked,ordinary:row(200)};
+ const result=api.prepareInventory({before:marked,after,credits:[],sourceId:'shop:ordinary',...opts});
+ assert.equal(result.reduced.qty,300);assert.equal(api.isUrgent(result.reduced,{actor}),true);
+ assert.equal(result.ordinary.qty,200);assert.equal(result.ordinary.bbReduced,undefined);
+ const dropped=api.settleInventory({before:marked,after:{reduced:row(300),ordinary:row(200)},...opts});assert.equal(api.isUrgent(dropped.reduced,{actor}),true);assert.equal(dropped.ordinary.bbReduced,undefined,'only the exact saved row may recover its own annotation');
+});
+
+test('a reduced credit can target its own added portion without relabelling an ordinary addition',()=>{
+ const before={ordinary:row(100)},after={ordinary:row(200),reduced:row(300)};
+ const result=api.prepareInventory({before,after,credits:[{name:'Carrots',quantity:300,unit:'g',inventoryId:'reduced'}],sourceId:'shop:mixed',...opts});
+ assert.equal(result.ordinary.qty,200);assert.equal(result.ordinary.bbReduced,undefined);assert.equal(api.isUrgent(result.reduced,{actor}),true);assert.equal(result.reduced.qty,300);
+});
+
+test('a new reduced receipt isolates its exact increment and preserves previous reduced dates and ordinary stock',()=>{
+ const oldMeta={version:1,actor,urgent:true,at:'2026-11-01T12:00:00Z',sources:['receipt:old']},before={reduced:row(200,'fridge',{bbReduced:oldMeta,notes:'Use first'}),ordinary:row(300)},after={...before,ordinary:row(400)};
+ const credit={name:'Carrots',quantity:100,unit:'g',sourceId:'receipt:new:line'},result=api.prepareInventory({before,after,credits:[credit],sourceId:'receipt:new',...opts});
+ assert.deepEqual(result.reduced,before.reduced);assert.equal(result.ordinary.qty,300);assert.equal(result.ordinary.bbReduced,undefined);
+ const fresh=result['ordinary|reduced'];assert.equal(fresh.qty,100);assert.equal(fresh.bbReduced.at,at);assert.deepEqual(fresh.bbReduced.sources,['receipt:new:line']);assert.equal(Object.values(result).reduce((n,r)=>n+(r.qty||0),0),600);
+ assert.deepEqual(api.prepareInventory({before:result,after:result,credits:[credit],sourceId:'receipt:new',...opts}),result,'replay cannot move stock or change the old lot');
+});
+
+test('exact legacy receipt lot proof preserves an already-reduced batch timestamp without marking ordinary stock',()=>{
+ const meta={version:1,actor,urgent:true,at:'2026-10-30T12:00:00Z',sources:['shop:prior']},current={reduced:row(200,'fridge',{bbReduced:meta}),ordinary:row(300)},review=[];
+ const credit={name:'Carrots',quantity:200,unit:'g',sourceId:'receipt:proof:line',inventoryId:'reduced',previouslyCreditedQuantity:200,legacyCreditId:'trip|carrot|g'},result=api.prepareInventory({before:current,after:current,credits:[credit],sourceId:'receipt:proof',onReview:value=>review.push(value),...opts});
+ assert.equal(review.length,0);assert.equal(result.reduced.qty,200);assert.equal(result.reduced.bbReduced.at,meta.at);assert.deepEqual(result.reduced.bbReduced.sources,['shop:prior','receipt:proof:line']);assert.equal(result.ordinary.qty,300);assert.equal(result.ordinary.bbReduced,undefined);
+});
+
+test('receipt proof for old reduced stock never consumes a separate ordinary line’s new quantity',()=>{
+ const meta={version:1,actor,urgent:true,at:1,sources:['shop:prior']},before={reduced:row(200,'fridge',{bbReduced:meta}),ordinary:row(300)},after={...before,ordinary:row(400)};
+ const credit={name:'Carrots',quantity:200,unit:'g',sourceId:'receipt:mixed:reduced-line',previouslyCreditedQuantity:200,legacyCreditId:'trip|carrot|g'},result=api.prepareInventory({before,after,credits:[credit],sourceId:'receipt:mixed',...opts});
+ assert.equal(result.reduced.qty,200);assert.equal(result.reduced.bbReduced.at,1);assert.equal(result.ordinary.qty,400);assert.equal(result.ordinary.bbReduced,undefined);assert.equal(Object.keys(result).length,2);
+});
+
+test('ambiguous reduced receipt proof reports review without relabelling or changing either batch',()=>{
+ const current={a:row(100,'fridge',{bbReduced:{version:1,actor,urgent:true,at:1,sources:['old-a']}}),b:row(100,'fridge',{bbReduced:{version:1,actor,urgent:true,at:2,sources:['old-b']}}),ordinary:row(300)},review=[];
+ const credit={name:'Carrots',quantity:100,unit:'g',sourceId:'receipt:unclear:line',previouslyCreditedQuantity:100,legacyCreditId:'trip|carrot|g'},result=api.prepareInventory({before:current,after:current,credits:[credit],sourceId:'receipt:unclear',onReview:value=>review.push(value),...opts});
+ assert.deepEqual(result,current);assert.equal(review.length,1);assert.equal(review[0].reason,'previous_reduced_purchase_lot_ambiguous');
+});
+
+test('one reduced batch next to ordinary stock is still ambiguous without exact receipt lot proof',()=>{
+ const current={reduced:row(200,'fridge',{bbReduced:{version:1,actor,urgent:true,at:1,sources:['old-reduced']}}),ordinary:row(300)},review=[];
+ const credit={name:'Carrots',quantity:100,unit:'g',sourceId:'receipt:unclear:one',previouslyCreditedQuantity:100,legacyCreditId:'trip|carrot|g'},result=api.prepareInventory({before:current,after:current,credits:[credit],sourceId:'receipt:unclear',onReview:value=>review.push(value),...opts});
+ assert.deepEqual(result,current);assert.deepEqual(result.reduced.bbReduced.sources,['old-reduced']);assert.equal(review.length,1);assert.equal(review[0].reason,'previous_reduced_purchase_lot_ambiguous');
+});
+
+test('a replayed source cannot mark replacement food after its original reduced portion is exhausted',()=>{
+ const first=bought({}, {carrots:row(300)}),used={carrots:{...first.carrots,qty:0,selected:false}},after={...used,ordinary:row(200)};
+ const result=bought(used,after);assert.equal(result.ordinary.qty,200);assert.equal(result.ordinary.bbReduced,undefined);assert.equal(Object.keys(result).length,2);
+});
+
+test('receipt projection retains dated and distinct noted ordinary portions and chooses a new safe destination',()=>{
+ const dated={older:row(100,'fridge',{notes:'Use first',useByISO:'2026-11-07'}),newer:row(200,'fridge',{notes:'For next week',useByISO:'2026-11-14'})};
+ const result=api.projectFrozenBuckets({inventory:dated,stockKey:'carrot|g',currentQuantity:300,nextQuantity:400,location:'fridge',...opts});
+ assert.deepEqual(result.older,{...dated.older,bb173StockKey:'carrot|g',bb173StockValue:100});assert.deepEqual(result.newer,{...dated.newer,bb173StockKey:'carrot|g',bb173StockValue:200});const fresh=Object.entries(result).find(([key])=>!Object.hasOwn(dated,key))[1];assert.equal(fresh.qty,100);assert.equal(fresh.useByISO,undefined);
+ const notes={a:row(100,'fridge',{notes:'Lunch'}),b:row(200,'fridge',{notes:'Dinner'})},noted=api.projectFrozenBuckets({inventory:notes,stockKey:'carrot|g',currentQuantity:300,nextQuantity:400,location:'fridge',...opts});assert.equal(noted.a.qty,100);assert.equal(noted.b.qty,200);assert.equal(Object.keys(noted).length,3);
+});
+
+test('receipt projection preserves reduced batches, grows ordinary stock and consumes Use soon first',()=>{
+ const marked=bought({}, {reduced:row(300)}),inventory={...marked,ordinary:row(200,'fridge',{notes:'Lunch reserve'})};
+ const project=(value,currentQuantity,nextQuantity)=>api.projectFrozenBuckets({inventory:value,stockKey:'carrot|g',currentQuantity,nextQuantity,location:'fridge',...opts});
+ const replay=project(inventory,500,500);assert.equal(replay.reduced.qty,300);assert.equal(replay.ordinary.qty,200);assert.equal(replay.ordinary.bbReduced,undefined);
+ const increased=project(replay,500,700);assert.equal(increased.reduced.qty,300);assert.equal(increased.ordinary.qty,400);assert.equal(increased.ordinary.notes,'Lunch reserve');
+ const decreased=project(increased,700,300);assert.equal(decreased.reduced.selected,false);assert.equal(decreased.ordinary.qty,300);
+ const settled=api.settleInventory({before:increased,after:decreased,...opts});assert.equal(settled.reduced.bbReduced.urgent,false);assert.equal(settled.ordinary.bbReduced,undefined);
+ const onlyReduced=project(marked,300,500),ordinary=Object.values(onlyReduced).find(value=>!value.bbReduced);assert.equal(onlyReduced.reduced.qty,300);assert.equal(ordinary.qty,200);assert.equal(ordinary.loc,'fridge');
 });
 test('source identities, units and locations do not mark unrelated stock or invent a conversion',()=>{
  const before={carrots:row(200),milk:{name:'Milk',qty:500,unit:'ml',loc:'fridge',selected:true}},after={...before,carrots:row(500)};

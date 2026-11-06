@@ -131,6 +131,47 @@ public final class BasketBossPurchasesPlugin: CAPPlugin, CAPBridgedPlugin {
         return result.keys.sorted().compactMap { result[$0] }
     }
 
+    // Only for verified candidates from Transaction.currentEntitlements. That
+    // stream includes billing grace, whose transaction expiry can be in the
+    // past. Expiry never grants/denies access here: the server checks fresh Apple
+    // status and ownership before acknowledging any signed restore candidate.
+    static func isEligibleCurrentRestoreCandidate(productID: String, productType: Product.ProductType,
+                                                   revocationDate: Date?, expirationDate _: Date?) -> Bool {
+        productIDs.contains(productID) && productType == .autoRenewable && revocationDate == nil
+    }
+
+    @MainActor private func collectCurrentRestoreCandidates() async -> [JSObject] {
+        var result: [String: JSObject] = [:]
+        // StoreKit makes current entitlements available without forcing an App
+        // Store account sync. Read them afresh; the unfinished cache can contain
+        // old renewals/refunds that belong in background server reconciliation.
+        for await verification in Transaction.currentEntitlements {
+            if Task.isCancelled { return [] }
+            guard case .verified(let transaction) = verification,
+                  Self.isEligibleCurrentRestoreCandidate(productID: transaction.productID, productType: transaction.productType,
+                                                        revocationDate: transaction.revocationDate,
+                                                        expirationDate: transaction.expirationDate),
+                  let payload = try? remember(verification), let id = payload["id"] as? String else { continue }
+            result[id] = payload
+        }
+        return result.keys.sorted().compactMap { result[$0] }
+    }
+
+    // Internal dependency injection lets hosted tests exercise the ordering
+    // without exposing a test hook to JavaScript or replacing signed payloads
+    // in the production collectors. Both paths still require server verification
+    // and its acknowledgement before finishTransaction can finish a transaction.
+    @MainActor static func restoreTransactions(currentEntitlements: () async -> [JSObject],
+                                               synchronize: () async throws -> Void,
+                                               collectAfterSync: () async -> [JSObject]) async throws -> JSObject {
+        let current = await currentEntitlements()
+        if !current.isEmpty {
+            return ["transactions": current, "restoreSource": "currentEntitlements"]
+        }
+        try await synchronize()
+        return ["transactions": await collectAfterSync(), "restoreSource": "appStoreSync"]
+    }
+
     @MainActor private func product(_ id: String) async throws -> Product {
         guard Self.productIDs.contains(id) else { throw PurchaseBridgeError.unsupportedProduct }
         if let existing = products[id] { return existing }
@@ -243,8 +284,11 @@ public final class BasketBossPurchasesPlugin: CAPPlugin, CAPBridgedPlugin {
             self.interactiveOperation = true
             defer { self.interactiveOperation = false }
             do {
-                try await AppStore.sync()
-                call.resolve(["transactions": await self.collectTransactions()])
+                let restored = try await Self.restoreTransactions(
+                    currentEntitlements: { await self.collectCurrentRestoreCandidates() },
+                    synchronize: { try await AppStore.sync() },
+                    collectAfterSync: { await self.collectTransactions() })
+                call.resolve(restored)
             } catch { Self.respondToRestoreFailure(error, call: call) }
         }
     }
@@ -267,6 +311,7 @@ public final class BasketBossPurchasesPlugin: CAPPlugin, CAPBridgedPlugin {
         var diagnostics: [String] = []
         var cancelled = false
         var network = false
+        var unknown = false
         for _ in 0..<8 {
             guard let value = current else { break }
             let nativeError = value as NSError
@@ -281,6 +326,10 @@ public final class BasketBossPurchasesPlugin: CAPPlugin, CAPBridgedPlugin {
                 switch storeKitError {
                 case .userCancelled:
                     cancelled = true
+                case .unknown:
+                    // Only the documented typed case establishes this meaning;
+                    // numeric NSError codes vary between StoreKit domains.
+                    unknown = true
                 case .networkError(let underlying):
                     storeKitUnderlyingError = underlying
                 case .systemError(let underlying):
@@ -299,7 +348,8 @@ public final class BasketBossPurchasesPlugin: CAPPlugin, CAPBridgedPlugin {
             current = storeKitUnderlyingError ?? (nativeError.userInfo[NSUnderlyingErrorKey] as? Error)
         }
         if cancelled { return .cancelled }
-        return .failed(code: network ? "BB_APPLE_RESTORE_NETWORK" : "BB_APPLE_RESTORE", diagnostics: diagnostics)
+        let failureCode = network ? "BB_APPLE_RESTORE_NETWORK" : (unknown ? "BB_APPLE_RESTORE_UNKNOWN" : "BB_APPLE_RESTORE")
+        return .failed(code: failureCode, diagnostics: diagnostics)
     }
 
     static func respondToRestoreFailure(_ error: Error, call: CAPPluginCall) {
@@ -534,8 +584,25 @@ private extension BasketBossPurchasesPlugin {
             report["stage"] = stage; writeSmokeReport(report)
             let restored = try await smokeCall("restorePurchases") { self.restorePurchases($0) }
             let restoredTransactions = restored["transactions"] as? [JSObject] ?? []
-            guard restoredTransactions.contains(where: { $0["id"] as? String == id }) else { throw LocalSmokeFailure(code: "restore_missing") }
+            guard let restoredTransaction = restoredTransactions.first(where: { $0["id"] as? String == id }),
+                  restoredTransaction["originalId"] as? String == transaction["originalId"] as? String,
+                  restoredTransaction["appAccountToken"] as? String == token.uuidString.lowercased(),
+                  restoredTransaction["environment"] as? String == "Xcode",
+                  !(restoredTransaction["signedTransactionInfo"] as? String ?? "").isEmpty else {
+                throw LocalSmokeFailure(code: "restore_missing")
+            }
+            guard restored["restoreSource"] as? String == "currentEntitlements" else {
+                throw LocalSmokeFailure(code: "restore_did_not_use_current_entitlements")
+            }
             report["restoreVerified"] = true
+            report["restoreCurrentEntitlementsVerified"] = true
+            report["restoreSource"] = "currentEntitlements"
+            var queuedAfterRestore = false
+            for await result in Transaction.unfinished {
+                if case .verified(let item) = result, String(item.id) == id { queuedAfterRestore = true }
+            }
+            guard queuedAfterRestore else { throw LocalSmokeFailure(code: "restore_finished_before_server_ack") }
+            report["restoreStillUnfinishedBeforeServerAck"] = true
             stage = "duplicate"
             report["stage"] = stage; writeSmokeReport(report)
             let duplicate = try await smokeCall("purchase", options: ["productId": "uk.co.basketboss.premium.annual", "appAccountToken": token.uuidString]) { self.purchase($0) }
@@ -562,6 +629,15 @@ private extension BasketBossPurchasesPlugin {
             stage = "pending_reset"
             report["stage"] = stage; writeSmokeReport(report)
             try await resetSmokeScenario(session)
+            stage = "empty_restore"
+            report["stage"] = stage; writeSmokeReport(report)
+            let emptyRestore = try await smokeCall("restorePurchases") { self.restorePurchases($0) }
+            guard let emptyTransactions = emptyRestore["transactions"] as? [JSObject], emptyTransactions.isEmpty,
+                  emptyRestore["restoreSource"] as? String == "appStoreSync" else {
+                throw LocalSmokeFailure(code: "empty_restore_invalid")
+            }
+            report["emptyRestoreVerified"] = true
+            report["emptyRestoreSource"] = "appStoreSync"
             stage = "pending"
             report["stage"] = stage; writeSmokeReport(report)
             await Task.detached { session.askToBuyEnabled = true }.value

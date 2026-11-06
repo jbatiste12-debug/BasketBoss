@@ -7,6 +7,8 @@ const transaction={id:'123456',originalId:'123000',productId:MONTH,appAccountTok
 const verificationError='This Apple purchase environment is not available for this account.';
 const restoreError='Apple purchases could not be restored. Please try again.';
 const restoreNetworkError='Apple could not restore purchases because the App Store connection is unavailable. Check your connection, then try Restore Purchases again.';
+const restoreUnknownError='Apple could not restore purchases because the App Store reported an unknown error. Try Restore Purchases again. If it continues, contact support with the support code.';
+const restoreSources=['currentEntitlements','appStoreSync'];
 const restoreDiagnostics=['SKErrorDomain:0','ASDErrorDomain:500','AMSErrorDomain:100'];
 const restoreFailure=(code='BB_APPLE_RESTORE',diagnostics=restoreDiagnostics)=>Object.assign(Error('private account person@example.com; receipt private-JWS; provider-description'),{code,data:{restoreDiagnostics:diagnostics,NSLocalizedDescription:'private provider-description',userInfo:{account:'person@example.com'}}});
 const signedApp='eyJhbGciOiJFUzI1NiJ9.eyJidW5kbGVJZCI6InVrLmNvLmJhc2tldGJvc3MuYXBwIn0.c2lnbmF0dXJl';
@@ -240,12 +242,92 @@ test('account deletion started during Apple purchase prevents backend verificati
  });
 });
 
-test('restore verifies purchases on the signed-in BasketBoss account before finishing',async()=>withFixture({},async h=>{
- const result=await h.controller.restore();assert.equal(result.restored,1);assert.equal(result.premiumAccess,true);assert.deepEqual(h.order,['verified','finish']);
- assert.deepEqual(finishes(h)[0][1],{transactionId:transaction.id,serverVerified:true});
- assert.equal(h.controller.state.premiumAccess,true);assert.equal(h.controller.state.provider,'apple');
- const finished=h.calls.indexOf(finishes(h)[0]);assert(h.calls.findIndex((call,index)=>index>finished&&call[0]==='http'&&call[1]==='/api/subscription/status')>finished);
+for(const restoreSource of restoreSources)test(restoreSource+' Restore waits for signed-in server verification before finishing',async()=>{
+ const reply=deferred();
+ await withFixture({restore:async()=>({transactions:[transaction],restoreSource}),fetch:async route=>{if(route==='/api/apple/verify')await reply.promise;}},async h=>{
+  const operation=h.controller.restore();while(!verifications(h).length)await tick();
+  assert.equal(finishes(h).length,0);assert.equal(h.controller.state.premiumAccess,false);assert.equal(h.controller.state.busy,true);
+  const verification=verifications(h)[0][2];assert.equal(verification.headers.Authorization,'Bearer actor-A-token');
+  assert.deepEqual(JSON.parse(verification.body),{transactionId:transaction.id,signedTransactionInfo:transaction.signedTransactionInfo});
+  reply.resolve();const result=await operation;
+  assert.deepEqual(result,{ok:true,status:'restored',restored:1,restoredActive:true,premiumAccess:true});assert.deepEqual(h.order,['verified','finish']);
+  assert.deepEqual(finishes(h)[0][1],{transactionId:transaction.id,serverVerified:true});
+  assert.equal(h.controller.state.premiumAccess,true);assert.equal(h.controller.state.provider,'apple');
+  const finished=h.calls.indexOf(finishes(h)[0]);assert(h.calls.findIndex((call,index)=>index>finished&&call[0]==='http'&&call[1]==='/api/subscription/status')>finished);
+ });
+});
+
+for(const restoreSource of restoreSources)test(restoreSource+' and native Premium flags cannot grant access after inactive server verification',async()=>withFixture({verifiedAccess:false,restore:async()=>({restoreSource,premiumAccess:true,verified:true,transactions:[{...transaction,premiumAccess:true,verified:true}]})},async h=>{
+ assert.deepEqual(await h.controller.restore(),{ok:true,status:'no_active_purchases',restored:1,restoredActive:false,premiumAccess:false});
+ assert.equal(verifications(h).length,1);assert.deepEqual(h.order,['verified','finish']);
+ assert.equal(h.controller.state.premiumAccess,false);assert.equal(h.controller.state.membershipState,'free');assert.equal(h.controller.state.provider,null);
+ assert.match(h.controller.state.message,/No active Apple subscription was found/);
 }));
+
+for(const restoreSource of restoreSources)for(const transactions of [[],undefined])test(restoreSource+' Restore with '+(transactions?'empty':'missing')+' transactions cannot fabricate restored access',async()=>withFixture({restore:async()=>({restoreSource,transactions,premiumAccess:true,restored:1,verified:true})},async h=>{
+ const checks=membershipChecks(h).length;
+ assert.deepEqual(await h.controller.restore(),{ok:true,status:'no_active_purchases',restored:0,restoredActive:false,premiumAccess:false});
+ assert.equal(membershipChecks(h).length,checks+1);assert.equal(verifications(h).length,0);assert.equal(finishes(h).length,0);
+ assert.equal(h.controller.state.premiumAccess,false);assert.equal(h.controller.state.membershipState,'free');
+ assert.match(h.controller.state.message,/No active Apple subscription was found/);assert.equal(h.calls.some(call=>call[0]==='membershipUpdate'),false);
+}));
+
+for(const restoreSource of restoreSources)test(restoreSource+' empty Restore preserves existing Premium without claiming an active restoration',async()=>withFixture({membership:{authenticated:true,premiumAccess:true,provider:'apple'},restore:async()=>({restoreSource,transactions:[],premiumAccess:true,restoredActive:true,status:'restored'})},async h=>{
+ const checks=membershipChecks(h).length;
+ assert.deepEqual(await h.controller.restore(),{ok:true,status:'no_active_purchases',restored:0,restoredActive:false,premiumAccess:true});
+ assert.equal(membershipChecks(h).length,checks+1);assert.equal(verifications(h).length,0);assert.equal(finishes(h).length,0);
+ assert.equal(h.controller.state.premiumAccess,true);assert.equal(h.controller.state.provider,'apple');assert.equal(h.controller.state.membershipState,'premium');
+ assert.equal(h.controller.state.message,'Your existing Premium membership is available.');
+}));
+
+for(const restoreSource of restoreSources)test(restoreSource+' inactive verified transaction cannot claim restoration from existing web Premium',async()=>withFixture({verifiedAccess:false,membership:{authenticated:true,premiumAccess:true,provider:'paddle'},restore:async()=>({restoreSource,transactions:[transaction],restoredActive:true})},async h=>{
+ assert.deepEqual(await h.controller.restore(),{ok:true,status:'no_active_purchases',restored:1,restoredActive:false,premiumAccess:true});
+ assert.deepEqual(h.order,['verified','finish']);assert.equal(h.controller.state.premiumAccess,true);assert.equal(h.controller.state.provider,'paddle');
+ assert.equal(h.controller.state.message,'Your existing Premium membership is available.');
+}));
+
+for(const restoreSource of restoreSources)test(restoreSource+' active verification cannot claim restored access when fresh membership is Free',async()=>withFixture({membership:{authenticated:true,premiumAccess:false,provider:null},restore:async()=>({restoreSource,transactions:[transaction]})},async h=>{
+ assert.deepEqual(await h.controller.restore(),{ok:true,status:'no_active_purchases',restored:1,restoredActive:false,premiumAccess:false});
+ assert.deepEqual(h.order,['verified','finish']);assert.equal(h.controller.state.premiumAccess,false);assert.equal(h.controller.state.membershipState,'free');
+ assert.match(h.controller.state.message,/No active Apple subscription was found/);assert.doesNotMatch(h.controller.state.message,/has been restored/);
+}));
+
+for(const restoreSource of restoreSources)test(restoreSource+' active verification retains a failed fresh membership check without claiming restoration',async()=>{
+ let membershipUnavailable=false;
+ const message='Membership status is temporarily unavailable.';
+ await withFixture({restore:async()=>({restoreSource,transactions:[transaction]}),fetch:(route,args,response)=>{
+  if(route==='/api/apple/verify')membershipUnavailable=true;
+  if(route==='/api/subscription/status'&&membershipUnavailable)return response({error:message},503);
+ }},async h=>{
+  assert.deepEqual(await h.controller.restore(),{ok:false,status:'unavailable',reason:'membership_unavailable',error:message,restored:1,restoredActive:false,premiumAccess:false});
+  assert.deepEqual(h.order,['verified','finish']);assert.equal(h.controller.state.premiumAccess,false);assert.equal(h.controller.state.membershipState,'unavailable');
+  assert.equal(h.controller.state.phase,'error');assert.equal(h.controller.state.message,message);assert.equal(h.controller.state.busy,false);
+ });
+});
+
+for(const restoreSource of restoreSources)for(const change of ['account','deletion','destroy'])test(restoreSource+' Restore discards native transactions after '+change,async()=>{
+ const reply=deferred();
+ await withFixture({restore:()=>reply.promise},async h=>{
+  const operation=h.controller.restore();while(!h.calls.some(call=>call[0]==='restore'))await tick();
+  if(change==='account')h.setAccount('actor-B');else if(change==='deletion')h.deleteAccount();else h.controller.destroy();
+  reply.resolve({restoreSource,transactions:[transaction],premiumAccess:true});
+  assert.equal((await operation).reason,'account_changed');assert.equal(verifications(h).length,0);assert.equal(finishes(h).length,0);
+  assert.equal(h.controller.state.premiumAccess,false);
+ });
+});
+
+for(const restoreSource of restoreSources)test(restoreSource+' Restore ignores late server acknowledgement after account switch',async()=>{
+ const reply=deferred();
+ await withFixture({restore:async()=>({restoreSource,transactions:[transaction]}),fetch:async(route,args,response)=>{
+  if(route==='/api/apple/verify'){await reply.promise;return response({ok:true,acknowledged:true,premiumAccess:true});}
+ }},async h=>{
+  const operation=h.controller.restore();while(!verifications(h).length)await tick();
+  const verification=verifications(h)[0][2];assert.equal(verification.headers.Authorization,'Bearer actor-A-token');
+  h.setAccount('actor-B');reply.resolve();assert.equal((await operation).reason,'account_changed');await tick();
+  assert.equal(verification.signal.aborted,true);assert.equal(finishes(h).length,0);assert.equal(h.controller.state.premiumAccess,false);
+  assert.equal(h.calls.some(call=>call[0]==='membershipUpdate'),false);
+ });
+});
 
 for(const premium of [false,true])test('a cancelled Restore preserves server-verified '+(premium?'Premium':'Free')+' and skips verification, finishing and status refresh',async()=>withFixture({membership:{authenticated:true,premiumAccess:premium,provider:premium?'apple':null},restore:async()=>({status:'cancelled',transactions:[transaction]})},async h=>{
  const checks=membershipChecks(h).length;
@@ -281,6 +363,29 @@ test('a network Restore failure displays a fixed connection action and only boun
  assert.equal(h.controller.state.message,message);assert.doesNotMatch(message,/person@|private-JWS|provider-description|ASDErrorDomain/);
  assert.equal(verifications(h).length,0);assert.equal(finishes(h).length,0);
 }));
+
+for(const premium of [false,true])test('typed unknown Restore failure remains an error and retains safe diagnostics for '+(premium?'Premium':'Free'),async()=>withFixture({membership:{authenticated:true,premiumAccess:premium,provider:premium?'apple':null},restore:async()=>{throw restoreFailure('BB_APPLE_RESTORE_UNKNOWN',['StoreKit.StoreKitError:2','StoreKitXStoreKitError:2','person@example.com','SKErrorDomain:0']);}},async h=>{
+ const checks=membershipChecks(h).length,message=restoreUnknownError+' Support code: StoreKit.StoreKitError:2, SKErrorDomain:0.';
+ assert.deepEqual(await h.controller.restore(),{ok:false,reason:'BB_APPLE_RESTORE_UNKNOWN',error:message});
+ assert.equal(h.controller.state.message,message);assert.equal(h.controller.state.phase,'error');assert.equal(h.controller.state.busy,false);
+ assert.equal(h.controller.state.premiumAccess,premium);assert.equal(h.controller.state.membershipState,premium?'premium':'free');
+ assert.equal(membershipChecks(h).length,checks);assert.equal(verifications(h).length,0);assert.equal(finishes(h).length,0);
+ for(const event of ['focus','basketboss:session-changed']){
+  h.win.dispatchEvent(new Event(event));await tick();
+  assert.equal(h.controller.state.message,message);assert.equal(h.controller.state.phase,'error');assert.equal(h.controller.state.premiumAccess,premium);
+ }
+ await h.controller.refresh();assert.equal(h.controller.state.message,message);assert.equal(h.controller.state.phase,'error');
+ assert.doesNotMatch(message,/cancelled|StoreKitX|person@|private-JWS|provider-description/);
+ assert.equal(h.calls.some(call=>call[0]==='membershipUpdate'),false);
+}));
+
+test('unknown Restore error classification comes only from the exact native error code',async()=>{
+ for(const code of ['BB_APPLE_RESTORE_UNKNOWN','BB_APPLE_RESTORE_UNKNOWN_PRIVATE','unknown'])await withFixture({restore:async()=>{throw restoreFailure(code,null);}},async h=>{
+  const error=code==='BB_APPLE_RESTORE_UNKNOWN'?restoreUnknownError:restoreError;
+  assert.deepEqual(await h.controller.restore(),{ok:false,reason:code==='BB_APPLE_RESTORE_UNKNOWN'?code:'BB_APPLE_RESTORE',error});
+  assert.equal(h.controller.state.phase,'error');assert.equal(h.controller.state.premiumAccess,false);
+ });
+});
 
 test('Restore accepts the exact typed StoreKit domain through nested Capacitor data and excludes lookalike domains',async()=>withFixture({restore:async()=>{throw restoreFailure('BB_APPLE_RESTORE_NETWORK',['StoreKit.StoreKitError:3','StoreKitXStoreKitError:3','StoreKit.StoreKitError.private:1','ArbitraryDomain:123','NSURLErrorDomain:-1009','StoreKit.StoreKitError:-9223372036854775808']);}},async h=>{
  const message=restoreNetworkError+' Support code: StoreKit.StoreKitError:3, NSURLErrorDomain:-1009, StoreKit.StoreKitError:-9223372036854775808.';
@@ -359,14 +464,15 @@ for(const change of ['account','destroy'])test('a late native Restore error afte
  });
 });
 
-for(const acknowledged of [false,true])test('Restore only acknowledges '+(acknowledged?'server-verified inactive purchases':'purchases with server acknowledgement'),async()=>withFixture({ack:acknowledged,verifiedAccess:false},async h=>{
+for(const restoreSource of restoreSources)for(const acknowledged of [false,true])test(restoreSource+' Restore only finishes '+(acknowledged?'server-verified inactive purchases':'purchases with server acknowledgement'),async()=>withFixture({ack:acknowledged,verifiedAccess:false,restore:async()=>({restoreSource,transactions:[transaction]})},async h=>{
  const result=await h.controller.restore();assert.equal(result.ok,acknowledged);
  assert.equal(h.controller.state.premiumAccess,false);assert.equal(finishes(h).length,acknowledged?1:0);
  assert.equal(verifications(h).length,1);
 }));
 
-test('restore cannot take an Apple purchase belonging to a different BasketBoss account',async()=>withFixture({fetch:(route,args,response)=>route==='/api/apple/verify'?response({error:'This purchase belongs to another BasketBoss account.',code:'account_mismatch'},409):null},async h=>{
- const result=await h.controller.restore();assert.equal(result.ok,false);assert.equal(result.reason,'account_mismatch');assert.equal(finishes(h).length,0);assert.equal(h.controller.state.premiumAccess,false);
+for(const restoreSource of restoreSources)for(const code of ['account_mismatch','apple_verification_unavailable'])test(restoreSource+' Restore cannot finish or unlock after '+code,async()=>withFixture({restore:async()=>({restoreSource,premiumAccess:true,transactions:[transaction]}),fetch:(route,args,response)=>route==='/api/apple/verify'?response({error:code==='account_mismatch'?'This purchase belongs to another BasketBoss account.':'Apple purchase verification is temporarily unavailable.',code},code==='account_mismatch'?409:503):null},async h=>{
+ const result=await h.controller.restore();assert.equal(result.ok,false);assert.equal(result.reason,code);assert.equal(verifications(h).length,1);assert.equal(finishes(h).length,0);assert.equal(h.controller.state.premiumAccess,false);
+ await h.controller.refresh();assert.equal(h.controller.state.message,result.error);assert.equal(h.controller.state.phase,'error');assert.equal(h.controller.state.premiumAccess,false);
 }));
 
 test('unconfigured Apple backend prevents both purchase and restore sheets',async()=>withFixture({fetch:(route,args,response)=>route==='/api/apple/config'?response({available:false}):null},async h=>{

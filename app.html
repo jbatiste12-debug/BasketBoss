@@ -9929,8 +9929,9 @@ function bb83BoughtCandidates(){
   const known=visible.get(id)||{};
   const name=entry?.name||known.name,unit=String(entry?.unit||known.unit||'each').toLowerCase();
   const qty=Number(entry?.qty||0),aisle=entry?.aisle||known.aisle||bb172Aisle({key:name});
-  if(name&&qty>0&&Number.isFinite(qty)&&['each','g','kg','ml','l','pack','clove'].includes(unit)
-    &&aisle!=='Household & Other')chosen.push({id,name,qty,unit,aisle,legacySnapshot:!!entry.legacySnapshot});
+  if(name&&qty>0&&Number.isFinite(qty)&&['each','g','kg','ml','l','pack','clove','tin','can','bag','bottle','jar','pouch','cup','tsp','tbsp'].includes(unit)
+    &&aisle!=='Household & Other')chosen.push({id,name,qty,unit,aisle,legacySnapshot:!!entry.legacySnapshot,
+     ...(entry.packReviewed===true?{packReviewed:true,packQuantity:entry.packQuantity,packUnit:entry.packUnit}:{})});
  }
  return chosen;
 }
@@ -10521,14 +10522,20 @@ function bb83TransferBought({defer=false}={}){
  if(!receipts)return {count:0,error:true};
  const eligible=bbBetaPendingBought(),household=bbHomePendingHouseholdPurchases();if(!eligible.length&&!household.length)return {count:0,skipped:0,consumed:0};
  let records=bb83ReadObject(BB83_KITCHEN_INVENTORY);
+ let pantryNeedsReview=false;
  let newStock;try{newStock={...(typeof bbHomePhysicalStock==='function'?bbHomePhysicalStock():bb307Stock)};}catch{return {count:0,error:true,needsPantryReview:true};}
  if(window.BBPantryPolicy){
   if(typeof window.BBPantryNormalize!=='function')return {count:0,error:true,needsPantryReview:true};
-  try{const normalized=window.BBPantryNormalize(newStock,records,{canonicalize:BBPriceV19.canonical,market:bb307Market});newStock=normalized.stock;records=normalized.inventory;}catch{return {count:0,error:true,needsPantryReview:true};}
+  try{const normalized=window.BBPantryNormalize(newStock,records,{canonicalize:BBPriceV19.canonical,market:bb307Market,exactConversionsOnly:true,preserveDisplayUnits:true});if(normalized.issues?.some(issue=>issue.identityConflict))return {count:0,error:true,needsPantryReview:true};pantryNeedsReview=!!normalized.issues?.length;newStock=normalized.stock;records=normalized.inventory;}catch{return {count:0,error:true,needsPantryReview:true};}
  }
  let nextRecords={...records};
+ let reducedPurchases=[];
+ if(window.BBReducedStock&&window.BBReducedPurchases){
+  try{reducedPurchases=window.BBReducedPurchases.stockCredits(bbShopV7Session(),bbReducedContext(),bbReducedProgress());}
+  catch(error){console.warn('Reduced stock could not be prepared',error);return {count:0,error:true,needsPantryReview:true};}
+ }
  const legacy=bb83ReadObject(BB83_SHOP_STOCK_LEDGER),nextLegacy={...legacy};
- const nextReceipts={...receipts},creditAdditions=[];let count=0,skipped=0,consumed=0;
+ const nextReceipts={...receipts},creditAdditions=[],reducedAdditions=[];let count=0,skipped=0,consumed=0;
  for(const item of eligible){
   let choice=item.partialPurchase?{mode:'exact',qty:item.qty,unit:item.unit}:bbBetaChoiceInfo(item);
   if(bbBetaDryVolumeUnit(item.name,item.unit)){skipped++;continue;}
@@ -10547,31 +10554,58 @@ function bb83TransferBought({defer=false}={}){
   const factor=choice.unit==='kg'||choice.unit==='l'?1000:1;let unit=choice.unit==='kg'?'g':choice.unit==='l'?'ml':choice.unit;amount*=factor;
   let creditedQuantity=item.qty*factor;
   const policy=window.BBPantryPolicy,wholePepper=policy?.isWholePepper?.(item.name,unit,item)||BB307Pantry.pantryName(item.name)==='pepper'&&['g','kg'].includes(unit)&&item.staple!==true,staple=policy?.isStaple(item.name)&&!wholePepper;
+  const purchaseConversion={market:typeof bb307Market==='undefined'?'UK':bb307Market,wholePepper,packReviewed:item.packReviewed===true,packQuantity:item.packQuantity,packUnit:item.packUnit};
+  let purchaseNeedsReview=false;
   if(policy&&amount>0){
-   const resolved=staple?policy.staplePurchase({name:item.name,quantity:amount,unit}):policy.normalize(item.name,amount,unit,{market:bb307Market,wholePepper});
-   if(resolved){const before=amount;amount=resolved.quantity;creditedQuantity=before>0?creditedQuantity*amount/before:0;unit=resolved.unit;}
+   const resolved=staple?policy.staplePurchase({name:item.name,quantity:amount,unit}):policy.normalize(item.name,amount,unit,purchaseConversion);
+   if(resolved&&(!resolved.estimated||staple)){const before=amount;amount=resolved.quantity;creditedQuantity=before>0?creditedQuantity*amount/before:0;unit=resolved.unit;}
+   else if(!resolved||resolved.estimated){purchaseNeedsReview=true;pantryNeedsReview=true;}
   }
   if(amount>0){
    const name=item.name;
    const stockId=BB307Pantry.pantryId(name,unit);
-   const defaultLoc=bb83StockLoc(name,item.aisle),candidates=Object.entries(nextRecords).filter(([k,r])=>r?.selected&&r?.name&&
-    (r.bb173StockKey?r.bb173StockKey===stockId:BB307Pantry.pantryId(r.name,(r.unit==='kg'?'g':r.unit==='l'?'ml':r.unit||'each'))===stockId));
-   // A frozen portion is a distinct storage decision, not the destination for
-   // a later fresh purchase of the same ingredient.
-   const existing=candidates.find(([,r])=>r.loc===defaultLoc)||candidates.find(([,r])=>defaultLoc!=='freezer'&&r.loc!=='freezer');
-   const loc=existing?.[1]?.loc||defaultLoc;
-   const baseInventoryId=loc+'|'+bb83KitchenName(name),baseRecord=nextRecords[baseInventoryId];
-   const inventoryId=existing?.[0]||(!baseRecord||baseRecord.bb173StockKey===stockId?baseInventoryId:baseInventoryId+'|'+stockId);
-   const previous=nextRecords[inventoryId]||{};
-   const previousUnit=previous.unit==='kg'?'g':previous.unit==='l'?'ml':previous.unit;
-   if(previous.name&&previousUnit&&previousUnit!==unit){skipped++;continue;}
-   const updated=(Number(newStock[stockId])||0)+amount;
-   if(!Number.isFinite(updated)||updated>1000000){skipped++;continue;}
-   const otherOwned=Object.entries(nextRecords).filter(([key,row])=>key!==inventoryId&&row?.selected&&row.bb173StockKey===stockId).reduce((sum,[,row])=>sum+(Number(row.bb173StockValue)||0),0);
-   if(otherOwned>updated){skipped++;continue;}
-   const recordAmount=updated-otherOwned;newStock[stockId]=updated;
-   nextRecords[inventoryId]={...previous,name,loc,selected:true,qty:recordAmount,unit,...(staple?{staple:true,stapleStatus:'in',stapleCount:recordAmount,containerLabel:policy.containerLabel(name)}:{}),
-    bb173StockKey:stockId,bb173StockValue:recordAmount};
+   if(['g','ml'].includes(unit)&&Object.values(nextRecords).some(row=>row?.selected&&row?.name&&BB307Pantry.pantryName(row.name)===BB307Pantry.pantryName(name)&&
+    row.bb173StockKey?.endsWith('|'+(unit==='g'?'ml':'g'))))pantryNeedsReview=true;
+   const portions=[];let reducedQuantity=0;
+   for(const paid of reducedPurchases.filter(row=>row.id===item.id)){
+    let quantity=paid.quantity,paidUnit=paid.unit;if(paidUnit==='kg'){quantity*=1000;paidUnit='g';}else if(paidUnit==='l'){quantity*=1000;paidUnit='ml';}
+    const normal=staple?policy?.staplePurchase({name:paid.name,quantity,unit:paidUnit}):policy?.normalize?.(paid.name,quantity,paidUnit,purchaseConversion);
+    if(normal&&(!normal.estimated||staple)){quantity=normal.quantity;paidUnit=normal.unit;}
+    if(paidUnit!==unit||!(quantity>0))continue;
+    quantity=Math.min(quantity,amount-reducedQuantity);if(!(quantity>0))continue;
+    portions.push({quantity,paid});reducedQuantity+=quantity;
+   }
+   if(amount>reducedQuantity)portions.push({quantity:amount-reducedQuantity});
+   // Preserve a user's named row and storage choice. A reduced batch and a
+   // frozen reserve keep their own quantities when ordinary food is added.
+   const draft={...nextRecords},added=[];let updated=Number(newStock[stockId])||0,invalid=false;
+   for(const portion of portions){
+    const dated=row=>Object.entries(row||{}).some(([key,value])=>/^(?:useBy(?:ISO|Date)?|bestBefore(?:ISO|Date)?|expiry(?:ISO|Date)?|expires(?:At|On)?|opened(?:At|On|Date)?|frozenAt|bought(?:At|On)|purchased(?:At|On)|purchaseDate|lot(?:Id|Code|Number)?|batch(?:Id|Code|Number)?)$/i.test(key)&&value!==undefined&&value!==null&&value!=='');
+    const uncertain=row=>row?.measurementNeedsReview===true||row?.packEstimated===true&&row.packReviewed!==true;
+    if(Object.values(draft).some(row=>row?.selected&&row.bb173StockKey===stockId&&uncertain(row)))pantryNeedsReview=true;
+    const defaultLoc=bb83StockLoc(name,item.aisle),candidates=Object.entries(draft).filter(([id,r])=>!purchaseNeedsReview&&!portion.paid&&!r?.bbReduced&&!dated(r)&&!uncertain(r)&&!added.some(row=>row.inventoryId===id)&&!reducedAdditions.some(row=>row.inventoryId===id)&&r?.selected&&r?.name&&
+     (r.bb173StockKey?r.bb173StockKey===stockId:BB307Pantry.pantryId(r.name,(r.unit==='kg'?'g':r.unit==='l'?'ml':r.unit||'each'))===stockId));
+    const preferred=candidates.filter(([,r])=>r.loc===defaultLoc),alternative=candidates.filter(([,r])=>defaultLoc!=='freezer'&&r.loc!=='freezer');
+    const existing=preferred.length===1?preferred[0]:preferred.length===0&&alternative.length===1?alternative[0]:null;
+    const loc=existing?.[1]?.loc||defaultLoc,baseInventoryId=loc+'|'+bb83KitchenName(name);
+    let inventoryId=existing?.[0]||baseInventoryId,suffix=0;
+    if(!existing)while(Object.hasOwn(draft,inventoryId))inventoryId=baseInventoryId+'|purchase-'+(++suffix);
+    const previous=draft[inventoryId]||{};
+    const display=previous.unit&&(policy?policy.normalize(previous.name,1,previous.unit,{market:previous.inputMarket||bb307Market,wholePepper,packReviewed:previous.packReviewed===true,packQuantity:previous.packQuantity,packUnit:previous.packUnit}):
+     {g:{unit:'g',quantity:1},kg:{unit:'g',quantity:1000},ml:{unit:'ml',quantity:1},l:{unit:'ml',quantity:1000}}[String(previous.unit).toLowerCase()]);
+    const keepDisplay=display&&!display.estimated&&display.unit===unit&&display.quantity>0;
+    if(previous.name&&previous.unit&&!keepDisplay&&previous.unit!==unit){invalid=true;break;}
+    updated+=portion.quantity;if(!Number.isFinite(updated)||updated>1000000){invalid=true;break;}
+    const otherOwned=Object.entries(draft).filter(([key,row])=>key!==inventoryId&&row?.selected&&row.bb173StockKey===stockId).reduce((sum,[,row])=>sum+(Number(row.bb173StockValue)||0),0);
+    if(otherOwned>updated){invalid=true;break;}
+    const recordAmount=updated-otherOwned;
+    draft[inventoryId]={...previous,name:previous.name||name,loc,selected:true,qty:keepDisplay?recordAmount/display.quantity:recordAmount,unit:keepDisplay?previous.unit:unit,
+     ...(purchaseNeedsReview?{measurementNeedsReview:true}:{}),...(item.packReviewed===true&&!previous.name?{packReviewed:true,packQuantity:item.packQuantity,packUnit:item.packUnit}:{}),
+     ...(staple?{staple:true,stapleStatus:'in',stapleCount:recordAmount,containerLabel:policy.containerLabel(name)}:{}),bb173StockKey:stockId,bb173StockValue:recordAmount};
+    if(portion.paid)added.push({name,unit,quantity:portion.quantity,stockKey:stockId,sourceId:portion.paid.sourceId,inventoryId});
+   }
+   if(invalid){skipped++;continue;}
+   nextRecords=draft;newStock[stockId]=updated;reducedAdditions.push(...added);
    count++;
   }else consumed++;
   const canonicalKey=BB307Pantry.pantryName(item.name),canonicalCreditId=bbBetaShopWeek()+'|'+canonicalKey+'|'+unit;
@@ -10590,12 +10624,8 @@ function bb83TransferBought({defer=false}={}){
    purchasedAt:current.purchasedAt||new Date().toISOString(),sourceReceiptIds:[...new Set([...(before.sourceReceiptIds||[]),...rows.map(row=>row.receiptId)])]};
  }
  if(window.BBReducedStock&&window.BBReducedPurchases){
-  try{const session=bbShopV7Session(),priced=window.BBReducedPurchases.stockCredits(session,bbReducedContext(),bbReducedProgress()),credits=[];
-   for(const row of creditAdditions){const paid=priced.find(value=>value.id===row.purchaseId);if(!paid)continue;let quantity=paid.quantity,unit=paid.unit;if(unit==='kg'){quantity*=1000;unit='g';}else if(unit==='l'){quantity*=1000;unit='ml';}
-    const policy=window.BBPantryPolicy,wholePepper=policy?.isWholePepper?.(paid.name,unit,paid)||BB307Pantry.pantryName(paid.name)==='pepper'&&['g','kg'].includes(unit)&&paid.staple!==true,normal=policy?.isStaple(paid.name)&&!wholePepper?policy.staplePurchase({name:paid.name,quantity,unit}):policy?.normalize?.(paid.name,quantity,unit,{market:bb307Market,wholePepper});if(normal){quantity=normal.quantity;unit=normal.unit;}
-    if(unit===row.unit)credits.push({name:row.name,unit,quantity:Math.min(quantity,row.credited),stockKey:BB307Pantry.pantryId(row.name,unit),sourceId:paid.sourceId});
-   }
-   if(credits.length)nextRecords=window.BBReducedStock.prepareInventory({before:records,after:nextRecords,credits,actor:bbReducedContext().actor,sourceId:'shop:'+session.id,at:Date.now(),policy:window.BBPantryPolicy,canonicalize:BBPriceV19.canonical,market:bb307Market});
+  try{const session=bbShopV7Session();
+   if(reducedAdditions.length)nextRecords=window.BBReducedStock.prepareInventory({before:records,after:nextRecords,credits:reducedAdditions,actor:bbReducedContext().actor,sourceId:'shop:'+session.id,at:Date.now(),policy:window.BBPantryPolicy,canonicalize:BBPriceV19.canonical,market:bb307Market,onReview:()=>{pantryNeedsReview=true;}});
   }catch(error){console.warn('Reduced stock could not be prepared',error);return {count:0,error:true,needsPantryReview:true};}
  }
  const updates={[BB83_KITCHEN_INVENTORY]:nextRecords,[BB83_SHOP_STOCK_LEDGER]:nextLegacy,[BB307_STOCK_KEY]:(BB307Pantry.physicalStock||BB307Pantry.normaliseStock)(newStock),[BB_BETA_RECEIPT_KEY]:nextReceipts};
@@ -10624,11 +10654,11 @@ function bb83TransferBought({defer=false}={}){
   if(window.BBHome?.applyManualPurchases?.(home,{shopSessionId:bbBetaShopWeek(),additions})===true)updates[homeKey]=home;
  }
  const keys=Object.keys(updates),before=Object.fromEntries(keys.map(k=>[k,localStorage.getItem(k)]));
- if(defer)return {count,skipped,consumed,shopSessionId:bbBetaShopWeek(),expected:before,updates};
+ if(defer)return {count,skipped,consumed,...(pantryNeedsReview?{needsPantryReview:true}:{}),shopSessionId:bbBetaShopWeek(),expected:before,updates};
  try{
   for(const [key,value]of Object.entries(updates)){const text=JSON.stringify(value);localStorage.setItem(key,text);if(localStorage.getItem(key)!==text)throw Error('Stock confirmation did not save');}
   bb307Stock=(BB307Pantry.physicalStock||BB307Pantry.normaliseStock)(newStock);if(updates[typeof BB307_FEATURE_KEY==='undefined'?'':BB307_FEATURE_KEY])bb307FeatureState=bb307ReadFeatures();
-  return {count,skipped,consumed};
+  return {count,skipped,consumed,...(pantryNeedsReview?{needsPantryReview:true}:{})};
  }catch(err){
   for(const key of keys){try{if(before[key]===null)localStorage.removeItem(key);else localStorage.setItem(key,before[key]);}catch(e){console.error('Stock rollback failed',key,e)}}
   bb307Stock=bb307ReadStock();console.error('Purchase transfer failed',err);
@@ -10684,11 +10714,11 @@ function bb172ShopPrompt(kind,after){
   note.textContent='Your recorded purchases will be added to At home once, including any part purchases.';
   dialog.append(note);
   leave.onclick=()=>{const result=bb83TransferBought({defer:true});
-   if(result.error){notify('At home transfer could not be saved safely. Shop remains open.');return;}
+   if(result.error){notify(result.needsPantryReview?'Review food names and amounts in At home before finishing. Your shop remains open.':'At home transfer could not be saved safely. Shop remains open.');return;}
    if(!bbShopV7Close(result)){notify('Could not finish safely. At home and your shopping progress have not changed; please try again.');return;}
    close();bb172ShopSetActive(false);if(typeof after==='function')after();
    notify(result.count+' item'+(result.count===1?'':'s')+' added to At home.'+
-    (result.skipped?' '+result.skipped+' item(s) need review in •••.':'')+' Check storage and use-by dates.');};
+    (result.skipped?' '+result.skipped+' item(s) need review in •••.':'')+(result.needsPantryReview?' Some existing At home amounts need review.':'')+' Check storage and use-by dates.');};
  }
  buttons.append(stay,leave);
  if(kind==='finish'){

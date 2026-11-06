@@ -17,6 +17,12 @@
     const storage = () => options.storage || root.localStorage;
     const now = () => (options.now ? new Date(options.now()) : new Date()).toISOString();
     const clone = value => JSON.parse(JSON.stringify(value));
+    const reducedReviewMessage = 'Some reduced purchases need review. Check their Use soon labels in At home.';
+    const reducedReviewResult = issues => issues?.length ? {needsReducedReview: true, reviewIssues: clone(issues), reviewMessage: reducedReviewMessage} : {};
+    const collectReducedReview = issues => value => {
+      if (issues.length >= 200 || !value || typeof value.reason !== 'string') return;
+      issues.push({name: typeof value.name === 'string' ? value.name.slice(0, 200) : '', unit: typeof value.unit === 'string' ? value.unit.slice(0, 30) : '', reason: value.reason.slice(0, 100)});
+    };
     // A measured receipt must not replace an independent package source with
     // the same display name. Keep both until their contents can be reviewed.
     const kitchenRecordId = (kitchen, base, stockKey) => {
@@ -51,6 +57,12 @@
     function sameContext(captured) { const current = activeContext(); return current.market === captured.market && current.retailer === captured.retailer; }
     const catalog = () => options.getCatalog ? options.getCatalog() : root.BBPriceV19?.catalog;
     const canonicalize = value => options.canonicalize ? options.canonicalize(value) : root.BBPriceV19?.canonical ? root.BBPriceV19.canonical(value) : value;
+    function requireReviewedPantryConversions(c, lines, market) {
+      if (options.pantryPolicy !== true) return;
+      const foodNames = new Set(lines.filter(line => line.selected !== false && c.classifyReceiptLine(line).classification === 'food').map(line => c.pantryTrackingPolicy.canonicalName(line.canonicalKey || line.key || line.name || line.description, canonicalize)));
+      const current = c.normalizePantryState(json(KEYS.stock, {}), json(KEYS.kitchen, {}), {canonicalize, market, exactConversionsOnly: true});
+      if (current.issues.some(issue => foodNames.has(c.pantryTrackingPolicy.canonicalName(issue.name, canonicalize)))) throw Error('Confirm saved pack contents in At home before adding this receipt. You can still save receipt prices only.');
+    }
     function cacheKey(actorId, scope) {
       if (!scope || !['user', 'household'].includes(scope.kind) || typeof scope.id !== 'string' || !/^[a-zA-Z0-9_-]{4,120}$/.test(scope.id)) throw Error('invalid_receipt_server_scope');
       return `basketboss_receipt_inventory_v1:${encodeURIComponent(actorId)}:${scope.kind}:${encodeURIComponent(scope.id)}`;
@@ -244,7 +256,7 @@
       if (!response.stock || typeof response.stock !== 'object' || Array.isArray(response.stock)) throw Error('receipt_server_stock_missing');
       const rawServerStock = c.normalizeStockMap(response.projectionMode === 'patch' ? { ...(cached.serverStock || {}), ...response.stock } : response.stock, { canonicalize });
       const currentKitchen=json(KEYS.kitchen,{}),tracking=options.pantryPolicy===true;
-      const local=tracking?c.normalizePantryState(json(KEYS.stock,{}),currentKitchen,{canonicalize,market:activeContext().market}):{stock:json(KEYS.stock,{}),inventory:currentKitchen};
+      const local=tracking?c.normalizePantryState(json(KEYS.stock,{}),currentKitchen,{canonicalize,market:activeContext().market,exactConversionsOnly:true}):{stock:json(KEYS.stock,{}),inventory:currentKitchen};
       const serverKitchen=clone(currentKitchen),pepperLines=tracking&&body?.action==='confirm_receipt'&&body.addToPantry!==false?(body.lines||[]).filter(line=>line.kind==='food'&&c.canonicalIngredientKey(line.canonicalKey,canonicalize)==='pepper'):[];
       // The confirmed receipt carries the description that distinguishes whole
       // peppers from a spice jar. Old local unit metadata predates this receipt.
@@ -253,10 +265,10 @@
         const whole=c.pantryTrackingPolicy.isWholePepper(line.name,line.unit,line);
         serverKitchen['receipt-context|'+stockKey]={name:whole?'Peppers':line.name||'Pepper',unit:line.unit,qty:quantity,bb173StockKey:stockKey,bb173StockValue:quantity,selected:true,staple:!whole,loc:line.location||'cupboard'};
       }
-      const nextServerStock = tracking?c.normalizePantryState(rawServerStock,serverKitchen,{canonicalize,market:activeContext().market}).stock:rawServerStock;
+      const nextServerStock = tracking?c.normalizePantryState(rawServerStock,serverKitchen,{canonicalize,market:activeContext().market,exactConversionsOnly:true}).stock:rawServerStock;
       const currentStock = c.normalizeStockMap(local.stock, { canonicalize });
       if (!owner.actorId && response.initialized === true && Object.keys(currentStock).length && !body?.localProjectionBaseline) throw Error('receipt_initial_pantry_merge_required');
-      const normalizedPrior=tracking?c.normalizePantryState(owner.serverStock||{},currentKitchen,{canonicalize,market:activeContext().market}).stock:owner.serverStock||{};
+      const normalizedPrior=tracking?c.normalizePantryState(owner.serverStock||{},currentKitchen,{canonicalize,market:activeContext().market,exactConversionsOnly:true}).stock:owner.serverStock||{};
       if (!body && owner.actorId && response.inventoryRevision > owner.inventoryRevision && !equalStock(currentStock, c.normalizeStockMap(normalizedPrior, { canonicalize }))) throw Error('receipt_local_remote_pantry_merge_required');
       let priorServerStock = normalizedPrior;
       if (body?.action === 'confirm_receipt') {
@@ -265,7 +277,7 @@
         // Otherwise the transaction reconciled the captured full local baseline first.
         if (!(Number(owner.inventoryRevision) >= response.receiptRevision)) priorServerStock = body.inventoryBaseline?.stock || {};
       } else if (body?.localProjectionBaseline) priorServerStock = body.localProjectionBaseline;
-      if(tracking)priorServerStock=c.normalizePantryState(priorServerStock,currentKitchen,{canonicalize,market:activeContext().market}).stock;
+      if(tracking)priorServerStock=c.normalizePantryState(priorServerStock,currentKitchen,{canonicalize,market:activeContext().market,exactConversionsOnly:true}).stock;
       const nextStock = c.projectReceiptInventory(currentStock, priorServerStock, nextServerStock);
       let kitchen = clone(local.inventory);
       for (const [field, limit] of [['inventory', 2000], ['essentials', 500], ['priceObservations', 2000], ['receipts', 500]]) if (response[field] !== undefined && (!Array.isArray(response[field]) || response[field].length > limit)) throw Error('receipt_projection_payload_limit');
@@ -331,15 +343,17 @@
       const appliedPriceIds = {...(cached.appliedPriceIds || {})}, newPrices = priceObservations.filter(x => typeof x.id === 'string' && !appliedPriceIds[x.id]);
       const appliedReceiptIds = {...(cached.appliedReceiptIds || {})}, freshReceipt = body?.action === 'confirm_receipt' && !appliedReceiptIds[body.receiptId];
       const reduced = freshReceipt ? reducedItems(body, reducedReview.reducedLineIds || []) : [];
+      const reviewIssues = freshReceipt ? [] : clone(cached.reducedReviewIssuesByReceipt?.[body?.receiptId] || []);
       if (reduced.length && body.addToPantry !== false && root.BBReducedStock?.prepareInventory) {
         const credits = reduced.map(line => {
           const saved = currentStock[line.canonicalKey + '|' + line.unit] || 0, prior = line.legacyCredit, proof = prior && ledger[prior.id];
           const verified = proof?.receiptInventoryReceiptId === body.receiptId && proof.receiptLegacyCreditById?.[body.receiptId] >= prior.quantity;
           return {name: line.canonicalKey, unit: line.unit, quantity: line.quantity, sourceId: 'receipt:' + body.receiptId + ':' + line.lineId, ...(verified && saved > 0 ? {previouslyCreditedQuantity: prior.quantity, legacyCreditId: prior.id} : {})};
         });
-        kitchen = root.BBReducedStock.prepareInventory({before: currentKitchen, after: kitchen, credits, actor: captured.actorId, sourceId: 'receipt:' + body.receiptId, at: reducedReview.confirmedAt || now()});
+        kitchen = root.BBReducedStock.prepareInventory({before: currentKitchen, after: kitchen, credits, actor: captured.actorId, sourceId: 'receipt:' + body.receiptId, at: reducedReview.confirmedAt || now(), onReview: collectReducedReview(reviewIssues)});
         changes[KEYS.kitchen] = kitchen;
       }
+      if (cached.reducedReviewIssuesByReceipt || reviewIssues.length) nextCache.reducedReviewIssuesByReceipt = {...(cached.reducedReviewIssuesByReceipt || {}), ...(freshReceipt && reviewIssues.length ? {[body.receiptId]: reviewIssues} : {})};
       const packet = {actorId: captured.actorId, source: 'cloud', stockAfter: nextStock, priceUpdates: newPrices, receiptId: body?.receiptId || response.receiptId || null, stockPantry: body?.addToPantry !== false, addToPantry: body?.addToPantry !== false, market: body?.market, retailer: body?.retailer, shopSessionId: body?.shopSessionId || null, purchasedAt: body?.purchasedAt || null, confirmedAt: body ? receiptConfirmedAt(response, body.receiptId, reducedReview.confirmedAt) : null, reducedItems: reduced, items: (freshReceipt ? body.lines || [] : []).filter(x => x.kind === 'food').map(x => ({...x, key: x.canonicalKey, classification: x.kind})), essentials: newEssentials};
       packet.purchaseCosts = freshReceipt ? acceptedPurchaseCosts(body,reducedReview.reducedLineIds || []) : [];
       // The app's household reconciliation joins this same atomic transaction.
@@ -356,8 +370,9 @@
       if (body?.action === 'confirm_receipt' && pendingConfirmation(captured.actorId).receiptId === body.receiptId) changes[pendingKey(captured.actorId)] = null;
       if (!sameSession(captured)) throw Error('receipt_account_changed');
       atomicWrite(changes, captured.actorId);
-      try { options.onProjection?.({ stock: nextStock, inventory: kitchen, essentials, receipts, pantryReview, scope }); } catch { /* Stored projection remains valid if rendering fails. */ }
-      return { stock: nextStock, inventory: kitchen, essentials, receipts, pantryReview, scope };
+      const projection = { stock: nextStock, inventory: kitchen, essentials, receipts, pantryReview, scope, ...reducedReviewResult(reviewIssues) };
+      try { options.onProjection?.(projection); } catch { /* Stored projection remains valid if rendering fails. */ }
+      return projection;
     }
     async function commitLocalReceiptInternal(packet) {
       const c = await core(), captured = session(), active = activeContext();
@@ -371,10 +386,12 @@
       const signature = JSON.stringify(stable({...packet, source: undefined}));
       if (saves[packet.receiptId]) {
         if (saves[packet.receiptId].signature !== signature) throw Error('receipt_identity_conflict');
-        return {ok: true, saved: 0, stocked: 0, duplicate: true, localOnly: true, message: 'This receipt has already been saved on this device.'};
+        const review = reducedReviewResult(saves[packet.receiptId].reviewIssues);
+        return {ok: true, saved: 0, stocked: 0, duplicate: true, localOnly: true, ...review, message: 'This receipt has already been saved on this device.' + (review.needsReducedReview ? ' ' + reducedReviewMessage : '')};
       }
       if (Object.keys(saves).length >= 2000) throw Error('local_receipt_history_limit');
-      const currentKitchen = json(KEYS.kitchen,{}), initial=options.pantryPolicy===true?c.normalizePantryState(json(KEYS.stock,{}),currentKitchen,{canonicalize,market:active.market}):{stock:json(KEYS.stock,{}),inventory:currentKitchen};
+      if (stockPantry) requireReviewedPantryConversions(c, packet.items, active.market);
+      const currentKitchen = json(KEYS.kitchen,{}), initial=options.pantryPolicy===true?c.normalizePantryState(json(KEYS.stock,{}),currentKitchen,{canonicalize,market:active.market,exactConversionsOnly:true}):{stock:json(KEYS.stock,{}),inventory:currentKitchen};
       const currentStock = c.normalizeStockMap(initial.stock, {canonicalize}), nextStock = {...currentStock}, ledger = options.pantryPolicy===true?c.normalizeFinishShopCredits(json(KEYS.finishShop,{}),{canonicalize,market:active.market,inventory:currentKitchen}):json(KEYS.finishShop, {});
       let kitchen = clone(initial.inventory);
       const items = [], purchased = new Map(), credited = new Map();
@@ -417,12 +434,12 @@
         kitchen[kitchenId] = {...(entry?.[1] || {}), name: wholePepper?'Peppers':entry?.[1]?.name || name, loc: location, selected: true, qty: nextStock[stockKey], unit, bb173StockKey: stockKey, bb173StockValue: nextStock[stockKey], receiptActorId: captured.actorId,...(wholePepper?{staple:false,containerLabel:undefined,stapleCount:undefined,stapleStatus:undefined}:options.pantryPolicy===true&&c.pantryTrackingPolicy.isStaple(name)?{staple:true,stapleCount:nextStock[stockKey],stapleStatus:'in',containerLabel:c.pantryTrackingPolicy.containerLabel(name)}:{})};
       }
       if (root.BBReducedStock?.settleInventory) kitchen = root.BBReducedStock.settleInventory({before: currentKitchen, after: kitchen, actor: captured.actorId});
-      const reduced = items.filter(line => line.classification === 'food' && line.reduced === true), savedAt = now();
+      const reduced = items.filter(line => line.classification === 'food' && line.reduced === true), savedAt = now(), reviewIssues = [];
       const remainingCredit = new Map([...credited].map(([key, value]) => [key, value.priorCreditedQuantity]));
       for (const line of reduced) {const key = line.key + '|' + line.unit, amount = Math.min(line.quantity || 0, remainingCredit.get(key) || 0);line.legacyCreditQuantity = amount;remainingCredit.set(key, Math.max(0, (remainingCredit.get(key) || 0) - amount));}
       if (stockPantry && reduced.length && root.BBReducedStock?.prepareInventory) {
         const reducedCredits = reduced.map(line => {const prior = credited.get(line.key + '|' + line.unit);return {name: line.key, unit: line.unit, quantity: line.quantity, sourceId: 'receipt:' + packet.receiptId + ':' + line.lineId, ...(line.legacyCreditQuantity > 0 && prior?.legacyCredit?.id ? {previouslyCreditedQuantity: line.legacyCreditQuantity, legacyCreditId: prior.legacyCredit.id} : {})};});
-        kitchen = root.BBReducedStock.prepareInventory({before: currentKitchen, after: kitchen, credits: reducedCredits, actor: captured.actorId, sourceId: 'receipt:' + packet.receiptId, at: savedAt});
+        kitchen = root.BBReducedStock.prepareInventory({before: currentKitchen, after: kitchen, credits: reducedCredits, actor: captured.actorId, sourceId: 'receipt:' + packet.receiptId, at: savedAt, onReview: collectReducedReview(reviewIssues)});
       }
       // A one-off yellow sticker (or other known promotion) is never saved as
       // the standard shelf price for following weeks, even on the local path.
@@ -431,7 +448,7 @@
       normalizedPacket.purchaseCosts=items.filter(line=>Number.isFinite(line.pricePaid)&&line.pricePaid>=0).map(line=>({...line,legacyCreditQuantity:credited.get(line.key+'|'+line.unit)?.priorCreditedQuantity||0}));
       normalizedPacket.finishShopCredits = clone(ledger);
       const changes = preparedChanges(normalizedPacket);
-      saves[packet.receiptId] = {signature, savedAt, stocked: stockPantry};
+      saves[packet.receiptId] = {signature, savedAt, stocked: stockPantry, ...(reviewIssues.length ? {reviewIssues} : {})};
       Object.assign(changes, {[savesKey]: saves});
       if (stockPantry) {
         Object.assign(changes, {[KEYS.stock]: c.normalizeStockMap(nextStock, {canonicalize}), [KEYS.kitchen]: kitchen});
@@ -443,7 +460,7 @@
       atomicWrite(changes, captured.actorId);
       reportReducedReceipt({receiptId: packet.receiptId, market: packet.market, retailer: packet.retailer, purchasedAt: packet.purchasedAt}, reduced.map(line => line.lineId), captured, active, savedAt);
       try {options.onProjection?.({source: 'legacy', stock: nextStock, inventory: kitchen, essentials: normalizedPacket.essentials});} catch {}
-      return {ok: true, saved: items.length, stocked: stockPantry ? items.length : 0, localOnly: true, message: stockPantry ? 'Prices saved and bought items added to At Home on this device.' : 'Reviewed prices saved on this device.'};
+      return {ok: true, saved: items.length, stocked: stockPantry ? items.length : 0, localOnly: true, ...reducedReviewResult(reviewIssues), message: (stockPantry ? 'Prices saved and bought items added to At Home on this device.' : 'Reviewed prices saved on this device.') + (reviewIssues.length ? ' ' + reducedReviewMessage : '')};
     }
     async function commitLocalReceipt(packet) { return withInventoryLock(() => commitLocalReceiptInternal(packet)); }
     function uuid() { const value = options.createId?.() || root.crypto?.randomUUID?.(); if (!value) throw Error('receipt_identity_generator_unavailable'); return value; }
@@ -465,6 +482,7 @@
       let owner = json(KEYS.owner, {});
       if (owner.actorId && owner.actorId !== captured.actorId) throw Error('receipt_projection_belongs_to_other_account');
       let requestId = idempotencyKey || `${draft.receiptId}:confirm`;
+      if (draft.addToPantry !== false) requireReviewedPantryConversions(c, draft.lines || [], context.market);
       const rawCredits = options.getFinishShopCredits ? options.getFinishShopCredits() : json(KEYS.finishShop, {}),credits=options.pantryPolicy===true?c.normalizeFinishShopCredits(rawCredits,{canonicalize,market:context.market,inventory:json(KEYS.kitchen,{})}):rawCredits;
       const pending = pendingConfirmation(captured.actorId),annotations=inferPurchaseAnnotations(draft.lines||[],draft.receiptId,draft.shopSessionId,c,pending.receiptId===draft.receiptId?pending:null);
       let body = c.prepareReceiptConfirmation({...draft,lines:annotations.lines}, { requestId, catalog: catalog(), canonicalize, finishShopCredits: credits,pantryPolicy:options.pantryPolicy===true });
@@ -480,7 +498,7 @@
       }
       if (!Number.isSafeInteger(owner.inventoryRevision)) throw Error('receipt_inventory_revision_missing');
       body.expectedScope = c.normalizeInventoryScope(owner.scope);
-      const baselineStock=options.pantryPolicy===true?c.normalizePantryState(json(KEYS.stock,{}),json(KEYS.kitchen,{}),{canonicalize,market:context.market}).stock:json(KEYS.stock,{});
+      const baselineStock=options.pantryPolicy===true?c.normalizePantryState(json(KEYS.stock,{}),json(KEYS.kitchen,{}),{canonicalize,market:context.market,exactConversionsOnly:true}).stock:json(KEYS.stock,{});
       body.inventoryBaseline = { stock: c.normalizeStockMap(baselineStock, { canonicalize }), expectedRevision: owner.inventoryRevision, initialize: owner.initialized !== true };
       if (pending.receiptId) {
         const semantic = value => { const { inventoryBaseline, ...rest } = value; return JSON.stringify(stable(rest)); };
@@ -512,7 +530,7 @@
         if (!sameSession(captured) || !sameContext(context) || signal?.aborted || !memoryDrafts.has(draft.receiptId)) return { ...base, localApplied: false, syncRequired: true, localError: 'receipt_context_changed_after_cloud_commit' };
         const reviewed = {reducedLineIds: reviewedReducedIds, confirmedAt: receiptConfirmedAt(response, body.receiptId, pending.createdAt || pendingConfirmation(captured.actorId).createdAt)};
         reportReducedReceipt(body, reviewedReducedIds, captured, context, reviewed.confirmedAt);
-        try { return { ...base, localApplied: true, projection: await applyProjection(response, captured, body, reviewed) }; }
+        try { const projection = await applyProjection(response, captured, body, reviewed); return { ...base, localApplied: true, projection, ...reducedReviewResult(projection.reviewIssues) }; }
         catch (error) { return { ...base, localApplied: false, syncRequired: true, localError: error.message }; }
       })();
       inFlight.set(operationKey, { digest, promise: operation });
@@ -524,7 +542,7 @@
       if (pending.receiptId && (response.receiptId !== pending.receiptId || !Number.isSafeInteger(response.receiptRevision) || response.receiptRevision < 1)) return { ok: true, localApplied: false, syncRequired: true, pendingReceipt: true, localError: 'pending_receipt_not_yet_confirmed' };
       const confirmedAt = pending.receiptId ? receiptConfirmedAt(response, pending.receiptId, null) : null;
       if (pending.receiptId) reportReducedReceipt(pending.body, pending.reducedLineIds || [], captured, context, confirmedAt);
-      try { return { ok: true, localApplied: true, projection: await applyProjection(response, captured, pending.receiptId ? pending.body : null, {reducedLineIds: pending.reducedLineIds || [], confirmedAt}), needsPantryConfirmation: response.pantryReview?.required !== false }; }
+      try { const projection = await applyProjection(response, captured, pending.receiptId ? pending.body : null, {reducedLineIds: pending.reducedLineIds || [], confirmedAt}); return { ok: true, localApplied: true, projection, needsPantryConfirmation: response.pantryReview?.required !== false, ...reducedReviewResult(projection.reviewIssues) }; }
       catch (error) { return { ok: true, localApplied: false, syncRequired: true, localError: error.message }; }
     }
     async function retryPendingConfirmationInternal({ signal } = {}) {
@@ -548,14 +566,14 @@
       if (!sameSession(captured) || !sameContext(context) || signal?.aborted) return { ...base, localApplied: false, syncRequired: true, localError: 'receipt_context_changed_after_cloud_commit' };
       const confirmedAt = receiptConfirmedAt(response, body.receiptId, pending.createdAt);
       reportReducedReceipt(body, pending.reducedLineIds || [], captured, context, confirmedAt);
-      try { return { ...base, localApplied: true, projection: await applyProjection(response, captured, body, {reducedLineIds: pending.reducedLineIds || [], confirmedAt}) }; }
+      try { const projection = await applyProjection(response, captured, body, {reducedLineIds: pending.reducedLineIds || [], confirmedAt}); return { ...base, localApplied: true, projection, ...reducedReviewResult(projection.reviewIssues) }; }
       catch (error) { return { ...base, localApplied: false, syncRequired: true, localError: error.message }; }
     }
     async function confirmPantryInternal({ stock, expectedRevision, shopSessionId, expectedScope, signal } = {}) {
       if (!stock || typeof stock !== 'object' || Array.isArray(stock) || !Number.isSafeInteger(expectedRevision) || expectedRevision < 0) throw Error('reviewed_pantry_stock_and_revision_required');
-      const c = await core();if(options.pantryPolicy===true)stock=c.normalizePantryState(stock,json(KEYS.kitchen,{}),{canonicalize,market:activeContext().market}).stock; stock = c.normalizeStockMap(stock, { canonicalize });
+      const c = await core();if(options.pantryPolicy===true)stock=c.normalizePantryState(stock,json(KEYS.kitchen,{}),{canonicalize,market:activeContext().market,exactConversionsOnly:true}).stock; stock = c.normalizeStockMap(stock, { canonicalize });
       if (pendingConfirmation(session().actorId).receiptId) throw Error('receipt_confirmation_recovery_required_first');
-      const captured = session(), context = activeContext(), owner = json(KEYS.owner, {}), scope = c.normalizeInventoryScope(expectedScope || owner.scope), baseline = c.normalizeStockMap(options.pantryPolicy===true?c.normalizePantryState(json(KEYS.stock,{}),json(KEYS.kitchen,{}),{canonicalize,market:context.market}).stock:json(KEYS.stock, {}), { canonicalize }), response = await request('POST', captured, { action: 'confirm_pantry', stock, expectedRevision, expectedScope: scope, shopSessionId }, signal);
+      const captured = session(), context = activeContext(), owner = json(KEYS.owner, {}), scope = c.normalizeInventoryScope(expectedScope || owner.scope), baseline = c.normalizeStockMap(options.pantryPolicy===true?c.normalizePantryState(json(KEYS.stock,{}),json(KEYS.kitchen,{}),{canonicalize,market:context.market,exactConversionsOnly:true}).stock:json(KEYS.stock, {}), { canonicalize }), response = await request('POST', captured, { action: 'confirm_pantry', stock, expectedRevision, expectedScope: scope, shopSessionId }, signal);
       if (!sameSession(captured) || !sameContext(context) || signal?.aborted) return { ok: true, committed: true, localApplied: false, syncRequired: true };
       try { return { ok: true, committed: true, localApplied: true, projection: await applyProjection(response, captured, { action: 'confirm_pantry', expectedScope: scope, localProjectionBaseline: baseline }), needsPantryConfirmation: false }; }
       catch (error) { return { ok: true, committed: true, localApplied: false, syncRequired: true, localError: error.message }; }

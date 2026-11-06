@@ -13,16 +13,45 @@
  function canonicalName(value,canonicalize){
   let raw=clean(value);if(!safeName(raw))return '';
   const originalStates=[...new Set(raw.match(/\b(?:cooked|frozen|dried|raw|fresh)\b/g)||[])];
-  raw=raw.replace(/\([^)]*\)/g,' ').replace(/\s+/g,' ').trim();
-  raw=raw.replace(/(?:\b\d+(?:\.\d+)?\s*[x×]\s*)?\b\d+(?:\.\d+)?\s*(?:kg|g|ml|litres?|liters?|l)\b/g,' ').replace(/\(\s*\)/g,' ').replace(/\s+/g,' ').trim();
+  raw=raw.replace(/(?:\b\d+(?:\.\d+)?\s*[x×]\s*)?\b\d+(?:\.\d+)?\s*(?:kg|g|ml|litres?|liters?|l)\b/g,' ').replace(/\s+/g,' ').trim();
+  // A bracket may identify a different food, diet or form, such as oat milk,
+  // gluten-free pasta or cooked chicken. Remove only quantities, repeated
+  // words and explicit usage notes; retain other physical food descriptors.
+  const descriptors=[];
+  const usageNote=/^(?:optional(?: (?:topping|garnish))?|(?:optional )?(?:to serve|for serving|for (?:the )?(?:topping|garnish|decoration|dusting|greasing)|to garnish|divided)(?: optional)?)$/;
+  const quantityNote=/^(?:from )?\d+(?:\.\d+)?\s*(?:fillets?|pieces?|slices?|packs?|packets?|bags?|bottles?|jars?|pouches?)$/;
+  raw=raw.replace(/\(([^)]*)\)/g,(_,content)=>{
+   const label=clean(content).replace(/,/g,' ').replace(/\s+/g,' ').trim();
+   // A tin/can identifies processing even when its bracket also gives a count.
+   // Other containers do not imply canned food or a known amount of contents.
+   const container=label.match(/^(?:from )?(?:\d+(?:\.\d+)?\s*)?(tins?|cans?)$/);
+   if(container)descriptors.push(container[1].startsWith('tin')?'tinned':'canned');
+   else if(label&&!usageNote.test(label)&&!quantityNote.test(label))descriptors.push(label);
+   return ' ';
+  }).replace(/\s+/g,' ').trim();
+  const contains=(text,part)=>(' '+text+' ').includes(' '+part+' '),qualifiers=[];
+  for(const descriptor of descriptors){
+   if(contains(raw,descriptor))continue;
+   const qualifier=raw&&contains(descriptor,raw)?(' '+descriptor+' ').replace(' '+raw+' ',' ').trim():descriptor;
+   if(qualifier&&!qualifiers.some(value=>contains(value,qualifier)))qualifiers.push(qualifier);
+  }
+  raw=[...qualifiers,raw].filter(Boolean).join(' ');
   if(!safeName(raw))return '';
-  const states=originalStates;
+  // These exact labels all mean fresh produce. Keep other uses of "fresh"
+  // (and every cooked, frozen or dried state) in their physical identities.
+  const freshTomato=/^fresh tomato(?:es)?$/.test(raw);
+  const states=originalStates.filter(state=>!(freshTomato&&state==='fresh'));
   const cannedTomatoes=!states.includes('fresh')&&/^(?:(?:tinned|canned|tin) (?:chopped |whole |plum )?tomato(?:es)?|chopped (?:tinned |canned )?tomato(?:es)?)$/.test(raw);
-  const alias=label=>cannedTomatoes?'chopped tomatoes':label.replace(/^(?:tinned|canned) ((?:(?:red |white |black |kidney |baked |butter |cannellini |borlotti )?beans?|chickpeas?|lentils?))$/,'$1').replace(/^tomato ketchup$/,'ketchup').replace(/^(?:runny|clear) honey$/,'honey');
-  let result=alias(raw).replace(/\bground beef\b/g,'beef mince').replace(/\bground turkey\b/g,'turkey mince').replace(/\bzucchini\b/g,'courgette').replace(/\beggplant\b/g,'aubergine').replace(/\bscallions?\b/g,'spring onion');
+  const alias=label=>freshTomato?'tomato':cannedTomatoes?'chopped tomatoes':label.replace(/^(?:tinned|canned) ((?:(?:red |white |black |kidney |baked |butter |cannellini |borlotti )?beans?|chickpeas?|lentils?))$/,'$1').replace(/^tomato ketchup$/,'ketchup').replace(/^(?:runny|clear) honey$/,'honey');
+  const foodAlias=label=>label.replace(/\bground beef\b/g,'beef mince').replace(/\bground turkey\b/g,'turkey mince').replace(/\bzucchini\b/g,'courgette').replace(/\beggplant\b/g,'aubergine').replace(/\bscallions?\b/g,'spring onion');
+  let result=foodAlias(alias(raw));
   if(typeof canonicalize==='function')try{const mapped=clean(canonicalize(result));if(safeName(mapped))result=alias(mapped);}catch{}
-  const plurals={potatoes:'potato',carrots:'carrot',onions:'onion','red onions':'red onion','spring onions':'spring onion',courgettes:'courgette',aubergines:'aubergine',cucumbers:'cucumber',shallots:'shallot',eggs:'egg',apples:'apple',bananas:'banana',lemons:'lemon',limes:'lime',oranges:'orange'};result=plurals[result]||result;
+  const plurals={potatoes:'potato',tomatoes:'tomato',carrots:'carrot',onions:'onion','red onions':'red onion','spring onions':'spring onion',courgettes:'courgette',aubergines:'aubergine',cucumbers:'cucumber',shallots:'shallot',eggs:'egg',apples:'apple',bananas:'banana',lemons:'lemon',limes:'lime',oranges:'orange'};result=plurals[result]||result;
+  for(const qualifier of qualifiers){const mapped=foodAlias(qualifier);if(!contains(result,mapped))result=mapped+' '+result;}
   for(const state of states)if(!new RegExp('\\b'+state+'\\b').test(result))result=state+' '+result;
+  // Protected descriptors must not undo an approved food alias. Otherwise a
+  // second pantry pass changes tinned beans or runny honey to a different key.
+  result=foodAlias(alias(result));result=plurals[result]||result;
   return safeName(result)?result:'';
  }
  function isStaple(value){

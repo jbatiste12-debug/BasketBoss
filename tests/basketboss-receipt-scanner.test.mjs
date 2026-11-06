@@ -273,6 +273,12 @@ test('cloud-committed storage failure never announces that stock was added', asy
   assert.ok(!/stock (?:was )?added|added to (?:your )?pantry/i.test(status));
   assert.ok(h.savedCallbacks.every(x => x.localApplied !== true));
 });
+test('a saved receipt with ambiguous reduced portions shows a review warning without recovery or another save',async()=>{
+ const h=harness({commitResult:{ok:true,committed:true,localApplied:true,receiptId:'receipt-fixture-id',needsReducedReview:true}}),dialog=await scanReceipt(h);
+ await reviewTop(dialog);await setValue(field(line(dialog),'reviewed'),true);await submit(dialog);
+ assert.equal(h.commits.length,1);assert.match(dialog.textContent,/Receipt saved/);assert.match(dialog.textContent,/Check their Use soon labels in At home/);
+ assert.equal(action(dialog,'recover').hidden,true);assert.equal(action(dialog,'save').disabled,true);assert.equal(h.savedCallbacks[0].localApplied,true);
+});
 test('quota failure does not retry the image scan automatically or write pantry state', async () => {
   const h = harness({ scanError: 'Daily scan allowance used. Try tomorrow.', scanStatusCode: 429 }), dialog = await scanReceipt(h);
   assert.equal(scanPosts(h).length, 1); assert.match(dialog.textContent, /allowance|tomorrow|limit/i); assert.equal(h.commits.length, 0); assert.equal(h.writes.length, 0);

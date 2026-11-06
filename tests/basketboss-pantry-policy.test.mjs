@@ -22,6 +22,66 @@ test('canned tomato aliases merge while fresh, frozen and cooked food states rem
  for(const name of [null,{},'', '__proto__','constructor','rice|g'])assert.equal(policy.canonicalName(name),'');
 });
 
+test('only exact fresh tomato labels share the existing fresh-produce tomato identity',()=>{
+ const pricingContext=vm.createContext({});vm.runInContext(fs.readFileSync(new URL('../basketboss-pricing-v19.js',import.meta.url),'utf8'),pricingContext);
+ for(const canonicalize of [undefined,pricingContext.BBPriceV19.canonical]){
+  for(const label of ['Tomato','Tomatoes','Fresh tomato','Fresh tomatoes','Tomatoes (fresh)']){
+   const key=policy.canonicalName(label,canonicalize);assert.equal(key,'tomato',label);assert.equal(policy.canonicalName(key,canonicalize),key,label+' is stable');
+  }
+  for(const label of ['Tinned tomatoes','Canned tomatoes','Tomatoes (1 tin)'])assert.equal(policy.canonicalName(label,canonicalize),'chopped tomatoes',label);
+  for(const label of ['Fresh peas','Fresh chopped tomatoes','Frozen tomatoes','Cooked tomatoes','Dried tomatoes','Tomato purée','Tomato paste'])assert.notEqual(policy.canonicalName(label,canonicalize),'tomato',label+' keeps its own state or food form');
+ }
+});
+
+test('parenthetical food, diet and state descriptors survive pantry matching and canonical callbacks',()=>{
+ const pricingContext=vm.createContext({});vm.runInContext(fs.readFileSync(new URL('../basketboss-pricing-v19.js',import.meta.url),'utf8'),pricingContext);
+ const canonicalize=pricingContext.BBPriceV19.canonical;
+ for(const [label,expected]of [['Pasta (gluten-free)','gluten-free pasta'],['Milk (oat)','oat milk'],['Milk (cow)','cow milk'],['Chicken breast (cooked)','cooked chicken breast'],['Rice (dry)','dry rice'],['Frozen chicken (thawed)','thawed frozen chicken'],['Beef mince (5% fat)','5% fat beef mince']]){
+  assert.equal(policy.canonicalName(label),expected,label);
+  assert.equal(policy.canonicalName(label,canonicalize),expected,label+' with catalogue aliases');
+  assert.equal(policy.canonicalName(expected,canonicalize),expected,label+' remains stable');
+ }
+ for(const [left,right]of [['Chicken breast','Turkey breast'],['Chicken breast (cooked)','Chicken breast (raw)'],['Pasta (gluten-free)','Pasta'],['Milk (oat)','Milk (cow)'],['Rice (dry)','Rice (cooked)'],['Beef mince (5% fat)','Beef mince (20% fat)']])assert.notEqual(policy.canonicalName(left,canonicalize),policy.canonicalName(right,canonicalize),left+' / '+right);
+ assert.equal(policy.canonicalName('Pasta (gluten-free)',()=> 'pasta'),'gluten-free pasta','a broad callback cannot discard an explicit diet qualifier');
+ assert.equal(policy.canonicalName('Milk (oat)',()=> 'milk'),'oat milk','a broad callback cannot discard an explicit food qualifier');
+});
+
+test('quantity-only and repeated parentheticals retain the ordinary food identity',()=>{
+ for(const label of ['Rice (500 g)','Rice (2 x 500 g)','Rice (rice)','Rice (rice 500 g)'])assert.equal(policy.canonicalName(label),'rice',label);
+ assert.equal(policy.canonicalName('Chicken breast (cooked chicken breast)'),'cooked chicken breast');
+ assert.equal(policy.canonicalName('Gluten-free pasta (gluten-free)'),'gluten-free pasta');
+ assert.equal(policy.canonicalName('Milk (whole milk)'),'whole milk');
+});
+
+test('explicit serving notes and source counts leave food identity and density unchanged',()=>{
+ for(const note of ['optional','optional topping','to serve','optional, to serve','for serving','for topping','for the topping','for garnish','for dusting','for greasing','divided'])assert.equal(policy.canonicalName('Soured cream ('+note+')'),'soured cream',note);
+ assert.equal(policy.normalize('Soured cream (optional topping)',4,'tbsp').quantity,60,'a serving note cannot disable the existing food-specific conversion');
+ assert.equal(policy.canonicalName('Cooked salmon (from 2 fillets)'),'cooked salmon');
+ assert.equal(policy.canonicalName('Salmon (2 fillets)'),'salmon');
+ for(const label of ['Pasta (gluten-free)','Milk (oat)','Salmon (smoked)','Peas (fresh)','Chicken (cooked)','Rice (dry)','Beef mince (5% fat)'])assert.notEqual(policy.canonicalName(label),policy.canonicalName(label.replace(/ \([^)]*\)/,'')),label);
+ assert.equal(policy.canonicalName('Salmon (from 2 trout fillets)'),'from 2 trout fillets salmon','an explicit different species is not a quantity-only note');
+});
+
+test('approved aliases and protected parenthetical qualifiers have a stable pantry identity',()=>{
+ const pricingContext=vm.createContext({});vm.runInContext(fs.readFileSync(new URL('../basketboss-pricing-v19.js',import.meta.url),'utf8'),pricingContext);
+ for(const canonicalize of [undefined,pricingContext.BBPriceV19.canonical])for(const [label,expected]of [['Beans (tinned)','beans'],['Kidney beans (canned)','kidney beans'],['Honey (runny)','honey'],['Honey (clear)','honey'],['Tomatoes (tinned)','chopped tomatoes'],['Meat (ground beef)','beef mince meat'],['Vegetables (zucchini)','courgette vegetables'],['Pasta (gluten-free)','gluten-free pasta'],['Milk (oat)','oat milk'],['Chicken (cooked)','cooked chicken'],['Beef mince (5% fat)','5% fat beef mince']]){
+  let key=policy.canonicalName(label,canonicalize);assert.equal(key,expected,label);
+  for(let pass=0;pass<3;pass++){key=policy.canonicalName(key,canonicalize);assert.equal(key,expected,label+' pass '+(pass+2));}
+ }
+});
+
+test('counted tin and can parentheses preserve tomato processing without assuming other containers are canned',()=>{
+ const pricingContext=vm.createContext({});vm.runInContext(fs.readFileSync(new URL('../basketboss-pricing-v19.js',import.meta.url),'utf8'),pricingContext);
+ for(const canonicalize of [undefined,pricingContext.BBPriceV19.canonical]){
+  for(const label of ['Tomatoes (1 tin)','Tomatoes (from 2 cans)','Tomatoes (1 x 400 g tin)','Tomatoes (can)']){
+   const key=policy.canonicalName(label,canonicalize);assert.equal(key,'chopped tomatoes',label);
+   assert.equal(policy.canonicalName(key,canonicalize),key,label+' is stable');
+   assert.notEqual(key,policy.canonicalName('Fresh tomatoes',canonicalize));assert.notEqual(key,policy.canonicalName('Tomatoes',canonicalize));
+  }
+  for(const label of ['Tomatoes (1 jar)','Tomatoes (from 2 bottles)','Tomatoes (1 bag)','Tomatoes (1 pack)'])assert.notEqual(policy.canonicalName(label,canonicalize),'chopped tomatoes',label+' does not prove canned processing');
+ }
+});
+
 test('UK container defaults convert specified core foods to canonical base units with review labels',()=>{
  for(const [name,quantity,unit,amount,base]of [['Chopped tomatoes',1,'tin',400,'g'],['Beans',2,'tins',800,'g'],['Kidney beans',.5,'can',200,'g'],['Spinach',1,'bag',200,'g'],['Salad leaves',2,'bags',400,'g'],['Beef mince',1,'pack',500,'g'],['Turkey mince',2,'packs',1000,'g']]){
   const result=policy.normalize(name,quantity,unit,{market:'UK'});assert.equal(result.quantity,amount,name);assert.equal(result.unit,base);assert.equal(result.estimated,true);assert.match(result.assumption,/Standard UK default.*Check/);
