@@ -4,6 +4,7 @@ import {installNativeApplePurchases} from '../native/apple-purchases.mjs';
 const MONTH='uk.co.basketboss.premium.monthly',YEAR='uk.co.basketboss.premium.annual',DELETED_FOUNDER='uk.co.basketboss.premium.founder.monthly';
 const TOKEN='c6376990-2814-47bc-b66f-4d5b4ca09538';
 const transaction={id:'123456',originalId:'123000',productId:MONTH,appAccountToken:TOKEN,signedTransactionInfo:'server-verifies-this-signed-JWS'};
+const verificationError='This Apple purchase environment is not available for this account.';
 const signedApp='eyJhbGciOiJFUzI1NiJ9.eyJidW5kbGVJZCI6InVrLmNvLmJhc2tldGJvc3MuYXBwIn0.c2lnbmF0dXJl';
 const beta={expiresAt:'2026-12-01T00:00:00.000Z',startedAt:'2026-11-03T00:00:00.000Z',applicationVersion:'6',environment:'Sandbox'};
 const deferred=()=>{let resolve;const promise=new Promise(r=>{resolve=r;});return {promise,resolve};};
@@ -80,6 +81,97 @@ test('a locally verified transaction never grants Premium without server acknowl
  const result=await h.controller.subscribe(MONTH);
  assert.equal(result.ok,false);assert.equal(finishes(h).length,0);assert.equal(h.controller.state.premiumAccess,false);
 }));
+
+for(const operation of ['subscribe','restore'])test('a failed '+operation+' keeps its verification reason across manual, focus and same-session refreshes',async()=>withFixture({fetch:(route,args,response)=>route==='/api/apple/verify'?response({code:'apple_environment_mismatch',error:verificationError},403):null},async h=>{
+ const result=await h.controller[operation](MONTH);
+ assert.equal(result.reason,'apple_environment_mismatch');assert.equal(result.error,verificationError);
+ assert.equal(h.controller.state.message,verificationError);assert.equal(finishes(h).length,0);
+ await h.controller.refresh();
+ for(const event of ['focus','basketboss:session-changed']){
+  h.win.dispatchEvent(new Event(event));await tick();
+  assert.equal(h.controller.state.message,verificationError);assert.equal(h.controller.state.phase,'error');
+  assert.equal(h.controller.state.membershipState,'free');assert.equal(h.controller.state.premiumAccess,false);
+ }
+ assert.equal(verifications(h).length,1);assert.equal(finishes(h).length,0);
+}));
+
+test('missing server acknowledgement remains actionable after a Free membership refresh',async()=>withFixture({fetch:(route,args,response)=>route==='/api/apple/verify'?response({ok:true,acknowledged:false,premiumAccess:true}):null},async h=>{
+ const result=await h.controller.subscribe(MONTH);assert.equal(result.ok,false);
+ await h.controller.refresh();assert.match(h.controller.state.message,/awaiting server confirmation.*Restore Purchases/);
+ assert.equal(h.controller.state.phase,'error');assert.equal(h.controller.state.premiumAccess,false);assert.equal(finishes(h).length,0);
+}));
+
+test('a queued verification failure survives a later acknowledged inactive transaction and membership refresh',async()=>withFixture({verifiedAccess:false,fetch:(route,args,response)=>route==='/api/apple/verify'&&JSON.parse(args.body).transactionId===transaction.id?response({code:'apple_environment_mismatch',error:verificationError},403):null},async h=>{
+ const next={...transaction,id:'123457',signedTransactionInfo:'another-server-verified-JWS'};
+ h.nativeListeners.get('transactionsUpdated')({transactions:[transaction,next]});
+ while(h.controller.state.busy)await tick();
+ assert.equal(verifications(h).length,2);assert.deepEqual(finishes(h).map(call=>call[1].transactionId),[next.id]);
+ assert.equal(h.controller.state.message,verificationError);assert.equal(h.controller.state.phase,'error');
+ assert.equal(h.controller.state.membershipState,'free');assert.equal(h.controller.state.premiumAccess,false);
+ await h.controller.refresh();assert.equal(h.controller.state.message,verificationError);
+}));
+
+test('authoritative Premium clears a retained verification failure without a local grant',async()=>{
+ let premium=false;
+ await withFixture({fetch:(route,args,response)=>{
+  if(route==='/api/apple/verify')return response({code:'apple_environment_mismatch',error:verificationError},403);
+  if(route==='/api/subscription/status')return response({authenticated:true,premiumAccess:premium,provider:premium?'apple':null});
+ }},async h=>{
+  await h.controller.subscribe(MONTH);assert.equal(h.controller.state.premiumAccess,false);
+  premium=true;await h.controller.refresh();assert.equal(h.controller.state.premiumAccess,true);assert.equal(h.controller.state.phase,'ready');
+  assert.match(h.controller.state.message,/Apple Premium subscription is available/);assert.equal(finishes(h).length,0);
+  premium=false;await h.controller.refresh();assert.equal(h.controller.state.premiumAccess,false);assert.match(h.controller.state.message,/Choose a plan/);
+ });
+});
+
+for(const operation of ['subscribe','restore'])test('successful inactive '+operation+' verification clears the previous failure while access stays Free',async()=>{
+ let reject=true;
+ await withFixture({verifiedAccess:false,fetch:(route,args,response)=>route==='/api/apple/verify'&&reject?response({code:'apple_environment_mismatch',error:verificationError},403):null},async h=>{
+  await h.controller.subscribe(MONTH);reject=false;
+  assert.equal((await h.controller[operation](MONTH)).ok,true);assert.equal(finishes(h).length,1);
+  await h.controller.refresh();assert.equal(h.controller.state.premiumAccess,false);assert.equal(h.controller.state.phase,'ready');assert.match(h.controller.state.message,/Choose a plan/);
+ });
+});
+
+for(const change of ['account','signout','token','expiry','silent-account'])test('a verification failure is cleared by '+change+' identity change',async()=>withFixture({fetch:(route,args,response)=>route==='/api/apple/verify'?response({code:'apple_environment_mismatch',error:verificationError},403):null},async h=>{
+ await h.controller.subscribe(MONTH);assert.equal(h.controller.state.message,verificationError);
+ if(change==='account'||change==='signout')h.setAccount(change==='account'?'actor-B':null);
+ else{
+  if(change==='token')h.session.access_token='new-token';
+  if(change==='expiry')h.session.expires_at+=60;
+  if(change==='silent-account')h.session.user={id:'actor-B'};
+  if(change!=='silent-account')h.win.dispatchEvent(new Event('basketboss:session-changed'));
+ }
+ const refreshed=h.controller.refresh();assert.notEqual(h.controller.state.message,verificationError);
+ await refreshed;assert.notEqual(h.controller.state.message,verificationError);assert.equal(h.controller.state.phase,'ready');
+ assert.equal(h.controller.state.membershipState,change==='signout'?'signed_out':'free');assert.equal(h.controller.state.premiumAccess,false);
+}));
+
+for(const operation of ['cancelled-purchase','empty-restore','product-error'])test('an explicit '+operation+' retry clears the previous verification failure',async()=>{
+ let attempts=0;
+ await withFixture({restore:async()=>({transactions:[]}),purchase:async()=>{
+  if(++attempts===1)return {status:'purchased',transaction};
+  if(operation==='product-error')throw Object.assign(Error('private lookup details'),{code:'BB_APPLE_PRODUCT_UNAVAILABLE'});
+  return {status:'cancelled'};
+ },fetch:(route,args,response)=>route==='/api/apple/verify'?response({code:'apple_environment_mismatch',error:verificationError},403):null},async h=>{
+  await h.controller.subscribe(MONTH);
+  if(operation==='empty-restore')await h.controller.restore();else await h.controller.subscribe(MONTH);
+  assert.notEqual(h.controller.state.message,verificationError);
+  if(operation==='product-error')assert.match(h.controller.state.message,/purchase sheet could not be opened/);
+  await h.controller.refresh();assert.match(h.controller.state.message,/Choose a plan/);assert.equal(h.controller.state.phase,'ready');
+  assert.equal(h.controller.state.premiumAccess,false);assert.equal(finishes(h).length,0);
+ });
+});
+
+test('destroying the controller during verification prevents late failure publication',async()=>{
+ const reply=deferred();let verifying=false;
+ await withFixture({fetch:async(route,args,response)=>{if(route==='/api/apple/verify'){verifying=true;await reply.promise;return response({code:'apple_environment_mismatch',error:verificationError},403);}}},async h=>{
+  let updates=0;h.controller.subscribeState(()=>updates++);
+  const operation=h.controller.subscribe(MONTH);while(!verifying)await tick();
+  h.controller.destroy();const before=updates;reply.resolve();assert.equal((await operation).reason,'account_changed');
+  h.win.dispatchEvent(new Event('focus'));await h.controller.refresh();assert.equal(updates,before);assert.equal(finishes(h).length,0);
+ });
+});
 
 test('verified inactive/refunded purchase can be finished without granting Premium',async()=>withFixture({verifiedAccess:false},async h=>{
  const result=await h.controller.subscribe(MONTH);
