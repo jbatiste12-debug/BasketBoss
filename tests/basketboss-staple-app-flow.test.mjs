@@ -290,3 +290,37 @@ test('an explicit target on measured reduced whole peppers stays food with its f
  const change=h.home.prepare([{name:'Bell peppers',unit:'g',qty:150,totalNeeded:400,pantryTarget:true,targetChanged:true,staple:false}]);homeModule.atomic(h.storage,{[change.key]:change.value},{[change.key]:change.expected});
  const rows=h.shopping();assert.equal(rows.length,1,JSON.stringify({rows,targets:h.home.targets()}));assert.equal(rows[0].unit,'g');assert.equal(rows[0].required,400);assert.equal(rows[0].toBuy,250);assert.notEqual(rows[0].staple,true);assert.equal(h.home.targets()['bell peppers|each'],undefined);assert.deepEqual(h.stock(),{'bell peppers|g':150});assert.deepEqual(h.inventory(),inventory);
 });
+
+test('buffer and chosen purchase pack flow to Shop without changing recipe requirements or physical stock',()=>{
+ const h=fixture({stock:{'milk|ml':200},inventory:{milk:entry('Milk',200,'ml')},ingredients:[{key:'milk',required:333.333333,unit:'ml'}]});
+ const change=h.home.prepare([{name:'Milk',unit:'ml',qty:200,totalNeeded:333.333333,extraBuffer:200,buyMultiple:1000,buyMultipleUnit:'ml',pantryTarget:true,targetChanged:true}]);
+ homeModule.atomic(h.storage,{[change.key]:change.value},{[change.key]:change.expected});
+ const rows=h.shopping();assert.equal(rows.length,1);assert.equal(rows[0].toBuy,1000);assert.equal(rows[0].buyMultiple,1000);assert.ok(Math.abs(rows[0].required-533.333333)<.01);assert.deepEqual(h.stock(),{'milk|ml':200});
+ const raw=copy(h.ctx.bb321UnifiedShop(h.state.ingredients,true));assert.ok(Math.abs(raw[0].required-333.333333)<.01);assert.ok(raw[0].toBuy<134,'the raw recipe path never includes buffer or pack rounding');
+});
+
+test('explicit staple buffer stays active while In stock and survives completion without reviving the old target',()=>{
+ const h=fixture({stock:{'ketchup|each':2},inventory:{ketchup:entry('Ketchup',2,'each',{staple:true,stapleStatus:'in'})},ingredients:[{key:'ketchup',required:15,unit:'ml'}]});
+ const change=h.home.prepare([{name:'Ketchup',unit:'each',qty:2,totalNeeded:1,extraBuffer:2,buyMultiple:2,buyMultipleUnit:'each',pantryTarget:true,targetChanged:true,staple:true}]);
+ homeModule.atomic(h.storage,{[change.key]:change.value},{[change.key]:change.expected});
+ let row=h.shopping()[0];assert.equal(row.required,3);assert.equal(row.toBuy,2);assert.equal(h.ctx.bb172StapleAssumesOnHand(row),false,'an intentional backup is not hidden by an In stock status');
+ h.home.complete('ketchup|each');h.state.ingredients=[];row=h.shopping()[0];assert.equal(row.required,2);assert.equal(row.toBuy,0);assert.equal(h.home.targets()['ketchup|each'].extraBuffer,2);assert.equal(h.home.targets()['ketchup|each'].buyMultiple,2);
+});
+
+test('cooking consumes the recipe amount while retaining the extra buffer and chosen purchase pack',async()=>{
+ const h=fixture({stock:{'milk|ml':1250},inventory:{milk:entry('Milk',1250,'ml')},ingredients:[{key:'milk',required:250,unit:'ml'}]});
+ const change=h.home.prepare([{name:'Milk',unit:'ml',qty:1250,totalNeeded:250,extraBuffer:100,buyMultiple:1000,buyMultipleUnit:'ml',pantryTarget:true,targetChanged:true}]);
+ homeModule.atomic(h.storage,{[change.key]:change.value},{[change.key]:change.expected});
+ assert.equal(h.shopping()[0].toBuy,0);await h.cook();assert.equal(h.stock()['milk|ml'],1000,'the recipe consumes250ml, not the350ml buffered target or a1L shopping pack');
+ assert.equal(h.home.targets()['milk|ml'].extraBuffer,100);assert.equal(h.home.targets()['milk|ml'].buyMultiple,1000);
+});
+
+test('a rounded full-pack purchase transfers once and a matching receipt cannot duplicate its stock',async()=>{
+ const h=fixture({stock:{'milk|ml':200},inventory:{milk:entry('Milk',200,'ml')},ingredients:[{key:'milk',required:333.333333,unit:'ml'}]});
+ const change=h.home.prepare([{name:'Milk',unit:'ml',qty:200,totalNeeded:333.333333,extraBuffer:200,buyMultiple:1000,buyMultipleUnit:'ml',pantryTarget:true,targetChanged:true}]);
+ homeModule.atomic(h.storage,{[change.key]:change.value},{[change.key]:change.expected});
+ const purchase=h.shopping()[0],apply=finish(h,{id:'milk|ml',name:'Milk',unit:'ml',qty:purchase.toBuy,aisle:'Dairy & Chilled'});
+ assert.equal(purchase.toBuy,1000);assert.equal(h.stock()['milk|ml'],200);assert.equal(apply().count,1);assert.equal(h.stock()['milk|ml'],1200);assert.equal(apply().count,0);assert.equal(h.shopping()[0].toBuy,0);
+ assert.equal((await h.receipt('rounded-milk-receipt','Milk',1000,'ml')).ok,true);assert.equal(h.stock()['milk|ml'],1200);assert.equal(Object.values(h.inventory()).filter(row=>row.selected).length,1);
+ assert.equal(h.home.targets()['milk|ml'].extraBuffer,200);assert.equal(h.home.targets()['milk|ml'].buyMultiple,1000);
+});

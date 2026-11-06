@@ -259,6 +259,11 @@ html body dialog.bbpi-panel .bbpi-step{
  cursor:pointer;touch-action:manipulation;
 }
 html body dialog.bbpi-panel .bbpi-status-label{margin:0 0 12px}
+html body dialog.bbpi-panel .bbpi-buffer-label{color:#61735b;font-weight:650}
+html body dialog.bbpi-panel .bbpi-buffer-label .bbpi-stepper{grid-template-columns:44px minmax(0,1fr) 44px}
+html body dialog.bbpi-panel .bbpi-buffer-label :is(input,.bbpi-step){background:#f6f8ef}
+html body dialog.bbpi-panel .bbpi-buy-label{margin-top:2px}
+html body dialog.bbpi-panel .bbpi-buy-fields{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:10px}
 html body dialog.bbpi-panel .bbpi-readout{
  margin:13px 0 0;font-size:14px;font-weight:750;line-height:1.45;color:#245d41;
  overflow-wrap:anywhere;
@@ -268,6 +273,8 @@ html body dialog.bbpi-panel .bbpi-notice{
  overflow-wrap:anywhere;
 }
 html body dialog.bbpi-panel .bbpi-notice:empty{display:none}
+html body dialog.bbpi-panel .bbpi-rounding-note{margin:4px 0 0;font-size:11px;line-height:1.4;color:#61735b}
+html body dialog.bbpi-panel .bbpi-rounding-note:empty{display:none}
 html body dialog.bbpi-panel .bbpi-notice.is-error{color:#8c4430}
 html body dialog.bbpi-panel .bbpi-pack{
  margin:14px 0 0;padding-top:9px;border-top:1px solid #dfe5d4;
@@ -276,6 +283,8 @@ html body dialog.bbpi-panel .bbpi-pack summary{
  min-height:44px;display:flex;align-items:center;font-size:12px;font-weight:750;
  line-height:1.4;cursor:pointer;touch-action:manipulation;
 }
+html body dialog.bbpi-panel .bbpi-pack summary:after{content:'+';margin-left:auto;padding-left:10px;font-size:18px;font-weight:500;color:#54755f}
+html body dialog.bbpi-panel .bbpi-pack[open] summary:after{content:'−'}
 html body dialog.bbpi-panel .bbpi-pack p{
  margin:2px 0 10px;font-size:12px;font-weight:400;line-height:1.45;color:#6b7c68;
 }

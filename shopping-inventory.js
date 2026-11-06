@@ -406,7 +406,7 @@ async function build(){
     const target=[...stagedTargets.values()].find(value=>value.sourceKey===row.inventoryId);
     if(!target)return row;
     if(row.qty===null||row.unit!==target.unit||row.conversionNeedsReview)throw Error('Review the amount and unit before adding '+row.name+' to Shop. Your saved stock has been kept.');
-    return {...row,totalNeeded:target.quantity,targetChanged:true,pantryTarget:true};
+    return {...row,totalNeeded:target.quantity,...(target.extraBuffer!==undefined?{extraBuffer:target.extraBuffer}:{}),...(target.buyMultiple!==undefined?{buyMultiple:target.buyMultiple,buyMultipleUnit:target.unit}:{}),targetChanged:true,pantryTarget:true};
    });
    homeChange=window.BBHome?.prepare?.(homeRows);
   }catch(error){note.textContent=error.message;return;}
@@ -479,7 +479,12 @@ async function build(){
   let needed;try{needed=window.BBHome?.foodTarget?.(row,{requirements:bb5Requirements(),otherRows:[...staged].filter(([id])=>id!==key).map(([,value])=>value)});}catch{needed=null;}
   const fields=needed||{totalNeeded:null,mealNeeded:null,minimumNeeded:null,targetProblem:'Shopping totals are still loading. Please try again.'};
   const pending=fields.canonicalUnit&&stagedTargets.get(pantryStockId(row.name,fields.canonicalUnit));
-  if(pending&&fields.quantityPerUnit>0){fields.totalQuantity=pending.quantity;fields.totalNeeded=Math.round(pending.quantity/fields.quantityPerUnit*1000000)/1000000;fields.shortfall=Math.round(Math.max(0,fields.totalNeeded-Number(row.qty||0)-Number(fields.otherOwned||0))*1000000)/1000000;}
+  if(pending&&fields.quantityPerUnit>0){
+   const view=value=>Math.round(value/fields.quantityPerUnit*1000000)/1000000;
+   fields.totalQuantity=pending.quantity;fields.totalNeeded=view(pending.quantity);fields.extraBufferQuantity=pending.extraBuffer??fields.extraBufferQuantity??0;fields.buyMultipleQuantity=pending.buyMultiple??fields.buyMultipleQuantity??0;fields.extraBuffer=view(fields.extraBufferQuantity);fields.buyMultiple=view(fields.buyMultipleQuantity);fields.buyMultipleUnit=row.unit;fields.requiredQuantity=pending.quantity+fields.extraBufferQuantity;fields.requiredNeeded=view(fields.requiredQuantity);
+   const owned=(Number(row.qty||0)+Number(fields.otherOwned||0))*fields.quantityPerUnit;
+   try{const purchase=window.BBHome.purchaseAmounts({needed:pending.quantity,buffer:fields.extraBufferQuantity,owned,multiple:fields.buyMultipleQuantity,unit:fields.canonicalUnit});fields.shortfall=view(purchase.purchaseQuantity);fields.unroundedShortfall=view(purchase.shortfall);fields.purchasePackCount=purchase.packCount;}catch(error){fields.targetProblem=error.message;fields.shortfall=null;}
+  }
   return {...row,...fields};
  }
  const editorRow=key=>{const value=staged.get(key);return value?editorDescriptor(value,key):null;};
@@ -493,8 +498,8 @@ async function build(){
  function editorUpdate(key,patch={}){
   const blocked=editorGuard();if(blocked)return editorFail(blocked);
   const previous=staged.get(key);if(!previous)return editorFail('This item changed. Choose it again.');
-  const next={...previous},hasQuantity=Object.hasOwn(patch,'qty'),hasTarget=Object.hasOwn(patch,'totalNeeded');
-  if(hasTarget&&(patch.totalNeeded===null||patch.totalNeeded===undefined||String(patch.totalNeeded).trim()===''||amount(patch.totalNeeded,patch.unit||next.unit)===null))return editorFail('Enter a valid Total needed, or use 0 for none. Your saved stock has been kept.');
+  const next={...previous},hasQuantity=Object.hasOwn(patch,'qty'),hasPolicy=['extraBuffer','buyMultiple','buyMultipleUnit'].some(field=>Object.hasOwn(patch,field)),hasTarget=Object.hasOwn(patch,'totalNeeded')||hasPolicy;
+  if(Object.hasOwn(patch,'totalNeeded')&&(patch.totalNeeded===null||patch.totalNeeded===undefined||String(patch.totalNeeded).trim()===''||amount(patch.totalNeeded,patch.unit||next.unit)===null))return editorFail('Enter a valid Total needed, or use 0 for none. Your saved stock has been kept.');
   if(Object.hasOwn(patch,'packQuantity')){
    const raw=patch.packQuantity===null||patch.packQuantity===undefined?'':String(patch.packQuantity).trim();
    if(raw==='')return editorFail('Enter a container size. Your reviewed contents and saved amount have been kept.');
@@ -548,14 +553,16 @@ async function build(){
   }
   if(hasTarget){
    if(next.qty===null||next.qty===undefined||next.qty==='')return editorFail('Enter how much you already have; use 0 for none.');
-   const info=window.BBHome?.foodTarget?.({...next,staple:isStapleRow(next)},{requirements:bb5Requirements(),otherRows:[...staged].filter(([id])=>id!==key).map(([,value])=>value)});
+   const policyPatch=Object.fromEntries(['extraBuffer','buyMultiple','buyMultipleUnit'].filter(field=>Object.hasOwn(patch,field)).map(field=>[field,patch[field]]));
+   const info=window.BBHome?.foodTarget?.({...next,...policyPatch,staple:isStapleRow(next)},{requirements:bb5Requirements(),otherRows:[...staged].filter(([id])=>id!==key).map(([,value])=>value)});
    if(!info||info.targetProblem)return editorFail(info?.targetProblem||'Shopping totals are still loading. Please try again.');
-   let quantity=Math.round(Number(patch.totalNeeded)*info.quantityPerUnit*1000000)/1000000;
-   if(Number(patch.totalNeeded)===info.totalNeeded)quantity=info.totalQuantity;
+   const base=Object.hasOwn(patch,'totalNeeded')?Number(patch.totalNeeded):info.totalNeeded;
+   let quantity=Math.round(base*info.quantityPerUnit*1000000)/1000000;
+   if(base===info.totalNeeded)quantity=info.totalQuantity;
    if(!Number.isFinite(quantity)||quantity<0||quantity>1000000||isStapleRow(next)&&(!Number.isInteger(quantity)||quantity>10000))return editorFail('Enter a valid Total needed for this item.');
    if(quantity+info.quantityTolerance<info.minimumQuantity)return editorFail(info.manualQuantity>0?'This item already has an extra amount on Shop. Keep its current total or amend that Shop item first.':'Total needed cannot be less than your planned meals need.');
    quantity=Math.abs(quantity-info.minimumQuantity)<=info.quantityTolerance?info.minimumQuantity:Math.max(quantity,info.minimumQuantity);
-   stagedTargets.set(pantryStockId(next.name,info.canonicalUnit),{sourceKey:key,quantity,unit:info.canonicalUnit});
+   stagedTargets.set(pantryStockId(next.name,info.canonicalUnit),{sourceKey:key,quantity,unit:info.canonicalUnit,extraBuffer:info.extraBufferQuantity??0,buyMultiple:info.buyMultipleQuantity??0});
   }
   staged.set(key,next);draftDirty=true;
   const input=[...card.querySelectorAll('[data-bb5-qty]')].find(node=>node.dataset.bb5Qty===key);

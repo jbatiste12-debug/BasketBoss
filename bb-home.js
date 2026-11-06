@@ -5,13 +5,26 @@
  const KEY='basketboss_at_home_requirements_v1';
  const valid=n=>typeof n==='number'&&Number.isFinite(n)&&n>=0&&n<=1000000;
  function difference(needed,owned){if(!valid(needed)||!valid(owned))throw Error('Enter valid non-negative amounts.');return Math.max(0,Math.round((needed-owned)*1000000)/1000000);}
+ const roundQuantity=value=>Math.round(value*1000000)/1000000;
+ function purchaseAmounts({needed,buffer=0,owned,multiple=0,unit}={}){
+  if(![needed,buffer,owned,multiple].every(valid))throw Error('Enter valid amounts and a non-negative pack size.');
+  if(!valid(needed+buffer))throw Error('The combined amount is too large.');
+  const shortfall=roundQuantity(Math.max(0,needed+buffer-owned));
+  if(!(multiple>0)||shortfall===0)return {shortfall,rawShortfall:shortfall,purchaseQuantity:shortfall,packCount:0,rounded:false,unit};
+  const size=Math.round(multiple*1000000);if(size<1)throw Error('Choose a larger pack size.');
+  const packCount=Math.ceil(Math.round(shortfall*1000000)/size),quantity=roundQuantity(packCount*size/1000000);
+  if(!valid(quantity))throw Error('The rounded purchase is too large.');
+  return {shortfall,rawShortfall:shortfall,purchaseQuantity:quantity,packCount,rounded:quantity!==shortfall,unit};
+ }
+ function purchaseQuantity(needed,buffer,owned,multiple=0){return purchaseAmounts({needed,buffer,owned,multiple}).purchaseQuantity;}
  function augment(items,lunch,targets,id){
   const map=new Map(items.map(row=>[id(row.key,row.unit),{...row}]));
   const lunchTotals=new Map();for(const row of lunch||[]){const key=id(row.name,row.unit);lunchTotals.set(key,(lunchTotals.get(key)||0)+Number(row.qty||0));}
   for(const row of Object.values(targets||{})){
-   if(!row?.pending||!valid(row.targetQty)||!row.name||!row.unit)continue;
+   if(!row?.name||!row.unit)continue;
+   const buffer=valid(row.extraBuffer)?row.extraBuffer:0,target=row.pending&&valid(row.targetQty)?row.targetQty:0;if(!(buffer>0)&&!row.pending)continue;if(!valid(row.targetQty))continue;
    const key=id(row.name,row.unit),before=map.get(key),base=Number(before?.required||0)+(lunchTotals.get(key)||0);
-   const extra=Math.max(0,row.targetQty-base);
+   const extra=roundQuantity(Math.max(0,target-base)+buffer);
    map.set(key,{...(before||{key:row.name,unit:row.unit,required:0,toBuy:0,pantryUsed:0}),required:Number(before?.required||0)+extra,bbHomePending:true});
   }return [...map.values()];
  }
@@ -174,11 +187,48 @@
    }
    const totalOwned=owned.quantity+otherOwned,minimum=(manual>0?Math.max(planned,totalOwned):planned)+manual,total=Math.max(planned,prior,hasPrior?0:defaultRestock,manual>0?totalOwned:0)+manual;
    if(![planned,prior,manual,minimum,total,totalOwned].every(valid))return problem('Review the combined amount needed before adding this item to Shop.');
+   const saved=Object.values(targets()).filter(target=>matching(target?.name)&&target.unit===one.unit).at(-1);
+   let extraBuffer=0,buyMultiple=0;
+   if(row.staple===true&&(Object.hasOwn(row,'extraBuffer')&&!Number.isInteger(Number(row.extraBuffer))||Object.hasOwn(row,'buyMultiple')&&row.buyMultiple!==null&&!Number.isInteger(Number(row.buyMultiple))))return problem('Use whole container counts for this staple.');
+   if(Object.hasOwn(row,'extraBuffer')&&typeof row.extraBuffer==='string'&&!row.extraBuffer.trim())return problem('Enter a valid extra stock buffer; use 0 for none.');
+   if(Object.hasOwn(row,'buyMultiple')&&typeof row.buyMultiple==='string'&&!row.buyMultiple.trim())return problem('Choose a valid standard pack size, or use Exact amount.');
+   if(Object.hasOwn(row,'extraBuffer')){const value=measure(row,Number(row.extraBuffer));if(!valid(Number(row.extraBuffer))||!value||value.unit!==one.unit)return problem('Enter a valid extra stock buffer.');extraBuffer=value.quantity;}
+   else if(saved?.extraBuffer!==undefined){if(!valid(saved.extraBuffer))return problem('Review the saved extra stock buffer.');extraBuffer=saved.extraBuffer;}
+   if(Object.hasOwn(row,'buyMultiple')){
+    const amount=row.buyMultiple===null?0:Number(row.buyMultiple),unit=row.buyMultipleUnit||row.unit;
+    const value=amount===0?{quantity:0,unit:one.unit}:measure({...row,unit,inputMarket:win.bb307ActiveMarket?.()||market},amount);
+    if(!valid(amount)||!value||value.unit!==one.unit||amount>0&&!(value.quantity>0))return problem('Choose a compatible standard pack size.');buyMultiple=value.quantity;
+   }else if(saved?.buyMultiple!==undefined){if(!valid(saved.buyMultiple))return problem('Review the saved standard pack size.');buyMultiple=saved.buyMultiple;}
+   if(row.staple===true&&(!Number.isInteger(extraBuffer)||!Number.isInteger(buyMultiple)))return problem('Use whole container counts for this staple.');
+   let purchase;try{purchase=purchaseAmounts({needed:total,buffer:extraBuffer,owned:totalOwned,multiple:buyMultiple,unit:one.unit});}catch(error){return problem(error.message);}
    const view=value=>Math.round(value/one.quantity*1000000)/1000000;
-   return {totalNeeded:view(total),totalQuantity:total,mealNeeded:view(planned),minimumNeeded:view(minimum),manualNeeded:view(manual),otherOwned:view(otherOwned),otherOwnedNeedsReview,shortfall:view(Math.max(0,total-totalOwned)),targetProblem:'',canonicalUnit:one.unit,quantityPerUnit:one.quantity,quantityTolerance:Math.max(0.000001,one.quantity*0.0000005+0.0000005),mealQuantity:planned,manualQuantity:manual,minimumQuantity:minimum};
+   return {totalNeeded:view(total),totalQuantity:total,requiredNeeded:view(total+extraBuffer),requiredQuantity:roundQuantity(total+extraBuffer),extraBuffer:view(extraBuffer),extraBufferQuantity:extraBuffer,buyMultiple:view(buyMultiple),buyMultipleUnit:row.unit,buyMultipleQuantity:buyMultiple,unroundedShortfall:view(purchase.shortfall),purchasePackCount:purchase.packCount,mealNeeded:view(planned),minimumNeeded:view(minimum),manualNeeded:view(manual),otherOwned:view(otherOwned),otherOwnedNeedsReview,shortfall:view(purchase.purchaseQuantity),targetProblem:'',canonicalUnit:one.unit,quantityPerUnit:one.quantity,quantityTolerance:Math.max(0.000001,one.quantity*0.0000005+0.0000005),mealQuantity:planned,manualQuantity:manual,minimumQuantity:minimum};
+  }
+  function roundShoppingItems(items){
+   const preferences=Object.values(targets()),policy=win.BBPantryPolicy,market=win.bb307ActiveMarket?.()||'UK';
+   return (items||[]).map(item=>{
+    if(!(Number(item.toBuy)>0))return item;
+    const recorded=valid(item.recordedPurchaseFloor)?item.recordedPurchaseFloor:0;
+    const name=item.key||item.name;
+    let one,multiple;
+    try{
+     if(item.staple===true)one={quantity:1,unit:'each'};
+     else if(policy)one=policy.normalize(name,1,item.unit,{market,canonicalize:win.BBPriceV19?.canonical});
+     else one={quantity:['kg','l'].includes(item.unit)?1000:1,unit:item.unit==='kg'?'g':item.unit==='l'?'ml':item.unit};
+     if(!one||!(one.quantity>0))return item;
+     // Preferences are saved in canonical units. Name aliases alone cannot
+     // distinguish a spice container from measured whole produce (pepper).
+     const match=preferences.find(row=>host().id(row.name,'')===host().id(name,'')&&row.unit===one.unit&&valid(row.buyMultiple)&&row.buyMultiple>0);if(!match)return item;
+     multiple={quantity:match.buyMultiple,unit:match.unit};
+     const size=multiple.quantity/one.quantity;
+     if(recorded>0&&Number(item.rawAutomaticPurchaseDemand)<=recorded)return {...item,buyMultiple:size,buyMultipleUnit:item.unit,purchasePackCount:0,unroundedToBuy:0,purchaseRounded:false};
+     const purchase=purchaseAmounts({needed:Number(item.toBuy),owned:recorded,multiple:size,unit:item.unit});
+     return {...item,toBuy:roundQuantity(recorded+purchase.purchaseQuantity),buyMultiple:size,buyMultipleUnit:item.unit,purchasePackCount:purchase.packCount,unroundedToBuy:purchase.shortfall,purchaseRounded:purchase.rounded};
+    }catch{return item;}
+   });
   }
   function requirement(name,unit){try{const base=unit==='kg'?'g':unit==='l'?'ml':unit;return (host()?.requirements()?.find(row=>host().id(row.key,row.unit)===host().id(name,base))?.required||0)/(unit==='kg'||unit==='l'?1000:1);}catch{return 0;}}
-  function total(name,unit){const base=unit==='kg'?'g':unit==='l'?'ml':unit,row=targets()[host().id(name,base)];return Math.max(requirement(name,unit),row?.pending?row.targetQty/(unit==='kg'||unit==='l'?1000:1):0);}
+  function total(name,unit){const base=unit==='kg'?'g':unit==='l'?'ml':unit,row=targets()[host().id(name,base)],factor=unit==='kg'||unit==='l'?1000:1;return roundQuantity(Math.max(requirement(name,unit),row?.pending?row.targetQty/factor:0)+(valid(row?.extraBuffer)?row.extraBuffer/factor:0));}
   function prepare(chosen){
    checkDraftActor();const {all,data,who}=own();const expected=store.getItem(KEY);
    for(const [index,row]of chosen.entries()){if(row.totalNeeded===undefined||row.totalNeeded===''||row.totalNeeded===null)continue;
@@ -200,7 +250,10 @@
     if(!valid(targetQty)||!['g','ml','tsp','tbsp','each','pack','clove','tin','loaf','slice','bulb'].includes(unit)||unit==='pack'&&!Number.isInteger(targetQty))throw Error('Check the total needed for '+row.name+'.');
     const id=host().id(row.name,unit),before=data.targets[id];
     const legacy=host().household().find(item=>item.selected&&!item.owned&&!Object.hasOwn(item,'targetQty')&&host().id(item.name,'g')===host().id(row.name,'g'));if(legacy)throw Error('Check the saved '+row.name+' food top-up first so it is not counted twice.');
-    data.targets[id]={name:row.name,unit,targetQty,pending:row.targetChanged||!before?true:before.pending};
+    let preferences={};
+    if(row.pantryTarget===true){const info=foodTarget(row,{otherRows:chosen.filter((_,at)=>at!==index)});if(info.targetProblem)throw Error(info.targetProblem);if(info.extraBufferQuantity>0)preferences.extraBuffer=info.extraBufferQuantity;if(info.buyMultipleQuantity>0)preferences.buyMultiple=info.buyMultipleQuantity;}
+    else{if(valid(before?.extraBuffer)&&before.extraBuffer>0)preferences.extraBuffer=before.extraBuffer;if(valid(before?.buyMultiple)&&before.buyMultiple>0)preferences.buyMultiple=before.buyMultiple;}
+    data.targets[id]={name:row.name,unit,targetQty,pending:row.targetChanged||!before?true:before.pending,...preferences};
    }
    for(const item of win.BBSharedShopping?.knownCompletedItems?.()||[]){if(item.completed&&item.completed_by===who&&chosen.some(row=>row.qty!==null&&row.qty!==undefined&&row.qty!==''&&host().id(row.name,row.unit)===host().id(item.name,item.unit))){data.sharedPurchases??={};const key=item.household_id+':'+item.id;if((data.sharedPurchases[key]?.revision||0)<item.revision)data.sharedPurchases[key]={revision:item.revision,checked:true};}}
    const featureChange=householdDraft.size?host().prepareHousehold([...householdDraft]):null;
@@ -455,6 +508,7 @@
     if(buy.source==='cupboard'&&buy.purpose!=='bought'&&base.staple===true&&base.stapleStatus==='in'&&Number(base.pantryUsed)>0)continue;
     if(!map.has(id)){map.set(id,base);output.push(base);}
     const automatic=Number(base.toBuy)||0,baseline=buy.shopSessionId===context.shopSessionId?Number(buy.boughtAtRequest)||0:0,next=buy.source==='cupboard'||buy.purpose==='bought'?Math.max(automatic,baseline+buy.quantity):Math.max(automatic,baseline)+buy.quantity;
+    if(buy.purpose==='bought'){base.recordedPurchaseFloor=Math.max(Number(base.recordedPurchaseFloor)||0,baseline+buy.quantity);base.rawAutomaticPurchaseDemand??=automatic;}else if(Object.hasOwn(base,'recordedPurchaseFloor'))base.rawAutomaticPurchaseDemand=next;
     base.required=(Number(base.required)||0)+next-automatic;base.toBuy=next;base.manualBuyQty=buy.quantity;base.manualBuyId=buy.id;base.quantityEstimated=!!base.quantityEstimated||buy.estimated;
     const policy=win.BBPantryPolicy,label=buy.displayName||buy.name,wholePepper=/^peppers?$/i.test(String(label||'').trim())&&buy.source!=='cupboard'&&base.staple!==true;
     if(policy?.isStaple(label)&&['each','pack','bottle','jar'].includes(String(buy.unit||'').toLowerCase())&&!wholePepper){base.staple=true;base.stapleContainer=policy.containerLabel(label);}
@@ -496,11 +550,11 @@
     const output=win.document.createElement('output');output.textContent='To buy: '+(item.manualPending===false?0:Math.max(0,target-owned))+' '+item.unit;editor.append(output);row.append(editor);row.querySelector('[data-bb307-owned]')?.setAttribute('hidden','');
    }
   }
-  function reminders(){const list=win.document.getElementById('bb321Printable');if(!list)return;list.querySelector('.bb-home-covered')?.remove();const data=Object.values(targets()).filter(row=>row.pending&&row.targetQty>0);const needed=host().requirements();const covered=data.filter(row=>{const item=needed.find(x=>host().id(x.key,x.unit)===host().id(row.name,row.unit));const current=host().stock()[host().id(row.name,row.unit)]||0;return Math.max(row.targetQty,item?.required||0)<=current;});const households=host().household().filter(row=>Object.hasOwn(row,'targetQty')&&row.manualPending!==false&&row.targetQty>0&&row.ownedQty>=row.targetQty).map(row=>({...row,homeId:'ess:'+row.id}));if(!covered.length&&!households.length)return;const box=win.document.createElement('div');box.className='bb-home-covered';for(const row of [...covered,...households]){const label=win.document.createElement('label'),tick=win.document.createElement('input');tick.type='checkbox';tick.addEventListener('change',()=>{if(tick.checked){complete(row.homeId||host().id(row.name,row.unit));host().refresh();}});label.append(tick,win.document.createTextNode(row.name+' · covered at home'));box.append(label);}list.append(box);}
+  function reminders(){const list=win.document.getElementById('bb321Printable');if(!list)return;list.querySelector('.bb-home-covered')?.remove();const data=Object.values(targets()).filter(row=>row.pending&&(row.targetQty>0||valid(row.extraBuffer)&&row.extraBuffer>0));const needed=host().requirements();const covered=data.filter(row=>{const item=needed.find(x=>host().id(x.key,x.unit)===host().id(row.name,row.unit));const current=host().stock()[host().id(row.name,row.unit)]||0;return Math.max(row.targetQty,item?.required||0)+(valid(row.extraBuffer)?row.extraBuffer:0)<=current;});const households=host().household().filter(row=>Object.hasOwn(row,'targetQty')&&row.manualPending!==false&&row.targetQty>0&&row.ownedQty>=row.targetQty).map(row=>({...row,homeId:'ess:'+row.id}));if(!covered.length&&!households.length)return;const box=win.document.createElement('div');box.className='bb-home-covered';for(const row of [...covered,...households]){const label=win.document.createElement('label'),tick=win.document.createElement('input');tick.type='checkbox';tick.addEventListener('change',()=>{if(tick.checked){complete(row.homeId||host().id(row.name,row.unit));host().refresh();}});label.append(tick,win.document.createTextNode(row.name+' · covered at home'));box.append(label);}list.append(box);}
   function openRequested(){const id=new URLSearchParams(win.location.search).get('bbcook');if(id)host()?.openCook?.(id);}
-  const api={prepareSharedPurchase,needsLegacyReview,receiptGeneration,supersedesReceipt,addHousehold,setHouseholdAmount,setHouseholdBalance,confirmHousehold,confirmHouseholdEntry,removeHousehold,openRequested,reminders,decorate,hasHouseholdDraft:()=>{checkDraftActor();return householdDraft.size>0;},committed:()=>{householdDraft.clear();host()?.reload();},difference,augment,targets,foodTarget,requirement,total,prepare,completionChanges,complete,isCooked,previewCook,cooked,previewDay,finishDay,shoppingBuys,addShoppingBuy,manualBuyItems,manualBuyEssentials,applyManualPurchases,actor,blocked,atomic};
+  const api={purchaseQuantity,purchaseAmounts,roundShoppingItems,prepareSharedPurchase,needsLegacyReview,receiptGeneration,supersedesReceipt,addHousehold,setHouseholdAmount,setHouseholdBalance,confirmHousehold,confirmHouseholdEntry,removeHousehold,openRequested,reminders,decorate,hasHouseholdDraft:()=>{checkDraftActor();return householdDraft.size>0;},committed:()=>{householdDraft.clear();host()?.reload();},difference,augment,targets,foodTarget,requirement,total,prepare,completionChanges,complete,isCooked,previewCook,cooked,previewDay,finishDay,shoppingBuys,addShoppingBuy,manualBuyItems,manualBuyEssentials,applyManualPurchases,actor,blocked,atomic};
   setTimeout(()=>{win.BBKitchenEssentials?.refresh?.();openRequested();},0);
   return Object.freeze(api);
  }
- return {difference,augment,atomic,install};
+ return {difference,purchaseQuantity,purchaseAmounts,augment,atomic,install};
 });

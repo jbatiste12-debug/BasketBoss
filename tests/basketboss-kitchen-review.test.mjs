@@ -119,6 +119,11 @@ test('compact review projects the existing total and shortfall, including stock 
  assert.deepEqual(review.reviewAmounts(row),{atHome:500,planned:1250,toShop:750});
  assert.equal(row.qty,200,'the summary never replaces this storage balance with a kitchen total');
 });
+test('compact review shows the buffered goal and the full pack purchase without changing the editable base',()=>{
+ const row={kind:'food',qty:200,unit:'ml',totalNeeded:333.333333,requiredNeeded:533.333333,extraBuffer:200,shortfall:1000};
+ assert.deepEqual(review.reviewAmounts(row),{atHome:200,planned:533.333333,toShop:1000});
+ assert.equal(row.totalNeeded,333.333333);
+});
 test('compact review keeps unknown and incompatible stock distinct from confirmed zero',()=>{
  const row={kind:'food',qty:null,unit:'g',otherOwned:0,totalNeeded:100,shortfall:100};
  assert.deepEqual(review.reviewAmounts(row),{atHome:null,planned:100,toShop:null});
