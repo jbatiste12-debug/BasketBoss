@@ -1,0 +1,58 @@
+Suggested App Store copy — review before entering in App Store Connect
+
+Name
+BasketBoss: Meal Planner
+
+Subtitle
+Plan meals. Shop smarter.
+
+Promotional text
+Plan dinners, shop for what you need and make more of the food you already have. Bring your meal plan, kitchen stock and shopping list together.
+
+Description
+Less dinner stress. A smarter shopping list. More use from the food you already have.
+
+BasketBoss connects your weekly dinner plan, food at home and shopping list, then helps you cook what you planned.
+
+PLAN YOUR WEEK
+Choose dinners, adjust portions and keep your household's meal preferences in mind. Explore 100 recipes free, with the full 500-recipe collection available with Premium.
+
+SHOP FOR WHAT YOU NEED
+Confirm the food already in your cupboard, fridge and freezer. BasketBoss calculates the shortfall for your meal plan. Add extra stock, choose practical pack sizes and keep weekly household essentials on your list.
+
+KEEP AN EYE ON YOUR BUDGET
+See estimated shopping costs and update them with your own confirmed prices. Tick off purchases as you shop and bring confirmed food quantities back into your kitchen stock.
+
+COOK WITH CONFIDENCE
+Follow guided recipe steps and timers. Premium adds optional Voice Cook and cooking questions for help along the way.
+
+MAKE MORE OF REDUCED FOOD
+Premium's Yellow sticker helper shows estimated reduction windows for supported supermarkets in the UK, Guernsey and Jersey. Log reduced purchases, prioritise Use soon food and move suitable stock to the freezer.
+
+OPTIONAL PREMIUM TOOLS
+Premium includes the full recipe collection and eligible receipt, food-photo, AI meal and voice tools. Review AI suggestions before saving. Camera and microphone access are optional.
+
+Shopping prices and supermarket reduction windows are estimates, not guaranteed live prices or availability. Recipe guidance and timers do not replace checking that food is safely cooked.
+
+Free features are available without a paid subscription. Premium subscriptions are optional. Apple displays the localized price and billing period before you confirm. Subscriptions renew automatically unless cancelled in Apple Account settings. Annual subscriptions are paid for one year upfront. Restore Purchases is available in the app.
+
+Privacy: https://basketboss.co.uk/privacy
+Terms: https://basketboss.co.uk/terms
+
+Keywords
+meal,planner,shopping,list,pantry,budget,recipes,family,food,waste,cooking,inventory
+
+Marketing URL
+https://basketboss.co.uk/
+
+Privacy Policy URL
+https://basketboss.co.uk/privacy
+
+Support contact
+support@basketboss.co.uk
+Use a live support webpage displaying this contact for the App Store Support URL.
+
+Copyright
+2026 Jason Batiste
+
+Do not include test account passwords in this document. Enter confirmed review credentials directly in App Store Connect's App Review Information fields. Complete the actual privacy, age-rating, export-compliance, agreements and availability fields separately.

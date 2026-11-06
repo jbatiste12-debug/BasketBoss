@@ -4,6 +4,20 @@
  'use strict';
  const LOCATIONS=['cupboard','fridge','freezer'];
  const ROUND=value=>Math.round(value*1000000)/1000000;
+ const foodFold=value=>String(value||'').normalize('NFKD').replace(/[\u0300-\u036f]/g,'').toLowerCase().replace(/\s+/g,' ').trim();
+ function matchedFood(value,foods,location,canonicalize){
+  const wanted=foodFold(value);if(!wanted)return null;
+  const exact=food=>[food.name,...food.aliases||[]].some(name=>foodFold(name)===wanted);
+  const preferred=foods.filter(food=>food.loc===location),candidates=[...preferred,...foods.filter(food=>food.loc!==location)];
+  const direct=candidates.find(exact);if(direct)return direct;
+  if(typeof canonicalize==='function'){const key=canonicalize(value);if(key)return candidates.find(food=>canonicalize(food.name)===key)||null;}
+  return null;
+ }
+ function matchingFoods(value,foods,location,limit=4){
+  const wanted=foodFold(value);if(!wanted)return [];
+  const rank=food=>{const names=[food.name,...food.aliases||[]].map(foodFold);return (names.includes(wanted)?0:names.some(name=>name.startsWith(wanted))?2:4)+(food.loc===location?0:1);};
+  return foods.filter(food=>[food.name,...food.aliases||[]].some(name=>foodFold(name).includes(wanted))).sort((a,b)=>rank(a)-rank(b)||a.name.localeCompare(b.name)).slice(0,limit);
+ }
  function stepFor(unit){return ({g:50,ml:50,kg:.25,l:.25,cup:.25,lb:.25,pint:.25})[unit]||1;}
  function stepped(value,unit,direction){const amount=value===null||value===undefined||value===''?0:Number(value);return Number.isFinite(amount)?ROUND(Math.max(0,amount+stepFor(unit)*(direction<0?-1:1))):null;}
  function preferredUnit(name,policy,fallback){
@@ -56,12 +70,17 @@
   if(!base)return row.unit?[row.unit]:['each'];
   return ['each','g','kg','ml','l','oz','lb','fl oz','cup','pint'].filter(unit=>{try{return policy.normalize(row.name,1,unit,options)?.unit===base.unit;}catch{return false;}});
  }
- function purchasePresets(row,policy,market='UK'){
+ function purchasePresets(row,policy,market='UK',standard=null){
   const options={market,packReviewed:row.packReviewed===true,packQuantity:row.packQuantity,packUnit:row.packUnit};
   let base;try{base=policy?.normalize(row.name,1,row.unit,options);}catch{}
   const counted=row.staple||preferredUnit(row.name,policy,row.unit)==='each'||base?.unit==='each';
   const values=counted?(row.staple?[[1,'each'],[2,'each'],[3,'each']]:[[1,'each'],[6,'each'],[12,'each']]):base?.unit==='ml'?(market==='US'?[[16,'fl oz'],[32,'fl oz'],[64,'fl oz']]:[[500,'ml'],[1,'l'],[2,'l']]):base?.unit==='g'?(market==='US'?[[8,'oz'],[1,'lb'],[2,'lb']]:[[250,'g'],[500,'g'],[1,'kg']]):[];
-  return values.map(([quantity,unit])=>({quantity,unit}));
+  const choices=values.map(([quantity,unit])=>({quantity,unit}));
+  if(!row.staple&&Number(standard?.quantity)>0&&Number(standard.quantity)<=1000000)try{
+   const candidate=policy?.normalize(row.name,Number(standard.quantity),standard.unit,options);
+   if(candidate?.unit===base?.unit&&!choices.some(value=>{const normalized=policy.normalize(row.name,value.quantity,value.unit,options);return normalized?.unit===candidate.unit&&Math.abs(normalized.quantity-candidate.quantity)<=.000001;}))choices.unshift({quantity:Number(standard.quantity),unit:standard.unit});
+  }catch{}
+  return choices;
  }
  function install(win){
   const doc=win.document;if(!doc?.addEventListener)return {refresh(){},destroy(){}};
@@ -113,8 +132,45 @@
    if(!valid(current)||!LOCATIONS.includes(loc))return;location=loc;
    const area=current.card.querySelector('[data-bb76-store="'+loc+'"]');if(!area)return;openArea(area);syncLocation();
   }
-  function addFood(loc){
-   if(!valid(current))return;location=loc;openEditor(null,undefined,'manual',current.preview?.('',loc)||{name:'',loc,qty:null,unit:'each',totalNeeded:0});
+  function knownFoods(){
+   const foods=[],byId=new Map(),catalogue=Object.values(win.BBPriceV19?.catalog||{}),canonical=value=>win.BBPantryPolicy?.canonicalName(value,win.BBPriceV19?.canonical)||foodFold(value);
+   const put=(name,loc,aliases=[])=>{if(!name||!LOCATIONS.includes(loc)||win.BBKitchenChoiceRules?.isHousehold?.(name))return;const id=loc+'|'+canonical(name),old=byId.get(id);if(old){old.aliases.push(...aliases,name);return;}const food={id,name,loc,aliases};byId.set(id,food);foods.push(food);};
+   for(const row of current.list())put(row.name,row.loc);
+   for(const tile of current.card.querySelectorAll('[data-bb5-food]')){
+    const loc=tile.closest('[data-bb76-store]')?.dataset.bb76Store,name=tile.dataset.bb5Food;
+    // The cupboard tile is tinned tuna. Keep fresh/frozen tuna distinct, and
+    // keep an existing saved name rather than silently moving old stock.
+    const tinned=loc==='cupboard'&&foodFold(name)==='tuna'&&!byId.has('cupboard|'+canonical(name))&&catalogue.some(food=>foodFold(food.ingredient)==='tinned tuna');
+    put(tinned?'Tinned tuna':name,loc,tinned?[name]:[]);
+   }
+   const place=(name,aisle)=>/^frozen\b/i.test(name)||/frozen/i.test(aisle||'')?'freezer':/dairy|chilled|produce|meat|fish/i.test(aisle||'')?'fridge':'cupboard';
+   for(const food of catalogue)if(typeof food.ingredient==='string')put(food.ingredient[0].toUpperCase()+food.ingredient.slice(1),place(food.ingredient,food.aisle));
+   for(const row of win.BBHomeHost?.requirements?.()||[]){const name=row.key||row.name;if(typeof name==='string'&&!foods.some(food=>canonical(food.name)===canonical(name)))put(name,place(name,win.BBPriceV19?.aisle?.(name)));}
+   return foods;
+  }
+  function previewFood(name,loc,foods=knownFoods()){
+   const match=matchedFood(name,foods,loc,value=>win.BBPantryPolicy?.canonicalName(value,win.BBPriceV19?.canonical)||foodFold(value));
+   return current.preview?.(match?.name||name.trim(),loc)||null;
+  }
+  function packChoices(row){
+   let standard=null;
+   if(!row.staple)try{
+    const pricing=win.BBPriceV19,key=pricing?.canonical?.(row.name),declared=Object.values(pricing?.catalog||{}).find(food=>pricing.canonical(food.ingredient)===key);
+    // Only an existing ingredient-specific catalogue entry can suggest a
+    // pack. A generic pricing fallback must not invent a custom food's size.
+    const pack=declared&&pricing.getPack?.(row.name,declared.standard_pack_unit,market());
+    if(pack)standard={quantity:pack.standard_pack_size,unit:pack.standard_pack_unit};
+   }catch{}
+   return purchasePresets(row,win.BBPantryPolicy,market(),standard);
+  }
+  function addFood(loc,name=query){
+   if(!valid(current))return;location=loc;const row=previewFood(String(name||''),loc)||{name:String(name||'').trim(),loc,qty:null,unit:'each',totalNeeded:0};openEditor(null,undefined,'manual',row);
+  }
+  function searchChoices(){
+   const choices=toolbar?.querySelector('.bbpi-search-matches');if(!choices||!valid(current))return;
+   choices.replaceChildren();const foods=matchingFoods(query,knownFoods(),location);
+   for(const food of foods){const control=btn('+ '+food.name,()=>{jump(food.loc);addFood(food.loc,food.name);},'bbpi-search-choice');control.setAttribute('aria-label','Add '+food.name+' to '+food.loc);choices.append(control);}
+   choices.hidden=!query.trim();if(!foods.length&&query.trim())choices.append(el('span','bbpi-search-empty','No match — add your own food.'));
   }
   function mountToolbar(){
    const panel=current.card.querySelector('#bbKitchenFoodPanel');if(!panel)return;
@@ -127,8 +183,9 @@
    for(const loc of LOCATIONS){const control=btn(loc[0].toUpperCase()+loc.slice(1),()=>jump(loc),'bbpi-location');control.dataset.bbpiLocation=loc;control.setAttribute('aria-pressed',String(loc===location));control.setAttribute('aria-controls','bbpi-area-'+loc);nav.append(control);}
    const filterPanel=el('div','bbpi-view-filters');filterPanel.id='bbpiViewFilterPanel';filterPanel.hidden=true;filterPanel.setAttribute('role','group');filterPanel.setAttribute('aria-label','Filter pantry stock');
    for(const [key,label]of[['all','All food'],['use-soon','Use soon'],['low','Low / Out']]){const control=btn(label,()=>{closeEditor();stockFilter=key;for(const button of filterPanel.querySelectorAll('button'))button.setAttribute('aria-pressed',String(button===control));chooseMatchingLocation();schedule();},'bbpi-filter');control.dataset.bbpiFilter=key;control.setAttribute('aria-pressed',String(key===stockFilter));filterPanel.append(control);}
-   search.addEventListener('input',()=>{closeEditor();query=search.value;chooseMatchingLocation();schedule();});
-   toolbar.append(actions,nav,filterPanel);panel.prepend(toolbar);current.card.dataset.bbpiFilters='false';
+   search.addEventListener('input',()=>{closeEditor();query=search.value;chooseMatchingLocation();searchChoices();schedule();});
+   const choices=el('div','bbpi-search-matches');choices.setAttribute('aria-label','Matching foods');choices.hidden=true;
+   toolbar.append(actions,nav,choices,filterPanel);panel.prepend(toolbar);current.card.dataset.bbpiFilters='false';searchChoices();
    if(win.ResizeObserver){toolbarResize=new win.ResizeObserver(measureToolbar);toolbarResize.observe(toolbar);}measureToolbar();
   }
   function measureToolbar(){if(toolbar?.isConnected&&current?.card?.isConnected)current.card.style.setProperty('--bbpi-toolbar-height',Math.ceil(toolbar.getBoundingClientRect().height)+'px');}
@@ -162,9 +219,10 @@
    }
   }
   function draftRow(view){
-   return {...view.row,name:view.name?view.name.value.trim():view.row.name,qty:view.quantity.value,unit:view.units.value,
-    ...(view.status?{stapleStatus:view.status.value}:{}),
-    ...(view.packQuantity?.value.trim()&&view.packUnit?.value?{packQuantity:Number(view.packQuantity.value),packUnit:view.packUnit.value,packReviewed:true}:{})};
+   const typed=view.name?.value.trim();
+   return {...view.row,name:view.name?(typed&&foodFold(typed)===view.resolvedInput?view.row.name:typed):view.row.name,qty:view.quantity.value,unit:view.units.value,
+    ...(view.row.staple&&view.status?{stapleStatus:view.status.value}:{}),
+    ...(!view.row.staple&&view.packQuantity?.value.trim()&&view.packUnit?.value?{packQuantity:Number(view.packQuantity.value),packUnit:view.packUnit.value,packReviewed:true}:{})};
   }
   function multipleDraft(view){
    if(!view.buySelect||view.buySelect.value==='off')return {quantity:0,unit:view.units.value};
@@ -194,14 +252,14 @@
    const amount=calculation?.purchaseQuantity??null,number=value=>new Intl.NumberFormat(market()==='US'?'en-US':'en-GB',{maximumFractionDigits:2}).format(value);
    const label=view.row.staple?unitLabel({...view.row,qty:amount},unit):unit;
    const packLabel=buy.unit==='l'?(buy.quantity===1?'litre':'litres'):view.row.staple?unitLabel({...view.row,qty:buy.quantity},buy.unit):buy.unit;
-   text(view.readout,amount===null?'Enter valid amounts to see what to buy.':amount>0&&buy.quantity>0?'Add to Shop: '+calculation.packCount+' × '+number(buy.quantity)+' '+packLabel:'Add to Shop: '+number(amount)+' '+label);
+   text(view.readout,amount===null?!model.name?'Enter a food name to get started.':view.quantity.value.trim()===''?'Enter how much you have; use 0 for none.':'Enter valid amounts to see what to buy.':amount>0&&buy.quantity>0?'Add to Shop: '+calculation.packCount+' × '+number(buy.quantity)+' '+packLabel:'Add to Shop: '+number(amount)+' '+label);
    text(view.roundingNote,calculation?.rounded?'Shortfall '+number(calculation.shortfall)+' '+unit+' · rounded to full packs.':'');
    if(view.otherOwned){view.otherOwned.hidden=!(other>0);text(view.otherOwned,other>0?'Also at home in another storage area: '+ROUND(other)+' '+unit+'.':'');}
    text(view.done,view.doneLabel||(amount>0?'Add to Shop':'Done'));
   }
   function localStep(field,direction){
    if(!editor||editor.busy)return;const next=stepped(field.value,editor.units.value,direction);if(next===null)return;
-   field.value=String(next);if(field===editor.quantity&&editor.status){if(next===0)editor.status.value='out';else if(editor.status.value==='out')editor.status.value='in';}editor.dirty=true;notice(editor,'');refreshPreview();
+   field.value=String(next);editor.touched.add(field===editor.quantity?'quantity':field===editor.needed?'needed':'buffer');if(field===editor.quantity&&editor.status){if(next===0)editor.status.value='out';else if(editor.status.value==='out')editor.status.value='in';}editor.dirty=true;notice(editor,'');refreshPreview();
   }
   function groupField(row){
    const api=win.BBPantryGroups;if(!api?.snapshot)return null;
@@ -225,10 +283,10 @@
    const minimum=converted({...view.row,qty:view.row.minimumNeeded??view.row.mealNeeded??0},row.unit,win.BBPantryPolicy,market());
    if(minimum!==null&&Number(neededRaw)+.000001<minimum)return {error:'Your planned meals and existing Shop items need at least '+ROUND(minimum)+' '+row.unit+'.',field:view.needed};
    if(row.staple&&(!Number.isInteger(Number(raw))||!Number.isInteger(Number(neededRaw))||!Number.isInteger(Number(bufferRaw))||!Number.isInteger(buy.quantity)))return {error:'Use whole container counts for this staple.',field:view.quantity};
-   if(view.packQuantity&&(view.packQuantity.value.trim()||view.packUnit.value)&&(!view.packQuantity.validity.valid||!(Number(view.packQuantity.value)>0)||!view.packUnit.value))return {error:'Enter the container size and its unit.',field:view.packQuantity};
+   if(!row.staple&&view.packQuantity&&(view.packQuantity.value.trim()||view.packUnit.value)&&(!view.packQuantity.validity.valid||!(Number(view.packQuantity.value)>0)||!view.packUnit.value))return {error:'Enter the container size and its unit.',field:view.packQuantity};
    const patch={qty:Number(raw),unit:row.unit,totalNeeded:Number(neededRaw),extraBuffer:Number(bufferRaw),buyMultiple:buy.quantity,buyMultipleUnit:buy.unit};
-   if(view.status)patch.stapleStatus=view.status.value;
-   if(view.packQuantity?.value.trim()&&view.packUnit?.value){patch.packQuantity=Number(view.packQuantity.value);patch.packUnit=view.packUnit.value;}
+   if(row.staple&&view.status)patch.stapleStatus=view.status.value;
+   if(!row.staple&&view.packQuantity?.value.trim()&&view.packUnit?.value){patch.packQuantity=Number(view.packQuantity.value);patch.packUnit=view.packUnit.value;}
    // The six-decimal display must not change an untouched physical balance.
    // Carry its exact base-unit value back through the selected unit.
    try{
@@ -288,7 +346,7 @@
    const content=el('div','bbpi-editor-content'),controls=el('div','bbpi-editor-controls');element.append(content);
    let name=null;
    if(anchor==='manual'){
-    const nameTag=el('label','bbpi-name-label','Food name');name=el('input');name.type='text';name.maxLength=70;name.autocomplete='off';name.placeholder='e.g. Tinned tomatoes';name.setAttribute('aria-label','Food name');nameTag.append(name);content.append(nameTag);
+    const nameTag=el('label','bbpi-name-label','Food name');name=el('input');name.type='text';name.maxLength=70;name.autocomplete='off';name.placeholder='e.g. Tinned tomatoes';name.value=row.name||'';name.setAttribute('aria-label','Food name');nameTag.append(name);content.append(nameTag);
     const choices=el('datalist');choices.id='bbpiFoodNames';name.setAttribute('list',choices.id);
     for(const value of [...new Set([...api.card.querySelectorAll('[data-bb5-food]')].map(node=>node.dataset.bb5Food))]){const option=el('option');option.value=value;choices.append(option);}content.append(choices);
    }
@@ -300,7 +358,7 @@
    const defaultBuffer=converted({...row,qty:row.extraBuffer??0},unit,win.BBPantryPolicy,market());
    field(bufferLabel,buffer,defaultBuffer===null?'':String(defaultBuffer),'Extra stock buffer for '+(row.name||'food'));buffer.dataset.bbpiBuffer='';
    const unitTag=el('label','bbpi-unit-label','Unit'),units=el('select');units.setAttribute('aria-label','Unit for '+(row.name||'food'));unitOptions(units,row.staple?['each']:(api.units?.()||['each','g','kg','ml','l','pack','bag','tin']),unit,row);unitTag.append(units);controls.append(unitTag);content.append(controls);
-   const buyLabel=el('label','bbpi-buy-label','Buy in multiples of (optional)'),buySelect=el('select'),buyOptions=purchasePresets(row,win.BBPantryPolicy,market()).map((option,index)=>({...option,value:'pack-'+index}));buySelect.dataset.bbpiBuyMultiple='';buySelect.setAttribute('aria-label','Buy '+(row.name||'food')+' in multiples of');
+   const buyLabel=el('label','bbpi-buy-label','Buy in multiples of (optional)'),buySelect=el('select'),buyOptions=packChoices(row).map((option,index)=>({...option,value:'pack-'+index}));buySelect.dataset.bbpiBuyMultiple='';buySelect.setAttribute('aria-label','Buy '+(row.name||'food')+' in multiples of');
    const off=el('option','','Exact amount (no rounding)');off.value='off';buySelect.append(off);
    const number=value=>new Intl.NumberFormat(market()==='US'?'en-US':'en-GB',{maximumFractionDigits:2}).format(value);
    for(const option of buyOptions){const suffix=option.unit==='l'?(option.quantity===1?'litre':'litres'):row.staple?unitLabel({...row,qty:option.quantity},option.unit):option.unit,label=el('option','',number(option.quantity)+' '+suffix);label.value=option.value;buySelect.append(label);}
@@ -314,9 +372,9 @@
    buySelect.value=Number(row.buyMultiple)>0?savedChoice?.value||'custom':'off';buyFields.hidden=buySelect.value!=='custom';
    const readout=el('p','bbpi-readout'),roundingNote=el('p','bbpi-rounding-note'),otherOwned=el('p','bbpi-notice'),noticeNode=el('p','bbpi-notice');readout.setAttribute('aria-live','polite');noticeNode.setAttribute('role','status');noticeNode.setAttribute('aria-live','polite');content.append(readout,roundingNote,otherOwned,noticeNode);
    const actions=el('footer','bbpi-editor-actions'),remove=btn('Remove item',()=>commitPanel(view,true),'bbpi-remove'),done=btn('Done',()=>commitPanel(view),'bbpi-done');remove.hidden=!key;actions.append(remove,done);element.append(actions);
-   const view={api,key,row,newItem:!key,loc:row.loc,actor:actor(),market:market(),anchor,element,title,name,quantity,needed,buffer,units,unit,buySelect,buyOptions,buyFields,buyQuantity,buyUnit,readout,roundingNote,otherOwned,notice:noticeNode,done,opener:doc.activeElement,dirty:false,busy:false,returnTo:options.returnTo,onClose:options.onClose,doneLabel:options.doneLabel};editor=view;
-   const edited=()=>{view.dirty=true;notice(view,'');refreshPreview(view);};quantity.addEventListener('input',()=>{if(view.status&&quantity.value.trim()!==''){if(Number(quantity.value)===0)view.status.value='out';else if(view.status.value==='out')view.status.value='in';}edited();});needed.addEventListener('input',edited);buffer.addEventListener('input',edited);
-   buySelect.addEventListener('change',()=>{buyFields.hidden=buySelect.value!=='custom';edited();});buyQuantity.addEventListener('input',edited);buyUnit.addEventListener('change',edited);
+   const view={api,key,row,newItem:!key,matchedKey:!key&&api.read(row.key)?row.key:null,loc:row.loc,actor:actor(),market:market(),anchor,element,title,name,quantity,needed,buffer,units,unit,buySelect,buyOptions,buyFields,buyQuantity,buyUnit,readout,roundingNote,otherOwned,notice:noticeNode,done,opener:doc.activeElement,dirty:false,touched:new Set(),resolvedInput:foodFold(row.name),busy:false,returnTo:options.returnTo,onClose:options.onClose,doneLabel:options.doneLabel};editor=view;
+   const edited=field=>{view.dirty=true;if(typeof field==='string')view.touched.add(field);notice(view,'');refreshPreview(view);};quantity.addEventListener('input',()=>{if(view.status&&quantity.value.trim()!==''){if(Number(quantity.value)===0)view.status.value='out';else if(view.status.value==='out')view.status.value='in';}edited('quantity');});needed.addEventListener('input',()=>edited('needed'));buffer.addEventListener('input',()=>edited('buffer'));
+   buySelect.addEventListener('change',()=>{buyFields.hidden=buySelect.value!=='custom';edited('buy');});buyQuantity.addEventListener('input',()=>edited('buy'));buyUnit.addEventListener('change',()=>edited('buy'));
    units.addEventListener('change',()=>{
     if(editor!==view||view.busy)return;const next=units.value,model=draftRow(view),samePack=!view.packQuantity||String(view.packQuantity.value)===(view.row.packReviewed?String(view.row.packQuantity??''):'')&&view.packUnit.value===(view.row.packUnit||'');model.unit=view.unit;
     const source=(input,field,canonicalField)=>{
@@ -326,24 +384,38 @@
     };
     const fromOwned=quantity.value.trim()===''?null:converted(source(quantity,'qty'),next,win.BBPantryPolicy,market()),fromNeeded=needed.value.trim()===''?null:converted(source(needed,'totalNeeded','totalQuantity'),next,win.BBPantryPolicy,market()),fromBuffer=buffer.value.trim()===''?null:converted(source(buffer,'extraBuffer','extraBufferQuantity'),next,win.BBPantryPolicy,market());
     if((quantity.value.trim()!==''&&fromOwned===null)||(needed.value.trim()!==''&&fromNeeded===null)||(buffer.value.trim()!==''&&fromBuffer===null)){units.value=view.unit;notice(view,'Set the container contents first, or clear the amount before choosing a different unit.',true);return;}
-    view.unit=next;if(fromOwned!==null)quantity.value=String(fromOwned);if(fromNeeded!==null)needed.value=String(fromNeeded);if(fromBuffer!==null)buffer.value=String(fromBuffer);edited();
+    view.unit=next;if(fromOwned!==null)quantity.value=String(fromOwned);if(fromNeeded!==null)needed.value=String(fromNeeded);if(fromBuffer!==null)buffer.value=String(fromBuffer);edited('unit');
    });
-   if(row.staple){
-    const label=el('label','bbpi-status-label','Stock status'),status=el('select');status.setAttribute('aria-label','Stock status for '+row.name);for(const[value,labelText]of[['in','In Stock'],['low','Low'],['out','Out']]){const option=el('option','',labelText);option.value=value;option.selected=value===(row.stapleStatus||'in');status.append(option);}label.append(status);content.prepend(label);view.status=status;
-    status.addEventListener('change',()=>{if(status.value==='out')quantity.value='0';else if(!(Number(quantity.value)>0))quantity.value='1';edited();});
-   }else{
-    const details=el('details','bbpi-pack'),summary=el('summary','','Container size (optional)'),help=el('p','','Use the size on the label for packs, bags or tins.'),fields=el('div','bbpi-pack-fields'),packTag=el('label','','One container contains'),packQuantity=el('input');packQuantity.type='number';packQuantity.inputMode='decimal';packQuantity.min='0.000001';packQuantity.max='1000000';packQuantity.step='any';packQuantity.value=row.packReviewed?row.packQuantity??'':'';packQuantity.setAttribute('aria-label','Container size for '+(row.name||'food'));packTag.append(packQuantity);
-    const packUnitTag=el('label','','Contents unit'),packUnit=el('select');packUnit.setAttribute('aria-label','Container contents unit');unitOptions(packUnit,['','g','ml','each','oz','lb','fl oz'],row.packUnit||'');if(!row.packUnit){const blank=el('option','','Choose unit');blank.value='';blank.selected=true;packUnit.prepend(blank);}packUnitTag.append(packUnit);fields.append(packTag,packUnitTag);details.append(summary,help,fields);content.append(details);view.packQuantity=packQuantity;view.packUnit=packUnit;packQuantity.addEventListener('input',edited);packUnit.addEventListener('change',edited);
+   if(row.staple||anchor==='manual'){
+    const label=el('label','bbpi-status-label','Stock status'),status=el('select');status.setAttribute('aria-label','Stock status for '+row.name);for(const[value,labelText]of[['in','In Stock'],['low','Low'],['out','Out']]){const option=el('option','',labelText);option.value=value;option.selected=value===(row.stapleStatus||'in');status.append(option);}label.hidden=!row.staple;label.append(status);content.prepend(label);view.status=status;view.statusLabel=label;
+    status.addEventListener('change',()=>{if(status.value==='out')quantity.value='0';else if(!(Number(quantity.value)>0))quantity.value='1';edited('quantity');});
+   }
+   if(!row.staple||anchor==='manual'){
+    const details=el('details','bbpi-pack'),summary=el('summary','','Container size (optional)'),help=el('p','','Use the size on the label for packs, bags or tins.'),fields=el('div','bbpi-pack-fields'),packTag=el('label','','One container contains'),packQuantity=el('input');details.hidden=!!row.staple;view.packDetails=details;packQuantity.type='number';packQuantity.inputMode='decimal';packQuantity.min='0.000001';packQuantity.max='1000000';packQuantity.step='any';packQuantity.value=row.packReviewed?row.packQuantity??'':'';packQuantity.setAttribute('aria-label','Container size for '+(row.name||'food'));packTag.append(packQuantity);
+    const packUnitTag=el('label','','Contents unit'),packUnit=el('select');packUnit.setAttribute('aria-label','Container contents unit');unitOptions(packUnit,['','g','ml','each','oz','lb','fl oz'],row.packUnit||'');if(!row.packUnit){const blank=el('option','','Choose unit');blank.value='';blank.selected=true;packUnit.prepend(blank);}packUnitTag.append(packUnit);fields.append(packTag,packUnitTag);details.append(summary,help,fields);content.append(details);view.packQuantity=packQuantity;view.packUnit=packUnit;packQuantity.addEventListener('input',()=>edited('pack'));packUnit.addEventListener('change',()=>edited('pack'));
    }
    view.group=groupField(row);if(view.group)content.append(view.group.label);
-   name?.addEventListener('change',()=>{
-    const preview=api.preview?.(name.value.trim(),row.loc);if(!preview)return;view.row={...preview};view.matchedKey=api.read(preview.key)?preview.key:null;text(title,preview.name||'Add food');
-    if(!view.dirty){view.unit=preview.unit;unitOptions(units,api.units?.()||[preview.unit],preview.unit,preview);needed.value=String(preview.totalNeeded??0);buffer.value=String(preview.extraBuffer??0);
-     view.buyOptions=purchasePresets(preview,win.BBPantryPolicy,market()).map((option,index)=>({...option,value:'pack-'+index}));buySelect.replaceChildren(off);
+   const foods=name?knownFoods():[];
+   const recognizeName=()=>{
+    if(editor!==view||view.busy)return;
+    const value=name.value.trim(),preview=previewFood(value,row.loc,foods);view.resolvedInput=preview?foodFold(value):null;
+    if(!preview){text(title,value||'Add food');refreshPreview(view);return;}view.row={...preview};view.matchedKey=api.read(preview.key)?preview.key:null;text(title,preview.name||'Add food');
+    if(!view.touched.has('unit')&&!view.touched.has('quantity')){view.unit=preview.staple?'each':rowUnit(preview)||preview.unit;unitOptions(units,api.units?.()||[view.unit],view.unit,preview);}
+    if(!view.touched.has('quantity'))quantity.value=rowAmount(preview,view.unit);
+    for(const input of [quantity,needed,buffer]){input.max=preview.staple?'10000':'1000000';input.step=preview.staple?'1':'any';}
+    if(view.statusLabel){view.statusLabel.hidden=!preview.staple;if(preview.staple)view.status.value=quantity.value.trim()!==''&&Number(quantity.value)===0?'out':preview.stapleStatus||'in';}
+    if(view.packDetails)view.packDetails.hidden=!!preview.staple;
+    if(!view.touched.has('needed')){const value=converted({...preview,qty:preview.totalNeeded??0},view.unit,win.BBPantryPolicy,market());needed.value=value===null?'':String(value);}
+    if(!view.touched.has('buffer')){const value=converted({...preview,qty:preview.extraBuffer??0},view.unit,win.BBPantryPolicy,market());buffer.value=value===null?'':String(value);}
+    if(!view.touched.has('buy')){
+     view.buyOptions=packChoices(preview).map((option,index)=>({...option,value:'pack-'+index}));buySelect.replaceChildren(off);
      for(const option of view.buyOptions){const suffix=option.unit==='l'?(option.quantity===1?'litre':'litres'):preview.staple?unitLabel({...preview,qty:option.quantity},option.unit):option.unit,item=el('option','',number(option.quantity)+' '+suffix);item.value=option.value;buySelect.append(item);}buySelect.append(custom);
      unitOptions(buyUnit,purchaseUnits(preview,win.BBPantryPolicy,market()),preview.buyMultipleUnit||preview.unit,preview);buyQuantity.value=Number(preview.buyMultiple)>0?String(preview.buyMultiple):'';buySelect.value=Number(preview.buyMultiple)>0?'custom':'off';buyFields.hidden=buySelect.value!=='custom';
-    }if(view.group&&!view.groupDirty)try{view.group.select.value=win.BBPantryGroups.groupFor(row.loc,win.BBPantryGroups.itemKey(preview.name),preview.name);}catch{}refreshPreview(view);
-   });
+    }
+    if(!view.touched.has('pack')&&view.packQuantity){view.packQuantity.value=preview.packReviewed?preview.packQuantity??'':'';view.packUnit.value=preview.packUnit||'';}
+    if(view.group&&!view.groupDirty)try{view.group.select.value=win.BBPantryGroups.groupFor(row.loc,win.BBPantryGroups.itemKey(preview.name),preview.name);}catch{}notice(view,'');refreshPreview(view);
+   };
+   name?.addEventListener('input',recognizeName);name?.addEventListener('change',recognizeName);
    element.addEventListener('cancel',event=>{event.preventDefault();if(!view.busy)closeEditor();});element.addEventListener('close',()=>{if(editor===view&&!view.busy)closeEditor();});
    doc.body.append(element);lockEditor();fitEditor();try{element.showModal();}catch{element.setAttribute('open','');}fitEditor();close.focus({preventScroll:true});refreshPreview(view);return true;
   }
@@ -414,7 +486,7 @@
    }
    const tile=event.target.closest?.('[data-bb5-food]');if(!tile||!current.card.contains(tile))return;const loc=tile.closest('[data-bb76-store]')?.dataset.bb76Store;if(!LOCATIONS.includes(loc))return;event.preventDefault();event.stopImmediatePropagation?.();event.stopPropagation();
    const name=tile.dataset.bb5Food,policy=win.BBPantryPolicy,canonical=value=>policy?.canonicalName(value,win.BBPriceV19?.canonical)||value.toLowerCase(),row=current.list().find(row=>row.loc===loc&&canonical(row.name)===canonical(name));
-   if(row)openEditor(row.key,preferredUnit(name,policy,rowUnit(row)));else{const preview=current.preview?.(name,loc);if(preview)openEditor(null,preferredUnit(name,policy,preview.unit),'tile',preview);}
+   if(row)openEditor(row.key,preferredUnit(name,policy,rowUnit(row)));else{const preview=previewFood(name,loc);if(preview)openEditor(null,preferredUnit(name,policy,preview.unit),'tile',preview);}
   }
   const reset=()=>{if(editor&&editor.actor===actor()&&editor.market===market()&&!win.BBAccountDeletion?.isDeleting?.()){schedule();return;}teardown();schedule();};
   const storageToggle=event=>{if(event.target?.matches?.('[data-bb76-store]')&&current?.card?.contains(event.target)){if(event.target.open!==(event.target.dataset.bb76Store===openedLocation))schedule();syncLocation();}};
@@ -424,5 +496,5 @@
   if(win.MutationObserver){observer=new win.MutationObserver(records=>{if(records.some(record=>!record.target.closest?.('.bbpi-ui')&&(record.target.id==='app'||record.target.matches?.('[data-bb76-tiles],#bb5SelectedRows')||record.target.closest?.('.bb76-kitchen-intro')||record.target.closest?.('.bbpg-controls')||[...record.addedNodes].some(node=>node.nodeType===1&&(node.id==='bb173ShopFridge'||node.id==='bbKitchenFoodPanel'||node.querySelector?.('#bb173ShopFridge,#bbKitchenFoodPanel'))))))schedule();});observer.observe(doc.body,{childList:true,subtree:true});}
   schedule();return {refresh:schedule,open(key,options={}){if(!valid(current))refresh();return openEditor(key,options.unit,'review',null,options)===true;},destroy(){destroyed=true;observer?.disconnect();teardown();doc.removeEventListener('click',click,true);doc.removeEventListener('keydown',keydown);doc.removeEventListener('toggle',storageToggle,true);win.removeEventListener('resize',measureToolbar);win.removeEventListener('resize',scheduleFit);win.visualViewport?.removeEventListener('resize',scheduleFit);win.visualViewport?.removeEventListener('scroll',scheduleFit);win.removeEventListener('bb:pantry-editor',schedule);win.removeEventListener('basketboss:market-changed',schedule);win.removeEventListener('basketboss:session-changed',reset);for(const event of['basketboss:account-deletion-started','basketboss:account-deletion-deleted'])win.removeEventListener(event,reset);win.removeEventListener('storage',storage);}};
  }
- return {install,stepFor,stepped,preferredUnit,converted,displayUnit,summaryAmount,stepPatch,matchesInventory,purchaseUnits,purchasePresets};
+ return {install,stepFor,stepped,preferredUnit,converted,displayUnit,summaryAmount,stepPatch,matchesInventory,purchaseUnits,purchasePresets,matchedFood,matchingFoods};
 });

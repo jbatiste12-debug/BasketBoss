@@ -156,6 +156,7 @@ export function verifyNativeWeb({directory}){
  const entry=fs.readFileSync(path.join(directory,'index.html'),'utf8');
  requireThat(entry===fs.readFileSync(path.join(directory,'app.html'),'utf8'),'Native app entrypoints must remain identical');
  requireThat(fs.statSync(path.join(directory,'bb-native-runtime.js')).size>0&&fs.statSync(path.join(directory,'bb-native.css')).size>0,'Native runtime or safe-area styles are missing');
+ requireThat(!/Unlock TestFlight Beta Premium|bb-native-beta-unlock/.test(fs.readFileSync(path.join(directory,'bb-native-runtime.js'),'utf8')),'App Store membership must not offer a TestFlight beta unlock');
  const manifest=json('native-web-manifest.json');
  requireThat(manifest.version===1&&manifest.appId==='uk.co.basketboss.app'&&manifest.freeRecipes===100,'Native build manifest is invalid');
  const listed=new Set(manifest.files.map(file=>file.path));

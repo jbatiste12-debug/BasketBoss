@@ -53,13 +53,9 @@ export function installNativeMembership({apiURL,readSession,fetch:perform=global
   if(purchases)mountPurchases(card,legal);else void refresh();
  }
  function mountPurchases(parent,legal){
-  const beta=doc.createElement('button');beta.type='button';beta.className='bb-native-apple-plan bb-native-apple-secondary bb-native-beta-unlock';beta.textContent='Unlock TestFlight Beta Premium';
-  const betaNote=doc.createElement('p');betaNote.className='bb-native-apple-disclosure';
-  beta.addEventListener('click',()=>{
-   if(!token()){signIn();return;}
-   if(typeof purchases.claimBeta!=='function'){text(status,'Update BasketBoss to the latest TestFlight build to unlock Beta Premium.');return;}
-   void purchases.claimBeta();
-  });
+  // Existing complimentary access remains valid, but the App Store membership
+  // screen only offers real Apple subscriptions and restoration.
+  const existingAccess=doc.createElement('p');existingAccess.className='bb-native-apple-disclosure bb-native-existing-access';
   const heading=doc.createElement('h4');heading.textContent='BasketBoss Premium';
   const benefits=doc.createElement('p');benefits.textContent='Explore the full recipe collection, batch cooking and eligible AI meal tools.';
   const plans=doc.createElement('div');plans.className='bb-native-apple-plans';plans.setAttribute('aria-label','Apple subscription purchase options');
@@ -72,18 +68,16 @@ export function installNativeMembership({apiURL,readSession,fetch:perform=global
   const retry=doc.createElement('button');retry.type='button';retry.className='bb-native-apple-secondary';retry.textContent='Refresh membership & prices';retry.addEventListener('click',()=>{void purchases.refresh();});
   controls.append(restore,manage,retry);
   const recurring=doc.createElement('p');recurring.className='bb-native-apple-disclosure';recurring.textContent='Payment is charged to your Apple Account when you confirm. Subscriptions renew automatically unless cancelled before renewal. You can manage or cancel in your Apple Account subscription settings. Apple shows your local price and billing period before you confirm.';
-  parent.append(heading,benefits,plans,catalogue,testing,controls,recurring,beta,betaNote);
+  parent.append(heading,benefits,plans,catalogue,testing,controls,recurring,existingAccess);
   // Keep the same privacy/terms links beside the Apple recurring-payment terms.
   parent.append(legal);
   let productKey='';
   unsubscribe=purchases.subscribeState(state=>{
    const duplicateCatalogue=state.availabilityMessage&&state.message===state.availabilityMessage;
    text(status,duplicateCatalogue?(state.authenticated?'Your account currently has Free access.':'Sign in to subscribe. Your Free recipes remain available.'):state.message);login.hidden=state.authenticated;login.disabled=state.busy;
-   const nativeIOS=win.BBNative?.isNative===true&&win.BBNative.platform==='ios';
-   beta.hidden=!nativeIOS||!state.authenticated;beta.disabled=state.busy||state.premiumAccess;
-   betaNote.hidden=beta.hidden;
+   existingAccess.hidden=state.provider!=='testflight_beta'||!state.premiumAccess;
    let betaExpiry=null;try{if(typeof state.beta?.expiresAt==='string'&&Number.isFinite(Date.parse(state.beta.expiresAt)))betaExpiry=new Date(state.beta.expiresAt).toLocaleDateString('en-GB');}catch{}
-   text(betaNote,state.provider==='testflight_beta'&&state.premiumAccess?'TestFlight Beta Premium is active'+(betaExpiry?' until '+betaExpiry:'')+'. No subscription or renewal charge.':state.premiumAccess?'Your existing membership already provides Premium access.':'For eligible TestFlight builds. Unlock Premium for beta testing without starting a subscription. Your signed-in account and Apple-signed app are verified securely.');
+   text(existingAccess,existingAccess.hidden?'':'Your complimentary Premium access is active'+(betaExpiry?' until '+betaExpiry:'')+'. No subscription or renewal charge.');
    restore.disabled=state.busy;retry.disabled=state.busy;manage.disabled=state.busy;manage.hidden=state.provider!=='apple';
    plans.hidden=false;recurring.hidden=false;heading.hidden=false;benefits.hidden=false;
    text(catalogue,state.availabilityMessage||state.productLoadMessage||(!state.available?state.message:''));catalogue.hidden=!catalogue.textContent;catalogue.setAttribute('data-product-load-state',state.productLoadState||(!state.available?'unavailable':'ready'));

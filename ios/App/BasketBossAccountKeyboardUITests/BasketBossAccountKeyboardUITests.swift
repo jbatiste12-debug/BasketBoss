@@ -5,6 +5,11 @@ import XCTest
 final class BasketBossAccountKeyboardUITests: XCTestCase {
     private var uiTestLaunchArguments: [String] = []
     private var uiTestLaunchEnvironment: [String: String] = [:]
+    // A cold Intel CI simulator can spend most of the former 25-second gate
+    // bringing up WKWebView and its accessibility service. Give only startup
+    // a bounded allowance; real keyboard and geometry waits stay unchanged.
+    private let startupReadinessTimeout: TimeInterval = 90
+    private let interactionExecutionAllowance: TimeInterval = 180
 
     override func setUpWithError() throws {
         try super.setUpWithError()
@@ -52,7 +57,7 @@ final class BasketBossAccountKeyboardUITests: XCTestCase {
     }
 
     @MainActor private func assertAccountWithKeyboard(password: Bool, onboarding: Bool = false) throws {
-        executionTimeAllowance = 180
+        executionTimeAllowance = startupReadinessTimeout + interactionExecutionAllowance
         let app = XCUIApplication(bundleIdentifier: "uk.co.basketboss.app")
         app.launchArguments = uiTestLaunchArguments + [onboarding ? "--bb-native-onboarding-keyboard-smoke" : "--bb-native-account-keyboard-smoke"]
         app.launchArguments.append(password ? "--bb-keyboard-password" : "--bb-keyboard-email")
@@ -69,6 +74,7 @@ final class BasketBossAccountKeyboardUITests: XCTestCase {
         // Clear any previous Simulator keyboard/focus state before launching
         // the app. Home must never be pressed after the input is focused.
         XCUIDevice.shared.press(.home)
+        let startupStarted = ProcessInfo.processInfo.systemUptime
         app.launch()
         XCTAssertTrue(app.wait(for: .runningForeground, timeout: 15), "The test app must reach the foreground before querying its UI.")
         // There is one WKWebView container. Cache that typed container; all
@@ -78,10 +84,20 @@ final class BasketBossAccountKeyboardUITests: XCTestCase {
         // Both entry points wait for the real launch-cover acknowledgement.
         // A WKWebView can expose accessibility nodes before it is interactive.
         let probe = app.staticTexts["bbAccountKeyboardProbe"]
+        var lastStartupProbe = "missing"
         let ready = XCTNSPredicateExpectation(predicate: NSPredicate { _, _ in
-            probe.exists && probe.label.contains("\"startupReady\":true")
+            guard probe.exists else { lastStartupProbe = "missing"; return false }
+            let label = probe.label
+            lastStartupProbe = String(label.prefix(1800))
+            return label.contains("\"startupReady\":true")
         }, object: nil)
-        XCTAssertEqual(XCTWaiter.wait(for: [ready], timeout: 25), .completed, "The native launch cover and sign-in entry point must be ready before interaction.")
+        let readyResult = XCTWaiter.wait(for: [ready], timeout: startupReadinessTimeout)
+        let startupSeconds = Int(ProcessInfo.processInfo.systemUptime - startupStarted)
+        let startupScope = onboarding ? "onboarding" : "account"
+        // Safe computed layout/status only, using the last poll. Do not issue
+        // another potentially slow AX snapshot or accept a late-ready result.
+        print("BB keyboard startup " + startupScope + " elapsedSeconds=\(startupSeconds) gateSeconds=\(Int(startupReadinessTimeout)) probe=" + lastStartupProbe)
+        XCTAssertEqual(readyResult, .completed, "The native launch cover and sign-in entry point must be ready before interaction. Last probe: \(lastStartupProbe)")
         if onboarding {
             // WKWebView prepares Welcome underneath the native launch cover.
             // Its accessibility nodes can exist before UIKit finishes fading.
