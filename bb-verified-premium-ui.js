@@ -2,35 +2,42 @@
  * Each successful verification is bound to the CURRENT Supabase login token.
  * The authoritative subscriptions and Owner entitlement remain on the server. */
 (()=>{'use strict';
-  let active=false, verifiedToken=null, lastToken=null, lastCheck=0, sequence=0;
+  let active=false, verifiedToken=null, verifiedActor=null, lastToken=null, lastActor=null, lastCheck=0, sequence=0;
   let phase='checking';
-  function accessToken(){
+  function identity(){
     try{
       const s=JSON.parse(localStorage.getItem('basketboss_cloud_session_v1')||'null');
-      return typeof s?.access_token==='string' &&
-        Number(s.expires_at)*1000>Date.now()+5000?s.access_token:null;
+      return typeof s?.access_token==='string' && s.access_token &&
+        typeof s.user?.id==='string' && s.user.id &&
+        Number(s.expires_at)*1000>Date.now()+5000?{token:s.access_token,actor:s.user.id}:null;
     }catch{return null;}
   }
+  const accessToken=()=>identity()?.token||null;
+  const sameIdentity=(token,actor)=>{const current=identity();return current?.token===token&&current?.actor===actor;};
   function isActive(){
-    const token=accessToken();
+    const current=identity(),token=current?.token;
     // Account switching or signing out invalidates a verified grant SYNCHRONOUSLY.
-    return !!(active && token && token===verifiedToken && token===lastToken);
+    return !!(active && token && token===verifiedToken && token===lastToken && current.actor===verifiedActor && current.actor===lastActor);
   }
   function state(){
-    const token=accessToken();
+    const current=identity(),token=current?.token;
     if(!token)return 'signed_out';
-    if(token!==lastToken)return 'checking';
+    if(token!==lastToken||current.actor!==lastActor)return 'checking';
     return isActive()?'premium':phase;
   }
   function signal(){document.dispatchEvent(new Event('basketboss:premium-verified'));}
+  function invalidate(){
+    sequence++;active=false;verifiedToken=null;verifiedActor=null;lastToken=null;lastActor=null;lastCheck=0;
+    phase=accessToken()?'checking':'signed_out';signal();
+  }
   async function refresh(force=false){
-    const token=accessToken(),now=Date.now();
-    if(!force&&token===lastToken&&now-lastCheck<30000)return isActive();
-    const switched=token!==lastToken;
-    lastToken=token;lastCheck=now;
+    const current=identity(),token=current?.token||null,actor=current?.actor||null,now=Date.now();
+    if(!force&&token===lastToken&&actor===lastActor&&now-lastCheck<30000)return isActive();
+    const switched=token!==lastToken||actor!==lastActor;
+    lastToken=token;lastActor=actor;lastCheck=now;
     const id=++sequence;
     if(switched||!token){
-      active=false;verifiedToken=null;
+      active=false;verifiedToken=null;verifiedActor=null;
       phase=token?'checking':'signed_out';
       signal();
     }else if(!active){phase='checking';signal();}
@@ -40,32 +47,35 @@
         cache:'no-store',credentials:'same-origin',redirect:'manual',
         headers:{'Authorization':'Bearer '+token,'Accept':'application/json'}
       });
-      if(id!==sequence||accessToken()!==token)return false;
-      if(!response.ok){active=false;verifiedToken=null;phase=response.status===401?'signed_out':'unavailable';}
+      if(id!==sequence||!sameIdentity(token,actor))return false;
+      if(!response.ok){active=false;verifiedToken=null;verifiedActor=null;phase=response.status===401?'signed_out':'unavailable';}
       else{
         const data=await response.json();
-        if(id!==sequence||accessToken()!==token)return false;
+        if(id!==sequence||!sameIdentity(token,actor))return false;
         const allowed=data?.authenticated===true && data?.premiumAccess===true &&
           (data.tier==='owner'||data.tier==='premium') &&
           (data.mode==='sandbox'||data.mode==='live');
         const free=data?.authenticated===true&&data?.premiumAccess===false;
         active=allowed;
         verifiedToken=allowed?token:null;
+        verifiedActor=allowed?actor:null;
         phase=allowed?'premium':free?'free':'unavailable';
       }
     }catch(_){
-      if(id===sequence&&accessToken()===token){
-        active=false;verifiedToken=null;phase='unavailable';
+      if(id===sequence&&sameIdentity(token,actor)){
+        active=false;verifiedToken=null;verifiedActor=null;phase='unavailable';
       }
     }finally{
-      if(id===sequence&&accessToken()===token)signal();
+      if(id===sequence&&sameIdentity(token,actor))signal();
     }
     return isActive();
   }
-  window.BasketBossVerifiedPremium=Object.freeze({isActive,state,refresh});
+  window.BasketBossVerifiedPremium=Object.freeze({isActive,state,refresh,invalidate});
   window.addEventListener('focus',()=>{void refresh();});
   // Detect same-tab sign-in and sign-out; `storage` only covers other tabs.
-  setInterval(()=>{if(accessToken()!==lastToken)void refresh(true);},1000);
+  setInterval(()=>{const current=identity();if((current?.token||null)!==lastToken||(current?.actor||null)!==lastActor)void refresh(true);},1000);
+  window.addEventListener('basketboss:session-changed',()=>{void refresh(true);});
+  for(const name of ['basketboss:account-deletion-started','basketboss:account-deletion-deleted'])window.addEventListener(name,invalidate);
   window.addEventListener('storage',e=>{
     if(e.key==='basketboss_cloud_session_v1')void refresh(true);
   });

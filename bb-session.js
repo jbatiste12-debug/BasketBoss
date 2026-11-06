@@ -37,9 +37,14 @@
   }
   function remember(s){
    if(blocked())return false;
+   const before=read();
    // Persist first. A failed storage write must not claim a remembered login.
    try{if(s){const value=JSON.stringify(s);local.setItem(KEY,value);if(local.getItem(KEY)!==value)return false;}else{local.removeItem(KEY);if(local.getItem(KEY)!==null)return false;}}catch{return false;}
-   epoch++;observedRaw=raw();retry=false;stopTimer();emit();schedule();return true;
+   epoch++;observedRaw=raw();retry=false;stopTimer();
+   // Clear a prior account's display grant before any repaint or asynchronous
+   // verification for the next account. This never edits Free plans or stock.
+   if(!s||s.user?.id!==before?.user?.id)try{win.BasketBossVerifiedPremium?.invalidate?.();}catch{}
+   emit();schedule();return true;
   }
   function state(){const s=read();return {remembered:!blocked()&&!!s&&(usable(s)||renewable(s)),refreshing:!!flight,needsConnection:!!s&&!usable(s)&&retry};}
   async function exchange(){

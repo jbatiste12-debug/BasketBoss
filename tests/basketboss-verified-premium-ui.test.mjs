@@ -11,7 +11,7 @@ const FREE={authenticated:true,premiumAccess:false,tier:'free',mode:'live'};
 
 function fixture(initialToken='actor-a'){
  const storage=new Map(),requests=[],signals=[],intervals=[],windowHandlers=new Map(),documentHandlers=new Map();
- const session=token=>{if(token===null)storage.delete('basketboss_cloud_session_v1');else storage.set('basketboss_cloud_session_v1',JSON.stringify({access_token:token,expires_at:Date.now()/1000+3600}));};
+ const session=(token,actor=token)=>{if(token===null)storage.delete('basketboss_cloud_session_v1');else storage.set('basketboss_cloud_session_v1',JSON.stringify({access_token:token,user:{id:actor},expires_at:Date.now()/1000+3600}));};
  session(initialToken);
  const window={addEventListener:(name,fn)=>windowHandlers.set(name,fn)};
  const document={hidden:false,addEventListener:(name,fn)=>documentHandlers.set(name,fn),dispatchEvent:event=>signals.push({event:event.type,state:window.BasketBossVerifiedPremium.state(),active:window.BasketBossVerifiedPremium.isActive()})};
@@ -90,4 +90,34 @@ test('a later verification for the same account wins over an earlier JSON respon
  const current=h.api.refresh(true);await h.respond(PREMIUM,{index:1});await current;
  const signalCount=h.signals.length;body.resolve(FREE);await tick();
  assert.equal(h.api.state(),'premium');assert.equal(h.api.isActive(),true);assert.equal(h.signals.length,signalCount);
+});
+
+test('same-tab sign-out clears the rendered grant immediately without waiting for polling or network',async()=>{
+ const h=fixture();await h.respond(PREMIUM);const before=h.signals.length;
+ h.session(null);h.event('basketboss:session-changed');
+ assert.equal(h.api.isActive(),false);assert.equal(h.api.state(),'signed_out');
+ assert.equal(h.signals.length,before+1);assert.equal(h.signals.at(-1).state,'signed_out');
+ assert.equal(h.requests.length,1,'logout does not need a successful server call');
+});
+
+test('the same token cannot carry a Premium display grant into a different saved account identity',async()=>{
+ const h=fixture();await h.respond(PREMIUM);const pending=h.api.refresh(true),body=deferred();
+ await h.respond(null,{json:()=>body.promise});h.session('actor-a','free-account-b');
+ assert.equal(h.api.isActive(),false);assert.equal(h.api.state(),'checking');
+ const signals=h.signals.length;body.resolve(PREMIUM);assert.equal(await pending,false);assert.equal(h.signals.length,signals);
+ h.event('basketboss:session-changed');assert.equal(h.api.isActive(),false);assert.equal(h.api.state(),'checking');
+ await h.respond(FREE);assert.equal(h.api.state(),'free');assert.equal(h.api.isActive(),false);
+});
+
+test('explicit membership invalidation discards an in-flight response even if the token is later reused',async()=>{
+ const h=fixture();await h.respond(PREMIUM);const pending=h.api.refresh(true),body=deferred();
+ await h.respond(null,{json:()=>body.promise});h.api.invalidate();
+ assert.equal(h.api.isActive(),false);assert.equal(h.api.state(),'checking');
+ const signals=h.signals.length;body.resolve(PREMIUM);assert.equal(await pending,false);assert.equal(h.signals.length,signals);
+ h.event('basketboss:session-changed');await h.respond(FREE);assert.equal(h.api.state(),'free');
+});
+
+test('a saved token without an account identity cannot grant a membership display or start verification',()=>{
+ const h=fixture(null);h.storage.set('basketboss_cloud_session_v1',JSON.stringify({access_token:'actor-a',expires_at:Date.now()/1000+3600}));
+ h.event('basketboss:session-changed');assert.equal(h.api.state(),'signed_out');assert.equal(h.api.isActive(),false);assert.equal(h.requests.length,0);
 });

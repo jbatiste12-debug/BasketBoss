@@ -3,7 +3,7 @@ import assert from 'node:assert/strict';
 import {installNativeMembership} from '../native/membership.mjs';
 
 function fixture({settings=false,native=true,authenticated=true}={}){
- const nodes=[],listeners=new Set(),calls={claims:0,signin:0};
+ const nodes=[],listeners=new Set(),calls={claims:0,signin:0,subscriptions:[],refreshes:0};
  class Element extends EventTarget{
   constructor(tag){super();this.tagName=tag.toUpperCase();this.children=[];this.parentElement=null;this.className='';this.ownText='';this.hidden=false;this.disabled=false;this.attrs={};this.dataset={};nodes.push(this);this.classList={contains:name=>this.className.split(' ').includes(name),add:name=>{this.className+=' '+name;}};}
   get textContent(){return this.ownText+this.children.map(child=>child.textContent).join('');}
@@ -20,7 +20,7 @@ function fixture({settings=false,native=true,authenticated=true}={}){
  const login=new Element('button');login.id='cloud-open';login.addEventListener('click',()=>calls.signin++);doc.body.append(login);
  const win=new EventTarget();win.location={href:native?'capacitor://localhost/'+(settings?'index.html':'pricing-sandbox.html'):'https://basketboss.co.uk/app',hash:'',assign:()=>{}};win.BBNative=native?{isNative:true,platform:'ios'}:null;
  let state={authenticated,premiumAccess:false,provider:null,beta:null,products:[],available:false,busy:false,membershipState:authenticated?'free':'signed_out',message:'Apple subscription prices could not be loaded.'};
- const purchases={refresh:async()=>state,claimBeta:async()=>{calls.claims++;},subscribeState(listener){listeners.add(listener);listener(state);return ()=>listeners.delete(listener);}};
+ const purchases={refresh:async()=>{calls.refreshes++;return state;},subscribe:async productId=>{calls.subscriptions.push(productId);return {ok:true};},claimBeta:async()=>{calls.claims++;},subscribeState(listener){listeners.add(listener);listener(state);return ()=>listeners.delete(listener);}};
  const emit=change=>{state={...state,...change};for(const listener of listeners)listener(state);};
  class Observer{observe(){}disconnect(){}}
  return {doc,win,Observer,parent,calls,purchases,emit,find:cls=>nodes.find(node=>node.className.split(' ').includes(cls)),session:()=>authenticated?{access_token:'test-session',expires_at:Date.now()/1000+3600,user:{id:'test-actor'}}:null};
@@ -34,7 +34,7 @@ async function withFixture(options,run){
 test('Paywall and Settings show a direct beta unlock even when Apple prices are unavailable',async()=>{
  for(const settings of [false,true])await withFixture({settings},async h=>{
   const button=h.find('bb-native-beta-unlock');assert.equal(button.textContent,'Unlock TestFlight Beta Premium');assert.equal(button.hidden,false);assert.equal(button.disabled,false);
-  assert.equal(h.find('bb-native-apple-plans').hidden,true);assert.match(h.parent.textContent,/without starting a subscription/);
+  assert.equal(h.find('bb-native-apple-plans').hidden,false);assert.match(h.parent.textContent,/without starting a subscription/);
   button.click();assert.equal(h.calls.claims,1);h.emit({busy:true});assert.equal(button.disabled,true);button.click();assert.equal(h.calls.claims,1);
  });
 });
@@ -45,8 +45,29 @@ test('beta unlock is not presented to web or signed-out users',async()=>{
  });
 });
 
-test('verified beta membership shows expiry and no renewal charge without offering another purchase',async()=>withFixture({},async h=>{
+test('verified beta membership retains the Apple purchase options and shows its separate complimentary expiry',async()=>withFixture({},async h=>{
  h.emit({premiumAccess:true,membershipState:'premium',provider:'testflight_beta',beta:{expiresAt:'2026-12-01T00:00:00.000Z'},message:'TestFlight Beta Premium is active.'});
- assert.equal(h.find('bb-native-beta-unlock').disabled,true);assert.equal(h.find('bb-native-apple-plans').hidden,true);assert.match(h.parent.textContent,/active until.*2026/);assert.match(h.parent.textContent,/No subscription or renewal charge/);
+ assert.equal(h.find('bb-native-beta-unlock').disabled,true);assert.equal(h.find('bb-native-apple-plans').hidden,false);assert.match(h.parent.textContent,/active until.*2026/);assert.match(h.parent.textContent,/No subscription or renewal charge/);
  h.find('bb-native-beta-unlock').click();assert.equal(h.calls.claims,0);
+}));
+
+
+test('fixed monthly and annual Apple CTAs precede the secondary beta option and retry missing prices',async()=>{
+ for(const settings of [false,true])await withFixture({settings},async h=>{
+  const plans=h.find('bb-native-apple-plans'),beta=h.find('bb-native-beta-unlock'),status=h.find('bb-native-apple-catalogue-state');
+  assert.equal(plans.hidden,false);assert.equal(plans.children.length,2);assert.ok(h.parent.children[0].children.indexOf(plans)<h.parent.children[0].children.indexOf(beta));
+  const expected=['uk.co.basketboss.premium.monthly','uk.co.basketboss.premium.annual'];
+  for(const [index,button]of plans.children.entries()){
+   assert.equal(button.disabled,false);assert.equal(button.getAttribute('data-apple-product'),expected[index]);assert.match(button.textContent,/Price shown by Apple.*Try Apple subscription/);button.click();
+  }
+  assert.deepEqual(h.calls.subscriptions,expected);assert.match(status.textContent,/prices could not be loaded/);
+  h.emit({busy:true});for(const button of plans.children)assert.equal(button.disabled,true);
+ });
+});
+
+test('verified sandbox test eligibility changes Apple actions without hiding existing membership or beta controls',async()=>withFixture({},async h=>{
+ h.emit({premiumAccess:true,membershipState:'premium',provider:'testflight_beta',sandboxPurchaseAllowed:true,productLoadState:'empty'});
+ const plans=h.find('bb-native-apple-plans');assert.equal(plans.hidden,false);assert.equal(plans.children.length,2);assert.match(plans.textContent,/Test subscription with Apple/);
+ assert.match(h.find('bb-native-apple-testing').textContent,/Sandbox purchase testing/);plans.children[0].click();assert.deepEqual(h.calls.subscriptions,['uk.co.basketboss.premium.monthly']);
+ h.emit({premiumAccess:true,provider:'paddle',sandboxPurchaseAllowed:false});assert.equal(plans.hidden,false);assert.match(h.find('bb-native-apple-testing').textContent,/existing membership covers Premium/);
 }));

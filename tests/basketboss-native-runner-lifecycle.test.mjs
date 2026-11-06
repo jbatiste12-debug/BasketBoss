@@ -6,7 +6,7 @@ import vm from 'node:vm';
 import {keyboardRuntimePlan} from '../scripts/ios-keyboard-runtime.mjs';
 import {cookRequiredFlags,cookReportFailure} from '../scripts/ios-cook-report.mjs';
 
-async function runScript(name,{ci=true,booted=true,includeLatest=false,failTests=false,bootTimeoutState=null,failReadiness=false,keepSimulator=false,cookBadReport=false,cookIncompleteReport=false,cookMissingFlag=null,cookSummary=null,cookSummaryError=false,cookContainerChanges=false,cookBuildBoots=false,cookBundleLocation='products',cookBuildError=null,keyboardBuildBoots=false,argv=[],env={},keyboardState=null,keyboardSummary=null,keyboardSummaryError=false,hardwareKeyboardPreference='1'}={}){
+async function runScript(name,{ci=true,booted=true,includeLatest=false,failTests=false,iapMissingFlag=null,bootTimeoutState=null,failReadiness=false,keepSimulator=false,cookBadReport=false,cookIncompleteReport=false,cookMissingFlag=null,cookSummary=null,cookSummaryError=false,cookContainerChanges=false,cookBuildBoots=false,cookBundleLocation='products',cookBuildError=null,keyboardBuildBoots=false,argv=[],env={},keyboardState=null,keyboardSummary=null,keyboardSummaryError=false,hardwareKeyboardPreference='1'}={}){
  const commands=[],executions=[],logs=[],delays=[],written=new Map(),readFiles=[],removed=[];let hostedCookRan=false;
  const processStub={platform:'darwin',argv:['node',name,...argv],env:{...(ci?{GITHUB_ACTIONS:'true'}:{}),...env}};
  if(keepSimulator)processStub.env.BB_IAP_KEEP_SIMULATOR_BOOTED='true';
@@ -26,9 +26,10 @@ async function runScript(name,{ci=true,booted=true,includeLatest=false,failTests
   },writeFileSync:(file,value)=>written.set(file,value),appendFileSync:(file,value)=>written.set(file,(written.get(file)||'')+value),
   readFileSync:file=>{readFiles.push(String(file));if(String(file).endsWith('/account-keyboard-diagnostics/state.json')){if(written.has(file))return written.get(file);if(keyboardState)return JSON.stringify(keyboardState);throw Error('keyboard state file missing');}return JSON.stringify(String(file).endsWith('bb-native-iap-smoke.json')?{
    complete:true,passed:true,localStoreKit:true,productionBillingTested:false,backendPremiumGranted:false,
-   productsLoaded:true,purchaseVerified:true,accountTokenPreserved:true,unfinishedBeforeServerAck:true,
+   productsLoaded:true,purchaseVerified:true,productIdRetryVerified:true,accountTokenPreserved:true,unfinishedBeforeServerAck:true,
    earlyFinishRejected:true,restoreVerified:true,duplicatePurchasePrevented:true,wrongAccountRejected:true,
-   finishedAfterAcknowledgement:true,pendingDoesNotGrantAccess:true,pendingApprovalDelivered:true,cancellationPreserved:true
+   finishedAfterAcknowledgement:true,pendingDoesNotGrantAccess:true,pendingApprovalDelivered:true,cancellationPreserved:true,cancellationHasNoTransaction:true,cancellationReleasesBusy:true,
+   ...(iapMissingFlag?{[iapMissingFlag]:false}:{})
   }:String(file).endsWith('bb-native-cook-smoke.json')?{complete:!cookIncompleteReport,passed:!cookBadReport,legacyVisible:false,...Object.fromEntries(cookRequiredFlags.map(key=>[key,key!==cookMissingFlag]))}:{complete:true,passed:true});}
  },execFileSync(command,args,options){
   executions.push({command,args,timeout:options?.timeout});commands.push([command,...args]);
@@ -449,4 +450,10 @@ test('Cook missing summaries, incomplete reports, failed UI and absent required 
   assert.equal(result.process.exitCode,1,JSON.stringify(options));
   assert.ok(result.logs.some(line=>line.includes('"failure":')&&!line.includes('"failure":""')));
  }
+});
+
+for(const flag of ['productIdRetryVerified','cancellationHasNoTransaction','cancellationReleasesBusy'])test('StoreKit runner refuses success without '+flag,async()=>{
+ const result=await runScript('test-ios-iap-smoke.mjs',{iapMissingFlag:flag});
+ assert.equal(result.process.exitCode,1);
+ assert.ok(result.logs.some(line=>line.includes('required_purchase_check_failed')));
 });

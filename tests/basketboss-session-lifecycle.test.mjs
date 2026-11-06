@@ -74,6 +74,27 @@ test('session lifecycle remains separate from Premium verification and never edi
  assert.match(source,/const validSession=\(\)=>\{try\{const s=.*expires_at/);
 });
 
+test('successful sign-out invalidates membership before session observers run, without touching local stock',()=>{
+ const h=harness({session:fresh}),order=[];
+ h.values.set('basketboss_321_unified_state_v1','local plan');h.values.set('basketboss_321_v7_measured_pantry','local stock');
+ h.win.BasketBossVerifiedPremium={invalidate(){order.push({step:'membership',session:h.values.get(KEY)});}};
+ h.win.BBReceiptHost={hasPendingConfirmation:()=>true};
+ h.win.addEventListener('basketboss:session-changed',()=>order.push({step:'session',session:h.values.get(KEY)}));
+ assert.equal(h.api.remember(null),true);assert.deepEqual(order,[{step:'membership',session:undefined},{step:'session',session:undefined}]);
+ assert.equal(h.values.get('basketboss_321_unified_state_v1'),'local plan');assert.equal(h.values.get('basketboss_321_v7_measured_pantry'),'local stock');
+});
+
+test('account replacement invalidates the previous grant while ordinary token renewal leaves verification to session observers',()=>{
+ const h=harness({session:fresh});let resets=0;h.win.BasketBossVerifiedPremium={invalidate(){resets++;}};
+ assert.equal(h.api.remember({...fresh,access_token:'rotated-again'}),true);assert.equal(resets,0);
+ assert.equal(h.api.remember({...fresh,user:{id:'22222222-2222-4222-8222-222222222222'},access_token:'free-b'}),true);assert.equal(resets,1);
+});
+
+test('a Premium display repaint failure cannot prevent a persisted sign-out or its session notification',()=>{
+ const h=harness({session:fresh});h.win.BasketBossVerifiedPremium={invalidate(){throw Error('view no longer mounted');}};
+ assert.equal(h.api.remember(null),true);assert.equal(h.values.has(KEY),false);assert.equal(h.events,1);
+});
+
 test('a stalled refresh times out without losing sign-in and a later resume can retry',async()=>{
  let stalled=true;
  const h=harness({respond:()=>stalled?new Promise(()=>{}):Response.json(fresh)});h.api.start();

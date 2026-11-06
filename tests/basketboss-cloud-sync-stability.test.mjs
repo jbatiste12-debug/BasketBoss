@@ -48,7 +48,7 @@ test('restoring a slow cloud copy cannot overwrite local edits made while it was
 
 test('a rejected account-connected backup probe settles locally instead of rejecting unhandled',async()=>{
  const h=fixture();h.setHandler(async()=>{throw Error('synthetic no supermarket signal');});await assert.doesNotReject(h.window.BasketBossCloud.connected());
- assert.equal(h.store.get(STATE),plan('first'));assert.match(h.node('cloud-message').textContent,/synthetic no supermarket signal/);assert.equal(h.timers.size,0);
+ assert.equal(h.store.get(STATE),plan('first'));assert.match(h.node('cloud-message').textContent,/Could not connect to cloud backup/);assert.doesNotMatch(h.node('cloud-message').textContent,/synthetic no supermarket signal/);assert.equal(h.timers.size,0);
 });
 test('same-account token refresh preserves cloud agreement and autosaves new edits with the refreshed token',async()=>{
  for(const event of ['basketboss:session-changed','storage']){
@@ -135,4 +135,54 @@ test('a concurrent account deletion cannot resurrect pantry or plan bytes during
  const write=h.storage.setItem;let deleting=true;h.storage.setItem=(key,value)=>{const result=write(key,value);if(key==='prices'&&deleting){deleting=false;write('basketboss_account_deletion_v1',JSON.stringify({actorId:'backup-test-actor',phase:'deleting'}));h.store.delete('stock');h.store.delete(STATE);}return result;};
  await h.node('cloud-download').onclick();assert.equal(h.reloads,0);assert.equal(h.store.get('stock'),undefined);assert.equal(h.store.get(STATE),undefined,'rollback must not restore the pre-deletion plan');
  assert.equal(JSON.parse(h.store.get('basketboss_account_deletion_v1')).phase,'deleting');assert.equal(h.node('cloud-download').disabled,false);
+});
+
+test('missing cloud table pauses automatic requests, preserves local data, and allows an explicit retry',async()=>{
+ const h=fixture(),saved=h.store.get(STATE),session=h.store.get(SESSION);
+ h.setHandler(async()=>Response.json({code:'PGRST205',message:"Could not find the table 'public.basketboss_data' in the schema cache",hint:'private schema detail'},{status:404}));
+ await h.window.BasketBossCloud.connected();assert.equal(h.calls.length,1);assert.ok(h.calls[0].url.includes('user_id=eq.backup-test-actor'));
+ assert.equal(h.store.get(STATE),saved);assert.equal(h.store.get(SESSION),session);assert.match(h.node('cloud-message').textContent,/Cloud backup is temporarily unavailable/);assert.doesNotMatch(h.node('cloud-message').textContent,/basketboss_data|PGRST|schema cache|private schema/);
+ h.window.BasketBossCloud.scheduleSave();h.event('online');await h.window.BasketBossCloud.connected();await tick();assert.equal(h.calls.length,1,'known missing schema does not keep retrying after edits, reconnects or account probes');assert.equal(h.timers.size,0);
+ h.setHandler(async()=>new Response(null,{status:204}));await h.node('cloud-upload').onclick();assert.equal(h.calls.length,2);assert.equal(h.calls[1].input.method,'POST');assert.equal(JSON.parse(h.calls[1].input.body).data.planned[0].recipeId,'first');assert.match(h.node('cloud-message').textContent,/Synced securely/);
+ assert.equal(h.store.get(STATE),saved);assert.equal(h.node('cloud-upload').disabled,false);assert.equal(h.node('cloud-download').disabled,false);
+});
+
+test('missing columns and undefined tables report setup failure rather than an empty cloud account',async()=>{
+ for(const code of ['PGRST204','42P01']){
+  const h=fixture(),saved=h.store.get(STATE);h.setHandler(async()=>Response.json({code,message:'internal database detail'},{status:404}));
+  await h.window.BasketBossCloud.connected();h.event('online');await tick();assert.equal(h.calls.length,1);assert.equal(h.calls[0].input.method,'GET');assert.equal(h.store.get(STATE),saved);assert.match(h.node('cloud-message').textContent,/temporarily unavailable/);assert.equal(h.reloads,0);
+ }
+});
+
+test('cloud permissions and expired credentials have separate friendly states without changing login or local amounts',async()=>{
+ for(const [status,code,expected]of[[403,'42501',/cannot access this account/],[401,'PGRST301',/Reconnect your account/]]){
+  const h=fixture(),before=[...h.store];h.setHandler(async()=>Response.json({code,message:'private role and table diagnostics'},{status}));
+  await h.node('cloud-upload').onclick();assert.match(h.node('cloud-message').textContent,expected);assert.doesNotMatch(h.node('cloud-message').textContent,/42501|PGRST301|private role/);assert.deepEqual([...h.store],before);
+  h.window.BasketBossCloud.scheduleSave();h.event('online');await h.window.BasketBossCloud.connected();await tick();assert.equal(h.calls.length,1);assert.equal(h.node('cloud-download').disabled,false,'the user can explicitly retry after access is fixed');
+ }
+});
+
+test('an invalid success payload cannot be mistaken for an empty backup and uploaded over',async()=>{
+ const h=fixture(),before=[...h.store];h.setHandler(async()=>Response.json({message:'an unexpected gateway response'}));
+ await h.window.BasketBossCloud.connected();assert.equal(h.calls.length,1);assert.equal(h.calls[0].input.method,'GET');assert.deepEqual([...h.store],before);assert.match(h.node('cloud-message').textContent,/temporarily unavailable/);assert.equal(h.reloads,0);
+});
+
+test('a missing-table result from the previous account cannot poison the next account or display its stale error',async()=>{
+ const h=fixture(),reply=deferred();h.setHandler(()=>reply.promise);const connected=h.window.BasketBossCloud.connected();await tick();
+ const next={access_token:'new-account-token',expires_at:Date.now()/1000+3600,user:{id:'next-test-actor',email:'next@example.invalid'}};h.store.set(SESSION,JSON.stringify(next));h.event('basketboss:session-changed');
+ reply.resolve(Response.json({code:'PGRST205',message:'old account schema error'},{status:404}));await connected;assert.doesNotMatch(h.node('cloud-message').textContent,/temporarily unavailable|old account/);
+ h.setHandler(async(_url,input)=>input.method==='GET'?Response.json([]):new Response(null,{status:204}));await h.window.BasketBossCloud.connected();
+ assert.equal(h.calls.length,3);assert.ok(h.calls[1].url.includes('user_id=eq.next-test-actor'));assert.equal(JSON.parse(h.calls[2].input.body).user_id,'next-test-actor');assert.match(h.node('cloud-message').textContent,/Synced securely/);
+});
+
+test('a refreshed same-account session resumes a paused authentication failure through a cloud read first',async()=>{
+ const h=fixture();h.setHandler(async()=>Response.json({code:'PGRST301',message:'expired token'},{status:401}));await h.window.BasketBossCloud.connected();assert.equal(h.calls.length,1);
+ const refreshed={...JSON.parse(h.store.get(SESSION)),access_token:'fresh-auth-token'};h.store.set(SESSION,JSON.stringify(refreshed));h.event('basketboss:session-changed');
+ h.setHandler(async(_url,input)=>input.method==='GET'?Response.json([]):new Response(null,{status:204}));h.expire(1400);await tick();await tick();
+ assert.equal(h.calls.length,3);assert.equal(h.calls[1].input.method,'GET','a fresh token checks for a remote copy before uploading');assert.equal(h.calls[1].input.headers.Authorization,'Bearer fresh-auth-token');assert.match(h.node('cloud-message').textContent,/Synced securely/);
+});
+
+test('a malformed successful upload response never reports a false cloud backup success',async()=>{
+ const h=fixture(),before=[...h.store];h.setHandler(async()=>Response.json({code:'PGRST205',message:'unexpected gateway error envelope'}));await h.node('cloud-upload').onclick();
+ assert.deepEqual([...h.store],before);assert.match(h.node('cloud-message').textContent,/temporarily unavailable/);assert.doesNotMatch(h.node('cloud-message').textContent,/Synced securely|PGRST205|gateway error/);
 });

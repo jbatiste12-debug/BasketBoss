@@ -39,6 +39,7 @@ on:
       - terms.html
       - service-worker.js
       - tests/**
+      - scripts/verify-apple-purchase-flow.mjs
 
 permissions:
   contents: read

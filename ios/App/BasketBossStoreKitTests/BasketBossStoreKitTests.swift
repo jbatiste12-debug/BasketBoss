@@ -16,11 +16,11 @@ final class BasketBossStoreKitTests: XCTestCase {
         XCTAssertEqual(report["localStoreKit"] as? Bool, true, detail)
         XCTAssertEqual(report["productionBillingTested"] as? Bool, false, detail)
         XCTAssertEqual(report["backendPremiumGranted"] as? Bool, false, detail)
-        var required = ["productsLoaded", "purchaseVerified", "accountTokenPreserved",
+        var required = ["productsLoaded", "purchaseVerified", "productIdRetryVerified", "accountTokenPreserved",
                         "unfinishedBeforeServerAck", "earlyFinishRejected", "restoreVerified",
                         "duplicatePurchasePrevented", "wrongAccountRejected",
                         "finishedAfterAcknowledgement", "pendingDoesNotGrantAccess", "pendingApprovalDelivered"]
-        if #available(iOS 17.0, *) { required.append("cancellationPreserved") }
+        if #available(iOS 17.0, *) { required.append(contentsOf: ["cancellationPreserved", "cancellationHasNoTransaction", "cancellationReleasesBusy"]) }
         for key in required { XCTAssertEqual(report[key] as? Bool, true, key + ": " + detail) }
     }
 }

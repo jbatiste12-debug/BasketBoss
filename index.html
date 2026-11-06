@@ -3598,7 +3598,7 @@ body.bbnext-plan-mode .shell > #bb175Toolbar{display:none!important}
 </style>
 <link rel="stylesheet" href="bb-membership-settings.css?v=bbsecure1">
 <script defer src="bb-membership-settings.js?v=20261101-apple1"></script>
-<script defer src="bb-verified-premium-ui.js?v=20261101-member1"></script>
+<script defer src="bb-verified-premium-ui.js?v=20261106-account-iap1"></script>
 <style id="bb-mvp-four-items-20261027">
 /* Presentation only: plan actions and consistent food crops. Never change photo sources. */
 #app .day .planned .bb172-planner-controls [data-cook],
@@ -8765,30 +8765,41 @@ window.BBPlanMoveHost=Object.freeze({snapshot:bbPlanMoveSnapshot,move:bbPlanMove
 window.addEventListener('storage',e=>{if(e.key===KEY){state=loadState();bbFeedingApplyDefault();render();notify('Updated from another tab')}});window.addEventListener('beforeunload',()=>{if(timerHandle)clearInterval(timerHandle)});window.addEventListener('pageshow',e=>{if(e.persisted)window.scrollTo({top:0,behavior:'instant'})});queueMicrotask(render);
 /* BB SECURE PREMIUM: runtime hydration from D1 after verified membership. */
 const bbFreeRecipes=RECIPES.slice(),bbFreeNormalized=BB307_NORMALIZED.slice(),bbFreeCosts=new Map(BB307_ORIGINAL_COSTS);
-let bbPremiumRequest=0,bbPremiumUser=null;
-window.BasketBossVerifiedPremium=Object.freeze({isActive:()=>bbVerifiedPaidRecipes});
+let bbPremiumRequest=0,bbPremiumUser=null,bbPremiumToken=null;
+function bbPremiumIdentity(){
+  let session;try{session=JSON.parse(localStorage.getItem('basketboss_cloud_session_v1')||'null')}catch{}
+  if(typeof session?.access_token!=='string'||!session.access_token||!session?.user?.id||!Number.isFinite(Number(session.expires_at))||Number(session.expires_at)*1000<=Date.now()+5000)return null;
+  return {id:String(session.user.id),token:session.access_token};
+}
+function bbPremiumMatches(pin){const current=bbPremiumIdentity();return !!pin&&!!current&&current.id===pin.id&&current.token===pin.token;}
+function bbPremiumSignal(){try{document.dispatchEvent(new Event('basketboss:premium-verified'))}catch{}}
+function bbPremiumInvalidate(){bbPremiumRequest++;bbPremiumClear();}
+window.BasketBossVerifiedPremium=Object.freeze({isActive:()=>{if(bbVerifiedPaidRecipes&&!bbPremiumMatches({id:bbPremiumUser,token:bbPremiumToken}))bbPremiumInvalidate();return bbVerifiedPaidRecipes;},invalidate:bbPremiumInvalidate});
 function bbPremiumClear(){
   const dirty=bbVerifiedPaidRecipes||RECIPES.length!==bbFreeRecipes.length||BB307_NORMALIZED.length!==bbFreeNormalized.length;
-  bbVerifiedPaidRecipes=false;bbPremiumUser=null;
+  bbVerifiedPaidRecipes=false;bbPremiumUser=null;bbPremiumToken=null;
   if(!dirty)return;
   RECIPES.splice(0,RECIPES.length,...bbFreeRecipes);
   BB307_NORMALIZED.splice(0,BB307_NORMALIZED.length,...bbFreeNormalized);
   BB307_SOURCE_RECIPES.splice(0,BB307_SOURCE_RECIPES.length,...bbFreeRecipes.map(r=>({...r,ingredients:r.ingredients.map(i=>[...i])})));
   BB307_ORIGINAL_COSTS.clear();BB307_VALID_IDS.clear();
   for(const r of bbFreeRecipes){BB307_ORIGINAL_COSTS.set(r.id,bbFreeCosts.get(r.id));BB307_VALID_IDS.add(r.id);}
-  render();
+  render();bbPremiumSignal();
 }
 async function bbPremiumReload(){
   const stamp=++bbPremiumRequest;
-  let s;try{s=JSON.parse(localStorage.getItem('basketboss_cloud_session_v1')||'null')}catch{}
-  if(typeof s?.access_token!=='string'||!s?.user?.id||Number(s.expires_at)*1000<=Date.now()+5000){bbPremiumClear();return;}
-  const id=String(s.user.id);
+  const pin=bbPremiumIdentity();
+  if(!pin){bbPremiumClear();return;}
+  if(bbPremiumUser!==pin.id||bbPremiumToken!==pin.token)bbPremiumClear();
+  const id=pin.id;
   try{
-    const response=await fetch('/api/recipes/premium?catalogue=500',{headers:{'Authorization':'Bearer '+s.access_token,'Accept':'application/json'},credentials:'same-origin',cache:'no-store'});
+    const response=await fetch('/api/recipes/premium?catalogue=500',{headers:{'Authorization':'Bearer '+pin.token,'Accept':'application/json'},credentials:'same-origin',cache:'no-store'});
     if(stamp!==bbPremiumRequest)return;
+    if(!bbPremiumMatches(pin)){bbPremiumClear();return;}
     if(!response.ok){bbPremiumClear();return;}
     const data=await response.json();
     if(stamp!==bbPremiumRequest)return;
+    if(!bbPremiumMatches(pin)){bbPremiumClear();return;}
     if(![221,400].includes(data?.count)||!Array.isArray(data.recipes)||data.recipes.length!==data.count||!Array.isArray(data.normalized)||data.normalized.length!==data.count)throw Error('Premium recipe data incomplete');
     for(const recipe of data.recipes)Object.assign(recipe,BBRecipePlanning.metadata(recipe));
     const fresh=new Set(bbFreeRecipes.map(x=>x.id)),unique=new Set();
@@ -8802,9 +8813,9 @@ async function bbPremiumReload(){
       BB307_ORIGINAL_COSTS.set(r.id,{total:Number(r.cost),lines:r.ingredients.map(i=>Number(i[2]))});
       BB307_VALID_IDS.add(r.id);
     }
-    bbVerifiedPaidRecipes=true;bbPremiumUser=id;
+    bbVerifiedPaidRecipes=true;bbPremiumUser=id;bbPremiumToken=pin.token;
     if(typeof bb307ApplyRememberedMarket==='function')bb307ApplyRememberedMarket();
-    render();
+    render();bbPremiumSignal();
   }catch(error){if(stamp===bbPremiumRequest)bbPremiumClear()}
 }
 window.addEventListener('basketboss:session-changed',()=>{void bbPremiumReload()});
@@ -11402,7 +11413,7 @@ if (false && 'serviceWorker' in navigator && location.protocol==='https:') {
 <small id="cloud-message">Sync is optional. Your recipes and meal plan continue to work on this device without an account.</small>
 </div></div>
 <script src="./cloud-config.js"></script>
-<script src="bb-session.js?v=20261102-session1"></script>
+<script src="bb-session.js?v=20261106-account-iap1"></script>
 <script>
 (function(){
 'use strict';
@@ -11410,12 +11421,23 @@ const config=window.BASKETBOSS_CLOUD_CONFIG||{};
 const enabled=/^https:\/\//.test(config.url||'') && !!config.anonKey && !config.url.includes('YOUR_PROJECT');
 const panel=document.getElementById('cloud-panel'),status=document.getElementById('cloud-status'),msg=document.getElementById('cloud-message');
 const auth=document.getElementById('cloud-auth'),signed=document.getElementById('cloud-signed');
-let session=null,sessionRaw=null,dirty=false,timer=null,loading=false,generation=0,deleting=false,syncFlight=null,cloudChoiceRequired=false,lastCloudFingerprint=null,connectFlight=null;
+let session=null,sessionRaw=null,dirty=false,timer=null,loading=false,generation=0,deleting=false,syncFlight=null,cloudChoiceRequired=false,lastCloudFingerprint=null,connectFlight=null,cloudPause=null;
 const sessionKey='basketboss_cloud_session_v1',stateKey='basketboss_321_unified_state_v1';
 const blocked=()=>deleting||window.BBAccountDeletion?.isDeleting?.()===true;
 const snapshot=()=>({generation,actor:session?.user?.id||null,token:session?.access_token||null,stored:localStorage.getItem(sessionKey)});
 const current=pin=>!blocked()&&pin.generation===generation&&pin.actor===(session?.user?.id||null)&&pin.token===(session?.access_token||null)&&pin.stored===localStorage.getItem(sessionKey);
 const setMessage=t=>{if(!blocked())msg.textContent=t==='pantry_backup_paused'?'Finish checking the pending receipt before cloud sync. Your changes are kept on this device.':/^pantry_backup_/.test(String(t))?'Your kitchen backup needs checking before syncing. Your saved amounts and prices are kept on this device.':t;};
+function cloudFailure(kind,pin=snapshot()){
+ const messages={setup:'Cloud backup is temporarily unavailable. Your plan and kitchen are saved on this device. Try Upload or Restore again later.',permission:'Cloud backup cannot access this account right now. Your plan and kitchen are saved on this device. Try signing in again or contact support.',auth:'Reconnect your account before using cloud backup. Your plan and kitchen are saved on this device.',network:'Could not connect to cloud backup. Your plan and kitchen are saved on this device. Try again when connected.',timeout:'Cloud connection timed out. Your plan and kitchen are saved on this device. Try again when connected.'};
+ return Object.assign(new Error(messages[kind]||messages.network),{cloudKind:kind,cloudPin:pin});
+}
+function reportCloudError(error){if(error?.cloudPin&&!current(error.cloudPin))return false;setMessage(error?.message||'Cloud sync is unavailable. Your local data has been kept.');return false;}
+function pauseCloud(error){
+ if(!current(error.cloudPin))return;
+ if(['setup','permission','auth'].includes(error.cloudKind)){cloudPause={kind:error.cloudKind,actor:error.cloudPin.actor};cloudChoiceRequired=true;dirty=true;clearTimeout(timer);timer=null;}
+ reportCloudError(error);
+}
+
 function restoreStoredSession(){try{sessionRaw=localStorage.getItem(sessionKey);const saved=JSON.parse(sessionRaw||'null');session=saved?.access_token?saved:null;}catch{sessionRaw=null;session=null;}}
 function setStatus(){const connected=!!(session?.access_token&&Number(session.expires_at)*1000>Date.now()+5000),remembered=window.BasketBossSession?.state().remembered===true,recovering=blocked()&&window.BBAccountDeletion?.canRecoverSignIn?.()===true;status.textContent=recovering?'An earlier account deletion needs checking. Sign in with the original account to recover access; cloud syncing stays paused during the check.':blocked()?'Account deletion is in progress. Cloud sync is paused.':!enabled?'Cloud sync needs setup by the site owner.':connected?'Signed in as '+(session.user?.email||'your account'):remembered?(window.BasketBossSession.state().needsConnection?'Your account is saved on this device. Reconnect to the internet to continue.':'Reconnecting to your account…'):session?'Your session has expired. Sign in again to access your account.':'Sign in to sync your plan between devices.';auth.hidden=!enabled||(blocked()?!recovering:(connected||remembered));signed.hidden=!(connected||remembered)||blocked();document.getElementById('cloud-signup').hidden=recovering;for(const id of ['cloud-upload','cloud-download','cloud-logout'])document.getElementById(id).disabled=blocked()||(id!=='cloud-logout'&&!!syncFlight);}
 function headers(token){return {'apikey':config.anonKey,'Authorization':'Bearer '+(token||config.anonKey),'Content-Type':'application/json'};}
@@ -11452,13 +11474,24 @@ function commitCloudRestore(updates,expected){
 }
 async function api(path,method='GET',body=null,token=null,recovery=false,extraHeaders={}){
  if(blocked()&&!(recovery&&path==='/auth/v1/token?grant_type=password'&&window.BBAccountDeletion?.canRecoverSignIn?.()===true))throw new Error('Account deletion is in progress.');
+ const cloudRequest=path.startsWith('/rest/v1/basketboss_data'),requestPin=cloudRequest?snapshot():null;
  const controller=new AbortController(),deadline=setTimeout(()=>controller.abort(),20000);
  try{
   const response=await fetch(config.url.replace(/\/$/,'')+path,{method,headers:{...headers(token),...extraHeaders},body:body?JSON.stringify(body):undefined,signal:controller.signal});
   const raw=await response.text();if(controller.signal.aborted)throw new Error('Cloud connection timed out. Your plan is saved on this device.');let data;try{data=raw?JSON.parse(raw):null}catch{data={message:raw}}
-  if(!response.ok)throw new Error(data?.msg||data?.error_description||data?.message||data?.error||'Cloud request failed');
+  if(!response.ok){
+   if(cloudRequest){
+    const code=String(data?.code||''),missing=['PGRST205','PGRST204','42P01'].includes(code)||response.status===404&&/basketboss_data|schema cache/i.test(String(data?.message||''));
+    throw cloudFailure(missing?'setup':response.status===401||['PGRST301','PGRST302','PGRST303'].includes(code)?'auth':response.status===403||code==='42501'?'permission':'network',requestPin);
+   }
+   throw new Error(data?.msg||data?.error_description||data?.message||data?.error||'Cloud request failed');
+  }
+  if(cloudRequest&&method!=='GET'&&raw&&!Array.isArray(data))throw cloudFailure('setup',requestPin);
   return data;
- }catch(error){if(controller.signal.aborted)throw new Error('Cloud connection timed out. Your plan is saved on this device.');throw error;}
+ }catch(error){
+  if(cloudRequest){const failure=controller.signal.aborted?cloudFailure('timeout',requestPin):error?.cloudKind?error:cloudFailure('network',requestPin);pauseCloud(failure);throw failure;}
+  if(controller.signal.aborted)throw new Error('Cloud connection timed out. Your plan is saved on this device.');throw error;
+ }
  finally{clearTimeout(deadline);}
 }
 function saveSession(s){if(blocked()||!window.BasketBossSession?.remember(s))return false;generation++;session=s;setStatus();return true;}
@@ -11472,11 +11505,12 @@ async function refresh(){
 async function getCloud(){
  if(blocked()||!await refresh()||blocked()||!session)return null;
  const pin=snapshot();
- const rows=await api('/rest/v1/basketboss_data?select=data,updated_at&limit=1','GET',null,pin.token);
+ const rows=await api('/rest/v1/basketboss_data?select=data,updated_at&user_id=eq.'+encodeURIComponent(pin.actor)+'&limit=1','GET',null,pin.token);
  if(!current(pin))return null;
+ if(!Array.isArray(rows)||rows.length>1||rows.some(row=>!row||typeof row!=='object'||!Object.hasOwn(row,'data'))){const error=cloudFailure('setup',pin);pauseCloud(error);throw error;}
  return {row:rows?.[0]||null,pin};
 }
-function queueCloudSave(){clearTimeout(timer);timer=setTimeout(()=>{timer=null;if(!blocked()&&navigator.onLine){if(cloudChoiceRequired)void connectedCloud();else push().catch(e=>setMessage(e.message));}},1400);}
+function queueCloudSave(){clearTimeout(timer);timer=null;if(cloudPause)return;timer=setTimeout(()=>{timer=null;if(!blocked()&&!cloudPause&&navigator.onLine){if(cloudChoiceRequired)void connectedCloud();else push().catch(reportCloudError);}},1400);}
 function cloudOperation(kind,work){
  if(syncFlight)return syncFlight.kind===kind?syncFlight.promise:Promise.resolve(false);
  if(blocked())return Promise.resolve(false);
@@ -11490,7 +11524,7 @@ function cloudOperation(kind,work){
 }
 function push(force=false){return cloudOperation('upload',async operation=>{
  if(blocked()||!session||!enabled)return false;
- if(force)cloudChoiceRequired=false;else if(cloudChoiceRequired)return false;
+ if(force){cloudPause=null;cloudChoiceRequired=false;}else if(cloudChoiceRequired||cloudPause)return false;
  if(!navigator.onLine){dirty=true;setMessage('You’re offline. Your plan is saved on this device and will sync when connected.');return false;}
  for(let attempt=0;attempt<2;attempt++){
   if(!await refresh()||blocked()||!session)return false;
@@ -11507,6 +11541,7 @@ function pull(confirmReplace=true){return cloudOperation('restore',async operati
  if(blocked()||!session)return false;
  if(window.BBReceiptHost?.hasPendingConfirmation?.())throw Error('Finish checking the pending receipt before restoring your account.');
  if(confirmReplace&&!confirm('Replace this device\u2019s current meal plan and preferences with your cloud copy?'))return false;
+ if(confirmReplace)cloudPause=null;else if(cloudPause)return false;
  if(!navigator.onLine){setMessage('You’re offline. Your current plan is saved on this device. Reconnect before restoring.');return false;}
  const before=localStorage.getItem(stateKey),beforeDeletion=localStorage.getItem('basketboss_account_deletion_v1'),beforeSnapshot=cloudSnapshot()?.fingerprint,result=await getCloud();if(!result||!current(result.pin))return false;
  const row=result.row;if(!row){setMessage('No cloud backup yet. Use Upload this device\u2019s plan first.');return false;}
@@ -11521,6 +11556,7 @@ function pull(confirmReplace=true){return cloudOperation('restore',async operati
  setMessage(kitchen?.requiresReview?'Cloud plan restored. Your local kitchen amounts were kept for review. Reloading\u2026':'\u2713 Cloud plan and kitchen restored. Reloading\u2026');location.reload();return true;
 });}
 function connectedCloud(){
+ if(cloudPause)return Promise.resolve(false);
  if(connectFlight)return connectFlight;
  const job=(async()=>{try{
   if(!navigator.onLine)return;const cloud=await getCloud();if(!cloud||!current(cloud.pin))return;
@@ -11528,7 +11564,7 @@ function connectedCloud(){
   if(cloud.row.data&&stableCloud(cloud.row.data)===cloudSnapshot()?.fingerprint){cloudChoiceRequired=false;lastCloudFingerprint=cloudSnapshot().fingerprint;dirty=false;return;}
   if(localCloudEmpty()){cloudChoiceRequired=false;await pull(false);return;}
   cloudChoiceRequired=true;setMessage('Cloud backup found. Choose Restore cloud plan to use it, or Upload to keep this device\u2019s plan and kitchen.');
- }catch(error){setMessage(error?.message||'Cloud sync is unavailable. Your local data has been kept.');}})();
+ }catch(error){reportCloudError(error);}})();
  connectFlight=job.finally(()=>{connectFlight=null;});return connectFlight;
 }
 async function signIn(signup){
@@ -11562,17 +11598,17 @@ window.BasketBossCloud={connected:connectedCloud,scheduleSave(){if(blocked()||lo
 window.addEventListener('basketboss:account-deletion-started',()=>{deleting=true;generation++;dirty=false;clearTimeout(timer);timer=null;setStatus();});
 window.addEventListener('basketboss:account-deletion-cancelled',()=>{deleting=false;generation++;restoreStoredSession();setStatus();});
 window.addEventListener('basketboss:account-deletion-deleted',()=>{deleting=true;generation++;session=null;dirty=false;clearTimeout(timer);timer=null;setStatus();});
-window.addEventListener('basketboss:session-changed',()=>{const before=sessionRaw,previousActor=session?.user?.id||null;restoreStoredSession();if(sessionRaw!==before){generation++;if((session?.user?.id||null)!==previousActor){cloudChoiceRequired=!!session;lastCloudFingerprint=null;}else if(dirty){if(syncFlight)syncFlight.drain=true;else queueCloudSave();}}setStatus();});
-window.addEventListener('storage',event=>{if(event.key!==sessionKey)return;generation++;const before=sessionRaw,previousActor=session?.user?.id||null;if(blocked())return;restoreStoredSession();const actorChanged=(session?.user?.id||null)!==previousActor;if(sessionRaw!==before){if(actorChanged){cloudChoiceRequired=!!session;lastCloudFingerprint=null;}else if(dirty){if(syncFlight)syncFlight.drain=true;else queueCloudSave();}}setStatus();if(actorChanged||cloudChoiceRequired)void connectedCloud();});
+window.addEventListener('basketboss:session-changed',()=>{const before=sessionRaw,previousActor=session?.user?.id||null;restoreStoredSession();if(sessionRaw!==before){generation++;if((session?.user?.id||null)!==previousActor){cloudPause=null;cloudChoiceRequired=!!session;lastCloudFingerprint=null;}else if(cloudPause?.kind==='auth'){cloudPause=null;cloudChoiceRequired=!!session;if(dirty)queueCloudSave();}else if(dirty){if(syncFlight)syncFlight.drain=true;else queueCloudSave();}}setStatus();});
+window.addEventListener('storage',event=>{if(event.key!==sessionKey)return;generation++;const before=sessionRaw,previousActor=session?.user?.id||null;if(blocked())return;restoreStoredSession();const actorChanged=(session?.user?.id||null)!==previousActor;if(sessionRaw!==before){if(actorChanged){cloudPause=null;cloudChoiceRequired=!!session;lastCloudFingerprint=null;}else if(cloudPause?.kind==='auth'){cloudPause=null;cloudChoiceRequired=!!session;if(dirty)queueCloudSave();}else if(dirty){if(syncFlight)syncFlight.drain=true;else queueCloudSave();}}setStatus();if(actorChanged||cloudChoiceRequired)void connectedCloud();});
 document.getElementById('cloud-open').onclick=()=>{window.BBOnboard2026?.pauseForAccount?.();panel.classList.add('open');setStatus();if(window.BBAccountDeletion?.canRecoverSignIn?.())void window.BBAccountDeletion.checkPending();};
 document.getElementById('cloud-close').onclick=()=>panel.classList.remove('open');
 panel.onclick=e=>{if(e.target===panel)panel.classList.remove('open')};
 document.getElementById('cloud-login').onclick=()=>signIn(false);
 document.getElementById('cloud-signup').onclick=()=>signIn(true);
-document.getElementById('cloud-upload').onclick=()=>push(true).catch(e=>setMessage(e.message));
-document.getElementById('cloud-download').onclick=()=>pull(true).catch(e=>setMessage(e.message));
+document.getElementById('cloud-upload').onclick=()=>push(true).catch(reportCloudError);
+document.getElementById('cloud-download').onclick=()=>pull(true).catch(reportCloudError);
 document.getElementById('cloud-logout').onclick=()=>{if(blocked())return;if(saveSession(null))setMessage('Signed out. Local data remains on this device.');else setMessage('Could not sign out on this device. Please try again.');};
-window.addEventListener('online',()=>{if(blocked())return;if(cloudChoiceRequired)void connectedCloud();else if(dirty)push().catch(e=>setMessage(e.message));});
+window.addEventListener('online',()=>{if(blocked()||cloudPause)return;if(cloudChoiceRequired)void connectedCloud();else if(dirty)push().catch(reportCloudError);});
 restoreStoredSession();
 cloudChoiceRequired=!!session;
 setStatus();

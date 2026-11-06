@@ -81,6 +81,28 @@ jobs:
       - run: npm run ios:verify
       - name: Native routing and purchase controller tests
         run: npm run test:native
+      - name: Audit product IDs and simulate the full client purchase flow
+        run: node scripts/verify-apple-purchase-flow.mjs --output artifacts/apple-purchase-local-diagnostic.json
+      - name: Read production Apple configuration without account credentials
+        run: |
+          node --input-type=module <<'JS'
+          const expected=['uk.co.basketboss.premium.monthly','uk.co.basketboss.premium.annual'];
+          let report={available:false,transport:'unavailable',realPurchaseTested:false};
+          try {
+            const response=await fetch('https://basketboss.co.uk/api/apple/config',{headers:{Origin:'capacitor://localhost'},signal:AbortSignal.timeout(15000),redirect:'error'});
+            const body=await response.json();
+            report={available:body.available===true,httpStatus:response.status,environment:['Production','Sandbox'].includes(body.environment)?body.environment:null,
+              reason:['apple_not_enabled','apple_not_ready'].includes(body.reason)?body.reason:null,
+              productIdsMatch:Array.isArray(body.productIds)&&body.productIds.length===2&&expected.every(id=>body.productIds.includes(id)),realPurchaseTested:false};
+          } catch {}
+          console.log('::notice title=Apple production purchase configuration::'+JSON.stringify(report));
+          JS
+      - uses: actions/upload-artifact@v6
+        with:
+          name: BasketBoss-Apple-Portable-Diagnostic
+          path: artifacts/apple-purchase-local-diagnostic.json
+          if-no-files-found: error
+          retention-days: 14
       - name: Install isolated PostgreSQL test engine
         run: npm install --prefix "$RUNNER_TEMP/bb-apple-pg" --package-lock=false --ignore-scripts --no-audit --no-fund @electric-sql/pglite@0.3.14
       - name: Verify Apple, web billing, household and account regression suites
