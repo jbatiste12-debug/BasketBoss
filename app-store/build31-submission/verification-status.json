@@ -1,0 +1,163 @@
+{
+  "updatedAt": "2026-11-06T20:37:11.645929+00:00",
+  "status": "verified_for_signed_testflight_upload",
+  "version": "1.0",
+  "build": 31,
+  "bundleId": "uk.co.basketboss.app",
+  "teamId": "J25UTUATD2",
+  "productIds": [
+    "uk.co.basketboss.premium.monthly",
+    "uk.co.basketboss.premium.annual"
+  ],
+  "candidateCommit": "946e80d83f74c71da57647508373a4cca3ca2413",
+  "releaseCommit": "b33d0aa42df21d60bbb93b4247d184298f53108c",
+  "proposedReleaseTag": "appstore-build31-restore-flow",
+  "releaseTag": "appstore-build31-restore-flow",
+  "releaseTagCreated": true,
+  "tagPushed": true,
+  "sourcePR": "https://github.com/jbatiste12-debug/BasketBoss/pull/87",
+  "sourcePRMerged": true,
+  "releaseTreeMatchesValidatedHead": true,
+  "readyForSignedUpload": true,
+  "signedUploadCompleted": false,
+  "submittedToAppReview": false,
+  "readyForAppReview": false,
+  "scope": [
+    "Verified current subscription entitlements before forced AppStore.sync fallback",
+    "Genuine transactions verified for ownership and fresh status by the server before acknowledgment and finishing",
+    "Explicit restoration outcome distinct from existing membership; unavailable membership status stays an error",
+    "Typed StoreKit unknown-error classification with fixed safe messaging and bounded domain/code diagnostics",
+    "Finish Shop full purchase credit with true food identity, compatible conversions, known pack contents and review of uncertainty"
+  ],
+  "verification": {
+    "localFullSuite": {
+      "status": "passed",
+      "sourceCommit": "946e80d83f74c71da57647508373a4cca3ca2413",
+      "total": 2791,
+      "passed": 2788,
+      "failed": 0,
+      "skipped": 1,
+      "todo": 2,
+      "postgresqlBackedChecksEnabled": true,
+      "skipReason": "Swift unavailable locally: Cook voice endpoint detector fixtures passed in the hosted suite."
+    },
+    "portableNative": {
+      "status": "passed",
+      "sourceCommit": "946e80d83f74c71da57647508373a4cca3ca2413",
+      "passed": true,
+      "files": 935,
+      "freeRecipes": 100,
+      "privateRecipeBundle": false,
+      "nativeGroupPassed": 265
+    },
+    "hostedFullSuite": {
+      "status": "passed",
+      "sourceCommit": "946e80d83f74c71da57647508373a4cca3ca2413",
+      "runId": 42287540325,
+      "jobId": 128132438385,
+      "runURL": "https://github.com/jbatiste12-debug/BasketBoss/actions/runs/42287540325",
+      "total": 2791,
+      "passed": 2789,
+      "failed": 0,
+      "skipped": 0,
+      "todo": 2
+    },
+    "hostedNative": {
+      "status": "passed",
+      "sourceCommit": "946e80d83f74c71da57647508373a4cca3ca2413",
+      "runId": 42287540325,
+      "runURL": "https://github.com/jbatiste12-debug/BasketBoss/actions/runs/42287540325",
+      "debugCompilePassed": true,
+      "releaseCompilePassed": true,
+      "releaseExcludesTestFixturePassed": true,
+      "storeKitXCTestsPassed": null,
+      "storeKitXCTestsFailed": null,
+      "cookPassedCases": 1,
+      "cookFailedCases": 0,
+      "cookSkippedCases": 0,
+      "keyboardPassedCases": 4,
+      "keyboardFailedCases": 0,
+      "keyboardSkippedCases": 0,
+      "keyboardRealSoftwareKeyboard": true,
+      "keyboardBackgroundLocked": true,
+      "jobId": 128132787031,
+      "storeKitXCTestTargetPassed": true,
+      "storeKitSourceTestMethods": 17,
+      "storeKitExecutedCountEvidence": "Not extracted; passing hosted XCTest target and complete/passed native StoreKit notice recorded.",
+      "workflowConclusion": "success"
+    },
+    "unsignedArchive": {
+      "status": "passed",
+      "sourceCommit": "946e80d83f74c71da57647508373a4cca3ca2413",
+      "runId": 42287540515,
+      "jobId": 128132153597,
+      "expectedVersion": "1.0",
+      "expectedBuild": 31,
+      "expectedBundleId": "uk.co.basketboss.app",
+      "archiveVersion": "1.0",
+      "archiveBuild": 31,
+      "archiveBundleId": "uk.co.basketboss.app",
+      "passed": true,
+      "artifactId": 13538896510,
+      "artifactBytes": 357353890,
+      "artifactURL": "https://github.com/jbatiste12-debug/BasketBoss/actions/runs/42287540515/artifacts/13538896510",
+      "artifactDigest": "sha256:c9b466f65633409d1b38a60f66078db5c6f377d0cae01d39149c64050dd445bf"
+    },
+    "productionConfiguration": {
+      "available": true,
+      "httpStatus": 200,
+      "environment": "Production",
+      "productIdsMatch": true,
+      "realPurchaseTested": false,
+      "sourceRunId": 42287540325,
+      "sourceJobId": 128132438385
+    },
+    "coldWorker": {
+      "passed": true,
+      "signedDataVerification": true,
+      "appTransactionVerification": true,
+      "tamperEnvironmentBundlePinnedRootAndOCSPRejection": true,
+      "sourceRunId": 42287540325,
+      "sourceJobId": 128132438385
+    },
+    "iosWorkflow": {
+      "status": "passed",
+      "sourceCommit": "946e80d83f74c71da57647508373a4cca3ca2413",
+      "runId": 42287540515,
+      "runURL": "https://github.com/jbatiste12-debug/BasketBoss/actions/runs/42287540515",
+      "cookStrictStepPassed": true,
+      "cookObservedCounts": null,
+      "cookRequiredCounts": {
+        "passed": 1,
+        "failed": 0,
+        "skipped": 0
+      },
+      "keyboardPassedCases": 4,
+      "keyboardFailedCases": 0,
+      "keyboardSkippedCases": 0,
+      "keyboardRealSoftwareKeyboard": true,
+      "keyboardBackgroundLocked": true
+    }
+  },
+  "externalChecks": {
+    "installedBuildNumberReportedByUser": 30,
+    "build30Installed": true,
+    "build30RestoreDiagnostic": "StoreKit.StoreKitError:2",
+    "build30RestoreAfterAppleAccountVerification": "user_reported_failure",
+    "typedDiagnosticMeaning": "Diagnostic consistent with StoreKit unknown-error category; no authentication cause established; distinct from SKErrorDomain cancellation",
+    "build28LiveSandboxPurchase": "user_confirmed_success",
+    "build28PremiumRetainedAfterRelaunch": "user_confirmed_success",
+    "build28PremiumRecipesUnlocked": "user_confirmed_success",
+    "build31Installed": false,
+    "build31RealDeviceRestore": "pending",
+    "build31RealDeviceShoppingPantry": "pending",
+    "productionBillingTested": false,
+    "appStoreConnectMetadataVerified": false,
+    "selectedSubmissionBuildVerified": false
+  },
+  "screenshots": {
+    "iPadSourceFolder": "https://github.com/jbatiste12-debug/BasketBoss/tree/build28-ipad-screenshots/app-store/ipad-build28",
+    "accuracyAgainstFinalBuild": "review_pending"
+  },
+  "evidencePolicy": "Replace null fields only with results for the exact Build31 candidate. Prior Build29 reports are not Build31 verification. Do not add passwords, customer identifiers, receipts or signed transaction payloads."
+}
