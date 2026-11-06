@@ -1,5 +1,25 @@
 import test from 'node:test';import assert from 'node:assert/strict';import{createRequire}from'node:module';
 const require=createRequire(import.meta.url),ui=require('../bb-pantry-inline.js'),policy=require('../bb-pantry-policy.js');
+test('food recognition resolves cupboard aliases without guessing partial names or merging fresh stock',()=>{
+ const tinned=Object.freeze({name:'Tinned tuna',loc:'cupboard',aliases:Object.freeze(['Tuna'])}),fresh=Object.freeze({name:'Fresh tuna steak',loc:'fridge',aliases:Object.freeze([])}),frozen=Object.freeze({name:'Frozen tuna',loc:'freezer',aliases:Object.freeze([])}),courgette=Object.freeze({name:'Courgette',loc:'fridge',aliases:Object.freeze([])}),foods=Object.freeze([tinned,fresh,frozen,courgette]),before=JSON.stringify(foods);
+ assert.equal(ui.matchedFood(' TUNA ',foods,'cupboard'),tinned);
+ assert.equal(ui.matchedFood('Fresh tuna steak',foods,'cupboard'),fresh);
+ assert.equal(ui.matchedFood('Frozen tuna',foods,'cupboard'),frozen);
+ assert.equal(ui.matchedFood('Zucchini',foods,'fridge',policy.canonicalName),courgette);
+ assert.equal(ui.matchedFood('Tu',foods,'cupboard'),null,'partial typing remains a draft, not an assumed ingredient');
+ assert.equal(ui.matchedFood('My own fish cakes',foods,'freezer'),null,'a custom name is not replaced with an unrelated known food');
+ assert.equal(ui.matchedFood('',foods,'cupboard'),null);
+ assert.equal(JSON.stringify(foods),before);
+});
+test('search discovers known food beyond saved inventory and keeps an existing saved identity first',()=>{
+ const saved={name:'Tuna',loc:'cupboard',aliases:[]},tinned={name:'Tinned tuna',loc:'cupboard',aliases:['Tuna']},fresh={name:'Fresh tuna steak',loc:'fridge',aliases:[]},frozen={name:'Frozen tuna',loc:'freezer',aliases:[]},milk={name:'Milk',loc:'fridge',aliases:[]},foods=[saved,tinned,fresh,frozen,milk],before=JSON.stringify(foods);
+ assert.equal(ui.matchedFood('Tuna',foods,'cupboard'),saved,'a legacy saved name keeps its existing stock key');
+ assert.deepEqual(ui.matchingFoods('milk',foods,'cupboard'),[milk]);
+ assert.deepEqual(ui.matchingFoods('tuna',foods,'cupboard',2),[tinned,saved].sort((a,b)=>a.name.localeCompare(b.name)));
+ assert.deepEqual(ui.matchingFoods('   ',foods,'cupboard'),[]);
+ assert.deepEqual(ui.matchingFoods('Unknown custom food',foods,'cupboard'),[]);
+ assert.equal(JSON.stringify(foods),before,'recognition never changes stock records or the catalogue');
+});
 test('unit-aware steppers support measured and counted stock without negative balances',()=>{
  assert.equal(ui.stepped(150,'g',1),200);assert.equal(ui.stepped(100,'ml',-1),50);assert.equal(ui.stepped(2,'each',1),3);assert.equal(ui.stepped(.5,'kg',1),.75);assert.equal(ui.stepped(.25,'cup',-1),0);assert.equal(ui.stepped(0,'each',-1),0);assert.equal(ui.stepped('','each',1),1);assert.equal(ui.stepped('invalid','g',1),null);assert.equal(ui.stepped(Infinity,'g',1),null);
 });
@@ -82,4 +102,12 @@ test('purchase unit choices reject unsupported cross-dimension and unidentified 
 test('staple purchase helpers remain whole containers and never invent measured volume',()=>{
  const staple=Object.freeze({name:'Olive oil',unit:'each',staple:true,qty:1}),before=JSON.stringify(staple);
  assert.deepEqual(ui.purchaseUnits(staple,policy),['each']);assert.deepEqual(ui.purchasePresets(staple,policy),[{quantity:1,unit:'each'},{quantity:2,unit:'each'},{quantity:3,unit:'each'}]);assert.equal(JSON.stringify(staple),before);
+});
+test('a recognized ingredient can suggest its existing pack without changing the default exact-amount choice',()=>{
+ const row=Object.freeze({name:'Tinned tuna',unit:'g'}),before=JSON.stringify(row);
+ assert.deepEqual(ui.purchasePresets(row,policy,'UK',{quantity:145,unit:'g'}),[{quantity:145,unit:'g'},{quantity:250,unit:'g'},{quantity:500,unit:'g'},{quantity:1,unit:'kg'}]);
+ assert.deepEqual(ui.purchasePresets({name:'Milk',unit:'ml'},policy,'UK',{quantity:1000,unit:'ml'}),[{quantity:500,unit:'ml'},{quantity:1,unit:'l'},{quantity:2,unit:'l'}],'equivalent litre and millilitre packs are not duplicated');
+ assert.deepEqual(ui.purchasePresets(row,policy,'UK',{quantity:145,unit:'ml'}),ui.purchasePresets(row,policy,'UK'),'incompatible dimensions never produce a pack suggestion');
+ assert.deepEqual(ui.purchasePresets({name:'Olive oil',unit:'each',staple:true},policy,'UK',{quantity:500,unit:'ml'}),[{quantity:1,unit:'each'},{quantity:2,unit:'each'},{quantity:3,unit:'each'}]);
+ assert.equal(JSON.stringify(row),before);
 });

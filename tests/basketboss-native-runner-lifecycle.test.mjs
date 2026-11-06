@@ -260,6 +260,27 @@ test('staged keyboard reporting requires all successful steps and exactly four p
  }
 });
 
+test('a cold startup failure remains a failed keyboard run even when the other three tests pass',async()=>{
+ const result=await runScript('test-ios-account-keyboard.mjs',{
+  argv:['--report'],keyboardState:keyboardReadyState(),
+  env:{...keyboardSuccessfulOutcomes,BB_KEYBOARD_EXECUTE_OUTCOME:'failure'},
+  keyboardSummary:{passedTests:3,failedTests:1,skippedTests:0}
+ });
+ assert.equal(result.process.exitCode,1);
+ const report=JSON.parse([...result.written].find(([file])=>file.endsWith('/report.json'))[1]);
+ assert.equal(report.passed,false);assert.equal(report.requiredTests,4);
+ assert.equal(report.failureStage,'real_keyboard_tests');
+ assert.equal(report.failure,'bb_keyboard_execute_outcome_failure');
+ const swift=fs.readFileSync(new URL('../ios/App/BasketBossAccountKeyboardUITests/BasketBossAccountKeyboardUITests.swift',import.meta.url),'utf8');
+ const startup=Number(swift.match(/startupReadinessTimeout: TimeInterval = (\d+)/)?.[1]);
+ const interaction=Number(swift.match(/interactionExecutionAllowance: TimeInterval = (\d+)/)?.[1]);
+ assert.equal(interaction,180,'the existing interaction allowance is reserved separately from cold startup');
+ assert.ok(startup>25&&startup<=90,'startup remains condition-based and bounded');
+ assert.ok(startup+interaction<=300,'the complete test stays within the native runner maximum');
+ assert.match(swift,/executionTimeAllowance = startupReadinessTimeout \+ interactionExecutionAllowance/);
+ assert.match(swift,/XCTAssertEqual\(readyResult, \.completed/,'late readiness must never replace a completed startup expectation');
+});
+
 test('staged keyboard reporting never lets a passing summary mask a failed, skipped or interrupted workflow step',async()=>{
  for(const key of Object.keys(keyboardSuccessfulOutcomes))for(const outcome of ['failure','skipped','cancelled','timed_out','']){
   const result=await runScript('test-ios-account-keyboard.mjs',{argv:['--report'],keyboardState:keyboardReadyState(),env:{...keyboardSuccessfulOutcomes,[key]:outcome}});

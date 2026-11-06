@@ -1,6 +1,8 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
+import os from 'node:os';
+import path from 'node:path';
 import {productionApiURL,nativePageURL,isCheckoutURL,installNativeFetch} from '../native/routing.mjs';
 import {transformNativeHtml,validatePublicCatalogue,verifyNativeWeb} from '../scripts/build-native-web.mjs';
 
@@ -47,4 +49,15 @@ test('native output contains public assets and the PWA entrypoints retain identi
  assert.ok(manifest.files.some(f=>f.path==='bb-native-runtime.js'));
  for(const name of ['bb-ingredient-preferences.js','bb-ingredient-picker.js','bb-ingredient-picker.css'])assert.ok(manifest.files.some(f=>f.path===name),'Ingredient filter must ship in the iOS bundle: '+name);
  assert.equal(verifyNativeWeb({directory:new URL('../dist/native',import.meta.url).pathname}).freeRecipes,100);
+});
+test('native release verification rejects a reintroduced TestFlight unlock in the shipping runtime',()=>{
+ const directory=fs.mkdtempSync(path.join(os.tmpdir(),'bb-native-release-membership-'));
+ try{
+  const source=new URL('../dist/native/',import.meta.url);
+  for(const name of ['recipes.json','normalized-ingredient-database.json','dessert_recipes.json','index.html','app.html','make-a-meal.html','privacy.html','terms.html','tutorial.html','basketboss-latest-guide.html','pricing-sandbox.html','compare.html','subscriptions.html','bb-native-runtime.js','bb-native.css'])fs.copyFileSync(new URL(name,source),path.join(directory,name));
+  for(const activation of ['Unlock TestFlight Beta Premium','bb-native-beta-unlock']){
+   fs.writeFileSync(path.join(directory,'bb-native-runtime.js'),'/* '+activation+' */');
+   assert.throws(()=>verifyNativeWeb({directory}),/App Store membership must not offer a TestFlight beta unlock/);
+  }
+ }finally{fs.rmSync(directory,{recursive:true,force:true});}
 });

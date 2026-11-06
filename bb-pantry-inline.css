@@ -117,6 +117,10 @@ html body #app #bb173ShopFridge.bbpi-enhanced{padding:14px}
  cursor:pointer;touch-action:manipulation;
 }
 #app #bb173ShopFridge .bbpi-toolbar .bbpi-toolbar-add{border-color:#245e43;background:#245e43;color:#fffdf7}
+#app #bb173ShopFridge .bbpi-search-matches{display:flex;flex-wrap:wrap;gap:5px;min-width:0}
+#app #bb173ShopFridge .bbpi-search-matches[hidden]{display:none!important}
+#app #bb173ShopFridge .bbpi-search-matches .bbpi-search-choice{max-width:100%;overflow-wrap:anywhere;text-align:left;border-radius:20px;background:#edf4e9}
+#app #bb173ShopFridge .bbpi-search-empty{padding:4px 0;font-size:12px;line-height:1.4;color:#54755f}
 #app #bb173ShopFridge .bbpi-location-nav{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:5px;padding:4px;border:1px solid #d5e3d6;border-radius:14px;background:#f0f5ed}
 #app #bb173ShopFridge .bbpi-location-nav button{width:100%;border-color:transparent;background:transparent;padding:7px 5px}
 #app #bb173ShopFridge .bbpi-location-nav button[aria-pressed=true],

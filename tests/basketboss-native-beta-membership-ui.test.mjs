@@ -31,31 +31,34 @@ async function withFixture(options,run){
  finally{controller?.destroy();if(previous===undefined)delete globalThis.MutationObserver;else globalThis.MutationObserver=previous;}
 }
 
-test('Paywall and Settings show a direct beta unlock even when Apple prices are unavailable',async()=>{
+test('shipping Paywall and Settings offer Apple plans without any beta activation control',async()=>{
  for(const settings of [false,true])await withFixture({settings},async h=>{
-  const button=h.find('bb-native-beta-unlock');assert.equal(button.textContent,'Unlock TestFlight Beta Premium');assert.equal(button.hidden,false);assert.equal(button.disabled,false);
-  assert.equal(h.find('bb-native-apple-plans').hidden,false);assert.match(h.parent.textContent,/without starting a subscription/);
-  button.click();assert.equal(h.calls.claims,1);h.emit({busy:true});assert.equal(button.disabled,true);button.click();assert.equal(h.calls.claims,1);
+  assert.equal(h.find('bb-native-beta-unlock'),undefined);assert.doesNotMatch(h.parent.textContent,/Unlock TestFlight|eligible TestFlight builds/);
+  assert.equal(h.find('bb-native-apple-plans').hidden,false);assert.equal(h.find('bb-native-existing-access').hidden,true);
+  for(const button of h.find('bb-native-apple-plans').children)button.click();
+  assert.equal(h.calls.claims,0);assert.equal(h.calls.subscriptions.length,2);
  });
 });
 
-test('beta unlock is not presented to web or signed-out users',async()=>{
+test('web and signed-out renderers have no beta activation and signed-out Apple actions open sign-in',async()=>{
  for(const options of [{native:false},{authenticated:false}])await withFixture(options,async h=>{
-  const button=h.find('bb-native-beta-unlock');assert.equal(button.hidden,true);button.click();assert.equal(h.calls.claims,0);
+  assert.equal(h.find('bb-native-beta-unlock'),undefined);assert.equal(h.calls.claims,0);
+  if(options.authenticated===false){h.find('bb-native-apple-plans').children[0].click();assert.equal(h.calls.signin,1);assert.deepEqual(h.calls.subscriptions,[]);}
  });
 });
 
 test('verified beta membership retains the Apple purchase options and shows its separate complimentary expiry',async()=>withFixture({},async h=>{
- h.emit({premiumAccess:true,membershipState:'premium',provider:'testflight_beta',beta:{expiresAt:'2026-12-01T00:00:00.000Z'},message:'TestFlight Beta Premium is active.'});
- assert.equal(h.find('bb-native-beta-unlock').disabled,true);assert.equal(h.find('bb-native-apple-plans').hidden,false);assert.match(h.parent.textContent,/active until.*2026/);assert.match(h.parent.textContent,/No subscription or renewal charge/);
- h.find('bb-native-beta-unlock').click();assert.equal(h.calls.claims,0);
+ h.emit({premiumAccess:true,membershipState:'premium',provider:'testflight_beta',beta:{expiresAt:'2026-12-01T00:00:00.000Z'},message:'Your complimentary Premium access is active.'});
+ assert.equal(h.find('bb-native-beta-unlock'),undefined);assert.equal(h.find('bb-native-apple-plans').hidden,false);
+ const existing=h.find('bb-native-existing-access');assert.equal(existing.hidden,false);assert.match(existing.textContent,/complimentary Premium access is active until.*2026/);assert.match(existing.textContent,/No subscription or renewal charge/);assert.equal(h.calls.claims,0);
+ h.emit({premiumAccess:false,membershipState:'signed_out',authenticated:false,provider:null,beta:null});assert.equal(existing.hidden,true);assert.equal(existing.textContent,'');
 }));
 
 
-test('fixed monthly and annual Apple CTAs precede the secondary beta option and retry missing prices',async()=>{
+test('fixed monthly and annual Apple CTAs stay primary and retry missing prices',async()=>{
  for(const settings of [false,true])await withFixture({settings},async h=>{
-  const plans=h.find('bb-native-apple-plans'),beta=h.find('bb-native-beta-unlock'),status=h.find('bb-native-apple-catalogue-state');
-  assert.equal(plans.hidden,false);assert.equal(plans.children.length,2);assert.ok(h.parent.children[0].children.indexOf(plans)<h.parent.children[0].children.indexOf(beta));
+  const plans=h.find('bb-native-apple-plans'),controls=h.find('bb-native-apple-actions'),status=h.find('bb-native-apple-catalogue-state');
+  assert.equal(plans.hidden,false);assert.equal(plans.children.length,2);assert.ok(h.parent.children[0].children.indexOf(plans)<h.parent.children[0].children.indexOf(controls));
   const expected=['uk.co.basketboss.premium.monthly','uk.co.basketboss.premium.annual'];
   for(const [index,button]of plans.children.entries()){
    assert.equal(button.disabled,false);assert.equal(button.getAttribute('data-apple-product'),expected[index]);assert.match(button.textContent,/Price shown by Apple.*Try Apple subscription/);button.click();
@@ -65,9 +68,10 @@ test('fixed monthly and annual Apple CTAs precede the secondary beta option and 
  });
 });
 
-test('verified sandbox test eligibility changes Apple actions without hiding existing membership or beta controls',async()=>withFixture({},async h=>{
+test('verified sandbox test eligibility preserves Apple testing and Production coverage without beta activation',async()=>withFixture({},async h=>{
  h.emit({premiumAccess:true,membershipState:'premium',provider:'testflight_beta',sandboxPurchaseAllowed:true,productLoadState:'empty'});
  const plans=h.find('bb-native-apple-plans');assert.equal(plans.hidden,false);assert.equal(plans.children.length,2);assert.match(plans.textContent,/Test subscription with Apple/);
  assert.match(h.find('bb-native-apple-testing').textContent,/Sandbox purchase testing/);plans.children[0].click();assert.deepEqual(h.calls.subscriptions,['uk.co.basketboss.premium.monthly']);
  h.emit({premiumAccess:true,provider:'paddle',sandboxPurchaseAllowed:false});assert.equal(plans.hidden,false);assert.match(h.find('bb-native-apple-testing').textContent,/existing membership covers Premium/);
+ assert.equal(h.find('bb-native-beta-unlock'),undefined);assert.equal(h.calls.claims,0);assert.equal(h.find('bb-native-existing-access').hidden,true);
 }));
