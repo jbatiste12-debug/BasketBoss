@@ -65,3 +65,21 @@ test('unknown balances are never presented as Out merely because the quantity is
  assert.equal(ui.matchesInventory({name:'Honey',qty:null,stapleStatus:'out'},{filter:'low'}),true);
  assert.equal(ui.matchesInventory({name:'Chicken',qty:500},{filter:'use-soon',useSoon:false}),false);
 });
+test('optional purchase presets offer supermarket quantities in each physical dimension',()=>{
+ assert.deepEqual(ui.purchasePresets({name:'Milk',unit:'ml'},policy,'UK'),[{quantity:500,unit:'ml'},{quantity:1,unit:'l'},{quantity:2,unit:'l'}]);
+ assert.deepEqual(ui.purchasePresets({name:'Pasta',unit:'g'},policy,'UK'),[{quantity:250,unit:'g'},{quantity:500,unit:'g'},{quantity:1,unit:'kg'}]);
+ assert.deepEqual(ui.purchasePresets({name:'Eggs',unit:'each'},policy,'UK'),[{quantity:1,unit:'each'},{quantity:6,unit:'each'},{quantity:12,unit:'each'}]);
+ assert.deepEqual(ui.purchasePresets({name:'Rice',unit:'g'},policy,'US'),[{quantity:8,unit:'oz'},{quantity:1,unit:'lb'},{quantity:2,unit:'lb'}]);
+ assert.deepEqual(ui.purchasePresets({name:'Milk',unit:'ml'},policy,'US'),[{quantity:16,unit:'fl oz'},{quantity:32,unit:'fl oz'},{quantity:64,unit:'fl oz'}]);
+});
+test('purchase unit choices reject unsupported cross-dimension and unidentified container conversions',()=>{
+ const milk=ui.purchaseUnits({name:'Milk',unit:'ml'},policy),unknown=ui.purchaseUnits({name:'Mystery food',unit:'g'},policy);
+ assert.ok(milk.includes('l'));assert.ok(milk.includes('fl oz'));assert.equal(milk.includes('g'),false);
+ assert.ok(unknown.includes('kg'));assert.equal(unknown.includes('ml'),false);
+ assert.deepEqual(ui.purchasePresets({name:'Mystery food',unit:'bag'},policy),[]);
+ assert.deepEqual(ui.purchaseUnits({name:'Mystery food',unit:'bag'},policy),['bag']);
+});
+test('staple purchase helpers remain whole containers and never invent measured volume',()=>{
+ const staple=Object.freeze({name:'Olive oil',unit:'each',staple:true,qty:1}),before=JSON.stringify(staple);
+ assert.deepEqual(ui.purchaseUnits(staple,policy),['each']);assert.deepEqual(ui.purchasePresets(staple,policy),[{quantity:1,unit:'each'},{quantity:2,unit:'each'},{quantity:3,unit:'each'}]);assert.equal(JSON.stringify(staple),before);
+});

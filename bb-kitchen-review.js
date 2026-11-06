@@ -15,7 +15,7 @@
   }
   const own=known(row.qty),other=known(foodTarget?.otherOwned??0),problem=row.readOnly||foodTarget?.targetProblem;
   const atHome=foodTarget?.otherOwnedNeedsReview||own===null||other===null?null:known(own+other);
-  return {atHome,planned:problem?null:known(foodTarget?.totalNeeded),toShop:problem||atHome===null?null:known(foodTarget?.shortfall)};
+  return {atHome,planned:problem?null:known(foodTarget?.requiredNeeded??foodTarget?.totalNeeded),toShop:problem||atHome===null?null:known(foodTarget?.shortfall)};
  }
  function createController(win){
   let busy=false,sequence=0;const intents=new Map();
