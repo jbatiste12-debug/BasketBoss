@@ -18,10 +18,10 @@ permissions:
 
 jobs:
   keyboard:
-    runs-on: macos-15-intel
+    # Match the ARM runner that passes the same four real-keyboard cases in
+    # Apple subscription verification, including its default Xcode toolchain.
+    runs-on: macos-26
     timeout-minutes: 45
-    env:
-      DEVELOPER_DIR: /Applications/Xcode_26.2.app/Contents/Developer
     steps:
       - uses: actions/checkout@v5
         with:
