@@ -84,12 +84,13 @@ try{
   else if(raw.passed!==true)failure='storekit_smoke_failed';
   else if(raw.localStoreKit!==true||raw.productionBillingTested!==false||raw.backendPremiumGranted!==false)failure='test_environment_mismatch';
  }
- const required=['productsLoaded','purchaseVerified','accountTokenPreserved','unfinishedBeforeServerAck','earlyFinishRejected','restoreVerified','duplicatePurchasePrevented','wrongAccountRejected','finishedAfterAcknowledgement','pendingDoesNotGrantAccess','pendingApprovalDelivered'];
- if(Number(runtimeVersion.split('.')[0])>=17)required.push('cancellationPreserved');
+ const required=['productsLoaded','purchaseVerified','productIdRetryVerified','accountTokenPreserved','unfinishedBeforeServerAck','earlyFinishRejected','restoreVerified','duplicatePurchasePrevented','wrongAccountRejected','finishedAfterAcknowledgement','pendingDoesNotGrantAccess','pendingApprovalDelivered'];
+ if(Number(runtimeVersion.split('.')[0])>=17)required.push('cancellationPreserved','cancellationHasNoTransaction','cancellationReleasesBusy');
  if(!failure&&required.some(key=>raw[key]!==true))failure='required_purchase_check_failed';
 }catch(error){failure=failure||(error.code==='ETIMEDOUT'?'command_timeout':'command_failed');commandError=String(error.code||error.message||'unknown').replace(/[^A-Za-z0-9_.-]/g,'').slice(0,120);progress({failure,commandError,signal:error.signal||null});}
 const report={reportReceived:!!raw,runtimeVersion,runtimeSelection,availableRuntimeVersions,failureStage:failure?stage:'',failure,commandError};
-for(const key of ['complete','passed','localStoreKit','productionBillingTested','backendPremiumGranted','productsLoaded','purchaseVerified','accountTokenPreserved','unfinishedBeforeServerAck','earlyFinishRejected','restoreVerified','duplicatePurchasePrevented','wrongAccountRejected','finishedAfterAcknowledgement','cancellationPreserved','pendingDoesNotGrantAccess','pendingApprovalDelivered'])report[key]=raw?.[key]===true;
+for(const key of ['complete','passed','localStoreKit','productionBillingTested','backendPremiumGranted','productsLoaded','purchaseVerified','productIdRetryVerified','accountTokenPreserved','unfinishedBeforeServerAck','earlyFinishRejected','restoreVerified','duplicatePurchasePrevented','wrongAccountRejected','finishedAfterAcknowledgement','cancellationPreserved','cancellationHasNoTransaction','cancellationReleasesBusy','pendingDoesNotGrantAccess','pendingApprovalDelivered'])report[key]=raw?.[key]===true;
+report.cancellationResult=['cancelled','pending','purchased','alreadyOwned'].includes(raw?.cancellationResult)?raw.cancellationResult:'';
 for(const key of ['stage','error'])report[key]=String(raw?.[key]||'').replace(/[^A-Za-z0-9_.-]/g,'').slice(0,100);
 fs.writeFileSync(path.join(out,'local-storekit-report.json'),JSON.stringify(report,null,2));
 if(failure&&phone){try{execute('xcrun',['simctl','io',phone.udid,'screenshot','--type=png',path.join(out,'failure.png')],30000);}catch{}}

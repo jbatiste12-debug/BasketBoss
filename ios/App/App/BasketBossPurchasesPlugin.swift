@@ -343,6 +343,33 @@ private extension BasketBossPurchasesPlugin {
         try? data.write(to: folder.appendingPathComponent("bb-native-iap-smoke.json"), options: .atomic)
     }
 
+    @MainActor func resetSmokeScenario(_ session: SKTestSession) async throws {
+        // Finishing a transaction does not expire its subscription. Isolate
+        // scenarios and refresh StoreKit's receipt before checking another
+        // result, otherwise the real duplicate-purchase guard can correctly
+        // return alreadyOwned before a simulated cancellation is exercised.
+        await Task.detached {
+            session.resetToDefaultState()
+            session.disableDialogs = true
+            session.clearTransactions()
+        }.value
+        products.removeAll()
+        unfinished.removeAll()
+        unfinishedPayloads.removeAll()
+        try await AppStore.sync()
+        for _ in 0..<50 {
+            var active = false
+            for await verification in Transaction.currentEntitlements {
+                if case .verified(let transaction) = verification,
+                   Self.productIDs.contains(transaction.productID), transaction.revocationDate == nil,
+                   transaction.expirationDate.map({ $0 > Date() }) == true { active = true }
+            }
+            if !active { return }
+            try await Task.sleep(nanoseconds: 100_000_000)
+        }
+        throw LocalSmokeFailure(code: "fixture_entitlements_not_cleared")
+    }
+
     @MainActor func runLocalStoreKitSmoke() async {
         var report: JSObject = ["complete": false, "passed": false, "localStoreKit": true,
                                 "productionBillingTested": false, "backendPremiumGranted": false]
@@ -379,6 +406,31 @@ private extension BasketBossPurchasesPlugin {
                 throw LocalSmokeFailure(code: "catalog_invalid")
             }
             report["productsLoaded"] = true
+
+            // Test cancellation before creating any active subscription. The
+            // production ownership check must never be weakened just to make a
+            // later cancellation fixture bypass an already-owned subscription.
+            if #available(iOS 17.0, *) {
+                stage = "cancel_reset"
+                report["stage"] = stage; writeSmokeReport(report)
+                try await resetSmokeScenario(session)
+                stage = "cancel"
+                report["stage"] = stage; writeSmokeReport(report)
+                try await session.setSimulatedError(.generic(.userCancelled), forAPI: .purchase)
+                let cancelled = try await smokeCall("purchase", options: ["productId": "uk.co.basketboss.premium.monthly", "appAccountToken": token.uuidString]) { self.purchase($0) }
+                let cancellationResult = cancelled["status"] as? String ?? "missing"
+                report["cancellationResult"] = ["cancelled", "pending", "purchased", "alreadyOwned"].contains(cancellationResult) ? cancellationResult : "unexpected"
+                guard cancellationResult == "cancelled" else { throw LocalSmokeFailure(code: "cancel_not_preserved") }
+                guard cancelled["transaction"] == nil else { throw LocalSmokeFailure(code: "cancel_returned_transaction") }
+                guard !interactiveOperation else { throw LocalSmokeFailure(code: "cancel_busy_not_released") }
+                report["cancellationPreserved"] = true
+                report["cancellationHasNoTransaction"] = true
+                report["cancellationReleasesBusy"] = true
+            }
+            stage = "purchase_reset"
+            report["stage"] = stage; writeSmokeReport(report)
+            try await resetSmokeScenario(session)
+            let purchaseStartsWithoutCachedProduct = products.isEmpty
             stage = "purchase"
             report["stage"] = stage; writeSmokeReport(report)
             let purchase = try await smokeCall("purchase", options: ["productId": "uk.co.basketboss.premium.monthly", "appAccountToken": token.uuidString]) { self.purchase($0) }
@@ -390,6 +442,7 @@ private extension BasketBossPurchasesPlugin {
                 throw LocalSmokeFailure(code: "purchase_invalid")
             }
             report["purchaseVerified"] = true
+            report["productIdRetryVerified"] = purchaseStartsWithoutCachedProduct
             report["accountTokenPreserved"] = true
             var queued = false
             for await result in Transaction.unfinished {
@@ -435,22 +488,9 @@ private extension BasketBossPurchasesPlugin {
             }
             guard !stillQueued else { throw LocalSmokeFailure(code: "finish_not_applied") }
             report["finishedAfterAcknowledgement"] = true
-            stage = "cancel"
+            stage = "pending_reset"
             report["stage"] = stage; writeSmokeReport(report)
-            await Task.detached { session.clearTransactions() }.value
-            if #available(iOS 17.0, *) {
-                try await session.setSimulatedError(.generic(.userCancelled), forAPI: .purchase)
-                let cancelled = try await smokeCall("purchase", options: ["productId": "uk.co.basketboss.premium.monthly", "appAccountToken": token.uuidString]) { self.purchase($0) }
-                guard cancelled["status"] as? String == "cancelled" else { throw LocalSmokeFailure(code: "cancel_not_preserved") }
-                report["cancellationPreserved"] = true
-                stage = "cancel_reset"
-                report["stage"] = stage; writeSmokeReport(report)
-                await Task.detached {
-                    session.resetToDefaultState()
-                    session.disableDialogs = true
-                    session.clearTransactions()
-                }.value
-            }
+            try await resetSmokeScenario(session)
             stage = "pending"
             report["stage"] = stage; writeSmokeReport(report)
             await Task.detached { session.askToBuyEnabled = true }.value

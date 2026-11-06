@@ -105,6 +105,11 @@ export function appleConfigForUser(config,userId){
  if(!appleUserAllowed(selected,userId))fail('apple_account_unavailable','Apple subscriptions are not available for this account.',403);
  return selected;
 }
+// An explicit StoreKit exercise may coexist with beta/web benefits only in
+// Apple's Sandbox and only for the server-maintained test account allowlist.
+export function appleSandboxPurchaseAllowed(config,userId){
+ return config?.environment===Environment.SANDBOX&&config.allowSandbox===true&&UUID.test(userId||'')&&config.sandboxUsers.includes(String(userId).toLowerCase());
+}
 // This decode ONLY routes to a verifier. Every field remains untrusted until
 // that verifier validates Apple's pinned chain, signature, bundle and environment.
 export function appleConfigForSignedData(config,signed,userId){

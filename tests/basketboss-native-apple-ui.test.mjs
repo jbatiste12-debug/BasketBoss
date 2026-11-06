@@ -35,7 +35,7 @@ function fixture(options={}){
   if(route==='/api/apple/testflight-beta'){premium=true;provider='testflight_beta';return response({ok:true,premiumAccess:true,provider,beta});}
   throw Error('Unexpected endpoint '+route);
  };
- const controller=installNativeApplePurchases({plugin,apiURL:path=>'https://basketboss.co.uk'+path,readSession:()=>session,fetch:perform,window:win,isDeleting:()=>deleting});
+ const controller=installNativeApplePurchases({plugin,apiURL:path=>'https://basketboss.co.uk'+path,readSession:()=>session,fetch:perform,window:win,isDeleting:()=>deleting,...(options.productLoadTimeoutMs?{productLoadTimeoutMs:options.productLoadTimeoutMs}:{})});
  return {controller,calls,order,plugin,win,response,nativeListeners,receiveIntent(productId){nativeListeners.get('purchaseIntentReceived')?.({productId});},setAccount(id){session=id?{...session,access_token:id+'-token',expires_at:Math.floor(Date.now()/1000)+3600,user:{id}}:null;win.dispatchEvent(new Event('basketboss:session-changed'));},deleteAccount(){deleting=true;win.dispatchEvent(new Event('basketboss:account-deletion-started'));},get session(){return session;}};
 }
 async function withFixture(options,run){const h=fixture(options);try{await h.controller.ready;await run(h);}finally{h.controller.destroy();}}
@@ -304,3 +304,41 @@ test('repeated beta taps share the existing busy boundary without requesting ano
 test('unavailable StoreKit products retain an informative fixed reason without native error details',async()=>withFixture({productsError:true},async h=>{
  assert.equal(h.controller.state.available,false);assert.match(h.controller.state.message,/prices could not be loaded.*App Store connection/);assert.equal(h.controller.state.premiumAccess,false);
 }));
+
+
+test('missing StoreKit metadata preserves an explicit fixed-ID native purchase attempt',async()=>{
+ for(const options of [{products:[]},{productsError:true}])await withFixture(options,async h=>{
+  assert.equal(h.controller.state.available,false);assert.equal(h.controller.state.purchaseServiceReady,true);assert.equal(h.controller.state.products.length,0);
+  assert.equal((await h.controller.subscribe(MONTH)).ok,true);assert.equal(purchases(h).length,1);assert.equal(purchases(h)[0][1].productId,MONTH);
+  assert.equal(verifications(h).length,1);assert.equal(finishes(h).length,1);
+ });
+});
+
+test('StoreKit empty, partial, invalid and timeout states are explicit and never invent a price',async()=>{
+ await withFixture({products:[]},async h=>{assert.equal(h.controller.state.productLoadState,'empty');assert.match(h.controller.state.productLoadMessage,/returned no subscription products/);});
+ await withFixture({products:[{id:MONTH,displayPrice:'£4.99',subscriptionPeriod:{unit:'month',value:1}}]},async h=>{assert.equal(h.controller.state.productLoadState,'partial');assert.match(h.controller.state.productLoadMessage,/Annual Premium/);assert.equal((await h.controller.subscribe(YEAR)).ok,true);});
+ await withFixture({products:[{id:YEAR,displayPrice:'£39.99',subscriptionPeriod:{unit:'week',value:1}}]},async h=>{assert.equal(h.controller.state.productLoadState,'invalid');assert.equal((await h.controller.subscribe(YEAR)).ok,false);assert.equal(purchases(h).length,0);});
+ const pending=deferred();await withFixture({productsWait:pending.promise,productLoadTimeoutMs:5},async h=>{assert.equal(h.controller.state.productLoadState,'timeout');assert.equal(h.controller.state.products.length,0);assert.match(h.controller.state.productLoadMessage,/timed out/);});pending.resolve({products:[]});
+});
+
+test('an allowed existing Beta or web member can explicitly test Apple only in server-selected Sandbox',async()=>{
+ for(const provider of ['testflight_beta','paddle','apple'])await withFixture({membership:{authenticated:true,premiumAccess:true,provider},config:{available:true,productIds:[MONTH,YEAR],environment:'Sandbox',sandboxPurchaseAllowed:true},fetch:(route,args,response)=>route==='/api/apple/purchase-context'?response({canPurchase:true,appAccountToken:TOKEN,productIds:[MONTH,YEAR],environment:'Sandbox',sandboxPurchaseAllowed:true}):null},async h=>{
+  assert.equal(h.controller.state.sandboxPurchaseAllowed,true);assert.equal((await h.controller.subscribe(MONTH)).ok,true);
+  const context=h.calls.find(c=>c[0]==='http'&&c[1]==='/api/apple/purchase-context');assert.deepEqual(JSON.parse(context[2].body),{productId:MONTH,testPurchase:true});assert.equal(purchases(h).length,1);assert.deepEqual(h.order,['verified','finish']);
+ });
+});
+
+test('a Sandbox test flag cannot bypass a Production environment or unconfirmed context',async()=>{
+ await withFixture({membership:{authenticated:true,premiumAccess:true,provider:'testflight_beta'},config:{available:true,productIds:[MONTH,YEAR],environment:'Production',sandboxPurchaseAllowed:true}},async h=>{assert.equal(h.controller.state.sandboxPurchaseAllowed,false);assert.equal((await h.controller.subscribe(MONTH)).reason,'already_premium');assert.equal(purchases(h).length,0);});
+ await withFixture({membership:{authenticated:true,premiumAccess:true,provider:'testflight_beta'},config:{available:true,productIds:[MONTH,YEAR],environment:'Sandbox',sandboxPurchaseAllowed:true}},async h=>{assert.equal((await h.controller.subscribe(MONTH)).ok,false);assert.equal(purchases(h).length,0);assert.match(h.controller.state.message,/could not be authorized/);});
+});
+
+test('changing accounts clears Sandbox purchase permission immediately while the next account is checked',async()=>{
+ const wait=deferred();let hold=false;
+ await withFixture({membership:{authenticated:true,premiumAccess:true,provider:'testflight_beta'},fetch:async(route,args,response)=>{
+  if(route==='/api/apple/config'){if(hold)return wait.promise;return response({available:true,productIds:[MONTH,YEAR],environment:'Sandbox',sandboxPurchaseAllowed:true});}return null;
+ }},async h=>{
+  assert.equal(h.controller.state.sandboxPurchaseAllowed,true);hold=true;h.setAccount('actor-B');assert.equal(h.controller.state.sandboxPurchaseAllowed,false);assert.equal(h.controller.state.premiumAccess,false);
+  wait.resolve(h.response({available:true,productIds:[MONTH,YEAR],environment:'Production',sandboxPurchaseAllowed:false}));await tick();assert.equal(h.controller.state.sandboxPurchaseAllowed,false);
+ });
+});

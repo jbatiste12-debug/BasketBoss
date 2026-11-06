@@ -7,7 +7,8 @@ import jsrsasign from 'jsrsasign';
 import {SignedDataVerifier,Environment} from '@apple/app-store-server-library';
 import {APPLE_ROOT_G3_SHA256,appleRootCertificates} from '../bb-server-lib/bb-apple-roots.js';
 import {ensureDeletionSchema,digestDeletionActor} from '../bb-server-lib/bb-account-deletion.js';
-import {APPLE_BUNDLE_ID,AppleBillingError,getVerifiedAppleConfig,appleConfigForUser,appleConfigForSignedData,appleAccountToken,assertAppleAccountReady,verifyAppleTransaction,evaluateAppleSubscription,fetchAppleCurrentSubscription,persistAppleSubscription,appleEntitlementFromRow,readAppleEntitlement,hasExistingWebPremium,assertNoPendingWebCheckout,appleAppIdentifierMatches} from '../bb-server-lib/bb-apple-subscriptions.js';
+import {APPLE_BUNDLE_ID,AppleBillingError,getVerifiedAppleConfig,appleConfigForUser,appleSandboxPurchaseAllowed,appleConfigForSignedData,appleAccountToken,assertAppleAccountReady,verifyAppleTransaction,evaluateAppleSubscription,fetchAppleCurrentSubscription,persistAppleSubscription,appleEntitlementFromRow,readAppleEntitlement,hasExistingWebPremium,assertNoPendingWebCheckout,appleAppIdentifierMatches} from '../bb-server-lib/bb-apple-subscriptions.js';
+import {persistTestFlightBetaGrant} from '../bb-server-lib/bb-testflight-beta.js';
 import {appleRequestJSON} from '../bb-server-lib/bb-apple-http.js';
 import {onRequestGet as appleConfigEndpoint} from '../functions/api/apple/config.js';
 import {onRequestPost as applePurchaseContextEndpoint} from '../functions/api/apple/purchase-context.js';
@@ -157,4 +158,40 @@ test('an existing unfinished web checkout blocks Apple while completed or other-
   sql.exec('DELETE FROM bb_billing_claims');insert.run(USER,state);
   await assert.rejects(()=>assertNoPendingWebCheckout(e,USER),rejectCode('web_checkout_pending',409));
  }
+});
+
+test('sandbox purchase exercises require the exact server allowlist and never enable a Production duplicate',async()=>{
+ const {e,c}=await prepared(),price='pri_'+'p'.repeat(26);
+ Object.assign(e,{SUPABASE_URL:'https://test.supabase.co',SUPABASE_PUBLISHABLE_KEY:'synthetic-public-key',BB_BILLING_ENABLED:'true',BB_BILLING_MODE:'live',PADDLE_LIVE_STANDARD_PRICE_ID:price,APPLE_ALLOW_SANDBOX:'true',APPLE_SANDBOX_USER_IDS:USER});
+ e.BILLING_DB.sql.prepare('INSERT INTO bb_paid_entitlements VALUES(?,?,?,?,?)').run(USER,'active',price,'standard',1);
+ const originalFetch=globalThis.fetch;
+ globalThis.fetch=async input=>{assert.equal(input,'https://test.supabase.co/auth/v1/user');return Response.json({id:USER,email:'test@example.invalid',email_confirmed_at:new Date().toISOString()});};
+ const request=body=>new Request('https://basketboss.co.uk/api/apple/purchase-context',{method:'POST',headers:{Origin:'capacitor://localhost',Authorization:'Bearer synthetic','Content-Type':'application/json'},body:JSON.stringify({productId:c.products.monthly,...body})});
+ try{
+  const config=await (await appleConfigEndpoint({env:e,request:new Request('https://basketboss.co.uk/api/apple/config',{headers:{Authorization:'Bearer synthetic'}})})).json();
+  assert.equal(config.environment,'Sandbox');assert.equal(config.sandboxPurchaseAllowed,true);
+  const normal=await applePurchaseContextEndpoint({env:e,request:request({})});assert.equal(normal.status,409);assert.equal((await normal.json()).provider,'paddle');
+  const testing=await applePurchaseContextEndpoint({env:e,request:request({testPurchase:true})}),body=await testing.json();
+  assert.equal(testing.status,200);assert.equal(body.canPurchase,true);assert.equal(body.environment,'Sandbox');assert.equal(body.sandboxPurchaseAllowed,true);assert.equal(body.appAccountToken,TOKEN);
+  assert.equal(e.BILLING_DB.sql.prepare('SELECT count(*) AS n FROM bb_apple_subscriptions').get().n,0,'a context never grants membership');
+  assert.equal((await applePurchaseContextEndpoint({env:e,request:request({testPurchase:'true'})})).status,400);
+  e.APPLE_SANDBOX_USER_IDS=OTHER;
+  const denied=await applePurchaseContextEndpoint({env:e,request:request({testPurchase:true})});assert.equal(denied.status,403);assert.equal((await denied.json()).code,'apple_test_purchase_not_allowed');
+  const ordinary=await applePurchaseContextEndpoint({env:e,request:request({})});assert.equal(ordinary.status,409,'Production web subscription still blocks another purchase');
+  assert.equal(appleSandboxPurchaseAllowed(c,USER),false);
+  const anonymousConfig=await (await appleConfigEndpoint({env:e,request:new Request('https://basketboss.co.uk/api/apple/config')})).json();assert.equal(anonymousConfig.sandboxPurchaseAllowed,false);
+ }finally{globalThis.fetch=originalFetch;}
+});
+
+test('an allowlisted beta member can explicitly exercise StoreKit without replacing their beta grant',async()=>{
+ const {e,c}=await prepared();Object.assign(e,{SUPABASE_URL:'https://test.supabase.co',SUPABASE_PUBLISHABLE_KEY:'synthetic-public-key',APPLE_ALLOW_SANDBOX:'true',APPLE_SANDBOX_USER_IDS:USER});
+ await persistTestFlightBetaGrant(e,USER,{receiptType:'Sandbox',bundleId:APPLE_BUNDLE_ID,appTransactionId:'900000000001',applicationVersion:'27',receiptCreationDate:Date.now()-1000});
+ const before=e.BILLING_DB.sql.prepare('SELECT * FROM bb_testflight_beta_grants').get(),originalFetch=globalThis.fetch;
+ globalThis.fetch=async input=>{assert.equal(input,'https://test.supabase.co/auth/v1/user');return Response.json({id:USER,email:'beta@example.invalid',email_confirmed_at:new Date().toISOString()});};
+ const request=extra=>new Request('https://basketboss.co.uk/api/apple/purchase-context',{method:'POST',headers:{Origin:'capacitor://localhost',Authorization:'Bearer synthetic','Content-Type':'application/json'},body:JSON.stringify({productId:c.products.annual,...extra})});
+ try{
+  const normal=await applePurchaseContextEndpoint({env:e,request:request({})});assert.equal(normal.status,409);assert.equal((await normal.json()).provider,'testflight_beta');
+  const result=await applePurchaseContextEndpoint({env:e,request:request({testPurchase:true})}),body=await result.json();assert.equal(result.status,200);assert.equal(body.environment,'Sandbox');assert.equal(body.sandboxPurchaseAllowed,true);assert.deepEqual(body.allowedProductIds,[c.products.annual]);
+  assert.deepEqual(e.BILLING_DB.sql.prepare('SELECT * FROM bb_testflight_beta_grants').get(),before);assert.equal(e.BILLING_DB.sql.prepare('SELECT count(*) AS n FROM bb_apple_subscriptions').get().n,0);
+ }finally{globalThis.fetch=originalFetch;}
 });
