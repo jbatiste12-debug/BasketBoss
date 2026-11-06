@@ -60,7 +60,7 @@
   const button=(label,fn,cls='')=>{const n=make('button',cls,label);n.type='button';n.addEventListener('click',fn);return n;};
   const groups=()=>win.BBPantryGroups,groupUI=()=>win.BBPantryGroupsUI;
   function notice(text,error=false){const region=doc.getElementById('bbKitchenEssentials');if(!region)return;let n=region.querySelector('.bbec-notice');if(!n){n=make('p','bbec-notice');n.setAttribute('role','status');region.append(n);}n.textContent=text;n.setAttribute('role',error?'alert':'status');}
-  function close(){if(!dialog)return;const state=active;state?.cleanup?.();if(dialog.contains(doc.activeElement))doc.activeElement.blur?.();dialog.remove();dialog=null;active=null;doc.body.style.overflow=state?.overflow||'';win.BBKeyboardLayout?.releaseAfterDismissal?.();state?.focus?.focus?.({preventScroll:true});}
+  function close(){if(!dialog)return;const state=active;state?.cleanup?.();if(dialog.contains(doc.activeElement))doc.activeElement.blur?.();dialog.remove();dialog=null;active=null;doc.body.style.overflow=state?.overflow||'';win.BBKeyboardLayout?.releaseAfterDismissal?.();state?.focus?.focus?.({preventScroll:true});try{state?.onClose?.({saved:state?.view?.done===true});}catch{}}
   function freeze(value){if(!active||!dialog)return;active.busy=value;dialog.setAttribute('aria-busy',String(value));for(const n of dialog.querySelectorAll('button,input,select'))n.disabled=value;if(!value){active.fields.name.readOnly=!active.allowNameChange;active.fields.unit.disabled=!!active.view.item;}}
   function status(text,error=false){if(!active)return;active.status.textContent=text;active.status.setAttribute('role',error?'alert':'status');}
   function fill(item){if(!active)return;active.view.item=item?{...item}:null;const values=defaults(item||{name:active.fields.name.value,unit:'each'});for(const key of ['name','targetQty','ownedQty','unit'])active.fields[key].value=values[key];active.fields.name.readOnly=!active.allowNameChange;active.fields.unit.disabled=!!item;draw();}
@@ -73,7 +73,7 @@
    }catch{active.preview.textContent='Enter the amounts to see what goes to Shop.';active.confirm.disabled=true;}
   }
   function openDialog(source={}){
-   if(destroyed||controller.isBusy()||dialog||doc.querySelector('dialog[open]'))return;
+   if(destroyed||controller.isBusy()||dialog||[...doc.querySelectorAll('dialog[open]')].some(node=>node!==source.returnTo))return false;
    let view;try{view=controller.open(source);}catch(error){notice(error.message,true);return;}
    dialog=make('dialog','bb-essentials-confirm-dialog');dialog.id='bbEssentialConfirm';dialog.setAttribute('aria-labelledby','bbEssentialConfirmTitle');
    const header=make('header'),title=make('h2','','Confirm weekly essential');title.id='bbEssentialConfirmTitle';title.tabIndex=-1;
@@ -89,8 +89,8 @@
    const groupWrap=make('label','','Subcategory'),group=make('select');let groupPin=null;let groupChosen=false;group.addEventListener('change',()=>{groupChosen=true;});
    try{const snapshot=groups()?.snapshot('essentials');groupPin=groups()?.context();if(snapshot){for(const row of snapshot.groups){const option=make('option','',row.name);option.value=row.id;group.append(option);}const activeGroup=groupUI()?.active('essentials');group.value=view.item?groups().groupFor('essentials',view.item.id,view.item.name):(activeGroup&&activeGroup!=='all'?activeGroup:groups().groupFor('essentials','name:'+groups().itemKey(view.defaults.name),view.defaults.name));groupWrap.append(group);body.append(groupWrap);}}catch{}
    const preview=make('output','bbec-preview');preview.setAttribute('aria-live','polite');body.append(preview);
-   const footer=make('footer'),message=make('p','bbec-status');message.setAttribute('role','status');message.setAttribute('aria-live','polite');const confirm=make('button','bbec-confirm','Confirm & update Shop');confirm.type='submit';footer.append(message,confirm);form.append(body,footer);dialog.append(header,form);doc.body.append(dialog);
-   active={view,fields,parts,measured,preview,confirm,status:message,busy:false,invalid:false,allowNameChange:!source.id&&!source.name,overflow:doc.body.style.overflow,focus:doc.activeElement};doc.body.style.overflow='hidden';
+   const footer=make('footer'),message=make('p','bbec-status');message.setAttribute('role','status');message.setAttribute('aria-live','polite');const confirm=make('button','bbec-confirm',source.doneLabel||'Confirm & update Shop');confirm.type='submit';footer.append(message,confirm);form.append(body,footer);dialog.append(header,form);doc.body.append(dialog);
+   active={view,fields,parts,measured,preview,confirm,status:message,busy:false,invalid:false,allowNameChange:!source.id&&!source.name,overflow:doc.body.style.overflow,focus:doc.activeElement,onClose:source.onClose};doc.body.style.overflow='hidden';
    const original=view.item;fill(original||{...source,...view.defaults});active.view.item=original;
    fields.name.readOnly=!active.allowNameChange;fields.unit.disabled=!!view.item;
    if(view.item&&win.BBHouseholdAmount?.defaultsFor){const values=win.BBHouseholdAmount.defaultsFor(view.item);for(const key of Object.keys(parts))parts[key].value=values[key]??'';}
@@ -105,7 +105,7 @@
      if(id&&groupPin&&group.value)try{groups().assign('essentials',id,group.value,groupPin);}catch{groupWarning=' You can amend its subcategory from the confirmed list.';}
      close();notice((result.message||'Essential confirmed. Shop is up to date.')+groupWarning);schedule();return;
     }
-    freeze(false);confirm.textContent='Confirm & update Shop';status(result.message,true);
+    freeze(false);confirm.textContent=source.doneLabel||'Confirm & update Shop';status(result.message,true);
     if(result.existing){fill(result.existing);draw();return;}
     if(/account|changed|reopen|close and reopen|pending|review/i.test(result.message||'')){state.invalid=true;confirm.disabled=true;}
    });
@@ -115,7 +115,7 @@
     const input=doc.activeElement;if(keyboard&&body.contains(input)&&input.matches?.('input,select,textarea')){const box=body.getBoundingClientRect(),field=input.getBoundingClientRect();if(field.bottom>box.bottom-12)body.scrollTop+=field.bottom-box.bottom+12;else if(field.top<box.top+12)body.scrollTop+=field.top-box.top-12;}
    };
    win.visualViewport?.addEventListener?.('resize',fit);win.visualViewport?.addEventListener?.('scroll',fit);win.addEventListener?.('resize',fit);dialog.addEventListener('focusin',fit);active.cleanup=()=>{win.visualViewport?.removeEventListener?.('resize',fit);win.visualViewport?.removeEventListener?.('scroll',fit);win.removeEventListener?.('resize',fit);};
-   try{dialog.showModal();}catch{dialog.setAttribute('open','');}fit();draw();title.focus?.({preventScroll:true});
+   try{dialog.showModal();}catch{dialog.setAttribute('open','');}fit();draw();title.focus?.({preventScroll:true});return true;
   }
   function renderConfirmed(region){
    let section=region.querySelector('.bbec-confirmed');if(!section){section=make('section','bbec-confirmed');section.setAttribute('aria-label','Confirmed weekly essentials');region.append(section);}

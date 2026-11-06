@@ -255,3 +255,100 @@ test('incomplete API container-content edits cannot erase a reviewed pack capaci
  }
  assert.equal(h.inventory()[key].packQuantity,500);assert.equal(h.inventory()[key].packReviewed,true);
 });
+
+function targetShopping(h){
+ const home=h.win.BBHome,id=h.win.BBHomeHost.id,requirements=home.augment(h.requirements,[],home.targets(),id),used=h.pantry.reconcileStock(h.stock(),requirements).pantry;
+ return home.manualBuyItems(requirements.map(row=>({...row,pantryUsed:used[id(row.key,row.unit)]||0,toBuy:Math.max(0,row.required-(used[id(row.key,row.unit)]||0))})));
+}
+
+test('a new-food preview exposes plan need without selecting, saving or creating a Shop request',()=>{
+ const h=fixture({live:true,requirements:[{key:'Rice',unit:'g',required:600}]}),editor=h.win.BBPantryEditor,before=new Map(h.values),rows=editor.list().length;
+ const preview=editor.preview('Rice','cupboard','g');assert.equal(preview.qty,null);assert.equal(preview.totalNeeded,600);assert.equal(preview.mealNeeded,600);assert.equal(preview.minimumNeeded,600);assert.equal(preview.shortfall,600);
+ assert.equal(editor.list().length,rows);assert.deepEqual(h.values,before);assert.equal(h.win.BBPantryLive.hasPending(),false);
+});
+
+test('an explicit pantry target shares the canonical tin conversion and adds only three tins after two at home',async()=>{
+ const h=fixture({live:true,requirements:[{key:'Chopped tomatoes',unit:'g',required:1200}]});h.win.BBPantryPolicy=pantryPolicy;const editor=h.win.BBPantryEditor,key=editor.select('Tinned tomatoes','cupboard',{unit:'tin'});
+ assert.equal(editor.read(key).mealNeeded,3);assert.equal(editor.update(key,{qty:2,unit:'tin',totalNeeded:5}).ok,true);await editor.flush();
+ assert.deepEqual(h.stock(),{'chopped tomatoes|g':800});assert.equal(h.win.BBHome.targets()['chopped tomatoes|g'].targetQty,2000);
+ assert.equal(targetShopping(h).length,1);assert.equal(targetShopping(h)[0].toBuy,1200,'three UK tins, not recipe shortfall plus three tins');
+ assert.equal(h.inventory()[key].totalNeeded,undefined);assert.equal(h.inventory()[key].targetChanged,undefined);assert.equal(h.inventory()[key].pantryTarget,undefined);
+ assert.equal(editor.update(key,{qty:2,unit:'tin',totalNeeded:5}).ok,true);await editor.flush();assert.equal(targetShopping(h)[0].toBuy,1200);assert.equal(Object.keys(h.win.BBHome.targets()).length,1);
+});
+
+test('explicit targets normalize UK and US packs, measured weights and produce counts before aggregation',async()=>{
+ for(const [market,name,unit,owned,needed,expectedStock,expectedTarget,key]of [
+  ['UK','Milk','l',.5,1.5,500,1500,'milk|ml'],['US','Milk','pint',1,3,473,1419,'milk|ml'],
+  ['US','Chopped tomatoes','tin',2,5,822,2055,'chopped tomatoes|g'],['UK','Carrots','each',2,5,160,400,'carrot|g'],
+  ['US','Rice','lb',1,2,453.6,907.2,'rice|g']
+ ]){
+  const h=fixture({live:true,requirements:[]});h.win.BBPantryPolicy=pantryPolicy;h.win.bb307ActiveMarket=()=>market;const editor=h.win.BBPantryEditor,id=editor.select(name,'cupboard',{unit});
+  assert.equal(editor.update(id,{qty:owned,unit,totalNeeded:needed}).ok,true,market+' '+name);await editor.flush();
+  assert.equal(h.stock()[key],expectedStock);assert.equal(h.win.BBHome.targets()[key].targetQty,expectedTarget);assert.equal(targetShopping(h)[0].toBuy,Math.round((expectedTarget-expectedStock)*1000000)/1000000);
+ }
+});
+
+test('a lower target cannot erase meal-plan demand or write only the stock half of a failed confirmation',async()=>{
+ const h=fixture({live:true,requirements:[{key:'Rice',unit:'g',required:1000}]}),editor=h.win.BBPantryEditor,{key}=editor.add({name:'Rice',loc:'cupboard',qty:250,unit:'g'});await editor.flush();const before=new Map(h.values);
+ const result=editor.update(key,{qty:500,totalNeeded:750});assert.equal(result.ok,false);assert.match(result.message,/planned meals/);await editor.flush();assert.deepEqual(h.values,before);assert.equal(editor.read(key).qty,250);assert.equal(targetShopping(h)[0].toBuy,750);
+});
+
+test('unknown pack targets and incompatible plan dimensions keep the prior stock and targets intact',async()=>{
+ for(const requirements of [[],[{key:'Rice',unit:'ml',required:200}]]){
+  const h=fixture({live:true,requirements});h.win.BBPantryPolicy=pantryPolicy;const editor=h.win.BBPantryEditor,{key}=editor.add({name:'Rice',loc:'cupboard',qty:250,unit:'g'});await editor.flush();const before=new Map(h.values);
+  const result=editor.update(key,{qty:1,unit:'bag',totalNeeded:3});assert.equal(result.ok,false);await editor.flush();assert.deepEqual(h.values,before);assert.equal(editor.read(key).qty,250);assert.deepEqual(h.win.BBHome.targets(),{});
+ }
+});
+
+test('an explicit target accounts for existing manual Shop quantities without duplicating or deleting them',async()=>{
+ const h=fixture({live:true,requirements:[{key:'Chopped tomatoes',unit:'g',required:1200}]});h.win.BBPantryPolicy=pantryPolicy;
+ Object.assign(h.win.BBHomeHost,{keys:()=>({stock:STOCK,inventory:INVENTORY}),shoppingKind:()=> 'food',shoppingPurchaseContext:()=>({shopSessionId:'target-trip',quantity:0}),refresh(){}});
+ assert.equal(h.win.BBHome.addShoppingBuy({name:'Chopped tomatoes',quantityText:'400 g',actorId:'guest',requestId:'already-on-shop'}).ok,true);
+ const editor=h.win.BBPantryEditor,key=editor.select('Tinned tomatoes','cupboard',{unit:'tin'}),beforeManual=h.win.BBHome.shoppingBuys()[0];
+ assert.equal(editor.read(key).totalNeeded,4);assert.equal(editor.read(key).manualNeeded,1);
+ assert.equal(editor.update(key,{qty:2,unit:'tin',totalNeeded:5}).ok,true);await editor.flush();
+ assert.equal(h.win.BBHome.targets()['chopped tomatoes|g'].targetQty,1600,'one existing manual tin is already part of the requested five');
+ assert.equal(h.win.BBHome.shoppingBuys()[0].quantity,beforeManual.quantity);assert.equal(targetShopping(h)[0].toBuy,1200);
+ assert.equal(editor.update(key,{qty:2,unit:'tin',totalNeeded:5}).ok,true);await editor.flush();assert.equal(targetShopping(h)[0].toBuy,1200);assert.equal(h.win.BBHome.shoppingBuys().length,1);
+ assert.equal(editor.update(key,{qty:2,unit:'tin',totalNeeded:3}).ok,false,'lowering the total cannot silently discard the existing direct top-up');await editor.flush();assert.equal(targetShopping(h)[0].toBuy,1200);
+});
+
+test('compatible stock in another storage area is exposed and deducted from the same absolute target once',async()=>{
+ const h=fixture({live:true,requirements:[{key:'Rice',unit:'g',required:500}]});h.win.BBPantryPolicy=pantryPolicy;const editor=h.win.BBPantryEditor;
+ const first=editor.add({name:'Rice',loc:'cupboard',qty:200,unit:'g'});await editor.flush();const second=editor.add({name:'Rice',loc:'freezer',qty:300,unit:'g'});await editor.flush();
+ assert.equal(editor.read(first.key).otherOwned,300);assert.equal(editor.read(first.key).shortfall,0);assert.equal(editor.read(second.key).otherOwned,200);
+ assert.equal(editor.update(first.key,{qty:200,unit:'g',totalNeeded:500}).ok,true);await editor.flush();assert.equal(targetShopping(h).length,1);assert.equal(targetShopping(h)[0].toBuy,0);assert.deepEqual(h.stock(),{'rice|g':500});
+});
+
+test('a failed combined stock/target transaction rolls back both and retry commits once',async()=>{
+ const h=fixture({live:true,requirements:[{key:'Rice',unit:'g',required:500}]}),editor=h.win.BBPantryEditor,{key}=editor.add({name:'Rice',loc:'cupboard',qty:200,unit:'g'});await editor.flush();const before=new Map(h.values),original=h.storage.setItem;let fail=true;
+ h.storage.setItem=(name,value)=>{if(name==='basketboss_at_home_requirements_v1'&&fail){fail=false;throw Error('quota');}original(name,value);};
+ assert.equal(editor.update(key,{qty:250,totalNeeded:1000}).ok,true);await editor.flush();assert.deepEqual(h.values,before);assert.equal(h.win.BBPantryLive.hasPending(),true);
+ await editor.flush();assert.equal(h.stock()['rice|g'],250);assert.equal(h.win.BBHome.targets()['rice|g'].targetQty,1000);assert.equal(targetShopping(h)[0].toBuy,750);
+});
+
+test('rounded US ounce/pound and fractional container/count defaults retain exact canonical targets with no phantom shortfall',async()=>{
+ for(const [market,name,unit,grams,pack]of [
+  ['US','Rice','oz',400,null],['US','Rice','lb',500,null],
+  ['UK','Chopped tomatoes','tin',500,{packQuantity:350,packUnit:'g'}],['UK','Carrots','each',100.001,null]
+ ]){
+  const h=fixture({live:true,requirements:[{key:name,unit:'g',required:grams}]});h.win.BBPantryPolicy=pantryPolicy;h.win.bb307ActiveMarket=()=>market;const editor=h.win.BBPantryEditor,{key}=editor.add({name,loc:'cupboard',qty:grams,unit:'g'});
+  if(pack)assert.equal(editor.update(key,pack).ok,true);await editor.flush();
+  const options={market,...(pack?{...pack,packReviewed:true}:{})},one=pantryPolicy.normalize(name,1,unit,options).quantity,display=Math.round(grams/one*1000000)/1000000;
+  for(let repeat=0;repeat<3;repeat++){
+   assert.equal(editor.update(key,{qty:grams/one,unit,totalNeeded:display,...(pack||{})}).ok,true,market+' '+unit+' accepts its displayed default');
+   assert.equal(editor.read(key).totalQuantity,grams,'pending totalQuantity exposes the exact requested base amount');await editor.flush();
+   assert.equal(h.win.BBHome.targets()[Object.keys(h.stock())[0]].targetQty,grams);assert.equal(h.stock()[Object.keys(h.stock())[0]],grams);assert.equal(targetShopping(h)[0].toBuy,0,'no extra pack appears for a floating-point remainder');
+  }
+ }
+});
+
+test('half a display quantum may round up to the real meal minimum, while a full quantum below is rejected',async()=>{
+ for(const [market,name,unit,required,higher,pack]of [['US','Rice','oz',400,500,null],['US','Rice','lb',500,700,null],['UK','Chopped tomatoes','tin',500,700,{packQuantity:350,packUnit:'g'}]]){
+  const h=fixture({live:true,requirements:[{key:name,unit:'g',required}]}),editor=h.win.BBPantryEditor;h.win.BBPantryPolicy=pantryPolicy;h.win.bb307ActiveMarket=()=>market;const {key}=editor.add({name,loc:'cupboard',qty:0,unit:'g'});if(pack)editor.update(key,pack);await editor.flush();
+  assert.equal(editor.update(key,{qty:0,unit:'g',totalNeeded:higher}).ok,true);await editor.flush();
+  const one=pantryPolicy.normalize(name,1,unit,{market,...(pack?{...pack,packReviewed:true}:{})}).quantity,rounded=Math.round(required/one*1000000)/1000000;
+  assert.equal(editor.update(key,{qty:0,unit,totalNeeded:rounded,...(pack||{})}).ok,true);await editor.flush();assert.equal(h.win.BBHome.targets()[Object.keys(h.stock())[0]||h.win.BBHomeHost.id(name,'g')].targetQty,required);
+  const before=new Map(h.values);assert.equal(editor.update(key,{qty:0,unit,totalNeeded:Math.round((rounded-.000001)*1000000)/1000000,...(pack||{})}).ok,false);await editor.flush();assert.deepEqual(h.values,before,'a real change below the minimum does not save stock or target');
+ }
+});

@@ -247,3 +247,46 @@ test('manual-only condiment counts retain bottle or jar metadata while whole pep
   const h=fixture();assert.equal(h.home.addShoppingBuy({name,quantityText:'2 each',actorId:ACTOR,requestId:'manual-'+name}).ok,true,name);const rows=h.shopping();assert.equal(rows.length,1,name);assert.notEqual(rows[0].staple,true,name+' is whole produce');assert.equal(rows[0].stapleContainer,undefined,name);
  }
 });
+
+function saveCountTarget(h,name,owned,needed){
+ const change=h.home.prepare([{name,unit:'each',qty:owned,totalNeeded:needed,pantryTarget:true,targetChanged:true,staple:true}]);
+ homeModule.atomic(h.storage,{[change.key]:change.value,...change.shoppingChange?.updates},{[change.key]:change.expected,...change.shoppingChange?.expected});
+}
+
+test('an explicit five-container target buys three even when two condiment containers are In Stock',()=>{
+ const h=fixture({stock:{'ketchup|each':2},inventory:{ketchup:entry('Ketchup',2,'each',{staple:true,stapleStatus:'in'})},ingredients:[{key:'ketchup',required:15,unit:'ml'}]});
+ saveCountTarget(h,'Ketchup',2,5);let rows=h.shopping().filter(row=>row.key==='ketchup');
+ assert.equal(rows.length,1);assert.equal(rows[0].required,5);assert.equal(rows[0].pantryUsed,2);assert.equal(rows[0].toBuy,3);assert.equal(rows[0].cupboardCheck,false);assert.equal(rows[0].stapleStatus,'in');
+ saveCountTarget(h,'Ketchup',2,5);rows=h.shopping().filter(row=>row.key==='ketchup');assert.equal(rows.length,1);assert.equal(rows[0].toBuy,3);assert.deepEqual(h.stock(),{'ketchup|each':2});
+});
+
+test('a target-only staple appears once without becoming a recipe cupboard reminder',()=>{
+ const h=fixture({stock:{'soy sauce|each':2},inventory:{soy:entry('Soy sauce',2,'each',{staple:true,stapleStatus:'in'})}});
+ saveCountTarget(h,'Soy sauce',2,5);const rows=h.shopping();assert.equal(rows.length,1);assert.equal(rows[0].key,'soy sauce');assert.equal(rows[0].toBuy,3);assert.equal(rows[0].cupboardRequired,false);
+});
+
+test('the plan-only requirements path ignores desired staple counts and keeps the meal minimum independent',()=>{
+ const h=fixture({stock:{'ketchup|each':2},inventory:{ketchup:entry('Ketchup',2,'each',{staple:true,stapleStatus:'in'})},ingredients:[{key:'ketchup',required:15,unit:'ml'}]});
+ saveCountTarget(h,'Ketchup',2,5);const before=[...h.values],plan=copy(h.ctx.bb321UnifiedShop(h.state.ingredients,true));
+ assert.equal(plan.length,1);assert.equal(plan[0].required,1);assert.equal(plan[0].toBuy,0);assert.equal(h.home.foodTarget({name:'Ketchup',qty:2,unit:'each',staple:true}).mealNeeded,1);assert.equal(h.shopping()[0].toBuy,3);assert.deepEqual([...h.values],before);
+ const alone=fixture({stock:{'soy sauce|each':2},inventory:{soy:entry('Soy sauce',2,'each',{staple:true,stapleStatus:'in'})}});saveCountTarget(alone,'Soy sauce',2,5);assert.deepEqual(copy(alone.ctx.bb321UnifiedShop([],true)),[]);
+});
+
+test('Low and Out retain one-container restocking until an explicit count target replaces that stock goal',()=>{
+ for(const status of ['low','out']){
+  const owned=status==='low'?1:0,h=fixture({stock:owned?{'ketchup|each':owned}:{},inventory:{ketchup:entry('Ketchup',owned,'each',{staple:true,stapleStatus:status})},ingredients:[{key:'ketchup',required:15,unit:'ml'}]});
+  assert.equal(h.shopping()[0].toBuy,1);assert.deepEqual(h.home.targets(),{});saveCountTarget(h,'Ketchup',owned,5);assert.equal(h.shopping()[0].toBuy,5-owned);
+ }
+});
+
+test('a zero target for an unplanned Out staple stays an explicit choice instead of manufacturing meal demand',()=>{
+ const h=fixture({inventory:{ketchup:entry('Ketchup',0,'each',{staple:true,stapleStatus:'out'})}});h.win.BBHomeHost.requirements=()=>h.ctx.bb321UnifiedShop([],true);
+ const initial=h.home.foodTarget({name:'Ketchup',qty:0,unit:'each',staple:true});assert.equal(initial.mealNeeded,0);assert.equal(initial.totalNeeded,1);assert.equal(initial.minimumNeeded,0);
+ saveCountTarget(h,'Ketchup',0,0);assert.equal(h.shopping()[0].toBuy,0);assert.equal(h.home.foodTarget({name:'Ketchup',qty:0,unit:'each',staple:true}).totalNeeded,0);
+});
+
+test('an explicit target on measured reduced whole peppers stays food with its full measured demand',()=>{
+ const inventory={pepper:entry('Bell peppers',150,'g',{staple:false,bbReduced:{actor:ACTOR,urgent:true,source:'reduced'}})},h=fixture({stock:{'bell peppers|g':150},inventory,ingredients:[{key:'bell peppers',unit:'g',required:100,staple:false}]});
+ const change=h.home.prepare([{name:'Bell peppers',unit:'g',qty:150,totalNeeded:400,pantryTarget:true,targetChanged:true,staple:false}]);homeModule.atomic(h.storage,{[change.key]:change.value},{[change.key]:change.expected});
+ const rows=h.shopping();assert.equal(rows.length,1,JSON.stringify({rows,targets:h.home.targets()}));assert.equal(rows[0].unit,'g');assert.equal(rows[0].required,400);assert.equal(rows[0].toBuy,250);assert.notEqual(rows[0].staple,true);assert.equal(h.home.targets()['bell peppers|each'],undefined);assert.deepEqual(h.stock(),{'bell peppers|g':150});assert.deepEqual(h.inventory(),inventory);
+});

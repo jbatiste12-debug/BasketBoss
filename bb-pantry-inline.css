@@ -178,9 +178,152 @@ html[data-bb-tab-viewport=document]:not([data-bb-tab-scroll-lock]):not(.bb-accou
  #app #bb173ShopFridge.bbpi-enhanced .bbpi-summary-row{grid-template-columns:minmax(0,1fr);gap:3px}
  #app #bb173ShopFridge.bbpi-enhanced .bbpi-summary-actions{justify-self:end}
 }
+/* The shell already reserves the dock clearance. Legacy #app padding and a
+   second panel gap otherwise add 267px of blank scroll space on this screen. */
+html[data-bb-tab-viewport=document] body[data-bbnext-view=shop]>.shell>#app:has(>#bb173ShopFridge.bbpi-enhanced){padding-bottom:0!important}
 /* Keep the inventory immediately below its controls; secondary review and
    photo tools retain their own handlers below the three storage sections. */
-#app #bb173ShopFridge.bbpi-enhanced #bbKitchenFoodPanel:not([hidden]){display:flex;flex-direction:column;padding-bottom:calc(112px + env(safe-area-inset-bottom,0px))!important}
+#app #bb173ShopFridge.bbpi-enhanced #bbKitchenFoodPanel:not([hidden]){display:flex;flex-direction:column;padding-bottom:0!important}
 #app #bb173ShopFridge.bbpi-enhanced #bbKitchenFoodPanel>.bbpi-toolbar{order:0;flex-shrink:0}
 #app #bb173ShopFridge.bbpi-enhanced #bbKitchenFoodPanel>#bb76StorageSections{order:1}
 #app #bb173ShopFridge.bbpi-enhanced #bbKitchenFoodPanel>:not(.bbpi-toolbar):not(#bb76StorageSections){order:2}
+
+/* The quantity panel lives outside the changing inventory tree. Only its
+   content scrolls; its heading and confirmation action remain in reach. */
+html body dialog.bbpi-panel{
+ position:fixed;inset:auto 0 auto;top:calc(var(--bbpi-viewport-top,0px) + max(8px,env(safe-area-inset-top,0px)));
+ width:calc(100% - 24px);max-width:520px;height:auto;
+ max-height:calc(var(--bbpi-viewport-height,100dvh) - max(8px,env(safe-area-inset-top,0px)) - max(8px,env(safe-area-inset-bottom,0px)));
+ min-width:0;min-height:0;margin:0 auto;padding:0;box-sizing:border-box;
+ overflow:hidden;border:1px solid #d7c69b;border-radius:20px;
+ background:#fffdf7;color:#244d3c;box-shadow:0 14px 42px #163d2c26;
+ font-family:inherit;text-align:left;animation:none!important;transform:none!important;
+ overscroll-behavior:none;
+}
+html body dialog.bbpi-panel[open]{display:flex;flex-direction:column}
+html body dialog.bbpi-panel:not([open]),
+html body dialog.bbpi-panel[hidden]{display:none!important}
+html body dialog.bbpi-panel::backdrop{background:#102d2780}
+html body dialog.bbpi-panel,
+html body dialog.bbpi-panel *{box-sizing:border-box;min-width:0}
+html body dialog.bbpi-panel .bbpi-editor-heading{
+ display:grid;grid-template-columns:minmax(0,1fr) 44px;column-gap:12px;row-gap:4px;
+ flex:none;margin:0;padding:16px 16px 13px;border-bottom:1px solid #dfe5d4;
+ background:#f6f8ee;
+}
+html body dialog.bbpi-panel .bbpi-eyebrow{
+ grid-column:1;font-size:10px;font-weight:850;line-height:1.3;letter-spacing:.12em;
+ text-transform:uppercase;color:#73825f;
+}
+html body dialog.bbpi-panel .bbpi-editor-heading h4{
+ grid-column:1;margin:0;font-size:22px;font-weight:850;line-height:1.2;
+ letter-spacing:-.025em;color:#174b35;overflow-wrap:anywhere;
+}
+html body dialog.bbpi-panel .bbpi-close{
+ grid-column:2;grid-row:1/3;align-self:center;width:44px;height:44px;min-height:44px;
+ display:inline-flex;align-items:center;justify-content:center;padding:0;
+ border:1px solid #c9d9c9;border-radius:12px;background:#fffdf7;color:#285b40;
+ font:500 25px/1 system-ui,sans-serif;cursor:pointer;touch-action:manipulation;
+}
+html body dialog.bbpi-panel .bbpi-editor-content{
+ flex:1 1 auto;min-height:0;margin:0;padding:15px 16px;
+ overflow-y:auto;overflow-x:hidden;-webkit-overflow-scrolling:touch;
+ overscroll-behavior-y:contain;scroll-padding:12px;touch-action:pan-y;
+}
+html body dialog.bbpi-panel .bbpi-editor-controls{
+ display:grid;grid-template-columns:minmax(0,1fr);gap:12px;align-items:end;
+}
+html body dialog.bbpi-panel label{
+ display:grid;gap:6px;font-size:12px;font-weight:750;line-height:1.4;color:#365e4b;
+}
+html body dialog.bbpi-panel :is(input,select){
+ width:100%;min-height:46px;max-width:100%;margin:0;border:1px solid #bfd0c0;
+ border-radius:11px;background:#fffdf7;color:#204b39;font-weight:500;
+ font-family:inherit;font-size:16px;line-height:1.3;padding:10px 11px;
+}
+html body dialog.bbpi-panel select{padding-right:28px}
+html body dialog.bbpi-panel :is(input,select,button):focus-visible,
+html body dialog.bbpi-panel summary:focus-visible{outline:2px solid #b99242;outline-offset:2px}
+html body dialog.bbpi-panel .bbpi-stepper{
+ display:grid;grid-template-columns:44px minmax(0,1fr) 44px;gap:6px;align-items:center;
+}
+html body dialog.bbpi-panel .bbpi-stepper input{
+ text-align:center;padding-left:3px;padding-right:3px;appearance:textfield;-moz-appearance:textfield;
+}
+html body dialog.bbpi-panel input::-webkit-inner-spin-button,
+html body dialog.bbpi-panel input::-webkit-outer-spin-button{-webkit-appearance:none;margin:0}
+html body dialog.bbpi-panel .bbpi-step{
+ display:inline-flex;align-items:center;justify-content:center;width:44px;min-width:44px;
+ min-height:46px;padding:0;border:1px solid #bdd0bb;border-radius:11px;
+ background:#eef4e8;color:#215b3d;font:650 23px/1 system-ui,sans-serif;
+ cursor:pointer;touch-action:manipulation;
+}
+html body dialog.bbpi-panel .bbpi-status-label{margin:0 0 12px}
+html body dialog.bbpi-panel .bbpi-readout{
+ margin:13px 0 0;font-size:14px;font-weight:750;line-height:1.45;color:#245d41;
+ overflow-wrap:anywhere;
+}
+html body dialog.bbpi-panel .bbpi-notice{
+ margin:10px 0 0;font-size:12px;font-weight:500;line-height:1.45;color:#54755f;
+ overflow-wrap:anywhere;
+}
+html body dialog.bbpi-panel .bbpi-notice:empty{display:none}
+html body dialog.bbpi-panel .bbpi-notice.is-error{color:#8c4430}
+html body dialog.bbpi-panel .bbpi-pack{
+ margin:14px 0 0;padding-top:9px;border-top:1px solid #dfe5d4;
+}
+html body dialog.bbpi-panel .bbpi-pack summary{
+ min-height:44px;display:flex;align-items:center;font-size:12px;font-weight:750;
+ line-height:1.4;cursor:pointer;touch-action:manipulation;
+}
+html body dialog.bbpi-panel .bbpi-pack p{
+ margin:2px 0 10px;font-size:12px;font-weight:400;line-height:1.45;color:#6b7c68;
+}
+html body dialog.bbpi-panel .bbpi-pack-fields{
+ display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:10px;
+}
+html body dialog.bbpi-panel .bbpg-item-group{margin-top:14px}
+html body dialog.bbpi-panel .bbpg-item-error{font-size:12px;font-weight:500;color:#8c4430}
+html body dialog.bbpi-panel .bbpi-editor-actions{
+ display:flex;flex:none;gap:10px;align-items:center;justify-content:space-between;
+ margin:0;padding:12px 16px max(12px,env(safe-area-inset-bottom,0px));
+ border-top:1px solid #dfe5d4;background:#fffdf7;
+}
+html body dialog.bbpi-panel .bbpi-editor-actions button{
+ display:inline-flex;align-items:center;justify-content:center;flex:1 1 0;
+ min-height:46px;min-width:44px;margin:0;padding:10px 12px;border-radius:12px;
+ font-family:inherit;font-size:14px;font-weight:800;line-height:1.2;
+ white-space:normal;text-align:center;cursor:pointer;touch-action:manipulation;
+}
+html body dialog.bbpi-panel .bbpi-remove{border:1px solid #e3d8c9;background:#fffaf2;color:#895b46}
+html body dialog.bbpi-panel .bbpi-done{border:1px solid #245d42;background:#245d42;color:#fffdf7}
+html body dialog.bbpi-panel button:disabled{opacity:.55;cursor:default}
+html body dialog.bbpi-panel [hidden]{display:none!important}
+html body dialog#bbpi-current-editor.bbpi-panel .bbpi-close{
+ width:44px!important;min-width:44px!important;max-width:44px!important;
+ height:44px!important;min-height:44px!important;max-height:44px!important;
+ padding:0!important;border:1px solid #c9d9c9!important;border-radius:12px!important;
+ background:#fffdf7!important;color:#285b40!important;box-shadow:none!important;
+ font:500 25px/1 system-ui,sans-serif!important;
+}
+html body dialog#bbpi-current-editor.bbpi-panel :is(input,select):focus{
+ outline:2px solid #b99242!important;outline-offset:2px!important;box-shadow:none!important;
+}
+@media(hover:hover){
+ html body dialog.bbpi-panel :is(.bbpi-close,.bbpi-step):not(:disabled):hover{background:#e8f0e3}
+ html body dialog.bbpi-panel .bbpi-done:not(:disabled):hover{background:#1d5239}
+}
+html body dialog.bbpi-panel button:not(:disabled):active{filter:brightness(.96)}
+html.bbpi-modal-open:has(#bbpi-current-editor[open]),
+html.bbpi-modal-open:has(#bbpi-current-editor[open]) body{overflow:hidden!important;overscroll-behavior:none}
+html.bbpi-modal-open:has(#bbpi-current-editor[open]) body{
+ position:fixed!important;top:var(--bbpi-scroll-top,0px)!important;left:0;right:0;width:100%;
+}
+@media(max-width:359px){
+ html body dialog.bbpi-panel{width:calc(100% - 16px);border-radius:17px}
+ html body dialog.bbpi-panel .bbpi-editor-heading{column-gap:8px;padding:13px 12px 11px}
+ html body dialog.bbpi-panel .bbpi-editor-heading h4{font-size:20px}
+ html body dialog.bbpi-panel .bbpi-editor-content{padding:12px}
+ html body dialog.bbpi-panel .bbpi-editor-actions{gap:8px;padding-left:12px;padding-right:12px}
+ html body dialog.bbpi-panel .bbpi-pack-fields{grid-template-columns:minmax(0,1fr)}
+}

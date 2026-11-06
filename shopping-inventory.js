@@ -76,10 +76,10 @@ const BB5_UNITS=['each','g','kg','ml','l','cup','oz','lb','fl oz','pack','bag','
 const BB5_CONTENT_UNITS=['g','ml','each','oz','lb','fl oz'];
 const entryUnits=()=>policyMarket()==='US'?['each','cup','oz','lb','fl oz','pint',...BB5_UNITS]:BB5_UNITS.filter(unit=>!['cup','oz','lb','fl oz'].includes(unit));
 let bb5RequirementsCache=null;
+function bb5Requirements(){if(!bb5RequirementsCache){bb5RequirementsCache=window.BBHomeHost?.requirements?.()||[];queueMicrotask(()=>{bb5RequirementsCache=null;});}return bb5RequirementsCache;}
 function bb5PlannedRequirements(name){
  const wanted=pantryStockId(name,''),groups=new Map();
- if(!bb5RequirementsCache){bb5RequirementsCache=window.BBHomeHost?.requirements?.()||[];queueMicrotask(()=>{bb5RequirementsCache=null;});}
- for(const row of bb5RequirementsCache){
+ for(const row of bb5Requirements()){
   if(pantryStockId(row.key||row.name,'')!==wanted)continue;
   const base=policy()?.normalize(row.key||row.name,Number(row.required),row.unit,policyOptions(row)),measured=base?{qty:base.quantity,unit:base.unit}:unitConversion(Number(row.required),String(row.unit||'').trim().toLowerCase());
   if(!BB5_UNITS.includes(measured.unit)||!Number.isFinite(measured.qty)||measured.qty<=0)continue;
@@ -168,7 +168,7 @@ async function build(){
  <p id="bb5StockStatus" class="bb173-shop-note" role="status" aria-live="polite">Select your food above, review the quantities, then confirm.</p>
  <details class="bb8-inventory-help"><summary>How does Pantry work?</summary><ol><li>Expand Cupboard, Fridge or Freezer and tap the foods you already have.</li><li>See every selected food together in the <strong>PANTRY</strong> list.</li><li>Set actual quantities in PANTRY, or leave an amount unknown.</li><li>Tap <strong>Confirm &amp; Reconcile Shopping List</strong>. BasketBoss saves measured stock and calculates what's left to buy.</li><li>For meal ideas instead, go to Cook → Make a Meal.</li></ol><a href="basketboss-latest-guide.html">Full BasketBoss guide →</a></details></section>`;
  const review=card.querySelector('#bb8WhatIHave'),rows=review.querySelector('#bb5SelectedRows'),note=review.querySelector('#bb5StockStatus'),reconcile=review.querySelector('#bb5Reconcile');
- const staged=new Map();let draftDirty=false;let openedRevision=physicalRevision();const openedActor=draftActor();
+ const staged=new Map(),stagedTargets=new Map();let draftDirty=false;let openedRevision=physicalRevision();const openedActor=draftActor();
  let autoTimer=null,saving=null,movingReduced=false;
  const live=()=>window.BBPantryLiveSync===true;
  function scheduleAuto(){if(!live()||!draftDirty)return;clearTimeout(autoTimer);autoTimer=setTimeout(()=>{autoTimer=null;void runSave(true);},350);}
@@ -185,8 +185,8 @@ async function build(){
  const draftKeys=(loc,name)=>[...staged].filter(([,row])=>sid(row.loc,row.name)===sid(loc,name)).map(([key])=>key);
  function stageValue(rec,inventoryId){
   const row={...rec,name:String(rec.name),loc:rec.loc,qty:rec.qty??null,unit:rec.unit||'each',inventoryId,inputMarket:rec.inputMarket||policyMarket()};
-  // Food records describe stock on hand. New demand comes from planned meals
-  // and explicit Shop top-ups; only Weekly essentials edits a target.
+  // Inventory is stock only. Explicit targets live in a separate staged map,
+  // so obsolete total fields on old inventory rows can never create demand.
   delete row.totalNeeded;delete row.targetChanged;
   if(policy()&&!isStapleRow(row)){
    const source=row.containerUnit||[...(row.pantrySourceHistory||[])].reverse().find(value=>['tin','can','bag','pack','pint'].includes(value.unit))?.unit;
@@ -224,11 +224,11 @@ async function build(){
  }
 
  if(pendingFoodDraft){
-  if(pendingFoodDraft.actor===openedActor&&pendingFoodDraft.revision===openedRevision){staged.clear();for(const [key,value]of pendingFoodDraft.rows)staged.set(key,{...value});draftDirty=true;}
+  if(pendingFoodDraft.actor===openedActor&&pendingFoodDraft.revision===openedRevision){staged.clear();for(const [key,value]of pendingFoodDraft.rows)staged.set(key,{...value});for(const [key,value]of pendingFoodDraft.targets||[])stagedTargets.set(key,{...value});draftDirty=true;}
   else{pendingFoodDraft=null;note.textContent='At home changed. Review the latest amounts before confirming.';}
  }
  function drawOverview(){
-  if(draftDirty)pendingFoodDraft={actor:openedActor,revision:openedRevision,rows:[...staged].map(([key,value])=>[key,{...value}])};
+  if(draftDirty)pendingFoodDraft={actor:openedActor,revision:openedRevision,rows:[...staged].map(([key,value])=>[key,{...value}]),targets:[...stagedTargets].map(([key,value])=>[key,{...value}])};
   review.querySelector('#bb75DraftIndicator').textContent=live()?(draftDirty?'Updating Shopping…':'Shopping up to date'):(draftDirty?'Not confirmed yet':'Review and confirm');
   if(draftDirty)scheduleAuto();
   editorEvent('amount');
@@ -401,7 +401,15 @@ async function build(){
    if(needsOwner.has(key)){nextInv[x.inventoryId||sid(x.loc,x.name)].bb173StockKey=key;nextInv[x.inventoryId||sid(x.loc,x.name)].bb173StockValue=p.qty}
   }
   if(window.BBReducedStock?.settleInventory){const annotated=window.BBReducedStock.settleInventory({before:originalInv,after:nextInv,actor:openedActor,policy:policy(),canonicalize:window.BBPriceV19?.canonical,market:policyMarket()});for(const key of Object.keys(nextInv))nextInv[key]=annotated[key];}
-  let homeChange;try{homeChange=window.BBHome?.prepare?.(chosen);}catch(error){note.textContent=error.message;return;}
+  let homeChange;try{
+   const homeRows=chosen.map(row=>{
+    const target=[...stagedTargets.values()].find(value=>value.sourceKey===row.inventoryId);
+    if(!target)return row;
+    if(row.qty===null||row.unit!==target.unit||row.conversionNeedsReview)throw Error('Review the amount and unit before adding '+row.name+' to Shop. Your saved stock has been kept.');
+    return {...row,totalNeeded:target.quantity,targetChanged:true,pantryTarget:true};
+   });
+   homeChange=window.BBHome?.prepare?.(homeRows);
+  }catch(error){note.textContent=error.message;return;}
   const shoppingChange=homeChange?.shoppingChange,shoppingBefore=Object.fromEntries(Object.keys(shoppingChange?.updates||{}).map(key=>[key,localStorage.getItem(key)]));
   const originalHomeRaw=homeChange?localStorage.getItem(homeChange.key):null;const featureChange=homeChange?.featureChange,originalFeatures=featureChange?localStorage.getItem(featureChange.key):null;
   const originalInventoryRaw=localStorage.getItem(INVENTORY),originalStockRaw=localStorage.getItem(MEASURED),originalConfirmedRaw=localStorage.getItem(CONFIRMED);
@@ -426,7 +434,7 @@ async function build(){
    }catch(restoreErr){console.error('BasketBoss pantry rollback failed',restoreErr)}
    note.textContent='Could not save safely. Review storage and try again.';return;
   }
-  pendingFoodDraft=null;openedRevision=physicalRevision();window.BBHome?.committed?.();externalAtOpen.clear();draftDirty=false;
+  pendingFoodDraft=null;stagedTargets.clear();openedRevision=physicalRevision();window.BBHome?.committed?.();externalAtOpen.clear();draftDirty=false;
   window.BasketBossCloud?.scheduleSave?.();
   const unknown=chosen.filter(x=>x.qty===null);
   const requirements=window.BBHomeHost?.requirements?.()||[],mismatches=window.BBHomeHost?.consume?.(nextStock,requirements)?.mismatches||{};
@@ -466,11 +474,27 @@ async function build(){
   return '';
  };
  const editorFail=message=>{note.textContent=message;editorEvent('status');return {ok:false,message};};
- const editorRow=key=>{const value=staged.get(key);return value?{...value,key,staple:isStapleRow(value),readout:bb5AmountReadout(value)}:null;};
+ function editorDescriptor(value,key){
+  const row={...value,key,staple:isStapleRow(value),readout:bb5AmountReadout(value)};
+  let needed;try{needed=window.BBHome?.foodTarget?.(row,{requirements:bb5Requirements(),otherRows:[...staged].filter(([id])=>id!==key).map(([,value])=>value)});}catch{needed=null;}
+  const fields=needed||{totalNeeded:null,mealNeeded:null,minimumNeeded:null,targetProblem:'Shopping totals are still loading. Please try again.'};
+  const pending=fields.canonicalUnit&&stagedTargets.get(pantryStockId(row.name,fields.canonicalUnit));
+  if(pending&&fields.quantityPerUnit>0){fields.totalQuantity=pending.quantity;fields.totalNeeded=Math.round(pending.quantity/fields.quantityPerUnit*1000000)/1000000;fields.shortfall=Math.round(Math.max(0,fields.totalNeeded-Number(row.qty||0)-Number(fields.otherOwned||0))*1000000)/1000000;}
+  return {...row,...fields};
+ }
+ const editorRow=key=>{const value=staged.get(key);return value?editorDescriptor(value,key):null;};
+ function editorPreview(name,loc,unit){
+  if(editorGuard()||!BB5_LOCATIONS.includes(loc)||typeof name!=='string'||!name.trim()||name.trim().length>70)return null;
+  const existing=draftKeys(loc,name);if(existing.length)return editorRow(existing[0]);
+  const staple=policy()?.isStaple(name),chosen=staple?'each':BB5_UNITS.includes(unit)?unit:bb5SuggestedUnit(name),key=sid(loc,name);
+  const row=stageValue({name:name.trim(),loc,qty:null,unit:chosen,...(staple?{staple:true,stapleStatus:'in'}:{})},key);row.qty=null;
+  return editorDescriptor(row,key);
+ }
  function editorUpdate(key,patch={}){
   const blocked=editorGuard();if(blocked)return editorFail(blocked);
   const previous=staged.get(key);if(!previous)return editorFail('This item changed. Choose it again.');
-  const next={...previous},hasQuantity=Object.hasOwn(patch,'qty');
+  const next={...previous},hasQuantity=Object.hasOwn(patch,'qty'),hasTarget=Object.hasOwn(patch,'totalNeeded');
+  if(hasTarget&&(patch.totalNeeded===null||patch.totalNeeded===undefined||String(patch.totalNeeded).trim()===''||amount(patch.totalNeeded,patch.unit||next.unit)===null))return editorFail('Enter a valid Total needed, or use 0 for none. Your saved stock has been kept.');
   if(Object.hasOwn(patch,'packQuantity')){
    const raw=patch.packQuantity===null||patch.packQuantity===undefined?'':String(patch.packQuantity).trim();
    if(raw==='')return editorFail('Enter a container size. Your reviewed contents and saved amount have been kept.');
@@ -498,6 +522,7 @@ async function build(){
    if(['tin','can','bag','pack','bottle','jar','pint'].includes(unit))next.containerUnit=unit;
   }
   function incompleteQuantity(raw,message){
+   if(hasTarget)return editorFail(message);
    next.qty=raw;staged.set(key,next);draftDirty=true;
    const input=[...card.querySelectorAll('[data-bb5-qty]')].find(node=>node.dataset.bb5Qty===key);
    if(input){input.value=raw;drawAmount(key,input);}drawOverview();
@@ -520,6 +545,17 @@ async function build(){
    }else if(hasQuantity&&next.qty!==null){if(Number(next.qty)===0)next.stapleStatus='out';else if(!['in','low'].includes(next.stapleStatus))next.stapleStatus='in';}
    if(next.qty!==null&&(!Number.isInteger(Number(next.qty))||Number(next.qty)>10000))return hasQuantity?incompleteQuantity(String(patch.qty).trim(),'Enter a whole container count, or choose a stock status.'):editorFail('Enter a whole container count, or choose a stock status.');
    next.unit='each';next.staple=true;
+  }
+  if(hasTarget){
+   if(next.qty===null||next.qty===undefined||next.qty==='')return editorFail('Enter how much you already have; use 0 for none.');
+   const info=window.BBHome?.foodTarget?.({...next,staple:isStapleRow(next)},{requirements:bb5Requirements(),otherRows:[...staged].filter(([id])=>id!==key).map(([,value])=>value)});
+   if(!info||info.targetProblem)return editorFail(info?.targetProblem||'Shopping totals are still loading. Please try again.');
+   let quantity=Math.round(Number(patch.totalNeeded)*info.quantityPerUnit*1000000)/1000000;
+   if(Number(patch.totalNeeded)===info.totalNeeded)quantity=info.totalQuantity;
+   if(!Number.isFinite(quantity)||quantity<0||quantity>1000000||isStapleRow(next)&&(!Number.isInteger(quantity)||quantity>10000))return editorFail('Enter a valid Total needed for this item.');
+   if(quantity+info.quantityTolerance<info.minimumQuantity)return editorFail(info.manualQuantity>0?'This item already has an extra amount on Shop. Keep its current total or amend that Shop item first.':'Total needed cannot be less than your planned meals need.');
+   quantity=Math.abs(quantity-info.minimumQuantity)<=info.quantityTolerance?info.minimumQuantity:Math.max(quantity,info.minimumQuantity);
+   stagedTargets.set(pantryStockId(next.name,info.canonicalUnit),{sourceKey:key,quantity,unit:info.canonicalUnit});
   }
   staged.set(key,next);draftDirty=true;
   const input=[...card.querySelectorAll('[data-bb5-qty]')].find(node=>node.dataset.bb5Qty===key);
@@ -589,9 +625,9 @@ async function build(){
   }catch(error){return editorFail(error?.message||'The move could not be saved. Your stock has been kept.');}
   finally{movingReduced=false;}
  }
- window.BBPantryEditor=Object.freeze({card,list:()=>[...staged.keys()].map(editorRow),read:editorRow,isCurrent:()=>!editorGuard(),select:editorSelect,update:editorUpdate,add:editorAdd,
+ window.BBPantryEditor=Object.freeze({card,list:()=>[...staged.keys()].map(editorRow),read:editorRow,preview:editorPreview,isCurrent:()=>!editorGuard(),select:editorSelect,update:editorUpdate,add:editorAdd,
   moveToFreezer:editorMoveToFreezer,
-  remove:key=>{const blocked=editorGuard();if(blocked)return editorFail(blocked);if(!staged.has(key))return {ok:false};staged.delete(key);draftDirty=true;render();editorEvent('remove',key);return {ok:true};},
+  remove:key=>{const blocked=editorGuard();if(blocked)return editorFail(blocked);if(!staged.has(key))return {ok:false};staged.delete(key);for(const [id,target]of stagedTargets)if(target.sourceKey===key)stagedTargets.delete(id);draftDirty=true;render();editorEvent('remove',key);return {ok:true};},
   flush:()=>runSave(true),status:()=>note.textContent,units:entryUnits});
  // One Kitchen picker and one Pantry list. Keep legacy controllers in the DOM
  // for their saved data, but do not expose duplicate editing forms or banners.

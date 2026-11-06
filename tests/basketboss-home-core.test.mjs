@@ -154,3 +154,14 @@ test('shared local purchase acknowledgements are actor-pinned and remain idempot
 test('a new shared purchase cannot make an older surplus-only stock basis look fully reviewed',()=>{
  const h=finishFixture({mode:'exact',unit:'g',qty:100},{id:'shared:new-request',name:'Rice',qty:100,unit:'g',aisle:'Cupboard / Pantry'});h.storage.setItem('receipts',JSON.stringify({'shop-session|rice|g':{name:'Rice',unit:'g',qty:400,credited:100,week:'shop-session'}}));h.finish();assert.equal(h.read('receipts')['shop-session|rice|g'].stockBasis,'mixed-review-required');assert.equal(h.win.BBHome.needsLegacyReview('rice'),true);
 });
+
+test('an absolute food target preserves a direct top-up and settles its old purchase baseline once',()=>{
+ const h=settlementFixture();h.host.requirements=()=>[{key:'Rice',unit:'g',required:600}];h.host.shoppingPurchaseContext=()=>({shopSessionId:'shop-session',quantity:0});
+ h.storage.setItem('basketboss_at_home_requirements_v1',JSON.stringify({version:1,byActor:{guest:{targets:{},cooked:{},planned:{},manualBuys:{'food:rice|g':{id:'food:rice|g',name:'Rice',kind:'food',quantity:200,unit:'g',pending:true,shopSessionId:'shop-session',boughtAtRequest:1600}},manualRequests:{existing:'historical-intent'}}}}));
+ const change=h.win.BBHome.prepare([{name:'Rice',unit:'g',qty:200,totalNeeded:1000,pantryTarget:true,targetChanged:true}]);
+ api.atomic(h.storage,{[change.key]:change.value,...change.shoppingChange.updates},change.shoppingChange.expected);
+ const data=h.read(change.key).byActor.guest;assert.equal(data.targets['rice|g'].targetQty,800);assert.equal(data.manualBuys['food:rice|g'].quantity,200);assert.equal(data.manualBuys['food:rice|g'].boughtAtRequest,0);
+ assert.equal(data.manualRequests.existing,'historical-intent');assert.equal(Object.values(data.settledPurchases)[0].purchase.qty,400,'the purchased amount remains in settled history');
+ const recipe=api.augment(h.host.requirements(),[],h.win.BBHome.targets(),h.host.id)[0];const shopping=h.win.BBHome.manualBuyItems([{...recipe,toBuy:recipe.required-200,pantryUsed:200}]);assert.equal(shopping[0].toBuy,800,'old checked quantities cannot inflate the new shortfall');
+ const completion=h.win.BBHome.completionChanges('rice|g');api.atomic(h.storage,completion);assert.equal(h.win.BBHome.targets()['rice|g'].pending,false);assert.deepEqual(h.win.BBHome.shoppingBuys().map(row=>row.quantity),[200],'completing a stock target does not erase a separately entered pending top-up');
+});
