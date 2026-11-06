@@ -335,6 +335,19 @@ html body #app.bbnext-plan[data-bb-compact-plan="true"] .bbnext-plan-budget[data
 html body #app.bbnext-plan[data-bb-compact-plan="true"] .bbnext-plan-budget[data-bb-budget-polish="premium"] .bbpc-budget-overview .bb-myweek-emblem .bbnext-plan-donut-core small{font-size:8px!important}
 @media(max-width:350px){html body #app.bbnext-plan[data-bb-compact-plan="true"] .bbnext-plan-budget[data-bb-budget-polish="premium"] .bbpc-budget-overview .bb-myweek-emblem .bbnext-plan-donut-core{width:48px!important;height:48px!important}html body #app.bbnext-plan[data-bb-compact-plan="true"] .bbnext-plan-budget[data-bb-budget-polish="premium"] .bbpc-budget-overview .bb-myweek-emblem .bbnext-plan-donut-core strong{font-size:10px!important}}
 
+/* Keep the desktop ring square: the older premium rule otherwise leaves a
+   124px height inside the compact 74px track and clips it against the card. */
+@media(min-width:741px){
+ html body #app.bbnext-plan[data-bb-compact-plan="true"] .bbnext-plan-budget[data-bb-simple-budget] .bbpc-budget-overview{grid-template-columns:88px minmax(0,1fr)}
+ html body #app.bbnext-plan[data-bb-compact-plan="true"] .bbnext-plan-budget[data-bb-simple-budget][data-bb-budget-polish="premium"] .bbpc-budget-overview .bb-myweek-emblem,
+ html body #app.bbnext-plan[data-bb-compact-plan="true"] .bbnext-plan-budget[data-bb-simple-budget][data-bb-budget-polish="premium"] .bbpc-budget-overview .bb-myweek-emblem>.bbnext-plan-donut{
+  width:88px!important;height:88px!important;min-height:88px!important;max-width:88px!important;max-height:88px!important;
+  grid-template-rows:88px!important;aspect-ratio:1!important;
+ }
+ html body #app.bbnext-plan[data-bb-compact-plan="true"] .bbnext-plan-budget[data-bb-simple-budget][data-bb-budget-polish="premium"] .bbpc-budget-overview .bb-myweek-emblem .bbnext-plan-donut-core{width:66px!important;height:66px!important}
+ html body #app.bbnext-plan[data-bb-compact-plan="true"] .bbnext-plan-budget[data-bb-simple-budget][data-bb-budget-polish="premium"] .bbpc-budget-overview .bb-myweek-emblem .bbnext-plan-donut-core strong{font-size:14px!important}
+}
+
 /* Highlight the three planning controls with the existing warm gold palette. */
 html body #app.bbnext-plan[data-bb-compact-plan="true"] #bbpolAutofillCard :is(#bbSimpleBudget>summary,#bbSimpleMealPreferences>summary,#bbAvoidIngredientTab){
  background:#f5e6bb!important;border:1px solid #d6bd78!important;color:#244d3c!important;
