@@ -3,6 +3,7 @@ import assert from 'node:assert/strict';
 import {createRequire} from 'node:module';
 const require=createRequire(import.meta.url),review=require('../bb-kitchen-review.js'),homeModule=require('../bb-home.js'),policy=require('../bb-pantry-policy.js');
 const FEATURES='basketboss_321_features_v1',SESSION='basketboss_cloud_session_v1',HOME='basketboss_at_home_requirements_v1';
+require('../bb-weekly-essentials.js');
 function fixture(){
  const item={id:'soap',name:'Soap',unit:'each',qty:4,targetQty:4,ownedQty:4,manualPending:false,selected:false,owned:true,packQuantity:1,packUnit:'each',packReviewed:true};
  const values=new Map([[FEATURES,JSON.stringify({version:1,essentials:[item]})],[SESSION,JSON.stringify({user:{id:'alice'}})],['stock',JSON.stringify({'rice|g':500})],['inventory','{}'],['ledger',JSON.stringify({generation:0})]]);
@@ -113,3 +114,34 @@ test('an in-flight update locks other stock and restock actions immediately',asy
  const first=h.api.remaining(h.food(),'50');assert.equal(h.api.isBusy(),true);assert.equal((await h.api.restock(h.food(),'1 kg',{extra:true})).ok,false);assert.equal((await h.api.remaining(h.household(),'0')).ok,false);await done();assert.equal((await first).ok,true);assert.equal(h.api.isBusy(),false);
 });
 test('without a document the review enhancement leaves existing UI owners untouched',()=>{const api=review.install({});api.refresh();api.open();api.destroy();});
+test('compact review projects the existing total and shortfall, including stock in other storage',()=>{
+ const row={kind:'food',qty:200,unit:'g',otherOwned:300,totalNeeded:1250,shortfall:750,manualNeeded:250};
+ assert.deepEqual(review.reviewAmounts(row),{atHome:500,planned:1250,toShop:750});
+ assert.equal(row.qty,200,'the summary never replaces this storage balance with a kitchen total');
+});
+test('compact review keeps unknown and incompatible stock distinct from confirmed zero',()=>{
+ const row={kind:'food',qty:null,unit:'g',otherOwned:0,totalNeeded:100,shortfall:100};
+ assert.deepEqual(review.reviewAmounts(row),{atHome:null,planned:100,toShop:null});
+ assert.deepEqual(review.reviewAmounts({...row,qty:0}),{atHome:0,planned:100,toShop:100});
+ assert.deepEqual(review.reviewAmounts({...row,qty:50,otherOwnedNeedsReview:true}),{atHome:null,planned:100,toShop:null});
+ assert.deepEqual(review.reviewAmounts({...row,qty:50,targetProblem:'Review units'}),{atHome:50,planned:null,toShop:null});
+});
+test('compact review never invents missing demand or infers a new shopping quantity',()=>{
+ assert.deepEqual(review.reviewAmounts({kind:'food',qty:250,unit:'g'}),{atHome:250,planned:null,toShop:null});
+ assert.deepEqual(review.reviewAmounts({kind:'food',qty:2,unit:'scoop',readOnly:true,totalNeeded:5,shortfall:3}),{atHome:2,planned:null,toShop:null});
+ const h=fixture(),before=[...h.values],row=h.food(),target=h.home.foodTarget(row,{otherRows:h.api.snapshot().rows.filter(other=>other.kind==='food'&&other.key!==row.key)});
+ assert.deepEqual(review.reviewAmounts(row,{foodTarget:target}),{atHome:500,planned:300,toShop:0});assert.deepEqual([...h.values],before);
+});
+test('compact review uses food targets for manual extras and staple stock without adding demand twice',()=>{
+ const h=fixture(),row=h.food();assert.equal(h.home.addShoppingBuy({name:'Rice',quantityText:'200 g',actorId:'alice',requestId:'compact-extra'}).ok,true);
+ const target=h.home.foodTarget(row);assert.deepEqual(review.reviewAmounts(row,{foodTarget:target}),{atHome:500,planned:700,toShop:200});
+ const staple=h.api.snapshot().rows.find(item=>item.staple),stapleTarget=h.home.foodTarget(staple,{requirements:[{key:'Honey',required:15,unit:'ml',cupboardRequired:true}]});
+ assert.deepEqual(review.reviewAmounts(staple,{foodTarget:stapleTarget}),{atHome:1,planned:1,toShop:0});
+});
+test('compact review delegates household balances and pending restock to the existing reconciler',()=>{
+ const row={kind:'household',qty:2,unit:'pack'},household={qty:4,unit:'pack',targetQty:4,ownedQty:2,manualPending:true},reconcile=globalThis.BBWeeklyEssentials.reconcile;
+ assert.deepEqual(review.reviewAmounts(row,{household,reconcile}),{atHome:2,planned:4,toShop:2});
+ assert.deepEqual(review.reviewAmounts(row,{household:{...household,manualPending:false},reconcile}),{atHome:2,planned:4,toShop:0});
+ assert.deepEqual(review.reviewAmounts({...row,qty:0},{household:{qty:4,unit:'pack',owned:false},reconcile}),{atHome:0,planned:4,toShop:4},'legacy required amounts are not replaced by the owned projection');
+ assert.deepEqual(review.reviewAmounts(row,{household:{...household,ownedQty:null},reconcile}),{atHome:null,planned:null,toShop:null});
+});
