@@ -2,6 +2,10 @@
 import {nativeMembershipURL} from './routing.mjs';
 const MONTHLY='uk.co.basketboss.premium.monthly',ANNUAL='uk.co.basketboss.premium.annual';
 const PRODUCTS=Object.freeze([MONTHLY,ANNUAL]);
+const PRODUCT_ERRORS=new Map([
+ ['BB_APPLE_PRODUCT_UNAVAILABLE','Apple did not return this subscription, so its purchase sheet could not be opened. Refresh prices or try again later.'],
+ ['BB_APPLE_PRODUCT_LOOKUP','Apple could not load this subscription, so its purchase sheet could not be opened. Check your App Store connection, then try again.']
+]);
 const UUID=/^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
 const accountChanged=()=>Object.assign(Error('Your account changed. Sign in to the account used for this purchase, then restore it.'),{code:'account_changed'});
 export function installNativeApplePurchases({plugin,apiURL,readSession,fetch:perform=globalThis.fetch,window:win=globalThis.window,isDeleting=()=>false,productLoadTimeoutMs=15000}){
@@ -100,7 +104,7 @@ export function installNativeApplePurchases({plugin,apiURL,readSession,fetch:per
   if(isDeleting())return {ok:false,reason:'account_deleting'};
   busy=true;emit({phase:'busy',message:'Please wait…'});
   try{return await operation(actor);}
-  catch(error){if(current(actor))emit({phase:'error',message:error.message||'Apple purchases are temporarily unavailable. Try again.'});return {ok:false,reason:error.code||'purchase_error',error:error.message};}
+  catch(error){const message=PRODUCT_ERRORS.get(error?.code)||error.message||'Apple purchases are temporarily unavailable. Try again.';if(current(actor))emit({phase:'error',message});return {ok:false,reason:error.code||'purchase_error',error:message};}
   finally{busy=false;if(!destroyed){emit({});if(queued.size)void drain();}}
  }
  async function subscribe(productId){return run(async actor=>{
@@ -116,7 +120,7 @@ export function installNativeApplePurchases({plugin,apiURL,readSession,fetch:per
   const context=await request('/api/apple/purchase-context',{pin:actor,body:{productId,...(testPurchase?{testPurchase:true}:{})}});requireCurrent(actor);
   if(testPurchase&&(context.environment!=='Sandbox'||context.sandboxPurchaseAllowed!==true))throw Error('Sandbox purchase testing could not be authorized for this account.');
   if(context.canPurchase!==true||!UUID.test(context.appAccountToken||'')||!context.productIds?.includes(productId))throw Error('Your account is not ready for an Apple purchase. Refresh your membership and try again.');
-  emit({message:'Confirm your subscription in Apple’s purchase sheet.'});
+  emit({message:'Checking this subscription with Apple…'});
   const purchase=await plugin.purchase({productId,appAccountToken:context.appAccountToken});
   requireCurrent(actor);
   if(purchase.status==='cancelled'){emit({phase:'ready',message:'Purchase cancelled. Your access has not changed.'});return {ok:true,status:'cancelled'};}

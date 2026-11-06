@@ -314,6 +314,41 @@ test('missing StoreKit metadata preserves an explicit fixed-ID native purchase a
  });
 });
 
+for(const productId of [MONTH,YEAR])test('an empty native lookup reports no purchase sheet and permits an explicit retry: '+productId,async()=>{
+ let attempt=0;
+ const lookup=deferred();
+ await withFixture({products:[],purchase:async()=>{
+  if(++attempt===1){await lookup.promise;throw Object.assign(Error('private StoreKit lookup details'),{code:'BB_APPLE_PRODUCT_UNAVAILABLE'});}
+  return {status:'purchased',transaction:{...transaction,productId}};
+ }},async h=>{
+  const messages=[],stop=h.controller.subscribeState(state=>messages.push(state.message));
+  const operation=h.controller.subscribe(productId);while(!purchases(h).length)await tick();
+  assert.equal(h.controller.state.message,'Checking this subscription with Apple…');assert.equal(h.controller.state.busy,true);
+  lookup.resolve();const result=await operation;
+  assert.equal(result.ok,false);assert.equal(result.reason,'BB_APPLE_PRODUCT_UNAVAILABLE');
+  assert.match(result.error,/Apple did not return this subscription.*sheet could not be opened/);
+  assert.equal(h.controller.state.message,result.error);assert.equal(h.controller.state.phase,'error');assert.equal(h.controller.state.busy,false);
+  assert.equal(h.controller.state.membershipState,'free');assert.equal(h.controller.state.premiumAccess,false);
+  assert.equal(h.controller.state.products.length,0);assert.equal(h.controller.state.purchaseServiceReady,true);
+  assert.equal(purchases(h).length,1);assert.deepEqual(purchases(h)[0][1],{productId,appAccountToken:TOKEN});
+  assert.equal(verifications(h).length,0);assert.equal(finishes(h).length,0);
+  assert.equal(h.calls.filter(c=>c[1]==='/api/apple/purchase-context').length,1);
+  assert.equal(messages.some(message=>/Confirm.*purchase sheet|private StoreKit|could not be completed/.test(message)),false);
+  assert.equal((await h.controller.subscribe(productId)).status,'verified');
+  assert.equal(purchases(h).length,2);assert.equal(verifications(h).length,1);assert.equal(finishes(h).length,1);assert.equal(h.controller.state.premiumAccess,true);
+  stop();
+ });
+});
+
+test('a failed native product lookup preserves its distinct safe reason without verifying or unlocking',async()=>withFixture({products:[],purchase:async()=>{throw Object.assign(Error('private StoreKit connection details'),{code:'BB_APPLE_PRODUCT_LOOKUP'});}},async h=>{
+ const result=await h.controller.subscribe(MONTH);
+ assert.equal(result.ok,false);assert.equal(result.reason,'BB_APPLE_PRODUCT_LOOKUP');
+ assert.match(result.error,/could not load this subscription.*sheet could not be opened.*App Store connection/);
+ assert.doesNotMatch(result.error,/private StoreKit|could not be completed/);assert.equal(h.controller.state.message,result.error);
+ assert.equal(h.controller.state.busy,false);assert.equal(h.controller.state.membershipState,'free');assert.equal(h.controller.state.premiumAccess,false);
+ assert.equal(purchases(h).length,1);assert.equal(verifications(h).length,0);assert.equal(finishes(h).length,0);
+}));
+
 test('StoreKit empty, partial, invalid and timeout states are explicit and never invent a price',async()=>{
  await withFixture({products:[]},async h=>{assert.equal(h.controller.state.productLoadState,'empty');assert.match(h.controller.state.productLoadMessage,/returned no subscription products/);});
  await withFixture({products:[{id:MONTH,displayPrice:'£4.99',subscriptionPeriod:{unit:'month',value:1}}]},async h=>{assert.equal(h.controller.state.productLoadState,'partial');assert.match(h.controller.state.productLoadMessage,/Annual Premium/);assert.equal((await h.controller.subscribe(YEAR)).ok,true);});

@@ -91,7 +91,7 @@ public final class BasketBossPurchasesPlugin: CAPPlugin, CAPBridgedPlugin {
     }
 
     private enum PurchaseBridgeError: Error {
-        case unsupportedProduct, unverified, wrongAccount, pendingTransaction, missingTransaction
+        case unsupportedProduct, productUnavailable, productLookupFailed, unverified, wrongAccount, pendingTransaction, missingTransaction
     }
 
     @MainActor private func remember(_ verification: VerificationResult<Transaction>) throws -> JSObject {
@@ -134,9 +134,11 @@ public final class BasketBossPurchasesPlugin: CAPPlugin, CAPBridgedPlugin {
     @MainActor private func product(_ id: String) async throws -> Product {
         guard Self.productIDs.contains(id) else { throw PurchaseBridgeError.unsupportedProduct }
         if let existing = products[id] { return existing }
-        let received = try await Product.products(for: [id])
+        let received: [Product]
+        do { received = try await Product.products(for: [id]) }
+        catch { throw PurchaseBridgeError.productLookupFailed }
         guard let found = received.first(where: { $0.id == id && $0.type == .autoRenewable }) else {
-            throw PurchaseBridgeError.unsupportedProduct
+            throw PurchaseBridgeError.productUnavailable
         }
         products[id] = found
         return found
@@ -226,6 +228,10 @@ public final class BasketBossPurchasesPlugin: CAPPlugin, CAPBridgedPlugin {
                 call.reject("This Apple subscription belongs to another BasketBoss account. Sign in to its original account or contact support.", "BB_APPLE_ACCOUNT_MISMATCH")
             } catch PurchaseBridgeError.unverified {
                 call.reject("Apple could not verify this purchase. Premium has not been activated.", "BB_APPLE_UNVERIFIED")
+            } catch PurchaseBridgeError.productUnavailable {
+                call.reject("Apple did not return this subscription, so its purchase sheet could not be opened. Refresh prices or try again later.", "BB_APPLE_PRODUCT_UNAVAILABLE")
+            } catch PurchaseBridgeError.productLookupFailed {
+                call.reject("Apple could not load this subscription, so its purchase sheet could not be opened. Check your App Store connection, then try again.", "BB_APPLE_PRODUCT_LOOKUP")
             } catch { call.reject("The Apple purchase could not be completed. Please try again.", "BB_APPLE_PURCHASE", error) }
         }
     }
