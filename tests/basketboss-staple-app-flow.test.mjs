@@ -85,8 +85,8 @@ test('a staple receipt adds a container to the existing row, clears Low and is i
  assert.equal((await h.receipt('ketchup-800-ml-receipt','Ketchup',800,'ml')).duplicate,true);assert.equal(h.stock()['ketchup|each'],2);assert.equal(h.shopping().find(row=>row.key.toLowerCase()==='ketchup')?.toBuy||0,0);
 });
 
-test('one tomato tin plus a measured receipt becomes one 800 g physical record usable by the next recipe',async()=>{
- const h=fixture({stock:{'chopped tomatoes|tin':1},inventory:{tomatoes:entry('Chopped tomatoes',1,'tin')},ingredients:[{key:'chopped tomatoes',required:600,unit:'g'}]});
+test('one reviewed tomato tin plus a measured receipt becomes one 800 g physical record usable by the next recipe',async()=>{
+ const h=fixture({stock:{'chopped tomatoes|tin':1},inventory:{tomatoes:entry('Chopped tomatoes',1,'tin',{packReviewed:true,packQuantity:400,packUnit:'g'})},ingredients:[{key:'chopped tomatoes',required:600,unit:'g'}]});
  assert.equal((await h.receipt('tomato-400-g-receipt','Chopped tomatoes',400,'g')).ok,true);assert.deepEqual(h.stock(),{'chopped tomatoes|g':800});
  const rows=Object.values(h.inventory()).filter(row=>row.selected&&policy.canonicalName(row.name)==='chopped tomatoes');assert.equal(rows.length,1);assert.equal(rows[0].qty,800);assert.equal(rows[0].unit,'g');assert.equal(h.shopping()[0].toBuy,0);
  assert.equal((await h.cook()).ok,true);assert.deepEqual(h.stock(),{'chopped tomatoes|g':200});assert.equal(h.shopping()[0].toBuy,400);
@@ -148,8 +148,8 @@ test('Finish shop credits one staple container, and its later measured receipt c
  assert.equal((await h.receipt('finished-ketchup-receipt','Ketchup',800,'ml')).ok,true);assert.deepEqual(h.stock(),{'ketchup|each':2},'the measured receipt nets the already credited container');
 });
 
-test('Finish shop merges an old tomato tin with the measured purchase and receipt netting keeps 800 g',async()=>{
- const h=fixture({stock:{'chopped tomatoes|tin':1},inventory:{tomatoes:entry('Chopped tomatoes',1,'tin')},ingredients:[{key:'chopped tomatoes',required:600,unit:'g'}]}),apply=finish(h,{id:'chopped tomatoes|g',name:'Chopped tomatoes',qty:400,unit:'g',aisle:'Cupboard / Pantry'});
+test('Finish shop merges a reviewed tomato tin with the measured purchase and receipt netting keeps 800 g',async()=>{
+ const h=fixture({stock:{'chopped tomatoes|tin':1},inventory:{tomatoes:entry('Chopped tomatoes',1,'tin',{packReviewed:true,packQuantity:400,packUnit:'g'})},ingredients:[{key:'chopped tomatoes',required:600,unit:'g'}]}),apply=finish(h,{id:'chopped tomatoes|g',name:'Chopped tomatoes',qty:400,unit:'g',aisle:'Cupboard / Pantry'});
  assert.equal(apply().count,1);assert.deepEqual(h.stock(),{'chopped tomatoes|g':800});assert.equal(Object.values(h.inventory()).filter(row=>row.selected).length,1);assert.equal(apply().count,0);
  assert.equal((await h.receipt('finished-tomato-receipt','Chopped tomatoes',400,'g')).ok,true);assert.deepEqual(h.stock(),{'chopped tomatoes|g':800});
 });
@@ -164,8 +164,8 @@ test('buying unrelated measured food never clears a manually Low condiment statu
  }
 });
 
-test('a historical Finish tomato tin nets its first measured receipt once without reimporting the legacy credit',async()=>{
- const h=fixture({stock:{'chopped tomatoes|tin':1},inventory:{tomatoes:entry('Chopped tomatoes',1,'tin')},ingredients:[{key:'chopped tomatoes',required:600,unit:'g'}]}),ledgerKey='basketboss_purchase_receipts_v1',legacyId='policy-trip|chopped tomatoes|tin';
+test('a historical Finish reviewed tomato tin nets its first measured receipt once without reimporting the legacy credit',async()=>{
+ const h=fixture({stock:{'chopped tomatoes|tin':1},inventory:{tomatoes:entry('Chopped tomatoes',1,'tin',{packReviewed:true,packQuantity:400,packUnit:'g'})},ingredients:[{key:'chopped tomatoes',required:600,unit:'g'}]}),ledgerKey='basketboss_purchase_receipts_v1',legacyId='policy-trip|chopped tomatoes|tin';
  h.storage.setItem(ledgerKey,JSON.stringify({[legacyId]:{name:'chopped tomatoes',unit:'tin',credited:1,qty:1,week:'policy-trip',stockBasis:'full-purchase'}}));
  assert.equal((await h.receipt('historical-tomato-receipt-1','Chopped tomatoes',400,'g')).ok,true);assert.deepEqual(h.stock(),{'chopped tomatoes|g':400},'the old deposited tin already represents this receipt purchase');
  assert.equal((await h.receipt('historical-tomato-receipt-1','Chopped tomatoes',400,'g')).duplicate,true);assert.deepEqual(h.stock(),{'chopped tomatoes|g':400});

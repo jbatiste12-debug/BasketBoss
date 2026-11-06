@@ -402,6 +402,7 @@
         if (result.localApplied === true) {
           state.done = true; state.frozen = true; recover.hidden = true; retry.hidden = true;
           status.textContent = state.draft?.addToPantry===false ? 'Reviewed receipt prices saved. At home and bought items were not changed.' : 'Receipt saved. Reviewed food and essentials restocked At home; matching current shopping items are marked bought.';
+          if (result.needsReducedReview) status.textContent += ' Some reduced purchases need review. Check their Use soon labels in At home.';
         } else {
           state.frozen = true; recover.hidden = false; retry.hidden = true;
           status.textContent = 'Receipt saved online, but this device has not updated Pantry. Check the saved receipt before confirming again.';

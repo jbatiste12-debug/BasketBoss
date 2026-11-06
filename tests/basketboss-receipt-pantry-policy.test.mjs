@@ -4,7 +4,7 @@ import {createRequire} from 'node:module';
 import fs from 'node:fs';
 import vm from 'node:vm';
 import * as Core from '../bb-receipt-inventory-core.mjs';
-import {normalizeReceiptLine,prepareReceiptConfirmation,validateReceiptConfirmation,normalizePantryState} from '../bb-receipt-inventory-core.mjs';
+import {normalizeReceiptLine,prepareReceiptConfirmation,validateReceiptConfirmation,normalizePantryState,normalizeFinishShopCredits,pantryLotMetadata} from '../bb-receipt-inventory-core.mjs';
 const require=createRequire(import.meta.url),quantity=require('../bb-receipt-quantity.js');
 const catalog={'ketchup|ml':{},'chopped tomatoes|tin':{},'milk|ml':{},'beef mince|g':{},'garlic|clove':{}};
 const row=(name,qty,unit,extra={})=>({name,loc:'cupboard',selected:true,qty,unit,bb173StockKey:name.toLowerCase()+'|'+unit,bb173StockValue:qty,...extra});
@@ -38,11 +38,83 @@ test('different storage locations retain their own allocations when converting t
  assert.deepEqual(result.stock,{'chopped tomatoes|g':800});assert.equal(result.inventory.a.bb173StockValue,400);assert.equal(result.inventory.b.bb173StockValue,400);assert.equal(result.inventory.b.loc,'fridge');
 });
 
+test('only aliases of the same reduced batch merge while edited details and other batches remain intact',()=>{
+ const reduced={version:1,actor:'lot-owner',urgent:true,at:'2026-11-05T12:00:00Z',sources:['purchase:one']};
+ const inventory={first:row('Rice',.2,'kg',{loc:'fridge',bbReduced:reduced,notes:'Keep in the blue tub',groupId:'my-grains'}),alias:row('Rice',100,'g',{loc:'fridge',bbReduced:{...reduced},notes:'Keep in the blue tub'}),later:row('Rice',50,'g',{loc:'fridge',bbReduced:{...reduced,at:'2026-11-06T12:00:00Z',sources:['purchase:two']}}),ordinary:row('Rice',75,'g',{loc:'fridge',notes:'For Sunday'})};
+ const result=normalizePantryState({'rice|kg':.2,'rice|g':225},inventory);
+ assert.deepEqual(result.stock,{'rice|g':425});assert.deepEqual(result.issues,[]);
+ assert.equal(Object.values(result.inventory).filter(value=>value.selected).length,3);
+ assert.equal(result.inventory.first.qty,300);assert.equal(result.inventory.first.notes,'Keep in the blue tub');assert.equal(result.inventory.first.groupId,'my-grains');
+ assert.equal(result.inventory.alias.policyMergedInto,'first');assert.equal(result.inventory.later.qty,50);assert.deepEqual(result.inventory.later.bbReduced.sources,['purchase:two']);
+ assert.equal(result.inventory.ordinary.qty,75);assert.equal(result.inventory.ordinary.bbReduced,undefined);assert.equal(result.inventory.ordinary.notes,'For Sunday');
+ const again=normalizePantryState(result.stock,result.inventory);assert.deepEqual(again.stock,result.stock);assert.deepEqual(again.inventory,result.inventory);
+});
+
+test('ordinary portions with distinct notes or dates retain their own allocations during unrelated normalization',()=>{
+ const inventory={old:row('Rice',100,'g',{notes:'Use first',useByISO:'2026-11-07'}),newer:row('Rice',200,'g',{notes:'For next week',useByISO:'2026-11-14'}),milk:row('Milk',1,'l')},stock={'rice|g':300,'milk|l':1};
+ const result=normalizePantryState(stock,inventory);assert.deepEqual(result.stock,{'rice|g':300,'milk|ml':1000});assert.deepEqual(result.issues,[]);
+ assert.equal(result.inventory.old.qty,100);assert.equal(result.inventory.newer.qty,200);assert.equal(result.inventory.old.notes,'Use first');assert.equal(result.inventory.newer.notes,'For next week');assert.equal(result.inventory.old.useByISO,'2026-11-07');assert.equal(result.inventory.newer.useByISO,'2026-11-14');assert.equal(Object.values(result.inventory).filter(value=>value.selected&&value.name==='Rice').length,2);
+ const again=normalizePantryState(result.stock,result.inventory);assert.deepEqual(again.stock,result.stock);assert.deepEqual(again.inventory,result.inventory);
+ assert.deepEqual(pantryLotMetadata(inventory.old),{notes:'Use first',useByISO:'2026-11-07'});
+ const aliases=normalizePantryState({'rice|kg':.1,'rice|g':200},{kg:row('Rice',.1,'kg',{notes:'Same reserve',lotId:'lot-one',useByISO:'2026-11-14'}),g:row('Rice',200,'g',{notes:'Same reserve',lotId:'lot-one',useByISO:'2026-11-14'})});
+ assert.equal(aliases.inventory.kg.qty,300);assert.equal(aliases.inventory.kg.notes,'Same reserve');assert.equal(aliases.inventory.g.selected,false);
+});
+
+test('dated and undated ordinary portions remain separate through repeated normalization in either row order',()=>{
+ for(const field of ['useByISO','bestBeforeISO','lotId','openedAt','notes','note'])for(const reversed of [false,true]){
+  const dated=row('Rice',100,'g',{[field]:field==='lotId'?'older-lot':'2026-11-07'}),undated=row('Rice',300,'g'),inventory=reversed?{undated,dated}:{dated,undated},stock={'rice|g':400};
+  const first=normalizePantryState(stock,inventory),again=normalizePantryState(first.stock,first.inventory);
+  assert.deepEqual(first.issues,[]);assert.deepEqual(first.stock,stock);assert.equal(first.inventory.dated.qty,100);assert.equal(first.inventory.undated.qty,300);assert.equal(first.inventory.undated[field],undefined);assert.equal(Object.values(first.inventory).filter(value=>value.selected).length,2);
+  assert.deepEqual(again.stock,stock);assert.deepEqual(again.inventory,first.inventory);assert.equal(again.inventory.undated[field],undefined);
+ }
+ const notes={older:row('Rice',100,'g',{notes:'Use first'}),newer:row('Rice',200,'g',{notes:'For next week'}),blank:row('Rice',300,'g')},three=normalizePantryState({'rice|g':600},notes),again=normalizePantryState(three.stock,three.inventory);
+ assert.equal(Object.values(three.inventory).filter(value=>value.selected).length,3);assert.equal(three.inventory.blank.qty,300);assert.equal(three.inventory.blank.notes,undefined);assert.deepEqual(again.inventory,three.inventory);
+});
+
+test('Finish-only exact conversion mode retains unreviewed estimates while defaults remain unchanged',()=>{
+ for(const [name,qty,unit,key]of [['Chopped tomatoes',2,'tin','chopped tomatoes'],['Beef mince',1,'pack','beef mince'],['Carrot',2,'each','carrot']]){
+  const stock={[key+'|'+unit]:qty},inventory={food:row(name,qty,unit,{bb173StockKey:key+'|'+unit})},result=normalizePantryState(stock,inventory,{exactConversionsOnly:true,preserveDisplayUnits:true});
+  assert.deepEqual(result.stock,stock,name);assert.deepEqual(result.inventory,inventory,name);assert.equal(result.issues[0].estimatedConversion,true,name);
+  assert.notDeepEqual(normalizePantryState(stock,inventory).stock,stock,'existing policy estimates remain available outside Finish');
+ }
+});
+
+test('historical Finish credits move only with exact measurements or reviewed container contents',()=>{
+ const id='historical-trip|chopped tomatoes|tin',credits={[id]:{name:'Chopped tomatoes',unit:'tin',qty:2,credited:2,week:'historical-trip',stockBasis:'full-purchase'}},input=JSON.stringify(credits);
+ const unreviewed=normalizeFinishShopCredits(credits);assert.deepEqual(unreviewed,credits);assert.equal(unreviewed['historical-trip|chopped tomatoes|g'],undefined,'two unreviewed tins cannot invent an 800 g receipt credit');assert.equal(JSON.stringify(credits),input);
+ const inventory={food:row('Chopped tomatoes',2,'tin',{packReviewed:true,packQuantity:300,packUnit:'g'})},reviewed=normalizeFinishShopCredits(credits,{inventory});
+ assert.equal(reviewed['historical-trip|chopped tomatoes|g'].policyAvailableCredit,600);assert.equal(reviewed[id].policyCreditMovedTo,'historical-trip|chopped tomatoes|g');assert.deepEqual(normalizeFinishShopCredits(reviewed,{inventory}),reviewed);
+ const metric=normalizeFinishShopCredits({'trip|rice|kg':{name:'Rice',unit:'kg',credited:.75,week:'trip'}});assert.equal(metric['trip|rice|g'].policyAvailableCredit,750);assert.equal(metric['trip|rice|kg'].policyCreditMovedTo,'trip|rice|g');
+ const counted={'trip|carrot|each':{name:'Carrot',unit:'each',credited:2,week:'trip'}};assert.deepEqual(normalizeFinishShopCredits(counted),counted,'a counted produce purchase is not an exact gram credit');
+ const staple=normalizeFinishShopCredits({'trip|ketchup|ml':{name:'Ketchup',unit:'ml',credited:800,week:'trip'}});assert.equal(staple['trip|ketchup|each'].policyAvailableCredit,1,'established staple container tracking remains available');
+});
+
+test('Finish-only display preservation keeps exact kilograms, litres and reviewed containers through repeat normalization',()=>{
+ for(const config of [
+  {name:'Rice',key:'rice',unit:'kg',qty:.5,base:'g',bought:500,expected:1},
+  {name:'Milk',key:'milk',unit:'l',qty:1,base:'ml',bought:500,expected:1.5},
+  {name:'Chopped tomatoes',key:'chopped tomatoes',unit:'tin',qty:2,base:'g',bought:400,expected:3,extra:{packReviewed:true,packQuantity:400,packUnit:'g'}}
+ ]){
+  const {name,key,unit,qty,base,bought,expected,extra={}}=config,stock={[key+'|'+unit]:qty,[key+'|'+base]:bought},inventory={original:row(name,qty,unit,{...extra,notes:'Keep my display'}),alias:row(name,bought,base,{notes:'Keep my display'})},options={exactConversionsOnly:true,preserveDisplayUnits:true};
+  const result=normalizePantryState(stock,inventory,options);assert.deepEqual(result.issues,[],name);assert.equal(result.inventory.original.unit,unit);assert.equal(result.inventory.original.qty,expected);assert.equal(result.inventory.original.notes,'Keep my display');assert.equal(result.inventory.original.bb173StockKey,key+'|'+base);assert.equal(result.inventory.original.bb173StockValue,result.stock[key+'|'+base]);assert.equal(result.inventory.alias.selected,false);
+  const again=normalizePantryState(result.stock,result.inventory,options);assert.deepEqual(again.stock,result.stock);assert.deepEqual(again.inventory,result.inventory);
+ }
+});
+
 test('unknown or conflicting package contents preserve every saved source for review',()=>{
  const inventory={mystery:row('Rice',2,'bag')},stock={'rice|bag':2},result=normalizePantryState(stock,inventory,{market:'UK'});
  assert.deepEqual(result.stock,stock);assert.deepEqual(result.inventory,inventory);assert.equal(result.issues.length,1);assert.match(result.issues[0].message,/kept.*review/i);
  const conflict={a:row('Beef mince',1,'pack',{packReviewed:true,packQuantity:250,packUnit:'g'}),b:row('Beef mince',1,'pack',{packReviewed:true,packQuantity:500,packUnit:'g'})};
  const second=normalizePantryState({'beef mince|pack':2},conflict,{market:'UK'});assert.deepEqual(second.stock,{'beef mince|pack':2});assert.deepEqual(second.inventory,conflict);assert.match(second.issues[0].message,/disagree/);
+});
+
+test('a legacy stock key cannot flatten a meaningful qualifier still present in its linked food name',()=>{
+ for(const [name,key]of [['Pasta (gluten-free)','pasta'],['Milk (oat)','milk'],['Rice (cooked)','rice']]){
+  const inventory={food:row(name,200,'g',{bb173StockKey:key+'|g',notes:'Keep this food separate'})},stock={[key+'|g']:200};
+  const result=normalizePantryState(stock,inventory);assert.deepEqual(result.stock,stock);assert.deepEqual(result.inventory,inventory);assert.equal(result.issues.length,1);assert.equal(result.issues[0].identityConflict,true,name);assert.match(result.issues[0].message,/identity disagree.*kept for review/i);
+ }
+ const aliases=normalizePantryState({'carrot|g':200},{food:row('Carrots',200,'g',{bb173StockKey:'carrot|g'})});assert.deepEqual(aliases.issues,[]);assert.equal(aliases.inventory.food.qty,200);
+ const unnamed=normalizePantryState({'rice|g':200},{food:row('',200,'g',{bb173StockKey:'rice|g'})});assert.deepEqual(unnamed.issues,[]);assert.equal(unnamed.inventory.food.qty,200);
 });
 
 test('receipt review hints match existing staple containers and use known measured equivalents',()=>{
@@ -72,7 +144,7 @@ test('whole Peppers and explicitly tagged ground pepper containers keep their di
 });
 
 test('cloud confirmation sends a canonical measured baseline and merges the reviewed receipt into one physical row',async()=>{
- const actor='policy_cloud_user',STOCK='basketboss_321_v7_measured_pantry',KITCHEN='basketboss_makeameal_v1_inventory',values=new Map([[STOCK,JSON.stringify({'chopped tomatoes|tin':1})],[KITCHEN,JSON.stringify({tin:row('Chopped tomatoes',1,'tin')})]]),writes=[];
+ const actor='policy_cloud_user',STOCK='basketboss_321_v7_measured_pantry',KITCHEN='basketboss_makeameal_v1_inventory',values=new Map([[STOCK,JSON.stringify({'chopped tomatoes|tin':1})],[KITCHEN,JSON.stringify({tin:row('Chopped tomatoes',1,'tin',{packReviewed:true,packQuantity:400,packUnit:'g'})})]]),writes=[];
  const storage={getItem:key=>values.get(key)??null,setItem(key,value){values.set(key,String(value));writes.push(key);},removeItem:key=>values.delete(key)},win={localStorage:storage};
  vm.runInNewContext(fs.readFileSync(new URL('../bb-receipt-inventory.js',import.meta.url),'utf8'),{window:win,console});
  let revision=0,serverStock={},receiptId=null;const bodies=[];

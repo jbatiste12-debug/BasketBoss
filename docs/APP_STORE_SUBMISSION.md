@@ -1,10 +1,10 @@
 # BasketBoss 1.0 — App Store submission
 
-Build 28 is installed in TestFlight. The user confirmed a real monthly Sandbox purchase, Premium activation, Premium retained after reopening, and unlocked Premium recipes. Restore Purchases still fails inside Apple's native account-sync operation after Apple Account verification. Build 29 is the next diagnostic candidate: it adds safe native restore details, ordinary cancellation handling and persistent verification messages. A TestFlight upload does not submit the app for App Review. Use the candidate's final verified release tag and results; do not infer Build 29 verification from Build 28's results.
+Build 30 is installed in TestFlight and displays the Restore diagnostic StoreKit.StoreKitError:2 after Apple Account verification. The user previously confirmed a real monthly Sandbox purchase, Premium retained after reopening and unlocked Premium recipes. Build 31 is the next candidate: Restore reads verified current StoreKit entitlements first and sends genuine signed purchases through the existing server checks; it forces Apple history sync only when no eligible current purchase is available. Successful real-device Restore remains unverified. A TestFlight upload does not submit an app for review.
 
 ## Upload the submission candidate
 
-On the Mac, open the candidate's `ios/App/App.xcworkspace`. Confirm Version **1.0**, Build **29**, bundle **uk.co.basketboss.app**, and signing team **J25UTUATD2**. Choose **Any iOS Device (arm64)**, then **Product → Archive**. In Organizer choose **Distribute App → App Store Connect → Upload**. If build 29 has already been uploaded, use the next unused build number.
+On the Mac, open the candidate's `ios/App/App.xcworkspace`. Confirm Version **1.0**, Build **31**, bundle **uk.co.basketboss.app**, and signing team **J25UTUATD2**. Choose **Any iOS Device (arm64)**, then **Product → Archive**. In Organizer choose **Distribute App → App Store Connect → Upload**. If build 31 has already been uploaded, use the next unused build number.
 
 Wait for Apple to finish processing the build, then open [BasketBoss in App Store Connect](https://appstoreconnect.apple.com/apps/6829160611/distribution). Select the processed build on the **iOS App 1.0 / Prepare for Submission** page. Uploading it to TestFlight alone does not select it for the App Store version.
 

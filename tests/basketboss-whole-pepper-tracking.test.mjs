@@ -51,12 +51,12 @@ test('recipe aggregation preserves whole food grams alongside the spice-containe
  assert.equal(spice.unit,'each');assert.equal(spice.required,1);
 });
 
-test('Finish shop pepper credits keep grams and migrate known whole-count proof to matching grams',()=>{
+test('Finish shop pepper credits retain exact grams and leave counted produce for a weight review',()=>{
  const credits={'trip-a|pepper|g':{name:'pepper',unit:'g',week:'trip-a',credited:400},'trip-b|pepper|each':{name:'Peppers',unit:'each',week:'trip-b',credited:2}};
  const normalized=core.normalizeFinishShopCredits(credits);
  assert.equal(normalized['trip-a|pepper|g'].credited,400);assert.equal(normalized['trip-a|pepper|each'],undefined);
- assert.equal(normalized['trip-b|pepper|g'].policyAvailableCredit,320);
- assert.equal(normalized['trip-b|pepper|each'].policyCreditMovedTo,'trip-b|pepper|g');
+ assert.equal(normalized['trip-b|pepper|g'],undefined,'a historical count cannot invent an estimated gram credit');
+ assert.deepEqual(normalized['trip-b|pepper|each'],credits['trip-b|pepper|each']);
 });
 
 test('known In stock containers cover Low containers elsewhere, while explicit unknown stays reviewable',()=>{
