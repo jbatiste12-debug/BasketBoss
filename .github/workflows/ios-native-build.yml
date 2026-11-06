@@ -106,8 +106,9 @@ permissions:
 
 jobs:
   simulator-build:
-    # Avoid the constrained ARM pool; this image includes the proven iOS 26.2 runtime.
-    runs-on: macos-15-intel
+    # Match the proven Apple Silicon StoreKit/keyboard runner. Keep the same
+    # unsigned iPhone archive, cold simulator install and strict Cook assertions.
+    runs-on: macos-26
     timeout-minutes: 60
     env:
       DEVELOPER_DIR: /Applications/Xcode_26.2.app/Contents/Developer
