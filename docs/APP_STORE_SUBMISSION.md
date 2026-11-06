@@ -1,10 +1,10 @@
 # BasketBoss 1.0 — App Store submission
 
-Build 27 has been uploaded to TestFlight. A TestFlight upload does not submit the app for App Review. Build 28 is the next submission candidate: it removes the native TestFlight activation control and includes the pantry search/add correction. Use its final verified release tag and results; do not infer Build 28 verification from Build 27's earlier results.
+Build 28 is installed in TestFlight. The user confirmed a real monthly Sandbox purchase, Premium activation, Premium retained after reopening, and unlocked Premium recipes. Restore Purchases still fails inside Apple's native account-sync operation after Apple Account verification. Build 29 is the next diagnostic candidate: it adds safe native restore details, ordinary cancellation handling and persistent verification messages. A TestFlight upload does not submit the app for App Review. Use the candidate's final verified release tag and results; do not infer Build 29 verification from Build 28's results.
 
 ## Upload the submission candidate
 
-On the Mac, open the candidate's `ios/App/App.xcworkspace`. Confirm Version **1.0**, Build **28**, bundle **uk.co.basketboss.app**, and signing team **J25UTUATD2**. Choose **Any iOS Device (arm64)**, then **Product → Archive**. In Organizer choose **Distribute App → App Store Connect → Upload**. If build 28 has already been uploaded, use the next unused build number.
+On the Mac, open the candidate's `ios/App/App.xcworkspace`. Confirm Version **1.0**, Build **29**, bundle **uk.co.basketboss.app**, and signing team **J25UTUATD2**. Choose **Any iOS Device (arm64)**, then **Product → Archive**. In Organizer choose **Distribute App → App Store Connect → Upload**. If build 29 has already been uploaded, use the next unused build number.
 
 Wait for Apple to finish processing the build, then open [BasketBoss in App Store Connect](https://appstoreconnect.apple.com/apps/6829160611/distribution). Select the processed build on the **iOS App 1.0 / Prepare for Submission** page. Uploading it to TestFlight alone does not select it for the App Store version.
 
@@ -19,7 +19,7 @@ The only Apple products to submit are:
 
 Complete each product's required metadata, availability, price and review screenshot. Include both in the same first-version submission. Depending on the current App Store Connect screen, attach them in the version's **In-App Purchases and Subscriptions** section or add them to the same draft review submission; verify both appear with app version 1.0 before submitting. Do not recreate the deleted Apple Founder product. The existing web Founder offer remains separate.
 
-Provide a dedicated, confirmed BasketBoss review login in **App Review Information → Sign-in information**. Put its password directly in App Store Connect. Apple reviewers use Sandbox purchases; the BasketBoss account's Auth UUID must be permitted by the server's Sandbox configuration. A pre-existing Free account allows Apple to exercise the real subscription flow. An existing Beta grant does not prove an Apple purchase works. Confirm a real Sandbox purchase grants that same account Premium and Restore Purchases works before treating the purchase path as live-verified.
+Provide a dedicated, confirmed BasketBoss review login in **App Review Information → Sign-in information**. Put its password directly in App Store Connect. Apple reviewers use Sandbox purchases; the BasketBoss account's Auth UUID must be permitted by the server's Sandbox configuration. Save and redeploy Production after changing that allowlist. A review account may already have verified Sandbox Premium: real Apple purchase options remain available to that authorized Sandbox session. An existing Beta grant does not prove an Apple purchase works. A real Sandbox purchase and recipe access have been user-confirmed for Build 28; successful Restore Purchases remains required before the full purchase flow is signed off.
 
 The App Store candidate contains no TestFlight activation control. Existing verified complimentary grants remain valid under the existing server rules. The PWA retains normal web plans and checkout; the native app uses StoreKit.
 

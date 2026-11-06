@@ -108,6 +108,7 @@ jobs:
       - name: Verify Apple, web billing, household and account regression suites
         env:
           BB_PGLITE_MODULE: ${{ runner.temp }}/bb-apple-pg/node_modules/@electric-sql/pglite
+          BB_RECEIPT_PGLITE_PATH: ${{ runner.temp }}/bb-apple-pg/node_modules/@electric-sql/pglite/dist/index.js
         run: node --test --test-isolation=none tests/*.test.mjs
       - name: Install isolated Cloudflare runtime verification tools
         run: npm install --prefix "$RUNNER_TEMP/bb-apple-worker" --package-lock=false --ignore-scripts --no-audit --no-fund wrangler@4.156.0

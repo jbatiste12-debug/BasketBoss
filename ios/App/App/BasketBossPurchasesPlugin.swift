@@ -91,7 +91,7 @@ public final class BasketBossPurchasesPlugin: CAPPlugin, CAPBridgedPlugin {
     }
 
     private enum PurchaseBridgeError: Error {
-        case unsupportedProduct, unverified, wrongAccount, pendingTransaction, missingTransaction
+        case unsupportedProduct, productUnavailable, productLookupFailed, unverified, wrongAccount, pendingTransaction, missingTransaction
     }
 
     @MainActor private func remember(_ verification: VerificationResult<Transaction>) throws -> JSObject {
@@ -134,9 +134,11 @@ public final class BasketBossPurchasesPlugin: CAPPlugin, CAPBridgedPlugin {
     @MainActor private func product(_ id: String) async throws -> Product {
         guard Self.productIDs.contains(id) else { throw PurchaseBridgeError.unsupportedProduct }
         if let existing = products[id] { return existing }
-        let received = try await Product.products(for: [id])
+        let received: [Product]
+        do { received = try await Product.products(for: [id]) }
+        catch { throw PurchaseBridgeError.productLookupFailed }
         guard let found = received.first(where: { $0.id == id && $0.type == .autoRenewable }) else {
-            throw PurchaseBridgeError.unsupportedProduct
+            throw PurchaseBridgeError.productUnavailable
         }
         products[id] = found
         return found
@@ -226,6 +228,10 @@ public final class BasketBossPurchasesPlugin: CAPPlugin, CAPBridgedPlugin {
                 call.reject("This Apple subscription belongs to another BasketBoss account. Sign in to its original account or contact support.", "BB_APPLE_ACCOUNT_MISMATCH")
             } catch PurchaseBridgeError.unverified {
                 call.reject("Apple could not verify this purchase. Premium has not been activated.", "BB_APPLE_UNVERIFIED")
+            } catch PurchaseBridgeError.productUnavailable {
+                call.reject("Apple did not return this subscription, so its purchase sheet could not be opened. Refresh prices or try again later.", "BB_APPLE_PRODUCT_UNAVAILABLE")
+            } catch PurchaseBridgeError.productLookupFailed {
+                call.reject("Apple could not load this subscription, so its purchase sheet could not be opened. Check your App Store connection, then try again.", "BB_APPLE_PRODUCT_LOOKUP")
             } catch { call.reject("The Apple purchase could not be completed. Please try again.", "BB_APPLE_PURCHASE", error) }
         }
     }
@@ -239,7 +245,72 @@ public final class BasketBossPurchasesPlugin: CAPPlugin, CAPBridgedPlugin {
             do {
                 try await AppStore.sync()
                 call.resolve(["transactions": await self.collectTransactions()])
-            } catch { call.reject("Apple purchases could not be restored. Check your Apple Account and try again.", "BB_APPLE_RESTORE", error) }
+            } catch { Self.respondToRestoreFailure(error, call: call) }
+        }
+    }
+
+    enum RestoreFailure: Equatable {
+        case cancelled
+        case failed(code: String, diagnostics: [String])
+    }
+
+    // AppStore.sync can wrap StoreKit failures in other NSError domains. Inspect
+    // only a bounded underlying-error chain; never expose descriptions, arbitrary
+    // domains, userInfo, receipts, or Apple Account details to JavaScript.
+    static func classifyRestoreFailure(_ error: Error) -> RestoreFailure {
+        let allowedDomains: Set<String> = [
+            SKErrorDomain, "StoreKitErrorDomain", "StoreKit.StoreKitError", "ASDErrorDomain", "AMSErrorDomain",
+            NSURLErrorDomain, NSCocoaErrorDomain
+        ]
+        var current: Error? = error
+        var visited: [NSError] = []
+        var diagnostics: [String] = []
+        var cancelled = false
+        var network = false
+        for _ in 0..<8 {
+            guard let value = current else { break }
+            let nativeError = value as NSError
+            guard !visited.contains(where: { $0 === nativeError }) else { break }
+            visited.append(nativeError)
+            let domain = nativeError.domain
+            let code = nativeError.code
+            // These documented associated errors need not appear under
+            // NSUnderlyingErrorKey when Swift bridges StoreKitError to NSError.
+            var storeKitUnderlyingError: Error?
+            if let storeKitError = value as? StoreKitError {
+                switch storeKitError {
+                case .userCancelled:
+                    cancelled = true
+                case .networkError(let underlying):
+                    storeKitUnderlyingError = underlying
+                case .systemError(let underlying):
+                    storeKitUnderlyingError = underlying
+                default:
+                    break
+                }
+            }
+            if domain == SKErrorDomain && code == SKError.Code.paymentCancelled.rawValue {
+                cancelled = true
+            }
+            if domain == NSURLErrorDomain { network = true }
+            if allowedDomains.contains(domain) && diagnostics.count < 3 {
+                diagnostics.append("\(domain):\(code)")
+            }
+            current = storeKitUnderlyingError ?? (nativeError.userInfo[NSUnderlyingErrorKey] as? Error)
+        }
+        if cancelled { return .cancelled }
+        return .failed(code: network ? "BB_APPLE_RESTORE_NETWORK" : "BB_APPLE_RESTORE", diagnostics: diagnostics)
+    }
+
+    static func respondToRestoreFailure(_ error: Error, call: CAPPluginCall) {
+        switch classifyRestoreFailure(error) {
+        case .cancelled:
+            call.resolve(["status": "cancelled", "transactions": []])
+        case .failed(let code, let diagnostics):
+            // Passing the raw Error here could expose sensitive data if the
+            // Capacitor serializer changes. Only the explicit safe data travels.
+            call.reject("Apple purchases could not be restored. Please try again.", code, nil,
+                        ["restoreDiagnostics": diagnostics])
         }
     }
 
