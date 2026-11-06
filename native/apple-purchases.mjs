@@ -6,11 +6,20 @@ const PRODUCT_ERRORS=new Map([
  ['BB_APPLE_PRODUCT_UNAVAILABLE','Apple did not return this subscription, so its purchase sheet could not be opened. Refresh prices or try again later.'],
  ['BB_APPLE_PRODUCT_LOOKUP','Apple could not load this subscription, so its purchase sheet could not be opened. Check your App Store connection, then try again.']
 ]);
+const RESTORE_DIAGNOSTIC=/^(?:SKErrorDomain|StoreKitErrorDomain|StoreKit\.StoreKitError|ASDErrorDomain|AMSErrorDomain|NSURLErrorDomain|NSCocoaErrorDomain):(?:0|-?[1-9]\d{0,18})$/;
+function restoreErrorMessage(error){
+ const message=error?.code==='BB_APPLE_RESTORE_NETWORK'?'Apple could not restore purchases because the App Store connection is unavailable. Check your connection, then try Restore Purchases again.':'Apple purchases could not be restored. Please try again.';
+ // Only the explicit native domain/code payload is suitable for display. Never
+ // expose StoreKit descriptions, userInfo or arbitrary provider error text.
+ const supplied=error?.data?.restoreDiagnostics;
+ const diagnostics=Array.isArray(supplied)?supplied.filter(value=>typeof value==='string'&&value.length<=43&&value.trim()===value&&RESTORE_DIAGNOSTIC.test(value)).slice(0,3):[];
+ return message+(diagnostics.length?' Support code: '+diagnostics.join(', ')+'.':'');
+}
 const UUID=/^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
 const accountChanged=()=>Object.assign(Error('Your account changed. Sign in to the account used for this purchase, then restore it.'),{code:'account_changed'});
 export function installNativeApplePurchases({plugin,apiURL,readSession,fetch:perform=globalThis.fetch,window:win=globalThis.window,isDeleting=()=>false,productLoadTimeoutMs=15000}){
  const url=value=>typeof apiURL==='function'?apiURL(value):String(apiURL||'')+value;
- let destroyed=false,generation=0,viewRevision=0,busy=false,verificationFailure=null;
+ let destroyed=false,generation=0,viewRevision=0,busy=false,verificationFailure=null,nativeRestoreFailure=null;
  const listenerHandles=[];
  const identity=()=>{const s=readSession();return JSON.stringify([s?.user?.id||null,s?.access_token||null,s?.expires_at||null]);};
  let lastIdentity=identity();
@@ -66,8 +75,8 @@ export function installNativeApplePurchases({plugin,apiURL,readSession,fetch:per
  }
  async function refresh(options={}){
   if(destroyed)return {...state};
-  const staleFailure=verificationFailure&&verificationFailure.identity!==identity();
-  if(staleFailure)verificationFailure=null;
+  const staleFailure=(verificationFailure&&verificationFailure.identity!==identity())||(nativeRestoreFailure&&nativeRestoreFailure.identity!==identity());
+  if(staleFailure){verificationFailure=null;nativeRestoreFailure=null;}
   const revision=++viewRevision,actor=pin(),epoch=generation;
   if(isDeleting()){emit({available:false,purchaseServiceReady:false,sandboxPurchaseAllowed:false,authenticated:!!actor,premiumAccess:false,membershipState:'unavailable',phase:'paused',message:'Account deletion is in progress. Purchases are paused.'});return {...state};}
   emit({authenticated:!!actor,membershipState:actor?'checking':'signed_out',...(staleFailure?{phase:'loading',message:'Checking Apple subscriptions…'}:{}),...(options.membershipOnly===true?{}:{productLoadState:'loading',productLoadMessage:'Loading subscription prices from Apple…'})});
@@ -83,11 +92,14 @@ export function installNativeApplePurchases({plugin,apiURL,readSession,fetch:per
    if(actor&&membership.reason==='billing_not_enabled')throw Error('Membership verification is not available right now.');
    const premium=membership?.premiumAccess===true;
    if(premium||!actor||verificationFailure?.identity!==identity())verificationFailure=null;
-   const verificationMessage=verificationFailure?.message;
+   if(!actor||nativeRestoreFailure?.identity!==identity())nativeRestoreFailure=null;
+   // A successful membership read does not explain an earlier native sync
+   // failure, even when that membership already provides Premium.
+   const failureMessage=nativeRestoreFailure?.message||verificationFailure?.message;
    const provider=membership?.provider||membership?.subscription?.provider||(membership?.householdRole==='partner'?'household':premium?'paddle':null);
-   emit({...catalog,authenticated:!!actor,premiumAccess:premium,membershipState:premium?'premium':actor?'free':'signed_out',provider,subscription:membership?.subscription||null,beta:provider==='testflight_beta'?membership?.beta||null:null,phase:verificationMessage?'error':'ready',message:premium?(provider==='testflight_beta'?'Your complimentary Premium access is active without a subscription charge.':provider==='apple'?'Your Apple Premium subscription is available.':'Your existing Premium membership is available. You do not need another subscription.'):verificationMessage||(
-    !catalog.available?(catalog.availabilityMessage||'Apple subscription options remain below. Try a plan or refresh prices. Your Free recipes remain available.'):requestedProductId?(actor?'Review the subscription options below, then choose a plan to continue your Apple purchase.':'Sign in or create your BasketBoss account, then choose a plan to continue your Apple purchase.'):actor?'Choose a plan to subscribe with Apple, or restore an existing Apple purchase.':'Use 100 recipes free. Sign in or create your BasketBoss account before subscribing.')});
-  }catch(error){if(!destroyed&&revision===viewRevision&&epoch===generation&&(!actor||current(actor)))emit({...catalog,available:false,authenticated:!!actor,premiumAccess:false,membershipState:actor?'unavailable':'signed_out',provider:null,subscription:null,beta:null,phase:'error',message:error.message||'Membership could not be checked. Try again.'});}
+   emit({...catalog,authenticated:!!actor,premiumAccess:premium,membershipState:premium?'premium':actor?'free':'signed_out',provider,subscription:membership?.subscription||null,beta:provider==='testflight_beta'?membership?.beta||null:null,phase:failureMessage?'error':'ready',message:failureMessage||(premium?(provider==='testflight_beta'?'Your complimentary Premium access is active without a subscription charge.':provider==='apple'?'Your Apple Premium subscription is available.':'Your existing Premium membership is available. You do not need another subscription.'):(
+    !catalog.available?(catalog.availabilityMessage||'Apple subscription options remain below. Try a plan or refresh prices. Your Free recipes remain available.'):requestedProductId?(actor?'Review the subscription options below, then choose a plan to continue your Apple purchase.':'Sign in or create your BasketBoss account, then choose a plan to continue your Apple purchase.'):actor?'Choose a plan to subscribe with Apple, or restore an existing Apple purchase.':'Use 100 recipes free. Sign in or create your BasketBoss account before subscribing.'))});
+  }catch(error){if(!destroyed&&revision===viewRevision&&epoch===generation&&(!actor||current(actor)))emit({...catalog,available:false,authenticated:!!actor,premiumAccess:false,membershipState:actor?'unavailable':'signed_out',provider:null,subscription:null,beta:null,phase:'error',message:nativeRestoreFailure?.message||verificationFailure?.message||error.message||'Membership could not be checked. Try again.'});}
   return {...state};
  }
  function notifyMembership(){if(win?.dispatchEvent&&win?.Event)win.dispatchEvent(new win.Event('basketboss:apple-membership-updated'));}
@@ -108,11 +120,12 @@ export function installNativeApplePurchases({plugin,apiURL,readSession,fetch:per
    return result;
   }catch(error){retainVerificationFailure(actor,purchaseErrorMessage(error),actorIdentity);throw error;}
  }
- async function run(operation){
+ async function run(operation,{explicit=true}={}){
   if(busy)return {ok:false,reason:'busy'};
   const actor=pin();
   if(!actor){emit({authenticated:false,phase:'error',message:'Sign in to your BasketBoss account to continue.'});return {ok:false,reason:'signin_required'};}
   if(isDeleting())return {ok:false,reason:'account_deleting'};
+  if(explicit)nativeRestoreFailure=null;
   busy=true;emit({phase:'busy',message:'Please wait…'});
   try{return await operation(actor);}
   catch(error){const message=purchaseErrorMessage(error);if(current(actor))emit({phase:'error',message});return {ok:false,reason:error.code||'purchase_error',error:message};}
@@ -145,12 +158,22 @@ export function installNativeApplePurchases({plugin,apiURL,readSession,fetch:per
  });}
  async function restore(){return run(async actor=>{
   verificationFailure=null;
+  const actorIdentity=identity();
   // Confirm that the verification service is ready before opening Apple restore.
   const config=await request('/api/apple/config',{pin:actor,authenticated:false});requireCurrent(actor);
   if(config.available!==true)throw Error('Apple purchase verification is unavailable. Try Restore Purchases again later.');
   emit({message:'Restoring purchases from your Apple Account…'});
-  const restored=await plugin.restorePurchases();requireCurrent(actor);
-  const transactions=Array.isArray(restored.transactions)?restored.transactions:[];
+  let restored;
+  try{restored=await plugin.restorePurchases();}
+  catch(error){
+   requireCurrent(actor);
+   const message=restoreErrorMessage(error);
+   if(identity()===actorIdentity)nativeRestoreFailure={identity:actorIdentity,message};
+   throw Object.assign(Error(message),{code:error?.code==='BB_APPLE_RESTORE_NETWORK'?'BB_APPLE_RESTORE_NETWORK':'BB_APPLE_RESTORE'});
+  }
+  requireCurrent(actor);
+  if(restored?.status==='cancelled'){emit({phase:'ready',message:'Restore cancelled. Your access has not changed.'});return {ok:true,status:'cancelled'};}
+  const transactions=Array.isArray(restored?.transactions)?restored.transactions:[];
   let active=false;
   for(const transaction of transactions){const result=await verify(transaction,actor);active=active||result.premiumAccess===true;}
   await refresh();requireCurrent(actor);
@@ -191,7 +214,7 @@ export function installNativeApplePurchases({plugin,apiURL,readSession,fetch:per
    // Refresh can clear this warning only when the server confirms Premium.
    if(failedMessage)retainVerificationFailure(actor,failedMessage,actorIdentity);
    await refresh();return {ok:true};
-  });
+  },{explicit:false});
  }
  function enqueue(event){for(const transaction of event?.transactions||[])if(transaction?.id)queued.set(transaction.id,transaction);if(!busy&&queued.size)void drain();}
  function receivePurchaseIntent(event){
@@ -206,7 +229,7 @@ export function installNativeApplePurchases({plugin,apiURL,readSession,fetch:per
   }catch{}
   void refresh();
  }
- function invalidate(event){const next=identity();if(event?.type==='basketboss:session-changed'&&next===lastIdentity&&!isDeleting()){void refresh();return;}lastIdentity=next;verificationFailure=null;generation++;viewRevision++;for(const request of requests)request.abort();queued.clear();emit({authenticated:!!pin(),premiumAccess:false,sandboxPurchaseAllowed:false,appleEnvironment:null,membershipState:pin()?'checking':'signed_out',provider:null,subscription:null,beta:null,phase:'loading',message:'Checking Apple subscriptions…'});void refresh().then(recoverPending);}
+ function invalidate(event){const next=identity();if(event?.type==='basketboss:session-changed'&&next===lastIdentity&&!isDeleting()){void refresh();return;}lastIdentity=next;verificationFailure=null;nativeRestoreFailure=null;generation++;viewRevision++;for(const request of requests)request.abort();queued.clear();emit({authenticated:!!pin(),premiumAccess:false,sandboxPurchaseAllowed:false,appleEnvironment:null,membershipState:pin()?'checking':'signed_out',provider:null,subscription:null,beta:null,phase:'loading',message:'Checking Apple subscriptions…'});void refresh().then(recoverPending);}
  const accountEvents=['basketboss:session-changed','basketboss:account-deletion-started','basketboss:account-deletion-cancelled','basketboss:account-deletion-deleted'];
  for(const event of accountEvents)win?.addEventListener?.(event,invalidate);
  const onStorage=event=>{if(event.key==='basketboss_cloud_session_v1')invalidate(event);};
@@ -215,5 +238,5 @@ export function installNativeApplePurchases({plugin,apiURL,readSession,fetch:per
  if(plugin?.addListener)for(const [name,listener]of [['purchaseIntentReceived',receivePurchaseIntent],['transactionsUpdated',enqueue]])Promise.resolve(plugin.addListener(name,listener)).then(handle=>{if(destroyed)void handle?.remove?.();else listenerHandles.push(handle);}).catch(()=>{});
  async function recoverPending(){const actor=pin();if(!destroyed&&actor&&!isDeleting()&&plugin?.getPendingTransactions){try{const result=await plugin.getPendingTransactions();if(current(actor))enqueue(result);}catch{}}}
  const ready=refresh().then(recoverPending);
- return {ready,subscribe,restore,manage,claimBeta,refresh,loadProducts,subscribeState(listener){listeners.add(listener);listener({...state,products:[...state.products]});return ()=>listeners.delete(listener);},get state(){return {...state,products:[...state.products]};},destroy(){destroyed=true;verificationFailure=null;generation++;for(const timer of productTimers)clearTimeout(timer);productTimers.clear();for(const request of requests)request.abort();requests.clear();queued.clear();listeners.clear();for(const handle of listenerHandles)void handle?.remove?.();for(const event of accountEvents)win?.removeEventListener?.(event,invalidate);win?.removeEventListener?.('storage',onStorage);win?.removeEventListener?.('focus',onFocus);}};
+ return {ready,subscribe,restore,manage,claimBeta,refresh,loadProducts,subscribeState(listener){listeners.add(listener);listener({...state,products:[...state.products]});return ()=>listeners.delete(listener);},get state(){return {...state,products:[...state.products]};},destroy(){destroyed=true;verificationFailure=null;nativeRestoreFailure=null;generation++;for(const timer of productTimers)clearTimeout(timer);productTimers.clear();for(const request of requests)request.abort();requests.clear();queued.clear();listeners.clear();for(const handle of listenerHandles)void handle?.remove?.();for(const event of accountEvents)win?.removeEventListener?.(event,invalidate);win?.removeEventListener?.('storage',onStorage);win?.removeEventListener?.('focus',onFocus);}};
 }
