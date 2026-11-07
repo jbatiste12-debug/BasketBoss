@@ -9,28 +9,35 @@
 <meta name="apple-mobile-web-app-title" content="BasketBoss">
 <link rel="apple-touch-icon" href="/icons/basketboss-crowned-v1766-192.png">
 <link rel="manifest" href="/manifest.webmanifest">
-  <meta name="description" content="Plan family meals, use what you have and shop for what is missing. Start with 100 free recipes; all 500 with Premium, plus AI tools and household sharing.">
+  <meta name="description" content="Plan meals around food already at home, shop for what's missing and track your spend. 100 free recipes; all 500 with Premium.">
   <link rel="canonical" href="https://basketboss.co.uk/">
   <meta property="og:site_name" content="BasketBoss">
   <meta property="og:locale" content="en_GB">
   <meta name="twitter:card" content="summary_large_image">
-  <meta name="twitter:title" content="BasketBoss | Your kitchen, made simple">
-  <meta name="twitter:description" content="Plan meals, manage your pantry, shop and cook. Start with 100 free recipes; all 500 with Premium, plus optional AI tools.">
+  <meta name="twitter:title" content="BasketBoss | Shop your kitchen first">
+  <meta name="twitter:description" content="Shop your kitchen first. Plan meals around what you have and buy the gaps. 100 free recipes; all 500 with Premium.">
   <meta name="twitter:image" content="https://basketboss.co.uk/basketboss-social-preview-20261028.png">
+  <meta name="twitter:image:alt" content="BasketBoss meal planning, pantry and shopping app">
   <script type="application/ld+json">{"@context":"https://schema.org","@type":"SoftwareApplication","name":"BasketBoss","url":"https://basketboss.co.uk/","description":"Family meal planning and weekly shopping lists with 100 free recipes, all 500 with Premium, serving adjustments and optional Premium household partner sharing.","applicationCategory":"LifestyleApplication","operatingSystem":"Web browser","offers":{"@type":"Offer","price":"0","priceCurrency":"GBP","url":"https://basketboss.co.uk/app","description":"Free recipes and basic planning; optional paid Premium subscription."},"featureList":["100 free recipes; all 500 with Premium","Family meal planning","Adjust servings per meal","Ingredient choices for Auto-fill","Premium quicker-dinner swaps within the current week","Optional Premium conversational Cook Mentor","Premium photo-to-meal AI with illustrative meal pictures","Saved weeks and pantry-aware Auto-fill","UK and US ingredient display units","Shopping lists by aisle","At home food and household stock checks","Confirm and reconcile shopping once","One weekly advanced shopping trip with a Free account","Optional Premium household partner sharing"]}</script>
   <meta property="og:type" content="website">
-  <meta property="og:title" content="BasketBoss | Your kitchen, made simple">
-  <meta property="og:description" content="Your kitchen, made simple. Plan meals, track your pantry and shop for what is missing. 100 free recipes; all 500 with Premium.">
+  <meta property="og:title" content="BasketBoss | Shop your kitchen first">
+  <meta property="og:description" content="Shop your kitchen first. Plan meals around what you have and buy the gaps. 100 free recipes; all 500 with Premium.">
   <meta property="og:url" content="https://basketboss.co.uk/">
   <meta property="og:image" content="https://basketboss.co.uk/basketboss-social-preview-20261028.png">
+  <meta property="og:image:secure_url" content="https://basketboss.co.uk/basketboss-social-preview-20261028.png">
+  <meta property="og:image:type" content="image/png">
+  <meta property="og:image:width" content="1200">
+  <meta property="og:image:height" content="630">
+  <meta property="og:image:alt" content="BasketBoss meal planning, pantry and shopping app">
   <link rel="icon" href="icons/basketboss-crowned-v1766-192.png" type="image/png">
-  <link rel="stylesheet" href="bb-family-landing.css?v=20261105-simple1">
+  <link rel="stylesheet" href="bb-family-landing.css?v=20261106-app-store1">
   <script src="bb-family-landing.js?v=20261105-simple1" defer></script>
-  <title>BasketBoss | Meal Planning, Pantry &amp; Shopping</title>
+  <title>BasketBoss | Shop Your Kitchen First</title>
   <script>
   /* Existing members go straight into the unchanged app. This checks only that
      a session/completion marker exists; it never reads or mutates saved plans. */
   (function(){try {
+    if(location.hash==='#features')return;
     var standalone=window.matchMedia&&window.matchMedia('(display-mode: standalone)').matches;
     var session=JSON.parse(localStorage.getItem('basketboss_cloud_session_v1')||'null');
     var active=!!(session&&session.user&&session.user.id&&typeof session.access_token==='string'&&Number(session.expires_at)*1000>Date.now()+5000);
@@ -52,11 +59,15 @@
     <section class="hero wrap" aria-labelledby="hero-title">
       <div class="hero-copy">
         <p class="eyebrow">PLAN SMARTER. EAT BETTER. LESS WASTE.</p>
-        <h1 id="hero-title">Aim to save<br><span>£25+ a week.</span></h1>
-        <p class="savings-note">An example target; your savings will vary.</p>
-        <p class="hero-description">Waste less food. Automate your kitchen stock. Plan meals around what you have, then buy only what’s missing.</p>
-        <a class="button hero-cta" href="/app" data-bbc-free>Start free <span aria-hidden="true">→</span></a>
+        <h1 id="hero-title">Shop your kitchen<br><span>before the supermarket.</span></h1>
+        <p class="hero-description">Check your fridge, freezer and cupboards. BasketBoss helps plan family meals around what’s there, then lists what’s missing.</p>
+        <ul class="hero-benefits"><li>Plan meals around food already at home.</li><li>Buy the gaps and waste less food.</li><li>Keep your running shopping total in view.</li></ul>
+        <div class="hero-actions">
+          <a class="app-store-badge" href="https://apps.apple.com/app/id6829160611" aria-label="Download BasketBoss on the App Store" data-bb-app-store-launch hidden><span class="badge-highlight" aria-hidden="true"></span><img src="/landing-assets/download-on-the-app-store.svg" alt="Download on the App Store" width="120" height="40" decoding="async"></a>
+          <a class="button hero-cta" href="/app" data-bbc-free><span data-bb-web-hero-label>Start free</span> <span aria-hidden="true">→</span></a>
+        </div>
         <p class="start-note">100 free recipes. No payment card.</p>
+        <p class="price-note">Prices are estimates until you enter or confirm what you paid.</p>
       </div>
       <figure class="hero-art">
         <div class="phone-frame"><img src="landing-assets/basketboss-plan-build21.png" alt="BasketBoss Plan screen showing a seven-dinner week, a budget estimate and adjustable servings." width="1320" height="2400" fetchpriority="high" decoding="async"></div>
@@ -88,7 +99,7 @@
 
     <section class="faq-section" id="faq" aria-labelledby="faq-title">
       <div class="wrap faq-wrap"><div><p class="eyebrow">GOOD TO KNOW</p><h2 id="faq-title">A few answers.</h2><p>BasketBoss is currently in Beta.</p></div><div class="faq-items">
-        <details id="faq-savings"><summary>Is the £25+ saving guaranteed?</summary><p>No. It’s an example weekly target, not a measured result or a guarantee. Your savings depend on your household, shopping and food waste.</p></details>
+        <details id="faq-savings"><summary>How can BasketBoss help me spend less?</summary><p>Start with food already at home and use your plan to buy what’s missing. Savings depend on your household, shopping and food waste.</p></details>
         <details id="faq-free"><summary>Is BasketBoss free?</summary><p>Yes. Free includes 100 recipes and the everyday basics. Confirmed Free accounts also get one new advanced shopping trip each week. Premium is optional.</p></details>
         <details id="faq-stock"><summary>How does stock update?</summary><p>Finish Shop adds confirmed purchases. Confirm cooked deducts ingredients once. Check quantities and manually review changes, leftovers and food safety.</p></details>
         <details id="faq-install"><summary>Can I install it on my phone?</summary><p>Yes. Open the app in a compatible browser and follow its home-screen installation steps.</p></details>

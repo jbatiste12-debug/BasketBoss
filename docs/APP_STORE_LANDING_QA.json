@@ -1,0 +1,64 @@
+{
+  "scope": "local-only; live badge display is an edge-rendering DOM fixture, actual /download handler uses no environment setting for live and explicit false for disabled",
+  "passed": true,
+  "responsiveWidths": [
+    320,
+    375,
+    768,
+    1440
+  ],
+  "visualCases": 8,
+  "actualDownloadBrowserCases": 6,
+  "existingMemberFeatureFallbacks": 2,
+  "checks": [
+    "Live official badge links directly to the correct trusted App Store product page; destination fulfilled locally.",
+    {
+      "hover": {
+        "artwork": "none",
+        "highlight": "matrix(1.02, 0, 0, 1.02, 0, 0)",
+        "transition": "0.18s, 0.18s, 0.18s"
+      },
+      "reducedMotion": "no-preference"
+    },
+    {
+      "hover": {
+        "artwork": "none",
+        "highlight": "none",
+        "transition": "0s"
+      },
+      "reducedMotion": "reduce"
+    },
+    "Existing hero web CTA navigates to /app"
+  ],
+  "errors": [],
+  "regression": {
+    "total": 2799,
+    "passed": 2796,
+    "failed": 0,
+    "skipped": 1,
+    "todo": 2,
+    "postgresqlBackedChecksEnabled": true,
+    "skipReason": "Swift unavailable on local host; unchanged Cook voice fixture"
+  },
+  "reactExamples": {
+    "esbuildSyntaxBundle": "passed",
+    "reactRuntimeAdded": false
+  },
+  "nativeBundle": {
+    "fileCount": 935,
+    "freeRecipes": 100,
+    "privateRecipeBundle": false,
+    "byteManifestMatchesBuild31": true
+  },
+  "liveLaunchEnabled": true,
+  "deployment": "Enable website promotion by deploying this release; optional BB_APP_STORE_LAUNCH_ENABLED=false disables it. Source default is on for the confirmed public listing.",
+  "releaseDefaultLive": true,
+  "explicitFalseKillSwitch": true,
+  "publicAvailabilityEvidence": {
+    "source": "User screenshot of App Store product page with Get button",
+    "date": "2026-11-07",
+    "storefront": "United Kingdom",
+    "appId": "6829160611",
+    "productionPurchaseVerified": false
+  }
+}

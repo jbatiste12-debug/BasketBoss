@@ -5,6 +5,7 @@
  */
 import {receiptInventoryConfigured} from './api/receipt-inventory.js';
 import {livePaidBillingEnabled} from '../bb-server-lib/bb-paid-access.js';
+import {APP_STORE_ID,appStoreLaunchEnabled} from '../bb-server-lib/bb-app-store-launch.js';
 export async function onRequest({request,env}){
   if(request.method!=='GET'&&request.method!=='HEAD')return new Response('Method not allowed',{status:405,headers:{Allow:'GET, HEAD'}});
   const source=new URL(request.url);
@@ -17,11 +18,20 @@ export async function onRequest({request,env}){
   headers.set('X-Content-Type-Options','nosniff');
   if(!['basketboss.co.uk','www.basketboss.co.uk'].includes(source.hostname))headers.set('X-Robots-Tag','noindex, nofollow');
   const response=new Response(asset.body,{status:asset.status,headers});
-  if(request.method==='GET'&&livePaidBillingEnabled(env)&&receiptInventoryConfigured(request,env)){
+  const appStoreLive=appStoreLaunchEnabled(env);
+  const receiptReady=livePaidBillingEnabled(env)&&receiptInventoryConfigured(request,env);
+  if(request.method==='GET'&&(appStoreLive||receiptReady)){
     response.headers.delete('Content-Length');response.headers.delete('ETag');
-    return new HTMLRewriter().on('[data-bb-smart-receipt-ready]',{
+    const rewrite=new HTMLRewriter();
+    if(receiptReady)rewrite.on('[data-bb-smart-receipt-ready]',{
       element(element){element.removeAttribute('hidden');}
-    }).transform(response);
+    });
+    if(appStoreLive){
+      rewrite.on('head',{element(element){element.append('<meta name="apple-itunes-app" content="app-id='+APP_STORE_ID+'">',{html:true});}});
+      rewrite.on('[data-bb-app-store-launch]',{element(element){element.removeAttribute('hidden');}});
+      rewrite.on('[data-bb-web-hero-label]',{element(element){element.setInnerContent('Use the web app');}});
+    }
+    return rewrite.transform(response);
   }
   return response;
 }

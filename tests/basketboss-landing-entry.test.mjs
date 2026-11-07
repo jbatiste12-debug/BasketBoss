@@ -14,7 +14,7 @@ const route=await import(pathToFileURL(path.join(root,'functions/index.js')).hre
 
 test('the public root serves welcome with revalidation and preview robots protection',async()=>{
  const calls=[];
- const env={ASSETS:{fetch:async r=>{calls.push(r);return new Response('<html>Landing mock</html>',{status:200,headers:{'Content-Type':'text/html'}})}}};
+ const env={BB_APP_STORE_LAUNCH_ENABLED:'false',ASSETS:{fetch:async r=>{calls.push(r);return new Response('<html>Landing mock</html>',{status:200,headers:{'Content-Type':'text/html'}})}}};
  const r=await route.onRequest({request:new Request('https://basketboss.co.uk/'),env});
  assert.equal(r.status,200);assert.equal(await r.text(),'<html>Landing mock</html>');
  assert.equal(new URL(calls[0].url).pathname,'/welcome');
@@ -39,13 +39,14 @@ test('existing-member redirects respect expiry and pending authentication callba
  const source=[...page.matchAll(/<script\b[^>]*>([\s\S]*?)<\/script>/g)].map(match=>match[1]).find(script=>script.includes('basketboss_cloud_session_v1'));
  assert.ok(source,'existing-member entry guard is present');
  const now=Date.now(),session={user:{id:'test-user'},access_token:'test-session',expires_at:(now+3600000)/1000};
- function run({stored={},standalone=false,pending=false,blockedStorage=false}={}){
+ function run({stored={},standalone=false,pending=false,blockedStorage=false,hash=''}={}){
   const redirects=[];
-  vm.runInNewContext(source,{window:{matchMedia:()=>({matches:standalone}),BBAuthCallbackBridge:{pending:()=>pending}},localStorage:{getItem:key=>{if(blockedStorage)throw Error('storage unavailable');return stored[key]??null;}},location:{replace:value=>redirects.push(value)},Date,JSON});
+  vm.runInNewContext(source,{window:{matchMedia:()=>({matches:standalone}),BBAuthCallbackBridge:{pending:()=>pending}},localStorage:{getItem:key=>{if(blockedStorage)throw Error('storage unavailable');return stored[key]??null;}},location:{hash,replace:value=>redirects.push(value)},Date,JSON});
   return redirects;
  }
  assert.deepEqual(run(),[]);
  assert.deepEqual(run({stored:{basketboss_cloud_session_v1:JSON.stringify(session)}}),['/app']);
+ assert.deepEqual(run({stored:{basketboss_cloud_session_v1:JSON.stringify(session)},hash:'#features'}),[],'explicit download fallback stays on the requested landing features');
  assert.deepEqual(run({stored:{basketboss_cloud_session_v1:JSON.stringify({...session,expires_at:(now-1000)/1000})}}),[]);
  assert.deepEqual(run({stored:{basketboss_cloud_session_v1:JSON.stringify({...session,access_token:null})}}),[]);
  assert.deepEqual(run({stored:{bb_onboarding_fresh_once_20261028_v1:'{"complete":true}'}}),['/app']);
@@ -64,14 +65,14 @@ test('callback capture precedes other scripts and the landing makes no account o
  assert.doesNotMatch(js,/localStorage|sessionStorage|Authorization|\/api\/|\bfetch\s*\(|\.setItem\(|innerHTML|insertAdjacentHTML|eval\(/);
 });
 
-test('the savings-led hero presents £25 as a variable example target',()=>{
+test('the pantry-first hero explains the weekly benefit without promising savings or live prices',()=>{
  const hero=page.match(/<section\b[^>]*\bclass="hero wrap"[^>]*>([\s\S]*?)<\/section>/)?.[1];
  assert.ok(hero);
- assert.match(hero,/<h1\b[^>]*>Aim to save<br><span>£25\+ a week\.<\/span><\/h1>/);
- assert.match(hero,/class="savings-note">An example target; your savings will vary\./);
- assert.match(page,/not a measured result or a guarantee/);
+ assert.match(hero,/<h1\b[^>]*>Shop your kitchen<br><span>before the supermarket\.<\/span><\/h1>/);
+ assert.match(hero,/Check your fridge, freezer and cupboards/);
+ assert.match(hero,/Prices are estimates until you enter or confirm what you paid/);
  assert.match(hero,/100 free recipes\. No payment card\./);
- assert.doesNotMatch(page,/Loved by thousands|star rating|App Store badge|Google Play badge|average savings|guaranteed £25/i);
+ assert.doesNotMatch(page,/Loved by thousands|star rating|Google Play badge|average savings|guaranteed £25|£25\+ a week|live supermarket prices/i);
 });
 
 test('the hero uses an app screenshot and preserves the public PWA identity',()=>{

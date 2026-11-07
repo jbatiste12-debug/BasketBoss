@@ -1,0 +1,28 @@
+Asset: Apple "Download on the App Store" badge, black, English US/UK
+Original asset title: Download_on_the_App_Store_Badge_US-UK_RGB_blk_4SVG_092917
+Original dimensions: 119.66407 by 40; viewBox 0 0 119.66407 40
+
+Official Apple asset address:
+https://developer.apple.com/assets/elements/badges/download-on-the-app-store.svg
+
+The execution environment could not download that Apple address. The SVG was
+instead obtained through the approved GitHub connector from an existing public
+copy in Jellyfin's Swiftfin iOS app repository:
+https://github.com/jellyfin/Swiftfin/blob/main/Resources/Download_on_the_App_Store_Badge_US-UK_RGB_blk_092917.svg
+
+Immutable Git blob:
+https://api.github.com/repos/jellyfin/Swiftfin/git/blobs/072b425a1ab785ee7143f0f0fba305f55bfb9678
+
+Git blob SHA-1: 072b425a1ab785ee7143f0f0fba305f55bfb9678
+File size: 10804 bytes
+Verification: the downloaded SVG's local git hash-object and byte count match
+the GitHub directory metadata exactly. No paths, wording, colours, proportions
+or other artwork were changed. Direct byte comparison with Apple's origin was
+not available in this environment.
+
+Apple's badge artwork and trademarks remain Apple's. Use is governed by Apple's
+App Store marketing guidance, rather than the application's source-code licence:
+https://developer.apple.com/app-store/marketing/guidelines/
+
+Keep the badge unmodified, preserve its aspect ratio, provide the required clear
+space and minimum display size, and use it with the actual App Store product URL.
