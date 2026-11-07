@@ -5,6 +5,7 @@ import vm from 'node:vm';
 
 const app=fs.readFileSync(new URL('../make-a-meal.js',import.meta.url),'utf8');
 const studio=fs.readFileSync(new URL('../bb-cook-studio.js',import.meta.url),'utf8');
+const scanIdentity=fs.readFileSync(new URL('../bb-scan-food-identity.js',import.meta.url),'utf8');
 const preferenceSources=['bb-dietary-preferences.js','bb-meal-preferences.js'].map(name=>fs.readFileSync(new URL('../'+name,import.meta.url),'utf8'));
 const tick=()=>new Promise(resolve=>setImmediate(resolve));
 const recipe=()=>({title:'Reviewed chicken and rice',summary:'A simple meal.',servings:4,prepMinutes:5,cookMinutes:20,ingredients:[{name:'Cooked chicken',quantity:'200 g',fromHome:true},{name:'Rice',quantity:'250 g',fromHome:true}],steps:['Review ingredient labels and cook safely.'],extraIngredients:[],allergens:[],safetyNotes:['Check safe handling and cooking temperatures.']});
@@ -30,6 +31,7 @@ function harness({pantry=false,deferResize=false,diets=[],servings=4,responseBod
  const window={document,navigator:{onLine:!offline},location:{href:'http://localhost/make-a-meal.html'+(pantry?'?bbscan=pantry&location=fridge':''),search:pantry?'?bbscan=pantry&location=fridge':''},BB173_FREE_RECIPE_IDS:[],BBAccountDeletion:{isDeleting:()=>deleting},BasketBossVerifiedPremium:{isActive:()=>!!token&&!deleting},localStorage:storage,addEventListener:on,BBMealImage:{cancelAll(){}},BBCookResult:{render(host,value,options){rendered.push({recipe:value,options});host.innerHTML='RECIPE READY';return{cancel(){host.innerHTML='';}};},clear:host=>host.replaceChildren()}};
  const context=vm.createContext({window,document,location:window.location,URL,URLSearchParams,localStorage:storage,Date,AbortController,fetch,confirm:message=>{dialogs.push(message);return consent;},setInterval:()=>1,clearInterval(){},setTimeout:(fn,wait)=>{const id=++timerId;timers.set(id,{fn,wait});return id;},clearTimeout:id=>timers.delete(id),requestAnimationFrame:fn=>fn(),MutationObserver:class{observe(){}},createImageBitmap:()=>deferResize?new Promise(resolve=>{resizeResolve=resolve;}):Promise.resolve(bitmap),console});
  vm.runInContext(studio,context);
+ vm.runInContext(scanIdentity,context);
  for(const source of preferenceSources)vm.runInContext(source,context);
  const injection=`\nwindow.__photoTest={renderScanResponse,bbConfirmPhotoMeal,scanPhoto,generate,bbCheckGeneratedMealAccount,bbClearGeneratedMeal,
   choosePhoto(file){photoFile=file;bbPhotoReviewToken=bbPaidToken();scanRevision++;},
@@ -188,6 +190,21 @@ test('account switching and deletion discard a delayed generated recipe and its 
 test('At home camera handoff keeps its explicit storage review instead of the meal-only flow',()=>{
  const h=harness({pantry:true});h.api.renderScanResponse({items:[{name:'Rice',estimatedQuantity:'unknown',confidence:'high',notes:''}]});
  const html=h.get('#scanResults').innerHTML;assert.match(html,/id="reviewFoods"/);assert.match(html,/data-scan-location/);assert.doesNotMatch(html,/id="reviewMealFoods"/);assert.deepEqual(h.writes,[]);
+});
+test('branded pantry scan review keeps individual product quantities and exposes canonical-group checks',()=>{
+ const h=harness({pantry:true});h.api.renderScanResponse({items:['John West Tuna Chunks','Waitrose Tuna Chunks'].map(name=>({name,estimatedQuantity:'unknown',confidence:'high',notes:''}))});
+ const html=h.get('#scanResults').innerHTML;
+ assert.equal((html.match(/data-scan-quantity/g)||[]).length,2,'both products retain their own checked amount');
+ assert.equal((html.match(/data-scan-variant/g)||[]).length,2);assert.equal((html.match(/data-scan-basis/g)||[]).length,2);
+ assert.match(html,/Food group: <strong>Tinned tuna<\/strong>/);assert.match(html,/John West Tuna Chunks/);assert.match(html,/Waitrose Tuna Chunks/);
+ assert.match(html,/data-scan-pack-quantity/);assert.match(html,/Unconfirmed amounts keep existing stock unchanged/);
+ assert.deepEqual(h.writes,[],'showing recognition suggestions cannot change measured stock');
+});
+test('unbranded pantry products expose reviewed container contents and scanner-only jar units',()=>{
+ const h=harness({pantry:true});h.api.renderScanResponse({items:[{name:'Black Peppercorns',estimatedQuantity:'one jar',confidence:'high',notes:''}]});
+ const html=h.get('#scanResults').innerHTML;assert.match(html,/data-scan-pack-quantity/);assert.match(html,/data-scan-pack-unit/);
+ assert.match(html,/<option value="jar"/);assert.match(html,/<option value="tin"/);assert.match(html,/One container contains/);
+ assert.doesNotMatch(html,/data-scan-quantity[^>]*value="20"/,'an AI photo estimate cannot invent the jar’s weight');assert.deepEqual(h.writes,[]);
 });
 
 

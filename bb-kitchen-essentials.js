@@ -12,6 +12,7 @@
   node.id=key==='food'?'bbKitchenFoodTab':'bbKitchenEssentialsTab';node.dataset.bbkeSection=key;
   node.setAttribute('role','tab');node.setAttribute('aria-controls',panel);
   const select=()=>{
+   if(selectedSection===key&&node.getAttribute('aria-selected')==='true')return;
    selectedSection=key;void window.BBPantryLive?.flush?.();refresh();
    if(window.BBTabViewport?.reset)window.BBTabViewport.reset({view:'shop'});
    else{window.scrollTo?.({top:0,left:0,behavior:'instant'});if(doc.scrollingElement)doc.scrollingElement.scrollTop=0;}

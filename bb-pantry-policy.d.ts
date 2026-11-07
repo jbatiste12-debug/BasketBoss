@@ -7,6 +7,8 @@ declare namespace policy {
  function canonicalName(name:unknown,canonicalize?:(name:string)=>string):string;
  function isStaple(name:unknown):boolean;
  function isWholePepper(name:unknown,unit:unknown,metadata?:{staple?:boolean}):boolean;
+ function isContainerTracked(record:unknown):boolean;
+ function measuredIdentityProblem(record:unknown,canonicalize?:(name:string)=>string):string;
  function containerLabel(name:unknown):'bottle'|'jar'|'unit';
  function defaultPack(name:unknown,unit:unknown,options?:Options):Amount|null;
  function normalize(name:unknown,quantity:unknown,unit:unknown,options?:Options):Amount|null;

@@ -1,0 +1,537 @@
+{
+  "attemptHistory": [
+    {
+      "width": 375,
+      "path": "planned-final/report-375.json",
+      "pass": false,
+      "observation": "Unexpected same-URL reload removed the editor before mode selection. No page/console error. Cause not reproduced."
+    },
+    {
+      "width": 375,
+      "path": "navigation-probe/report-375.json",
+      "pass": true,
+      "observation": "Focused jar-mode path passed; no extra navigation."
+    },
+    {
+      "width": 375,
+      "path": "planned-final375-trace/report-375.json",
+      "pass": true,
+      "observation": "Full retry passed with CDP trace; exactly six expected document navigations."
+    },
+    {
+      "width": 320,
+      "path": "planned-final/report-320.json",
+      "pass": true,
+      "observation": "Full final run passed."
+    }
+  ],
+  "selectedArtifacts": {
+    "320": "planned-final",
+    "375": "planned-final375-trace"
+  },
+  "date": "2026-11-07T10:25:28.362Z",
+  "pass": true,
+  "provenance": "Actual candidate source in isolated touch Chromium at 375 and 320 px. Every HTTP request intercepted; synthetic account only; no customer writes or paid scans. Source hashes compare received runtime bytes to the final candidate. Scanner render exposure is test-only instrumentation with raw source hashes captured before injection.",
+  "sourceHashes": {
+    "app.html": "c0b80150479bd4549d830053e18a159a5c80ee8365be3cffa0221ee89a12a119",
+    "bb-pantry-inline.js": "98b2ee0bc3c6410e9f6c62133e59567f5a5258777e9779d7a9abd0b20c2e26a0",
+    "bb-pantry-inline.css": "08cfc17c2b11b0c4626a4848e5ca70bfbe4f44e33f75751c531062af37e36e3e",
+    "shopping-inventory.js": "18cf25bc20db0f18d96a808dd6c063dd3b203886341601aefca188b19a1a5738",
+    "bb-home.js": "fa0d0f8f7afb96c12e3420df1ee41feaf8a316cfd1060bb8b3d5304c9055e1e3",
+    "bb-pantry-policy.js": "201b6b7e32fcb865fd48e2b926eb608af2dfe1a9348030cb23987ec3c7c107c4",
+    "bb-pantry-deduction.js": "9fe47599796e263818b75b738dd5e91070e596d1595ce413bcab6e7e39dd3d52",
+    "bb-recipe-canonical.js": "265deeff6e5d3caaa3aaa2f3df05b612594e4745a33f618fe67cac7f8c40ba43",
+    "bb-receipt-inventory.js": "ab1c73b7545ca50e82734526aad0f7a40f9ede43f88b58baf1d1fbfa5b8c8c57",
+    "bb-receipt-inventory-core.mjs": "6ebc98d6992a4784ef221d10eaeda184cfa479006f17984e7c657fcc056ee37d",
+    "make-a-meal.html": "d109802637daeda16d542b1041a93bb9592fe2ebc8592b6fc0075c01921aa0cb",
+    "make-a-meal.js": "07f08c2485a5f0f075bde9f968d9c1d8e6790404be7501c83b33aa4dd20063c1",
+    "bb-scan-food-identity.js": "c3eb213d0330c79f3740f719fd6598344a4e55dcd6c004b629bdbab7f88bcfd8",
+    "bb-pantry-camera.js": "b006f72e8b81a68ab690871c12cad6f6030d432fe20976b992dedcc5ca06d803",
+    "bb-pantry-camera.css": "887e5117a7076fe2fd15071614299a080e7ae2c9a63432b6305d707ab945a44d"
+  },
+  "planned": [
+    {
+      "width": 375,
+      "pass": true,
+      "issues": [],
+      "pageErrors": [],
+      "consoleErrors": [],
+      "sourceHashesMatch": {
+        "app.html": true,
+        "bb-pantry-policy.js": true,
+        "bb-recipe-canonical.js": true,
+        "bb-pantry-inline.css": true,
+        "bb-receipt-inventory.js": true,
+        "shopping-inventory.js": true,
+        "bb-pantry-inline.js": true,
+        "bb-pantry-deduction.js": true,
+        "bb-home.js": true,
+        "bb-receipt-inventory-core.mjs": true
+      },
+      "checks": {
+        "noMealNeeded": "0",
+        "bufferPreview": "Add to Shop: 250 g",
+        "savedShortfall": 250,
+        "stockAfterFinish": 500,
+        "stockCarried": 500,
+        "plannedNeeded": "1500",
+        "reducedServingsNeeded": "750",
+        "removedMealsNeeded": "0",
+        "legacyTarget": 2500,
+        "cooking": {
+          "before": 500,
+          "after": 250,
+          "again": 250
+        },
+        "manualTopups": [
+          {
+            "name": "pasta",
+            "quantity": 100,
+            "unit": "g"
+          }
+        ],
+        "oilPreview": "Add to Shop: 1 \u00d7 1 bottle",
+        "oilStockAfterFinish": 1.5,
+        "oilStockAfterRepeatedFinish": 1.5,
+        "pepperContainer": {
+          "tracking": "containers",
+          "qty": "1",
+          "unit": {
+            "value": "each",
+            "label": "jar"
+          },
+          "contents": "20",
+          "contentsUnit": "g"
+        },
+        "pepperMeasured": {
+          "tracking": "measured",
+          "qty": "20",
+          "unit": "g",
+          "needed": {
+            "value": "0",
+            "readOnly": true,
+            "disabled": false,
+            "type": "number",
+            "valid": true,
+            "stepperButtons": 0,
+            "helper": "Total needed (automatic)Not needed for your planned meals. Use Extra stock buffer to keep more on hand.",
+            "all": "CupboardBlack Peppercorn\u00d7Stock statusIn StockLowOutTrack amount asJars or bottlesWeight or volumeAt home\u2212+Total needed (automatic)Not needed for your planned meals. Use Extra stock buffer to keep more on hand.Extra stock buffer\u2212+UnitgkgmllitrespinttbsptspBuy in multiples of (optional)Exact amount (no rounding)250 g500 g1 kgCustom pack sizePack sizePack unitgkgozlbAdd to Shop: 0 gContainer size (optional)Use the size on the label for one jar, bottle, pack or tin.One container containsContents unitgmleachozlbfl ozSubcategoryTins & jarsPasta, rice & grainsBakingHerbs & spicesOther itemsRemove itemDone"
+          }
+        },
+        "pepperMeasuredBuffer": "Add to Shop: 10 g",
+        "outOilFound": {
+          "needed": {
+            "value": "0",
+            "readOnly": true,
+            "disabled": false,
+            "type": "number",
+            "valid": true,
+            "stepperButtons": 0,
+            "helper": "Total needed (automatic)Not needed for your planned meals. Use Extra stock buffer to keep more on hand.",
+            "all": "CupboardCooking oil\u00d7Stock statusIn StockLowOutTrack amount asJars or bottlesWeight or volumeAt home\u2212+Total needed (automatic)Not needed for your planned meals. Use Extra stock buffer to keep more on hand.Extra stock buffer\u2212+UnitbottlesBuy in multiples of (optional)Whole containers1 bottle2 bottles3 bottlesCustom pack sizePack sizePack unitbottlesAdd to Shop: 1 \u00d7 1 bottleShortfall 0.5 bottles \u00b7 rounded to full packs.Container size (optional)Use the size on the label for one jar, bottle, pack or tin.One container containsContents unitChoose unitgmleachozlbfl ozSubcategoryTins & jarsPasta, rice & grainsBakingHerbs & spicesOther itemsRemove itemAdd to Shop"
+          },
+          "readout": "Add to Shop: 1 \u00d7 1 bottle"
+        },
+        "explicitOilTarget": {
+          "needed": {
+            "value": "1",
+            "readOnly": true,
+            "disabled": false,
+            "type": "number",
+            "valid": true,
+            "stepperButtons": 0,
+            "helper": "Total needed (automatic)Not needed for your planned meals. Includes your saved restock target. Use Extra stock buffer to keep more on hand.",
+            "all": "CupboardCooking oil\u00d7Stock statusIn StockLowOutTrack amount asJars or bottlesWeight or volumeAt home\u2212+Total needed (automatic)Not needed for your planned meals. Includes your saved restock target. Use Extra stock buffer to keep more on hand.Extra stock buffer\u2212+UnitbottlesBuy in multiples of (optional)Whole containers1 bottle2 bottles3 bottlesCustom pack sizePack sizePack unitbottlesAdd to Shop: 2 \u00d7 1 bottleShortfall 1.5 bottles \u00b7 rounded to full packs.Container size (optional)Use the size on the label for one jar, bottle, pack or tin.One container containsContents unitChoose unitgmleachozlbfl ozSubcategoryTins & jarsPasta, rice & grainsBakingHerbs & spicesOther itemsRemove itemAdd to Shop"
+          },
+          "readout": "Add to Shop: 2 \u00d7 1 bottle"
+        }
+      }
+    },
+    {
+      "width": 320,
+      "pass": true,
+      "issues": [],
+      "pageErrors": [],
+      "consoleErrors": [],
+      "sourceHashesMatch": {
+        "app.html": true,
+        "bb-pantry-policy.js": true,
+        "bb-recipe-canonical.js": true,
+        "bb-pantry-inline.css": true,
+        "bb-receipt-inventory.js": true,
+        "shopping-inventory.js": true,
+        "bb-pantry-inline.js": true,
+        "bb-pantry-deduction.js": true,
+        "bb-home.js": true,
+        "bb-receipt-inventory-core.mjs": true
+      },
+      "checks": {
+        "noMealNeeded": "0",
+        "bufferPreview": "Add to Shop: 250 g",
+        "savedShortfall": 250,
+        "stockAfterFinish": 500,
+        "stockCarried": 500,
+        "plannedNeeded": "1500",
+        "reducedServingsNeeded": "750",
+        "removedMealsNeeded": "0",
+        "legacyTarget": 2500,
+        "cooking": {
+          "before": 500,
+          "after": 250,
+          "again": 250
+        },
+        "manualTopups": [
+          {
+            "name": "pasta",
+            "quantity": 100,
+            "unit": "g"
+          }
+        ],
+        "oilPreview": "Add to Shop: 1 \u00d7 1 bottle",
+        "oilStockAfterFinish": 1.5,
+        "oilStockAfterRepeatedFinish": 1.5,
+        "pepperContainer": {
+          "tracking": "containers",
+          "qty": "1",
+          "unit": {
+            "value": "each",
+            "label": "jar"
+          },
+          "contents": "20",
+          "contentsUnit": "g"
+        },
+        "pepperMeasured": {
+          "tracking": "measured",
+          "qty": "20",
+          "unit": "g",
+          "needed": {
+            "value": "0",
+            "readOnly": true,
+            "disabled": false,
+            "type": "number",
+            "valid": true,
+            "stepperButtons": 0,
+            "helper": "Total needed (automatic)Not needed for your planned meals. Use Extra stock buffer to keep more on hand.",
+            "all": "CupboardBlack Peppercorn\u00d7Stock statusIn StockLowOutTrack amount asJars or bottlesWeight or volumeAt home\u2212+Total needed (automatic)Not needed for your planned meals. Use Extra stock buffer to keep more on hand.Extra stock buffer\u2212+UnitgkgmllitrespinttbsptspBuy in multiples of (optional)Exact amount (no rounding)250 g500 g1 kgCustom pack sizePack sizePack unitgkgozlbAdd to Shop: 0 gContainer size (optional)Use the size on the label for one jar, bottle, pack or tin.One container containsContents unitgmleachozlbfl ozSubcategoryTins & jarsPasta, rice & grainsBakingHerbs & spicesOther itemsRemove itemDone"
+          }
+        },
+        "pepperMeasuredBuffer": "Add to Shop: 10 g",
+        "outOilFound": {
+          "needed": {
+            "value": "0",
+            "readOnly": true,
+            "disabled": false,
+            "type": "number",
+            "valid": true,
+            "stepperButtons": 0,
+            "helper": "Total needed (automatic)Not needed for your planned meals. Use Extra stock buffer to keep more on hand.",
+            "all": "CupboardCooking oil\u00d7Stock statusIn StockLowOutTrack amount asJars or bottlesWeight or volumeAt home\u2212+Total needed (automatic)Not needed for your planned meals. Use Extra stock buffer to keep more on hand.Extra stock buffer\u2212+UnitbottlesBuy in multiples of (optional)Whole containers1 bottle2 bottles3 bottlesCustom pack sizePack sizePack unitbottlesAdd to Shop: 1 \u00d7 1 bottleShortfall 0.5 bottles \u00b7 rounded to full packs.Container size (optional)Use the size on the label for one jar, bottle, pack or tin.One container containsContents unitChoose unitgmleachozlbfl ozSubcategoryTins & jarsPasta, rice & grainsBakingHerbs & spicesOther itemsRemove itemAdd to Shop"
+          },
+          "readout": "Add to Shop: 1 \u00d7 1 bottle"
+        },
+        "explicitOilTarget": {
+          "needed": {
+            "value": "1",
+            "readOnly": true,
+            "disabled": false,
+            "type": "number",
+            "valid": true,
+            "stepperButtons": 0,
+            "helper": "Total needed (automatic)Not needed for your planned meals. Includes your saved restock target. Use Extra stock buffer to keep more on hand.",
+            "all": "CupboardCooking oil\u00d7Stock statusIn StockLowOutTrack amount asJars or bottlesWeight or volumeAt home\u2212+Total needed (automatic)Not needed for your planned meals. Includes your saved restock target. Use Extra stock buffer to keep more on hand.Extra stock buffer\u2212+UnitbottlesBuy in multiples of (optional)Whole containers1 bottle2 bottles3 bottlesCustom pack sizePack sizePack unitbottlesAdd to Shop: 2 \u00d7 1 bottleShortfall 1.5 bottles \u00b7 rounded to full packs.Container size (optional)Use the size on the label for one jar, bottle, pack or tin.One container containsContents unitChoose unitgmleachozlbfl ozSubcategoryTins & jarsPasta, rice & grainsBakingHerbs & spicesOther itemsRemove itemAdd to Shop"
+          },
+          "readout": "Add to Shop: 2 \u00d7 1 bottle"
+        }
+      }
+    }
+  ],
+  "scanner": [
+    {
+      "width": 375,
+      "pass": true,
+      "issues": [],
+      "pageErrors": [],
+      "consoleErrors": [],
+      "sourceHashesMatch": {
+        "make-a-meal.html": true,
+        "bb-pantry-camera.css": true,
+        "bb-scan-food-identity.js": true,
+        "bb-pantry-policy.js": true,
+        "bb-pantry-camera.js": true,
+        "make-a-meal.js": true,
+        "app.html": true,
+        "bb-recipe-canonical.js": true,
+        "bb-pantry-inline.css": true,
+        "bb-receipt-inventory.js": true,
+        "shopping-inventory.js": true,
+        "bb-pantry-inline.js": true,
+        "bb-pantry-deduction.js": true,
+        "bb-home.js": true,
+        "bb-receipt-inventory-core.mjs": true
+      },
+      "checks": {
+        "unknownStock": {},
+        "confirmedStock": {
+          "tinned tuna in brine|g": 265
+        },
+        "repeatedStock": {
+          "tinned tuna in brine|g": 265
+        },
+        "productDetails": "Scanned product details (2)John West Tuna Chunks120 g \u00b7 drained weightWaitrose Tuna Chunks0.145 kg \u00b7 drained weightThese are the last reviewed scan details. At home shows the total currently available.",
+        "pepperStock": {
+          "tinned tuna in brine|g": 265,
+          "black peppercorns|g": 20
+        },
+        "pepperAfterEdit": {
+          "tinned tuna in brine|g": 265,
+          "black peppercorns|g": 19.5
+        },
+        "bounds": {
+          "dialogWidth": 351,
+          "overflow": false,
+          "footerBottom": 803,
+          "viewport": 812
+        }
+      }
+    },
+    {
+      "width": 320,
+      "pass": true,
+      "issues": [],
+      "pageErrors": [],
+      "consoleErrors": [],
+      "sourceHashesMatch": {
+        "make-a-meal.html": true,
+        "bb-pantry-camera.css": true,
+        "bb-scan-food-identity.js": true,
+        "bb-pantry-camera.js": true,
+        "bb-pantry-policy.js": true,
+        "make-a-meal.js": true,
+        "app.html": true,
+        "bb-recipe-canonical.js": true,
+        "bb-pantry-inline.css": true,
+        "bb-receipt-inventory.js": true,
+        "shopping-inventory.js": true,
+        "bb-pantry-inline.js": true,
+        "bb-pantry-deduction.js": true,
+        "bb-home.js": true,
+        "bb-receipt-inventory-core.mjs": true
+      },
+      "checks": {
+        "unknownStock": {},
+        "confirmedStock": {
+          "tinned tuna in brine|g": 265
+        },
+        "repeatedStock": {
+          "tinned tuna in brine|g": 265
+        },
+        "productDetails": "Scanned product details (2)John West Tuna Chunks120 g \u00b7 drained weightWaitrose Tuna Chunks0.145 kg \u00b7 drained weightThese are the last reviewed scan details. At home shows the total currently available.",
+        "pepperStock": {
+          "tinned tuna in brine|g": 265,
+          "black peppercorns|g": 20
+        },
+        "pepperAfterEdit": {
+          "tinned tuna in brine|g": 265,
+          "black peppercorns|g": 19.5
+        },
+        "bounds": {
+          "dialogWidth": 304,
+          "overflow": false,
+          "footerBottom": 803,
+          "viewport": 812
+        }
+      }
+    }
+  ],
+  "validation": {
+    "nodeSuite": {
+      "total": 2841,
+      "passed": 2838,
+      "failed": 0,
+      "skipped": 1,
+      "todo": 2,
+      "skipReason": "Swift compiler unavailable in Linux; existing TODO cases retained"
+    },
+    "typecheck": "TypeScript5.9.3 strict/checkJs/noEmit passed",
+    "native": {
+      "files": 936,
+      "freeRecipes": 100,
+      "portableVerification": "passed"
+    },
+    "provenance": "Node suite, strict typecheck and native portable verification results supplied by the parent agent; browser source-hash evidence was collected by this QA agent."
+  },
+  "previews": [
+    {
+      "label": "Automatic meal need and buffer-only shopping",
+      "path": "/dev/shm/pantry-final-qa/planned-final375-trace/375-pasta-no-meals-buffer.png"
+    },
+    {
+      "label": "Half a bottle owned; buy one whole bottle",
+      "path": "/dev/shm/pantry-final-qa/planned-final375-trace/375-oil-half-bottle-whole-purchase.png"
+    },
+    {
+      "label": "One jar with20g contents, kept separate from jar count",
+      "path": "/dev/shm/pantry-final-qa/planned-final375-trace/375-peppercorn-one-jar-20g.png"
+    }
+  ],
+  "additionalPreview": {
+    "label": "Combined tuna brands with retained product details",
+    "path": "/dev/shm/pantry-final-qa/scanner-final/375-confirmed-group-product-details.png"
+  },
+  "limitations": [
+    "One earlier375px full run experienced an unexplained same-URL reload before mode selection. The focused375px repro and full375px retry with CDP tracing passed; the traced run contained only the six expected navigations. The failed attempt remains preserved; no speculative source change was made for it."
+  ],
+  "transitions": {
+    "provenance": "Actual working source in isolated touch Chromium; all HTTP intercepted with synthetic account; no live writes. Navigation uses synthetic clicks and trusted wheel input. Layout-shift observations are diagnostic, not production Core Web Vitals.",
+    "files": {
+      "bb-pantry-inline.js": "98b2ee0bc3c6410e9f6c62133e59567f5a5258777e9779d7a9abd0b20c2e26a0",
+      "bb-pantry-inline.css": "08cfc17c2b11b0c4626a4848e5ca70bfbe4f44e33f75751c531062af37e36e3e",
+      "bb-kitchen-essentials.js": "a7e8614a60de3a9ee33a37e55ba70a0efc4c13e1b63db38eb94617e660e1fa9d"
+    },
+    "widths": [
+      {
+        "width": 375,
+        "pass": true,
+        "issues": [],
+        "pageErrors": [],
+        "consoleErrors": [],
+        "firstFridgeItem": {
+          "toolbarBottom": 125,
+          "rowTop": 253.015625,
+          "rowBottom": 322.796875,
+          "height": 812
+        },
+        "unchangedControls": {
+          "count": 44,
+          "preserved": 44
+        },
+        "sameTab": {
+          "sameFood": {
+            "before": 700,
+            "after": 700,
+            "flushCalls": 0
+          },
+          "switched": {
+            "selected": "true",
+            "foodHidden": true,
+            "flushCalls": 1
+          },
+          "sameEssentials": {
+            "before": 150,
+            "after": 150,
+            "flushCalls": 1
+          },
+          "returned": {
+            "selected": "true",
+            "foodHidden": false,
+            "flushCalls": 2
+          }
+        },
+        "positions": [
+          {
+            "action": "cupboard-long-to-fridge-short",
+            "sequence": [
+              1200,
+              410
+            ]
+          },
+          {
+            "action": "fridge-short-to-cupboard-long",
+            "sequence": [
+              410,
+              290
+            ]
+          },
+          {
+            "action": "open-editor",
+            "sequence": [
+              850,
+              0
+            ]
+          },
+          {
+            "action": "close-editor",
+            "sequence": [
+              0,
+              850
+            ]
+          }
+        ]
+      },
+      {
+        "width": 320,
+        "pass": true,
+        "issues": [],
+        "pageErrors": [],
+        "consoleErrors": [],
+        "firstFridgeItem": {
+          "toolbarBottom": 175,
+          "rowTop": 323.9375,
+          "rowBottom": 423.9375,
+          "height": 812
+        },
+        "unchangedControls": {
+          "count": 44,
+          "preserved": 44
+        },
+        "sameTab": {
+          "sameFood": {
+            "before": 700,
+            "after": 700,
+            "flushCalls": 0
+          },
+          "switched": {
+            "selected": "true",
+            "foodHidden": true,
+            "flushCalls": 1
+          },
+          "sameEssentials": {
+            "before": 150,
+            "after": 150,
+            "flushCalls": 1
+          },
+          "returned": {
+            "selected": "true",
+            "foodHidden": false,
+            "flushCalls": 2
+          }
+        },
+        "positions": [
+          {
+            "action": "cupboard-long-to-fridge-short",
+            "sequence": [
+              1200,
+              451
+            ]
+          },
+          {
+            "action": "fridge-short-to-cupboard-long",
+            "sequence": [
+              451,
+              331
+            ]
+          },
+          {
+            "action": "open-editor",
+            "sequence": [
+              850,
+              0
+            ]
+          },
+          {
+            "action": "close-editor",
+            "sequence": [
+              0,
+              850
+            ]
+          }
+        ]
+      }
+    ],
+    "nodeTests": {
+      "total": 51,
+      "pass": 51,
+      "fail": 0
+    }
+  }
+}

@@ -266,6 +266,71 @@ test('a new-food preview exposes plan need without selecting, saving or creating
  const preview=editor.preview('Rice','cupboard','g');assert.equal(preview.qty,null);assert.equal(preview.totalNeeded,600);assert.equal(preview.mealNeeded,600);assert.equal(preview.minimumNeeded,600);assert.equal(preview.shortfall,600);
  assert.equal(editor.list().length,rows);assert.deepEqual(h.values,before);assert.equal(h.win.BBPantryLive.hasPending(),false);
 });
+test('automatic pantry confirmations follow a changed plan instead of retaining its old demand',async()=>{
+ const h=fixture({live:true,requirements:[{key:'Pasta',unit:'g',required:600}]});h.win.BBPantryPolicy=pantryPolicy;
+ const editor=h.win.BBPantryEditor,{key}=editor.add({name:'Pasta',loc:'cupboard',qty:250,unit:'g'});await editor.flush();
+ const patch={qty:250,unit:'g',totalNeeded:600,automaticNeeded:true,extraBuffer:0,buyMultiple:0};
+ assert.equal(editor.update(key,patch).ok,true);await editor.flush();assert.equal(h.win.BBHome.targets()['pasta|g'].targetQty,0);
+ h.requirements.splice(0,1,{key:'Pasta',unit:'g',required:300});await Promise.resolve();
+ assert.equal(editor.read(key).totalNeeded,300);assert.equal(editor.read(key).shortfall,50);assert.equal(targetShopping(h)[0].toBuy,50);
+ assert.equal(editor.update(key,patch).ok,true,'a stale automatic display is recalculated');await editor.flush();
+ h.requirements.splice(0);await Promise.resolve();
+ assert.equal(editor.read(key).totalNeeded,0);assert.equal(editor.read(key).shortfall,0);assert.equal(targetShopping(h).length,0);
+ assert.equal(editor.update(key,{...patch,totalNeeded:''}).ok,true,'automatic demand never depends on a blank display input');await editor.flush();
+ assert.deepEqual(h.stock(),{'pasta|g':250});assert.equal(h.inventory()[key].automaticNeeded,undefined,'presentation mode is not physical stock');
+});
+
+test('automatic buffer-only API saves retain one request and the same preview as actual Shop with direct extras',async()=>{
+ const h=fixture({live:true,requirements:[]});h.win.BBPantryPolicy=pantryPolicy;
+ Object.assign(h.win.BBHomeHost,{keys:()=>({stock:STOCK,inventory:INVENTORY}),shoppingKind:()=> 'food',shoppingPurchaseContext:()=>({shopSessionId:'auto-trip',quantity:0}),refresh(){}});
+ const editor=h.win.BBPantryEditor,{key}=editor.add({name:'Pasta',loc:'cupboard',qty:500,unit:'g'});await editor.flush();
+ assert.equal(h.win.BBHome.addShoppingBuy({name:'Pasta',quantityText:'200 g',requestId:'direct-extra',actorId:'guest'}).ok,true);
+ for(let review=0;review<2;review++){
+  const result=editor.update(key,{qty:500,unit:'g',automaticNeeded:true,extraBuffer:100,buyMultiple:0});assert.equal(result.ok,true);
+  assert.equal(result.row.totalNeeded,0);assert.equal(result.row.shortfall,200);await editor.flush();
+  assert.equal(editor.read(key).totalNeeded,0);assert.equal(editor.read(key).shortfall,200);assert.equal(targetShopping(h)[0].toBuy,200);
+  assert.equal(h.win.BBHome.targets()['pasta|g'].targetQty,0);assert.equal(h.win.BBHome.shoppingBuys().length,1);
+  assert.deepEqual(h.stock(),{'pasta|g':500});
+ }
+});
+test('partial staple stock survives Add, automatic buffer saves and quantity-only edits without integer truncation',async()=>{
+ const h=fixture({live:true,requirements:[]});h.win.BBPantryPolicy=pantryPolicy;
+ const editor=h.win.BBPantryEditor,{key}=editor.add({name:'Olive oil',loc:'cupboard',qty:.5,unit:'bottle'});await editor.flush();
+ assert.deepEqual(h.stock(),{'olive oil|each':.5});assert.equal(h.inventory()[key].qty,.5);
+ const result=editor.update(key,{qty:.5,unit:'each',automaticNeeded:true,totalNeeded:0,extraBuffer:1,buyMultiple:0});
+ assert.equal(result.ok,true);assert.equal(result.row.unroundedShortfall,.5);assert.equal(result.row.shortfall,1);await editor.flush();
+ assert.equal(h.win.BBHome.targets()['olive oil|each'].buyMultiple,1);assert.deepEqual(h.stock(),{'olive oil|each':.5});
+ assert.equal(editor.update(key,{qty:1.5}).ok,true);await editor.flush();assert.deepEqual(h.stock(),{'olive oil|each':1.5});
+ assert.equal(editor.update(key,{qty:.5}).ok,true);await editor.flush();assert.deepEqual(h.stock(),{'olive oil|each':.5});
+ const more=editor.add({name:'Olive oil',loc:'cupboard',qty:.25,unit:'bottle'});assert.equal(more.ok,true);await editor.flush();
+ assert.equal(more.key,key);assert.deepEqual(h.stock(),{'olive oil|each':.75});assert.equal(Object.keys(h.inventory()).length,1);
+});
+test('switching a legacy container count to measured spice stock requires a new explicit amount',async()=>{
+ const key='cupboard|black peppercorns',name='Black peppercorns',stockKey='black peppercorns|each';
+ const h=fixture({live:true,requirements:[],inventory:{[key]:{name,loc:'cupboard',selected:true,unit:'each',qty:20,staple:true,stapleStatus:'in',bb173StockKey:stockKey,bb173StockValue:20}},stock:{[stockKey]:20}});h.win.BBPantryPolicy=pantryPolicy;
+ const editor=h.win.BBPantryEditor,editKey=editor.list().find(row=>row.name===name).key,before=new Map(h.values),mode={trackingMode:'measured',measurementReviewed:true,unit:'g',automaticNeeded:true,extraBuffer:0,buyMultiple:0};
+ assert.equal(editor.update(editKey,{...mode}).ok,false);await editor.flush();assert.deepEqual(h.values,before,'a unit switch never reinterprets 20 old jars as grams');
+ assert.equal(editor.update(editKey,{...mode,qty:''}).ok,false);await editor.flush();assert.deepEqual(h.values,before);
+ const confirmed=editor.update(editKey,{...mode,qty:20});assert.equal(confirmed.ok,true,confirmed.message);await editor.flush();
+ assert.deepEqual(h.stock(),{'black peppercorns|g':20});assert.equal(h.inventory()[editKey].qty,20);assert.equal(h.inventory()[editKey].unit,'g');assert.equal(h.inventory()[editKey].trackingMode,'measured');assert.equal(h.inventory()[editKey].measurementReviewed,true);assert.equal(h.inventory()[editKey].staple,false);
+ assert.equal(editor.read(editKey).staple,false);assert.equal(editor.read(editKey).shortfall,0);
+});
+test('reviewed measured staple stock keeps grams and fractional gram buffers without forcing container rounding',async()=>{
+ const h=fixture({live:true,requirements:[{key:'Black peppercorns',unit:'g',required:25}]});h.win.BBPantryPolicy=pantryPolicy;
+ const editor=h.win.BBPantryEditor,{key}=editor.add({name:'Black peppercorns',loc:'cupboard',qty:20,unit:'g',trackingMode:'measured',measurementReviewed:true});await editor.flush();
+ assert.deepEqual(h.stock(),{'black peppercorns|g':20});
+ const result=editor.update(key,{qty:20,unit:'g',trackingMode:'measured',measurementReviewed:true,automaticNeeded:true,extraBuffer:2.5,buyMultiple:0});
+ assert.equal(result.ok,true);assert.equal(result.row.totalNeeded,25);assert.equal(result.row.shortfall,7.5);await editor.flush();
+ assert.deepEqual(h.stock(),{'black peppercorns|g':20});assert.equal(h.win.BBHome.targets()['black peppercorns|g'].extraBuffer,2.5);assert.equal(h.win.BBHome.targets()['black peppercorns|g'].buyMultiple,undefined);
+ assert.equal(h.inventory()[key].trackingMode,'measured');assert.equal(targetShopping(h)[0].toBuy,7.5);
+});
+test('ambiguous measured pepper cannot overwrite whole-pepper stock through Add or quantity-only edits',async()=>{
+ const facts={trackingMode:'measured',measurementReviewed:true,staple:false},h=fixture({live:true,requirements:[],inventory:{'cupboard|pepper':{name:'Pepper',loc:'cupboard',selected:true,unit:'g',qty:20,...facts,bb173StockKey:'pepper|g',bb173StockValue:20}},stock:{'pepper|g':20}});h.win.BBPantryPolicy=pantryPolicy;
+ const editor=h.win.BBPantryEditor,key=editor.list()[0].key,before=new Map(h.values);
+ const added=editor.add({name:'Pepper',loc:'cupboard',qty:200,unit:'g',...facts});assert.equal(added.ok,false);assert.match(added.message,/separately from whole peppers/);
+ const changed=editor.update(key,{qty:30});assert.equal(changed.ok,false);assert.match(changed.message,/separately from whole peppers/);await editor.flush();assert.deepEqual(h.values,before);
+ assert.match(h.win.BBHome.foodTarget({name:'Pepper',qty:20,unit:'g',...facts}).targetProblem,/separately from whole peppers/);
+});
 
 test('an explicit pantry target shares the canonical tin conversion and adds only three tins after two at home',async()=>{
  const h=fixture({live:true,requirements:[{key:'Chopped tomatoes',unit:'g',required:1200}]});h.win.BBPantryPolicy=pantryPolicy;const editor=h.win.BBPantryEditor,key=editor.select('Tinned tomatoes','cupboard',{unit:'tin'});

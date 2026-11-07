@@ -27,6 +27,78 @@ test('extra stock buffer is added exactly once before pantry subtraction and pac
  const info=h.home.foodTarget(h.row);assert.equal(info.totalNeeded,800);assert.equal(info.requiredNeeded,1300);assert.equal(info.shortfall,2000);assert.equal(h.shopping()[0].required,1300);assert.equal(h.shopping()[0].toBuy,2000);
  h.save({totalNeeded:800,extraBuffer:500,buyMultiple:1000,buyMultipleUnit:'ml'});assert.equal(h.home.foodTarget(h.row).requiredNeeded,1300);assert.equal(h.shopping().length,1);assert.equal(h.shopping()[0].toBuy,2000);
 });
+test('buffer-only food requests save with no planned meals and do not credit unbought stock',()=>{
+ const h=fixture({name:'Pasta',unit:'g',owned:250,needed:0});h.requirements([]);
+ for(let review=0;review<2;review++){
+  const target=h.save({totalNeeded:0,extraBuffer:500,buyMultiple:0,buyMultipleUnit:'g'});
+  const info=h.home.foodTarget(h.row);
+  assert.equal(target.targetQty,0);assert.equal(info.mealNeeded,0);assert.equal(info.totalNeeded,0);
+  assert.equal(info.requiredNeeded,500);assert.equal(info.shortfall,250);
+  assert.equal(h.shopping().length,1);assert.equal(h.shopping()[0].toBuy,250);
+  assert.equal(h.read('stock')['pasta|g'],250,'saving a request does not mean it was bought');
+ }
+});
+test('a completed buffer-only request keeps its preference and remaining pantry for the next plan',()=>{
+ const h=fixture({name:'Pasta',unit:'g',owned:500,needed:0});h.requirements([]);
+ h.save({totalNeeded:0,extraBuffer:500,buyMultiple:500,buyMultipleUnit:'g'});
+ module.atomic(h.storage,h.home.completionChanges('pasta|g'));
+ assert.equal(h.home.targets()['pasta|g'].pending,false);
+ assert.equal(h.home.foodTarget(h.row).shortfall,0,'a new week cannot reset the existing pantry');
+ h.requirements([{key:'Pasta',unit:'kg',required:.3}]);
+ const next=h.home.foodTarget(h.row);
+ assert.equal(next.mealNeeded,300);assert.equal(next.extraBuffer,500);assert.equal(next.requiredNeeded,800);
+ assert.equal(next.unroundedShortfall,300);assert.equal(next.shortfall,500,'round only the missing amount to the chosen pack');
+ assert.equal(h.read('stock')['pasta|g'],500,'planning another week does not consume ingredients');
+});
+test('automatic meal totals follow reductions and removal without freezing the previous plan',()=>{
+ const h=fixture({name:'Pasta',unit:'g',owned:250,needed:600}),automatic={automaticNeeded:true,extraBuffer:0,buyMultiple:0};
+ const saved=h.save({...automatic,totalNeeded:600});
+ assert.equal(saved.targetQty,0,'derived meal demand is not an explicit restock request');assert.equal(saved.pending,false);
+ h.requirements([{key:'Pasta',unit:'g',required:300}]);
+ assert.equal(h.home.foodTarget({...h.row,automaticNeeded:true}).totalNeeded,300);assert.equal(h.shopping()[0].toBuy,50);
+ h.save({...automatic,totalNeeded:600});assert.equal(h.home.targets()['pasta|g'].targetQty,0,'a stale visible amount is not saved as a new request');
+ h.requirements([]);const removed=h.home.foodTarget({...h.row,automaticNeeded:true});
+ assert.equal(removed.totalNeeded,0);assert.equal(removed.shortfall,0);assert.equal(h.shopping().length,0);
+ assert.equal(h.read('stock')['pasta|g'],250);
+});
+test('automatic saving keeps explicit legacy restock and direct Shop requests distinct',()=>{
+ const h=fixture({name:'Pasta',unit:'g',owned:250,needed:600});h.save({totalNeeded:1000});
+ assert.equal(h.home.addShoppingBuy({name:'Pasta',quantityText:'200 g',requestId:'extra',actorId:'guest'}).ok,true);
+ const options={automaticNeeded:true,extraBuffer:100,buyMultiple:500,buyMultipleUnit:'g'};
+ for(let review=0;review<2;review++){
+  const info=h.home.foodTarget({...h.row,...options});
+  assert.equal(info.totalNeeded,1000);assert.equal(info.restockQuantity,1000);assert.equal(info.manualQuantity,200);assert.equal(info.shortfall,1500);
+  const saved=h.save({...options,totalNeeded:info.totalNeeded});
+  assert.equal(saved.targetQty,1000);assert.equal(h.home.shoppingBuys()[0].quantity,200);assert.equal(h.shopping()[0].toBuy,1500);
+ }
+ h.requirements([]);assert.equal(h.home.foodTarget({...h.row,automaticNeeded:true}).totalNeeded,1000,'a deliberate prior request survives meal removal');
+});
+test('automatic buffers use existing stock before adding direct purchases and rounding the combined shortfall',()=>{
+ for(const [buffer,multiple,expected]of[[100,0,200],[500,0,200],[700,0,400],[700,500,500]]){
+  const h=fixture({name:'Pasta',unit:'g',owned:500,needed:0});h.requirements([]);
+  assert.equal(h.home.addShoppingBuy({name:'Pasta',quantityText:'200 g',requestId:'extra',actorId:'guest'}).ok,true);
+  const options={automaticNeeded:true,extraBuffer:buffer,buyMultiple:multiple,buyMultipleUnit:'g'};
+  for(let review=0;review<2;review++){
+   const info=h.home.foodTarget({...h.row,...options});assert.equal(info.totalNeeded,0);assert.equal(info.shortfall,expected);
+   h.save({...options,totalNeeded:0});assert.equal(h.shopping()[0].toBuy,expected);assert.equal(h.home.targets()['pasta|g'].targetQty,0);
+  }
+ }
+});
+test('automatic mode derives missing-staple restock without persisting it as an explicit request',()=>{
+ const h=fixture({name:'Olive oil',unit:'each',owned:0,needed:0});h.requirements([{key:'Olive oil',unit:'each',required:1,cupboardRequired:false}]);
+ const options={staple:true,automaticNeeded:true,extraBuffer:0,buyMultiple:0};
+ const info=h.home.foodTarget({...h.row,...options});assert.equal(info.mealNeeded,0);assert.equal(info.restockQuantity,0);assert.equal(info.defaultRestockQuantity,1);assert.equal(info.totalNeeded,1);
+ const saved=h.save({...options,totalNeeded:1});assert.equal(saved.targetQty,0);assert.equal(saved.pending,false);
+ const restocked=h.home.foodTarget({...h.row,...options,qty:.5,stapleStatus:'in',extraBuffer:1});assert.equal(restocked.totalNeeded,0);assert.equal(restocked.shortfall,1,'confirming half a bottle does not retain a stale Out request alongside the buffer');
+});
+test('automatic review preserves an explicit zero staple target instead of reviving a default restock',()=>{
+ const h=fixture({name:'Olive oil',unit:'each',owned:0,needed:0});h.requirements([{key:'Olive oil',unit:'each',required:1,cupboardRequired:false}]);
+ h.storage.setItem(HOME,JSON.stringify({version:1,byActor:{guest:{targets:{'olive oil|each':{name:'Olive oil',unit:'each',targetQty:0,pending:true}},cooked:{},planned:{}}}}));
+ const options={staple:true,automaticNeeded:true,extraBuffer:0,buyMultiple:0};
+ assert.equal(h.home.foodTarget({...h.row,...options}).totalNeeded,0);
+ const saved=h.save({...options,totalNeeded:0});assert.equal(saved.targetQty,0);assert.equal(saved.pending,true);
+ assert.equal(h.home.foodTarget({...h.row,...options}).totalNeeded,0);
+});
 test('buffer and buying preferences remain active after target fulfillment without reviving the old base',()=>{
  const h=fixture({needed:1000,owned:200});h.save({totalNeeded:1000,extraBuffer:100,buyMultiple:1000,buyMultipleUnit:'ml'});module.atomic(h.storage,h.home.completionChanges('milk|ml'));
  assert.equal(h.home.targets()['milk|ml'].pending,false);h.requirements([{key:'Milk',unit:'ml',required:300}]);
@@ -70,6 +142,21 @@ test('purchase pack size does not overwrite the reviewed contents of a physical 
 test('countable eggs round to six while staple buffers use whole container counts',()=>{
  const eggs=fixture({name:'Eggs',unit:'each',owned:2,needed:7});eggs.save({totalNeeded:7,extraBuffer:1,buyMultiple:6,buyMultipleUnit:'each'});assert.equal(eggs.home.foodTarget(eggs.row).shortfall,6);assert.equal(eggs.shopping()[0].toBuy,6);
  const h=fixture({name:'Olive oil',unit:'each',owned:1,needed:1});const row={...h.row,staple:true};assert.equal(h.home.foodTarget({...row,extraBuffer:.5}).targetProblem,'Use whole container counts for this staple.');
+});
+test('half-used staple containers are saved as stock while the missing purchase rounds to a whole container',()=>{
+ const h=fixture({name:'Olive oil',unit:'each',owned:.5,needed:0});h.requirements([]);
+ const options={staple:true,automaticNeeded:true,extraBuffer:1,buyMultiple:0,buyMultipleUnit:'each'};
+ for(let review=0;review<2;review++){
+  const info=h.home.foodTarget({...h.row,...options});
+  assert.equal(info.targetProblem,'');assert.equal(info.totalNeeded,0);assert.equal(info.unroundedShortfall,.5);assert.equal(info.shortfall,1);assert.equal(info.buyMultipleQuantity,1);
+  const saved=h.save({...options,totalNeeded:0});assert.equal(saved.buyMultiple,1);assert.equal(h.shopping()[0].toBuy,1);
+  assert.equal(h.read('stock')['olive oil|each'],.5,'requesting a bottle never tops up physical stock');
+ }
+ const twoAreas=h.home.foodTarget({...h.row,...options},{otherRows:[{name:'Olive oil',unit:'each',qty:.25,staple:true}]});
+ assert.equal(twoAreas.otherOwned,.25);assert.equal(twoAreas.unroundedShortfall,.25);assert.equal(twoAreas.shortfall,1);
+ assert.equal(h.home.addShoppingBuy({name:'Olive oil',quantityText:'0.5 each',requestId:'partial-purchase',actorId:'guest'}).ok,false,'partial pantry stock does not allow fractional purchase counts');
+ assert.match(h.home.foodTarget({...h.row,...options,extraBuffer:.5}).targetProblem,/whole container/);
+ assert.match(h.home.foodTarget({...h.row,...options,buyMultiple:.5}).targetProblem,/whole container/);
 });
 test('invalid, negative and incompatible optional values fail before persistence',()=>{
  const h=fixture(),before=[...h.values];

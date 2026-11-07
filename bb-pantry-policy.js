@@ -76,8 +76,24 @@
  }
  function containerLabel(value){
   const name=canonicalName(value);
-  if(/\b(?:salt|pepper|paprika|cumin|turmeric|coriander powder|cinnamon|nutmeg|allspice|masala|powder|spice|herb|honey|mustard|jam|paste|peanut butter|pesto)\b/.test(name))return 'jar';
+  if(/\b(?:salt|pepper|peppercorns?|paprika|cumin|turmeric|coriander powder|cinnamon|nutmeg|allspice|masala|powder|spice|herb|honey|mustard|jam|paste|peanut butter|pesto)\b/.test(name))return 'jar';
   return isStaple(name)?'bottle':'unit';
+ }
+ function isContainerTracked(record){
+  if(!object(record))return false;
+  const name=record.name||record.key||record.canonicalKey;
+  if(!isStaple(name)||isWholePepper(name,record.unit,record))return false;
+  if(record.trackingMode==='measured'&&record.measurementReviewed===true){
+   const value=normalize(name,1,record.unit,{market:record.inputMarket||record.market,packReviewed:record.packReviewed===true,packQuantity:record.packQuantity,packUnit:record.packUnit});
+   if(value&&['g','ml'].includes(value.unit)&&value.estimated!==true)return false;
+  }
+  return true;
+ }
+ function measuredIdentityProblem(record,canonicalize){
+  if(!object(record)||record.trackingMode!=='measured'||record.measurementReviewed!==true)return '';
+  const name=record.name||record.key||record.canonicalKey;
+  if(isStaple(name)&&canonicalName(name,canonicalize)==='pepper')return 'Name this seasoning separately from whole peppers before saving a measured amount. Its existing stock has been kept.';
+  return '';
  }
  const uk=market=>market===undefined||market===null||['UK','GB','Guernsey','Jersey'].includes(market);
  // Approximate weights for a 240 ml US cup, matched by ingredient and form.
@@ -169,5 +185,5 @@
   if(stock&&typeof stock==='object'&&record.bb173StockKey&&Object.hasOwn(stock,record.bb173StockKey)){const amount=number(stock[record.bb173StockKey]);if(amount!==null)return amount>0?'in':'out';}
   return 'unknown';
  }
- return Object.freeze({canonicalName,isStaple,isWholePepper,containerLabel,defaultPack,normalize,smallUse,staplePurchase,stapleStatus,baseUnit,cupGrams,cupTable,countGrams});
+ return Object.freeze({canonicalName,isStaple,isWholePepper,isContainerTracked,measuredIdentityProblem,containerLabel,defaultPack,normalize,smallUse,staplePurchase,stapleStatus,baseUnit,cupGrams,cupTable,countGrams});
 });
