@@ -25,19 +25,41 @@
       "observation": "Full final run passed."
     }
   ],
+  "limitations": [
+    "One earlier375px full run experienced an unexplained same-URL reload before mode selection. The focused375px repro and full375px retry with CDP tracing passed; the traced run contained only the six expected navigations. The failed attempt remains preserved; no speculative source change was made for it."
+  ],
   "selectedArtifacts": {
-    "320": "planned-final",
-    "375": "planned-final375-trace"
+    "planned": "net-basis-final/planned",
+    "scanner": "net-basis-final/scanner"
   },
-  "date": "2026-11-07T10:25:28.362Z",
+  "scope": "Local candidate verification only; remote CI status is tracked separately by the parent agent.",
+  "validation": {
+    "nodeSuite": {
+      "total": 2847,
+      "passed": 2844,
+      "failed": 0,
+      "skipped": 1,
+      "todo": 2,
+      "skipReason": "Swift compiler unavailable locally; two existing TODO cases retained"
+    },
+    "typecheck": "TypeScript5.9.3 strict/checkJs/noEmit passed",
+    "native": {
+      "files": 936,
+      "freeRecipes": 100,
+      "privateRecipeBundle": false,
+      "portableVerification": "passed"
+    },
+    "provenance": "Node, strict typecheck and native results supplied by the parent; browser hashes collected by this QA agent."
+  },
+  "date": "2026-11-07T10:44:12.309Z",
   "pass": true,
   "provenance": "Actual candidate source in isolated touch Chromium at 375 and 320 px. Every HTTP request intercepted; synthetic account only; no customer writes or paid scans. Source hashes compare received runtime bytes to the final candidate. Scanner render exposure is test-only instrumentation with raw source hashes captured before injection.",
   "sourceHashes": {
     "app.html": "c0b80150479bd4549d830053e18a159a5c80ee8365be3cffa0221ee89a12a119",
-    "bb-pantry-inline.js": "98b2ee0bc3c6410e9f6c62133e59567f5a5258777e9779d7a9abd0b20c2e26a0",
+    "bb-pantry-inline.js": "1c0cfd23d952eb03c54ec3651d984b12e4912bb89d09c281c82a8f763bd8d472",
     "bb-pantry-inline.css": "08cfc17c2b11b0c4626a4848e5ca70bfbe4f44e33f75751c531062af37e36e3e",
     "shopping-inventory.js": "18cf25bc20db0f18d96a808dd6c063dd3b203886341601aefca188b19a1a5738",
-    "bb-home.js": "fa0d0f8f7afb96c12e3420df1ee41feaf8a316cfd1060bb8b3d5304c9055e1e3",
+    "bb-home.js": "b0bbab6285c41d11a920fc234b8d67650708c5d3abc5e7963c8e7e755824853e",
     "bb-pantry-policy.js": "201b6b7e32fcb865fd48e2b926eb608af2dfe1a9348030cb23987ec3c7c107c4",
     "bb-pantry-deduction.js": "9fe47599796e263818b75b738dd5e91070e596d1595ce413bcab6e7e39dd3d52",
     "bb-recipe-canonical.js": "265deeff6e5d3caaa3aaa2f3df05b612594e4745a33f618fe67cac7f8c40ba43",
@@ -45,8 +67,8 @@
     "bb-receipt-inventory-core.mjs": "6ebc98d6992a4784ef221d10eaeda184cfa479006f17984e7c657fcc056ee37d",
     "make-a-meal.html": "d109802637daeda16d542b1041a93bb9592fe2ebc8592b6fc0075c01921aa0cb",
     "make-a-meal.js": "07f08c2485a5f0f075bde9f968d9c1d8e6790404be7501c83b33aa4dd20063c1",
-    "bb-scan-food-identity.js": "c3eb213d0330c79f3740f719fd6598344a4e55dcd6c004b629bdbab7f88bcfd8",
-    "bb-pantry-camera.js": "b006f72e8b81a68ab690871c12cad6f6030d432fe20976b992dedcc5ca06d803",
+    "bb-scan-food-identity.js": "c66bedff2e4f1c6a32d5a9e90d792db7ffe0068059e1063f170b3b8881e2cb5c",
+    "bb-pantry-camera.js": "01362f42eb2d96b5af9bc978b1dca50d0e691ea820f9829e5c490faad33594c9",
     "bb-pantry-camera.css": "887e5117a7076fe2fd15071614299a080e7ae2c9a63432b6305d707ab945a44d"
   },
   "planned": [
@@ -111,7 +133,7 @@
             "value": "0",
             "readOnly": true,
             "disabled": false,
-            "type": "number",
+            "type": "text",
             "valid": true,
             "stepperButtons": 0,
             "helper": "Total needed (automatic)Not needed for your planned meals. Use Extra stock buffer to keep more on hand.",
@@ -124,7 +146,7 @@
             "value": "0",
             "readOnly": true,
             "disabled": false,
-            "type": "number",
+            "type": "text",
             "valid": true,
             "stepperButtons": 0,
             "helper": "Total needed (automatic)Not needed for your planned meals. Use Extra stock buffer to keep more on hand.",
@@ -137,7 +159,7 @@
             "value": "1",
             "readOnly": true,
             "disabled": false,
-            "type": "number",
+            "type": "text",
             "valid": true,
             "stepperButtons": 0,
             "helper": "Total needed (automatic)Not needed for your planned meals. Includes your saved restock target. Use Extra stock buffer to keep more on hand.",
@@ -208,7 +230,7 @@
             "value": "0",
             "readOnly": true,
             "disabled": false,
-            "type": "number",
+            "type": "text",
             "valid": true,
             "stepperButtons": 0,
             "helper": "Total needed (automatic)Not needed for your planned meals. Use Extra stock buffer to keep more on hand.",
@@ -221,7 +243,7 @@
             "value": "0",
             "readOnly": true,
             "disabled": false,
-            "type": "number",
+            "type": "text",
             "valid": true,
             "stepperButtons": 0,
             "helper": "Total needed (automatic)Not needed for your planned meals. Use Extra stock buffer to keep more on hand.",
@@ -234,7 +256,7 @@
             "value": "1",
             "readOnly": true,
             "disabled": false,
-            "type": "number",
+            "type": "text",
             "valid": true,
             "stepperButtons": 0,
             "helper": "Total needed (automatic)Not needed for your planned meals. Includes your saved restock target. Use Extra stock buffer to keep more on hand.",
@@ -272,18 +294,18 @@
       "checks": {
         "unknownStock": {},
         "confirmedStock": {
-          "tinned tuna in brine|g": 265
+          "drained tinned tuna in brine|g": 265
         },
         "repeatedStock": {
-          "tinned tuna in brine|g": 265
+          "drained tinned tuna in brine|g": 265
         },
         "productDetails": "Scanned product details (2)John West Tuna Chunks120 g \u00b7 drained weightWaitrose Tuna Chunks0.145 kg \u00b7 drained weightThese are the last reviewed scan details. At home shows the total currently available.",
         "pepperStock": {
-          "tinned tuna in brine|g": 265,
+          "drained tinned tuna in brine|g": 265,
           "black peppercorns|g": 20
         },
         "pepperAfterEdit": {
-          "tinned tuna in brine|g": 265,
+          "drained tinned tuna in brine|g": 265,
           "black peppercorns|g": 19.5
         },
         "bounds": {
@@ -291,6 +313,20 @@
           "overflow": false,
           "footerBottom": 803,
           "viewport": 812
+        },
+        "tunaBasisReview": {
+          "needed": "Needs review",
+          "readOnly": true,
+          "helper": "Your planned meals use related tuna, but the type or net/drained weight needs review. Use Extra stock buffer to keep more on hand.",
+          "readout": "Add to Shop: 0 g",
+          "bufferPreview": "Add to Shop: 35 g"
+        },
+        "tunaNetDemand": {
+          "required": 290,
+          "credited": 0,
+          "toBuy": 290,
+          "shopLabel": "Buy 2 tins (290 g)",
+          "drainedStock": 265
         }
       }
     },
@@ -304,8 +340,8 @@
         "make-a-meal.html": true,
         "bb-pantry-camera.css": true,
         "bb-scan-food-identity.js": true,
-        "bb-pantry-camera.js": true,
         "bb-pantry-policy.js": true,
+        "bb-pantry-camera.js": true,
         "make-a-meal.js": true,
         "app.html": true,
         "bb-recipe-canonical.js": true,
@@ -320,18 +356,18 @@
       "checks": {
         "unknownStock": {},
         "confirmedStock": {
-          "tinned tuna in brine|g": 265
+          "drained tinned tuna in brine|g": 265
         },
         "repeatedStock": {
-          "tinned tuna in brine|g": 265
+          "drained tinned tuna in brine|g": 265
         },
         "productDetails": "Scanned product details (2)John West Tuna Chunks120 g \u00b7 drained weightWaitrose Tuna Chunks0.145 kg \u00b7 drained weightThese are the last reviewed scan details. At home shows the total currently available.",
         "pepperStock": {
-          "tinned tuna in brine|g": 265,
+          "drained tinned tuna in brine|g": 265,
           "black peppercorns|g": 20
         },
         "pepperAfterEdit": {
-          "tinned tuna in brine|g": 265,
+          "drained tinned tuna in brine|g": 265,
           "black peppercorns|g": 19.5
         },
         "bounds": {
@@ -339,52 +375,69 @@
           "overflow": false,
           "footerBottom": 803,
           "viewport": 812
+        },
+        "tunaBasisReview": {
+          "needed": "Needs review",
+          "readOnly": true,
+          "helper": "Your planned meals use related tuna, but the type or net/drained weight needs review. Use Extra stock buffer to keep more on hand.",
+          "readout": "Add to Shop: 0 g",
+          "bufferPreview": "Add to Shop: 35 g"
+        },
+        "tunaNetDemand": {
+          "required": 290,
+          "credited": 0,
+          "toBuy": 290,
+          "shopLabel": "Buy 2 tins (290 g)",
+          "drainedStock": 265
         }
       }
     }
   ],
-  "validation": {
-    "nodeSuite": {
-      "total": 2841,
-      "passed": 2838,
-      "failed": 0,
-      "skipped": 1,
-      "todo": 2,
-      "skipReason": "Swift compiler unavailable in Linux; existing TODO cases retained"
-    },
-    "typecheck": "TypeScript5.9.3 strict/checkJs/noEmit passed",
-    "native": {
-      "files": 936,
-      "freeRecipes": 100,
-      "portableVerification": "passed"
-    },
-    "provenance": "Node suite, strict typecheck and native portable verification results supplied by the parent agent; browser source-hash evidence was collected by this QA agent."
-  },
   "previews": [
     {
-      "label": "Automatic meal need and buffer-only shopping",
-      "path": "/dev/shm/pantry-final-qa/planned-final375-trace/375-pasta-no-meals-buffer.png"
+      "label": "Automatic need and buffer-only shopping",
+      "path": "/dev/shm/pantry-final-qa/net-basis-final/planned/375-pasta-no-meals-buffer.png"
     },
     {
       "label": "Half a bottle owned; buy one whole bottle",
-      "path": "/dev/shm/pantry-final-qa/planned-final375-trace/375-oil-half-bottle-whole-purchase.png"
+      "path": "/dev/shm/pantry-final-qa/net-basis-final/planned/375-oil-half-bottle-whole-purchase.png"
     },
     {
-      "label": "One jar with20g contents, kept separate from jar count",
-      "path": "/dev/shm/pantry-final-qa/planned-final375-trace/375-peppercorn-one-jar-20g.png"
+      "label": "One jar with20gcontents, separate from jar count",
+      "path": "/dev/shm/pantry-final-qa/net-basis-final/planned/375-peppercorn-one-jar-20g.png"
     }
   ],
-  "additionalPreview": {
-    "label": "Combined tuna brands with retained product details",
-    "path": "/dev/shm/pantry-final-qa/scanner-final/375-confirmed-group-product-details.png"
-  },
-  "limitations": [
-    "One earlier375px full run experienced an unexplained same-URL reload before mode selection. The focused375px repro and full375px retry with CDP tracing passed; the traced run contained only the six expected navigations. The failed attempt remains preserved; no speculative source change was made for it."
+  "additionalPreviews": [
+    {
+      "label": "Retained brand details under one drained tuna group",
+      "path": "/dev/shm/pantry-final-qa/net-basis-final/scanner/375-confirmed-group-product-details.png"
+    },
+    {
+      "label": "Related net/drained demand requires review",
+      "path": "/dev/shm/pantry-final-qa/net-basis-final/scanner/375-tuna-net-drained-needs-review.png"
+    },
+    {
+      "label": "Net demand remains290g despite265g drained stock",
+      "path": "/dev/shm/pantry-final-qa/net-basis-final/scanner/375-tuna-net-demand-unchanged.png"
+    }
+  ],
+  "navigationVerification": [
+    {
+      "width": 375,
+      "documentRequests": 6,
+      "scriptScheduledNavigations": 0
+    },
+    {
+      "width": 320,
+      "documentRequests": 6,
+      "scriptScheduledNavigations": 0
+    }
   ],
   "transitions": {
-    "provenance": "Actual working source in isolated touch Chromium; all HTTP intercepted with synthetic account; no live writes. Navigation uses synthetic clicks and trusted wheel input. Layout-shift observations are diagnostic, not production Core Web Vitals.",
+    "verifiedAt": "2026-11-07T10:51:31.496042+00:00",
+    "provenance": "Actual frozen working source in isolated touch Chromium; all HTTP intercepted with a synthetic account; no live writes. Navigation uses synthetic clicks and trusted wheel input. Layout-shift observations are diagnostic, not production Core Web Vitals.",
     "files": {
-      "bb-pantry-inline.js": "98b2ee0bc3c6410e9f6c62133e59567f5a5258777e9779d7a9abd0b20c2e26a0",
+      "bb-pantry-inline.js": "1c0cfd23d952eb03c54ec3651d984b12e4912bb89d09c281c82a8f763bd8d472",
       "bb-pantry-inline.css": "08cfc17c2b11b0c4626a4848e5ca70bfbe4f44e33f75751c531062af37e36e3e",
       "bb-kitchen-essentials.js": "a7e8614a60de3a9ee33a37e55ba70a0efc4c13e1b63db38eb94617e660e1fa9d"
     },
@@ -392,6 +445,10 @@
       {
         "width": 375,
         "pass": true,
+        "servedHashesMatch": {
+          "bb-pantry-inline.js": true,
+          "bb-pantry-inline.css": true
+        },
         "issues": [],
         "pageErrors": [],
         "consoleErrors": [],
@@ -461,6 +518,10 @@
       {
         "width": 320,
         "pass": true,
+        "servedHashesMatch": {
+          "bb-pantry-inline.js": true,
+          "bb-pantry-inline.css": true
+        },
         "issues": [],
         "pageErrors": [],
         "consoleErrors": [],
@@ -531,7 +592,16 @@
     "nodeTests": {
       "total": 51,
       "pass": 51,
-      "fail": 0
+      "fail": 0,
+      "scope": "Previously run relevant pantry UI/group suites; the latest rerun is browser-only."
     }
+  },
+  "nativeSmokeReporter": {
+    "scope": "Debug-only test reporting, excluded from Release",
+    "fixed": "Completed success and failure snapshots cannot be overwritten by late progress from this or a prior document.",
+    "focusedTestsPassed": 40,
+    "regressionProof": "Removing the JavaScript completion guard reproduces both new late-event failures.",
+    "productionNavigationChanged": false,
+    "timeoutsOrAssertionsWeakened": false
   }
 }

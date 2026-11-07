@@ -1,6 +1,8 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import {createRequire} from 'node:module';
+import fs from 'node:fs';
+import vm from 'node:vm';
 import {normalizePantryState,pantryLotMetadata} from '../bb-receipt-inventory-core.mjs';
 const require=createRequire(import.meta.url),camera=require('../bb-pantry-camera.js'),identity=require('../bb-scan-food-identity.js');
 const uid=(name,loc)=>loc+'|'+name.toLowerCase();
@@ -20,7 +22,7 @@ test('approved branded products resolve to food identities without generic brand
 test('two brands with compatible confirmed weights form one stocktake total and preserve product provenance',()=>{
  const foods=[tuna('John West Tuna Chunks',120),tuna('Waitrose Tuna Chunks',.145,{unit:'kg'})];
  const result=save(foods),row=active(result)[0];
- assert.deepEqual(result.stock,{'tinned tuna in brine|g':265});assert.equal(active(result).length,1);assert.equal(row.qty,265);
+ assert.deepEqual(result.stock,{'drained tinned tuna in brine|g':265});assert.equal(active(result).length,1);assert.equal(row.qty,265);
  assert.deepEqual(row.scanProductLots.map(lot=>lot.brand),['John West','Waitrose']);
  assert.equal(row.scanProductLots[1].checkedQuantity,.145);assert.equal(row.scanProductLots[1].unit,'kg');
  assert.equal(row.trackingMode,'measured');assert.equal(row.measurementReviewed,true);
@@ -30,7 +32,7 @@ test('two brands with compatible confirmed weights form one stocktake total and 
 test('unmeasured branded scan names consolidate to one pending food heading without inventing stock',()=>{
  const inventory=Object.fromEntries(['John West Tuna Chunks','Waitrose Tuna Chunks'].map(name=>[uid(name,'cupboard'),{name,loc:'cupboard',selected:true,qty:null,unit:'g',source:'scan'}]));
  const result=save([tuna('John West Tuna Chunks',null,{variant:''}),tuna('Waitrose Tuna Chunks',null,{variant:''})],{stock:{'rice|g':200},inventory});
- assert.deepEqual(result.stock,{'rice|g':200});assert.equal(active(result).length,1);assert.equal(active(result)[0].name,'Tinned tuna');
+ assert.deepEqual(result.stock,{'rice|g':200});assert.equal(active(result).length,1);assert.equal(active(result)[0].name,'Drained tinned tuna');
  assert.equal(active(result)[0].qty,null);assert.equal(active(result)[0].scanNeedsReview,true);assert.equal(active(result)[0].scanProductLots.length,2);
  assert.equal(active(result)[0].trackingMode,undefined);assert.match(result.groups[0].reviewMessage,/Confirm the amount/);
 });
@@ -44,7 +46,7 @@ test('unknown product amounts retain confirmed stock and its weight basis for la
 
 test('packing liquids and fresh or frozen tuna remain distinct physical food groups',()=>{
  const result=save([tuna('John West Tuna Chunks in brine',100),tuna('Waitrose Tuna Chunks in sunflower oil',150,{variant:'sunflower'}),{name:'Fresh tuna',loc:'fridge',qty:200,unit:'g'},{name:'Frozen tuna',loc:'freezer',qty:300,unit:'g'}]);
- assert.deepEqual(result.stock,{'tinned tuna in brine|g':100,'tinned tuna in sunflower oil|g':150,'fresh tuna|g':200,'frozen tuna|g':300});
+ assert.deepEqual(result.stock,{'drained tinned tuna in brine|g':100,'drained tinned tuna in sunflower oil|g':150,'fresh tuna|g':200,'frozen tuna|g':300});
  assert.equal(active(result).length,4);
  assert.throws(()=>save([tuna('John West Tuna Chunks in brine',100,{variant:'sunflower'})]),/disagrees/);
 });
@@ -52,16 +54,31 @@ test('packing liquids and fresh or frozen tuna remain distinct physical food gro
 test('unspecified packing liquid and mixed net or drained basis never silently combine',()=>{
  for(const foods of [
   [tuna('John West Tuna Chunks',120,{variant:''}),tuna('Waitrose Tuna Chunks',145,{variant:''})],
-  [tuna('John West Tuna Chunks',120,{quantityBasis:'net'}),tuna('Waitrose Tuna Chunks',145)],
   [tuna('John West Tuna Chunks',120,{quantityBasis:''})]
  ]){const result=save(foods);assert.deepEqual(result.stock,{});assert.ok(result.groups.every(group=>group.pending));}
  const prior=save([tuna('John West Tuna Chunks',200,{quantityBasis:'net'})]);
- const changed=save([tuna('John West Tuna Chunks',140)],prior);assert.deepEqual(changed.stock,prior.stock);assert.equal(active(changed)[0].scanQuantityBasis,'net');assert.equal(changed.groups[0].pending,true);
+ const changed=save([tuna('John West Tuna Chunks',140)],prior);assert.deepEqual(changed.stock,prior.stock);assert.equal(active(changed).find(row=>row.bb173StockValue>0).scanQuantityBasis,'net');assert.equal(changed.groups[0].pending,true);
+});
+test('different net and drained product weights retain distinct physical identities',()=>{
+ const result=save([tuna('John West Tuna Chunks',200,{quantityBasis:'net'}),tuna('Waitrose Tuna Chunks',145)]);
+ assert.deepEqual(result.stock,{'tinned tuna in brine|g':200,'drained tinned tuna in brine|g':145});assert.equal(active(result).length,2);
+});
+test('generic drained tuna cannot credit a generic NET meal requirement through the actual pantry allocator',()=>{
+ const drained=save([tuna('Tinned tuna',200,{variant:''})]);
+ assert.deepEqual(drained.stock,{'drained tinned tuna|g':200});
+ const html=fs.readFileSync(new URL('../index.html',import.meta.url),'utf8'),source=html.match(/const BB307Pantry=\(\(\)=>\{[\s\S]*?\n\}\)\(\);/)[0];
+ const context=vm.createContext({BB_WHOLE_PRODUCE_GRAMS:{},BBPantryPolicy:require('../bb-pantry-policy.js')});
+ vm.runInContext(fs.readFileSync(new URL('../basketboss-pricing-v19.js',import.meta.url),'utf8'),context);vm.runInContext(source+'\nthis.pantry=BB307Pantry;',context);
+ const requirements=[{key:'Tinned tuna',unit:'g',required:290}],result=context.pantry.reconcileStock(drained.stock,requirements);
+ assert.equal(result.pantry['tinned tuna|g'],undefined);assert.equal(result.remainingStock['drained tinned tuna|g'],200,'drained grams never turn into net label grams');
+ const again=save([tuna('Tinned tuna',200,{variant:''})],drained);assert.deepEqual(again.stock,drained.stock);
+ const net=save([tuna('Tinned tuna',290,{variant:'',quantityBasis:'net'})]),covered=context.pantry.reconcileStock(net.stock,requirements);
+ assert.equal(covered.pantry['tinned tuna|g'],290,'an explicitly reviewed net amount still covers the compatible net requirement');
 });
 
 test('different reviewed tin sizes sum by contents and never use a generic canned-food default',()=>{
  const foods=[tuna('John West Tuna Chunks',2,{unit:'tin',packReviewed:true,packQuantity:120,packUnit:'g'}),tuna('Waitrose Tuna Chunks',3,{unit:'tin',packReviewed:true,packQuantity:145,packUnit:'g'})];
- const result=save(foods);assert.equal(result.stock['tinned tuna in brine|g'],675);assert.equal(active(result)[0].scanProductLots[1].packQuantity,145);
+ const result=save(foods);assert.equal(result.stock['drained tinned tuna in brine|g'],675);assert.equal(active(result)[0].scanProductLots[1].packQuantity,145);
  const unknown=save([tuna('John West Tuna Chunks',2,{unit:'tin'}),tuna('Waitrose Tuna Chunks',3,{unit:'tin'})]);
  assert.deepEqual(unknown.stock,{});assert.equal(unknown.groups[0].pending,true);assert.match(unknown.groups[0].reviewMessage,/container/);
 });
@@ -85,8 +102,8 @@ test('brand aliases sum approved tomatoes and baked beans while keeping differen
 
 test('one location stocktake keeps other confirmed locations and zero removes only that group',()=>{
  const initial=save([tuna('John West Tuna Chunks',120),tuna('Waitrose Tuna Chunks',200,{loc:'freezer'})]);
- const replaced=save([tuna('John West Tuna Chunks',90)],initial);assert.equal(replaced.stock['tinned tuna in brine|g'],290);
- const removed=save([tuna('John West Tuna Chunks',0)],replaced);assert.equal(removed.stock['tinned tuna in brine|g'],200);assert.equal(active(removed).length,1);
+ const replaced=save([tuna('John West Tuna Chunks',90)],initial);assert.equal(replaced.stock['drained tinned tuna in brine|g'],290);
+ const removed=save([tuna('John West Tuna Chunks',0)],replaced);assert.equal(removed.stock['drained tinned tuna in brine|g'],200);assert.equal(active(removed).length,1);
 });
 
 test('previously measured branded stock is retained for explicit migration rather than counted twice',()=>{

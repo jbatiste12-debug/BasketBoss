@@ -266,6 +266,13 @@ test('a new-food preview exposes plan need without selecting, saving or creating
  const preview=editor.preview('Rice','cupboard','g');assert.equal(preview.qty,null);assert.equal(preview.totalNeeded,600);assert.equal(preview.mealNeeded,600);assert.equal(preview.minimumNeeded,600);assert.equal(preview.shortfall,600);
  assert.equal(editor.list().length,rows);assert.deepEqual(h.values,before);assert.equal(h.win.BBPantryLive.hasPending(),false);
 });
+test('drained tuna stock flags a related net-weight meal without reducing its separate Shop demand',async()=>{
+ const h=fixture({live:true,requirements:[{key:'Tinned tuna',unit:'g',required:290}]});h.win.BBPantryPolicy=pantryPolicy;
+ const editor=h.win.BBPantryEditor,{key}=editor.add({name:'Drained tinned tuna in brine',loc:'cupboard',qty:265,unit:'g'});await editor.flush();
+ const before=new Map(h.values),info=editor.read(key);
+ assert.equal(info.mealNeeded,0);assert.equal(info.plannedNeedsReview,true);assert.match(info.plannedReviewMessage,/net\/drained/);
+ assert.equal(h.needed()[0].toBuy,290,'related fish is not a compatible net/drained quantity');assert.deepEqual(h.values,before);
+});
 test('automatic pantry confirmations follow a changed plan instead of retaining its old demand',async()=>{
  const h=fixture({live:true,requirements:[{key:'Pasta',unit:'g',required:600}]});h.win.BBPantryPolicy=pantryPolicy;
  const editor=h.win.BBPantryEditor,{key}=editor.add({name:'Pasta',loc:'cupboard',qty:250,unit:'g'});await editor.flush();

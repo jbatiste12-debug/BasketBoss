@@ -245,11 +245,11 @@
    // Recalculate it in the current unit rather than reusing a rounded input.
    try{info=win.BBHome?.foodTarget?.({...draftRow(view),inputMarket:market(),automaticNeeded:true,extraBuffer:0,buyMultiple:0},{otherRows:view.api.list().filter(item=>item.key!==(view.key||view.matchedKey))});}catch{}
    const problem=info?.targetProblem||(!info?'Shopping totals are still loading. Please try again.':'');
-   view.needed.value=problem?'':String(info.totalNeeded);
+   view.needed.value=problem?'':info.plannedNeedsReview&&info.totalQuantity===0?'Needs review':String(info.totalNeeded);
    let help=problem;
    if(!problem){
     const number=new Intl.NumberFormat(market()==='US'?'en-US':'en-GB',{maximumFractionDigits:2});
-    help=info.plannedNeedsReview?'Planned meal quantities need a unit check; only compatible amounts are included.':info.mealQuantity>0?'From your planned meals: '+number.format(info.mealNeeded)+' '+view.units.value+'.':'Not needed for your planned meals.';
+    help=info.plannedNeedsReview?(info.plannedReviewMessage||'Planned meal quantities need a unit check; only compatible amounts are included.'):info.mealQuantity>0?'From your planned meals: '+number.format(info.mealNeeded)+' '+view.units.value+'.':'Not needed for your planned meals.';
     if(info.totalQuantity>info.mealQuantity+info.quantityTolerance)help+=' Includes your saved restock target.';
     if(info.manualQuantity>0)help+=' Extra already on Shop: '+number.format(info.manualNeeded)+' '+view.units.value+'.';
     if(info.otherRequestsNeedReview)help+=' Some existing Shop items use different units and need review.';
@@ -260,7 +260,7 @@
   function refreshPreview(view=editor){
    if(!view)return;
    const target=automaticNeeded(view);
-   const owned=Number(view.quantity.value),needed=Number(view.needed.value),buffer=Number(view.buffer.value),known=view.quantity.value.trim()!==''&&view.needed.value.trim()!==''&&view.buffer.value.trim()!==''&&[owned,needed,buffer].every(value=>Number.isFinite(value)&&value>=0);
+   const owned=Number(view.quantity.value),needed=target?.totalNeeded??NaN,buffer=Number(view.buffer.value),known=!!target&&view.quantity.value.trim()!==''&&view.buffer.value.trim()!==''&&[owned,needed,buffer].every(value=>Number.isFinite(value)&&value>=0);
    const unit=view.units.value,model=draftRow(view),other=Number(view.row.otherOwned||0)===0?0:converted({...view.row,qty:view.row.otherOwned},unit,win.BBPantryPolicy,market()),buy=multipleDraft(view);
    let calculation=null;
    if(target&&known&&!target.otherOwnedNeedsReview&&other!==null&&buy.quantity!==null)try{
@@ -303,7 +303,7 @@
   }
   function preparePanel(view){
    const target=automaticNeeded(view);
-   const row=draftRow(view),raw=view.quantity.value.trim(),neededRaw=view.needed.value.trim(),bufferRaw=view.buffer.value.trim(),buy=multipleDraft(view);
+   const row=draftRow(view),raw=view.quantity.value.trim(),neededRaw=target?String(target.totalNeeded):'',bufferRaw=view.buffer.value.trim(),buy=multipleDraft(view);
    if(!row.name)return {error:'Enter the food name.',field:view.name};
    if(view.group&&(view.groupDirty||view.newItem)){
     try{const pin=win.BBPantryGroups.context();if(pin.actor!==view.actor||pin.raw!==view.group.pin.raw)return {error:'Subcategories changed. Close this panel and review them before saving.'};view.group.pin=pin;}catch{return {error:'Reopen At home to review your subcategories before saving.'};}
@@ -385,7 +385,7 @@
    const field=(label,input,value,aria)=>{input.type='number';input.inputMode='decimal';input.min='0';input.max=row.staple?'10000':'1000000';input.step=row.staple?'1':'any';input.placeholder='0';input.value=value;input.setAttribute('aria-label',aria);const stepper=el('div','bbpi-stepper'),less=btn('−',()=>localStep(input,-1),'bbpi-step'),more=btn('+',()=>localStep(input,1),'bbpi-step');less.setAttribute('aria-label','Less '+aria);more.setAttribute('aria-label','More '+aria);stepper.append(less,input,more);label.append(stepper);controls.append(label);};
    field(quantityLabel,quantity,rowAmount(row,unit),'Amount of '+(row.name||'food')+' at home');quantity.step='any';quantity.dataset.bbpiQuantity='';
    const defaultNeeded=converted({...row,qty:row.totalNeeded??0},unit,win.BBPantryPolicy,market());
-   needed.type='number';needed.readOnly=true;needed.value=defaultNeeded===null?'':String(defaultNeeded);needed.setAttribute('aria-label','Total needed for '+(row.name||'food'));needed.setAttribute('aria-describedby','bbpiNeededHelp');needed.dataset.bbpiNeeded='';neededHelp.id='bbpiNeededHelp';neededHelp.setAttribute('aria-live','polite');neededLabel.append(needed,neededHelp);controls.append(neededLabel);
+   needed.type='text';needed.readOnly=true;needed.value=defaultNeeded===null?'':String(defaultNeeded);needed.setAttribute('aria-label','Total needed for '+(row.name||'food'));needed.setAttribute('aria-describedby','bbpiNeededHelp');needed.dataset.bbpiNeeded='';neededHelp.id='bbpiNeededHelp';neededHelp.setAttribute('aria-live','polite');neededLabel.append(needed,neededHelp);controls.append(neededLabel);
    const defaultBuffer=converted({...row,qty:row.extraBuffer??0},unit,win.BBPantryPolicy,market());
    field(bufferLabel,buffer,defaultBuffer===null?'':String(defaultBuffer),'Extra stock buffer for '+(row.name||'food'));buffer.dataset.bbpiBuffer='';
    const unitTag=el('label','bbpi-unit-label','Unit'),units=el('select');units.setAttribute('aria-label','Unit for '+(row.name||'food'));unitOptions(units,row.staple?['each']:(api.units?.()||['each','g','kg','ml','l','pack','bag','tin']),unit,row);unitTag.append(units);controls.append(unitTag);content.append(controls);

@@ -9,7 +9,7 @@ for bb_command in git node npm pod xcrun; do
   command -v "$bb_command" >/dev/null || { echo "Missing $bb_command. Install it before continuing."; exit 1; }
 done
 
-bb_release_ref='appstore-1.0.1-build32-pantry'
+bb_release_ref='appstore-1.0.1-build32-pantry-final'
 bb_release_dir="$(mktemp -d "${HOME}/BasketBoss-1.0.1-build32-XXXXXX")"
 git -c http.version=HTTP/1.1 clone --depth 1 --branch "$bb_release_ref" https://github.com/jbatiste12-debug/BasketBoss.git "$bb_release_dir"
 cd "$bb_release_dir"

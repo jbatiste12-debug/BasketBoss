@@ -22,6 +22,17 @@ test('fractional measured shortfall rounds to a real pack without changing physi
  const shop=h.shopping()[0];assert.equal(shop.required,333.333333,'recipe/base requirement is not rounded');assert.equal(shop.toBuy,1000);assert.equal(shop.buyMultiple,1000);assert.equal(shop.purchasePackCount,1);assert.equal(shop.unroundedToBuy,133.333333);
  assert.equal(h.storage.getItem('stock'),beforeStock);assert.equal(h.storage.getItem('inventory'),beforeInventory);
 });
+test('related canned tuna needs a type and weight-basis review without aliasing food quantities',()=>{
+ const h=fixture({name:'Drained tinned tuna in brine',unit:'g',owned:265,needed:0}),before=new Map(h.values);
+ h.requirements([{key:'Tinned tuna',unit:'g',required:290}]);
+ const related=h.home.foodTarget(h.row);assert.equal(related.mealNeeded,0);assert.equal(related.plannedNeedsReview,true);assert.match(related.plannedReviewMessage,/type or net\/drained weight needs review/);assert.deepEqual(h.values,before);
+ h.requirements([{key:'Drained tinned tuna in brine',unit:'g',required:200}]);
+ const exact=h.home.foodTarget(h.row);assert.equal(exact.mealNeeded,200);assert.equal(exact.plannedNeedsReview,false);assert.equal(exact.plannedReviewMessage,'');
+ for(const key of ['Fresh tuna','Frozen tuna','Tuna steak','Tinned salmon','Canned mackerel','Tinned tuna and salmon']){
+  h.requirements([{key,unit:'g',required:290}]);assert.equal(h.home.foodTarget(h.row).plannedNeedsReview,false,key);
+ }
+ h.requirements([{key:'Tinned tuna',unit:'g',required:0}]);assert.equal(h.home.foodTarget(h.row).plannedNeedsReview,false);
+});
 test('extra stock buffer is added exactly once before pantry subtraction and pack rounding',()=>{
  const h=fixture({needed:800,owned:200});h.save({totalNeeded:800,extraBuffer:500,buyMultiple:1,buyMultipleUnit:'l'});
  const info=h.home.foodTarget(h.row);assert.equal(info.totalNeeded,800);assert.equal(info.requiredNeeded,1300);assert.equal(info.shortfall,2000);assert.equal(h.shopping()[0].required,1300);assert.equal(h.shopping()[0].toBuy,2000);

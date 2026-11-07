@@ -41,6 +41,9 @@
    if(bases.size>1)problem='Net and drained weights cannot be combined. Review these product amounts.';
    if(group.rows.length>1&&group.rows.some(row=>row.product.needsVariant&&row.amount?.quantity>0))problem='Confirm the packing liquid before combining tuna from different products.';
    if(previous.scanQuantityBasis&&bases.size&& !bases.has(previous.scanQuantityBasis)&&previous.bb173StockValue>0)problem='The saved stock uses a different weight basis. Review the existing total before replacing it.';
+   for(const [oldId,old]of Object.entries(nextInventory))if(oldId!==id&&old?.selected!==false&&old.loc===loc&&old.bb173StockValue>0&&old.scanQuantityBasis&&bases.size&&!bases.has(old.scanQuantityBasis)&&Array.isArray(old.scanProductLots)){
+    if(old.scanProductLots.some(prior=>lots.some(lot=>String(lot.productName).toLowerCase()===String(prior.productName).toLowerCase())))problem='The saved stock uses a different weight basis. Review the existing total before replacing it.';
+   }
    // Retire only unmeasured aliases whose exact product is present in this
    // reviewed snapshot. Previously measured branded stock is never guessed.
    for(const [oldId,old]of Object.entries(nextInventory))if(oldId!==id&&old?.selected!==false&&old.loc===loc&&incoming.has(oldId)){

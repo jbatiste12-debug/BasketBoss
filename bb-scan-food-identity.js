@@ -18,7 +18,7 @@
    if(declared&&chosen!==declared)throw Error('The selected tuna type disagrees with its product label.');
    const basis=quantityBasis==='net'||quantityBasis==='drained'?quantityBasis:tuna[3]==='drained'?'drained':tuna[3]==='net weight'?'net':'';
    if(tuna[3]&&basis!==(tuna[3]==='drained'?'drained':'net'))throw Error('The selected weight basis disagrees with its product label.');
-   return {...result,canonicalName:'Tinned tuna'+(chosen?' '+variants[chosen]:''),brand:tuna[1]?/^john/.test(tuna[1])?'John West':'Waitrose':'',family:'tinned tuna',approved:true,variant:chosen,quantityBasis:basis,needsVariant:!chosen,needsBasis:!basis};
+   return {...result,canonicalName:(basis==='drained'?'Drained tinned tuna':'Tinned tuna')+(chosen?' '+variants[chosen]:''),brand:tuna[1]?/^john/.test(tuna[1])?'John West':'Waitrose':'',family:'tinned tuna',approved:true,variant:chosen,quantityBasis:basis,needsVariant:!chosen,needsBasis:!basis};
   }
   const tomato=label.match(/^(?:(essential waitrose|waitrose) )?((?:tinned |canned )?chopped tomatoes)$/);
   if(tomato)return {...result,canonicalName:'Chopped tomatoes',brand:tomato[1]?'Waitrose':'',family:'chopped tomatoes',approved:true};

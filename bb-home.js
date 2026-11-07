@@ -168,14 +168,19 @@
    const nameId=host().id(row.name,''),matching=name=>host().id(name,'')===nameId;
    const raw=row.qty===null||row.qty===undefined||row.qty===''?null:Number(row.qty),owned=raw===null?{quantity:0,unit:one.unit}:measure(row,raw);
    if(!owned||owned.unit!==one.unit||!valid(owned.quantity))return problem('Review the amount at home before adding this item to Shop.');
-   let planned=0,prior=0,manual=0,otherOwned=0,otherOwnedNeedsReview=false,defaultRestock=0,hasPrior=false,plannedNeedsReview=false,otherRequestsNeedReview=false;
+   let planned=0,prior=0,manual=0,otherOwned=0,otherOwnedNeedsReview=false,defaultRestock=0,hasPrior=false,plannedNeedsReview=false,otherRequestsNeedReview=false,plannedReviewMessage='';
+   const cannedTuna=name=>{const text=String(policy?.canonicalName?.(name,win.BBPriceV19?.canonical)||name||'').normalize('NFKD').toLowerCase();return /\btuna\b/.test(text)&&/\b(?:tinned|canned|tins?|cans?)\b/.test(text)&&!/\b(?:fresh|frozen|raw|steaks?|fillets?|salmon|mackerel|sardines?|anchovies|cod|haddock|trout)\b/.test(text);};
    for(const item of otherRows){
     if(!matching(item?.name||item?.key)||item.qty===null||item.qty===undefined||item.qty==='')continue;
     const value=measure(item,Number(item.qty));
     if(!value||value.unit!==one.unit){if(Number(item.qty)>0)otherOwnedNeedsReview=true;continue;}otherOwned+=value.quantity;
    }
    for(const item of requirements||host()?.requirements?.()||[]){
-    if(!matching(item.key||item.name)||!(Number(item.required)>0))continue;
+    if(!(Number(item.required)>0))continue;
+    if(!matching(item.key||item.name)){
+     if(cannedTuna(row.name)&&cannedTuna(item.key||item.name)){plannedNeedsReview=true;plannedReviewMessage='Your planned meals use related tuna, but the type or net/drained weight needs review.';}
+     continue;
+    }
     if(container){if(item.cupboardRequired===false){if(!automatic||!(raw>0)||(policy?.stapleStatus?.(row)||row.stapleStatus)!=='in')defaultRestock=1;continue;}planned=1;continue;}
     const value=measure(item,Number(item.required));
     if(measuredMode&&(!value||value.unit!==one.unit)){plannedNeedsReview=true;continue;}
@@ -217,7 +222,7 @@
     purchase=automatic?purchaseAmounts({needed:missing,owned:0,multiple:buyMultiple,unit:one.unit}):purchaseAmounts({needed:total,buffer:extraBuffer,owned:totalOwned,multiple:buyMultiple,unit:one.unit});
    }catch(error){return problem(error.message);}
    const view=value=>Math.round(value/one.quantity*1000000)/1000000;
-   return {totalNeeded:view(total),totalQuantity:total,requiredNeeded:view(total+extraBuffer),requiredQuantity:roundQuantity(total+extraBuffer),extraBuffer:view(extraBuffer),extraBufferQuantity:extraBuffer,buyMultiple:view(buyMultiple),buyMultipleUnit:row.unit,buyMultipleQuantity:buyMultiple,unroundedShortfall:view(purchase.shortfall),purchasePackCount:purchase.packCount,mealNeeded:view(planned),minimumNeeded:view(minimum),manualNeeded:view(manual),otherOwned:view(otherOwned),otherOwnedNeedsReview,plannedNeedsReview,otherRequestsNeedReview,shortfall:view(purchase.purchaseQuantity),targetProblem:'',canonicalUnit:one.unit,quantityPerUnit:one.quantity,quantityTolerance:Math.max(0.000001,one.quantity*0.0000005+0.0000005),mealQuantity:planned,manualQuantity:manual,minimumQuantity:minimum,restockQuantity:prior,restockPending:hasPrior,defaultRestockQuantity:hasPrior?0:defaultRestock};
+   return {totalNeeded:view(total),totalQuantity:total,requiredNeeded:view(total+extraBuffer),requiredQuantity:roundQuantity(total+extraBuffer),extraBuffer:view(extraBuffer),extraBufferQuantity:extraBuffer,buyMultiple:view(buyMultiple),buyMultipleUnit:row.unit,buyMultipleQuantity:buyMultiple,unroundedShortfall:view(purchase.shortfall),purchasePackCount:purchase.packCount,mealNeeded:view(planned),minimumNeeded:view(minimum),manualNeeded:view(manual),otherOwned:view(otherOwned),otherOwnedNeedsReview,plannedNeedsReview,plannedReviewMessage,otherRequestsNeedReview,shortfall:view(purchase.purchaseQuantity),targetProblem:'',canonicalUnit:one.unit,quantityPerUnit:one.quantity,quantityTolerance:Math.max(0.000001,one.quantity*0.0000005+0.0000005),mealQuantity:planned,manualQuantity:manual,minimumQuantity:minimum,restockQuantity:prior,restockPending:hasPrior,defaultRestockQuantity:hasPrior?0:defaultRestock};
   }
   function roundShoppingItems(items){
    const preferences=Object.values(targets()),policy=win.BBPantryPolicy,market=win.bb307ActiveMarket?.()||'UK';
