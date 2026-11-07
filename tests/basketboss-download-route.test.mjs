@@ -1,7 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import vm from 'node:vm';
-import {APP_STORE_ID, APP_STORE_URL, appStoreLaunchEnabled} from '../bb-server-lib/bb-app-store-launch.js';
+import {APP_STORE_ID, APP_STORE_URL, APP_STORE_PUBLIC_RELEASED, appStoreLaunchEnabled} from '../bb-server-lib/bb-app-store-launch.js';
 import {getDownloadDestination} from '../bb-download-routing.mjs';
 import {onRequest} from '../functions/download.js';
 
@@ -11,10 +11,17 @@ const iphone = {userAgent: 'Mozilla/5.0 (iPhone; CPU iPhone OS 26_2 like Mac OS 
 const ipad = {userAgent: 'Mozilla/5.0 (iPad; CPU OS 26_2 like Mac OS X) AppleWebKit/605.1.15 Mobile/15E148 Safari/604.1'};
 const macUA = 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15) AppleWebKit/605.1.15 Version/26.2 Safari/605.1.15';
 
-test('the launch gate defaults off and accepts only the explicit release setting', async () => {
+test('the confirmed public release defaults on with a strict operator override', async () => {
   assert.equal(APP_STORE_ID, '6829160611');
   assert.equal(APP_STORE_URL, 'https://apps.apple.com/app/id6829160611');
-  for (const env of [undefined, null, {}, {BB_APP_STORE_LAUNCH_ENABLED: true}, {BB_APP_STORE_LAUNCH_ENABLED: 'TRUE'}, {BB_APP_STORE_LAUNCH_ENABLED: 'false'}]) {
+  assert.equal(APP_STORE_PUBLIC_RELEASED, true);
+  for (const env of [undefined, null, {}]) {
+    assert.equal(appStoreLaunchEnabled(env), true);
+    const response = onRequest({request: request(), env});
+    assert.equal(response.status, 200);
+    assert.match(await response.text(), /Open BasketBoss in the App Store/);
+  }
+  for (const env of [{BB_APP_STORE_LAUNCH_ENABLED: true}, {BB_APP_STORE_LAUNCH_ENABLED: false}, {BB_APP_STORE_LAUNCH_ENABLED: 'TRUE'}, {BB_APP_STORE_LAUNCH_ENABLED: ''}, {BB_APP_STORE_LAUNCH_ENABLED: null}, {BB_APP_STORE_LAUNCH_ENABLED: 'false'}]) {
     assert.equal(appStoreLaunchEnabled(env), false);
     const response = onRequest({request: request(), env});
     assert.equal(response.status, 302);
@@ -37,7 +44,7 @@ test('download only accepts GET and HEAD, without caching or executing a redirec
   assert.equal(head.status, 200);
   assert.equal(head.headers.get('Content-Type'), 'text/html; charset=utf-8');
   assert.equal(await head.text(), '');
-  const offHead = onRequest({request: request(undefined, 'HEAD'), env: {}});
+  const offHead = onRequest({request: request(undefined, 'HEAD'), env: {BB_APP_STORE_LAUNCH_ENABLED: 'false'}});
   assert.equal(offHead.status, 302);
   assert.equal(offHead.headers.get('Location'), '/#features');
   assert.equal(await offHead.text(), '');

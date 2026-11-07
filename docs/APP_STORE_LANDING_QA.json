@@ -1,5 +1,5 @@
 {
-  "scope": "local-only; live badge display is a DOM fixture, real /download handler and real landing source execute",
+  "scope": "local-only; live badge display is an edge-rendering DOM fixture, actual /download handler uses no environment setting for live and explicit false for disabled",
   "passed": true,
   "responsiveWidths": [
     320,
@@ -50,6 +50,15 @@
     "privateRecipeBundle": false,
     "byteManifestMatchesBuild31": true
   },
-  "liveLaunchEnabled": false,
-  "deployment": "Draft preparation only; enable BB_APP_STORE_LAUNCH_ENABLED=true after approval and public listing availability."
+  "liveLaunchEnabled": true,
+  "deployment": "Enable website promotion by deploying this release; optional BB_APP_STORE_LAUNCH_ENABLED=false disables it. Source default is on for the confirmed public listing.",
+  "releaseDefaultLive": true,
+  "explicitFalseKillSwitch": true,
+  "publicAvailabilityEvidence": {
+    "source": "User screenshot of App Store product page with Get button",
+    "date": "2026-11-07",
+    "storefront": "United Kingdom",
+    "appId": "6829160611",
+    "productionPurchaseVerified": false
+  }
 }

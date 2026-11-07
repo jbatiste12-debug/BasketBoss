@@ -8,7 +8,9 @@ The App Store ID is `6829160611`. Its country-neutral product URL is:
 https://apps.apple.com/app/id6829160611
 ```
 
-Keep App Store promotion disabled while the first release is in review. After approval and public availability, set the Cloudflare Pages environment variable `BB_APP_STORE_LAUNCH_ENABLED` to the exact string `true` and redeploy. The default is off. `bb-server-lib/bb-app-store-launch.js` is the shared launch configuration. Confirm the product page opens in the intended countries before enabling the launch.
+The user confirmed approval and a public UK App Store listing with a **Get** button on 2026-11-07. `bb-server-lib/bb-app-store-launch.js` now records that public release, so website promotion is enabled by default after deploying this change. App Store territory settings remain under Apple's control; the UK confirmation does not establish availability in every country.
+
+`BB_APP_STORE_LAUNCH_ENABLED` is an optional Cloudflare Pages override. Leave it unset to use the confirmed release default, set the exact string `false` to disable promotion, or set the exact string `true` to enable it explicitly. Any other supplied value disables promotion. Redeploy after changing the override. No environment-variable entry is needed for the normal launch.
 
 Existing `/app` web entry points continue to work before and after the App Store launch.
 
@@ -25,7 +27,7 @@ import {
 } from "./BasketBossAppStoreExamples";
 
 const appStoreUrl = "https://apps.apple.com/app/id6829160611";
-const isAppStoreLive = false; // Change only after public App Store availability.
+const isAppStoreLive = true; // Public UK listing confirmed on 2026-11-07.
 
 // Option A: badge next to the hero copy.
 <BasketBossHeroExample
@@ -91,8 +93,8 @@ OpenGraph is useful for WhatsApp and other link previews; Twitter uses the card 
 
 The official badge links directly to the App Store product page. Use `https://basketboss.co.uk/download` for campaign and shared links that need device routing.
 
-- Before launch, `/download` returns visitors to `/#features`.
-- After launch, the route provides lightweight client-side detection that sends iPhone and iPad visitors to the configured App Store URL.
+- With promotion disabled, `/download` returns visitors to `/#features`.
+- With the confirmed release enabled, the route provides lightweight client-side detection that sends iPhone and iPad visitors to the configured App Store URL.
 - Desktop and Android visitors continue to `/#features`.
 - Normal App Store and features links remain available when JavaScript cannot run.
 

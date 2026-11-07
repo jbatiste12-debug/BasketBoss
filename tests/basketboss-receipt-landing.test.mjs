@@ -3,7 +3,7 @@ import assert from 'node:assert/strict';
 import fs from 'node:fs/promises';
 import {onRequest} from '../functions/index.js';
 const html=await fs.readFile(new URL('../welcome.html',import.meta.url),'utf8');
-const env={BB_RECEIPT_INVENTORY_ENABLED:'true',BB_PREMIUM_SINGLE_SESSION_ENABLED:'true',BB_BILLING_MODE:'live',BB_BILLING_ENABLED:'true',CF_PAGES_BRANCH:'main',SUPABASE_URL:'https://kbhyosxuvlcazyzzinqv.supabase.co',SUPABASE_PUBLISHABLE_KEY:'public_'+'a'.repeat(30),SUPABASE_SECRET_KEY:'sb_secret_'+'s'.repeat(40),BILLING_DB:{prepare(){}},ASSETS:{fetch:async()=>new Response(html,{headers:{'Content-Type':'text/html'}})}};
+const env={BB_APP_STORE_LAUNCH_ENABLED:'false',BB_RECEIPT_INVENTORY_ENABLED:'true',BB_PREMIUM_SINGLE_SESSION_ENABLED:'true',BB_BILLING_MODE:'live',BB_BILLING_ENABLED:'true',CF_PAGES_BRANCH:'main',SUPABASE_URL:'https://kbhyosxuvlcazyzzinqv.supabase.co',SUPABASE_PUBLISHABLE_KEY:'public_'+'a'.repeat(30),SUPABASE_SECRET_KEY:'sb_secret_'+'s'.repeat(40),BILLING_DB:{prepare(){}},ASSETS:{fetch:async()=>new Response(html,{headers:{'Content-Type':'text/html'}})}};
 test('SmartReceipt remains hidden until the production feature is configured',async()=>{
  assert.match(html,/<section[^>]*data-bb-smart-receipt-ready[^>]*hidden/);
  const response=await onRequest({request:new Request('https://basketboss.co.uk/'),env:{...env,BB_RECEIPT_INVENTORY_ENABLED:'false'}});
@@ -26,7 +26,7 @@ test('preview and unconfigured backends never enable new receipt marketing',asyn
 test('App Store launch is independent of receipt availability and keeps web entry intact',async()=>{
  assert.match(html,/<a[^>]*href="https:\/\/apps\.apple\.com\/app\/id6829160611"[^>]*data-bb-app-store-launch[^>]*hidden/);
  assert.doesNotMatch(html,/<meta[^>]*name="apple-itunes-app"/);
- for(const receiptEnabled of [false,true]){
+ for(const [receiptEnabled,launchSetting] of [[false,'true'],[true,'true'],[false,undefined]]){
   const previous=globalThis.HTMLRewriter,operations=[];
   globalThis.HTMLRewriter=class{
    on(selector,handler){handler.element({
@@ -37,7 +37,7 @@ test('App Store launch is independent of receipt availability and keeps web entr
    transform(response){return response;}
   };
   try{
-   const response=await onRequest({request:new Request('https://basketboss.co.uk/'),env:{...env,BB_APP_STORE_LAUNCH_ENABLED:'true',BB_RECEIPT_INVENTORY_ENABLED:String(receiptEnabled)}});
+   const response=await onRequest({request:new Request('https://basketboss.co.uk/'),env:{...env,BB_APP_STORE_LAUNCH_ENABLED:launchSetting,BB_RECEIPT_INVENTORY_ENABLED:String(receiptEnabled)}});
    assert.equal(response.status,200);
    assert.ok(operations.some(op=>op.selector==='head'&&op.kind==='append'&&op.value==='<meta name="apple-itunes-app" content="app-id=6829160611">'&&op.html===true));
    assert.ok(operations.some(op=>op.selector==='[data-bb-app-store-launch]'&&op.kind==='remove'&&op.value==='hidden'));

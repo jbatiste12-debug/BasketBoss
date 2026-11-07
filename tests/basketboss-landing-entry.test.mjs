@@ -14,7 +14,7 @@ const route=await import(pathToFileURL(path.join(root,'functions/index.js')).hre
 
 test('the public root serves welcome with revalidation and preview robots protection',async()=>{
  const calls=[];
- const env={ASSETS:{fetch:async r=>{calls.push(r);return new Response('<html>Landing mock</html>',{status:200,headers:{'Content-Type':'text/html'}})}}};
+ const env={BB_APP_STORE_LAUNCH_ENABLED:'false',ASSETS:{fetch:async r=>{calls.push(r);return new Response('<html>Landing mock</html>',{status:200,headers:{'Content-Type':'text/html'}})}}};
  const r=await route.onRequest({request:new Request('https://basketboss.co.uk/'),env});
  assert.equal(r.status,200);assert.equal(await r.text(),'<html>Landing mock</html>');
  assert.equal(new URL(calls[0].url).pathname,'/welcome');
