@@ -1,0 +1,176 @@
+{
+  "destination": "https://basketboss.co.uk/download",
+  "decoder": "zxing-cpp 3.1.1",
+  "passed": true,
+  "checks": [
+    {
+      "source": "/dev/shm/bb-letterbox/BasketBoss-A5-Flyer.png",
+      "kind": "PNG",
+      "sourceSHA256": "1f19d3086d8978925e8b8498cc3a5c8aec87afc7147f4e7b38af2c57d6362bc3",
+      "dimensions": [
+        1749,
+        2481
+      ],
+      "decoded": [
+        "https://basketboss.co.uk/download"
+      ],
+      "passed": true
+    },
+    {
+      "source": "/dev/shm/bb-letterbox/BasketBoss-A5-Flyer.pdf",
+      "kind": "PDF render",
+      "dpi": 300,
+      "pageSizeMM": [
+        148.0,
+        210.0
+      ],
+      "mediaSizeMM": [
+        148.0,
+        210.0
+      ],
+      "trimSizeMM": [
+        148.0,
+        210.0
+      ],
+      "sourceSHA256": "e955d43c2d52f21a34c86bd509f9b2500f462efca9d8d73e17e44b6e5432c224",
+      "dimensions": [
+        1749,
+        2481
+      ],
+      "decoded": [
+        "https://basketboss.co.uk/download"
+      ],
+      "passed": true
+    },
+    {
+      "source": "/dev/shm/bb-letterbox/BasketBoss-A5-Flyer.pdf",
+      "kind": "PDF render",
+      "dpi": 150,
+      "pageSizeMM": [
+        148.0,
+        210.0
+      ],
+      "mediaSizeMM": [
+        148.0,
+        210.0
+      ],
+      "trimSizeMM": [
+        148.0,
+        210.0
+      ],
+      "sourceSHA256": "e955d43c2d52f21a34c86bd509f9b2500f462efca9d8d73e17e44b6e5432c224",
+      "dimensions": [
+        875,
+        1241
+      ],
+      "decoded": [
+        "https://basketboss.co.uk/download"
+      ],
+      "passed": true
+    },
+    {
+      "source": "/dev/shm/bb-letterbox/BasketBoss-A5-Flyer.pdf",
+      "kind": "PDF render",
+      "dpi": 96,
+      "pageSizeMM": [
+        148.0,
+        210.0
+      ],
+      "mediaSizeMM": [
+        148.0,
+        210.0
+      ],
+      "trimSizeMM": [
+        148.0,
+        210.0
+      ],
+      "sourceSHA256": "e955d43c2d52f21a34c86bd509f9b2500f462efca9d8d73e17e44b6e5432c224",
+      "dimensions": [
+        560,
+        794
+      ],
+      "decoded": [
+        "https://basketboss.co.uk/download"
+      ],
+      "passed": true
+    },
+    {
+      "source": "/dev/shm/bb-letterbox/BasketBoss-A5-Flyer-3mm-Bleed.pdf",
+      "kind": "PDF render",
+      "dpi": 300,
+      "pageSizeMM": [
+        154.0,
+        216.0
+      ],
+      "mediaSizeMM": [
+        154.0,
+        216.0
+      ],
+      "trimSizeMM": [
+        148.0,
+        210.0
+      ],
+      "sourceSHA256": "4d7e6a95418b989165414cc90890a848c193650372786f8c8a0c2d415b597afd",
+      "dimensions": [
+        1819,
+        2552
+      ],
+      "decoded": [
+        "https://basketboss.co.uk/download"
+      ],
+      "passed": true
+    },
+    {
+      "source": "/dev/shm/bb-letterbox/BasketBoss-A5-Flyer-3mm-Bleed.pdf",
+      "kind": "PDF render",
+      "dpi": 150,
+      "pageSizeMM": [
+        154.0,
+        216.0
+      ],
+      "mediaSizeMM": [
+        154.0,
+        216.0
+      ],
+      "trimSizeMM": [
+        148.0,
+        210.0
+      ],
+      "sourceSHA256": "4d7e6a95418b989165414cc90890a848c193650372786f8c8a0c2d415b597afd",
+      "dimensions": [
+        910,
+        1276
+      ],
+      "decoded": [
+        "https://basketboss.co.uk/download"
+      ],
+      "passed": true
+    },
+    {
+      "source": "/dev/shm/bb-letterbox/BasketBoss-A5-Flyer-3mm-Bleed.pdf",
+      "kind": "PDF render",
+      "dpi": 96,
+      "pageSizeMM": [
+        154.0,
+        216.0
+      ],
+      "mediaSizeMM": [
+        154.0,
+        216.0
+      ],
+      "trimSizeMM": [
+        148.0,
+        210.0
+      ],
+      "sourceSHA256": "4d7e6a95418b989165414cc90890a848c193650372786f8c8a0c2d415b597afd",
+      "dimensions": [
+        583,
+        817
+      ],
+      "decoded": [
+        "https://basketboss.co.uk/download"
+      ],
+      "passed": true
+    }
+  ]
+}
