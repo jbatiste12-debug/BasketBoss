@@ -9,6 +9,34 @@ const require=createRequire(import.meta.url),quantity=require('../bb-receipt-qua
 const catalog={'ketchup|ml':{},'chopped tomatoes|tin':{},'milk|ml':{},'beef mince|g':{},'garlic|clove':{}};
 const row=(name,qty,unit,extra={})=>({name,loc:'cupboard',selected:true,qty,unit,bb173StockKey:name.toLowerCase()+'|'+unit,bb173StockValue:qty,...extra});
 
+test('physical partial staple containers retain their exact amount through normalization and reopening',()=>{
+ for(const unit of ['each','pack','bottle','jar']){
+  const stock={['olive oil|'+unit]:.5},inventory={oil:row('Olive oil',.5,unit,{staple:true,stapleStatus:'in'})};
+  const first=normalizePantryState(stock,inventory,{exactConversionsOnly:true,preserveDisplayUnits:true});
+  assert.deepEqual(first.stock,{'olive oil|each':.5},unit);assert.equal(first.inventory.oil.qty,.5);assert.equal(first.inventory.oil.stapleCount,.5);assert.deepEqual(first.issues,[]);
+  const reopened=normalizePantryState(first.stock,first.inventory,{exactConversionsOnly:true,preserveDisplayUnits:true});
+  assert.deepEqual(reopened.stock,first.stock);assert.deepEqual(reopened.inventory,first.inventory);
+ }
+});
+test('reviewed measured spice stock and receipts retain grams while default container purchases stay counted',()=>{
+ const name='Black peppercorns',facts={trackingMode:'measured',measurementReviewed:true,staple:false},inventory={spice:row(name,20,'g',facts)};
+ const normalized=normalizePantryState({'black peppercorns|g':20},inventory,{exactConversionsOnly:true,preserveDisplayUnits:true});
+ assert.deepEqual(normalized.stock,{'black peppercorns|g':20});assert.equal(normalized.inventory.spice.qty,20);assert.equal(normalized.inventory.spice.staple,false);assert.equal(normalized.inventory.spice.trackingMode,'measured');
+ assert.deepEqual(normalizePantryState(normalized.stock,normalized.inventory).stock,normalized.stock);
+ const receipt={id:'spice',description:name,canonicalKey:'black peppercorns',classification:'food',quantity:20,unit:'g',lineTotal:2,reviewed:true},context={catalog:{'black peppercorns|g':{}},market:'UK',pantryPolicy:true};
+ assert.equal(normalizeReceiptLine(receipt,context).unit,'each','unmeasured cupboard mode keeps its existing container policy');
+ const measured=normalizeReceiptLine({...receipt,...facts},context);assert.equal(measured.quantity,20);assert.equal(measured.unit,'g');
+ const body=prepareReceiptConfirmation({receiptId:'measured-spice-receipt',market:'UK',currency:'GBP',retailer:'Tesco',shopSessionId:'trip',lines:[measured]},{requestId:'measured-spice-request',catalog:context.catalog,pantryPolicy:true});
+ assert.equal(body.lines[0].quantity,20);assert.equal(body.lines[0].unit,'g');assert.equal(Object.hasOwn(body.lines[0],'trackingMode'),false,'client mode metadata is not added to the server wire schema');
+ const checked=validateReceiptConfirmation({...body,expectedScope:{kind:'user',id:'policy-user'},inventoryBaseline:{stock:{'black peppercorns|g':20},expectedRevision:0,initialize:true}},{catalog:context.catalog});assert.equal(checked.lines[0].quantity,20);
+ const unknown=normalizeReceiptLine({...receipt,...facts,quantity:1,unit:'each'},context);assert.ok(unknown.issues.includes('reviewed_weight_or_volume_required'),'a jar count without checked contents cannot become guessed grams');
+});
+test('ambiguous measured pepper is retained for review and cannot be credited as fresh produce',()=>{
+ const facts={trackingMode:'measured',measurementReviewed:true,staple:false},inventory={spice:row('Pepper',20,'g',facts)},stock={'pepper|g':20};
+ const kept=normalizePantryState(stock,inventory,{exactConversionsOnly:true});assert.deepEqual(kept.stock,stock);assert.deepEqual(kept.inventory,inventory);assert.equal(kept.issues.length,1);assert.match(kept.issues[0].message,/separately from whole peppers/);
+ const line=normalizeReceiptLine({description:'Pepper',canonicalKey:'pepper',classification:'food',quantity:20,unit:'g',lineTotal:2,reviewed:true,...facts},{catalog:{'pepper|g':{}},market:'UK',pantryPolicy:true});assert.ok(line.issues.includes('measured_food_identity_review'));assert.equal(line.quantity,null);
+});
+
 test('reviewed staple receipt amounts become editable container counts and survive server validation unchanged',()=>{
  const raw={id:'ketchup',description:'KETCHUP 800ML',canonicalKey:'ketchup',classification:'food',quantity:800,unit:'ml',lineTotal:2.5,reviewed:true};
  const normalized=normalizeReceiptLine(raw,{catalog,market:'UK',pantryPolicy:true});

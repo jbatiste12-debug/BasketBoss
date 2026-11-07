@@ -379,18 +379,27 @@ private enum BasketBossAccountKeyboardSetup {
 // A fresh CI simulator can exercise the actual capacitor:// WKWebView. This
 // hook is excluded from Release and never changes a user's normal installation.
 private final class BasketBossCookSmokeReporter: NSObject, WKScriptMessageHandler {
+    // This reporter is created afresh for each smoke launch. Completion is
+    // terminal, including failure; queued messages from an older document
+    // must not replace the final report while XCTest polls its atomic file.
+    private var completed = false
+
     func userContentController(_ userContentController: WKUserContentController, didReceive message: WKScriptMessage) {
         guard let report = message.body as? [String: Any] else { return }
         record(report)
     }
 
     func record(_ report: [String: Any]) {
+        guard !completed else { return }
         let keys = ["complete", "passed", "nativeOrigin", "cookMounted", "cookReady", "navPresent", "navVisible", "navHit", "legacyVisible", "backToPlan", "dataKept", "mainReady", "startupReady", "phase", "readyState", "errorCount", "errorLine", "errorKind", "errorSource", "lastScript", "scriptCount", "ingredientClosed", "ingredientPhoto", "ingredientSaved", "ingredientAutofill", "ingredientExistingKept", "ingredientRestored", "voiceFreeLocked", "voiceManualStart", "voiceNextStep", "voiceTimer", "voiceScaledAmount", "voiceExitStopped", "voiceRestored", "voicePrepAvailable", "voicePrepNarrated", "voicePrepAdvanced", "voiceCookNarrated", "voiceStepNarrated", "mentorAvailable", "mentorRecipeContext", "mentorSpokenQuestion", "mentorTypedQuestion", "mentorFollowupHistory", "mentorPrivateAudio", "mentorAnswerVisible", "mentorNoAutonomousActions", "mentorCancelledAnswer", "mentorInterrupt", "mentorHistoryCleared", "mentorNoDeviceFallback", "mentorGreetingName", "voiceFailure"]
         let safe = report.filter { keys.contains($0.key) }
         guard let data = try? JSONSerialization.data(withJSONObject: safe, options: [.sortedKeys]),
               let folder = FileManager.default.urls(for: .documentDirectory, in: .userDomainMask).first else { return }
         try? FileManager.default.createDirectory(at: folder, withIntermediateDirectories: true)
-        try? data.write(to: folder.appendingPathComponent("bb-native-cook-smoke.json"), options: .atomic)
+        do {
+            try data.write(to: folder.appendingPathComponent("bb-native-cook-smoke.json"), options: .atomic)
+            completed = report["complete"] as? Bool == true
+        } catch {}
     }
 
     static let script = #"""
@@ -400,9 +409,11 @@ private final class BasketBossCookSmokeReporter: NSObject, WKScriptMessageHandle
       addEventListener('error',e=>{errors.push({kind:e.error?.name||'ResourceError',line:e.lineno||0,source:String(e.filename||e.target?.src||'').split('/').pop().split('?')[0].replace(/[^A-Za-z0-9_.-]/g,'').slice(0,100)});},true);
       localStorage.setItem('bb_onboarding_fresh_once_20261028_v1',JSON.stringify({complete:true,step:10}));
       localStorage.setItem('basketboss_native_smoke_probe','keep');
-      let ticks=0,scrolled=false,navigationPending=false,ingredientRunning=false,voiceRunning=false;
-      function progress(report={},complete=false){const e=errors[0]||{},scripts=[...document.scripts],last=scripts.at(-1);window.webkit.messageHandlers.bbNativeCookSmoke.postMessage({...JSON.parse(sessionStorage.getItem(key+'_report')||'{}'),complete,nativeOrigin:location.protocol==='capacitor:',phase:location.pathname.endsWith('/make-a-meal.html')?'cook':sessionStorage.getItem(key)==='back'?'return':'main',readyState:document.readyState,mainReady:!!document.getElementById('app')?.firstElementChild,startupReady:window.BBNativeStartup?.phase==='ready',scriptCount:scripts.length,lastScript:String(last?.src||last?.id||'inline').split('/').pop().split('?')[0].replace(/[^A-Za-z0-9_.-]/g,'').slice(0,100),...report,errorCount:errors.length,errorLine:e.line||0,errorKind:e.kind||'',errorSource:e.source||''});}
-      function send(report){progress(report,true);clearInterval(timer);}
+      let ticks=0,scrolled=false,navigationPending=false,ingredientRunning=false,voiceRunning=false,completed=false;
+      function progress(report={},complete=false){if(completed&&!complete)return;const e=errors[0]||{},scripts=[...document.scripts],last=scripts.at(-1);window.webkit.messageHandlers.bbNativeCookSmoke.postMessage({...JSON.parse(sessionStorage.getItem(key+'_report')||'{}'),complete,nativeOrigin:location.protocol==='capacitor:',phase:location.pathname.endsWith('/make-a-meal.html')?'cook':sessionStorage.getItem(key)==='back'?'return':'main',readyState:document.readyState,mainReady:!!document.getElementById('app')?.firstElementChild,startupReady:window.BBNativeStartup?.phase==='ready',scriptCount:scripts.length,lastScript:String(last?.src||last?.id||'inline').split('/').pop().split('?')[0].replace(/[^A-Za-z0-9_.-]/g,'').slice(0,100),...report,errorCount:errors.length,errorLine:e.line||0,errorKind:e.kind||'',errorSource:e.source||''});}
+      // A later load/readystatechange/script event must not replace the final
+      // atomic report with an incomplete Cook-only snapshot after return.
+      function send(report){if(completed)return;completed=true;progress(report,true);clearInterval(timer);}
       async function verifyIngredients(){
         const report={},stateKey='basketboss_321_unified_state_v1';
         const wait=async read=>{for(let n=0;n<60;n++){const value=read();if(value)return value;await new Promise(resolve=>setTimeout(resolve,100));}throw Error('IngredientSmokeTimeout');};

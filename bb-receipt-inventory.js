@@ -3,7 +3,7 @@
 (function (root) {
   'use strict';
   const scriptURL = root.document?.currentScript?.src;
-  const moduleURL = scriptURL ? new URL('./bb-receipt-inventory-core.mjs?v=20261105-business1', scriptURL).href : './bb-receipt-inventory-core.mjs?v=20261105-business1';
+  const moduleURL = scriptURL ? new URL('./bb-receipt-inventory-core.mjs?v=20261107-pantry-stock2', scriptURL).href : './bb-receipt-inventory-core.mjs?v=20261107-pantry-stock2';
   const KEYS = Object.freeze({ stock: 'basketboss_321_v7_measured_pantry', kitchen: 'basketboss_makeameal_v1_inventory', confirmed: 'basketboss_ui_next_confirmed_pantry_v1', finishShop: 'basketboss_purchase_receipts_v1', owner: 'basketboss_receipt_projection_owner_v1', session: 'basketboss_cloud_session_v1' });
   function createReceiptInventoryAdapter(initial = {}) {
     let options = { ...initial }, corePromise, memoryDrafts = new Map();
@@ -57,6 +57,16 @@
     function sameContext(captured) { const current = activeContext(); return current.market === captured.market && current.retailer === captured.retailer; }
     const catalog = () => options.getCatalog ? options.getCatalog() : root.BBPriceV19?.catalog;
     const canonicalize = value => options.canonicalize ? options.canonicalize(value) : root.BBPriceV19?.canonical ? root.BBPriceV19.canonical(value) : value;
+    function measuredPantryRows(name,c,kitchen=json(KEYS.kitchen,{})){
+      const policy=c.pantryTrackingPolicy,key=policy.canonicalName(name,canonicalize),rows=Object.values(kitchen).filter(row=>row?.selected!==false&&policy.canonicalName(row.name,canonicalize)===key);
+      if(!rows.length||rows.some(row=>policy.isContainerTracked(row)))return [];
+      return rows.filter(row=>row.trackingMode==='measured'&&row.measurementReviewed===true&&policy.isContainerTracked(row)===false);
+    }
+    function withPantryTracking(raw,c,kitchen){
+      if(options.pantryPolicy!==true||raw.trackingMode!==undefined)return raw;
+      const name=raw.canonicalKey||raw.key||raw.ingredientKey||raw.name||raw.description;
+      return measuredPantryRows(name,c,kitchen).length?{...raw,trackingMode:'measured',measurementReviewed:true}:raw;
+    }
     function requireReviewedPantryConversions(c, lines, market) {
       if (options.pantryPolicy !== true) return;
       const foodNames = new Set(lines.filter(line => line.selected !== false && c.classifyReceiptLine(line).classification === 'food').map(line => c.pantryTrackingPolicy.canonicalName(line.canonicalKey || line.key || line.name || line.description, canonicalize)));
@@ -258,12 +268,20 @@
       const currentKitchen=json(KEYS.kitchen,{}),tracking=options.pantryPolicy===true;
       const local=tracking?c.normalizePantryState(json(KEYS.stock,{}),currentKitchen,{canonicalize,market:activeContext().market,exactConversionsOnly:true}):{stock:json(KEYS.stock,{}),inventory:currentKitchen};
       const serverKitchen=clone(currentKitchen),pepperLines=tracking&&body?.action==='confirm_receipt'&&body.addToPantry!==false?(body.lines||[]).filter(line=>line.kind==='food'&&c.canonicalIngredientKey(line.canonicalKey,canonicalize)==='pepper'):[];
+      const measuredLines=tracking&&body?.action==='confirm_receipt'&&body.addToPantry!==false?(body.lines||[]).filter(line=>line.kind==='food'&&['g','ml'].includes(line.unit)&&c.pantryTrackingPolicy.isStaple(line.canonicalKey)&&!c.pantryTrackingPolicy.isWholePepper(line.name,line.unit,line)):[];
+      for(const line of measuredLines){
+        const stockKey=line.canonicalKey+'|'+line.unit,matching=Object.entries(serverKitchen).filter(([,row])=>row?.bb173StockKey===stockKey);
+        const facts={trackingMode:'measured',measurementReviewed:true,staple:false};
+        if(matching.length)for(const [id,row]of matching)serverKitchen[id]={...row,...facts};
+        else if(rawServerStock[stockKey]>0)serverKitchen['receipt-mode|'+stockKey]={name:line.canonicalKey,unit:line.unit,qty:rawServerStock[stockKey],bb173StockKey:stockKey,bb173StockValue:rawServerStock[stockKey],selected:true,loc:line.location||'cupboard',...facts};
+      }
       // The confirmed receipt carries the description that distinguishes whole
       // peppers from a spice jar. Old local unit metadata predates this receipt.
       for(const line of pepperLines){const stockKey='pepper|'+line.unit,quantity=rawServerStock[stockKey];if(!(quantity>0))continue;
         for(const [id,row]of Object.entries(serverKitchen))if(row?.bb173StockKey===stockKey)delete serverKitchen[id];
         const whole=c.pantryTrackingPolicy.isWholePepper(line.name,line.unit,line);
-        serverKitchen['receipt-context|'+stockKey]={name:whole?'Peppers':line.name||'Pepper',unit:line.unit,qty:quantity,bb173StockKey:stockKey,bb173StockValue:quantity,selected:true,staple:!whole,loc:line.location||'cupboard'};
+        const measured=measuredLines.includes(line);
+        serverKitchen['receipt-context|'+stockKey]={name:whole?'Peppers':line.name||'Pepper',unit:line.unit,qty:quantity,bb173StockKey:stockKey,bb173StockValue:quantity,selected:true,staple:!whole&&!measured,loc:line.location||'cupboard',...(measured?{trackingMode:'measured',measurementReviewed:true}:{})};
       }
       const nextServerStock = tracking?c.normalizePantryState(rawServerStock,serverKitchen,{canonicalize,market:activeContext().market,exactConversionsOnly:true}).stock:rawServerStock;
       const currentStock = c.normalizeStockMap(local.stock, { canonicalize });
@@ -306,9 +324,11 @@
         const quantity = nextStock[stockKey] || 0;
         const pepperLine=pepperLines.find(line=>line.canonicalKey===name&&line.unit===unit);
         const ambiguousPepper=name==='pepper'&&unit==='each'&&!pepperLine&&!existing;
-        const wholePepper=name==='pepper'&&!ambiguousPepper&&(unit==='g'||c.pantryTrackingPolicy.isWholePepper(pepperLine?.name||previous.name||name,unit,pepperLine||previous));
+        const measuredMode=measuredLines.some(line=>line.canonicalKey===name&&line.unit===unit)||previous.trackingMode==='measured'&&previous.measurementReviewed===true&&c.pantryTrackingPolicy.isContainerTracked(previous)===false;
+        const wholePepper=name==='pepper'&&!ambiguousPepper&&!measuredMode&&(unit==='g'||c.pantryTrackingPolicy.isWholePepper(pepperLine?.name||previous.name||name,unit,pepperLine||previous));
         const purchasedStaple=tracking&&body?.action==='confirm_receipt'&&!cached.appliedReceiptIds?.[body.receiptId]&&(body.lines||[]).some(line=>line.kind==='food'&&c.pantryTrackingPolicy.canonicalName(line.canonicalKey,canonicalize)===c.pantryTrackingPolicy.canonicalName(name,canonicalize)&&line.quantity>0);
-        if (quantity > 0) {kitchen[id] = { ...previous, name: wholePepper?'Peppers':previous.name || name, loc: location, selected: true, qty: quantity, unit, bb173StockKey: stockKey, bb173StockValue: quantity, receiptActorId: captured.actorId,...(tracking&&c.pantryTrackingPolicy.isStaple(name)&&!wholePepper&&!ambiguousPepper?{staple:true,stapleCount:quantity,stapleStatus:purchasedStaple?'in':previous.stapleStatus||'in',containerLabel:c.pantryTrackingPolicy.containerLabel(name)}:{}) };
+        if (quantity > 0) {kitchen[id] = { ...previous, name: wholePepper?'Peppers':previous.name || name, loc: location, selected: true, qty: quantity, unit, bb173StockKey: stockKey, bb173StockValue: quantity, receiptActorId: captured.actorId,...(tracking&&c.pantryTrackingPolicy.isStaple(name)&&!wholePepper&&!ambiguousPepper&&!measuredMode?{staple:true,stapleCount:quantity,stapleStatus:purchasedStaple?'in':previous.stapleStatus||'in',containerLabel:c.pantryTrackingPolicy.containerLabel(name)}:{}) };
+          if(measuredMode){kitchen[id].trackingMode='measured';kitchen[id].measurementReviewed=true;kitchen[id].staple=false;delete kitchen[id].stapleStatus;delete kitchen[id].stapleCount;delete kitchen[id].containerLabel;}
           if(wholePepper){kitchen[id].staple=false;delete kitchen[id].stapleStatus;delete kitchen[id].stapleCount;delete kitchen[id].containerLabel;}
           if(ambiguousPepper){kitchen[id].conversionNeedsReview=true;kitchen[id].staple=true;kitchen[id].stapleStatus='unknown';}
         }
@@ -396,7 +416,7 @@
       let kitchen = clone(initial.inventory);
       const items = [], purchased = new Map(), credited = new Map();
       const normalizedLines=packet.items.map((raw,index)=>{
-        const line=c.normalizeReceiptLine({...raw,id:'line-'+index,...(options.pantryPolicy===true?{}:{packQuantity:null,packUnit:null,packCount:null}),canonicalKey:raw.key||raw.canonicalKey,reviewed:true},{catalog:catalog(),canonicalize,market:active.market,pantryPolicy:options.pantryPolicy===true});
+        const line=c.normalizeReceiptLine(withPantryTracking({...raw,id:'line-'+index,...(options.pantryPolicy===true?{}:{packQuantity:null,packUnit:null,packCount:null}),canonicalKey:raw.key||raw.canonicalKey,reviewed:true},c,currentKitchen),{catalog:catalog(),canonicalize,market:active.market,pantryPolicy:options.pantryPolicy===true});
         const guide=c.normalizeMeasuredQuantity(raw.guidePackQuantity,raw.guidePackUnit||raw.unit),bought=c.normalizeMeasuredQuantity(line.quantity,line.unit);
         // The legacy editor labels price per guide pack; keep that baseline
         // untouched while recording the cost of all packs actually bought.
@@ -412,7 +432,7 @@
         if (line.reduced && !reducedEnabled()) throw Error('premium_reduced_food_required');
         const issues = stockPantry ? line.issues : line.issues.filter(x => !['measured_quantity_required', 'pack_count_required', 'canonical_unit_not_in_catalog'].includes(x));
         if (issues.length || stockPantry && !c.normalizeMeasuredQuantity(line.quantity, line.unit)) throw Error('invalid_local_receipt_quantity');
-        items.push({...raw, lineId: line.id, key: line.classification === 'food' ? line.canonicalKey : raw.key || null, name: line.description, classification: line.classification, quantity: line.quantity, unit: line.unit, pricePaid: line.pricePaid, priceType: line.priceType, reduced: line.reduced});
+        items.push({...raw, lineId: line.id, key: line.classification === 'food' ? line.canonicalKey : raw.key || null, name: line.description, classification: line.classification, quantity: line.quantity, unit: line.unit, pricePaid: line.pricePaid, priceType: line.priceType, reduced: line.reduced,...(line.trackingMode==='measured'&&line.measurementReviewed===true?{trackingMode:'measured',measurementReviewed:true}:{})});
         if (!stockPantry || line.classification !== 'food') continue;
         const stockKey = line.canonicalKey + '|' + line.unit;
         purchased.set(stockKey, (purchased.get(stockKey) || 0) + line.quantity);
@@ -431,7 +451,8 @@
         const entry = existing[0], location = entry?.[1]?.loc || 'cupboard', kitchenId = entry?.[0] || kitchenRecordId(kitchen,location+'|'+name,stockKey);
         for (const [oldId, row] of existing.slice(1)) { kitchen[oldId] = {...row, selected: false, qty: null}; delete kitchen[oldId].bb173StockKey; delete kitchen[oldId].bb173StockValue; }
         const incoming=items.find(line=>line.key+'|'+line.unit===stockKey),wholePepper=c.pantryTrackingPolicy.isWholePepper?.(incoming?.name||name,unit,incoming||{})===true;
-        kitchen[kitchenId] = {...(entry?.[1] || {}), name: wholePepper?'Peppers':entry?.[1]?.name || name, loc: location, selected: true, qty: nextStock[stockKey], unit, bb173StockKey: stockKey, bb173StockValue: nextStock[stockKey], receiptActorId: captured.actorId,...(wholePepper?{staple:false,containerLabel:undefined,stapleCount:undefined,stapleStatus:undefined}:options.pantryPolicy===true&&c.pantryTrackingPolicy.isStaple(name)?{staple:true,stapleCount:nextStock[stockKey],stapleStatus:'in',containerLabel:c.pantryTrackingPolicy.containerLabel(name)}:{})};
+        const measuredMode=incoming?.trackingMode==='measured'&&incoming.measurementReviewed===true||entry?.[1]?.trackingMode==='measured'&&entry?.[1]?.measurementReviewed===true;
+        kitchen[kitchenId] = {...(entry?.[1] || {}), name: wholePepper?'Peppers':entry?.[1]?.name || name, loc: location, selected: true, qty: nextStock[stockKey], unit, bb173StockKey: stockKey, bb173StockValue: nextStock[stockKey], receiptActorId: captured.actorId,...(wholePepper||measuredMode?{staple:false,containerLabel:undefined,stapleCount:undefined,stapleStatus:undefined,...(measuredMode?{trackingMode:'measured',measurementReviewed:true}:{})}:options.pantryPolicy===true&&c.pantryTrackingPolicy.isStaple(name)?{staple:true,stapleCount:nextStock[stockKey],stapleStatus:'in',containerLabel:c.pantryTrackingPolicy.containerLabel(name)}:{})};
       }
       if (root.BBReducedStock?.settleInventory) kitchen = root.BBReducedStock.settleInventory({before: currentKitchen, after: kitchen, actor: captured.actorId});
       const reduced = items.filter(line => line.classification === 'food' && line.reduced === true), savedAt = now(), reviewIssues = [];
@@ -468,7 +489,8 @@
       const c = await core(), captured = session(), active = activeContext();
       const market = context.market || active.market, retailer = context.retailer ?? active.retailer;
       if (market !== active.market || retailer !== active.retailer) throw Error('receipt_context_changed');
-      const draft = c.normalizeReceiptDraft(raw, { ...context, market, retailer, catalog: catalog(), canonicalize,pantryPolicy:options.pantryPolicy===true });
+      const tracked={...raw,...(Array.isArray(raw.lines)?{lines:raw.lines.map(line=>withPantryTracking(line,c))}:Array.isArray(raw.items)?{items:raw.items.map(line=>withPantryTracking(line,c))}:{})};
+      const draft = c.normalizeReceiptDraft(tracked, { ...context, market, retailer, catalog: catalog(), canonicalize,pantryPolicy:options.pantryPolicy===true });
       draft.receiptId ||= `receipt-${uuid()}`;
       memoryDrafts.set(draft.receiptId, { actorId: captured.actorId, draft: clone(draft), context: active });
       return draft;
@@ -484,7 +506,7 @@
       let requestId = idempotencyKey || `${draft.receiptId}:confirm`;
       if (draft.addToPantry !== false) requireReviewedPantryConversions(c, draft.lines || [], context.market);
       const rawCredits = options.getFinishShopCredits ? options.getFinishShopCredits() : json(KEYS.finishShop, {}),credits=options.pantryPolicy===true?c.normalizeFinishShopCredits(rawCredits,{canonicalize,market:context.market,inventory:json(KEYS.kitchen,{})}):rawCredits;
-      const pending = pendingConfirmation(captured.actorId),annotations=inferPurchaseAnnotations(draft.lines||[],draft.receiptId,draft.shopSessionId,c,pending.receiptId===draft.receiptId?pending:null);
+      const pending = pendingConfirmation(captured.actorId),annotations=inferPurchaseAnnotations((draft.lines||[]).map(line=>withPantryTracking(line,c)),draft.receiptId,draft.shopSessionId,c,pending.receiptId===draft.receiptId?pending:null);
       let body = c.prepareReceiptConfirmation({...draft,lines:annotations.lines}, { requestId, catalog: catalog(), canonicalize, finishShopCredits: credits,pantryPolicy:options.pantryPolicy===true });
       const reviewedReducedIds = reducedLineIds(body, annotations.lines.filter(line => line.reduced === true && line.reviewed === true && line.selected !== false && line.classification === 'food' && line.sourceKind === 'purchase').map(line => line.id));
       if (reviewedReducedIds.length && !reducedEnabled()) throw Error('premium_reduced_food_required');

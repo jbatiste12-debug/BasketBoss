@@ -312,6 +312,15 @@ html body dialog.bbpi-panel .bbpi-remove{border:1px solid #e3d8c9;background:#ff
 html body dialog.bbpi-panel .bbpi-done{border:1px solid #245d42;background:#245d42;color:#fffdf7}
 html body dialog.bbpi-panel button:disabled{opacity:.55;cursor:default}
 html body dialog.bbpi-panel [hidden]{display:none!important}
+html body dialog.bbpi-panel .bbpi-needed-label input[readonly]{background:#f1f5eb;color:#365e4b;text-align:center;cursor:default}
+html body dialog.bbpi-panel .bbpi-needed-help{font-size:12px;font-weight:400;line-height:1.45;color:#62765f}
+html body dialog.bbpi-panel .bbpi-scan-products{margin-top:14px;border-top:1px solid #dfe5d4;padding-top:10px;font-size:12px;line-height:1.5}
+html body dialog.bbpi-panel .bbpi-scan-products summary{min-height:44px;display:flex;align-items:center;font-weight:750;cursor:pointer}
+html body dialog.bbpi-panel .bbpi-scan-products ul{padding-left:18px;margin:4px 0 10px}
+html body dialog.bbpi-panel .bbpi-scan-products li{margin:8px 0}
+html body dialog.bbpi-panel .bbpi-scan-products li :is(strong,span){display:block}
+html body dialog.bbpi-panel .bbpi-scan-products p{margin:6px 0;color:#62765f}
+html body dialog.bbpi-panel .bbpi-scan-products .bbpi-scan-review,#app #bb173ShopFridge .bbpi-scan-review{color:#875936;font-size:12px;line-height:1.45}
 html body dialog#bbpi-current-editor.bbpi-panel .bbpi-close{
  width:44px!important;min-width:44px!important;max-width:44px!important;
  height:44px!important;min-height:44px!important;max-height:44px!important;

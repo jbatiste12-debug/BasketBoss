@@ -128,13 +128,16 @@ export function normalizeReceiptLine(raw = {}, context = {}, index = 0) {
   if(context.pantryPolicy===true&&canonicalKey){
     canonicalKey=canonicalIngredientKey(pantryPolicy.canonicalName(canonicalKey,context.canonicalize),context.canonicalize);
     const wholePepper=pantryPolicy.isWholePepper(description,pack.unit??raw.unit,raw);
-    if(classified.classification==='food'&&pantryPolicy.isStaple(canonicalKey)&&!wholePepper){
+    const measuredMode=raw.trackingMode==='measured'&&raw.measurementReviewed===true;
+    if(classified.classification==='food'&&pantryPolicy.isStaple(canonicalKey)&&!wholePepper&&!measuredMode){
       const container=pantryPolicy.staplePurchase({name:canonicalKey,quantity:pack.quantity??raw.quantity??pack.packQuantity,unit:pack.unit??raw.unit??pack.packUnit,packCount:raw.packCount??pack.packCount,packQuantity:pack.packQuantity,packUnit:pack.packUnit});
       if(container)pack={quantity:container.quantity,unit:'each',packCount:null,packQuantity:null,packUnit:null,issue:null};
     }else if(classified.classification==='food'){
       const amount=pantryPolicy.normalize(canonicalKey,pack.quantity??raw.quantity,pack.unit??raw.unit,{market:context.market,wholePepper,packQuantity:raw.packQuantity,packUnit:raw.packUnit,reviewed:raw.packReviewed===true||raw.reviewed===true&&raw.packQuantity>0&&!!raw.packUnit});
-      if(amount)pack={...pack,quantity:amount.quantity,unit:amount.unit,issue:null};
+      if(measuredMode&&(!amount||!['g','ml'].includes(amount.unit)||amount.estimated===true))pack={...pack,quantity:null,unit:null,issue:'reviewed_weight_or_volume_required'};
+      else if(amount)pack={...pack,quantity:amount.quantity,unit:amount.unit,issue:null};
     }
+    if(pantryPolicy.measuredIdentityProblem({...raw,name:canonicalKey},context.canonicalize))pack={...pack,quantity:null,unit:null,issue:'measured_food_identity_review'};
   }
   const paid = finite(raw.lineTotal ?? raw.pricePaid ?? raw.price), unitPaid = finite(raw.unitPrice);
   const pricePaid = paid !== null ? money(paid) : unitPaid !== null && pack.packCount !== null ? money(unitPaid * pack.packCount) : null;
@@ -157,7 +160,8 @@ export function normalizeReceiptLine(raw = {}, context = {}, index = 0) {
     reducedSuggested: classified.classification === 'food' && (raw.reducedSuggested === true || reducedReceiptSuggestion(raw)),
     location: ['cupboard', 'fridge', 'freezer'].includes(raw.location || raw.loc) ? raw.location || raw.loc : 'cupboard',
     confidence: ['high', 'medium', 'low'].includes(raw.confidence) ? raw.confidence : 'low', notes: clean(raw.notes, 500),
-    selected: raw.selected !== false && classified.sourceKind === 'purchase', reviewed: raw.reviewed === true, issues
+    selected: raw.selected !== false && classified.sourceKind === 'purchase', reviewed: raw.reviewed === true, issues,
+    ...(raw.trackingMode==='measured'&&raw.measurementReviewed===true?{trackingMode:'measured',measurementReviewed:true}:{})
   };
 }
 export function receiptTotals(lines, receiptTotal = null) {
@@ -376,7 +380,7 @@ function validReducedMetadata(value) {
   return object(value) && value.version === 1 && typeof value.actor === 'string' && /^[A-Za-z0-9_-]{1,120}$/.test(value.actor) && typeof value.urgent === 'boolean' && Array.isArray(value.sources) && value.sources.length > 0 && value.sources.length <= 128 && value.sources.every(id => typeof id === 'string' && id.length > 0 && id.length <= 300 && !/[\u0000-\u001f\u007f]/.test(id)) && (typeof value.at === 'number' && Number.isFinite(value.at) || typeof value.at === 'string' && Number.isFinite(Date.parse(value.at)));
 }
 export function pantryLotMetadata(row = {}) {
-  const fields = /^(?:notes?|useBy(?:ISO|Date)?|bestBefore(?:ISO|Date)?|expiry(?:ISO|Date)?|expires(?:At|On)?|opened(?:At|On|Date)?|frozenAt|bought(?:At|On)|purchased(?:At|On)|purchaseDate|lot(?:Id|Code|Number)?|batch(?:Id|Code|Number)?)$/i;
+  const fields = /^(?:notes?|useBy(?:ISO|Date)?|bestBefore(?:ISO|Date)?|expiry(?:ISO|Date)?|expires(?:At|On)?|opened(?:At|On|Date)?|frozenAt|bought(?:At|On)|purchased(?:At|On)|purchaseDate|lot(?:Id|Code|Number)?|batch(?:Id|Code|Number)?|scanProductLots|scanPreviousProductLots|scanQuantityBasis|trackingMode|measurementReviewed)$/i;
   return Object.fromEntries(Object.keys(row).sort().filter(key => fields.test(key) && row[key] !== undefined && row[key] !== null && row[key] !== '').map(key => [key, row[key]]));
 }
 function pantryLotKey(row, id) {
@@ -419,6 +423,8 @@ export function normalizePantryState(stock = {}, inventory = {}, {canonicalize, 
     const reviewed=linked.filter(([,row])=>row.packReviewed===true),signatures=new Set(reviewed.map(([,row])=>JSON.stringify([row.packQuantity,row.packUnit])));
     const conflict=signatures.size>1||reviewed.length>0&&reviewed.length!==linked.length;
     const metadata=reviewed[0]?.[1];
+    const identityProblem=linked.map(([,row])=>pantryPolicy.measuredIdentityProblem(row,canonicalize)).find(Boolean);
+    if(identityProblem){add(stockKey,quantity);issues.push({stockKey,name,unit:rawUnit,identityConflict:true,message:identityProblem});continue;}
     if(name==='pepper'&&normalizeUnit(rawUnit)==='each'&&!linked.length){add(stockKey,quantity);issues.push({stockKey,name,unit:rawUnit,message:'This pepper count could describe whole produce or spice containers. The saved quantity has been kept for review.'});continue;}
     if(name==='pepper'&&linked.some(([,row])=>row.staple===true)&&linked.some(([,row])=>pantryPolicy.isWholePepper(row.name,rawUnit,row))){add(stockKey,quantity);issues.push({stockKey,name,unit:rawUnit,message:'Whole peppers and a pepper spice container share this saved balance. Their quantities have been kept for review.'});continue;}
     if(linked.some(([,row])=>clean(row.name)&&policyName(row.name)!==name)){
@@ -426,11 +432,17 @@ export function normalizePantryState(stock = {}, inventory = {}, {canonicalize, 
     }
     const wholePepper=name==='pepper'&&!linked.some(([,row])=>row.staple===true)&&(['each','g','kg'].includes(normalizeUnit(rawUnit))||linked.some(([,row])=>pantryPolicy.isWholePepper(row.name,rawUnit,row)));
     const statuses=linked.map(([,row])=>pantryPolicy.stapleStatus(row,quantity));
-    const staple=pantryPolicy.isStaple(name)&&!wholePepper,status=statuses.includes('in')?'in':statuses.includes('low')?'low':statuses.includes('out')?'out':statuses.length?'unknown':'in';
+    const measuredRows=linked.filter(([,row])=>row.trackingMode==='measured'&&row.measurementReviewed===true&&pantryPolicy.isContainerTracked(row)===false);
+    if(pantryPolicy.isStaple(name)&&measuredRows.length&&measuredRows.length!==linked.length){add(stockKey,quantity);issues.push({stockKey,name,unit:rawUnit,message:'Measured and container tracking share this saved balance. The existing amount has been kept for review.'});continue;}
+    const measuredStaple=pantryPolicy.isStaple(name)&&measuredRows.length>0;
+    const staple=pantryPolicy.isStaple(name)&&!wholePepper&&!measuredStaple,status=statuses.includes('in')?'in':statuses.includes('low')?'low':statuses.includes('out')?'out':statuses.length?'unknown':'in';
     let normalized;
     if(staple){
       const purchase=pantryPolicy.staplePurchase({name,quantity,unit:rawUnit});
-      normalized=purchase||(['each','pack'].includes(normalizeUnit(rawUnit))&&quantity>0?{quantity:Math.ceil(quantity),unit:'each',estimated:true,assumption:'Partly used staple containers kept in stock; review the container count.'}:null);
+      // Physical balances may be part of a container. Receipt purchases still
+      // pass staplePurchase's whole-container guard before reaching stock.
+      const countedUnit=normalizeUnit(rawUnit)||clean(rawUnit,30).toLowerCase();
+      normalized=purchase||(['each','pack','bag','tin','bottle','bottles','jar','jars','pouch','pouches'].includes(countedUnit)&&quantity>0?{quantity,unit:'each',estimated:false,assumption:'Recorded amount of pantry containers, including partly used containers.'}:null);
     }else if(!conflict||exactConversionsOnly&&['g','kg','ml','l'].includes(normalizeUnit(rawUnit)))normalized=pantryPolicy.normalize(name,quantity,rawUnit,{market,canonicalize,wholePepper,reviewed:metadata?.packReviewed===true,packQuantity:metadata?.packQuantity,packUnit:metadata?.packUnit});
     if(!normalized){
       add(stockKey,quantity);issues.push({stockKey,name,unit:rawUnit,message:conflict?'Container sizes disagree. Existing stock has been kept for review.':'Unknown container or unit. Existing stock has been kept for review.'});continue;
@@ -445,7 +457,7 @@ export function normalizePantryState(stock = {}, inventory = {}, {canonicalize, 
     const entries=linked.length?linked:[[null,{name:rawName,loc:'cupboard',selected:true}]];
     for(const [id,row]of entries){
       const amount=linked.length>1?(Number(row.bb173StockValue??row.qty)||0)/quantity*normalized.quantity:normalized.quantity;
-      contributions.push({id,row,name,key:nextKey,unit:normalized.unit,quantity:amount,source:{stockKey,quantity:linked.length>1?Number(row.bb173StockValue??row.qty)||0:quantity,unit:rawUnit,assumption:normalized.assumption||''},estimated:normalized.estimated===true,staple,status,wholePepper});
+      contributions.push({id,row,name,key:nextKey,unit:normalized.unit,quantity:amount,source:{stockKey,quantity:linked.length>1?Number(row.bb173StockValue??row.qty)||0:quantity,unit:rawUnit,assumption:normalized.assumption||''},estimated:normalized.estimated===true,staple,status,wholePepper,measuredStaple});
     }
   }
   const grouped=new Map();
@@ -469,6 +481,7 @@ export function normalizePantryState(stock = {}, inventory = {}, {canonicalize, 
     if (reduced) row.bbReduced = reduced; else if (reduced === null) delete row.bbReduced;
     if(history.length)row.pantrySourceHistory=history;
     if(first.staple){row.staple=true;row.stapleStatus=list.some(item=>item.status==='in')?'in':list.some(item=>item.status==='low')?'low':list.some(item=>item.status==='unknown')?'unknown':'out';row.stapleCount=quantity;row.containerLabel=pantryPolicy.containerLabel(first.name);}
+    else if(first.measuredStaple){row.staple=false;row.trackingMode='measured';row.measurementReviewed=true;delete row.stapleStatus;delete row.stapleCount;delete row.containerLabel;}
     else if(first.wholePepper){if(pantryPolicy.canonicalName(row.name)==='pepper')row.name='Peppers';row.staple=false;delete row.stapleStatus;delete row.stapleCount;delete row.containerLabel;}
     else if(list.some(item=>item.estimated)){row.packEstimated=true;row.packAssumption=list.filter(item=>item.estimated).map(item=>item.source.assumption).filter(Boolean).join(' ');}
     records[id]=row;
@@ -491,7 +504,8 @@ export function normalizeFinishShopCredits(credits = {}, {canonicalize,market='U
     if(signatures.size>1)continue;
     const related=Object.values(inventory).filter(record=>pantryPolicy.canonicalName(record?.name,canonicalize)===canonical&&(normalizeUnit(record.unit)===unit||Array.isArray(record.pantrySourceHistory)&&record.pantrySourceHistory.some(source=>source?.stockKey===name+'|'+unit)));
     const wholePepper=canonical==='pepper'&&row.staple!==true&&(['g','kg'].includes(unit)||pantryPolicy.isWholePepper(row.name,'g',row)||related.some(record=>pantryPolicy.isWholePepper(record.name,record.unit,record))&&!related.some(record=>record.staple===true));
-    const metadata=facts[0],staple=pantryPolicy.isStaple(canonical)&&!wholePepper,converted=staple?pantryPolicy.staplePurchase({name:canonical,quantity:available,unit}):pantryPolicy.normalize(canonical,available,unit,{market,canonicalize,wholePepper,reviewed:metadata?.packReviewed===true,packQuantity:metadata?.packQuantity,packUnit:metadata?.packUnit});
+    const measuredMode=related.some(record=>record.trackingMode==='measured'&&record.measurementReviewed===true&&pantryPolicy.isContainerTracked(record)===false);
+    const metadata=facts[0],staple=pantryPolicy.isStaple(canonical)&&!wholePepper&&!measuredMode,converted=staple?pantryPolicy.staplePurchase({name:canonical,quantity:available,unit}):pantryPolicy.normalize(canonical,available,unit,{market,canonicalize,wholePepper,reviewed:metadata?.packReviewed===true,packQuantity:metadata?.packQuantity,packUnit:metadata?.packUnit});
     // A historical receipt credit is replay proof, not evidence of pack size
     // or produce weight. Only exact measured conversions may move that credit.
     if(!converted||converted.estimated===true&&!staple)continue;

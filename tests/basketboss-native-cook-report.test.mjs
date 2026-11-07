@@ -1,6 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
+import vm from 'node:vm';
 import {cookRequiredFlags,cookReportFailure} from '../scripts/ios-cook-report.mjs';
 const complete=()=>({complete:true,passed:true,legacyVisible:false,...Object.fromEntries(cookRequiredFlags.map(key=>[key,true]))});
 test('Cook accepts only the complete passing real-app report',()=>{
@@ -41,4 +42,36 @@ test('Debug WebView QA remains valid JavaScript and checks the real mentor with 
  assert.match(script,/pendingAnswer\.signal\.aborted/,'the actual question request must be aborted on interruption');
  assert.match(script,/JSON\.stringify\(actualNextActions\)!==JSON\.stringify\(expectedNextActions\)/,'verify every rendered action in order after normalized method parsing');
  assert.doesNotMatch(script,/textContent\.includes\(recipe\.method\[1\]\)/,'separate bullet nodes do not preserve source sentence whitespace');
+});
+
+function returnProbe({view='week',missingFlag,keepData=true}={}){
+ const source=fs.readFileSync(new URL('../ios/App/App/AppDelegate.swift',import.meta.url),'utf8');
+ const script=source.slice(source.indexOf('private final class BasketBossCookSmokeReporter')).match(/static let script = #"""\n([\s\S]*?)\n    """#/)?.[1];
+ assert.ok(script);
+ const report=complete();delete report.complete;delete report.passed;delete report.backToPlan;delete report.dataKept;
+ if(missingFlag)report[missingFlag]=false;
+ const session=new Map([['bb_native_cook_smoke','back'],['bb_native_cook_smoke_report',JSON.stringify(report)]]),local=new Map(),messages=[],events=new Map();
+ const storage=data=>({getItem:key=>data.get(key)??null,setItem:(key,value)=>data.set(key,String(value)),removeItem:key=>data.delete(key)});
+ let interval,observer,cleared=false;
+ const listen=(type,callback)=>{const callbacks=events.get(type)||[];callbacks.push(callback);events.set(type,callbacks);};
+ const document={readyState:'complete',body:{dataset:{bbnextView:view}},documentElement:{},scripts:[{src:'capacitor://localhost/bb-yellow-stickers-ui.js'}],getElementById:id=>id==='app'?{firstElementChild:{}}:null,addEventListener:listen};
+ const window={BBNativeStartup:{phase:'ready'},webkit:{messageHandlers:{bbNativeCookSmoke:{postMessage:message=>messages.push(structuredClone(message))}}}};
+ vm.runInNewContext(script,{window,document,location:{protocol:'capacitor:',pathname:'/index.html'},localStorage:storage(local),sessionStorage:storage(session),addEventListener:listen,MutationObserver:class{constructor(callback){observer=callback;}observe(){}},setInterval:callback=>{interval=callback;return 1;},clearInterval:()=>{cleared=true;},setTimeout,clearTimeout,console});
+ if(!keepData)local.delete('basketboss_native_smoke_probe');
+ return {messages,finish:()=>interval(),cleared:()=>cleared,lateEvents:()=>{for(const type of ['load','readystatechange'])for(const callback of events.get(type)||[])callback();observer([{addedNodes:[{nodeName:'SCRIPT'}]}]);}};
+}
+
+test('late return-page readiness events cannot overwrite a completed real Cook report',()=>{
+ const h=returnProbe();h.finish();
+ const finished=h.messages.at(-1);assert.equal(finished.complete,true);assert.equal(finished.passed,true);assert.equal(finished.backToPlan,true);assert.equal(finished.dataKept,true);assert.equal(h.cleared(),true);
+ const count=h.messages.length;h.lateEvents();
+ assert.equal(h.messages.length,count,'load, readystatechange and late scripts must preserve the final atomic report');
+ assert.deepEqual(h.messages.at(-1),finished);
+});
+
+test('preserving completion never bypasses route, retention or mentor assertions',()=>{
+ for(const options of [{view:'shop'},{keepData:false},{missingFlag:'mentorRecipeContext'}]){
+  const h=returnProbe(options);h.finish();const finished=h.messages.at(-1);
+  assert.equal(finished.complete,true);assert.equal(finished.passed,false);h.lateEvents();assert.deepEqual(h.messages.at(-1),finished);
+ }
 });

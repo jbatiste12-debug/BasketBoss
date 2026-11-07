@@ -32,6 +32,10 @@ export interface FoodConversion {
   assumption?: string;
 }
 export interface PantryConversionContext {
+  /** Explicitly confirmed measured staple sources; never infer from an estimate. */
+  measuredStockKeys?: string[];
+  /** Foods deliberately tracked in measured units, including a confirmed zero balance. */
+  measuredFoods?: string[];
   /** Exact physical stock keys requiring identity review; retain but do not allocate. */
   excludedStockKeys?: string[];
   /** Enables status/container staples and labelled UK pack defaults. */

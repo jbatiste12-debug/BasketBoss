@@ -84,6 +84,36 @@ test('a staple receipt adds a container to the existing row, clears Low and is i
  assert.deepEqual(h.stock(),{'ketchup|each':2});const rows=Object.values(h.inventory()).filter(row=>row.selected&&policy.isStaple(row.name));assert.equal(rows.length,1);assert.equal(rows[0].qty,2);assert.equal(rows[0].unit,'each');assert.equal(rows[0].stapleStatus,'in');
  assert.equal((await h.receipt('ketchup-800-ml-receipt','Ketchup',800,'ml')).duplicate,true);assert.equal(h.stock()['ketchup|each'],2);assert.equal(h.shopping().find(row=>row.key.toLowerCase()==='ketchup')?.toBuy||0,0);
 });
+test('Finish shop adds a whole bottle to half-used pantry stock exactly once',()=>{
+ const h=fixture({stock:{'olive oil|each':.5},inventory:{oil:entry('Olive oil',.5,'each',{staple:true,stapleStatus:'in'})}});
+ const request={name:'Olive oil',unit:'each',qty:.5,staple:true,totalNeeded:0,automaticNeeded:true,extraBuffer:1,buyMultiple:0,pantryTarget:true,targetChanged:true};
+ const change=h.home.prepare([request]);homeModule.atomic(h.storage,{[change.key]:change.value},{[change.key]:change.expected});
+ assert.equal(h.home.foodTarget(request).shortfall,1);assert.equal(h.home.targets()['olive oil|each'].buyMultiple,1);
+ assert.equal(h.shopping().find(row=>row.key.toLowerCase()==='olive oil').toBuy,1);
+ const transfer=finish(h,{id:'olive oil|each',name:'Olive oil',unit:'each',qty:1,aisle:'Cupboard / Pantry'});
+ assert.equal(transfer().count,1);assert.deepEqual(h.stock(),{'olive oil|each':1.5});
+ const active=Object.values(h.inventory()).filter(row=>row.selected&&policy.canonicalName(row.name)==='olive oil');
+ assert.equal(active.length,1);assert.equal(active[0].qty,1.5);assert.equal(active[0].unit,'each');
+ assert.equal(transfer().count,0);assert.deepEqual(h.stock(),{'olive oil|each':1.5});
+});
+test('a reviewed whole-container receipt preserves the existing half bottle and remains idempotent',async()=>{
+ const h=fixture({stock:{'ketchup|each':.5},inventory:{ketchup:entry('Ketchup',.5,'each',{staple:true,stapleStatus:'in'})}});
+ assert.equal((await h.receipt('half-bottle-top-up','Ketchup',1,'each')).ok,true);
+ assert.deepEqual(h.stock(),{'ketchup|each':1.5});assert.equal(h.inventory().ketchup.qty,1.5);
+ assert.equal((await h.receipt('half-bottle-top-up','Ketchup',1,'each')).duplicate,true);assert.deepEqual(h.stock(),{'ketchup|each':1.5});
+ assert.equal(policy.staplePurchase({name:'Ketchup',quantity:.5,unit:'bottle'}),null,'receipt purchases retain their whole-container rule');
+});
+test('receipt matching follows reviewed measured condiment stock without converting its volume into bottles',async()=>{
+ const h=fixture({stock:{'ketchup|ml':20},inventory:{ketchup:entry('Ketchup',20,'ml',{staple:false,trackingMode:'measured',measurementReviewed:true})}});
+ assert.equal((await h.receipt('measured-condiment-top-up','Ketchup',250,'ml')).ok,true);
+ assert.deepEqual(h.stock(),{'ketchup|ml':270});assert.equal(h.inventory().ketchup.qty,270);assert.equal(h.inventory().ketchup.unit,'ml');assert.equal(h.inventory().ketchup.staple,false);assert.equal(h.inventory().ketchup.trackingMode,'measured');
+ assert.equal((await h.receipt('measured-condiment-top-up','Ketchup',250,'ml')).duplicate,true);assert.deepEqual(h.stock(),{'ketchup|ml':270});
+});
+test('a measured condiment Finish credit stays measured so its matching receipt cannot add stock twice',async()=>{
+ const h=fixture({stock:{'ketchup|ml':20},inventory:{ketchup:entry('Ketchup',20,'ml',{staple:false,trackingMode:'measured',measurementReviewed:true})}});
+ const transfer=finish(h,{id:'ketchup|ml',name:'Ketchup',unit:'ml',qty:30,aisle:'Cupboard / Pantry'});assert.equal(transfer().count,1);assert.deepEqual(h.stock(),{'ketchup|ml':50});
+ assert.equal((await h.receipt('measured-condiment-credit','Ketchup',30,'ml')).ok,true);assert.deepEqual(h.stock(),{'ketchup|ml':50});
+});
 
 test('one reviewed tomato tin plus a measured receipt becomes one 800 g physical record usable by the next recipe',async()=>{
  const h=fixture({stock:{'chopped tomatoes|tin':1},inventory:{tomatoes:entry('Chopped tomatoes',1,'tin',{packReviewed:true,packQuantity:400,packUnit:'g'})},ingredients:[{key:'chopped tomatoes',required:600,unit:'g'}]});

@@ -8,14 +8,14 @@ const [html,privacy,script,css,handler,worker]=await Promise.all([
   'index.html','privacy.html','bb-funnel.js','bb-funnel.css','functions/api/funnel/[event].js','service-worker.js'
 ].map(read));
 
-test('Only marketing assets added, existing checkout/auth/camera source still present',()=>{
+test('Signup funnel retains the account entrypoints and cache protections',()=>{
   assert.match(html,/<script defer src="bb-funnel\.js\?v=20261028-v1"><\/script>/);
   assert.match(html,/<link rel="stylesheet" href="bb-funnel\.css\?v=20261028-v1">/);
   assert.match(html,/id="cloud-signup"/);
   assert.match(html,/id="cloud-open"/);
   assert.match(html,/id="bbColdVisitor"/);
   assert.match(html,/<meta property="og:image"/);
-  assert.match(worker,/v74-appstore-pantry1/);
+  assert.match(worker,/v75-pantry-stock2/);
   assert.match(worker,/target\.pathname\.startsWith\(new URL\('api\/', APP_BASE\)\.pathname\)\) return/);
   assert.match(privacy,/Anonymous usage steps/);
 });

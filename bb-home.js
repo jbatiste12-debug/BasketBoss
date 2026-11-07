@@ -155,9 +155,11 @@
    const problem=message=>({totalNeeded:null,mealNeeded:null,minimumNeeded:null,manualNeeded:null,targetProblem:message});
    if(!row?.name||!row.unit)return problem('Choose an item and unit first.');
    const market=row.inputMarket||win.bb307ActiveMarket?.()||'UK',policy=win.BBPantryPolicy;
+   const identityProblem=policy?.measuredIdentityProblem?.(row,win.BBPriceV19?.canonical);if(identityProblem)return problem(identityProblem);
+   const automatic=row.automaticNeeded===true,container=row.staple===true&&policy?.isContainerTracked?.(row)!==false,measuredMode=row.trackingMode==='measured'&&row.measurementReviewed===true&&policy?.isContainerTracked?.(row)===false;
    const options=value=>({market:value?.inputMarket||market,canonicalize:win.BBPriceV19?.canonical,packReviewed:value?.packReviewed===true,packQuantity:value?.packQuantity,packUnit:value?.packUnit,wholePepper:policy?.isWholePepper?.(value?.name||value?.key,value?.unit,value)});
    const measure=(value,quantity)=>{
-    if(value.staple===true)return value.unit==='each'&&valid(quantity)&&Number.isInteger(quantity)&&quantity<=10000?{quantity,unit:'each'}:null;
+    if(container&&value.staple===true&&policy?.isContainerTracked?.(value)!==false)return value.unit==='each'&&valid(quantity)&&quantity<=10000?{quantity,unit:'each'}:null;
     if(policy)return policy.normalize(value.name||value.key,quantity,value.unit,options(value));
     const unit=value.unit==='kg'?'g':value.unit==='l'?'ml':value.unit,factor=['kg','l'].includes(value.unit)?1000:1;
     return ['g','ml','each'].includes(unit)&&valid(quantity*factor)?{quantity:Math.round(quantity*factor*1000000)/1000000,unit}:null;
@@ -166,30 +168,41 @@
    const nameId=host().id(row.name,''),matching=name=>host().id(name,'')===nameId;
    const raw=row.qty===null||row.qty===undefined||row.qty===''?null:Number(row.qty),owned=raw===null?{quantity:0,unit:one.unit}:measure(row,raw);
    if(!owned||owned.unit!==one.unit||!valid(owned.quantity))return problem('Review the amount at home before adding this item to Shop.');
-   let planned=0,prior=0,manual=0,otherOwned=0,otherOwnedNeedsReview=false,defaultRestock=0,hasPrior=false;
+   let planned=0,prior=0,manual=0,otherOwned=0,otherOwnedNeedsReview=false,defaultRestock=0,hasPrior=false,plannedNeedsReview=false,otherRequestsNeedReview=false,plannedReviewMessage='';
+   const cannedTuna=name=>{const text=String(policy?.canonicalName?.(name,win.BBPriceV19?.canonical)||name||'').normalize('NFKD').toLowerCase();return /\btuna\b/.test(text)&&/\b(?:tinned|canned|tins?|cans?)\b/.test(text)&&!/\b(?:fresh|frozen|raw|steaks?|fillets?|salmon|mackerel|sardines?|anchovies|cod|haddock|trout)\b/.test(text);};
    for(const item of otherRows){
     if(!matching(item?.name||item?.key)||item.qty===null||item.qty===undefined||item.qty==='')continue;
     const value=measure(item,Number(item.qty));
     if(!value||value.unit!==one.unit){if(Number(item.qty)>0)otherOwnedNeedsReview=true;continue;}otherOwned+=value.quantity;
    }
    for(const item of requirements||host()?.requirements?.()||[]){
-    if(!matching(item.key||item.name)||!(Number(item.required)>0))continue;
-    if(row.staple===true){if(item.cupboardRequired===false){defaultRestock=1;continue;}planned=1;continue;}
-    const value=measure(item,Number(item.required));if(!value||value.unit!==one.unit)return problem('Review the planned ingredient units before adding this item to Shop.');planned+=value.quantity;
+    if(!(Number(item.required)>0))continue;
+    if(!matching(item.key||item.name)){
+     if(cannedTuna(row.name)&&cannedTuna(item.key||item.name)){plannedNeedsReview=true;plannedReviewMessage='Your planned meals use related tuna, but the type or net/drained weight needs review.';}
+     continue;
+    }
+    if(container){if(item.cupboardRequired===false){if(!automatic||!(raw>0)||(policy?.stapleStatus?.(row)||row.stapleStatus)!=='in')defaultRestock=1;continue;}planned=1;continue;}
+    const value=measure(item,Number(item.required));
+    if(measuredMode&&(!value||value.unit!==one.unit)){plannedNeedsReview=true;continue;}
+    if(!value||value.unit!==one.unit)return problem('Review the planned ingredient units before adding this item to Shop.');planned+=value.quantity;
    }
    for(const target of Object.values(targets())){
     if(!target?.pending||!matching(target.name)||!valid(target.targetQty))continue;
-    const value=measure({...target,staple:row.staple===true},target.targetQty);if(!value||value.unit!==one.unit)return problem('Review the saved shopping target unit before changing it.');hasPrior=true;prior=Math.max(prior,value.quantity);
+    const value=measure({...target,staple:container},target.targetQty);if(measuredMode&&(!value||value.unit!==one.unit)){otherRequestsNeedReview=true;continue;}
+    if(!value||value.unit!==one.unit||container&&!Number.isInteger(value.quantity))return problem('Review the saved shopping target unit before changing it.');hasPrior=true;prior=Math.max(prior,value.quantity);
    }
    for(const buy of shoppingBuys()){
     if(buy.kind==='household'||buy.source==='cupboard'||buy.purpose==='bought'||!matching(buy.name))continue;
-    const value=measure({...buy,staple:row.staple===true},buy.quantity);if(!value||value.unit!==one.unit)return problem('Review this item’s existing Shop unit before changing its total.');manual+=value.quantity;
+    const value=measure({...buy,staple:container},buy.quantity);if(measuredMode&&(!value||value.unit!==one.unit)){otherRequestsNeedReview=true;continue;}
+    if(!value||value.unit!==one.unit||container&&!Number.isInteger(value.quantity))return problem('Review this item’s existing Shop unit before changing its total.');manual+=value.quantity;
    }
-   const totalOwned=owned.quantity+otherOwned,minimum=(manual>0?Math.max(planned,totalOwned):planned)+manual,total=Math.max(planned,prior,hasPrior?0:defaultRestock,manual>0?totalOwned:0)+manual;
-   if(![planned,prior,manual,minimum,total,totalOwned].every(valid))return problem('Review the combined amount needed before adding this item to Shop.');
+   const restock=Math.max(prior,hasPrior?0:defaultRestock),totalOwned=owned.quantity+otherOwned;
+   const minimum=automatic?planned:(manual>0?Math.max(planned,totalOwned):planned)+manual;
+   const total=automatic?Math.max(planned,restock):Math.max(planned,restock,manual>0?totalOwned:0)+manual;
+   if(![planned,prior,manual,minimum,total,totalOwned,restock].every(valid))return problem('Review the combined amount needed before adding this item to Shop.');
    const saved=Object.values(targets()).filter(target=>matching(target?.name)&&target.unit===one.unit).at(-1);
    let extraBuffer=0,buyMultiple=0;
-   if(row.staple===true&&(Object.hasOwn(row,'extraBuffer')&&!Number.isInteger(Number(row.extraBuffer))||Object.hasOwn(row,'buyMultiple')&&row.buyMultiple!==null&&!Number.isInteger(Number(row.buyMultiple))))return problem('Use whole container counts for this staple.');
+   if(container&&(Object.hasOwn(row,'extraBuffer')&&!Number.isInteger(Number(row.extraBuffer))||Object.hasOwn(row,'buyMultiple')&&row.buyMultiple!==null&&!Number.isInteger(Number(row.buyMultiple))))return problem('Use whole container counts for this staple.');
    if(Object.hasOwn(row,'extraBuffer')&&typeof row.extraBuffer==='string'&&!row.extraBuffer.trim())return problem('Enter a valid extra stock buffer; use 0 for none.');
    if(Object.hasOwn(row,'buyMultiple')&&typeof row.buyMultiple==='string'&&!row.buyMultiple.trim())return problem('Choose a valid standard pack size, or use Exact amount.');
    if(Object.hasOwn(row,'extraBuffer')){const value=measure(row,Number(row.extraBuffer));if(!valid(Number(row.extraBuffer))||!value||value.unit!==one.unit)return problem('Enter a valid extra stock buffer.');extraBuffer=value.quantity;}
@@ -199,10 +212,17 @@
     const value=amount===0?{quantity:0,unit:one.unit}:measure({...row,unit,inputMarket:win.bb307ActiveMarket?.()||market},amount);
     if(!valid(amount)||!value||value.unit!==one.unit||amount>0&&!(value.quantity>0))return problem('Choose a compatible standard pack size.');buyMultiple=value.quantity;
    }else if(saved?.buyMultiple!==undefined){if(!valid(saved.buyMultiple))return problem('Review the saved standard pack size.');buyMultiple=saved.buyMultiple;}
-   if(row.staple===true&&(!Number.isInteger(extraBuffer)||!Number.isInteger(buyMultiple)))return problem('Use whole container counts for this staple.');
-   let purchase;try{purchase=purchaseAmounts({needed:total,buffer:extraBuffer,owned:totalOwned,multiple:buyMultiple,unit:one.unit});}catch(error){return problem(error.message);}
+   if(container&&(!Number.isInteger(extraBuffer)||!Number.isInteger(buyMultiple)))return problem('Use whole container counts for this staple.');
+   // A half-used bottle is valid stock; a purchase is still a whole bottle.
+   if(container)buyMultiple=Math.max(1,buyMultiple);
+   let purchase;try{
+    // Deliberate Shop purchases are extra quantities to buy. Existing pantry
+    // stock covers meals and the buffer first, but never cancels that request.
+    const missing=automatic?roundQuantity(Math.max(0,total+extraBuffer-totalOwned)+manual):null;
+    purchase=automatic?purchaseAmounts({needed:missing,owned:0,multiple:buyMultiple,unit:one.unit}):purchaseAmounts({needed:total,buffer:extraBuffer,owned:totalOwned,multiple:buyMultiple,unit:one.unit});
+   }catch(error){return problem(error.message);}
    const view=value=>Math.round(value/one.quantity*1000000)/1000000;
-   return {totalNeeded:view(total),totalQuantity:total,requiredNeeded:view(total+extraBuffer),requiredQuantity:roundQuantity(total+extraBuffer),extraBuffer:view(extraBuffer),extraBufferQuantity:extraBuffer,buyMultiple:view(buyMultiple),buyMultipleUnit:row.unit,buyMultipleQuantity:buyMultiple,unroundedShortfall:view(purchase.shortfall),purchasePackCount:purchase.packCount,mealNeeded:view(planned),minimumNeeded:view(minimum),manualNeeded:view(manual),otherOwned:view(otherOwned),otherOwnedNeedsReview,shortfall:view(purchase.purchaseQuantity),targetProblem:'',canonicalUnit:one.unit,quantityPerUnit:one.quantity,quantityTolerance:Math.max(0.000001,one.quantity*0.0000005+0.0000005),mealQuantity:planned,manualQuantity:manual,minimumQuantity:minimum};
+   return {totalNeeded:view(total),totalQuantity:total,requiredNeeded:view(total+extraBuffer),requiredQuantity:roundQuantity(total+extraBuffer),extraBuffer:view(extraBuffer),extraBufferQuantity:extraBuffer,buyMultiple:view(buyMultiple),buyMultipleUnit:row.unit,buyMultipleQuantity:buyMultiple,unroundedShortfall:view(purchase.shortfall),purchasePackCount:purchase.packCount,mealNeeded:view(planned),minimumNeeded:view(minimum),manualNeeded:view(manual),otherOwned:view(otherOwned),otherOwnedNeedsReview,plannedNeedsReview,plannedReviewMessage,otherRequestsNeedReview,shortfall:view(purchase.purchaseQuantity),targetProblem:'',canonicalUnit:one.unit,quantityPerUnit:one.quantity,quantityTolerance:Math.max(0.000001,one.quantity*0.0000005+0.0000005),mealQuantity:planned,manualQuantity:manual,minimumQuantity:minimum,restockQuantity:prior,restockPending:hasPrior,defaultRestockQuantity:hasPrior?0:defaultRestock};
   }
   function roundShoppingItems(items){
    const preferences=Object.values(targets()),policy=win.BBPantryPolicy,market=win.bb307ActiveMarket?.()||'UK';
@@ -231,21 +251,22 @@
   function total(name,unit){const base=unit==='kg'?'g':unit==='l'?'ml':unit,row=targets()[host().id(name,base)],factor=unit==='kg'||unit==='l'?1000:1;return roundQuantity(Math.max(requirement(name,unit),row?.pending?row.targetQty/factor:0)+(valid(row?.extraBuffer)?row.extraBuffer/factor:0));}
   function prepare(chosen){
    checkDraftActor();const {all,data,who}=own();const expected=store.getItem(KEY);
-   for(const [index,row]of chosen.entries()){if(row.totalNeeded===undefined||row.totalNeeded===''||row.totalNeeded===null)continue;
+   for(const [index,row]of chosen.entries()){if(row.automaticNeeded!==true&&(row.totalNeeded===undefined||row.totalNeeded===''||row.totalNeeded===null))continue;
     let unit=row.unit==='kg'?'g':row.unit==='l'?'ml':row.unit;
     if(row.qty===null||row.qty===undefined||row.qty==='')throw Error('Enter how much '+row.name+' you already have; use 0 for none.');
-    let targetQty=Number(row.totalNeeded)*(row.unit==='kg'||row.unit==='l'?1000:1);
+    let targetQty=Number(row.totalNeeded)*(row.unit==='kg'||row.unit==='l'?1000:1),automaticTargetPending=false;
     if(row.pantryTarget===true){
      const info=foodTarget(row,{otherRows:chosen.filter((_,at)=>at!==index)});if(info.targetProblem)throw Error(info.targetProblem);
-     targetQty=Math.round(Number(row.totalNeeded)*info.quantityPerUnit*1000000)/1000000;unit=info.canonicalUnit;
+     targetQty=row.automaticNeeded===true?info.totalQuantity:Math.round(Number(row.totalNeeded)*info.quantityPerUnit*1000000)/1000000;unit=info.canonicalUnit;
      if(Number(row.totalNeeded)===info.totalNeeded)targetQty=info.totalQuantity;
-     if(row.staple===true&&(!Number.isInteger(targetQty)||targetQty>10000))throw Error('Use whole container counts for this staple.');
+     if(row.staple===true&&win.BBPantryPolicy?.isContainerTracked?.(row)!==false&&(!Number.isInteger(targetQty)||targetQty>10000))throw Error('Use whole container counts for this staple.');
      if(!valid(targetQty)||targetQty+info.quantityTolerance<info.minimumQuantity)throw Error(info.manualQuantity>0?'This item already has an extra amount on Shop. Keep its current total or amend that Shop item first.':'Total needed cannot be less than your planned meals need.');
      targetQty=Math.abs(targetQty-info.minimumQuantity)<=info.quantityTolerance?info.minimumQuantity:Math.max(targetQty,info.minimumQuantity);
      // Direct Shop top-ups already contribute after pantry deduction. Keep
      // them intact and add only the remainder of this absolute stock target.
-     targetQty=Math.round(Math.max(0,targetQty-info.manualQuantity)*1000000)/1000000;
-     for(const buy of Object.values(data.manualBuys||{}))if(buy?.pending!==false&&buy.kind!=='household'&&buy.source!=='cupboard'&&buy.purpose!=='bought'&&host().id(buy.name,'')===host().id(row.name,''))buy.boughtAtRequest=0;
+     targetQty=row.automaticNeeded===true?info.restockQuantity:Math.round(Math.max(0,targetQty-info.manualQuantity)*1000000)/1000000;
+     if(row.automaticNeeded===true)automaticTargetPending=info.restockPending;
+     for(const buy of Object.values(data.manualBuys||{}))if(buy?.pending!==false&&buy.kind!=='household'&&buy.source!=='cupboard'&&buy.purpose!=='bought'&&host().id(buy.name,'')===host().id(row.name,'')&&(!(row.trackingMode==='measured'&&row.measurementReviewed===true)||buy.unit===info.canonicalUnit))buy.boughtAtRequest=0;
     }
     if(!valid(targetQty)||!['g','ml','tsp','tbsp','each','pack','clove','tin','loaf','slice','bulb'].includes(unit)||unit==='pack'&&!Number.isInteger(targetQty))throw Error('Check the total needed for '+row.name+'.');
     const id=host().id(row.name,unit),before=data.targets[id];
@@ -253,7 +274,7 @@
     let preferences={};
     if(row.pantryTarget===true){const info=foodTarget(row,{otherRows:chosen.filter((_,at)=>at!==index)});if(info.targetProblem)throw Error(info.targetProblem);if(info.extraBufferQuantity>0)preferences.extraBuffer=info.extraBufferQuantity;if(info.buyMultipleQuantity>0)preferences.buyMultiple=info.buyMultipleQuantity;}
     else{if(valid(before?.extraBuffer)&&before.extraBuffer>0)preferences.extraBuffer=before.extraBuffer;if(valid(before?.buyMultiple)&&before.buyMultiple>0)preferences.buyMultiple=before.buyMultiple;}
-    data.targets[id]={name:row.name,unit,targetQty,pending:row.targetChanged||!before?true:before.pending,...preferences};
+    data.targets[id]={name:row.name,unit,targetQty,pending:row.automaticNeeded===true?automaticTargetPending:row.targetChanged||!before?true:before.pending,...preferences,...(row.automaticNeeded===true?{automaticNeeded:true}:{})};
    }
    for(const item of win.BBSharedShopping?.knownCompletedItems?.()||[]){if(item.completed&&item.completed_by===who&&chosen.some(row=>row.qty!==null&&row.qty!==undefined&&row.qty!==''&&host().id(row.name,row.unit)===host().id(item.name,item.unit))){data.sharedPurchases??={};const key=item.household_id+':'+item.id;if((data.sharedPurchases[key]?.revision||0)<item.revision)data.sharedPurchases[key]={revision:item.revision,checked:true};}}
    const featureChange=householdDraft.size?host().prepareHousehold([...householdDraft]):null;
