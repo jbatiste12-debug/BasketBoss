@@ -236,10 +236,21 @@ function findSourcedPrice({name,unit,market,retailer,asOf,observations=sourcedPr
  matches.sort((a,b)=>b.retrieved_at.localeCompare(a.retrieved_at));
  return matches[0]||null;
 }
+/* The existing garlic guide is one bulb priced as an approximate ten-clove
+   pack. Expose that same pack in explicit bulb units for source recipes; do
+   not price one bulb as one clove or convert persistent stock quantities. */
+function garlicBulbPack(name,unit){
+ if(name!=='garlic'||unit!=='bulb')return null;
+ const cloves=PACKS['garlic|clove'];
+ if(cloves?.source!=='bulb_average_10_cloves_review'||cloves.unit!=='clove'||cloves.standard_pack_unit!=='clove'||cloves.standard_pack_size!==10||!positive(cloves.uk_pack_price))return null;
+ // A future clove-specific regional pack is not automatically a bulb pack.
+ const {regional_packs,...guide}=cloves;
+ return {...guide,unit:'bulb',standard_pack_size:1,standard_pack_unit:'bulb',price_per_unit:cloves.uk_pack_price,needs_review:true,derived_from:'garlic|clove'};
+}
 function getPack(name,unit,market='UK',retailer=root.BBSupermarkets?.getSelected(market)||null,asOf){
  const region=regionalMarkets[market];if(!region)return null;
  const n=canonical(name),u=unit==null?'each':String(unit).toLowerCase();
- const direct=PACKS[n+'|'+u]||CANONICAL_PACKS.get(n+'|'+u);
+ const direct=PACKS[n+'|'+u]||CANONICAL_PACKS.get(n+'|'+u)||garlicBulbPack(n,u);
  const base=direct&&direct.standard_pack_unit===u?direct:fallbackPack(name,u);
  const sourced=findSourcedPrice({name,unit:u,market,retailer,asOf});
  const regional=sourced?{standard_pack_size:sourced.pack_quantity,pack_price:sourced.pack_price,source:'public_online_product_page',needs_review:false}:base.regional_packs?.[market]||region.pack_overrides[n+'|'+u];

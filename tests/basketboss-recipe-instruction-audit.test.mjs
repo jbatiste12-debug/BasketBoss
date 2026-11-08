@@ -19,6 +19,23 @@ test('current public instructions, normalized identities and dessert copies agre
   assert.deepEqual(result.review, [], 'accepted public recommendations must resolve their original findings');
 });
 
+test('public ingredient display lines retain the matching source food and quantity', () => {
+  for (const recipe of recipes) {
+    assert.deepEqual(
+      recipe.ingredient_display_lines,
+      recipe.ingredients.map(([name, quantity]) => `${name} — ${quantity}`),
+      `${recipe.id}: display copy must stay aligned with the source ingredient positions`
+    );
+  }
+  for (const entry of ['app.html', 'index.html']) {
+    const source = fs.readFileSync(new URL('../' + entry, import.meta.url), 'utf8');
+    const declaration = source.split('\n').find(line => line.startsWith('const RECIPES='));
+    assert(declaration?.endsWith(';'), `${entry}: public recipe declaration is missing`);
+    const embedded = JSON.parse(declaration.slice('const RECIPES='.length, -1));
+    assert.deepEqual(embedded, recipes, `${entry}: embedded public recipes must match recipes.json`);
+  }
+});
+
 test('the audit retains pack, oven, elapsed-time and stuffing-shape checks after recommendations', () => {
   const shells = oneRecipe('spinach-ricotta-shells', [['Pasta shells', '250 g']], ['Cook the shells.', 'Fill the shells and bake.']);
   assert(auditRecipeInstructions({ recipes: [shells] }).review.some(finding => finding.code === 'stuffing-shell-size'));
