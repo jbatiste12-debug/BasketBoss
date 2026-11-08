@@ -24,7 +24,7 @@ export const APPROVED700=Object.freeze({
  reviewedDataCommit:'050d77f6862245052c88127cdff8caeed127e13f',
  plaintextSha256:'35733d23fe954318dba2c66bdcf566ce6f3f29d5f038166e3c83e41ef9356e7b',
  plaintextBytes:4484709,
- recipientFingerprint:'62df600a0710ed523668111e40339a72ec502300fc248a8a67862008a1ae74ac',
+ recipientFingerprint:'a0cd1fd90382242a516b7801ffef09171215ae4f71cb1801835f305eb07d6d4e',
  sqlSha256:'51d9bd2d46ce3461cb7fc6090606de6aa1189069fcfe95190565efa214a8318f',
  premiumRowsSha256:'6b7c4a00bc2047667ef7108302ac5fa3a2fe8b4d875f0a4566da9b65f55cdfd5',
  protectedRowsSha256:'f89eaecc9b2ca71fbd8018c7f733e51c630f6992e5ad5def902f609a71fcbc2e',
