@@ -1,0 +1,1610 @@
+{
+  "schemaVersion": 1,
+  "images": [
+    {
+      "id": "crispy-aromatic-duck-pancakes",
+      "image": "release-assets/basketboss-v17/images/new/crispy-aromatic-duck-pancakes.webp",
+      "sha256": "229361b6b756dd619f4f9147a1d743c3dc75bcb6c59a2c58ea5f12cbd32f82f2",
+      "reviewedAt": "2026-11-08T16:52:50.719403+00:00",
+      "naturalnessReview": "passed",
+      "reviewer": "assistant visual inspection of generated source and exported image",
+      "notes": "Overhead 90-degree family sharing; blue oval platter, patterned side plates and forks. Food matches the ingredient brief; no text/watermark, hands, unrelated sides or obvious artefacts."
+    },
+    {
+      "id": "beef-in-black-bean-sauce-with-rice",
+      "image": "release-assets/basketboss-v17/images/new/beef-in-black-bean-sauce-with-rice.webp",
+      "sha256": "347b81e707284d4c5fc2b57fe7925ce4aedf3a242fade9298d50bc4f0959df97",
+      "naturalnessReview": "passed",
+      "reviewedAt": "2026-11-08T17:40:48.066892+00:00",
+      "notes": "Visually inspected original: plausible cooked textures and household tableware; exact recipe components, no extraneous sides/garnish; overhead, low-angle and family-sharing compositions varied by dish."
+    },
+    {
+      "id": "sesame-prawn-toast-with-cucumber-salad",
+      "image": "release-assets/basketboss-v17/images/new/sesame-prawn-toast-with-cucumber-salad.webp",
+      "sha256": "ad90e7242bc2450204285091877a35ad1ae4e2ad88df48d8ff0167108916eb47",
+      "naturalnessReview": "passed",
+      "reviewedAt": "2026-11-08T17:40:48.633107+00:00",
+      "notes": "Visually inspected original: plausible cooked textures and household tableware; exact recipe components, no extraneous sides/garnish; overhead, low-angle and family-sharing compositions varied by dish."
+    },
+    {
+      "id": "chicken-satay-skewers-with-peanut-sauce",
+      "image": "release-assets/basketboss-v17/images/new/chicken-satay-skewers-with-peanut-sauce.webp",
+      "sha256": "de7a9e5589ceb1720cd38b0b3ea84787e7312d616a1e62b88e133db8ec21e5d6",
+      "naturalnessReview": "passed",
+      "reviewedAt": "2026-11-08T17:40:49.168170+00:00",
+      "notes": "Visually inspected original: plausible cooked textures and household tableware; exact recipe components, no extraneous sides/garnish; overhead, low-angle and family-sharing compositions varied by dish."
+    },
+    {
+      "id": "chicken-jalfrezi-with-pilau-rice",
+      "image": "release-assets/basketboss-v17/images/new/chicken-jalfrezi-with-pilau-rice.webp",
+      "sha256": "af80af397d5e3792a311fb726f27d20468a3220138b8b431b756e8c6392c3bd3",
+      "naturalnessReview": "passed",
+      "reviewedAt": "2026-11-08T17:40:49.792250+00:00",
+      "notes": "Visually inspected original: plausible cooked textures and household tableware; exact recipe components, no extraneous sides/garnish; overhead, low-angle and family-sharing compositions varied by dish."
+    },
+    {
+      "id": "lamb-rogan-josh",
+      "image": "release-assets/basketboss-v17/images/new/lamb-rogan-josh.webp",
+      "sha256": "54c56f9a356f0632c675c972df1ac64da4f3f29a99fdf83d975e7242d59a6ca4",
+      "naturalnessReview": "passed",
+      "reviewedAt": "2026-11-08T17:40:50.273713+00:00",
+      "notes": "Visually inspected original: plausible cooked textures and household tableware; exact recipe components, no extraneous sides/garnish; overhead, low-angle and family-sharing compositions varied by dish."
+    },
+    {
+      "id": "chicken-dhansak",
+      "image": "release-assets/basketboss-v17/images/new/chicken-dhansak.webp",
+      "sha256": "e769441967db5c82735e8fb8d90ca0484bbe1190a95d84ea796a34a2c4d8127c",
+      "naturalnessReview": "passed",
+      "reviewedAt": "2026-11-08T17:40:50.722881+00:00",
+      "notes": "Visually inspected original: plausible cooked textures and household tableware; exact recipe components, no extraneous sides/garnish; overhead, low-angle and family-sharing compositions varied by dish."
+    },
+    {
+      "id": "lamb-seekh-kebabs-with-mint-yoghurt",
+      "image": "release-assets/basketboss-v17/images/new/lamb-seekh-kebabs-with-mint-yoghurt.webp",
+      "sha256": "40b4453fb391eb876cd9e88d84cad3cf85c60ccd4639dbc8a290cffec675abe9",
+      "naturalnessReview": "passed",
+      "reviewedAt": "2026-11-08T17:40:51.303045+00:00",
+      "notes": "Visually inspected original: plausible cooked textures and household tableware; exact recipe components, no extraneous sides/garnish; overhead, low-angle and family-sharing compositions varied by dish."
+    },
+    {
+      "id": "peri-peri-spatchcock-chicken-with-spicy-rice",
+      "image": "release-assets/basketboss-v17/images/new/peri-peri-spatchcock-chicken-with-spicy-rice.webp",
+      "sha256": "cc320c6a867a778fbd068bb2970e83cdb8659aa0666ea774c8fde9495f4fc0a4",
+      "naturalnessReview": "passed",
+      "reviewedAt": "2026-11-08T17:40:51.773065+00:00",
+      "notes": "Visually inspected original: plausible cooked textures and household tableware; exact recipe components, no extraneous sides/garnish; overhead, low-angle and family-sharing compositions varied by dish."
+    },
+    {
+      "id": "double-smash-cheeseburgers-with-burger-sauce",
+      "image": "release-assets/basketboss-v17/images/new/double-smash-cheeseburgers-with-burger-sauce.webp",
+      "sha256": "f1923411735cf69cadc6b24b44dbac2340ceeffa5f22ddfdab8346c657fd4cf2",
+      "naturalnessReview": "passed",
+      "reviewedAt": "2026-11-08T17:40:52.195091+00:00",
+      "notes": "Visually inspected original: plausible cooked textures and household tableware; exact recipe components, no extraneous sides/garnish; overhead, low-angle and family-sharing compositions varied by dish."
+    },
+    {
+      "id": "buttermilk-fried-chicken-pieces-with-peppered-gravy",
+      "image": "release-assets/basketboss-v17/images/new/buttermilk-fried-chicken-pieces-with-peppered-gravy.webp",
+      "sha256": "e3021ecb0eb2f58763ce96a1121eb1ee6767e284d2b77e8cbb1ad8b31d117711",
+      "naturalnessReview": "passed",
+      "reviewedAt": "2026-11-08T20:51:33.957148+00:00",
+      "notes": "Visually inspected generated original and cooked-dish presentation: realistic edible texture, plausible household tableware, ingredient-faithful food components and varied composition; no text, people or extraneous garnish."
+    },
+    {
+      "id": "crispy-chicken-chimichangas",
+      "image": "release-assets/basketboss-v17/images/new/crispy-chicken-chimichangas.webp",
+      "sha256": "75e2813b2cf4d6d13e254b5fa4924e48363f8d5bba9bf76fcbb821be656c4bf0",
+      "naturalnessReview": "passed",
+      "reviewedAt": "2026-11-08T20:51:37.959814+00:00",
+      "notes": "Visually inspected generated original and cooked-dish presentation: realistic edible texture, plausible household tableware, ingredient-faithful food components and varied composition; no text, people or extraneous garnish."
+    },
+    {
+      "id": "battered-haddock-and-chips-with-mushy-peas",
+      "image": "release-assets/basketboss-v17/images/new/battered-haddock-and-chips-with-mushy-peas.webp",
+      "sha256": "aaf3775b1fd17538e21180681ade564c875c4b1c31cf719d1e902b7deed127a3",
+      "naturalnessReview": "passed",
+      "reviewedAt": "2026-11-08T20:51:32.926801+00:00",
+      "notes": "Visually inspected generated original and cooked-dish presentation: realistic edible texture, plausible household tableware, ingredient-faithful food components and varied composition; no text, people or extraneous garnish."
+    },
+    {
+      "id": "salmon-en-croute-with-spinach",
+      "image": "release-assets/basketboss-v17/images/new/salmon-en-croute-with-spinach.webp",
+      "sha256": "c2d5e746d16cc876d09b5c111899f65b0d81ebe738e1d178d280edbc9fed4363",
+      "reviewedAt": "2026-11-08T16:52:50.719420+00:00",
+      "naturalnessReview": "passed",
+      "reviewer": "assistant visual inspection of generated source and exported image",
+      "notes": "Angled individual plated serving with recipe-specific food and warm natural light. Food matches the ingredient brief; no text/watermark, hands, unrelated sides or obvious artefacts."
+    },
+    {
+      "id": "tuna-steak-nicoise-salad",
+      "image": "release-assets/basketboss-v17/images/new/tuna-steak-nicoise-salad.webp",
+      "sha256": "cb0a6ade6230e9866f82267f032591076c6933777e418b3776fef3c71f6b8ec7",
+      "naturalnessReview": "passed",
+      "reviewedAt": "2026-11-08T20:51:48.742857+00:00",
+      "notes": "Visually inspected generated original and cooked-dish presentation: realistic edible texture, plausible household tableware, ingredient-faithful food components and varied composition; no text, people or extraneous garnish."
+    },
+    {
+      "id": "moules-marinieres-with-skinny-chips",
+      "image": "release-assets/basketboss-v17/images/new/moules-marinieres-with-skinny-chips.webp",
+      "sha256": "f312a3647c94e6989f1408f6c23c311ff1528763d834853ff3e633be92202bc1",
+      "naturalnessReview": "passed",
+      "reviewedAt": "2026-11-08T20:51:42.353960+00:00",
+      "notes": "Visually inspected generated original and cooked-dish presentation: realistic edible texture, plausible household tableware, ingredient-faithful food components and varied composition; no text, people or extraneous garnish."
+    },
+    {
+      "id": "smoked-haddock-mornay-with-spinach",
+      "image": "release-assets/basketboss-v17/images/new/smoked-haddock-mornay-with-spinach.webp",
+      "sha256": "942d4048b3330e0a98001312d422db7b99282d26301ec47dffc2c335a5bf3fd2",
+      "naturalnessReview": "passed",
+      "reviewedAt": "2026-11-08T20:51:46.194884+00:00",
+      "notes": "Visually inspected generated original and cooked-dish presentation: realistic edible texture, plausible household tableware, ingredient-faithful food components and varied composition; no text, people or extraneous garnish."
+    },
+    {
+      "id": "smoked-salmon-leek-and-dill-quiche",
+      "image": "release-assets/basketboss-v17/images/new/smoked-salmon-leek-and-dill-quiche.webp",
+      "sha256": "3aeb4afae6da59b305014e56af92eaeab2282880dc6b92bf3d497d32f309f092",
+      "naturalnessReview": "passed",
+      "reviewedAt": "2026-11-08T20:51:47.291340+00:00",
+      "notes": "Visually inspected generated original and cooked-dish presentation: realistic edible texture, plausible household tableware, ingredient-faithful food components and varied composition; no text, people or extraneous garnish."
+    },
+    {
+      "id": "pan-fried-trout-almondine",
+      "image": "release-assets/basketboss-v17/images/new/pan-fried-trout-almondine.webp",
+      "sha256": "fd7db8d8f812f87ed106f60d71f144ddf91f49dc0cb6bf797c1dcfcd5372db4a",
+      "naturalnessReview": "passed",
+      "reviewedAt": "2026-11-08T20:51:42.803461+00:00",
+      "notes": "Visually inspected generated original and cooked-dish presentation: realistic edible texture, plausible household tableware, ingredient-faithful food components and varied composition; no text, people or extraneous garnish."
+    },
+    {
+      "id": "crispy-breaded-king-prawns-with-tartare-sauce",
+      "image": "release-assets/basketboss-v17/images/new/crispy-breaded-king-prawns-with-tartare-sauce.webp",
+      "sha256": "4f8ffcf49728cdbdcb3301c9b2730e78da700c5132c4421ab4a5da213ffe973e",
+      "naturalnessReview": "passed",
+      "reviewedAt": "2026-11-08T20:51:36.973702+00:00",
+      "notes": "Visually inspected generated original and cooked-dish presentation: realistic edible texture, plausible household tableware, ingredient-faithful food components and varied composition; no text, people or extraneous garnish."
+    },
+    {
+      "id": "coq-au-vin-with-mash",
+      "image": "release-assets/basketboss-v17/images/new/coq-au-vin-with-mash.webp",
+      "sha256": "e7e2e41cc19345e719aad47e562c0eb529812d0968f75046b8d0828e2cac4e31",
+      "naturalnessReview": "passed",
+      "reviewedAt": "2026-11-08T20:51:36.423278+00:00",
+      "notes": "Visually inspected generated original and cooked-dish presentation: realistic edible texture, plausible household tableware, ingredient-faithful food components and varied composition; no text, people or extraneous garnish."
+    },
+    {
+      "id": "chicken-kiev-with-parsley-potatoes",
+      "image": "release-assets/basketboss-v17/images/new/chicken-kiev-with-parsley-potatoes.webp",
+      "sha256": "f8e148efc6e827d2c83985742d59eae1cc86ef45a1d74e01b1d568fd8c6034e4",
+      "naturalnessReview": "passed",
+      "reviewedAt": "2026-11-08T20:51:35.448507+00:00",
+      "notes": "Visually inspected generated original and cooked-dish presentation: realistic edible texture, plausible household tableware, ingredient-faithful food components and varied composition; no text, people or extraneous garnish."
+    },
+    {
+      "id": "pork-tenderloin-stuffed-with-apple-and-black-pudding",
+      "image": "release-assets/basketboss-v17/images/new/pork-tenderloin-stuffed-with-apple-and-black-pudding.webp",
+      "sha256": "d76d688676553e0348b92d25b79885ad6b9f14f47f75b49dfb86da1b023902fa",
+      "naturalnessReview": "passed",
+      "reviewedAt": "2026-11-08T20:51:43.735979+00:00",
+      "notes": "Visually inspected generated original and cooked-dish presentation: realistic edible texture, plausible household tableware, ingredient-faithful food components and varied composition; no text, people or extraneous garnish."
+    },
+    {
+      "id": "crispy-calamari-with-garlic-mayo-and-warm-potato-salad",
+      "image": "release-assets/basketboss-v17/images/new/crispy-calamari-with-garlic-mayo-and-warm-potato-salad.webp",
+      "sha256": "5fc96ae1d27f85859818528ba11ff1e3a6e7548cad34bfcb186b7194ab7fe92e",
+      "naturalnessReview": "passed",
+      "reviewedAt": "2026-11-08T20:51:37.499678+00:00",
+      "notes": "Visually inspected generated original and cooked-dish presentation: realistic edible texture, plausible household tableware, ingredient-faithful food components and varied composition; no text, people or extraneous garnish."
+    },
+    {
+      "id": "seafood-spaghetti-marinara-with-mussels-prawns-and-squid",
+      "image": "release-assets/basketboss-v17/images/new/seafood-spaghetti-marinara-with-mussels-prawns-and-squid.webp",
+      "sha256": "ed4a214287351bc5722d25c4a0a3113166d66eb9ed2c046a807c2df14f4aeb12",
+      "naturalnessReview": "passed",
+      "reviewedAt": "2026-11-08T20:51:45.774300+00:00",
+      "notes": "Visually inspected generated original and cooked-dish presentation: realistic edible texture, plausible household tableware, ingredient-faithful food components and varied composition; no text, people or extraneous garnish."
+    },
+    {
+      "id": "smoked-haddock-omelette-arnold-bennett",
+      "image": "release-assets/basketboss-v17/images/new/smoked-haddock-omelette-arnold-bennett.webp",
+      "sha256": "0a12d481c4ea8e18aa848618c36f1861cd9c351164b9ec94317c071a6379a0b7",
+      "naturalnessReview": "passed",
+      "reviewedAt": "2026-11-08T20:51:46.732267+00:00",
+      "notes": "Visually inspected generated original and cooked-dish presentation: realistic edible texture, plausible household tableware, ingredient-faithful food components and varied composition; no text, people or extraneous garnish."
+    },
+    {
+      "id": "spaghetti-carbonara",
+      "image": "release-assets/basketboss-v17/images/new/spaghetti-carbonara.webp",
+      "sha256": "515d064776b05e89f4707aedf5f05ad7744cce63b325bf37aa156277b52a34df",
+      "reviewedAt": "2026-11-08T16:52:50.719423+00:00",
+      "naturalnessReview": "passed",
+      "reviewer": "assistant visual inspection of generated source and exported image",
+      "notes": "Angled individual plated serving with recipe-specific food and warm natural light. Food matches the ingredient brief; no text/watermark, hands, unrelated sides or obvious artefacts."
+    },
+    {
+      "id": "belgian-breakfast-waffles-with-berries",
+      "image": "release-assets/basketboss-v17/images/new/belgian-breakfast-waffles-with-berries.webp",
+      "sha256": "7ac6656280fd555ebf88cd0f1cfe4d77f884541e96edacf628b9f615d93c67b4",
+      "reviewedAt": "2026-11-08T16:52:50.719424+00:00",
+      "naturalnessReview": "passed",
+      "reviewer": "assistant visual inspection of generated source and exported image",
+      "notes": "Angled individual plated serving with recipe-specific food and warm natural light. Food matches the ingredient brief; no text/watermark, hands, unrelated sides or obvious artefacts."
+    },
+    {
+      "id": "penne-puttanesca",
+      "image": "release-assets/basketboss-v17/images/new/penne-puttanesca.webp",
+      "sha256": "db595a603a1c30a83d947c68c2ba929bcbf51a6ecf99fdea30ae04e1c7caf7fd",
+      "naturalnessReview": "passed",
+      "reviewedAt": "2026-11-08T20:51:43.311732+00:00",
+      "notes": "Visually inspected generated original and cooked-dish presentation: realistic edible texture, plausible household tableware, ingredient-faithful food components and varied composition; no text, people or extraneous garnish."
+    },
+    {
+      "id": "french-onion-soup-with-cheese-croutons",
+      "image": "release-assets/basketboss-v17/images/new/french-onion-soup-with-cheese-croutons.webp",
+      "sha256": "e26e821a614633eba491d8ddef0504318697a9ad46d4399103e09695b5a2b382",
+      "naturalnessReview": "passed",
+      "reviewedAt": "2026-11-08T20:51:38.861277+00:00",
+      "notes": "Visually inspected generated original and cooked-dish presentation: realistic edible texture, plausible household tableware, ingredient-faithful food components and varied composition; no text, people or extraneous garnish."
+    },
+    {
+      "id": "homemade-crumpets-with-butter",
+      "image": "release-assets/basketboss-v17/images/new/homemade-crumpets-with-butter.webp",
+      "sha256": "cc8dd28ee6650fa5921ffff05bd35cf91b632b14e375ca8788eec2a8ea83b294",
+      "naturalnessReview": "passed",
+      "reviewedAt": "2026-11-08T20:51:41.452708+00:00",
+      "notes": "Visually inspected generated original and cooked-dish presentation: realistic edible texture, plausible household tableware, ingredient-faithful food components and varied composition; no text, people or extraneous garnish."
+    },
+    {
+      "id": "sausage-plait-with-onion-chutney",
+      "image": "release-assets/basketboss-v17/images/new/sausage-plait-with-onion-chutney.webp",
+      "sha256": "28a4cad702de701a0e38dd94c8347af633898d34105d59166a7527816481a2ae",
+      "naturalnessReview": "passed",
+      "reviewedAt": "2026-11-08T20:51:45.281007+00:00",
+      "notes": "Visually inspected generated original and cooked-dish presentation: realistic edible texture, plausible household tableware, ingredient-faithful food components and varied composition; no text, people or extraneous garnish."
+    },
+    {
+      "id": "steak-and-ale-pie",
+      "image": "release-assets/basketboss-v17/images/new/steak-and-ale-pie.webp",
+      "sha256": "59a569240dacecff6542a9ccc069e831d4e7b46eb86a664ea7243ae8053b5157",
+      "naturalnessReview": "passed",
+      "reviewedAt": "2026-11-08T20:51:48.253645+00:00",
+      "notes": "Visually inspected generated original and cooked-dish presentation: realistic edible texture, plausible household tableware, ingredient-faithful food components and varied composition; no text, people or extraneous garnish."
+    },
+    {
+      "id": "ham-egg-and-chips",
+      "image": "release-assets/basketboss-v17/images/new/ham-egg-and-chips.webp",
+      "sha256": "d9485e57cc2d30a971cda2df1cf491bff79d14f27ff08ac987b4b653b2626d06",
+      "naturalnessReview": "passed",
+      "reviewedAt": "2026-11-08T20:51:40.003914+00:00",
+      "notes": "Visually inspected generated original and cooked-dish presentation: realistic edible texture, plausible household tableware, ingredient-faithful food components and varied composition; no text, people or extraneous garnish."
+    },
+    {
+      "id": "bangers-and-mash-with-onion-gravy",
+      "image": "release-assets/basketboss-v17/images/new/bangers-and-mash-with-onion-gravy.webp",
+      "sha256": "0f6cabee298f65f42e3ffe6014b0e1c5c8ff8a7584e801fbd1db3ab8c0a0ca21",
+      "naturalnessReview": "passed",
+      "reviewedAt": "2026-11-08T20:51:32.335957+00:00",
+      "notes": "Visually inspected generated original and cooked-dish presentation: realistic edible texture, plausible household tableware, ingredient-faithful food components and varied composition; no text, people or extraneous garnish."
+    },
+    {
+      "id": "classic-creamy-stovetop-porridge",
+      "image": "release-assets/basketboss-v17/images/new/classic-creamy-stovetop-porridge.webp",
+      "sha256": "ff8a74983552a56c4db49658574d2b8f36afdd0be50fdf414c780f81e6f44f3b",
+      "naturalnessReview": "passed",
+      "reviewedAt": "2026-11-08T20:51:35.957349+00:00",
+      "notes": "Visually inspected generated original and cooked-dish presentation: realistic edible texture, plausible household tableware, ingredient-faithful food components and varied composition; no text, people or extraneous garnish."
+    },
+    {
+      "id": "leek-and-potato-soup",
+      "image": "release-assets/basketboss-v17/images/new/leek-and-potato-soup.webp",
+      "sha256": "17ef159b864f86dd8894c4e3c107761337baf78806962b99d2159ac3dbd18be4",
+      "naturalnessReview": "passed",
+      "reviewedAt": "2026-11-08T20:51:41.948781+00:00",
+      "notes": "Visually inspected generated original and cooked-dish presentation: realistic edible texture, plausible household tableware, ingredient-faithful food components and varied composition; no text, people or extraneous garnish."
+    },
+    {
+      "id": "chia-seed-breakfast-pudding-with-berries",
+      "image": "release-assets/basketboss-v17/images/new/chia-seed-breakfast-pudding-with-berries.webp",
+      "sha256": "5f109ebf596c66cd94fe011fe8896b81e733163cc74f4bb09076109d27afe802",
+      "naturalnessReview": "passed",
+      "reviewedAt": "2026-11-08T20:51:35.004921+00:00",
+      "notes": "Visually inspected generated original and cooked-dish presentation: realistic edible texture, plausible household tableware, ingredient-faithful food components and varied composition; no text, people or extraneous garnish."
+    },
+    {
+      "id": "american-biscuits-with-sausage-gravy",
+      "image": "release-assets/basketboss-v17/images/new/american-biscuits-with-sausage-gravy.webp",
+      "sha256": "9465ad80d2a090aa63e2db17ebc2cdcd34793c6e4bd4f19e7a2ac7939819c9bf",
+      "naturalnessReview": "passed",
+      "reviewedAt": "2026-11-08T20:51:31.357228+00:00",
+      "notes": "Visually inspected generated original and cooked-dish presentation: realistic edible texture, plausible household tableware, ingredient-faithful food components and varied composition; no text, people or extraneous garnish."
+    },
+    {
+      "id": "salisbury-steak-with-mash",
+      "image": "release-assets/basketboss-v17/images/new/salisbury-steak-with-mash.webp",
+      "sha256": "9deb743fca2928a72ea48af46e7428232546c24101babab995cd205fe614045d",
+      "naturalnessReview": "passed",
+      "reviewedAt": "2026-11-08T20:51:44.693029+00:00",
+      "notes": "Visually inspected generated original and cooked-dish presentation: realistic edible texture, plausible household tableware, ingredient-faithful food components and varied composition; no text, people or extraneous garnish."
+    },
+    {
+      "id": "homemade-boiled-and-baked-breakfast-bagels",
+      "image": "release-assets/basketboss-v17/images/new/homemade-boiled-and-baked-breakfast-bagels.webp",
+      "sha256": "8b07e79040b20e0b8a71a2bd4719bd371aa9ea8bea3f08a8be4ad0b6c33810a6",
+      "naturalnessReview": "passed",
+      "reviewedAt": "2026-11-08T20:51:41.026691+00:00",
+      "notes": "Visually inspected generated original and cooked-dish presentation: realistic edible texture, plausible household tableware, ingredient-faithful food components and varied composition; no text, people or extraneous garnish."
+    },
+    {
+      "id": "beef-and-onion-cobbler",
+      "image": "release-assets/basketboss-v17/images/new/beef-and-onion-cobbler.webp",
+      "sha256": "e63928c2df60ff41e46489dd7ce9e5969d6cb94a9497ab603e48275f6e9f73e9",
+      "naturalnessReview": "passed",
+      "reviewedAt": "2026-11-08T20:51:33.460882+00:00",
+      "notes": "Visually inspected generated original and cooked-dish presentation: realistic edible texture, plausible household tableware, ingredient-faithful food components and varied composition; no text, people or extraneous garnish."
+    },
+    {
+      "id": "eggs-benedict",
+      "image": "release-assets/basketboss-v17/images/new/eggs-benedict.webp",
+      "sha256": "44c845dffe509631e1fa7f8310357f6d5ed589701685d3a7773e8405f4b04ee4",
+      "naturalnessReview": "passed",
+      "reviewedAt": "2026-11-08T20:51:38.356386+00:00",
+      "notes": "Visually inspected generated original and cooked-dish presentation: realistic edible texture, plausible household tableware, ingredient-faithful food components and varied composition; no text, people or extraneous garnish."
+    },
+    {
+      "id": "full-english-breakfast-traybake",
+      "image": "release-assets/basketboss-v17/images/new/full-english-breakfast-traybake.webp",
+      "sha256": "39bf0025f0e68ad25e4029b735fcdf6b2e09fddcde48408e9ebd5430fa85d045",
+      "naturalnessReview": "passed",
+      "reviewedAt": "2026-11-08T20:51:39.417265+00:00",
+      "notes": "Visually inspected generated original and cooked-dish presentation: realistic edible texture, plausible household tableware, ingredient-faithful food components and varied composition; no text, people or extraneous garnish."
+    },
+    {
+      "id": "sticky-bbq-pork-spare-ribs-with-slaw",
+      "image": "release-assets/basketboss-v17/images/new/sticky-bbq-pork-spare-ribs-with-slaw.webp",
+      "sha256": "86fb286e957f0149190a889d1e365adeab2cd3a564ef57b0516d3d6f23aff841",
+      "reviewedAt": "2026-11-08T16:52:50.719426+00:00",
+      "naturalnessReview": "passed",
+      "reviewer": "assistant visual inspection of generated source and exported image",
+      "notes": "Low 20-degree family sharing; dark roasting tray, pale-blue slaw bowl and serving tongs. Food matches the ingredient brief; no text/watermark, hands, unrelated sides or obvious artefacts."
+    },
+    {
+      "id": "cajun-chicken-prawn-and-chorizo-jambalaya",
+      "image": "release-assets/basketboss-v17/images/new/cajun-chicken-prawn-and-chorizo-jambalaya.webp",
+      "sha256": "9cdf81690dd6374117708cb41ad47f76a10416f9f4d1ecd8cd2b96bed29fffda",
+      "naturalnessReview": "passed",
+      "reviewedAt": "2026-11-08T20:51:34.519282+00:00",
+      "notes": "Visually inspected generated original and cooked-dish presentation: realistic edible texture, plausible household tableware, ingredient-faithful food components and varied composition; no text, people or extraneous garnish."
+    },
+    {
+      "id": "american-hot-dogs-with-mustard-onions",
+      "image": "release-assets/basketboss-v17/images/new/american-hot-dogs-with-mustard-onions.webp",
+      "sha256": "40fe071c68030cecb1f9c425acc93b26a01c65b7bd495a3b3c0ae91a9b4c3469",
+      "naturalnessReview": "passed",
+      "reviewedAt": "2026-11-08T20:51:31.837364+00:00",
+      "notes": "Visually inspected generated original and cooked-dish presentation: realistic edible texture, plausible household tableware, ingredient-faithful food components and varied composition; no text, people or extraneous garnish."
+    },
+    {
+      "id": "homemade-all-butter-croissants",
+      "image": "release-assets/basketboss-v17/images/new/homemade-all-butter-croissants.webp",
+      "sha256": "aac084a353bcedfe17bcabbd30f9e414b70596f7db8e526ecfb50290ece4f385",
+      "naturalnessReview": "passed",
+      "reviewedAt": "2026-11-08T20:51:40.479110+00:00",
+      "notes": "Visually inspected generated original and cooked-dish presentation: realistic edible texture, plausible household tableware, ingredient-faithful food components and varied composition; no text, people or extraneous garnish."
+    },
+    {
+      "id": "soft-boiled-eggs-with-buttered-toast-soldiers",
+      "image": "release-assets/basketboss-v17/images/new/soft-boiled-eggs-with-buttered-toast-soldiers.webp",
+      "sha256": "fb434b739df64fdd06428d7c18ac5ff6dc21354bf6ff75a43eee61ce242e3467",
+      "naturalnessReview": "passed",
+      "reviewedAt": "2026-11-08T20:51:47.754123+00:00",
+      "notes": "Visually inspected generated original and cooked-dish presentation: realistic edible texture, plausible household tableware, ingredient-faithful food components and varied composition; no text, people or extraneous garnish."
+    },
+    {
+      "id": "ratatouille-with-crusty-bread",
+      "image": "release-assets/basketboss-v17/images/new/ratatouille-with-crusty-bread.webp",
+      "sha256": "c118ec6076aff693f5087e038de859af39827c22f1df1f69ffcdb1eb938cb41d",
+      "naturalnessReview": "passed",
+      "reviewedAt": "2026-11-08T20:51:44.263456+00:00",
+      "notes": "Visually inspected generated original and cooked-dish presentation: realistic edible texture, plausible household tableware, ingredient-faithful food components and varied composition; no text, people or extraneous garnish."
+    },
+    {
+      "id": "chicken-chow-mein",
+      "image": "release-assets/basketboss-v17/images/new/chicken-chow-mein.webp",
+      "sha256": "046c581b4289383a45f0f61bea6e5509828729ddcee1bc1fbf11050d11e631ca",
+      "naturalnessReview": "passed",
+      "reviewedAt": "2026-11-08T20:57:39.007294+00:00",
+      "notes": "Visually inspected original: realistic cooked textures and recipe-specific ingredients; no unlisted garnish or sides. Distinct vessel/angle, with family sharing for chow mein."
+    },
+    {
+      "id": "chinese-takeaway-lemon-chicken",
+      "image": "release-assets/basketboss-v17/images/new/chinese-takeaway-lemon-chicken.webp",
+      "sha256": "b6cbb3ba8f69c489abfc5065ebb2e765d03bc07edd7f7a251d07b78a4bc1ae0b",
+      "naturalnessReview": "passed",
+      "reviewedAt": "2026-11-08T20:57:39.007868+00:00",
+      "notes": "Visually inspected original: realistic cooked textures and recipe-specific ingredients; no unlisted garnish or sides. Distinct vessel/angle, with family sharing for chow mein."
+    },
+    {
+      "id": "chinese-chicken-and-sweetcorn-soup",
+      "image": "release-assets/basketboss-v17/images/new/chinese-chicken-and-sweetcorn-soup.webp",
+      "sha256": "60e81d7a101f2beb98cbff263b628fc84bf255d693c29ceee9cc5d1e6bc92409",
+      "naturalnessReview": "passed",
+      "reviewedAt": "2026-11-08T20:57:39.008247+00:00",
+      "notes": "Visually inspected original: realistic cooked textures and recipe-specific ingredients; no unlisted garnish or sides. Distinct vessel/angle, with family sharing for chow mein."
+    },
+    {
+      "id": "chinese-hot-and-sour-soup",
+      "image": "release-assets/basketboss-v17/images/new/chinese-hot-and-sour-soup.webp",
+      "sha256": "a98b42c66e972626d3173872b6cd7e28dd6732a5040c7f1be6a3f29a9f20ebce",
+      "naturalnessReview": "passed",
+      "reviewedAt": "2026-11-08T20:57:39.008719+00:00",
+      "notes": "Visually inspected original against the final recipe ledger: plausible cooked texture and ingredients, no extra foods; distinct soup bowl, roast-pork rice plate, and overhead balti sharing presentation."
+    },
+    {
+      "id": "char-siu-pork-with-rice",
+      "image": "release-assets/basketboss-v17/images/new/char-siu-pork-with-rice.webp",
+      "sha256": "55a0df314c0d23bad938214165267800ab694d53c221b36a2641d14fe5f4e40c",
+      "naturalnessReview": "passed",
+      "reviewedAt": "2026-11-08T20:57:39.009414+00:00",
+      "notes": "Visually inspected original against the final recipe ledger: plausible cooked texture and ingredients, no extra foods; distinct soup bowl, roast-pork rice plate, and overhead balti sharing presentation."
+    },
+    {
+      "id": "chicken-balti-with-naan",
+      "image": "release-assets/basketboss-v17/images/new/chicken-balti-with-naan.webp",
+      "sha256": "db224cfe2265769ba1d9ac009e9f8572982e755a78db0aec3e507145ba6c850a",
+      "naturalnessReview": "passed",
+      "reviewedAt": "2026-11-08T20:57:39.010173+00:00",
+      "notes": "Visually inspected original against the final recipe ledger: plausible cooked texture and ingredients, no extra foods; distinct soup bowl, roast-pork rice plate, and overhead balti sharing presentation."
+    },
+    {
+      "id": "lamb-vindaloo-with-rice",
+      "image": "release-assets/basketboss-v17/images/new/lamb-vindaloo-with-rice.webp",
+      "sha256": "a4697332e6ca6da06553d9f893d4ca2148741bf78075ae71488a57967fda3968",
+      "naturalnessReview": "passed",
+      "reviewedAt": "2026-11-08T20:27:54.919Z",
+      "notes": "Visually inspected original against exact recipe ledger: dish-specific cooked texture, correct rice/salad/raita components and realistic tableware; no unlisted garnish or sides."
+    },
+    {
+      "id": "vegetable-biryani-with-cucumber-raita",
+      "image": "release-assets/basketboss-v17/images/new/vegetable-biryani-with-cucumber-raita.webp",
+      "sha256": "155084107b3b49b79be162590b767c9b3e58102179194acf3089235081de7269",
+      "naturalnessReview": "passed",
+      "reviewedAt": "2026-11-08T20:27:54.459Z",
+      "notes": "Visually inspected original against exact recipe ledger: dish-specific cooked texture, correct rice/salad/raita components and realistic tableware; no unlisted garnish or sides."
+    },
+    {
+      "id": "tandoori-chicken-with-mint-salad",
+      "image": "release-assets/basketboss-v17/images/new/tandoori-chicken-with-mint-salad.webp",
+      "sha256": "2de364e42687463b7af0f68fb20fd6479ea329ddfec3887218174ec6bbb49e43",
+      "naturalnessReview": "passed",
+      "reviewedAt": "2026-11-08T20:27:55.396Z",
+      "notes": "Visually inspected original against exact recipe ledger: dish-specific cooked texture, correct rice/salad/raita components and realistic tableware; no unlisted garnish or sides."
+    },
+    {
+      "id": "onion-bhajis-with-mango-chutney",
+      "image": "release-assets/basketboss-v17/images/new/onion-bhajis-with-mango-chutney.webp",
+      "sha256": "151928e52da3fa23f7cca75c2137e4e9317cdb1e349d96d246c95d971e2472e9",
+      "naturalnessReview": "passed",
+      "reviewedAt": "2026-11-08T20:34:39.543Z",
+      "notes": "Visually inspected original: natural cooked textures, recipe-faithful components and distinctive sharing/plated presentation; no unlisted side or garnish."
+    },
+    {
+      "id": "lahmacun-with-chopped-salad",
+      "image": "release-assets/basketboss-v17/images/new/lahmacun-with-chopped-salad.webp",
+      "sha256": "9dd5e3d82c2e7ecf12d2c6c74287fbdfdc32a7a4b0b4f21f97119154c3957c1a",
+      "naturalnessReview": "passed",
+      "reviewedAt": "2026-11-08T20:34:40.002Z",
+      "notes": "Visually inspected original: natural cooked textures, recipe-faithful components and distinctive sharing/plated presentation; no unlisted side or garnish."
+    },
+    {
+      "id": "philly-cheesesteak-rolls",
+      "image": "release-assets/basketboss-v17/images/new/philly-cheesesteak-rolls.webp",
+      "sha256": "0df27dd12314b79469d9ec75a7e591a90e796b69af1d3bc46664120a2cd3fb1d",
+      "naturalnessReview": "passed",
+      "reviewedAt": "2026-11-08T20:34:39.081Z",
+      "notes": "Visually inspected original: natural cooked textures, recipe-faithful components and distinctive sharing/plated presentation; no unlisted side or garnish."
+    },
+    {
+      "id": "beef-birria-quesatacos",
+      "image": "release-assets/basketboss-v17/images/new/beef-birria-quesatacos.webp",
+      "sha256": "3512185f39b3edcb1b0264bad6cb62782709368c6f559a51f95d264bdc2adb75",
+      "naturalnessReview": "passed",
+      "reviewedAt": "2026-11-08T20:38:09.601Z",
+      "notes": "Visually inspected originals: Wellington pastry, mushroom/prosciutto layers and beef cross-section are plausible; birria has crisp dipped tortillas, shredded beef, cheese, onion, coriander and broth; Diane has its listed mushroom cream sauce and saut\u00e9 potatoes. No unlisted foods."
+    },
+    {
+      "id": "steak-diane-with-saute-potatoes",
+      "image": "release-assets/basketboss-v17/images/new/steak-diane-with-saute-potatoes.webp",
+      "sha256": "63629ef6fe9fde1108656975e4be15600b86d6e7c7c38551b4315fcc5ad3f474",
+      "naturalnessReview": "passed",
+      "reviewedAt": "2026-11-08T20:42:13.965Z",
+      "notes": "Visually inspected originals: corrected Diane shows one steak with its mushroom sauce and potatoes; sole has brown-butter fish and green beans; salmon has hollandaise, potatoes and dill. Realistic edible textures, no unlisted foods."
+    },
+    {
+      "id": "beef-wellington-with-red-wine-gravy",
+      "image": "release-assets/basketboss-v17/images/new/beef-wellington-with-red-wine-gravy.webp",
+      "sha256": "8437b61b2b2a2ecb22f9f9ce84eb42b8c80ac301d44ef7f3186840b5af22e6df",
+      "naturalnessReview": "passed",
+      "reviewedAt": "2026-11-08T20:44:54.332Z",
+      "notes": "Visually inspected originals: preserved Wellington, coarse flaked-cod and potato brandade with green salad, and pancetta-wrapped opaque monkfish on crushed peas all match recipe components; no unlisted additions and realistic household presentation."
+    },
+    {
+      "id": "sole-meuniere-with-green-beans",
+      "image": "release-assets/basketboss-v17/images/new/sole-meuniere-with-green-beans.webp",
+      "sha256": "936df15b07d4753842005f654b8d30122bbffce7de69e85e188975c7ba79ddd3",
+      "naturalnessReview": "passed",
+      "reviewedAt": "2026-11-08T20:42:14.437Z",
+      "notes": "Visually inspected originals: corrected Diane shows one steak with its mushroom sauce and potatoes; sole has brown-butter fish and green beans; salmon has hollandaise, potatoes and dill. Realistic edible textures, no unlisted foods."
+    },
+    {
+      "id": "poached-salmon-with-hollandaise-and-new-potatoes",
+      "image": "release-assets/basketboss-v17/images/new/poached-salmon-with-hollandaise-and-new-potatoes.webp",
+      "sha256": "5e5d4664fa6fe33db72f86d687cda9e9a9de919a53c5e962771e22b051b557d3",
+      "naturalnessReview": "passed",
+      "reviewedAt": "2026-11-08T20:42:13.501Z",
+      "notes": "Visually inspected originals: corrected Diane shows one steak with its mushroom sauce and potatoes; sole has brown-butter fish and green beans; salmon has hollandaise, potatoes and dill. Realistic edible textures, no unlisted foods."
+    },
+    {
+      "id": "fresh-cod-brandade-with-green-salad",
+      "image": "release-assets/basketboss-v17/images/new/fresh-cod-brandade-with-green-salad.webp",
+      "sha256": "30acd5049cdf6eee1db66a45db65dd530c0bc4ba685f9e314c3bbe9e894e47cd",
+      "naturalnessReview": "passed",
+      "reviewedAt": "2026-11-08T20:44:54.788Z",
+      "notes": "Visually inspected originals: preserved Wellington, coarse flaked-cod and potato brandade with green salad, and pancetta-wrapped opaque monkfish on crushed peas all match recipe components; no unlisted additions and realistic household presentation."
+    },
+    {
+      "id": "pancetta-wrapped-monkfish-with-crushed-peas",
+      "image": "release-assets/basketboss-v17/images/new/pancetta-wrapped-monkfish-with-crushed-peas.webp",
+      "sha256": "52b0b91dd204261d8fff28ce720c897c5dc7ffe3c8b7172065084c0f499979c7",
+      "naturalnessReview": "passed",
+      "reviewedAt": "2026-11-08T20:44:55.263Z",
+      "notes": "Visually inspected originals: preserved Wellington, coarse flaked-cod and potato brandade with green salad, and pancetta-wrapped opaque monkfish on crushed peas all match recipe components; no unlisted additions and realistic household presentation."
+    },
+    {
+      "id": "mussel-and-saffron-risotto",
+      "image": "release-assets/basketboss-v17/images/new/mussel-and-saffron-risotto.webp",
+      "sha256": "2cb9c83f09e248d53cfb471b1a98a0fd7f0e4bd86a006c6e5ec21e3ba528129b",
+      "naturalnessReview": "passed",
+      "reviewedAt": "2026-11-08T20:46:49.623Z",
+      "notes": "Visually inspected originals: mussels are open and cooked in saffron rice; puff tart has asparagus, small brown shrimp and listed chives; hot-smoked salmon potato salad has horseradish dressing, cucumber, leaves and dill. No unlisted foods or synthetic textures."
+    },
+    {
+      "id": "brown-shrimp-and-asparagus-puff-tart",
+      "image": "release-assets/basketboss-v17/images/new/brown-shrimp-and-asparagus-puff-tart.webp",
+      "sha256": "c1948cb7017b00f0f30faf6094a7a7f963e98888fe6159b9de26125b2cf9170f",
+      "naturalnessReview": "passed",
+      "reviewedAt": "2026-11-08T20:46:50.090Z",
+      "notes": "Visually inspected originals: mussels are open and cooked in saffron rice; puff tart has asparagus, small brown shrimp and listed chives; hot-smoked salmon potato salad has horseradish dressing, cucumber, leaves and dill. No unlisted foods or synthetic textures."
+    },
+    {
+      "id": "hot-smoked-salmon-potato-salad-with-horseradish",
+      "image": "release-assets/basketboss-v17/images/new/hot-smoked-salmon-potato-salad-with-horseradish.webp",
+      "sha256": "1f4a9df6f2cf5573419e4fd228f27fc18417365122c82c0edc0817c915b662e7",
+      "naturalnessReview": "passed",
+      "reviewedAt": "2026-11-08T20:46:49.146Z",
+      "notes": "Visually inspected originals: mussels are open and cooked in saffron rice; puff tart has asparagus, small brown shrimp and listed chives; hot-smoked salmon potato salad has horseradish dressing, cucumber, leaves and dill. No unlisted foods or synthetic textures."
+    },
+    {
+      "id": "maryland-style-crab-cakes-with-remoulade",
+      "image": "release-assets/basketboss-v17/images/new/maryland-style-crab-cakes-with-remoulade.webp",
+      "sha256": "6522f49e2dcf5543465362562341d52f10ec77387d5311b370486bf8b75d8f06",
+      "naturalnessReview": "passed",
+      "reviewedAt": "2026-11-08T20:49:27.539Z",
+      "notes": "Visually inspected originals: crab cakes show crab flakes rather than potato mash with the listed remoulade; chowder contains cooked clams, potato and bacon; sardines are grilled whole beside tomato-rubbed bread. No unlisted foods, realistic textures and distinct views."
+    },
+    {
+      "id": "new-england-clam-chowder",
+      "image": "release-assets/basketboss-v17/images/new/new-england-clam-chowder.webp",
+      "sha256": "55b09c20cb9ed3730e77ba859d884996d7015c2d8b09ded326e47cd1cdfb2f9a",
+      "naturalnessReview": "passed",
+      "reviewedAt": "2026-11-08T20:49:27.063Z",
+      "notes": "Visually inspected originals: crab cakes show crab flakes rather than potato mash with the listed remoulade; chowder contains cooked clams, potato and bacon; sardines are grilled whole beside tomato-rubbed bread. No unlisted foods, realistic textures and distinct views."
+    },
+    {
+      "id": "grilled-sardines-with-tomato-bread",
+      "image": "release-assets/basketboss-v17/images/new/grilled-sardines-with-tomato-bread.webp",
+      "sha256": "d4a7e404440440440fe502ed7700ab5dd50b707a822b3565b25da7cc1af21692",
+      "naturalnessReview": "passed",
+      "reviewedAt": "2026-11-08T20:49:28.005Z",
+      "notes": "Visually inspected originals: crab cakes show crab flakes rather than potato mash with the listed remoulade; chowder contains cooked clams, potato and bacon; sardines are grilled whole beside tomato-rubbed bread. No unlisted foods, realistic textures and distinct views."
+    },
+    {
+      "id": "cornish-beef-pasties",
+      "image": "release-assets/basketboss-v17/images/new/cornish-beef-pasties.webp",
+      "sha256": "692e5dd1b3dc4148bb4c4b5d4e1dc04dbd4a8e1e40ba85e72b8aefc5bd2f7a36",
+      "naturalnessReview": "passed",
+      "reviewedAt": "2026-11-08T20:51:29.464Z",
+      "notes": "Visually inspected originals: hand-crimped Cornish pasties reveal cooked beef/potato/swede, Boston beans have dark treacle sauce and cornbread, and chasseur has chicken, mushrooms, tomato-led sauce and mash. No unlisted foods; natural textures and varied vessels."
+    },
+    {
+      "id": "boston-baked-beans-with-cornbread",
+      "image": "release-assets/basketboss-v17/images/new/boston-baked-beans-with-cornbread.webp",
+      "sha256": "085ca0ccb319b2c757ecb222e908a2b6a7a951c1913b66cfb81eb78759256063",
+      "naturalnessReview": "passed",
+      "reviewedAt": "2026-11-08T20:51:28.538Z",
+      "notes": "Visually inspected originals: hand-crimped Cornish pasties reveal cooked beef/potato/swede, Boston beans have dark treacle sauce and cornbread, and chasseur has chicken, mushrooms, tomato-led sauce and mash. No unlisted foods; natural textures and varied vessels."
+    },
+    {
+      "id": "chicken-chasseur-with-mash",
+      "image": "release-assets/basketboss-v17/images/new/chicken-chasseur-with-mash.webp",
+      "sha256": "c22164e1d90f36f981484951f05fa6aed24bc497a79932d70888ae0244f07bf4",
+      "naturalnessReview": "passed",
+      "reviewedAt": "2026-11-08T20:51:28.999Z",
+      "notes": "Visually inspected originals: hand-crimped Cornish pasties reveal cooked beef/potato/swede, Boston beans have dark treacle sauce and cornbread, and chasseur has chicken, mushrooms, tomato-led sauce and mash. No unlisted foods; natural textures and varied vessels."
+    },
+    {
+      "id": "creamy-tomato-soup-with-cheese-toasties",
+      "image": "release-assets/basketboss-v17/images/new/creamy-tomato-soup-with-cheese-toasties.webp",
+      "sha256": "e9d2723f841b509c152797a905275b49f5e1c6f948d87e301618b8d62acc40e2",
+      "naturalnessReview": "passed",
+      "reviewedAt": "2026-11-08T20:53:26.315Z",
+      "notes": "Visually inspected originals: tomato soup accompanies cheese toasties, carrot soup has coriander and crusty bread, and minestrone shows the correct vegetable/bean/pasta mixture with Parmesan and bread. No unrelated foods; natural textures, appropriate dishes and varied angles."
+    },
+    {
+      "id": "carrot-and-coriander-soup-with-crusty-bread",
+      "image": "release-assets/basketboss-v17/images/new/carrot-and-coriander-soup-with-crusty-bread.webp",
+      "sha256": "bbb72d814477c8f66542f3aa4607f59266335ea75db3f5a459a336eb72c5cace",
+      "naturalnessReview": "passed",
+      "reviewedAt": "2026-11-08T20:53:25.837Z",
+      "notes": "Visually inspected originals: tomato soup accompanies cheese toasties, carrot soup has coriander and crusty bread, and minestrone shows the correct vegetable/bean/pasta mixture with Parmesan and bread. No unrelated foods; natural textures, appropriate dishes and varied angles."
+    },
+    {
+      "id": "minestrone-with-crusty-bread",
+      "image": "release-assets/basketboss-v17/images/new/minestrone-with-crusty-bread.webp",
+      "sha256": "184ae96756fa458267b151a0e69e8c50efd0c349a14e07f62cae8f677e091ab7",
+      "naturalnessReview": "passed",
+      "reviewedAt": "2026-11-08T20:53:25.373Z",
+      "notes": "Visually inspected originals: tomato soup accompanies cheese toasties, carrot soup has coriander and crusty bread, and minestrone shows the correct vegetable/bean/pasta mixture with Parmesan and bread. No unrelated foods; natural textures, appropriate dishes and varied angles."
+    },
+    {
+      "id": "american-cobb-salad",
+      "image": "release-assets/basketboss-v17/images/new/american-cobb-salad.webp",
+      "sha256": "57b76e6a644a832259b1b84600b166b1f1b6495678026d5e78e25ce0ed329b85",
+      "naturalnessReview": "passed",
+      "reviewedAt": "2026-11-08T20:55:49.042Z",
+      "notes": "Visually inspected originals: Cobb contains its named chicken, bacon, eggs, avocado, tomato and blue cheese; Ploughman's has cheese, bread, apple, pickles and listed salad; Reuben has rye, corned beef, sauerkraut, melted cheese and dressing. No unrelated food or labels."
+    },
+    {
+      "id": "ploughmans-cheese-and-pickle-supper",
+      "image": "release-assets/basketboss-v17/images/new/ploughmans-cheese-and-pickle-supper.webp",
+      "sha256": "2733cc229b6410790b557378646e850f872b38371595544657827275c6188b32",
+      "naturalnessReview": "passed",
+      "reviewedAt": "2026-11-08T20:55:50.032Z",
+      "notes": "Visually inspected originals: Cobb contains its named chicken, bacon, eggs, avocado, tomato and blue cheese; Ploughman's has cheese, bread, apple, pickles and listed salad; Reuben has rye, corned beef, sauerkraut, melted cheese and dressing. No unrelated food or labels."
+    },
+    {
+      "id": "reuben-sandwiches",
+      "image": "release-assets/basketboss-v17/images/new/reuben-sandwiches.webp",
+      "sha256": "48eb53053111aa739225c8b02fab54a92cd18d4677b247f72f05befcec0480a8",
+      "naturalnessReview": "passed",
+      "reviewedAt": "2026-11-08T20:55:49.565Z",
+      "notes": "Visually inspected originals: Cobb contains its named chicken, bacon, eggs, avocado, tomato and blue cheese; Ploughman's has cheese, bread, apple, pickles and listed salad; Reuben has rye, corned beef, sauerkraut, melted cheese and dressing. No unrelated food or labels."
+    },
+    {
+      "id": "bacon-and-cabbage-with-parsley-sauce",
+      "image": "release-assets/basketboss-v17/images/new/bacon-and-cabbage-with-parsley-sauce.webp",
+      "sha256": "6b860ccfa2709e614c0fbd17fc38a130a3e3b6b4a900b4e2f2160ca482ccaf32",
+      "naturalnessReview": "passed",
+      "reviewedAt": "2026-11-08T20:57:38.401Z",
+      "notes": "Visually inspected originals: cooked bacon joint with cabbage, potatoes and parsley sauce; bread-dough calzone with ham/mushroom/cheese filling; layered lamb, aubergine and potato moussaka with golden b\u00e9chamel. No unlisted foods; realistic cooked textures."
+    },
+    {
+      "id": "ham-and-mushroom-calzone",
+      "image": "release-assets/basketboss-v17/images/new/ham-and-mushroom-calzone.webp",
+      "sha256": "93307ed17245466748564b19e603d809b7e4a17d826d46dcbd168a238f1a4a66",
+      "naturalnessReview": "passed",
+      "reviewedAt": "2026-11-08T20:57:37.474Z",
+      "notes": "Visually inspected originals: cooked bacon joint with cabbage, potatoes and parsley sauce; bread-dough calzone with ham/mushroom/cheese filling; layered lamb, aubergine and potato moussaka with golden b\u00e9chamel. No unlisted foods; realistic cooked textures."
+    },
+    {
+      "id": "lamb-moussaka",
+      "image": "release-assets/basketboss-v17/images/new/lamb-moussaka.webp",
+      "sha256": "dc3c474ff82e3bfbfce609be40dd0195894d0655242d8826aedd4f52b61fc0aa",
+      "naturalnessReview": "passed",
+      "reviewedAt": "2026-11-08T20:57:37.937Z",
+      "notes": "Visually inspected originals: cooked bacon joint with cabbage, potatoes and parsley sauce; bread-dough calzone with ham/mushroom/cheese filling; layered lamb, aubergine and potato moussaka with golden b\u00e9chamel. No unlisted foods; realistic cooked textures."
+    },
+    {
+      "id": "cauliflower-cheese-with-crusty-bread",
+      "image": "release-assets/basketboss-v17/images/new/cauliflower-cheese-with-crusty-bread.webp",
+      "sha256": "d77dd83030d36382992520743167ed665d3fb01248214d0e64b7906c73b614b3",
+      "naturalnessReview": "passed",
+      "reviewedAt": "2026-11-08T21:40:12.777426+00:00",
+      "notes": "Visually reviewed original images and labelled QA pages: plausible cooked form matching the recipe and ingredient ledger, household tableware with varied close, overhead and sharing compositions. Export preserves the complete 1448 x 1086 image; no watermark or unrelated side dish."
+    },
+    {
+      "id": "american-pot-roast-beef-with-carrots",
+      "image": "release-assets/basketboss-v17/images/new/american-pot-roast-beef-with-carrots.webp",
+      "sha256": "90cb7a292e26abb2a96cf4c42556f6086e5619c06967291ce2e3e5c4cb01dd6c",
+      "naturalnessReview": "passed",
+      "reviewedAt": "2026-11-08T21:40:12.777435+00:00",
+      "notes": "Visually reviewed original images and labelled QA pages: plausible cooked form matching the recipe and ingredient ledger, household tableware with varied close, overhead and sharing compositions. Export preserves the complete 1448 x 1086 image; no watermark or unrelated side dish."
+    },
+    {
+      "id": "cacio-e-pepe",
+      "image": "release-assets/basketboss-v17/images/new/cacio-e-pepe.webp",
+      "sha256": "bc60fb5a16ed81f723d9229d1e75fa956edf1ae7c6fe2ace0a09db6595cd56cd",
+      "naturalnessReview": "passed",
+      "reviewedAt": "2026-11-08T21:40:12.777439+00:00",
+      "notes": "Visually reviewed original images and labelled QA pages: plausible cooked form matching the recipe and ingredient ledger, household tableware with varied close, overhead and sharing compositions. Export preserves the complete 1448 x 1086 image; no watermark or unrelated side dish."
+    },
+    {
+      "id": "homemade-english-breakfast-muffins",
+      "image": "release-assets/basketboss-v17/images/new/homemade-english-breakfast-muffins.webp",
+      "sha256": "e54cd4e1ccf7a0dbe341851f48b4345cdb2c09c39acb57a83d09d20a0ea08430",
+      "naturalnessReview": "passed",
+      "reviewedAt": "2026-11-08T21:40:12.777440+00:00",
+      "notes": "Visually reviewed original images and labelled QA pages: plausible cooked form matching the recipe and ingredient ledger, household tableware with varied close, overhead and sharing compositions. Export preserves the complete 1448 x 1086 image; no watermark or unrelated side dish."
+    },
+    {
+      "id": "cranberry-and-orange-breakfast-scones",
+      "image": "release-assets/basketboss-v17/images/new/cranberry-and-orange-breakfast-scones.webp",
+      "sha256": "43d5e5d4779562593b5e356230cfdd4c127995d90ae13bb99391ca17021a78d2",
+      "naturalnessReview": "passed",
+      "reviewedAt": "2026-11-08T21:40:12.777441+00:00",
+      "notes": "Visually reviewed original images and labelled QA pages: plausible cooked form matching the recipe and ingredient ledger, household tableware with varied close, overhead and sharing compositions. Export preserves the complete 1448 x 1086 image; no watermark or unrelated side dish."
+    },
+    {
+      "id": "cinnamon-raisin-breakfast-loaf",
+      "image": "release-assets/basketboss-v17/images/new/cinnamon-raisin-breakfast-loaf.webp",
+      "sha256": "46b7dcb1d73491bd740c768fc9e5a8f1b014163e2f4ab9cd5a15fd55e157a220",
+      "naturalnessReview": "passed",
+      "reviewedAt": "2026-11-08T21:40:12.777442+00:00",
+      "notes": "Visually reviewed original images and labelled QA pages: plausible cooked form matching the recipe and ingredient ledger, household tableware with varied close, overhead and sharing compositions. Export preserves the complete 1448 x 1086 image; no watermark or unrelated side dish."
+    },
+    {
+      "id": "honey-and-almond-breakfast-flapjacks",
+      "image": "release-assets/basketboss-v17/images/new/honey-and-almond-breakfast-flapjacks.webp",
+      "sha256": "accb920659aa25b549b7b29cfe9be0fd2d72bf2f8f6f83f33ac4cfac44e7f42d",
+      "naturalnessReview": "passed",
+      "reviewedAt": "2026-11-08T21:40:12.777443+00:00",
+      "notes": "Visually reviewed original images and labelled QA pages: plausible cooked form matching the recipe and ingredient ledger, household tableware with varied close, overhead and sharing compositions. Export preserves the complete 1448 x 1086 image; no watermark or unrelated side dish."
+    },
+    {
+      "id": "sausage-breakfast-baps-with-brown-sauce",
+      "image": "release-assets/basketboss-v17/images/new/sausage-breakfast-baps-with-brown-sauce.webp",
+      "sha256": "3d3f271c46d37110fccae5897cdabec17e2b7a170dd4061f3d27de33b4063e14",
+      "naturalnessReview": "passed",
+      "reviewedAt": "2026-11-08T21:40:12.777444+00:00",
+      "notes": "Visually reviewed original images and labelled QA pages: plausible cooked form matching the recipe and ingredient ledger, household tableware with varied close, overhead and sharing compositions. Export preserves the complete 1448 x 1086 image; no watermark or unrelated side dish."
+    },
+    {
+      "id": "black-pudding-and-apple-breakfast-stacks",
+      "image": "release-assets/basketboss-v17/images/new/black-pudding-and-apple-breakfast-stacks.webp",
+      "sha256": "fd396b17ab4c4deb260d771365b910a0630c3d0d398c71764b59e92e3ebfef3d",
+      "naturalnessReview": "passed",
+      "reviewedAt": "2026-11-08T21:40:12.777445+00:00",
+      "notes": "Visually reviewed original images and labelled QA pages: plausible cooked form matching the recipe and ingredient ledger, household tableware with varied close, overhead and sharing compositions. Export preserves the complete 1448 x 1086 image; no watermark or unrelated side dish."
+    },
+    {
+      "id": "grilled-kippers-with-lemon-butter-and-toast",
+      "image": "release-assets/basketboss-v17/images/new/grilled-kippers-with-lemon-butter-and-toast.webp",
+      "sha256": "313c1939b477cfb870270bd75bd33ff0f821d3f47cd31b9ff185258626cadf4f",
+      "naturalnessReview": "passed",
+      "reviewedAt": "2026-11-08T21:40:12.777446+00:00",
+      "notes": "Visually reviewed original images and labelled QA pages: plausible cooked form matching the recipe and ingredient ledger, household tableware with varied close, overhead and sharing compositions. Export preserves the complete 1448 x 1086 image; no watermark or unrelated side dish."
+    },
+    {
+      "id": "homemade-fruit-and-nut-muesli",
+      "image": "release-assets/basketboss-v17/images/new/homemade-fruit-and-nut-muesli.webp",
+      "sha256": "c3aa971a9edfc0e5794331912bb8295c3cdc258421539b79aa0d43abc86dd3e9",
+      "naturalnessReview": "passed",
+      "reviewedAt": "2026-11-08T21:40:12.777447+00:00",
+      "notes": "Visually reviewed original images and labelled QA pages: plausible cooked form matching the recipe and ingredient ledger, household tableware with varied close, overhead and sharing compositions. Export preserves the complete 1448 x 1086 image; no watermark or unrelated side dish."
+    },
+    {
+      "id": "toasted-fruit-teacakes",
+      "image": "release-assets/basketboss-v17/images/new/toasted-fruit-teacakes.webp",
+      "sha256": "1375bed184c8e6ac30ea83ada58b4c6e03fa76e64ea6c0fe234de05ceb6dbebb",
+      "naturalnessReview": "passed",
+      "reviewedAt": "2026-11-08T21:40:12.777448+00:00",
+      "notes": "Visually reviewed original images and labelled QA pages: plausible cooked form matching the recipe and ingredient ledger, household tableware with varied close, overhead and sharing compositions. Export preserves the complete 1448 x 1086 image; no watermark or unrelated side dish."
+    },
+    {
+      "id": "potato-farls-with-fried-eggs",
+      "image": "release-assets/basketboss-v17/images/new/potato-farls-with-fried-eggs.webp",
+      "sha256": "8d851bf5b2f16490fd7b222b0ab6209fc771ecbdf25e338fec2440a0301b09fc",
+      "naturalnessReview": "passed",
+      "reviewedAt": "2026-11-08T21:40:12.777449+00:00",
+      "notes": "Visually reviewed original images and labelled QA pages: plausible cooked form matching the recipe and ingredient ledger, household tableware with varied close, overhead and sharing compositions. Export preserves the complete 1448 x 1086 image; no watermark or unrelated side dish."
+    },
+    {
+      "id": "chicken-madras-with-rice",
+      "image": "release-assets/basketboss-v17/images/new/chicken-madras-with-rice.webp",
+      "sha256": "4951b81b4ac7c91d2f52a0b20fe5304d6c1e988de4fd8b3a2a616521579a3d70",
+      "naturalnessReview": "passed",
+      "reviewedAt": "2026-11-08T20:56:19.600166+00:00",
+      "notes": "Visually inspected the labelled original-frame QA contact sheet: realistic edible textures and ordinary household tableware, recognisable Chicken madras with rice presentation, recipe-listed components, no people, text, watermark or unrelated garnish. Camera angles and sharing/plated compositions vary across the batch. Photograph portions are representative; this review does not claim a kitchen test."
+    },
+    {
+      "id": "lamb-pasanda-with-almond-rice",
+      "image": "release-assets/basketboss-v17/images/new/lamb-pasanda-with-almond-rice.webp",
+      "sha256": "ec1293824ce7ca9cf89fd645cf86dd32fbe76aa7e7871ac5fe755a03de673059",
+      "naturalnessReview": "passed",
+      "reviewedAt": "2026-11-08T20:56:19.600166+00:00",
+      "notes": "Visually inspected the labelled original-frame QA contact sheet: realistic edible textures and ordinary household tableware, recognisable Lamb pasanda with almond rice presentation, recipe-listed components, no people, text, watermark or unrelated garnish. Camera angles and sharing/plated compositions vary across the batch. Photograph portions are representative; this review does not claim a kitchen test."
+    },
+    {
+      "id": "paneer-tikka-skewers-with-mint-chutney",
+      "image": "release-assets/basketboss-v17/images/new/paneer-tikka-skewers-with-mint-chutney.webp",
+      "sha256": "f6a386729130ee74a6a41a5135a3cd96a7d6514509648806e153d841a7e2d05b",
+      "naturalnessReview": "passed",
+      "reviewedAt": "2026-11-08T20:56:19.600166+00:00",
+      "notes": "Visually inspected the labelled original-frame QA contact sheet: realistic edible textures and ordinary household tableware, recognisable Paneer tikka skewers with mint chutney presentation, recipe-listed components, no people, text, watermark or unrelated garnish. Camera angles and sharing/plated compositions vary across the batch. Photograph portions are representative; this review does not claim a kitchen test."
+    },
+    {
+      "id": "king-prawn-puri",
+      "image": "release-assets/basketboss-v17/images/new/king-prawn-puri.webp",
+      "sha256": "2b9c1bfe1d6db03e35ac7fc9a03a8ba24e230d06f21b216ea8e8aa11ed43e4c6",
+      "naturalnessReview": "passed",
+      "reviewedAt": "2026-11-08T20:56:19.600166+00:00",
+      "notes": "Visually inspected the labelled original-frame QA contact sheet: realistic edible textures and ordinary household tableware, recognisable King prawn puri presentation, recipe-listed components, no people, text, watermark or unrelated garnish. Camera angles and sharing/plated compositions vary across the batch. Photograph portions are representative; this review does not claim a kitchen test."
+    },
+    {
+      "id": "bombay-potatoes",
+      "image": "release-assets/basketboss-v17/images/new/bombay-potatoes.webp",
+      "sha256": "09377974ac2efb591ce2327a2043fc0ae42bd7e9aa8e731b006910471a6cc402",
+      "naturalnessReview": "passed",
+      "reviewedAt": "2026-11-08T20:56:19.600166+00:00",
+      "notes": "Visually inspected the labelled original-frame QA contact sheet: realistic edible textures and ordinary household tableware, recognisable Bombay potatoes presentation, recipe-listed components, no people, text, watermark or unrelated garnish. Camera angles and sharing/plated compositions vary across the batch. Photograph portions are representative; this review does not claim a kitchen test."
+    },
+    {
+      "id": "chinese-chicken-and-cashew-nuts",
+      "image": "release-assets/basketboss-v17/images/new/chinese-chicken-and-cashew-nuts.webp",
+      "sha256": "2998bd9dc3eaf3e474b73633471688646a0a0b80b584e408d4d52c0a6c952b3a",
+      "naturalnessReview": "passed",
+      "reviewedAt": "2026-11-08T20:56:19.600166+00:00",
+      "notes": "Visually inspected the labelled original-frame QA contact sheet: realistic edible textures and ordinary household tableware, recognisable Chinese chicken and cashew nuts presentation, recipe-listed components, no people, text, watermark or unrelated garnish. Camera angles and sharing/plated compositions vary across the batch. Photograph portions are representative; this review does not claim a kitchen test."
+    },
+    {
+      "id": "kung-pao-chicken-with-rice",
+      "image": "release-assets/basketboss-v17/images/new/kung-pao-chicken-with-rice.webp",
+      "sha256": "10239ad503ec1ba3dc387153358b079b5bfc9b2043cc077a8dca5e2b5ff17fa1",
+      "naturalnessReview": "passed",
+      "reviewedAt": "2026-11-08T20:56:19.600166+00:00",
+      "notes": "Visually inspected the labelled original-frame QA contact sheet: realistic edible textures and ordinary household tableware, recognisable Kung pao chicken with rice presentation, recipe-listed components, no people, text, watermark or unrelated garnish. Camera angles and sharing/plated compositions vary across the batch. Photograph portions are representative; this review does not claim a kitchen test."
+    },
+    {
+      "id": "chinese-takeaway-crispy-seaweed",
+      "image": "release-assets/basketboss-v17/images/new/chinese-takeaway-crispy-seaweed.webp",
+      "sha256": "e91afc1571330e241f94773ef4bf7ac0cf658cdd63e7e515610627f44a818811",
+      "naturalnessReview": "passed",
+      "reviewedAt": "2026-11-08T20:56:19.600166+00:00",
+      "notes": "Visually inspected the labelled original-frame QA contact sheet: realistic edible textures and ordinary household tableware, recognisable Chinese takeaway crispy seaweed presentation, recipe-listed components, no people, text, watermark or unrelated garnish. Camera angles and sharing/plated compositions vary across the batch. Photograph portions are representative; this review does not claim a kitchen test."
+    },
+    {
+      "id": "chinese-curry-chicken-and-chips",
+      "image": "release-assets/basketboss-v17/images/new/chinese-curry-chicken-and-chips.webp",
+      "sha256": "a08551950503f98cbdca4877276d3a7378d07f9839fde1deb5c69e4ca924e8b4",
+      "naturalnessReview": "passed",
+      "reviewedAt": "2026-11-08T20:56:19.600166+00:00",
+      "notes": "Visually inspected the labelled original-frame QA contact sheet: realistic edible textures and ordinary household tableware, recognisable Chinese curry chicken and chips presentation, recipe-listed components, no people, text, watermark or unrelated garnish. Camera angles and sharing/plated compositions vary across the batch. Photograph portions are representative; this review does not claim a kitchen test."
+    },
+    {
+      "id": "cheeseburger-loaded-fries",
+      "image": "release-assets/basketboss-v17/images/new/cheeseburger-loaded-fries.webp",
+      "sha256": "f9fa5323a6a727e247c70acbae2d80ef0421c3db63f40392617aaccb98fea899",
+      "naturalnessReview": "passed",
+      "reviewedAt": "2026-11-08T20:56:19.600166+00:00",
+      "notes": "Visually inspected the labelled original-frame QA contact sheet: realistic edible textures and ordinary household tableware, recognisable Cheeseburger loaded fries presentation, recipe-listed components, no people, text, watermark or unrelated garnish. Camera angles and sharing/plated compositions vary across the batch. Photograph portions are representative; this review does not claim a kitchen test."
+    },
+    {
+      "id": "pork-tacos-al-pastor",
+      "image": "release-assets/basketboss-v17/images/new/pork-tacos-al-pastor.webp",
+      "sha256": "6681cc86162b006bd286434b262476c4265ed3f67c6507d04ccfd13148e2b38a",
+      "naturalnessReview": "passed",
+      "reviewedAt": "2026-11-08T20:56:19.600166+00:00",
+      "notes": "Visually inspected the labelled original-frame QA contact sheet: realistic edible textures and ordinary household tableware, recognisable Pork tacos al pastor presentation, recipe-listed components, no people, text, watermark or unrelated garnish. Camera angles and sharing/plated compositions vary across the batch. Photograph portions are representative; this review does not claim a kitchen test."
+    },
+    {
+      "id": "chicago-deep-dish-pepperoni-pizza",
+      "image": "release-assets/basketboss-v17/images/new/chicago-deep-dish-pepperoni-pizza.webp",
+      "sha256": "ccf2559c47feca0f24a2b09a945d0079998df72cb4f90be1967938e2806e3351",
+      "naturalnessReview": "passed",
+      "reviewedAt": "2026-11-08T20:56:19.600166+00:00",
+      "notes": "Visually inspected the labelled original-frame QA contact sheet: realistic edible textures and ordinary household tableware, recognisable Chicago deep-dish pepperoni pizza presentation, recipe-listed components, no people, text, watermark or unrelated garnish. Camera angles and sharing/plated compositions vary across the batch. Photograph portions are representative; this review does not claim a kitchen test."
+    },
+    {
+      "id": "prawn-cocktail-with-brown-bread",
+      "image": "release-assets/basketboss-v17/images/new/prawn-cocktail-with-brown-bread.webp",
+      "sha256": "f96e44aece3b52e33534731d0be5367be0ee88aa125ee978db6dd7fee1a36503",
+      "naturalnessReview": "passed",
+      "reviewedAt": "2026-11-08T20:56:19.600166+00:00",
+      "notes": "Visually inspected the labelled original-frame QA contact sheet: realistic edible textures and ordinary household tableware, recognisable Prawn cocktail with brown bread presentation, recipe-listed components, no people, text, watermark or unrelated garnish. Camera angles and sharing/plated compositions vary across the batch. Photograph portions are representative; this review does not claim a kitchen test."
+    },
+    {
+      "id": "smoked-mackerel-pate-with-toast",
+      "image": "release-assets/basketboss-v17/images/new/smoked-mackerel-pate-with-toast.webp",
+      "sha256": "cc56b2576d3ba1d16bbe23212a4b2becae303a8ee1bc5c00b54a7727ebb02e70",
+      "naturalnessReview": "passed",
+      "reviewedAt": "2026-11-08T20:56:19.600166+00:00",
+      "notes": "Visually inspected the labelled original-frame QA contact sheet: realistic edible textures and ordinary household tableware, recognisable Smoked mackerel p\u00e2t\u00e9 with toast presentation, recipe-listed components, no people, text, watermark or unrelated garnish. Camera angles and sharing/plated compositions vary across the batch. Photograph portions are representative; this review does not claim a kitchen test."
+    },
+    {
+      "id": "seafood-crepes-in-white-wine-cream-sauce",
+      "image": "release-assets/basketboss-v17/images/new/seafood-crepes-in-white-wine-cream-sauce.webp",
+      "sha256": "a9d90a50d7600a3dd4d8cf759a6c07f3282f1720160b39b39d29dd1244444bd4",
+      "naturalnessReview": "passed",
+      "reviewedAt": "2026-11-08T20:56:19.600166+00:00",
+      "notes": "Visually inspected the labelled original-frame QA contact sheet: realistic edible textures and ordinary household tableware, recognisable Seafood cr\u00eapes in white wine cream sauce presentation, recipe-listed components, no people, text, watermark or unrelated garnish. Camera angles and sharing/plated compositions vary across the batch. Photograph portions are representative; this review does not claim a kitchen test."
+    },
+    {
+      "id": "cioppino-with-sourdough",
+      "image": "release-assets/basketboss-v17/images/new/cioppino-with-sourdough.webp",
+      "sha256": "cfffe7ed08835177857ee77d38e3bf9592c26013a6241f80f2dc58e81f59f498",
+      "naturalnessReview": "passed",
+      "reviewedAt": "2026-11-08T20:56:19.600166+00:00",
+      "notes": "Visually inspected the labelled original-frame QA contact sheet: realistic edible textures and ordinary household tableware, recognisable Cioppino with sourdough presentation, recipe-listed components, no people, text, watermark or unrelated garnish. Camera angles and sharing/plated compositions vary across the batch. Photograph portions are representative; this review does not claim a kitchen test."
+    },
+    {
+      "id": "mackerel-escabeche-with-crusty-bread",
+      "image": "release-assets/basketboss-v17/images/new/mackerel-escabeche-with-crusty-bread.webp",
+      "sha256": "1347f704d189043be07230060ad3610020eb57b3255b026871643558c22e3698",
+      "naturalnessReview": "passed",
+      "reviewedAt": "2026-11-08T20:56:19.600166+00:00",
+      "notes": "Visually inspected the labelled original-frame QA contact sheet: realistic edible textures and ordinary household tableware, recognisable Mackerel escabeche with crusty bread presentation, recipe-listed components, no people, text, watermark or unrelated garnish. Camera angles and sharing/plated compositions vary across the batch. Photograph portions are representative; this review does not claim a kitchen test."
+    },
+    {
+      "id": "salmon-and-prawn-terrine-with-cucumber-salad",
+      "image": "release-assets/basketboss-v17/images/new/salmon-and-prawn-terrine-with-cucumber-salad.webp",
+      "sha256": "37b5872387bfa4f1c1fc57e2e4b3d2a64defa4d4d066fa2c4d09bb6cf066d9d4",
+      "naturalnessReview": "passed",
+      "reviewedAt": "2026-11-08T20:56:19.600166+00:00",
+      "notes": "Visually inspected the labelled original-frame QA contact sheet: realistic edible textures and ordinary household tableware, recognisable Salmon and prawn terrine with cucumber salad presentation, recipe-listed components, no people, text, watermark or unrelated garnish. Camera angles and sharing/plated compositions vary across the batch. Photograph portions are representative; this review does not claim a kitchen test."
+    },
+    {
+      "id": "herb-stuffed-whole-baked-trout",
+      "image": "release-assets/basketboss-v17/images/new/herb-stuffed-whole-baked-trout.webp",
+      "sha256": "c3e34631545d80f3143e0d200dea745d6c250081ed5011e5ce8c343fa13df2dc",
+      "naturalnessReview": "passed",
+      "reviewedAt": "2026-11-08T20:56:19.600166+00:00",
+      "notes": "Visually inspected the labelled original-frame QA contact sheet: realistic edible textures and ordinary household tableware, recognisable Herb-stuffed whole baked trout presentation, recipe-listed components, no people, text, watermark or unrelated garnish. Camera angles and sharing/plated compositions vary across the batch. Photograph portions are representative; this review does not claim a kitchen test."
+    },
+    {
+      "id": "grilled-tuna-with-peperonata",
+      "image": "release-assets/basketboss-v17/images/new/grilled-tuna-with-peperonata.webp",
+      "sha256": "2be9c4fdd52216b543fc971d92949dbd8c26598777414d8dd369760a66dae576",
+      "naturalnessReview": "passed",
+      "reviewedAt": "2026-11-08T20:56:19.600166+00:00",
+      "notes": "Visually inspected the labelled original-frame QA contact sheet: realistic edible textures and ordinary household tableware, recognisable Grilled tuna with peperonata presentation, recipe-listed components, no people, text, watermark or unrelated garnish. Camera angles and sharing/plated compositions vary across the batch. Photograph portions are representative; this review does not claim a kitchen test."
+    },
+    {
+      "id": "sea-bass-en-papillote-with-fennel",
+      "image": "release-assets/basketboss-v17/images/new/sea-bass-en-papillote-with-fennel.webp",
+      "sha256": "85fa974777c2a9c50c7d017959784a4b0ff1e611a019cc1ff0c4b75ed3f5a226",
+      "naturalnessReview": "passed",
+      "reviewedAt": "2026-11-08T20:56:19.600166+00:00",
+      "notes": "Visually inspected the labelled original-frame QA contact sheet: realistic edible textures and ordinary household tableware, recognisable Sea bass en papillote with fennel presentation, recipe-listed components, no people, text, watermark or unrelated garnish. Camera angles and sharing/plated compositions vary across the batch. Photograph portions are representative; this review does not claim a kitchen test."
+    },
+    {
+      "id": "dressed-crab-with-brown-bread",
+      "image": "release-assets/basketboss-v17/images/new/dressed-crab-with-brown-bread.webp",
+      "sha256": "d8630a7fbd0702815c785246f6dda2fb4562f9aef11a90a2f1722a635307bfde",
+      "naturalnessReview": "passed",
+      "reviewedAt": "2026-11-08T20:56:19.600166+00:00",
+      "notes": "Visually inspected the labelled original-frame QA contact sheet: realistic edible textures and ordinary household tableware, recognisable Dressed crab with brown bread presentation, recipe-listed components, no people, text, watermark or unrelated garnish. Camera angles and sharing/plated compositions vary across the batch. Photograph portions are representative; this review does not claim a kitchen test."
+    },
+    {
+      "id": "smoked-salmon-blinis-with-lemon-creme-fraiche",
+      "image": "release-assets/basketboss-v17/images/new/smoked-salmon-blinis-with-lemon-creme-fraiche.webp",
+      "sha256": "ddc4938615577c5b67f406ba344365aae25d5df8cb8a99aebd03b7034c47f13f",
+      "naturalnessReview": "passed",
+      "reviewedAt": "2026-11-08T20:56:19.600166+00:00",
+      "notes": "Visually inspected the labelled original-frame QA contact sheet: realistic edible textures and ordinary household tableware, recognisable Smoked salmon blinis with lemon cr\u00e8me fra\u00eeche presentation, recipe-listed components, no people, text, watermark or unrelated garnish. Camera angles and sharing/plated compositions vary across the batch. Photograph portions are representative; this review does not claim a kitchen test."
+    },
+    {
+      "id": "prawn-saganaki-with-crusty-bread",
+      "image": "release-assets/basketboss-v17/images/new/prawn-saganaki-with-crusty-bread.webp",
+      "sha256": "90bb19dd7d412fd721790fbeeedceb08fb1138ad94bf5126f0e5e74e7b421886",
+      "naturalnessReview": "passed",
+      "reviewedAt": "2026-11-08T20:56:19.600166+00:00",
+      "notes": "Visually inspected the labelled original-frame QA contact sheet: realistic edible textures and ordinary household tableware, recognisable Prawn saganaki with crusty bread presentation, recipe-listed components, no people, text, watermark or unrelated garnish. Camera angles and sharing/plated compositions vary across the batch. Photograph portions are representative; this review does not claim a kitchen test."
+    },
+    {
+      "id": "coquilles-saint-jacques",
+      "image": "release-assets/basketboss-v17/images/new/coquilles-saint-jacques.webp",
+      "sha256": "869e878d52ba945df2a36a5cbe667e9857383e3b722ce8f098ed2dafd013ca62",
+      "naturalnessReview": "passed",
+      "reviewedAt": "2026-11-08T20:56:19.600166+00:00",
+      "notes": "Visually inspected the labelled original-frame QA contact sheet: realistic edible textures and ordinary household tableware, recognisable Coquilles Saint-Jacques presentation, recipe-listed components, no people, text, watermark or unrelated garnish. Camera angles and sharing/plated compositions vary across the batch. Photograph portions are representative; this review does not claim a kitchen test."
+    },
+    {
+      "id": "corned-beef-and-potato-pie",
+      "image": "release-assets/basketboss-v17/images/new/corned-beef-and-potato-pie.webp",
+      "sha256": "6d1b3be6663e631c968119cbdb55887a34bbaaab4a17193d2aeed2eca1cd7eb9",
+      "naturalnessReview": "passed",
+      "reviewedAt": "2026-11-08T20:56:19.600166+00:00",
+      "notes": "Visually inspected the labelled original-frame QA contact sheet: realistic edible textures and ordinary household tableware, recognisable Corned beef and potato pie presentation, recipe-listed components, no people, text, watermark or unrelated garnish. Camera angles and sharing/plated compositions vary across the batch. Photograph portions are representative; this review does not claim a kitchen test."
+    },
+    {
+      "id": "chicken-and-mushroom-vol-au-vents",
+      "image": "release-assets/basketboss-v17/images/new/chicken-and-mushroom-vol-au-vents.webp",
+      "sha256": "fd96ddf4327debc8f4dbfa59cd627a8b75240f704684be4ce868c8b5b1b6dbb1",
+      "naturalnessReview": "passed",
+      "reviewedAt": "2026-11-08T20:56:19.600166+00:00",
+      "notes": "Visually inspected the labelled original-frame QA contact sheet: realistic edible textures and ordinary household tableware, recognisable Chicken and mushroom vol-au-vents presentation, recipe-listed components, no people, text, watermark or unrelated garnish. Camera angles and sharing/plated compositions vary across the batch. Photograph portions are representative; this review does not claim a kitchen test."
+    },
+    {
+      "id": "spanish-tortilla-with-tomato-salad",
+      "image": "release-assets/basketboss-v17/images/new/spanish-tortilla-with-tomato-salad.webp",
+      "sha256": "bb7d357b5735d7238d7f085b0bf3eb98efd676e3bdd07c882c40bf289fbeebb6",
+      "naturalnessReview": "passed",
+      "reviewedAt": "2026-11-08T20:56:19.600166+00:00",
+      "notes": "Visually inspected the labelled original-frame QA contact sheet: realistic edible textures and ordinary household tableware, recognisable Spanish tortilla with tomato salad presentation, recipe-listed components, no people, text, watermark or unrelated garnish. Camera angles and sharing/plated compositions vary across the batch. Photograph portions are representative; this review does not claim a kitchen test."
+    },
+    {
+      "id": "rigatoni-allamatriciana",
+      "image": "release-assets/basketboss-v17/images/new/rigatoni-allamatriciana.webp",
+      "sha256": "87af32088fe4dbb5d5810d452a6b84c568c5d3997c374de95ba611c12f5527f5",
+      "naturalnessReview": "passed",
+      "reviewedAt": "2026-11-08T20:56:19.600166+00:00",
+      "notes": "Visually inspected the labelled original-frame QA contact sheet: realistic edible textures and ordinary household tableware, recognisable Rigatoni all\u2019Amatriciana presentation, recipe-listed components, no people, text, watermark or unrelated garnish. Camera angles and sharing/plated compositions vary across the batch. Photograph portions are representative; this review does not claim a kitchen test."
+    },
+    {
+      "id": "pasta-alla-norma",
+      "image": "release-assets/basketboss-v17/images/new/pasta-alla-norma.webp",
+      "sha256": "3840a6ec1bd319fc9c0ee011cbda397e7a7c23ad8ea499009186c45b3cef88f6",
+      "naturalnessReview": "passed",
+      "reviewedAt": "2026-11-08T20:56:19.600166+00:00",
+      "notes": "Visually inspected the labelled original-frame QA contact sheet: realistic edible textures and ordinary household tableware, recognisable Pasta alla Norma presentation, recipe-listed components, no people, text, watermark or unrelated garnish. Camera angles and sharing/plated compositions vary across the batch. Photograph portions are representative; this review does not claim a kitchen test."
+    },
+    {
+      "id": "swedish-meatballs-with-creamy-gravy",
+      "image": "release-assets/basketboss-v17/images/new/swedish-meatballs-with-creamy-gravy.webp",
+      "sha256": "193610b39162670016d05ffca90a1804cd105205570751550b126796c2fa08d1",
+      "naturalnessReview": "passed",
+      "reviewedAt": "2026-11-08T20:56:19.600166+00:00",
+      "notes": "Visually inspected the labelled original-frame QA contact sheet: realistic edible textures and ordinary household tableware, recognisable Swedish meatballs with creamy gravy presentation, recipe-listed components, no people, text, watermark or unrelated garnish. Camera angles and sharing/plated compositions vary across the batch. Photograph portions are representative; this review does not claim a kitchen test."
+    },
+    {
+      "id": "beef-olives-with-mash",
+      "image": "release-assets/basketboss-v17/images/new/beef-olives-with-mash.webp",
+      "sha256": "4aa91c3758bc0ba8d777f1c5b084e88828b5a45edb39c855d7da1a284ae2f546",
+      "naturalnessReview": "passed",
+      "reviewedAt": "2026-11-08T20:56:19.600166+00:00",
+      "notes": "Visually inspected the labelled original-frame QA contact sheet: realistic edible textures and ordinary household tableware, recognisable Beef olives with mash presentation, recipe-listed components, no people, text, watermark or unrelated garnish. Camera angles and sharing/plated compositions vary across the batch. Photograph portions are representative; this review does not claim a kitchen test."
+    },
+    {
+      "id": "cock-a-leekie-soup-with-bread",
+      "image": "release-assets/basketboss-v17/images/new/cock-a-leekie-soup-with-bread.webp",
+      "sha256": "4df0e881e93186dacc45f3f3bf7839b0772304b49e6e509db490f33c229c824e",
+      "naturalnessReview": "passed",
+      "reviewedAt": "2026-11-08T20:56:19.600166+00:00",
+      "notes": "Visually inspected the labelled original-frame QA contact sheet: realistic edible textures and ordinary household tableware, recognisable Cock-a-leekie soup with bread presentation, recipe-listed components, no people, text, watermark or unrelated garnish. Camera angles and sharing/plated compositions vary across the batch. Photograph portions are representative; this review does not claim a kitchen test."
+    },
+    {
+      "id": "scotch-broth-with-lamb-and-barley",
+      "image": "release-assets/basketboss-v17/images/new/scotch-broth-with-lamb-and-barley.webp",
+      "sha256": "00cc7c9c2ac68e38ac18ae7ec069e70b114778dcc594da70dc25714276512d34",
+      "naturalnessReview": "passed",
+      "reviewedAt": "2026-11-08T20:56:19.600166+00:00",
+      "notes": "Visually inspected the labelled original-frame QA contact sheet: realistic edible textures and ordinary household tableware, recognisable Scotch broth with lamb and barley presentation, recipe-listed components, no people, text, watermark or unrelated garnish. Camera angles and sharing/plated compositions vary across the batch. Photograph portions are representative; this review does not claim a kitchen test."
+    },
+    {
+      "id": "tartiflette-style-potato-bake",
+      "image": "release-assets/basketboss-v17/images/new/tartiflette-style-potato-bake.webp",
+      "sha256": "01e497021cf1c7e0d975e8d07ca350e137bb84247d6a5e15d4efe5c31e58e56a",
+      "naturalnessReview": "passed",
+      "reviewedAt": "2026-11-08T20:56:19.600166+00:00",
+      "notes": "Visually inspected the labelled original-frame QA contact sheet: realistic edible textures and ordinary household tableware, recognisable Tartiflette-style potato bake presentation, recipe-listed components, no people, text, watermark or unrelated garnish. Camera angles and sharing/plated compositions vary across the batch. Photograph portions are representative; this review does not claim a kitchen test."
+    },
+    {
+      "id": "roast-vegetable-crumble-with-cheddar-oats",
+      "image": "release-assets/basketboss-v17/images/new/roast-vegetable-crumble-with-cheddar-oats.webp",
+      "sha256": "c0f1e648f46c7a4c2b9ff96dbe28d969bbe172b942d8467df2014ee9f8b710ad",
+      "naturalnessReview": "passed",
+      "reviewedAt": "2026-11-08T20:56:19.600166+00:00",
+      "notes": "Visually inspected the labelled original-frame QA contact sheet: realistic edible textures and ordinary household tableware, recognisable Roast vegetable crumble with Cheddar oats presentation, recipe-listed components, no people, text, watermark or unrelated garnish. Camera angles and sharing/plated compositions vary across the batch. Photograph portions are representative; this review does not claim a kitchen test."
+    },
+    {
+      "id": "lentil-and-walnut-nut-roast",
+      "image": "release-assets/basketboss-v17/images/new/lentil-and-walnut-nut-roast.webp",
+      "sha256": "fa5514dcdc85aac2c1c878d1c4dfd75a6fa1d8372b5bf208ae5f6754ac71e0eb",
+      "naturalnessReview": "passed",
+      "reviewedAt": "2026-11-08T20:56:19.600166+00:00",
+      "notes": "Visually inspected the labelled original-frame QA contact sheet: realistic edible textures and ordinary household tableware, recognisable Lentil and walnut nut roast presentation, recipe-listed components, no people, text, watermark or unrelated garnish. Camera angles and sharing/plated compositions vary across the batch. Photograph portions are representative; this review does not claim a kitchen test."
+    },
+    {
+      "id": "panzanella-bread-salad",
+      "image": "release-assets/basketboss-v17/images/new/panzanella-bread-salad.webp",
+      "sha256": "a5c3d903f890808bb1816dbe44a17be65b31fb02632e3668a56f465a1a120627",
+      "naturalnessReview": "passed",
+      "reviewedAt": "2026-11-08T20:56:19.600166+00:00",
+      "notes": "Visually inspected the labelled original-frame QA contact sheet: realistic edible textures and ordinary household tableware, recognisable Panzanella bread salad presentation, recipe-listed components, no people, text, watermark or unrelated garnish. Camera angles and sharing/plated compositions vary across the batch. Photograph portions are representative; this review does not claim a kitchen test."
+    },
+    {
+      "id": "salade-lyonnaise-with-poached-eggs",
+      "image": "release-assets/basketboss-v17/images/new/salade-lyonnaise-with-poached-eggs.webp",
+      "sha256": "e3109777e7201f5b3c420dcb6a73a03b4631bb5ab47d9dc3d3d443dfcae0f898",
+      "naturalnessReview": "passed",
+      "reviewedAt": "2026-11-08T20:56:19.600166+00:00",
+      "notes": "Visually inspected the labelled original-frame QA contact sheet: realistic edible textures and ordinary household tableware, recognisable Salade Lyonnaise with poached eggs presentation, recipe-listed components, no people, text, watermark or unrelated garnish. Camera angles and sharing/plated compositions vary across the batch. Photograph portions are representative; this review does not claim a kitchen test."
+    },
+    {
+      "id": "crispy-bacon-and-cheddar-potato-skins",
+      "image": "release-assets/basketboss-v17/images/new/crispy-bacon-and-cheddar-potato-skins.webp",
+      "sha256": "30f92d982638079c364ae72c704987751b42f94b9ca6a78ac2db5ae343a5a7fd",
+      "naturalnessReview": "passed",
+      "reviewedAt": "2026-11-08T20:56:19.600166+00:00",
+      "notes": "Visually inspected the labelled original-frame QA contact sheet: realistic edible textures and ordinary household tableware, recognisable Crispy bacon and Cheddar potato skins presentation, recipe-listed components, no people, text, watermark or unrelated garnish. Camera angles and sharing/plated compositions vary across the batch. Photograph portions are representative; this review does not claim a kitchen test."
+    },
+    {
+      "id": "southern-chicken-and-waffles",
+      "image": "release-assets/basketboss-v17/images/new/southern-chicken-and-waffles.webp",
+      "sha256": "e7c801847b9d05773755bb3201efce3723a9d52afc9e9204b7051d44995193d7",
+      "naturalnessReview": "passed",
+      "reviewedAt": "2026-11-08T20:56:19.600166+00:00",
+      "notes": "Visually inspected the labelled original-frame QA contact sheet: realistic edible textures and ordinary household tableware, recognisable Southern chicken and waffles presentation, recipe-listed components, no people, text, watermark or unrelated garnish. Camera angles and sharing/plated compositions vary across the batch. Photograph portions are representative; this review does not claim a kitchen test."
+    },
+    {
+      "id": "staffordshire-oatcakes-with-bacon-and-cheese",
+      "image": "release-assets/basketboss-v17/images/new/staffordshire-oatcakes-with-bacon-and-cheese.webp",
+      "sha256": "42468e639df2cb13f7aebbe84565fea35d6796a2f4b288dfc79ae095dce7e583",
+      "naturalnessReview": "passed",
+      "reviewedAt": "2026-11-08T20:56:19.600166+00:00",
+      "notes": "Visually inspected the labelled original-frame QA contact sheet: realistic edible textures and ordinary household tableware, recognisable Staffordshire oatcakes with bacon and cheese presentation, recipe-listed components, no people, text, watermark or unrelated garnish. Camera angles and sharing/plated compositions vary across the batch. Photograph portions are representative; this review does not claim a kitchen test."
+    },
+    {
+      "id": "homemade-hot-cross-buns",
+      "image": "release-assets/basketboss-v17/images/new/homemade-hot-cross-buns.webp",
+      "sha256": "9d12ca3d8986c3f2c1b660e2b7d761f96d40404b328938cda77d94776f82f317",
+      "naturalnessReview": "passed",
+      "reviewedAt": "2026-11-08T20:56:19.600166+00:00",
+      "notes": "Visually inspected the labelled original-frame QA contact sheet: realistic edible textures and ordinary household tableware, recognisable Homemade hot cross buns presentation, recipe-listed components, no people, text, watermark or unrelated garnish. Camera angles and sharing/plated compositions vary across the batch. Photograph portions are representative; this review does not claim a kitchen test."
+    },
+    {
+      "id": "breakfast-soda-bread-with-marmalade",
+      "image": "release-assets/basketboss-v17/images/new/breakfast-soda-bread-with-marmalade.webp",
+      "sha256": "61dadaf2240c600f56106e7bdff32e1eb110862fc27f15613943dc4dc3b12ee0",
+      "naturalnessReview": "passed",
+      "reviewedAt": "2026-11-08T20:56:19.600166+00:00",
+      "notes": "Visually inspected the labelled original-frame QA contact sheet: realistic edible textures and ordinary household tableware, recognisable Breakfast soda bread with marmalade presentation, recipe-listed components, no people, text, watermark or unrelated garnish. Camera angles and sharing/plated compositions vary across the batch. Photograph portions are representative; this review does not claim a kitchen test."
+    },
+    {
+      "id": "homemade-malt-loaf",
+      "image": "release-assets/basketboss-v17/images/new/homemade-malt-loaf.webp",
+      "sha256": "fd9006561783769dc0405d49625c0a2f2505789e78e69ccffad8b5634e59158a",
+      "naturalnessReview": "passed",
+      "reviewedAt": "2026-11-08T20:56:19.600166+00:00",
+      "notes": "Visually inspected the labelled original-frame QA contact sheet: realistic edible textures and ordinary household tableware, recognisable Homemade malt loaf presentation, recipe-listed components, no people, text, watermark or unrelated garnish. Camera angles and sharing/plated compositions vary across the batch. Photograph portions are representative; this review does not claim a kitchen test."
+    },
+    {
+      "id": "croque-madame",
+      "image": "release-assets/basketboss-v17/images/new/croque-madame.webp",
+      "sha256": "6ae66f228bf945c911d4a05aaa4b6d1d9e9271c0318205488e99d1317fdc2ba8",
+      "naturalnessReview": "passed",
+      "reviewedAt": "2026-11-08T20:56:19.600166+00:00",
+      "notes": "Visually inspected the labelled original-frame QA contact sheet: realistic edible textures and ordinary household tableware, recognisable Croque Madame presentation, recipe-listed components, no people, text, watermark or unrelated garnish. Camera angles and sharing/plated compositions vary across the batch. Photograph portions are representative; this review does not claim a kitchen test."
+    },
+    {
+      "id": "baked-eggs-in-cream-with-chives",
+      "image": "release-assets/basketboss-v17/images/new/baked-eggs-in-cream-with-chives.webp",
+      "sha256": "6ded2d01f2356a1e862b95d134709ecf7d54000419106574951bd94650d4f325",
+      "naturalnessReview": "passed",
+      "reviewedAt": "2026-11-08T20:56:19.600166+00:00",
+      "notes": "Visually inspected the labelled original-frame QA contact sheet: realistic edible textures and ordinary household tableware, recognisable Baked eggs in cream with chives presentation, recipe-listed components, no people, text, watermark or unrelated garnish. Camera angles and sharing/plated compositions vary across the batch. Photograph portions are representative; this review does not claim a kitchen test."
+    },
+    {
+      "id": "pan-con-tomate-with-cured-ham",
+      "image": "release-assets/basketboss-v17/images/new/pan-con-tomate-with-cured-ham.webp",
+      "sha256": "d183336d209c5bf151d0a8c3bfeb038ac6589c6acf039d74fc71273bf1eabd7b",
+      "naturalnessReview": "passed",
+      "reviewedAt": "2026-11-08T20:56:19.600166+00:00",
+      "notes": "Visually inspected the labelled original-frame QA contact sheet: realistic edible textures and ordinary household tableware, recognisable Pan con tomate with cured ham presentation, recipe-listed components, no people, text, watermark or unrelated garnish. Camera angles and sharing/plated compositions vary across the batch. Photograph portions are representative; this review does not claim a kitchen test."
+    },
+    {
+      "id": "sausage-egg-and-cheese-breakfast-muffins",
+      "image": "release-assets/basketboss-v17/images/new/sausage-egg-and-cheese-breakfast-muffins.webp",
+      "sha256": "8ff45d8e42330a4bc8a82c9fa16c64577a80919d26840a5b64c5e199d8655a0b",
+      "naturalnessReview": "passed",
+      "reviewedAt": "2026-11-08T20:56:19.600166+00:00",
+      "notes": "Visually inspected the labelled original-frame QA contact sheet: realistic edible textures and ordinary household tableware, recognisable Sausage, egg and cheese breakfast muffins presentation, recipe-listed components, no people, text, watermark or unrelated garnish. Camera angles and sharing/plated compositions vary across the batch. Photograph portions are representative; this review does not claim a kitchen test."
+    },
+    {
+      "id": "bacon-and-scrambled-egg-breakfast-quesadillas",
+      "image": "release-assets/basketboss-v17/images/new/bacon-and-scrambled-egg-breakfast-quesadillas.webp",
+      "sha256": "1f23fea68794a1bbc73a29748c7dd5f254f217bec933306627777055943b4e15",
+      "naturalnessReview": "passed",
+      "reviewedAt": "2026-11-08T20:56:19.600166+00:00",
+      "notes": "Visually inspected the labelled original-frame QA contact sheet: realistic edible textures and ordinary household tableware, recognisable Bacon and scrambled egg breakfast quesadillas presentation, recipe-listed components, no people, text, watermark or unrelated garnish. Camera angles and sharing/plated compositions vary across the batch. Photograph portions are representative; this review does not claim a kitchen test."
+    },
+    {
+      "id": "mushroom-bhaji-with-naan",
+      "image": "release-assets/basketboss-v17/images/new/mushroom-bhaji-with-naan.webp",
+      "sha256": "65e615acd2340f52e0dceaf96b198749ce0cdade76ab3148e95ec4c0b6ef248e",
+      "naturalnessReview": "passed",
+      "reviewedAt": "2026-11-08T20:39:25.066452+00:00",
+      "notes": "Original generated photo visually inspected against source method and ingredient ledger. Realistic food and tableware, distinctive angle/presentation, no text/hands/CGI or unlisted sides/garnish."
+    },
+    {
+      "id": "keema-naan",
+      "image": "release-assets/basketboss-v17/images/new/keema-naan.webp",
+      "sha256": "72904d2441b03879b6c42de5462cf4868e28709a232d8ce64989d484d760dbeb",
+      "naturalnessReview": "passed",
+      "reviewedAt": "2026-11-08T20:39:25.066463+00:00",
+      "notes": "Original generated photo visually inspected against source method and ingredient ledger. Realistic food and tableware, distinctive angle/presentation, no text/hands/CGI or unlisted sides/garnish."
+    },
+    {
+      "id": "chicken-pakora-with-mint-yoghurt",
+      "image": "release-assets/basketboss-v17/images/new/chicken-pakora-with-mint-yoghurt.webp",
+      "sha256": "a01351f2fb442842b67d273aae515fc6b9c81c76c648d7ad3b67d2ce45f1e917",
+      "naturalnessReview": "passed",
+      "reviewedAt": "2026-11-08T20:39:25.066465+00:00",
+      "notes": "Original generated photo visually inspected against source method and ingredient ledger. Realistic food and tableware, distinctive angle/presentation, no text/hands/CGI or unlisted sides/garnish."
+    },
+    {
+      "id": "chinese-ginger-and-spring-onion-lamb-with-rice",
+      "image": "release-assets/basketboss-v17/images/new/chinese-ginger-and-spring-onion-lamb-with-rice.webp",
+      "sha256": "cb15853ab2639ee060167d206dd600b03abeb086d1f9aa1305f608a1a468f7cb",
+      "naturalnessReview": "passed",
+      "reviewedAt": "2026-11-08T20:41:35.592487+00:00",
+      "notes": "Original generated photo visually inspected against source method and ingredient ledger. Realistic food and tableware, distinctive angle/presentation, no text/hands/CGI or unlisted sides/garnish."
+    },
+    {
+      "id": "salt-and-pepper-chips",
+      "image": "release-assets/basketboss-v17/images/new/salt-and-pepper-chips.webp",
+      "sha256": "1ba804dae6aa996f4968f8f23ce362da4e629a617fa0f0f408eea1a2dc464f19",
+      "naturalnessReview": "passed",
+      "reviewedAt": "2026-11-08T20:41:35.592497+00:00",
+      "notes": "Original generated photo visually inspected against source method and ingredient ledger. Realistic food and tableware, distinctive angle/presentation, no text/hands/CGI or unlisted sides/garnish."
+    },
+    {
+      "id": "buffalo-chicken-wings-with-blue-cheese-dip",
+      "image": "release-assets/basketboss-v17/images/new/buffalo-chicken-wings-with-blue-cheese-dip.webp",
+      "sha256": "89323b496d09a0eacaada443c439ebb4ecf9bdec03eb2ba39dd1d9a5772675bc",
+      "naturalnessReview": "passed",
+      "reviewedAt": "2026-11-08T20:41:35.592500+00:00",
+      "notes": "Original generated photo visually inspected against source method and ingredient ledger. Realistic food and tableware, distinctive angle/presentation, no text/hands/CGI or unlisted sides/garnish."
+    },
+    {
+      "id": "battered-sausage-with-chip-shop-curry-sauce",
+      "image": "release-assets/basketboss-v17/images/new/battered-sausage-with-chip-shop-curry-sauce.webp",
+      "sha256": "f416afc4d40cd2f777eff6dc5f3492338c66dc5c5f96ed86e6914264462e4388",
+      "naturalnessReview": "passed",
+      "reviewedAt": "2026-11-08T20:43:19.749340+00:00",
+      "notes": "Original generated photo visually inspected against source method and ingredient ledger. Realistic food and tableware, distinctive angle/presentation, no text/hands/CGI or unlisted sides/garnish."
+    },
+    {
+      "id": "beef-barbacoa-tacos",
+      "image": "release-assets/basketboss-v17/images/new/beef-barbacoa-tacos.webp",
+      "sha256": "d20bfef4c96138930f36eea7c94a65549759451ac375b0e01c5c12064bbb923c",
+      "naturalnessReview": "passed",
+      "reviewedAt": "2026-11-08T20:43:19.749348+00:00",
+      "notes": "Original generated photo visually inspected against source method and ingredient ledger. Realistic food and tableware, distinctive angle/presentation, no text/hands/CGI or unlisted sides/garnish."
+    },
+    {
+      "id": "chicken-fajita-crunchwraps",
+      "image": "release-assets/basketboss-v17/images/new/chicken-fajita-crunchwraps.webp",
+      "sha256": "aa3de1f738cd873a5192f71f78508d63ed01dd62e9f2d243847195d2dd93ff79",
+      "naturalnessReview": "passed",
+      "reviewedAt": "2026-11-08T20:43:19.749351+00:00",
+      "notes": "Original generated photo visually inspected against source method and ingredient ledger. Realistic food and tableware, distinctive angle/presentation, no text/hands/CGI or unlisted sides/garnish."
+    },
+    {
+      "id": "mozzarella-sticks-with-marinara",
+      "image": "release-assets/basketboss-v17/images/new/mozzarella-sticks-with-marinara.webp",
+      "sha256": "772faf4e1a400a3edb5691486fd245f19cc60a5e0c8540ccd0acc99c25cc66cc",
+      "naturalnessReview": "passed",
+      "reviewedAt": "2026-11-08T20:44:51.123313+00:00",
+      "notes": "Original generated photo visually inspected against source method and ingredient ledger. Realistic food and tableware, distinctive angle/presentation, no text/hands/CGI or unlisted sides/garnish."
+    },
+    {
+      "id": "jalapeno-poppers-with-ranch-dip",
+      "image": "release-assets/basketboss-v17/images/new/jalapeno-poppers-with-ranch-dip.webp",
+      "sha256": "8a74b8ee6f10843db73cdf72ef5937a6e1591801e2f24c17bc8e889f73937669",
+      "naturalnessReview": "passed",
+      "reviewedAt": "2026-11-08T20:44:51.123324+00:00",
+      "notes": "Original generated photo visually inspected against source method and ingredient ledger. Realistic food and tableware, distinctive angle/presentation, no text/hands/CGI or unlisted sides/garnish."
+    },
+    {
+      "id": "chilli-con-queso-with-tortilla-chips",
+      "image": "release-assets/basketboss-v17/images/new/chilli-con-queso-with-tortilla-chips.webp",
+      "sha256": "56a555a3c6e589525ca1de84519027a1100c69fe8c7c3851cc8b7138b60b6773",
+      "naturalnessReview": "passed",
+      "reviewedAt": "2026-11-08T20:44:51.123326+00:00",
+      "notes": "Original generated photo visually inspected against source method and ingredient ledger. Realistic food and tableware, distinctive angle/presentation, no text/hands/CGI or unlisted sides/garnish."
+    },
+    {
+      "id": "beef-bourguignon-with-mash",
+      "image": "release-assets/basketboss-v17/images/new/beef-bourguignon-with-mash.webp",
+      "sha256": "12f1b694d15313f2b8454dae1c0abc50928dece16723e17cafb69f957567fc0b",
+      "naturalnessReview": "passed",
+      "reviewedAt": "2026-11-08T20:47:02.001300+00:00",
+      "notes": "Original generated photo visually inspected against source method and ingredient ledger. Realistic food and tableware, distinctive angle/presentation, no text/hands/CGI or unlisted sides/garnish."
+    },
+    {
+      "id": "chicken-cordon-bleu-with-green-salad",
+      "image": "release-assets/basketboss-v17/images/new/chicken-cordon-bleu-with-green-salad.webp",
+      "sha256": "e0137422640364b6d7febb44f0229b6af5179bb14bb6801ff61738a8e05c7c69",
+      "naturalnessReview": "passed",
+      "reviewedAt": "2026-11-08T20:47:02.001309+00:00",
+      "notes": "Original generated photo visually inspected against source method and ingredient ledger. Realistic food and tableware, distinctive angle/presentation, no text/hands/CGI or unlisted sides/garnish."
+    },
+    {
+      "id": "lamb-cutlets-with-mint-pesto-and-dauphinoise",
+      "image": "release-assets/basketboss-v17/images/new/lamb-cutlets-with-mint-pesto-and-dauphinoise.webp",
+      "sha256": "1626044b31b15b81b7a343cc97d48b2a6028a08e371118a6d0b1688aa88f188c",
+      "naturalnessReview": "passed",
+      "reviewedAt": "2026-11-08T20:47:02.001311+00:00",
+      "notes": "Original generated photo visually inspected against source method and ingredient ledger. Realistic food and tableware, distinctive angle/presentation, no text/hands/CGI or unlisted sides/garnish."
+    },
+    {
+      "id": "steak-frites-with-cafe-de-paris-butter",
+      "image": "release-assets/basketboss-v17/images/new/steak-frites-with-cafe-de-paris-butter.webp",
+      "sha256": "d8f4d8749cccff5a9a19284b67c5669a5738f2e1922a4f48df05e9007b32a9fe",
+      "naturalnessReview": "passed",
+      "reviewedAt": "2026-11-08T20:49:24.320052+00:00",
+      "notes": "Original generated photo visually inspected against source method and ingredient ledger. Realistic food and tableware, distinctive angle/presentation, no text/hands/CGI or unlisted sides/garnish."
+    },
+    {
+      "id": "hake-with-clams-and-parsley-sauce",
+      "image": "release-assets/basketboss-v17/images/new/hake-with-clams-and-parsley-sauce.webp",
+      "sha256": "58c777c5847df187237d006f9b7f4c9b08752dea30121d7949a896fd21861e5c",
+      "naturalnessReview": "passed",
+      "reviewedAt": "2026-11-08T20:49:24.320061+00:00",
+      "notes": "Original generated photo visually inspected against source method and ingredient ledger. Realistic food and tableware, distinctive angle/presentation, no text/hands/CGI or unlisted sides/garnish."
+    },
+    {
+      "id": "king-prawn-and-chorizo-skewers-with-lemon-potatoes",
+      "image": "release-assets/basketboss-v17/images/new/king-prawn-and-chorizo-skewers-with-lemon-potatoes.webp",
+      "sha256": "e473f0e15cfc46e829c475b9825bf147e02f9580d2ef2bda84295f4a9e999e72",
+      "naturalnessReview": "passed",
+      "reviewedAt": "2026-11-08T20:49:24.320064+00:00",
+      "notes": "Original generated photo visually inspected against source method and ingredient ledger. Realistic food and tableware, distinctive angle/presentation, no text/hands/CGI or unlisted sides/garnish."
+    },
+    {
+      "id": "sole-veronique-with-steamed-potatoes",
+      "image": "release-assets/basketboss-v17/images/new/sole-veronique-with-steamed-potatoes.webp",
+      "sha256": "b26cac197e71f22bc4de37b1387909e2f68d12725cc4410afe67d4ec9474624d",
+      "naturalnessReview": "passed",
+      "reviewedAt": "2026-11-08T20:51:08.769195+00:00",
+      "notes": "Original generated photo visually inspected against source method and ingredient ledger. Realistic food and tableware, distinctive angle/presentation, no text/hands/CGI or unlisted sides/garnish."
+    },
+    {
+      "id": "potted-brown-shrimp-with-toast",
+      "image": "release-assets/basketboss-v17/images/new/potted-brown-shrimp-with-toast.webp",
+      "sha256": "4fd2cacdfc06d2a009e1100cd24a19bf9c3c0ec60a3138dfb109efc1eb866ce0",
+      "naturalnessReview": "passed",
+      "reviewedAt": "2026-11-08T20:51:08.769204+00:00",
+      "notes": "Original generated photo visually inspected against source method and ingredient ledger. Realistic food and tableware, distinctive angle/presentation, no text/hands/CGI or unlisted sides/garnish."
+    },
+    {
+      "id": "open-crab-melts-with-lemon-salad",
+      "image": "release-assets/basketboss-v17/images/new/open-crab-melts-with-lemon-salad.webp",
+      "sha256": "119f526c3981e7b43042e462a7b1bdce90a8867e1815faebca41902ceb295c5a",
+      "naturalnessReview": "passed",
+      "reviewedAt": "2026-11-08T20:51:08.769207+00:00",
+      "notes": "Original generated photo visually inspected against source method and ingredient ledger. Realistic food and tableware, distinctive angle/presentation, no text/hands/CGI or unlisted sides/garnish."
+    },
+    {
+      "id": "smoked-haddock-scotch-eggs-with-mustard-leaves",
+      "image": "release-assets/basketboss-v17/images/new/smoked-haddock-scotch-eggs-with-mustard-leaves.webp",
+      "sha256": "d31da6824476811eee3a19c604ae5ea5bd5ef01007a55b17b64b28af6ed29346",
+      "naturalnessReview": "passed",
+      "reviewedAt": "2026-11-08T20:53:35.680378+00:00",
+      "notes": "Original generated photo visually inspected against source method and ingredient ledger. Realistic food and tableware, distinctive angle/presentation, no text/hands/CGI or unlisted sides/garnish."
+    },
+    {
+      "id": "spaghetti-alle-vongole",
+      "image": "release-assets/basketboss-v17/images/new/spaghetti-alle-vongole.webp",
+      "sha256": "b3b3099b7140a9e0ad0613821492fd350a1a09e2acbf46bc00db14380227907f",
+      "naturalnessReview": "passed",
+      "reviewedAt": "2026-11-08T20:53:35.680394+00:00",
+      "notes": "Original generated photo visually inspected against source method and ingredient ledger. Realistic food and tableware, distinctive angle/presentation, no text/hands/CGI or unlisted sides/garnish."
+    },
+    {
+      "id": "roast-beef-tonnato-with-green-salad",
+      "image": "release-assets/basketboss-v17/images/new/roast-beef-tonnato-with-green-salad.webp",
+      "sha256": "1eefba5b177261b757f00c759f7be21af204afdf2118d0be5622033cb1467ebc",
+      "naturalnessReview": "passed",
+      "reviewedAt": "2026-11-08T20:53:35.680396+00:00",
+      "notes": "Original generated photo visually inspected against source method and ingredient ledger. Realistic food and tableware, distinctive angle/presentation, no text/hands/CGI or unlisted sides/garnish."
+    },
+    {
+      "id": "hunters-chicken-with-chips",
+      "image": "release-assets/basketboss-v17/images/new/hunters-chicken-with-chips.webp",
+      "sha256": "f4a37448119e87660ca82faa5631cf48b31011c525066d779fe5184e3f88050b",
+      "naturalnessReview": "passed",
+      "reviewedAt": "2026-11-08T21:40:12.777450+00:00",
+      "notes": "Visually reviewed original images and labelled QA pages: plausible cooked form matching the recipe and ingredient ledger, household tableware with varied close, overhead and sharing compositions. Export preserves the complete 1448 x 1086 image; no watermark or unrelated side dish."
+    },
+    {
+      "id": "lancashire-lamb-hotpot",
+      "image": "release-assets/basketboss-v17/images/new/lancashire-lamb-hotpot.webp",
+      "sha256": "d75e109956f8966805b48fd0c3e3dc70f577dd324e581fc7fb23a2b4cfb52a13",
+      "naturalnessReview": "passed",
+      "reviewedAt": "2026-11-08T20:56:31.868852+00:00",
+      "notes": "Original generated photo visually inspected against source method and ingredient ledger. Realistic food and tableware, distinctive angle/presentation, no text/hands/CGI or unlisted sides/garnish."
+    },
+    {
+      "id": "bacon-and-onion-suet-roly-poly",
+      "image": "release-assets/basketboss-v17/images/new/bacon-and-onion-suet-roly-poly.webp",
+      "sha256": "223e027c4c7463d342a7a215b87f68adf16d20a1b4823016ed0319ec9cb16cc9",
+      "naturalnessReview": "passed",
+      "reviewedAt": "2026-11-08T20:56:31.868862+00:00",
+      "notes": "Original generated photo visually inspected against source method and ingredient ledger. Realistic food and tableware, distinctive angle/presentation, no text/hands/CGI or unlisted sides/garnish."
+    },
+    {
+      "id": "steak-pizzaiola-with-potatoes",
+      "image": "release-assets/basketboss-v17/images/new/steak-pizzaiola-with-potatoes.webp",
+      "sha256": "58acbfb877dfc93ef11881f8916747a9c5b05cadec6357581cbca006b52bfa4a",
+      "naturalnessReview": "passed",
+      "reviewedAt": "2026-11-08T20:56:31.868865+00:00",
+      "notes": "Original generated photo visually inspected against source method and ingredient ledger. Realistic food and tableware, distinctive angle/presentation, no text/hands/CGI or unlisted sides/garnish."
+    },
+    {
+      "id": "sweetcorn-spoonbread-with-black-bean-salad",
+      "image": "release-assets/basketboss-v17/images/new/sweetcorn-spoonbread-with-black-bean-salad.webp",
+      "sha256": "e4a6e3d023cac16e114954c146003ab9d86f4cc5654d7a7b93197b6a88084a54",
+      "naturalnessReview": "passed",
+      "reviewedAt": "2026-11-08T21:40:12.777452+00:00",
+      "notes": "Visually reviewed original images and labelled QA pages: plausible cooked form matching the recipe and ingredient ledger, household tableware with varied close, overhead and sharing compositions. Export preserves the complete 1448 x 1086 image; no watermark or unrelated side dish."
+    },
+    {
+      "id": "succotash-with-baked-eggs",
+      "image": "release-assets/basketboss-v17/images/new/succotash-with-baked-eggs.webp",
+      "sha256": "840cd79bd65aff7f50e3cc1fe8bb43867bda5bca2b418bb99d9b5cdbfb47ac0b",
+      "naturalnessReview": "passed",
+      "reviewedAt": "2026-11-08T21:40:12.777452+00:00",
+      "notes": "Visually reviewed original images and labelled QA pages: plausible cooked form matching the recipe and ingredient ledger, household tableware with varied close, overhead and sharing compositions. Export preserves the complete 1448 x 1086 image; no watermark or unrelated side dish."
+    },
+    {
+      "id": "homemade-corn-dogs-with-slaw",
+      "image": "release-assets/basketboss-v17/images/new/homemade-corn-dogs-with-slaw.webp",
+      "sha256": "9d8de71f0cae14095d6cc3fce590916741680003d7eb64e4c467d6385a95ac4d",
+      "naturalnessReview": "passed",
+      "reviewedAt": "2026-11-08T21:40:12.777453+00:00",
+      "notes": "Visually reviewed original images and labelled QA pages: plausible cooked form matching the recipe and ingredient ledger, household tableware with varied close, overhead and sharing compositions. Export preserves the complete 1448 x 1086 image; no watermark or unrelated side dish."
+    },
+    {
+      "id": "american-three-bean-salad-with-cornbread",
+      "image": "release-assets/basketboss-v17/images/new/american-three-bean-salad-with-cornbread.webp",
+      "sha256": "7ef4248668707c819763bb16899829bdcae8fc58ace9963d47e2176b6234a697",
+      "naturalnessReview": "passed",
+      "reviewedAt": "2026-11-08T21:40:12.777454+00:00",
+      "notes": "Visually reviewed original images and labelled QA pages: plausible cooked form matching the recipe and ingredient ledger, household tableware with varied close, overhead and sharing compositions. Export preserves the complete 1448 x 1086 image; no watermark or unrelated side dish."
+    },
+    {
+      "id": "classic-blt-sandwiches",
+      "image": "release-assets/basketboss-v17/images/new/classic-blt-sandwiches.webp",
+      "sha256": "71048a9edde5a62a39b6932b7d84e246cdfd990d7d5f93f95da0e89bb8b64260",
+      "naturalnessReview": "passed",
+      "reviewedAt": "2026-11-08T21:40:12.777455+00:00",
+      "notes": "Visually reviewed original images and labelled QA pages: plausible cooked form matching the recipe and ingredient ledger, household tableware with varied close, overhead and sharing compositions. Export preserves the complete 1448 x 1086 image; no watermark or unrelated side dish."
+    },
+    {
+      "id": "tuna-melt-toasties",
+      "image": "release-assets/basketboss-v17/images/new/tuna-melt-toasties.webp",
+      "sha256": "6cd123fe05f4a38c4b60286db48cd5bb2c82030d42b104fdfef1d0a8d684f871",
+      "naturalnessReview": "passed",
+      "reviewedAt": "2026-11-08T21:40:12.777456+00:00",
+      "notes": "Visually reviewed original images and labelled QA pages: plausible cooked form matching the recipe and ingredient ledger, household tableware with varied close, overhead and sharing compositions. Export preserves the complete 1448 x 1086 image; no watermark or unrelated side dish."
+    },
+    {
+      "id": "monte-cristo-sandwiches",
+      "image": "release-assets/basketboss-v17/images/new/monte-cristo-sandwiches.webp",
+      "sha256": "3b6eab61a88af178e7303c7808a5ff0664fec1d5d9d080a9000b122c2f96020b",
+      "naturalnessReview": "passed",
+      "reviewedAt": "2026-11-08T21:40:12.777457+00:00",
+      "notes": "Visually reviewed original images and labelled QA pages: plausible cooked form matching the recipe and ingredient ledger, household tableware with varied close, overhead and sharing compositions. Export preserves the complete 1448 x 1086 image; no watermark or unrelated side dish."
+    },
+    {
+      "id": "pork-and-liver-faggots-with-mash",
+      "image": "release-assets/basketboss-v17/images/new/pork-and-liver-faggots-with-mash.webp",
+      "sha256": "e00e9d7625eabf16ddbd727c3a2aae385daf8f8828bf947bdf1a72c8c5b97fa9",
+      "naturalnessReview": "passed",
+      "reviewedAt": "2026-11-08T21:40:12.777458+00:00",
+      "notes": "Visually reviewed original images and labelled QA pages: plausible cooked form matching the recipe and ingredient ledger, household tableware with varied close, overhead and sharing compositions. Export preserves the complete 1448 x 1086 image; no watermark or unrelated side dish."
+    },
+    {
+      "id": "cajun-dirty-rice",
+      "image": "release-assets/basketboss-v17/images/new/cajun-dirty-rice.webp",
+      "sha256": "2ec41daccac0fe0865b4b8d2c16a7f775423f5f79d7b10d431ae6c50ba8fa012",
+      "naturalnessReview": "passed",
+      "reviewedAt": "2026-11-08T21:40:12.777461+00:00",
+      "notes": "Visually reviewed original images and labelled QA pages: plausible cooked form matching the recipe and ingredient ledger, household tableware with varied close, overhead and sharing compositions. Export preserves the complete 1448 x 1086 image; no watermark or unrelated side dish."
+    },
+    {
+      "id": "cauliflower-steaks-with-romesco-and-butter-beans",
+      "image": "release-assets/basketboss-v17/images/new/cauliflower-steaks-with-romesco-and-butter-beans.webp",
+      "sha256": "c84ae415be0d6e77cc9ac1c68b3ce5ff34ad54508770b1905b2aaa59a23cfcde",
+      "naturalnessReview": "passed",
+      "reviewedAt": "2026-11-08T21:40:12.777462+00:00",
+      "notes": "Visually reviewed original images and labelled QA pages: plausible cooked form matching the recipe and ingredient ledger, household tableware with varied close, overhead and sharing compositions. Export preserves the complete 1448 x 1086 image; no watermark or unrelated side dish."
+    },
+    {
+      "id": "roast-cabbage-wedges-with-cheddar-white-beans",
+      "image": "release-assets/basketboss-v17/images/new/roast-cabbage-wedges-with-cheddar-white-beans.webp",
+      "sha256": "f838c2c41a8429bbddd1ec5f510bf6acbc6a318fc68237a3b17dd3a108dea71c",
+      "naturalnessReview": "passed",
+      "reviewedAt": "2026-11-08T21:40:12.777463+00:00",
+      "notes": "Visually reviewed original images and labelled QA pages: plausible cooked form matching the recipe and ingredient ledger, household tableware with varied close, overhead and sharing compositions. Export preserves the complete 1448 x 1086 image; no watermark or unrelated side dish."
+    },
+    {
+      "id": "crispy-polenta-chips-with-tomato-bean-ragu",
+      "image": "release-assets/basketboss-v17/images/new/crispy-polenta-chips-with-tomato-bean-ragu.webp",
+      "sha256": "b7e2c8c99f66b3c046caa83888174dc44bee24f87752874c8625aaa312acbfdc",
+      "naturalnessReview": "passed",
+      "reviewedAt": "2026-11-08T21:40:12.777464+00:00",
+      "notes": "Visually reviewed original images and labelled QA pages: plausible cooked form matching the recipe and ingredient ledger, household tableware with varied close, overhead and sharing compositions. Export preserves the complete 1448 x 1086 image; no watermark or unrelated side dish."
+    },
+    {
+      "id": "peanut-butter-and-banana-smoothie-bowls",
+      "image": "release-assets/basketboss-v17/images/new/peanut-butter-and-banana-smoothie-bowls.webp",
+      "sha256": "4b901573136ead09c5205dc7ce974428050b298559bf727734cc226871742840",
+      "naturalnessReview": "passed",
+      "reviewedAt": "2026-11-08T21:40:12.777466+00:00",
+      "notes": "Visually reviewed original images and labelled QA pages: plausible cooked form matching the recipe and ingredient ledger, household tableware with varied close, overhead and sharing compositions. Export preserves the complete 1448 x 1086 image; no watermark or unrelated side dish."
+    },
+    {
+      "id": "warm-pear-and-quinoa-breakfast-bowls",
+      "image": "release-assets/basketboss-v17/images/new/warm-pear-and-quinoa-breakfast-bowls.webp",
+      "sha256": "db222d1554d361aa8fe808febfeb1a32671af34b2925763bb12d70145a1b323d",
+      "naturalnessReview": "passed",
+      "reviewedAt": "2026-11-08T21:40:12.777467+00:00",
+      "notes": "Visually reviewed original images and labelled QA pages: plausible cooked form matching the recipe and ingredient ledger, household tableware with varied close, overhead and sharing compositions. Export preserves the complete 1448 x 1086 image; no watermark or unrelated side dish."
+    },
+    {
+      "id": "baked-ricotta-with-roasted-plums",
+      "image": "release-assets/basketboss-v17/images/new/baked-ricotta-with-roasted-plums.webp",
+      "sha256": "5340a165be0a56910d2a1d12ee90c4ab8d22ae8bb7f2093267bdf999042cd227",
+      "naturalnessReview": "passed",
+      "reviewedAt": "2026-11-08T21:40:12.777468+00:00",
+      "notes": "Visually reviewed original images and labelled QA pages: plausible cooked form matching the recipe and ingredient ledger, household tableware with varied close, overhead and sharing compositions. Export preserves the complete 1448 x 1086 image; no watermark or unrelated side dish."
+    },
+    {
+      "id": "bacon-and-maple-cornbread-breakfast-muffins",
+      "image": "release-assets/basketboss-v17/images/new/bacon-and-maple-cornbread-breakfast-muffins.webp",
+      "sha256": "187da965ff0360c528c02c70dfb0c3b8bf49477348069c3d85ab0a39fb7beb38",
+      "naturalnessReview": "passed",
+      "reviewedAt": "2026-11-08T21:40:12.777469+00:00",
+      "notes": "Visually reviewed original images and labelled QA pages: plausible cooked form matching the recipe and ingredient ledger, household tableware with varied close, overhead and sharing compositions. Export preserves the complete 1448 x 1086 image; no watermark or unrelated side dish."
+    },
+    {
+      "id": "cinnamon-baked-apples-with-cottage-cheese-and-pecans",
+      "image": "release-assets/basketboss-v17/images/new/cinnamon-baked-apples-with-cottage-cheese-and-pecans.webp",
+      "sha256": "cf81189a7c2520ded4ecb24ced7432dc0e3ef37ce210d8272606c30a5a8954b8",
+      "naturalnessReview": "passed",
+      "reviewedAt": "2026-11-08T21:40:12.777470+00:00",
+      "notes": "Visually reviewed original images and labelled QA pages: plausible cooked form matching the recipe and ingredient ledger, household tableware with varied close, overhead and sharing compositions. Export preserves the complete 1448 x 1086 image; no watermark or unrelated side dish."
+    },
+    {
+      "id": "homemade-pork-and-sage-breakfast-patties",
+      "image": "release-assets/basketboss-v17/images/new/homemade-pork-and-sage-breakfast-patties.webp",
+      "sha256": "443f0f4d6fc5e228f3f376514aa6659f1ba1201129584e7737fd19e07990d6cb",
+      "naturalnessReview": "passed",
+      "reviewedAt": "2026-11-08T21:40:12.777471+00:00",
+      "notes": "Visually reviewed original images and labelled QA pages: plausible cooked form matching the recipe and ingredient ledger, household tableware with varied close, overhead and sharing compositions. Export preserves the complete 1448 x 1086 image; no watermark or unrelated side dish."
+    },
+    {
+      "id": "dutch-baby-with-lemon-and-blueberries",
+      "image": "release-assets/basketboss-v17/images/new/dutch-baby-with-lemon-and-blueberries.webp",
+      "sha256": "156431c46b93a9d506e7bd1037352d6354c5c820d91579d857e3c07fbe005b03",
+      "naturalnessReview": "passed",
+      "reviewedAt": "2026-11-08T21:40:12.777472+00:00",
+      "notes": "Visually reviewed original images and labelled QA pages: plausible cooked form matching the recipe and ingredient ledger, household tableware with varied close, overhead and sharing compositions. Export preserves the complete 1448 x 1086 image; no watermark or unrelated side dish."
+    },
+    {
+      "id": "cottage-cheese-cucumber-and-radish-crispbreads",
+      "image": "release-assets/basketboss-v17/images/new/cottage-cheese-cucumber-and-radish-crispbreads.webp",
+      "sha256": "ec21f17ca9dd72dfc7016d21ee5d4a6f6e73f13fd22c0402082775dd9587317a",
+      "naturalnessReview": "passed",
+      "reviewedAt": "2026-11-08T21:40:12.777475+00:00",
+      "notes": "Visually reviewed original images and labelled QA pages: plausible cooked form matching the recipe and ingredient ledger, household tableware with varied close, overhead and sharing compositions. Export preserves the complete 1448 x 1086 image; no watermark or unrelated side dish."
+    },
+    {
+      "id": "baked-grapefruit-with-honey-and-yoghurt",
+      "image": "release-assets/basketboss-v17/images/new/baked-grapefruit-with-honey-and-yoghurt.webp",
+      "sha256": "d71ae4cf5f8631d57d2b05d55e1b1fbb6bda1fb7ba1c5c27da178b0ce78d5e5a",
+      "naturalnessReview": "passed",
+      "reviewedAt": "2026-11-08T21:40:12.777476+00:00",
+      "notes": "Visually reviewed original images and labelled QA pages: plausible cooked form matching the recipe and ingredient ledger, household tableware with varied close, overhead and sharing compositions. Export preserves the complete 1448 x 1086 image; no watermark or unrelated side dish."
+    },
+    {
+      "id": "buck-rarebit",
+      "image": "release-assets/basketboss-v17/images/new/buck-rarebit.webp",
+      "sha256": "ce77dc826ac48cf3ea51037b511af65a4aecd3fb1333867aab6196b2fa6d0734",
+      "naturalnessReview": "passed",
+      "reviewedAt": "2026-11-08T21:40:12.777477+00:00",
+      "notes": "Visually reviewed original images and labelled QA pages: plausible cooked form matching the recipe and ingredient ledger, household tableware with varied close, overhead and sharing compositions. Export preserves the complete 1448 x 1086 image; no watermark or unrelated side dish."
+    }
+  ]
+}

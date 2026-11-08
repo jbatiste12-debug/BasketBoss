@@ -1,0 +1,78 @@
+{
+  "schemaVersion": 1,
+  "catalogueVersion": 700,
+  "status": "automated-checks-passed",
+  "activationEligible": false,
+  "counts": {
+    "protectedExisting": 500,
+    "addition": 200,
+    "newFree": 100,
+    "newPremium": 100,
+    "total": 700,
+    "newBreakfasts": 39
+  },
+  "coverage": {
+    "ingredientRows": 2121,
+    "existingExactPackRows": 1938,
+    "newExactPackRows": 183,
+    "unmappedRows": 0
+  },
+  "checks": {
+    "pricingCases": 19200,
+    "pantryCases": 2400,
+    "imageCases": 200,
+    "legacyDinnerComparisons": 1000,
+    "methodCoverage": 700,
+    "ingredientAndPortionCoverage": 700,
+    "similarityPairsEditoriallyResolved": 22
+  },
+  "protectedPrivateRowsSha256": "f89eaecc9b2ca71fbd8018c7f733e51c630f6992e5ad5def902f609a71fcbc2e",
+  "protectedFiles": {
+    "recipes.json": {
+      "unchanged": true,
+      "sha256": "ee77ba6d2ab5d53a113075487d8e177c27468ba226cc029895020d6dc9fd84bd"
+    },
+    "normalized-ingredient-database.json": {
+      "unchanged": true,
+      "sha256": "d1d71230ba59a8e0106a66ef0d9704dd57426b1a1907a76ec4ba3139a18dd648"
+    },
+    "ingredient-pack-catalog.json": {
+      "unchanged": true,
+      "sha256": "40432d2c7ee651eeed1d5305f8acb180e7a2b445d82dc63bb10b3676235eedea"
+    },
+    "dessert_recipes.json": {
+      "unchanged": true,
+      "sha256": "e63c661a435185cf7a0e99f5f85999bb63a9f665ab1a40857ad92a1033784132"
+    },
+    "app.html": {
+      "unchanged": true,
+      "sha256": "9edf622c1a2609b74611a96dd46be3246b2752df34e0e57191aee35fd273affd"
+    },
+    "index.html": {
+      "unchanged": true,
+      "sha256": "9edf622c1a2609b74611a96dd46be3246b2752df34e0e57191aee35fd273affd"
+    },
+    "bb-recipe-planning.js": {
+      "unchanged": true,
+      "sha256": "b297e7c5d580668a7973307d88c930f2209f43eb75924734ad20da13c02d6113"
+    },
+    "functions/api/recipes/premium.js": {
+      "unchanged": true,
+      "sha256": "472a3877e7e790eb730909586541405b7bc01ecde129bf3a989b8904739619a5"
+    }
+  },
+  "sourceHashes": {
+    "plan": "b19f8da6a7f287f61c4347df988350ef56ac63718cbefa0fbd1833821c077d4c",
+    "recipes": "f3798d1af781e3c75b40bf7828efc53b939114d09d5b9eb1d9be7a865a796dd7",
+    "normalized": "b141d154a22924f5c21ede03295890be251b63b1d83b52894ebba0ab6c02b705",
+    "briefs": "b37548cb39329fbf2f6d07cf2e5ab703675e968789b72a623ddac09e85458975",
+    "packs": "74eb499f9fc3091332e3fd989a4e97f860f227e78763e3839f01c2867749e85e",
+    "roles": "2e19c18842f6d343fc522f4addd806b8a4da89aa32716ce5f2216116813820fa"
+  },
+  "failures": [],
+  "limitations": [
+    "Indicative UK/regional guide estimates, not observed retailer quotes.",
+    "Editorial and automated validation do not constitute kitchen testing.",
+    "No production database import, feature activation, signed archive or App Store submission has been performed."
+  ]
+}

@@ -1,0 +1,324 @@
+name: Verify catalogue 700 iOS 1.0.2 build 33
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [main, feature/recipe700-pilot]
+    paths:
+      - .github/workflows/ios-catalogue700-build.yml
+      - catalogues/700/release/**
+      - tools/catalogue700/**
+      - bb-plan-swap.*
+      - bb-plan-swap-*.js
+      - ios/**
+      - native/**
+      - tests/basketboss-catalogue700-*.test.mjs
+      - tests/basketboss-plan-swap.test.mjs
+
+permissions:
+  contents: read
+
+jobs:
+  simulator-build:
+    # Match the proven Apple Silicon StoreKit/keyboard runner. Keep the same
+    # unsigned iPhone archive, cold simulator install and strict Cook assertions.
+    runs-on: macos-26
+    timeout-minutes: 60
+    env:
+      DEVELOPER_DIR: /Applications/Xcode_26.2.app/Contents/Developer
+    steps:
+      - uses: actions/checkout@v5
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@v5
+        with:
+          node-version: '24'
+          cache: npm
+      - name: Install pinned native dependencies
+        run: npm ci --no-audit --no-fund
+      - name: Stage the complete versioned catalogue 700 client
+        run: >-
+          node tools/catalogue700/sync-ios.mjs
+          --source-root "$GITHUB_WORKSPACE"
+          --public-release "$GITHUB_WORKSPACE/catalogues/700/release"
+          --output-dir "$RUNNER_TEMP/basketboss-catalogue700-native"
+      - name: Verify versioned catalogue and one-day replacement regressions
+        run: node --test --test-isolation=none tests/basketboss-catalogue700-*.test.mjs tests/basketboss-plan-swap.test.mjs
+      - name: Verify ingredient units, basket, pantry, saved weeks and Cook regressions
+        run: >-
+          node --test --test-isolation=none
+          tests/basketboss-garlic-basket.test.mjs
+          tests/basketboss-canonical-measure.test.mjs
+          tests/basketboss-ingredient-standardisation.test.mjs
+          tests/basketboss-pantry-reconcile.test.mjs
+          tests/basketboss-pantry-conversion.test.mjs
+          tests/basketboss-pantry-cook-flow.test.mjs
+          tests/basketboss-pantry-conversion-cook-flow.test.mjs
+          tests/basketboss-day-completion-core.test.mjs
+          tests/basketboss-day-done.test.mjs
+          tests/basketboss-shop-add.test.mjs
+          tests/basketboss-auth-flow.test.mjs
+          tests/basketboss-dietary-preferences.test.mjs
+          tests/basketboss-dietary-autofill.test.mjs
+          tests/basketboss-meal-preferences.test.mjs
+          tests/basketboss-kitchen-review.test.mjs
+          tests/basketboss-essentials-confirm-core.test.mjs
+          tests/basketboss-essentials-confirm-ui.test.mjs
+          tests/basketboss-kitchen-prices.test.mjs
+          tests/basketboss-yellow-sticker*.test.mjs
+          tests/basketboss-reduced-*.test.mjs
+          tests/basketboss-shop-subcategories.test.mjs
+          tests/basketboss-shop-thumbnail-scope.test.mjs
+          tests/basketboss-dietary-ai.test.mjs
+          tests/basketboss-tab-swipe.test.mjs
+          tests/basketboss-home-household-topup.test.mjs
+          tests/basketboss-buffer-pack-core.test.mjs
+          tests/basketboss-purchase-pack-host.test.mjs
+          tests/basketboss-pantry-inline.test.mjs
+          tests/basketboss-shop-essentials-section.test.mjs
+          tests/basketboss-manual-buy-core.test.mjs
+          tests/basketboss-manual-purchase-app.test.mjs
+          tests/basketboss-pantry-autofill.test.mjs
+          tests/basketboss-pantry-autofill-app.test.mjs
+          tests/basketboss-saved-weeks.test.mjs
+          tests/basketboss-saved-week-host.test.mjs
+          tests/basketboss-cook-phase-navigation.test.mjs
+          tests/basketboss-cook-voice.test.mjs
+          tests/basketboss-evening-pivot-app.test.mjs
+          tests/basketboss-landing-meal-pricing.test.mjs
+      - name: Audit all recipe units in UK and US and verify pantry policy
+        run: |
+          npm run audit:pantry
+          node --test --test-isolation=none tests/basketboss-pantry-policy*.test.mjs tests/basketboss-pantry-regions-audit.test.mjs tests/basketboss-receipt-pantry-policy.test.mjs tests/basketboss-staple-app-flow.test.mjs
+      - name: Test native routing and permissions
+        run: npm run test:native
+      - name: Verify photo review, recipe creation and matching meal pictures
+        run: >-
+          node --test --test-isolation=none
+          tests/basketboss-photo-meal-flow.test.mjs
+          tests/basketboss-photo-meal-ingredients.test.mjs
+          tests/basketboss-cook-studio.test.mjs
+          tests/basketboss-cook-result.test.mjs
+          tests/basketboss-meal-image-client.test.mjs
+          tests/basketboss-meal-image.test.mjs
+          tests/basketboss-pantry-camera.test.mjs
+          tests/basketboss-ai-quota-autoinit.test.mjs
+          tests/basketboss-ai-turnstile-safari-premium.test.mjs
+      - name: Compile the iOS simulator app without signing credentials
+        run: >-
+          xcodebuild
+          -workspace ios/App/App.xcworkspace
+          -scheme App
+          -configuration Debug
+          -sdk iphonesimulator
+          -destination 'generic/platform=iOS Simulator'
+          -derivedDataPath /tmp/basketboss-ios-build
+          CODE_SIGNING_ALLOWED=NO
+          build
+      - name: Publish fixed build verification
+        run: echo '::notice title=BasketBoss iOS native build::{"simulatorBuild":true,"bundleId":"uk.co.basketboss.app","minimumIOS":"16.0","signingTested":false}'
+      # Finish device compilation before Simulator startup; Cook and keyboard
+      # checks still determine whether this verification run succeeds.
+      - name: Create the unsigned iPhone archive for build 33
+        run: |
+          xcodebuild \
+            -workspace ios/App/App.xcworkspace \
+            -scheme App \
+            -configuration Release \
+            -sdk iphoneos \
+            -destination 'generic/platform=iOS' \
+            -derivedDataPath /tmp/basketboss-ios-device-build \
+            -archivePath "$RUNNER_TEMP/BasketBoss-1.0.2-build33.xcarchive" \
+            CODE_SIGNING_ALLOWED=NO \
+            archive
+          test "$(/usr/libexec/PlistBuddy -c 'Print CFBundleVersion' "$RUNNER_TEMP/BasketBoss-1.0.2-build33.xcarchive/Products/Applications/App.app/Info.plist")" = '33'
+          test "$(/usr/libexec/PlistBuddy -c 'Print CFBundleIdentifier' "$RUNNER_TEMP/BasketBoss-1.0.2-build33.xcarchive/Products/Applications/App.app/Info.plist")" = 'uk.co.basketboss.app'
+          ditto -c -k --sequesterRsrc --keepParent \
+            "$RUNNER_TEMP/BasketBoss-1.0.2-build33.xcarchive" \
+            "$RUNNER_TEMP/BasketBoss-1.0.2-build33-unsigned.xcarchive.zip"
+      - name: Retain the unsigned iPhone archive
+        uses: actions/upload-artifact@v6
+        with:
+          name: BasketBoss-1.0.2-build33-unsigned-iPhone-archive
+          path: ${{ runner.temp }}/BasketBoss-1.0.2-build33-unsigned.xcarchive.zip
+          if-no-files-found: error
+          retention-days: 7
+          compression-level: 0
+      - name: Exercise Cook in the actual iOS WebView
+        run: node scripts/test-ios-cook-smoke.mjs
+      - uses: actions/upload-artifact@v6
+        if: always()
+        with:
+          name: BasketBoss-Cook-Verification
+          path: artifacts/cook-smoke-diagnostics/
+          if-no-files-found: ignore
+          retention-days: 14
+
+  account-keyboard:
+    # Match the ARM runner that passes the same four real-keyboard cases in
+    # Apple subscription verification, including its default Xcode toolchain.
+    runs-on: macos-26
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@v5
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@v5
+        with:
+          node-version: '24'
+          cache: npm
+      - run: npm ci --no-audit --no-fund
+      - name: Stage the complete versioned catalogue 700 client
+        run: >-
+          node tools/catalogue700/sync-ios.mjs
+          --source-root "$GITHUB_WORKSPACE"
+          --public-release "$GITHUB_WORKSPACE/catalogues/700/release"
+          --output-dir "$RUNNER_TEMP/basketboss-catalogue700-native"
+      - name: Verify versioned catalogue and one-day replacement regressions
+        run: node --test --test-isolation=none tests/basketboss-catalogue700-*.test.mjs tests/basketboss-plan-swap.test.mjs
+      - name: Prepare the proven iOS simulator and software keyboard
+        run: |
+          node --input-type=module <<'JS'
+          import {execFileSync} from 'node:child_process';
+          const run=(...args)=>{
+            const readOnlyList=args[0]==='simctl'&&args[1]==='list';
+            for(let attempt=0;;attempt++){
+              try{return execFileSync('xcrun',args,{encoding:'utf8',timeout:120000}).trim();}
+              catch(error){
+                if(!readOnlyList||error.code!=='ETIMEDOUT'||attempt!==0)throw error;
+                console.log('Retrying one timed-out readonly simulator list.');
+              }
+            }
+          };
+          const runtimes=JSON.parse(run('simctl','list','runtimes','--json')).runtimes.filter(r=>r.isAvailable&&r.name.startsWith('iOS'));
+          const devices=JSON.parse(run('simctl','list','devices','available','--json')).devices;
+          const runtime=runtimes.find(r=>r.version.startsWith('26.2'))||runtimes.find(r=>r.version.startsWith('18.6'));
+          if(!runtime)throw Error('proven_runtime_missing');
+          const phone=(devices[runtime.identifier]||[]).find(d=>d.isAvailable&&d.name.startsWith('iPhone'));
+          if(!phone)throw Error('iphone_missing');
+          execFileSync('defaults',['write','com.apple.iphonesimulator','ConnectHardwareKeyboard','-bool','NO']);
+          if(phone.state!=='Booted')run('simctl','boot',phone.udid);
+          execFileSync('open',['-a','Simulator','--args','-CurrentDeviceUDID',phone.udid]);
+          console.log('Booting '+phone.name+' / iOS '+runtime.version);
+          execFileSync('xcrun',['simctl','bootstatus',phone.udid,'-b'],{stdio:'inherit',timeout:540000});
+          JS
+      - name: Prepare the keyboard UI test target
+        run: node scripts/test-ios-account-keyboard.mjs --prepare
+      - name: Compile keyboard UI tests
+        id: compile_keyboard_tests
+        timeout-minutes: 15
+        shell: bash
+        run: |
+          xcodebuild build-for-testing \
+            -workspace ios/App/App.xcworkspace \
+            -scheme BasketBossAccountKeyboardUITests \
+            -configuration Debug \
+            -sdk iphonesimulator \
+            -destination "platform=iOS Simulator,id=$BB_KEYBOARD_SIMULATOR" \
+            -derivedDataPath /tmp/basketboss-ios-build \
+            COMPILER_INDEX_STORE_ENABLE=NO \
+            CODE_SIGNING_ALLOWED=NO \
+            2>&1 | tee artifacts/account-keyboard-diagnostics/build.log
+      - name: Activate the keyboard test simulator
+        id: activate_keyboard_tests
+        run: node scripts/test-ios-account-keyboard.mjs --activate
+      - name: Execute keyboard UI tests
+        id: execute_keyboard_tests
+        timeout-minutes: 10
+        shell: bash
+        run: |
+          xcodebuild test-without-building \
+            -workspace ios/App/App.xcworkspace \
+            -scheme BasketBossAccountKeyboardUITests \
+            -configuration Debug \
+            -sdk iphonesimulator \
+            -destination "platform=iOS Simulator,id=$BB_KEYBOARD_SIMULATOR" \
+            -derivedDataPath /tmp/basketboss-ios-build \
+            -parallel-testing-enabled NO \
+            -test-timeouts-enabled YES \
+            -default-test-execution-time-allowance 180 \
+            -maximum-test-execution-time-allowance 300 \
+            -resultBundlePath artifacts/account-keyboard-diagnostics/AccountKeyboard.xcresult \
+            CODE_SIGNING_ALLOWED=NO \
+            2>&1 | tee artifacts/account-keyboard-diagnostics/tests.log
+      - name: Report strict keyboard test results
+        if: always()
+        env:
+          BB_KEYBOARD_COMPILE_OUTCOME: ${{ steps.compile_keyboard_tests.outcome }}
+          BB_KEYBOARD_ACTIVATE_OUTCOME: ${{ steps.activate_keyboard_tests.outcome }}
+          BB_KEYBOARD_EXECUTE_OUTCOME: ${{ steps.execute_keyboard_tests.outcome }}
+        run: node scripts/test-ios-account-keyboard.mjs --report
+      - name: Restore keyboard test simulator settings
+        if: always()
+        run: node scripts/test-ios-account-keyboard.mjs --cleanup
+      - uses: actions/upload-artifact@v6
+        if: always()
+        with:
+          name: BasketBoss-700-Keyboard-Verification
+          path: artifacts/account-keyboard-diagnostics/
+          if-no-files-found: ignore
+          retention-days: 7
+
+  local-storekit-simulator:
+    runs-on: macos-26
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+          cache: npm
+      - name: Install pinned dependencies
+        run: npm ci --no-audit --no-fund
+      - name: Stage the complete versioned catalogue 700 client
+        run: >-
+          node tools/catalogue700/sync-ios.mjs
+          --source-root "$GITHUB_WORKSPACE"
+          --public-release "$GITHUB_WORKSPACE/catalogues/700/release"
+          --output-dir "$RUNNER_TEMP/basketboss-catalogue700-native"
+      - name: Verify versioned catalogue and one-day replacement regressions
+        run: node --test --test-isolation=none tests/basketboss-catalogue700-*.test.mjs tests/basketboss-plan-swap.test.mjs
+      - name: Compile Debug iPhone simulator app
+        run: >-
+          xcodebuild
+          -quiet
+          -workspace ios/App/App.xcworkspace
+          -scheme App
+          -configuration Debug
+          -sdk iphonesimulator
+          -destination 'generic/platform=iOS Simulator'
+          -derivedDataPath /tmp/basketboss-ios-build
+          CODE_SIGNING_ALLOWED=NO
+          build
+      - name: Compile Release without local StoreKit test code
+        run: >-
+          xcodebuild
+          -quiet
+          -workspace ios/App/App.xcworkspace
+          -scheme App
+          -configuration Release
+          -sdk iphonesimulator
+          -destination 'generic/platform=iOS Simulator'
+          -derivedDataPath /tmp/basketboss-ios-build
+          CODE_SIGNING_ALLOWED=NO
+          build
+      - name: Verify Release excludes StoreKit test fixture
+        run: |
+          test ! -f /tmp/basketboss-ios-build/Build/Products/Release-iphonesimulator/App.app/BasketBossPremium.storekit
+          if otool -L /tmp/basketboss-ios-build/Build/Products/Release-iphonesimulator/App.app/App | rg StoreKitTest; then
+            echo 'Release must not link the local StoreKit test framework.'
+            exit 1
+          fi
+      - name: Exercise real StoreKit bridge in hosted XCTest with local products
+        env:
+          BB_IAP_KEEP_SIMULATOR_BOOTED: 'true'
+        run: node scripts/test-ios-iap-smoke.mjs
+      - uses: actions/upload-artifact@v6
+        if: always()
+        with:
+          name: BasketBoss-700-StoreKit-Verification
+          path: artifacts/apple-iap-diagnostics/
+          if-no-files-found: ignore
+          retention-days: 14

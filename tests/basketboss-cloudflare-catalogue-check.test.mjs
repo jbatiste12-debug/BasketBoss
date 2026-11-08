@@ -29,13 +29,13 @@ test('review readiness rejects an outdated privacy revision even when it is a va
  await assert.rejects(verifyReviewDeployment(async()=>new Response('Last updated 1 November 2026.',{headers:{'Content-Type':'text/html'}})),/App review compliance routes/);
 });
 
-function landingFixture({hidden=false,assetType,assetStatus=200,headline='Aim to save<br><span>£25+ a week.</span>',savingsNote='An example target; your savings will vary.'}={}){
+function landingFixture({hidden=false,assetType,assetStatus=200,headline='Shop your kitchen<br><span>before the supermarket.</span>',html,pageStatus=200,pageType='text/html'}={}){
  const requests=[];
  const perform=async(address,options)=>{
   requests.push({address,options});
   assert.equal(options.redirect,'error');assert.equal(options.cache,'no-store');assert.equal(options.headers,undefined);
   const pathname=new URL(address).pathname;
-  if(pathname==='/')return new Response('<h1>'+headline+'</h1><p class="savings-note">'+savingsNote+'</p><link rel="stylesheet" href="bb-family-landing.css?v=release"><script src="/bb-family-landing.js?v=release"></script><section id="smart-receipt" data-bb-smart-receipt-ready'+(hidden?' hidden':'')+'></section>',{headers:{'Content-Type':'text/html'}});
+  if(pathname==='/')return new Response(html??'<h1>'+headline+'</h1><link rel="stylesheet" href="bb-family-landing.css?v=release"><script src="/bb-family-landing.js?v=release"></script><section id="smart-receipt" data-bb-smart-receipt-ready'+(hidden?' hidden':'')+'></section>',{status:pageStatus,headers:{'Content-Type':pageType}});
   return new Response('public asset',{status:assetStatus,headers:{'Content-Type':assetType||(pathname.endsWith('.css')?'text/css':'application/javascript')}});
  };
  return {requests,perform};
@@ -49,12 +49,23 @@ test('landing verification reports enabled and hidden receipt marketing without 
  }
 });
 
+test('landing verification accepts the actual checked-in pantry-first page without an obsolete savings-note claim',async()=>{
+ const html=readFileSync(new URL('../welcome.html',import.meta.url),'utf8');assert.doesNotMatch(html,/class="savings-note"/);
+ const {perform,requests}=landingFixture({html});assert.deepEqual(await verifyLandingDeployment(perform),{headline:true,stylesheet:true,script:true,smartReceiptSectionVisible:false});assert.equal(requests.length,3);
+});
+
 test('landing verification rejects stale copy, missing assets and HTML fallback assets',async()=>{
  await assert.rejects(verifyLandingDeployment(landingFixture({headline:'Previous landing'}).perform),/headline is not present/);
   await assert.rejects(verifyLandingDeployment(landingFixture({headline:'Your kitchen.<br><em>Made simple.</em>'}).perform),/headline is not present/);
-  await assert.rejects(verifyLandingDeployment(landingFixture({savingsNote:'Guaranteed savings.'}).perform),/qualification is not present/);
+ await assert.rejects(verifyLandingDeployment(landingFixture({headline:'Aim to save<br><span>£25+ a week.</span>'}).perform),/headline is not present/);
  await assert.rejects(verifyLandingDeployment(landingFixture({assetStatus:404}).perform),/asset is not available/);
  await assert.rejects(verifyLandingDeployment(landingFixture({assetType:'text/html'}).perform),/asset is not available/);
+});
+
+test('landing verification retains page status/type and required receipt section guards',async()=>{
+ for(const invalid of [{pageStatus:404},{pageType:'text/plain'}])await assert.rejects(verifyLandingDeployment(landingFixture(invalid).perform),/landing page is not available/);
+ const current=readFileSync(new URL('../welcome.html',import.meta.url),'utf8'),missing=current.replace(/id="smart-receipt"/,'id="removed-receipt"');
+ await assert.rejects(verifyLandingDeployment(landingFixture({html:missing}).perform),/SmartReceipt landing section is missing/);
 });
 
 test('landing verification replaces unexpected network messages with a fixed diagnostic',async()=>{

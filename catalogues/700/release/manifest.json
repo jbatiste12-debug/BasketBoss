@@ -1,0 +1,1623 @@
+{
+  "schemaVersion": 1,
+  "clientVersion": "1.0.2",
+  "nativeBuild": 33,
+  "activationEligible": false,
+  "catalogue_version": 700,
+  "release_id": "catalogue700-20261108-build33",
+  "free_count": 200,
+  "premium_count": 500,
+  "premium_rows_sha256": "6b7c4a00bc2047667ef7108302ac5fa3a2fe8b4d875f0a4566da9b65f55cdfd5",
+  "protected_rows_sha256": "f89eaecc9b2ca71fbd8018c7f733e51c630f6992e5ad5def902f609a71fcbc2e",
+  "free_recipes_sha256": "ac52369dc2f1d470546c749153197bc2f9d7e81508d9aed443ef35ad5f58f49e",
+  "free_normalized_sha256": "8ebdd985602f1f739c7cd35e8a308f4aec613a41f8e2388fb1af88326da65f04",
+  "sourceBaseCommit": "9087b2476fde0a92134663b12ace378cf09a2b6f",
+  "recipes": [
+    {
+      "id": "crispy-aromatic-duck-pancakes",
+      "catalogueNumber": 501,
+      "name": "Crispy aromatic duck pancakes",
+      "image": "release-assets/basketboss-v17/images/new/crispy-aromatic-duck-pancakes.webp",
+      "sha256": "229361b6b756dd619f4f9147a1d743c3dc75bcb6c59a2c58ea5f12cbd32f82f2",
+      "tier": "premium"
+    },
+    {
+      "id": "beef-in-black-bean-sauce-with-rice",
+      "catalogueNumber": 502,
+      "name": "Beef in black bean sauce with rice",
+      "image": "release-assets/basketboss-v17/images/new/beef-in-black-bean-sauce-with-rice.webp",
+      "sha256": "347b81e707284d4c5fc2b57fe7925ce4aedf3a242fade9298d50bc4f0959df97",
+      "tier": "free"
+    },
+    {
+      "id": "sesame-prawn-toast-with-cucumber-salad",
+      "catalogueNumber": 503,
+      "name": "Sesame prawn toast with cucumber salad",
+      "image": "release-assets/basketboss-v17/images/new/sesame-prawn-toast-with-cucumber-salad.webp",
+      "sha256": "ad90e7242bc2450204285091877a35ad1ae4e2ad88df48d8ff0167108916eb47",
+      "tier": "free"
+    },
+    {
+      "id": "chicken-satay-skewers-with-peanut-sauce",
+      "catalogueNumber": 504,
+      "name": "Chicken satay skewers with peanut sauce",
+      "image": "release-assets/basketboss-v17/images/new/chicken-satay-skewers-with-peanut-sauce.webp",
+      "sha256": "de7a9e5589ceb1720cd38b0b3ea84787e7312d616a1e62b88e133db8ec21e5d6",
+      "tier": "premium"
+    },
+    {
+      "id": "chicken-jalfrezi-with-pilau-rice",
+      "catalogueNumber": 505,
+      "name": "Chicken jalfrezi with pilau rice",
+      "image": "release-assets/basketboss-v17/images/new/chicken-jalfrezi-with-pilau-rice.webp",
+      "sha256": "af80af397d5e3792a311fb726f27d20468a3220138b8b431b756e8c6392c3bd3",
+      "tier": "free"
+    },
+    {
+      "id": "lamb-rogan-josh",
+      "catalogueNumber": 506,
+      "name": "Lamb rogan josh",
+      "image": "release-assets/basketboss-v17/images/new/lamb-rogan-josh.webp",
+      "sha256": "54c56f9a356f0632c675c972df1ac64da4f3f29a99fdf83d975e7242d59a6ca4",
+      "tier": "premium"
+    },
+    {
+      "id": "chicken-dhansak",
+      "catalogueNumber": 507,
+      "name": "Chicken dhansak",
+      "image": "release-assets/basketboss-v17/images/new/chicken-dhansak.webp",
+      "sha256": "e769441967db5c82735e8fb8d90ca0484bbe1190a95d84ea796a34a2c4d8127c",
+      "tier": "premium"
+    },
+    {
+      "id": "lamb-seekh-kebabs-with-mint-yoghurt",
+      "catalogueNumber": 508,
+      "name": "Lamb seekh kebabs with mint yoghurt",
+      "image": "release-assets/basketboss-v17/images/new/lamb-seekh-kebabs-with-mint-yoghurt.webp",
+      "sha256": "40b4453fb391eb876cd9e88d84cad3cf85c60ccd4639dbc8a290cffec675abe9",
+      "tier": "free"
+    },
+    {
+      "id": "peri-peri-spatchcock-chicken-with-spicy-rice",
+      "catalogueNumber": 509,
+      "name": "Peri-peri spatchcock chicken with spicy rice",
+      "image": "release-assets/basketboss-v17/images/new/peri-peri-spatchcock-chicken-with-spicy-rice.webp",
+      "sha256": "cc320c6a867a778fbd068bb2970e83cdb8659aa0666ea774c8fde9495f4fc0a4",
+      "tier": "free"
+    },
+    {
+      "id": "double-smash-cheeseburgers-with-burger-sauce",
+      "catalogueNumber": 510,
+      "name": "Double smash cheeseburgers with burger sauce",
+      "image": "release-assets/basketboss-v17/images/new/double-smash-cheeseburgers-with-burger-sauce.webp",
+      "sha256": "f1923411735cf69cadc6b24b44dbac2340ceeffa5f22ddfdab8346c657fd4cf2",
+      "tier": "free"
+    },
+    {
+      "id": "buttermilk-fried-chicken-pieces-with-peppered-gravy",
+      "catalogueNumber": 511,
+      "name": "Buttermilk fried chicken pieces with peppered gravy",
+      "image": "release-assets/basketboss-v17/images/new/buttermilk-fried-chicken-pieces-with-peppered-gravy.webp",
+      "sha256": "e3021ecb0eb2f58763ce96a1121eb1ee6767e284d2b77e8cbb1ad8b31d117711",
+      "tier": "premium"
+    },
+    {
+      "id": "crispy-chicken-chimichangas",
+      "catalogueNumber": 512,
+      "name": "Crispy chicken chimichangas",
+      "image": "release-assets/basketboss-v17/images/new/crispy-chicken-chimichangas.webp",
+      "sha256": "75e2813b2cf4d6d13e254b5fa4924e48363f8d5bba9bf76fcbb821be656c4bf0",
+      "tier": "premium"
+    },
+    {
+      "id": "battered-haddock-and-chips-with-mushy-peas",
+      "catalogueNumber": 513,
+      "name": "Battered haddock and chips with mushy peas",
+      "image": "release-assets/basketboss-v17/images/new/battered-haddock-and-chips-with-mushy-peas.webp",
+      "sha256": "aaf3775b1fd17538e21180681ade564c875c4b1c31cf719d1e902b7deed127a3",
+      "tier": "free"
+    },
+    {
+      "id": "salmon-en-croute-with-spinach",
+      "catalogueNumber": 514,
+      "name": "Salmon en croûte with spinach",
+      "image": "release-assets/basketboss-v17/images/new/salmon-en-croute-with-spinach.webp",
+      "sha256": "c2d5e746d16cc876d09b5c111899f65b0d81ebe738e1d178d280edbc9fed4363",
+      "tier": "premium"
+    },
+    {
+      "id": "tuna-steak-nicoise-salad",
+      "catalogueNumber": 515,
+      "name": "Tuna-steak Niçoise salad",
+      "image": "release-assets/basketboss-v17/images/new/tuna-steak-nicoise-salad.webp",
+      "sha256": "cb0a6ade6230e9866f82267f032591076c6933777e418b3776fef3c71f6b8ec7",
+      "tier": "free"
+    },
+    {
+      "id": "moules-marinieres-with-skinny-chips",
+      "catalogueNumber": 516,
+      "name": "Moules marinières with skinny chips",
+      "image": "release-assets/basketboss-v17/images/new/moules-marinieres-with-skinny-chips.webp",
+      "sha256": "f312a3647c94e6989f1408f6c23c311ff1528763d834853ff3e633be92202bc1",
+      "tier": "premium"
+    },
+    {
+      "id": "smoked-haddock-mornay-with-spinach",
+      "catalogueNumber": 517,
+      "name": "Smoked haddock Mornay with spinach",
+      "image": "release-assets/basketboss-v17/images/new/smoked-haddock-mornay-with-spinach.webp",
+      "sha256": "942d4048b3330e0a98001312d422db7b99282d26301ec47dffc2c335a5bf3fd2",
+      "tier": "free"
+    },
+    {
+      "id": "smoked-salmon-leek-and-dill-quiche",
+      "catalogueNumber": 518,
+      "name": "Smoked salmon, leek and dill quiche",
+      "image": "release-assets/basketboss-v17/images/new/smoked-salmon-leek-and-dill-quiche.webp",
+      "sha256": "3aeb4afae6da59b305014e56af92eaeab2282880dc6b92bf3d497d32f309f092",
+      "tier": "free"
+    },
+    {
+      "id": "pan-fried-trout-almondine",
+      "catalogueNumber": 519,
+      "name": "Pan-fried trout almondine",
+      "image": "release-assets/basketboss-v17/images/new/pan-fried-trout-almondine.webp",
+      "sha256": "fd7db8d8f812f87ed106f60d71f144ddf91f49dc0cb6bf797c1dcfcd5372db4a",
+      "tier": "premium"
+    },
+    {
+      "id": "crispy-breaded-king-prawns-with-tartare-sauce",
+      "catalogueNumber": 520,
+      "name": "Crispy breaded king prawns with tartare sauce",
+      "image": "release-assets/basketboss-v17/images/new/crispy-breaded-king-prawns-with-tartare-sauce.webp",
+      "sha256": "4f8ffcf49728cdbdcb3301c9b2730e78da700c5132c4421ab4a5da213ffe973e",
+      "tier": "free"
+    },
+    {
+      "id": "coq-au-vin-with-mash",
+      "catalogueNumber": 521,
+      "name": "Coq au vin with mash",
+      "image": "release-assets/basketboss-v17/images/new/coq-au-vin-with-mash.webp",
+      "sha256": "e7e2e41cc19345e719aad47e562c0eb529812d0968f75046b8d0828e2cac4e31",
+      "tier": "premium"
+    },
+    {
+      "id": "chicken-kiev-with-parsley-potatoes",
+      "catalogueNumber": 522,
+      "name": "Chicken Kiev with parsley potatoes",
+      "image": "release-assets/basketboss-v17/images/new/chicken-kiev-with-parsley-potatoes.webp",
+      "sha256": "f8e148efc6e827d2c83985742d59eae1cc86ef45a1d74e01b1d568fd8c6034e4",
+      "tier": "free"
+    },
+    {
+      "id": "pork-tenderloin-stuffed-with-apple-and-black-pudding",
+      "catalogueNumber": 523,
+      "name": "Pork tenderloin stuffed with apple and black pudding",
+      "image": "release-assets/basketboss-v17/images/new/pork-tenderloin-stuffed-with-apple-and-black-pudding.webp",
+      "sha256": "d76d688676553e0348b92d25b79885ad6b9f14f47f75b49dfb86da1b023902fa",
+      "tier": "premium"
+    },
+    {
+      "id": "crispy-calamari-with-garlic-mayo-and-warm-potato-salad",
+      "catalogueNumber": 524,
+      "name": "Crispy calamari with garlic mayo and warm potato salad",
+      "image": "release-assets/basketboss-v17/images/new/crispy-calamari-with-garlic-mayo-and-warm-potato-salad.webp",
+      "sha256": "5fc96ae1d27f85859818528ba11ff1e3a6e7548cad34bfcb186b7194ab7fe92e",
+      "tier": "premium"
+    },
+    {
+      "id": "seafood-spaghetti-marinara-with-mussels-prawns-and-squid",
+      "catalogueNumber": 525,
+      "name": "Seafood spaghetti marinara with mussels, prawns and squid",
+      "image": "release-assets/basketboss-v17/images/new/seafood-spaghetti-marinara-with-mussels-prawns-and-squid.webp",
+      "sha256": "ed4a214287351bc5722d25c4a0a3113166d66eb9ed2c046a807c2df14f4aeb12",
+      "tier": "premium"
+    },
+    {
+      "id": "smoked-haddock-omelette-arnold-bennett",
+      "catalogueNumber": 526,
+      "name": "Smoked haddock omelette Arnold Bennett",
+      "image": "release-assets/basketboss-v17/images/new/smoked-haddock-omelette-arnold-bennett.webp",
+      "sha256": "0a12d481c4ea8e18aa848618c36f1861cd9c351164b9ec94317c071a6379a0b7",
+      "tier": "free"
+    },
+    {
+      "id": "spaghetti-carbonara",
+      "catalogueNumber": 527,
+      "name": "Spaghetti carbonara",
+      "image": "release-assets/basketboss-v17/images/new/spaghetti-carbonara.webp",
+      "sha256": "515d064776b05e89f4707aedf5f05ad7744cce63b325bf37aa156277b52a34df",
+      "tier": "free"
+    },
+    {
+      "id": "belgian-breakfast-waffles-with-berries",
+      "catalogueNumber": 528,
+      "name": "Belgian breakfast waffles with berries",
+      "image": "release-assets/basketboss-v17/images/new/belgian-breakfast-waffles-with-berries.webp",
+      "sha256": "7ac6656280fd555ebf88cd0f1cfe4d77f884541e96edacf628b9f615d93c67b4",
+      "tier": "premium"
+    },
+    {
+      "id": "penne-puttanesca",
+      "catalogueNumber": 529,
+      "name": "Penne puttanesca",
+      "image": "release-assets/basketboss-v17/images/new/penne-puttanesca.webp",
+      "sha256": "db595a603a1c30a83d947c68c2ba929bcbf51a6ecf99fdea30ae04e1c7caf7fd",
+      "tier": "free"
+    },
+    {
+      "id": "french-onion-soup-with-cheese-croutons",
+      "catalogueNumber": 530,
+      "name": "French onion soup with cheese croutons",
+      "image": "release-assets/basketboss-v17/images/new/french-onion-soup-with-cheese-croutons.webp",
+      "sha256": "e26e821a614633eba491d8ddef0504318697a9ad46d4399103e09695b5a2b382",
+      "tier": "premium"
+    },
+    {
+      "id": "homemade-crumpets-with-butter",
+      "catalogueNumber": 531,
+      "name": "Homemade crumpets with butter",
+      "image": "release-assets/basketboss-v17/images/new/homemade-crumpets-with-butter.webp",
+      "sha256": "cc8dd28ee6650fa5921ffff05bd35cf91b632b14e375ca8788eec2a8ea83b294",
+      "tier": "free"
+    },
+    {
+      "id": "sausage-plait-with-onion-chutney",
+      "catalogueNumber": 532,
+      "name": "Sausage plait with onion chutney",
+      "image": "release-assets/basketboss-v17/images/new/sausage-plait-with-onion-chutney.webp",
+      "sha256": "28a4cad702de701a0e38dd94c8347af633898d34105d59166a7527816481a2ae",
+      "tier": "premium"
+    },
+    {
+      "id": "steak-and-ale-pie",
+      "catalogueNumber": 533,
+      "name": "Steak and ale pie",
+      "image": "release-assets/basketboss-v17/images/new/steak-and-ale-pie.webp",
+      "sha256": "59a569240dacecff6542a9ccc069e831d4e7b46eb86a664ea7243ae8053b5157",
+      "tier": "free"
+    },
+    {
+      "id": "ham-egg-and-chips",
+      "catalogueNumber": 534,
+      "name": "Ham, egg and chips",
+      "image": "release-assets/basketboss-v17/images/new/ham-egg-and-chips.webp",
+      "sha256": "d9485e57cc2d30a971cda2df1cf491bff79d14f27ff08ac987b4b653b2626d06",
+      "tier": "premium"
+    },
+    {
+      "id": "bangers-and-mash-with-onion-gravy",
+      "catalogueNumber": 535,
+      "name": "Bangers and mash with onion gravy",
+      "image": "release-assets/basketboss-v17/images/new/bangers-and-mash-with-onion-gravy.webp",
+      "sha256": "0f6cabee298f65f42e3ffe6014b0e1c5c8ff8a7584e801fbd1db3ab8c0a0ca21",
+      "tier": "free"
+    },
+    {
+      "id": "classic-creamy-stovetop-porridge",
+      "catalogueNumber": 536,
+      "name": "Classic creamy stovetop porridge",
+      "image": "release-assets/basketboss-v17/images/new/classic-creamy-stovetop-porridge.webp",
+      "sha256": "ff8a74983552a56c4db49658574d2b8f36afdd0be50fdf414c780f81e6f44f3b",
+      "tier": "premium"
+    },
+    {
+      "id": "leek-and-potato-soup",
+      "catalogueNumber": 537,
+      "name": "Leek and potato soup",
+      "image": "release-assets/basketboss-v17/images/new/leek-and-potato-soup.webp",
+      "sha256": "17ef159b864f86dd8894c4e3c107761337baf78806962b99d2159ac3dbd18be4",
+      "tier": "free"
+    },
+    {
+      "id": "chia-seed-breakfast-pudding-with-berries",
+      "catalogueNumber": 538,
+      "name": "Chia-seed breakfast pudding with berries",
+      "image": "release-assets/basketboss-v17/images/new/chia-seed-breakfast-pudding-with-berries.webp",
+      "sha256": "5f109ebf596c66cd94fe011fe8896b81e733163cc74f4bb09076109d27afe802",
+      "tier": "premium"
+    },
+    {
+      "id": "american-biscuits-with-sausage-gravy",
+      "catalogueNumber": 539,
+      "name": "American biscuits with sausage gravy",
+      "image": "release-assets/basketboss-v17/images/new/american-biscuits-with-sausage-gravy.webp",
+      "sha256": "9465ad80d2a090aa63e2db17ebc2cdcd34793c6e4bd4f19e7a2ac7939819c9bf",
+      "tier": "free"
+    },
+    {
+      "id": "salisbury-steak-with-mash",
+      "catalogueNumber": 540,
+      "name": "Salisbury steak with mash",
+      "image": "release-assets/basketboss-v17/images/new/salisbury-steak-with-mash.webp",
+      "sha256": "9deb743fca2928a72ea48af46e7428232546c24101babab995cd205fe614045d",
+      "tier": "premium"
+    },
+    {
+      "id": "homemade-boiled-and-baked-breakfast-bagels",
+      "catalogueNumber": 541,
+      "name": "Homemade boiled-and-baked breakfast bagels",
+      "image": "release-assets/basketboss-v17/images/new/homemade-boiled-and-baked-breakfast-bagels.webp",
+      "sha256": "8b07e79040b20e0b8a71a2bd4719bd371aa9ea8bea3f08a8be4ad0b6c33810a6",
+      "tier": "free"
+    },
+    {
+      "id": "beef-and-onion-cobbler",
+      "catalogueNumber": 542,
+      "name": "Beef and onion cobbler",
+      "image": "release-assets/basketboss-v17/images/new/beef-and-onion-cobbler.webp",
+      "sha256": "e63928c2df60ff41e46489dd7ce9e5969d6cb94a9497ab603e48275f6e9f73e9",
+      "tier": "premium"
+    },
+    {
+      "id": "eggs-benedict",
+      "catalogueNumber": 543,
+      "name": "Eggs Benedict",
+      "image": "release-assets/basketboss-v17/images/new/eggs-benedict.webp",
+      "sha256": "44c845dffe509631e1fa7f8310357f6d5ed589701685d3a7773e8405f4b04ee4",
+      "tier": "free"
+    },
+    {
+      "id": "full-english-breakfast-traybake",
+      "catalogueNumber": 544,
+      "name": "Full English breakfast traybake",
+      "image": "release-assets/basketboss-v17/images/new/full-english-breakfast-traybake.webp",
+      "sha256": "39bf0025f0e68ad25e4029b735fcdf6b2e09fddcde48408e9ebd5430fa85d045",
+      "tier": "premium"
+    },
+    {
+      "id": "sticky-bbq-pork-spare-ribs-with-slaw",
+      "catalogueNumber": 545,
+      "name": "Sticky BBQ pork spare ribs with slaw",
+      "image": "release-assets/basketboss-v17/images/new/sticky-bbq-pork-spare-ribs-with-slaw.webp",
+      "sha256": "86fb286e957f0149190a889d1e365adeab2cd3a564ef57b0516d3d6f23aff841",
+      "tier": "free"
+    },
+    {
+      "id": "cajun-chicken-prawn-and-chorizo-jambalaya",
+      "catalogueNumber": 546,
+      "name": "Cajun chicken, prawn and chorizo jambalaya",
+      "image": "release-assets/basketboss-v17/images/new/cajun-chicken-prawn-and-chorizo-jambalaya.webp",
+      "sha256": "9cdf81690dd6374117708cb41ad47f76a10416f9f4d1ecd8cd2b96bed29fffda",
+      "tier": "premium"
+    },
+    {
+      "id": "american-hot-dogs-with-mustard-onions",
+      "catalogueNumber": 547,
+      "name": "American hot dogs with mustard onions",
+      "image": "release-assets/basketboss-v17/images/new/american-hot-dogs-with-mustard-onions.webp",
+      "sha256": "40fe071c68030cecb1f9c425acc93b26a01c65b7bd495a3b3c0ae91a9b4c3469",
+      "tier": "free"
+    },
+    {
+      "id": "homemade-all-butter-croissants",
+      "catalogueNumber": 548,
+      "name": "Homemade all-butter croissants",
+      "image": "release-assets/basketboss-v17/images/new/homemade-all-butter-croissants.webp",
+      "sha256": "aac084a353bcedfe17bcabbd30f9e414b70596f7db8e526ecfb50290ece4f385",
+      "tier": "premium"
+    },
+    {
+      "id": "soft-boiled-eggs-with-buttered-toast-soldiers",
+      "catalogueNumber": 549,
+      "name": "Soft-boiled eggs with buttered toast soldiers",
+      "image": "release-assets/basketboss-v17/images/new/soft-boiled-eggs-with-buttered-toast-soldiers.webp",
+      "sha256": "fb434b739df64fdd06428d7c18ac5ff6dc21354bf6ff75a43eee61ce242e3467",
+      "tier": "free"
+    },
+    {
+      "id": "ratatouille-with-crusty-bread",
+      "catalogueNumber": 550,
+      "name": "Ratatouille with crusty bread",
+      "image": "release-assets/basketboss-v17/images/new/ratatouille-with-crusty-bread.webp",
+      "sha256": "c118ec6076aff693f5087e038de859af39827c22f1df1f69ffcdb1eb938cb41d",
+      "tier": "premium"
+    },
+    {
+      "id": "chicken-chow-mein",
+      "catalogueNumber": 551,
+      "name": "Chicken chow mein",
+      "image": "release-assets/basketboss-v17/images/new/chicken-chow-mein.webp",
+      "sha256": "046c581b4289383a45f0f61bea6e5509828729ddcee1bc1fbf11050d11e631ca",
+      "tier": "free"
+    },
+    {
+      "id": "chinese-takeaway-lemon-chicken",
+      "catalogueNumber": 552,
+      "name": "Chinese takeaway lemon chicken",
+      "image": "release-assets/basketboss-v17/images/new/chinese-takeaway-lemon-chicken.webp",
+      "sha256": "b6cbb3ba8f69c489abfc5065ebb2e765d03bc07edd7f7a251d07b78a4bc1ae0b",
+      "tier": "premium"
+    },
+    {
+      "id": "chinese-chicken-and-sweetcorn-soup",
+      "catalogueNumber": 553,
+      "name": "Chinese chicken and sweetcorn soup",
+      "image": "release-assets/basketboss-v17/images/new/chinese-chicken-and-sweetcorn-soup.webp",
+      "sha256": "60e81d7a101f2beb98cbff263b628fc84bf255d693c29ceee9cc5d1e6bc92409",
+      "tier": "free"
+    },
+    {
+      "id": "chinese-hot-and-sour-soup",
+      "catalogueNumber": 554,
+      "name": "Chinese hot and sour soup",
+      "image": "release-assets/basketboss-v17/images/new/chinese-hot-and-sour-soup.webp",
+      "sha256": "a98b42c66e972626d3173872b6cd7e28dd6732a5040c7f1be6a3f29a9f20ebce",
+      "tier": "premium"
+    },
+    {
+      "id": "char-siu-pork-with-rice",
+      "catalogueNumber": 555,
+      "name": "Char siu pork with rice",
+      "image": "release-assets/basketboss-v17/images/new/char-siu-pork-with-rice.webp",
+      "sha256": "55a0df314c0d23bad938214165267800ab694d53c221b36a2641d14fe5f4e40c",
+      "tier": "free"
+    },
+    {
+      "id": "chicken-balti-with-naan",
+      "catalogueNumber": 556,
+      "name": "Chicken balti with naan",
+      "image": "release-assets/basketboss-v17/images/new/chicken-balti-with-naan.webp",
+      "sha256": "db224cfe2265769ba1d9ac009e9f8572982e755a78db0aec3e507145ba6c850a",
+      "tier": "premium"
+    },
+    {
+      "id": "lamb-vindaloo-with-rice",
+      "catalogueNumber": 557,
+      "name": "Lamb vindaloo with rice",
+      "image": "release-assets/basketboss-v17/images/new/lamb-vindaloo-with-rice.webp",
+      "sha256": "a4697332e6ca6da06553d9f893d4ca2148741bf78075ae71488a57967fda3968",
+      "tier": "free"
+    },
+    {
+      "id": "vegetable-biryani-with-cucumber-raita",
+      "catalogueNumber": 558,
+      "name": "Vegetable biryani with cucumber raita",
+      "image": "release-assets/basketboss-v17/images/new/vegetable-biryani-with-cucumber-raita.webp",
+      "sha256": "155084107b3b49b79be162590b767c9b3e58102179194acf3089235081de7269",
+      "tier": "premium"
+    },
+    {
+      "id": "tandoori-chicken-with-mint-salad",
+      "catalogueNumber": 559,
+      "name": "Tandoori chicken with mint salad",
+      "image": "release-assets/basketboss-v17/images/new/tandoori-chicken-with-mint-salad.webp",
+      "sha256": "2de364e42687463b7af0f68fb20fd6479ea329ddfec3887218174ec6bbb49e43",
+      "tier": "free"
+    },
+    {
+      "id": "onion-bhajis-with-mango-chutney",
+      "catalogueNumber": 560,
+      "name": "Onion bhajis with mango chutney",
+      "image": "release-assets/basketboss-v17/images/new/onion-bhajis-with-mango-chutney.webp",
+      "sha256": "151928e52da3fa23f7cca75c2137e4e9317cdb1e349d96d246c95d971e2472e9",
+      "tier": "premium"
+    },
+    {
+      "id": "lahmacun-with-chopped-salad",
+      "catalogueNumber": 561,
+      "name": "Lahmacun with chopped salad",
+      "image": "release-assets/basketboss-v17/images/new/lahmacun-with-chopped-salad.webp",
+      "sha256": "9dd5e3d82c2e7ecf12d2c6c74287fbdfdc32a7a4b0b4f21f97119154c3957c1a",
+      "tier": "free"
+    },
+    {
+      "id": "philly-cheesesteak-rolls",
+      "catalogueNumber": 562,
+      "name": "Philly cheesesteak rolls",
+      "image": "release-assets/basketboss-v17/images/new/philly-cheesesteak-rolls.webp",
+      "sha256": "0df27dd12314b79469d9ec75a7e591a90e796b69af1d3bc46664120a2cd3fb1d",
+      "tier": "premium"
+    },
+    {
+      "id": "beef-birria-quesatacos",
+      "catalogueNumber": 563,
+      "name": "Beef birria quesatacos",
+      "image": "release-assets/basketboss-v17/images/new/beef-birria-quesatacos.webp",
+      "sha256": "3512185f39b3edcb1b0264bad6cb62782709368c6f559a51f95d264bdc2adb75",
+      "tier": "free"
+    },
+    {
+      "id": "steak-diane-with-saute-potatoes",
+      "catalogueNumber": 564,
+      "name": "Steak Diane with sauté potatoes",
+      "image": "release-assets/basketboss-v17/images/new/steak-diane-with-saute-potatoes.webp",
+      "sha256": "63629ef6fe9fde1108656975e4be15600b86d6e7c7c38551b4315fcc5ad3f474",
+      "tier": "premium"
+    },
+    {
+      "id": "beef-wellington-with-red-wine-gravy",
+      "catalogueNumber": 565,
+      "name": "Beef Wellington with red wine gravy",
+      "image": "release-assets/basketboss-v17/images/new/beef-wellington-with-red-wine-gravy.webp",
+      "sha256": "8437b61b2b2a2ecb22f9f9ce84eb42b8c80ac301d44ef7f3186840b5af22e6df",
+      "tier": "free"
+    },
+    {
+      "id": "sole-meuniere-with-green-beans",
+      "catalogueNumber": 566,
+      "name": "Sole meunière with green beans",
+      "image": "release-assets/basketboss-v17/images/new/sole-meuniere-with-green-beans.webp",
+      "sha256": "936df15b07d4753842005f654b8d30122bbffce7de69e85e188975c7ba79ddd3",
+      "tier": "premium"
+    },
+    {
+      "id": "poached-salmon-with-hollandaise-and-new-potatoes",
+      "catalogueNumber": 567,
+      "name": "Poached salmon with hollandaise and new potatoes",
+      "image": "release-assets/basketboss-v17/images/new/poached-salmon-with-hollandaise-and-new-potatoes.webp",
+      "sha256": "5e5d4664fa6fe33db72f86d687cda9e9a9de919a53c5e962771e22b051b557d3",
+      "tier": "free"
+    },
+    {
+      "id": "fresh-cod-brandade-with-green-salad",
+      "catalogueNumber": 568,
+      "name": "Fresh cod brandade with green salad",
+      "image": "release-assets/basketboss-v17/images/new/fresh-cod-brandade-with-green-salad.webp",
+      "sha256": "30acd5049cdf6eee1db66a45db65dd530c0bc4ba685f9e314c3bbe9e894e47cd",
+      "tier": "premium"
+    },
+    {
+      "id": "pancetta-wrapped-monkfish-with-crushed-peas",
+      "catalogueNumber": 569,
+      "name": "Pancetta-wrapped monkfish with crushed peas",
+      "image": "release-assets/basketboss-v17/images/new/pancetta-wrapped-monkfish-with-crushed-peas.webp",
+      "sha256": "52b0b91dd204261d8fff28ce720c897c5dc7ffe3c8b7172065084c0f499979c7",
+      "tier": "free"
+    },
+    {
+      "id": "mussel-and-saffron-risotto",
+      "catalogueNumber": 570,
+      "name": "Mussel and saffron risotto",
+      "image": "release-assets/basketboss-v17/images/new/mussel-and-saffron-risotto.webp",
+      "sha256": "2cb9c83f09e248d53cfb471b1a98a0fd7f0e4bd86a006c6e5ec21e3ba528129b",
+      "tier": "premium"
+    },
+    {
+      "id": "brown-shrimp-and-asparagus-puff-tart",
+      "catalogueNumber": 571,
+      "name": "Brown shrimp and asparagus puff tart",
+      "image": "release-assets/basketboss-v17/images/new/brown-shrimp-and-asparagus-puff-tart.webp",
+      "sha256": "c1948cb7017b00f0f30faf6094a7a7f963e98888fe6159b9de26125b2cf9170f",
+      "tier": "free"
+    },
+    {
+      "id": "hot-smoked-salmon-potato-salad-with-horseradish",
+      "catalogueNumber": 572,
+      "name": "Hot-smoked salmon potato salad with horseradish",
+      "image": "release-assets/basketboss-v17/images/new/hot-smoked-salmon-potato-salad-with-horseradish.webp",
+      "sha256": "1f4a9df6f2cf5573419e4fd228f27fc18417365122c82c0edc0817c915b662e7",
+      "tier": "premium"
+    },
+    {
+      "id": "maryland-style-crab-cakes-with-remoulade",
+      "catalogueNumber": 573,
+      "name": "Maryland-style crab cakes with remoulade",
+      "image": "release-assets/basketboss-v17/images/new/maryland-style-crab-cakes-with-remoulade.webp",
+      "sha256": "6522f49e2dcf5543465362562341d52f10ec77387d5311b370486bf8b75d8f06",
+      "tier": "free"
+    },
+    {
+      "id": "new-england-clam-chowder",
+      "catalogueNumber": 574,
+      "name": "New England clam chowder",
+      "image": "release-assets/basketboss-v17/images/new/new-england-clam-chowder.webp",
+      "sha256": "55b09c20cb9ed3730e77ba859d884996d7015c2d8b09ded326e47cd1cdfb2f9a",
+      "tier": "premium"
+    },
+    {
+      "id": "grilled-sardines-with-tomato-bread",
+      "catalogueNumber": 575,
+      "name": "Grilled sardines with tomato bread",
+      "image": "release-assets/basketboss-v17/images/new/grilled-sardines-with-tomato-bread.webp",
+      "sha256": "d4a7e404440440440fe502ed7700ab5dd50b707a822b3565b25da7cc1af21692",
+      "tier": "free"
+    },
+    {
+      "id": "cornish-beef-pasties",
+      "catalogueNumber": 576,
+      "name": "Cornish beef pasties",
+      "image": "release-assets/basketboss-v17/images/new/cornish-beef-pasties.webp",
+      "sha256": "692e5dd1b3dc4148bb4c4b5d4e1dc04dbd4a8e1e40ba85e72b8aefc5bd2f7a36",
+      "tier": "premium"
+    },
+    {
+      "id": "boston-baked-beans-with-cornbread",
+      "catalogueNumber": 577,
+      "name": "Boston baked beans with cornbread",
+      "image": "release-assets/basketboss-v17/images/new/boston-baked-beans-with-cornbread.webp",
+      "sha256": "085ca0ccb319b2c757ecb222e908a2b6a7a951c1913b66cfb81eb78759256063",
+      "tier": "free"
+    },
+    {
+      "id": "chicken-chasseur-with-mash",
+      "catalogueNumber": 578,
+      "name": "Chicken chasseur with mash",
+      "image": "release-assets/basketboss-v17/images/new/chicken-chasseur-with-mash.webp",
+      "sha256": "c22164e1d90f36f981484951f05fa6aed24bc497a79932d70888ae0244f07bf4",
+      "tier": "premium"
+    },
+    {
+      "id": "creamy-tomato-soup-with-cheese-toasties",
+      "catalogueNumber": 579,
+      "name": "Creamy tomato soup with cheese toasties",
+      "image": "release-assets/basketboss-v17/images/new/creamy-tomato-soup-with-cheese-toasties.webp",
+      "sha256": "e9d2723f841b509c152797a905275b49f5e1c6f948d87e301618b8d62acc40e2",
+      "tier": "free"
+    },
+    {
+      "id": "carrot-and-coriander-soup-with-crusty-bread",
+      "catalogueNumber": 580,
+      "name": "Carrot and coriander soup with crusty bread",
+      "image": "release-assets/basketboss-v17/images/new/carrot-and-coriander-soup-with-crusty-bread.webp",
+      "sha256": "bbb72d814477c8f66542f3aa4607f59266335ea75db3f5a459a336eb72c5cace",
+      "tier": "premium"
+    },
+    {
+      "id": "minestrone-with-crusty-bread",
+      "catalogueNumber": 581,
+      "name": "Minestrone with crusty bread",
+      "image": "release-assets/basketboss-v17/images/new/minestrone-with-crusty-bread.webp",
+      "sha256": "184ae96756fa458267b151a0e69e8c50efd0c349a14e07f62cae8f677e091ab7",
+      "tier": "free"
+    },
+    {
+      "id": "american-cobb-salad",
+      "catalogueNumber": 582,
+      "name": "American Cobb salad",
+      "image": "release-assets/basketboss-v17/images/new/american-cobb-salad.webp",
+      "sha256": "57b76e6a644a832259b1b84600b166b1f1b6495678026d5e78e25ce0ed329b85",
+      "tier": "premium"
+    },
+    {
+      "id": "ploughmans-cheese-and-pickle-supper",
+      "catalogueNumber": 583,
+      "name": "Ploughman’s cheese and pickle supper",
+      "image": "release-assets/basketboss-v17/images/new/ploughmans-cheese-and-pickle-supper.webp",
+      "sha256": "2733cc229b6410790b557378646e850f872b38371595544657827275c6188b32",
+      "tier": "free"
+    },
+    {
+      "id": "reuben-sandwiches",
+      "catalogueNumber": 584,
+      "name": "Reuben sandwiches",
+      "image": "release-assets/basketboss-v17/images/new/reuben-sandwiches.webp",
+      "sha256": "48eb53053111aa739225c8b02fab54a92cd18d4677b247f72f05befcec0480a8",
+      "tier": "premium"
+    },
+    {
+      "id": "bacon-and-cabbage-with-parsley-sauce",
+      "catalogueNumber": 585,
+      "name": "Bacon and cabbage with parsley sauce",
+      "image": "release-assets/basketboss-v17/images/new/bacon-and-cabbage-with-parsley-sauce.webp",
+      "sha256": "6b860ccfa2709e614c0fbd17fc38a130a3e3b6b4a900b4e2f2160ca482ccaf32",
+      "tier": "free"
+    },
+    {
+      "id": "ham-and-mushroom-calzone",
+      "catalogueNumber": 586,
+      "name": "Ham and mushroom calzone",
+      "image": "release-assets/basketboss-v17/images/new/ham-and-mushroom-calzone.webp",
+      "sha256": "93307ed17245466748564b19e603d809b7e4a17d826d46dcbd168a238f1a4a66",
+      "tier": "premium"
+    },
+    {
+      "id": "lamb-moussaka",
+      "catalogueNumber": 587,
+      "name": "Lamb moussaka",
+      "image": "release-assets/basketboss-v17/images/new/lamb-moussaka.webp",
+      "sha256": "dc3c474ff82e3bfbfce609be40dd0195894d0655242d8826aedd4f52b61fc0aa",
+      "tier": "free"
+    },
+    {
+      "id": "cauliflower-cheese-with-crusty-bread",
+      "catalogueNumber": 588,
+      "name": "Cauliflower cheese with crusty bread",
+      "image": "release-assets/basketboss-v17/images/new/cauliflower-cheese-with-crusty-bread.webp",
+      "sha256": "d77dd83030d36382992520743167ed665d3fb01248214d0e64b7906c73b614b3",
+      "tier": "premium"
+    },
+    {
+      "id": "american-pot-roast-beef-with-carrots",
+      "catalogueNumber": 589,
+      "name": "American pot-roast beef with carrots",
+      "image": "release-assets/basketboss-v17/images/new/american-pot-roast-beef-with-carrots.webp",
+      "sha256": "90cb7a292e26abb2a96cf4c42556f6086e5619c06967291ce2e3e5c4cb01dd6c",
+      "tier": "free"
+    },
+    {
+      "id": "cacio-e-pepe",
+      "catalogueNumber": 590,
+      "name": "Cacio e pepe",
+      "image": "release-assets/basketboss-v17/images/new/cacio-e-pepe.webp",
+      "sha256": "bc60fb5a16ed81f723d9229d1e75fa956edf1ae7c6fe2ace0a09db6595cd56cd",
+      "tier": "premium"
+    },
+    {
+      "id": "homemade-english-breakfast-muffins",
+      "catalogueNumber": 591,
+      "name": "Homemade English breakfast muffins",
+      "image": "release-assets/basketboss-v17/images/new/homemade-english-breakfast-muffins.webp",
+      "sha256": "e54cd4e1ccf7a0dbe341851f48b4345cdb2c09c39acb57a83d09d20a0ea08430",
+      "tier": "free"
+    },
+    {
+      "id": "cranberry-and-orange-breakfast-scones",
+      "catalogueNumber": 592,
+      "name": "Cranberry and orange breakfast scones",
+      "image": "release-assets/basketboss-v17/images/new/cranberry-and-orange-breakfast-scones.webp",
+      "sha256": "43d5e5d4779562593b5e356230cfdd4c127995d90ae13bb99391ca17021a78d2",
+      "tier": "premium"
+    },
+    {
+      "id": "cinnamon-raisin-breakfast-loaf",
+      "catalogueNumber": 593,
+      "name": "Cinnamon-raisin breakfast loaf",
+      "image": "release-assets/basketboss-v17/images/new/cinnamon-raisin-breakfast-loaf.webp",
+      "sha256": "46b7dcb1d73491bd740c768fc9e5a8f1b014163e2f4ab9cd5a15fd55e157a220",
+      "tier": "free"
+    },
+    {
+      "id": "honey-and-almond-breakfast-flapjacks",
+      "catalogueNumber": 594,
+      "name": "Honey and almond breakfast flapjacks",
+      "image": "release-assets/basketboss-v17/images/new/honey-and-almond-breakfast-flapjacks.webp",
+      "sha256": "accb920659aa25b549b7b29cfe9be0fd2d72bf2f8f6f83f33ac4cfac44e7f42d",
+      "tier": "premium"
+    },
+    {
+      "id": "sausage-breakfast-baps-with-brown-sauce",
+      "catalogueNumber": 595,
+      "name": "Sausage breakfast baps with brown sauce",
+      "image": "release-assets/basketboss-v17/images/new/sausage-breakfast-baps-with-brown-sauce.webp",
+      "sha256": "3d3f271c46d37110fccae5897cdabec17e2b7a170dd4061f3d27de33b4063e14",
+      "tier": "free"
+    },
+    {
+      "id": "black-pudding-and-apple-breakfast-stacks",
+      "catalogueNumber": 596,
+      "name": "Black pudding and apple breakfast stacks",
+      "image": "release-assets/basketboss-v17/images/new/black-pudding-and-apple-breakfast-stacks.webp",
+      "sha256": "fd396b17ab4c4deb260d771365b910a0630c3d0d398c71764b59e92e3ebfef3d",
+      "tier": "premium"
+    },
+    {
+      "id": "grilled-kippers-with-lemon-butter-and-toast",
+      "catalogueNumber": 597,
+      "name": "Grilled kippers with lemon butter and toast",
+      "image": "release-assets/basketboss-v17/images/new/grilled-kippers-with-lemon-butter-and-toast.webp",
+      "sha256": "313c1939b477cfb870270bd75bd33ff0f821d3f47cd31b9ff185258626cadf4f",
+      "tier": "free"
+    },
+    {
+      "id": "homemade-fruit-and-nut-muesli",
+      "catalogueNumber": 598,
+      "name": "Homemade fruit and nut muesli",
+      "image": "release-assets/basketboss-v17/images/new/homemade-fruit-and-nut-muesli.webp",
+      "sha256": "c3aa971a9edfc0e5794331912bb8295c3cdc258421539b79aa0d43abc86dd3e9",
+      "tier": "premium"
+    },
+    {
+      "id": "toasted-fruit-teacakes",
+      "catalogueNumber": 599,
+      "name": "Toasted fruit teacakes",
+      "image": "release-assets/basketboss-v17/images/new/toasted-fruit-teacakes.webp",
+      "sha256": "1375bed184c8e6ac30ea83ada58b4c6e03fa76e64ea6c0fe234de05ceb6dbebb",
+      "tier": "free"
+    },
+    {
+      "id": "potato-farls-with-fried-eggs",
+      "catalogueNumber": 600,
+      "name": "Potato farls with fried eggs",
+      "image": "release-assets/basketboss-v17/images/new/potato-farls-with-fried-eggs.webp",
+      "sha256": "8d851bf5b2f16490fd7b222b0ab6209fc771ecbdf25e338fec2440a0301b09fc",
+      "tier": "premium"
+    },
+    {
+      "id": "chicken-madras-with-rice",
+      "catalogueNumber": 601,
+      "name": "Chicken madras with rice",
+      "image": "release-assets/basketboss-v17/images/new/chicken-madras-with-rice.webp",
+      "sha256": "4951b81b4ac7c91d2f52a0b20fe5304d6c1e988de4fd8b3a2a616521579a3d70",
+      "tier": "free"
+    },
+    {
+      "id": "lamb-pasanda-with-almond-rice",
+      "catalogueNumber": 602,
+      "name": "Lamb pasanda with almond rice",
+      "image": "release-assets/basketboss-v17/images/new/lamb-pasanda-with-almond-rice.webp",
+      "sha256": "ec1293824ce7ca9cf89fd645cf86dd32fbe76aa7e7871ac5fe755a03de673059",
+      "tier": "premium"
+    },
+    {
+      "id": "paneer-tikka-skewers-with-mint-chutney",
+      "catalogueNumber": 603,
+      "name": "Paneer tikka skewers with mint chutney",
+      "image": "release-assets/basketboss-v17/images/new/paneer-tikka-skewers-with-mint-chutney.webp",
+      "sha256": "f6a386729130ee74a6a41a5135a3cd96a7d6514509648806e153d841a7e2d05b",
+      "tier": "free"
+    },
+    {
+      "id": "king-prawn-puri",
+      "catalogueNumber": 604,
+      "name": "King prawn puri",
+      "image": "release-assets/basketboss-v17/images/new/king-prawn-puri.webp",
+      "sha256": "2b9c1bfe1d6db03e35ac7fc9a03a8ba24e230d06f21b216ea8e8aa11ed43e4c6",
+      "tier": "premium"
+    },
+    {
+      "id": "bombay-potatoes",
+      "catalogueNumber": 605,
+      "name": "Bombay potatoes",
+      "image": "release-assets/basketboss-v17/images/new/bombay-potatoes.webp",
+      "sha256": "09377974ac2efb591ce2327a2043fc0ae42bd7e9aa8e731b006910471a6cc402",
+      "tier": "free"
+    },
+    {
+      "id": "chinese-chicken-and-cashew-nuts",
+      "catalogueNumber": 606,
+      "name": "Chinese chicken and cashew nuts",
+      "image": "release-assets/basketboss-v17/images/new/chinese-chicken-and-cashew-nuts.webp",
+      "sha256": "2998bd9dc3eaf3e474b73633471688646a0a0b80b584e408d4d52c0a6c952b3a",
+      "tier": "premium"
+    },
+    {
+      "id": "kung-pao-chicken-with-rice",
+      "catalogueNumber": 607,
+      "name": "Kung pao chicken with rice",
+      "image": "release-assets/basketboss-v17/images/new/kung-pao-chicken-with-rice.webp",
+      "sha256": "10239ad503ec1ba3dc387153358b079b5bfc9b2043cc077a8dca5e2b5ff17fa1",
+      "tier": "free"
+    },
+    {
+      "id": "chinese-takeaway-crispy-seaweed",
+      "catalogueNumber": 608,
+      "name": "Chinese takeaway crispy seaweed",
+      "image": "release-assets/basketboss-v17/images/new/chinese-takeaway-crispy-seaweed.webp",
+      "sha256": "e91afc1571330e241f94773ef4bf7ac0cf658cdd63e7e515610627f44a818811",
+      "tier": "premium"
+    },
+    {
+      "id": "chinese-curry-chicken-and-chips",
+      "catalogueNumber": 609,
+      "name": "Chinese curry chicken and chips",
+      "image": "release-assets/basketboss-v17/images/new/chinese-curry-chicken-and-chips.webp",
+      "sha256": "a08551950503f98cbdca4877276d3a7378d07f9839fde1deb5c69e4ca924e8b4",
+      "tier": "free"
+    },
+    {
+      "id": "cheeseburger-loaded-fries",
+      "catalogueNumber": 610,
+      "name": "Cheeseburger loaded fries",
+      "image": "release-assets/basketboss-v17/images/new/cheeseburger-loaded-fries.webp",
+      "sha256": "f9fa5323a6a727e247c70acbae2d80ef0421c3db63f40392617aaccb98fea899",
+      "tier": "premium"
+    },
+    {
+      "id": "pork-tacos-al-pastor",
+      "catalogueNumber": 611,
+      "name": "Pork tacos al pastor",
+      "image": "release-assets/basketboss-v17/images/new/pork-tacos-al-pastor.webp",
+      "sha256": "6681cc86162b006bd286434b262476c4265ed3f67c6507d04ccfd13148e2b38a",
+      "tier": "free"
+    },
+    {
+      "id": "chicago-deep-dish-pepperoni-pizza",
+      "catalogueNumber": 612,
+      "name": "Chicago deep-dish pepperoni pizza",
+      "image": "release-assets/basketboss-v17/images/new/chicago-deep-dish-pepperoni-pizza.webp",
+      "sha256": "ccf2559c47feca0f24a2b09a945d0079998df72cb4f90be1967938e2806e3351",
+      "tier": "premium"
+    },
+    {
+      "id": "prawn-cocktail-with-brown-bread",
+      "catalogueNumber": 613,
+      "name": "Prawn cocktail with brown bread",
+      "image": "release-assets/basketboss-v17/images/new/prawn-cocktail-with-brown-bread.webp",
+      "sha256": "f96e44aece3b52e33534731d0be5367be0ee88aa125ee978db6dd7fee1a36503",
+      "tier": "free"
+    },
+    {
+      "id": "smoked-mackerel-pate-with-toast",
+      "catalogueNumber": 614,
+      "name": "Smoked mackerel pâté with toast",
+      "image": "release-assets/basketboss-v17/images/new/smoked-mackerel-pate-with-toast.webp",
+      "sha256": "cc56b2576d3ba1d16bbe23212a4b2becae303a8ee1bc5c00b54a7727ebb02e70",
+      "tier": "premium"
+    },
+    {
+      "id": "seafood-crepes-in-white-wine-cream-sauce",
+      "catalogueNumber": 615,
+      "name": "Seafood crêpes in white wine cream sauce",
+      "image": "release-assets/basketboss-v17/images/new/seafood-crepes-in-white-wine-cream-sauce.webp",
+      "sha256": "a9d90a50d7600a3dd4d8cf759a6c07f3282f1720160b39b39d29dd1244444bd4",
+      "tier": "free"
+    },
+    {
+      "id": "cioppino-with-sourdough",
+      "catalogueNumber": 616,
+      "name": "Cioppino with sourdough",
+      "image": "release-assets/basketboss-v17/images/new/cioppino-with-sourdough.webp",
+      "sha256": "cfffe7ed08835177857ee77d38e3bf9592c26013a6241f80f2dc58e81f59f498",
+      "tier": "premium"
+    },
+    {
+      "id": "mackerel-escabeche-with-crusty-bread",
+      "catalogueNumber": 617,
+      "name": "Mackerel escabeche with crusty bread",
+      "image": "release-assets/basketboss-v17/images/new/mackerel-escabeche-with-crusty-bread.webp",
+      "sha256": "1347f704d189043be07230060ad3610020eb57b3255b026871643558c22e3698",
+      "tier": "free"
+    },
+    {
+      "id": "salmon-and-prawn-terrine-with-cucumber-salad",
+      "catalogueNumber": 618,
+      "name": "Salmon and prawn terrine with cucumber salad",
+      "image": "release-assets/basketboss-v17/images/new/salmon-and-prawn-terrine-with-cucumber-salad.webp",
+      "sha256": "37b5872387bfa4f1c1fc57e2e4b3d2a64defa4d4d066fa2c4d09bb6cf066d9d4",
+      "tier": "premium"
+    },
+    {
+      "id": "herb-stuffed-whole-baked-trout",
+      "catalogueNumber": 619,
+      "name": "Herb-stuffed whole baked trout",
+      "image": "release-assets/basketboss-v17/images/new/herb-stuffed-whole-baked-trout.webp",
+      "sha256": "c3e34631545d80f3143e0d200dea745d6c250081ed5011e5ce8c343fa13df2dc",
+      "tier": "free"
+    },
+    {
+      "id": "grilled-tuna-with-peperonata",
+      "catalogueNumber": 620,
+      "name": "Grilled tuna with peperonata",
+      "image": "release-assets/basketboss-v17/images/new/grilled-tuna-with-peperonata.webp",
+      "sha256": "2be9c4fdd52216b543fc971d92949dbd8c26598777414d8dd369760a66dae576",
+      "tier": "premium"
+    },
+    {
+      "id": "sea-bass-en-papillote-with-fennel",
+      "catalogueNumber": 621,
+      "name": "Sea bass en papillote with fennel",
+      "image": "release-assets/basketboss-v17/images/new/sea-bass-en-papillote-with-fennel.webp",
+      "sha256": "85fa974777c2a9c50c7d017959784a4b0ff1e611a019cc1ff0c4b75ed3f5a226",
+      "tier": "free"
+    },
+    {
+      "id": "dressed-crab-with-brown-bread",
+      "catalogueNumber": 622,
+      "name": "Dressed crab with brown bread",
+      "image": "release-assets/basketboss-v17/images/new/dressed-crab-with-brown-bread.webp",
+      "sha256": "d8630a7fbd0702815c785246f6dda2fb4562f9aef11a90a2f1722a635307bfde",
+      "tier": "premium"
+    },
+    {
+      "id": "smoked-salmon-blinis-with-lemon-creme-fraiche",
+      "catalogueNumber": 623,
+      "name": "Smoked salmon blinis with lemon crème fraîche",
+      "image": "release-assets/basketboss-v17/images/new/smoked-salmon-blinis-with-lemon-creme-fraiche.webp",
+      "sha256": "ddc4938615577c5b67f406ba344365aae25d5df8cb8a99aebd03b7034c47f13f",
+      "tier": "free"
+    },
+    {
+      "id": "prawn-saganaki-with-crusty-bread",
+      "catalogueNumber": 624,
+      "name": "Prawn saganaki with crusty bread",
+      "image": "release-assets/basketboss-v17/images/new/prawn-saganaki-with-crusty-bread.webp",
+      "sha256": "90bb19dd7d412fd721790fbeeedceb08fb1138ad94bf5126f0e5e74e7b421886",
+      "tier": "premium"
+    },
+    {
+      "id": "coquilles-saint-jacques",
+      "catalogueNumber": 625,
+      "name": "Coquilles Saint-Jacques",
+      "image": "release-assets/basketboss-v17/images/new/coquilles-saint-jacques.webp",
+      "sha256": "869e878d52ba945df2a36a5cbe667e9857383e3b722ce8f098ed2dafd013ca62",
+      "tier": "free"
+    },
+    {
+      "id": "corned-beef-and-potato-pie",
+      "catalogueNumber": 626,
+      "name": "Corned beef and potato pie",
+      "image": "release-assets/basketboss-v17/images/new/corned-beef-and-potato-pie.webp",
+      "sha256": "6d1b3be6663e631c968119cbdb55887a34bbaaab4a17193d2aeed2eca1cd7eb9",
+      "tier": "premium"
+    },
+    {
+      "id": "chicken-and-mushroom-vol-au-vents",
+      "catalogueNumber": 627,
+      "name": "Chicken and mushroom vol-au-vents",
+      "image": "release-assets/basketboss-v17/images/new/chicken-and-mushroom-vol-au-vents.webp",
+      "sha256": "fd96ddf4327debc8f4dbfa59cd627a8b75240f704684be4ce868c8b5b1b6dbb1",
+      "tier": "free"
+    },
+    {
+      "id": "spanish-tortilla-with-tomato-salad",
+      "catalogueNumber": 628,
+      "name": "Spanish tortilla with tomato salad",
+      "image": "release-assets/basketboss-v17/images/new/spanish-tortilla-with-tomato-salad.webp",
+      "sha256": "bb7d357b5735d7238d7f085b0bf3eb98efd676e3bdd07c882c40bf289fbeebb6",
+      "tier": "premium"
+    },
+    {
+      "id": "rigatoni-allamatriciana",
+      "catalogueNumber": 629,
+      "name": "Rigatoni all’Amatriciana",
+      "image": "release-assets/basketboss-v17/images/new/rigatoni-allamatriciana.webp",
+      "sha256": "87af32088fe4dbb5d5810d452a6b84c568c5d3997c374de95ba611c12f5527f5",
+      "tier": "free"
+    },
+    {
+      "id": "pasta-alla-norma",
+      "catalogueNumber": 630,
+      "name": "Pasta alla Norma",
+      "image": "release-assets/basketboss-v17/images/new/pasta-alla-norma.webp",
+      "sha256": "3840a6ec1bd319fc9c0ee011cbda397e7a7c23ad8ea499009186c45b3cef88f6",
+      "tier": "premium"
+    },
+    {
+      "id": "swedish-meatballs-with-creamy-gravy",
+      "catalogueNumber": 631,
+      "name": "Swedish meatballs with creamy gravy",
+      "image": "release-assets/basketboss-v17/images/new/swedish-meatballs-with-creamy-gravy.webp",
+      "sha256": "193610b39162670016d05ffca90a1804cd105205570751550b126796c2fa08d1",
+      "tier": "free"
+    },
+    {
+      "id": "beef-olives-with-mash",
+      "catalogueNumber": 632,
+      "name": "Beef olives with mash",
+      "image": "release-assets/basketboss-v17/images/new/beef-olives-with-mash.webp",
+      "sha256": "4aa91c3758bc0ba8d777f1c5b084e88828b5a45edb39c855d7da1a284ae2f546",
+      "tier": "premium"
+    },
+    {
+      "id": "cock-a-leekie-soup-with-bread",
+      "catalogueNumber": 633,
+      "name": "Cock-a-leekie soup with bread",
+      "image": "release-assets/basketboss-v17/images/new/cock-a-leekie-soup-with-bread.webp",
+      "sha256": "4df0e881e93186dacc45f3f3bf7839b0772304b49e6e509db490f33c229c824e",
+      "tier": "free"
+    },
+    {
+      "id": "scotch-broth-with-lamb-and-barley",
+      "catalogueNumber": 634,
+      "name": "Scotch broth with lamb and barley",
+      "image": "release-assets/basketboss-v17/images/new/scotch-broth-with-lamb-and-barley.webp",
+      "sha256": "00cc7c9c2ac68e38ac18ae7ec069e70b114778dcc594da70dc25714276512d34",
+      "tier": "premium"
+    },
+    {
+      "id": "tartiflette-style-potato-bake",
+      "catalogueNumber": 635,
+      "name": "Tartiflette-style potato bake",
+      "image": "release-assets/basketboss-v17/images/new/tartiflette-style-potato-bake.webp",
+      "sha256": "01e497021cf1c7e0d975e8d07ca350e137bb84247d6a5e15d4efe5c31e58e56a",
+      "tier": "free"
+    },
+    {
+      "id": "roast-vegetable-crumble-with-cheddar-oats",
+      "catalogueNumber": 636,
+      "name": "Roast vegetable crumble with Cheddar oats",
+      "image": "release-assets/basketboss-v17/images/new/roast-vegetable-crumble-with-cheddar-oats.webp",
+      "sha256": "c0f1e648f46c7a4c2b9ff96dbe28d969bbe172b942d8467df2014ee9f8b710ad",
+      "tier": "premium"
+    },
+    {
+      "id": "lentil-and-walnut-nut-roast",
+      "catalogueNumber": 637,
+      "name": "Lentil and walnut nut roast",
+      "image": "release-assets/basketboss-v17/images/new/lentil-and-walnut-nut-roast.webp",
+      "sha256": "fa5514dcdc85aac2c1c878d1c4dfd75a6fa1d8372b5bf208ae5f6754ac71e0eb",
+      "tier": "free"
+    },
+    {
+      "id": "panzanella-bread-salad",
+      "catalogueNumber": 638,
+      "name": "Panzanella bread salad",
+      "image": "release-assets/basketboss-v17/images/new/panzanella-bread-salad.webp",
+      "sha256": "a5c3d903f890808bb1816dbe44a17be65b31fb02632e3668a56f465a1a120627",
+      "tier": "premium"
+    },
+    {
+      "id": "salade-lyonnaise-with-poached-eggs",
+      "catalogueNumber": 639,
+      "name": "Salade Lyonnaise with poached eggs",
+      "image": "release-assets/basketboss-v17/images/new/salade-lyonnaise-with-poached-eggs.webp",
+      "sha256": "e3109777e7201f5b3c420dcb6a73a03b4631bb5ab47d9dc3d3d443dfcae0f898",
+      "tier": "free"
+    },
+    {
+      "id": "crispy-bacon-and-cheddar-potato-skins",
+      "catalogueNumber": 640,
+      "name": "Crispy bacon and Cheddar potato skins",
+      "image": "release-assets/basketboss-v17/images/new/crispy-bacon-and-cheddar-potato-skins.webp",
+      "sha256": "30f92d982638079c364ae72c704987751b42f94b9ca6a78ac2db5ae343a5a7fd",
+      "tier": "premium"
+    },
+    {
+      "id": "southern-chicken-and-waffles",
+      "catalogueNumber": 641,
+      "name": "Southern chicken and waffles",
+      "image": "release-assets/basketboss-v17/images/new/southern-chicken-and-waffles.webp",
+      "sha256": "e7c801847b9d05773755bb3201efce3723a9d52afc9e9204b7051d44995193d7",
+      "tier": "free"
+    },
+    {
+      "id": "staffordshire-oatcakes-with-bacon-and-cheese",
+      "catalogueNumber": 642,
+      "name": "Staffordshire oatcakes with bacon and cheese",
+      "image": "release-assets/basketboss-v17/images/new/staffordshire-oatcakes-with-bacon-and-cheese.webp",
+      "sha256": "42468e639df2cb13f7aebbe84565fea35d6796a2f4b288dfc79ae095dce7e583",
+      "tier": "premium"
+    },
+    {
+      "id": "homemade-hot-cross-buns",
+      "catalogueNumber": 643,
+      "name": "Homemade hot cross buns",
+      "image": "release-assets/basketboss-v17/images/new/homemade-hot-cross-buns.webp",
+      "sha256": "9d12ca3d8986c3f2c1b660e2b7d761f96d40404b328938cda77d94776f82f317",
+      "tier": "free"
+    },
+    {
+      "id": "breakfast-soda-bread-with-marmalade",
+      "catalogueNumber": 644,
+      "name": "Breakfast soda bread with marmalade",
+      "image": "release-assets/basketboss-v17/images/new/breakfast-soda-bread-with-marmalade.webp",
+      "sha256": "61dadaf2240c600f56106e7bdff32e1eb110862fc27f15613943dc4dc3b12ee0",
+      "tier": "premium"
+    },
+    {
+      "id": "homemade-malt-loaf",
+      "catalogueNumber": 645,
+      "name": "Homemade malt loaf",
+      "image": "release-assets/basketboss-v17/images/new/homemade-malt-loaf.webp",
+      "sha256": "fd9006561783769dc0405d49625c0a2f2505789e78e69ccffad8b5634e59158a",
+      "tier": "free"
+    },
+    {
+      "id": "croque-madame",
+      "catalogueNumber": 646,
+      "name": "Croque Madame",
+      "image": "release-assets/basketboss-v17/images/new/croque-madame.webp",
+      "sha256": "6ae66f228bf945c911d4a05aaa4b6d1d9e9271c0318205488e99d1317fdc2ba8",
+      "tier": "premium"
+    },
+    {
+      "id": "baked-eggs-in-cream-with-chives",
+      "catalogueNumber": 647,
+      "name": "Baked eggs in cream with chives",
+      "image": "release-assets/basketboss-v17/images/new/baked-eggs-in-cream-with-chives.webp",
+      "sha256": "6ded2d01f2356a1e862b95d134709ecf7d54000419106574951bd94650d4f325",
+      "tier": "free"
+    },
+    {
+      "id": "pan-con-tomate-with-cured-ham",
+      "catalogueNumber": 648,
+      "name": "Pan con tomate with cured ham",
+      "image": "release-assets/basketboss-v17/images/new/pan-con-tomate-with-cured-ham.webp",
+      "sha256": "d183336d209c5bf151d0a8c3bfeb038ac6589c6acf039d74fc71273bf1eabd7b",
+      "tier": "premium"
+    },
+    {
+      "id": "sausage-egg-and-cheese-breakfast-muffins",
+      "catalogueNumber": 649,
+      "name": "Sausage, egg and cheese breakfast muffins",
+      "image": "release-assets/basketboss-v17/images/new/sausage-egg-and-cheese-breakfast-muffins.webp",
+      "sha256": "8ff45d8e42330a4bc8a82c9fa16c64577a80919d26840a5b64c5e199d8655a0b",
+      "tier": "free"
+    },
+    {
+      "id": "bacon-and-scrambled-egg-breakfast-quesadillas",
+      "catalogueNumber": 650,
+      "name": "Bacon and scrambled egg breakfast quesadillas",
+      "image": "release-assets/basketboss-v17/images/new/bacon-and-scrambled-egg-breakfast-quesadillas.webp",
+      "sha256": "1f23fea68794a1bbc73a29748c7dd5f254f217bec933306627777055943b4e15",
+      "tier": "premium"
+    },
+    {
+      "id": "mushroom-bhaji-with-naan",
+      "catalogueNumber": 651,
+      "name": "Mushroom bhaji with naan",
+      "image": "release-assets/basketboss-v17/images/new/mushroom-bhaji-with-naan.webp",
+      "sha256": "65e615acd2340f52e0dceaf96b198749ce0cdade76ab3148e95ec4c0b6ef248e",
+      "tier": "free"
+    },
+    {
+      "id": "keema-naan",
+      "catalogueNumber": 652,
+      "name": "Keema naan",
+      "image": "release-assets/basketboss-v17/images/new/keema-naan.webp",
+      "sha256": "72904d2441b03879b6c42de5462cf4868e28709a232d8ce64989d484d760dbeb",
+      "tier": "premium"
+    },
+    {
+      "id": "chicken-pakora-with-mint-yoghurt",
+      "catalogueNumber": 653,
+      "name": "Chicken pakora with mint yoghurt",
+      "image": "release-assets/basketboss-v17/images/new/chicken-pakora-with-mint-yoghurt.webp",
+      "sha256": "a01351f2fb442842b67d273aae515fc6b9c81c76c648d7ad3b67d2ce45f1e917",
+      "tier": "free"
+    },
+    {
+      "id": "chinese-ginger-and-spring-onion-lamb-with-rice",
+      "catalogueNumber": 654,
+      "name": "Chinese ginger and spring onion lamb with rice",
+      "image": "release-assets/basketboss-v17/images/new/chinese-ginger-and-spring-onion-lamb-with-rice.webp",
+      "sha256": "cb15853ab2639ee060167d206dd600b03abeb086d1f9aa1305f608a1a468f7cb",
+      "tier": "premium"
+    },
+    {
+      "id": "salt-and-pepper-chips",
+      "catalogueNumber": 655,
+      "name": "Salt and pepper chips",
+      "image": "release-assets/basketboss-v17/images/new/salt-and-pepper-chips.webp",
+      "sha256": "1ba804dae6aa996f4968f8f23ce362da4e629a617fa0f0f408eea1a2dc464f19",
+      "tier": "free"
+    },
+    {
+      "id": "buffalo-chicken-wings-with-blue-cheese-dip",
+      "catalogueNumber": 656,
+      "name": "Buffalo chicken wings with blue cheese dip",
+      "image": "release-assets/basketboss-v17/images/new/buffalo-chicken-wings-with-blue-cheese-dip.webp",
+      "sha256": "89323b496d09a0eacaada443c439ebb4ecf9bdec03eb2ba39dd1d9a5772675bc",
+      "tier": "premium"
+    },
+    {
+      "id": "battered-sausage-with-chip-shop-curry-sauce",
+      "catalogueNumber": 657,
+      "name": "Battered sausage with chip-shop curry sauce",
+      "image": "release-assets/basketboss-v17/images/new/battered-sausage-with-chip-shop-curry-sauce.webp",
+      "sha256": "f416afc4d40cd2f777eff6dc5f3492338c66dc5c5f96ed86e6914264462e4388",
+      "tier": "free"
+    },
+    {
+      "id": "beef-barbacoa-tacos",
+      "catalogueNumber": 658,
+      "name": "Beef barbacoa tacos",
+      "image": "release-assets/basketboss-v17/images/new/beef-barbacoa-tacos.webp",
+      "sha256": "d20bfef4c96138930f36eea7c94a65549759451ac375b0e01c5c12064bbb923c",
+      "tier": "premium"
+    },
+    {
+      "id": "chicken-fajita-crunchwraps",
+      "catalogueNumber": 659,
+      "name": "Chicken fajita crunchwraps",
+      "image": "release-assets/basketboss-v17/images/new/chicken-fajita-crunchwraps.webp",
+      "sha256": "aa3de1f738cd873a5192f71f78508d63ed01dd62e9f2d243847195d2dd93ff79",
+      "tier": "free"
+    },
+    {
+      "id": "mozzarella-sticks-with-marinara",
+      "catalogueNumber": 660,
+      "name": "Mozzarella sticks with marinara",
+      "image": "release-assets/basketboss-v17/images/new/mozzarella-sticks-with-marinara.webp",
+      "sha256": "772faf4e1a400a3edb5691486fd245f19cc60a5e0c8540ccd0acc99c25cc66cc",
+      "tier": "premium"
+    },
+    {
+      "id": "jalapeno-poppers-with-ranch-dip",
+      "catalogueNumber": 661,
+      "name": "Jalapeño poppers with ranch dip",
+      "image": "release-assets/basketboss-v17/images/new/jalapeno-poppers-with-ranch-dip.webp",
+      "sha256": "8a74b8ee6f10843db73cdf72ef5937a6e1591801e2f24c17bc8e889f73937669",
+      "tier": "free"
+    },
+    {
+      "id": "chilli-con-queso-with-tortilla-chips",
+      "catalogueNumber": 662,
+      "name": "Chilli con queso with tortilla chips",
+      "image": "release-assets/basketboss-v17/images/new/chilli-con-queso-with-tortilla-chips.webp",
+      "sha256": "56a555a3c6e589525ca1de84519027a1100c69fe8c7c3851cc8b7138b60b6773",
+      "tier": "premium"
+    },
+    {
+      "id": "beef-bourguignon-with-mash",
+      "catalogueNumber": 663,
+      "name": "Beef bourguignon with mash",
+      "image": "release-assets/basketboss-v17/images/new/beef-bourguignon-with-mash.webp",
+      "sha256": "12f1b694d15313f2b8454dae1c0abc50928dece16723e17cafb69f957567fc0b",
+      "tier": "free"
+    },
+    {
+      "id": "chicken-cordon-bleu-with-green-salad",
+      "catalogueNumber": 664,
+      "name": "Chicken Cordon Bleu with green salad",
+      "image": "release-assets/basketboss-v17/images/new/chicken-cordon-bleu-with-green-salad.webp",
+      "sha256": "e0137422640364b6d7febb44f0229b6af5179bb14bb6801ff61738a8e05c7c69",
+      "tier": "premium"
+    },
+    {
+      "id": "lamb-cutlets-with-mint-pesto-and-dauphinoise",
+      "catalogueNumber": 665,
+      "name": "Lamb cutlets with mint pesto and dauphinoise",
+      "image": "release-assets/basketboss-v17/images/new/lamb-cutlets-with-mint-pesto-and-dauphinoise.webp",
+      "sha256": "1626044b31b15b81b7a343cc97d48b2a6028a08e371118a6d0b1688aa88f188c",
+      "tier": "free"
+    },
+    {
+      "id": "steak-frites-with-cafe-de-paris-butter",
+      "catalogueNumber": 666,
+      "name": "Steak frites with Café de Paris butter",
+      "image": "release-assets/basketboss-v17/images/new/steak-frites-with-cafe-de-paris-butter.webp",
+      "sha256": "d8f4d8749cccff5a9a19284b67c5669a5738f2e1922a4f48df05e9007b32a9fe",
+      "tier": "premium"
+    },
+    {
+      "id": "hake-with-clams-and-parsley-sauce",
+      "catalogueNumber": 667,
+      "name": "Hake with clams and parsley sauce",
+      "image": "release-assets/basketboss-v17/images/new/hake-with-clams-and-parsley-sauce.webp",
+      "sha256": "58c777c5847df187237d006f9b7f4c9b08752dea30121d7949a896fd21861e5c",
+      "tier": "free"
+    },
+    {
+      "id": "king-prawn-and-chorizo-skewers-with-lemon-potatoes",
+      "catalogueNumber": 668,
+      "name": "King prawn and chorizo skewers with lemon potatoes",
+      "image": "release-assets/basketboss-v17/images/new/king-prawn-and-chorizo-skewers-with-lemon-potatoes.webp",
+      "sha256": "e473f0e15cfc46e829c475b9825bf147e02f9580d2ef2bda84295f4a9e999e72",
+      "tier": "premium"
+    },
+    {
+      "id": "sole-veronique-with-steamed-potatoes",
+      "catalogueNumber": 669,
+      "name": "Sole Véronique with steamed potatoes",
+      "image": "release-assets/basketboss-v17/images/new/sole-veronique-with-steamed-potatoes.webp",
+      "sha256": "b26cac197e71f22bc4de37b1387909e2f68d12725cc4410afe67d4ec9474624d",
+      "tier": "free"
+    },
+    {
+      "id": "potted-brown-shrimp-with-toast",
+      "catalogueNumber": 670,
+      "name": "Potted brown shrimp with toast",
+      "image": "release-assets/basketboss-v17/images/new/potted-brown-shrimp-with-toast.webp",
+      "sha256": "4fd2cacdfc06d2a009e1100cd24a19bf9c3c0ec60a3138dfb109efc1eb866ce0",
+      "tier": "premium"
+    },
+    {
+      "id": "open-crab-melts-with-lemon-salad",
+      "catalogueNumber": 671,
+      "name": "Open crab melts with lemon salad",
+      "image": "release-assets/basketboss-v17/images/new/open-crab-melts-with-lemon-salad.webp",
+      "sha256": "119f526c3981e7b43042e462a7b1bdce90a8867e1815faebca41902ceb295c5a",
+      "tier": "free"
+    },
+    {
+      "id": "smoked-haddock-scotch-eggs-with-mustard-leaves",
+      "catalogueNumber": 672,
+      "name": "Smoked haddock Scotch eggs with mustard leaves",
+      "image": "release-assets/basketboss-v17/images/new/smoked-haddock-scotch-eggs-with-mustard-leaves.webp",
+      "sha256": "d31da6824476811eee3a19c604ae5ea5bd5ef01007a55b17b64b28af6ed29346",
+      "tier": "premium"
+    },
+    {
+      "id": "spaghetti-alle-vongole",
+      "catalogueNumber": 673,
+      "name": "Spaghetti alle vongole",
+      "image": "release-assets/basketboss-v17/images/new/spaghetti-alle-vongole.webp",
+      "sha256": "b3b3099b7140a9e0ad0613821492fd350a1a09e2acbf46bc00db14380227907f",
+      "tier": "free"
+    },
+    {
+      "id": "roast-beef-tonnato-with-green-salad",
+      "catalogueNumber": 674,
+      "name": "Roast beef tonnato with green salad",
+      "image": "release-assets/basketboss-v17/images/new/roast-beef-tonnato-with-green-salad.webp",
+      "sha256": "1eefba5b177261b757f00c759f7be21af204afdf2118d0be5622033cb1467ebc",
+      "tier": "premium"
+    },
+    {
+      "id": "hunters-chicken-with-chips",
+      "catalogueNumber": 675,
+      "name": "Hunter’s chicken with chips",
+      "image": "release-assets/basketboss-v17/images/new/hunters-chicken-with-chips.webp",
+      "sha256": "f4a37448119e87660ca82faa5631cf48b31011c525066d779fe5184e3f88050b",
+      "tier": "free"
+    },
+    {
+      "id": "lancashire-lamb-hotpot",
+      "catalogueNumber": 676,
+      "name": "Lancashire lamb hotpot",
+      "image": "release-assets/basketboss-v17/images/new/lancashire-lamb-hotpot.webp",
+      "sha256": "d75e109956f8966805b48fd0c3e3dc70f577dd324e581fc7fb23a2b4cfb52a13",
+      "tier": "premium"
+    },
+    {
+      "id": "bacon-and-onion-suet-roly-poly",
+      "catalogueNumber": 677,
+      "name": "Bacon and onion suet roly-poly",
+      "image": "release-assets/basketboss-v17/images/new/bacon-and-onion-suet-roly-poly.webp",
+      "sha256": "223e027c4c7463d342a7a215b87f68adf16d20a1b4823016ed0319ec9cb16cc9",
+      "tier": "free"
+    },
+    {
+      "id": "steak-pizzaiola-with-potatoes",
+      "catalogueNumber": 678,
+      "name": "Steak pizzaiola with potatoes",
+      "image": "release-assets/basketboss-v17/images/new/steak-pizzaiola-with-potatoes.webp",
+      "sha256": "58acbfb877dfc93ef11881f8916747a9c5b05cadec6357581cbca006b52bfa4a",
+      "tier": "premium"
+    },
+    {
+      "id": "sweetcorn-spoonbread-with-black-bean-salad",
+      "catalogueNumber": 679,
+      "name": "Sweetcorn spoonbread with black bean salad",
+      "image": "release-assets/basketboss-v17/images/new/sweetcorn-spoonbread-with-black-bean-salad.webp",
+      "sha256": "e4a6e3d023cac16e114954c146003ab9d86f4cc5654d7a7b93197b6a88084a54",
+      "tier": "free"
+    },
+    {
+      "id": "succotash-with-baked-eggs",
+      "catalogueNumber": 680,
+      "name": "Succotash with baked eggs",
+      "image": "release-assets/basketboss-v17/images/new/succotash-with-baked-eggs.webp",
+      "sha256": "840cd79bd65aff7f50e3cc1fe8bb43867bda5bca2b418bb99d9b5cdbfb47ac0b",
+      "tier": "premium"
+    },
+    {
+      "id": "homemade-corn-dogs-with-slaw",
+      "catalogueNumber": 681,
+      "name": "Homemade corn dogs with slaw",
+      "image": "release-assets/basketboss-v17/images/new/homemade-corn-dogs-with-slaw.webp",
+      "sha256": "9d8de71f0cae14095d6cc3fce590916741680003d7eb64e4c467d6385a95ac4d",
+      "tier": "free"
+    },
+    {
+      "id": "american-three-bean-salad-with-cornbread",
+      "catalogueNumber": 682,
+      "name": "American three-bean salad with cornbread",
+      "image": "release-assets/basketboss-v17/images/new/american-three-bean-salad-with-cornbread.webp",
+      "sha256": "7ef4248668707c819763bb16899829bdcae8fc58ace9963d47e2176b6234a697",
+      "tier": "premium"
+    },
+    {
+      "id": "classic-blt-sandwiches",
+      "catalogueNumber": 683,
+      "name": "Classic BLT sandwiches",
+      "image": "release-assets/basketboss-v17/images/new/classic-blt-sandwiches.webp",
+      "sha256": "71048a9edde5a62a39b6932b7d84e246cdfd990d7d5f93f95da0e89bb8b64260",
+      "tier": "free"
+    },
+    {
+      "id": "tuna-melt-toasties",
+      "catalogueNumber": 684,
+      "name": "Tuna melt toasties",
+      "image": "release-assets/basketboss-v17/images/new/tuna-melt-toasties.webp",
+      "sha256": "6cd123fe05f4a38c4b60286db48cd5bb2c82030d42b104fdfef1d0a8d684f871",
+      "tier": "premium"
+    },
+    {
+      "id": "monte-cristo-sandwiches",
+      "catalogueNumber": 685,
+      "name": "Monte Cristo sandwiches",
+      "image": "release-assets/basketboss-v17/images/new/monte-cristo-sandwiches.webp",
+      "sha256": "3b6eab61a88af178e7303c7808a5ff0664fec1d5d9d080a9000b122c2f96020b",
+      "tier": "free"
+    },
+    {
+      "id": "pork-and-liver-faggots-with-mash",
+      "catalogueNumber": 686,
+      "name": "Pork and liver faggots with mash",
+      "image": "release-assets/basketboss-v17/images/new/pork-and-liver-faggots-with-mash.webp",
+      "sha256": "e00e9d7625eabf16ddbd727c3a2aae385daf8f8828bf947bdf1a72c8c5b97fa9",
+      "tier": "premium"
+    },
+    {
+      "id": "cajun-dirty-rice",
+      "catalogueNumber": 687,
+      "name": "Cajun dirty rice",
+      "image": "release-assets/basketboss-v17/images/new/cajun-dirty-rice.webp",
+      "sha256": "2ec41daccac0fe0865b4b8d2c16a7f775423f5f79d7b10d431ae6c50ba8fa012",
+      "tier": "free"
+    },
+    {
+      "id": "cauliflower-steaks-with-romesco-and-butter-beans",
+      "catalogueNumber": 688,
+      "name": "Cauliflower steaks with romesco and butter beans",
+      "image": "release-assets/basketboss-v17/images/new/cauliflower-steaks-with-romesco-and-butter-beans.webp",
+      "sha256": "c84ae415be0d6e77cc9ac1c68b3ce5ff34ad54508770b1905b2aaa59a23cfcde",
+      "tier": "premium"
+    },
+    {
+      "id": "roast-cabbage-wedges-with-cheddar-white-beans",
+      "catalogueNumber": 689,
+      "name": "Roast cabbage wedges with Cheddar white beans",
+      "image": "release-assets/basketboss-v17/images/new/roast-cabbage-wedges-with-cheddar-white-beans.webp",
+      "sha256": "f838c2c41a8429bbddd1ec5f510bf6acbc6a318fc68237a3b17dd3a108dea71c",
+      "tier": "free"
+    },
+    {
+      "id": "crispy-polenta-chips-with-tomato-bean-ragu",
+      "catalogueNumber": 690,
+      "name": "Crispy polenta chips with tomato-bean ragù",
+      "image": "release-assets/basketboss-v17/images/new/crispy-polenta-chips-with-tomato-bean-ragu.webp",
+      "sha256": "b7e2c8c99f66b3c046caa83888174dc44bee24f87752874c8625aaa312acbfdc",
+      "tier": "premium"
+    },
+    {
+      "id": "peanut-butter-and-banana-smoothie-bowls",
+      "catalogueNumber": 691,
+      "name": "Peanut butter and banana smoothie bowls",
+      "image": "release-assets/basketboss-v17/images/new/peanut-butter-and-banana-smoothie-bowls.webp",
+      "sha256": "4b901573136ead09c5205dc7ce974428050b298559bf727734cc226871742840",
+      "tier": "free"
+    },
+    {
+      "id": "warm-pear-and-quinoa-breakfast-bowls",
+      "catalogueNumber": 692,
+      "name": "Warm pear and quinoa breakfast bowls",
+      "image": "release-assets/basketboss-v17/images/new/warm-pear-and-quinoa-breakfast-bowls.webp",
+      "sha256": "db222d1554d361aa8fe808febfeb1a32671af34b2925763bb12d70145a1b323d",
+      "tier": "premium"
+    },
+    {
+      "id": "baked-ricotta-with-roasted-plums",
+      "catalogueNumber": 693,
+      "name": "Baked ricotta with roasted plums",
+      "image": "release-assets/basketboss-v17/images/new/baked-ricotta-with-roasted-plums.webp",
+      "sha256": "5340a165be0a56910d2a1d12ee90c4ab8d22ae8bb7f2093267bdf999042cd227",
+      "tier": "free"
+    },
+    {
+      "id": "bacon-and-maple-cornbread-breakfast-muffins",
+      "catalogueNumber": 694,
+      "name": "Bacon and maple cornbread breakfast muffins",
+      "image": "release-assets/basketboss-v17/images/new/bacon-and-maple-cornbread-breakfast-muffins.webp",
+      "sha256": "187da965ff0360c528c02c70dfb0c3b8bf49477348069c3d85ab0a39fb7beb38",
+      "tier": "premium"
+    },
+    {
+      "id": "cinnamon-baked-apples-with-cottage-cheese-and-pecans",
+      "catalogueNumber": 695,
+      "name": "Cinnamon baked apples with cottage cheese and pecans",
+      "image": "release-assets/basketboss-v17/images/new/cinnamon-baked-apples-with-cottage-cheese-and-pecans.webp",
+      "sha256": "cf81189a7c2520ded4ecb24ced7432dc0e3ef37ce210d8272606c30a5a8954b8",
+      "tier": "free"
+    },
+    {
+      "id": "homemade-pork-and-sage-breakfast-patties",
+      "catalogueNumber": 696,
+      "name": "Homemade pork and sage breakfast patties",
+      "image": "release-assets/basketboss-v17/images/new/homemade-pork-and-sage-breakfast-patties.webp",
+      "sha256": "443f0f4d6fc5e228f3f376514aa6659f1ba1201129584e7737fd19e07990d6cb",
+      "tier": "premium"
+    },
+    {
+      "id": "dutch-baby-with-lemon-and-blueberries",
+      "catalogueNumber": 697,
+      "name": "Dutch baby with lemon and blueberries",
+      "image": "release-assets/basketboss-v17/images/new/dutch-baby-with-lemon-and-blueberries.webp",
+      "sha256": "156431c46b93a9d506e7bd1037352d6354c5c820d91579d857e3c07fbe005b03",
+      "tier": "free"
+    },
+    {
+      "id": "cottage-cheese-cucumber-and-radish-crispbreads",
+      "catalogueNumber": 698,
+      "name": "Cottage cheese, cucumber and radish crispbreads",
+      "image": "release-assets/basketboss-v17/images/new/cottage-cheese-cucumber-and-radish-crispbreads.webp",
+      "sha256": "ec21f17ca9dd72dfc7016d21ee5d4a6f6e73f13fd22c0402082775dd9587317a",
+      "tier": "premium"
+    },
+    {
+      "id": "baked-grapefruit-with-honey-and-yoghurt",
+      "catalogueNumber": 699,
+      "name": "Baked grapefruit with honey and yoghurt",
+      "image": "release-assets/basketboss-v17/images/new/baked-grapefruit-with-honey-and-yoghurt.webp",
+      "sha256": "d71ae4cf5f8631d57d2b05d55e1b1fbb6bda1fb7ba1c5c27da178b0ce78d5e5a",
+      "tier": "free"
+    },
+    {
+      "id": "buck-rarebit",
+      "catalogueNumber": 700,
+      "name": "Buck rarebit",
+      "image": "release-assets/basketboss-v17/images/new/buck-rarebit.webp",
+      "sha256": "ce77dc826ac48cf3ea51037b511af65a4aecd3fb1333867aab6196b2fa6d0734",
+      "tier": "premium"
+    }
+  ],
+  "encryptedPayload": {
+    "file": ".github/private-catalogue/catalogue700-release.sealed.json",
+    "plaintextSha256": "35733d23fe954318dba2c66bdcf566ce6f3f29d5f038166e3c83e41ef9356e7b",
+    "plaintextBytes": 4484709,
+    "recipientFingerprint": "62df600a0710ed523668111e40339a72ec502300fc248a8a67862008a1ae74ac"
+  }
+}

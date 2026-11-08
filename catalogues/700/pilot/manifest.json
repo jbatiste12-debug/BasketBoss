@@ -1,0 +1,119 @@
+{
+  "schemaVersion": 1,
+  "catalogueVersion": 700,
+  "stage": "five-recipe-image-and-schema-pilot",
+  "activationEligible": false,
+  "sourceCommit": "b3ee36c3e115844684b24482c7de7026d9064f27",
+  "counts": {
+    "protectedExisting": 500,
+    "pilot": 5,
+    "newFree": 2,
+    "newPremium": 3,
+    "target": 700,
+    "remainingNew": 195
+  },
+  "protectedPrivateRowsSha256": "f89eaecc9b2ca71fbd8018c7f733e51c630f6992e5ad5def902f609a71fcbc2e",
+  "sourceHashes": {
+    "recipes": "2b9a705542e4af2aa84fdd586c71fb7eef183a1cbdead9dbc7e912e919eaf989",
+    "normalized": "8a2884e8bb42db887289851d469dee45ddd350b74fe150b078c7566704f88279",
+    "imageBriefs": "f477121a5bc1905391428c9d91a8c9d353baa2c52be33ceb6b3ae6a2666fc2cc",
+    "planningRoles": "59e861eef79e3172da0bdc31efb618242309e4e0f462823e210639f31290692b"
+  },
+  "publicData": {
+    "recipes": "catalogues/700/pilot/free.recipes.json",
+    "normalized": "catalogues/700/pilot/free.normalized.json",
+    "briefs": "catalogues/700/pilot/free.image-briefs.json"
+  },
+  "premiumData": {
+    "sealed": ".github/private-catalogue/catalogue700-pilot.sealed.json",
+    "recipientFingerprint": "62df600a0710ed523668111e40339a72ec502300fc248a8a67862008a1ae74ac",
+    "plaintextSha256": "71ed1edc72bfc4d8aaa2cc304560412079db59ea27d2ab8ad3e59fd99d2f381b",
+    "sealedSha256": "d47795751513c3dd02ef4c4c0cdea89f928297ffae16f26766c47f3b113a5030"
+  },
+  "planning": {
+    "policy": "tools/catalogue700/planning.mjs",
+    "roles": "catalogues/700/pilot/planning-roles.json",
+    "wiredIntoCurrentClient": false,
+    "legacy500Unchanged": true
+  },
+  "packOverlay": {
+    "file": "catalogues/700/pilot/pack-additions.json",
+    "appliedToProduction": false,
+    "evidence": "ILLUSTRATIVE_UNVERIFIED"
+  },
+  "photography": {
+    "format": "webp",
+    "width": 1448,
+    "height": 1086,
+    "policy": "Vary camera angles, plates, serving vessels and occasional cutlery; include family-sharing scenes while matching each recipe ingredient ledger.",
+    "deployment": "Stage assets separately; materialize each canonical image path only with the complete versioned700 release."
+  },
+  "recipes": [
+    {
+      "id": "crispy-aromatic-duck-pancakes",
+      "catalogueNumber": 501,
+      "name": "Crispy aromatic duck pancakes",
+      "accessTier": "premium",
+      "mins": 185,
+      "servings": 4,
+      "dinnerEligible": true,
+      "image": "release-assets/basketboss-v17/images/new/crispy-aromatic-duck-pancakes.webp",
+      "sha256": "229361b6b756dd619f4f9147a1d743c3dc75bcb6c59a2c58ea5f12cbd32f82f2",
+      "composition": "Overhead 90-degree family sharing; blue oval platter, patterned side plates and forks.",
+      "photoServings": 4
+    },
+    {
+      "id": "salmon-en-croute-with-spinach",
+      "catalogueNumber": 514,
+      "name": "Salmon en cro\u00fbte with spinach",
+      "accessTier": "premium",
+      "mins": 110,
+      "servings": 4,
+      "dinnerEligible": true,
+      "image": "release-assets/basketboss-v17/images/new/salmon-en-croute-with-spinach.webp",
+      "sha256": "c2d5e746d16cc876d09b5c111899f65b0d81ebe738e1d178d280edbc9fed4363",
+      "composition": "Angled individual plated serving with recipe-specific food and warm natural light.",
+      "photoServings": 1
+    },
+    {
+      "id": "spaghetti-carbonara",
+      "catalogueNumber": 527,
+      "name": "Spaghetti carbonara",
+      "accessTier": "free",
+      "mins": 25,
+      "servings": 4,
+      "dinnerEligible": true,
+      "image": "release-assets/basketboss-v17/images/new/spaghetti-carbonara.webp",
+      "sha256": "515d064776b05e89f4707aedf5f05ad7744cce63b325bf37aa156277b52a34df",
+      "composition": "Angled individual plated serving with recipe-specific food and warm natural light.",
+      "photoServings": 1
+    },
+    {
+      "id": "belgian-breakfast-waffles-with-berries",
+      "catalogueNumber": 528,
+      "name": "Belgian breakfast waffles with berries",
+      "accessTier": "premium",
+      "mins": 45,
+      "servings": 4,
+      "dinnerEligible": false,
+      "image": "release-assets/basketboss-v17/images/new/belgian-breakfast-waffles-with-berries.webp",
+      "sha256": "7ac6656280fd555ebf88cd0f1cfe4d77f884541e96edacf628b9f615d93c67b4",
+      "composition": "Angled individual plated serving with recipe-specific food and warm natural light.",
+      "photoServings": 1
+    },
+    {
+      "id": "sticky-bbq-pork-spare-ribs-with-slaw",
+      "catalogueNumber": 545,
+      "name": "Sticky BBQ pork spare ribs with slaw",
+      "accessTier": "free",
+      "mins": 200,
+      "servings": 4,
+      "dinnerEligible": true,
+      "image": "release-assets/basketboss-v17/images/new/sticky-bbq-pork-spare-ribs-with-slaw.webp",
+      "sha256": "86fb286e957f0149190a889d1e365adeab2cd3a564ef57b0516d3d6f23aff841",
+      "composition": "Low 20-degree family sharing; dark roasting tray, pale-blue slaw bowl and serving tongs.",
+      "photoServings": 4
+    }
+  ],
+  "assetsRoot": "catalogues/700/pilot/assets"
+}

@@ -19,3 +19,6 @@ supabase/.temp/
 
 # Generated native bundle may use a local temporary staging link.
 /dist
+
+# Local plaintext catalogue drafts and protected baseline exports.
+.local-private/

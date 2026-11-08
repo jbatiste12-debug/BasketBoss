@@ -1,0 +1,33 @@
+{
+  "schemaVersion": 1,
+  "ingredients": {
+    "hoisin sauce|g": {
+      "ingredient": "hoisin sauce",
+      "unit": "g",
+      "standard_pack_size": 220,
+      "standard_pack_unit": "g",
+      "uk_pack_price": 1.85,
+      "price_per_unit": 0.00840909090909091,
+      "source": "recipe700_pilot_editorial_illustrative_unverified",
+      "needs_review": true,
+      "evidence_status": "ILLUSTRATIVE_UNVERIFIED",
+      "aisle": "Cupboard / Pantry",
+      "meal_pricing_mode": "pantry_usage",
+      "reason": "Pilot planning guide only: assumed 220 g jar at £1.85. Not an observed retailer price; verify the purchased jar label and shelf price."
+    },
+    "pork spare ribs|g": {
+      "ingredient": "pork spare ribs",
+      "unit": "g",
+      "standard_pack_size": 1000,
+      "standard_pack_unit": "g",
+      "uk_pack_price": 7.5,
+      "price_per_unit": 0.0075,
+      "source": "recipe700_pilot_editorial_illustrative_unverified",
+      "needs_review": true,
+      "evidence_status": "ILLUSTRATIVE_UNVERIFIED",
+      "aisle": "Meat & Fish",
+      "meal_pricing_mode": "full_packs",
+      "reason": "Pilot planning guide only: assumed 1 kg raw bone-in ribs pack at £7.50. Not an observed retailer price. Raw bone-in weight is retained; no edible-yield or cooked-weight conversion."
+    }
+  }
+}

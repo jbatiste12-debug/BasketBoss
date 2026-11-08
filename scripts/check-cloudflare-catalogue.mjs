@@ -32,12 +32,10 @@ export async function verifyLandingDeployment(perform = fetch) {
   try { html = await page.text(); }
   catch { throw Error('The public landing page could not be read.'); }
   if(html.length>262144)throw Error('The public landing page response is invalid.');
-  const heading=(html.match(/<h1\b[^>]*>([\s\S]*?)<\/h1>/i)?.[1]||'').replace(/<[^>]*>/g,' ').replace(/\s+/g,' ').trim();
-  if(heading!=='Aim to save £25+ a week.')
-    throw Error('The current savings-target landing headline is not present on production.');
-  const savingsNote=html.match(/<p\b[^>]*\bclass=["'][^"']*\bsavings-note\b[^"']*["'][^>]*>([\s\S]*?)<\/p>/i)?.[1]||'';
-  if(!/example target/i.test(savingsNote)||!/savings will vary/i.test(savingsNote))
-    throw Error('The savings target qualification is not present on production.');
+  const headline=value=>(value.match(/<h1\b[^>]*>([\s\S]*?)<\/h1>/i)?.[1]||'').replace(/<[^>]*>/g,' ').replace(/\s+/g,' ').trim();
+  const expectedHeadline=headline(readFileSync(new URL('../welcome.html',import.meta.url),'utf8'));
+  if(!expectedHeadline||headline(html)!==expectedHeadline)
+    throw Error('The current landing headline is not present on production.');
   const sources=[
     {pattern:/<link\b[^>]*\bhref=["'](\/?bb-family-landing\.css(?:\?[^"']*)?)["'][^>]*>/i,type:/text\/css/i},
     {pattern:/<script\b[^>]*\bsrc=["'](\/?bb-family-landing\.js(?:\?[^"']*)?)["'][^>]*>/i,type:/javascript/i}
