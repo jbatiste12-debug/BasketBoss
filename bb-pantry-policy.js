@@ -41,7 +41,7 @@
   // (and every cooked, frozen or dried state) in their physical identities.
   const freshTomato=/^fresh tomato(?:es)?$/.test(raw);
   const states=originalStates.filter(state=>!(freshTomato&&state==='fresh'));
-  const cannedTomatoes=!states.includes('fresh')&&/^(?:(?:tinned|canned|tin) (?:chopped |whole |plum )?tomato(?:es)?|chopped (?:tinned |canned )?tomato(?:es)?)$/.test(raw);
+  const cannedTomatoes=!states.includes('fresh')&&/^(?:(?:tinned|canned|tin) (?:chopped |whole |plum )?tomato(?:es)?|chopped (?:tinned |canned )?tomato(?:es)?|(?:chopped |whole |plum )?tomato(?:es)? (?:tinned|canned))$/.test(raw);
   const alias=label=>freshTomato?'tomato':cannedTomatoes?'chopped tomatoes':label.replace(/^(?:tinned|canned) ((?:(?:red |white |black |kidney |baked |butter |cannellini |borlotti )?beans?|chickpeas?|lentils?))$/,'$1').replace(/^tomato ketchup$/,'ketchup').replace(/^(?:runny|clear) honey$/,'honey');
   const foodAlias=label=>label.replace(/\bground beef\b/g,'beef mince').replace(/\bground turkey\b/g,'turkey mince').replace(/\bzucchini\b/g,'courgette').replace(/\beggplant\b/g,'aubergine').replace(/\bscallions?\b/g,'spring onion');
   let result=foodAlias(alias(raw));

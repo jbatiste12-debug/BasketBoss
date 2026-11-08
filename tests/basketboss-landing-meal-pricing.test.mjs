@@ -96,7 +96,10 @@ test('public shopping combines source-proven Garlic cloves and keeps explicit bu
   assert.equal(distinct.length,2);
   assert.equal(distinct.find(row=>row.unit==='clove').quantity,1.5);
   assert.equal(distinct.find(row=>row.unit==='bulb').quantity,1);
-  assert.equal(distinct.find(row=>row.unit==='bulb').cost,null,'a missing bulb pack stays unavailable instead of pricing the bulb as a clove');
+  const bulb=distinct.find(row=>row.unit==='bulb');
+  assert.equal(bulb.cost,h.api.price({name:'garlic',quantity:1,unit:'bulb',market:'UK'}).packAmount);
+  assert.equal(h.api.getPack('garlic','bulb','UK').standard_pack_size,1,'the explicit guide quotes one whole bulb');
+  assert.equal(h.api.getPack('garlic','clove','UK').standard_pack_size,10,'clove and bulb quantities keep distinct pack units');
 });
 
 test('failed or mismatched public quantity data shows unavailable instead of a false price',async()=>{
