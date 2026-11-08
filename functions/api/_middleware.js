@@ -16,6 +16,7 @@ const PROTECTED=[
  /^\/api\/tts\/?$/,
  /^\/api\/cook-assistant\/?$/,
  /^\/api\/recipes\/premium\/?$/,
+ /^\/api\/recipes\/v700\/premium\/?$/,
  /^\/api\/bb173\/(?:generate|scan|meal-image)\/?$/,
  /^\/api\/household\/?$/,
  /^\/api\/receipt-inventory\/?$/

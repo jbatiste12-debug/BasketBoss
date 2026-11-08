@@ -25,5 +25,6 @@ export function isCatalogueDinner(recipe,{catalogueVersion=500,roles,legacyIsDin
  // Even an explicit dinner flag cannot route a labelled breakfast/dessert
  // into Auto-fill. Reviewed savoury duck pancakes remain a valid dinner.
  const category=[recipe.category,recipe.tag,recipe.mealType].map(text).join(' ');
- return !NON_DINNER.test(category)&&!SWEET_NAME.test(text(recipe.name));
+ const reviewedSavouryWaffles=recipe.id==='southern-chicken-and-waffles'&&number===641&&text(recipe.name)==='southern chicken and waffles'&&recipe.primaryProtein==='chicken';
+ return !NON_DINNER.test(category)&&(!SWEET_NAME.test(text(recipe.name))||reviewedSavouryWaffles);
 }

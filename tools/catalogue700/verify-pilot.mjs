@@ -30,8 +30,79 @@ const round=value=>Math.round((value+Number.EPSILON)*100)/100;
 const same=(a,b)=>JSON.stringify(a)===JSON.stringify(b);
 const issue=(failures,condition,message)=>{if(!condition)failures.push(message);return Boolean(condition);};
 const REQUIRED=['id','slug','catalogueNumber','name','category','tag','mins','prep_mins','cook_mins','servings','baseServings','cost','cost_basis','image','tip','ingredients','method','steps','ingredient_display_lines','allergy_advice','allergen_screen_possible_unverified','culinary_prep_notes','culinary_data_version','culinary_profile','primaryProtein','cheeseHeavy','dinnerEligible','expansionGroup','fingerprint','coreIngredientKeys','flavorTokens','accessTier','reviewStatus','portion_status','cook_test_status','imageProvenance','ci_estimates','premium'];
+const nonempty=value=>typeof value==='string'&&value.trim().length>0;
+const strings=value=>Array.isArray(value)&&value.every(nonempty);
+const NORMALIZED_UNITS=new Set(['g','ml','each','clove']);
+const FRACTIONS={'¼':'1/4','½':'1/2','¾':'3/4','⅓':'1/3','⅔':'2/3','⅛':'1/8','⅜':'3/8','⅝':'5/8','⅞':'7/8'};
+const NUMBER='(?:\\d+(?:\\.\\d+)?(?:\\s+\\d+\\/\\d+)?|\\d+\\/\\d+)';
+function sourceNumber(value){
+ let result=0;
+ for(const part of value.trim().split(/\s+/)){const pair=part.split('/'),n=pair.length===2?Number(pair[0])/Number(pair[1]):Number(part);if(!positive(n))return null;result+=n;}
+ return positive(result)?result:null;
+}
 
-export function recipeChecks(recipe,normal,expected,{allowedFields,allowedCategories}={}){
+/** Read an explicitly stated amount only. No density, pack-size or food-weight guesses. */
+export function parseSourceQuantity(text,normalizedUnit){
+ if(!nonempty(text)||!NORMALIZED_UNITS.has(normalizedUnit))return null;
+ const source=text.replaceAll(',','').replace(/[¼½¾⅓⅔⅛⅜⅝⅞]/g,part=>' '+FRACTIONS[part]).replace(/[×]/g,'x').replace(/\s+/g,' ').trim();
+ if(/(?:^|[\s,(])[-−]\s*\d|\d\s*(?:–|—|-|to)\s*\d/i.test(source))return null;
+ const metric=new RegExp('('+NUMBER+')\\s*(kg|g|ml|l)\\b','gi');
+ const matches=[...source.matchAll(metric)].map(match=>{
+  const unit=match[2].toLowerCase(),multiplier=unit==='kg'||unit==='l'?1000:1;
+  return {quantity:sourceNumber(match[1])*multiplier,unit:unit==='kg'?'g':unit==='l'?'ml':unit,index:match.index,end:match.index+match[0].length};
+ });
+ if(normalizedUnit==='g'||normalizedUnit==='ml'){
+  const sameUnit=matches.filter(match=>match.unit===normalizedUnit&&positive(match.quantity));if(!sameUnit.length)return null;
+  const perItem=sameUnit.filter(match=>/^\s*(?:(?:net\s+)?drained(?:\s+weight)?\s+)?(?:per\s+(?:tin|pack|piece|item)|each)\b/i.test(source.slice(match.end)));
+  if(perItem.length){
+   if(perItem.length!==1)return null;
+   const count=new RegExp('^(?:about\\s+|approximately\\s+)?('+NUMBER+')\\s+(?!g\\b|kg\\b|ml\\b|l\\b)','i').exec(source);if(!count)return null;
+   return {quantity:sourceNumber(count[1])*perItem[0].quantity,unit:normalizedUnit,basis:'EXPLICIT_COUNT_AND_SIZE'};
+  }
+  // An explicit drained or combined total takes precedence over the printed
+  // size of a tin/pack. Ambiguous multiple weights must be clarified by author.
+  const totals=sameUnit.filter(match=>/^(?:\s|[,():-])*(?:(?:in\s+)?total|combined|drained(?:\s+weight)?|net\s+drained)\b/i.test(source.slice(match.end))||/\b(?:drained\s+(?:weight|total)|total(?:\s+weight)?|combined(?:\s+weight)?)\s*[:=(]?\s*$/i.test(source.slice(0,match.index)));
+  if(totals.length){if(new Set(totals.map(match=>match.quantity)).size!==1)return null;return {quantity:totals[0].quantity,unit:normalizedUnit,basis:'EXPLICIT_TOTAL'};}
+  const multipack=new RegExp('('+NUMBER+')\\s*x\\s*('+NUMBER+')\\s*(kg|g|ml|l)\\b','i').exec(source);
+  if(multipack){
+   const unit=multipack[3].toLowerCase(),dimension=unit==='kg'?'g':unit==='l'?'ml':unit,multiplier=unit==='kg'||unit==='l'?1000:1;
+   if(dimension!==normalizedUnit)return null;
+   const quantity=sourceNumber(multipack[1])*sourceNumber(multipack[2])*multiplier;
+   if(sameUnit.length!==1||!positive(quantity))return null;
+   return {quantity,unit:normalizedUnit,basis:'EXPLICIT_MULTIPACK'};
+  }
+  if(sameUnit.length!==1)return null;
+  return {quantity:sameUnit[0].quantity,unit:normalizedUnit,basis:'EXPLICIT_METRIC'};
+ }
+ const count=new RegExp('^(?:about\\s+|approximately\\s+)?('+NUMBER+')\\s+(.+)$','i').exec(source);if(!count)return null;
+ const suffix=count[2].trim();
+ if(/^(?:g|kg|ml|l|grams?|kilograms?|millilitres?|litres?|oz|lb|tsp|tbsp|cups?|tablespoons?|teaspoons?)\b/i.test(suffix))return null;
+ if(normalizedUnit==='clove'&&!/\bcloves?\b/i.test(suffix))return null;
+ if(/^x\b/i.test(suffix)){
+  const packed=new RegExp('^x\\s*('+NUMBER+')\\s+(?!g\\b|kg\\b|ml\\b|l\\b)(.+)$','i').exec(suffix);if(!packed)return null;
+  return {quantity:sourceNumber(count[1])*sourceNumber(packed[1]),unit:normalizedUnit,basis:'EXPLICIT_COUNT_MULTIPACK'};
+ }
+ return {quantity:sourceNumber(count[1]),unit:normalizedUnit,basis:'EXPLICIT_COUNT'};
+}
+
+export function noCookSafetyFailures(recipe){
+ if(recipe?.cook_mins!==0)return [];
+ const failures=[];
+ for(const [index,row]of (Array.isArray(recipe.ingredients)?recipe.ingredients:[]).entries()){
+  const name=String(row?.[0]||''),category=String(row?.[3]||'');
+  const animal=/\b(?:chicken|poultry|turkey|duck|goose|beef|pork|lamb|veal|venison|mince|bacon|pancetta|gammon|ham|sausage|chorizo|salmon|cod|haddock|tuna|trout|prawns?|shrimp|mussels?|clams?|scallops?|squid|calamari|sea bass|fish|crab|lobster|oysters?|eggs?)\b/i.test(name)||/^(?:meat|fish|seafood)$/i.test(category);
+  if(!animal)continue;
+  const namedForm=name+' '+String(row?.[1]||'');
+  const prep=typeof recipe.culinary_prep_notes?.[index]==='string'?recipe.culinary_prep_notes[index]:'';
+  const form=namedForm+' '+prep;
+  const explicitlyUnsafe=/\b(?:raw|uncooked|partly[- ]cooked|partially[- ]cooked)\b|\bnot\s+(?:fully[- ]cooked|cooked|ready[- ]to[- ]eat)/i.test(namedForm)||/\bnot\s+(?:fully[- ]cooked|cooked|ready[- ]to[- ]eat)/i.test(prep);
+  const ready=/\b(?:fully[- ]cooked|cooked|hard[- ]boiled|ready[- ]to[- ]eat|tinned|canned)\b/i.test(form)||/\bsmoked\s+(?:salmon|trout|mackerel)\b/i.test(name);
+  if(explicitlyUnsafe||!ready)failures.push(`${recipe.id}: no-cook animal ingredient needs an explicit safe ready-to-eat form: ${name}`);
+ }
+ return failures;
+}
+
+export function recipeChecks(recipe,normal,expected,{allowedFields,allowedCategories,allowNoCook=false,strictSourceBinding=false}={}){
  const failures=[],r=recipe||{},nr=normal||{},id=r.id||'unknown';
  for(const field of REQUIRED)issue(failures,Object.hasOwn(r,field),`${id}: missing ${field}`);
  if(allowedFields)for(const field of Object.keys(r))issue(failures,allowedFields.has(field),`${id}: field outside the existing recipe schema: ${field}`);
@@ -41,12 +112,12 @@ export function recipeChecks(recipe,normal,expected,{allowedFields,allowedCatego
  issue(failures,r.image===`release-assets/basketboss-v17/images/new/${r.id}.webp`,`${id}: image path does not follow the exact existing schema`);
  issue(failures,typeof r.name==='string'&&r.name.trim()&&typeof r.category==='string'&&r.category.trim()&&typeof r.tag==='string'&&r.tag.trim()&&positive(r.cost),`${id}: name, category, tag or cost is invalid`);
  issue(failures,Number.isInteger(r.servings)&&r.servings>=1&&r.servings<=12&&r.baseServings===r.servings,`${id}: invalid or mismatched portions`);
- issue(failures,positive(r.mins)&&positive(r.prep_mins)&&positive(r.cook_mins)&&r.mins>=r.prep_mins+r.cook_mins,`${id}: elapsed time is below prep plus cook`);
+ issue(failures,positive(r.mins)&&positive(r.prep_mins)&&(positive(r.cook_mins)||(allowNoCook&&r.cook_mins===0))&&r.mins>=r.prep_mins+r.cook_mins,`${id}: elapsed time is below prep plus cook`);
  if(r.total_elapsed_mins!==undefined)issue(failures,r.total_elapsed_mins===r.mins,`${id}: total elapsed time drift`);
  issue(failures,Array.isArray(r.ingredients)&&r.ingredients.length>=3,`${id}: ingredient list is absent/too short`);
  issue(failures,Array.isArray(r.method)&&r.method.length>=3&&r.method.every(step=>typeof step==='string'&&step.trim().length>=15),`${id}: incomplete method`);
  issue(failures,same(r.method,r.steps),`${id}: Cook steps differ from authoritative method`);
- issue(failures,Array.isArray(r.culinary_prep_notes)&&r.culinary_prep_notes.length===r.ingredients?.length&&r.culinary_prep_notes.every(value=>typeof value==='string'),`${id}: ingredient prep notes are not positional`);
+ issue(failures,strings(r.culinary_prep_notes)&&r.culinary_prep_notes.length===r.ingredients?.length,`${id}: ingredient prep notes are not positional/nonempty`);
  issue(failures,Array.isArray(r.ingredient_display_lines)&&r.ingredient_display_lines.length===r.ingredients?.length,`${id}: display lines are not positional`);
  issue(failures,nr.id===r.id&&nr.name===r.name&&nr.servings===r.servings&&Array.isArray(nr.ingredients)&&nr.ingredients.length===r.ingredients?.length,`${id}: recipe/normalization pairing mismatch`);
  for(const [index,source]of (Array.isArray(r.ingredients)?r.ingredients:[]).entries()){
@@ -54,18 +125,32 @@ export function recipeChecks(recipe,normal,expected,{allowedFields,allowedCatego
   if(allowedCategories)issue(failures,allowedCategories.has(source?.[3]),`${id}/${index}: unknown ingredient category`);
   issue(failures,r.ingredient_display_lines?.[index]===`${source?.[0]} — ${source?.[1]}`,`${id}/${index}: display copy is stale`);
   const n=nr.ingredients?.[index];
-  issue(failures,n&&n.name===source?.[0]&&n.recipe_id===r.id&&n.ingredient_index===index&&typeof n.key==='string'&&n.key.trim()&&positive(n.quantity)&&typeof n.unit==='string'&&typeof n.price_hint==='number'&&Number.isFinite(n.price_hint)&&n.price_hint>=0,`${id}/${index}: invalid or misaligned normalized ingredient`);
+  issue(failures,n&&n.name===source?.[0]&&n.recipe_id===r.id&&n.ingredient_index===index&&nonempty(n.key)&&positive(n.quantity)&&NORMALIZED_UNITS.has(n.unit)&&typeof n.price_hint==='number'&&Number.isFinite(n.price_hint)&&n.price_hint>=0,`${id}/${index}: invalid or misaligned normalized ingredient`);
+  issue(failures,n?.price_hint===source?.[2],`${id}/${index}: normalized price hint differs from source ingredient`);
+  if(strictSourceBinding){const stated=parseSourceQuantity(source?.[1],n?.unit);issue(failures,stated&&positive(stated.quantity)&&Math.abs(stated.quantity-n?.quantity)<=1e-7,`${id}/${index}: source amount and normalized amount differ or need explicit clarification`);}
  }
- issue(failures,typeof r.allergy_advice==='string'&&r.allergy_advice.length>=80&&Array.isArray(r.allergen_screen_possible_unverified),`${id}: allergy guidance missing`);
+ issue(failures,typeof r.allergy_advice==='string'&&r.allergy_advice.length>=80&&strings(r.allergen_screen_possible_unverified),`${id}: allergy guidance missing`);
  issue(failures,r.cook_test_status==='Not kitchen-tested',`${id}: do not claim an unperformed kitchen test`);
- issue(failures,typeof r.cheeseHeavy==='boolean'&&typeof r.primaryProtein==='string'&&r.primaryProtein,`${id}: planning metadata incomplete`);
- issue(failures,r.fingerprint&&['primaryProtein','base','flavorProfile','cookingMethod','vessel'].every(key=>typeof r.fingerprint[key]==='string'&&r.fingerprint[key]),`${id}: culinary fingerprint incomplete`);
+ issue(failures,typeof r.cheeseHeavy==='boolean'&&nonempty(r.primaryProtein),`${id}: planning metadata incomplete`);
+ issue(failures,r.fingerprint&&['primaryProtein','base','flavorProfile','cookingMethod','vessel'].every(key=>nonempty(r.fingerprint[key])),`${id}: culinary fingerprint incomplete`);
+ issue(failures,strings(r.coreIngredientKeys)&&r.coreIngredientKeys.length>0&&strings(r.flavorTokens),`${id}: canonical/flavor metadata must contain nonempty strings`);
+ for(const key of ['cost_basis','tip','culinary_data_version','culinary_profile','expansionGroup','reviewStatus','portion_status'])issue(failures,nonempty(r[key]),`${id}: missing/blank culinary metadata: ${key}`);
+ if(strictSourceBinding&&allowNoCook)failures.push(...noCookSafetyFailures(r));
  issue(failures,r.imageProvenance?.type==='generated'&&r.imageProvenance.exportWidth===1448&&r.imageProvenance.exportHeight===1086&&r.imageProvenance.exportFormat==='webp',`${id}: image provenance/export mismatch`);
- if(!expected.dinner)issue(failures,/\bbreakfast|\bbrunch/i.test([r.category,r.tag].join(' '))&&/waffle\s*iron/i.test((r.method||[]).join(' ')),`${id}: breakfast and waffle equipment must be explicit`);
+ if(!expected.dinner){
+  // The original five-record pilot keeps its exact waffle check. A full
+  // catalogue may explicitly identify other non-dinner meal roles.
+  if(expected.kind===undefined)issue(failures,/\bbreakfast|\bbrunch/i.test([r.category,r.tag].join(' '))&&/waffle\s*iron/i.test((Array.isArray(r.method)?r.method:[]).join(' ')),`${id}: breakfast and waffle equipment must be explicit`);
+  else {
+   issue(failures,['breakfast','dessert','starter','side'].includes(expected.kind),`${id}: non-dinner role is invalid`);
+   if(expected.kind==='breakfast')issue(failures,/\bbreakfast|\bbrunch/i.test([r.category,r.tag].join(' ')),`${id}: breakfast category must be explicit`);
+   if(/waffle/i.test(r.name))issue(failures,/waffle\s*iron/i.test((Array.isArray(r.method)?r.method:[]).join(' ')),`${id}: waffle equipment must be explicit`);
+  }
+ }
  return failures;
 }
 
-export function briefChecks(recipe,brief){
+export function briefChecks(recipe,brief,{strictLedger=false}={}){
  const failures=[],r=recipe,b=brief||{},id=r.id;
  issue(failures,b.id===id&&b.catalogueNumber===r.catalogueNumber&&b.image===r.image,`${id}: image brief identity mismatch`);
  issue(failures,b.width===1448&&b.height===1086&&b.format==='webp',`${id}: image brief export format mismatch`);
@@ -75,6 +160,7 @@ export function briefChecks(recipe,brief){
  issue(failures,/no hands/i.test(negatives)&&/no (?:text|watermark)/i.test(negatives)&&/CGI/i.test(negatives),`${id}: image negative constraints incomplete`);
  const ledger=b.exactIngredientLedger||b.ingredientSpecification||'';
  issue(failures,typeof ledger==='string'&&r.ingredients.every(([name])=>fold(ledger).includes(fold(name))),`${id}: image ledger must cover every source ingredient`);
+ if(strictLedger)issue(failures,ledger===r.ingredients.map(row=>row[0]+' — '+row[1]).join('; '),`${id}: image ledger quantities differ from the exact source`);
  issue(failures,same(b.recipeMethod,r.method),`${id}: image brief method is stale`);
  return failures;
 }
