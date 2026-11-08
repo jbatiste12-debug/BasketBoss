@@ -21,6 +21,7 @@ export const CLIENT_FILES=Object.freeze([
  'bb-evening-pivot.js','bb-evening-pivot-app.js','bb-evening-pivot-ui.js','bb-evening-pivot-ui.css',
  'bb-cook-voice.js','bb-cook-voice.css','bb-cook-speech-text.js','bb-cook-tts.js','bb-cook-assistant.js',
  'bb-saved-weeks.js','bb-saved-weeks.css',
+ 'bb-plan-extras.js','bb-plan-extras-sync.js','bb-plan-extras.css',
  'bb-yellow-stickers.js','bb-yellow-stickers-ui.js','bb-yellow-stickers-ui.css','bb-reduced-stock.js','bb-reduced-purchases.js',
  'bb-kitchen-prices.js',
  'bb-shop-subcategories.js','bb-shop-subcategories.css','bb-essentials-confirm.js','bb-essentials-confirm.css',
@@ -165,6 +166,16 @@ export function verifyNativeWeb({directory}){
   requireThat(typeof file.path==='string'&&!path.isAbsolute(file.path)&&!file.path.split('/').includes('..')&&listed.has(file.path),'Native manifest path is invalid');
   const bytes=fs.readFileSync(path.join(directory,file.path));
   requireThat(bytes.length===file.bytes&&sha256(bytes)===file.sha256,'Native bundle hash mismatch: '+file.path);
+ }
+ // A complete manifest is insufficient when a page references a script which
+ // was never included in the explicit client allowlist. Check actual pages too.
+ for(const name of [...HTML_FILES,...MEMBERSHIP_ALIASES]){
+  const html=fs.readFileSync(path.join(directory,name),'utf8');
+  for(const match of html.matchAll(/<(?:script|link)\b[^>]*?\b(?:src|href)\s*=\s*["']([^"']+)["'][^>]*>/gi)){
+   const value=match[1];if(/^(?:[a-z][a-z0-9+.-]*:|\/\/|#)/i.test(value))continue;
+   let asset;try{asset=decodeURIComponent(new URL(value.replace(/&amp;/g,'&'),'https://native.invalid/').pathname).replace(/^\//,'');}catch{throw Error('Native HTML dependency is invalid: '+name);}
+   if(/\.(?:js|mjs|css)$/i.test(asset))requireThat(listed.has(asset),'Native HTML dependency is missing: '+name+' -> '+asset);
+  }
  }
  return {files:files.length,freeRecipes:100,privateRecipeBundle:false};
 }

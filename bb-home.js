@@ -301,7 +301,7 @@
    // family was still finishing Sunday. Retain that confirmed occurrence only
    // when its recorded cooking timestamp belongs to the current regional week.
    if(typeof key!=='string'||!/^\d{4}-\d\d-\d\d\|/.test(key)||typeof win.BBReducedPurchases?.week!=='function')return exact;
-   const week=key.slice(0,10),suffix=key.slice(10),kinds=['dinner','dessert','lunch','leftover','note'];
+   const week=key.slice(0,10),suffix=key.slice(10),kinds=['dinner','breakfast','dessert','lunch','leftover','note'];
    let match=details;
    if(!match.recipeId){const parts=key.slice(11).split('|'),at=parts.findIndex((part,index)=>kinds.includes(part)&&['Monday','Tuesday','Wednesday','Thursday','Friday','Saturday','Sunday'].includes(parts[index+1]));
     if(at>=0)match={kind:parts[at],day:parts[at+1],recipeId:parts.slice(at+2).join('|')};
@@ -391,7 +391,80 @@
     records.forEach(({row,value},index)=>{const amount=index===records.length-1?left:Math.min(left,Math.max(0,value));left=Math.max(0,left-amount);row.bb173StockKey=key;row.bb173StockValue=amount;const display=deduction.measure(row.unit);if(display.unit!==base)row.unit=base;row.qty=amount/(display.unit===base?display.factor:1);});
    }
   }
-  function commitConsumption(state,result){
+  const copy=value=>JSON.parse(JSON.stringify(value));
+  const ordered=value=>Array.isArray(value)?value.map(ordered):object(value)?Object.fromEntries(Object.keys(value).sort().map(key=>[key,ordered(value[key])])):value;
+  const signature=value=>JSON.stringify(ordered(value));
+  // A bounded integrity checksum binds the journal to separate Cook receipts.
+  // It detects persisted-data drift; localStorage is not an authorization
+  // boundary, and this is not a signature or a substitute for quantity checks.
+  function dayIntegrity(action){
+   const value=copy(action);delete value.integrity;
+   for(const item of value.items||[])if(object(item.receipt))delete item.receipt.dayUndoIntegrity;
+   const bytes=unescape(encodeURIComponent(signature(value)));let hash=14695981039346656037n;
+   for(let index=0;index<bytes.length;index++)hash=BigInt.asUintN(64,(hash^BigInt(bytes.charCodeAt(index)))*1099511628211n);
+   return 'fnv64:'+hash.toString(16).padStart(16,'0');
+  }
+  // Quantities may change after Day done. Identity, units, package contents,
+  // location and lot provenance must still describe the very same food row.
+  function kitchenIdentity(row){
+   const value={...row};for(const field of ['qty','bb173StockValue','stapleCount','note','notes'])delete value[field];
+   if(object(value.bbReduced)){value.bbReduced={...value.bbReduced};delete value.bbReduced.urgent;}
+   return signature(value);
+  }
+  function recordDayAction(state,result){
+   state.data.dayActions??={};if(!object(state.data.dayActions))throw Error('Review your saved day confirmations before continuing.');
+   const beforeStock=result.preservesSourceUnits?state.stock:deduction.stockData(state.stock,host().id).values;
+   const stock=[];
+   for(const [key,before]of Object.entries(beforeStock)){
+    const after=result.remainingStock[key]||0;if(before>after)stock.push({key,before,after,restore:before-after});
+   }
+   const before=state.expected[state.keys.inventory]===null?{}:JSON.parse(state.expected[state.keys.inventory]),inventory=[];
+   let unavailable=null;
+   for(const [id,old]of Object.entries(before)){
+    const next=state.inventory[id];if(signature(old)===signature(next))continue;
+    if(!object(old)||!object(next)||!valid(old.qty)||!valid(next.qty)||old.unit!==next.unit||old.selected!==next.selected){unavailable='Some older Kitchen measurements changed units. Review At home before reversing this day.';continue;}
+    const quantity={before:old.qty,after:next.qty,restore:old.qty-next.qty};
+    const oldUnit=typeof old.bb173StockKey==='string'?deduction.measure(old.bb173StockKey.slice(old.bb173StockKey.lastIndexOf('|')+1)):null;
+    const nextUnit=typeof next.bb173StockKey==='string'?deduction.measure(next.bb173StockKey.slice(next.bb173StockKey.lastIndexOf('|')+1)):null;
+    let stockValue=null;
+    if(oldUnit&&nextUnit&&oldUnit.unit===nextUnit.unit&&valid(old.bb173StockValue)&&valid(next.bb173StockValue)){
+     const amount=old.bb173StockValue*oldUnit.factor/nextUnit.factor;
+     stockValue={before:amount,after:next.bb173StockValue,restore:amount-next.bb173StockValue};
+    }
+    if(quantity.restore<0||stockValue?.restore<0||!stockValue&&old.bb173StockValue!==next.bb173StockValue){unavailable='The original Kitchen allocation needs review before this day can be reversed.';continue;}
+    if(!quantity.restore&&!stockValue?.restore&&old.bbReduced?.urgent===next.bbReduced?.urgent)continue;
+    inventory.push({id,stockKey:next.bb173StockKey||null,identity:kitchenIdentity(next),quantity,stockValue,urgent:old.bbReduced?.urgent===true});
+   }
+   const items=state.pending.map(item=>({kind:item.kind,recipeId:item.recipeId,name:item.name,day:item.day,factor:item.factor,occurrence:item.occurrence,receiptKey:'day:'+item.occurrence,receipt:copy(state.data.cooked['day:'+item.occurrence])}));
+   const actionId='day:'+state.day+':'+Date.now()+':'+Math.random().toString(36).slice(2,12);
+   const allocations=result.used.map(row=>({id:host().id(row.key,row.unit),unit:row.unit,quantity:row.required,sources:(row.allocations?.length?row.allocations.map(source=>({stockKey:source.stockKey,sourceQuantity:source.sourceQuantity,quantity:source.quantity})): [{stockKey:row.id,sourceQuantity:row.required,quantity:row.required}])}));
+   // Save exact physical-source portions in the separate Cook receipts too.
+   // Recipe grams alone cannot verify a reversal of a fraction of a tin/pack.
+   const available=new Map(allocations.map(row=>[row.id,copy(row.sources)]));
+   for(const item of items){
+    const receipt=state.data.cooked[item.receiptKey],sources=[];
+    for(const ingredient of receipt.ingredients){
+     const ingredientId=host().id(ingredient.key,ingredient.unit);let wanted=ingredient.quantity;
+     for(const source of available.get(ingredientId)||[]){
+      if(!(wanted>0)||!(source.quantity>0))continue;
+      const quantity=Math.min(wanted,source.quantity),sourceQuantity=quantity===source.quantity?source.sourceQuantity:source.sourceQuantity*quantity/source.quantity;
+      sources.push({ingredientId,unit:ingredient.unit,stockKey:source.stockKey,quantity,sourceQuantity});
+      wanted=Math.max(0,wanted-quantity);source.quantity=Math.max(0,source.quantity-quantity);source.sourceQuantity=Math.max(0,source.sourceQuantity-sourceQuantity);
+     }
+     if(wanted>.000001)unavailable='The original Cook receipt does not fully describe its physical stock allocation. Review At home before reversing this day.';
+    }
+    receipt.dayUndoAllocations=sources;item.receipt=copy(receipt);
+   }
+   if([...available.values()].some(rows=>rows.some(row=>row.quantity>.000001)))unavailable='The original Cook receipts need physical stock allocation review before this day can be reversed.';
+   const action={version:1,actionId,actor:state.who,day:state.day,status:'active',at:Date.now(),items,stock,inventory,allocations,...(unavailable?{unavailable}:{})};
+   action.integrity=dayIntegrity(action);
+   for(const item of items){state.data.cooked[item.receiptKey].dayUndoIntegrity=action.integrity;item.receipt.dayUndoIntegrity=action.integrity;}
+   state.data.dayActions[actionId]=action;
+   // Only the current plan cycle can be undone; retain bounded historical
+   // journals without pruning meal receipts or purchase replay protection.
+   for(const key of Object.keys(state.data.dayActions).slice(0,-100))delete state.data.dayActions[key];
+  }
+  function commitConsumption(state,result,{journalDay=false}={}){
    projectKitchen(state,result);
    if(win.BBReducedStock?.settleInventory){
     const previous=state.expected[state.keys.inventory],before=previous===null?{}:JSON.parse(previous);
@@ -399,6 +472,7 @@
    }
    const physical=result.used.flatMap(row=>(row.allocations||[]).map(allocation=>{const at=allocation.stockKey.lastIndexOf('|');return host().id(allocation.stockKey.slice(0,at),deduction.measure(allocation.stockKey.slice(at+1)).unit);}));
    const shopping=settle(state.data,[...result.used.map(row=>row.id),...physical],true);
+   if(journalDay)recordDayAction(state,result);
    if(actor()!==state.who||blocked())return false;
    atomic(store,{[state.keys.stock]:result.remainingStock,[state.keys.inventory]:state.inventory,[KEY]:state.all,...shopping?.updates},{...state.expected,...shopping?.expected});host().refresh();return true;
   }
@@ -430,7 +504,7 @@
    if(!Array.isArray(contexts)||!contexts.length||contexts.length>30)throw Error('There is no planned food to confirm for this day.');
    const seen=new Set(),items=contexts.map(context=>{
     const {kind,recipeId,factor,occurrence}=context||{};
-    if(!['dinner','dessert','lunch','leftover','note'].includes(kind)||typeof recipeId!=='string'||!recipeId||recipeId.length>256||!Number.isFinite(factor)||factor<=0||factor>100||context.day!==day||typeof occurrence!=='string'||!occurrence||occurrence.length>2000||['__proto__','constructor','prototype'].includes(occurrence)||seen.has(occurrence))throw Error('The day’s food changed. Review the planned meals before confirming.');
+    if(!['dinner','breakfast','dessert','lunch','leftover','note'].includes(kind)||typeof recipeId!=='string'||!recipeId||recipeId.length>256||!Number.isFinite(factor)||factor<=0||factor>100||context.day!==day||typeof occurrence!=='string'||!occurrence||occurrence.length>2000||['__proto__','constructor','prototype'].includes(occurrence)||seen.has(occurrence))throw Error('The day’s food changed. Review the planned meals before confirming.');
     seen.add(occurrence);
     if(!Array.isArray(context.ingredients)||context.ingredients.length>500||!context.ingredients.length&&!['leftover','note'].includes(kind))throw Error('Review the ingredient amounts for '+(context.name||recipeId)+' before confirming this day.');
     const item={kind,recipeId,name:String(context.name||recipeId).slice(0,240),day,factor,occurrence,ingredients:context.ingredients.map(row=>({...row})),already:completed(state.data,occurrence,{recipeId,day,kind}),manualReview:context.manualReview===true};
@@ -460,13 +534,119 @@
    for(const item of state.pending){
     const rows=deduction.proposal({stock:state.stock,ingredients:item.ingredients,id:host().id,conversion:state.conversion}).rows,ingredients=[];
     for(const row of rows){const amount=Math.min(available.get(row.id)||0,row.required||0);if(amount>0){ingredients.push({key:row.name,unit:row.unit,quantity:amount});available.set(row.id,(available.get(row.id)||0)-amount);}}
-    state.data.cooked['day:'+item.occurrence]={kind:item.kind,recipeId:item.recipeId,day:item.day,factor:item.factor,occurrence:item.occurrence,at:Date.now(),ingredients,skipped:result.issues.filter(issue=>issue.id==='manual:'+item.occurrence||rows.some(row=>row.id===issue.id)).map(issue=>issue.id)};
+    state.data.cooked['day:'+item.occurrence]={kind:item.kind,recipeId:item.recipeId,day:item.day,factor:item.factor,occurrence:item.occurrence,...(item.sourceOccurrence?{sourceOccurrence:item.sourceOccurrence}:{}),at:Date.now(),ingredients,skipped:result.issues.filter(issue=>issue.id==='manual:'+item.occurrence||rows.some(row=>row.id===issue.id)).map(issue=>issue.id)};
     state.data.planned[item.occurrence]=true;
    }
-   if(!commitConsumption(state,result))return {ok:false,needsReview:true,message:'Your account or pantry changed. Review the latest amounts first.'};
+   if(!commitConsumption(state,result,{journalDay:true}))return {ok:false,needsReview:true,message:'Your account or pantry changed. Review the latest amounts first.'};
    const response={...await syncConsumption(result),completedCount:state.pending.length};
    if(actor()===state.who&&!win.BBAccountDeletion?.isDeleting?.())try{host().notify?.(response.message);}catch{}
    return response;
+  }
+  function undoDaySnapshot(event={}){
+   const {day,actorId}=event;
+   if(!['Monday','Tuesday','Wednesday','Thursday','Friday','Saturday','Sunday'].includes(day))throw Error('Choose a planned day before undoing its confirmation.');
+   const state=completionHome(actorId),contexts=host()?.dayMeals?.(day);
+   if(!Array.isArray(contexts)||contexts.length>30)throw Error('Review this day’s planned food before undoing its confirmation.');
+   const actions=state.data.dayActions;
+   if(actions!==undefined&&!object(actions))throw Error('Review your saved day confirmations before continuing.');
+   const entries=Object.entries(actions||{}).filter(([,value])=>value?.day===day),active=entries.filter(([,value])=>value.status==='active').at(-1);
+   if(!active){
+    if(entries.some(([,value])=>value.status==='undone')||!contexts.some(item=>completed(state.data,item.occurrence,item)))return {...state,already:true,contexts};
+    throw Error('These meals were confirmed individually or before Undo day done was available. Review their amounts in At home; no stock will be guessed.');
+   }
+   const [actionId,action]=active;
+   if(action.version!==1||action.actionId!==actionId||action.actor!==state.who||!Array.isArray(action.items)||!action.items.length||action.items.length>30||!Array.isArray(action.stock)||action.stock.length>2000||!Array.isArray(action.inventory)||action.inventory.length>2500||!Array.isArray(action.allocations)||action.allocations.length>500||typeof action.integrity!=='string'||action.integrity!==dayIntegrity(action))throw Error('The original day confirmation needs review before it can be reversed.');
+   if(action.unavailable)throw Error(action.unavailable);
+   const snapshot=pantrySnapshot(state,[],{undoDay:day,actionId});
+   const sameQuantity=(left,right)=>Math.abs(left-right)<=Math.max(.000001,Math.abs(left)*1e-9,Math.abs(right)*1e-9),occurrences=new Set(),receiptKeys=new Set(),receiptTotals=new Map(),receiptSources=new Map();
+   for(const item of action.items){
+    const current=contexts.find(value=>value?.occurrence===item.occurrence);
+    if(typeof item.occurrence!=='string'||occurrences.has(item.occurrence)||receiptKeys.has(item.receiptKey)||item.receiptKey!=='day:'+item.occurrence||item.day!==day||!current||current.recipeId!==item.recipeId||current.kind!==item.kind||current.factor!==item.factor||!state.data.planned[item.occurrence]||state.data.cooked[item.receiptKey]?.dayUndoIntegrity!==action.integrity||signature(state.data.cooked[item.receiptKey])!==signature(item.receipt)||!Array.isArray(item.receipt.ingredients)||item.receipt.ingredients.length>500)throw Error('Your planned food or its confirmation changed. Review this day before undoing it.');
+    occurrences.add(item.occurrence);receiptKeys.add(item.receiptKey);
+    const ingredientTotals=new Map(),physicalTotals=new Map(),physicalSources=new Set();
+    for(const ingredient of item.receipt.ingredients){if(typeof ingredient.key!=='string'||typeof ingredient.unit!=='string'||!valid(ingredient.quantity)||!(ingredient.quantity>0))throw Error('The original cooked quantities need review.');const key=host().id(ingredient.key,ingredient.unit);receiptTotals.set(key,(receiptTotals.get(key)||0)+ingredient.quantity);ingredientTotals.set(key,(ingredientTotals.get(key)||0)+ingredient.quantity);}
+    if(!Array.isArray(item.receipt.dayUndoAllocations)||item.receipt.dayUndoAllocations.length>2000)throw Error('The Cook receipt has no complete physical allocation record.');
+    for(const source of item.receipt.dayUndoAllocations){
+     const key=source.ingredientId+'\n'+source.stockKey;
+     if(!ingredientTotals.has(source.ingredientId)||typeof source.unit!=='string'||source.ingredientId!==host().id(source.ingredientId.slice(0,source.ingredientId.lastIndexOf('|')),source.unit)||typeof source.stockKey!=='string'||source.stockKey.lastIndexOf('|')<1||physicalSources.has(key)||!valid(source.quantity)||!(source.quantity>0)||!valid(source.sourceQuantity)||!(source.sourceQuantity>0))throw Error('The Cook receipt contains inconsistent physical stock allocations.');
+     const physical=deduction.measure(source.stockKey.slice(source.stockKey.lastIndexOf('|')+1)),target=deduction.measure(source.unit);
+     if(physical.unit===target.unit&&!sameQuantity(source.sourceQuantity*physical.factor,source.quantity*target.factor))throw Error('The original metric stock allocation does not match its cooked amount.');
+     const pack=snapshot.conversion?.stock?.[source.stockKey],contents=pack?.reviewed===true&&valid(pack.packQuantity)&&pack.packQuantity>0?deduction.measure(pack.packUnit):null;
+     if(!['g','ml'].includes(physical.unit)&&contents?.unit===target.unit&&!sameQuantity(source.sourceQuantity*pack.packQuantity*contents.factor,source.quantity*target.factor))throw Error('The reviewed package contents do not match the recorded cooked amount.');
+     physicalSources.add(key);physicalTotals.set(source.ingredientId,(physicalTotals.get(source.ingredientId)||0)+source.quantity);receiptSources.set(source.stockKey,(receiptSources.get(source.stockKey)||0)+source.sourceQuantity);
+    }
+    if(ingredientTotals.size!==physicalTotals.size||[...ingredientTotals].some(([key,quantity])=>!sameQuantity(physicalTotals.get(key)||0,quantity)))throw Error('The Cook receipt quantities do not match their physical sources.');
+   }
+   const sourceTotals=new Map(),allocationIds=new Set();
+   for(const row of action.allocations){
+    if(typeof row.id!=='string'||allocationIds.has(row.id)||typeof row.unit!=='string'||!valid(row.quantity)||!(row.quantity>0)||!Array.isArray(row.sources)||!row.sources.length||row.sources.length>2000||!sameQuantity(receiptTotals.get(row.id)||0,row.quantity))throw Error('The journal does not match its recorded cooked quantities. Review At home.');
+    allocationIds.add(row.id);const sources=new Set();let total=0;
+    for(const source of row.sources){if(typeof source.stockKey!=='string'||source.stockKey.lastIndexOf('|')<1||sources.has(source.stockKey)||!valid(source.sourceQuantity)||!(source.sourceQuantity>0)||!valid(source.quantity)||!(source.quantity>0))throw Error('The original physical stock allocations need review.');sources.add(source.stockKey);sourceTotals.set(source.stockKey,(sourceTotals.get(source.stockKey)||0)+source.sourceQuantity);total+=source.quantity;}
+    if(!sameQuantity(total,row.quantity))throw Error('The original cooked amount does not match its physical allocations.');
+   }
+   if(receiptTotals.size!==allocationIds.size||action.stock.length!==sourceTotals.size||action.stock.length!==receiptSources.size||new Set(action.stock.map(row=>row.key)).size!==action.stock.length||new Set(action.inventory.map(row=>row.id)).size!==action.inventory.length)throw Error('The original day journal contains incomplete or duplicate quantities.');
+   for(const row of action.stock)if(!sameQuantity(sourceTotals.get(row.key)||0,row.restore)||!sameQuantity(receiptSources.get(row.key)||0,row.restore))throw Error('The original stock deduction does not match its cooked allocations.');
+   // Never put raw ingredients back while a confirmed leftover meal still
+   // depends on the batch which this reversal would mark uncooked.
+   for(const row of Object.values(state.data.cooked))if(row?.sourceOccurrence&&occurrences.has(row.sourceOccurrence))throw Error('Undo the confirmed leftovers from this batch first, then undo its original cooking day.');
+   for(const name of ['Monday','Tuesday','Wednesday','Thursday','Friday','Saturday','Sunday'])for(const row of host()?.dayMeals?.(name)||[])if(row?.sourceOccurrence&&occurrences.has(row.sourceOccurrence)&&completed(state.data,row.occurrence,row))throw Error('Undo the confirmed leftovers from this batch first, then undo its original cooking day.');
+   const stock={...snapshot.stock},inventory=copy(snapshot.inventory);
+   const validDelta=value=>object(value)&&valid(value.before)&&valid(value.after)&&valid(value.restore)&&value.restore===value.before-value.after;
+   for(const row of action.inventory){
+    const current=inventory[row.id];
+    if(typeof row.id!=='string'||['__proto__','constructor','prototype'].includes(row.id)||!object(current)||kitchenIdentity(current)!==row.identity||row.stockKey!==(current.bb173StockKey||null)||!validDelta(row.quantity)||row.stockValue!==null&&!validDelta(row.stockValue)||!valid(current.qty)||row.stockValue&&!valid(current.bb173StockValue))throw Error('A Kitchen item, unit, location or food batch changed. Review At home before undoing this day.');
+    if(row.stockValue){const source=deduction.measure(row.stockKey.slice(row.stockKey.lastIndexOf('|')+1)),display=deduction.measure(current.unit);if(source.unit!==display.unit||!sameQuantity(row.stockValue.restore*source.factor,row.quantity.restore*display.factor))throw Error('The original Kitchen amount does not match its physical source.');}
+    if(row.urgent&&current.bbReduced?.urgent!==true&&current.qty>0)throw Error('This reduced-food batch has since been refilled or changed. Review At home before restoring its old quantity.');
+    const amount=current.qty===row.quantity.after?row.quantity.before:current.qty+row.quantity.restore;
+    if(!valid(amount))throw Error('The restored Kitchen amount would be too large. Review At home first.');
+    current.qty=amount;
+    if(row.stockValue){const value=current.bb173StockValue===row.stockValue.after?row.stockValue.before:current.bb173StockValue+row.stockValue.restore;if(!valid(value))throw Error('The restored stock amount would be too large. Review At home first.');current.bb173StockValue=value;}
+    if(row.urgent&&current.qty>0&&object(current.bbReduced))current.bbReduced={...current.bbReduced,urgent:true};
+   }
+   for(const row of action.stock){
+    if(typeof row.key!=='string'||row.key.lastIndexOf('|')<1||!validDelta(row)||!(row.restore>0))throw Error('The original stock deduction needs review before it can be restored.');
+    const current=snapshot.stock[row.key]??0;
+    if(!valid(current))throw Error('Review your current pantry amounts before undoing this day.');
+    const records=Object.values(snapshot.inventory).filter(item=>item?.selected!==false&&item?.bb173StockKey===row.key);
+    if(records.some(item=>!valid(item.bb173StockValue))||records.length&&Math.abs(records.reduce((sum,item)=>sum+item.bb173StockValue,0)-current)>.000001||!records.length&&row.after>0&&!Object.hasOwn(snapshot.stock,row.key))throw Error('A physical pantry source was removed or changed. Review At home before restoring this day.');
+    const amount=current===row.after?row.before:current+row.restore;
+    if(!valid(amount))throw Error('The restored pantry amount would be too large. Review At home first.');
+    stock[row.key]=amount;
+    const restored=Object.values(inventory).filter(item=>item?.selected!==false&&item?.bb173StockKey===row.key);
+    if(restored.length&&(restored.some(item=>!valid(item.bb173StockValue))||!sameQuantity(restored.reduce((sum,item)=>sum+item.bb173StockValue,0),amount)))throw Error('Restored Kitchen quantities do not match the physical pantry balance. Review At home.');
+   }
+   const items=action.items.map(({kind,name})=>({kind,name})),rows=action.stock.map(row=>{const at=row.key.lastIndexOf('|');return {name:row.key.slice(0,at),unit:row.key.slice(at+1),restore:row.restore};});
+   return {...snapshot,actionId,action,contexts,items,rows,restoredStock:stock,restoredInventory:inventory,remainingConfirmedCount:contexts.filter(item=>!occurrences.has(item.occurrence)&&completed(state.data,item.occurrence,item)).length};
+  }
+  function previewUndoDay(event){
+   try{
+    const state=undoDaySnapshot(event);
+    if(state.already)return {ok:true,already:true,items:[],rows:[],fingerprint:null,message:'There is no remaining Day done confirmation to undo for this day.'};
+    return {ok:true,already:false,items:state.items,rows:state.rows,fingerprint:state.fingerprint,remainingConfirmedCount:state.remainingConfirmedCount,message:'Undo restores only the food deducted by this Day done confirmation. Earlier Cook confirmations and later purchases stay recorded.'};
+   }catch(error){return {ok:false,needsReview:true,items:[],rows:[],message:error?.message||'Review At home before undoing this day.'};}
+  }
+  async function undoDay(event={}){
+   let state;try{state=undoDaySnapshot(event);}catch(error){return {ok:false,needsReview:true,message:error?.message||'Review At home before undoing this day.'};}
+   if(state.already)return {ok:true,already:true,restoredCount:0,issues:[],message:'Day done has already been undone; no stock was added again.'};
+   if(typeof event.expected!=='string'||event.expected!==state.fingerprint)return {ok:false,needsReview:true,message:'Your day, account or pantry changed. Review the latest amounts before undoing.'};
+   for(const item of state.action.items){delete state.data.cooked[item.receiptKey];delete state.data.planned[item.occurrence];}
+   state.data.dayActions[state.actionId]={...state.action,status:'undone',undoneAt:Date.now()};
+   if(actor()!==state.who||blocked())return {ok:false,needsReview:true,message:'Your account or pantry changed. Review this day again.'};
+   // Settlement history and receipt generations deliberately remain intact:
+   // reactivating old purchase credit could apply the same shop a second time.
+   atomic(store,{[state.keys.stock]:state.restoredStock,[state.keys.inventory]:state.restoredInventory,[KEY]:state.all},state.expected);
+   try{host().refresh();}catch{}
+   const base={ok:true,restoredCount:state.action.items.length,remainingConfirmedCount:state.remainingConfirmedCount,issues:[]},sync=win.BBReceiptHost?.confirmCookedPantry;
+   // A successful local save rerenders Plan and disposes its original dialog.
+   // Report the eventual sync result through the current host, pinned to the
+   // original account AND session, rather than a now-detached dialog.
+   const reply=value=>{try{if(actor()===state.who&&store.getItem('basketboss_cloud_session_v1')===state.expected.basketboss_cloud_session_v1&&!win.BBAccountDeletion?.isDeleting?.())host().notify?.(value.message);}catch{}return value;};
+   if(actor()!==state.who||store.getItem('basketboss_cloud_session_v1')!==state.expected.basketboss_cloud_session_v1||store.getItem('basketboss_receipt_projection_owner_v1')!==state.expected.basketboss_receipt_projection_owner_v1||store.getItem(state.keys.stock)!==JSON.stringify(state.restoredStock))return reply({...base,localOnly:true,onlinePending:true,message:'Day done undone for the original account on this device. Reopen At home before synchronizing its restored amounts.'});
+   if(!sync)return reply({...base,localOnly:true,message:'Day done undone. At home restored on this device; shopping now uses the restored amounts.'});
+   let response;try{response=await sync.call(win.BBReceiptHost,{stock:state.restoredStock});}catch{}
+   if(!response?.ok||response.needsReview)return reply({...base,onlinePending:true,needsReview:true,message:'Day done undone on this device. Review online pantry confirmation to synchronize the restored amounts.'});
+   if(response.localOnly)return reply({...base,localOnly:true,...(response.weeklyReviewRequired?{weeklyReviewRequired:true}:{}),message:'Day done undone. At home restored on this device; online pantry confirmation can be retried.'});
+   return reply({...base,...(response.weeklyReviewRequired?{weeklyReviewRequired:true}:{}),message:'Day done undone. At home restored; earlier Cook confirmations remain recorded.'+(response.weeklyReviewRequired?' Review your remaining food before the next shop.':'')});
   }
   function shoppingBuys(){
    const data=own().data;return Object.entries(object(data.manualBuys)?data.manualBuys:{}).filter(([,row])=>row?.pending!==false&&valid(row.quantity)&&row.quantity>0).map(([id,row])=>({...row,id}));
@@ -573,7 +753,7 @@
   }
   function reminders(){const list=win.document.getElementById('bb321Printable');if(!list)return;list.querySelector('.bb-home-covered')?.remove();const data=Object.values(targets()).filter(row=>row.pending&&(row.targetQty>0||valid(row.extraBuffer)&&row.extraBuffer>0));const needed=host().requirements();const covered=data.filter(row=>{const item=needed.find(x=>host().id(x.key,x.unit)===host().id(row.name,row.unit));const current=host().stock()[host().id(row.name,row.unit)]||0;return Math.max(row.targetQty,item?.required||0)+(valid(row.extraBuffer)?row.extraBuffer:0)<=current;});const households=host().household().filter(row=>Object.hasOwn(row,'targetQty')&&row.manualPending!==false&&row.targetQty>0&&row.ownedQty>=row.targetQty).map(row=>({...row,homeId:'ess:'+row.id}));if(!covered.length&&!households.length)return;const box=win.document.createElement('div');box.className='bb-home-covered';for(const row of [...covered,...households]){const label=win.document.createElement('label'),tick=win.document.createElement('input');tick.type='checkbox';tick.addEventListener('change',()=>{if(tick.checked){complete(row.homeId||host().id(row.name,row.unit));host().refresh();}});label.append(tick,win.document.createTextNode(row.name+' · covered at home'));box.append(label);}list.append(box);}
   function openRequested(){const id=new URLSearchParams(win.location.search).get('bbcook');if(id)host()?.openCook?.(id);}
-  const api={purchaseQuantity,purchaseAmounts,roundShoppingItems,prepareSharedPurchase,needsLegacyReview,receiptGeneration,supersedesReceipt,addHousehold,setHouseholdAmount,setHouseholdBalance,confirmHousehold,confirmHouseholdEntry,removeHousehold,openRequested,reminders,decorate,hasHouseholdDraft:()=>{checkDraftActor();return householdDraft.size>0;},committed:()=>{householdDraft.clear();host()?.reload();},difference,augment,targets,foodTarget,requirement,total,prepare,completionChanges,complete,isCooked,previewCook,cooked,previewDay,finishDay,shoppingBuys,addShoppingBuy,manualBuyItems,manualBuyEssentials,applyManualPurchases,actor,blocked,atomic};
+  const api={purchaseQuantity,purchaseAmounts,roundShoppingItems,prepareSharedPurchase,needsLegacyReview,receiptGeneration,supersedesReceipt,addHousehold,setHouseholdAmount,setHouseholdBalance,confirmHousehold,confirmHouseholdEntry,removeHousehold,openRequested,reminders,decorate,hasHouseholdDraft:()=>{checkDraftActor();return householdDraft.size>0;},committed:()=>{householdDraft.clear();host()?.reload();},difference,augment,targets,foodTarget,requirement,total,prepare,completionChanges,complete,isCooked,previewCook,cooked,previewDay,finishDay,previewUndoDay,undoDay,shoppingBuys,addShoppingBuy,manualBuyItems,manualBuyEssentials,applyManualPurchases,actor,blocked,atomic};
   setTimeout(()=>{win.BBKitchenEssentials?.refresh?.();openRequested();},0);
   return Object.freeze(api);
  }

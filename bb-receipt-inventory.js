@@ -265,8 +265,8 @@
       if ((!owner.cacheKey || owner.cacheKey === key) && Number.isSafeInteger(owner.inventoryRevision) && owner.inventoryRevision > response.inventoryRevision) throw Error('receipt_stale_server_projection');
       if (!response.stock || typeof response.stock !== 'object' || Array.isArray(response.stock)) throw Error('receipt_server_stock_missing');
       const rawServerStock = c.normalizeStockMap(response.projectionMode === 'patch' ? { ...(cached.serverStock || {}), ...response.stock } : response.stock, { canonicalize });
-      const currentKitchen=json(KEYS.kitchen,{}),tracking=options.pantryPolicy===true;
-      const local=tracking?c.normalizePantryState(json(KEYS.stock,{}),currentKitchen,{canonicalize,market:activeContext().market,exactConversionsOnly:true}):{stock:json(KEYS.stock,{}),inventory:currentKitchen};
+      const currentKitchen=json(KEYS.kitchen,{}),savedStock=json(KEYS.stock,{}),tracking=options.pantryPolicy===true;
+      const local=tracking?c.normalizePantryState(savedStock,currentKitchen,{canonicalize,market:activeContext().market,exactConversionsOnly:true}):{stock:savedStock,inventory:currentKitchen};
       const serverKitchen=clone(currentKitchen),pepperLines=tracking&&body?.action==='confirm_receipt'&&body.addToPantry!==false?(body.lines||[]).filter(line=>line.kind==='food'&&c.canonicalIngredientKey(line.canonicalKey,canonicalize)==='pepper'):[];
       const measuredLines=tracking&&body?.action==='confirm_receipt'&&body.addToPantry!==false?(body.lines||[]).filter(line=>line.kind==='food'&&['g','ml'].includes(line.unit)&&c.pantryTrackingPolicy.isStaple(line.canonicalKey)&&!c.pantryTrackingPolicy.isWholePepper(line.name,line.unit,line)):[];
       for(const line of measuredLines){
@@ -297,13 +297,17 @@
       } else if (body?.localProjectionBaseline) priorServerStock = body.localProjectionBaseline;
       if(tracking)priorServerStock=c.normalizePantryState(priorServerStock,currentKitchen,{canonicalize,market:activeContext().market,exactConversionsOnly:true}).stock;
       const nextStock = c.projectReceiptInventory(currentStock, priorServerStock, nextServerStock);
-      let kitchen = clone(local.inventory);
+      // An acknowledgement of the exact same physical balances must not turn
+      // a local Cook allocation into a new Kitchen representation. Keep its
+      // display units, zero rows and lot metadata within the established scope.
+      const preserveKitchen = body?.action === 'confirm_pantry' && owner.actorId === captured.actorId && owner.cacheKey === key && explicitScopeAdoption && equalStock(currentStock, nextStock) && equalStock(savedStock, nextStock);
+      let kitchen = clone(preserveKitchen ? currentKitchen : local.inventory);
       for (const [field, limit] of [['inventory', 2000], ['essentials', 500], ['priceObservations', 2000], ['receipts', 500]]) if (response[field] !== undefined && (!Array.isArray(response[field]) || response[field].length > limit)) throw Error('receipt_projection_payload_limit');
       const inventory = (response.inventory || []).map(x => safeServerRecord(x, ['stockKey', 'canonicalKey', 'quantity', 'unit', 'location', 'revision']));
       for (const item of inventory) {
         if (typeof item.stockKey !== 'string' || item.stockKey.length > 180 || item.stockKey !== `${item.canonicalKey}|${item.unit}` || !Number.isFinite(item.quantity) || item.quantity < 0 || item.quantity > 1000000 || item.quantity > 0 && rawServerStock[item.stockKey] !== item.quantity || !Number.isInteger(item.revision) || item.revision < 0 || !['cupboard', 'fridge', 'freezer'].includes(item.location)) throw Error('invalid_receipt_inventory_projection');
       }
-      for (const stockKey of new Set([...Object.keys(priorServerStock), ...Object.keys(nextServerStock)])) {
+      for (const stockKey of preserveKitchen ? [] : new Set([...Object.keys(priorServerStock), ...Object.keys(nextServerStock)])) {
         const split = stockKey.lastIndexOf('|'), name = stockKey.slice(0, split), unit = stockKey.slice(split + 1);
         const matches = Object.entries(kitchen).filter(([, x]) => x?.selected && (x.bb173StockKey===stockKey||x.name && c.canonicalIngredientKey(x.name, canonicalize) === name && c.normalizeStockQuantity(x.qty, x.unit)?.unit === unit));
         const bucketed=root.BBReducedStock?.projectFrozenBuckets?.({inventory:kitchen,stockKey,currentQuantity:Number(currentStock[stockKey])||0,nextQuantity:nextStock[stockKey]||0,location:inventory.find(row=>row.stockKey===stockKey)?.location||'cupboard',actor:captured.actorId,canonicalize,market:activeContext().market});
@@ -334,7 +338,7 @@
         }
         else if (existing) { kitchen[id] = { ...previous, selected: false, qty: null }; delete kitchen[id].bb173StockKey; delete kitchen[id].bb173StockValue; }
       }
-      if (root.BBReducedStock?.settleInventory) kitchen = root.BBReducedStock.settleInventory({before: currentKitchen, after: kitchen, actor: captured.actorId});
+      if (!preserveKitchen && root.BBReducedStock?.settleInventory) kitchen = root.BBReducedStock.settleInventory({before: currentKitchen, after: kitchen, actor: captured.actorId});
       const essentials = (response.essentials || []).slice(0, 500).map(x => safeServerRecord(x, ['id', 'lineId', 'receiptId', 'name', 'productName', 'brand', 'quantity', 'unit', 'packQuantity', 'packUnit', 'packCount', 'pricePaid', 'currency', 'market', 'retailer', 'shopSessionId', 'confirmedAt', 'purchasedAt', 'addToPantry', 'kind', 'priceType', 'eligibleForRegularPrice']));
       const receipts = (response.receipts || []).map(x => safeServerRecord(x, ['receiptId', 'shopSessionId', 'market', 'currency', 'retailer', 'purchasedAt', 'confirmedAt', 'foodSubtotal', 'essentialsSubtotal', 'receiptTotal', 'adjustmentTotal']));
       for (const receipt of receipts) for (const field of ['foodSubtotal', 'essentialsSubtotal', 'receiptTotal', 'adjustmentTotal']) if (receipt[field] !== undefined && receipt[field] !== null && (!Number.isFinite(receipt[field]) || Math.abs(receipt[field]) > 100000 || ['foodSubtotal', 'essentialsSubtotal'].includes(field) && receipt[field] < 0)) throw Error('invalid_receipt_summary_amount');

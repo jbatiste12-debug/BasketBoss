@@ -66,21 +66,24 @@ function fixture({preview,finish,real=false,items,stock}={}){
  return {...h,values,storage,ledger,home:h.win.BBHome,host,calls,previews,confirmed,mount,get ui(){return ui;},get badge(){return badge;},get container(){return container;},isGreen:()=>badge.classList.contains('bb-day-is-done'),dialog:()=>h.all().find(node=>node.tagName==='dialog'),trigger:()=>container.children.find(node=>node.dataset.bbDayDone),action:name=>h.all().find(node=>node.dataset.bbDayAction===name),setActor(id,token='token-two'){storage.setItem(SESSION,JSON.stringify({user:{id},access_token:token}));},setMeals(value){meals=value;},stock:host.stock};
 }
 
-test('quick Day done locks immediately across preview and commit and turns green after success',async()=>{
+async function review(h){const result=await h.ui.quickComplete();await tick();return result;}
+async function confirm(h){await review(h);const button=h.action('confirm');assert.ok(button,'food changes require an explicit confirmation');await button.click();await tick();return h.confirmed.at(-1);}
+
+test('badge double-tap opens one review and never commits or paints green without explicit confirmation',async()=>{
  const first=deferred(),finish=deferred();
- const h=fixture({preview:(_,count)=>count===1?first.promise:clean(),finish:()=>finish.promise});
- const pending=h.win.BBDayDone.quickComplete('Monday');
- assert.equal(h.trigger().disabled,true);assert.equal(h.badge.getAttribute('aria-busy'),'true');assert.equal(h.isGreen(),false);
+ const h=fixture({preview:()=>first.promise,finish:()=>finish.promise});
+ const result=await h.win.BBDayDone.quickComplete('Monday');
+ assert.equal(result.review,true);assert.equal(h.calls.length,0);assert.equal(h.isGreen(),false);assert.ok(h.dialog());
  await h.ui.quickComplete();assert.equal(h.previews.length,1);assert.equal(h.calls.length,0);
- first.resolve(clean());await tick();assert.equal(h.previews.length,2);assert.equal(h.calls.length,1);assert.equal(h.isGreen(),false);
- await h.ui.quickComplete();assert.equal(h.calls.length,1);
+ first.resolve(clean());await tick();assert.equal(h.previews.length,1);assert.equal(h.calls.length,0);assert.equal(h.isGreen(),false);
+ const button=h.action('confirm'),pending=button.click();button.click();
+ assert.equal(h.calls.length,1);assert.equal(h.trigger().disabled,true);assert.equal(h.badge.getAttribute('aria-busy'),'true');assert.equal(h.isGreen(),false);
  assert.deepEqual(h.calls[0],{day:'Monday',actorId:'actor-one',expected:'current-plan-and-stock'});
  finish.resolve({ok:true,message:'At home updated.'});await pending;
- assert.equal(h.isGreen(),true);assert.match(h.badge.textContent,/✓/);assert.match(h.trigger().textContent,/✓/);assert.equal(h.trigger().disabled,false);assert.equal(h.badge.getAttribute('aria-busy'),'false');assert.equal(h.confirmed.length,1);assert.equal(h.dialog(),undefined);
- assert.ok(h.all().some(node=>node.getAttribute('role')==='status'&&node.textContent.includes('Monday done')));
+ assert.equal(h.isGreen(),true);assert.match(h.badge.textContent,/✓/);assert.equal(h.trigger().textContent,'Undo day done');assert.equal(h.trigger().disabled,false);assert.equal(h.badge.getAttribute('aria-busy'),'false');assert.equal(h.confirmed.length,1);
 });
 
-test('unknown, estimated, blocked and manual-review quantities open the existing review without committing',async()=>{
+test('unknown, estimated, blocked and manual-review quantities remain visible without an implicit commit',async()=>{
  for(const value of [
   {...clean(),issues:[{message:'Pack contents need review.'}]},
   {...clean(),rows:[{name:'Carrots',unit:'g',deduct:160,estimated:true,assumptions:['80 g each']}]},
@@ -89,53 +92,57 @@ test('unknown, estimated, blocked and manual-review quantities open the existing
   {...clean(),needsReview:true},
   {ok:false,needsReview:true,rows:[],issues:[],message:'Confirm the original batch first.'}
  ]){
-  const h=fixture({preview:()=>value});await h.ui.quickComplete();await tick();
+  const h=fixture({preview:()=>value});await review(h);
   assert.equal(h.calls.length,0);assert.equal(h.isGreen(),false);assert.ok(h.dialog());assert.match(h.dialog().textContent,/Confirm Monday is done/);assert.equal(h.trigger().disabled,false);
+  h.action('close').click();assert.equal(h.calls.length,0);
  }
 });
 
-test('a changed plan fingerprint is reviewed before any quick completion commit',async()=>{
- const h=fixture({preview:(_,count)=>({...clean(),fingerprint:count===1?'old-plan':'new-plan'})});
- await h.ui.quickComplete();await tick();assert.equal(h.calls.length,0);assert.equal(h.isGreen(),false);assert.ok(h.action('confirm'));
- await h.action('confirm').click();assert.equal(h.calls.length,1);assert.equal(h.calls[0].expected,'new-plan');
+test('a changed fingerprint rejected by the guarded core requires a fresh review and another explicit confirmation',async()=>{
+ const h=fixture({preview:(_,count)=>({...clean(),fingerprint:count===1?'old-plan':'new-plan'}),finish:(_,count)=>count===1?{ok:false,needsReview:true,message:'Your pantry changed.'}:{ok:true,message:'At home updated.'}});
+ await review(h);assert.equal(h.calls.length,0);assert.equal(h.isGreen(),false);
+ await h.action('confirm').click();assert.equal(h.calls.length,1);assert.equal(h.calls[0].expected,'old-plan');assert.equal(h.isGreen(),false);
+ h.action('refresh').click();await tick();assert.equal(h.previews.length,2);assert.equal(h.calls.length,1);
+ await h.action('confirm').click();assert.equal(h.calls.length,2);assert.equal(h.calls[1].expected,'new-plan');assert.equal(h.isGreen(),true);
 });
 
-test('account switching or refreshing a token while checking prevents the old quick request',async()=>{
+test('account switching or refreshing a token while previewing prevents the old request',async()=>{
  for(const change of [h=>h.setActor('actor-two'),h=>h.setActor('actor-one','new-token')]){
   const wait=deferred(),h=fixture({preview:(_,count)=>count===1?wait.promise:clean()});
-  const pending=h.ui.quickComplete();change(h);wait.resolve(clean());await pending;await tick();
-  assert.equal(h.calls.length,0);assert.equal(h.isGreen(),false);assert.ok(h.dialog());assert.equal(h.previews.at(-1).actorId,h.home.actor());
+  await h.ui.quickComplete();change(h);wait.resolve(clean());await tick();
+  assert.equal(h.calls.length,0);assert.equal(h.isGreen(),false);assert.ok(h.dialog());assert.equal(h.action('confirm'),undefined);assert.match(h.dialog().textContent,/account changed or your session refreshed/);
+  h.action('close').click();await review(h);assert.equal(h.previews.at(-1).actorId,h.home.actor());assert.ok(h.action('confirm'));assert.equal(h.calls.length,0);
  }
 });
 
-test('a failed guarded commit opens review and never paints a false green badge',async()=>{
+test('a failed explicit guarded commit never paints a false green badge and offers a fresh review',async()=>{
  const h=fixture({finish:()=>({ok:false,needsReview:true,message:'Your pantry changed.'})});
- await h.ui.quickComplete();await tick();assert.equal(h.calls.length,1);assert.equal(h.confirmed.length,0);assert.equal(h.isGreen(),false);assert.ok(h.dialog());assert.ok(h.action('confirm'));
+ await review(h);assert.equal(h.calls.length,0);await h.action('confirm').click();
+ assert.equal(h.calls.length,1);assert.equal(h.confirmed.length,0);assert.equal(h.isGreen(),false);assert.ok(h.dialog());assert.ok(h.action('refresh'));
 });
 
-test('the fresh preview checks the current token again before invoking finishDay',async()=>{
- const wait=deferred(),h=fixture({preview:(_,count)=>count===2?wait.promise:clean()});
- const pending=h.ui.quickComplete();await tick();assert.equal(h.previews.length,2);assert.equal(h.calls.length,0);
- h.setActor('actor-one','refreshed-during-recheck');wait.resolve(clean());await pending;await tick();
- assert.equal(h.calls.length,0);assert.equal(h.isGreen(),false);assert.ok(h.dialog());
+test('the explicit confirmation checks the current token before invoking finishDay',async()=>{
+ const h=fixture();await review(h);assert.equal(h.previews.length,1);assert.equal(h.calls.length,0);
+ h.setActor('actor-one','refreshed-after-review');await h.action('confirm').click();
+ assert.equal(h.calls.length,0);assert.equal(h.isGreen(),false);assert.equal(h.action('confirm').disabled,true);assert.match(h.dialog().textContent,/session refreshed/);
 });
 
 test('a completion result arriving after account switching cannot paint the new account green',async()=>{
- const wait=deferred(),h=fixture({finish:()=>wait.promise});
- const pending=h.ui.quickComplete();await tick();assert.equal(h.calls.length,1);
+ const wait=deferred(),h=fixture({finish:()=>wait.promise});await review(h);
+ const pending=h.action('confirm').click();assert.equal(h.calls.length,1);
  h.setActor('actor-two');h.win.fire('storage',{key:SESSION});wait.resolve({ok:true,message:'Previous account updated.'});await pending;
- assert.equal(h.isGreen(),false);assert.equal(h.confirmed.length,0);assert.equal(h.trigger().disabled,false);assert.doesNotMatch(h.trigger().textContent,/✓/);
+ assert.equal(h.isGreen(),false);assert.equal(h.confirmed.length,0);assert.equal(h.trigger().disabled,false);assert.equal(h.trigger().textContent,'Day done');assert.equal(h.dialog(),undefined);
 });
 
 test('persisted occurrence completions restore green after reload and are scoped to the active account',async()=>{
- const h=fixture();await h.ui.quickComplete();assert.equal(h.calls.length,1);assert.equal(h.isGreen(),true);
- await h.ui.quickComplete();assert.equal(h.calls.length,1,'an already-confirmed preview cannot issue another finish');
- h.mount({freshModule:true});assert.equal(h.isGreen(),true);assert.match(h.badge.textContent,/✓/);
+ const h=fixture();await confirm(h);assert.equal(h.calls.length,1);assert.equal(h.isGreen(),true);h.action('close').click();
+ await review(h);assert.equal(h.calls.length,1,'opening a completed day cannot issue another finish');h.action('close').click();
+ h.mount({freshModule:true});assert.equal(h.isGreen(),true);assert.match(h.badge.textContent,/✓/);assert.equal(h.trigger().textContent,'Undo day done');
  h.setActor('actor-two');h.win.fire('storage',{key:SESSION});assert.equal(h.isGreen(),false);assert.doesNotMatch(h.badge.textContent,/✓/);
  h.setActor('actor-one');h.win.fire('focus');assert.equal(h.isGreen(),true);assert.equal(h.calls.length,1);
 });
 
-test('individual Cook followed by quick Day done confirms only remaining lunch and dessert amounts',async()=>{
+test('individual Cook followed by reviewed Day done confirms only remaining lunch and dessert amounts',async()=>{
  const items=[
   {kind:'dinner',recipeId:'dinner',name:'Dinner',day:'Monday',factor:1,occurrence:'week-one|dinner|Monday',ingredients:[{key:'rice',unit:'g',required:400}]},
   {kind:'lunch',recipeId:'lunch',name:'Lunch',day:'Monday',factor:1,occurrence:'week-one|lunch|Monday',ingredients:[{key:'bread',unit:'each',required:4}]},
@@ -144,23 +151,39 @@ test('individual Cook followed by quick Day done confirms only remaining lunch a
  const h=fixture({real:true,items,stock:{'rice|g':1000,'bread|each':12}});
  const dinner=items[0];assert.equal((await h.home.cooked({sessionId:'individual-cook',recipeId:dinner.recipeId,day:'Monday',kind:'dinner',factor:1,actorId:'actor-one',occurrence:dinner.occurrence})).ok,true);
  assert.deepEqual(h.stock(),{'rice|g':600,'bread|each':12});assert.equal(h.isGreen(),false);
- const result=await h.ui.quickComplete();assert.equal(result.ok,true);assert.equal(result.completedCount,2);assert.equal(h.isGreen(),true);assert.deepEqual(h.stock(),{'rice|g':500,'bread|each':8});
- await h.ui.quickComplete();assert.equal(h.calls.length,1);assert.deepEqual(h.stock(),{'rice|g':500,'bread|each':8});
+ await review(h);assert.deepEqual(h.stock(),{'rice|g':600,'bread|each':12});assert.equal(h.calls.length,0);
+ await h.action('confirm').click();assert.equal(h.confirmed.at(-1).completedCount,2);assert.equal(h.isGreen(),true);assert.deepEqual(h.stock(),{'rice|g':500,'bread|each':8});
+ h.action('close').click();await review(h);assert.equal(h.calls.length,1);assert.deepEqual(h.stock(),{'rice|g':500,'bread|each':8});h.action('close').click();
  h.mount({freshModule:true});assert.equal(h.isGreen(),true);
 });
 
-test('quick leftover completion reviews an uncooked source and never deducts the batch twice',async()=>{
+test('reviewed leftover completion blocks an uncooked source and never deducts the batch twice',async()=>{
  const sourceMeal={kind:'dinner',recipeId:'batch',name:'Batch curry',day:'Monday',factor:1,occurrence:'week-one|dinner|Monday|batch',ingredients:[{key:'rice',unit:'g',required:600}]};
  const leftover={kind:'leftover',recipeId:'leftovers',name:'Leftover curry',day:'Wednesday',factor:1,occurrence:'week-one|leftover|Wednesday|batch',sourceOccurrence:sourceMeal.occurrence,ingredients:[]};
  const h=fixture({real:true,items:[sourceMeal,leftover]});h.mount({day:'Wednesday'});
- await h.ui.quickComplete();await tick();assert.equal(h.calls.length,0);assert.equal(h.isGreen(),false);assert.match(h.dialog().textContent,/original batch/);
- h.action('close').click();h.mount({day:'Monday'});assert.equal((await h.ui.quickComplete()).ok,true);assert.equal(h.stock()['rice|g'],400);
- h.mount({day:'Wednesday'});assert.equal((await h.ui.quickComplete()).ok,true);assert.equal(h.stock()['rice|g'],400);assert.equal(h.isGreen(),true);assert.equal(h.home.isCooked(leftover.occurrence),true);
+ await review(h);assert.equal(h.calls.length,0);assert.equal(h.isGreen(),false);assert.match(h.dialog().textContent,/original batch/);assert.equal(h.action('confirm'),undefined);
+ h.action('close').click();h.mount({day:'Monday'});await confirm(h);assert.equal(h.stock()['rice|g'],400);
+ h.mount({day:'Wednesday'});await review(h);assert.equal(h.stock()['rice|g'],400);assert.equal(h.isGreen(),false);await h.action('confirm').click();assert.equal(h.stock()['rice|g'],400);assert.equal(h.isGreen(),true);assert.equal(h.home.isCooked(leftover.occurrence),true);
 });
 
-test('replacing a completed day with a different plan occurrence clears its green state',async()=>{
- const h=fixture({real:true});await h.ui.quickComplete();assert.equal(h.isGreen(),true);assert.equal(h.stock()['rice|g'],800);
+test('replacing a completed day with a different plan occurrence clears green without changing stock until explicit confirmation',async()=>{
+ const h=fixture({real:true});await confirm(h);assert.equal(h.isGreen(),true);assert.equal(h.stock()['rice|g'],800);h.action('close').click();
  h.setMeals([{kind:'dinner',recipeId:'new-dinner',name:'New dinner',day:'Monday',factor:1,occurrence:'week-two|dinner|Monday|new-dinner',ingredients:[{key:'rice',unit:'g',required:300}]}]);h.storage.setItem(PLAN,'week-two');h.win.fire('storage',{key:PLAN});
  assert.equal(h.isGreen(),false);assert.equal(h.stock()['rice|g'],800);
- assert.equal((await h.ui.quickComplete()).ok,true);assert.equal(h.stock()['rice|g'],500);assert.equal(h.isGreen(),true);
+ await review(h);assert.equal(h.stock()['rice|g'],800);await h.action('confirm').click();assert.equal(h.stock()['rice|g'],500);assert.equal(h.isGreen(),true);
+});
+
+test('Undo after UI reload returns only Day done amounts and preserves earlier Cook and later purchases',async()=>{
+ const items=[
+  {kind:'dinner',recipeId:'dinner',name:'Dinner',day:'Monday',factor:1,occurrence:'week-one|dinner|Monday',ingredients:[{key:'rice',unit:'g',required:400}]},
+  {kind:'breakfast',recipeId:'breakfast',name:'Breakfast',day:'Monday',factor:1,occurrence:'week-one|breakfast|Monday',ingredients:[{key:'bread',unit:'each',required:4}]},
+  {kind:'dessert',recipeId:'dessert',name:'Dessert',day:'Monday',factor:1,occurrence:'week-one|dessert|Monday',ingredients:[{key:'rice',unit:'g',required:100}]}
+ ];
+ const h=fixture({real:true,items,stock:{'rice|g':1000,'bread|each':12}}),dinner=items[0];
+ await h.home.cooked({sessionId:'earlier-cook',recipeId:dinner.recipeId,day:'Monday',kind:'dinner',factor:1,actorId:'actor-one',occurrence:dinner.occurrence});
+ await confirm(h);assert.deepEqual(h.stock(),{'rice|g':500,'bread|each':8});h.mount({freshModule:true});assert.equal(h.isGreen(),true);assert.equal(h.trigger().textContent,'Undo day done');
+ h.storage.setItem('stock',JSON.stringify({...h.stock(),'rice|g':700}));const before=JSON.stringify(h.stock());
+ await review(h);assert.equal(JSON.stringify(h.stock()),before,'opening Undo is read-only');assert.ok(h.action('undo'));assert.equal(h.action('confirm'),undefined);assert.match(h.dialog().textContent,/Return 100 g/);
+ await h.action('undo').click();assert.deepEqual(h.stock(),{'rice|g':800,'bread|each':12});assert.equal(h.home.isCooked(dinner.occurrence),true);assert.equal(h.home.isCooked(items[1].occurrence),false);assert.equal(h.home.isCooked(items[2].occurrence),false);assert.equal(h.isGreen(),false);assert.equal(h.trigger().textContent,'Day done');
+ h.mount({freshModule:true});assert.equal(h.isGreen(),false);assert.deepEqual(h.stock(),{'rice|g':800,'bread|each':12});
 });

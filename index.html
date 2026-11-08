@@ -1533,7 +1533,7 @@ const tab=window.bb172ActiveTab;
   const label=document.createElement('span');label.textContent=recipe.title+' · '+recipe.lines.length+' ingredients';
   const remove=document.createElement('button');remove.type='button';remove.className='small-btn';remove.textContent='Remove';
   remove.onclick=()=>{
-   if((state.planned||[]).some(x=>x.recipeId===recipe.id)){bb172Msg('Remove this recipe from your Planner before deleting it.');return}
+   if([...(state.planned||[]),...(state.plannedBreakfasts||[]),...(state.plannedDesserts||[])].some(x=>x.recipeId===recipe.id)){bb172Msg('Remove this recipe from your Planner before deleting it.');return}
    if(!window.confirm('Delete your personal recipe “'+recipe.title+'” from this device?'))return;
    const remaining=bb172ReadOwnRecipes().filter(x=>x.id!==recipe.id);if(bb172SaveObject(BB172_OWN_RECIPE_KEY,remaining))window.location.reload();
   };
@@ -3799,7 +3799,9 @@ body[data-bbnext-view="discover"] #app .bb-featured-card #bbFeaturedBatch {
 <script src="bb-duration.js?v=20261102-duration2"></script>
 <script src="bb-price-scan.js?v=20261105-reduced1"></script>
 <script src="basketboss-pricing-v19.js?v=20261108-baseline1"></script>
-<script src="bb-serving-scale.js?v=20261103-kitchen2"></script>
+<script src="bb-serving-scale.js?v=20261108-planner1"></script>
+<script src="bb-plan-extras.js?v=20261108-planner1"></script>
+<script src="bb-plan-extras-sync.js?v=20261108-planner1"></script>
 <script src="bb-recipe-measures.js?v=20261104-regions2"></script>
 <script src="bb-cook-method.js?v=20261105-cook1"></script>
 <script src="bb-cook-step-layout.js?v=20261105-cook1"></script>
@@ -3808,7 +3810,7 @@ body[data-bbnext-view="discover"] #app .bb-featured-card #bbFeaturedBatch {
 <script src="bb-recipe-planning.js?v=20261104-cycle1"></script>
 <script src="bb-recipe-editorial.js?v=20261102-editorial4"></script>
 <script src="bb-plan-move.js?v=20261102-drag1"></script>
-<script src="bb-saved-weeks.js?v=20261104-compact-plan1"></script>
+<script src="bb-saved-weeks.js?v=20261108-planner1"></script>
 <link rel="stylesheet" href="bb-saved-weeks.css?v=20261104-compact1">
 <script src="bb-reduced-stock.js?v=20261105-business1"></script>
 <script src="bb-reduced-purchases.js?v=20261105-business1"></script>
@@ -3827,7 +3829,7 @@ body[data-bbnext-view="discover"] #app .bb-featured-card #bbFeaturedBatch {
 <script src="bb-cook-assistant.js?v=20261105-cook1"></script>
 <script src="bb-cook-voice.js?v=20261104-mentor-stream1"></script>
 <script defer src="bb-weekly-essentials.js?v=20261105-shop-confirm1"></script>
-<script defer src="bb-receipt-inventory.js?v=20261107-pantry-stock2"></script>
+<script defer src="bb-receipt-inventory.js?v=20261108-planner1"></script>
 <script defer src="bb-receipt-scanner.js?v=20261105-preflight1"></script>
 <script defer src="bb-receipt-host.js?v=20261105-business1"></script>
 <link rel="stylesheet" href="bb-receipt-scanner.css?v=20261031-receipt-pantry">
@@ -4277,6 +4279,12 @@ function bb307Selections(){
    if(p.has(id))p.get(id).servings+=count;
    else p.set(id,{id,servings:count});
   }
+ }
+ if(typeof bbGetBreakfasts==='function')for(const planned of bbGetBreakfasts()){
+  const id=planned.recipeId,recipe=planned.recipe;
+  if(!bb176AllowedRecipe(id)||window.BBHome?.isCooked?.(bbHomeOccurrence(id,planned.day,'breakfast')))continue;
+  const count=BBServing.forMeal(state,planned,recipe);
+  if(p.has(id))p.get(id).servings+=count;else p.set(id,{id,servings:count});
  }
  return [...p.values()];
 }
@@ -5396,7 +5404,7 @@ function loadState(){
  let pantry={};try{const old=JSON.parse(localStorage.getItem(OLD_PANTRY)||'{}');for(const r of RECIPES)for(const ing of r.ingredients){if(old[ing[0]]||old[ing[0].toLowerCase()])pantry[norm(ing[0])]=true}}catch(e){}
  return normalize({version:2,planned,pantry,customPantry:[],dismissed:[],scanEndpoint:'',servings:4});
 }
-function normalize(s){return {version:2,mealPreferences:typeof BBMealPreferences==='undefined'?(s.mealPreferences||null):BBMealPreferences.normalize(s.mealPreferences),pantryPlanGeneration:typeof s.pantryPlanGeneration==='string'&&/^[a-zA-Z0-9_-]{1,80}$/.test(s.pantryPlanGeneration)?s.pantryPlanGeneration:null,ingredientAvoidance:typeof BBIngredientPreferences==='undefined'?(s.ingredientAvoidance?.version===1&&typeof s.ingredientAvoidance.scope==='string'&&Array.isArray(s.ingredientAvoidance.excluded)?{version:1,scope:s.ingredientAvoidance.scope,excluded:s.ingredientAvoidance.excluded.filter(x=>typeof x==='string').slice(0,100)}:null):BBIngredientPreferences.normalize(s.ingredientAvoidance),planned:Array.isArray(s.planned)?s.planned.filter(p=>p&&typeof p.recipeId==='string'&&p.recipeId.length>0&&p.recipeId.length<=256&&DAYS.includes(p.day)).map(p=>({recipeId:p.recipeId,day:p.day})):[],pantry:s.pantry&&typeof s.pantry==='object'?s.pantry:{},customPantry:Array.isArray(s.customPantry)?s.customPantry:[],dismissed:Array.isArray(s.dismissed)?s.dismissed:[],scanEndpoint:'',servings:Number(s.servings)||4,feedingSet:s.feedingSet===true,mealServings:BBServing.validOverrides(s.mealServings),dayServings:BBServing.validDayOverrides(s.dayServings),recipePhotos:s.recipePhotos&&typeof s.recipePhotos==='object'?s.recipePhotos:{},recipeCollections:s.recipeCollections&&typeof s.recipeCollections==='object'?s.recipeCollections:{},leftoverSources:s.leftoverSources&&typeof s.leftoverSources==='object'?s.leftoverSources:{},leftoverConfirmed:s.leftoverConfirmed&&typeof s.leftoverConfirmed==='object'?s.leftoverConfirmed:{},plannedDesserts:Array.isArray(s.plannedDesserts)?s.plannedDesserts.filter(p=>p&&typeof p.recipeId==='string'&&p.recipeId.length>0&&p.recipeId.length<=256&&DAYS.includes(p.day)).map(p=>({recipeId:p.recipeId,day:p.day})):[],bbManualBatch:s.bbManualBatch?.version===1&&Array.isArray(s.bbManualBatch.pairs)?{version:1,pairs:s.bbManualBatch.pairs.slice(0,3).filter(x=>x&&typeof x.sourceDay==='string'&&typeof x.leftoverDay==='string'&&typeof x.recipeId==='string').map(x=>({sourceDay:x.sourceDay,leftoverDay:x.leftoverDay,recipeId:x.recipeId}))}:null,bb81Batch:s.bb81Batch?.version===1 && typeof s.bb81Batch.monday==='string' && typeof s.bb81Batch.wednesday==='string' ? {version:1,monday:s.bb81Batch.monday,wednesday:s.bb81Batch.wednesday}:null}}
+function normalize(s){return {version:2,mealPreferences:typeof BBMealPreferences==='undefined'?(s.mealPreferences||null):BBMealPreferences.normalize(s.mealPreferences),pantryPlanGeneration:typeof s.pantryPlanGeneration==='string'&&/^[a-zA-Z0-9_-]{1,80}$/.test(s.pantryPlanGeneration)?s.pantryPlanGeneration:null,ingredientAvoidance:typeof BBIngredientPreferences==='undefined'?(s.ingredientAvoidance?.version===1&&typeof s.ingredientAvoidance.scope==='string'&&Array.isArray(s.ingredientAvoidance.excluded)?{version:1,scope:s.ingredientAvoidance.scope,excluded:s.ingredientAvoidance.excluded.filter(x=>typeof x==='string').slice(0,100)}:null):BBIngredientPreferences.normalize(s.ingredientAvoidance),planned:Array.isArray(s.planned)?s.planned.filter(p=>p&&typeof p.recipeId==='string'&&p.recipeId.length>0&&p.recipeId.length<=256&&DAYS.includes(p.day)).map(p=>({recipeId:p.recipeId,day:p.day,...(Number.isInteger(p.servings)&&p.servings>=1&&p.servings<=12?{servings:p.servings}:{})})):[],pantry:s.pantry&&typeof s.pantry==='object'?s.pantry:{},customPantry:Array.isArray(s.customPantry)?s.customPantry:[],dismissed:Array.isArray(s.dismissed)?s.dismissed:[],scanEndpoint:'',servings:Number(s.servings)||4,feedingSet:s.feedingSet===true,mealServings:BBServing.validOverrides(s.mealServings),dayServings:BBServing.validDayOverrides(s.dayServings),recipePhotos:s.recipePhotos&&typeof s.recipePhotos==='object'?s.recipePhotos:{},recipeCollections:s.recipeCollections&&typeof s.recipeCollections==='object'?s.recipeCollections:{},leftoverSources:s.leftoverSources&&typeof s.leftoverSources==='object'?s.leftoverSources:{},leftoverConfirmed:s.leftoverConfirmed&&typeof s.leftoverConfirmed==='object'?s.leftoverConfirmed:{},plannedBreakfasts:BBPlanExtras.normalizeSlots(s.plannedBreakfasts),plannedDesserts:BBPlanExtras.normalizeSlots(s.plannedDesserts),bbManualBatch:s.bbManualBatch?.version===1&&Array.isArray(s.bbManualBatch.pairs)?{version:1,pairs:s.bbManualBatch.pairs.slice(0,3).filter(x=>x&&typeof x.sourceDay==='string'&&typeof x.leftoverDay==='string'&&typeof x.recipeId==='string').map(x=>({sourceDay:x.sourceDay,leftoverDay:x.leftoverDay,recipeId:x.recipeId}))}:null,bb81Batch:s.bb81Batch?.version===1 && typeof s.bb81Batch.monday==='string' && typeof s.bb81Batch.wednesday==='string' ? {version:1,monday:s.bb81Batch.monday,wednesday:s.bb81Batch.wednesday}:null}}
 function norm(s){return String(s||'').toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g,'').replace(/\b(pack|packs|fresh|large|small|medium|block|tub|bag|box|fillets|fillet)\b/g,'').replace(/[^a-z0-9]+/g,' ').trim()}
 let state=loadState();
 // Unified planner backups carry these personal choices between PWA and iOS.
@@ -5415,17 +5423,18 @@ if(typeof BBMealPreferences!=='undefined'){
 function bbFeedingOnboard(){try{return BBServing.onboardingHousehold(localStorage.getItem('bb_onboarding_fresh_once_20261028_v1'))}catch(_){return null}}
 function bbFeedingApplyDefault(){if(!state.feedingSet&&Number(state.servings)===4){const n=bbFeedingOnboard();if(n)state.servings=n}}
 bbFeedingApplyDefault();
-function bbFeedingForRecipe(r,day){
- const slot=day?{recipeId:r.id,day}:(state.planned||[]).find(p=>p.recipeId===r.id)||{recipeId:r.id};
+function bbFeedingForRecipe(r,day,kind='dinner'){
+ const slots=kind==='breakfast'?state.plannedBreakfasts:kind==='dessert'?state.plannedDesserts:state.planned;
+ const slot=(slots||[]).find(p=>p.recipeId===r.id&&(!day||p.day===day))||{recipeId:r.id,day};
  return BBServing.forMeal(state,slot,r);
 }
 function bbFeedingSave(next,id,day){
  const n=BBServing.count(next);if(!n)return false;
- const oldServings=state.servings,oldSet=state.feedingSet,oldByDay={...state.dayServings};
- if(id&&day&&DAYS.includes(day))state.dayServings={...state.dayServings,[day]:{recipeId:id,count:n}};
+ const oldServings=state.servings,oldSet=state.feedingSet,oldByDay={...state.dayServings},oldPlan=state.planned;
+ if(id&&day&&DAYS.includes(day)){state.dayServings={...state.dayServings,[day]:{recipeId:id,count:n}};state.planned=state.planned.map(slot=>slot.recipeId===id&&slot.day===day&&Object.hasOwn(slot,'servings')?{...slot,servings:n}:slot);}
  else if(!id){state.servings=n;state.feedingSet=true;}
  else return false;
- if(!persist()){state.servings=oldServings;state.feedingSet=oldSet;state.dayServings=oldByDay;return false;}
+ if(!persist()){state.servings=oldServings;state.feedingSet=oldSet;state.dayServings=oldByDay;state.planned=oldPlan;return false;}
  render();return true;
 }
 /* Each day stepper is its own contained control; the original summary/card
@@ -5472,7 +5481,7 @@ function persist(){
   const next=JSON.stringify(state);
   const old=localStorage.getItem(KEY);
   /* Preserve the previous nonempty plan before any update, including clearing the week. */
-  if(old){try{const prev=JSON.parse(old);if(prev&&Array.isArray(prev.planned)&&prev.planned.length){localStorage.setItem(BB_SNAPSHOT,old)}}catch(e){bbStorageSafe=false;throw Error('Existing saved data cannot be read safely')}}
+  if(old){try{const prev=JSON.parse(old);if(prev&&(prev.planned?.length||prev.plannedBreakfasts?.length||prev.plannedDesserts?.length)){localStorage.setItem(BB_SNAPSHOT,old)}}catch(e){bbStorageSafe=false;throw Error('Existing saved data cannot be read safely')}}
   localStorage.setItem(KEY,next);
   if(localStorage.getItem(KEY)!==next)throw Error('Save verification failed');
   window.BasketBossCloud?.scheduleSave();
@@ -5611,7 +5620,7 @@ function bbAddSuggestedLeftover(sourceId,targetId){
  notify('Leftover recipe planned for '+day+'. Confirm leftovers after cooking.');render();
 }
 
-function getBasket(){const map=new Map();for(const p of [...getPlanned(),...bbGetDesserts()].filter(p=>bb176AllowedRecipe(p.recipeId)))for(const raw of p.recipe.ingredients){const name=raw[0],key=norm(name);if(bbIsLeftover(p.recipe)&&/^leftover cooked /i.test(name)&&state.leftoverConfirmed[p.recipeId])continue;if(!map.has(key))map.set(key,{key,name,category:raw[3]||'Other',unit:raw[1],quantities:[],price:0,count:0,recipes:[],owned:!!state.pantry[key]});const item=map.get(key);if(bbIsLeftover(p.recipe)&&/^leftover cooked /i.test(name))item.needsConfirmation=true;item.count++;item.quantities.push(String(raw[1]||'').trim());item.price+=Number(raw[2])||0;item.recipes.push(p.recipe.name)}return [...map.values()].map(i=>({...i,unit:shoppingQuantity(i)})).sort((a,b)=>(Object.keys(CATEGORIES).indexOf(a.category)-Object.keys(CATEGORIES).indexOf(b.category))||a.name.localeCompare(b.name))}
+function getBasket(){const map=new Map();for(const p of [...getPlanned(),...bbGetDesserts(),...bbGetBreakfasts()].filter(p=>bb176AllowedRecipe(p.recipeId)))for(const raw of p.recipe.ingredients){const name=raw[0],key=norm(name);if(bbIsLeftover(p.recipe)&&/^leftover cooked /i.test(name)&&state.leftoverConfirmed[p.recipeId])continue;if(!map.has(key))map.set(key,{key,name,category:raw[3]||'Other',unit:raw[1],quantities:[],price:0,count:0,recipes:[],owned:!!state.pantry[key]});const item=map.get(key);if(bbIsLeftover(p.recipe)&&/^leftover cooked /i.test(name))item.needsConfirmation=true;item.count++;item.quantities.push(String(raw[1]||'').trim());item.price+=Number(raw[2])||0;item.recipes.push(p.recipe.name)}return [...map.values()].map(i=>({...i,unit:shoppingQuantity(i)})).sort((a,b)=>(Object.keys(CATEGORIES).indexOf(a.category)-Object.keys(CATEGORIES).indexOf(b.category))||a.name.localeCompare(b.name))}
 function totals(){const basket=getBasket(),summary=bb321WeeklySummary();return {basket,total:summary.remainingTotal,pending:summary.remainingPending,owned:basket.filter(i=>i.owned).length}}
 
 function updateStats(){
@@ -6490,7 +6499,7 @@ function bbManualPlanDecorate(app){
    leftover.classList.add('bb81-leftover-night');
    const strong=leftover.querySelector('.bbnext-day-description strong');if(strong)strong.textContent='♻ Leftovers (from '+p.sourceDay+')';
    const sub=leftover.querySelector('.bbnext-day-description small');if(sub)sub.textContent='Leftovers from '+p.sourceDay+' · '+getRecipe(p.recipeId)?.name;
-   const content=leftover.querySelector('.bbnext-day-content');if(content){const text=document.createElement('p');text.className='bb81-leftover-explain';text.textContent='Reserved from '+p.sourceDay+'’s double batch. Cool promptly and refrigerate safely or freeze as appropriate.';const remove=document.createElement('button');remove.type='button';remove.className='small-btn';remove.textContent='Remove batch link';remove.onclick=()=>{const old=state.bbManualBatch;const newPairs=pairs.filter(x=>x!==p);state.bbManualBatch=newPairs.length?{version:1,pairs:newPairs}:null;if(!persist()){state.bbManualBatch=old;notify('Could not remove link.');return;}render();};content.replaceChildren(text,remove);}
+   const content=leftover.querySelector('.bbnext-day-content');if(content){const text=document.createElement('p');text.className='bb81-leftover-explain';text.textContent='Reserved from '+p.sourceDay+'’s double batch. Cool promptly and refrigerate safely or freeze as appropriate.';const remove=document.createElement('button');remove.type='button';remove.className='small-btn';remove.textContent='Remove batch link';remove.onclick=()=>{const old=state.bbManualBatch;const newPairs=pairs.filter(x=>x!==p);state.bbManualBatch=newPairs.length?{version:1,pairs:newPairs}:null;if(!persist()){state.bbManualBatch=old;notify('Could not remove link.');return;}render();};const extras=[...content.querySelectorAll('.bb-plan-optional-meals,.bb-plan-extra-additions')];content.replaceChildren(text,remove,...extras);}
   }
  }
  for(const day of DAYS){
@@ -6788,6 +6797,7 @@ function bb81PlanBatchDecorate(app){
   const title=root.querySelector('.bbnext-day-description strong');if(title)title.textContent='♻ Leftover Night: '+(bb176AllowedRecipe(link.recipe.id)?link.recipe.name:'Premium dinner saved');
   const subtitle=root.querySelector('.bbnext-day-description small');if(subtitle)subtitle.textContent='0 min new prep · Leftovers from '+link.sourceDay;
   const content=root.querySelector('.bbnext-day-content');if(!content)continue;
+  const optional=[...content.querySelectorAll('.bb-plan-optional-meals,.bb-plan-extra-additions')];
   content.replaceChildren();
   const info=document.createElement('p');info.className='bb81-leftover-explain';
   info.textContent='Set aside half of '+link.sourceDay+'’s double batch. No second recipe is added to Shopping. Cool safely, refrigerate promptly, reheat until steaming hot, and check freshness before serving.';
@@ -6801,7 +6811,7 @@ function bb81PlanBatchDecorate(app){
    if(!persist()){state.bb81Batch=old;notify('Could not save the batch-link removal.');return;}
    render();notify('Leftover links removed. Shopping now uses normal dinner servings.');
   };
-  buttons.append(open,remove);content.append(info,buttons);
+  buttons.append(open,remove);content.append(info,buttons,...optional);
  }
 }
 
@@ -7004,18 +7014,18 @@ function bbNextComposePlan(app){
   const oldIntro=panel.querySelector('.bb1759-summary-heading');
   if(oldIntro){
     const h=oldIntro.querySelector('h3');if(h)h.textContent='Your dinner plan';
-    const sub=oldIntro.querySelector('p');if(sub)sub.textContent='Tap a day to view dinner. Hold the day badge to move it. Double-tap it to mark the day done.';
+    const sub=oldIntro.querySelector('p');if(sub)sub.textContent='Tap a day for dinner, optional breakfast and dessert. Hold the day badge to move dinner. Double-tap to review Day done; nothing changes until you confirm.';
     // Move the real Clear Week control out of the hidden legacy editor.
     const clear=originals.querySelector('#clearWeek');
     if(clear){
       clear.className='bb77-clear-week';clear.textContent='Clear week';
-      clear.disabled=!state.planned.length&&!(state.plannedDesserts||[]).length;
+      clear.disabled=!state.planned.length&&!(state.plannedDesserts||[]).length&&!(state.plannedBreakfasts||[]).length;
       clear.onclick=async()=>{
-        const dinners=state.planned.length,desserts=(state.plannedDesserts||[]).length;
-        if(!dinners&&!desserts)return;
-        if(!await bbQaConfirm('Clear '+dinners+' dinner'+(dinners===1?'':'s')+' and '+desserts+' dessert'+(desserts===1?'':'s')+' from this week?\n\nShopping will be recalculated. PANTRY, School Lunches, saved recipes and account settings will remain unchanged.','Clear this week?','Clear week'))return;
-        const before={planned:state.planned,plannedDesserts:state.plannedDesserts,leftoverSources:state.leftoverSources,leftoverConfirmed:state.leftoverConfirmed,pantryPlanGeneration:state.pantryPlanGeneration};
-        state.planned=[];state.plannedDesserts=[];state.pantryPlanGeneration=crypto.randomUUID();state.leftoverSources={};state.leftoverConfirmed={};
+        const dinners=state.planned.length,desserts=(state.plannedDesserts||[]).length,breakfasts=(state.plannedBreakfasts||[]).length;
+        if(!dinners&&!desserts&&!breakfasts)return;
+        if(!await bbQaConfirm('Clear '+dinners+' dinner'+(dinners===1?'':'s')+' and '+desserts+' dessert'+(desserts===1?'':'s')+' and '+breakfasts+' breakfast'+(breakfasts===1?'':'s')+' from this week?\n\nShopping will be recalculated. PANTRY, School Lunches, saved recipes and account settings will remain unchanged.','Clear this week?','Clear week'))return;
+        const before={planned:state.planned,plannedDesserts:state.plannedDesserts,plannedBreakfasts:state.plannedBreakfasts,leftoverSources:state.leftoverSources,leftoverConfirmed:state.leftoverConfirmed,pantryPlanGeneration:state.pantryPlanGeneration};
+        state.planned=[];state.plannedDesserts=[];state.plannedBreakfasts=[];state.pantryPlanGeneration=crypto.randomUUID();state.leftoverSources={};state.leftoverConfirmed={};
         if(!persist()){Object.assign(state,before);notify('Could not clear the week; your plan has been restored.');return;}
         if(!bbShopV7Close()){Object.assign(state,before);persist();notify('Could not close shopping session; plan restored');return;}
         bb80OpenPlanDays.clear();bb80RememberPlanDays();bbNextExpandedPlanDay=null;render();notify('Week cleared. Shopping recalculated; PANTRY and lunches kept.');
@@ -7061,7 +7071,7 @@ function bbNextComposePlan(app){
    details.open=bb80OpenPlanDays.has(day);
    const toggle=document.createElement('summary');toggle.className='bbnext-day-toggle';
    const label=document.createElement('span');label.className='bbnext-day-label';label.textContent=day.slice(0,3).toUpperCase();
-   if(state.planned.some(p=>p.day===day)){label.dataset.bbPlanHandle=day;label.title='Hold to move '+day+' dinner. Double-tap to mark all planned food for '+day+' done.';}
+   if(state.planned.some(p=>p.day===day)){label.dataset.bbPlanHandle=day;label.title='Hold to move '+day+' dinner. Double-tap to review all planned food for '+day+' done.';}
    const desc=document.createElement('span');desc.className='bbnext-day-description';
    const title=document.createElement('strong');title.textContent=pendingUnloaded?'Saved dinner · waiting for recipe access':available?(recipe?.name||'No meal planned'):'🔒 Premium dinner saved';
    const subtitle=document.createElement('small');
@@ -7127,7 +7137,7 @@ function bbNextComposePlan(app){
     // Preserve the selected day for recipes cooked on multiple days.
     const cookFromDay=row.querySelector('[data-cook]');
     if(cookFromDay&&recipe&&available) cookFromDay.onclick=e=>{
-      e.stopPropagation();openCook(recipe.id,day);
+      e.stopPropagation();openCook(recipe.id,day,'dinner');
     };
     if(cookFromDay&&recipe&&available&&day===bbEveningToday()){
       const pivot=window.BBEveningPivotUI?.createButton({day,recipeId:recipe.id});
@@ -7241,6 +7251,7 @@ function bb18GalleryCard(x){
 function bb80PromptAddRecipe(id){
  const recipe=getRecipe(id);if(!recipe)return;
  if(!bb176AllowedRecipe(id)){bb176OpenPremiumUpgrade();return;}
+ if(bbIsBreakfast(getRecipe(id))){addRecipe(id);return;}
  if(state.planned.some(p=>p.recipeId===id)||(state.plannedDesserts||[]).some(p=>p.recipeId===id)){notify('This recipe is already in your week.');return;}
  const dessert=bbIsDessert(recipe);
  const taken=new Set((dessert?(state.plannedDesserts||[]):state.planned||[]).map(p=>p.day));if(!dessert){for(const day of bbBatchPairs().map(x=>x.leftoverDay))taken.add(day);}
@@ -7398,29 +7409,103 @@ function bbPlanDessert(id,day){
  if(!chosen)chosen=state.planned.map(p=>p.day).find(d=>!taken.has(d))||DAYS.find(d=>!taken.has(d));
  if(!chosen){notify('You already have seven desserts planned.');return}
  if(!state.plannedDesserts)state.plannedDesserts=[];
- state.plannedDesserts.push({recipeId:id,day:chosen});
+ state.plannedDesserts.push({recipeId:id,day:chosen,servings:BBServing.forMeal(state,{recipeId:id,day:chosen},getRecipe(id))});
  if(!persist()){state.plannedDesserts.pop();notify('Dessert was not saved; check browser storage.');return}
  bbRecordPlannedRecipes([id]);bbDessertTargetDay=null;
  notify('Bake / dessert saved for '+chosen+'. Shopping list updated.');render();
 }
-function bbDessertForDay(day){
- const d=bbGetDesserts().find(p=>p.day===day);
- if(!d)return `<button class="btn bb-add-dessert" data-dessert-add-day="${day}">+ Choose bake / dessert</button>`;
- return `<div class="bb-dessert-day-row">
- ${imageHTML(d.recipe,'bb-dessert-day-image')}
- <div class="bb-dessert-day-info"><strong>🍰 ${esc(d.recipe.name)}</strong><span>${window.BBDuration?.format(d.recipe.mins)||"?"}</span></div>
- <div class="bb-dessert-day-actions"><select data-dessert-move="${esc(d.recipeId)}" aria-label="Move dessert to another day">${DAYS.map(x=>`<option ${x===day?'selected':''}>${x}</option>`).join('')}</select><button class="small-btn" data-dessert-cook="${esc(d.recipeId)}" data-dessert-day="${day}">Cook</button><button class="small-btn" data-dessert-remove="${esc(d.recipeId)}" aria-label="Remove dessert">Remove</button></div>
- </div>`;
+const bbPlanExtraOpen=new Set();
+function bbIsBreakfast(recipe){return window.BBPlanExtras.isBreakfast(recipe);}
+function bbGetBreakfasts(){return (state.plannedBreakfasts||[]).map(slot=>({...slot,recipe:getRecipe(slot.recipeId)})).filter(slot=>slot.recipe);}
+function bbPlanBreakfast(id,day){
+ const recipe=getRecipe(id);
+ if(!DAYS.includes(day)||!bbIsBreakfast(recipe)){notify('Choose a breakfast recipe and a day first.');return false;}
+ if(!bb176AllowedRecipe(id)){bb176OpenPremiumUpgrade();return false;}
+ if((state.plannedBreakfasts||[]).some(slot=>slot.day===day)){notify('That day already has a breakfast. Remove or move it first.');return false;}
+ const before=state.plannedBreakfasts;
+ state.plannedBreakfasts=[...(before||[]),{recipeId:id,day,servings:BBServing.count(state.servings)||4}];
+ if(!persist()){state.plannedBreakfasts=before;notify('Breakfast was not saved. Check device storage and try again.');return false;}
+ bbRecordPlannedRecipes([id]);bb80OpenPlanDays.add(day);bb80RememberPlanDays();render();notify('Breakfast saved for '+day+'. Shopping list updated.');return true;
+}
+function bbChooseBreakfast(day){
+ return window.BBPlanExtras.openBreakfastPicker({win:window,day,
+  recipes:()=>RECIPES.filter(recipe=>bbIsBreakfast(recipe)&&bb176AllowedRecipe(recipe.id)),
+  context:()=>JSON.stringify([window.BBHome?.actor?.()||'guest',localStorage.getItem('basketboss_cloud_session_v1'),state.pantryPlanGeneration,state.plannedBreakfasts,window.BBAccountDeletion?.isDeleting?.()===true]),
+  select:(id,chosen)=>window.BBAccountDeletion?.isDeleting?.()?false:bbPlanBreakfast(id,chosen),notify});
+}
+function bbExtraForDay(kind,day){
+ const breakfast=kind==='breakfast',key=breakfast?'plannedBreakfasts':'plannedDesserts',label=breakfast?'Breakfast':'Bake / dessert',slot=(state[key]||[]).find(row=>row.day===day);
+ if(!slot)return `<button type="button" class="btn ${breakfast?'bb-add-breakfast':'bb-add-dessert'}" ${breakfast?'data-breakfast-add-day':'data-dessert-add-day'}="${day}">+ Add ${breakfast?'breakfast':'bake / dessert'}</button>`;
+ const recipe=getRecipe(slot.recipeId),allowed=recipe&&bb176AllowedRecipe(slot.recipeId),servings=recipe?BBServing.forMeal(state,slot,recipe):BBServing.count(slot.servings)||BBServing.count(state.servings)||4;
+ const occurrence=bbHomeOccurrence(slot.recipeId,day,kind),cooked=window.BBHome?.isCooked?.(occurrence)===true;
+ const disabled=!allowed||cooked,title=allowed?recipe.name:'Saved '+label.toLowerCase()+' · reconnect recipe access';
+ const image=allowed&&(state.recipePhotos?.[recipe.id]||recipe.image);
+ return `<details class="bb-plan-extra bb-plan-extra--${kind}" data-extra-kind="${kind}" data-extra-day="${day}" ${bbPlanExtraOpen.has(kind+'|'+day)?'open':''}>
+ <summary class="bb-plan-extra-summary">${image?`<img class="bb-plan-extra-thumb" src="${esc(image)}" alt="" loading="lazy" decoding="async">`:'<span class="bb-plan-extra-thumb" aria-hidden="true"></span>'}<span class="bb-plan-extra-copy"><span class="bb-plan-extra-label">${label}</span><strong>${esc(title)}</strong><span class="bb-plan-extra-meta">${allowed?esc(window.BBDuration?.format(recipe.mins)||''):''} · ${servings} servings${cooked?' · Confirmed':''}</span></span><span class="bb-plan-extra-caret" aria-hidden="true"></span></summary>
+ <div class="bb-plan-extra-details"><div class="bb-plan-extra-portions"><span>Servings</span><span class="bbfeed-control"><button type="button" data-extra-portion="-1" data-extra-kind="${kind}" data-extra-day="${day}" aria-label="Decrease ${day} ${label.toLowerCase()} servings" ${disabled||servings<=1?'disabled':''}>−</button><output aria-live="polite">${servings}</output><button type="button" data-extra-portion="1" data-extra-kind="${kind}" data-extra-day="${day}" aria-label="Increase ${day} ${label.toLowerCase()} servings" ${disabled||servings>=12?'disabled':''}>+</button></span></div>
+ <div class="bb-plan-extra-actions"><select data-extra-move="${kind}" data-extra-from="${day}" aria-label="Move ${day} ${label.toLowerCase()} to another day" ${cooked?'disabled':''}>${DAYS.map(value=>`<option ${value===day?'selected':''}>${value}</option>`).join('')}</select><button type="button" class="small-btn" data-extra-cook="${kind}" data-extra-day="${day}" ${!allowed?'disabled':''}>Cook</button><button type="button" class="small-btn" data-extra-remove="${kind}" data-extra-day="${day}" aria-label="Remove ${day} ${label.toLowerCase()}">Remove</button></div>${cooked?'<p class="bb-plan-extra-meta">Confirmed meals keep their recorded portions.</p>':''}</div></details>`;
+}
+function bbBreakfastForDay(day){return bbExtraForDay('breakfast',day);}
+function bbDessertForDay(day){return bbExtraForDay('dessert',day);}
+function bbExtrasForDay(day){
+ const breakfast=bbBreakfastForDay(day),dessert=bbDessertForDay(day),hasBreakfast=(state.plannedBreakfasts||[]).some(row=>row.day===day),hasDessert=(state.plannedDesserts||[]).some(row=>row.day===day);
+ return `<div class="bb-plan-optional-meals">${hasBreakfast?breakfast:''}${hasDessert?dessert:''}</div><div class="bb-plan-extra-additions">${hasBreakfast?'':breakfast}${hasDessert?'':dessert}</div>`;
+}
+function bbBindExtraActions(app){
+ app.querySelectorAll('.bb-plan-extra').forEach(details=>details.addEventListener('toggle',()=>{if(!details.isConnected)return;const key=details.dataset.extraKind+'|'+details.dataset.extraDay;if(details.open)bbPlanExtraOpen.add(key);else bbPlanExtraOpen.delete(key);}));
+ const field=kind=>kind==='breakfast'?'plannedBreakfasts':kind==='dessert'?'plannedDesserts':null;
+ const commit=(kind,day,change)=>{
+  const key=field(kind);if(!key||!DAYS.includes(day))return false;
+  const before=state[key]||[],slot=before.find(row=>row.day===day);if(!slot)return false;
+  const next=change(slot,before);if(!next)return false;state[key]=next;
+  if(!persist()){state[key]=before;notify('Could not save this change. Your planned food has been kept.');render();return false;}
+  render();return true;
+ };
+ app.querySelectorAll('[data-breakfast-add-day]').forEach(button=>button.onclick=()=>bbChooseBreakfast(button.dataset.breakfastAddDay));
+ app.querySelectorAll('[data-extra-remove]').forEach(button=>button.onclick=()=>commit(button.dataset.extraRemove,button.dataset.extraDay,(slot,rows)=>rows.filter(row=>row!==slot)));
+ app.querySelectorAll('[data-extra-move]').forEach(select=>select.onchange=()=>commit(select.dataset.extraMove,select.dataset.extraFrom,(slot,rows)=>{
+  if(window.BBHome?.isCooked?.(bbHomeOccurrence(slot.recipeId,slot.day,select.dataset.extraMove))){notify('This meal is already confirmed. Keep its recorded day.');render();return null;}
+  if(!DAYS.includes(select.value)||rows.some(row=>row!==slot&&row.day===select.value)){notify('Another '+(select.dataset.extraMove==='breakfast'?'breakfast':'dessert')+' is already planned that day.');render();return null;}
+  return rows.map(row=>row===slot?{...row,day:select.value}:row);
+ }));
+ app.querySelectorAll('[data-extra-cook]').forEach(button=>button.onclick=()=>{
+  const kind=button.dataset.extraCook,key=field(kind),slot=(state[key]||[]).find(row=>row.day===button.dataset.extraDay);if(slot)openCook(slot.recipeId,slot.day,kind);
+ });
+ app.querySelectorAll('[data-extra-portion]').forEach(button=>button.onclick=()=>{
+  const kind=button.dataset.extraKind,day=button.dataset.extraDay,delta=Number(button.dataset.extraPortion);if(![-1,1].includes(delta))return;
+  if(commit(kind,day,(slot,rows)=>{
+   const recipe=getRecipe(slot.recipeId);if(!recipe||!bb176AllowedRecipe(slot.recipeId)||window.BBHome?.isCooked?.(bbHomeOccurrence(slot.recipeId,day,kind)))return null;
+   const count=BBServing.forMeal(state,slot,recipe)+delta;if(!BBServing.count(count))return null;
+   return rows.map(row=>row===slot?{...row,servings:count}:row);
+  })){
+   const details=[...document.querySelectorAll('.bb-plan-extra')].find(node=>node.dataset.extraKind===kind&&node.dataset.extraDay===day);if(details){details.open=true;bbPlanExtraOpen.add(kind+'|'+day);details.querySelector('[data-extra-portion="'+delta+'"]')?.focus({preventScroll:true});}
+  }
+ });
+ app.querySelectorAll('.bb-plan-extra-thumb').forEach(image=>image.addEventListener('error',()=>image.remove(),{once:true}));
+}
+function bbPlanExtraActionLayout(app){
+ for(const card of app.querySelectorAll('.bbnext-day[data-bbnext-day]')){
+  const content=card.querySelector('.bbnext-day-content');if(!content)continue;
+  for(const optional of content.querySelectorAll('.bb-plan-optional-meals,.bb-plan-extra-additions'))content.append(optional);
+  let actions=content.querySelector('.bb-plan-day-actions');if(!actions){actions=document.createElement('div');actions.className='bb-plan-day-actions';content.append(actions);}
+  for(const control of content.querySelectorAll('.bb-plan-move-button,.bb-manual-batch-btn,.bb-evening-pivot,.bb-day-done-trigger,.bb174-day-ideas')){
+   if(control.classList.contains('bb-evening-pivot')||control.classList.contains('bb174-day-ideas'))control.classList.add('bb-plan-leftovers');
+   if(control.classList.contains('bb174-day-ideas'))control.textContent='3 leftover ideas';
+   if(control.classList.contains('bb-manual-batch-btn'))control.textContent=bb176IsPremiumPreview()?'Batch cook · 2 days':'Batch cook · Premium';
+   actions.append(control);
+  }
+ }
 }
 
-function addRecipe(id,day){if(!bb176AllowedRecipe(id)){bb176OpenPremiumUpgrade();return;}const dessertRecipe=getRecipe(id);if(bbIsDessert(dessertRecipe)){bbPlanDessert(id,day);return}if(state.planned.some(p=>p.recipeId===id)){notify('That recipe is already in your week.');return}const used=new Set(state.planned.map(p=>p.day));for(const day of bbBatchPairs().map(x=>x.leftoverDay))used.add(day);if(day&&used.has(day)){notify('That day already has a dinner or linked leftover night.');return}const assigned=day||DAYS.find(d=>!used.has(d));if(!assigned){notify('No free dinner slots; remove one first.');return}state.planned.push({recipeId:id,day:assigned});if(!persist()){state.planned.pop();return;}bbRecordPlannedRecipes([id]);notify('Added to '+assigned+' \u2713');render()}
-function renderWeek(app){const planned=getPlanned();app.innerHTML=`<div class="section-head"><div><h3>Your weekly game plan</h3><p>One dinner per day keeps the week simple.</p></div><button class="btn" id="clearWeek">Clear week</button></div><div class="notice">Tip: changing a meal's day updates your shopping list automatically. Duplicate recipe bookings are prevented.</div>${DAYS.map((d,i)=>{const p=planned.find(x=>x.day===d);return `<section class="day"><div class="day-head"><strong>${d}</strong><span>${p?'Dinner planned':'Open slot'}</span></div>${p?`<div class="planned"><div><strong>${esc(p.recipe.name)}</strong><div class="muted" style="font-size:10px;margin-top:3px">${window.BBDuration?.format(p.recipe.mins)||"?"}</div></div><div class="small-actions"><select data-move="${p.recipeId}" aria-label="Move ${esc(p.recipe.name)} to another day">${DAYS.map(x=>`<option ${x===d?'selected':''}>${x}</option>`).join('')}</select><button class="small-btn" data-cook="${p.recipeId}">Cook</button><button class="small-btn" data-remove="${p.recipeId}" aria-label="Remove ${esc(p.recipe.name)}">\u2715</button></div></div>${bbLeftoverControls(p,planned)}`:`<button class="btn" data-add-day="${d}">\uFF0B Choose dinner</button>`}${bbDessertForDay(d)}</section>`}).join('')}`;app.querySelector('#clearWeek').onclick=async()=>{if(await bbQaConfirm('Clear all planned dinners and desserts? Your pantry checklist will stay saved.','Clear this week?','Clear week')){const old={planned:state.planned,plannedDesserts:state.plannedDesserts,leftoverSources:state.leftoverSources,leftoverConfirmed:state.leftoverConfirmed};state.planned=[];state.plannedDesserts=[];state.pantryPlanGeneration=crypto.randomUUID();state.leftoverSources={};state.leftoverConfirmed={};if(!persist()||!bbShopV7Close()){Object.assign(state,old);persist();notify('Could not safely clear week');return;}render()}};app.querySelectorAll('[data-move]').forEach(el=>el.onchange=()=>{const from=el.closest('[data-bbnext-day]')?.dataset.bbnextDay||el.querySelector('option[selected]')?.value;const snapshot=bbPlanMoveSnapshot();const result=bbPlanMoveDinner({from,to:el.value,expected:snapshot.fingerprint,recipeId:el.dataset.move});if(!result.ok)render();notify(result.message);});app.querySelectorAll('[data-remove]').forEach(el=>el.onclick=()=>{state.planned=state.planned.filter(p=>p.recipeId!==el.dataset.remove);persist();render();notify('Meal removed')});app.querySelectorAll('[data-leftover-source]').forEach(el=>el.onchange=()=>{state.leftoverSources[el.dataset.leftoverSource]=el.checked;if(!el.checked){for(const r of bbLeftoverSuggestions(el.dataset.leftoverSource))state.leftoverConfirmed[r.id]=false}persist();render()});
+function addRecipe(id,day){if(bbIsBreakfast(getRecipe(id))){return bbPlanBreakfast(id,day||DAYS.find(value=>!(state.plannedBreakfasts||[]).some(slot=>slot.day===value)));}if(!bb176AllowedRecipe(id)){bb176OpenPremiumUpgrade();return;}const dessertRecipe=getRecipe(id);if(bbIsDessert(dessertRecipe)){bbPlanDessert(id,day);return}if(state.planned.some(p=>p.recipeId===id)){notify('That recipe is already in your week.');return}const used=new Set(state.planned.map(p=>p.day));for(const day of bbBatchPairs().map(x=>x.leftoverDay))used.add(day);if(day&&used.has(day)){notify('That day already has a dinner or linked leftover night.');return}const assigned=day||DAYS.find(d=>!used.has(d));if(!assigned){notify('No free dinner slots; remove one first.');return}state.planned.push({recipeId:id,day:assigned});if(!persist()){state.planned.pop();return;}bbRecordPlannedRecipes([id]);notify('Added to '+assigned+' \u2713');render()}
+function renderWeek(app){const planned=getPlanned();app.innerHTML=`<div class="section-head"><div><h3>Your weekly game plan</h3><p>One dinner per day keeps the week simple.</p></div><button class="btn" id="clearWeek">Clear week</button></div><div class="notice">Tip: changing a meal's day updates your shopping list automatically. Duplicate recipe bookings are prevented.</div>${DAYS.map((d,i)=>{const p=planned.find(x=>x.day===d);return `<section class="day"><div class="day-head"><strong>${d}</strong><span>${p?'Dinner planned':'Open slot'}</span></div>${p?`<div class="planned"><div><strong>${esc(p.recipe.name)}</strong><div class="muted" style="font-size:10px;margin-top:3px">${window.BBDuration?.format(p.recipe.mins)||"?"}</div></div><div class="small-actions"><select data-move="${p.recipeId}" aria-label="Move ${esc(p.recipe.name)} to another day">${DAYS.map(x=>`<option ${x===d?'selected':''}>${x}</option>`).join('')}</select><button class="small-btn" data-cook="${p.recipeId}">Cook</button><button class="small-btn" data-remove="${p.recipeId}" aria-label="Remove ${esc(p.recipe.name)}">\u2715</button></div></div>${bbLeftoverControls(p,planned)}`:`<button class="btn" data-add-day="${d}">\uFF0B Choose dinner</button>`}${bbExtrasForDay(d)}</section>`}).join('')}`;app.querySelector('#clearWeek').onclick=async()=>{if(await bbQaConfirm('Clear all planned dinners, breakfasts and desserts? Your pantry checklist will stay saved.','Clear this week?','Clear week')){const old={planned:state.planned,plannedDesserts:state.plannedDesserts,plannedBreakfasts:state.plannedBreakfasts,leftoverSources:state.leftoverSources,leftoverConfirmed:state.leftoverConfirmed};state.planned=[];state.plannedDesserts=[];state.plannedBreakfasts=[];state.pantryPlanGeneration=crypto.randomUUID();state.leftoverSources={};state.leftoverConfirmed={};if(!persist()||!bbShopV7Close()){Object.assign(state,old);persist();notify('Could not safely clear week');return;}render()}};app.querySelectorAll('[data-move]').forEach(el=>el.onchange=()=>{const from=el.closest('[data-bbnext-day]')?.dataset.bbnextDay||el.querySelector('option[selected]')?.value;const snapshot=bbPlanMoveSnapshot();const result=bbPlanMoveDinner({from,to:el.value,expected:snapshot.fingerprint,recipeId:el.dataset.move});if(!result.ok)render();notify(result.message);});app.querySelectorAll('[data-remove]').forEach(el=>el.onclick=()=>{state.planned=state.planned.filter(p=>p.recipeId!==el.dataset.remove);persist();render();notify('Meal removed')});app.querySelectorAll('[data-leftover-source]').forEach(el=>el.onchange=()=>{state.leftoverSources[el.dataset.leftoverSource]=el.checked;if(!el.checked){for(const r of bbLeftoverSuggestions(el.dataset.leftoverSource))state.leftoverConfirmed[r.id]=false}persist();render()});
 app.querySelectorAll('[data-leftover-confirm]').forEach(el=>el.onchange=()=>{state.leftoverConfirmed[el.dataset.leftoverConfirm]=el.checked;persist();render()});
 app.querySelectorAll('[data-leftover-add]').forEach(el=>el.onclick=()=>bbAddSuggestedLeftover(el.dataset.leftoverFrom,el.dataset.leftoverAdd));
 app.querySelectorAll('[data-dessert-add-day]').forEach(el=>el.onclick=()=>{bbDessertTargetDay=el.dataset.dessertAddDay;tab='discover';collectionFilter='Desserts';query='';recipeIndex=0;galleryPage=0;render();notify('Choose a dessert for '+bbDessertTargetDay)});
 app.querySelectorAll('[data-dessert-remove]').forEach(el=>el.onclick=()=>{const before=state.plannedDesserts.slice();state.plannedDesserts=before.filter(p=>p.recipeId!==el.dataset.dessertRemove);if(!persist())state.plannedDesserts=before;render()});
 app.querySelectorAll('[data-dessert-move]').forEach(el=>el.onchange=()=>{const dessert=state.plannedDesserts.find(p=>p.recipeId===el.dataset.dessertMove);if(!dessert)return;const old=dessert.day;if(state.plannedDesserts.some(p=>p.day===el.value&&p.recipeId!==dessert.recipeId)){notify('Another dessert is already planned that day.');render();return}dessert.day=el.value;if(!persist())dessert.day=old;render()});
 app.querySelectorAll('[data-dessert-cook]').forEach(el=>el.onclick=()=>openCook(el.dataset.dessertCook,el.dataset.dessertDay,'dessert'));
+bbBindExtraActions(app);
 app.querySelectorAll('[data-cook]').forEach(el=>el.onclick=()=>openCook(el.dataset.cook));app.querySelectorAll('[data-add-day]').forEach(el=>el.onclick=()=>{tab='discover';query='';recipeIndex=0;render();notify('Pick a recipe, then add it to your week')})}
 /* v17.2: store and pantry helpers, no login or remote syncing. */
 const BB172_STORE_KEY='basketboss_v172_instore_v1';
@@ -7956,35 +8041,36 @@ function bb321TinShoppingQuantity(name,quantity,unit){
 function bb321ShoppingSources(){
  const byId=new Map(),normal=new Map(BB307_NORMALIZED.map(r=>[r.id,r]));
  const seen=new Set(),batch=typeof bb81ActiveBatch==='function'?bb81ActiveBatch():null;
- const add=(key,unit,day,recipeName,qty)=>{
+ const add=(key,unit,day,recipeName,qty,kind='dinner')=>{
   const measured=BBPriceV19.canonicalMeasure(key,qty,unit);if(!measured)return;
   const sourceQuantity=Number(qty),sourceUnit=unit;key=measured.key;unit=measured.unit;qty=measured.quantity;
   const id=BB307Pantry.pantryId(key,unit);
   if(!byId.has(id))byId.set(id,[]);
-  const linked=bbBatchPairs().find(x=>x.sourceDay===day&&state.planned.some(p=>p.day===day&&getRecipe(p.recipeId)?.name===recipeName&&p.recipeId===x.recipeId));
+  const linked=kind==='dinner'?bbBatchPairs().find(x=>x.sourceDay===day&&state.planned.some(p=>p.day===day&&getRecipe(p.recipeId)?.name===recipeName&&p.recipeId===x.recipeId)):null;
   byId.get(id).push({day,recipeName,qty:Number(qty),unit,sourceQuantity,sourceUnit,estimated:measured.estimated,assumption:measured.assumption,batchLeftoverDay:linked?.leftoverDay||null});
  };
- const pushRecipe=(slot,isDessert=false)=>{
+ const pushRecipe=(slot,kind='dinner')=>{
   if(!slot||!slot.recipeId||!slot.day)return;
-  if(typeof window!=='undefined'&&window.BBHome?.isCooked?.(bbHomeOccurrence(slot.recipeId,slot.day,isDessert?'dessert':'dinner')))return;
+  if(typeof window!=='undefined'&&window.BBHome?.isCooked?.(bbHomeOccurrence(slot.recipeId,slot.day,kind)))return;
   const src=getRecipe(slot.recipeId),r=normal.get(slot.recipeId);
   if(!src||!r||!bb176AllowedRecipe(slot.recipeId))return;
   const ratio=BBServing.ratio(BBServing.forMeal(state,slot,src),src);
-  const double=!isDessert&&!!bbBatchPairFor(slot);
+  const double=kind==='dinner'&&!!bbBatchPairFor(slot);
   for(const ing of r.ingredients||[]){
    const q=Number(ing.quantity)*ratio*(double?2:1);
    const unit=BBPriceV19.recipeIngredientUnit?.(ing,src.ingredients)||ing.unit;
-   if(ing.key&&unit&&Number.isFinite(q)&&q>0)add(ing.key,unit,slot.day,src.name,q);
+   if(ing.key&&unit&&Number.isFinite(q)&&q>0)add(ing.key,unit,slot.day,src.name,q,kind);
   }
  };
  // Unlike the basket's recipe-ID aggregate, the source map retains each day.
  for(const planned of state.planned||[])pushRecipe(planned);
- if(typeof bbGetDesserts==='function')for(const p of bbGetDesserts())pushRecipe({recipeId:p.recipeId||p.recipe?.id,day:p.day||'Dessert'},true);
+ if(typeof bbGetDesserts==='function')for(const p of bbGetDesserts())pushRecipe(p,'dessert');
+ if(typeof bbGetBreakfasts==='function')for(const p of bbGetBreakfasts())pushRecipe(p,'breakfast');
  if(typeof bb321LunchState==='object'&&bb321LunchState){
   const people=Number(bb321LunchState.children)||1;
   for(const day of BB321Lunch.LUNCH_DAYS)for(const ing of (typeof window!=='undefined'&&window.BBHome?.isCooked?.(bbHomeOccurrence('lunchbox:'+day,day,'lunch'))?[]:bb321LunchState.days?.[day])||[]){
    const qty=Number(ing.qty)*people;
-   if(Number.isFinite(qty)&&qty>0)add(ing.name,ing.unit,day,'Lunchbox',qty);
+   if(Number.isFinite(qty)&&qty>0)add(ing.name,ing.unit,day,'Lunchbox',qty,'lunch');
   }
  }
  return byId;
@@ -8262,8 +8348,8 @@ function openCook(id,day,kind){
  if(!bb176AllowedRecipe(id)){bb176OpenPremiumUpgrade();return;}
  if(window.BBHome?.needsLegacyReview?.(id)){tab='shop';render();notify('Review ingredient amounts in At home before cooking from an older shopping record.');return;}
 
- if(!day){const slots=[...(state.planned||[]).map(row=>({...row,kind:'dinner'})),...(state.plannedDesserts||[]).map(row=>({...row,kind:'dessert'}))].filter(row=>row.recipeId===id);if(slots.length===1){day=slots[0].day;kind=slots[0].kind;}else if(slots.length>1){tab='week';render();notify('Open the planned day to confirm the correct meal.');return;}}
- kind=kind||((state.plannedDesserts||[]).some(row=>row.recipeId===id&&row.day===day)&&!(state.planned||[]).some(row=>row.recipeId===id&&row.day===day)?'dessert':'dinner');
+ if(!day){const slots=[...(state.planned||[]).map(row=>({...row,kind:'dinner'})),...(state.plannedDesserts||[]).map(row=>({...row,kind:'dessert'})),...(state.plannedBreakfasts||[]).map(row=>({...row,kind:'breakfast'}))].filter(row=>row.recipeId===id);if(slots.length===1){day=slots[0].day;kind=slots[0].kind;}else if(slots.length>1){tab='week';render();notify('Open the planned day to confirm the correct meal.');return;}}
+ kind=kind||((state.planned||[]).some(row=>row.recipeId===id&&row.day===day)?'dinner':(state.plannedBreakfasts||[]).some(row=>row.recipeId===id&&row.day===day)?'breakfast':(state.plannedDesserts||[]).some(row=>row.recipeId===id&&row.day===day)?'dessert':'dinner');
  const steps=kitchenMethodFor(r).map(String),sourceSteps=window.BBCookMethod?.sourceMethod(r)||[],timerSteps=sourceSteps.length===steps.length?sourceSteps:steps;
  if(!steps.length||steps.some(text=>!text.trim())){notify('This recipe needs cooking instructions before Cook can start.');return;}
  if(timerHandle)clearInterval(timerHandle);timerHandle=null;timer=bbUICookStepSeconds(timerSteps[0]);
@@ -8272,7 +8358,7 @@ function openCook(id,day,kind){
  root.innerHTML=`<div class="cook-overlay" role="dialog" aria-modal="true" aria-label="BasketBoss Cook"><section class="cook-panel bb-kitchen" data-phase="prep"><div class="bb-cook-intro"><div class="bb-head"><span class="eyebrow">\u2726 BASKETBOSS COOK</span><button class="btn" id="bbExit">\u2715 Exit</button></div><h2 id="bbTitle" tabindex="-1"></h2><div class="muted" id="bbMeta"></div><nav class="bb-phases" aria-label="Cooking stages"><button type="button" class="bb-phase" id="bbPhasePrep">PREP</button><button type="button" class="bb-phase" id="bbPhaseCook">COOK</button><span class="bb-phase" id="bbPhaseDone">DONE</span></nav></div><div id="bbBody" aria-live="polite"></div></section></div>`;
  const $=id=>root.querySelector('#'+id);$('bbTitle').textContent=r.name;
  const batchCook=!!(kind==='dinner'&&typeof bb81IsBatchSource==='function'&&state.planned.some(p=>p.recipeId===id&&p.day===day&&bb81IsBatchSource(p)));
- const chosenServings=bbFeedingForRecipe(r,day);
+ const chosenServings=bbFeedingForRecipe(r,day,kind);
  const cookFactor=BBServing.ratio(chosenServings,r)*(batchCook?2:1);
  const cookReceipt=crypto.randomUUID(),cookActor=window.BBHome?.actor?.(),cookOccurrence=bbHomeOccurrence(id,day,kind);let pantryCard=null,lastCookView='';
  // Display labels only: pantry deduction uses the original recipe and cookFactor.
@@ -8341,6 +8427,7 @@ function bbHomeOccurrence(id,day,kind='dinner'){
   // Preserve completion identities written by build 7 until a week is replaced.
   if(!state.pantryPlanGeneration)return bbHomeWeekToken()+'|'+JSON.stringify(row);
  }else if(kind==='dessert'&&!(state.plannedDesserts||[]).some(p=>p.recipeId===id&&p.day===day))return null;
+ else if(kind==='breakfast'&&!(state.plannedBreakfasts||[]).some(p=>p.recipeId===id&&p.day===day))return null;
  return bbHomeWeekToken()+'|'+kind+'|'+day+'|'+id;
 }
 function bbHomeMeasuredTracking(name){
@@ -8382,6 +8469,7 @@ function bbHomeDayMeals(day){
  };
  for(const slot of state.planned||[])if(slot.day===day)addRecipe(slot,'dinner');
  for(const slot of state.plannedDesserts||[])if(slot.day===day)addRecipe(slot,'dessert');
+ for(const slot of state.plannedBreakfasts||[])if(slot.day===day)addRecipe(slot,'breakfast');
  const lunches=bb321LunchState?.days?.[day]||[],children=Number(bb321LunchState?.children)||1;
  if(lunches.length)items.push({kind:'lunch',recipeId:'lunchbox:'+day,name:'School lunch'+(children>1?' · '+children+' children':''),day,factor:1,occurrence:bbHomeOccurrence('lunchbox:'+day,day,'lunch'),ingredients:lunches.map(row=>({key:row.name,name:row.name,unit:row.unit,required:Number.isFinite(Number(row.qty))?Number(row.qty)*children:null}))});
  const leftover=bbBatchPairs().find(pair=>pair.leftoverDay===day);
@@ -8560,10 +8648,12 @@ function bbMountShopAdd(app){
  }
 }
 function bbMountDayDone(app){
- if(!window.BBDayDone||tab!=='week')return;
+ if(tab!=='week')return;
+ bbPlanExtraActionLayout(app);
+ if(!window.BBDayDone)return;
  for(const card of app.querySelectorAll('.bbnext-day[data-bbnext-day]')){
   const day=card.dataset.bbnextDay;let items;try{items=bbHomeDayMeals(day);}catch{items=[{}];}
-  const content=card.querySelector('.bbnext-day-content');if(content&&items.length){const mounted=window.BBDayDone.mount({container:content,day});if(mounted)bbDayDoneUI.push(mounted);}
+  const content=card.querySelector('.bbnext-day-content');if(content&&items.length){const mounted=window.BBDayDone.mount({container:content.querySelector('.bb-plan-day-actions')||content,day});if(mounted)bbDayDoneUI.push(mounted);}
  }
 }
 function bbHomeSettlePurchases(ids,{cooking=false}={}){
@@ -8653,6 +8743,7 @@ window.BBHomeHost=Object.freeze({needsLegacyReview:bbHomeNeedsLegacyReview,settl
  refresh:()=>{bb307Stock=bb307ReadStock();window.BasketBossCloud?.scheduleSave?.();if(typeof render==='function')render();}
 });
 
+window.BBPlanExtrasHost=Object.freeze({generation:plan=>typeof plan?.pantryPlanGeneration==='string'&&/^[a-zA-Z0-9_-]{1,80}$/.test(plan.pantryPlanGeneration)?plan.pantryPlanGeneration:'legacy-'+bbHomeWeekToken().slice(0,10)});
 window.BBPantryCameraHost=Object.freeze({isPremium:bbVerifiedPremiumFeature,upgrade:bb176OpenPremiumUpgrade,getTab:()=>tab});
 window.BBHowItWorksHost=Object.freeze({openPlan:()=>{document.querySelector('.bbui-settings-close')?.click();tab='week';render();window.scrollTo({top:0,behavior:'smooth'});}});
 
@@ -8679,7 +8770,7 @@ function bbRestoreSavedWeek({week,expected,actor}={}){
  if(document.querySelector('.cook-overlay')||window.BBReceiptHost?.hasPendingConfirmation?.()===true||window.BBReceiptHost?.requiresPantryReview?.()===true)return {ok:false,message:'Finish cooking or review the pending pantry confirmation before replacing your week.'};
  let clean;
  try{clean=window.BBSavedWeeks.validateWeek(week);}catch{return {ok:false,message:'This saved week needs review. Your current plan has been kept.'};}
- const ids=new Set([...clean.planned,...clean.plannedDesserts].map(row=>row.recipeId));
+ const ids=new Set([...clean.planned,...clean.plannedDesserts,...clean.plannedBreakfasts].map(row=>row.recipeId));
  for(const [id,selected]of Object.entries({...clean.leftoverSources,...clean.leftoverConfirmed}))if(selected)ids.add(id);
  for(const pair of clean.bbManualBatch?.pairs||[])ids.add(pair.recipeId);
  if(clean.bb81Batch){ids.add(clean.bb81Batch.monday);ids.add(clean.bb81Batch.wednesday);}
@@ -8688,12 +8779,12 @@ function bbRestoreSavedWeek({week,expected,actor}={}){
  try{
   for(const [key,value]of Object.entries(initial.raw))if(localStorage.getItem(key)!==value)throw Error('changed');
   const lunch=BB321Lunch.normaliseLunchbox(clean.lunch);
-  const fields=['planned','plannedDesserts','servings','feedingSet','mealServings','dayServings','leftoverSources','leftoverConfirmed','bbManualBatch','bb81Batch'];
+  const fields=['planned','plannedDesserts','plannedBreakfasts','servings','feedingSet','mealServings','dayServings','leftoverSources','leftoverConfirmed','bbManualBatch','bb81Batch'];
   state={...state,pantryPlanGeneration:crypto.randomUUID(),...Object.fromEntries(fields.map(key=>[key,JSON.parse(JSON.stringify(clean[key]))]))};
   if(typeof bb81ClearStaleBatch==='function')bb81ClearStaleBatch();
   if(typeof bbManualCleanStale==='function')bbManualCleanStale();
   const updates={[KEY]:state,[BB321_LUNCH_KEY]:lunch,[BB172_QUICK_DINNER_KEY]:clean.customDinners};
-  if(initial.raw[KEY]){const prior=JSON.parse(initial.raw[KEY]);if(prior?.planned?.length)updates[BB_SNAPSHOT]=prior;}
+  if(initial.raw[KEY]){const prior=JSON.parse(initial.raw[KEY]);if(prior?.planned?.length||prior?.plannedBreakfasts?.length||prior?.plannedDesserts?.length)updates[BB_SNAPSHOT]=prior;}
   // Plan, lunches, notes and the shopping transition share one guarded write.
   // This never attributes an unrelated tab's newer bytes to our transaction.
   if(!bbShopV7Close({updates,expected:initial.raw,allowUninitialized:true}))throw Error('save');
@@ -11488,6 +11579,43 @@ function restoreStoredSession(){try{sessionRaw=localStorage.getItem(sessionKey);
 function setStatus(){const connected=!!(session?.access_token&&Number(session.expires_at)*1000>Date.now()+5000),remembered=window.BasketBossSession?.state().remembered===true,recovering=blocked()&&window.BBAccountDeletion?.canRecoverSignIn?.()===true;status.textContent=recovering?'An earlier account deletion needs checking. Sign in with the original account to recover access; cloud syncing stays paused during the check.':blocked()?'Account deletion is in progress. Cloud sync is paused.':!enabled?'Cloud sync needs setup by the site owner.':connected?'Signed in as '+(session.user?.email||'your account'):remembered?(window.BasketBossSession.state().needsConnection?'Your account is saved on this device. Reconnect to the internet to continue.':'Reconnecting to your account…'):session?'Your session has expired. Sign in again to access your account.':'Sign in to sync your plan between devices.';auth.hidden=!enabled||(blocked()?!recovering:(connected||remembered));signed.hidden=!(connected||remembered)||blocked();document.getElementById('cloud-signup').hidden=recovering;for(const id of ['cloud-upload','cloud-download','cloud-logout'])document.getElementById(id).disabled=blocked()||(id!=='cloud-logout'&&!!syncFlight);}
 function headers(token){return {'apikey':config.anonKey,'Authorization':'Bearer '+(token||config.anonKey),'Content-Type':'application/json'};}
 function stableCloud(value){return JSON.stringify(value,(_key,item)=>item&&typeof item==='object'&&!Array.isArray(item)?Object.fromEntries(Object.keys(item).sort().map(key=>[key,item[key]])):item);}
+let plannerExtrasClient=null,plannerExtrasStatus=null;
+function plannerExtras(){
+ if(!plannerExtrasClient&&window.BBPlanExtrasSync)plannerExtrasClient=window.BBPlanExtrasSync.create({storage:localStorage,request:api});
+ return plannerExtrasClient;
+}
+function plannerExtrasCycle(plan){return window.BBPlanExtrasHost?.generation?.(plan)||plan?.pantryPlanGeneration||null;}
+function plannerExtrasNeeded(plan,pin){
+ if(!window.BBPlanExtrasSync)return !!plan?.plannedBreakfasts?.length;
+ try{
+  const payload=window.BBPlanExtrasSync.capture(plan);
+  if(payload.plannedBreakfasts.length||payload.portionOverrides.length)return true;
+  return !!plannerExtras()?.readLocal({actor:pin.actor,generation:plannerExtrasCycle(plan),current:()=>current(pin)})?.payload;
+ }catch{return true;}
+}
+function rememberPlannerExtras(plan,pin){
+ if(!plannerExtrasNeeded(plan,pin))return;
+ return plannerExtras()?.remember({actor:pin.actor,generation:plannerExtrasCycle(plan),plan,current:()=>current(pin)});
+}
+async function syncPlannerExtras(plan,pin,fingerprint,force){
+ if(!plannerExtrasNeeded(plan,pin))return {ok:true,status:'not-needed',message:''};
+ if(!plannerExtras())return {ok:false,status:'unavailable',message:'Optional meals are saved on this device; their cloud backup is still loading.'};
+ return plannerExtras().save({actor:pin.actor,generation:plannerExtrasCycle(plan),token:pin.token,plan,force,current:()=>current(pin)&&cloudSnapshot()?.fingerprint===fingerprint});
+}
+function plannerCloudMessage(){return plannerExtrasStatus&&!['synced','not-needed'].includes(plannerExtrasStatus.status)?'Your plan is saved. '+plannerExtrasStatus.message:'\u2713 Synced securely to your account';}
+async function inspectPlannerExtras(cloud,saved){
+ if(!plannerExtras())return false;
+ const pin=cloud.pin,plan=saved.data,cycle=plannerExtrasCycle(plan);
+ const result=await plannerExtras().load({actor:pin.actor,generation:cycle,token:pin.token,stage:true,current:()=>current(pin)&&cloudSnapshot()?.fingerprint===saved.fingerprint});
+ if(!current(pin)||cloudSnapshot()?.fingerprint!==saved.fingerprint)return true;
+ if(result.status==='loaded'){
+  let same=false;try{same=stableCloud(result.payload)===stableCloud(window.BBPlanExtrasSync.capture(plan));}catch{}
+  if(!same){cloudChoiceRequired=true;setMessage('A separate cloud copy of your breakfasts or meal portions is available. Choose Restore cloud plan to review and load it. Your current choices have been kept.');return true;}
+  if(result.cache)commitCloudRestore({[result.cache.key]:result.cache.value},{[result.cache.key]:result.cache.expected,[sessionKey]:pin.stored,basketboss_account_deletion_v1:localStorage.getItem('basketboss_account_deletion_v1')});
+  plannerExtrasClient=null;plannerExtrasStatus={ok:true,status:'synced',message:'Optional meals are synced.'};
+ }else plannerExtrasStatus=result;
+ return false;
+}
 function cloudSnapshot(){
  const raw=localStorage.getItem(stateKey);if(!raw)return null;
  const data=JSON.parse(raw);delete data.atHomeBackup;
@@ -11497,7 +11625,7 @@ function cloudSnapshot(){
 }
 function localCloudEmpty(){
  const raw=localStorage.getItem(stateKey),plan=raw?JSON.parse(raw):{};
- if((plan.planned||[]).length||(plan.plannedDesserts||[]).length||Object.values(plan.pantry||{}).some(Boolean))return false;
+ if((plan.planned||[]).length||(plan.plannedDesserts||[]).length||(plan.plannedBreakfasts||[]).length||Object.values(plan.pantry||{}).some(Boolean))return false;
  return window.BBReceiptHost?.hasLocalData?.()===false;
 }
 function commitCloudRestore(updates,expected){
@@ -11530,7 +11658,9 @@ async function api(path,method='GET',body=null,token=null,recovery=false,extraHe
     const code=String(data?.code||''),missing=['PGRST205','PGRST204','42P01'].includes(code)||response.status===404&&/basketboss_data|schema cache/i.test(String(data?.message||''));
     throw cloudFailure(missing?'setup':response.status===401||['PGRST301','PGRST302','PGRST303'].includes(code)?'auth':response.status===403||code==='42501'?'permission':'network',requestPin);
    }
-   throw new Error(data?.msg||data?.error_description||data?.message||data?.error||'Cloud request failed');
+   const error=new Error(data?.msg||data?.error_description||data?.message||data?.error||'Cloud request failed');
+   if(path.startsWith('/rest/v1/basketboss_planner_extras_v1')||path==='/rest/v1/rpc/bb_save_planner_extras_v1')Object.assign(error,{code:data?.code,status:response.status});
+   throw error;
   }
   if(cloudRequest&&method!=='GET'&&raw&&!Array.isArray(data))throw cloudFailure('setup',requestPin);
   return data;
@@ -11575,11 +11705,15 @@ function push(force=false){return cloudOperation('upload',async operation=>{
  for(let attempt=0;attempt<2;attempt++){
   if(!await refresh()||blocked()||!session)return false;
   const pin=snapshot(),saved=cloudSnapshot();if(!saved)return false;
-  const {data,fingerprint}=saved;if(lastCloudFingerprint===fingerprint){dirty=false;setMessage('\u2713 Synced securely to your account');return true;}dirty=true;
+  const {data,fingerprint}=saved;
+  if(!force&&lastCloudFingerprint===fingerprint&&(!plannerExtrasNeeded(data,pin)||plannerExtrasStatus?.status==='synced')){dirty=false;setMessage(plannerCloudMessage());return true;}dirty=true;
+  rememberPlannerExtras(data,pin);
   await api('/rest/v1/basketboss_data?on_conflict=user_id','POST',{user_id:pin.actor,data,updated_at:new Date().toISOString()},pin.token,false,{'Prefer':'resolution=merge-duplicates,return=minimal'});
   if(!current(pin))return false;
-  lastCloudFingerprint=fingerprint;dirty=cloudSnapshot()?.fingerprint!==fingerprint;
-  if(!dirty){setMessage('\u2713 Synced securely to your account');return true;}
+  const extras=await syncPlannerExtras(data,pin,fingerprint,force);
+  if(!current(pin))return false;
+  plannerExtrasStatus=extras;lastCloudFingerprint=fingerprint;dirty=cloudSnapshot()?.fingerprint!==fingerprint;
+  if(!dirty){setMessage(plannerCloudMessage());return extras.ok;}
  }
  operation.drain=dirty;setMessage('Your latest changes are saved on this device. Finishing cloud sync…');return true;
 });}
@@ -11591,15 +11725,24 @@ function pull(confirmReplace=true){return cloudOperation('restore',async operati
  if(!navigator.onLine){setMessage('You’re offline. Your current plan is saved on this device. Reconnect before restoring.');return false;}
  const before=localStorage.getItem(stateKey),beforeDeletion=localStorage.getItem('basketboss_account_deletion_v1'),beforeSnapshot=cloudSnapshot()?.fingerprint,result=await getCloud();if(!result||!current(result.pin))return false;
  const row=result.row;if(!row){setMessage('No cloud backup yet. Use Upload this device\u2019s plan first.');return false;}
- const remote=row.data;if(!remote||remote.version!==2||!Array.isArray(remote.planned))throw new Error('Cloud data format is not supported.');
+ let remote=row.data;if(!remote||remote.version!==2||!Array.isArray(remote.planned))throw new Error('Cloud data format is not supported.');
+ let extraRestore=null,extraCache=null;
+ if(plannerExtras()){
+  const cycle=plannerExtrasCycle(remote),cached=plannerExtras().readLocal({actor:result.pin.actor,generation:cycle,current:()=>current(result.pin)});
+  extraRestore=await plannerExtras().load({actor:result.pin.actor,generation:cycle,token:result.pin.token,force:confirmReplace,stage:true,current:()=>current(result.pin)&&localStorage.getItem(stateKey)===before&&cloudSnapshot()?.fingerprint===beforeSnapshot});
+  if(!current(result.pin)||extraRestore.status==='stale')return false;
+  if(extraRestore.status==='loaded'){remote=window.BBPlanExtrasSync.apply(remote,extraRestore.payload);extraCache=extraRestore.cache;}
+  else if(cached?.payload&&cached.ok){remote=window.BBPlanExtrasSync.apply(remote,cached.payload);extraRestore={...extraRestore,ok:false,status:'device-fallback',message:'Optional meals from this device were kept for this plan. Their cloud copy could not be restored.'};}
+  else if(extraRestore.status==='missing'&&plannerExtrasNeeded(remote,result.pin))extraRestore={...extraRestore,ok:false,status:'base-only',message:'Optional meals came from the main plan. Upload this plan to protect their separate cloud backup.'};
+ }
  if(!current(result.pin))return false;
  if(localStorage.getItem(stateKey)!==before||cloudSnapshot()?.fingerprint!==beforeSnapshot){dirty=true;operation.drain=!cloudChoiceRequired;setMessage('Your saved data changed while the cloud copy was loading. Your latest changes have been kept. Try Restore again when ready.');return false;}
  if(window.BBReceiptHost?.hasPendingConfirmation?.())throw Error('Finish checking the pending receipt before restoring your account.');
  const kitchen=remote.atHomeBackup?window.BBReceiptHost?.prepareBackupRestore?.(remote.atHomeBackup):null;
  if(remote.atHomeBackup&&!kitchen)throw Error('Kitchen restore tools are still loading. Your local data has been kept.');
  const plan={...remote};delete plan.atHomeBackup;
- loading=true;try{commitCloudRestore({...kitchen?.updates,[stateKey]:plan},{...kitchen?.expected,[stateKey]:before,[sessionKey]:result.pin.stored,basketboss_account_deletion_v1:beforeDeletion});dirty=false;cloudChoiceRequired=false;lastCloudFingerprint=kitchen?.requiresReview?null:stableCloud(remote);clearTimeout(timer);timer=null;}finally{loading=false;}
- setMessage(kitchen?.requiresReview?'Cloud plan restored. Your local kitchen amounts were kept for review. Reloading\u2026':'\u2713 Cloud plan and kitchen restored. Reloading\u2026');location.reload();return true;
+ loading=true;try{commitCloudRestore({...kitchen?.updates,...(extraCache?{[extraCache.key]:extraCache.value}:{}),[stateKey]:plan},{...kitchen?.expected,...(extraCache?{[extraCache.key]:extraCache.expected}:{}),[stateKey]:before,[sessionKey]:result.pin.stored,basketboss_account_deletion_v1:beforeDeletion});plannerExtrasClient=null;plannerExtrasStatus=extraRestore;dirty=false;cloudChoiceRequired=false;lastCloudFingerprint=kitchen?.requiresReview?null:stableCloud(remote);clearTimeout(timer);timer=null;}finally{loading=false;}
+ setMessage(kitchen?.requiresReview?'Cloud plan restored. Your local kitchen amounts were kept for review. Reloading\u2026':extraRestore&&!['loaded','missing'].includes(extraRestore.status)?'Cloud plan restored. '+extraRestore.message+' Reloading\u2026':'\u2713 Cloud plan and kitchen restored. Reloading\u2026');location.reload();return true;
 });}
 function connectedCloud(){
  if(cloudPause)return Promise.resolve(false);
@@ -11607,7 +11750,7 @@ function connectedCloud(){
  const job=(async()=>{try{
   if(!navigator.onLine)return;const cloud=await getCloud();if(!cloud||!current(cloud.pin))return;
   if(!cloud.row){cloudChoiceRequired=false;await push();return;}
-  if(cloud.row.data&&stableCloud(cloud.row.data)===cloudSnapshot()?.fingerprint){cloudChoiceRequired=false;lastCloudFingerprint=cloudSnapshot().fingerprint;dirty=false;return;}
+  if(cloud.row.data&&stableCloud(cloud.row.data)===cloudSnapshot()?.fingerprint){const saved=cloudSnapshot();if(await inspectPlannerExtras(cloud,saved))return;if(!current(cloud.pin)||cloudSnapshot()?.fingerprint!==saved.fingerprint)return;cloudChoiceRequired=false;lastCloudFingerprint=saved.fingerprint;dirty=false;if(plannerExtrasNeeded(saved.data,cloud.pin))await push();return;}
   if(localCloudEmpty()){cloudChoiceRequired=false;await pull(false);return;}
   cloudChoiceRequired=true;setMessage('Cloud backup found. Choose Restore cloud plan to use it, or Upload to keep this device\u2019s plan and kitchen.');
  }catch(error){reportCloudError(error);}})();
@@ -11637,10 +11780,10 @@ async function signIn(signup){
  if(!saveSession({...result,expires_at:Math.floor(Date.now()/1000)+result.expires_in}))return;
  const cloud=await getCloud();if(!cloud||!current(cloud.pin))return;
  if(cloud.row){setMessage('Cloud backup found. Choose Restore cloud plan to use it, or Upload to keep this device\u2019s plan.');}
- else{await push();if(current(cloud.pin))setMessage('Account connected and this device\u2019s plan backed up.');}
+ else{const backedUp=await push();if(backedUp&&current(cloud.pin))setMessage('Account connected and this device\u2019s plan backed up.');}
  }catch(e){if(current(pin))setMessage(e.message);}
 }
-window.BasketBossCloud={connected:connectedCloud,scheduleSave(){if(blocked()||loading||!session||!enabled)return;dirty=true;queueCloudSave();}};
+window.BasketBossCloud={connected:connectedCloud,scheduleSave(){if(blocked()||loading||!session||!enabled)return;try{const saved=cloudSnapshot();if(saved)rememberPlannerExtras(saved.data,snapshot());}catch{}dirty=true;queueCloudSave();}};
 window.addEventListener('basketboss:account-deletion-started',()=>{deleting=true;generation++;dirty=false;clearTimeout(timer);timer=null;setStatus();});
 window.addEventListener('basketboss:account-deletion-cancelled',()=>{deleting=false;generation++;restoreStoredSession();setStatus();});
 window.addEventListener('basketboss:account-deletion-deleted',()=>{deleting=true;generation++;session=null;dirty=false;clearTimeout(timer);timer=null;setStatus();});
@@ -11694,6 +11837,7 @@ input.addEventListener('change',async()=>{
   if(data.app!=='BasketBoss'||data.backupVersion!==1||!data.state||data.state.version!==2||!Array.isArray(data.state.planned)||!data.state.pantry||typeof data.state.pantry!=='object')throw Error('Not a supported BasketBoss backup');
   const validDays=['Monday','Tuesday','Wednesday','Thursday','Friday','Saturday','Sunday'];
   if(data.state.planned.length>100||!data.state.planned.every(x=>x&&typeof x.recipeId==='string'&&validDays.includes(x.day)))throw Error('Invalid saved meal plan');
+  for(const key of ['plannedBreakfasts','plannedDesserts'])if(data.state[key]!==undefined&&(!Array.isArray(data.state[key])||data.state[key].length>7||!data.state[key].every(x=>x&&typeof x.recipeId==='string'&&validDays.includes(x.day)&&(x.servings===undefined||Number.isInteger(x.servings)&&x.servings>=1&&x.servings<=12))||new Set(data.state[key].map(x=>x.day)).size!==data.state[key].length))throw Error('Invalid saved optional meals');
   if(!confirm('Restore this BasketBoss backup? This replaces the saved meal plan, pantry, photo preferences and collections on this device. Make a backup of your current data first if you want to keep it.'))return;
   const old=localStorage.getItem('basketboss_321_unified_state_v1');
   try{localStorage.setItem('basketboss_321_unified_state_v1',JSON.stringify(data.state));}catch(e){if(old===null)localStorage.removeItem('basketboss_321_unified_state_v1');else localStorage.setItem('basketboss_321_unified_state_v1',old);throw e;}
@@ -11987,7 +12131,7 @@ function returningUser(){
  try{
   const raw=read('basketboss_321_unified_state_v1');
   if(raw){const s=JSON.parse(raw);
-   if(s&&((Array.isArray(s.planned)&&s.planned.length)||(Array.isArray(s.plannedDesserts)&&s.plannedDesserts.length)||(Array.isArray(s.customPantry)&&s.customPantry.length)||(s.pantry&&Object.values(s.pantry).some(Boolean))))return true;
+   if(s&&((Array.isArray(s.planned)&&s.planned.length)||(Array.isArray(s.plannedDesserts)&&s.plannedDesserts.length)||(Array.isArray(s.plannedBreakfasts)&&s.plannedBreakfasts.length)||(Array.isArray(s.customPantry)&&s.customPantry.length)||(s.pantry&&Object.values(s.pantry).some(Boolean))))return true;
   }
   const lunch=read('basketboss_321_v8_school_lunchboxes_v1');
   if(lunch){const x=JSON.parse(lunch);if(x?.days&&Object.values(x.days).some(a=>Array.isArray(a)&&a.length))return true;}
@@ -12113,7 +12257,7 @@ if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',
   <button type="button" class="bbtrial-free" data-bbtrial-free>Continue with BasketBoss Free →</button>
   <p class="bbtrial-foot">100 starter recipes, manual ingredients and basic planning remain available without subscribing.</p>
  </div>
-</dialog><script src="bb-intro-trial.js?v=bb-account-first-20261027-v1"></script><link rel="stylesheet" href="bb-how-it-works.css?v=20261104-kitchen1"><script defer src="bb-how-it-works.js?v=20261107-pantry-stock2"></script><script defer src="bb-onboarding-v2.js?v=20261104-diets1"></script><script defer src="bb-cold-preview.js?v=20261028-conversion-1"></script><script defer src="bb-funnel.js?v=20261028-v1"></script><script defer src="bb-ux-cleanup.js?v=20261028-ux1"></script><script src="bb-us-market.js?v=20261102-loop2"></script><script defer src="bb-install.js?v=173install1"></script><script defer src="bb-welcome-splash.js?v=20261101-signin2"></script><script defer src="bb-premium-features.js?v=20261105-preflight1"></script>
+</dialog><script src="bb-intro-trial.js?v=bb-account-first-20261027-v1"></script><link rel="stylesheet" href="bb-how-it-works.css?v=20261104-kitchen1"><script defer src="bb-how-it-works.js?v=20261108-planner1"></script><script defer src="bb-onboarding-v2.js?v=20261104-diets1"></script><script defer src="bb-cold-preview.js?v=20261028-conversion-1"></script><script defer src="bb-funnel.js?v=20261028-v1"></script><script defer src="bb-ux-cleanup.js?v=20261028-ux1"></script><script src="bb-us-market.js?v=20261102-loop2"></script><script defer src="bb-install.js?v=173install1"></script><script defer src="bb-welcome-splash.js?v=20261101-signin2"></script><script defer src="bb-premium-features.js?v=20261105-preflight1"></script>
 <style id="bb175-ux-fix">
 /* BasketBoss v17.4.2 premium-preview usability improvements */
 #app .swipe-action.yes{color:#c91e43!important;background:#fff2f4!important;border:3px solid #d92c50!important;box-shadow:0 5px 18px rgba(192,22,60,.22)!important;font-size:37px!important;font-weight:900!important}
@@ -12958,7 +13102,7 @@ body[data-bbnext-view="discover"] #app .bb175-discover-heading{padding-top:calc(
 <link rel="stylesheet" href="bb-simple-layout.css?v=20261104-plan-budget1">
 <script defer src="bb-simple-layout.js?v=20261105-options1"></script>
 <script defer src="bb-pantry-deduction.js?v=20261107-pantry-stock2"></script>
-<script defer src="bb-home.js?v=20261107-pantry-stock2"></script><link rel="stylesheet" href="bb-day-done.css?v=20261105-daydone1"><script defer src="bb-day-done.js?v=20261105-daydone1"></script><link rel="stylesheet" href="bb-shop-add.css?v=20261105-reduced1"><script defer src="bb-shop-add.js?v=20261105-preflight1"></script><script defer src="bb-cupboard-staples.js?v=20261104-cupboard2"></script><script src="bb-pantry-autofill.js?v=20261105-reduced1"></script>
+<script defer src="bb-home.js?v=20261108-planner1"></script><link rel="stylesheet" href="bb-day-done.css?v=20261108-planner1"><script defer src="bb-day-done.js?v=20261108-planner1"></script><link rel="stylesheet" href="bb-shop-add.css?v=20261105-reduced1"><script defer src="bb-shop-add.js?v=20261105-preflight1"></script><script defer src="bb-cupboard-staples.js?v=20261104-cupboard2"></script><script src="bb-pantry-autofill.js?v=20261105-reduced1"></script>
 <link rel="stylesheet" href="bb-shared-shopping.css?v=20261102-loop2">
 <script defer src="bb-shared-shopping.js?v=20261102-loop2"></script>
 <link rel="stylesheet" href="bb-plan-drag.css?v=20261105-daydone1">
@@ -12981,4 +13125,5 @@ body[data-bbnext-view="discover"] #app .bb175-discover-heading{padding-top:calc(
 <script defer src="bb-essentials-confirm.js?v=20261106-pantry-panel1"></script>
 <link rel="stylesheet" href="bb-yellow-stickers-ui.css?v=20261105-reduced1">
 <script defer src="bb-yellow-stickers-ui.js?v=20261105-preflight1"></script>
+<link rel="stylesheet" href="bb-plan-extras.css?v=20261108-planner1">
 </body></html>

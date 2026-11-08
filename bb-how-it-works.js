@@ -30,7 +30,7 @@
   const usedBefore=()=>{
    if(object(SETUP)?.complete===true||read('basketboss_onboarding_seen_v1')==='true')return true;
    const plan=object('basketboss_321_unified_state_v1');
-   return !!(plan&&(plan.planned?.length||plan.plannedDesserts?.length||plan.customPantry?.length||plan.feedingSet===true||Object.keys(plan.pantry||{}).length));
+   return !!(plan&&(plan.planned?.length||plan.plannedDesserts?.length||plan.plannedBreakfasts?.length||plan.customPantry?.length||plan.feedingSet===true||Object.keys(plan.pantry||{}).length));
   };
   let eligible=saved()?.version===1&&saved()?.eligible===true&&!seen()||!saved()&&!usedBefore();
   let handled=seen(),started=false,queued=false,view=null,observer=null;

@@ -1,4 +1,5 @@
 .bb-day-done-trigger{min-height:44px!important;background:#e9f3e7!important;color:#205c41!important;border:1px solid #adcbb6!important;border-radius:12px!important;font-weight:750!important}
+.bb-day-done-trigger[data-bb-day-done-state="complete"]{background:#fffdf4!important;border-color:#c8d9cc!important;color:#325b46!important}
 #app.bbnext-plan .bbnext-day-label,#app.bbnext-plan .bbnext-day-badge{position:relative}
 #app.bbnext-plan .bbnext-day-label.bb-day-is-done,#app.bbnext-plan .bbnext-day-badge.bb-day-is-done{background:#23784d!important;border-color:#17663e!important;color:#fff!important;box-shadow:0 0 0 2px #23784d1a!important}
 .bb-day-done-check{position:absolute;right:3px;top:4px;display:grid;place-items:center;width:15px;height:15px;border-radius:50%;background:#fff;color:#17663e;font:900 11px/1 system-ui,sans-serif;letter-spacing:0}
@@ -24,5 +25,7 @@
 .bb-day-done-actions{display:flex;flex-wrap:wrap;gap:10px;margin-top:18px}
 .bb-day-done-actions .btn{flex:1;min-width:130px;min-height:48px;border-radius:14px;white-space:normal}
 .bb-day-done-actions .primary{background:#215f47;color:#fffdf4}
+.bb-day-done-actions .bb-day-undo-review{background:#f7f4e9;color:#34583f;border:1px solid #d6d7be}
+.bb-day-done-actions button:disabled{cursor:progress;opacity:.65}
 .bb-day-done-dialog button:focus-visible,.bb-day-done-trigger:focus-visible,.bb-day-done-amounts summary:focus-visible{outline:3px solid #ceaa51;outline-offset:3px}
 @media(max-width:380px){.bb-day-done-dialog{padding:18px}.bb-day-done-actions .btn{min-width:100%}}
