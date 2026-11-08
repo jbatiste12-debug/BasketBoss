@@ -1,0 +1,87 @@
+name: Inspect or activate the reviewed catalogue 700 release
+
+on:
+  pull_request:
+    paths:
+      - .github/workflows/activate-catalogue700.yml
+      - tools/catalogue700/activate.mjs
+      - tools/catalogue700/prepare-import.mjs
+      - tools/catalogue700/release.mjs
+      - tests/basketboss-catalogue700-activation.test.mjs
+  push:
+    branches: [main]
+    paths:
+      - .github/workflows/activate-catalogue700.yml
+      - tools/catalogue700/activate.mjs
+      - tests/basketboss-catalogue700-activation.test.mjs
+      - .github/private-catalogue/catalogue700-release.sealed.json
+      - .github/private-catalogue/catalogue700-recipient.json
+      - catalogues/700/release/manifest.json
+  workflow_dispatch:
+    inputs:
+      mode:
+        description: Inspect readiness or explicitly activate the reviewed release
+        type: choice
+        options: [inspect, activate]
+        default: inspect
+        required: true
+
+permissions:
+  contents: read
+
+concurrency:
+  group: basketboss-catalogue700-activation
+  cancel-in-progress: false
+
+jobs:
+  portable:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v5
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@v5
+        with:
+          node-version: '24'
+          cache: npm
+      - run: npm ci --no-audit --no-fund
+      - name: Verify versioned activation, scoped flags and legacy preservation
+        run: node --test --test-isolation=none tests/basketboss-catalogue700-activation.test.mjs tests/basketboss-catalogue700-versioning.test.mjs
+  release:
+    needs: portable
+    if: github.repository == 'jbatiste12-debug/BasketBoss' && github.ref == 'refs/heads/main' && (github.event_name == 'push' || github.event_name == 'workflow_dispatch')
+    environment: github-pages
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v5
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+      - uses: actions/setup-node@v5
+        with:
+          node-version: '24'
+          cache: npm
+      - run: npm ci --no-audit --no-fund
+      - name: Install pinned atomic importer for an explicit activation
+        if: github.event_name == 'workflow_dispatch' && inputs.mode == 'activate'
+        run: npm install --prefix "$RUNNER_TEMP/basketboss700-tools" --ignore-scripts --no-audit --no-fund --save-exact wrangler@4.156.0
+      - name: Inspect or explicitly activate catalogue 700
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ vars.CLOUDFLARE_ACCOUNT_ID || secrets.CLOUDFLARE_ACCOUNT_ID }}
+          # Decryption remains tied to the original recipient even if the
+          # management credential is rotated. Neither value is logged.
+          BB_CATALOGUE_DECRYPT_TOKEN: ${{ secrets.BB_CATALOGUE_DECRYPT_TOKEN }}
+          BB_CATALOGUE700_MODE: ${{ github.event_name == 'workflow_dispatch' && inputs.mode || 'inspect' }}
+          WRANGLER_BIN: ${{ runner.temp }}/basketboss700-tools/node_modules/.bin/wrangler
+        run: node tools/catalogue700/activate.mjs
+      - name: Retain encrypted rollback only
+        if: always()
+        uses: actions/upload-artifact@v6
+        with:
+          name: catalogue700-rollback-encrypted-${{ github.run_id }}-${{ github.run_attempt }}
+          path: ${{ runner.temp }}/basketboss-catalogue700-rollback.sealed.json
+          if-no-files-found: ignore
+          retention-days: 7

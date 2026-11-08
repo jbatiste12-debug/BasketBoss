@@ -35,7 +35,9 @@ The legacy `basketboss_data` table and its three-column contract remain unchange
 - Unchanged uploads adopt an identical remote payload without writing. Conflicting edits require an explicit restore/review. Matching legacy base data still probes for protected extras and offers a deliberate restore choice if they differ.
 - Missing setup or failed extension sync keeps local data and reports a partial backup; sign-in cannot overwrite that result with a full-success message. Unknown schema pauses repeated extension requests. The ordinary plan endpoint remains available.
 
-The installer is prepared and tested, **not applied to production**. Install it before releasing the new client to provide the separate backup. Without it, breakfasts still save on the device and in exported plan files, while the UI reports that their protected cloud backup is unavailable.
+The installer was applied to the production `basketboss-auth` project on 8 November 2026 as migration `20261108224217_basketboss_planner_extras_v1`. The three-column legacy backup table remains unchanged. Live checks verified owner-only reads/writes, anonymous denial, revision conflicts, blocked owner reassignment and Auth deletion-cascade metadata. The behavior probes ran in a transaction and were rolled back; no probe records remain. The post-install security advisor reported no new notice for these objects.
+
+Without this setup in another environment, breakfasts still save on the device and in exported plan files, while the UI reports that their protected cloud backup is unavailable.
 
 ## Validation
 

@@ -69,6 +69,24 @@ node tools/catalogue700/prepare-import.mjs \
 
 Read the token from the existing secret environment as `BB_CATALOGUE_DECRYPT_TOKEN` or `CLOUDFLARE_API_TOKEN`; never put it in a command argument, source file or PR. The command verifies the envelope pins, exact protected 400-row prefix, public 200-record hashes and complete 500-row payload before writing owner-only SQL. It neither imports that SQL nor enables a feature flag. The token must correspond to the existing recipient fingerprint; rotating a Cloudflare API token does not change an encrypted envelope's recipient.
 
+## Dedicated activation workflow
+
+`.github/workflows/activate-catalogue700.yml` is separate from every historical 400-row activation workflow. Pull requests run only portable tests. Matching pushes to main run an inspection; they do not import recipes or enable the gate. Explicit activation is available through **Actions → Inspect or activate the reviewed catalogue 700 release → Run workflow → main → activate**.
+
+The activator requires the intended repository's main-branch Actions environment, the reviewed data commit in its ancestry, and the exact approved release, plaintext, SQL and protected-row hashes. It compares the live 221-row and 400-row catalogues before and after import, seals a rollback snapshot, imports only the guarded versioned SQL, and verifies all 500 new-version rows plus metadata before changing any release setting.
+
+Only the five catalogue-700 settings are patched. Other production/preview configuration and masked secrets must remain unchanged. Readiness is checked against the canonical deployment's actual environment snapshot: an unauthenticated HTTP 401 alone cannot prove a gate is enabled, because authentication middleware can return it first. A rebuild stays on the current approved main commit. Ambiguous concurrent changes stop automatic recovery instead of overwriting another operator's configuration.
+
+Unauthenticated access/CORS checks prove the public boundary, not delivery to a signed-in member. Real Premium hydration and purchase/restore on a device remain final release checks.
+
+### Recovering after a deployment-token rotation
+
+`CLOUDFLARE_API_TOKEN` authenticates management requests. `BB_CATALOGUE_DECRYPT_TOKEN` can separately retain the release's original decryption credential; when unset, the current management token is used for compatibility. Neither secret is logged.
+
+If the management token is valid but the original release key is unavailable, inspect mode returns only its derived public recipient and reports that resealing is required. The frozen private payload can then be sealed to that observed public key without exposing a token. Use a dedicated `.github/private-catalogue/catalogue700-recipient.json`; retain the historical shared recipient. Change only the envelope, its transport metadata and the approved recipient fingerprint. The plaintext/SQL hashes, recipe hashes, IDs and image bytes must remain exact.
+
+Production Supabase setup and the current credential status are recorded in [the rollout status](catalogue700-rollout-status.md).
+
 ## Future client integration
 
 The future 1.0.2 client must deliberately select catalogue 700, load the separate 200-record Free data, verify both canonical Free hashes against the reviewed manifest and private response, and combine only a complete matching 200/500 pair. Recipe and normalized IDs must be unique and aligned across all 700 before replacing client state. A changed sign-in must discard delayed private responses. Existing clients continue loading their original files and route.
