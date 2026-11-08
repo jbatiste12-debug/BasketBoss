@@ -21,6 +21,8 @@
     return (count(servings)||4)/(base>0?base:4);
   }
   function forMeal(state,slot,recipe){
+    // Optional meals keep their own headcount, independent of dinner/day defaults.
+    if(count(slot?.servings))return count(slot.servings);
     // New overrides are per DAY and tied to its recipe ID. A replaced dinner
     // must never inherit a former dinner's headcount. Legacy recipe-scoped
     // overrides still work for existing saved plans without any migration write.

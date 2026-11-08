@@ -3,6 +3,7 @@ import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import vm from 'node:vm';
 import BBServing from '../bb-serving-scale.js';
+import BBPlanExtras from '../bb-plan-extras.js';
 const index=fs.readFileSync('index.html','utf8');
 const cook=fs.readFileSync('make-a-meal.html','utf8');
 const css=fs.readFileSync('bb-cook-plan-hotfix.css','utf8');
@@ -13,7 +14,7 @@ assert.ok(s>0&&n>s&&e>n,'original load/normalize source must be present');
 const actualSource=index.slice(s,e);
 function loadAsFreshPage(storage,catalogue){
  const ctx={
-   BBServing,
+   BBServing,BBPlanExtras,
    KEY:'basketboss_321_unified_state_v1',
    BB_SNAPSHOT:'basketboss_321_unified_recovery_v1',
    OLD_PLAN:'basketboss_321_unified_oldplan_v1',

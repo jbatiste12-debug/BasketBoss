@@ -5,8 +5,8 @@ import vm from 'node:vm';
 
 const source=fs.readFileSync(new URL('../bb-day-done.js',import.meta.url),'utf8');
 const tick=()=>new Promise(resolve=>setImmediate(resolve));
-function fixture({preview,finish,reviewDay,day='Monday'}={}){
- let doc,actor='actor-one';
+function fixture({preview,finish,reviewDay,undoPreview,undo,complete=false,day='Monday'}={}){
+ let doc,actor='actor-one',session='original-session';
  class Element{
   constructor(tag){this.tagName=tag;this.ownerDocument=doc;this.children=[];this.parentNode=null;this.dataset={};this.attributes={};this.events=new Map();this._text='';this.disabled=false;}
   append(...nodes){for(const node of nodes){node.parentNode=this;this.children.push(node);}}
@@ -25,17 +25,19 @@ function fixture({preview,finish,reviewDay,day='Monday'}={}){
   close(){this.open=false;this.fire('close');}
  }
  doc={createElement:tag=>new Element(tag)};doc.body=new Element('body');const container=new Element('div');doc.body.append(container);doc.activeElement=container;
- const calls=[],previews=[],confirmed=[],reviews=[];
+ const calls=[],previews=[],confirmed=[],reviews=[],undoPreviews=[],undos=[],undone=[];
  const normal={ok:true,fingerprint:'plan-one',items:[{kind:'dinner',name:'Vegetable stew',servings:4},{kind:'lunch',name:'Cheese sandwiches',servingsLabel:'2 children'},{kind:'dessert',name:'Apple crumble',already:true},{kind:'leftover',name:'Tuesday batch',servings:4}],rows:[{name:'Pasta',unit:'g',owned:500,deduct:200}],issues:[]};
- const win={document:doc,BBHome:{actor:()=>actor,previewDay(value){previews.push(value);return preview?preview(value,previews.length):normal;},finishDay(value){calls.push(value);return finish?finish(value,calls.length):Promise.resolve({ok:true,completedCount:3,message:'Day confirmed. At home updated.'});}},BBHomeHost:{}};
+ const win={document:doc,localStorage:{getItem:()=>session},BBHome:{actor:()=>actor,isCooked:()=>complete,previewDay(value){previews.push(value);return preview?preview(value,previews.length):normal;},finishDay(value){calls.push(value);return finish?finish(value,calls.length):Promise.resolve({ok:true,completedCount:3,message:'Day confirmed. At home updated.'});}},BBHomeHost:{dayMeals:()=>[{occurrence:'week|dinner|Monday|stew'}]}};
+ if(undoPreview)win.BBHome.previewUndoDay=value=>{undoPreviews.push(value);return undoPreview(value,undoPreviews.length);};
+ if(undo)win.BBHome.undoDay=value=>{undos.push(value);return undo(value,undos.length);};
  if(reviewDay)win.BBHomeHost.reviewDay=value=>{reviews.push(value);reviewDay(value);};
  vm.runInNewContext(source,{window:win});
- const ui=win.BBDayDone.mount({container,day,win,onConfirmed:value=>confirmed.push(value)});
+ const ui=win.BBDayDone.mount({container,day,win,onConfirmed:value=>confirmed.push(value),onUndone:value=>undone.push(value)});
  const all=(node=doc.body)=>[node,...node.children.flatMap(child=>all(child))];
  const action=name=>all().find(node=>node.dataset.bbDayAction===name);
  const trigger=()=>all().find(node=>node.dataset.bbDayDone===day);
  const dialog=()=>all().find(node=>node.tagName==='dialog');
- return {ui,doc,container,win,previews,calls,confirmed,reviews,all,action,trigger,dialog,setActor:value=>{actor=value;},async open(){trigger().focus();trigger().click();await tick();}};
+ return {ui,doc,container,win,previews,calls,confirmed,reviews,undoPreviews,undos,undone,all,action,trigger,dialog,setActor:value=>{actor=value;},setSession:value=>{session=value;},setComplete:value=>{complete=value;},async open(){trigger().focus();trigger().click();await tick();}};
 }
 
 test('Day done reviews all planned food and quantities without consuming on mount or open',async()=>{
@@ -56,13 +58,13 @@ test('one explicit confirmation sends the reviewed fingerprint once and locks pe
  assert.equal(confirm.disabled,true);assert.equal(h.action('close').disabled,true);
  const cancel=h.dialog().fire('cancel');assert.equal(cancel.prevented,true);assert.ok(h.dialog());
  resolve({ok:true,completedCount:3,message:'Pantry updated for the remaining three meals.'});await tick();
- assert.equal(h.confirmed.length,1);assert.match(h.trigger().textContent,/✓/);assert.equal(h.action('confirm'),undefined);
+ assert.equal(h.confirmed.length,1);assert.equal(h.trigger().textContent,'Undo day done');assert.equal(h.action('confirm'),undefined);
  assert.match(h.dialog().textContent,/remaining three meals/);h.action('close').click();assert.equal(h.dialog(),undefined);
 });
 
 test('already confirmed days open a read-only result without another finish request',async()=>{
  const h=fixture({preview:()=>({ok:true,already:true,items:[{kind:'dinner',name:'Stew',already:true}],message:'This day is already confirmed.'})});await h.open();
- assert.equal(h.action('confirm'),undefined);assert.match(h.dialog().textContent,/already confirmed/);assert.match(h.trigger().textContent,/✓/);assert.equal(h.calls.length,0);
+ assert.equal(h.action('confirm'),undefined);assert.match(h.dialog().textContent,/already confirmed/);assert.equal(h.trigger().textContent,'Undo day done');assert.equal(h.calls.length,0);
 });
 
 test('stale results require a fresh review before a second confirmation',async()=>{
@@ -109,4 +111,68 @@ test('day confirmation exposes conversion estimates and unknown unit fallbacks b
  const h=fixture({preview:()=>({ok:true,fingerprint:'units',items:[],rows:[{name:'Carrots',unit:'g',deduct:160,estimated:true,assumptions:['80 g per whole item']},{name:'Rice',unit:'g',deduct:0,issueLabel:'1 bag stays unchanged. Review At home.'}],issues:[{message:'Rice pack contents need review.'}]})});
  await h.open();const text=h.dialog().textContent;
  assert.match(text,/estimated ingredient weights/);assert.match(text,/80 g per whole item/);assert.match(text,/1 bag stays unchanged/);assert.equal(h.calls.length,0);assert.ok(h.action('confirm'));
+});
+
+const undoReady=()=>({ok:true,fingerprint:'undo-one',items:[{kind:'breakfast',name:'Porridge'},{kind:'dessert',name:'Apple crumble'}],rows:[{name:'Oats',unit:'g',restore:80}],issues:[]});
+
+test('a completed day offers a read-only undo review and cancelling restores nothing',async()=>{
+ const h=fixture({complete:true,undoPreview:undoReady,undo:()=>({ok:true})});
+ assert.equal(h.trigger().textContent,'Undo day done');assert.equal(h.undoPreviews.length,0);
+ await h.open();assert.equal(h.previews.length,0);assert.equal(h.undoPreviews.length,1);assert.equal(h.undos.length,0);assert.equal(h.calls.length,0);
+ assert.deepEqual(JSON.parse(JSON.stringify(h.undoPreviews[0])),{day:'Monday',actorId:'actor-one'});
+ for(const text of ['Undo Monday Day done?','Meals you cooked earlier stay confirmed.','Breakfast','Bake / dessert','Return 80 g'])assert.ok(h.dialog().textContent.includes(text),text);
+ assert.ok(h.action('undo'));h.action('close').click();assert.equal(h.dialog(),undefined);assert.equal(h.undos.length,0);assert.equal(h.doc.activeElement,h.trigger());
+});
+
+test('undo submits the reviewed fingerprint once, locks every action and refreshes completion from the ledger',async()=>{
+ let resolve;
+ const h=fixture({complete:true,undoPreview:undoReady,undo:()=>new Promise(done=>{resolve=done;})});await h.open();
+ const confirm=h.action('undo');confirm.click();confirm.click();assert.equal(h.undos.length,1);assert.equal(h.calls.length,0);
+ assert.deepEqual(JSON.parse(JSON.stringify(h.undos[0])),{day:'Monday',actorId:'actor-one',expected:'undo-one'});
+ assert.equal(confirm.disabled,true);assert.equal(h.action('close').disabled,true);assert.equal(h.trigger().disabled,true);assert.equal(h.dialog().fire('cancel').prevented,true);
+ h.setComplete(false);resolve({ok:true,restoredCount:2,remainingConfirmedCount:1,message:'Two meals reopened; your earlier dinner stays confirmed.'});await tick();
+ assert.equal(h.undone.length,1);assert.equal(h.confirmed.length,0);assert.equal(h.action('undo'),undefined);assert.equal(h.trigger().textContent,'Day done');assert.equal(h.trigger().disabled,false);assert.match(h.dialog().textContent,/earlier dinner stays confirmed/);
+});
+
+test('a partial day can review its existing Day done action without completing the newly added meal',async()=>{
+ const h=fixture({undoPreview:undoReady,undo:()=>({ok:true})});await h.open();
+ assert.ok(h.action('confirm'));assert.ok(h.action('review-undo'));assert.equal(h.calls.length,0);h.action('review-undo').click();await tick();
+ assert.equal(h.action('confirm'),undefined);assert.ok(h.action('undo'));assert.equal(h.calls.length,0);assert.equal(h.undos.length,0);
+});
+
+test('legacy days without a reversible record explain manual review and never expose an undo commit',async()=>{
+ const h=fixture({complete:true,undoPreview:()=>({ok:false,needsReview:true,message:'This older confirmation has no saved undo record. Review your remaining pantry amounts.'}),undo:()=>({ok:true}),reviewDay(){}});await h.open();
+ assert.equal(h.action('undo'),undefined);assert.equal(h.action('confirm'),undefined);assert.match(h.dialog().textContent,/no saved undo record/);assert.ok(h.action('review'));h.action('review').click();assert.deepEqual(h.reviews,['Monday']);assert.equal(h.undos.length,0);
+ const unavailable=fixture({complete:true});await unavailable.open();assert.equal(unavailable.action('undo'),undefined);assert.match(unavailable.dialog().textContent,/no saved undo record/);
+});
+
+test('account and token changes while undo is previewed prevent submitting stale restoration',async()=>{
+ for(const change of [h=>h.setActor('actor-two'),h=>h.setSession('refreshed-token')]){
+  const h=fixture({complete:true,undoPreview:undoReady,undo:()=>({ok:true})});await h.open();change(h);h.action('undo').click();
+  assert.equal(h.undos.length,0);assert.equal(h.action('undo').disabled,true);assert.match(h.dialog().textContent,/account changed or your session refreshed/);
+ }
+});
+
+test('undo results arriving after account switching cannot update the new account view',async()=>{
+ let resolve;const h=fixture({complete:true,undoPreview:undoReady,undo:()=>new Promise(done=>{resolve=done;})});await h.open();h.action('undo').click();
+ h.setActor('actor-two');h.setComplete(false);resolve({ok:true,message:'Previous account restored.'});await tick();
+ assert.equal(h.dialog(),undefined);assert.equal(h.trigger().textContent,'Day done');assert.equal(h.undone.length,0);assert.equal(h.trigger().disabled,false);
+});
+
+test('a stale undo requires a fresh preview before a second explicit commit',async()=>{
+ const h=fixture({complete:true,undoPreview:(_,n)=>({...undoReady(),fingerprint:'undo-'+n}),undo:(_,n)=>n===1?{ok:false,needsReview:true,message:'Your pantry changed. Review the latest amounts.'}:{ok:true,message:'Restored.'}});await h.open();await h.action('undo').click();
+ assert.equal(h.undone.length,0);assert.equal(h.undos.length,1);assert.ok(h.action('refresh'));h.action('refresh').click();await tick();assert.equal(h.undos.length,1);assert.equal(h.undoPreviews.length,2);
+ h.setComplete(false);await h.action('undo').click();assert.equal(h.undos.length,2);assert.equal(h.undos[1].expected,'undo-2');assert.equal(h.undone.length,1);
+});
+
+test('an already undone result is read-only and a missing undo fingerprint fails closed',async()=>{
+ const done=fixture({complete:true,undoPreview:()=>({ok:true,already:true,message:'This action has already been undone.'}),undo:()=>({ok:true})});await done.open();assert.equal(done.action('undo'),undefined);assert.equal(done.undos.length,0);assert.match(done.dialog().textContent,/already been undone/);
+ const missing=fixture({complete:true,undoPreview:()=>({...undoReady(),fingerprint:null}),undo:()=>({ok:true})});await missing.open();assert.equal(missing.action('undo'),undefined);assert.match(missing.dialog().textContent,/could not be checked safely/);
+});
+
+test('undo cannot expose a commit for missing methods, unchecked rows or invalid restoration quantities',async()=>{
+ for(const invalid of [value=>({...value,needsReview:true}),value=>({...value,rows:null}),value=>({...value,rows:[{name:'Oats',restore:null}]}),value=>({...value,rows:[{name:'Oats',restore:-1}]}),value=>({...value,rows:[{name:'Oats',restore:Infinity}]})]){
+  const h=fixture({complete:true,undoPreview:()=>invalid(undoReady()),undo:()=>({ok:true})});await h.open();assert.equal(h.action('undo'),undefined);assert.equal(h.undos.length,0);assert.match(h.dialog().textContent,/could not be checked safely/);
+ }
+ const unavailable=fixture({complete:true,undoPreview:undoReady});await unavailable.open();assert.equal(unavailable.action('undo'),undefined);assert.match(unavailable.dialog().textContent,/could not be checked safely/);
 });

@@ -20,7 +20,8 @@
   if(!Array.isArray(value)||value.length>7)fail('Review the '+label+' before saving this week.');
   const days=new Set();return value.map(row=>{
    if(!object(row)||!DAYS.includes(row.day)||!id(row.recipeId)||days.has(row.day))fail('Review the '+label+' before saving this week.');
-   days.add(row.day);return {day:row.day,recipeId:row.recipeId};
+   if(own(row,'servings')&&!count(row.servings))fail('Review meal servings before saving this week.');
+   days.add(row.day);return {day:row.day,recipeId:row.recipeId,...(own(row,'servings')?{servings:row.servings}:{})};
   });
  }
  function lunchbox(value){
@@ -43,7 +44,8 @@
  function capture({plan,lunch,notes}={}){
   if(!object(plan)||!count(plan.servings))fail('Review household servings before saving this week.');
   const planned=slots(plan.planned,'dinners'),plannedDesserts=slots(plan.plannedDesserts||[],'desserts');
-  const recipeIds=new Set([...planned,...plannedDesserts].map(row=>row.recipeId)),mealServings={},dayServings={};
+  const plannedBreakfasts=slots(plan.plannedBreakfasts===undefined?[]:plan.plannedBreakfasts,'breakfasts');
+  const recipeIds=new Set([...planned,...plannedBreakfasts,...plannedDesserts].map(row=>row.recipeId)),mealServings={},dayServings={};
   for(const [recipeId,amount]of Object.entries(plan.mealServings||{}))if(recipeIds.has(recipeId)){
    if(!count(amount))fail('Review meal servings before saving this week.');mealServings[recipeId]=amount;
   }
@@ -78,7 +80,7 @@
   const customDinners={};for(const day of DAYS)if(own(notes||{},day)){
    if(!text(notes[day],110)||planned.some(row=>row.day===day)||reserved.has(day))fail('Review custom dinners before saving this week.');customDinners[day]=notes[day];
   }
-  return {version:1,planned,plannedDesserts,servings:plan.servings,feedingSet:plan.feedingSet===true,mealServings,dayServings,
+  return {version:1,planned,plannedBreakfasts,plannedDesserts,servings:plan.servings,feedingSet:plan.feedingSet===true,mealServings,dayServings,
    leftoverSources:flags(plan.leftoverSources),leftoverConfirmed:flags(plan.leftoverConfirmed),bbManualBatch,bb81Batch,lunch:lunchbox(lunch),customDinners};
  }
  function validateWeek(value){
@@ -91,8 +93,8 @@
  };
  const summary=week=>{
   const dinnerDays=new Set([...week.planned.map(row=>row.day),...Object.keys(week.customDinners||{}),...(week.bbManualBatch?.pairs||[]).map(pair=>pair.leftoverDay),...(week.bb81Batch?['Tuesday','Thursday']:[])]);
-  const dinners=dinnerDays.size,desserts=week.plannedDesserts.length,lunches=WEEKDAYS.filter(day=>week.lunch.days[day].length).length;
-  return dinners+' dinner'+(dinners===1?'':'s')+' · '+desserts+' dessert'+(desserts===1?'':'s')+' · '+lunches+' lunch day'+(lunches===1?'':'s');
+  const dinners=dinnerDays.size,breakfasts=(week.plannedBreakfasts||[]).length,desserts=week.plannedDesserts.length,lunches=WEEKDAYS.filter(day=>week.lunch.days[day].length).length;
+  return dinners+' dinner'+(dinners===1?'':'s')+(breakfasts?' · '+breakfasts+' breakfast'+(breakfasts===1?'':'s'):'')+' · '+desserts+' dessert'+(desserts===1?'':'s')+' · '+lunches+' lunch day'+(lunches===1?'':'s');
  };
  function createStore({storage,context=()=>({actor:'guest',ready:true}),now=Date.now,makeId}={}){
   let sequence=0;
@@ -127,7 +129,7 @@
    try{
     const before=read();if(!before.ok)return before;
     const cleaned=validateWeek(week),label=title(name);
-    if(!cleaned.planned.length&&!cleaned.plannedDesserts.length&&!Object.keys(cleaned.customDinners).length&&!WEEKDAYS.some(day=>cleaned.lunch.days[day].length))fail('Choose meals or school lunches before saving a week.');
+    if(!cleaned.planned.length&&!cleaned.plannedBreakfasts.length&&!cleaned.plannedDesserts.length&&!Object.keys(cleaned.customDinners).length&&!WEEKDAYS.some(day=>cleaned.lunch.days[day].length))fail('Choose meals or school lunches before saving a week.');
     const duplicate=before.weeks.find(row=>row.name.toLocaleLowerCase()===label.toLocaleLowerCase());
     if(duplicate&&duplicate.id!==replaceId)return {ok:false,duplicateId:duplicate.id,expected:before.raw,actor:before.actor,message:'A week with that name already exists.'};
     if(replaceId&&!before.weeks.some(row=>row.id===replaceId))fail('That saved week changed. Review the list and try again.');
@@ -181,7 +183,7 @@
      if(pending)return;let before;try{before=host.snapshot();}catch{message('Could not read your current week.');return;}if(before?.ready!==true){message(before?.message||'Your current week needs review.');return;}
      pending=true;render();
      try{
-      if(!await confirm('Replace your current meal plan with “'+row.name+'”? Its days, servings, desserts and school lunches will be restored. Your At home stock is kept.','Use saved week?','Use this week'))return;
+      if(!await confirm('Replace your current meal plan with “'+row.name+'”? Its days, servings, breakfasts, desserts and school lunches will be restored. Your At home stock is kept.','Use saved week?','Use this week'))return;
       if(!current(state.actor)){message('Your account or page changed. Reopen Saved weeks.');return;}
       const latest=store.read();if(!latest.ok||latest.raw!==state.raw){message('Saved weeks changed. Review the list and try again.');return;}
       const result=await host.restore({week:validateWeek(row.week),expected:before.fingerprint,actor:state.actor});message(result?.message||(result?.ok?'Saved week loaded.':'Could not load this saved week.'));
