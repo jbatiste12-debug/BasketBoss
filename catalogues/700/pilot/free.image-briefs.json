@@ -1,0 +1,96 @@
+[
+  {
+    "id": "spaghetti-carbonara",
+    "catalogueNumber": 527,
+    "title": "Spaghetti carbonara",
+    "image": "release-assets/basketboss-v17/images/new/spaghetti-carbonara.webp",
+    "width": 1448,
+    "height": 1086,
+    "format": "webp",
+    "type": "generated",
+    "style": "Photorealistic home-cooked food, natural window daylight, 50mm food photography, cream ceramics and understated warm tabletop, realistic textures, no hands, no text, no logos, no CGI.",
+    "dish_brief": "Spaghetti coated in a silky pale-gold egg and Parmesan sauce, crisp pancetta cubes, visible black pepper and a little finely grated Parmesan. Natural glossy sauce, not a pool of cream. No parsley, peas, garlic bread, salad or other unlisted additions.",
+    "visible_ingredients": [
+      "Spaghetti",
+      "Pancetta",
+      "Eggs",
+      "Parmesan",
+      "Ground black pepper",
+      "Salt"
+    ],
+    "recipe_servings": 4,
+    "composition": "One appealing plated serving or a small serving platter; maintain enough breathing room for both 4:3 cards and square thumbnail crops.",
+    "reviewStatus": "awaiting-image-and-schema-validation",
+    "vessel": "shallow cream ceramic pasta bowl",
+    "prompt": "Spaghetti coated in a silky pale-gold egg and Parmesan sauce, crisp pancetta cubes, visible black pepper and a little finely grated Parmesan. Natural glossy sauce, not a pool of cream. No parsley, peas, garlic bread, salad or other unlisted additions. Angled individual plated serving with recipe-specific food and warm natural light. Food matches the ingredient brief; no text/watermark, hands, unrelated sides or obvious artefacts. Photorealistic home-cooked food in natural daylight, using a 50mm lens. Preserve realistic edible texture, dish-specific browning and an ordinary household presentation. Vary camera angle and family-sharing tableware as stated; avoid identical template layouts. No hands, no text, no watermarks, no logos, no CGI.",
+    "negativeConstraints": [
+      "No hands",
+      "No text",
+      "No watermarks",
+      "No logos",
+      "No CGI",
+      "No unrelated sides or unlisted garnish"
+    ],
+    "exactIngredientLedger": "Spaghetti — 400 g; Pancetta — 200 g, diced; Eggs — 4 medium eggs, using 2 whole eggs and the yolks from the other 2; Parmesan — 100 g, finely grated; Ground black pepper — 2 g; Salt — 8 g, for the pasta cooking water",
+    "recipeMethod": [
+      "Bring a large pan of tap water to the boil. Add the measured salt and cook the spaghetti for its pack time until just al dente. Before draining, reserve 250 ml of the cooking water.",
+      "Meanwhile, put the diced pancetta in a wide dry frying pan over a medium-low heat. Cook for 8–10 minutes, stirring regularly, until its fat has rendered and the cubes are golden and cooked through. Do not add oil.",
+      "Whisk the two whole eggs, two additional yolks, 80 g Parmesan and most of the black pepper together. Refrigerate the two unused egg whites promptly for another recipe; all four eggs are included in the ingredient quantity.",
+      "Take the pancetta pan off the heat. Add the hot drained spaghetti and toss through the pancetta and its rendered fat. Wait about 30 seconds, then pour in the egg mixture while tossing continuously. Add the reserved hot cooking water a tablespoon at a time until a glossy sauce clings to the strands; do not pour in all 250 ml automatically.",
+      "Return to the lowest heat only if needed and keep tossing so the eggs warm evenly without scrambling. For a fully cooked egg sauce, check it reaches 71°C with a clean probe while continuing to stir; add another splash of reserved hot water if it thickens. The sauce should remain glossy, with no visible liquid egg.",
+      "Divide immediately between four warm bowls. Finish with the reserved 20 g Parmesan and remaining black pepper. No cream, garlic, parsley or peas are added."
+    ],
+    "houseComposition": "Angled individual plated serving with recipe-specific food and warm natural light. Food matches the ingredient brief; no text/watermark, hands, unrelated sides or obvious artefacts.",
+    "stylingVersion": "recipe700-pilot-varied-household-v2"
+  },
+  {
+    "id": "sticky-bbq-pork-spare-ribs-with-slaw",
+    "catalogueNumber": 545,
+    "title": "Sticky BBQ pork spare ribs with slaw",
+    "image": "release-assets/basketboss-v17/images/new/sticky-bbq-pork-spare-ribs-with-slaw.webp",
+    "width": 1448,
+    "height": 1086,
+    "format": "webp",
+    "type": "generated",
+    "style": "Photorealistic home-cooked food, natural window daylight, 50mm food photography, cream ceramics and understated warm tabletop, realistic textures, no hands, no text, no logos, no CGI.",
+    "dish_brief": "Tender bone-in pork spare ribs with a sticky caramelised BBQ glaze and a separate portion of creamy white-cabbage, carrot and fine-onion slaw. Clearly bone-in, realistically cooked meat. No chips, bread, parsley, spring onion or other unlisted garnish.",
+    "visible_ingredients": [
+      "Pork spare ribs",
+      "Smoked paprika",
+      "Garlic",
+      "Soft brown sugar",
+      "Salt",
+      "Ground black pepper",
+      "BBQ sauce",
+      "Apple cider vinegar",
+      "White cabbage",
+      "Carrots",
+      "Onion",
+      "Mayonnaise"
+    ],
+    "recipe_servings": 4,
+    "composition": "Lower three-quarter angle family-sharing roasting tray showing ribs for four with a communal bowl of the listed cabbage/carrot/onion slaw; different tableware from the other photographs.",
+    "reviewStatus": "awaiting-image-and-schema-validation",
+    "vessel": "dark family roasting tray with pale-blue slaw bowl and serving tongs",
+    "prompt": "Tender bone-in pork spare ribs with a sticky caramelised BBQ glaze and a separate portion of creamy white-cabbage, carrot and fine-onion slaw. Clearly bone-in, realistically cooked meat. No chips, bread, parsley, spring onion or other unlisted garnish. Low 20-degree family sharing; dark roasting tray, pale-blue slaw bowl and serving tongs. Food matches the ingredient brief; no text/watermark, hands, unrelated sides or obvious artefacts. Photorealistic home-cooked food in natural daylight, using a 50mm lens. Preserve realistic edible texture, dish-specific browning and an ordinary household presentation. Vary camera angle and family-sharing tableware as stated; avoid identical template layouts. No hands, no text, no watermarks, no logos, no CGI.",
+    "negativeConstraints": [
+      "No hands",
+      "No text",
+      "No watermarks",
+      "No logos",
+      "No CGI",
+      "No unrelated sides or unlisted garnish"
+    ],
+    "exactIngredientLedger": "Pork spare ribs — 1.6 kg raw bone-in pork spare ribs; Smoked paprika — 6 g; Garlic — 2 cloves; Soft brown sugar — 20 g; Salt — 4 g; Ground black pepper — 2 g; BBQ sauce — 180 ml; Apple cider vinegar — 20 ml; White cabbage — 300 g; Carrots — 150 g; Onion — 1/2 small onion; Mayonnaise — 80 ml",
+    "recipeMethod": [
+      "Heat the oven to 160°C (140°C fan). Put the ribs in a deep roasting tin. Mix the smoked paprika, crushed garlic, brown sugar, salt, half the pepper and 10 ml vinegar into a paste and rub all over the ribs. Cover the tin tightly with foil; no added water or cooking oil is required.",
+      "Roast covered for 2 hours 30 minutes until very tender and the meat yields easily when pierced between the bones. Check the thickest part is cooked through and reaches 75°C for 30 seconds, keeping the probe away from bone. If still firm, cover again and cook longer before glazing.",
+      "Meanwhile, slice the cabbage very finely, grate the carrots and finely slice the half onion. Mix the mayonnaise with the remaining 10 ml vinegar and pepper, then toss with all the prepared vegetables. Cover and refrigerate until serving.",
+      "Lift the ribs onto a clean roasting tray and carefully pour away the accumulated cooking liquid and rendered fat. Turn the oven up to 220°C (200°C fan). Brush the tender ribs with all the measured BBQ sauce.",
+      "Roast uncovered for 15–20 minutes, turning once and brushing with the sauce on the tray, until sticky and caramelised. Watch the glaze closely so the sugar colours without burning. Keep the ribs out of direct flame; this recipe is oven cooked.",
+      "Rest for 10 minutes, cut between the bones and divide into four portions. Serve with the chilled cabbage, carrot and onion slaw."
+    ],
+    "houseComposition": "Low 20-degree family sharing; dark roasting tray, pale-blue slaw bowl and serving tongs. Food matches the ingredient brief; no text/watermark, hands, unrelated sides or obvious artefacts.",
+    "stylingVersion": "recipe700-pilot-varied-household-v2"
+  }
+]

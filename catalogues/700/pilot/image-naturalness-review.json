@@ -1,0 +1,50 @@
+{
+  "schemaVersion": 1,
+  "images": [
+    {
+      "id": "crispy-aromatic-duck-pancakes",
+      "image": "release-assets/basketboss-v17/images/new/crispy-aromatic-duck-pancakes.webp",
+      "sha256": "229361b6b756dd619f4f9147a1d743c3dc75bcb6c59a2c58ea5f12cbd32f82f2",
+      "reviewedAt": "2026-11-08T16:52:50.719403+00:00",
+      "naturalnessReview": "passed",
+      "reviewer": "assistant visual inspection of generated source and exported image",
+      "notes": "Overhead 90-degree family sharing; blue oval platter, patterned side plates and forks. Food matches the ingredient brief; no text/watermark, hands, unrelated sides or obvious artefacts."
+    },
+    {
+      "id": "salmon-en-croute-with-spinach",
+      "image": "release-assets/basketboss-v17/images/new/salmon-en-croute-with-spinach.webp",
+      "sha256": "c2d5e746d16cc876d09b5c111899f65b0d81ebe738e1d178d280edbc9fed4363",
+      "reviewedAt": "2026-11-08T16:52:50.719420+00:00",
+      "naturalnessReview": "passed",
+      "reviewer": "assistant visual inspection of generated source and exported image",
+      "notes": "Angled individual plated serving with recipe-specific food and warm natural light. Food matches the ingredient brief; no text/watermark, hands, unrelated sides or obvious artefacts."
+    },
+    {
+      "id": "spaghetti-carbonara",
+      "image": "release-assets/basketboss-v17/images/new/spaghetti-carbonara.webp",
+      "sha256": "515d064776b05e89f4707aedf5f05ad7744cce63b325bf37aa156277b52a34df",
+      "reviewedAt": "2026-11-08T16:52:50.719423+00:00",
+      "naturalnessReview": "passed",
+      "reviewer": "assistant visual inspection of generated source and exported image",
+      "notes": "Angled individual plated serving with recipe-specific food and warm natural light. Food matches the ingredient brief; no text/watermark, hands, unrelated sides or obvious artefacts."
+    },
+    {
+      "id": "belgian-breakfast-waffles-with-berries",
+      "image": "release-assets/basketboss-v17/images/new/belgian-breakfast-waffles-with-berries.webp",
+      "sha256": "7ac6656280fd555ebf88cd0f1cfe4d77f884541e96edacf628b9f615d93c67b4",
+      "reviewedAt": "2026-11-08T16:52:50.719424+00:00",
+      "naturalnessReview": "passed",
+      "reviewer": "assistant visual inspection of generated source and exported image",
+      "notes": "Angled individual plated serving with recipe-specific food and warm natural light. Food matches the ingredient brief; no text/watermark, hands, unrelated sides or obvious artefacts."
+    },
+    {
+      "id": "sticky-bbq-pork-spare-ribs-with-slaw",
+      "image": "release-assets/basketboss-v17/images/new/sticky-bbq-pork-spare-ribs-with-slaw.webp",
+      "sha256": "86fb286e957f0149190a889d1e365adeab2cd3a564ef57b0516d3d6f23aff841",
+      "reviewedAt": "2026-11-08T16:52:50.719426+00:00",
+      "naturalnessReview": "passed",
+      "reviewer": "assistant visual inspection of generated source and exported image",
+      "notes": "Low 20-degree family sharing; dark roasting tray, pale-blue slaw bowl and serving tongs. Food matches the ingredient brief; no text/watermark, hands, unrelated sides or obvious artefacts."
+    }
+  ]
+}

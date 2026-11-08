@@ -1,0 +1,381 @@
+[
+  {
+    "id": "spaghetti-carbonara",
+    "slug": "spaghetti-carbonara",
+    "catalogueNumber": 527,
+    "name": "Spaghetti carbonara",
+    "category": "Family Meals · Pasta",
+    "tag": "QUICK DINNER",
+    "mins": 25,
+    "prep_mins": 10,
+    "cook_mins": 15,
+    "servings": 4,
+    "baseServings": 4,
+    "cost": 10.91,
+    "cost_basis": "Actual BasketBoss source-aware meal estimate. Fresh food uses guide packs and pantry ingredients use the existing policy. Pilot pack additions and regional multipliers are illustrative/unverified; Shop charges the packs actually purchased.",
+    "image": "release-assets/basketboss-v17/images/new/spaghetti-carbonara.webp",
+    "tip": "Take the pan off the direct heat before adding the egg mixture, then loosen with measured splashes of the reserved pasta water.",
+    "ingredients": [
+      [
+        "Spaghetti",
+        "400 g",
+        1.6,
+        "Grains"
+      ],
+      [
+        "Pancetta",
+        "200 g, diced",
+        3.27,
+        "Meat"
+      ],
+      [
+        "Eggs",
+        "4 medium eggs, using 2 whole eggs and the yolks from the other 2",
+        1.2,
+        "Dairy"
+      ],
+      [
+        "Parmesan",
+        "100 g, finely grated",
+        1,
+        "Dairy"
+      ],
+      [
+        "Ground black pepper",
+        "2 g",
+        0.1,
+        "Other"
+      ],
+      [
+        "Salt",
+        "8 g, for the pasta cooking water",
+        0.01,
+        "Other"
+      ]
+    ],
+    "method": [
+      "Bring a large pan of tap water to the boil. Add the measured salt and cook the spaghetti for its pack time until just al dente. Before draining, reserve 250 ml of the cooking water.",
+      "Meanwhile, put the diced pancetta in a wide dry frying pan over a medium-low heat. Cook for 8–10 minutes, stirring regularly, until its fat has rendered and the cubes are golden and cooked through. Do not add oil.",
+      "Whisk the two whole eggs, two additional yolks, 80 g Parmesan and most of the black pepper together. Refrigerate the two unused egg whites promptly for another recipe; all four eggs are included in the ingredient quantity.",
+      "Take the pancetta pan off the heat. Add the hot drained spaghetti and toss through the pancetta and its rendered fat. Wait about 30 seconds, then pour in the egg mixture while tossing continuously. Add the reserved hot cooking water a tablespoon at a time until a glossy sauce clings to the strands; do not pour in all 250 ml automatically.",
+      "Return to the lowest heat only if needed and keep tossing so the eggs warm evenly without scrambling. For a fully cooked egg sauce, check it reaches 71°C with a clean probe while continuing to stir; add another splash of reserved hot water if it thickens. The sauce should remain glossy, with no visible liquid egg.",
+      "Divide immediately between four warm bowls. Finish with the reserved 20 g Parmesan and remaining black pepper. No cream, garlic, parsley or peas are added."
+    ],
+    "steps": [
+      "Bring a large pan of tap water to the boil. Add the measured salt and cook the spaghetti for its pack time until just al dente. Before draining, reserve 250 ml of the cooking water.",
+      "Meanwhile, put the diced pancetta in a wide dry frying pan over a medium-low heat. Cook for 8–10 minutes, stirring regularly, until its fat has rendered and the cubes are golden and cooked through. Do not add oil.",
+      "Whisk the two whole eggs, two additional yolks, 80 g Parmesan and most of the black pepper together. Refrigerate the two unused egg whites promptly for another recipe; all four eggs are included in the ingredient quantity.",
+      "Take the pancetta pan off the heat. Add the hot drained spaghetti and toss through the pancetta and its rendered fat. Wait about 30 seconds, then pour in the egg mixture while tossing continuously. Add the reserved hot cooking water a tablespoon at a time until a glossy sauce clings to the strands; do not pour in all 250 ml automatically.",
+      "Return to the lowest heat only if needed and keep tossing so the eggs warm evenly without scrambling. For a fully cooked egg sauce, check it reaches 71°C with a clean probe while continuing to stir; add another splash of reserved hot water if it thickens. The sauce should remain glossy, with no visible liquid egg.",
+      "Divide immediately between four warm bowls. Finish with the reserved 20 g Parmesan and remaining black pepper. No cream, garlic, parsley or peas are added."
+    ],
+    "ingredient_display_lines": [
+      "Spaghetti — 400 g",
+      "Pancetta — 200 g, diced",
+      "Eggs — 4 medium eggs, using 2 whole eggs and the yolks from the other 2",
+      "Parmesan — 100 g, finely grated",
+      "Ground black pepper — 2 g",
+      "Salt — 8 g, for the pasta cooking water"
+    ],
+    "allergy_advice": "Allergy information is a guide, not a guarantee. Check every ingredient and substitute label, including may-contain warnings, and prevent cross-contact. Prepared sauces, pastry and baking ingredients may contain additional allergens. Choose another meal if you cannot confirm suitability.",
+    "allergen_screen_possible_unverified": [
+      "Gluten-containing cereals",
+      "Eggs",
+      "Milk"
+    ],
+    "culinary_prep_notes": [
+      "Cook in boiling water until just al dente and reserve 250 ml of its cooking water.",
+      "Cook gently in a dry frying pan so its own fat renders before the cubes crisp.",
+      "Whisk the whole eggs and yolks with the grated cheese; refrigerate the two unused whites for another recipe.",
+      "Whisk 80 g into the egg mixture and reserve 20 g to serve.",
+      "Add most to the eggs and a little to finish.",
+      "Add to the boiling cooking water; no extra salt is added to the sauce."
+    ],
+    "culinary_data_version": "expansion-700-pilot-20261108",
+    "culinary_profile": "Italian household classic",
+    "primaryProtein": "pork",
+    "cheeseHeavy": true,
+    "dinnerEligible": true,
+    "expansionGroup": "general-dinner",
+    "fingerprint": {
+      "primaryProtein": "pork",
+      "base": "long-pasta",
+      "flavorProfile": "egg-parmesan-black-pepper",
+      "cookingMethod": "render-pancetta-and-emulsify-eggs",
+      "vessel": "saucepan-and-frying-pan"
+    },
+    "coreIngredientKeys": [
+      "spaghetti",
+      "pancetta",
+      "egg",
+      "parmesan"
+    ],
+    "flavorTokens": [
+      "parmesan",
+      "black-pepper"
+    ],
+    "accessTier": "free",
+    "premium": false,
+    "reviewStatus": "batch-awaiting-global-validation",
+    "portion_status": "Authored adjustable household servings; not NHS-approved dietary advice.",
+    "cook_test_status": "Not kitchen-tested",
+    "imageProvenance": {
+      "type": "generated",
+      "purpose": "Photorealistic recipe-card illustration",
+      "exportWidth": 1448,
+      "exportHeight": 1086,
+      "exportFormat": "webp"
+    },
+    "total_elapsed_mins": 25,
+    "ci_estimates": {
+      "UK": {
+        "estimate": 10.91,
+        "currency": "GBP",
+        "per_serving_estimate": 2.73,
+        "confidence": "INDICATIVE_UNVERIFIED",
+        "cost_basis": "Actual BasketBoss source-aware meal adapter; regional guide packs plus proportional pantry use, including two staged illustrative pack additions. Not observed supermarket prices.",
+        "estimate_gbp": 10.91
+      },
+      "Guernsey": {
+        "estimate": 13.38,
+        "currency": "GBP",
+        "per_serving_estimate": 3.35,
+        "confidence": "INDICATIVE_UNVERIFIED",
+        "cost_basis": "Actual BasketBoss source-aware meal adapter; regional guide packs plus proportional pantry use, including two staged illustrative pack additions. Not observed supermarket prices.",
+        "estimate_gbp": 13.38
+      },
+      "Jersey": {
+        "estimate": 13.97,
+        "currency": "GBP",
+        "per_serving_estimate": 3.49,
+        "confidence": "INDICATIVE_UNVERIFIED",
+        "cost_basis": "Actual BasketBoss source-aware meal adapter; regional guide packs plus proportional pantry use, including two staged illustrative pack additions. Not observed supermarket prices.",
+        "estimate_gbp": 13.97
+      },
+      "US": {
+        "estimate": 18.56,
+        "currency": "USD",
+        "per_serving_estimate": 4.64,
+        "confidence": "INDICATIVE_UNVERIFIED",
+        "cost_basis": "Actual BasketBoss source-aware meal adapter; regional guide packs plus proportional pantry use, including two staged illustrative pack additions. Not observed supermarket prices.",
+        "estimate_usd": 18.56
+      }
+    }
+  },
+  {
+    "id": "sticky-bbq-pork-spare-ribs-with-slaw",
+    "slug": "sticky-bbq-pork-spare-ribs-with-slaw",
+    "catalogueNumber": 545,
+    "name": "Sticky BBQ pork spare ribs with slaw",
+    "category": "Family Meals · BBQ favourites",
+    "tag": "SLOW ROAST",
+    "mins": 200,
+    "prep_mins": 20,
+    "cook_mins": 170,
+    "servings": 4,
+    "baseServings": 4,
+    "cost": 21.74,
+    "cost_basis": "Actual BasketBoss source-aware meal estimate. Fresh food uses guide packs and pantry ingredients use the existing policy. Pilot pack additions and regional multipliers are illustrative/unverified; Shop charges the packs actually purchased.",
+    "image": "release-assets/basketboss-v17/images/new/sticky-bbq-pork-spare-ribs-with-slaw.webp",
+    "tip": "Cook the ribs covered until tender before adding the glaze; the final hot roast makes the sauce sticky without drying the meat.",
+    "ingredients": [
+      [
+        "Pork spare ribs",
+        "1.6 kg raw bone-in pork spare ribs",
+        11,
+        "Meat"
+      ],
+      [
+        "Smoked paprika",
+        "6 g",
+        0.29,
+        "Other"
+      ],
+      [
+        "Garlic",
+        "2 cloves",
+        0.1,
+        "Vegetables"
+      ],
+      [
+        "Soft brown sugar",
+        "20 g",
+        0.04,
+        "Other"
+      ],
+      [
+        "Salt",
+        "4 g",
+        0.01,
+        "Other"
+      ],
+      [
+        "Ground black pepper",
+        "2 g",
+        0.1,
+        "Other"
+      ],
+      [
+        "BBQ sauce",
+        "180 ml",
+        1.2,
+        "Other"
+      ],
+      [
+        "Apple cider vinegar",
+        "20 ml",
+        0.08,
+        "Other"
+      ],
+      [
+        "White cabbage",
+        "300 g",
+        0.33,
+        "Vegetables"
+      ],
+      [
+        "Carrots",
+        "150 g",
+        0.1,
+        "Vegetables"
+      ],
+      [
+        "Onion",
+        "1/2 small onion",
+        0.17,
+        "Vegetables"
+      ],
+      [
+        "Mayonnaise",
+        "80 ml",
+        0.53,
+        "Other"
+      ]
+    ],
+    "method": [
+      "Heat the oven to 160°C (140°C fan). Put the ribs in a deep roasting tin. Mix the smoked paprika, crushed garlic, brown sugar, salt, half the pepper and 10 ml vinegar into a paste and rub all over the ribs. Cover the tin tightly with foil; no added water or cooking oil is required.",
+      "Roast covered for 2 hours 30 minutes until very tender and the meat yields easily when pierced between the bones. Check the thickest part is cooked through and reaches 75°C for 30 seconds, keeping the probe away from bone. If still firm, cover again and cook longer before glazing.",
+      "Meanwhile, slice the cabbage very finely, grate the carrots and finely slice the half onion. Mix the mayonnaise with the remaining 10 ml vinegar and pepper, then toss with all the prepared vegetables. Cover and refrigerate until serving.",
+      "Lift the ribs onto a clean roasting tray and carefully pour away the accumulated cooking liquid and rendered fat. Turn the oven up to 220°C (200°C fan). Brush the tender ribs with all the measured BBQ sauce.",
+      "Roast uncovered for 15–20 minutes, turning once and brushing with the sauce on the tray, until sticky and caramelised. Watch the glaze closely so the sugar colours without burning. Keep the ribs out of direct flame; this recipe is oven cooked.",
+      "Rest for 10 minutes, cut between the bones and divide into four portions. Serve with the chilled cabbage, carrot and onion slaw."
+    ],
+    "steps": [
+      "Heat the oven to 160°C (140°C fan). Put the ribs in a deep roasting tin. Mix the smoked paprika, crushed garlic, brown sugar, salt, half the pepper and 10 ml vinegar into a paste and rub all over the ribs. Cover the tin tightly with foil; no added water or cooking oil is required.",
+      "Roast covered for 2 hours 30 minutes until very tender and the meat yields easily when pierced between the bones. Check the thickest part is cooked through and reaches 75°C for 30 seconds, keeping the probe away from bone. If still firm, cover again and cook longer before glazing.",
+      "Meanwhile, slice the cabbage very finely, grate the carrots and finely slice the half onion. Mix the mayonnaise with the remaining 10 ml vinegar and pepper, then toss with all the prepared vegetables. Cover and refrigerate until serving.",
+      "Lift the ribs onto a clean roasting tray and carefully pour away the accumulated cooking liquid and rendered fat. Turn the oven up to 220°C (200°C fan). Brush the tender ribs with all the measured BBQ sauce.",
+      "Roast uncovered for 15–20 minutes, turning once and brushing with the sauce on the tray, until sticky and caramelised. Watch the glaze closely so the sugar colours without burning. Keep the ribs out of direct flame; this recipe is oven cooked.",
+      "Rest for 10 minutes, cut between the bones and divide into four portions. Serve with the chilled cabbage, carrot and onion slaw."
+    ],
+    "ingredient_display_lines": [
+      "Pork spare ribs — 1.6 kg raw bone-in pork spare ribs",
+      "Smoked paprika — 6 g",
+      "Garlic — 2 cloves",
+      "Soft brown sugar — 20 g",
+      "Salt — 4 g",
+      "Ground black pepper — 2 g",
+      "BBQ sauce — 180 ml",
+      "Apple cider vinegar — 20 ml",
+      "White cabbage — 300 g",
+      "Carrots — 150 g",
+      "Onion — 1/2 small onion",
+      "Mayonnaise — 80 ml"
+    ],
+    "allergy_advice": "Allergy information is a guide, not a guarantee. Check every ingredient and substitute label, including may-contain warnings, and prevent cross-contact. Prepared sauces, pastry and baking ingredients may contain additional allergens. Choose another meal if you cannot confirm suitability.",
+    "allergen_screen_possible_unverified": [
+      "Eggs",
+      "Mustard",
+      "Gluten-containing cereals",
+      "Soya",
+      "Sulphites"
+    ],
+    "culinary_prep_notes": [
+      "Keep the racks on the bone; cut into portions only after cooking.",
+      "Mix into the rub and coat the ribs evenly.",
+      "Peel and crush finely into the rub.",
+      "Use in the rub; the glaze already contains sugar so add no extra.",
+      "Use in the rib rub.",
+      "Use half for the rub and half in the slaw dressing.",
+      "Measure by volume and brush onto the tender cooked ribs for the final roast.",
+      "Use 10 ml in the rib rub and 10 ml in the slaw dressing.",
+      "Remove the hard core and slice very finely.",
+      "Scrub or peel and coarsely grate.",
+      "Peel and slice very finely so it mixes evenly through the slaw.",
+      "Measure by volume and mix with the vinegar before adding the vegetables."
+    ],
+    "culinary_data_version": "expansion-700-pilot-20261108",
+    "culinary_profile": "American-style family favourite",
+    "primaryProtein": "pork",
+    "cheeseHeavy": false,
+    "dinnerEligible": true,
+    "expansionGroup": "general-dinner",
+    "fingerprint": {
+      "primaryProtein": "pork",
+      "base": "bone-in-ribs-and-raw-slaw",
+      "flavorProfile": "smoky-bbq-cider",
+      "cookingMethod": "covered-slow-roast-and-hot-glaze",
+      "vessel": "roasting-tin"
+    },
+    "coreIngredientKeys": [
+      "pork spare ribs",
+      "bbq sauce",
+      "white cabbage",
+      "carrot",
+      "mayonnaise"
+    ],
+    "flavorTokens": [
+      "smoked-paprika",
+      "bbq",
+      "cider"
+    ],
+    "accessTier": "free",
+    "premium": false,
+    "reviewStatus": "batch-awaiting-global-validation",
+    "portion_status": "Authored adjustable household servings; not NHS-approved dietary advice.",
+    "cook_test_status": "Not kitchen-tested",
+    "imageProvenance": {
+      "type": "generated",
+      "purpose": "Photorealistic recipe-card illustration",
+      "exportWidth": 1448,
+      "exportHeight": 1086,
+      "exportFormat": "webp"
+    },
+    "total_elapsed_mins": 200,
+    "ci_estimates": {
+      "UK": {
+        "estimate": 21.74,
+        "currency": "GBP",
+        "per_serving_estimate": 5.44,
+        "confidence": "INDICATIVE_UNVERIFIED",
+        "cost_basis": "Actual BasketBoss source-aware meal adapter; regional guide packs plus proportional pantry use, including two staged illustrative pack additions. Not observed supermarket prices.",
+        "estimate_gbp": 21.74
+      },
+      "Guernsey": {
+        "estimate": 26.02,
+        "currency": "GBP",
+        "per_serving_estimate": 6.51,
+        "confidence": "INDICATIVE_UNVERIFIED",
+        "cost_basis": "Actual BasketBoss source-aware meal adapter; regional guide packs plus proportional pantry use, including two staged illustrative pack additions. Not observed supermarket prices.",
+        "estimate_gbp": 26.02
+      },
+      "Jersey": {
+        "estimate": 27.34,
+        "currency": "GBP",
+        "per_serving_estimate": 6.84,
+        "confidence": "INDICATIVE_UNVERIFIED",
+        "cost_basis": "Actual BasketBoss source-aware meal adapter; regional guide packs plus proportional pantry use, including two staged illustrative pack additions. Not observed supermarket prices.",
+        "estimate_gbp": 27.34
+      },
+      "US": {
+        "estimate": 37.46,
+        "currency": "USD",
+        "per_serving_estimate": 9.37,
+        "confidence": "INDICATIVE_UNVERIFIED",
+        "cost_basis": "Actual BasketBoss source-aware meal adapter; regional guide packs plus proportional pantry use, including two staged illustrative pack additions. Not observed supermarket prices.",
+        "estimate_usd": 37.46
+      }
+    },
+    "rest_mins": 10
+  }
+]

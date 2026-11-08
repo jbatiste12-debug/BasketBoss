@@ -1,0 +1,68 @@
+{
+  "schemaVersion": 1,
+  "status": "pilot-automated-checks-passed",
+  "activationEligible": false,
+  "counts": {
+    "protectedProduction": 500,
+    "stagedPilot": 5,
+    "previewCombined": 505,
+    "releaseTarget": 700,
+    "missingReleaseRecipes": 195
+  },
+  "tierCounts": {
+    "free": 2,
+    "premium": 3
+  },
+  "protectedFiles": {
+    "recipes.json": {
+      "unchanged": true,
+      "sha256": "ee77ba6d2ab5d53a113075487d8e177c27468ba226cc029895020d6dc9fd84bd"
+    },
+    "normalized-ingredient-database.json": {
+      "unchanged": true,
+      "sha256": "d1d71230ba59a8e0106a66ef0d9704dd57426b1a1907a76ec4ba3139a18dd648"
+    },
+    "ingredient-pack-catalog.json": {
+      "unchanged": true,
+      "sha256": "40432d2c7ee651eeed1d5305f8acb180e7a2b445d82dc63bb10b3676235eedea"
+    },
+    "dessert_recipes.json": {
+      "unchanged": true,
+      "sha256": "e63c661a435185cf7a0e99f5f85999bb63a9f665ab1a40857ad92a1033784132"
+    }
+  },
+  "protectedPrivateRowsSha256": "f89eaecc9b2ca71fbd8018c7f733e51c630f6992e5ad5def902f609a71fcbc2e",
+  "sourceHashes": {
+    "recipes": "2b9a705542e4af2aa84fdd586c71fb7eef183a1cbdead9dbc7e912e919eaf989",
+    "normalized": "8a2884e8bb42db887289851d469dee45ddd350b74fe150b078c7566704f88279",
+    "imageBriefs": "f477121a5bc1905391428c9d91a8c9d353baa2c52be33ceb6b3ae6a2666fc2cc",
+    "planningRoles": "59e861eef79e3172da0bdc31efb618242309e4e0f462823e210639f31290692b"
+  },
+  "checks": {
+    "pricingCases": 120,
+    "pantryCases": 15,
+    "imageCases": 5,
+    "canonicalIngredientRows": 47,
+    "newIndicativePackPairs": 2,
+    "duplicateCandidates": 0
+  },
+  "planning": {
+    "policy": "staged-catalogue-700",
+    "wiredIntoClient": false,
+    "activationEligible": false,
+    "legacyComparisons": 1000,
+    "pilotComparisons": 20,
+    "legacyIncompatibilities": [
+      {
+        "id": "crispy-aromatic-duck-pancakes",
+        "legacyDinnerEligible": false,
+        "approvedDinnerEligible": true
+      }
+    ]
+  },
+  "warnings": [
+    "The catalogue-700 dinner policy is staged only. A future versioned client must wire it deliberately before release; catalogue-500 planning remains unchanged.",
+    "The legacy client excludes savoury duck pancakes by title. Its behavior is preserved; the staged catalogue-700 policy handles the explicitly reviewed new dinner role only after future client integration."
+  ],
+  "failures": []
+}

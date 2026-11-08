@@ -1,0 +1,234 @@
+{
+  "recipes": [
+    {
+      "id": "spaghetti-carbonara",
+      "name": "Spaghetti carbonara",
+      "servings": 4,
+      "ingredients": [
+        {
+          "name": "Spaghetti",
+          "key": "spaghetti",
+          "quantity": 400,
+          "unit": "g",
+          "price_hint": 1.6,
+          "status": "AUTHORED_EXPLICIT_EXPANSION",
+          "recipe_id": "spaghetti-carbonara",
+          "ingredient_index": 0,
+          "prep_note": "Cook in boiling water until just al dente and reserve 250 ml of its cooking water.",
+          "quantity_basis": "EXPLICIT_METRIC_QUANTITY"
+        },
+        {
+          "name": "Pancetta",
+          "key": "pancetta",
+          "quantity": 200,
+          "unit": "g",
+          "price_hint": 3.27,
+          "status": "AUTHORED_EXPLICIT_EXPANSION",
+          "recipe_id": "spaghetti-carbonara",
+          "ingredient_index": 1,
+          "prep_note": "Cook gently in a dry frying pan so its own fat renders before the cubes crisp.",
+          "quantity_basis": "EXPLICIT_METRIC_QUANTITY"
+        },
+        {
+          "name": "Eggs",
+          "key": "egg",
+          "quantity": 4,
+          "unit": "each",
+          "price_hint": 1.2,
+          "status": "AUTHORED_EXPLICIT_EXPANSION",
+          "recipe_id": "spaghetti-carbonara",
+          "ingredient_index": 2,
+          "prep_note": "Whisk the whole eggs and yolks with the grated cheese; refrigerate the two unused whites for another recipe.",
+          "quantity_basis": "EXPLICIT_COUNT"
+        },
+        {
+          "name": "Parmesan",
+          "key": "parmesan",
+          "quantity": 100,
+          "unit": "g",
+          "price_hint": 1,
+          "status": "AUTHORED_EXPLICIT_EXPANSION",
+          "recipe_id": "spaghetti-carbonara",
+          "ingredient_index": 3,
+          "prep_note": "Whisk 80 g into the egg mixture and reserve 20 g to serve.",
+          "quantity_basis": "EXPLICIT_METRIC_QUANTITY"
+        },
+        {
+          "name": "Ground black pepper",
+          "key": "ground black pepper",
+          "quantity": 2,
+          "unit": "g",
+          "price_hint": 0.1,
+          "status": "AUTHORED_EXPLICIT_EXPANSION",
+          "recipe_id": "spaghetti-carbonara",
+          "ingredient_index": 4,
+          "prep_note": "Add most to the eggs and a little to finish.",
+          "quantity_basis": "EXPLICIT_METRIC_QUANTITY"
+        },
+        {
+          "name": "Salt",
+          "key": "salt",
+          "quantity": 8,
+          "unit": "g",
+          "price_hint": 0.01,
+          "status": "AUTHORED_EXPLICIT_EXPANSION",
+          "recipe_id": "spaghetti-carbonara",
+          "ingredient_index": 5,
+          "prep_note": "Add to the boiling cooking water; no extra salt is added to the sauce.",
+          "quantity_basis": "EXPLICIT_METRIC_QUANTITY"
+        }
+      ]
+    },
+    {
+      "id": "sticky-bbq-pork-spare-ribs-with-slaw",
+      "name": "Sticky BBQ pork spare ribs with slaw",
+      "servings": 4,
+      "ingredients": [
+        {
+          "name": "Pork spare ribs",
+          "key": "pork spare ribs",
+          "quantity": 1600,
+          "unit": "g",
+          "price_hint": 11,
+          "status": "AUTHORED_EXPLICIT_EXPANSION",
+          "recipe_id": "sticky-bbq-pork-spare-ribs-with-slaw",
+          "ingredient_index": 0,
+          "prep_note": "Keep the racks on the bone; cut into portions only after cooking.",
+          "quantity_basis": "EXPLICIT_METRIC_QUANTITY"
+        },
+        {
+          "name": "Smoked paprika",
+          "key": "smoked paprika",
+          "quantity": 6,
+          "unit": "g",
+          "price_hint": 0.29,
+          "status": "AUTHORED_EXPLICIT_EXPANSION",
+          "recipe_id": "sticky-bbq-pork-spare-ribs-with-slaw",
+          "ingredient_index": 1,
+          "prep_note": "Mix into the rub and coat the ribs evenly.",
+          "quantity_basis": "EXPLICIT_METRIC_QUANTITY"
+        },
+        {
+          "name": "Garlic",
+          "key": "garlic",
+          "quantity": 2,
+          "unit": "clove",
+          "price_hint": 0.1,
+          "status": "AUTHORED_EXPLICIT_EXPANSION",
+          "recipe_id": "sticky-bbq-pork-spare-ribs-with-slaw",
+          "ingredient_index": 2,
+          "prep_note": "Peel and crush finely into the rub.",
+          "quantity_basis": "EXPLICIT_METRIC_QUANTITY"
+        },
+        {
+          "name": "Soft brown sugar",
+          "key": "soft brown sugar",
+          "quantity": 20,
+          "unit": "g",
+          "price_hint": 0.04,
+          "status": "AUTHORED_EXPLICIT_EXPANSION",
+          "recipe_id": "sticky-bbq-pork-spare-ribs-with-slaw",
+          "ingredient_index": 3,
+          "prep_note": "Use in the rub; the glaze already contains sugar so add no extra.",
+          "quantity_basis": "EXPLICIT_METRIC_QUANTITY"
+        },
+        {
+          "name": "Salt",
+          "key": "salt",
+          "quantity": 4,
+          "unit": "g",
+          "price_hint": 0.01,
+          "status": "AUTHORED_EXPLICIT_EXPANSION",
+          "recipe_id": "sticky-bbq-pork-spare-ribs-with-slaw",
+          "ingredient_index": 4,
+          "prep_note": "Use in the rib rub.",
+          "quantity_basis": "EXPLICIT_METRIC_QUANTITY"
+        },
+        {
+          "name": "Ground black pepper",
+          "key": "ground black pepper",
+          "quantity": 2,
+          "unit": "g",
+          "price_hint": 0.1,
+          "status": "AUTHORED_EXPLICIT_EXPANSION",
+          "recipe_id": "sticky-bbq-pork-spare-ribs-with-slaw",
+          "ingredient_index": 5,
+          "prep_note": "Use half for the rub and half in the slaw dressing.",
+          "quantity_basis": "EXPLICIT_METRIC_QUANTITY"
+        },
+        {
+          "name": "BBQ sauce",
+          "key": "bbq sauce",
+          "quantity": 180,
+          "unit": "ml",
+          "price_hint": 1.2,
+          "status": "AUTHORED_EXPLICIT_EXPANSION",
+          "recipe_id": "sticky-bbq-pork-spare-ribs-with-slaw",
+          "ingredient_index": 6,
+          "prep_note": "Measure by volume and brush onto the tender cooked ribs for the final roast.",
+          "quantity_basis": "EXPLICIT_METRIC_QUANTITY"
+        },
+        {
+          "name": "Apple cider vinegar",
+          "key": "apple cider vinegar",
+          "quantity": 20,
+          "unit": "ml",
+          "price_hint": 0.08,
+          "status": "AUTHORED_EXPLICIT_EXPANSION",
+          "recipe_id": "sticky-bbq-pork-spare-ribs-with-slaw",
+          "ingredient_index": 7,
+          "prep_note": "Use 10 ml in the rib rub and 10 ml in the slaw dressing.",
+          "quantity_basis": "EXPLICIT_METRIC_QUANTITY"
+        },
+        {
+          "name": "White cabbage",
+          "key": "white cabbage",
+          "quantity": 300,
+          "unit": "g",
+          "price_hint": 0.33,
+          "status": "AUTHORED_EXPLICIT_EXPANSION",
+          "recipe_id": "sticky-bbq-pork-spare-ribs-with-slaw",
+          "ingredient_index": 8,
+          "prep_note": "Remove the hard core and slice very finely.",
+          "quantity_basis": "EXPLICIT_METRIC_QUANTITY"
+        },
+        {
+          "name": "Carrots",
+          "key": "carrot",
+          "quantity": 150,
+          "unit": "g",
+          "price_hint": 0.1,
+          "status": "AUTHORED_EXPLICIT_EXPANSION",
+          "recipe_id": "sticky-bbq-pork-spare-ribs-with-slaw",
+          "ingredient_index": 9,
+          "prep_note": "Scrub or peel and coarsely grate.",
+          "quantity_basis": "EXPLICIT_METRIC_QUANTITY"
+        },
+        {
+          "name": "Onion",
+          "key": "onion",
+          "quantity": 0.5,
+          "unit": "each",
+          "price_hint": 0.17,
+          "status": "AUTHORED_EXPLICIT_EXPANSION",
+          "recipe_id": "sticky-bbq-pork-spare-ribs-with-slaw",
+          "ingredient_index": 10,
+          "prep_note": "Peel and slice very finely so it mixes evenly through the slaw.",
+          "quantity_basis": "EXPLICIT_COUNT"
+        },
+        {
+          "name": "Mayonnaise",
+          "key": "mayonnaise",
+          "quantity": 80,
+          "unit": "ml",
+          "price_hint": 0.53,
+          "status": "AUTHORED_EXPLICIT_EXPANSION",
+          "recipe_id": "sticky-bbq-pork-spare-ribs-with-slaw",
+          "ingredient_index": 11,
+          "prep_note": "Measure by volume and mix with the vinegar before adding the vegetables.",
+          "quantity_basis": "EXPLICIT_METRIC_QUANTITY"
+        }
+      ]
+    }
+  ]
+}
