@@ -42,6 +42,9 @@
   }
   tabs.addEventListener('scroll',()=>{view.tabScroll=tabs.scrollLeft;},{passive:true});view.bar.append(tabs);
   const panel=el('div','bbpg-editor');panel.id=panelId;panel.hidden=!view.editing;
+  // Build editing controls only when requested; closed group panels carry no
+  // stock actions and need only their stable aria-controls target.
+  if(view.editing){
   panel.append(el('p','bbpg-help','Make these groups your own. Removing a group keeps its items in Other. Groups are saved on this device for your account.'));
   const list=el('div','bbpg-group-list');
   const editable=view.groups.filter(group=>group.id!=='other');
@@ -60,18 +63,21 @@
   panel.append(list);
   const add=el('form','bbpg-add-group'),label=el('label','bbpg-name-label','New subcategory'),input=el('input');input.type='text';input.maxLength=48;input.required=true;input.autocomplete='off';input.placeholder=view.section==='essentials'?'e.g. Pet supplies':'e.g. Weekly favourites';input.value=view.newName;input.dataset.bbpgFocus='new-name';input.setAttribute('aria-label','New '+labels[view.section]+' subcategory');input.addEventListener('input',()=>{view.newName=input.value;});label.append(input);
   const submit=button('＋ Add group',()=>{});submit.type='submit';submit.className='bbpg-add';
-  add.addEventListener('submit',event=>{event.preventDefault();mutate(view,pin,ctx=>{api().create(view.section,input.value,ctx);view.newName='';},'Subcategory added. Use an item’s Subcategory menu to put it here.','new-name');});add.append(label,submit);panel.append(add);view.bar.append(panel);
+  add.addEventListener('submit',event=>{event.preventDefault();mutate(view,pin,ctx=>{api().create(view.section,input.value,ctx);view.newName='';},'Subcategory added. Use an item’s Subcategory menu to put it here.','new-name');});add.append(label,submit);panel.append(add);
+  }
+  view.bar.append(panel);
   const notice=el('p','bbpg-status',view.message);notice.setAttribute('role',view.error?'alert':'status');notice.setAttribute('aria-live','polite');notice.classList.toggle('is-error',!!view.error);view.bar.append(notice);
   // Replacing the pill controls must not jump back to the start of their row.
   // Reveal a selected group by scrolling only this row, never the whole page.
-  tabs.scrollLeft=scroll;
+  const startsAtAll=view.active==='all'&&scroll===0;
+  if(!startsAtAll)tabs.scrollLeft=scroll;
   const chosen=[...tabs.children].find(node=>node.dataset.bbpgGroup===view.active);
-  if(chosen&&(view.active!=='all'||oldActive!==view.active)){
+  if(!startsAtAll&&chosen&&(view.active!=='all'||oldActive!==view.active)){
    const row=tabs.getBoundingClientRect(),pill=chosen.getBoundingClientRect();
    if(pill.width>tabs.clientWidth||pill.left<row.left)tabs.scrollLeft+=pill.left-row.left;
    else if(pill.right>row.right)tabs.scrollLeft+=pill.right-row.right;
   }
-  view.tabScroll=tabs.scrollLeft;view.renderedActive=view.active;
+  view.tabScroll=startsAtAll?0:tabs.scrollLeft;view.renderedActive=view.active;
  }
  function mount(host,section,onChange){
   if(!host||!api()||!Object.hasOwn(labels,section))return null;

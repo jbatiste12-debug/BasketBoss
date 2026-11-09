@@ -173,7 +173,8 @@
   }
   function searchChoices(){
    const choices=toolbar?.querySelector('.bbpi-search-matches');if(!choices||!valid(current))return;
-   choices.replaceChildren();const foods=matchingFoods(query,knownFoods(),location);
+   choices.replaceChildren();if(!query.trim()){choices.hidden=true;return;}
+   const foods=matchingFoods(query,knownFoods(),location);
    for(const food of foods){const control=btn('+ '+food.name,()=>{jump(food.loc);addFood(food.loc,food.name);},'bbpi-search-choice');control.setAttribute('aria-label','Add '+food.name+' to '+food.loc);choices.append(control);}
    choices.hidden=!query.trim();if(!foods.length&&query.trim())choices.append(el('span','bbpi-search-empty','No match — add your own food.'));
   }

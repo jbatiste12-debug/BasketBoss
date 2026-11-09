@@ -8,7 +8,7 @@ const ENV={GITHUB_ACTIONS:'true',GITHUB_REPOSITORY:'jbatiste12-debug/BasketBoss'
 const diagnostic=(patch={})=>'BB_COOK_DIAGNOSTIC '+JSON.stringify({stage:'provider_request',code:'BB_COOK_PROVIDER_ACCESS',status:502,...patch});
 const trace=(patch={})=>({event:{request:{url:'https://old-canonical.pages.dev/api/tts?private='+PRIVATE,headers:{Origin:'capacitor://localhost',Authorization:PRIVATE,Cookie:PRIVATE},body:PRIVATE},response:{status:502,headers:{secret:PRIVATE}}},outcome:'exception',logs:[{level:'warn',message:[diagnostic()]},{level:'error',message:[PRIVATE]}],exceptions:[{name:PRIVATE,message:PRIVATE,stack:PRIVATE}],...patch});
 
-function fixture({projectPatch={},tailURL='wss://tail.developers.workers.dev/capability?token='+PRIVATE,publicResponse,apiResponse,onSocket,autoClose=true,socketFailure=false,deleteFailure=false,schemaColumns=['day_utc','actor','action','used'],schemaFailure=false}={}){
+function fixture({projectPatch={},tailId=TAIL,tailURL='wss://tail.developers.workers.dev/capability?token='+PRIVATE,publicResponse,apiResponse,onSocket,autoClose=true,socketFailure=false,deleteFailure=false,schemaColumns=['day_utc','actor','action','used'],schemaFailure=false}={}){
  const calls=[],emitted=[],sockets=[],timers=[];
  const project={name:'basketboss-site',production_branch:'main',domains:['basketboss.co.uk','www.basketboss.co.uk'],
   canonical_deployment:{id:DEPLOYMENT,environment:'production',latest_stage:{name:'deploy',status:'success'},deployment_trigger:{metadata:{commit_hash:COMMIT}}},
@@ -22,7 +22,7 @@ function fixture({projectPatch={},tailURL='wss://tail.developers.workers.dev/cap
     return Response.json({success:!schemaFailure,result:[{success:true,results:schemaColumns.map(name=>({name}))}]},{status:schemaFailure?403:200});
    }
    if(options.method==='GET')return Response.json({success:true,result:project});
-   if(options.method==='POST')return Response.json({success:true,result:{id:TAIL,url:tailURL,expires_at:PRIVATE}});
+   if(options.method==='POST')return Response.json({success:true,result:{id:tailId,url:tailURL,expires_at:PRIVATE}});
    if(options.method==='DELETE')return Response.json({success:!deleteFailure,result:null,errors:deleteFailure?[{message:PRIVATE}]:[]},{status:deleteFailure?500:200});
    throw Error(PRIVATE);
   }
@@ -147,6 +147,35 @@ test('tail uses trace-v1 and debug:false, emits bounded sanitized records, and a
  assert.equal(h.timers[0].milliseconds,90000);assert.equal(h.timers[0].cleared,true);
  assert.doesNotMatch(JSON.stringify(h.emitted),new RegExp(PRIVATE));
  assert.equal(h.emitted.findIndex(value=>value.route==='/api/tts'&&value.originKind==='native')>h.emitted.findIndex(value=>value.kind==='tail'),true);
+});
+
+test('Pages UUID and opaque tail IDs both listen and clean up only their encoded capability path',async()=>{
+ for(const tailId of [TAIL,'7d721a2c9fe94a48b73e6bd4e6d9cb84','tail:'+PRIVATE+'+QmFzZTY0==','a'.repeat(256)]){
+  const h=fixture({tailId,onSocket:socket=>socket.message(JSON.stringify(trace()))});
+  assert.equal((await h.run('tail')).emitted,1);assert.equal(h.sockets.length,1);
+  const deleted=h.calls.filter(call=>call.options.method==='DELETE');assert.equal(deleted.length,1);
+  assert.equal(deleted[0].url.pathname,'/client/v4/accounts/'+ENV.CLOUDFLARE_ACCOUNT_ID+'/pages/projects/basketboss-site/deployments/'+DEPLOYMENT+'/tails/'+encodeURIComponent(tailId));
+  assert.equal(deleted[0].url.search,'');assert.equal(deleted[0].url.hash,'');
+  assert.doesNotMatch(JSON.stringify(h.emitted),new RegExp(PRIVATE));assert.equal(JSON.stringify(h.emitted).includes(tailId),false);
+ }
+});
+
+test('unsafe or unbounded opaque IDs never reach a socket or a DELETE path and expose no descriptor content',async()=>{
+ for(const tailId of ['',null,42,{id:PRIVATE},'.','..','../'+PRIVATE,'tail/'+PRIVATE,'tail?token='+PRIVATE,'tail#'+PRIVATE,'%2e%2e','tail\\'+PRIVATE,'tail '+PRIVATE,'tail\n'+PRIVATE,'a'.repeat(257)]){
+  const h=fixture({tailId});
+  await assert.rejects(()=>h.run('tail'),error=>{assert.deepEqual(cookInspectionFailure(error),{kind:'failure',code:'INSPECT_TAIL_RESPONSE'});assert.doesNotMatch(error.message,new RegExp(PRIVATE));return true;});
+  assert.equal(h.sockets.length,0);assert.equal(h.calls.some(call=>call.options.method==='DELETE'),false);assert.doesNotMatch(JSON.stringify(h.emitted),new RegExp(PRIVATE));
+ }
+});
+
+test('a valid opaque ID is deleted even when its returned URL descriptor is invalid, with all secrets redacted',async()=>{
+ const tailId='tail:'+PRIVATE+'+temporary=';
+ for(const tailURL of [null,{},PRIVATE,'https://tail.developers.workers.dev/'+PRIVATE,'wss://tail.developers.workers.dev.attacker.invalid/'+PRIVATE]){
+  const h=fixture({tailId,tailURL});
+  await assert.rejects(()=>h.run('tail'),error=>{assert.deepEqual(cookInspectionFailure(error),{kind:'failure',code:'INSPECT_TAIL_URL'});assert.doesNotMatch(error.message,new RegExp(PRIVATE));return true;});
+  assert.equal(h.sockets.length,0);assert.equal(h.calls.at(-1).options.method,'DELETE');assert.ok(h.calls.at(-1).url.pathname.endsWith('/tails/'+encodeURIComponent(tailId)));
+  assert.doesNotMatch(JSON.stringify(h.emitted),new RegExp(PRIVATE));
+ }
 });
 
 test('unsafe tail destinations are rejected without connecting and still deleted',async()=>{

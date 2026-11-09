@@ -1,0 +1,96 @@
+<!doctype html>
+<html lang="en">
+<head>
+<base href="/">
+<meta name="basketboss-web-catalogue" content="700">
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <meta name="theme-color" content="#0d271d">
+  <meta name="referrer" content="strict-origin-when-cross-origin">
+  <title>BasketBoss Premium Plans</title>
+  <link rel="stylesheet" href="/pricing-sandbox.css?v=416f3a520484f8cf">
+  <script defer src="https://cdn.paddle.com/paddle/v2/paddle.js"></script>
+  <style>
+  .bb-checkout-feedback{margin-top:12px;padding:12px 14px;border-radius:12px;border:1px solid #c7dbc9;background:#f5faf4;color:#234a34;font-size:14px;line-height:1.55}
+  .bb-checkout-feedback[data-type="error"]{background:#fff2ed;border-color:#e8b4a3;color:#793b28}
+  .bb-checkout-fallback{display:inline-block;margin-top:9px;padding:11px 14px;min-height:44px;border-radius:10px;background:#205f3f;color:white!important;font-weight:800;text-decoration:none}
+  .bb-checkout-fallback:focus-visible{outline:3px solid #d5a437;outline-offset:3px}
+  .bb-paddle-trust{font-size:12px;line-height:1.5;text-align:center;color:#315d48;margin:12px 4px 0;font-weight:650}
+  .bb-paddle-trust a{color:inherit;text-decoration:underline;text-underline-offset:3px}
+  </style>
+  <script defer src="/paddle-sandbox.js?v=b04e2cf9d5ee3fae"></script>
+<!-- bb174-trial-ux-preview-v1: verified status display ONLY, no entitlement gate -->
+<link rel="stylesheet" href="/bb174-trial-ux.css?v=6e263b1817de1400">
+<script defer src="/pwa700/bb174-trial-ux.js?v=599463ddb43b302e"></script>
+</head>
+<body>
+  <div class="app-shell">
+    <header class="masthead">
+      <a class="brand" href="make-a-meal.html" aria-label="BasketBoss Make a Meal"><span class="brand-icon" aria-hidden="true">🧺</span><span>BasketBoss</span></a>
+      <div class="masthead-links"><a href="make-a-meal.html">← Back to Make a Meal</a></div>
+    </header>
+
+    <main>
+      <div class="test-ribbon" role="status"><span class="ribbon-dot" aria-hidden="true"></span> BASKETBOSS PREMIUM · MONTHLY MEMBERSHIP</div>
+      <section class="intro" aria-labelledby="plans-heading">
+        <p class="eyebrow">ONE SIMPLE UPGRADE</p>
+        <h1 id="plans-heading">Cook smarter with<br><span>BasketBoss Premium.</span></h1>
+        <p class="lead">Compare web Founder and Standard Premium, including trial lengths and monthly renewal terms.</p>
+        <p class="fineprint" id="recipe-availability">The web and Home Screen app include 200 Free recipes and all 700 with Premium. App Store: currently 100 Free and 500 total; the expanded collection is coming in an update. Apple plans and offers are shown separately in the app.</p>
+      </section>
+
+      <div id="checkoutMessage" class="checkout-message" role="status" aria-live="polite">Preparing secure Paddle checkout…</div>
+      <section class="plan-grid" aria-label="BasketBoss Premium subscription options" data-bb2026-pricing-clear-premium-benefits>
+        <article class="plan-card monthly" id="founder">
+          <div class="card-top"><span class="plan-icon" aria-hidden="true">🚀</span><span class="plan-label">FOUNDING MEMBER · FIRST 25 CONFIRMED ELIGIBLE MEMBERS</span></div>
+          <h2>Founding Member</h2>
+          <div class="price"><span class="pounds">£</span>1.99<span class="period"> / month</span></div>
+          <p class="subline"><strong>7-day free trial</strong>, then £1.99/month. The founding rate continues while your eligible subscription remains active. Available only while the first 25 qualifying places remain; checkout must confirm eligibility.</p>
+          <ul class="features">
+            <li><strong>All 700 recipes</strong> (vs 200 with Free)</li>
+            <li><strong>50 breakfast options</strong> across the full collection, plus optional breakfast and dessert planning</li>
+            <li><strong>Complete Leftover Magic</strong> collection</li>
+            <li><strong>Unlimited advanced shopping trips</strong> and extra shopping tools</li>
+            <li><strong>Premium AI</strong> photo scans (up to 5/day) and meal ideas (up to 10/day), subject to availability and usage limits</li>
+            <li><strong>Trim My Basket</strong> suggestions where available</li>
+            <li><strong>Yellow sticker &amp; reduced-food tools</strong> for UK, Guernsey and Jersey: estimated store windows, shopper reports and Use soon pantry priority</li>
+          </ul>
+          <button class="checkout-btn green" data-plan="founder" type="button">Start 7-day Founder trial <span aria-hidden="true">→</span></button>
+          <p class="bb-paddle-trust">🔒 Secure checkout via Paddle <span aria-hidden="true">•</span> <a href="subscriptions.html">Cancel anytime</a></p>
+        </article>
+        <article class="plan-card annual" id="monthly">
+          <div class="card-top"><span class="plan-icon" aria-hidden="true">✨</span><span class="plan-label">Standard Premium</span></div>
+          <h2>Standard Monthly</h2>
+          <div class="price"><span class="pounds">£</span>4.99<span class="period"> / month</span></div>
+          <p class="subline"><strong>3-day free trial</strong>, then £4.99/month. Cancel anytime; verify the trial end, first payment, taxes and renewal terms in secure checkout.</p>
+          <ul class="features"><li><strong>Everything in Premium</strong> shown in the Founding Member card</li>
+            <li>Same 700-recipe access and Premium tools</li>
+            <li>3 days free, then £4.99/month · cancel through subscription management</li>
+            <li>No annual web plan is currently offered</li></ul>
+          <button class="checkout-btn gold" data-plan="monthly" type="button">Start 3-day Standard trial <span aria-hidden="true">→</span></button>
+          <p class="bb-paddle-trust">🔒 Secure checkout via Paddle <span aria-hidden="true">•</span> <a href="subscriptions.html">Cancel anytime</a></p>
+        </article>
+      </section>
+
+      <section class="bb173-tier-comparison" aria-labelledby="bb173CompareTitle" style="max-width:980px;margin:20px auto;padding:20px;border:1px solid #b9d4bf;border-radius:19px;background:#f9fdf8;color:#234c33">
+<h2 id="bb173CompareTitle" style="margin:0 0 8px">Free or Premium? Your choice.</h2>
+<p style="line-height:1.5">Free: 200 recipes, manual ingredients, basic planning, unlimited shopping lists and one advanced shopping trip per week after sign-in, Install BasketBoss and all four markets. Premium: all 700 recipes, complete Leftover Magic, unlimited advanced shopping trips and Yellow sticker &amp; reduced-food tools for UK, Guernsey and Jersey. Store reduction times are estimates; availability varies by branch. AI tools are optional early access, subject to availability and daily limits (5 scans and 10 meal ideas/day).</p>
+<p style="font-size:12px;color:#52705b">Founding places are limited to the first 25 qualifying confirmed members. The exact first charge, taxes and renewal amount are shown in secure checkout.</p>
+<p style="font-size:14px;margin:12px 0 0"><a href="compare.html" style="color:#1d6543;font-weight:800;text-underline-offset:3px">See why families might choose BasketBoss, and compare Free with Premium</a></p>
+</section>
+
+<p class="hint" style="margin:10px 0 0;color:#284c42;font-size:14px">New to BasketBoss? <a href="index.html">Open BasketBoss to sign in or create an account</a>, then return to choose a plan.</p>
+
+      <section class="test-info" aria-labelledby="test-info-title">
+        <div class="info-icon" aria-hidden="true">🔒</div>
+        <div>
+          <h2 id="test-info-title">Your subscription details</h2>
+          <p>Review the trial end, recurring price, taxes and cancellation information before confirming any subscription in secure checkout.</p>
+          <p class="fineprint">*Premium features require eligible subscription access. AI availability and daily limits apply. Tax displayed at checkout may vary by location.</p>
+        </div>
+      </section>
+    </main>
+    <footer class="footer">BasketBoss · Eat well. Spend less. Waste less. <span aria-hidden="true">·</span> <a href="privacy.html">Privacy &amp; Legal</a> <span aria-hidden="true">·</span> <a href="terms.html">Terms</a> · <a href="subscriptions.html">Cancellations &amp; refunds</a> · <a href="mailto:support@basketboss.co.uk">Support</a></footer>
+  </div>
+</body>
+</html>

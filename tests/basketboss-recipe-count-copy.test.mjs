@@ -7,12 +7,14 @@ const configContext={window:{}};
 vm.runInNewContext(read('bb-premium-preview-config.js'),configContext);
 const config=configContext.window.BB173_PREMIUM_PREVIEW;
 const total=config.freeRecipes+config.targetPremiumRecipes;
+const webRelease=JSON.parse(read('catalogues/700/release/manifest.json'));
+const webFree=webRelease.free_count,webTotal=webFree+webRelease.premium_count;
 const index=read('index.html');
 const app=read('app.html');
 const stripComments=source=>source.replace(/<!--[\s\S]*?-->/g,'').replace(/\/\*[\s\S]*?\*\//g,'').replace(/(^|\s)\/\/[^\n]*/g,'$1');
 const surfaces=['index.html','app.html','welcome.html','make-a-meal.html','compare.html','pricing-sandbox.html','bb-premium-features.js','bb-plan-premium-polish.js','bb-onboarding-v2.js','bb-real-app-tour.js','bb-real-app-tour-v82.js','bb-beta-landing.js','premium-upgrade.js'];
 
-test('presentation metadata describes the actual 100 Free plus 400 Premium catalogue without granting access',()=>{
+test('preserved legacy presentation metadata describes 100 Free plus 400 Premium without granting access',()=>{
  const free=JSON.parse(read('recipes.json'));
  assert.equal(config.freeRecipes,100);
  assert.equal(config.targetPremiumRecipes,400);
@@ -26,7 +28,7 @@ test('presentation metadata describes the actual 100 Free plus 400 Premium catal
  assert.equal(config.subscriptionVerified,false);
 });
 
-test('Plan and Make a Meal upgrade/search copy agrees with catalogue metadata',()=>{
+test('preserved legacy Plan and Make a Meal copy agrees with its catalogue metadata',()=>{
  assert.equal(index,app,'The app entrypoints must remain identical.');
  for(const source of [index,app]){
   assert.equal(Number(source.match(/placeholder="Search (\d+) BasketBoss recipes"/)?.[1]),total);
@@ -43,12 +45,25 @@ test('Plan and Make a Meal upgrade/search copy agrees with catalogue metadata',(
  assert.equal(Number(premium.match(/Includes (\d+) recipes/)?.[1]),total);
 });
 
-test('pricing, onboarding and tours describe the same 500-recipe Premium access',()=>{
- assert.equal(Number(read('compare.html').match(/Built-in recipes<\/th><td>100 recipes<\/td><td>(\d+) recipes/)?.[1]),total);
+test('public web pricing and comparison describe 200 Free and all 700 while retaining App Store availability',()=>{
+ assert.equal(webRelease.catalogue_version,700);
+ assert.equal(webFree,200);
+ assert.equal(webRelease.premium_count,500);
+ assert.equal(webTotal,700);
+ const comparison=read('compare.html'),row=comparison.match(/Built-in recipes<\/th><td>(\d+) recipes<\/td><td>All (\d+) recipes/);
+ assert.equal(Number(row?.[1]),webFree);
+ assert.equal(Number(row?.[2]),webTotal);
  const pricing=read('pricing-sandbox.html');
- assert.equal(Number(pricing.match(/All (\d+) recipes/)?.[1]),total);
- assert.equal(Number(pricing.match(/Same (\d+)-recipe access/)?.[1]),total);
- assert.match(pricing,/Free: 100 recipes/);
+ assert.equal(Number(pricing.match(/All (\d+) recipes/)?.[1]),webTotal);
+ assert.equal(Number(pricing.match(/Same (\d+)-recipe access/)?.[1]),webTotal);
+ assert.match(pricing,/Free: 200 recipes/);
+ for(const page of [pricing,comparison]){
+  assert.match(page,/App Store: currently 100 Free and 500 total/);
+  assert.match(page,/expanded collection is coming in an update/);
+ }
+});
+
+test('preserved legacy onboarding and tours continue to describe 100 Free and all 500',()=>{
  for(const file of ['bb-onboarding-v2.js','bb-real-app-tour.js','bb-real-app-tour-v82.js']){
   const source=read(file);
   assert.match(source,/100 (?:Free )?recipes|100 recipes free/);
@@ -56,17 +71,19 @@ test('pricing, onboarding and tours describe the same 500-recipe Premium access'
  }
 });
 
-test('landing visible copy and metadata retain 100 Free and disclose 500 with Premium',()=>{
+test('landing visible copy and metadata describe 200 Free and all 700 for the web',()=>{
  const page=read('welcome.html');
- assert.match(page,/<strong>100 free recipes<\/strong>/);
- assert.match(page,/<h3>Premium<\/h3>[\s\S]*?<strong>All 500 recipes<\/strong>/);
+ assert.match(page,/<strong>200 free recipes<\/strong>/);
+ assert.match(page,/<h3>Premium<\/h3>[\s\S]*?<strong>All 700 recipes<\/strong>/);
+ assert.match(page,/App Store: currently 100 Free and 500 total/);
+ assert.match(page,/expanded collection is coming in an update/);
  const schema=JSON.parse(page.match(/<script type="application\/ld\+json">([\s\S]*?)<\/script>/)[1]);
- assert.match(schema.description,/100 free recipes, all 500 with Premium/);
- assert.ok(schema.featureList.includes('100 free recipes; all 500 with Premium'));
+ assert.match(schema.description,/200 free recipes, all 700 with Premium/);
+ assert.ok(schema.featureList.includes('200 free recipes; all 700 with Premium'));
  for(const name of ['description','twitter:description','og:description']){
   const tag=page.match(new RegExp('<meta (?:name|property)="'+name+'" content="([^"]+)"'))?.[1];
-  assert.match(tag,/100 free recipes/);
-  assert.match(tag,/500 with Premium/);
+  assert.match(tag,/200 free recipes/);
+  assert.match(tag,/700 with Premium on the web/);
  }
  // The landing demo still loads only the public 100, never a private 500-record bundle.
  assert.match(read('bb-beta-landing.js'),/data\.length!==100/);

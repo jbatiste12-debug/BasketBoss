@@ -29,6 +29,9 @@
  try{const prior=JSON.parse(localStorage.getItem(FX_KEY)||'null');if(prior&&Number.isFinite(prior.rate)&&prior.rate>0&&/^\d{4}-\d{2}-\d{2}$/.test(prior.date))fx=prior;}catch{}
  function market(){try{return ['UK','Jersey','Guernsey','US'].includes(localStorage.getItem(MARKET_KEY))?localStorage.getItem(MARKET_KEY):'Jersey';}catch{return 'Jersey';}}
  function isUS(){return market()==='US';}
+ // Replacing equal text still emits childList mutations. Keep presentation
+ // writes idempotent so this module's observer can settle between user actions.
+ function text(el,value){if(el.textContent!==value)el.textContent=value;}
  function nativeRegionalPrices(){return !!window.BBPriceV19?.regionalMarkets?.US;}
  function titleCaseReplace(match,replacement){if(match===match.toUpperCase())return replacement.toUpperCase();if(match[0]===match[0].toUpperCase())return replacement[0].toUpperCase()+replacement.slice(1);return replacement;}
  function foodNames(s){let text=s;for(const [re,v] of MAP)text=text.replace(re,m=>titleCaseReplace(m,typeof v==='function'?v(m):v));return text;}
@@ -60,21 +63,21 @@
  function banner(){const root=document.getElementById('bb17RegionCard')||document.querySelector('.shell > header.top')||document.querySelector('.app-shell main')||document.querySelector('main');if(!root)return;
   let el=document.getElementById('bbUSMarketNote');if(!el){el=document.createElement('aside');el.id='bbUSMarketNote';el.className='bb-us-market-note';el.setAttribute('role','note');root.insertAdjacentElement('afterend',el);}
   const oldDetail=document.querySelector('#bb17RegionCard .bb17-price-details span');
-  if(oldDetail){if(!oldDetail.dataset.bbOriginalExplanation)oldDetail.dataset.bbOriginalExplanation=oldDetail.textContent;oldDetail.textContent=isUS()?(nativeRegionalPrices()?'US shopping figures use illustrative regional pack sizes and USD price guides. They are not live or verified supermarket quotes. Confirm allergies and food safety.':'US shopping figures use indicative UK basket calculations converted to USD reference amounts. Not verified American retailer quotes. Confirm allergies and food safety.'):oldDetail.dataset.bbOriginalExplanation;}
+  if(oldDetail){if(!oldDetail.dataset.bbOriginalExplanation)oldDetail.dataset.bbOriginalExplanation=oldDetail.textContent;text(oldDetail,isUS()?(nativeRegionalPrices()?'US shopping figures use illustrative regional pack sizes and USD price guides. They are not live or verified supermarket quotes. Confirm allergies and food safety.':'US shopping figures use indicative UK basket calculations converted to USD reference amounts. Not verified American retailer quotes. Confirm allergies and food safety.'):oldDetail.dataset.bbOriginalExplanation);}
   if(!isUS()){el.hidden=true;return;}el.hidden=false;
   const date=fx?fx.date:'not available';
-  el.textContent=IS_PRICE_PAGE?'United States selected · Final subscription charges and currency are set by Paddle and the customer billing address. Confirm USD at checkout.':nativeRegionalPrices()?'🇺🇸 United States · American food names and cooking units. Grocery estimates use illustrative US pack sizes and USD price guides, not live or verified supermarket quotes. You can set a USD budget and save your own local prices.':'🇺🇸 US mode · American food names and converted cooking units. Grocery costs are NOT US supermarket prices: UK-based illustrative estimates converted at an indicative GBP→USD reference rate (date: '+date+'). Budget editing and custom UK price estimates are not available in US preview.';
+  text(el,IS_PRICE_PAGE?'United States selected · Final subscription charges and currency are set by Paddle and the customer billing address. Confirm USD at checkout.':nativeRegionalPrices()?'🇺🇸 United States · American food names and cooking units. Grocery estimates use illustrative US pack sizes and USD price guides, not live or verified supermarket quotes. You can set a USD budget and save your own local prices.':'🇺🇸 US mode · American food names and converted cooking units. Grocery costs are NOT US supermarket prices: UK-based illustrative estimates converted at an indicative GBP→USD reference rate (date: '+date+'). Budget editing and custom UK price estimates are not available in US preview.');
  }
  function offers(){ // Existing intro/upsell prices are GBP; never pass them off as binding US charges.
   for(const host of document.querySelectorAll('#bbIntroTrialDialog,#bbPremiumDialog,#bbPremiumUpgradeDialog,.bbpremium-modal,.bbp-modal')){
    host.querySelectorAll('.bbtrial-price,.bb-price,.bb-premium-price,.bbpremium-price').forEach(el=>{
     if(!el.dataset.bbOriginalPrice)el.dataset.bbOriginalPrice=el.textContent;
-    el.textContent=isUS()?'US$ · see checkout':el.dataset.bbOriginalPrice;
+    text(el,isUS()?'US$ · see checkout':el.dataset.bbOriginalPrice);
    });
    const description=host.querySelector('#bbPremiumDescription');
    if(description){
     if(!description.dataset.bbOriginalDescription)description.dataset.bbOriginalDescription=description.textContent;
-    description.textContent=isUS()?'Founding Member trial is seven days, then GBP £1.99 per month for up to 25 eligible members. Standard Premium is GBP £4.99/month with no trial. Verify local currency, taxes and final amount at checkout. No real payments are enabled yet.':description.dataset.bbOriginalDescription;
+    text(description,isUS()?'Founding Member trial is seven days, then GBP £1.99 per month for up to 25 eligible members. Standard Premium is GBP £4.99/month with no trial. Verify local currency, taxes and final amount at checkout. No real payments are enabled yet.':description.dataset.bbOriginalDescription);
    }
    host.querySelectorAll('a[aria-label]').forEach(a=>{
     if(!a.dataset.bbOriginalAria)a.dataset.bbOriginalAria=a.getAttribute('aria-label');

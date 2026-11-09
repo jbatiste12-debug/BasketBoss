@@ -6,10 +6,14 @@ import path from 'node:path';
 import vm from 'node:vm';
 import crypto from 'node:crypto';
 import {fileURLToPath,pathToFileURL} from 'node:url';
-import {buildNativeWeb,verifyNativeWeb,versionNativeHtml} from '../../scripts/build-native-web.mjs';
+import {buildNativeWeb,verifyNativeWeb,versionNativeHtml,CLIENT_FILES} from '../../scripts/build-native-web.mjs';
 import {canonicalHash,private700OutputDirectory,PROTECTED500} from './release.mjs';
 import {sha256Utf8} from './client-integrity.mjs';
+import {transform700MakeAMeal} from './make-a-meal.mjs';
+import {transform700Presentation} from './presentation.mjs';
+import {transform700Performance} from './performance.mjs';
 import swapHost from '../../bb-plan-swap-host.js';
+import {transform700PantrySelection} from './pantry-selection.mjs';
 import {webpDimensions} from '../../scripts/verify-recipe-expansion.mjs';
 
 const ROOT=path.resolve(path.dirname(fileURLToPath(import.meta.url)),'../..');
@@ -109,6 +113,35 @@ function browserContract(release){
  return {catalogueVersion:700,clientVersion:'1.0.2',releaseId:release.manifest.release_id,freeRecipesSha256:release.manifest.free_recipes_sha256,freeNormalizedSha256:release.manifest.free_normalized_sha256,premiumRowsSha256:release.manifest.premium_rows_sha256,premiumIds:release.premiumIds,allIds:[...release.roles.legacyRecipeIds,...release.roles.recipes.map(r=>r.id)],newRecipeIds:release.roles.recipes.map(r=>r.id)};
 }
 
+function previewConfiguration(source){
+ const context=vm.createContext({window:{}});
+ vm.runInContext(source,context,{timeout:1000});
+ return {ids:context.window.BB173_FREE_RECIPE_IDS,config:context.window.BB173_PREMIUM_PREVIEW};
+}
+
+function verify700PreviewConfig(source,release){
+ const {ids,config}=previewConfiguration(source),expected=release.free.map(recipe=>recipe.id);
+ assert(Array.isArray(ids)&&equal(ids,expected)&&ids.length===200&&new Set(ids).size===200&&ids.every(id=>!release.premiumIds.includes(id)),'preview_free_ids');
+ assert(config?.freeRecipes===200&&config.totalRecipes===700&&config.targetRecipes===700&&config.targetPremiumRecipes===500&&equal(config.acceptedPremiumRecipeCounts,[500])&&config.subscriptionVerified===false,'preview_counts');
+ assert(Object.isFrozen(ids)&&Object.isFrozen(config)&&Object.isFrozen(config.acceptedPremiumRecipeCounts),'preview_immutable');
+ return {ids,config};
+}
+
+// The Free allowlist is used by the real planner gate as well as presentation.
+// Only generated catalogue-700 clients receive this public-data override;
+// Premium still requires the existing authenticated server response.
+export function transform700PreviewConfig(source,release){
+ assert(typeof source==='string'&&Array.isArray(release?.free)&&release.free.length===200&&Array.isArray(release.premiumIds)&&release.premiumIds.length===500,'preview_release');
+ const {ids,config}=previewConfiguration(source);
+ assert(Array.isArray(ids)&&ids.length===100&&new Set(ids).size===100&&equal([...ids].sort(),release.free.slice(0,100).map(recipe=>recipe.id).sort())&&config?.freeRecipes===100&&config.totalRecipes===500&&config.targetRecipes===500&&config.targetPremiumRecipes===400&&equal(config.acceptedPremiumRecipeCounts,[221,400])&&config.subscriptionVerified===false,'preview_legacy_source');
+ source=replaceOnce(source,'window.BB173_FREE_RECIPE_IDS=Object.freeze('+JSON.stringify(ids)+');','window.BB173_FREE_RECIPE_IDS=Object.freeze('+safeJson(release.free.map(recipe=>recipe.id))+');','preview_free_ids');
+ source=replaceOnce(source,'freeRecipes:100,totalRecipes:500,targetRecipes:500,targetPremiumRecipes:400','freeRecipes:200,totalRecipes:700,targetRecipes:700,targetPremiumRecipes:500','preview_counts');
+ source=replaceOnce(source,'acceptedPremiumRecipeCounts:Object.freeze([221,400])','acceptedPremiumRecipeCounts:Object.freeze([500])','preview_accepted_counts');
+ source=source.replace('Public static files include 100 Free recipes; complete 221/400-record Premium catalogues','Public static files include 200 Free recipes; the complete 500-record Premium catalogue');
+ verify700PreviewConfig(source,release);
+ return source;
+}
+
 function proofScript(contract){
  const portable=sha256Utf8.toString().replace('function sha256Utf8(','function bbCatalogue700Sha256(');
  return `\n// Versioned data proof is captured before recipe metadata or regional prices mutate runtime objects.\n${portable}\nconst BB_CATALOGUE700_RELEASE=Object.freeze(${safeJson(contract)});\nconst BB_CATALOGUE700_NEW_IDS=new Set(BB_CATALOGUE700_RELEASE.newRecipeIds);\nconst BB_CATALOGUE700_PUBLIC_BYTES=[JSON.stringify(RECIPES),JSON.stringify(BB307_NORMALIZED)];\nconst BB_CATALOGUE700_FREE_PROOF=Promise.resolve().then(()=>Promise.all(BB_CATALOGUE700_PUBLIC_BYTES.map(async value=>{if(globalThis.crypto?.subtle){try{const buffer=await crypto.subtle.digest('SHA-256',new TextEncoder().encode(value));return Array.from(new Uint8Array(buffer),byte=>byte.toString(16).padStart(2,'0')).join('');}catch{}}return bbCatalogue700Sha256(value);}))).then(([recipes,normalized])=>recipes===BB_CATALOGUE700_RELEASE.freeRecipesSha256&&normalized===BB_CATALOGUE700_RELEASE.freeNormalizedSha256).catch(()=>false);\n`;
@@ -116,6 +149,7 @@ function proofScript(contract){
 
 export function transform700Html(source,release){
  assert(typeof source==='string','source_html');
+ source=transform700Performance(source);
  for(const [name,value]of [['RECIPES',release.free],['BB307_NORMALIZED',release.normal]]){
   const span=inlineArray(source,name);source=source.slice(0,span.start)+safeJson(value)+source.slice(span.end);
  }
@@ -133,7 +167,7 @@ export function transform700Html(source,release){
   'const all=RECIPES.filter(r=>bb176AllowedRecipe(r.id)&&bbAfIngredientAllowed(r)&&bbAfDinner(r)&&',
   'const all=RECIPES.filter(r=>!(filters.bbPlanSwapExcluded||[]).includes(r.id)&&bb176AllowedRecipe(r.id)&&bbAfIngredientAllowed(r)&&bbAfDinner(r)&&',
   'swap_exclusion');
- source=replaceOnce(source,'</head>','<link rel="stylesheet" href="bb-plan-swap.css">\n<script src="bb-plan-swap-core.js"></script>\n<script src="bb-plan-swap-host.js"></script>\n</head>','swap_style');
+ source=replaceOnce(source,'</head>','<link rel="stylesheet" href="bb-plan-swap.css">\n<link rel="stylesheet" href="bb-pantry-selection.css">\n<script src="bb-plan-swap-core.js"></script>\n<script src="bb-plan-swap-host.js"></script>\n<script src="bb-pantry-selection.js"></script>\n<script defer src="bb-ui-continuity.js"></script>\n</head>','swap_style');
  // Bind the adapter inside the existing private planner closure, after its
  // state is initialized. External scripts cannot access that lexical state.
  source=replaceOnce(source,'window.BBHomeHost=Object.freeze({',`(function(win){const bindPlanner=${swapHost.currentPlanner.toString()};win.BBPlanSwapHost=win.BBPlanSwapHostFactory.createHost(bindPlanner());})(window);\nwindow.BBHomeHost=Object.freeze({`,'swap_private_binding');
@@ -167,6 +201,10 @@ export function verify700Client({directory,release,requireInventory=true}){
  assert(html.includes("fetch('/api/recipes/v700/premium?catalogue=700'")&&!html.includes("fetch('/api/recipes/premium?catalogue=500'"),'versioned_route');
  assert(html.includes('data.count!==500')&&html.includes('data?.catalogueVersion!==700')&&html.includes('BB_CATALOGUE700_FREE_PROOF'),'response_validation');
  assert(html.includes("if(stamp!==bbPremiumRequest)return;")&&html.includes("if(!bbPremiumMatches(pin)){bbPremiumClear();return;}"),'session_guards');
+ verify700PreviewConfig(fs.readFileSync(regular(path.join(directory,'bb-premium-preview-config.js')),'utf8'),release);
+ const mealSource=fs.readFileSync(regular(path.join(directory,'make-a-meal.js')),'utf8'),mealHtml=fs.readFileSync(regular(path.join(directory,'make-a-meal.html')),'utf8');
+ assert(mealSource.includes("bbMealJSON('recipes.json',{cache:'no-store'})")&&mealSource.includes("bbMealJSON('/api/recipes/v700/premium?catalogue=700'")&&!mealSource.includes("/api/recipes/premium?catalogue=500")&&mealSource.includes('data.length!==200||bbSecureFreeIds.size!==200||'),'make_catalogue');
+ assert(/<script\b[^>]*\bsrc="bb-recipe-planning\.js(?:\?[^"<>]*)?"/.test(mealHtml),'make_planning');
  const privateIds=new Set(release.premiumIds),fileHashes=[];
  walk(directory,(name,file)=>{
   const bytes=fs.readFileSync(file);fileHashes.push({path:name,bytes:bytes.length,sha256:hash(bytes)});
@@ -205,20 +243,25 @@ export async function build700Client({sourceRoot=ROOT,publicRelease,outputDirect
  try{
   walk(sourceDirectory,(name,file)=>{if(name==='native-web-manifest.json')return;const target=path.join(staging,name);fs.mkdirSync(path.dirname(target),{recursive:true});fs.copyFileSync(file,target);});
   const write=(name,value)=>{const target=path.join(staging,name);fs.mkdirSync(path.dirname(target),{recursive:true});fs.writeFileSync(target,value);};
+  for(const name of CLIENT_FILES){if(!name.endsWith('.js'))continue;const original=fs.readFileSync(path.join(staging,name),'utf8'),updated=transform700Presentation(original);if(updated!==original)write(name,updated);}
   const html=transform700Html(fs.readFileSync(path.join(sourceDirectory,'app.html'),'utf8'),release);
   write('app.html',html);write('index.html',html);
   write('recipes.json',JSON.stringify(release.free,null,2)+'\n');write('normalized-ingredient-database.json',JSON.stringify({recipes:release.normal},null,2)+'\n');
   write('bb-recipe-planning.js',transform700Planning(fs.readFileSync(path.join(sourceDirectory,'bb-recipe-planning.js'),'utf8'),release.roles));
-  for(const file of ['bb-plan-swap-core.js','bb-plan-swap-host.js','bb-plan-swap.js','bb-plan-swap.css'])write(file,fs.readFileSync(regular(path.join(clientAssetsRoot,file))));
+  write('bb-premium-preview-config.js',transform700PreviewConfig(fs.readFileSync(path.join(sourceDirectory,'bb-premium-preview-config.js'),'utf8'),release));
+  write('make-a-meal.js',transform700MakeAMeal(fs.readFileSync(path.join(sourceDirectory,'make-a-meal.js'),'utf8'),release,{publicRecipesUrl:'recipes.json'}));
+  write('make-a-meal.html',replaceOnce(fs.readFileSync(path.join(staging,'make-a-meal.html'),'utf8'),'</head>','<script src="bb-recipe-planning.js"></script>\n</head>','make_planning'));
+  for(const file of ['bb-plan-swap-core.js','bb-plan-swap-host.js','bb-plan-swap.js','bb-plan-swap.css','bb-ui-continuity.js','bb-pantry-selection.js','bb-pantry-selection.css'])write(file,fs.readFileSync(regular(path.join(clientAssetsRoot,file))));
+  write('shopping-inventory.js',transform700PantrySelection(fs.readFileSync(path.join(sourceDirectory,'shopping-inventory.js'),'utf8')));
   const overlay='\n/* Isolated catalogue-700 exact-pair guide additions; no aliases or conversion rules change. */\nObject.assign(window.BBPriceV19.catalog,'+safeJson(release.packs)+');\n';
   write('basketboss-pricing-v19.js',fs.readFileSync(path.join(sourceDirectory,'basketboss-pricing-v19.js'),'utf8')+overlay);
   const packData=json(path.join(sourceDirectory,'ingredient-pack-catalog.json'));packData.ingredients={...packData.ingredients,...release.packs};write('ingredient-pack-catalog.json',JSON.stringify(packData,null,2)+'\n');
   for(const row of release.imageRows)write(row.image,fs.readFileSync(path.join(publicRelease,'assets',row.image)));
   // Keep count disclosures consistent in this generated native runtime only.
-  const nativeRuntime=path.join(staging,'bb-native-runtime.js');if(fs.existsSync(nativeRuntime))write('bb-native-runtime.js',fs.readFileSync(nativeRuntime,'utf8').replaceAll('Use 100 recipes free','Use 200 recipes free'));
+  const nativeRuntime=path.join(staging,'bb-native-runtime.js');if(fs.existsSync(nativeRuntime))write('bb-native-runtime.js',transform700Presentation(fs.readFileSync(nativeRuntime,'utf8')));
   const htmlFiles=[];walk(staging,name=>{if(/\.html$/i.test(name))htmlFiles.push(name);});
   const readAsset=name=>{const file=path.join(staging,name);return fs.existsSync(file)&&fs.statSync(file).isFile()?fs.readFileSync(file):null;},documents=new Map();
-  for(const file of htmlFiles){const next=versionNativeHtml(fs.readFileSync(path.join(staging,file),'utf8'),readAsset);write(file,next);documents.set(file,hash(Buffer.from(next)).slice(0,16));}
+  for(const file of htmlFiles){const next=versionNativeHtml(transform700Presentation(fs.readFileSync(path.join(staging,file),'utf8')),readAsset);write(file,next);documents.set(file,hash(Buffer.from(next)).slice(0,16));}
   for(const file of htmlFiles)write(file,versionNativeHtml(fs.readFileSync(path.join(staging,file),'utf8'),readAsset,documents));
   write('catalogue700-client-manifest.json',JSON.stringify({...browserContract(release),schemaVersion:1,activationEligible:false,newImageCount:200,privateRecipeBundle:false},null,2)+'\n');
   const verification=verify700Client({directory:staging,release,requireInventory:false});

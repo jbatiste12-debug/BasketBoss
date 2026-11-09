@@ -68,7 +68,7 @@ test('live checks require public100, landing500, protected Premium and actual We
   assert.equal(seen.length, 4);assert.equal(seen[3].options.method, 'HEAD');
   await assert.rejects(verifyLivePublicRoutes(rows, async () => ({ok: true, text: async () => '321 recipes'})), /not yet published/);
 });
-test('live check accepts the shipped 500 with Premium landing wording', async () => {
+test('legacy live check accepts the explicit installed-500 availability note alongside web700', async () => {
   const {rows} = catalogue();const landing = fs.readFileSync(new URL('../welcome.html', import.meta.url), 'utf8');
   const result = await verifyLivePublicRoutes(rows, async address => {
     const url = new URL(address);
@@ -78,6 +78,9 @@ test('live check accepts the shipped 500 with Premium landing wording', async ()
     return {ok: true, headers: new Headers({'content-type': 'image/webp'})};
   });
   assert.equal(result.landing500, true);
+  for (const copy of ['700 recipes', 'App Store: currently 200 Free and 700 total']) {
+    await assert.rejects(verifyLivePublicRoutes(rows, async () => ({ok:true,text:async()=>copy})), /not yet published/);
+  }
 });
 test('public route redirects may use www BasketBoss but never another host', async () => {
   const {rows} = catalogue();
