@@ -11,8 +11,19 @@ const check=(condition,code)=>{if(!condition)throw Error('WEB700_'+code);};
 const publicTypes=name=>name.endsWith('.html')?/text\/html/i:name.endsWith('.css')?/text\/css/i:name.endsWith('.json')?/application\/json/i:name.endsWith('.png')?/image\/png/i:/javascript/i;
 const rootAssets=['bb-ui-continuity.js','bb-pantry-selection.js','bb-pantry-selection.css','basketboss-social-preview-20261109.png'];
 const CODES=new Set(['LOCAL_CONTRACT','LOCAL_FILES','NETWORK','PUBLIC_ASSET','PUBLIC_BODY','PUBLIC_SIZE','MANIFEST_STALE','ASSET_BYTES','ROUTE','PUBLIC_COUNT','LEGACY_PUBLIC','ROOT_ASSET','LOCAL_IMAGE','IMAGE_REWRITE','PAID_BOUNDARY','ATTEMPTS','UNAVAILABLE'].map(code=>'WEB700_'+code));
-function requireAssetBytes(relative,expectedBytes,expectedSha256,actual,code){
- if(actual.length===expectedBytes&&hash(actual)===expectedSha256)return;
+export function approvedEmailHintVariant(approved,expectedBytes,expectedSha256){
+ check(Buffer.isBuffer(approved)&&approved.length===expectedBytes&&hash(approved)===expectedSha256,'LOCAL_FILES');
+ const open=Buffer.from('<!--email_off-->'),close=Buffer.from('<!--/email_off-->'),start=approved.indexOf(open),end=approved.indexOf(close),text=approved.toString('utf8');
+ check(start>=0&&end>start&&approved.lastIndexOf(open)===start&&approved.lastIndexOf(close)===end,'LOCAL_FILES');
+ check([...text.matchAll(/<body\b[^>]*>/gi)].length===1&&[...text.matchAll(/<\/body\s*>/gi)].length===1&&/<body\b[^>]*><!--email_off-->/i.test(text)&&/<!--\/email_off--><\/body\s*>/i.test(text),'LOCAL_FILES');
+ // The edge consumes these two nonexecuting provider directives. Construct
+ // that exact approved representation; never strip or normalize a response.
+ return Buffer.concat([approved.subarray(0,start),approved.subarray(start+open.length,end),approved.subarray(end+close.length)]);
+}
+function requireAssetBytes(relative,expectedBytes,expectedSha256,actual,code,approvedHtml){
+ const directiveVariant=approvedHtml?approvedEmailHintVariant(approvedHtml,expectedBytes,expectedSha256):null;
+ if(actual.length===expectedBytes&&hash(actual)===expectedSha256)return 'literal';
+ if(directiveVariant&&actual.length===directiveVariant.length&&hash(actual)===hash(directiveVariant))return 'directive';
  const text=actual.toString('utf8'),error=Error('WEB700_'+code);
  error.details=Object.freeze({publicPath:relative,expectedBytes,receivedBytes:actual.length,expectedSha256,receivedSha256:hash(actual),cloudflareEmailProtection:/data-cfemail\s*=|\/cdn-cgi\/l\/email-protection|\/cdn-cgi\/scripts\/[^\s"'<>]*email-decode\.min\.js/i.test(text),cloudflareInsights:/static\.cloudflareinsights\.com\/(?:beacon(?:\.min)?\.js|)/i.test(text),rocketLoader:/\/cdn-cgi\/scripts\/[^\s"'<>]*rocket-loader\.min\.js|data-cf-settings\s*=/i.test(text)});
  throw error;
@@ -55,10 +66,10 @@ export async function verifyWeb700Deployment({perform=fetch,root=ROOT}={}){
  const deployedInventory=await bytes('/pwa700/manifest.json','manifest.json',inventoryBytes.length+1024);
  check(hash(deployedInventory)===hash(inventoryBytes),'MANIFEST_STALE');
  // Bounded parallel reads prove the generated public pack reached Pages.
- let cursor=0;
- await Promise.all(Array.from({length:4},async()=>{while(cursor<inventory.files.length){const row=inventory.files[cursor++],relative='/pwa700/'+row.path.replace(/\.html$/,'');const deployed=await bytes(relative,row.path,row.bytes+1024);requireAssetBytes(relative,row.bytes,row.sha256,deployed,'ASSET_BYTES');}}));
- const app=fs.readFileSync(path.join(directory,'app.html')),appResponse=await bytes('/app','app.html',app.length+1024);
- requireAssetBytes('/app',app.length,hash(app),appResponse,'ROUTE');
+ let cursor=0,literalAssetBytesMatched=0,directiveVariantsVerified=0;
+ await Promise.all(Array.from({length:4},async()=>{while(cursor<inventory.files.length){const row=inventory.files[cursor++],relative='/pwa700/'+row.path.replace(/\.html$/,''),approved=row.path.endsWith('.html')?fs.readFileSync(path.join(directory,row.path)):undefined;const deployed=await bytes(relative,row.path,row.bytes+1024);const variant=requireAssetBytes(relative,row.bytes,row.sha256,deployed,'ASSET_BYTES',approved);if(variant==='literal')literalAssetBytesMatched++;else directiveVariantsVerified++;}}));
+ const app=fs.readFileSync(path.join(directory,'app.html')),appRecords=inventory.files.filter(row=>row.path==='app.html');check(appRecords.length===1,'LOCAL_FILES');
+ const appResponse=await bytes('/app','app.html',app.length+1024),appVariant=requireAssetBytes('/app',appRecords[0].bytes,appRecords[0].sha256,appResponse,'ROUTE',app);
  const free=JSON.parse(fs.readFileSync(path.join(directory,'recipes.json')));check(Array.isArray(free)&&free.length===200,'PUBLIC_COUNT');
  const legacy=fs.readFileSync(path.join(root,'recipes.json')),legacyResponse=await bytes('/recipes.json','recipes.json',legacy.length+1024);
  requireAssetBytes('/recipes.json',legacy.length,hash(legacy),legacyResponse,'LEGACY_PUBLIC');check(JSON.parse(legacyResponse).length===100,'LEGACY_PUBLIC');
@@ -66,7 +77,7 @@ export async function verifyWeb700Deployment({perform=fetch,root=ROOT}={}){
  const photo=release.recipes?.[0]?.image;check(typeof photo==='string'&&/^release-assets\/basketboss-v17\/images\/new\/[a-z0-9-]+\.webp$/.test(photo),'LOCAL_IMAGE');
  const image=await response('/'+photo,'HEAD');check(image.status===200&&/^image\/webp(?:;|$)/i.test(image.headers.get('content-type')||''),'IMAGE_REWRITE');await image.body?.cancel().catch(()=>{});
  for(const endpoint of ['/api/recipes/premium?catalogue=500','/api/recipes/v700/premium?catalogue=700']){const denied=await response(endpoint);await denied.body?.cancel().catch(()=>{});check([401,403].includes(denied.status),'PAID_BOUNDARY');}
- return {ok:true,catalogueVersion:700,publicRecipes:200,generatedFiles:inventory.files.length,generatedBytesVerified:true,routedAppVerified:true,rootAssets:rootAssets.length,newImageRewrite:true,legacyPublicRecipes:100,legacyPublicUnchanged:true,unauthenticatedPremiumDenied:true};
+ return {ok:true,catalogueVersion:700,publicRecipes:200,generatedFiles:inventory.files.length,generatedApplicationBytesVerified:true,literalAssetBytesMatched,directiveVariantsVerified,routedAppVerified:true,routedAppDirectiveVariant:appVariant==='directive',rootAssets:rootAssets.length,newImageRewrite:true,legacyPublicRecipes:100,legacyPublicUnchanged:true,unauthenticatedPremiumDenied:true};
 }
 
 export async function waitForWeb700Deployment({attempts=12,pause=()=>new Promise(resolve=>setTimeout(resolve,10000)),...options}={}){

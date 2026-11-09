@@ -5,7 +5,7 @@ import path from 'node:path';
 import {createHash} from 'node:crypto';
 import {spawnSync} from 'node:child_process';
 import {fileURLToPath} from 'node:url';
-import {verifyWeb700Deployment,waitForWeb700Deployment,web700DeploymentFailure} from '../scripts/verify-web700-deployment.mjs';
+import {verifyWeb700Deployment,waitForWeb700Deployment,web700DeploymentFailure,approvedEmailHintVariant} from '../scripts/verify-web700-deployment.mjs';
 
 const root=path.resolve(new URL('..',import.meta.url).pathname);
 const inventory=JSON.parse(fs.readFileSync(path.join(root,'pwa700/manifest.json')));
@@ -26,7 +26,7 @@ function fixture({replace,headStatus=200,denial=401}={}){
 
 test('public web700 deployment proof checks every generated asset, routed app, unchanged legacy Free100 and both paid boundaries',async()=>{
  const f=fixture(),result=await verifyWeb700Deployment({perform:f.perform});
- assert.deepEqual(result,{ok:true,catalogueVersion:700,publicRecipes:200,generatedFiles:inventory.files.length,generatedBytesVerified:true,routedAppVerified:true,rootAssets:4,newImageRewrite:true,legacyPublicRecipes:100,legacyPublicUnchanged:true,unauthenticatedPremiumDenied:true});
+ assert.deepEqual(result,{ok:true,catalogueVersion:700,publicRecipes:200,generatedFiles:inventory.files.length,generatedApplicationBytesVerified:true,literalAssetBytesMatched:inventory.files.length,directiveVariantsVerified:0,routedAppVerified:true,routedAppDirectiveVariant:false,rootAssets:4,newImageRewrite:true,legacyPublicRecipes:100,legacyPublicUnchanged:true,unauthenticatedPremiumDenied:true});
  assert.equal(f.requests.filter(row=>row.options.method==='HEAD').length,1);assert.equal(f.requests.filter(row=>new URL(row.address).pathname.startsWith('/api/')).length,2);
  assert.equal(f.requests.some(row=>/private|sealed|\.sql|\.github/.test(row.address)),false);
  assert.equal(f.requests.length,inventory.files.length+10);
@@ -86,4 +86,31 @@ test('the diagnostic CLI --once flag performs one read attempt and prints only t
  const program=`let calls=0;globalThis.fetch=async()=>{calls++;throw Error('synthetic-private-provider-body');};process.argv=['node',${JSON.stringify(fileURLToPath(script))},'--once'];process.on('exit',()=>console.log(JSON.stringify({calls})));await import(${JSON.stringify(script.href)});`;
  const result=spawnSync(process.execPath,['--input-type=module','-e',program],{encoding:'utf8',timeout:5000});
  assert.equal(result.status,1);assert.equal(result.error,undefined);assert.deepEqual(JSON.parse(result.stdout.trim()),{calls:1});assert.deepEqual(JSON.parse(result.stderr.trim()),{ok:false,error:'WEB700_NETWORK'});assert.doesNotMatch(result.stderr,/synthetic|provider-body/);
+});
+
+const stripApprovedHints=body=>Buffer.from(body.toString('utf8').replace('<!--email_off-->','').replace('<!--/email_off-->',''));
+test('deployment proof accepts only the exact approved HTML representation after both provider directives are consumed',async()=>{
+ const htmlFiles=inventory.files.filter(row=>row.path.endsWith('.html')).length,f=fixture({replace:(route,body)=>route==='/app'||inventory.files.some(row=>row.path.endsWith('.html')&&route==='/pwa700/'+row.path.slice(0,-5))?{body:stripApprovedHints(body)}:null});
+ const result=await verifyWeb700Deployment({perform:f.perform});assert.equal(result.generatedApplicationBytesVerified,true);assert.equal(result.directiveVariantsVerified,htmlFiles);assert.equal(result.literalAssetBytesMatched,inventory.files.length-htmlFiles);assert.equal(result.routedAppVerified,true);assert.equal(result.routedAppDirectiveVariant,true);assert.equal(result.legacyPublicUnchanged,true);assert.equal(result.unauthenticatedPremiumDenied,true);
+});
+
+test('consumed-directive variants still reject changed HTML, JS, JSON, email rewrites, decode scripts and incomplete or extra hints',async()=>{
+ const edits=[
+  ['/pwa700/app',body=>Buffer.from(stripApprovedHints(body).toString().replace('BasketBoss','Changed application text'))],
+  ['/pwa700/app',body=>Buffer.concat([stripApprovedHints(body),Buffer.from('<script data-cfasync="false" src="/cdn-cgi/scripts/12345678/cloudflare-static/email-decode.min.js" defer></script>')])],
+  ['/pwa700/app',body=>Buffer.concat([stripApprovedHints(body),Buffer.from('<a data-cfemail="synthetic">[email protected]</a>')])],
+  ['/pwa700/app',body=>Buffer.from(body.toString().replace('<!--email_off-->',''))],
+  ['/pwa700/app',body=>Buffer.concat([body,Buffer.from('<!--email_off--><!--/email_off-->')])],
+  ['/pwa700/bb-ui-continuity.js',body=>Buffer.concat([body,Buffer.from('<!--email_off--><!--/email_off-->')])],
+  ['/pwa700/recipes.json',body=>Buffer.from(JSON.stringify(JSON.parse(body).slice(0,-1)))],
+  ['/app',body=>Buffer.concat([stripApprovedHints(body),Buffer.from('changed')])]
+ ];
+ for(const [route,edit]of edits){const f=fixture({replace:(pathname,body)=>pathname===route?{body:edit(body)}:null});await assert.rejects(verifyWeb700Deployment({perform:f.perform}),new RegExp('^Error: WEB700_'+(route==='/app'?'ROUTE':'ASSET_BYTES')+'$'));}
+});
+
+test('the approved HTML variant requires the manifest byte proof and exactly one directive pair at the real body boundaries',()=>{
+ const good=Buffer.from('<!doctype html><html><head></head><body><!--email_off--><a href="mailto:help@example.com">Support</a><!--/email_off--></body></html>'),sha=value=>createHash('sha256').update(value).digest('hex');
+ assert.deepEqual(approvedEmailHintVariant(good,good.length,sha(good)),stripApprovedHints(good));
+ assert.throws(()=>approvedEmailHintVariant(good,good.length+1,sha(good)),/WEB700_LOCAL_FILES/);assert.throws(()=>approvedEmailHintVariant(good,good.length,'0'.repeat(64)),/WEB700_LOCAL_FILES/);
+ for(const text of [good.toString().replace('<!--email_off-->',''),good.toString().replace('<!--/email_off-->',''),good.toString().replace('<!--/email_off-->','<!--email_off--><!--/email_off-->'),good.toString().replace('<body><!--email_off-->','<body><p>Unprotected</p><!--email_off-->'),good.toString().replace('<!--/email_off--></body>','<!--/email_off--><p>Unprotected</p></body>'),good.toString().replace('</body>','</body><body></body>'),'<script><!--email_off-->not HTML<!--/email_off--></script>']){const malformed=Buffer.from(text);assert.throws(()=>approvedEmailHintVariant(malformed,malformed.length,sha(malformed)),/WEB700_LOCAL_FILES/);}
 });
