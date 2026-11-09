@@ -346,15 +346,20 @@ html body #app.bbnext-plan .bbnext-day .bb-plan-day-actions button:disabled {
   }
 }
 
-/* The breakfast picker is appended to body, outside the Plan's app element. */
-dialog.bb-plan-breakfast-picker {
+/* Optional meal pickers stay above the Plan, with independently scrolling choices. */
+dialog.bb-plan-meal-picker {
   box-sizing: border-box;
   width: min(520px, calc(100vw - 24px));
   max-width: calc(100vw - 24px);
-  max-height: 80vh;
-  max-height: min(80dvh, 720px);
-  margin: auto;
-  padding: 20px;
+  position: fixed;
+  inset: auto;
+  left: 50%;
+  top: var(--bb-plan-picker-top, 50%);
+  transform: translate(-50%, -50%);
+  height: min(680px, calc(var(--bb-plan-picker-height, 100dvh) - 32px));
+  max-height: calc(var(--bb-plan-picker-height, 100dvh) - 32px);
+  margin: 0;
+  padding: 18px;
   border: 1px solid #c7d6bd;
   border-radius: 20px;
   background: #fffdf6;
@@ -363,17 +368,21 @@ dialog.bb-plan-breakfast-picker {
   overflow: hidden;
   font-family: inherit;
 }
-dialog.bb-plan-breakfast-picker[open] {
+dialog.bb-plan-meal-picker[open] {
   display: grid;
-  grid-template-rows: auto auto minmax(0, 1fr) auto;
-  gap: 13px;
+  grid-template-rows: auto auto auto auto minmax(0, 1fr);
+  gap: 10px;
 }
-dialog.bb-plan-breakfast-picker::backdrop {
+dialog.bb-plan-meal-picker::backdrop {
   background: #132b1c70;
   -webkit-backdrop-filter: blur(3px);
   backdrop-filter: blur(3px);
 }
-dialog.bb-plan-breakfast-picker .bb-plan-picker-heading {
+dialog.bb-plan-meal-picker .bb-plan-picker-heading {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 12px;
   margin: 0;
   color: #214e39;
   font-size: 22px;
@@ -381,20 +390,20 @@ dialog.bb-plan-breakfast-picker .bb-plan-picker-heading {
   line-height: 1.25;
   letter-spacing: -.025em;
 }
-dialog.bb-plan-breakfast-picker .bb-plan-picker-heading h2 {
+dialog.bb-plan-meal-picker .bb-plan-picker-heading h2 {
   margin: 0;
   font: inherit;
 }
-dialog.bb-plan-breakfast-picker .bb-plan-picker-heading p {
-  margin: 7px 0 0;
+dialog.bb-plan-meal-picker .bb-plan-picker-intro {
+  margin: 0;
   color: #617362;
   font-size: 13px;
   font-weight: 450;
   line-height: 1.5;
   letter-spacing: normal;
 }
-dialog.bb-plan-breakfast-picker .bb-plan-picker-search,
-dialog.bb-plan-breakfast-picker .bb-plan-picker-search input {
+dialog.bb-plan-meal-picker .bb-plan-picker-search,
+dialog.bb-plan-meal-picker .bb-plan-picker-search input {
   box-sizing: border-box;
   width: 100%;
   min-width: 0;
@@ -409,7 +418,7 @@ dialog.bb-plan-breakfast-picker .bb-plan-picker-search input {
   font-size: 16px;
   line-height: 1.4;
 }
-dialog.bb-plan-breakfast-picker .bb-plan-picker-list {
+dialog.bb-plan-meal-picker .bb-plan-picker-list {
   display: grid;
   align-content: start;
   gap: 8px;
@@ -423,7 +432,7 @@ dialog.bb-plan-breakfast-picker .bb-plan-picker-list {
   -webkit-overflow-scrolling: touch;
   scroll-padding: 5px;
 }
-dialog.bb-plan-breakfast-picker .bb-plan-picker-choice {
+dialog.bb-plan-meal-picker .bb-plan-picker-choice {
   display: grid;
   grid-template-columns: 62px minmax(0, 1fr);
   align-items: center;
@@ -443,7 +452,7 @@ dialog.bb-plan-breakfast-picker .bb-plan-picker-choice {
   cursor: pointer;
   -webkit-tap-highlight-color: transparent;
 }
-dialog.bb-plan-breakfast-picker .bb-plan-picker-choice img {
+dialog.bb-plan-meal-picker .bb-plan-picker-choice img {
   display: block;
   width: 62px;
   height: 62px;
@@ -453,12 +462,15 @@ dialog.bb-plan-breakfast-picker .bb-plan-picker-choice img {
   background: #edf2e5;
   object-fit: cover;
 }
-dialog.bb-plan-breakfast-picker .bb-plan-picker-choice > span {
+dialog.bb-plan-meal-picker .bb-plan-picker-choice:not(:has(img)) {
+  grid-template-columns: minmax(0, 1fr);
+}
+dialog.bb-plan-meal-picker .bb-plan-picker-choice > span {
   display: grid;
   gap: 5px;
   min-width: 0;
 }
-dialog.bb-plan-breakfast-picker .bb-plan-picker-choice strong {
+dialog.bb-plan-meal-picker .bb-plan-picker-choice strong {
   color: #214e39;
   font-size: 14px;
   font-weight: 700;
@@ -466,32 +478,33 @@ dialog.bb-plan-breakfast-picker .bb-plan-picker-choice strong {
   white-space: normal;
   overflow-wrap: anywhere;
 }
-dialog.bb-plan-breakfast-picker .bb-plan-picker-choice small {
+dialog.bb-plan-meal-picker .bb-plan-picker-choice small {
   color: #617362;
   font-size: 12px;
   font-weight: 450;
   line-height: 1.4;
 }
-dialog.bb-plan-breakfast-picker .bb-plan-picker-choice:hover {
+dialog.bb-plan-meal-picker .bb-plan-picker-choice:hover {
   border-color: #a1b995;
   background: #f2f6e9;
 }
-dialog.bb-plan-breakfast-picker .bb-plan-picker-empty {
+dialog.bb-plan-meal-picker .bb-plan-picker-empty {
   margin: 0;
-  padding: 24px 12px;
+  padding: 0;
   color: #617362;
   font-size: 14px;
   line-height: 1.5;
-  text-align: center;
+  text-align: left;
 }
-dialog.bb-plan-breakfast-picker .bb-plan-picker-close {
+dialog.bb-plan-meal-picker .bb-plan-picker-close {
+  width: auto;
   display: flex;
   align-items: center;
   justify-content: center;
   box-sizing: border-box;
-  width: 100%;
-  min-height: 46px;
-  padding: 10px 14px;
+  min-height: 44px;
+  margin: 0;
+  padding: 9px 14px;
   border: 1px solid #c7d6bd;
   border-radius: 12px;
   background: #edf3e5;
@@ -501,23 +514,23 @@ dialog.bb-plan-breakfast-picker .bb-plan-picker-close {
   font-weight: 750;
   cursor: pointer;
 }
-dialog.bb-plan-breakfast-picker :is(button, input):focus-visible {
+dialog.bb-plan-meal-picker :is(button, input):focus-visible {
   outline: 3px solid #99722c;
   outline-offset: -3px;
 }
-dialog.bb-plan-breakfast-picker [hidden] {
+dialog.bb-plan-meal-picker [hidden] {
   display: none !important;
 }
-dialog.bb-plan-breakfast-picker button:disabled {
+dialog.bb-plan-meal-picker button:disabled {
   opacity: .5;
   cursor: default;
 }
 @media (max-width: 375px) {
-  dialog.bb-plan-breakfast-picker {
+  dialog.bb-plan-meal-picker {
     padding: 15px;
     border-radius: 17px;
   }
-  dialog.bb-plan-breakfast-picker .bb-plan-picker-heading {
+  dialog.bb-plan-meal-picker .bb-plan-picker-heading {
     font-size: 20px;
   }
 }

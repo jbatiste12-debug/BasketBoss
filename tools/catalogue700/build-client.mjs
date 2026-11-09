@@ -12,6 +12,7 @@ import {sha256Utf8} from './client-integrity.mjs';
 import {transform700MakeAMeal} from './make-a-meal.mjs';
 import {transform700Presentation} from './presentation.mjs';
 import {transform700Performance} from './performance.mjs';
+import {transform700PlanExtrasPicker} from './plan-extras-picker.mjs';
 import swapHost from '../../bb-plan-swap-host.js';
 import {transform700PantrySelection} from './pantry-selection.mjs';
 import {webpDimensions} from '../../scripts/verify-recipe-expansion.mjs';
@@ -150,6 +151,7 @@ function proofScript(contract){
 export function transform700Html(source,release){
  assert(typeof source==='string','source_html');
  source=transform700Performance(source);
+ source=transform700PlanExtrasPicker(source);
  for(const [name,value]of [['RECIPES',release.free],['BB307_NORMALIZED',release.normal]]){
   const span=inlineArray(source,name);source=source.slice(0,span.start)+safeJson(value)+source.slice(span.end);
  }
