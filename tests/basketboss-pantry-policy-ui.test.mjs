@@ -10,7 +10,7 @@ const pantrySource=html.match(/const BB307Pantry=\(\(\)=>\{[\s\S]*?\n\}\)\(\);/)
 const INVENTORY='basketboss_makeameal_v1_inventory',STOCK='basketboss_321_v7_measured_pantry';
 const decode=value=>String(value).replace(/&(?:amp|lt|gt|quot|#39);/g,x=>({'&amp;':'&','&lt;':'<','&gt;':'>','&quot;':'"','&#39;':"'"}[x]));
 const dataKey=name=>name.slice(5).replace(/-([a-z])/g,(_,char)=>char.toUpperCase());
-async function fixture({requirements=[{key:'Honey',unit:'tbsp',required:2},{key:'Lettuce',unit:'each',required:.5}],inventory={},stock={},onlineError=false,live=false}={}){
+export async function fixture({requirements=[{key:'Honey',unit:'tbsp',required:2},{key:'Lettuce',unit:'each',required:.5}],inventory={},stock={},onlineError=false,live=false,sourceOverride=source,configureWindow}={}){
  const values=new Map([[INVENTORY,JSON.stringify(inventory)],[STOCK,JSON.stringify(stock)]]);
  let doc,shopVisits=0,syncs=0;
  function matches(node,selector){
@@ -64,7 +64,7 @@ async function fixture({requirements=[{key:'Honey',unit:'tbsp',required:2},{key:
  context.BBPriceV19=win.BBPriceV19;context.BB_WHOLE_PRODUCE_GRAMS={};vm.runInContext(pantrySource+'\nthis.pantry=BB307Pantry;',context);const pantry=context.pantry;
  const readStock=()=>JSON.parse(storage.getItem(STOCK)||'{}');
  win.BBHomeHost={id:pantry.pantryId,stock:readStock,requirements:()=>requirements,household:()=>[],reload(){},settlePurchases:()=>null,consume:pantry.reconcileStock};
- win.BBHome=homeModule.install(win);win.BBPantryPolicy=policy;win.BBReceiptInventoryCore=receiptCore;vm.runInContext(source,context);await new Promise(resolve=>setTimeout(resolve,0));
+ win.BBHome=homeModule.install(win);win.BBPantryPolicy=policy;win.BBReceiptInventoryCore=receiptCore;configureWindow?.(win);vm.runInContext(sourceOverride,context);await new Promise(resolve=>setTimeout(resolve,0));
  const selected=()=>doc.getElementById('bb5SelectedRows');
  const control=(attribute,key)=>selected().querySelector('['+attribute+'="'+key+'"]');
  return {win,doc,storage,values,pantry,requirements,selected,control,

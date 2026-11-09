@@ -22,6 +22,7 @@ function fixture({premium=true,browser=false,available=true,nativeStartError=nul
   setAttribute(name,value){this.attributes[name]=String(value);}
   getAttribute(name){return this.attributes[name]??null;}
   click(){if(!this.disabled)this.fire('click');}
+  focus(){doc.activeElement=this;}
  }
  const doc=Object.assign(events(),{visibilityState:'visible',createElement:tag=>new Node(tag)});doc.body=new Node('body');
  const container=new Node('div');doc.body.append(container);
@@ -456,6 +457,46 @@ test('mentor starts first sentence before model completion and prefetches just o
  const clips=h.calls.filter(c=>Array.isArray(c)&&c[0]==='playAudioData').slice(-3).map(c=>c[1]);assert(clips.every(c=>c.keepHeld===true));assert.equal(new Set(clips.map(c=>c.speechId)).size,1,'one native hold covers all sentences and model gaps');assert.match(h.status(),/Listening/);h.controller.dispose();
 });
 
+test('a complete sentence starts synthesis during a pause before the next word',async()=>{
+ for(const browser of [false,true]){
+  const model=deferredSpeech(),requests=[];let time=0;const starts=[];
+  const tts={prepareMentor:async text=>{starts.push({text,time});return {base64:'SUQzAAE=',contentType:'audio/mpeg'};},playMentor:async text=>{starts.push({text,time});return {played:true};}};
+  const h=mentorFixture({browser,tts,assistant:{ask:(payload,settings)=>{requests.push(settings);return model.promise;}}});
+  h.button().click();await tick();starts.length=0;await h.final('How thick should it be?');
+  const first='The sauce should coat the back of your spoon.',second='Keep the heat gentle while you stir.';
+  time=100;requests[0].onDelta(first+' ');await tick();
+  assert.equal(starts.length,1);assert.equal(starts[0].time,100,'the confirmed sentence is sent immediately, before the next-word event at 900ms');
+  assert.equal(starts[0].text,first);assert.equal(h.find('bbcv-answer').getAttribute('aria-busy'),'true');
+  time=900;requests[0].onDelta(second);time=1100;model.resolve({answer:first+' '+second});await tick();
+  assert.equal(starts.length,2,'each sentence is synthesized once');assert.equal(h.find('bbcv-answer').getAttribute('aria-busy'),'false');h.controller.dispose();
+ }
+});
+
+test('native synthesis overlaps one already queued sentence and preserves playback order',async()=>{
+ const model=deferredSpeech(),requests=[],preparations=[],plays=[],hold=deferredSpeech();let answering=false;
+ const tts={prepareMentor:async(text,settings)=>{if(!answering)return {base64:'greeting',contentType:'audio/mpeg'};const ready=deferredSpeech();preparations.push({text,settings,ready});return ready.promise;}};
+ const h=mentorFixture({tts,assistant:{ask:(payload,settings)=>{requests.push(settings);return model.promise;}},mentorPlayback:async clip=>{plays.push(clip.base64);return {spoken:true};}});
+ h.button().click();await tick();plays.length=0;answering=true;h.host.BBNativeCookVoice.prepareSpeech=()=>hold.promise;
+ await h.final('How should I cook it?');const sentences=['Cook the fish until the centre reaches 75°C.','Keep the heat gentle so the outside stays moist.','Then rest it briefly before you serve it.'];
+ requests[0].onDelta(sentences.join(' ')+' ');await tick();assert.equal(preparations.length,0,'audio waits for the microphone hold');
+ hold.resolve({speechId:'held-answer'});await tick();assert.equal(preparations.length,2,'the next queued sentence overlaps the first synthesis');
+ preparations[1].ready.resolve({base64:'second',contentType:'audio/mpeg'});await tick();assert.deepEqual(plays,[],'the faster second synthesis cannot jump the queue');
+ preparations[0].ready.resolve({base64:'first',contentType:'audio/mpeg'});await tick();assert.deepEqual(plays,['first','second']);assert.equal(preparations.length,3);
+ preparations[2].ready.resolve({base64:'third',contentType:'audio/mpeg'});model.resolve({answer:sentences.join(' ')});await tick();
+ assert.deepEqual(plays,['first','second','third']);assert.equal(preparations.length,3,'overlap does not add synthesis requests');h.controller.dispose();
+});
+
+test('browser mentor reports preparation until audio actually starts and ignores a stale start',async()=>{
+ const pending=deferredSpeech(),starts=[];let greeting=true;
+ const h=mentorFixture({browser:true,tts:{playMentor:async(text,settings)=>{if(greeting)return {played:true};starts.push(settings);return pending.promise;}}});
+ h.button().click();await tick();greeting=false;await h.typed('What should it look like?');
+ assert.match(h.status(),/Preparing/);starts[0].onStart();assert.match(h.status(),/is speaking/);
+ h.find('bbcv-interrupt').click();const status=h.status();starts[0].onStart();assert.equal(h.status(),status,'an obsolete player cannot replace the listening state');
+ assert.notEqual(h.doc.activeElement,h.find('bbcv-question-input'),'asking aloud does not open the software keyboard');
+ pending.resolve({played:true});await tick();h.controller.dispose();
+ const typed=mentorFixture({assistant:{ask:()=>new Promise(()=>{})}});await typed.typed('How thick should it be?');typed.find('bbcv-interrupt').click();assert.equal(typed.doc.activeElement,typed.find('bbcv-question-input'));assert.equal(typed.find('bbcv-answer').getAttribute('aria-busy'),'false');typed.controller.dispose();
+});
+
 test('a failed text stream cancels speech, labels its partial reply and retains no incomplete history',async()=>{
  const model=deferredSpeech(),playing=deferredSpeech(),requests=[];let plays=0;
  const h=mentorFixture({assistant:{ask:(payload,settings)=>{requests.push({payload,settings});return requests.length===1?model.promise:Promise.resolve({answer:'Follow the current recipe instruction.'});}},mentorPlayback:()=>++plays===2?playing.promise:Promise.resolve({spoken:true})});
@@ -477,6 +518,8 @@ test('sentence boundaries preserve decimals, cooking abbreviations and a final u
  const source='Add 1.5 tbsp. of oil and approx. 2.5 g of spice. Then stir until smooth';
  const part=voice.mentorSentence(source);assert.equal(part.sentence,'Add 1.5 tbsp. of oil and approx. 2.5 g of spice.');assert.equal(voice.mentorSentence(part.rest,true).sentence,'Then stir until smooth');
  assert.equal(voice.mentorSentence('Check it reaches 75°C').sentence,'');assert.equal(voice.mentorSentence('Yes.').sentence,'');
+ assert.equal(voice.mentorSentence('Add 1.5 tbsp. of oil and approx. ').sentence,'');
+ assert.equal(voice.mentorSentence('Heat the sauce gently before adding 1.').sentence,'');
 });
 test('mentor keeps explicit navigation and timers local while quantities are conversational questions',async()=>{
  const h=mentorFixture();h.context.next=()=>{h.calls.push('next');h.context.stepIndex=1;h.context.currentStep='Stir in the peppers.';h.context.mentorRecipe.currentStep=1;h.controller.refresh();return true;};
@@ -562,6 +605,20 @@ test('native recognition failure cannot abort an independent written question',a
   assert.equal(requests[0].signal.aborted,false);assert.equal(h.button().getAttribute('aria-pressed'),'false');
   pending.resolve({answer:'Cook it gently, stirring until softened.'});await tick();
   assert.match(h.find('bbcv-answer').textContent,/stirring until softened/);assert.match(h.status(),/Voice stopped/);h.controller.dispose();
+ }
+});
+test('native recognition failure during streamed speech cancels audio and finishes the written answer',async()=>{
+ for(const state of ['error','stopped']){
+  const model=deferredSpeech(),playing=deferredSpeech(),requests=[];let plays=0;
+  const h=mentorFixture({assistant:{ask:(payload,settings)=>{requests.push(settings);return model.promise;}},mentorPlayback:()=>++plays===2?playing.promise:Promise.resolve({spoken:true})});
+  h.button().click();await tick();await h.final('How do I soften the onion?');
+  const first='Cook it gently, stirring until softened.';requests[0].onDelta(first+' ');await tick();assert.equal(plays,2);
+  const ticket=h.calls.filter(c=>Array.isArray(c)&&c[0]==='playAudioData').at(-1)[1].speechId;
+  h.nativeStatus({state,code:'BB_VOICE_RECOGNITION'});await tick();
+  assert.equal(requests[0].signal.aborted,false);assert.equal(h.button().getAttribute('aria-pressed'),'false');
+  assert(h.calls.some(c=>Array.isArray(c)&&c[0]==='cancelNativeSpeech'&&c[1].speechId===ticket));
+  requests[0].onDelta('Keep the heat low.');model.resolve({answer:first+' Keep the heat low.'});playing.resolve({spoken:true});await tick();
+  assert.equal(h.find('bbcv-answer').textContent,first+' Keep the heat low.');assert.equal(h.find('bbcv-answer').getAttribute('aria-busy'),'false');assert.match(h.status(),/Voice stopped/);assert.equal(plays,2);h.controller.dispose();
  }
 });
 test('speech service limits retain the written answer and report the service limit accurately',async()=>{

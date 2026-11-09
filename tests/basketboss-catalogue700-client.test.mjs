@@ -8,10 +8,11 @@ import {webcrypto,createHash} from 'node:crypto';
 import planning from '../bb-recipe-planning.js';
 import {isCatalogueDinner} from '../tools/catalogue700/planning.mjs';
 import {canonicalHash,PROTECTED500} from '../tools/catalogue700/release.mjs';
-import {inlineArray,transform700Html,transform700Planning,validatePublic700Release,verify700Client} from '../tools/catalogue700/build-client.mjs';
+import {inlineArray,transform700Html,transform700Planning,transform700PreviewConfig,validatePublic700Release,verify700Client} from '../tools/catalogue700/build-client.mjs';
 import {stage700IOSAssets,sync700IOS} from '../tools/catalogue700/sync-ios.mjs';
 import {verifyNativeWeb,buildNativeWeb,CLIENT_FILES,DATA_FILES,HTML_FILES} from '../scripts/build-native-web.mjs';
 import {sha256Utf8} from '../tools/catalogue700/client-integrity.mjs';
+import {transform700MakeAMeal} from '../tools/catalogue700/make-a-meal.mjs';
 
 const root=path.resolve(new URL('..',import.meta.url).pathname);
 const original=fs.readFileSync(new URL('../app.html',import.meta.url),'utf8');
@@ -46,6 +47,42 @@ test('700 generated HTML replaces only explicit data and hydration anchors',()=>
  assert.throws(()=>transform700Html(original.replace("fetch('/api/recipes/premium?catalogue=500'","fetch('/different'"),release),/anchor_premium_route/);
  assert.throws(()=>inlineArray(original+'\nconst RECIPES=[];','RECIPES'),/ambiguous_RECIPES/);
  assert.throws(()=>inlineArray('const RECIPES=["unterminated];','RECIPES'));
+});
+
+test('actual 700 Free catalogue passes the real planner gate while every Premium ID remains denied',()=>{
+ const release=validatePublic700Release({directory:path.join(root,'catalogues/700/release'),sourceDirectory:root,verifyImages:false});
+ const legacyConfig=fs.readFileSync(path.join(root,'bb-premium-preview-config.js'),'utf8'),html=transform700Html(original,release),source=transform700PreviewConfig(legacyConfig,release);
+ const gate=html.slice(html.indexOf('function bb176AllowedRecipe(id){'),html.indexOf('function bb176MaskPremiumPlans(app){'));
+ const context=vm.createContext({RECIPES:[...clone(release.free),...release.premiumIds.map(id=>({id,category:'DINNER'}))],bbVerifiedPaidRecipes:false,bb176IsPremiumPreview:()=>false});context.window=context;
+ vm.runInContext(source+'\n'+transform700Planning(originalPlanning,release.roles)+'\n'+gate,context);
+ const config=context.BB173_PREMIUM_PREVIEW;
+ assert.deepEqual(Array.from(context.BB173_FREE_RECIPE_IDS),release.free.map(recipe=>recipe.id));
+ assert.equal(config.freeRecipes,200);assert.equal(config.totalRecipes,700);assert.equal(config.targetRecipes,700);assert.equal(config.targetPremiumRecipes,500);
+ assert.deepEqual(Array.from(config.acceptedPremiumRecipeCounts),[500]);assert.equal(config.subscriptionVerified,false);
+ for(const recipe of release.free)assert.equal(context.bb176AllowedRecipe(recipe.id),true,recipe.id);
+ for(const id of release.premiumIds)assert.equal(context.bb176AllowedRecipe(id),false,id);
+ assert.equal(context.bb176AllowedRecipe('unknown-official-recipe'),false);
+ const rotation=context.BBRecipePlanning.createRotation({recipes:context.RECIPES,storage:{getItem:()=>null,setItem(){}},scope:'free-catalogue700',isAllowed:recipe=>context.bb176AllowedRecipe(recipe.id)});
+ const expected=release.free.filter(recipe=>context.BBRecipePlanning.isDinner(recipe));
+ assert.deepEqual(Array.from(rotation.eligible,recipe=>recipe.id),expected.map(recipe=>recipe.id));
+ const newRoles=new Map(release.roles.recipes.map(role=>[role.id,role.kind]));
+ const newFreeDinners=release.free.slice(100).filter(recipe=>newRoles.get(recipe.id)==='dinner');
+ assert.ok(newFreeDinners.length>0);
+ for(const recipe of newFreeDinners)assert.ok(rotation.eligible.some(candidate=>candidate.id===recipe.id),recipe.id);
+ for(const recipe of rotation.eligible)assert.notEqual(newRoles.get(recipe.id),'breakfast');
+ const legacyContext={window:{}};vm.runInNewContext(legacyConfig,legacyContext);
+ assert.equal(legacyContext.window.BB173_FREE_RECIPE_IDS.length,100);assert.equal(legacyContext.window.BB173_PREMIUM_PREVIEW.targetPremiumRecipes,400);
+ assert.equal(fs.readFileSync(path.join(root,'bb-premium-preview-config.js'),'utf8'),legacyConfig,'legacy source stays byte-identical');
+});
+
+test('700 Free configuration rejects stale source, duplicate IDs and Premium overlap without granting membership',()=>{
+ const release=fixture(),source=fs.readFileSync(path.join(root,'bb-premium-preview-config.js'),'utf8');
+ for(const change of [value=>value.replace('freeRecipes:100','freeRecipes:101'),value=>value.replace('subscriptionVerified:false','subscriptionVerified:true'),value=>value.replace('"fajitas"','"different-free-id"')])assert.throws(()=>transform700PreviewConfig(change(source),release),/preview_legacy_source/);
+ const duplicate=clone(release);duplicate.free[199].id=duplicate.free[198].id;
+ assert.throws(()=>transform700PreviewConfig(source,duplicate),/preview_free_ids/);
+ const overlap=clone(release);overlap.premiumIds[499]=overlap.free[199].id;
+ assert.throws(()=>transform700PreviewConfig(source,overlap),/preview_free_ids/);
+ const incomplete=clone(release);incomplete.free.pop();assert.throws(()=>transform700PreviewConfig(source,incomplete),/preview_release/);
 });
 
 test('700 data injection cannot terminate its script through authored display text',()=>{
@@ -198,7 +235,7 @@ test('explicit700 sync stages the verified200-Free build after standard100-Free 
  const temp=fs.mkdtempSync(path.join(os.tmpdir(),'bb700-sync-')),project=path.join(temp,'project'),publicDirectory=path.join(temp,'release'),output=path.join(temp,'native700');
  try{
   const release=writeSyntheticPublicRelease(publicDirectory),baseline=(await syntheticNativeBaseline(path.join(temp,'baseline-source'))).directory;verifyNativeWeb({directory:baseline});
-  fs.mkdirSync(project);for(const name of ['app.html','basketboss-pricing-v19.js','capacitor.config.json','bb-plan-swap-core.js','bb-plan-swap-host.js','bb-plan-swap.js','bb-plan-swap.css'])fs.copyFileSync(path.join(root,name),path.join(project,name));
+  fs.mkdirSync(project);for(const name of ['app.html','basketboss-pricing-v19.js','capacitor.config.json','bb-plan-swap-core.js','bb-plan-swap-host.js','bb-plan-swap.js','bb-plan-swap.css','bb-ui-continuity.js','bb-pantry-selection.js','bb-pantry-selection.css'])fs.copyFileSync(path.join(root,name),path.join(project,name));
   const iosPublic=path.join(project,'ios/App/App/public');fs.mkdirSync(iosPublic,{recursive:true});fs.writeFileSync(path.join(iosPublic,'prior-release.txt'),'prior release');
   const originalConfig=fs.readFileSync(path.join(project,'capacitor.config.json')),calls=[];
   const result=await sync700IOS({root:project,publicRelease:publicDirectory,outputDirectory:output,platform:'darwin',runStandardSync:async cwd=>{
@@ -212,6 +249,31 @@ test('explicit700 sync stages the verified200-Free build after standard100-Free 
   assert.deepEqual(result.preservedPlatformFiles,['cordova_plugins.js','cordova.js'].sort((a,b)=>a.localeCompare(b,'en')));
   assert.equal(fs.readFileSync(path.join(iosPublic,'cordova.js'),'utf8'),'/* synthetic Capacitor bridge file */');
   const validated=validatePublic700Release({directory:publicDirectory,sourceDirectory:project});assert.equal(verify700Client({directory:iosPublic,release:validated}).freeRecipes,200);
+  const generatedConfig=fs.readFileSync(path.join(iosPublic,'bb-premium-preview-config.js'),'utf8'),configContext={window:{}};vm.runInNewContext(generatedConfig,configContext);
+  assert.equal(configContext.window.BB173_FREE_RECIPE_IDS.length,200);assert.equal(configContext.window.BB173_PREMIUM_PREVIEW.subscriptionVerified,false);
+  const configStamp=createHash('sha256').update(generatedConfig).digest('hex').slice(0,16);
+  const configURLs=[...fs.readFileSync(path.join(iosPublic,'app.html'),'utf8').matchAll(/src="(bb-premium-preview-config\.js[^"<>]*)"/g)].map(match=>new URL(match[1].replace(/&amp;/g,'&'),'https://native.invalid/'));
+  assert.ok(configURLs.length>0);for(const url of configURLs)assert.equal(url.searchParams.get('bb_native_asset'),configStamp,'asset stamp includes the corrected generated allowlist');
+  fs.copyFileSync(path.join(root,'bb-premium-preview-config.js'),path.join(iosPublic,'bb-premium-preview-config.js'));
+  assert.throws(()=>verify700Client({directory:iosPublic,release:validated,requireInventory:false}),/preview_free_ids/,'a stale legacy Free gate fails explicit700 verification');
+  fs.writeFileSync(path.join(iosPublic,'bb-premium-preview-config.js'),generatedConfig);
+  const mealSource=fs.readFileSync(path.join(iosPublic,'make-a-meal.js'),'utf8');
+  assert.equal(mealSource,transform700MakeAMeal(fs.readFileSync(path.join(root,'make-a-meal.js'),'utf8'),release,{publicRecipesUrl:'recipes.json'}),'the actual native companion uses the shared security-tested loader with its bundled public URL');
+  const meal=nativeMealHarness({source:mealSource,release,config:generatedConfig,publicRecipes:JSON.parse(fs.readFileSync(path.join(iosPublic,'recipes.json')))});
+  await meal.loadPublic();assert.deepEqual(meal.snapshot(),{recipes:200,premium:0});assert.deepEqual(meal.urls(),['recipes.json']);assert.deepEqual(meal.errors,[]);
+  meal.session({user:{id:'native-member-a'},access_token:'native-token-a',expires_at:Date.now()/1000+3600});await meal.reload();assert.deepEqual(meal.snapshot(),{recipes:700,premium:500});
+  meal.session(null);await meal.reload();assert.deepEqual(meal.snapshot(),{recipes:200,premium:0});
+  meal.session({user:{id:'native-member-a'},access_token:'native-token-a',expires_at:Date.now()/1000+3600});let finish;
+  meal.respond(()=>new Promise(resolve=>{finish=resolve;}));const pending=meal.reload();
+  meal.session({user:{id:'native-member-b'},access_token:'native-token-b',expires_at:Date.now()/1000+3600});finish(meal.response());await pending;assert.deepEqual(meal.snapshot(),{recipes:200,premium:0},'a response for the former account cannot hydrate the actual native companion');
+  meal.respond(async()=>({response:{ok:false},data:null}));await meal.reload();assert.deepEqual(meal.snapshot(),{recipes:200,premium:0},'denied membership preserves the bundled Free recipes');
+  const mealHtml=fs.readFileSync(path.join(iosPublic,'make-a-meal.html'),'utf8');
+  assert.match(mealHtml,/<script src="bb-recipe-planning\.js\?bb_native_asset=[a-f0-9]{16}"><\/script>/);
+  assert.ok(mealHtml.indexOf('src="bb-recipe-planning.js')<mealHtml.indexOf('src="make-a-meal.js'));
+  assert.match(fs.readFileSync(path.join(iosPublic,'app.html'),'utf8'),/Premium · 700 recipes \+ Leftover Magic/);
+  assert.match(fs.readFileSync(path.join(iosPublic,'compare.html'),'utf8'),/Use 200 recipes free, or choose Apple Premium/);
+  assert.match(fs.readFileSync(path.join(iosPublic,'bb-membership-compare.js'),'utf8'),/\['Recipe collection','200 recipes','All 700 recipes'\]/);
+  assert.match(fs.readFileSync(path.join(iosPublic,'bb-premium-features.js'),'utf8'),/500 more recipes in Premium/);
   assert.throws(()=>verifyNativeWeb({directory:iosPublic}),/exactly the public 100 Free/,'the old verifier was not weakened to accept700');
   // A later accidental standard-sync copy is detectable by the explicit700
   // verifier, rather than silently passing as the release staged above.
@@ -224,6 +286,17 @@ test('explicit700 sync stages the verified200-Free build after standard100-Free 
  }finally{fs.rmSync(temp,{recursive:true,force:true});}
 });
 function readFree(directory){return JSON.parse(fs.readFileSync(path.join(directory,'recipes.json'))).length;}
+
+function nativeMealHarness({source,release,config,publicRecipes}){
+ const end=source.indexOf('function bbSecureCheckAccountChange(){'),tokenStart=source.indexOf('function bbPaidToken(){'),tokenEnd=source.indexOf('async function requestBody(',tokenStart);
+ const loadStart=source.indexOf("if(!bbPhotoMealMode)bbMealJSON('recipes.json'"),loadEnd=source.indexOf('renderTiles();bb82UnifyMealLayout();',loadStart);
+ assert.ok(end>0&&tokenStart>0&&tokenEnd>tokenStart&&loadStart>0&&loadEnd>loadStart);
+ let session=null,perform=async()=>response();const urls=[],errors=[];
+ const response=()=>({response:{ok:true},data:{catalogueVersion:700,releaseId:release.manifest.release_id,count:500,total:700,targetTotal:700,freeRecipesSha256:release.manifest.free_recipes_sha256,freeNormalizedSha256:release.manifest.free_normalized_sha256,recipes:clone(release.premium),normalized:clone(release.premiumNormal)}});
+ const context=vm.createContext({TextEncoder,AbortController,setTimeout,clearTimeout,publicRecipes,localStorage:{getItem:()=>session?JSON.stringify(session):null},renderTiles(){},message:value=>errors.push(value),fetch(){throw Error('unexpected real network');},perform:async(url,options)=>{urls.push(url);if(url==='recipes.json')return {response:{ok:true},data:clone(publicRecipes)};assert.equal(url,'/api/recipes/v700/premium?catalogue=700');assert.equal(options.cache,'no-store');assert.equal(options.headers.Authorization,'Bearer '+session.access_token);return perform();}});context.window=context;
+ vm.runInContext(config+'\nlet recipes=[];const bbPhotoMealMode=false;\n'+source.slice("(()=>{'use strict';".length,end)+'\n'+source.slice(tokenStart,tokenEnd)+'\nbbMealJSON=(...args)=>perform(...args);globalThis.reload=bbSecureRefreshPremiumRecipes;globalThis.snapshot=()=>({recipes:recipes.length,premium:bbSecurePremiumIds.size});',context);
+ return {loadPublic:async()=>{vm.runInContext(source.slice(loadStart,loadEnd).replace('if(!bbPhotoMealMode)','globalThis.publicLoad='),context);await context.publicLoad;},reload:()=>context.reload(),snapshot:()=>({...context.snapshot()}),urls:()=>urls.slice(),session:value=>{session=value;},respond:value=>{perform=value;},response,errors};
+}
 
 test('explicit700 sync validates before native changes and restores the prior public directory if sync fails',async()=>{
  const temp=fs.mkdtempSync(path.join(os.tmpdir(),'bb700-sync-rollback-')),project=path.join(temp,'project'),publicDirectory=path.join(temp,'release');

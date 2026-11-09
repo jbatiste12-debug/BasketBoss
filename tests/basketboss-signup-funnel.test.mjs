@@ -2,6 +2,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import fs from 'node:fs/promises';
 import vm from 'node:vm';
+import {readWorkerInventory} from './helpers/service-worker-inventory.mjs';
 
 const read=p=>fs.readFile(new URL('../'+p,import.meta.url),'utf8');
 const [html,privacy,script,css,handler,worker]=await Promise.all([
@@ -15,7 +16,8 @@ test('Signup funnel retains the account entrypoints and cache protections',()=>{
   assert.match(html,/id="cloud-open"/);
   assert.match(html,/id="bbColdVisitor"/);
   assert.match(html,/<meta property="og:image"/);
-  assert.match(worker,/v77-planner1/);
+  assert.match(worker,/v78-web700/);
+  const inventory=readWorkerInventory(worker);assert.equal(inventory.imports,1);assert.match(inventory.version,/^[a-f0-9]{64}$/);assert.equal(inventory.cache,inventory.base+'-'+inventory.version);
   assert.match(worker,/target\.pathname\.startsWith\(new URL\('api\/', APP_BASE\)\.pathname\)\) return/);
   assert.match(privacy,/Anonymous usage steps/);
 });

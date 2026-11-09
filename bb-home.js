@@ -247,16 +247,19 @@
     }catch{return item;}
    });
   }
-  function requirement(name,unit){try{const base=unit==='kg'?'g':unit==='l'?'ml':unit;return (host()?.requirements()?.find(row=>host().id(row.key,row.unit)===host().id(name,base))?.required||0)/(unit==='kg'||unit==='l'?1000:1);}catch{return 0;}}
-  function total(name,unit){const base=unit==='kg'?'g':unit==='l'?'ml':unit,row=targets()[host().id(name,base)],factor=unit==='kg'||unit==='l'?1000:1;return roundQuantity(Math.max(requirement(name,unit),row?.pending?row.targetQty/factor:0)+(valid(row?.extraBuffer)?row.extraBuffer/factor:0));}
+  function requirement(name,unit,options){try{const base=unit==='kg'?'g':unit==='l'?'ml':unit;return ((Array.isArray(options?.requirements)?options.requirements:host()?.requirements())?.find(row=>host().id(row.key,row.unit)===host().id(name,base))?.required||0)/(unit==='kg'||unit==='l'?1000:1);}catch{return 0;}}
+  function total(name,unit,options){const base=unit==='kg'?'g':unit==='l'?'ml':unit,row=targets()[host().id(name,base)],factor=unit==='kg'||unit==='l'?1000:1;return roundQuantity(Math.max(requirement(name,unit,options),row?.pending?row.targetQty/factor:0)+(valid(row?.extraBuffer)?row.extraBuffer/factor:0));}
   function prepare(chosen){
    checkDraftActor();const {all,data,who}=own();const expected=store.getItem(KEY);
+   // The synchronous proposal reads one plan snapshot. Nothing is committed
+   // until every row, stock amount, account and expected value is validated.
+   let requirements;const plannedRequirements=()=>requirements??=(host()?.requirements?.()||[]);
    for(const [index,row]of chosen.entries()){if(row.automaticNeeded!==true&&(row.totalNeeded===undefined||row.totalNeeded===''||row.totalNeeded===null))continue;
     let unit=row.unit==='kg'?'g':row.unit==='l'?'ml':row.unit;
     if(row.qty===null||row.qty===undefined||row.qty==='')throw Error('Enter how much '+row.name+' you already have; use 0 for none.');
     let targetQty=Number(row.totalNeeded)*(row.unit==='kg'||row.unit==='l'?1000:1),automaticTargetPending=false;
     if(row.pantryTarget===true){
-     const info=foodTarget(row,{otherRows:chosen.filter((_,at)=>at!==index)});if(info.targetProblem)throw Error(info.targetProblem);
+     const info=foodTarget(row,{requirements:plannedRequirements(),otherRows:chosen.filter((_,at)=>at!==index)});if(info.targetProblem)throw Error(info.targetProblem);
      targetQty=row.automaticNeeded===true?info.totalQuantity:Math.round(Number(row.totalNeeded)*info.quantityPerUnit*1000000)/1000000;unit=info.canonicalUnit;
      if(Number(row.totalNeeded)===info.totalNeeded)targetQty=info.totalQuantity;
      if(row.staple===true&&win.BBPantryPolicy?.isContainerTracked?.(row)!==false&&(!Number.isInteger(targetQty)||targetQty>10000))throw Error('Use whole container counts for this staple.');
@@ -272,7 +275,7 @@
     const id=host().id(row.name,unit),before=data.targets[id];
     const legacy=host().household().find(item=>item.selected&&!item.owned&&!Object.hasOwn(item,'targetQty')&&host().id(item.name,'g')===host().id(row.name,'g'));if(legacy)throw Error('Check the saved '+row.name+' food top-up first so it is not counted twice.');
     let preferences={};
-    if(row.pantryTarget===true){const info=foodTarget(row,{otherRows:chosen.filter((_,at)=>at!==index)});if(info.targetProblem)throw Error(info.targetProblem);if(info.extraBufferQuantity>0)preferences.extraBuffer=info.extraBufferQuantity;if(info.buyMultipleQuantity>0)preferences.buyMultiple=info.buyMultipleQuantity;}
+    if(row.pantryTarget===true){const info=foodTarget(row,{requirements:plannedRequirements(),otherRows:chosen.filter((_,at)=>at!==index)});if(info.targetProblem)throw Error(info.targetProblem);if(info.extraBufferQuantity>0)preferences.extraBuffer=info.extraBufferQuantity;if(info.buyMultipleQuantity>0)preferences.buyMultiple=info.buyMultipleQuantity;}
     else{if(valid(before?.extraBuffer)&&before.extraBuffer>0)preferences.extraBuffer=before.extraBuffer;if(valid(before?.buyMultiple)&&before.buyMultiple>0)preferences.buyMultiple=before.buyMultiple;}
     data.targets[id]={name:row.name,unit,targetQty,pending:row.automaticNeeded===true?automaticTargetPending:row.targetChanged||!before?true:before.pending,...preferences,...(row.automaticNeeded===true?{automaticNeeded:true}:{})};
    }

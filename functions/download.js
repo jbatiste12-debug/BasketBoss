@@ -27,14 +27,14 @@ function downloadPage() {
   <meta property="og:title" content="BasketBoss | Shop your kitchen first">
   <meta property="og:description" content="Plan family meals around food already at home. Buy what is missing and waste less.">
   <meta property="og:url" content="https://basketboss.co.uk/">
-  <meta property="og:image" content="https://basketboss.co.uk/basketboss-social-preview-20261028.png">
+  <meta property="og:image" content="https://basketboss.co.uk/basketboss-social-preview-20261109.png">
   <meta property="og:image:width" content="1200">
   <meta property="og:image:height" content="630">
   <meta property="og:image:alt" content="BasketBoss meal planning, pantry and shopping app">
   <meta name="twitter:card" content="summary_large_image">
   <meta name="twitter:title" content="BasketBoss | Shop your kitchen first">
   <meta name="twitter:description" content="Plan family meals around food already at home. Buy what is missing and waste less.">
-  <meta name="twitter:image" content="https://basketboss.co.uk/basketboss-social-preview-20261028.png">
+  <meta name="twitter:image" content="https://basketboss.co.uk/basketboss-social-preview-20261109.png">
   <meta name="twitter:image:alt" content="BasketBoss meal planning, pantry and shopping app">
   <style>html{color-scheme:light}body{max-width:42rem;margin:15vh auto;padding:1.5rem;background:#faf8ef;color:#163e2d;font:1.1rem/1.6 system-ui,sans-serif}a{color:inherit;display:inline-flex;align-items:center;min-height:44px;margin-right:1.5rem}a:focus-visible{outline:3px solid #94701c;outline-offset:4px}</style>
 </head>

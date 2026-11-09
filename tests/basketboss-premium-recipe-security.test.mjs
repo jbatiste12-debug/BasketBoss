@@ -1,6 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import fs from 'node:fs/promises';
+import {readWorkerInventory} from './helpers/service-worker-inventory.mjs';
 const root=new URL('../',import.meta.url);
 const read=async p=>fs.readFile(new URL(p,root),'utf8');
 const list=JSON.parse(await read('recipes.json'));
@@ -24,10 +25,12 @@ test('Make a Meal uses authenticated Premium delivery, not a 321-item public bun
 });
 test('service worker uses a fresh cache and avoids public full-catalogue caching',async()=>{
   const source=await read('service-worker.js');
-  assert.match(source,/basketboss-premium-secure-shell-20261108-v77-planner1/);
-  const core=source.match(/const CORE\s*=\s*\[([\s\S]*?)\]\s*\.map\(/)?.[1];
-  assert.ok(core,'precache declaration present');
-  assert.doesNotMatch(core,/['"]manifest\.webmanifest['"]/);
+  assert.match(source,/basketboss-premium-secure-shell-20261109-v78-web700/);
+  const inventory=readWorkerInventory(source);assert.ok(inventory.core.length>50,'actual concatenated precache inventory is present');
+  assert.equal(inventory.imports,1);assert.match(inventory.version,/^[a-f0-9]{64}$/);
+  assert.equal(inventory.cache,inventory.base+'-'+inventory.version);
+  for(const address of inventory.core){const url=new URL(address);assert.equal(url.origin,'https://basketboss.co.uk');assert.doesNotMatch(url.pathname,/\.webmanifest$|^\/api\/|^\/recipes\.json$/);}
+  assert.ok(inventory.core.includes('https://basketboss.co.uk/pwa700/recipes.json'),'only the isolated Free200 recipe asset joins the expanded cache');
 });
 test('authenticated server API retains access gate and no-store',async()=>{
   const api=await read('functions/api/recipes/premium.js');

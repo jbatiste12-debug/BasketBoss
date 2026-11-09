@@ -275,3 +275,25 @@ test('prefetched private audio cannot cross transport instances, accounts, token
   await assert.rejects(api.playPreparedMentor(prepared,{signal:controller.signal}));assert.equal(h.players.length,0);assert.equal(h.calls.length,1);assert.equal(h.timers.size,0);
  }
 });
+
+test('mentor playback announces audio start only after playback begins, including prefetched clips',async()=>{
+ for(const method of ['playMentor','playPreparedMentor']){
+  let started=0;const h=fixture({response:mp3,autoEnd:false,delayedPlay:true});
+  const content=method==='playPreparedMentor'?await h.api.prepareMentor('Stir gently.'):'Stir gently.';
+  const pending=h.api[method](content,{onStart:()=>started++});await tick();assert.equal(h.players[0].played,1);assert.equal(started,0);
+  h.players[0].releasePlay();await tick();assert.equal(started,1);h.players[0].dispatchEvent(new Event('ended'));await pending;assert.equal(started,1);
+ }
+ const tail=deferred();let reads=0,started=0;
+ const h=fixture({media:true,autoEnd:false,delayedPlay:true,response:()=>({ok:true,headers:new Headers({'Content-Type':'audio/mpeg'}),body:{getReader:()=>({read:async()=>++reads===1?{done:false,value:new Uint8Array([73,68,51])}:tail.promise,cancel:async()=>{}})}})});
+ const pending=h.api.playMentor('Stir gently.',{onStart:()=>started++});await tick();assert.equal(started,0);h.players[0].releasePlay();await tick();assert.equal(started,1);
+ tail.resolve({done:true});await tick();h.players[0].dispatchEvent(new Event('ended'));await pending;assert.equal(started,1);
+});
+
+test('cancelled playback cannot announce a late audio start',async()=>{
+ for(const media of [false,true]){
+  const tail=deferred(),controller=new AbortController();let reads=0,started=0;
+  const h=fixture({media,autoEnd:false,delayedPlay:true,response:media?()=>({ok:true,headers:new Headers({'Content-Type':'audio/mpeg'}),body:{getReader:()=>({read:async()=>++reads===1?{done:false,value:new Uint8Array([73,68,51])}:tail.promise,cancel:async()=>{}})}}):mp3});
+  const pending=h.api.playMentor('Stir gently.',{signal:controller.signal,onStart:()=>started++});await tick();controller.abort();await assert.rejects(pending,{name:'AbortError'});
+  h.players[0].releasePlay();tail.resolve({done:true});await tick();assert.equal(started,0);assert.equal(h.players[0].paused,1);assert.equal(h.revoked.length,1);
+ }
+});

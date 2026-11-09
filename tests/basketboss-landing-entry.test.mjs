@@ -71,7 +71,8 @@ test('the pantry-first hero explains the weekly benefit without promising saving
  assert.match(hero,/<h1\b[^>]*>Shop your kitchen<br><span>before the supermarket\.<\/span><\/h1>/);
  assert.match(hero,/Check your fridge, freezer and cupboards/);
  assert.match(hero,/Prices are estimates until you enter or confirm what you paid/);
- assert.match(hero,/100 free recipes\. No payment card\./);
+ assert.match(hero,/200 free recipes on the web\. No payment card\./);
+ assert.match(hero,/href="#recipe-availability">App Store recipe availability/);
  assert.doesNotMatch(page,/Loved by thousands|star rating|Google Play badge|average savings|guaranteed £25|£25\+ a week|live supermarket prices/i);
 });
 

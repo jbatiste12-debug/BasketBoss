@@ -54,10 +54,22 @@
  }
  function eligible(session,context,progress={}){return costs(session,context,progress).filter(row=>row.reduced!==false);}
  function stockCredits(session,context,progress={}){return eligible(session,context,progress).filter(row=>row.kind==='manual').map(row=>({id:row.purchaseId,name:row.name,unit:row.unit,quantity:row.quantity,pricePaid:row.pricePaid,sourceId:'reduced:'+row.actor+':'+row.shopSessionId+':'+row.id+':'+row.at}));}
+ // Reuse only the locale/time-zone formatter. Dates and week results remain
+ // fresh on every call, including after a US device time-zone change.
+ const weekFormatters=new Map();
+ function weekFormatter(timeZone){
+  let formatter=weekFormatters.get(timeZone);
+  if(!formatter){
+   formatter=new Intl.DateTimeFormat('en-GB',{timeZone,year:'numeric',month:'2-digit',day:'2-digit'});
+   if(weekFormatters.size>=8)weekFormatters.delete(weekFormatters.keys().next().value);
+   weekFormatters.set(timeZone,formatter);
+  }
+  return formatter;
+ }
  function week(at,market){
   const value=new Date(at);if(!Number.isFinite(value.getTime()))return null;
   const timeZone=market==='US'?Intl.DateTimeFormat().resolvedOptions().timeZone:'Europe/London';
-  const parts=new Intl.DateTimeFormat('en-GB',{timeZone,year:'numeric',month:'2-digit',day:'2-digit'}).formatToParts(value),get=key=>parts.find(part=>part.type===key)?.value;
+  const parts=weekFormatter(timeZone).formatToParts(value),get=key=>parts.find(part=>part.type===key)?.value;
   const day=new Date(get('year')+'-'+get('month')+'-'+get('day')+'T12:00:00Z');day.setUTCDate(day.getUTCDate()-(day.getUTCDay()+6)%7);return day.toISOString().slice(0,10);
  }
  function budget({total=0,pending=0,lines=[],session,archives={},context,progress={},quote,now=Date.now()}={}){

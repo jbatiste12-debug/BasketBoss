@@ -9,6 +9,10 @@ const HOSTS=Object.freeze([['apex','https://basketboss.co.uk'],['www','https://w
 const ROUTES=new Set(['/api/tts','/api/cook-assistant']);
 const QUOTA_SCHEMA_SQL="SELECT name FROM pragma_table_info('bb_ai_daily_usage')";
 const UUID=/^[a-f0-9]{8}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{12}$/i;
+// Pages tail IDs are opaque strings, not deployment/database UUIDs. Accept
+// bounded URL-safe identifiers (including base64 punctuation), never paths,
+// percent escapes, whitespace or control characters. They are not logged.
+const TAIL_ID=/^[A-Za-z0-9_.~:+=-]{1,256}$/;
 export const COOK_INSPECT_LIMITS=Object.freeze({durationMs:90000,eventBytes:1024*1024,events:50});
 const DIAGNOSTIC_STAGES=new Set(['config','authorization','request','quota_database','quota','provider_request','provider_audio','account_state','session_config','session_verification']);
 const DIAGNOSTIC_CODES=new Set([
@@ -213,14 +217,15 @@ export async function inspectCookService(env=process.env,options={}){
  if(mode==='probe')return {mode,matchingSha:details.matchingSha,probes:probes.length};
  const tailRoute=prefix+'/deployments/'+details.deploymentId+'/tails';
  const tail=await cloudflare(env,tailRoute,'POST',perform,{filters:[]},'tail_create');
- requireThat(UUID.test(tail?.id||''),'INSPECT_TAIL_RESPONSE');
+ requireThat(typeof tail?.id==='string'&&TAIL_ID.test(tail.id)&&tail.id!=='.'&&tail.id!=='..','INSPECT_TAIL_RESPONSE');
+ const tailId=encodeURIComponent(tail.id);
  try{
   const url=validateCookTailURL(tail.url);
   emit({kind:'tail',matchingSha:details.matchingSha,listening:true,durationSeconds:90});
   const result=await listen(url,{WebSocket:options.WebSocket||globalThis.WebSocket,emit,setTimeout:options.setTimeout||setTimeout,clearTimeout:options.clearTimeout||clearTimeout});
   return {mode,matchingSha:details.matchingSha,...result};
  }finally{
-  try{await cloudflare(env,tailRoute+'/'+tail.id,'DELETE',perform,undefined,'tail_delete');}
+  try{await cloudflare(env,tailRoute+'/'+tailId,'DELETE',perform,undefined,'tail_delete');}
   catch(error){const safe=cookInspectionFailure(error);throw new InspectionError('INSPECT_TAIL_CLEANUP',{operation:'tail_delete',status:safe.status??null,cloudflareCodes:safe.cloudflareCodes||[]});}
  }
 }

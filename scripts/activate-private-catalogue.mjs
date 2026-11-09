@@ -128,7 +128,10 @@ export async function verifyLivePublicRoutes(rows, perform = fetch) {
     throw Error('The live public route redirects too many times.');
   };
   const landing = await read('/');
-  assert(landing.ok && /500\s+(?:(?:Premium\s+)?recipes|with\s+Premium)/i.test(await landing.text()), 'The live landing page has not yet published the 500-recipe copy.');
+  const landingText = landing.ok ? await landing.text() : '';
+  const legacyCopy = /500\s+(?:(?:Premium\s+)?recipes|with\s+Premium)/i.test(landingText);
+  const installedVersionCopy = /App\s*Store:\s*currently\s*100\s+Free\s+and\s+500\s+total/i.test(landingText);
+  assert(landing.ok && (legacyCopy || installedVersionCopy), 'The live landing page has not yet published the 500-recipe copy.');
   const free = await read('/recipes.json');
   const freeRecipes = free.ok ? await free.json().catch(() => null) : null;
   assert(Array.isArray(freeRecipes) && freeRecipes.length === 100, 'The live public recipe catalogue is not exactly 100 recipes.');

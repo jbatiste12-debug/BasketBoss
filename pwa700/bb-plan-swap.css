@@ -1,0 +1,8 @@
+/* A contained44px control beside each dinner's portion stepper. */
+#app.bbnext-plan .bb-plan-swap-button{display:inline-flex!important;align-items:center;justify-content:center;width:44px!important;min-width:44px!important;height:44px!important;min-height:44px!important;flex:0 0 44px;padding:0!important;margin:0 0 0 4px;border:1px solid #bdd3c4!important;border-radius:50%!important;background:#eef6ef!important;color:#226347!important;box-shadow:0 2px 7px #173e2410;cursor:pointer;vertical-align:middle;touch-action:manipulation}
+#app.bbnext-plan .bb-plan-swap-button svg{width:22px;height:22px;display:block;pointer-events:none}
+#app.bbnext-plan .bb-plan-swap-button:hover{background:#e3f0e5!important;border-color:#86ae94!important}
+#app.bbnext-plan .bb-plan-swap-button:focus-visible{outline:3px solid #cead54;outline-offset:3px}
+#app.bbnext-plan .bb-plan-swap-button:disabled{opacity:.5;cursor:wait}
+@media(prefers-reduced-motion:no-preference){#app.bbnext-plan .bb-plan-swap-button{transition:background .16s,border-color .16s,transform .16s}#app.bbnext-plan .bb-plan-swap-button:active{transform:scale(.95)}}
+@media(prefers-reduced-motion:no-preference){#app.bbnext-plan .bb-plan-swap-button[aria-busy=true] svg{animation:bb-plan-swap-turn 1.1s linear infinite}}@keyframes bb-plan-swap-turn{to{transform:rotate(360deg)}}

@@ -3,6 +3,8 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import fs from 'node:fs/promises';
+import {createHash} from 'node:crypto';
+import {readWorkerInventory} from './helpers/service-worker-inventory.mjs';
 const root = new URL('../', import.meta.url);
 const read = p => fs.readFile(new URL(p, root), 'utf8');
 
@@ -34,16 +36,29 @@ test('Public normalized recipe data does not expose the protected 221 catalogue'
 
 test('All locally pre-cached PWA assets exist, without manifest or API paths', async () => {
   const sw = await read('service-worker.js');
-  const match = sw.match(/const CORE\s*=\s*\[([\s\S]*?)\]\s*\.map\(/);
-  assert.ok(match, 'expected a static CORE list');
-  const assets = [...match[1].matchAll(/['"]([^'"]+)['"]/g)].map(m => m[1]);
-  assert.ok(assets.length >= 50, 'expected the existing protected shell inventory');
-  for (const url of assets) {
-    const path = url.replace(/^\.\//, '').split('?')[0];
-    assert.ok(!path.startsWith('api/') && path !== 'manifest.webmanifest' && path !== 'recipes.json',
-      `${path} must not be pre-cached`);
-    const sourcePath=path==='app'?'app.html':path==='welcome'?'welcome.html':path;
-    await fs.access(new URL(sourcePath, root));
+  const inventory=readWorkerInventory(sw);
+  assert.equal(inventory.imports,1);assert.ok(inventory.core.length>=50,'expected the existing protected shell inventory');
+  assert.ok(inventory.pwa.length>=150,'expected the generated public700 inventory to be included');
+  const assetFile=async address=>{
+    const url=new URL(address,'https://basketboss.co.uk/');assert.equal(url.origin,'https://basketboss.co.uk');
+    const path=url.pathname.slice(1);
+    assert.ok(!path.startsWith('api/')&&!path.endsWith('.webmanifest')&&path!=='recipes.json',`${path} must not be pre-cached`);
+    assert.doesNotMatch(path,/(?:^|\/)(?:functions|bb-server-lib|native|dist|sql|scripts|tests|docs|node_modules)(?:\/|$)|(?:^|\/)\.[^/]+|\.(?:private|sealed|backup)(?:\.json)?$/i);
+    for(const key of ['code','token_hash','access_token','refresh_token','error_code'])assert.equal(url.searchParams.has(key),false,'credential query must not enter the cache');
+    let source=new URL(path,root);
+    try{assert.ok((await fs.stat(source)).isFile());}catch{source=new URL(path+'.html',root);assert.ok((await fs.stat(source)).isFile());}
+    return source;
+  };
+  for (const url of inventory.core) await assetFile(url);
+  const proof=[];
+  for(const url of inventory.pwa){assert.ok(inventory.core.includes(new URL(url,'https://basketboss.co.uk/').href),'generated entry must join actual CORE');proof.push({url,sha256:createHash('sha256').update(await fs.readFile(await assetFile(url))).digest('hex')});}
+  assert.deepEqual(inventory.pwa,inventory.pwa.slice().sort(),'cache hash uses sorted exact URLs including query versions');
+  assert.equal(inventory.version,createHash('sha256').update(JSON.stringify(proof)).digest('hex'),'cache identity binds the actual generated and shared asset bytes');
+  assert.equal(inventory.cache,inventory.base+'-'+inventory.version);
+  const publicFree=JSON.parse(await read('pwa700/recipes.json'));
+  assert.equal(publicFree.length,200);assert.equal(new Set(publicFree.map(row=>row.id)).size,200);
+  for(const recipe of publicFree){
+    assert.notEqual(recipe.premium,true);assert.notEqual(recipe.accessTier,'premium');
   }
 });
 

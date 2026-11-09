@@ -1,0 +1,121 @@
+name: Verify web catalogue 700 and build 34 regressions
+
+on:
+  workflow_dispatch:
+  pull_request:
+    paths:
+      - .github/workflows/web700-regression.yml
+      - tools/catalogue700/**
+      - catalogues/700/release/**
+      - pwa700/**
+      - bb-*.js
+      - bb-*.css
+      - shopping-inventory.js
+      - make-a-meal.*
+      - basketboss-pricing-v19.js
+      - basketboss-social-preview-*.png
+      - social-assets/**
+      - service-worker.js
+      - manifest.webmanifest
+      - _headers
+      - _redirects
+      - functions/**
+      - bb-server-lib/**
+      - tests/**
+      - scripts/**
+      - sql/**
+      - supabase/migrations/**
+      - '*.html'
+      - pricing-sandbox.css
+      - package.json
+      - package-lock.json
+  push:
+    branches: [main]
+    paths:
+      - .github/workflows/web700-regression.yml
+      - tools/catalogue700/**
+      - catalogues/700/release/**
+      - pwa700/**
+      - bb-*.js
+      - bb-*.css
+      - shopping-inventory.js
+      - make-a-meal.*
+      - basketboss-pricing-v19.js
+      - basketboss-social-preview-*.png
+      - social-assets/**
+      - service-worker.js
+      - manifest.webmanifest
+      - _headers
+      - _redirects
+      - functions/**
+      - bb-server-lib/**
+      - tests/**
+      - scripts/**
+      - sql/**
+      - supabase/migrations/**
+      - '*.html'
+      - pricing-sandbox.css
+      - package.json
+      - package-lock.json
+
+permissions:
+  contents: read
+
+jobs:
+  portable-and-browser:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v5
+        with:
+          persist-credentials: false
+          fetch-depth: 0
+      - uses: actions/setup-node@v5
+        with:
+          node-version: '24'
+          cache: npm
+      - name: Configure isolated test tool paths on the allocated runner
+        run: |
+          printf '%s\n' \
+            "PLAYWRIGHT_BROWSERS_PATH=$RUNNER_TEMP/basketboss-regression-chromium" \
+            "BB_PLAYWRIGHT_MODULE=$RUNNER_TEMP/basketboss-regression-tools/node_modules/playwright" \
+            "BB_PGLITE_MODULE=$RUNNER_TEMP/basketboss-regression-tools/node_modules/@electric-sql/pglite" \
+            "BB_RECEIPT_PGLITE_PATH=$RUNNER_TEMP/basketboss-regression-tools/node_modules/@electric-sql/pglite/dist/index.js" >> "$GITHUB_ENV"
+      - name: Install pinned application dependencies
+        run: npm ci --no-audit --no-fund
+      - name: Install isolated browser and PostgreSQL test tools
+        run: >-
+          npm install --prefix "$RUNNER_TEMP/basketboss-regression-tools"
+          --package-lock=false --ignore-scripts --no-audit --no-fund
+          playwright@1.62.1 @electric-sql/pglite@0.3.14
+      - name: Install the matching Chromium runtime
+        run: node "$BB_PLAYWRIGHT_MODULE/cli.js" install --with-deps chromium
+      - name: Require the browser and PostgreSQL test engines
+        run: |
+          node <<'JS'
+          const assert = require('node:assert/strict');
+          const {chromium} = require(process.env.BB_PLAYWRIGHT_MODULE);
+          const {PGlite} = require(process.env.BB_PGLITE_MODULE);
+          assert.equal(typeof chromium.launch, 'function');
+          assert.equal(typeof PGlite, 'function');
+          require('node:fs').accessSync(chromium.executablePath());
+          console.log('Pinned browser and PostgreSQL test engines are available.');
+          JS
+      - name: Require deterministic public PWA assets
+        run: |
+          node tools/catalogue700/build-pwa.mjs
+          node <<'JS'
+          const {execFileSync} = require('node:child_process');
+          const changed = execFileSync('git', ['status', '--porcelain', '--', 'pwa700', '_redirects'], {encoding:'utf8'});
+          if (changed.trim()) {
+            console.error('Regenerate and commit the public PWA assets before release:\n' + changed);
+            process.exitCode = 1;
+          }
+          JS
+      - name: Verify the portable native package
+        run: npm run build:native
+      - name: Run the complete application, PostgreSQL and Chromium regressions
+        run: node --test --test-isolation=none tests/*.test.mjs
+      - name: Verify the deployed public 700 catalogue and legacy boundaries
+        if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+        run: node scripts/verify-web700-deployment.mjs

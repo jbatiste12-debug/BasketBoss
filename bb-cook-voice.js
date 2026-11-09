@@ -104,7 +104,9 @@
  // four early clips plus a final remainder bounds synthesis work per answer.
  function mentorSentence(value,final=false){
   const text=String(value||'');if(final)return {sentence:text.trim(),rest:''};
-  const boundary=/[.!?]+[”"’')\]]*(?=\s+\S)/g;let match;
+  // A following space confirms the punctuation without waiting for the next
+  // word to arrive. Decimals and an unfinished final token still stay intact.
+  const boundary=/[.!?]+[”"’')\]]*(?=\s)/g;let match;
   while((match=boundary.exec(text))){
    const end=match.index+match[0].length,prefix=text.slice(0,end);
    if(prefix.trim().length<32)continue;
@@ -159,6 +161,7 @@
    form.hidden=disclosure.hidden=c.premium!==true;input.disabled=c.premium!==true;send.disabled=c.premium!==true||busy;
    nameRow.hidden=c.premium!==true;if(c.premium!==true)nameForm.hidden=true;nameDisplay.textContent='Your mentor: '+mentorName;
    exchange.hidden=!question.textContent&&!answer.textContent;question.hidden=!question.textContent;answer.hidden=!answer.textContent;
+   answer.setAttribute('aria-busy',String(job?.questionPending===true));
    interrupt.hidden=!busy;interrupt.textContent=wanted?'Ask a question':'Cancel question';retry.hidden=!retryVoice||!wanted||busy;
   }
   const current=value=>job===value&&value.generation===generation&&value.epoch===epoch&&!value.controller.signal.aborted&&allowed()&&actor()===value.actor&&String(read().key??'')===value.key&&position(read())===value.position;
@@ -215,8 +218,7 @@
      if(result?.spoken!==true)throw Error('mentor_audio_unavailable');value.speechId=null;
     }else{
      if(typeof tts?.playMentor!=='function')throw Error('mentor_audio_unavailable');
-     mode='speaking';message('Your cooking mentor is speaking.');render();
-     await tts.playMentor(chunk,{signal:value.controller.signal,timeoutMs:Math.min(360000,AI_SETUP_TIMEOUT_MS+speechTimeoutMs(chunk))});
+     await tts.playMentor(chunk,{signal:value.controller.signal,timeoutMs:Math.min(360000,AI_SETUP_TIMEOUT_MS+speechTimeoutMs(chunk)),onStart:()=>{if(current(value)&&wanted){mode='speaking';message('Your cooking mentor is speaking.');render();}}});
     }
    }
   }
@@ -242,17 +244,19 @@
      if(backend==='native'){
       if(!await holdNative(value)||!valid())break;
       if(typeof tts?.prepareMentor!=='function'||typeof native()?.playAudioData!=='function')throw Error('mentor_audio_unavailable');
-      prefetch=true;const prepared=await prepare(active);if(prepared.error)throw prepared.error;if(!valid())break;
+      prefetch=true;const preparation=prepare(active);prime();
+      const prepared=await preparation;if(prepared.error)throw prepared.error;if(!valid())break;
       prime();mode='speaking';message('Your cooking mentor is speaking.');render();
       const result=await native().playAudioData({...prepared.audio,speechId:value.speechId,keepHeld:true});if(!valid())break;
       if(result?.spoken!==true)throw Error('mentor_audio_unavailable');
      }else{
       if(typeof tts?.playMentor!=='function')throw Error('mentor_audio_unavailable');
-      prefetch=true;prime();mode='speaking';message('Your cooking mentor is speaking.');render();
+      prefetch=true;prime();
+      const playback={...settings,timeoutMs:AI_SETUP_TIMEOUT_MS+speechTimeoutMs(active.text),onStart:()=>{if(valid()){mode='speaking';message('Your cooking mentor is speaking.');render();}}};
       if(active.audio&&typeof tts.playPreparedMentor==='function'){
        const prepared=await active.audio;if(prepared.error)throw prepared.error;if(!valid())break;
-       await tts.playPreparedMentor(prepared.audio,{...settings,timeoutMs:AI_SETUP_TIMEOUT_MS+speechTimeoutMs(active.text)});
-      }else await tts.playMentor(active.text,{...settings,timeoutMs:AI_SETUP_TIMEOUT_MS+speechTimeoutMs(active.text)});
+       await tts.playPreparedMentor(prepared.audio,playback);
+      }else await tts.playMentor(active.text,playback);
      }
      active=null;
     }}catch(error){
@@ -294,22 +298,22 @@
    if(!allowed())return;const prompt=String(raw||'').trim();
    if(!prompt||prompt.length>600){message('Ask a cooking question of up to 600 characters.');return;}
    let value,queue,buffer='',received='',clips=0;try{
-    value=beginJob('thinking');question.textContent=prompt;answer.textContent='';lastSpeech='';lastAnswerPosition=null;input.value='';message('Thinking about your recipe…');render();
+    value=beginJob('thinking');value.questionPending=true;question.textContent=prompt;answer.textContent='';lastSpeech='';lastAnswerPosition=null;input.value='';message('Thinking about your recipe…');render();
     // Obtain the written answer independently of native audio setup. Busy
     // suppresses recognition here; the queue holds the microphone before any
     // reply audio is prepared or played and reports audio-only failures.
     if(typeof assistant?.ask!=='function')throw Error('mentor_unavailable');
-    queue=speechQueue(value);
+    queue=speechQueue(value);value.cancelAudio=queue.cancel;
     const onDelta=(text)=>{
      if(!current(value))return;
      received+=text;if(received.length>1000)throw Error('mentor_response');
-     answer.textContent=received;buffer+=text;render();
+     answer.textContent=received;buffer+=text;if(mode==='thinking'){mode='answering';message('Your cooking mentor is replying…');}render();
      while(clips<4){const part=mentorSentence(buffer);if(!part.sentence)break;buffer=part.rest;clips++;if(wanted)queue.push(part.sentence);}
     };
     const result=await assistant.ask({question:prompt,recipe:c.mentorRecipe,history:history.map(h=>({...h})),mentorName},{onDelta,signal:value.controller.signal,timeoutMs:45000});
     if(!current(value))return;if(typeof result?.answer!=='string'||!result.answer.trim()||result.answer.length>1000)throw Error('mentor_response');
     const reply=result.answer.trim();if(received&&received.trim()!==reply)throw Error('mentor_response');
-    history=[...history,{role:'user',text:prompt},{role:'assistant',text:reply}].slice(-4);answer.textContent=reply;lastSpeech=reply;lastAnswerPosition=value.position;
+    history=[...history,{role:'user',text:prompt},{role:'assistant',text:reply}].slice(-4);answer.textContent=reply;lastSpeech=reply;lastAnswerPosition=value.position;value.questionPending=false;render();
     if(!received)buffer=reply;
     if(wanted){queue.push(mentorSentence(buffer,true).sentence);await queue.drain();}
     if(!wanted)message(value.voiceFailed?'Your cooking mentor’s reply. Voice stopped; tap Turn on mentor voice to retry.':'Your cooking mentor’s reply.');render();
@@ -346,8 +350,8 @@
    if(session!==epoch||!wanted)return;const state=typeof value==='string'?value:value?.state;
    // A microphone failure must not cancel an independent written question.
    // Explicit Stop, backgrounding and account changes still use stop().
-   if((state==='error'||state==='stopped')&&job&&mode==='thinking'){
-    job.voiceFailed=true;wanted=false;starting=false;clearRestart();
+   if((state==='error'||state==='stopped')&&job?.questionPending===true){
+    job.voiceFailed=true;wanted=false;starting=false;clearRestart();job.cancelAudio?.();
     try{Promise.resolve(native()?.stop()).catch(()=>{});}catch{}
     message('Voice stopped. Still getting your written answer…');render();return;
    }
@@ -379,7 +383,7 @@
   function resumeAfterInterrupt(){
    cancelPending();retryVoice=false;failureNotice='';
    if(wanted){mode='listening';message('Listening. Ask your cooking question.');if(backend==='browser')beginBrowser(epoch);}
-   else{mode='idle';message('Type your cooking question below.');}render();input.focus?.();
+   else{mode='idle';message('Type your cooking question below.');input.focus?.();}render();
   }
   function refresh(){
    if(disposed)return;const c=read(),key=String(c.key??''),nextPosition=position(c);

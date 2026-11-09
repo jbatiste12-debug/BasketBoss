@@ -21,8 +21,9 @@ test('Comparison page is accurate, accessible and links to existing actual produ
   assert.match(compare, /<h1>More dinner ideas/);
   assert.match(compare, /<th scope="col">Free<\/th>/);
   assert.match(compare, /<th scope="col">Premium<\/th>/);
-  assert.match(compare, /100 recipes/);
-  assert.match(compare, /500 recipes/);
+  assert.match(compare, /<td>200 recipes<\/td>/);
+  assert.match(compare, /<td>All 700 recipes<\/td>/);
+  assert.match(compare, /App Store: currently 100 Free and 500 total/);
   assert.match(compare, /7-day free trial, then £1\.99\/month/);
   assert.match(compare, /3-day free trial, then £4\.99\/month/);
   assert.match(compare, /first 25 eligible confirmed subscribers/);

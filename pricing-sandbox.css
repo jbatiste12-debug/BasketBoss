@@ -19,9 +19,9 @@ h1 span{color:#246d4b}
 .plan-card{display:flex;flex-direction:column;padding:30px;border-radius:26px;background:#fff;border:1px solid var(--line);box-shadow:var(--shadow);min-width:0;position:relative;overflow:hidden}
 .annual{border:2px solid #d8b13d;background:linear-gradient(145deg,#fffefa,#fffdf4)}
 .card-top{display:flex;justify-content:space-between;align-items:center;gap:10px;min-height:48px}
-.plan-icon{width:48px;height:48px;border-radius:16px;display:grid;place-items:center;background:#e8f3e9;font-size:24px}
+.plan-icon{width:48px;height:48px;flex:0 0 48px;border-radius:16px;display:grid;place-items:center;background:#e8f3e9;font-size:24px}
 .annual .plan-icon{background:#fff2c3}
-.plan-label,.savings{display:inline-flex;padding:6px 11px;border-radius:99px;background:#eef4ef;color:#235c40;font-size:12px;font-weight:850;white-space:nowrap}
+.plan-label,.savings{display:inline-flex;min-width:0;padding:6px 11px;border-radius:99px;background:#eef4ef;color:#235c40;font-size:12px;font-weight:850;white-space:normal;overflow-wrap:anywhere;line-height:1.4}
 .savings{color:#74530b;background:#fbe8a6}
 .plan-card h2{font-size:24px;letter-spacing:-.03em;margin:24px 0 7px}
 .price{font-size:clamp(43px,5vw,56px);font-weight:900;letter-spacing:-.055em;line-height:1.12;color:#143a32;white-space:nowrap}

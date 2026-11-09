@@ -2,6 +2,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import vm from 'node:vm';
+import {readWorkerInventory} from './helpers/service-worker-inventory.mjs';
 const script=fs.readFileSync(new URL('../service-worker.js',import.meta.url),'utf8');
 const SCOPE='https://basketboss.co.uk/';
 function harness({offline=false}={}) {
@@ -18,8 +19,11 @@ function harness({offline=false}={}) {
   return {request,seen};
 }
 test('Beta cache is versioned past the production merge',()=>{
- assert.match(script,/basketboss-premium-secure-shell-20261108-v77-planner1/);
+ assert.match(script,/basketboss-premium-secure-shell-20261109-v78-web700/);
  assert.doesNotMatch(script,/20261028-v13-free-signup-funnel/);
+ const inventory=readWorkerInventory(script);
+ assert.equal(inventory.imports,1);assert.match(inventory.version,/^[a-f0-9]{64}$/);
+ assert.equal(inventory.cache,'basketboss-premium-secure-shell-20261109-v78-web700-'+inventory.version);
 });
 test('Onboarding, partner sharing and per-day serving assets refresh from network',async()=>{
  const h=harness();for(const asset of ['bb-onboarding-v2.js?v=20261031-shop-prices','bb-household-sharing.js?v=20261030-rc1','bb-serving-scale.js']){

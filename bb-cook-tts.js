@@ -53,16 +53,17 @@
   function operation(options,task){
    const Controller=win.AbortController||globalThis.AbortController;
    if(!Controller)return Promise.reject(failure('BB_TTS_UNAVAILABLE'));
-   const controller=new Controller(),cleanups=[];let reason=null,timer=null;
+   const controller=new Controller(),cleanups=[];let reason=null,timer=null,began=false;
    const stop=value=>{if(controller.signal.aborted)return;reason=value;controller.abort();};
    const check=()=>{if(controller.signal.aborted)throw reason||cancelled();if(blocked())throw failure('BB_TTS_SESSION_CHANGED');};
+   const started=()=>{check();if(began)return;began=true;options?.onStart?.();check();};
    const add=fn=>cleanups.push(fn),abort=()=>stop(cancelled());
    const external=options?.signal;
    if(external?.aborted)stop(cancelled());else external?.addEventListener?.('abort',abort,{once:true});
    const timeout=Number(options?.timeoutMs),wait=Number.isFinite(timeout)?Math.max(1000,Math.min(360000,timeout)):15000;
    const stopped=new Promise((_,reject)=>controller.signal.addEventListener('abort',()=>reject(reason||cancelled()),{once:true}));
    timer=later(()=>stop(failure('BB_TTS_TIMEOUT')),wait);
-   const promise=Promise.resolve().then(()=>{check();return task({signal:controller.signal,check,add,stop});});
+   const promise=Promise.resolve().then(()=>{check();return task({signal:controller.signal,check,add,stop,started});});
    return Promise.race([promise,stopped]).finally(()=>{clear(timer);external?.removeEventListener?.('abort',abort);for(const fn of cleanups.reverse())try{fn();}catch{}});
   }
   async function session(scope){
@@ -156,7 +157,7 @@
    assertPin(pin,scope);
    const BlobType=win.Blob||globalThis.Blob;if(!BlobType)throw failure('BB_TTS_AUDIO');
    const player=audio(scope),done=completed(player,scope);player.src=objectURL(new BlobType([bytes],{type:'audio/mpeg'}),scope);
-   assertPin(pin,scope);try{await player.play();}catch{throw failure('BB_TTS_AUDIO');}await done.promise;
+   assertPin(pin,scope);try{await player.play();}catch{throw failure('BB_TTS_AUDIO');}assertPin(pin,scope);scope.started();await done.promise;
    assertPin(pin,scope);return {played:true};
   }
   async function playPreparedMentor(value,options={}){
@@ -209,7 +210,7 @@
    if(!size)throw failure('BB_TTS_AUDIO');assertPin(pin,scope);
    const BlobType=win.Blob||globalThis.Blob;if(!BlobType)throw failure('BB_TTS_AUDIO');
    const done=completed(player,scope);player.src=objectURL(new BlobType(chunks,{type:'audio/mpeg'}),scope);
-   try{await player.play();}catch{throw failure('BB_TTS_AUDIO');}await done.promise;
+   try{await player.play();}catch{throw failure('BB_TTS_AUDIO');}assertPin(pin,scope);scope.started();await done.promise;
   }
   async function progressive(response,player,pin,scope,Source){
    const media=new Source(),done=completed(player,scope),source=reader(response,scope);let size=0,buffer=null,playing=false;
@@ -227,7 +228,7 @@
      while(true){
       const item=await source.read();scope.check();if(item.done)break;
       size+=item.value.byteLength;if(size>MAX_AUDIO)throw failure('BB_TTS_AUDIO');await append(item.value);scope.check();
-      if(!playing){assertPin(pin,scope);playing=true;Promise.resolve(player.play()).catch(()=>done.fail(failure('BB_TTS_AUDIO')));}
+      if(!playing){assertPin(pin,scope);playing=true;Promise.resolve(player.play()).then(()=>{assertPin(pin,scope);scope.started();}).catch(error=>done.fail(error?.code?error:failure('BB_TTS_AUDIO')));}
      }
      if(!size)throw failure('BB_TTS_AUDIO');if(media.readyState==='open')media.endOfStream();
     }catch(error){done.fail(error);}
