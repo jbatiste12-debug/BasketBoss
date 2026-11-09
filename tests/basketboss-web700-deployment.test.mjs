@@ -2,7 +2,10 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import path from 'node:path';
-import {verifyWeb700Deployment,waitForWeb700Deployment} from '../scripts/verify-web700-deployment.mjs';
+import {createHash} from 'node:crypto';
+import {spawnSync} from 'node:child_process';
+import {fileURLToPath} from 'node:url';
+import {verifyWeb700Deployment,waitForWeb700Deployment,web700DeploymentFailure} from '../scripts/verify-web700-deployment.mjs';
 
 const root=path.resolve(new URL('..',import.meta.url).pathname);
 const inventory=JSON.parse(fs.readFileSync(path.join(root,'pwa700/manifest.json')));
@@ -58,4 +61,29 @@ test('bounded retries recover after propagation and never expose provider messag
  assert.equal((await waitForWeb700Deployment({perform,attempts:2,pause:async()=>{pauses++;}})).ok,true);assert.equal(pauses,1);
  await assert.rejects(waitForWeb700Deployment({perform:async()=>{throw Error('synthetic-private-provider-detail');},attempts:2,pause:async()=>{}}),/^Error: WEB700_NETWORK$/);
  await assert.rejects(waitForWeb700Deployment({perform,attempts:13}),/WEB700_ATTEMPTS/);
+});
+
+test('byte mismatch diagnostics expose only the allowlisted public path, hashes, lengths and edge markers while still rejecting',async()=>{
+ const suffix='<a data-cfemail="synthetic-private-text" href="/cdn-cgi/l/email-protection">hidden email</a><script src="https://static.cloudflareinsights.com/beacon.min.js"></script><script data-cf-settings="synthetic" src="/cdn-cgi/scripts/example/rocket-loader.min.js"></script>',original=fs.readFileSync(path.join(root,'pwa700/app.html'));
+ const body=Buffer.concat([original,Buffer.from(suffix)]),f=fixture({replace:route=>route==='/pwa700/app'?{body}:null});
+ let failure;try{await verifyWeb700Deployment({perform:f.perform});assert.fail('changed public bytes must remain a failed deployment proof');}catch(error){failure=error;}
+ assert.equal(failure.message,'WEB700_ASSET_BYTES');const result=web700DeploymentFailure(failure);
+ assert.deepEqual(result,{ok:false,error:'WEB700_ASSET_BYTES',details:{publicPath:'/pwa700/app',expectedBytes:original.length,receivedBytes:body.length,expectedSha256:createHash('sha256').update(original).digest('hex'),receivedSha256:createHash('sha256').update(body).digest('hex'),cloudflareEmailProtection:true,cloudflareInsights:true,rocketLoader:true}});
+ assert.doesNotMatch(JSON.stringify(result),/synthetic|hidden email|<script|data-cfemail/);
+});
+
+test('diagnostic formatting drops arbitrary provider details, credentials, unsafe paths and malformed metadata',()=>{
+ const good={publicPath:'/pwa700/app',expectedBytes:100,receivedBytes:101,expectedSha256:'a'.repeat(64),receivedSha256:'b'.repeat(64),cloudflareEmailProtection:false,cloudflareInsights:false,rocketLoader:false},error=Object.assign(Error('WEB700_ASSET_BYTES'),{details:{...good,body:'synthetic-provider-credential',authorization:'Bearer synthetic-secret'}});
+ assert.deepEqual(web700DeploymentFailure(error).details,good);assert.doesNotMatch(JSON.stringify(web700DeploymentFailure(error)),/synthetic|Bearer|authorization|body/);
+ for(const patch of [{publicPath:'/api/recipes/v700/premium'},{publicPath:'https://elsewhere.example/public.js'},{publicPath:'/pwa700/app?access_token=synthetic'},{publicPath:'/.github/private-catalogue/file'},{expectedBytes:Infinity},{receivedBytes:8*1024*1024+1025},{receivedSha256:'synthetic-provider-credential'},{rocketLoader:'synthetic-provider-credential'}])assert.deepEqual(web700DeploymentFailure(Object.assign(Error('WEB700_ASSET_BYTES'),{details:{...good,...patch}})),{ok:false,error:'WEB700_ASSET_BYTES'});
+ assert.deepEqual(web700DeploymentFailure(Object.assign(Error('WEB700_SYNTHETIC_PROVIDER_SECRET'),{details:good})),{ok:false,error:'WEB700_UNAVAILABLE'});
+ assert.deepEqual(web700DeploymentFailure(Object.assign(Error('synthetic-provider-credential'),{details:good})),{ok:false,error:'WEB700_UNAVAILABLE'});
+ assert.deepEqual(web700DeploymentFailure(Object.assign(Error('WEB700_NETWORK'),{details:good})),{ok:false,error:'WEB700_NETWORK'});
+});
+
+test('the diagnostic CLI --once flag performs one read attempt and prints only the fixed failure object',()=>{
+ const script=new URL('../scripts/verify-web700-deployment.mjs',import.meta.url);
+ const program=`let calls=0;globalThis.fetch=async()=>{calls++;throw Error('synthetic-private-provider-body');};process.argv=['node',${JSON.stringify(fileURLToPath(script))},'--once'];process.on('exit',()=>console.log(JSON.stringify({calls})));await import(${JSON.stringify(script.href)});`;
+ const result=spawnSync(process.execPath,['--input-type=module','-e',program],{encoding:'utf8',timeout:5000});
+ assert.equal(result.status,1);assert.equal(result.error,undefined);assert.deepEqual(JSON.parse(result.stdout.trim()),{calls:1});assert.deepEqual(JSON.parse(result.stderr.trim()),{ok:false,error:'WEB700_NETWORK'});assert.doesNotMatch(result.stderr,/synthetic|provider-body/);
 });

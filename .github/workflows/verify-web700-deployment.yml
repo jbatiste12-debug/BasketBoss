@@ -1,0 +1,31 @@
+name: Verify public web 700 deployment
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+    paths:
+      - .github/workflows/verify-web700-deployment.yml
+      - scripts/verify-web700-deployment.mjs
+      - tests/basketboss-web700-deployment.test.mjs
+      - pwa700/**
+
+permissions:
+  contents: read
+
+jobs:
+  public-deployment:
+    if: github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    timeout-minutes: 6
+    steps:
+      - uses: actions/checkout@v5
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@v5
+        with:
+          node-version: '24'
+      - name: Verify bounded public diagnostics and unchanged acceptance rules
+        run: node --test tests/basketboss-web700-deployment.test.mjs
+      - name: Verify public assets and both anonymous Premium boundaries
+        run: node scripts/verify-web700-deployment.mjs --once
