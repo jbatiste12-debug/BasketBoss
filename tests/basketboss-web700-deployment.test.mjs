@@ -9,6 +9,7 @@ import {verifyWeb700Deployment,waitForWeb700Deployment,web700DeploymentFailure,a
 
 const root=path.resolve(new URL('..',import.meta.url).pathname);
 const inventory=JSON.parse(fs.readFileSync(path.join(root,'pwa700/manifest.json')));
+const approvedLandingPrice=fs.readFileSync(path.join(root,'welcome.html'),'utf8').match(/Standard web Premium: (£\d{1,4}\.\d{2}\/month)/)[1];
 function fixture({replace,headStatus=200,denial=401}={}){
  const requests=[];
  const perform=async(address,options)=>{
@@ -16,7 +17,7 @@ function fixture({replace,headStatus=200,denial=401}={}){
   const route=new URL(address).pathname;
   if(route.startsWith('/api/'))return new Response('Synthetic private error text must never be reported.',{status:denial});
   if(options.method==='HEAD')return new Response(null,{status:headStatus,headers:{'Content-Type':'image/webp'}});
-  const name=route==='/app'?'pwa700/app.html':route.slice(1),file=path.join(root,name.endsWith('.html')||path.extname(name)?name:name+'.html');
+  const name=route==='/'?'welcome.html':route==='/app'?'pwa700/app.html':route.slice(1),file=path.join(root,name.endsWith('.html')||path.extname(name)?name:name+'.html');
   let body=fs.readFileSync(file),type=file.endsWith('.html')?'text/html':file.endsWith('.css')?'text/css':file.endsWith('.json')?'application/json':file.endsWith('.png')?'image/png':'application/javascript';
   const change=replace?.(route,body);if(change){body=change.body??body;type=change.type??type;}
   return new Response(body,{headers:{'Content-Type':type}});
@@ -26,10 +27,11 @@ function fixture({replace,headStatus=200,denial=401}={}){
 
 test('public web700 deployment proof checks every generated asset, routed app, unchanged legacy Free100 and both paid boundaries',async()=>{
  const f=fixture(),result=await verifyWeb700Deployment({perform:f.perform});
- assert.deepEqual(result,{ok:true,catalogueVersion:700,publicRecipes:200,generatedFiles:inventory.files.length,generatedApplicationBytesVerified:true,literalAssetBytesMatched:inventory.files.length,directiveVariantsVerified:0,routedAppVerified:true,routedAppDirectiveVariant:false,rootAssets:4,newImageRewrite:true,legacyPublicRecipes:100,legacyPublicUnchanged:true,unauthenticatedPremiumDenied:true});
+ assert.deepEqual(result,{ok:true,catalogueVersion:700,publicRecipes:200,generatedFiles:inventory.files.length,generatedApplicationBytesVerified:true,literalAssetBytesMatched:inventory.files.length,directiveVariantsVerified:0,routedAppVerified:true,routedAppDirectiveVariant:false,landingMonthlyPriceVerified:true,advertisedMonthlyPrice:approvedLandingPrice,rootAssets:6,newImageRewrite:true,legacyPublicRecipes:100,legacyPublicUnchanged:true,unauthenticatedPremiumDenied:true});
  assert.equal(f.requests.filter(row=>row.options.method==='HEAD').length,1);assert.equal(f.requests.filter(row=>new URL(row.address).pathname.startsWith('/api/')).length,2);
  assert.equal(f.requests.some(row=>/private|sealed|\.sql|\.github/.test(row.address)),false);
- assert.equal(f.requests.length,inventory.files.length+10);
+ assert.equal(f.requests.filter(row=>new URL(row.address).pathname==='/').length,1);
+ assert.equal(f.requests.length,inventory.files.length+13);
 });
 
 test('deployment proof rejects a stale manifest before downloading the asset pack',async()=>{
@@ -43,10 +45,27 @@ test('deployment proof rejects stale assets, missing HTML middleware, modified l
   ['/app',{body:'<html>Old app</html>'},'ROUTE'],
   ['/recipes.json',{body:'[]'},'LEGACY_PUBLIC'],
   ['/pwa700/bb-ui-continuity.js',{type:'text/html'},'PUBLIC_ASSET'],
-  ['/bb-pantry-selection.css',{body:'stale'},'ROOT_ASSET']
+  ['/bb-pantry-selection.css',{body:'stale'},'ROOT_ASSET'],
+  ['/bb-membership-settings.js',{body:'stale'},'ROOT_ASSET'],
+  ['/bb-us-market.js',{body:'stale'},'ROOT_ASSET']
  ]){
   const f=fixture({replace:pathname=>pathname===route?change:null});
   await assert.rejects(verifyWeb700Deployment({perform:f.perform}),new RegExp('^Error: WEB700_'+code+'$'));
+ }
+});
+
+test('landing pricing must match the single approved advertised amount without logging returned HTML',async()=>{
+ const edge=fixture({replace:(route,body)=>route==='/'?{body:Buffer.concat([body,Buffer.from('<script data-cfasync="false" src="/cdn-cgi/scripts/12345678/cloudflare-static/email-decode.min.js" defer></script>')])}:null});
+ assert.equal((await verifyWeb700Deployment({perform:edge.perform})).landingMonthlyPriceVerified,true,'unrelated landing email protection must not require a whole-document byte match');
+ for(const change of [
+  body=>Buffer.from(body.toString().replace('Standard web Premium: '+approvedLandingPrice,'Standard web Premium: £4.99/month')),
+  body=>Buffer.from(body.toString().replace('Standard web Premium: '+approvedLandingPrice,'No advertised monthly amount')),
+  body=>Buffer.concat([body,Buffer.from('Standard web Premium: '+approvedLandingPrice)])
+ ]){
+  const f=fixture({replace:(route,body)=>route==='/'?{body:change(body)}:null});
+  let failure;try{await verifyWeb700Deployment({perform:f.perform});assert.fail('stale, absent or ambiguous advertised pricing must fail');}catch(error){failure=error;}
+  assert.equal(failure.message,'WEB700_LANDING_PRICE');
+  assert.deepEqual(web700DeploymentFailure(Object.assign(failure,{details:{body:'synthetic-private-HTML',authorization:'synthetic-private-token'}})),{ok:false,error:'WEB700_LANDING_PRICE'});
  }
 });
 

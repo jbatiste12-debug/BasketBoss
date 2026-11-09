@@ -9,8 +9,8 @@ const HOST='https://basketboss.co.uk';
 const hash=value=>crypto.createHash('sha256').update(value).digest('hex');
 const check=(condition,code)=>{if(!condition)throw Error('WEB700_'+code);};
 const publicTypes=name=>name.endsWith('.html')?/text\/html/i:name.endsWith('.css')?/text\/css/i:name.endsWith('.json')?/application\/json/i:name.endsWith('.png')?/image\/png/i:/javascript/i;
-const rootAssets=['bb-ui-continuity.js','bb-pantry-selection.js','bb-pantry-selection.css','basketboss-social-preview-20261109.png'];
-const CODES=new Set(['LOCAL_CONTRACT','LOCAL_FILES','NETWORK','PUBLIC_ASSET','PUBLIC_BODY','PUBLIC_SIZE','MANIFEST_STALE','ASSET_BYTES','ROUTE','PUBLIC_COUNT','LEGACY_PUBLIC','ROOT_ASSET','LOCAL_IMAGE','IMAGE_REWRITE','PAID_BOUNDARY','ATTEMPTS','UNAVAILABLE'].map(code=>'WEB700_'+code));
+const rootAssets=['bb-ui-continuity.js','bb-pantry-selection.js','bb-pantry-selection.css','basketboss-social-preview-20261109.png','bb-membership-settings.js','bb-us-market.js'];
+const CODES=new Set(['LOCAL_CONTRACT','LOCAL_FILES','NETWORK','PUBLIC_ASSET','PUBLIC_BODY','PUBLIC_SIZE','MANIFEST_STALE','LANDING_PRICE','ASSET_BYTES','ROUTE','PUBLIC_COUNT','LEGACY_PUBLIC','ROOT_ASSET','LOCAL_IMAGE','IMAGE_REWRITE','PAID_BOUNDARY','ATTEMPTS','UNAVAILABLE'].map(code=>'WEB700_'+code));
 export function approvedEmailHintVariant(approved,expectedBytes,expectedSha256){
  check(Buffer.isBuffer(approved)&&approved.length===expectedBytes&&hash(approved)===expectedSha256,'LOCAL_FILES');
  const open=Buffer.from('<!--email_off-->'),close=Buffer.from('<!--/email_off-->'),start=approved.indexOf(open),end=approved.indexOf(close),text=approved.toString('utf8');
@@ -65,6 +65,15 @@ export async function verifyWeb700Deployment({perform=fetch,root=ROOT}={}){
  }
  const deployedInventory=await bytes('/pwa700/manifest.json','manifest.json',inventoryBytes.length+1024);
  check(hash(deployedInventory)===hash(inventoryBytes),'MANIFEST_STALE');
+ // A fresh anonymous landing read checks the advertised price without requiring
+ // unrelated edge-managed HTML (such as email protection) to be byte-identical.
+ const landingSource=fs.readFileSync(path.join(root,'welcome.html'));
+ const advertised=landingSource.toString('utf8').match(/Standard web Premium: £\d{1,4}\.\d{2}\/month/g)||[];
+ check(advertised.length===1,'LOCAL_FILES');
+ const landing=await bytes('/','welcome.html',landingSource.length+8192);
+ const deployedPrice=landing.toString('utf8').match(/Standard web Premium: £\d{1,4}\.\d{2}\/month/g)||[];
+ check(deployedPrice.length===1&&deployedPrice[0]===advertised[0],'LANDING_PRICE');
+ const advertisedMonthlyPrice=advertised[0].slice('Standard web Premium: '.length);
  // Bounded parallel reads prove the generated public pack reached Pages.
  let cursor=0,literalAssetBytesMatched=0,directiveVariantsVerified=0;
  await Promise.all(Array.from({length:4},async()=>{while(cursor<inventory.files.length){const row=inventory.files[cursor++],relative='/pwa700/'+row.path.replace(/\.html$/,''),approved=row.path.endsWith('.html')?fs.readFileSync(path.join(directory,row.path)):undefined;const deployed=await bytes(relative,row.path,row.bytes+1024);const variant=requireAssetBytes(relative,row.bytes,row.sha256,deployed,'ASSET_BYTES',approved);if(variant==='literal')literalAssetBytesMatched++;else directiveVariantsVerified++;}}));
@@ -77,7 +86,7 @@ export async function verifyWeb700Deployment({perform=fetch,root=ROOT}={}){
  const photo=release.recipes?.[0]?.image;check(typeof photo==='string'&&/^release-assets\/basketboss-v17\/images\/new\/[a-z0-9-]+\.webp$/.test(photo),'LOCAL_IMAGE');
  const image=await response('/'+photo,'HEAD');check(image.status===200&&/^image\/webp(?:;|$)/i.test(image.headers.get('content-type')||''),'IMAGE_REWRITE');await image.body?.cancel().catch(()=>{});
  for(const endpoint of ['/api/recipes/premium?catalogue=500','/api/recipes/v700/premium?catalogue=700']){const denied=await response(endpoint);await denied.body?.cancel().catch(()=>{});check([401,403].includes(denied.status),'PAID_BOUNDARY');}
- return {ok:true,catalogueVersion:700,publicRecipes:200,generatedFiles:inventory.files.length,generatedApplicationBytesVerified:true,literalAssetBytesMatched,directiveVariantsVerified,routedAppVerified:true,routedAppDirectiveVariant:appVariant==='directive',rootAssets:rootAssets.length,newImageRewrite:true,legacyPublicRecipes:100,legacyPublicUnchanged:true,unauthenticatedPremiumDenied:true};
+ return {ok:true,catalogueVersion:700,publicRecipes:200,generatedFiles:inventory.files.length,generatedApplicationBytesVerified:true,literalAssetBytesMatched,directiveVariantsVerified,routedAppVerified:true,routedAppDirectiveVariant:appVariant==='directive',landingMonthlyPriceVerified:true,advertisedMonthlyPrice,rootAssets:rootAssets.length,newImageRewrite:true,legacyPublicRecipes:100,legacyPublicUnchanged:true,unauthenticatedPremiumDenied:true};
 }
 
 export async function waitForWeb700Deployment({attempts=12,pause=()=>new Promise(resolve=>setTimeout(resolve,10000)),...options}={}){

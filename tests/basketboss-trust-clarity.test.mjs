@@ -25,7 +25,7 @@ test('Comparison page is accurate, accessible and links to existing actual produ
   assert.match(compare, /<td>All 700 recipes<\/td>/);
   assert.match(compare, /App Store: currently 100 Free and 500 total/);
   assert.match(compare, /7-day free trial, then £1\.99\/month/);
-  assert.match(compare, /3-day free trial, then £4\.99\/month/);
+  assert.match(compare, /3-day free trial, then £3\.99\/month/);
   assert.match(compare, /first 25 eligible confirmed subscribers/);
   assert.match(compare, /up to 5 scans and 10 meal ideas per day/);
   assert.match(compare, /subject to usage limits/);
@@ -39,7 +39,7 @@ test('Comparison page is accurate, accessible and links to existing actual produ
 test('Outdated paid-checkout notice is corrected without changing existing legal rights',()=>{
   assert.doesNotMatch(terms, /Paid checkout is not yet available/);
   assert.match(terms, /Premium checkout is available where enabled/);
-  assert.match(terms, /Last updated 1 November 2026/);
+  assert.match(terms, /Last updated 9 November 2026/);
   assert.match(terms, /Nothing in these Terms removes mandatory consumer rights/);
   assert.match(terms, /Paddle processes subscription payments as merchant of record/);
 });
@@ -58,6 +58,6 @@ test('Trust material links to real current policy and subscription documents',()
   assert.match(privacy, /support@basketboss\.co\.uk/);
   assert.match(subscription, /Manage subscription|Manage or cancel/);
   assert.match(subscription, /£1\.99\/month/);
-  assert.match(subscription, /£4\.99\/month/);
+  assert.match(subscription, /£3\.99\/month/);
   assert.match(subscription, /Paddle/);
 });

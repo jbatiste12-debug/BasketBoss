@@ -129,7 +129,7 @@
         if(typeof sub.id!=='string' || !/^sub_[a-z0-9]{26}$/.test(sub.id)){
           status.textContent='Membership details temporarily unavailable.';return;
         }
-        const name=sub.plan==='founder'?'Founding Member (£1.99/month)':sub.plan==='standard'?'Standard Premium (£4.99/month)':'Premium subscription';
+        const name=sub.plan==='founder'?'Founding Member (£1.99/month)':sub.plan==='standard'?'Standard Premium':'Premium subscription';
         const names={trialing:'Free trial',active:'Active',past_due:'Payment overdue',paused:'Paused',canceled:'Canceled'};
         if(!Object.prototype.hasOwnProperty.call(names,sub.status)){
           status.textContent='Membership status temporarily unavailable.';return;
@@ -139,6 +139,7 @@
         const trial=dateText(sub.trialEndsAt),renewal=dateText(sub.currentPeriodEndsAt),cancel=dateText(sub.cancellationEffectiveAt);
         if(sub.status==='trialing'&&trial)parts.push(`Trial ends ${trial}. Cancel before this date to avoid the first subscription charge.`);
         else if(sub.status==='active'&&renewal)parts.push(`Current billing period ends ${renewal}.`);
+        parts.push('Your renewal amount is shown in Paddle subscription management.');
         if(sub.cancelAtPeriodEnd===true)parts.push(`Cancellation scheduled${cancel?` for ${cancel}`:''}.`);
         if(!raw.premiumAccess){parts.push('Premium access is currently unavailable.');upgrade.hidden=false;}
         details.textContent=parts.join(' ');

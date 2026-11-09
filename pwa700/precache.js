@@ -1,5 +1,5 @@
 /* Public web700 cache contract. Never include private/API/auth responses. */
-self.BB700_PWA_CACHE_VERSION="b165cf3ac082b1cda94432aaa70f10a2ba79d57817c77894807f306cd65aa1c2";
+self.BB700_PWA_CACHE_VERSION="f1bc78e92a7b7cee1051ac1fad64e7380dc380272a0f25eaf0961c3704a3404c";
 self.BB700_PWA_PRECACHE=Object.freeze([
   "/basketboss-aisles-v20.js?v=d45b76bac322b605",
   "/bb-account-deletion.css?v=645b166ac6fe196f",
@@ -78,7 +78,7 @@ self.BB700_PWA_PRECACHE=Object.freeze([
   "/bb-membership-compare.css?v=ad910a66d1cf7c71",
   "/bb-membership-legal.css?v=70f0af9e149d5125",
   "/bb-membership-settings.css?v=d04d75dfb43483ef",
-  "/bb-membership-settings.js?v=91acfd87f991597d",
+  "/bb-membership-settings.js?v=7bb4ba640cbc5ae1",
   "/bb-mobile-beta-polish.css?v=1819641292a7e4e9",
   "/bb-mobile-beta-polish.js?v=5b8e413a74d5e63c",
   "/bb-mobile-three-20261027.css?v=6acbd2e4381b1760",
@@ -147,7 +147,7 @@ self.BB700_PWA_PRECACHE=Object.freeze([
   "/bb-tab-viewport.css?v=4cdf61c976b6f103",
   "/bb-tab-viewport.js?v=953139a9877385f4",
   "/bb-us-market.css?v=809a5f1ab3da895f",
-  "/bb-us-market.js?v=ed00265d60fbf048",
+  "/bb-us-market.js?v=8e07375d3f4c4176",
   "/bb-ux-cleanup.css?v=060e057bbc9586e1",
   "/bb-ux-cleanup.js?v=4ba6e15d362d6a86",
   "/bb-verified-premium-ui.js?v=68c5db5f0db6e70d",
@@ -180,7 +180,7 @@ self.BB700_PWA_PRECACHE=Object.freeze([
   "/pwa700/bb-membership-compare.js",
   "/pwa700/bb-membership-compare.js?v=b318bb5e665db375",
   "/pwa700/bb-onboarding-v2.js",
-  "/pwa700/bb-onboarding-v2.js?v=a582247c8d654819",
+  "/pwa700/bb-onboarding-v2.js?v=2cf3b2f680d39764",
   "/pwa700/bb-pantry-selection.css",
   "/pwa700/bb-pantry-selection.css?v=f36a43f98c876ce5",
   "/pwa700/bb-pantry-selection.js",
@@ -196,7 +196,7 @@ self.BB700_PWA_PRECACHE=Object.freeze([
   "/pwa700/bb-plan-swap.js",
   "/pwa700/bb-plan-swap.js?v=f991078935315229",
   "/pwa700/bb-premium-features.js",
-  "/pwa700/bb-premium-features.js?v=eb38a7a6dafcb8d4",
+  "/pwa700/bb-premium-features.js?v=212237dab98a367d",
   "/pwa700/bb-premium-preview-config.js",
   "/pwa700/bb-premium-preview-config.js?v=8d2fe4dfe1cd16d6",
   "/pwa700/bb-real-app-tour-v82.js",
@@ -210,7 +210,7 @@ self.BB700_PWA_PRECACHE=Object.freeze([
   "/pwa700/bb-welcome-splash.js",
   "/pwa700/bb-welcome-splash.js?v=2c529c615a0409cb",
   "/pwa700/bb174-trial-ux.js",
-  "/pwa700/bb174-trial-ux.js?v=599463ddb43b302e",
+  "/pwa700/bb174-trial-ux.js?v=20956520ed8a2434",
   "/pwa700/compare",
   "/pwa700/ingredient-pack-catalog.json",
   "/pwa700/make-a-meal",
