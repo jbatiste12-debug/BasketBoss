@@ -3808,7 +3808,7 @@ body[data-bbnext-view="discover"] #app .bb-featured-card #bbFeaturedBatch {
 <script src="/bb-price-scan.js?v=e9a3012f1eaca334"></script>
 <script src="/pwa700/basketboss-pricing-v19.js?v=2baef73003299ebf"></script>
 <script src="/bb-serving-scale.js?v=fd997aeb765ffca2"></script>
-<script src="/bb-plan-extras.js?v=9b880ebdbf086beb"></script>
+<script src="/bb-plan-extras.js?v=c30822d86ac9c95a"></script>
 <script src="/bb-plan-extras-sync.js?v=25e09c436f406513"></script>
 <script src="/bb-recipe-measures.js?v=8f63cb901d5f7197"></script>
 <script src="/bb-cook-method.js?v=1d65cbee0a3c1ced"></script>
@@ -7541,7 +7541,20 @@ function addRecipe(id,day){if(bbIsBreakfast(getRecipe(id))){return bbPlanBreakfa
 function renderWeek(app){const planned=getPlanned();app.innerHTML=`<div class="section-head"><div><h3>Your weekly game plan</h3><p>One dinner per day keeps the week simple.</p></div><button class="btn" id="clearWeek">Clear week</button></div><div class="notice">Tip: changing a meal's day updates your shopping list automatically. Duplicate recipe bookings are prevented.</div>${DAYS.map((d,i)=>{const p=planned.find(x=>x.day===d);return `<section class="day"><div class="day-head"><strong>${d}</strong><span>${p?'Dinner planned':'Open slot'}</span></div>${p?`<div class="planned"><div><strong>${esc(p.recipe.name)}</strong><div class="muted" style="font-size:10px;margin-top:3px">${window.BBDuration?.format(p.recipe.mins)||"?"}</div></div><div class="small-actions"><select data-move="${p.recipeId}" aria-label="Move ${esc(p.recipe.name)} to another day">${DAYS.map(x=>`<option ${x===d?'selected':''}>${x}</option>`).join('')}</select><button class="small-btn" data-cook="${p.recipeId}">Cook</button><button class="small-btn" data-remove="${p.recipeId}" aria-label="Remove ${esc(p.recipe.name)}">\u2715</button></div></div>${bbLeftoverControls(p,planned)}`:`<button class="btn" data-add-day="${d}">\uFF0B Choose dinner</button>`}${bbExtrasForDay(d)}</section>`}).join('')}`;app.querySelector('#clearWeek').onclick=async()=>{if(await bbQaConfirm('Clear all planned dinners, breakfasts and desserts? Your pantry checklist will stay saved.','Clear this week?','Clear week')){const old={planned:state.planned,plannedDesserts:state.plannedDesserts,plannedBreakfasts:state.plannedBreakfasts,leftoverSources:state.leftoverSources,leftoverConfirmed:state.leftoverConfirmed};state.planned=[];state.plannedDesserts=[];state.plannedBreakfasts=[];state.pantryPlanGeneration=crypto.randomUUID();state.leftoverSources={};state.leftoverConfirmed={};if(!persist()||!bbShopV7Close()){Object.assign(state,old);persist();notify('Could not safely clear week');return;}render()}};app.querySelectorAll('[data-move]').forEach(el=>el.onchange=()=>{const from=el.closest('[data-bbnext-day]')?.dataset.bbnextDay||el.querySelector('option[selected]')?.value;const snapshot=bbPlanMoveSnapshot();const result=bbPlanMoveDinner({from,to:el.value,expected:snapshot.fingerprint,recipeId:el.dataset.move});if(!result.ok)render();notify(result.message);});app.querySelectorAll('[data-remove]').forEach(el=>el.onclick=()=>{state.planned=state.planned.filter(p=>p.recipeId!==el.dataset.remove);persist();render();notify('Meal removed')});app.querySelectorAll('[data-leftover-source]').forEach(el=>el.onchange=()=>{state.leftoverSources[el.dataset.leftoverSource]=el.checked;if(!el.checked){for(const r of bbLeftoverSuggestions(el.dataset.leftoverSource))state.leftoverConfirmed[r.id]=false}persist();render()});
 app.querySelectorAll('[data-leftover-confirm]').forEach(el=>el.onchange=()=>{state.leftoverConfirmed[el.dataset.leftoverConfirm]=el.checked;persist();render()});
 app.querySelectorAll('[data-leftover-add]').forEach(el=>el.onclick=()=>bbAddSuggestedLeftover(el.dataset.leftoverFrom,el.dataset.leftoverAdd));
-app.querySelectorAll('[data-dessert-add-day]').forEach(el=>el.onclick=()=>{bbDessertTargetDay=el.dataset.dessertAddDay;tab='discover';collectionFilter='Desserts';query='';recipeIndex=0;galleryPage=0;render();notify('Choose a dessert for '+bbDessertTargetDay)});
+app.querySelectorAll('[data-dessert-add-day]').forEach(el=>el.onclick=()=>{
+ const day=el.dataset.dessertAddDay;
+ return window.BBPlanExtras.openDessertPicker({
+  win:window,day,eligible:bbIsDessert,
+  recipes:()=>RECIPES.filter(recipe=>bbIsDessert(recipe)&&bb176AllowedRecipe(recipe.id)&&!(state.plannedDesserts||[]).some(slot=>slot.recipeId===recipe.id)),
+  context:()=>JSON.stringify([window.BBHome?.actor?.()||'guest',localStorage.getItem('basketboss_cloud_session_v1'),state.pantryPlanGeneration,state.plannedDesserts,tab,day,window.BBAccountDeletion?.isDeleting?.()===true]),
+  select:(id,chosen)=>{
+   if(window.BBAccountDeletion?.isDeleting?.())return false;
+   if((state.plannedDesserts||[]).some(slot=>slot.day===chosen)){notify('This day already has a dessert. Remove it before choosing another.');return false;}
+   bbPlanDessert(id,chosen);
+   return (state.plannedDesserts||[]).some(slot=>slot.recipeId===id&&slot.day===chosen);
+  },notify
+ });
+});
 app.querySelectorAll('[data-dessert-remove]').forEach(el=>el.onclick=()=>{const before=state.plannedDesserts.slice();state.plannedDesserts=before.filter(p=>p.recipeId!==el.dataset.dessertRemove);if(!persist())state.plannedDesserts=before;render()});
 app.querySelectorAll('[data-dessert-move]').forEach(el=>el.onchange=()=>{const dessert=state.plannedDesserts.find(p=>p.recipeId===el.dataset.dessertMove);if(!dessert)return;const old=dessert.day;if(state.plannedDesserts.some(p=>p.day===el.value&&p.recipeId!==dessert.recipeId)){notify('Another dessert is already planned that day.');render();return}dessert.day=el.value;if(!persist())dessert.day=old;render()});
 app.querySelectorAll('[data-dessert-cook]').forEach(el=>el.onclick=()=>openCook(el.dataset.dessertCook,el.dataset.dessertDay,'dessert'));
@@ -13189,6 +13202,6 @@ body[data-bbnext-view="discover"] #app .bb175-discover-heading{padding-top:calc(
 <script defer src="/bb-essentials-confirm.js?v=a79f2627f21b3469"></script>
 <link rel="stylesheet" href="/bb-yellow-stickers-ui.css?v=eb8693cb28c3c223">
 <script defer src="/bb-yellow-stickers-ui.js?v=5942e6d23275d82d"></script>
-<link rel="stylesheet" href="/bb-plan-extras.css?v=6bbb7d7d7dca86d8">
+<link rel="stylesheet" href="/bb-plan-extras.css?v=1746bc3462e9a4f7">
 <script src="/pwa700/bb-plan-swap.js?v=f991078935315229"></script>
 <!--/email_off--></body></html>

@@ -1,4 +1,4 @@
-name: Verify web catalogue 700 and build 34 regressions
+name: Verify web catalogue 700 and build 35 regressions
 
 on:
   workflow_dispatch:
@@ -115,7 +115,7 @@ jobs:
       - name: Verify the portable native package
         run: npm run build:native
       - name: Run the complete application, PostgreSQL and Chromium regressions
-        run: node --test --test-isolation=none tests/*.test.mjs
+        run: node --test --test-concurrency=1 tests/*.test.mjs
       - name: Verify the deployed public 700 catalogue and legacy boundaries
         if: github.event_name == 'push' && github.ref == 'refs/heads/main'
         run: node scripts/verify-web700-deployment.mjs

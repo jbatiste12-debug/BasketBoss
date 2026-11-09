@@ -19,45 +19,59 @@
   }).map(row=>({recipeId:row.recipeId,day:row.day,...(count(row.servings)?{servings:row.servings}:{})}));
  }
  let current=null;
- function openBreakfastPicker({win,day,recipes,context,select,notify=()=>{}}={}){
+ function openMealPicker({win,day,recipes,eligible,context,select,notify=()=>{},kind}={}){
   const doc=win?.document;
-  if(!doc?.createElement||!DAYS.includes(day)||typeof recipes!=='function'||typeof context!=='function'||typeof select!=='function')return null;
+  if(!doc?.createElement||!DAYS.includes(day)||typeof recipes!=='function'||typeof eligible!=='function'||typeof context!=='function'||typeof select!=='function')return null;
   current?.close();
-  const pin=context(),focus=doc.activeElement;
+  const breakfast=kind==='breakfast',label=breakfast?'breakfast':'dessert',plural=breakfast?'breakfasts':'desserts or bakes';
+  const pin=context(),view=doc.body?.dataset.bbnextView,focus=doc.activeElement;
   const make=(tag,cls,text)=>{const node=doc.createElement(tag);if(cls)node.className=cls;if(text!==undefined)node.textContent=text;return node;};
-  const dialog=make('dialog','bb-plan-breakfast-picker');dialog.setAttribute('aria-modal','true');dialog.setAttribute('aria-labelledby','bbBreakfastPickerTitle');
-  const header=make('div','bb-plan-picker-heading'),title=make('h2','','Choose breakfast');title.id='bbBreakfastPickerTitle';
-  const closeButton=make('button','bb-plan-picker-close','Close');closeButton.type='button';closeButton.setAttribute('aria-label','Close breakfast recipes');
+  const dialog=make('dialog','bb-plan-meal-picker bb-plan-'+label+'-picker');dialog.setAttribute('aria-modal','true');dialog.setAttribute('aria-labelledby','bbPlanPickerTitle');dialog.setAttribute('aria-describedby','bbPlanPickerIntro');
+  const header=make('div','bb-plan-picker-heading'),title=make('h2','','Choose '+label);title.id='bbPlanPickerTitle';
+  const closeButton=make('button','bb-plan-picker-close','Close');closeButton.type='button';closeButton.setAttribute('aria-label','Close '+label+' recipes');
   header.append(title,closeButton);
-  const intro=make('p','','Optional breakfast for '+day+'. Ingredients join your shopping list.');
-  const search=make('input','bb-plan-picker-search');search.type='search';search.placeholder='Search breakfasts';search.setAttribute('aria-label','Search breakfast recipes');
-  const list=make('div','bb-plan-picker-list');list.setAttribute('aria-label','Breakfast recipes');
-  const status=make('p','bb-plan-picker-empty');status.setAttribute('role','status');
+  const intro=make('p','bb-plan-picker-intro','Optional '+(breakfast?'breakfast':'dessert or bake')+' for '+day+'. Ingredients join your shopping list.');intro.id='bbPlanPickerIntro';
+  const search=make('input','bb-plan-picker-search');search.type='search';search.placeholder='Search '+plural;search.autocomplete='off';search.enterKeyHint='search';search.setAttribute('aria-label','Search '+label+' recipes');
+  const list=make('div','bb-plan-picker-list');list.setAttribute('aria-label',breakfast?'Breakfast recipes':'Dessert and baking recipes');
+  const status=make('p','bb-plan-picker-empty');status.setAttribute('role','status');status.setAttribute('aria-live','polite');
   dialog.append(header,intro,search,status,list);
   let closed=false;
-  function close(){if(closed)return;closed=true;try{dialog.close();}catch{}dialog.remove();if(current?.node===dialog)current=null;if(focus?.isConnected)focus.focus?.({preventScroll:true});}
+  const events=['basketboss:session-changed','basketboss:account-deletion-started','basketboss:account-deletion-deleted'];
+  function viewport(){const vp=win.visualViewport;dialog.style.setProperty('--bb-plan-picker-height',(vp?.height||win.innerHeight)+'px');dialog.style.setProperty('--bb-plan-picker-top',((vp?.offsetTop||0)+(vp?.height||win.innerHeight)/2)+'px');}
+  function close(){
+   if(closed)return;closed=true;
+   events.forEach(name=>win.removeEventListener(name,close));win.removeEventListener('storage',storageChanged);win.removeEventListener('resize',viewport);win.visualViewport?.removeEventListener('resize',viewport);win.visualViewport?.removeEventListener('scroll',viewport);
+   try{dialog.close();}catch{}dialog.remove();if(current?.node===dialog)current=null;
+   if(focus?.isConnected&&context()===pin&&doc.body?.dataset.bbnextView===view)focus.focus?.({preventScroll:true});
+  }
+  function storageChanged(event){if(event.key===null||event.key==='basketboss_cloud_session_v1')close();}
   function paint(){
+   if(closed)return;
    list.replaceChildren();
-   const query=search.value.trim().toLocaleLowerCase(),available=recipes().filter(isBreakfast),filtered=available.filter(recipe=>String(recipe.name||'').toLocaleLowerCase().includes(query));
-   status.textContent=filtered.length?filtered.length+' breakfast '+(filtered.length===1?'option':'options'):available.length?'No matching breakfasts. Try another search.':'Breakfast recipes are still loading. Reopen this picker after your recipes load.';
+   const query=search.value.trim().toLocaleLowerCase(),available=recipes().filter(eligible),filtered=available.filter(recipe=>String(recipe.name||'').toLocaleLowerCase().includes(query));
+   status.textContent=filtered.length?filtered.length+' '+label+' '+(filtered.length===1?'option':'options'):available.length?'No matching '+plural+'. Try another search.':'No '+label+' options available. Refresh your recipes or choose another day.';
    for(const recipe of filtered){
-    const button=make('button','bb-plan-picker-choice');button.type='button';button.dataset.bbBreakfastChoose=recipe.id;button.setAttribute('aria-label','Plan '+recipe.name+' for '+day);
+    const button=make('button','bb-plan-picker-choice');button.type='button';button.dataset[breakfast?'bbBreakfastChoose':'bbDessertChoose']=recipe.id;button.setAttribute('aria-label','Plan '+recipe.name+' for '+day);
     if(recipe.image){const image=make('img','');image.src=recipe.image;image.alt='';image.loading='lazy';image.decoding='async';image.addEventListener('error',()=>image.remove(),{once:true});button.append(image);}
-    const text=make('span',''),name=make('strong','',recipe.name),meta=make('small','',win.BBDuration?.format(recipe.mins)||'Breakfast');text.append(name,meta);button.append(text);
+    const text=make('span',''),name=make('strong','',recipe.name),meta=make('small','',win.BBDuration?.format(recipe.mins)||(breakfast?'Breakfast':'Dessert / bake'));text.append(name,meta);button.append(text);
     button.addEventListener('click',()=>{
      if(closed)return;
-     if(context()!==pin){close();notify('Your account or plan changed. Reopen breakfast to choose again.');return;}
-     const latest=recipes().find(value=>value.id===recipe.id&&isBreakfast(value));
-     if(!latest){paint();notify('This breakfast is no longer available. Choose another.');return;}
+     if(context()!==pin||doc.body?.dataset.bbnextView!==view){close();notify('Your account or plan changed. Reopen '+label+' to choose again.');return;}
+     const latest=recipes().find(value=>value.id===recipe.id&&eligible(value));
+     if(!latest){paint();notify('This '+label+' is no longer available. Choose another.');return;}
      if(select(recipe.id,day)!==false)close();
     });list.append(button);
    }
   }
   search.addEventListener('input',paint);closeButton.addEventListener('click',close);
+  search.addEventListener('keydown',event=>{if(event.key==='Enter'){event.preventDefault();search.blur();}});
   dialog.addEventListener('cancel',event=>{event.preventDefault();close();});dialog.addEventListener('close',close);
   (doc.body||doc.documentElement).append(dialog);current={node:dialog,close};paint();
-  try{dialog.showModal();}catch{dialog.setAttribute('open','');}search.focus?.({preventScroll:true});
+  events.forEach(name=>win.addEventListener(name,close));win.addEventListener('storage',storageChanged);win.addEventListener('resize',viewport);win.visualViewport?.addEventListener('resize',viewport);win.visualViewport?.addEventListener('scroll',viewport);viewport();
+  try{dialog.showModal();}catch{dialog.setAttribute('open','');}closeButton.focus?.({preventScroll:true});
   return Object.freeze({close,node:dialog});
  }
- return Object.freeze({isBreakfast,normalizeSlots,openBreakfastPicker});
+ function openBreakfastPicker(options={}){return openMealPicker({...options,kind:'breakfast',eligible:isBreakfast});}
+ function openDessertPicker(options={}){return openMealPicker({...options,kind:'dessert'});}
+ return Object.freeze({isBreakfast,normalizeSlots,openBreakfastPicker,openDessertPicker});
 });
