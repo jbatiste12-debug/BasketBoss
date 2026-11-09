@@ -513,13 +513,13 @@
   "files": [
     {
       "path": "app.html",
-      "bytes": 2953451,
-      "sha256": "cbd147e9cec2d46d6f858503ad603acf69ce13eb4725af1b49a72d441ff4251c"
+      "bytes": 2953484,
+      "sha256": "7d7e54a0b87a878089d656e6f503a474b5b7fe5d70a26b8732028aaca9bbc474"
     },
     {
       "path": "basketboss-latest-guide.html",
-      "bytes": 28143,
-      "sha256": "8d5cc8cf940d459c03d31498d4be21835bb2501697112ac06d6ee58854c9b94b"
+      "bytes": 28176,
+      "sha256": "0b3c8afb534c530e9e968e3d22ec508c36be4d528ba27fe2a2b3088130ba98c7"
     },
     {
       "path": "basketboss-pricing-v19.js",
@@ -623,8 +623,8 @@
     },
     {
       "path": "compare.html",
-      "bytes": 8567,
-      "sha256": "b733e72e5a2df77dc7c766cad5d94b623404a987f29a13646cf2a2923fe1325a"
+      "bytes": 8600,
+      "sha256": "f39aa22280491f8ee966de0edc6b8fe3a397196b8e84cd045d7e52d22f7ab1c4"
     },
     {
       "path": "ingredient-pack-catalog.json",
@@ -633,8 +633,8 @@
     },
     {
       "path": "make-a-meal.html",
-      "bytes": 39757,
-      "sha256": "8b5410b8032c16bdeca212cf11342c0b6ac7811ce8a137300139aa2d45439948"
+      "bytes": 39790,
+      "sha256": "ab08a3e61447c11de177e7252d6715c5fe8444d1057ec5007155a542db8973fd"
     },
     {
       "path": "make-a-meal.js",
@@ -649,12 +649,12 @@
     {
       "path": "precache.js",
       "bytes": 10245,
-      "sha256": "0661a2e0ee55635119f606a8d675145d2ad0b06cc3046e81a813ece17d49f700"
+      "sha256": "0c99b9b10c796715cf9c40171fd05be3903ab72e94cea9bd7575663914cb0f1e"
     },
     {
       "path": "pricing-sandbox.html",
-      "bytes": 8391,
-      "sha256": "c8f76f1b3173a707b6d5e84bb82f5234b7ad05d30d94d8a9ba3321a86f057b38"
+      "bytes": 8424,
+      "sha256": "9ebe6c030e0f4b257f5eef6afb8ec7dd65919b867ee19178d4cb1d84f1bc2977"
     },
     {
       "path": "recipes.json",
@@ -668,13 +668,13 @@
     },
     {
       "path": "subscriptions.html",
-      "bytes": 7378,
-      "sha256": "8e442d1cc5e08385a9b288102b3d67ddf9e7941085afc7c00ad17932f3d95f07"
+      "bytes": 7411,
+      "sha256": "32a63ef774dab68b1b9a8320449a8a10d5617c71feab6f197062202abec6cb61"
     },
     {
       "path": "tutorial.html",
-      "bytes": 24497,
-      "sha256": "0fa62f8e776cee317e420518d93d454f7560899ad30e3cbf38ef433b86d97a2e"
+      "bytes": 24530,
+      "sha256": "2854e82719b4735504c11804f081f97bd072fa0d89f050f69826dae444c37e65"
     }
   ]
 }
