@@ -81,7 +81,7 @@ test('unified planner adapter keeps cloud backup values scoped and rolls back fa
 
 const blockStart=html.indexOf("const BB_AF_DAYS=['Monday'");
 const blockEnd=html.indexOf('/* END_BASKETBOSS_AUTOFILL_VARIETY_ROTATION_V1 */',blockStart);
-const drawSource=html.match(/function bbPlanVarietyValid\(plans\)\{[\s\S]*?\n\}/)[0]+'\n'+html.slice(blockStart,blockEnd);
+const drawSource=html.match(/function bbPlanVarietyValid\(plans(?:,softProteinAdjacency=false)?\)\{[\s\S]*?\n\}/)[0]+'\n'+html.slice(blockStart,blockEnd);
 function planner(recipes=real){
  const h=core(),state={planned:[],bb81Batch:null},notices=[];let saves=0;
  const context={BBRecipeEditorial:require('../bb-recipe-editorial.js'),RECIPES:recipes,state,localStorage:h.storage,console,BBRecipePlanning:planning,BBIngredientPreferences:h.api,DAYS,
@@ -117,7 +117,7 @@ test('a missing preference script blocks Auto-fill and keeps stored ingredient c
  const h=planner();delete h.context.BBIngredientPreferences;
  assert.equal(h.draw(DAYS,[]),null);assert.equal(h.saves,0);
  const normalizeSource=html.match(/function normalize\(s\)\{[^\n]+\}/)[0];
- const context=vm.createContext({DAYS,BBServing:{validOverrides:()=>({}),validDayOverrides:()=>({})}});
+ const context=vm.createContext({DAYS,BBPlanExtras:require('../bb-plan-extras.js'),BBServing:{validOverrides:()=>({}),validDayOverrides:()=>({})}});
  vm.runInContext(normalizeSource,context);
  context.saved={version:2,ingredientAvoidance:{version:1,scope:'guest',excluded:['chicken','future-food']}};
  const value=vm.runInContext('normalize(saved)',context);
