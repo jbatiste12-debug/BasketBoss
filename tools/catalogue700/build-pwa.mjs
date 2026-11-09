@@ -24,11 +24,22 @@ const documents=Object.freeze(['app.html','make-a-meal.html','tutorial.html','ba
 const staticExtension=/\.(?:js|mjs|css|json|webmanifest|png|webp|jpe?g|svg|gif|avif|ico|woff2?)(?:\?|$)/i;
 function once(source,from,to,label){const at=source.indexOf(from);assert(at>=0&&source.indexOf(from,at+from.length)<0,'anchor_'+label);return source.slice(0,at)+to+source.slice(at+from.length);}
 
+export function protect700EmailBody(source){
+ assert(typeof source==='string'&&!/<!--\/?email_off-->/i.test(source),'email_marker_source');
+ const opening=[...source.matchAll(/<body\b[^>]*>/gi)],closing=[...source.matchAll(/<\/body\s*>/gi)];
+ assert(opening.length===1&&closing.length===1&&opening[0].index<closing[0].index,'email_body_anchors');
+ // Cloudflare's documented per-page opt-out preserves mailto links and exact
+ // public HTML bytes without disabling Brotli/Gzip with no-transform headers.
+ // https://developers.cloudflare.com/waf/tools/scrape-shield/email-address-obfuscation/
+ source=once(source,opening[0][0],opening[0][0]+'<!--email_off-->','email_body_open');
+ return once(source,closing[0][0],'<!--/email_off-->'+closing[0][0],'email_body_close');
+}
 
 function webDocument(source){
  assert(!/bb-native-runtime|basketboss-native-build|@capacitor\//.test(source),'native_source');
  source=source.replace(/<base\b[^>]*>/gi,'');
- return once(source,'<head>','<head>\n<base href="/">\n<meta name="basketboss-web-catalogue" content="700">','web_head');
+ source=once(source,'<head>','<head>\n<base href="/">\n<meta name="basketboss-web-catalogue" content="700">','web_head');
+ return protect700EmailBody(source);
 }
 
 function assetReferences(source,files,sourceRoot,precache){

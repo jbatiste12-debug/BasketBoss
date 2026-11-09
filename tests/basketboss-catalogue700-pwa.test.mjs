@@ -5,7 +5,7 @@ import os from 'node:os';
 import path from 'node:path';
 import vm from 'node:vm';
 import {createHash} from 'node:crypto';
-import {build700Pwa,verify700Pwa,transform700MakeAMeal} from '../tools/catalogue700/build-pwa.mjs';
+import {build700Pwa,verify700Pwa,transform700MakeAMeal,protect700EmailBody} from '../tools/catalogue700/build-pwa.mjs';
 import {transform700MakeAMeal as sharedMakeTransform,pwa700Contract as sharedMakeContract} from '../tools/catalogue700/make-a-meal.mjs';
 import {validatePublic700Release,inlineArray} from '../tools/catalogue700/build-client.mjs';
 
@@ -14,6 +14,14 @@ const release=validatePublic700Release({directory,sourceDirectory:root});
 const read=name=>fs.readFileSync(path.join(root,name),'utf8');
 const hash=value=>createHash('sha256').update(value).digest('hex');
 const clone=value=>JSON.parse(JSON.stringify(value));
+
+test('generated web email protection adds only documented body comments, preserves mailto content and fails closed on ambiguous anchors',()=>{
+ const source='<!doctype html><html><head><title>Contact</title></head><body class="compact"><a href="mailto:help@basketboss.co.uk">help@basketboss.co.uk</a><script>const unchanged="safe";</script></body></html>',protectedHtml=protect700EmailBody(source);
+ assert.equal(protectedHtml.replace('<!--email_off-->','').replace('<!--/email_off-->',''),source);
+ assert.match(protectedHtml,/<body class="compact"><!--email_off--><a href="mailto:help@basketboss\.co\.uk">help@basketboss\.co\.uk<\/a>/);
+ assert.match(protectedHtml,/<!--\/email_off--><\/body>/);
+ for(const invalid of [source.replace('<body class="compact">',''),source.replace('</body>',''),source.replace('</body>','</body><body></body>'),source.replace('<body','</body><body'),source.replace('</body>','<!--email_off--></body>'),source.replace('</body>','<!--/email_off--></body>'),protectedHtml])assert.throws(()=>protect700EmailBody(invalid),/catalogue700_pwa_email/);
+});
 
 test('shared companion transform preserves identical security in native and PWA outputs with an explicit public URL',()=>{
  assert.equal(sharedMakeTransform,transform700MakeAMeal,'PWA reexports the pure shared transform');
@@ -26,7 +34,7 @@ test('shared companion transform preserves identical security in native and PWA 
 
 test('isolated web700 generation preserves legacy clients and emits only public web data without StoreKit',()=>{
  const temp=fs.mkdtempSync(path.join(os.tmpdir(),'bb700-pwa-')),output=path.join(temp,'pwa700');
- const protectedPaths=['app.html','index.html','recipes.json','normalized-ingredient-database.json','bb-premium-preview-config.js','bb-recipe-planning.js','basketboss-pricing-v19.js','make-a-meal.js','capacitor.config.json'];
+ const protectedPaths=['app.html','index.html','make-a-meal.html','tutorial.html','basketboss-latest-guide.html','pricing-sandbox.html','compare.html','subscriptions.html','recipes.json','normalized-ingredient-database.json','bb-premium-preview-config.js','bb-recipe-planning.js','basketboss-pricing-v19.js','make-a-meal.js','capacitor.config.json'];
  const before=new Map(protectedPaths.map(name=>[name,hash(read(name))]));
  try{
   const result=build700Pwa({sourceRoot:root,publicRelease:directory,outputDirectory:output,writeImageRedirects:false});
@@ -34,6 +42,9 @@ test('isolated web700 generation preserves legacy clients and emits only public 
   assert.equal(verify700Pwa({directory:output,release}).catalogueVersion,700);
   for(const [name,digest]of before)assert.equal(hash(read(name)),digest,name+' legacy bytes changed');
   const html=fs.readFileSync(path.join(output,'app.html'),'utf8');
+  for(const name of ['app.html','make-a-meal.html','tutorial.html','basketboss-latest-guide.html','pricing-sandbox.html','compare.html','subscriptions.html']){
+   const document=fs.readFileSync(path.join(output,name),'utf8');assert.equal(document.match(/<!--email_off-->/g)?.length,1,name);assert.equal(document.match(/<!--\/email_off-->/g)?.length,1,name);assert.match(document,/<body\b[^>]*><!--email_off-->/i);assert.match(document,/<!--\/email_off--><\/body\s*>/i);
+  }
   assert.equal(inlineArray(html,'RECIPES').value.length,200);assert.match(html,/<base href="\/">/);assert.match(html,/src="\/pwa700\/bb-premium-preview-config\.js\?v=[a-f0-9]{16}"/);
   assert.doesNotMatch(html,/bb-native-runtime|basketboss-native-build|@capacitor\//);
   const context=vm.createContext({window:{},self:{}});vm.runInContext(fs.readFileSync(path.join(output,'bb-premium-preview-config.js'),'utf8'),context);
