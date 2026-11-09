@@ -65,11 +65,6 @@ jobs:
   portable-and-browser:
     runs-on: ubuntu-latest
     timeout-minutes: 20
-    env:
-      PLAYWRIGHT_BROWSERS_PATH: ${{ runner.temp }}/basketboss-regression-chromium
-      BB_PLAYWRIGHT_MODULE: ${{ runner.temp }}/basketboss-regression-tools/node_modules/playwright
-      BB_PGLITE_MODULE: ${{ runner.temp }}/basketboss-regression-tools/node_modules/@electric-sql/pglite
-      BB_RECEIPT_PGLITE_PATH: ${{ runner.temp }}/basketboss-regression-tools/node_modules/@electric-sql/pglite/dist/index.js
     steps:
       - uses: actions/checkout@v5
         with:
@@ -79,6 +74,13 @@ jobs:
         with:
           node-version: '24'
           cache: npm
+      - name: Configure isolated test tool paths on the allocated runner
+        run: |
+          printf '%s\n' \
+            "PLAYWRIGHT_BROWSERS_PATH=$RUNNER_TEMP/basketboss-regression-chromium" \
+            "BB_PLAYWRIGHT_MODULE=$RUNNER_TEMP/basketboss-regression-tools/node_modules/playwright" \
+            "BB_PGLITE_MODULE=$RUNNER_TEMP/basketboss-regression-tools/node_modules/@electric-sql/pglite" \
+            "BB_RECEIPT_PGLITE_PATH=$RUNNER_TEMP/basketboss-regression-tools/node_modules/@electric-sql/pglite/dist/index.js" >> "$GITHUB_ENV"
       - name: Install pinned application dependencies
         run: npm ci --no-audit --no-fund
       - name: Install isolated browser and PostgreSQL test tools
