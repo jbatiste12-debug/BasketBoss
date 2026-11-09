@@ -77,7 +77,7 @@
    const description=host.querySelector('#bbPremiumDescription');
    if(description){
     if(!description.dataset.bbOriginalDescription)description.dataset.bbOriginalDescription=description.textContent;
-    text(description,isUS()?'Founding Member trial is seven days, then GBP £1.99 per month for up to 25 eligible members. Standard Premium is GBP £4.99/month with no trial. Verify local currency, taxes and final amount at checkout. No real payments are enabled yet.':description.dataset.bbOriginalDescription);
+    text(description,isUS()?'Founding Member trial is seven days, then GBP £1.99 per month for up to 25 eligible members. Standard Premium offers three days free, then GBP £3.99/month. Verify local currency, taxes, trial dates and the final amount at checkout.':description.dataset.bbOriginalDescription);
    }
    host.querySelectorAll('a[aria-label]').forEach(a=>{
     if(!a.dataset.bbOriginalAria)a.dataset.bbOriginalAria=a.getAttribute('aria-label');

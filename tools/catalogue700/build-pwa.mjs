@@ -9,6 +9,7 @@ import {fileURLToPath,pathToFileURL} from 'node:url';
 import {CLIENT_FILES} from '../../scripts/build-native-web.mjs';
 import {inlineArray,transform700Html,transform700Planning,transform700PreviewConfig,validatePublic700Release} from './build-client.mjs';
 import {transform700Presentation} from './presentation.mjs';
+import {transform700WebPricing} from './web-pricing.mjs';
 import {transform700PantrySelection} from './pantry-selection.mjs';
 import {pwa700Contract,transform700MakeAMeal} from './make-a-meal.mjs';
 export {pwa700Contract,transform700MakeAMeal} from './make-a-meal.mjs';
@@ -92,7 +93,7 @@ export function build700Pwa({sourceRoot=ROOT,publicRelease=path.join(ROOT,'catal
  files.set('recipes.json',json(release.free));files.set('normalized-ingredient-database.json',json({recipes:release.normal}));
  for(const name of ['bb-plan-swap-core.js','bb-plan-swap-host.js','bb-plan-swap.js','bb-plan-swap.css','bb-ui-continuity.js','bb-pantry-selection.js','bb-pantry-selection.css'])files.set(name,read(sourceRoot,name));
  const htmls=new Map();
- for(const name of documents){let source=name==='app.html'?transform700Html(read(sourceRoot,name),release):read(sourceRoot,name);source=webDocument(transform700Presentation(source));if(name==='make-a-meal.html')source=once(source,'</head>','<script src="bb-recipe-planning.js"></script>\n</head>','make_planning');htmls.set(name,source);}
+ for(const name of documents){let source=name==='app.html'?transform700Html(read(sourceRoot,name),release):read(sourceRoot,name);source=webDocument(transform700WebPricing(transform700Presentation(source)));if(name==='make-a-meal.html')source=once(source,'</head>','<script src="bb-recipe-planning.js"></script>\n</head>','make_planning');htmls.set(name,source);}
  for(const [name,source]of htmls){files.set(name,assetReferences(source,files,sourceRoot,precache));precache.add('/pwa700/'+name.replace(/\.html$/,''));}
  for(const name of files.keys())if(staticExtension.test(name))precache.add('/pwa700/'+name);
  // These are transitive module imports rather than HTML src attributes.

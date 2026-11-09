@@ -514,7 +514,7 @@
     {
       "path": "app.html",
       "bytes": 2953484,
-      "sha256": "7d7e54a0b87a878089d656e6f503a474b5b7fe5d70a26b8732028aaca9bbc474"
+      "sha256": "a895aca8d125bf6109e1df1ec234b1955e3f1d60253c33f807784bf2bab74164"
     },
     {
       "path": "basketboss-latest-guide.html",
@@ -544,7 +544,7 @@
     {
       "path": "bb-onboarding-v2.js",
       "bytes": 41014,
-      "sha256": "a582247c8d6548190ec7d92406d73b93f1de76b901490fe73c480fe4b9f084b8"
+      "sha256": "2cf3b2f680d3976454cd6c822c256ac84d39d9b396f555425af837697afc7104"
     },
     {
       "path": "bb-pantry-selection.css",
@@ -584,7 +584,7 @@
     {
       "path": "bb-premium-features.js",
       "bytes": 10539,
-      "sha256": "eb38a7a6dafcb8d41b28b82d1d9d65499e6eb17d7f60af901308b182362e2844"
+      "sha256": "212237dab98a367daea368fa235bf5583222169d0f57f60cb4f94a1ed7111379"
     },
     {
       "path": "bb-premium-preview-config.js",
@@ -619,12 +619,12 @@
     {
       "path": "bb174-trial-ux.js",
       "bytes": 11185,
-      "sha256": "599463ddb43b302e776571cc4e072a899ffe7c53c833e8eff148f41325b2b1cb"
+      "sha256": "20956520ed8a24345ddcb64233d5d1ec9d10ab5d4cac68d2ece49d386d84dec9"
     },
     {
       "path": "compare.html",
       "bytes": 8600,
-      "sha256": "f39aa22280491f8ee966de0edc6b8fe3a397196b8e84cd045d7e52d22f7ab1c4"
+      "sha256": "95216ba4696c38d6d06c30fc52d694348cccbc9f499be17e46a19b5af7e1aef1"
     },
     {
       "path": "ingredient-pack-catalog.json",
@@ -634,7 +634,7 @@
     {
       "path": "make-a-meal.html",
       "bytes": 39790,
-      "sha256": "ab08a3e61447c11de177e7252d6715c5fe8444d1057ec5007155a542db8973fd"
+      "sha256": "b020be8d8dbf495b073d1114786fba1eb137019e53ea71ecc0bd297f66ef0b2d"
     },
     {
       "path": "make-a-meal.js",
@@ -649,12 +649,12 @@
     {
       "path": "precache.js",
       "bytes": 10245,
-      "sha256": "0c99b9b10c796715cf9c40171fd05be3903ab72e94cea9bd7575663914cb0f1e"
+      "sha256": "35bb90605c9c80f7e3f88dc7a3def4362f760e8ba50618ebb8be3f25333cf523"
     },
     {
       "path": "pricing-sandbox.html",
       "bytes": 8424,
-      "sha256": "9ebe6c030e0f4b257f5eef6afb8ec7dd65919b867ee19178d4cb1d84f1bc2977"
+      "sha256": "0aa4b007b993945679bcf4b60e6d35237d0141d2d509e75f55a140c5dcf3741d"
     },
     {
       "path": "recipes.json",
@@ -668,8 +668,8 @@
     },
     {
       "path": "subscriptions.html",
-      "bytes": 7411,
-      "sha256": "32a63ef774dab68b1b9a8320449a8a10d5617c71feab6f197062202abec6cb61"
+      "bytes": 7370,
+      "sha256": "a55f58320dd4d93d695f4cd56256bce1dd33114764042d19bc84fec739860cf4"
     },
     {
       "path": "tutorial.html",

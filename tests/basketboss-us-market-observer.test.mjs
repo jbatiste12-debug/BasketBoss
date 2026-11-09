@@ -64,7 +64,9 @@ describe('regional presentation mutation observer',()=>{
   assert.equal(await page.locator('#food').textContent(),'Zucchini · 3.5 oz');
   assert.equal(await page.locator('.bb-premium-price').textContent(),'US$ · see checkout');
   assert.match(await page.locator('#bbUSMarketNote').textContent(),/illustrative US pack sizes and USD price guides/);
-  assert.match(await page.locator('#bbPremiumDescription').textContent(),/GBP £4\.99\/month/);
+  assert.match(await page.locator('#bbPremiumDescription').textContent(),/GBP £3\.99\/month/);
+  assert.match(await page.locator('#bbPremiumDescription').textContent(),/three days free/);
+  assert.doesNotMatch(await page.locator('#bbPremiumDescription').textContent(),/with no trial|No real payments/);
  },{market:'US'}));
 
  check('market changes restore UK source text and then settle again',()=>fixture(async page=>{

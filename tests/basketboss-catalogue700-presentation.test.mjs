@@ -3,6 +3,7 @@ import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import vm from 'node:vm';
 import {transform700Presentation} from '../tools/catalogue700/presentation.mjs';
+import {transform700WebPricing} from '../tools/catalogue700/web-pricing.mjs';
 import {inlineArray} from '../tools/catalogue700/build-client.mjs';
 
 const read = file => fs.readFileSync(new URL('../' + file, import.meta.url), 'utf8');
@@ -70,7 +71,7 @@ test('transformed client scripts remain executable syntax', () => {
   assert.throws(() => transform700Presentation(null), TypeError);
 });
 
-test('public web copy distinguishes the expanded PWA from the existing App Store version and preserves billing terms', () => {
+test('public web copy advertises the updated Paddle price and keeps platform and trial terms separate', () => {
   const landing = read('welcome.html'), pricing = read('pricing-sandbox.html'), subscriptions = read('subscriptions.html'), compare = read('compare.html'), terms = read('terms.html');
   assert.match(landing, /200 free recipes/);
   assert.match(landing, /All 700 recipes/);
@@ -85,9 +86,10 @@ test('public web copy distinguishes the expanded PWA from the existing App Store
   assert.match(pricing, /3-day free trial/);
   assert.match(pricing, /first 25 qualifying places remain/);
   assert.match(pricing, /£1\.99\/month/);
-  assert.match(pricing, /£4\.99\/month/);
+  assert.match(pricing, /£3\.99\/month/);
+  assert.match(landing, /Standard web Premium: £3\.99\/month/);
   assert.match(subscriptions, /No annual web plan is currently available/);
-  assert.match(subscriptions, /£39\.99\/year paid upfront/);
+  assert.match(subscriptions, /Apple displays each plan’s actual local price and billing period/);
   assert.match(subscriptions, /web trials above do not automatically apply/);
   assert.match(compare, /All 700 recipes/);
   assert.match(compare, /50 options across the full collection/);
@@ -95,6 +97,18 @@ test('public web copy distinguishes the expanded PWA from the existing App Store
   assert.match(terms, /complete collection available in your app version/);
   assert.match(terms, /Recipe counts may vary by app version/);
   for (const source of [landing, pricing, compare, terms, subscriptions]) assert.equal(transform700Presentation(source), source, 'already updated web copy and its App Store availability note stay stable');
+});
+
+test('web-only price copy preserves recipe arrays, grocery prices and native presentation', () => {
+  const source=read('app.html'),result=transform700WebPricing(source);
+  for(const name of ['RECIPES','BB307_NORMALIZED'])assert.deepEqual(inlineArray(result,name).value,inlineArray(source,name).value);
+  assert.match(result,/Standard Premium: 3-day free trial, then £3\.99\/month/);
+  assert.match(result,/<span class="bbtrial-price">£3\.99<\/span>/);
+  assert.doesNotMatch(result,/Standard Premium: 3(?: days free|-day free trial), then £4\.99\/month/);
+  const unrelated='Fish pack £4.99; ingredient price=4.99; Founder £1.99; Apple annual £39.99; acceptedPremiumRecipeCounts:[221,400]';
+  assert.equal(transform700WebPricing(unrelated),unrelated);
+  assert.match(transform700Presentation(source),/Standard Premium: 3-day free trial, then £4\.99\/month/);
+  assert.equal(transform700WebPricing(result),result);
 });
 
 test('the refreshed PWA install description preserves its existing app identity and launch route', () => {

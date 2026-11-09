@@ -24,7 +24,7 @@
     if (text) node.textContent = text;
     return node;
   }
-  const terms = 'Founding Member: 7 days free, then £1.99/month for the first 25 confirmed eligible members. Standard Premium: 3 days free, then £4.99/month. Both plans renew monthly after the trial unless cancelled. Payment details, exact charge dates and applicable taxes are shown before checkout confirmation.';
+  const terms = 'Founding Member: 7 days free, then £1.99/month for the first 25 confirmed eligible members. Standard Premium: 3 days free, then £3.99/month. Both plans renew monthly after the trial unless cancelled. Payment details, exact charge dates and applicable taxes are shown before checkout confirmation.';
   function addTerms() {
     const comparison = $$('.bb173-tier-comparison');
     if (comparison && !$$('#bb174PricingTerms')) {
