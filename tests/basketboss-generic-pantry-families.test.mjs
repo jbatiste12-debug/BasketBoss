@@ -49,10 +49,41 @@ test('family matching remains opt-in for callers using the legacy strict convers
  const stock={'rice|g':200};for(const conversion of [undefined,{}]){const result=proposal({stock,ingredients:[food('Basmati rice',300)],conversion});assert.equal(result.rows[0].deduct,0);assert.deepEqual(result.remainingStock,stock);}
 });
 
+test('plain sausage counts cover pork sausage needs without renaming or weighing saved stock',()=>{
+ for(const generic of ['Sausage','Sausages'])for(const specific of ['Pork sausage','Pork sausages'])for(const [owned,needed]of [[generic,specific],[specific,generic]]){
+  assert.equal(policy.stockCompatible(owned,needed),true,owned+' / '+needed);
+  const key=policy.canonicalName(owned)+'|each',stock={[key]:5},before=JSON.stringify(stock),result=proposal({stock,ingredients:[food(needed,6,'each')],conversion:context}),row=result.rows[0];
+  assert.equal(row.required,6);assert.equal(row.deduct,5);assert.equal(row.required-row.deduct,1);assert.equal(row.allocations[0].stockKey,key);assert.equal(row.allocations[0].sourceQuantity,5);
+  assert.deepEqual(result.remainingStock,{});assert.equal(JSON.stringify(stock),before);
+ }
+ assert.equal(policy.canonicalName('Sausages'),'sausages');assert.equal(policy.canonicalName('Pork sausages'),'pork sausages');
+ const weighed={'sausages|g':500},incompatible=proposal({stock:weighed,ingredients:[food('Pork sausages',6,'each')],conversion:context});
+ assert.equal(incompatible.rows[0].deduct,0);assert.equal(incompatible.rows[0].issue,'unit_mismatch');assert.deepEqual(incompatible.remainingStock,weighed,'a matching food family supplies no invented grams per sausage');
+ for(const conversion of [undefined,{}])assert.equal(proposal({stock:{'sausages|each':5},ingredients:[food('Pork sausages',6,'each')],conversion}).rows[0].deduct,0,'legacy strict callers retain their previous contract');
+});
+test('sausage stock is allocated once across recipe names and specific stock is reserved first',()=>{
+ const stock={'sausages|each':5},result=proposal({stock,ingredients:[food('Pork sausages',6,'each'),food('Sausages',6,'each')],conversion:context});
+ assert.equal(result.rows.reduce((sum,row)=>sum+row.deduct,0),5);assert.equal(result.rows.reduce((sum,row)=>sum+row.required-row.deduct,0),7);assert.equal(result.rows.flatMap(row=>row.allocations).reduce((sum,row)=>sum+row.sourceQuantity,0),5);assert.deepEqual(stock,{'sausages|each':5});
+ const reserved=proposal({stock:{'sausage|each':5,'pork sausages|each':5},ingredients:[food('Sausage',6,'each'),food('Pork sausages',5,'each')],conversion:context});
+ assert.equal(reserved.rows.find(row=>row.name==='Pork sausages').deduct,5);assert.equal(reserved.rows.find(row=>row.name==='Sausage').deduct,5);assert.deepEqual(reserved.remainingStock,{});
+});
+
 import fs from 'node:fs';
 import vm from 'node:vm';
 const html=fs.readFileSync(new URL('../index.html',import.meta.url),'utf8');
 const id=(name,unit)=>policy.canonicalName(name)+'|'+unit;
+test('actual unified Shop uses five generic sausages once against the six-piece pork recipe requirement',()=>{
+ const recipes=JSON.parse(fs.readFileSync(new URL('../recipes.json',import.meta.url),'utf8')),normalized=JSON.parse(fs.readFileSync(new URL('../normalized-ingredient-database.json',import.meta.url),'utf8')).recipes;
+ const recipe=recipes.find(row=>row.id==='sausage-gnocchi'),source=normalized.find(row=>row.id===recipe.id).ingredients[0];
+ assert.equal(recipe.ingredients[0][0],'Pork sausages');assert.equal(source.quantity,6);assert.equal(source.unit,'each');
+ const stock={'sausages|each':5},before=JSON.stringify(stock),scope=vm.createContext({BBPantryPolicy:policy,BBPantryDeduction:{proposal},BB307Pantry:{pantryId:id},bbHomeConversionContext:()=>context,bb307ReadStock:()=>({...stock}),bbHomePhysicalStock:()=>({...stock}),bbBetaStockForCurrentWeek:value=>value,bbReceiptPantryReviewRequired:()=>false,bbReceiptHasAuthoritativePantry:()=>true,bbHomeLegacyPantry:()=>({}),bb321LunchboxRequirements:()=>[],bbHomeApplyStapleShopping:items=>items,bb307Stock:{}});scope.window=scope;
+ const lunchStart=html.indexOf('const BB321Lunch=(()=>{'),lunchEnd=html.indexOf('/* BasketBoss 321 v8 —',lunchStart);assert.ok(lunchStart>=0&&lunchEnd>lunchStart);vm.runInContext(html.slice(lunchStart,lunchEnd),scope);
+ for(const [name,next]of [['bbPantryReconcileStock','bb307Plan'],['bb321UnifiedShop','bb321LunchboxHTML']]){const start=html.indexOf('function '+name+'('),end=html.indexOf('\nfunction '+next+'(',start);assert.ok(start>=0&&end>start);vm.runInContext(html.slice(start,end),scope);}
+ const requirement={key:source.key,name:source.name,required:source.quantity,unit:source.unit},row=scope.bb321UnifiedShop([requirement])[0];
+ assert.equal(row.required,6);assert.equal(row.pantryUsed,5);assert.equal(row.toBuy,1);assert.equal(JSON.stringify(stock),before,'Shop only reads the saved five-piece balance');
+ const both=scope.bb321UnifiedShop([requirement,{key:'sausages',required:6,unit:'each'}]);
+ assert.equal(both.reduce((sum,item)=>sum+item.pantryUsed,0),5);assert.equal(both.reduce((sum,item)=>sum+item.toBuy,0),7);assert.equal(JSON.stringify(stock),before);
+});
 test('the actual Shop reconciliation wrapper credits generic stock across recipe varieties once',()=>{
  const a=html.indexOf('function bbPantryReconcileStock('),b=html.indexOf('\nfunction ',a+20),scope=vm.createContext({BB307Pantry:{pantryId:id},bbHomeConversionContext:()=>context,window:{BBPantryPolicy:policy,BBPantryDeduction:{proposal}}});
  assert.ok(a>=0&&b>a);vm.runInContext(html.slice(a,b),scope);

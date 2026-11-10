@@ -53,6 +53,24 @@ test('quantity-only and repeated parentheticals retain the ordinary food identit
  assert.equal(policy.canonicalName('Milk (whole milk)'),'whole milk');
 });
 
+test('measured parenthetical notes cannot become food descriptors after their amounts are removed',()=>{
+ const pricingContext=vm.createContext({});vm.runInContext(fs.readFileSync(new URL('../basketboss-pricing-v19.js',import.meta.url),'utf8'),pricingContext);
+ for(const canonicalize of [undefined,pricingContext.BBPriceV19.canonical]){
+  for(const note of ['about 250 g each','about250g each','250 g each','approx. 200–250 g each','approximately 200 g to 250 g each','around 0.2–0.25 kg each','roughly 250 grams each','≈ 250 g each']){
+   const label='Baking potatoes ('+note+')',key=policy.canonicalName(label,canonicalize);
+   assert.equal(key,'baking potato',label);
+   assert.equal(policy.canonicalName(key,canonicalize),key,label+' remains stable');
+  }
+  for(const [label,expected]of [['Milk (oat, about 1 l)','oat milk'],['Chicken breast (approx. 200 g each; cooked)','cooked chicken breast'],['Pasta (gluten-free, 2 x 500 g)','gluten-free pasta'],['Salmon (smoked; around 125–150 g each)','smoked salmon'],['Tomatoes (about 400 g tin)','chopped tomatoes'],['Tomatoes (1 x 400 g tin)','chopped tomatoes']]){
+   const key=policy.canonicalName(label,canonicalize);assert.equal(key,expected,label);
+   assert.equal(policy.canonicalName(key,canonicalize),key,label+' remains stable');
+  }
+  for(const name of ['about each baking potatoes','each baking potatoes'])assert.equal(policy.canonicalName(name,canonicalize),name,'an already saved malformed identity is not silently aliased');
+  for(const [left,right]of [['Chicken breast (cooked, about 200 g each)','Chicken breast (raw, about 200 g each)'],['Pasta (gluten-free, 500 g)','Pasta (500 g)'],['Milk (oat, 1 l)','Milk (cow, 1 l)'],['Beef mince (5% fat, 500 g)','Beef mince (20% fat, 500 g)'],['Salmon (smoked, 250 g)','Salmon (250 g)']])assert.notEqual(policy.canonicalName(left,canonicalize),policy.canonicalName(right,canonicalize),left+' / '+right);
+ }
+ assert.equal(policy.canonicalName('Pasta (gluten-free, about 500 g)',()=> 'pasta'),'gluten-free pasta','a quantity clause cannot erase a protected diet descriptor');
+});
+
 test('explicit serving notes and source counts leave food identity and density unchanged',()=>{
  for(const note of ['optional','optional topping','to serve','optional, to serve','for serving','for topping','for the topping','for garnish','for dusting','for greasing','divided'])assert.equal(policy.canonicalName('Soured cream ('+note+')'),'soured cream',note);
  assert.equal(policy.normalize('Soured cream (optional topping)',4,'tbsp').quantity,60,'a serving note cannot disable the existing food-specific conversion');

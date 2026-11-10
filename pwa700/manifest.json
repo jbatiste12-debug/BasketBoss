@@ -513,13 +513,13 @@
   "files": [
     {
       "path": "app.html",
-      "bytes": 2971110,
-      "sha256": "4e395566708946ad3d6727e5492578f5c10d0979f924faa8bd07a80474ec03c5"
+      "bytes": 2976842,
+      "sha256": "a2fd491c6e635c69bdcab58f9be5a3270c47e9c077abf82fa970c8192edc332d"
     },
     {
       "path": "basketboss-latest-guide.html",
-      "bytes": 30325,
-      "sha256": "762ae1afd4e926f9dc2bc473a7ecce95e64b57bcc9b421172dd081d845026c11"
+      "bytes": 30461,
+      "sha256": "75bb3d11ce578928a3239b88f9c7236aecbc75395e3515143aed4864561c6818"
     },
     {
       "path": "basketboss-pricing-v19.js",
@@ -593,8 +593,8 @@
     },
     {
       "path": "bb-real-app-tour-v82.js",
-      "bytes": 14452,
-      "sha256": "427d73c7d7d578cad674cbd32cc9f55581f9a0dfff407e8b29249c581150f1db"
+      "bytes": 14655,
+      "sha256": "7f9dbbe1fbd9fb81f09daea115e4eb9efbb6e5dc838ac1fcf8c3df288eff727f"
     },
     {
       "path": "bb-real-app-tour.js",
@@ -634,7 +634,7 @@
     {
       "path": "make-a-meal.html",
       "bytes": 40037,
-      "sha256": "c628486aa5127b908d62c9125171d1817526691fdeba4204ceb0e195b60f7593"
+      "sha256": "567c59bb29adad998f20040aaecf3ba8a9b2e10b0b2dc1e7321a00429ba4f15b"
     },
     {
       "path": "make-a-meal.js",
@@ -649,7 +649,7 @@
     {
       "path": "precache.js",
       "bytes": 10340,
-      "sha256": "331625f78b677160098ccd3dab1067797d9f0a1af4ea48496607e9d403cf86d1"
+      "sha256": "59f6e45e5d6f1c1aaa6356db900f62d63ed0f04cfb2e431ae4b5ae03760b8cf5"
     },
     {
       "path": "pricing-sandbox.html",
@@ -673,8 +673,8 @@
     },
     {
       "path": "tutorial.html",
-      "bytes": 26679,
-      "sha256": "6b7921f8b331f6af08b767870dd64e64f7af791b84781f778060e01b84c078d7"
+      "bytes": 26815,
+      "sha256": "832f7f0a3da0c71ae551c254cdd672f25a035c1acabeb3693ff78bfd0ae34617"
     }
   ]
 }

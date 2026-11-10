@@ -10,9 +10,19 @@
  const aliases={gram:'g',grams:'g',kilogram:'kg',kilograms:'kg',millilitre:'ml',millilitres:'ml',milliliter:'ml',milliliters:'ml',litre:'l',litres:'l',liter:'l',liters:'l',counts:'each',count:'each',unit:'each',units:'each',piece:'each',pieces:'each',item:'each',items:'each',pcs:'each',pc:'each',cloves:'clove',tins:'tin',can:'tin',cans:'tin',packs:'pack',packets:'pack',packet:'pack',bags:'bag',bottles:'bottle',jars:'jar',pouches:'pouch',bunches:'bunch',teaspoon:'tsp',teaspoons:'tsp',tablespoon:'tbsp',tablespoons:'tbsp',pints:'pint',pinches:'pinch',dashes:'dash',cups:'cup',ounce:'oz',ounces:'oz',pound:'lb',pounds:'lb',lbs:'lb','fluid ounce':'fl oz','fluid ounces':'fl oz',floz:'fl oz','us cup':'cup','us cups':'cup','us fl oz':'fl oz'};
  const unit=value=>{const key=clean(value).replace(/^fl\.?\s*oz\.?$/,'fl oz');return aliases[key]||key;};
  const safeName=value=>!!value&&!value.includes('|')&&!['__proto__','constructor','prototype'].includes(value)&&value.length<=200;
+ const noteAmount='(?:\\d+(?:\\.\\d+)?|\\.\\d+)',noteUnit='(?:kg|g|ml|l|kilograms?|grams?|millilitres?|milliliters?|litres?|liters?)\\b';
+ const measuredNote=new RegExp('^(?:(?:about|approx(?:imately)?\\.?|around|roughly|[~≈])\\s*)?(?:'+noteAmount+'\\s*[x×]\\s*)?'+noteAmount+'(?:\\s*'+noteUnit+')?(?:\\s*(?:-|to)\\s*'+noteAmount+')?\\s*'+noteUnit+'(?:\\s*(?:each|in total|total))?(?:\\s+(tins?|cans?|packs?|packets?|bags?|bottles?|jars?|pouches?))?$');
  function canonicalName(value,canonicalize){
   let raw=clean(value);if(!safeName(raw))return '';
   const originalStates=[...new Set(raw.match(/\b(?:cooked|frozen|dried|raw|fresh)\b/g)||[])];
+  // Classify complete measurement notes before stripping their numbers. A note
+  // such as "about 250 g each" must not become a protected "about each" food.
+  // Only comma/semicolon-separated quantity clauses are removed; retain the
+  // other descriptors and any container word that establishes tin processing.
+  raw=raw.replace(/\(([^()]*)\)/g,(_,content)=>{
+   let measured=false;const parts=content.split(/[,;]/).map(part=>{const text=part.trim(),note=text.match(measuredNote);if(!note)return text;measured=true;return note[1]||'';}).filter(Boolean);
+   return !measured?'('+content+')':parts.length?'('+parts.join(', ')+')':' ';
+  });
   raw=raw.replace(/(?:\b\d+(?:\.\d+)?\s*[x×]\s*)?\b\d+(?:\.\d+)?\s*(?:kg|g|ml|litres?|liters?|l)\b/g,' ').replace(/\s+/g,' ').trim();
   // A bracket may identify a different food, diet or form, such as oat milk,
   // gluten-free pasta or cooked chicken. Remove only quantities, repeated
@@ -55,6 +65,38 @@
   result=result.replace(/^((?:brown|red|white|yellow) )onions$/,'$1onion').replace(/^((?:white|red|yellow|baking|new|baby|maris piper|king edward|charlotte) )potatoes$/,'$1potato');
   return safeName(result)?result:'';
  }
+ const matchSingular=value=>({leaves:'leaf',knives:'knife',loaves:'loaf',tomatoes:'tomato',potatoes:'potato'}[value]||(/ies$/.test(value)?value.slice(0,-3)+'y':/(?:ches|shes|sses|xes|zes)$/.test(value)?value.slice(0,-2):/s$/.test(value)&&!/(?:ss|us|is)$/.test(value)?value.slice(0,-1):value));
+ const matchWords=value=>String(value||'').replace(/^\s*\d+(?:\.\d+)?(?:\s*[x×]\s*)?\s+(?=[\p{L}])/u,'').normalize('NFKD').replace(/[\u0300-\u036f]/g,'').toLowerCase().replace(/[^\p{L}\p{N}]+/gu,' ').trim().split(/\s+/).filter(Boolean).map(matchSingular);
+ const matchQualifiers=new Set(['pork','beef','chicken','fresh','large','medium','small','whole','unsalted','salted','mature','mild','light','dark','white','brown','red','yellow','green','organic','british','unsmoked','smoked','skimmed']);
+ const matchProtected=new Set(['vegan','vegetarian','plant','glutenfree','dairyfree','lactosefree','oat','almond','soy','coconut','tinned','dried','frozen','powder','granule','paste','puree','stock','broth','mince','sausage','breast','thigh','rasher','streaky','cooked','raw','leftover','ground','grated','chopped','sliced','diced']);
+ const cheeseTypes=new Set(['cheddar','mozzarella','parmesan','gruyere','gouda','edam','stilton','feta','brie','camembert','manchego','halloumi','ricotta','mascarpone','gorgonzola','roquefort','emmental','pecorino']);
+ function matchProfile(value,canonicalize){
+  const canonical=canonicalName(value,canonicalize);if(!canonical)return null;
+  const phrases=text=>matchWords(text).join(' ').replace(/\b(gluten|dairy|lactose) free\b/g,'$1free').replace(/\bcanned\b/g,'tinned').split(' ').filter(Boolean);
+  const originalWords=phrases(value),words=phrases(canonical);
+  if(canonical==='chopped tomatoes')originalWords.push('tinned');
+  const protectedWords=[...new Set([...originalWords,...words].filter(word=>matchProtected.has(word)))].sort();
+  let category='';
+  if(words.at(-1)==='cheese'&&words.slice(0,-1).some(word=>cheeseTypes.has(word))){category='cheese';words.pop();}
+  else if(words.length===1&&cheeseTypes.has(words[0]))category='cheese';
+  const identity=words.join(' '),head=words.at(-1)||'',generic=words.length>0&&words.every(word=>word===head||matchProtected.has(word));
+  const base=words.join(' ').replace(/\b(?:extra virgin|free range|semi skimmed|full fat)\b/g,' ').split(/\s+/).filter(word=>word&&!matchQualifiers.has(word));
+  if(!base.length&&head)base.push(head);
+  // Here these ordinary adjectives identify a different physical form: fresh
+  // pasta is wet, and brown sugar is not the generic white sugar pool.
+  const wetPasta=originalWords.includes('fresh')&&words.some(word=>/^(?:pasta|penne|fusilli|spaghetti|rigatoni|macaroni|tagliatelle|linguine|farfalle|conchiglie|orecchiette|fettuccine|orzo)$/.test(word));
+  const form=[wetPasta?'wet pasta':'',head==='sugar'&&originalWords.includes('brown')?'brown sugar':''].filter(Boolean).join('|');
+  // The singular word "pepper" also names a seasoning. Keep the existing
+  // produce/seasoning distinction when colour and size qualifiers disappear.
+  const pepperRole=/\bpeppers?\b/.test(clean(value))?(isWholePepper(value,'g',{})?'whole':'seasoning'):'';
+  if(pepperRole==='whole'&&base.every(word=>['bell','mixed','pepper'].includes(word)))base.splice(0,base.length,'pepper');
+  const key=[...protectedWords.filter(word=>!base.includes(word)),...base].join(' ');
+  const compound=(head==='butter'&&base.some(word=>['peanut','cashew','cocoa','garlic','nut','seed'].includes(word))||head==='cheese'&&base.some(word=>['cream','cottage'].includes(word))||head==='cream'&&base.some(word=>['ice','soured','sour','clotted','whipping'].includes(word))||head==='potato'&&base.includes('sweet')||head==='onion'&&base.includes('spring')||head==='flour'&&(base.includes('bread')||base.join(' ').includes('self raising')))?base.join(' '):'';
+  return {canonical,identity,key,head,category,generic,protectedKey:protectedWords.join('|'),pepperRole,compound,form};
+ }
+ // Comparison only: this key never replaces a pantry or receipt identifier.
+ // Matching also requires the generic/specific and protected-food checks below.
+ function getCanonicalMatchKey(value,canonicalize){return matchProfile(value,canonicalize)?.key||'';}
  function stockFamily(value,canonicalize){
   const original=canonicalName(value,canonicalize);if(!original)return '';
   // A generic kitchen entry is a shared pool, not permission to replace a
@@ -70,11 +112,16 @@
   if(/^(?:(?:white|granulated|white granulated|caster|castor) )?sugar$/.test(original))return 'sugar';
   if(/^(?:(?:sea|table|rock|kosher) )?salt$/.test(original))return 'salt';
   if(/^(?:(?:boneless |skinless |fresh )?chicken breast(?:s| fillets?)?|chicken fillets?)$/.test(original))return 'chicken breast';
-  return original;
+  const profile=matchProfile(value,canonicalize);return profile&&!profile.generic&&profile.head?profile.head:original;
  }
  function stockCompatible(left,right,canonicalize){
-  const a=canonicalName(left,canonicalize),b=canonicalName(right,canonicalize);if(!a||!b)return false;if(a===b)return true;
-  const family=stockFamily(a,canonicalize);return family===stockFamily(b,canonicalize)&&(a===family||b===family);
+  const a=matchProfile(left,canonicalize),b=matchProfile(right,canonicalize);if(!a||!b||a.protectedKey!==b.protectedKey||a.pepperRole!==b.pepperRole||a.compound!==b.compound||a.form!==b.form)return false;
+  if(a.identity===b.identity)return true;
+  if(a.generic||b.generic){
+   if(a.key===b.key||a.head===b.head)return true;
+   if(a.generic&&a.head==='cheese'&&b.category==='cheese'||b.generic&&b.head==='cheese'&&a.category==='cheese')return true;
+  }
+  const family=stockFamily(left,canonicalize);return family===stockFamily(right,canonicalize)&&(a.canonical===family||b.canonical===family);
  }
  function isStaple(value){
   const name=canonicalName(value);if(!name)return false;
@@ -207,5 +254,5 @@
   if(stock&&typeof stock==='object'&&record.bb173StockKey&&Object.hasOwn(stock,record.bb173StockKey)){const amount=number(stock[record.bb173StockKey]);if(amount!==null)return amount>0?'in':'out';}
   return 'unknown';
  }
- return Object.freeze({canonicalName,stockFamily,stockCompatible,isStaple,isWholePepper,isContainerTracked,measuredIdentityProblem,containerLabel,defaultPack,normalize,smallUse,staplePurchase,stapleStatus,baseUnit,cupGrams,cupTable,countGrams});
+ return Object.freeze({canonicalName,getCanonicalMatchKey,stockFamily,stockCompatible,isStaple,isWholePepper,isContainerTracked,measuredIdentityProblem,containerLabel,defaultPack,normalize,smallUse,staplePurchase,stapleStatus,baseUnit,cupGrams,cupTable,countGrams});
 });
