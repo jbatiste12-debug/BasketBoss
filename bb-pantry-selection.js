@@ -101,12 +101,20 @@
    const countText=selected.size+' selected',count=bar.querySelector('.bbps-count');if(count.textContent!==countText)count.textContent=countText;for(const node of bar.querySelectorAll('button'))node.disabled=busy;bar.querySelector('.bbps-delete').disabled=busy||!selected.size;
   }
   function schedule(){if(queued)return;queued=true;(win.requestAnimationFrame||win.setTimeout).call(win,render);}
-  function click(event){const node=rowNode(event.target);if(!node||!valid()||!host.context().card.contains(node))return;
-   if(suppressed&&suppressed.key===node.dataset.bbpiKey&&Date.now()<suppressed.until){suppressed=null;event.preventDefault();event.stopImmediatePropagation();return;}
+  function click(event){
+   // The selection bar can appear under a held finger. WebKit may retarget
+   // its release click to a new bar button rather than the original food row.
+   // Consume that gesture's pointer click even when its target has changed.
+   if(suppressed&&event.detail>0){suppressed=null;event.preventDefault();event.stopImmediatePropagation();return;}
+   const node=rowNode(event.target);if(!node||!valid()||!host.context().card.contains(node))return;
    if(!active||event.target.closest('.bbps-check'))return;event.preventDefault();event.stopImmediatePropagation();toggle(node.dataset.bbpiKey);
   }
-  function pointerDown(event){if(active||busy||!valid()||event.button>0||event.target.closest?.('button,input,select,a,summary,label'))return;const node=rowNode(event.target);if(!node||!host.context().card.contains(node))return;cancelPress();const pin=host;
-   const candidate={id:event.pointerId,key:node.dataset.bbpiKey,node,x:event.clientX,y:event.clientY,timer:null};press=candidate;node.classList.add('bbps-pressing');candidate.timer=win.setTimeout(()=>{if(press!==candidate||host!==pin||!valid())return cancelPress();press=null;node.classList.remove('bbps-pressing');enter(candidate.key);suppressed={key:candidate.key,until:Date.now()+900};},450);
+  function pointerDown(event){
+   // A fresh pointer press is an intentional next action, not the held
+   // gesture's compatibility click. Keyboard activation never uses this pin.
+   suppressed=null;
+   if(active||busy||!valid()||event.button>0||event.target.closest?.('button,input,select,a,summary,label'))return;const node=rowNode(event.target);if(!node||!host.context().card.contains(node))return;cancelPress();const pin=host;
+   const candidate={id:event.pointerId,key:node.dataset.bbpiKey,node,x:event.clientX,y:event.clientY,timer:null};press=candidate;node.classList.add('bbps-pressing');candidate.timer=win.setTimeout(()=>{if(press!==candidate||host!==pin||!valid())return cancelPress();press=null;node.classList.remove('bbps-pressing');enter(candidate.key);suppressed={key:candidate.key};},450);
   }
   doc.addEventListener('pointerdown',pointerDown,true);doc.addEventListener('pointermove',event=>{if(press&&(event.pointerId!==press.id||Math.hypot(event.clientX-press.x,event.clientY-press.y)>10))cancelPress();},true);
   for(const name of ['pointerup','pointercancel','scroll'])doc.addEventListener(name,cancelPress,true);

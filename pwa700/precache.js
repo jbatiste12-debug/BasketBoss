@@ -1,5 +1,5 @@
 /* Public web700 cache contract. Never include private/API/auth responses. */
-self.BB700_PWA_CACHE_VERSION="72a264d0590cc33b3a32966aebe8cc79d73fab0c73efe4b9637ba66be2351350";
+self.BB700_PWA_CACHE_VERSION="8409b7cf64e110f8c7c09acdc2f1a3b18f1e3d42367ffa79feb9b887266c8274";
 self.BB700_PWA_PRECACHE=Object.freeze([
   "/basketboss-aisles-v20.js?v=d45b76bac322b605",
   "/bb-account-deletion.css?v=645b166ac6fe196f",
@@ -51,7 +51,7 @@ self.BB700_PWA_PRECACHE=Object.freeze([
   "/bb-food-visuals.js?v=aaaeaee1397a7c4c",
   "/bb-funnel.css?v=6156a006fb062b01",
   "/bb-funnel.js?v=4bee9ce96a61edd8",
-  "/bb-home.js?v=c82174904501d15b",
+  "/bb-home.js?v=1779059e59872ddc",
   "/bb-household-amount.js?v=6489f4e3a691f94e",
   "/bb-household-sharing.css?v=5a899815065c9b06",
   "/bb-household-sharing.js?v=cdb4b0d27a37a193",
@@ -78,7 +78,7 @@ self.BB700_PWA_PRECACHE=Object.freeze([
   "/bb-membership-compare.css?v=ad910a66d1cf7c71",
   "/bb-membership-legal.css?v=70f0af9e149d5125",
   "/bb-membership-settings.css?v=d04d75dfb43483ef",
-  "/bb-membership-settings.js?v=7bb4ba640cbc5ae1",
+  "/bb-membership-settings.js?v=3fc744b0ec3c8848",
   "/bb-mobile-beta-polish.css?v=1819641292a7e4e9",
   "/bb-mobile-beta-polish.js?v=5b8e413a74d5e63c",
   "/bb-mobile-three-20261027.css?v=6acbd2e4381b1760",
@@ -94,7 +94,7 @@ self.BB700_PWA_PRECACHE=Object.freeze([
   "/bb-pantry-groups.css?v=2eac4c2ce30aa037",
   "/bb-pantry-groups.js?v=9b432ca060be5785",
   "/bb-pantry-inline.css?v=08cfc17c2b11b0c4",
-  "/bb-pantry-inline.js?v=ae680e55cafe84c7",
+  "/bb-pantry-inline.js?v=d103732333fd7ae2",
   "/bb-pantry-policy.js",
   "/bb-pantry-policy.js?v=5ffdfd17722f3158",
   "/bb-pantry-runtime.mjs?v=7c6a7711e53a3496",
@@ -111,7 +111,7 @@ self.BB700_PWA_PRECACHE=Object.freeze([
   "/bb-premium-feature-badges.css?v=ccab5dd9ebefe3fe",
   "/bb-premium-feature-badges.js?v=e10f09e1fb788a64",
   "/bb-premium-features.css?v=f3eaa5f0e3238f7c",
-  "/bb-premium-finish.css?v=cc9da2604fb57468",
+  "/bb-premium-finish.css?v=bf0126c048f4f487",
   "/bb-price-scan.js?v=e9a3012f1eaca334",
   "/bb-purchase-choice.css?v=7982c53202f5c96f",
   "/bb-real-app-tour.css?v=e70325086ae3874f",
@@ -121,7 +121,7 @@ self.BB700_PWA_PRECACHE=Object.freeze([
   "/bb-receipt-inventory.js?v=c9bac4c62b628a26",
   "/bb-receipt-quantity.js?v=bf57b05a9993d398",
   "/bb-receipt-scanner.css?v=f5a7f0035dc6279e",
-  "/bb-receipt-scanner.js?v=8a856ff7c2fb8010",
+  "/bb-receipt-scanner.js?v=44189473c8d617fe",
   "/bb-recipe-canonical.js?v=265deeff6e5d3caa",
   "/bb-recipe-editorial.js?v=abfb893cd37f8dcc",
   "/bb-recipe-ingredient-layout.css?v=7a30d20f75de3e74",
@@ -186,7 +186,7 @@ self.BB700_PWA_PRECACHE=Object.freeze([
   "/pwa700/bb-pantry-selection.css",
   "/pwa700/bb-pantry-selection.css?v=f36a43f98c876ce5",
   "/pwa700/bb-pantry-selection.js",
-  "/pwa700/bb-pantry-selection.js?v=d81c4d44ed7abafa",
+  "/pwa700/bb-pantry-selection.js?v=b4cf576b3e3f2c4b",
   "/pwa700/bb-plan-premium-polish.js",
   "/pwa700/bb-plan-premium-polish.js?v=119b12c93909fd8e",
   "/pwa700/bb-plan-swap-core.js",
@@ -222,7 +222,7 @@ self.BB700_PWA_PRECACHE=Object.freeze([
   "/pwa700/pricing-sandbox",
   "/pwa700/recipes.json",
   "/pwa700/shopping-inventory.js",
-  "/pwa700/shopping-inventory.js?v=2416be16cb940def",
+  "/pwa700/shopping-inventory.js?v=5bf1462f3a220d41",
   "/pwa700/subscriptions",
   "/pwa700/tutorial"
 ]);

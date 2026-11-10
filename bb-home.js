@@ -41,7 +41,18 @@
  function install(win){
   const householdDraft=new Map();let householdActor=null;
   function checkDraftActor(){const who=actor();if(who!==householdActor){householdDraft.clear();householdActor=who;}}
-  const store=win.localStorage,read=()=>{try{const value=JSON.parse(store.getItem(KEY)||'{}');return value&&value.version===1?value:{version:1,targets:{},cooked:{},planned:{}};}catch{return {version:1,targets:{},cooked:{},planned:{}};}};
+  const store=win.localStorage,read=()=>{
+   let value;
+   try{
+    const raw=store.getItem(KEY);
+    if(raw===null)return {version:1,targets:{},cooked:{},planned:{}};
+    value=JSON.parse(raw);
+   }catch{throw Error('Review your saved At home records before updating stock.');}
+   // An unreadable or newer record is not an empty pantry. Keep its bytes so
+   // an unrelated confirmation cannot silently replace its saved history.
+   if(!object(value)||value.version!==1)throw Error('Review your saved At home records before updating stock.');
+   return value;
+  };
   const actor=()=>{try{return JSON.parse(store.getItem('basketboss_cloud_session_v1')||'null')?.user?.id||'guest';}catch{return 'guest';}};
   const blocked=()=>{
    const receipt=win.BBReceiptHost;
@@ -49,10 +60,22 @@
    try{return typeof receipt?.canConsumePantry==='function'?receipt.canConsumePantry()!==true:!!receipt?.requiresPantryReview?.();}catch{return true;}
   };
   const host=()=>win.BBHomeHost;
-  function own(){const all=read();const who=actor();all.byActor??={};all.byActor[who]??={targets:{},cooked:{},planned:{}};return {all,data:all.byActor[who],who};}
-  function targets(){return own().data.targets||{};}
-  function receiptGeneration(id){const data=own().data;return data.receiptGenerations?.[id]||0;}
-  function supersedesReceipt(id){return !!own().data.supersededReceipts?.[id];}
+  function own(){
+   const all=read(),who=actor();
+   if(all.byActor!==undefined&&!object(all.byActor))throw Error('Review your saved At home records before updating stock.');
+   all.byActor??={};all.byActor[who]??={targets:{},cooked:{},planned:{}};
+   const data=all.byActor[who];if(!object(data))throw Error('Review your saved At home records before updating stock.');
+   // A valid restored account may have history but no shopping targets yet.
+   // Fill absent maps on this parsed proposal only; preserve existing records.
+   for(const key of ['targets','cooked','planned']){data[key]??={};if(!object(data[key]))throw Error('Review your saved At home records before updating stock.');}
+   return {all,data,who};
+  }
+  // Reading a screen must remain possible even when saved metadata needs review.
+  // Mutations still use own() and refuse to overwrite an unreadable history.
+  function viewData(){try{const data=read().byActor?.[actor()];return object(data)?data:{};}catch{return {};}}
+  function targets(){const data=viewData();return object(data.targets)?data.targets:{};}
+  function receiptGeneration(id){const data=viewData();return data.receiptGenerations?.[id]||0;}
+  function supersedesReceipt(id){return !!viewData().supersededReceipts?.[id];}
   function settle(data,ids,cooking=false){
    const change=host()?.settlePurchases?.([...new Set(ids)],{cooking});if(!change)return null;
    data.receiptGenerations={...(data.receiptGenerations||{}),...change.generations};
@@ -329,7 +352,7 @@
    }
    return false;
   }
-  function isCooked(key){return completed(own().data,key);}
+  function isCooked(key){return completed(viewData(),key);}
   const object=value=>value&&typeof value==='object'&&!Array.isArray(value);
   function completionHome(actorId){
    const who=actor();if(actorId!==who)throw Error('Your account changed. Reopen Cook before updating At home.');
@@ -652,7 +675,7 @@
    return reply({...base,...(response.weeklyReviewRequired?{weeklyReviewRequired:true}:{}),message:'Day done undone. At home restored; earlier Cook confirmations remain recorded.'+(response.weeklyReviewRequired?' Review your remaining food before the next shop.':'')});
   }
   function shoppingBuys(){
-   const data=own().data;return Object.entries(object(data.manualBuys)?data.manualBuys:{}).filter(([,row])=>row?.pending!==false&&valid(row.quantity)&&row.quantity>0).map(([id,row])=>({...row,id}));
+   const data=viewData();return Object.entries(object(data.manualBuys)?data.manualBuys:{}).filter(([,row])=>row?.pending!==false&&valid(row.quantity)&&row.quantity>0).map(([id,row])=>({...row,id}));
   }
   function shoppingBuyId(row){
    if(row.kind!=='household')return host().id(row.name,row.unit);

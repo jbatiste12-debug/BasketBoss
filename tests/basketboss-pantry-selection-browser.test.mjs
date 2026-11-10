@@ -23,9 +23,48 @@ async function fixture(run){const context=await browser.newContext({viewport:{wi
 async function waitCount(page,value){await page.waitForFunction(value=>document.querySelector('.bbps-count')?.textContent===value,value);}
 async function select(page){await page.getByRole('button',{name:'Select items',exact:true}).click();await page.getByRole('checkbox',{name:'Select Rice in cupboard',exact:true}).check();}
 async function confirm(page){await page.locator('.bbps-bar').getByRole('button',{name:'Delete',exact:true}).click();await page.getByRole('dialog').waitFor();}
+async function touchHoldOverSelectionControl(page,control,duration){
+ // Measure the actual floating controls, then put a real food row beneath
+ // their future position. A touch release can be retargeted after layout.
+ await page.getByRole('button',{name:'Select items',exact:true}).click();
+ const position=await page.locator('.bbps-bar '+control).boundingBox();
+ const point={x:position.x+position.width/2,y:position.y+position.height/2};
+ await page.locator('.bbps-bar .bbps-cancel').click();
+ await page.locator('.bbps-bar').waitFor({state:'detached'});
+ await page.waitForFunction(()=>!history.state?.bbPantrySelection);
+ await page.evaluate(()=>document.body.style.paddingTop='700px');
+ const food=page.locator('[data-bbpi-key="cupboard|rice"] strong'),box=await food.boundingBox();
+ await page.evaluate(delta=>scrollBy(0,delta),box.y+box.height/2-point.y);
+ await page.waitForTimeout(80);
+ assert.equal(await page.evaluate(({x,y})=>document.elementFromPoint(x,y)?.closest('.bbpi-summary-row')?.dataset.bbpiKey,point),'cupboard|rice');
+ const session=await page.context().newCDPSession(page);
+ await session.send('Input.dispatchTouchEvent',{type:'touchStart',touchPoints:[point]});
+ await page.waitForTimeout(duration);await waitCount(page,'1 selected');
+ const barControl=await page.locator('.bbps-bar '+control).boundingBox();
+ assert.ok(point.x>=barControl.x&&point.x<=barControl.x+barControl.width&&point.y>=barControl.y&&point.y<=barControl.y+barControl.height,'the new bar control overlaps the held finger');
+ await session.send('Input.dispatchTouchEvent',{type:'touchEnd',touchPoints:[]});
+ await page.waitForTimeout(120);await session.detach();
+}
 describe('pantry food multi-selection browser interactions',()=>{
  before(async()=>{if(chromium)browser=await chromium.launch({headless:true,...(process.env.BB_CHROMIUM_PATH?{executablePath:process.env.BB_CHROMIUM_PATH}:{}),args:['--no-sandbox']});});after(async()=>{await browser?.close();});
  check('long press selects one food, suppresses its release click, and Escape leaves stock untouched',()=>fixture(async page=>{const target=page.locator('[data-bbpi-key="cupboard|rice"] strong');await target.scrollIntoViewIfNeeded();const box=await target.boundingBox();await page.mouse.move(box.x+12,box.y+10);await page.mouse.down();await page.waitForTimeout(510);await page.mouse.up();await waitCount(page,'1 selected');assert.equal(await page.getByRole('checkbox',{name:'Select Rice in cupboard',exact:true}).isChecked(),true);assert.equal(await page.evaluate(()=>flushes),0);await page.keyboard.press('Escape');await count(page).waitFor({state:'detached'});assert.equal(await page.evaluate(()=>saved.size),4);}));
+ for(const [control,duration]of [['.bbps-all',600],['.bbps-cancel',1800]])check('touch hold keeps one food selected when its release lands on '+control,()=>fixture(async page=>{
+  await touchHoldOverSelectionControl(page,control,duration);
+  await waitCount(page,'1 selected');
+  assert.equal(await page.getByRole('checkbox',{name:'Select Rice in cupboard',exact:true}).isChecked(),true);
+  assert.equal(await page.getByRole('checkbox',{name:'Select Tuna chunks in cupboard',exact:true}).isChecked(),false);
+  assert.equal(await page.getByRole('dialog').count(),0);assert.equal(await page.evaluate(()=>flushes),0);
+  await page.locator('.bbps-bar .bbps-all').click();await waitCount(page,'2 selected');
+  await page.locator('.bbps-bar .bbps-cancel').click();await count(page).waitFor({state:'detached'});assert.equal(await page.evaluate(()=>saved.size),4);
+ }));
+ for(const activation of ['pointer','keyboard'])check('an intentional '+activation+' action works when a completed hold emits no release click',()=>fixture(async page=>{
+  const food=page.locator('[data-bbpi-key="cupboard|rice"] strong');
+  await food.dispatchEvent('pointerdown',{button:0,pointerId:1,clientX:50,clientY:100});await page.waitForTimeout(510);
+  await food.dispatchEvent('pointerup',{button:0,pointerId:1,clientX:50,clientY:100});await waitCount(page,'1 selected');
+  const all=page.locator('.bbps-bar .bbps-all');
+  if(activation==='pointer')await all.click();else{await all.focus();await page.keyboard.press('Enter');}
+  await waitCount(page,'2 selected');assert.equal(await page.evaluate(()=>flushes),0);
+ }));
  for(const mode of ['movement','scroll','release'])check(mode+' before hold threshold cancels selection',()=>fixture(async page=>{await page.locator('[data-bbpi-key="cupboard|rice"] strong').dispatchEvent('pointerdown',{button:0,pointerId:1,clientX:50,clientY:100});if(mode==='movement')await page.dispatchEvent('body','pointermove',{pointerId:1,clientX:65,clientY:100});if(mode==='scroll')await page.dispatchEvent('body','scroll');if(mode==='release')await page.dispatchEvent('body','pointerup',{pointerId:1});await page.waitForTimeout(520);assert.equal(await count(page).count(),0);assert.equal(await page.evaluate(()=>flushes),0);}));
  check('keyboard selection and Select all shown omit collapsed storage, while Cancel saves nothing',()=>fixture(async page=>{await page.getByRole('button',{name:'Select items',exact:true}).focus();await page.keyboard.press('Enter');await waitCount(page,'0 selected');assert.equal(await page.locator('.bbps-bar').getByRole('button',{name:'Delete',exact:true}).isDisabled(),true);await page.getByRole('button',{name:'Select all shown',exact:true}).click();await waitCount(page,'2 selected');assert.equal(await page.locator('input[data-bbps-key="fridge|milk"]').isChecked(),false);await page.locator('.bbps-bar').getByRole('button',{name:'Cancel',exact:true}).click();await count(page).waitFor({state:'detached'});assert.equal(await page.evaluate(()=>flushes),0);}));
  check('selection spans sections and exact confirmation cancellation preserves all foods',()=>fixture(async page=>{await select(page);await page.getByText('Fridge',{exact:true}).click();await page.getByRole('checkbox',{name:'Select Milk in fridge',exact:true}).check();await waitCount(page,'2 selected');await confirm(page);assert.match(await page.getByRole('dialog').innerText(),/Rice · cupboard/);assert.match(await page.getByRole('dialog').innerText(),/Milk · fridge/);await page.getByRole('button',{name:'Keep foods',exact:true}).click();await page.getByRole('dialog').waitFor({state:'detached'});assert.equal(await page.evaluate(()=>saved.size),4);assert.equal(await page.evaluate(()=>flushes),0);await waitCount(page,'2 selected');}));

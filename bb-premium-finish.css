@@ -50,6 +50,22 @@ html body #app :is(.bb16-filter-panel h2,.bb1759-summary-heading h3){font-weight
 html body #app .bb16-filter-panel{border-top:3px solid #c3a45d7a!important}
 html body #app .bb-featured-card .recipe-body>.eyebrow{color:var(--bb-premium-gold-ink)!important;-webkit-text-fill-color:currentColor!important}
 html body #app .bb-featured-card .recipe-body .chip{background:#f0f5e9!important;border-color:#d8e3cf!important;color:var(--bb-premium-green)!important}
+/* Opaque fallback keeps image labels readable even without backdrop blur. */
+html body #app :is(.recipe-image,.mini-img)>:is(.pill,.time-pill){
+ background:rgba(16,42,29,.94)!important;color:#fff!important;-webkit-text-fill-color:currentColor!important;
+ border:1px solid #ffffff47!important;border-radius:999px!important;
+ -webkit-backdrop-filter:blur(12px);backdrop-filter:blur(12px);
+ line-height:1.35!important;overflow-wrap:anywhere!important;white-space:normal!important;
+}
+html body #app .recipe-image>.pill{max-width:calc(100% - 132px)!important}
+html body #app .mini-img>.pill{max-width:calc(100% - 20px)!important}
+html body #app .bb-featured-card .recipe-body h3{min-width:0!important;overflow-wrap:anywhere!important;white-space:normal!important}
+html body[data-bbnext-view="discover"] #app .grid-recipes .mini-content h4{
+ display:-webkit-box!important;-webkit-box-orient:vertical!important;-webkit-line-clamp:3!important;line-clamp:3;
+ height:4.35em!important;min-height:4.35em!important;line-height:1.45!important;
+ overflow:hidden!important;overflow-wrap:anywhere!important;white-space:normal!important;
+}
+html body #app :is([data-bb-measures],.bbpi-readout,.bbpi-summary-amount,.bb18-recipe-meta,.bb15-shop-amount,.bbnext-plan-budget){font-variant-numeric:tabular-nums!important}
 html body #app :is(.bbnext-day,.bb-plan-extra,.bb174-leftover-option){border-color:var(--bb-premium-border)!important;background:#fffefa!important;box-shadow:0 2px 9px #123e2d06!important}
 html body #app.bbnext-plan[data-bb-compact-plan="true"] .bbnext-plan-budget[data-bb-simple-budget],
 html body #app .bbnext-plan-budget[data-bb-simple-budget]{background:var(--bb-premium-gloss)!important;border-color:#c3a45d66!important;box-shadow:0 8px 22px #123e2d1a,inset 0 1px #ffffff20!important}
@@ -129,6 +145,72 @@ html body #app #bbKitchenSections{background:#e9efdf!important;border:1px solid 
 html body #app #bbKitchenSections button{min-height:44px!important;border-radius:11px!important;color:var(--bb-premium-green)!important}
 html body #app #bbKitchenSections button[aria-selected=true]{background:var(--bb-premium-gloss)!important;color:var(--bb-premium-ivory)!important;box-shadow:0 2px 7px #123e2d14!important}
 html body #app #bb173ShopFridge .bb-pantry-camera-button{background:linear-gradient(135deg,#f7efd9,#f0e4c1)!important;border-color:#d6c591!important;color:#4c5835!important;border-radius:14px!important;min-height:44px!important}
+
+/* Pantry rows keep one premium card and a small visual stepper with full touch targets. */
+html body #app #bb173ShopFridge.bbpi-enhanced [data-bb76-count]{background:#e7f0e9!important;color:#315b42!important;border-radius:999px!important;padding:5px 9px!important;font-variant-numeric:tabular-nums!important;white-space:nowrap!important}
+html body[data-bbnext-view="shop"] #app #bb173ShopFridge.bbpi-enhanced .bb76-store{
+ background:#fff!important;border:0!important;border-radius:22px!important;
+ box-shadow:0 8px 24px rgba(16,42,29,.06)!important;
+}
+html body[data-bbnext-view="shop"] #app #bb173ShopFridge.bbpi-enhanced .bbpi-summary{
+ margin:0!important;padding:0!important;border:0!important;border-radius:0!important;
+ background:transparent!important;box-shadow:none!important;
+}
+html body[data-bbnext-view="shop"] #app #bb173ShopFridge.bbpi-enhanced .bbpi-summary>header[hidden]{display:none!important}
+html body[data-bbnext-view="shop"] #app #bb173ShopFridge.bbpi-enhanced .bbpi-summary-list{gap:8px!important}
+html body[data-bbnext-view="shop"] #app #bb173ShopFridge.bbpi-enhanced .bbpi-summary-row{
+ min-width:0!important;min-height:64px!important;padding:11px 12px!important;gap:8px!important;
+ border:1px solid transparent!important;border-radius:16px!important;background:#F8FBF9!important;
+}
+html body[data-bbnext-view="shop"] #app #bb173ShopFridge.bbpi-enhanced .bbpi-summary-main{
+ gap:3px 6px!important;min-width:0!important;min-height:38px!important;
+}
+html body[data-bbnext-view="shop"] #app #bb173ShopFridge.bbpi-enhanced .bbpi-summary-title{
+ display:flex!important;align-items:center!important;flex:1 0 100%!important;min-width:0!important;gap:6px!important;
+}
+html body[data-bbnext-view="shop"] #app #bb173ShopFridge.bbpi-enhanced .bbpi-summary-title strong{
+ flex:0 1 auto!important;min-width:0!important;font-size:14px!important;line-height:1.4!important;font-weight:700!important;overflow-wrap:anywhere!important;
+}
+html body #app :is(.bbpi-edit,.bbps-start){text-decoration:none!important}
+html body[data-bbnext-view="shop"] #app #bb173ShopFridge.bbpi-enhanced .bbpi-summary-amount{
+ color:var(--bb-premium-muted)!important;font-size:13px!important;line-height:1.4!important;
+ font-variant-numeric:tabular-nums!important;
+}
+html body[data-bbnext-view="shop"] #app #bb173ShopFridge.bbpi-enhanced .bb-kitchen-last-price{font-variant-numeric:tabular-nums!important}
+html body[data-bbnext-view="shop"] #app #bb173ShopFridge.bbpi-enhanced #bb76StorageSections .bbpi-summary-main .bbpi-edit{
+ flex:none!important;width:auto!important;min-width:44px!important;min-height:44px!important;margin:-12px 0!important;
+ padding:0 2px!important;border:0!important;border-radius:8px!important;background:transparent!important;box-shadow:none!important;
+ color:#567462!important;-webkit-text-fill-color:currentColor!important;text-decoration:none!important;
+ font-size:12px!important;line-height:20px!important;font-weight:600!important;
+}
+html body[data-bbnext-view="shop"] #app #bb173ShopFridge.bbpi-enhanced:not(.bbps-active) .bbpi-summary-actions{
+ display:grid!important;position:relative!important;grid-template-columns:44px 44px!important;gap:0!important;
+ border:0!important;border-radius:0!important;background:transparent!important;overflow:visible!important;
+}
+html body[data-bbnext-view="shop"] #app #bb173ShopFridge.bbpi-enhanced .bbpi-summary-actions::before{
+ content:"";position:absolute;top:3px;left:4px;width:80px;height:38px;box-sizing:border-box;
+ border:1px solid #D5E2D8;border-radius:12px;background:#fff;pointer-events:none;
+}
+html body[data-bbnext-view="shop"] #app #bb173ShopFridge.bbpi-enhanced .bbpi-summary-actions::after{
+ content:"";position:absolute;top:4px;left:44px;width:1px;height:36px;background:#D5E2D8;pointer-events:none;
+}
+html body[data-bbnext-view="shop"] #app #bb173ShopFridge.bbpi-enhanced .bbpi-summary-actions:focus-within{outline:3px solid var(--bb-premium-forest)!important;outline-offset:3px!important}
+html body[data-bbnext-view="shop"] #app #bb173ShopFridge.bbpi-enhanced #bb76StorageSections .bbpi-summary-actions .bbpi-step{
+ position:relative!important;z-index:1;width:44px!important;min-width:44px!important;height:44px!important;min-height:44px!important;
+ padding:0!important;border:0!important;border-radius:10px!important;background:transparent!important;box-shadow:none!important;
+ color:#1B4D33!important;-webkit-text-fill-color:currentColor!important;font-size:21px!important;line-height:1!important;font-weight:650!important;
+}
+html body[data-bbnext-view="shop"] #app #bb173ShopFridge.bbpi-enhanced .bbpi-summary-footer{padding:12px 0 0!important;gap:8px!important}
+html body[data-bbnext-view="shop"] #app #bb173ShopFridge.bbpi-enhanced #bb76StorageSections .bbpi-summary-footer .bbpi-add-food{
+ flex:1 1 auto!important;min-width:0!important;width:auto!important;min-height:46px!important;
+ padding:11px 14px!important;border:1px solid #1B4D33!important;border-radius:14px!important;
+ background:#1B4D33!important;color:#fff!important;-webkit-text-fill-color:currentColor!important;
+ box-shadow:none!important;font-size:14px!important;line-height:1.4!important;font-weight:750!important;
+}
+html body[data-bbnext-view="shop"] #app #bb173ShopFridge.bbpi-enhanced.bbps-active .bbpi-edit{display:none!important}
+html body[data-bbnext-view="shop"] #app #bb173ShopFridge.bbpi-enhanced.bbps-active .bbpi-summary-row.bbps-selected{
+ border-color:#4d8b65!important;background:#edf5e9!important;box-shadow:inset 0 0 0 1px #4d8b65!important;
+}
 
 /* Shop's mobile summary is an existing sibling of #app. */
 html body[data-bbnext-view="shop-list"] #bbReleaseShopOverview{color:var(--bb-premium-ink)!important}

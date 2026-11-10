@@ -58,7 +58,7 @@ jobs:
           if [[ "$BEFORE_SHA" =~ ^[0-9a-f]{40}$ ]] && git cat-file -e "$BEFORE_SHA^{commit}" 2>/dev/null; then
             native=false
             while IFS= read -r file; do
-              if [[ "$file" == ".github/workflows/apple-subscriptions.yml" || "$file" =~ ^(ios/|native/|scripts/(build-native|ios-|test-ios|prepare-ios)|capacitor\.config\.(ts|js|json)$|package(-lock)?\.json$|[^/]+\.(js|mjs|css|html)$) ]]; then
+              if [[ "$file" == ".github/workflows/apple-subscriptions.yml" || "$file" =~ ^(ios/|native/|scripts/(build-native|ios-|test-ios|prepare-ios|verify-ios-storekit-release)|capacitor\.config\.(ts|js|json)$|package(-lock)?\.json$|[^/]+\.(js|mjs|css|html)$) ]]; then
                 native=true
               fi
             done < <(git diff --name-only "$BEFORE_SHA" "$GITHUB_SHA")
@@ -158,12 +158,7 @@ jobs:
           CODE_SIGNING_ALLOWED=NO
           build
       - name: Verify Release excludes StoreKit test fixture
-        run: |
-          test ! -f /tmp/basketboss-ios-build/Build/Products/Release-iphonesimulator/App.app/BasketBossPremium.storekit
-          if otool -L /tmp/basketboss-ios-build/Build/Products/Release-iphonesimulator/App.app/App | rg StoreKitTest; then
-            echo 'Release must not link the local StoreKit test framework.'
-            exit 1
-          fi
+        run: node scripts/verify-ios-storekit-release.mjs --app /tmp/basketboss-ios-build/Build/Products/Release-iphonesimulator/App.app
       - name: Exercise real StoreKit bridge in hosted XCTest with local products
         env:
           BB_IAP_KEEP_SIMULATOR_BOOTED: 'true'
