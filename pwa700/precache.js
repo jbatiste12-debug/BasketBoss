@@ -1,5 +1,5 @@
 /* Public web700 cache contract. Never include private/API/auth responses. */
-self.BB700_PWA_CACHE_VERSION="7b64418d3dda594741f5a36c7e041eb11ba61c62983b455d4fded94f8cc69c76";
+self.BB700_PWA_CACHE_VERSION="f00bd7b710c6c82a24b39f74bd4fbc93d9003bade49d6af6e6f27fad42fea753";
 self.BB700_PWA_PRECACHE=Object.freeze([
   "/basketboss-aisles-v20.js?v=d45b76bac322b605",
   "/bb-account-deletion.css?v=645b166ac6fe196f",
@@ -96,7 +96,7 @@ self.BB700_PWA_PRECACHE=Object.freeze([
   "/bb-pantry-inline.css?v=08cfc17c2b11b0c4",
   "/bb-pantry-inline.js?v=d103732333fd7ae2",
   "/bb-pantry-policy.js",
-  "/bb-pantry-policy.js?v=5ffdfd17722f3158",
+  "/bb-pantry-policy.js?v=3203e72f8e373bed",
   "/bb-pantry-runtime.mjs?v=7c6a7711e53a3496",
   "/bb-partner-signup-prompt.css?v=4b8718904151c105",
   "/bb-partner-signup-prompt.js?v=4d5dba284b0f176f",
@@ -122,7 +122,7 @@ self.BB700_PWA_PRECACHE=Object.freeze([
   "/bb-receipt-quantity.js?v=bf57b05a9993d398",
   "/bb-receipt-scanner.css?v=f5a7f0035dc6279e",
   "/bb-receipt-scanner.js?v=44189473c8d617fe",
-  "/bb-recipe-canonical.js?v=265deeff6e5d3caa",
+  "/bb-recipe-canonical.js?v=878f44edae3f68b7",
   "/bb-recipe-editorial.js?v=abfb893cd37f8dcc",
   "/bb-recipe-ingredient-layout.css?v=7a30d20f75de3e74",
   "/bb-recipe-measures.js?v=8f63cb901d5f7197",

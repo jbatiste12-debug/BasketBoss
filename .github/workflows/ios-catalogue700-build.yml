@@ -8,6 +8,12 @@ on:
       - .github/workflows/ios-catalogue700-build.yml
       - catalogues/700/release/**
       - tools/catalogue700/**
+      - app.html
+      - index.html
+      - bb-*.js
+      - bb-*.css
+      - shopping-inventory.js
+      - tests/basketboss-inventory-math-regression.test.mjs
       - bb-plan-swap.*
       - bb-plan-swap-*.js
       - ios/**

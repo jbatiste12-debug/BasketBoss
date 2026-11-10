@@ -43,7 +43,7 @@
   const states=originalStates.filter(state=>!(freshTomato&&state==='fresh'));
   const cannedTomatoes=!states.includes('fresh')&&/^(?:(?:tinned|canned|tin) (?:chopped |whole |plum )?tomato(?:es)?|chopped (?:tinned |canned )?tomato(?:es)?|(?:chopped |whole |plum )?tomato(?:es)? (?:tinned|canned))$/.test(raw);
   const alias=label=>freshTomato?'tomato':cannedTomatoes?'chopped tomatoes':label.replace(/^(?:tinned|canned) ((?:(?:red |white |black |kidney |baked |butter |cannellini |borlotti )?beans?|chickpeas?|lentils?))$/,'$1').replace(/^tomato ketchup$/,'ketchup').replace(/^(?:runny|clear) honey$/,'honey');
-  const foodAlias=label=>label.replace(/\bground beef\b/g,'beef mince').replace(/\bground turkey\b/g,'turkey mince').replace(/\bzucchini\b/g,'courgette').replace(/\beggplant\b/g,'aubergine').replace(/\bscallions?\b/g,'spring onion');
+  const foodAlias=label=>label.replace(/^extra[ -]virgin olive oil$/,'olive oil').replace(/\bground beef\b/g,'beef mince').replace(/\bground turkey\b/g,'turkey mince').replace(/\bzucchini\b/g,'courgette').replace(/\beggplant\b/g,'aubergine').replace(/\bscallions?\b/g,'spring onion');
   let result=foodAlias(alias(raw));
   if(typeof canonicalize==='function')try{const mapped=clean(canonicalize(result));if(safeName(mapped))result=alias(mapped);}catch{}
   const plurals={potatoes:'potato',tomatoes:'tomato',carrots:'carrot',onions:'onion','red onions':'red onion','spring onions':'spring onion',courgettes:'courgette',aubergines:'aubergine',cucumbers:'cucumber',shallots:'shallot',eggs:'egg',apples:'apple',bananas:'banana',lemons:'lemon',limes:'lime',oranges:'orange'};result=plurals[result]||result;
