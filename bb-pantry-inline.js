@@ -130,7 +130,7 @@
   function openArea(area){openedLocation=area.dataset.bb76Store;for(const other of current.card.querySelectorAll('[data-bb76-store]'))if(other!==area)other.open=false;area.open=true;}
   function revealLocation(loc){
    const area=current?.card?.querySelector('[data-bb76-store="'+loc+'"]');if(!area?.open||!toolbar?.isConnected||editor)return;
-   const top=area.getBoundingClientRect().top+win.scrollY-toolbar.getBoundingClientRect().height-8;
+   const top=area.getBoundingClientRect().top+win.scrollY-8;
    win.scrollTo({top:Math.max(0,top),left:win.scrollX||0,behavior:'instant'});
   }
   function jump(loc){
@@ -183,18 +183,15 @@
    if(toolbar?.parentNode===panel)return;
    toolbar?.remove();toolbarResize?.disconnect();toolbar=el('section','bbpi-toolbar bbpi-ui');toolbar.id='bbpiToolbar';toolbar.setAttribute('aria-label','Pantry tools');
    const actions=el('div','bbpi-toolbar-actions'),searchTag=el('label','bbpi-search-label'),search=el('input');search.id='bbpiSearch';search.type='search';search.placeholder='Search food';search.maxLength=100;search.value=query;search.setAttribute('aria-label','Search pantry');searchTag.append(search);
-   const add=btn('+ Add item',()=>addFood(location),'bbpi-toolbar-add');add.id='bbpiAddItem';
-   const filters=btn('View filters',()=>{const show=filterPanel.hidden;filterPanel.hidden=!show;filters.setAttribute('aria-expanded',String(show));current.card.dataset.bbpiFilters=String(show);measureToolbar();},'bbpi-toolbar-filters');filters.id='bbpiViewFilters';filters.setAttribute('aria-controls','bbpiViewFilterPanel');filters.setAttribute('aria-expanded','false');actions.append(searchTag,add,filters);
-   const nav=el('nav','bbpi-location-nav');nav.setAttribute('aria-label','Pantry storage areas');
-   for(const loc of LOCATIONS){const control=btn(loc[0].toUpperCase()+loc.slice(1),()=>jump(loc),'bbpi-location');control.dataset.bbpiLocation=loc;control.setAttribute('aria-pressed',String(loc===location));control.setAttribute('aria-controls','bbpi-area-'+loc);nav.append(control);}
+   const filters=btn('Filters',()=>{const show=filterPanel.hidden;filterPanel.hidden=!show;filters.setAttribute('aria-expanded',String(show));current.card.dataset.bbpiFilters=String(show);measureToolbar();},'bbpi-toolbar-filters');filters.id='bbpiViewFilters';filters.setAttribute('aria-controls','bbpiViewFilterPanel');filters.setAttribute('aria-expanded','false');actions.append(searchTag,filters);
    const filterPanel=el('div','bbpi-view-filters');filterPanel.id='bbpiViewFilterPanel';filterPanel.hidden=true;filterPanel.setAttribute('role','group');filterPanel.setAttribute('aria-label','Filter pantry stock');
    for(const [key,label]of[['all','All food'],['use-soon','Use soon'],['low','Low / Out']]){const control=btn(label,()=>{closeEditor();stockFilter=key;for(const button of filterPanel.querySelectorAll('button'))button.setAttribute('aria-pressed',String(button===control));chooseMatchingLocation();pendingReveal=location;schedule();},'bbpi-filter');control.dataset.bbpiFilter=key;control.setAttribute('aria-pressed',String(key===stockFilter));filterPanel.append(control);}
    search.addEventListener('input',()=>{closeEditor();query=search.value;chooseMatchingLocation();searchChoices();schedule();});
    const choices=el('div','bbpi-search-matches');choices.setAttribute('aria-label','Matching foods');choices.hidden=true;
-   toolbar.append(actions,nav,choices,filterPanel);panel.prepend(toolbar);current.card.dataset.bbpiFilters='false';searchChoices();
+   toolbar.append(actions,choices,filterPanel);panel.prepend(toolbar);current.card.dataset.bbpiFilters='false';searchChoices();
    if(win.ResizeObserver){toolbarResize=new win.ResizeObserver(measureToolbar);toolbarResize.observe(toolbar);}measureToolbar();
   }
-  function measureToolbar(){if(toolbar?.isConnected&&current?.card?.isConnected)current.card.style.setProperty('--bbpi-toolbar-height',Math.ceil(toolbar.getBoundingClientRect().height)+'px');}
+  function measureToolbar(){if(toolbar?.isConnected&&current?.card?.isConnected)current.card.style.setProperty('--bbpi-toolbar-height','0px');}
   function unitOptions(select,values,selected,row){select.replaceChildren();for(const value of [...new Set(values.concat(selected))]){if(!value)continue;const option=el('option','',row?.staple?unitLabel(row,value):value==='l'?'litres':value);option.value=value;option.selected=value===selected;select.append(option);}}
   function tileFor(row){const tiles=[...current.card.querySelectorAll('[data-bb76-store="'+row.loc+'"] [data-bb5-food]')],exact=tiles.find(node=>node.dataset.bb5Food===row.name);if(exact)return exact;const policy=win.BBPantryPolicy,key=policy?.canonicalName(row.name,win.BBPriceV19?.canonical);return key?tiles.find(node=>policy.canonicalName(node.dataset.bb5Food,win.BBPriceV19?.canonical)===key)||null:null;}
   // The form lives outside #app. Typing never changes the pantry ledger.

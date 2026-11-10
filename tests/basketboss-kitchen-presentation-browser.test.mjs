@@ -115,4 +115,26 @@ describe('Kitchen presentation work stays proportional to visible controls',()=>
   await page.locator('#bbpiSearch').fill('No matching food');
   await page.getByText('No match — add your own food.',{exact:true}).waitFor();
  },{pantry:true}));
+
+ check('pantry keeps one search and filter row, real storage accordions and per-area Add food without duplicate shortcuts',()=>fixture(async page=>{
+  assert.equal(await page.locator('#bbpiAddItem,.bbpi-location-nav,[data-bbpi-location]').count(),0);
+  assert.equal(await page.locator('#bbpiSearch').count(),1);
+  assert.equal(await page.locator('[data-bb76-store]>summary').count(),3);
+  assert.equal(await page.locator('[data-bb76-store] .bbpi-add-food').count(),3);
+  const filter=page.getByRole('button',{name:'Filters',exact:true});
+  assert.equal(await filter.getAttribute('aria-expanded'),'false');
+  await filter.click();assert.equal(await filter.getAttribute('aria-expanded'),'true');
+  assert.equal(await page.locator('#card').getAttribute('data-bbpi-filters'),'true');
+  await page.getByRole('button',{name:'Low / Out',exact:true}).click();
+  await page.waitForFunction(()=>document.querySelectorAll('.bbpi-summary-row').length===0);
+  assert.equal(await page.locator('.bbpi-summary-row').count(),0);
+  await page.getByRole('button',{name:'All food',exact:true}).click();await page.locator('.bbpi-summary-row').waitFor();
+  await filter.click();assert.equal(await filter.getAttribute('aria-expanded'),'false');
+  await page.locator('[data-bb76-store="cupboard"] .bbpi-add-food').click();
+  await page.locator('#bbpi-current-editor').waitFor();
+  assert.match(await page.locator('#bbpi-current-editor').innerText(),/Add food/);
+  await page.locator('#bbpi-current-editor .bbpi-close').click();
+  await page.locator('#bbpi-current-editor').waitFor({state:'detached'});
+  assert.equal(await page.evaluate(()=>__stockWrites),0,'opening and closing presentation must not save stock');
+ },{pantry:true}));
 });

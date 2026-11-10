@@ -68,28 +68,42 @@
      content.append(summary);lunchDetails=make('details','bb-day-done-lunch-details');lunchDetails.append(make('summary','','View planned lunches'),list);
     }else content.append(list);
    }
+   const amountDetails=[];
    if(value.rows?.length){
     const amounts=make('section','bb-day-done-amounts');amounts.setAttribute('aria-label',undo?'Amounts to return to At home':'Ingredients used');
-    const title=make('div','bb-day-done-amounts-heading');title.append(make('h3','',undo?'Return to At home':'Ingredients used'),make('span','',undo?'Recorded':'Planned amount'));amounts.append(title);
-    for(const row of value.rows){
-     const line=make('div','bb-day-done-amount'),main=make('div','bb-day-done-amount-main'),unit=row.unit?' '+row.unit:'';
-     const required=Number.isFinite(row.required)?row.required:null;
-     const amount=undo?(Number.isFinite(row.restore)?row.restore+unit:'Needs review'):required!==null?required+unit:row.staple?(row.stockLabel||'Staple'):'Needs review';
-     main.append(make('strong','',row.name||'Ingredient'),make('span','bb-day-done-quantity',amount));line.append(main);
-     if(!undo&&row.staple)line.append(make('small','',row.stockLabel||'Staple status kept; no spoonful deduction'));
-     if(!undo&&required!==null&&Number.isFinite(row.deduct)&&Math.abs(row.deduct-required)>.000001)line.append(make('small','bb-day-done-issue','Planned '+required+unit+'; the recorded At home amount will reduce by '+row.deduct+unit+'. Check this difference before confirming.'));
-     if(!undo&&required===null&&!row.staple&&Number.isFinite(row.deduct))line.append(make('small','','Recorded At home reduction: '+row.deduct+unit+'. Planned amount unavailable.'));
-     if(row.issueLabel)line.append(make('small','bb-day-done-issue',row.issueLabel));
-     for(const assumption of row.assumptions||[])line.append(make('small','',assumption));amounts.append(line);
+    let table=null,body=null;
+    if(undo){const title=make('div','bb-day-done-amounts-heading');title.append(make('h3','','Return to At home'),make('span','','Recorded'));amounts.append(title);}
+    else{
+     table=make('table','bb-day-done-ingredient-table');table.append(make('caption','','Ingredients used'));const head=make('thead'),headRow=make('tr');
+     for(const text of ['Ingredient','Required','In pantry','Remaining']){const cell=make('th','',text);cell.setAttribute('scope','col');if(text==='Remaining'){cell.setAttribute('aria-label','Remaining after confirmation');cell.append(make('small','bb-day-done-projection-label','after confirmation'));}headRow.append(cell);}head.append(headRow);body=make('tbody');table.append(head,body);amounts.append(table);
     }
-    if(value.rows.some(row=>row.estimated))amounts.append(make('p','bb-day-done-issue','Some conversions use estimated ingredient weights. Check these amounts before confirming.'));
+    for(const row of value.rows){
+     const unit=row.unit?' '+row.unit:'',required=Number.isFinite(row.required)?row.required:null;
+     if(undo){
+      const line=make('div','bb-day-done-amount'),main=make('div','bb-day-done-amount-main');main.append(make('strong','',row.name||'Ingredient'),make('span','bb-day-done-quantity',Number.isFinite(row.restore)?row.restore+unit:'Needs review'));line.append(main);if(row.issueLabel)line.append(make('small','bb-day-done-issue',row.issueLabel));amounts.append(line);
+     }else{
+      const line=make('tr','bb-day-done-amount bb-day-done-amount-main'),name=make('td','bb-day-done-ingredient-name');name.append(make('strong','',row.name||'Ingredient'));if(row.estimated)name.append(make('small','','Estimated'));
+      const needed=make('td','bb-day-done-quantity',required!==null?required+unit:row.staple?'Staple':'Check amount');let owned='Not checked',remaining='Not checked',check=false;
+      if(row.staple){owned=({in:'In stock',low:'Low',out:'Out of stock'})[row.stapleStatus]||'Check stock';remaining='Unchanged';}
+      else if(row.issue==='unit_mismatch'||row.issue==='unit_unknown'){owned=remaining='Check unit';check=true;}
+      else if(row.issue==='amount_unknown'){owned=remaining='Check amount';check=true;}
+      else{if(Number.isFinite(row.owned)&&row.owned>=0)owned=row.owned+unit;if(Number.isFinite(row.remaining)&&row.remaining>=0)remaining=row.remaining+unit;}
+      const pantry=make('td',check?'bb-day-done-cell-review':'',owned),after=make('td',check?'bb-day-done-cell-review':'',remaining);line.append(name,needed,pantry,after);body.append(line);
+     }
+     const notes=[row.issueLabel,...(row.assumptions||[])].filter(Boolean);if(row.staple&&row.stockLabel)notes.push(row.stockLabel);if(notes.length)amountDetails.push({name:row.name||'Ingredient',notes:[...new Set(notes)]});
+    }
     content.append(amounts);
    }
+   if(amountDetails.length){
+    const details=make('details','bb-day-done-conversion-details');details.append(make('summary','','Amount details'));
+    for(const entry of amountDetails){const item=make('div','bb-day-done-conversion-item');item.append(make('strong','',entry.name));for(const note of entry.notes)item.append(make('p','',note));details.append(item);}content.append(details);
+   }
    if(lunchDetails)content.append(lunchDetails);
-   if(value.issues?.length){
+   const rowIssues=new Set((value.rows||[]).map(row=>row.issueLabel).filter(Boolean)),remainingIssues=(value.issues||[]).filter(issue=>!rowIssues.has(typeof issue==='string'?issue:issue.message||issue.issueLabel));
+   if(remainingIssues.length){
     const issues=make('div','bb-day-done-issues');
     issues.append(make('p','',undo?'Some recorded amounts need a check before undoing this day.':'Some planned amounts need a check. Review the messages below before confirming.'));
-    for(const issue of value.issues){const message=typeof issue==='string'?issue:issue.message||issue.issueLabel;if(message)issues.append(make('p','bb-day-done-issue',message));}
+    for(const issue of remainingIssues){const message=typeof issue==='string'?issue:issue.message||issue.issueLabel;if(message)issues.append(make('p','bb-day-done-issue',message));}
     content.append(issues);
    }
   }
@@ -98,10 +112,11 @@
    mode=nextMode;const undo=mode==='undo',active=dialog,version=++revision;preview=null;
    active.replaceChildren();
    const heading=make('h2','',undo?'Undo '+day+' Day done?':lunchWeek?'Confirm school lunches for the week':'Confirm ingredients used');heading.id='bbDayDoneTitle'+dialogId;heading.tabIndex=-1;active.setAttribute('aria-labelledby',heading.id);
-   if(!undo)active.append(make('p','bb-day-done-kicker',lunchWeek?'SCHOOL LUNCHES · THIS WEEK':day.toUpperCase()+' · DAY DONE'));
+   const header=make('header','bb-day-done-header');
+   if(!undo)header.append(make('p','bb-day-done-kicker',lunchWeek?'SCHOOL LUNCHES · THIS WEEK':day.toUpperCase()+' · DAY DONE'));
    const explanation=make('p','bb-day-done-explanation',undo?'Reopen only the meals confirmed by this Day done action and return their recorded amounts to At home. Meals you cooked earlier stay confirmed.':'Check the ingredients you used. Confirm to update At home.');
    const content=make('div','bb-day-done-content'),status=make('p','bb-day-done-status','Checking your plan and pantry…');status.setAttribute('role','status');
-   const actions=make('div','bb-day-done-actions'),cancel=make('button','btn',undo?'Cancel':'Not yet');cancel.type='button';cancel.dataset.bbDayAction='close';cancel.onclick=()=>close();actions.append(cancel);active.append(heading,explanation,content,status,actions);
+   const actions=make('div','bb-day-done-actions'),cancel=make('button','btn',undo?'Cancel':'Not yet');cancel.type='button';cancel.dataset.bbDayAction='close';cancel.onclick=()=>close();actions.append(cancel);header.append(heading,explanation);const footer=make('footer','bb-day-done-footer');footer.append(status,actions);active.append(header,content,footer);
    heading.focus?.({preventScroll:true});
    let value,undoPreview=null;
    try{
@@ -114,7 +129,7 @@
    if(disposed||dialog!==active||version!==revision)return;
    if(!current()){refreshCompletion();status.textContent='Your account changed or your session refreshed. Close this review and reopen Day done.';return;}
    value=value||{ok:false,message:'Day confirmation is still loading. Try again shortly.'};preview=value;content.replaceChildren();appendRows(content,value,undo);
-   status.textContent=value.message||(undo?(value.already?'This Day done action has already been undone.':value.ok?'Check the recorded amounts before undoing this Day done action.':'Review At home before changing these amounts.'):value.already?(lunchWeek?'All school lunches for this week are already confirmed.':'All planned food for this day is already confirmed.'):value.ok?(lunchWeek?'Lunches already confirmed are skipped.':'Meals already confirmed are skipped.'):'Review your pantry or plan before confirming this day.');
+   status.textContent=value.message||(undo?(value.already?'This Day done action has already been undone.':value.ok?'Check the recorded amounts before undoing this Day done action.':'Review At home before changing these amounts.'):value.already?(lunchWeek?'All school lunches for this week are already confirmed.':'All planned food for this day is already confirmed.'):value.ok?'Pantry changes only when you confirm.':'Review your pantry or plan before confirming this day.');
    if(!lunchWeek&&!undo&&undoPreview?.ok&&!undoPreview.already){
     const reviewUndo=make('button','btn bb-day-undo-review','Review undo day done');reviewUndo.type='button';reviewUndo.dataset.bbDayAction='review-undo';reviewUndo.onclick=()=>{if(!busy)void load('undo');};actions.append(reviewUndo);
    }
@@ -154,7 +169,7 @@
     return;
    }
    if(typeof value.fingerprint!=='string'||!value.fingerprint||undo&&(typeof home?.undoDay!=='function'||value.needsReview||!Array.isArray(value.rows)||value.rows.some(row=>!Number.isFinite(row.restore)||row.restore<0))){status.textContent='Your day could not be checked safely. Close this review and try again.';return;}
-   const confirm=make('button','btn primary',undo?'Confirm undo day done':lunchWeek?'Confirm lunches for the week':'Confirm ingredients used');confirm.type='button';confirm.dataset.bbDayAction=undo?'undo':'confirm';actions.append(confirm);
+   const confirm=make('button','btn primary',undo?'Confirm undo day done':'Confirm & update pantry');confirm.type='button';confirm.dataset.bbDayAction=undo?'undo':'confirm';actions.append(confirm);
    confirm.onclick=async()=>{
     if(busy||disposed||dialog!==active)return;
     if(!current()){refreshCompletion();confirm.disabled=true;status.textContent='Your account changed or your session refreshed. Close this review and reopen Day done.';return;}

@@ -26,7 +26,7 @@ function fixture({preview,finish,reviewDay,undoPreview,undo,complete=false,day='
  }
  doc={createElement:tag=>new Element(tag)};doc.body=new Element('body');const container=new Element('div');doc.body.append(container);doc.activeElement=container;
  const calls=[],previews=[],confirmed=[],reviews=[],undoPreviews=[],undos=[],undone=[];
- const normal={ok:true,fingerprint:'plan-one',items:[{kind:'dinner',name:'Vegetable stew',servings:4},{kind:'lunch',name:'Cheese sandwiches',servingsLabel:'2 children'},{kind:'dessert',name:'Apple crumble',already:true},{kind:'leftover',name:'Tuesday batch',servings:4}],rows:[{name:'Pasta',unit:'g',required:200,owned:500,deduct:200}],issues:[]};
+ const normal={ok:true,fingerprint:'plan-one',items:[{kind:'dinner',name:'Vegetable stew',servings:4},{kind:'lunch',name:'Cheese sandwiches',servingsLabel:'2 children'},{kind:'dessert',name:'Apple crumble',already:true},{kind:'leftover',name:'Tuesday batch',servings:4}],rows:[{name:'Pasta',unit:'g',required:200,owned:500,deduct:200,remaining:300}],issues:[]};
  const win={document:doc,localStorage:{getItem:()=>session},BBHome:{actor:()=>actor,isCooked:()=>complete,previewDay(value){previews.push(value);return preview?preview(value,previews.length):normal;},finishDay(value){calls.push(value);return finish?finish(value,calls.length):Promise.resolve({ok:true,completedCount:3,message:'Day confirmed. At home updated.'});}},BBHomeHost:{dayMeals:()=>[{occurrence:'week|dinner|Monday|stew'}]}};
  if(undoPreview)win.BBHome.previewUndoDay=value=>{undoPreviews.push(value);return undoPreview(value,undoPreviews.length);};
  if(undo)win.BBHome.undoDay=value=>{undos.push(value);return undo(value,undos.length);};
@@ -112,7 +112,7 @@ test('invalid days do not create confirmation controls',()=>{
 test('day confirmation exposes conversion estimates and unknown unit fallbacks before commit',async()=>{
  const h=fixture({preview:()=>({ok:true,fingerprint:'units',items:[],rows:[{name:'Carrots',unit:'g',deduct:160,estimated:true,assumptions:['80 g per whole item']},{name:'Rice',unit:'g',deduct:0,issueLabel:'1 bag stays unchanged. Review At home.'}],issues:[{message:'Rice pack contents need review.'}]})});
  await h.open();const text=h.dialog().textContent;
- assert.match(text,/estimated ingredient weights/);assert.match(text,/80 g per whole item/);assert.match(text,/1 bag stays unchanged/);assert.equal(h.calls.length,0);assert.ok(h.action('confirm'));
+ assert.match(text,/Estimated/);assert.equal(h.all().find(node=>node.className==='bb-day-done-conversion-details').open,undefined);assert.match(text,/80 g per whole item/);assert.match(text,/1 bag stays unchanged/);assert.equal(h.calls.length,0);assert.ok(h.action('confirm'));
 });
 
 const undoReady=()=>({ok:true,fingerprint:'undo-one',items:[{kind:'breakfast',name:'Porridge'},{kind:'dessert',name:'Apple crumble'}],rows:[{name:'Oats',unit:'g',restore:80}],issues:[]});
@@ -212,13 +212,13 @@ test('pending receipt status checks reload the same panel without submitting a m
  let checks=0;const h=fixture({preview:()=>({...pantryBlocked(),pantryStatus:{ready:false,reason:'receipt_pending',canReviewInline:false}}),reviewDay(){},receipt:{recoverReceipt:async()=>{checks++;}}});await h.open();const original=h.dialog();await h.action('check-receipt').click();await tick();assert.equal(checks,1);assert.equal(h.previews.length,2);assert.equal(h.dialog(),original);assert.equal(h.calls.length,0);assert.equal(h.reviews.length,0);assert.equal(h.action('confirm'),undefined);
 });
 
-test('the required amount stays visible when recorded pantry deduction is capped or unknown',async()=>{
- const h=fixture({preview:()=>({ok:true,fingerprint:'planned',items:[],rows:[{name:'Fish fingers',required:8,deduct:3,unit:''},{name:'Lettuce',required:150,unit:'g',planned:true}],issues:[]})});await h.open();const text=h.dialog().textContent;
- assert.match(text,/Fish fingers8/);assert.match(text,/Planned 8; the recorded At home amount will reduce by 3/);assert.match(text,/Lettuce150 g/);assert.doesNotMatch(h.all().find(node=>node.className==='bb-day-done-amount'&&node.textContent.includes('Lettuce')).textContent,/At home|owned|remaining|reduce/i);assert.equal(h.all().filter(node=>node.tagName==='details').length,0);assert.equal(h.calls.length,0);
+test('the four columns preserve required, recorded and projected amounts without inventing unchecked stock',async()=>{
+ const h=fixture({preview:()=>({ok:true,fingerprint:'planned',items:[],rows:[{name:'Fish fingers',required:8,deduct:3,owned:3,remaining:0,unit:''},{name:'Lettuce',required:150,unit:'g',planned:true}],issues:[]})});await h.open();
+ const rows=h.all().filter(node=>node.tagName==='tr'&&node.className?.includes('bb-day-done-amount'));assert.deepEqual(rows.map(row=>row.children.map(cell=>cell.textContent)),[['Fish fingers','8','3','0'],['Lettuce','150 g','Not checked','Not checked']]);assert.equal(h.all().filter(node=>node.tagName==='details').length,0);assert.match(h.dialog().textContent,/Pantry changes only when you confirm/);const remaining=h.all().find(node=>node.tagName==='th'&&node.getAttribute('aria-label')==='Remaining after confirmation');assert.ok(remaining);assert.match(remaining.textContent,/after confirmation/);assert.equal(h.calls.length,0);
 });
 
 test('weekly school lunch review shares the panel and needs one explicit confirmation, with no weekly undo',async()=>{
- const h=fixture({lunchWeek:true,undoPreview:undoReady,undo:()=>({ok:true})});await h.open();assert.deepEqual(JSON.parse(JSON.stringify(h.previews[0])),{actorId:'actor-one'});assert.match(h.dialog().textContent,/Confirm school lunches for the week/);assert.equal(h.action('confirm').textContent,'Confirm lunches for the week');assert.equal(h.action('review-undo'),undefined);assert.equal(h.undoPreviews.length,0);assert.equal(h.calls.length,0);
+ const h=fixture({lunchWeek:true,undoPreview:undoReady,undo:()=>({ok:true})});await h.open();assert.deepEqual(JSON.parse(JSON.stringify(h.previews[0])),{actorId:'actor-one'});assert.match(h.dialog().textContent,/Confirm school lunches for the week/);assert.equal(h.action('confirm').textContent,'Confirm & update pantry');assert.equal(h.action('review-undo'),undefined);assert.equal(h.undoPreviews.length,0);assert.equal(h.calls.length,0);
  await h.action('confirm').click();assert.deepEqual(JSON.parse(JSON.stringify(h.calls[0])),{actorId:'actor-one',expected:'plan-one'});assert.equal(h.confirmed.length,1);assert.equal(h.trigger().textContent,'Review confirmed school lunches');assert.equal(h.action('review-undo'),undefined);assert.equal(h.undos.length,0);assert.ok(h.dialog());h.action('close').click();assert.equal(h.dialog(),undefined);
 });
 
@@ -231,4 +231,28 @@ test('weekly lunch days use one compact summary and keep combined ingredients ou
  const summary=h.all().find(node=>node.className==='bb-day-done-lunch-summary');assert.match(summary.textContent,/3 lunch days to confirm/);assert.match(summary.textContent,/Wednesday · Thursday · Friday/);assert.match(summary.textContent,/2 already confirmed/);assert.doesNotMatch(summary.textContent,/children/);
  const details=h.all().find(node=>node.className==='bb-day-done-lunch-details');assert.equal(details.open,undefined);assert.equal(details.children[0].textContent,'View planned lunches');assert.equal(details.children[1].children.length,5);
  const amounts=h.all().find(node=>node.className==='bb-day-done-amounts');assert.equal(amounts.parentNode,summary.parentNode);assert.equal(details.parentNode,amounts.parentNode);assert.ok(amounts.parentNode.children.indexOf(amounts)<amounts.parentNode.children.indexOf(details));assert.match(amounts.textContent,/Bread12 slices/);assert.equal(h.calls.length,0);assert.ok(h.action('confirm'));
+});
+
+
+test('zero, partial and surplus pantry amounts come from the reviewed fields and confirmation remains explicit',async()=>{
+ const rows=[{name:'Chicken',required:800,unit:'g',owned:0,deduct:0,remaining:0},{name:'Potatoes',required:800,unit:'g',owned:0,deduct:0,remaining:0},{name:'Carrots',required:300,unit:'g',owned:100,deduct:100,remaining:0},{name:'Broccoli',required:300,unit:'g',owned:500,deduct:300,remaining:200},{name:'Milk',required:100,unit:'ml',owned:200,deduct:100,remaining:100},{name:'Lemon',required:1,unit:'each',planned:true}];
+ const original=JSON.stringify(rows),h=fixture({preview:()=>({ok:true,fingerprint:'same-core-fingerprint',items:[],rows,issues:[]})});await h.open();
+ const cells=h.all().filter(node=>node.tagName==='tr'&&node.className?.includes('bb-day-done-amount')).map(row=>row.children.map(cell=>cell.textContent));assert.deepEqual(cells,[['Chicken','800 g','0 g','0 g'],['Potatoes','800 g','0 g','0 g'],['Carrots','300 g','100 g','0 g'],['Broccoli','300 g','500 g','200 g'],['Milk','100 ml','200 ml','100 ml'],['Lemon','1 each','Not checked','Not checked']]);assert.doesNotMatch(h.dialog().textContent,/Planned 800|reduce by 0|Not recorded at home/);assert.equal(JSON.stringify(rows),original);assert.equal(h.calls.length,0);
+ await h.action('confirm').click();assert.equal(h.calls.length,1);assert.equal(h.calls[0].expected,'same-core-fingerprint');assert.equal(JSON.stringify(rows),original);
+});
+
+test('unit ambiguity stays specific while its full explanation and estimates sit in collapsed amount details',async()=>{
+ const message='At home has 1 bunch of fresh thyme. Reviewed pack contents or a food-specific conversion are needed. This stock stays unchanged; review At home.';
+ const h=fixture({preview:()=>({ok:true,fingerprint:'units-same',items:[],rows:[{name:'Fresh thyme',required:5,unit:'g',owned:0,deduct:0,issue:'unit_mismatch',issueLabel:message},{name:'Pasta',required:200,unit:'g',owned:100,deduct:100,issue:'unit_mismatch',issueLabel:'Some saved packs have unreviewed contents.'},{name:'Seasoning',required:null,unit:null,deduct:0,issue:'amount_unknown',issueLabel:'Amount is unknown.'},{name:'Carrots',required:160,unit:'g',owned:500,deduct:160,estimated:true,assumptions:['80 g per whole item']}],issues:[{id:'thyme',message}]})});await h.open();
+ const row=name=>h.all().find(node=>node.tagName==='tr'&&node.className?.includes('bb-day-done-amount')&&node.textContent.startsWith(name));assert.deepEqual(row('Fresh thyme').children.map(cell=>cell.textContent),['Fresh thyme','5 g','Check unit','Check unit']);assert.doesNotMatch(row('Fresh thyme').textContent,/Not recorded|pack contents|food-specific/);assert.deepEqual(row('Pasta').children.map(cell=>cell.textContent),['Pasta','200 g','Check unit','Check unit']);assert.deepEqual(row('Seasoning').children.map(cell=>cell.textContent),['Seasoning','Check amount','Check amount','Check amount']);assert.match(row('Carrots').textContent,/Estimated/);
+ const details=h.all().find(node=>node.className==='bb-day-done-conversion-details');assert.equal(details.open,undefined);assert.match(details.textContent,/1 bunch of fresh thyme/);assert.match(details.textContent,/80 g per whole item/);assert.equal(h.dialog().textContent.split(message).length-1,1);assert.equal(h.all().filter(node=>node.className==='bb-day-done-issues').length,0);assert.equal(h.calls.length,0);assert.ok(h.action('confirm'));
+});
+
+test('a blocked planned-only preview never invents a missing-stock status or a zero deduction',async()=>{
+ const h=fixture({preview:pantryBlocked,receipt:{reviewPantry:async()=>null}});await h.open();assert.doesNotMatch(h.dialog().textContent,/Not recorded at home|At home: 0|Missing stock/);assert.equal(h.action('confirm'),undefined);assert.ok(h.action('review-pantry'));
+});
+
+
+test('staples keep container status rather than projecting measured pantry quantities',async()=>{
+ const h=fixture({preview:()=>({ok:true,fingerprint:'staples',items:[],rows:[{name:'Olive oil',required:30,unit:'ml',owned:0,deduct:0,remaining:0,staple:true,stapleStatus:'in',stockLabel:'In stock · container tracking'},{name:'Pepper',required:1,unit:'tsp',staple:true,stapleStatus:'low',stockLabel:'Low · add a container to Shopping'}],issues:[]})});await h.open();const rows=h.all().filter(node=>node.tagName==='tr'&&node.className?.includes('bb-day-done-amount'));assert.deepEqual(rows.map(row=>row.children.map(cell=>cell.textContent)),[['Olive oil','30 ml','In stock','Unchanged'],['Pepper','1 tsp','Low','Unchanged']]);assert.match(h.all().find(node=>node.className==='bb-day-done-conversion-details').textContent,/container tracking/);assert.equal(h.calls.length,0);
 });

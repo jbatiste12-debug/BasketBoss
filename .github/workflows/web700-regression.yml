@@ -1,4 +1,4 @@
-name: Verify web catalogue 700 and build 39 regressions
+name: Verify web catalogue 700 and build 40 regressions
 
 on:
   workflow_dispatch:
