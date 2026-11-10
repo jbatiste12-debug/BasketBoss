@@ -28,3 +28,31 @@ export function isCatalogueDinner(recipe,{catalogueVersion=500,roles,legacyIsDin
  const reviewedSavouryWaffles=recipe.id==='southern-chicken-and-waffles'&&number===641&&text(recipe.name)==='southern chicken and waffles'&&recipe.primaryProtein==='chicken';
  return !NON_DINNER.test(category)&&(!SWEET_NAME.test(text(recipe.name))||reviewedSavouryWaffles);
 }
+
+// A generated catalogue's authored roles do not change during the session.
+// Validate and copy those primitives once; recipe eligibility remains live.
+// Keep the dynamic validator above for callers passing mutable role manifests.
+export function compileCatalogueDinner({catalogueVersion=500,roles,legacyIsDinner}={}){
+ if(typeof legacyIsDinner!=='function')return ()=>false;
+ if(catalogueVersion!==700)return recipe=>legacyIsDinner(recipe)===true;
+ const legacy=roles?.legacyRecipeIds;
+ if(roles?.schemaVersion!==1||roles.catalogueVersion!==700||roles.legacyCatalogueVersion!==500||!Array.isArray(legacy)||legacy.length!==500||new Set(legacy).size!==500||legacy.some(id=>typeof id!=='string'||!ID.test(id))||!Array.isArray(roles.recipes))return ()=>false;
+ const legacyIds=new Set(legacy),roleIds=new Set(),numbers=new Set(),byId=new Map();
+ let validNewRoles=true;
+ for(const source of roles.recipes){
+  const role=source&&{id:source.id,catalogueNumber:source.catalogueNumber,kind:source.kind};
+  if(!role||typeof role.id!=='string'||!ID.test(role.id)||legacyIds.has(role.id)||roleIds.has(role.id)||!Number.isInteger(role.catalogueNumber)||role.catalogueNumber<501||role.catalogueNumber>700||numbers.has(role.catalogueNumber)||!['dinner','breakfast','dessert','starter','side'].includes(role.kind)){validNewRoles=false;break;}
+  roleIds.add(role.id);numbers.add(role.catalogueNumber);byId.set(role.id,Object.freeze(role));
+ }
+ return recipe=>{
+  if(!recipe||typeof recipe.id!=='string'||!ID.test(recipe.id))return false;
+  // Legacy clients keep their original predicate even if new roles are invalid.
+  if(legacyIds.has(recipe.id))return legacyIsDinner(recipe)===true;
+  if(!validNewRoles)return false;
+  const number=recipe.catalogueNumber,role=byId.get(recipe.id);
+  if(!Number.isInteger(number)||number<501||number>700||!role||role.catalogueNumber!==number||role.kind!=='dinner'||recipe.dinnerEligible!==true)return false;
+  const category=[recipe.category,recipe.tag,recipe.mealType].map(text).join(' ');
+  const reviewedSavouryWaffles=recipe.id==='southern-chicken-and-waffles'&&number===641&&text(recipe.name)==='southern chicken and waffles'&&recipe.primaryProtein==='chicken';
+  return !NON_DINNER.test(category)&&(!SWEET_NAME.test(text(recipe.name))||reviewedSavouryWaffles);
+ };
+}

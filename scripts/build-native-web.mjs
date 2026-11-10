@@ -51,6 +51,7 @@ export const CLIENT_FILES=Object.freeze([
  'bb-intro-trial.css','bb-light-meal.css','bb-membership-legal.css',
  'bb-membership-settings.css','bb-mobile-beta-polish.css','bb-mobile-three-20261027.css',
  'bb-onboarding-v2.css','bb-partner-signup-prompt.css','bb-plan-premium-polish.css',
+ 'bb-premium-finish.css','bb-premium-dialogs.css',
  'bb-premium-features.css','bb-purchase-choice.css','bb-real-app-tour.css',
  'bb-receipt-host.css','bb-receipt-scanner.css','bb-recipe-ingredient-layout.css',
  'bb-servings-mobile-polish.css','bb-settings-premium-polish.css',

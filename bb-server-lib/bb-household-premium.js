@@ -59,8 +59,8 @@ export async function sharedHouseholdPremiumOwner(request,env,user){
   if(h?.partner_user_id!==user.id||h?.invite_status!=='accepted'||
      typeof h.partner_email!=='string'||h.partner_email.trim().toLowerCase()!==email||
      !UUID.test(h.owner_user_id||'')||h.owner_user_id===user.id)return null;
-  // Inherit production payments or the owner's current persisted TestFlight
-  // grant. No BB_OWNER_USER_ID bypass, browser claim, or Apple Sandbox payment.
+  // Inherit production payments, persisted TestFlight access or the explicit
+  // server owner sharing grant. No browser claim or Apple Sandbox payment.
   const row=isLive(env)?await env.BILLING_DB.prepare(
     `SELECT status,price_id,plan FROM bb_paid_entitlements WHERE user_id=?
      ORDER BY CASE WHEN status IN ('active','trialing') AND
@@ -68,9 +68,9 @@ export async function sharedHouseholdPremiumOwner(request,env,user){
       THEN 0 ELSE 1 END,updated_at_ms DESC LIMIT 1`
   ).bind(h.owner_user_id,expectedPrice(env,'founder'),expectedPrice(env,'standard')).first():null;
   const expected=row?expectedPrice(env,row.plan):null;
-  if(row&&expected&&entitlementForStatus(row.status)&&expected===row.price_id)return h.owner_user_id;
-  if(env.APPLE_BILLING_ENABLED!=='true'&&!testFlightBetaEnabled(env))return null;
+  if(env.BB_OWNER_HOUSEHOLD_ENABLED!=='true'&&row&&expected&&entitlementForStatus(row.status)&&expected===row.price_id)return h.owner_user_id;
+  if(env.APPLE_BILLING_ENABLED!=='true'&&!testFlightBetaEnabled(env)&&env.BB_OWNER_HOUSEHOLD_ENABLED!=='true')return null;
   const {readPersonalPaidAccess}=await import('./bb-paid-access.js');
-  const access=await readPersonalPaidAccess(env,h.owner_user_id,{productionOnly:true,includeTestFlightBeta:true,paddleRow:row});
+  const access=await readPersonalPaidAccess(env,h.owner_user_id,{productionOnly:true,includeTestFlightBeta:true,includeOwnerHousehold:true,paddleRow:row});
   return access.premiumAccess?h.owner_user_id:null;
 }

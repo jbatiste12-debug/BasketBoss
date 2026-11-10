@@ -513,8 +513,8 @@
   "files": [
     {
       "path": "app.html",
-      "bytes": 2954184,
-      "sha256": "f730ceda0a72d975631c82e7ac2051fd925ecde979ed285ae8b90a3cfbb08f6a"
+      "bytes": 2956061,
+      "sha256": "7c00510dd5843beb234b829d1f6d61fd82107f9f0aa6046cd785658dbd8eec78"
     },
     {
       "path": "basketboss-latest-guide.html",
@@ -603,8 +603,8 @@
     },
     {
       "path": "bb-recipe-planning.js",
-      "bytes": 50346,
-      "sha256": "7739581ba80bb4d8f58ec4a02fd3af8c97bd3528a558e2cd0fb8501d2ba12646"
+      "bytes": 52689,
+      "sha256": "548674f85695f43f24029f3931484ab2cb5a4e4acbd74b8e74bd99fe6d063f54"
     },
     {
       "path": "bb-ui-continuity.js",
@@ -633,8 +633,8 @@
     },
     {
       "path": "make-a-meal.html",
-      "bytes": 39790,
-      "sha256": "b020be8d8dbf495b073d1114786fba1eb137019e53ea71ecc0bd297f66ef0b2d"
+      "bytes": 40037,
+      "sha256": "e0ea672a238da17b7b934263854e8d58cb64fe6861e64b8f17a07ba58f04233d"
     },
     {
       "path": "make-a-meal.js",
@@ -648,8 +648,8 @@
     },
     {
       "path": "precache.js",
-      "bytes": 10245,
-      "sha256": "f8e620b94f1e20b54775f909cf5700a1d1c37337a57793fea266e5632bd32025"
+      "bytes": 10340,
+      "sha256": "91b8d50124274e2536214841ab40119c29049932e3054e5d0732911b9302d4de"
     },
     {
       "path": "pricing-sandbox.html",

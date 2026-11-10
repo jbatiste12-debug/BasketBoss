@@ -3815,7 +3815,7 @@ body[data-bbnext-view="discover"] #app .bb-featured-card #bbFeaturedBatch {
 <script src="/bb-cook-step-layout.js?v=2d66e1b201bd403f"></script>
 <script src="/bb-cook-pantry.js?v=dbafd66980b2f963"></script>
 <link rel="stylesheet" href="/bb-cook-clarity.css?v=14b4d8b1c08dc5a4">
-<script src="/pwa700/bb-recipe-planning.js?v=7739581ba80bb4d8"></script>
+<script src="/pwa700/bb-recipe-planning.js?v=548674f85695f43f"></script>
 <script src="/bb-recipe-editorial.js?v=abfb893cd37f8dcc"></script>
 <script src="/bb-plan-move.js?v=15a181268831d410"></script>
 <script src="/bb-saved-weeks.js?v=6dd392cc7b8d9ca1"></script>
@@ -9637,14 +9637,22 @@ function bbAfDraw(days,previous,filters={},batch=false){
  const weighted=typeof BBPantryAutofill!=='undefined';
  let stock={};if(weighted&&window.BBHome?.blocked?.()!==true)try{stock=bbHomePhysicalStock();}catch{}
  const history=weighted?bbPlannedRecipeHistory():{};
- const goalPreferences=typeof BBMealPreferences==='undefined'?null:BBMealPreferences.get(),goalCosts=new Map();
+ const goalPreferences=typeof BBMealPreferences==='undefined'?null:BBMealPreferences.get(),goalCosts=new Map(),ingredientCache=new Map();
+ const priceGoal=goalPreferences?.goals.includes('Spend less on groceries')===true;
  const goalScore=(recipe,preference)=>{
-  if(!goalPreferences)return 0;
-  if(!goalCosts.has(recipe.id)){let amount=null;try{amount=bbRecipeMealEstimate(recipe).amount;}catch{}goalCosts.set(recipe.id,amount);}
-  return BBMealPreferences.goalScore({goals:goalPreferences.goals,amount:goalCosts.get(recipe.id),servings:state.servings,pantryBonus:preference?.pantryBonus||0,previouslyPlanned:Object.hasOwn(history,recipe.id)});
+  if(!goalPreferences?.goals.length)return 0;
+  if(priceGoal&&!goalCosts.has(recipe.id)){let amount=null;try{amount=bbRecipeMealEstimate(recipe).amount;}catch{}goalCosts.set(recipe.id,amount);}
+  return BBMealPreferences.goalScore({goals:goalPreferences.goals,amount:priceGoal?goalCosts.get(recipe.id):null,servings:state.servings,pantryBonus:preference?.pantryBonus||0,previouslyPlanned:Object.hasOwn(history,recipe.id)});
  };
 
- const ingredientRows=(recipe,day)=>bbHomeRecipeIngredients(recipe.id,BBServing.ratio(BBServing.forMeal(state,{recipeId:recipe.id,day},recipe),recipe)*(batch&&['Monday','Wednesday'].includes(day)?2:1));
+ // Serving-scaled requirements are immutable during this read-only proposal.
+ // The cache is discarded before confirmation and never survives another tap.
+ const ingredientRows=(recipe,day)=>{
+  const factor=BBServing.ratio(BBServing.forMeal(state,{recipeId:recipe.id,day},recipe),recipe)*(batch&&['Monday','Wednesday'].includes(day)?2:1);
+  let rows=ingredientCache.get(recipe.id);if(!rows){rows=new Map();ingredientCache.set(recipe.id,rows);}
+  if(!rows.has(factor))rows.set(factor,bbHomeRecipeIngredients(recipe.id,factor));
+  return rows.get(factor);
+ };
  const scored=(r,week)=>{
   const d=details(r.id),used=new Set();
   for(const item of week)for(const x of details(item.recipeId)?.food||[])used.add(x);
@@ -9659,7 +9667,27 @@ function bbAfDraw(days,previous,filters={},batch=false){
  for(let attempt=0;attempt<100;attempt++){
   const rotation=bbRotationSession({forAutoFill:true}),before=rotation.snapshot(),selected=[],week=[...previous];
   let conversion=null;if(weighted)try{conversion=bbHomeConversionContext();}catch{conversion={};}
-  const pantry=weighted?BBPantryAutofill.create({stock,priorityStockKeys:window.BBReducedStock?.priority?.(stock,{inventory:bb83ReadObject('basketboss_makeameal_v1_inventory'),actor:window.BBHome?.actor?.()||'guest',allowed:window.BBReducedFoodHost?.isPremium?.()===true,canonicalize:BBPriceV19.canonical,market:bb307Market})||[],canonicalMeasure:BBPriceV19.canonicalMeasure,lastPlannedAt:history,proposal:({stock,ingredients})=>window.BBPantryDeduction.proposal({stock,ingredients,id:BB307Pantry.pantryId,conversion})}):null;
+  // Reuse a proposal only for identical requirements AND the complete current
+  // ledger stock. Each reservation changes that key; every retry starts fresh.
+  const proposalCache=new Map();
+  // Canonical identity is independent of stock; quantities still use each
+  // candidate's current ledger and no lookup survives this button press.
+  const pantryIds=new Map();
+  const pantryId=(name,unit)=>{
+   if(typeof name!=='string'||typeof unit!=='string')return BB307Pantry.pantryId(name,unit);
+   let units=pantryIds.get(name);if(!units){units=new Map();pantryIds.set(name,units);}
+   if(!units.has(unit))units.set(unit,BB307Pantry.pantryId(name,unit));
+   return units.get(unit);
+  };
+  const pantryProposal=({stock,ingredients})=>{
+   const cacheable=Object.values(stock).every(Number.isFinite)&&ingredients.every(row=>row&&typeof row==='object'&&(row.required===null||Number.isFinite(row.required)));
+   const key=cacheable?JSON.stringify([stock,ingredients]):null;
+   if(key!==null&&proposalCache.has(key))return proposalCache.get(key);
+   const result=window.BBPantryDeduction.proposal({stock,ingredients,id:pantryId,conversion});
+   if(key!==null&&result&&typeof result.then!=='function')proposalCache.set(key,result);
+   return result;
+  };
+  const pantry=weighted?BBPantryAutofill.create({stock,priorityStockKeys:window.BBReducedStock?.priority?.(stock,{inventory:bb83ReadObject('basketboss_makeameal_v1_inventory'),actor:window.BBHome?.actor?.()||'guest',allowed:window.BBReducedFoodHost?.isPremium?.()===true,canonicalize:BBPriceV19.canonical,market:bb307Market})||[],canonicalMeasure:BBPriceV19.canonicalMeasure,lastPlannedAt:history,proposal:pantryProposal}):null;
   if(pantry)for(const day of BB_AF_DAYS){let meals=[];try{meals=bbHomeDayMeals(day);}catch{}for(const meal of meals)if(!window.BBHome?.isCooked?.(meal.occurrence))pantry.reserve(meal.ingredients,{sourceIngredients:getRecipe(meal.recipeId)?.ingredients});}
   for(const day of days){
    const candidatesForDay=all.filter(r=>!bbAfWorldMeal(r)||(worldAllowed&&bbAfWorldCount(week)===0));
@@ -13145,7 +13173,7 @@ body[data-bbnext-view="discover"] #app .bb175-discover-heading{padding-top:calc(
 <script defer src="/bb-weekly-shop.js?v=527947c9a9ce151a"></script>
 <link rel="stylesheet" href="/bb-membership-compare.css?v=ad910a66d1cf7c71">
 <script defer src="/pwa700/bb-membership-compare.js?v=b318bb5e665db375"></script>
-<link rel="stylesheet" href="/bb-plan-premium-polish.css?v=a64c2bdcbe2eb7ad">
+<link rel="stylesheet" href="/bb-plan-premium-polish.css?v=be11bcb4ee1c3f95">
 <script defer src="/pwa700/bb-plan-premium-polish.js?v=119b12c93909fd8e"></script>
 <link rel="stylesheet" href="/bb-ingredient-picker.css?v=9b21ceeb3e24ebc0">
 <link rel="stylesheet" href="/bb-evening-pivot-ui.css?v=f5e043dd0ce3bffd">
@@ -13178,7 +13206,7 @@ body[data-bbnext-view="discover"] #app .bb175-discover-heading{padding-top:calc(
 <script defer src="/bb-keyboard-layout.js?v=872e31f50037e966"></script>
 <link rel="stylesheet" href="/bb-simple-layout.css?v=b78ffdb3dab2f664">
 <script defer src="/bb-simple-layout.js?v=56c64ce7eee60d96"></script>
-<script defer src="/bb-pantry-deduction.js?v=9fe47599796e2638"></script>
+<script defer src="/bb-pantry-deduction.js?v=559e10922842e8b0"></script>
 <script defer src="/bb-home.js?v=c82174904501d15b"></script><link rel="stylesheet" href="/bb-day-done.css?v=1982290ac1ca619e"><script defer src="/bb-day-done.js?v=4dec8eede3f8b7c2"></script><link rel="stylesheet" href="/bb-shop-add.css?v=76495afe6b55de2b"><script defer src="/bb-shop-add.js?v=ab24b574d6fa7c12"></script><script defer src="/bb-cupboard-staples.js?v=ee852189a99dad60"></script><script src="/bb-pantry-autofill.js?v=20024bb507445777"></script>
 <link rel="stylesheet" href="/bb-shared-shopping.css?v=c9924fc3f011d04a">
 <script defer src="/bb-shared-shopping.js?v=bd4c62f9339234a3"></script>
@@ -13203,5 +13231,9 @@ body[data-bbnext-view="discover"] #app .bb175-discover-heading{padding-top:calc(
 <link rel="stylesheet" href="/bb-yellow-stickers-ui.css?v=eb8693cb28c3c223">
 <script defer src="/bb-yellow-stickers-ui.js?v=5942e6d23275d82d"></script>
 <link rel="stylesheet" href="/bb-plan-extras.css?v=1746bc3462e9a4f7">
+
+<!-- Shared app finish: loaded after the legacy component styles. -->
+<link rel="stylesheet" href="/bb-premium-finish.css?v=a91c53fb185d53df">
+<link rel="stylesheet" href="/bb-premium-dialogs.css?v=e42b0968a6881d77">
 <script src="/pwa700/bb-plan-swap.js?v=f991078935315229"></script>
 <!--/email_off--></body></html>

@@ -92,8 +92,14 @@ for(const mode of ['input','modal','duplicate','hidden','keep'])check(mode+' pre
 }));
 
 for(const intent of ['Tab','Escape','pointer','wheel'])check('later '+intent+' intent cancels a pending restoration',()=>fixture(async page=>{
- await page.evaluate(()=>{hideExpanded=true;renderPlanner();});await page.locator(control()).focus();await page.keyboard.press('Enter');
- if(intent==='pointer')await page.locator('#other').click();else if(intent==='wheel')await page.mouse.wheel(0,10);else await page.keyboard.press(intent);
+ await page.evaluate(()=>{hideExpanded=true;renderPlanner();});
+ // CDP may deliver wheel after the fixture's 30ms repaint. Drive that repaint
+ // only after the trusted wheel arrives, so this exercises pending cancellation.
+ if(intent==='wheel')await page.evaluate(()=>{mode='manual';window.wheelSeen=new Promise(resolve=>window.addEventListener('wheel',event=>resolve(event.isTrusted),{once:true}));});
+ await page.locator(control()).focus();await page.keyboard.press('Enter');
+ if(intent==='pointer')await page.locator('#other').click();else if(intent==='wheel'){
+  await page.mouse.wheel(0,10);assert.equal(await page.evaluate(()=>window.wheelSeen),true);await page.evaluate(()=>renderPlanner());
+ }else await page.keyboard.press(intent);
  await settle(page);
  assert.notEqual(await page.evaluate(()=>document.activeElement.closest('[data-bbfeed-pos]')?.dataset.bbfeedPos),'summary');
  if(intent==='Tab'||intent==='pointer')assert.equal(await page.evaluate(()=>document.activeElement.id),'other');

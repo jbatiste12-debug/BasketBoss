@@ -10,7 +10,7 @@ const SHOP_UUID=/^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-
 function shoppingInput(data){return SHOP_UUID.test(data.id||'')&&typeof data.name==='string'&&data.name.trim().length>=1&&data.name.trim().length<=70&&!/[\u0000-\u001f\u007f]/.test(data.name)&&typeof data.quantity==='number'&&Number.isFinite(data.quantity)&&data.quantity>0&&data.quantity<=1000000&&Math.abs(data.quantity*1000000-Math.round(data.quantity*1000000))<0.0001&&SHOP_UNITS.has(data.unit)&&(data.unit!=='pack'||Number.isInteger(data.quantity));}
 function shoppingRow(row,household){return row&&typeof row==='object'&&!Array.isArray(row)&&row.household_id===household&&SHOP_UUID.test(row.id||'')&&shoppingInput(row)&&typeof row.completed==='boolean'&&Number.isSafeInteger(row.revision)&&row.revision>=1&&(row.created_by===null||SHOP_UUID.test(row.created_by||''))&&(row.completed_by===null||SHOP_UUID.test(row.completed_by||''))&&(row.added_by_name===null||typeof row.added_by_name==='string'&&row.added_by_name.length>=1&&row.added_by_name.length<=60);}
 function privateKey(env){return env.SUPABASE_SECRET_KEY||env.SUPABASE_SERVICE_ROLE_KEY||'';}
-// Four independent gates. This never accepts the QA tenant or test-owner entitlement.
+// Four independent gates. No QA tenant or browser-provided entitlement.
 // "Configured" means permitted to attempt status reads, not that any user is paid.
 // HARD RELEASE BRAKE: separate security-reviewed activation commit required.
 const RELEASE_ARMED=true;
@@ -56,7 +56,7 @@ async function first(env,table,filter,select='*'){
 }
 async function premium(env,userId){
  if(!(livePaidBillingEnabled(env)||testFlightBetaEnabled(env))||!env.BILLING_DB?.prepare)return false;
- return (await readPersonalPaidAccess(env,userId,{productionOnly:true,includeTestFlightBeta:true})).premiumAccess;
+ return (await readPersonalPaidAccess(env,userId,{productionOnly:true,includeTestFlightBeta:true,includeOwnerHousehold:true})).premiumAccess;
 }
 async function householdForUser(env,user){
  const owner=await first(env,'bb_households',eq('owner_user_id',user.id));

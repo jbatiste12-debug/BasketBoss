@@ -4,6 +4,7 @@
  */
 import {isBillingEnabled,isLive,expectedPrice,entitlementForStatus} from './bb-billing.js';
 import {readAppleEntitlement} from './bb-apple-subscriptions.js';
+import {isAccountDeleting} from './bb-account-deletion.js';
 import {testFlightBetaEnabled,readTestFlightBetaGrant} from './bb-testflight-beta.js';
 export {testFlightBetaEnabled} from './bb-testflight-beta.js';
 export const appleBillingEnabled=env=>env.APPLE_BILLING_ENABLED==='true';
@@ -11,11 +12,20 @@ export const paidBillingEnabled=env=>isBillingEnabled(env)||appleBillingEnabled(
 // This is only a feature/configuration gate. Every user still needs a verified
 // personal entitlement. Sandbox never enables production household sharing.
 export const livePaidBillingEnabled=env=>isLive(env)||(appleBillingEnabled(env)&&env.APPLE_ENVIRONMENT==='Production');
+const OWNER_UUID=/^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
 export function paddleAccess(env,row,{productionOnly=false}={}){
  const price=row?expectedPrice(env,row.plan):null;
  return !!row&&!!price&&(!productionOnly||isLive(env))&&price===row.price_id&&entitlementForStatus(row.status);
 }
-export async function readPersonalPaidAccess(env,userId,{productionOnly=false,includeTestFlightBeta=false,paddleRow}={}){
+export async function readPersonalPaidAccess(env,userId,{productionOnly=false,includeTestFlightBeta=false,includeOwnerHousehold=false,paddleRow}={}){
+ // This optional sharing grant is server configuration, never a payment. Only
+ // production household callers opt in after their identity/session gates.
+ if(includeOwnerHousehold===true&&productionOnly===true&&env.BB_OWNER_HOUSEHOLD_ENABLED==='true'&&
+    typeof env.BB_OWNER_USER_ID==='string'&&OWNER_UUID.test(env.BB_OWNER_USER_ID)&&userId===env.BB_OWNER_USER_ID&&
+    (livePaidBillingEnabled(env)||testFlightBetaEnabled(env))&&env.BILLING_DB?.prepare){
+  const premiumAccess=!await isAccountDeleting(env,userId);
+  return {premiumAccess,provider:premiumAccess?'owner_household':null,paddleRow:paddleRow||null,apple:null};
+ }
  let row=paddleRow;
  if(row===undefined&&isBillingEnabled(env))row=await env.BILLING_DB.prepare(
   'SELECT status,price_id,plan FROM bb_paid_entitlements WHERE user_id=? ORDER BY updated_at_ms DESC LIMIT 1'

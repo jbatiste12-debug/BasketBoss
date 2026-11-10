@@ -67,8 +67,15 @@
   const excludedStockKeys=new Set(conversion.excludedStockKeys||[]);
   const physical=/** @type {StockMap} */ ({...stock}),sources=/** @type {ConversionSource[]} */ ([]),rows=/** @type {ConversionRow[]} */ ([]),byId=/** @type {Map<string,ConversionRow>} */ (new Map()),ruleCache=/** @type {Map<string,Map<string,ConversionEdge[]>>} */ (new Map());
   const mode=conversion.pantryMode===true&&!!policy;
+  // Only immutable food-name identities are shared within this one proposal.
+  // Stock, quantities, conversion rules and allocations remain fresh below.
+  const foodNames=/** @type {Map<string,string>} */ (new Map());
   /** @param {string} value */
-  const foodName=value=>mode?policy.canonicalName(value):value;
+  const foodName=value=>{
+   if(!mode)return value;
+   if(!foodNames.has(value))foodNames.set(value,policy.canonicalName(value));
+   return /** @type {string} */ (foodNames.get(value));
+  };
   /** @param {string} value */
   const stateFor=value=>foodState(foodName(value));
   /** @param {string} value */
