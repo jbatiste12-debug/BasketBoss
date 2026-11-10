@@ -1,4 +1,4 @@
-/* A once-only introduction to the repeating week, also available from Settings.
+/* An optional introduction to the repeating week, available from Settings.
  * This guide only writes its own display marker; it never changes a meal,
  * pantry quantity, account, membership or shopping checkmark. */
 (function(root,factory){
@@ -8,7 +8,7 @@
  if(root&&!root.BBHowItWorks){root.BBHowItWorks=api.install(root);root.BBHowItWorks.start();}
 })(typeof window==='undefined'?null:window,function(){
  'use strict';
- const KEY='basketboss_how_it_works_v1',SETUP='bb_onboarding_fresh_once_20261028_v1';
+ const KEY='basketboss_how_it_works_v1';
  const steps=[
   ['Plan Your Meals','Start in Plan. Auto-fill your week, or choose recipes in Discover. Set the servings for everyone eating.','plan'],
   ['Confirm What’s At Home','In At home, use Add item or Edit to open a separate panel. For cupboard staples, choose Jars or bottles (0.5 for half a bottle) or Weight or volume (g/ml). Re-enter the amount after switching. Check the automatic Total needed. The panel says when your meals do not need the item. Use Extra stock buffer for backups, even with no meal requiring them. Buy in multiples of rounds the missing amount to your chosen pack. Confirm Add to Shop, or Done when nothing is missing; the list’s + / − controls still save immediately.','pantry'],
@@ -25,15 +25,7 @@
   const doc=win.document;
   const read=key=>{try{return win.localStorage.getItem(key);}catch{return null;}};
   const object=key=>{try{return JSON.parse(read(key)||'null');}catch{return null;}};
-  const saved=()=>object(KEY);
-  const seen=()=>saved()?.version===1&&saved()?.seen===true;
-  const usedBefore=()=>{
-   if(object(SETUP)?.complete===true||read('basketboss_onboarding_seen_v1')==='true')return true;
-   const plan=object('basketboss_321_unified_state_v1');
-   return !!(plan&&(plan.planned?.length||plan.plannedDesserts?.length||plan.plannedBreakfasts?.length||plan.customPantry?.length||plan.feedingSet===true||Object.keys(plan.pantry||{}).length));
-  };
-  let eligible=saved()?.version===1&&saved()?.eligible===true&&!seen()||!saved()&&!usedBefore();
-  let handled=seen(),started=false,queued=false,view=null,observer=null;
+  let started=false,view=null;
   function write(value){try{const text=JSON.stringify(value);win.localStorage.setItem(KEY,text);return win.localStorage.getItem(KEY)===text;}catch{return false;}}
   const create=(tag,className,text)=>{const node=doc.createElement(tag);if(className)node.className=className;if(text!==undefined)node.textContent=text;return node;};
   function icon(name){const node=create('span','bb-how-icon');node.setAttribute('aria-hidden','true');node.innerHTML='<svg viewBox="0 0 24 24" width="24" height="24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round">'+icons[name]+'</svg>';return node;}
@@ -63,6 +55,7 @@
    current.node.remove();restore(current);return true;
   }
   function open(options={}){
+   if(options.automatic===true)return false;
    if(view){view.close.focus?.({preventScroll:true});return true;}
    if(blocked(options.automatic===true))return false;
    const dialog=create('dialog','bb-how-dialog');dialog.id='bbHowItWorksDialog';dialog.setAttribute('aria-modal','true');dialog.setAttribute('aria-labelledby','bbHowItWorksTitle');dialog.setAttribute('aria-describedby','bbHowItWorksIntro');
@@ -96,21 +89,16 @@
    doc.body.style.overflow='hidden';doc.documentElement?.classList?.add('bb-how-open');doc.addEventListener('keydown',current.trap,true);
    dialog.addEventListener('cancel',event=>{event.preventDefault();close();});dialog.addEventListener('close',()=>{if(view===current)close();});
    dialog.addEventListener('click',event=>{if(event.target!==dialog)return;const rect=dialog.getBoundingClientRect();if(event.clientX<rect.left||event.clientX>rect.right||event.clientY<rect.top||event.clientY>rect.bottom)close();});
-   dismiss.focus?.({preventScroll:true});handled=true;eligible=false;observer?.disconnect();
+   dismiss.focus?.({preventScroll:true});
    write({version:1,eligible:false,seen:true});
    return true;
   }
-  function attempt(){queued=false;if(handled||!eligible||seen()||object(SETUP)?.complete!==true)return;open({automatic:true});}
-  function schedule(){if(queued||handled||!eligible)return;queued=true;(win.queueMicrotask||globalThis.queueMicrotask||((fn)=>Promise.resolve().then(fn)))(attempt);}
-  function setupFinished(){schedule();}
+  // Existing setup callers may announce completion, but the optional guide
+  // opens only through its Settings control or an explicit open() request.
+  function setupFinished(){return false;}
   function start(){
    if(started||!doc)return;started=true;
-   if(eligible&&!handled)write({version:1,eligible:true,seen:false});
    doc.addEventListener('click',event=>{const button=event.target.closest?.('#bbHowItWorksOpen,[data-bb-how-it-works]');if(!button)return;event.preventDefault();event.stopPropagation?.();open();});
-   doc.addEventListener('focusout',schedule);doc.addEventListener('visibilitychange',schedule);
-   win.addEventListener?.('basketboss:native-startup-ready',schedule);win.addEventListener?.('basketboss:account-deletion-cancelled',schedule);win.addEventListener?.('focus',schedule);win.addEventListener?.('storage',schedule);
-   const ready=()=>{if(eligible&&!handled&&win.MutationObserver&&doc.body){observer=new win.MutationObserver(schedule);observer.observe(doc.body,{subtree:true,childList:true,attributes:true,attributeFilter:['class','open','hidden']});}schedule();};
-   if(doc.readyState==='loading')doc.addEventListener('DOMContentLoaded',ready,{once:true});else ready();
    win.addEventListener?.('basketboss:account-deletion-started',close);win.addEventListener?.('basketboss:account-deletion-deleted',close);
   }
   return Object.freeze({open,close,start,setupFinished,isOpen:()=>!!view});

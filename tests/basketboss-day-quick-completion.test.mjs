@@ -93,7 +93,7 @@ test('unknown, estimated, blocked and manual-review quantities remain visible wi
   {ok:false,needsReview:true,rows:[],issues:[],message:'Confirm the original batch first.'}
  ]){
   const h=fixture({preview:()=>value});await review(h);
-  assert.equal(h.calls.length,0);assert.equal(h.isGreen(),false);assert.ok(h.dialog());assert.match(h.dialog().textContent,/Confirm Monday is done/);assert.equal(h.trigger().disabled,false);
+  assert.equal(h.calls.length,0);assert.equal(h.isGreen(),false);assert.ok(h.dialog());assert.match(h.dialog().textContent,/Confirm ingredients used/);assert.match(h.dialog().textContent,/MONDAY · DAY DONE/);assert.equal(h.trigger().disabled,false);
   h.action('close').click();assert.equal(h.calls.length,0);
  }
 });
@@ -183,7 +183,7 @@ test('Undo after UI reload returns only Day done amounts and preserves earlier C
  await h.home.cooked({sessionId:'earlier-cook',recipeId:dinner.recipeId,day:'Monday',kind:'dinner',factor:1,actorId:'actor-one',occurrence:dinner.occurrence});
  await confirm(h);assert.deepEqual(h.stock(),{'rice|g':500,'bread|each':8});h.mount({freshModule:true});assert.equal(h.isGreen(),true);assert.equal(h.trigger().textContent,'Undo day done');
  h.storage.setItem('stock',JSON.stringify({...h.stock(),'rice|g':700}));const before=JSON.stringify(h.stock());
- await review(h);assert.equal(JSON.stringify(h.stock()),before,'opening Undo is read-only');assert.ok(h.action('undo'));assert.equal(h.action('confirm'),undefined);assert.match(h.dialog().textContent,/Return 100 g/);
+ await review(h);assert.equal(JSON.stringify(h.stock()),before,'opening Undo is read-only');assert.ok(h.action('undo'));assert.equal(h.action('confirm'),undefined);assert.match(h.dialog().textContent,/Return to At home/);assert.match(h.dialog().textContent,/rice100 g/);
  await h.action('undo').click();assert.deepEqual(h.stock(),{'rice|g':800,'bread|each':12});assert.equal(h.home.isCooked(dinner.occurrence),true);assert.equal(h.home.isCooked(items[1].occurrence),false);assert.equal(h.home.isCooked(items[2].occurrence),false);assert.equal(h.isGreen(),false);assert.equal(h.trigger().textContent,'Day done');
  h.mount({freshModule:true});assert.equal(h.isGreen(),false);assert.deepEqual(h.stock(),{'rice|g':800,'bread|each':12});
 });

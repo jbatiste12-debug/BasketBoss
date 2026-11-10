@@ -188,10 +188,12 @@
        foot='Standard is monthly, not annual. Founder eligibility is verified at checkout. Subscription checkout requires a signed-in account; payment, taxes and renewal terms are confirmed on the existing secure Paddle page.';
        actions=btn('Explore Premium plans','premium')+btn('Continue with BasketBoss Free','free-complete','outline');
    }
-   const counter=state.step===0?'':`<div class="bbob-progress" aria-label="Onboarding step ${state.step+1} of ${STEP_MAX+1}"><span style="width:${Math.min(100,Math.round(100*state.step/STEP_MAX))}%"></span></div>`;
+   const optionalTour=state.step>=6&&state.step<=9;
+   if(optionalTour)actions+=btn('Skip tour','skip-tour','outline');
+   const counter=state.step===0?'':`<div class="bbob-progress" aria-label="${optionalTour?'Optional tour · ':''}Onboarding step ${state.step+1} of ${STEP_MAX+1}"><span style="width:${Math.min(100,Math.round(100*state.step/STEP_MAX))}%"></span></div>`;
    const headingMarkup=`<p class="bbob-eyebrow">${eyebrow}</p><h1 id="bbob-title">${headline}</h1>`;
    const intro=state.step===9?`<div class="bbob-kitchen-hero"><div class="bbob-kitchen-hero-copy">${headingMarkup}</div><img class="bbob-kitchen-meal" src="release-assets/basketboss-v17/images/existing/creamy-pasta.webp" alt="" width="360" height="360"><span class="bbob-kitchen-ribbon">Plan. Shop. Cook. Repeat.</span></div><p class="bbob-description">${description}</p>`:`${headingMarkup}<p class="bbob-description">${description}</p>`;
-   return `<div class="bbob-shell"><header class="bbob-header"><div class="bbob-brand"><img src="${LOGO}" alt=""><span>Basket<span>Boss</span></span></div><button type="button" class="bbob-exit" data-bbob="${replaying?'replay-cancel':'free'}" aria-label="${replaying?'Cancel setup and keep existing preferences':'Exit onboarding and explore free recipes'}">${replaying?'Cancel setup':'Explore Free'} <span aria-hidden="true">×</span></button></header>${counter}<section class="bbob-main" aria-labelledby="bbob-title">${intro}${art}${foot?`<p class="bbob-footnote">${foot}</p>`:''}<p id="bbobSaveError" role="alert" class="bbob-save-error"></p></section><footer class="bbob-footer">${actions}<div class="bbob-stepname">${titles[state.step]} · ${state.step+1} of 11</div></footer></div>`;
+   return `<div class="bbob-shell"><header class="bbob-header"><div class="bbob-brand"><img src="${LOGO}" alt=""><span>Basket<span>Boss</span></span></div><button type="button" class="bbob-exit" data-bbob="${replaying?'replay-cancel':'free'}" aria-label="${replaying?'Cancel setup and keep existing preferences':'Exit onboarding and explore free recipes'}">${replaying?'Cancel setup':'Explore Free'} <span aria-hidden="true">×</span></button></header>${counter}<section class="bbob-main" aria-labelledby="bbob-title">${intro}${art}${foot?`<p class="bbob-footnote">${foot}</p>`:''}<p id="bbobSaveError" role="alert" class="bbob-save-error"></p></section><footer class="bbob-footer">${actions}<div class="bbob-stepname">${optionalTour?'Optional tour · ':''}${titles[state.step]} · ${state.step+1} of 11</div></footer></div>`;
  }
  function restoreAuth(){
    if(form&&formMarker?.parentNode)formMarker.parentNode.insertBefore(form,formMarker);
@@ -236,7 +238,7 @@
    sizeWelcomeViewport();host.scrollTop=0;
    if(state.step===1&&!accountRemembered()){
      const heading=host.querySelector('#bbob-title');heading?.setAttribute('tabindex','-1');heading?.focus({preventScroll:true});
-   }else host.querySelector('[data-bbob="next"]')?.focus({preventScroll:true});
+   }else (host.querySelector('[data-bbob="next"]')||host.querySelector('[data-bbob="free-complete"]'))?.focus({preventScroll:true});
  }
  // No changes to app state take place on preview, survey selection or Back.
  // Commit to the existing app's OWN setters only when the user exits onboarding.
@@ -412,6 +414,7 @@
      if(action==='replay-cancel'){dismiss();return;}
      if(action==='free'||action==='free-complete'){complete();return;}
      if(action==='premium'){complete(true);return;}
+     if(action==='skip-tour'&&state.step>=6&&state.step<=9){state.step=STEP_MAX;persist();render();return;}
      if(action==='partner-invite'){
        state.partnerIntent='invite';state.wantsPartnerInvite=true;persist();render();return;
      }

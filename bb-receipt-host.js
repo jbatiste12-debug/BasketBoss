@@ -123,6 +123,8 @@
     let options = {...initial}, availability = {available: false, premium: false}, lastChecked = 0, checkedActor = null, statusPromise = null;
     let isolationError = null, issue = null, observer = null, scheduled = false, rendering = false, reviewing = false, confirmingCurrent = false, activeDialog = null, lastTab = null, generation = 0, configured = false;
     let deletionPaused = false, choosingTrip = false, observedActor = null;
+    let activePantryReview = null;
+    const inlineReviews = new Set(), projectionHolds = new Set();
     const blocked = () => deletionPaused || root.BBAccountDeletion?.isDeleting?.() === true;
     const store = () => options.storage || root.localStorage;
     const doc = () => options.document || root.document;
@@ -139,6 +141,19 @@
     };
     const notify = text => options.notify?.(text);
     const projection = () => { try { return blocked() || actor() === 'guest' ? null : adapter()?.getCachedProjection?.() || null; } catch { return null; } };
+    function projectionPin() {const active = context();return {actorId: actor(), generation, market: active.market, retailer: active.retailer};}
+    function sameProjectionPin(pin) {const active = context();return !blocked() && pin.actorId === actor() && pin.generation === generation && pin.market === active.market && pin.retailer === active.retailer;}
+    function notifyProjection(value) {
+      let held = false;
+      for (const hold of projectionHolds) if (sameProjectionPin(hold.pin)) {hold.pending = value;hold.hasPending = true;held = true;}
+      if (!held) options.onProjection?.(value);
+    }
+    function holdProjection() {const hold = {pin: projectionPin(), pending: null, hasPending: false};projectionHolds.add(hold);return hold;}
+    function releaseProjection(hold, refresh) {
+      if (!hold || !projectionHolds.delete(hold) || !refresh || !hold.hasPending || !sameProjectionPin(hold.pin)) return;
+      notifyProjection(hold.pending);
+    }
+    function discardInlineReviews() {for (const review of [...inlineReviews]) review.dispose({refresh: false});projectionHolds.clear();}
     function writeAtomic(changes) {
       if (blocked()) throw Error('account_deletion_in_progress');
       const before = Object.fromEntries(Object.keys(changes).map(key => [key, store().getItem(key)]));
@@ -239,11 +254,13 @@
         // before this tab receives its session event. Its in-memory plan still
         // needs replacement even though the persisted marker is already right.
         if (previousView !== null && previousView !== next) {
+          discardInlineReviews();
           const handled = options.onActorChanged?.({previous: previousView, actor: next, guestClaimed: false}) === true;
           if (!handled) options.onProjection?.({actorChanged: true});
         }
         return false;
       }
+      discardInlineReviews();
       if (typeof previous !== 'string' || !/^(?:guest|[A-Za-z0-9_-]{8,120})$/.test(previous)) throw Error('receipt_host_actor_invalid');
       const saved = Object.fromEntries(ACTIVE_KEYS.map(key => [key, store().getItem(key)]));
       const savedEssentials = options.getEssentials ? clone(options.getEssentials() || []) : [];
@@ -314,20 +331,32 @@
       if (!Object.hasOwn(confirmed, 'receiptCookReview')) return;
       delete confirmed.receiptCookReview;writeAtomic({[KEYS.confirmed]: confirmed});
     }
-    function canConsumePantry() {
-      if (blocked() || isolationError || hasPendingConfirmation() || reviewing || confirmingCurrent || choosingTrip) return false;
-      if (issue?.includes('pantry_merge_required') || issue === 'receipt_household_scope_changed' || issue === 'receipt_refresh_required') return false;
+    function getConsumptionStatus() {
+      const review = (reason, message, canReviewInline = false) => {
+        const permitted = canReviewInline && actor() !== 'guest' && !!session()?.access_token;
+        return {ready: false, reason, message: canReviewInline && !permitted ? message + ' Sign in to review your saved pantry.' : message, canReviewInline: permitted};
+      };
+      if (blocked()) return review('account_deletion', 'Finish the pending account review before confirming ingredients used.');
+      if (isolationError) return review('account_isolation', isolationError);
+      if (hasPendingConfirmation()) return review('receipt_pending', 'A receipt confirmation needs checking before ingredients can be deducted. Check its receipt status before confirming ingredients, so the same purchase is not added twice.');
+      if (reviewing) return review('review_open', 'Finish or close the open pantry review, then check these ingredients again.');
+      if (confirmingCurrent) return review('confirmation_pending', 'Your pantry confirmation is still saving. Check these ingredients again when it finishes.');
+      if (choosingTrip) return review('trip_choice_open', 'Finish or close the receipt shopping-trip choice before confirming ingredients used.');
+      if (issue?.includes('pantry_merge_required')) return review('pantry_merge', 'Your saved online pantry and this device need checking. Review the amounts to keep before confirming ingredients used.', true);
+      if (issue === 'receipt_household_scope_changed') return review('scope_changed', 'Your shared pantry changed. Review the saved and device amounts before confirming ingredients used.', true);
+      if (issue === 'receipt_refresh_required') return review('refresh_required', 'Your saved pantry needs checking before ingredients can be deducted. Review its current amounts here.', true);
       try {
         const cached = projection(), owner = read(KEYS.owner), marker = read(KEYS.actor);
         read(KEYS.confirmed);
-        if (owner.actorId && owner.actorId !== actor() || marker.actorId && marker.actorId !== actor()) return false;
-        if (cached?.scope?.kind === 'user' && cached.scope.id !== actor()) return false;
+        if (owner.actorId && owner.actorId !== actor() || marker.actorId && marker.actorId !== actor()) return review('account_mismatch', 'Your saved pantry belongs to a different account. Reopen BasketBoss with the intended account before confirming ingredients used.');
+        if (cached?.scope?.kind === 'user' && cached.scope.id !== actor()) return review('account_mismatch', 'Your saved pantry belongs to a different account. Reopen BasketBoss with the intended account before confirming ingredients used.');
         // A confirmed receipt already supplies measured stock. Its routine next-
         // shop review must not prevent using that stock for a confirmed meal.
-        if (availability.available && cached?.pantryReview?.required === true && cached.initialized !== true) return false;
-        return true;
-      } catch { return false; }
+        if (availability.available && cached?.pantryReview?.required === true && cached.initialized !== true) return review('pantry_uninitialized', 'Confirm your starting pantry amounts before recording ingredients used. Review the saved and device amounts here.', true);
+        return {ready: true, reason: null, message: '', canReviewInline: false};
+      } catch { return review('storage_unreadable', 'Your saved pantry records could not be read safely. Reload BasketBoss and review device storage before confirming ingredients used.'); }
     }
+    function canConsumePantry() {return getConsumptionStatus().ready;}
     function hasLocalReview(cached) {
       try {
         const ack = read(KEYS.confirmed).receiptLocalReview;
@@ -400,7 +429,7 @@
       adapter()?.configure?.({getSession: session, getContext: context, getCatalog: options.getCatalog, canonicalize: options.canonicalize,
         pantryPolicy:options.pantryPolicy===true,
         getFinishShopCredits: options.getFinishShopCredits, getArchivedShop:options.getArchivedShop,getPurchaseCosts:options.getPurchaseCosts,receiptSaveKeys: options.receiptSaveKeys, prepareReceiptSave: options.prepareReceiptSave,
-        onProjection: value => {if (blocked()) return;issue = null; options.onProjection?.(value); schedule();}});
+        onProjection: value => {if (blocked()) return;issue = null; notifyProjection(value); schedule();}});
       scanner()?.configure?.({getSession: session, getContext: context, getShoppingItems: options.getShoppingItems, getKitchen:options.getKitchen, pantryPolicy:options.pantryPolicy===true, inventory: adapter()});
     }
     function tripPin() {
@@ -474,7 +503,7 @@
         let trips;try {trips = recordedTrips(options.getFinishShopCredits?.() || read(KEYS.ledger), captured);} catch {notify('Your recorded shopping trips need review before scanning this receipt.');return null;}
         if (trips.length) {trip = await chooseReceiptTrip(captured, trips);if (!trip || blocked() || serial !== generation || actor() !== openingActor || session()?.access_token !== openingToken) return null;}
       }
-      return scanner()?.open?.({...captured, ...value, ...trip, onSaved: result => {if (blocked() || serial !== generation) return;options.onProjection?.(result?.projection || {}); value.onSaved?.(result); schedule();}});
+      return scanner()?.open?.({...captured, ...value, ...trip, onSaved: result => {if (blocked() || serial !== generation) return;notifyProjection(result?.projection || {}); value.onSaved?.(result); schedule();}});
     }
     async function recoverReceipt({retry = false} = {}) {
       if (blocked()) return {ok: false};
@@ -525,7 +554,7 @@
         if (!result.localApplied) {issue = 'receipt_refresh_required';return {...result, needsReview: true};}
         recordLegacyCoverage(ledger, active, id);
         if (!preserveCookReview) clearCookReview();
-        issue = null;options.onProjection?.(result.projection);schedule();return {...result, needsReview: false, localOnly: false};
+        issue = null;notifyProjection(result.projection);schedule();return {...result, needsReview: false, localOnly: false};
       } catch (error) {issue = error.status === 409 ? 'receipt_local_remote_pantry_merge_required' : 'receipt_refresh_required';schedule();return {ok: false, needsReview: true, conflict: error.status === 409,...(error.message==='inventory_ambiguous_package_sources'?{code:error.message}:{})};}
       finally {confirmingCurrent = false;}
     }
@@ -543,22 +572,28 @@
       const result = await confirmCurrentPantry({stock, preserveCookReview: true});
       return {...result, weeklyReviewRequired: !!projection() && requiresPantryReview()};
     }
-    async function reviewPantry() {
+    async function reviewPantry({container, onConfirmed, onCancel, deferProjection = false} = {}) {
       if (blocked()) return null;
-      const serial = generation;
       if (reviewing || choosingTrip) return null; isolate(); if (isolationError) {notify(isolationError);return null;}
       if (hasPendingConfirmation()) {await recoverReceipt();return null;}
+      const serial = generation;
       reviewing = true;
+      const inline = !!container, hold = inline && deferProjection ? holdProjection() : null;
+      const id = actor(), token = session()?.access_token, currentContext = {...context()};
+      const current = () => !blocked() && serial === generation && id === actor() && token === session()?.access_token && currentContext.market === context().market && currentContext.retailer === context().retailer;
       let data;
-      try {data = await fetchInventory();} catch (error) {reviewing = false;notify(error.message);return null;}
-      if (blocked() || serial !== generation) {reviewing = false;return null;}
-      const id = actor(), currentContext = context(), local = clone(options.getStock?.() || read(KEYS.stock));
-      const ledgerAtReview = read(KEYS.ledger);
-      const document = doc(); if (!document) {reviewing = false;return {data, local};}
-      const dialog = element('dialog', undefined, 'bb-receipt-pantry-dialog');activeDialog = dialog;dialog.setAttribute('aria-labelledby', 'bbReceiptPantryTitle');
-      const heading = element('h2', 'Confirm Your Pantry');heading.id = 'bbReceiptPantryTitle';
+      try {data = await fetchInventory();} catch (error) {if (serial === generation) reviewing = false;releaseProjection(hold, current());if (current()) notify(error.message);return null;}
+      if (!current() || inline && container.isConnected === false) {if (serial === generation) reviewing = false;releaseProjection(hold, false);return null;}
+      let local, ledgerAtReview, oldOwner;
+      try {local = clone(options.getStock?.() || read(KEYS.stock));ledgerAtReview = read(KEYS.ledger);oldOwner = read(KEYS.owner);}
+      catch {reviewing = false;releaseProjection(hold, true);notify('Your saved pantry records could not be read safely. Reload BasketBoss before reviewing these amounts.');return null;}
+      const document = doc(); if (!document) {reviewing = false;releaseProjection(hold, true);return {data, local};}
+      const dialog = element(inline ? 'section' : 'dialog', undefined, 'bb-receipt-pantry-dialog' + (inline ? ' bb-receipt-pantry-inline' : ''));
+      if (!inline) activeDialog = dialog;
+      dialog.setAttribute('aria-labelledby', inline ? 'bbReceiptPantryInlineTitle' : 'bbReceiptPantryTitle');
+      const heading = element(inline ? 'h3' : 'h2', inline ? 'Review pantry amounts' : 'Confirm Your Pantry');heading.id = inline ? 'bbReceiptPantryInlineTitle' : 'bbReceiptPantryTitle';
       const explanation = element('p', 'Check what is still in stock. Confirmed amounts will reduce your next shopping list.');
-      const oldOwner = read(KEYS.owner), scopeChanged = !!oldOwner.scope && (oldOwner.scope.kind !== data.scope.kind || oldOwner.scope.id !== data.scope.id);
+      const scopeChanged = !!oldOwner.scope && (oldOwner.scope.kind !== data.scope.kind || oldOwner.scope.id !== data.scope.id);
       if (scopeChanged || !oldOwner.actorId && data.initialized && Object.keys(local).length) explanation.textContent = 'You have two saved pantry lists. Review the quantities to keep; overlapping amounts are never added together.';
       const controls = element('div', undefined, 'bb-receipt-host-actions');
       const online = element('button', 'Use saved online amounts'), device = element('button', 'Use this device’s amounts');online.type = device.type = 'button';controls.append(online, device);
@@ -575,13 +610,32 @@
       online.onclick = () => {for (const [key, input] of inputs) input.value = String(data.stock[key] || 0);};
       device.onclick = () => {for (const [key, input] of inputs) input.value = String(local[key] || 0);};
       const buttons = element('div', undefined, 'bb-receipt-host-actions'), confirm = element('button', 'Confirm pantry & update shopping'), cancel = element('button', 'Review later');confirm.type = 'submit';cancel.type = 'button';buttons.append(confirm, cancel);
-      form.append(rows, message, buttons);dialog.append(heading, explanation, controls, form);document.body.append(dialog);
-      let busy = false;
-      const close = () => {dialog.close?.();dialog.remove();reviewing = false;if (activeDialog === dialog) activeDialog = null;};cancel.onclick = () => {if (!busy) close();};
-      dialog.addEventListener('cancel', event => {if (busy) event.preventDefault();});dialog.addEventListener('close', () => {reviewing = false;dialog.remove();if (activeDialog === dialog) activeDialog = null;});
+      form.append(rows, message, buttons);dialog.append(heading, explanation, controls, form);
+      let busy = false, disposed = false, removed = false, settled = false;
+      const closeForm = () => {
+        if (removed) return;removed = true;
+        if (activePantryReview === controller) {activePantryReview = null;reviewing = false;}
+        if (activeDialog === dialog) activeDialog = null;
+        if (!inline) dialog.close?.();dialog.remove();
+      };
+      const controller = {element: dialog, dispose({refresh = true} = {}) {
+        if (disposed) return;disposed = true;closeForm();inlineReviews.delete(controller);releaseProjection(hold, refresh);
+      }};
+      activePantryReview = controller;if (inline) inlineReviews.add(controller);
+      (inline ? container : document.body).append(dialog);
+      const cancelReview = () => {
+        if (busy || disposed || settled) return;settled = true;
+        if (inline) closeForm();else controller.dispose();
+        if (current()) onCancel?.();
+      };
+      cancel.onclick = cancelReview;
+      if (!inline) {
+        dialog.addEventListener('cancel', event => {if (busy) event.preventDefault();else {event.preventDefault();cancelReview();}});
+        dialog.addEventListener('close', () => controller.dispose());
+      }
       form.addEventListener('submit', async event => {
-        event.preventDefault();if (busy) return;
-        if (blocked() || serial !== generation || id !== actor() || currentContext.market !== context().market || currentContext.retailer !== context().retailer) {message.textContent = 'Your account or shopping region changed. Reopen this review.';return;}
+        event.preventDefault();if (busy || disposed || settled) return;
+        if (!current()) {message.textContent = 'Your account or shopping region changed. Reopen this review.';return;}
         const stock = {};
         for (const [key, input] of inputs) {
           const value = Number(input.value), unit = key.slice(key.lastIndexOf('|') + 1);
@@ -593,16 +647,22 @@
           // The adapter adopts the verified scope only after reviewed CAS
           // success, preserving the previous owner/cache on conflict or failure.
           const result = await adapter().confirmPantry({stock, expectedRevision: data.inventoryRevision, expectedScope: clone(data.scope), shopSessionId: currentContext.shopSessionId || null});
-          if (blocked() || serial !== generation || id !== actor()) return;
+          if (disposed || !current()) return;
           if (!result.localApplied) {message.textContent = 'Pantry saved online. Refresh it before shopping on this device.';issue = 'receipt_refresh_required';return;}
           clearCookReview();
           recordLegacyCoverage(ledgerAtReview, currentContext, id);
-          issue = null;notify('Pantry confirmed. Your shopping list now includes only what is still needed.');close();options.onProjection?.(result.projection);schedule();
+          issue = null;notify('Pantry confirmed. Your shopping list now includes only what is still needed.');
+          // The adapter can emit its projection before resolving this call.
+          // Keep both notifications behind the outer Ingredients used panel.
+          notifyProjection(result.projection);settled = true;
+          if (inline) closeForm();else controller.dispose();
+          schedule();if (current()) onConfirmed?.(result);
         } catch (error) {
-          message.textContent = error.status === 409 ? 'This pantry changed on another device. Close and reopen the review to use the latest quantities.' : 'Your pantry could not be confirmed. Your local quantities are preserved.';
+          if (!disposed && current()) message.textContent = error.status === 409 ? 'This pantry changed on another device. Close and reopen the review to use the latest quantities.' : 'Your pantry could not be confirmed. Your local quantities are preserved.';
         } finally {busy = false;confirm.disabled = cancel.disabled = false;}
       });
-      if (typeof dialog.showModal === 'function') dialog.showModal();else dialog.setAttribute('open', '');confirm.focus();return dialog;
+      if (!inline) {if (typeof dialog.showModal === 'function') dialog.showModal();else dialog.setAttribute('open', '');}
+      confirm.focus();return inline ? controller : dialog;
     }
     function openReceiptEntry() {
       if (blocked()) return;
@@ -688,10 +748,10 @@
       if (document && !observer && root.MutationObserver) {const app = document.getElementById('app');if (app) {observer = new root.MutationObserver(schedule);observer.observe(app, {childList: true});}}
       afterRender();return api;
     }
-    const accountChanged = () => {if (!configured) return;generation++;activeDialog?.close?.();activeDialog?.remove();activeDialog = null;reviewing = false;lastChecked = 0;checkedActor = null;statusPromise = null;isolate();setupAdapter();schedule();};
+    const accountChanged = () => {if (!configured) return;generation++;discardInlineReviews();activeDialog?.close?.();activeDialog?.remove();activeDialog = null;reviewing = false;lastChecked = 0;checkedActor = null;statusPromise = null;isolate();setupAdapter();schedule();};
     const pauseDeletion = () => {
       deletionPaused = true;generation++;availability = {available: false, premium: false};statusPromise = null;checkedActor = null;lastChecked = 0;
-      activeDialog?.close?.();activeDialog?.remove();activeDialog = null;reviewing = false;scanner()?.close?.();
+      discardInlineReviews();activeDialog?.close?.();activeDialog?.remove();activeDialog = null;reviewing = false;scanner()?.close?.();
       if (externalTimer !== null) {root.clearTimeout?.(externalTimer);externalTimer = null;}
     };
     root.addEventListener?.('basketboss:account-deletion-started', pauseDeletion);
@@ -699,7 +759,9 @@
     root.addEventListener?.('basketboss:account-deletion-cancelled', () => {deletionPaused = false;accountChanged();});
     root.addEventListener?.('basketboss:session-changed', accountChanged);
     root.addEventListener?.('pageshow', () => {if (configured && observedActor !== actor()) accountChanged();});
-    root.addEventListener?.('basketboss:supermarket-changed', () => {if (!configured) return;activeDialog?.close?.();activeDialog?.remove();activeDialog = null;reviewing = false;lastChecked = 0;schedule();});
+    const regionChanged = () => {if (!configured) return;generation++;discardInlineReviews();activeDialog?.close?.();activeDialog?.remove();activeDialog = null;reviewing = false;lastChecked = 0;checkedActor = null;statusPromise = null;schedule();};
+    root.addEventListener?.('basketboss:supermarket-changed', regionChanged);
+    root.addEventListener?.('basketboss:market-changed', regionChanged);
     let externalTimer = null;
     function externalChange(event) {
       if (blocked()) return;
@@ -713,7 +775,7 @@
       options.onProjection?.({externalStorage: true});schedule();
     }
     root.addEventListener?.('storage', externalChange);
-    const api = Object.freeze({configure, afterRender, refreshAvailability, open, saveLegacyReceipt, reviewPantry, confirmCurrentPantry, confirmCookedPantry, canConsumePantry, confirmLocalPantryReview, recoverReceipt, requiresPantryReview, hasPendingConfirmation, allowLegacyTransfer, handlesInventorySync, coversLegacyCredit, switchActor, exportBackup, prepareBackupRestore, hasLocalData, getAvailability: () => ({...availability}), getProjection: projection, weeklySummary: () => weeklyReceiptSummary(projection(), context(), clock()), keys: KEYS});
+    const api = Object.freeze({configure, afterRender, refreshAvailability, open, saveLegacyReceipt, reviewPantry, confirmCurrentPantry, confirmCookedPantry, canConsumePantry, getConsumptionStatus, confirmLocalPantryReview, recoverReceipt, requiresPantryReview, hasPendingConfirmation, allowLegacyTransfer, handlesInventorySync, coversLegacyCredit, switchActor, exportBackup, prepareBackupRestore, hasLocalData, getAvailability: () => ({...availability}), getProjection: projection, weeklySummary: () => weeklyReceiptSummary(projection(), context(), clock()), keys: KEYS});
     return api;
   }
   root.BBReceiptHostFactory = createHost;

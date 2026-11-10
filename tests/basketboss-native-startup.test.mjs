@@ -79,6 +79,17 @@ test('iOS starts native motion independently of web content and keeps a name on 
  assert.doesNotMatch(swift,/startup[^\n]*Thread\.sleep|startup[^\n]*usleep/);
 });
 
+test('iOS fades the existing native cover as soon as the same readiness handoff arrives, without a minimum animation hold',()=>{
+ const swift=fs.readFileSync(new URL('../ios/App/App/AppDelegate.swift',import.meta.url),'utf8');
+ const finish=swift.slice(swift.indexOf('    func finishStartup(completion:'),swift.indexOf('\n#if DEBUG',swift.indexOf('    func finishStartup(completion:')));
+ assert.match(finish,/startupTimeout\?\.cancel\(\)/);
+ assert.match(finish,/UIView\.animate\(withDuration: UIAccessibility\.isReduceMotionEnabled \? 0 : 0\.14/);
+ assert.match(finish,/brand\.removeFromSuperview\(\); completion\(\)/);
+ assert.doesNotMatch(finish,/asyncAfter|remainingIntroDuration|4\.0/);
+ assert.doesNotMatch(swift,/remainingIntroDuration|private let presentedAt/);
+ assert.match(swift,/@objc func finishStartup\(_ call: CAPPluginCall\) \{\s*DispatchQueue\.main\.async/);
+});
+
 
 test('native cream screens use dark status-bar text according to the installed Capacitor style semantics',()=>{
  const sdk=fs.readFileSync(new URL('../node_modules/@capacitor/status-bar/ios/Sources/StatusBarPlugin/StatusBarPlugin.swift',import.meta.url),'utf8');

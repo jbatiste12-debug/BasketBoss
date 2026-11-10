@@ -221,15 +221,12 @@ class BasketBossViewController: CAPBridgeViewController {
         startupFinished = true
         startupTimeout?.cancel()
         guard let brand = startupView else { completion(); return }
-        // Keep the requested four-second brand animation while the app prepares
-        // underneath it. Later page navigation has no cover and no extra wait.
-        DispatchQueue.main.asyncAfter(deadline: .now() + brand.remainingIntroDuration) { [weak self, weak brand] in
-            guard let brand = brand, self?.startupView === brand else { completion(); return }
-            self?.startupView = nil
-            UIView.animate(withDuration: UIAccessibility.isReduceMotionEnabled ? 0 : 0.14, animations: {
-                brand.alpha = 0
-            }, completion: { _ in brand.removeFromSuperview(); completion() })
-        }
+        // The existing readiness handoff owns dismissal. Do not hold an
+        // interactive app behind an additional branding animation.
+        startupView = nil
+        UIView.animate(withDuration: UIAccessibility.isReduceMotionEnabled ? 0 : 0.14, animations: {
+            brand.alpha = 0
+        }, completion: { _ in brand.removeFromSuperview(); completion() })
     }
 }
 
@@ -622,15 +619,6 @@ private final class BasketBossCookSmokeReporter: NSObject, WKScriptMessageHandle
 // Native animation runs before, and independently of, the WKWebView JavaScript.
 // The wordmark is present from the first frame during the requested intro.
 private final class BasketBossStartupView: UIView {
-    private let presentedAt = CACurrentMediaTime()
-    var remainingIntroDuration: TimeInterval {
-        #if DEBUG
-        #if targetEnvironment(simulator)
-        if BasketBossKeyboardUITestRuntime.disablesAnimations { return 0 }
-        #endif
-        #endif
-        return UIAccessibility.isReduceMotionEnabled ? 0 : max(0, 4.0 - (CACurrentMediaTime() - presentedAt))
-    }
     var retry: (() -> Void)?
     private let logo = UIImageView(image: UIImage(named: "Splash"))
     private let name = UILabel()

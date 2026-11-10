@@ -1,8 +1,11 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import {createRequire} from 'node:module';
+import fs from 'node:fs/promises';
+import vm from 'node:vm';
 
 const {install}=createRequire(import.meta.url)('../bb-home.js');
+const receiptSource=await fs.readFile(new URL('../bb-receipt-host.js',import.meta.url),'utf8');
 const ACTOR='11111111-1111-4111-8111-111111111111';
 const STOCK='basketboss_321_v7_measured_pantry',INVENTORY='basketboss_makeameal_v1_inventory',HOME='basketboss_at_home_requirements_v1',SESSION='basketboss_cloud_session_v1',PLAN='basketboss_321_unified_state_v1',LUNCH='basketboss_321_lunch_v1';
 const id=(name,unit)=>String(name).toLowerCase().trim()+'|'+unit;
@@ -26,6 +29,22 @@ function fixture({items=foods(),stock={'rice|g':1000,'bread|each':12,'milk|ml':1
  const win={localStorage:storage,document:{},location:{search:''},BBHomeHost:host,BBReceiptHost:receipt,BBAccountDeletion:{isDeleting:()=>state.deleting}};
  const home=install(win);win.BBHome=home;
  return {values,storage,state,host,win,home,stock:host.stock,data:()=>JSON.parse(storage.getItem(HOME)||'{}'),event:{day:'Monday',actorId:ACTOR},preview(){return home.previewDay(this.event);},async confirm(){const preview=this.preview();return home.finishDay({...this.event,expected:preview.fingerprint});}};
+}
+
+async function realReceipt(h,{reason='pantry_uninitialized'}={}){
+ const scope={kind:'user',id:ACTOR},state={cached:{initialized:reason!=='pantry_uninitialized',scope,inventoryRevision:2,pantryReview:{required:true}},pending:{},syncs:[]};
+ const root={localStorage:h.storage,Intl,Date,queueMicrotask,addEventListener(){}};
+ vm.runInNewContext(receiptSource,root,{filename:'bb-receipt-host.js'});
+ const inventory={configure(){},getCachedProjection:()=>state.cached,getPendingConfirmation:()=>state.pending,recoverLocalTransaction(){},
+  async synchronize(){return reason==='pantry_merge'?{ok:false,localApplied:false,localError:'receipt_initial_pantry_merge_required'}:{ok:true,localApplied:true};},
+  async confirmPantry(packet){state.syncs.push(packet);return {ok:true,localApplied:true};}};
+ const receipt=root.BBReceiptHostFactory({storage:h.storage,inventory,getSession:()=>JSON.parse(h.storage.getItem(SESSION)),getContext:()=>({market:'UK',shopSessionId:'current-shop'}),getStock:h.stock,getEssentials:()=>[],setEssentials:()=>true,fetch:async()=>({ok:true,json:async()=>({ok:true,available:true,premium:true})})});
+ receipt.configure();await receipt.refreshAvailability({force:true,synchronize:reason==='pantry_merge'});
+ if(reason==='receipt_pending')state.pending={receiptId:'unresolved'};
+ if(reason==='account_mismatch')state.cached={...state.cached,scope:{kind:'user',id:'another-account'}};
+ if(reason==='storage_unreadable')h.storage.setItem('basketboss_receipt_projection_owner_v1','{broken');
+ h.win.BBReceiptHost=receipt;h.host.schoolLunchWeekMeals=()=>h.state.items.filter(item=>item.kind==='lunch');
+ return {receipt,state};
 }
 
 test('Day done preview is read-only and its confirmation deducts dinner, child lunches and dessert together once',async()=>{
@@ -143,4 +162,43 @@ test('a late sync result does not toast a different account after account switch
  const h=fixture();let release;h.state.syncWait=new Promise(resolve=>{release=resolve;});
  const promise=h.confirm();await Promise.resolve();h.storage.setItem(SESSION,JSON.stringify({user:{id:'other-user'}}));release();
  assert.equal((await promise).ok,true);assert.equal(h.state.messages.length,0);
+});
+
+for(const reason of ['pantry_uninitialized','pantry_merge','receipt_pending','account_mismatch','storage_unreadable'])test('real '+reason+' pantry gate keeps planned Day and lunch ingredients visible without reading stock',async()=>{
+ const h=fixture(),{receipt,state}=await realReceipt(h,{reason});
+ assert.equal(receipt.getConsumptionStatus().reason,reason);
+ const expectedStatus=JSON.parse(JSON.stringify(receipt.getConsumptionStatus())),before=[...h.values],reads=[];
+ for(const name of ['stock','keys','conversionContext'])h.host[name]=()=>{reads.push(name);throw Error('Pantry data must stay private while blocked');};
+ const day=h.preview();assert.equal(day.ok,false);assert.equal(day.needsReview,true);assert.equal(day.reviewAction,'pantry');assert.deepEqual(day.pantryStatus,expectedStatus);
+ assert.deepEqual(day.items.map(item=>item.name),['rice-dinner','lunchbox:Monday','rice-pudding']);
+ assert.deepEqual(day.rows.map(row=>[row.id,row.required]),[['rice|g',500],['bread|each',4],['milk|ml',300]]);
+ assert.ok(day.rows.every(row=>row.planned===true&&!('owned'in row)&&!('deduct'in row)&&!('remaining'in row)));
+ const week=h.home.previewLunchWeek({actorId:ACTOR});assert.equal(week.ok,false);assert.equal(week.reviewAction,'pantry');assert.deepEqual(week.pantryStatus,expectedStatus);
+ assert.deepEqual(week.items,[{kind:'lunch',name:'lunchbox:Monday',day:'Monday',already:false}]);
+ assert.deepEqual(week.rows.map(row=>[row.id,row.required]),[['bread|each',4],['milk|ml',100]]);
+ assert.equal((await h.home.finishDay({...h.event,expected:'blocked'})).ok,false);
+ assert.equal((await h.home.finishLunchWeek({actorId:ACTOR,expected:'blocked'})).ok,false);
+ assert.deepEqual([...h.values],before);assert.deepEqual(reads,[]);assert.equal(state.syncs.length,0);
+});
+
+for(const change of ['actor','contexts','ingredient','home','generic-pantry-error'])test('invalid '+change+' keeps completion failure data guarded',async()=>{
+ const h=fixture();await realReceipt(h);
+ if(change==='actor')h.storage.setItem(SESSION,JSON.stringify({user:{id:'another-account'}}));
+ if(change==='contexts')h.state.items[1].occurrence=h.state.items[0].occurrence;
+ if(change==='ingredient')h.state.items[0].ingredients[0].required=-1;
+ if(change==='home')h.storage.setItem(HOME,'{broken');
+ if(change==='generic-pantry-error'){
+  h.win.BBReceiptHost={hasPendingConfirmation:()=>false,canConsumePantry:()=>true};
+  // The same human message is not evidence of a typed pantry block.
+  h.host.stock=()=>{throw Error('Review At home before updating these ingredients.');};
+ }
+ const before=[...h.values],preview=h.preview();assert.equal(preview.ok,false);assert.deepEqual(preview.items,[]);assert.deepEqual(preview.rows,[]);assert.equal(preview.reviewAction,undefined);assert.equal(preview.pantryStatus,undefined);
+ assert.equal((await h.home.finishDay({...h.event,expected:'invalid'})).ok,false);assert.deepEqual([...h.values],before);
+});
+
+test('blocked ingredient rows aggregate planned units without applying pantry conversions or implying empty stock',async()=>{
+ const h=fixture({items:[food('lunch','lunchbox:Monday',[{key:'rice',unit:'kg',required:.25},{key:'rice',unit:'g',required:100},{key:'salt',unit:'tsp',required:null}])]}),{receipt}=await realReceipt(h);
+ assert.equal(receipt.canConsumePantry(),false);
+ const preview=h.preview();assert.equal(preview.ok,false);assert.deepEqual(preview.rows.map(row=>[row.name,row.unit,row.required]),[['rice','g',350],['salt','tsp',null]]);
+ assert.ok(preview.rows.every(row=>!('owned'in row)&&!('canDeduct'in row)));
 });

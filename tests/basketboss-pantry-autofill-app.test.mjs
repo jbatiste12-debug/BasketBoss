@@ -32,7 +32,7 @@ function harness(catalog,{stock={},planned=[],history={},actor='guest',random=.1
  class Clock extends Date{constructor(...args){super(...(args.length?args:[NOW]));}static now(){return NOW;}}
  const ctx={Date:Clock,Math:Object.assign(Object.create(Math),{random:typeof random==='function'?random:()=>random}),console,
   localStorage:storage,state,RECIPES:catalog,BB307_NORMALIZED:catalog.map(row=>({id:row.id,ingredients:row.normalized})),
-  DAYS,BB307_STOCK_KEY:STOCK,bb307Market:'UK',
+  DAYS,BB321Lunch:{LUNCH_DAYS:DAYS.slice(0,5)},BB307_STOCK_KEY:STOCK,bb307Market:'UK',
   BBIngredientPreferences:{recipeAllowed:row=>!excluded.has(row.id),scope:()=>actor},
   BBHome:{actor:()=>actor,blocked:()=>blocked,isCooked:()=>false},
   getRecipe:id=>catalog.find(row=>row.id===id),bb176AllowedRecipe:id=>allowed.has(id),

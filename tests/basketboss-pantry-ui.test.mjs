@@ -62,10 +62,16 @@ function environment(initial = {}) {
   return {win, doc, values, store, dispatch, descendants, text: node => descendants(node).map(value => value.textContent).join(' '), buttons: () => doc.body.querySelectorAll('button:not(:disabled)')};
 }
 
-test('the first-use weekly guide waits for completed setup and is then shown only once', async () => {
+test('finishing setup never opens a duplicate guide or marks it seen, while Settings still opens it', async () => {
   const h = environment(), api = guide.install(h.win);api.start();await next();
   assert.equal(api.isOpen(), false);
-  h.store.setItem(SETUP, JSON.stringify({complete: true}));api.setupFinished();await next();assert.equal(api.isOpen(), true);
+  assert.equal(h.store.getItem(guide.KEY),null);
+  h.store.setItem(SETUP, JSON.stringify({complete: true}));assert.equal(api.setupFinished(),false);
+  for(const event of ['focusout','visibilitychange','basketboss:native-startup-ready','basketboss:account-deletion-cancelled','focus','storage'])h.dispatch(event);
+  await next();assert.equal(api.isOpen(),false);assert.equal(h.store.getItem(guide.KEY),null);
+  assert.equal(api.open({automatic:true}),false);assert.equal(h.store.getItem(guide.KEY),null);
+  const settings=h.doc.createElement('button');settings.id='bbHowItWorksOpen';h.doc.body.append(settings);
+  h.dispatch('click',{target:settings});assert.equal(api.isOpen(),true);
   assert.match(h.text(h.doc.body), /Plan Your Meals/);assert.match(h.text(h.doc.body), /Cook & Confirm/);
   h.dispatch('keydown', {key: 'Escape'});assert.equal(api.isOpen(), false);
   api.setupFinished();h.dispatch('focus');await next();assert.equal(api.isOpen(), false);
@@ -93,11 +99,14 @@ test('guide close restores scroll lock, original focus and pre-existing inert st
   assert.equal(h.doc.activeElement, focus);assert.equal(h.doc.body.style.overflow, 'auto');
 });
 
-test('the automatic guide waits for typing and cannot open during account deletion', async () => {
-  const h = environment(), input = h.doc.createElement('input');h.doc.body.append(input);input.focus();const api = guide.install(h.win);api.start();
+test('legacy eligible state cannot reopen an automatic guide, and manual entry still respects account deletion', async () => {
+  const display={version:1,eligible:true,seen:false};
+  const h = environment({[guide.KEY]:display}), input = h.doc.createElement('input');h.doc.body.append(input);input.focus();const api = guide.install(h.win);api.start();
   h.store.setItem(SETUP, JSON.stringify({complete: true}));api.setupFinished();await next();assert.equal(api.isOpen(), false);
   h.doc.body.focus();h.win.BBAccountDeletion = {isDeleting: () => true};assert.equal(api.open(), false);
-  h.win.BBAccountDeletion = {isDeleting: () => false};h.dispatch('focusout');await next();assert.equal(api.isOpen(), true);api.close();
+  h.win.BBAccountDeletion = {isDeleting: () => false};h.dispatch('focusout');await next();assert.equal(api.isOpen(), false);
+  assert.deepEqual(JSON.parse(h.store.getItem(guide.KEY)),display,'automatic events must not change the existing display marker');
+  assert.equal(api.open(),true);h.dispatch('basketboss:account-deletion-started');assert.equal(api.isOpen(),false);
 });
 
 function cookFixture(home) {

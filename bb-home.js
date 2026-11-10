@@ -377,7 +377,16 @@
    return {all,data,who,oldHome};
   }
   function pantrySnapshot(state,ingredients,identity){
-   if(blocked())throw Error('Review At home before updating these ingredients.');
+   if(blocked()){
+    const error=Error('Review At home before updating these ingredients.');error.code='pantry_consumption_blocked';
+    // The receipt host reports only its gate, never pantry quantities. Keep
+    // this check before reading storage keys, stock or conversion metadata.
+    try{const status=win.BBReceiptHost?.getConsumptionStatus?.();if(object(status)&&status.ready===false&&typeof status.reason==='string'&&typeof status.message==='string'){
+     error.pantryStatus={ready:false,reason:status.reason.slice(0,120),message:status.message.slice(0,1000),canReviewInline:status.canReviewInline===true};
+     if(error.pantryStatus.message)error.message=error.pantryStatus.message;
+    }}catch{}
+    throw error;
+   }
    if(!deduction)throw Error('Pantry quantities are still loading. Reopen Cook to try again.');
    if(host().needsLegacyReview?.(ingredients))throw Error('Review the ingredient amounts in At home before updating this older shopping record.');
    const keys=host().keys();if(typeof keys?.stock!=='string'||typeof keys?.inventory!=='string')throw Error('Pantry storage is still loading.');
@@ -537,38 +546,72 @@
    if(!commitConsumption(state,result))return {ok:false,message:'Your account or pantry changed. Review the latest amounts first.'};
    return syncConsumption(result);
   }
-  function daySnapshot(event={}){
-   const {day,actorId}=event;if(typeof day!=='string'||!day.trim()||day.length>16)throw Error('Choose a planned day before confirming its food.');
-   const state=completionHome(actorId),contexts=host()?.dayMeals?.(day);
-   if(!Array.isArray(contexts)||!contexts.length||contexts.length>30)throw Error('There is no planned food to confirm for this day.');
+  function completionItems(state,contexts,{day,lunchWeek=false}={}){
+   if(!Array.isArray(contexts)||!contexts.length||contexts.length>30)throw Error(lunchWeek?'There are no planned school lunches to confirm for this week.':'There is no planned food to confirm for this day.');
    const seen=new Set(),items=contexts.map(context=>{
     const {kind,recipeId,factor,occurrence}=context||{};
-    if(!['dinner','breakfast','dessert','lunch','leftover','note'].includes(kind)||typeof recipeId!=='string'||!recipeId||recipeId.length>256||!Number.isFinite(factor)||factor<=0||factor>100||context.day!==day||typeof occurrence!=='string'||!occurrence||occurrence.length>2000||['__proto__','constructor','prototype'].includes(occurrence)||seen.has(occurrence))throw Error('The day’s food changed. Review the planned meals before confirming.');
+    const itemDay=lunchWeek?context.day:day;
+    if(!(lunchWeek?kind==='lunch':['dinner','breakfast','dessert','lunch','leftover','note'].includes(kind))||typeof recipeId!=='string'||!recipeId||recipeId.length>256||!Number.isFinite(factor)||factor<=0||factor>100||context.day!==itemDay||lunchWeek&&!['Monday','Tuesday','Wednesday','Thursday','Friday','Saturday','Sunday'].includes(itemDay)||typeof occurrence!=='string'||!occurrence||occurrence.length>2000||['__proto__','constructor','prototype'].includes(occurrence)||seen.has(occurrence))throw Error(lunchWeek?'The school lunches changed. Review the planned lunches before confirming.':'The day’s food changed. Review the planned meals before confirming.');
     seen.add(occurrence);
     if(!Array.isArray(context.ingredients)||context.ingredients.length>500||!context.ingredients.length&&!['leftover','note'].includes(kind))throw Error('Review the ingredient amounts for '+(context.name||recipeId)+' before confirming this day.');
-    const item={kind,recipeId,name:String(context.name||recipeId).slice(0,240),day,factor,occurrence,ingredients:context.ingredients.map(row=>({...row})),already:completed(state.data,occurrence,{recipeId,day,kind}),manualReview:context.manualReview===true};
+    if(context.ingredients.some(row=>!object(row)||row.required!==null&&row.required!==undefined&&!valid(row.required)))throw Error('Review the planned ingredient amounts before confirming.');
+    const item={kind,recipeId,name:String(context.name||recipeId).slice(0,240),day:itemDay,factor,occurrence,ingredients:context.ingredients.map(row=>({...row})),already:completed(state.data,occurrence,{recipeId,day:itemDay,kind}),manualReview:context.manualReview===true};
     if(kind==='leftover'&&context.sourceOccurrence===undefined)throw Error('Review the original batch before confirming leftovers.');
     if(context.sourceOccurrence!==undefined){if(typeof context.sourceOccurrence!=='string'||!context.sourceOccurrence||context.sourceOccurrence.length>2000||['__proto__','constructor','prototype'].includes(context.sourceOccurrence))throw Error('Review the original batch before confirming leftovers.');item.sourceOccurrence=context.sourceOccurrence;}
     return item;
    });
+   return items;
+  }
+  function completionPreviewItems(items,lunchWeek=false){return items.map(({kind,name,day,already})=>({kind,name,...(lunchWeek?{day}:{}),already}));}
+  function completionSnapshot(state,items,identity,{lunchWeek=false}={}){
    const pending=items.filter(item=>!item.already);
    if(!pending.length)return {...state,items,already:true};
    for(const item of pending)if(item.sourceOccurrence&&!completed(state.data,item.sourceOccurrence))throw Error('Confirm the original batch cooked before marking these leftovers done.');
-   const ingredients=pending.flatMap(item=>item.ingredients),snapshot=pantrySnapshot(state,ingredients,{day,items});
+   const ingredients=pending.flatMap(item=>item.ingredients);let snapshot;
+   try{snapshot=pantrySnapshot(state,ingredients,{...identity,items});}
+   catch(error){
+    if(error?.code==='pantry_consumption_blocked'){
+     // Planned amounts can be reviewed even while the pantry belongs to a
+     // different actor or needs reconciliation. Empty stock is deliberately
+     // local to this pure validation; never read that pantry for the preview.
+     const planned=deduction.proposal({stock:{},ingredients,id:host().id});
+     error.completionPreview={items:completionPreviewItems(items,lunchWeek),rows:planned.rows.map(({id,name,unit,required})=>({id,name,unit,required,planned:true})),issues:planned.issues};
+    }
+    throw error;
+   }
    const manualIssues=pending.filter(item=>item.manualReview).map(item=>({id:'manual:'+item.occurrence,message:item.name+' has no measured ingredient list. Check its remaining amounts in At home.'}));
-   return {...snapshot,day,items,pending,manualIssues};
+   return {...snapshot,...identity,items,pending,manualIssues};
+  }
+  function daySnapshot(event={}){
+   const {day,actorId}=event;if(typeof day!=='string'||!day.trim()||day.length>16)throw Error('Choose a planned day before confirming its food.');
+   const state=completionHome(actorId),items=completionItems(state,host()?.dayMeals?.(day),{day});
+   return completionSnapshot(state,items,{day});
+  }
+  function lunchWeekSnapshot(event={}){
+   const state=completionHome(event.actorId),items=completionItems(state,host()?.schoolLunchWeekMeals?.(),{lunchWeek:true});
+   return completionSnapshot(state,items,{lunchWeek:true},{lunchWeek:true});
+  }
+  function completionFailure(error,message){
+   const preview=error?.code==='pantry_consumption_blocked'?error.completionPreview:null;
+   return {ok:false,already:false,items:[],rows:[],issues:[],...preview,needsReview:true,...(error?.code==='pantry_consumption_blocked'&&error.pantryStatus?{reviewAction:'pantry',pantryStatus:error.pantryStatus}:{}),message:error?.message||message};
   }
   function previewDay(event){
    try{
     const state=daySnapshot(event),items=state.items.map(({kind,name,already})=>({kind,name,already}));
     if(state.already)return {ok:true,already:true,items,rows:[],issues:[],fingerprint:null,message:'All planned food for this day is already confirmed.'};
     return {ok:true,already:false,items,rows:state.result.rows,issues:[...state.result.issues,...state.manualIssues],fingerprint:state.fingerprint};
-   }catch(error){return {ok:false,already:false,items:[],rows:[],issues:[],needsReview:true,message:error?.message||'Review this day’s food and pantry amounts first.'};}
+   }catch(error){return completionFailure(error,'Review this day’s food and pantry amounts first.');}
   }
-  async function finishDay(event={}){
-   let state;try{state=daySnapshot(event);}catch(error){return {ok:false,needsReview:true,message:error?.message||'Review this day’s food and pantry amounts first.'};}
-   if(state.already)return {ok:true,already:true,completedCount:0,issues:[],message:'All planned food for this day is already confirmed.'};
-   if(typeof event.expected!=='string'||event.expected!==state.fingerprint)return {ok:false,needsReview:true,message:'Your day’s food or pantry changed. Review the latest amounts before confirming.'};
+  function previewLunchWeek(event){
+   try{
+    const state=lunchWeekSnapshot(event),items=completionPreviewItems(state.items,true);
+    if(state.already)return {ok:true,already:true,items,rows:[],issues:[],fingerprint:null,message:'All planned school lunches for this week are already confirmed.'};
+    return {ok:true,already:false,items,rows:state.result.rows,issues:[...state.result.issues,...state.manualIssues],fingerprint:state.fingerprint};
+   }catch(error){return completionFailure(error,'Review this week’s school lunches and pantry amounts first.');}
+  }
+  async function finishCompletion(event,state,{journalDay=false,lunchWeek=false}={}){
+   if(state.already)return {ok:true,already:true,completedCount:0,issues:[],message:lunchWeek?'All planned school lunches for this week are already confirmed.':'All planned food for this day is already confirmed.'};
+   if(typeof event.expected!=='string'||event.expected!==state.fingerprint)return {ok:false,needsReview:true,message:lunchWeek?'Your school lunches or pantry changed. Review the latest amounts before confirming.':'Your day’s food or pantry changed. Review the latest amounts before confirming.'};
    const result={...state.result,issues:[...state.result.issues,...state.manualIssues]},available=new Map(result.used.map(row=>[row.id,row.required]));
    for(const item of state.pending){
     const rows=deduction.proposal({stock:state.stock,ingredients:item.ingredients,id:host().id,conversion:state.conversion}).rows,ingredients=[];
@@ -576,10 +619,23 @@
     state.data.cooked['day:'+item.occurrence]={kind:item.kind,recipeId:item.recipeId,day:item.day,factor:item.factor,occurrence:item.occurrence,...(item.sourceOccurrence?{sourceOccurrence:item.sourceOccurrence}:{}),at:Date.now(),ingredients,skipped:result.issues.filter(issue=>issue.id==='manual:'+item.occurrence||rows.some(row=>row.id===issue.id)).map(issue=>issue.id)};
     state.data.planned[item.occurrence]=true;
    }
-   if(!commitConsumption(state,result,{journalDay:true}))return {ok:false,needsReview:true,message:'Your account or pantry changed. Review the latest amounts first.'};
-   const response={...await syncConsumption(result),completedCount:state.pending.length};
-   if(actor()===state.who&&!win.BBAccountDeletion?.isDeleting?.())try{host().notify?.(response.message);}catch{}
-   return response;
+   if(!commitConsumption(state,result,{journalDay}))return {ok:false,needsReview:true,message:'Your account or pantry changed. Review the latest amounts first.'};
+   const reply=response=>{try{if(actor()===state.who&&store.getItem('basketboss_cloud_session_v1')===state.expected.basketboss_cloud_session_v1&&!win.BBAccountDeletion?.isDeleting?.())host().notify?.(response.message);}catch{}return response;};
+   // Refresh can synchronously switch accounts or replace pantry data. Keep
+   // the committed local receipt, but never send its stock under that new
+   // context. The same original-session pin also protects late notices.
+   if(actor()!==state.who||blocked()||store.getItem('basketboss_cloud_session_v1')!==state.expected.basketboss_cloud_session_v1||store.getItem('basketboss_receipt_projection_owner_v1')!==state.expected.basketboss_receipt_projection_owner_v1||store.getItem(state.keys.stock)!==JSON.stringify(result.remainingStock))return reply({ok:true,completedCount:state.pending.length,issues:result.issues,localOnly:true,onlinePending:true,message:'Ingredients confirmed for the original account on this device. Review the pantry before synchronizing its remaining amounts.'});
+   return reply({...await syncConsumption(result),completedCount:state.pending.length});
+  }
+  async function finishDay(event={}){
+   let state;try{state=daySnapshot(event);}catch(error){return completionFailure(error,'Review this day’s food and pantry amounts first.');}
+   return finishCompletion(event,state,{journalDay:true});
+  }
+  async function finishLunchWeek(event={}){
+   let state;try{state=lunchWeekSnapshot(event);}catch(error){return completionFailure(error,'Review this week’s school lunches and pantry amounts first.');}
+   // Weekly lunches are individual meal confirmations. A later Day undo must
+   // restore only that Day action, leaving these earlier receipts untouched.
+   return finishCompletion(event,state,{lunchWeek:true});
   }
   function undoDaySnapshot(event={}){
    const {day,actorId}=event;
@@ -792,7 +848,7 @@
   }
   function reminders(){const list=win.document.getElementById('bb321Printable');if(!list)return;list.querySelector('.bb-home-covered')?.remove();const data=Object.values(targets()).filter(row=>row.pending&&(row.targetQty>0||valid(row.extraBuffer)&&row.extraBuffer>0));const needed=host().requirements();const covered=data.filter(row=>{const item=needed.find(x=>host().id(x.key,x.unit)===host().id(row.name,row.unit));const current=host().stock()[host().id(row.name,row.unit)]||0;return Math.max(row.targetQty,item?.required||0)+(valid(row.extraBuffer)?row.extraBuffer:0)<=current;});const households=host().household().filter(row=>Object.hasOwn(row,'targetQty')&&row.manualPending!==false&&row.targetQty>0&&row.ownedQty>=row.targetQty).map(row=>({...row,homeId:'ess:'+row.id}));if(!covered.length&&!households.length)return;const box=win.document.createElement('div');box.className='bb-home-covered';for(const row of [...covered,...households]){const label=win.document.createElement('label'),tick=win.document.createElement('input');tick.type='checkbox';tick.addEventListener('change',()=>{if(tick.checked){complete(row.homeId||host().id(row.name,row.unit));host().refresh();}});label.append(tick,win.document.createTextNode(row.name+' · covered at home'));box.append(label);}list.append(box);}
   function openRequested(){const id=new URLSearchParams(win.location.search).get('bbcook');if(id)host()?.openCook?.(id);}
-  const api={purchaseQuantity,purchaseAmounts,roundShoppingItems,prepareSharedPurchase,needsLegacyReview,receiptGeneration,supersedesReceipt,addHousehold,setHouseholdAmount,setHouseholdBalance,confirmHousehold,confirmHouseholdEntry,removeHousehold,openRequested,reminders,decorate,hasHouseholdDraft:()=>{checkDraftActor();return householdDraft.size>0;},committed:()=>{householdDraft.clear();host()?.reload();},difference,augment,targets,foodTarget,requirement,total,prepare,completionChanges,complete,isCooked,previewCook,cooked,previewDay,finishDay,previewUndoDay,undoDay,shoppingBuys,addShoppingBuy,manualBuyItems,manualBuyEssentials,applyManualPurchases,actor,blocked,atomic};
+  const api={purchaseQuantity,purchaseAmounts,roundShoppingItems,prepareSharedPurchase,needsLegacyReview,receiptGeneration,supersedesReceipt,addHousehold,setHouseholdAmount,setHouseholdBalance,confirmHousehold,confirmHouseholdEntry,removeHousehold,openRequested,reminders,decorate,hasHouseholdDraft:()=>{checkDraftActor();return householdDraft.size>0;},committed:()=>{householdDraft.clear();host()?.reload();},difference,augment,targets,foodTarget,requirement,total,prepare,completionChanges,complete,isCooked,previewCook,cooked,previewDay,finishDay,previewLunchWeek,finishLunchWeek,previewUndoDay,undoDay,shoppingBuys,addShoppingBuy,manualBuyItems,manualBuyEssentials,applyManualPurchases,actor,blocked,atomic};
   setTimeout(()=>{win.BBKitchenEssentials?.refresh?.();openRequested();},0);
   return Object.freeze(api);
  }
