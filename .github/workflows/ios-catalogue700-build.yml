@@ -1,4 +1,4 @@
-name: Verify catalogue 700 iOS 1.0.2 build 36
+name: Verify catalogue 700 iOS 1.0.2 build 37
 
 on:
   workflow_dispatch:
@@ -12,6 +12,8 @@ on:
       - bb-plan-swap-*.js
       - ios/**
       - native/**
+      - scripts/verify-ios-storekit-release.mjs
+      - tests/basketboss-native-storekit-release.test.mjs
       - tests/basketboss-catalogue700-*.test.mjs
       - tests/basketboss-plan-swap.test.mjs
 
@@ -119,7 +121,7 @@ jobs:
         run: echo '::notice title=BasketBoss iOS native build::{"simulatorBuild":true,"bundleId":"uk.co.basketboss.app","minimumIOS":"16.0","signingTested":false}'
       # Finish device compilation before Simulator startup; Cook and keyboard
       # checks still determine whether this verification run succeeds.
-      - name: Create the unsigned iPhone archive for build 36
+      - name: Create the unsigned iPhone archive for build 37
         run: |
           xcodebuild \
             -workspace ios/App/App.xcworkspace \
@@ -305,12 +307,7 @@ jobs:
           CODE_SIGNING_ALLOWED=NO
           build
       - name: Verify Release excludes StoreKit test fixture
-        run: |
-          test ! -f /tmp/basketboss-ios-build/Build/Products/Release-iphonesimulator/App.app/BasketBossPremium.storekit
-          if otool -L /tmp/basketboss-ios-build/Build/Products/Release-iphonesimulator/App.app/App | rg StoreKitTest; then
-            echo 'Release must not link the local StoreKit test framework.'
-            exit 1
-          fi
+        run: node scripts/verify-ios-storekit-release.mjs --app /tmp/basketboss-ios-build/Build/Products/Release-iphonesimulator/App.app
       - name: Exercise real StoreKit bridge in hosted XCTest with local products
         env:
           BB_IAP_KEEP_SIMULATOR_BOOTED: 'true'

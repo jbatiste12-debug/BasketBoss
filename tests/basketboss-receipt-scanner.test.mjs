@@ -458,3 +458,29 @@ test('rapid receipt scan taps start only one paid image request',async()=>{
  assert.equal(button.disabled,true);await button.emit('click');await tick();assert.equal(scanPosts(h).length,1);
  release();await first;assert.equal(scanPosts(h).length,1);assert.equal(h.commits.length,0);
 });
+
+test('cancelling stalled image preparation settles immediately and late decoding never uploads',async()=>{
+ let release,prepared=false;const photo=new Promise(resolve=>{release=resolve;});
+ const h=harness({preparePhoto:()=>{prepared=true;return photo;}}),controller=new AbortController();
+ const scan=h.api.readReceipt({file:{},market:'UK',retailer:'Tesco',consent:true,signal:controller.signal});
+ await tick();assert.equal(prepared,true);controller.abort();await assert.rejects(scan,/receipt_scan_cancelled/);
+ release(PHOTO);await tick();assert.equal(scanPosts(h).length,0);assert.equal(h.commits.length,0);assert.equal(h.writes.length,0);
+});
+test('a stalled photo hits its deadline, enables retry and makes no scan upload',async()=>{
+ const h=harness({preparePhoto:()=>new Promise(()=>{})}),dialog=await h.open(),timers=[];
+ h.api.configure({setTimeout:(fn,delay)=>{timers.push({fn,delay});return timers.length;},clearTimeout(){}});
+ await selectPhoto(dialog);await setValue(top(dialog,'consent'),true);const pending=action(dialog,'scan').emit('click');await tick();
+ timers.find(x=>x.delay===65000).fn();await pending;
+ assert.equal(action(dialog,'scan').disabled,false);assert.match(dialog.textContent,/cancelled/i);assert.equal(scanPosts(h).length,0);assert.equal(h.writes.length,0);
+ await action(dialog,'close').emit('click');assert.equal(dialog.isConnected,false);
+});
+test('an expired old scan deadline cannot abort a replacement photo scan',async()=>{
+ const preparations=[],timers=[],h=harness({preparePhoto:(_file,{signal})=>new Promise(resolve=>preparations.push({signal,resolve}))}),dialog=await h.open();
+ h.api.configure({setTimeout:(fn,delay)=>{timers.push({fn,delay});return timers.length;},clearTimeout(){}});
+ await selectPhoto(dialog);await setValue(top(dialog,'consent'),true);const first=action(dialog,'scan').emit('click');await tick();
+ const oldDeadline=timers.find(x=>x.delay===65000).fn;assert.equal(preparations.length,1);
+ await selectPhoto(dialog);await setValue(top(dialog,'consent'),true);const second=action(dialog,'scan').emit('click');await tick();assert.equal(preparations.length,2);
+ oldDeadline();assert.equal(preparations[1].signal.aborted,false);
+ preparations[0].resolve(PHOTO);preparations[1].resolve(PHOTO);await Promise.all([first,second]);
+ assert.equal(scanPosts(h).length,1);assert.equal(h.normalizations.length,1);assert.equal(h.commits.length,0);assert.equal(h.writes.length,0);
+});

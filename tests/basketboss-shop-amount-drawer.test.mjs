@@ -92,3 +92,13 @@ test('checkbox completion and undo keep the known reduced partial purchase cost'
 test('Premium must still be active when the reduced drawer purchase is committed',()=>{
  const h=fixture({premium:true}),drawer=h.drawer(),section=drawer.children.find(node=>node.className==='bb-reduced-purchase'),inputs=section.all('input');inputs[0].value='100';inputs[1].value='1';h.setPremium(false);const before=[...h.values];section.all('button')[0].click();assert.deepEqual([...h.values],before);assert.match(drawer.textContent,/Premium/);
 });
+
+test('a restored account with receipt history and no target map can check food off and deposit it once',()=>{
+ const h=fixture(),homeKey='basketboss_at_home_requirements_v1',history={receiptGenerations:{prior:2},custom:'keep'};
+ h.storage.setItem(homeKey,JSON.stringify({version:1,byActor:{tester:history,other:{cooked:{previous:{at:1}}}}}));
+ h.win.document={getElementById:()=>null};h.win.location={search:''};h.win.BBHome=require('../bb-home.js').install(h.win);
+ const initialStock=h.storage.getItem('stock');assert.equal(h.check(true),true);assert.equal(h.storage.getItem('stock'),initialStock);
+ assert.equal(h.pending().length,1);assert.equal(h.finish().count,1);assert.equal(h.read('stock')['rice|g'],400);
+ assert.equal(h.finish().count,0);assert.equal(h.read('stock')['rice|g'],400);
+ const saved=h.read(homeKey);assert.deepEqual(saved.byActor.tester,history);assert.deepEqual(saved.byActor.other,{cooked:{previous:{at:1}}});
+});

@@ -55,11 +55,11 @@
     links.append(link('Privacy notice','privacy.html'));
     root.append(links);
     parent.append(root);
-    let busy=false,managedProvider=null;
+    let busy=false,managedProvider=null,refreshRevision=0;
     const manageLabel=()=>managedProvider==='apple'?'Manage Apple subscription / cancel':'Manage subscription / cancel';
     manage.addEventListener('click',async()=>{
       if(busy || manage.disabled)return;
-      const bearer=token();
+      const bearer=token(),revision=refreshRevision;
       if(!bearer){status.textContent='Sign in again to manage your subscription.';manage.disabled=true;return;}
       busy=true;manage.disabled=true;manage.textContent=managedProvider==='apple'?'Opening Apple subscriptions…':'Opening Paddle securely…';
       try{
@@ -73,15 +73,16 @@
           cache:'no-store',credentials:'same-origin'
         });
         const data=await res.json().catch(()=>null);
-        if(token()!==bearer)return;
+        if(token()!==bearer||revision!==refreshRevision)return;
         const dest=res.ok&&data ? destinationOK(data.url):null;
         if(!dest)throw Error('Secure billing link unavailable. Use your Paddle receipt or paddle.net.');
         window.location.assign(dest);
-      }catch(err){status.textContent=err.message;}
-      finally{busy=false;manage.textContent=manageLabel();manage.disabled=managedProvider===null;}
+      }catch(err){if(token()===bearer&&revision===refreshRevision)status.textContent=err.message;}
+      finally{busy=false;if(token()===bearer&&revision===refreshRevision){manage.textContent=manageLabel();manage.disabled=managedProvider===null;}}
     });
     async function refresh(){
-      const bearer=token();
+      const bearer=token(),revision=++refreshRevision;
+      const current=()=>revision===refreshRevision&&token()===bearer&&root.isConnected!==false;
       details.textContent='';manage.disabled=true;upgrade.hidden=true;managedProvider=null;manage.textContent=manageLabel();
       if(!bearer){status.textContent='BasketBoss Free — sign in or create an account to start a Premium trial.';upgrade.hidden=false;return;}
       try{
@@ -89,9 +90,10 @@
           headers:{'Authorization':'Bearer '+bearer,'Accept':'application/json'},
           cache:'no-store',credentials:'same-origin'
         });
+        if(!current())return;
         if(!response.ok){status.textContent=response.status===401?'Session expired — sign in again.':'Membership status temporarily unavailable. Please try again.';return;}
         const raw=await response.json();
-        if(token()!==bearer)return;
+        if(!current())return;
         if(raw?.authenticated!==true){status.textContent='Unable to verify your account.';return;}
         if(raw.tier==='owner' && raw.premiumAccess===true){
           status.textContent='Owner Premium — complimentary access';
@@ -144,7 +146,7 @@
         if(!raw.premiumAccess){parts.push('Premium access is currently unavailable.');upgrade.hidden=false;}
         details.textContent=parts.join(' ');
         managedProvider='paddle';manage.textContent=manageLabel();manage.disabled=false;
-      }catch{status.textContent='Membership status temporarily unavailable. Please retry later.';}
+      }catch{if(current())status.textContent='Membership status temporarily unavailable. Please retry later.';}
     }
     refresh();
     window.addEventListener('focus',refresh);

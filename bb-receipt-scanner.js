@@ -32,6 +32,22 @@
       if (signal?.aborted) throw Error('receipt_scan_cancelled');
       if (!unchanged(captured, expected)) throw Error('receipt_context_changed');
     }
+    function photoWithSignal(file, signal) {
+      if (signal?.aborted) return Promise.reject(Error('receipt_scan_cancelled'));
+      const prepare = () => {
+        if (signal?.aborted) throw Error('receipt_scan_cancelled');
+        return (options.preparePhoto || preparePhoto)(file, { signal });
+      };
+      if (!signal?.addEventListener) return Promise.resolve().then(prepare);
+      let abort;
+      const stopped = new Promise((_, reject) => {
+        abort = () => reject(Error('receipt_scan_cancelled'));
+        signal.addEventListener('abort', abort, { once: true });
+      });
+      // Image decoding may not support cancellation. Stop waiting immediately;
+      // the original preparation still owns and releases its bitmap if it ends.
+      return Promise.race([Promise.resolve().then(prepare), stopped]).finally(() => signal.removeEventListener('abort', abort));
+    }
     function message(error) {
       const key = String(error?.message || error || '');
       if (/context_changed|account_changed|session_expired|draft_not_owned/.test(key)) return 'Your account, region or supermarket changed. Close and reopen the receipt scanner.';
@@ -105,7 +121,7 @@
       const ready = await availability({ market, retailer, signal });
       if (!ready.available) throw Error(ready.reason);
       if (ready.turnstileRequired && (typeof turnstileToken !== 'string' || !turnstileToken)) throw Error('receipt_security_check_required');
-      const photo = await (options.preparePhoto || preparePhoto)(file, { signal });
+      const photo = await photoWithSignal(file, signal);
       assertCurrent(captured, expected, signal);
       if (!photo || photo.mimeType !== 'image/jpeg' || typeof photo.imageBase64 !== 'string' || !photo.imageBase64.length || photo.imageBase64.length > MAX_BASE64) throw Error('The receipt image could not be prepared.');
       const result = await jsonRequest('/api/bb173/scan', captured, { signal, method: 'POST', body: { ...photo, scanKind: 'receipt_inventory', expectedCurrency: CURRENCIES[market], turnstileToken } });
@@ -383,9 +399,10 @@
       scan.addEventListener('click', async () => {
         if (scan.disabled || !state.file || !consent.input.checked || !guard()) return;
         const revision = ++state.revision; state.busy = true; update(); status.textContent = 'Reading the receipt. You will review it before anything is saved…';
-        state.controller = new AbortController(); const timer = (options.setTimeout || root.setTimeout)(() => state.controller?.abort(), 65000);
+        const controller = new AbortController(); state.controller = controller;
+        const timer = (options.setTimeout || root.setTimeout)(() => controller.abort(), 65000);
         try {
-          const raw = await readReceipt({ file: state.file, market, retailer, consent: true, signal: state.controller.signal, turnstileToken: state.challengeToken });
+          const raw = await readReceipt({ file: state.file, market, retailer, consent: true, signal: controller.signal, turnstileToken: state.challengeToken });
           if (!alive(revision) || !guard()) return;
           const draft = await inventory().normalizeDraft({ ...raw, shopSessionId: null }, { market, retailer });
           if (!alive(revision) || !guard()) { inventory().cancelDraft?.(draft); return; }

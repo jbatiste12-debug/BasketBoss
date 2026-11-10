@@ -253,7 +253,7 @@ async function build(){
     const on=draftKeys(loc,name).length>0;return `<button type="button" data-bb5-food="${esc(name)}" aria-pressed="${on}">${visual}<span>${esc(name)}</span><small>${on?'✓ Selected':'Tap to add'}</small></button>`;
    }).join('');
    const count=[...staged.values()].filter(x=>x.loc===loc).length;
-   card.querySelector(`[data-bb76-count="${loc}"]`).textContent=count?`${count} selected`:'None selected';
+   card.querySelector(`[data-bb76-count="${loc}"]`).textContent=`${count} item${count===1?'':'s'}`;
   }
   const all=[...staged.values()].sort((a,b)=>BB5_LOCATIONS.indexOf(a.loc)-BB5_LOCATIONS.indexOf(b.loc)||a.name.localeCompare(b.name));
   review.querySelector('#bb5SelectedCount').textContent=`(${all.length})`;
