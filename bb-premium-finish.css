@@ -293,3 +293,7 @@ html body #bb172Storefront[data-bb-shop-compact="true"] .bb172-storefront-compac
  html body #bb172Storefront .bb172-storefront-compact strong{font-size:16px}
 }
 @media(prefers-reduced-motion:reduce){html body #bb172Storefront .bb172-storefront-progress-fill{transition:none!important}}
+/* Exact food needs stay separate from the purchase pack in both Shop views. */
+html body #app .bb321-shop-info .bb-shop-need-context,
+html body #bb172Storefront .bb15-shop-ingredient .bb-shop-need-context{display:block!important;margin:4px 0 0!important;color:#61716a!important;font-size:11px!important;font-weight:500!important;line-height:1.4!important;white-space:normal!important;overflow-wrap:anywhere!important}
+html body #bb172Storefront .bb15-shop-ingredient .bb-shop-need-context{font-size:10px!important;line-height:1.35!important}
