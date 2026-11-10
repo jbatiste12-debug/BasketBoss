@@ -115,13 +115,16 @@
   const blocked=()=>root.BBAccountDeletion?.isDeleting?.()===true;
   const controller=create({getSession:session,isBlocked:blocked,storage:root.localStorage,fetch:(...args)=>root.fetch(...args),uuid:()=>root.crypto.randomUUID(),recordPurchase:(item,checked,pin)=>root.BBSharedShoppingHost?.recordPurchase?.(item,checked,pin)??false,onChange:()=>schedule()});
   function openSharing(){if(root.BBSharedShoppingHost?.openSharing)return root.BBSharedShoppingHost.openSharing();doc.querySelector('[data-bbhs-trigger]')?.click();}
+  function signedInActor(){const current=session();return !blocked()&&UUID.test(current?.user?.id||'')&&typeof current?.access_token==='string'&&Number(current.expires_at)*1000>Date.now()+5000?current.user.id:null;}
+  function openAdd(){place();if(!signedInActor()||controller.snapshot().phase!=='ready')return openSharing();formOpen=true;render();ui.form.scrollIntoView?.({block:'nearest',behavior:'smooth'});ui.name.focus();}
   function make(){if(card)return;
    card=el('section',undefined,'bb-shared-shopping');card.id='bbSharedShopping';card.setAttribute('aria-labelledby','bbSharedShoppingTitle');
-   const header=el('div',undefined,'bbss-header'),copy=el('div'),title=el('h2','Shared Household Additions');title.id='bbSharedShoppingTitle';const count=el('span','', 'bbss-count');title.append(count);copy.append(title);
+   const header=el('div',undefined,'bbss-header'),copy=el('div',undefined,'bbss-heading'),title=el('h2','Shared Household Additions');title.id='bbSharedShoppingTitle';const count=el('span','', 'bbss-count');title.append(count);copy.append(title);
    const badge=el('span','PREMIUM','bbss-premium');
-   const add=el('button','＋ Add item','bbss-add');add.type='button';add.setAttribute('aria-controls','bbSharedShoppingForm');add.setAttribute('aria-expanded','false');add.addEventListener('click',()=>{formOpen=!formOpen;render();if(formOpen)ui.name.focus();});header.append(copy,badge,add);
+   const headerActions=el('div',undefined,'bbss-header-actions'),connect=el('button','Partner Sharing','bbss-connect');connect.type='button';connect.addEventListener('click',openSharing);
+   const add=el('button','＋ Add item','bbss-add');add.type='button';add.setAttribute('aria-controls','bbSharedShoppingForm');add.setAttribute('aria-expanded','false');add.addEventListener('click',openAdd);headerActions.append(connect,add);header.append(copy,badge,headerActions);
    const intro=el('p','Add mid-week extras like toothpaste or eggs anytime. Everyone in your linked household sees them, with who added each item.','bbss-intro');
-   const gate=el('div',undefined,'bbss-gate'),gateText=el('p'),connect=el('button','Partner Sharing');connect.type='button';connect.addEventListener('click',openSharing);gate.append(gateText,connect);
+   const gate=el('div',undefined,'bbss-gate'),gateText=el('p');gate.append(gateText);
    const form=el('form',undefined,'bbss-form');form.id='bbSharedShoppingForm';form.hidden=true;
    const nameLabel=el('label','Item','bbss-name'),name=el('input');name.name='name';name.maxLength=70;name.required=true;name.placeholder='e.g. milk or washing-up liquid';name.autocomplete='off';nameLabel.append(name);
    const quantityLabel=el('label','Extra quantity'),amount=el('input');amount.name='quantity';amount.type='number';amount.min='.001';amount.max='1000000';amount.step='any';amount.inputMode='decimal';amount.value='1';amount.required=true;quantityLabel.append(amount);
@@ -133,14 +136,17 @@
    const status=el('p','', 'bbss-status');status.setAttribute('role','status');status.setAttribute('aria-live','polite');const footer=el('div',undefined,'bbss-footer'),refresh=el('button','Refresh shared list','bbss-refresh');refresh.type='button';refresh.addEventListener('click',()=>void controller.refresh({force:true}));footer.append(refresh);
    card.append(header,intro,gate,form,list,pending,history,status,footer);ui={header,title,count,badge,add,intro,gate,gateText,connect,form,name,amount,unit,submit,cancel,list,pending,history,historyTitle,historyList,status,refresh};
   }
-  function row(item,history=false){
-   const node=el('div',undefined,'bbss-item'+(history?' is-complete':''));node.dataset.sharedItem=item.id;
-   const text=el('div',undefined,'bbss-item-copy'),title=el('strong',item.name),quantityText=el('span',item.quantity+' '+(item.unit==='pack'?(item.quantity===1?'pack':'packs'):item.unit),'bbss-quantity');const attribution=el('small','Added by '+creatorLabel(item),'bbss-attribution');text.append(title,quantityText,attribution);
+  function row(item,history=false,actor=null){
+   const partner=UUID.test(actor||'')&&UUID.test(item.created_by||'')&&item.created_by.toLowerCase()!==actor.toLowerCase();
+   const node=el('div',undefined,'bbss-item'+(history?' is-complete':'')+(partner?' is-partner-added':''));node.dataset.sharedItem=item.id;
+   const text=el('div',undefined,'bbss-item-copy'),title=el('strong',item.name),quantityText=el('span',item.quantity+' '+(item.unit==='pack'?(item.quantity===1?'pack':'packs'):item.unit),'bbss-quantity');const attribution=el('small',undefined,'bbss-attribution');
+   if(partner){const badge=el('span',undefined,'bbss-partner-badge'),icon=el('span',undefined,'bbss-partner-icon');icon.setAttribute('aria-hidden','true');badge.append(icon,el('span','Partner added'));attribution.append(badge);}
+   attribution.append(el('span','Added by '+creatorLabel(item),'bbss-creator'));text.append(title,quantityText,attribution);
    if(!history){const label=el('label',undefined,'bbss-check'),check=el('input');check.type='checkbox';check.setAttribute('aria-label','Bought '+item.name);check.disabled=controller.snapshot().busyIds.includes(item.id);check.addEventListener('change',()=>{check.checked=false;if(!check.disabled)void controller.complete(item.id,true);});label.append(check);node.append(label);}
    else node.append(el('span','✓','bbss-done'));
    node.append(text);return node;
   }
-  function render(){make();const state=controller.snapshot(),actor=session()?.user?.id||null;
+  function render(){make();const state=controller.snapshot(),actor=session()?.user?.id||null,attributionActor=signedInActor();
    if(actor!==draftActor||state.household_id&&draftHousehold&&state.household_id!==draftHousehold){draftActor=actor;draftHousehold=state.household_id;formOpen=false;submitting=false;ui.name.value='';ui.amount.value='1';ui.unit.value='each';renderStamp='';}
    if(state.household_id)draftHousehold=state.household_id;
    const ready=state.phase==='ready',pendingItems=state.items.filter(item=>!item.completed),completeItems=state.items.filter(item=>item.completed).sort((a,b)=>String(b.completed_at||'').localeCompare(String(a.completed_at||'')));
@@ -148,10 +154,10 @@
    ui.count.textContent=ready?' · '+pendingItems.length:'';ui.badge.hidden=state.premium;ui.add.hidden=!ready;ui.intro.hidden=!ready;ui.gate.hidden=ready;ui.form.hidden=!ready||!formOpen;ui.add.setAttribute('aria-expanded',String(ready&&formOpen));ui.submit.disabled=submitting;ui.cancel.disabled=submitting;ui.name.disabled=submitting;ui.amount.disabled=submitting;ui.unit.disabled=submitting;
    ui.gateText.textContent=state.phase==='loading'?'Checking your shared household…':state.phase==='signed-out'?'Link a Premium household to add extras and see who added each item.':state.phase==='premium'?'Partner Sharing is included with Premium.':state.phase==='unlinked'?'Link your partner to share shopping extras.':state.phase==='unavailable'?'Partner Sharing is not available on this site yet.': 'Reconnect to refresh your shared shopping list.';
    ui.connect.hidden=state.phase==='loading';ui.connect.textContent=state.phase==='signed-out'?'Sign in & Partner Sharing':'Partner Sharing';
-   const stamp=JSON.stringify([state.items,state.busyIds,state.pendingAdds,state.pendingCompletions]);
+   const stamp=JSON.stringify([attributionActor,state.items,state.busyIds,state.pendingAdds,state.pendingCompletions]);
    if(stamp!==renderStamp){renderStamp=stamp;ui.list.replaceChildren();ui.historyList.replaceChildren();ui.pending.replaceChildren();
     if(ready&&!pendingItems.length)ui.list.append(el('p','No shared extras to buy.','bbss-empty'));
-    for(const item of pendingItems)ui.list.append(row(item));for(const item of completeItems)ui.historyList.append(row(item,true));
+    for(const item of pendingItems)ui.list.append(row(item,false,attributionActor));for(const item of completeItems)ui.historyList.append(row(item,true,attributionActor));
     for(const record of state.pendingAdds){const node=el('div',undefined,'bbss-retry');node.append(el('span',record.name+' · '+record.quantity+' '+record.unit+' · Not shared yet'));const retry=el('button','Retry addition');retry.type='button';retry.disabled=state.busyIds.includes(record.id);retry.addEventListener('click',()=>void controller.retry(record.id));node.append(retry);ui.pending.append(node);}
     for(const record of state.pendingCompletions){const node=el('div',undefined,'bbss-retry');node.append(el('span',record.serverAck?'Bought saved online · device save needs retry':'Checkmark awaiting confirmation'));const retry=el('button',record.serverAck?'Save purchase on this device':'Retry checkmark');retry.type='button';retry.disabled=state.busyIds.includes(record.id);retry.addEventListener('click',()=>void controller.retry(record.id));node.append(retry);ui.pending.append(node);}
    }
@@ -160,22 +166,31 @@
   function inView(){return doc.body.classList.contains('bb172-storefront-visible')||(doc.body.dataset.bbnextView||doc.querySelector('.tab.active')?.dataset.tab)==='shop-list';}
   function place(){
    scheduled=false;make();const visible=inView();card.hidden=!visible;if(!visible)return;
-   const advanced=doc.body.classList.contains('bb172-storefront-visible')?doc.querySelector('#bb172Storefront .bb172-storefront-shell'):null;
-   if(advanced){if(advanced.firstElementChild!==card)advanced.prepend(card);}
+   const advanced=doc.body.classList.contains('bb172-storefront-visible')?doc.getElementById('bb172Storefront'):null;
+   if(advanced){const controls=advanced.querySelector('.bb172-storefront-controls');if(controls&&card.nextSibling!==controls)controls.before(card);}
    else{const app=doc.getElementById('app'),anchor=doc.getElementById('bbReleaseShopOverview')||app;if(anchor&&card.nextSibling!==anchor)anchor.before(card);}
    render();if(Date.now()-lastFetchStarted>10000){lastFetchStarted=Date.now();void controller.refresh();}
   }
   function schedule(){if(!scheduled){scheduled=true;root.queueMicrotask?root.queueMicrotask(place):Promise.resolve().then(place);}}
   function isolate(){formOpen=false;lastFetchStarted=0;controller.invalidate();schedule();if(inView())void controller.refresh({force:true});}
+  function needsPlacement(record){
+   if(record.type==='attributes')return record.target===doc.body;
+   if(record.type!=='childList')return false;
+   if(record.target===doc.getElementById('app'))return true;
+   const storefront=doc.getElementById('bb172Storefront');
+   // Moving this card also generates a mutation. Its settled position needs no work.
+   if(record.target===storefront){const controls=storefront.querySelector('.bb172-storefront-controls');return !!controls&&(card.parentNode!==storefront||card.nextSibling!==controls);}
+   return Array.from(record.addedNodes||[]).some(node=>node.nodeType===1&&(node.matches?.('#app,#bbReleaseShopOverview,#bb172Storefront,.bb172-storefront-controls')||node.querySelector?.('#bb172Storefront,.bb172-storefront-controls')));
+  }
   function start(){
-   schedule();const observer=new root.MutationObserver(records=>{if(records.some(record=>record.type==='attributes'&&record.target===doc.body||record.type==='childList'&&(record.target===doc.getElementById('app')||Array.from(record.addedNodes||[]).some(node=>node.nodeType===1&&(node.matches?.('#app,#bbReleaseShopOverview,#bb172Storefront,.bb172-storefront-shell,.bb172-storefront-controls')||node.querySelector?.('#bb172Storefront,.bb172-storefront-controls'))))))schedule();});observer.observe(doc.body,{childList:true,subtree:true,attributes:true,attributeFilter:['class','data-bbnext-view']});
+   schedule();const observer=new root.MutationObserver(records=>{if(records.some(needsPlacement))schedule();});observer.observe(doc.body,{childList:true,subtree:true,attributes:true,attributeFilter:['class','data-bbnext-view']});
    root.addEventListener('basketboss:session-changed',isolate);root.addEventListener('storage',event=>{if(event.key===null||event.key==='basketboss_cloud_session_v1')isolate();});
    for(const name of ['basketboss:account-deletion-started','basketboss:account-deletion-deleted','basketboss:account-deletion-cancelled'])root.addEventListener(name,isolate);
    for(const name of ['focus','online'])root.addEventListener(name,()=>{if(inView())void controller.refresh({force:true});});
    doc.addEventListener('visibilitychange',()=>{if(!doc.hidden&&inView())void controller.refresh({force:true});});
    poll=root.setInterval(()=>{if(!doc.hidden&&inView())void controller.refresh({force:true});},20000);
   }
-  root.BBSharedShopping=Object.freeze({afterRender:schedule,refresh:options=>controller.refresh(options),add:controller.add,complete:controller.complete,snapshot:controller.snapshot,knownCompletedItems:controller.knownCompletedItems});
+  root.BBSharedShopping=Object.freeze({afterRender:schedule,openAdd,refresh:options=>controller.refresh(options),add:controller.add,complete:controller.complete,snapshot:controller.snapshot,knownCompletedItems:controller.knownCompletedItems});
   if(doc.readyState==='loading')doc.addEventListener('DOMContentLoaded',start,{once:true});else start();
  }
  return Object.freeze({create,install,validItem,creatorLabel,KEY,ENDPOINT,UNITS});

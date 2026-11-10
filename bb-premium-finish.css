@@ -253,3 +253,43 @@ html body[data-bbnext-view] .shell>header.top :is(button,select):focus-visible{o
 @media(prefers-reduced-motion:reduce){
  html body[data-bbnext-view] .shell *,html body.bb-photo-meal-page #bb15AiPremiumHub *{scroll-behavior:auto!important;transition:none!important;animation:none!important}
 }
+
+/* Shopping owns the screen. Keep ordinary branding on the other views. */
+html body.bb172-storefront-visible[data-bbnext-view] .shell>header.top[data-bb-account-polish],
+html body.bb172-storefront-visible .shell>header.top[data-bb-account-polish]{display:none!important;visibility:hidden!important;pointer-events:none!important}
+html body #bb172Storefront{overflow-anchor:none;--bb-shop-compact-size:calc(68px + env(safe-area-inset-top,0px));scroll-padding-top:calc(80px + env(safe-area-inset-top,0px))!important}
+html body #bb172Storefront .bb172-storefront-header{
+ position:sticky!important;top:calc(var(--bb-shop-compact-size) - var(--bb-shop-header-size,280px))!important;z-index:30!important;
+ width:100%!important;max-width:none!important;border-radius:0!important;border-bottom:0!important;
+ padding:calc(14px + env(safe-area-inset-top,0px)) max(16px,env(safe-area-inset-right,0px)) 16px max(16px,env(safe-area-inset-left,0px))!important;
+ background:radial-gradient(ellipse at 90% 0%,#ffffff12,transparent 60%),linear-gradient(120deg,#153e5c,#225c7b)!important;
+ box-shadow:0 5px 22px #143e5824!important;
+}
+html body #bb172Storefront .bb172-storefront-header-top{grid-template-columns:minmax(0,1fr) auto auto!important;grid-template-areas:"brand wake exit"!important;min-height:44px!important;gap:8px!important}
+html body #bb172Storefront .bbnext-shop-brand{justify-self:start!important;padding:0!important;background:transparent!important;border:0!important;box-shadow:none!important;gap:7px!important}
+html body #bb172Storefront .bbnext-shop-brand-name{font-size:18px!important}
+html body #bb172Storefront :is(.bb172-storefront-wake,.bb172-storefront-exit){min-height:44px!important;min-width:44px!important;border-radius:13px!important;padding:9px!important;font-size:11px!important}
+html body #bb172Storefront .bb172-storefront-stat{padding:11px!important;min-height:68px!important;border-radius:15px!important}
+html body #bb172Storefront .bb172-storefront-stat strong{font-variant-numeric:tabular-nums!important;font-size:clamp(17px,4.5vw,24px)!important}
+html body #bb172Storefront .bb172-storefront-actions{display:flex;align-items:center;gap:12px;margin-top:15px}
+html body #bb172Storefront .bb172-storefront-share-hint{flex:1;color:#d7e8ed;font-size:12px;line-height:1.45;max-width:230px}
+html body #bb172Storefront .bb172-storefront-add{display:inline-flex!important;align-items:center;justify-content:center;gap:5px;min-height:46px!important;min-width:46px!important;flex:none;padding:10px 16px!important;border:1px solid #efdb9b!important;border-radius:14px!important;background:linear-gradient(135deg,#faedc6,#ebd393)!important;color:#263f36!important;-webkit-text-fill-color:currentColor!important;box-shadow:0 4px 14px #061e3130,inset 0 1px #fff9!important;font-family:inherit;font-size:14px;font-weight:800;line-height:1.2;text-decoration:none!important;cursor:pointer}
+html body #bb172Storefront .bb172-storefront-add:focus-visible{outline:3px solid #fff!important;outline-offset:3px}
+html body #bb172Storefront .bb172-storefront-compact{position:absolute;inset:auto 0 0;display:grid;grid-template-columns:minmax(0,1fr) auto auto 44px;align-items:center;gap:12px;height:var(--bb-shop-compact-size);padding:calc(8px + env(safe-area-inset-top,0px)) max(12px,env(safe-area-inset-right,0px)) 8px max(16px,env(safe-area-inset-left,0px));visibility:hidden;pointer-events:none}
+html body #bb172Storefront .bb172-storefront-compact :is(strong,small){display:block;white-space:nowrap;font-variant-numeric:tabular-nums}
+html body #bb172Storefront .bb172-storefront-compact strong{font-size:17px;line-height:1.3;color:white;letter-spacing:-.02em}
+html body #bb172Storefront .bb172-storefront-compact small{font-size:10px;line-height:1.4;color:#daebee;font-weight:650}
+html body #bb172Storefront .bb172-storefront-compact-count{text-align:center;min-width:44px}
+html body #bb172Storefront .bb172-storefront-compact-exit{box-sizing:border-box!important;width:44px!important;min-width:44px!important;max-width:44px!important;height:44px!important;min-height:44px!important;padding:0!important;border:1px solid #ffffff45!important;border-radius:13px!important;background:#ffffff10!important;color:white!important;-webkit-text-fill-color:currentColor!important;font-size:27px!important;line-height:1!important;box-shadow:none!important;cursor:pointer}
+html body #bb172Storefront[data-bb-shop-compact="true"] .bb172-storefront-header>:not(.bb172-storefront-compact){visibility:hidden!important;pointer-events:none!important}
+html body #bb172Storefront[data-bb-shop-compact="true"] .bb172-storefront-compact{visibility:visible;pointer-events:auto}
+@media(max-width:370px){
+ html body #bb172Storefront .bb172-storefront-header-top{grid-template-columns:minmax(0,1fr) auto!important;grid-template-areas:"brand exit" "wake wake"!important}
+ html body #bb172Storefront .bb172-storefront-wake{justify-self:start!important}
+ html body #bb172Storefront .bb172-storefront-compact{gap:9px}
+ html body #bb172Storefront .bb172-storefront-compact .bb172-storefront-add{width:46px;padding:8px!important}
+ html body #bb172Storefront .bb172-storefront-compact .bb172-storefront-add-label{display:none}
+ html body #bb172Storefront .bb172-storefront-add-symbol{font-size:23px;line-height:1}
+ html body #bb172Storefront .bb172-storefront-compact strong{font-size:16px}
+}
+@media(prefers-reduced-motion:reduce){html body #bb172Storefront .bb172-storefront-progress-fill{transition:none!important}}
