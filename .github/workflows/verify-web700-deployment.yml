@@ -7,6 +7,12 @@ on:
     paths:
       - .github/workflows/verify-web700-deployment.yml
       - scripts/verify-web700-deployment.mjs
+      - scripts/verify-layout-deployment.mjs
+      - bb-simple-layout.js
+      - bb-pantry-inline.js
+      - bb-pantry-inline.css
+      - bb-plan-premium-polish.css
+      - bb-premium-finish.css
       - tests/basketboss-web700-deployment.test.mjs
       - pwa700/**
 
@@ -29,3 +35,5 @@ jobs:
         run: node --test tests/basketboss-web700-deployment.test.mjs
       - name: Verify public assets and both anonymous Premium boundaries
         run: node scripts/verify-web700-deployment.mjs --once
+      - name: Verify the current planner, pantry and shopping layouts
+        run: node scripts/verify-layout-deployment.mjs

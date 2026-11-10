@@ -3799,7 +3799,7 @@ body[data-bbnext-view="discover"] #app .bb-featured-card #bbFeaturedBatch {
 <div id="modalRoot"></div><div id="toastRoot" aria-live="polite"></div>
 <script src="/basketboss-aisles-v20.js?v=d45b76bac322b605"></script>
 <script src="/bb-supermarkets.js?v=0e7c0cfdd73c5e15"></script>
-<script src="/bb-pantry-policy.js?v=9a48e7d672f992aa"></script>
+<script src="/bb-pantry-policy.js?v=2035a06b9de9b0a8"></script>
 <script src="/bb-pantry-display.js?v=3703aec840ec42c6"></script>
 <script src="/bb-recipe-canonical.js?v=878f44edae3f68b7"></script>
 <script type="module" src="/bb-pantry-runtime.mjs?v=7c6a7711e53a3496"></script>
@@ -7959,21 +7959,65 @@ function bb84SeedPreviouslyBought(items,essentials,ticks){
  }
  if(changed)bb84WritePurchased(next);
 }
-function bb84DisplayedPurchase(item,required,already=0){
- const name=String(item.key||item.name||''),unit=String(item.unit||'each').toLowerCase(),remaining=Math.max(0,Number(required)-Number(already));
- if(!Number.isFinite(remaining)||!(remaining>0))return Number(already)||0;
- let quantity=remaining;
- if(Number(item.buyMultiple)>0&&item.buyMultipleUnit===unit&&window.BBHome?.purchaseAmounts){
-  const purchase=window.BBHome.purchaseAmounts({needed:remaining,buffer:0,owned:0,multiple:Number(item.buyMultiple),unit});
-  if(purchase&&Number.isFinite(purchase.purchaseQuantity))return Number(already)+purchase.purchaseQuantity;
+function bbShopExactQuantity(quantity,unit,market=bb307Market){
+ const n=Number(quantity),u=String(unit||'each').toLowerCase();
+ if(!Number.isFinite(n)||n<0)return 'Check quantity';
+ const number=value=>{const text=new Intl.NumberFormat(market==='US'?'en-US':'en-GB',{maximumFractionDigits:6,useGrouping:false}).format(value);return value>0&&Number(text)===0?value.toExponential(2):text;};
+ if(u==='each')return number(n);
+ if(['g','kg','ml','l'].includes(u)){const weight=u==='g'||u==='kg',base=n*(['kg','l'].includes(u)?1000:1);return number(base>=1000?base/1000:base)+' '+(base>=1000?(weight?'kg':'L'):(weight?'g':'ml'));}
+ return number(n)+' '+u;
+}
+function bbShopPurchasePack(item,quantity,quote=item.priceQuote){
+ // The subtitle and checkbox share one validated physical purchase contract.
+ return bb84DisplayedPurchase(item,quantity,0,{contract:true,quote});
+}
+function bbShopNeedPresentation(item,{bought=0,checked=false,market=bb307Market,quote=item.priceQuote}={}){
+ const known=value=>(typeof value==='number'||typeof value==='string'&&value.trim()!=='')&&Number.isFinite(Number(value))&&Number(value)>=0&&Number(value)<=1000000;
+ const unit=item.unit||'each',owned=known(item.pantryUsed)?Number(item.pantryUsed):known(item.ownedQty)?Number(item.ownedQty):0;
+ // A missing requirement is not zero. Older/manual rows provide their net
+ // demand as toBuy/qty; household targets and balances use their entered unit.
+ const demand=known(item.toBuy)?Number(item.toBuy):known(item.qty)?Number(item.qty):null;
+ const required=known(item.required)?Number(item.required):known(item.targetQty)?Number(item.targetQty):demand===null?null:owned+demand;
+ const recorded=known(item.recordedPurchaseFloor)?Number(item.recordedPurchaseFloor):0;
+ const purchased=Math.max(recorded,known(bought)?Number(bought):0),amount=value=>bbShopExactQuantity(value,unit,market);
+ if(required===null||required>1000000)return {required:null,atHome:owned,bought:purchased,targetQuantity:null,needed:null,primary:'Check quantity',secondary:purchased>0?'Bought '+amount(purchased)+' • Check required quantity':'Check required quantity',purchaseQuantity:null,packCount:0,packQty:null,packUnit:null,checked:!!checked};
+ const atHome=Math.min(required,owned),targetQuantity=Math.max(0,Math.round((required-atHome)*1000000)/1000000);
+ const needed=Math.max(0,Math.round((targetQuantity-purchased)*1000000)/1000000);
+ const pack=bbShopPurchasePack(item,needed,quote),parts=['Have '+amount(atHome)+' at home (of '+amount(required)+')'];
+ if(purchased>0)parts.push('Bought '+amount(purchased));
+ if(needed>0){
+  if(pack?.packCount&&pack.kind!=='whole'){
+   const label=pack.kind==='bread'?bbShopExactQuantity(pack.packQty,'each',market)+' slices':pack.packUnit==='each'?bbShopExactQuantity(pack.packQty,'each',market)+' pk':bbShopExactQuantity(pack.packQty,pack.packUnit,market);
+   const container=pack.kind==='bread'?(pack.packCount===1?'loaf':'loaves'):pack.kind==='tin'?(pack.packCount===1?'tin':'tins'):(pack.packCount===1?'pack':'packs');
+   parts.push('Buy '+pack.packCount+' '+container+' ('+label+')');
+  }else parts.push('Buy '+amount(pack?.purchaseQuantity??needed));
  }
- // Use the same pack contract as the primary quantity label. A shelf-price
- // guide is not evidence that the shopper bought that pack.
- const tin=bb307Market==='US'&&['g','kg','ml','l'].includes(unit)?null:bb321TinSpec(name,unit);
- if(tin)quantity=Math.ceil((remaining-0.000001)/tin.size)*tin.size;
- else if(unit==='each'&&/\b(?:bread|toast)\b/i.test(name)&&!/\b(?:bread loaf|loaf of bread|garlic baguette|bread rolls?|flatbread|pitta bread|bread flour|breadcrumbs?)\b/i.test(name))quantity=Math.ceil(remaining/18)*18;
- else if(['each','pack','clove','cloves','can','cans','tin','tins'].includes(unit))quantity=Math.ceil(remaining-1e-9);
- return Number(already)+quantity;
+ return {required,atHome,bought:purchased,targetQuantity,needed,primary:amount(needed)+(purchased>0&&needed>0?' more needed':' needed'),secondary:parts.join(' • '),purchaseQuantity:pack?.purchaseQuantity??needed,packCount:pack?.packCount||0,packQty:pack?.packQty||null,packUnit:pack?.packUnit||null,checked:!!checked};
+}
+function bb84DisplayedPurchase(item,required,already=0,options={}){
+ const name=String(item.key||item.name||''),unit=String(item.unit||'each').toLowerCase(),prior=Number(already)||0,remaining=Math.max(0,Number(required)-prior);
+ if(!Number.isFinite(remaining)||!(remaining>0)||remaining>1000000)return options.contract?null:prior;
+ const scale={g:1,kg:1000,ml:1,l:1000},family=value=>['g','kg'].includes(value)?'weight':['ml','l'].includes(value)?'volume':null;
+ const quote=Object.hasOwn(options,'quote')?options.quote:item.priceQuote;
+ const offers=[];
+ if(Number(item.buyMultiple)>0&&String(item.buyMultipleUnit||'').toLowerCase()===unit)offers.push({packQty:Number(item.buyMultiple),packUnit:unit,kind:'pack'});
+ if(quote)offers.push({packQty:Number(quote.packQty),packUnit:String(quote.packUnit||'').toLowerCase(),kind:'pack'});
+ const tin=bb307Market==='US'&&['g','kg','ml','l'].includes(unit)?null:typeof bb321TinSpec==='function'?bb321TinSpec(name,unit):null;
+ if(tin)offers.push({packQty:Number(tin.size),packUnit:unit,kind:'tin'});
+ if(unit==='each'&&/\b(?:bread|toast)\b/i.test(name)&&!/\b(?:bread loaf|loaf of bread|garlic baguette|bread rolls?|flatbread|pitta bread|bread flour|breadcrumbs?)\b/i.test(name))offers.push({packQty:18,packUnit:'each',kind:'bread'});
+ if(['each','pack','clove','cloves','can','cans','tin','tins'].includes(unit))offers.push({packQty:1,packUnit:unit,kind:'whole'});
+ let contract={purchaseQuantity:remaining,packCount:0,packQty:null,packUnit:null,kind:'exact'};
+ for(const offer of offers){
+  const {packQty,packUnit,kind}=offer;
+  if(!Number.isFinite(packQty)||!(packQty>0)||packQty>1000000)continue;
+  const size=packUnit===unit?packQty:family(unit)&&family(unit)===family(packUnit)?packQty*scale[packUnit]/scale[unit]:null;
+  if(!Number.isFinite(size)||!(size>0)||size>1000000)continue;
+  const epsilon=kind==='tin'?0.000001:kind==='whole'?1e-9:1e-10*size;
+  const packCount=Math.max(1,Math.ceil((remaining-epsilon)/size)),purchaseQuantity=packCount*size;
+  if(!Number.isSafeInteger(packCount)||!Number.isFinite(purchaseQuantity)||purchaseQuantity+0.000001<remaining||purchaseQuantity>1000000)continue;
+  contract={purchaseQuantity,packCount,packQty,packUnit,kind};break;
+ }
+ return options.contract?contract:prior+contract.purchaseQuantity;
 }
 /* Reduced purchase costs are kept in the active trip, never usual prices. */
 function bbReducedContext(){return {actor:window.BBHome?.actor?.()||'guest',market:bb307Market};}
@@ -8043,7 +8087,7 @@ function bb84SetPrimaryPurchase(id,checked,item,essential=false,additional={}){
  try{
   const session=bbShopV7Session(),ticks=bb321ReadShopTicks(),purchases=bb84ReadPurchased();
   const partials=bbPartialAll(),choices=bbBetaPurchaseChoices(),undo={...session.checkboxUndo},reducedUndo={...session.reducedCheckboxUndo},key=bbPartialKey({id});
-  const qty=Number(essential?item.qty:item.toBuy),old=partials[key],oldBought=Number(old?.bought||0);
+  const qty=typeof bbShopNeedPresentation==='function'?bbShopNeedPresentation(item).targetQuantity:Number(essential?item.qty:item.toBuy),old=partials[key],oldBought=Number(old?.bought||0);
   if(checked){if(!(qty>0)||oldBought>0&&old.unit!==String(item.unit||'each'))return false;
    const actualQty=bb84DisplayedPurchase(item,qty,oldBought);if(!Number.isFinite(actualQty)||actualQty<qty||actualQty>1000000)return false;
    undo[id]=old&&oldBought>0?{...old}:null;
@@ -8091,7 +8135,7 @@ function bb84ExtraRows(app,items,essentials,ticks,market){
  const list=app.querySelector('#bb321Printable');if(!list)return;
  for(const [item,essential] of [...items.map(x=>[x,false]),...essentials.map(x=>[x,true])]){
   const id=essential?'ess:'+item.id:BB307Pantry.pantryId(item.key,item.unit);
-  const needed=Number(essential?item.qty:item.toBuy),extra=bb84ExtraNeeded(id,needed,ticks);
+  const needed=typeof bbShopNeedPresentation==='function'?bbShopNeedPresentation(item).targetQuantity:Number(essential?item.qty:item.toBuy),extra=bb84ExtraNeeded(id,needed,ticks);
   if(!(extra>0))continue;
   const primary=[...list.querySelectorAll('[data-bb321-tick]')].find(x=>x.dataset.bb321Tick===id);
   const original=primary?.closest('.bb321-buy-row');if(!original)continue;
@@ -8112,7 +8156,7 @@ function bb321WeeklySummary(existingResult){
  if(!bbShopV7Reconcile(need,essentials))notify('Please review your saved shopping progress.');
  const ticks=bb321ReadShopTicks();
  bb84SeedPreviouslyBought(need,essentials,ticks);
- const extraNeed=[...need.map(item=>({item,id:BB307Pantry.pantryId(item.key,item.unit),essential:false})),...essentials.map(item=>({item,id:'ess:'+item.id,essential:true}))].map(x=>({...x,qty:bb84ExtraNeeded(x.id,Number(x.essential?x.item.qty:x.item.toBuy),ticks)})).filter(x=>x.qty>0);
+ const extraNeed=[...need.map(item=>({item,id:BB307Pantry.pantryId(item.key,item.unit),essential:false})),...essentials.map(item=>({item,id:'ess:'+item.id,essential:true}))].map(x=>({...x,qty:bb84ExtraNeeded(x.id,typeof bbShopNeedPresentation==='function'?bbShopNeedPresentation(x.item).targetQuantity:Number(x.essential?x.item.qty:x.item.toBuy),ticks)})).filter(x=>x.qty>0);
  const extraSpend=extraNeed.reduce((v,x)=>v+(bb15Quote({...x.item,toBuy:x.qty,qty:x.qty},x.essential).amount||0),0);
  const subtotal=need.reduce((v,item)=>v+(item.displaySpend||0),0);
  const additional=essentials.reduce((v,item)=>v+(item.displaySpend||0),0);
@@ -8223,7 +8267,7 @@ function renderShop(app){
    const id=pantryId(item),stock=bb307Stock[id]||0,legacy=!!state.pantry?.[bb307NormaliseName(item.key)]&&!stock;
    const effective=legacy?item.required:stock;
    const partial=bbPartialDetails({id,basketItem:item,checked:!!ticks[id]});
-   const remaining=partial?.bought>0?partial.remaining:item.toBuy;
+   const needDisplay=bbShopNeedPresentation(item,{bought:ticks[id]?bb84SavedPurchased(id):partial?.bought||0,checked:!!ticks[id],market:bb307Market});
    const units=BB307Pantry.stockUnits(item.unit);
    const support=[];
    if(item.packSize&&item.toBuy)support.push(`Illustrative pack: ${number(item.packSize)} ${esc(item.priceQuote?.packUnit||item.unit)}`);
@@ -8237,7 +8281,7 @@ function renderShop(app){
     <div class="bb321-shop-main">
       <input id="bb321-buy-check-${i}" class="bb321-shop-checkbox" type="checkbox" data-bb321-tick="${esc(id)}" aria-label="Bought ${esc(item.key)}" ${ticks[id]?'checked':''}>
       <div class="bb321-shop-info"><label for="bb321-buy-check-${i}" class="bb321-shop-name">${esc(bb172Title(item.key))}</label>
-        <div class="bb321-shop-quantity"><strong>${esc(bb80ShoppingAction(item.key,ticks[id]?(bb84SavedPurchased(id)||item.toBuy):remaining,item.unit,bb307Market,!!ticks[id],item))}${partial?.bought>0?' more':''}</strong>${partial?.bought>0?`<small class="bbpartial-progress">${partial.bought} ${esc(item.unit)} already purchased · ${remaining} left</small>`:''}<span class="bb321-shop-source">${source}</span></div>
+        <div class="bb321-shop-quantity"><strong>${esc(needDisplay.primary)}</strong><small class="bb-shop-need-context">${esc(needDisplay.secondary)}</small><span class="bb321-shop-source">${source}</span></div>
         <details class="bb321-shop-detail"><summary>Pack &amp; pantry details</summary>
          ${support.length?`<p class="muted bb321-shop-hint">${support.join(' · ')}</p>`:''}
          ${bb321StockControls(item,i,effective,units)}
@@ -8259,10 +8303,11 @@ function renderShop(app){
    </div>`;
  }).join('');
  const essentialsRows=essentials.map((x,i)=>{
-   const id='ess:'+x.id;
+   const id='ess:'+x.id,partial=bbPartialDetails({id,basketItem:{...x,toBuy:x.qty},checked:!!ticks[id]});
+   const needDisplay=bbShopNeedPresentation(x,{bought:ticks[id]?bb84SavedPurchased(id):partial?.bought||0,checked:!!ticks[id],market:bb307Market});
    return `<div class="shop-row bb321-buy-row bb321-essential-row" data-bb321-purchased="${ticks[id]?'true':'false'}">
     <div class="bb321-shop-main"><input class="bb321-shop-checkbox" id="bb321-ess-check-${i}" type="checkbox" aria-label="Bought ${esc(x.name)}" data-bb321-tick="${esc(id)}" ${ticks[id]?'checked':''}>
-     <div class="bb321-shop-info"><label for="bb321-ess-check-${i}" class="bb321-shop-name">${esc(bb172Title(x.name))}</label><div class="bb321-shop-quantity"><strong>${esc(bb80ShoppingAction(x.name,x.qty,x.unit,bb307Market,false))}</strong><span class="bb321-shop-source">Weekly essential</span></div>${bb15PriceEditor(x,true,i)}</div></div>
+     <div class="bb321-shop-info"><label for="bb321-ess-check-${i}" class="bb321-shop-name">${esc(bb172Title(x.name))}</label><div class="bb321-shop-quantity"><strong>${esc(needDisplay.primary)}</strong><small class="bb-shop-need-context">${esc(needDisplay.secondary)}</small><span class="bb321-shop-source">Weekly essential</span></div>${bb15PriceEditor(x,true,i)}</div></div>
     <div class="bb321-shop-price" aria-label="Indicative cost for ${esc(x.name)}">${bb15PriceLabel(x.priceQuote)}</div>
    </div>`;
  }).join('');
@@ -10372,7 +10417,8 @@ function bbShopV7Close(transfer=null){
 function bbShopV7Reconcile(items,essentials){
  const ticks=bbShopV7Read(BB321_SHOP_TICKS_KEY),purchased=bbShopV7Read(BB84_PURCHASED_KEY),partials=bbShopV7Read(BB_PARTIAL_PURCHASE_KEY),session=bbShopV7Session();
  const nextTicks={...ticks},nextPartials={...partials},nextPurchased={...purchased},nextUndo={...session.checkboxUndo};let changed=false;
- for(const [id,required,unit] of [...items.map(x=>[BB307Pantry.pantryId(x.key,x.unit),Number(x.toBuy),x.unit]),...essentials.map(x=>['ess:'+x.id,Number(x.qty),x.unit])]){
+ const target=x=>typeof bbShopNeedPresentation==='function'?bbShopNeedPresentation(x).targetQuantity:Number(x.toBuy??x.qty);
+ for(const [id,required,unit] of [...items.map(x=>[BB307Pantry.pantryId(x.key,x.unit),target(x),x.unit]),...essentials.map(x=>['ess:'+x.id,target(x),x.unit])]){
   if(!ticks[id]||!(required>0))continue;
   const purchase=purchased[id];if(purchase?.legacySnapshot)continue;
   const measured=Number(purchase?.actualQty??purchase?.qty)||0;
@@ -10582,7 +10628,7 @@ function bbPartialKey(item){return bbBetaShopWeek()+'|'+item.id;}
 function bbPartialAll(){bbShopV7Session();return bb83ReadObject(BB_PARTIAL_PURCHASE_KEY);}
 function bbPartialDetails(item){
  if(!item||!item.id||!item.basketItem||item.checked)return null;
- const needed=Number(item.basketItem.toBuy),unit=item.basketItem.unit;
+ const needed=typeof bbShopNeedPresentation==='function'?bbShopNeedPresentation(item.basketItem).targetQuantity:Number(item.basketItem.toBuy),unit=item.basketItem.unit;
  if(!Number.isFinite(needed)||needed<=0)return null;
  const saved=bbPartialAll()[bbPartialKey(item)];
  const bought=Number(saved?.bought||0);
@@ -10592,7 +10638,7 @@ function bbPartialDetails(item){
 function bbPartialSet(item,boughtTotal,reducedPrice){
  if(!item?.id)return false;
  const valid=bbBetaReceiptCandidate(item),basket=item.basketItem;
- const required=Number(basket?.toBuy??valid?.qty),unit=String(basket?.unit||valid?.unit||''),total=Number(boughtTotal);
+ const required=basket&&typeof bbShopNeedPresentation==='function'?bbShopNeedPresentation(basket).targetQuantity:Number(basket?.toBuy??valid?.qty),unit=String(basket?.unit||valid?.unit||''),total=Number(boughtTotal);
  if(!(required>0)||!['each','g','kg','ml','l','pack','clove'].includes(unit)||!Number.isFinite(total)||total<0||total>1000000)return false;
  if(['each','pack','clove'].includes(unit)&&!Number.isInteger(total))return false;
  if(bbBetaReceiptRead()?.[bbBetaReceiptId(item.id)])return false;
@@ -11293,7 +11339,11 @@ function bb172StorefrontMakeRow(item){
  const mismatch=item.row?.querySelector('.bb-pantry-mismatch');
  if(mismatch)info.append(bb172StorefrontEl('small','bb-pantry-mismatch',mismatch.textContent));
  const amount=bb172StorefrontEl('span','bbcompact-qty',item.qty||'Check quantity');
- const partial=bbPartialDetails(item);if(partial&&partial.bought>0){info.append(bb172StorefrontEl('small','bbpartial-progress',partial.bought+' / '+partial.needed+' '+partial.unit+' bought · '+partial.remaining+' left'));const display=bb80ShoppingQuantity(item.name,partial.remaining,partial.unit,bb307Market,item.basketItem||{});amount.textContent='Buy '+display+' more';}
+ const partial=bbPartialDetails(item);
+ if(item.basketItem){
+  const needDisplay=bbShopNeedPresentation(item.basketItem,{bought:item.checked?bb84SavedPurchased(item.id):partial?.bought||0,checked:item.checked,market:bb307Market});
+  amount.textContent=needDisplay.primary;info.append(bb172StorefrontEl('small','bb-shop-need-context',needDisplay.secondary));
+ }else if(partial&&partial.bought>0){info.append(bb172StorefrontEl('small','bbpartial-progress',partial.bought+' / '+partial.needed+' '+partial.unit+' bought · '+partial.remaining+' left'));const display=bb80ShoppingQuantity(item.name,partial.remaining,partial.unit,bb307Market,item.basketItem||{});amount.textContent='Buy '+display+' more';}
  const rawLines=[...(item.row?.querySelectorAll('.bb80-price-line')||[])];
  const priceText=(needle)=>{const found=rawLines.find(el=>el.querySelector('span')?.textContent?.toLowerCase().includes(needle));return found?.querySelector('strong,button')?.textContent?.trim()||''};
  const rawPrice=item.price||'';
@@ -12493,7 +12543,7 @@ if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',
   <button type="button" class="bbtrial-free" data-bbtrial-free>Continue with BasketBoss Free →</button>
   <p class="bbtrial-foot">200 starter recipes, manual ingredients and basic planning remain available without subscribing.</p>
  </div>
-</dialog><script src="/pwa700/bb-intro-trial.js?v=2a443fc0c0575862"></script><link rel="stylesheet" href="/bb-how-it-works.css?v=dbb7f80026cc2c2d"><script defer src="/bb-how-it-works.js?v=651cfb06d1cccfd4"></script><script defer src="/pwa700/bb-onboarding-v2.js?v=a374ca915d24c934"></script><script defer src="/bb-cold-preview.js?v=46afe53cdbe6b6b6"></script><script defer src="/bb-funnel.js?v=4bee9ce96a61edd8"></script><script defer src="/bb-ux-cleanup.js?v=4ba6e15d362d6a86"></script><script src="/bb-us-market.js?v=8e07375d3f4c4176"></script><script defer src="/bb-install.js?v=2014bf7430501c45"></script><script defer src="/pwa700/bb-welcome-splash.js?v=2c529c615a0409cb"></script><script defer src="/pwa700/bb-premium-features.js?v=212237dab98a367d"></script>
+</dialog><script src="/pwa700/bb-intro-trial.js?v=2a443fc0c0575862"></script><link rel="stylesheet" href="/bb-how-it-works.css?v=dbb7f80026cc2c2d"><script defer src="/bb-how-it-works.js?v=bdd83d8ee84dd641"></script><script defer src="/pwa700/bb-onboarding-v2.js?v=a374ca915d24c934"></script><script defer src="/bb-cold-preview.js?v=46afe53cdbe6b6b6"></script><script defer src="/bb-funnel.js?v=4bee9ce96a61edd8"></script><script defer src="/bb-ux-cleanup.js?v=4ba6e15d362d6a86"></script><script src="/bb-us-market.js?v=8e07375d3f4c4176"></script><script defer src="/bb-install.js?v=2014bf7430501c45"></script><script defer src="/pwa700/bb-welcome-splash.js?v=2c529c615a0409cb"></script><script defer src="/pwa700/bb-premium-features.js?v=212237dab98a367d"></script>
 <style id="bb175-ux-fix">
 /* BasketBoss v17.4.2 premium-preview usability improvements */
 #app .swipe-action.yes{color:#c91e43!important;background:#fff2f4!important;border:3px solid #d92c50!important;box-shadow:0 5px 18px rgba(192,22,60,.22)!important;font-size:37px!important;font-weight:900!important}
@@ -12753,7 +12803,7 @@ body{background:var(--bb17513-app-canvas)!important;background-image:none!import
   else start();
 })();
 </script>
-<script src="/pwa700/bb-real-app-tour-v82.js?v=427d73c7d7d578ca" defer></script>
+<script src="/pwa700/bb-real-app-tour-v82.js?v=7f9dbbe1fbd9fb81" defer></script>
 <!-- BB17513 private QA membership switch: PRIVATE CODESPACES HOSTS ONLY. Not an entitlement. -->
 
 <script defer src="/pwa700/bb-cloudflare-qa.js?v=57d9640bd84ebd61"></script>
@@ -12780,10 +12830,10 @@ function initialise(){
  <p class="bbui-tutorial-intro">Choose the section you need. Each tutorial is here, inside Settings, and can be opened or closed independently.</p>
  <details class="bbui-tutorial-topic"><summary>📅 Plan — set up your week</summary><div class="bbui-tutorial-body"><ol><li>Open <strong>Plan</strong> and set the number of people you cook for.</li><li>Choose a dinner for each day, or use <strong>Auto-fill My Week</strong> to fill eligible empty days.</li><li>To change one dinner, use that day’s <strong>Auto-fill</strong> control. Check the suggested meal before confirming. Shop recalculates for the new ingredients.</li><li>Open a day to see its meal, ingredients and cooking controls.</li></ol></div></details>
  <details class="bbui-tutorial-topic" id="bbGuideIngredientsUsed"><summary>✅ Confirm a meal’s ingredients</summary><div class="bbui-tutorial-body"><ol><li>After using the planned food, open its day in <strong>Plan</strong> and tap <strong>Day done</strong>.</li><li>Check <strong>Required</strong>, <strong>In pantry</strong> and <strong>Remaining after confirmation</strong> in the ingredient table. Food stays At home until you confirm it was used or manually update the stock.</li><li>If a stock check is needed, complete it inside the panel. You stay in Plan.</li><li>Tap <strong>Confirm &amp; update pantry</strong>. Choose <strong>Not yet</strong> to leave without confirming the meal.</li></ol><p>Meals already confirmed are skipped, so the same ingredients are not deducted twice.</p></div></details>
- <details class="bbui-tutorial-topic" id="bbGuideSchoolLunches"><summary>🎒 Confirm the school-lunch week</summary><div class="bbui-tutorial-body"><ol><li>In <strong>Plan → School lunchboxes</strong>, choose your children’s lunches and check the number of children.</li><li>When those lunches have been made or used, tap <strong>Confirm school lunches for the week</strong>.</li><li>Check the planned days and their combined ingredient amounts. Lunches already confirmed are skipped.</li><li>Tap <strong>Confirm lunches for the week</strong>. Only the remaining lunches update At home; dinners stay separate.</li></ol><p>Saving a lunch plan adds its ingredients to Shop. Confirming the food as used deducts the ingredients from stock.</p></div></details>
+ <details class="bbui-tutorial-topic" id="bbGuideSchoolLunches"><summary>🎒 Confirm the school-lunch week</summary><div class="bbui-tutorial-body"><ol><li>In <strong>Plan → School lunches</strong> above the day list, choose your children’s lunches and check the number of children.</li><li>When those lunches have been made or used, tap <strong>Confirm school lunches for the week</strong>.</li><li>Check the planned days and their combined ingredient amounts. Lunches already confirmed are skipped.</li><li>Tap <strong>Confirm lunches for the week</strong>. Only the remaining lunches update At home; dinners stay separate.</li></ol><p>Saving a lunch plan adds its ingredients to Shop. Confirming the food as used deducts the ingredients from stock.</p></div></details>
  <details class="bbui-tutorial-topic"><summary>🔎 Discover — search recipes</summary><div class="bbui-tutorial-body"><ol><li>Search by recipe name or browse the available categories.</li><li>Swipe the featured recipe to browse (no automatic planning), or use View Recipe & Cook. Tap Add to week on the gallery recipe cards below to choose a day.</li><li>Premium recipes show a faded image with the BasketBoss logo and <strong>Unlock with Premium</strong> in Free mode.</li></ol></div></details>
- <details class="bbui-tutorial-topic"><summary>🏠 At home — stock and essentials</summary><div class="bbui-tutorial-body"><section id="at-home-quantities"><ol><li>Open Cupboard, Fridge or Freezer. Tap <strong>Add food</strong> to record food you already have.</li><li>Tap an item to edit its quantity, or use its <strong>− / +</strong> controls. Valid saved changes update Shop automatically.</li><li>Shop buys the difference: if meals need <strong>300 g rice</strong> and you have <strong>200 g</strong>, it shows <strong>Buy 100 g</strong>.</li><li>Use <strong>Extra stock buffer</strong> when you want more left over after your planned meals.</li><li>For Weekly essentials, review the amount needed and the amount at home, then choose <strong>Confirm &amp; update Shop</strong>.</li></ol><p>Use the same unit when checking quantities. An approximate whole-food count is an estimate; your saved measured amount is kept.</p></section></div></details>
- <details class="bbui-tutorial-topic"><summary>🛒 Shop — check what you need</summary><div class="bbui-tutorial-body"><ol><li>Shop combines the ingredients for your meals, school lunches and essentials, then subtracts recorded pantry stock.</li><li>Choose <strong>Begin shop</strong>. The blue summary becomes a compact estimate and item counter as you scroll.</li><li>Tick the amount you buy. Use <strong>•••</strong> if you bought a different amount or want to record the full pack.</li><li>Use <strong>Add item</strong> for a shared extra. <strong>Partner Sharing</strong> connects your household; a person badge identifies items your partner added.</li><li>Choose <strong>Finish shop</strong>, then <strong>Finish &amp; update At home</strong>. The full amount you recorded buying is added to stock, including surplus.</li></ol><p>Ticking an item records the purchase. Finishing the shop confirms the transfer to At home.</p></div></details>
+ <details class="bbui-tutorial-topic"><summary>🏠 At home — stock and essentials</summary><div class="bbui-tutorial-body"><section id="at-home-quantities"><ol><li>Choose the <strong>Fridge</strong>, <strong>Cupboard</strong>, <strong>Freezer</strong> or <strong>All</strong> storage tab. Tap <strong>Add food</strong> to record food you already have.</li><li>Tap an item to edit its quantity, or use its <strong>− / +</strong> controls. Valid saved changes update Shop automatically.</li><li>Shop buys the difference: if meals need <strong>300 g rice</strong> and you have <strong>200 g</strong>, it shows <strong>Buy 100 g</strong>.</li><li>Use <strong>Extra stock buffer</strong> when you want more left over after your planned meals.</li><li>For Weekly essentials, review the amount needed and the amount at home, then choose <strong>Confirm &amp; update Shop</strong>.</li></ol><p>Use the same unit when checking quantities. An approximate whole-food count is an estimate; your saved measured amount is kept.</p></section></div></details>
+ <details class="bbui-tutorial-topic"><summary>🛒 Shop — check what you need</summary><div class="bbui-tutorial-body"><ol><li>Shop combines the ingredients for your meals, school lunches and essentials, then subtracts recorded pantry stock.</li><li>Choose <strong>Begin shop</strong>. The blue summary becomes a compact estimate and item counter as you scroll.</li><li>The main amount is the exact shortfall after your pantry stock is counted. The line below shows your pantry credit and purchase-pack suggestion. Tick the shown pack, or use <strong>•••</strong> to enter a different amount actually bought.</li><li>Use <strong>Add item</strong> for a shared extra. <strong>Partner Sharing</strong> connects your household; a person badge identifies items your partner added.</li><li>Choose <strong>Finish shop</strong>, then <strong>Finish &amp; update At home</strong>. The full amount you recorded buying is added to stock, including surplus.</li></ol><p>Ticking an item records the purchase. Finishing the shop confirms the transfer to At home.</p></div></details>
  <details class="bbui-tutorial-topic"><summary>🍳 Cook — Make a Meal and follow steps</summary><div class="bbui-tutorial-body"><ol><li>Open your planned meal to follow its preparation and cooking steps.</li><li>When the food has been used, choose <strong>Day done</strong> in Plan. In Cook, review the amounts and choose <strong>Confirm cooked &amp; update pantry</strong>.</li><li>In Plan’s ingredient panel, check the listed amounts before choosing <strong>Confirm &amp; update pantry</strong>. Meals already confirmed are skipped.</li><li>At home updates after confirmation. Any required stock check appears in the same panel.</li><li>Follow packaging, storage, food-safety and allergy instructions.</li></ol></div></details>
  <details class="bbui-tutorial-topic"><summary>🧾 Receipt scanner — review before saving</summary><div class="bbui-tutorial-body"><ol><li>Open <strong>Shop</strong>, choose your region and supermarket, then tap <strong>Scan Receipt</strong>. This optional feature needs a confirmed Premium account, internet access and available scan allowance.</li><li>Take or choose a photo. Crop out personal/payment details and review it before agreeing to send it to Google Gemini.</li><li>Tap <strong>Scan receipt</strong>, then check the store, currency, total, discounts, names, amounts and food locations. Keep uncertain quantities unknown; non-food purchases stay separate from food stock.</li><li>Choose <strong>Confirm receipt &amp; add food</strong> when correct. Confirmed food updates At home; a preview alone saves nothing.</li><li>Use <strong>Check receipt status</strong> after an interrupted confirmation. Review <strong>Confirm Your Pantry</strong> before the next shop to avoid counting the same purchase twice.</li></ol><p>Receipt photos are not saved by BasketBoss. Original photos remain in your own photo library. <a href="basketboss-latest-guide.html#receipts">Read the receipt scanner guide</a>.</p></div></details>
  <details class="bbui-tutorial-topic"><summary>↗ How it all connects · PWA &amp; iPhone</summary><div class="bbui-tutorial-body"><ol><li><strong>Plan:</strong> choose meals and portions.</li><li><strong>At home:</strong> record the food you already have.</li><li><strong>Shop:</strong> buy the remaining amount, then finish the shop to add purchases to stock.</li><li><strong>Confirm &amp; update pantry:</strong> subtract the ingredients after the food has been used.</li></ol><p>Planning and Auto-fill calculate what you need; they do not consume pantry stock. Each installation has its own local storage. Use the account, sharing and backup tools provided when moving between devices.</p></div></details>
@@ -13306,7 +13356,7 @@ body[data-bbnext-view="discover"] #app .bb175-discover-heading{padding-top:calc(
 <script defer src="/bb-weekly-shop.js?v=527947c9a9ce151a"></script>
 <link rel="stylesheet" href="/bb-membership-compare.css?v=ad910a66d1cf7c71">
 <script defer src="/pwa700/bb-membership-compare.js?v=b318bb5e665db375"></script>
-<link rel="stylesheet" href="/bb-plan-premium-polish.css?v=be11bcb4ee1c3f95">
+<link rel="stylesheet" href="/bb-plan-premium-polish.css?v=de79ad20991d92ce">
 <script defer src="/pwa700/bb-plan-premium-polish.js?v=119b12c93909fd8e"></script>
 <link rel="stylesheet" href="/bb-ingredient-picker.css?v=9b21ceeb3e24ebc0">
 <link rel="stylesheet" href="/bb-evening-pivot-ui.css?v=f5e043dd0ce3bffd">
@@ -13333,12 +13383,12 @@ body[data-bbnext-view="discover"] #app .bb175-discover-heading{padding-top:calc(
 <script defer src="/bb-household-amount.js?v=6489f4e3a691f94e"></script>
 <script defer src="/bb-kitchen-essentials.js?v=a7e8614a60de3a9e"></script>
 <script defer src="/bb-kitchen-prices.js?v=c22ce8be49f9f5c2"></script>
-<link rel="stylesheet" href="/bb-pantry-inline.css?v=e4427862328ee172">
-<script defer src="/bb-pantry-inline.js?v=bfe8dab4bae00ebc"></script>
+<link rel="stylesheet" href="/bb-pantry-inline.css?v=2e1b5462ce29a0f6">
+<script defer src="/bb-pantry-inline.js?v=a2549130cdc33094"></script>
 <link rel="stylesheet" href="/bb-keyboard-layout.css?v=2a885fc1cdadaedf">
 <script defer src="/bb-keyboard-layout.js?v=872e31f50037e966"></script>
 <link rel="stylesheet" href="/bb-simple-layout.css?v=b78ffdb3dab2f664">
-<script defer src="/bb-simple-layout.js?v=56c64ce7eee60d96"></script>
+<script defer src="/bb-simple-layout.js?v=a8c398e403aec217"></script>
 <script defer src="/bb-pantry-deduction.js?v=7f7ea56758539457"></script>
 <script defer src="/bb-home.js?v=0555391aa6f210ae"></script><link rel="stylesheet" href="/bb-day-done.css?v=253f0f3f5c07d102"><script defer src="/bb-day-done.js?v=426d69277433d1e7"></script><link rel="stylesheet" href="/bb-shop-add.css?v=76495afe6b55de2b"><script defer src="/bb-shop-add.js?v=ab24b574d6fa7c12"></script><script defer src="/bb-cupboard-staples.js?v=ee852189a99dad60"></script><script src="/bb-pantry-autofill.js?v=20024bb507445777"></script>
 <link rel="stylesheet" href="/bb-shared-shopping.css?v=608ff045e8152025">
@@ -13366,7 +13416,7 @@ body[data-bbnext-view="discover"] #app .bb175-discover-heading{padding-top:calc(
 <link rel="stylesheet" href="/bb-plan-extras.css?v=1746bc3462e9a4f7">
 
 <!-- Shared app finish: loaded after the legacy component styles. -->
-<link rel="stylesheet" href="/bb-premium-finish.css?v=b89f4e5748ef41e4">
+<link rel="stylesheet" href="/bb-premium-finish.css?v=2ad25ee4737dabd1">
 <link rel="stylesheet" href="/bb-premium-dialogs.css?v=e42b0968a6881d77">
 <script src="/pwa700/bb-plan-swap.js?v=f991078935315229"></script>
 <!--/email_off--></body></html>

@@ -50,7 +50,7 @@ async function checkQuantity(item){
   const opened={quantity:await quantity.inputValue(),needed:await needed.inputValue(),unit:await unit.inputValue()};
   if(!item.before){assert.equal(opened.quantity,item.display);assert.equal(opened.unit,item.displayUnit||item.unit);assert.equal(opened.needed,item.needed);}
   await page.evaluate(()=>document.activeElement?.blur());
-  
+
   await panel.locator('.bbpi-close').click();await panel.waitFor({state:'detached'});assert.deepEqual(await snapshot(),original,'opening/closing cannot write');
   if(!item.before){
    await edit();await panel.locator('.bbpi-done').click();await panel.waitFor({state:'detached'});let saved=await snapshot();assert.equal(saved.canonical.quantity,original.canonical.quantity,'untouched Done preserves exact balance');assert.equal(saved.stock,original.stock,'untouched Done preserves physical stock bytes');if(item.pack)assert.equal(saved.packQuantity,item.pack);

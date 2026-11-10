@@ -388,3 +388,41 @@ html body #app.bbnext-plan[data-bb-compact-plan="true"] #bbpolAutofillCard #bbSi
  min-width:18px;height:18px;padding:0 3px;box-sizing:border-box;border:1px solid #fffdf6;border-radius:999px;
  background:#245e43;color:#fffdf6;font:750 10px/1 system-ui;
 }
+
+/* One planner card, two original plans. Tab selection is presentation only. */
+html body .shell #app.bbnext-plan{padding-bottom:calc(120px + env(safe-area-inset-bottom,0px))!important}
+#app.bbnext-plan #bb1759MealsSummary[data-bb-planner-tabs]{overflow-anchor:none}
+#app.bbnext-plan .bbs-planner-tabs{display:flex;align-items:center;gap:9px;min-width:0;margin:0 0 12px}
+#app.bbnext-plan .bbs-planner-tablist{display:flex;flex:1 1 auto;gap:4px;padding:4px;min-width:0;border:1px solid #c9d9bf;border-radius:999px;background:#e9efdf;box-sizing:border-box}
+#app.bbnext-plan .bbs-planner-tablist>[role="tab"]{display:flex;align-items:center;justify-content:center;flex:1 1 auto;gap:5px;min-width:0;min-height:44px;padding:8px 9px;border:0;border-radius:999px;background:transparent;color:#385c42;font:750 12px/1.2 system-ui,-apple-system,sans-serif;cursor:pointer;white-space:nowrap;box-shadow:none}
+#app.bbnext-plan .bbs-planner-tablist>[role="tab"][aria-selected="true"]{background:#24563e;color:#fffdf5;box-shadow:0 2px 5px #173d2520}
+#app.bbnext-plan .bbs-planner-tab-count{font-size:11px;font-variant-numeric:tabular-nums;font-weight:650}
+#app.bbnext-plan .bbs-planner-tablist>[role="tab"]:focus-visible{outline:2px solid #b38b38;outline-offset:2px}
+#app.bbnext-plan .bbs-planner-tabs>#clearWeek{flex:0 0 auto;margin:0!important;padding:8px 10px!important;font-size:11px!important;white-space:nowrap}
+#app.bbnext-plan #bb1759MealsSummary[data-bb-planner-tabs]>.bb1759-summary-heading h3,
+#app.bbnext-plan #bb1759MealsSummary[data-bb-planner-tabs]>.bb1759-summary-heading .bb1759-step,
+#app.bbnext-plan #bb1759MealsSummary[data-bb-planner-tabs]>.bb1759-summary-heading .bb1759-count{display:none!important}
+#app.bbnext-plan #bb1759MealsSummary[data-bb-planner-tabs]>.bb1759-summary-heading{margin:0 0 12px!important}
+#app.bbnext-plan #bbSimpleDinnersPane[hidden],
+#app.bbnext-plan #bbSimpleSchoolLunchesPane[hidden],
+#app.bbnext-plan[data-bb-planner-pane="lunches"] #bb1759MealsSummary[data-bb-planner-tabs]>.bb1759-summary-heading,
+#app.bbnext-plan[data-bb-planner-pane="lunches"] .bbs-planner-tabs>#clearWeek,
+#app.bbnext-plan[data-bb-planner-pane="lunches"] [data-bb307-extras="week"]{display:none!important}
+#app.bbnext-plan #bbSimpleSchoolLunchesPane{min-width:0}
+#app.bbnext-plan #bbSimpleSchoolLunchesPane #bb321SchoolLunchbox{margin:0!important;padding:0!important;border:0!important;border-radius:0!important;background:transparent!important;box-shadow:none!important;min-width:0}
+#app.bbnext-plan #bbSimpleSchoolLunchesPane #bb321SchoolLunchbox>.section-head{display:block!important;margin-bottom:12px!important}
+#app.bbnext-plan #bbSimpleSchoolLunchesPane #bb321SchoolLunchbox>.section-head .chip{display:none!important}
+#app.bbnext-plan #bbSimpleSchoolLunchesPane #bb321SchoolLunchbox>.section-head h3{display:block!important;margin:0 0 7px!important;font-size:19px!important;color:#24563e!important;line-height:1.25!important}
+#app.bbnext-plan #bbSimpleSchoolLunchesPane #bb321SchoolLunchbox>.section-head .chip{flex-shrink:0;font-size:10px}
+@media(max-width:350px){
+ #app.bbnext-plan .bbs-planner-tabs{flex-wrap:wrap;gap:7px}
+ #app.bbnext-plan .bbs-planner-tablist{flex-basis:100%}
+ #app.bbnext-plan .bbs-planner-tablist>[role="tab"]{font-size:12px;padding-inline:8px}
+ #app.bbnext-plan .bbs-planner-tabs>#clearWeek{margin-left:auto!important}
+ #app.bbnext-plan #bbSimpleSchoolLunchesPane #bb321SchoolLunchbox>.section-head h3{font-size:17px!important}
+}
+
+/* Keep the original lunch section ID as the visible legacy jump target. */
+#app.bbnext-plan #bbSimpleSchoolLunchesPane>#bb1756Lunchboxes{display:block!important;margin:0!important;padding:0!important;border:0!important;background:transparent!important;box-shadow:none!important}
+#app.bbnext-plan #bbSimpleSchoolLunchesPane>#bb1756Lunchboxes>summary{display:none!important}
+#app.bbnext-plan #bbSimpleSchoolLunchesPane>#bb1756Lunchboxes>.bb1756-extra-content{margin:0!important;padding:0!important;border:0!important;background:transparent!important}
