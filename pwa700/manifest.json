@@ -513,13 +513,13 @@
   "files": [
     {
       "path": "app.html",
-      "bytes": 2971016,
-      "sha256": "99e21e921ec332bd8d57b43c77bc8dd2a48a1421f2d0ab007ed6b7d0646c57b8"
+      "bytes": 2971110,
+      "sha256": "4e395566708946ad3d6727e5492578f5c10d0979f924faa8bd07a80474ec03c5"
     },
     {
       "path": "basketboss-latest-guide.html",
-      "bytes": 30242,
-      "sha256": "6972a863e5731d602debb09d7c78256832ba967c9aed9a5c848432e7d61f72f4"
+      "bytes": 30325,
+      "sha256": "762ae1afd4e926f9dc2bc473a7ecce95e64b57bcc9b421172dd081d845026c11"
     },
     {
       "path": "basketboss-pricing-v19.js",
@@ -553,8 +553,8 @@
     },
     {
       "path": "bb-pantry-selection.js",
-      "bytes": 14312,
-      "sha256": "b4cf576b3e3f2c4b25a4a2ca222cd577dee433d003894840b7ce91d8e8494894"
+      "bytes": 14368,
+      "sha256": "2b9f3259706609e7f8d5e32a0c7d133ad17b0900fa651773f7e7a4fb8de6621f"
     },
     {
       "path": "bb-plan-premium-polish.js",
@@ -593,13 +593,13 @@
     },
     {
       "path": "bb-real-app-tour-v82.js",
-      "bytes": 14454,
-      "sha256": "7fe8959de51df77ef166a7257b7e4ca86db263cf932b36a069e2ffbdd864cd9b"
+      "bytes": 14452,
+      "sha256": "427d73c7d7d578cad674cbd32cc9f55581f9a0dfff407e8b29249c581150f1db"
     },
     {
       "path": "bb-real-app-tour.js",
-      "bytes": 14654,
-      "sha256": "757edaf7993c0b333ddfb94fe86e51305f09456594db8cbadc9100422d820415"
+      "bytes": 14653,
+      "sha256": "987cc0aaed91a681a7a398804fddd88e17ed1c4d158c65f036acf4120af307ad"
     },
     {
       "path": "bb-recipe-planning.js",
@@ -634,7 +634,7 @@
     {
       "path": "make-a-meal.html",
       "bytes": 40037,
-      "sha256": "04febaf773c603c8e4ab90cc52adc05da78c15d1f2bceba4e6887a093e745ece"
+      "sha256": "c628486aa5127b908d62c9125171d1817526691fdeba4204ceb0e195b60f7593"
     },
     {
       "path": "make-a-meal.js",
@@ -649,7 +649,7 @@
     {
       "path": "precache.js",
       "bytes": 10340,
-      "sha256": "c3f2e92fd0c2256f9be7c79a495929b9a58800b3437168fbaa5618a0c8649881"
+      "sha256": "331625f78b677160098ccd3dab1067797d9f0a1af4ea48496607e9d403cf86d1"
     },
     {
       "path": "pricing-sandbox.html",
@@ -673,8 +673,8 @@
     },
     {
       "path": "tutorial.html",
-      "bytes": 26596,
-      "sha256": "93ae7b4f611db2d1a15b80d3fbc928658ae5742db72373e96ad9a497d1c943c8"
+      "bytes": 26679,
+      "sha256": "6b7921f8b331f6af08b767870dd64e64f7af791b84781f778060e01b84c078d7"
     }
   ]
 }

@@ -68,3 +68,46 @@
 .bb-day-done-lunch-details>summary{cursor:pointer;min-height:28px;padding:5px 0;font-weight:700}
 .bb-day-done-lunch-details .bb-day-done-meals{margin:8px 0 0}
 .bb-day-done-lunch-details>summary:focus-visible{outline:3px solid #ceaa51;outline-offset:3px}
+
+/* Keep confirmation controls visible while long ingredient lists scroll. */
+.bb-day-done-dialog{--bb-done-top:max(12px,env(safe-area-inset-top,0px));--bb-done-bottom:max(12px,env(safe-area-inset-bottom,0px));--bb-done-left:max(12px,env(safe-area-inset-left,0px));--bb-done-right:max(12px,env(safe-area-inset-right,0px));position:fixed;inset:var(--bb-done-top) var(--bb-done-right) var(--bb-done-bottom) var(--bb-done-left);width:min(calc(100% - var(--bb-done-left) - var(--bb-done-right)),580px);max-width:none;max-height:calc(100dvh - var(--bb-done-top) - var(--bb-done-bottom));padding:0;margin:auto;overflow:hidden}
+.bb-day-done-dialog[open]{display:flex;flex-direction:column}
+.bb-day-done-header{flex:none;padding:20px 20px 12px;background:#fffdf6}
+.bb-day-done-dialog .bb-day-done-explanation{margin:0;font-size:14px}
+.bb-day-done-content{min-height:0;flex:0 1 auto;overflow:auto;overscroll-behavior:contain;padding:0 20px;scrollbar-width:thin;scroll-padding-block:12px}
+.bb-day-done-footer{flex:none;padding:12px 20px 18px;background:#fffdf6;border-top:1px solid #e2e7da}
+.bb-day-done-footer .bb-day-done-status{margin:0 0 10px;min-height:0}
+.bb-day-done-footer .bb-day-done-actions{margin:0}
+.bb-day-done-stock-note{margin:0 0 12px;padding:10px 12px;border-radius:12px;background:#f4f0e2;color:#665832;font-size:12px;line-height:1.45!important}
+.bb-day-done-amount{padding:10px 0;gap:3px}
+.bb-day-done-amount-main strong{min-width:0;overflow-wrap:anywhere}
+.bb-day-done-row-status{font-size:11px!important;line-height:1.35!important}
+.bb-day-done-conversion-details{margin:10px 0 12px;color:#5d6a59;font-size:12px}
+.bb-day-done-conversion-details>summary{min-height:32px;padding:7px 0;cursor:pointer;font-weight:700}
+.bb-day-done-conversion-item{padding:8px 0;border-top:1px solid #e2e7da}
+.bb-day-done-conversion-item strong{font-size:12px}
+.bb-day-done-conversion-item p{font-size:12px;margin:5px 0;overflow-wrap:anywhere}
+.bb-day-done-content>.bb-day-done-amounts:last-child{margin-bottom:12px}
+.bb-day-done-content>.bb-day-done-meals{margin-bottom:12px}
+.bb-day-done-conversion-details>summary:focus-visible{outline:3px solid #ceaa51;outline-offset:3px}
+@media(max-width:380px){.bb-day-done-header{padding:16px 16px 10px}.bb-day-done-dialog h2{font-size:24px}.bb-day-done-dialog .bb-day-done-explanation{font-size:13px}.bb-day-done-content{padding:0 16px}.bb-day-done-footer{padding:10px 16px 14px}.bb-day-done-dialog .bb-day-done-kicker{margin-bottom:7px}.bb-day-done-actions .btn{min-height:44px;padding:10px}.bb-day-done-footer .bb-day-done-status{font-size:11px;margin-bottom:8px}}
+
+.bb-day-done-amount .bb-day-done-stock-math{color:#526b57;font-size:12px!important;font-variant-numeric:tabular-nums;word-spacing:.03em}
+
+/* Read the same reviewed quantities across each ingredient row. */
+.bb-day-done-amounts:has(.bb-day-done-ingredient-table){padding:0 10px}
+.bb-day-done-ingredient-table{width:100%;table-layout:fixed;border-collapse:collapse;text-align:right;font-size:12px;line-height:1.35;font-variant-numeric:tabular-nums}
+.bb-day-done-ingredient-table caption{padding:12px 0;text-align:left;font-size:14px;font-weight:800;color:#173c2d}
+.bb-day-done-ingredient-table th{width:22%;padding:8px 4px;border-top:1px solid #e2e7da;border-bottom:1px solid #e2e7da;font-size:10px;font-weight:700;color:#5d6c5c;overflow-wrap:normal;vertical-align:bottom}
+.bb-day-done-ingredient-table th:first-child{width:34%;text-align:left;padding-left:0}
+.bb-day-done-ingredient-table .bb-day-done-amount{display:table-row;margin:0;padding:0;border:0;font-size:12px}
+.bb-day-done-ingredient-table td{padding:12px 4px;border-bottom:1px solid #e2e7da;vertical-align:top;overflow-wrap:anywhere;font-size:12px;font-weight:500}
+.bb-day-done-ingredient-table tr:last-child td{border-bottom:0}
+.bb-day-done-ingredient-table .bb-day-done-ingredient-name{text-align:left;padding-left:0}
+.bb-day-done-ingredient-name strong{font-size:12px!important;font-weight:650!important;line-height:1.35}
+.bb-day-done-ingredient-name small{display:block;margin-top:3px;font-size:10px!important;color:#64715e}
+.bb-day-done-ingredient-table .bb-day-done-quantity{font-size:12px;font-weight:700}
+.bb-day-done-ingredient-table .bb-day-done-cell-review{font-size:10px;color:#78551f}
+@media(max-width:380px){.bb-day-done-amounts:has(.bb-day-done-ingredient-table){padding:0 7px}.bb-day-done-ingredient-table th{padding-inline:2px;font-size:10px}.bb-day-done-ingredient-table td{padding:10px 2px;font-size:12px}.bb-day-done-ingredient-table .bb-day-done-quantity{font-size:12px}.bb-day-done-ingredient-name strong{font-size:12px!important}.bb-day-done-ingredient-table .bb-day-done-cell-review{font-size:10px}}
+
+.bb-day-done-projection-label{display:block;margin-top:2px;font-size:8px;font-weight:400;line-height:1.25;color:#64715e}

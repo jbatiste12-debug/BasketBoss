@@ -19,7 +19,7 @@ window.adapter={context:()=>({actor,market,card:document.getElementById('card')}
 </script>`;
 const count=page=>page.locator('.bbps-count');
 const check=(name,run)=>test(name,{skip:!chromium?'Playwright unavailable; set BB_PLAYWRIGHT_MODULE to run pantry browser regressions':false},run);
-async function fixture(run){const context=await browser.newContext({viewport:{width:390,height:844},hasTouch:true,isMobile:true,reducedMotion:'reduce'}),page=await context.newPage(),errors=[];page.on('pageerror',error=>errors.push(error.message));try{await page.route('http://pantry.test/**',route=>route.fulfill({contentType:'text/html',body:html}));await page.goto('http://pantry.test/app');await page.addScriptTag({content:source});await page.evaluate(()=>BBPantrySelection.bind(adapter));await page.getByRole('button',{name:'Select items',exact:true}).waitFor();await run(page);assert.deepEqual(errors,[]);}finally{await context.close();}}
+async function fixture(run,{actions=false}={}){const context=await browser.newContext({viewport:{width:390,height:844},hasTouch:true,isMobile:true,reducedMotion:'reduce'}),page=await context.newPage(),errors=[];page.on('pageerror',error=>errors.push(error.message));try{await page.route('http://pantry.test/**',route=>route.fulfill({contentType:'text/html',body:actions?html.replace('<div id="bbpiToolbar"></div>','<div id="bbpiToolbar"><div class="bbpi-toolbar-actions"></div></div>'):html}));await page.goto('http://pantry.test/app');await page.addScriptTag({content:source});await page.evaluate(()=>BBPantrySelection.bind(adapter));await page.getByRole('button',{name:'Select items',exact:true}).waitFor();await run(page);assert.deepEqual(errors,[]);}finally{await context.close();}}
 async function waitCount(page,value){await page.waitForFunction(value=>document.querySelector('.bbps-count')?.textContent===value,value);}
 async function select(page){await page.getByRole('button',{name:'Select items',exact:true}).click();await page.getByRole('checkbox',{name:'Select Rice in cupboard',exact:true}).check();}
 async function confirm(page){await page.locator('.bbps-bar').getByRole('button',{name:'Delete',exact:true}).click();await page.getByRole('dialog').waitFor();}
@@ -47,6 +47,14 @@ async function touchHoldOverSelectionControl(page,control,duration){
 }
 describe('pantry food multi-selection browser interactions',()=>{
  before(async()=>{if(chromium)browser=await chromium.launch({headless:true,...(process.env.BB_CHROMIUM_PATH?{executablePath:process.env.BB_CHROMIUM_PATH}:{}),args:['--no-sandbox']});});after(async()=>{await browser?.close();});
+ check('Select items stays in the search actions and supports keyboard selection without changing stock',()=>fixture(async page=>{
+  const select=page.locator('#bbpiToolbar .bbpi-toolbar-actions').getByRole('button',{name:'Select items',exact:true});
+  assert.equal(await page.locator('[data-bbps-start]').count(),1);
+  await select.focus();await page.keyboard.press('Space');await waitCount(page,'0 selected');
+  await page.getByRole('checkbox',{name:'Select Rice in cupboard',exact:true}).check();await waitCount(page,'1 selected');
+  await page.locator('.bbps-cancel').click();await count(page).waitFor({state:'detached'});
+  assert.equal(await page.evaluate(()=>saved.size),4);assert.equal(await page.evaluate(()=>flushes),0);
+ },{actions:true}));
  check('long press selects one food, suppresses its release click, and Escape leaves stock untouched',()=>fixture(async page=>{const target=page.locator('[data-bbpi-key="cupboard|rice"] strong');await target.scrollIntoViewIfNeeded();const box=await target.boundingBox();await page.mouse.move(box.x+12,box.y+10);await page.mouse.down();await page.waitForTimeout(510);await page.mouse.up();await waitCount(page,'1 selected');assert.equal(await page.getByRole('checkbox',{name:'Select Rice in cupboard',exact:true}).isChecked(),true);assert.equal(await page.evaluate(()=>flushes),0);await page.keyboard.press('Escape');await count(page).waitFor({state:'detached'});assert.equal(await page.evaluate(()=>saved.size),4);}));
  for(const [control,duration]of [['.bbps-all',600],['.bbps-cancel',1800]])check('touch hold keeps one food selected when its release lands on '+control,()=>fixture(async page=>{
   await touchHoldOverSelectionControl(page,control,duration);

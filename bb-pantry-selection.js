@@ -87,7 +87,7 @@
    queued=false;
    if(!valid()||!host.context().card.getClientRects().length){active=false;selected.clear();if(!busy)closeDialog();bar?.remove();bar=null;toolbar?.remove();toolbar=null;return;}
    const card=host.context().card;
-   const target=card.querySelector('#bbpiToolbar');if(target&&!target.querySelector('[data-bbps-start]')){const start=button('Select items',()=>enter(),'bbps-start');start.dataset.bbpsStart='';target.append(start);}
+   const target=card.querySelector('#bbpiToolbar .bbpi-toolbar-actions')||card.querySelector('#bbpiToolbar');if(target&&!card.querySelector('[data-bbps-start]')){const start=button('Select items',()=>enter(),'bbps-start');start.dataset.bbpsStart='';target.append(start);}
    card.classList.toggle('bbps-active',active);card.querySelectorAll('[data-bbps-start]').forEach(node=>{if(node.hidden!==active)node.hidden=active;});
    if(!active){for(const label of card.querySelectorAll('.bbps-check'))if(!label.hidden)label.hidden=true;for(const node of card.querySelectorAll('.bbps-selected'))node.classList.remove('bbps-selected');bar?.remove();bar=null;return;}
    const rows=new Map(host.rows().map(row=>[row.key,row]));for(const key of selected)if(!rows.has(key))selected.delete(key);
