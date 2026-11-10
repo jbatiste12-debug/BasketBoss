@@ -29,3 +29,42 @@
 .bb-day-done-actions button:disabled{cursor:progress;opacity:.65}
 .bb-day-done-dialog button:focus-visible,.bb-day-done-trigger:focus-visible,.bb-day-done-amounts summary:focus-visible{outline:3px solid #ceaa51;outline-offset:3px}
 @media(max-width:380px){.bb-day-done-dialog{padding:18px}.bb-day-done-actions .btn{min-width:100%}}
+/* Ingredient confirmation stays visible in one Plan panel. */
+.bb-day-done-dialog{width:min(calc(100% - 28px),580px);max-height:calc(100dvh - 36px);padding:22px;background:#fffdf6;color:#173c2d;font-family:"Avenir Next",-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;line-height:1.4;overscroll-behavior:contain}
+.bb-day-done-dialog .bb-day-done-kicker{margin:0 0 9px;color:#657354;font-size:10px;font-weight:850;letter-spacing:.14em}
+.bb-day-done-dialog h2{font-size:27px;letter-spacing:-.035em;line-height:1.1;margin:0 0 12px}
+.bb-day-done-dialog .bb-day-done-explanation{margin:0 0 18px;font-size:14px;line-height:1.5;color:#526556}
+.bb-day-done-meals{margin:0 0 18px}
+.bb-day-done-meals li{padding:11px 13px;border-color:#dce5d9;background:#eff3e8}
+.bb-day-done-meals strong{font-size:15px;line-height:1.35}
+.bb-day-done-meals span{font-size:12px}
+.bb-day-done-amounts{margin:0;border:1px solid #dce5d9;padding:0 13px;background:#fffefa}
+.bb-day-done-amounts-heading{display:flex;align-items:center;justify-content:space-between;gap:8px;padding:12px 0}
+.bb-day-done-amounts-heading h3{margin:0;font-size:14px;font-weight:800}
+.bb-day-done-amounts-heading>span{font-size:10px;color:#63715f}
+.bb-day-done-amount{padding:12px 0;border-color:#e5e8dc;gap:5px}
+.bb-day-done-amount:first-of-type{margin-top:0}
+.bb-day-done-amount-main{display:flex;align-items:baseline;justify-content:space-between;gap:12px}
+.bb-day-done-amount-main strong{font-size:14px;font-weight:650}
+.bb-day-done-quantity{flex:none;font-size:14px;font-weight:800;font-variant-numeric:tabular-nums}
+.bb-day-done-amount small{font-size:12px;line-height:1.45;color:#657361}
+.bb-day-done-amount small.bb-day-done-issue{color:#78551f}
+.bb-day-done-status{margin:14px 0 0;font-size:12px;color:#64715e;line-height:1.4}
+.bb-day-done-actions{flex-direction:column-reverse;margin-top:16px;gap:8px}
+.bb-day-done-actions .btn{flex:none;width:100%;min-height:48px;padding:12px;border:1px solid #d2ddcc;background:#fffdf6;color:#355240;font-family:inherit;font-size:14px;font-weight:750;line-height:1.35;cursor:pointer}
+.bb-day-done-actions .primary{background:#123e2d;border-color:#123e2d;color:#fffdf6}
+.bb-day-done-pantry-review{margin-top:16px;border-top:1px solid #dce5d9;padding-top:16px}
+
+.bb-day-done-dialog h2:focus{outline:none}
+.bb-school-lunch-confirm{display:grid;gap:10px;margin:12px 0 16px;padding:14px;border:1px solid #dce5d9;border-radius:16px;background:#f5f9f1}
+.bb-school-lunch-confirm p{margin:0;font-size:13px;line-height:1.5;color:#5b7062}
+.bb-school-lunch-confirm .bb-day-done-trigger{width:100%;min-height:46px!important;padding:11px 14px;background:#1b4d33!important;color:#fffdf6!important;border-color:#1b4d33!important;white-space:normal!important}
+
+.bb-day-done-lunch-summary{display:grid;gap:5px;margin:0 0 16px;padding:12px 13px;border:1px solid #dce5d9;border-radius:14px;background:#eff3e8}
+.bb-day-done-lunch-summary strong{font-size:15px;line-height:1.35}
+.bb-day-done-lunch-days,.bb-day-done-lunch-confirmed{font-size:12px;line-height:1.4;color:#5a7061}
+.bb-day-done-lunch-confirmed{font-size:11px}
+.bb-day-done-lunch-details{margin:10px 0 0;font-size:12px;color:#526556}
+.bb-day-done-lunch-details>summary{cursor:pointer;min-height:28px;padding:5px 0;font-weight:700}
+.bb-day-done-lunch-details .bb-day-done-meals{margin:8px 0 0}
+.bb-day-done-lunch-details>summary:focus-visible{outline:3px solid #ceaa51;outline-offset:3px}

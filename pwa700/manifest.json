@@ -513,13 +513,13 @@
   "files": [
     {
       "path": "app.html",
-      "bytes": 2967885,
-      "sha256": "d868e1407de4c897b88bb07b2f72b95d0135f7a5ca85e0054e899567958c3036"
+      "bytes": 2970870,
+      "sha256": "e338f7313eca49ccd2c4398271cbb7db0093634252c2f1e6b727194e759d0ebc"
     },
     {
       "path": "basketboss-latest-guide.html",
-      "bytes": 28176,
-      "sha256": "0b3c8afb534c530e9e968e3d22ec508c36be4d528ba27fe2a2b3088130ba98c7"
+      "bytes": 30242,
+      "sha256": "6972a863e5731d602debb09d7c78256832ba967c9aed9a5c848432e7d61f72f4"
     },
     {
       "path": "basketboss-pricing-v19.js",
@@ -593,13 +593,13 @@
     },
     {
       "path": "bb-real-app-tour-v82.js",
-      "bytes": 13489,
-      "sha256": "97ac42ac6793e1951df50e7e136f45d63007e6cd9b3a1f5d4ae235fafc65091f"
+      "bytes": 14454,
+      "sha256": "7fe8959de51df77ef166a7257b7e4ca86db263cf932b36a069e2ffbdd864cd9b"
     },
     {
       "path": "bb-real-app-tour.js",
-      "bytes": 14473,
-      "sha256": "db447fc4151ae8d2ee18e29cf4f485881c47e4c873ecb5eb072c78cf7ff7964c"
+      "bytes": 14654,
+      "sha256": "757edaf7993c0b333ddfb94fe86e51305f09456594db8cbadc9100422d820415"
     },
     {
       "path": "bb-recipe-planning.js",
@@ -634,7 +634,7 @@
     {
       "path": "make-a-meal.html",
       "bytes": 40037,
-      "sha256": "946773c581728c54f20f76cb867425b7ab3b4279edd3b154fd04f616cb409647"
+      "sha256": "04febaf773c603c8e4ab90cc52adc05da78c15d1f2bceba4e6887a093e745ece"
     },
     {
       "path": "make-a-meal.js",
@@ -649,7 +649,7 @@
     {
       "path": "precache.js",
       "bytes": 10340,
-      "sha256": "42a380329b4dbfe12af59ea88b0c919ea21ac2df53a7e6b1c1093df63d9815e8"
+      "sha256": "39e150ed295e6bfdacaf5baa11d91df6032ed3b67921989f31a1ab94be3e5987"
     },
     {
       "path": "pricing-sandbox.html",
@@ -673,8 +673,8 @@
     },
     {
       "path": "tutorial.html",
-      "bytes": 24530,
-      "sha256": "2854e82719b4735504c11804f081f97bd072fa0d89f050f69826dae444c37e65"
+      "bytes": 26596,
+      "sha256": "93ae7b4f611db2d1a15b80d3fbc928658ae5742db72373e96ad9a497d1c943c8"
     }
   ]
 }

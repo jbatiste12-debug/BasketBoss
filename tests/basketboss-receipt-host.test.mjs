@@ -16,20 +16,28 @@ function storage(initial = {}) {
 class Element {
   constructor(tag) {this.tagName = tag.toUpperCase();this.children = [];this.events = {};this.dataset = {};this.attributes = {};this.value = '';this.textContent = '';this.disabled = false;}
   append(...children) {for (const child of children) {child.parent = this;this.children.push(child);}}
+  replaceChildren(...children) {for(const child of this.children)child.parent=null;this.children=[];this._text='';this.append(...children);}
+  set textContent(value) {this.replaceChildren();this._text=String(value);}
+  get textContent() {return this._text+this.children.map(child=>child.textContent).join('');}
+  get isConnected() {return this._connected ?? (this.tagName==='BODY'||!!this.parent?.isConnected);}
+  set isConnected(value) {this._connected=value;}
   setAttribute(key, value) {this.attributes[key] = value;}
+  getAttribute(key) {return this.attributes[key];}
   addEventListener(name, handler) {this.events[name] = handler;}
   removeAttribute(name) {delete this.attributes[name];}
-  remove() {if (this.parent) this.parent.children = this.parent.children.filter(x => x !== this);}
+  remove() {if (this.parent) this.parent.children = this.parent.children.filter(x => x !== this);this.parent=null;}
   close() {this.events.close?.();}
   showModal() {this.open = true;}
-  focus() {}
+  focus() {if(this.ownerDocument)this.ownerDocument.activeElement=this;}
+  click() {if(!this.disabled)return this.onclick?.({preventDefault(){},stopPropagation(){}});}
 }
 const descendants = node => [node, ...node.children.flatMap(descendants)];
 function harness({stock = {}, actor = actorA, cached = null, document = false, status = {ok: true, available: true, premium: true}, fetch: fetcher} = {}) {
   let currentSession = actor === 'guest' ? null : {access_token: 'synthetic-token-' + actor, expires_at: 9999999999, user: {id: actor}};
   let currentCache = cached, pending = {}, essentials = [], currentContext = {market: 'UK', retailer: 'Tesco', shopSessionId: 'shop-current'};
   const store = storage({[keys.stock]: JSON.stringify(stock)}), events = {}, notices = [], calls = [], body = new Element('body');
-  const doc = document ? {createElement: tag => new Element(tag), body, getElementById: () => null} : undefined;
+  const doc = document ? {createElement(tag) {const node=new Element(tag);node.ownerDocument=this;return node;}, body, getElementById: () => null} : undefined;
+  if(doc)body.ownerDocument=doc;
   const inventory = {
     configure(value) {this.options = value;}, getCachedProjection: () => currentCache, getPendingConfirmation: () => pending,
     recoverLocalTransaction() {}, async synchronize() {calls.push('synchronize');return {ok: true, localApplied: true};},
@@ -364,4 +372,130 @@ test('weekly pantry review accepts partial physical items and packs without roun
  await descendants(dialog).find(x=>x.tagName==='FORM').events.submit({preventDefault(){}});
  const call=h.calls.find(x=>typeof x==='object');assert.deepEqual(JSON.parse(JSON.stringify(call.stock)),h.data.stock);
  assert.deepEqual(JSON.parse(h.store.getItem(keys.stock)),h.data.stock);
+});
+
+test('consumption status explains the existing gates without changing stock or contacting inventory', async () => {
+ const scope={kind:'user',id:actorA},cached={initialized:true,scope,inventoryRevision:2,pantryReview:{required:true}},h=harness({cached});
+ await h.host.refreshAvailability({synchronize:false});
+ const before=[...h.store.values],calls=h.calls.length;
+ assert.equal(h.host.getConsumptionStatus().ready,true,'routine weekly review still allows measured cooking');
+ assert.equal(h.host.getConsumptionStatus().canReviewInline,false);
+ h.setCached({...cached,initialized:false});
+ assert.equal(h.host.getConsumptionStatus().reason,'pantry_uninitialized');assert.equal(h.host.getConsumptionStatus().canReviewInline,true);assert.equal(h.host.canConsumePantry(),false);
+ h.setPending({receiptId:'pending'});assert.equal(h.host.getConsumptionStatus().reason,'receipt_pending');assert.equal(h.host.getConsumptionStatus().canReviewInline,false);
+ h.setPending({});h.store.setItem(keys.confirmed,'unreadable');assert.equal(h.host.getConsumptionStatus().reason,'storage_unreadable');h.store.removeItem(keys.confirmed);
+ assert.deepEqual([...h.store.values],before);assert.equal(h.calls.length,calls);
+ h.event('basketboss:account-deletion-started');assert.equal(h.host.getConsumptionStatus().reason,'account_deletion');assert.equal(h.host.canConsumePantry(),false);
+});
+
+test('consumption status identifies a merge without converting weekly review into a new blocker', async () => {
+ const h=harness({cached:{initialized:true,scope:{kind:'user',id:actorA},inventoryRevision:2,pantryReview:{required:false}}});
+ h.inventory.synchronize=async()=>({localApplied:false,localError:'receipt_local_remote_pantry_merge_required'});
+ await h.host.refreshAvailability({force:true});
+ assert.equal(h.host.getConsumptionStatus().reason,'pantry_merge');assert.equal(h.host.getConsumptionStatus().canReviewInline,true);assert.equal(h.host.canConsumePantry(),false);
+});
+
+test('inline pantry review keeps verified scope, revision and exact fractional amounts in the existing CAS request', async () => {
+ const scope={kind:'household',id:'shared-pantry'},h=pantryHarness({scope,revision:7}),container=new Element('div');h.body.append(container);
+ h.data.stock={'rice|pack':.5};h.store.setItem(keys.stock,JSON.stringify({'egg|each':8.666667}));
+ let confirmed=0;const projections=[];h.host.configure({onProjection:value=>projections.push(value)});
+ h.inventory.confirmPantry=async value=>{h.calls.push(value);h.setCached({scope,inventoryRevision:8});h.inventory.options.onProjection({adapter:true});return {ok:true,localApplied:true,projection:{confirmed:true}};};
+ const controller=await h.host.reviewPantry({container,deferProjection:true,onConfirmed(){confirmed++;assert.equal(h.host.getConsumptionStatus().ready,true);assert.equal(projections.length,0);}});
+ assert.equal(controller.element.tagName,'SECTION');assert.equal(descendants(container).filter(node=>node.tagName==='DIALOG').length,0);assert.equal(h.host.getConsumptionStatus().reason,'review_open');
+ const inputs=descendants(controller.element).filter(node=>node.tagName==='INPUT');assert.equal(inputs.length,2);assert.ok(inputs.every(input=>input.step==='any'));
+ inputs.find(input=>input.dataset.stockKey==='egg|each').value='8.666667';
+ await descendants(controller.element).find(node=>node.tagName==='FORM').events.submit({preventDefault(){}});
+ const request=h.calls[0];assert.deepEqual(JSON.parse(JSON.stringify(request.stock)),{'egg|each':8.666667,'rice|pack':.5});assert.equal(request.expectedRevision,7);assert.deepEqual(JSON.parse(JSON.stringify(request.expectedScope)),scope);assert.equal(request.shopSessionId,'shop-current');
+ assert.equal(confirmed,1);assert.equal(container.children.length,0);assert.equal(projections.length,0);
+ controller.dispose();controller.dispose();assert.deepEqual(JSON.parse(JSON.stringify(projections)),[{confirmed:true}]);
+});
+
+test('inline review holds adapter notifications before its inventory fetch resolves', async () => {
+ const h=pantryHarness(),container=new Element('div'),projections=[];h.body.append(container);
+ let release;h.host.configure({onProjection:value=>projections.push(value),fetch:()=>new Promise(resolve=>{release=()=>resolve({ok:true,json:async()=>h.data});})});
+ const pending=h.host.reviewPantry({container,deferProjection:true});h.inventory.options.onProjection({duringFetch:true});assert.equal(projections.length,0);
+ release();const controller=await pending;assert.equal(projections.length,0);controller.dispose();assert.deepEqual(JSON.parse(JSON.stringify(projections)),[{duringFetch:true}]);assert.equal(h.host.canConsumePantry(),true);
+});
+
+test('inline Review later clears its gate and calls onCancel once while its outer projection hold stays active', async () => {
+ const h=pantryHarness(),container=new Element('div'),projections=[];h.body.append(container);let cancelled=0;
+ h.host.configure({onProjection:value=>projections.push(value)});
+ const controller=await h.host.reviewPantry({container,deferProjection:true,onCancel(){cancelled++;assert.equal(h.host.canConsumePantry(),true);}}),before=[...h.store.values];
+ h.inventory.options.onProjection({pending:true});const cancel=descendants(controller.element).find(node=>node.textContent==='Review later');cancel.onclick();cancel.onclick();
+ assert.equal(cancelled,1);assert.equal(container.children.length,0);assert.deepEqual([...h.store.values],before);assert.equal(h.calls.length,0);assert.equal(projections.length,0);
+ controller.dispose();assert.equal(projections.length,1);
+});
+
+test('inline revision conflict preserves the form, local quantities and projection hold for review', async () => {
+ const h=pantryHarness(),container=new Element('div'),projections=[];h.body.append(container);let confirmed=0;
+ h.host.configure({onProjection:value=>projections.push(value)});h.inventory.confirmPantry=async()=>{const error=Error('conflict');error.status=409;throw error;};
+ const controller=await h.host.reviewPantry({container,deferProjection:true,onConfirmed(){confirmed++;}}),before=[...h.store.values];
+ h.inventory.options.onProjection({background:true});await descendants(controller.element).find(node=>node.tagName==='FORM').events.submit({preventDefault(){}});
+ assert.ok(container.children.includes(controller.element));assert.ok(descendants(controller.element).some(node=>/changed on another device/.test(node.textContent)));assert.equal(h.host.canConsumePantry(),false);assert.equal(confirmed,0);assert.equal(projections.length,0);assert.deepEqual([...h.store.values],before);
+ controller.dispose({refresh:false});assert.equal(projections.length,0);assert.equal(h.host.canConsumePantry(),true);
+});
+
+test('disposing an inline review during confirmation prevents late success callbacks and coverage writes', async () => {
+ const h=pantryHarness(),container=new Element('div');h.body.append(container);let release,confirmed=0;
+ h.inventory.confirmPantry=()=>new Promise(resolve=>{release=()=>resolve({ok:true,localApplied:true,projection:{late:true}});});
+ const controller=await h.host.reviewPantry({container,deferProjection:true,onConfirmed(){confirmed++;}}),before=[...h.store.values];
+ const pending=descendants(controller.element).find(node=>node.tagName==='FORM').events.submit({preventDefault(){}});controller.dispose({refresh:false});release();await pending;
+ assert.equal(confirmed,0);assert.equal(container.children.length,0);assert.deepEqual([...h.store.values],before);assert.equal(h.host.canConsumePantry(),true);
+});
+
+test('session, deletion and region events discard inline projection holds and close their forms', async () => {
+ for(const event of ['basketboss:session-changed','basketboss:account-deletion-started','basketboss:market-changed','basketboss:supermarket-changed']){
+  const h=pantryHarness(),container=new Element('div'),projections=[];h.body.append(container);h.host.configure({onProjection:value=>projections.push(value)});
+  const controller=await h.host.reviewPantry({container,deferProjection:true});h.inventory.options.onProjection({stale:true});
+  if(event==='basketboss:session-changed')h.setActor(actorB);
+  if(event==='basketboss:market-changed')h.setContext({market:'US'});
+  if(event==='basketboss:supermarket-changed')h.setContext({retailer:'Aldi'});
+  h.event(event);const after=projections.length;controller.dispose();assert.equal(container.children.length,0,event);assert.equal(projections.length,after,event);assert.ok(!projections.some(value=>value.stale),event);
+ }
+});
+
+test('a disconnected inline container never receives a late fetched pantry form', async () => {
+ const h=pantryHarness(),container=new Element('div'),projections=[];container.isConnected=true;let release;
+ h.host.configure({onProjection:value=>projections.push(value),fetch:()=>new Promise(resolve=>{release=()=>resolve({ok:true,json:async()=>h.data});})});
+ const pending=h.host.reviewPantry({container,deferProjection:true});h.inventory.options.onProjection({stale:true});container.isConnected=false;release();
+ assert.equal(await pending,null);assert.equal(container.children.length,0);assert.equal(projections.length,0);assert.equal(h.host.canConsumePantry(),true);
+});
+
+test('inline review pins the generation after safely isolating an account switch', async () => {
+ const h=pantryHarness(),container=new Element('div');h.body.append(container);h.setActor(actorB);h.data.scope={kind:'user',id:actorB};
+ const controller=await h.host.reviewPantry({container,deferProjection:true});assert.ok(controller);assert.equal(h.host.getConsumptionStatus().reason,'review_open');
+ controller.dispose({refresh:false});assert.equal(h.host.canConsumePantry(),true);
+});
+
+test('a guest cannot be offered inline cloud review for a retained merge issue', async () => {
+ const h=harness({cached:{initialized:true,scope:{kind:'user',id:actorA},inventoryRevision:2,pantryReview:{required:false}}});
+ h.inventory.synchronize=async()=>({localApplied:false,localError:'receipt_initial_pantry_merge_required'});await h.host.refreshAvailability({force:true});h.setActor('guest');h.host.switchActor();
+ assert.equal(h.host.getConsumptionStatus().ready,false);assert.equal(h.host.getConsumptionStatus().reason,'pantry_merge');assert.equal(h.host.getConsumptionStatus().canReviewInline,false);assert.match(h.host.getConsumptionStatus().message,/Sign in/);
+});
+
+test('deletion and region changes suppress a late inline confirmation after the form was closed', async () => {
+ for(const event of ['basketboss:account-deletion-started','basketboss:market-changed']){
+  const h=pantryHarness(),container=new Element('div'),projections=[];h.body.append(container);let release,confirmed=0;h.host.configure({onProjection:value=>projections.push(value)});
+  h.inventory.confirmPantry=()=>new Promise(resolve=>{release=()=>resolve({ok:true,localApplied:true,projection:{stale:true}});});
+  const controller=await h.host.reviewPantry({container,deferProjection:true,onConfirmed(){confirmed++;}}),before=[...h.store.values];
+  const pending=descendants(controller.element).find(node=>node.tagName==='FORM').events.submit({preventDefault(){}});h.inventory.options.onProjection({stale:true});
+  if(event==='basketboss:market-changed')h.setContext({market:'US'});h.event(event);release();await pending;controller.dispose();
+  assert.equal(confirmed,0,event);assert.equal(container.children.length,0,event);assert.deepEqual([...h.store.values],before,event);assert.equal(projections.length,0,event);
+ }
+});
+
+test('real Day done and receipt host keep inline pantry confirmation in the same ingredients dialog', async () => {
+ const h=pantryHarness(),scope={kind:'user',id:actorA},projections=[],win=h.root;h.data.available=true;h.data.premium=true;
+ h.setCached({initialized:false,scope,inventoryRevision:2,pantryReview:{required:true}});await h.host.refreshAvailability({synchronize:false});h.host.configure({onProjection:value=>projections.push(value)});
+ const container=win.document.createElement('div');h.body.append(container);let finishes=0,previews=0;
+ win.BBReceiptHost=h.host;win.BBHomeHost={dayMeals:()=>[{occurrence:'monday-rice'}]};
+ win.BBHome={actor:()=>actorA,isCooked:()=>false,previewDay(){previews++;const pantryStatus=h.host.getConsumptionStatus(),items=[{kind:'dinner',name:'Rice dinner'}],rows=[{name:'Rice',unit:'g',required:200}];return pantryStatus.ready?{ok:true,fingerprint:'verified-day',items,rows}:{ok:false,reviewAction:'pantry',pantryStatus,message:pantryStatus.message,items,rows};},finishDay(){finishes++;return {ok:true};}};
+ h.inventory.confirmPantry=async value=>{h.setCached({initialized:true,scope,inventoryRevision:3,pantryReview:{required:false}});h.inventory.options.onProjection({stock:value.stock});return {ok:true,localApplied:true,projection:{stock:value.stock}};};
+ const daySource=await fs.readFile(new URL('../bb-day-done.js',import.meta.url),'utf8');vm.runInNewContext(daySource,{window:win});
+ const ui=win.BBDayDone.mount({container,day:'Monday',win});ui.open();await new Promise(resolve=>setImmediate(resolve));
+ const outer=descendants(h.body).find(node=>node.tagName==='DIALOG'),action=name=>descendants(outer).find(node=>node.dataset.bbDayAction===name);
+ assert.ok(outer);assert.ok(action('review-pantry'));assert.equal(finishes,0);await action('review-pantry').click();
+ const inlineForm=descendants(outer).find(node=>node.tagName==='FORM');assert.ok(inlineForm);await inlineForm.events.submit({preventDefault(){}});await new Promise(resolve=>setImmediate(resolve));
+ assert.equal(descendants(h.body).find(node=>node.tagName==='DIALOG'),outer);assert.equal(previews,2);assert.ok(action('confirm'));assert.equal(finishes,0);assert.equal(projections.length,0);assert.equal(descendants(outer).filter(node=>node.tagName==='FORM').length,0);
+ action('close').click();assert.equal(outer.isConnected,false);assert.equal(projections.length,1);assert.equal(finishes,0);ui.dispose();
 });
