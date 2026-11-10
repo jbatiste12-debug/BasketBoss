@@ -108,3 +108,14 @@ test('rounded shopping totals cannot replace the exact target on a checkbox or e
  assert.equal(h.finish().count,1);assert.equal(h.read('stock')['pork sausages|each'],6);assert.equal(h.finish().count,0);
  const measured=fixture({name:'Rice',unit:'g',required:500,pantryUsed:350,toBuy:500,quote:{packQty:500,packUnit:'g'}});assert.equal(measured.amount(150),true);assert.equal(measured.read('purchases')[measured.id].qty,150);assert.equal(measured.read('purchases')[measured.id].actualQty,150);
 });
+
+test('an exact completed purchase creates no phantom extra row or summary demand from a rounded shopping total',()=>{
+ const h=fixture({toBuy:6});assert.equal(h.amount(1),true);
+ h.ctx.bbShopV7Read=h.read;h.ctx.bb321UnifiedShop=()=>[h.basket];h.ctx.bbReceiptPantryReviewRequired=()=>false;h.ctx.bbReceiptHasAuthoritativePantry=()=>false;h.ctx.bb172AssumesOnHand=()=>false;h.ctx.bb15Quote=item=>item.priceQuote;h.ctx.bb84SeedPreviouslyBought=()=>{};h.ctx.bb321Number=value=>value;delete h.ctx.window.BBReducedPurchases;
+ for(const name of ['bb84ExtraNeeded','bb84ExtraRows','bbShopV7Reconcile','bb321WeeklySummary'])vm.runInContext(actual(name),h.ctx);
+ const summary=h.ctx.bb321WeeklySummary({items:[h.basket]});assert.equal(summary.extraNeed.length,0);assert.equal(summary.remainingTotal,0);
+ let inserted=0;const original={insertAdjacentElement(){inserted++;}},list={querySelectorAll:()=>[{dataset:{bb321Tick:h.id},closest:()=>original}]};
+ h.ctx.document={createElement:()=>({})};h.ctx.bb15PriceLabel=()=>'';h.ctx.esc=value=>value;h.ctx.bb80ShoppingQuantity=(_name,value)=>String(value);h.ctx.bb172Title=value=>value;
+ h.ctx.bb84ExtraRows({querySelector:()=>list},[h.basket],[],h.read('ticks'),'UK');assert.equal(inserted,0);
+ assert.equal(h.finish().count,1);assert.equal(h.read('stock')['pork sausages|each'],6,'an explicit one-item purchase adds only one to the existing five');assert.equal(h.finish().count,0);
+});

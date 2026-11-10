@@ -8082,7 +8082,7 @@ function bb84ExtraRows(app,items,essentials,ticks,market){
  const list=app.querySelector('#bb321Printable');if(!list)return;
  for(const [item,essential] of [...items.map(x=>[x,false]),...essentials.map(x=>[x,true])]){
   const id=essential?'ess:'+item.id:BB307Pantry.pantryId(item.key,item.unit);
-  const needed=Number(essential?item.qty:item.toBuy),extra=bb84ExtraNeeded(id,needed,ticks);
+  const needed=typeof bbShopNeedPresentation==='function'?bbShopNeedPresentation(item).targetQuantity:Number(essential?item.qty:item.toBuy),extra=bb84ExtraNeeded(id,needed,ticks);
   if(!(extra>0))continue;
   const primary=[...list.querySelectorAll('[data-bb321-tick]')].find(x=>x.dataset.bb321Tick===id);
   const original=primary?.closest('.bb321-buy-row');if(!original)continue;
@@ -8103,7 +8103,7 @@ function bb321WeeklySummary(existingResult){
  if(!bbShopV7Reconcile(need,essentials))notify('Please review your saved shopping progress.');
  const ticks=bb321ReadShopTicks();
  bb84SeedPreviouslyBought(need,essentials,ticks);
- const extraNeed=[...need.map(item=>({item,id:BB307Pantry.pantryId(item.key,item.unit),essential:false})),...essentials.map(item=>({item,id:'ess:'+item.id,essential:true}))].map(x=>({...x,qty:bb84ExtraNeeded(x.id,Number(x.essential?x.item.qty:x.item.toBuy),ticks)})).filter(x=>x.qty>0);
+ const extraNeed=[...need.map(item=>({item,id:BB307Pantry.pantryId(item.key,item.unit),essential:false})),...essentials.map(item=>({item,id:'ess:'+item.id,essential:true}))].map(x=>({...x,qty:bb84ExtraNeeded(x.id,typeof bbShopNeedPresentation==='function'?bbShopNeedPresentation(x.item).targetQuantity:Number(x.essential?x.item.qty:x.item.toBuy),ticks)})).filter(x=>x.qty>0);
  const extraSpend=extraNeed.reduce((v,x)=>v+(bb15Quote({...x.item,toBuy:x.qty,qty:x.qty},x.essential).amount||0),0);
  const subtotal=need.reduce((v,item)=>v+(item.displaySpend||0),0);
  const additional=essentials.reduce((v,item)=>v+(item.displaySpend||0),0);
