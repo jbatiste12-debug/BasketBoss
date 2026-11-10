@@ -36,6 +36,8 @@ const CORE = ['bb-plan-extras.js','bb-plan-extras.js?v=20261108-planner1','bb-pl
   // to public marketing, so /app has its own guaranteed offline copy.
   'app','welcome',
   // Current public app and landing assets: no entitlement/API/private payloads.
+  'bb-premium-finish.css','bb-premium-finish.css?v=20261110-forest1',
+  'bb-premium-dialogs.css','bb-premium-dialogs.css?v=20261110-forest1',
   'bb-onboarding-v2.css?v=20261104-kitchen1',
   'feedback-config.js',
   'bb-pantry-policy.js?v=20261108-baseline1',

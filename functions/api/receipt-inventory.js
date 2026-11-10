@@ -51,7 +51,7 @@ async function authorized(request, env) {
   const personalPaid = personal.premiumAccess;
   const shareablePaid = personalPaid && (personal.provider==='paddle' || personal.provider==='testflight_beta' || personal.apple?.environment==='Production');
   // Match existing catalogue/AI owner access only for the authenticated server ID.
-  // This exception is never inherited by a partner or accepted from the browser.
+  // Sharing requires its separate server opt-in; browser claims are not used.
   const owner = typeof env.BB_OWNER_USER_ID === 'string' && user.id === env.BB_OWNER_USER_ID;
   let premium = personalPaid || owner, scope = {kind: 'user', id: user.id};
   if (partnerBenefitsEnabled(request, env)) {
@@ -60,7 +60,10 @@ async function authorized(request, env) {
     if (rows.length === 1) {
       const household = rows[0];
       if (!UUID.test(household.id || '') || household.owner_user_id !== user.id && household.partner_user_id !== user.id) throw Error('receipt_household_scope_invalid');
-      if (household.owner_user_id === user.id && shareablePaid) scope = {kind: 'household', id: household.id};
+      let shareableOwner = shareablePaid;
+      if (household.owner_user_id === user.id && owner && !shareableOwner)
+        shareableOwner = (await readPersonalPaidAccess(env,user.id,{productionOnly:true,includeOwnerHousehold:true})).provider === 'owner_household';
+      if (household.owner_user_id === user.id && shareableOwner) scope = {kind: 'household', id: household.id};
       else if (household.invite_status === 'accepted' && household.partner_user_id === user.id && typeof household.partner_email === 'string' && household.partner_email.trim().toLowerCase() === user.email.trim().toLowerCase()) {
         const sharedOwner = await sharedHouseholdPremiumOwner(request, env, user);
         if (sharedOwner && sharedOwner === household.owner_user_id) {premium = true; scope = {kind: 'household', id: household.id};}

@@ -1,0 +1,161 @@
+/* BasketBoss's existing dialogs and forms share the app's forest finish.
+   Positioning, viewport measurements, focus handling, visibility and scrolling
+   remain owned by the original components. No content or actions are replaced. */
+html body :is(.bbui-settings-panel[data-bb-account-polish],#cloud-card[data-bb-account-polish],dialog.bbpi-panel,dialog.bb-plan-meal-picker,#bbhs-dialog){
+ color:var(--bb-premium-ink,#173C2D)!important;
+ background:var(--bb-premium-ivory,#FFFDF6)!important;
+ border-color:var(--bb-premium-border,#DCE5D9)!important;
+ box-shadow:0 20px 64px #123e2d30,inset 0 1px #ffffffb3!important;
+ font-family:"Avenir Next",-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif!important;
+}
+/* Older component styles pin text fill separately from their text colour. */
+html body :is(.bbui-settings-panel[data-bb-account-polish],#cloud-card[data-bb-account-polish],dialog.bbpi-panel,dialog.bb-plan-meal-picker,#bbhs-dialog,.bb-native-membership-page main) :is(h1,h2,h3,h4,p,small,strong,label,button,a,span,input,select,textarea,summary),
+html body #modalRoot>.cook-overlay .cook-panel.bb-kitchen :is(h1,h2,h3,h4,p,small,strong,label,button,a,span,input,select,textarea,summary){-webkit-text-fill-color:currentColor!important}
+html body .bbui-settings-overlay:has([data-bb-account-polish]),
+html body #cloud-panel.open:has([data-bb-account-polish]){
+ -webkit-backdrop-filter:none!important;backdrop-filter:none!important;
+}
+html body :is(dialog.bbpi-panel,dialog.bb-plan-meal-picker,#bbhs-dialog)::backdrop{
+ background:#102d2380!important;-webkit-backdrop-filter:none!important;backdrop-filter:none!important;
+}
+
+/* Account and Settings keep their existing single scrolling surface. */
+html body .bbui-settings-panel[data-bb-account-polish] .bbui-settings-heading{
+ background:var(--bb-premium-gloss,linear-gradient(125deg,#123E2D,#245E43))!important;
+ border-bottom:1px solid #d5bc7a66!important;box-shadow:0 4px 14px #123e2d0d!important;
+}
+html body .bbui-settings-panel[data-bb-account-polish] :is(#bbuiSettingsTitle,.bbap-heading-note){color:var(--bb-premium-ivory,#FFFDF6)!important}
+html body .bbui-settings-panel[data-bb-account-polish] .bbap-eyebrow{color:var(--bb-premium-gold-light,#D5BC7A)!important}
+html body .bbui-settings-panel[data-bb-account-polish] .bbui-settings-close{
+ width:44px!important;min-width:44px!important;min-height:44px!important;
+ background:#ffffff12!important;border-color:#ffffff52!important;color:var(--bb-premium-ivory,#FFFDF6)!important;
+}
+html body .bbui-settings-panel[data-bb-account-polish] :is(.bbui-settings-section,.bbui-tutorial-topic){
+ border-color:var(--bb-premium-border,#DCE5D9)!important;background:#fffefa!important;
+ box-shadow:0 3px 12px #123e2d05!important;
+}
+html body .bbui-settings-panel[data-bb-account-polish] .bbui-settings-section>h3{color:var(--bb-premium-ink,#173C2D)!important;font-size:14px!important}
+html body .bbui-settings-panel[data-bb-account-polish] .bbap-section-icon{background:#edf3e7!important;color:var(--bb-premium-green,#245E43)!important}
+html body .bbui-settings-panel[data-bb-account-polish] .bbui-settings-switch{background:#edf2e6!important;border-color:var(--bb-premium-border,#DCE5D9)!important}
+html body .bbui-settings-panel[data-bb-account-polish] .bbui-settings-switch button{color:var(--bb-premium-muted,#607265)!important}
+html body .bbui-settings-panel[data-bb-account-polish] .bbui-settings-switch button[aria-selected=true]{
+ background:var(--bb-premium-forest,#123E2D)!important;color:var(--bb-premium-ivory,#FFFDF6)!important;box-shadow:0 2px 6px #123e2d12!important;
+}
+html body .bbui-settings-panel[data-bb-account-polish] .bbui-settings-section button:not(.bb-account-deletion-open):not(.bb-account-deletion-submit):not(.bb-account-deletion-cancel){
+ border-color:#d1ddcb!important;background:#f1f5ec!important;color:var(--bb-premium-green,#245E43)!important;border-radius:13px!important;
+}
+html body .bbui-settings-panel[data-bb-account-polish] #bb16AccountShortcut{
+ background:var(--bb-premium-gloss,linear-gradient(125deg,#123E2D,#245E43))!important;
+ border-color:var(--bb-premium-green,#245E43)!important;color:var(--bb-premium-ivory,#FFFDF6)!important;
+ box-shadow:0 3px 9px #123e2d12!important;
+}
+html body #cloud-card[data-bb-account-polish] :is(h2,h3){color:var(--bb-premium-ink,#173C2D)!important;letter-spacing:-.025em!important}
+html body #cloud-card[data-bb-account-polish] :is(.bbap-account-mark,#cloud-close){background:#eef3e7!important;border-color:var(--bb-premium-border,#DCE5D9)!important;color:var(--bb-premium-green,#245E43)!important}
+html body #cloud-card[data-bb-account-polish] :is(#cloud-login,#cloud-signup,#bbAuthSavePassword,#bbAuthReset){
+ background:var(--bb-premium-gloss,linear-gradient(125deg,#123E2D,#245E43))!important;color:var(--bb-premium-ivory,#FFFDF6)!important;
+ border-color:var(--bb-premium-green,#245E43)!important;border-radius:13px!important;min-height:46px!important;
+}
+
+/* Pantry editor: a clear forest heading, warm controls, and distinct removal. */
+html body dialog#bbpi-current-editor.bbpi-panel{border-radius:22px!important}
+html body dialog.bbpi-panel .bbpi-editor-heading{
+ background:var(--bb-premium-gloss,linear-gradient(125deg,#123E2D,#245E43))!important;
+ border-bottom-color:#d5bc7a66!important;
+}
+html body dialog.bbpi-panel .bbpi-editor-heading h4{color:var(--bb-premium-ivory,#FFFDF6)!important;font-weight:780!important;letter-spacing:-.025em!important}
+html body dialog.bbpi-panel .bbpi-eyebrow{color:var(--bb-premium-gold-light,#D5BC7A)!important}
+html body dialog#bbpi-current-editor.bbpi-panel .bbpi-close{
+ background:#ffffff12!important;border-color:#fffdf64d!important;color:var(--bb-premium-ivory,#FFFDF6)!important;box-shadow:none!important;
+}
+html body dialog.bbpi-panel :is(label,.bbpi-readout){color:var(--bb-premium-ink,#173C2D)!important}
+html body dialog.bbpi-panel .bbpi-buffer-label{color:var(--bb-premium-muted,#607265)!important}
+html body dialog.bbpi-panel .bbpi-step{
+ background:#eef4e8!important;border-color:#cddbc5!important;color:var(--bb-premium-green,#245E43)!important;border-radius:12px!important;
+}
+html body dialog.bbpi-panel .bbpi-editor-actions{background:var(--bb-premium-ivory,#FFFDF6)!important;border-top-color:var(--bb-premium-border,#DCE5D9)!important}
+html body dialog.bbpi-panel .bbpi-done{
+ background:var(--bb-premium-gloss,linear-gradient(125deg,#123E2D,#245E43))!important;color:var(--bb-premium-ivory,#FFFDF6)!important;
+ border-color:var(--bb-premium-green,#245E43)!important;box-shadow:0 3px 8px #123e2d12!important;
+}
+html body dialog.bbpi-panel .bbpi-remove{
+ background:#fff3ed!important;border-color:#e6c9bc!important;color:var(--bb-premium-danger,#9B4836)!important;
+}
+
+/* Meal choices keep the measured picker viewport and its scrolling list. */
+html body dialog.bb-plan-meal-picker{border-radius:22px!important;border-top:3px solid var(--bb-premium-gold,#C3A45D)!important}
+html body dialog.bb-plan-meal-picker .bb-plan-picker-heading{color:var(--bb-premium-ink,#173C2D)!important;font-weight:800!important}
+html body dialog.bb-plan-meal-picker .bb-plan-picker-heading h2{color:inherit!important;letter-spacing:-.025em!important}
+html body dialog.bb-plan-meal-picker :is(.bb-plan-picker-intro,.bb-plan-picker-empty,.bb-plan-picker-choice small){color:var(--bb-premium-muted,#607265)!important}
+html body dialog.bb-plan-meal-picker .bb-plan-picker-close{
+ background:#edf3e7!important;border-color:#d0dec8!important;color:var(--bb-premium-green,#245E43)!important;border-radius:12px!important;
+}
+html body dialog.bb-plan-meal-picker .bb-plan-picker-choice{
+ background:#fffefa!important;border-color:var(--bb-premium-border,#DCE5D9)!important;border-radius:15px!important;box-shadow:0 2px 7px #123e2d04!important;
+}
+html body dialog.bb-plan-meal-picker .bb-plan-picker-choice strong{color:var(--bb-premium-ink,#173C2D)!important;font-weight:750!important}
+html body dialog.bb-plan-meal-picker .bb-plan-picker-choice img{border-radius:11px!important;background:#edf3e7!important}
+
+/* Sharing uses the same vocabulary of surfaces; eligibility is server-owned. */
+html body #bbhs-dialog{border-radius:22px!important;border-top:3px solid var(--bb-premium-gold,#C3A45D)!important}
+html body #bbhs-dialog h2{color:var(--bb-premium-ink,#173C2D)!important;letter-spacing:-.025em!important;font-weight:800!important}
+html body #bbhs-dialog :is(p,small){color:var(--bb-premium-muted,#607265)!important}
+html body #bbhs-dialog label{color:var(--bb-premium-ink,#173C2D)!important}
+html body #bbhs-dialog :is(button,.bbhs-primary){min-height:44px!important;border-radius:12px!important;font-family:inherit!important}
+html body #bbhs-dialog button{background:#f0f5e9!important;border-color:#cfddc7!important;color:var(--bb-premium-green,#245E43)!important}
+html body #bbhs-dialog .bbhs-primary{background:var(--bb-premium-gloss,linear-gradient(125deg,#123E2D,#245E43))!important;border-color:var(--bb-premium-green,#245E43)!important;color:var(--bb-premium-ivory,#FFFDF6)!important}
+html body #bbhs-dialog .bbhs-close{min-width:44px!important;width:44px!important;min-height:44px!important;height:44px!important;background:#edf3e7!important;border-color:var(--bb-premium-border,#DCE5D9)!important;color:var(--bb-premium-green,#245E43)!important}
+html body #bbhs-dialog [data-unlink]{background:#fff3ed!important;border-color:#e6c9bc!important;color:var(--bb-premium-danger,#9B4836)!important}
+
+/* Cooking keeps its original sticky actions, phase navigation and timers. */
+html body #modalRoot>.cook-overlay .cook-panel.bb-kitchen{
+ background:var(--bb-premium-ivory,#FFFDF6)!important;border-color:var(--bb-premium-border,#DCE5D9)!important;box-shadow:0 20px 64px #123e2d30!important;
+ --cook-forest:var(--bb-premium-green,#245E43);--cook-deep:var(--bb-premium-forest,#123E2D);--cook-cream:var(--bb-premium-ivory,#FFFDF6);--cook-gold:var(--bb-premium-gold,#C3A45D);
+}
+html body #modalRoot>.cook-overlay .cook-panel.bb-kitchen .bb-cook-intro{background:var(--bb-premium-gloss,linear-gradient(125deg,#123E2D,#245E43))!important;border-bottom:1px solid #d5bc7a66!important}
+html body #modalRoot>.cook-overlay .cook-panel.bb-kitchen #bbTitle{color:var(--bb-premium-ivory,#FFFDF6)!important}
+html body #modalRoot>.cook-overlay .cook-panel.bb-kitchen .bb-head .eyebrow{color:var(--bb-premium-gold-light,#D5BC7A)!important}
+html body #modalRoot>.cook-overlay .cook-panel.bb-kitchen button.bb-phase{min-height:44px!important}
+html body #modalRoot>.cook-overlay .cook-panel.bb-kitchen .bb-cook-voice-slot{background:#f5f2e6!important;border-color:#ded2ad!important;box-shadow:0 3px 12px #123e2d07!important}
+html body #modalRoot>.cook-overlay .cook-panel.bb-kitchen .bb-cook-premium-pill{background:#f2e7c7!important;border-color:#dac389!important;color:#6b5526!important}
+html body #modalRoot>.cook-overlay .cook-panel.bb-kitchen :is(#bbInstruction,.bb-cook-ingredient){background:#fffefa!important;border-color:var(--bb-premium-border,#DCE5D9)!important}
+html body #modalRoot>.cook-overlay .cook-panel.bb-kitchen #bbInstruction{border-left-color:var(--bb-premium-gold,#C3A45D)!important}
+html body #modalRoot>.cook-overlay .cook-panel.bb-kitchen .bb-controls{background:var(--bb-premium-ivory,#FFFDF6)!important;border-top-color:var(--bb-premium-border,#DCE5D9)!important;box-shadow:0 -5px 18px #123e2d08!important}
+html body #modalRoot>.cook-overlay .cook-panel.bb-kitchen :is(.btn.primary,.bbcv-toggle,#bbStart,#bbNext,#bbFinish){background:var(--bb-premium-gloss,linear-gradient(125deg,#123E2D,#245E43))!important;color:var(--bb-premium-ivory,#FFFDF6)!important;border-color:var(--bb-premium-green,#245E43)!important}
+
+/* Native membership is the original StoreKit UI, with the same live prices,
+   disabled states, Restore Purchases and sign-in actions. */
+html body.bb-native-membership-page{background:linear-gradient(160deg,#f8faf3,#f3f5eb 60%,#faf7ee)!important;color:var(--bb-premium-ink,#173C2D)!important}
+html body.bb-native-membership-page main{border:1px solid var(--bb-premium-border,#DCE5D9)!important;border-radius:24px!important;background:var(--bb-premium-ivory,#FFFDF6)!important;box-shadow:var(--bb-premium-shadow,0 8px 24px #123e2d0d)!important;padding:24px!important}
+html body.bb-native-membership-page main>.brand{border:1px solid #c3a45d66!important;box-shadow:0 3px 9px #123e2d0d!important}
+html body.bb-native-membership-page #bbNativeMembershipHeading{color:var(--bb-premium-forest,#123E2D)!important;font-size:clamp(28px,7vw,36px)!important;letter-spacing:-.035em!important}
+html body :is(.bb-native-membership-page main,.bbui-settings-panel[data-bb-account-polish]) .bb-native-membership{background:#f2f5e9!important;border-color:#d8e2ce!important;border-radius:19px!important;color:var(--bb-premium-ink,#173C2D)!important}
+html body :is(.bb-native-membership-page main,.bbui-settings-panel[data-bb-account-polish]) .bb-native-membership :is(h2,h3){color:var(--bb-premium-ink,#173C2D)!important;letter-spacing:-.025em!important}
+html body :is(.bb-native-membership-page main,.bbui-settings-panel[data-bb-account-polish]) .bb-native-apple-plan{background:#fffefa!important;border:1px solid #d6c18c!important;border-radius:17px!important;color:var(--bb-premium-forest,#123E2D)!important;box-shadow:0 3px 10px #123e2d06!important;min-height:126px!important;text-align:left!important}
+html body :is(.bb-native-membership-page main,.bbui-settings-panel[data-bb-account-polish]) .bb-native-apple-plan:not(:disabled){background:var(--bb-premium-gloss,linear-gradient(125deg,#123E2D,#245E43))!important;border-color:var(--bb-premium-green,#245E43)!important;color:var(--bb-premium-ivory,#FFFDF6)!important}
+html body :is(.bb-native-membership-page main,.bbui-settings-panel[data-bb-account-polish]) .bb-native-apple-plan>strong{color:inherit!important;font-size:18px!important}
+html body :is(.bb-native-membership-page main,.bbui-settings-panel[data-bb-account-polish]) .bb-native-apple-plan>span{color:inherit!important;font-size:clamp(23px,5.6vw,28px)!important;font-weight:800!important;letter-spacing:-.025em!important}
+html body :is(.bb-native-membership-page main,.bbui-settings-panel[data-bb-account-polish]) .bb-native-apple-plan>small{color:inherit!important;font-size:12px!important;line-height:1.45!important}
+html body :is(.bb-native-membership-page main,.bbui-settings-panel[data-bb-account-polish]) .bb-native-apple-secondary{background:#edf3e7!important;border-color:#cdddc5!important;color:var(--bb-premium-green,#245E43)!important;border-radius:12px!important;min-height:44px!important}
+
+/* Focus and pressed feedback stay immediate. No open/close animations or
+   delayed opacity are introduced, and disabled controls keep their semantics. */
+html body :is(#cloud-card[data-bb-account-polish],dialog.bbpi-panel,dialog.bb-plan-meal-picker,#bbhs-dialog) :is(input:not([type=checkbox]):not([type=radio]):not([type=file]),select,textarea){
+ background:#fffefa!important;border-color:#cad9c2!important;color:var(--bb-premium-ink,#173C2D)!important;border-radius:12px!important;font-size:16px!important;min-height:44px!important;
+}
+html body :is(.bbui-settings-panel[data-bb-account-polish],#cloud-card[data-bb-account-polish],dialog.bbpi-panel,dialog.bb-plan-meal-picker,#bbhs-dialog,.bb-native-membership-page main) :is(button,a,input,select,textarea,summary):focus-visible,
+html body #modalRoot>.cook-overlay .cook-panel.bb-kitchen :is(button,a,input,select,textarea,summary):focus-visible{outline:3px solid var(--bb-premium-forest,#123E2D)!important;outline-offset:2px!important}
+html body .bbui-settings-panel[data-bb-account-polish] .bbui-settings-heading .bbui-settings-close:focus-visible,
+html body dialog.bbpi-panel .bbpi-editor-heading .bbpi-close:focus-visible,
+html body #modalRoot>.cook-overlay .cook-panel.bb-kitchen .bb-cook-intro :is(#bbExit,button.bb-phase):focus-visible{outline-color:var(--bb-premium-gold-light,#D5BC7A)!important}
+html body :is(dialog.bb-plan-meal-picker,#bbhs-dialog) button:not(:disabled):active{border-color:var(--bb-premium-gold,#C3A45D)!important;box-shadow:inset 0 1px 3px #123e2d18!important}
+@media(hover:hover){
+ html body dialog.bb-plan-meal-picker .bb-plan-picker-choice:not(:disabled):hover{background:#f0f5e9!important;border-color:#b7cbaa!important}
+}
+@media(max-width:375px){
+ html body.bb-native-membership-page main{padding:16px!important;border-radius:20px!important}
+ html body #bbhs-dialog .bbhs-card{padding:18px!important}
+}
+@media(prefers-reduced-motion:reduce){
+ html body :is(.bbui-settings-panel[data-bb-account-polish],#cloud-card[data-bb-account-polish],dialog.bbpi-panel,dialog.bb-plan-meal-picker,#bbhs-dialog,.bb-native-membership-page main) *{scroll-behavior:auto!important;animation:none!important;transition:none!important}
+ html body #modalRoot>.cook-overlay .cook-panel.bb-kitchen .bbcv-icon{animation:none!important}
+}

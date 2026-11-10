@@ -9561,14 +9561,22 @@ function bbAfDraw(days,previous,filters={},batch=false){
  const weighted=typeof BBPantryAutofill!=='undefined';
  let stock={};if(weighted&&window.BBHome?.blocked?.()!==true)try{stock=bbHomePhysicalStock();}catch{}
  const history=weighted?bbPlannedRecipeHistory():{};
- const goalPreferences=typeof BBMealPreferences==='undefined'?null:BBMealPreferences.get(),goalCosts=new Map();
+ const goalPreferences=typeof BBMealPreferences==='undefined'?null:BBMealPreferences.get(),goalCosts=new Map(),ingredientCache=new Map();
+ const priceGoal=goalPreferences?.goals.includes('Spend less on groceries')===true;
  const goalScore=(recipe,preference)=>{
-  if(!goalPreferences)return 0;
-  if(!goalCosts.has(recipe.id)){let amount=null;try{amount=bbRecipeMealEstimate(recipe).amount;}catch{}goalCosts.set(recipe.id,amount);}
-  return BBMealPreferences.goalScore({goals:goalPreferences.goals,amount:goalCosts.get(recipe.id),servings:state.servings,pantryBonus:preference?.pantryBonus||0,previouslyPlanned:Object.hasOwn(history,recipe.id)});
+  if(!goalPreferences?.goals.length)return 0;
+  if(priceGoal&&!goalCosts.has(recipe.id)){let amount=null;try{amount=bbRecipeMealEstimate(recipe).amount;}catch{}goalCosts.set(recipe.id,amount);}
+  return BBMealPreferences.goalScore({goals:goalPreferences.goals,amount:priceGoal?goalCosts.get(recipe.id):null,servings:state.servings,pantryBonus:preference?.pantryBonus||0,previouslyPlanned:Object.hasOwn(history,recipe.id)});
  };
 
- const ingredientRows=(recipe,day)=>bbHomeRecipeIngredients(recipe.id,BBServing.ratio(BBServing.forMeal(state,{recipeId:recipe.id,day},recipe),recipe)*(batch&&['Monday','Wednesday'].includes(day)?2:1));
+ // Serving-scaled requirements are immutable during this read-only proposal.
+ // The cache is discarded before confirmation and never survives another tap.
+ const ingredientRows=(recipe,day)=>{
+  const factor=BBServing.ratio(BBServing.forMeal(state,{recipeId:recipe.id,day},recipe),recipe)*(batch&&['Monday','Wednesday'].includes(day)?2:1);
+  let rows=ingredientCache.get(recipe.id);if(!rows){rows=new Map();ingredientCache.set(recipe.id,rows);}
+  if(!rows.has(factor))rows.set(factor,bbHomeRecipeIngredients(recipe.id,factor));
+  return rows.get(factor);
+ };
  const scored=(r,week)=>{
   const d=details(r.id),used=new Set();
   for(const item of week)for(const x of details(item.recipeId)?.food||[])used.add(x);
@@ -9583,7 +9591,27 @@ function bbAfDraw(days,previous,filters={},batch=false){
  for(let attempt=0;attempt<100;attempt++){
   const rotation=bbRotationSession({forAutoFill:true}),before=rotation.snapshot(),selected=[],week=[...previous];
   let conversion=null;if(weighted)try{conversion=bbHomeConversionContext();}catch{conversion={};}
-  const pantry=weighted?BBPantryAutofill.create({stock,priorityStockKeys:window.BBReducedStock?.priority?.(stock,{inventory:bb83ReadObject('basketboss_makeameal_v1_inventory'),actor:window.BBHome?.actor?.()||'guest',allowed:window.BBReducedFoodHost?.isPremium?.()===true,canonicalize:BBPriceV19.canonical,market:bb307Market})||[],canonicalMeasure:BBPriceV19.canonicalMeasure,lastPlannedAt:history,proposal:({stock,ingredients})=>window.BBPantryDeduction.proposal({stock,ingredients,id:BB307Pantry.pantryId,conversion})}):null;
+  // Reuse a proposal only for identical requirements AND the complete current
+  // ledger stock. Each reservation changes that key; every retry starts fresh.
+  const proposalCache=new Map();
+  // Canonical identity is independent of stock; quantities still use each
+  // candidate's current ledger and no lookup survives this button press.
+  const pantryIds=new Map();
+  const pantryId=(name,unit)=>{
+   if(typeof name!=='string'||typeof unit!=='string')return BB307Pantry.pantryId(name,unit);
+   let units=pantryIds.get(name);if(!units){units=new Map();pantryIds.set(name,units);}
+   if(!units.has(unit))units.set(unit,BB307Pantry.pantryId(name,unit));
+   return units.get(unit);
+  };
+  const pantryProposal=({stock,ingredients})=>{
+   const cacheable=Object.values(stock).every(Number.isFinite)&&ingredients.every(row=>row&&typeof row==='object'&&(row.required===null||Number.isFinite(row.required)));
+   const key=cacheable?JSON.stringify([stock,ingredients]):null;
+   if(key!==null&&proposalCache.has(key))return proposalCache.get(key);
+   const result=window.BBPantryDeduction.proposal({stock,ingredients,id:pantryId,conversion});
+   if(key!==null&&result&&typeof result.then!=='function')proposalCache.set(key,result);
+   return result;
+  };
+  const pantry=weighted?BBPantryAutofill.create({stock,priorityStockKeys:window.BBReducedStock?.priority?.(stock,{inventory:bb83ReadObject('basketboss_makeameal_v1_inventory'),actor:window.BBHome?.actor?.()||'guest',allowed:window.BBReducedFoodHost?.isPremium?.()===true,canonicalize:BBPriceV19.canonical,market:bb307Market})||[],canonicalMeasure:BBPriceV19.canonicalMeasure,lastPlannedAt:history,proposal:pantryProposal}):null;
   if(pantry)for(const day of BB_AF_DAYS){let meals=[];try{meals=bbHomeDayMeals(day);}catch{}for(const meal of meals)if(!window.BBHome?.isCooked?.(meal.occurrence))pantry.reserve(meal.ingredients,{sourceIngredients:getRecipe(meal.recipeId)?.ingredients});}
   for(const day of days){
    const candidatesForDay=all.filter(r=>!bbAfWorldMeal(r)||(worldAllowed&&bbAfWorldCount(week)===0));
@@ -13126,4 +13154,8 @@ body[data-bbnext-view="discover"] #app .bb175-discover-heading{padding-top:calc(
 <link rel="stylesheet" href="bb-yellow-stickers-ui.css?v=20261105-reduced1">
 <script defer src="bb-yellow-stickers-ui.js?v=20261105-preflight1"></script>
 <link rel="stylesheet" href="bb-plan-extras.css?v=20261108-planner1">
+
+<!-- Shared app finish: loaded after the legacy component styles. -->
+<link rel="stylesheet" href="bb-premium-finish.css?v=20261110-forest1">
+<link rel="stylesheet" href="bb-premium-dialogs.css?v=20261110-forest1">
 </body></html>
