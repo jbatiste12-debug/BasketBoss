@@ -173,3 +173,11 @@ test('Finish deposits a partial purchase once and later receipt matching consume
  assert.equal(h.finish().count,1);assert.equal(h.get('stock')['rice|g'],325);
  const {computeReceiptCredit}=await import('../bb-receipt-inventory-core.mjs');const receipt=computeReceiptCredit({name:'Rice',canonicalKey:'rice',quantity:125,unit:'g'},h.get('receipts'),{shopSessionId:session.id});assert.equal(receipt.addedQuantity,0);assert.equal(receipt.priorCreditedQuantity,125);assert.equal(h.finish().count,0);
 });
+
+test('actual Finish places plural whole produce, chilled food and frozen food in the correct default storage',()=>{
+ const cases=[['Potatoes','Produce','cupboard'],['Red onions','Produce','cupboard'],['Bananas','Produce','cupboard'],['Apples','Produce','cupboard'],['Spring onions','Produce','fridge'],['Green onion','Produce','fridge'],['Sliced potatoes','Produce','fridge'],['Frozen peas','Produce','freezer'],['Chicken breast','Meat & Fish','fridge'],['Rice','Cupboard / Pantry','cupboard'],['Milk','Dairy & Chilled','fridge']];
+ const h=fixture();for(const [name,aisle]of cases)h.buy(name,500,name==='Milk'?'ml':'g',{aisle});
+ assert.equal(h.finish().count,cases.length);
+ for(const [name,,location]of cases){const rows=h.active().filter(row=>row.name===name);assert.equal(rows.length,1,name);assert.equal(rows[0].loc,location,name+' default category');assert.equal(rows[0].qty,500,name+' purchased amount');}
+ assert.equal(h.finish().count,0,'a repeated Finish cannot create duplicate pantry entries');
+});
