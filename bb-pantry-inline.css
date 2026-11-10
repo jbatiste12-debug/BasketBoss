@@ -360,7 +360,7 @@ html body[data-bbnext-view=shop] #app #bb173ShopFridge.bbpi-enhanced{
 html body[data-bbnext-view=shop] #app #bb173ShopFridge.bbpi-enhanced .bb76-kitchen-intro{
  display:grid!important;grid-template-columns:minmax(85px,.8fr) minmax(150px,1.3fr)!important;
  align-items:center!important;gap:7px!important;height:56px!important;min-height:0!important;
- margin:0 0 14px!important;padding:8px 10px!important;border:0!important;border-radius:15px!important;
+ margin:0 0 14px!important;padding:3px 10px!important;border:0!important;border-radius:15px!important;
  background:#1b4d36!important;box-shadow:none!important;
 }
 html body[data-bbnext-view=shop] #app #bb173ShopFridge.bbpi-enhanced .bb76-title,
@@ -384,7 +384,7 @@ html body[data-bbnext-view=shop] #app #bb173ShopFridge.bbpi-enhanced #bbKitchenS
  border-radius:10px!important;box-shadow:none!important;
 }
 html body[data-bbnext-view=shop] #app #bb173ShopFridge.bbpi-enhanced #bbKitchenSections>button{
- min-width:0!important;min-height:32px!important;margin:0!important;padding:5px 3px!important;
+ min-width:44px!important;min-height:44px!important;margin:0!important;padding:5px 3px!important;
  border:0!important;border-radius:7px!important;background:transparent!important;color:#e9efdf!important;
  font:650 10px/1.2 system-ui!important;white-space:nowrap!important;box-shadow:none!important;
 }
@@ -417,7 +417,7 @@ html body[data-bbnext-view=shop] #app #bb173ShopFridge.bbpi-enhanced .bbpi-stora
 html body[data-bbnext-view=shop] #app #bb173ShopFridge.bbpi-enhanced .bbpi-storage-tabs::-webkit-scrollbar{display:none!important}
 html body[data-bbnext-view=shop] #app #bb173ShopFridge.bbpi-enhanced .bbpi-storage-tabs .bbpi-storage-tab{
  display:inline-flex!important;align-items:center!important;justify-content:center!important;gap:6px!important;
- flex:0 0 auto!important;width:auto!important;min-width:0!important;min-height:40px!important;margin:0!important;padding:9px 12px!important;
+ flex:0 0 auto!important;width:auto!important;min-width:44px!important;min-height:44px!important;margin:0!important;padding:9px 12px!important;
  border:1px solid #d7e0cd!important;border-radius:999px!important;background:#e9efdf!important;color:#385b43!important;
  font:650 12px/1.2 system-ui!important;white-space:nowrap!important;box-shadow:none!important;
 }
