@@ -10043,7 +10043,12 @@ function bb83StockLoc(name,aisle){
  const n=String(name||'').toLowerCase();
  if(/\bfrozen\b/.test(n))return 'freezer';
  if(aisle==='Cupboard / Pantry'||aisle==='Bakery'||aisle==='Household & Other')return 'cupboard';
- if(aisle==='Produce'&&/\b(potato|onion|banana|apple|garlic|citrus)\b/.test(n))return 'cupboard';
+ if(aisle==='Produce'){
+  // Whole dry produce uses the cupboard; prepared produce and salad onions
+  // stay chilled. Preserve the same defaults for singular and plural labels.
+  if(/\b(?:(?:spring|green)\s+onions?|scallions?|chopped|sliced|diced|peeled|cooked)\b/.test(n))return 'fridge';
+  if(/\b(potato(?:es)?|onions?|bananas?|apples?|garlic|citrus)\b/.test(n))return 'cupboard';
+ }
  return 'fridge';
 }
 function bb83KitchenName(name){
