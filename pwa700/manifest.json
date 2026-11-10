@@ -514,7 +514,7 @@
     {
       "path": "app.html",
       "bytes": 2956061,
-      "sha256": "7c00510dd5843beb234b829d1f6d61fd82107f9f0aa6046cd785658dbd8eec78"
+      "sha256": "09aa429f6a9406a1e3c22ece627ef9dc51c6e8291445ac22884a56aac3fb7f51"
     },
     {
       "path": "basketboss-latest-guide.html",
@@ -634,7 +634,7 @@
     {
       "path": "make-a-meal.html",
       "bytes": 40037,
-      "sha256": "e0ea672a238da17b7b934263854e8d58cb64fe6861e64b8f17a07ba58f04233d"
+      "sha256": "1ea85c656093cc246480099f4d416a1cf5e5a4ec07ecd0570a1b3d3d14e7030c"
     },
     {
       "path": "make-a-meal.js",
@@ -649,7 +649,7 @@
     {
       "path": "precache.js",
       "bytes": 10340,
-      "sha256": "91b8d50124274e2536214841ab40119c29049932e3054e5d0732911b9302d4de"
+      "sha256": "bc7611e4b52b366c9e6bc37f4f289f877083a012116db8bae246084de30bd878"
     },
     {
       "path": "pricing-sandbox.html",

@@ -71,6 +71,8 @@ html body #app :is(select,input[type=search],input[type=text],input[type=number]
 html body #app :is(#recipeSearch,#bbpiSearch){border-color:#c6d5bf!important;border-radius:14px!important;background:#fffefa!important;font-size:16px!important}
 html body #app :is(#bb172FillSixDinners,.bbnext-plan-primary,#cookRecipe,#bbFeaturedAddWeek,[data-cook],.bb-kitchen-review-open,.bbpi-toolbar-add,.bbpi-add-food,.bbpi-done,.bb80-gallery-add:not(.bb-manual-batch-btn)){
  background:var(--bb-premium-gloss)!important;border:1px solid #245e43!important;color:var(--bb-premium-ivory)!important;
+ /* Keep legacy WebKit text-fill rules from painting dark labels on forest actions. */
+ -webkit-text-fill-color:currentColor!important;
  border-radius:13px!important;min-height:44px!important;box-shadow:0 3px 9px #123e2d12,inset 0 1px #ffffff14!important;font-weight:750!important;
 }
 html body #app :is(.bbnext-plan-secondary,.bb16-toggle-filters,.bb-manual-batch-btn,.bb-add-breakfast,.bb-add-dessert,.bb-plan-move-button,.bb-day-done-trigger,.bb-evening-pivot-open,.bbpi-toolbar-filters,.bbpi-edit,.bbpi-step,.bbpi-add-food,.bbps-start,.bbcs-add){
