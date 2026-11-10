@@ -50,6 +50,39 @@ test('fresh native install opens onboarding once and can finish without prices, 
  const again=harness({store:h.storage});assert.equal(again.active(),undefined);assert.equal(again.window.BBOnboard2026.willShow(),false);
 });
 
+test('only optional tour screens can skip to the existing final choice without completing setup or applying preferences',()=>{
+ for(const step of [6,7,8,9]){
+  const saved={...completed,step,started:true,complete:false},h=harness({saved});
+  const session=h.storage.get(SESSION),plan=h.storage.get(PLAN);
+  assert.match(h.active().innerHTML,/data-bbob="skip-tour"/);
+  assert.match(h.active().innerHTML,/Optional tour/);
+  h.tap('skip-tour');
+  assert.deepEqual(h.read(),{...saved,step:10});
+  assert.match(h.active().innerHTML,/Start using BasketBoss/);
+  assert.doesNotMatch(h.active().innerHTML,/data-bbob="skip-tour"/);
+  assert.deepEqual(h.preferences,[],'skipping presentation must not commit setup');
+  assert.equal(h.storage.get(SESSION),session);assert.equal(h.storage.get(PLAN),plan);
+  const resumed=harness({store:h.storage});
+  assert.equal(resumed.read().step,10);assert.match(resumed.active().innerHTML,/Start using BasketBoss/);
+  h.tap('free-complete');
+  assert.equal(h.read().complete,true);
+  assert.deepEqual(h.preferences,[{house:2},{region:'UK'},{meals:{diets:['Vegetarian'],goals:['Plan dinners faster']}}]);
+ }
+ for(const step of [0,1,2,3,4,5,10]){
+  const h=harness({saved:{...completed,step,started:true,complete:false}}),before=h.storage.get(KEY);
+  assert.doesNotMatch(h.active().innerHTML,/data-bbob="skip-tour"/);
+  h.tap('skip-tour');assert.equal(h.storage.get(KEY),before);assert.deepEqual(h.preferences,[]);
+ }
+});
+
+test('skipping an optional replay tour and cancelling preserves the previously committed setup',()=>{
+ const h=harness({saved:completed}),before=h.storage.get(KEY);
+ h.window.BBOnboard2026.open();h.through(3);h.tap(null,3);h.region('Guernsey');h.through(3);
+ h.tap('skip-tour');assert.match(h.active().innerHTML,/Start using BasketBoss/);
+ assert.equal(h.storage.get(KEY),before);assert.deepEqual(h.preferences,[]);
+ h.tap('replay-cancel');assert.equal(h.active(),undefined);assert.equal(h.storage.get(KEY),before);assert.deepEqual(h.preferences,[]);
+});
+
 test('returning users keep completion, while Settings replay opens the complete setup and preserves data',()=>{
  const h=harness({saved:completed}),before=h.storage.get(KEY),session=h.storage.get(SESSION);
  assert.equal(h.active(),undefined);assert.equal(h.replayButton.textContent,'Replay welcome & setup');

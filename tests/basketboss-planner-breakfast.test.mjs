@@ -29,7 +29,7 @@ function fixture(entry,{cooked=[],allowed=()=>true}={}){
  vm.runInContext(read('basketboss-pricing-v19.js'),context);
  context.BB307Pantry={pantryName:context.BBPriceV19.canonical,pantryId:(name,unit)=>context.BBPriceV19.canonical(name)+'|'+unit};
  for(const name of ['bbIsBreakfast','bbGetBreakfasts','bbGetDesserts'])if(source.includes('function '+name+'('))vm.runInContext(sourceFunction(source,name),context);
- for(const name of ['normalize','bbFeedingForRecipe','bbHomeOccurrence','bbHomeRecipeIngredients','bb307Selections','bb321ShoppingSources','bbHomeDayMeals'])vm.runInContext(sourceFunction(source,name),context);
+ for(const name of ['normalize','bbFeedingForRecipe','bbHomeOccurrence','bbHomeRecipeIngredients','bb307Selections','bb321ShoppingSources','bbHomeSchoolLunchMeal','bbHomeDayMeals'])vm.runInContext(sourceFunction(source,name),context);
  return {context,state,source};
 }
 

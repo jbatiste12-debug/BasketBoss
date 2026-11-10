@@ -27,11 +27,11 @@ function fixture({replace,headStatus=200,denial=401}={}){
 
 test('public web700 deployment proof checks every generated asset, routed app, unchanged legacy Free100 and both paid boundaries',async()=>{
  const f=fixture(),result=await verifyWeb700Deployment({perform:f.perform});
- assert.deepEqual(result,{ok:true,catalogueVersion:700,publicRecipes:200,generatedFiles:inventory.files.length,generatedApplicationBytesVerified:true,literalAssetBytesMatched:inventory.files.length,directiveVariantsVerified:0,routedAppVerified:true,routedAppDirectiveVariant:false,landingMonthlyPriceVerified:true,advertisedMonthlyPrice:approvedLandingPrice,rootAssets:22,newImageRewrite:true,legacyPublicRecipes:100,legacyPublicUnchanged:true,unauthenticatedPremiumDenied:true});
+ assert.deepEqual(result,{ok:true,catalogueVersion:700,publicRecipes:200,generatedFiles:inventory.files.length,generatedApplicationBytesVerified:true,literalAssetBytesMatched:inventory.files.length,directiveVariantsVerified:0,routedAppVerified:true,routedAppDirectiveVariant:false,landingMonthlyPriceVerified:true,advertisedMonthlyPrice:approvedLandingPrice,rootAssets:25,newImageRewrite:true,legacyPublicRecipes:100,legacyPublicUnchanged:true,unauthenticatedPremiumDenied:true});
  assert.equal(f.requests.filter(row=>row.options.method==='HEAD').length,1);assert.equal(f.requests.filter(row=>new URL(row.address).pathname.startsWith('/api/')).length,2);
  assert.equal(f.requests.some(row=>/private|sealed|\.sql|\.github/.test(row.address)),false);
  assert.equal(f.requests.filter(row=>new URL(row.address).pathname==='/').length,1);
- assert.equal(f.requests.length,inventory.files.length+29);
+ assert.equal(f.requests.length,inventory.files.length+32);
 });
 
 test('deployment proof rejects a stale manifest before downloading the asset pack',async()=>{
@@ -63,7 +63,10 @@ test('deployment proof rejects stale assets, missing HTML middleware, modified l
   ['/bb-shared-shopping.js',{body:'stale'},'ROOT_ASSET'],
   ['/bb-shared-shopping.css',{body:'stale'},'ROOT_ASSET'],
   ['/bb-day-done.js',{body:'stale'},'ROOT_ASSET'],
-  ['/bb-day-done.css',{body:'stale'},'ROOT_ASSET']
+  ['/bb-day-done.css',{body:'stale'},'ROOT_ASSET'],
+  ['/bb-onboarding-v2.js',{body:'stale'},'ROOT_ASSET'],
+  ['/bb-onboarding-v2.css',{body:'stale'},'ROOT_ASSET'],
+  ['/bb-how-it-works.js',{body:'stale'},'ROOT_ASSET']
  ]){
   const f=fixture({replace:pathname=>pathname===route?change:null});
   await assert.rejects(verifyWeb700Deployment({perform:f.perform}),new RegExp('^Error: WEB700_'+code+'$'));
