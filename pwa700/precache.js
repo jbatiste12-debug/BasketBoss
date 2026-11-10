@@ -1,5 +1,5 @@
 /* Public web700 cache contract. Never include private/API/auth responses. */
-self.BB700_PWA_CACHE_VERSION="bc7fcecb23297790a46586af01761a7c456c7299a24ad72cfa6217f9ad892a09";
+self.BB700_PWA_CACHE_VERSION="2802f74440613ba0970054636c4a2170ace54c484fa4edc2584caac4020f9105";
 self.BB700_PWA_PRECACHE=Object.freeze([
   "/basketboss-aisles-v20.js?v=d45b76bac322b605",
   "/bb-account-deletion.css?v=645b166ac6fe196f",
@@ -111,7 +111,7 @@ self.BB700_PWA_PRECACHE=Object.freeze([
   "/bb-premium-feature-badges.css?v=ccab5dd9ebefe3fe",
   "/bb-premium-feature-badges.js?v=e10f09e1fb788a64",
   "/bb-premium-features.css?v=f3eaa5f0e3238f7c",
-  "/bb-premium-finish.css?v=bf0126c048f4f487",
+  "/bb-premium-finish.css?v=b89f4e5748ef41e4",
   "/bb-price-scan.js?v=e9a3012f1eaca334",
   "/bb-purchase-choice.css?v=7982c53202f5c96f",
   "/bb-real-app-tour.css?v=e70325086ae3874f",
@@ -135,8 +135,8 @@ self.BB700_PWA_PRECACHE=Object.freeze([
   "/bb-servings-mobile-polish.css?v=cc45ed59fe0bd110",
   "/bb-session.js?v=a5bcffc28634ff1c",
   "/bb-settings-premium-polish.css?v=08327fa766622da5",
-  "/bb-shared-shopping.css?v=c9924fc3f011d04a",
-  "/bb-shared-shopping.js?v=bd4c62f9339234a3",
+  "/bb-shared-shopping.css?v=608ff045e8152025",
+  "/bb-shared-shopping.js?v=f88ff03af4fc7137",
   "/bb-shop-add.css?v=76495afe6b55de2b",
   "/bb-shop-add.js?v=ab24b574d6fa7c12",
   "/bb-shop-cook-clarity.css?v=079592a7e425520e",

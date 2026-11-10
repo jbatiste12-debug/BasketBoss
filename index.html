@@ -10997,6 +10997,7 @@ let bb172StorefrontReminder=false;
 let bb172StorefrontOpenedAisles={};
 let bb172StorefrontScroll=0;
 let bb172StorefrontPending=false;
+let bb172StorefrontHeaderObserver=null;
 let bb172WakeSentinel=null;
 let bb172WakePending=false;
 let bb172WakeState='idle';
@@ -11071,6 +11072,7 @@ function bb172StorefrontOpen(){
   shell.id='bb172Storefront';shell.setAttribute('aria-label','BasketBoss shopping mode');
   shell.setAttribute('role','region');shell.tabIndex=-1;
   document.body.appendChild(shell);
+  shell.addEventListener('scroll',()=>bb172StorefrontSyncHeader(shell),{passive:true});
  }
  document.body.classList.add('bb172-storefront-visible');
  bb172StorefrontRender();
@@ -11078,6 +11080,7 @@ function bb172StorefrontOpen(){
  void bb172StorefrontWakeOn();
 }
 function bb172StorefrontClose(){
+ bb172StorefrontHeaderObserver?.disconnect();bb172StorefrontHeaderObserver=null;
  const shell=document.getElementById('bb172Storefront');if(shell)shell.remove();
  document.body.classList.remove('bb172-storefront-visible');
  bb172StorefrontReminder=false;
@@ -11220,10 +11223,39 @@ function bb172StorefrontLogo(){
  wrap.innerHTML='<svg viewBox="0 0 64 64" width="50" height="50" focusable="false" aria-hidden="true" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M22 18 18 10 27 14 32 6 37 14 46 10 42 18Z" fill="#2E6F40" stroke="#2E6F40" stroke-width="2" stroke-linejoin="round"/><path d="M21 21h22" stroke="#1B4365" stroke-width="3" stroke-linecap="round"/><path d="M18 30 25 23M46 30 39 23" stroke="#1B4365" stroke-width="4" stroke-linecap="round"/><path d="M11 31h42l-5 24H16l-5-24Z" fill="#1B4365" stroke="#1B4365" stroke-width="2" stroke-linejoin="round"/><path d="M22 38v10M32 38v10M42 38v10" stroke="#FAF8F5" stroke-width="4" stroke-linecap="round"/></svg>';
  return wrap;
 }
+function bb172StorefrontSyncHeader(shell,measure=false){
+ if(!shell?.isConnected)return;
+ if(measure){
+  const header=shell.querySelector('.bb172-storefront-header'),compact=header?.querySelector('.bb172-storefront-compact');
+  if(!header||!compact)return;
+  const height=header.getBoundingClientRect().height,compactHeight=compact.getBoundingClientRect().height;
+  if(height>0&&compactHeight>0){shell.style.setProperty('--bb-shop-header-size',height+'px');shell.dataset.bbShopCollapseAt=String(Math.max(1,height-compactHeight));}
+ }
+ const threshold=Number(shell.dataset.bbShopCollapseAt)||200;
+ // Geometry stays constant: the header scrolls upward until its compact
+ // bottom edge pins. Ticking an item never changes the list's scroll offset.
+ const compact=shell.scrollTop>=threshold;
+ if(shell.dataset.bbShopCompact!==String(compact))shell.dataset.bbShopCompact=String(compact);
+}
+function bb172StorefrontObserveHeader(shell){
+ bb172StorefrontHeaderObserver?.disconnect();bb172StorefrontHeaderObserver=null;
+ bb172StorefrontSyncHeader(shell,true);
+ const header=shell.querySelector('.bb172-storefront-header');
+ if(header&&typeof ResizeObserver==='function'){
+  bb172StorefrontHeaderObserver=new ResizeObserver(()=>bb172StorefrontSyncHeader(shell,true));
+  bb172StorefrontHeaderObserver.observe(header);
+ }
+}
+function bb172StorefrontAddItem(){
+ if(window.BBSharedShopping?.openAdd)return window.BBSharedShopping.openAdd();
+ if(window.BBSharedShoppingHost?.openSharing)return window.BBSharedShoppingHost.openSharing();
+ document.querySelector('[data-bbhs-trigger]')?.click();
+}
 function bb172StorefrontRender(){
  const shell=document.getElementById('bb172Storefront');
  if(!shell||!bb172ShopActive||tab!=='shop')return;
  const lastScroll=shell.scrollTop;
+ const sharedCard=shell.querySelector('#bbSharedShopping');
  const all=bb172StorefrontAll();
  const left=all.filter(x=>!x.checked);
  const complete=all.length-left.length;
@@ -11266,6 +11298,24 @@ function bb172StorefrontRender(){
  const fill=bb172StorefrontEl('div','bb172-storefront-progress-fill');fill.style.width=percent+'%';progressTrack.append(fill);
  progress.append(progressLabel,progressTrack);
  header.append(stats,progress);
+ const add=bb172StorefrontButton('＋ Add item','bb172-storefront-add',bb172StorefrontAddItem);
+ add.setAttribute('aria-label','Add item to shared shopping list');
+ const actionRow=bb172StorefrontEl('div','bb172-storefront-actions');
+ const sharedHint=bb172StorefrontEl('span','bb172-storefront-share-hint','Shopping together? Add an extra for your partner.');
+ actionRow.append(sharedHint,add);header.append(actionRow);
+ const compact=bb172StorefrontEl('div','bb172-storefront-compact');
+ const budget=bb172StorefrontEl('div','bb172-storefront-compact-budget');
+ const target=typeof bb172BudgetValue==='function'?bb172BudgetValue():null;
+ const budgetLabel=target>0?'Budget '+BBPriceV19.money(target,bb307Market):'Left to buy';
+ budget.append(bb172StorefrontEl('small','',budgetLabel),bb172StorefrontEl('strong','',summary?BBPriceV19.money(summary.remainingTotal||0,bb307Market)+' est.':'Estimate unavailable'));
+ budget.setAttribute('aria-label',budgetLabel+'. '+rest+' remaining estimate.');
+ const count=bb172StorefrontEl('div','bb172-storefront-compact-count');
+ count.append(bb172StorefrontEl('strong','',String(left.length)),bb172StorefrontEl('small','',left.length===1?'item left':'items left'));
+ const compactAdd=bb172StorefrontButton('','bb172-storefront-add',bb172StorefrontAddItem);
+ compactAdd.setAttribute('aria-label','Add item to shared shopping list');
+ compactAdd.append(bb172StorefrontEl('span','bb172-storefront-add-symbol','＋'),bb172StorefrontEl('span','bb172-storefront-add-label','Add item'));
+ const compactExit=bb172StorefrontButton('×','bb172-storefront-compact-exit',bb172StorefrontConfirmExit);compactExit.setAttribute('aria-label','Exit shopping mode');
+ compact.append(budget,count,compactAdd,compactExit);header.append(compact);
  shell.append(header);
  if(bb172StorefrontReminder&&left.length){
   const reminder=bb172StorefrontEl('aside','bb172-storefront-reminder');
@@ -11289,7 +11339,11 @@ function bb172StorefrontRender(){
   const b=bb172StorefrontButton(label,'bb172-storefront-filter'+(id===bb172StorefrontFilter?' is-active':''),()=>bb172StorefrontSetFilter(id));
   b.setAttribute('aria-pressed',String(id===bb172StorefrontFilter));filters.append(b);
  }
- controls.append(filters);shell.append(controls);
+ controls.append(filters);
+ // Keep the shared form and its height in the same synchronous repaint.
+ // A delayed remount would move the list under the shopper's finger.
+ if(sharedCard)shell.append(sharedCard);
+ shell.append(controls);
  const content=bb172StorefrontEl('main','bb172-storefront-aisles');content.id='bb172StorefrontAisles';shell.append(content);
  bb172StorefrontDrawAisles(all);
  const foot=bb172StorefrontEl('footer','bb172-storefront-bottom');
@@ -11303,6 +11357,7 @@ function bb172StorefrontRender(){
  const finish=bb172StorefrontButton('Finish shop','bb172-storefront-finish',bb172StorefrontConfirmFinish);
  footBtns.append(copy,finish);foot.append(leftText,footBtns);shell.append(foot);
  shell.scrollTop=lastScroll;
+ bb172StorefrontObserveHeader(shell);
 }
 function bb172StorefrontDrawAisles(allRows){
  const content=document.getElementById('bb172StorefrontAisles');if(!content)return;
