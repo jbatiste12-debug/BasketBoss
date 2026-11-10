@@ -86,6 +86,38 @@ html body #app #bbpolAutofillCard :is(#bbSimpleBudget[open]>summary,#bbSimpleMea
 html body #app :is(.bbpi-location,.bb81-pro-pills button,.bb16-categories button){border-color:#d1ddca!important;color:var(--bb-premium-green)!important;background:#f2f6ed!important;min-height:44px!important;border-radius:12px!important}
 html body #app :is(.bbpi-location[aria-selected=true],.bbpi-location.is-active,.bb16-categories button.active,.bb81-pro-pills button.active){background:var(--bb-premium-gloss)!important;color:var(--bb-premium-ivory)!important;border-color:var(--bb-premium-green)!important}
 
+/* Discover ingredients stay in aligned rows, with a compact quantity pill. */
+html body[data-bbnext-view="discover"] #app .bbfeed-ingredients{
+ background:transparent!important;border:0!important;padding:0!important;color:var(--bb-premium-ink)!important;
+}
+html body[data-bbnext-view="discover"] #app .bbfeed-ingredients>summary{
+ display:inline-flex!important;align-items:center!important;min-height:44px!important;
+ padding:8px 14px!important;box-sizing:border-box!important;list-style:none!important;
+ background:#edf3e7!important;border:1px solid #d4dfca!important;border-radius:999px!important;
+ color:var(--bb-premium-green)!important;-webkit-text-fill-color:currentColor!important;
+ font-size:14px!important;line-height:1.4!important;font-weight:750!important;
+}
+html body[data-bbnext-view="discover"] #app .bbfeed-ingredients>summary::-webkit-details-marker{display:none!important}
+html body[data-bbnext-view="discover"] #app .bbfeed-ingredients[open]>summary{margin-bottom:12px!important}
+html body[data-bbnext-view="discover"] #app .bbfeed-ingredients[open]>.ingredient-row{
+ display:block!important;margin:0 0 8px!important;padding:10px 12px!important;
+ background:#f4f7ef!important;border:1px solid #dce5d5!important;border-radius:22px!important;
+}
+html body[data-bbnext-view="discover"] #app .bbfeed-ingredients[open]>.ingredient-row:last-child{margin-bottom:0!important}
+html body[data-bbnext-view="discover"] #app .bbfeed-ingredients[open]>.ingredient-row>span{
+ display:grid!important;grid-template-columns:minmax(0,1fr) minmax(72px,38%)!important;
+ align-items:center!important;gap:10px!important;min-width:0!important;
+ color:var(--bb-premium-ink)!important;-webkit-text-fill-color:currentColor!important;
+ font-size:14px!important;line-height:1.45!important;font-weight:600!important;overflow-wrap:anywhere!important;
+}
+html body[data-bbnext-view="discover"] #app .bbfeed-ingredients[open] .ingredient-row [data-bb-measures]{
+ display:inline-block!important;justify-self:end!important;max-width:100%!important;box-sizing:border-box!important;
+ margin:0!important;padding:6px 9px!important;background:#e6eedf!important;
+ border:1px solid #d4dfca!important;border-radius:999px!important;
+ color:var(--bb-premium-green)!important;-webkit-text-fill-color:currentColor!important;
+ font-size:13px!important;line-height:1.35!important;font-weight:650!important;overflow-wrap:anywhere!important;
+}
+
 /* At home: one clear introduction and consistent pantry surfaces. */
 html body #app #bb173ShopFridge.bbpi-enhanced{background:transparent!important;border-color:transparent!important;box-shadow:none!important}
 html body #app #bb173ShopFridge .bb76-kitchen-intro{background:var(--bb-premium-gloss)!important;border:1px solid #c3a45d66!important;border-radius:20px!important;padding:20px!important;color:var(--bb-premium-ivory)!important;box-shadow:0 7px 20px #123e2d12!important}
