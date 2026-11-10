@@ -43,7 +43,7 @@
   const states=originalStates.filter(state=>!(freshTomato&&state==='fresh'));
   const cannedTomatoes=!states.includes('fresh')&&/^(?:(?:tinned|canned|tin) (?:chopped |whole |plum )?tomato(?:es)?|chopped (?:tinned |canned )?tomato(?:es)?|(?:chopped |whole |plum )?tomato(?:es)? (?:tinned|canned))$/.test(raw);
   const alias=label=>freshTomato?'tomato':cannedTomatoes?'chopped tomatoes':label.replace(/^(?:tinned|canned) ((?:(?:red |white |black |kidney |baked |butter |cannellini |borlotti )?beans?|chickpeas?|lentils?))$/,'$1').replace(/^tomato ketchup$/,'ketchup').replace(/^(?:runny|clear) honey$/,'honey');
-  const foodAlias=label=>label.replace(/\bground beef\b/g,'beef mince').replace(/\bground turkey\b/g,'turkey mince').replace(/\bzucchini\b/g,'courgette').replace(/\beggplant\b/g,'aubergine').replace(/\bscallions?\b/g,'spring onion');
+  const foodAlias=label=>label.replace(/^extra[ -]virgin olive oil$/,'olive oil').replace(/\bground beef\b/g,'beef mince').replace(/\bground turkey\b/g,'turkey mince').replace(/\bzucchini\b/g,'courgette').replace(/\beggplant\b/g,'aubergine').replace(/\bscallions?\b/g,'spring onion');
   let result=foodAlias(alias(raw));
   if(typeof canonicalize==='function')try{const mapped=clean(canonicalize(result));if(safeName(mapped))result=alias(mapped);}catch{}
   const plurals={potatoes:'potato',tomatoes:'tomato',carrots:'carrot',onions:'onion','red onions':'red onion','spring onions':'spring onion',courgettes:'courgette',aubergines:'aubergine',cucumbers:'cucumber',shallots:'shallot',eggs:'egg',apples:'apple',bananas:'banana',lemons:'lemon',limes:'lime',oranges:'orange'};result=plurals[result]||result;
@@ -52,7 +52,29 @@
   // Protected descriptors must not undo an approved food alias. Otherwise a
   // second pantry pass changes tinned beans or runny honey to a different key.
   result=foodAlias(alias(result));result=plurals[result]||result;
+  result=result.replace(/^((?:brown|red|white|yellow) )onions$/,'$1onion').replace(/^((?:white|red|yellow|baking|new|baby|maris piper|king edward|charlotte) )potatoes$/,'$1potato');
   return safeName(result)?result:'';
+ }
+ function stockFamily(value,canonicalize){
+  const original=canonicalName(value,canonicalize);if(!original)return '';
+  // A generic kitchen entry is a shared pool, not permission to replace a
+  // specifically named stock item with a different specific variety.
+  const dry=original.replace(/^(?:dry|dried|uncooked) /,'').replace(/ (?:dry|uncooked)$/,'');
+  if(/^(?:(?:basmati|jasmine|white|brown|long[- ]grain|short[- ]grain|easy[- ]cook|arborio|risotto|sushi|pudding) )?rice$/.test(dry))return 'rice';
+  if(/^(?:pasta|(?:(?:penne|fusilli|spaghetti|rigatoni|macaroni|tagliatelle|linguine|farfalle|conchiglie|orecchiette|fettuccine|orzo)(?: pasta)?))$/.test(dry))return 'pasta';
+  if(/^(?:(?:brown|red|white|yellow) )?onion$/.test(original))return 'onion';
+  if(/^(?:(?:white|red|yellow|baking|new|baby|maris piper|king edward|charlotte) )?potato(?:es)?$/.test(original))return 'potato';
+  if(/^(?:(?:whole|semi[- ]skimmed|skimmed|full[- ]fat|fresh) )?milk$/.test(original))return 'milk';
+  if(/^(?:(?:grated )?(?:mild |mature |extra mature )?)cheddar$/.test(original))return 'cheddar';
+  if(/^(?:(?:plain|all[- ]purpose|plain white) )?flour$/.test(original))return 'flour';
+  if(/^(?:(?:white|granulated|white granulated|caster|castor) )?sugar$/.test(original))return 'sugar';
+  if(/^(?:(?:sea|table|rock|kosher) )?salt$/.test(original))return 'salt';
+  if(/^(?:(?:boneless |skinless |fresh )?chicken breast(?:s| fillets?)?|chicken fillets?)$/.test(original))return 'chicken breast';
+  return original;
+ }
+ function stockCompatible(left,right,canonicalize){
+  const a=canonicalName(left,canonicalize),b=canonicalName(right,canonicalize);if(!a||!b)return false;if(a===b)return true;
+  const family=stockFamily(a,canonicalize);return family===stockFamily(b,canonicalize)&&(a===family||b===family);
  }
  function isStaple(value){
   const name=canonicalName(value);if(!name)return false;
@@ -185,5 +207,5 @@
   if(stock&&typeof stock==='object'&&record.bb173StockKey&&Object.hasOwn(stock,record.bb173StockKey)){const amount=number(stock[record.bb173StockKey]);if(amount!==null)return amount>0?'in':'out';}
   return 'unknown';
  }
- return Object.freeze({canonicalName,isStaple,isWholePepper,isContainerTracked,measuredIdentityProblem,containerLabel,defaultPack,normalize,smallUse,staplePurchase,stapleStatus,baseUnit,cupGrams,cupTable,countGrams});
+ return Object.freeze({canonicalName,stockFamily,stockCompatible,isStaple,isWholePepper,isContainerTracked,measuredIdentityProblem,containerLabel,defaultPack,normalize,smallUse,staplePurchase,stapleStatus,baseUnit,cupGrams,cupTable,countGrams});
 });

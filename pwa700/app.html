@@ -1515,12 +1515,12 @@ const tab=window.bb172ActiveTab;
   if(bb172ReadOwnRecipes().length>=25){bb172Msg('The preview allows up to 25 own recipes. Remove an old one first.');return}
   bb172Modal('Add a family recipe',form=>{
    bb172Input(form,'Meal name','title','text','',80);
-   bb172Input(form,'Ingredients (separated by commas)','ingredients','textarea','',1000).placeholder='e.g. minced beef 500g, chopped tomatoes 2 tins, spaghetti 500g';
-   const notice=document.createElement('p');notice.className='bb172-plus-small';notice.textContent='Include amounts where possible. This preview uses an unverified price guide, not real retailer quotes. An ingredient without a quantity defaults to 1 each and needs checking.';
+   bb172Input(form,'Ingredients (one per line, or separated by commas)','ingredients','textarea','',1000).placeholder='e.g. minced beef 500g, chopped tomatoes 2 tins, spaghetti 500g';
+   const notice=document.createElement('p');notice.className='bb172-plus-small';notice.textContent='Include amounts where possible. This preview uses an unverified price guide, not real retailer quotes. Ingredients without a readable amount are kept for review; no quantity is invented.';
    form.append(notice);
   },'Save personal recipe',form=>{
-   const title=String(form.elements.title.value||'').trim();const lines=String(form.elements.ingredients.value||'').split(',').map(x=>x.trim()).filter(Boolean);
-   if(title.length<2||lines.length<1||lines.length>24)throw Error('Enter a meal title and between 1 and 24 comma-separated ingredients.');
+   const title=String(form.elements.title.value||'').trim();const lines=bb172SplitOwnIngredients(form.elements.ingredients.value);
+   if(title.length<2||lines.length<1||lines.length>24)throw Error('Enter a meal title and between 1 and 24 ingredients, separated by commas or new lines.');
    const id='bb172-own-'+Date.now().toString(36)+'-'+Math.random().toString(36).slice(2,8);
    const valid=lines.map((line,i)=>bb172ParseOwnIngredient(line,i,id));
    if(valid.some(x=>!x))throw Error('An ingredient quantity could not be read. Use, for example, “rice 500g” or “2 eggs”.');
@@ -3799,9 +3799,9 @@ body[data-bbnext-view="discover"] #app .bb-featured-card #bbFeaturedBatch {
 <div id="modalRoot"></div><div id="toastRoot" aria-live="polite"></div>
 <script src="/basketboss-aisles-v20.js?v=d45b76bac322b605"></script>
 <script src="/bb-supermarkets.js?v=0e7c0cfdd73c5e15"></script>
-<script src="/bb-pantry-policy.js?v=5ffdfd17722f3158"></script>
+<script src="/bb-pantry-policy.js?v=9a48e7d672f992aa"></script>
 <script src="/bb-pantry-display.js?v=3703aec840ec42c6"></script>
-<script src="/bb-recipe-canonical.js?v=265deeff6e5d3caa"></script>
+<script src="/bb-recipe-canonical.js?v=878f44edae3f68b7"></script>
 <script type="module" src="/bb-pantry-runtime.mjs?v=7c6a7711e53a3496"></script>
 <script src="/bb-receipt-quantity.js?v=bf57b05a9993d398"></script>
 <script src="/bb-duration.js?v=5c7631356b6ce8ee"></script>
@@ -4183,23 +4183,73 @@ function bb172ReadOwnRecipes(){
  try{const list=JSON.parse(localStorage.getItem(BB172_OWN_RECIPE_KEY)||'[]');return Array.isArray(list)?list.filter(x=>x&&/^bb172-own-[0-9a-z-]{8,52}$/.test(x.id)&&typeof x.title==='string'&&Array.isArray(x.lines)).slice(0,25):[]}
  catch(e){return []}
 }
-function bb172ParseOwnIngredient(line,idx,id){
- const original=String(line||'').trim().slice(0,110);
- if(!original)return null;
- let name=original,qty=1,unit='each',status='NEEDS_PACK_SPEC';
- let match=original.match(/^(.*?)\s+(\d+(?:\.\d+)?)\s*(kg|g|ml|l|tins?|packs?|cloves?|each)\s*$/i);
- if(match){name=match[1].trim();qty=Number(match[2]);unit=match[3].toLowerCase();status='PARSED_EDITORIAL_UNVERIFIED';}
- else{
-  match=original.match(/^(\d+(?:\.\d+)?)\s+(.*)$/i);
-  if(match){qty=Number(match[1]);name=match[2].trim();status='PARSED_EDITORIAL_UNVERIFIED';}
+function bb172SplitOwnIngredients(input){
+ const text=typeof input==='string'?input:'',parts=[];if(text.length>50000)return [text];let value='',depth=0,quoted=false;
+ const preparation=/^(?:(?:finely|roughly|freshly|coarsely|thinly|well)\s+)?(?:chopped|diced|sliced|crushed|minced|grated|peeled|drained|rinsed|melted|softened|beaten|cooked|thawed|divided|optional|to taste|to serve|extra virgin)(?:\s+(?:and\s+)?(?:chopped|diced|sliced|crushed|minced|grated|peeled|drained|rinsed|divided))?$/i;
+ const append=()=>{const item=value.trim();value='';if(!item)return;if(parts.length&&preparation.test(item))parts[parts.length-1]+=', '+item;else parts.push(item);};
+ for(let at=0;at<text.length;at++){
+  const char=text[at];if(char==='"')quoted=!quoted;
+  if(!quoted){if(char==='('||char==='[')depth++;if(char===')'||char===']')depth=Math.max(0,depth-1);}
+  const decimal=char===','&&/\d/.test(text[at-1]||'')&&/^\d+\s*(?:kg|g|ml|l|tbsps?|tsps?|cups?)\b/i.test(text.slice(at+1));
+  if(!quoted&&!depth&&(char==='\n'||char===';'||char===','&&!decimal)){append();continue;}
+  value+=char;
  }
- if(unit==='kg'){qty*=1000;unit='g'}
- if(unit==='l'){qty*=1000;unit='ml'}
- if(/^tins?$|^packs?$/.test(unit)){unit='pack';status='NEEDS_PACK_SPEC'}
- if(/^cloves?$/.test(unit))unit='clove';
- if(!(qty>0)||qty>100000||!name)return null;
- const key=name.toLowerCase().replace(/\s+/g,' ').slice(0,76);
- return {name,source:original,key,quantity:qty,unit,status,recipe_id:id,ingredient_index:idx};
+ append();return parts;
+}
+function bb172ParseOwnIngredient(line,idx,id){
+ const original=typeof line==='string'?line.trim():'';if(!original||original.length>2048)return null;
+ const fractions={'½':'1/2','⅓':'1/3','⅔':'2/3','¼':'1/4','¾':'3/4','⅛':'1/8','⅜':'3/8','⅝':'5/8','⅞':'7/8','⅙':'1/6','⅚':'5/6'};
+ let text=original.replace(/^"([\s\S]*)"$/,'$1').replace(/\u00a0/g,' ').replace(/(\d)([½⅓⅔¼¾⅛⅜⅝⅞⅙⅚])/g,'$1 $2').replace(/[½⅓⅔¼¾⅛⅜⅝⅞⅙⅚]/g,ch=>fractions[ch]).normalize('NFKC').replace(/⁄/g,'/').replace(/[–—−]/g,'-').replace(/(\d),(\d)/g,'$1.$2').replace(/\s+/g,' ').trim();
+ const number='(?:\\d+\\s+\\d+\\/\\d+|\\d+\\/\\d+|\\d+(?:\\.\\d+)?|\\.\\d+)';
+ const quantity='[+-]?'+number+'(?:\\s*-\\s*'+number+')?';
+ const unitWords='kilograms?|kg|grams?|g|millilit(?:re|er)s?|ml|lit(?:re|er)s?|l|tablespoons?|tbsps?|teaspoons?|tsps?|cups?|tins?|cans?|packs?|packets?|cloves?|pinches?|pinch|dashes|dash|each|pieces?';
+ const aliases={kilogram:'kg',kilograms:'kg',gram:'g',grams:'g',millilitre:'ml',millilitres:'ml',milliliter:'ml',milliliters:'ml',litre:'l',litres:'l',liter:'l',liters:'l',tablespoon:'tbsp',tablespoons:'tbsp',tbsps:'tbsp',teaspoon:'tsp',teaspoons:'tsp',tsps:'tsp',cups:'cup',tins:'tin',can:'tin',cans:'tin',packs:'pack',packet:'pack',packets:'pack',cloves:'clove',pinches:'pinch',dashes:'dash',piece:'each',pieces:'each'};
+ const readNumber=raw=>{let total=0;for(const part of String(raw).trim().split(/\s+/)){const pair=part.split('/'),n=pair.length===2&&Number(pair[1])!==0?Number(pair[0])/Number(pair[1]):pair.length===1?Number(part):NaN;if(!Number.isFinite(n))return null;total+=n;}return Number.isFinite(total)&&total>=0?total:null;};
+ const readRange=raw=>{const pieces=String(raw).split(/\s*-\s*/);if(pieces.length>2||pieces.some(x=>!x))return null;const values=pieces.map(readNumber);return values.some(x=>x===null)?null:{min:Math.min(...values),max:Math.max(...values),range:pieces.length===2};};
+ const format=n=>String(Math.round(n*1000000)/1000000);
+ let name=text,qty=null,unit='unknown',quantityText='',prepNote='',size='',range=null,pack=null,issue='',estimated=false;
+ const multi=new RegExp('^('+number+')\\s*[x×]\\s*('+number+')\\s*(kg|g|ml|l)\\b\\s*(?:(tins?|cans?|packs?|packets?)\\s+)?(.+)$','i').exec(text);
+ let matched=false;
+ if(multi){
+  const count=readNumber(multi[1]),contents=readNumber(multi[2]),u=multi[3].toLowerCase(),factor=u==='kg'||u==='l'?1000:1;
+  if(count!==null&&Number.isInteger(count)&&count>0&&contents!==null&&contents>0&&count*contents*factor<=1000000){qty=count*contents*factor;unit=u==='kg'?'g':u==='l'?'ml':u;name=multi[5];pack={packCount:count,packQuantity:contents*factor,packUnit:unit,packReviewed:true};quantityText=format(qty)+' '+unit;matched=true;if(/^(?:tin|can)/i.test(multi[4]||''))name='Tinned '+name;}
+  else issue='Review the pack count and contents.';
+ }
+ if(!matched&&!issue){
+  const suffix=new RegExp('^(.+?)\\s+('+quantity+')\\s*('+unitWords+')\\s*$','i').exec(text);
+  const prefix=new RegExp('^('+quantity+')\\s*('+unitWords+')\\b\\s*(?:of\\s+)?(.+)$','i').exec(text);
+  const counted=new RegExp('^('+quantity+')\\s+(.+)$','i').exec(text);
+  let q='',rawUnit='';
+  if(suffix){name=suffix[1];q=suffix[2];rawUnit=suffix[3];}
+  else if(prefix){q=prefix[1];rawUnit=prefix[2];name=prefix[3];}
+  else if(counted){q=counted[1];rawUnit='each';name=counted[2];}
+  else{const pinch=/^(?:a |an )?(pinch|dash)\s+(?:of\s+)?(.+)$/i.exec(text);if(pinch){q='1';rawUnit=pinch[1];name=pinch[2];}}
+  if(q){
+   range=readRange(q);unit=aliases[rawUnit.toLowerCase()]||rawUnit.toLowerCase();
+   if(range){qty=range.max;quantityText=q.replace(/\s*-\s*/g,'–')+(unit==='each'?'':' '+unit);matched=true;if(range.range){estimated=true;issue='This recipe gives a range; shopping uses the upper amount. Confirm the amount used when cooking.';}}
+   else issue='Review the ingredient quantity.';
+   if(qty!==null&&(unit==='kg'||unit==='l')){qty*=1000;if(range){range.min*=1000;range.max*=1000;}unit=unit==='kg'?'g':'ml';}
+  }
+ }
+ let noteAt=-1,noteDepth=0;for(let at=0;at<name.length;at++){if(name[at]==='('||name[at]==='[')noteDepth++;else if(name[at]===')'||name[at]===']')noteDepth=Math.max(0,noteDepth-1);else if(name[at]===','&&!noteDepth){noteAt=at;break;}}
+ if(noteAt>=0){prepNote=name.slice(noteAt+1).trim();name=name.slice(0,noteAt).trim();}
+ const descriptor=/^(?:large|small|medium|whole)\s+/i.exec(name);if(descriptor){size=descriptor[0].trim();name=name.slice(descriptor[0].length);if(quantityText&&unit==='each')quantityText+=' '+size;}
+ const taste=/\b(?:to taste|as needed)\b/i.exec(name);if(taste){unit=taste[0].toLowerCase();name=name.replace(taste[0],'').trim();qty=null;quantityText=unit;issue='No exact amount is specified. Review this seasoning separately.';}
+ if(qty!==null&&['g','ml'].includes(unit)){
+  const container=/^(tins?|cans?|packs?|packets?)\s+(?:of\s+)?(.+)$/i.exec(name);
+  if(container){if(/^(?:tin|can)/i.test(container[1]))name='Tinned '+container[2];else name=container[2];pack={packCount:1,packQuantity:qty,packUnit:unit,packReviewed:true};}
+ }
+ if(/^(?:tinned|canned|fresh|frozen|cooked|dried|raw|extra virgin)$/i.test(prepNote)){name=prepNote+' '+name;prepNote='';}
+ name=name.replace(/^of\s+/i,'').replace(/\s+/g,' ').trim();
+ if(!name)return {name:original,source:original,key:original.toLowerCase(),quantity:null,unit:'unknown',status:'NEEDS_PACK_SPEC',needsReview:true,parsingNote:'Review the ingredient name.',recipe_id:id,ingredient_index:idx};
+ if(!matched&&!issue)issue='No reliable quantity and unit could be read. The original line has been kept.';
+ if(qty!==null&&(!Number.isFinite(qty)||qty<0||qty>1000000)){qty=null;issue='Review the ingredient amount; it is outside the supported range.';}
+ if(qty!==null&&['g','ml'].includes(unit)){const rounded=Math.round(qty*1000000)/1000000;if(qty>0&&rounded===0){qty=null;issue='This amount is too small for a reliable stock comparison.';}else{qty=rounded;quantityText=range?.range?format(range.min)+'–'+format(range.max)+' '+unit:format(qty)+' '+unit;if(pack)pack.packQuantity=Math.round(pack.packQuantity*1000000)/1000000;}}
+ if(['tin','pack','pinch','dash'].includes(unit)&&!pack&&!issue)issue='Confirm the container contents or the actual seasoning amount before using a precise weight.';
+ const canonicalize=typeof BBPriceV19!=='undefined'?BBPriceV19.canonical:null;
+ const key=typeof window!=='undefined'&&window.BBPantryPolicy?.canonicalName?window.BBPantryPolicy.canonicalName(name,canonicalize):canonicalize?canonicalize(name):name.toLowerCase().replace(/\s+/g,' ');
+ if(!key||key.includes('|')||['__proto__','constructor','prototype'].includes(key))return null;
+ return {name,source:original,key,quantity:qty,unit,status:qty===null||['tin','pack'].includes(unit)&&!pack?'NEEDS_PACK_SPEC':'PARSED_EDITORIAL_UNVERIFIED',quantityText:quantityText||original,prep_note:prepNote,...(size?{size}:{}),...(range?.range?{quantityMin:range.min,quantityMax:range.max}:{}),...(pack||{}),...(estimated?{estimated:true}:{}),...(issue?{needsReview:true,parsingNote:issue}:{}),recipe_id:id,ingredient_index:idx};
 }
 /* A neutral cooking icon, not a photograph pretending to show a personal meal. */
 const BB172_OWN_IMAGE='data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSI2NDAiIGhlaWdodD0iNDgwIiB2aWV3Qm94PSIwIDAgNjQwIDQ4MCI+PHJlY3Qgd2lkdGg9IjY0MCIgaGVpZ2h0PSI0ODAiIGZpbGw9IiMxYjQzNjUiLz48Y2lyY2xlIGN4PSIzMjAiIGN5PSIyMDUiIHI9IjEyNiIgZmlsbD0iI2YzZjdlYSIvPjxjaXJjbGUgY3g9IjMyMCIgY3k9IjIwNSIgcj0iOTIiIGZpbGw9IiNkN2U1ZTYiLz48Y2lyY2xlIGN4PSIzMjAiIGN5PSIyMDUiIHI9IjcwIiBmaWxsPSJub25lIiBzdHJva2U9IiNhM2JkYzUiIHN0cm9rZS13aWR0aD0iNCIvPjxwYXRoIGQ9Ik0xNjAgMTQwdjEzMCBNMTQ0IDE0MHY1NXExNiAyMiAzMiAwdi01NSBNNDgwIDE0MHYxMzAgTTQ3OSAxNDBxLTM2IDM4IDAgNzgiIHN0cm9rZT0iI2Q1ZTVlNyIgc3Ryb2tlLXdpZHRoPSIxMiIgZmlsbD0ibm9uZSIgc3Ryb2tlLWxpbmVjYXA9InJvdW5kIi8+PHRleHQgeD0iMzIwIiB5PSI0MDUiIGZpbGw9IndoaXRlIiBmb250LXNpemU9IjI4IiBmb250LWZhbWlseT0iQXJpYWwiIHRleHQtYW5jaG9yPSJtaWRkbGUiPk1ZIEZBTUlMWSBSRUNJUEU8L3RleHQ+PC9zdmc+';
@@ -4212,7 +4262,7 @@ for(const own of bb172ReadOwnRecipes()){
   RECIPES.push({id:own.id,name:own.title.slice(0,80),category:'Family meal',tag:'MY RECIPE',mins:30,servings,
     cost:0,image:BB172_OWN_IMAGE,tip:'Your personal recipe. Check ingredient quantities, cooking steps and safe food temperatures yourself.',
     method:['Prepare this meal using your own household recipe and food-safety instructions.'],
-    ingredients:parsed.map(i=>[i.name,i.source,0])});
+    ingredients:parsed.map(i=>[i.name,(i.quantityText||i.source)+(i.prep_note?', '+i.prep_note:''),0])});
   BB307_NORMALIZED.push({id:own.id,name:own.title.slice(0,80),servings,ingredients:parsed});
  }catch(err){console.warn('Could not load personal BasketBoss recipe',err)}
 }
@@ -4281,9 +4331,10 @@ function bbHomeLegacyPantry(){
  return legacy;
 }
 function bb307Selections(){
- const p=new Map();
+ const p=new Map(),seen=new Set();
  const batch=typeof bb81ActiveBatch==='function'?bb81ActiveBatch():null;
  for(const planned of state.planned||[]){
+  const occurrence='dinner|'+planned.day+'|'+planned.recipeId;if(seen.has(occurrence))continue;seen.add(occurrence);
   if(window.BBHome?.isCooked?.(bbHomeOccurrence(planned.recipeId,planned.day)))continue;
   const id=planned.recipeId,recipe=RECIPES.find(r=>r.id===id);
   if(!bb176AllowedRecipe(id))continue;
@@ -4300,6 +4351,7 @@ function bb307Selections(){
  if(typeof bbGetDesserts==='function')for(const planned of bbGetDesserts()){
   if(window.BBHome?.isCooked?.(bbHomeOccurrence(planned.recipeId||planned.recipe?.id,planned.day,'dessert')))continue;
   const id=planned.recipeId||(planned.recipe&&planned.recipe.id),recipe=RECIPES.find(r=>r.id===id);
+  const occurrence='dessert|'+planned.day+'|'+id;if(seen.has(occurrence))continue;seen.add(occurrence);
   if(!bb176AllowedRecipe(id))continue;
   if(recipe){
    const count=BBServing.forMeal(state,planned,recipe);
@@ -4309,6 +4361,7 @@ function bb307Selections(){
  }
  if(typeof bbGetBreakfasts==='function')for(const planned of bbGetBreakfasts()){
   const id=planned.recipeId,recipe=planned.recipe;
+  const occurrence='breakfast|'+planned.day+'|'+id;if(seen.has(occurrence))continue;seen.add(occurrence);
   if(!bb176AllowedRecipe(id)||window.BBHome?.isCooked?.(bbHomeOccurrence(id,planned.day,'breakfast')))continue;
   const count=BBServing.forMeal(state,planned,recipe);
   if(p.has(id))p.get(id).servings+=count;else p.set(id,{id,servings:count});
@@ -4832,7 +4885,7 @@ function mergeLunchShopping(recipeItems,lunchItems,stock,pantryIdFn,legacyOwned=
   const id=pantryIdFn(l.name,l.unit);
   let item=byId.get(id);
   if(!item){item={key:l.name,unit:l.unit,required:0,recipeRequired:0,recipeToBuy:0,toBuy:0,pantryUsed:0,spend:null,recipeSpend:null,sharedAcrossRecipes:0,packSize:null,surplus:0,lunchQty:0,lunchDays:[],lunchAdded:true};byId.set(id,item);merged.push(item)}
-  item.lunchQty=Math.round((item.lunchQty+l.qty)*100)/100;
+  item.lunchQty=Math.round((item.lunchQty+l.qty)*1000000)/1000000;
   item.quantityEstimated=!!item.quantityEstimated||!!l.quantityEstimated;
   item.quantityAssumptions=[...new Set([...(item.quantityAssumptions||[]),...(l.quantityAssumptions||[])])];
   item.lunchDays=[...new Set([...item.lunchDays,...l.days])];item.lunchAdded=true;
@@ -4840,9 +4893,9 @@ function mergeLunchShopping(recipeItems,lunchItems,stock,pantryIdFn,legacyOwned=
  for(const item of merged){
   const id=pantryIdFn(item.key,item.unit),measured=Number(stock?.[id]);
   const owned=Number.isFinite(measured)&&measured>0?measured:(legacyOwned?.[String(item.key).toLowerCase()]?item.recipeRequired:0);
-  item.required=Math.round((item.recipeRequired+item.lunchQty)*100)/100;
-  item.pantryUsed=Math.round(Math.min(item.required,Math.max(0,owned))*100)/100;
-  item.toBuy=Math.round(Math.max(0,item.required-item.pantryUsed)*100)/100;
+  item.required=Math.round((item.recipeRequired+item.lunchQty)*1000000)/1000000;
+  item.pantryUsed=Math.round(Math.min(item.required,Math.max(0,owned))*1000000)/1000000;
+  item.toBuy=Math.round(Math.max(0,item.required-item.pantryUsed)*1000000)/1000000;
   // No lunchbox checkout-price claim: recipe estimate was calculated before adding these items.
   if(item.lunchAdded){item.spend=null;item.packSize=null;item.surplus=0;}
  }
@@ -13211,8 +13264,8 @@ body[data-bbnext-view="discover"] #app .bb175-discover-heading{padding-top:calc(
 <script defer src="/bb-keyboard-layout.js?v=872e31f50037e966"></script>
 <link rel="stylesheet" href="/bb-simple-layout.css?v=b78ffdb3dab2f664">
 <script defer src="/bb-simple-layout.js?v=56c64ce7eee60d96"></script>
-<script defer src="/bb-pantry-deduction.js?v=559e10922842e8b0"></script>
-<script defer src="/bb-home.js?v=1779059e59872ddc"></script><link rel="stylesheet" href="/bb-day-done.css?v=1982290ac1ca619e"><script defer src="/bb-day-done.js?v=4dec8eede3f8b7c2"></script><link rel="stylesheet" href="/bb-shop-add.css?v=76495afe6b55de2b"><script defer src="/bb-shop-add.js?v=ab24b574d6fa7c12"></script><script defer src="/bb-cupboard-staples.js?v=ee852189a99dad60"></script><script src="/bb-pantry-autofill.js?v=20024bb507445777"></script>
+<script defer src="/bb-pantry-deduction.js?v=7f7ea56758539457"></script>
+<script defer src="/bb-home.js?v=add05d365e8517e3"></script><link rel="stylesheet" href="/bb-day-done.css?v=1982290ac1ca619e"><script defer src="/bb-day-done.js?v=4dec8eede3f8b7c2"></script><link rel="stylesheet" href="/bb-shop-add.css?v=76495afe6b55de2b"><script defer src="/bb-shop-add.js?v=ab24b574d6fa7c12"></script><script defer src="/bb-cupboard-staples.js?v=ee852189a99dad60"></script><script src="/bb-pantry-autofill.js?v=20024bb507445777"></script>
 <link rel="stylesheet" href="/bb-shared-shopping.css?v=c9924fc3f011d04a">
 <script defer src="/bb-shared-shopping.js?v=bd4c62f9339234a3"></script>
 <link rel="stylesheet" href="/bb-plan-drag.css?v=c54ef00f36c09c35">

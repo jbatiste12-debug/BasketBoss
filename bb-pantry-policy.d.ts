@@ -5,6 +5,8 @@ declare namespace policy {
  interface Amount {quantity:number;unit:BaseUnit;estimated:boolean;assumption:string;packQuantity?:number;packUnit?:BaseUnit;}
  interface Purchase {name?:unknown;canonicalKey?:unknown;key?:unknown;description?:unknown;quantity?:unknown;unit?:unknown;packCount?:unknown;packQuantity?:unknown;packUnit?:unknown;[key:string]:unknown;}
  function canonicalName(name:unknown,canonicalize?:(name:string)=>string):string;
+ function stockFamily(name:unknown,canonicalize?:(name:string)=>string):string;
+ function stockCompatible(left:unknown,right:unknown,canonicalize?:(name:string)=>string):boolean;
  function isStaple(name:unknown):boolean;
  function isWholePepper(name:unknown,unit:unknown,metadata?:{staple?:boolean}):boolean;
  function isContainerTracked(record:unknown):boolean;
