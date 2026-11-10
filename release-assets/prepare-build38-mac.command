@@ -11,7 +11,7 @@ fi
 node -e 'if(Number(process.versions.node.split(".")[0])<22){console.error("Node.js 22 or newer is required.");process.exit(1)}'
 xcode-select -p >/dev/null
 BB38_DIR="$(mktemp -d "$HOME/BasketBoss-1.0.2-build38.XXXXXX")"
-BB38_STAGE="$(mktemp -d "${TMPDIR:-/tmp}/BasketBoss-native37.XXXXXX")"
+BB38_STAGE="$(mktemp -d "${TMPDIR:-/tmp}/BasketBoss-native38.XXXXXX")"
 git clone --branch fix/immersive-shopping-mode --single-branch https://github.com/jbatiste12-debug/BasketBoss.git "$BB38_DIR"
 cd "$BB38_DIR"
 git checkout --detach 4fe569853b57a7ccc9733071003023ba07b63426
