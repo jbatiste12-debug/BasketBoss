@@ -197,7 +197,16 @@
     edits.set(edit.id,edit.quantity*info.factor);
    }
   }
-  for(const row of rows){
+  // Reserve specifically named ingredients before generic family requests;
+  // each source still has one physical balance shared by every recipe row.
+  /** @param {ConversionRow} row */
+  const allocationPriority=row=>{
+   if(!mode)return 0;
+   const food=row._conversion.food||row.name;
+   return Number(policy.stockFamily(food)!==policy.canonicalName(food))*2+Number(sources.some(source=>source.canonicalKey===row.canonicalKey&&source.state===row._conversion.state&&physical[source.stockKey]>0));
+  };
+  const allocationRows=mode?[...rows].sort((a,b)=>allocationPriority(b)-allocationPriority(a)):rows;
+  for(const row of allocationRows){
    const context=row._conversion,wanted=edits.has(row.id)?/** @type {number} */ (edits.get(row.id)):row.required;
    // The main ingredient catalogue singularises whole peppers to "pepper".
    // A counted recipe pepper stays produce unless the user explicitly tracks
@@ -216,9 +225,9 @@
    if(mode&&recipePepper&&pepperRoles.size&&(recipePepperRole==='ambiguous'||pepperRoles.has('ambiguous')||pepperRoles.size>1||!pepperRoles.has(recipePepperRole))){row.issue='unit_mismatch';row.issueLabel='Whole peppers and pepper seasoning need separate ingredient identities. Review this food in At home; its saved stock stays unchanged.';continue;}
    if(mode&&context.food&&policy.isStaple(context.food)&&!wholePepper&&!measuredFoods.has(row.canonicalKey+'|state:'+context.state)){
     row.staple=true;
-    const records=Object.entries(conversion.staples||{}).filter(([food])=>name(food)&&foodId(food)===row.canonicalKey&&stateFor(food)===context.state).map(([,entry])=>entry);
+    const records=Object.entries(conversion.staples||{}).filter(([food])=>name(food)&&(foodId(food)===row.canonicalKey&&stateFor(food)===context.state||policy.stockCompatible(food,context.food||row.name))).map(([,entry])=>entry);
     const statuses=records.map(entry=>{const raw=typeof entry==='string'?entry:entry?.status||entry?.stapleStatus;return raw==='in_stock'?'in':raw==='in'||raw==='low'||raw==='out'?raw:'unknown';});
-    const matching=sources.filter(source=>!source.excluded&&source.canonicalKey===row.canonicalKey&&source.state===context.state);
+    const matching=sources.filter(source=>!source.excluded&&(source.canonicalKey===row.canonicalKey&&source.state===context.state||policy.stockCompatible(source.food,context.food||row.name)));
     const status=statuses.length?statuses.every(value=>value===statuses[0])?statuses[0]:'unknown':matching.some(source=>physical[source.stockKey]>0)?'in':'out';
     row.stapleStatus=status;row.stapleRestock=status==='low'||status==='out';row.covered=context.smallStaple===true&&status==='in';
     const count=records.filter(entry=>typeof entry==='object'&&entry!==null).map(entry=>entry.count).filter(valid);
@@ -235,9 +244,9 @@
    if(!context.measurable){row.issue=context.stateConflict?'unit_mismatch':row.required===null?'amount_unknown':'unit_unknown';row.issueLabel=context.stateConflict?'Recipe lines describe different food states under the same ingredient. Review those amounts in At home; this stock stays unchanged.':context.invalid?'Pack contents need review in At home; no stock will be deducted.':'Amount or unit needs review in At home; no stock will be deducted.';if(!mode&&wanted!==null&&wanted>0&&edits.has(row.id))throw Error('Review the pantry unit for '+row.name+' before deducting it.');continue;}
    const candidates=/** @type {Array<{source:ConversionSource,relation:ConversionPath}>} */ ([]),unconverted=/** @type {ConversionSource[]} */ ([]),recipeEstimated=row.estimated,recipeAssumptions=[...row.assumptions];
    for(const source of sources){
-    const quantity=physical[source.stockKey]||0;if(!(quantity>0)||source.canonicalKey!==row.canonicalKey)continue;
+    const quantity=physical[source.stockKey]||0,compatible=mode&&policy.stockCompatible(source.food,context.food||row.name);if(!(quantity>0)||(source.canonicalKey!==row.canonicalKey&&!compatible))continue;
     let relation=null;
-    if(source.excluded||source.state!==context.state)unconverted.push(source);
+    if(source.excluded||source.state!==context.state&&!compatible)unconverted.push(source);
     else if(source.pack?.invalid)unconverted.push(source);
     else{
      // Matching literal units need no package-size assumption. Otherwise use
@@ -255,7 +264,7 @@
    if(unconverted.length&&wanted!==null&&wanted>0){row.issue='unit_mismatch';row.issueLabel=unconverted.some(source=>source.excluded)?'Some At home amounts need ingredient identity review. Those quantities stay unchanged; review them in At home.':'At home has '+unconverted.map(source=>physical[source.stockKey]+' '+source.sourceUnit+' of '+source.food).join(', ')+'. Reviewed pack contents or a food-specific conversion are needed. This stock stays unchanged; review At home.';}
    if(!mode&&edits.has(row.id)&&!row.canDeduct&&wanted!==null&&wanted>0)throw Error('Review the pantry unit for '+row.name+' before deducting it.');
    let needed=Math.min(row.owned,Math.max(0,wanted||0));
-   for(const {source,relation}of candidates){
+   for(const {source,relation}of candidates.sort((a,b)=>Number(b.source.canonicalKey===row.canonicalKey)-Number(a.source.canonicalKey===row.canonicalKey))){
     if(!(needed>0))break;const before=physical[source.stockKey],sourceQuantity=Math.min(before,needed/relation.factor),quantity=Math.min(needed,sourceQuantity*relation.factor),left=before-sourceQuantity;
     if(!valid(sourceQuantity)||!valid(quantity)||!valid(left))throw Error('Review the pantry conversion before cooking.');
     if(sourceQuantity===0||quantity===0||left===before){row.issue='unit_mismatch';row.issueLabel='This converted amount is too small to record safely in its stored unit. Review the amount in At home; this stock stays unchanged.';continue;}

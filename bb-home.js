@@ -1,6 +1,6 @@
 /* At home owns manual requirements and completion receipts; measured stock
    remains in the existing pantry. No prices, billing or server data are invented. */
-(function(root,factory){const common=typeof module==='object'&&module.exports;const api=factory(root?.BBPantryDeduction||(common?require('./bb-pantry-deduction.js'):null));if(common)module.exports=api;if(root)root.BBHome=api.install(root);})(typeof window==='undefined'?null:window,function(deduction){
+(function(root,factory){const common=typeof module==='object'&&module.exports;const api=factory(root?.BBPantryDeduction||(common?require('./bb-pantry-deduction.js'):null),root?.BBPantryPolicy||(common?require('./bb-pantry-policy.js'):null));if(common)module.exports=api;if(root)root.BBHome=api.install(root);})(typeof window==='undefined'?null:window,function(deduction,policy){
  'use strict';
  const KEY='basketboss_at_home_requirements_v1';
  const valid=n=>typeof n==='number'&&Number.isFinite(n)&&n>=0&&n<=1000000;
@@ -19,11 +19,11 @@
  function purchaseQuantity(needed,buffer,owned,multiple=0){return purchaseAmounts({needed,buffer,owned,multiple}).purchaseQuantity;}
  function augment(items,lunch,targets,id){
   const map=new Map(items.map(row=>[id(row.key,row.unit),{...row}]));
-  const lunchTotals=new Map();for(const row of lunch||[]){const key=id(row.name,row.unit);lunchTotals.set(key,(lunchTotals.get(key)||0)+Number(row.qty||0));}
   for(const row of Object.values(targets||{})){
    if(!row?.name||!row.unit)continue;
    const buffer=valid(row.extraBuffer)?row.extraBuffer:0,target=row.pending&&valid(row.targetQty)?row.targetQty:0;if(!(buffer>0)&&!row.pending)continue;if(!valid(row.targetQty))continue;
-   const key=id(row.name,row.unit),before=map.get(key),base=Number(before?.required||0)+(lunchTotals.get(key)||0);
+   const key=id(row.name,row.unit),before=map.get(key),compatible=(name,unit)=>unit===row.unit&&(id(name,unit)===key||policy?.stockCompatible?.(row.name,name));
+   const base=[...map.values()].filter(item=>compatible(item.key,item.unit)).reduce((sum,item)=>sum+Number(item.required||0),0)+(lunch||[]).filter(item=>compatible(item.name,item.unit)).reduce((sum,item)=>sum+Number(item.qty||0),0);
    const extra=roundQuantity(Math.max(0,target-base)+buffer);
    map.set(key,{...(before||{key:row.name,unit:row.unit,required:0,toBuy:0,pantryUsed:0}),required:Number(before?.required||0)+extra,bbHomePending:true});
   }return [...map.values()];
@@ -188,19 +188,19 @@
     return ['g','ml','each'].includes(unit)&&valid(quantity*factor)?{quantity:Math.round(quantity*factor*1000000)/1000000,unit}:null;
    };
    const one=measure(row,1);if(!one||!(one.quantity>0))return problem('Set compatible container contents before adding this item to Shop. Your saved stock has been kept.');
-   const nameId=host().id(row.name,''),matching=name=>host().id(name,'')===nameId;
+   const nameId=host().id(row.name,''),matching=name=>host().id(name,'')===nameId,compatible=name=>matching(name)||policy?.stockCompatible?.(row.name,name,win.BBPriceV19?.canonical);
    const raw=row.qty===null||row.qty===undefined||row.qty===''?null:Number(row.qty),owned=raw===null?{quantity:0,unit:one.unit}:measure(row,raw);
    if(!owned||owned.unit!==one.unit||!valid(owned.quantity))return problem('Review the amount at home before adding this item to Shop.');
    let planned=0,prior=0,manual=0,otherOwned=0,otherOwnedNeedsReview=false,defaultRestock=0,hasPrior=false,plannedNeedsReview=false,otherRequestsNeedReview=false,plannedReviewMessage='';
    const cannedTuna=name=>{const text=String(policy?.canonicalName?.(name,win.BBPriceV19?.canonical)||name||'').normalize('NFKD').toLowerCase();return /\btuna\b/.test(text)&&/\b(?:tinned|canned|tins?|cans?)\b/.test(text)&&!/\b(?:fresh|frozen|raw|steaks?|fillets?|salmon|mackerel|sardines?|anchovies|cod|haddock|trout)\b/.test(text);};
    for(const item of otherRows){
-    if(!matching(item?.name||item?.key)||item.qty===null||item.qty===undefined||item.qty==='')continue;
+    if(!compatible(item?.name||item?.key)||item.qty===null||item.qty===undefined||item.qty==='')continue;
     const value=measure(item,Number(item.qty));
     if(!value||value.unit!==one.unit){if(Number(item.qty)>0)otherOwnedNeedsReview=true;continue;}otherOwned+=value.quantity;
    }
    for(const item of requirements||host()?.requirements?.()||[]){
     if(!(Number(item.required)>0))continue;
-    if(!matching(item.key||item.name)){
+    if(!compatible(item.key||item.name)){
      if(cannedTuna(row.name)&&cannedTuna(item.key||item.name)){plannedNeedsReview=true;plannedReviewMessage='Your planned meals use related tuna, but the type or net/drained weight needs review.';}
      continue;
     }
@@ -270,7 +270,20 @@
     }catch{return item;}
    });
   }
-  function requirement(name,unit,options){try{const base=unit==='kg'?'g':unit==='l'?'ml':unit;return ((Array.isArray(options?.requirements)?options.requirements:host()?.requirements())?.find(row=>host().id(row.key,row.unit)===host().id(name,base))?.required||0)/(unit==='kg'||unit==='l'?1000:1);}catch{return 0;}}
+  function requirement(name,unit,options){
+   try{
+    const base=unit==='kg'?'g':unit==='l'?'ml':unit,policy=win.BBPantryPolicy,market=win.bb307ActiveMarket?.()||'UK';
+    let quantity=0;
+    for(const row of (Array.isArray(options?.requirements)?options.requirements:host()?.requirements())||[]){
+     if(!(Number(row.required)>0))continue;
+     if(host().id(row.key,'')!==host().id(name,'')&&!policy?.stockCompatible?.(name,row.key,win.BBPriceV19?.canonical))continue;
+     const measured=policy?.normalize?.(row.key,Number(row.required),row.unit,{market,canonicalize:win.BBPriceV19?.canonical});
+     if(measured?.unit===base)quantity+=measured.quantity;
+     else if(row.unit===base)quantity+=Number(row.required);
+    }
+    return roundQuantity(quantity/(unit==='kg'||unit==='l'?1000:1));
+   }catch{return 0;}
+  }
   function total(name,unit,options){const base=unit==='kg'?'g':unit==='l'?'ml':unit,row=targets()[host().id(name,base)],factor=unit==='kg'||unit==='l'?1000:1;return roundQuantity(Math.max(requirement(name,unit,options),row?.pending?row.targetQty/factor:0)+(valid(row?.extraBuffer)?row.extraBuffer/factor:0));}
   function prepare(chosen){
    checkDraftActor();const {all,data,who}=own();const expected=store.getItem(KEY);
