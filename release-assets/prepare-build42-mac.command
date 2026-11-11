@@ -14,8 +14,8 @@ BB42_DIR="$(mktemp -d "$HOME/BasketBoss-1.0.2-build42.XXXXXX")"
 BB42_STAGE="$(mktemp -d "${TMPDIR:-/tmp}/BasketBoss-native42.XXXXXX")"
 git clone --branch main --single-branch https://github.com/jbatiste12-debug/BasketBoss.git "$BB42_DIR"
 cd "$BB42_DIR"
-git fetch origin df60d977dbaf8aa1fd5aa545bb82691a4f7ec14c
-git checkout --detach df60d977dbaf8aa1fd5aa545bb82691a4f7ec14c
+git fetch origin 1a36d99d4202afc411796885f4662719abf6c514
+git checkout --detach 1a36d99d4202afc411796885f4662719abf6c514
 npm ci --no-audit --no-fund
 node tools/catalogue700/sync-ios.mjs --source-root "$BB42_DIR" --public-release "$BB42_DIR/catalogues/700/release" --output-dir "$BB42_STAGE"
 open "$BB42_DIR/ios/App/App.xcworkspace"
