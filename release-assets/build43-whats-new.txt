@@ -2,3 +2,4 @@ My Week now clearly shows the estimated amount left to buy and updates as you ch
 Plan, the shopping overview and shopping mode show the same remaining estimate.
 Your combined weekly spending total stays available in Budget & household, including purchases already recorded.
 A shorter three-screen setup introduces BasketBoss, your household preferences and Premium, with a clear option to continue free. The longer walkthrough remains available in Help.
+Food used up after confirming a meal now disappears from At home and its item counts. Any stock remaining stays visible.

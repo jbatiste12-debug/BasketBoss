@@ -15,12 +15,14 @@ The main My Week amount is estimated shopping still to buy, including pantry cre
 
 The Premium offer opens the existing verified purchase page. Apple shows the actual localized product price; no free trial is promised by setup. Continue free applies setup choices without changing an entitlement.
 
+At home hides items whose saved stock is exactly zero and excludes them from its counters. Confirming a cooked meal keeps any positive leftovers visible. Saved restock targets and cooking history are preserved.
+
 Do not run ordinary npm run ios:sync after this launcher; that selects the legacy catalogue instead of the 700-recipe release.
 
 Pinned application source:
-https://github.com/jbatiste12-debug/BasketBoss/commit/032558d724f41654c5f55048853c793e88cf1ed0
+https://github.com/jbatiste12-debug/BasketBoss/commit/352ca8ca73de4e485c83b76cd8b52803ae030a7b
 
 Complete source ZIP:
-https://github.com/jbatiste12-debug/BasketBoss/archive/032558d724f41654c5f55048853c793e88cf1ed0.zip
+https://github.com/jbatiste12-debug/BasketBoss/archive/352ca8ca73de4e485c83b76cd8b52803ae030a7b.zip
 
 See build43-whats-new.txt for Apple Connect notes and build43-what-to-test.txt for regression checks.

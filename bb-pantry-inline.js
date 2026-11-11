@@ -72,6 +72,12 @@
   if(filter==='low')return ['low','out'].includes(row.stapleStatus)||(row.qty!==null&&row.qty!==undefined&&row.qty!==''&&Number(row.qty)===0);
   return true;
  }
+ function hasAtHomeStock(row){
+  // Exhausted records remain in the ledger for shopping, targets and undo.
+  // Unknown amounts still need review, and tiny positive balances stay visible.
+  const quantity=row.qty;
+  return !(typeof quantity==='number'||typeof quantity==='string'&&quantity.trim()!=='')||!Number.isFinite(Number(quantity))||Number(quantity)!==0;
+ }
  function purchaseUnits(row,policy,market='UK'){
   if(row.staple)return ['each'];
   const options={market,packReviewed:row.packReviewed===true,packQuantity:row.packQuantity,packUnit:row.packUnit};
@@ -130,6 +136,7 @@
   function unitLabel(row,unit){if(row.staple)return (win.BBPantryPolicy?.containerLabel(row.name)||'container')+(Number(row.qty)===1?'':'s');return unit==='each'?'each':unit==='l'?'litres':unit;}
   function matches(row){try{return !win.BBPantryGroupsUI||win.BBPantryGroupsUI.matches(row.loc,win.BBPantryGroups?.itemKey(row.name)||row.name.toLowerCase(),row.name);}catch{return true;}}
   function inventoryMatches(row){
+   if(!hasAtHomeStock(row))return false;
    if(!matches(row))return false;
    // A quantity can stop matching Low/Out on its first digit. Keep its editor
    // mounted until Done so typing 200 cannot save only the initial 2.
@@ -139,7 +146,7 @@
   const locationName=loc=>loc==='all'?'All':loc[0].toUpperCase()+loc.slice(1);
   function syncLocation(){
    if(!toolbar?.isConnected||!valid(current))return;
-   const rows=current.list();
+   const rows=current.list().filter(hasAtHomeStock);
    for(const control of toolbar.querySelectorAll('[data-bbpi-storage]')){
     const loc=control.dataset.bbpiStorage,selected=loc===openedLocation;
     control.setAttribute('aria-selected',String(selected));control.tabIndex=selected?0:-1;
@@ -563,7 +570,7 @@
    form.addEventListener('submit',event=>{event.preventDefault();event.stopPropagation();if(!valid(current))return teardown();const result=safe(()=>current.add({name:name.value,loc,qty:quantity.value,unit:unit.value}));if(!result?.ok){notice(view,result?.message||'Enter the item, quantity and unit.',true);return;}name.value='';quantity.value='';notice(view,'Food added. Shopping updates automatically.');schedule();name.focus({preventScroll:true});});
   }
   function summaries(rows){for(const view of sections.values()){
-   const all=rows.filter(row=>row.loc===view.loc),visible=all.filter(inventoryMatches);
+   const all=rows.filter(row=>row.loc===view.loc&&hasAtHomeStock(row)),visible=all.filter(inventoryMatches);
    const own=reducedAllowed()&&win.BBReducedStock?.sort?win.BBReducedStock.sort(visible,{actor:reducedActor()}):visible;
    let prices=()=>null;try{prices=win.BBKitchenPrices?.read?.()||prices;}catch{}
    const labels=new Map(own.map(row=>[row.key,win.BBKitchenPrices?.label?.(prices(row.name))||'']));
@@ -634,5 +641,5 @@
   if(win.MutationObserver){observer=new win.MutationObserver(records=>{if(records.some(record=>!record.target.closest?.('.bbpi-ui')&&(record.target.id==='app'||record.target.matches?.('[data-bb76-tiles],#bb5SelectedRows')||record.target.closest?.('.bb76-kitchen-intro')||record.target.closest?.('.bbpg-controls')||[...record.addedNodes].some(node=>node.nodeType===1&&(node.id==='bb173ShopFridge'||node.id==='bbKitchenFoodPanel'||node.classList?.contains('bb-pantry-camera-bar')||node.querySelector?.('#bb173ShopFridge,#bbKitchenFoodPanel'))))))schedule();});observer.observe(doc.body,{childList:true,subtree:true});}
   schedule();return {refresh:schedule,open(key,options={}){if(!valid(current))refresh();return openEditor(key,options.unit,'review',null,options)===true;},destroy(){destroyed=true;observer?.disconnect();teardown();doc.removeEventListener('click',click,true);doc.removeEventListener('keydown',keydown);doc.removeEventListener('toggle',storageToggle,true);win.removeEventListener('resize',measureToolbar);win.removeEventListener('resize',scheduleFit);win.visualViewport?.removeEventListener('resize',scheduleFit);win.visualViewport?.removeEventListener('scroll',scheduleFit);win.removeEventListener('bb:pantry-editor',schedule);win.removeEventListener('basketboss:market-changed',schedule);win.removeEventListener('basketboss:session-changed',reset);for(const event of['basketboss:account-deletion-started','basketboss:account-deletion-deleted'])win.removeEventListener(event,reset);win.removeEventListener('storage',storage);}};
  }
- return {install,stepFor,stepped,preferredUnit,converted,displayUnit,summaryAmount,stepPatch,matchesInventory,purchaseUnits,purchasePresets,matchedFood,matchingFoods};
+ return {install,stepFor,stepped,preferredUnit,converted,displayUnit,summaryAmount,stepPatch,matchesInventory,hasAtHomeStock,purchaseUnits,purchasePresets,matchedFood,matchingFoods};
 });
