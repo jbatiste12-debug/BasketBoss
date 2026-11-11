@@ -1,0 +1,4 @@
+Shopping now updates At home as you mark items bought, using the amounts you record.
+Save unfinished shopping and continue at another shop.
+Confirm meals using your recorded pantry stock, without entering bought amounts again.
+Improved pantry syncing, purchase corrections and ingredient naming.

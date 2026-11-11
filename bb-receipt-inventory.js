@@ -285,9 +285,15 @@
       }
       const nextServerStock = tracking?c.normalizePantryState(rawServerStock,serverKitchen,{canonicalize,market:activeContext().market,exactConversionsOnly:true}).stock:rawServerStock;
       const currentStock = c.normalizeStockMap(local.stock, { canonicalize });
-      if (!owner.actorId && response.initialized === true && Object.keys(currentStock).length && !body?.localProjectionBaseline) throw Error('receipt_initial_pantry_merge_required');
       const normalizedPrior=tracking?c.normalizePantryState(owner.serverStock||{},currentKitchen,{canonicalize,market:activeContext().market,exactConversionsOnly:true}).stock:owner.serverStock||{};
-      if (!body && owner.actorId && response.inventoryRevision > owner.inventoryRevision && !equalStock(currentStock, c.normalizeStockMap(normalizedPrior, { canonicalize }))) throw Error('receipt_local_remote_pantry_merge_required');
+      const newerDirtyProjection = !body && owner.actorId && response.inventoryRevision > owner.inventoryRevision && !equalStock(currentStock, c.normalizeStockMap(normalizedPrior, { canonicalize }));
+      // A verified absolute GET can acknowledge balances already present on
+      // this device. Adding the server delta here would count that food twice.
+      // Different balances still need the existing explicit merge review.
+      const completeSnapshot = response.projectionMode === undefined || response.projectionMode === 'full';
+      const identicalGetAcknowledgement = !body && completeSnapshot && response.initialized === true && (!owner.actorId || newerDirtyProjection) && equalStock(currentStock, nextServerStock);
+      if (!owner.actorId && response.initialized === true && Object.keys(currentStock).length && !body?.localProjectionBaseline && !identicalGetAcknowledgement) throw Error('receipt_initial_pantry_merge_required');
+      if (newerDirtyProjection && !identicalGetAcknowledgement) throw Error('receipt_local_remote_pantry_merge_required');
       let priorServerStock = normalizedPrior;
       if (body?.action === 'confirm_receipt') {
         if (!Number.isSafeInteger(response.receiptRevision) || response.receiptRevision < 1 || response.receiptRevision > response.inventoryRevision) throw Error('receipt_commit_revision_missing');
@@ -296,11 +302,12 @@
         if (!(Number(owner.inventoryRevision) >= response.receiptRevision)) priorServerStock = body.inventoryBaseline?.stock || {};
       } else if (body?.localProjectionBaseline) priorServerStock = body.localProjectionBaseline;
       if(tracking)priorServerStock=c.normalizePantryState(priorServerStock,currentKitchen,{canonicalize,market:activeContext().market,exactConversionsOnly:true}).stock;
-      const nextStock = c.projectReceiptInventory(currentStock, priorServerStock, nextServerStock);
+      const nextStock = identicalGetAcknowledgement ? currentStock : c.projectReceiptInventory(currentStock, priorServerStock, nextServerStock);
       // An acknowledgement of the exact same physical balances must not turn
       // a local Cook allocation into a new Kitchen representation. Keep its
-      // display units, zero rows and lot metadata within the established scope.
-      const preserveKitchen = body?.action === 'confirm_pantry' && owner.actorId === captured.actorId && owner.cacheKey === key && explicitScopeAdoption && equalStock(currentStock, nextStock) && equalStock(savedStock, nextStock);
+      // display units, zero rows and lot metadata. GET acknowledgements have
+      // already passed the account, scope and monotonic revision guards above.
+      const preserveKitchen = identicalGetAcknowledgement || body?.action === 'confirm_pantry' && owner.actorId === captured.actorId && owner.cacheKey === key && explicitScopeAdoption && equalStock(currentStock, nextStock) && equalStock(savedStock, nextStock);
       let kitchen = clone(preserveKitchen ? currentKitchen : local.inventory);
       for (const [field, limit] of [['inventory', 2000], ['essentials', 500], ['priceObservations', 2000], ['receipts', 500]]) if (response[field] !== undefined && (!Array.isArray(response[field]) || response[field].length > limit)) throw Error('receipt_projection_payload_limit');
       const inventory = (response.inventory || []).map(x => safeServerRecord(x, ['stockKey', 'canonicalKey', 'quantity', 'unit', 'location', 'revision']));

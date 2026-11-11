@@ -1,0 +1,13 @@
+BasketBoss 1.0.2 (42)
+
+1. Add a recipe requiring 6 sausages while At home contains 5. Shop should show 1 needed, plus the pack hint.
+2. Tick Bought. At home should immediately include the recorded purchase/pack quantity, once.
+3. Edit the bought amount. At home should reflect the corrected purchase, not another deposit. Reload and verify the amount stays.
+4. Finish with unchecked items. Choose Save N for another shop. Reopen Shop and use Continue your shop; unchecked food remains unbought.
+5. Open Day done. Required, In pantry and Remaining should use your recorded stock. Cancel preserves every amount; confirm deducts once.
+6. Try the same purchase while offline, then reconnect. It should retry without double credit. A real different cloud balance still requires review.
+7. The gammon fried-rice recipe uses 300 g dry rice. Shop should list Rice and the recipe should retain its cooking instructions.
+
+Existing manually entered Rice Freshly Cooked top-ups have no dry-weight provenance. Remove an obsolete duplicate top-up once; actual cooked stock is preserved.
+
+The Mac launcher stages the 700-recipe release. Do not run ordinary ios:sync afterward because that selects the legacy catalogue.

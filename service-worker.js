@@ -42,6 +42,7 @@ const CORE = ['bb-plan-extras.js','bb-plan-extras.js?v=20261108-planner1','bb-pl
   'feedback-config.js',
   'bb-pantry-policy.js?v=20261108-baseline1',
   'bb-pantry-display.js?v=20261104-regions2',
+  'bb-recipe-purchase-basis.js','bb-recipe-purchase-basis.js?v=20261111-dry-basis1',
   'bb-recipe-canonical.js?v=20261107-pantry-stock2',
   'bb-pantry-runtime.mjs?v=20261104-regions2',
   'bb-receipt-quantity.js?v=20261105-business1',

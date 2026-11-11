@@ -169,7 +169,9 @@ export function transform700Html(source,release){
   'const all=RECIPES.filter(r=>bb176AllowedRecipe(r.id)&&bbAfIngredientAllowed(r)&&bbAfDinner(r)&&',
   'const all=RECIPES.filter(r=>!(filters.bbPlanSwapExcluded||[]).includes(r.id)&&bb176AllowedRecipe(r.id)&&bbAfIngredientAllowed(r)&&bbAfDinner(r)&&',
   'swap_exclusion');
- source=replaceOnce(source,'</head>','<link rel="stylesheet" href="bb-plan-swap.css">\n<link rel="stylesheet" href="bb-pantry-selection.css">\n<script src="bb-plan-swap-core.js"></script>\n<script src="bb-plan-swap-host.js"></script>\n<script src="bb-pantry-selection.js"></script>\n<script defer src="bb-ui-continuity.js"></script>\n</head>','swap_style');
+ // The current release records ownership when an item is bought. Keep the
+ // separately supported legacy catalogue's record-then-Finish contract intact.
+ source=replaceOnce(source,'</head>','<meta name="basketboss-shop-ownership" content="immediate-v1">\n<link rel="stylesheet" href="bb-shop-continuation.css">\n<script src="bb-shop-ownership.js"></script>\n<script src="bb-shop-continuation.js"></script>\n<link rel="stylesheet" href="bb-plan-swap.css">\n<link rel="stylesheet" href="bb-pantry-selection.css">\n<script src="bb-plan-swap-core.js"></script>\n<script src="bb-plan-swap-host.js"></script>\n<script src="bb-pantry-selection.js"></script>\n<script defer src="bb-ui-continuity.js"></script>\n</head>','swap_style');
  // Bind the adapter inside the existing private planner closure, after its
  // state is initialized. External scripts cannot access that lexical state.
  source=replaceOnce(source,'window.BBHomeHost=Object.freeze({',`(function(win){const bindPlanner=${swapHost.currentPlanner.toString()};win.BBPlanSwapHost=win.BBPlanSwapHostFactory.createHost(bindPlanner());})(window);\nwindow.BBHomeHost=Object.freeze({`,'swap_private_binding');

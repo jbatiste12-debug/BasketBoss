@@ -784,12 +784,14 @@
     if(request.reduced!==undefined){
      if(win.BBReducedFoodHost?.isPremium?.()!==true)throw Error('Premium is required to log a reduced purchase.');
      if(typeof host().prepareManualPurchase!=='function')throw Error('Reduced purchases are still loading. Reopen Add item.');
-     purchase=host().prepareManualPurchase({request,candidate,id:shoppingBuyId(candidate),context});
+     purchase=host().prepareManualPurchase({request,candidate,id:shoppingBuyId(candidate),context,homeProposal:state.all});
      if(!object(purchase)||!object(purchase.updates)||!object(purchase.expected)||Object.hasOwn(purchase.updates,KEY))throw Error('The reduced purchase could not be prepared safely.');
      for(const [key,value]of Object.entries(expected))if(Object.hasOwn(purchase.expected,key)&&purchase.expected[key]!==value)throw Error('Your account or shopping changed. Reopen Add item.');
     }
-    atomic(store,{[KEY]:state.all,...purchase.updates},{...purchase.expected,...expected});
-    const message=request.reduced!==undefined?name+' recorded as a reduced purchase. Finish shop to add it to At home.':measured.quantity>0?name+' added to buy: '+raw+' '+(aliases[rawUnit]||rawUnit)+'.':name+' removed from manual top-ups.';
+    if(purchase.homeUpdate!==undefined&&(!purchase.owned||!object(purchase.homeUpdate)||purchase.homeUpdate.byActor?.[state.who]?.manualRequests?.[request.requestId]!==intent))throw Error('The owned purchase could not be prepared safely.');
+    atomic(store,{[KEY]:purchase.homeUpdate||state.all,...purchase.updates},{...purchase.expected,...expected});
+    if(purchase.owned)try{const sync=win.BBReceiptHost?.retryPurchasedPantry?.();sync?.catch?.(()=>{});}catch{}
+    const message=request.reduced!==undefined?name+(purchase.owned?' recorded as a reduced purchase and added to At home.':' recorded as a reduced purchase. Finish shop to add it to At home.'):measured.quantity>0?name+' added to buy: '+raw+' '+(aliases[rawUnit]||rawUnit)+'.':name+' removed from manual top-ups.';
     // The intent is committed even if a later repaint cannot complete.
     try{host().refresh();}catch{}try{host().notify?.(message);}catch{}
     return {ok:true,message};

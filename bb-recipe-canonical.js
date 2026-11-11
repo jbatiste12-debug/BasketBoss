@@ -2,7 +2,8 @@
 (function(root,factory){const api=factory(root?.BBPantryPolicy||(typeof module==='object'?require('./bb-pantry-policy.js'):null));if(typeof module==='object')module.exports=api;if(root)root.BBRecipeCanonical=api;})(typeof window==='undefined'?null:window,function(policy){
  'use strict';
  function project(row,{sourceLine,canonicalize,canonicalMeasure,recipeIngredientUnit,factor=1,pantryRecord}={}){
-  const name=row.name||row.key,key=policy.canonicalName(sourceLine?.[0]||row.name||row.key,canonicalize),source=String(sourceLine?.[1]||''),originalUnit=row.unit,unit=(/\b(?:sticks?|stalks?)\b/i.test(String(sourceLine?.[1]||''))&&/celery/i.test(name))?'stalk':recipeIngredientUnit?.(row,sourceLine?[sourceLine]:[])||originalUnit;
+  const basis=(typeof window!=='undefined'?window.BBRecipePurchaseBasis:typeof module==='object'?require('./bb-recipe-purchase-basis.js'):null)?.project(row,sourceLine,{canonicalize});
+  const name=basis?.name||row.name||row.key,key=policy.canonicalName(basis?.name||sourceLine?.[0]||row.name||row.key,canonicalize),source=String(sourceLine?.[1]||''),originalUnit=row.unit,unit=(/\b(?:sticks?|stalks?)\b/i.test(String(sourceLine?.[1]||''))&&/celery/i.test(name))?'stalk':recipeIngredientUnit?.(row,sourceLine?[sourceLine]:[])||originalUnit;
   const value=row.required??row.quantity;
   const raw=typeof value==='number'||typeof value==='string'&&value.trim()?Number(value):NaN;
   const quantity=Number.isFinite(raw)&&raw>=0&&Number.isFinite(factor)&&factor>0?raw*factor:null;

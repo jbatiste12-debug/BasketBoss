@@ -123,7 +123,7 @@
     let options = {...initial}, availability = {available: false, premium: false}, lastChecked = 0, checkedActor = null, statusPromise = null;
     let isolationError = null, issue = null, observer = null, scheduled = false, rendering = false, reviewing = false, confirmingCurrent = false, activeDialog = null, lastTab = null, generation = 0, configured = false;
     let deletionPaused = false, choosingTrip = false, observedActor = null;
-    let activePantryReview = null;
+    let activePantryReview = null, purchaseSyncPromise = null;
     const inlineReviews = new Set(), projectionHolds = new Set();
     const blocked = () => deletionPaused || root.BBAccountDeletion?.isDeleting?.() === true;
     const store = () => options.storage || root.localStorage;
@@ -154,9 +154,10 @@
       notifyProjection(hold.pending);
     }
     function discardInlineReviews() {for (const review of [...inlineReviews]) review.dispose({refresh: false});projectionHolds.clear();}
-    function writeAtomic(changes) {
+    function writeAtomic(changes, expected = {}) {
       if (blocked()) throw Error('account_deletion_in_progress');
       const before = Object.fromEntries(Object.keys(changes).map(key => [key, store().getItem(key)]));
+      for (const [key, value] of Object.entries(expected)) if ((Object.hasOwn(before, key) ? before[key] : store().getItem(key)) !== value) throw Error('receipt_host_storage_changed');
       const after = Object.fromEntries(Object.entries(changes).map(([key, value]) => [key, value === null ? null : JSON.stringify(value)]));
       const written = [];
       try {
@@ -312,7 +313,7 @@
       try { return !!store().getItem('basketboss_receipt_inventory_journal_v1:' + encodeURIComponent(actor())) || !!adapter()?.getPendingConfirmation?.()?.receiptId; } catch { return true; }
     }
     function requiresPantryReview() {
-      if (isolationError || hasPendingConfirmation()) return true;
+      if (isolationError || hasPendingConfirmation() || purchaseNeedsReview()) return true;
       const cached = projection(); if (!cached) return false;
       if (hasCookReview(cached)) return true;
       if (!availability.available && hasLocalReview(cached)) return false;
@@ -331,6 +332,147 @@
       if (!Object.hasOwn(confirmed, 'receiptCookReview')) return;
       delete confirmed.receiptCookReview;writeAtomic({[KEYS.confirmed]: confirmed});
     }
+    // Purchases become physically owned in the local shop transaction. Keep its
+    // absolute pantry and the last verified server baseline together until CAS
+    // acknowledges them. This is actor-scoped metadata, never a second ledger.
+    function purchaseSyncKey(id = actor()) {return 'basketboss_purchase_pantry_sync_v1:' + encodeURIComponent(id);}
+    function purchaseStock(value) {
+      if (!isObject(value) || Object.keys(value).length > 2000) throw Error('invalid_purchase_pantry_stock');
+      const result = {};
+      for (const key of Object.keys(value).sort()) {
+        const amount = value[key];
+        if (!key || key.length > 240 || ['__proto__', 'prototype', 'constructor'].includes(key) || typeof amount !== 'number' || !Number.isFinite(amount) || amount < 0 || amount > 1000000) throw Error('invalid_purchase_pantry_stock');
+        if (amount > 0) result[key] = amount;
+      }
+      return result;
+    }
+    const samePurchaseStock = (a, b) => JSON.stringify(purchaseStock(a)) === JSON.stringify(purchaseStock(b));
+    const samePurchaseScope = (a, b) => !!a && !!b && a.kind === b.kind && a.id === b.id;
+    function purchasedPantrySnapshot() {
+      if (actor() === 'guest') return {raw: null, row: null};
+      const raw = store().getItem(purchaseSyncKey());
+      if (raw === null) return {raw, row: null};
+      const row = JSON.parse(raw);
+      // The app's existing multi-key journal serializes deletion proposals as
+      // JSON null. Both representations mean this metadata has no pending job.
+      if (row === null) return {raw, row: null};
+      if (!isObject(row)) throw Error('invalid_purchase_pantry_sync');
+      if (!Object.keys(row).length) return {raw, row: null};
+      if (row.version !== 1 || row.actorId !== actor() || !['user', 'household'].includes(row.scope?.kind) || typeof row.scope.id !== 'string' || row.scope.kind === 'user' && row.scope.id !== actor() || !Number.isSafeInteger(row.expectedRevision) || row.expectedRevision < 0) throw Error('invalid_purchase_pantry_sync');
+      purchaseStock(row.stock);purchaseStock(row.baselineStock);
+      if (row.attempt) {
+        if (!Number.isSafeInteger(row.attempt.expectedRevision) || row.attempt.expectedRevision < 0) throw Error('invalid_purchase_pantry_sync');
+        purchaseStock(row.attempt.stock);
+      }
+      return {raw, row};
+    }
+    function purchasedPantry() {return purchasedPantrySnapshot().row;}
+    function purchaseNeedsReview() {
+      try {const pending = purchasedPantry();return pending?.needsReview === true && (pending.remoteConflict === true || availability.available);}
+      catch {return true;}
+    }
+    function clearPurchasedPantry(expected) {
+      const key = purchaseSyncKey();
+      if (store().getItem(key) === expected) writeAtomic({[key]: null}, {[key]: expected});
+    }
+    function preparePurchasedPantry({stock, beforeStock, shopSessionId} = {}) {
+      if (blocked() || isolationError) throw Error('purchase_pantry_sync_paused');
+      const target = purchaseStock(stock), baseline = purchaseStock(beforeStock), id = actor();
+      if (id === 'guest') return {updates: {}, expected: {}, queued: false, localOnly: true};
+      const key = purchaseSyncKey(), {raw, row: pending} = purchasedPantrySnapshot(), ownerRaw = store().getItem(KEYS.owner), markerRaw = store().getItem(KEYS.actor), owner = ownerRaw === null ? {} : JSON.parse(ownerRaw), marker = markerRaw === null ? {} : JSON.parse(markerRaw), active = context();
+      if (!isObject(owner) || !isObject(marker) || owner.actorId && owner.actorId !== id || marker.actorId !== id) throw Error('purchase_pantry_account_changed');
+      // An unowned/Free pantry has no verified online balance to replace.
+      if (!pending && (!owner.actorId || !owner.scope || !Number.isSafeInteger(owner.inventoryRevision))) return {updates: {}, expected: {}, queued: false, localOnly: true};
+      let next;
+      if (pending) {
+        next = {...pending, stock: target, shopSessionId: shopSessionId ?? active.shopSessionId ?? null};
+        if (!samePurchaseStock(baseline, pending.stock) && !samePurchaseStock(target, pending.stock) || !samePurchaseScope(pending.scope, owner.scope) || pending.market !== active.market || pending.retailer !== (active.retailer || null)) next.needsReview = true;
+      } else {
+        next = {version: 1, actorId: id, scope: clone(owner.scope), market: active.market, retailer: active.retailer || null, expectedRevision: owner.inventoryRevision, baselineStock: purchaseStock(owner.serverStock || {}), stock: target, shopSessionId: shopSessionId ?? active.shopSessionId ?? null, queuedAt: clock()};
+        if (!samePurchaseStock(baseline, next.baselineStock) || issue?.includes('pantry_merge_required') || issue === 'receipt_household_scope_changed') next.needsReview = true;
+      }
+      if (!next.attempt && !next.needsReview && samePurchaseStock(next.stock, next.baselineStock)) return {updates: {[key]: null}, expected: {[key]: raw, [KEYS.owner]: ownerRaw, [KEYS.actor]: markerRaw}, queued: false, localOnly: false};
+      return {updates: {[key]: next}, expected: {[key]: raw, [KEYS.owner]: ownerRaw, [KEYS.actor]: markerRaw}, queued: true, localOnly: false, needsReview: next.needsReview === true};
+    }
+    async function confirmPurchasedPantry(value = {}) {
+      let prepared;
+      try {
+        prepared = preparePurchasedPantry(value);
+        writeAtomic(prepared.updates, prepared.expected);
+      } catch (error) {return {ok: false, queued: false, needsReview: true, code: error.message};}
+      if (!prepared.queued) return {ok: true, localOnly: prepared.localOnly, queued: false, needsReview: false};
+      return retryPurchasedPantry();
+    }
+    async function retryPurchasedPantry() {
+      if (purchaseSyncPromise) return purchaseSyncPromise;
+      const pin = tripPin();
+      const current = () => sameTripPin(pin);
+      const run = async () => {
+        if (!current() || isolationError) return {ok: false, queued: true, needsReview: true};
+        let queued;
+        try {queued = purchasedPantry();} catch {return {ok: false, queued: true, needsReview: true};}
+        if (!queued) return {ok: true, queued: false, localOnly: true, needsReview: false};
+        if (queued.remoteConflict) return {ok: false, queued: true, needsReview: true, conflict: true};
+        if (reviewing || confirmingCurrent || choosingTrip || hasPendingConfirmation()) return {ok: false, queued: true, needsReview: false, pending: true};
+        await refreshAvailability({synchronize: false});
+        if (!current()) return {ok: false, queued: true, needsReview: true};
+        if (!availability.available) return {ok: true, queued: true, localOnly: true, needsReview: false};
+        if (queued.needsReview) return {ok: false, queued: true, needsReview: true, conflict: false};
+        const markReview = () => {
+          if (current()) {
+            const latest = purchasedPantrySnapshot();
+            if (latest.row) writeAtomic({[purchaseSyncKey()]: {...latest.row, needsReview: true, remoteConflict: true}}, {[purchaseSyncKey()]: latest.raw});
+            issue = 'receipt_local_remote_pantry_merge_required';schedule();
+          }
+          return {ok: false, queued: true, needsReview: true, conflict: true};
+        };
+        const reconcile = async () => {
+          // An interrupted request may already have committed. Only balances
+          // recorded before that request can prove a safe retry revision.
+          const remote = await fetchInventory();
+          if (!current()) return false;
+          const latest = purchasedPantrySnapshot();queued = latest.row;
+          if (!queued || !samePurchaseScope(remote.scope, queued.scope) || remote.inventoryRevision < queued.expectedRevision || !samePurchaseStock(remote.stock, queued.baselineStock) && !samePurchaseStock(remote.stock, queued.attempt?.stock || queued.stock)) return false;
+          writeAtomic({[purchaseSyncKey()]: {...queued, expectedRevision: remote.inventoryRevision, baselineStock: purchaseStock(remote.stock), attempt: null}}, {[purchaseSyncKey()]: latest.raw});
+          return true;
+        };
+        confirmingCurrent = true;
+        try {
+          if (queued.market !== context().market || queued.retailer !== (context().retailer || null) || !samePurchaseScope(queued.scope, projection()?.scope) || !samePurchaseStock(queued.stock, options.getStock?.() || read(KEYS.stock))) return markReview();
+          if (queued.attempt && !await reconcile()) return current() ? markReview() : {ok: false, queued: true, needsReview: true};
+          for (let conflicts = 0; conflicts < 4;) {
+            if (!current()) return {ok: false, queued: true, needsReview: true};
+            const beforeAttempt = purchasedPantrySnapshot();queued = beforeAttempt.row;
+            if (!queued) return {ok: true, queued: false, needsReview: false};
+            if (queued.needsReview || !samePurchaseStock(queued.stock, options.getStock?.() || read(KEYS.stock))) return markReview();
+            if (hasPendingConfirmation()) return {ok: false, queued: true, pending: true, needsReview: false};
+            const attempt = {stock: clone(queued.stock), expectedRevision: queued.expectedRevision};
+            writeAtomic({[purchaseSyncKey()]: {...queued, attempt}}, {[purchaseSyncKey()]: beforeAttempt.raw});
+            let result;
+            try {result = await adapter().confirmPantry({stock: clone(attempt.stock), expectedRevision: attempt.expectedRevision, expectedScope: clone(queued.scope), shopSessionId: queued.shopSessionId});}
+            catch (error) {
+              if (!current()) return {ok: false, queued: true, needsReview: true};
+              if (error.status === 409) {conflicts++;if (await reconcile()) continue;return markReview();}
+              return {ok: false, queued: true, needsReview: false, retryable: true};
+            }
+            if (!current()) return {ok: false, queued: true, committed: result.committed === true, needsReview: true};
+            if (!result.localApplied) return {ok: false, queued: true, committed: result.committed === true, needsReview: false, retryable: true};
+            conflicts = 0;
+            const latest = purchasedPantrySnapshot(), saved = projection();
+            if (!latest.row || !samePurchaseScope(latest.row.scope, saved?.scope) || !Number.isSafeInteger(saved.inventoryRevision) || !samePurchaseStock(saved.serverStock || {}, attempt.stock)) return markReview();
+            if (samePurchaseStock(latest.row.stock, attempt.stock)) {
+              writeAtomic({[purchaseSyncKey()]: null}, {[purchaseSyncKey()]: latest.raw});issue = null;notifyProjection(result.projection);schedule();return {...result, queued: false, localOnly: false, needsReview: false};
+            }
+            writeAtomic({[purchaseSyncKey()]: {...latest.row, expectedRevision: saved.inventoryRevision, baselineStock: clone(attempt.stock), attempt: null}}, {[purchaseSyncKey()]: latest.raw});
+          }
+          return {ok: true, queued: true, needsReview: false};
+        } catch {return {ok: false, queued: true, needsReview: false, retryable: true};}
+        finally {confirmingCurrent = false;schedule();}
+      };
+      const locks = options.locks || root.navigator?.locks;
+      purchaseSyncPromise = (async () => {try {return await (locks?.request ? locks.request('basketboss-purchase-pantry-sync:' + pin.actorId, {mode: 'exclusive'}, run) : run());} finally {purchaseSyncPromise = null;}})();
+      return purchaseSyncPromise;
+    }
     function getConsumptionStatus() {
       const review = (reason, message, canReviewInline = false) => {
         const permitted = canReviewInline && actor() !== 'guest' && !!session()?.access_token;
@@ -342,6 +484,7 @@
       if (reviewing) return review('review_open', 'Finish or close the open pantry review, then check these ingredients again.');
       if (confirmingCurrent) return review('confirmation_pending', 'Your pantry confirmation is still saving. Check these ingredients again when it finishes.');
       if (choosingTrip) return review('trip_choice_open', 'Finish or close the receipt shopping-trip choice before confirming ingredients used.');
+      if (purchaseNeedsReview()) return review('pantry_merge', 'Your saved online pantry and this device need checking. Review the amounts to keep before confirming ingredients used.', true);
       if (issue?.includes('pantry_merge_required')) return review('pantry_merge', 'Your saved online pantry and this device need checking. Review the amounts to keep before confirming ingredients used.', true);
       if (issue === 'receipt_household_scope_changed') return review('scope_changed', 'Your shared pantry changed. Review the saved and device amounts before confirming ingredients used.', true);
       if (issue === 'receipt_refresh_required') return review('refresh_required', 'Your saved pantry needs checking before ingredients can be deducted. Review its current amounts here.', true);
@@ -378,6 +521,13 @@
       if (!hasPendingConfirmation() && !isolationError && !reviewing && !confirmingCurrent) return true;
       notify('Recover the pending receipt before finishing this shop. No leftovers have been transferred.');
       return false;
+    }
+    function allowPurchaseTransfer() {
+      if (blocked() || isolationError || hasPendingConfirmation() || reviewing || choosingTrip || purchaseNeedsReview()) return false;
+      if (issue?.includes('pantry_merge_required') || issue === 'receipt_household_scope_changed' || issue === 'receipt_refresh_required') return false;
+      // Local purchases can join the durable queue while its earlier CAS is in
+      // flight. A user-entered pantry confirmation still owns its whole form.
+      return !confirmingCurrent || purchaseSyncPromise !== null;
     }
     function handlesInventorySync() { return projection()?.scope?.kind === 'household'; }
     function coversLegacyCredit(receipt) {
@@ -546,14 +696,14 @@
       if (!availability.available) return preserveCookReview ? {ok: true, localOnly: true, needsReview: false} : confirmLocalPantryReview();
       const cached = projection();
       if (!cached?.scope || !Number.isSafeInteger(cached.inventoryRevision) || issue?.includes('pantry_merge_required') || issue === 'receipt_household_scope_changed') return {ok: false, needsReview: true};
-      const id = actor(), active = context(), ledger = read(KEYS.ledger);
+      const id = actor(), active = context(), ledger = read(KEYS.ledger), purchaseAtReview = store().getItem(purchaseSyncKey());
       confirmingCurrent = true;
       try {
         const result = await adapter().confirmPantry({stock: clone(stock), expectedRevision: cached.inventoryRevision, expectedScope: clone(cached.scope), shopSessionId: active.shopSessionId || null});
         if (blocked() || serial !== generation || id !== actor()) return {ok: false, committed: result.committed === true, needsReview: true};
         if (!result.localApplied) {issue = 'receipt_refresh_required';return {...result, needsReview: true};}
         recordLegacyCoverage(ledger, active, id);
-        if (!preserveCookReview) clearCookReview();
+        if (!preserveCookReview) {clearCookReview();clearPurchasedPantry(purchaseAtReview);}
         issue = null;notifyProjection(result.projection);schedule();return {...result, needsReview: false, localOnly: false};
       } catch (error) {issue = error.status === 409 ? 'receipt_local_remote_pantry_merge_required' : 'receipt_refresh_required';schedule();return {ok: false, needsReview: true, conflict: error.status === 409,...(error.message==='inventory_ambiguous_package_sources'?{code:error.message}:{})};}
       finally {confirmingCurrent = false;}
@@ -569,7 +719,10 @@
           required: true, actorId: actor(), scope: cached.scope.kind + ':' + cached.scope.id
         }}});
       }
-      const result = await confirmCurrentPantry({stock, preserveCookReview: true});
+      const pendingPurchase = purchasedPantry();
+      const result = pendingPurchase
+        ? await confirmPurchasedPantry({stock, beforeStock: pendingPurchase.stock, shopSessionId: pendingPurchase.shopSessionId})
+        : await confirmCurrentPantry({stock, preserveCookReview: true});
       return {...result, weeklyReviewRequired: !!projection() && requiresPantryReview()};
     }
     async function reviewPantry({container, onConfirmed, onCancel, deferProjection = false} = {}) {
@@ -584,8 +737,8 @@
       let data;
       try {data = await fetchInventory();} catch (error) {if (serial === generation) reviewing = false;releaseProjection(hold, current());if (current()) notify(error.message);return null;}
       if (!current() || inline && container.isConnected === false) {if (serial === generation) reviewing = false;releaseProjection(hold, false);return null;}
-      let local, ledgerAtReview, oldOwner;
-      try {local = clone(options.getStock?.() || read(KEYS.stock));ledgerAtReview = read(KEYS.ledger);oldOwner = read(KEYS.owner);}
+      let local, ledgerAtReview, oldOwner, purchaseAtReview;
+      try {local = clone(options.getStock?.() || read(KEYS.stock));ledgerAtReview = read(KEYS.ledger);oldOwner = read(KEYS.owner);purchaseAtReview = store().getItem(purchaseSyncKey());}
       catch {reviewing = false;releaseProjection(hold, true);notify('Your saved pantry records could not be read safely. Reload BasketBoss before reviewing these amounts.');return null;}
       const document = doc(); if (!document) {reviewing = false;releaseProjection(hold, true);return {data, local};}
       const dialog = element(inline ? 'section' : 'dialog', undefined, 'bb-receipt-pantry-dialog' + (inline ? ' bb-receipt-pantry-inline' : ''));
@@ -650,6 +803,7 @@
           if (disposed || !current()) return;
           if (!result.localApplied) {message.textContent = 'Pantry saved online. Refresh it before shopping on this device.';issue = 'receipt_refresh_required';return;}
           clearCookReview();
+          clearPurchasedPantry(purchaseAtReview);
           recordLegacyCoverage(ledgerAtReview, currentContext, id);
           issue = null;notify('Pantry confirmed. Your shopping list now includes only what is still needed.');
           // The adapter can emit its projection before resolving this call.
@@ -775,7 +929,7 @@
       options.onProjection?.({externalStorage: true});schedule();
     }
     root.addEventListener?.('storage', externalChange);
-    const api = Object.freeze({configure, afterRender, refreshAvailability, open, saveLegacyReceipt, reviewPantry, confirmCurrentPantry, confirmCookedPantry, canConsumePantry, getConsumptionStatus, confirmLocalPantryReview, recoverReceipt, requiresPantryReview, hasPendingConfirmation, allowLegacyTransfer, handlesInventorySync, coversLegacyCredit, switchActor, exportBackup, prepareBackupRestore, hasLocalData, getAvailability: () => ({...availability}), getProjection: projection, weeklySummary: () => weeklyReceiptSummary(projection(), context(), clock()), keys: KEYS});
+    const api = Object.freeze({configure, afterRender, refreshAvailability, open, saveLegacyReceipt, reviewPantry, confirmCurrentPantry, confirmCookedPantry, preparePurchasedPantry, confirmPurchasedPantry, retryPurchasedPantry, canConsumePantry, getConsumptionStatus, confirmLocalPantryReview, recoverReceipt, requiresPantryReview, hasPendingConfirmation, allowLegacyTransfer, allowPurchaseTransfer, handlesInventorySync, coversLegacyCredit, switchActor, exportBackup, prepareBackupRestore, hasLocalData, getAvailability: () => ({...availability}), getProjection: projection, weeklySummary: () => weeklyReceiptSummary(projection(), context(), clock()), keys: KEYS});
     return api;
   }
   root.BBReceiptHostFactory = createHost;
