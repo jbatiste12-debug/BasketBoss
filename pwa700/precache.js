@@ -1,5 +1,5 @@
 /* Public web700 cache contract. Never include private/API/auth responses. */
-self.BB700_PWA_CACHE_VERSION="ddf9f2537744d7ad5504b680110c34ca577136a99923023540e87f9633c74360";
+self.BB700_PWA_CACHE_VERSION="70f50751c18d4f4a6cc61784a163abbac89c93f4176716a0bd9033f72abbbd9a";
 self.BB700_PWA_PRECACHE=Object.freeze([
   "/basketboss-aisles-v20.js?v=d45b76bac322b605",
   "/bb-account-deletion.css?v=645b166ac6fe196f",
@@ -15,7 +15,7 @@ self.BB700_PWA_PRECACHE=Object.freeze([
   "/bb-beta-launch-polish.css?v=f53a9cfdbc975dcb",
   "/bb-beta-launch-polish.js?v=2433c157f891f55c",
   "/bb-beta-six-fixes.css?v=03298990720c67a4",
-  "/bb-beta-six-fixes.js?v=19fe6a0aa20866d2",
+  "/bb-beta-six-fixes.js?v=ab30fb67b9064b8a",
   "/bb-cold-preview.css?v=3a514158fc902936",
   "/bb-cold-preview.js?v=46afe53cdbe6b6b6",
   "/bb-consolidated-qa.css?v=ed0f3f0f7eef44de",
@@ -84,7 +84,7 @@ self.BB700_PWA_PRECACHE=Object.freeze([
   "/bb-mobile-three-20261027.css?v=6acbd2e4381b1760",
   "/bb-navigation-polish.css?v=1f9c559ea6d2c12b",
   "/bb-navigation-polish.js?v=aee9704e7660f8a4",
-  "/bb-onboarding-v2.css?v=eb5e9b170aeceaa3",
+  "/bb-onboarding-v2.css?v=66c2bf8528e5343b",
   "/bb-pantry-autofill.js?v=20024bb507445777",
   "/bb-pantry-camera.css?v=887e5117a7076fe2",
   "/bb-pantry-camera.js?v=01362f42eb2d96b5",
@@ -147,7 +147,7 @@ self.BB700_PWA_PRECACHE=Object.freeze([
   "/bb-shop-subcategories.css?v=8b65ede44fc728a5",
   "/bb-shop-subcategories.js?v=07139a1741881fbc",
   "/bb-simple-layout.css?v=b78ffdb3dab2f664",
-  "/bb-simple-layout.js?v=a8c398e403aec217",
+  "/bb-simple-layout.js?v=0a02773f77d3ba78",
   "/bb-supermarkets.js?v=0e7c0cfdd73c5e15",
   "/bb-tab-swipe.js?v=8a961f001cf75618",
   "/bb-tab-viewport.css?v=4cdf61c976b6f103",
@@ -186,7 +186,7 @@ self.BB700_PWA_PRECACHE=Object.freeze([
   "/pwa700/bb-membership-compare.js",
   "/pwa700/bb-membership-compare.js?v=b318bb5e665db375",
   "/pwa700/bb-onboarding-v2.js",
-  "/pwa700/bb-onboarding-v2.js?v=a374ca915d24c934",
+  "/pwa700/bb-onboarding-v2.js?v=fced3181b839490b",
   "/pwa700/bb-pantry-selection.css",
   "/pwa700/bb-pantry-selection.css?v=f36a43f98c876ce5",
   "/pwa700/bb-pantry-selection.js",

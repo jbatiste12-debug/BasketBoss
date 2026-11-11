@@ -323,7 +323,7 @@ private enum BasketBossAccountKeyboardSetup {
               ['#cloud-password','cloud-password'],
               ['#cloud-login','cloud-login'],
               ['#cloud-close','cloud-close'],
-              ['#bbNewOnboarding .bbob-footer button[data-bbob="next"]','bbobNext'],
+              ['#bbNewOnboarding [data-bbob-account] > summary, #bbNewOnboarding .bbob-footer button[data-bbob="next"]','bbobNext'],
               ['#bbNewOnboarding button.bbob-exit','bbobExit'],
               ['.tabs button[data-tab="week"]','bbPlanNav'],
               ['.tabs button[data-tab="discover"]','bbDiscoverNav'],
@@ -334,6 +334,9 @@ private enum BasketBossAccountKeyboardSetup {
               const control=document.querySelector(selector);
               if(!control)continue;
               if(!control.id)control.id=identifier;
+              // Quick setup opens its optional account disclosure with this
+              // real tap; legacy Welcome still advances through its Next button.
+              if(identifier==='bbobNext'&&control.tagName==='SUMMARY')control.setAttribute('role','button');
               if(control.getAttribute('aria-label')!==identifier)control.setAttribute('aria-label',identifier);
             }
           };

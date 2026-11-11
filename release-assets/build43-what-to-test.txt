@@ -1,0 +1,16 @@
+BasketBoss 1.0.2 (43)
+
+1. With shopping already recorded this week, remove meals, add a dinner, and change its servings on Plan. The main amount must update without opening Shop.
+2. The main badge means estimated amount still to buy. Pantry credit and supermarket whole-pack rounding still apply; reducing a serving can leave the same pack price.
+3. Open Budget & household. The combined weekly total includes recorded purchases plus the shopping estimate. Deleting meals must not erase real spending history.
+4. Save or type a weekly budget target. The weekly comparison updates while the cost still to buy remains unchanged.
+5. Open Shop and shopping mode. Their remaining estimates must agree with Plan.
+6. Record or correct a partial purchase; return to Plan. Remaining shopping and weekly spending stay distinct, with no double stock credit.
+7. Unknown prices remain explicitly unpriced rather than being presented as a complete estimate.
+
+Uploading this build to TestFlight does not replace or withdraw an App Store submission. Signing and upload run on your Mac in Xcode.
+
+8. Fresh setup has three screens: welcome, household and Premium. Existing completed setups do not reopen. The longer walkthrough stays in Help.
+9. Sign-in is optional. Open the original email/password form, check the keyboard, go Back, and confirm the draft remains intact.
+10. Household, region, goals and diets remain drafts until you finish. Continue free applies chosen preferences once; cancelling a replay preserves the original choices.
+11. Premium opens the existing verified plan/Apple purchase screen after saving setup. No price or free-trial claim is invented. Continue free never creates or changes an entitlement.
