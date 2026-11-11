@@ -110,6 +110,8 @@
    for(const attribute of ['aria-label','title'])if(details.firstElementChild.getAttribute(attribute)!==label)details.firstElementChild.setAttribute(attribute,label);
   }
   const settings=app.querySelector('#bbSimpleBudget'),status=settings?.querySelector('.bb77-budget-status');
+  const weeklyTrim=budget?.querySelector(':scope>.bb81-trim-banner'),budgetBody=settings?.querySelector('.bbs-budget-body');
+  if(weeklyTrim&&budgetBody)budgetBody.append(weeklyTrim);
   if(status&&/could not|not verified|enter a target|unchanged|try again/i.test(status.textContent||''))settings.setAttribute('open','');
  }
  function kitchen(app){

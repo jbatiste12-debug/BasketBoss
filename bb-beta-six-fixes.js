@@ -114,7 +114,7 @@
     const title=node('h2',null,'Your shopping snapshot');
     const summary=node('p',null,rows.length?'Know what you need before heading for the aisles.':'Your basket fills up when you plan meals or add essentials.');
     const metrics=node('div','bb-r6-stats');
-    for(const [value,label] of [[pending.length,'Still to buy'],[checked,'Already bought'],[estimate,'Estimated total']]){
+    for(const [value,label] of [[pending.length,'Still to buy'],[checked,'Already bought'],[estimate,'Left to buy (est.)']]){
       const item=node('div','bb-r6-stat');item.append(node('strong',null,String(value)),node('span',null,label));metrics.append(item);
     }
     const track=node('div','bb-r6-track');track.setAttribute('role','progressbar');

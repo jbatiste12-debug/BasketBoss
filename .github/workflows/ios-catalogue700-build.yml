@@ -1,7 +1,18 @@
-name: Verify catalogue 700 iOS 1.0.2 build 42
+name: Verify catalogue 700 iOS 1.0.2 build 43
 
 on:
   workflow_dispatch:
+  pull_request:
+    branches: [main]
+    paths:
+      - .github/workflows/ios-catalogue700-build.yml
+      - tools/catalogue700/**
+      - app.html
+      - index.html
+      - bb-*.js
+      - bb-*.css
+      - native/**
+      - ios/**
   push:
     branches: [main, feature/recipe700-pilot]
     paths:
@@ -25,6 +36,10 @@ on:
 
 permissions:
   contents: read
+
+concurrency:
+  group: catalogue700-ios-${{ github.head_ref || github.ref }}
+  cancel-in-progress: true
 
 jobs:
   simulator-build:
@@ -127,7 +142,7 @@ jobs:
         run: echo '::notice title=BasketBoss iOS native build::{"simulatorBuild":true,"bundleId":"uk.co.basketboss.app","minimumIOS":"16.0","signingTested":false}'
       # Finish device compilation before Simulator startup; Cook and keyboard
       # checks still determine whether this verification run succeeds.
-      - name: Create the unsigned iPhone archive for build 42
+      - name: Create the unsigned iPhone archive for build 43
         run: |
           xcodebuild \
             -workspace ios/App/App.xcworkspace \
@@ -136,19 +151,19 @@ jobs:
             -sdk iphoneos \
             -destination 'generic/platform=iOS' \
             -derivedDataPath /tmp/basketboss-ios-device-build \
-            -archivePath "$RUNNER_TEMP/BasketBoss-1.0.2-build42.xcarchive" \
+            -archivePath "$RUNNER_TEMP/BasketBoss-1.0.2-build43.xcarchive" \
             CODE_SIGNING_ALLOWED=NO \
             archive
-          test "$(/usr/libexec/PlistBuddy -c 'Print CFBundleVersion' "$RUNNER_TEMP/BasketBoss-1.0.2-build42.xcarchive/Products/Applications/App.app/Info.plist")" = '42'
-          test "$(/usr/libexec/PlistBuddy -c 'Print CFBundleIdentifier' "$RUNNER_TEMP/BasketBoss-1.0.2-build42.xcarchive/Products/Applications/App.app/Info.plist")" = 'uk.co.basketboss.app'
+          test "$(/usr/libexec/PlistBuddy -c 'Print CFBundleVersion' "$RUNNER_TEMP/BasketBoss-1.0.2-build43.xcarchive/Products/Applications/App.app/Info.plist")" = '43'
+          test "$(/usr/libexec/PlistBuddy -c 'Print CFBundleIdentifier' "$RUNNER_TEMP/BasketBoss-1.0.2-build43.xcarchive/Products/Applications/App.app/Info.plist")" = 'uk.co.basketboss.app'
           ditto -c -k --sequesterRsrc --keepParent \
-            "$RUNNER_TEMP/BasketBoss-1.0.2-build42.xcarchive" \
-            "$RUNNER_TEMP/BasketBoss-1.0.2-build42-unsigned.xcarchive.zip"
+            "$RUNNER_TEMP/BasketBoss-1.0.2-build43.xcarchive" \
+            "$RUNNER_TEMP/BasketBoss-1.0.2-build43-unsigned.xcarchive.zip"
       - name: Retain the unsigned iPhone archive
         uses: actions/upload-artifact@v6
         with:
-          name: BasketBoss-1.0.2-build42-unsigned-iPhone-archive
-          path: ${{ runner.temp }}/BasketBoss-1.0.2-build42-unsigned.xcarchive.zip
+          name: BasketBoss-1.0.2-build43-unsigned-iPhone-archive
+          path: ${{ runner.temp }}/BasketBoss-1.0.2-build43-unsigned.xcarchive.zip
           if-no-files-found: error
           retention-days: 7
           compression-level: 0

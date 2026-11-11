@@ -38,6 +38,11 @@ if(Capacitor.isNativePlatform()&&Capacitor.getPlatform()==='ios'){
   await Browser.open({url:url.href,presentationStyle:'popover'});
  }
  window.BBNative=Object.freeze({isNative:true,platform:'ios',apiOrigin:PRODUCTION_ORIGIN,apiURL:path=>productionApiURL(path)||path,haptic,openExternal,clearTemporaryData,dismissKeyboard});
+ // Setup can hand off after saving completion, without starting a purchase.
+ window.BBNativeMembership=Object.freeze({open(){
+  if(deleting()||document.getElementById('bbAccountDeletionDialog')?.open===true||document.documentElement.classList.contains('bb-native-starting'))return false;
+  location.assign(nativeMembershipURL(location.href));return true;
+ }});
  const cookVoice=installNativeCookVoice({plugin:registerPlugin('BasketBossCookVoice'),window,isPremium:()=>window.BasketBossVerifiedPremium?.isActive?.()===true});
  // Preserve method/body/authentication. No cookie transport or native HTTP
  // patch is enabled: WKWebView uses the server's narrow native-origin CORS.

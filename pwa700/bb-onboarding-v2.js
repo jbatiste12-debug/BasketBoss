@@ -10,6 +10,10 @@
  const PREVIEW_HOST='basketboss-preview.basketboss-site.pages.dev';
  const LOGO='icons/basketboss-crowned-v1766-512.png';
  const STEP_MAX=10;
+ // Only the current app document opts into the shorter setup. Older clients
+ // retain their existing resumable presentation and the same completion key.
+ const quick=document.querySelector('meta[name="basketboss-onboarding"]')?.content==='quick-v1';
+ const QUICK_STEPS=[1,3,10];
  // Exact public Free recipe facts from the pinned recipes.json catalogue.
  // These are static read-only samples, never copies of user plans.
  const RECIPES=[
@@ -70,6 +74,7 @@
  }
  // Replay uses memory until Finish; closing or reloading keeps prior setup intact.
  let replaying=false,replayOriginal=null;
+ let quickSetupOriginal=null,quickAccountOpen=false,quickPreferencesOpen=false,quickPartnerOpen=false;
  const changedPreferences=new Set();
  function persist(commitReplay=false){if(blocked())return false;if(replaying&&!commitReplay)return true;return write(KEY,JSON.stringify({step:state.step,house:state.house,goals:state.goals,diets:state.diets,region:state.region,started:state.started,complete:state.complete,partnerStepV2:true,wantsPartnerInvite:state.wantsPartnerInvite===true,partnerIntent:state.partnerIntent||'none'}));}
  const btn=(label,action,kind='primary')=>`<button type="button" class="bbob-btn bbob-${kind}" data-bbob="${action}">${label}</button>`;
@@ -97,9 +102,38 @@
    return `<div class="bbob-figure bbob-real-shop" aria-label="Read-only BasketBoss aisle shopping example"><div class="bbob-mock-top">FAJITAS SHOPPING LIST · EXAMPLE <span>BY AISLE</span></div><div class="bbob-shop-total"><span>Indicative basket estimate</span><strong>£${total.toFixed(2)}</strong></div>${rows}<p class="bbob-preview-disclaimer">Example ingredient quantities and prices for ${esc(lead.name)} (6 servings). Your actual list recalculates quantities, packs and pantry deductions for your region and supermarket. This example does not change your shopping list.</p></div>`;
  }
 
- function options(items,selected,multiple){return `<div class="bbob-options ${multiple?'bbob-goals':''}">${items.map((v,i)=>`<button type="button" class="bbob-option ${selected.includes(v)?'chosen':''}" data-bbob-opt="${i}" aria-pressed="${selected.includes(v)}"><span class="bbob-choice-mark" aria-hidden="true">${selected.includes(v)?'✓':' '}</span><span>${v}</span></button>`).join('')}</div>`;}
+ function options(items,selected,multiple,group=''){return `<div class="bbob-options ${multiple?'bbob-goals':''}">${items.map((v,i)=>`<button type="button" class="bbob-option ${selected.includes(v)?'chosen':''}" data-bbob-opt="${i}"${group?` data-bbob-group="${group}"`:''} aria-pressed="${selected.includes(v)}"><span class="bbob-choice-mark" aria-hidden="true">${selected.includes(v)?'✓':' '}</span><span>${v}</span></button>`).join('')}</div>`;}
  const titles=['Welcome','Account','Partner sharing','Household','Goals','Preferences','Discover','Plan','Shop','You’re all set','Membership'];
+ function quickContent(){
+   const step=QUICK_STEPS.indexOf(state.step)+1;
+   const premium=window.BasketBossVerifiedPremium?.isActive?.()===true;
+   let title='',description='',art='',actions='';
+   if(state.step===1){
+     title=state.partnerIntent==='join'?'Join your partner’s kitchen.':'A little planning. A better week.';
+     description='Plan meals you’ll look forward to, use what’s at home and shop with one clear list.';
+     art=`<div class="bbob-quick-welcome"><img src="${RECIPES[1].image}" alt="Creamy garlic parmesan chicken pasta" width="500" height="300"><div><span>YOUR WEEK, MADE SIMPLER</span><strong>Plan. Shop. Cook. Repeat.</strong></div></div><div class="bbob-quick-free"><span aria-hidden="true">✓</span><p><strong>Explore 200 free recipes.</strong><span>No subscription or account needed to get started.</span></p></div>`;
+     if(accountRemembered()){
+       art+='<div class="bbob-auth-ready" role="status">✓ You’re already signed in. Your account and saved meals are ready.</div>';
+     }else{
+       art+=`<details class="bbob-quick-details bbob-quick-account" data-bbob-account ${quickAccountOpen||state.partnerIntent==='join'?'open':''}><summary>${state.partnerIntent==='join'?'Sign in with your invited email':'Have an account? Sign in or create one'}</summary><p>Use your existing BasketBoss account to keep your plans together. New accounts may need email confirmation.</p><div id="bbobAuthSlot" class="bbob-auth-slot"></div><div id="bbobMessageSlot" class="bbob-message-slot" aria-live="polite"></div></details>`;
+     }
+     actions=btn(accountRemembered()?'Continue setup':'Continue without signing in','next');
+   }else if(state.step===3){
+     title='Make it work for your household.';
+     description='Set your usual portions and shopping region. Everything here is optional and can be changed later.';
+     art=`<section class="bbob-quick-setup" aria-label="Household setup"><h2>Who are you cooking for?</h2>${options(HOUSE,state.house?[state.house]:[],false,'house')}<label class="bbob-market-label" for="bbob-region">Shopping region<select id="bbob-region" data-bbob-region><option value="">Choose later in Settings</option>${REGIONS.map(r=>`<option value="${r}" ${state.region===r?'selected':''}>${r==='US'?'United States':r}</option>`).join('')}</select></label></section><details class="bbob-quick-details" data-bbob-preferences ${quickPreferencesOpen?'open':''}><summary>Diet & planning preferences <span>Optional</span></summary><h2>Any dietary preferences?</h2>${options(DIETS,state.diets,true,'diets')}<p class="bbob-quick-note">Always check ingredient labels and allergens.</p><h2>What would make dinner easier?</h2><p class="bbob-quick-note">Choose up to three to guide Auto-fill suggestions.</p>${options(GOALS,state.goals,true,'goals')}</details><details class="bbob-quick-details" data-bbob-partner ${quickPartnerOpen?'open':''}><summary>Planning with a partner? <span>Optional</span></summary><p>Partner Sharing links one verified partner when enabled for Premium.</p><div class="bbob-quick-partner-actions">${btn(state.wantsPartnerInvite?'✓ Invite preference saved':'Invite one partner (Premium)','partner-invite','outline')}${btn('Join an invitation','partner-join','outline')}${state.wantsPartnerInvite?btn('Not now','partner-later','link'):''}</div>${state.wantsPartnerInvite?'<p class="bbob-quick-note" role="status">We’ll help you invite your partner after account verification and Premium activation. No email has been sent.</p>':''}</details>`;
+     actions=btn('Continue','next')+btn('Skip setup for now','skip','link')+btn('Back','back','link');
+   }else{
+     title=premium?'Your Premium kitchen is ready.':'More possibilities. Less dinner admin.';
+     description=premium?'Your verified Premium membership is already active. Your saved meals and preferences are ready to use.':'Make the most of your food, your time and your weekly shop with BasketBoss Premium.';
+     art=`<div class="bbob-quick-offer"><div class="bbob-quick-offer-top"><span class="bbob-quick-crown" aria-hidden="true">♛</span><span>BASKETBOSS PREMIUM</span>${premium?'<b>ACTIVE</b>':'<b>YOUR KITCHEN, UPGRADED</b>'}</div><h2>${premium?'Everything you need, together.':'A little help for the whole week.'}</h2><ul><li><span aria-hidden="true">✦</span><div><strong>700 recipes to make your own</strong><p>More family favourites, fresh ideas and meals worth repeating.</p></div></li><li><span aria-hidden="true">✓</span><div><strong>Smarter weekly planning</strong><p>Smart Auto-fill, batch cooking and tools to make your basket go further.</p></div></li><li><span aria-hidden="true">⌁</span><div><strong>Turn pantry photos into a starting point</strong><p>Scan food and review the suggested ingredients before using them.</p></div></li><li><span aria-hidden="true">♫</span><div><strong>A helping hand while you cook</strong><p>Hands-free Voice Cook, plus optional AI meal ideas.</p></div></li></ul></div><p class="bbob-quick-note bbob-quick-offer-note">${premium?'Your membership stays exactly as it is. Continue to start planning.':native()?'Review current Apple plans and available prices on the next screen. Restore Purchases is available there.':'Review current plans, prices and subscription terms on the next screen.'}${premium?'':' AI tools have daily limits and depend on service availability.'}</p>`;
+     actions=premium?btn('Continue to BasketBoss','free-complete'):btn('See Premium plans','quick-premium')+btn('Continue with BasketBoss Free','free-complete','outline');
+     actions+=btn('Back','back','link');
+   }
+   return `<div class="bbob-shell"><header class="bbob-header"><div class="bbob-brand"><img src="${LOGO}" alt=""><span>Basket<span>Boss</span></span></div><button type="button" class="bbob-exit" data-bbob="${replaying?'replay-cancel':'free'}" aria-label="${replaying?'Cancel setup and keep existing preferences':'Continue with BasketBoss Free'}">${replaying?'Cancel setup':'Continue free'} <span aria-hidden="true">×</span></button></header><div class="bbob-quick-progress" aria-label="Setup step ${step} of 3"><span>${step===1?'Welcome':step===2?'Your household':'Your BasketBoss'}</span><b>${step} of 3</b><div><i style="width:${step/3*100}%"></i></div></div><section class="bbob-main" aria-labelledby="bbob-title"><p class="bbob-eyebrow">${state.step===10?'YOUR BASKETBOSS':'WELCOME TO BASKETBOSS'}</p><h1 id="bbob-title">${title}</h1><p class="bbob-description">${description}</p>${art}<p id="bbobSaveError" role="alert" class="bbob-save-error"></p></section><footer class="bbob-footer">${actions}</footer></div>`;
+ }
  function content(){
+   if(quick)return quickContent();
    let headline='',eyebrow='',description='',art='',foot='',actions='';
    switch(state.step){
      case 0:
@@ -233,7 +267,13 @@
    host.classList?.toggle('bbob-keyboard',state.step===1&&editing&&height<fullViewportHeight-100);
    window.requestAnimationFrame?.(keepAuthFocusVisible);
  }
- function render(){if(!host)return;host.classList?.toggle('bbob-kitchen-slide',state.step===9);restoreAuth();host.innerHTML=content();
+ function render(){if(!host)return;
+   if(quick){
+     for(const [selector,remember] of [['[data-bbob-account]',value=>{quickAccountOpen=value;}],['[data-bbob-preferences]',value=>{quickPreferencesOpen=value;}],['[data-bbob-partner]',value=>{quickPartnerOpen=value;}]]){
+       const details=host.querySelector(selector);if(details)remember(details.open===true);
+     }
+   }
+   host.classList?.toggle('bbob-quick',quick);host.classList?.toggle('bbob-quick-premium',quick&&state.step===10);host.classList?.toggle('bbob-kitchen-slide',!quick&&state.step===9);restoreAuth();host.innerHTML=content();
    if(state.step===1&&!accountRemembered())mountAuth();
    sizeWelcomeViewport();host.scrollTop=0;
    if(state.step===1&&!accountRemembered()){
@@ -267,6 +307,19 @@
  }
  function authenticated(){
    if(!validSession()||blocked())return false;
+   if(quick&&!state.complete){
+     if(state.partnerIntent==='join'&&host){finishJoinHandoff();return state.complete===true;}
+     // Signing in is optional setup, not consent to finish or purchase. Keep
+     // the mounted short flow moving without committing its preference draft.
+     const previous=state.step;state.step=3;
+     if(!persist()){
+       state.step=previous;
+       const status=host?.querySelector('#bbobSaveError')||id('cloud-message');
+       if(status)status.textContent='Could not save your setup. Please retry; your choices are kept.';
+       return false;
+     }
+     if(host)render();return true;
+   }
    // Signing in must not commit a Settings replay draft or overwrite later
    // planner edits from an already completed survey.
    if(replaying){dismiss();return true;}
@@ -287,23 +340,23 @@
    dismiss(false);return true;
  }
  function complete(goPremium=false){
-   if(!host||blocked())return;
+   if(!host||blocked())return false;
    const firstSetup=!replaying;
    if(!persist()){
      host.querySelector('#bbobSaveError')?.replaceChildren(document.createTextNode('Unable to save your setup on this device. Please check browser storage and retry.'));
-     return;
+     return false;
    }
    const error=applyChosenPreferences();
    if(error){
      const status=host.querySelector('#bbobSaveError');
      if(status)status.textContent=error;
-     return;
+     return false;
    }
    state.complete=true;state.started=false;
    if(!persist(true)){state.complete=false;state.started=true;
      const status=host.querySelector('#bbobSaveError');
      if(status)status.textContent='Could not save onboarding completion. Please retry.';
-     return;
+     return false;
    } // Selected meal choices were saved through the planner preference setter.
    write('basketboss_onboarding_seen_v1','true');
    try{sessionStorage.setItem('basketboss_welcome_splash_seen_v1','1')}catch(_){}
@@ -316,8 +369,9 @@
      else if(window.BBIntroTrialOffer?.open)void window.BBIntroTrialOffer.open();
    }else{
      document.querySelector('.shell .tabs [data-tab="discover"]')?.click();
-     if(firstSetup)window.BBHowItWorks?.setupFinished?.();
+     if(firstSetup&&!quick)window.BBHowItWorks?.setupFinished?.();
    }
+   return true;
  }
 
  function finishJoinHandoff(){
@@ -337,13 +391,14 @@
      else document.getElementById('cloud-open')?.click();
    });
  }
- function chooseOption(i){
+ function chooseOption(i,group=''){
    if(blocked())return;
-   const items=state.step===3?HOUSE:state.step===4?GOALS:DIETS;
+   const section=quick&&state.step===3?({house:3,goals:4,diets:5}[group]||3):state.step;
+   const items=section===3?HOUSE:section===4?GOALS:DIETS;
    const v=items[i];if(v===undefined)return;
-   if(state.step===3){state.house=v;changedPreferences.add('house');}
-   if(state.step===4){const set=new Set(state.goals);set.has(v)?set.delete(v):(set.size<3&&set.add(v));state.goals=[...set];changedPreferences.add('goals');}
-   if(state.step===5){const set=new Set(state.diets);if(v===DIETS[0]){state.diets=[v];}
+   if(section===3){state.house=v;changedPreferences.add('house');}
+   if(section===4){const set=new Set(state.goals);set.has(v)?set.delete(v):(set.size<3&&set.add(v));state.goals=[...set];changedPreferences.add('goals');}
+   if(section===5){const set=new Set(state.diets);if(v===DIETS[0]){state.diets=[v];}
      else{set.delete(DIETS[0]);set.has(v)?set.delete(v):set.add(v);state.diets=[...set];}changedPreferences.add('diets');}
    persist();render();
  }
@@ -383,7 +438,7 @@
    if(host||blocked())return false;
    accountRequested=false;
    replayOriginal=JSON.parse(JSON.stringify(restoreState()||state));
-   state={house:'',goals:[],diets:[],region:'',partnerStepV2:true,wantsPartnerInvite:false,partnerIntent:'none',...replayOriginal,step:0,started:true,complete:false};
+   state={house:'',goals:[],diets:[],region:'',partnerStepV2:true,wantsPartnerInvite:false,partnerIntent:'none',...replayOriginal,step:quick?1:0,started:true,complete:false};
    state.goals=Array.isArray(state.goals)?[...state.goals]:[];state.diets=Array.isArray(state.diets)?[...state.diets]:[];
    replaying=true;changedPreferences.clear();
    return begin(true);
@@ -392,15 +447,21 @@
    if((!force&&!willShow())||host||blocked()||(!force&&accountRequested))return false;
    if(!force)state=restoreState()||state;
    // Everyone sees the new rollout once; saved recipes, plans and sessions stay intact.
-   if(!state.started){state={step:0,house:'',goals:[],diets:[],region:'',started:true,complete:false,partnerStepV2:true,wantsPartnerInvite:false,partnerIntent:'none'};persist();}
+   if(!state.started){state=quick?{...state,started:true,complete:false}:{step:0,house:'',goals:[],diets:[],region:'',started:true,complete:false,partnerStepV2:true,wantsPartnerInvite:false,partnerIntent:'none'};persist();}
    else if(!state.partnerStepV2){
      // Resume older incomplete onboarding at the corresponding screen; never
      // reset or repeat the tour for users who already completed it.
-     if(Number.isInteger(state.step)&&state.step>=2&&state.step<=9)state.step++;
+     if(!quick&&Number.isInteger(state.step)&&state.step>=2&&state.step<=9)state.step++;
      state.partnerStepV2=true;
      if(!persist())return;
    }
    if(!Number.isInteger(state.step)||state.step<0||state.step>STEP_MAX)state.step=0;
+   if(quick){
+     state.goals=Array.isArray(state.goals)?state.goals:[];state.diets=Array.isArray(state.diets)?state.diets:[];
+     const mapped=state.step<=1?1:state.step<=5?3:10;
+     if(state.step!==mapped){state.step=mapped;persist();}
+     quickSetupOriginal={house:state.house,region:state.region,goals:[...state.goals],diets:[...state.diets]};
+   }
    oldOverflow=document.body.style.overflow;lastFocus=document.activeElement;
    host=document.createElement('div');host.id='bbNewOnboarding';host.setAttribute('role','dialog');host.setAttribute('aria-modal','true');host.setAttribute('aria-label','BasketBoss welcome and setup');
    document.body.appendChild(host);document.body.style.overflow='hidden';lockWelcomeBackground();
@@ -409,11 +470,24 @@
    host.addEventListener('focusout',()=>queueMicrotask(sizeWelcomeViewport));
    host.addEventListener('click',e=>{
      if(blocked())return;
-     const option=e.target.closest('[data-bbob-opt]');if(option){chooseOption(Number(option.dataset.bbobOpt));return;}
+     const option=e.target.closest('[data-bbob-opt]');if(option){chooseOption(Number(option.dataset.bbobOpt),option.dataset.bbobGroup);return;}
      const action=e.target.closest('[data-bbob]')?.dataset.bbob;if(!action)return;
      if(action==='replay-cancel'){dismiss();return;}
      if(action==='free'||action==='free-complete'){complete();return;}
      if(action==='premium'){complete(true);return;}
+     if(action==='quick-premium'&&quick&&state.step===10){
+       if(!native()){complete(true);return;}
+       const membership=window.BBNativeMembership;
+       if(typeof membership?.open!=='function'){
+         const status=host.querySelector('#bbobSaveError');
+         if(status)status.textContent='Premium plans are still opening. Please retry, or continue with BasketBoss Free.';
+         return;
+       }
+       // The native hook only navigates to the existing Apple membership
+       // screen. Never leave before local setup and its original setters save.
+       if(complete(false)===true&&state.complete&&!host)membership.open();
+       return;
+     }
      if(action==='skip-tour'&&state.step>=6&&state.step<=9){state.step=STEP_MAX;persist();render();return;}
      if(action==='partner-invite'){
        state.partnerIntent='invite';state.wantsPartnerInvite=true;persist();render();return;
@@ -428,16 +502,22 @@
        state.step=3;persist();render();return;
      }
      if(action==='next'){
-       if(state.step===2 && state.partnerIntent==='join' && validSession()){finishJoinHandoff();return;}
-       state.step=Math.min(STEP_MAX,state.step+1);persist();render();return;
+       if((state.step===2||quick&&state.step===1) && state.partnerIntent==='join' && validSession()){finishJoinHandoff();return;}
+       state.step=quick?(state.step===1?3:10):Math.min(STEP_MAX,state.step+1);persist();render();return;
      }
      if(action==='skip'){
+       if(quick){
+         if(state.step!==3)return;
+         Object.assign(state,{...quickSetupOriginal,goals:[...quickSetupOriginal.goals],diets:[...quickSetupOriginal.diets]});
+         for(const key of ['house','region','goals','diets'])changedPreferences.delete(key);
+         state.step=10;persist();render();return;
+       }
        if(state.step===3){state.house=replaying?(replayOriginal.house||''):'';state.region=replaying?(replayOriginal.region||''):'';changedPreferences.delete('house');changedPreferences.delete('region');}
        if(state.step===4){state.goals=replaying?[...(replayOriginal.goals||[])]:[];changedPreferences.delete('goals');}
        if(state.step===5){state.diets=replaying?[...(replayOriginal.diets||[])]:[];changedPreferences.delete('diets');}
        state.step=Math.min(STEP_MAX,state.step+1);persist();render();return;
      }
-     if(action==='back'){state.step=Math.max(0,state.step-1);persist();render();}
+     if(action==='back'){state.step=quick?(state.step===10?3:1):Math.max(0,state.step-1);persist();render();}
    });
    host.addEventListener('change',e=>{if(!blocked()&&e.target.matches('[data-bbob-region]')){state.region=e.target.value;changedPreferences.add('region');persist();}});
    host.addEventListener('keydown',e=>{if(e.key==='Escape'){e.preventDefault();e.stopPropagation?.();if(replaying)dismiss();else complete();}});
@@ -476,8 +556,9 @@
      if(blocked()||!host||state.step!==1)return;
      // A late signed-out notification must not move the shared form while
      // someone is editing: reparenting it blurs the input and hides iOS's keyboard.
-     if(validSession()){if(state.partnerIntent==='join')finishJoinHandoff();else{state.step=2;persist();render();}}else if(!accountInput())render();
+     if(validSession()){if(state.partnerIntent==='join')finishJoinHandoff();else{state.step=quick?3:2;persist();render();}}else if(!accountInput())render();
    });
+   document.addEventListener('basketboss:premium-verified',()=>{if(quick&&host&&state.step===10&&!blocked())render();});
    window.addEventListener('basketboss:account-deletion-started',()=>{if(host)dismiss();replayLabel();});
    window.addEventListener('basketboss:account-deletion-deleted',()=>{if(host)dismiss();replayLabel();});
    window.addEventListener('basketboss:account-deletion-cancelled',event=>queueMicrotask(()=>{replayLabel();if(!event.detail?.reconciled)begin();}));
