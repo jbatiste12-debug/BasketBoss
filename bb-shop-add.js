@@ -15,6 +15,7 @@
   function openDialog(){
    if(disposed||active)return;const home=win.BBHome,who=actor();
    if(!who||typeof home?.addShoppingBuy!=='function'){notice.textContent='Shopping entry is still loading. Reopen it in a moment.';return;}
+   if(win.BBShopPurchaseHost?.isReady?.()===false){notice.textContent='Shopping is still loading. Try again in a moment.';return;}
    if(win.BBAccountDeletion?.isDeleting?.()){notice.textContent='Finish account deletion before changing your shopping list.';return;}
    if(doc.querySelector?.('dialog[open]')){notice.textContent='Finish or close the current form before adding an item.';return;}
    notice.textContent='';
@@ -52,6 +53,7 @@
    cancel.onclick=()=>{if(!state.busy)close(state);};
    form.addEventListener('submit',async event=>{
     event.preventDefault();if(state.busy||!alive())return;state.checkContext();if(!current())return;
+    if(win.BBShopPurchaseHost?.isReady?.()===false){status.textContent='Shopping is still loading. Try again in a moment.';return;}
     const item=name.value.trim(),amount=quantity.value.trim();
     if(!item||!amount){status.textContent='Enter an item and the quantity you want to buy.';save.disabled=true;return;}
     const reducedValue=reduced?.checked?Number(reducedPrice.value):null;
