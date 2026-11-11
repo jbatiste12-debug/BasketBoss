@@ -65,4 +65,12 @@ jobs:
         env:
           BB_PGLITE_MODULE: ${{ runner.temp }}/bb-deletion-pg/node_modules/@electric-sql/pglite
           BB_RECEIPT_PGLITE_PATH: ${{ runner.temp }}/bb-deletion-pg/node_modules/@electric-sql/pglite/dist/index.js
-        run: node --test --test-isolation=none tests/*.test.mjs
+        # Full sequential browser coverage stays in web700-regression.yml.
+        # Keep this portable job focused on deletion, SQL and billing boundaries.
+        run: >-
+          node --test --test-concurrency=1
+          tests/basketboss-account-deletion*.test.mjs
+          tests/basketboss-apple*.test.mjs
+          tests/basketboss-native*.test.mjs
+          tests/basketboss-premium-billing*.test.mjs
+          tests/basketboss-public-legal.test.mjs
