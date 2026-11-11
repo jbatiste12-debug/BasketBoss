@@ -3804,7 +3804,7 @@ body[data-bbnext-view="discover"] #app .bb-featured-card #bbFeaturedBatch {
 <div id="modalRoot"></div><div id="toastRoot" aria-live="polite"></div>
 <script src="/basketboss-aisles-v20.js?v=d45b76bac322b605"></script>
 <script src="/bb-supermarkets.js?v=0e7c0cfdd73c5e15"></script>
-<script src="/bb-pantry-policy.js?v=2035a06b9de9b0a8"></script>
+<script src="/bb-pantry-policy.js?v=085205ffb0aacf65"></script>
 <script src="/bb-pantry-display.js?v=3703aec840ec42c6"></script>
 <script src="/bb-recipe-purchase-basis.js?v=56122bf98efed0e3"></script>
 <script src="/bb-recipe-canonical.js?v=7859ebbf9ad539e0"></script>
@@ -3845,7 +3845,7 @@ body[data-bbnext-view="discover"] #app .bb-featured-card #bbFeaturedBatch {
 <script defer src="/bb-weekly-essentials.js?v=46a2d5b9851a1f61"></script>
 <script defer src="/bb-receipt-inventory.js?v=804269d12d30c564"></script>
 <script defer src="/bb-receipt-scanner.js?v=44189473c8d617fe"></script>
-<script defer src="/bb-receipt-host.js?v=b03f9ffdfd6cbb4b"></script>
+<script defer src="/bb-receipt-host.js?v=4a91ad6788a8e650"></script>
 <link rel="stylesheet" href="/bb-receipt-scanner.css?v=f5a7f0035dc6279e">
 <link rel="stylesheet" href="/bb-receipt-host.css?v=144740b15969b571">
 <script>
@@ -10757,7 +10757,7 @@ function bbBetaAlreadyHave(item){
 }
 /* BB-PANTRY-PLAN-PARTIAL-20261025 — runs inside existing app controller.
  * No new app shell. No recipe/editorial data changes. */
-function bbPartialRound(n){return Math.round(n*1000)/1000;}
+function bbPartialRound(n,unit){const scale=(unit==='kg'||unit==='l'?1000:1)*1000;return Math.round(n*scale)/scale;}
 function bbPartialKey(item){return bbBetaShopWeek()+'|'+item.id;}
 function bbPartialAll(){bbShopV7Session();return bb83ReadObject(BB_PARTIAL_PURCHASE_KEY);}
 function bbPartialDetails(item){
@@ -10767,20 +10767,24 @@ function bbPartialDetails(item){
  const saved=bbPartialAll()[bbPartialKey(item)];
  const bought=Number(saved?.bought||0);
  if(saved?.unit!==unit||!(bought>0)||!Number.isFinite(bought))return {needed,unit,bought:0,remaining:needed};
- return {needed,unit,bought:bbPartialRound(bought),remaining:bbPartialRound(Math.max(0,needed-bought))};
+ return {needed,unit,bought:bbPartialRound(bought,unit),remaining:bbPartialRound(Math.max(0,needed-bought),unit)};
 }
 function bbPartialSet(item,boughtTotal,reducedPrice,options={}){
  if(!item?.id)return false;
  const valid=bbBetaReceiptCandidate(item),basket=item.basketItem;
  const required=basket&&typeof bbShopNeedPresentation==='function'?bbShopNeedPresentation(basket).targetQuantity:Number(basket?.toBuy??valid?.qty),unit=String(basket?.unit||valid?.unit||''),total=Number(boughtTotal);
- if(!(required>0)||!['each','g','kg','ml','l','pack','clove'].includes(unit)||!Number.isFinite(total)||total<0||total>1000000)return false;
- if(['each','pack','clove'].includes(unit)&&!Number.isInteger(total))return false;
+ if(!(required>0)||!['each','g','kg','ml','l','pack','clove','bag','tin','bunch','loaf'].includes(unit)||!Number.isFinite(total)||total<0||total>1000000)return false;
+ if(['each','pack','clove','bag','tin','bunch','loaf'].includes(unit)&&!Number.isInteger(total))return false;
+ // A purchase supports three canonical g/ml decimals, including six input
+ // decimals for kg/l. Never silently truncate an entered physical amount.
+ const representable=bbPartialRound(total,unit);
+ if(total>0&&(!(representable>0)||Math.abs(total-representable)>Number.EPSILON*Math.max(1,total)*8))return false;
  if(bbBetaReceiptRead()?.[bbBetaReceiptId(item.id)]&&!(options.inventoryNow&&bbShopV7Session().shelfEdits?.[item.id]?.kind==='shop-owned-v1'))return false;
  const session=bbShopV7Session(),ownedExpected=options.inventoryNow?bbShopOwnedExpected():{},partials=bbPartialAll(),key=bbPartialKey(item),prior=partials[key];
  if(prior?.bought>0&&prior.unit!==unit)return false;
  const ticks=bb321ReadShopTicks(),purchased=bb84ReadPurchased(),choices=bbBetaPurchaseChoices(),undo={...session.checkboxUndo};
  const nextPartials={...partials},detail=bb84DetailFor(basket||{key:item.name,unit},item.id.startsWith('ess:'),ownedExpected);
- if(total>0&&total<required)nextPartials[key]={bought:bbPartialRound(total),unit,required,week:session.id,name:item.name,aisle:item.aisle,essential:item.id.startsWith('ess:')};
+ if(total>0&&total<required)nextPartials[key]={bought:bbPartialRound(total,unit),unit,required,week:session.id,name:item.name,aisle:item.aisle,essential:item.id.startsWith('ess:')};
  else delete nextPartials[key];
  if(total>=required){
   ticks[item.id]=true;
@@ -10804,7 +10808,7 @@ function bbPartialSet(item,boughtTotal,reducedPrice,options={}){
  if(options.inventoryNow)bbShopOwnedSaved();
  if(total>=required)window.BBHomeHost?.reload?.();
  render();bb172StorefrontRefresh();
- notify(total<required?item.name+': '+bbPartialRound(required-total)+' '+unit+' still to buy.':item.name+' marked bought ✓');
+ notify(total<required?item.name+': '+bbPartialRound(required-total,unit)+' '+unit+' still to buy.':item.name+' marked bought ✓');
  return true;
 }
 const BB_PANTRY_PLANNER_DRAFT='basketboss_pantry_plan_suggestions_v1';
@@ -10833,7 +10837,7 @@ function bbPantryRecipeMatches(){
      const single=BB307Pantry.reconcileStock({[s.id]:s.qty},[item]);
      return Number(single.pantry[BB307Pantry.pantryId(item.key,item.unit)]||0)>0;
     });
-    found.push({name:ing.name||ing.key,qty:bbPartialRound(credited),unit,coverage:Math.min(1,credited/want),stock:food.map(x=>x.name)});
+    found.push({name:ing.name||ing.key,qty:bbPartialRound(credited,unit),unit,coverage:Math.min(1,credited/want),stock:food.map(x=>x.name)});
    }
   }
   if(found.length){const core=found.filter(x=>!/^oil|^garlic$|^salt|seasoning|water/i.test(x.name));
@@ -10911,7 +10915,7 @@ function bbBetaShopChoiceRow(item){
   if(bbBetaDryVolumeUnit(item.name,unit)){status.textContent='Check this item’s measured unit in At home first.';return;}
   details.replaceChildren();
   const label=bb172StorefrontEl('label','','Total bought ('+unit+')');
-  const input=bb172StorefrontEl('input','');input.type='number';input.step=['each','pack','clove'].includes(unit)?'1':'any';input.min='0';input.max='1000000';
+  const input=bb172StorefrontEl('input','');input.type='number';input.step=['each','pack','clove','bag','tin','bunch','loaf'].includes(unit)?'1':'any';input.min='0';input.max='1000000';
   input.value=String(partial?.bought||saved?.actualQty||valid?.qty||needed);input.setAttribute('aria-label','Total '+item.name+' bought in '+unit);
   label.append(input);details.append(label);
   const save=bb172StorefrontButton('Save amount','bb-beta-save-actual',()=>{
@@ -10928,7 +10932,7 @@ function bbBetaShopChoiceRow(item){
  if(bbReducedPremium()&&window.BBReducedPurchases){
   const savedReduced=window.BBReducedPurchases.eligible(bbShopV7Session(),bbReducedContext(),bbReducedProgress()).find(row=>row.kind==='manual'&&row.purchaseId===item.id);
   const reduced=bb172StorefrontEl('details','bb-reduced-purchase'),summary=bb172StorefrontEl('summary','','🏷️ Bought reduced');reduced.append(summary);
-  const amountLabel=bb172StorefrontEl('label','','Total bought ('+unit+')'),amount=bb172StorefrontEl('input','');amount.type='number';amount.min='0.000001';amount.max='1000000';amount.step=['each','pack','clove'].includes(unit)?'1':'any';amount.value=String(savedReduced?.quantity||partial?.bought||saved?.actualQty||needed);amount.setAttribute('aria-label','Reduced amount of '+item.name+' bought');amountLabel.append(amount);
+  const amountLabel=bb172StorefrontEl('label','','Total bought ('+unit+')'),amount=bb172StorefrontEl('input','');amount.type='number';amount.min='0.000001';amount.max='1000000';amount.step=['each','pack','clove','bag','tin','bunch','loaf'].includes(unit)?'1':'any';amount.value=String(savedReduced?.quantity||partial?.bought||saved?.actualQty||needed);amount.setAttribute('aria-label','Reduced amount of '+item.name+' bought');amountLabel.append(amount);
   const paidLabel=bb172StorefrontEl('label','','Total paid ('+(bb307Market==='US'?'$':'£')+')'),paid=bb172StorefrontEl('input','');paid.type='number';paid.min='0.01';paid.max='100000';paid.step='0.01';paid.inputMode='decimal';paid.value=savedReduced?String(savedReduced.pricePaid):'';paid.placeholder='Yellow-sticker price';paid.setAttribute('aria-label','Total yellow-sticker price paid for '+item.name);paidLabel.append(paid);
   const saveReduced=bb172StorefrontButton('Save reduced purchase','bb-beta-save-actual',()=>{
    if(!current()||!bbReducedPremium()){status.textContent='Premium or shopping changed. Reopen this item.';return;}
@@ -12686,7 +12690,7 @@ window.BB172Welcome={open:()=>open(true),completed:()=>read(SEEN)==='true'};
 }
 if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',patchPaths,{once:true});else patchPaths();})();
 </script>
-<script src="/pwa700/shopping-inventory.js?v=5bf1462f3a220d41" defer></script><dialog id="bbIntroTrialDialog" aria-labelledby="bbIntroTrialTitle" aria-describedby="bbIntroTrialText">
+<script src="/pwa700/shopping-inventory.js?v=6db24f05eba54f9f" defer></script><dialog id="bbIntroTrialDialog" aria-labelledby="bbIntroTrialTitle" aria-describedby="bbIntroTrialText">
  <div class="bbtrial-hero">
   <button type="button" class="bbtrial-x" data-bbtrial-close aria-label="Close Premium offer">×</button>
   <p class="bbtrial-topline">🚀 FOUNDING MEMBER BETA · FIRST 25 PLACES</p>

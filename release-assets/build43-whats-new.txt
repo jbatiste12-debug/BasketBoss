@@ -3,3 +3,6 @@ Plan, the shopping overview and shopping mode show the same remaining estimate.
 Your combined weekly spending total stays available in Budget & household, including purchases already recorded.
 A shorter three-screen setup introduces BasketBoss, your household preferences and Premium, with a clear option to continue free. The longer walkthrough remains available in Help.
 Food used up after confirming a meal now disappears from At home and its item counts. Any stock remaining stays visible.
+Improved pantry matching and planned-unit suggestions, including generic fish names and recipe fillets.
+Corrected partial purchase quantities in kilograms/litres and supported household count units.
+Cooking and undo now retry saved stock updates reliably after an offline session.

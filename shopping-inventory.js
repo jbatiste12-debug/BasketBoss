@@ -80,7 +80,10 @@ function bb5Requirements(){if(!bb5RequirementsCache){bb5RequirementsCache=window
 function bb5PlannedRequirements(name){
  const wanted=pantryStockId(name,''),groups=new Map();
  for(const row of bb5Requirements()){
-  if(pantryStockId(row.key||row.name,'')!==wanted)continue;
+  const food=row.key||row.name;
+  // New food suggestions use the same protected-name comparison as stock
+  // reconciliation. Saved names, quantities and units keep their identities.
+  if(pantryStockId(food,'')!==wanted&&policy()?.stockCompatible?.(name,food,window.BBPriceV19?.canonical)!==true)continue;
   const base=policy()?.normalize(row.key||row.name,Number(row.required),row.unit,policyOptions(row)),measured=base?{qty:base.quantity,unit:base.unit}:unitConversion(Number(row.required),String(row.unit||'').trim().toLowerCase());
   if(!BB5_UNITS.includes(measured.unit)||!Number.isFinite(measured.qty)||measured.qty<=0)continue;
   groups.set(measured.unit,(groups.get(measured.unit)||0)+measured.qty);
