@@ -9,6 +9,11 @@ On your Mac:
 
 Requires Xcode and Node.js 22 or newer. This prepares source; signing/upload happen on your Mac. A TestFlight upload does not replace or withdraw an App Store review submission.
 
+To prepare AND create the signed TestFlight archive from Terminal, run the downloaded launcher with its archive option:
+  bash prepare-build43-mac.command --archive
+
+This runs the same pinned 700-recipe preparation first, then uses the App scheme, Release configuration, Any iOS Device destination and the project's existing automatic signing team (J25UTUATD2). Xcode must be signed in to the Apple developer account. The archive is saved under ~/Library/Developer/Xcode/Archives/<date>/ with a unique build-43 filename and opened in Xcode Organizer. Choose Distribute App > App Store Connect > Upload there. The command does not upload, submit for review, or change the current App Store submission. Without --archive, the launcher still opens the workspace for testing directly on your iPhone.
+
 Existing users keep their completed setup. To see the new three-screen flow, use Settings > Replay welcome & setup. This avoids deleting your plans or pantry data.
 
 The main My Week amount is estimated shopping still to buy, including pantry credit and full-pack rounding. Recorded purchases remain in the separate combined weekly total inside Budget & household.
@@ -26,10 +31,10 @@ Shopping pack controls: tap the green Buying pill on an item. A preset saves wit
 Do not run ordinary npm run ios:sync after this launcher; that selects the legacy catalogue instead of the 700-recipe release.
 
 Pinned application source:
-https://github.com/jbatiste12-debug/BasketBoss/commit/b6a8e2bcef58dfd73ede16d4ffbc064297ec47f5
+https://github.com/jbatiste12-debug/BasketBoss/commit/83e1da4c79c885b2bf88f08ac65e2ec3140d71d8
 
 Complete source ZIP:
-https://github.com/jbatiste12-debug/BasketBoss/archive/b6a8e2bcef58dfd73ede16d4ffbc064297ec47f5.zip
+https://github.com/jbatiste12-debug/BasketBoss/archive/83e1da4c79c885b2bf88f08ac65e2ec3140d71d8.zip
 
 See build43-whats-new.txt for Apple Connect notes and build43-what-to-test.txt for regression checks.
 

@@ -458,5 +458,23 @@
       day
     );
   }
-  return Object.freeze({ read, get, label });
+  function visibleLabel(quote) {
+    const original = label(quote);
+    if (!original) return "";
+    const size = sizeLabel(quote);
+    let display = size.replace(/\d{1,3}(?:,\d{3})+(?:\.\d+)?/g, value => value.replace(/,/g, ""));
+    try {
+      if (typeof root?.BBShopPurchaseUI?.formatDisplayQuantityText === "function")
+        display = root.BBShopPurchaseUI.formatDisplayQuantityText(display, { market: quote.market, countMode: "balance" });
+    } catch {}
+    display = display.replace(/(^|[^\p{L}\p{N}_.-])((?:\d+(?:\.\d+)?|\.\d+)(?:e[+-]?\d+)?)\s*(US cups?|fl oz|kg|ml|g|l|items?|packs?|bags?|tins?|bunch(?:es)?|loaves?|cloves?|bottles?|jars?|rolls?|pairs?|oz|lb)\b/giu, (original, prefix, raw, unit) => {
+      const amount = Number(raw);
+      if (!Number.isFinite(amount) || amount < 0) return original;
+      const whole = ["g", "ml"].includes(unit.toLowerCase()), small = whole ? 1 : .1;
+      const number = amount > 0 && amount < small ? "<" + small : new Intl.NumberFormat(quote.market === "US" ? "en-US" : "en-GB", { maximumFractionDigits: whole ? 0 : 1, useGrouping: false }).format(amount);
+      return prefix + number + " " + unit;
+    });
+    return original.replace(" · " + size + " · ", " · " + display + " · ");
+  }
+  return Object.freeze({ read, get, label, visibleLabel });
 });

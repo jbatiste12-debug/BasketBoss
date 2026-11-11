@@ -8,7 +8,8 @@
    try{const formatted=win.BBShopPurchaseUI?.formatDisplayQty?.(value,unit,{countMode:'balance'});if(formatted&&!/^Check\b/.test(formatted))return formatted;}catch{}
    const suffix=unit?' '+unit:'';if(value>0&&value<1&&['g','ml'].includes(unit))return '<1'+suffix;
    const counted=/^(?:each|counts?|cloves?|packs?|tins?|cans?|buns?|bulbs?|rolls?|eggs?|fillets?|bottles?|jars?|bags?|loaves?|slices?|pieces?|items?)$/i.test(unit||'');
-   return new Intl.NumberFormat('en-GB',{maximumFractionDigits:['g','ml'].includes(unit)?0:counted?1:2,useGrouping:false}).format(value)+suffix;
+   if(value>0&&value<.1&&!['g','ml'].includes(unit))return '<0.1'+suffix;
+   return new Intl.NumberFormat('en-GB',{maximumFractionDigits:['g','ml'].includes(unit)?0:1,useGrouping:false}).format(value)+suffix;
   }
   const displayNote=value=>{try{return win.BBShopPurchaseUI?.formatDisplayQuantityText?.(value)||value;}catch{return value;}};
   const card=make('section','bb-cook-pantry');card.setAttribute('aria-label','Confirm cooked meal');container.append(card);

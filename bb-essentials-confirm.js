@@ -55,6 +55,7 @@
  }
  function install(win){
   const doc=win.document;if(!doc)return {open(){},refresh(){},destroy(){}};
+  const visible=(quantity,unit)=>{try{const value=win.BBShopPurchaseUI?.formatDisplayQty?.(quantity,unit,{market:win.bb307ActiveMarket?.()||'UK',countMode:'balance'});if(value&&!/^Check\b/.test(value))return value;}catch{}return amountLabel(quantity,unit);};
   const controller=createController(win);let dialog=null,active=null,observer=null,queued=false,destroyed=false;
   const make=(tag,cls,value)=>{const n=doc.createElement(tag);if(cls)n.className=cls;if(value!==undefined)n.textContent=value;return n;};
   const button=(label,fn,cls='')=>{const n=make('button',cls,label);n.type='button';n.addEventListener('click',fn);return n;};
@@ -69,7 +70,7 @@
    try{
     const patch=active.measured.open?win.BBHouseholdAmount?.prepare?.({remaining:active.parts.remaining.value,capacity:active.parts.capacity.value,capacityUnit:active.parts.capacityUnit.value,neededContainers:active.parts.neededContainers.value}):prepare(input,{unit:active.view.item?.unit});
     if(!patch)throw Error('Enter the full container size and amounts.');
-    active.preview.textContent=amountLabel(Math.max(0,patch.targetQty-patch.ownedQty),patch.unit||input.unit)+' to buy';active.confirm.disabled=active.busy||active.invalid;
+    active.preview.textContent=visible(Math.max(0,patch.targetQty-patch.ownedQty),patch.unit||input.unit)+' to buy';active.confirm.disabled=active.busy||active.invalid;
    }catch{active.preview.textContent='Enter the amounts to see what goes to Shop.';active.confirm.disabled=true;}
   }
   function openDialog(source={}){
@@ -121,11 +122,11 @@
    let section=region.querySelector('.bbec-confirmed');if(!section){section=make('section','bbec-confirmed');section.setAttribute('aria-label','Confirmed weekly essentials');region.append(section);}
    const records=controller.records().filter(row=>row.selected!==false&&controller.validHousehold(row.name)),activeGroup=groupUI()?.active('essentials');
    const own=records.filter(row=>!activeGroup||activeGroup==='all'||!groups()||groups().groupFor('essentials',row.id,row.name)===activeGroup);
-   let prices=()=>null;try{prices=win.BBKitchenPrices?.read?.()||prices;}catch{}const labels=new Map(own.map(row=>[row.id,win.BBKitchenPrices?.label?.(prices(row.name))||'']));
+   let prices=()=>null;try{prices=win.BBKitchenPrices?.read?.()||prices;}catch{}const labels=new Map(own.map(row=>[row.id,(win.BBKitchenPrices?.visibleLabel||win.BBKitchenPrices?.label)?.(prices(row.name))||'']));
    const stamp=JSON.stringify([own,activeGroup,[...labels]]);if(section.dataset.bbecStamp===stamp)return;section.dataset.bbecStamp=stamp;section.replaceChildren();
    const heading=make('h3','','Confirmed essentials · '+records.length),list=make('ul','bbec-list');section.append(heading,list);
    for(const item of own){const row=make('li'),info=make('div','bbec-item-info'),name=make('strong','',item.name),amount=defaults(item),reconciled=win.BBWeeklyEssentials?.reconcile?.(item),buy=reconciled?.valid?reconciled.toBuy:0;
-    const detail=make('small','',!reconciled?.valid?'Review the saved amounts':buy>0?'On your Shop list · Buy '+amountLabel(buy,amount.unit):Number(amount.ownedQty)>=Number(amount.targetQty)?'Already at home · Nothing to buy':'No current Shop request · Amend to restock');info.append(name,detail);if(labels.get(item.id))info.append(make('small','bb-kitchen-last-price',labels.get(item.id)));
+    const detail=make('small','',!reconciled?.valid?'Review the saved amounts':buy>0?'On your Shop list · Buy '+visible(buy,amount.unit):Number(amount.ownedQty)>=Number(amount.targetQty)?'Already at home · Nothing to buy':'No current Shop request · Amend to restock');info.append(name,detail);if(labels.get(item.id))info.append(make('small','bb-kitchen-last-price',labels.get(item.id)));
     const actions=make('div','bbec-item-actions'),amend=button('Amend',()=>openDialog({id:item.id}),'bbec-amend');amend.setAttribute('aria-label','Amend '+item.name);
     const remove=button('Delete',async()=>{if(controller.isBusy()||dialog)return;let view;try{view=controller.open({id:item.id});}catch(error){notice(error.message,true);return;}remove.disabled=amend.disabled=true;const result=await controller.remove(view);notice(result.message|| (result.ok?'Removed from weekly essentials.':'Could not remove this item.'),!result.ok);if(result.ok)schedule();else remove.disabled=amend.disabled=false;},'bbec-delete');remove.setAttribute('aria-label','Delete '+item.name+' from weekly essentials');actions.append(amend,remove);row.append(info,actions);list.append(row);
    }

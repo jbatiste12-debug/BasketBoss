@@ -104,7 +104,7 @@ test('Day done undo formats a recorded restoration without altering the recorded
 test('unknown units and amounts retain review messages, including a readable legacy fallback without the shared formatter',async()=>{
  const rows=[{name:'Seasoning',unit:'tsp',required:1.333333,owned:2,remaining:.666667},{name:'Unknown quantity',unit:'g',required:null,issue:'amount_unknown'},{name:'Wrong unit',unit:'g',required:666.666667,owned:200,remaining:200,issue:'unit_mismatch'}];
  for(const withFormatter of [true,false]){
-  const h=await dayFixture(rows,{withFormatter});assert.deepEqual(h.tableRows().map(row=>row.children.map(cell=>cell.textContent)),[['Seasoning','1.33 tsp','2 tsp','0.67 tsp'],['Unknown quantity','Check amount','Check amount','Check amount'],['Wrong unit','667 g','Check unit','Check unit']]);assert.equal(h.calls.length,0);
+  const h=await dayFixture(rows,{withFormatter});assert.deepEqual(h.tableRows().map(row=>row.children.map(cell=>cell.textContent)),[['Seasoning','1.3 tsp','2 tsp','0.7 tsp'],['Unknown quantity','Check amount','Check amount','Check amount'],['Wrong unit','667 g','Check unit','Check unit']]);assert.equal(h.calls.length,0);
  }
 });
 

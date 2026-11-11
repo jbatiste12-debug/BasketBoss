@@ -1,5 +1,33 @@
 #!/bin/bash
 set -euo pipefail
+bb43Mode() {
+  if [[ "$#" -eq 0 ]]; then
+    printf 'prepare\n'
+  elif [[ "$#" -eq 1 && "$1" == '--archive' ]]; then
+    printf 'archive\n'
+  else
+    printf 'Usage: bash prepare-build43-mac.command [--archive]\n' >&2
+    return 2
+  fi
+}
+
+bb43ArchiveProject() {
+  local bb43_project="$1" bb43_archive_base="$2" bb43_archive_path
+  mkdir -p "$bb43_archive_base"
+  bb43_archive_path="$bb43_archive_base/BasketBoss-1.0.2-build43-$(date '+%H%M%S')-$$-$RANDOM.xcarchive"
+  while [[ -e "$bb43_archive_path" ]]; do
+    bb43_archive_path="$bb43_archive_base/BasketBoss-1.0.2-build43-$(date '+%H%M%S')-$$-$RANDOM.xcarchive"
+  done
+  xcodebuild -workspace "$bb43_project/ios/App/App.xcworkspace" -scheme App -configuration Release -destination 'generic/platform=iOS' -archivePath "$bb43_archive_path" -allowProvisioningUpdates archive || return "$?"
+  if [[ ! -d "$bb43_archive_path" ]]; then
+    printf 'Xcode did not create the archive. Check the build output above.\n' >&2
+    return 1
+  fi
+  open "$bb43_archive_path" || return "$?"
+  printf '\nArchive ready: %s\nIn Xcode Organizer choose Distribute App > App Store Connect > Upload.\nThe archive has not been uploaded and your App Store submission has not changed.\n' "$bb43_archive_path"
+}
+
+BB43_MODE="$(bb43Mode "$@")"
 if [[ "$(uname -s)" != "Darwin" ]]; then
   printf 'Run this launcher on your Mac with Xcode installed.\n' >&2
   exit 1
@@ -14,9 +42,14 @@ BB43_DIR="$(mktemp -d "$HOME/BasketBoss-1.0.2-build43.XXXXXX")"
 BB43_STAGE="$(mktemp -d "${TMPDIR:-/tmp}/BasketBoss-native43.XXXXXX")"
 git clone --depth 1 --branch main --single-branch https://github.com/jbatiste12-debug/BasketBoss.git "$BB43_DIR"
 cd "$BB43_DIR"
-git fetch --depth 1 origin b6a8e2bcef58dfd73ede16d4ffbc064297ec47f5
-git checkout --detach b6a8e2bcef58dfd73ede16d4ffbc064297ec47f5
+git fetch --depth 1 origin 83e1da4c79c885b2bf88f08ac65e2ec3140d71d8
+git checkout --detach 83e1da4c79c885b2bf88f08ac65e2ec3140d71d8
 npm ci --no-audit --no-fund
 node tools/catalogue700/sync-ios.mjs --source-root "$BB43_DIR" --public-release "$BB43_DIR/catalogues/700/release" --output-dir "$BB43_STAGE"
-open "$BB43_DIR/ios/App/App.xcworkspace"
-printf '\nReady in Xcode: version 1.0.2, build 43.\nTo test: connect your iPhone, select it at the top of Xcode, then press the play button (Product > Run).\nWhen ready for TestFlight: select Any iOS Device, then Product > Archive > Distribute App > App Store Connect > Upload.\nSetup and syncing are already complete. You do not need any more Terminal commands.\nKeep this prepared project as it is; ordinary ios:sync would replace its recipe assets.\nYour current App Store submission has not been changed.\nSource folder: %s\n' "$BB43_DIR"
+if [[ "$BB43_MODE" == 'archive' ]]; then
+  bb43ArchiveProject "$BB43_DIR" "$HOME/Library/Developer/Xcode/Archives/$(date '+%Y-%m-%d')"
+else
+  open "$BB43_DIR/ios/App/App.xcworkspace"
+  printf '\nReady in Xcode: version 1.0.2, build 43.\nTo test: connect your iPhone, select it at the top of Xcode, then press the play button (Product > Run).\nWhen ready for TestFlight: select Any iOS Device, then Product > Archive > Distribute App > App Store Connect > Upload.\nSetup and syncing are already complete. You do not need any more Terminal commands.\n'
+fi
+printf '\nKeep this prepared project as it is; ordinary ios:sync would replace its recipe assets.\nYour current App Store submission has not been changed.\nSource folder: %s\n' "$BB43_DIR"

@@ -32,6 +32,7 @@
  }
  function install(win){
   const doc=win.document;
+  const visible=(quantity,unit)=>{try{const value=win.BBShopPurchaseUI?.formatDisplayQty?.(quantity,unit,{market:win.bb307ActiveMarket?.()||'UK',countMode:'balance'});if(value&&!/^Check\b/.test(value))return value;}catch{}return quantity+' '+unit;};
   function decorate(container){
    if(!container)return;
    const host=()=>win.BBHomeHost;
@@ -52,7 +53,7 @@
     let pin=null,loaded=false,busy=false,done=false,needsRefresh=false;
     function value(){return prepare(Object.fromEntries(Object.entries(inputs).map(([key,input])=>[key,input.value])));}
     function draw(){
-     try{const patch=value();preview.textContent=patch.ownedQty+' '+patch.unit+' already at home · '+patch.targetQty+' '+patch.unit+' total needed';save.disabled=busy||done||needsRefresh;return patch;}
+     try{const patch=value();preview.textContent=visible(patch.ownedQty,patch.unit)+' already at home · '+visible(patch.targetQty,patch.unit)+' total needed';save.disabled=busy||done||needsRefresh;return patch;}
      catch(error){preview.textContent='Enter all amounts and the full container size. Unknown sizes stay unchanged.';save.disabled=true;return null;}
     }
     function initialise(){

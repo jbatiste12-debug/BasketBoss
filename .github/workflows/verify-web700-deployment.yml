@@ -60,9 +60,10 @@ jobs:
           node --input-type=module <<'JS'
           import fs from 'node:fs';
           import assert from 'node:assert/strict';
-          const assets=['bb-shop-purchase-ui.js','bb-shop-purchase-ui.css','bb-shared-shopping.js','bb-household-stock-review.js','bb-loose-produce-ui.js','bb-day-done.js','bb-cook-pantry.js','bb-pantry-inline.js','bb-kitchen-choice-rules.mjs','bb-kitchen-essentials.js','bb-shop-add.js'];
+          const assets=['bb-shop-purchase-ui.js','bb-shop-purchase-ui.css','bb-shared-shopping.js','bb-household-stock-review.js','bb-loose-produce-ui.js','bb-day-done.js','bb-cook-pantry.js','bb-pantry-inline.js','bb-kitchen-choice-rules.mjs','bb-kitchen-essentials.js','bb-shop-add.js','bb-premium-features.js','bb-household-amount.js','bb-essentials-confirm.js','bb-recipe-measures.js','bb-us-market.js','bb-cook-result.js','bb-kitchen-prices.js','bb-price-scan.js','service-worker.js'];
+          const generated=new Set(JSON.parse(fs.readFileSync('pwa700/manifest.json','utf8')).files.map(row=>row.path));
           for(const name of assets){
-            const expected=fs.readFileSync(name);
+            const expected=fs.readFileSync(generated.has(name)?'pwa700/'+name:name);
             const response=await fetch('https://basketboss.co.uk/'+name,{redirect:'error',cache:'no-store',signal:AbortSignal.timeout(15000)});
             assert.equal(response.status,200,'Buying control asset unavailable');
             assert.match(response.headers.get('content-type')||'',name.endsWith('.css')?/text\/css/i:/javascript/i);

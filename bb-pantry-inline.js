@@ -57,17 +57,21 @@
   }
   return number.format(quantity)+' '+unit;
  }
+ function visibleQuantity(value,unit,market='UK',display){
+  if(value===null||value===undefined||value===''||!Number.isFinite(Number(value))||Number(value)<0)return 'Check amount';
+  const quantity=Number(value);let rendered;
+  try{rendered=display?.formatDisplayQty?.(quantity,unit,{market,countMode:'balance'});}catch{}
+  if(rendered&&!/^Check\b/.test(rendered))return rendered;
+  const label=String(unit||'').trim();if(!label)return 'Check unit';
+  const measured=['g','ml'].includes(label),tiny=quantity>0&&quantity<(measured?1:.1);
+  const number=tiny?measured?'<1':'<0.1':new Intl.NumberFormat(market==='US'?'en-US':'en-GB',{maximumFractionDigits:measured?0:1,useGrouping:false}).format(quantity);
+  return number+' '+(market==='US'&&['cup','pint'].includes(label)?'US '+label+(quantity<=1?'':'s'):label);
+ }
  function visibleSummaryAmount(row,market='UK',policy,display,legacyDisplay){
   const unit=displayUnit(row,market,policy,{preferMeasured:true}),quantity=converted(row,unit,policy,market);
   const status=row.staple?({in:'In Stock',low:'Low',out:'Out'}[row.stapleStatus]||'Review status'):'';
   if(quantity===null)return row.staple?status:'Amount unknown';
-  const countOptions={market,countMode:'balance'};
-  let rendered;try{rendered=display?.formatDisplayQty?.(quantity,row.staple?(policy?.containerLabel(row.name)||'each'):unit,countOptions);}catch{}
-  if(!rendered||/^Check\b/.test(rendered)){
-   if(row.staple){const label=policy?.containerLabel(row.name)||'container';rendered=new Intl.NumberFormat(market==='US'?'en-US':'en-GB',{maximumFractionDigits:1,useGrouping:false}).format(quantity)+' '+label+(quantity===1?'':'s');}
-   else if(['g','ml','each'].includes(unit))rendered=quantity>0&&quantity<1&&unit!=='each'?'<1 '+unit:new Intl.NumberFormat(market==='US'?'en-US':'en-GB',{maximumFractionDigits:unit==='each'?1:0,useGrouping:false}).format(quantity)+' '+unit;
-   else return summaryAmount(row,market,policy,legacyDisplay,{preferMeasured:true});
-  }
+  const rendered=visibleQuantity(quantity,row.staple?(policy?.containerLabel(row.name)||'each'):unit,market,display);
   return row.staple?status+' · '+rendered:rendered;
  }
  function stepPatch(row,viewUnit,direction,policy,market='UK'){
@@ -119,6 +123,8 @@
   const text=(node,value)=>{if(node&&node.textContent!==value)node.textContent=value;};
   const market=()=>win.bb307ActiveMarket?.()||'UK';
   const amountText=value=>readableNumber(value,market());
+  const visibleAmount=(value,unit)=>visibleQuantity(value,unit,market(),win.BBShopPurchaseUI);
+  const visibleNote=value=>{try{return win.BBShopPurchaseUI?.formatDisplayQuantityText?.(value,{market:market()})||value;}catch{return value;}};
   // Programmatic display rounding never becomes a new physical balance.
   // A real input event discards this backing, even when the text is retyped.
   function setAmount(input,value){
@@ -355,10 +361,9 @@
    view.needed.value=problem?'':info.plannedNeedsReview&&info.totalQuantity===0?'Needs review':amountText(displayNeeded);
    let help=problem;
    if(!problem){
-    const number=new Intl.NumberFormat(market()==='US'?'en-US':'en-GB',{maximumFractionDigits:2});
-    help=info.plannedNeedsReview?(info.plannedReviewMessage||'Planned meal quantities need a unit check; only compatible amounts are included.'):info.mealQuantity>0?'From your planned meals: '+number.format(info.mealNeeded)+' '+view.units.value+'.':'Not needed for your planned meals.';
+    help=info.plannedNeedsReview?visibleNote(info.plannedReviewMessage||'Planned meal quantities need a unit check; only compatible amounts are included.'):info.mealQuantity>0?'From your planned meals: '+visibleAmount(info.mealNeeded,view.units.value)+'.':'Not needed for your planned meals.';
     if(info.totalQuantity>info.mealQuantity+info.quantityTolerance)help+=' Includes your saved restock target.';
-    if(info.manualQuantity>0)help+=' Extra already on Shop: '+number.format(info.manualNeeded)+' '+view.units.value+'.';
+    if(info.manualQuantity>0)help+=' Extra already on Shop: '+visibleAmount(info.manualNeeded,view.units.value)+'.';
     if(info.otherRequestsNeedReview)help+=' Some existing Shop items use different units and need review.';
     help+=' Use Extra stock buffer to keep more on hand.';
    }
@@ -386,14 +391,14 @@
      }
     }
    }catch{}
-   const amount=calculation?.purchaseQuantity??null,number=value=>new Intl.NumberFormat(market()==='US'?'en-US':'en-GB',{maximumFractionDigits:2}).format(value);
+   const amount=calculation?.purchaseQuantity??null;
    const label=model.staple?unitLabel({...model,qty:amount},unit):unit;
    const packLabel=buy.unit==='l'?(buy.quantity===1?'litre':'litres'):model.staple?unitLabel({...model,qty:buy.quantity},buy.unit):buy.unit;
-   text(view.readout,amount===null?!model.name?'Enter a food name to get started.':view.quantity.value.trim()===''?'Enter how much you have; use 0 for none.':'Enter valid amounts to see what to buy.':amount>0&&buy.quantity>0?'Add to Shop: '+calculation.packCount+' × '+number(buy.quantity)+' '+packLabel:'Add to Shop: '+number(amount)+' '+label);
+   text(view.readout,amount===null?!model.name?'Enter a food name to get started.':view.quantity.value.trim()===''?'Enter how much you have; use 0 for none.':'Enter valid amounts to see what to buy.':amount>0&&buy.quantity>0?'Add to Shop: '+calculation.packCount+' × '+visibleAmount(buy.quantity,packLabel):'Add to Shop: '+visibleAmount(amount,label));
    const shortfallLabel=model.staple?unitLabel({...model,qty:calculation?.shortfall},unit):unit;
-   text(view.roundingNote,calculation?.rounded?'Shortfall '+number(calculation.shortfall)+' '+shortfallLabel+' · rounded to full packs.':'');
+   text(view.roundingNote,calculation?.rounded?'Shortfall '+visibleAmount(calculation.shortfall,shortfallLabel)+' · rounded to full packs.':'');
    if(view.bufferHelp)text(view.bufferHelp,buffer>0&&amount===0?'Your food at home already covers your meal needs and this buffer. Nothing needs adding to Shop.':'Added to your meal needs. Food already at home counts first.');
-   if(view.otherOwned){view.otherOwned.hidden=!(other>0);text(view.otherOwned,other>0?'Also at home in another storage area: '+ROUND(other)+' '+unit+'.':'');}
+   if(view.otherOwned){view.otherOwned.hidden=!(other>0);text(view.otherOwned,other>0?'Also at home in another storage area: '+visibleAmount(other,unit)+'.':'');}
    text(view.done,view.doneLabel||(amount>0?'Add to Shop':'Done'));
   }
   function localStep(field,direction){
@@ -500,8 +505,7 @@
    const unitTag=el('label','bbpi-unit-label','Unit'),units=el('select');units.setAttribute('aria-label','Unit for '+(row.name||'food'));unitOptions(units,row.staple?['each']:(api.units?.()||['each','g','kg','ml','l','pack','bag','tin']),unit,row);unitTag.append(units);controls.append(unitTag);content.append(controls);
    const buyLabel=el('label','bbpi-buy-label','Buy in multiples of (optional)'),buySelect=el('select'),buyOptions=packChoices(row).map((option,index)=>({...option,value:'pack-'+index}));buySelect.dataset.bbpiBuyMultiple='';buySelect.setAttribute('aria-label','Buy '+(row.name||'food')+' in multiples of');
    const off=el('option','',row.staple?'Whole containers':'Exact amount (no rounding)');off.value='off';buySelect.append(off);
-   const number=value=>new Intl.NumberFormat(market()==='US'?'en-US':'en-GB',{maximumFractionDigits:2}).format(value);
-   for(const option of buyOptions){const suffix=option.unit==='l'?(option.quantity===1?'litre':'litres'):row.staple?unitLabel({...row,qty:option.quantity},option.unit):option.unit,label=el('option','',number(option.quantity)+' '+suffix);label.value=option.value;buySelect.append(label);}
+   for(const option of buyOptions){const suffix=option.unit==='l'?(option.quantity===1?'litre':'litres'):row.staple?unitLabel({...row,qty:option.quantity},option.unit):option.unit,label=el('option','',visibleAmount(option.quantity,suffix));label.value=option.value;buySelect.append(label);}
    const custom=el('option','','Custom pack size');custom.value='custom';buySelect.append(custom);buyLabel.append(buySelect);controls.append(buyLabel);
    const buyFields=el('div','bbpi-buy-fields'),buyQuantityLabel=el('label','','Pack size'),buyQuantity=el('input'),buyUnitLabel=el('label','','Pack unit'),buyUnit=el('select');buyQuantity.type='number';buyQuantity.inputMode='decimal';buyQuantity.min=row.staple?'1':'0.000001';buyQuantity.max='1000000';buyQuantity.step=row.staple?'1':'any';buyQuantity.placeholder='e.g. 500';buyQuantity.setAttribute('aria-label','Purchase pack size for '+(row.name||'food'));buyQuantity.dataset.bbpiBuyQuantity='';setAmount(buyQuantity,Number(row.buyMultiple)>0?row.buyMultiple:'');buyQuantityLabel.append(buyQuantity);buyUnit.setAttribute('aria-label','Purchase pack unit for '+(row.name||'food'));buyUnit.dataset.bbpiBuyUnit='';unitOptions(buyUnit,purchaseUnits(row,win.BBPantryPolicy,market()),row.buyMultipleUnit||row.unit||unit,row);buyUnitLabel.append(buyUnit);buyFields.append(buyQuantityLabel,buyUnitLabel);controls.append(buyFields);
    let savedChoice=null;
@@ -554,7 +558,7 @@
      setAmount(quantity,'');setAmount(buffer,0);view.unit=next;
      unitOptions(units,model.staple?['each']:measuredUnits,next,{...model,unit:next});model=draftRow(view);
      view.buyOptions=packChoices(model).map((option,index)=>({...option,value:'pack-'+index}));buySelect.replaceChildren(off);
-     for(const option of view.buyOptions){const suffix=option.unit==='l'?(option.quantity===1?'litre':'litres'):model.staple?unitLabel({...model,qty:option.quantity},option.unit):option.unit,item=el('option','',number(option.quantity)+' '+suffix);item.value=option.value;buySelect.append(item);}buySelect.append(custom);buySelect.value='off';buyFields.hidden=true;setAmount(buyQuantity,'');unitOptions(buyUnit,purchaseUnits(model,win.BBPantryPolicy,market()),next,model);
+     for(const option of view.buyOptions){const suffix=option.unit==='l'?(option.quantity===1?'litre':'litres'):model.staple?unitLabel({...model,qty:option.quantity},option.unit):option.unit,item=el('option','',visibleAmount(option.quantity,suffix));item.value=option.value;buySelect.append(item);}buySelect.append(custom);buySelect.value='off';buyFields.hidden=true;setAmount(buyQuantity,'');unitOptions(buyUnit,purchaseUnits(model,win.BBPantryPolicy,market()),next,model);
      for(const field of ['tracking','quantity','unit','buffer','buy'])view.touched.add(field);
     }
     if(!reset&&!trackingLabel.hidden)unitOptions(units,model.staple?['each']:measuredUnits,view.unit,model);
@@ -577,7 +581,7 @@
     if(!view.touched.has('buffer')){const value=converted({...preview,qty:preview.extraBuffer??0},view.unit,win.BBPantryPolicy,market());setAmount(buffer,value);}
     if(!view.touched.has('buy')){
      view.buyOptions=packChoices(preview).map((option,index)=>({...option,value:'pack-'+index}));buySelect.replaceChildren(off);
-     for(const option of view.buyOptions){const suffix=option.unit==='l'?(option.quantity===1?'litre':'litres'):preview.staple?unitLabel({...preview,qty:option.quantity},option.unit):option.unit,item=el('option','',number(option.quantity)+' '+suffix);item.value=option.value;buySelect.append(item);}buySelect.append(custom);
+     for(const option of view.buyOptions){const suffix=option.unit==='l'?(option.quantity===1?'litre':'litres'):preview.staple?unitLabel({...preview,qty:option.quantity},option.unit):option.unit,item=el('option','',visibleAmount(option.quantity,suffix));item.value=option.value;buySelect.append(item);}buySelect.append(custom);
      unitOptions(buyUnit,purchaseUnits(preview,win.BBPantryPolicy,market()),preview.buyMultipleUnit||preview.unit,preview);setAmount(buyQuantity,Number(preview.buyMultiple)>0?preview.buyMultiple:'');buySelect.value=Number(preview.buyMultiple)>0?'custom':'off';buyFields.hidden=buySelect.value!=='custom';
     }
     if(!view.touched.has('pack')&&view.packQuantity){setAmount(view.packQuantity,preview.packReviewed?preview.packQuantity??'':'');view.packUnit.value=preview.packUnit||'';}
@@ -622,7 +626,7 @@
    const all=rows.filter(row=>row.loc===view.loc&&visibleFood(row)),visible=all.filter(inventoryMatches);
    const own=reducedAllowed()&&win.BBReducedStock?.sort?win.BBReducedStock.sort(visible,{actor:reducedActor()}):visible;
    let prices=()=>null;try{prices=win.BBKitchenPrices?.read?.()||prices;}catch{}
-   const labels=new Map(own.map(row=>[row.key,win.BBKitchenPrices?.label?.(prices(row.name))||'']));
+   const labels=new Map(own.map(row=>[row.key,(win.BBKitchenPrices?.visibleLabel||win.BBKitchenPrices?.label)?.(prices(row.name))||'']));
    const rowStamp=row=>JSON.stringify([market(),row.name,row.qty,row.unit,row.inputMarket,row.staple,row.stapleStatus,row.packReviewed,row.packQuantity,row.packUnit,row.readout,labels.get(row.key),urgent(row),row.scanNeedsReview===true,looseProduce(row)?.display]);
    const stamp=JSON.stringify([query,stockFilter,all.length,own.map(row=>[row.key,rowStamp(row)])]);
    if(stamp===view.stamp)continue;view.stamp=stamp;
@@ -692,5 +696,5 @@
   if(win.MutationObserver){observer=new win.MutationObserver(records=>{if(records.some(record=>!record.target.closest?.('.bbpi-ui')&&(record.target.id==='app'||record.target.matches?.('[data-bb76-tiles],#bb5SelectedRows')||record.target.closest?.('.bb76-kitchen-intro')||record.target.closest?.('.bbpg-controls')||[...record.addedNodes].some(node=>node.nodeType===1&&(node.id==='bb173ShopFridge'||node.id==='bbKitchenFoodPanel'||node.classList?.contains('bb-pantry-camera-bar')||node.querySelector?.('#bb173ShopFridge,#bbKitchenFoodPanel'))))))schedule();});observer.observe(doc.body,{childList:true,subtree:true});}
   schedule();return {refresh:schedule,open(key,options={}){if(!valid(current))refresh();return openEditor(key,options.unit,'review',null,options)===true;},destroy(){destroyed=true;observer?.disconnect();teardown();doc.removeEventListener('click',click,true);doc.removeEventListener('keydown',keydown);doc.removeEventListener('toggle',storageToggle,true);win.removeEventListener('resize',measureToolbar);win.removeEventListener('resize',scheduleFit);win.visualViewport?.removeEventListener('resize',scheduleFit);win.visualViewport?.removeEventListener('scroll',scheduleFit);win.removeEventListener('bb:pantry-editor',schedule);win.removeEventListener('basketboss:market-changed',schedule);win.removeEventListener('basketboss:session-changed',reset);for(const event of['basketboss:account-deletion-started','basketboss:account-deletion-deleted'])win.removeEventListener(event,reset);win.removeEventListener('storage',storage);}};
  }
- return {install,stepFor,stepped,preferredUnit,converted,displayUnit,summaryAmount,visibleSummaryAmount,stepPatch,matchesInventory,hasAtHomeStock,purchaseUnits,purchasePresets,matchedFood,matchingFoods};
+ return {install,stepFor,stepped,preferredUnit,converted,displayUnit,summaryAmount,visibleQuantity,visibleSummaryAmount,stepPatch,matchesInventory,hasAtHomeStock,purchaseUnits,purchasePresets,matchedFood,matchingFoods};
 });

@@ -1,6 +1,14 @@
 /* Reviewed receipt prices and optional restocking. The host owns one atomic save. */
 (function(root){'use strict';
  const currency=market=>market==='US'?'USD':['UK','Jersey','Guernsey'].includes(market)?'GBP':null;
+ function displayQuantityText(value,market){
+  const source=typeof value==='string'?value:'';
+  const shared=root.BBShopPurchaseUI?.formatDisplayQuantityText;if(typeof shared==='function')return shared(source,{market,countMode:'balance'});
+  return source.replace(/(^|[^\p{L}\p{N}_.-])((?:\d+(?:\.\d+)?|\.\d+)(?:e[+-]?\d+)?)\s*(kg|ml|g|l|each|cloves?|packs?|tins?|cans?|bags?|bunch(?:es)?|bottles?|jars?|rolls?|items?|slices?|loaves?|tbsp|tsp|cups?|pints?|oz|lb)\b/giu,(original,prefix,raw,unit)=>{
+   const amount=Number(raw);if(!Number.isFinite(amount)||amount<0)return original;const whole=['g','ml'].includes(unit.toLowerCase()),small=whole?1:.1;
+   return prefix+(amount>0&&amount<small?'<'+small:new Intl.NumberFormat(market==='US'?'en-US':'en-GB',{maximumFractionDigits:whole?0:1,useGrouping:false}).format(amount))+' '+unit;
+  });
+ }
  function accessToken(){
   try{const value=JSON.parse(root.localStorage?.getItem('basketboss_cloud_session_v1')||'null');
    return typeof value?.access_token==='string'&&Number(value.expires_at)*1000>Date.now()+5000?value.access_token:null;
@@ -117,7 +125,7 @@
     for(const value of draft.rows){
      const field=doc.createElement('fieldset');field.style.cssText='margin:12px 0;padding:12px;min-width:0;border:1px solid #dce7df;border-radius:10px';
      const legend=doc.createElement('legend');legend.textContent=value.name;
-     const product=doc.createElement('p');product.textContent='Guide pack: '+value.packQuantity+' '+value.unit+'. Confidence: '+value.confidence+'. '+value.notes;
+     const product=doc.createElement('p');product.textContent=displayQuantityText('Guide pack: '+value.packQuantity+' '+value.unit+'. Confidence: '+value.confidence+'. '+value.notes,market);
      const brandLabel=doc.createElement('label');brandLabel.textContent='Brand (optional)';const brand=doc.createElement('input');brand.type='text';brand.maxLength=80;brand.value=value.brand;brand.style.width='100%';brandLabel.append(brand);
      const priceLabel=doc.createElement('label'),priceTitle=doc.createElement('span');priceTitle.textContent='Price for one guide pack ('+currency(market)+')';priceLabel.append(priceTitle);const price=doc.createElement('input');price.type='number';price.min='.01';price.max='10000';price.step='.01';price.value=value.price===null?'':value.price.toFixed(2);price.style.width='100%';priceLabel.append(price);
      let reduced=null,reducedLabel=null;
@@ -125,7 +133,7 @@
      const quantityLabel=doc.createElement('label');quantityLabel.textContent='Total amount bought';const quantity=doc.createElement('input');quantity.type='number';quantity.min='.001';quantity.max='1000000';quantity.step='any';quantity.value=value.boughtQuantity===null?'':String(value.boughtQuantity);quantity.dataset.bbReceiptBoughtQuantity=value.key;quantityLabel.append(quantity);
      const unitLabel=doc.createElement('label');unitLabel.textContent='Unit';const unit=doc.createElement('select');unit.dataset.bbReceiptBoughtUnit=value.key;
      for(const label of ['g','kg','ml','l','each','clove','bulb','tin','pack','bag','bunch','loaf','slice','tsp','tbsp']){const option=doc.createElement('option');option.value=label;option.textContent=label;unit.append(option);}unit.value=value.boughtUnit||value.unit;unitLabel.append(unit);
-     const quantityNote=doc.createElement('p');quantityNote.className='bb-receipt-quantity-note';quantityNote.textContent=value.quantityNote;
+     const quantityNote=doc.createElement('p');quantityNote.className='bb-receipt-quantity-note';quantityNote.textContent=displayQuantityText(value.quantityNote,market);
      const confirm=doc.createElement('label');const check=doc.createElement('input');check.type='checkbox';check.dataset.bbReceiptReviewRow=value.key;confirm.append(check,doc.createTextNode(' I checked this product, price, guide pack and amount bought. Save this item.'));
      check.addEventListener('change',updateSave);field.append(legend,product,brandLabel,priceLabel,...(reducedLabel?[reducedLabel]:[]),quantityLabel,unitLabel,quantityNote,confirm);rowsBox.append(field);rows.push({value,brand,price,quantity,unit,check,reduced});
     }

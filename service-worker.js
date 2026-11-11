@@ -161,7 +161,22 @@ self.addEventListener('fetch', event => {
         event.waitUntil(caches.open(CACHE).then(c => c.put(req, copy)));
       }
       return response;
-    }).catch(async () => (await caches.match(req)) || Response.error()));
+    }).catch(async () => {
+      const rulesRetry = target.pathname === new URL('bb-kitchen-choice-rules.mjs', APP_BASE).pathname && target.searchParams.has('bbRulesRetry');
+      if (!rulesRetry) return (await caches.match(req)) || Response.error();
+      const current = await caches.open(CACHE);
+      const exact = await current.match(req);
+      if (exact) return exact;
+      // The explicit classifier retry bypasses a failed module-map entry.
+      // While offline, reuse only this release's precached public module.
+      if ([...target.searchParams.keys()].every(key => key === 'bbRulesRetry') &&
+          target.searchParams.getAll('bbRulesRetry').length === 1 &&
+          /^[1-9][0-9]*$/.test(target.searchParams.get('bbRulesRetry'))) {
+        const cached = await current.match(new URL('bb-kitchen-choice-rules.mjs', APP_BASE).href);
+        if (cached) return cached;
+      }
+      return Response.error();
+    }));
     return;
   }
   if (target.pathname.startsWith(APP_BASE.pathname)) {

@@ -98,5 +98,29 @@
   // Instruction quantities keep their exact metric source, and use weight
   // rather than guessed ingredient density when the ingredient is ambiguous.
   function step(text,market){const value=original(text);return us(market)?temperatures(amounts(value,'')):value;}
-  return Object.freeze({quantity,step});
+  // Visible labels are separate from the original conversion/source strings.
+  // Never feed these rounded labels back into serving or inventory arithmetic.
+  function readable(text,market){
+    const shared=typeof window!=='undefined'&&window.BBShopPurchaseUI?.formatDisplayQuantityText;
+    if(typeof shared==='function')text=shared(text,{market,countMode:'balance'});
+    return text.replace(/(^|[^\p{L}\p{N}_./])(<\s*)?((?:\d{1,3}(?:,\d{3})+|\d+)(?:\.\d+)?|\.\d+)\s*((?:US\s+)?(?:fl\s+oz|cups?|pints?)|millilitres?|milliliters?|kilograms?|grams?|litres?|liters?|kg|ml|g|l|oz|lbs?|tbsp|tsp|each|eggs?|cloves?|packs?|pieces?|items?|°\s*[CF])\b/giu,(all,prefix,bound,raw,unit)=>{
+      const value=Number(raw.replaceAll(',',''));if(!Number.isFinite(value))return all;
+      const normalized=unit.toLowerCase(),metric=/^(?:millilit|kilogram|gram|litr|liter|kg$|ml$|g$|l$)/.test(normalized);
+      if(metric){
+        const weight=/^(?:kilogram|gram|kg$|g$)/.test(normalized),base=value*(/^(?:kilogram|litr|liter|kg$|l$)/.test(normalized)?1000:1),label=weight?'g':'ml';
+        if(base>0&&base<1)return prefix+'<1 '+label;
+        const rounded=Math.round(base);return prefix+(bound?'<':'')+(rounded>=1000&&rounded%1000===0?String(rounded/1000)+' '+(weight?'kg':'L'):String(rounded)+' '+label);
+      }
+      const small=value>0&&value<.05;return prefix+(bound||small?'<':'')+(small?'0.1':new Intl.NumberFormat('en-GB',{maximumFractionDigits:1,useGrouping:false}).format(value))+(unit.startsWith('°')?'':' ')+unit;
+    });
+  }
+  function displayQuantity(text,name,market){
+    return readable(quantity(text,name,market),market).replace(/(^|[^\p{L}\p{N}_./-])(<\s*)?((?:\d{1,3}(?:,\d{3})+|\d+)\.\d+|\.\d+)(?![\p{L}\p{N}_.])/giu,(all,prefix,bound,raw,offset,full)=>{
+      if(/(?:[$£€]|\b(?:USD|GBP|EUR))\s*$/i.test(full.slice(0,offset+prefix.length)))return all;
+      const value=Number(raw.replaceAll(',',''));if(!Number.isFinite(value))return all;
+      const small=value>0&&value<.05;return prefix+(bound||small?'<':'')+(small?'0.1':new Intl.NumberFormat('en-GB',{maximumFractionDigits:1,useGrouping:raw.includes(',')}).format(value));
+    });
+  }
+  function displayStep(text,market){return readable(step(text,market),market);}
+  return Object.freeze({quantity,step,displayQuantity,displayStep});
 });
