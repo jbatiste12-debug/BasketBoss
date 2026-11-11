@@ -2,16 +2,6 @@ name: Verify catalogue 700 iOS 1.0.2 build 42
 
 on:
   workflow_dispatch:
-  pull_request:
-    paths:
-      - .github/workflows/ios-catalogue700-build.yml
-      - tools/catalogue700/**
-      - scripts/build-native-web.mjs
-      - app.html
-      - index.html
-      - bb-*.js
-      - bb-*.css
-      - ios/**
   push:
     branches: [main, feature/recipe700-pilot]
     paths:

@@ -83,17 +83,18 @@
    if(!active(marker,id,session)||!!marker.essential!==essential||id.startsWith('shared:'))continue;
    const original=marker.anchor;if(!object(original))continue;
    const current=byId.get(id),row={...original,...current};
-   // Keep the trip's pre-purchase demand as the checkbox anchor. The physical
-   // pantry already includes this purchase; subtracting both would hide it.
-   const required=Math.max(Number(original.required)||0,Number(current?.required)||0),increase=Math.max(0,required-(Number(original.required)||0));
-   row.pantryUsed=Number(original.pantryUsed)||0;row.required=required||original.required;
-   if(essential){
-    if(!row.id&&id.startsWith('ess:'))row.id=id.slice(4);
-    row.pantryUsed=Number(original.pantryUsed??original.ownedQty)||0;row.ownedQty=row.pantryUsed;
-    const originalTarget=Number(original.targetQty??original.required)||row.pantryUsed+(Number(original.qty)||0),target=Math.max(originalTarget,Number(current?.targetQty??current?.required)||0);
-    row.qty=(Number(original.qty)||0)+Math.max(0,target-originalTarget);row.targetQty=target;
-   }
-   else row.toBuy=Math.round(((Number(original.toBuy)||0)+increase)*1000000)/1000000;
+   // Current rows already deduct this physical purchase. Restore only its
+   // recorded contribution for checkbox arithmetic; never revive old unmet
+   // demand after the user reduces or removes a meal/manual requirement.
+   const amount=Math.max(0,Number(marker.amount)||0),originalDemand=Math.max(0,Number(essential?original.qty:original.toBuy)||0);
+   const known=value=>value!==null&&value!==undefined&&value!==''&&Number.isFinite(Number(value))&&Number(value)>=0;
+   const currentRequired=Number(essential?current?.targetQty??current?.required:current?.required),owned=current?.pantryUsed;
+   const remaining=current?Math.max(0,essential?Number(current.qty)||0:known(current.required)&&known(owned)?Number(current.required)-Number(owned):Number(current.toBuy)||0):0;
+   const history=Math.min(amount,originalDemand||amount),target=Math.round((remaining>0?amount+remaining:history)*1000000)/1000000;
+   const required=Math.max(target,Number.isFinite(currentRequired)&&currentRequired>=0?currentRequired:current?Number(original.required)||0:0);
+   row.required=required;row.pantryUsed=Math.max(0,required-target);
+   if(essential){if(!row.id&&id.startsWith('ess:'))row.id=id.slice(4);row.qty=target;row.ownedQty=row.pantryUsed;row.targetQty=required;}
+   else row.toBuy=target;
    row.shopOwnedAnchor=true;
    if(current)Object.assign(current,row);else{output.push(row);byId.set(id,row);}
   }return output;
