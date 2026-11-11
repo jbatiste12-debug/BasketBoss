@@ -137,7 +137,7 @@
   function close(){if(busy)return false;opened=false;editor.hidden=true;button.setAttribute('aria-expanded','false');return true;}
   function open(){if(busy)return false;draft={...saved};custom.value=String(draft.quantity);price.value=saved.priceOverride===undefined?'':String(saved.priceOverride);customMode=draft.kind==='custom'||saved.priceOverride!==undefined;opened=true;editor.hidden=false;button.setAttribute('aria-expanded','true');update();return true;}
   click(button,()=>opened?close():open());click(cancel,close);
-  editor.addEventListener('click',event=>event.stopPropagation());editor.addEventListener('keydown',event=>{event.stopPropagation();if(event.key==='Escape'){event.preventDefault();if(close()&&button.isConnected)button.focus?.({preventScroll:true});}});
+  editor.addEventListener('click',event=>event.stopPropagation());editor.addEventListener('change',event=>event.stopPropagation());editor.addEventListener('keydown',event=>{event.stopPropagation();if(event.key==='Escape'){event.preventDefault();if(close()&&button.isConnected)button.focus?.({preventScroll:true});}});
   async function saveChoice(){
    const chosen=withPrice();if(!chosen||!editor.isConnected||!button.isConnected)return;
    busy=true;editor.setAttribute('aria-busy','true');controls.forEach(node=>node.disabled=true);status.textContent='Saving buying amount…';
@@ -149,7 +149,12 @@
    finally{busy=false;if(editor.isConnected&&button.isConnected){editor.removeAttribute('aria-busy');controls.forEach(node=>node.disabled=false);exactButton.disabled=practical===0;minus.disabled=draft.packCount<=1;plus.disabled=draft.packQuantity*(draft.packCount+1)>MAX;save.disabled=!withPrice();}}
   }
   click(save,saveChoice);
-  update();return {button,editor,open,close};
+  function snapshot(){return !busy&&opened?{draft:{...draft},customMode,custom:custom.value,price:price.value}:null;}
+  function restore(value){
+   if(busy||!object(value)||!selectionOf(value.draft,unit)||typeof value.custom!=='string'||value.custom.length>64||typeof value.price!=='string'||value.price.length>64)return false;
+   draft={...value.draft};customMode=value.customMode===true;custom.value=value.custom;price.value=value.price;opened=true;editor.hidden=false;button.setAttribute('aria-expanded','true');update();return true;
+  }
+  update();return {button,editor,open,close,snapshot,restore};
  }
  return Object.freeze({formatDisplayQty,amount,readPlan,writePlan,buyingLabel,estimatePrice,createPicker});
 });
