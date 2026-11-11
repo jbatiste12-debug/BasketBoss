@@ -14,7 +14,7 @@ The emergency audit covers the green Buying controls, purchase checkboxes, house
 
 The 14 protected functions and eight complete core/catalogue files are byte-identical to the frozen baseline `0b8ff949265f2f0f31f3606ec5a288b5c462ad31`. No recipe scaling, canonical ingredient matcher, core pricing table, pantry subtraction or conversion function changed. The At home conversion/step helpers retain their original exported contracts; presentation adapters call them.
 
-The user authorized exactly two pre-existing tiny-quantity display assertions to change from `0.000001 g` to `<1 g`; their exact saved-quantity assertions remain unchanged. Other pre-existing calculation assertions are unchanged. New display helper tests follow the requested maximum-one-decimal count formatting.
+The user authorized exactly two pre-existing tiny-quantity display assertions to change from `0.000001 g` to `<1 g`; their exact saved-quantity assertions remain unchanged. The user also authorized updating the existing unpriced-budget display test for the £2.50 guide. That test still asserts null catalogue price, exact known-price subtotal, pending counts and unchanged spending history; only display expectations change. Other pre-existing calculation assertions are unchanged. New display helper tests follow the requested maximum-one-decimal count formatting.
 
 ## Automated coverage
 
