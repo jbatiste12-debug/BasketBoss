@@ -3,7 +3,7 @@ BasketBoss 1.0.2 — build 43
 On your Mac:
 1. Open prepare-build43-mac.command. It downloads the pinned source, installs dependencies, stages the 700-recipe client, and opens Xcode.
 2. Confirm Version 1.0.2 and Build 43. Choose your Apple signing team if requested.
-3. Select Any iOS Device (arm64), then Product > Archive.
+3. To test first, connect your iPhone, select it at the top of Xcode, and press the play button (Product > Run). When ready to upload, select Any iOS Device (arm64), then Product > Archive.
 4. In Organizer choose Distribute App > App Store Connect > Upload.
 5. After Apple processes the upload, select build 43 in TestFlight.
 
@@ -21,12 +21,14 @@ Inventory edge-case fixes: new pantry food uses its compatible planned unit, gen
 
 An already-saved amount such as 200 each is kept for explicit review. To correct the haddock example: At home > Fridge > Edit Smoked haddock > clear the At home amount > choose g > enter 200 > Add to Shop. This gives 600 g required and 400 g to buy.
 
+Shopping pack controls: tap the green Buying pill on an item. A preset saves with one tap; use Custom for a different amount or total estimated price. Choosing an unticked pack does not add stock. Ticking confirms the selected physical amount; Finish/reopening does not credit it again. The core calculations, canonical matcher and price catalogue are unchanged. See docs/qa/2026-11-11-shopping-pack-controls.md.
+
 Do not run ordinary npm run ios:sync after this launcher; that selects the legacy catalogue instead of the 700-recipe release.
 
 Pinned application source:
-https://github.com/jbatiste12-debug/BasketBoss/commit/6f50b87276e37463893f67d8328b972938904284
+https://github.com/jbatiste12-debug/BasketBoss/commit/f8e76649cc52480e4205ca41b4463b01f30dda09
 
 Complete source ZIP:
-https://github.com/jbatiste12-debug/BasketBoss/archive/6f50b87276e37463893f67d8328b972938904284.zip
+https://github.com/jbatiste12-debug/BasketBoss/archive/f8e76649cc52480e4205ca41b4463b01f30dda09.zip
 
 See build43-whats-new.txt for Apple Connect notes and build43-what-to-test.txt for regression checks.
