@@ -1,47 +1,28 @@
-BasketBoss 1.0.2 — build 43
+BasketBoss 1.0.2 — Build 43
 
-On your Mac:
-1. Open prepare-build43-mac.command. It downloads the pinned source, installs dependencies, stages the 700-recipe client, and opens Xcode.
-2. Confirm Version 1.0.2 and Build 43. Choose your Apple signing team if requested.
-3. To test first, connect your iPhone, select it at the top of Xcode, and press the play button (Product > Run). When ready to upload, select Any iOS Device (arm64), then Product > Archive.
-4. In Organizer choose Distribute App > App Store Connect > Upload.
-5. After Apple processes the upload, select build 43 in TestFlight.
+On your Mac, open prepare-build43-mac.command. It downloads the tested source, installs dependencies, prepares the 700-recipe client and opens Xcode. Requires Xcode and Node.js 22 or newer.
 
-Requires Xcode and Node.js 22 or newer. This prepares source; signing/upload happen on your Mac. A TestFlight upload does not replace or withdraw an App Store review submission.
+To test: connect your iPhone, select it at the top of Xcode and press the play button (Product > Run). Version is 1.0.2, Build 43.
 
-To prepare AND create the signed TestFlight archive from Terminal, run the downloaded launcher with its archive option:
+To prepare and archive from Terminal:
   bash prepare-build43-mac.command --archive
 
-This runs the same pinned 700-recipe preparation first, then uses the App scheme, Release configuration, Any iOS Device destination and the project's existing automatic signing team (J25UTUATD2). Xcode must be signed in to the Apple developer account. The archive is saved under ~/Library/Developer/Xcode/Archives/<date>/ with a unique build-43 filename and opened in Xcode Organizer. Choose Distribute App > App Store Connect > Upload there. The command does not upload, submit for review, or change the current App Store submission. Without --archive, the launcher still opens the workspace for testing directly on your iPhone.
+The archive opens in Xcode Organizer. Choose Distribute App > App Store Connect > Upload. Signing and uploading happen on your Mac; this launcher does not upload or alter your current submission.
 
-Existing users keep their completed setup. To see the new three-screen flow, use Settings > Replay welcome & setup. This avoids deleting your plans or pantry data.
+Your pantry:
+- At home is the single visible pantry used for shopping and planned meals. An absent food contributes zero; old saved amounts are not offered in a second confirmation screen.
+- Purchases, edits, removals, cooking and undo retain their precise existing quantities. Offline edits queue for account sync without adding device and saved balances together.
+- The Premium inviter leads the household. Only the verified owner seeds a new empty household from their At home stock. The invited partner waits and joins that pantry; personal balances are backed up rather than merged.
+- Linked eligible accounts refresh automatically while foregrounded, using a four-second polling interval and refresh on return/reconnect. This uses existing authenticated services, not a new WebSocket subscription. RLS, recipe calculations and subscription eligibility are unchanged.
+- Genuine conflicts and other scope reconnections are managed under Account & cloud sync. Existing initialized household stock always wins over an older personal snapshot.
+- Recipe pieces such as six sausages now display as 6 each. True package and weight quantities keep their meaning.
 
-The main My Week amount is estimated shopping still to buy, including pantry credit and full-pack rounding. Recorded purchases remain in the separate combined weekly total inside Budget & household.
+Local verification: 4,238 passed, zero failures, zero cancellations; 1 existing platform skip and 2 existing TODOs are recorded separately. Rebuilt PWA/native asset parity and all 22 protected calculation/file checks pass. See docs/qa/2026-11-11-account-pantry-single-source.md. Live publication proof is recorded separately in the current release packet.
 
-The Premium offer opens the existing verified purchase page. Apple shows the actual localized product price; no free trial is promised by setup. Continue free applies setup choices without changing an entitlement.
-
-At home hides items whose saved stock is exactly zero and excludes them from its counters. Confirming a cooked meal keeps any positive leftovers visible. Saved restock targets and cooking history are preserved.
-
-Inventory edge-case fixes: new pantry food uses its compatible planned unit, generic food names match recipe fillet/portion descriptions without renaming saved stock, partial kg/l purchases retain their supported physical quantity, and offline cooking/undo retries safely when connection returns. See docs/qa/2026-11-11-inventory-edge-audit.md for the full audit and regression coverage.
-
-An already-saved amount such as 200 each is kept for explicit review. To correct the haddock example: At home > Fridge > Edit Smoked haddock > clear the At home amount > choose g > enter 200 > Add to Shop. This gives 600 g required and 400 g to buy.
-
-Shopping pack controls: tap the green Buying pill on an item. A preset saves with one tap; use Custom for a different amount or total estimated price. Choosing an unticked pack does not add stock. Ticking confirms the selected physical amount; Finish/reopening does not credit it again. The core calculations, canonical matcher and price catalogue are unchanged. See docs/qa/2026-11-11-shopping-pack-controls.md.
-
-Do not run ordinary npm run ios:sync after this launcher; that selects the legacy catalogue instead of the 700-recipe release.
+No additional ios:sync is needed. Ordinary ios:sync after this launcher would replace the prepared 700-recipe assets.
 
 Pinned application source:
-https://github.com/jbatiste12-debug/BasketBoss/commit/3ba4d26a725bb27a5b0ee7c04ec99cbb112707a4
+https://github.com/jbatiste12-debug/BasketBoss/commit/c99afebf52ce65b56b083ddab4fcdc9ab1fe56c7
 
 Complete source ZIP:
-https://github.com/jbatiste12-debug/BasketBoss/archive/3ba4d26a725bb27a5b0ee7c04ec99cbb112707a4.zip
-
-See build43-whats-new.txt for Apple Connect notes and build43-what-to-test.txt for regression checks.
-
-Shopping checkbox reliability: checkbox events stop independently of Buying controls. A failed purchase does not leave a false tick. When stock needs review, Shop shows one editable amount for each food and one confirmation action. There are no separate online/device source buttons. Confirming an untouched rounded amount preserves its exact stored quantity, then retries only the intended purchase. Other successful purchases are kept.
-
-Emergency presentation audit: whole-unit display labels now cover confirmation messages and Cook from pantry too. Unknown household/custom prices have an editable guide estimate. Household purchases stay in Weekly essentials; existing food-filed household stock is moved only after you review the actual total. Whole lime/lemon/orange count purchases retain canonical grams and an optional count-display proof. See docs/qa/2026-11-11-shopping-integrity-audit.md.
-
-Remaining stock and next-week planning: confirmed cooking leaves physical stock available immediately to Shop. The tested chicken example shows 533 g at home and 67 g still needed; a small fresh-food top-up uses the practical deficit instead of the previous full pack. Auto-fill offers Prioritize what’s at home or Fresh weekly plan. Start next week saves the current week before replacing it, while retaining actual pantry stock.
-
-Current local release gate: 4,139 passed, zero failures, zero cancellations; one existing Swift-only Linux skip and two existing TODOs are recorded separately. Source/PWA/native asset parity and all 22 protected math/file isolation checks pass. See docs/qa/2026-11-11-pantry-first-stock-credit.md. Live publication status is recorded separately; these local results do not claim a signed archive, physical-device run or App Store submission.
+https://github.com/jbatiste12-debug/BasketBoss/archive/c99afebf52ce65b56b083ddab4fcdc9ab1fe56c7.zip
