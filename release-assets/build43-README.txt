@@ -38,6 +38,10 @@ https://github.com/jbatiste12-debug/BasketBoss/archive/3ba4d26a725bb27a5b0ee7c04
 
 See build43-whats-new.txt for Apple Connect notes and build43-what-to-test.txt for regression checks.
 
-Shopping checkbox reliability: checkbox events stop independently of Buying controls. A failed purchase does not leave a false tick. If online and device pantry amounts differ, the existing review opens within Shop; Use this device’s amounts prefills the saved values, and confirmation retries only the intended purchase. Other successful purchases are kept.
+Shopping checkbox reliability: checkbox events stop independently of Buying controls. A failed purchase does not leave a false tick. When stock needs review, Shop shows one editable amount for each food and one confirmation action. There are no separate online/device source buttons. Confirming an untouched rounded amount preserves its exact stored quantity, then retries only the intended purchase. Other successful purchases are kept.
 
 Emergency presentation audit: whole-unit display labels now cover confirmation messages and Cook from pantry too. Unknown household/custom prices have an editable guide estimate. Household purchases stay in Weekly essentials; existing food-filed household stock is moved only after you review the actual total. Whole lime/lemon/orange count purchases retain canonical grams and an optional count-display proof. See docs/qa/2026-11-11-shopping-integrity-audit.md.
+
+Remaining stock and next-week planning: confirmed cooking leaves physical stock available immediately to Shop. The tested chicken example shows 533 g at home and 67 g still needed; a small fresh-food top-up uses the practical deficit instead of the previous full pack. Auto-fill offers Prioritize what’s at home or Fresh weekly plan. Start next week saves the current week before replacing it, while retaining actual pantry stock.
+
+Current local release gate: 4,139 passed, zero failures, zero cancellations; one existing Swift-only Linux skip and two existing TODOs are recorded separately. Source/PWA/native asset parity and all 22 protected math/file isolation checks pass. See docs/qa/2026-11-11-pantry-first-stock-credit.md. Live publication status is recorded separately; these local results do not claim a signed archive, physical-device run or App Store submission.

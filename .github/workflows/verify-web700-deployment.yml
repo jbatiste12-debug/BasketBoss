@@ -6,6 +6,8 @@ on:
     branches: [main]
     paths:
       - .github/workflows/verify-web700-deployment.yml
+      - release-assets/prepare-build43-mac.command
+      - release-assets/build43-README.txt
       - scripts/verify-web700-deployment.mjs
       - scripts/verify-layout-deployment.mjs
       - bb-simple-layout.js
