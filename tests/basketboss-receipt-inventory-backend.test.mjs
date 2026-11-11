@@ -23,7 +23,7 @@ function setup(options = {}) {
     BILLING_DB: {prepare() {let user;return {bind(id) {user = id;return this;}, async first() {return prices.get(user) ? {status: 'active', price_id: PRICE, plan: 'founder'} : null;}};}}};
   if (options.household) {env.BB_PARTNER_SHARING_ENABLED = 'true';env.BB_PARTNER_PRODUCTION_READY = 'true';}
   const household = {id: HOUSEHOLD, owner_user_id: options.householdOwner ? USER : OWNER, partner_user_id: options.householdOwner ? OWNER : USER, partner_email: 'member@example.test', invite_status: options.unlinked ? 'unlinked' : 'accepted'};
-  let revision = 0, stock = {}, initialized = false;
+  let revision = options.initialRevision || 0, stock = {}, initialized = options.initialized === true;
   const receipts = new Map();
   function snapshot(scope, extras = {}) {
     return {ok: true, autoStockReady: options.autoStockReady !== false, scope, initialized, inventoryRevision: revision, stock: {...stock}, inventory: Object.entries(stock).map(([key, quantity]) => ({stockKey: key, canonicalKey: key.split('|')[0], unit: key.split('|')[1], quantity, location: 'cupboard', revision})), essentials: [], priceObservations: [], pantryReview: {required: true, shopSessionId: null, confirmedAt: null}, ...extras};
@@ -152,12 +152,48 @@ test('recovery probe returns the receipt commit revision without another increme
   } finally {fixture.restore();}
 });
 test('accepted partner scope is derived from confirmed email and paid owner, never caller fields', async () => {
-  const fixture = setup({paid: false, household: true, ownerPaid: true});try {
-    const body = draft();body.expectedScope = {kind: 'household', id: HOUSEHOLD};
+  const fixture = setup({paid: false, household: true, ownerPaid: true, initialized: true, initialRevision: 1});try {
+    const body = draft();body.expectedScope = {kind: 'household', id: HOUSEHOLD};body.inventoryBaseline.expectedRevision = 1;body.inventoryBaseline.initialize = false;
     const response = await onRequestPost({request: request('POST', body), env: fixture.env});assert.equal(response.status, 200);
     assert.equal(fixture.rpc[0].p_scope_kind, 'household');assert.equal(fixture.rpc[0].p_scope_id, HOUSEHOLD);assert.equal(fixture.rpc[0].p_actor, USER);
     const spoofed = draft();spoofed.scope = {kind: 'user', id: OWNER};assert.equal((await onRequestPost({request: request('POST', spoofed), env: fixture.env})).status, 400);
     assert.equal(fixture.rpc.length, 1);
+  } finally {fixture.restore();}
+});
+for (const action of ['confirm_pantry', 'confirm_receipt']) test('a partner cannot initialize the lead household through ' + action, async () => {
+  for (const paid of [false, true]) {
+    const fixture = setup({paid, household: true, ownerPaid: true});try {
+      const body = action === 'confirm_pantry' ? {action, stock: {'milk|ml': 200}, expectedRevision: 0, expectedScope: {kind: 'household', id: HOUSEHOLD}, shopSessionId: null} : draft();
+      body.expectedScope = {kind: 'household', id: HOUSEHOLD};
+      const response = await onRequestPost({request: request('POST', body), env: fixture.env});
+      assert.equal(response.status, 409);assert.deepEqual(await response.json(), {ok: false, error: 'receipt_household_initialization_pending', conflict: true});
+      assert.deepEqual(fixture.rpc.map(call => call.p_action), ['get'], 'the initial partner request performs no pantry or receipt write');
+      assert.equal(fixture.rpc[0].p_scope_id, HOUSEHOLD);assert.equal(fixture.rpc[0].p_actor, USER);
+    } finally {fixture.restore();}
+  }
+});
+test('the server-derived lead can seed the exact household balance without an extra initialization read', async () => {
+  const fixture = setup({household: true, householdOwner: true});try {
+    const body = {action: 'confirm_pantry', stock: {'sausage|each': 4, 'rice|g': 233.333333}, expectedRevision: 0, expectedScope: {kind: 'household', id: HOUSEHOLD}, shopSessionId: null};
+    const response = await onRequestPost({request: request('POST', body), env: fixture.env});assert.equal(response.status, 200);
+    const value = await response.json();assert.deepEqual(value.stock, body.stock);assert.equal(value.initialized, true);assert.equal(value.inventoryRevision, 1);
+    assert.equal(Object.hasOwn(value, 'householdOwnerId'), false, 'verified ownership remains internal authorization metadata');
+    assert.deepEqual(fixture.rpc.map(call => call.p_action), ['confirm_pantry']);
+  } finally {fixture.restore();}
+});
+test('an already initialized household keeps the existing stale-revision response for a partner', async () => {
+  const fixture = setup({paid: false, household: true, ownerPaid: true, initialized: true, initialRevision: 1});try {
+    const body = {action: 'confirm_pantry', stock: {}, expectedRevision: 0, expectedScope: {kind: 'household', id: HOUSEHOLD}, shopSessionId: null};
+    const response = await onRequestPost({request: request('POST', body), env: fixture.env});assert.equal(response.status, 409);
+    assert.equal((await response.json()).error, 'receipt_revision_conflict');
+    assert.deepEqual(fixture.rpc.map(call => call.p_action), ['get', 'confirm_pantry']);
+  } finally {fixture.restore();}
+});
+test('an unavailable initial household snapshot fails closed before any partner write', async () => {
+  const fixture = setup({paid: false, household: true, ownerPaid: true, migrationMissing: true});try {
+    const body = {action: 'confirm_pantry', stock: {}, expectedRevision: 0, expectedScope: {kind: 'household', id: HOUSEHOLD}, shopSessionId: null};
+    const response = await onRequestPost({request: request('POST', body), env: fixture.env});assert.equal(response.status, 503);
+    assert.deepEqual(fixture.rpc.map(call => call.p_action), ['get']);
   } finally {fixture.restore();}
 });
 test('a paid household owner retains the same scope after unlink while the former partner is denied', async () => {

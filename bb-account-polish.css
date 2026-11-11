@@ -105,3 +105,7 @@ html.bb-account-open body .shell,html.bb-account-open body .bbui-settings-overla
 html.bb-account-open body .shell .tabs,html.bb-account-open body nav.bb-r6-cook-nav{visibility:hidden!important;pointer-events:none!important}
 html body #cloud-panel.open:has([data-bb-account-polish]){inset:auto!important;top:var(--bbap-viewport-top,0px)!important;left:var(--bbap-viewport-left,0px)!important;width:var(--bbap-viewport-width,100%)!important;height:var(--bbap-viewport-height,100dvh)!important;min-height:0!important;overflow:hidden!important;background:#f5f7ef!important;backdrop-filter:none!important;-webkit-backdrop-filter:none!important}
 html body #cloud-panel #cloud-card[data-bb-account-polish]{max-height:calc(var(--bbap-viewport-height,100dvh) - 30px - env(safe-area-inset-top,0px) - env(safe-area-inset-bottom,0px))!important;min-height:0!important;scroll-padding:52px 12px 16px}
+html body #cloud-card[data-bb-account-polish] .bbap-pantry-sync{margin:14px 0;padding:16px;border:1px solid #d6dfd2;border-radius:18px;background:#f3f7ee;color:#173e2e}
+html body #cloud-card[data-bb-account-polish] .bbap-pantry-sync h3{margin:0 0 8px;font-size:18px}
+html body #cloud-card[data-bb-account-polish] .bbap-pantry-sync p{margin:8px 0;font-size:16px;line-height:1.45}
+html body #cloud-card[data-bb-account-polish] .bbap-pantry-sync button{margin:12px 0 0;min-height:48px;font-size:16px}

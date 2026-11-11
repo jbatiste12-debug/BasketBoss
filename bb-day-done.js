@@ -166,7 +166,10 @@
    if(!value.ok){
     if(value.reviewAction==='pantry'){
      const pantry=value.pantryStatus||{},receipt=win.BBReceiptHost;
-     if(pantry.canReviewInline===true&&typeof receipt?.reviewPantry==='function'){
+     if(receipt?.accountPantrySyncEnabled?.()===true&&pantry.reason!=='receipt_pending'){
+      const account=make('button','btn primary','Account & cloud sync');account.type='button';account.dataset.bbDayAction='review-pantry';actions.append(account);
+      account.onclick=()=>{if(busy||!current())return;close();receipt.reviewPantry?.();};
+     }else if(pantry.canReviewInline===true&&typeof receipt?.reviewPantry==='function'){
       const review=make('button','btn primary','Check saved stock');review.type='button';review.dataset.bbDayAction='review-pantry';actions.append(review);
       review.onclick=async()=>{
        if(busy||disposed||dialog!==active)return;

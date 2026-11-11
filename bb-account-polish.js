@@ -10,7 +10,7 @@
     backup: '<svg viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M5 8a7 7 0 0 1 12-3l2 2M19 3v4h-4M19 16a7 7 0 0 1-12 3l-2-2M5 21v-4h4M12 8v8m-3-3 3 3 3-3"/></svg>',
     preferences: '<svg viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"><path d="M4 7h16M4 17h16"/><circle cx="8" cy="7" r="3" fill="var(--bbap-card,#fffdf7)"/><circle cx="16" cy="17" r="3" fill="var(--bbap-card,#fffdf7)"/></svg>'
   };
-  const state = { panel: null, opened: false, focusBack: null, queued: false, viewportFrame: null, background: [], scrollX: 0, scrollY: 0 };
+  const state = { panel: null, opened: false, focusBack: null, queued: false, viewportFrame: null, background: [], scrollX: 0, scrollY: 0, pantryBusy: false, pantryMessage: '', pantrySignature: '' };
   function fitAccountViewport() {
     state.viewportFrame = null;
     if (!state.opened || !state.panel?.classList.contains('open')) return;
@@ -62,6 +62,48 @@
     return node;
   }
   function setText(node, value) { if (node && node.textContent !== value) node.textContent = value; }
+  function syncPantryAccount() {
+    const signed = doc.getElementById('cloud-signed'), host = root.BBReceiptHost;
+    if (!signed || !host?.getAccountPantryStatus) return;
+    let value;
+    try { value = host.getAccountPantryStatus(); } catch { return; }
+    if (!value?.enabled) { doc.getElementById('bbAccountPantrySync')?.remove(); return; }
+    let section = doc.getElementById('bbAccountPantrySync');
+    if (!section) {
+      section = element('section', 'bbap-pantry-sync'); section.id = 'bbAccountPantrySync';
+      section.setAttribute('aria-labelledby', 'bbAccountPantrySyncTitle');
+      const title = element('h3', '', 'At home & cloud sync'); title.id = 'bbAccountPantrySyncTitle';
+      const copy = element('p', '', 'Your At home pantry is used for shopping and planned meals. Foods you remove stay removed.');
+      copy.id = 'bbAccountPantrySyncDescription';
+      const status = element('p'); status.id = 'bbAccountPantrySyncStatus'; status.setAttribute('role', 'status'); status.setAttribute('aria-live', 'polite');
+      const button = element('button', '', 'Sync At home pantry'); button.type = 'button'; button.id = 'bbAccountPantrySyncButton';
+      button.addEventListener('click', async event => {
+        event.stopPropagation();
+        if (state.pantryBusy) return;
+        let current, session;
+        try { current = host.getAccountPantryStatus(); session = root.localStorage.getItem('basketboss_cloud_session_v1'); } catch { return; }
+        if (!current?.canSync) return;
+        state.pantryBusy = true; state.pantryMessage = ''; syncPantryAccount();
+        try {
+          const result = await host.syncAccountPantry({ resolveConflict: current.requiresReview === true || current.status === 'conflict', adoptScope: current.adoptScope === true });
+          if (root.localStorage.getItem('basketboss_cloud_session_v1') !== session) return;
+          if (result?.ok && !result.needsReview) root.BasketBossCloud?.scheduleSave?.();
+          else state.pantryMessage = 'Your At home pantry has been kept. Reconnect and try syncing again.';
+        } catch { if (root.localStorage.getItem('basketboss_cloud_session_v1') === session) state.pantryMessage = 'Your At home pantry has been kept. Reconnect and try syncing again.'; }
+        finally { state.pantryBusy = false; syncPantryAccount(); }
+      });
+      section.append(title, copy, status, button);
+      const logout = doc.getElementById('cloud-logout'); logout?.parentNode === signed ? signed.insertBefore(section, logout) : signed.append(section);
+    }
+    const signature = JSON.stringify([value.status, value.message, value.queued]);
+    if (state.pantrySignature !== signature) { state.pantrySignature = signature; state.pantryMessage = ''; }
+    section.dataset.syncStatus = value.status;
+    setText(doc.getElementById('bbAccountPantrySyncDescription'), value.description || 'Your At home pantry is used for shopping and planned meals. Foods you remove stay removed.');
+    setText(doc.getElementById('bbAccountPantrySyncStatus'), state.pantryBusy ? 'Syncing your At home pantry…' : state.pantryMessage || value.message || 'Your pantry sync is managed with your account.');
+    const button = doc.getElementById('bbAccountPantrySyncButton');
+    button.disabled = state.pantryBusy || value.canSync !== true;
+    setText(button, state.pantryBusy ? 'Syncing…' : value.actionLabel || 'Sync At home pantry');
+  }
   function decorateSettings() {
     const panel = doc.querySelector('.bbui-settings-panel');
     if (!panel || panel.dataset.bbAccountPolish) return;
@@ -151,6 +193,7 @@
       observer.observe(panel, { attributes: true, attributeFilter: ['class', 'hidden'], subtree: true });
     }
     const signedIn = doc.getElementById('cloud-signed')?.hidden === false;
+    syncPantryAccount();
     const title = card.querySelector('h2');
     const authView=doc.getElementById('cloud-auth')?.dataset.bbAuthView;const authTitles={'check-email':'Check your email.','forgot-password':'Reset your password.','reset-sent':'Check your email.','set-password':'Set a new password.','verifying':'Checking your link…','link-error':'This link couldn’t be used.'};
     setText(title, authTitles[authView] || (signedIn ? 'Your account.' : 'Welcome back.'));
@@ -193,6 +236,11 @@
     });
     observer.observe(doc.body, { childList: true, subtree: true });
   }
-  root.BBAccountPolish = Object.freeze({ refresh });
+  root.BBAccountPolish = Object.freeze({ refresh, openPantrySync() {
+    const panel = doc.getElementById('cloud-panel');
+    if (!panel?.classList.contains('open')) doc.getElementById('cloud-open')?.click();
+    refresh();
+    doc.getElementById('bbAccountPantrySync')?.scrollIntoView?.({block:'nearest'});
+  } });
   if (doc.readyState === 'loading') doc.addEventListener('DOMContentLoaded', start, { once: true }); else start();
 })(typeof window === 'undefined' ? globalThis : window);

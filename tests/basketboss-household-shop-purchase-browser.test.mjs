@@ -282,6 +282,10 @@ for(const total of [16,18])test(`a tick reviews misplaced household stock and mo
 test('reviewing misplaced household stock cannot bypass an unresolved online pantry conflict',{skip:!chromium&&'Playwright unavailable',timeout:60000},async()=>{
  const {page,context,errors,remote,inventoryWrites}=await fixture(390,{online:true,name:'ToiletRolls',stock:{'rice|g':16,'toiletrolls|each':16},remoteStock:{'rice|g':8},seedReceipts:true});
  try{
+  // Keep the existing legacy cloud-confirmation contract covered. The shipped
+  // Account mode uses current At home stock while its guarded outbox waits;
+  // that workflow is exercised by account-pantry-live-browser and host tests.
+  await page.evaluate(()=>BBReceiptHost.configure({accountPantrySync:false}));
   await page.evaluate(()=>BBReceiptHost.refreshAvailability({force:true,synchronize:true}));
   // A previous online conflict leaves this actor-scoped durable job. The
   // household review must preserve its guard rather than acknowledge it.

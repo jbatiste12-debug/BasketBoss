@@ -420,7 +420,18 @@ async function build(){
   const shoppingChange=homeChange?.shoppingChange,shoppingBefore=Object.fromEntries(Object.keys(shoppingChange?.updates||{}).map(key=>[key,localStorage.getItem(key)]));
   const originalHomeRaw=homeChange?localStorage.getItem(homeChange.key):null;const featureChange=homeChange?.featureChange,originalFeatures=featureChange?localStorage.getItem(featureChange.key):null;
   const originalInventoryRaw=localStorage.getItem(INVENTORY),originalStockRaw=localStorage.getItem(MEASURED),originalConfirmedRaw=localStorage.getItem(CONFIRMED);
+  const receiptHost=window.BBReceiptHost;let accountSync=false,pantrySync;
   try{
+   accountSync=receiptHost?.accountPantrySyncEnabled?.()===true;
+   if(accountSync){
+    if(typeof receiptHost.preparePurchasedPantry!=='function'||typeof receiptHost.retryPurchasedPantry!=='function'||typeof window.BBHome?.atomic!=='function')throw Error('Account sync is still loading. Try saving again in a moment.');
+    // Prepare from the persisted pre-edit balance. The existing local save
+    // owns this absolute target, including deletions and an empty pantry.
+    pantrySync=receiptHost.preparePurchasedPantry({stock:nextStock,beforeStock:JSON.parse(originalStockRaw||'{}')});
+   }
+  }catch(error){note.textContent=error?.message||'Could not prepare account sync. Your saved quantities have been kept.';return;}
+  try{
+   for(const [key,value]of Object.entries(pantrySync?.expected||{}))if(localStorage.getItem(key)!==value)throw Error('Account sync changed before saving');
    const text=JSON.stringify(nextInv);localStorage.setItem(INVENTORY,text);if(localStorage.getItem(INVENTORY)!==text)throw Error('Inventory save verification failed');
    if(typeof bb307SaveStock==='function'){if(!bb307SaveStock(nextStock))throw Error('Stock save failed')}
    else{const stockText=JSON.stringify(nextStock);localStorage.setItem(MEASURED,stockText);if(localStorage.getItem(MEASURED)!==stockText)throw Error('Stock save verification failed')}
@@ -430,6 +441,7 @@ async function build(){
    if(homeChange){if(window.BBHome.actor()!==homeChange.who||localStorage.getItem(homeChange.key)!==homeChange.expected)throw Error('At home changed elsewhere');const homeText=JSON.stringify(homeChange.value);localStorage.setItem(homeChange.key,homeText);if(localStorage.getItem(homeChange.key)!==homeText)throw Error('Requirements save failed');}
    if(featureChange){if(localStorage.getItem(featureChange.key)!==featureChange.expected)throw Error('Household list changed');const value=JSON.stringify(featureChange.value);localStorage.setItem(featureChange.key,value);if(localStorage.getItem(featureChange.key)!==value)throw Error('Household save failed');}
    if(shoppingChange)window.BBHome.atomic(localStorage,shoppingChange.updates,shoppingChange.expected);
+   if(pantrySync)window.BBHome.atomic(localStorage,pantrySync.updates,pantrySync.expected);
   }catch(err){
    try{for(const [key,value]of Object.entries(shoppingBefore)){if(value===null)localStorage.removeItem(key);else localStorage.setItem(key,value);}
    if(featureChange){if(originalFeatures===null)localStorage.removeItem(featureChange.key);else localStorage.setItem(featureChange.key,originalFeatures);}
@@ -453,7 +465,15 @@ async function build(){
    rows.querySelectorAll('[data-bb5-qty]').forEach(input=>{if(input.dataset.bb5Qty===key){input.focus({preventScroll:true});input.closest('[data-bb5-row]').scrollIntoView({behavior:'smooth',block:'center'});}});
   }
   if(automatic)note.textContent=reviewText||'✓ Pantry saved. Shopping has been updated.';
-  if(window.BBReceiptHost?.confirmCurrentPantry){
+  if(accountSync){
+   let synced;reconcile.disabled=true;
+   try{synced=await receiptHost.retryPurchasedPantry();}
+   catch{note.textContent=reviewText+' Your current amounts are saved in At home. Retry syncing in Account & cloud sync.';return;}
+   finally{reconcile.disabled=false;}
+   if(!synced?.ok||synced.needsReview||synced.queued){
+    note.textContent=reviewText+' Your current amounts are saved in At home. '+(synced?.needsReview?'Check Account & cloud sync to resolve the saved sync conflict.':'They will sync when your connection is available.');return;
+   }
+  }else if(window.BBReceiptHost?.confirmCurrentPantry){
    let synced;reconcile.disabled=true;
    try{synced=await window.BBReceiptHost.confirmCurrentPantry({stock:nextStock});}
    catch{note.textContent=reviewText+' Your amounts are saved on this device. Online Pantry confirmation needs another attempt.';return;}

@@ -53,7 +53,7 @@ async function authorized(request, env) {
   // Match existing catalogue/AI owner access only for the authenticated server ID.
   // Sharing requires its separate server opt-in; browser claims are not used.
   const owner = typeof env.BB_OWNER_USER_ID === 'string' && user.id === env.BB_OWNER_USER_ID;
-  let premium = personalPaid || owner, scope = {kind: 'user', id: user.id};
+  let premium = personalPaid || owner, scope = {kind: 'user', id: user.id}, householdOwnerId = null;
   if (partnerBenefitsEnabled(request, env)) {
     const rows = await supabase(env, 'bb_households?select=id,owner_user_id,partner_user_id,partner_email,invite_status&or=' + encodeURIComponent('(owner_user_id.eq.' + user.id + ',and(partner_user_id.eq.' + user.id + ',invite_status.eq.accepted))') + '&limit=3');
     if (!Array.isArray(rows) || rows.length > 1) throw Error('receipt_household_scope_unavailable');
@@ -68,10 +68,11 @@ async function authorized(request, env) {
         const sharedOwner = await sharedHouseholdPremiumOwner(request, env, user);
         if (sharedOwner && sharedOwner === household.owner_user_id) {premium = true; scope = {kind: 'household', id: household.id};}
       }
+      if (scope.kind === 'household') householdOwnerId = household.owner_user_id;
     }
   }
   if(!premium&&personalError)throw personalError;
-  return premium ? {user, scope} : {error: json({ok: false, error: 'receipt_premium_required'}, 403)};
+  return premium ? {user, scope, householdOwnerId} : {error: json({ok: false, error: 'receipt_premium_required'}, 403)};
 }
 function fullStock(value) {
   // Existing manual Kitchen stock may include custom foods. Preserve those
@@ -171,6 +172,17 @@ export async function onRequestPost({request, env}) {
   // This is a CAS precondition, never an authorization source. A simultaneous
   // household join/unlink must not apply an old baseline to a newly derived scope.
   if (body.expectedScope?.kind !== auth.scope.kind || body.expectedScope?.id !== auth.scope.id) return json({ok: false, error: 'receipt_scope_conflict', conflict: true}, 409);
-  try {return rpcResponse(await rpc(env, auth, body.action, body, null, hash), auth);} catch {return unavailable();}
+  try {
+    const expectedRevision = body.action === 'confirm_pantry' ? body.expectedRevision : body.inventoryBaseline?.expectedRevision;
+    if (auth.scope.kind === 'household' && auth.user.id !== auth.householdOwnerId && expectedRevision === 0) {
+      // An accepted partner joins the lead's pantry. Only its verified owner
+      // can create the first balance; an empty partner snapshot must not win
+      // the initial revision race and replace the lead's personal stock.
+      const initial = await rpc(env, auth, 'get');
+      if (!object(initial) || initial.ok !== true || initial.scope?.kind !== auth.scope.kind || initial.scope?.id !== auth.scope.id || typeof initial.initialized !== 'boolean' || !Number.isSafeInteger(initial.inventoryRevision) || initial.inventoryRevision < 0) return unavailable();
+      if (!initial.initialized || initial.inventoryRevision === 0) return json({ok: false, error: 'receipt_household_initialization_pending', conflict: true}, 409);
+    }
+    return rpcResponse(await rpc(env, auth, body.action, body, null, hash), auth);
+  } catch {return unavailable();}
 }
 export function onRequestOptions() {return json({ok: false, error: 'receipt_method_not_allowed'}, 405);}

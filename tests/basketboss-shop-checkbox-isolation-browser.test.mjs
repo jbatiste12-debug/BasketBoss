@@ -183,19 +183,22 @@ for(const width of [320,390])test('green pack choices, independent checkbox even
   await page.evaluate(()=>BBReceiptHost.retryPurchasedPantry());await finishAndReload(page,shell,expected);assert.deepEqual(errors,[]);
  }finally{await context.close();}
 });
-for(const width of [320,390])test('a mismatched saved pantry is reviewed in Shop and the intended tick retries without amount re-entry at '+width,{timeout:90000},async()=>{
+for(const width of [320,390])test('Shop uses At home while any saved-stock conflict stays inside Account sync at '+width,{timeout:90000},async()=>{
  const {page,context,errors}=await fixture(width,{recipeId:'fajitas',emptyOnline:true});
  try{
   await page.evaluate(()=>BBReceiptHost.refreshAvailability({force:true,synchronize:true}));const shell=await openShop(page),wraps='tortilla wraps|each';
   await rowFor(shell,wraps).locator('.bb172-storefront-checkbox').click();
-  const review=page.locator('.bb-receipt-pantry-dialog');await review.waitFor({state:'visible'});
-  assert.equal(await rowFor(shell,wraps).locator('.bb172-storefront-checkbox').isChecked(),false,'a rejected or pending save must not leave a phantom tick');assert.deepEqual((await current(page)).ticks,{});
-  await review.getByRole('spinbutton',{name:'chicken breast amount in g',exact:true}).fill('200');
-  assert.equal(await review.getByRole('spinbutton',{name:'chicken breast amount in g',exact:true}).inputValue(),'200');
-  await review.getByRole('button',{name:'Confirm pantry & update shopping',exact:true}).click();await review.waitFor({state:'detached'});await saved(page,wraps);
+  await saved(page,wraps);
+  assert.equal(await rowFor(shell,wraps).locator('.bb172-storefront-checkbox').isChecked(),true,'confirmed local purchases stay ticked while account sync is pending');
+  assert.equal(await page.locator('.bb-receipt-pantry-dialog').count(),0,'there is no separate Confirm Pantry screen');
   await choose(page,shell,'cheddar|g','exact');assert.equal((await current(page)).ticks[wraps],true);
   await rowFor(shell,'cheddar|g').locator('.bb172-storefront-checkbox').click();await saved(page,'cheddar|g');
   const expected={'chicken breast|g':200,'tortilla wraps|each':8,'cheddar|g':267};assert.deepEqual((await current(page)).stock,expected);
+  await page.evaluate(()=>BBAccountPolish.openPantrySync());
+  const account=page.locator('#cloud-panel');await account.locator('#bbAccountPantrySyncButton').click();
+  await page.waitForFunction(()=>BBReceiptHost.getAccountPantryStatus().status==='synced');
+  assert.equal(await account.locator('input[type=number]').count(),0,'account sync never asks for all food amounts again');
+  await account.locator('#cloud-close').click();
   await page.evaluate(()=>BBReceiptHost.retryPurchasedPantry());await finishAndReload(page,shell,expected);assert.deepEqual(errors,[]);
  }finally{await context.close();}
 });
@@ -221,5 +224,21 @@ test('an online purchase acknowledgement preserves the next open Buying editor a
   await page.waitForFunction(()=>BBReceiptHost.getProjection()?.inventoryRevision>3);
   const fresh=rowFor(shell,'soured cream|g').locator('.bb-shop-pack-picker');await fresh.waitFor({state:'visible'});assert.equal(await fresh.locator('[data-bb-pack-custom]').inputValue(),'222.222');assert.equal(await fresh.locator('[data-bb-pack-price]').inputValue(),'2.99');
   await savePicker(fresh);await rowFor(shell,'soured cream|g').locator('.bb172-storefront-checkbox').click();await saved(page,'soured cream|g');const result=await current(page);assert.equal(result.stock['soured cream|g'],222.222);assert.equal(result.ticks['tortilla wraps|each'],true);assert.deepEqual(errors,[]);
+ }finally{await context.close();}
+});
+
+test('a synchronized bought pack remains editable after reload and a fresh Shop availability check',{timeout:90000},async()=>{
+ const {page,context,errors}=await fixture(390,{recipeId:'fajitas'});
+ try{
+  await page.evaluate(()=>BBReceiptHost.refreshAvailability({force:true,synchronize:true}));
+  let shell=await openShop(page);const wraps='tortilla wraps|each';
+  await rowFor(shell,wraps).locator('.bb172-storefront-checkbox').click();await saved(page,wraps);
+  await page.evaluate(()=>BBReceiptHost.retryPurchasedPantry());
+  assert.equal((await current(page)).stock[wraps],8);
+  await page.reload({waitUntil:'domcontentloaded'});await page.waitForFunction(()=>window.__readableShopQA?.ready());
+  await page.evaluate(()=>BBReceiptHost.refreshAvailability({force:true,synchronize:true}));
+  shell=await openShop(page);await choose(page,shell,wraps,'6');
+  const value=await current(page);assert.equal(value.stock[wraps],12);assert.equal(value.purchases[wraps].actualQty,12);assert.equal(value.ticks[wraps],true);
+  assert.equal(await page.locator('.bb-receipt-pantry-dialog').count(),0);assert.deepEqual(errors,[]);
  }finally{await context.close();}
 });

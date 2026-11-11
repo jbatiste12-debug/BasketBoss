@@ -244,22 +244,28 @@ async function refreshStatus(){
  if(!userSession()){status=null;return null;}
  try{status=await api('?mode=status');return status}catch{status=null;return null;}
 }
+function householdChanged(action){
+ if(deleting())return;
+ // The account pantry lifecycle rechecks the server-derived scope. This is
+ // only a notification; sharing never chooses or migrates that scope here.
+ try{const event=new Event('basketboss:household-changed');event.detail={action};window.dispatchEvent?.(event);}catch{}
+}
 async function open(){if(deleting())return;makeModal();if(!dialog.open)dialog.showModal();const body=dialog.querySelector('[data-bbhs-body]');
  body.textContent='Checking account…';message('');dialog.querySelector('[data-bbhs-review]').replaceChildren();const s=await refreshStatus();
  if(!s){body.innerHTML='<p>Sign in to link a partner, or explore BasketBoss Premium. Your saved plan is unchanged.</p><a class="bbhs-primary" href="pricing-sandbox.html">Explore Premium</a>';return;}
  if(!s.configured){body.innerHTML='<p>Household Partner Sharing is being prepared. It is not activated yet; your saved plan remains private on this device.</p><a class="bbhs-primary" href="pricing-sandbox.html">Explore Premium</a>';return;}
  if(s.invite){body.innerHTML='<p>You have been invited to share a BasketBoss household.</p><button class="bbhs-primary" data-accept>Accept &amp; Sync</button>';
-  body.querySelector('[data-accept]').onclick=async()=>{try{await api('',{action:'accept',household_id:s.invite.household_id});message('Invite accepted. Your existing device data is preserved.');await refreshStatus();await synchronize();await open();}catch{message('Unable to accept now; nothing changed on this device.')}};return;}
+  body.querySelector('[data-accept]').onclick=async()=>{try{await api('',{action:'accept',household_id:s.invite.household_id});message('Invite accepted. Your existing device data is preserved.');await refreshStatus();householdChanged('accept');await synchronize();await open();}catch{message('Unable to accept now; nothing changed on this device.')}};return;}
  if(!s.premium){body.innerHTML='<p>Partner Sharing is part of BasketBoss Premium.</p><a href="pricing-sandbox.html" class="bbhs-primary">Explore Premium plans</a>';return;}
  if(s.role==='partner'){body.innerHTML='<p>Connected to your shared Premium household. Any conflicting changes are kept for review.</p><button data-sync class="bbhs-primary">Sync safely now</button>';}
  else{body.innerHTML=`<label>Partner email <input data-email type="email" autocomplete="email" placeholder="partner@example.com" value="${esc(s.partner_email||'')}"></label><p>${s.invite_status==='accepted'?'Connected':s.invite_status==='pending'?'Invitation pending':'No partner linked'}</p><button class="bbhs-primary" data-invite>Create Partner Invite</button><button data-unlink ${s.invite_status==='none'?'disabled':''}>Unlink partner</button><button data-sync>Sync safely now</button><button data-init-import>Start sharing this device’s saved plan</button><small>One partner only. A pending invite appears when the partner signs in with the matching confirmed email. No invitation email is sent yet.</small>`;
-  body.querySelector('[data-invite]').onclick=async()=>{try{const email=body.querySelector('[data-email]').value;const result=await api('',{action:'invite',email});message(result.message);await refreshStatus();}catch(e){message(e.message)}};
+  body.querySelector('[data-invite]').onclick=async()=>{try{const email=body.querySelector('[data-email]').value;const result=await api('',{action:'invite',email});message(result.message);await refreshStatus();householdChanged('invite');}catch(e){message(e.message)}};
   body.querySelector('[data-init-import]').onclick=async()=>{
    if(!confirm('Share this device’s saved meals, pantry, servings and shopping checkmarks with your linked household? Only do this if the saved plan belongs to this account.'))return;
    await synchronize({allowInitialImport:true});
   };
   body.querySelector('[data-unlink]').onclick=async()=>{if(!confirm('Unlink your partner? Their device will keep its existing local plan.'))return;
-   try{await api('',{action:'unlink'});message('Partner unlinked; your stored plan remains.');await refreshStatus();await open();}catch(e){message(e.message)}};
+   try{await api('',{action:'unlink'});message('Partner unlinked; your stored plan remains.');await refreshStatus();householdChanged('unlink');await open();}catch(e){message(e.message)}};
  }
  body.querySelector('[data-sync]')?.addEventListener('click',()=>synchronize());
 }

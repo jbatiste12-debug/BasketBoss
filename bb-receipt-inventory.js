@@ -608,13 +608,15 @@
       try { const projection = await applyProjection(response, captured, body, {reducedLineIds: pending.reducedLineIds || [], confirmedAt}); return { ...base, localApplied: true, projection, ...reducedReviewResult(projection.reviewIssues) }; }
       catch (error) { return { ...base, localApplied: false, syncRequired: true, localError: error.message }; }
     }
-    async function confirmPantryInternal({ stock, expectedRevision, shopSessionId, expectedScope, signal } = {}) {
+    async function confirmPantryInternal({ stock, expectedRevision, shopSessionId, expectedScope, signal, precondition } = {}) {
       if (!stock || typeof stock !== 'object' || Array.isArray(stock) || !Number.isSafeInteger(expectedRevision) || expectedRevision < 0) throw Error('reviewed_pantry_stock_and_revision_required');
       const c = await core();if(options.pantryPolicy===true)stock=c.normalizePantryState(stock,json(KEYS.kitchen,{}),{canonicalize,market:activeContext().market,exactConversionsOnly:true}).stock; stock = c.normalizeStockMap(stock, { canonicalize });
       if (pendingConfirmation(session().actorId).receiptId) throw Error('receipt_confirmation_recovery_required_first');
+      const check = () => {if (precondition !== undefined && (typeof precondition !== 'function' || precondition({stock, expectedRevision, expectedScope}) !== true)) throw Error('receipt_local_data_changed');};
+      check();
       const captured = session(), context = activeContext(), owner = json(KEYS.owner, {}), scope = c.normalizeInventoryScope(expectedScope || owner.scope), baseline = c.normalizeStockMap(options.pantryPolicy===true?c.normalizePantryState(json(KEYS.stock,{}),json(KEYS.kitchen,{}),{canonicalize,market:context.market,exactConversionsOnly:true}).stock:json(KEYS.stock, {}), { canonicalize }), response = await request('POST', captured, { action: 'confirm_pantry', stock, expectedRevision, expectedScope: scope, shopSessionId }, signal);
       if (!sameSession(captured) || !sameContext(context) || signal?.aborted) return { ok: true, committed: true, localApplied: false, syncRequired: true };
-      try { return { ok: true, committed: true, localApplied: true, projection: await applyProjection(response, captured, { action: 'confirm_pantry', expectedScope: scope, localProjectionBaseline: baseline }), needsPantryConfirmation: false }; }
+      try { check();return { ok: true, committed: true, localApplied: true, projection: await applyProjection(response, captured, { action: 'confirm_pantry', expectedScope: scope, localProjectionBaseline: baseline }), needsPantryConfirmation: false }; }
       catch (error) { return { ok: true, committed: true, localApplied: false, syncRequired: true, localError: error.message }; }
     }
     function cancelDraft(value) { const id = typeof value === 'string' ? value : value?.receiptId; if (id) memoryDrafts.delete(id); let pending = false; try { pending = pendingConfirmation(session().actorId).receiptId === id; } catch {} return { cancelled: true, inventoryChanged: false, cloudConfirmationPending: pending }; }

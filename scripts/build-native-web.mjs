@@ -29,7 +29,7 @@ export const CLIENT_FILES=Object.freeze([
  'bb-kitchen-essentials.js','bb-kitchen-essentials.css','bb-pantry-inline.js','bb-pantry-inline.css','bb-pantry-groups.js','bb-pantry-groups-ui.js','bb-pantry-groups.css','bb-household-amount.js','bb-keyboard-layout.js','bb-keyboard-layout.css',
  'bb-cook-studio.js','bb-cook-studio.css','bb-cook-result.js','bb-cook-result.css',
  'bb-meal-image.js','bb-meal-image.css','bb-navigation-polish.js','bb-navigation-polish.css','bb-tab-viewport.js','bb-tab-viewport.css','bb-tab-swipe.js',
- 'bb-account-polish.js','bb-account-polish.css','bb-membership-compare.js','bb-membership-compare.css',
+ 'bb-account-polish.js','bb-account-polish.css','bb-account-pantry-live.js','bb-membership-compare.js','bb-membership-compare.css',
  'bb-premium-feature-badges.js','bb-premium-feature-badges.css',
  'bb-scan-food-identity.js','bb-pantry-camera.js','bb-pantry-camera.css','bb-cook-experience.css','bb-featured-framing.js','bb-duration.js','bb-recipe-measures.js','bb-cook-method.js','bb-cook-step-layout.js','bb-cook-pantry.js','bb-cook-clarity.css','bb-receipt-quantity.js','bb-pantry-deduction.js','bb-how-it-works.js','bb-how-it-works.css',
  'bb-recipe-purchase-basis.js','bb-home.js','bb-pantry-policy.js','bb-pantry-display.js','bb-recipe-canonical.js','bb-pantry-runtime.mjs','bb-kitchen-choice-rules.mjs','bb-shared-shopping.js','bb-shared-shopping.css',
