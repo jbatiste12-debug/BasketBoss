@@ -44,6 +44,20 @@ test('current catalogue build renders 200 Free recipes while the preserved legac
  assert.equal(harness().read().step,1);
 });
 
+test('optional account disclosure opens and closes in place without replacing credentials or advancing setup',()=>{
+ const h=harness(),host=h.active(),originalQuery=host.querySelector;
+ const panel={hidden:true,contains:()=>false},attributes=new Map([['aria-expanded','false']]);
+ const toggle={setAttribute:(name,value)=>attributes.set(name,value)};
+ host.querySelector=selector=>selector==='#bbobQuickAccountPanel'?panel:selector==='[data-bbob="quick-account"]'?toggle:originalQuery(selector);
+ let html=host.innerHTML,renders=0;
+ Object.defineProperty(host,'innerHTML',{get:()=>html,set:value=>{renders++;html=value;}});
+ const saved=h.storage.get(KEY),writes=h.writes.length;
+ h.tap('quick-account');assert.equal(panel.hidden,false);assert.equal(attributes.get('aria-expanded'),'true');
+ h.tap('quick-account');assert.equal(panel.hidden,true);assert.equal(attributes.get('aria-expanded'),'false');
+ assert.equal(renders,0,'disclosure must not detach and remount the real credential fields');
+ assert.equal(h.storage.get(KEY),saved);assert.equal(h.writes.length,writes);assert.deepEqual(h.preferences,[]);assert.equal(h.read().step,1);
+});
+
 test('quick setup has three screens, preserves drafts on Back and finishes Free without a tutorial or billing write',()=>{
  const h=harness();
  assert.equal(h.read().step,1);assert.match(h.active().innerHTML,/Setup step 1 of 3/);

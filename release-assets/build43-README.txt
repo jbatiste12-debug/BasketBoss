@@ -18,9 +18,9 @@ The Premium offer opens the existing verified purchase page. Apple shows the act
 Do not run ordinary npm run ios:sync after this launcher; that selects the legacy catalogue instead of the 700-recipe release.
 
 Pinned application source:
-https://github.com/jbatiste12-debug/BasketBoss/commit/364b24379ab55a304a4e7e69283a655fe46c760f
+https://github.com/jbatiste12-debug/BasketBoss/commit/032558d724f41654c5f55048853c793e88cf1ed0
 
 Complete source ZIP:
-https://github.com/jbatiste12-debug/BasketBoss/archive/364b24379ab55a304a4e7e69283a655fe46c760f.zip
+https://github.com/jbatiste12-debug/BasketBoss/archive/032558d724f41654c5f55048853c793e88cf1ed0.zip
 
 See build43-whats-new.txt for Apple Connect notes and build43-what-to-test.txt for regression checks.

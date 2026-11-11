@@ -134,12 +134,13 @@ for(const viewport of [{width:320,height:700},{width:390,height:844},{width:844,
  const {page,context,errors,network}=await fixture(viewport);
  try{
   const original=await snapshot(page);let host=await assertStep(page,1);
-  assert.equal(await host.locator('[data-bbob-account]').evaluate(node=>node.open),false,'sign-in starts optional and collapsed');
+  const accountToggle=host.locator('[data-bbob="quick-account"]');
+  assert.equal(await accountToggle.getAttribute('aria-expanded'),'false','sign-in starts optional and collapsed');
   assert.match(await host.innerText(),/No subscription or account needed/);
   assert.match(await host.innerText(),/200 free recipes/,'the current generated release advertises its actual Free catalogue');
   assert.doesNotMatch(await host.innerText(),/\b100\b/,'the current release never shows the legacy Free recipe count');
   assert.equal(await host.locator('#bbob-title').evaluate(node=>getComputedStyle(node).outlineStyle),'none','programmatic heading focus does not draw clipped outline rules');
-  await host.locator('[data-bbob-account]>summary').click();
+  await accountToggle.click();
   assert.equal(await host.locator('#cloud-auth #cloud-login').count(),1,'the existing sign-in control is reused');
   assert.equal(await host.locator('#cloud-auth #cloud-signup').count(),1,'the existing create-account control remains available');
   await host.locator('#cloud-email').fill('returning@example.invalid');
@@ -229,23 +230,50 @@ test('generated 700 offers the existing Premium page after saving setup without 
  }finally{await context.close();}
 });
 
-test('native keyboard smoke identifiers open the real optional account disclosure in generated 700 setup',{skip:!chromium&&'Playwright unavailable',timeout:60000},async()=>{
+for(const viewport of [{width:390,height:844},{width:402,height:874}])test(`native keyboard smoke identifiers open a visible real account form at ${viewport.width}×${viewport.height}`,{skip:!chromium&&'Playwright unavailable',timeout:60000},async()=>{
  const swift=await fs.readFile(path.join(root,'ios/App/App/AppDelegate.swift'),'utf8');
  const start=swift.indexOf('const identifyControls=()=>{'),end=swift.indexOf('const check=setInterval',start);
  assert.ok(start>=0&&end>start,'the real Debug simulator keyboard helper is available');
  const identifyControls=swift.slice(start,end);
- const {page,context,errors,network}=await fixture();
+ const {page,context,errors,network}=await fixture(viewport);
  try{
   let host=await assertStep(page,1);
   // Execute the helper extracted from AppDelegate's raw JavaScript, keeping
-  // its exact selectors, accessible names and disclosure role adaptation.
+  // its exact selectors and accessible names against the real account button.
   await page.evaluate(identifyControls+'\nidentifyControls();');
   const next=host.getByRole('button',{name:'bbobNext',exact:true});
-  assert.equal(await next.evaluate(node=>node.tagName),'SUMMARY','the native smoke tap addresses the account disclosure');
+  assert.equal(await next.getAttribute('data-bbob'),'quick-account','the native smoke tap addresses the optional account action');
+  assert.equal(await next.getAttribute('aria-expanded'),'false');
+  const panelId=await next.getAttribute('aria-controls');assert.ok(panelId,'the account action identifies its controlled panel');
+  const panel=host.locator(`[id="${panelId}"]`),originalForm=await host.locator('#cloud-auth').elementHandle();
+  assert.equal(await panel.isVisible(),false,'the account form remains optional before the native tap');
+  const backgroundScroll=()=>page.evaluate(()=>({x:scrollX,y:scrollY,rootTop:document.documentElement.scrollTop,rootLeft:document.documentElement.scrollLeft,bodyTop:document.body.scrollTop,shellTop:document.querySelector('.shell')?.scrollTop}));
+  const beforeScroll=await backgroundScroll();
   await next.click();host=await assertStep(page,1);
-  assert.equal(await host.locator('[data-bbob-account]').evaluate(node=>node.open),true);
+  assert.equal(await next.getAttribute('aria-expanded'),'true');assert.equal(await panel.isVisible(),true);
+  const geometry=await page.evaluate(()=>({
+   main:document.querySelector('#bbNewOnboarding .bbob-main').getBoundingClientRect().toJSON(),
+   footer:document.querySelector('#bbNewOnboarding .bbob-footer').getBoundingClientRect().toJSON(),
+   fields:['cloud-email','cloud-password'].map(id=>({id,...document.getElementById(id).getBoundingClientRect().toJSON()})),
+   inputFocused:document.activeElement?.matches('#cloud-email,#cloud-password')===true,
+  }));
+  assert.equal(geometry.inputFocused,false,'opening the account form does not focus an input or summon the keyboard');
+  for(const field of geometry.fields){
+   assert.ok(field.left>=geometry.main.left&&field.right<=geometry.main.right,`${field.id} fits the visible main width`);
+   assert.ok(field.top>=geometry.main.top&&field.bottom<=geometry.main.bottom,`${field.id} is fully visible immediately after opening, before input focus`);
+   assert.ok(field.bottom<=geometry.footer.top,`${field.id} is clear of the fixed footer`);
+  }
+  assert.deepEqual(await backgroundScroll(),beforeScroll,'opening the form scrolls only the onboarding main, keeping the app background and document position fixed');
   assert.equal(await host.locator('#cloud-auth #cloud-email').isVisible(),true,'the original email field is available to the native keyboard test');
   assert.equal(await host.locator('#cloud-auth #cloud-password').isVisible(),true,'the original password field is available to the native keyboard test');
+  await host.locator('#cloud-email').fill('returning@example.invalid');await host.locator('#cloud-password').fill('existing-account-password');
+  await next.click();await assertStep(page,1);
+  assert.equal(await next.getAttribute('aria-expanded'),'false');assert.equal(await panel.isVisible(),false);
+  await next.click();host=await assertStep(page,1);
+  assert.equal(await next.getAttribute('aria-expanded'),'true');assert.equal(await panel.isVisible(),true);
+  assert.equal(await originalForm.evaluate(node=>node.isConnected&&node===document.getElementById('cloud-auth')),true,'account toggles preserve the same real form and its handlers');
+  assert.equal(await host.locator('#cloud-email').inputValue(),'returning@example.invalid','collapsing and reopening preserves the email draft');
+  assert.equal(await host.locator('#cloud-password').inputValue(),'existing-account-password','collapsing and reopening preserves the password draft');
   const continueSetup=host.getByRole('button',{name:'Continue without signing in',exact:true});
   assert.equal(await continueSetup.getAttribute('data-bbob'),'next','the real setup action keeps its existing handler');
   assert.equal(await continueSetup.getAttribute('aria-label'),null,'the account identifier does not replace the setup action label');

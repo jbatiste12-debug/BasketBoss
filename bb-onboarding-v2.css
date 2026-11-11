@@ -221,6 +221,12 @@ html.bb-onboarding-open body .shell .tabs,html.bb-onboarding-open body nav.bb-r6
 #bbNewOnboarding .bbob-quick-details>summary>span{font-size:10px;font-weight:500;color:#7a826a;margin-left:5px}
 #bbNewOnboarding .bbob-quick-details[open]{padding-bottom:12px}
 #bbNewOnboarding .bbob-quick-details>p{font-size:12px;line-height:1.55;color:#64745b;margin:2px 0 13px}
+#bbNewOnboarding .bbob-quick-account-toggle{display:flex;align-items:center;gap:8px;min-height:48px;width:100%;padding:14px 0;border:0;background:transparent;color:#36553d;text-align:left;font-size:12px;font-weight:750;line-height:1.5}
+#bbNewOnboarding .bbob-quick-account-toggle>span{display:inline-block;font-size:20px;line-height:16px;transform:rotate(0deg)}
+#bbNewOnboarding .bbob-quick-account-toggle[aria-expanded="true"]>span{transform:rotate(90deg)}
+#bbNewOnboarding .bbob-quick-account-panel{padding-bottom:12px}
+#bbNewOnboarding .bbob-quick-account-panel[hidden]{display:none!important}
+#bbNewOnboarding .bbob-quick-account-panel>p{font-size:12px;line-height:1.55;color:#64745b;margin:2px 0 13px}
 #bbNewOnboarding.bbob-quick h2{font-size:13px;color:#244a34;line-height:1.4;margin:1px 0 11px;font-weight:800}
 #bbNewOnboarding .bbob-quick-setup>.bbob-options{grid-template-columns:repeat(2,minmax(0,1fr));gap:8px;margin:0 0 16px}
 #bbNewOnboarding.bbob-quick .bbob-option{min-height:45px;font-size:12px;padding:10px;border:1px solid #d6decd;border-radius:11px;background:#fffdf7;gap:9px}
@@ -248,4 +254,4 @@ html.bb-onboarding-open body .shell .tabs,html.bb-onboarding-open body nav.bb-r6
 @media(max-width:359px){#bbNewOnboarding.bbob-quick .bbob-shell{width:calc(100% - 28px)}#bbNewOnboarding .bbob-quick-offer{padding:18px 15px 5px}#bbNewOnboarding .bbob-quick-offer-top>b{font-size:6px;padding:4px 5px}#bbNewOnboarding .bbob-quick-offer li{gap:9px}#bbNewOnboarding .bbob-quick-offer li strong{font-size:12px}#bbNewOnboarding.bbob-quick .bbob-exit{font-size:10px}}
 @media(max-height:700px){#bbNewOnboarding.bbob-quick .bbob-main{padding-top:15px}#bbNewOnboarding.bbob-quick .bbob-description{font-size:13px;margin:10px 0 15px}#bbNewOnboarding .bbob-quick-welcome>img{height:170px}#bbNewOnboarding .bbob-quick-welcome{min-height:170px}}
 @media(max-height:480px){#bbNewOnboarding.bbob-quick .bbob-shell{padding-top:5px;padding-bottom:4px}#bbNewOnboarding .bbob-quick-progress{margin-top:3px;gap:4px}#bbNewOnboarding.bbob-quick .bbob-main{padding-top:12px}#bbNewOnboarding.bbob-quick .bbob-footer{gap:4px;padding-top:5px}#bbNewOnboarding.bbob-quick .bbob-btn{min-height:42px;padding:8px 13px}#bbNewOnboarding.bbob-quick .bbob-btn.bbob-link{min-height:26px;padding:3px 12px}}
-@media(max-width:560px){#bbNewOnboarding.bbob-quick.bbob-keyboard .bbob-quick-welcome,#bbNewOnboarding.bbob-quick.bbob-keyboard .bbob-quick-free,#bbNewOnboarding.bbob-quick.bbob-keyboard .bbob-quick-progress{display:none}#bbNewOnboarding.bbob-quick.bbob-keyboard .bbob-quick-account{border:0;padding:0;background:transparent}#bbNewOnboarding.bbob-quick.bbob-keyboard .bbob-quick-account>summary,#bbNewOnboarding.bbob-quick.bbob-keyboard .bbob-quick-account>p{display:none}}
+@media(max-width:560px){#bbNewOnboarding.bbob-quick.bbob-keyboard .bbob-quick-welcome,#bbNewOnboarding.bbob-quick.bbob-keyboard .bbob-quick-free,#bbNewOnboarding.bbob-quick.bbob-keyboard .bbob-quick-progress{display:none}#bbNewOnboarding.bbob-quick.bbob-keyboard .bbob-quick-account{border:0;padding:0;background:transparent}#bbNewOnboarding.bbob-quick.bbob-keyboard .bbob-quick-account-toggle,#bbNewOnboarding.bbob-quick.bbob-keyboard .bbob-quick-account-panel>p{display:none}}

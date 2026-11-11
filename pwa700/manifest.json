@@ -514,7 +514,7 @@
     {
       "path": "app.html",
       "bytes": 2995112,
-      "sha256": "00422ad53a81fcf4130b221ab886096508cfad2152007b340d205ef7d68bee62"
+      "sha256": "828a9ae680629f09618f6f2d9fe252c537051593247bff7159244838cdfb2af9"
     },
     {
       "path": "basketboss-latest-guide.html",
@@ -543,8 +543,8 @@
     },
     {
       "path": "bb-onboarding-v2.js",
-      "bytes": 51326,
-      "sha256": "fced3181b839490bb17e76d1a2a93b4b2de9cd7e1fb5a54293a1b71b7652dfa9"
+      "bytes": 52429,
+      "sha256": "795e91f73dd50533f4c5d6d90b2817079a6bd32db1ef2e2e4d7cb12ef949a8ac"
     },
     {
       "path": "bb-pantry-selection.css",
@@ -649,7 +649,7 @@
     {
       "path": "precache.js",
       "bytes": 10538,
-      "sha256": "e88c690879c53a1ae760a20f728646348eefb10600933312f0dcf150cc2793a4"
+      "sha256": "cfff5c4f9bf0f782aaf5f7721b79972f5e959ca3b00df31c3125cfb70c5c8e6d"
     },
     {
       "path": "pricing-sandbox.html",
