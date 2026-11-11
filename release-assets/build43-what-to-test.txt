@@ -14,3 +14,4 @@ Uploading this build to TestFlight does not replace or withdraw an App Store sub
 9. Sign-in is optional. Open the original email/password form, check the keyboard, go Back, and confirm the draft remains intact.
 10. Household, region, goals and diets remain drafts until you finish. Continue free applies chosen preferences once; cancelling a replay preserves the original choices.
 11. Premium opens the existing verified plan/Apple purchase screen after saving setup. No price or free-trial claim is invented. Continue free never creates or changes an entitlement.
+12. Confirm ingredients used for a meal. Items reduced to exactly zero disappear from At home and its storage counts immediately and after reopening. Positive leftovers and items whose amount is unknown remain visible. Shopping restock targets and confirmed-cook history remain saved.
