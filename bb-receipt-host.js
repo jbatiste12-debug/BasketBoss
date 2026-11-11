@@ -414,7 +414,9 @@
         if (!queued) return {ok: true, queued: false, localOnly: true, needsReview: false};
         if (queued.remoteConflict) return {ok: false, queued: true, needsReview: true, conflict: true};
         if (reviewing || confirmingCurrent || choosingTrip || hasPendingConfirmation()) return {ok: false, queued: true, needsReview: false, pending: true};
-        await refreshAvailability({synchronize: false});
+        // A reconnect may arrive inside the unavailable-status cache window.
+        // An explicit queued retry must check that state again immediately.
+        await refreshAvailability({synchronize: false, force: availability.available === false});
         if (!current()) return {ok: false, queued: true, needsReview: true};
         if (!availability.available) return {ok: true, queued: true, localOnly: true, needsReview: false};
         if (queued.needsReview) return {ok: false, queued: true, needsReview: true, conflict: false};
@@ -720,8 +722,15 @@
         }}});
       }
       const pendingPurchase = purchasedPantry();
-      const result = pendingPurchase
-        ? await confirmPurchasedPantry({stock, beforeStock: pendingPurchase.stock, shopSessionId: pendingPurchase.shopSessionId})
+      // A confirmed meal or undo can change an already synchronized pantry
+      // without any new purchase. Reuse its verified CAS baseline so closing
+      // offline cannot leave that deduction outside the durable retry queue.
+      const owner = read(KEYS.owner);
+      const verifiedBaseline = !pendingPurchase && cached?.initialized === true && owner.actorId === actor() &&
+        samePurchaseScope(owner.scope, cached.scope) && owner.inventoryRevision === cached.inventoryRevision && isObject(owner.serverStock)
+        ? purchaseStock(owner.serverStock) : null;
+      const result = pendingPurchase || verifiedBaseline
+        ? await confirmPurchasedPantry({stock, beforeStock: pendingPurchase?.stock || verifiedBaseline, shopSessionId: pendingPurchase?.shopSessionId})
         : await confirmCurrentPantry({stock, preserveCookReview: true});
       return {...result, weeklyReviewRequired: !!projection() && requiresPantryReview()};
     }

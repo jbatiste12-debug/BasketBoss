@@ -114,6 +114,20 @@
   if(/^(?:(?:boneless |skinless |fresh )?chicken breast(?:s| fillets?)?|chicken fillets?)$/.test(original))return 'chicken breast';
   const profile=matchProfile(value,canonicalize);return profile&&!profile.generic&&profile.head?profile.head:original;
  }
+ function cutCompatible(left,right,canonicalize){
+  // A pantry name can omit a recipe's portion description. Compare only the
+  // declared food before these terminal cut nouns; never rename saved stock.
+  const a=matchWords(left.canonical),b=matchWords(right.canonical),hasCut=words=>words.length>1&&/^(?:fillet|portion)$/.test(words.at(-1));
+  const leftCut=hasCut(a),rightCut=hasCut(b);
+  // Two explicitly named cuts are not permission to replace one another.
+  if(leftCut===rightCut)return false;
+  const coating=words=>words.filter(word=>/^(?:breaded|battered|crumbed|stuffed)$/.test(word)).sort().join('|');
+  if(coating(a)!==coating(b))return false;
+  const food=matchProfile((leftCut?a:b).slice(0,-1).join(' '),canonicalize),other=leftCut?right:left;
+  if(!food||food.protectedKey!==other.protectedKey||food.pepperRole!==other.pepperRole||food.compound!==other.compound||food.form!==other.form)return false;
+  if(food.identity===other.identity)return true;
+  return (food.generic||other.generic)&&(food.key===other.key||food.head===other.head);
+ }
  function stockCompatible(left,right,canonicalize){
   const a=matchProfile(left,canonicalize),b=matchProfile(right,canonicalize);if(!a||!b||a.protectedKey!==b.protectedKey||a.pepperRole!==b.pepperRole||a.compound!==b.compound||a.form!==b.form)return false;
   if(a.identity===b.identity)return true;
@@ -121,7 +135,7 @@
    if(a.key===b.key||a.head===b.head)return true;
    if(a.generic&&a.head==='cheese'&&b.category==='cheese'||b.generic&&b.head==='cheese'&&a.category==='cheese')return true;
   }
-  const family=stockFamily(left,canonicalize);return family===stockFamily(right,canonicalize)&&(a.canonical===family||b.canonical===family);
+  const family=stockFamily(left,canonicalize);return family===stockFamily(right,canonicalize)&&(a.canonical===family||b.canonical===family)||cutCompatible(a,b,canonicalize);
  }
  function isStaple(value){
   const name=canonicalName(value);if(!name)return false;
