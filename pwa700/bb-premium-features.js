@@ -63,7 +63,16 @@
   }
   function releaseCheckout(request,abort=false){if(!request||checkoutRequest!==request)return;checkoutRequest=null;if(abort){request.dismissed=true;request.controller.abort();}request.dialog.removeAttribute('aria-busy');for(const plan of request.links)plan.removeAttribute('aria-disabled');}
   function hideDialog(){releaseCheckout(checkoutRequest,true);const d=$('#bb173TierDialog');if(d?.open)d.close();else d?.removeAttribute('open');lastOpener?.focus({preventScroll:true});}
-  function showDialog(trigger,context){installDialog();lastOpener=trigger||document.activeElement;
+  function showDialog(trigger,context){
+    // Every legacy feature gate must reach the bundled Apple membership page.
+    // Its web plan links are hidden in native builds, so that preview alone
+    // cannot provide an upgrade action there. Navigation never starts billing.
+    if(window.BBNative?.isNative===true){
+      if(window.BasketBossMembershipUI?.open){window.BasketBossMembershipUI.open();return;}
+      if(window.BBNativeMembership?.open){window.BBNativeMembership.open();return;}
+      window.location.assign(new URL(PRICING,window.location.href).href);return;
+    }
+    installDialog();lastOpener=trigger||document.activeElement;
     $('#bb173TierDesc').textContent='Includes all 700 recipes, including 50 breakfast options, optional meal planning, Smart Auto-Fill and 1-Tap Batch Cooking, 5 AI photo scans & 10 AI meal ideas per day.';
     const checkoutStatus=$('#bb173CheckoutStatus');if(checkoutStatus){checkoutStatus.hidden=true;checkoutStatus.textContent='';}
     const d=$('#bb173TierDialog');if(!d.open){if(typeof d.showModal==='function')d.showModal();else d.setAttribute('open','');}

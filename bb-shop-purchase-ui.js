@@ -6,10 +6,11 @@
  const number=value=>typeof value==='number'&&Number.isFinite(value)&&value>=0&&value<=MAX;
  const positive=value=>number(value)&&value>0;
  const text=(value,max)=>typeof value==='string'&&value.trim()===value&&value.length>0&&value.length<=max&&!/[\u0000-\u001f\u007f]/.test(value)&&!['__proto__','constructor','prototype'].includes(value);
- const aliases={grams:'g',gram:'g',millilitres:'ml',milliliters:'ml',millilitre:'ml',milliliter:'ml',kilograms:'kg',kilogram:'kg',litres:'l',liters:'l',litre:'l',liter:'l',units:'each',unit:'each',items:'each',item:'each',pieces:'each',piece:'each',counts:'each',count:'each',packs:'pack',tins:'tin',cans:'can',buns:'bun',bulbs:'bulb',cloves:'clove',bottles:'bottle',jars:'jar',bags:'bag',loaves:'loaf',slices:'slice',rolls:'roll',tubs:'tub',eggs:'egg',fillets:'fillet'};
- const unitOf=value=>{const key=String(value||'').trim().toLowerCase();return aliases[key]||key;};
- const units=new Set(['g','ml','kg','l','each','pack','tin','can','bun','bulb','clove','bottle','jar','bag','loaf','slice','roll','tub','egg','fillet']);
- const plural=value=>({loaf:'loaves'}[value]||value+'s');
+ const aliases={grams:'g',gram:'g',millilitres:'ml',milliliters:'ml',millilitre:'ml',milliliter:'ml',kilograms:'kg',kilogram:'kg',litres:'l',liters:'l',litre:'l',liter:'l',units:'each',unit:'each',items:'each',item:'each',pieces:'each',piece:'each',counts:'each',count:'each',packs:'pack',tins:'tin',cans:'can',buns:'bun',bulbs:'bulb',cloves:'clove',bottles:'bottle',jars:'jar',bags:'bag',loaves:'loaf',slices:'slice',rolls:'roll',tubs:'tub',eggs:'egg',fillets:'fillet',cups:'cup',pints:'pint',ounces:'oz',ounce:'oz',pounds:'lb',pound:'lb',bunches:'bunch',cartons:'carton',sachets:'sachet',leaves:'leaf',containers:'container',boxes:'box',portions:'portion',servings:'serving',handfuls:'handful',pinches:'pinch',punnets:'punnet',sprigs:'sprig',heads:'head',stalks:'stalk',rashers:'rasher',breasts:'breast',thighs:'thigh'};
+ const unitOf=value=>{const key=String(value||'').trim().toLowerCase().replace(/^us\s+/,'').replace(/^fl\s*oz$/,'fl oz');return aliases[key]||key;};
+ const units=new Set(['g','ml','kg','l','each','pack','tin','can','bun','bulb','clove','bottle','jar','bag','loaf','slice','roll','tub','egg','fillet','oz','lb','fl oz','cup','pint','tsp','tbsp','bunch','carton','sachet','leaf','container','box','portion','serving','handful','pinch','punnet','sprig','head','stalk','rasher','breast','thigh']);
+ const displayMeasures=new Set(['oz','lb','fl oz','cup','pint','tsp','tbsp']);
+ const plural=value=>({loaf:'loaves',leaf:'leaves',bunch:'bunches',box:'boxes',pinch:'pinches'}[value]||value+'s');
  const digits=(value,maximumFractionDigits=1,market='UK')=>new Intl.NumberFormat(market==='US'?'en-US':'en-GB',{maximumFractionDigits,useGrouping:false}).format(value);
  function countValue(value,options={}){
   if(options.countMode==='balance')return value;
@@ -27,8 +28,12 @@
    if(rounded>=1000&&rounded%1000===0&&options.compact!==false)return digits(rounded/1000,0,market)+' '+(weight?'kg':'L');
    return digits(rounded,0,market)+' '+baseUnit;
   }
+  if(displayMeasures.has(unit)){
+   const explicitUS=/^us\s/i.test(String(rawUnit)),regional=explicitUS||market==='US',label=['cup','pint'].includes(unit)?(regional?'US ':'')+unit+(value<=1?'':'s'):unit==='fl oz'&&explicitUS?'US fl oz':unit;
+   return (value>0&&value<.1?'<0.1':digits(value,1,market))+' '+label;
+  }
   const shown=countValue(value,options),label=unit==='each'?'each':shown<=1?unit:plural(unit);
-  return (shown>0&&shown<.05?'<0.1':digits(shown,1,market))+' '+label;
+  return (shown>0&&shown<.1?'<0.1':digits(shown,1,market))+' '+label;
  }
  function amount(name,value,rawUnit,options={}){
   const formatted=formatDisplayQty(value,rawUnit,options),unit=unitOf(rawUnit);
@@ -38,10 +43,13 @@
  }
  function formatDisplayQuantityText(value,options={}){
   if(typeof value!=='string')return '';
-  return value.replace(/(^|[^\p{L}\p{N}_.-])((?:\d+(?:\.\d+)?|\.\d+)(?:e[+-]?\d+)?)\s*(millilitres?|milliliters?|kilograms?|grams?|litres?|liters?|kg|ml|g|l|each|counts?|cloves?|packs?|tins?|cans?|buns?|bulbs?|rolls?|eggs?|fillets?|bottles?|jars?|bags?|loaves?|slices?|pieces?|items?|tbsp|tsp|cups?|pints?|oz|lb|bunch(?:es)?|cartons?|sachets?|leaves?)\b/giu,(original,prefix,raw,unit)=>{
-   const quantity=Number(raw);if(!number(quantity))return original;
-   const rendered=formatDisplayQty(quantity,unit,{...options,countMode:'balance'});
-   return prefix+(/^Check\b/.test(rendered)?digits(quantity,1,options.market||'UK')+' '+unit:rendered);
+  return value.replace(/(^|[^\p{L}\p{N}_,./-])((?:(?:\d{1,3}(?:,\d{3})+|\d+)(?:\.\d+)?|\.\d+)(?:e[+-]?\d+)?)(?:\s*(–|—|-|to)\s*((?:(?:\d{1,3}(?:,\d{3})+|\d+)(?:\.\d+)?|\.\d+)(?:e[+-]?\d+)?))?\s*(millilitres?|milliliters?|kilograms?|grams?|litres?|liters?|kg|ml|g|l|each|counts?|cloves?|packs?|tins?|cans?|buns?|bulbs?|rolls?|eggs?|fillets?|bottles?|jars?|bags?|loaves?|slices?|pieces?|items?|units?|tbsp|tsp|(?:US\s+)?(?:fl\s*oz|cups?|pints?)|oz|lb|bunch(?:es)?|cartons?|sachets?|leaf|leaves|containers?|boxes?|portions?|servings?|handfuls?|pinches?|punnets?|sprigs?|heads?|stalks?|rashers?|breasts?|thighs?)\b/giu,(original,prefix,raw,separator,last,unit,offset,source)=>{
+   if(/[£$€¥₹]\s*$/.test(source.slice(0,offset+prefix.length)))return original;
+   const quantity=Number(raw.replaceAll(',',''));if(!number(quantity))return original;
+   const render=amount=>{let shown=formatDisplayQty(amount,unit,{...options,countMode:'balance',...(last?{compact:false}:{})});if(unitOf(unit)==='each'&&unit.toLowerCase()!=='each')shown=shown.replace(/ each$/,' '+unit);return /^Check\b/.test(shown)?(amount>0&&amount<.1?'<0.1':digits(amount,1,options.market||'UK'))+' '+unit:shown;};
+   let rendered=render(quantity);
+   if(last){const final=Number(last.replaceAll(',',''));if(!number(final))return original;rendered=rendered.slice(0,rendered.indexOf(' '))+(separator==='to'?' to ':separator)+render(final);}
+   return (prefix==='<'&&rendered.startsWith('<')?'':prefix)+rendered;
   });
  }
  function contextOf(value){

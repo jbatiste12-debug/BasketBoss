@@ -55,8 +55,12 @@
   const live=node.nodeValue;
   let info=sources.get(node);
   if(!info||live!==info.last){info={base:live,last:live};sources.set(node,info);}
-  const translated=measures(foodNames(info.base));
-  const out=isUS()?(nativeRegionalPrices()?translated:approximateCost(translated)):info.base;
+  const regional=measures(foodNames(info.base));
+  // The legacy regional converter and its source cache stay unchanged. Its
+  // already-localized text only needs the readable display wrapper here.
+  const translated=window.BBRecipeMeasures?.displayStep?.(regional,'UK')??window.BBShopPurchaseUI?.formatDisplayQuantityText?.(regional,{market:'US'})??regional;
+  const originalDisplay=window.BBRecipeMeasures?.displayStep?.(info.base,'UK')??window.BBShopPurchaseUI?.formatDisplayQuantityText?.(info.base,{market:market()})??info.base;
+  const out=isUS()?(nativeRegionalPrices()?translated:approximateCost(translated)):originalDisplay;
   if(out!==live){node.nodeValue=out;info.last=out;}
  }
  function textWalk(root){if(!root)return;const walker=document.createTreeWalker(root,NodeFilter.SHOW_TEXT);let node,count=0;while((node=walker.nextNode())&&count<20000){count++;if(node.nodeValue&&node.nodeValue.trim())localizeText(node);}}

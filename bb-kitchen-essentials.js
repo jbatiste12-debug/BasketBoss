@@ -16,6 +16,9 @@
   return rulesLoading;
  }
  const text=(node,value)=>{if(node&&node.textContent!==value)node.textContent=value;};
+ function readableQuantity(value){try{return window.BBShopPurchaseUI?.formatDisplayQuantityText?.(String(value),{market:window.bb307ActiveMarket?.()||'UK'})??String(value);}catch{return String(value);}}
+ function readableAmount(raw,unit,noun=false){if(String(raw).trim())try{const value=window.BBShopPurchaseUI?.formatDisplayQty?.(Number(raw),noun?'each':unit,{market:window.bb307ActiveMarket?.()||'UK',countMode:'balance'});if(value&&!/^Check\b/.test(value))return noun?value.replace(/ each$/,' '+unit+(Number(raw)===1?'':'s')):value;}catch{}return readableQuantity(raw+' '+unit);}
+ function readableHouseholdOutputs(container){for(const output of container?.querySelectorAll('.bb-home-quantities output')||[])text(output,readableQuantity(output.textContent));}
  function sectionButton(label,key,panel){
   const node=doc.createElement('button');node.type='button';node.textContent=label;
   node.id=key==='food'?'bbKitchenFoodTab':'bbKitchenEssentialsTab';node.dataset.bbkeSection=key;
@@ -115,7 +118,7 @@
   const values=rows.map(row=>{
    const name=row.querySelector('strong').textContent,amount=row.querySelector('[data-bb5-qty]').value,unit=row.querySelector('[data-bb5-unit]').value,needed=row.querySelector('[data-bb5-needed]')?.value,buy=row.querySelector('output')?.textContent;
    const status=row.querySelector('[data-bb5-staple-status]')?.value,container=window.BBPantryPolicy?.containerLabel(name)||'unit';
-   return {name,description:status?({in:'In Stock',low:'Low',out:'Out',unknown:'Review status'}[status]||'Review status')+(amount.trim()?' · '+amount+' '+container+(Number(amount)===1?'':'s'):'')+' · container tracking':(amount.trim()?amount+' '+unit+' already got':'Amount unknown — enter an amount to reduce Shopping')+(needed!==undefined?' · '+needed+' '+unit+' needed':'')+(buy?' · '+buy:'')};
+   return {name,description:readableQuantity(status?({in:'In Stock',low:'Low',out:'Out',unknown:'Review status'}[status]||'Review status')+(amount.trim()?' · '+readableAmount(amount,container,true):'')+' · container tracking':(amount.trim()?readableAmount(amount,unit)+' already got':'Amount unknown — enter an amount to reduce Shopping')+(needed!==undefined?' · '+readableAmount(needed,unit)+' needed':'')+(buy?' · '+buy:''))};
   });
   let groups=null,pin=null;try{groups=window.BBPantryGroups?.snapshot(key);pin=window.BBPantryGroups?.context();}catch{}
   const stamp=JSON.stringify([values,pin,groupUI()?.active(key)]);
@@ -286,16 +289,17 @@
   if(rules){for(const area of kitchen.querySelectorAll('.bb76-store[data-bb76-store]')){foodChoices(area);selectedReadout(area,kitchen);}refreshGroupPickers(kitchen);if(original)householdChoices(original,kitchen);}
   window.BBHome?.decorate?.(original);
   window.BBHouseholdAmount?.decorate?.(original);
+  readableHouseholdOutputs(original);
   kitchen.querySelector('#bb5Reconcile')?.classList.add('bbke-reconcile-top');
   sections(kitchen,essentials);
  }
  function schedule(){if(!queued){queued=true;requestAnimationFrame(refresh);}}
  function start(){
   refresh();const app=doc.getElementById('app');if(!app)return;
-  app.addEventListener('input',event=>{if(event.target.matches('[data-bb5-qty],[data-bb5-needed]'))schedule();});
+  app.addEventListener('input',event=>{if(event.target.matches('[data-bb5-qty],[data-bb5-needed]')||event.target.closest?.('#bbKitchenEssentials .bb-home-quantities'))schedule();});
   app.addEventListener('change',event=>{if(event.target.matches('[data-bb5-unit],[data-bb5-staple-status],[data-bb5-pack-unit]'))schedule();});
   new MutationObserver(records=>{
-   if(records.some(record=>record.target===app||record.target.matches?.('[data-bb76-tiles],#bb5SelectedRows')||[...record.addedNodes].some(node=>node.nodeType===1&&(node.matches?.('#bb173ShopFridge,[data-bb307-extras="shop"],#bb1756PlannerExtras,#bb1756Essentials,[data-bb5-food]')||node.querySelector?.('#bb173ShopFridge,#bb1756Essentials')))))schedule();
+   if(records.some(record=>record.target===app||record.target.matches?.('[data-bb76-tiles],#bb5SelectedRows')||record.target.closest?.('#bbKitchenEssentials .bb-home-quantities')||[...record.addedNodes].some(node=>node.nodeType===1&&(node.matches?.('#bb173ShopFridge,[data-bb307-extras="shop"],#bb1756PlannerExtras,#bb1756Essentials,[data-bb5-food]')||node.querySelector?.('#bb173ShopFridge,#bb1756Essentials')))))schedule();
   }).observe(app,{childList:true,subtree:true});
   new MutationObserver(schedule).observe(doc.body,{attributes:true,attributeFilter:['data-bbnext-view']});
   const reset=()=>{selectedSection='food';choices.clear();window.BBPantryGroupsUI?.reset();app.querySelectorAll('[data-bbpg-revision],[data-bbke-values]').forEach(node=>{delete node.dataset.bbpgRevision;delete node.dataset.bbkeValues;});schedule();};

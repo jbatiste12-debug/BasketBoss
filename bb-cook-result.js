@@ -7,9 +7,9 @@
  const durationLabel=minutes=>root.BBDuration?.format(minutes)??String(minutes)+'mins';
  const durationText=value=>root.BBDuration?.text(value)??String(value??'');
  function market(){try{return root.BasketBossMarket?.get?.()||root.localStorage?.getItem('basketboss_321_v7_market')||'Jersey';}catch{return 'Jersey';}}
- const quantity=item=>root.BBRecipeMeasures?.quantity(item?.quantity||'Quantity unclear',item?.name,market())??String(item?.quantity||'Quantity unclear');
+ const quantity=item=>root.BBRecipeMeasures?.displayQuantity?.(item?.quantity||'Quantity unclear',item?.name,market())??String(item?.quantity||'Quantity unclear');
  const cleanStep=value=>root.BBCookMethod?.normalizeStep(value)??String(value??'').replace(/^\s*\d+[.)]\s*/,'');
- const stepText=value=>durationText(root.BBRecipeMeasures?.step(cleanStep(value),market())??cleanStep(value));
+ const stepText=value=>durationText(root.BBRecipeMeasures?.displayStep?.(cleanStep(value),market())??cleanStep(value));
  const recipeMethod=recipe=>root.BBCookMethod?.normalizeMethod(recipe)??items(recipe.steps);
  function ingredientsMarkup(ingredients){return ingredients.map(item=>`<li><span><span data-bb-measures>${escape(quantity(item))}</span> ${escape(item?.name||'')}</span><small>${item?.fromHome===false?'To buy':'Selected food · check quantity'}</small></li>`).join('');}
  function methodMarkup(steps){return steps.map(step=>{
