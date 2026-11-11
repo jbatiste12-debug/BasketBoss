@@ -65,8 +65,12 @@ jobs:
           fi
           echo "native=$native" >> "$GITHUB_OUTPUT"
   portable-verification:
+    # Main full suites share one slot; never overlap Chromium runners per ref.
+    concurrency:
+      group: basketboss-full-regression-${{ github.ref }}
+      cancel-in-progress: false
     runs-on: ubuntu-latest
-    timeout-minutes: 15
+    timeout-minutes: 20
     steps:
       - uses: actions/checkout@v4
         with:
@@ -103,30 +107,38 @@ jobs:
           path: artifacts/apple-purchase-local-diagnostic.json
           if-no-files-found: error
           retention-days: 14
-      - name: Install isolated PostgreSQL test engine
-        run: npm install --prefix "$RUNNER_TEMP/bb-apple-pg" --package-lock=false --ignore-scripts --no-audit --no-fund @electric-sql/pglite@0.3.14
+      - name: Configure isolated full-suite tools
+        run: |
+          printf '%s\n' \
+            "PLAYWRIGHT_BROWSERS_PATH=$RUNNER_TEMP/bb-apple-pg-chromium" \
+            "BB_PLAYWRIGHT_MODULE=$RUNNER_TEMP/bb-apple-pg/node_modules/playwright" \
+            "BB_PGLITE_MODULE=$RUNNER_TEMP/bb-apple-pg/node_modules/@electric-sql/pglite" \
+            "BB_RECEIPT_PGLITE_PATH=$RUNNER_TEMP/bb-apple-pg/node_modules/@electric-sql/pglite/dist/index.js" >> "$GITHUB_ENV"
+      - name: Install pinned browser and PostgreSQL test engines
+        run: >-
+          npm install --prefix "$RUNNER_TEMP/bb-apple-pg"
+          --package-lock=false --ignore-scripts --no-audit --no-fund
+          playwright@1.62.1 @electric-sql/pglite@0.3.14
+      - name: Install the matching Chromium runtime
+        run: node "$BB_PLAYWRIGHT_MODULE/cli.js" install --with-deps chromium
+      - name: Require the browser and PostgreSQL test engines
+        run: |
+          node <<'JS'
+          const assert = require('node:assert/strict');
+          const {chromium} = require(process.env.BB_PLAYWRIGHT_MODULE);
+          const {PGlite} = require(process.env.BB_PGLITE_MODULE);
+          assert.equal(typeof chromium.launch, 'function');
+          assert.equal(typeof PGlite, 'function');
+          require('node:fs').accessSync(chromium.executablePath());
+          console.log('Pinned browser and PostgreSQL test engines are available.');
+          JS
       - name: Verify Apple, web billing, household and account regression suites
         env:
           BB_PGLITE_MODULE: ${{ runner.temp }}/bb-apple-pg/node_modules/@electric-sql/pglite
           BB_RECEIPT_PGLITE_PATH: ${{ runner.temp }}/bb-apple-pg/node_modules/@electric-sql/pglite/dist/index.js
-        # Full sequential browser coverage stays in web700-regression.yml.
-        # This job deliberately installs only the portable PostgreSQL tools.
-        run: >-
-          node --test --test-concurrency=1
-          tests/basketboss-apple*.test.mjs
-          tests/basketboss-native*.test.mjs
-          tests/basketboss-account-deletion*.test.mjs
-          tests/basketboss-premium-billing*.test.mjs
-          tests/basketboss-premium-ai-checkout-reconcile.test.mjs
-          tests/basketboss-testflight-beta*.test.mjs
-          tests/basketboss-public-legal.test.mjs
-          tests/basketboss-household-amount*.test.mjs
-          tests/basketboss-household-production.test.mjs
-          tests/basketboss-household-quantities.test.mjs
-          tests/basketboss-household-readable-quantities.test.mjs
-          tests/basketboss-household-readiness.test.mjs
-          tests/basketboss-household-routing.test.mjs
-          tests/basketboss-shared-shopping*.test.mjs
+        # Execute every assertion, including mandatory browser and historical SQL audits.
+        # web700-regression.yml provides the same full coverage for review/manual runs.
+        run: node --test --test-concurrency=1 tests/*.test.mjs
       - name: Install isolated Cloudflare runtime verification tools
         run: npm install --prefix "$RUNNER_TEMP/bb-apple-worker" --package-lock=false --ignore-scripts --no-audit --no-fund wrangler@4.156.0
       - name: Verify cold Worker startup and real signature verification

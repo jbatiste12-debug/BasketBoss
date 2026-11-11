@@ -3,6 +3,7 @@ name: Verify web catalogue 700 and build 43 regressions
 on:
   workflow_dispatch:
   pull_request:
+    types: [opened, synchronize, reopened, ready_for_review]
     paths:
       - .github/workflows/web700-regression.yml
       - tools/catalogue700/**
@@ -63,6 +64,11 @@ permissions:
 
 jobs:
   portable-and-browser:
+    # Main full suites run in Apple/compliance; review and manual runs stay here.
+    if: github.event_name == 'workflow_dispatch' || (github.event_name == 'pull_request' && github.event.pull_request.draft == false)
+    concurrency:
+      group: basketboss-full-regression-${{ github.ref }}
+      cancel-in-progress: false
     runs-on: ubuntu-latest
     timeout-minutes: 20
     steps:
@@ -116,6 +122,4 @@ jobs:
         run: npm run build:native
       - name: Run the complete application, PostgreSQL and Chromium regressions
         run: node --test --test-concurrency=1 tests/*.test.mjs
-      - name: Verify the deployed public 700 catalogue and legacy boundaries
-        if: github.event_name == 'push' && github.ref == 'refs/heads/main'
-        run: node scripts/verify-web700-deployment.mjs
+      # Live main deployment is checked by verify-web700-deployment.yml.

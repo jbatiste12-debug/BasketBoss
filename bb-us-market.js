@@ -59,7 +59,9 @@
   // The legacy regional converter and its source cache stay unchanged. Its
   // already-localized text only needs the readable display wrapper here.
   const translated=window.BBRecipeMeasures?.displayStep?.(regional,'UK')??window.BBShopPurchaseUI?.formatDisplayQuantityText?.(regional,{market:'US'})??regional;
-  const originalDisplay=window.BBRecipeMeasures?.displayStep?.(info.base,'UK')??window.BBShopPurchaseUI?.formatDisplayQuantityText?.(info.base,{market:market()})??info.base;
+  // Keep already-readable integer prose (including the mentor's answer)
+  // intact; only decimal quantities need the non-US rounding adapter.
+  const originalDisplay=/\d*\.\d+/.test(info.base)?(window.BBRecipeMeasures?.displayStep?.(info.base,'UK')??window.BBShopPurchaseUI?.formatDisplayQuantityText?.(info.base,{market:market()})??info.base):info.base;
   const out=isUS()?(nativeRegionalPrices()?translated:approximateCost(translated)):originalDisplay;
   if(out!==live){node.nodeValue=out;info.last=out;}
  }
