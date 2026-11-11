@@ -27,7 +27,7 @@ test('saved-list copy formatting is optional and never rounds the archived quant
   const formatted = continuation.formatList(snapshot, format);
   assert.match(formatted, /833 g Rice/);
   assert.match(formatted, /<1 g Tiny herbs/);
-  assert.match(formatted, /2\.33 each Eggs/);
+  assert.match(formatted, /2\.3 each Eggs/);
   assert.match(formatted, /Check quantity Kitchen rolls/);
   assert.doesNotMatch(formatted, /833\.333333|0\.000001|2\.333333/);
   assert.equal(continuation.formatList(snapshot), legacy);
@@ -90,7 +90,7 @@ test('saved, shared, bought and pending UI quantities use the optional formatter
     await page.waitForFunction(() => [...document.querySelectorAll('.bbss-quantity')].some(node => node.textContent === '833 g'));
     await page.locator('.bb-shop-continuation-details > summary').click();
     assert.match(await page.locator('.bbss-list').innerText(), /<1 g/);
-    assert.equal(await page.locator('.bbss-history .bbss-quantity').textContent(), '2.33 eggs');
+    assert.equal(await page.locator('.bbss-history .bbss-quantity').textContent(), '2.3 eggs');
     assert.match(await page.locator('.bbss-pending-list').innerText(), /Syrup · 17 ml · Not shared yet/);
     assert.match(await page.locator('.bb-shop-continuation-list').innerText(), /833 g/);
     assert.match(await page.locator('.bb-shop-continuation-list').innerText(), /<1 g/);

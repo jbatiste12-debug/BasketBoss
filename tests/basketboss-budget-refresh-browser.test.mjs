@@ -223,15 +223,31 @@ test('current 700 current-basket totals retain real unpriced essentials as pendi
  const {page,context,errors}=await fixture(390,{unpriced:true});
  try{
   const archive=await page.evaluate(()=>window.__budgetQA.archive());
-  await assertPlanBudget(page,12.50,'unpriced essentials cannot turn historical spending into today’s estimate');
   const summary=await page.evaluate(()=>window.__budgetQA.summary());
   assert.equal(summary.pending,1);assert.equal(summary.remainingPending,1);
-  assert.equal(await page.locator('#myWeekEstimatedTotal').textContent(),'£12.50 +','Plan marks the incomplete current-basket estimate explicitly');
-  assert.match(await page.locator('.bb77-price-note').textContent(),/1 item still needs a price/);
+  assert.equal(summary.remainingTotal,12.50,'the underlying basket retains its known-price subtotal');
+  assert.equal(summary.total,263.95,'the completed trip stays in weekly spending history');
+  const shampoo=summary.essentials.find(item=>item.id==='shampoo-unpriced');
+  assert.equal(shampoo.priceQuote.amount,null,'a display guide cannot invent an authoritative product price');
+  assert.equal(shampoo.priceQuote.priceNeeded,true);
+  const displayed=await page.locator('#myWeekEstimatedTotal').textContent();
+  assert.equal(displayed,'£15.00','Plan includes the optional guide for the unpriced essential');
+  assert.equal(Number(displayed.slice(1))-summary.remainingTotal,2.50,'the guide contributes exactly £2.50 to the display only');
+  assert.equal(await page.evaluate(()=>document.body.dataset.bbnextView),'week','the displayed estimate is ready before any Shop navigation');
+  assert.equal(await page.locator('#myWeekEstimatedTotal').evaluate(node=>node.parentElement.querySelector('small')?.textContent),'to buy');
+  const settings=page.locator('#bbSimpleBudget');await settings.waitFor();
+  assert.equal(await settings.evaluate(node=>node.open),false,'weekly spending remains in the existing closed budget disclosure');
+  assert.equal(await settings.locator('.bb77-weekly-forecast').isVisible(),false);
+  const trim=page.locator('.bb81-trim-banner');
+  if(await trim.count()){
+   assert.equal(await settings.locator('.bbs-budget-body .bb81-trim-banner').count(),await trim.count());
+   assert.equal(await trim.first().isVisible(),false,'history-driven suggestions remain inside the closed budget disclosure');
+  }
+  assert.equal(await page.locator('.bb77-price-note').textContent(),'','the current shopping display uses its numeric guide');
   assert.match(await page.locator('#bbSimpleBudget .bb77-weekly-forecast').textContent(),/£263\.95 \+/,'weekly history stays visibly incomplete too');
-  await assertOverviewBudget(page,12.50);
-  assert.match(await page.locator('#bbReleaseShopOverview .bb-r6-stat').last().textContent(),/\+/,'Shop overview retains the incomplete-estimate marker');
-  assert.match(await page.locator('.bb321-shop-summary-stats').textContent(),/1 unpriced/);
+  await assertOverviewBudget(page,15.00);
+  assert.doesNotMatch(await page.locator('#bbReleaseShopOverview .bb-r6-stat').last().textContent(),/\+/,'Shop overview includes the numeric guide');
+  assert.doesNotMatch(await page.locator('.bb321-shop-summary-stats').textContent(),/\bunpriced\b/);
   assert.equal(await page.evaluate(()=>window.__budgetQA.archive()),archive);
   assert.deepEqual(errors,[]);
  }finally{await context.close();}

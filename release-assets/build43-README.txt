@@ -26,11 +26,13 @@ Shopping pack controls: tap the green Buying pill on an item. A preset saves wit
 Do not run ordinary npm run ios:sync after this launcher; that selects the legacy catalogue instead of the 700-recipe release.
 
 Pinned application source:
-https://github.com/jbatiste12-debug/BasketBoss/commit/8fc8530cbf972097f96c3aea0d84dff23ad7b8b1
+https://github.com/jbatiste12-debug/BasketBoss/commit/b6a8e2bcef58dfd73ede16d4ffbc064297ec47f5
 
 Complete source ZIP:
-https://github.com/jbatiste12-debug/BasketBoss/archive/8fc8530cbf972097f96c3aea0d84dff23ad7b8b1.zip
+https://github.com/jbatiste12-debug/BasketBoss/archive/b6a8e2bcef58dfd73ede16d4ffbc064297ec47f5.zip
 
 See build43-whats-new.txt for Apple Connect notes and build43-what-to-test.txt for regression checks.
 
 Shopping checkbox reliability: checkbox events stop independently of Buying controls. A failed purchase does not leave a false tick. If online and device pantry amounts differ, the existing review opens within Shop; Use this device’s amounts prefills the saved values, and confirmation retries only the intended purchase. Other successful purchases are kept.
+
+Emergency presentation audit: whole-unit display labels now cover confirmation messages and Cook from pantry too. Unknown household/custom prices have an editable guide estimate. Household purchases stay in Weekly essentials; existing food-filed household stock is moved only after you review the actual total. Whole lime/lemon/orange count purchases retain canonical grams and an optional count-display proof. See docs/qa/2026-11-11-shopping-integrity-audit.md.

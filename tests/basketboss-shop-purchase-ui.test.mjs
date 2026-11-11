@@ -1,6 +1,8 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import {createRequire} from 'node:module';
+import fs from 'node:fs';
+import vm from 'node:vm';
 const ui=createRequire(import.meta.url)('../bb-shop-purchase-ui.js');
 const KEY='basketboss_shop_pack_ui_v1';
 const context=(extra={})=>({actor:'alice',trip:'trip-one',id:'pasta|g',unit:'g',...extra});
@@ -13,8 +15,8 @@ function storage(initial={}){
 test('display rounding produces readable strings without changing source amounts',()=>{
  const rows=Object.freeze([[466.666666666,'g','467 g'],[1000,'g','1 kg'],[1500,'g','1500 g'],[1.5,'kg','1500 g'],[2000,'ml','2 L'],[.000001,'g','<1 g'],[.6,'ml','<1 ml'],[0,'g','0 g'],[2.00000000001,'each','2 each'],[3.25,'each','4 each'],[2.5,'each','2.5 each']].map(Object.freeze)),before=JSON.stringify(rows);
  for(const [quantity,unit,expected]of rows)assert.equal(ui.formatDisplayQty(quantity,unit),expected);
- assert.equal(ui.formatDisplayQty(.000001,'each',{countMode:'balance'}),'<0.01 each');
- assert.equal(ui.formatDisplayQty(3.333333,'clove',{countMode:'balance'}),'3.33 cloves');
+ assert.equal(ui.formatDisplayQty(.000001,'each',{countMode:'balance'}),'<0.1 each');
+ assert.equal(ui.formatDisplayQty(3.333333,'clove',{countMode:'balance'}),'3.3 cloves');
  assert.equal(ui.formatDisplayQty(1,'bulb'),'1 bulb');assert.equal(ui.formatDisplayQty(2,'loaf'),'2 loaves');
  for(const value of [null,undefined,'300',NaN,Infinity,-1])assert.equal(ui.formatDisplayQty(value,'g'),'Check amount');
  assert.equal(ui.formatDisplayQty(5,'mystery'),'Check unit');assert.equal(JSON.stringify(rows),before);
@@ -23,7 +25,8 @@ test('display rounding produces readable strings without changing source amounts
 test('optional ingredient nouns distinguish counted garlic and eggs without altering their quantities',()=>{
  assert.equal(ui.amount('Garlic',1.2,'each',{noun:true}),'2 cloves');
  assert.equal(ui.amount('Eggs',.75,'each',{noun:true}),'1 egg');
- assert.equal(ui.amount('Eggs',.75,'each',{noun:true,countMode:'balance'}),'0.75 egg');
+ assert.equal(ui.amount('Eggs',.75,'each',{noun:true,countMode:'balance'}),'0.8 egg');
+ assert.equal(ui.amount('Toilet rolls',3.333333,'each',{noun:true,countMode:'balance'}),'3.3 rolls');
  assert.equal(ui.amount('Garlic',3,'each'),'3 each');assert.equal(ui.amount('Milk',466.66666,'ml',{noun:true}),'467 ml');
 });
 
@@ -167,4 +170,41 @@ test('detached picker nodes cannot initiate a save or receive a late host result
 
 test('an exact zero requirement cannot manufacture a one-item purchase plan',async()=>{
  const h=fixture({needed:0,recommended:null});h.picker.open();assert.equal(h.preset('exact').textContent,'Exact (0 g)');assert.equal(h.preset('exact').disabled,true);assert.equal(h.save().disabled,true);await h.save().fire('click');assert.equal(h.calls.length,0);
+});
+
+test('the browser global formatter is the same display-only function exported by the UI module',()=>{
+ const win={};vm.runInNewContext(fs.readFileSync(new URL('../bb-shop-purchase-ui.js',import.meta.url),'utf8'),{window:win});
+ assert.equal(win.formatDisplayQty,win.BBShopPurchaseUI.formatDisplayQty);assert.equal(win.formatDisplayQty(666.666667,'g'),'667 g');
+});
+
+test('opening the price action reveals and focuses its field without changing a buying amount',async()=>{
+ const h=fixture(),before=[...h.saved.values],label=h.picker.button.textContent;
+ assert.equal(h.picker.openPrice(),true);assert.equal(h.doc.activeElement,h.price());assert.equal(h.price().parentNode.hidden,false);assert.equal(h.custom().parentNode.hidden,false);assert.equal(h.calls.length,0);assert.equal(h.picker.button.textContent,label);assert.equal(h.custom().value,'1000');assert.deepEqual([...h.saved.values],before);
+ h.price().value='3.99';await h.price().fire('input');await h.save().fire('click');assert.equal(h.calls[0].quantity,1000);assert.equal(h.calls[0].priceOverride,3.99);
+});
+
+const looseProfile=Object.freeze({food:'lime',gramsPerEach:70,unitLabel:'lime'});
+const looseSelection=(count=1)=>selection({packQuantity:70,packCount:count,quantity:70*count,boughtQtyOverride:70*count,retailCount:{...looseProfile,count}});
+
+test('loose-produce count metadata stays optional, cloned, consistent and canonical in UI storage',()=>{
+ const saved=storage(),chosen=looseSelection(2),before=JSON.stringify(chosen);assert.equal(ui.writePlan(saved,context({id:'lime|g'}),chosen).ok,true);
+ const read=ui.readPlan(saved,context({id:'lime|g'}));assert.equal(read.unit,'g');assert.equal(read.quantity,140);assert.deepEqual(read.retailCount,{...looseProfile,count:2});read.retailCount.count=99;assert.equal(ui.readPlan(saved,context({id:'lime|g'})).retailCount.count,2);assert.equal(JSON.stringify(chosen),before);
+ for(const metadata of [{...looseProfile,count:1.5},{...looseProfile,count:3},{...looseProfile,count:2,gramsPerEach:80},{...looseProfile,count:2,food:'__proto__'},{...looseProfile,count:2,unitLabel:'lime\n'}]){
+  const invalid=storage();assert.equal(ui.writePlan(invalid,context({id:'lime|g'}),{...chosen,retailCount:metadata}).ok,false);assert.equal(invalid.writes.length,0);
+ }
+ assert.equal(ui.writePlan(storage(),context({unit:'ml'}),{...chosen,unit:'ml'}).ok,false,'mass-based count metadata cannot be attached to a volume');
+ assert.equal(ui.buyingLabel(chosen,'Lime'),'Buying: 2 limes');assert.equal(ui.buyingLabel(selection(),'Lime'),'Buying: 500 g pack','old gram plans are not reinterpreted as a guessed fruit count');
+});
+
+test('a supplied loose-produce profile offers integer counts while saving only their existing canonical gram basis',async()=>{
+ const h=fixture({name:'Lime',unit:'g',needed:40,recommended:looseSelection(),retailCountProfile:looseProfile,quickPresets:true}),before=[...h.saved.values];
+ h.picker.open();assert.equal(h.picker.button.textContent,'Buying: 1 lime');assert.equal(h.preset('exact').textContent,'Exact (1 lime)');assert.equal(h.preset('500'),null);assert.equal(h.preset('2').textContent,'2 limes');
+ await h.preset('2').fire('click');assert.equal(h.calls.length,1);assert.equal(h.calls[0].quantity,140);assert.equal(h.calls[0].boughtQtyOverride,140);assert.equal(h.calls[0].unit,'g');assert.equal(h.calls[0].packQuantity,70);assert.equal(h.calls[0].packCount,2);assert.equal(h.calls[0].retailCount.count,2);assert.equal(Object.isFrozen(h.calls[0].retailCount),true);assert.deepEqual([...h.saved.values],before);assert.equal(h.picker.button.textContent,'Buying: 2 limes');
+});
+
+test('loose count steps and repaint snapshots preserve metadata, while an explicit mass custom amount removes it',async()=>{
+ const h=fixture({name:'Lime',unit:'g',needed:80,recommended:looseSelection(2),retailCountProfile:looseProfile});h.picker.open();assert.equal(h.preset('exact').textContent,'Exact (2 limes)');await h.count('plus').fire('click');
+ const snapshot=h.picker.snapshot();snapshot.draft.retailCount.count=99;assert.match(h.find('.bb-shop-pack-preview').textContent,/3 limes/);const usable=h.picker.snapshot();h.picker.close();assert.equal(h.picker.restore(usable),true);await h.save().fire('click');assert.equal(h.calls[0].quantity,210);assert.equal(h.calls[0].retailCount.count,3);
+ h.picker.openPrice();h.price().value='0';await h.price().fire('input');await h.save().fire('click');assert.equal(h.calls[1].retailCount.count,3);assert.equal(h.calls[1].priceOverride,0);
+ h.picker.open();await h.preset('custom').fire('click');h.custom().value='150';await h.custom().fire('input');await h.save().fire('click');assert.equal(h.calls[2].quantity,150);assert.equal(h.calls[2].unit,'g');assert.equal(Object.hasOwn(h.calls[2],'retailCount'),false);assert.equal(h.picker.button.textContent,'Buying: 150 g');
 });

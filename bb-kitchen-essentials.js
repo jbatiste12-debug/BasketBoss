@@ -2,10 +2,19 @@
    handlers; pantry quantities, prices and shopping state keep their owners. */
 (()=>{'use strict';
  if(window.BBKitchenEssentials)return;
- const doc=document;let queued=false,selectedSection='food',rules=null;
+ const doc=document;let queued=false,selectedSection='food',rules=null,rulesLoading=null,rulesAttempts=0;
  const choices=new Map(),legacyOpen={value:false};
  const helperURL=new URL('./bb-kitchen-choice-rules.mjs',doc.currentScript?.src||location.href).href;
- import(helperURL).then(value=>{rules=value;window.BBKitchenChoiceRules=value;schedule();}).catch(()=>{});
+ function loadRules(){
+  if(rules)return Promise.resolve(rules);
+  if(rulesLoading)return rulesLoading;
+  const url=new URL(helperURL);if(rulesAttempts++)url.searchParams.set('bbRulesRetry',String(rulesAttempts));
+  rulesLoading=import(url.href).then(value=>{
+   if(typeof value?.isHousehold!=='function'||typeof value?.previewOrder!=='function'||!value.FOOD_PREVIEWS||!Array.isArray(value.HOUSEHOLD_PREVIEWS))return null;
+   rules=value;window.BBKitchenChoiceRules=value;schedule();return value;
+  }).catch(()=>null).finally(()=>{rulesLoading=null;});
+  return rulesLoading;
+ }
  const text=(node,value)=>{if(node&&node.textContent!==value)node.textContent=value;};
  function sectionButton(label,key,panel){
   const node=doc.createElement('button');node.type='button';node.textContent=label;
@@ -294,6 +303,7 @@
   for(const event of ['basketboss:account-deletion-started','basketboss:account-deletion-deleted','basketboss:account-deletion-cancelled'])window.addEventListener(event,reset);
   window.addEventListener('storage',event=>{if(event.key==='basketboss_cloud_session_v1'||event.key==='basketboss_pantry_groups_v1'||event.key===null)reset();});
  }
- window.BBKitchenEssentials=Object.freeze({refresh});
+ window.BBKitchenEssentials=Object.freeze({refresh,loadRules});
+ void loadRules();
  if(doc.readyState==='loading')doc.addEventListener('DOMContentLoaded',start,{once:true});else start();
 })();

@@ -3793,8 +3793,10 @@ body[data-bbnext-view="discover"] #app .bb-featured-card #bbFeaturedBatch {
 <script src="bb-supermarkets.js?v=20261105-reduced1"></script>
 <script src="bb-pantry-policy.js?v=20261108-baseline1"></script>
 <script src="bb-pantry-display.js?v=20261104-regions2"></script>
-<link rel="stylesheet" href="bb-shop-purchase-ui.css?v=20261111-packs1">
-<script src="bb-shop-purchase-ui.js?v=20261111-checkbox1"></script>
+<link rel="stylesheet" href="bb-shop-purchase-ui.css?v=20261111-integrity1">
+<script src="bb-household-stock-review.js?v=20261111-integrity1"></script>
+<script src="bb-loose-produce-ui.js?v=20261111-integrity1"></script>
+<script src="bb-shop-purchase-ui.js?v=20261111-integrity1"></script>
 <script src="bb-recipe-purchase-basis.js?v=20261111-dry-basis1"></script>
 <script src="bb-recipe-canonical.js?v=20261107-pantry-stock2"></script>
 <script type="module" src="bb-pantry-runtime.mjs?v=20261104-regions2"></script>
@@ -7246,7 +7248,7 @@ function bbNextComposePlan(app){
 
 let bbUIPreviouslyRenderedTab=null,bbUIRenderRevision=0;
 let bbDayDoneUI=[];let bbShopAddUI=null;
-function render(options={}){const bbUIRenderToken=++bbUIRenderRevision;const bbUINavigation=options?.navigation===true||bbUIPreviouslyRenderedTab!==null&&bbUIPreviouslyRenderedTab!==tab;if(bbUINavigation)bbUIActionRevision++;const bbUIRestoreAction=bbUIActionRevision;bbShopAddUI?.dispose();bbShopAddUI=null;bbDayDoneUI.forEach(ui=>ui.dispose());bbDayDoneUI=[];bbSavedWeeksUI?.dispose();bbSavedWeeksUI=null;document.body.classList.toggle('bbnext-compact-header',tab!=='week');document.body.classList.toggle('bbnext-plan-mode',tab==='week');document.body.dataset.bbnextView=tab;const bbUIRenderingTab=tab;if(tab!=='week')bbSavedToolsEntryPending=false;else if(bbUIPreviouslyRenderedTab!=='week')bbSavedToolsEntryPending=true;const bbUIPreserveY=!bbUINavigation&&bbUIPreviouslyRenderedTab===tab&&!document.querySelector('dialog[open],.cook-overlay')?window.scrollY:null;bb1748SyncBudget();tabs();updateStats();const app=document.getElementById('app');app.innerHTML='';if(tab==='discover')renderDiscover(app);if(tab==='week')renderWeek(app);if(tab==='shop'||tab==='shop-list')renderShop(app);if(tab==='fridge')renderFridge(app);if(tab==='overview')bb16RenderOverview(app);bbDecorate();if(tab==='week'){bb174PlannerReminder(app);bb14PolishPlanner(app);bb172PlannerPolish(app);bb176MaskPremiumPlans(app);}window.bb172ActiveTab=(tab==='shop-list'?'shop':tab);bb172PlusDecorate(app);bb172QuickstartDecorate(app);bb172PremiumDecorate(app);bb1745ShoppingPresentation(app);bb1753Reconcile(app);bb1754ShopFocused(app);bb175EnhanceUI(app);bb1748PlannerBudget(app);bb1756PlannerFlow(app);bb1757PlannerOrder(app);bbNextComposePlan(app);if(tab==='week'){bb81FilterPanel(app);bb81BudgetTrimBanner(app);bb81PlanBatchDecorate(app);bbManualPlanDecorate(app);}if(tab==='week'){bbPantryPlannerAttach(app);bbMountDayDone(app);}bbReceiptAfterRender();bbMountShopAdd(app);window.BBSharedShopping?.afterRender?.();bbShopContinuationAfterRender(app);window.BBHome?.reminders?.();window.BBHome?.openRequested?.();bbUIPreviouslyRenderedTab=bbUIRenderingTab;window.BBNavigationPolish?.refresh?.();if(bbUINavigation){if(!window.BBTabViewport?.commit?.(bbUIRenderingTab))window.scrollTo({top:0,behavior:'instant'});}else if(bbUIPreserveY!==null){requestAnimationFrame(()=>{if(bbUIRenderToken===bbUIRenderRevision&&bbUIRestoreAction===bbUIActionRevision&&tab===bbUIRenderingTab&&window.scrollY!==bbUIPreserveY&&!document.querySelector('.cook-overlay'))window.scrollTo({top:bbUIPreserveY,behavior:'instant'});});}}
+function render(options={}){const bbUIRenderToken=++bbUIRenderRevision;const bbUINavigation=options?.navigation===true||bbUIPreviouslyRenderedTab!==null&&bbUIPreviouslyRenderedTab!==tab;if(bbUINavigation)bbUIActionRevision++;const bbUIRestoreAction=bbUIActionRevision;bbShopAddUI?.dispose();bbShopAddUI=null;bbDayDoneUI.forEach(ui=>ui.dispose());bbDayDoneUI=[];bbSavedWeeksUI?.dispose();bbSavedWeeksUI=null;document.body.classList.toggle('bbnext-compact-header',tab!=='week');document.body.classList.toggle('bbnext-plan-mode',tab==='week');document.body.dataset.bbnextView=tab;const bbUIRenderingTab=tab;if(tab!=='week')bbSavedToolsEntryPending=false;else if(bbUIPreviouslyRenderedTab!=='week')bbSavedToolsEntryPending=true;const bbUIPreserveY=!bbUINavigation&&bbUIPreviouslyRenderedTab===tab&&!document.querySelector('dialog[open],.cook-overlay')?window.scrollY:null;bb1748SyncBudget();tabs();updateStats();const app=document.getElementById('app');app.innerHTML='';if(tab==='discover')renderDiscover(app);if(tab==='week')renderWeek(app);if(tab==='shop'||tab==='shop-list')renderShop(app);if(tab==='fridge')renderFridge(app);if(tab==='overview')bb16RenderOverview(app);bbDecorate();if(tab==='week'){bb174PlannerReminder(app);bb14PolishPlanner(app);bb172PlannerPolish(app);bb176MaskPremiumPlans(app);}window.bb172ActiveTab=(tab==='shop-list'?'shop':tab);bb172PlusDecorate(app);bb172QuickstartDecorate(app);bb172PremiumDecorate(app);bb1745ShoppingPresentation(app);bb1753Reconcile(app);bb1754ShopFocused(app);bb175EnhanceUI(app);bb1748PlannerBudget(app);bb1756PlannerFlow(app);bb1757PlannerOrder(app);bbNextComposePlan(app);if(tab==='week'){bb81FilterPanel(app);bb81BudgetTrimBanner(app);bb81PlanBatchDecorate(app);bbManualPlanDecorate(app);}if(tab==='week'){bbPantryPlannerAttach(app);bbMountDayDone(app);}bbReceiptAfterRender();bbHouseholdStockReviewAfterRender(app);bbMountShopAdd(app);window.BBSharedShopping?.afterRender?.();bbShopContinuationAfterRender(app);window.BBHome?.reminders?.();window.BBHome?.openRequested?.();bbUIPreviouslyRenderedTab=bbUIRenderingTab;window.BBNavigationPolish?.refresh?.();if(bbUINavigation){if(!window.BBTabViewport?.commit?.(bbUIRenderingTab))window.scrollTo({top:0,behavior:'instant'});}else if(bbUIPreserveY!==null){requestAnimationFrame(()=>{if(bbUIRenderToken===bbUIRenderRevision&&bbUIRestoreAction===bbUIActionRevision&&tab===bbUIRenderingTab&&window.scrollY!==bbUIPreserveY&&!document.querySelector('.cook-overlay'))window.scrollTo({top:bbUIPreserveY,behavior:'instant'});});}}
 
 // Repaint the real Planner, gallery, budget and locked states once QA identity
 // verification finishes. Saves and shopping data are not modified.
@@ -7581,7 +7583,7 @@ function bb172LeftoverOverrides(){try{return JSON.parse(localStorage.getItem(BB1
 function bb172AssumesOnHand(item){
  return (typeof bb172StapleAssumesOnHand==='function'&&bb172StapleAssumesOnHand(item)) || (/^leftover\b/i.test(String(item.key||''))&&!bb172LeftoverOverrides()[BB307Pantry.pantryId(item.key,item.unit)]);
 }
-function bb172Aisle(item){return BBPriceV19.aisle(item.key||item.name||'');}
+function bb172Aisle(item){const name=item.key||item.name||'';return window.BBKitchenChoiceRules?.isHousehold?.(name,item.productName||item.product||'')?'Household & Other':BBPriceV19.aisle(name);}
 function bb172AisleRank(item){return ['Produce','Meat & Fish','Dairy & Chilled','Bakery','Cupboard / Pantry','Household & Other'].indexOf(bb172Aisle(item))}
 function bb172Title(s){return String(s||'').replace(/\b[a-z]/g,x=>x.toUpperCase())}
 function bb172Checklist(items,essentials,ticks,pantryId,market){
@@ -8403,6 +8405,7 @@ function renderShop(app){
  };
  app.querySelectorAll('[data-bb321-tick]').forEach(el=>{el.addEventListener('click',event=>event.stopPropagation());el.onchange=event=>{
   event?.stopPropagation();
+  if(typeof bbShopPurchaseRulesReady==='function'&&!bbShopPurchaseRulesReady()){el.checked=!el.checked;notify('Shopping is still loading. Try again in a moment.');return;}
   const id=el.dataset.bb321Tick;
   if(id.startsWith('bb84extra:')){
    const parent=id.slice('bb84extra:'.length),needed=Number(el.dataset.bb84ExtraNeeded);
@@ -8414,9 +8417,11 @@ function renderShop(app){
    const view=bbShopPurchaseViewItem(bbShopPurchaseListItem(purchase.item,purchase.essential)),pin=purchaseViewPins.get(id);
    if(pin?.context&&!bbShopPurchaseViewCurrent(view,pin)){el.checked=!el.checked;notify('Your account or shop changed. Reopen Shopping.');return;}
    if(el.checked&&typeof bbShopPurchaseReviewForTick==='function'&&bbShopPurchaseReviewForTick(view)){el.checked=false;return;}
+   const beforeCountStock=window.BBLooseProduceUI?bb307ReadStock():null;
    const selected=el.checked&&(view.boughtQtyOverride!==undefined||view.uiDefaultPurchase),quantity=selected?bbShopPurchaseNativeTotal(view,view.purchaseSelection||view.uiDefaultPurchase):null;
    const saved=selected?quantity!==null&&bbPartialSet(view,quantity,undefined,{inventoryNow:window.BBShopOwnership?.enabled?.()===true}):bb84SetPrimaryPurchase(id,el.checked,purchase.item,purchase.essential,{inventoryNow:window.BBShopOwnership?.enabled?.()===true});
    if(!saved){el.checked=!el.checked;notify('Purchase save failed — no progress lost');return;}
+   if(typeof bbShopPurchaseRememberCount==='function')bbShopPurchaseRememberCount(view,selected?view.purchaseSelection||view.uiDefaultPurchase:null,beforeCountStock);
   }
   else {const next=bb321ReadShopTicks();if(el.checked)next[id]=true;else delete next[id];if(!bb321WriteShopTicks(next)){el.checked=!el.checked;return;}}
   render();
@@ -8907,6 +8912,7 @@ function bbHomeNeedsLegacyReview(rows){
 }
 window.BBSharedShoppingHost=Object.freeze({
  recordPurchase:(item,checked,pin)=>{
+  if(typeof bbShopPurchaseRulesReady==='function'&&!bbShopPurchaseRulesReady()){notify('Shopping is still loading. Try again in a moment.');return false;}
   try{
    const change=window.BBHome?.prepareSharedPurchase?.(item,checked,pin);if(!change)return false;if(change.already)return true;
    const name=String(item.name||''),baseUnit=item.unit==='kg'?'g':item.unit==='l'?'ml':item.unit,known=BB307_NORMALIZED.some(recipe=>(recipe.ingredients||[]).some(row=>(BBPriceV19.recipeIngredientUnit?.(row,getRecipe(recipe.id)?.ingredients)||row.unit)===baseUnit&&BB307Pantry.pantryName(row.key||row.name)===BB307Pantry.pantryName(name))),household=window.BBKitchenChoiceRules?.isHousehold?.(name)||!known;
@@ -10799,19 +10805,20 @@ function bbPantryPlannerPopulate(suggestions){
 function bbPantryPlannerModal(){
  document.getElementById('bbPantryPlannerDialog')?.remove();
  const data=bbPantryRecipeMatches(),dlg=document.createElement('dialog');dlg.id='bbPantryPlannerDialog';
+ const displayAmount=(value,unit)=>{const shown=window.BBShopPurchaseUI?.formatDisplayQty?.(value,unit,{market:bb307Market,countMode:'balance'});return shown&&!/^Check\b/.test(shown)?shown:(!Number.isFinite(value)?'Check amount':value>0&&value<1&&['g','ml'].includes(unit)?'<1 '+unit:new Intl.NumberFormat('en-GB',{maximumFractionDigits:['g','ml'].includes(unit)?0:unit==='each'?1:2,useGrouping:false}).format(value)+' '+unit);};
  dlg.style.cssText='border:1px solid #b9d6bf;border-radius:19px;background:#fcfdfa;color:#224638;padding:22px;max-width:560px;width:calc(100% - 28px);max-height:85vh;overflow:auto;box-shadow:0 20px 80px #0007';
  const h=document.createElement('h2');h.textContent='✨ Cook from your Pantry';
  const intro=document.createElement('p');intro.textContent='Recipes are suggested from confirmed measured At home stock. Your stock is NOT removed when you plan. Shopping deducts only eligible Pantry amounts; leftovers credited from this week’s shop become available to next week’s list. Check freshness and storage dates. No unverified unit conversions are used.';
  const note=document.createElement('p');note.textContent='BasketBoss currently has one visible weekly planner. Populate Planner fills only empty slots in that week. For next week, first switch or clear your current plan; nothing here replaces existing meals.';
- const stockLine=document.createElement('p');stockLine.textContent=data.stock.length?'Pantry detected: '+data.stock.slice(0,12).map(x=>x.name+' '+x.qty+' '+x.unit).join(' · '):'No measured Pantry ingredients found. Confirm quantities in At home first.';
+ const stockLine=document.createElement('p');stockLine.textContent=data.stock.length?'Pantry detected: '+data.stock.slice(0,12).map(x=>x.name+' '+displayAmount(x.qty,x.unit)).join(' · '):'No measured Pantry ingredients found. Confirm quantities in At home first.';
  const choices=document.createElement('div');choices.style.cssText='display:grid;gap:9px;margin:12px 0';
- if(data.questionable.length){const warning=document.createElement('p');warning.setAttribute('role','status');warning.style.color='#936022';warning.textContent='⚠ Check units before matching: '+data.questionable.map(x=>x.name+' ('+x.qty+' '+x.unit+')').join(', ')+'. Dry ingredients cannot be safely measured by volume in this planner.';dlg.append(warning);}
+ if(data.questionable.length){const warning=document.createElement('p');warning.setAttribute('role','status');warning.style.color='#936022';warning.textContent='⚠ Check units before matching: '+data.questionable.map(x=>x.name+' ('+displayAmount(x.qty,x.unit)+')').join(', ')+'. Dry ingredients cannot be safely measured by volume in this planner.';dlg.append(warning);}
  const selected=new Set();data.recipes.slice(0,15).forEach((r,i)=>{
   const label=document.createElement('label');label.style.cssText='display:flex;gap:10px;align-items:start;background:#f0f8f1;border:1px solid #d4e7d7;border-radius:11px;padding:11px';
   const input=document.createElement('input');input.type='checkbox';input.checked=i<7;if(input.checked)selected.add(r.id);
   input.addEventListener('change',()=>{if(input.checked)selected.add(r.id);else selected.delete(r.id)});
   const content=document.createElement('span');const strong=document.createElement('strong');strong.textContent=r.name;
-  const small=document.createElement('small');small.style.display='block';small.textContent='Uses Pantry: '+r.matched.map(x=>x.name+' ('+x.qty+' '+x.unit+')').join(', ');
+  const small=document.createElement('small');small.style.display='block';small.textContent='Uses Pantry: '+r.matched.map(x=>x.name+' ('+displayAmount(x.qty,x.unit)+')').join(', ');
   content.append(strong,small);label.append(input,content);choices.append(label);
  });
  if(!data.recipes.length){const none=document.createElement('p');none.textContent='No recipes match your Pantry and ingredient choices. Check Pantry measurements and food freshness first.';choices.append(none)}
@@ -10856,10 +10863,12 @@ function bbBetaShopChoiceRow(item){
   label.append(input);details.append(label);
   const save=bb172StorefrontButton('Save amount','bb-beta-save-actual',()=>{
    if(!current()){status.textContent='Shopping changed. Reopen this item to edit it.';return;}
+   if(typeof bbShopPurchaseRulesReady==='function'&&!bbShopPurchaseRulesReady()){status.textContent='Shopping is still loading. Try again in a moment.';return;}
    if(!input.value.trim()||!bbPartialSet(item,Number(input.value),undefined,{inventoryNow:window.BBShopOwnership?.enabled?.()===true})){status.textContent='Enter a valid amount bought.';return;}
   });details.append(save);input.focus({preventScroll:true});
  });buttons.append(edit);
  if(item.basketItem)buttons.append(bb172StorefrontButton('Already have enough','bb-beta-purchase-pill',()=>{
+  if(typeof bbShopPurchaseRulesReady==='function'&&!bbShopPurchaseRulesReady()){status.textContent='Shopping is still loading. Try again in a moment.';return;}
   if(current())bbBetaAlreadyHave(item);else status.textContent='Shopping changed. Reopen this item to edit it.';
  }));
  if(partial?.bought>0)wrap.append(bb172StorefrontEl('small','bbpartial-progress',displayAmount(partial.bought)+' bought · '+displayAmount(partial.remaining)+' to buy'));
@@ -10872,6 +10881,7 @@ function bbBetaShopChoiceRow(item){
   const paidLabel=bb172StorefrontEl('label','','Total paid ('+(bb307Market==='US'?'$':'£')+')'),paid=bb172StorefrontEl('input','');paid.type='number';paid.min='0.01';paid.max='100000';paid.step='0.01';paid.inputMode='decimal';paid.value=savedReduced?String(savedReduced.pricePaid):'';paid.placeholder='Yellow-sticker price';paid.setAttribute('aria-label','Total yellow-sticker price paid for '+item.name);paidLabel.append(paid);
   const saveReduced=bb172StorefrontButton('Save reduced purchase','bb-beta-save-actual',()=>{
    if(!current()||!bbReducedPremium()){status.textContent='Premium or shopping changed. Reopen this item.';return;}
+   if(typeof bbShopPurchaseRulesReady==='function'&&!bbShopPurchaseRulesReady()){status.textContent='Shopping is still loading. Try again in a moment.';return;}
    if(!paid.value.trim()||!amount.value.trim()||!bbPartialSet(item,Number(amount.value),Number(paid.value),{inventoryNow:window.BBShopOwnership?.enabled?.()===true})){status.textContent='Check the amount bought and the total paid.';return;}
   });reduced.append(amountLabel,paidLabel,saveReduced);wrap.append(reduced);
  }
@@ -11437,6 +11447,7 @@ function bbShopPurchaseViewCurrent(item,pin){
 }
 function bbShopPurchaseRecommended(item,needed){
  const basket=item.basketItem,base=bbShopPurchaseBase(item);if(!basket||!base||!(Number(needed)>0))return null;
+ const counted=base.unit==='g'?window.BBLooseProduceUI?.recommend?.(base.name,needed*base.factor,window.BBPantryPolicy):null;if(counted)return counted;
  if(base.unit==='g'&&/\b(?:coleslaw|cabbage slaw)\b/i.test(base.name)){
   const packCount=Math.max(1,Math.ceil(needed*base.factor/300));
   return {kind:'pack',packQuantity:300,packCount,quantity:300*packCount,unit:'g',label:'tub',boughtQtyOverride:300*packCount};
@@ -11450,13 +11461,16 @@ function bbShopPurchaseViewItem(item){
  const view={...item},pin=bbShopPurchaseViewPin(item),basket=item.basketItem;view.purchaseViewPin=pin;
  delete view.purchaseSelection;delete view.boughtQtyOverride;delete view.priceOverride;delete view.uiDefaultPurchase;
  const quote=basket?.priceQuote;view.baseEstimatedPrice=typeof quote?.amount==='number'&&Number.isFinite(quote.amount)&&quote.amount>=0?quote.amount:null;
+ // A visibly labelled guide belongs to the optional presentation layer. The
+ // catalogue quote remains unknown until a real/manual price is supplied.
+ view.fallbackEstimatedPrice=view.baseEstimatedPrice===null?2.50:null;
  const exact=basket?bbShopNeedPresentation(basket):null,recommended=exact?bbShopPurchaseRecommended(item,exact.targetQuantity):null;
  view.defaultPackQty=recommended?.quantity??null;
  if(window.BBShopPurchaseUI&&recommended&&basket){
   const original=bbShopPurchasePack(basket,exact.targetQuantity),base=bbShopPurchaseBase(item);
   if(original&&base&&Math.abs(original.purchaseQuantity*base.factor-recommended.quantity)>1e-9)view.uiDefaultPurchase=recommended;
  }
- try{const selection=window.BBShopPurchaseUI?.readPlan(localStorage,pin.context);if(selection){view.purchaseSelection=selection;view.boughtQtyOverride=selection.quantity;view.priceOverride=window.BBShopPurchaseUI.estimatePrice(view.baseEstimatedPrice,view.defaultPackQty,selection);}}catch{}
+ try{const selection=window.BBShopPurchaseUI?.readPlan(localStorage,pin.context);if(selection){view.purchaseSelection=selection;view.boughtQtyOverride=selection.quantity;view.priceOverride=window.BBShopPurchaseUI.estimatePrice(view.baseEstimatedPrice??view.fallbackEstimatedPrice,view.defaultPackQty,selection);}}catch{}
  return view;
 }
 function bbShopPurchaseListItem(item,essential=false){
@@ -11468,7 +11482,8 @@ function bbShopPurchaseCopyHint(item,essential=false){
 }
 function bbShopPurchaseQuote(item,essential=false){
  const view=bbShopPurchaseViewItem(bbShopPurchaseListItem(item,essential));
- return typeof view.priceOverride==='number'&&Number.isFinite(view.priceOverride)?{...item.priceQuote,amount:view.priceOverride,packAmount:view.priceOverride,portionAmount:item.priceQuote?.portionAmount??view.priceOverride,...(essential?{essential:true}:{}),rough:true,uiPurchaseOverride:true}:item.priceQuote;
+ const price=view.priceOverride??view.fallbackEstimatedPrice;
+ return typeof price==='number'&&Number.isFinite(price)?{...item.priceQuote,amount:price,packAmount:price,portionAmount:item.priceQuote?.portionAmount??price,...(essential?{essential:true}:{}),rough:true,uiPurchaseOverride:view.boughtQtyOverride!==undefined,uiFallbackGuide:view.baseEstimatedPrice===null,priceNeeded:false}:item.priceQuote;
 }
 function bbShopPurchaseEstimate(summary){
  const ui=window.BBShopPurchaseUI;if(!summary||!ui?.readPlan||typeof summary.remainingTotal!=='number')return summary;
@@ -11476,8 +11491,9 @@ function bbShopPurchaseEstimate(summary){
  const ticks=bb321ReadShopTicks();
  for(const [item,essential]of [...(summary.items||[]).filter(row=>row.toBuy>0).map(row=>[row,false]),...(summary.essentials||[]).map(row=>[row,true])]){
   const view=bbShopPurchaseViewItem(bbShopPurchaseListItem(item,essential));
-  if(ticks[view.id]||view.boughtQtyOverride===undefined||typeof view.priceOverride!=='number'||!Number.isFinite(view.priceOverride))continue;
-  remainingTotal+=view.priceOverride-(view.baseEstimatedPrice||0);if(view.baseEstimatedPrice===null)remainingPending=Math.max(0,remainingPending-1);changed=true;
+  const price=view.priceOverride??view.fallbackEstimatedPrice;
+  if(ticks[view.id]||typeof price!=='number'||!Number.isFinite(price)||view.boughtQtyOverride===undefined&&view.fallbackEstimatedPrice===null)continue;
+  remainingTotal+=price-(view.baseEstimatedPrice||0);if(view.baseEstimatedPrice===null)remainingPending=Math.max(0,remainingPending-1);changed=true;
  }
  return changed?{...summary,baseRemainingTotal:summary.remainingTotal,remainingTotal:Math.max(0,Number(remainingTotal.toFixed(2))),remainingPending}:summary;
 }
@@ -11504,6 +11520,10 @@ function bbShopPurchaseNativeTotal(item,selection){
  if(!measured||measured.unit!==base.unit||Math.abs(measured.quantity-selection.quantity)>Number.EPSILON*Math.max(1,selection.quantity)*8)return null;
  return quantity;
 }
+function bbShopPurchaseRememberCount(item,selection,beforeStock){
+ const loose=window.BBLooseProduceUI,base=bbShopPurchaseBase(item);if(!loose||!beforeStock||base?.unit!=='g'||!loose.profile(base.name,window.BBPantryPolicy))return;
+ try{const stockKey=BB307Pantry.pantryId(base.name,'g'),after=bb307ReadStock();loose.writeStockProof(localStorage,{actor:window.BBHome?.actor?.()||'guest',stockKey,name:base.name},{beforeQuantity:Number(beforeStock[stockKey])||0,afterQuantity:Number(after[stockKey])||0,selection},window.BBPantryPolicy);}catch{}
+}
 function bbShopPurchaseSaveView(item,selection,pin){
  const ui=window.BBShopPurchaseUI;
  if(!ui||!bbShopPurchaseViewCurrent(item,pin))return {ok:false,message:'Your account or shop changed. Reopen this item.'};
@@ -11515,10 +11535,12 @@ function bbShopPurchaseSaveView(item,selection,pin){
  const rollback=()=>{try{saved.rollback?.();}catch{}};
  if(!bbShopPurchaseViewCurrent(item,pin)){rollback();return {ok:false,message:'Your account or shop changed. Reopen this item.'};}
  const checked=!!bb321ReadShopTicks()[item.id],current=checked?bb84SavedPurchased(item.id):Number(bbPartialDetails({...item,checked:false})?.bought)||0;
- const bought=checked||current>0,changesStock=bought&&quantity!==current;
+ const bought=checked||current>0,changesStock=bought&&quantity!==current,beforeCountStock=changesStock&&window.BBLooseProduceUI?bb307ReadStock():null;
+ if(changesStock&&typeof bbShopPurchaseRulesReady==='function'&&!bbShopPurchaseRulesReady()){rollback();return {ok:false,message:'Shopping is still loading. Try again in a moment.'};}
  if(changesStock&&!bbPartialSet(item,quantity,undefined,{inventoryNow:window.BBShopOwnership?.enabled?.()===true})){
   rollback();return {ok:false,message:'The purchase could not be changed. Review its current amount in At home.'};
  }
+ if(beforeCountStock&&typeof bbShopPurchaseRememberCount==='function')bbShopPurchaseRememberCount(item,selection,beforeCountStock);
  bb172StorefrontKeepItem(item.id);if(!changesStock)render();bb172StorefrontRefresh();return {ok:true};
 }
 function bbShopPurchaseAttachRows(app,purchaseMap){
@@ -11540,9 +11562,47 @@ function bbShopPurchasePicker(item,needed){
  const pin=item.purchaseViewPin||bbShopPurchaseViewPin(item),partial=bbPartialDetails(item);
  const actual=(item.checked?bb84SavedPurchased(item.id):Number(partial?.bought)||0)*base.factor;
  const initial=item.purchaseSelection||(actual>0?{kind:'custom',packQuantity:actual,packCount:1,quantity:actual,unit:base.unit,label:'pack',boughtQtyOverride:actual}:null);
- return ui.createPicker({win:window,name:item.name,unit:base.unit,needed:needed*base.factor,initial,recommended:bbShopPurchaseRecommended(item,needed),onSave:selection=>bbShopPurchaseSaveView(item,selection,pin),baseEstimatedPrice:item.baseEstimatedPrice,defaultPackQty:item.defaultPackQty,market:bb307Market,quickPresets:true});
+ return ui.createPicker({win:window,name:item.name,unit:base.unit,needed:needed*base.factor,initial,recommended:bbShopPurchaseRecommended(item,needed),retailCountProfile:base.unit==='g'?window.BBLooseProduceUI?.profile?.(item.name,window.BBPantryPolicy):null,onSave:selection=>bbShopPurchaseSaveView(item,selection,pin),baseEstimatedPrice:item.baseEstimatedPrice??item.fallbackEstimatedPrice,defaultPackQty:item.defaultPackQty,market:bb307Market,quickPresets:true});
+}
+var bbHouseholdStockReviewUI=null,bbHouseholdStockReviewDialogUI=null;
+function bbHouseholdStockReviewOptions(onSaved){
+ const helper=window.BBHouseholdStockReview;if(!helper||!window.BBKitchenChoiceRules?.isHousehold||!window.BBWeeklyEssentials)return null;
+ const keys={stock:BB307_STOCK_KEY,inventory:BB83_KITCHEN_INVENTORY,features:BB307_FEATURE_KEY};
+ return {document,keys,market:bb307Market,isHousehold:name=>window.BBKitchenChoiceRules.isHousehold(name),canonicalize:BBPriceV19.canonical,reconcile:window.BBWeeklyEssentials.reconcile,formatDisplayQty:window.BBShopPurchaseUI?.formatDisplayQty,
+  read:()=>{const expected=bbShopOwnedExpected();for(const key of Object.values(window.BBReceiptHost?.keys||{}))if(typeof key==='string'&&!Object.hasOwn(expected,key))expected[key]=localStorage.getItem(key);return {actor:window.BBHome?.actor?.()||'guest',trip:bbBetaShopWeek(),session:localStorage.getItem('basketboss_cloud_session_v1'),stock:JSON.parse(localStorage.getItem(keys.stock)||'{}'),inventory:JSON.parse(localStorage.getItem(keys.inventory)||'{}'),features:JSON.parse(localStorage.getItem(keys.features)||'{"version":1,"essentials":[]}'),expected};},
+  preparePurchasedPantry:request=>window.BBReceiptHost?.preparePurchasedPantry?.(request),write:bbShopV7Write,
+  onSaved:prepared=>{bb307Stock=bb307ReadStock();bb307FeatureState=bb307ReadFeatures();render();bb172StorefrontRefresh();try{window.BBReceiptHost?.retryPurchasedPantry?.()?.catch?.(()=>{});}catch{}notify('Household stock saved in Weekly essentials.');onSaved?.(prepared);}
+ };
+}
+function bbHouseholdStockReviewAfterRender(app){
+ bbHouseholdStockReviewUI?.destroy();bbHouseholdStockReviewUI=null;
+ if(!app||tab!=='shop'||bb172ShopActive)return;
+ const revision=bbUIRenderRevision;
+ requestAnimationFrame(()=>{
+  if(revision!==bbUIRenderRevision||tab!=='shop'||bb172ShopActive)return;
+  const target=app.querySelector('#bbKitchenEssentials'),options=bbHouseholdStockReviewOptions();if(!target||!options)return;
+  bbHouseholdStockReviewUI=window.BBHouseholdStockReview.createController(options);bbHouseholdStockReviewUI.render(target);
+ });
+}
+function bbHouseholdStockReviewForTick(item){
+ const options=bbHouseholdStockReviewOptions();if(!options)return false;
+ let rows;try{rows=window.BBHouseholdStockReview.scan(options.read(),options);}catch{return false;}
+ if(!rows.length)return false;
+ if(document.querySelector('.bb-household-stock-review-dialog'))return true;
+ const pin=bbShopPurchaseViewPin(item),dialog=document.createElement('dialog');dialog.className='bb-receipt-pantry-dialog bb-household-stock-review-dialog';dialog.setAttribute('aria-label','Review household stock');document.body.append(dialog);
+ let controller=null,closed=false;const dispose=()=>{if(closed)return;closed=true;controller?.destroy();if(bbHouseholdStockReviewDialogUI===controller)bbHouseholdStockReviewDialogUI=null;dialog.close?.();dialog.remove();};
+ const repaired=()=>{let left;try{left=window.BBHouseholdStockReview.scan(options.read(),options);}catch{return;}if(left.length)return;dispose();queueMicrotask(()=>{if(!bbShopPurchaseViewCurrent(item,pin))return;const box=[...document.querySelectorAll('#app [data-bb321-tick]')].find(box=>box.dataset.bb321Tick===item.id);if(box?.isConnected&&!box.checked)box.click();bb172StorefrontRefresh();});};
+ controller=window.BBHouseholdStockReview.createController({...options,onDismiss:dispose,onSaved:prepared=>{options.onSaved(prepared);repaired();}});bbHouseholdStockReviewDialogUI=controller;controller.render(dialog);
+ dialog.addEventListener('cancel',event=>{event.preventDefault();dispose();bb172StorefrontRefresh();});dialog.addEventListener('close',dispose,{once:true});
+ dialog.addEventListener('click',event=>{if(event.target instanceof HTMLButtonElement&&event.target.textContent==='Not now')dispose();});
+ if(typeof dialog.showModal==='function')dialog.showModal();else dialog.setAttribute('open','');return true;
+}
+function bbShopPurchaseRulesReady(){
+ if(typeof window.BBKitchenChoiceRules?.isHousehold==='function')return true;
+ try{window.BBKitchenEssentials?.loadRules?.()?.catch?.(()=>{});}catch{}return false;
 }
 function bbShopPurchaseReviewForTick(item){
+ if(typeof bbHouseholdStockReviewForTick==='function'&&bbHouseholdStockReviewForTick(item))return true;
  const host=window.BBReceiptHost;
  if(!host?.reviewPantry||host.allowPurchaseTransfer?.()!==false)return false;
  let status;try{status=host.getConsumptionStatus?.();}catch{return false;}
@@ -11560,9 +11620,10 @@ function bbShopPurchaseReviewForTick(item){
  },onCancel:()=>bb172StorefrontRefresh()})).catch(()=>notify('The saved pantry could not be checked. Your shopping progress is kept.'));
  return true;
 }
-window.BBShopPurchaseHost=Object.freeze({estimate:bbShopPurchaseEstimate,summaryView:bbShopPurchaseEstimate});
+window.BBShopPurchaseHost=Object.freeze({estimate:bbShopPurchaseEstimate,summaryView:bbShopPurchaseEstimate,isReady:bbShopPurchaseRulesReady});
 function bb172StorefrontToggle(item){
  if(!item.box?.isConnected){bb172StorefrontRefresh();return;}
+ if(typeof bbShopPurchaseRulesReady==='function'&&!bbShopPurchaseRulesReady()){notify('Shopping is still loading. Try again in a moment.');bb172StorefrontRefresh();return;}
  bb172StorefrontKeepItem(item.id);
  if(!item.checked&&typeof bbShopPurchaseReviewForTick==='function'&&bbShopPurchaseReviewForTick(item)){bb172StorefrontRefresh();return;}
  if(!item.checked){
@@ -11570,7 +11631,9 @@ function bb172StorefrontToggle(item){
   if(view.boughtQtyOverride!==undefined||view.uiDefaultPurchase){
    if(item.purchaseViewPin&&!bbShopPurchaseViewCurrent(item,item.purchaseViewPin)){notify('Your account or shop changed. Reopen this item.');bb172StorefrontRefresh();return;}
    const quantity=bbShopPurchaseNativeTotal(item,view.purchaseSelection||view.uiDefaultPurchase);
+   const beforeCountStock=window.BBLooseProduceUI?bb307ReadStock():null;
    if(quantity===null||!bbPartialSet(item,quantity,undefined,{inventoryNow:window.BBShopOwnership?.enabled?.()===true}))notify('The purchase amount could not be saved. Review this item and try again.');
+   else if(beforeCountStock&&typeof bbShopPurchaseRememberCount==='function')bbShopPurchaseRememberCount(item,view.purchaseSelection||view.uiDefaultPurchase,beforeCountStock);
    bb172StorefrontRefresh();return;
   }
  }
@@ -11606,12 +11669,15 @@ function bb172StorefrontMakeRow(item){
  const rawPrice=item.price||'';
  const currencyValue=(label)=>{const match=rawPrice.match(new RegExp(label+'\\s*(?:est\\.?\\s*:?)?\\s*([~]?[£$]\\s*[0-9]+(?:\\.[0-9]{1,2})?)','i'));return match?.[1]||''};
  const full=priceText('full pack')||currencyValue('full pack')||'Check estimate';
- const shelf=bb172StorefrontEl('span','bbcompact-price',typeof item.priceOverride==='number'?BBPriceV19.money(item.priceOverride,bb307Market):full);
- shelf.title=typeof item.priceOverride==='number'?'Estimated total for your selected buying amount':'Estimated full-pack shelf price';
+ const displayedPrice=item.priceOverride??item.baseEstimatedPrice??item.fallbackEstimatedPrice;
+ const shelf=bb172StorefrontEl('button','bbcompact-price bb-shop-price-edit',typeof displayedPrice==='number'?(item.baseEstimatedPrice===null?'~':'')+BBPriceV19.money(displayedPrice,bb307Market):full);
+ shelf.type='button';shelf.dataset.bbShopPriceEdit=item.id;shelf.setAttribute('aria-label','Edit total price for '+item.name);
+ shelf.title=item.baseEstimatedPrice===null?'Guide estimate — tap to enter your actual total price':typeof item.priceOverride==='number'?'Estimated total for your selected buying amount':'Estimated full-pack shelf price';
  if(window.BBReducedPurchases)try{const reduced=window.BBReducedPurchases.eligible(bbShopV7Session(),bbReducedContext(),bbReducedProgress()).find(row=>row.kind==='manual'&&row.purchaseId===item.id);if(reduced){shelf.textContent='🏷️ '+BBPriceV19.money(reduced.pricePaid,bb307Market);shelf.title='Total paid for the reduced purchase';}}catch{}
  const toggle=bb172StorefrontButton('•••','bbcompact-toggle',()=>{const open=!drawer.hidden;drawer.hidden=open;toggle.setAttribute('aria-expanded',String(!open));toggle.setAttribute('aria-label',open?'Show item details':'Hide item details')});
  toggle.setAttribute('aria-expanded','false');toggle.setAttribute('aria-label','Show item details');
  const main=bb172StorefrontEl('div','bbcompact-main'),picker=typeof needed==='number'?bbShopPurchasePicker(item,needed):null;
+ shelf.addEventListener('click',event=>{event.preventDefault();event.stopPropagation();if(picker?.openPrice)picker.openPrice();else if(picker)picker.open();});
  if(picker){row.bbShopPackPicker=picker;row.bbShopPurchasePin=item.purchaseViewPin;}
  if(picker){
   row.classList.add('bb-shop-purchase-row');info.classList.add('bb-shop-purchase-body');
