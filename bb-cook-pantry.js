@@ -3,6 +3,14 @@
  function mount({container,event,onOpenAtHome=()=>{},onConfirmed=()=>{},win=root}){
   const doc=container.ownerDocument,home=win.BBHome;let disposed=false,busy=false,done=false,notified=false,preview;
   const make=(tag,cls,text)=>{const n=doc.createElement(tag);if(cls)n.className=cls;if(text!==undefined)n.textContent=text;return n;};
+  function displayAmount(value,unit){
+   if(!Number.isFinite(value)||value<0)return 'Check amount';
+   try{const formatted=win.BBShopPurchaseUI?.formatDisplayQty?.(value,unit,{countMode:'balance'});if(formatted&&!/^Check\b/.test(formatted))return formatted;}catch{}
+   const suffix=unit?' '+unit:'';if(value>0&&value<1&&['g','ml'].includes(unit))return '<1'+suffix;
+   const counted=/^(?:each|counts?|cloves?|packs?|tins?|cans?|buns?|bulbs?|rolls?|eggs?|fillets?|bottles?|jars?|bags?|loaves?|slices?|pieces?|items?)$/i.test(unit||'');
+   return new Intl.NumberFormat('en-GB',{maximumFractionDigits:['g','ml'].includes(unit)?0:counted?1:2,useGrouping:false}).format(value)+suffix;
+  }
+  const displayNote=value=>{try{return win.BBShopPurchaseUI?.formatDisplayQuantityText?.(value)||value;}catch{return value;}};
   const card=make('section','bb-cook-pantry');card.setAttribute('aria-label','Confirm cooked meal');container.append(card);
   const status=make('p','bb-cook-pantry-status');status.setAttribute('role','status');
   function confirmed(result){
@@ -26,13 +34,13 @@
     if(row.staple){
      line.append(make('span','muted',row.stockLabel||({in:'In Stock',low:'Low — restock',out:'Out — restock'}[row.stapleStatus])||'Check stock status'));
      line.append(make('small','muted','Staple: container/status tracking. Recipe spoonfuls do not reduce its saved stock.'));
-     if(row.issueLabel)line.append(make('small','bb-cook-pantry-issue',row.issueLabel));review.append(line);continue;
+     if(row.issueLabel)line.append(make('small','bb-cook-pantry-issue',displayNote(row.issueLabel)));review.append(line);continue;
     }
     if(row.canDeduct&&row.required!==null){const field=make('input');field.type='number';field.min='0';field.max='1000000';field.step='any';field.inputMode='decimal';field.value=String(row.required);field.setAttribute('aria-label','Amount used: '+row.name);label.append(field,doc.createTextNode(' '+row.unit));edits.push({row,field});}
-    else line.append(make('span','muted',row.required===null?'Amount unknown':String(row.required)+' '+(row.unit||'')));
-    line.append(make('small','muted','At home: '+row.owned+' '+(row.unit||'')+' · deduct up to '+row.deduct+' '+(row.unit||'')));
-    if(row.issueLabel)line.append(make('small','bb-cook-pantry-issue',row.issueLabel));
-    for(const assumption of row.assumptions||[])line.append(make('small','muted',assumption));review.append(line);
+    else line.append(make('span','muted',row.required===null?'Amount unknown':displayAmount(row.required,row.unit)));
+    const balance=make('small','muted','At home: '+displayAmount(row.owned,row.unit)+' · deduct up to '+displayAmount(row.deduct,row.unit));if(Number.isFinite(row.owned))balance.setAttribute('data-bb-cook-raw-owned',String(row.owned));if(Number.isFinite(row.deduct))balance.setAttribute('data-bb-cook-raw-deduct',String(row.deduct));line.append(balance);
+    if(row.issueLabel)line.append(make('small','bb-cook-pantry-issue',displayNote(row.issueLabel)));
+    for(const assumption of row.assumptions||[])line.append(make('small','muted',displayNote(assumption)));review.append(line);
    }
    if(preview.rows?.some(row=>row.estimated)){review.open=true;card.append(make('p','bb-cook-pantry-issue','Some conversions use estimated ingredient weights. Check the amounts below before confirming.'));}
    if(preview.issues?.length){review.open=true;card.append(make('p','bb-cook-pantry-issue','Some amounts need a check. Compatible stock can still be deducted; flagged units stay unchanged.'));}

@@ -45,6 +45,9 @@ const CORE = ['bb-plan-extras.js','bb-plan-extras.js?v=20261108-planner1','bb-pl
   'bb-shop-purchase-ui.js','bb-shop-purchase-ui.css',
   'bb-shop-purchase-ui.js?v=20261111-packs1','bb-shop-purchase-ui.css?v=20261111-packs1',
   'bb-shop-purchase-ui.js?v=20261111-checkbox1',
+  'bb-shop-purchase-ui.js?v=20261111-integrity1','bb-shop-purchase-ui.css?v=20261111-integrity1',
+  'bb-household-stock-review.js','bb-household-stock-review.js?v=20261111-integrity1',
+  'bb-loose-produce-ui.js','bb-loose-produce-ui.js?v=20261111-integrity1',
   'bb-recipe-purchase-basis.js','bb-recipe-purchase-basis.js?v=20261111-dry-basis1',
   'bb-recipe-canonical.js?v=20261107-pantry-stock2',
   'bb-pantry-runtime.mjs?v=20261104-regions2',
@@ -133,6 +136,7 @@ self.addEventListener('fetch', event => {
   // No account, plan, API or billing response may be cached by this exception.
   const releaseAssets = new Set([
     'bb-shop-purchase-ui.js','bb-shop-purchase-ui.css',
+    'bb-household-stock-review.js','bb-loose-produce-ui.js',
     'bb-receipt-inventory-core.mjs',
     'bb-yellow-stickers.js','bb-yellow-stickers-ui.js','bb-yellow-stickers-ui.css','bb-reduced-stock.js','bb-reduced-purchases.js',
     'bb-kitchen-prices.js',

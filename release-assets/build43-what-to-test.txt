@@ -6,7 +6,7 @@ BasketBoss 1.0.2 (43)
 4. Save or type a weekly budget target. The weekly comparison updates while the cost still to buy remains unchanged.
 5. Open Shop and shopping mode. Their remaining estimates must agree with Plan.
 6. Record or correct a partial purchase; return to Plan. Remaining shopping and weekly spending stay distinct, with no double stock credit.
-7. Unknown prices remain explicitly unpriced rather than being presented as a complete estimate.
+7. An unknown household/custom price displays a clearly estimated £2.50 guide instead of Check estimate. Tap its price or Buying > Custom to enter the actual total cost. Pack changes scale the guide; the catalogue quote stays unchanged.
 
 Uploading this build to TestFlight does not replace or withdraw an App Store submission. Signing and upload run on your Mac in Xcode.
 
@@ -31,3 +31,7 @@ Uploading this build to TestFlight does not replace or withdraw an App Store sub
 25. Tick two purchases, change another item’s Buying pack and tick it. Both earlier ticks and pantry credits must remain. Finish/reopen must credit only the actual bought quantities once.
 26. If online and device pantry amounts differ, tick an item and use the existing saved-pantry review in Shop. Choose this device’s amounts, confirm without retyping, and check that only the intended purchase is retried. Cancel must not mark it bought.
 27. While an earlier purchase syncs online, open the next Buying editor and enter a Custom amount/total cost. The acknowledgement must keep that draft open and unchanged.
+
+28. With an existing misplaced Toilet rolls food balance, open Weekly essentials or tick in Shop. Review the saved food and household amounts; Not now must leave all balances unchanged. Choose the actual total and move it to Weekly essentials. The food row disappears, the existing essentials ID/target remain, and Finish/reload must not add the purchase again.
+29. Check scaled quantities in Shop, expanded Plan, At home and Confirm ingredients used. Grams/ml display whole numbers, count balances at most one decimal, and a positive amount below 1 g remains visible as <1 g. Exact stored quantities must not change from rendering.
+30. Buy one loose lime through the Buying count suggestion, then reopen At home. It displays 1 each using the recorded count choice; the canonical stock remains 70 g using the existing policy estimate. Buying two records 140 g and displays 2 each. Old measured balances such as 1,000 g remain measured and require a count check rather than being silently relabelled as one lime.

@@ -10,6 +10,33 @@
   const card=lunchWeek?null:container.closest?.('.bbnext-day[data-bbnext-day]');
   const badge=providedBadge||card?.querySelector?.('.bbnext-day-badge,.bbnext-day-label');
   const make=(tag,cls,text)=>{const node=doc.createElement(tag);if(cls)node.className=cls;if(text!==undefined)node.textContent=String(text);return node;};
+  // Readable labels never become pantry amounts or confirmation inputs.
+  function displayAmount(value,unit){
+   if(!Number.isFinite(value)||value<0)return 'Check amount';
+   try{const formatted=win.BBShopPurchaseUI?.formatDisplayQty?.(value,unit,{countMode:'balance'});if(formatted&&!/^Check\b/.test(formatted))return formatted;}catch{}
+   const suffix=unit?' '+unit:'';if(value>0&&value<1&&['g','ml'].includes(unit))return '<1'+suffix;
+   const counted=/^(?:each|counts?|cloves?|packs?|tins?|cans?|buns?|bulbs?|rolls?|eggs?|fillets?|bottles?|jars?|bags?|loaves?|slices?|pieces?|items?)$/i.test(unit||'');
+   return new Intl.NumberFormat('en-GB',{maximumFractionDigits:['g','ml'].includes(unit)?0:counted?1:2,useGrouping:false}).format(value)+suffix;
+  }
+  function rawAmount(node,value,unit,field){if(Number.isFinite(value)){node.dataset.bbDayRawAmount=String(value);node.dataset.bbDayUnit=unit||'';node.dataset.bbDayQuantityField=field;}return node;}
+  const displayNote=value=>{try{return win.BBShopPurchaseUI?.formatDisplayQuantityText?.(value)||value;}catch{return value;}};
+  function produceCountProfile(row){
+   if(row.unit!=='g'||row.staple||row.issue||!Number.isFinite(row.owned)||row.owned<0)return null;
+   try{
+    const ui=win.BBLooseProduceUI,policy=win.BBPantryPolicy,known=ui?.profile?.(row.name,policy),stock=win.BBHomeHost?.stock?.();
+    if(!known||!stock||typeof stock!=='object'||Array.isArray(stock)||typeof ui.readStockProof!=='function')return null;
+    let quantity=0,sources=0;
+    for(const [stockKey,value]of Object.entries(stock)){
+     const at=stockKey.lastIndexOf('|'),source=at>0?ui.profile(stockKey.slice(0,at),policy):null;if(source?.food!==known.food)continue;
+     if(!(typeof value==='number'&&Number.isFinite(value)&&value>=0))return null;if(value===0)continue;
+     if(stockKey.slice(at+1)!=='g')return null;
+     const proof=ui.readStockProof(win.localStorage,{actor:actor(),stockKey,canonicalQuantity:value},policy);
+     if(!proof||proof.food!==known.food||proof.gramsPerEach!==known.gramsPerEach)return null;
+     quantity+=value;sources++;
+    }
+    return sources&&row.owned<=quantity+1e-9?known:null;
+   }catch{return null;}
+  }
   const trigger=make('button','small-btn bb-day-done-trigger',lunchWeek?'Confirm school lunches for the week':'Day done');trigger.type='button';if(lunchWeek)trigger.dataset.bbLunchWeekDone='true';else trigger.dataset.bbDayDone=day;trigger.setAttribute('aria-label',lunchWeek?'Confirm school lunches for the week':'Confirm all planned food for '+day);container.append(trigger);
   const actor=()=>typeof home?.actor==='function'?home.actor():'guest';
   // The core fingerprint also pins pantry, all planned food and its portions.
@@ -78,17 +105,18 @@
      for(const text of ['Ingredient','Required','In pantry','Remaining']){const cell=make('th','',text);cell.setAttribute('scope','col');if(text==='Remaining'){cell.setAttribute('aria-label','Remaining after confirmation');cell.append(make('small','bb-day-done-projection-label','after confirmation'));}headRow.append(cell);}head.append(headRow);body=make('tbody');table.append(head,body);amounts.append(table);
     }
     for(const row of value.rows){
-     const unit=row.unit?' '+row.unit:'',required=Number.isFinite(row.required)?row.required:null;
+     const required=Number.isFinite(row.required)?row.required:null,countProfile=undo?null:produceCountProfile(row);
+     const rowAmount=value=>countProfile?displayAmount(value/countProfile.gramsPerEach,'each'):displayAmount(value,row.unit);
      if(undo){
-      const line=make('div','bb-day-done-amount'),main=make('div','bb-day-done-amount-main');main.append(make('strong','',row.name||'Ingredient'),make('span','bb-day-done-quantity',Number.isFinite(row.restore)?row.restore+unit:'Needs review'));line.append(main);if(row.issueLabel)line.append(make('small','bb-day-done-issue',row.issueLabel));amounts.append(line);
+      const line=make('div','bb-day-done-amount'),main=make('div','bb-day-done-amount-main');main.append(make('strong','',row.name||'Ingredient'),rawAmount(make('span','bb-day-done-quantity',Number.isFinite(row.restore)?displayAmount(row.restore,row.unit):'Needs review'),row.restore,row.unit,'restore'));line.append(main);if(row.issueLabel)line.append(make('small','bb-day-done-issue',displayNote(row.issueLabel)));amounts.append(line);
      }else{
       const line=make('tr','bb-day-done-amount bb-day-done-amount-main'),name=make('td','bb-day-done-ingredient-name');name.append(make('strong','',row.name||'Ingredient'));if(row.estimated)name.append(make('small','','Estimated'));
-      const needed=make('td','bb-day-done-quantity',required!==null?required+unit:row.staple?'Staple':'Check amount');let owned='Not checked',remaining='Not checked',check=false;
+      const needed=rawAmount(make('td','bb-day-done-quantity',required!==null?rowAmount(required):row.staple?'Staple':'Check amount'),required,row.unit,'required');let owned='Not checked',remaining='Not checked',check=false;
       if(row.staple){owned=({in:'In stock',low:'Low',out:'Out of stock'})[row.stapleStatus]||'Check stock';remaining='Unchanged';}
       else if(row.issue==='unit_mismatch'||row.issue==='unit_unknown'){owned=remaining='Check unit';check=true;}
       else if(row.issue==='amount_unknown'){owned=remaining='Check amount';check=true;}
-      else{if(Number.isFinite(row.owned)&&row.owned>=0)owned=row.owned+unit;if(Number.isFinite(row.remaining)&&row.remaining>=0)remaining=row.remaining+unit;}
-      const pantry=make('td',check?'bb-day-done-cell-review':'',owned),after=make('td',check?'bb-day-done-cell-review':'',remaining);line.append(name,needed,pantry,after);body.append(line);
+      else{if(Number.isFinite(row.owned)&&row.owned>=0)owned=rowAmount(row.owned);if(Number.isFinite(row.remaining)&&row.remaining>=0)remaining=rowAmount(row.remaining);}
+      const pantry=make('td',check?'bb-day-done-cell-review':'',owned),after=make('td',check?'bb-day-done-cell-review':'',remaining);if(!row.staple&&!check){rawAmount(pantry,row.owned,row.unit,'owned');rawAmount(after,row.remaining,row.unit,'remaining');}line.append(name,needed,pantry,after);body.append(line);
      }
      const notes=[row.issueLabel,...(row.assumptions||[])].filter(Boolean);if(row.staple&&row.stockLabel)notes.push(row.stockLabel);if(notes.length)amountDetails.push({name:row.name||'Ingredient',notes:[...new Set(notes)]});
     }
@@ -96,14 +124,14 @@
    }
    if(amountDetails.length){
     const details=make('details','bb-day-done-conversion-details');details.append(make('summary','','Amount details'));
-    for(const entry of amountDetails){const item=make('div','bb-day-done-conversion-item');item.append(make('strong','',entry.name));for(const note of entry.notes)item.append(make('p','',note));details.append(item);}content.append(details);
+    for(const entry of amountDetails){const item=make('div','bb-day-done-conversion-item');item.append(make('strong','',entry.name));for(const note of entry.notes)item.append(make('p','',displayNote(note)));details.append(item);}content.append(details);
    }
    if(lunchDetails)content.append(lunchDetails);
    const rowIssues=new Set((value.rows||[]).map(row=>row.issueLabel).filter(Boolean)),remainingIssues=(value.issues||[]).filter(issue=>!rowIssues.has(typeof issue==='string'?issue:issue.message||issue.issueLabel));
    if(remainingIssues.length){
     const issues=make('div','bb-day-done-issues');
     issues.append(make('p','',undo?'Some recorded amounts need a check before undoing this day.':'Some planned amounts need a check. Review the messages below before confirming.'));
-    for(const issue of remainingIssues){const message=typeof issue==='string'?issue:issue.message||issue.issueLabel;if(message)issues.append(make('p','bb-day-done-issue',message));}
+    for(const issue of remainingIssues){const message=typeof issue==='string'?issue:issue.message||issue.issueLabel;if(message)issues.append(make('p','bb-day-done-issue',displayNote(message)));}
     content.append(issues);
    }
   }
