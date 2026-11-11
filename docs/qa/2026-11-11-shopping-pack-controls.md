@@ -45,6 +45,9 @@ not migrated or rewritten by rendering or choosing an unbought pack.
 - A selected quantity scales the UI estimate around the default visible
   purchase total. A manual `priceOverride` is the total for the selected
   purchase, including all packs; it is not multiplied again.
+- Clearing a manual price keeps the selected quantity and restores its scaled
+  estimate. Having no buying choice at all retains the original catalogue
+  estimate exactly.
 - Row prices, Shop headers, Shop overview and My Week's remaining estimate use
   the same optional display layer. Core summaries, historical spending, pantry
   savings, catalogue prices and price observations are unchanged.
@@ -65,6 +68,11 @@ These are estimated shopping guides, and the user can select the actual pack.
 Saving a choice for an unticked item changes only optional UI state. The tick
 then passes the selected physical amount through the existing purchase handler;
 Finish continues to use the existing receipt/stock ownership path.
+
+Changing the selected quantity on an already bought item corrects that purchase
+through the existing amount handler. It does not create a second stock credit.
+The shopper can set the actual amount during shopping; confirming ingredients
+used later continues to deduct the recipe's original scaled requirement.
 
 Verified cases include:
 

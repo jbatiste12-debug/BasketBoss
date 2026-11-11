@@ -3806,8 +3806,8 @@ body[data-bbnext-view="discover"] #app .bb-featured-card #bbFeaturedBatch {
 <script src="/bb-supermarkets.js?v=0e7c0cfdd73c5e15"></script>
 <script src="/bb-pantry-policy.js?v=085205ffb0aacf65"></script>
 <script src="/bb-pantry-display.js?v=3703aec840ec42c6"></script>
-<link rel="stylesheet" href="/bb-shop-purchase-ui.css?v=0a41d901af80e637">
-<script src="/bb-shop-purchase-ui.js?v=ccbdb5a40935342a"></script>
+<link rel="stylesheet" href="/bb-shop-purchase-ui.css?v=f91cb2c0802b03c3">
+<script src="/bb-shop-purchase-ui.js?v=ba523204c5261f81"></script>
 <script src="/bb-recipe-purchase-basis.js?v=56122bf98efed0e3"></script>
 <script src="/bb-recipe-canonical.js?v=7859ebbf9ad539e0"></script>
 <script type="module" src="/bb-pantry-runtime.mjs?v=7c6a7711e53a3496"></script>
@@ -3845,7 +3845,7 @@ body[data-bbnext-view="discover"] #app .bb-featured-card #bbFeaturedBatch {
 <script src="/bb-cook-assistant.js?v=490b11713cc4b2a9"></script>
 <script src="/bb-cook-voice.js?v=01f8387775264833"></script>
 <script defer src="/bb-weekly-essentials.js?v=46a2d5b9851a1f61"></script>
-<script defer src="/bb-receipt-inventory.js?v=804269d12d30c564"></script>
+<script defer src="/bb-receipt-inventory.js?v=b7e29ad23f5873b5"></script>
 <script defer src="/bb-receipt-scanner.js?v=44189473c8d617fe"></script>
 <script defer src="/bb-receipt-host.js?v=4a91ad6788a8e650"></script>
 <link rel="stylesheet" href="/bb-receipt-scanner.css?v=f5a7f0035dc6279e">
@@ -8361,6 +8361,7 @@ function renderShop(app){
    const effective=legacy?item.required:stock;
    const partial=bbPartialDetails({id,basketItem:item,checked:!!ticks[id]});
    const needDisplay=bbShopPurchaseNeedView(item,{bought:ticks[id]?bb84SavedPurchased(id):partial?.bought||0,checked:!!ticks[id],market:bb307Market});
+   const legacyNeedDisplay=bbShopNeedPresentation(item,{bought:ticks[id]?bb84SavedPurchased(id):partial?.bought||0,checked:!!ticks[id],market:bb307Market});
    const units=BB307Pantry.stockUnits(item.unit);
    const support=[];
    if(item.packSize&&item.toBuy)support.push(`Illustrative pack: ${number(item.packSize)} ${esc(item.priceQuote?.packUnit||item.unit)}`);
@@ -8374,7 +8375,7 @@ function renderShop(app){
     <div class="bb321-shop-main">
       <input id="bb321-buy-check-${i}" class="bb321-shop-checkbox" type="checkbox" data-bb321-tick="${esc(id)}" aria-label="Bought ${esc(item.key)}" ${ticks[id]?'checked':''}>
       <div class="bb321-shop-info"><label for="bb321-buy-check-${i}" class="bb321-shop-name">${esc(bb172Title(item.key))}</label>
-        <div class="bb321-shop-quantity"><strong>${esc(needDisplay.primary)}</strong><small class="bb-shop-need-context">${esc(needDisplay.secondary)}</small>${bbShopPurchaseCopyHint(item)?`<small class="bb-shop-purchase-label">${esc(bbShopPurchaseCopyHint(item))}</small>`:''}<span class="bb321-shop-source">${source}</span></div>
+        <div class="bb321-shop-quantity"><strong>${esc(needDisplay.primary)}</strong><small class="bb-shop-need-context" hidden aria-hidden="true">${esc(legacyNeedDisplay.secondary)}</small><small class="bb-shop-purchase-context">${esc(needDisplay.secondary)}</small>${bbShopPurchaseCopyHint(item)?`<small class="bb-shop-purchase-label">${esc(bbShopPurchaseCopyHint(item))}</small>`:''}<span class="bb321-shop-source">${source}</span></div>
         <details class="bb321-shop-detail"><summary>Pack &amp; pantry details</summary>
          ${support.length?`<p class="muted bb321-shop-hint">${support.join(' · ')}</p>`:''}
          ${bb321StockControls(item,i,effective,units)}
@@ -8398,9 +8399,10 @@ function renderShop(app){
  const essentialsRows=essentials.map((x,i)=>{
    const id='ess:'+x.id,partial=bbPartialDetails({id,basketItem:{...x,toBuy:x.qty},checked:!!ticks[id]});
    const needDisplay=bbShopPurchaseNeedView(x,{bought:ticks[id]?bb84SavedPurchased(id):partial?.bought||0,checked:!!ticks[id],market:bb307Market});
+   const legacyNeedDisplay=bbShopNeedPresentation(x,{bought:ticks[id]?bb84SavedPurchased(id):partial?.bought||0,checked:!!ticks[id],market:bb307Market});
    return `<div class="shop-row bb321-buy-row bb321-essential-row" data-bb321-purchased="${ticks[id]?'true':'false'}">
     <div class="bb321-shop-main"><input class="bb321-shop-checkbox" id="bb321-ess-check-${i}" type="checkbox" aria-label="Bought ${esc(x.name)}" data-bb321-tick="${esc(id)}" ${ticks[id]?'checked':''}>
-     <div class="bb321-shop-info"><label for="bb321-ess-check-${i}" class="bb321-shop-name">${esc(bb172Title(x.name))}</label><div class="bb321-shop-quantity"><strong>${esc(needDisplay.primary)}</strong><small class="bb-shop-need-context">${esc(needDisplay.secondary)}</small>${bbShopPurchaseCopyHint(x,true)?`<small class="bb-shop-purchase-label">${esc(bbShopPurchaseCopyHint(x,true))}</small>`:''}<span class="bb321-shop-source">Weekly essential</span></div>${bb15PriceEditor(x,true,i)}</div></div>
+     <div class="bb321-shop-info"><label for="bb321-ess-check-${i}" class="bb321-shop-name">${esc(bb172Title(x.name))}</label><div class="bb321-shop-quantity"><strong>${esc(needDisplay.primary)}</strong><small class="bb-shop-need-context" hidden aria-hidden="true">${esc(legacyNeedDisplay.secondary)}</small><small class="bb-shop-purchase-context">${esc(needDisplay.secondary)}</small>${bbShopPurchaseCopyHint(x,true)?`<small class="bb-shop-purchase-label">${esc(bbShopPurchaseCopyHint(x,true))}</small>`:''}<span class="bb321-shop-source">Weekly essential</span></div>${bb15PriceEditor(x,true,i)}</div></div>
     <div class="bb321-shop-price" aria-label="Indicative cost for ${esc(x.name)}">${bb15PriceLabel(bbShopPurchaseQuote(x,true))}</div>
    </div>`;
  }).join('');
@@ -10918,6 +10920,7 @@ function bbBetaShopChoiceRow(item){
  const locked=!!bbBetaReceiptRead()?.[bbBetaReceiptId(item.id)]&&!owned;
  if(locked){wrap.append(bb172StorefrontEl('small','','✓ Added to At home'));return wrap;}
  const unit=item.basketItem?.unit||valid?.unit||'',needed=Number(item.basketItem?.toBuy??valid?.qty??0);
+ const displayAmount=(value,units=unit)=>typeof bbShopPurchaseDisplay==='function'?bbShopPurchaseDisplay(item.name,value,units):value+' '+units;
  const buttons=bb172StorefrontEl('div','bb-beta-purchase-pills'),details=bb172StorefrontEl('div','bb-beta-choice-pack-details');
  const status=bb172StorefrontEl('small','bb-beta-choice-status','');status.setAttribute('role','status');
  const pin={account:localStorage.getItem('basketboss_cloud_session_v1'),week:bbBetaShopWeek()};
@@ -10939,8 +10942,8 @@ function bbBetaShopChoiceRow(item){
  if(item.basketItem)buttons.append(bb172StorefrontButton('Already have enough','bb-beta-purchase-pill',()=>{
   if(current())bbBetaAlreadyHave(item);else status.textContent='Shopping changed. Reopen this item to edit it.';
  }));
- if(partial?.bought>0)wrap.append(bb172StorefrontEl('small','bbpartial-progress',bbShopPurchaseDisplay(item.name,partial.bought,unit)+' bought · '+bbShopPurchaseDisplay(item.name,partial.remaining,unit)+' to buy'));
- else if(saved?.mode==='custom')wrap.append(bb172StorefrontEl('small','',bbShopPurchaseDisplay(item.name,saved.actualQty,unit)+' bought'));
+ if(partial?.bought>0)wrap.append(bb172StorefrontEl('small','bbpartial-progress',displayAmount(partial.bought)+' bought · '+displayAmount(partial.remaining)+' to buy'));
+ else if(saved?.mode==='custom')wrap.append(bb172StorefrontEl('small','',displayAmount(saved.actualQty)+' bought'));
  wrap.append(buttons,details,status);
  if(bbReducedPremium()&&window.BBReducedPurchases){
   const savedReduced=window.BBReducedPurchases.eligible(bbShopV7Session(),bbReducedContext(),bbReducedProgress()).find(row=>row.kind==='manual'&&row.purchaseId===item.id);
@@ -12852,7 +12855,7 @@ window.BB172Welcome={open:()=>open(true),completed:()=>read(SEEN)==='true'};
 }
 if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',patchPaths,{once:true});else patchPaths();})();
 </script>
-<script src="/pwa700/shopping-inventory.js?v=6db24f05eba54f9f" defer></script><dialog id="bbIntroTrialDialog" aria-labelledby="bbIntroTrialTitle" aria-describedby="bbIntroTrialText">
+<script src="/pwa700/shopping-inventory.js?v=3cd61e633ffb32d4" defer></script><dialog id="bbIntroTrialDialog" aria-labelledby="bbIntroTrialTitle" aria-describedby="bbIntroTrialText">
  <div class="bbtrial-hero">
   <button type="button" class="bbtrial-x" data-bbtrial-close aria-label="Close Premium offer">×</button>
   <p class="bbtrial-topline">🚀 FOUNDING MEMBER BETA · FIRST 25 PLACES</p>

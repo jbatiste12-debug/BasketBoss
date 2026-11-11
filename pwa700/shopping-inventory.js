@@ -223,7 +223,8 @@ async function build(){
   externalAtOpen.set(stockKey,qty);
   const known=[...staged.values()].find(x=>pantryStockId(x.name,x.unit)===pantryStockId(name,unit));
   if(known)continue;
-  const loc=BB5_LOCATIONS.find(place=>BB5_FOODS[place].some(([,preset])=>canon(preset)===canon(name)))||'cupboard';
+  let inferredLocation;try{inferredLocation=window.bb83StockLoc?.(name,window.BBPriceV19?.aisle?.(name));}catch{}
+  const loc=BB5_LOCATIONS.find(place=>BB5_FOODS[place].some(([,preset])=>canon(preset)===canon(name)))||(BB5_LOCATIONS.includes(inferredLocation)?inferredLocation:'cupboard');
   const key=sid(loc,name);
   if(!staged.has(key))staged.set(key,stageValue({name,loc,qty,unit},key));
  }
