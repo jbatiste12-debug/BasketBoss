@@ -62,7 +62,7 @@ jobs:
           node --input-type=module <<'JS'
           import fs from 'node:fs';
           import assert from 'node:assert/strict';
-          const assets=['bb-shop-purchase-ui.js','bb-shop-purchase-ui.css','bb-shared-shopping.js','bb-household-stock-review.js','bb-loose-produce-ui.js','bb-day-done.js','bb-cook-pantry.js','bb-pantry-inline.js','bb-kitchen-choice-rules.mjs','bb-kitchen-essentials.js','bb-shop-add.js','bb-premium-features.js','bb-household-amount.js','bb-essentials-confirm.js','bb-recipe-measures.js','bb-us-market.js','bb-cook-result.js','bb-kitchen-prices.js','bb-price-scan.js','service-worker.js'];
+          const assets=['bb-shop-purchase-ui.js','bb-shop-purchase-ui.css','bb-shared-shopping.js','bb-household-stock-review.js','bb-loose-produce-ui.js','bb-day-done.js','bb-cook-pantry.js','bb-pantry-inline.js','bb-kitchen-choice-rules.mjs','bb-kitchen-essentials.js','bb-shop-add.js','bb-premium-features.js','bb-household-amount.js','bb-essentials-confirm.js','bb-recipe-measures.js','bb-us-market.js','bb-cook-result.js','bb-kitchen-prices.js','bb-price-scan.js','service-worker.js','bb-pantry-first-controls.js','bb-pantry-first-controls.css','bb-pantry-autofill.js'];
           const generated=new Set(JSON.parse(fs.readFileSync('pwa700/manifest.json','utf8')).files.map(row=>row.path));
           const paths=assets.flatMap(name=>generated.has(name)?[name,'pwa700/'+name]:[name]);
           for(const name of paths){
