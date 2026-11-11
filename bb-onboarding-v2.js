@@ -115,7 +115,8 @@
      if(accountRemembered()){
        art+='<div class="bbob-auth-ready" role="status">✓ You’re already signed in. Your account and saved meals are ready.</div>';
      }else{
-       art+=`<details class="bbob-quick-details bbob-quick-account" data-bbob-account ${quickAccountOpen||state.partnerIntent==='join'?'open':''}><summary>${state.partnerIntent==='join'?'Sign in with your invited email':'Have an account? Sign in or create one'}</summary><p>Use your existing BasketBoss account to keep your plans together. New accounts may need email confirmation.</p><div id="bbobAuthSlot" class="bbob-auth-slot"></div><div id="bbobMessageSlot" class="bbob-message-slot" aria-live="polite"></div></details>`;
+       const accountOpen=quickAccountOpen||state.partnerIntent==='join';
+       art+=`<section class="bbob-quick-details bbob-quick-account" data-bbob-account><button type="button" class="bbob-quick-account-toggle" data-bbob="quick-account" aria-expanded="${accountOpen}" aria-controls="bbobQuickAccountPanel"><span aria-hidden="true">›</span>${state.partnerIntent==='join'?'Sign in with your invited email':'Have an account? Sign in or create one'}</button><div id="bbobQuickAccountPanel" class="bbob-quick-account-panel" ${accountOpen?'':'hidden'}><p>Use your existing BasketBoss account to keep your plans together. New accounts may need email confirmation.</p><div id="bbobAuthSlot" class="bbob-auth-slot"></div><div id="bbobMessageSlot" class="bbob-message-slot" aria-live="polite"></div></div></section>`;
      }
      actions=btn(accountRemembered()?'Continue setup':'Continue without signing in','next');
    }else if(state.step===3){
@@ -269,7 +270,8 @@
  }
  function render(){if(!host)return;
    if(quick){
-     for(const [selector,remember] of [['[data-bbob-account]',value=>{quickAccountOpen=value;}],['[data-bbob-preferences]',value=>{quickPreferencesOpen=value;}],['[data-bbob-partner]',value=>{quickPartnerOpen=value;}]]){
+     const accountPanel=host.querySelector('#bbobQuickAccountPanel');if(accountPanel)quickAccountOpen=!accountPanel.hidden;
+     for(const [selector,remember] of [['[data-bbob-preferences]',value=>{quickPreferencesOpen=value;}],['[data-bbob-partner]',value=>{quickPartnerOpen=value;}]]){
        const details=host.querySelector(selector);if(details)remember(details.open===true);
      }
    }
@@ -473,6 +475,18 @@
      const option=e.target.closest('[data-bbob-opt]');if(option){chooseOption(Number(option.dataset.bbobOpt),option.dataset.bbobGroup);return;}
      const action=e.target.closest('[data-bbob]')?.dataset.bbob;if(!action)return;
      if(action==='replay-cancel'){dismiss();return;}
+     if(action==='quick-account'&&quick&&state.step===1){
+       const panel=host.querySelector('#bbobQuickAccountPanel'),toggle=host.querySelector('[data-bbob="quick-account"]');
+       if(!panel||!toggle)return;
+       quickAccountOpen=panel.hidden;
+       if(!quickAccountOpen&&panel.contains(document.activeElement))document.activeElement.blur?.();
+       panel.hidden=!quickAccountOpen;toggle.setAttribute('aria-expanded',String(quickAccountOpen));
+       // Reveal the original controls in place: changing innerHTML here would
+       // detach the credential fields and disrupt native focus and drafts.
+       sizeWelcomeViewport();
+       if(quickAccountOpen)toggle.scrollIntoView?.({block:'start',behavior:'instant'});
+       return;
+     }
      if(action==='free'||action==='free-complete'){complete();return;}
      if(action==='premium'){complete(true);return;}
      if(action==='quick-premium'&&quick&&state.step===10){
