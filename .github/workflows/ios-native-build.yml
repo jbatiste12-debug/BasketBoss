@@ -203,7 +203,7 @@ jobs:
         run: echo '::notice title=BasketBoss iOS native build::{"simulatorBuild":true,"bundleId":"uk.co.basketboss.app","minimumIOS":"16.0","signingTested":false}'
       # Finish device compilation before Simulator startup; Cook and keyboard
       # checks still determine whether this verification run succeeds.
-      - name: Create the unsigned legacy-catalogue baseline archive for build 41
+      - name: Create the unsigned legacy-catalogue baseline archive for build 42
         run: |
           xcodebuild \
             -workspace ios/App/App.xcworkspace \
@@ -212,19 +212,19 @@ jobs:
             -sdk iphoneos \
             -destination 'generic/platform=iOS' \
             -derivedDataPath /tmp/basketboss-ios-device-build \
-            -archivePath "$RUNNER_TEMP/BasketBoss-legacy500-1.0.2-build41.xcarchive" \
+            -archivePath "$RUNNER_TEMP/BasketBoss-legacy500-1.0.2-build42.xcarchive" \
             CODE_SIGNING_ALLOWED=NO \
             archive
-          test "$(/usr/libexec/PlistBuddy -c 'Print CFBundleVersion' "$RUNNER_TEMP/BasketBoss-legacy500-1.0.2-build41.xcarchive/Products/Applications/App.app/Info.plist")" = '41'
-          test "$(/usr/libexec/PlistBuddy -c 'Print CFBundleIdentifier' "$RUNNER_TEMP/BasketBoss-legacy500-1.0.2-build41.xcarchive/Products/Applications/App.app/Info.plist")" = 'uk.co.basketboss.app'
+          test "$(/usr/libexec/PlistBuddy -c 'Print CFBundleVersion' "$RUNNER_TEMP/BasketBoss-legacy500-1.0.2-build42.xcarchive/Products/Applications/App.app/Info.plist")" = '42'
+          test "$(/usr/libexec/PlistBuddy -c 'Print CFBundleIdentifier' "$RUNNER_TEMP/BasketBoss-legacy500-1.0.2-build42.xcarchive/Products/Applications/App.app/Info.plist")" = 'uk.co.basketboss.app'
           ditto -c -k --sequesterRsrc --keepParent \
-            "$RUNNER_TEMP/BasketBoss-legacy500-1.0.2-build41.xcarchive" \
-            "$RUNNER_TEMP/BasketBoss-legacy500-1.0.2-build41-unsigned.xcarchive.zip"
+            "$RUNNER_TEMP/BasketBoss-legacy500-1.0.2-build42.xcarchive" \
+            "$RUNNER_TEMP/BasketBoss-legacy500-1.0.2-build42-unsigned.xcarchive.zip"
       - name: Retain the unsigned iPhone archive
         uses: actions/upload-artifact@v6
         with:
-          name: BasketBoss-legacy500-1.0.2-build41-unsigned-iPhone-archive
-          path: ${{ runner.temp }}/BasketBoss-legacy500-1.0.2-build41-unsigned.xcarchive.zip
+          name: BasketBoss-legacy500-1.0.2-build42-unsigned-iPhone-archive
+          path: ${{ runner.temp }}/BasketBoss-legacy500-1.0.2-build42-unsigned.xcarchive.zip
           if-no-files-found: error
           retention-days: 7
           compression-level: 0

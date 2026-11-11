@@ -13,7 +13,15 @@ on:
       - bb-pantry-inline.css
       - bb-plan-premium-polish.css
       - bb-premium-finish.css
+      - bb-shop-ownership.js
+      - bb-shop-continuation.js
+      - bb-shop-continuation.css
+      - bb-receipt-host.js
+      - bb-receipt-inventory.js
+      - bb-home.js
       - tests/basketboss-web700-deployment.test.mjs
+      - tests/basketboss-layout-deployment.test.mjs
+      - tests/basketboss-shop-restock-deployment.test.mjs
       - pwa700/**
 
 permissions:
@@ -32,8 +40,8 @@ jobs:
         with:
           node-version: '24'
       - name: Verify bounded public diagnostics and unchanged acceptance rules
-        run: node --test tests/basketboss-web700-deployment.test.mjs
+        run: node --test tests/basketboss-web700-deployment.test.mjs tests/basketboss-layout-deployment.test.mjs tests/basketboss-shop-restock-deployment.test.mjs
       - name: Verify public assets and both anonymous Premium boundaries
         run: node scripts/verify-web700-deployment.mjs --once
       - name: Verify the current planner, pantry and shopping layouts
-        run: node scripts/verify-layout-deployment.mjs
+        run: node scripts/verify-layout-deployment.mjs --shop-restock
