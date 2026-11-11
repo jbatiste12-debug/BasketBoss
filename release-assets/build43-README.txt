@@ -17,12 +17,16 @@ The Premium offer opens the existing verified purchase page. Apple shows the act
 
 At home hides items whose saved stock is exactly zero and excludes them from its counters. Confirming a cooked meal keeps any positive leftovers visible. Saved restock targets and cooking history are preserved.
 
+Inventory edge-case fixes: new pantry food uses its compatible planned unit, generic food names match recipe fillet/portion descriptions without renaming saved stock, partial kg/l purchases retain their supported physical quantity, and offline cooking/undo retries safely when connection returns. See docs/qa/2026-11-11-inventory-edge-audit.md for the full audit and regression coverage.
+
+An already-saved amount such as 200 each is kept for explicit review. To correct the haddock example: At home > Fridge > Edit Smoked haddock > clear the At home amount > choose g > enter 200 > Add to Shop. This gives 600 g required and 400 g to buy.
+
 Do not run ordinary npm run ios:sync after this launcher; that selects the legacy catalogue instead of the 700-recipe release.
 
 Pinned application source:
-https://github.com/jbatiste12-debug/BasketBoss/commit/352ca8ca73de4e485c83b76cd8b52803ae030a7b
+https://github.com/jbatiste12-debug/BasketBoss/commit/6f50b87276e37463893f67d8328b972938904284
 
 Complete source ZIP:
-https://github.com/jbatiste12-debug/BasketBoss/archive/352ca8ca73de4e485c83b76cd8b52803ae030a7b.zip
+https://github.com/jbatiste12-debug/BasketBoss/archive/6f50b87276e37463893f67d8328b972938904284.zip
 
 See build43-whats-new.txt for Apple Connect notes and build43-what-to-test.txt for regression checks.
