@@ -12,9 +12,9 @@ Requires Xcode and Node.js 22 or newer. This is source preparation; it is not a 
 Do not run ordinary npm run ios:sync after preparing this release; that selects the legacy catalogue instead of the 700-recipe release.
 
 Pinned application source:
-https://github.com/jbatiste12-debug/BasketBoss/commit/1a36d99d4202afc411796885f4662719abf6c514
+https://github.com/jbatiste12-debug/BasketBoss/commit/55887a0399358235b0600feb19951622cdca744a
 
 Complete source ZIP:
-https://github.com/jbatiste12-debug/BasketBoss/archive/1a36d99d4202afc411796885f4662719abf6c514.zip
+https://github.com/jbatiste12-debug/BasketBoss/archive/55887a0399358235b0600feb19951622cdca744a.zip
 
 See build42-whats-new.txt for Apple Connect notes and build42-what-to-test.txt for the key checks.
