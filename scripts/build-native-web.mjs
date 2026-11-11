@@ -33,7 +33,7 @@ export const CLIENT_FILES=Object.freeze([
  'bb-premium-feature-badges.js','bb-premium-feature-badges.css',
  'bb-scan-food-identity.js','bb-pantry-camera.js','bb-pantry-camera.css','bb-cook-experience.css','bb-featured-framing.js','bb-duration.js','bb-recipe-measures.js','bb-cook-method.js','bb-cook-step-layout.js','bb-cook-pantry.js','bb-cook-clarity.css','bb-receipt-quantity.js','bb-pantry-deduction.js','bb-how-it-works.js','bb-how-it-works.css',
  'bb-recipe-purchase-basis.js','bb-home.js','bb-pantry-policy.js','bb-pantry-display.js','bb-recipe-canonical.js','bb-pantry-runtime.mjs','bb-kitchen-choice-rules.mjs','bb-shared-shopping.js','bb-shared-shopping.css',
- 'bb-day-done.js','bb-day-done.css','bb-shop-add.js','bb-shop-add.css','bb-cupboard-staples.js','bb-pantry-autofill.js',
+ 'bb-day-done.js','bb-day-done.css','bb-shop-add.js','bb-shop-add.css','bb-cupboard-staples.js','bb-pantry-autofill.js','bb-pantry-first-controls.js','bb-pantry-first-controls.css',
  'bb-weekly-shop.js','bb-weekly-shop.css','bb-simple-layout.js','bb-simple-layout.css',
  'bb-shop-ownership.js','bb-shop-continuation.js','bb-shop-continuation.css',
  'bb-shop-purchase-ui.js','bb-shop-purchase-ui.css',

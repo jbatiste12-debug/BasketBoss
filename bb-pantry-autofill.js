@@ -31,8 +31,8 @@
  }
  // lastPlannedAt is an actual per-recipe timestamp map, never undated seen IDs.
  // now can be an epoch-millisecond value or an injected clock function.
- function create({stock={},canonicalMeasure,lastPlannedAt={},now=Date.now,proposal,priorityStockKeys=[]}={}){
-  const physical=typeof proposal==='function';
+ function create({stock={},canonicalMeasure,lastPlannedAt={},now=Date.now,proposal,priorityStockKeys=[],scoringMode}={}){
+  const physical=typeof proposal==='function',pantryFirst=scoringMode==='pantry-first';
   if(!physical&&typeof canonicalMeasure!=='function')throw Error('Canonical pantry measurements are required.');
   let capturedNow;try{capturedNow=timestamp(typeof now==='function'?now():now);}catch{capturedNow=null;}
   const ledger=new Map(),invalid=new Set(),prioritySources=new Set((priorityStockKeys instanceof Set?[...priorityStockKeys]:Array.isArray(priorityStockKeys)?priorityStockKeys:[]).filter(physicalKey)),priorityCanonical=new Set();
@@ -59,6 +59,20 @@
     assumptions:new Set([...(previous?.assumptions||[]),...(value.assumption?[value.assumption]:[])])});
    if(prioritySources.has(id))priorityCanonical.add(value.id);
   }
+  // Availability counts canonical ingredient rows with any proven stock once;
+  // a partial amount is available, but not fully covered. Quantity coverage is
+  // the mean allocated/required fraction and breaks availability ties. The
+  // injected physical proposal remains the sole matcher and unit allocator.
+  function pantryFirstDetails(eligible=0,available=0,full=0,coverageSum=0){
+   if(!pantryFirst)return {};
+   const quantityCoverage=eligible?coverageSum/eligible:0;
+   return {eligibleIngredients:eligible,availableIngredients:available,fullyCoveredIngredients:full,
+    availabilityPercent:eligible?100*available/eligible:0,fullCoveragePercent:eligible?100*full/eligible:0,
+    quantityCoverage,pantryCoverage:quantityCoverage};
+  }
+  // Keep the set after reservations so a deliberately measured staple stays
+  // eligible when its finite pantry balance has been exhausted by prior meals.
+  const measuredStaples=new Set(pantryFirst?[...ledger].filter(([,value])=>isStaple(value.key,{wholeFood:value.wholeFood})).map(([id])=>id):[]);
   function finishAssessment(details,{recipeId='',protein='',previousProtein='',lastPlannedAt:history=lastPlannedAt}={}){
    let plannedAt=null;
    try{plannedAt=timestamp(typeof history?.get==='function'?history.get(recipeId):history&&!Array.isArray(history)&&Object.hasOwn(history,recipeId)?history[recipeId]:null);}catch{}
@@ -67,7 +81,7 @@
    const currentProtein=text(protein),yesterdayProtein=text(previousProtein);
    const sameProteinPenalty=currentProtein&&currentProtein!=='unknown'&&currentProtein===yesterdayProtein?WEIGHTS.sameProtein:0;
    const pantryBonus=details.pantryMatches*WEIGHTS.pantryMatch,useSoonMatches=new Set(details.used.filter(row=>row.priority&&!row.staple&&row.quantity>0).map(row=>row.key)).size,useSoonBonus=useSoonMatches*WEIGHTS.useSoonMatch;
-   return {...details,score:pantryBonus+useSoonBonus-recentPenalty-sameProteinPenalty,pantryBonus,useSoonMatches,useSoonBonus,recentPenalty,sameProteinPenalty,ageDays};
+   return {...details,score:pantryFirst?details.availabilityPercent:pantryBonus+useSoonBonus-recentPenalty-sameProteinPenalty,pantryBonus,useSoonMatches,useSoonBonus,recentPenalty,sameProteinPenalty,ageDays};
   }
   function wholePepper(row,sourceIngredients){
    if(row.canonicalKey!=='pepper')return false;
@@ -83,7 +97,7 @@
   }
   function assessPhysical(ingredients,options){
    const empty=()=>finishAssessment({coverage:0,matchedIngredients:0,requiredIngredients:Array.isArray(ingredients)?Math.min(500,ingredients.length):0,
-    unmeasuredIngredients:Array.isArray(ingredients)?Math.min(500,ingredients.length):0,pantryMatches:0,pantryCoverage:0,stockUsedFraction:0,estimated:false,assumptions:[],used:[]},options);
+    unmeasuredIngredients:Array.isArray(ingredients)?Math.min(500,ingredients.length):0,pantryMatches:0,pantryCoverage:0,stockUsedFraction:0,estimated:false,assumptions:[],used:[],...pantryFirstDetails()},options);
    try{
     if(!Array.isArray(ingredients)||ingredients.length>500)return empty();
     const rows=copy(ingredients);for(const row of rows)if(object(row)&&!Object.hasOwn(row,'required')&&Object.hasOwn(row,'quantity'))row.required=row.quantity;
@@ -96,6 +110,7 @@
      remaining[id]=quantity;
     }
     let coverageSum=0,pantryCoverageSum=0,stockUsedFraction=0,requiredIngredients=0,unmeasuredIngredients=0,nonStapleRequirements=0,estimated=false,totalAllocations=0;
+    let eligibleIngredients=0,availableIngredients=0,fullyCoveredIngredients=0,eligibleCoverageSum=0;
     for(const row of result.rows){
      if(!object(row)||typeof row.id!=='string'||!row.id||row.id.length>220||rowIds.has(row.id)||row.required!==null&&!nonnegative(row.required)||!nonnegative(row.owned)||!nonnegative(row.deduct))return empty();
      rowIds.add(row.id);
@@ -115,6 +130,10 @@
      if(!key||key.includes('|')||RESERVED.has(text(key)))return empty();
      const staple=isStaple(key,{wholeFood:wholePepper({...row,canonicalKey:key},options?.sourceIngredients)});
      if(!staple)nonStapleRequirements++;
+     // Shared pantry-mode proposals mark unmeasured/status-only staples. A
+     // measured staple bypasses that branch, even when its stock is now zero.
+     const eligible=row.staple!==true&&(!staple||row.required!==null&&typeof row.unit==='string'&&!!row.unit.trim());
+     if(eligible)eligibleIngredients++;
      if(row.required===null||typeof row.unit!=='string'||!row.unit.trim()){unmeasuredIngredients++;if(row.deduct>0)return empty();continue;}
      if(row.deduct===0)continue;
      if(row.id!==key+'|'+row.unit||row.unit.length>40)return empty();
@@ -122,6 +141,7 @@
      const notes=row.assumptions===undefined?[]:row.assumptions;
      if(!Array.isArray(notes)||notes.length>200||notes.some(value=>typeof value!=='string'||!value.trim()||value.length>300)||row.estimated===true&&!notes.length)return empty();
      coverageSum+=row.deduct/row.required;stockUsedFraction+=row.deduct/row.owned;
+     if(eligible){availableIngredients++;eligibleCoverageSum+=row.deduct/row.required;if(row.deduct>=row.required)fullyCoveredIngredients++;}
      if(!staple){matched.add(key);pantryCoverageSum+=row.deduct/row.required;}
      estimated||=row.estimated===true;for(const note of notes)assumptions.add(note);
      used.push({id:row.id,key,unit:row.unit,quantity:row.deduct,required:row.required,available:row.owned,estimated:row.estimated===true,staple,...(parts.some(part=>prioritySources.has(part.stockKey))?{priority:true}:{})});
@@ -133,7 +153,8 @@
     }
     if(used.length&&!changed)return empty();
     const assessed=finishAssessment({coverage:requiredIngredients?coverageSum/requiredIngredients:0,matchedIngredients:used.length,requiredIngredients,unmeasuredIngredients,
-     pantryMatches:matched.size,pantryCoverage:nonStapleRequirements?pantryCoverageSum/nonStapleRequirements:0,stockUsedFraction,estimated,assumptions:[...assumptions].sort(),used},options);
+     pantryMatches:matched.size,pantryCoverage:nonStapleRequirements?pantryCoverageSum/nonStapleRequirements:0,stockUsedFraction,estimated,assumptions:[...assumptions].sort(),used,
+     ...pantryFirstDetails(eligibleIngredients,availableIngredients,fullyCoveredIngredients,eligibleCoverageSum)},options);
     proposedStock.set(assessed,remaining);return assessed;
    }catch{return empty();}
   }
@@ -157,12 +178,15 @@
      assumptions:new Set([...(previous?.assumptions||[]),...(value.assumption?[value.assumption]:[])])});
    }
    const used=[],assumptions=new Set(),matchedPantryKeys=new Set();let coverageSum=0,stockUsedFraction=0,estimated=false,pantryCoverageSum=0,nonStapleRequirements=unmeasuredNonStaples;
+   let eligibleIngredients=unmeasuredNonStaples,availableIngredients=0,fullyCoveredIngredients=0,eligibleCoverageSum=0;
    for(const [id,required]of requirements){
     const available=ledger.get(id),staple=isStaple(required.key,{wholeFood:required.wholeFood||available?.wholeFood});
     if(!staple)nonStapleRequirements++;
+    const eligible=!staple||measuredStaples.has(id);if(eligible)eligibleIngredients++;
     if(!available)continue;
     const quantity=round(Math.min(required.quantity,available.quantity));if(!positive(quantity))continue;
     coverageSum+=quantity/required.quantity;stockUsedFraction+=quantity/available.quantity;
+    if(eligible){availableIngredients++;eligibleCoverageSum+=quantity/required.quantity;if(quantity>=required.quantity)fullyCoveredIngredients++;}
     if(!staple){matchedPantryKeys.add(required.key);pantryCoverageSum+=quantity/required.quantity;}
     const approximation=required.estimated||available.estimated;estimated||=approximation;
     for(const assumption of [...required.assumptions,...available.assumptions])assumptions.add(assumption);
@@ -172,7 +196,8 @@
    // Coverage remains a tie-breaker, never an age claim or a hard eligibility rule.
    return finishAssessment({coverage,matchedIngredients:used.length,requiredIngredients,unmeasuredIngredients,
     pantryMatches:matchedPantryKeys.size,pantryCoverage:nonStapleRequirements?pantryCoverageSum/nonStapleRequirements:0,
-    stockUsedFraction,estimated,assumptions:[...assumptions].sort(),used},options);
+    stockUsedFraction,estimated,assumptions:[...assumptions].sort(),used,
+    ...pantryFirstDetails(eligibleIngredients,availableIngredients,fullyCoveredIngredients,eligibleCoverageSum)},options);
   }
   function reserve(ingredients,options){
    const result=assess(ingredients,options);

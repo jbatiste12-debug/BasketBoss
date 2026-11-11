@@ -190,7 +190,7 @@ for(const width of [320,390])test('a mismatched saved pantry is reviewed in Shop
   await rowFor(shell,wraps).locator('.bb172-storefront-checkbox').click();
   const review=page.locator('.bb-receipt-pantry-dialog');await review.waitFor({state:'visible'});
   assert.equal(await rowFor(shell,wraps).locator('.bb172-storefront-checkbox').isChecked(),false,'a rejected or pending save must not leave a phantom tick');assert.deepEqual((await current(page)).ticks,{});
-  await review.getByRole('button',{name:'Use this device’s amounts',exact:true}).click();
+  await review.getByRole('spinbutton',{name:'chicken breast amount in g',exact:true}).fill('200');
   assert.equal(await review.getByRole('spinbutton',{name:'chicken breast amount in g',exact:true}).inputValue(),'200');
   await review.getByRole('button',{name:'Confirm pantry & update shopping',exact:true}).click();await review.waitFor({state:'detached'});await saved(page,wraps);
   await choose(page,shell,'cheddar|g','exact');assert.equal((await current(page)).ticks[wraps],true);

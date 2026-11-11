@@ -3849,7 +3849,7 @@ body[data-bbnext-view="discover"] #app .bb-featured-card #bbFeaturedBatch {
 <script defer src="/bb-weekly-essentials.js?v=46a2d5b9851a1f61"></script>
 <script defer src="/bb-receipt-inventory.js?v=b7e29ad23f5873b5"></script>
 <script defer src="/bb-receipt-scanner.js?v=44189473c8d617fe"></script>
-<script defer src="/bb-receipt-host.js?v=4a91ad6788a8e650"></script>
+<script defer src="/bb-receipt-host.js?v=a6ac985b1c27af03"></script>
 <link rel="stylesheet" href="/bb-receipt-scanner.css?v=f5a7f0035dc6279e">
 <link rel="stylesheet" href="/bb-receipt-host.css?v=144740b15969b571">
 <script>
@@ -4332,7 +4332,15 @@ function bbHomePhysicalStock(){return BB307Pantry.physicalStock(JSON.parse(local
 function bb307ReadStock(){try{return bbHomePhysicalStock()}catch(e){console.warn('Pantry stock unavailable',e);return {}}}
 let bb307Stock=bb307ReadStock();
 let bbReceiptHostReady=false;
-function bbReceiptPantryReviewRequired(){return bbReceiptHostReady&&window.BBReceiptHost?.requiresPantryReview?.()===true;}
+function bbReceiptPantryReviewRequired(){
+ if(!bbReceiptHostReady)return false;
+ try{
+  const host=window.BBReceiptHost;if(host?.requiresPantryReview?.()!==true)return false;
+  // A routine weekly reminder does not invalidate stock already confirmed by
+  // cooking. The host still blocks receipts, account changes and real conflicts.
+  return host.getConsumptionStatus?.()?.ready!==true;
+ }catch{return true;}
+}
 function bbReceiptHasAuthoritativePantry(){return bbReceiptHostReady&&window.BBReceiptHost?.getProjection?.()?.initialized===true;}
 function bbReceiptAfterRender(){if(bbReceiptHostReady)window.BBReceiptHost?.afterRender?.();}
 function bb307SaveStock(next){
@@ -5601,10 +5609,10 @@ function bbRecipeMealEstimate(recipe,servings){
  return BBPriceV19.estimateMeal({market:bb307Market,retailer:bb307ActiveRetailer(),ingredients:(normalized.ingredients||[]).map(i=>({...i,unit:BBPriceV19.recipeIngredientUnit?.(i,recipe.ingredients)||i.unit,quantity:typeof i.quantity==='number'?i.quantity*factor:i.quantity}))});
 }
 window.BasketBossMealEstimate=(id,servings)=>bbRecipeMealEstimate(getRecipe(id),servings);
-function bbRotationSession({forAutoFill=false}={}){
+function bbRotationSession({forAutoFill=false,storage=localStorage}={}){
  let account='guest';
- try{account=JSON.parse(localStorage.getItem('basketboss_cloud_session_v1')||'null')?.user?.id||'guest';}catch(_){}
- return BBRecipePlanning.createRotation({recipes:RECIPES,isAllowed:r=>bb176AllowedRecipe(r.id),isEligible:r=>bbAfIngredientAllowed(r)&&(typeof BBIngredientPreferences==='undefined'||BBIngredientPreferences.scope()===account),scope:account,softProteinAdjacency:forAutoFill&&typeof BBPantryAutofill!=='undefined',softRecentRecipes:forAutoFill&&typeof BBPantryAutofill!=='undefined',legacyKey:'basketboss_autofill_seenRecipeIds_v1',rotationGroup:forAutoFill&&typeof BBRecipeEditorial!=='undefined'?r=>BBRecipeEditorial.isWorldMeal(r)?'world':'everyday':undefined});
+ try{account=JSON.parse(storage.getItem('basketboss_cloud_session_v1')||'null')?.user?.id||'guest';}catch(_){}
+ return BBRecipePlanning.createRotation({storage,recipes:RECIPES,isAllowed:r=>bb176AllowedRecipe(r.id),isEligible:r=>bbAfIngredientAllowed(r)&&(typeof BBIngredientPreferences==='undefined'||BBIngredientPreferences.scope()===account),scope:account,softProteinAdjacency:forAutoFill&&typeof BBPantryAutofill!=='undefined',softRecentRecipes:forAutoFill&&typeof BBPantryAutofill!=='undefined',legacyKey:'basketboss_autofill_seenRecipeIds_v1',rotationGroup:forAutoFill&&typeof BBRecipeEditorial!=='undefined'?r=>BBRecipeEditorial.isWorldMeal(r)?'world':'everyday':undefined});
 }
 /* BASKETBOSS_EVENING_PIVOT_ADAPTER: read-only until a reviewed two-meal swap. */
 function bbVerifiedPremiumFeature(){return window.BasketBossVerifiedPremium?.isActive?.()===true;}
@@ -6759,6 +6767,7 @@ function bbAfWithLock(action){
 }
 async function bb81AutoFillPro(){return bbAfWithLock(bb81AutoFillProRun);}
 async function bb81AutoFillProRun(){
+ const pantryMode=globalThis.BBPantryFirstControls?.capture?.();
  if(!bb176IsPremiumPreview()){bb81ProUpgradePreview('auto');return false;}
  if(!BB81_PRO_FILTERS.some(k=>bb81ProFilters[k]))return false;
  if(!Array.isArray(state.planned)){notify('Saved plan format not recognised. Nothing changed.');return false;}
@@ -6773,7 +6782,7 @@ async function bb81AutoFillProRun(){
  const days=batch?['Monday','Wednesday','Friday','Saturday']:BB_AF_DAYS.filter(d=>!occupied.has(d));
  if(!days.length){notify('All dinner slots are planned. Nothing changed.');return false;}
  let selection;
- try{selection=bbAfDraw(days,previous,bb81ProFilters,batch);}
+ try{selection=bbAfDraw(days,previous,bb81ProFilters,batch,pantryMode);}
  catch(_){notify('Unable to read rotation history. Nothing changed.');return false;}
  if(!selection){notify('No unused dinners match your dietary preferences, ingredients to avoid, Premium filters and variety rules. Your preferences were kept. Add a suitable meal manually.');return false;}
  const confirmText=batch?
@@ -8125,7 +8134,13 @@ function bbShopOwnedExpected(){
 }
 function bbShopOwnedChanges(id,updates,item,essential=false,initialExpected={},ownershipContext={}){
  const api=window.BBShopOwnership;if(!api)throw Error('Purchase saving is still loading. Reopen this item.');
- const session=updates[BB_SHOP_SESSION_V7_KEY],prior=bbShopV7Session(),marker=prior.shelfEdits?.[id],receiptId=bbBetaReceiptId(id);
+ const session=updates[BB_SHOP_SESSION_V7_KEY],prior=bbShopV7Session(),receiptId=bbBetaReceiptId(id);
+ let marker=prior.shelfEdits?.[id];
+ // A consumed purchase retains its history, but cannot own a later top-up.
+ // Only discard a proven inactive marker in this same actor's new generation.
+ if(marker?.kind==='shop-owned-v1'&&marker.actor===(window.BBHome?.actor?.()||'guest')&&marker.receiptId!==receiptId&&typeof api.active==='function'&&typeof bbShopV7Snapshot==='function'){
+  try{if(api.active(marker,id,bbShopV7Snapshot(prior))===false)marker=undefined;}catch{}
+ }
  const purchase=updates[BB84_PURCHASED_KEY]?.[id],partial=updates[BB_PARTIAL_PURCHASE_KEY]?.[session.id+'|'+id];
  const amount=Number(purchase?.actualQty??purchase?.qty??partial?.bought??0),unit=String(purchase?.unit||partial?.unit||item.unit||'each');
  const keys=[BB307_STOCK_KEY,BB83_KITCHEN_INVENTORY,BB83_SHOP_STOCK_LEDGER,BB_BETA_RECEIPT_KEY,BB307_FEATURE_KEY,'basketboss_at_home_requirements_v1'];
@@ -9117,6 +9132,80 @@ function bbRestoreSavedWeek({week,expected,actor}={}){
 }
 window.BBSavedWeeksHost=Object.freeze({context:bbSavedWeekContext,snapshot:bbSavedWeekSnapshot,restore:bbRestoreSavedWeek,confirm:(message,title,action)=>bbQaConfirm(message,title,action)});
 
+/* Start a new visible week only after review. Saved weeks, rotation and the
+ * shopping transition share the existing guarded writer; stock is never written. */
+function bbNextWeekStorageStage(){
+ const expected=new Map(),draft=new Map();
+ const storage={
+  getItem(key){if(draft.has(key))return draft.get(key);if(!expected.has(key))expected.set(key,localStorage.getItem(key));return expected.get(key);},
+  setItem(key,value){storage.getItem(key);draft.set(key,String(value));},
+  removeItem(key){storage.getItem(key);draft.set(key,null);}
+ };
+ return {storage,expected,updates(){return Object.fromEntries([...draft].map(([key,value])=>{if(value===null)throw Error('Invalid staged week.');return [key,JSON.parse(value)];}));}};
+}
+function bbNextWeekReady(){
+ return bbSavedWeekContext().ready&&!!window.BBSavedWeeks&&
+  !document.querySelector('.cook-overlay')&&window.BBReceiptHost?.hasPendingConfirmation?.()!==true&&
+  !bbReceiptPantryReviewRequired()&&window.BBHome?.blocked?.()!==true;
+}
+async function bbStartNextWeek(options={}){
+ const result=await bbAfWithLock(()=>bbStartNextWeekRun(options));
+ return result||{ok:false,message:'Auto-fill is already busy. Your current plan has been kept.'};
+}
+async function bbStartNextWeekRun({mode}={}){
+ const failed=message=>{notify(message);return {ok:false,message};};
+ if(!bbNextWeekReady())return failed('Finish cooking or review your pantry and account before starting next week.');
+ const initial=bbSavedWeekSnapshot();if(!initial.ready)return failed(initial.message);
+ const pantryMode=mode==='fresh'?'fresh':'pantry-first',stage=bbNextWeekStorageStage();
+ try{
+  for(const [key,value]of Object.entries(initial.raw))if(stage.storage.getItem(key)!==value)throw Error('changed');
+  for(const key of [BB307_STOCK_KEY,'basketboss_makeameal_v1_inventory','basketboss_at_home_requirements_v1','basketboss_receipt_projection_owner_v1'])stage.storage.getItem(key);
+  const currentWeek=window.BBSavedWeeks.capture({plan:initial.plan,lunch:initial.lunch,notes:initial.notes});
+  const planningState={...initial.plan,planned:[],plannedBreakfasts:[],plannedDesserts:[],mealServings:{},dayServings:{},leftoverSources:{},leftoverConfirmed:{},bbManualBatch:null,bb81Batch:null};
+  const filters=bb176IsPremiumPreview()?{...bb81ProFilters}:{};
+  if(filters.batch)return failed('Turn off Cook Once, Eat Twice before starting a varied new week.');
+  const selection=bbAfDraw(BB_AF_DAYS,[],filters,false,pantryMode,{planningState,reserveCurrentMeals:false,storage:stage.storage});
+  if(!selection?.additions?.length)return failed('No dinners match your preferences and variety rules. Your current week has been kept.');
+  let savedName='';
+  const hasCurrent=currentWeek.planned.length||currentWeek.plannedBreakfasts.length||currentWeek.plannedDesserts.length||Object.keys(currentWeek.customDinners).length||Object.values(currentWeek.lunch.days).some(rows=>rows.length);
+  if(hasCurrent){
+   const saved=window.BBSavedWeeks.createStore({storage:stage.storage,context:bbSavedWeekContext}),list=saved.read();
+   if(!list.ok)return failed(list.message);
+   const base='Week saved '+new Date().toLocaleDateString('en-GB',{day:'numeric',month:'short',year:'numeric'}),names=new Set(list.weeks.map(row=>row.name.toLocaleLowerCase()));
+   savedName=base;for(let suffix=2;names.has(savedName.toLocaleLowerCase());suffix++)savedName=base+' ('+suffix+')';
+   const result=saved.save(savedName,currentWeek);if(!result.ok)return failed(result.message);
+  }
+  const current=()=>{
+   if(!bbNextWeekReady()||bbSavedWeekSnapshot().fingerprint!==initial.fingerprint)return false;
+   return [...stage.expected].every(([key,value])=>localStorage.getItem(key)===value);
+  };
+  if(!current())return failed('Your week or pantry changed. Review the latest amounts and try again.');
+  const meals=selection.additions.map(row=>row.day.slice(0,3)+': '+(getRecipe(row.recipeId)?.name||row.recipeId)).join('\n');
+  const message=(savedName?'Save your current week as “'+savedName+'”, then replace the visible planner':'Replace the empty visible planner')+' with '+selection.additions.length+' new dinners?\n\n'+meals+'\n\nAt home quantities stay unchanged. Breakfasts, desserts, school lunches and dinner notes start empty. Your previous shopping trip and unfinished list are saved.'+bbAfDietNotice(selection.additions.length,BB_AF_DAYS.length);
+  if(!await bbQaConfirm(message,'Start next week?','Start next week'))return {ok:false,cancelled:true,message:'Your current week has been kept.'};
+  if(!current())return failed('Your account, week or pantry changed. Nothing was replaced.');
+  const additions=selection.additions;
+  if(additions.some(row=>!BB_AF_DAYS.includes(row.day)||!bb176AllowedRecipe(row.recipeId)||!bbAfIngredientAllowed(getRecipe(row.recipeId)))||
+    !bbPlanVarietyValid(additions,true)||new Set(additions.map(row=>row.day)).size!==additions.length||new Set(additions.map(row=>row.recipeId)).size!==additions.length||
+    bbAfWorldCount(additions)>1||bbAfWorldCount(additions)>0&&!selection.worldAllowed)return failed('Your recipe access or preferences changed. Your current week has been kept.');
+  if(!selection.rotation.commit())return failed('Recipe rotation changed. Your current week has been kept.');
+  bbRecordPlannedRecipesToStorage(additions.map(row=>row.recipeId),stage.storage);
+  if(!current())return failed('Your saved week changed. Nothing was replaced.');
+  const next={...planningState,pantryPlanGeneration:crypto.randomUUID(),planned:additions.map(row=>({...row}))};
+  const lunch=BB321Lunch.normaliseLunchbox({version:1,children:currentWeek.lunch.children,days:{},menus:{}});
+  const updates={...stage.updates(),[KEY]:next,[BB321_LUNCH_KEY]:lunch,[BB172_QUICK_DINNER_KEY]:{}};
+  if(initial.raw[KEY]&&hasCurrent)updates[BB_SNAPSHOT]=JSON.parse(initial.raw[KEY]);
+  // Keep the old in-memory week until Close has archived ITS remaining list.
+  // Its existing write/rollback guard owns every staged key in this transfer.
+  if(!bbShopV7Close({updates,expected:{...initial.raw,...Object.fromEntries(stage.expected)},allowUninitialized:true}))return failed('Could not start next week. Your current plan and saved weeks have been kept.');
+  state=next;bb321LunchState=lunch;bb80OpenPlanDays.clear();bb80RememberPlanDays();bbNextExpandedPlanDay=null;
+  try{window.BasketBossCloud?.scheduleSave();}catch{}
+  render();const messageText='Next week started. Your At home stock has been kept'+(savedName?' and your previous week is in Saved weeks.':'.');notify(messageText);
+  return {ok:true,savedName,added:additions.length,message:messageText};
+ }catch{return failed('Could not prepare next week. Your current plan and pantry have been kept.');}
+}
+window.BBPantryFirstHost=Object.freeze({startNextWeek:bbStartNextWeek});
+
 /* Dinner day moves preserve servings and never rewrite cooking receipts. */
 function bbPlanMoveSnapshot(){
  let actor='guest',rawPlan=null,rawNotes=null,rawHome=null,home={},notes={},problem='';
@@ -9838,13 +9927,16 @@ function bbPlannedRecipeHistory(){
  try{const all=JSON.parse(localStorage.getItem('basketboss_planned_recipe_dates_v1')||'{}'),actor=window.BBHome?.actor?.()||'guest';return all.version===1&&all.byActor?.[actor]&&typeof all.byActor[actor]==='object'?all.byActor[actor]:{};}catch{return {};}
 }
 function bbRecordPlannedRecipes(ids){
+ return bbRecordPlannedRecipesToStorage(ids,localStorage);
+}
+function bbRecordPlannedRecipesToStorage(ids,storage){
  try{
-  const actor=window.BBHome?.actor?.()||'guest',key='basketboss_planned_recipe_dates_v1',raw=localStorage.getItem(key),all=raw?JSON.parse(raw):{version:1,byActor:{}};
+  const actor=window.BBHome?.actor?.()||'guest',key='basketboss_planned_recipe_dates_v1',raw=storage.getItem(key),all=raw?JSON.parse(raw):{version:1,byActor:{}};
   if(all.version!==1||!all.byActor||typeof all.byActor!=='object'||Array.isArray(all.byActor))return;
   const now=Date.now(),before=all.byActor[actor]||{},next={};
   for(const [id,time]of Object.entries(before))if(typeof time==='number'&&Number.isFinite(time)&&time<=now&&time>=now-30*86400000)next[id]=time;
   for(const id of ids||[])if(typeof id==='string'&&getRecipe(id)&&!['__proto__','constructor','prototype'].includes(id))next[id]=now;
-  all.byActor[actor]=next;if(localStorage.getItem(key)===raw)localStorage.setItem(key,JSON.stringify(all));
+  all.byActor[actor]=next;if(storage.getItem(key)===raw)storage.setItem(key,JSON.stringify(all));
  }catch{} // A history write never cancels an already saved meal plan.
 }
 function bbAfExactProtein(recipe){
@@ -9870,11 +9962,12 @@ function bbAfWeightedPick(candidates,random=Math.random){
  for(let i=0;i<candidates.length;i++){choice-=weights[i];if(choice<=0)return candidates[i].r;}
  return candidates[candidates.length-1].r;
 }
-function bbAfDraw(days,previous,filters={},batch=false){
+function bbAfDraw(days,previous,filters={},batch=false,pantryMode,drawContext={}){
  if(typeof BBRecipeEditorial==='undefined')return null;
+ const planningState=drawContext.planningState||state,rotationOptions={forAutoFill:true,...(drawContext.storage?{storage:drawContext.storage}:{})};
  // One allowance roll per proposal, never once per day or retry. Existing
  // manually chosen world meals use the same weekly cap; they are never removed.
- const recent=bbRotationSession({forAutoFill:true}).snapshot().last;
+ const recent=bbRotationSession(rotationOptions).snapshot().last;
  const worldAllowed=bbAfWorldCount(previous)===0&&!recent.some(id=>bbAfWorldMeal(getRecipe(id)||{id}))&&Math.random()<0.25;
  const all=RECIPES.filter(r=>!(filters.bbPlanSwapExcluded||[]).includes(r.id)&&bb176AllowedRecipe(r.id)&&bbAfIngredientAllowed(r)&&bbAfDinner(r)&&
   (!filters.quick||bb81Under30(r))&&(!filters.kids||bb81KidOK(r)));
@@ -9884,20 +9977,23 @@ function bbAfDraw(days,previous,filters={},batch=false){
   return cache.get(id);
  };
  const weighted=typeof BBPantryAutofill!=='undefined';
- let stock={};if(weighted&&window.BBHome?.blocked?.()!==true)try{stock=bbHomePhysicalStock();}catch{}
+ let stock={};if(weighted&&pantryMode!=='fresh'&&window.BBHome?.blocked?.()!==true&&
+   (typeof bbReceiptPantryReviewRequired!=='function'||!bbReceiptPantryReviewRequired()))try{
+  stock=Object.fromEntries(Object.entries(bbHomePhysicalStock()).filter(([,quantity])=>typeof quantity==='number'&&Number.isFinite(quantity)&&quantity>0));
+ }catch{}
  const history=weighted?bbPlannedRecipeHistory():{};
  const goalPreferences=typeof BBMealPreferences==='undefined'?null:BBMealPreferences.get(),goalCosts=new Map(),ingredientCache=new Map();
  const priceGoal=goalPreferences?.goals.includes('Spend less on groceries')===true;
  const goalScore=(recipe,preference)=>{
   if(!goalPreferences?.goals.length)return 0;
-  if(priceGoal&&!goalCosts.has(recipe.id)){let amount=null;try{amount=bbRecipeMealEstimate(recipe).amount;}catch{}goalCosts.set(recipe.id,amount);}
-  return BBMealPreferences.goalScore({goals:goalPreferences.goals,amount:priceGoal?goalCosts.get(recipe.id):null,servings:state.servings,pantryBonus:preference?.pantryBonus||0,previouslyPlanned:Object.hasOwn(history,recipe.id)});
+  if(priceGoal&&!goalCosts.has(recipe.id)){let amount=null;try{amount=bbRecipeMealEstimate(recipe,drawContext.planningState?BBServing.forMeal(planningState,{recipeId:recipe.id},recipe):undefined).amount;}catch{}goalCosts.set(recipe.id,amount);}
+  return BBMealPreferences.goalScore({goals:goalPreferences.goals,amount:priceGoal?goalCosts.get(recipe.id):null,servings:planningState.servings,pantryBonus:preference?.pantryBonus||0,previouslyPlanned:Object.hasOwn(history,recipe.id)});
  };
 
  // Serving-scaled requirements are immutable during this read-only proposal.
  // The cache is discarded before confirmation and never survives another tap.
  const ingredientRows=(recipe,day)=>{
-  const factor=BBServing.ratio(BBServing.forMeal(state,{recipeId:recipe.id,day},recipe),recipe)*(batch&&['Monday','Wednesday'].includes(day)?2:1);
+  const factor=BBServing.ratio(BBServing.forMeal(planningState,{recipeId:recipe.id,day},recipe),recipe)*(batch&&['Monday','Wednesday'].includes(day)?2:1);
   let rows=ingredientCache.get(recipe.id);if(!rows){rows=new Map();ingredientCache.set(recipe.id,rows);}
   if(!rows.has(factor))rows.set(factor,bbHomeRecipeIngredients(recipe.id,factor));
   return rows.get(factor);
@@ -9914,7 +10010,7 @@ function bbAfDraw(days,previous,filters={},batch=false){
  // pool. Narrow time/ingredient filters cannot reset either cohort early.
  let best=null;
  for(let attempt=0;attempt<100;attempt++){
-  const rotation=bbRotationSession({forAutoFill:true}),before=rotation.snapshot(),selected=[],week=[...previous];
+  const rotation=bbRotationSession(rotationOptions),before=rotation.snapshot(),selected=[],week=[...previous];
   let conversion=null;if(weighted)try{conversion=bbHomeConversionContext();}catch{conversion={};}
   // Reuse a proposal only for identical requirements AND the complete current
   // ledger stock. Each reservation changes that key; every retry starts fresh.
@@ -9936,8 +10032,8 @@ function bbAfDraw(days,previous,filters={},batch=false){
    if(key!==null&&result&&typeof result.then!=='function')proposalCache.set(key,result);
    return result;
   };
-  const pantry=weighted?BBPantryAutofill.create({stock,priorityStockKeys:window.BBReducedStock?.priority?.(stock,{inventory:bb83ReadObject('basketboss_makeameal_v1_inventory'),actor:window.BBHome?.actor?.()||'guest',allowed:window.BBReducedFoodHost?.isPremium?.()===true,canonicalize:BBPriceV19.canonical,market:bb307Market})||[],canonicalMeasure:BBPriceV19.canonicalMeasure,lastPlannedAt:history,proposal:pantryProposal}):null;
-  if(pantry)for(const day of BB_AF_DAYS){let meals=[];try{meals=bbHomeDayMeals(day);}catch{}for(const meal of meals)if(!window.BBHome?.isCooked?.(meal.occurrence))pantry.reserve(meal.ingredients,{sourceIngredients:getRecipe(meal.recipeId)?.ingredients});}
+  const pantry=weighted?BBPantryAutofill.create({stock,scoringMode:pantryMode==='pantry-first'?'pantry-first':undefined,priorityStockKeys:window.BBReducedStock?.priority?.(stock,{inventory:bb83ReadObject('basketboss_makeameal_v1_inventory'),actor:window.BBHome?.actor?.()||'guest',allowed:window.BBReducedFoodHost?.isPremium?.()===true,canonicalize:BBPriceV19.canonical,market:bb307Market})||[],canonicalMeasure:BBPriceV19.canonicalMeasure,lastPlannedAt:history,proposal:pantryProposal}):null;
+  if(pantry&&drawContext.reserveCurrentMeals!==false)for(const day of BB_AF_DAYS){let meals=[];try{meals=bbHomeDayMeals(day);}catch{}for(const meal of meals)if(!window.BBHome?.isCooked?.(meal.occurrence))pantry.reserve(meal.ingredients,{sourceIngredients:getRecipe(meal.recipeId)?.ingredients});}
   for(const day of days){
    const candidatesForDay=all.filter(r=>!bbAfWorldMeal(r)||(worldAllowed&&bbAfWorldCount(week)===0));
    let options=rotation.filter(candidatesForDay,{day,planned:week}).filter(r=>bbAfFits(r,day,week,details,weighted)&&
@@ -9946,9 +10042,10 @@ function bbAfDraw(days,previous,filters={},batch=false){
    const lessRecent=reset?options.filter(r=>!before.last.includes(r.id)):options;
    if(!weighted&&lessRecent.length)options=lessRecent;
    if(!options.length)break;
-   const previousProtein=weighted?bbAfPreviousProtein(week,day,batch):'';
-   const candidates=options.map(r=>{const preference=pantry?.assess(ingredientRows(r,day),{recipeId:r.id,protein:bbAfExactProtein(r),previousProtein,sourceIngredients:r.ingredients});return {r,score:scored(r,week)+(preference?.score||0)+(preference?.pantryCoverage||0)*0.01+goalScore(r,preference)};});
-   const pick=bbAfWeightedPick(candidates);
+   const previousSlot=drawContext.reserveCurrentMeals===false?week.find(row=>BB_AF_DAYS.indexOf(row.day)===BB_AF_DAYS.indexOf(day)-1):null;
+   const previousProtein=weighted?(drawContext.reserveCurrentMeals===false?(previousSlot?bbAfExactProtein(getRecipe(previousSlot.recipeId)):''):bbAfPreviousProtein(week,day,batch)):'';
+   const candidates=options.map(r=>{const preference=pantry?.assess(ingredientRows(r,day),{recipeId:r.id,protein:bbAfExactProtein(r),previousProtein,sourceIngredients:r.ingredients});return {r,preference,score:scored(r,week)+(preference?.score||0)+(preference?.pantryCoverage||0)*0.01+goalScore(r,preference)-(pantryMode==='pantry-first'?(preference?.recentPenalty||0)+(preference?.sameProteinPenalty||0):0)};});
+   const pick=pantryMode==='pantry-first'?candidates.sort((a,b)=>(b.preference?.availabilityPercent||0)-(a.preference?.availabilityPercent||0)||(b.preference?.quantityCoverage||0)-(a.preference?.quantityCoverage||0)||b.score-a.score)[0]?.r:bbAfWeightedPick(candidates);
    if(!rotation.take(pick,{day,planned:week}))break;
    if(pantry)pantry.reserve(ingredientRows(pick,day),{sourceIngredients:pick.ingredients});
    const item={day,recipeId:pick.id};selected.push(item);week.push(item);
@@ -10083,6 +10180,7 @@ function bb172BuildSixDinners(allRecipes){
 }
 async function bb172AutoFillSixDinners(){return bbAfWithLock(bb172AutoFillSixDinnersRun);}
 async function bb172AutoFillSixDinnersRun(){
+ const pantryMode=globalThis.BBPantryFirstControls?.capture?.();
  if(bbBatchPairs().length){notify('Linked batch nights are planned. Remove those links before another Auto-fill.');return false;}
  if(bb176IsPremiumPreview()&&BB81_PRO_FILTERS.some(k=>bb81ProFilters[k]))return bb81AutoFillProRun();
  if(!Array.isArray(state.planned)){notify('Saved plan format not recognised. Nothing changed.');return false;}
@@ -10092,7 +10190,7 @@ async function bb172AutoFillSixDinnersRun(){
  const days=BB_AF_DAYS.filter(day=>!occupied.has(day));
  if(!days.length){notify('All seven dinners are already planned. Nothing changed.');return false;}
  let selection;
- try{selection=bbAfDraw(days,previous);}
+ try{selection=bbAfDraw(days,previous,{},false,pantryMode);}
  catch(_){notify('Unable to read rotation history. Nothing changed.');return false;}
  if(!selection){notify('No unused dinners match your dietary preferences, ingredients to avoid and variety rules. Your preferences were kept. Add a suitable meal manually.');return false;}
  const planSnapshot=JSON.stringify(previous),notesSnapshot=JSON.stringify(notes);
@@ -11557,7 +11655,10 @@ function bbShopPurchaseBase(item){
 }
 function bbShopPurchaseViewContext(item){
  const base=bbShopPurchaseBase(item);
- return item?.id&&base?{actor:window.BBHome?.actor?.()||'guest',trip:bbBetaShopWeek(),id:item.id,unit:base.unit}:null;
+ if(!item?.id||!base)return null;
+ const trip=bbBetaShopWeek(),generation=window.BBHome?.receiptGeneration?.(trip+'|'+item.id);
+ // Cooking settles the old purchase; a later top-up has its own buying choice.
+ return {actor:window.BBHome?.actor?.()||'guest',trip:Number.isSafeInteger(generation)&&generation>0?trip+'|home:'+generation:trip,id:item.id,unit:base.unit};
 }
 function bbShopPurchaseViewPin(item){
  return {context:bbShopPurchaseViewContext(item),account:localStorage.getItem('basketboss_cloud_session_v1')};
@@ -11575,12 +11676,22 @@ function bbShopPurchaseRecommended(item,needed){
  }
  const contract=bbShopPurchasePack(basket,needed);if(!contract||!(contract.purchaseQuantity>0))return null;
  const count=contract.packCount||1,quantity=contract.purchaseQuantity*base.factor,packQuantity=quantity/count;
+ const owned=Number(basket.pantryUsed),required=Number(basket.required),net=Number(needed)*base.factor;
+ const aisle=typeof bb172Aisle==='function'?bb172Aisle({key:base.name,name:base.name,unit:base.rawUnit}):null;
+ // Fresh produce and counter meat/fish can be weighed as a small top-up.
+ // Packaged foods retain their retail pack and its original price estimate.
+ if(item.essential!==true&&['Produce','Meat & Fish'].includes(aisle)&&['g','kg'].includes(base.rawUnit)&&base.unit==='g'&&
+   Number.isFinite(owned)&&owned>0&&Number.isFinite(required)&&required>owned&&
+   !(Number(basket.buyMultiple)>0)&&basket.packReviewed!==true&&net>0&&net*4<packQuantity){
+  const topUp=Math.ceil(net);
+  return {kind:'exact',packQuantity:topUp,packCount:1,quantity:topUp,unit:base.unit,label:'pack',boughtQtyOverride:topUp,automaticTopUp:true};
+ }
  const label=/\bgarlic\b/i.test(base.name)&&!/(?:bread|baguette|powder|sauce)/i.test(base.name)&&base.unit==='each'&&packQuantity===10?'bulb':/\bcoleslaw\b/i.test(base.name)?'tub':'pack';
  return {kind:contract.kind==='exact'||contract.kind==='whole'?'exact':'pack',packQuantity,packCount:count,quantity,unit:base.unit,label,boughtQtyOverride:quantity};
 }
 function bbShopPurchaseViewItem(item){
  const view={...item},pin=bbShopPurchaseViewPin(item),basket=item.basketItem;view.purchaseViewPin=pin;
- delete view.purchaseSelection;delete view.boughtQtyOverride;delete view.priceOverride;delete view.uiDefaultPurchase;
+ delete view.purchaseSelection;delete view.boughtQtyOverride;delete view.priceOverride;delete view.uiDefaultPurchase;delete view.uiPantryTopUp;
  const quote=basket?.priceQuote;view.baseEstimatedPrice=typeof quote?.amount==='number'&&Number.isFinite(quote.amount)&&quote.amount>=0?quote.amount:null;
  // A visibly labelled guide belongs to the optional presentation layer. The
  // catalogue quote remains unknown until a real/manual price is supplied.
@@ -11590,6 +11701,11 @@ function bbShopPurchaseViewItem(item){
  if(window.BBShopPurchaseUI&&recommended&&basket){
   const original=bbShopPurchasePack(basket,exact.targetQuantity),base=bbShopPurchaseBase(item);
   if(original&&base&&Math.abs(original.purchaseQuantity*base.factor-recommended.quantity)>1e-9)view.uiDefaultPurchase=recommended;
+  if(recommended.automaticTopUp&&original&&base){
+   view.defaultPackQty=original.purchaseQuantity*base.factor;
+   view.uiPantryTopUp=true;
+   view.priceOverride=window.BBShopPurchaseUI.estimatePrice(view.baseEstimatedPrice??view.fallbackEstimatedPrice,view.defaultPackQty,recommended);
+  }
  }
  try{const selection=window.BBShopPurchaseUI?.readPlan(localStorage,pin.context);if(selection){view.purchaseSelection=selection;view.boughtQtyOverride=selection.quantity;view.priceOverride=window.BBShopPurchaseUI.estimatePrice(view.baseEstimatedPrice??view.fallbackEstimatedPrice,view.defaultPackQty,selection);}}catch{}
  return view;
@@ -11613,7 +11729,7 @@ function bbShopPurchaseEstimate(summary){
  for(const [item,essential]of [...(summary.items||[]).filter(row=>row.toBuy>0).map(row=>[row,false]),...(summary.essentials||[]).map(row=>[row,true])]){
   const view=bbShopPurchaseViewItem(bbShopPurchaseListItem(item,essential));
   const price=view.priceOverride??view.fallbackEstimatedPrice;
-  if(ticks[view.id]||typeof price!=='number'||!Number.isFinite(price)||view.boughtQtyOverride===undefined&&view.fallbackEstimatedPrice===null)continue;
+  if(ticks[view.id]||typeof price!=='number'||!Number.isFinite(price)||view.boughtQtyOverride===undefined&&view.fallbackEstimatedPrice===null&&!view.uiPantryTopUp)continue;
   remainingTotal+=price-(view.baseEstimatedPrice||0);if(view.baseEstimatedPrice===null)remainingPending=Math.max(0,remainingPending-1);changed=true;
  }
  return changed?{...summary,baseRemainingTotal:summary.remainingTotal,remainingTotal:Math.max(0,Number(remainingTotal.toFixed(2))),remainingPending}:summary;
@@ -13869,7 +13985,7 @@ body[data-bbnext-view="discover"] #app .bb175-discover-heading{padding-top:calc(
 <link rel="stylesheet" href="/bb-simple-layout.css?v=b78ffdb3dab2f664">
 <script defer src="/bb-simple-layout.js?v=0a02773f77d3ba78"></script>
 <script defer src="/bb-pantry-deduction.js?v=7f7ea56758539457"></script>
-<script defer src="/bb-home.js?v=c9bde043c90016d9"></script><link rel="stylesheet" href="/bb-day-done.css?v=253f0f3f5c07d102"><script defer src="/bb-day-done.js?v=f727ecfefa4cd49e"></script><link rel="stylesheet" href="/bb-shop-add.css?v=76495afe6b55de2b"><script defer src="/bb-shop-add.js?v=93627cc9f3997f85"></script><script defer src="/bb-cupboard-staples.js?v=ee852189a99dad60"></script><script src="/bb-pantry-autofill.js?v=20024bb507445777"></script>
+<script defer src="/bb-home.js?v=c9bde043c90016d9"></script><link rel="stylesheet" href="/bb-day-done.css?v=253f0f3f5c07d102"><script defer src="/bb-day-done.js?v=f727ecfefa4cd49e"></script><link rel="stylesheet" href="/bb-shop-add.css?v=76495afe6b55de2b"><script defer src="/bb-shop-add.js?v=93627cc9f3997f85"></script><script defer src="/bb-cupboard-staples.js?v=ee852189a99dad60"></script><script src="/bb-pantry-autofill.js?v=436984c5e56295f2"></script><link rel="stylesheet" href="/bb-pantry-first-controls.css?v=bc00a8eb47b0af9e"><script defer src="/bb-pantry-first-controls.js?v=6a0e5866b0926f3b"></script>
 <link rel="stylesheet" href="/bb-shared-shopping.css?v=608ff045e8152025">
 <script defer src="/bb-shared-shopping.js?v=fb0c4aa8a858f3e9"></script>
 <link rel="stylesheet" href="/bb-plan-drag.css?v=c54ef00f36c09c35">

@@ -73,6 +73,17 @@ test('actual Auto-fill weights pantry overlap while retaining non-pantry candida
  const chooseLast=harness(catalog,{stock:{'rice|g':500},random:.999999});
  assert.equal(chooseLast.api.draw(['Monday'],chooseLast.state.planned).additions[0].recipeId,'new-food','a positive pantry overlap must not filter out every nonmatching meal');
 });
+test('a next-week proposal uses draft servings, skips old-week reservations and stages rotation without writes',()=>{
+ const catalog=[recipe('fixed','chicken'),recipe('candidate','beans')],h=harness(catalog,{stock:{'rice|g':600},planned:[{day:'Monday',recipeId:'fixed'}],random:0});
+ h.excluded.add('fixed');h.state.mealServings={candidate:12};
+ const before=[...h.values],writes=new Map(),storage={getItem:key=>writes.has(key)?writes.get(key):h.storage.getItem(key),setItem:(key,value)=>writes.set(key,String(value)),removeItem:key=>writes.set(key,null)};
+ const planningState={...h.state,planned:[],servings:2,mealServings:{},dayServings:{}};
+ const selection=h.api.draw(['Monday'],[],{},false,'pantry-first',{planningState,reserveCurrentMeals:false,storage});
+ assert.equal(selection.additions[0].recipeId,'candidate');assert.deepEqual([...h.values],before);assert.equal(writes.size,0);
+ assert.equal(h.attempts[0].reservations.length,1,'the old planned dinner is not reserved for a replacement week');
+ const used=h.attempts[0].reservations[0].used.find(row=>row.key==='rice');assert.equal(used.required,150);assert.equal(used.quantity,150);
+ assert.equal(selection.rotation.commit(),true);assert.equal(writes.has(selection.rotation.key),true);assert.deepEqual([...h.values],before,'rotation is staged until the guarded trip/plan transaction');
+});
 
 test('actual scoring ignores staple-only stock, zero quantities and unresolved pantry state',()=>{
  const stapleRows=[{name:'Salt',quantity:1,unit:'g'},{name:'Pepper',quantity:1,unit:'g'},{name:'Oil',quantity:15,unit:'ml'},{name:'Water',quantity:300,unit:'ml'}];
@@ -180,4 +191,30 @@ test('actual Auto-fill uses reviewed physical pack metadata and reserves it with
  assert.deepEqual(h.attempts[0].initial,{'rice|pack':1});
  assert.deepEqual(h.attempts[0].reservations.map(result=>result.used.find(row=>row.key==='rice')?.quantity||0),[300,200,0]);
  assert.equal(h.attempts[0].ledger.snapshot()['rice|pack'],undefined);assert.deepEqual([...h.values],before);
+});
+
+
+test('explicit pantry-first mode chooses ingredient percentage before absolute match count',()=>{
+ const catalog=[recipe('three-of-four','chicken',[{name:'Bread',quantity:2,unit:'each'},{name:'Cheddar',quantity:40,unit:'g'},{name:'Egg',quantity:2,unit:'each'},{name:'Tomato',quantity:100,unit:'g'}]),recipe('one-of-one','beans')];
+ const h=harness(catalog,{stock:{'bread|each':2,'cheddar|g':40,'egg|each':2,'rice|g':300},random:.999999}),before=[...h.values];
+ const selection=h.api.draw(['Monday'],h.state.planned,{},false,'pantry-first');assert.equal(selection.additions[0].recipeId,'one-of-one');
+ const scores=new Map(h.attempts[0].assessments.map(row=>[row.recipeId,row.result]));assert.equal(scores.get('three-of-four').availabilityPercent,75);assert.equal(scores.get('one-of-one').availabilityPercent,100);assert.deepEqual([...h.values],before);
+});
+
+test('pantry-first reserves existing meals and each new selection against the same physical ledger',()=>{
+ const catalog=[recipe('existing','fish'),recipe('rice-topup','chicken'),recipe('potatoes','beans',[{name:'Potatoes',quantity:300,unit:'g'}])];
+ const h=harness(catalog,{stock:{'rice|g':500,'potato|g':300},planned:[{recipeId:'existing',day:'Wednesday'}]}),before=[...h.values];
+ const selection=h.api.draw(['Monday','Tuesday'],h.state.planned,{},false,'pantry-first');assert.deepEqual(plain(selection.additions.map(row=>row.recipeId)),['potatoes','rice-topup']);
+ const reservations=h.attempts[0].reservations;assert.equal(reservations[0].used.find(row=>row.key==='rice').quantity,300);assert.equal(reservations.at(-1).used.find(row=>row.key==='rice').quantity,200);assert.deepEqual([...h.values],before);
+});
+
+test('explicit fresh mode leaves physical pantry untouched while suppressing pantry ranking',()=>{
+ const h=harness([recipe('pantry','chicken'),recipe('fresh','beans',[{name:'Pasta',quantity:300,unit:'g'}])],{stock:{'rice|g':500},random:.999999}),before=[...h.values];
+ const selection=h.api.draw(['Monday'],h.state.planned,{},false,'fresh');assert.equal(selection.additions[0].recipeId,'fresh');assert.deepEqual(h.attempts[0].initial,{});assert.ok(h.attempts[0].assessments.every(row=>row.result.pantryBonus===0));assert.deepEqual([...h.values],before);
+});
+
+
+test('pantry-first uses existing recency penalties only after equal pantry percentages and coverage',()=>{
+ const h=harness([recipe('recent-pantry','chicken'),recipe('older-pantry','beans')],{stock:{'rice|g':500},history:{'recent-pantry':NOW-3*DAY,'older-pantry':NOW-20*DAY},random:.1});
+ const selection=h.api.draw(['Monday'],h.state.planned,{},false,'pantry-first');assert.equal(selection.additions[0].recipeId,'older-pantry');
 });

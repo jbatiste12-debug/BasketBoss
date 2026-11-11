@@ -135,3 +135,77 @@ test('an account switch during a later write preserves new authentication and ro
  assert.equal(h.values.get(savedKey),savedJSON);assert.doesNotMatch(h.values.get(savedKey),/access_token|new-account-token|kept-private-token/);
  assert.equal(h.writes.includes('basketboss_cloud_session_v1'),false,'authentication is an expected value, never a write payload');
 });
+
+// Exercise Start next week against the actual Saved Weeks store, lock, guarded
+// shopping close and rollback writer. Recipe ranking has its own pure tests.
+function nextWeekHarness(){
+ const h=harness(),draws=[],archivedPlans=[],rotationKey='basketboss_autofill_rotation_v1:'+ACTOR;
+ h.values.set(rotationKey,JSON.stringify({version:1,cycle:0,seen:['old-dinner'],last:['old-dinner']}));
+ h.values.set('basketboss_makeameal_v1_inventory',JSON.stringify({'fridge|rice':{name:'rice',loc:'fridge',selected:true,qty:600,unit:'g',bb173StockKey:'rice|g',bb173StockValue:600}}));
+ Object.assign(h.ctx,{BB_AF_DAYS:['Monday','Tuesday','Wednesday','Thursday','Friday','Saturday','Sunday'],bbAfBusy:false,bb307Market:'UK',
+  bb176IsPremiumPreview:()=>false,bb81ProFilters:{},bbAfDietNotice:()=>'',bbAfIngredientAllowed:recipe=>!!recipe&&h.allowed.has(recipe.id),
+  bbPlanVarietyValid:()=>true,bbAfWorldCount:()=>0,bb321ReadShopTicks:()=>JSON.parse(h.storage.getItem('ticks')||'{}'),
+  bb321WeeklySummary:()=>{archivedPlans.push(plain(h.ctx.state.planned));return {items:[],essentials:[]};},
+  bbAfDraw(days,previous,filters,batch,mode,context){
+   draws.push({days:plain(days),previous:plain(previous),filters:plain(filters),batch,mode,planningState:plain(context.planningState),reserve:context.reserveCurrentMeals});
+   const before=context.storage.getItem(rotationKey);
+   return {worldAllowed:false,additions:[{day:'Monday',recipeId:'new-dinner'},{day:'Tuesday',recipeId:'soup'}],rotation:{commit(){
+    if(context.storage.getItem(rotationKey)!==before)return false;
+    context.storage.setItem(rotationKey,JSON.stringify({version:1,cycle:0,seen:['old-dinner','new-dinner','soup'],last:['new-dinner','soup']}));return true;
+   }}};
+  }});
+ h.ctx.document.querySelectorAll=()=>[];
+ vm.runInContext(block('function bbReceiptPantryReviewRequired(){','function bbReceiptHasAuthoritativePantry('),h.ctx);
+ h.ctx.window.BBShopOwnership={enabled:()=>true};
+ h.ctx.window.BBShopContinuation={prepareContinuation:(session,remaining,context)=>({ok:true,snapshot:{status:'pending',actorId:context.actor,market:context.market,items:remaining}})};
+ vm.runInContext(block('function bbAfSetBusy(','async function bb81AutoFillPro('),h.ctx);
+ return Object.assign(h,{draws,archivedPlans,rotationKey,next:h.ctx.window.BBPantryFirstHost});
+}
+test('Start next week atomically saves the previous plan and replaces only planning choices while retaining pantry',async()=>{
+ const h=nextWeekHarness(),old=plain(h.ctx.state),stock=h.values.get('stock'),inventory=h.values.get('basketboss_makeameal_v1_inventory'),home=h.values.get('basketboss_at_home_requirements_v1'),receipts=h.values.get('receipts'),partials=h.values.get('partials');
+ h.ctx.bbQaConfirm=async(message,title,action)=>{assert.equal(h.writes.length,0,'a complete proposal and saved-week draft are read-only before confirmation');assert.equal(title,'Start next week?');assert.equal(action,'Start next week');assert.match(message,/Breakfasts, desserts, school lunches and dinner notes start empty/);return true;};
+ const result=await h.next.startNextWeek({mode:'pantry-first'});assert.equal(result.ok,true);assert.equal(result.added,2);
+ assert.deepEqual(plain(h.ctx.state.planned),[{day:'Monday',recipeId:'new-dinner'},{day:'Tuesday',recipeId:'soup'}]);assert.notEqual(h.ctx.state.pantryPlanGeneration,old.pantryPlanGeneration);
+ assert.deepEqual(plain(h.ctx.state.plannedDesserts),[]);assert.deepEqual(plain(h.ctx.state.plannedBreakfasts),[]);assert.deepEqual(plain(h.ctx.state.dayServings),{});assert.deepEqual(plain(h.ctx.state.mealServings),{});
+ assert.equal(h.ctx.state.servings,old.servings);assert.deepEqual(plain(h.ctx.state.pantry),old.pantry);assert.deepEqual(plain(h.ctx.state.ingredientAvoidance),old.ingredientAvoidance);
+ assert.equal(h.values.get('stock'),stock);assert.equal(h.values.get('basketboss_makeameal_v1_inventory'),inventory);assert.equal(h.values.get('basketboss_at_home_requirements_v1'),home);assert.equal(h.values.get('receipts'),receipts);assert.equal(h.values.get('partials'),partials);
+ const saved=model.createStore({storage:h.storage,context:h.host.context}).read();assert.equal(saved.weeks.length,1);assert.equal(saved.weeks[0].name,result.savedName);assert.deepEqual(saved.weeks[0].week.planned,old.planned);assert.equal(saved.weeks[0].week.lunch.days.Monday[0].name,'Pear');
+ assert.doesNotMatch(h.values.get(saved.key),/kept-private-token|access_token|existing-photo/);assert.deepEqual(JSON.parse(h.values.get('backup')),old);
+ assert.deepEqual(h.archivedPlans,[old.planned],'old unfinished shopping is archived before changing the in-memory plan');
+ assert.deepEqual(JSON.parse(h.values.get('ticks')),{});assert.deepEqual(h.ended,['shop-before']);assert.notEqual(JSON.parse(h.values.get('shop')).id,'shop-before');
+ assert.equal(h.draws[0].reserve,false);assert.deepEqual(h.draws[0].previous,[]);assert.deepEqual(h.draws[0].planningState.dayServings,{});assert.equal(h.draws[0].mode,'pantry-first');
+ assert.deepEqual(JSON.parse(h.values.get(h.rotationKey)).last,['new-dinner','soup']);assert.equal(h.renders,1);
+});
+test('cancelled next-week previews and state changes during review never write plan, stock or history',async()=>{
+ for(const change of [null,h=>h.values.set('stock',JSON.stringify({'rice|g':300})),h=>h.values.set('basketboss_cloud_session_v1',JSON.stringify({user:{id:'other'}})),h=>{h.ctx.state.servings=2;},h=>h.allowed.delete('new-dinner'),h=>h.values.set(h.rotationKey,JSON.stringify({version:1,cycle:1,seen:[],last:[]})),h=>h.pending(true)]){
+  const h=nextWeekHarness();let after;
+  h.ctx.bbQaConfirm=async()=>{change?.(h);after=[...h.values];return !!change;};
+  const result=await h.next.startNextWeek({mode:'fresh'});assert.equal(result.ok,false);assert.deepEqual([...h.values],after);assert.equal(h.writes.length,0);assert.equal(h.renders,0);assert.equal(h.ctx.state.planned[0].recipeId,'old-dinner');
+ }
+});
+test('a next-week storage failure rolls back saved-week, rotation, plan and trip together',async()=>{
+ for(const keyOf of [h=>model.KEY+ACTOR,h=>h.rotationKey,()=> 'basketboss_planned_recipe_dates_v1',()=> 'plan',()=> 'lunch',()=> 'notes',()=> 'backup',()=> 'archive',()=> 'shop',()=> 'ticks',()=> 'purchases',()=> 'choices']){
+  const h=nextWeekHarness(),before=new Map(h.values),state=JSON.stringify(h.ctx.state),lunch=JSON.stringify(h.ctx.bb321LunchState),failureKey=keyOf(h);let fail=true;
+  h.writeHook(key=>{if(key===failureKey&&fail){fail=false;throw Error('quota');}});
+  assert.equal((await h.next.startNextWeek()).ok,false,failureKey);assert.deepEqual(new Map(h.values),before,failureKey);assert.equal(JSON.stringify(h.ctx.state),state,failureKey);assert.equal(JSON.stringify(h.ctx.bb321LunchState),lunch,failureKey);assert.equal(h.renders,0);assert.deepEqual(h.ended,[]);
+ }
+});
+test('rapid Start next week taps share the existing lock and cannot archive or save twice',async()=>{
+ const h=nextWeekHarness();let confirm,shown;
+ const waiting=new Promise(resolve=>{shown=resolve;});h.ctx.bbQaConfirm=()=>{shown();return new Promise(resolve=>{confirm=resolve;});};
+ const first=h.next.startNextWeek({mode:'fresh'});await waiting;
+ assert.equal((await h.next.startNextWeek({mode:'pantry-first'})).ok,false);assert.equal(h.draws.length,1);assert.equal(h.writes.length,0);
+ confirm(true);assert.equal((await first).ok,true);assert.equal(h.ended.length,1);assert.equal(model.createStore({storage:h.storage,context:h.host.context}).read().weeks.length,1);
+});
+test('next-week failure preserves a newer external purchase while rolling back this transition',async()=>{
+ const h=nextWeekHarness(),external=JSON.stringify({'new-purchase':{qty:2,unit:'each'}}),old=JSON.stringify(h.ctx.state);let fail=true;
+ h.writeHook(key=>{if(key==='ticks'&&fail){fail=false;h.values.set('purchases',external);throw Error('quota');}});
+ assert.equal((await h.next.startNextWeek()).ok,false);assert.equal(h.values.get('purchases'),external);assert.equal(JSON.stringify(h.ctx.state),old);assert.equal(h.values.has(model.KEY+ACTOR),false);assert.equal(h.renders,0);
+});
+test('routine pantry reminders allow a new week while true stock conflicts remain blocked',async()=>{
+ for(const ready of [true,false]){
+  const h=nextWeekHarness(),stock=h.values.get('stock');h.review(true);h.ctx.window.BBReceiptHost.getConsumptionStatus=()=>({ready});
+  const result=await h.next.startNextWeek();assert.equal(result.ok,ready);assert.equal(h.values.get('stock'),stock);
+  if(!ready){assert.equal(h.writes.length,0);assert.equal(h.draws.length,0);assert.equal(h.ctx.state.planned[0].recipeId,'old-dinner');}
+ }
+});

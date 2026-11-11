@@ -738,7 +738,7 @@
       if (blocked()) return null;
       if (reviewing || choosingTrip) return null; isolate(); if (isolationError) {notify(isolationError);return null;}
       if (hasPendingConfirmation()) {await recoverReceipt();return null;}
-      const serial = generation;
+      const serial = generation, priorProjection = projection(), trustedBeforeReview = getConsumptionStatus().ready;
       reviewing = true;
       const inline = !!container, hold = inline && deferProjection ? holdProjection() : null;
       const id = actor(), token = session()?.access_token, currentContext = {...context()};
@@ -756,23 +756,33 @@
       const heading = element(inline ? 'h3' : 'h2', inline ? 'Review pantry amounts' : 'Confirm Your Pantry');heading.id = inline ? 'bbReceiptPantryInlineTitle' : 'bbReceiptPantryTitle';
       const explanation = element('p', 'Check what is still in stock. Confirmed amounts will reduce your next shopping list.');
       const scopeChanged = !!oldOwner.scope && (oldOwner.scope.kind !== data.scope.kind || oldOwner.scope.id !== data.scope.id);
-      if (scopeChanged || !oldOwner.actorId && data.initialized && Object.keys(local).length) explanation.textContent = 'You have two saved pantry lists. Review the quantities to keep; overlapping amounts are never added together.';
-      const controls = element('div', undefined, 'bb-receipt-host-actions');
-      const online = element('button', 'Use saved online amounts'), device = element('button', 'Use this device’s amounts');online.type = device.type = 'button';controls.append(online, device);
+      let equalStock = false;try {equalStock = samePurchaseStock(local, data.stock);} catch {}
+      const trustedLocal = trustedBeforeReview && priorProjection?.initialized === true && oldOwner.actorId === id && samePurchaseScope(oldOwner.scope, data.scope) && samePurchaseScope(priorProjection.scope, data.scope) && priorProjection.inventoryRevision === data.inventoryRevision;
+      const initialStock = equalStock || trustedLocal || !data.initialized ? local : data.stock;
+      if (!equalStock && (scopeChanged || data.initialized)) explanation.textContent = 'Some saved amounts differ. Check the amount to keep for each food, then confirm. Amounts are never added together.';
+      const shownNumber = (value, unit) => Number.isFinite(Number(value)) && Number(value) >= 0 ? new Intl.NumberFormat('en-GB', {maximumFractionDigits: ['g', 'ml'].includes(unit) ? 0 : 1, useGrouping: false}).format(Number(value)) : '';
+      const shownAmount = (value, unit) => {
+        const amount = Number(value);if (!Number.isFinite(amount) || amount < 0) return 'Check amount';
+        const formatter = root.BBShopPurchaseUI?.formatDisplayQty || root.formatDisplayQty;
+        if (typeof formatter === 'function') {const shown = formatter(amount, unit, {countMode: 'balance', compact: false});if (!/^Check\b/.test(shown)) return shown;}
+        if (amount > 0 && amount < (['g', 'ml'].includes(unit) ? 1 : .1)) return (['g', 'ml'].includes(unit) ? '<1 ' : '<0.1 ') + unit;
+        return shownNumber(amount, unit) + ' ' + unit;
+      };
       const form = element('form'), rows = element('div', undefined, 'bb-receipt-pantry-rows'), message = element('p');message.setAttribute('role', 'status');message.setAttribute('aria-live', 'polite');
-      const inputs = new Map(), allKeys = [...new Set([...Object.keys(local), ...Object.keys(data.stock)])].sort();
+      const inputs = new Map(), originalAmounts = new Map(), allKeys = [...new Set([...Object.keys(local), ...Object.keys(data.stock)])].sort();
       for (const key of allKeys) {
         const split = key.lastIndexOf('|'); if (split < 1 || key.length > 180) continue;
         const unit = key.slice(split + 1), label = element('label', undefined, 'bb-receipt-pantry-row'), title = element('strong', key.slice(0, split));
-        const detail = element('small', 'Online: ' + (data.stock[key] || 0) + ' ' + unit + ' · This device: ' + (local[key] || 0) + ' ' + unit);
-        const input = element('input');input.type = 'number';input.min = '0';input.max = '1000000';input.step = 'any';input.value = String((data.initialized ? data.stock[key] : local[key]) || 0);input.setAttribute('aria-label', key.slice(0, split) + ' amount in ' + unit);input.dataset.stockKey = key;
+        const localAmount = local[key] || 0, savedAmount = data.stock[key] || 0;
+        const detail = element('small', Number(localAmount) === Number(savedAmount) ? 'At home: ' + shownAmount(initialStock[key] || 0, unit) : 'At home: ' + shownAmount(localAmount, unit) + ' · Saved: ' + shownAmount(savedAmount, unit));
+        const input = element('input');input.type = 'number';input.min = '0';input.max = '1000000';input.step = 'any';input.value = shownNumber(initialStock[key] || 0, unit);input.setAttribute('aria-label', key.slice(0, split) + ' amount in ' + unit);input.dataset.stockKey = key;
+        const original = {quantity: Number(initialStock[key] || 0), shown: input.value, edited: false};originalAmounts.set(key, original);
+        input.addEventListener('input', () => {original.edited = true;});
         label.append(title, detail, input, element('span', unit));rows.append(label);inputs.set(key, input);
       }
       if (!inputs.size) rows.append(element('p', 'No measured foods are saved. Confirm an empty pantry to continue.'));
-      online.onclick = () => {for (const [key, input] of inputs) input.value = String(data.stock[key] || 0);};
-      device.onclick = () => {for (const [key, input] of inputs) input.value = String(local[key] || 0);};
       const buttons = element('div', undefined, 'bb-receipt-host-actions'), confirm = element('button', 'Confirm pantry & update shopping'), cancel = element('button', 'Review later');confirm.type = 'submit';cancel.type = 'button';buttons.append(confirm, cancel);
-      form.append(rows, message, buttons);dialog.append(heading, explanation, controls, form);
+      form.append(rows, message, buttons);dialog.append(heading, explanation, form);
       let busy = false, disposed = false, removed = false, settled = false;
       const closeForm = () => {
         if (removed) return;removed = true;
@@ -800,7 +810,7 @@
         if (!current()) {message.textContent = 'Your account or shopping region changed. Reopen this review.';return;}
         const stock = {};
         for (const [key, input] of inputs) {
-          const value = Number(input.value), unit = key.slice(key.lastIndexOf('|') + 1);
+          const original = originalAmounts.get(key), value = original && !original.edited && input.value === original.shown ? original.quantity : Number(input.value);
           if (input.value.trim() === '' || !Number.isFinite(value) || value < 0 || value > 1000000) {message.textContent = 'Check the amount for ' + key.slice(0, key.lastIndexOf('|')) + '.';input.focus();return;}
           if (value > 0) stock[key] = value;
         }
@@ -879,7 +889,8 @@
       mount.querySelector('#bbReceiptReviewBanner')?.remove();
       if (requiresPantryReview() || hasPendingConfirmation() || issue) {
         const banner = element('section', undefined, 'bb-receipt-host-banner bb-receipt-host-section');banner.id = 'bbReceiptReviewBanner';
-        banner.append(element('h3', hasPendingConfirmation() ? 'Recover your receipt' : 'Confirm Your Pantry'), element('p', hasPendingConfirmation() ? 'A receipt confirmation needs checking. Finish Shop is paused to prevent adding the same purchase twice.' : 'Check your current amounts before your pantry reduces the shopping list.'));
+        const counted = !hasPendingConfirmation() && requiresPantryReview() && getConsumptionStatus().ready;
+        banner.append(element('h3', hasPendingConfirmation() ? 'Recover your receipt' : counted ? 'At home stock included' : 'Confirm Your Pantry'), element('p', hasPendingConfirmation() ? 'A receipt confirmation needs checking. Finish Shop is paused to prevent adding the same purchase twice.' : counted ? 'Your At home amounts are already included in this list. Review them if they have changed.' : 'Check your current amounts before your pantry reduces the shopping list.'));
         if (issue) banner.append(element('p', issue.includes('pantry_merge_required') || issue === 'receipt_household_scope_changed' ? 'Review the saved and device quantities before syncing this pantry.' : issue.startsWith('receipt_') || issue.startsWith('pending_') ? 'Refresh your saved pantry before using it for this shop.' : issue));
         const button = element('button', hasPendingConfirmation() ? 'Check receipt status' : 'Review pantry');button.type = 'button';button.onclick = () => {void (hasPendingConfirmation() ? recoverReceipt() : reviewPantry());};banner.append(button);
         if (hasPendingConfirmation()) {const retry = element('button', 'Retry original confirmation');retry.type = 'button';retry.onclick = () => {void recoverReceipt({retry: true});};banner.append(retry);}

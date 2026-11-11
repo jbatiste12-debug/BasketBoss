@@ -6,6 +6,7 @@ import {createRequire} from 'node:module';
 const require = createRequire(import.meta.url), reduced = require('../bb-reduced-purchases.js'), reducedStock = require('../bb-reduced-stock.js');
 
 const source = await fs.readFile(new URL('../bb-receipt-host.js', import.meta.url), 'utf8');
+const appHtml = await fs.readFile(new URL('../app.html', import.meta.url), 'utf8');
 const actorA = '11111111-1111-4111-8111-111111111111';
 const actorB = '22222222-2222-4222-8222-222222222222';
 const keys = {stock: 'basketboss_321_v7_measured_pantry', kitchen: 'basketboss_makeameal_v1_inventory', confirmed: 'basketboss_ui_next_confirmed_pantry_v1', ledger: 'basketboss_purchase_receipts_v1', owner: 'basketboss_receipt_projection_owner_v1'};
@@ -228,6 +229,116 @@ function pantryHarness({scope = {kind: 'user', id: actorA}, revision = 2} = {}) 
   h.store.setItem(keys.owner, JSON.stringify({actorId: actorA, scope: {kind: 'user', id: actorA}}));
   return {...h, data};
 }
+
+// Exercise the real application adapter with the real host status. A routine
+// review reminder is distinct from a pantry whose ownership needs resolution.
+function shoppingCredit(h) {
+  const policy = require('../bb-pantry-policy.js'), deduction = require('../bb-pantry-deduction.js');
+  const id = (name, unit) => policy.canonicalName(name) + '|' + unit;
+  const ctx = vm.createContext({bbReceiptHostReady: true, window: {BBReceiptHost: h.host, BBPantryPolicy: policy, BBPantryDeduction: deduction}, BB307Pantry: {pantryId: id}, bbHomeConversionContext: () => ({pantryMode: true, market: 'UK'})});
+  for (const [name, next] of [['bbReceiptPantryReviewRequired', 'bbReceiptHasAuthoritativePantry'], ['bbPantryReconcileStock', 'bb307Plan']]) {
+    const start = appHtml.indexOf('function ' + name + '('), end = appHtml.indexOf('\nfunction ' + next + '(', start);
+    assert.ok(start >= 0 && end > start, name);vm.runInContext(appHtml.slice(start, end), ctx);
+  }
+  const blocked = ctx.bbReceiptPantryReviewRequired(), stock = JSON.parse(h.store.getItem(keys.stock) || '{}');
+  const result = ctx.bbPantryReconcileStock(blocked ? {} : stock, [{key: 'Chicken breast', name: 'Chicken breast', unit: 'g', required: 600}]);
+  const credited = result.pantry['chicken breast|g'] || 0;
+  return {blocked, credited, needed: Math.round((600 - credited) * 1000000) / 1000000};
+}
+
+test('routine pantry review credits the live six-decimal remainder to the next shopping meal', async () => {
+  const cached = {initialized: true, scope: {kind: 'user', id: actorA}, inventoryRevision: 2, pantryReview: {required: true}};
+  const h = harness({cached, stock: {'chicken breast|g': 533.333333}});
+  await h.host.refreshAvailability({synchronize: false});
+  assert.equal(h.host.requiresPantryReview(), true);assert.equal(h.host.getConsumptionStatus().ready, true);
+  const before = [...h.store.values], calls = h.calls.length;
+  assert.deepEqual(shoppingCredit(h), {blocked: false, credited: 533.333333, needed: 66.666667});
+  assert.deepEqual([...h.store.values], before);assert.equal(h.calls.length, calls, 'derived shopping reads do not save or synchronize stock');
+});
+
+test('online and offline confirmed cooking retain usable shopping credit while keeping the review reminder', async () => {
+  for (const offline of [false, true]) {
+    const scope = {kind: 'user', id: actorA}, stock = {'chicken breast|g': 533.333333};
+    const cached = {initialized: true, scope, inventoryRevision: 2, pantryReview: {required: true}};
+    const h = harness({cached, stock, status: {ok: true, available: !offline, premium: true}});
+    h.inventory.confirmPantry = async value => {
+      h.setCached({...cached, inventoryRevision: 3, pantryReview: {required: false}});
+      return {ok: true, committed: true, localApplied: true, projection: {stock: value.stock}};
+    };
+    const result = await h.host.confirmCookedPantry({stock});
+    assert.equal(result.ok, true);assert.equal(result.weeklyReviewRequired, true);
+    assert.equal(h.host.requiresPantryReview(), true);assert.equal(h.host.getConsumptionStatus().ready, true);
+    const before = [...h.store.values];
+    assert.deepEqual(shoppingCredit(h), {blocked: false, credited: 533.333333, needed: 66.666667}, offline ? 'offline' : 'online');
+    assert.deepEqual([...h.store.values], before);assert.deepEqual(JSON.parse(h.store.getItem(keys.stock)), stock);
+  }
+});
+
+test('unsafe pantry review states continue withholding shopping credit without changing saved balances', async () => {
+  const scope = {kind: 'user', id: actorA}, cached = {initialized: true, scope, inventoryRevision: 2, pantryReview: {required: true}};
+  for (const [label, change] of [
+    ['uninitialized', h => h.setCached({...cached, initialized: false})],
+    ['pending receipt', h => h.setPending({receiptId: 'pending'})],
+    ['pending receipt journal', h => h.store.setItem('basketboss_receipt_inventory_journal_v1:' + actorA, '{}')],
+    ['different account', h => h.setCached({...cached, scope: {kind: 'user', id: actorB}})],
+    ['unreadable confirmation', h => h.store.setItem(keys.confirmed, '{broken')],
+    ['remote conflict', async h => {h.inventory.synchronize = async () => ({localApplied: false, localError: 'receipt_local_remote_pantry_merge_required'});await h.host.refreshAvailability({force: true});}]
+  ]) {
+    const h = harness({cached, stock: {'chicken breast|g': 533.333333}});
+    await h.host.refreshAvailability({synchronize: false});await change(h);
+    assert.equal(h.host.requiresPantryReview(), true, label);assert.equal(h.host.getConsumptionStatus().ready, false, label);
+    const before = [...h.store.values], calls = h.calls.length;
+    assert.deepEqual(shoppingCredit(h), {blocked: true, credited: 0, needed: 600}, label);
+    assert.deepEqual([...h.store.values], before, label);assert.equal(h.calls.length, calls, label);
+  }
+  for (const status of [undefined, () => {throw Error('unavailable');}]) {
+    const h = harness({stock: {'chicken breast|g': 533.333333}});
+    h.host = {requiresPantryReview: () => true, ...(status ? {getConsumptionStatus: status} : {})};
+    assert.deepEqual(shoppingCredit(h), {blocked: true, credited: 0, needed: 600}, 'missing or failed status remains conservative');
+  }
+});
+
+test('equal pantry amounts use one clean balance and preserve untouched exact quantities on confirmation', async () => {
+  const h = pantryHarness(), stock = {'chicken breast|g': 533.333333, 'cheddar|g': 93.333333, 'egg|each': 1.333333, 'rice|g': .000001};
+  h.data.stock = stock;h.store.setItem(keys.stock, JSON.stringify(stock));
+  const before = [...h.store.values], dialog = await h.host.reviewPantry(), nodes = descendants(dialog), inputs = nodes.filter(node => node.tagName === 'INPUT');
+  assert.deepEqual([...h.store.values], before, 'opening the review does not rewrite precise stock');
+  assert.equal(inputs.length, 4);assert.ok(!nodes.some(node => node.tagName === 'BUTTON' && /^Use (?:saved|this)/.test(node.textContent)));
+  assert.deepEqual(inputs.map(input => [input.dataset.stockKey, input.value]), [['cheddar|g', '93'], ['chicken breast|g', '533'], ['egg|each', '1.3'], ['rice|g', '0']]);
+  assert.doesNotMatch(dialog.textContent, /\d+\.\d{2,}|Online:|This device:/);assert.match(dialog.textContent, /At home: <1 g/);
+  await nodes.find(node => node.tagName === 'FORM').events.submit({preventDefault() {}});
+  assert.deepEqual(JSON.parse(JSON.stringify(h.calls[0].stock)), stock, 'rounded fields must not replace untouched six-decimal balances');
+});
+
+test('a trusted local cooking balance prefills the review without requiring a source choice', async () => {
+  const h = pantryHarness(), scope = h.data.scope;
+  h.data.stock = {'chicken breast|g': 1200};h.store.setItem(keys.stock, JSON.stringify({'chicken breast|g': 533.333333}));
+  h.setCached({initialized: true, scope, inventoryRevision: h.data.inventoryRevision, pantryReview: {required: true}});
+  h.store.setItem(keys.confirmed, JSON.stringify({receiptCookReview: {required: true, actorId: actorA, scope: 'user:' + actorA}}));
+  const dialog = await h.host.reviewPantry(), nodes = descendants(dialog), input = nodes.find(node => node.tagName === 'INPUT');
+  assert.equal(input.value, '533');assert.match(dialog.textContent, /At home: 533 g · Saved: 1200 g/);
+  await nodes.find(node => node.tagName === 'FORM').events.submit({preventDefault() {}});
+  assert.equal(h.calls[0].stock['chicken breast|g'], 533.333333);assert.equal(h.calls[0].expectedRevision, 2);
+});
+
+test('a newer saved revision keeps the established conflict default and exact CAS request', async () => {
+  const h = pantryHarness(), scope = h.data.scope;
+  h.data.stock = {'chicken breast|g': 700.333333};h.store.setItem(keys.stock, JSON.stringify({'chicken breast|g': 533.333333}));
+  h.setCached({initialized: true, scope, inventoryRevision: h.data.inventoryRevision - 1, pantryReview: {required: true}});
+  const dialog = await h.host.reviewPantry(), nodes = descendants(dialog), input = nodes.find(node => node.tagName === 'INPUT');
+  assert.equal(input.value, '700');assert.match(dialog.textContent, /Some saved amounts differ/);assert.match(dialog.textContent, /At home: 533 g · Saved: 700 g/);
+  await nodes.find(node => node.tagName === 'FORM').events.submit({preventDefault() {}});
+  assert.equal(h.calls[0].stock['chicken breast|g'], 700.333333);assert.equal(h.calls[0].expectedRevision, 2);assert.deepEqual(JSON.parse(JSON.stringify(h.calls[0].expectedScope)), scope);
+});
+
+test('editing a rounded balance changes only that quantity, including explicitly entering the shown whole amount', async () => {
+  const h = pantryHarness(), stock = {'chicken breast|g': 533.333333, 'cheddar|g': 93.333333};
+  h.data.stock = stock;h.store.setItem(keys.stock, JSON.stringify(stock));
+  const dialog = await h.host.reviewPantry(), nodes = descendants(dialog), input = nodes.find(node => node.tagName === 'INPUT' && node.dataset.stockKey === 'chicken breast|g');
+  assert.equal(input.value, '533');input.events.input();
+  await nodes.find(node => node.tagName === 'FORM').events.submit({preventDefault() {}});
+  assert.deepEqual(JSON.parse(JSON.stringify(h.calls[0].stock)), {'chicken breast|g': 533, 'cheddar|g': 93.333333});
+});
 test('cancelling Pantry review performs no cloud write and retains quantities', async () => {
   const h = pantryHarness(), dialog = await h.host.reviewPantry();
   assert.equal(h.host.allowLegacyTransfer(), false);

@@ -109,3 +109,47 @@ test('different display units keep their exact existing transfer behavior',()=>{
  assert.equal(h.check(true),true);assert.equal(h.read('stock')['rice|g'],850);assert.equal(Object.values(h.read('inventory'))[0].unit,'kg');assert.equal(Object.values(h.read('inventory'))[0].qty,.85);
  assert.equal(h.amount(150),true);assert.equal(h.read('stock')['rice|g'],500);assert.equal(Object.values(h.read('inventory'))[0].unit,'kg');assert.equal(Object.values(h.read('inventory'))[0].qty,.5);
 });
+
+function settledChickenPurchase(){
+ const h=fixture({name:'Chicken breast',unit:'g',required:666.666667,pantryUsed:0,toBuy:666.666667,quote:null});
+ assert.equal(h.amount(1200),true);assert.equal(h.read('stock')['chicken breast|g'],1200);
+ const priorSession=h.read('session'),originalReceipt=h.read('receipts')['shop-net-test|'+h.id],originalMarker=copy(priorSession.shelfEdits[h.id]);
+ // This is the boundary after confirmed cooking: current purchase progress
+ // has been settled, while its retained receipt/marker proves the old deposit.
+ for(const key of ['ticks','purchases','partials','choices'])h.storage.setItem(key,'{}');
+ h.storage.setItem('session',JSON.stringify({...priorSession,bought:{},purchases:{},partials:{},choices:{},checkboxUndo:{}}));
+ h.storage.setItem('stock',JSON.stringify({'chicken breast|g':533.333333}));
+ h.storage.setItem('inventory',JSON.stringify({'fridge|chicken breast':{name:'Chicken breast',loc:'fridge',selected:true,qty:533.333333,unit:'g',bb173StockKey:'chicken breast|g',bb173StockValue:533.333333}}));
+ h.ctx.bbBetaReceiptId=id=>'shop-net-test|'+id+'|home:1';
+ h.ctx.bbShopV7Snapshot=session=>({...session,bought:h.read('ticks'),purchases:h.read('purchases'),partials:h.read('partials'),choices:h.read('choices')});
+ Object.assign(h.basket,{required:600,pantryUsed:533.333333,toBuy:66.666667,qty:66.666667});
+ return {...h,originalReceipt,originalMarker};
+}
+
+test('a settled earlier-generation marker permits one new purchase without replaying its consumed deposit',()=>{
+ const h=settledChickenPurchase(),oldReceiptId='shop-net-test|'+h.id,newReceiptId=oldReceiptId+'|home:1';
+ assert.equal(ownership.active(h.originalMarker,h.id,h.ctx.bbShopV7Snapshot(h.read('session'))),false);
+ assert.equal(h.amount(67),true);assert.equal(h.read('stock')['chicken breast|g'],600.333333);
+ assert.equal(h.read('session').shelfEdits[h.id].receiptId,newReceiptId);assert.equal(h.read('purchases')[h.id].actualQty,67);
+ assert.ok(h.read('receipts')[newReceiptId]);assert.ok(h.read('receipts')[oldReceiptId],'the previous receipt remains a durable replay proof');
+ // Repeat the selected physical amount. The bare legacy checkbox fixture has
+ // no Buying adapter and intentionally re-infers the exact recipe shortfall.
+ assert.equal(h.amount(67),true);assert.equal(h.finish().count,0);assert.equal(h.read('stock')['chicken breast|g'],600.333333,'repeated completion cannot add another 67 g');
+ assert.equal(h.check(false),true);assert.equal(h.read('stock')['chicken breast|g'],533.333333);
+ assert.deepEqual(h.read('receipts')[oldReceiptId],h.originalReceipt);assert.equal(h.read('receipts')[newReceiptId],undefined);
+ assert.equal(h.amount(67),true);assert.equal(h.read('stock')['chicken breast|g'],600.333333);
+});
+
+for(const mode of ['active','other actor','missing activity API','throwing activity API','unknown activity','missing snapshot'])test('a '+mode+' earlier-generation marker is rejected before any purchase writes',()=>{
+ const h=settledChickenPurchase();
+ if(mode==='active')h.storage.setItem('purchases',JSON.stringify({[h.id]:{qty:1200,name:'Chicken breast',unit:'g'}}));
+ if(mode==='other actor'){const session=h.read('session');session.shelfEdits[h.id].actor='another-person';h.storage.setItem('session',JSON.stringify(session));}
+ if(mode==='missing activity API'){const {active,...api}=ownership;h.ctx.window.BBShopOwnership=api;}
+ if(mode==='throwing activity API')h.ctx.window.BBShopOwnership={...ownership,active(){throw Error('Purchase activity unavailable');}};
+ if(mode==='unknown activity')h.ctx.window.BBShopOwnership={...ownership,active(){return undefined;}};
+ if(mode==='missing snapshot')delete h.ctx.bbShopV7Snapshot;
+ const before=new Map(h.values),session=h.read('session'),purchase={qty:67,actualQty:67,name:'Chicken breast',unit:'g'};
+ const updates={session:{...session,bought:{[h.id]:true},purchases:{[h.id]:purchase}},ticks:{[h.id]:true},purchases:{[h.id]:purchase},partials:{},choices:{}};
+ assert.throws(()=>h.ctx.bbShopOwnedChanges(h.id,updates,h.basket,false),/purchase|activity/i);
+ assert.deepEqual(h.values,before,'neither stock, progress nor replay history may change');
+});

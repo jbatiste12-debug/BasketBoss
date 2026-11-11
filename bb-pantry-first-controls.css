@@ -1,0 +1,29 @@
+/* This preference row belongs only to the existing Plan Auto-fill controls. */
+#app.bbnext-plan .bbnext-plan-actions>.bb-pantry-first-controls{
+ grid-column:1/-1;order:-1;display:grid;grid-template-columns:minmax(0,1.35fr) minmax(0,1fr);gap:5px;min-width:0;
+ padding:4px;margin:0 0 2px;box-sizing:border-box;border:1px solid #d4dfcd;border-radius:999px;background:#eaf0e1;
+}
+#app.bbnext-plan .bbnext-plan-actions .bb-pantry-first-controls>.bb-pantry-first-choice{
+ min-width:0;min-height:44px;padding:7px 9px;border:1px solid transparent;border-radius:999px;
+ background:transparent;color:#375a42;box-shadow:none;font:750 12px/1.25 system-ui,-apple-system,sans-serif;
+ white-space:normal;text-align:center;cursor:pointer;touch-action:manipulation;
+}
+#app.bbnext-plan .bbnext-plan-actions .bb-pantry-first-controls>.bb-pantry-first-choice[aria-pressed="true"]{
+ border-color:#214f3b;background:#214f3b;color:#fffdf3;box-shadow:0 2px 5px #214f3b1a;
+}
+#app.bbnext-plan .bbnext-plan-actions .bb-pantry-first-controls>.bb-pantry-first-choice:focus-visible{
+ outline:3px solid #c9a851;outline-offset:2px;
+}
+#app.bbnext-plan .bbnext-plan-actions .bb-pantry-first-controls>.bb-pantry-first-choice:disabled{
+ cursor:wait;opacity:.65;
+}
+#app.bbnext-plan .bbnext-plan-actions>.bb-pantry-first-next-week{
+ grid-column:1/-1;min-height:44px;padding:8px 12px;border:1px solid #cbdcc5;border-radius:12px;
+ background:#fffdf6;color:#315b40;font:750 12px/1.3 system-ui,-apple-system,sans-serif;cursor:pointer;touch-action:manipulation;
+}
+#app.bbnext-plan .bbnext-plan-actions>.bb-pantry-first-next-week:disabled{cursor:wait;opacity:.65}
+#app.bbnext-plan .bbnext-plan-actions>.bb-pantry-first-next-week:focus-visible{outline:3px solid #c9a851;outline-offset:2px}
+#app.bbnext-plan .bbnext-plan-actions>.bb-pantry-first-status{
+ grid-column:1/-1;margin:0;font:500 12px/1.4 system-ui,-apple-system,sans-serif;color:#375a42;
+}
+#app.bbnext-plan .bbnext-plan-actions>.bb-pantry-first-status[hidden]{display:none}
