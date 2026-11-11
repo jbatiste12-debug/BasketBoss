@@ -26,10 +26,10 @@ Shopping pack controls: tap the green Buying pill on an item. A preset saves wit
 Do not run ordinary npm run ios:sync after this launcher; that selects the legacy catalogue instead of the 700-recipe release.
 
 Pinned application source:
-https://github.com/jbatiste12-debug/BasketBoss/commit/dbb37459ba51a22ad100779f37e82aa46b52ec3c
+https://github.com/jbatiste12-debug/BasketBoss/commit/f7fc0f2693c0262ea4174b4a3b072c610df5e452
 
 Complete source ZIP:
-https://github.com/jbatiste12-debug/BasketBoss/archive/dbb37459ba51a22ad100779f37e82aa46b52ec3c.zip
+https://github.com/jbatiste12-debug/BasketBoss/archive/f7fc0f2693c0262ea4174b4a3b072c610df5e452.zip
 
 See build43-whats-new.txt for Apple Connect notes and build43-what-to-test.txt for regression checks.
 
