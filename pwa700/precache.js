@@ -1,5 +1,5 @@
 /* Public web700 cache contract. Never include private/API/auth responses. */
-self.BB700_PWA_CACHE_VERSION="079daa5649f697f1a92a1f8e6410c885362c5a758cf6ef114e0f2b14826f490b";
+self.BB700_PWA_CACHE_VERSION="b5110a89c8b6a07bdd5b30b038aa99b410ae0d6656acc5e38e59dfad0d793333";
 self.BB700_PWA_PRECACHE=Object.freeze([
   "/basketboss-aisles-v20.js?v=d45b76bac322b605",
   "/bb-account-deletion.css?v=645b166ac6fe196f",
@@ -118,7 +118,7 @@ self.BB700_PWA_PRECACHE=Object.freeze([
   "/bb-receipt-host.css?v=144740b15969b571",
   "/bb-receipt-host.js?v=4a91ad6788a8e650",
   "/bb-receipt-inventory-core.mjs?v=20261105-business1",
-  "/bb-receipt-inventory.js?v=804269d12d30c564",
+  "/bb-receipt-inventory.js?v=b7e29ad23f5873b5",
   "/bb-receipt-quantity.js?v=bf57b05a9993d398",
   "/bb-receipt-scanner.css?v=f5a7f0035dc6279e",
   "/bb-receipt-scanner.js?v=44189473c8d617fe",
@@ -137,13 +137,15 @@ self.BB700_PWA_PRECACHE=Object.freeze([
   "/bb-session.js?v=a5bcffc28634ff1c",
   "/bb-settings-premium-polish.css?v=08327fa766622da5",
   "/bb-shared-shopping.css?v=608ff045e8152025",
-  "/bb-shared-shopping.js?v=f88ff03af4fc7137",
+  "/bb-shared-shopping.js?v=fb0c4aa8a858f3e9",
   "/bb-shop-add.css?v=76495afe6b55de2b",
   "/bb-shop-add.js?v=ab24b574d6fa7c12",
   "/bb-shop-continuation.css?v=8dc1befcdab6d580",
-  "/bb-shop-continuation.js?v=c6856fc40e3a4913",
+  "/bb-shop-continuation.js?v=4c3fa21456bdcd13",
   "/bb-shop-cook-clarity.css?v=079592a7e425520e",
   "/bb-shop-ownership.js?v=5a7c303133bd68fc",
+  "/bb-shop-purchase-ui.css?v=f91cb2c0802b03c3",
+  "/bb-shop-purchase-ui.js?v=ba523204c5261f81",
   "/bb-shop-subcategories.css?v=8b65ede44fc728a5",
   "/bb-shop-subcategories.js?v=07139a1741881fbc",
   "/bb-simple-layout.css?v=b78ffdb3dab2f664",
@@ -226,7 +228,7 @@ self.BB700_PWA_PRECACHE=Object.freeze([
   "/pwa700/pricing-sandbox",
   "/pwa700/recipes.json",
   "/pwa700/shopping-inventory.js",
-  "/pwa700/shopping-inventory.js?v=6db24f05eba54f9f",
+  "/pwa700/shopping-inventory.js?v=3cd61e633ffb32d4",
   "/pwa700/subscriptions",
   "/pwa700/tutorial"
 ]);

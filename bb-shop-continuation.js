@@ -69,9 +69,14 @@
  function readPending(storage,context){
   try{return listPending(JSON.parse(storage.getItem(ARCHIVE_KEY)||'{}'),context);}catch{return [];}
  }
- function formatList(snapshot){
+ function displayQuantity(row,snapshot,formatter){
+  if(row.quantityNeedsReview)return 'Check quantity';
+  if(typeof formatter==='function')try{const value=formatter(row,snapshot);if(typeof value==='string'&&value.trim())return value;}catch{}
+  return String(row.quantity)+' '+row.unit;
+ }
+ function formatList(snapshot,formatter){
   const value=snapshotCopy(snapshot);
-  return value?'Saved shopping list\n'+value.rows.map(row=>(row.quantityNeedsReview?'Check quantity':String(row.quantity)+' '+row.unit)+' '+row.name).join('\n'):'';
+  return value?'Saved shopping list\n'+value.rows.map(row=>displayQuantity(row,value,formatter)+' '+row.name).join('\n'):'';
  }
  function mount({container,win,context,onContinue,onCopy}){
   const doc=container.ownerDocument||win?.document;
@@ -82,6 +87,7 @@
   const current=()=>{try{return scope(typeof context==='function'?context():context);}catch{return null;}};
   const same=(left,right)=>!!left&&!!right&&left.actorId===right.actorId&&left.market===right.market;
   const blocked=()=>win?.BBAccountDeletion?.isDeleting?.()===true;
+  const quantityText=(row,snapshot)=>{const ui=win?.BBShopPurchaseUI,options={market:snapshot.market,countMode:'balance'};return typeof ui?.formatDisplayQty==='function'?ui.formatDisplayQty(row.quantity,row.unit,options):undefined;};
   function render(){
    if(disposed)return;
    const serial=++generation,who=current();wrap.replaceChildren();
@@ -94,7 +100,7 @@
     head.append(title,make('span','bb-shop-continuation-count',count+' item'+(count===1?'':'s')+' saved'),make('span','bb-shop-continuation-date',dateLabel));
     const description=make('p','bb-shop-continuation-note','Open your current list to see what is still needed.');
     const details=make('details','bb-shop-continuation-details'),summary=make('summary','','Saved list from your last shop'),list=make('ul','bb-shop-continuation-list');
-    for(const row of snapshot.rows){const item=make('li'),name=make('span','',row.name),quantity=make('strong','',row.quantityNeedsReview?'Check quantity':String(row.quantity)+' '+row.unit);item.append(name,quantity);list.append(item);}
+    for(const row of snapshot.rows){const item=make('li'),name=make('span','',row.name),quantity=make('strong','',displayQuantity(row,snapshot,quantityText));item.append(name,quantity);list.append(item);}
     details.append(summary,list);
     const actions=make('div','bb-shop-continuation-actions'),resume=make('button','bb-shop-continuation-resume','Continue shopping'),copy=make('button','bb-shop-continuation-copy','Copy saved list');resume.type=copy.type='button';resume.disabled=typeof onContinue!=='function';
     const status=make('p','bb-shop-continuation-status');status.setAttribute('role','status');status.setAttribute('aria-live','polite');
@@ -108,7 +114,7 @@
     };
     copy.onclick=async()=>{
      if(busy||!alive())return;
-     busy=true;copy.disabled=true;copy.setAttribute('aria-busy','true');const value=formatList(snapshot);
+     busy=true;copy.disabled=true;copy.setAttribute('aria-busy','true');const value=formatList(snapshot,quantityText);
      try{
       if(typeof onCopy==='function'){if(await onCopy(value,snapshot)===false)throw Error('Copy unavailable');}
       else if(typeof win?.navigator?.clipboard?.writeText==='function')await win.navigator.clipboard.writeText(value);

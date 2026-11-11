@@ -57,6 +57,11 @@
     function sameContext(captured) { const current = activeContext(); return current.market === captured.market && current.retailer === captured.retailer; }
     const catalog = () => options.getCatalog ? options.getCatalog() : root.BBPriceV19?.catalog;
     const canonicalize = value => options.canonicalize ? options.canonicalize(value) : root.BBPriceV19?.canonical ? root.BBPriceV19.canonical(value) : value;
+    function storageLocation(name, requested) {
+      if (['cupboard', 'fridge', 'freezer'].includes(requested)) return requested;
+      try {const location = root.bb83StockLoc?.(name, root.BBPriceV19?.aisle?.(name));if (['cupboard', 'fridge', 'freezer'].includes(location)) return location;} catch {}
+      return 'cupboard';
+    }
     function measuredPantryRows(name,c,kitchen=json(KEYS.kitchen,{})){
       const policy=c.pantryTrackingPolicy,key=policy.canonicalName(name,canonicalize),rows=Object.values(kitchen).filter(row=>row?.selected!==false&&policy.canonicalName(row.name,canonicalize)===key);
       if(!rows.length||rows.some(row=>policy.isContainerTracked(row)))return [];
@@ -457,11 +462,12 @@
         const prior = ledger[id] || {}, coverage = {...(prior.receiptCoverageById || {}), [packet.receiptId]: quantity};
         if(receiptShopSessionId)ledger[id] = {...prior, name, unit, qty: prior.qty ?? quantity, week: receiptShopSessionId, mode: prior.mode || 'receipt_inventory', credited: prior.credited || 0,...(Object.hasOwn(prior,'policyAvailableCredit')?{policyAvailableCredit:0}:{}), receiptInventoryReceiptId: packet.receiptId, receiptLegacyCreditById: {...(prior.receiptLegacyCreditById || {}), [packet.receiptId]: credit.priorCreditedQuantity}, receiptCoverageById: coverage, receiptCoveredQuantity: Object.values(coverage).reduce((n, x) => n + Number(x || 0), 0), purchasedAt: prior.purchasedAt || now()};
         const existing = Object.entries(kitchen).filter(([, x]) => x?.selected && (x.bb173StockKey===stockKey||c.canonicalIngredientKey(x.name, canonicalize) === name && c.normalizeStockQuantity(x.qty, x.unit)?.unit === unit));
-        const bucketed=root.BBReducedStock?.projectFrozenBuckets?.({inventory:kitchen,stockKey,currentQuantity:nextStock[stockKey]-credit.addedQuantity,nextQuantity:nextStock[stockKey],location:items.find(line=>line.key+'|'+line.unit===stockKey)?.location||'cupboard',actor:captured.actorId,canonicalize,market:active.market});
+        const incoming=items.find(line=>line.key+'|'+line.unit===stockKey),requestedLocation=storageLocation(name,incoming?.location||incoming?.loc);
+        const bucketed=root.BBReducedStock?.projectFrozenBuckets?.({inventory:kitchen,stockKey,currentQuantity:nextStock[stockKey]-credit.addedQuantity,nextQuantity:nextStock[stockKey],location:requestedLocation,actor:captured.actorId,canonicalize,market:active.market});
         if(bucketed){kitchen=bucketed;continue;}
-        const entry = existing[0], location = entry?.[1]?.loc || 'cupboard', kitchenId = entry?.[0] || kitchenRecordId(kitchen,location+'|'+name,stockKey);
+        const entry = existing[0], location = ['cupboard','fridge','freezer'].includes(entry?.[1]?.loc) ? entry[1].loc : requestedLocation, kitchenId = entry?.[0] || kitchenRecordId(kitchen,location+'|'+name,stockKey);
         for (const [oldId, row] of existing.slice(1)) { kitchen[oldId] = {...row, selected: false, qty: null}; delete kitchen[oldId].bb173StockKey; delete kitchen[oldId].bb173StockValue; }
-        const incoming=items.find(line=>line.key+'|'+line.unit===stockKey),wholePepper=c.pantryTrackingPolicy.isWholePepper?.(incoming?.name||name,unit,incoming||{})===true;
+        const wholePepper=c.pantryTrackingPolicy.isWholePepper?.(incoming?.name||name,unit,incoming||{})===true;
         const measuredMode=incoming?.trackingMode==='measured'&&incoming.measurementReviewed===true||entry?.[1]?.trackingMode==='measured'&&entry?.[1]?.measurementReviewed===true;
         kitchen[kitchenId] = {...(entry?.[1] || {}), name: wholePepper?'Peppers':entry?.[1]?.name || name, loc: location, selected: true, qty: nextStock[stockKey], unit, bb173StockKey: stockKey, bb173StockValue: nextStock[stockKey], receiptActorId: captured.actorId,...(wholePepper||measuredMode?{staple:false,containerLabel:undefined,stapleCount:undefined,stapleStatus:undefined,...(measuredMode?{trackingMode:'measured',measurementReviewed:true}:{})}:options.pantryPolicy===true&&c.pantryTrackingPolicy.isStaple(name)?{staple:true,stapleCount:nextStock[stockKey],stapleStatus:'in',containerLabel:c.pantryTrackingPolicy.containerLabel(name)}:{})};
       }
