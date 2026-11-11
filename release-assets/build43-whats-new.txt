@@ -6,3 +6,5 @@ Food used up after confirming a meal now disappears from At home and its item co
 Improved pantry matching and planned-unit suggestions, including generic fish names and recipe fillets.
 Corrected partial purchase quantities in kilograms/litres and supported household count units.
 Cooking and undo now retry saved stock updates reliably after an offline session.
+Shopping quantities are easier to read. Tap Buying to choose a pack size, number of packs, custom amount or total price.
+Pack choices update the displayed shopping estimate and confirm the physical amount added to At home. Recipe requirements and pantry calculations stay unchanged.
