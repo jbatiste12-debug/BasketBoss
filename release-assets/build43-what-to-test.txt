@@ -27,3 +27,7 @@ Uploading this build to TestFlight does not replace or withdraw an App Store sub
 22. After ticking a selected 500 g purchase with 200 g already at home, open Buying > Custom and enter 300 g as the total bought. At home must become 500 g, with the original purchase corrected rather than another purchase added. Repeating Save, Finish and reopening must not duplicate the credit.
 23. Change only the optional total cost after buying or cooking. The estimate updates without another stock transaction. Cancelling an edit, entering an invalid amount or encountering a failed save must leave the last saved quantity and price intact.
 24. Check that rounded shopping labels never become saved ingredient amounts. For example, 466.666667 g may display as 467 g needed. Entering 466.666667 g under Custom must retain that precise purchase quantity, while the recipe requirement stays unchanged. A positive amount below 1 g must remain visible as less than 1 g.
+
+25. Tick two purchases, change another item’s Buying pack and tick it. Both earlier ticks and pantry credits must remain. Finish/reopen must credit only the actual bought quantities once.
+26. If online and device pantry amounts differ, tick an item and use the existing saved-pantry review in Shop. Choose this device’s amounts, confirm without retyping, and check that only the intended purchase is retried. Cancel must not mark it bought.
+27. While an earlier purchase syncs online, open the next Buying editor and enter a Custom amount/total cost. The acknowledgement must keep that draft open and unchanged.

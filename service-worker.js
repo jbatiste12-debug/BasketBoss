@@ -44,6 +44,7 @@ const CORE = ['bb-plan-extras.js','bb-plan-extras.js?v=20261108-planner1','bb-pl
   'bb-pantry-display.js?v=20261104-regions2',
   'bb-shop-purchase-ui.js','bb-shop-purchase-ui.css',
   'bb-shop-purchase-ui.js?v=20261111-packs1','bb-shop-purchase-ui.css?v=20261111-packs1',
+  'bb-shop-purchase-ui.js?v=20261111-checkbox1',
   'bb-recipe-purchase-basis.js','bb-recipe-purchase-basis.js?v=20261111-dry-basis1',
   'bb-recipe-canonical.js?v=20261107-pantry-stock2',
   'bb-pantry-runtime.mjs?v=20261104-regions2',

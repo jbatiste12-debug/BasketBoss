@@ -3807,7 +3807,7 @@ body[data-bbnext-view="discover"] #app .bb-featured-card #bbFeaturedBatch {
 <script src="/bb-pantry-policy.js?v=085205ffb0aacf65"></script>
 <script src="/bb-pantry-display.js?v=3703aec840ec42c6"></script>
 <link rel="stylesheet" href="/bb-shop-purchase-ui.css?v=f91cb2c0802b03c3">
-<script src="/bb-shop-purchase-ui.js?v=ba523204c5261f81"></script>
+<script src="/bb-shop-purchase-ui.js?v=d7b4093f62776f47"></script>
 <script src="/bb-recipe-purchase-basis.js?v=56122bf98efed0e3"></script>
 <script src="/bb-recipe-canonical.js?v=7859ebbf9ad539e0"></script>
 <script type="module" src="/bb-pantry-runtime.mjs?v=7c6a7711e53a3496"></script>
@@ -8459,7 +8459,8 @@ function renderShop(app){
   if(!window.confirm('Clear all measured pantry quantities and older owned ticks in this preview?'))return;
   if(!bb307SaveStock({}))return;state.pantry={};persist();render();
  };
- app.querySelectorAll('[data-bb321-tick]').forEach(el=>el.onchange=()=>{
+ app.querySelectorAll('[data-bb321-tick]').forEach(el=>{el.addEventListener('click',event=>event.stopPropagation());el.onchange=event=>{
+  event?.stopPropagation();
   const id=el.dataset.bb321Tick;
   if(id.startsWith('bb84extra:')){
    const parent=id.slice('bb84extra:'.length),needed=Number(el.dataset.bb84ExtraNeeded);
@@ -8470,13 +8471,14 @@ function renderShop(app){
   if(purchase){
    const view=bbShopPurchaseViewItem(bbShopPurchaseListItem(purchase.item,purchase.essential)),pin=purchaseViewPins.get(id);
    if(pin?.context&&!bbShopPurchaseViewCurrent(view,pin)){el.checked=!el.checked;notify('Your account or shop changed. Reopen Shopping.');return;}
+   if(el.checked&&typeof bbShopPurchaseReviewForTick==='function'&&bbShopPurchaseReviewForTick(view)){el.checked=false;return;}
    const selected=el.checked&&(view.boughtQtyOverride!==undefined||view.uiDefaultPurchase),quantity=selected?bbShopPurchaseNativeTotal(view,view.purchaseSelection||view.uiDefaultPurchase):null;
    const saved=selected?quantity!==null&&bbPartialSet(view,quantity,undefined,{inventoryNow:window.BBShopOwnership?.enabled?.()===true}):bb84SetPrimaryPurchase(id,el.checked,purchase.item,purchase.essential,{inventoryNow:window.BBShopOwnership?.enabled?.()===true});
    if(!saved){el.checked=!el.checked;notify('Purchase save failed — no progress lost');return;}
   }
   else {const next=bb321ReadShopTicks();if(el.checked)next[id]=true;else delete next[id];if(!bb321WriteShopTicks(next)){el.checked=!el.checked;return;}}
   render();
- });
+ };});
  bbShopPurchaseAttachRows(app,purchaseMap);
  app.querySelectorAll('[data-bb172-have]').forEach(el=>el.onclick=()=>{
   const item=toBuy[Number(el.dataset.bb172Have)];if(!item)return;
@@ -11622,10 +11624,29 @@ function bbShopPurchasePicker(item,needed){
  const initial=item.purchaseSelection||(actual>0?{kind:'custom',packQuantity:actual,packCount:1,quantity:actual,unit:base.unit,label:'pack',boughtQtyOverride:actual}:null);
  return ui.createPicker({win:window,name:item.name,unit:base.unit,needed:needed*base.factor,initial,recommended:bbShopPurchaseRecommended(item,needed),onSave:selection=>bbShopPurchaseSaveView(item,selection,pin),baseEstimatedPrice:item.baseEstimatedPrice,defaultPackQty:item.defaultPackQty,market:bb307Market,quickPresets:true});
 }
+function bbShopPurchaseReviewForTick(item){
+ const host=window.BBReceiptHost;
+ if(!host?.reviewPantry||host.allowPurchaseTransfer?.()!==false)return false;
+ let status;try{status=host.getConsumptionStatus?.();}catch{return false;}
+ if(status?.canReviewInline!==true)return false;
+ const pin=bbShopPurchaseViewPin(item);
+ // Reuse the existing reviewed CAS path. Choosing a pack never authorizes
+ // replacing an online pantry; this review retains its two saved choices.
+ void Promise.resolve(host.reviewPantry({onConfirmed:()=>{
+  queueMicrotask(()=>{
+   if(!bbShopPurchaseViewCurrent(item,pin))return;
+   const box=[...document.querySelectorAll('#app [data-bb321-tick]')].find(box=>box.dataset.bb321Tick===item.id);
+   if(box?.isConnected&&!box.checked)box.click();
+   bb172StorefrontRefresh();
+  });
+ },onCancel:()=>bb172StorefrontRefresh()})).catch(()=>notify('The saved pantry could not be checked. Your shopping progress is kept.'));
+ return true;
+}
 window.BBShopPurchaseHost=Object.freeze({estimate:bbShopPurchaseEstimate,summaryView:bbShopPurchaseEstimate});
 function bb172StorefrontToggle(item){
- if(!item.box?.isConnected)return;
+ if(!item.box?.isConnected){bb172StorefrontRefresh();return;}
  bb172StorefrontKeepItem(item.id);
+ if(!item.checked&&typeof bbShopPurchaseReviewForTick==='function'&&bbShopPurchaseReviewForTick(item)){bb172StorefrontRefresh();return;}
  if(!item.checked){
   const view=bbShopPurchaseViewItem(item);
   if(view.boughtQtyOverride!==undefined||view.uiDefaultPurchase){
@@ -11637,6 +11658,9 @@ function bb172StorefrontToggle(item){
  }
  item.box.checked=!item.box.checked;
  item.box.dispatchEvent(new Event('change',{bubbles:true}));
+ // The native input may have rejected and rolled back the transaction. Always
+ // redraw from its saved state rather than leaving an optimistic overlay tick.
+ bb172StorefrontRefresh();
  // The app's own change handler saves the ticks, recalculates costs and re-renders.
  // The aisle observer then recreates the view from that authoritative state.
 }
@@ -11647,7 +11671,8 @@ function bb172StorefrontMakeRow(item){
  const check=bb172StorefrontEl('input','bb172-storefront-checkbox');
  check.type='checkbox';check.checked=item.checked;
  check.setAttribute('aria-label',(item.checked?'Mark not bought: ':'Mark bought: ')+item.name);
- check.addEventListener('change',()=>bb172StorefrontToggle(item));
+ check.addEventListener('click',event=>event.stopPropagation());
+ check.addEventListener('change',event=>{event.stopPropagation();bb172StorefrontToggle(item);});
  const info=bb172StorefrontEl('div','bb15-shop-ingredient'),title=bb172StorefrontEl('strong','bb172-storefront-item-title',item.name);
  const amount=bb172StorefrontEl('span','bbcompact-qty',item.qty||'Check quantity');
  const partial=bbPartialDetails(item);let needed=null,needContext=null,legacyContext=null;
@@ -11669,6 +11694,7 @@ function bb172StorefrontMakeRow(item){
  const toggle=bb172StorefrontButton('•••','bbcompact-toggle',()=>{const open=!drawer.hidden;drawer.hidden=open;toggle.setAttribute('aria-expanded',String(!open));toggle.setAttribute('aria-label',open?'Show item details':'Hide item details')});
  toggle.setAttribute('aria-expanded','false');toggle.setAttribute('aria-label','Show item details');
  const main=bb172StorefrontEl('div','bbcompact-main'),picker=typeof needed==='number'?bbShopPurchasePicker(item,needed):null;
+ if(picker){row.bbShopPackPicker=picker;row.bbShopPurchasePin=item.purchaseViewPin;}
  if(picker){
   row.classList.add('bb-shop-purchase-row');info.classList.add('bb-shop-purchase-body');
   const heading=bb172StorefrontEl('div','bb-shop-purchase-heading'),quantityLine=bb172StorefrontEl('div','bb-shop-purchase-quantity-line');
@@ -11741,6 +11767,7 @@ function bb172StorefrontRender(){
  const shell=document.getElementById('bb172Storefront');
  if(!shell||!bb172ShopActive||tab!=='shop')return;
  const lastScroll=shell.scrollTop;
+ const openPickers=[...shell.querySelectorAll('[data-bb-shop-purchase-id]')].map(row=>({id:row.dataset.bbShopPurchaseId,pin:row.bbShopPurchasePin,draft:row.bbShopPackPicker?.snapshot?.()})).filter(row=>row.draft);
  const sharedCard=shell.querySelector('#bbSharedShopping');
  const all=bb172StorefrontAll();
  const left=all.filter(x=>!x.checked);
@@ -11832,6 +11859,10 @@ function bb172StorefrontRender(){
  shell.append(controls);
  const content=bb172StorefrontEl('main','bb172-storefront-aisles');content.id='bb172StorefrontAisles';shell.append(content);
  bb172StorefrontDrawAisles(all);
+ for(const row of shell.querySelectorAll('[data-bb-shop-purchase-id]')){
+  const previous=openPickers.find(old=>old.id===row.dataset.bbShopPurchaseId);
+  if(previous&&bbShopPurchaseViewCurrent({id:previous.id,basketItem:all.find(item=>item.id===previous.id)?.basketItem},previous.pin))row.bbShopPackPicker?.restore?.(previous.draft);
+ }
  const foot=bb172StorefrontEl('footer','bb172-storefront-bottom');
  const leftText=bb172StorefrontEl('span','',left.length?left.length+' item'+(left.length===1?'':'s')+' left':'Everything ticked off ✓');
  const footBtns=bb172StorefrontEl('div','bb172-storefront-bottom-buttons');
