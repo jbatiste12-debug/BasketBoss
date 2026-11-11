@@ -109,7 +109,24 @@ jobs:
         env:
           BB_PGLITE_MODULE: ${{ runner.temp }}/bb-apple-pg/node_modules/@electric-sql/pglite
           BB_RECEIPT_PGLITE_PATH: ${{ runner.temp }}/bb-apple-pg/node_modules/@electric-sql/pglite/dist/index.js
-        run: node --test --test-isolation=none tests/*.test.mjs
+        # Full sequential browser coverage stays in web700-regression.yml.
+        # This job deliberately installs only the portable PostgreSQL tools.
+        run: >-
+          node --test --test-concurrency=1
+          tests/basketboss-apple*.test.mjs
+          tests/basketboss-native*.test.mjs
+          tests/basketboss-account-deletion*.test.mjs
+          tests/basketboss-premium-billing*.test.mjs
+          tests/basketboss-premium-ai-checkout-reconcile.test.mjs
+          tests/basketboss-testflight-beta*.test.mjs
+          tests/basketboss-public-legal.test.mjs
+          tests/basketboss-household-amount*.test.mjs
+          tests/basketboss-household-production.test.mjs
+          tests/basketboss-household-quantities.test.mjs
+          tests/basketboss-household-readable-quantities.test.mjs
+          tests/basketboss-household-readiness.test.mjs
+          tests/basketboss-household-routing.test.mjs
+          tests/basketboss-shared-shopping*.test.mjs
       - name: Install isolated Cloudflare runtime verification tools
         run: npm install --prefix "$RUNNER_TEMP/bb-apple-worker" --package-lock=false --ignore-scripts --no-audit --no-fund wrangler@4.156.0
       - name: Verify cold Worker startup and real signature verification
