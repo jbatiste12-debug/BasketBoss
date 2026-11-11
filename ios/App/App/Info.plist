@@ -65,9 +65,9 @@
 	<key>UIViewControllerBasedStatusBarAppearance</key>
 	<true/>
 	<key>NSCameraUsageDescription</key>
-	<string>BasketBoss uses the camera to photograph a supermarket receipt. You review the photo and choose whether to send it for receipt scanning.</string>
+	<string>BasketBoss uses the camera to photograph food and supermarket receipts. You review the photo and choose whether to send it for ingredient recognition or receipt scanning.</string>
 	<key>NSPhotoLibraryUsageDescription</key>
-	<string>BasketBoss lets you choose a supermarket receipt photo to review and scan into your pantry.</string>
+	<string>BasketBoss lets you choose food photos for ingredient scanning or recipes, and supermarket receipt photos for receipt scanning. You review the selected photo before continuing.</string>
 	<key>NSMicrophoneUsageDescription</key>
 	<string>BasketBoss uses your microphone when you turn on Voice Cook to hear cooking questions and recipe controls.</string>
 	<key>NSSpeechRecognitionUsageDescription</key>

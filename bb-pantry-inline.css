@@ -400,7 +400,7 @@ html body[data-bbnext-view=shop] #app #bb173ShopFridge.bbpi-enhanced .bbpi-toolb
 }
 html body[data-bbnext-view=shop] #app #bb173ShopFridge.bbpi-enhanced .bbpi-toolbar-actions input{
  min-width:0!important;min-height:44px!important;border-radius:12px!important;padding:9px 11px!important;
- background:#fffef8!important;border-color:#d7dfce!important;font-size:14px!important;
+ background:#fffef8!important;border-color:#d7dfce!important;font-size:16px!important;
 }
 html body[data-bbnext-view=shop] #app #bb173ShopFridge.bbpi-enhanced .bbpi-toolbar-actions button{
  min-width:44px!important;min-height:44px!important;padding:8px 9px!important;border:1px solid #d7dfce!important;

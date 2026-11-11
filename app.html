@@ -4565,7 +4565,10 @@ function bb307ReadFeatures(){
 }
 let bb307FeatureState=bb307ReadFeatures();
 function bb307StoreFeatures(){
- try{localStorage.setItem(BB307_FEATURE_KEY,JSON.stringify(bb307FeatureState));return true}
+ try{
+  const raw=localStorage.getItem(BB307_FEATURE_KEY),saved=raw===null?{}:JSON.parse(raw);
+  if(!saved||typeof saved!=='object'||Array.isArray(saved))throw Error('Saved household data needs review. Existing data has been kept.');
+  localStorage.setItem(BB307_FEATURE_KEY,JSON.stringify(bb307FeatureState));return true}
  catch(e){console.warn('BasketBoss feature changes not saved',e);notify('Could not save changes to this device.');return false}
 }
 function bb307FeaturesRefresh(){
@@ -8069,6 +8072,13 @@ function bbShopOwnedChanges(id,updates,item,essential=false,initialExpected={},o
  const amount=Number(purchase?.actualQty??purchase?.qty??partial?.bought??0),unit=String(purchase?.unit||partial?.unit||item.unit||'each');
  const keys=[BB307_STOCK_KEY,BB83_KITCHEN_INVENTORY,BB83_SHOP_STOCK_LEDGER,BB_BETA_RECEIPT_KEY,BB307_FEATURE_KEY,'basketboss_at_home_requirements_v1'];
  const expected={...Object.fromEntries([...new Set([...Object.keys(updates),...keys,'basketboss_cloud_session_v1'])].map(key=>[key,localStorage.getItem(key)])),...initialExpected};
+ // A permissive screen reader may show an empty fallback, but a purchase
+ // must never replace unreadable stock/history with that fallback.
+ for(const key of new Set([...keys,typeof BB321_SHOP_TICKS_KEY==='string'?BB321_SHOP_TICKS_KEY:'basketboss_321_v11_shop_ticks',BB84_PURCHASED_KEY,BB_PARTIAL_PURCHASE_KEY,typeof BB_BETA_CHOICE_KEY==='string'?BB_BETA_CHOICE_KEY:'basketboss_purchase_choices_v1'])){
+  const raw=expected[key]===undefined?localStorage.getItem(key):expected[key];if(raw===null)continue;
+  let saved;try{saved=JSON.parse(raw);}catch{throw Error('Saved At home data needs review before confirming purchases. Existing data has been kept.');}
+  if(!saved||typeof saved!=='object'||Array.isArray(saved))throw Error('Saved At home data needs review before confirming purchases. Existing data has been kept.');
+ }
  const current=Object.fromEntries(keys.map(key=>[key,bb83ReadObject(key)])),beforeStock=JSON.parse(JSON.stringify(current[BB307_STOCK_KEY]));
  if(marker?.kind==='shop-owned-v1'&&(marker.receiptId!==receiptId||marker.actor!==(window.BBHome?.actor?.()||'guest')))throw Error('This purchase changed. Reopen it in At home.');
  const restored=marker?.kind==='shop-owned-v1'?api.rewind(current,marker.changes):{};
@@ -8935,14 +8945,19 @@ function bbHomePrepareHouseholdEntry(entry){
  const normalized={...entry,unit,targetQty:entry.targetQty*factor,ownedQty:entry.ownedQty*factor};
  const q=BBWeeklyEssentials.reconcile({...normalized,manualPending:true});
  if(!q.valid)throw Error('Check the needed and already-at-home amounts.');
- const before=localStorage.getItem(BB307_FEATURE_KEY);
+ const before=localStorage.getItem(BB307_FEATURE_KEY);let saved;
+ try{saved=before===null?{}:JSON.parse(before);}catch{throw Error('Saved household data needs review. Existing data has been kept.');}
+ if(!saved||typeof saved!=='object'||Array.isArray(saved))throw Error('Saved household data needs review. Existing data has been kept.');
  const next=BB307Features.addEssential(bb307FeatureState,{...normalized,qty:Math.min(999,Math.max(1,Math.ceil(normalized.targetQty)))},RECIPES);
  const row=next.essentials[next.essentials.length-1];
  Object.assign(row,{unit,targetQty:normalized.targetQty,ownedQty:normalized.ownedQty,selected:true,owned:false,manualPending:true});
  return {key:BB307_FEATURE_KEY,value:next,expected:before,id:row.id};
 }
 function bbHomePrepareHouseholdRemoval(id){
- const before=localStorage.getItem(BB307_FEATURE_KEY),next=JSON.parse(JSON.stringify(bb307FeatureState));
+ const before=localStorage.getItem(BB307_FEATURE_KEY);let saved;
+ try{saved=before===null?{}:JSON.parse(before);}catch{throw Error('Saved household data needs review. Existing data has been kept.');}
+ if(!saved||typeof saved!=='object'||Array.isArray(saved))throw Error('Saved household data needs review. Existing data has been kept.');
+ const next=JSON.parse(JSON.stringify(bb307FeatureState));
  const row=next.essentials.find(item=>item.id===id);
  if(!row)throw Error('This household item changed. Reopen Weekly essentials.');
  row.selected=false;row.manualPending=false;
@@ -8958,8 +8973,8 @@ window.BBHomeHost=Object.freeze({needsLegacyReview:bbHomeNeedsLegacyReview,settl
  saveHouseholdAmount:(id,patch,pin)=>window.BBHome.setHouseholdAmount(id,patch,pin),
  prepareHouseholdEntry:bbHomePrepareHouseholdEntry,prepareHouseholdRemoval:bbHomePrepareHouseholdRemoval,
  prepareManualPurchase:bbReducedPrepareQuickPurchase,
- prepareHousehold:entries=>{const before=localStorage.getItem(BB307_FEATURE_KEY),next=JSON.parse(JSON.stringify(bb307FeatureState));for(const [id,patch]of entries){const row=next.essentials.find(x=>x.id===id);if(!row)throw Error('Household list changed. Review it first.');const q=BBWeeklyEssentials.reconcile({...row,...patch,manualPending:true});if(!q.valid)throw Error('Check household amounts for '+row.name);Object.assign(row,patch,{manualPending:true,selected:true,...(q.toBuy>0?{owned:false}:{})});}return {key:BB307_FEATURE_KEY,value:next,expected:before};},
- completeHousehold:id=>{const next=JSON.parse(JSON.stringify(bb307FeatureState)),row=next.essentials.find(x=>x.id===id);if(!row||!Object.hasOwn(row,'targetQty'))return {};row.manualPending=false;row.ownedQty=Math.max(row.ownedQty,row.targetQty);return {[BB307_FEATURE_KEY]:next};},
+ prepareHousehold:entries=>{const before=localStorage.getItem(BB307_FEATURE_KEY);let saved;try{saved=before===null?{}:JSON.parse(before);}catch{throw Error('Saved household data needs review. Existing data has been kept.');}if(!saved||typeof saved!=='object'||Array.isArray(saved))throw Error('Saved household data needs review. Existing data has been kept.');const next=JSON.parse(JSON.stringify(bb307FeatureState));for(const [id,patch]of entries){const row=next.essentials.find(x=>x.id===id);if(!row)throw Error('Household list changed. Review it first.');const q=BBWeeklyEssentials.reconcile({...row,...patch,manualPending:true});if(!q.valid)throw Error('Check household amounts for '+row.name);Object.assign(row,patch,{manualPending:true,selected:true,...(q.toBuy>0?{owned:false}:{})});}return {key:BB307_FEATURE_KEY,value:next,expected:before};},
+ completeHousehold:id=>{const next=JSON.parse(JSON.stringify(bb307FeatureState)),row=next.essentials.find(x=>x.id===id);if(!row||!Object.hasOwn(row,'targetQty'))return {};let saved;try{const raw=localStorage.getItem(BB307_FEATURE_KEY);saved=raw===null?{}:JSON.parse(raw);}catch{throw Error('Saved household data needs review. Existing data has been kept.');}if(!saved||typeof saved!=='object'||Array.isArray(saved))throw Error('Saved household data needs review. Existing data has been kept.');row.manualPending=false;row.ownedQty=Math.max(row.ownedQty,row.targetQty);return {[BB307_FEATURE_KEY]:next};},
  reload:()=>{bb307FeatureState=bb307ReadFeatures();},
  occurrence:bbHomeOccurrence,
  recipeIngredients:bbHomeRecipeIngredients,conversionContext:bbHomeConversionContext,
@@ -10363,8 +10378,27 @@ const BB_SHOP_ARCHIVE_V7_KEY='basketboss_shop_session_archive_v7';
 function bbShopV7Read(key){try{const v=JSON.parse(localStorage.getItem(key)||'{}');return v&&typeof v==='object'&&!Array.isArray(v)?v:{}}catch(_){return {}}}
 function bbShopV7Write(changes,expected={}){
  const old={},after={},written=[];try{
+  // Migration and legacy Finish also use this writer. Preserve unreadable
+  // records instead of publishing a permissive reader's empty fallback.
+  const objectMaps=new Set([
+   typeof BB_SHOP_SESSION_V7_KEY==='string'?BB_SHOP_SESSION_V7_KEY:'basketboss_active_shop_session_v7',
+   typeof BB_SHOP_ARCHIVE_V7_KEY==='string'?BB_SHOP_ARCHIVE_V7_KEY:'basketboss_shop_session_archive_v7',
+   typeof BB321_SHOP_TICKS_KEY==='string'?BB321_SHOP_TICKS_KEY:'basketboss_321_v11_shop_ticks',
+   typeof BB84_PURCHASED_KEY==='string'?BB84_PURCHASED_KEY:'basketboss_ui_next_bought_quantity_v1',
+   typeof BB_PARTIAL_PURCHASE_KEY==='string'?BB_PARTIAL_PURCHASE_KEY:'basketboss_partial_purchases_v1',
+   typeof BB_BETA_CHOICE_KEY==='string'?BB_BETA_CHOICE_KEY:'basketboss_purchase_choices_v1',
+   typeof BB_BETA_RECEIPT_KEY==='string'?BB_BETA_RECEIPT_KEY:'basketboss_purchase_receipts_v1',
+   typeof BB307_STOCK_KEY==='string'?BB307_STOCK_KEY:'basketboss_321_v7_measured_pantry',
+   typeof BB83_KITCHEN_INVENTORY==='string'?BB83_KITCHEN_INVENTORY:'basketboss_makeameal_v1_inventory',
+   typeof BB83_SHOP_STOCK_LEDGER==='string'?BB83_SHOP_STOCK_LEDGER:'basketboss_ui_next_bought_to_kitchen_v1',
+   typeof BB307_FEATURE_KEY==='string'?BB307_FEATURE_KEY:'basketboss_321_features_v1','basketboss_at_home_requirements_v1'
+  ]);
   for(const [key,bytes]of Object.entries(expected))if(localStorage.getItem(key)!==bytes)throw Error('Shopping changed elsewhere. Review before saving.');
-  for(const key of Object.keys(changes)){old[key]=localStorage.getItem(key);if(Object.hasOwn(expected,key)&&old[key]!==expected[key])throw Error('Shopping changed elsewhere. Review before saving.');after[key]=JSON.stringify(changes[key]);}
+  for(const key of Object.keys(changes)){
+   old[key]=localStorage.getItem(key);if(Object.hasOwn(expected,key)&&old[key]!==expected[key])throw Error('Shopping changed elsewhere. Review before saving.');
+   if(objectMaps.has(key)&&old[key]!==null){let saved;try{saved=JSON.parse(old[key]);}catch{throw Error('Saved shopping data needs review. Existing data has been kept.');}if(!saved||typeof saved!=='object'||Array.isArray(saved))throw Error('Saved shopping data needs review. Existing data has been kept.');}
+   after[key]=JSON.stringify(changes[key]);
+  }
   for(const key of Object.keys(changes)){
    if(localStorage.getItem(key)!==old[key])throw Error('Shopping changed elsewhere. Review before saving.');
    written.push(key);localStorage.setItem(key,after[key]);

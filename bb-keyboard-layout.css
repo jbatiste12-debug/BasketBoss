@@ -17,7 +17,18 @@ html.bb-keyboard-open body nav[aria-label="Bottom navigation"]{
     their existing buttons/links a full hit area without changing their type. */
  html body .bbui-settings-overlay .bbui-settings-panel[data-bb-account-polish] .bbui-settings-close,
  html body .bbui-settings-overlay .bbui-settings-panel[data-bb-account-polish] a{min-width:44px!important;}
- html body #app.bbnext-plan .bbnext-day-content>.day>.planned.bb14-meal-card .bb172-planner-controls>select[data-move],
+}
+
+/* iPad and wide touch layouts need the same no-zoom editing floor. */
+html body #app.bbnext-plan .bbnext-day-content>.day>.planned.bb14-meal-card .bb172-planner-controls>select[data-move],
  html body input:not([type=checkbox]):not([type=radio]):not([type=range]):not([type=file]):not([type=color]):not([type=hidden]),
  html body textarea,html body select{font-size:16px!important;}
+
+/* iOS may shrink only visualViewport while the layout viewport stays tall. */
+html.bb-keyboard-open body #bb172Storefront.bb172-storefront{
+ padding-bottom:0!important;scroll-padding-bottom:0!important;
+ inset:auto 0 auto!important;top:var(--bb-edit-viewport-top,0px)!important;
+ height:var(--bb-edit-viewport-height,100dvh)!important;
+ max-height:var(--bb-edit-viewport-height,100dvh)!important;
 }
+html.bb-keyboard-open body #bb172Storefront>.bb172-storefront-bottom{position:sticky!important;bottom:0!important;min-height:0!important;height:auto!important;padding-top:12px!important;padding-bottom:calc(12px + env(safe-area-inset-bottom,0px))!important;}

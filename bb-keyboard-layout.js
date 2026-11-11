@@ -60,6 +60,9 @@
     // through blur/field changes; restore only when visible height recovers.
     if(!opened)restingHeight=Math.max(restingHeight,height);
    }
+   const style=doc.documentElement.style;
+   const viewportValues={'--bb-edit-viewport-height':height+'px','--bb-edit-viewport-top':Math.max(0,Number(win.visualViewport?.offsetTop)||0)+'px'};
+   for(const [name,value]of Object.entries(viewportValues))if(style?.getPropertyValue?.(name)!==value)style?.setProperty?.(name,value);
    classes.toggle('bb-keyboard-open',opened);
   }
   function schedule(){if(frame===null)frame=win.requestAnimationFrame(refresh);}
