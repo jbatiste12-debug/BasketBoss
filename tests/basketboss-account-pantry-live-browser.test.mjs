@@ -46,7 +46,7 @@ function mockServer({shared=false}={}){
 function requestActor(request){
  try{return JSON.parse(Buffer.from(request.headers().authorization?.replace(/^Bearer\s+/i,'').split('.')[1]||'','base64url').toString()).sub;}catch{return null;}
 }
-async function fixture(server,actor=A){
+async function fixture(server,actor=A,{plannedDay='Monday'}={}){
  const anchor='window.BBHomeHost=Object.freeze({',source=await fs.readFile(path.join(root,'app.html'),'utf8');assert.ok(source.includes(anchor));
  const app=transform700Presentation(transform700Html(source,release)).replace(anchor,bridge+anchor);
  const context=await browser.newContext({viewport:{width:390,height:844},isMobile:true,hasTouch:true,reducedMotion:'reduce',serviceWorkers:'block'}),page=await context.newPage(),errors=[];
@@ -90,11 +90,11 @@ async function fixture(server,actor=A){
   }catch{return route.fulfill({status:404,body:''});}
  });
  const remote=server.projection(actor);
- await context.addInitScript(({actor,remote,STOCK,INVENTORY})=>{
+ await context.addInitScript(({actor,remote,STOCK,INVENTORY,plannedDay})=>{
   if(localStorage.getItem('account-pantry-live-fixture-v1'))return;
   const expires=Math.floor(Date.now()/1000)+7200,encode=value=>btoa(JSON.stringify(value)).replace(/=/g,'').replace(/\+/g,'-').replace(/\//g,'_');
   localStorage.setItem('basketboss_cloud_session_v1',JSON.stringify({access_token:encode({alg:'HS256',typ:'JWT'})+'.'+encode({sub:actor,exp:expires,iat:expires-3600,aud:'authenticated',role:'authenticated'})+'.synthetic',expires_at:expires,user:{id:actor,email:'pantry-live-'+actor.slice(-2)+'@example.invalid',email_confirmed_at:'2026-01-01T00:00:00Z'}}));
-  localStorage.setItem('basketboss_321_unified_state_v1',JSON.stringify({version:2,planned:[{recipeId:'sausage-gnocchi',day:'Monday',servings:4}],plannedBreakfasts:[],plannedDesserts:[],servings:4,feedingSet:true,pantry:{},mealPreferences:{version:1,scope:actor,diets:[],goals:[]}}));
+  localStorage.setItem('basketboss_321_unified_state_v1',JSON.stringify({version:2,planned:[{recipeId:'sausage-gnocchi',day:plannedDay,servings:4}],plannedBreakfasts:[],plannedDesserts:[],servings:4,feedingSet:true,pantry:{},mealPreferences:{version:1,scope:actor,diets:[],goals:[]}}));
   localStorage.setItem('basketboss_321_features_v1',JSON.stringify({version:1,essentials:[]}));localStorage.setItem(STOCK,JSON.stringify(remote.stock));
   const inventory={};for(const [id,qty]of Object.entries(remote.stock)){const at=id.lastIndexOf('|'),name=id.slice(0,at),unit=id.slice(at+1);inventory['fridge|'+name]={name,loc:'fridge',selected:true,qty,unit,bb173StockKey:id,bb173StockValue:qty};}
   localStorage.setItem(INVENTORY,JSON.stringify(inventory));
@@ -102,7 +102,7 @@ async function fixture(server,actor=A){
   localStorage.setItem(cacheKey,JSON.stringify(cached));localStorage.setItem('basketboss_receipt_projection_owner_v1',JSON.stringify({version:1,actorId:actor,scope:remote.scope,cacheKey,initialized:true,inventoryRevision:remote.inventoryRevision,serverStock:remote.stock}));
   localStorage.setItem('bb_onboarding_fresh_once_20261028_v1',JSON.stringify({step:10,complete:true,started:false,partnerStepV2:true}));localStorage.setItem('basketboss_how_it_works_v1',JSON.stringify({version:1,seen:true}));sessionStorage.setItem('basketboss_welcome_splash_seen_v1','1');localStorage.setItem('basketboss_321_v7_market','Guernsey');
   localStorage.setItem('account-pantry-live-fixture-v1','1');
- },{actor,remote,STOCK,INVENTORY});
+ },{actor,remote,STOCK,INVENTORY,plannedDay});
  try{
   await page.goto('https://basketboss.co.uk/app',{waitUntil:'domcontentloaded'});await page.waitForFunction(()=>window.__accountPantryQA?.ready());
   await page.waitForFunction(()=>window.BBReceiptHost?.getProjection?.()?.initialized===true&&window.BBReceiptHost.getConsumptionStatus().ready===true);
@@ -136,6 +136,31 @@ async function assertSausageNeed(page){
  assert.equal(await shell.locator('[data-bb-shop-purchase-id="chicken breast|g"]').count(),0,'deleted chicken is neither stock nor a phantom shopping requirement');
  await noPantrySourcePrompt(page);return row;
 }
+
+test('Plan, Cook prep and Discover display six sausage pieces without changing pantry balances or recipe requirements',{skip:!chromium&&'Playwright unavailable',timeout:60000},async()=>{
+ const server=mockServer(),h=await fixture(server,A,{plannedDay:'Friday'});
+ try{
+  await waitStock(h.page,INITIAL);
+  const pantryBytes=()=>h.page.evaluate(({STOCK,INVENTORY})=>[localStorage.getItem(STOCK),localStorage.getItem(INVENTORY)],{STOCK,INVENTORY});
+  const requirement=()=>h.page.evaluate(()=>{const item=window.__accountPantryQA.summary().items.find(row=>/sausages?/.test(row.key));return {required:item.required,unit:item.unit};});
+  const before=await pantryBytes();assert.deepEqual(await requirement(),{required:6,unit:'each'});
+  await h.page.locator('#bbPrimaryNavigation [data-bb-nav-item="plan"]').click();
+  const friday=h.page.locator('.bbnext-day[data-bbnext-day="Friday"]');await friday.waitFor();
+  if(!await friday.evaluate(node=>node.open))await friday.locator('.bbnext-day-description>strong').click();
+  const summary=friday.locator('.bbnext-meal-ingredients');
+  assert.match(await summary.innerText(),/Pork sausages\s*\(6 each\)/i);assert.doesNotMatch(await summary.innerText(),/6 packs?/i);
+  await friday.locator('[data-cook]').click();await h.page.locator('.cook-overlay').waitFor();
+  const sausage=h.page.locator('#bbBody .bb-cook-ingredient').filter({has:h.page.locator('.bb-prep-name',{hasText:/^Pork sausages$/i})});
+  assert.equal(await sausage.locator('.bb-prep-quantity').innerText(),'6 each');assert.doesNotMatch(await sausage.innerText(),/6 packs?/i);
+  await h.page.locator('#bbExit').click();await h.page.locator('.cook-overlay').waitFor({state:'detached'});
+  await h.page.evaluate(()=>window.__accountPantryQA.discover('sausage-gnocchi'));await h.page.locator('.bbfeed-ingredients>summary').click();
+  const ingredient=h.page.locator('.bbfeed-ingredients .ingredient-row').filter({hasText:'Pork sausages'});
+  assert.match(await ingredient.innerText(),/6 each/);assert.doesNotMatch(await ingredient.innerText(),/6 packs?/i);
+  assert.deepEqual(await requirement(),{required:6,unit:'each'});
+  assert.deepEqual(await pantryBytes(),before,'opening recipe views never changes exact pantry stock or inventory bytes');
+  assert.deepEqual(server.record(A).stock,INITIAL);assert.equal(server.posts.filter(row=>row.committed).length,0);assert.deepEqual(h.errors,[]);
+ }finally{await h.context.close();}
+});
 
 test('offline At home deletions and four sausages survive reconnect/reload without a second pantry confirmation',{skip:!chromium&&'Playwright unavailable',timeout:90000},async()=>{
  const server=mockServer(),h=await fixture(server);

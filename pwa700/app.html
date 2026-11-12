@@ -7290,7 +7290,7 @@ function bbNextComposePlan(app){
        const ingredients=document.createElement('div');ingredients.className='bbnext-meal-ingredients';
        const title=document.createElement('strong');title.textContent='Ingredients in this recipe';
        const factor=BBServing.ratio(bbFeedingForRecipe(recipe,day),recipe);
-       const values=document.createElement('p');values.setAttribute('data-bb-measures','');values.textContent=recipe.ingredients.slice(0,6).map(item=>Array.isArray(item)?item[0]+' ('+(bbRecipeVisibleQuantity(bbRecipeIngredientQuantity(recipe,item,factor),item[0],bb307Market)||bbRecipeIngredientQuantity(recipe,item,factor))+')':String(item)).join(' · ')+(recipe.ingredients.length>6?' · + more':'');
+       const values=document.createElement('p');values.setAttribute('data-bb-measures','');values.textContent=recipe.ingredients.slice(0,6).map(item=>Array.isArray(item)?item[0]+' ('+(bbRecipeVisibleQuantity(bbRecipeDisplayIngredientQuantity(recipe,item,factor),item[0],bb307Market)||bbRecipeDisplayIngredientQuantity(recipe,item,factor))+')':String(item)).join(' · ')+(recipe.ingredients.length>6?' · + more':'');
        ingredients.append(title,values);content.append(ingredients);
      }
    }
@@ -8696,7 +8696,7 @@ function openCook(id,day,kind){
  const cookFactor=BBServing.ratio(chosenServings,r)*(batchCook?2:1);
  const cookReceipt=crypto.randomUUID(),cookActor=window.BBHome?.actor?.(),cookOccurrence=bbHomeOccurrence(id,day,kind);let pantryCard=null,lastCookView='';
  // Display labels only: pantry deduction uses the original recipe and cookFactor.
- const ingredients=r.ingredients.map(i=>[i[0],bbRecipeIngredientQuantity(r,i,cookFactor),i[2],i[3]]);
+ const ingredients=r.ingredients.map(i=>[i[0],bbRecipeDisplayIngredientQuantity(r,i,cookFactor),i[2],i[3]]);
  const voiceSlot=document.createElement('div');voiceSlot.className='bb-cook-voice-slot';voiceSlot.innerHTML='<div class="bb-cook-companion-heading"><div><span class="bb-cook-companion-kicker">A HELPING VOICE</span><h3>Your kitchen companion</h3></div><span class="bb-cook-premium-pill">✦ Premium</span></div>';$('bbBody').before(voiceSlot);
  const voice=window.BBCookVoice?.mount({container:voiceSlot,context:()=>({key:r.id+'|'+(day||'')+'|'+chosenServings,
   mentorEnabled:true,mentorRecipe:{id:String(r.id),title:String(r.name),servings:batchCook?chosenServings*2:chosenServings,
