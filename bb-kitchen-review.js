@@ -118,17 +118,24 @@
    let snapshot;try{snapshot=controller.snapshot();}catch{message('Your saved stock could not be read. Close and reopen this check.',true);return;}
    if(snapshot.context.actor!==state.actor){close();return;}
    if(!snapshot.foodReady&&state.list.querySelector('[data-review-item^="food:"]'))return;
-   const query=state.search.value.trim().toLowerCase(),rows=snapshot.rows.filter(row=>(state.section==='all'||state.section===row.kind)&&(!query||row.name.toLowerCase().includes(query)));
+   const query=state.search.value.trim().toLowerCase(),rows=snapshot.rows.filter(row=>(state.section==='all'||state.section===row.kind)&&(!query||row.name.toLowerCase().includes(query))).map(row=>{
+    let target=row,household=row;
+    if(row.kind==='food'&&!row.readOnly&&row.totalNeeded===undefined)try{target=win.BBHome?.foodTarget?.(row,{otherRows:snapshot.rows.filter(other=>other.kind==='food'&&other.key!==row.key)})||row;}catch{}
+    if(row.kind==='household')household=(win.BBHomeHost?.household?.()||[]).find(item=>item.id===row.key)||row;
+    return {row,amounts:reviewAmounts(row,{foodTarget:target,household,reconcile:win.BBWeeklyEssentials?.reconcile})};
+   }).filter(({row,amounts})=>{
+    // Depleted editor records remain available to stock/sync owners, but have
+    // nothing to review when no stock, meal need or restock is left. Preserve
+    // unknown amounts and deliberate staples rather than treating them as zero.
+    if(row.kind!=='food'||row.staple||row.readOnly||['atHome','planned','toShop'].some(key=>amounts[key]!==0))return true;
+    try{return controller.shopping(row).onList;}catch{return true;}
+   });
    const top=state.body.scrollTop;state.list.replaceChildren();state.count.textContent=rows.length+' item'+(rows.length===1?'':'s');
    const table=make('div','bb-kitchen-review-table');table.setAttribute('role','table');table.setAttribute('aria-label','Stock and planned shopping');
    const header=make('div','bb-kitchen-review-columns');header.setAttribute('role','row');
    for(const [name,title]of[['Item','Tap an item to change its amounts'],['At home','Total compatible stock across your kitchen'],['Planned','Total needed for meals and your selected restock'],['To Shop','Remaining quantity on your shopping list']]){const cell=make('span','',name);cell.setAttribute('role','columnheader');cell.title=title;header.append(cell);}table.append(header);
    const market=win.bb307ActiveMarket?.()||'UK',policy=win.BBPantryPolicy;
-   for(const row of rows){
-    let target=row,household=row;
-    if(row.kind==='food'&&!row.readOnly&&row.totalNeeded===undefined)try{target=win.BBHome?.foodTarget?.(row,{otherRows:snapshot.rows.filter(other=>other.kind==='food'&&other.key!==row.key)})||row;}catch{}
-    if(row.kind==='household')household=(win.BBHomeHost?.household?.()||[]).find(item=>item.id===row.key)||row;
-    const amounts=reviewAmounts(row,{foodTarget:target,household,reconcile:win.BBWeeklyEssentials?.reconcile});
+   for(const {row,amounts} of rows){
     let unit=row.unit;
     if(row.kind==='food'&&!row.staple&&win.BBPantryInline?.displayUnit)try{unit=win.BBPantryInline.displayUnit({...row,qty:Math.max(amounts.atHome||0,amounts.planned||0,amounts.toShop||0)||row.qty},market,policy);}catch{}
     function label(quantity){

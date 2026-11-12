@@ -125,3 +125,62 @@ check('At home row controls, search, filters and selection keep their existing f
  await page.waitForFunction(()=>document.querySelector('.bbps-count')?.textContent==='3 selected');assert.equal(await page.locator('.bbps-count').innerText(),'3 selected');await page.locator('.bbps-cancel').click();await page.locator('.bbps-bar').waitFor({state:'detached'});
  assert.equal(await page.evaluate(()=>BBPantryEditor.list().length),3);
 }));
+for(const viewport of [{width:390,height:844},{width:320,height:568}])check('weekly kitchen check hides depleted unused foods without deleting stock records at '+viewport.width+'px',()=>fixture(viewport,async page=>{
+ await page.evaluate(async()=>{
+  for(const item of [{name:'Passata',loc:'cupboard',qty:500,unit:'g'},{name:'Garlic baguette',loc:'freezer',qty:1,unit:'each'},{name:'Pasta',loc:'cupboard',qty:.000001,unit:'g'}]){
+   const added=BBPantryEditor.add(item);if(!added?.ok)throw Error(added?.message||'weekly review seed');
+  }
+  await BBPantryEditor.flush();
+  for(const name of ['Passata','Garlic baguette']){
+   const id=BBHomeHost.id(name,''),row=BBPantryEditor.list().find(item=>BBHomeHost.id(item.name,'')===id);
+   if(!row)throw Error('Missing weekly review seed: '+name);
+   const updated=BBPantryEditor.update(row.key,{qty:0});if(!updated?.ok)throw Error(updated?.message||'deplete weekly review seed');
+  }
+  await BBPantryEditor.flush();
+  const essential=await BBHome.confirmHouseholdEntry({name:'Toilet rolls',unit:'each',targetQty:5,ownedQty:18,packQuantity:6,packUnit:'each',packReviewed:true},BBHomeHost.householdAmountContext());
+  if(!essential?.ok)throw Error(essential?.message||'weekly review essential seed');
+ });
+ const retained=await page.evaluate(()=>Object.fromEntries(['Passata','Garlic baguette','Pasta'].map(name=>{
+  const id=BBHomeHost.id(name,''),row=BBPantryEditor.list().find(item=>BBHomeHost.id(item.name,'')===id);return [name,row?.qty];
+ })));
+ assert.deepEqual(retained,{'Passata':0,'Garlic baguette':0,'Pasta':.000001},'depleted entries still exist in the real editor, while a tiny positive reserve stays precise');
+ const pantryBytes=()=>page.evaluate(()=>{const keys=BBHomeHost.keys();return [localStorage.getItem(keys.stock),localStorage.getItem(keys.inventory)];});
+ const before=await pantryBytes(),dialog=page.locator('#bbKitchenReviewDialog');
+ const item=name=>dialog.locator('.bb-kitchen-review-item').filter({has:page.locator('strong').filter({hasText:new RegExp('^'+name+'$','i')})});
+ const assertRows=async()=>{
+  await page.waitForFunction(()=>document.querySelector('#bbKitchenReviewDialog .bb-kitchen-review-count')?.textContent==='5 items');
+  assert.equal(await dialog.locator('.bb-kitchen-review-item').count(),5);
+  assert.equal(await item('Passata').count(),0);assert.equal(await item('Garlic baguette').count(),0);
+  assert.equal(await item('Pasta').count(),1,'a positive amount must not be hidden merely because it rounds below one display unit');
+  const essential=item('Toilet rolls');assert.equal(await essential.count(),1);
+  assert.equal(await essential.locator('[data-review-column="atHome"]').innerText(),'18 each');
+  assert.equal(await essential.locator('[data-review-column="planned"]').innerText(),'5 each');
+  assert.equal(await essential.locator('[data-review-column="toShop"]').innerText(),'0 each');
+ };
+ await page.locator('#bbKitchenReviewOpen').click();await dialog.waitFor();await assertRows();
+ await dialog.getByRole('button',{name:'Refresh amounts',exact:true}).click();await assertRows();
+ const search=dialog.getByRole('searchbox',{name:'Find stock to review',exact:true});
+ await search.fill('passata');await page.waitForFunction(()=>document.querySelector('#bbKitchenReviewDialog .bb-kitchen-review-count')?.textContent==='0 items');
+ assert.equal(await dialog.locator('.bb-kitchen-review-item').count(),0);assert.equal(await dialog.locator('.bb-kitchen-review-empty').count(),1);
+ await search.fill('');await assertRows();
+ const section=dialog.getByRole('combobox',{name:'Stock section',exact:true});await section.selectOption('food');
+ await page.waitForFunction(()=>document.querySelector('#bbKitchenReviewDialog .bb-kitchen-review-count')?.textContent==='4 items');
+ assert.equal(await item('Passata').count(),0);assert.equal(await item('Garlic baguette').count(),0);assert.equal(await item('Toilet rolls').count(),0);
+ await section.selectOption('all');await assertRows();
+ await dialog.getByRole('button',{name:'Close',exact:true}).click();await dialog.waitFor({state:'detached'});
+ await page.locator('#bbKitchenReviewOpen').click();await dialog.waitFor();await assertRows();
+ assert.deepEqual(await pantryBytes(),before,'opening, searching, filtering, refreshing and reopening change no saved stock or inventory bytes');
+ await dialog.getByRole('button',{name:'Close',exact:true}).click();await dialog.waitFor({state:'detached'});
+ const added=await page.evaluate(()=>BBHome.addShoppingBuy({name:'Passata',quantityText:'100 g',actorId:BBHome.actor(),requestId:'weekly-review-zero-passata-top-up'}));
+ assert.equal(added.ok,true,added.message);assert.deepEqual(await pantryBytes(),before,'requesting a real manual top-up never credits stock');
+ const withTopUp=await pantryBytes();await page.locator('#bbKitchenReviewOpen').click();await dialog.waitFor();
+ await page.waitForFunction(()=>document.querySelector('#bbKitchenReviewDialog .bb-kitchen-review-count')?.textContent==='6 items');
+ const passata=item('Passata');assert.equal(await passata.count(),1,'a depleted food reappears when it has a genuine pending shopping request');
+ assert.equal(await passata.locator('[data-review-column="atHome"]').innerText(),'0 g');
+ assert.equal(await passata.locator('[data-review-column="planned"]').innerText(),'100 g');
+ assert.equal(await passata.locator('[data-review-column="toShop"]').innerText(),'100 g');
+ assert.equal(await item('Garlic baguette').count(),0,'an unrelated depleted food remains hidden');
+ await dialog.getByRole('button',{name:'Refresh amounts',exact:true}).click();assert.equal(await item('Passata').count(),1);
+ assert.deepEqual(await pantryBytes(),withTopUp,'showing the pending top-up changes no balances');
+ await dialog.getByRole('button',{name:'Close',exact:true}).click();
+}));
