@@ -23,6 +23,9 @@ const bridge=`window.__readableShopQA={
  ready:()=>RECIPES.length===200&&window.BBWeeklyShop&&window.BBHome&&window.BBShopPurchaseUI?.createPicker&&window.BBShopOwnership?.enabled?.(),
  openShop(){tab='shop';render();return window.BBWeeklyShop.start();},
  ordinaryShop(){tab='shop-list';render();},
+ atHome(){bb172ShopSetActive(false);tab='shop';render();},
+ pantryRows:()=>Object.values(JSON.parse(localStorage.getItem(BB83_KITCHEN_INVENTORY)||'{}')).filter(row=>row?.selected===true),
+ shopSession:()=>bbShopV7Session(),
  plan(){tab='week';render();},
  renderAgain(){render();},
  summary:()=>bb321WeeklySummary(),
@@ -240,5 +243,114 @@ test('a synchronized bought pack remains editable after reload and a fresh Shop 
   shell=await openShop(page);await choose(page,shell,wraps,'6');
   const value=await current(page);assert.equal(value.stock[wraps],12);assert.equal(value.purchases[wraps].actualQty,12);assert.equal(value.ticks[wraps],true);
   assert.equal(await page.locator('.bb-receipt-pantry-dialog').count(),0);assert.deepEqual(errors,[]);
+ }finally{await context.close();}
+});
+
+
+// These regressions exercise the public 700 app, the existing physical-stock
+// transfer and the real account receipt round-trip together. They deliberately
+// use an existing generic household name rather than pre-normalized fixtures.
+const progressLabel=shell=>shell.locator('.bb172-storefront-progress-label span');
+async function assertProgress(page,shell,complete,total){
+ await page.waitForFunction(({complete,total})=>document.querySelector('#bb172Storefront .bb172-storefront-progress-label span')?.textContent===complete+' of '+total+' checked',{complete,total});
+ assert.equal(await progressLabel(shell).textContent(),complete+' of '+total+' checked');
+ assert.equal(await shell.locator('.bb172-storefront-progress-track[role=progressbar]').getAttribute('aria-valuenow'),String(total?Math.round(complete*100/total):0));
+}
+async function expectBought(page,shell,id,checked=true){
+ await page.waitForFunction(({id,checked})=>[...document.querySelectorAll('#bb172Storefront [data-bb-shop-purchase-id]')].find(row=>row.dataset.bbShopPurchaseId===id)?.querySelector('.bb172-storefront-checkbox')?.checked===checked,{id,checked});
+ assert.equal(await rowFor(shell,id).locator('.bb172-storefront-checkbox').isChecked(),checked);
+}
+async function waitPantry(page,expected){
+ await page.waitForFunction(expected=>JSON.stringify(Object.entries(window.__readableShopQA.stock()).sort())===JSON.stringify(Object.entries(expected).sort()),expected);
+ assert.deepEqual((await current(page)).stock,expected);
+}
+
+test('a bought sausage pack merges the household alias, stays in Bought across account refresh and reload, and unticks exactly once',{timeout:90000},async()=>{
+ const {page,context,errors}=await fixture(390,{recipeId:'sausage-gnocchi',stock:{'sausages|each':3}});
+ try{
+  await page.evaluate(()=>BBReceiptHost.refreshAvailability({force:true,synchronize:true}));
+  await waitPantry(page,{'pork sausages|each':3});
+  let shell=await openShop(page);const pork='pork sausages|each',baguette='garlic baguette|each',total=await shell.locator('.bbcompact-shop-row').count();
+  assert.match(await rowFor(shell,pork).locator('.bbcompact-qty').textContent(),/^3 needed$/);
+  assert.match(await rowFor(shell,pork).locator('.bb-shop-purchase-context').textContent(),/Have 3 at home/);
+  await rowFor(shell,baguette).locator('.bb172-storefront-checkbox').click();await expectBought(page,shell,baguette);
+  await choose(page,shell,pork,'6');
+  await rowFor(shell,pork).locator('.bb172-storefront-checkbox').click();await expectBought(page,shell,pork);
+  await waitPantry(page,{'pork sausages|each':9,'garlic baguette|each':1});
+  await assertProgress(page,shell,2,total);
+  await shell.getByRole('button',{name:'To buy',exact:true}).click();assert.equal(await rowFor(shell,pork).count(),0);
+  await shell.getByRole('button',{name:'Bought',exact:true}).click();await expectBought(page,shell,pork);await expectBought(page,shell,baguette);
+  assert.equal(await shell.locator('.bbcompact-shop-row').count(),2);
+  assert.match(await rowFor(shell,pork).locator('.bb172-storefront-item-title').textContent(),/pork sausages/i);
+  const pantry=await page.evaluate(()=>window.__readableShopQA.pantryRows());
+  const sausageRows=pantry.filter(row=>/^(?:pork )?sausages?$/i.test(row.name));
+  assert.equal(sausageRows.length,1,'one ordinary fridge food represents the shared sausage identity');assert.match(sausageRows[0].name,/^pork sausages$/i);assert.equal(sausageRows[0].qty,9);assert.equal(sausageRows[0].unit,'each');
+  await page.evaluate(async()=>{await BBReceiptHost.retryPurchasedPantry();await BBReceiptHost.refreshAccountPantry();});
+  await expectBought(page,shell,pork);await assertProgress(page,shell,2,total);
+  await page.evaluate(()=>{const key='basketboss_active_shop_session_v7',session=JSON.parse(localStorage.getItem(key));delete session.completedPurchases;localStorage.setItem(key,JSON.stringify(session));});
+  await page.reload({waitUntil:'domcontentloaded'});await page.waitForFunction(()=>window.__readableShopQA?.ready());
+  await page.evaluate(()=>BBReceiptHost.refreshAvailability({force:true,synchronize:true}));
+  shell=await openShop(page);await shell.getByRole('button',{name:'Bought',exact:true}).click();await expectBought(page,shell,pork);await expectBought(page,shell,baguette);await assertProgress(page,shell,2,total);
+  await rowFor(shell,pork).locator('.bb172-storefront-checkbox').click();
+  await waitPantry(page,{'pork sausages|each':3,'garlic baguette|each':1});
+  await assertProgress(page,shell,1,total);assert.equal(await rowFor(shell,pork).count(),0,'unticked food leaves Bought');await expectBought(page,shell,baguette);
+  await shell.getByRole('button',{name:'To buy',exact:true}).click();await expectBought(page,shell,pork,false);
+  await shell.getByRole('button',{name:'All items',exact:true}).click();
+  await rowFor(shell,pork).locator('.bb172-storefront-checkbox').click();await expectBought(page,shell,pork);
+  await page.evaluate(()=>BBReceiptHost.retryPurchasedPantry());
+  await finishAndReload(page,shell,{'pork sausages|each':9,'garlic baguette|each':1});
+  assert.deepEqual(await page.evaluate(()=>window.__readableShopQA.shopSession().completedPurchases||{}),{},'Finish retires the active shop completion records');assert.deepEqual(errors,[]);
+ }finally{await context.close();}
+});
+
+test('a confirmed smaller actual purchase stays checked in Bought while exact partial stock math remains reversible',{timeout:90000},async()=>{
+ const {page,context,errors}=await fixture(390,{recipeId:'sausage-gnocchi',stock:{}});
+ try{
+  await page.evaluate(()=>BBReceiptHost.refreshAvailability({force:true,synchronize:true}));
+  const shell=await openShop(page),pork='pork sausages|each',total=await shell.locator('.bbcompact-shop-row').count();
+  const panel=await picker(page,rowFor(shell,pork));await panel.locator('[data-bb-pack-preset="custom"]').click();await panel.locator('[data-bb-pack-custom]').fill('2');await savePicker(panel);
+  await rowFor(shell,pork).locator('.bb172-storefront-checkbox').click();const bought='bought:'+(await page.evaluate(()=>__readableShopQA.shopSession().id))+'|'+pork;await expectBought(page,shell,bought);
+  await waitPantry(page,{'pork sausages|each':2});await assertProgress(page,shell,1,total+1);assert.match(await rowFor(shell,pork).locator('.bbcompact-qty').textContent(),/^4 more needed$/);
+  const data=await current(page);assert.equal(data.ticks[pork],undefined,'the pre-existing partial purchase ledger keeps its original shortfall semantics');
+  const partials=await page.evaluate(()=>JSON.parse(localStorage.getItem('basketboss_partial_purchases_v1')||'{}'));
+  assert.equal(Object.values(partials).find(row=>row.name==='Pork Sausages'||row.name==='pork sausages')?.bought,2);
+  await shell.getByRole('button',{name:'Bought',exact:true}).click();await expectBought(page,shell,bought);
+  await rowFor(shell,bought).locator('.bb172-storefront-checkbox').click();await waitPantry(page,{});await assertProgress(page,shell,0,total);
+  await shell.getByRole('button',{name:'To buy',exact:true}).click();await expectBought(page,shell,pork,false);assert.match(await rowFor(shell,pork).locator('.bbcompact-qty').textContent(),/^6 needed$/);assert.deepEqual(errors,[]);
+ }finally{await context.close();}
+});
+
+test('legacy generic and specific sausage rows consolidate on load while chicken cuts remain independent',{timeout:90000},async()=>{
+ const expected={'pork sausages|each':9,'chicken breast|g':200,'chicken thigh|g':300};
+ const {page,context,errors}=await fixture(390,{recipeId:'chicken-burgers',stock:{'sausages|each':3,'pork sausages|each':6,'chicken breast|g':200,'chicken thigh|g':300}});
+ try{
+  await page.evaluate(()=>BBReceiptHost.refreshAvailability({force:true,synchronize:true}));await waitPantry(page,expected);
+  await page.evaluate(()=>window.__readableShopQA.atHome());await page.waitForFunction(()=>window.BBPantryEditor?.isCurrent());
+  const rows=await page.evaluate(()=>window.BBPantryEditor.list());
+  const sausages=rows.filter(row=>/^(?:pork )?sausages?$/i.test(row.name));assert.equal(sausages.length,1);assert.match(sausages[0].name,/^pork sausages$/i);assert.equal(sausages[0].qty,9);
+  assert.equal(rows.filter(row=>/chicken breast/i.test(row.name)).length,1);assert.equal(rows.filter(row=>/chicken thigh/i.test(row.name)).length,1);
+  const shell=await openShop(page),breast=rowFor(shell,'chicken breast|g');
+  assert.match(await breast.locator('.bb-shop-purchase-context').textContent(),/Have 200 g at home/);
+  assert.match(await breast.locator('.bbcompact-qty').textContent(),/^467 g needed$/,'the separate 300 g thigh stock cannot cover a breast requirement');
+  assert.deepEqual((await current(page)).stock,expected,'viewing Shop does not reassign distinct cuts');
+  await page.reload({waitUntil:'domcontentloaded'});await page.waitForFunction(()=>window.__readableShopQA?.ready());await waitPantry(page,expected);assert.deepEqual(errors,[]);
+ }finally{await context.close();}
+});
+
+test('saving At home retains active Bought records and refuses an unsafe untick after that purchase amount changes',{timeout:90000},async()=>{
+ const {page,context,errors}=await fixture(390,{recipeId:'sausage-gnocchi',stock:{'sausages|each':3}});
+ try{
+  await page.evaluate(()=>BBReceiptHost.refreshAvailability({force:true,synchronize:true}));await waitPantry(page,{'pork sausages|each':3});
+  let shell=await openShop(page);const pork='pork sausages|each',baguette='garlic baguette|each',total=await shell.locator('.bbcompact-shop-row').count();
+  await choose(page,shell,pork,'6');await rowFor(shell,pork).locator('.bb172-storefront-checkbox').click();await expectBought(page,shell,pork);
+  await rowFor(shell,baguette).locator('.bb172-storefront-checkbox').click();await expectBought(page,shell,baguette);await assertProgress(page,shell,2,total);
+  await page.evaluate(()=>BBReceiptHost.retryPurchasedPantry());
+  await page.evaluate(()=>window.__readableShopQA.atHome());await page.waitForFunction(()=>window.BBPantryEditor?.isCurrent());
+  const edit=await page.evaluate(async()=>{const editor=window.BBPantryEditor,row=editor.list().find(row=>/^(?:pork )?sausages?$/i.test(row.name));const result=editor.update(row.key,{qty:8});if(result.ok)await editor.flush();return result;});assert.equal(edit.ok,true);
+  await waitPantry(page,{'pork sausages|each':8,'garlic baguette|each':1});
+  shell=await openShop(page);await shell.getByRole('button',{name:'Bought',exact:true}).click();await expectBought(page,shell,pork);await expectBought(page,shell,baguette);await assertProgress(page,shell,2,total);
+  await rowFor(shell,pork).locator('.bb172-storefront-checkbox').click();
+  await page.waitForFunction(()=>/used or changed/i.test(document.getElementById('toastRoot')?.textContent||''));
+  await expectBought(page,shell,pork);await expectBought(page,shell,baguette);await assertProgress(page,shell,2,total);assert.deepEqual((await current(page)).stock,{'pork sausages|each':8,'garlic baguette|each':1});assert.deepEqual(errors,[]);
  }finally{await context.close();}
 });

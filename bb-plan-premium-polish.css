@@ -426,3 +426,22 @@ html body .shell #app.bbnext-plan{padding-bottom:calc(120px + env(safe-area-inse
 #app.bbnext-plan #bbSimpleSchoolLunchesPane>#bb1756Lunchboxes{display:block!important;margin:0!important;padding:0!important;border:0!important;background:transparent!important;box-shadow:none!important}
 #app.bbnext-plan #bbSimpleSchoolLunchesPane>#bb1756Lunchboxes>summary{display:none!important}
 #app.bbnext-plan #bbSimpleSchoolLunchesPane>#bb1756Lunchboxes>.bb1756-extra-content{margin:0!important;padding:0!important;border:0!important;background:transparent!important}
+
+
+/* Center only the four rows in the compact My Week controls card. */
+html body #app.bbnext-plan[data-bb-compact-plan="true"] #bbpolAutofillCard .bbpc-filter-row,
+html body #app.bbnext-plan[data-bb-compact-plan="true"] #bbpolAutofillCard>.bbnext-plan-actions{
+ box-sizing:border-box;width:100%;min-width:0;margin-inline:auto!important;justify-content:center;
+}
+html body #app.bbnext-plan[data-bb-compact-plan="true"] #bbpolAutofillCard>.bbnext-plan-actions{
+ margin:0!important;
+}
+html body #app.bbnext-plan[data-bb-compact-plan="true"] #bbpolAutofillCard>.bbnext-plan-actions>.bb-pantry-first-controls{
+ justify-self:center;width:100%;margin-inline:auto;
+}
+html body #app.bbnext-plan[data-bb-compact-plan="true"] #bbpolAutofillCard>.bbnext-plan-actions>.bb-pantry-first-next-week{
+ justify-self:start;width:calc(100% - 52px);
+}
+html body #app.bbnext-plan[data-bb-compact-plan="true"] #bbpolAutofillCard>#bbnextPlanAutofill>summary{
+ width:44px!important;right:12px!important;bottom:12px;
+}

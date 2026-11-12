@@ -248,7 +248,7 @@
    globalActions.append(add,scan,help,choices);storage.append(globalActions);syncScans();
   }
   function knownFoods(){
-   const foods=[],byId=new Map(),catalogue=Object.values(win.BBPriceV19?.catalog||{}),canonical=value=>win.BBPantryPolicy?.canonicalName(value,win.BBPriceV19?.canonical)||foodFold(value);
+   const foods=[],byId=new Map(),catalogue=Object.values(win.BBPriceV19?.catalog||{}),canonical=value=>win.BBPantryPolicy?.canonicalName(value,win.BBPantryAliasCanonical||win.BBPriceV19?.canonical)||foodFold(value);
    const put=(name,loc,aliases=[])=>{if(!name||!LOCATIONS.includes(loc)||win.BBKitchenChoiceRules?.isHousehold?.(name))return;const id=loc+'|'+canonical(name),old=byId.get(id);if(old){old.aliases.push(...aliases,name);return;}const food={id,name,loc,aliases};byId.set(id,food);foods.push(food);};
    for(const row of current.list())put(row.name,row.loc);
    for(const tile of current.card.querySelectorAll('[data-bb5-food]')){
@@ -264,7 +264,7 @@
    return foods;
   }
   function previewFood(name,loc,foods=knownFoods()){
-   const match=matchedFood(name,foods,loc,value=>win.BBPantryPolicy?.canonicalName(value,win.BBPriceV19?.canonical)||foodFold(value));
+   const match=matchedFood(name,foods,loc,value=>win.BBPantryPolicy?.canonicalName(value,win.BBPantryAliasCanonical||win.BBPriceV19?.canonical)||foodFold(value));
    return current.preview?.(match?.name||name.trim(),loc)||null;
   }
   function packChoices(row){
@@ -685,7 +685,7 @@
    }
    const group=event.target.closest?.('[data-bbpg-group]');if(group&&current.card.contains(group)){pendingReveal=location;schedule();}
    const tile=event.target.closest?.('[data-bb5-food]');if(!tile||!current.card.contains(tile))return;const loc=tile.closest('[data-bb76-store]')?.dataset.bb76Store;if(!LOCATIONS.includes(loc))return;event.preventDefault();event.stopImmediatePropagation?.();event.stopPropagation();
-   const name=tile.dataset.bb5Food,policy=win.BBPantryPolicy,canonical=value=>policy?.canonicalName(value,win.BBPriceV19?.canonical)||value.toLowerCase(),row=current.list().find(row=>row.loc===loc&&canonical(row.name)===canonical(name));
+   const name=tile.dataset.bb5Food,policy=win.BBPantryPolicy,canonical=value=>policy?.canonicalName(value,win.BBPantryAliasCanonical||win.BBPriceV19?.canonical)||value.toLowerCase(),row=current.list().find(row=>row.loc===loc&&canonical(row.name)===canonical(name));
    if(row)openEditor(row.key,preferredUnit(name,policy,rowUnit(row),{preferMeasured:true}));else{const preview=previewFood(name,loc);if(preview)openEditor(null,preferredUnit(name,policy,preview.unit,{preferMeasured:true}),'tile',preview);}
   }
   const reset=()=>{if(editor&&editor.actor===actor()&&editor.market===market()&&!win.BBAccountDeletion?.isDeleting?.()){schedule();return;}teardown();schedule();};

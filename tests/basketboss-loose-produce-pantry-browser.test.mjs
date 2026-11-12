@@ -119,14 +119,14 @@ for(const width of [320,390]){
    assert.equal(await page.locator('.bbpi-hero-count').textContent(),'1');
    assert.ok(await page.evaluate(()=>BBPantryEditor.list().some(row=>row.name==='toilet roll')),'the household inventory record remains intact');
    await page.evaluate(()=>window.__produceBeforeAPI=BBPantryEditor);
-   await row.getByRole('button',{name:'More lime in fridge',exact:true}).click();
+   await row.getByRole('button',{name:/^More lime in fridge$/i,exact:true}).click();
    await page.waitForFunction(()=>BBHomeHost.stock()['lime|g']===210);
-   try{await page.waitForFunction(()=>[...document.querySelectorAll('.bbpi-summary-row')].some(row=>row.querySelector('strong')?.textContent==='lime'&&row.querySelector('.bbpi-summary-amount')?.textContent==='3 each'));}
+   try{await page.waitForFunction(()=>[...document.querySelectorAll('.bbpi-summary-row')].some(row=>row.querySelector('strong')?.textContent?.toLowerCase()==='lime'&&row.querySelector('.bbpi-summary-amount')?.textContent==='3 each'));}
    catch(error){
-    const diagnostic=await page.evaluate(()=>({amount:document.querySelector('.bbpi-summary-amount')?.textContent,proof:localStorage.getItem(BBLooseProduceUI.key),same:BBPantryEditor===window.__produceBeforeAPI,current:window.__produceBeforeAPI.isCurrent(),connected:window.__produceBeforeAPI.card.isConnected,pending:BBPantryLive.hasPending(),status:BBPantryEditor.status(),row:BBPantryEditor.list().find(row=>row.name==='lime')}));
+    const diagnostic=await page.evaluate(()=>({amount:document.querySelector('.bbpi-summary-amount')?.textContent,proof:localStorage.getItem(BBLooseProduceUI.key),same:BBPantryEditor===window.__produceBeforeAPI,current:window.__produceBeforeAPI.isCurrent(),connected:window.__produceBeforeAPI.card.isConnected,pending:BBPantryLive.hasPending(),status:BBPantryEditor.status(),row:BBPantryEditor.list().find(row=>row.name.toLowerCase()==='lime')}));
     throw Error(error.message+' '+JSON.stringify(diagnostic));
    }
-   const data=await page.evaluate(()=>({stock:BBHomeHost.stock(),row:BBPantryEditor.list().find(row=>row.name==='lime'),physical:JSON.parse(localStorage.getItem(BBHomeHost.keys().inventory))['fridge|lime'],proof:BBLooseProduceUI.readStockProof(localStorage,{actor:BBHome.actor(),stockKey:'lime|g',canonicalQuantity:210},BBPantryPolicy)}));
+   const data=await page.evaluate(()=>({stock:BBHomeHost.stock(),row:BBPantryEditor.list().find(row=>row.name.toLowerCase()==='lime'),physical:JSON.parse(localStorage.getItem(BBHomeHost.keys().inventory))['fridge|lime'],proof:BBLooseProduceUI.readStockProof(localStorage,{actor:BBHome.actor(),stockKey:'lime|g',canonicalQuantity:210},BBPantryPolicy)}));
    assert.equal(data.stock['lime|g'],210);assert.equal(data.stock['toilet roll|each'],4);assert.equal(data.row.unit,'g');assert.equal(data.row.qty,210);assert.equal(data.physical.bb173StockValue,210);assert.equal(data.physical.unit,'g');assert.equal(data.physical.qty,210);
    assert.equal(data.proof.maxCanonicalQuantity,210);assert.equal(data.physical.retailCount,undefined,'no metadata is appended to the physical inventory row');
    assert.deepEqual(errors,[]);
@@ -139,7 +139,7 @@ for(const width of [320,390]){
    const row=page.locator('.bbpi-summary-row').filter({has:page.locator('strong').filter({hasText:/^lime$/i})});
    assert.match(await row.locator('.bbpi-summary-amount').textContent(),/^(?:1000 g|1 kg)$/);
    assert.equal(await row.locator('.bbpi-count-review').textContent(),'Check count');
-   const data=await page.evaluate(()=>({stock:BBHomeHost.stock(),row:BBPantryEditor.list().find(row=>row.name==='lime')}));
+   const data=await page.evaluate(()=>({stock:BBHomeHost.stock(),row:BBPantryEditor.list().find(row=>row.name.toLowerCase()==='lime')}));
    assert.deepEqual(data.stock,{'lime|g':1000});assert.equal(data.row.unit,'g');assert.equal(data.row.qty,1000);
    assert.deepEqual(errors,[]);
   }finally{await context.close();}

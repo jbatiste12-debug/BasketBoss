@@ -7,7 +7,7 @@ const CONFIRMED='basketboss_ui_next_confirmed_pantry_v1';
 const policy=()=>window.BBPantryPolicy;
 const isStapleRow=row=>typeof policy()?.isContainerTracked==='function'?policy().isContainerTracked(row):!!policy()?.isStaple(row?.name)&&!(policy().canonicalName(row.name)==='pepper'&&row.unit==='each'&&row.staple!==true);
 const policyMarket=()=>window.bb307ActiveMarket?.()||'UK';
-const policyOptions=row=>({market:row?.inputMarket||policyMarket(),canonicalize:window.BBPriceV19?.canonical,packReviewed:row?.packReviewed===true,reviewed:row?.packReviewed===true,packQuantity:row?.packQuantity,packUnit:row?.packUnit});
+const policyOptions=row=>({market:row?.inputMarket||policyMarket(),canonicalize:window.BBPantryConversionCanonical||window.BBPriceV19?.canonical,packReviewed:row?.packReviewed===true,reviewed:row?.packReviewed===true,packQuantity:row?.packQuantity,packUnit:row?.packUnit});
 const regionalAmount=(name,quantity,unit)=>window.BBPantryDisplay?.format(name,quantity,unit,policyMarket())||quantity+' '+unit;
 const pantryModuleURL=document.currentScript?.src?new URL('./bb-receipt-inventory-core.mjs?v=20261105-business1',document.currentScript.src).href:'./bb-receipt-inventory-core.mjs?v=20261105-business1';
 let pantryModulePromise;
@@ -17,7 +17,7 @@ const draftActor=()=>{try{return JSON.parse(localStorage.getItem('basketboss_clo
 const physicalRevision=()=>JSON.stringify([localStorage.getItem(INVENTORY),localStorage.getItem(MEASURED)]);
 const ITEMS=[['🥛','Milk'],['🧀','Cheddar'],['🥣','Yoghurt'],['🍖','Ham'],['🧈','Butter'],['🥚','Eggs'],['🍗','Cooked chicken'],['🥛','Cream'],['🧀','Mozzarella'],['🥬','Spinach'],['🥒','Cucumber'],['🥗','Lettuce'],['🥓','Bacon'],['🍄','Mushrooms'],['🍅','Tomatoes'],['🥕','Carrots'],['🧅','Onion'],['🫑','Peppers'],['🥦','Broccoli'],['🧀','Cheese strings']];
 const esc=s=>String(s??'').replace(/[&<>"']/g,x=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[x]));
-function canon(s){let t=String(s||'').toLowerCase().normalize('NFKC').replace(/\([^)]*\)/g,' ').replace(/[–—-]/g,' ').replace(/[^\p{L}\s]/gu,' ').replace(/\s+/g,' ').trim();const alias={eggs:'egg',tomatoes:'tomato',potatoes:'potato',onions:'onion',carrots:'carrot',peppers:'pepper',mushrooms:'mushroom',yoghurts:'yoghurt'};t=t.replace(/^(cooked|frozen|fresh|raw|chopped|sliced|grated)\s+/,'');if(alias[t])return alias[t];if(t.endsWith('ies'))t=t.slice(0,-3)+'y';else if(t.endsWith('s')&&!t.endsWith('ss'))t=t.slice(0,-1);return alias[t]||t}
+function canon(s){if(window.BBPantryAliasCanonical)return policy()?.canonicalName(s,window.BBPantryAliasCanonical)||window.BBPantryAliasCanonical(s);let t=String(s||'').toLowerCase().normalize('NFKC').replace(/\([^)]*\)/g,' ').replace(/[–—-]/g,' ').replace(/[^\p{L}\s]/gu,' ').replace(/\s+/g,' ').trim();const alias={eggs:'egg',tomatoes:'tomato',potatoes:'potato',onions:'onion',carrots:'carrot',peppers:'pepper',mushrooms:'mushroom',yoghurts:'yoghurt'};t=t.replace(/^(cooked|frozen|fresh|raw|chopped|sliced|grated)\s+/,'');if(alias[t])return alias[t];if(t.endsWith('ies'))t=t.slice(0,-3)+'y';else if(t.endsWith('s')&&!t.endsWith('ss'))t=t.slice(0,-1);return alias[t]||t}
 const id=s=>'fridge|'+canon(s);
 function read(key){try{const x=JSON.parse(localStorage.getItem(key)||'{}');return x&&typeof x==='object'&&!Array.isArray(x)?x:{}}catch{return {}}}
 function saveBoth(inventory,measured){const oi=localStorage.getItem(INVENTORY),om=localStorage.getItem(MEASURED);try{const a=JSON.stringify(inventory),b=JSON.stringify(measured);localStorage.setItem(MEASURED,b);localStorage.setItem(INVENTORY,a);if(localStorage.getItem(INVENTORY)!==a||localStorage.getItem(MEASURED)!==b)throw Error('Save verification failed');return true}catch(e){try{if(oi===null)localStorage.removeItem(INVENTORY);else localStorage.setItem(INVENTORY,oi);if(om===null)localStorage.removeItem(MEASURED);else localStorage.setItem(MEASURED,om)}catch{}return false}}
@@ -58,7 +58,7 @@ function placeInventoryFirst(app,panel,fridge){
 function pantryStockId(name,unit){
  /* Same canonical resolver and explicit plural aliases as main BB307Pantry. */
  const raw=String(name||'').trim().toLowerCase().replace(/\s+/g,' ');
- const resolve=window.BBPriceV19?.canonical;
+ const resolve=window.BBPantryAliasCanonical||window.BBPriceV19?.canonical;
  const canonName=typeof resolve==='function'?resolve(raw):raw;
  const aliases={potatoes:'potato',eggs:'egg',tomatoes:'tomato',onions:'onion',peppers:'pepper',carrots:'carrot',bananas:'banana',apples:'apple',lemons:'lemon',limes:'lime',mushrooms:'mushroom',scallops:'scallop',wraps:'wrap'};
  const n=policy()?.canonicalName(name,resolve)||(typeof resolve==='function'?resolve(aliases[canonName]||canonName):(aliases[canonName]||canonName));
@@ -156,7 +156,7 @@ async function build(){
   if(draftActor()!==openingActor||localStorage.getItem('basketboss_cloud_session_v1')!==openingSession||physicalRevision()!==openingRevision||document.getElementById('bb172StaplesPanel')!==panel||document.querySelector('.tab.active')?.dataset.tab!=='shop'){
    delete panel.dataset.bb5BulkInventoryApplied;return;
   }
-  if(typeof module.normalizePantryState==='function'){normalizeState=module.normalizePantryState;openingState=normalizeState(openingState.stock,openingState.inventory,{canonicalize:window.BBPriceV19?.canonical,market:policyMarket()});}
+  if(typeof module.normalizePantryState==='function'){normalizeState=module.normalizePantryState;openingState=normalizeState(openingState.stock,openingState.inventory,{canonicalize:window.BBPantryAliasCanonical||window.BBPriceV19?.canonical,market:policyMarket()});}
  }catch{openingState.issues=[{message:'Container conversions need review. Existing stock has been kept.'}];}
  const card=document.createElement('section');card.id='bb173ShopFridge';card.className='bb173-shop-fridge bb5-multi-inventory bb75-simple-kitchen';
  card.innerHTML=`<header class="bb173-shop-header bb76-kitchen-intro"><div class="bb76-title"><div><p class="bb76-eyebrow">KITCHEN · UI-NEXT 7.6.1</p><h2>What have you got already?</h2><p>Choose the food you already have. Open each area, tap your ingredients, then check the amounts in <strong>PANTRY</strong>.</p></div><button type="button" id="bb76JumpPantry" class="bb76-view-pantry">View PANTRY <span id="bb76JumpCount">0</span> ↓</button></div></header>
@@ -184,7 +184,7 @@ async function build(){
   saving=reconcilePantry(automatic).finally(()=>{saving=null;if(draftDirty&&card.isConnected&&JSON.stringify([...staged])!==savedDraft)scheduleAuto();});return saving;
  }
  if(live()){window.BBPantryLive={flush:()=>runSave(true),hasPending:()=>draftDirty,householdChanged:()=>{draftDirty=true;scheduleAuto();}};reconcile.textContent='Update Shopping now';card.querySelectorAll('li')[3].textContent='Valid amounts save automatically and update Shopping. Done saves pending picker changes.';note.textContent='Valid changes update Shopping automatically.';review.querySelector('.bb174-fridge-review-head p').textContent='Set actual quantities or staple status. Valid edits save automatically; Done saves any pending picker changes.';review.querySelector('.bb174-fridge-explain').textContent='Known quantities reduce what is left to buy. Unknown amounts and containers stay visible for review.';}
- function sid(loc,name){return loc+'|'+(policy()?.canonicalName(name,window.BBPriceV19?.canonical)||canon(name))}
+ function sid(loc,name){return loc+'|'+(policy()?.canonicalName(name,window.BBPantryAliasCanonical||window.BBPriceV19?.canonical)||canon(name))}
  const draftKeys=(loc,name)=>[...staged].filter(([,row])=>sid(row.loc,row.name)===sid(loc,name)).map(([key])=>key);
  function stageValue(rec,inventoryId){
   const row={...rec,name:String(rec.name),loc:rec.loc,qty:rec.qty??null,unit:rec.unit||'each',inventoryId,inputMarket:rec.inputMarket||policyMarket()};
@@ -339,7 +339,7 @@ async function build(){
    note.textContent='Recover the pending receipt in Shop before changing Pantry quantities.';return;
   }
   let state={inventory:read(INVENTORY),stock:read(MEASURED),issues:[]};
-  if(normalizeState)try{state=normalizeState(state.stock,state.inventory,{canonicalize:window.BBPriceV19?.canonical,market:policyMarket()});}catch{note.textContent='Review the saved pantry units first. Every amount has been kept unchanged.';return;}
+  if(normalizeState)try{state=normalizeState(state.stock,state.inventory,{canonicalize:window.BBPantryAliasCanonical||window.BBPriceV19?.canonical,market:policyMarket()});}catch{note.textContent='Review the saved pantry units first. Every amount has been kept unchanged.';return;}
   const originalInv=state.inventory,originalStock=state.stock,nextInv={...originalInv},nextStock={...originalStock};
   // Different physical sources can share a displayed name. Keep both records
   // intact until their units are reviewed instead of consolidating one away.
@@ -407,7 +407,7 @@ async function build(){
    const p=unitConversion(x.qty,x.unit),key=pantryStockId(x.name,p.unit);
    if(needsOwner.has(key)){nextInv[x.inventoryId||sid(x.loc,x.name)].bb173StockKey=key;nextInv[x.inventoryId||sid(x.loc,x.name)].bb173StockValue=p.qty}
   }
-  if(window.BBReducedStock?.settleInventory){const annotated=window.BBReducedStock.settleInventory({before:originalInv,after:nextInv,actor:openedActor,policy:policy(),canonicalize:window.BBPriceV19?.canonical,market:policyMarket()});for(const key of Object.keys(nextInv))nextInv[key]=annotated[key];}
+  if(window.BBReducedStock?.settleInventory){const annotated=window.BBReducedStock.settleInventory({before:originalInv,after:nextInv,actor:openedActor,policy:policy(),canonicalize:window.BBPantryAliasCanonical||window.BBPriceV19?.canonical,market:policyMarket()});for(const key of Object.keys(nextInv))nextInv[key]=annotated[key];}
   let homeChange;try{
    const homeRows=chosen.map(row=>{
     const target=[...stagedTargets.values()].find(value=>value.sourceKey===row.inventoryId);

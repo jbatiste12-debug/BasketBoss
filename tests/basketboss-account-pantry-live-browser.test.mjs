@@ -142,14 +142,14 @@ test('offline At home deletions and four sausages survive reconnect/reload witho
  try{
   await waitStock(h.page,INITIAL);await home(h.page);await noPantrySourcePrompt(h.page);
   server.offline.add(A);await h.context.setOffline(true);
-  await replaceFood(h.page,[{name:'Sausages',loc:'fridge',qty:4,unit:'each'}]);await waitStock(h.page,{'sausages|each':4});
-  const queued=await h.page.evaluate(()=>window.__accountPantryQA.outbox());assert.deepEqual(queued.stock,{'sausages|each':4});assert.deepEqual(server.record(A).stock,INITIAL);
+  await replaceFood(h.page,[{name:'Sausages',loc:'fridge',qty:4,unit:'each'}]);await waitStock(h.page,{'pork sausages|each':4});
+  const queued=await h.page.evaluate(()=>window.__accountPantryQA.outbox());assert.deepEqual(queued.stock,{'pork sausages|each':4});assert.deepEqual(server.record(A).stock,INITIAL);
   const offlineNeed=await h.page.evaluate(()=>window.__accountPantryQA.summary().items.find(row=>/sausages?/.test(row.key)));assert.equal(offlineNeed.pantryUsed,4);assert.equal(offlineNeed.toBuy,2);
   // Reload with API connectivity still absent, while all app assets are
   // fulfilled locally. The outbox must survive before the reconnect retry.
-  await h.context.setOffline(false);await h.page.reload({waitUntil:'domcontentloaded'});await h.page.waitForFunction(()=>window.__accountPantryQA?.ready());await waitStock(h.page,{'sausages|each':4});
+  await h.context.setOffline(false);await h.page.reload({waitUntil:'domcontentloaded'});await h.page.waitForFunction(()=>window.__accountPantryQA?.ready());await waitStock(h.page,{'pork sausages|each':4});
   await noPantrySourcePrompt(h.page);server.offline.delete(A);await h.page.evaluate(()=>window.dispatchEvent(new Event('online')));
-  await h.page.waitForFunction(()=>window.__accountPantryQA.outbox()===null,{},{timeout:15000});await waitStock(h.page,{'sausages|each':4});assert.deepEqual(server.record(A).stock,{'sausages|each':4});
+  await h.page.waitForFunction(()=>window.__accountPantryQA.outbox()===null,{},{timeout:15000});await waitStock(h.page,{'pork sausages|each':4});assert.deepEqual(server.record(A).stock,{'pork sausages|each':4});
   await assertSausageNeed(h.page);await home(h.page);await h.page.locator('[data-bbpi-storage=all]').click();
   const foods=h.page.locator('.bbpi-summary-row');assert.equal(await foods.count(),1);assert.match(await foods.innerText(),/Sausages\s+Edit\s*›?\s+4 each/i);assert.doesNotMatch(await h.page.locator('#app').innerText(),/Chicken Breast|Mixed Peppers|Lime/i);
   await h.page.evaluate(()=>window.BBAccountPolish.openPantrySync());const account=h.page.locator('#bbAccountPantrySync');await account.waitFor({state:'visible'});
@@ -167,21 +167,21 @@ test('linked household accounts automatically share exact edits and preserve an 
   const a=await fixture(server,A);contexts.push(a);const b=await fixture(server,B);contexts.push(b);const unrelated=await fixture(server,C);contexts.push(unrelated);
   await home(a.page);await home(b.page);await home(unrelated.page);await waitStock(a.page,INITIAL);await waitStock(b.page,INITIAL);await waitStock(unrelated.page,{'egg|each':2});
   assert.deepEqual(await a.page.evaluate(()=>window.__accountPantryQA.owner().scope),server.scopeFor(A));assert.deepEqual(await b.page.evaluate(()=>window.__accountPantryQA.owner().scope),server.scopeFor(B));
-  await replaceFood(a.page,[{name:'Sausages',loc:'fridge',qty:4,unit:'each'}]);await waitStock(a.page,{'sausages|each':4});
+  await replaceFood(a.page,[{name:'Sausages',loc:'fridge',qty:4,unit:'each'}]);await waitStock(a.page,{'pork sausages|each':4});
   // No refresh API, online event or navigation is invoked for B: the shipped
   // foreground four-second poll must observe the other account's revision.
-  await waitStock(b.page,{'sausages|each':4});await noPantrySourcePrompt(b.page);assert.deepEqual(server.record(A).stock,{'sausages|each':4});
+  await waitStock(b.page,{'pork sausages|each':4});await noPantrySourcePrompt(b.page);assert.deepEqual(server.record(A).stock,{'pork sausages|each':4});
   const row=await assertSausageNeed(a.page);await row.locator('.bb-shop-buying-pill').click();await row.locator('[data-bb-pack-preset=custom]').click();
   const custom=row.locator('[data-bb-pack-custom]');await custom.fill('9');const draftNode=await custom.elementHandle(),reads=server.reads.filter(entry=>entry.actor===A).length;
   await a.page.waitForTimeout(4500);
   assert.ok(server.reads.filter(entry=>entry.actor===A).length>reads,'an unchanged remote pantry was fetched during the open draft');
-  assert.equal(await custom.isVisible(),true);assert.equal(await custom.inputValue(),'9');assert.equal(await draftNode.evaluate(node=>node.isConnected&&document.activeElement===node),true,'an unchanged poll preserves the actual focused input, including its keyboard focus');assert.equal(await row.locator('.bb172-storefront-checkbox').isChecked(),false);await waitStock(a.page,{'sausages|each':4});
+  assert.equal(await custom.isVisible(),true);assert.equal(await custom.inputValue(),'9');assert.equal(await draftNode.evaluate(node=>node.isConnected&&document.activeElement===node),true,'an unchanged poll preserves the actual focused input, including its keyboard focus');assert.equal(await row.locator('.bb172-storefront-checkbox').isChecked(),false);await waitStock(a.page,{'pork sausages|each':4});
   await row.locator('.bb-shop-pack-cancel').click();await noPantrySourcePrompt(a.page);
   await home(b.page);const changed=await b.page.evaluate(async()=>{
    const editor=window.BBPantryEditor,sausage=editor.list().find(row=>/sausages?/i.test(row.name)),results=[editor.update(sausage.key,{qty:7,unit:'each'}),editor.add({name:'Milk',loc:'fridge',qty:300,unit:'ml'})];await window.BBPantryLive.flush();return results;
   });assert.ok(changed.every(result=>result.ok===true),JSON.stringify(changed));
-  await waitStock(b.page,{'sausages|each':7,'milk|ml':300});await waitStock(a.page,{'sausages|each':7,'milk|ml':300});
-  assert.deepEqual(server.record(A).stock,{'sausages|each':7,'milk|ml':300});assert.equal(server.record(A),server.record(B));
+  await waitStock(b.page,{'pork sausages|each':7,'semi-skimmed milk|ml':300});await waitStock(a.page,{'pork sausages|each':7,'semi-skimmed milk|ml':300});
+  assert.deepEqual(server.record(A).stock,{'pork sausages|each':7,'semi-skimmed milk|ml':300});assert.equal(server.record(A),server.record(B));
   await waitStock(unrelated.page,{'egg|each':2});assert.deepEqual(server.record(C).stock,{'egg|each':2});assert.equal(server.posts.filter(row=>row.actor===C).length,0);
   assert.equal(server.posts.filter(row=>[A,B].includes(row.actor)&&row.committed).length,2,'each absolute edit is saved once, without doubled shared stock');
   for(const h of contexts){await noPantrySourcePrompt(h.page);assert.deepEqual(h.errors,[]);}
@@ -189,7 +189,7 @@ test('linked household accounts automatically share exact edits and preserve an 
 });
 
 test('verified Premium inviter seeds an empty new household once and the invited partner adopts the lead pantry',{skip:!chromium&&'Playwright unavailable',timeout:90000},async()=>{
- const server=mockServer(),contexts=[],household={kind:'household',id:'11111111-1111-4111-8111-111111111143'},leadStock={'sausages|each':4},partnerStock={'milk|ml':500};
+ const server=mockServer(),contexts=[],household={kind:'household',id:'11111111-1111-4111-8111-111111111143'},leadStock={'pork sausages|each':4},partnerStock={'semi-skimmed milk|ml':500};
  server.record(A).stock=clone(leadStock);server.record(B).stock=clone(partnerStock);
  try{
   const lead=await fixture(server,A);contexts.push(lead);const partner=await fixture(server,B);contexts.push(partner);
@@ -214,14 +214,14 @@ test('verified Premium inviter seeds an empty new household once and the invited
   for(const row of server.posts.filter(row=>row.committed))assert.deepEqual(row.body.stock,leadStock,'scope adoption never adds or merges personal stock');
   // A later authoritative shared update must win over either device's stale
   // four-sausage balance when the invitation lifecycle is replayed.
-  const existingShared={'sausages|each':2,'egg|each':6};server.record(A).stock=clone(existingShared);server.record(A).revision++;
+  const existingShared={'pork sausages|each':2,'egg|each':6};server.record(A).stock=clone(existingShared);server.record(A).revision++;
   const initializedRevision=server.record(A).revision,postsBeforeReplay=server.posts.length;
   await lead.page.evaluate(()=>window.dispatchEvent(new CustomEvent('basketboss:household-changed',{detail:{action:'invite'}})));await partner.page.evaluate(()=>window.dispatchEvent(new CustomEvent('basketboss:household-changed',{detail:{action:'accept'}})));
   await waitStock(lead.page,existingShared);await waitStock(partner.page,existingShared);assert.deepEqual(server.record(A).stock,existingShared);
   assert.equal(server.posts.filter(row=>row.actor===A&&row.committed&&row.body.expectedRevision===0).length,1);assert.ok(server.record(A).revision>=initializedRevision);
   for(const row of server.posts.slice(postsBeforeReplay).filter(row=>row.committed))assert.deepEqual(row.body.stock,existingShared,'an initialized shared pantry can never be overwritten by the stale lead pantry');
   const milkBackup=await partner.page.evaluate(()=>Object.keys(localStorage).filter(key=>key.startsWith('basketboss_pantry_scope_backup_v1:')).map(key=>JSON.parse(localStorage.getItem(key))));
-  assert.ok(milkBackup.some(row=>JSON.stringify(row).includes('milk|ml')&&row.actorId===B),'the partner’s previous personal pantry has a scoped local backup');
+  assert.ok(milkBackup.some(row=>JSON.stringify(row).includes('semi-skimmed milk|ml')&&row.actorId===B),'the partner’s previous personal pantry has a scoped local backup');
   for(const h of contexts){await noPantrySourcePrompt(h.page);assert.deepEqual(h.errors,[]);assert.deepEqual(await h.page.evaluate(()=>window.__accountPantryQA.stock()),existingShared);}
  }finally{for(const h of contexts)await h.context.close();}
 });

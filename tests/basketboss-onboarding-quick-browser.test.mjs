@@ -68,8 +68,8 @@ async function fixture({width=390,height=844,onboarding}={}){
  await context.addInitScript(({onboarding,key})=>{
   if(!localStorage.getItem('quick-onboarding-fixture-v1')){
    localStorage.setItem('basketboss_321_unified_state_v1',JSON.stringify({version:2,planned:[{recipeId:'veggie-fried-rice',day:'Monday',servings:3},{recipeId:'sausage-gnocchi',day:'Friday'}],plannedBreakfasts:[],plannedDesserts:[],servings:4,feedingSet:true,pantry:{Rice:true},mealPreferences:{version:1,scope:'guest',diets:[],goals:[]}}));
-   localStorage.setItem('basketboss_321_v7_measured_pantry',JSON.stringify({'rice|g':300,'pork sausages|each':5}));
-   localStorage.setItem('basketboss_makeameal_v1_inventory',JSON.stringify({'cupboard|rice':{name:'Rice',loc:'cupboard',selected:true,qty:300,unit:'g',bb173StockKey:'rice|g',bb173StockValue:300}}));
+   localStorage.setItem('basketboss_321_v7_measured_pantry',JSON.stringify({'long-grain rice|g':300,'pork sausages|each':5}));
+   localStorage.setItem('basketboss_makeameal_v1_inventory',JSON.stringify({'cupboard|rice':{name:'Rice',loc:'cupboard',selected:true,qty:300,unit:'g',bb173StockKey:'long-grain rice|g',bb173StockValue:300}}));
    localStorage.setItem('basketboss_321_v7_market','UK');
    localStorage.setItem('basketboss_v172_weekly_budget_target_v1','150');
    localStorage.setItem('basketboss_how_it_works_v1',JSON.stringify({version:1,seen:true}));

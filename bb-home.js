@@ -73,7 +73,21 @@
   // Reading a screen must remain possible even when saved metadata needs review.
   // Mutations still use own() and refuse to overwrite an unreadable history.
   function viewData(){try{const data=read().byActor?.[actor()];return object(data)?data:{};}catch{return {};}}
-  function targets(){const data=viewData();return object(data.targets)?data.targets:{};}
+  function targets(){
+   const data=viewData(),raw=object(data.targets)?data.targets:{};
+   if(typeof win.BBPantryAliasCanonical!=='function'||typeof host()?.id!=='function')return raw;
+   // Legacy manual targets keep their exact amounts. Resolve their saved name
+   // keys at the read boundary; an explicit current key wins over its alias.
+   const rows=[];
+   for(const [key,value]of Object.entries(raw)){
+    const at=key.lastIndexOf('|'),canonical=at>0?host().id(key.slice(0,at),key.slice(at+1)):key;
+    if(canonical!==key&&Object.hasOwn(raw,canonical))continue;
+    const aliases=win.BBHouseholdAliases,target=typeof value?.name==='string'?aliases?.canonicalName?.(value.name):null;
+    const household=aliases?.groups?.some(group=>group.target===target),display=household?aliases.displayName(value.name):value?.name;
+    rows.push([canonical,household&&display!==value.name?{...value,name:display}:value]);
+   }
+   return Object.fromEntries(rows);
+  }
   function receiptGeneration(id){const data=viewData();return data.receiptGenerations?.[id]||0;}
   function supersedesReceipt(id){return !!viewData().supersededReceipts?.[id];}
   function settle(data,ids,cooking=false){
@@ -180,7 +194,7 @@
    const market=row.inputMarket||win.bb307ActiveMarket?.()||'UK',policy=win.BBPantryPolicy;
    const identityProblem=policy?.measuredIdentityProblem?.(row,win.BBPriceV19?.canonical);if(identityProblem)return problem(identityProblem);
    const automatic=row.automaticNeeded===true,container=row.staple===true&&policy?.isContainerTracked?.(row)!==false,measuredMode=row.trackingMode==='measured'&&row.measurementReviewed===true&&policy?.isContainerTracked?.(row)===false;
-   const options=value=>({market:value?.inputMarket||market,canonicalize:win.BBPriceV19?.canonical,packReviewed:value?.packReviewed===true,packQuantity:value?.packQuantity,packUnit:value?.packUnit,wholePepper:policy?.isWholePepper?.(value?.name||value?.key,value?.unit,value)});
+   const options=value=>({market:value?.inputMarket||market,canonicalize:win.BBPantryConversionCanonical||win.BBPriceV19?.canonical,packReviewed:value?.packReviewed===true,packQuantity:value?.packQuantity,packUnit:value?.packUnit,wholePepper:policy?.isWholePepper?.(value?.name||value?.key,value?.unit,value)});
    const measure=(value,quantity)=>{
     if(container&&value.staple===true&&policy?.isContainerTracked?.(value)!==false)return value.unit==='each'&&valid(quantity)&&quantity<=10000?{quantity,unit:'each'}:null;
     if(policy)return policy.normalize(value.name||value.key,quantity,value.unit,options(value));
@@ -188,7 +202,7 @@
     return ['g','ml','each'].includes(unit)&&valid(quantity*factor)?{quantity:Math.round(quantity*factor*1000000)/1000000,unit}:null;
    };
    const one=measure(row,1);if(!one||!(one.quantity>0))return problem('Set compatible container contents before adding this item to Shop. Your saved stock has been kept.');
-   const nameId=host().id(row.name,''),matching=name=>host().id(name,'')===nameId,compatible=name=>matching(name)||policy?.stockCompatible?.(row.name,name,win.BBPriceV19?.canonical);
+   const nameId=host().id(row.name,''),matching=name=>host().id(name,'')===nameId,compatible=name=>matching(name)||policy?.stockCompatible?.(row.name,name,win.BBPantryAliasCanonical||win.BBPriceV19?.canonical);
    const raw=row.qty===null||row.qty===undefined||row.qty===''?null:Number(row.qty),owned=raw===null?{quantity:0,unit:one.unit}:measure(row,raw);
    if(!owned||owned.unit!==one.unit||!valid(owned.quantity))return problem('Review the amount at home before adding this item to Shop.');
    let planned=0,prior=0,manual=0,otherOwned=0,otherOwnedNeedsReview=false,defaultRestock=0,hasPrior=false,plannedNeedsReview=false,otherRequestsNeedReview=false,plannedReviewMessage='';
@@ -256,7 +270,7 @@
     let one,multiple;
     try{
      if(item.staple===true)one={quantity:1,unit:'each'};
-     else if(policy)one=policy.normalize(name,1,item.unit,{market,canonicalize:win.BBPriceV19?.canonical});
+     else if(policy)one=policy.normalize(name,1,item.unit,{market,canonicalize:win.BBPantryConversionCanonical||win.BBPriceV19?.canonical});
      else one={quantity:['kg','l'].includes(item.unit)?1000:1,unit:item.unit==='kg'?'g':item.unit==='l'?'ml':item.unit};
      if(!one||!(one.quantity>0))return item;
      // Preferences are saved in canonical units. Name aliases alone cannot
@@ -276,8 +290,8 @@
     let quantity=0;
     for(const row of (Array.isArray(options?.requirements)?options.requirements:host()?.requirements())||[]){
      if(!(Number(row.required)>0))continue;
-     if(host().id(row.key,'')!==host().id(name,'')&&!policy?.stockCompatible?.(name,row.key,win.BBPriceV19?.canonical))continue;
-     const measured=policy?.normalize?.(row.key,Number(row.required),row.unit,{market,canonicalize:win.BBPriceV19?.canonical});
+     if(host().id(row.key,'')!==host().id(name,'')&&!policy?.stockCompatible?.(name,row.key,win.BBPantryAliasCanonical||win.BBPriceV19?.canonical))continue;
+     const measured=policy?.normalize?.(row.key,Number(row.required),row.unit,{market,canonicalize:win.BBPantryConversionCanonical||win.BBPriceV19?.canonical});
      if(measured?.unit===base)quantity+=measured.quantity;
      else if(row.unit===base)quantity+=Number(row.required);
     }

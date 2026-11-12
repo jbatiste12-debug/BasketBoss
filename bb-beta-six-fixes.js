@@ -101,18 +101,23 @@
     // If Shop has no rows, still show a visible snapshot and a Plan CTA.
     const original=doc.getElementById('bb321Printable');
     const rows=original?[...original.querySelectorAll('[data-bb321-tick]')]:[];
-    const pending=rows.filter(b=>!b.checked);
+    // Active purchase history survives stock coverage and At home edits.
+    let completedRows;try{completedRows=window.BBShopCompletionHost?.rows?.();}catch{}
+    const checkedIds=new Set((completedRows||[]).filter(row=>row.checked).map(row=>row.id));
+    const isChecked=box=>box.checked||checkedIds.has(box.dataset.bb321Tick);
+    const pending=rows.filter(b=>!isChecked(b));
     const food=rows.filter(b=>!b.closest('.bb321-essential-row'));
-    const pendingFood=food.filter(b=>!b.checked);
-    const checked=rows.length-pending.length;
-    const pct=rows.length?Math.round(checked/rows.length*100):0;
+    const pendingFood=food.filter(b=>!isChecked(b));
+    const totalCount=Array.isArray(completedRows)?completedRows.length:rows.length;
+    const checked=Array.isArray(completedRows)?completedRows.filter(row=>row.checked).length:rows.length-pending.length;
+    const pct=totalCount?Math.round(checked/totalCount*100):0;
     const totals=[doc.querySelector('.bb321-shop-total'),doc.getElementById('statSpend'),doc.getElementById('headerTotal')];
     const estimate=safeText(totals.find(n=>n && /[£$€]/.test(n.textContent))?.textContent)||'—';
     overview.replaceChildren();
     const hero=node('div','bb-r6-hero');
     const eyebrow=node('div','bb-r6-eyebrow','✦ BASKETBOSS · YOUR SHOP');
     const title=node('h2',null,'Your shopping snapshot');
-    const summary=node('p',null,rows.length?'Know what you need before heading for the aisles.':'Your basket fills up when you plan meals or add essentials.');
+    const summary=node('p',null,totalCount?'Know what you need before heading for the aisles.':'Your basket fills up when you plan meals or add essentials.');
     const metrics=node('div','bb-r6-stats');
     for(const [value,label] of [[pending.length,'Still to buy'],[checked,'Already bought'],[estimate,'Left to buy (est.)']]){
       const item=node('div','bb-r6-stat');item.append(node('strong',null,String(value)),node('span',null,label));metrics.append(item);
@@ -121,7 +126,7 @@
     track.setAttribute('aria-label','Shopping progress');track.setAttribute('aria-valuenow',String(pct));
     track.setAttribute('aria-valuemin','0');track.setAttribute('aria-valuemax','100');
     const fill=node('span');fill.style.width=pct+'%';track.append(fill);
-    hero.append(eyebrow,title,summary,metrics,track,node('p','bb-r6-progress',rows.length?pct+'% complete · '+rows.length+' items':'No items in the basket yet'));
+    hero.append(eyebrow,title,summary,metrics,track,node('p','bb-r6-progress',totalCount?pct+'% complete · '+totalCount+' items':'No items in the basket yet'));
     const list=node('section','bb-r6-list');list.append(node('h3',null,'Coming up in your basket'));
     list.append(node('p',null,pendingFood.length?'A preview of food still to buy.':food.length?'Food shopping is covered.':'Plan meals to build your food list.'));
     if(pendingFood.length){const ul=node('ul');for(const b of pendingFood.slice(0,4)){

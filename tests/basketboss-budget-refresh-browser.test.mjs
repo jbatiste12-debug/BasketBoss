@@ -32,7 +32,7 @@ const bridge=`window.__budgetQA={
 };`;
 
 async function fixture(width,{unpriced=false}={}){
- const at=Date.now(),ledger=require('../bb-reduced-purchases.js'),historic={...ledger.putCost({version:7,id:'shop-budget-historic-trip'},{actor,market:'UK',id:'rice|g',purchaseId:'rice|g',name:'Rice',unit:'g',quantity:500,shopSessionId:'shop-budget-historic-trip',pricePaid:251.45,at}),closedAt:new Date(at).toISOString()};
+ const at=Date.now(),ledger=require('../bb-reduced-purchases.js'),historic={...ledger.putCost({version:7,id:'shop-budget-historic-trip'},{actor,market:'UK',id:'long-grain rice|g',purchaseId:'long-grain rice|g',name:'Rice',unit:'g',quantity:500,shopSessionId:'shop-budget-historic-trip',pricePaid:251.45,at}),closedAt:new Date(at).toISOString()};
  const anchor='window.BBHomeHost=Object.freeze({',source=await fs.readFile(path.join(root,'app.html'),'utf8');
  assert.ok(source.includes(anchor));
  const app=transform700Presentation(transform700Html(source,release)).replace(anchor,bridge+anchor);
@@ -192,7 +192,7 @@ test('current 700 Plan and Shop agree after real partial purchases while preserv
   await clearDinner(page,'Monday');
   await page.locator('.bbnext-day[data-bbnext-day="Friday"] summary [data-bbfeed-delta="1"]').click();
   await assertOverviewBudget(page,11.20);
-  let shell=await openShoppingMode(page),row=shell.locator('.bbcompact-shop-row').filter({hasText:'Pork Sausages'});
+  let shell=await openShoppingMode(page),row=shell.locator('[data-bb-shop-purchase-id="pork sausages|each"]');
   await row.locator('.bb172-storefront-checkbox').check();
   await setSausagesBought(page,row,1);
   assert.equal((await page.evaluate(()=>window.__budgetQA.stock()))['pork sausages|each'],6,'only the one purchased sausage is added to the five owned');
@@ -200,7 +200,7 @@ test('current 700 Plan and Shop agree after real partial purchases while preserv
   await page.evaluate(()=>window.__budgetQA.plan());
   await assertPlanBudget(page,11.20,'a partial purchase still requires a full pack to cover the shortfall',265.45);
   await assertOverviewBudget(page,11.20);
-  shell=await openShoppingMode(page);row=shell.locator('.bbcompact-shop-row').filter({hasText:'Pork Sausages'});
+  shell=await openShoppingMode(page);row=shell.locator('[data-bb-shop-purchase-id="pork sausages|each"]');
   await setSausagesBought(page,row,3);
   assert.equal((await page.evaluate(()=>window.__budgetQA.stock()))['pork sausages|each'],8,'correcting the purchase replaces the earlier one-item credit');
   await exitShoppingMode(page,shell);

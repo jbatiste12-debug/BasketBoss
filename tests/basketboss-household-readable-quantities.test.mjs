@@ -94,5 +94,8 @@ test('the essentials adapter sanitizes frozen BBHome output after each original 
  const h=kitchenReadouts(),outputs=[{textContent:'To buy: 2.333333 each'},{textContent:'To buy: 666.666667 g'}],inputs=[{value:'3.666667'},{value:'1.333334'}],container={querySelectorAll:selector=>selector==='.bb-home-quantities output'?outputs:inputs},before=JSON.stringify(inputs);
  h.api.readableHouseholdOutputs(container);assert.deepEqual(outputs.map(node=>node.textContent),['To buy: 2.3 each','To buy: 667 g']);
  outputs[0].textContent='To buy: 1.666666 each';h.api.readableHouseholdOutputs(container);assert.equal(outputs[0].textContent,'To buy: 1.7 each');assert.equal(JSON.stringify(inputs),before);
- const digest=crypto.createHash('sha256').update(source('bb-home.js')).digest('hex');assert.equal(digest,'c9bde043c90016d9db4fc23ef9d61098623282152ceddee6de4b97e36977bf6f');
+ const current=source('bb-home.js'),start=current.indexOf('  function targets(){'),end=current.indexOf('\n  function receiptGeneration',start),reader=current.slice(start,end);
+ assert.equal(crypto.createHash('sha256').update(reader).digest('hex'),'f85250fbe79b0de22e79e992dca87de45f52c28f2fe285ceaf45f56bc4866571','only the approved alias reader is outside the frozen calculation body');
+ const unchanged=current.replace(reader,'  function targets(){const data=viewData();return object(data.targets)?data.targets:{};}').replaceAll('win.BBPantryConversionCanonical||win.BBPriceV19?.canonical','win.BBPriceV19?.canonical').replaceAll('win.BBPantryAliasCanonical||win.BBPriceV19?.canonical','win.BBPriceV19?.canonical');
+ const digest=crypto.createHash('sha256').update(unchanged).digest('hex');assert.equal(digest,'c9bde043c90016d9db4fc23ef9d61098623282152ceddee6de4b97e36977bf6f');
 });

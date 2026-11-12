@@ -103,7 +103,11 @@
   function refresh(){
    if(destroyed)return;const kitchen=doc.getElementById('bb173ShopFridge'),intro=kitchen?.querySelector('.bb76-kitchen-intro');
    if(!kitchen?.isConnected||!intro){card?.remove();card=null;return;}
-   if(!card?.isConnected){card=make('section','bb-kitchen-review-card');card.id='bbKitchenWeeklyReview';const text=make('div'),heading=make('strong','','Weekly kitchen check'),copy=make('p','','Update what’s left, then choose what to restock.');text.append(heading,copy);const open=button('Review & restock →',openDialog,'bb-kitchen-review-open');open.id='bbKitchenReviewOpen';card.append(text,open);intro.after(card);}
+   if(!card?.isConnected){card=make('section','bb-kitchen-review-card');card.id='bbKitchenWeeklyReview';const text=make('div'),heading=make('strong','','Weekly kitchen check'),copy=make('p','','See what’s left and what to restock.');text.append(heading,copy);const open=button('Review & restock →',openDialog,'bb-kitchen-review-open');open.id='bbKitchenReviewOpen';card.append(text,open);}
+   // This action leads the whole kitchen, above its heading and stock sections.
+   // Re-anchor only after a legacy renderer has moved it; ordinary refreshes
+   // leave the document position and focused search field untouched.
+   if(card.parentNode!==kitchen||intro.previousElementSibling!==card)intro.before(card);
    if(dialog&&!state?.busy&&!state?.child)paintRows();
   }
   function close(){if(!dialog)return;const previous=state;previous?.cleanup?.();if(dialog.contains(doc.activeElement))doc.activeElement.blur?.();dialog.remove();dialog=null;state=null;doc.body.style.overflow=previous?.overflow||'';doc.documentElement.classList.remove('bb-kitchen-check-open');doc.documentElement.style.removeProperty('--bb-kitchen-review-scroll-top');win.scrollTo?.({top:previous?.scrollY||0,left:previous?.scrollX||0,behavior:'instant'});win.BBKeyboardLayout?.releaseAfterDismissal?.();card?.querySelector('button')?.focus?.({preventScroll:true});}

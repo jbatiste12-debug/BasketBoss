@@ -72,7 +72,7 @@
   if(!food){food=doc.createElement('section');food.id='bbKitchenFoodPanel';food.setAttribute('role','tabpanel');food.setAttribute('aria-labelledby','bbKitchenFoodTab');nav.after(food);}
   // Reuse the original controls. Hiding a panel never removes its draft input,
   // handlers or selected foods, and later legacy renders can be adopted again.
-  for(const node of [...kitchen.children])if(node!==food&&node!==nav&&!node.classList.contains('bb76-kitchen-intro'))food.append(node);
+  for(const node of [...kitchen.children])if(node!==food&&node!==nav&&node.id!=='bbKitchenWeeklyReview'&&!node.classList.contains('bb76-kitchen-intro'))food.append(node);
   const pantryJump=kitchen.querySelector('#bb76JumpPantry');
   if(pantryJump?.firstChild?.nodeType===3)pantryJump.firstChild.textContent='Your pantry ';
   food.hidden=selectedSection!=='food';essentials.hidden=selectedSection!=='essentials';

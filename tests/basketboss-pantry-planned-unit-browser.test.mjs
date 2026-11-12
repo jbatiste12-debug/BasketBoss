@@ -98,7 +98,7 @@ async function addFood(page,name){
  await panel.getByLabel('Food name',{exact:true}).press('Tab');
  return panel;
 }
-const descriptor=(page,name)=>page.evaluate(name=>BBPantryEditor.list().find(row=>row.name.toLowerCase()===name.toLowerCase()),name);
+const descriptor=(page,name)=>page.evaluate(name=>BBPantryEditor.list().find(row=>BBHomeHost.id(row.name,'')===BBHomeHost.id(name,'')),name);
 const summary=page=>page.evaluate(()=>window.__plannedUnitQA.summary());
 const skip=!chromium&&'Playwright unavailable';
 
@@ -127,7 +127,7 @@ for(const width of [320,390]){
  });
 
  for(const item of [
-  {name:'Milk',recipeId:MORNAY,unit:'ml',needed:600,owned:200,buy:400},
+  {name:'Whole milk',recipeId:MORNAY,unit:'ml',needed:600,owned:200,buy:400},
   {name:'Cod',recipeId:'seafood-crepes-in-white-wine-cream-sauce',unit:'g',needed:350,owned:200,buy:150},
   {name:'Salmon',recipeId:'salmon',unit:'each',needed:4,owned:1,buy:3},
   {name:'Eggs',recipeId:'veggie-fried-rice',unit:'each',needed:6,owned:2,buy:4}

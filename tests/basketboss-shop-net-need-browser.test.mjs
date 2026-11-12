@@ -55,8 +55,8 @@ async function fixture(width){
   localStorage.setItem('basketboss_cloud_session_v1',JSON.stringify({access_token:encode({alg:'HS256',typ:'JWT'})+'.'+encode({sub:actor,exp:expires,iat:expires-3600,aud:'authenticated',role:'authenticated'})+'.synthetic',expires_at:expires,user:{id:actor,email:'net-need@example.invalid',email_confirmed_at:'2026-01-01T00:00:00Z'}}));
   localStorage.setItem('basketboss_321_unified_state_v1',JSON.stringify({version:2,planned:[],plannedBreakfasts:[],plannedDesserts:[],servings:4,feedingSet:true,pantry:{},mealPreferences:{version:1,scope:actor,diets:[],goals:[]}}));
   localStorage.setItem('basketboss_321_features_v1',JSON.stringify({version:1,essentials:[]}));
-  localStorage.setItem('basketboss_321_v7_measured_pantry',JSON.stringify({'pork sausages|each':5,'rice|g':350}));
-  localStorage.setItem('basketboss_makeameal_v1_inventory',JSON.stringify({'fridge|pork sausages':{name:'Pork sausages',loc:'fridge',selected:true,qty:5,unit:'each',bb173StockKey:'pork sausages|each',bb173StockValue:5},'cupboard|rice':{name:'Rice',loc:'cupboard',selected:true,qty:350,unit:'g',bb173StockKey:'rice|g',bb173StockValue:350}}));
+  localStorage.setItem('basketboss_321_v7_measured_pantry',JSON.stringify({'pork sausages|each':5,'long-grain rice|g':350}));
+  localStorage.setItem('basketboss_makeameal_v1_inventory',JSON.stringify({'fridge|pork sausages':{name:'Pork sausages',loc:'fridge',selected:true,qty:5,unit:'each',bb173StockKey:'pork sausages|each',bb173StockValue:5},'cupboard|rice':{name:'Rice',loc:'cupboard',selected:true,qty:350,unit:'g',bb173StockKey:'long-grain rice|g',bb173StockValue:350}}));
   localStorage.setItem('bb_onboarding_fresh_once_20261028_v1',JSON.stringify({step:10,complete:true,started:false,partnerStepV2:true}));
   localStorage.setItem('basketboss_how_it_works_v1',JSON.stringify({version:1,seen:true}));sessionStorage.setItem('basketboss_welcome_splash_seen_v1','1');localStorage.setItem('basketboss_321_v7_market','UK');
  },{actor});

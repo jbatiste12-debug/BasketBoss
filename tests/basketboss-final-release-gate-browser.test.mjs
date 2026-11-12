@@ -34,7 +34,7 @@ const bridge=`window.__householdPurchaseQA={
  summary:()=>bb321WeeklySummary()
 };`;
 
-async function fixture(width,{holdRules=false,online=false,name='Toilet rolls',recipeId=null,stock={'rice|g':16},remoteStock=null,seedReceipts=false}={}){
+async function fixture(width,{holdRules=false,online=false,name='Toilet rolls',recipeId=null,stock={'long-grain rice|g':16},remoteStock=null,seedReceipts=false}={}){
  const latency=150;let releaseRules;const rulesHydrated=new Promise(resolve=>releaseRules=resolve);if(!holdRules)releaseRules();
  const anchor='window.BBHomeHost=Object.freeze({',source=await fs.readFile(path.join(root,'app.html'),'utf8');
  assert.ok(source.includes(anchor));
@@ -162,7 +162,7 @@ async function isolateControls(page,shell,id){
  }
 }
 test('sequential final release gate: cold start, food six-pack, Day done leftovers, household purchase and all visible readouts',{skip:!chromium&&'Playwright unavailable',timeout:240000},async()=>{
- const initial={'chicken breast|g':200,'rice|g':16.666667,'cheddar|g':240,'milk|ml':568.333333};
+ const initial={'chicken breast|g':200,'long-grain rice|g':16.666667,'cheddar|g':240,'semi-skimmed milk|ml':568.333333};
  const {page,context,errors,releaseRules}=await fixture(390,{holdRules:true,recipeId:'chicken-burgers',stock:initial});
  try{
   const precise=await page.evaluate(()=>window.__householdPurchaseQA.precise('chicken-burgers'));
@@ -183,8 +183,8 @@ test('sequential final release gate: cold start, food six-pack, Day done leftove
   assert.equal(await buns.locator('.bb172-storefront-checkbox').isChecked(),true);await isolateControls(page,shell,'brioche buns|each');await scanText(page,'Bought six buns');
   await finishCurrent(page,shell);assert.equal((await current(page)).stock['brioche buns|each'],6);
   await page.evaluate(()=>window.__householdPurchaseQA.home());await page.locator('[role="tab"][data-bbpi-storage="all"]').click();await scanText(page,'At home all food');
-  const oldStock=(await current(page)).stock,rice=page.locator('.bbpi-summary-row').filter({has:page.locator('strong').filter({hasText:/^rice$/i})});
-  await rice.getByRole('button',{name:/Edit rice/i}).click();await scanText(page,'At home precise quantity editor');
+  const oldStock=(await current(page)).stock,rice=page.locator('.bbpi-summary-row').filter({has:page.locator('strong').filter({hasText:/^long-grain rice$/i})});
+  await rice.getByRole('button',{name:/Edit long-grain rice/i}).click();await scanText(page,'At home precise quantity editor');
   await page.locator('#bbpi-current-editor .bbpi-close').click();assert.deepEqual((await current(page)).stock,oldStock,'opening pantry editors never changes six-decimal stored amounts');
   await page.evaluate(()=>window.__householdPurchaseQA.plan());await scanText(page,'Plan dinner list');
   await page.locator('#app details').evaluateAll(nodes=>nodes.forEach(node=>node.open=true));await scanText(page,'Plan budget and preferences disclosures');await page.locator('#app details').evaluateAll(nodes=>nodes.forEach(node=>node.open=false));await page.getByRole('tab',{name:'School lunches (0/5)',exact:true}).evaluate(node=>node.scrollIntoView({block:'center'}));
@@ -198,7 +198,7 @@ test('sequential final release gate: cold start, food six-pack, Day done leftove
   for(const details of await done.locator('details').all())await details.evaluate(node=>node.open=true);
   await scanText(page,'Day done amount details');const bunLine=done.locator('tbody tr').filter({hasText:/brioche buns/i});assert.match(await bunLine.innerText(),/4 each.*6 each.*2 each/s);
   await done.getByRole('button',{name:'Confirm & update pantry',exact:true}).click();await page.waitForFunction(()=>window.__householdPurchaseQA.state().stock['brioche buns|each']===2);await scanText(page,'Day done success toast');
-  assert.equal((await current(page)).stock['rice|g'],16.666667,'an unrelated precise reserve stays exact after cooking');
+  assert.equal((await current(page)).stock['long-grain rice|g'],16.666667,'an unrelated precise reserve stays exact after cooking');
   shell=await openShop(page);essential=rowFor(shell);assert.equal(await page.evaluate(()=>window.__householdPurchaseQA.aisle('Toilet rolls')),'Household & Other');
   await isolateControls(page,shell,essentialId);await essential.locator('.bb-shop-buying-pill').click();await essential.locator('[data-bb-pack-preset="12"]').click();
   assert.equal((await current(page)).features.essentials[0].ownedQty,2);

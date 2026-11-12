@@ -28,8 +28,8 @@ async function fixture(viewport,run){
    if(rel.includes('..'))return route.fulfill({status:404,body:''});
    let body;
    try{
-    if(['bb-onboarding-v2.js','bb-how-it-works.js','bb-pantry-inline.js','bb-pantry-selection.js'].includes(rel))body=transform700Presentation(await fs.readFile(path.join(ROOT,rel),'utf8'));
-    else if(['bb-onboarding-v2.css','bb-pantry-inline.css'].includes(rel))body=await fs.readFile(path.join(ROOT,rel));
+    if(['bb-onboarding-v2.js','bb-how-it-works.js','bb-pantry-inline.js','bb-pantry-selection.js','bb-kitchen-review.js','bb-kitchen-essentials.js'].includes(rel))body=transform700Presentation(await fs.readFile(path.join(ROOT,rel),'utf8'));
+    else if(['bb-onboarding-v2.css','bb-pantry-inline.css','bb-kitchen-review.css'].includes(rel))body=await fs.readFile(path.join(ROOT,rel));
     else{try{body=await fs.readFile(path.join(ROOT,'pwa700',rel));}catch{try{body=await fs.readFile(path.join(ROOT,rel));}catch{body=await fs.readFile(path.join(ROOT,'catalogues/700/release/assets',rel));}}}
    }catch{return route.fulfill({status:404,body:''});}
    const types={'.html':'text/html','.js':'application/javascript','.mjs':'application/javascript','.css':'text/css','.json':'application/json','.webp':'image/webp','.png':'image/png','.svg':'image/svg+xml'};
@@ -60,13 +60,24 @@ for(const viewport of [{width:390,height:844},{width:320,height:568}])check('At 
  const layout=await list.evaluate(node=>{const s=getComputedStyle(node),r=node.getBoundingClientRect();return {overflow:s.overflowX,whiteSpace:s.whiteSpace,scrollbar:s.scrollbarWidth,width:r.width,ys:[...node.querySelectorAll('[role="tab"]')].map(tab=>tab.getBoundingClientRect().y)};});
  assert.equal(layout.overflow,'auto');assert.equal(layout.whiteSpace,'nowrap');assert.equal(layout.scrollbar,'none');assert.ok(Math.max(...layout.ys)-Math.min(...layout.ys)<2,'all four tabs share a row');assert.ok(layout.width<=viewport.width);
  const header=await page.locator('#bb173ShopFridge .bb76-kitchen-intro').boundingBox();assert.ok(header&&header.height<60,'At home header stays compact');
+ await page.evaluate(()=>scrollTo(0,0));
+ await page.waitForFunction(()=>{const kitchen=document.getElementById('bb173ShopFridge'),intro=kitchen?.querySelector('.bb76-kitchen-intro'),review=document.getElementById('bbKitchenWeeklyReview');return review?.parentNode===kitchen&&intro?.previousElementSibling===review;});
+ const topAction=await page.locator('#bbKitchenWeeklyReview').evaluate(review=>{const intro=review.nextElementSibling,toolbar=document.getElementById('bbpiToolbar'),button=review.querySelector('button'),rect=node=>{const r=node.getBoundingClientRect();return {y:r.y,bottom:r.bottom,width:r.width,height:r.height};};const style=getComputedStyle(button);return {position:getComputedStyle(review).position,intro:rect(intro),review:rect(review),toolbar:rect(toolbar),button:rect(button),buttonStyle:{minHeight:style.minHeight,minWidth:style.minWidth,font:style.font}};});
+ assert.equal(topAction.position,'static','weekly review uses the existing document scroller');
+ assert.ok(topAction.review.bottom<=topAction.intro.y&&topAction.intro.bottom<=topAction.toolbar.y,'Review & restock appears above the At home heading, with search/storage below the heading: '+JSON.stringify(topAction));
+ await fs.mkdir('/workspace/shared',{recursive:true});await page.screenshot({path:'/workspace/shared/basketboss-at-home-top-restock'+(viewport.width===390?'':'-'+viewport.width)+'.png',animations:'disabled'});
+ assert.ok(topAction.button.height>=48&&topAction.button.width>=120,'the prominent review action keeps a large touch target: '+JSON.stringify(topAction));
+
  for(const button of await page.locator('#bbKitchenSections>button,[data-bbpi-storage]').all()){const box=await button.boundingBox();assert.ok(box&&box.height>=44&&box.width>=44,'new header and storage controls retain44px touch targets');}
  assert.equal(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth),true,'storage overflow stays inside its horizontal tab strip');
  await page.evaluate(()=>window.__pantryNodes=[...document.querySelectorAll('#bb173ShopFridge [data-bb76-store]')].map(area=>({area,body:area.querySelector('.bb76-store-body'),id:area.id,loc:area.dataset.bb76Store,tiles:[...area.querySelectorAll('[data-bb5-food]')]})));
  const stockBefore=await page.evaluate(()=>{const keys=BBHomeHost.keys();return [localStorage.getItem(keys.stock),localStorage.getItem(keys.inventory)];});
  for(const loc of ['fridge','cupboard','freezer','all','fridge']){
-  await page.evaluate(()=>scrollTo(0,0));const before=await page.evaluate(()=>scrollY);
-  await tab(page,loc).click();
+  await page.evaluate(()=>scrollTo(0,0));const targetTab=tab(page,loc);
+  // Reveal the target before measuring: browser automation may scroll it into
+  // the safe area above fixed navigation before dispatching the actual click.
+  await targetTab.scrollIntoViewIfNeeded();const before=await page.evaluate(()=>scrollY);
+  await targetTab.click();
   assert.equal(await tab(page,loc).getAttribute('aria-selected'),'true');assert.equal(await page.evaluate(()=>scrollY),before,'switching storage leaves document position stable');
   assert.equal(await page.locator('[data-bb76-store]:visible').count(),loc==='all'?3:1);
   assert.equal(await visibleRows(page).count(),loc==='all'?3:1);
@@ -101,12 +112,13 @@ check('At home actions use the selected storage and original Premium camera hand
  await tab(page,'freezer').click();const scan=page.locator('.bbpi-ai-scan:visible');assert.equal(await scan.isDisabled(),true);assert.match((await scan.getAttribute('title')||'')+' '+(await page.locator('#bb173ShopFridge').innerText()),/supports? Fridge and Cupboard|Fridge and Cupboard only/i);
 }));
 check('At home row controls, search, filters and selection keep their existing flows',()=>fixture({width:390,height:844},async page=>{
- await tab(page,'cupboard').click();const rice=page.locator('.bbpi-summary-row:visible').filter({hasText:'Rice'});
- const before=await page.evaluate(()=>BBPantryEditor.list().find(row=>row.name==='Rice').qty);
- await rice.getByRole('button',{name:'More Rice in cupboard',exact:true}).click();
- await page.waitForFunction(value=>BBPantryEditor.list().find(row=>row.name==='Rice').qty>value,before);
+ await tab(page,'cupboard').click();
+ const riceState=await page.evaluate(()=>{const id=BBHomeHost.id('Rice','g'),row=BBPantryEditor.list().find(row=>BBHomeHost.id(row.name,row.unit)===id);return {id,name:row.name,qty:row.qty};});
+ const rice=page.locator('.bbpi-summary-row:visible').filter({hasText:riceState.name}),before=riceState.qty;
+ await rice.getByRole('button',{name:'More '+riceState.name+' in cupboard',exact:true}).click();
+ await page.waitForFunction(({id,before})=>BBPantryEditor.list().find(row=>BBHomeHost.id(row.name,row.unit)===id)?.qty>before,{id:riceState.id,before});
  assert.equal(await page.locator('#bbpi-current-editor').count(),0,'stepper click does not also open the row editor');
- await rice.getByRole('button',{name:'Edit Rice in cupboard',exact:true}).click();await page.locator('#bbpi-current-editor').waitFor();await page.locator('#bbpi-current-editor .bbpi-close').click();
+ await rice.getByRole('button',{name:'Edit '+riceState.name+' in cupboard',exact:true}).click();await page.locator('#bbpi-current-editor').waitFor();await page.locator('#bbpi-current-editor .bbpi-close').click();
  await page.locator('#bbpiSearch').fill('Milk');await page.waitForFunction(()=>[...document.querySelectorAll('.bbpi-summary-row')].filter(node=>node.getClientRects().length).length===1&&[...document.querySelectorAll('.bbpi-summary-row')].some(node=>node.getClientRects().length&&node.textContent.includes('Milk')));assert.match(await visibleRows(page).innerText(),/Milk/);await page.locator('#bbpiSearch').fill('');
  await page.locator('#bbpiViewFilters').click();assert.equal(await page.locator('#bbpiViewFilters').getAttribute('aria-expanded'),'true');await page.getByRole('button',{name:'All food',exact:true}).click();
  await tab(page,'all').click();await page.getByRole('button',{name:'Select items',exact:true}).click();await page.getByRole('button',{name:'Select all shown',exact:true}).click();

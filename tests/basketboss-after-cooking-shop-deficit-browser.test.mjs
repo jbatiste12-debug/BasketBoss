@@ -180,7 +180,7 @@ test('Plan offers pantry-first and fresh modes without changing stock or existin
   });
   assert.equal(await modes.locator('[data-bb-pantry-first-mode="pantry-first"]').getAttribute('aria-pressed'),'true');
   await page.locator('#bb172FillSixDinners').click();const confirm=page.locator('#bbQaConfirmOverlay');await confirm.waitFor();
-  const pantry=await page.evaluate(()=>window.__pantryFirstTrace[0]);assert.equal(pantry.mode,'pantry-first');assert.equal(pantry.stock['chicken breast|g'],533.333333);assert.equal(pantry.stock['rice|g'],500);assert.equal(pantry.stock['peas|g'],250);assert.equal(Object.hasOwn(pantry.stock,'water|ml'),false);
+  const pantry=await page.evaluate(()=>window.__pantryFirstTrace[0]);assert.equal(pantry.mode,'pantry-first');assert.equal(pantry.stock['chicken breast|g'],533.333333);assert.equal(pantry.stock['long-grain rice|g'],500);assert.equal(Object.hasOwn(pantry.stock,'rice|g'),false,'the explicit rice alias migrates identity without changing its 500 g balance');assert.equal(pantry.stock['peas|g'],250);assert.equal(Object.hasOwn(pantry.stock,'water|ml'),false);
   assert.ok(pantry.choices.length);for(const choice of pantry.choices){assert.equal(choice.selected,choice.max);assert.equal(choice.coverage,choice.maxCoverage);}
   assert.deepEqual(await page.evaluate(()=>({stock:__stockDeficitQA.stock(),planned:__stockDeficitQA.planned()})),before);
   await confirm.getByRole('button',{name:'Keep my week',exact:true}).click();

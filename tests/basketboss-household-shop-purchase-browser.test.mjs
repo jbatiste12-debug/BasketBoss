@@ -31,7 +31,7 @@ const bridge=`window.__householdPurchaseQA={
  summary:()=>bb321WeeklySummary()
 };`;
 
-async function fixture(width,{online=false,name='Toilet rolls',recipeId=null,stock={'rice|g':16},remoteStock=null,seedReceipts=false}={}){
+async function fixture(width,{online=false,name='Toilet rolls',recipeId=null,stock={'long-grain rice|g':16},remoteStock=null,seedReceipts=false}={}){
  const latency=150;
  const anchor='window.BBHomeHost=Object.freeze({',source=await fs.readFile(path.join(root,'app.html'),'utf8');
  assert.ok(source.includes(anchor));
@@ -122,7 +122,7 @@ function assertHousehold(snapshot,quantity){
  const item=snapshot.features.essentials.find(row=>row.id==='toilet-rolls');
  assert.equal(item.targetQty,5);assert.equal(item.ownedQty,2+quantity,'the purchased number of rolls increases household ownership');
  assert.equal(item.unit,'each');assert.equal(item.owned,true);assert.equal(item.manualPending,false);
- assert.deepEqual(snapshot.stock,{'rice|g':16},'a household purchase never enters measured food stock');
+ assert.deepEqual(snapshot.stock,{'long-grain rice|g':16},'a household purchase never enters measured food stock');
  assert.equal(Object.values(snapshot.inventory).some(row=>/toilet/i.test(row.name)),false,'a household purchase never enters Cupboard, Fridge or Freezer');
  const receipt=Object.values(snapshot.receipts).filter(row=>row.stockBasis==='household-purchase'&&/toilet/i.test(row.name));
  assert.equal(receipt.length,1,'one purchase has one household replay proof');assert.equal(receipt[0].credited,quantity);
@@ -179,7 +179,7 @@ const totalPriceValue=async shell=>{const expanded=priceValue(await shell.locato
 const frozenPriceKeys=summary=>[...(summary.items||[]),...(summary.essentials||[])].map(({key,name,unit,required,pantryUsed,toBuy,qty,priceQuote})=>({key,name,unit,required,pantryUsed,toBuy,qty,priceQuote}));
 
 for(const width of [320,390])test(`scaled quantities remain readable across Shop, At home, Plan and Day done at ${width}px`,{skip:!chromium&&'Playwright unavailable',timeout:60000},async()=>{
- const stock={'rice|g':16.666667,'cheddar|g':500.333333,'chicken breast|g':900.666667,'soured cream|g':200.666667,'tortilla wraps|each':4.333333,'lime|each':1.333333};
+ const stock={'long-grain rice|g':16.666667,'cheddar|g':500.333333,'chicken breast|g':900.666667,'soured cream|g':200.666667,'tortilla wraps|each':4.333333,'lime|each':1.333333};
  const {page,context,errors}=await fixture(width,{recipeId:'fajitas',stock});
  try{
   const precise=await page.evaluate(()=>window.__householdPurchaseQA.precise('fajitas')),shell=await openShop(page);
@@ -227,7 +227,7 @@ test('unpriced toilet rolls show a UI estimate, scale selected packs and accept 
 });
 
 for(const name of ['Unpriced laundry pods','Festival grain blend'])test(`custom ${name} retains a numeric editable shopping estimate`,{skip:!chromium&&'Playwright unavailable',timeout:60000},async()=>{
- const household=/laundry/.test(name),stock=household?{'rice|g':16}:{'rice|g':16,'festival grain blend|g':2};
+ const household=/laundry/.test(name),stock=household?{'long-grain rice|g':16}:{'long-grain rice|g':16,'festival grain blend|g':2};
  const {page,context,errors}=await fixture(390,{name:household?name:'Toilet rolls',stock});
  try{
   let id=essentialId;
@@ -253,7 +253,7 @@ async function foodAll(page){
  await page.locator('.bbpi-summary-row').first().waitFor({state:'visible'});
 }
 for(const total of [16,18])test(`a tick reviews misplaced household stock and moves the explicitly confirmed ${total} total without buying it again`,{skip:!chromium&&'Playwright unavailable',timeout:60000},async()=>{
- const {page,context,errors,remote,inventoryWrites}=await fixture(390,{online:true,name:'ToiletRolls',stock:{'rice|g':16,'toiletrolls|each':16},seedReceipts:true});
+ const {page,context,errors,remote,inventoryWrites}=await fixture(390,{online:true,name:'ToiletRolls',stock:{'long-grain rice|g':16,'toiletrolls|each':16},seedReceipts:true});
  try{
   await page.evaluate(()=>BBReceiptHost.refreshAvailability({force:true,synchronize:true}));const initial=repairState(await current(page));
   await foodAll(page);assert.equal(await page.locator('.bbpi-hero-count').textContent(),'1','misplaced household stock is excluded from the food counter');
@@ -269,18 +269,18 @@ for(const total of [16,18])test(`a tick reviews misplaced household stock and mo
   assert.equal(await dialog.getByRole('spinbutton',{name:'Actual total of toiletrolls in each',exact:true}).inputValue(),String(total));
   await dialog.getByRole('button',{name:'Move to Weekly essentials',exact:true}).click();await dialog.waitFor({state:'detached'});
   const saved=await current(page),essential=saved.features.essentials.find(row=>row.id==='toilet-rolls');assert.equal(essential.name,'ToiletRolls');assert.equal(essential.unit,'each');assert.equal(essential.targetQty,5);assert.equal(essential.ownedQty,total,'only the confirmed total is retained');
-  assert.deepEqual(saved.stock,{'rice|g':16});const old=saved.inventory['cupboard|toiletrolls'];assert.ok(old);assert.equal(old.selected,false);assert.equal(old.qty,0);assert.equal(old.bb173StockKey,undefined);assert.equal(old.bb173StockValue,undefined);
+  assert.deepEqual(saved.stock,{'long-grain rice|g':16});const old=saved.inventory['cupboard|toiletrolls'];assert.ok(old);assert.equal(old.selected,false);assert.equal(old.qty,0);assert.equal(old.bb173StockKey,undefined);assert.equal(old.bb173StockValue,undefined);
   assert.deepEqual(saved.receipts,initial.receipts,'a reviewed storage move cannot erase or duplicate a purchase receipt');assert.equal(saved.purchases[essentialId],undefined,'moving existing stock does not additionally buy three more rolls');
-  await page.evaluate(()=>BBReceiptHost.retryPurchasedPantry());assert.deepEqual(remote.stock,{'rice|g':16},'the existing revision-checked sync removes the misplaced food quantity online');assert.ok(inventoryWrites.some(row=>row.action==='confirm_pantry'&&!Object.hasOwn(row.stock,'toiletrolls|each')));
+  await page.evaluate(()=>BBReceiptHost.retryPurchasedPantry());assert.deepEqual(remote.stock,{'long-grain rice|g':16},'the existing revision-checked sync removes the misplaced food quantity online');assert.ok(inventoryWrites.some(row=>row.action==='confirm_pantry'&&!Object.hasOwn(row.stock,'toiletrolls|each')));
   await foodAll(page);assert.equal(await page.locator('.bbpi-hero-count').textContent(),'1');
   await page.locator('#bbKitchenSections').getByRole('tab',{name:'Weekly essentials',exact:true}).click();const confirmed=page.locator('#bbKitchenEssentials .bbec-list>li').filter({hasText:'ToiletRolls'});await confirmed.getByRole('button',{name:'Amend ToiletRolls',exact:true}).click();
   const edit=page.locator('#bbEssentialConfirm');assert.equal(await edit.getByRole('spinbutton',{name:'Already at home',exact:true}).inputValue(),String(total));assert.equal(await edit.getByRole('spinbutton',{name:'Total needed this week',exact:true}).inputValue(),'5');await edit.getByRole('button',{name:'Cancel',exact:true}).click();
-  await page.reload({waitUntil:'domcontentloaded'});await page.waitForFunction(()=>window.__householdPurchaseQA?.ready());const reloaded=await current(page);assert.deepEqual(reloaded.stock,{'rice|g':16});assert.equal(reloaded.features.essentials.find(row=>row.id==='toilet-rolls').ownedQty,total);assert.deepEqual(reloaded.receipts,initial.receipts);assert.deepEqual(errors,[]);
+  await page.reload({waitUntil:'domcontentloaded'});await page.waitForFunction(()=>window.__householdPurchaseQA?.ready());const reloaded=await current(page);assert.deepEqual(reloaded.stock,{'long-grain rice|g':16});assert.equal(reloaded.features.essentials.find(row=>row.id==='toilet-rolls').ownedQty,total);assert.deepEqual(reloaded.receipts,initial.receipts);assert.deepEqual(errors,[]);
  }finally{await context.close();}
 });
 
 test('reviewing misplaced household stock cannot bypass an unresolved online pantry conflict',{skip:!chromium&&'Playwright unavailable',timeout:60000},async()=>{
- const {page,context,errors,remote,inventoryWrites}=await fixture(390,{online:true,name:'ToiletRolls',stock:{'rice|g':16,'toiletrolls|each':16},remoteStock:{'rice|g':8},seedReceipts:true});
+ const {page,context,errors,remote,inventoryWrites}=await fixture(390,{online:true,name:'ToiletRolls',stock:{'long-grain rice|g':16,'toiletrolls|each':16},remoteStock:{'long-grain rice|g':8},seedReceipts:true});
  try{
   // Keep the existing legacy cloud-confirmation contract covered. The shipped
   // Account mode uses current At home stock while its guarded outbox waits;
@@ -289,12 +289,12 @@ test('reviewing misplaced household stock cannot bypass an unresolved online pan
   await page.evaluate(()=>BBReceiptHost.refreshAvailability({force:true,synchronize:true}));
   // A previous online conflict leaves this actor-scoped durable job. The
   // household review must preserve its guard rather than acknowledge it.
-  await page.evaluate(()=>{const actorId=BBHome.actor();localStorage.setItem('basketboss_purchase_pantry_sync_v1:'+encodeURIComponent(actorId),JSON.stringify({version:1,actorId,scope:{kind:'user',id:actorId},market:'UK',retailer:null,expectedRevision:3,baselineStock:{'rice|g':8},stock:{'rice|g':16,'toiletrolls|each':16},shopSessionId:window.__householdPurchaseQA.state().session.id,queuedAt:Date.now(),needsReview:true,remoteConflict:true}));});
+  await page.evaluate(()=>{const actorId=BBHome.actor();localStorage.setItem('basketboss_purchase_pantry_sync_v1:'+encodeURIComponent(actorId),JSON.stringify({version:1,actorId,scope:{kind:'user',id:actorId},market:'UK',retailer:null,expectedRevision:3,baselineStock:{'long-grain rice|g':8},stock:{'long-grain rice|g':16,'toiletrolls|each':16},shopSessionId:window.__householdPurchaseQA.state().session.id,queuedAt:Date.now(),needsReview:true,remoteConflict:true}));});
   const initial=repairState(await current(page)),shell=await openShop(page);await rowFor(shell).locator('.bb172-storefront-checkbox').click();
   const dialog=page.getByRole('dialog',{name:'Review household stock',exact:true});await dialog.waitFor({state:'visible'});await dialog.getByRole('button',{name:'Move to Weekly essentials',exact:true}).click();
-  await dialog.waitFor({state:'detached'});const saved=await current(page);assert.deepEqual(saved.stock,{'rice|g':16},'the explicitly reviewed local move retains the local food balance');assert.equal(saved.features.essentials.find(row=>row.id==='toilet-rolls').ownedQty,16);assert.deepEqual(saved.receipts,initial.receipts);assert.equal(saved.ticks[essentialId],undefined);
-  const queued=await page.evaluate(()=>JSON.parse(localStorage.getItem('basketboss_purchase_pantry_sync_v1:'+encodeURIComponent(BBHome.actor()))));assert.equal(queued.needsReview,true,'a local reviewed repair cannot acknowledge an unrelated online stock conflict');assert.deepEqual(queued.stock,{'rice|g':16});assert.deepEqual(queued.baselineStock,{'rice|g':8});assert.equal(queued.actorId,actor);
-  await page.evaluate(()=>BBReceiptHost.retryPurchasedPantry());assert.equal(await page.evaluate(()=>BBReceiptHost.requiresPantryReview()),true);assert.equal(await page.evaluate(()=>BBReceiptHost.canConsumePantry()),false);assert.deepEqual(remote.stock,{'rice|g':8});assert.equal(inventoryWrites.length,0,'an unresolved stock conflict cannot issue a pantry overwrite');assert.deepEqual(errors,[]);
+  await dialog.waitFor({state:'detached'});const saved=await current(page);assert.deepEqual(saved.stock,{'long-grain rice|g':16},'the explicitly reviewed local move retains the local food balance');assert.equal(saved.features.essentials.find(row=>row.id==='toilet-rolls').ownedQty,16);assert.deepEqual(saved.receipts,initial.receipts);assert.equal(saved.ticks[essentialId],undefined);
+  const queued=await page.evaluate(()=>JSON.parse(localStorage.getItem('basketboss_purchase_pantry_sync_v1:'+encodeURIComponent(BBHome.actor()))));assert.equal(queued.needsReview,true,'a local reviewed repair cannot acknowledge an unrelated online stock conflict');assert.deepEqual(queued.stock,{'long-grain rice|g':16});assert.deepEqual(queued.baselineStock,{'long-grain rice|g':8});assert.equal(queued.actorId,actor);
+  await page.evaluate(()=>BBReceiptHost.retryPurchasedPantry());assert.equal(await page.evaluate(()=>BBReceiptHost.requiresPantryReview()),true);assert.equal(await page.evaluate(()=>BBReceiptHost.canConsumePantry()),false);assert.deepEqual(remote.stock,{'long-grain rice|g':8});assert.equal(inventoryWrites.length,0,'an unresolved stock conflict cannot issue a pantry overwrite');assert.deepEqual(errors,[]);
  }finally{await context.close();}
 });
 
@@ -304,11 +304,11 @@ for(const count of [1,2])test(`actual scaled fajita shopping buys ${count} whole
   const initial=await page.evaluate(()=>window.__householdPurchaseQA.precise('fajitas')),summary=await page.evaluate(()=>window.__householdPurchaseQA.summary()),lime=summary.items.find(row=>row.key==='lime');assert.ok(lime);assert.equal(lime.unit,'g');assert.equal(lime.toBuy,46.666667);
   const shell=await openShop(page),row=shell.locator('[data-bb-shop-purchase-id="lime|g"]');assert.match(await row.locator('.bb-shop-buying-pill').textContent(),/Buying:\s*1 lime$/i,'a small culinary fraction recommends one physical lime');
   if(count===2){await row.locator('.bb-shop-buying-pill').click();const picker=row.locator('.bb-shop-pack-picker');await picker.locator('[data-bb-pack-preset="2"]').click();await picker.waitFor({state:'hidden'});assert.match(await row.locator('.bb-shop-buying-pill').textContent(),/Buying:\s*2 limes$/i);}
-  assert.deepEqual((await current(page)).stock,{'rice|g':16},'a count plan is still read-only until ticked');await row.locator('.bb172-storefront-checkbox').click();
+  assert.deepEqual((await current(page)).stock,{'long-grain rice|g':16},'a count plan is still read-only until ticked');await row.locator('.bb172-storefront-checkbox').click();
   await page.waitForFunction(quantity=>window.__householdPurchaseQA.state().stock['lime|g']===quantity,quantity);const bought=await current(page);assert.equal(bought.purchases['lime|g'].actualQty,quantity);assert.equal(bought.ticks['lime|g'],true);
   const proof=await page.evaluate(quantity=>BBLooseProduceUI.readStockProof(localStorage,{actor:BBHome.actor(),stockKey:'lime|g',canonicalQuantity:quantity},BBPantryPolicy),quantity);assert.ok(proof);assert.equal(proof.maxCanonicalQuantity,quantity);assert.equal(proof.gramsPerEach,70);
   await foodAll(page);const pantry=page.locator('.bbpi-summary-row').filter({has:page.locator('strong').filter({hasText:/^lime$/i})});assert.equal(await pantry.locator('.bbpi-summary-amount').textContent(),count+' each');assert.equal(await pantry.locator('.bbpi-count-review').count(),0);
-  await page.reload({waitUntil:'domcontentloaded'});await page.waitForFunction(()=>window.__householdPurchaseQA?.ready());await foodAll(page);assert.equal(await pantry.locator('.bbpi-summary-amount').textContent(),count+' each');assert.deepEqual((await current(page)).stock,{'rice|g':16,'lime|g':quantity});
+  await page.reload({waitUntil:'domcontentloaded'});await page.waitForFunction(()=>window.__householdPurchaseQA?.ready());await foodAll(page);assert.equal(await pantry.locator('.bbpi-summary-amount').textContent(),count+' each');assert.deepEqual((await current(page)).stock,{'long-grain rice|g':16,'lime|g':quantity});
   const final=await page.evaluate(()=>window.__householdPurchaseQA.precise('fajitas'));assert.deepEqual(final.recipe,initial.recipe);assert.deepEqual(final.normalized,initial.normalized,'retail count choices never rewrite scaled source recipe data');assert.deepEqual(errors,[]);
  }finally{await context.close();}
 });

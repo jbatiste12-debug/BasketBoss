@@ -35,6 +35,7 @@ export const CLIENT_FILES=Object.freeze([
  'bb-recipe-purchase-basis.js','bb-home.js','bb-pantry-policy.js','bb-pantry-display.js','bb-recipe-canonical.js','bb-pantry-runtime.mjs','bb-kitchen-choice-rules.mjs','bb-shared-shopping.js','bb-shared-shopping.css',
  'bb-day-done.js','bb-day-done.css','bb-shop-add.js','bb-shop-add.css','bb-cupboard-staples.js','bb-pantry-autofill.js','bb-pantry-first-controls.js','bb-pantry-first-controls.css',
  'bb-weekly-shop.js','bb-weekly-shop.css','bb-simple-layout.js','bb-simple-layout.css',
+ 'bb-household-aliases.js','bb-pantry-alias-migration.js','bb-shop-completion.js',
  'bb-shop-ownership.js','bb-shop-continuation.js','bb-shop-continuation.css',
  'bb-shop-purchase-ui.js','bb-shop-purchase-ui.css',
  'bb-household-stock-review.js','bb-loose-produce-ui.js',
