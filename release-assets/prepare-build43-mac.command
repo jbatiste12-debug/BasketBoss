@@ -42,8 +42,8 @@ BB43_DIR="$(mktemp -d "$HOME/BasketBoss-1.0.2-build43.XXXXXX")"
 BB43_STAGE="$(mktemp -d "${TMPDIR:-/tmp}/BasketBoss-native43.XXXXXX")"
 git clone --depth 1 --branch main --single-branch https://github.com/jbatiste12-debug/BasketBoss.git "$BB43_DIR"
 cd "$BB43_DIR"
-git fetch --depth 1 origin c99afebf52ce65b56b083ddab4fcdc9ab1fe56c7
-git checkout --detach c99afebf52ce65b56b083ddab4fcdc9ab1fe56c7
+git fetch --depth 1 origin 402e0c23f149bc3252f33cc5ea010b5e53d9f95d
+git checkout --detach 402e0c23f149bc3252f33cc5ea010b5e53d9f95d
 npm ci --no-audit --no-fund
 node tools/catalogue700/sync-ios.mjs --source-root "$BB43_DIR" --public-release "$BB43_DIR/catalogues/700/release" --output-dir "$BB43_STAGE"
 if [[ "$BB43_MODE" == 'archive' ]]; then

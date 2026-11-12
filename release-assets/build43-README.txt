@@ -1,28 +1,32 @@
 BasketBoss 1.0.2 — Build 43
 
-On your Mac, open prepare-build43-mac.command. It downloads the tested source, installs dependencies, prepares the 700-recipe client and opens Xcode. Requires Xcode and Node.js 22 or newer.
+On your Mac, open prepare-build43-mac.command. It downloads the pinned source, installs dependencies, prepares the 700-recipe client and opens Xcode. Requires Xcode and Node.js 22 or newer.
 
-To test: connect your iPhone, select it at the top of Xcode and press the play button (Product > Run). Version is 1.0.2, Build 43.
+For signing: open Xcode > Settings > Accounts and sign in with your Apple Developer account. In the App target > Signing & Capabilities, choose your paid development team and keep automatic signing enabled. Keep bundle ID uk.co.basketboss.app.
 
-To prepare and archive from Terminal:
+To test: connect your iPhone, select it in Xcode and choose Product > Run.
+To submit: select Any iOS Device, then Product > Archive. In Organizer choose Distribute App > App Store Connect > Upload.
+
+Once signing is configured, the optional Terminal archive mode is:
   bash prepare-build43-mac.command --archive
 
-The archive opens in Xcode Organizer. Choose Distribute App > App Store Connect > Upload. Signing and uploading happen on your Mac; this launcher does not upload or alter your current submission.
+The launcher does not upload or alter your App Store submission. Native signing, physical iPhone testing and upload happen on your Mac.
 
-Your pantry:
-- At home is the single visible pantry used for shopping and planned meals. An absent food contributes zero; old saved amounts are not offered in a second confirmation screen.
-- Purchases, edits, removals, cooking and undo retain their precise existing quantities. Offline edits queue for account sync without adding device and saved balances together.
-- The Premium inviter leads the household. Only the verified owner seeds a new empty household from their At home stock. The invited partner waits and joins that pantry; personal balances are backed up rather than merged.
-- Linked eligible accounts refresh automatically while foregrounded, using a four-second polling interval and refresh on return/reconnect. This uses existing authenticated services, not a new WebSocket subscription. RLS, recipe calculations and subscription eligibility are unchanged.
-- Genuine conflicts and other scope reconnections are managed under Account & cloud sync. Existing initialized household stock always wins over an older personal snapshot.
-- Recipe pieces such as six sausages now display as 6 each. True package and weight quantities keep their meaning.
+What changed:
+- Confirmed purchases remain in Bought until Finish shop. Eligible unticks reverse only that purchase, and later recipe shortfalls remain visible.
+- Common household ingredient names reconcile into the same stock. Sausages plus Pork Sausages combine while distinct cuts, proteins and varieties stay separate.
+- Review & restock is above At home. Scrolling, storage tabs and navigation clearance remain intact.
+- My Week's four control rows are centered with scoped CSS only.
+- The yellow Shop reminder keeps Reviewed inside its card, with wrapping text and its original dismissal behavior.
 
-Local verification: 4,238 passed, zero failures, zero cancellations; 1 existing platform skip and 2 existing TODOs are recorded separately. Rebuilt PWA/native asset parity and all 22 protected calculation/file checks pass. See docs/qa/2026-11-11-account-pantry-single-source.md. Live publication proof is recorded separately in the current release packet.
+Local verification: 4,305 passed, zero failures, zero cancellations; 1 existing platform skip and 2 existing TODOs are recorded separately. Source hashes were frozen throughout the clean sequential run. PWA/native assets match, and all 22 numerical-isolation checks pass (19 byte-identical; three approved name-identity adapters). The full 700-recipe alias audit and composed cut protections pass. See docs/qa/2026-11-12-bought-aliases-and-restock.md.
 
 No additional ios:sync is needed. Ordinary ios:sync after this launcher would replace the prepared 700-recipe assets.
 
 Pinned application source:
-https://github.com/jbatiste12-debug/BasketBoss/commit/c99afebf52ce65b56b083ddab4fcdc9ab1fe56c7
+https://github.com/jbatiste12-debug/BasketBoss/commit/402e0c23f149bc3252f33cc5ea010b5e53d9f95d
 
 Complete source ZIP:
-https://github.com/jbatiste12-debug/BasketBoss/archive/c99afebf52ce65b56b083ddab4fcdc9ab1fe56c7.zip
+https://github.com/jbatiste12-debug/BasketBoss/archive/402e0c23f149bc3252f33cc5ea010b5e53d9f95d.zip
+
+Live publication evidence and local verification reports are included separately in the current release packet.
