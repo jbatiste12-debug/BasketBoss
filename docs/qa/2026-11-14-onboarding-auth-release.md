@@ -1,70 +1,68 @@
-BasketBoss onboarding, authentication and Apple release audit — 14 November 2026
+BasketBoss onboarding, account recovery and UI release audit — 14 November 2026
 
-Application source: `c52cc0e0583b1da7f0b345f6655c6293b4766a34`.
-Next native marketing version/build: **1.0.3 (45)**. The UK App Store currently lists 1.0.2. The catalogue/client compatibility contract remains 1.0.2; the launcher updates the separate native marketing/build fields.
+Application source: `f7f7cd271ac0d736c4e733c1a776883f4b0dcf75`.
+Native handoff: 1.0.3 (45). Catalogue compatibility remains 1.0.2. The launcher prepares a separate checkout; it does not upload or change the current App Store submission.
 
-**Findings**
+Findings
 
-| Finding | Evidence and implication |
+| Status | Finding and evidence |
 |---|---|
-| Confirmed: downloads need not create accounts. | Guest recipes, planning and shopping already work locally. No anonymous Supabase account is created. Downloads cannot be equated with registrations. |
-| Confirmed: signup was easy to miss. | The old quick welcome collapsed account access under an account question and promoted guest continuation. Return in either credentials field always submitted Sign in. `bb-onboarding-v2.js`, `bb-auth-flow.js`. |
-| Confirmed: old analytics did not measure registrations. | They counted clicks/restored sessions and watched an obsolete confirmation-message element. `bb-funnel.js`. |
-| Confirmed: production project matches the app. | Read-only public-settings CI verified production project `kbhyosxuvlcazyzzinqv`, email enabled and confirmation required. Source and native use the same public configuration. No credential values were reported. |
-| Confirmed: registrations do reach production. | Aggregate Auth queries at audit start showed 19 accounts, 15 email-confirmed, 13 with a sign-in, and four account records created in the previous seven days. Records may include tests; these figures do not establish a download conversion rate. |
-| Confirmed: Apple login was absent/disabled. | No Apple auth integration existed. Public provider settings initially reported Apple disabled. The owner is now configuring Apple; the initial observation must not be treated as the final live setting. |
-| Confirmed: Apple needed deletion support. | Password-only deletion could not serve Apple-only accounts. Added fresh Apple reauthentication and token revocation before the existing durable deletion journal. |
-| Confirmed: native bridge debug logs could expose credentials. | Capacitor logs plugin response payloads by default. iOS bridge logging is now disabled before returning Apple credentials. |
-| Unconfirmed: email delivery or allowed redirects contributed to the gap. | Email confirmation is required. The owner reports SMTP configured, but real delivery and the complete provider redirect allowlist have not been independently verified. Pending confirmation normally creates an Auth record; it does not alone explain absent records. Cross-browser PKCE confirmation remains a possible activation problem. |
+| Confirmed | Guest recipes, planning and shopping already worked locally. Downloads do not necessarily create Supabase accounts. No anonymous authentication was added. |
+| Confirmed | Signup was easy to miss and Return always submitted Sign in. Explicit signup/login modes and a short optional welcome now use the original verified Supabase/session owners (`bb-auth-flow.js`, `bb-onboarding-v2.js`). |
+| Confirmed | Production web/native configuration identifies the same project, `kbhyosxuvlcazyzzinqv`. Public settings initially showed email enabled, confirmation required and Apple disabled. The owner subsequently began manual Apple configuration; its final live readiness still needs checking. No credentials were reported. |
+| Confirmed | A genuinely new user test reached production Authentication and became email-confirmed. Confirmation mail was delivered. At the last read-only account check there was no successful server session or cloud kitchen row for that account. The browser-recovery fixes therefore need a real follow-up sign-in check. The test address is excluded from this report. |
+| Confirmed | Local profile switching omitted four old recovery/migration keys from isolation, allowing an old week to reappear after primary state was cleared. They now follow the original actor archive and are excluded from cloud kitchen backup payloads (`bb-receipt-host.js`). Existing raw data is preserved; no pantry or account was deleted. |
+| Confirmed | Account Settings used a static Sign in label and offered cloud backup actions without relevant saved data. Labels now follow the remembered session; backup actions appear only for actual saved data or actionable issues. Verified login enters the app while background cloud connection completes. |
+| Confirmed | A failed confirmation link gave generic feedback. A browser remembering another account could also hide the recovery form. Recovery now offers an independently verified email sign-in/account switch and retains the old account on failure (`bb-auth-flow.js`). |
+| Confirmed | Read-only database inspection found owner-scoped authenticated RLS on kitchen and planner-extras tables, empty kitchen defaults and no sample-plan insertion trigger. Cloud queries pin the verified actor. There was no evidence that the new account received another user's server row. |
+| Hypothesis | Opening a private-Safari signup link in a different Gmail/browser context can lose the PKCE verifier; an expired/reused link is another possibility. The observed confirmed account and bounded invalid-link log do not prove the precise original failure. |
+| Confirmed | The old recipe placeholder implied Premium status. It now neutrally says to check recipe access or choose another meal; it does not grant membership. |
+| Confirmed | Analytics could miss an already-rendered welcome because its deferred script precedes the funnel script. Startup now replays only an actually visible welcome through existing once-only flags. |
 
-**Implemented experience**
+Experience and security
 
-The new quick welcome says “Your weekly shop, sorted. 👑”, explains the three benefits, and offers Explore BasketBoss Free, Create free account and Sign in. Household setup is optional. Guest exploration uses the existing local data and entitlement boundaries. A successful signup/login enters the app directly; returning accounts and completed older onboarding skip the automatic welcome. Partner invitation and explicit Help replay paths remain available.
+The welcome says “Your weekly shop, sorted. 👑”, shows the three benefits, and offers free exploration, email account creation, Sign in, and direct native Apple authorization when ready. Setup remains optional. Existing users skip automatic onboarding; Help replay and partner paths remain intact. Contextual, dismissible signup prompts follow genuine first plan/list creation. No preview uses another account's data.
 
-The original email form and Supabase/session owners remain authoritative. Explicit signup/login modes control Return, primary action and password autocomplete. Loading, submission locks, network deadlines, validation, confirmation-pending, resend and recovery remain supported. Guest work uses the existing safe account-adoption path; account switches preserve isolation and cloud conflicts still require explicit choice. No RLS, schema, production provider or SMTP setting was changed by this code.
+Email signup/login preserves the real SDK, verified-user checks, confirmed-email requirement, single session manager, PKCE, duplicate-submission guards, safe callbacks and error recovery. Cloud conflict choices remain explicit. No production provider, SMTP setting, template, schema, migration or RLS policy was changed by this work. A proposed token-hash confirmation email template is documented separately and has NOT been applied: `docs/auth-confirm-signup-token-hash-proposal.md`.
 
-After genuine successful plan/list creation, guests receive a dismissible prompt to create a free account to save and sync across devices. Existing rendering, cloud restoration, failed saves and idempotent retries do not count as new creation. Recipe scaling, shopping deficits and pantry subtraction were not rewritten.
+Native Apple login uses random nonce/state, checked native authorization, Supabase ID-token verification and existing session persistence. The button requires the configured provider, native bridge and account-deletion readiness. Apple-only deletion reauthenticates, validates Apple's signed identity, exchanges the code and revokes its token before the existing durable deletion journal. Capacitor plugin payload logging is disabled. Web Apple OAuth was not enabled. See `docs/apple-sign-in-release.md`.
 
-Apple authentication is native iOS first. Its secure random nonce/state, native authorization and Supabase ID-token exchange feed the existing verified-session persistence path. Apple appears only when its Supabase provider, native bridge and server deletion readiness all pass. PWA email signup/login remain available. See [Apple setup](../apple-sign-in-release.md).
+Monthly/annual trial labels require StoreKit to return a real eligible zero-price seven-day introductory offer. Renewal price/period come from Apple; the customer confirms the subscription and renewal terms. The owner reports configuring both offers in App Store Connect. Actual purchase-sheet currency follows the purchasing storefront; USD was not relabelled as GBP. See `docs/apple-seven-day-trial.md`.
 
-The Apple paywall now reads a real zero-price seven-day introductory offer and current eligibility from StoreKit. Eligible users see “7 days free, then [Apple price]” and the selected renewal period. The Apple purchase sheet requires confirmation; the paid subscription renews automatically unless cancelled. Ineligible/missing offers retain normal subscription presentation. The owner reports configuring one-week free offers for both monthly and annual plans; signed-device verification is still required. Product IDs, purchase/restore and verified entitlement calculations remain unchanged. See [trial and currency setup](../apple-seven-day-trial.md).
+UI changes
 
-Apple's sheet chooses currency using the purchasing storefront. Existing UK test settings are already `en_GB`/`GBR`; web base prices are GBP. USD was reported in Apple's own sheet. No dollar charge has been relabelled as pounds. Check the actual purchasing/Sandbox storefront and UK subscription pricing.
+- My Week: existing next-week action/info sit visually in the header; preferences are compact; mode controls have soft active pills; Auto-fill is primary and Add meal secondary; full instructions remain in expandable tips. The same controls, parents, handlers and dynamic bindings remain in place.
+- Day plan: existing native disclosure/actions form a bottom sheet, with collapsed real ingredient counts, compact optional-meal/utility actions and Day done below. The same signup reminder is dismissible at the top. Keyboard viewport changes, nested modal yielding and existing badge gesture timing remain supported. The dock is dimmed below the sheet instead of covering Day done.
+- Batch cooking: successful saves open Plan; linked portions display the actual recipe and source day as filled cards. Source time/serving controls and existing per-day serving overrides are preserved. The original batch scaling and single source-day deduction remain authoritative.
+- At home: All is first/default; In stock/Weekly essentials reuse their handlers. Add food and the real guarded receipt entry are separate prominent actions. The original food-photo scan remains separately labelled. Empty-state chips open the existing prefilled quantity editor; they do not invent stock or save until confirmation. Review & restock remains above At home in a compact form. The trial badge appears only when the native read-only StoreKit eligibility gate is true; PWA/unknown/ineligible users see Premium.
 
-**Funnel measurement**
+The app is vanilla JavaScript/CSS, not a React/Tailwind component. Complete source files are supplied. `bb-home.js` remains byte-identical to the pre-refactor baseline (SHA-256 `6ef580b0821a489f32e581d2078fe9fa7d67204c410b63751659a65fa4d65d50`). Recipe scaling, stock conversion, canonical matching and pantry subtraction functions were not rewritten.
 
-The existing first-party, bodyless `/api/funnel/{event}` transport now measures `first_app_open`, `onboarding_viewed`, `signup_screen_viewed`, method selection (email/Apple), actual accepted signup attempts, confirmation pending, verified signup-intent completion, fixed safe failure categories, first meal-plan creation and first shopping-list creation.
+Privacy-conscious funnel
 
-Only allowlisted names are sent. No passwords, tokens, emails, account IDs, recipe details or user content are transmitted. Local milestone flags provide reload deduplication without sending installation identifiers. The auth submission owner distinguishes legitimate retries. Metrics are best-effort aggregate requests, with at-most-once sends; they are not an exactly-once server ledger. `first_app_open` means first instrumented open per installation since rollout. `signup_succeeded` means a verified, persisted signup-intent completion, not proof of a newly inserted user: Supabase deliberately obscures existing-email signup responses. Restored sessions are not signup successes. Privacy disclosure was updated.
+The existing bodyless, allowlisted first-party endpoint measures first instrumented app open, welcome viewed, signup screen, chosen method, accepted attempt, pending confirmation, verified persisted signup-intent completion, safe failure category, first plan and first list. It sends no email, password, token, account ID, recipe content or installation identifier. Local flags deduplicate milestones/reloads. Metrics are best-effort aggregate events, not an exactly-once server ledger; signup success does not claim proof of a new Auth insertion because Supabase obscures existing-email signup responses. Privacy disclosure was updated.
 
-**Verification**
+Verification
 
 | Check | Result |
 |---|---|
-| Combined auth, session, account deletion, household adoption, native purchase/trial and onboarding tests | 614 passed, zero failures; two skipped. |
-| Sequential generated-700 app + real bundled SDK browser tests | 15 passed, zero failures. Covers guest value, contextual signup, PKCE confirmation, duplicate taps, validation/retry, logout isolation/relogin restoration, Apple gates, narrow/landscape layouts and keyboard helper targets. All auth network traffic was locally fulfilled. |
-| Build45 launcher/archive guards | Eight passed, zero failures. Verifies 1.0.3/45 preparation, idempotency, refusal of unexpected versions, archive metadata and historical launcher preservation. |
-| Cache/funnel checks | 21 passed, zero failures; includes overlap with the combined group. |
-| Native Apple compilation | Successful unsigned Release simulator compilation on macOS in GitHub Actions run `43621495041`. No archive or App Store upload performed. |
-| Rebuild and parity | Verified 700 native bundle (200 Free/500 Premium), regenerated public PWA/cache inventory. Seven changed shared assets are byte-identical; onboarding differs only by the two documented existing native copy replacements. No unexpected differences or private recipe bundle. `app.html` and `index.html` remain identical. |
-| Skipped checks | Real PostgreSQL deletion integration requires its optional local fixture; the Swift speech endpoint fixture requires a Swift compiler. The latter is unrelated to this auth change. Neither skip proves a production failure. |
+| Full sequential non-browser suite | 4,230 tests: 4,215 passed, zero failures, 13 skips and two existing TODOs. |
+| Final sequential browser release checks | 32 passed, zero failures/cancellations/skips, in one clean sequential run with an explicit Chromium executable. Covers real SDK auth/recovery, batch/source portions, original day actions, ingredient counts, Day-done hit targets, At home tabs/search/groups/selection/restock, six quick-add drafts, save and Premium receipt gating. |
+| Extra visual audit | My Week at390/320/844px: all103 original controls, live bindings and business data retained;13 touch targets checked; popovers/modes/Autofill/next-week cancellation/Add meal/Sunday dock clearance passed. At home/day sheet at390/320/768px: quick-add cancellation/save, live counts, filters, essential mode, receipt upgrade gate, dynamic ingredients and Day-done hit target passed with no page errors. All requests were fulfilled locally. |
+| Offer/editor/receipt focused checks | 96 existing focused tests plus the new read-only native offer-gate test passed. Day-sheet/funnel18 tests passed. These overlap the full suite. |
+| Build45 launcher | Eight passed, zero failures; pinned source includes all account and UI fixes. Historical Build43/44 launchers remain unchanged. |
+| Assets | Rebuilt native100-Free shell, generated700 native bundle (200Free/500Premium,1,168 files), and public PWA/cache inventory. Twelve checked shared assets match native bytes; onboarding retains only the two documented existing native copy substitutions. Entry documents match. No private recipe bundle. |
+| Native compilation | The account-safety source passed unsigned Release simulator compilation in GitHub Actions run43628374026. The later layout revision changes shared web assets, not Swift; its final CI result must be checked separately. No signed-device Apple authorization, purchase, deletion or archive was claimed here. |
+| Previous live PWA proof | Account-safety commit8635abbdff205bf4b0332a49f9c96e48f279fd41 deployed successfully; live public parity passed after the deployment completed. The initial stale-manifest deployment race was retried only after deploy success. Final layout deployment/parity is recorded separately. |
 
-No fresh production signup was submitted from this workspace: its outbound policy prevents direct access to the app/Supabase hosts. CI checked public settings read-only. The supplied fresh test inbox was checked without exposing its address and was unused. Real confirmation delivery, successful production Auth persistence and real Apple authorization/revocation remain manual release checks; local browser mocks and unsigned compilation do not establish them.
+A wider CI run exposed two pre-existing screenshot writes to `/workspace`, which is unavailable on GitHub runners. They now use an optional screenshot directory or the system temporary directory. No stock assertions were weakened. An initial local kitchen test group lacked the Chromium executable setting; rerunning with `/usr/bin/chromium` passed all seven checks.
 
-**Owner-side release steps**
+Some optional full-suite checks need PostgreSQL fixtures, device/simulator or Swift tooling; skipped checks do not establish production behavior. The separate live private-Cook audit remains blocked by its dedicated read credential (`cook_method_audit_protected_read_denied`); this was not bypassed and no broader token was substituted.
 
-1. Complete Apple Developer capability/provisioning, Supabase native bundle-ID provider setup and the separate server Sign-In key settings in [the Apple guide](../apple-sign-in-release.md). Keep private keys in the server secret store, never chat or source. No new database migration is required.
-2. Perform a real controlled-inbox signup/confirmation/login/logout and verify its Auth record. Confirm links return to the originating browser/app; verify SMTP delivery and redirect allowlist if it fails. Do not disable confirmation or weaken policies to hide delivery problems.
-3. Test new/returning Apple login, cancellation, Hide My Email, household access and account deletion/retry on a signed device. Check both seven-day subscription offers and the actual renewal currency/price in Apple's sheet.
-4. Run the new launcher to prepare 1.0.3 (45). If build45 has already been uploaded, choose a higher unused build before upload. The public listing cannot reveal the highest uploaded build.
-5. Create/select App Store version1.0.3, attach the tested build and submit manually. The launcher does not upload or alter the existing release.
+Before submission
 
-The public App Store description still advertises older recipe counts and the current What's New includes an expedited-review request. Correct those in the next version's metadata. A suitable short What's New, once its advertised features are enabled and device-tested:
-
-- Get started faster with a simpler welcome and clearer account signup.
-- Create a free account to save and sync your meal plans and shopping lists.
-- Sign in with Apple on iPhone and iPad.
-- Eligible customers can try Apple Premium free for seven days, with clear renewal pricing.
-- Account, shopping and onboarding reliability improvements.
-
-Keep review requests in Apple's review correspondence, outside customer-facing release notes.
+1. Complete the Apple capability/provisioning, Supabase native bundle-ID provider configuration and separate server Sign-In key readiness from the linked guide. Keep the .p8 key in server secrets, outside chat/source. No database migration is required.
+2. Verify the controlled new account signs in, Settings shows its account, its cloud data is empty or its own, and logout/relogin preserves isolation. Test email confirmation in the actual browser/app context. Do not disable confirmation or weaken RLS.
+3. On a signed iPhone/iPad test Apple signup/login/cancellation, Hide My Email, household access and Apple-only account deletion. Check both eligible seven-day offers, ineligible fallback, restoration, actual renewal currency and price in Apple's sheet.
+4. Use the updated Build45 launcher. If45 has already been uploaded, choose a higher unused build. Test before Archive; the launcher does not upload. Ordinary ios:sync must not overwrite the prepared700 assets.
+5. Correct the public App Store recipe counts and remove the expedited-review request from customer-facing What's New. Keep review requests in Apple's correspondence. Describe Apple login/trials as shipped only when configured and device-tested.

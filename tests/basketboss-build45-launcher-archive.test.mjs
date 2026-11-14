@@ -163,7 +163,7 @@ test('build 45 prepares and verifies the project around catalogue-700 sync befor
  assert.match(source,/open "\$BB45_DIR\/ios\/App\/App\.xcworkspace"/);
  const fetch=source.match(/^git fetch --depth 1 origin ([a-f0-9]{40})$/m),checkout=source.match(/^git checkout --detach ([a-f0-9]{40})$/m);
  assert.ok(fetch&&checkout);assert.equal(fetch[1],checkout[1]);
- assert.equal(fetch[1],'c52cc0e0583b1da7f0b345f6655c6293b4766a34','Build 45 fetches the reviewed application source even if the launcher is committed later');
+ assert.equal(fetch[1],'f7f7cd271ac0d736c4e733c1a776883f4b0dcf75','Build 45 fetches the reviewed application source even if the launcher is committed later');
  assert.doesNotMatch(source,/altool|notarytool|iTMSTransporter|-exportArchive|-upload-app|appstoreconnect/);
 });
 

@@ -58,6 +58,6 @@ Do not run ordinary ios:sync after this launcher: it would replace the verified
 The earlier Build 43 and Build 44 launchers are preserved unchanged.
 
 Pinned application source:
-https://github.com/jbatiste12-debug/BasketBoss/commit/c52cc0e0583b1da7f0b345f6655c6293b4766a34
+https://github.com/jbatiste12-debug/BasketBoss/commit/f7f7cd271ac0d736c4e733c1a776883f4b0dcf75
 Complete application source:
-https://github.com/jbatiste12-debug/BasketBoss/archive/c52cc0e0583b1da7f0b345f6655c6293b4766a34.zip
+https://github.com/jbatiste12-debug/BasketBoss/archive/f7f7cd271ac0d736c4e733c1a776883f4b0dcf75.zip
