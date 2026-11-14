@@ -9,7 +9,7 @@ const [html,privacy,script,css,handler,worker]=await Promise.all([
   'index.html','privacy.html','bb-funnel.js','bb-funnel.css','functions/api/funnel/[event].js','service-worker.js'
 ].map(read));
 
-function visitor({store=new Map(),sessionStore=new Map(),storageBlocked=false,fetchThrows=false,readyState='complete'}={}){
+function visitor({store=new Map(),sessionStore=new Map(),storageBlocked=false,fetchThrows=false,readyState='complete',welcome=null}={}){
   const calls=[],listeners=new Map(),timers=[],classes=new Set(),nodes={};
   const on=(name,fn)=>{if(!listeners.has(name))listeners.set(name,[]);listeners.get(name).push(fn);};
   const fire=(name,event={})=>{for(const fn of listeners.get(name)||[])fn(event);};
@@ -32,7 +32,13 @@ function visitor({store=new Map(),sessionStore=new Map(),storageBlocked=false,fe
   const doc={readyState,documentElement:{classList:{contains:c=>classes.has(c)}},body:{appendChild(el){nodes.bbFunnelNudge=el;}},getElementById(id){return nodes[id]||null;},querySelector(){return null;},
     createElement(){const b=new El('bbFunnelNudge');b.children['[data-bbf-signup]']=new El('nudge-account');b.children['[data-bbf-dismiss]']=new El('nudge-dismiss');return b;},addEventListener:on};
   const modes=[];
-  const win={addEventListener:on,setTimeout:fn=>timers.push(fn),BBAuthFlow:{open:mode=>modes.push(mode)}};
+  const win={addEventListener:on,setTimeout:fn=>timers.push(fn),BBAuthFlow:{open:mode=>modes.push(mode)},getComputedStyle:node=>({visibility:node.visibility||'visible'})};
+  if(welcome){
+    const host=new El('bbNewOnboarding');host.hidden=welcome.hidden===true;host.visibility=welcome.visibility||'visible';host.getClientRects=()=>welcome.rects===0?[]:[{}];nodes.bbNewOnboarding=host;
+    // Match the real document order: onboarding's optional call happens before
+    // the following deferred funnel script has installed its public API.
+    win.BBFunnel?.once?.('onboarding_viewed');
+  }
   const storage=map=>({getItem(k){if(storageBlocked)throw Error('Unavailable');return map.get(k)||null;},setItem(k,v){if(storageBlocked)throw Error('Unavailable');map.set(k,String(v));}});
   const context={document:doc,window:win,Element:El,localStorage:storage(store),sessionStorage:storage(sessionStore),Date,fetch:(url,options)=>{calls.push({url,options});if(fetchThrows)throw Error('Offline');return Promise.resolve({ok:true});}};
   vm.runInNewContext(script,context,{filename:'bb-funnel.js'});
@@ -152,4 +158,20 @@ test('Safe API exists before DOM ready and DOM readiness cannot double-count fir
   assert.ok(h.win.BBFunnel);assert.equal(h.count('first_app_open'),0);
   h.win.BBFunnel.once('onboarding_viewed');h.fire('DOMContentLoaded');h.fire('DOMContentLoaded');
   assert.equal(h.count('first_app_open'),1);assert.equal(h.count('landing'),1);
+});
+
+test('the real deferred script order replays an already-visible welcome exactly once',()=>{
+  const onboarding=html.indexOf('<script defer src="bb-onboarding-v2.js?'),funnel=html.indexOf('<script defer src="bb-funnel.js?');
+  assert.ok(onboarding>=0&&funnel>onboarding,'the test reproduces the actual onboarding-before-funnel document order');
+  const h=visitor({readyState:'interactive',welcome:{}});
+  assert.equal(h.count('onboarding_viewed'),1,'the preceding welcome is recorded after the funnel API becomes available');
+  h.win.BBFunnel.once('onboarding_viewed');h.fire('DOMContentLoaded');assert.equal(h.count('onboarding_viewed'),1);
+  const next=visitor({store:h.store,readyState:'interactive',welcome:{}});assert.equal(next.count('onboarding_viewed'),0,'reload preserves durable milestone deduplication');
+});
+
+test('startup never invents an onboarding view for a missing or hidden welcome',()=>{
+  for(const welcome of [null,{hidden:true},{rects:0},{visibility:'hidden'}]){
+    const h=visitor({readyState:'interactive',welcome});assert.equal(h.count('onboarding_viewed'),0);
+    assert.equal(h.count('first_app_open'),1,'ordinary startup tracking still works');
+  }
 });

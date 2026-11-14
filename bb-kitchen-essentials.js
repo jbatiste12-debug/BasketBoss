@@ -65,7 +65,7 @@
   let nav=kitchen.querySelector('#bbKitchenSections');
   if(!nav){
    nav=doc.createElement('nav');nav.id='bbKitchenSections';nav.setAttribute('aria-label','At home sections');nav.setAttribute('role','tablist');
-   nav.append(sectionButton('Choose food','food','bbKitchenFoodPanel'),sectionButton('Weekly essentials','essentials','bbKitchenEssentials'));
+   nav.append(sectionButton('In stock','food','bbKitchenFoodPanel'),sectionButton('Weekly essentials','essentials','bbKitchenEssentials'));
    kitchen.querySelector('.bb76-kitchen-intro').after(nav);
   }
   let food=kitchen.querySelector('#bbKitchenFoodPanel');

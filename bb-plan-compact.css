@@ -1,0 +1,120 @@
+/* My Week layout only. display:contents changes boxes, not DOM ownership:
+   Start next week and Auto-fill mode keep their existing delegated handlers. */
+html body .shell #app.bbnext-plan[data-bb-compact-plan="true"][data-bb-compact-header="true"]{
+ display:grid!important;grid-template-columns:minmax(0,1.3fr) minmax(0,1fr);gap:8px;
+ align-items:start;padding-bottom:calc(128px + env(safe-area-inset-bottom,0px))!important;
+}
+html body .shell #app.bbnext-plan[data-bb-compact-header="true"]>*{grid-column:1/-1;min-width:0}
+html body .shell #app.bbnext-plan[data-bb-compact-header="true"] .bbnext-plan-budget[data-bb-simple-budget]{
+ grid-column:1/-1;grid-row:1;min-height:98px;box-sizing:border-box;
+ margin:0 0 2px!important;padding:14px calc(44% + 10px) 14px 14px!important;
+ border:1px solid #345d45!important;border-radius:18px!important;
+ background:linear-gradient(120deg,#173e2e,#24583e)!important;box-shadow:none!important;
+}
+html body .shell #app.bbnext-plan[data-bb-compact-header="true"] .bbnext-plan-budget[data-bb-simple-budget]::before{display:none!important}
+html body .shell #app.bbnext-plan[data-bb-compact-header="true"] .bbpc-budget-overview{grid-template-columns:56px minmax(0,1fr)!important;gap:10px!important}
+html body .shell #app.bbnext-plan[data-bb-compact-header="true"] .bbnext-plan-budget[data-bb-budget-polish="premium"] .bbpc-budget-overview .bb-myweek-emblem,
+html body .shell #app.bbnext-plan[data-bb-compact-header="true"] .bbnext-plan-budget[data-bb-budget-polish="premium"] .bbpc-budget-overview .bb-myweek-emblem>.bbnext-plan-donut{
+ width:56px!important;height:56px!important;max-width:56px!important;min-width:0!important;
+}
+html body .shell #app.bbnext-plan[data-bb-compact-header="true"] .bbnext-plan-budget[data-bb-budget-polish="premium"] .bbpc-budget-overview .bb-myweek-emblem .bbnext-plan-donut-core{width:44px!important;height:44px!important;gap:2px!important}
+html body .shell #app.bbnext-plan[data-bb-compact-header="true"] .bbnext-plan-budget[data-bb-budget-polish="premium"] .bbpc-budget-overview .bb-myweek-emblem .bbnext-plan-donut-core strong{font-size:10px!important;letter-spacing:-.4px!important}
+html body .shell #app.bbnext-plan[data-bb-compact-header="true"] .bbpc-budget-overview .bbnext-plan-budget-text h2{font-size:23px!important;margin:0 0 4px!important;line-height:1.1!important}
+html body .shell #app.bbnext-plan[data-bb-compact-header="true"] .bbpc-budget-overview .bbnext-plan-budget-text>p{font-size:11px!important;line-height:1.35!important;white-space:normal!important}
+html body .shell #app.bbnext-plan[data-bb-compact-header="true"] #bbpolAutofillCard{
+ display:grid!important;grid-column:1/-1;grid-row:1/6;grid-template-columns:subgrid;grid-template-rows:subgrid;
+ margin:0!important;padding:0!important;border:0!important;border-radius:0!important;background:transparent!important;
+ box-shadow:none!important;pointer-events:none;
+}
+html body .shell #app.bbnext-plan[data-bb-compact-header="true"] #bbpolAutofillCard>*{pointer-events:auto}
+html body .shell #app.bbnext-plan[data-bb-compact-plan="true"][data-bb-compact-header="true"] #bbpolAutofillCard>.bbnext-plan-actions{display:contents!important}
+html body .shell #app.bbnext-plan[data-bb-compact-header="true"] #bbpolAutofillCard::before{
+ content:'';grid-column:1/-1;grid-row:2/5;align-self:stretch;z-index:0;
+ border:1px solid #dce4d4;border-radius:16px;background:#fffef9;pointer-events:none;
+}
+html body .shell #app.bbnext-plan[data-bb-compact-header="true"] #bbpolAutofillCard>.bbpc-filter-row{
+ grid-column:1/-1;grid-row:2;grid-template-columns:repeat(3,minmax(0,1fr))!important;
+ gap:6px!important;width:auto!important;margin:10px 10px 0!important;
+ position:relative;z-index:20;
+}
+html body .shell #app.bbnext-plan[data-bb-compact-header="true"] #bbpolAutofillCard :is(#bbSimpleBudget>summary,#bbSimpleMealPreferences>summary,#bbAvoidIngredientTab){
+ min-height:44px!important;height:auto!important;padding:6px!important;font-size:12px!important;
+ background:#f6f5e9!important;border-color:#d8ddcb!important;color:#35563e!important;
+ line-height:1.2!important;border-radius:13px!important;box-shadow:none!important;white-space:normal!important;
+}
+html body .shell #app.bbnext-plan[data-bb-compact-header="true"] #bbpolAutofillCard :is(#bbSimpleBudget[open]>summary,#bbSimpleMealPreferences[open]>summary,#bbAvoidIngredientTab[aria-expanded="true"]){background:#e7eddc!important;border-color:#8ca986!important}
+html body .shell #app.bbnext-plan[data-bb-compact-header="true"] #bbpolAutofillCard>.bbnext-plan-actions>.bb-pantry-first-controls{
+ grid-column:1/-1;grid-row:3;order:0;justify-self:stretch;width:auto!important;
+ margin:0 10px!important;padding:3px!important;gap:3px!important;border-radius:13px!important;
+ background:#eaf0e1!important;border-color:#d8e2cf!important;
+ position:relative;z-index:1;
+}
+html body .shell #app.bbnext-plan[data-bb-compact-header="true"] #bbpolAutofillCard .bb-pantry-first-controls>.bb-pantry-first-choice{
+ min-height:44px!important;padding:7px!important;border-radius:10px!important;font-size:12px!important;
+ color:#35533c!important;background:transparent!important;border-color:transparent!important;box-shadow:none!important;
+}
+html body .shell #app.bbnext-plan[data-bb-compact-header="true"] #bbpolAutofillCard .bb-pantry-first-controls>.bb-pantry-first-choice[aria-pressed="true"]{
+ background:#fffef9!important;border-color:#e2e8d8!important;color:#214d35!important;box-shadow:0 1px 4px #193c2412!important;
+}
+html body .shell #app.bbnext-plan[data-bb-compact-header="true"] #bbpolAutofillCard .bbnext-plan-actions>#bb172FillSixDinners{
+ grid-column:1;grid-row:4;width:auto!important;min-height:46px!important;margin:0 0 10px 10px!important;
+ padding:10px 8px!important;border-radius:12px!important;background:#24643f!important;
+ border-color:#24643f!important;box-shadow:none!important;font-size:12px!important;
+ position:relative;z-index:1;
+}
+html body .shell #app.bbnext-plan[data-bb-compact-header="true"] #bbpolAutofillCard .bbnext-plan-actions>.bbnext-plan-secondary:not(#bbPantryPlannerButton){
+ grid-column:2;grid-row:4;width:auto!important;min-height:46px!important;margin:0 10px 10px 0!important;
+ padding:10px 8px!important;border:1px solid #bbcdb4!important;border-radius:12px!important;
+ background:#fffef9!important;color:#2d533b!important;box-shadow:none!important;font-size:12px!important;
+ position:relative;z-index:1;
+}
+html body .shell #app.bbnext-plan[data-bb-compact-header="true"] #bbpolAutofillCard>.bbnext-plan-actions>.bb-pantry-first-next-week{
+ grid-column:2;grid-row:1;align-self:center;justify-self:end;z-index:2;
+ width:calc(100% - 48px)!important;max-width:150px;min-height:44px!important;height:auto!important;
+ margin:0 48px 0 0!important;padding:7px 5px!important;border:1px solid #8faa8e!important;border-radius:10px!important;
+ background:#ffffff0c!important;color:#fffef6!important;font-size:12px!important;line-height:1.25!important;
+}
+html body .shell #app.bbnext-plan[data-bb-compact-header="true"] #bbpolAutofillCard>.bbnext-plan-actions>.bb-pantry-first-status{grid-column:1/-1;grid-row:5;margin:0 10px!important}
+html body .shell #app.bbnext-plan[data-bb-compact-header="true"] #bbpolAutofillCard>#bbnextPlanAutofill{
+ grid-column:2;grid-row:1;position:relative!important;align-self:center;justify-self:end;
+ z-index:30;width:44px;min-height:44px!important;margin:0!important;
+}
+html body .shell #app.bbnext-plan[data-bb-compact-header="true"] #bbpolAutofillCard>#bbnextPlanAutofill>summary{
+ position:static!important;inset:auto!important;width:44px!important;height:44px!important;min-height:44px!important;
+ color:#e4eddb!important;font-size:21px!important;border-radius:10px!important;
+}
+html body .shell #app.bbnext-plan[data-bb-compact-header="true"] #bbpolAutofillCard .bbpc-info-content{
+ top:calc(100% + 8px)!important;left:auto!important;right:0!important;
+ width:min(360px,calc(100vw - 48px))!important;max-width:none!important;max-height:min(60dvh,var(--bbpc-popover-height,480px));z-index:80;
+}
+html body .shell #app.bbnext-plan[data-bb-compact-header="true"] #bbpolAutofillCard :is(#bbSimpleBudget,#bbSimpleMealPreferences){position:relative!important}
+html body .shell #app.bbnext-plan[data-bb-compact-header="true"] #bbpolAutofillCard #bbSimpleBudget>.bbs-budget-body,
+html body .shell #app.bbnext-plan[data-bb-compact-header="true"] #bbpolAutofillCard #bbSimpleMealPreferences>.bb-meal-preference-body{
+ top:calc(100% + 8px)!important;left:0!important;right:auto!important;width:min(360px,calc(100vw - 48px))!important;max-width:none!important;z-index:80!important;
+}
+html body .shell #app.bbnext-plan[data-bb-compact-header="true"] #bbpolAutofillCard #bbSimpleMealPreferences>.bb-meal-preference-body{left:50%!important;transform:translateX(-50%)}
+html body .shell #app.bbnext-plan[data-bb-compact-header="true"] #bb1759MealsSummary{grid-row:6;margin:0!important;padding:12px!important;border-radius:16px!important}
+html body .shell #app.bbnext-plan[data-bb-compact-header="true"] .bbs-planner-tabs{gap:7px!important;margin-bottom:6px!important}
+html body .shell #app.bbnext-plan[data-bb-compact-header="true"] .bbs-planner-tablist{gap:3px;padding:3px;border-radius:13px;background:#eaf0e1;border-color:#d8e2cf}
+html body .shell #app.bbnext-plan[data-bb-compact-header="true"] .bbs-planner-tablist>[role="tab"]{min-height:44px;padding:7px 5px;border-radius:10px;font-size:12px;white-space:normal;line-height:1.2}
+html body .shell #app.bbnext-plan[data-bb-compact-header="true"] .bbs-planner-tab-count{font-size:12px}
+html body .shell #app.bbnext-plan[data-bb-compact-header="true"] .bbs-planner-tablist>[role="tab"][aria-selected="true"]{background:#fffef9;color:#214d35;box-shadow:0 1px 4px #193c2412}
+html body .shell #app.bbnext-plan[data-bb-compact-header="true"] .bbs-planner-tabs>#clearWeek{min-height:44px!important;padding:6px!important;font-size:11px!important;line-height:1.2;white-space:normal!important}
+html body .shell #app.bbnext-plan[data-bb-compact-header="true"] .bb1759-summary-heading{margin-bottom:6px!important}
+html body .shell #app.bbnext-plan[data-bb-compact-header="true"] .bb-plan-compact-tips{grid-column:1/-1;margin:0;min-width:0}
+html body .shell #app.bbnext-plan[data-bb-compact-header="true"] .bb-plan-compact-tips>summary{display:flex;align-items:center;min-height:44px;padding:5px 1px;font-size:12px;line-height:1.4;color:#61705b;cursor:pointer;list-style:none}
+html body .shell #app.bbnext-plan[data-bb-compact-header="true"] .bb-plan-compact-tips>summary::after{content:'⌄';margin-left:auto;padding:0 5px;font-size:16px}
+html body .shell #app.bbnext-plan[data-bb-compact-header="true"] .bb-plan-compact-tips>summary::-webkit-details-marker{display:none}
+html body .shell #app.bbnext-plan[data-bb-compact-header="true"] .bb-plan-compact-tips[open]>summary::after{transform:rotate(180deg)}
+html body .shell #app.bbnext-plan[data-bb-compact-header="true"] .bb-plan-compact-tips>p{margin:0 0 10px!important;font-size:11px!important;line-height:1.5!important}
+@media(max-width:350px){
+ html body .shell #app.bbnext-plan[data-bb-compact-header="true"] .bbpc-budget-overview{grid-template-columns:44px minmax(0,1fr)!important;gap:7px!important}
+ html body .shell #app.bbnext-plan[data-bb-compact-header="true"] .bbnext-plan-budget[data-bb-budget-polish="premium"] .bbpc-budget-overview .bb-myweek-emblem,
+ html body .shell #app.bbnext-plan[data-bb-compact-header="true"] .bbnext-plan-budget[data-bb-budget-polish="premium"] .bbpc-budget-overview .bb-myweek-emblem>.bbnext-plan-donut{width:44px!important;height:44px!important;max-width:44px!important}
+ html body .shell #app.bbnext-plan[data-bb-compact-header="true"] .bbnext-plan-budget[data-bb-budget-polish="premium"] .bbpc-budget-overview .bb-myweek-emblem .bbnext-plan-donut-core{width:36px!important;height:36px!important}
+ html body .shell #app.bbnext-plan[data-bb-compact-header="true"] .bbnext-plan-budget[data-bb-budget-polish="premium"] .bbpc-budget-overview .bb-myweek-emblem .bbnext-plan-donut-core strong{font-size:9px!important}
+ html body .shell #app.bbnext-plan[data-bb-compact-header="true"] .bbpc-budget-overview .bbnext-plan-budget-text h2{font-size:19px!important}
+ html body .shell #app.bbnext-plan[data-bb-compact-header="true"] .bbpc-budget-overview .bbnext-plan-budget-text>p{font-size:11px!important}
+ html body .shell #app.bbnext-plan[data-bb-compact-header="true"] .bbs-planner-tabs{flex-wrap:wrap}
+ html body .shell #app.bbnext-plan[data-bb-compact-header="true"] .bbs-planner-tablist{flex-basis:100%}
+}

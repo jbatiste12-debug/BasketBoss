@@ -120,6 +120,13 @@
   function start(){
     if(started||!document.getElementById('bbColdVisitor'))return;started=true;
     once('first_app_open'); // First instrumented app open on this installation.
+    // Deferred onboarding runs first with readyState="interactive", before
+    // this optional API exists. Replay only an actually rendered welcome;
+    // returning accounts without it must never acquire an onboarding view.
+    try{
+      const welcome=document.getElementById('bbNewOnboarding');
+      if(welcome&&!welcome.hidden&&welcome.getClientRects?.().length>0&&window.getComputedStyle?.(welcome)?.visibility!=='hidden')once('onboarding_viewed');
+    }catch(_){/* Optional display metrics cannot interrupt application startup. */}
     if(!signedIn())track('landing');
     document.addEventListener('click',clicked,true);
     window.addEventListener('basketboss:session-changed',onSession);

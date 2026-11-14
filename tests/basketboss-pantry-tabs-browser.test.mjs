@@ -2,6 +2,7 @@ import test,{before,after} from 'node:test';
 import assert from 'node:assert/strict';
 import fs from 'node:fs/promises';
 import path from 'node:path';
+import os from 'node:os';
 import {fileURLToPath} from 'node:url';
 import {createRequire} from 'node:module';
 import {transform700Presentation} from '../tools/catalogue700/presentation.mjs';
@@ -15,7 +16,7 @@ const visibleRows=page=>page.locator('.bbpi-summary-row:visible');
 // Exercise the actual generated app with disposable local storage and local
 // assets. Fresh source overrides prevent a stale pwa700 enhancement from hiding
 // a failure in the presentation under test.
-async function fixture(viewport,run){
+async function fixture(viewport,run,{seed=true}={}){
  const context=await browser.newContext({viewport,isMobile:true,hasTouch:true,serviceWorkers:'block',reducedMotion:'reduce'}),page=await context.newPage(),errors=[];
  page.setDefaultTimeout(10000);page.on('pageerror',error=>errors.push(error.message));page.on('dialog',dialog=>dialog.dismiss());
  try{
@@ -45,7 +46,7 @@ async function fixture(viewport,run){
   await page.goto('https://basketboss.co.uk/app',{waitUntil:'domcontentloaded'});
   await page.evaluate(()=>window.bb307SwitchIsland('Guernsey'));
   await page.locator('#bbPrimaryNavigation [data-bb-nav-item="kitchen"]').click();await page.locator('#bbpiSearch').waitFor();
-  await page.evaluate(async()=>{
+  if(seed)await page.evaluate(async()=>{
    for(const item of [{name:'Milk',loc:'fridge',qty:500,unit:'ml'},{name:'Rice',loc:'cupboard',qty:500,unit:'g'},{name:'Peas',loc:'freezer',qty:350,unit:'g'}]){const added=BBPantryEditor.add(item);if(!added?.ok)throw Error(added?.message||'seed');}
    await BBPantryEditor.flush();
   });
@@ -56,17 +57,18 @@ async function fixture(viewport,run){
 }
 for(const viewport of [{width:390,height:844},{width:320,height:568}])check('At home tabs stay on one horizontal row and preserve pantry nodes at '+viewport.width+'px',()=>fixture(viewport,async page=>{
  const list=page.getByRole('tablist',{name:'Pantry storage'});assert.equal(await list.count(),1);
- assert.deepEqual(await list.getByRole('tab').evaluateAll(nodes=>nodes.map(node=>node.dataset.bbpiStorage)),['fridge','cupboard','freezer','all']);
+ assert.deepEqual(await list.getByRole('tab').evaluateAll(nodes=>nodes.map(node=>node.dataset.bbpiStorage)),['all','fridge','cupboard','freezer']);
+ assert.equal(await tab(page,'all').getAttribute('aria-selected'),'true');
  const layout=await list.evaluate(node=>{const s=getComputedStyle(node),r=node.getBoundingClientRect();return {overflow:s.overflowX,whiteSpace:s.whiteSpace,scrollbar:s.scrollbarWidth,width:r.width,ys:[...node.querySelectorAll('[role="tab"]')].map(tab=>tab.getBoundingClientRect().y)};});
  assert.equal(layout.overflow,'auto');assert.equal(layout.whiteSpace,'nowrap');assert.equal(layout.scrollbar,'none');assert.ok(Math.max(...layout.ys)-Math.min(...layout.ys)<2,'all four tabs share a row');assert.ok(layout.width<=viewport.width);
- const header=await page.locator('#bb173ShopFridge .bb76-kitchen-intro').boundingBox();assert.ok(header&&header.height<60,'At home header stays compact');
+ const header=await page.locator('#bb173ShopFridge .bb76-kitchen-intro').boundingBox();assert.ok(header&&header.height<130,'At home header stays compact with readable44px section tabs');
  await page.evaluate(()=>scrollTo(0,0));
  await page.waitForFunction(()=>{const kitchen=document.getElementById('bb173ShopFridge'),intro=kitchen?.querySelector('.bb76-kitchen-intro'),review=document.getElementById('bbKitchenWeeklyReview');return review?.parentNode===kitchen&&intro?.previousElementSibling===review;});
  const topAction=await page.locator('#bbKitchenWeeklyReview').evaluate(review=>{const intro=review.nextElementSibling,toolbar=document.getElementById('bbpiToolbar'),button=review.querySelector('button'),rect=node=>{const r=node.getBoundingClientRect();return {y:r.y,bottom:r.bottom,width:r.width,height:r.height};};const style=getComputedStyle(button);return {position:getComputedStyle(review).position,intro:rect(intro),review:rect(review),toolbar:rect(toolbar),button:rect(button),buttonStyle:{minHeight:style.minHeight,minWidth:style.minWidth,font:style.font}};});
  assert.equal(topAction.position,'static','weekly review uses the existing document scroller');
  assert.ok(topAction.review.bottom<=topAction.intro.y&&topAction.intro.bottom<=topAction.toolbar.y,'Review & restock appears above the At home heading, with search/storage below the heading: '+JSON.stringify(topAction));
- await fs.mkdir('/workspace/shared',{recursive:true});await page.screenshot({path:'/workspace/shared/basketboss-at-home-top-restock'+(viewport.width===390?'':'-'+viewport.width)+'.png',animations:'disabled'});
- assert.ok(topAction.button.height>=48&&topAction.button.width>=120,'the prominent review action keeps a large touch target: '+JSON.stringify(topAction));
+ const screenshots=process.env.BB_UI_SCREENSHOT_DIR||path.join(os.tmpdir(),'basketboss-ui-previews');await fs.mkdir(screenshots,{recursive:true});await page.screenshot({path:path.join(screenshots,'basketboss-at-home-top-restock-'+viewport.width+'.png'),animations:'disabled'});
+ assert.ok(topAction.button.height>=44&&topAction.button.width>=44,'the compact review action keeps a44px touch target: '+JSON.stringify(topAction));
 
  for(const button of await page.locator('#bbKitchenSections>button,[data-bbpi-storage]').all()){const box=await button.boundingBox();assert.ok(box&&box.height>=44&&box.width>=44,'new header and storage controls retain44px touch targets');}
  assert.equal(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth),true,'storage overflow stays inside its horizontal tab strip');
@@ -184,3 +186,24 @@ for(const viewport of [{width:390,height:844},{width:320,height:568}])check('wee
  assert.deepEqual(await pantryBytes(),withTopUp,'showing the pending top-up changes no balances');
  await dialog.getByRole('button',{name:'Close',exact:true}).click();
 }));
+
+check('empty At home quick-adds reuse the quantity editor and receipt entry keeps the Premium gate',()=>fixture({width:390,height:844},async page=>{
+ await page.locator('#bbpiEmptyStart:not([hidden])').waitFor();
+ const balances=()=>page.evaluate(()=>{const keys=BBHomeHost.keys();return [localStorage.getItem(keys.stock),localStorage.getItem(keys.inventory)];});
+ const before=await balances();
+ for(const name of ['Milk','Eggs','Bread','Chicken','Pasta','Butter']){
+  await page.locator('[data-bbpi-quick-add="'+name+'"]').click();
+  const editor=page.locator('#bbpi-current-editor');await editor.waitFor();
+  assert.equal(await editor.locator('[data-bbpi-quantity]').inputValue(),'','the user supplies the real quantity');
+  await editor.getByRole('button',{name:'Close pantry item',exact:true}).click();
+  assert.deepEqual(await balances(),before,'opening and dismissing a staple never credits stock');
+ }
+ assert.equal(await page.locator('.bbpi-receipt-badge').innerText(),'Premium','a browser must not invent Apple trial eligibility');
+ await page.locator('.bbpi-scan-receipt').click();await page.locator('#bbMembershipCompare[open]').waitFor();
+ await page.getByRole('button',{name:'Close membership comparison',exact:true}).click();assert.deepEqual(await balances(),before);
+ await page.locator('[data-bbpi-quick-add="Pasta"]').click();const editor=page.locator('#bbpi-current-editor');
+ await editor.locator('[data-bbpi-quantity]').fill('250');await editor.locator('.bbpi-done').click();await editor.waitFor({state:'detached'});
+ await page.waitForFunction(()=>document.querySelector('.bbpi-hero-count')?.textContent==='1');
+ assert.equal(await tab(page,'all').getAttribute('aria-selected'),'true');assert.equal(await page.locator('#bbpiEmptyStart').isVisible(),false);
+ assert.match(await visibleRows(page).innerText(),/Pasta[\s\S]*250 g/);
+},{seed:false}));

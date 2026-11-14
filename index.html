@@ -3854,7 +3854,7 @@ body[data-bbnext-view="discover"] #app .bb-featured-card #bbFeaturedBatch {
 <script defer src="bb-weekly-essentials.js?v=20261105-shop-confirm1"></script>
 <script defer src="bb-receipt-inventory.js?v=20261108-planner1"></script>
 <script defer src="bb-receipt-scanner.js?v=20261105-preflight1"></script>
-<script defer src="bb-receipt-host.js?v=20261114-account2"></script>
+<script defer src="bb-receipt-host.js?v=20261114-layout1"></script>
 <link rel="stylesheet" href="bb-receipt-scanner.css?v=20261031-receipt-pantry">
 <link rel="stylesheet" href="bb-receipt-host.css?v=20261101-receipt-tab1">
 <script>
@@ -6570,11 +6570,12 @@ function bbManualBatchPlan(id,sourceDay,allowReplace=false){
  if(conflicts.length&&!allowReplace)return {ok:false,conflicts,reason:'These days already have dinners; explicit replacement confirmation is required.'};
  const oldPlan=state.planned,oldBatch=state.bbManualBatch;
  const existing=bbManualPairs().map(x=>({...x}));
- const nextPlan=current.filter(p=>p.day!==sourceDay&&p.day!==next).concat({day:sourceDay,recipeId:id});
+ const sourceSlot=current.find(p=>p.day===sourceDay&&p.recipeId===id);
+ const nextPlan=current.filter(p=>p.day!==sourceDay&&p.day!==next).concat(sourceSlot?{...sourceSlot}:{day:sourceDay,recipeId:id});
  state.planned=nextPlan;state.bbManualBatch={version:1,pairs:[...existing,{sourceDay,leftoverDay:next,recipeId:id}]};
  if(!persist()){state.planned=oldPlan;state.bbManualBatch=oldBatch;return {ok:false,reason:'Could not save; the previous weekly plan was restored.'};}
  bb80OpenPlanDays.add(sourceDay);bb80OpenPlanDays.add(next);bb80RememberPlanDays();
- render();notify('🍲 '+recipe.name+' now covers '+sourceDay+' and '+next+'. Shopping includes 2× ingredients once.');
+ tab='week';render({navigation:true});notify('🍲 '+recipe.name+' now covers '+sourceDay+' and '+next+'. Shopping includes 2× ingredients once.');
  return {ok:true};
 }
 function bbManualBatchDialog(id,preferredDay){
@@ -6620,12 +6621,12 @@ function bbManualPlanDecorate(app){
  for(const p of pairs){
   const cook=app.querySelector('.bbnext-day[data-bbnext-day="'+p.sourceDay+'"]');
   const leftover=app.querySelector('.bbnext-day[data-bbnext-day="'+p.leftoverDay+'"]');
-  if(cook){const label=cook.querySelector('.bbnext-day-description small');if(label)label.textContent='🍲 Cook double · Covers '+p.leftoverDay+' too';}
+  if(cook){const desc=cook.querySelector('.bbnext-day-description');if(desc){const label=document.createElement('small');label.className='bb81-batch-source-label';label.textContent='🍲 Cook double · Batch portion for '+p.leftoverDay;desc.append(label);}}
   if(leftover){
-   leftover.classList.add('bb81-leftover-night');
-   const strong=leftover.querySelector('.bbnext-day-description strong');if(strong)strong.textContent='♻ Leftovers (from '+p.sourceDay+')';
-   const sub=leftover.querySelector('.bbnext-day-description small');if(sub)sub.textContent='Leftovers from '+p.sourceDay+' · '+getRecipe(p.recipeId)?.name;
-   const content=leftover.querySelector('.bbnext-day-content');if(content){const text=document.createElement('p');text.className='bb81-leftover-explain';text.textContent='Reserved from '+p.sourceDay+'’s double batch. Cool promptly and refrigerate safely or freeze as appropriate.';const remove=document.createElement('button');remove.type='button';remove.className='small-btn';remove.textContent='Remove batch link';remove.onclick=()=>{const old=state.bbManualBatch;const newPairs=pairs.filter(x=>x!==p);state.bbManualBatch=newPairs.length?{version:1,pairs:newPairs}:null;if(!persist()){state.bbManualBatch=old;notify('Could not remove link.');return;}render();};const extras=[...content.querySelectorAll('.bb-plan-optional-meals,.bb-plan-extra-additions')];content.replaceChildren(text,remove,...extras);}
+   leftover.classList.add('bb81-leftover-night','has-meal');
+   const strong=leftover.querySelector('.bbnext-day-description strong');if(strong)strong.textContent='♻ Batch cook · '+getRecipe(p.recipeId)?.name;
+   const sub=leftover.querySelector('.bbnext-day-description small');if(sub)sub.textContent='Batch-cooked on '+p.sourceDay+' · No extra cooking';
+   const content=leftover.querySelector('.bbnext-day-content');if(content){const text=document.createElement('p');text.className='bb81-leftover-explain';text.textContent='Reserved from '+p.sourceDay+'’s double batch. Cool promptly and refrigerate safely or freeze as appropriate.';const view=document.createElement('button');view.type='button';view.className='small-btn';view.textContent='View '+p.sourceDay+' meal';view.onclick=()=>{bb80OpenPlanDays.add(p.sourceDay);bb80RememberPlanDays();render();document.querySelector('.bbnext-day[data-bbnext-day="'+p.sourceDay+'"]')?.scrollIntoView({behavior:'smooth',block:'center'});};const remove=document.createElement('button');remove.type='button';remove.className='small-btn';remove.textContent='Remove batch link';remove.onclick=()=>{const old=state.bbManualBatch;const newPairs=pairs.filter(x=>x!==p);state.bbManualBatch=newPairs.length?{version:1,pairs:newPairs}:null;if(!persist()){state.bbManualBatch=old;notify('Could not remove link.');return;}render();};const extras=[...content.querySelectorAll('.bb-plan-optional-meals,.bb-plan-extra-additions')];content.replaceChildren(text,view,remove,...extras);}
   }
  }
  for(const day of DAYS){
@@ -6912,7 +6913,7 @@ function bb81PlanBatchDecorate(app){
  const count=panel?.querySelector('.bb1759-count');if(count)count.textContent=(state.planned.length+2)+'/7 nights planned';
  for(const day of ['Monday','Wednesday']){
   const root=app.querySelector('.bbnext-day[data-bbnext-day="'+day+'"]');if(!root)continue;
-  const desc=root.querySelector('.bbnext-day-description small');if(desc)desc.textContent='🍲 Cook double · Covers '+(day==='Monday'?'Tuesday':'Thursday')+' too';
+  const desc=root.querySelector('.bbnext-day-description'),pair=bbBatchPairs().find(value=>value.sourceDay===day);if(desc&&pair){const label=document.createElement('small');label.className='bb81-batch-source-label';label.textContent='🍲 Cook double · Batch portion for '+pair.leftoverDay;desc.append(label);}
   const note=document.createElement('div');note.className='bb81-batch-cook-note';
   note.textContent='Cook for 2× your usual servings. Shopping includes double ingredients for this recipe, but charges for purchased packs only once. Cool promptly, refrigerate and reheat leftovers thoroughly; eat within 48 hours or freeze promptly.';
   const content=root.querySelector('.bbnext-day-content');if(content)content.prepend(note);
@@ -6920,9 +6921,9 @@ function bb81PlanBatchDecorate(app){
  for(const day of ['Tuesday','Thursday']){
   const link=bb81BatchDisplayFor(day);if(!link)continue;
   const root=app.querySelector('.bbnext-day[data-bbnext-day="'+day+'"]');if(!root)continue;
-  root.classList.add('bb81-leftover-night');
-  const title=root.querySelector('.bbnext-day-description strong');if(title)title.textContent='♻ Leftover Night: '+(bb176AllowedRecipe(link.recipe.id)?link.recipe.name:'Premium dinner saved');
-  const subtitle=root.querySelector('.bbnext-day-description small');if(subtitle)subtitle.textContent='0 min new prep · Leftovers from '+link.sourceDay;
+  root.classList.add('bb81-leftover-night','has-meal');
+  const title=root.querySelector('.bbnext-day-description strong');if(title)title.textContent='♻ Batch cook · '+(bb176AllowedRecipe(link.recipe.id)?link.recipe.name:'Premium dinner saved');
+  const subtitle=root.querySelector('.bbnext-day-description small');if(subtitle)subtitle.textContent='Batch-cooked on '+link.sourceDay+' · No extra cooking';
   const content=root.querySelector('.bbnext-day-content');if(!content)continue;
   const optional=[...content.querySelectorAll('.bb-plan-optional-meals,.bb-plan-extra-additions')];
   content.replaceChildren();
@@ -7259,7 +7260,7 @@ function bbNextComposePlan(app){
      nightServing.append(nightLabel,bbFeedingDayStepper(day,recipe,'expanded'),nightPeople);
      content.append(nightServing);
      if(Array.isArray(recipe.ingredients)&&recipe.ingredients.length){
-       const ingredients=document.createElement('div');ingredients.className='bbnext-meal-ingredients';
+       const ingredients=document.createElement('div');ingredients.className='bbnext-meal-ingredients';ingredients.dataset.bbIngredientCount=String(recipe.ingredients.length);
        const title=document.createElement('strong');title.textContent='Ingredients in this recipe';
        const factor=BBServing.ratio(bbFeedingForRecipe(recipe,day),recipe);
        const values=document.createElement('p');values.setAttribute('data-bb-measures','');values.textContent=recipe.ingredients.slice(0,6).map(item=>Array.isArray(item)?item[0]+' ('+(bbRecipeVisibleQuantity(bbRecipeDisplayIngredientQuantity(recipe,item,factor),item[0],bb307Market)||bbRecipeDisplayIngredientQuantity(recipe,item,factor))+')':String(item)).join(' · ')+(recipe.ingredients.length>6?' · + more':'');
@@ -13215,7 +13216,7 @@ if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',
   <button type="button" class="bbtrial-free" data-bbtrial-free>Continue with BasketBoss Free →</button>
   <p class="bbtrial-foot">100 starter recipes, manual ingredients and basic planning remain available without subscribing.</p>
  </div>
-</dialog><script src="bb-intro-trial.js?v=bb-account-first-20261027-v1"></script><link rel="stylesheet" href="bb-how-it-works.css?v=20261104-kitchen1"><script defer src="bb-how-it-works.js?v=20261108-planner1"></script><script defer src="bb-onboarding-v2.js?v=20261114-account2"></script><script defer src="bb-cold-preview.js?v=20261028-conversion-1"></script><script defer src="bb-funnel.js?v=20261114-onboarding1"></script><script defer src="bb-ux-cleanup.js?v=20261028-ux1"></script><script src="bb-us-market.js?v=20261102-loop2"></script><script defer src="bb-install.js?v=173install1"></script><script defer src="bb-welcome-splash.js?v=20261101-signin2"></script><script defer src="bb-premium-features.js?v=20261105-preflight1"></script>
+</dialog><script src="bb-intro-trial.js?v=bb-account-first-20261027-v1"></script><link rel="stylesheet" href="bb-how-it-works.css?v=20261104-kitchen1"><script defer src="bb-how-it-works.js?v=20261108-planner1"></script><script defer src="bb-onboarding-v2.js?v=20261114-account2"></script><script defer src="bb-cold-preview.js?v=20261028-conversion-1"></script><script defer src="bb-funnel.js?v=20261114-account2"></script><script defer src="bb-ux-cleanup.js?v=20261028-ux1"></script><script src="bb-us-market.js?v=20261102-loop2"></script><script defer src="bb-install.js?v=173install1"></script><script defer src="bb-welcome-splash.js?v=20261101-signin2"></script><script defer src="bb-premium-features.js?v=20261105-preflight1"></script>
 <style id="bb175-ux-fix">
 /* BasketBoss v17.4.2 premium-preview usability improvements */
 #app .swipe-action.yes{color:#c91e43!important;background:#fff2f4!important;border:3px solid #d92c50!important;box-shadow:0 5px 18px rgba(192,22,60,.22)!important;font-size:37px!important;font-weight:900!important}
@@ -14053,10 +14054,10 @@ body[data-bbnext-view="discover"] #app .bb175-discover-heading{padding-top:calc(
 <script defer src="bb-pantry-groups.js?v=20261104-groups1"></script>
 <script defer src="bb-pantry-groups-ui.js?v=20261104-groups1"></script>
 <script defer src="bb-household-amount.js?v=20261104-groups1"></script>
-<script defer src="bb-kitchen-essentials.js?v=20261107-pantry-stock2"></script>
+<script defer src="bb-kitchen-essentials.js?v=20261114-layout1"></script>
 <script defer src="bb-kitchen-prices.js?v=20261105-shop-confirm1"></script>
 <link rel="stylesheet" href="bb-pantry-inline.css?v=20261107-pantry-stock2">
-<script defer src="bb-pantry-inline.js?v=20261107-pantry-stock2"></script>
+<script defer src="bb-pantry-inline.js?v=20261114-layout1"></script>
 <link rel="stylesheet" href="bb-keyboard-layout.css?v=20261105-preflight2">
 <script defer src="bb-keyboard-layout.js?v=20261105-preflight1"></script>
 <link rel="stylesheet" href="bb-simple-layout.css?v=20261104-plan-budget1">
@@ -14074,7 +14075,7 @@ body[data-bbnext-view="discover"] #app .bb175-discover-heading{padding-top:calc(
 <link rel="stylesheet" href="bb-tab-viewport.css?v=20261105-preflight1">
 <script defer src="bb-tab-viewport.js?v=20261105-nav1"></script>
 
-<link rel="stylesheet" href="bb-auth-flow.css?v=20261114-onboarding1">
+<link rel="stylesheet" href="bb-auth-flow.css?v=20261114-account2">
 <script defer src="bb-auth-sdk.js?v=20261104-auth1"></script>
 <script defer src="bb-auth-flow.js?v=20261114-account2"></script>
 
@@ -14090,4 +14091,11 @@ body[data-bbnext-view="discover"] #app .bb175-discover-heading{padding-top:calc(
 <!-- Shared app finish: loaded after the legacy component styles. -->
 <link rel="stylesheet" href="bb-premium-finish.css?v=20261110-forest1">
 <link rel="stylesheet" href="bb-premium-dialogs.css?v=20261110-forest1">
+
+<link rel="stylesheet" href="bb-plan-compact.css?v=20261114-layout1">
+<script defer src="bb-plan-compact.js?v=20261114-layout1"></script>
+
+<link rel="stylesheet" href="bb-day-plan-sheet.css?v=20261114-layout1">
+<script defer src="bb-day-plan-sheet.js?v=20261114-layout1"></script>
+<link rel="stylesheet" href="bb-at-home-compact.css?v=20261114-layout1">
 </body></html>

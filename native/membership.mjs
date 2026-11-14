@@ -18,7 +18,14 @@ export function applePlanPresentation(state,plan){
 // and access is always confirmed by the server.
 export function installNativeMembership({apiURL,readSession,fetch:perform=globalThis.fetch,document:doc=globalThis.document,window:win=globalThis.window,purchases=null}){
  const url=path=>typeof apiURL==='function'?apiURL(path):apiURL+path;
- let observer,card,status,login,revision=0,unsubscribe,headerUnsubscribe,viewState='checking';
+ let observer,card,status,login,revision=0,unsubscribe,headerUnsubscribe,trialUnsubscribe,viewState='checking';
+ // Read-only presentation gate. StoreKit remains the source of offer eligibility.
+ const trialOffer=Object.freeze({isEligible(){const state=purchases?.state;return state?.available===true&&state.premiumAccess===false&&(state.products||[]).some(eligibleSevenDayAppleTrial);}});
+ if(purchases){
+  win.BasketBossNativeTrialOffer=trialOffer;
+  let lastEligibility;
+  trialUnsubscribe=purchases.subscribeState(()=>{const eligible=trialOffer.isEligible();if(eligible===lastEligibility)return;lastEligibility=eligible;if(win.Event)win.dispatchEvent?.(new win.Event('basketboss:trial-offer-changed'));});
+ }
  const hide=node=>{if(node&&!node.classList.contains('bb-native-hidden'))node.classList.add('bb-native-hidden');};
  const text=(node,value)=>{if(node&&node.textContent!==value)node.textContent=value;};
  const memberLabel=()=>win.BasketBossMembershipUI?.label?.()||({signed_out:'FREE · Upgrade to Premium',free:'FREE · Upgrade to Premium',premium:'PREMIUM',checking:'Checking membership…'}[purchases?.state?.membershipState||viewState]||'Check membership');
@@ -146,5 +153,5 @@ export function installNativeMembership({apiURL,readSession,fetch:perform=global
  tidy();observer=new MutationObserver(tidy);observer.observe(doc.body,{childList:true,subtree:true});
  win.addEventListener('basketboss:session-changed',refresh);win.addEventListener('focus',refresh);win.addEventListener('basketboss:apple-membership-updated',refresh);
  if(win.location.hash==='#account')doc.getElementById('cloud-open')?.click();
- return {refresh,destroy(){unsubscribe?.();headerUnsubscribe?.();observer.disconnect();win.removeEventListener('basketboss:session-changed',refresh);win.removeEventListener('focus',refresh);win.removeEventListener('basketboss:apple-membership-updated',refresh);}};
+ return {refresh,destroy(){unsubscribe?.();headerUnsubscribe?.();trialUnsubscribe?.();if(win.BasketBossNativeTrialOffer===trialOffer)delete win.BasketBossNativeTrialOffer;observer.disconnect();win.removeEventListener('basketboss:session-changed',refresh);win.removeEventListener('focus',refresh);win.removeEventListener('basketboss:apple-membership-updated',refresh);}};
 }
