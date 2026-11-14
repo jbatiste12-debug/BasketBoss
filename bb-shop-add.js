@@ -62,7 +62,12 @@
     const request={...state.intent};state.busy=true;dialog.setAttribute('aria-busy','true');inputs.forEach(node=>node.disabled=true);save.disabled=cancel.disabled=true;status.textContent=reducedValue!==null?'Recording reduced purchase…':'Adding item…';
     try{
      const result=await home.addShoppingBuy(request);if(!alive())return;state.checkContext();if(!current())return;
-     if(result?.ok===true){notice.textContent=result.message||'Item added to shopping.';close(state);try{onSaved(result);}catch{}return;}
+     if(result?.ok===true){
+      // Optional activation signal follows the core's confirmed save. A retry
+      // or a zero-amount removal never represents a newly created list.
+      if(result.already!==true&&Number.parseFloat(amount)>0)try{win.dispatchEvent?.(new win.CustomEvent('basketboss:first-shopping-list-created'));}catch{}
+      notice.textContent=result.message||'Item added to shopping.';close(state);try{onSaved(result);}catch{}return;
+     }
      status.textContent=result?.message||'The item could not be added. Check the name and quantity, then try again.';
     }catch{if(alive()&&current())status.textContent='Your shopping update needs checking. Try adding the same item again.';}
     finally{state.busy=false;if(alive()){dialog.removeAttribute('aria-busy');cancel.disabled=false;if(!state.invalid){inputs.forEach(node=>node.disabled=false);save.disabled=!name.value.trim()||!quantity.value.trim()||(reduced?.checked&&(!(Number(reducedPrice.value)>0)||Number(reducedPrice.value)>100000));}}}

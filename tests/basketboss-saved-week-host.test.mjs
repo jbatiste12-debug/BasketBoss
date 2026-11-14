@@ -11,7 +11,7 @@ const shopCode=block('function bbShopV7Read(key){','function bbShopV7Reconcile('
 const persistCode=block('function persist(){','function notify(');
 const lunchCode=block('const BB321Lunch=(()=>{','const BB321_LUNCH_KEY=');
 const storeLunchCode=block('function bb321StoreLunch(next){','function bb321LunchboxRequirements(');
-const recipeHistoryCode=block('function bbRecordPlannedRecipes(ids){','function bbAfExactProtein(');
+const recipeHistoryCode=block('function bbRecordPlannedRecipes(','function bbAfExactProtein(');
 const plain=value=>JSON.parse(JSON.stringify(value));
 const keys={KEY:'plan',BB_SNAPSHOT:'backup',BB321_LUNCH_KEY:'lunch',BB172_QUICK_DINNER_KEY:'notes',BB_SHOP_SESSION_V7_KEY:'shop',BB_SHOP_ARCHIVE_V7_KEY:'archive',BB321_SHOP_TICKS_KEY:'ticks',BB84_PURCHASED_KEY:'purchases',BB_BETA_CHOICE_KEY:'choices',BB_PARTIAL_PURCHASE_KEY:'partials',BB_BETA_RECEIPT_KEY:'receipts'};
 const ACTOR='person-one';

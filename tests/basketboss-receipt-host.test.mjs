@@ -55,6 +55,81 @@ function harness({stock = {}, actor = actorA, cached = null, document = false, s
   return {host, inventory, store, calls, notices, body, root, helpers: root.BBReceiptHostHelpers, options, setSession(value) {currentSession = value;}, setActor(id) {currentSession = id === 'guest' ? null : {access_token: 'synthetic-token-' + id, user: {id}};}, setContext(value) {currentContext = {...currentContext, ...value};}, setCached(value) {currentCache = value;}, setPending(value) {pending = value;}, getEssentials: () => essentials, setEssentials(value) {essentials = value;}, event(name) {events[name]?.();}};
 }
 
+// Execute the application's real early migration and real loadState fallback
+// after a simulated reload. Keep unrelated recipe math/rendering out of this
+// storage-isolation regression; no cloud requests or account records are used.
+function readStartupPlan(store){
+ const migration=appHtml.match(/<script id="basketboss-v17-safe-live-migration">([\s\S]*?)<\/script>/)?.[1];
+ assert.ok(migration,'the real early migration is covered');
+ const start=appHtml.indexOf('function loadState(){'),end=appHtml.indexOf('\nfunction normalize(',start);
+ assert.ok(start>=0&&end>start,'the real saved-plan loader is covered');
+ const context=vm.createContext({localStorage:store,console:{warn(){}},KEY:'basketboss_321_unified_state_v1',BB_SNAPSHOT:'basketboss_321_unified_recovery_v1',OLD_PLAN:'basketboss_321_unified_oldplan_v1',OLD_PANTRY:'basketboss_321_unified_oldpantry_v1',
+  DAYS:['Monday','Tuesday','Wednesday','Thursday','Friday','Saturday','Sunday'],RECIPES:[{id:'profile-a-dinner',ingredients:[['Rice']]}],normalize:value=>value,norm:value=>String(value).toLowerCase(),bbStorageSafe:true,bbRecovered:false});
+ vm.runInContext(migration,context);vm.runInContext(appHtml.slice(start,end),context);
+ return JSON.parse(JSON.stringify(vm.runInContext('loadState()',context)));
+}
+
+const priorPlan=()=>({version:2,planned:[{recipeId:'profile-a-dinner',day:'Monday'}],pantry:{rice:true},servings:4});
+const priorFallbacks=own=>({
+ [own.planRecovery]:JSON.stringify(priorPlan()),
+ [own.legacyState]:JSON.stringify(priorPlan()),
+ [own.legacyPlan]:JSON.stringify([{meal:{id:'profile-a-dinner'},assignedDay:'Monday'}]),
+ [own.legacyPantry]:JSON.stringify({Rice:true})
+});
+
+for(const field of ['planRecovery','legacyState','legacyPlan','legacyPantry'])test('account switch isolates '+field+' before the real startup fallback can resurrect another profile',()=>{
+ const h=harness({actor:actorA}),own=h.host.keys,raw=priorFallbacks(own)[own[field]];
+ h.store.setItem(own.plan,JSON.stringify(priorPlan()));h.store.setItem(own[field],raw);
+ h.setActor(actorB);assert.equal(h.host.switchActor(),true);
+ assert.equal(h.store.getItem(own.plan),null);assert.equal(h.store.getItem(own[field]),null);
+ const fresh=readStartupPlan(h.store);assert.deepEqual(fresh.planned,[]);assert.deepEqual(fresh.pantry,{});
+ const archive=JSON.parse(h.store.getItem('basketboss_receipt_host_snapshot_v1:'+actorA));assert.equal(archive.values[own[field]],raw,'the prior actor retains the exact fallback bytes');
+ h.setActor(actorA);assert.equal(h.host.switchActor(),true);assert.equal(h.store.getItem(own[field]),raw);
+ assert.deepEqual(readStartupPlan(h.store).planned,priorPlan().planned,'returning to the original actor restores their own week');
+});
+
+test('signing out isolates all plan fallback keys and preserves them in the signed-in actor archive',()=>{
+ const h=harness({actor:actorA}),own=h.host.keys,values=priorFallbacks(own);
+ h.store.setItem(own.plan,JSON.stringify(priorPlan()));for(const [key,value]of Object.entries(values))h.store.setItem(key,value);
+ h.setActor('guest');h.host.switchActor();
+ for(const key of Object.keys(values))assert.equal(h.store.getItem(key),null);
+ assert.deepEqual(readStartupPlan(h.store).planned,[]);
+ h.setActor(actorA);h.host.switchActor();for(const [key,value]of Object.entries(values))assert.equal(h.store.getItem(key),value);
+});
+
+test('older destination archives without fallback fields never inherit the active actor recovery plan',()=>{
+ const h=harness({actor:actorA}),own=h.host.keys;
+ h.store.setItem(own.planRecovery,JSON.stringify(priorPlan()));h.store.setItem(own.legacyState,JSON.stringify(priorPlan()));
+ h.store.setItem('basketboss_receipt_host_snapshot_v1:'+actorB,JSON.stringify({version:1,actorId:actorB,values:Object.fromEntries(Object.values(keys).map(key=>[key,null])),essentials:[]}));
+ h.setActor(actorB);h.host.switchActor();assert.deepEqual(readStartupPlan(h.store).planned,[]);
+ for(const key of Object.keys(priorFallbacks(own)))assert.equal(h.store.getItem(key),null);
+});
+
+test('the first unclaimed guest keeps its draft while recovery artifacts stay out of the kitchen cloud payload',()=>{
+ const h=harness({actor:'guest'}),own=h.host.keys,values=priorFallbacks(own);
+ h.store.setItem(own.plan,JSON.stringify(priorPlan()));for(const [key,value]of Object.entries(values))h.store.setItem(key,value);
+ h.setActor(actorA);h.host.switchActor();
+ for(const [key,value]of Object.entries(values))assert.equal(h.store.getItem(key),value,'guest draft adoption preserves existing fallback data');
+ const backup=h.host.exportBackup();for(const key of Object.keys(values))assert.equal(Object.hasOwn(backup.values,key),false,'fallback is local to the actor archive');
+ assert.deepEqual(readStartupPlan(h.store).planned,priorPlan().planned);
+});
+
+test('unreadable legacy recovery bytes are archived and restored without blocking an otherwise safe account switch',()=>{
+ const h=harness({actor:actorA}),own=h.host.keys,raw=' { invalid legacy bytes\n';
+ h.store.setItem(own.plan,JSON.stringify(priorPlan()));h.store.setItem(own.planRecovery,raw);
+ h.setActor(actorB);h.host.switchActor();assert.deepEqual(readStartupPlan(h.store).planned,[]);
+ assert.equal(Object.hasOwn(h.host.exportBackup().values,own.planRecovery),false);
+ h.setActor(actorA);h.host.switchActor();assert.equal(h.store.getItem(own.planRecovery),raw);
+});
+
+test('a failed recovery-key write rolls back the account archive and active values together',()=>{
+ const h=harness({actor:actorA}),own=h.host.keys;
+ h.store.setItem(own.planRecovery,JSON.stringify(priorPlan()));
+ h.store.setItem('basketboss_receipt_host_snapshot_v1:'+actorB,JSON.stringify({version:1,actorId:actorB,values:{...Object.fromEntries(Object.values(keys).map(key=>[key,null])),[own.planRecovery]:'{"version":2,"planned":[]}'},essentials:[]}));
+ const before=Object.fromEntries(h.store.values);h.store.failNext(own.planRecovery);h.setActor(actorB);
+ assert.throws(()=>h.host.switchActor(),/quota/);assert.deepEqual(Object.fromEntries(h.store.values),before);
+});
+
 test('weekly receipt subtotals separate food/non-food and exclude other markets, old or unknown dates', () => {
   const {helpers} = harness();
   const row = {receiptId: 'r1', market: 'UK', currency: 'GBP', purchasedAt: '2026-10-30', foodSubtotal: 5, essentialsSubtotal: 2, receiptTotal: 6.5};

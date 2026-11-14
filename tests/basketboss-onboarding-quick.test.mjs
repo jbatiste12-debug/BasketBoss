@@ -9,7 +9,7 @@ const KEY='bb_onboarding_fresh_once_20261028_v1';
 const PLAN='basketboss_321_unified_state_v1',SESSION='basketboss_cloud_session_v1';
 const prior={step:4,started:true,complete:false,house:'2 people',region:'UK',goals:['Plan dinners faster'],diets:['Vegetarian'],partnerStepV2:true,wantsPartnerInvite:true,partnerIntent:'invite'};
 
-function harness({saved,native=false,hook=true,premium=false,store,script=source,quick=true}={}){
+function harness({saved,native=false,hook=true,premium=false,store,script=source,quick=true,appleReady=false,appleAction}={}){
  const storage=store||new Map([[PLAN,'existing meals, pantry and budget']]);
  if(saved)storage.set(KEY,JSON.stringify(saved));
  const nodes=[],writes=[],preferences=[],navigation=[],events=new Map(),docEvents=new Map();
@@ -17,20 +17,24 @@ function harness({saved,native=false,hook=true,premium=false,store,script=source
  const on=(map,name,fn)=>{const list=map.get(name)||[];list.push(fn);map.set(name,list);};
  const status={textContent:'',replaceChildren(node){this.textContent=node.textContent;}};
  const rootClasses=new Set();
+ const appleCalls=[],appleModes=[],appleButton={disabled:false,attributes:new Map(),setAttribute(key,value){this.attributes.set(key,value);}},appleLabel={textContent:''},appleStatus={textContent:'',hidden:true};
+ const appleSection={hidden:true,querySelector:selector=>selector==='[data-bbob="quick-apple"]'?appleButton:selector==='[data-bbob-apple-label]'?appleLabel:selector==='[data-bbob-apple-status]'?appleStatus:null};
  const replayButton={id:'bbOnboardingReplay',textContent:'',setAttribute(){},focus(){},isConnected:true};
  replayButton.parentNode={appendChild(){}};
  const location={hostname:native?'localhost':'basketboss.co.uk',protocol:native?'capacitor:':'https:',search:'',hash:'',assign(target){navigation.push({target,saved:JSON.parse(storage.get(KEY)),closed:!active()});}};
  const document={readyState:'complete',activeElement:replayButton,body:{style:{overflow:''},appendChild(node){nodes.push(node);}},documentElement:{style:{setProperty(){},removeProperty(){}},classList:{contains:name=>rootClasses.has(name),add:name=>rootClasses.add(name),remove:name=>rootClasses.delete(name)}},
   querySelector(selector){return quick&&selector==='meta[name="basketboss-onboarding"]'?{content:'quick-v1'}:null;},querySelectorAll:()=>[],getElementById:id=>id===replayButton.id?replayButton:null,createTextNode:text=>({textContent:text}),
-  createElement(){const classes=new Set();return {innerHTML:'',events:new Map(),classList:{toggle(name,enabled){enabled?classes.add(name):classes.delete(name);},contains:name=>classes.has(name)},style:{setProperty(){}},contains:()=>false,setAttribute(){},addEventListener(name,fn){on(this.events,name,fn);},querySelector:selector=>selector==='#bbobSaveError'?status:null,remove(){this.removed=true;}};},addEventListener(name,fn){on(docEvents,name,fn);}};
+  createElement(){const classes=new Set();return {innerHTML:'',events:new Map(),classList:{toggle(name,enabled){enabled?classes.add(name):classes.delete(name);},contains:name=>classes.has(name)},style:{setProperty(){}},contains:()=>false,setAttribute(){},addEventListener(name,fn){on(this.events,name,fn);},querySelector:selector=>selector==='#bbobSaveError'?status:selector==='[data-bbob-apple]'?appleSection:null,remove(){this.removed=true;}};},addEventListener(name,fn){on(docEvents,name,fn);}};
  const active=()=>nodes.findLast(node=>!node.removed);
  const window={location,innerHeight:844,innerWidth:390,scrollTo(){},matchMedia:()=>({matches:false}),addEventListener(name,fn){on(events,name,fn);},BBNative:native?{isNative:true}:undefined,
+  BBAuthFlow:{appleAvailable:()=>appleReady,open:mode=>appleModes.push(mode),signInWithApple(options){appleCalls.push(JSON.parse(JSON.stringify(options)));return Promise.resolve(appleAction?.(options)??false);}},
   BasketBossVerifiedPremium:{isActive:()=>activePremium},BBHowItWorks:{setupFinished(){howMany++;}},BasketBossSetOnboardingServings(value){preferences.push({house:value});return true;},bb307SwitchIsland(value){preferences.push({region:value});return true;},BasketBossSetOnboardingMealPreferences(value){preferences.push({meals:JSON.parse(JSON.stringify(value))});return mealsSaved;}};
  if(native&&hook)window.BBNativeMembership={open(){navigation.push({target:'native-membership',saved:JSON.parse(storage.get(KEY)),closed:!active()});return true;}};
  const context={window,document,location,localStorage:{getItem:key=>storage.get(key)??null,setItem(key,value){if(storageBlocked||completionBlocked&&key===KEY&&JSON.parse(value).complete===true)throw Error('storage unavailable');writes.push([key,value]);storage.set(key,value);}},sessionStorage:{setItem(){}},navigator:{standalone:false},URLSearchParams,queueMicrotask,console};
  vm.runInNewContext(script,context,{timeout:1000});
  function tap(action,option,group){assert.ok(active(),'onboarding should be open');for(const fn of active().events.get('click')||[])fn({target:{closest(selector){if(selector==='[data-bbob-opt]'&&option!==undefined)return {dataset:{bbobOpt:String(option),bbobGroup:group}};if(selector==='[data-bbob]'&&action)return {dataset:{bbob:action}};return null;}}});}
  return {window,storage,writes,preferences,navigation,status,active,tap,read:()=>JSON.parse(storage.get(KEY)||'null'),setStorageBlocked:value=>{storageBlocked=value;},setCompletionBlocked:value=>{completionBlocked=value;},setMealsSaved:value=>{mealsSaved=value;},howMany:()=>howMany,
+  apple:{section:appleSection,button:appleButton,label:appleLabel,status:appleStatus,calls:appleCalls,modes:appleModes},setAppleReady(value){appleReady=value;for(const fn of events.get('basketboss:apple-auth-availability')||[])fn({detail:{available:value}});},
   region(value){for(const fn of active().events.get('change')||[])fn({target:{value,matches:()=>true}});},signIn(){storage.set(SESSION,JSON.stringify({user:{id:'existing-account'},access_token:'fresh-token',expires_at:9999999999}));},dispatch(name){for(const fn of events.get(name)||[])fn();},verifyPremium(value){activePremium=value;for(const fn of docEvents.get('basketboss:premium-verified')||[])fn();}};
 }
 
@@ -42,6 +46,48 @@ test('current catalogue build renders 200 Free recipes while the preserved legac
  assert.match(legacy.active().innerHTML,/100 free recipes/);
  assert.match(legacy.active().innerHTML,/Welcome · 1 of 11/);
  assert.equal(harness().read().step,1);
+});
+
+test('native welcome reveals ready Apple auth without opening or remounting email controls',()=>{
+ const h=harness({native:true}),host=h.active(),original=host.innerHTML,saved=h.storage.get(KEY),writes=h.writes.length;
+ assert.equal(h.apple.section.hidden,true);
+ h.setAppleReady(true);
+ assert.equal(h.apple.section.hidden,false);assert.equal(h.apple.button.disabled,false);
+ assert.equal(h.apple.label.textContent,'Continue with Apple');assert.equal(host.innerHTML,original,'availability updates preserve the original mounted form');
+ assert.match(host.innerHTML,/id="bbobQuickAccountPanel" class="bbob-quick-account-panel" hidden/);
+ assert.deepEqual(h.apple.modes,[]);assert.equal(h.storage.get(KEY),saved);assert.equal(h.writes.length,writes);
+ h.setAppleReady(false);assert.equal(h.apple.section.hidden,true);
+ h.tap('free-complete');assert.equal(h.read().complete,true);assert.equal(h.storage.has(SESSION),false);
+});
+
+test('direct welcome Apple auth locks rapid taps and leaves guest exploration available after cancellation',async()=>{
+ let settle;const reply=new Promise(resolve=>{settle=resolve;});
+ const h=harness({native:true,appleReady:true,appleAction:()=>reply}),host=h.active(),saved=h.storage.get(KEY),original=host.innerHTML;
+ h.tap('quick-apple');h.tap('quick-apple');
+ assert.deepEqual(h.apple.calls,[{intent:'sign-up'}]);assert.deepEqual(h.apple.modes,[]);
+ assert.equal(h.apple.button.disabled,true);assert.equal(h.apple.button.attributes.get('aria-busy'),'true');
+ assert.equal(h.apple.label.textContent,'Connecting to Apple…');assert.equal(host.innerHTML,original);
+ assert.equal(h.storage.get(KEY),saved);assert.deepEqual(h.preferences,[]);
+ settle(false);await Promise.resolve();await Promise.resolve();await Promise.resolve();
+ assert.equal(h.apple.button.disabled,false);assert.equal(h.apple.button.attributes.get('aria-busy'),'false');
+ assert.match(h.apple.status.textContent,/Try again, or explore Free/);assert.equal(h.apple.status.hidden,false);
+ assert.equal(h.storage.has(SESSION),false);h.tap('free-complete');assert.equal(h.read().complete,true);
+});
+
+test('welcome never invokes native Apple while its runtime or provider readiness is unavailable',()=>{
+ for(const options of [{native:false,appleReady:true},{native:true,appleReady:false}]){
+  const h=harness(options);assert.equal(h.apple.section.hidden,true);
+  h.tap('quick-apple');assert.deepEqual(h.apple.calls,[]);assert.deepEqual(h.apple.modes,[]);
+  assert.equal(h.read().complete,false);assert.equal(h.storage.has(SESSION),false);
+ }
+});
+
+test('verified direct Apple success uses the existing account welcome completion without email setup',async()=>{
+ let h;h=harness({native:true,appleReady:true,appleAction:()=>{h.signIn();h.dispatch('basketboss:session-changed');return true;}});
+ const plan=h.storage.get(PLAN);h.tap('quick-apple');await Promise.resolve();await Promise.resolve();
+ assert.equal(h.active(),undefined);assert.equal(h.read().complete,true);assert.ok(h.storage.get(SESSION));
+ assert.equal(h.storage.get(PLAN),plan);assert.deepEqual(h.preferences,[]);assert.deepEqual(h.apple.modes,[]);
+ assert.deepEqual(h.apple.calls,[{intent:'sign-up'}]);
 });
 
 test('account actions select signup or sign-in in place without replacing credentials or advancing setup',()=>{

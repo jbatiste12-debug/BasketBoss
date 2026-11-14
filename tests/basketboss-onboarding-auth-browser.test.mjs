@@ -11,6 +11,7 @@ const require = createRequire(import.meta.url), root = fileURLToPath(new URL('..
 const SESSION = 'basketboss_cloud_session_v1', ONBOARDING = 'bb_onboarding_fresh_once_20261028_v1';
 const SYNTHETIC_EMAIL = 'family@example.invalid', SYNTHETIC_PASSWORD = 'synthetic-password-for-local-tests';
 const USER_ID = '00000000-0000-4000-8000-000000000001';
+const PRIOR_USER_ID = '00000000-0000-4000-8000-000000000002';
 let chromium, browser, release, app;
 for (const name of [process.env.BB_PLAYWRIGHT_MODULE, 'playwright', '/opt/codex/runtimes/codex-primary-runtime/dependencies/node/node_modules/playwright'].filter(Boolean)) {
   try { ({ chromium } = require(name)); break; } catch {}
@@ -26,25 +27,25 @@ before(async () => {
 });
 after(async () => { await browser?.close(); });
 
-function user(confirmed = true, provider = 'email') {
-  return { id: USER_ID, aud: 'authenticated', role: 'authenticated', email: SYNTHETIC_EMAIL,
+function user(confirmed = true, provider = 'email', actorId = USER_ID) {
+  return { id: actorId, aud: 'authenticated', role: 'authenticated', email: actorId === USER_ID ? SYNTHETIC_EMAIL : 'prior-household@example.invalid',
     created_at: '2026-11-01T00:00:00Z', updated_at: new Date().toISOString(),
     email_confirmed_at: confirmed ? '2026-11-01T00:00:00Z' : null,
     confirmation_sent_at: '2026-11-01T00:00:00Z', app_metadata: { provider, providers: [provider] }, user_metadata: {},
-    identities: [{ id: USER_ID, user_id: USER_ID, provider, identity_data: { sub: USER_ID } }] };
+    identities: [{ id: actorId, user_id: actorId, provider, identity_data: { sub: actorId } }] };
 }
-function session(provider = 'email') {
+function session(provider = 'email', actorId = USER_ID) {
   const expires = Math.floor(Date.now() / 1000) + 3600;
   const encode = value => Buffer.from(JSON.stringify(value)).toString('base64url');
-  const token = encode({ alg: 'HS256', typ: 'JWT' }) + '.' + encode({ sub: USER_ID, exp: expires, aud: 'authenticated', role: 'authenticated' }) + '.synthetic-signature';
-  return { access_token: token, refresh_token: 'synthetic-refresh-only-for-local-routing', token_type: 'bearer', expires_in: 3600, expires_at: expires, user: user(true, provider) };
+  const token = encode({ alg: 'HS256', typ: 'JWT' }) + '.' + encode({ sub: actorId, exp: expires, aud: 'authenticated', role: 'authenticated' }) + '.synthetic-signature';
+  return { access_token: token, refresh_token: 'synthetic-refresh-only-for-local-routing', token_type: 'bearer', expires_in: 3600, expires_at: expires, user: user(true, provider, actorId) };
 }
 const deferred = () => { let resolve; const promise = new Promise(done => { resolve = done; }); return { promise, resolve }; };
 
-async function fixture({ returning = false, existingSession = false, native = false, appleProvider = false, deletionReady = true, signupOutcomes = ['pending'], holdSignup = false } = {}) {
+async function fixture({ returning = false, existingSession = false, native = false, appleProvider = false, deletionReady = true, signupOutcomes = ['pending'], holdSignup = false, verificationState = { used: false }, priorProfile = false, holdCloud = false, initialActor = USER_ID, rejectPasswordOnce = false } = {}) {
   const context = await browser.newContext({ viewport: { width: 390, height: 844 }, isMobile: true, hasTouch: true, reducedMotion: 'reduce', serviceWorkers: 'block' });
-  const page = await context.newPage(), errors = [], authRequests = [], events = [], checks = { deletion: false }, gate = deferred();
-  let signupCount = 0, connected = existingSession;
+  const page = await context.newPage(), errors = [], authRequests = [], events = [], cloudWrites = [], checks = { deletion: false, cloudPending: false }, gate = deferred(), cloudGate = deferred();
+  let signupCount = 0, passwordAttempts = 0, connected = existingSession;
   page.setDefaultTimeout(12000);
   page.on('pageerror', error => errors.push(error.message));
   page.on('dialog', dialog => dialog.dismiss());
@@ -74,11 +75,29 @@ async function fixture({ returning = false, existingSession = false, native = fa
       if (url.pathname === '/auth/v1/token') {
         const body = request.postDataJSON(), grant = url.searchParams.get('grant_type');
         authRequests.push({ kind: 'token', grant, correctEmail: body.email === SYNTHETIC_EMAIL, passwordPresent: typeof body.password === 'string', hasVerifier: typeof body.code_verifier === 'string' && body.code_verifier.length > 10, appleNonce: body.nonce === 'synthetic-native-nonce', appleProvider: body.provider === 'apple' });
+        if (grant === 'password' && rejectPasswordOnce && passwordAttempts++ === 0) return json({ code: 'invalid_credentials', msg: 'Invalid login credentials.' }, 400);
         connected = true;
         return json(session(grant === 'id_token' ? 'apple' : 'email'));
       }
+      if (url.pathname === '/auth/v1/verify') {
+        const body = request.postDataJSON();
+        authRequests.push({ kind: 'verify-otp', signupType: body.type === 'signup', tokenHashPresent: body.token_hash === 'synthetic-one-use-confirmation-hash', verifierAbsent: !body.code_verifier });
+        if (verificationState.used || body.token_hash !== 'synthetic-one-use-confirmation-hash') return json({ code: 'otp_expired', msg: 'This email link is invalid or has expired.' }, 403);
+        verificationState.used = true; connected = true;
+        return json(session());
+      }
       if (url.pathname === '/auth/v1/user') { authRequests.push({ kind: 'verified-user' }); return json(user(true, native ? 'apple' : 'email')); }
       if (url.pathname === '/auth/v1/logout') return json({});
+      if (url.pathname === '/rest/v1/basketboss_data') {
+        if (request.method() === 'GET') {
+          authRequests.push({ kind: 'cloud-read', ownActor: url.searchParams.get('user_id') === 'eq.' + USER_ID });
+          if (holdCloud) { checks.cloudPending = true; await cloudGate.promise; checks.cloudPending = false; }
+        } else if (request.method() === 'POST') {
+          const body = request.postDataJSON();
+          cloudWrites.push({ ownActor: body.user_id === USER_ID, plannedCount: body.data?.planned?.length ?? 0, containsPriorMeal: body.data?.planned?.some(row => row.recipeId === 'veggie-fried-rice') === true });
+        }
+        return json([]);
+      }
       return json([]);
     }
     if (!['basketboss.co.uk', 'www.basketboss.co.uk'].includes(url.hostname)) return route.fulfill({ status: 200, body: '' });
@@ -113,11 +132,19 @@ async function fixture({ returning = false, existingSession = false, native = fa
       return route.fulfill({ status: 200, contentType: types[path.extname(relative)] || 'application/octet-stream', body });
     } catch { return route.fulfill({ status: 404, body: '' }); }
   });
-  await context.addInitScript(({ returning, existingSession, native, savedSession, onboardingKey, sessionKey }) => {
+  await context.addInitScript(({ returning, existingSession, native, savedSession, onboardingKey, sessionKey, priorProfile, priorActor }) => {
     if (!localStorage.getItem('auth-onboarding-browser-fixture-v1')) {
       localStorage.setItem('basketboss_321_unified_state_v1', JSON.stringify({ version: 2, planned: returning ? [{ recipeId: 'veggie-fried-rice', day: 'Monday', servings: 3 }] : [], plannedBreakfasts: [], plannedDesserts: [], servings: 4, feedingSet: true, pantry: returning ? { Rice: true } : {}, mealPreferences: { version: 1, scope: 'guest', diets: [], goals: [] } }));
       localStorage.setItem('basketboss_321_v7_measured_pantry', JSON.stringify(returning ? { 'long-grain rice|g': 300 } : {}));
       localStorage.setItem('basketboss_321_v7_market', 'UK');
+      if (priorProfile) {
+        const oldPlan = localStorage.getItem('basketboss_321_unified_state_v1');
+        localStorage.setItem('basketboss_receipt_host_actor_v1', JSON.stringify({ version: 1, actorId: priorActor, localAccountSeen: true }));
+        localStorage.setItem('basketboss_321_unified_recovery_v1', oldPlan);
+        localStorage.setItem('basketboss_state_v2', oldPlan);
+        localStorage.setItem('basketboss_321_unified_oldplan_v1', JSON.stringify([{ meal: { id: 'veggie-fried-rice' }, assignedDay: 'Monday' }]));
+        localStorage.setItem('basketboss_321_unified_oldpantry_v1', JSON.stringify({ Rice: true }));
+      }
       localStorage.setItem('basketboss_how_it_works_v1', JSON.stringify({ version: 1, seen: true }));
       sessionStorage.setItem('basketboss_welcome_splash_seen_v1', '1');
       if (returning) localStorage.setItem(onboardingKey, JSON.stringify({ complete: true, started: false, step: 10 }));
@@ -129,10 +156,10 @@ async function fixture({ returning = false, existingSession = false, native = fa
       window.__nativeAppleCalls = 0;
       window.BBNativeAppleAuth = { available: async () => true, signIn: async () => { window.__nativeAppleCalls++; return { identityToken: 'synthetic-native-identity', nonce: 'synthetic-native-nonce' }; } };
     }
-  }, { returning, existingSession, native, savedSession: session(), onboardingKey: ONBOARDING, sessionKey: SESSION });
+  }, { returning, existingSession, native, savedSession: session('email', initialActor), onboardingKey: ONBOARDING, sessionKey: SESSION, priorProfile, priorActor: PRIOR_USER_ID });
   await page.goto('https://basketboss.co.uk/app', { waitUntil: 'domcontentloaded' });
   await page.waitForFunction(() => window.__authOnboardingQA?.ready());
-  return { page, context, errors, authRequests, events, checks, releaseSignup: gate.resolve };
+  return { page, context, errors, authRequests, events, cloudWrites, checks, releaseSignup: gate.resolve, releaseCloud: cloudGate.resolve };
 }
 const options = { skip: !chromium && 'Playwright unavailable', timeout: 60000 };
 const count = (events, name) => events.filter(event => event.name === name).length;
@@ -178,6 +205,8 @@ test('signup Return uses the real SDK PKCE request; confirmation becomes success
     await waitEvent(h.page, h.events, 'signup_confirmation_pending');
     assert.equal(count(h.events, 'signup_succeeded'), 0);
     assert.equal(await h.page.evaluate(key => localStorage.getItem(key) === null, SESSION), true);
+    await h.page.evaluate(() => document.getElementById('cloud-open').click());
+    assert.equal(await h.page.locator('#cloud-auth').getAttribute('data-bb-auth-view'), 'check-email', 'Account entry preserves a pending confirmation instead of resubmitting signup');
     await h.page.goto('https://basketboss.co.uk/app?code=synthetic-confirmation-code&bb_auth=signup', { waitUntil: 'domcontentloaded' });
     await h.page.waitForFunction(() => window.BasketBossSession?.state().remembered === true);
     await waitEvent(h.page, h.events, 'signup_succeeded');
@@ -254,29 +283,165 @@ test('returning user signs in with Return and signs out without exposing or losi
   } finally { await h.context.close(); }
 });
 
-test('Apple is native-only and requires provider plus deletion readiness before real SDK token exchange', options, async () => {
+test('Apple is available directly on the native welcome only after provider and deletion readiness checks', options, async () => {
   for (const settings of [{ native: false, appleProvider: true, deletionReady: true }, { native: true, appleProvider: true, deletionReady: false }, { native: true, appleProvider: true, deletionReady: true }]) {
     const h = await fixture(settings);
     try {
-      await openSignup(h.page);
       if (!settings.native || !settings.deletionReady) {
         if (settings.native) {
           await assertEventually(() => h.checks.deletion, 'native Apple deletion readiness must be checked');
           await h.page.evaluate(() => new Promise(requestAnimationFrame));
         }
+        assert.equal(await h.page.locator('[data-bbob="quick-apple"]').isVisible(), false);
+        await openSignup(h.page);
         assert.equal(await h.page.locator('#bbAuthApple').isVisible(), false);
         assert.equal(h.authRequests.filter(x => x.grant === 'id_token').length, 0);
       } else {
-        await h.page.locator('#bbAuthApple').waitFor({ state: 'visible' });
-        await h.page.locator('#bbAuthApple').click();
+        await h.page.locator('[data-bbob="quick-apple"]').waitFor({ state: 'visible' });
+        assert.equal(await h.page.locator('#bbobQuickAccountPanel').isVisible(), false, 'Apple does not require opening the email form');
+        assert.equal(await h.page.locator('#cloud-password').isVisible(), false);
+        await h.page.locator('[data-bbob="quick-apple"]').click();
         await h.page.waitForFunction(() => window.BasketBossSession?.state().remembered === true);
         assert.equal(await h.page.evaluate(() => window.__nativeAppleCalls), 1);
         assert.equal(h.authRequests.filter(x => x.grant === 'id_token').length, 1);
         assert.ok(h.authRequests.find(x => x.grant === 'id_token').appleNonce);
         assert.ok(h.authRequests.find(x => x.grant === 'id_token').appleProvider);
+        assert.equal(h.authRequests.some(x => x.kind === 'signup' || x.grant === 'password'), false);
         await waitEvent(h.page, h.events, 'signup_succeeded');
       }
       assert.deepEqual(h.errors, []);
     } finally { await h.context.close(); }
   }
+});
+
+test('an expired or reused email callback offers verified password sign-in instead of assuming the account failed', options, async () => {
+  const h = await fixture();
+  try {
+    await h.page.goto('https://basketboss.co.uk/app#error=access_denied&error_code=otp_expired&bb_auth=signup', { waitUntil: 'domcontentloaded' });
+    await h.page.locator('#bbAuthFeedback').filter({ hasText: 'may already be confirmed' }).waitFor();
+    assert.equal(await h.page.evaluate(() => window.BasketBossSession.state().remembered), false);
+    assert.equal(h.authRequests.filter(x => ['signup', 'token', 'verified-user'].includes(x.kind)).length, 0, 'failed callback alone never establishes a session');
+    await h.page.getByRole('button', { name: 'Sign in with email', exact: true }).click();
+    assert.equal(await h.page.locator('#cloud-login').isVisible(), true);
+    await fillAccount(h.page); await h.page.locator('#cloud-password').press('Enter');
+    await h.page.waitForFunction(() => window.BasketBossSession?.state().remembered === true);
+    assert.equal(h.authRequests.filter(x => x.grant === 'password').length, 1);
+    assert.ok(h.authRequests.some(x => x.kind === 'verified-user'));
+    assert.equal(count(h.events, 'signup_succeeded'), 0);
+    assert.deepEqual(h.errors, []);
+  } finally { await h.context.close(); }
+});
+
+test('optional token-hash confirmation verifies in a fresh browser context without PKCE and rejects reuse', options, async () => {
+  const verificationState = { used: false }, original = await fixture(), fresh = await fixture({ verificationState });
+  let reused;
+  try {
+    await openSignup(original.page); await fillAccount(original.page);
+    await original.page.locator('#cloud-password').press('Enter');
+    await original.page.locator('#bbAuthCopy').filter({ hasText: 'confirm your account' }).waitFor();
+    assert.equal(await fresh.page.evaluate(() => Object.keys(localStorage).some(key => key.includes('code-verifier'))), false, 'fresh browser has no PKCE verifier from signup');
+    await fresh.page.goto('https://basketboss.co.uk/app#token_hash=synthetic-one-use-confirmation-hash&type=signup', { waitUntil: 'domcontentloaded' });
+    await fresh.page.waitForFunction(() => window.BasketBossSession?.state().remembered === true);
+    const verification = fresh.authRequests.filter(request => request.kind === 'verify-otp');
+    assert.equal(verification.length, 1);
+    assert.ok(verification[0].signupType && verification[0].tokenHashPresent && verification[0].verifierAbsent);
+    assert.ok(fresh.authRequests.some(request => request.kind === 'verified-user'), 'verified OTP response still passes the independent getUser check');
+    assert.equal(fresh.authRequests.some(request => request.grant === 'pkce'), false);
+    assert.doesNotMatch(fresh.page.url(), /token_hash/);
+    await fresh.page.reload({ waitUntil: 'domcontentloaded' });
+    await fresh.page.waitForFunction(() => window.BasketBossSession?.state().remembered === true);
+    assert.equal(fresh.authRequests.filter(request => request.kind === 'verify-otp').length, 1, 'reload never reuses the scrubbed token');
+    assert.equal(await original.page.evaluate(() => window.BasketBossSession.state().remembered), false, 'confirmation never copies another browser session into the originating app');
+    reused = await fixture({ verificationState });
+    await reused.page.goto('https://basketboss.co.uk/app#token_hash=synthetic-one-use-confirmation-hash&type=signup', { waitUntil: 'domcontentloaded' });
+    await reused.page.locator('#bbAuthFeedback').filter({ hasText: 'may already be confirmed' }).waitFor();
+    assert.equal(await reused.page.evaluate(() => window.BasketBossSession.state().remembered), false, 'a reused token never grants access');
+    assert.equal(reused.authRequests.some(request => request.kind === 'verified-user'), false);
+    assert.deepEqual([...original.errors, ...fresh.errors, ...reused.errors], []);
+  } finally { await original.context.close(); await fresh.context.close(); await reused?.context.close(); }
+});
+
+test('a new verified account cannot resurrect or upload the previous local profile through recovery keys', options, async () => {
+  const h = await fixture({ returning: true, priorProfile: true });
+  try {
+    await h.page.waitForFunction(() => window.__authOnboardingQA?.ready() && window.__authOnboardingQA.draft().planned.length === 0);
+    await h.page.evaluate(() => document.getElementById('cloud-open').click());
+    await h.page.locator('#bbAuthSigninMode').click(); await fillAccount(h.page);
+    await Promise.all([h.page.waitForNavigation({ waitUntil: 'domcontentloaded' }), h.page.locator('#cloud-password').press('Enter')]);
+    await h.page.waitForFunction(() => window.__authOnboardingQA?.ready() && window.BasketBossSession?.state().remembered === true);
+    assert.deepEqual(await draft(h.page), { planned: [], pantry: {}, stock: {}, inventory: null });
+    await assertEventually(() => h.authRequests.some(request => request.kind === 'cloud-read' && request.ownActor), 'the new verified actor must check its own cloud backup');
+    assert.ok(h.cloudWrites.every(write => write.ownActor && write.plannedCount === 0 && !write.containsPriorMeal), 'previous profile meals never enter a new account upload');
+    const priorArchive = await h.page.evaluate(actorId => {
+      const archive = JSON.parse(localStorage.getItem('basketboss_receipt_host_snapshot_v1:' + encodeURIComponent(actorId)) || 'null');
+      const fallback = ['basketboss_321_unified_recovery_v1', 'basketboss_state_v2', 'basketboss_321_unified_oldplan_v1', 'basketboss_321_unified_oldpantry_v1'];
+      return { ownerMatches: archive?.actorId === actorId, archivedFallbackCount: fallback.filter(key => typeof archive?.values?.[key] === 'string').length, activeFallbackHasPriorMeal: fallback.some(key => (localStorage.getItem(key) || '').includes('veggie-fried-rice')) };
+    }, PRIOR_USER_ID);
+    assert.deepEqual(priorArchive, { ownerMatches: true, archivedFallbackCount: 4, activeFallbackHasPriorMeal: false });
+    assert.match(await h.page.locator('#bb16AccountShortcut').textContent(), /Your account/);
+    assert.equal(await h.page.locator('#cloud-panel').isVisible(), false, 'verified login enters the app directly');
+    await h.page.evaluate(() => document.getElementById('cloud-open').click());
+    assert.equal(await h.page.evaluate(() => window.BasketBossCloud.needsChoice()), false);
+    assert.equal(await h.page.locator('#cloud-backup-controls').evaluate(node => node.open), false, 'no nonexistent saved plan is presented as a restore choice');
+    await Promise.all([h.page.waitForNavigation({ waitUntil: 'domcontentloaded' }), h.page.locator('#cloud-logout').click()]);
+    await h.page.waitForFunction(() => window.__authOnboardingQA?.ready() && window.BasketBossSession?.state().remembered === false);
+    assert.deepEqual(await draft(h.page), { planned: [], pantry: {}, stock: {}, inventory: null });
+    assert.ok(h.cloudWrites.every(write => !write.containsPriorMeal));
+    assert.deepEqual(h.errors, []);
+  } finally { await h.context.close(); }
+});
+
+test('verified sign-in enters the app while cloud backup is pending and normal Account entry defaults to sign-in', options, async () => {
+  const h = await fixture({ returning: true, holdCloud: true });
+  try {
+    const saved = await draft(h.page);
+    await h.page.evaluate(() => document.getElementById('cloud-open').click());
+    await h.page.locator('#bbAuthSignupMode').click(); await fillAccount(h.page);
+    await h.page.locator('#cloud-close').click();
+    await h.page.evaluate(() => document.getElementById('cloud-open').click());
+    assert.equal(await h.page.locator('#cloud-auth').getAttribute('data-bb-auth-mode'), 'sign-in');
+    assert.equal(await h.page.locator('#cloud-password').getAttribute('autocomplete'), 'current-password');
+    assert.equal((await h.page.locator('#cloud-email').inputValue()) === SYNTHETIC_EMAIL, true, 'switching normal entry does not erase the credential draft');
+    await h.page.locator('#cloud-password').press('Enter');
+    await h.page.waitForFunction(() => window.BasketBossSession?.state().remembered === true && window.BBAuthFlow?.state().busy === false);
+    await assertEventually(() => h.checks.cloudPending, 'the real backup request must remain pending for this check');
+    assert.equal(await h.page.locator('#cloud-panel').isVisible(), false, 'the app is accessible before backup responds');
+    await h.page.locator('.shell nav.tabs [data-tab="shop"]').click();
+    await h.page.locator('.shell nav.tabs [data-tab="week"]').click();
+    assert.deepEqual(await draft(h.page), saved);
+    h.releaseCloud();
+    await assertEventually(() => !h.checks.cloudPending, 'the independent backup request can complete afterwards');
+    assert.equal(await h.page.evaluate(() => window.BasketBossSession.state().remembered), true);
+    assert.deepEqual(h.errors, []);
+  } finally { h.releaseCloud(); await h.context.close(); }
+});
+
+test('failed confirmation in a browser remembering another account offers a real verified account switch', options, async () => {
+  const h = await fixture({ returning: true, existingSession: true, initialActor: PRIOR_USER_ID, rejectPasswordOnce: true });
+  try {
+    const priorDraft = await draft(h.page);
+    assert.equal(priorDraft.planned.length, 1);
+    await h.page.goto('https://basketboss.co.uk/app#error=access_denied&error_code=otp_expired&bb_auth=signup', { waitUntil: 'domcontentloaded' });
+    await h.page.locator('#bbAuthFeedback').filter({ hasText: 'may already be confirmed' }).waitFor();
+    assert.equal(await h.page.evaluate(actor => window.BasketBossSession.read()?.user?.id === actor, PRIOR_USER_ID), true);
+    assert.deepEqual(await draft(h.page), priorDraft, 'the failed link neither signs into the new account nor erases the remembered account');
+    assert.equal(await h.page.locator('#cloud-signed').isVisible(), false, 'existing account backup actions cannot look like success for the failed link');
+    assert.equal(await h.page.locator('#cloud-status').isVisible(), false);
+    await h.page.getByRole('button', { name: 'Sign in with email', exact: true }).click();
+    await h.page.locator('#cloud-login').waitFor({ state: 'visible' });
+    assert.equal(await h.page.locator('#cloud-email').isVisible(), true, 'recovery can open the switch form even while another account is remembered');
+    assert.equal(await h.page.getByRole('button', { name: 'Keep current account', exact: true }).isVisible(), true);
+    await fillAccount(h.page); await h.page.locator('#cloud-password').press('Enter');
+    await h.page.locator('#bbAuthFeedback').filter({ hasText: 'Invalid login credentials' }).waitFor();
+    assert.equal(await h.page.evaluate(actor => window.BasketBossSession.read()?.user?.id === actor, PRIOR_USER_ID), true, 'a rejected new login retains the existing verified session');
+    assert.deepEqual(await draft(h.page), priorDraft);
+    assert.equal(await h.page.locator('#cloud-login').isVisible(), true);
+    await Promise.all([h.page.waitForNavigation({ waitUntil: 'domcontentloaded' }), h.page.locator('#cloud-password').press('Enter')]);
+    await h.page.waitForFunction(actor => window.__authOnboardingQA?.ready() && window.BasketBossSession.read()?.user?.id === actor, USER_ID);
+    assert.deepEqual(await draft(h.page), { planned: [], pantry: {}, stock: {}, inventory: null }, 'only the verified new account switches the visible private profile');
+    assert.equal(h.authRequests.filter(request => request.grant === 'password').length, 2);
+    assert.equal(h.authRequests.filter(request => request.kind === 'verified-user').length, 1);
+    assert.equal(count(h.events, 'signup_succeeded'), 0);
+    assert.deepEqual(h.errors, []);
+  } finally { await h.context.close(); }
 });

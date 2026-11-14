@@ -13,7 +13,7 @@
 <link rel="stylesheet" href="bb-account-polish.css?v=20261105-preflight1">
 <script defer src="bb-account-polish.js?v=20261105-preflight1"></script>
 <script defer src="bb-account-pantry-live.js"></script>
-<link rel="stylesheet" href="bb-onboarding-v2.css?v=20261114-onboarding1">
+<link rel="stylesheet" href="bb-onboarding-v2.css?v=20261114-account2">
 <link rel="stylesheet" href="bb-ux-cleanup.css?v=20261028-ux1">
 <meta charset="utf-8"><meta http-equiv="Content-Type" content="text/html; charset=utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
 <meta name="apple-mobile-web-app-capable" content="yes"><meta name="apple-mobile-web-app-title" content="BasketBoss">
@@ -892,7 +892,20 @@ header.top .brand h1{font-family:"Avenir Next",ui-sans-serif,system-ui,-apple-sy
 @media(max-width:920px){.bb16-overview-metrics{grid-template-columns:repeat(2,minmax(0,1fr))}.bb16-overview-detail{grid-template-columns:minmax(0,1fr)}}
 @media(max-width:650px){.bb16-account-card{top:12px;right:12px}.bb16-account-card button{padding:8px 10px;font-size:11px}.shell .hero{padding-top:60px!important}.shell .tabs{gap:5px!important}.shell .tabs .tab{padding:7px 2px!important;min-height:64px!important;border-radius:10px!important}.shell .tabs .tab .nav-label{font-size:10px!important}.bb16-filter-panel{padding:13px}.bb16-category-grid{grid-template-columns:repeat(2,minmax(0,1fr))!important}.bb16-day-row{grid-template-columns:70px minmax(0,1fr);gap:6px}.bb16-day-lunch{grid-column:2;text-align:left}.bb16-overview-heading{padding:17px}.bb16-overview-metrics{gap:8px}.bb16-metric{padding:13px 11px}#bb307EssentialsForm{grid-template-columns:repeat(2,minmax(0,1fr))!important}#bb307EssentialsForm .bb16-essential-name{grid-column:1 / -1}}
 @media(max-width:380px){.bb16-providers{grid-template-columns:1fr}.bb16-overview-metrics{grid-template-columns:minmax(0,1fr)}.shell .tabs .tab .nav-label{font-size:9px!important}.shell .tabs .tab{padding:6px 1px!important}.bb16-filter-heading{align-items:flex-start}}
-</style><script id="bb16AccountShortcutJs">document.addEventListener('DOMContentLoaded',function(){const b=document.getElementById('bb16AccountShortcut');if(!b)return;b.addEventListener('click',function(){const old=document.getElementById('cloud-open');if(old)old.click();else window.alert('Account sign-in is not configured in this preview.')})});</script><script id="basketboss-v17-safe-live-migration">(function(){try{const next='basketboss_321_unified_state_v1',legacy='basketboss_state_v2';if(localStorage.getItem(next)!==null)return;const raw=localStorage.getItem(legacy);if(!raw)return;const parsed=JSON.parse(raw);if(parsed&&parsed.version===2&&Array.isArray(parsed.planned)){localStorage.setItem(next,raw)}}catch(error){console.warn('BasketBoss legacy plan remains untouched; automatic copy unavailable.',error)}})();</script>
+</style><script id="bb16AccountShortcutJs">
+document.addEventListener('DOMContentLoaded',function(){
+ const button=document.getElementById('bb16AccountShortcut');if(!button)return;
+ function syncAccountShortcut(){
+  let remembered=false;try{remembered=window.BasketBossSession?.state?.().remembered===true;}catch{}
+  button.textContent=remembered?'♙ Your account':'♙ Sign in / Create account';
+  button.setAttribute('aria-label',remembered?'Open your BasketBoss account':'Open BasketBoss sign in or create account');
+ }
+ button.addEventListener('click',function(){const old=document.getElementById('cloud-open');if(old)old.click();else window.alert('Account sign-in is not configured in this preview.');});
+ for(const name of ['basketboss:session-changed','basketboss:account-changed','basketboss:auth-ready','basketboss:account-deletion-started','basketboss:account-deletion-cancelled','basketboss:account-deletion-deleted'])window.addEventListener(name,syncAccountShortcut);
+ window.addEventListener('storage',event=>{if(event.key==='basketboss_cloud_session_v1'||event.key==='basketboss_account_deletion_v1')syncAccountShortcut();});
+ document.addEventListener('visibilitychange',syncAccountShortcut);syncAccountShortcut();
+});
+</script><script id="basketboss-v17-safe-live-migration">(function(){try{const next='basketboss_321_unified_state_v1',legacy='basketboss_state_v2';if(localStorage.getItem(next)!==null)return;const raw=localStorage.getItem(legacy);if(!raw)return;const parsed=JSON.parse(raw);if(parsed&&parsed.version===2&&Array.isArray(parsed.planned)){localStorage.setItem(next,raw)}}catch(error){console.warn('BasketBoss legacy plan remains untouched; automatic copy unavailable.',error)}})();</script>
 <style id="bb17MobilePolishCss">
 /* BasketBoss v17.1 iPhone layout: scoped, non-destructive presentation-only patch.
    Keep the original three-market selector and all shopping calculations intact. */
@@ -3841,7 +3854,7 @@ body[data-bbnext-view="discover"] #app .bb-featured-card #bbFeaturedBatch {
 <script defer src="bb-weekly-essentials.js?v=20261105-shop-confirm1"></script>
 <script defer src="bb-receipt-inventory.js?v=20261108-planner1"></script>
 <script defer src="bb-receipt-scanner.js?v=20261105-preflight1"></script>
-<script defer src="bb-receipt-host.js?v=20261105-business1"></script>
+<script defer src="bb-receipt-host.js?v=20261114-account2"></script>
 <link rel="stylesheet" href="bb-receipt-scanner.css?v=20261031-receipt-pantry">
 <link rel="stylesheet" href="bb-receipt-host.css?v=20261101-receipt-tab1">
 <script>
@@ -7205,7 +7218,7 @@ function bbNextComposePlan(app){
      const serving=bbFeedingDayStepper(day,recipe,'summary');
      subtitle.append(time,serving);
    }else{
-     subtitle.textContent=pendingUnloaded?'Your meal is still saved. Reconnect Premium to load its details.':available?'Tap to choose dinner':'Unlock Premium to see this meal';
+     subtitle.textContent=pendingUnloaded?'Your meal is still saved. Check recipe access or choose another meal.':available?'Tap to choose dinner':'Unlock Premium to see this meal';
    }
    if(day===bbEveningToday()&&(recipe||pendingUnloaded)){
      const tonight=document.createElement('span');tonight.className='bb77-tonight';tonight.textContent='Tonight';
@@ -12460,6 +12473,9 @@ if (false && 'serviceWorker' in navigator && location.protocol==='https:') {
 #cloud-card input{width:100%;box-sizing:border-box;margin:6px 0 12px;padding:12px;background:#09182d;color:#fff;border:1px solid #43648a;border-radius:10px;font-size:16px}
 #cloud-card button{margin:4px;padding:10px 13px;border-radius:10px;background:#2563eb;color:white;border:0;font-weight:700}
 #cloud-card .secondary{background:#233c5c}
+#cloud-backup-controls{margin:12px 0;border:1px solid currentColor;border-radius:12px;padding:10px}
+#cloud-backup-controls summary{cursor:pointer;font-weight:700;min-height:24px}
+#cloud-backup-controls[open] summary{margin-bottom:8px}
 #cloud-card small{display:block;color:#a9c0df;line-height:1.5}
 .photo-manager-row{display:grid;grid-template-columns:125px minmax(0,1fr);gap:14px;padding:16px 0;border-bottom:1px solid var(--line)}.photo-manager-row>img{width:125px;height:125px;object-fit:cover;border-radius:13px}.photo-manager-info{min-width:0}.photo-manager-info strong,.photo-manager-info small,.photo-manager-info label{display:block}.photo-manager-info small{color:var(--muted);margin:4px 0}.photo-manager-info a{display:inline-block;color:#93c5fd;margin:4px 0 10px;font-size:12px}.photo-manager-info label{font-size:11px;margin-bottom:5px}.photo-manager-info .actions{margin-top:8px}@media(max-width:450px){.photo-manager-row{grid-template-columns:90px minmax(0,1fr);gap:9px}.photo-manager-row>img{width:90px;height:95px}.photo-manager-info .btn{padding:8px}}
 </style>
@@ -12474,8 +12490,10 @@ if (false && 'serviceWorker' in navigator && location.protocol==='https:') {
 <button id="cloud-login" disabled>Sign in</button><button id="cloud-signup" class="secondary" disabled>Create account</button>
 </div>
 <div id="cloud-signed" hidden>
+<details id="cloud-backup-controls" hidden><summary>Manage cloud backup</summary>
 <button id="cloud-upload">Upload this device's plan</button>
 <button id="cloud-download" class="secondary">Restore cloud plan</button>
+</details>
 <button id="cloud-logout" class="secondary">Sign out</button>
 </div>
 <small id="cloud-message">Sync is optional. Your recipes and meal plan continue to work on this device without an account.</small>
@@ -12490,6 +12508,7 @@ const enabled=/^https:\/\//.test(config.url||'') && !!config.anonKey && !config.
 const panel=document.getElementById('cloud-panel'),status=document.getElementById('cloud-status'),msg=document.getElementById('cloud-message');
 const auth=document.getElementById('cloud-auth'),signed=document.getElementById('cloud-signed');
 let session=null,sessionRaw=null,dirty=false,timer=null,loading=false,generation=0,deleting=false,syncFlight=null,cloudChoiceRequired=false,lastCloudFingerprint=null,connectFlight=null,cloudPause=null;
+let cloudChoiceVisible=false,cloudBackupKnown=false,cloudSyncIssue=false;
 const sessionKey='basketboss_cloud_session_v1',stateKey='basketboss_321_unified_state_v1';
 const blocked=()=>deleting||window.BBAccountDeletion?.isDeleting?.()===true;
 const snapshot=()=>({generation,actor:session?.user?.id||null,token:session?.access_token||null,stored:localStorage.getItem(sessionKey)});
@@ -12499,15 +12518,22 @@ function cloudFailure(kind,pin=snapshot()){
  const messages={setup:'Cloud backup is temporarily unavailable. Your plan and kitchen are saved on this device. Try Upload or Restore again later.',permission:'Cloud backup cannot access this account right now. Your plan and kitchen are saved on this device. Try signing in again or contact support.',auth:'Reconnect your account before using cloud backup. Your plan and kitchen are saved on this device.',network:'Could not connect to cloud backup. Your plan and kitchen are saved on this device. Try again when connected.',timeout:'Cloud connection timed out. Your plan and kitchen are saved on this device. Try again when connected.'};
  return Object.assign(new Error(messages[kind]||messages.network),{cloudKind:kind,cloudPin:pin});
 }
-function reportCloudError(error){if(error?.cloudPin&&!current(error.cloudPin))return false;setMessage(error?.message||'Cloud sync is unavailable. Your local data has been kept.');return false;}
+function reportCloudError(error){if(error?.cloudPin&&!current(error.cloudPin))return false;cloudSyncIssue=true;syncCloudCopyControls();setMessage(error?.message||'Cloud sync is unavailable. Your local data has been kept.');return false;}
 function pauseCloud(error){
  if(!current(error.cloudPin))return;
- if(['setup','permission','auth'].includes(error.cloudKind)){cloudPause={kind:error.cloudKind,actor:error.cloudPin.actor};cloudChoiceRequired=true;dirty=true;clearTimeout(timer);timer=null;}
+ if(['setup','permission','auth'].includes(error.cloudKind)){cloudPause={kind:error.cloudKind,actor:error.cloudPin.actor};cloudChoiceRequired=true;dirty=true;clearTimeout(timer);timer=null;syncCloudCopyControls();}
  reportCloudError(error);
 }
 
 function restoreStoredSession(){try{sessionRaw=localStorage.getItem(sessionKey);const saved=JSON.parse(sessionRaw||'null');session=saved?.access_token?saved:null;}catch{sessionRaw=null;session=null;}}
-function setStatus(){const connected=!!(session?.access_token&&Number(session.expires_at)*1000>Date.now()+5000),remembered=window.BasketBossSession?.state().remembered===true,recovering=blocked()&&window.BBAccountDeletion?.canRecoverSignIn?.()===true;status.textContent=recovering?'An earlier account deletion needs checking. Sign in with the original account to recover access; cloud syncing stays paused during the check.':blocked()?'Account deletion is in progress. Cloud sync is paused.':!enabled?'Cloud sync needs setup by the site owner.':connected?'Signed in as '+(session.user?.email||'your account'):remembered?(window.BasketBossSession.state().needsConnection?'Your account is saved on this device. Reconnect to the internet to continue.':'Reconnecting to your account…'):session?'Your session has expired. Sign in again to access your account.':'Sign in to sync your plan between devices.';auth.hidden=!enabled||(blocked()?!recovering:(connected||remembered));signed.hidden=!(connected||remembered)||blocked();document.getElementById('cloud-signup').hidden=recovering;for(const id of ['cloud-upload','cloud-download','cloud-logout'])document.getElementById(id).disabled=blocked()||(id!=='cloud-logout'&&!!syncFlight);}
+function syncCloudCopyControls(){
+ const controls=document.getElementById('cloud-backup-controls');if(!controls)return;
+ const member=!!session||window.BasketBossSession?.state?.().remembered===true,required=cloudChoiceVisible||!!cloudPause||cloudSyncIssue;
+ controls.hidden=!member||!(cloudBackupKnown||required);
+ if(required)controls.open=true;else if(controls.bbChoiceForced||!member)controls.open=false;
+ controls.bbChoiceForced=required;
+}
+function setStatus(){const connected=!!(session?.access_token&&Number(session.expires_at)*1000>Date.now()+5000),remembered=window.BasketBossSession?.state().remembered===true,recovering=blocked()&&window.BBAccountDeletion?.canRecoverSignIn?.()===true;status.textContent=recovering?'An earlier account deletion needs checking. Sign in with the original account to recover access; cloud syncing stays paused during the check.':blocked()?'Account deletion is in progress. Cloud sync is paused.':!enabled?'Cloud sync needs setup by the site owner.':connected?'Signed in as '+(session.user?.email||'your account'):remembered?(window.BasketBossSession.state().needsConnection?'Your account is saved on this device. Reconnect to the internet to continue.':'Reconnecting to your account…'):session?'Your session has expired. Sign in again to access your account.':'Sign in to sync your plan between devices.';auth.hidden=!enabled||(blocked()?!recovering:(connected||remembered));signed.hidden=!(connected||remembered)||blocked();document.getElementById('cloud-signup').hidden=recovering;for(const id of ['cloud-upload','cloud-download','cloud-logout'])document.getElementById(id).disabled=blocked()||(id!=='cloud-logout'&&!!syncFlight);syncCloudCopyControls();}
 function headers(token){return {'apikey':config.anonKey,'Authorization':'Bearer '+(token||config.anonKey),'Content-Type':'application/json'};}
 function stableCloud(value){return JSON.stringify(value,(_key,item)=>item&&typeof item==='object'&&!Array.isArray(item)?Object.fromEntries(Object.keys(item).sort().map(key=>[key,item[key]])):item);}
 let plannerExtrasClient=null,plannerExtrasStatus=null;
@@ -12541,7 +12567,7 @@ async function inspectPlannerExtras(cloud,saved){
  if(!current(pin)||cloudSnapshot()?.fingerprint!==saved.fingerprint)return true;
  if(result.status==='loaded'){
   let same=false;try{same=stableCloud(result.payload)===stableCloud(window.BBPlanExtrasSync.capture(plan));}catch{}
-  if(!same){cloudChoiceRequired=true;setMessage('A separate cloud copy of your breakfasts or meal portions is available. Choose Restore cloud plan to review and load it. Your current choices have been kept.');return true;}
+  if(!same){cloudChoiceRequired=true;cloudChoiceVisible=true;syncCloudCopyControls();setMessage('A separate cloud copy of your breakfasts or meal portions is available. Choose Restore cloud plan to review and load it. Your current choices have been kept.');return true;}
   if(result.cache)commitCloudRestore({[result.cache.key]:result.cache.value},{[result.cache.key]:result.cache.expected,[sessionKey]:pin.stored,basketboss_account_deletion_v1:localStorage.getItem('basketboss_account_deletion_v1')});
   plannerExtrasClient=null;plannerExtrasStatus={ok:true,status:'synced',message:'Optional meals are synced.'};
  }else plannerExtrasStatus=result;
@@ -12615,6 +12641,7 @@ async function getCloud(){
  const rows=await api('/rest/v1/basketboss_data?select=data,updated_at&user_id=eq.'+encodeURIComponent(pin.actor)+'&limit=1','GET',null,pin.token);
  if(!current(pin))return null;
  if(!Array.isArray(rows)||rows.length>1||rows.some(row=>!row||typeof row!=='object'||!Object.hasOwn(row,'data'))){const error=cloudFailure('setup',pin);pauseCloud(error);throw error;}
+ cloudBackupKnown=rows[0]?.data?.version===2&&Array.isArray(rows[0].data.planned);syncCloudCopyControls();
  return {row:rows?.[0]||null,pin};
 }
 function queueCloudSave(){clearTimeout(timer);timer=null;if(cloudPause)return;timer=setTimeout(()=>{timer=null;if(!blocked()&&!cloudPause&&navigator.onLine){if(cloudChoiceRequired)void connectedCloud();else push().catch(reportCloudError);}},1400);}
@@ -12643,7 +12670,7 @@ function push(force=false){return cloudOperation('upload',async operation=>{
   if(!current(pin))return false;
   const extras=await syncPlannerExtras(data,pin,fingerprint,force);
   if(!current(pin))return false;
-  plannerExtrasStatus=extras;lastCloudFingerprint=fingerprint;dirty=cloudSnapshot()?.fingerprint!==fingerprint;
+  plannerExtrasStatus=extras;lastCloudFingerprint=fingerprint;dirty=cloudSnapshot()?.fingerprint!==fingerprint;cloudBackupKnown=true;cloudChoiceVisible=false;cloudSyncIssue=false;
   if(!dirty){setMessage(plannerCloudMessage());return extras.ok;}
  }
  operation.drain=dirty;setMessage('Your latest changes are saved on this device. Finishing cloud sync…');return true;
@@ -12672,7 +12699,7 @@ function pull(confirmReplace=true){return cloudOperation('restore',async operati
  const kitchen=remote.atHomeBackup?window.BBReceiptHost?.prepareBackupRestore?.(remote.atHomeBackup):null;
  if(remote.atHomeBackup&&!kitchen)throw Error('Kitchen restore tools are still loading. Your local data has been kept.');
  const plan={...remote};delete plan.atHomeBackup;
- loading=true;try{commitCloudRestore({...kitchen?.updates,...(extraCache?{[extraCache.key]:extraCache.value}:{}),[stateKey]:plan},{...kitchen?.expected,...(extraCache?{[extraCache.key]:extraCache.expected}:{}),[stateKey]:before,[sessionKey]:result.pin.stored,basketboss_account_deletion_v1:beforeDeletion});plannerExtrasClient=null;plannerExtrasStatus=extraRestore;dirty=false;cloudChoiceRequired=false;lastCloudFingerprint=kitchen?.requiresReview?null:stableCloud(remote);clearTimeout(timer);timer=null;}finally{loading=false;}
+ loading=true;try{commitCloudRestore({...kitchen?.updates,...(extraCache?{[extraCache.key]:extraCache.value}:{}),[stateKey]:plan},{...kitchen?.expected,...(extraCache?{[extraCache.key]:extraCache.expected}:{}),[stateKey]:before,[sessionKey]:result.pin.stored,basketboss_account_deletion_v1:beforeDeletion});plannerExtrasClient=null;plannerExtrasStatus=extraRestore;dirty=false;cloudChoiceRequired=false;cloudChoiceVisible=false;cloudSyncIssue=false;lastCloudFingerprint=kitchen?.requiresReview?null:stableCloud(remote);clearTimeout(timer);timer=null;}finally{loading=false;}
  setMessage(kitchen?.requiresReview?'Cloud plan restored. Your local kitchen amounts were kept for review. Reloading\u2026':extraRestore&&!['loaded','missing'].includes(extraRestore.status)?'Cloud plan restored. '+extraRestore.message+' Reloading\u2026':'\u2713 Cloud plan and kitchen restored. Reloading\u2026');location.reload();return true;
 });}
 function connectedCloud(){
@@ -12680,10 +12707,10 @@ function connectedCloud(){
  if(connectFlight)return connectFlight;
  const job=(async()=>{try{
   if(!navigator.onLine)return;const cloud=await getCloud();if(!cloud||!current(cloud.pin))return;
-  if(!cloud.row){cloudChoiceRequired=false;await push();return;}
-  if(cloud.row.data&&stableCloud(cloud.row.data)===cloudSnapshot()?.fingerprint){const saved=cloudSnapshot();if(await inspectPlannerExtras(cloud,saved))return;if(!current(cloud.pin)||cloudSnapshot()?.fingerprint!==saved.fingerprint)return;cloudChoiceRequired=false;lastCloudFingerprint=saved.fingerprint;dirty=false;if(plannerExtrasNeeded(saved.data,cloud.pin))await push();return;}
-  if(localCloudEmpty()){cloudChoiceRequired=false;await pull(false);return;}
-  cloudChoiceRequired=true;setMessage('Cloud backup found. Choose Restore cloud plan to use it, or Upload to keep this device\u2019s plan and kitchen.');
+  if(!cloud.row){cloudChoiceRequired=false;cloudChoiceVisible=false;syncCloudCopyControls();await push();return;}
+  if(cloud.row.data&&stableCloud(cloud.row.data)===cloudSnapshot()?.fingerprint){const saved=cloudSnapshot();if(await inspectPlannerExtras(cloud,saved))return;if(!current(cloud.pin)||cloudSnapshot()?.fingerprint!==saved.fingerprint)return;cloudChoiceRequired=false;cloudChoiceVisible=false;cloudSyncIssue=false;syncCloudCopyControls();lastCloudFingerprint=saved.fingerprint;dirty=false;if(plannerExtrasNeeded(saved.data,cloud.pin))await push();return;}
+  if(localCloudEmpty()){cloudChoiceRequired=false;cloudChoiceVisible=false;syncCloudCopyControls();await pull(false);return;}
+  cloudChoiceRequired=true;cloudChoiceVisible=true;syncCloudCopyControls();setMessage('Cloud backup found. Choose Restore cloud plan to use it, or Upload to keep this device\u2019s plan and kitchen.');
  }catch(error){reportCloudError(error);}})();
  connectFlight=job.finally(()=>{connectFlight=null;});return connectFlight;
 }
@@ -12714,12 +12741,12 @@ async function signIn(signup){
  else{const backedUp=await push();if(backedUp&&current(cloud.pin))setMessage('Account connected and this device\u2019s plan backed up.');}
  }catch(e){if(current(pin))setMessage(e.message);}
 }
-window.BasketBossCloud={connected:connectedCloud,scheduleSave(){if(blocked()||loading||!session||!enabled)return;try{const saved=cloudSnapshot();if(saved)rememberPlannerExtras(saved.data,snapshot());}catch{}dirty=true;queueCloudSave();}};
+window.BasketBossCloud={connected:connectedCloud,needsChoice:()=>cloudChoiceVisible,status:()=>Object.freeze({needsChoice:cloudChoiceVisible,hasBackup:cloudBackupKnown,paused:!!cloudPause,needsAttention:!!cloudPause||cloudSyncIssue}),scheduleSave(){if(blocked()||loading||!session||!enabled)return;try{const saved=cloudSnapshot();if(saved)rememberPlannerExtras(saved.data,snapshot());}catch{}dirty=true;queueCloudSave();}};
 window.addEventListener('basketboss:account-deletion-started',()=>{deleting=true;generation++;dirty=false;clearTimeout(timer);timer=null;setStatus();});
 window.addEventListener('basketboss:account-deletion-cancelled',()=>{deleting=false;generation++;restoreStoredSession();setStatus();});
 window.addEventListener('basketboss:account-deletion-deleted',()=>{deleting=true;generation++;session=null;dirty=false;clearTimeout(timer);timer=null;setStatus();});
-window.addEventListener('basketboss:session-changed',()=>{const before=sessionRaw,previousActor=session?.user?.id||null;restoreStoredSession();if(sessionRaw!==before){generation++;if((session?.user?.id||null)!==previousActor){cloudPause=null;cloudChoiceRequired=!!session;lastCloudFingerprint=null;}else if(cloudPause?.kind==='auth'){cloudPause=null;cloudChoiceRequired=!!session;if(dirty)queueCloudSave();}else if(dirty){if(syncFlight)syncFlight.drain=true;else queueCloudSave();}}setStatus();});
-window.addEventListener('storage',event=>{if(event.key!==sessionKey)return;generation++;const before=sessionRaw,previousActor=session?.user?.id||null;if(blocked())return;restoreStoredSession();const actorChanged=(session?.user?.id||null)!==previousActor;if(sessionRaw!==before){if(actorChanged){cloudPause=null;cloudChoiceRequired=!!session;lastCloudFingerprint=null;}else if(cloudPause?.kind==='auth'){cloudPause=null;cloudChoiceRequired=!!session;if(dirty)queueCloudSave();}else if(dirty){if(syncFlight)syncFlight.drain=true;else queueCloudSave();}}setStatus();if(actorChanged||cloudChoiceRequired)void connectedCloud();});
+window.addEventListener('basketboss:session-changed',()=>{const before=sessionRaw,previousActor=session?.user?.id||null;restoreStoredSession();if(sessionRaw!==before){generation++;if((session?.user?.id||null)!==previousActor){cloudPause=null;cloudChoiceRequired=!!session;cloudChoiceVisible=false;cloudBackupKnown=false;cloudSyncIssue=false;lastCloudFingerprint=null;}else if(cloudPause?.kind==='auth'){cloudPause=null;cloudChoiceRequired=!!session;if(dirty)queueCloudSave();}else if(dirty){if(syncFlight)syncFlight.drain=true;else queueCloudSave();}}setStatus();});
+window.addEventListener('storage',event=>{if(event.key!==sessionKey)return;generation++;const before=sessionRaw,previousActor=session?.user?.id||null;if(blocked())return;restoreStoredSession();const actorChanged=(session?.user?.id||null)!==previousActor;if(sessionRaw!==before){if(actorChanged){cloudPause=null;cloudChoiceRequired=!!session;cloudChoiceVisible=false;cloudBackupKnown=false;cloudSyncIssue=false;lastCloudFingerprint=null;}else if(cloudPause?.kind==='auth'){cloudPause=null;cloudChoiceRequired=!!session;if(dirty)queueCloudSave();}else if(dirty){if(syncFlight)syncFlight.drain=true;else queueCloudSave();}}setStatus();if(actorChanged||cloudChoiceRequired)void connectedCloud();});
 document.getElementById('cloud-open').onclick=()=>{window.BBOnboard2026?.pauseForAccount?.();panel.classList.add('open');setStatus();if(window.BBAccountDeletion?.canRecoverSignIn?.())void window.BBAccountDeletion.checkPending();};
 document.getElementById('cloud-close').onclick=()=>panel.classList.remove('open');
 panel.onclick=e=>{if(e.target===panel)panel.classList.remove('open')};
@@ -13188,7 +13215,7 @@ if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',
   <button type="button" class="bbtrial-free" data-bbtrial-free>Continue with BasketBoss Free →</button>
   <p class="bbtrial-foot">100 starter recipes, manual ingredients and basic planning remain available without subscribing.</p>
  </div>
-</dialog><script src="bb-intro-trial.js?v=bb-account-first-20261027-v1"></script><link rel="stylesheet" href="bb-how-it-works.css?v=20261104-kitchen1"><script defer src="bb-how-it-works.js?v=20261108-planner1"></script><script defer src="bb-onboarding-v2.js?v=20261114-onboarding1"></script><script defer src="bb-cold-preview.js?v=20261028-conversion-1"></script><script defer src="bb-funnel.js?v=20261114-onboarding1"></script><script defer src="bb-ux-cleanup.js?v=20261028-ux1"></script><script src="bb-us-market.js?v=20261102-loop2"></script><script defer src="bb-install.js?v=173install1"></script><script defer src="bb-welcome-splash.js?v=20261101-signin2"></script><script defer src="bb-premium-features.js?v=20261105-preflight1"></script>
+</dialog><script src="bb-intro-trial.js?v=bb-account-first-20261027-v1"></script><link rel="stylesheet" href="bb-how-it-works.css?v=20261104-kitchen1"><script defer src="bb-how-it-works.js?v=20261108-planner1"></script><script defer src="bb-onboarding-v2.js?v=20261114-account2"></script><script defer src="bb-cold-preview.js?v=20261028-conversion-1"></script><script defer src="bb-funnel.js?v=20261114-onboarding1"></script><script defer src="bb-ux-cleanup.js?v=20261028-ux1"></script><script src="bb-us-market.js?v=20261102-loop2"></script><script defer src="bb-install.js?v=173install1"></script><script defer src="bb-welcome-splash.js?v=20261101-signin2"></script><script defer src="bb-premium-features.js?v=20261105-preflight1"></script>
 <style id="bb175-ux-fix">
 /* BasketBoss v17.4.2 premium-preview usability improvements */
 #app .swipe-action.yes{color:#c91e43!important;background:#fff2f4!important;border:3px solid #d92c50!important;box-shadow:0 5px 18px rgba(192,22,60,.22)!important;font-size:37px!important;font-weight:900!important}
@@ -14035,7 +14062,7 @@ body[data-bbnext-view="discover"] #app .bb175-discover-heading{padding-top:calc(
 <link rel="stylesheet" href="bb-simple-layout.css?v=20261104-plan-budget1">
 <script defer src="bb-simple-layout.js?v=20261105-options1"></script>
 <script defer src="bb-pantry-deduction.js?v=20261107-pantry-stock2"></script>
-<script defer src="bb-home.js?v=20261114-onboarding1"></script><link rel="stylesheet" href="bb-day-done.css?v=20261108-planner1"><script defer src="bb-day-done.js?v=20261108-planner1"></script><link rel="stylesheet" href="bb-shop-add.css?v=20261105-reduced1"><script defer src="bb-shop-add.js?v=20261105-preflight1"></script><script defer src="bb-cupboard-staples.js?v=20261104-cupboard2"></script><script src="bb-pantry-autofill.js?v=20261105-reduced1"></script><link rel="stylesheet" href="bb-pantry-first-controls.css"><script defer src="bb-pantry-first-controls.js"></script>
+<script defer src="bb-home.js?v=20261114-onboarding1"></script><link rel="stylesheet" href="bb-day-done.css?v=20261108-planner1"><script defer src="bb-day-done.js?v=20261108-planner1"></script><link rel="stylesheet" href="bb-shop-add.css?v=20261105-reduced1"><script defer src="bb-shop-add.js?v=20261114-onboarding1"></script><script defer src="bb-cupboard-staples.js?v=20261104-cupboard2"></script><script src="bb-pantry-autofill.js?v=20261105-reduced1"></script><link rel="stylesheet" href="bb-pantry-first-controls.css"><script defer src="bb-pantry-first-controls.js"></script>
 <link rel="stylesheet" href="bb-shared-shopping.css?v=20261102-loop2">
 <script defer src="bb-shared-shopping.js?v=20261102-loop2"></script>
 <link rel="stylesheet" href="bb-plan-drag.css?v=20261105-daydone1">
@@ -14049,7 +14076,7 @@ body[data-bbnext-view="discover"] #app .bb175-discover-heading{padding-top:calc(
 
 <link rel="stylesheet" href="bb-auth-flow.css?v=20261114-onboarding1">
 <script defer src="bb-auth-sdk.js?v=20261104-auth1"></script>
-<script defer src="bb-auth-flow.js?v=20261114-onboarding1"></script>
+<script defer src="bb-auth-flow.js?v=20261114-account2"></script>
 
 <script defer src="bb-tab-swipe.js?v=20261104-swipe1"></script>
 <link rel="stylesheet" href="bb-kitchen-review.css?v=20261106-restock-table1">

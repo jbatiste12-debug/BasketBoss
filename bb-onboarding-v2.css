@@ -274,8 +274,17 @@ html.bb-onboarding-open body .shell .tabs,html.bb-onboarding-open body nav.bb-r6
 #bbNewOnboarding .bbob-quick-auth-actions .bbob-btn:first-child{background:#e9efdf;border-color:#a8b79c}
 #bbNewOnboarding .bbob-quick-account-note{margin:8px 0 0;color:#69775f;font-size:10px;line-height:1.5;text-align:center}
 #bbNewOnboarding .bbob-quick-account-panel{margin-top:12px}
+#bbNewOnboarding .bbob-quick-apple{margin:0 0 9px}
+#bbNewOnboarding .bbob-quick-apple[hidden],#bbNewOnboarding .bbob-quick-apple-status[hidden]{display:none!important}
+#bbNewOnboarding.bbob-quick .bbob-apple{display:flex;justify-content:center;align-items:center;gap:8px;width:100%;min-height:48px;background:#000;border:1px solid #000;color:#fff;font-family:-apple-system,BlinkMacSystemFont,sans-serif;font-size:16px;letter-spacing:0;border-radius:10px;box-shadow:none}
+#bbNewOnboarding .bbob-apple svg{width:23px;height:23px;flex:none}
+#bbNewOnboarding .bbob-apple:disabled{opacity:.65;cursor:wait}
+#bbNewOnboarding .bbob-quick-apple-status{font-size:12px;line-height:1.5;color:#5e6e57;margin:8px 0 0}
+#bbNewOnboarding.bbob-apple-ready .bbob-quick-welcome{min-height:105px}
+#bbNewOnboarding.bbob-apple-ready .bbob-quick-welcome>img{height:105px!important;max-height:105px!important}
 #bbNewOnboarding.bbob-account-open .bbob-quick-welcome,#bbNewOnboarding.bbob-account-open .bbob-quick-benefits,#bbNewOnboarding.bbob-account-open .bbob-quick-free,#bbNewOnboarding.bbob-account-open .bbob-quick-auth-actions,#bbNewOnboarding.bbob-account-open .bbob-quick-account-note{display:none}
 #bbNewOnboarding.bbob-account-open .bbob-description{margin-bottom:12px}
+#bbNewOnboarding.bbob-account-open .bbob-quick-apple{display:none}
 #bbNewOnboarding.bbob-quick input,#bbNewOnboarding.bbob-quick select,#bbNewOnboarding.bbob-quick textarea{font-size:16px!important}
 #bbNewOnboarding.bbob-quick-welcome-screen .bbob-footer .bbob-link{font-size:11px}
 @media(max-height:700px){#bbNewOnboarding.bbob-quick-welcome-screen .bbob-main{padding-top:12px}#bbNewOnboarding.bbob-quick-welcome-screen h1{font-size:28px}#bbNewOnboarding.bbob-quick-welcome-screen .bbob-quick-welcome{min-height:100px}#bbNewOnboarding.bbob-quick-welcome-screen .bbob-quick-welcome>img{height:105px!important;max-height:105px!important}#bbNewOnboarding .bbob-quick-benefits{gap:7px;margin-bottom:11px}#bbNewOnboarding .bbob-quick-benefits li{font-size:12px}}

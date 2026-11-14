@@ -20,16 +20,21 @@
     typeof email === "string" &&
     email.length <= 254 &&
     /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email);
-  const problem = (error) =>
-    /pkce|code_verifier/.test(error?.code || "")
-      ? "Open this link in the browser where you started, or request a new email from this device."
-      : ["AbortError", "AuthRetryableFetchError"].includes(error?.name)
-        ? "Could not connect. Check your connection and try again."
-        : error?.code === "email_not_confirmed"
-          ? "Confirm your email before signing in."
-          : /rate|too_many|over_email/.test(error?.code || "")
-            ? "Too many requests. Wait before trying again."
-            : error?.message || "Unable to connect. Please try again.";
+  const problem = (error) => {
+    const code = String(error?.code || "");
+    if (/pkce|code_verifier/.test(code) || ["flow_state_not_found", "flow_state_expired"].includes(code))
+      return error?.authType === "recovery"
+        ? "This reset link needs the app or browser where you requested it. Open it there, or request a new reset link on this device."
+        : "This link could not finish signing you in on this device. If you have confirmed your email, sign in with your email and password. Otherwise, request a new link from the app or browser where you started.";
+    if (code === "otp_expired")
+      return error?.authType === "recovery"
+        ? "This password reset link has expired or has already been used. Request a new password reset email."
+        : "This email link has expired or has already been used. Your email may already be confirmed. Try signing in with your email and password; if confirmation is still needed, you can request a new email.";
+    if (["AbortError", "AuthRetryableFetchError"].includes(error?.name)) return "Could not connect. Check your connection and try again.";
+    if (code === "email_not_confirmed") return "Confirm your email before signing in.";
+    if (/rate|too_many|over_email/.test(code)) return "Too many requests. Wait before trying again.";
+    return error?.message || "Unable to connect. Please try again.";
+  };
   // Only this fixed category leaves the auth controller. Never send provider
   // messages, email addresses, credentials or identifiers to funnel analytics.
   const errorCategory = (error) => {
@@ -38,7 +43,7 @@
     if (/rate|too_many|over_email/.test(code)) return "rate_limited";
     if (/weak_password|email_address_invalid|validation_failed|bad_json/.test(code)) return "validation";
     if (/signup_disabled|email_provider_disabled|provider_disabled|unexpected_failure|BB_APPLE_UNAVAILABLE/.test(code)) return "unavailable";
-    if (/pkce|code_verifier|otp_expired|email_not_confirmed|session_not_found|BB_APPLE_INVALID_CREDENTIAL|BB_APPLE_AUTH_FAILED/.test(code)) return "verification";
+    if (/pkce|code_verifier|flow_state|otp_expired|email_not_confirmed|session_not_found|BB_APPLE_INVALID_CREDENTIAL|BB_APPLE_AUTH_FAILED/.test(code)) return "verification";
     return "unknown";
   };
   async function timedFetch(win, input, init = {}) {
@@ -90,6 +95,8 @@
         busy: false,
         action: "",
         cooldownUntil: 0,
+        linkRecovery: false,
+        allowAccountSwitch: false,
       },
       epoch = 0,
       lease = null,
@@ -192,7 +199,7 @@
       } catch {}
       lease = null;
       options.clearTransient?.();
-      set({ view: "sign-in", message: "" });
+      set({ view: "sign-in", message: "", allowAccountSwitch: false });
       options.onSuccess?.(
         state.action === "password"
           ? "password"
@@ -244,9 +251,9 @@
       }
       return e;
     }
-    function open(view = "sign-in") {
+    function open(view = "sign-in", presentation = {}) {
       if (state.busy) return;
-      set({ view, message: "", ...(["sign-up", "sign-in"].includes(view) ? { mode: view } : {}) });
+      set({ view, message: "", ...(["sign-up", "sign-in"].includes(view) ? { mode: view } : {}), ...(typeof presentation.switchAccount === "boolean" ? { allowAccountSwitch: presentation.switchAccount } : {}) });
     }
     function signUp(value, password) {
       if (state.busy || blocked()) return Promise.resolve(false);
@@ -304,13 +311,13 @@
         return accept(r.data?.session, false, p);
       });
     }
-    function signInWithApple() {
+    function signInWithApple(selection = {}) {
       if (state.busy || blocked()) return Promise.resolve(false);
       if (!options.apple?.enabled?.()) {
         set({ message: "Sign in with Apple is unavailable. Use email or try again shortly." });
         return Promise.resolve(false);
       }
-      const signingUp = state.mode === "sign-up";
+      const signingUp = selection?.intent === "sign-up" || (selection?.intent !== "sign-in" && state.mode === "sign-up");
       return run(signingUp ? "apple-signup" : "apple-signin", async (p) => {
         if (signingUp) {
           lifecycle("signup_method_apple");
@@ -442,12 +449,14 @@
         const callbackType = fields.type || fields.bb_auth || "";
         signupCallback = ["signup", "email"].includes(callbackType) || (callbackType === "apple" && pendingSignup()?.method === "apple");
         recoveryEvent = false;
-        set({ view: "verifying" });
+        set({ view: "verifying", linkRecovery: callbackType === "recovery" });
         try {
-          if (fields.error || fields.error_code)
-            throw Error(
-              "This link has expired or could not be used. Request a new confirmation or password reset email.",
-            );
+          if (fields.error || fields.error_code) {
+            // Retain a bounded provider error code for accurate local recovery.
+            // Never reflect the URL's error_description or emit either value.
+            const code = typeof fields.error_code === "string" && /^[a-z0-9_]{1,80}$/i.test(fields.error_code) ? fields.error_code : "auth_callback_error";
+            throw Object.assign(Error(callbackType === "recovery" ? "This password reset link could not be used. Request a fresh reset email from this device." : "This sign-in link could not be used. If you already confirmed your email, sign in with your email and password. Otherwise request a fresh email."), { code });
+          }
           const type = fields.type || fields.bb_auth || "";
           let r;
           if (fields.code)
@@ -467,6 +476,7 @@
             });
           else throw Error("This link is incomplete. Request a new email.");
           check(r.error);
+          if (r.data?.redirectType === "recovery" || recoveryEvent) set({ linkRecovery: true });
           return await accept(
             r.data?.session,
             type === "recovery" ||
@@ -474,6 +484,8 @@
               recoveryEvent,
             p,
           );
+        } catch (error) {
+          throw Object.assign(new Error(error?.message || "This sign-in link could not be used. Please try signing in or request a new email."), { name: error?.name || "Error", code: error?.code, authType: state.linkRecovery ? "recovery" : callbackType });
         } finally {
           handlingCallback = false;
         }
@@ -526,6 +538,8 @@
         busy: false,
         action: "",
         cooldownUntil: 0,
+        linkRecovery: false,
+        allowAccountSwitch: false,
       });
     }
     return Object.freeze({
@@ -652,7 +666,8 @@
       reset = button("bbAuthReset", "Send reset link"),
       resend = button("bbAuthResend", "Resend email"),
       save = button("bbAuthSavePassword", "Save new password"),
-      back = button("bbAuthBack", "Back to sign in");
+      back = button("bbAuthBack", "Back to sign in"),
+      cancelSwitch = button("bbAuthCancelSwitch", "Keep current account");
     const modes = make("div", "bbAuthModes"),
       signupMode = button("bbAuthSignupMode", "Create account"),
       signinMode = button("bbAuthSigninMode", "Sign in");
@@ -689,7 +704,7 @@
       back,
       feedback,
     );
-    form.append(forgot, extra);
+    form.append(forgot, extra, cancelSwitch);
     let latest = null,
       callbackBusy = false;
     const blocked = () => {
@@ -711,11 +726,15 @@
         signingUp = s.mode === "sign-up",
         waiting = s.view === "check-email",
         resetting = s.view === "forgot-password",
-        setting = s.view === "set-password";
+        setting = s.view === "set-password",
+        member = win.BasketBossSession?.state?.().remembered === true,
+        activeAuth = !normal || s.allowAccountSwitch;
       form.dataset.bbAuthView = s.view;
       form.dataset.bbAuthMode = s.mode;
       const status = doc.getElementById("cloud-status");
-      if (status) status.hidden = !normal;
+      if (status) status.hidden = activeAuth;
+      const signed = doc.getElementById("cloud-signed");
+      if (signed) signed.hidden = activeAuth || !member || blocked();
       form.setAttribute("aria-busy", String(s.busy));
       for (const n of fields) if (n) n.hidden = !normal;
       modes.hidden = intro.hidden = !normal || blocked();
@@ -729,7 +748,9 @@
       appleRetry.disabled = s.busy || appleChecking;
       signup.hidden = !normal || !signingUp || blocked();
       login.hidden = !normal || (signingUp && !blocked());
-      intro.textContent = signingUp
+      intro.textContent = s.allowAccountSwitch && member
+        ? "Sign in to the account you want to use. Your current account stays signed in until the new sign-in is verified."
+        : signingUp
         ? "Create a free account to keep your plan safe and sync it across devices. No card needed."
         : "Sign in to your BasketBoss account to access your saved kitchen.";
       signupMode.setAttribute("aria-pressed", String(signingUp));
@@ -737,8 +758,9 @@
       signupMode.disabled = signinMode.disabled = s.busy;
       password.autocomplete = signingUp ? "new-password" : "current-password";
       password.setAttribute("enterkeyhint", signingUp ? "done" : "go");
-      form.hidden =
-        normal && win.BasketBossSession?.state?.().remembered === true;
+      form.hidden = normal && member && !s.allowAccountSwitch;
+      cancelSwitch.hidden = !normal || !member || !s.allowAccountSwitch;
+      cancelSwitch.disabled = s.busy;
       if (normal && signingUp && !form.hidden && form.getClientRects?.().length) {
         try { win.BBFunnel?.track?.("signup_screen_viewed"); } catch {}
       }
@@ -762,7 +784,9 @@
                 ? "Forgot your password?"
                 : s.view === "reset-sent"
                   ? "Check your email"
-                  : "";
+                  : s.view === "link-error"
+                    ? s.linkRecovery ? "Reset link unavailable" : "Sign-in link unavailable"
+                    : "";
       copy.textContent = waiting
         ? "Check your email (" + s.email + ") to confirm your account."
         : setting
@@ -783,7 +807,9 @@
       back.hidden = normal || s.busy;
       back.textContent = setting
         ? "Request a new reset link"
-        : waiting && signingUp ? "Back to create account" : "Back to sign in";
+        : s.view === "link-error"
+          ? s.linkRecovery ? "Request a new reset link" : "Sign in with email"
+          : waiting && signingUp ? "Back to create account" : "Back to sign in";
       const remaining = Math.max(
         0,
         Math.ceil((s.cooldownUntil - Date.now()) / 1000),
@@ -813,8 +839,7 @@
       feedback.textContent = s.message === copy.textContent ? "" : s.message;
       const message = doc.getElementById("cloud-message");
       if (message) {
-        const member = win.BasketBossSession?.state?.().remembered === true;
-        message.hidden = !member;
+        message.hidden = !member || activeAuth;
         if (!member) message.textContent = "";
       }
     }
@@ -829,13 +854,17 @@
       win.setTimeout(() => n.remove(), 6000);
     }
     function route(type) {
+      const signedInActor = actor();
+      const stillSignedIn = () => signedInActor && actor() === signedInActor && !blocked() && win.BasketBossSession?.state?.().remembered === true;
       password.value = newPassword.value = repeat.value = "";
-      doc.getElementById("cloud-close")?.click();
-      const setupSaved = win.BBOnboard2026?.authenticated?.();
+      let setupSaved;
+      try { setupSaved = win.BBOnboard2026?.authenticated?.(); } catch { setupSaved = false; }
       const setupWarning =
         setupSaved === false
           ? "Signed in. Your setup could not be saved. Please retry setup in Settings."
           : "";
+      if (!stillSignedIn()) return;
+      doc.getElementById("cloud-close")?.click();
       doc.querySelector('.shell nav.tabs [data-tab="week"]')?.click();
       win.BBTabViewport?.reset?.({ view: "week" });
       const message = doc.getElementById("cloud-message");
@@ -851,7 +880,20 @@
               ? "Password updated — welcome back!"
               : "Welcome to BasketBoss!"),
       );
-      void Promise.resolve(win.BasketBossCloud?.connected?.()).catch(() => {});
+      // Enter the app immediately after verified sign-in. The existing backup
+      // owner retains its own deadlines, account checks and write safeguards.
+      // A slow backup must never hold the sign-in UI or its submission lock.
+      try {
+        void Promise.resolve(win.BasketBossCloud?.connected?.()).then(() => {
+          if (!stillSignedIn()) return;
+          const cloud = win.BasketBossCloud?.status?.();
+          const conflict = cloud?.hasBackup === true && (win.BasketBossCloud?.needsChoice?.() === true || cloud?.needsChoice === true);
+          if (conflict || cloud?.needsAttention === true || cloud?.paused === true) {
+            doc.getElementById("cloud-open")?.click();
+            toast("You’re signed in. Review your account backup below.");
+          }
+        }).catch(() => {});
+      } catch {}
     }
     const actor = () => {
       try {
@@ -920,12 +962,22 @@
       } finally {
         appleChecking = false;
         paint(core.state());
+        try { win.dispatchEvent(new win.CustomEvent("basketboss:apple-auth-availability", { detail: { available: appleReady && !blocked() } })); } catch {}
       }
     }
     appleButton.onclick = () => core.signInWithApple();
     appleRetry.onclick = () => checkApple();
     signupMode.onclick = () => core.open("sign-up");
     signinMode.onclick = () => core.open("sign-in");
+    const accountOpened = () => {
+      const current = core.state();
+      // A normal Account entry is sign-in. Explicit signup calls may select
+      // sign-up immediately afterwards; pending verification/recovery stays put.
+      if (!current.busy && !blocked() && ["sign-in", "sign-up"].includes(current.view) && win.BasketBossSession?.state?.().remembered !== true)
+        core.open("sign-in");
+      else if (current.allowAccountSwitch || !["sign-in", "sign-up"].includes(current.view)) paint(current);
+    };
+    doc.getElementById("cloud-open")?.addEventListener("click", accountOpened);
     let deletionSignInBusy = false;
     login.onclick = async () => {
       if (deletionSignInBusy) return false;
@@ -958,11 +1010,17 @@
     reset.onclick = () => core.requestReset(recoveryEmail.value);
     resend.onclick = () => core.resend();
     save.onclick = () => core.updatePassword(newPassword.value, repeat.value);
+    cancelSwitch.onclick = () => core.open("sign-in", { switchAccount: false });
     back.onclick = () => {
       if (core.state().view === "set-password") {
         recoveryEmail.value = core.state().email;
         invalidate();
         core.open("forgot-password");
+      } else if (core.state().view === "link-error") {
+        if (core.state().linkRecovery) {
+          recoveryEmail.value = core.state().email;
+          core.open("forgot-password");
+        } else core.open("sign-in", { switchAccount: true });
       } else core.open(core.state().mode);
     };
     form.addEventListener("keydown", (event) => {
@@ -1015,6 +1073,18 @@
     win.addEventListener("popstate", routeChanged);
     const pageShown = (event) => { if (event.persisted) core.resumeNavigation(); };
     win.addEventListener("pageshow", pageShown);
+    // The older cloud owner also updates `hidden` when background sync settles.
+    // Retain explicit callback/switch presentation without touching its session
+    // or data owner. Only repair mismatched attributes to avoid observer loops.
+    const accountPresentation = win.MutationObserver ? new win.MutationObserver(() => {
+      if (!latest || (["sign-in", "sign-up"].includes(latest.view) && !latest.allowAccountSwitch)) return;
+      if (form.hidden) form.hidden = false;
+      for (const id of ["cloud-signed", "cloud-status", "cloud-message"]) {
+        const node = doc.getElementById(id); if (node && !node.hidden) node.hidden = true;
+      }
+    }) : null;
+    const accountCard = doc.getElementById("cloud-card");
+    if (accountCard) accountPresentation?.observe(accountCard, { subtree: true, attributes: true, attributeFilter: ["hidden"] });
     const invalidate = () => {
       password.value = newPassword.value = repeat.value = "";
       core.invalidate();
@@ -1029,12 +1099,15 @@
     }, 1000);
     const api = {
       ...core,
+      appleAvailable: () => appleReady && !blocked(),
       handleCallbackURL,
       destroy() {
         win.removeEventListener("hashchange", routeChanged);
         win.removeEventListener("popstate", routeChanged);
         win.removeEventListener("pageshow", pageShown);
+        accountPresentation?.disconnect();
         win.removeEventListener("basketboss:session-changed", changed);
+        doc.getElementById("cloud-open")?.removeEventListener("click", accountOpened);
         subscription.data?.subscription?.unsubscribe?.();
         win.clearInterval(timer);
         for (const event of [

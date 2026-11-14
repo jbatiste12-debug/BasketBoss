@@ -50,6 +50,43 @@ test('a rejected account-connected backup probe settles locally instead of rejec
  const h=fixture();h.setHandler(async()=>{throw Error('synthetic no supermarket signal');});await assert.doesNotReject(h.window.BasketBossCloud.connected());
  assert.equal(h.store.get(STATE),plan('first'));assert.match(h.node('cloud-message').textContent,/Could not connect to cloud backup/);assert.doesNotMatch(h.node('cloud-message').textContent,/synthetic no supermarket signal/);assert.equal(h.timers.size,0);
 });
+test('a new account with no cloud row connects without a restore choice and keeps its existing draft',async()=>{
+ const h=fixture(),saved=h.store.get(STATE);
+ assert.equal(h.node('cloud-backup-controls').hidden,true,'there is no backup to manage before the first probe');
+ h.setHandler(async(_url,input)=>input.method==='GET'?Response.json([]):new Response(null,{status:204}));
+ await h.window.BasketBossCloud.connected();
+ assert.equal(h.reloads,0);assert.equal(h.store.get(STATE),saved);
+ assert.equal(h.window.BasketBossCloud.needsChoice(),false);
+ assert.deepEqual({...h.window.BasketBossCloud.status()},{needsChoice:false,hasBackup:true,paused:false,needsAttention:false});
+ assert.notEqual(h.node('cloud-backup-controls').open,true,'the optional backup controls never become a first-login prompt');
+ const writes=h.calls.filter(call=>call.input.method==='POST');assert.equal(writes.length,1);
+ assert.equal(JSON.parse(writes[0].input.body).user_id,'backup-test-actor');
+ assert.equal(JSON.parse(writes[0].input.body).data.planned[0].recipeId,'first','only this account’s current local draft is backed up');
+});
+test('an agreed backup stays in collapsed management controls while true conflicts remain explicit',async()=>{
+ for(const conflict of [false,true]){
+  const h=fixture();h.setHandler(async()=>Response.json([{data:JSON.parse(plan(conflict?'remote-dinner':'first'))}]));
+  await h.window.BasketBossCloud.connected();
+  assert.equal(h.window.BasketBossCloud.needsChoice(),conflict);
+  assert.equal(h.window.BasketBossCloud.status().hasBackup,true);
+  assert.equal(h.node('cloud-backup-controls').hidden,false);
+  assert.equal(h.node('cloud-backup-controls').open===true,conflict);
+  assert.equal(h.reloads,0);assert.ok(h.calls.every(call=>call.input.method==='GET'),'a conflict can never silently replace either copy');
+  assert.equal(Object.isFrozen(h.window.BasketBossCloud.status()),true,'the UI status cannot mutate the sync controller');
+ }
+});
+test('failed cloud probes keep a retry action available without claiming a data conflict',async()=>{
+ const h=fixture();h.setHandler(async()=>{throw Error('synthetic connection failure');});
+ await h.window.BasketBossCloud.connected();
+ assert.equal(h.window.BasketBossCloud.needsChoice(),false);
+ assert.equal(h.window.BasketBossCloud.status().needsAttention,true);
+ assert.equal(h.node('cloud-backup-controls').hidden,false);
+ assert.equal(h.node('cloud-backup-controls').open,true);
+ h.setHandler(async(_url,input)=>input.method==='GET'?Response.json([]):new Response(null,{status:204}));
+ await h.window.BasketBossCloud.connected();
+ assert.equal(h.window.BasketBossCloud.status().needsAttention,false);
+ assert.equal(h.node('cloud-backup-controls').open,false);
+});
 test('same-account token refresh preserves cloud agreement and autosaves new edits with the refreshed token',async()=>{
  for(const event of ['basketboss:session-changed','storage']){
   const h=fixture();await h.node('cloud-upload').onclick();assert.equal(h.calls.length,1);

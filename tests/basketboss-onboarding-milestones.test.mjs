@@ -102,35 +102,63 @@ test('a school-lunch-only first plan signals activation after its successful sav
 });
 
 function manualFixture(){
- const homeKey='basketboss_at_home_requirements_v1',values=new Map([['stock',JSON.stringify({'eggs|each':10})],['inventory','{}'],['basketboss_cloud_session_v1',JSON.stringify({user:{id:'test-person'}})]]),events=[];
- let blocked=false;
+ const homeKey='basketboss_at_home_requirements_v1',values=new Map([['stock',JSON.stringify({'eggs|each':10})],['inventory','{}'],['basketboss_cloud_session_v1',JSON.stringify({user:{id:'test-person'}})]]),events=[],saved=[];
+ let blocked=false,requestId='first-add',doc;
+ const walk=node=>[node,...node.children.flatMap(walk)];
+ class Node{
+  constructor(tag){Object.assign(this,{tagName:tag.toUpperCase(),children:[],parentNode:null,ownerDocument:doc,className:'',attributes:new Map(),events:new Map(),style:{},value:'',disabled:false,hidden:false,open:false,_text:''});}
+  set textContent(value){this._text=String(value);this.children=[];}
+  get textContent(){return this._text+this.children.map(child=>child.textContent).join('');}
+  append(...nodes){for(const node of nodes){node.remove();node.parentNode=this;this.children.push(node);}}
+  remove(){if(this.parentNode)this.parentNode.children=this.parentNode.children.filter(child=>child!==this);this.parentNode=null;}
+  setAttribute(name,value){this.attributes.set(name,String(value));if(name==='open')this.open=true;}
+  removeAttribute(name){this.attributes.delete(name);if(name==='open')this.open=false;}
+  addEventListener(name,fn){const handlers=this.events.get(name)||[];handlers.push(fn);this.events.set(name,handlers);}
+  async fire(name){const event={target:this,preventDefault(){}};await Promise.all((this.events.get(name)||[]).map(fn=>fn(event)));}
+  matches(selector){return selector.split(',').some(raw=>{const text=raw.trim();return text==='dialog[open]'?this.tagName==='DIALOG'&&this.open:text.startsWith('.')?this.className.split(/\s+/).includes(text.slice(1)):this.tagName.toLowerCase()===text;});}
+  querySelectorAll(selector){return walk(this).slice(1).filter(node=>node.matches(selector));}
+  querySelector(selector){return this.querySelectorAll(selector)[0]||null;}
+  contains(node){return walk(this).includes(node);}
+  get isConnected(){return this===doc.body||!!this.parentNode?.isConnected;}
+  focus(){doc.activeElement=this;}
+  blur(){doc.activeElement=doc.body;}
+  showModal(){this.setAttribute('open','');}
+  close(){this.removeAttribute('open');void this.fire('close');}
+ }
+ doc={createElement:tag=>new Node(tag),querySelector:selector=>doc.body.querySelector(selector)};doc.body=new Node('body');doc.body.style.overflow='auto';doc.activeElement=doc.body;
  const storage={getItem:key=>values.get(key)??null,setItem(key,value){if(blocked&&key===homeKey)throw Error('Storage unavailable');values.set(key,value);},removeItem:key=>values.delete(key)};
- const win={localStorage:storage,CustomEvent:class{constructor(type){this.type=type;}},dispatchEvent:event=>events.push(event),document:{},location:{search:''},
+ const win={localStorage:storage,CustomEvent:class{constructor(type){this.type=type;}},dispatchEvent:event=>events.push(event),document:doc,location:{search:''},crypto:{randomUUID:()=>requestId},
   BBHomeHost:{id:(name,unit)=>name.toLowerCase()+'|'+unit,keys:()=>({stock:'stock',inventory:'inventory'}),stock:()=>JSON.parse(values.get('stock')),household:()=>[],refresh(){},shoppingKind:name=>name==='Toilet rolls'?'household':'food',shoppingPurchaseContext:()=>({shopSessionId:'test-trip',quantity:0})}};
  const home=install(win);win.BBHome=home;
- return {home,events,values,win,setBlocked:value=>{blocked=value;},request:(name='Eggs',quantityText='4',requestId='first-add')=>({name,quantityText,requestId,actorId:'test-person'})};
+ vm.runInNewContext(fs.readFileSync(new URL('../bb-shop-add.js',import.meta.url),'utf8'),{window:win});
+ const container=new Node('div');doc.body.append(container);win.BBShopAdd.mount({container,win,onSaved:result=>saved.push(result)});
+ return {home,events,values,win,saved,setBlocked:value=>{blocked=value;},setRequestId:value=>{requestId=value;},async add(name='Eggs',qty='4'){
+  if(!doc.querySelector('dialog'))doc.querySelector('.bb-shop-add-open').onclick();
+  const nodes=walk(doc.body),item=nodes.find(node=>node.name==='name'),quantity=nodes.find(node=>node.name==='quantityText');
+  item.value=name;quantity.value=qty;await quantity.fire('input');await doc.querySelector('form').fire('submit');
+  return saved.at(-1);
+ }};
 }
 
-test('manual food and essential lists count only after committed nonzero requests, excluding retries and removals',()=>{
+test('manual food and essential UI additions count only after committed nonzero requests, excluding retries and removals',async()=>{
  for(const name of ['Eggs','Toilet rolls']){
   const h=manualFixture(),stock=h.values.get('stock');
-  assert.equal(h.home.addShoppingBuy(h.request(name)).ok,true);
+  assert.equal((await h.add(name)).ok,true);
   assert.deepEqual(h.events.map(event=>event.type),['basketboss:first-shopping-list-created']);
   assert.deepEqual(Object.keys(h.events[0]),['type']);
-  assert.equal(h.home.addShoppingBuy(h.request(name)).already,true);
+  assert.equal((await h.add(name)).already,true);
   assert.equal(h.events.length,1,'idempotent retries emit no second event');
-  assert.equal(h.home.addShoppingBuy(h.request(name,'0','remove')).ok,true);
+  h.setRequestId('remove');assert.equal((await h.add(name,'0')).ok,true);
   assert.equal(h.events.length,1,'removing a top-up creates no list');
   assert.equal(h.values.get('stock'),stock,'adding a shopping request cannot credit stock');
  }
 });
 
-test('failed manual saves and optional telemetry failures never misreport or damage the purchase request',()=>{
- const h=manualFixture();h.setBlocked(true);
- assert.equal(h.home.addShoppingBuy(h.request()).ok,false);
- assert.deepEqual(h.events,[]);
+test('failed manual UI saves and optional telemetry failures never misreport or damage the purchase request',async()=>{
+ const h=manualFixture();h.setBlocked(true);await h.add();
+ assert.deepEqual(h.saved,[]);assert.deepEqual(h.events,[]);
  h.setBlocked(false);h.win.dispatchEvent=()=>{throw Error('Optional telemetry unavailable');};
- assert.equal(h.home.addShoppingBuy(h.request()).ok,true);
+ assert.equal((await h.add()).ok,true);
  assert.equal(h.home.shoppingBuys()[0].quantity,4);
 });
 

@@ -71,7 +71,7 @@ test('Shop count labels buy complete items while metric inputs and amounts remai
  assert.equal(sandbox.bb80ShoppingQuantity('Onion',1.25,'medium'),'≈ 1 ½ medium');
  assert.equal(sandbox.bb80ShoppingQuantity('Onion',1.25,'each'),'2 onions');
  const quantity=187.5;assert.equal(sandbox.bb80ShoppingQuantity('Spinach',quantity,'g'),'187.5 g');assert.equal(quantity,187.5);
- assert.match(html,/bbRecipeIngredientQuantity\(recipe,item,factor\)/);
- assert.match(html,/bbRecipeIngredientQuantity\(r,i,cookFactor\)/);
+ assert.match(html,/bbRecipeDisplayIngredientQuantity\(recipe,item,factor\)/);
+ assert.match(html,/bbRecipeDisplayIngredientQuantity\(r,i,cookFactor\)/);
  assert.match(html,/event:\{sessionId:cookReceipt,recipeId:id,day,factor:cookFactor/,'pantry updates retain the original recipe and precise factor');
 });

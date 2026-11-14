@@ -13,7 +13,7 @@ html body #cloud-auth #bbAuthAppleRetry{min-height:44px;font-size:16px;font-weig
 #bbAuthStates h3{margin:0 0 10px;font-size:23px;color:#194b36}
 #bbAuthStates p{line-height:1.5;overflow-wrap:anywhere}
 #bbAuthStates input{box-sizing:border-box;width:100%;min-height:48px;margin:8px 0;padding:12px;border:1px solid #bfcfbf;border-radius:12px;background:#fff;font-size:16px;color:#183d2c}
-#bbAuthStates button,#bbAuthForgot{min-height:44px;margin-top:8px;padding:10px 14px;border:1px solid #c4d4bf;border-radius:12px;background:#f0f5e9;color:#20583d;font:inherit;font-weight:750}
+#bbAuthStates button,#bbAuthForgot,#bbAuthCancelSwitch{min-height:44px;margin-top:8px;padding:10px 14px;border:1px solid #c4d4bf;border-radius:12px;background:#f0f5e9;color:#20583d;font:inherit;font-weight:750}
 #bbAuthSavePassword,#bbAuthReset{background:#205e43!important;color:#fff!important}
 #cloud-auth button:disabled{opacity:.6;cursor:wait}
 #bbAuthFeedback:empty{display:none}

@@ -61,7 +61,7 @@ test('Plan -> Cook -> Plan restores identical Free and deferred Premium meal ref
 test('unavailable saved dinner remains visibly reserved, not No meal planned',()=>{
  assert.match(index,/pendingUnloaded=state\.planned\.some\(/);
  assert.match(index,/Saved dinner · waiting for recipe access/);
- assert.match(index,/Reconnect Premium to load its details/);
+ assert.match(index,/Check recipe access or choose another meal/);
 });
 test('text overflow is scoped to real onboarding, Plan, and header',()=>{
  assert.match(index,/bb-cook-plan-hotfix\.css\?v=20261101-corner2/);

@@ -77,6 +77,29 @@
  // Replay uses memory until Finish; closing or reloading keeps prior setup intact.
  let replaying=false,replayOriginal=null;
  let quickSetupOriginal=null,quickAccountOpen=false,quickPreferencesOpen=false,quickPartnerOpen=false;
+ let quickAppleBusy=false,quickAppleMessage='';
+ function welcomeAppleAvailable(){
+   try{return native()&&!blocked()&&!accountRemembered()&&window.BBAuthFlow?.appleAvailable?.()===true;}catch(_){return false;}
+ }
+ function syncWelcomeApple(){
+   if(!quick||!host||state.step!==1)return;
+   const section=host.querySelector('[data-bbob-apple]');if(!section)return;
+   const available=welcomeAppleAvailable(),visible=native()&&!blocked()&&!accountRemembered()&&(available||quickAppleBusy);
+   section.hidden=!visible;host.classList?.toggle('bbob-apple-ready',visible);
+   const button=section.querySelector('[data-bbob="quick-apple"]');
+   if(button){button.disabled=quickAppleBusy||!available;button.setAttribute('aria-busy',String(quickAppleBusy));}
+   const label=section.querySelector('[data-bbob-apple-label]');if(label)label.textContent=quickAppleBusy?'Connecting to Apple…':'Continue with Apple';
+   const status=section.querySelector('[data-bbob-apple-status]');if(status){status.textContent=quickAppleMessage;status.hidden=!quickAppleMessage;}
+ }
+ async function signInWelcomeApple(){
+   if(quickAppleBusy||!welcomeAppleAvailable())return;
+   quickAppleBusy=true;quickAppleMessage='';syncWelcomeApple();
+   try{
+     const connected=await window.BBAuthFlow.signInWithApple({intent:'sign-up'});
+     if(connected!==true)quickAppleMessage='Apple sign-in wasn’t completed. Try again, or explore Free.';
+   }catch(_){quickAppleMessage='Could not connect to Apple. Try again, or explore Free.';}
+   finally{quickAppleBusy=false;syncWelcomeApple();}
+ }
  const changedPreferences=new Set();
  function persist(commitReplay=false){if(blocked())return false;if(replaying&&!commitReplay)return true;return write(KEY,JSON.stringify({step:state.step,house:state.house,goals:state.goals,diets:state.diets,region:state.region,started:state.started,complete:state.complete,partnerStepV2:true,wantsPartnerInvite:state.wantsPartnerInvite===true,partnerIntent:state.partnerIntent||'none'}));}
  const btn=(label,action,kind='primary')=>`<button type="button" class="bbob-btn bbob-${kind}" data-bbob="${action}">${label}</button>`;
@@ -118,7 +141,7 @@
        art+='<div class="bbob-auth-ready" role="status">✓ You’re already signed in. Your account and saved meals are ready.</div>';
      }else{
        const accountOpen=quickAccountOpen||state.partnerIntent==='join';
-       art+=`<section class="bbob-quick-account" data-bbob-account><div class="bbob-quick-auth-actions">${btn('Create free account','quick-signup','outline')}${btn(state.partnerIntent==='join'?'Sign in with invited email':'Sign in','quick-signin','outline')}</div><p class="bbob-quick-account-note">Create an account to save and sync across devices.</p><div id="bbobQuickAccountPanel" class="bbob-quick-account-panel" ${accountOpen?'':'hidden'}><div id="bbobAuthSlot" class="bbob-auth-slot"></div><div id="bbobMessageSlot" class="bbob-message-slot" aria-live="polite"></div>${btn('Back to welcome','quick-account','link')}</div></section>`;
+       art+=`<section class="bbob-quick-account" data-bbob-account><div class="bbob-quick-apple" data-bbob-apple ${welcomeAppleAvailable()?'':'hidden'}><button type="button" class="bbob-btn bbob-apple" data-bbob="quick-apple" aria-label="Continue with Apple"><svg viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path fill="currentColor" d="M17.05 20.28c-.98.95-2.05.8-3.08.35-1.09-.46-2.09-.48-3.24 0-1.44.62-2.2.44-3.06-.35C2.79 15.26 3.5 7.59 9.05 7.31c1.35.07 2.29.76 3.08.82 1.18-.24 2.31-.94 3.57-.85 1.51.12 2.65.72 3.4 1.8-3.12 1.87-2.38 5.98.48 7.13-.57 1.5-1.31 2.99-2.54 4.08l.01-.01zM12.03 7.25C11.88 5.02 13.69 3.18 15.77 3c.29 2.58-2.34 4.5-3.74 4.25z"/></svg><span data-bbob-apple-label>Continue with Apple</span></button><p class="bbob-quick-apple-status" data-bbob-apple-status role="status" aria-live="polite" hidden></p></div><div class="bbob-quick-auth-actions">${btn('Create free account','quick-signup','outline')}${btn(state.partnerIntent==='join'?'Sign in with invited email':'Sign in','quick-signin','outline')}</div><p class="bbob-quick-account-note">Sign in to save and sync. Exploring Free needs no account.</p><div id="bbobQuickAccountPanel" class="bbob-quick-account-panel" ${accountOpen?'':'hidden'}><div id="bbobAuthSlot" class="bbob-auth-slot"></div><div id="bbobMessageSlot" class="bbob-message-slot" aria-live="polite"></div>${btn('Back to welcome','quick-account','link')}</div></section>`;
      }
      actions=btn(state.partnerIntent==='join'?'Continue without joining':'Explore BasketBoss Free','free-complete')+btn('Set up my household · Optional','next','link');
    }else if(state.step===3){
@@ -279,6 +302,7 @@
    }
    host.classList?.toggle('bbob-quick',quick);host.classList?.toggle('bbob-quick-welcome-screen',quick&&state.step===1);host.classList?.toggle('bbob-account-open',quick&&state.step===1&&(quickAccountOpen||state.partnerIntent==='join'));host.classList?.toggle('bbob-quick-premium',quick&&state.step===10);host.classList?.toggle('bbob-kitchen-slide',!quick&&state.step===9);restoreAuth();host.innerHTML=content();
    if(state.step===1&&!accountRemembered())mountAuth();
+   syncWelcomeApple();
    sizeWelcomeViewport();host.scrollTop=0;
    if(state.step===1&&!accountRemembered()){
      const heading=host.querySelector('#bbob-title');heading?.setAttribute('tabindex','-1');heading?.focus({preventScroll:true});
@@ -494,6 +518,7 @@
      const option=e.target.closest('[data-bbob-opt]');if(option){chooseOption(Number(option.dataset.bbobOpt),option.dataset.bbobGroup);return;}
      const action=e.target.closest('[data-bbob]')?.dataset.bbob;if(!action)return;
      if(action==='replay-cancel'){dismiss();return;}
+     if(action==='quick-apple'&&quick&&state.step===1){void signInWelcomeApple();return;}
      if(['quick-account','quick-signup','quick-signin'].includes(action)&&quick&&state.step===1){
        const panel=host.querySelector('#bbobQuickAccountPanel'),toggle=host.querySelector('[data-bbob="quick-account"]');
        if(!panel)return;
@@ -585,6 +610,8 @@
    window.visualViewport?.addEventListener?.('scroll',sizeWelcomeViewport);
    window.addEventListener('resize',sizeWelcomeViewport);
    window.addEventListener('orientationchange',sizeWelcomeViewport);
+   window.addEventListener('basketboss:auth-ready',syncWelcomeApple);
+   window.addEventListener('basketboss:apple-auth-availability',syncWelcomeApple);
    trimFounder();begin();replayLabel();
    document.addEventListener('click',event=>{
      if(!event.target.closest?.('#bbOnboardingReplay,#bbBetaWelcomeReplay'))return;

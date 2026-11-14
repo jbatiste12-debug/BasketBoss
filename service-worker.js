@@ -7,7 +7,7 @@ const IMAGE_CACHE = 'basketboss-v20261102-audited-images-v2';
 const APP_BASE = new URL(self.registration.scope);
 // Public build inventory only. The worker never imports account or API data.
 const USING_PWA700 = typeof importScripts === 'function';
-if (USING_PWA700) importScripts(new URL('pwa700/precache.js?v=20261114-auth1', APP_BASE).href);
+if (USING_PWA700) importScripts(new URL('pwa700/precache.js?v=20261114-account2', APP_BASE).href);
 const PWA700_CORE = Array.isArray(self.BB700_PWA_PRECACHE) ? self.BB700_PWA_PRECACHE : [];
 if (USING_PWA700 && (!PWA700_CORE.length || !/^[a-f0-9]{64}$/.test(self.BB700_PWA_CACHE_VERSION || ''))) throw new Error('Missing public PWA cache inventory');
 const CACHE = CACHE_BASE + (USING_PWA700 ? '-' + self.BB700_PWA_CACHE_VERSION : '');
@@ -83,7 +83,7 @@ const CORE = ['bb-plan-extras.js','bb-plan-extras.js?v=20261108-planner1','bb-pl
   'bb-day-done.css?v=20261108-planner1',
   'bb-day-done.js?v=20261108-planner1',
   'bb-shop-add.css?v=20261105-reduced1',
-  'bb-shop-add.js?v=20261105-preflight1',
+  'bb-shop-add.js?v=20261114-onboarding1',
   'bb-cupboard-staples.js?v=20261104-cupboard2',
   'bb-pantry-autofill.js?v=20261105-reduced1',
   'bb-pantry-first-controls.js','bb-pantry-first-controls.css','bb-account-pantry-live.js',
@@ -95,7 +95,7 @@ const CORE = ['bb-plan-extras.js','bb-plan-extras.js?v=20261108-planner1','bb-pl
   'basketboss-pricing-v19.js?v=20261108-baseline1',
   'bb-family-landing.css?v=20261105-simple1',
   'bb-family-landing.js?v=20261104-landing1'
-].concat(PWA700_CORE)
+,"./cloud-config.js","bb-home.js?v=20261114-onboarding1","bb-onboarding-v2.css?v=20261114-account2","bb-receipt-host.js?v=20261114-account2","bb-onboarding-v2.js?v=20261114-account2","bb-auth-flow.js?v=20261114-account2"].concat(PWA700_CORE)
   .map(path => new URL(path, APP_BASE).href);
 self.addEventListener('install', event => {
   event.waitUntil(caches.open(CACHE).then(cache => cache.addAll([...new Set(CORE)])).then(() => self.skipWaiting()));

@@ -242,6 +242,24 @@ test("native Apple signup locks taps and passes its nonce through the verified s
   assert.equal(JSON.stringify(h.lifecycle).includes("synthetic-apple-token"), false);
 });
 
+test("direct welcome Apple signup requires no email form or mode switch", async () => {
+  const wait = deferred();
+  const h = fixture({ apple: { enabled: () => true, native: true, signIn: () => wait.promise } });
+  const pending = h.core.signInWithApple({ intent: "sign-up" });
+  assert.equal(h.core.state().view, "sign-in", "direct provider choice does not open or select the email signup form");
+  assert.equal(h.core.state().mode, "sign-in");
+  assert.equal(h.core.state().email, "");
+  assert.equal(h.core.state().busy, true);
+  wait.resolve({ identityToken: "synthetic-apple-token", nonce: "synthetic-native-nonce" });
+  assert.equal(await pending, true);
+  assert.deepEqual(h.lifecycle, ["signup_method_apple", "signup_attempted", "signup_succeeded"]);
+  assert.equal(h.calls.some(x => ["signUp", "signInWithPassword"].includes(x.name)), false);
+  const returning = fixture({ apple: { enabled: () => true, native: true, signIn: async () => ({ identityToken: "synthetic-token", nonce: "synthetic-nonce" }) } });
+  returning.core.open("sign-up");
+  assert.equal(await returning.core.signInWithApple({ intent: "sign-in" }), true);
+  assert.deepEqual(returning.lifecycle, [], "explicit returning-provider sign-in never counts as signup intent");
+});
+
 test("Apple cancellation releases the form and existing Apple sign-in is not counted as signup", async () => {
   const cancelled = fixture({ apple: { enabled: () => true, native: true, async signIn() { throw Object.assign(Error("cancelled"), { code: "BB_APPLE_CANCELLED" }); } } });
   cancelled.core.open("sign-up");
@@ -481,6 +499,63 @@ test("expired callback and rate-limit errors stay recoverable and unlock buttons
   });
   await h.core.signIn(h.user.email, "password123");
   assert.match(h.core.state().message, /Wait/);
+});
+
+test("expired or reused callback offers password sign-in without accepting the failed link", async () => {
+  const h = fixture();
+  assert.equal(await h.core.callback({ error: "access_denied", error_code: "otp_expired", error_description: "Untrusted URL description", bb_auth: "signup" }), false);
+  assert.equal(h.core.state().view, "link-error");
+  assert.match(h.core.state().message, /expired or has already been used/);
+  assert.match(h.core.state().message, /may already be confirmed/);
+  assert.match(h.core.state().message, /signing in with your email and password/);
+  assert.doesNotMatch(h.core.state().message, /Untrusted URL description/);
+  assert.equal(h.success.length, 0);
+  assert.equal(h.calls.length, 0, "an error-only callback never attempts to establish a session");
+  h.core.open("sign-in");
+  assert.equal(await h.core.signIn(h.user.email, "password123"), true);
+  assert.equal(h.success.length, 1, "only the subsequent independently verified password sign-in grants access");
+});
+
+test("missing PKCE state explains the device mismatch without assuming an expired email", async () => {
+  for (const code of ["flow_state_not_found", "flow_state_expired", "pkce_code_verifier_not_found", "bad_code_verifier"]) {
+    const h = fixture();
+    h.auth.exchangeCodeForSession = async () => ({ error: { code, message: "Provider detail" } });
+    assert.equal(await h.core.callback({ code: "synthetic-link", bb_auth: "signup" }), false);
+    assert.match(h.core.state().message, /could not finish signing you in on this device/);
+    assert.match(h.core.state().message, /sign in with your email and password/);
+    assert.doesNotMatch(h.core.state().message, /expired|Provider detail/);
+    assert.equal(h.success.length, 0);
+  }
+});
+
+test("reset-link errors retain reset recovery and unknown URL errors stay generic", async () => {
+  const recovery = fixture();
+  await recovery.core.callback({ error: "access_denied", error_code: "otp_expired", type: "recovery" });
+  assert.equal(recovery.core.state().linkRecovery, true);
+  assert.match(recovery.core.state().message, /new password reset email/);
+  assert.doesNotMatch(recovery.core.state().message, /may already be confirmed/);
+  assert.equal(recovery.success.length, 0);
+  const unknown = fixture();
+  await unknown.core.callback({ error: "access_denied", error_code: "<untrusted-code>", error_description: "untrusted description" });
+  assert.match(unknown.core.state().message, /could not be used/);
+  assert.doesNotMatch(unknown.core.state().message, /expired|untrusted/);
+  assert.equal(unknown.success.length, 0);
+});
+
+test("explicit account-switch recovery remains presentation-only until a new sign-in verifies", async () => {
+  const h = fixture(), signIn = h.auth.signInWithPassword;
+  h.core.open("sign-in", { switchAccount: true });
+  assert.equal(h.core.state().allowAccountSwitch, true);
+  h.auth.signInWithPassword = async () => ({ error: { code: "invalid_credentials", message: "Invalid login credentials." } });
+  assert.equal(await h.core.signIn(h.user.email, "password123"), false);
+  assert.equal(h.core.state().allowAccountSwitch, true);
+  assert.equal(h.success.length, 0);
+  h.auth.signInWithPassword = signIn;
+  assert.equal(await h.core.signIn(h.user.email, "password123"), true);
+  assert.equal(h.core.state().allowAccountSwitch, false);
+  h.core.open("sign-in", { switchAccount: true });
+  h.core.open("sign-in", { switchAccount: false });
+  assert.equal(h.core.state().allowAccountSwitch, false);
 });
 test("account switch or deletion invalidates late callback responses", async () => {
   for (const mutate of ["change", "block"]) {

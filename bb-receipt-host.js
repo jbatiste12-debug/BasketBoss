@@ -18,12 +18,22 @@
     choices: 'basketboss_purchase_choices_v1',
     partials: 'basketboss_partial_purchases_v1',
     plan: 'basketboss_321_unified_state_v1',
+    planRecovery: 'basketboss_321_unified_recovery_v1',
+    legacyState: 'basketboss_state_v2',
+    legacyPlan: 'basketboss_321_unified_oldplan_v1',
+    legacyPantry: 'basketboss_321_unified_oldpantry_v1',
     lunch: 'basketboss_321_v8_school_lunchboxes_v1',
     notes: 'basketboss_v172_custom_dinners_v1'
   });
   const LEGACY_ACTIVE_KEYS = [KEYS.stock, KEYS.kitchen, KEYS.confirmed, KEYS.ledger, KEYS.owner];
-  const ACTIVE_KEYS = [...LEGACY_ACTIVE_KEYS, KEYS.prices, KEYS.paidPrices, KEYS.packSizes, KEYS.shop, KEYS.shopArchive, KEYS.ticks, KEYS.purchases, KEYS.choices, KEYS.partials, KEYS.plan, KEYS.lunch, KEYS.notes];
-  const BACKUP_KEYS = ACTIVE_KEYS.filter(key => ![KEYS.owner, KEYS.plan].includes(key));
+  // The app reads these when the primary plan is absent. They belong to the
+  // same local profile as that plan; leaving them global resurrects the prior
+  // account's week after a switch clears the destination's primary plan.
+  const PLAN_FALLBACK_KEYS = [KEYS.planRecovery, KEYS.legacyState, KEYS.legacyPlan, KEYS.legacyPantry];
+  const ACTIVE_KEYS = [...LEGACY_ACTIVE_KEYS, KEYS.prices, KEYS.paidPrices, KEYS.packSizes, KEYS.shop, KEYS.shopArchive, KEYS.ticks, KEYS.purchases, KEYS.choices, KEYS.partials, KEYS.plan, ...PLAN_FALLBACK_KEYS, KEYS.lunch, KEYS.notes];
+  // Recovery/migration artifacts stay local in their actor archive, never in
+  // the kitchen cloud payload. Its existing schema is deliberately unchanged.
+  const BACKUP_KEYS = ACTIVE_KEYS.filter(key => ![KEYS.owner, KEYS.plan, ...PLAN_FALLBACK_KEYS].includes(key));
   const HOME_KEY = 'basketboss_at_home_requirements_v1';
   const FEATURES_KEY = 'basketboss_321_features_v1';
   const CURRENCIES = {UK: 'GBP', Guernsey: 'GBP', Jersey: 'GBP', US: 'USD'};
@@ -162,11 +172,11 @@
       notifyProjection(hold.pending);
     }
     function discardInlineReviews() {for (const review of [...inlineReviews]) review.dispose({refresh: false});projectionHolds.clear();}
-    function writeAtomic(changes, expected = {}) {
+    function writeAtomic(changes, expected = {}, rawKeys = []) {
       if (blocked()) throw Error('account_deletion_in_progress');
       const before = Object.fromEntries(Object.keys(changes).map(key => [key, store().getItem(key)]));
       for (const [key, value] of Object.entries(expected)) if ((Object.hasOwn(before, key) ? before[key] : store().getItem(key)) !== value) throw Error('receipt_host_storage_changed');
-      const after = Object.fromEntries(Object.entries(changes).map(([key, value]) => [key, value === null ? null : JSON.stringify(value)]));
+      const after = Object.fromEntries(Object.entries(changes).map(([key, value]) => [key, value === null ? null : rawKeys.includes(key) ? value : JSON.stringify(value)]));
       const written = [];
       try {
         for (const [key, value] of Object.entries(after)) {
@@ -294,9 +304,15 @@
         archived.claimedHome = clone(home.byActor.guest);
         home.byActor[next] = claimGuestMetadata(home.byActor.guest, next);delete home.byActor.guest;changes[HOME_KEY] = home;
       }
-      for (const key of ACTIVE_KEYS) {const value = values[key] === null || values[key] === undefined ? null : JSON.parse(values[key]);changes[key] = claimGuest ? claimGuestMetadata(value, next) : value;}
+      for (const key of ACTIVE_KEYS) {
+        // Preserve even unreadable legacy bytes in the old actor's archive.
+        // A missing key in an older destination archive means no fallback;
+        // it must never inherit the currently active actor's global value.
+        if (PLAN_FALLBACK_KEYS.includes(key)) {changes[key] = values[key] ?? null;continue;}
+        const value = values[key] === null || values[key] === undefined ? null : JSON.parse(values[key]);changes[key] = claimGuest ? claimGuestMetadata(value, next) : value;
+      }
       if (options.setEssentials && options.setEssentials(nextEssentials) === false) throw Error('receipt_host_essentials_switch_failed');
-      try {writeAtomic(changes);} catch (error) {try {options.setEssentials?.(savedEssentials);} catch {} throw error;}
+      try {writeAtomic(changes, {}, PLAN_FALLBACK_KEYS);} catch (error) {try {options.setEssentials?.(savedEssentials);} catch {} throw error;}
       observedActor = next;
       availability = {available: false, premium: false}; lastChecked = 0; checkedActor = null; statusPromise = null;generation++;
       const handled = options.onActorChanged?.({previous, actor: next, guestClaimed: claimGuest}) === true;
