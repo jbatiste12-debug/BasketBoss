@@ -84,6 +84,8 @@ for(const viewport of [{width:390,height:844},{width:320,height:568}])test('plan
   // Existing native dinner disclosure still opens its original action controls.
   const monday=page.locator('.bbnext-day[data-bbnext-day="Monday"]');await monday.locator('.bbnext-day-description>strong').click();await page.waitForFunction(()=>document.querySelector('.bbnext-day[data-bbnext-day="Monday"]').open);assert.equal(await monday.evaluate(node=>node.open),true);
   assert.ok(await monday.locator('[data-move]').isVisible());
+  // Close the real day editor before exercising background planner tabs.
+  const closeDay=monday.locator('.bbdps-close');if(await closeDay.count())await closeDay.click();
   // Keyboard tabs remain usable without a pointer or navigation event.
   await dinners.focus();await dinners.press('ArrowRight');assert.equal(await lunches.getAttribute('aria-selected'),'true');await lunches.press('Home');assert.equal(await dinners.getAttribute('aria-selected'),'true');
   const bounds=await page.locator('#bbSimplePlannerTabs').boundingBox();assert.ok(bounds.x>=0&&bounds.x+bounds.width<=viewport.width);

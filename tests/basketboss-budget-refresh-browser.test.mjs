@@ -26,6 +26,7 @@ const bridge=`window.__budgetQA={
  add:(id,day)=>addRecipe(id,day),
  state:()=>JSON.parse(JSON.stringify(state)),
  summary:()=>bb321WeeklySummary(),
+ displaySummary:()=>bbShopPurchaseEstimate(bb321WeeklySummary()),
  stock:()=>bb307ReadStock(),
  purchase:()=>bb84ReadPurchased()[BB307Pantry.pantryId('Pork sausages','each')],
  archive:()=>localStorage.getItem(BB_SHOP_ARCHIVE_V7_KEY),
@@ -101,19 +102,28 @@ async function fixture(width,{unpriced=false}={}){
 const money=amount=>'£'+amount.toFixed(2);
 async function assertPlanBudget(page,amount,message,weeklyTotal=Math.round((251.45+amount)*100)/100){
  const summary=await page.evaluate(()=>window.__budgetQA.summary());
- assert.equal(await page.locator('#myWeekEstimatedTotal').textContent(),money(amount)+(summary.remainingPending?' +':''),message);
+ assert.equal(await page.locator('#myWeekEstimatedTotal').textContent(),money(amount),message);
  assert.equal(await page.evaluate(()=>document.body.dataset.bbnextView),'week','the estimate updates on Plan before any Shop navigation');
  assert.equal(summary.remainingTotal,amount,'real current shopping quantities support the visible estimate');
  assert.equal(summary.total,weeklyTotal,'the completed trip stays in weekly spending history');
  assert.equal(await page.locator('#myWeekEstimatedTotal').evaluate(node=>node.parentElement.querySelector('small')?.textContent),'to buy','the headline explains which money is shown');
  const settings=page.locator('#bbSimpleBudget');await settings.waitFor();
  assert.equal(await settings.evaluate(node=>node.open),false,'weekly spending stays in the existing closed Budget & household disclosure');
+ assert.match(await settings.locator('.bb77-left-to-buy').textContent(),new RegExp('Left to buy: '+money(amount).replace(/[£.]/g,value=>value==='.'?'\\.':value)),'the primary budget line agrees with the ring');
+ const details=settings.locator('details.bb77-weekly-spending');
+ assert.equal(await details.evaluate(node=>node.open),false,'recorded spending starts inside its own closed disclosure');
+ assert.equal(await details.locator(':scope > summary').textContent(),'Recorded spending & weekly total');
+ assert.equal(await settings.locator('.bb77-recorded-purchases').textContent(),'Recorded purchases: '+money(Math.round((weeklyTotal-amount)*100)/100));
+ const period=details.locator('.bb77-weekly-period'),week=require('../bb-reduced-purchases.js').week(Date.now(),'UK'),end=new Date(week+'T12:00:00Z');end.setUTCDate(end.getUTCDate()+6);
+ assert.equal(await period.getAttribute('data-week-start'),week);assert.equal(await period.getAttribute('data-week-end'),end.toISOString().slice(0,10));
+ assert.match(await period.textContent(),/Calendar week:/);
  const forecast=settings.locator('.bb77-weekly-forecast');
- assert.match(await forecast.textContent(),new RegExp('This week: £'+weeklyTotal.toFixed(2).replace('.','\\.')));
+ assert.equal(await forecast.textContent(),'Recorded purchases + shopping estimate: '+money(weeklyTotal));
  assert.equal(await forecast.isVisible(),false);
  const trim=page.locator('.bb81-trim-banner');
  if(await trim.count()){
   assert.equal(await settings.locator('.bbs-budget-body .bb81-trim-banner').count(),await trim.count(),'a weekly-spending trim suggestion stays with its budget comparison');
+  assert.equal(await details.locator('.bb81-trim-banner').count(),await trim.count(),'weekly-spending suggestions stay in the nested spending details');
   assert.equal(await trim.first().isVisible(),false,'history-driven budget suggestions stay hidden while Budget & household is closed');
  }
 }
@@ -170,7 +180,7 @@ for(const width of [390,320])test(`current 700 Plan recalculates its current bas
   await settings.locator(':scope>summary').click();
   await settings.locator('#bb77BudgetTarget').fill('300');
   assert.match(await settings.locator('.bb77-weekly-budget-state').textContent(),/£44\.10 under your £300 budget/,'typing a target immediately updates the weekly comparison');
-  assert.match(await settings.locator('.bb77-weekly-forecast').textContent(),/This week: £255\.90/);
+  assert.equal(await settings.locator('.bb77-weekly-forecast').textContent(),'Recorded purchases + shopping estimate: £255.90');
   assert.equal(await page.locator('#myWeekEstimatedTotal').textContent(),'£4.45','saving a weekly target cannot change the current groceries to buy');
   assert.equal(await page.evaluate(()=>localStorage.getItem('basketboss_v172_weekly_budget_target_v1')),'300');
   await settings.locator(':scope>summary').click();
@@ -237,6 +247,9 @@ test('current 700 current-basket totals retain real unpriced essentials as pendi
   assert.equal(await page.locator('#myWeekEstimatedTotal').evaluate(node=>node.parentElement.querySelector('small')?.textContent),'to buy');
   const settings=page.locator('#bbSimpleBudget');await settings.waitFor();
   assert.equal(await settings.evaluate(node=>node.open),false,'weekly spending remains in the existing closed budget disclosure');
+  assert.equal(await settings.locator('.bb77-left-to-buy').textContent(),'Left to buy: £15.00 estimated','the optional guide matches the ring, without changing the core quote');
+  assert.equal(await settings.locator('details.bb77-weekly-spending').evaluate(node=>node.open),false);
+  assert.equal(await settings.locator('.bb77-recorded-purchases').textContent(),'Recorded purchases: £251.45');
   assert.equal(await settings.locator('.bb77-weekly-forecast').isVisible(),false);
   const trim=page.locator('.bb81-trim-banner');
   if(await trim.count()){
@@ -244,11 +257,52 @@ test('current 700 current-basket totals retain real unpriced essentials as pendi
    assert.equal(await trim.first().isVisible(),false,'history-driven suggestions remain inside the closed budget disclosure');
   }
   assert.equal(await page.locator('.bb77-price-note').textContent(),'','the current shopping display uses its numeric guide');
-  assert.match(await page.locator('#bbSimpleBudget .bb77-weekly-forecast').textContent(),/£263\.95 \+/,'weekly history stays visibly incomplete too');
+  assert.equal(await settings.locator('.bb77-weekly-forecast').textContent(),'Recorded purchases + shopping estimate: £266.45','the presentation combines the unchanged £251.45 history with the £15 buying estimate');
+  assert.doesNotMatch(await settings.locator('.bb77-weekly-forecast').textContent(),/£[\d,.]+\s*\+(?:\s|$)/,'uncertain prices use an explanatory note instead of a dangling plus');
   await assertOverviewBudget(page,15.00);
   assert.doesNotMatch(await page.locator('#bbReleaseShopOverview .bb-r6-stat').last().textContent(),/\+/,'Shop overview includes the numeric guide');
   assert.doesNotMatch(await page.locator('.bb321-shop-summary-stats').textContent(),/\bunpriced\b/);
   assert.equal(await page.evaluate(()=>window.__budgetQA.archive()),archive);
+  assert.deepEqual(errors,[]);
+ }finally{await context.close();}
+});
+
+test('Buying presets and custom total prices update the budget breakdown without changing historical spending or core quotes',{skip:!chromium&&'Playwright unavailable',timeout:60000},async()=>{
+ const {page,context,errors}=await fixture(390);
+ try{
+  await clearDinner(page,'Monday');
+  const archive=await page.evaluate(()=>window.__budgetQA.archive()),stock=await page.evaluate(()=>window.__budgetQA.stock()),before=await page.evaluate(()=>window.__budgetQA.summary());
+  assert.equal(before.remainingTotal,4.45);assert.equal(before.total,255.90);
+  await assertOverviewBudget(page,4.45);
+  let shell=await openShoppingMode(page),row=shell.locator('[data-bb-shop-purchase-id="pork sausages|each"]');
+  await row.locator('.bb-shop-buying-pill').click();
+  await row.locator('[data-bb-pack-preset="4"]').click();
+  await page.waitForFunction(()=>window.__budgetQA.displaySummary().remainingTotal!==4.45);
+  await exitShoppingMode(page,shell);await page.evaluate(()=>window.__budgetQA.plan());
+  const preset=await page.evaluate(()=>window.__budgetQA.displaySummary());
+  assert.notEqual(preset.remainingTotal,4.45,'a smaller selected pack changes the current display estimate');
+  assert.equal(preset.total,255.90,'the original catalogue-based weekly result remains intact');
+  assert.equal(await page.locator('#myWeekEstimatedTotal').textContent(),money(preset.remainingTotal));
+  let settings=page.locator('#bbSimpleBudget');
+  assert.equal(await settings.locator('.bb77-left-to-buy').textContent(),'Left to buy: '+money(preset.remainingTotal)+' estimated');
+  assert.equal(await settings.locator('.bb77-recorded-purchases').textContent(),'Recorded purchases: £251.45');
+  assert.equal(await settings.locator('.bb77-weekly-forecast').textContent(),'Recorded purchases + shopping estimate: '+money(Math.round((251.45+preset.remainingTotal)*100)/100));
+  assert.equal(await settings.locator('details.bb77-weekly-spending').evaluate(node=>node.open),false);
+
+  await assertOverviewBudget(page,preset.remainingTotal);
+  shell=await openShoppingMode(page);row=shell.locator('[data-bb-shop-purchase-id="pork sausages|each"]');
+  await row.locator('.bb-shop-buying-pill').click();await row.locator('[data-bb-pack-preset="custom"]').click();
+  await row.locator('[data-bb-pack-price]').fill('3.99');await row.locator('.bb-shop-pack-save').click();
+  await page.waitForFunction(previous=>window.__budgetQA.displaySummary().remainingTotal!==previous,preset.remainingTotal);
+  await exitShoppingMode(page,shell);await page.evaluate(()=>window.__budgetQA.plan());
+  const custom=await page.evaluate(()=>window.__budgetQA.displaySummary());
+  assert.equal(custom.total,255.90);assert.equal(custom.remainingTotal,5.64,'£3.99 selected total plus £1.65 for the other remaining item');
+  settings=page.locator('#bbSimpleBudget');
+  assert.equal(await settings.locator('.bb77-left-to-buy').textContent(),'Left to buy: £5.64 estimated');
+  assert.equal(await settings.locator('.bb77-recorded-purchases').textContent(),'Recorded purchases: £251.45');
+  assert.equal(await settings.locator('.bb77-weekly-forecast').textContent(),'Recorded purchases + shopping estimate: £257.09');
+  assert.equal(await page.evaluate(()=>window.__budgetQA.archive()),archive,'pack and price choices cannot rewrite past trip costs');
+  assert.deepEqual(await page.evaluate(()=>window.__budgetQA.stock()),stock,'unticked Buying choices do not credit or remove food');
   assert.deepEqual(errors,[]);
  }finally{await context.close();}
 });

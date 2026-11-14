@@ -1,5 +1,5 @@
 /* Public web700 cache contract. Never include private/API/auth responses. */
-self.BB700_PWA_CACHE_VERSION="5b6defed30de1a8541526f2d39029919879425fb73a32a9be23b624a758296f8";
+self.BB700_PWA_CACHE_VERSION="232146d94bfdb9d371ce2a38e43786bed7b9889fd8c79a1cd49cd6f7af5edc20";
 self.BB700_PWA_PRECACHE=Object.freeze([
   "/basketboss-aisles-v20.js?v=d45b76bac322b605",
   "/bb-account-deletion.css?v=645b166ac6fe196f",
@@ -162,7 +162,7 @@ self.BB700_PWA_PRECACHE=Object.freeze([
   "/bb-shop-subcategories.css?v=8b65ede44fc728a5",
   "/bb-shop-subcategories.js?v=07139a1741881fbc",
   "/bb-simple-layout.css?v=b78ffdb3dab2f664",
-  "/bb-simple-layout.js?v=0a02773f77d3ba78",
+  "/bb-simple-layout.js?v=48d64fd307288197",
   "/bb-supermarkets.js?v=0e7c0cfdd73c5e15",
   "/bb-tab-swipe.js?v=8a961f001cf75618",
   "/bb-tab-viewport.css?v=4cdf61c976b6f103",
@@ -175,6 +175,8 @@ self.BB700_PWA_PRECACHE=Object.freeze([
   "/bb-weekly-essentials.js?v=46a2d5b9851a1f61",
   "/bb-weekly-shop.css?v=e9dd1b92af09f520",
   "/bb-weekly-shop.js?v=527947c9a9ce151a",
+  "/bb-weekly-spending-ui.css?v=cbe5803bfe61cd58",
+  "/bb-weekly-spending-ui.js?v=663ed90e90c0e660",
   "/bb-welcome-splash.css?v=106dd1a35634f6ce",
   "/bb-yellow-stickers-ui.css?v=eb8693cb28c3c223",
   "/bb-yellow-stickers-ui.js?v=5942e6d23275d82d",

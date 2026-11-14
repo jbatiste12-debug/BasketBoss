@@ -3814,6 +3814,7 @@ body[data-bbnext-view="discover"] #app .bb-featured-card #bbFeaturedBatch {
 <script src="bb-household-stock-review.js?v=20261111-integrity1"></script>
 <script src="bb-loose-produce-ui.js?v=20261111-integrity1"></script>
 <script src="bb-shop-purchase-ui.js?v=20261111-integrity1"></script>
+<script src="bb-weekly-spending-ui.js?v=20261114-budget1"></script>
 <script src="bb-shop-completion.js?v=20261112-completion1"></script>
 <script src="bb-recipe-purchase-basis.js?v=20261111-dry-basis1"></script>
 <script src="bb-recipe-canonical.js?v=20261107-pantry-stock2"></script>
@@ -7044,6 +7045,18 @@ function bbNextComposePlan(app){
  const priceNote=document.createElement('small');priceNote.className='bb77-price-note';
  const weeklyForecast=document.createElement('p');weeklyForecast.className='bb77-weekly-forecast';
  const weeklyBudgetState=document.createElement('p');weeklyBudgetState.className='bb77-weekly-budget-state';
+ const leftToBuy=document.createElement('p');leftToBuy.className='bb77-left-to-buy';
+ const leftToBuyNote=document.createElement('p');leftToBuyNote.className='bb77-left-to-buy-note';
+ const spendingDetails=document.createElement('details');spendingDetails.className='bb77-weekly-spending';
+ const spendingSummary=document.createElement('summary');spendingSummary.textContent='Recorded spending & weekly total';
+ const spendingBody=document.createElement('div');spendingBody.className='bb77-weekly-spending-body';
+ const spendingPeriod=document.createElement('p');spendingPeriod.className='bb77-weekly-period';
+ const recordedPurchases=document.createElement('p');recordedPurchases.className='bb77-recorded-purchases';
+ const recordedNote=document.createElement('p');recordedNote.className='bb77-recorded-note';
+ const spendingNote=document.createElement('p');spendingNote.className='bb77-weekly-spending-note';
+ const spendingScope=document.createElement('p');spendingScope.className='bb77-weekly-spending-note';spendingScope.textContent='Includes current and finished shops recorded this week.';
+ spendingBody.append(spendingPeriod,recordedPurchases,recordedNote,weeklyForecast,weeklyBudgetState,spendingNote,spendingScope);
+ spendingDetails.append(spendingSummary,spendingBody);
  const disclaimer=document.createElement('small');disclaimer.textContent='Shopping estimates use full-pack prices, so fewer servings may still need the same packs. Meals with their own people count keep it when you change household size. Actual checkout prices may vary.';
  budgetText.append(kicker);
  const feed=document.createElement('div');feed.className='bbfeed-control bbfeed-global';feed.setAttribute('role','group');feed.setAttribute('aria-label','Household servings');
@@ -7059,8 +7072,13 @@ function bbNextComposePlan(app){
 
  function bb77SyncEstimateAndRing(budgetDenominator, custom){
    const d=Number(budgetDenominator)>0?Number(budgetDenominator):150;
-   const copy=bbMyWeekBudgetCopy({spend,target:custom?d:null,dinners:dinnerCount,pending:Number(basket?.pending)||0,review:amountReview,savings:pantrySavings,money:moneyValue});
-   estimate.textContent=moneyValue(shoppingSpend)+(shoppingPending?' +':'');
+   const spending=window.BBWeeklySpendingUI?.view?.({shoppingSpend,shoppingPending,baseTotal:spend,basePending:Number(basket?.pending)||0,
+    ledger:window.BBReducedPurchases,session:bbShopV7Session(),archives:bbShopV7Read(BB_SHOP_ARCHIVE_V7_KEY),context:bbReducedContext(),progress:bbReducedProgress(),quote:bbReducedBudgetQuote,now:Date.now(),money:moneyValue})||{
+    leftToBuyText:moneyValue(shoppingSpend),leftToBuyNote:shoppingPending?'Some item prices need checking.':'Estimated from your current shopping list. Actual checkout prices may vary.',
+    recordedAvailable:false,recordedNote:'The saved purchase breakdown could not be checked. Your existing weekly estimate is shown below.',
+    combinedTotal:spend,combinedPending:Number(basket?.pending)||0,combinedLabel:'Existing weekly estimate',combinedText:moneyValue(spend),combinedNote:Number(basket?.pending)>0?'Some prices still need checking.':'',periodText:'',weekStart:'',weekEnd:''};
+   const copy=bbMyWeekBudgetCopy({spend:spending.combinedTotal,target:custom?d:null,dinners:dinnerCount,pending:spending.combinedPending,review:amountReview,savings:pantrySavings,money:moneyValue});
+   estimate.textContent=moneyValue(shoppingSpend);
    // This badge describes unbought shopping, not spending already recorded.
    // Keep the weekly budget comparison in its existing settings disclosure.
    donut.style.setProperty('--bbnext-budget-pct','0%');
@@ -7069,7 +7087,15 @@ function bbNextComposePlan(app){
    donut.setAttribute('role','img');
    for(const attribute of ['aria-valuemin','aria-valuemax','aria-valuenow','aria-valuetext'])donut.removeAttribute(attribute);
    donut.setAttribute('aria-label',moneyValue(shoppingSpend)+' estimated left to buy'+(shoppingPending?'; '+shoppingPending+' items still need a price':''));
-   weeklyForecast.textContent='This week: '+moneyValue(spend)+(Number(basket?.pending)>0?' +':'')+' · recorded purchases + shopping estimate';
+   leftToBuy.textContent='Left to buy: '+spending.leftToBuyText+' estimated';
+   leftToBuyNote.textContent=spending.leftToBuyNote;
+   spendingPeriod.textContent=spending.periodText;spendingPeriod.hidden=!spending.periodText;
+   spendingPeriod.dataset.weekStart=spending.weekStart||'';spendingPeriod.dataset.weekEnd=spending.weekEnd||'';
+   recordedPurchases.textContent=spending.recordedAvailable?'Recorded purchases: '+spending.recordedText:'Recorded purchase breakdown unavailable.';
+   spendingScope.hidden=!spending.recordedAvailable;
+   recordedNote.textContent=spending.recordedNote;
+   weeklyForecast.textContent=spending.combinedLabel+': '+spending.combinedText;
+   spendingNote.textContent=spending.combinedNote;spendingNote.hidden=!spending.combinedNote;
    weeklyBudgetState.textContent=copy.summary.replace(/\s*·\s*[0-7]\/7 dinners planned$/,'');
    weeklyBudgetState.hidden=!custom;
 
@@ -7089,7 +7115,7 @@ function bbNextComposePlan(app){
  const goalButton=document.createElement('button');goalButton.type='submit';goalButton.textContent=bb77HasCustomTarget?'Update budget':'Set budget';
  const goalStatus=document.createElement('p');goalStatus.className='bb77-budget-status';goalStatus.setAttribute('aria-live','polite');
  const goalControls=document.createElement('div');goalControls.className='bb77-budget-controls';goalControls.append(goalInput,goalButton);
- budgetForm.append(weeklyForecast,weeklyBudgetState,goalLabel,goalControls,goalStatus);
+ budgetForm.append(leftToBuy,leftToBuyNote,spendingDetails,goalLabel,goalControls,goalStatus);
 
  // Save on every valid input as well as change/blur; do not re-render while typing.
  // Refresh the amount still to buy and the weekly budget comparison together.
@@ -14061,7 +14087,7 @@ body[data-bbnext-view="discover"] #app .bb175-discover-heading{padding-top:calc(
 <link rel="stylesheet" href="bb-keyboard-layout.css?v=20261105-preflight2">
 <script defer src="bb-keyboard-layout.js?v=20261105-preflight1"></script>
 <link rel="stylesheet" href="bb-simple-layout.css?v=20261104-plan-budget1">
-<script defer src="bb-simple-layout.js?v=20261105-options1"></script>
+<script defer src="bb-simple-layout.js?v=20261114-budget1"></script>
 <script defer src="bb-pantry-deduction.js?v=20261107-pantry-stock2"></script>
 <script defer src="bb-home.js?v=20261114-onboarding1"></script><link rel="stylesheet" href="bb-day-done.css?v=20261108-planner1"><script defer src="bb-day-done.js?v=20261108-planner1"></script><link rel="stylesheet" href="bb-shop-add.css?v=20261105-reduced1"><script defer src="bb-shop-add.js?v=20261114-onboarding1"></script><script defer src="bb-cupboard-staples.js?v=20261104-cupboard2"></script><script src="bb-pantry-autofill.js?v=20261105-reduced1"></script><link rel="stylesheet" href="bb-pantry-first-controls.css"><script defer src="bb-pantry-first-controls.js"></script>
 <link rel="stylesheet" href="bb-shared-shopping.css?v=20261102-loop2">
@@ -14098,4 +14124,5 @@ body[data-bbnext-view="discover"] #app .bb175-discover-heading{padding-top:calc(
 <link rel="stylesheet" href="bb-day-plan-sheet.css?v=20261114-layout1">
 <script defer src="bb-day-plan-sheet.js?v=20261114-layout1"></script>
 <link rel="stylesheet" href="bb-at-home-compact.css?v=20261114-layout1">
+<link rel="stylesheet" href="bb-weekly-spending-ui.css?v=20261114-budget1">
 </body></html>

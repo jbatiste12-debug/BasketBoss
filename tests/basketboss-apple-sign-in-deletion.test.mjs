@@ -74,6 +74,52 @@ test('deletion identity derives Apple subjects from the fresh authenticated Supa
 
 test('public Apple readiness never leaks credentials and stays disabled before configuration',async()=>{
  const result=await onRequestGet({env:{}}),data=await result.json();
- assert.deepEqual(data,{available:false,nativeOnly:true,deletionReady:false});
+ assert.deepEqual(data,{available:false,nativeOnly:true,deletionReady:false,checks:{appleConfiguration:false,accountDeletionConfiguration:false,accountDeletionChecked:false,accountDeletionReady:false}});
  assert.equal(result.headers.get('Cache-Control'),'no-store');assert.doesNotMatch(JSON.stringify(data),/PRIVATE KEY|TEAM123456|SIGN123456/);
+});
+
+test('public Apple diagnostics distinguish configured credentials from an unavailable deletion backend',async()=>{
+ const previous=globalThis.fetch;let calls=0;
+ globalThis.fetch=async()=>{calls++;throw Error('Readiness must not be requested.');};
+ try{
+  const data=await (await onRequestGet({env})).json();
+  assert.deepEqual(data,{available:false,nativeOnly:true,deletionReady:false,checks:{appleConfiguration:true,accountDeletionConfiguration:false,accountDeletionChecked:false,accountDeletionReady:false}});
+  assert.equal(calls,0);assert.doesNotMatch(JSON.stringify(data),/PRIVATE KEY|TEAM123456|SIGN123456/);
+ }finally{globalThis.fetch=previous;}
+});
+
+const deletionBackend={SUPABASE_URL:'https://synthetic.supabase.co',SUPABASE_PUBLISHABLE_KEY:'synthetic-public-key',SUPABASE_SECRET_KEY:'synthetic-service-key-for-local-readiness-tests-only',BILLING_DB:{prepare(){throw Error('Readiness must not execute a local SQL query.');}}};
+
+test('invalid Apple configuration does not probe an otherwise configured deletion backend',async()=>{
+ const previous=globalThis.fetch;let calls=0;
+ globalThis.fetch=async()=>{calls++;throw Error('Readiness must not be requested.');};
+ try{
+  const data=await (await onRequestGet({env:{...env,...deletionBackend,APPLE_SIGN_IN_KEY_ID:'invalid'}})).json();
+  assert.deepEqual(data,{available:false,nativeOnly:true,deletionReady:false,checks:{appleConfiguration:false,accountDeletionConfiguration:true,accountDeletionChecked:false,accountDeletionReady:false}});
+  assert.equal(calls,0);
+ }finally{globalThis.fetch=previous;}
+});
+
+test('public Apple readiness is enabled only after the configured deletion readiness RPC succeeds',async()=>{
+ const previous=globalThis.fetch;let calls=0;
+ globalThis.fetch=async(address,options)=>{
+  calls++;assert.equal(address,deletionBackend.SUPABASE_URL+'/rest/v1/rpc/bb_account_deletion_ready');assert.equal(options.method,'POST');
+  return response({ready:true,version:1});
+ };
+ try{
+  const result=await onRequestGet({env:{...env,...deletionBackend}}),data=await result.json();
+  assert.deepEqual(data,{available:true,nativeOnly:true,deletionReady:true,checks:{appleConfiguration:true,accountDeletionConfiguration:true,accountDeletionChecked:true,accountDeletionReady:true}});
+  assert.equal(calls,1);assert.equal(result.headers.get('Cache-Control'),'no-store');
+  assert.doesNotMatch(JSON.stringify(data),/PRIVATE KEY|TEAM123456|SIGN123456|supabase|synthetic|service-key/);
+ }finally{globalThis.fetch=previous;}
+});
+
+test('a failed Apple deletion readiness check reports only checked and ready booleans',async()=>{
+ const previous=globalThis.fetch;let calls=0;
+ globalThis.fetch=async()=>{calls++;throw Error('private endpoint diagnostic with credentials must never be returned');};
+ try{
+  const data=await (await onRequestGet({env:{...env,...deletionBackend}})).json();
+  assert.deepEqual(data,{available:false,nativeOnly:true,deletionReady:false,checks:{appleConfiguration:true,accountDeletionConfiguration:true,accountDeletionChecked:true,accountDeletionReady:false}});
+  assert.equal(calls,1);assert.doesNotMatch(JSON.stringify(data),/private|endpoint|credentials|PRIVATE KEY|TEAM123456|SIGN123456|synthetic/);
+ }finally{globalThis.fetch=previous;}
 });

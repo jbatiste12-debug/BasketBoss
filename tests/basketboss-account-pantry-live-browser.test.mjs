@@ -146,7 +146,12 @@ test('Plan, Cook prep and Discover display six sausage pieces without changing p
   const before=await pantryBytes();assert.deepEqual(await requirement(),{required:6,unit:'each'});
   await h.page.locator('#bbPrimaryNavigation [data-bb-nav-item="plan"]').click();
   const friday=h.page.locator('.bbnext-day[data-bbnext-day="Friday"]');await friday.waitFor();
-  if(!await friday.evaluate(node=>node.open))await friday.locator('.bbnext-day-description>strong').click();
+  const daySheet=await h.page.evaluate(()=>!!window.BBPlanDaySheet);
+  if(daySheet?!await friday.evaluate(node=>node.classList.contains('bbdps-active')):!await friday.evaluate(node=>node.open))await friday.locator('.bbnext-day-description>strong').click();
+  if(daySheet){
+   const disclosure=friday.locator('.bbdps-ingredients');await disclosure.locator(':scope>summary').waitFor();
+   if(!await disclosure.evaluate(node=>node.open))await disclosure.locator(':scope>summary').click();
+  }
   const summary=friday.locator('.bbnext-meal-ingredients');
   assert.match(await summary.innerText(),/Pork sausages\s*\(6 each\)/i);assert.doesNotMatch(await summary.innerText(),/6 packs?/i);
   await friday.locator('[data-cook]').click();await h.page.locator('.cook-overlay').waitFor();
@@ -175,7 +180,7 @@ test('offline At home deletions and four sausages survive reconnect/reload witho
   await h.context.setOffline(false);await h.page.reload({waitUntil:'domcontentloaded'});await h.page.waitForFunction(()=>window.__accountPantryQA?.ready());await waitStock(h.page,{'pork sausages|each':4});
   await noPantrySourcePrompt(h.page);server.offline.delete(A);await h.page.evaluate(()=>window.dispatchEvent(new Event('online')));
   await h.page.waitForFunction(()=>window.__accountPantryQA.outbox()===null,{},{timeout:15000});await waitStock(h.page,{'pork sausages|each':4});assert.deepEqual(server.record(A).stock,{'pork sausages|each':4});
-  await assertSausageNeed(h.page);await home(h.page);await h.page.locator('[data-bbpi-storage=all]').click();
+  await assertSausageNeed(h.page);await home(h.page);await h.page.locator('button[role="tab"][data-bbpi-storage="all"]').click();
   const foods=h.page.locator('.bbpi-summary-row');assert.equal(await foods.count(),1);assert.match(await foods.innerText(),/Sausages\s+Edit\s*›?\s+4 each/i);assert.doesNotMatch(await h.page.locator('#app').innerText(),/Chicken Breast|Mixed Peppers|Lime/i);
   await h.page.evaluate(()=>window.BBAccountPolish.openPantrySync());const account=h.page.locator('#bbAccountPantrySync');await account.waitFor({state:'visible'});
   assert.equal(await account.getByRole('button').count(),1);assert.equal(await account.getByRole('button',{name:'Sync At home pantry',exact:true}).count(),1);assert.doesNotMatch(await account.innerText(),/saved or device|choose.*pantry|use.*saved|confirm pantry/i);
