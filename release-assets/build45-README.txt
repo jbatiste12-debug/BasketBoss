@@ -58,6 +58,8 @@ Do not run ordinary ios:sync after this launcher: it would replace the verified
 The earlier Build 43 and Build 44 launchers are preserved unchanged.
 
 Pinned application source:
-https://github.com/jbatiste12-debug/BasketBoss/commit/c350b8ec6a96ca1d8236a2e2eabbd5478a04bcfc
+https://github.com/jbatiste12-debug/BasketBoss/commit/70696857376c38401cb3bfcbd41051e93a50d21a
 Complete application source:
-https://github.com/jbatiste12-debug/BasketBoss/archive/c350b8ec6a96ca1d8236a2e2eabbd5478a04bcfc.zip
+https://github.com/jbatiste12-debug/BasketBoss/archive/70696857376c38401cb3bfcbd41051e93a50d21a.zip
+
+This revision includes compact Shopping rows and the onboarding keyboard CSS correction. Before submission, run on the iPhone and confirm Sign in stays reachable with the email and password keyboards open. Browser viewport probes pass; the corrected real UIKit keyboard gate is still pending.
