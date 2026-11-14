@@ -1,6 +1,6 @@
 BasketBoss onboarding, account recovery and UI release audit — 14 November 2026
 
-Application source: `f7f7cd271ac0d736c4e733c1a776883f4b0dcf75`.
+Application source: `c350b8ec6a96ca1d8236a2e2eabbd5478a04bcfc`.
 Native handoff: 1.0.3 (45). Catalogue compatibility remains 1.0.2. The launcher prepares a separate checkout; it does not upload or change the current App Store submission.
 
 Findings
@@ -66,3 +66,18 @@ Before submission
 3. On a signed iPhone/iPad test Apple signup/login/cancellation, Hide My Email, household access and Apple-only account deletion. Check both eligible seven-day offers, ineligible fallback, restoration, actual renewal currency and price in Apple's sheet.
 4. Use the updated Build45 launcher. If45 has already been uploaded, choose a higher unused build. Test before Archive; the launcher does not upload. Ordinary ios:sync must not overwrite the prepared700 assets.
 5. Correct the public App Store recipe counts and remove the expedited-review request from customer-facing What's New. Keep review requests in Apple's correspondence. Describe Apple login/trials as shipped only when configured and device-tested.
+
+
+Budget clarity and live Apple setup follow-up
+
+The reported £406.06 is the weekly combined calculation, while £99.40 is the remaining buying estimate. The ledger includes current and explicitly completed shops recorded during the same Mon–Sun week. It checks actor, market and currency, deduplicates trip/row identities, and replaces receipt-covered estimates. Repeated test shops are a plausible source; the exact device ledger was not inspected, so the difference is not asserted to be actual paid spending. The old trailing plus meant unresolved prices.
+
+Budget & household now puts the same Left to buy amount as the ring first. Recorded known costs, date range, combined estimate and target comparison sit inside a closed “Recorded spending & weekly total” disclosure. Pending prices use explanatory text. The read-only adapter obtains recorded costs by calling the existing ledger budget with zero base/empty lines, then combines them with the current UI buying estimate in cents. This keeps pack, manual-price and guide-price display overrides consistent without changing the core budget, receipts or stock. Missing ledger data retains the original combined estimate with an explicit unavailable breakdown; recorded costs are never inferred by subtraction.
+
+Validation:61 focused budget/pack/ledger tests passed;58 Apple/session tests passed;11 sequential real-browser regressions passed (budget edits, partial buys, pack/custom prices, fallback guides, offline stock, partner/lead pantry and planner tabs). Eight core source files and three existing calculation helpers remain byte-identical to their pre-fix hashes. PWA and700 native assets rebuilt; seven checked shared assets match. No private recipe bundle.
+
+The preceding b4 full CI run found four old UI test flows using pre-sheet/pre-All interactions. Tests now expand the real ingredients disclosure before checking six sausage pieces, target the All tab rather than its enclosing section, and close the day modal before keyboard tab navigation. Quantity, state, node, handler and history assertions are preserved. Those affected cases pass in the11-test browser run. The new full CI result must be checked separately; the earlier four failures are not presented as a green full-suite result.
+
+Build b4 also passed Debug/Release iOS compilation, hosted StoreKit simulator tests, Cook navigation and actual iOS keyboard checks. These do not prove live Apple authorization or subscription eligibility.
+
+The owner reported completing Apple/Cloudflare settings, but the public endpoint still returned available:false. This confirms the server gate remained blocked at that check, without proving which credential or deletion prerequisite was incomplete. The endpoint now adds four safe booleans (appleConfiguration, accountDeletionConfiguration, accountDeletionChecked, accountDeletionReady). Existing availability behavior and readiness RPC short-circuiting remain unchanged; no IDs, keys, account information or raw errors are exposed. Production secrets/providers/schema were not changed by this code. The owner must refresh the deployed endpoint and complete the native-device sign-in test.
