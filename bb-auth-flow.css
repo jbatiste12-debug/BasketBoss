@@ -20,3 +20,18 @@ html body #cloud-auth #bbAuthAppleRetry{min-height:44px;font-size:16px;font-weig
 #bbAuthToast{position:fixed;z-index:2147482000;left:16px;right:16px;top:calc(20px + env(safe-area-inset-top));max-width:520px;margin:auto;padding:16px 20px;border-radius:16px;background:#1f5e43;color:#fff;box-shadow:0 8px 28px #173c3730;text-align:center}
 
 html body #cloud-card[data-bb-account-polish] #cloud-auth [hidden],html body #bbNewOnboarding #cloud-auth [hidden]{display:none!important}
+
+/* WKWebView can keep the focused email visible while the longer auth form
+   scrolls its submit action below the keyboard. Keep that SAME visible action
+   inside the existing onboarding scroller; retain this layout until the
+   keyboard class clears, so input blur cannot move a button during its tap. */
+@media(max-width:560px){
+ #bbNewOnboarding.bbob-keyboard .bbob-main{scroll-padding-bottom:80px}
+ #bbNewOnboarding.bbob-keyboard #cloud-auth{position:relative;display:flex;flex-direction:column}
+ #bbNewOnboarding.bbob-keyboard #cloud-auth :is(#cloud-login,#cloud-signup):not([hidden]){
+  position:sticky;bottom:0;z-index:4;flex-shrink:0;align-self:stretch;
+  width:100%;min-height:48px;margin:0;background:#205e43;color:#fff;
+  box-shadow:0 -8px 0 8px #fff,0 -12px 18px #fff;
+ }
+ #bbNewOnboarding.bbob-keyboard #cloud-auth input{scroll-margin-block:16px 80px}
+}

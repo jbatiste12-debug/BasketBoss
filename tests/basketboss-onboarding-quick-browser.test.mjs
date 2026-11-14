@@ -15,6 +15,35 @@ before(async()=>{
  release=validatePublic700Release({directory:path.join(root,'catalogues/700/release'),sourceDirectory:root});
  if(chromium)browser=await chromium.launch({headless:true,executablePath:process.env.BB_CHROMIUM_PATH||'/usr/bin/chromium',args:['--no-sandbox']});
 });
+
+for(const width of [320,390])for(const field of ['cloud-email','cloud-password'])test(`fresh onboarding keeps its original sign-in action reachable in a reduced keyboard viewport at ${width}px with ${field}`,{skip:!chromium&&'Playwright unavailable',timeout:60000},async()=>{
+ const {page,context,errors,network}=await fixture({width,height:844});
+ try{
+  const before=await snapshot(page),host=await assertStep(page,1);
+  await host.locator('[data-bbob="quick-signin"]').click();
+  const login=await host.locator('#cloud-login').elementHandle();
+  // A browser viewport probe complements the separate real UIKit keyboard
+  // suite. No credentials are entered and the action is never submitted.
+  await page.evaluate(field=>{
+   Object.defineProperty(window.visualViewport,'height',{configurable:true,get:()=>330});
+   document.getElementById(field).focus();
+   window.visualViewport.dispatchEvent(new Event('resize'));
+  },field);
+  await page.waitForFunction(()=>document.getElementById('bbNewOnboarding')?.classList.contains('bbob-keyboard'));
+  await host.locator('.bbob-main').evaluate(node=>{node.scrollTop=node.scrollHeight;});
+  const geometry=await login.evaluate(node=>{
+   const b=node.getBoundingClientRect(),host=document.getElementById('bbNewOnboarding').getBoundingClientRect(),main=document.querySelector('#bbNewOnboarding .bbob-main').getBoundingClientRect(),hit=document.elementFromPoint(b.x+b.width/2,b.y+b.height/2);
+   return {top:b.top,bottom:b.bottom,left:b.left,right:b.right,height:b.height,hostBottom:host.bottom,mainTop:main.top,mainBottom:main.bottom,hit:hit===node||node.contains(hit),same:node===document.getElementById('cloud-login'),focused:document.activeElement?.id};
+  });
+  assert.equal(geometry.same,true,'the original authentication action and owner remain intact');
+  assert.equal(geometry.focused,field,'reaching the action does not require dismissing the focused field');
+  assert.ok(geometry.height>=44&&geometry.left>=0&&geometry.right<=width,'the action keeps a full touch target');
+  assert.ok(geometry.top>=geometry.mainTop-1&&geometry.bottom<=Math.min(330,geometry.hostBottom,geometry.mainBottom)+1,'the action fits inside the visible form above the keyboard');
+  assert.equal(geometry.hit,true,'the original action receives the tap');
+  const after=await snapshot(page);assert.deepEqual(after.state,before.state);assert.deepEqual(after.stock,before.stock);assert.equal(after.session,before.session);
+  await assertNoCheckoutOrEntitlement(page,network);assert.deepEqual(errors,[]);
+ }finally{await context.close();}
+});
 after(async()=>{await browser?.close();});
 
 // Expose reads from the original application's closure. The generated 700 app,

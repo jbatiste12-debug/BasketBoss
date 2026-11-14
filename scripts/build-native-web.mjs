@@ -40,6 +40,7 @@ export const CLIENT_FILES=Object.freeze([
  'bb-household-aliases.js','bb-pantry-alias-migration.js','bb-shop-completion.js',
  'bb-shop-ownership.js','bb-shop-continuation.js','bb-shop-continuation.css',
  'bb-shop-purchase-ui.js','bb-shop-purchase-ui.css',
+ 'bb-shop-friendly-quantity-ui.js','bb-shop-compact.css',
  'bb-household-stock-review.js','bb-loose-produce-ui.js',
  'bb-funnel.js','bb-household-sharing.js','bb-install.js','bb-intro-trial.js',
  'bb-membership-settings.js','bb-mobile-beta-polish.js','bb-onboarding-v2.js',

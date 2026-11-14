@@ -3827,6 +3827,7 @@ body[data-bbnext-view="discover"] #app .bb-featured-card #bbFeaturedBatch {
 <script src="/bb-household-stock-review.js?v=7dfd3a0a58079526"></script>
 <script src="/bb-loose-produce-ui.js?v=86e95d908160d098"></script>
 <script src="/bb-shop-purchase-ui.js?v=324e2d382ab2a7b8"></script>
+<script src="/bb-shop-friendly-quantity-ui.js?v=2e4bccd216ff8b64"></script>
 <script src="/bb-weekly-spending-ui.js?v=663ed90e90c0e660"></script>
 <script src="/bb-shop-completion.js?v=e9ae792a713c9693"></script>
 <script src="/bb-recipe-purchase-basis.js?v=56122bf98efed0e3"></script>
@@ -12057,17 +12058,17 @@ function bb172StorefrontMakeRow(item){
  check.addEventListener('click',event=>event.stopPropagation());
  check.addEventListener('change',event=>{event.stopPropagation();bb172StorefrontToggle(item);});
  const info=bb172StorefrontEl('div','bb15-shop-ingredient'),title=bb172StorefrontEl('strong','bb172-storefront-item-title',item.name);
- const amount=bb172StorefrontEl('span','bbcompact-qty',item.qty||'Check quantity');
+ const amount=bb172StorefrontEl('span','bbcompact-qty bb-shop-precise-quantity',item.qty||'Check quantity');
  const partial=bbPartialDetails(item);let needed=null,remainingNeeded=null,needContext=null,legacyContext=null;
  if(item.basketItem){
   const needDisplay=bbShopPurchaseNeedView(item.basketItem,{bought:completed?.amount??(item.checked?bb84SavedPurchased(item.id):partial?.bought||0),checked:item.checked,market:bb307Market});
   remainingNeeded=needDisplay.needed;
-  amount.textContent=needDisplay.primary;needed=needDisplay.targetQuantity;needContext=bb172StorefrontEl('small','bb-shop-purchase-context','Have '+bbShopPurchaseDisplay(item.name,needDisplay.atHome,item.basketItem.unit,false,false)+' at home');
+  amount.textContent=needDisplay.primary;needed=needDisplay.targetQuantity;needContext=bb172StorefrontEl('small','bb-shop-purchase-context','Have '+bbShopPurchaseDisplay(item.name,needDisplay.atHome,item.basketItem.unit,false,false)+' at home');needContext.hidden=!(needDisplay.atHome>0);
   // Retain the exact baseline context hook for existing DOM consumers. The
   // visible row uses the selected Buying pill instead of this pack guide.
   legacyContext=bb172StorefrontEl('small','bb-shop-need-context',bbShopNeedPresentation(item.basketItem,{bought:item.checked?bb84SavedPurchased(item.id):partial?.bought||0,checked:item.checked,market:bb307Market}).secondary);legacyContext.hidden=true;legacyContext.setAttribute('aria-hidden','true');
  }else if(partial&&partial.bought>0){needContext=bb172StorefrontEl('small','bbpartial-progress',bbShopPurchaseDisplay(item.name,partial.bought,partial.unit)+' / '+bbShopPurchaseDisplay(item.name,partial.needed,partial.unit)+' bought · '+bbShopPurchaseDisplay(item.name,partial.remaining,partial.unit)+' left');const display=(typeof bb80ShoppingDisplayQuantity==='function'?bb80ShoppingDisplayQuantity:bb80ShoppingQuantity)(item.name,partial.remaining,partial.unit,bb307Market,item.basketItem||{});amount.textContent='Buy '+display+' more';}
- if(completed){amount.textContent='Bought '+bbShopPurchaseDisplay(item.name,completed.amount,completed.unit);if(needContext)needContext.textContent=historyOnly&&!completed.purchaseOnly?'Purchase recorded for this shop. Its stock has since been updated in At home.':'Purchase confirmed and added to At home.'+(remainingNeeded>0?' '+bbShopPurchaseDisplay(item.name,remainingNeeded,item.basketItem.unit,true)+' still needed.':'');}
+ if(completed){amount.textContent='Bought '+bbShopPurchaseDisplay(item.name,completed.amount,completed.unit);if(needContext){needContext.hidden=false;needContext.textContent=historyOnly&&!completed.purchaseOnly?'Purchase recorded for this shop. Its stock has since been updated in At home.':'Purchase confirmed and added to At home.'+(remainingNeeded>0?' '+bbShopPurchaseDisplay(item.name,remainingNeeded,item.basketItem.unit,true)+' still needed.':'');}}
  const rawLines=[...(item.row?.querySelectorAll('.bb80-price-line')||[])];
  const priceText=(needle)=>{const found=rawLines.find(el=>el.querySelector('span')?.textContent?.toLowerCase().includes(needle));return found?.querySelector('strong,button')?.textContent?.trim()||''};
  const rawPrice=item.price||'';
@@ -12090,7 +12091,12 @@ function bb172StorefrontMakeRow(item){
   heading.append(title,shelf,toggle);quantityLine.append(amount,picker.button);info.append(heading,quantityLine);if(needContext)info.append(needContext);main.append(check,info);
  }else{info.append(title);if(needContext)info.append(needContext);main.append(check,info,amount,shelf,toggle);}
  if(legacyContext)info.append(legacyContext);
- const usedIn=item.row?.querySelector('.bb321-shop-used-in');if(usedIn)info.append(bb172StorefrontEl('small','bb321-shop-used-in',usedIn.textContent));
+ const usedIn=item.row?.querySelector('.bb321-shop-used-in');
+ // This hint only describes the already-calculated deficit. It never supplies
+ // a purchase quantity, price, stock identity or deduction amount.
+ const friendly=!item.checked&&remainingNeeded>0?window.BBShopFriendlyQuantityUI?.view?.({name:item.name,quantity:remainingNeeded,unit:item.basketItem?.unit,selection:item.purchaseSelection||item.uiDefaultPurchase||bbShopPurchaseRecommended(item,needed),policy:window.BBPantryPolicy}):null;
+ if(friendly){row.classList.add('bb-shop-has-friendly-quantity');info.append(bb172StorefrontEl('span','bb-shop-friendly-quantity',friendly+(usedIn?.textContent?' · '+usedIn.textContent:'')));}
+ if(usedIn){const source=bb172StorefrontEl('small','bb321-shop-used-in',usedIn.textContent);source.hidden=!!friendly;info.append(source);}
  const mismatch=item.row?.querySelector('.bb-pantry-mismatch');if(mismatch)info.append(bb172StorefrontEl('small','bb-pantry-mismatch',mismatch.textContent));
  const heldHeight=bb172StorefrontItemHeights.get(document.getElementById('bb172Storefront')?.clientWidth+'|'+item.id);
  if(heldHeight>0)main.style.setProperty('min-height',heldHeight+'px','important');
@@ -14183,7 +14189,7 @@ body[data-bbnext-view="discover"] #app .bb175-discover-heading{padding-top:calc(
 <link rel="stylesheet" href="/bb-tab-viewport.css?v=4cdf61c976b6f103">
 <script defer src="/bb-tab-viewport.js?v=953139a9877385f4"></script>
 
-<link rel="stylesheet" href="/bb-auth-flow.css?v=9eac312e38894c06">
+<link rel="stylesheet" href="/bb-auth-flow.css?v=91cc589192fcaa27">
 <script defer src="/bb-auth-sdk.js?v=d74a6e342fd6848e"></script>
 <script defer src="/bb-auth-flow.js?v=d740d67879062f8b"></script>
 
@@ -14207,5 +14213,6 @@ body[data-bbnext-view="discover"] #app .bb175-discover-heading{padding-top:calc(
 <script defer src="/bb-day-plan-sheet.js?v=24ac571e820dd23d"></script>
 <link rel="stylesheet" href="/bb-at-home-compact.css?v=bc880d85a818439a">
 <link rel="stylesheet" href="/bb-weekly-spending-ui.css?v=cbe5803bfe61cd58">
+<link rel="stylesheet" href="/bb-shop-compact.css?v=60fd493bcc148386">
 <script src="/pwa700/bb-plan-swap.js?v=f991078935315229"></script>
 <!--/email_off--></body></html>

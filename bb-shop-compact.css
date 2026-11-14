@@ -1,0 +1,128 @@
+/* Shopping presentation only. Original inputs, Buying controls, drawers and
+   owning DOM parents stay intact; only their layout boxes are rearranged. */
+html body #bb172Storefront .bbcompact-shop-row{border-top:1px solid #e4e9df!important;background:#fffef9!important}
+html body #bb172Storefront .bbcompact-shop-row .bbcompact-main{padding:10px 12px!important;min-width:0!important;max-width:100%!important}
+html body #bb172Storefront .bbcompact-shop-row.bb-shop-purchase-row .bbcompact-main{
+ display:grid!important;grid-template-columns:44px minmax(0,1fr)!important;gap:8px!important;align-items:start!important;
+}
+html body #bb172Storefront .bbcompact-shop-row.bb-shop-purchase-row .bbcompact-main>.bb172-storefront-checkbox{
+ grid-column:1!important;grid-row:1!important;align-self:start!important;margin:0!important;
+ width:44px!important;min-width:44px!important;height:44px!important;min-height:44px!important;
+}
+html body #bb172Storefront .bbcompact-shop-row.bb-shop-purchase-row .bbcompact-main>.bb-shop-purchase-body{
+ display:grid!important;grid-column:2!important;grid-row:1!important;grid-template-columns:minmax(0,1fr) minmax(108px,.78fr)!important;
+ grid-template-rows:none!important;grid-auto-rows:auto;align-items:start;gap:3px 9px;min-width:0!important;
+ width:100%!important;max-width:100%!important;padding:0!important;
+}
+html body #bb172Storefront .bbcompact-shop-row.bb-shop-purchase-row .bb-shop-purchase-heading,
+html body #bb172Storefront .bbcompact-shop-row.bb-shop-purchase-row .bb-shop-purchase-quantity-line{display:contents!important}
+html body #bb172Storefront .bbcompact-shop-row.bb-shop-purchase-row .bb-shop-purchase-heading>.bb172-storefront-item-title{
+ display:block!important;grid-column:1!important;grid-row:1!important;align-self:center!important;
+ width:auto!important;min-width:0!important;max-width:100%!important;max-height:none!important;
+ margin:0!important;font-size:17px!important;font-weight:800!important;line-height:1.28!important;
+ color:#214b36!important;white-space:normal!important;overflow:visible!important;overflow-wrap:break-word!important;
+ -webkit-line-clamp:unset!important;-webkit-box-orient:initial!important;text-overflow:clip!important;
+}
+html body #bb172Storefront .bbcompact-shop-row.bb-shop-purchase-row .bb-shop-purchase-heading>.bbcompact-price{
+ display:block!important;grid-column:2!important;grid-row:1!important;align-self:start!important;justify-self:start!important;
+ box-sizing:border-box!important;width:calc(100% - 48px)!important;min-width:44px!important;max-width:none!important;min-height:44px!important;
+ margin:0 48px 0 0!important;padding:0!important;border:0!important;background:transparent!important;
+ color:#315741!important;font-size:12px!important;font-weight:750!important;line-height:1.35!important;
+ text-align:right!important;white-space:normal!important;overflow:visible!important;overflow-wrap:anywhere!important;
+}
+html body #bb172Storefront .bbcompact-shop-row.bb-shop-purchase-row .bb-shop-purchase-heading>.bbcompact-toggle{
+ grid-column:2!important;grid-row:1!important;justify-self:end!important;align-self:start!important;
+ width:44px!important;min-width:44px!important;height:44px!important;min-height:44px!important;
+ margin:0!important;padding:0!important;border:0!important;background:transparent!important;color:#41634a!important;
+}
+html body #bb172Storefront .bbcompact-shop-row .bb-shop-friendly-quantity{
+ display:block;grid-column:1!important;grid-row:2!important;align-self:center;min-width:0;margin:0;
+ color:#425e48;font-size:14px;font-weight:650;line-height:1.4;white-space:normal;overflow-wrap:break-word;
+}
+html body #bb172Storefront .bbcompact-shop-row.bb-shop-purchase-row .bb-shop-purchase-quantity-line>.bbcompact-qty{
+ grid-column:1!important;grid-row:2!important;align-self:center!important;justify-self:start!important;
+ max-width:100%!important;margin:0!important;padding:0!important;background:transparent!important;
+ color:#5e725f!important;font-size:14px!important;font-weight:600!important;line-height:1.4!important;white-space:normal!important;
+}
+html body #bb172Storefront .bbcompact-shop-row.bb-shop-purchase-row.bb-shop-has-friendly-quantity .bb-shop-purchase-quantity-line>.bb-shop-precise-quantity{
+ grid-column:1!important;grid-row:3!important;font-size:12px!important;font-weight:500!important;color:#70806d!important;
+}
+html body #bb172Storefront .bbcompact-shop-row.bb-shop-purchase-row .bb-shop-purchase-quantity-line>.bb-shop-buying-pill{
+ grid-column:2!important;grid-row:2!important;justify-self:end!important;align-self:start!important;
+ box-sizing:border-box;width:100%;min-width:0!important;max-width:200px!important;min-height:44px!important;
+ margin:0!important;padding:8px 9px!important;border:1px solid #d2dfc9!important;border-radius:12px!important;
+ background:#edf3e5!important;color:#365b40!important;box-shadow:none!important;font-size:12px!important;
+ line-height:1.3!important;font-weight:700!important;white-space:normal!important;overflow-wrap:break-word!important;
+}
+html body #bb172Storefront .bbcompact-shop-row .bb-shop-buying-pill[aria-expanded="true"]{background:#e0ebd7!important;border-color:#91ae85!important}
+html body #bb172Storefront .bbcompact-shop-row .bb321-shop-used-in{grid-column:1!important;grid-row:3!important;margin:0!important;color:#73816f!important;font-size:11px!important;line-height:1.4!important;white-space:normal!important}
+html body #bb172Storefront .bbcompact-shop-row.bb-shop-has-friendly-quantity .bb321-shop-used-in{grid-row:4!important}
+html body #bb172Storefront .bbcompact-shop-row .bb-shop-purchase-context,
+html body #bb172Storefront .bbcompact-shop-row .bbpartial-progress{grid-column:1/-1!important;grid-row:4!important;margin:2px 0 0!important;color:#6a7b66!important;font-size:12px!important;line-height:1.45!important}
+html body #bb172Storefront .bbcompact-shop-row .bb-pantry-mismatch{grid-column:1/-1!important;grid-row:5!important;margin:4px 0 0!important;font-size:12px!important;line-height:1.4!important}
+html body #bb172Storefront .bbcompact-shop-row :is(.bb-shop-friendly-quantity,.bb-shop-purchase-context,.bb321-shop-used-in,.bb-shop-need-context)[hidden]{display:none!important}
+
+/* Historical and other legacy rows keep their original, non-picker controls. */
+html body #bb172Storefront .bbcompact-shop-row:not(.bb-shop-purchase-row) .bbcompact-main{
+ display:grid!important;grid-template-columns:44px minmax(0,1fr) minmax(48px,auto) 44px!important;gap:3px 7px!important;align-items:start!important;
+}
+html body #bb172Storefront .bbcompact-shop-row:not(.bb-shop-purchase-row) .bbcompact-main>.bb172-storefront-checkbox{grid-column:1!important;grid-row:1/5!important;align-self:start!important;width:44px!important;min-width:44px!important;min-height:44px!important;height:44px!important;margin:0!important}
+html body #bb172Storefront .bbcompact-shop-row:not(.bb-shop-purchase-row) .bbcompact-main>.bb15-shop-ingredient{display:contents!important}
+html body #bb172Storefront .bbcompact-shop-row:not(.bb-shop-purchase-row) .bb172-storefront-item-title{grid-column:2!important;grid-row:1!important;font-size:17px!important;font-weight:800!important;line-height:1.28!important;white-space:normal!important;overflow:visible!important;max-height:none!important;-webkit-line-clamp:unset!important}
+html body #bb172Storefront .bbcompact-shop-row:not(.bb-shop-purchase-row) .bbcompact-main>.bbcompact-price{grid-column:3!important;grid-row:1!important;min-height:44px!important;margin:0!important;padding:0!important;font-size:12px!important;white-space:normal!important;overflow:visible!important;max-width:76px!important}
+html body #bb172Storefront .bbcompact-shop-row:not(.bb-shop-purchase-row) .bbcompact-main>.bbcompact-toggle{grid-column:4!important;grid-row:1!important;align-self:start!important;width:44px!important;min-width:44px!important;min-height:44px!important;height:44px!important}
+html body #bb172Storefront .bbcompact-shop-row:not(.bb-shop-purchase-row) .bbcompact-main>.bbcompact-qty{grid-column:2/4!important;grid-row:2!important;font-size:14px!important;font-weight:600!important;line-height:1.4!important;color:#60735f!important}
+html body #bb172Storefront .bbcompact-shop-row:not(.bb-shop-purchase-row) .bb-shop-friendly-quantity{grid-column:2/4!important;grid-row:2!important}
+html body #bb172Storefront .bbcompact-shop-row:not(.bb-shop-purchase-row).bb-shop-has-friendly-quantity .bbcompact-main>.bb-shop-precise-quantity{grid-row:3!important;font-size:12px!important;font-weight:500!important}
+html body #bb172Storefront .bbcompact-shop-row:not(.bb-shop-purchase-row) .bb321-shop-used-in{grid-column:2/4!important;grid-row:3!important}
+html body #bb172Storefront .bbcompact-shop-row:not(.bb-shop-purchase-row).bb-shop-has-friendly-quantity .bb321-shop-used-in{grid-row:4!important}
+html body #bb172Storefront .bbcompact-shop-row:not(.bb-shop-purchase-row) :is(.bb-shop-purchase-context,.bbpartial-progress){grid-column:2/4!important;grid-row:5!important}
+html body #bb172Storefront .bbcompact-shop-row:not(.bb-shop-purchase-row) .bb-pantry-mismatch{grid-column:2/4!important;grid-row:6!important}
+html body #bb172Storefront .bb-shop-pack-picker input{font-size:16px!important;min-height:44px!important}
+html body #bb172Storefront .bb-shop-pack-picker button{min-height:44px!important}
+html body #bb172Storefront .bbcompact-drawer{font-size:12px;line-height:1.5}
+
+/* Keep the real header and compact bar measurable for the existing scroll
+   threshold/ResizeObserver. The small top row retains Wake and Exit access. */
+html body #bb172Storefront{--bb-shop-compact-size:calc(68px + env(safe-area-inset-top,0px));scroll-padding-top:calc(80px + env(safe-area-inset-top,0px))!important}
+html body #bb172Storefront .bb172-storefront-header{
+ padding:calc(8px + env(safe-area-inset-top,0px)) 12px 76px!important;
+ background:#193f5a!important;box-shadow:0 2px 8px #17394b12!important;border:0!important;border-radius:0!important;
+}
+html body #bb172Storefront .bb172-storefront-header-top{display:grid!important;grid-template-columns:minmax(0,1fr) auto auto!important;grid-template-areas:"brand wake exit"!important;min-height:44px!important;gap:7px!important}
+html body #bb172Storefront .bbnext-shop-brand-name{font-size:16px!important}
+html body #bb172Storefront .bbnext-shop-brand svg{width:26px!important;height:26px!important}
+html body #bb172Storefront :is(.bb172-storefront-wake,.bb172-storefront-exit){min-width:44px!important;min-height:44px!important;max-width:96px;padding:7px!important;font-size:11px!important;line-height:1.3!important;white-space:normal!important;box-shadow:none!important}
+html body #bb172Storefront .bb172-storefront-header>.bb15-shop-subtitle,
+html body #bb172Storefront .bb172-storefront-header>.bb172-storefront-actions{display:none!important}
+html body #bb172Storefront .bb172-storefront-header>:is(.bb172-storefront-wake-note,.bb172-storefront-stats){position:absolute!important;width:1px!important;height:1px!important;padding:0!important;margin:-1px!important;overflow:hidden!important;clip:rect(0,0,0,0)!important;clip-path:inset(50%)!important;white-space:nowrap!important;border:0!important}
+html body #bb172Storefront .bb172-storefront-header>.bb172-storefront-progress{position:static!important;width:auto!important;height:auto!important;min-height:0!important;margin:5px 0 0!important;padding:0!important;overflow:visible!important;clip:auto!important;clip-path:none!important;white-space:normal!important;border:0!important}
+html body #bb172Storefront .bb172-storefront-progress-label{display:flex!important;justify-content:space-between!important;align-items:center!important;gap:8px!important;margin:0!important;font-size:11px!important;line-height:1.4!important}
+html body #bb172Storefront .bb172-storefront-progress-label>strong{font-size:11px!important;line-height:1.4!important}
+html body #bb172Storefront .bb172-storefront-progress-track{height:3px!important;min-height:3px!important;margin:4px 0 0!important;border-radius:3px!important}
+html body #bb172Storefront .bb172-storefront-progress-fill{height:100%!important;border-radius:3px!important}
+html body #bb172Storefront .bb172-storefront-compact{visibility:visible!important;pointer-events:auto!important;grid-template-columns:minmax(0,1fr) auto auto!important;gap:9px!important;padding-inline:12px!important}
+html body #bb172Storefront .bb172-storefront-compact strong{font-size:17px!important}
+html body #bb172Storefront .bb172-storefront-compact small{font-size:11px!important}
+html body #bb172Storefront .bb172-storefront-compact .bb172-storefront-add{min-height:44px!important;min-width:44px!important;border-radius:12px!important;box-shadow:none!important}
+html body #bb172Storefront:not([data-bb-shop-compact="true"]) .bb172-storefront-compact-exit{display:none!important}
+html body #bb172Storefront[data-bb-shop-compact="true"] .bb172-storefront-compact{grid-template-columns:minmax(0,1fr) auto auto 44px!important}
+
+/* Keep the live footer count for assistive technology without repeating a
+   second prominent number beside the two unchanged shopping actions. */
+html body #bb172Storefront .bb172-storefront-bottom{gap:8px!important;padding:10px 12px calc(10px + env(safe-area-inset-bottom,0px))!important;box-shadow:0 -2px 10px #183e2910!important;background:#fffef9!important}
+html body #bb172Storefront .bb172-storefront-bottom>span{position:absolute!important;width:1px!important;height:1px!important;padding:0!important;margin:-1px!important;overflow:hidden!important;clip:rect(0,0,0,0)!important;clip-path:inset(50%)!important;white-space:nowrap!important;border:0!important}
+html body #bb172Storefront .bb172-storefront-bottom-buttons{display:grid!important;grid-template-columns:minmax(0,1fr) minmax(0,1fr)!important;gap:8px!important;width:100%;min-width:0}
+html body #bb172Storefront .bb172-storefront-bottom-buttons>button{min-width:44px!important;min-height:46px!important;padding:10px 8px!important;border-radius:12px!important;font-size:13px!important;line-height:1.3!important;white-space:normal!important}
+html body #bb172Storefront .bb172-storefront-aisles{padding-bottom:calc(128px + env(safe-area-inset-bottom,0px))!important}
+
+@media(max-width:350px){
+ html body #bb172Storefront .bbcompact-shop-row .bbcompact-main{padding-inline:8px!important}
+ html body #bb172Storefront .bbcompact-shop-row.bb-shop-purchase-row .bbcompact-main>.bb-shop-purchase-body{grid-template-columns:minmax(0,1fr) 104px!important;column-gap:6px!important}
+ html body #bb172Storefront .bbcompact-shop-row.bb-shop-purchase-row .bb-shop-purchase-heading>.bb172-storefront-item-title,
+ html body #bb172Storefront .bbcompact-shop-row:not(.bb-shop-purchase-row) .bb172-storefront-item-title{font-size:16px!important}
+ html body #bb172Storefront .bbcompact-shop-row .bb-shop-friendly-quantity{font-size:13px}
+ html body #bb172Storefront .bbcompact-shop-row.bb-shop-purchase-row .bb-shop-purchase-quantity-line>.bb-shop-buying-pill{padding-inline:6px!important}
+ html body #bb172Storefront .bbnext-shop-brand-name{font-size:14px!important}
+ html body #bb172Storefront :is(.bb172-storefront-wake,.bb172-storefront-exit){max-width:84px;font-size:10px!important}
+}

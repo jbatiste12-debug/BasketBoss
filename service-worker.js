@@ -7,7 +7,7 @@ const IMAGE_CACHE = 'basketboss-v20261102-audited-images-v2';
 const APP_BASE = new URL(self.registration.scope);
 // Public build inventory only. The worker never imports account or API data.
 const USING_PWA700 = typeof importScripts === 'function';
-if (USING_PWA700) importScripts(new URL('pwa700/precache.js?v=20261114-budget1', APP_BASE).href);
+if (USING_PWA700) importScripts(new URL('pwa700/precache.js?v=20261114-shop1', APP_BASE).href);
 const PWA700_CORE = Array.isArray(self.BB700_PWA_PRECACHE) ? self.BB700_PWA_PRECACHE : [];
 if (USING_PWA700 && (!PWA700_CORE.length || !/^[a-f0-9]{64}$/.test(self.BB700_PWA_CACHE_VERSION || ''))) throw new Error('Missing public PWA cache inventory');
 const CACHE = CACHE_BASE + (USING_PWA700 ? '-' + self.BB700_PWA_CACHE_VERSION : '');
@@ -43,6 +43,8 @@ const CORE = ['bb-plan-extras.js','bb-plan-extras.js?v=20261108-planner1','bb-pl
   'bb-pantry-policy.js?v=20261108-baseline1',
   'bb-pantry-display.js?v=20261104-regions2',
   'bb-shop-purchase-ui.js','bb-shop-purchase-ui.css',
+  'bb-shop-friendly-quantity-ui.js','bb-shop-friendly-quantity-ui.js?v=20261114-shop1',
+  'bb-shop-compact.css','bb-shop-compact.css?v=20261114-shop1',
   'bb-shop-purchase-ui.js?v=20261111-packs1','bb-shop-purchase-ui.css?v=20261111-packs1',
   'bb-shop-purchase-ui.js?v=20261111-checkbox1',
   'bb-shop-purchase-ui.js?v=20261111-integrity1','bb-shop-purchase-ui.css?v=20261111-integrity1',
