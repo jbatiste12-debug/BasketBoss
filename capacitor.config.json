@@ -8,6 +8,7 @@
     "cleartext": false
   },
   "ios": {
+    "loggingBehavior": "none",
     "minVersion": "16.0",
     "contentInset": "never",
     "backgroundColor": "#fffdf7",

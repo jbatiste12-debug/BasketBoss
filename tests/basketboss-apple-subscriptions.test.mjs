@@ -61,6 +61,20 @@ test('valid signatures cannot override bundle, environment, product, ownership, 
  const c=getVerifiedAppleConfig(env(database())),service={config:c,verifier:new SignedDataVerifier([pki.root.raw],false,Environment.PRODUCTION,c.bundleId,c.appId)};
  for(const extra of [{bundleId:'evil.app'},{environment:'Sandbox'},{productId:'uk.co.basketboss.premium.fake'},{subscriptionGroupIdentifier:'9999'},{appAccountToken:'not-a-uuid'},{inAppOwnershipType:'FAMILY_SHARED'},{quantity:2},{signedDate:Date.now()+600000}])await assert.rejects(()=>verifyAppleTransaction(service,jws(transaction(c,extra),pki)),error=>error.status===400);
 });
+test('a signed zero-price introductory trial uses normal expiry and renewal verification without a local entitlement grant',async()=>{
+ const c=getVerifiedAppleConfig(env(database())),expires=Date.now()+7*86400000;
+ const tx=transaction(c,{price:0,currency:'GBP',offerType:1,offerDiscountType:'FREE_TRIAL',expiresDate:expires});
+ const service={config:c,verifier:new SignedDataVerifier([pki.root.raw],false,Environment.PRODUCTION,c.bundleId,c.appId)};
+ const verified=await verifyAppleTransaction(service,jws(tx,pki));assert.equal(verified.price,0);
+ const state=evaluateAppleSubscription(c,verified,renewal(c,verified),1);
+ const row={environment:state.environment,product_id:state.productId,plan:state.plan,status:state.status,
+  expires_at_ms:state.expiresAtMs,grace_expires_at_ms:state.graceExpiresAtMs,revoked_at_ms:state.revokedAtMs,
+  cancel_at_period_end:Number(state.cancelAtPeriodEnd),last_verified_at_ms:state.lastVerifiedAtMs};
+ const trial=appleEntitlementFromRow(c,row);assert.equal(trial.premiumAccess,true);assert.equal(trial.plan,'monthly');
+ assert.equal(trial.cancelAtPeriodEnd,false);assert.equal(appleEntitlementFromRow(c,row,expires+1).premiumAccess,false);
+ const cancelled=evaluateAppleSubscription(c,verified,renewal(c,verified,{autoRenewStatus:0}),1);
+ assert.equal(cancelled.cancelAtPeriodEnd,true);assert.equal(cancelled.expiresAtMs,expires);
+});
 test('only monthly and annual are advertised; a deleted Founder SKU cannot open a purchase or grant access',async()=>{
  const {e,c}=await prepared(),deletedProduct='uk.co.basketboss.premium.founder.monthly';
  // Obsolete variables cannot bring the deleted Apple product back into scope.

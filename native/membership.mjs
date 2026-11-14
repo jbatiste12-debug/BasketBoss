@@ -1,9 +1,17 @@
 import {isNativeBillingURL,nativeMembershipURL} from './routing.mjs';
 
 const APPLE_PLANS=Object.freeze([{id:'uk.co.basketboss.premium.monthly',name:'Monthly Premium',period:'per month'},{id:'uk.co.basketboss.premium.annual',name:'Annual Premium',period:'per year'}]);
+export function eligibleSevenDayAppleTrial(product){
+ const offer=product?.introductoryOffer;
+ return !!product?.displayPrice&&offer?.eligible===true&&offer.paymentMode==='freeTrial'&&
+  offer.price==='0'&&offer.periodCount===1&&
+  ((offer.period?.unit==='day'&&offer.period.value===7)||(offer.period?.unit==='week'&&offer.period.value===1));
+}
 export function applePlanPresentation(state,plan){
  const product=(state.products||[]).find(value=>value.id===plan.id),test=state.authenticated&&state.premiumAccess&&state.sandboxPurchaseAllowed===true;
- return {price:product?.displayPrice?product.displayPrice+' '+plan.period:'Price shown by Apple',action:!state.authenticated?'Sign in to subscribe':test?'Test subscription with Apple':product?'Subscribe with Apple':'Try Apple subscription',disabled:state.busy===true};
+ const trial=!state.premiumAccess&&eligibleSevenDayAppleTrial(product);
+ const renewal=product?.displayPrice?product.displayPrice+' '+plan.period:'Price shown by Apple';
+ return {price:trial?'7 days free, then '+renewal:renewal,action:!state.authenticated?(trial?'Sign in to start free trial':'Sign in to subscribe'):test?'Test subscription with Apple':trial?'Start 7-day free trial':product?'Subscribe with Apple':'Try Apple subscription',disabled:state.busy===true};
 }
 
 // Keep web processors blocked. Native Apple purchases are provided separately
@@ -67,7 +75,10 @@ export function installNativeMembership({apiURL,readSession,fetch:perform=global
   const manage=doc.createElement('button');manage.type='button';manage.textContent='Manage Apple subscription';manage.addEventListener('click',()=>{void purchases.manage();});
   const retry=doc.createElement('button');retry.type='button';retry.className='bb-native-apple-secondary';retry.textContent='Refresh membership & prices';retry.addEventListener('click',()=>{void purchases.refresh();});
   controls.append(restore,manage,retry);
-  const recurring=doc.createElement('p');recurring.className='bb-native-apple-disclosure';recurring.textContent='Payment is charged to your Apple Account when you confirm. Subscriptions renew automatically unless cancelled before renewal. You can manage or cancel in your Apple Account subscription settings. Apple shows your local price and billing period before you confirm.';
+  const recurring=doc.createElement('p');recurring.className='bb-native-apple-disclosure bb-native-apple-renewal';
+  const standardTerms='Payment is charged to your Apple Account when you confirm. Subscriptions renew automatically unless cancelled before renewal. You can manage or cancel in your Apple Account subscription settings. Apple shows your local price and billing period before you confirm.';
+  const trialTerms='Confirm with Apple to start your subscription. For an eligible 7-day free trial, your Apple Account is charged the selected plan’s price shown above after 7 days, then renews automatically. Cancel at least 24 hours before the trial ends to avoid a charge. Other subscriptions are charged when you confirm. Manage or cancel in your Apple Account subscription settings.';
+  recurring.textContent=standardTerms;
   parent.append(heading,benefits,plans,catalogue,testing,controls,recurring,existingAccess);
   // Keep the same privacy/terms links beside the Apple recurring-payment terms.
   parent.append(legal);
@@ -80,6 +91,7 @@ export function installNativeMembership({apiURL,readSession,fetch:perform=global
    text(existingAccess,existingAccess.hidden?'':'Your complimentary Premium access is active'+(betaExpiry?' until '+betaExpiry:'')+'. No subscription or renewal charge.');
    restore.disabled=state.busy;retry.disabled=state.busy;manage.disabled=state.busy;manage.hidden=state.provider!=='apple';
    plans.hidden=false;recurring.hidden=false;heading.hidden=false;benefits.hidden=false;
+   text(recurring,!state.premiumAccess&&(state.products||[]).some(eligibleSevenDayAppleTrial)?trialTerms:standardTerms);
    text(catalogue,state.availabilityMessage||state.productLoadMessage||(!state.available?state.message:''));catalogue.hidden=!catalogue.textContent;catalogue.setAttribute('data-product-load-state',state.productLoadState||(!state.available?'unavailable':'ready'));
    testing.hidden=!state.premiumAccess;
    text(testing,state.premiumAccess?(state.sandboxPurchaseAllowed===true?'Sandbox purchase testing is available for this account. Apple test subscriptions do not charge real money.':'Your existing membership covers Premium. No additional Apple subscription is needed.'):'');

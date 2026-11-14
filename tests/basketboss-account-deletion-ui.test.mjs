@@ -344,3 +344,37 @@ test('a sign-in provider outage is not presented as a rejected password', async 
   assert.doesNotMatch(result.message, /password or session could not be verified|supabase|private diagnostic/);
   assert.equal(h.local.getItem(SESSION), session());
 });
+
+function useAppleSession(h){
+ const value=JSON.parse(h.local.getItem(SESSION));value.user.identities=[{provider:'apple',identity_data:{sub:'synthetic-apple-subject'}}];
+ h.local.setItem(SESSION,JSON.stringify(value));
+}
+
+test('Apple-only deletion obtains fresh proof before the mutation barrier and never needs a password',async()=>{
+ const calls=[],credential={identityToken:'synthetic.apple.token',nonce:'a'.repeat(64),authorizationCode:'synthetic-code'};
+ let h;
+ h=harness(async(url,init)=>{calls.push({url,body:JSON.parse(init.body)});return response(200,{ok:true,deleted:true});},{
+  BBNative:{isNative:true},BBNativeAppleAuth:{signIn:async()=>{assert.equal(h.api.isDeleting(),false);return credential;}}
+ });
+ useAppleSession(h);
+ const result=await h.remove({password:''});assert.equal(result.deleted,true);
+ assert.equal(calls[0].url,'/api/account/delete?reauth=apple');assert.deepEqual(calls[0].body,{confirmation:'DELETE',apple:credential});
+ assert.equal(Object.hasOwn(calls[0].body,'password'),false);
+});
+
+test('cancelled Apple deletion confirmation keeps the account, pantry and write barrier unchanged',async()=>{
+ let sent=0;
+ const h=harness(async()=>{sent++;return response(200,{ok:true,deleted:true});},{BBNative:{isNative:true},BBNativeAppleAuth:{signIn:async()=>{throw Object.assign(Error('cancelled'),{code:'BB_APPLE_CANCELLED'});}}});
+ useAppleSession(h);const before=h.local.getItem(SESSION);
+ const result=await h.remove({password:''});assert.equal(result.reason,'cancelled');assert.equal(sent,0);
+ assert.equal(h.api.isDeleting(),false);assert.equal(h.local.getItem(SESSION),before);assert.equal(h.local.getItem('basketboss_321_unified_state_v1'),'meal plan');assert.deepEqual(h.events,[]);
+});
+
+test('an Apple deletion retry uses the durable journal without requesting another Apple grant',async()=>{
+ let requests=0,proofs=0;const bodies=[];
+ const h=harness(async(url,init)=>{bodies.push(JSON.parse(init.body));return ++requests===1?response(202,{ok:false,pending:true}):response(200,{ok:true,deleted:true});},{
+  BBNative:{isNative:true},BBNativeAppleAuth:{signIn:async()=>{proofs++;return {identityToken:'synthetic.apple.token',nonce:'a'.repeat(64),authorizationCode:'synthetic-code'};}}
+ });
+ useAppleSession(h);assert.equal((await h.remove({password:''})).pending,true);assert.equal((await h.remove({password:''})).deleted,true);
+ assert.equal(proofs,1);assert.deepEqual(bodies[1],{confirmation:'DELETE',resume:true});
+});

@@ -9,8 +9,8 @@ const style=fs.readFileSync('bb-onboarding-v2.css','utf8');
 const compare=fs.readFileSync('compare.html','utf8');
 
 test('new onboarding runs before legacy animation without modifying its artwork',()=>{
- assert.match(index,/bb-onboarding-v2\.js\?v=20261104-diets1/);
- assert.match(index,/bb-onboarding-v2\.css\?v=20261104-kitchen1/);
+ assert.match(index,/bb-onboarding-v2\.js\?v=20261114-onboarding1/);
+ assert.match(index,/bb-onboarding-v2\.css\?v=20261114-onboarding1/);
  assert.ok(index.indexOf('bb-onboarding-v2.js')<index.indexOf('bb-welcome-splash.js'));
  assert.match(index,/if\(window\.BBOnboard2026\)return;/);
  assert.match(splash,/!window\.BBOnboard2026/);
@@ -92,9 +92,10 @@ test('survey stores choices and uses original household and region setters only 
 });
 
 
-test('fresh one-time onboarding restart does not skip returning users or remove sign-in and Premium screens',()=>{
+test('welcome preserves completion and older returning users while retaining explicit sign-in and Premium routes',()=>{
  assert.match(onboarding,/bb_onboarding_fresh_once_20261028_v1/);
- assert.match(onboarding,/return restoreState\(\)\?\.complete!==true/);
+ assert.match(onboarding,/return saved\?\.complete!==true/);
+ assert.match(onboarding,/quick&&!saved\?\.started&&\(accountRemembered\(\)\|\|read\('basketboss_onboarding_seen_v1'\)==='true'\)/);
  assert.doesNotMatch(onboarding,/if\(!preview\(\)\&\&returningUser\(\)/);
  assert.match(onboarding,/headline='You’re already signed in\.'/);
  assert.match(onboarding,/id\('cloud-auth'\)/);

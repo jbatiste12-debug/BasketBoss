@@ -96,7 +96,8 @@ async function fixture({width=390,height=844,onboarding}={}){
 async function snapshot(page){return page.evaluate(()=>({state:window.__onboardingQA.state(),stock:window.__onboardingQA.stock(),inventory:localStorage.getItem('basketboss_makeameal_v1_inventory'),market:window.__onboardingQA.market(),session:localStorage.getItem('basketboss_cloud_session_v1')}));}
 async function assertStep(page,step){
  const host=page.locator('#bbNewOnboarding.bbob-quick');await host.waitFor();
- assert.equal(await host.locator('.bbob-quick-progress').getAttribute('aria-label'),`Setup step ${step} of 3`);
+ if(step===1)assert.equal(await host.locator('.bbob-quick-progress').count(),0,'welcome does not require a multi-screen introduction');
+ else assert.equal(await host.locator('.bbob-quick-progress').getAttribute('aria-label'),`Optional setup step ${step-1} of 2`);
  assert.doesNotMatch(await host.innerText(),/\bof 11\b|Optional tour/,'the current flow never exposes the old eleven-screen tutorial');
  assert.equal(await host.locator('.bbob-stepname,.bbob-progress').count(),0);
  assert.equal(await host.locator('.bbob-exit').isVisible(),true,'Free is available on every screen');
@@ -134,13 +135,16 @@ for(const viewport of [{width:320,height:700},{width:390,height:844},{width:844,
  const {page,context,errors,network}=await fixture(viewport);
  try{
   const original=await snapshot(page);let host=await assertStep(page,1);
-  const accountToggle=host.locator('[data-bbob="quick-account"]');
-  assert.equal(await accountToggle.getAttribute('aria-expanded'),'false','sign-in starts optional and collapsed');
+  const accountPanel=host.locator('#bbobQuickAccountPanel');
+  assert.equal(await accountPanel.isVisible(),false,'account creation remains optional');
+  assert.match(await host.innerText(),/Your weekly shop, sorted\. 👑/);
+  assert.equal(await host.getByRole('button',{name:'Create free account',exact:true}).isVisible(),true);
+  assert.equal(await host.getByRole('button',{name:'Sign in',exact:true}).isVisible(),true);
   assert.match(await host.innerText(),/No subscription or account needed/);
   assert.match(await host.innerText(),/200 free recipes/,'the current generated release advertises its actual Free catalogue');
   assert.doesNotMatch(await host.innerText(),/\b100\b/,'the current release never shows the legacy Free recipe count');
   assert.equal(await host.locator('#bbob-title').evaluate(node=>getComputedStyle(node).outlineStyle),'none','programmatic heading focus does not draw clipped outline rules');
-  await accountToggle.click();
+  await host.locator('[data-bbob="quick-signin"]').click();
   assert.equal(await host.locator('#cloud-auth #cloud-login').count(),1,'the existing sign-in control is reused');
   assert.equal(await host.locator('#cloud-auth #cloud-signup').count(),1,'the existing create-account control remains available');
   await host.locator('#cloud-email').fill('returning@example.invalid');
@@ -180,6 +184,36 @@ for(const viewport of [{width:320,height:700},{width:390,height:844},{width:844,
   assert.equal(await page.locator('#bbNewOnboarding').count(),0,'completed users do not see setup again');
   assertPreserved(original,await snapshot(page));
   assert.deepEqual(errors,[]);
+ }finally{await context.close();}
+});
+
+test('generated 700 enters Free from one welcome and preserves the local plan without registration',{skip:!chromium&&'Playwright unavailable',timeout:60000},async()=>{
+ const {page,context,errors,network}=await fixture();
+ try{
+  const original=await snapshot(page),host=await assertStep(page,1);
+  await host.getByRole('button',{name:'Explore BasketBoss Free',exact:true}).click();
+  await host.waitFor({state:'detached'});
+  assert.deepEqual(await snapshot(page),original,'guest exploration cannot replace the existing local draft');
+  await assertNoCheckoutOrEntitlement(page,network);
+  await page.reload({waitUntil:'domcontentloaded'});await page.waitForFunction(()=>window.__onboardingQA?.ready());
+  assert.equal(await page.locator('#bbNewOnboarding').count(),0,'returning guest does not repeat the welcome');
+  assert.deepEqual(errors,[]);
+ }finally{await context.close();}
+});
+
+test('generated 700 exposes signup mode then switches to sign-in using the same credential fields',{skip:!chromium&&'Playwright unavailable',timeout:60000},async()=>{
+ const {page,context,errors,network}=await fixture();
+ try{
+  const host=await assertStep(page,1),form=await host.locator('#cloud-auth').elementHandle();
+  await host.locator('[data-bbob="quick-signup"]').click();
+  assert.equal(await host.locator('#bbobQuickAccountPanel').isVisible(),true);
+  assert.equal(await host.locator('#cloud-password').getAttribute('autocomplete'),'new-password');
+  await host.locator('#cloud-email').fill('guest@example.invalid');
+  await host.locator('#bbAuthSigninMode').click();
+  assert.equal(await host.locator('#cloud-password').getAttribute('autocomplete'),'current-password');
+  assert.equal(await host.locator('#cloud-email').inputValue(),'guest@example.invalid');
+  assert.equal(await form.evaluate(node=>node===document.getElementById('cloud-auth')),true);
+  await assertNoCheckoutOrEntitlement(page,network);assert.deepEqual(errors,[]);
  }finally{await context.close();}
 });
 
@@ -242,15 +276,13 @@ for(const viewport of [{width:390,height:844},{width:402,height:874}])test(`nati
   // its exact selectors and accessible names against the real account button.
   await page.evaluate(identifyControls+'\nidentifyControls();');
   const next=host.getByRole('button',{name:'bbobNext',exact:true});
-  assert.equal(await next.getAttribute('data-bbob'),'quick-account','the native smoke tap addresses the optional account action');
-  assert.equal(await next.getAttribute('aria-expanded'),'false');
-  const panelId=await next.getAttribute('aria-controls');assert.ok(panelId,'the account action identifies its controlled panel');
-  const panel=host.locator(`[id="${panelId}"]`),originalForm=await host.locator('#cloud-auth').elementHandle();
+  assert.equal(await next.getAttribute('data-bbob'),'quick-signin','the native smoke tap addresses the explicit Sign in action');
+  const panel=host.locator('#bbobQuickAccountPanel'),originalForm=await host.locator('#cloud-auth').elementHandle();
   assert.equal(await panel.isVisible(),false,'the account form remains optional before the native tap');
   const backgroundScroll=()=>page.evaluate(()=>({x:scrollX,y:scrollY,rootTop:document.documentElement.scrollTop,rootLeft:document.documentElement.scrollLeft,bodyTop:document.body.scrollTop,shellTop:document.querySelector('.shell')?.scrollTop}));
   const beforeScroll=await backgroundScroll();
   await next.click();host=await assertStep(page,1);
-  assert.equal(await next.getAttribute('aria-expanded'),'true');assert.equal(await panel.isVisible(),true);
+  assert.equal(await panel.isVisible(),true);
   const geometry=await page.evaluate(()=>({
    main:document.querySelector('#bbNewOnboarding .bbob-main').getBoundingClientRect().toJSON(),
    footer:document.querySelector('#bbNewOnboarding .bbob-footer').getBoundingClientRect().toJSON(),
@@ -267,17 +299,21 @@ for(const viewport of [{width:390,height:844},{width:402,height:874}])test(`nati
   assert.equal(await host.locator('#cloud-auth #cloud-email').isVisible(),true,'the original email field is available to the native keyboard test');
   assert.equal(await host.locator('#cloud-auth #cloud-password').isVisible(),true,'the original password field is available to the native keyboard test');
   await host.locator('#cloud-email').fill('returning@example.invalid');await host.locator('#cloud-password').fill('existing-account-password');
-  await next.click();await assertStep(page,1);
-  assert.equal(await next.getAttribute('aria-expanded'),'false');assert.equal(await panel.isVisible(),false);
+  await host.getByRole('button',{name:'Back to welcome',exact:true}).click();await assertStep(page,1);
+  assert.equal(await panel.isVisible(),false);
   await next.click();host=await assertStep(page,1);
-  assert.equal(await next.getAttribute('aria-expanded'),'true');assert.equal(await panel.isVisible(),true);
+  assert.equal(await panel.isVisible(),true);
   assert.equal(await originalForm.evaluate(node=>node.isConnected&&node===document.getElementById('cloud-auth')),true,'account toggles preserve the same real form and its handlers');
   assert.equal(await host.locator('#cloud-email').inputValue(),'returning@example.invalid','collapsing and reopening preserves the email draft');
   assert.equal(await host.locator('#cloud-password').inputValue(),'existing-account-password','collapsing and reopening preserves the password draft');
-  const continueSetup=host.getByRole('button',{name:'Continue without signing in',exact:true});
-  assert.equal(await continueSetup.getAttribute('data-bbob'),'next','the real setup action keeps its existing handler');
-  assert.equal(await continueSetup.getAttribute('aria-label'),null,'the account identifier does not replace the setup action label');
-  await continueSetup.click();await assertStep(page,2);
+  const optionalSetup=host.getByRole('button',{name:'Set up my household · Optional',exact:true});
+  assert.equal(await optionalSetup.getAttribute('data-bbob'),'next','the optional setup action keeps its existing handler');
+  assert.equal(await optionalSetup.getAttribute('aria-label'),null,'the account identifier does not replace the optional setup label');
+  const exploreFree=host.getByRole('button',{name:'Explore BasketBoss Free',exact:true});
+  assert.equal(await exploreFree.getAttribute('data-bbob'),'free-complete','guest exploration finishes welcome without opening optional setup');
+  assert.equal(await exploreFree.getAttribute('aria-label'),null,'the native account identifier does not replace the guest action label');
+  await exploreFree.click();await host.waitFor({state:'detached'});
+  assert.equal(await page.evaluate(key=>JSON.parse(localStorage.getItem(key)).complete,ONBOARDING),true);
   await assertNoCheckoutOrEntitlement(page,network);assert.deepEqual(errors,[]);
  }finally{await context.close();}
 });

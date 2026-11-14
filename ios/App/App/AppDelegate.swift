@@ -143,6 +143,7 @@ class BasketBossViewController: CAPBridgeViewController {
         bridge?.registerPluginInstance(BasketBossNavigationPlugin())
         bridge?.registerPluginInstance(BasketBossPurchasesPlugin())
         bridge?.registerPluginInstance(BasketBossCookVoicePlugin())
+        bridge?.registerPluginInstance(BasketBossAppleAuthPlugin())
         #if DEBUG
         if #available(iOS 16.4, *) { webView?.isInspectable = true }
         if ProcessInfo.processInfo.arguments.contains("--bb-native-cook-smoke"), let webView = webView {
@@ -323,7 +324,7 @@ private enum BasketBossAccountKeyboardSetup {
               ['#cloud-password','cloud-password'],
               ['#cloud-login','cloud-login'],
               ['#cloud-close','cloud-close'],
-              ['#bbNewOnboarding button[data-bbob="quick-account"], #bbNewOnboarding .bbob-footer button[data-bbob="next"]','bbobNext'],
+              [['#bbNewOnboarding button[data-bbob="quick-signin"]', '#bbNewOnboarding button[data-bbob="quick-signup"]', '#bbNewOnboarding button[data-bbob="quick-account"]', '#bbNewOnboarding .bbob-footer button[data-bbob="next"]'],'bbobNext'],
               ['#bbNewOnboarding button.bbob-exit','bbobExit'],
               ['.tabs button[data-tab="week"]','bbPlanNav'],
               ['.tabs button[data-tab="discover"]','bbDiscoverNav'],
@@ -331,7 +332,9 @@ private enum BasketBossAccountKeyboardSetup {
               ['.tabs button[data-tab="shop-list"]','bbShopNav'],
               ['.tabs a.bb173-make-meal-link','bbCookNav']
             ]){
-              const control=document.querySelector(selector);
+              // Selector lists use DOM order, so query the preferred actions
+              // separately when the smoke test needs an explicit first choice.
+              const control=(Array.isArray(selector)?selector:[selector]).map(query=>document.querySelector(query)).find(Boolean);
               if(!control)continue;
               if(!control.id)control.id=identifier;
               // Quick setup opens its optional account panel with this

@@ -39,6 +39,7 @@
   catch(error){for(const key of written.reverse()){try{if(storage.getItem(key)!==after[key])continue;if(prior[key]===null)storage.removeItem(key);else storage.setItem(key,prior[key]);}catch{}}throw error;}
  }
  function install(win){
+  const activationListCreated=()=>{try{win.dispatchEvent?.(new win.CustomEvent('basketboss:first-shopping-list-created'));}catch{}};
   const householdDraft=new Map();let householdActor=null;
   function checkDraftActor(){const who=actor();if(who!==householdActor){householdDraft.clear();householdActor=who;}}
   const store=win.localStorage,read=()=>{
@@ -103,7 +104,7 @@
    const targetQty=Math.max(householdDraft.get(id)?.targetQty??(item.manualPending!==false?Number(item.targetQty??item.qty):0),ownedQty)+1;
    const drafts=new Map(householdDraft);drafts.set(id,{targetQty,ownedQty,selected:true,owned:false});
    const feature=host().prepareHousehold([...drafts]),shopping=settle(data,[...drafts.keys()].map(key=>'ess:'+key));
-   atomic(store,{[KEY]:all,[feature.key]:feature.value,...shopping?.updates},{[KEY]:expected,[feature.key]:feature.expected,...shopping?.expected});householdDraft.clear();host().reload();host().refresh();return true;
+   atomic(store,{[KEY]:all,[feature.key]:feature.value,...shopping?.updates},{[KEY]:expected,[feature.key]:feature.expected,...shopping?.expected});activationListCreated();householdDraft.clear();host().reload();host().refresh();return true;
   }
   function setHouseholdAmount(id,patch,pin){
    checkDraftActor();
@@ -119,6 +120,7 @@
    const shopping=settle(data,['ess:'+id]);
    if(actor()!==who||win.BBAccountDeletion?.isDeleting?.())throw Error('Your account changed. Reopen the amount editor.');
    atomic(store,{[KEY]:all,[feature.key]:feature.value,...shopping?.updates},{[KEY]:expected,[feature.key]:feature.expected,...shopping?.expected,basketboss_cloud_session_v1:pin.session});
+   if(patch.targetQty>patch.ownedQty)activationListCreated();
    host().reload();host().refresh();return {ok:true,message:'Amount saved in '+patch.unit+'. Matching purchases will add to this balance.'};
   }
   // A weekly stock check replaces the owned balance, never its usual target,
@@ -169,6 +171,7 @@
    if(actor()!==context.who||store.getItem('basketboss_cloud_session_v1')!==context.session||win.BBAccountDeletion?.isDeleting?.()||win.BBReceiptHost?.hasPendingConfirmation?.())throw Error('Your account or receipt review changed. Reopen this confirmation.');
    atomic(store,{...(homeChange?{[KEY]:homeChange.all}:{}),[feature.key]:feature.value,...shopping?.updates},{...(homeChange?{[KEY]:homeChange.expected}:{}),[feature.key]:feature.expected,...shopping?.expected,basketboss_cloud_session_v1:context.session});
    householdDraft.delete(feature.id);
+   if(!remove&&Number(item.targetQty??item.qty)>ownedAfter)activationListCreated();
    try{host().reload();}catch{}try{host().refresh();}catch{}
    return {ok:true,id:feature.id,item:{...item},message:remove?'Weekly requirement removed. Your stock has been kept.':'Weekly essential confirmed. Shop is up to date.'};
   }
@@ -804,6 +807,8 @@
     }
     if(purchase.homeUpdate!==undefined&&(!purchase.owned||!object(purchase.homeUpdate)||purchase.homeUpdate.byActor?.[state.who]?.manualRequests?.[request.requestId]!==intent))throw Error('The owned purchase could not be prepared safely.');
     atomic(store,{[KEY]:purchase.homeUpdate||state.all,...purchase.updates},{...purchase.expected,...expected});
+    // Notify only after the committed, nonzero user request. Never send item data.
+    if(measured.quantity>0)activationListCreated();
     if(purchase.owned)try{const sync=win.BBReceiptHost?.retryPurchasedPantry?.();sync?.catch?.(()=>{});}catch{}
     const message=request.reduced!==undefined?name+(purchase.owned?' recorded as a reduced purchase and added to At home.':' recorded as a reduced purchase. Finish shop to add it to At home.'):measured.quantity>0?name+' added to buy: '+raw+' '+(aliases[rawUnit]||rawUnit)+'.':name+' removed from manual top-ups.';
     // The intent is committed even if a later repaint cannot complete.
@@ -864,7 +869,7 @@
   }
   function reminders(){const list=win.document.getElementById('bb321Printable');if(!list)return;list.querySelector('.bb-home-covered')?.remove();const data=Object.values(targets()).filter(row=>row.pending&&(row.targetQty>0||valid(row.extraBuffer)&&row.extraBuffer>0));const needed=host().requirements();const covered=data.filter(row=>{const item=needed.find(x=>host().id(x.key,x.unit)===host().id(row.name,row.unit));const current=host().stock()[host().id(row.name,row.unit)]||0;return Math.max(row.targetQty,item?.required||0)+(valid(row.extraBuffer)?row.extraBuffer:0)<=current;});const households=host().household().filter(row=>Object.hasOwn(row,'targetQty')&&row.manualPending!==false&&row.targetQty>0&&row.ownedQty>=row.targetQty).map(row=>({...row,homeId:'ess:'+row.id}));if(!covered.length&&!households.length)return;const box=win.document.createElement('div');box.className='bb-home-covered';for(const row of [...covered,...households]){const label=win.document.createElement('label'),tick=win.document.createElement('input');tick.type='checkbox';tick.addEventListener('change',()=>{if(tick.checked){complete(row.homeId||host().id(row.name,row.unit));host().refresh();}});label.append(tick,win.document.createTextNode(row.name+' · covered at home'));box.append(label);}list.append(box);}
   function openRequested(){const id=new URLSearchParams(win.location.search).get('bbcook');if(id)host()?.openCook?.(id);}
-  const api={purchaseQuantity,purchaseAmounts,roundShoppingItems,prepareSharedPurchase,needsLegacyReview,receiptGeneration,supersedesReceipt,addHousehold,setHouseholdAmount,setHouseholdBalance,confirmHousehold,confirmHouseholdEntry,removeHousehold,openRequested,reminders,decorate,hasHouseholdDraft:()=>{checkDraftActor();return householdDraft.size>0;},committed:()=>{householdDraft.clear();host()?.reload();},difference,augment,targets,foodTarget,requirement,total,prepare,completionChanges,complete,isCooked,previewCook,cooked,previewDay,finishDay,previewLunchWeek,finishLunchWeek,previewUndoDay,undoDay,shoppingBuys,addShoppingBuy,manualBuyItems,manualBuyEssentials,applyManualPurchases,actor,blocked,atomic};
+  const api={purchaseQuantity,purchaseAmounts,roundShoppingItems,prepareSharedPurchase,needsLegacyReview,receiptGeneration,supersedesReceipt,addHousehold,setHouseholdAmount,setHouseholdBalance,confirmHousehold,confirmHouseholdEntry,removeHousehold,openRequested,reminders,decorate,hasHouseholdDraft:()=>{checkDraftActor();return householdDraft.size>0;},committed:()=>{householdDraft.clear();host()?.reload();try{if(Object.values(targets()).some(row=>row?.pending&&Number(row.targetQty)>0)||(host()?.household?.()||[]).some(row=>row?.selected&&!row.owned&&Number(row.targetQty??row.qty)>Number(row.ownedQty??0)))activationListCreated();}catch{}},difference,augment,targets,foodTarget,requirement,total,prepare,completionChanges,complete,isCooked,previewCook,cooked,previewDay,finishDay,previewLunchWeek,finishLunchWeek,previewUndoDay,undoDay,shoppingBuys,addShoppingBuy,manualBuyItems,manualBuyEssentials,applyManualPurchases,actor,blocked,atomic};
   setTimeout(()=>{win.BBKitchenEssentials?.refresh?.();openRequested();},0);
   return Object.freeze(api);
  }

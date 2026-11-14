@@ -255,3 +255,28 @@ html.bb-onboarding-open body .shell .tabs,html.bb-onboarding-open body nav.bb-r6
 @media(max-height:700px){#bbNewOnboarding.bbob-quick .bbob-main{padding-top:15px}#bbNewOnboarding.bbob-quick .bbob-description{font-size:13px;margin:10px 0 15px}#bbNewOnboarding .bbob-quick-welcome>img{height:170px}#bbNewOnboarding .bbob-quick-welcome{min-height:170px}}
 @media(max-height:480px){#bbNewOnboarding.bbob-quick .bbob-shell{padding-top:5px;padding-bottom:4px}#bbNewOnboarding .bbob-quick-progress{margin-top:3px;gap:4px}#bbNewOnboarding.bbob-quick .bbob-main{padding-top:12px}#bbNewOnboarding.bbob-quick .bbob-footer{gap:4px;padding-top:5px}#bbNewOnboarding.bbob-quick .bbob-btn{min-height:42px;padding:8px 13px}#bbNewOnboarding.bbob-quick .bbob-btn.bbob-link{min-height:26px;padding:3px 12px}}
 @media(max-width:560px){#bbNewOnboarding.bbob-quick.bbob-keyboard .bbob-quick-welcome,#bbNewOnboarding.bbob-quick.bbob-keyboard .bbob-quick-free,#bbNewOnboarding.bbob-quick.bbob-keyboard .bbob-quick-progress{display:none}#bbNewOnboarding.bbob-quick.bbob-keyboard .bbob-quick-account{border:0;padding:0;background:transparent}#bbNewOnboarding.bbob-quick.bbob-keyboard .bbob-quick-account-toggle,#bbNewOnboarding.bbob-quick.bbob-keyboard .bbob-quick-account-panel>p{display:none}}
+
+/* One welcoming screen before optional household setup or account creation. */
+#bbNewOnboarding.bbob-quick-welcome-screen .bbob-main{padding-top:18px}
+#bbNewOnboarding.bbob-quick-welcome-screen h1{font-size:30px;line-height:1.13}
+#bbNewOnboarding .bbob-title-together{white-space:nowrap}
+#bbNewOnboarding.bbob-quick-welcome-screen .bbob-description{margin:10px 0 15px}
+#bbNewOnboarding.bbob-quick-welcome-screen .bbob-quick-welcome{min-height:125px;margin-bottom:12px;border-radius:18px}
+#bbNewOnboarding.bbob-quick-welcome-screen .bbob-quick-welcome>img{height:125px!important;min-height:0!important;max-height:125px!important;aspect-ratio:auto}
+#bbNewOnboarding.bbob-quick-welcome-screen .bbob-quick-welcome>div{padding:16px}
+#bbNewOnboarding.bbob-quick-welcome-screen .bbob-quick-welcome strong{font-size:19px;max-width:250px}
+#bbNewOnboarding .bbob-quick-benefits{list-style:none;display:grid;gap:10px;margin:0 0 15px;padding:0}
+#bbNewOnboarding .bbob-quick-benefits li{display:flex;gap:10px;align-items:center;color:#244a34;font-size:13px;line-height:1.4}
+#bbNewOnboarding .bbob-quick-benefits li>span:first-child{display:grid;place-items:center;flex:none;width:29px;height:29px;border-radius:9px;background:#e8edde;color:#315c41;font-size:18px}
+#bbNewOnboarding.bbob-quick-welcome-screen .bbob-quick-free{margin:0 0 14px}
+#bbNewOnboarding .bbob-quick-auth-actions{display:grid;grid-template-columns:minmax(0,1.3fr) minmax(0,1fr);gap:8px}
+#bbNewOnboarding .bbob-quick-auth-actions .bbob-btn{padding-inline:9px;min-height:46px}
+#bbNewOnboarding .bbob-quick-auth-actions .bbob-btn:first-child{background:#e9efdf;border-color:#a8b79c}
+#bbNewOnboarding .bbob-quick-account-note{margin:8px 0 0;color:#69775f;font-size:10px;line-height:1.5;text-align:center}
+#bbNewOnboarding .bbob-quick-account-panel{margin-top:12px}
+#bbNewOnboarding.bbob-account-open .bbob-quick-welcome,#bbNewOnboarding.bbob-account-open .bbob-quick-benefits,#bbNewOnboarding.bbob-account-open .bbob-quick-free,#bbNewOnboarding.bbob-account-open .bbob-quick-auth-actions,#bbNewOnboarding.bbob-account-open .bbob-quick-account-note{display:none}
+#bbNewOnboarding.bbob-account-open .bbob-description{margin-bottom:12px}
+#bbNewOnboarding.bbob-quick input,#bbNewOnboarding.bbob-quick select,#bbNewOnboarding.bbob-quick textarea{font-size:16px!important}
+#bbNewOnboarding.bbob-quick-welcome-screen .bbob-footer .bbob-link{font-size:11px}
+@media(max-height:700px){#bbNewOnboarding.bbob-quick-welcome-screen .bbob-main{padding-top:12px}#bbNewOnboarding.bbob-quick-welcome-screen h1{font-size:28px}#bbNewOnboarding.bbob-quick-welcome-screen .bbob-quick-welcome{min-height:100px}#bbNewOnboarding.bbob-quick-welcome-screen .bbob-quick-welcome>img{height:105px!important;max-height:105px!important}#bbNewOnboarding .bbob-quick-benefits{gap:7px;margin-bottom:11px}#bbNewOnboarding .bbob-quick-benefits li{font-size:12px}}
+@media(max-width:560px){#bbNewOnboarding.bbob-quick.bbob-keyboard .bbob-quick-benefits,#bbNewOnboarding.bbob-quick.bbob-keyboard .bbob-quick-auth-actions,#bbNewOnboarding.bbob-quick.bbob-keyboard .bbob-quick-account-note{display:none}}

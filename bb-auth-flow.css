@@ -1,4 +1,14 @@
 #cloud-auth [hidden]{display:none!important}
+#bbAuthModes{display:flex;gap:4px;padding:4px;margin:0 0 12px;border:1px solid #c4d4bf;border-radius:14px;background:#edf3e7}
+html body #cloud-auth #bbAuthModes button{flex:1;min-width:0;min-height:44px;margin:0;padding:10px 12px;border:0;border-radius:10px;background:transparent;color:#20583d;font:inherit;font-weight:750;box-shadow:none}
+html body #cloud-auth #bbAuthModes button[aria-pressed="true"]{background:#205e43;color:#fff}
+#bbAuthIntro{margin:0 0 12px;line-height:1.5;color:#315744}
+#cloud-auth[data-bb-auth-mode="sign-up"] #cloud-signup,#cloud-auth[data-bb-auth-mode="sign-in"] #cloud-login{background:#205e43!important;color:#fff!important;min-height:48px}
+html body #cloud-auth #bbAuthApple{display:flex;align-items:center;justify-content:center;gap:8px;width:100%;min-height:48px;margin:0;padding:10px 16px;border:1px solid #000;border-radius:10px;background:#000!important;color:#fff!important;font:600 16px -apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;box-shadow:none}
+#bbAuthApple svg{display:block;width:22px;height:22px}
+#bbAuthAppleDivider{text-align:center;color:#536a5b;font-size:14px;margin:14px 0}
+#bbAuthAppleStatus{font-size:14px;line-height:1.5;color:#315744}
+html body #cloud-auth #bbAuthAppleRetry{min-height:44px;font-size:16px;font-weight:600}
 #bbAuthStates{padding-top:12px;color:#214b36}
 #bbAuthStates h3{margin:0 0 10px;font-size:23px;color:#194b36}
 #bbAuthStates p{line-height:1.5;overflow-wrap:anywhere}

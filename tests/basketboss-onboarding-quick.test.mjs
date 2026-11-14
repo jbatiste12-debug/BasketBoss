@@ -44,29 +44,30 @@ test('current catalogue build renders 200 Free recipes while the preserved legac
  assert.equal(harness().read().step,1);
 });
 
-test('optional account disclosure opens and closes in place without replacing credentials or advancing setup',()=>{
+test('account actions select signup or sign-in in place without replacing credentials or advancing setup',()=>{
  const h=harness(),host=h.active(),originalQuery=host.querySelector;
- const panel={hidden:true,contains:()=>false},attributes=new Map([['aria-expanded','false']]);
- const toggle={setAttribute:(name,value)=>attributes.set(name,value)};
- host.querySelector=selector=>selector==='#bbobQuickAccountPanel'?panel:selector==='[data-bbob="quick-account"]'?toggle:originalQuery(selector);
+ const panel={hidden:true,contains:()=>false},modes=[];
+ h.window.BBAuthFlow={open:mode=>modes.push(mode)};
+ host.querySelector=selector=>selector==='#bbobQuickAccountPanel'?panel:originalQuery(selector);
  let html=host.innerHTML,renders=0;
  Object.defineProperty(host,'innerHTML',{get:()=>html,set:value=>{renders++;html=value;}});
  const saved=h.storage.get(KEY),writes=h.writes.length;
- h.tap('quick-account');assert.equal(panel.hidden,false);assert.equal(attributes.get('aria-expanded'),'true');
- h.tap('quick-account');assert.equal(panel.hidden,true);assert.equal(attributes.get('aria-expanded'),'false');
+ h.tap('quick-signup');assert.equal(panel.hidden,false);
+ h.tap('quick-signin');assert.equal(panel.hidden,false);assert.deepEqual(modes,['sign-up','sign-in']);
  assert.equal(renders,0,'disclosure must not detach and remount the real credential fields');
  assert.equal(h.storage.get(KEY),saved);assert.equal(h.writes.length,writes);assert.deepEqual(h.preferences,[]);assert.equal(h.read().step,1);
 });
 
-test('quick setup has three screens, preserves drafts on Back and finishes Free without a tutorial or billing write',()=>{
+test('optional household setup preserves drafts on Back and finishes Free without billing writes',()=>{
  const h=harness();
- assert.equal(h.read().step,1);assert.match(h.active().innerHTML,/Setup step 1 of 3/);
- assert.match(h.active().innerHTML,/Have an account\? Sign in or create one/);
+ assert.equal(h.read().step,1);assert.match(h.active().innerHTML,/Your weekly shop, <span class="bbob-title-together">sorted\. 👑<\/span>/);
+ assert.match(h.active().innerHTML,/Create free account/);assert.match(h.active().innerHTML,/data-bbob="quick-signin"/);
+ assert.doesNotMatch(h.active().innerHTML,/Setup step|of 3/);
  assert.doesNotMatch(h.active().innerHTML,/bbob-original-logo-motion|Optional tour|of 11/);
  h.tap('next');assert.equal(h.read().step,3);
  h.tap(null,1,'house');h.region('Guernsey');h.tap(null,1,'diets');h.tap(null,0,'goals');
  assert.deepEqual(h.preferences,[]);
- h.tap('next');assert.equal(h.read().step,10);assert.match(h.active().innerHTML,/Setup step 3 of 3/);
+ h.tap('next');assert.equal(h.read().step,10);assert.match(h.active().innerHTML,/Optional setup step 2 of 2/);
  assert.match(h.active().innerHTML,/700 recipes|See Premium plans|Continue with BasketBoss Free/);
  assert.doesNotMatch(h.active().innerHTML,/£|free trial|Founder|Paddle|data-bbob="premium"/);
  h.tap('back');assert.equal(h.read().step,3);assert.equal(h.read().region,'Guernsey');
@@ -76,6 +77,29 @@ test('quick setup has three screens, preserves drafts on Back and finishes Free 
  assert.equal(h.storage.get(PLAN),'existing meals, pantry and budget');assert.equal(h.navigation.length,0);assert.equal(h.howMany(),0);
  assert.ok(h.writes.every(([key])=>[KEY,'basketboss_onboarding_seen_v1'].includes(key)));
  const returning=harness({store:h.storage});assert.equal(returning.active(),undefined);
+});
+
+test('one welcome enters the real Free app without registration or optional setup',()=>{
+ const h=harness(),original=h.storage.get(PLAN);
+ assert.match(h.active().innerHTML,/Plan meals for the week\./);
+ assert.match(h.active().innerHTML,/Organise groceries and household essentials\./);
+ assert.match(h.active().innerHTML,/Use pantry ingredients and leftovers\./);
+ h.tap('free-complete');
+ assert.equal(h.active(),undefined);assert.equal(h.read().complete,true);
+ assert.equal(h.storage.get(PLAN),original);assert.equal(h.storage.has(SESSION),false);
+ assert.deepEqual(h.preferences,[]);assert.deepEqual(h.navigation,[]);
+ assert.equal(harness({store:h.storage}).active(),undefined);
+});
+
+test('returning accounts and completed older setup do not restart the automatic welcome',()=>{
+ const signedIn=new Map([[PLAN,'existing plan'],[SESSION,JSON.stringify({user:{id:'existing-account'},access_token:'synthetic-token',expires_at:9999999999})]]);
+ for(const storage of [signedIn,new Map([[PLAN,'existing plan'],['basketboss_onboarding_seen_v1','true']])]){
+  const h=harness({store:storage}),before=[...storage];
+  assert.equal(h.active(),undefined);assert.equal(h.window.BBOnboard2026.willShow(),false);assert.deepEqual([...storage],before);
+  assert.equal(h.window.BBOnboard2026.open(),true,'Settings replay remains available');
+ }
+ const unfinished=harness({store:signedIn,saved:{...prior,step:3}});
+ assert.ok(unfinished.active(),'explicit unfinished setup remains resumable');
 });
 
 test('incomplete legacy screens map once without losing household, diet, goals or partner intent',()=>{
@@ -99,12 +123,22 @@ test('skip setup restores its pre-edit answers and never commits while navigatin
  h.tap('free-complete');assert.deepEqual(h.preferences,[{house:2},{region:'UK'},{meals:{diets:['Vegetarian'],goals:['Plan dinners faster']}}]);
 });
 
-test('successful optional authentication advances to household without completion or preference writes',()=>{
+test('successful welcome authentication enters the app while optional setup remains explicit',()=>{
  const h=harness({saved:{...prior,step:1}});h.signIn();assert.equal(h.window.BBOnboard2026.authenticated(),true);
- assert.equal(h.read().step,3);assert.equal(h.read().complete,false);assert.deepEqual(h.preferences,[]);
- assert.ok(h.active());assert.match(h.active().innerHTML,/Who are you cooking for/);
- h.tap('next');assert.match(h.active().innerHTML,/See Premium plans/);
- const session=harness();session.signIn();session.dispatch('basketboss:session-changed');assert.equal(session.read().step,3);assert.equal(session.read().complete,false);assert.deepEqual(session.preferences,[]);
+ assert.equal(h.read().complete,true);assert.equal(h.active(),undefined);
+ assert.deepEqual(h.preferences,[],'sign-in must not commit an optional preference draft');
+ const session=harness();session.signIn();session.dispatch('basketboss:session-changed');assert.equal(session.read().complete,true);assert.equal(session.active(),undefined);assert.deepEqual(session.preferences,[]);
+ const optional=harness();optional.tap('next');assert.match(optional.active().innerHTML,/Who are you cooking for/);optional.tap('next');assert.match(optional.active().innerHTML,/See Premium plans/);
+});
+
+test('welcome completion storage failure keeps verified sign-in and optional drafts recoverable',()=>{
+ const h=harness({saved:{...prior,step:1}}),plan=h.storage.get(PLAN);
+ h.signIn();h.setCompletionBlocked(true);
+ assert.equal(h.window.BBOnboard2026.authenticated(),false);assert.ok(h.active());assert.equal(h.read().complete,false);
+ assert.equal(h.storage.get(PLAN),plan);assert.ok(h.storage.get(SESSION));assert.deepEqual(h.preferences,[]);
+ assert.match(h.status.textContent,/Could not save welcome completion/);
+ h.setCompletionBlocked(false);assert.equal(h.window.BBOnboard2026.authenticated(),true);assert.equal(h.active(),undefined);assert.equal(h.read().complete,true);
+ assert.deepEqual(h.preferences,[]);
 });
 
 test('partner join still requires a fresh authenticated session and preserves its secure invitation handoff',()=>{

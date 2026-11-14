@@ -4,8 +4,8 @@ import fs from 'node:fs';
 const read=p=>fs.readFileSync(p,'utf8');
 const index=read('index.html'), js=read('bb-onboarding-v2.js'), prompt=read('bb-partner-signup-prompt.js'), api=read('functions/api/household/index.js');
 test('main onboarding and account prompt installed without replacing the account flow',()=>{
-  assert.match(index,/bb-onboarding-v2\.js\?v=20261104-diets1/);
-  assert.match(index,/bb-onboarding-v2\.css\?v=20261104-kitchen1/);
+  assert.match(index,/bb-onboarding-v2\.js\?v=20261114-onboarding1/);
+  assert.match(index,/bb-onboarding-v2\.css\?v=20261114-onboarding1/);
   assert.match(index,/bb-partner-signup-prompt\.js\?v=partner-main1/);
   assert.match(index,/id="cloud-signup"/);
   assert.match(index,/id="cloud-login"/);
@@ -40,7 +40,7 @@ test('offline/backend missing still has a truthful post-sign-in prompt',()=>{
   assert.match(prompt,/wantsPartnerInvite/);
 });
 test('one-time onboarding preserves existing accounts and plans',()=>{
-  assert.match(js,/return restoreState\(\)\?\.complete!==true/);
+  assert.match(js,/const saved=restoreState\(\);\s*if\(quick&&!saved\?\.started&&\(accountRemembered\(\)\|\|read\('basketboss_onboarding_seen_v1'\)==='true'\)\)return false;\s*return saved\?\.complete!==true;/);
   assert.match(js,/state\.complete=true/);
   assert.match(js,/wantsPartnerInvite/);
   assert.doesNotMatch(js,/localStorage\.setItem\(['"]basketboss_321_unified_state_v1/);

@@ -1,6 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import {DatabaseSync} from 'node:sqlite';
+import {createHash,generateKeyPairSync,sign} from 'node:crypto';
 import {onRequestGet,onRequestPost} from '../functions/api/account/delete.js';
 import {digestDeletionActor,digestDeletionRef,digestDeletionRetry,ensureDeletionSchema} from '../bb-server-lib/bb-account-deletion.js';
 
@@ -58,10 +59,11 @@ function fixture(t){
  t.mock.method(console,'warn',()=>{});
  t.mock.method(globalThis,'fetch',async(input,options={})=>{
   const url=new URL(String(input)),method=options.method||'GET';
-  const body=options.body?JSON.parse(options.body):null;
+  const body=options.body?(options.body instanceof URLSearchParams?Object.fromEntries(options.body):JSON.parse(options.body)):null;
   f.calls.push({url:url.href,path:url.pathname,method,body,headers:new Headers(options.headers)});
+  if(url.origin==='https://appleid.apple.com'&&f.appleFetch)return f.appleFetch(url,options);
   if(url.origin===env.SUPABASE_URL){
-   if(url.pathname==='/auth/v1/user')return f.knownActor&&!f.authDeleted?json({id:USER,email:EMAIL,email_confirmed_at:'2026-10-01T00:00:00Z'}):json({error:'Unknown session'},401);
+   if(url.pathname==='/auth/v1/user')return f.knownActor&&!f.authDeleted?json({id:USER,email:EMAIL,email_confirmed_at:'2026-10-01T00:00:00Z',...(f.appleIdentity?{identities:[{provider:'apple',identity_data:{sub:'synthetic.apple.subject'}}]}:{})}):json({error:'Unknown session'},401);
    if(url.pathname==='/auth/v1/token'){
     assert.equal(url.search,'?grant_type=password');
     if(f.passwordUnavailable)return json({error:'synthetic-private-auth-provider-body'},503);
@@ -349,4 +351,55 @@ test('an unavailable AI usage schema check is not mistaken for an empty history'
  const response=await remove(f),result=await response.json();
  assert.equal(response.status,202);assert.equal(result.pending,true);assert.equal(result.code,'deletion_database_pending');
  assert.deepEqual(rows(f,'bb_founder_slots'),before);assertNoRemoteDeletion(f);assert.ok(!JSON.stringify(result).includes('synthetic-private'));
+});
+
+test('Apple-linked accounts cannot bypass Apple revocation with the password path',async t=>{
+ const f=fixture(t);f.appleIdentity=true;
+ const response=await remove(f),data=await response.json();
+ assert.equal(response.status,403);assert.equal(data.code,'deletion_apple_required');assert.equal(data.pending,false);
+ assert.equal(rows(f,'bb_account_deletions').length,0);assertNoRemoteDeletion(f);
+ assert.equal(f.calls.some(call=>call.path==='/auth/v1/token'),false);
+});
+
+test('an Apple resume request can never create a new deletion intent',async t=>{
+ const f=fixture(t);f.appleIdentity=true;
+ const response=await remove(f,{body:{confirmation:'DELETE',resume:true}}),data=await response.json();
+ assert.equal(response.status,403);assert.equal(data.code,'deletion_apple_required');assert.equal(data.pending,false);
+ assert.equal(rows(f,'bb_account_deletions').length,0);assertNoRemoteDeletion(f);
+});
+
+test('missing Apple server credentials fail before journaling or deleting any saved data',async t=>{
+ const f=fixture(t);f.appleIdentity=true;
+ const response=await remove(f,{body:{confirmation:'DELETE',apple:{identityToken:'synthetic.token.value',nonce:'a'.repeat(64),authorizationCode:'synthetic-code'}}}),data=await response.json();
+ assert.equal(response.status,503);assert.equal(data.code,'deletion_apple_unavailable');assert.equal(data.pending,false);
+ assert.equal(rows(f,'bb_account_deletions').length,0);assertNoRemoteDeletion(f);
+ assert.doesNotMatch(JSON.stringify(data),/synthetic-code|synthetic.token.value|PRIVATE/);
+});
+
+test('the original bearer can resume an already-authorized Apple deletion idempotently',async t=>{
+ const f=fixture(t);f.appleIdentity=true;await ensureDeletionSchema(f.env);
+ await f.db.prepare('INSERT INTO bb_account_deletions(actor_hash,retry_hash,user_id,email,started_at_ms) VALUES(?,?,?,?,?)').bind(await digestDeletionActor(USER),await digestDeletionRetry(TOKEN),USER,EMAIL,Date.now()).run();
+ const response=await remove(f,{body:{confirmation:'DELETE',resume:true}});assert.equal(response.status,200);assert.equal((await response.json()).deleted,true);
+ assert.equal(f.deleteCalls,1);assert.equal(f.calls.some(call=>call.path.startsWith('/auth/')),false);
+});
+
+test('fresh Apple proof revokes access before the existing durable deletion removes account data',async t=>{
+ const f=fixture(t);f.appleIdentity=true;
+ const appleKeys=generateKeyPairSync('rsa',{modulusLength:2048}),clientKeys=generateKeyPairSync('ec',{namedCurve:'prime256v1'}),nonce='a'.repeat(64),now=Math.floor(Date.now()/1000);
+ Object.assign(f.env,{APPLE_SIGN_IN_ENABLED:'true',APPLE_SIGN_IN_TEAM_ID:'TEAM123456',APPLE_SIGN_IN_KEY_ID:'SIGN123456',APPLE_SIGN_IN_CLIENT_ID:'uk.co.basketboss.app',APPLE_SIGN_IN_PRIVATE_KEY:clientKeys.privateKey.export({type:'pkcs8',format:'pem'})});
+ const encode=value=>Buffer.from(JSON.stringify(value)).toString('base64url');
+ const unsigned=encode({alg:'RS256',kid:'synthetic-apple-key'})+'.'+encode({iss:'https://appleid.apple.com',aud:'uk.co.basketboss.app',sub:'synthetic.apple.subject',iat:now,exp:now+300,nonce:createHash('sha256').update(nonce).digest('hex')});
+ const identityToken=unsigned+'.'+sign('RSA-SHA256',Buffer.from(unsigned),appleKeys.privateKey).toString('base64url');
+ f.appleFetch=async(url)=>{
+  if(url.pathname==='/auth/keys')return json({keys:[{...appleKeys.publicKey.export({format:'jwk'}),kid:'synthetic-apple-key',alg:'RS256',use:'sig'}]});
+  if(url.pathname==='/auth/token')return json({id_token:identityToken,refresh_token:'synthetic-apple-refresh'});
+  if(url.pathname==='/auth/revoke'){
+   assert.equal(rows(f,'bb_account_deletions').length,0,'revocation precedes any durable deletion intent');assertNoRemoteDeletion(f);return json({});
+  }
+  throw Error('unexpected Apple fixture path');
+ };
+ const response=await remove(f,{body:{confirmation:'DELETE',apple:{identityToken,nonce,authorizationCode:'synthetic-authorization-code'}}});
+ assert.equal(response.status,200);assert.equal((await response.json()).deleted,true);assert.equal(f.authDeleted,true);assert.equal(f.plans.has(USER),false);assert.equal(f.plans.has(OTHER),true);
+ assert.equal(f.calls.filter(call=>call.path==='/auth/revoke').length,1);
+ assert.ok(f.calls.findIndex(call=>call.path==='/auth/revoke')<f.calls.findIndex(call=>call.path==='/rest/v1/rpc/bb_account_delete_data'));
 });

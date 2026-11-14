@@ -75,3 +75,24 @@ test('verified sandbox test eligibility preserves Apple testing and Production c
  h.emit({premiumAccess:true,provider:'paddle',sandboxPurchaseAllowed:false});assert.equal(plans.hidden,false);assert.match(h.find('bb-native-apple-testing').textContent,/existing membership covers Premium/);
  assert.equal(h.find('bb-native-beta-unlock'),undefined);assert.equal(h.calls.claims,0);assert.equal(h.find('bb-native-existing-access').hidden,true);
 }));
+
+test('eligible seven-day trial paywall shows renewal price, cancellation terms and the normal Apple purchase action',async()=>withFixture({},async h=>{
+ const month='uk.co.basketboss.premium.monthly';
+ const trial={paymentMode:'freeTrial',price:'0',periodCount:1,period:{unit:'week',value:1},eligible:true};
+ h.emit({available:true,products:[{id:month,displayPrice:'£4.99',introductoryOffer:trial},{id:'uk.co.basketboss.premium.annual',displayPrice:'£39.99'}],message:'Choose a plan.'});
+ const plans=h.find('bb-native-apple-plans'),terms=h.find('bb-native-apple-renewal');
+ assert.match(plans.children[0].textContent,/7 days free, then £4\.99 per month.*Start 7-day free trial/);
+ assert.doesNotMatch(plans.children[1].textContent,/free trial|7 days free/);
+ assert.match(terms.textContent,/charged the selected plan’s price shown above after 7 days, then renews automatically/);
+ assert.match(terms.textContent,/Cancel at least 24 hours before the trial ends/);
+ assert.match(terms.textContent,/Confirm with Apple/);assert.deepEqual(h.calls.subscriptions,[]);
+ plans.children[0].click();assert.deepEqual(h.calls.subscriptions,[month]);
+ h.emit({products:[{id:month,displayPrice:'£4.99',introductoryOffer:{...trial,eligible:false}}]});
+ assert.doesNotMatch(plans.textContent,/free trial|7 days free/);assert.doesNotMatch(terms.textContent,/7.day free trial/);
+}));
+
+test('signed-out trial CTA opens login without starting a trial or charging',async()=>withFixture({authenticated:false},async h=>{
+ h.emit({products:[{id:'uk.co.basketboss.premium.monthly',displayPrice:'£4.99',introductoryOffer:{paymentMode:'freeTrial',price:'0',periodCount:1,period:{unit:'day',value:7},eligible:true}}]});
+ const button=h.find('bb-native-apple-plans').children[0];assert.match(button.textContent,/Sign in to start free trial/);
+ button.click();assert.equal(h.calls.signin,1);assert.deepEqual(h.calls.subscriptions,[]);
+}));

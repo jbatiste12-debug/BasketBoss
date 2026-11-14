@@ -11,6 +11,7 @@ import {installNativeApplePurchases} from './apple-purchases.mjs';
 import {installNativeStartup} from './startup.mjs';
 import {watchNativeEntryReadiness} from './entry-readiness.mjs';
 import {installNativeCookVoice} from './cook-voice.mjs';
+import {installNativeAppleAuth} from './apple-auth.mjs';
 
 if(Capacitor.isNativePlatform()&&Capacitor.getPlatform()==='ios'){
  document.documentElement.classList.add('bb-native-ios');
@@ -24,6 +25,7 @@ if(Capacitor.isNativePlatform()&&Capacitor.getPlatform()==='ios'){
   return result;
  };
  const deleting=()=>window.BBAccountDeletion?.isDeleting?.()===true;
+ installNativeAppleAuth({plugin:registerPlugin('BasketBossAppleAuth'),window,isAvailable:()=>Capacitor.isPluginAvailable('BasketBossAppleAuth'),isDeleting:deleting});
  const readSession=()=>{try{return JSON.parse(localStorage.getItem('basketboss_cloud_session_v1')||'null');}catch{return null;}};
  const haptic=kind=>{
   const action=kind==='success'?()=>Haptics.notification({type:NotificationType.Success}):kind==='selection'?()=>Haptics.selectionStart().then(()=>Haptics.selectionChanged()).finally(()=>Haptics.selectionEnd()):()=>Haptics.impact({style:ImpactStyle.Light});

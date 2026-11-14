@@ -16,6 +16,8 @@
     deletion_cloud_pending: 'We could not confirm that your cloud account and saved data were deleted.',
     deletion_database_pending: 'We could not finish deleting your saved account data.',
     deletion_password_required: 'Your password could not be verified. A previous deletion request still needs to finish.',
+    deletion_apple_required: 'Apple could not confirm this account. Please try again.',
+    deletion_apple_unavailable: 'Apple account verification is temporarily unavailable.',
     deletion_not_ready: 'Account deletion is temporarily unavailable. A previous deletion request still needs to finish.'
   });
 
@@ -31,6 +33,7 @@
     }
     if (code === 'deletion_auth_unavailable') return { pending, code, text: 'We could not verify your sign-in right now. Your account and saved device data have been kept, and syncing can continue. Please try again later.' };
     if (code === 'deletion_not_ready') return { pending, code, text: 'Account deletion is not available yet. Your account and saved device data have been kept, and syncing can continue. Please try again later.' };
+    if (code === 'deletion_apple_required' || code === 'deletion_apple_unavailable') return { pending, code, text: pendingMessages[code] + ' ' + kept + ' and syncing can continue.' };
     if (code === 'deletion_password_required' || response.status === 401 || response.status === 403) return { pending, code, text: 'Your password or session could not be verified. ' + kept + ' and syncing can continue. Check your password, or close this window and sign in again.' };
     return { pending, code, text: 'Your account deletion could not be completed. ' + kept + ' and syncing can continue. Please retry.' };
   }
@@ -56,7 +59,7 @@
     let phase = 'idle', pinned = null, inFlight = null, controller = null;
     let dialog = null, form = null, message = null, password = null, confirmation = null, acknowledged = null;
     let submit = null, cancel = null, cleanupRetry = null, restoreFocus = null, observer = null, started = false, locked = false;
-    let success = false, knownActor = null, statusFlight = null;
+    let success = false, knownActor = null, statusFlight = null, authorizingApple = false;
 
     function readSession() {
       try {
@@ -69,7 +72,8 @@
           const pending = readLock();
           if (!pending || pending.actorId !== value.user.id || !['pending', 'deleting'].includes(pending.phase)) return null;
         }
-        return { actorId: value.user.id, token: value.access_token, email: String(value.user.email || '') };
+        const apple=Array.isArray(value.user.identities)&&value.user.identities.some(identity=>identity?.provider==='apple')||Array.isArray(value.user.app_metadata?.providers)&&value.user.app_metadata.providers.includes('apple');
+        return { actorId: value.user.id, token: value.access_token, email: String(value.user.email || ''), ...(apple?{apple:true}:{}) };
       } catch { return null; }
     }
 
@@ -105,18 +109,20 @@
 
     function update() {
       if (!dialog) return;
-      const busy = phase === 'deleting' || success;
-      submit.disabled = busy || locked || !password.value || confirmation.value !== 'DELETE' || !acknowledged.checked;
-      submit.textContent = busy ? 'Deleting…' : phase === 'pending' ? 'Retry account deletion' : 'Permanently delete account';
+      const busy = phase === 'deleting' || authorizingApple || success,apple=readSession()?.apple===true;
+      submit.disabled = busy || locked || (!apple&&!password.value) || confirmation.value !== 'DELETE' || !acknowledged.checked;
+      submit.textContent = authorizingApple?'Confirming with Apple…':busy ? 'Deleting…' : phase === 'pending' ? 'Retry account deletion' : apple?'Confirm with Apple & delete account':'Permanently delete account';
+      password.closest?.('label')?.toggleAttribute?.('hidden',apple||success);
+      password.required=!apple;
       password.disabled = busy || locked;
       confirmation.disabled = busy || locked;
       acknowledged.disabled = busy || locked;
-      cancel.disabled = phase === 'deleting' || success;
+      cancel.disabled = phase === 'deleting' || authorizingApple || success;
       cancel.textContent = phase === 'pending' ? 'Close' : 'Cancel';
       cancel.hidden = success;
       submit.hidden = success;
-      form.querySelectorAll('label').forEach(label => { label.hidden = success; });
-      dialog.setAttribute('aria-busy', String(phase === 'deleting'));
+      form.querySelectorAll('label').forEach(label => { label.hidden = success||(apple&&label.contains?.(password)); });
+      dialog.setAttribute('aria-busy', String(phase === 'deleting'||authorizingApple));
     }
 
     function setMessage(text, error = false) {
@@ -270,7 +276,8 @@
     async function requestDeletion(input) {
       if (inFlight) return inFlight;
       const expected = input.expectedSession || pinned;
-      if (input.confirmation !== 'DELETE' || input.acknowledged !== true || typeof input.password !== 'string' || !input.password) return { ok: false, reason: 'confirmation' };
+      const apple=readSession()?.apple===true;
+      if (input.confirmation !== 'DELETE' || input.acknowledged !== true || (!apple&&(typeof input.password !== 'string' || !input.password))) return { ok: false, reason: 'confirmation' };
       if (!sameSession(expected)) return { ok: false, reason: 'account_changed' };
       if (!fetcher) return { ok: false, reason: 'unavailable' };
       const savedLock = readLock();
@@ -278,7 +285,21 @@
       pinned = { ...expected };
       locked = false;
       const run = async () => {
+        let appleCredential=null,sent=false;
         try {
+          if(apple&&!hadPending){
+            authorizingApple=true;update();
+            if(host.BBNative?.isNative!==true||typeof host.BBNativeAppleAuth?.signIn!=='function'){
+              setMessage('Open BasketBoss on your iPhone to confirm with Apple and delete this account. Your saved data has been kept.',true);
+              return {ok:false,pending:false,reason:'apple_unavailable'};
+            }
+            // Obtain fresh proof before starting the deletion barrier, because
+            // native sign-in deliberately rejects mutations during deletion.
+            appleCredential=await host.BBNativeAppleAuth.signIn();
+            if(!appleCredential?.identityToken||!appleCredential.nonce||!appleCredential.authorizationCode)throw Error('apple_unavailable');
+            if(!sameSession(expected))return {ok:false,pending:false,reason:'account_changed'};
+            authorizingApple=false;
+          }
           lock('deleting');
           emit('started');
           setMessage('Deleting your account and saved cloud data…');
@@ -287,10 +308,12 @@
           const timeout = host.setTimeout?.(() => controller?.abort(), 45000);
           let response;
           try {
-            response = await fetcher('/api/account/delete', {
+            const payload=apple?(hadPending?{confirmation:'DELETE',resume:true}:{confirmation:'DELETE',apple:appleCredential}):{confirmation:'DELETE',password:input.password};
+            sent=true;
+            response = await fetcher('/api/account/delete'+(apple?'?reauth=apple':''), {
               method: 'POST', credentials: 'same-origin', cache: 'no-store',
               headers: { 'Authorization': 'Bearer ' + expected.token, 'Content-Type': 'application/json' },
-              body: JSON.stringify({ confirmation: 'DELETE', password: input.password }),
+              body: JSON.stringify(payload),
               ...(controller ? { signal: controller.signal } : {})
             });
           } finally { if (timeout !== undefined) host.clearTimeout?.(timeout); }
@@ -314,8 +337,12 @@
           // removed the key by the time another tab receives the event.
           lock('deleted');
           return await finishOnThisDevice();
-        } catch {
+        } catch(error) {
           if (password) password.value = '';
+          if(apple&&!sent){
+            setMessage(error?.code==='BB_APPLE_CANCELLED'?'Apple confirmation was cancelled. Nothing has been deleted.':'Apple could not confirm this account. Nothing has been deleted. Please try again.',true);
+            return {ok:false,pending:hadPending,reason:error?.code==='BB_APPLE_CANCELLED'?'cancelled':'apple_unavailable'};
+          }
           // A connection failure can happen after the server has acted. Keep data
           // and the write barrier until the idempotent endpoint confirms success.
           lock('pending');
@@ -324,6 +351,7 @@
             : 'We could not confirm deletion. Your saved device data has been kept and syncing is paused. Re-enter your password and retry when connected.', true);
           return { ok: false, pending: true, reason: locked ? 'account_changed' : 'connection' };
         } finally {
+          appleCredential=null;authorizingApple=false;
           controller = null;
           if (locked && phase === 'deleting') phase = 'pending';
           update();
@@ -421,16 +449,16 @@
       phase = savedLock?.actorId === current.actorId ? 'pending' : 'idle';
       form.reset();
       doc.getElementById('bbAccountDeletionEmail').textContent = 'Signed in as ' + (current.email || 'your BasketBoss account');
-      setMessage(phase === 'pending' ? 'A previous deletion request needs confirmation. Syncing is paused. Re-enter your password and retry to finish.' : '');
+      setMessage(phase === 'pending' ? (current.apple?'A previous deletion request needs confirmation. Syncing is paused. Retry to finish.':'A previous deletion request needs confirmation. Syncing is paused. Re-enter your password and retry to finish.') : current.apple?'You will confirm with Apple before your account is deleted. This also revokes Apple sign-in access.':'');
       restoreFocus = doc.activeElement;
       if (typeof dialog.showModal === 'function') { if (!dialog.open) dialog.showModal(); }
       else { dialog.setAttribute('open', ''); dialog.setAttribute('role', 'dialog'); dialog.setAttribute('aria-modal', 'true'); }
-      password.focus();
+      (current.apple?confirmation:password).focus();
       return true;
     }
 
     function close() {
-      if (!dialog || phase === 'deleting' || success) return;
+      if (!dialog || phase === 'deleting' || authorizingApple || success) return;
       password.value = ''; confirmation.value = ''; acknowledged.checked = false;
       if (typeof dialog.close === 'function') dialog.close(); else dialog.removeAttribute('open');
       restoreFocus?.focus?.();

@@ -185,7 +185,7 @@ public final class BasketBossPurchasesPlugin: CAPPlugin, CAPBridgedPlugin {
         return found
     }
 
-    private static func productPayload(_ product: Product) -> JSObject {
+    private static func productPayload(_ product: Product) async -> JSObject {
         var payload: JSObject = [
             "id": product.id, "displayName": product.displayName,
             "description": product.description, "displayPrice": product.displayPrice,
@@ -203,6 +203,28 @@ public final class BasketBossPurchasesPlugin: CAPPlugin, CAPBridgedPlugin {
             }
             payload["subscriptionPeriod"] = ["unit": unit, "value": period.value]
         }
+        // Advertise only an actual seven-day, zero-price introductory offer.
+        // Apple decides eligibility for its subscription group/account; an
+        // eligibility result alone does not prove that an offer exists.
+        if let subscription = product.subscription,
+           let offer = subscription.introductoryOffer,
+           offer.paymentMode == .freeTrial, offer.price == 0, offer.periodCount == 1 {
+            let unit: String
+            let sevenDays: Bool
+            switch offer.period.unit {
+            case .day: unit = "day"; sevenDays = offer.period.value == 7
+            case .week: unit = "week"; sevenDays = offer.period.value == 1
+            default: unit = "unknown"; sevenDays = false
+            }
+            if sevenDays {
+                let eligible = await subscription.isEligibleForIntroOffer
+                payload["introductoryOffer"] = [
+                    "paymentMode": "freeTrial", "price": "0", "periodCount": 1,
+                    "period": ["unit": unit, "value": offer.period.value],
+                    "eligible": eligible
+                ]
+            }
+        }
         return payload
     }
 
@@ -219,7 +241,11 @@ public final class BasketBossPurchasesPlugin: CAPPlugin, CAPBridgedPlugin {
                 let received = try await Product.products(for: requested)
                 let safe = received.filter { Self.productIDs.contains($0.id) && $0.type == .autoRenewable }
                 for product in safe { self.products[product.id] = product }
-                call.resolve(["products": safe.sorted { $0.id < $1.id }.map(Self.productPayload)])
+                var payloads: [JSObject] = []
+                for product in safe.sorted(by: { $0.id < $1.id }) {
+                    payloads.append(await Self.productPayload(product))
+                }
+                call.resolve(["products": payloads])
             } catch { call.reject("Apple subscription prices could not be loaded. Try again later.", "BB_APPLE_PRODUCTS", error) }
         }
     }

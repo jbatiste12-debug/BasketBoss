@@ -2,18 +2,19 @@ import test from "node:test";
 import assert from "node:assert/strict";
 import { createRequire } from "node:module";
 const require = createRequire(import.meta.url),
-  { create, validEmail, timedFetch } = require("../bb-auth-flow.js"),
+  { create, validEmail, timedFetch, appleAvailability } = require("../bb-auth-flow.js"),
   bridge = require("../bb-auth-callback.js");
 const deferred = () => {
   let resolve;
   const promise = new Promise((r) => (resolve = r));
   return { promise, resolve };
 };
-function fixture() {
+function fixture(options = {}) {
   const data = new Map(),
     calls = [],
     success = [],
-    states = [];
+    states = [],
+    lifecycle = [];
   let time = 100000,
     raw = null,
     blocked = false;
@@ -33,6 +34,8 @@ function fixture() {
   for (const name of [
     "signUp",
     "signInWithPassword",
+    "signInWithIdToken",
+    "signInWithOAuth",
     "resend",
     "resetPasswordForEmail",
     "exchangeCodeForSession",
@@ -70,6 +73,8 @@ function fixture() {
     redirectTo: (type) => "https://www.basketboss.co.uk/app?bb_auth=" + type,
     onState: (s) => states.push(s),
     onSuccess: (type, user) => success.push({ type, user }),
+    onLifecycle: (event) => lifecycle.push(event),
+    ...options,
   });
   return {
     core,
@@ -79,6 +84,7 @@ function fixture() {
     calls,
     states,
     success,
+    lifecycle,
     storage,
     data,
     advance: (n) => (time += n),
@@ -93,6 +99,194 @@ test("email validation and minimum passwords prevent network calls", async () =>
   assert.equal(await h.core.signUp("family@basketboss.co.uk", "short"), false);
   assert.equal(h.calls.length, 0);
   assert.equal(validEmail("family+test@basketboss.co.uk"), true);
+});
+
+test("explicit account mode survives recovery navigation and cannot change during a submission", async () => {
+  const h = fixture(), wait = deferred();
+  h.core.open("sign-up");
+  assert.equal(h.core.state().view, "sign-up");
+  assert.equal(h.core.state().mode, "sign-up");
+  h.core.open("forgot-password");
+  assert.equal(h.core.state().mode, "sign-up");
+  h.core.open("sign-up");
+  h.auth.signUp = () => wait.promise;
+  const pending = h.core.signUp(h.user.email, "password123");
+  h.core.open("sign-in");
+  assert.equal(h.core.state().view, "sign-up");
+  wait.resolve({ data: { user: h.user, session: null }, error: null });
+  await pending;
+  h.core.open("sign-in");
+  assert.equal(h.core.state().mode, "sign-in");
+});
+
+test("signup funnel counts actual requests once and separates email confirmation from success", async () => {
+  const h = fixture(), wait = deferred();
+  assert.equal(await h.core.signUp("invalid", "password123"), false);
+  assert.deepEqual(h.lifecycle, []);
+  h.auth.signUp = () => wait.promise;
+  const pending = h.core.signUp(h.user.email, "password123");
+  await h.core.signUp(h.user.email, "password123");
+  assert.deepEqual(h.lifecycle, ["signup_method_email", "signup_attempted"]);
+  wait.resolve({ data: { user: h.user, session: null }, error: null });
+  await pending;
+  assert.deepEqual(h.lifecycle, ["signup_method_email", "signup_attempted", "signup_confirmation_pending"]);
+  assert.deepEqual(JSON.parse(h.data.get("basketboss_signup_pending_v1")), { createdAt: 100000 });
+  await h.core.signIn(h.user.email, "password123");
+  assert.equal(h.lifecycle.includes("signup_succeeded"), false, "ordinary sign-in is never a registration metric");
+});
+
+test("only a verified persisted signup callback consumes the pending success marker", async () => {
+  const h = fixture();
+  await h.core.signUp(h.user.email, "password123");
+  await h.core.callback({ code: "signup-code", bb_auth: "signup" });
+  assert.equal(h.lifecycle.filter(x => x === "signup_succeeded").length, 1);
+  assert.equal(h.data.has("basketboss_signup_pending_v1"), false);
+  await h.core.callback({ code: "repeated-signup-code", bb_auth: "signup" });
+  assert.equal(h.lifecycle.filter(x => x === "signup_succeeded").length, 1);
+  const returning = fixture();
+  await returning.core.callback({ code: "existing-account-link", bb_auth: "signup" });
+  assert.equal(returning.lifecycle.includes("signup_succeeded"), false);
+});
+
+test("confirmation attribution survives a reload but rejects expired or corrupt markers", async () => {
+  const first = fixture();
+  await first.core.signUp(first.user.email, "password123");
+  const reloaded = fixture({ storage: first.storage });
+  await reloaded.core.callback({ code: "signup-after-reload", bb_auth: "signup" });
+  assert.equal(reloaded.lifecycle.filter(x => x === "signup_succeeded").length, 1);
+  assert.equal(first.data.has("basketboss_signup_pending_v1"), false);
+  for (const raw of ["null", "{", '{"createdAt":-86400000}', '{"createdAt":200000}']) {
+    const h = fixture();
+    h.data.set("basketboss_signup_pending_v1", raw);
+    await h.core.callback({ code: "unattributed-confirmation", bb_auth: "signup" });
+    assert.equal(h.success.length, 1, "account verification still works without analytics attribution");
+    assert.equal(h.lifecycle.includes("signup_succeeded"), false);
+  }
+});
+
+test("a failed confirmation emits a safe category once and remains recoverable", async () => {
+  const h = fixture();
+  await h.core.signUp(h.user.email, "password123");
+  await h.core.callback({ error: "expired", bb_auth: "signup" });
+  await h.core.callback({ error: "expired", bb_auth: "signup" });
+  assert.equal(h.lifecycle.filter(x => x === "signup_failed_verification").length, 1);
+  await h.core.callback({ code: "fresh-signup-code", bb_auth: "signup" });
+  assert.equal(h.lifecycle.filter(x => x === "signup_succeeded").length, 1);
+});
+
+test("signup telemetry is optional, contains no provider messages, and waits for a saved session", async () => {
+  const h = fixture();
+  h.auth.signUp = async () => ({ error: { code: "over_email_send_rate_limit", message: "private provider detail" } });
+  assert.equal(await h.core.signUp(h.user.email, "password123"), false);
+  assert.deepEqual(h.lifecycle, ["signup_method_email", "signup_attempted", "signup_failed_rate_limited"]);
+  assert.equal(JSON.stringify(h.lifecycle).includes(h.user.email), false);
+  assert.equal(JSON.stringify(h.lifecycle).includes("private"), false);
+  const unsaved = fixture({ remember: () => false });
+  unsaved.auth.signUp = async () => ({ data: { session: unsaved.session }, error: null });
+  assert.equal(await unsaved.core.signUp(unsaved.user.email, "password123"), false);
+  assert.equal(unsaved.lifecycle.includes("signup_succeeded"), false);
+  const unavailableMetrics = fixture({ onLifecycle() { throw Error("metrics unavailable"); } });
+  assert.equal(await unavailableMetrics.core.signUp(unavailableMetrics.user.email, "password123"), true);
+});
+
+test("corrupt cooldown shapes do not block a genuine signup or change saved account data", async () => {
+  for (const raw of ["null", "[]", "42", "\"invalid\""]) {
+    const h = fixture();
+    h.data.set("basketboss_auth_email_cooldowns_v1", raw);
+    h.data.set("existing_kitchen", "preserved");
+    assert.equal(await h.core.signUp(h.user.email, "password123"), true);
+    assert.equal(h.data.get("existing_kitchen"), "preserved");
+  }
+});
+
+test("Apple availability requires the provider, native capability and deployed deletion readiness", async () => {
+  let settings = { external: { apple: false } }, capability = true, calls = 0,
+    deployment = { available: true, nativeOnly: true, deletionReady: true };
+  const win = {
+    BBNative: { isNative: true }, BBNativeAppleAuth: { available: async () => capability },
+    setTimeout: () => 1, clearTimeout() {},
+    fetch: async (address, options) => {
+      calls++;
+      assert.ok(["https://auth.invalid/auth/v1/settings", "/api/auth/apple-config"].includes(address));
+      assert.equal(options.credentials, "omit");
+      return { ok: true, clone: () => ({ arrayBuffer: async () => new ArrayBuffer(0) }), json: async () => address.startsWith("https:") ? settings : deployment };
+    },
+  }, config = { url: "https://auth.invalid/", anonKey: "synthetic-public-key" };
+  assert.deepEqual(await appleAvailability(win, config), { enabled: false });
+  settings = { external: { apple: true } };
+  assert.deepEqual(await appleAvailability(win, config), { enabled: true });
+  deployment = { available: true, nativeOnly: true, deletionReady: false };
+  assert.deepEqual(await appleAvailability(win, config), { enabled: false });
+  capability = false;
+  assert.deepEqual(await appleAvailability(win, config), { enabled: false, unavailable: true });
+  delete win.BBNative;
+  assert.deepEqual(await appleAvailability(win, config), { enabled: false }, "PWA never exposes unsupported web OAuth");
+  assert.equal(calls, 6);
+});
+
+test("native Apple signup locks taps and passes its nonce through the verified session owner", async () => {
+  const wait = deferred(); let nativeCalls = 0;
+  const h = fixture({ apple: { enabled: () => true, native: true, signIn() { nativeCalls++; return wait.promise; } } });
+  h.core.open("sign-up");
+  const pending = h.core.signInWithApple();
+  await h.core.signInWithApple();
+  await h.core.signUp(h.user.email, "password123");
+  assert.equal(h.core.state().busy, true);
+  assert.equal(nativeCalls, 1);
+  wait.resolve({ identityToken: "synthetic-apple-token", nonce: "synthetic-raw-nonce" });
+  assert.equal(await pending, true);
+  assert.deepEqual(h.calls.find(x => x.name === "signInWithIdToken").args[0], { provider: "apple", token: "synthetic-apple-token", nonce: "synthetic-raw-nonce" });
+  assert.equal(h.calls.some(x => x.name === "getUser"), true);
+  assert.equal(h.success.length, 1);
+  assert.deepEqual(h.lifecycle, ["signup_method_apple", "signup_attempted", "signup_succeeded"]);
+  assert.equal(JSON.stringify(h.lifecycle).includes("synthetic-apple-token"), false);
+});
+
+test("Apple cancellation releases the form and existing Apple sign-in is not counted as signup", async () => {
+  const cancelled = fixture({ apple: { enabled: () => true, native: true, async signIn() { throw Object.assign(Error("cancelled"), { code: "BB_APPLE_CANCELLED" }); } } });
+  cancelled.core.open("sign-up");
+  assert.equal(await cancelled.core.signInWithApple(), false);
+  assert.equal(cancelled.core.state().busy, false);
+  assert.match(cancelled.core.state().message, /cancelled/);
+  assert.equal(cancelled.calls.length, 0);
+  assert.equal(cancelled.lifecycle.some(x => x.startsWith("signup_failed_")), false);
+  const returning = fixture({ apple: { enabled: () => true, native: true, signIn: async () => ({ identityToken: "synthetic-token", nonce: "synthetic-nonce" }) } });
+  assert.equal(await returning.core.signInWithApple(), true);
+  assert.equal(returning.success.length, 1);
+  assert.deepEqual(returning.lifecycle, []);
+});
+
+test("an unavailable or malformed Apple credential never creates an app session", async () => {
+  const unavailable = fixture({ apple: { enabled: () => false } });
+  unavailable.core.open("sign-up");
+  assert.equal(await unavailable.core.signInWithApple(), false);
+  assert.equal(unavailable.calls.length, 0);
+  assert.deepEqual(unavailable.lifecycle, []);
+  const malformed = fixture({ apple: { enabled: () => true, native: true, signIn: async () => ({ identityToken: "synthetic-token" }) } });
+  malformed.core.open("sign-up");
+  assert.equal(await malformed.core.signInWithApple(), false);
+  assert.equal(malformed.success.length, 0);
+  assert.equal(malformed.calls.length, 0);
+  assert.equal(malformed.lifecycle.at(-1), "signup_failed_verification");
+});
+
+test("web Apple uses the SDK PKCE redirect and attributes only a verified signup-intent callback", async () => {
+  const destinations = [];
+  const h = fixture({ apple: { enabled: () => true, native: false, navigate: url => destinations.push(url) } });
+  h.auth.signInWithOAuth = async (...args) => {
+    h.calls.push({ name: "signInWithOAuth", args });
+    return { data: { url: "https://auth.invalid/auth/v1/authorize?provider=apple" }, error: null };
+  };
+  h.core.open("sign-up");
+  assert.equal(await h.core.signInWithApple(), true);
+  assert.equal(h.core.state().busy, true, "outbound OAuth navigation cannot be submitted twice");
+  await h.core.signInWithApple();
+  assert.equal(destinations.length, 1);
+  assert.deepEqual(h.calls[0].args[0], { provider: "apple", options: { redirectTo: "https://www.basketboss.co.uk/app?bb_auth=apple", skipBrowserRedirect: true } });
+  h.core.resumeNavigation();
+  await h.core.callback({ code: "apple-return-code", bb_auth: "apple" });
+  assert.equal(h.lifecycle.filter(x => x === "signup_succeeded").length, 1);
+  assert.equal(h.data.has("basketboss_signup_pending_v1"), false);
 });
 test("signup locks immediately across Create account, Sign in, reset and repeat taps", async () => {
   const h = fixture(),

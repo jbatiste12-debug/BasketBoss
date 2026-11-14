@@ -14,7 +14,8 @@
   "use strict";
   const SESSION = "basketboss_cloud_session_v1",
     RECOVERY = "basketboss_password_recovery_v1",
-    COOLDOWN = "basketboss_auth_email_cooldowns_v1";
+    COOLDOWN = "basketboss_auth_email_cooldowns_v1",
+    SIGNUP_PENDING = "basketboss_signup_pending_v1";
   const validEmail = (email) =>
     typeof email === "string" &&
     email.length <= 254 &&
@@ -29,6 +30,17 @@
           : /rate|too_many|over_email/.test(error?.code || "")
             ? "Too many requests. Wait before trying again."
             : error?.message || "Unable to connect. Please try again.";
+  // Only this fixed category leaves the auth controller. Never send provider
+  // messages, email addresses, credentials or identifiers to funnel analytics.
+  const errorCategory = (error) => {
+    const code = String(error?.code || "");
+    if (["AbortError", "AuthRetryableFetchError", "TypeError"].includes(error?.name)) return "network";
+    if (/rate|too_many|over_email/.test(code)) return "rate_limited";
+    if (/weak_password|email_address_invalid|validation_failed|bad_json/.test(code)) return "validation";
+    if (/signup_disabled|email_provider_disabled|provider_disabled|unexpected_failure|BB_APPLE_UNAVAILABLE/.test(code)) return "unavailable";
+    if (/pkce|code_verifier|otp_expired|email_not_confirmed|session_not_found|BB_APPLE_INVALID_CREDENTIAL|BB_APPLE_AUTH_FAILED/.test(code)) return "verification";
+    return "unknown";
+  };
   async function timedFetch(win, input, init = {}) {
     const controller = new AbortController(),
       timer = win.setTimeout(() => controller.abort(), 20000);
@@ -46,12 +58,33 @@
       init.signal?.removeEventListener("abort", abort);
     }
   }
+  async function appleAvailability(win, config) {
+    // This release supports native Apple credentials and their server-side
+    // deletion/revocation path. PWA users retain the working email flow.
+    if (win.BBNative?.isNative !== true) return { enabled: false };
+    const response = await timedFetch(win, config.url.replace(/\/$/, "") + "/auth/v1/settings", {
+      headers: { apikey: config.anonKey }, cache: "no-store", credentials: "omit", referrerPolicy: "no-referrer",
+    });
+    if (!response.ok) throw Error("Apple sign-in settings could not be checked.");
+    const settings = await response.json();
+    if (settings?.external?.apple !== true) return { enabled: false };
+    if (await win.BBNativeAppleAuth?.available?.() !== true)
+      return { enabled: false, unavailable: true };
+    const readiness = await timedFetch(win, win.BBNative.apiURL?.("/api/auth/apple-config") || "/api/auth/apple-config", {
+      cache: "no-store", credentials: "omit", referrerPolicy: "no-referrer",
+    });
+    if (!readiness.ok) throw Error("Apple sign-in readiness could not be checked.");
+    const deployment = await readiness.json();
+    if (deployment?.available !== true || deployment.nativeOnly !== true || deployment.deletionReady !== true) return { enabled: false };
+    return { enabled: true };
+  }
   function create(options) {
     const auth = options.auth,
       store = options.storage,
       now = options.now || Date.now;
     let state = {
         view: "sign-in",
+        mode: "sign-in",
         email: "",
         message: "",
         busy: false,
@@ -61,8 +94,22 @@
       epoch = 0,
       lease = null,
       recoveryEvent = false,
-      handlingCallback = false;
+      handlingCallback = false,
+      signupCallback = false,
+      navigating = false;
     const emit = () => options.onState?.({ ...state });
+    const lifecycle = (event) => { try { options.onLifecycle?.(event); } catch {} };
+    const pendingStore = options.pendingStorage || store;
+    function pendingSignup() {
+      try {
+        const value = JSON.parse(pendingStore?.getItem(SIGNUP_PENDING) || "null");
+        return Number.isFinite(value?.createdAt) && value.createdAt <= now() && now() - value.createdAt < 86400000 ? value : null;
+      } catch { return null; }
+    }
+    function clearPendingSignup() { try { pendingStore?.removeItem(SIGNUP_PENDING); } catch {} }
+    function rememberPendingSignup(value = { createdAt: now() }) {
+      try { pendingStore?.setItem(SIGNUP_PENDING, JSON.stringify(value)); } catch {}
+    }
     const blocked = () => options.blocked?.() === true;
     const pin = () => ({ epoch, session: options.sessionRaw?.() });
     const current = (p) =>
@@ -73,7 +120,8 @@
     }
     function deadlines() {
       try {
-        return JSON.parse(store?.getItem(COOLDOWN) || "{}");
+        const value = JSON.parse(store?.getItem(COOLDOWN) || "{}");
+        return value && typeof value === "object" && !Array.isArray(value) ? value : {};
       } catch {
         return {};
       }
@@ -135,6 +183,10 @@
         throw Error(
           "Your browser could not save sign-in. Enable site storage and try again.",
         );
+      if (["signup", "apple-signup"].includes(state.action) || (handlingCallback && signupCallback && pendingSignup())) {
+        clearPendingSignup();
+        lifecycle("signup_succeeded");
+      }
       try {
         store?.removeItem(RECOVERY);
       } catch {}
@@ -159,6 +211,14 @@
         return await task(p);
       } catch (error) {
         if (current(p)) {
+          if (["signup", "apple-signup"].includes(action)) lifecycle("signup_failed_" + errorCategory(error));
+          else if (action === "callback" && signupCallback) {
+            const pending = pendingSignup();
+            if (pending && !pending.verificationFailed) {
+              rememberPendingSignup({ ...pending, verificationFailed: true });
+              lifecycle("signup_failed_verification");
+            }
+          }
           if (/rate|too_many|over_email/.test(error?.code || ""))
             cool(state.email);
           if (!lease) options.clearTransient?.();
@@ -173,7 +233,7 @@
         }
         return false;
       } finally {
-        if (p.epoch === epoch) set({ busy: false, action: "" });
+        if (p.epoch === epoch && !navigating) set({ busy: false, action: "" });
       }
     }
     function email(value) {
@@ -186,7 +246,7 @@
     }
     function open(view = "sign-in") {
       if (state.busy) return;
-      set({ view, message: "" });
+      set({ view, message: "", ...(["sign-up", "sign-in"].includes(view) ? { mode: view } : {}) });
     }
     function signUp(value, password) {
       if (state.busy || blocked()) return Promise.resolve(false);
@@ -207,6 +267,8 @@
       }
       return run("signup", async (p) => {
         set({ email: e });
+        lifecycle("signup_method_email");
+        lifecycle("signup_attempted");
         const r = await auth.signUp({
           email: e,
           password,
@@ -215,6 +277,10 @@
         check(r.error);
         if (!current(p)) return false;
         if (r.data?.session) return accept(r.data.session, false, p);
+        // A confirmation response is acceptance of the request, not proof of a
+        // new account. Supabase deliberately protects against email enumeration.
+        rememberPendingSignup();
+        lifecycle("signup_confirmation_pending");
         cool(e);
         set({
           view: "check-email",
@@ -237,6 +303,54 @@
         check(r.error);
         return accept(r.data?.session, false, p);
       });
+    }
+    function signInWithApple() {
+      if (state.busy || blocked()) return Promise.resolve(false);
+      if (!options.apple?.enabled?.()) {
+        set({ message: "Sign in with Apple is unavailable. Use email or try again shortly." });
+        return Promise.resolve(false);
+      }
+      const signingUp = state.mode === "sign-up";
+      return run(signingUp ? "apple-signup" : "apple-signin", async (p) => {
+        if (signingUp) {
+          lifecycle("signup_method_apple");
+          lifecycle("signup_attempted");
+        }
+        if (options.apple.native) {
+          let credential;
+          try { credential = await options.apple.signIn(); }
+          catch (error) {
+            if (error?.code === "BB_APPLE_CANCELLED") {
+              if (current(p)) set({ message: "Apple sign-in cancelled. You can try again or use email." });
+              return false;
+            }
+            throw error;
+          }
+          if (!current(p)) return false;
+          if (!credential?.identityToken || !credential.nonce)
+            throw Object.assign(Error("Apple could not verify this sign-in. Please try again."), { code: "BB_APPLE_INVALID_CREDENTIAL" });
+          const result = await auth.signInWithIdToken({ provider: "apple", token: credential.identityToken, nonce: credential.nonce });
+          check(result.error);
+          return accept(result.data?.session, false, p);
+        }
+        const result = await auth.signInWithOAuth({
+          provider: "apple",
+          options: { redirectTo: options.redirectTo("apple"), skipBrowserRedirect: true },
+        });
+        check(result.error);
+        if (!current(p)) return false;
+        if (!result.data?.url) throw Error("Apple sign-in could not open. Use email or try again.");
+        if (signingUp) rememberPendingSignup({ createdAt: now(), method: "apple" });
+        navigating = true;
+        try { options.apple.navigate(result.data.url); }
+        catch (error) { navigating = false; throw error; }
+        return true;
+      });
+    }
+    function resumeNavigation() {
+      if (!navigating) return;
+      navigating = false;
+      set({ busy: false, action: "" });
     }
     function resend() {
       if (
@@ -325,6 +439,8 @@
       if (!fields) return Promise.resolve(false);
       return run("callback", async (p) => {
         handlingCallback = true;
+        const callbackType = fields.type || fields.bb_auth || "";
+        signupCallback = ["signup", "email"].includes(callbackType) || (callbackType === "apple" && pendingSignup()?.method === "apple");
         recoveryEvent = false;
         set({ view: "verifying" });
         try {
@@ -395,13 +511,16 @@
     }
     function invalidate() {
       epoch++;
+      navigating = false;
       lease = null;
       try {
         store?.removeItem(RECOVERY);
       } catch {}
       options.clearTransient?.();
+      clearPendingSignup();
       set({
         view: "sign-in",
+        mode: "sign-in",
         email: "",
         message: "",
         busy: false,
@@ -414,6 +533,8 @@
       open,
       signUp,
       signIn,
+      signInWithApple,
+      resumeNavigation,
       resend,
       requestReset,
       updatePassword,
@@ -532,6 +653,30 @@
       resend = button("bbAuthResend", "Resend email"),
       save = button("bbAuthSavePassword", "Save new password"),
       back = button("bbAuthBack", "Back to sign in");
+    const modes = make("div", "bbAuthModes"),
+      signupMode = button("bbAuthSignupMode", "Create account"),
+      signinMode = button("bbAuthSigninMode", "Sign in");
+    modes.setAttribute("role", "group");
+    modes.setAttribute("aria-label", "Account access");
+    modes.append(signupMode, signinMode);
+    form.insertBefore(modes, form.firstChild);
+    const intro = make("p", "bbAuthIntro");
+    form.insertBefore(intro, modes.nextSibling);
+    const appleSection = make("div", "bbAuthAppleSection"),
+      appleButton = button("bbAuthApple", "Continue with Apple"),
+      appleStatus = make("p", "bbAuthAppleStatus"),
+      appleRetry = button("bbAuthAppleRetry", "Retry Apple sign-in"),
+      appleDivider = make("p", "bbAuthAppleDivider", "or use email");
+    const appleMark = make("span"), appleLabel = make("span", null, "Continue with Apple");
+    appleMark.setAttribute("aria-hidden", "true");
+    appleMark.innerHTML = '<svg viewBox="0 0 24 24" focusable="false"><path fill="currentColor" d="M17.05 20.28c-.98.95-2.05.8-3.08.35-1.09-.46-2.09-.48-3.24 0-1.44.62-2.2.44-3.06-.35C2.79 15.26 3.5 7.59 9.05 7.31c1.35.07 2.29.76 3.08.82 1.18-.24 2.31-.94 3.57-.85 1.51.12 2.65.72 3.4 1.8-3.12 1.87-2.38 5.98.48 7.13-.57 1.5-1.31 2.99-2.54 4.08l.01-.01zM12.03 7.25C11.88 5.02 13.69 3.18 15.77 3c.29 2.58-2.34 4.5-3.74 4.25z"/></svg>';
+    appleButton.textContent = "";
+    appleButton.append(appleMark, appleLabel);
+    appleButton.setAttribute("aria-label", "Continue with Apple");
+    appleStatus.setAttribute("role", "status");
+    appleSection.append(appleButton, appleStatus, appleRetry, appleDivider);
+    form.insertBefore(appleSection, intro.nextSibling);
+    let appleReady = false, appleChecking = false, appleProblem = "", appleCheckFailed = false;
     extra.append(
       title,
       copy,
@@ -562,19 +707,42 @@
     };
     function paint(s) {
       latest = s;
-      const normal = s.view === "sign-in",
+      const normal = ["sign-in", "sign-up"].includes(s.view),
+        signingUp = s.mode === "sign-up",
         waiting = s.view === "check-email",
         resetting = s.view === "forgot-password",
         setting = s.view === "set-password";
       form.dataset.bbAuthView = s.view;
+      form.dataset.bbAuthMode = s.mode;
       const status = doc.getElementById("cloud-status");
       if (status) status.hidden = !normal;
       form.setAttribute("aria-busy", String(s.busy));
       for (const n of fields) if (n) n.hidden = !normal;
-      signup.hidden = !normal || blocked();
+      modes.hidden = intro.hidden = !normal || blocked();
+      appleSection.hidden = !normal || blocked() || (!appleReady && !appleProblem);
+      appleButton.hidden = appleDivider.hidden = !appleReady;
+      appleButton.disabled = s.busy || !appleReady;
+      appleLabel.textContent = s.busy && /^apple-/.test(s.action) ? "Connecting to Apple…" : "Continue with Apple";
+      appleStatus.textContent = appleProblem;
+      appleStatus.hidden = !appleProblem;
+      appleRetry.hidden = !appleCheckFailed;
+      appleRetry.disabled = s.busy || appleChecking;
+      signup.hidden = !normal || !signingUp || blocked();
+      login.hidden = !normal || (signingUp && !blocked());
+      intro.textContent = signingUp
+        ? "Create a free account to keep your plan safe and sync it across devices. No card needed."
+        : "Sign in to your BasketBoss account to access your saved kitchen.";
+      signupMode.setAttribute("aria-pressed", String(signingUp));
+      signinMode.setAttribute("aria-pressed", String(!signingUp));
+      signupMode.disabled = signinMode.disabled = s.busy;
+      password.autocomplete = signingUp ? "new-password" : "current-password";
+      password.setAttribute("enterkeyhint", signingUp ? "done" : "go");
       form.hidden =
         normal && win.BasketBossSession?.state?.().remembered === true;
-      forgot.hidden = !normal;
+      if (normal && signingUp && !form.hidden && form.getClientRects?.().length) {
+        try { win.BBFunnel?.track?.("signup_screen_viewed"); } catch {}
+      }
+      forgot.hidden = !normal || signingUp;
       extra.hidden = normal && !s.message;
       login.disabled = signup.disabled = s.busy;
       login.textContent =
@@ -615,7 +783,7 @@
       back.hidden = normal || s.busy;
       back.textContent = setting
         ? "Request a new reset link"
-        : "Back to sign in";
+        : waiting && signingUp ? "Back to create account" : "Back to sign in";
       const remaining = Math.max(
         0,
         Math.ceil((s.cooldownUntil - Date.now()) / 1000),
@@ -700,6 +868,7 @@
     const core = create({
       auth,
       storage: win.sessionStorage,
+      pendingStorage: win.localStorage,
       blocked,
       sessionRaw: () => win.localStorage.getItem(SESSION),
       remember: (s) => {
@@ -721,7 +890,42 @@
           : new URL("/app?bb_auth=" + type, win.location.href).href,
       onState: paint,
       onSuccess: route,
+      onLifecycle: (event) => win.BBFunnel?.track?.(event),
+      apple: {
+        enabled: () => appleReady,
+        native: win.BBNative?.isNative === true,
+        signIn: () => win.BBNativeAppleAuth.signIn(),
+        navigate: (address) => {
+          const target = new URL(address);
+          if (target.protocol !== "https:" || target.origin !== new URL(config.url).origin || target.pathname !== "/auth/v1/authorize")
+            throw Error("Apple sign-in returned an unexpected destination. Use email or try again.");
+          win.location.assign(target.href);
+        },
+      },
     });
+    async function checkApple() {
+      if (appleChecking) return;
+      appleChecking = true;
+      appleCheckFailed = false;
+      appleProblem = "";
+      paint(core.state());
+      try {
+        const availability = await appleAvailability(win, config);
+        appleReady = availability.enabled;
+        appleProblem = availability.unavailable ? "Apple sign-in is unavailable in this build. You can use email." : "";
+      } catch {
+        appleReady = false;
+        appleCheckFailed = true;
+        appleProblem = "Apple sign-in could not be checked. You can use email, or retry.";
+      } finally {
+        appleChecking = false;
+        paint(core.state());
+      }
+    }
+    appleButton.onclick = () => core.signInWithApple();
+    appleRetry.onclick = () => checkApple();
+    signupMode.onclick = () => core.open("sign-up");
+    signinMode.onclick = () => core.open("sign-in");
     let deletionSignInBusy = false;
     login.onclick = async () => {
       if (deletionSignInBusy) return false;
@@ -759,7 +963,7 @@
         recoveryEmail.value = core.state().email;
         invalidate();
         core.open("forgot-password");
-      } else core.open();
+      } else core.open(core.state().mode);
     };
     form.addEventListener("keydown", (event) => {
       if (event.key !== "Enter" || event.isComposing) return;
@@ -767,6 +971,7 @@
       if (latest?.busy) return;
       if (latest?.view === "set-password") save.click();
       else if (latest?.view === "forgot-password") reset.click();
+      else if (latest?.view === "sign-up") signup.click();
       else if (latest?.view === "sign-in") login.click();
     });
     const subscription = auth.onAuthStateChange((event, s) => {
@@ -808,6 +1013,8 @@
     };
     win.addEventListener("hashchange", routeChanged);
     win.addEventListener("popstate", routeChanged);
+    const pageShown = (event) => { if (event.persisted) core.resumeNavigation(); };
+    win.addEventListener("pageshow", pageShown);
     const invalidate = () => {
       password.value = newPassword.value = repeat.value = "";
       core.invalidate();
@@ -826,6 +1033,7 @@
       destroy() {
         win.removeEventListener("hashchange", routeChanged);
         win.removeEventListener("popstate", routeChanged);
+        win.removeEventListener("pageshow", pageShown);
         win.removeEventListener("basketboss:session-changed", changed);
         subscription.data?.subscription?.unsubscribe?.();
         win.clearInterval(timer);
@@ -838,6 +1046,7 @@
     };
     win.BBAuthFlow = Object.freeze(api);
     paint(core.state());
+    void checkApple();
     win.dispatchEvent(new win.Event("basketboss:auth-ready"));
     void consume().then(() => {
       if (!callbackBusy && core.state().view === "sign-in")
@@ -850,5 +1059,5 @@
     });
     return api;
   }
-  return Object.freeze({ create, install, validEmail, timedFetch });
+  return Object.freeze({ create, install, validEmail, timedFetch, appleAvailability });
 });

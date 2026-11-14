@@ -1,5 +1,6 @@
 import {json,authenticatedUser,requireSameOrigin} from '../../../bb-server-lib/bb-billing.js';
 import {deletionConfigured,deletionReady,deletionRpc,ensureDeletionSchema,digestDeletionActor,digestDeletionRetry,reauthenticateDeletion,cancelAccountBilling,eraseAccountD1} from '../../../bb-server-lib/bb-account-deletion.js';
+import {authenticatedDeletionUser,reauthenticateAppleDeletion} from '../../../bb-server-lib/bb-apple-sign-in.js';
 const UUID=/^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
 const messages={
  deletion_database_pending:'Account deletion has not finished yet. Your saved device data has been kept. Retry to finish.',
@@ -48,13 +49,19 @@ export async function onRequestPost({request,env}){
  if(!/^Bearer [^\s]+$/.test(token)||token.length>16000)return rejected('deletion_sign_in_required','Sign in to delete your account.',401);
  let body;
  try{
-  if(Number(request.headers.get('content-length')||0)>2048)throw Error();
+  const maximum=new URL(request.url).searchParams.get('reauth')==='apple'?24576:2048;
+  if(Number(request.headers.get('content-length')||0)>maximum)throw Error();
   const reader=request.body?.getReader();if(!reader)throw Error();
   const chunks=[];let size=0;
-  for(;;){const item=await reader.read();if(item.done)break;size+=item.value.byteLength;if(size>2048){await reader.cancel();throw Error();}chunks.push(item.value);}
+  for(;;){const item=await reader.read();if(item.done)break;size+=item.value.byteLength;if(size>maximum){await reader.cancel();throw Error();}chunks.push(item.value);}
   const bytes=new Uint8Array(size);let offset=0;for(const chunk of chunks){bytes.set(chunk,offset);offset+=chunk.byteLength;}
   body=JSON.parse(new TextDecoder('utf-8',{fatal:true}).decode(bytes));
-  if(!body||Object.keys(body).some(key=>!['confirmation','password'].includes(key))||body.confirmation!=='DELETE'||typeof body.password!=='string'||body.password.length<1||body.password.length>1024)throw Error();
+  if(!body||body.confirmation!=='DELETE')throw Error();
+  if(body.apple){
+   if(Object.keys(body).some(key=>!['confirmation','apple'].includes(key))||typeof body.apple!=='object'||Array.isArray(body.apple))throw Error();
+  }else if(body.resume===true){
+   if(Object.keys(body).some(key=>!['confirmation','resume'].includes(key)))throw Error();
+  }else if(size>2048||Object.keys(body).some(key=>!['confirmation','password'].includes(key))||typeof body.password!=='string'||body.password.length<1||body.password.length>1024)throw Error();
  }catch{return rejected('deletion_confirmation_required','Enter DELETE and your current password to confirm.',400);}
  let row,locked=false,intentStarted=false,knownNoJournal=false,stage='state';
  try{
@@ -65,7 +72,7 @@ export async function onRequestPost({request,env}){
   row=await db.prepare('SELECT * FROM bb_account_deletions WHERE retry_hash=?').bind(retryHash).first();
   if(row?.completed_at_ms)return json({ok:true,deleted:true});
   if(!row){
-   const user=await authenticatedUser(request,env);
+   const user=await authenticatedDeletionUser(request,env);
    if(!user||!UUID.test(user.id))return rejected('deletion_sign_in_required','Sign in to delete your account.',401);
    const actorHash=await digestDeletionActor(user.id);
    // A refreshed session may resume an existing actor's job even though its
@@ -77,13 +84,24 @@ export async function onRequestPost({request,env}){
    if(!await deletionReady(env))return row?pending('deletion_not_ready',503):
     rejected('deletion_not_ready','Account deletion is awaiting a server update. Nothing has been deleted. Please try again later.',503,false);
    stage='authentication';
-   if(!await reauthenticateDeletion(env,user,body.password))return rejected('deletion_password_required','Your current password could not be verified.',403,!!row);
+   if(user.appleIdentity){
+    // A durable job proves fresh Apple reauthentication/revocation already
+    // completed before its creation. Its verified owner may safely resume it;
+    // this never starts a new deletion or skips reauthentication for one.
+    if(!(body.resume===true&&row)){
+     if(!body.apple)return rejected('deletion_apple_required','Confirm with Apple to delete this account.',403,!!row);
+     await reauthenticateAppleDeletion(env,user,body.apple);
+    }
+   }else{
+    if(body.apple||body.resume===true)return rejected('deletion_password_required','Your current password could not be verified.',403,!!row);
+    if(!await reauthenticateDeletion(env,user,body.password))return rejected('deletion_password_required','Your current password could not be verified.',403,!!row);
+   }
    if(!row){
     intentStarted=true;
     await db.prepare(`INSERT OR IGNORE INTO bb_account_deletions(actor_hash,retry_hash,user_id,email,started_at_ms) VALUES(?,?,?,?,?)`)
      .bind(actorHash,retryHash,user.id,user.email,Date.now()).run();
    }
-   // Only a fresh authenticated/password-verified session can change a retry
+   // Only the verified owner with required reauthentication can change a retry
    // credential. No plaintext token or password is persisted in the journal.
    await db.prepare('UPDATE bb_account_deletions SET retry_hash=? WHERE actor_hash=? AND completed_at_ms IS NULL').bind(retryHash,actorHash).run();
    row=await db.prepare('SELECT * FROM bb_account_deletions WHERE actor_hash=?').bind(actorHash).first();
@@ -108,6 +126,9 @@ export async function onRequestPost({request,env}){
    .bind(Date.now(),row.actor_hash).run();
   return json({ok:true,deleted:true});
  }catch(error){
+  if(stage==='authentication'&&['deletion_apple_required','deletion_apple_unavailable'].includes(error?.code)){
+   return rejected(error.code,error.code==='deletion_apple_required'?'Apple could not confirm this account. Please try again.':'Apple account verification is temporarily unavailable. Your saved data has been kept. Please try again later.',error.status||503,!!row);
+  }
   // Only our fixed stage/enum leaves this boundary. Never echo a provider body,
   // request, SQL exception, password, bearer or email in a response or log.
   const code=stage==='billing'?(error?.message==='billing_checkout_pending'?'deletion_checkout_pending':'deletion_billing_pending'):
