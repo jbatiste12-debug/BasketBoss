@@ -1,0 +1,60 @@
+name: Onboarding and Apple authentication release audit
+on:
+  push:
+    branches: [codex/onboarding-signup-conversion]
+  workflow_dispatch:
+permissions:
+  contents: read
+concurrency:
+  group: basketboss-onboarding-auth-${{ github.ref }}
+  cancel-in-progress: false
+jobs:
+  public-settings:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+      - name: Read public provider settings without authenticating or changing configuration
+        run: node scripts/audit-auth-release.mjs
+  native-compile:
+    needs: public-settings
+    if: ${{ always() }}
+    runs-on: macos-26
+    timeout-minutes: 25
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+          cache: npm
+      - name: Detect native Apple authentication source
+        id: apple
+        shell: bash
+        run: |
+          if test -f ios/App/App/BasketBossAppleAuthPlugin.swift; then
+            echo 'present=true' >> "$GITHUB_OUTPUT"
+          fi
+      - if: steps.apple.outputs.present == 'true'
+        run: npm ci --no-audit --no-fund
+      - if: steps.apple.outputs.present == 'true'
+        name: Prepare verified catalogue700 native workspace
+        run: node tools/catalogue700/sync-ios.mjs --output-dir /tmp/basketboss-auth-native700
+      - if: steps.apple.outputs.present == 'true'
+        name: Compile Apple authentication bridge without signing or uploading
+        run: >-
+          xcodebuild build
+          -workspace ios/App/App.xcworkspace
+          -scheme App
+          -configuration Release
+          -sdk iphonesimulator
+          -destination 'generic/platform=iOS Simulator'
+          -derivedDataPath /tmp/basketboss-auth-ios-build
+          COMPILER_INDEX_STORE_ENABLE=NO
+          CODE_SIGNING_ALLOWED=NO
