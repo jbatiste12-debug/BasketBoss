@@ -1,5 +1,5 @@
 /* Public web700 cache contract. Never include private/API/auth responses. */
-self.BB700_PWA_CACHE_VERSION="4c94f9947ec282bcda8e86c7666cba44aa45d1179eac4ce9bda1a51d21e29d7b";
+self.BB700_PWA_CACHE_VERSION="8fc3e034b58f09841ee65d39d15ecc697dea2138441f6ae58eb24c8ca2bc602b";
 self.BB700_PWA_PRECACHE=Object.freeze([
   "/basketboss-aisles-v20.js?v=d45b76bac322b605",
   "/bb-account-deletion.css?v=645b166ac6fe196f",
@@ -43,6 +43,8 @@ self.BB700_PWA_PRECACHE=Object.freeze([
   "/bb-day-plan-sheet.css?v=8a36e38906da4174",
   "/bb-day-plan-sheet.js?v=24ac571e820dd23d",
   "/bb-dietary-preferences.js?v=26a7b8a5ddab5ac8",
+  "/bb-discover-compact.css?v=c709c4d79578428a",
+  "/bb-discover-compact.js?v=b6f3503a16f33b8d",
   "/bb-duration.js?v=5c7631356b6ce8ee",
   "/bb-essentials-confirm.css?v=a860577f29da3ac9",
   "/bb-essentials-confirm.js?v=b477b93ea7f78752",
