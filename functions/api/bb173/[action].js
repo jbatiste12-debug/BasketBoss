@@ -310,8 +310,8 @@ async function verifiedPaddleCheckoutMember(user,env){
     return false;
   }
 }
-async function eligibleMember(request,env){
-  const user=await authenticatedUser(request,env);
+async function eligibleMember(request,env,verifiedUser){
+  const user=verifiedUser===undefined?await authenticatedUser(request,env):verifiedUser;
   if(!user)return null;
   if(env.BB_OWNER_USER_ID && user.id===env.BB_OWNER_USER_ID)
     return user;
@@ -331,6 +331,31 @@ async function eligibleMember(request,env){
   if(await verifiedPaddleCheckoutMember(user,env))return user;
   if(verificationError)throw verificationError;
   return null;
+}
+const FOOD_SCAN_PREVIEW_LIMIT=2;
+const FOOD_SCAN_PREVIEW_DAY='lifetime';
+const FOOD_SCAN_PREVIEW_ACTION='food-scan-preview';
+const foodScanPreviewEnabled=env=>livePaidBillingEnabled(env)&&!ownerPreviewAI(env);
+const foodScanStatus=(available=false,remaining=0,preview=false)=>({
+  food_scan_available:available,food_scan_remaining:remaining,
+  food_scan_limit:FOOD_SCAN_PREVIEW_LIMIT,food_scan_preview:preview
+});
+async function foodScanPreviewRemaining(db,userId){
+  const actorHash=await digestDeletionActor(userId);
+  const blocked=await db.prepare('SELECT 1 AS blocked FROM bb_account_deletions WHERE actor_hash=? LIMIT 1').bind(actorHash).first();
+  if(blocked)return 0;
+  try{
+    const row=await db.prepare('SELECT used FROM bb_ai_daily_usage WHERE day_utc=? AND actor=? AND action=?')
+      .bind(FOOD_SCAN_PREVIEW_DAY,'user:'+userId,FOOD_SCAN_PREVIEW_ACTION).first();
+    const used=row?.used??0;
+    if(!Number.isSafeInteger(used)||used<0)throw Error('quota_schema_mismatch');
+    return Math.max(0,FOOD_SCAN_PREVIEW_LIMIT-used);
+  }catch(error){
+    // A status check is read-only. The existing first-request quota initializer
+    // creates this optional table; unknown schemas/database failures stay closed.
+    if(/no such table:\s*["'`]?bb_ai_daily_usage\b/i.test(String(error?.message||'')))return FOOD_SCAN_PREVIEW_LIMIT;
+    throw error;
+  }
 }
 async function hashIP(ip,salt){
   const key=await crypto.subtle.importKey('raw',new TextEncoder().encode(salt),{name:'HMAC',hash:'SHA-256'},false,['sign']);
@@ -371,9 +396,11 @@ async function siteVerify(token,request,env){
 // D1 quota table is initialized ONLY if D1 explicitly reports it absent.
 // An incompatible existing schema or unavailable database still fails closed.
 // Quotas are never bypassed, including for Live Founder, Premium and Owner.
-async function consumeQuota(db,userId,action,globalCap,globalAction='all'){
-  const day=new Date().toISOString().slice(0,10);
-  const cap=action==='scan'?5:10;
+async function consumeQuota(db,userId,action,globalCap,globalAction='all',foodPreview=false){
+  const today=new Date().toISOString().slice(0,10);
+  const day=foodPreview?FOOD_SCAN_PREVIEW_DAY:today;
+  const quotaAction=foodPreview?FOOD_SCAN_PREVIEW_ACTION:action;
+  const cap=foodPreview?FOOD_SCAN_PREVIEW_LIMIT:action==='scan'?5:10;
   const inc=`INSERT INTO bb_ai_daily_usage(day_utc,actor,action,used)
     VALUES(?,?,?,1)
     ON CONFLICT(day_utc,actor,action)
@@ -391,13 +418,26 @@ async function consumeQuota(db,userId,action,globalCap,globalAction='all'){
       (SELECT 1 FROM bb_account_deletions WHERE actor_hash=?)
     RETURNING used`;
   const increment=async()=>{
+    if(foodPreview){
+      // Check the scarce lifetime allowance before reserving daily capacity.
+      // Reserve global capacity first, so a full service never spends a free
+      // attempt. The final lifetime UPSERT is still atomic across devices.
+      // Concurrent exhausted requests may reserve unused global capacity;
+      // they never exceed the account allowance or reach the AI provider.
+      if(await foodScanPreviewRemaining(db,userId)<=0)return false;
+      const all=await db.prepare(inc).bind(today,'global',globalAction,globalCap).first();
+      if(!all)return false;
+      const mine=await db.prepare(mineInc)
+        .bind(day,'user:'+userId,quotaAction,cap,actorHash,cap,actorHash).first();
+      return !!mine;
+    }
     // The existing per-user limit (5 scans / 10 meal drafts) and global
     // limit remain mandatory; no unmetered alternative is allowed.
     const mine=await db.prepare(mineInc)
-      .bind(day,'user:'+userId,action,cap,actorHash,cap,actorHash).first();
+      .bind(day,'user:'+userId,quotaAction,cap,actorHash,cap,actorHash).first();
     if(!mine)return false;
     const all=await db.prepare(inc)
-      .bind(day,'global',globalAction,globalCap).first();
+      .bind(today,'global',globalAction,globalCap).first();
     return !!all;
   };
   try{return await increment();}
@@ -454,21 +494,26 @@ export async function onRequest({request,env,params}){
         own=!!account && !!env.BB_OWNER_USER_ID &&
           account.id===env.BB_OWNER_USER_ID;
       }catch(_){}
-      return respond({status:'disabled',premium_ai:false,siteKey:null,
+      return respond({status:'disabled',premium_ai:false,siteKey:null,...foodScanStatus(),
         ...(own?{checks:aiConfigurationChecks(env)}:{})});
     }
     try{
-      const member=await eligibleMember(request,env);
+      const user=await authenticatedUser(request,env);
+      const member=await eligibleMember(request,env,user);
+      const preview=!member&&!!user&&foodScanPreviewEnabled(env);
+      const remaining=member?null:preview?await foodScanPreviewRemaining(env.BILLING_DB,user.id):0;
+      const scanAvailable=!!member||preview&&remaining>0;
       return respond({
-        status:member?'available':'disabled',
+        status:member||scanAvailable?'available':'disabled',
         premium_ai:!!member,
+        ...foodScanStatus(scanAvailable,remaining,preview),
         // Client presentation only. Live paid/Owner fallback is enforced
         // independently by eligibleMember() on every AI POST.
         turnstileRequired:member?!(livePaidBillingEnabled(env)||member.bbTestFlightBeta===true):true,
-        siteKey:member?env.TURNSTILE_SITE_KEY:null
+        siteKey:scanAvailable?env.TURNSTILE_SITE_KEY:null
       });
     }catch{
-      return respond({status:'disabled',premium_ai:false,siteKey:null});
+      return respond({status:'disabled',premium_ai:false,siteKey:null,...foodScanStatus()});
     }
   }
 
@@ -480,9 +525,13 @@ export async function onRequest({request,env,params}){
   if(!requireSameOrigin(request,true))
     return respond({error:'Origin not permitted'},403);
 
-  let member;
+  let member,foodPreview=false;
   try{
-    member=await eligibleMember(request,env);
+    const user=await authenticatedUser(request,env);
+    member=await eligibleMember(request,env,user);
+    if(!member&&user&&action==='scan'&&foodScanPreviewEnabled(env)){
+      member=user;foodPreview=true;
+    }
   }catch{
     return respond({error:'Entitlement verification unavailable'},503);
   }
@@ -495,6 +544,10 @@ export async function onRequest({request,env,params}){
   const body=parsed.body;
   const bad=validateInput(action,body);
   if(bad)return respond({error:bad},400);
+  // The free allowance identifies food in a photo only. It does not grant
+  // receipt persistence, AI recipe generation, pictures or Premium access.
+  if(foodPreview&&body.scanKind!==undefined)
+    return respond({error:'Verified Premium membership required for receipt scanning'},403);
   let imageGrant=null;
   if(action==='meal-image'){
     if(!mealImageModel(env)||!mealImageGlobalCap(env))return respond({error:'Meal pictures are temporarily unavailable.'},503);
@@ -518,7 +571,7 @@ export async function onRequest({request,env,params}){
   // All per-user and global AI quotas are still enforced below.
   const hasChallenge=typeof body.turnstileToken==='string' && body.turnstileToken.length>0;
   const passedChallenge=hasChallenge && await siteVerify(body.turnstileToken,request,env);
-  if(!passedChallenge && !livePaidBillingEnabled(env)&&member.bbTestFlightBeta!==true)
+  if(!passedChallenge && (foodPreview||!livePaidBillingEnabled(env)&&member.bbTestFlightBeta!==true))
     return respond({error:'Human verification failed'},403);
 
   try{
@@ -536,8 +589,8 @@ export async function onRequest({request,env,params}){
     if(!await consumeQuota(
       env.BILLING_DB,member.bbQuotaOwnerId||member.id,action,
       action==='meal-image'?mealImageGlobalCap(env):limits(env).global,
-      action==='meal-image'?'meal-image-all':'all'
-    ))return respond({error:'Daily AI usage limit reached'},429);
+      action==='meal-image'?'meal-image-all':'all',foodPreview
+    ))return respond({error:foodPreview?'Free photo scan allowance or daily AI limit reached. You can add ingredients manually or choose Premium.':'Daily AI usage limit reached'},429);
   }catch(err){
     // Diagnostic class only: never log auth tokens, IPs, secrets or D1 row data.
     const detail=String(err?.message||'').toLowerCase();

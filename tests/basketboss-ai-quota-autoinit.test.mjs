@@ -97,7 +97,7 @@ test('Incompatible quota schema never bypasses daily limits or triggers destruct
   assert.ok(!h.seen.some(x=>x.url?.includes('generativelanguage.googleapis.com')));
 }));
 
-test('Free authenticated account is denied before D1 quota writes or initialization',async()=>withHarness({paid:false},async h=>{
+test('Free authenticated account without a human challenge is denied before D1 quota writes or initialization',async()=>withHarness({paid:false},async h=>{
   const response=await h.request();assert.equal(response.status,403);
   assert.ok(!h.seen.some(x=>x.sql?.includes('bb_ai_daily_usage')));
 }));
