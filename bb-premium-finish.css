@@ -35,7 +35,8 @@ html body[data-bbnext-view] .shell>header.top[data-bb-account-polish] .brand h1,
 html body[data-bbnext-view] .shell>header.top[data-bb-account-polish] .brand h1 span{color:var(--bb-premium-ivory)!important;-webkit-text-fill-color:currentColor!important}
 html body[data-bbnext-view] .shell>header.top[data-bb-account-polish] #saveStatus{color:#e6eddd!important}
 html body[data-bbnext-view] .shell>header.top[data-bb-account-polish] .brand .logo{background:#fffdf6!important;border-color:#d5bc7a99!important;box-shadow:0 2px 7px #082b2426!important}
-html body[data-bbnext-view] .shell>header.top[data-bb-account-polish] .bb-public-beta-badge{background:#ead9ac!important;border-color:#d5bc7a!important;color:#284c38!important}
+/* Public App Store release: keep the header focused on the BasketBoss brand. */
+html body[data-bbnext-view] .shell>header.top[data-bb-account-polish] .bb-public-beta-badge{display:none!important}
 html body[data-bbnext-view] .shell>header.top[data-bb-account-polish] #bbpolRegionPill,
 html body[data-bbnext-view] .shell>header.top[data-bb-account-polish] #bbuiOpenSettings{background:#ffffff0f!important;border-color:#fffdf650!important;color:var(--bb-premium-ivory)!important;box-shadow:inset 0 1px #ffffff0f!important}
 html body[data-bbnext-view] .shell>header.top[data-bb-account-polish] #bbpolUpgradePill{background:linear-gradient(135deg,#f5e9c9,#e8d6a3)!important;border-color:#d5bc7a!important;color:#4c472e!important;box-shadow:inset 0 1px #ffffff9c,0 2px 7px #082b2412!important}
