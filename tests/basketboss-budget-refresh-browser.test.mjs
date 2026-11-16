@@ -107,7 +107,7 @@ async function assertPlanBudget(page,amount,message,weeklyTotal=Math.round((251.
  assert.equal(summary.remainingTotal,amount,'real current shopping quantities support the visible estimate');
  assert.equal(summary.total,weeklyTotal,'the completed trip stays in weekly spending history');
  assert.equal(await page.locator('#myWeekEstimatedTotal').evaluate(node=>node.parentElement.querySelector('small')?.textContent),'to buy','the headline explains which money is shown');
- const settings=page.locator('#bbSimpleBudget');await settings.waitFor();
+ const settings=page.locator('#bbSimpleBudget');await settings.waitFor({state:'attached'});
  assert.equal(await settings.evaluate(node=>node.open),false,'weekly spending stays in the existing closed Budget & household disclosure');
  assert.match(await settings.locator('.bb77-left-to-buy').textContent(),new RegExp('Left to buy: '+money(amount).replace(/[£.]/g,value=>value==='.'?'\\.':value)),'the primary budget line agrees with the ring');
  const details=settings.locator('details.bb77-weekly-spending');
@@ -128,9 +128,19 @@ async function assertPlanBudget(page,amount,message,weeklyTotal=Math.round((251.
  }
 }
 async function clearDinner(page,day){
- await page.getByRole('button',{name:'Clear only '+day+' dinner',exact:true}).click();
+ const row=page.locator('.bbnext-day[data-bbnext-day="'+day+'"]');
+ await row.getByRole('button',{name:'More options for '+day+' dinner',exact:true}).click();
+ await row.getByRole('button',{name:'Remove '+day+' dinner',exact:true}).click();
  await page.locator('#bbQaConfirmOverlay').getByRole('button',{name:'Clear this meal',exact:true}).click();
  await page.waitForFunction(day=>!window.__budgetQA.state().planned.some(slot=>slot.day===day),day);
+}
+async function changeDinnerServings(page,day,delta){
+ const row=page.locator('.bbnext-day[data-bbnext-day="'+day+'"]'),summary=row.locator('summary [data-bbfeed-delta="'+delta+'"]');
+ if(await summary.isVisible()){await summary.click();return;}
+ // Narrow phones keep the original servings controls in the day sheet.
+ await row.locator('.bbnext-day-description>strong').click();
+ await row.locator('[data-bbfeed-pos="expanded"] [data-bbfeed-delta="'+delta+'"]').click();
+ const close=row.locator('.bbdps-close');if(await close.isVisible())await close.click();
 }
 async function assertOverviewBudget(page,amount){
  await page.evaluate(()=>window.__budgetQA.overview());
@@ -172,11 +182,12 @@ for(const width of [390,320])test(`current 700 Plan recalculates its current bas
   // render. All recipe quantities, pantry use and prices remain real.
   await page.evaluate(()=>window.__budgetQA.add('sausage-gnocchi','Friday'));
   await assertPlanBudget(page,4.45,'adding the sausage dinner refreshes the estimate without Shop navigation');
-  await page.locator('.bbnext-day[data-bbnext-day="Friday"] summary [data-bbfeed-delta="1"]').click();
+  await changeDinnerServings(page,'Friday',1);
   await assertPlanBudget(page,11.20,'a fifth person needs the next full packs after pantry deductions');
-  await page.locator('.bbnext-day[data-bbnext-day="Friday"] summary [data-bbfeed-delta="-1"]').click();
+  await changeDinnerServings(page,'Friday',-1);
   await assertPlanBudget(page,4.45,'reducing servings refreshes the amount as well');
   const settings=page.locator('#bbSimpleBudget');
+  await page.locator('#bbPlanMoreOptions>summary').click();
   await settings.locator(':scope>summary').click();
   await settings.locator('#bb77BudgetTarget').fill('300');
   assert.match(await settings.locator('.bb77-weekly-budget-state').textContent(),/£44\.10 under your £300 budget/,'typing a target immediately updates the weekly comparison');
@@ -200,7 +211,7 @@ test('current 700 Plan and Shop agree after real partial purchases while preserv
  try{
   const archive=await page.evaluate(()=>window.__budgetQA.archive());
   await clearDinner(page,'Monday');
-  await page.locator('.bbnext-day[data-bbnext-day="Friday"] summary [data-bbfeed-delta="1"]').click();
+  await changeDinnerServings(page,'Friday',1);
   await assertOverviewBudget(page,11.20);
   let shell=await openShoppingMode(page),row=shell.locator('[data-bb-shop-purchase-id="pork sausages|each"]');
   await row.locator('.bb172-storefront-checkbox').check();
@@ -245,7 +256,7 @@ test('current 700 current-basket totals retain real unpriced essentials as pendi
   assert.equal(Number(displayed.slice(1))-summary.remainingTotal,2.50,'the guide contributes exactly £2.50 to the display only');
   assert.equal(await page.evaluate(()=>document.body.dataset.bbnextView),'week','the displayed estimate is ready before any Shop navigation');
   assert.equal(await page.locator('#myWeekEstimatedTotal').evaluate(node=>node.parentElement.querySelector('small')?.textContent),'to buy');
-  const settings=page.locator('#bbSimpleBudget');await settings.waitFor();
+  const settings=page.locator('#bbSimpleBudget');await settings.waitFor({state:'attached'});
   assert.equal(await settings.evaluate(node=>node.open),false,'weekly spending remains in the existing closed budget disclosure');
   assert.equal(await settings.locator('.bb77-left-to-buy').textContent(),'Left to buy: £15.00 estimated','the optional guide matches the ring, without changing the core quote');
   assert.equal(await settings.locator('details.bb77-weekly-spending').evaluate(node=>node.open),false);

@@ -47,6 +47,6 @@ Linux tests and matching web assets do not certify a signed iPhone build.
 Historical Build 43 through Build 46 launchers remain unchanged.
 
 Pinned application source:
-https://github.com/jbatiste12-debug/BasketBoss/commit/69165dd44d20d0686267a27c603440bbe0d62b54
+https://github.com/jbatiste12-debug/BasketBoss/commit/7cdb72e756cff2baa7d481c567dc04e2b55fa5e5
 Complete source:
-https://github.com/jbatiste12-debug/BasketBoss/archive/69165dd44d20d0686267a27c603440bbe0d62b54.zip
+https://github.com/jbatiste12-debug/BasketBoss/archive/7cdb72e756cff2baa7d481c567dc04e2b55fa5e5.zip
