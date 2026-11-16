@@ -97,6 +97,11 @@ async function addFood(page,name){
  const panel=page.locator('#bbpi-current-editor');
  await panel.getByLabel('Food name',{exact:true}).fill(name);
  await panel.getByLabel('Food name',{exact:true}).press('Tab');
+ const optional=panel.locator('.bbpa-amount');
+ await optional.waitFor({state:'attached'});
+ if(!await optional.evaluate(node=>node.open))await optional.locator(':scope>summary').click();
+ const exact=panel.locator('.bbpi-amount-details');
+ if(!await exact.evaluate(node=>node.open))await exact.locator(':scope>summary').click();
  return panel;
 }
 const descriptor=(page,name)=>page.evaluate(name=>BBPantryEditor.list().find(row=>BBHomeHost.id(row.name,'')===BBHomeHost.id(name,'')),name);

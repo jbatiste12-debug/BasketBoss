@@ -13,6 +13,13 @@ after(async()=>{await browser?.close();});
 const check=(name,run)=>test(name,{skip:!chromium?'Playwright unavailable; set BB_PLAYWRIGHT_MODULE to run browser regressions':false},run);
 const tab=(page,loc)=>page.locator('[role="tab"][data-bbpi-storage="'+loc+'"]');
 const visibleRows=page=>page.locator('.bbpi-summary-row:visible');
+async function openAddFoodAmount(panel){
+ const optional=panel.locator('.bbpa-amount');
+ await optional.waitFor({state:'attached'});
+ if(!await optional.evaluate(node=>node.open))await optional.locator(':scope>summary').click();
+ const exact=panel.locator('.bbpi-amount-details');
+ if(!await exact.evaluate(node=>node.open))await exact.locator(':scope>summary').click();
+}
 // Exercise the actual generated app with disposable local storage and local
 // assets. Fresh source overrides prevent a stale pwa700 enhancement from hiding
 // a failure in the presentation under test.
@@ -101,6 +108,7 @@ check('At home actions use the selected storage and original Premium camera hand
   // Adding from All must choose Cupboard without a second global Add/scan pair.
   const expected=loc==='all'?'cupboard':loc;
   await panel.getByLabel('Food name',{exact:true}).fill('Tabs test '+expected);
+  await openAddFoodAmount(panel);
   await panel.locator('[data-bbpi-quantity]').fill('1');
   await panel.locator('.bbpi-done').click();await panel.waitFor({state:'detached'});
   assert.equal(await page.evaluate(name=>BBPantryEditor.list().find(row=>row.name===name)?.loc,'Tabs test '+expected),expected);
@@ -208,6 +216,7 @@ check('empty At home quick-adds reuse the quantity editor and receipt entry keep
  await page.locator('.bbpi-scan-receipt').click();await page.locator('#bbMembershipCompare[open]').waitFor();
  await page.getByRole('button',{name:'Close membership comparison',exact:true}).click();assert.deepEqual(await balances(),before);
  await page.locator('[data-bbpi-quick-add="Pasta"]').click();const editor=page.locator('#bbpi-current-editor');
+ await openAddFoodAmount(editor);
  await editor.locator('[data-bbpi-quantity]').fill('250');await editor.locator('.bbpi-done').click();await editor.waitFor({state:'detached'});
  await page.waitForFunction(()=>document.querySelector('.bbpi-hero-count')?.textContent==='1');
  assert.equal(await page.locator('#bbpiToolbar').isVisible(),true,'the original controls return as soon as stock exists');

@@ -37,7 +37,7 @@ function harness(imported=inventory){
 
 test('real web700 inventory precaches exact public asset versions and uses its byte-derived cache identity',async()=>{
  const h=harness();await h.install();
- assert.equal(h.opened[0],'basketboss-premium-secure-shell-20261116-pantry-levels1-web700-'+version);
+ assert.equal(h.opened[0],'basketboss-premium-secure-shell-20261116-add-food-amount1-web700-'+version);
  for(const path of expectedUrls)assert.ok(h.stored.has(new URL(path,scope).href),path);
  assert.equal(expectedUrls.some(url=>new URL(url,scope).pathname.endsWith('.webmanifest')),false,'Access-protected manifest cannot block offline installation');
  const free=await h.stored.get(scope+'pwa700/recipes.json').clone().json();assert.equal(free.length,200);assert.ok(free.every(recipe=>recipe.premium!==true&&recipe.accessTier!=='premium'));
@@ -60,7 +60,7 @@ test('700 PWA opens the correct app and generated modules offline after the lega
 });
 
 test('a changed public generation gets a distinct cache and rejects protected import entries',async()=>{
- const nextVersion=version[0]==='a'?'b'.repeat(64):'a'.repeat(64),h=harness(inventory.replace(version,nextVersion));await h.install();assert.ok(h.opened[0].endsWith(nextVersion));assert.notEqual(h.opened[0],'basketboss-premium-secure-shell-20261116-pantry-levels1-web700-'+version);
+ const nextVersion=version[0]==='a'?'b'.repeat(64):'a'.repeat(64),h=harness(inventory.replace(version,nextVersion));await h.install();assert.ok(h.opened[0].endsWith(nextVersion));assert.notEqual(h.opened[0],'basketboss-premium-secure-shell-20261116-add-food-amount1-web700-'+version);
  for(const url of ['/api/recipes/v700/premium?catalogue=700','https://elsewhere.example/public.js','/app?code=private','/archive.sealed.json','/bb-server-lib/internal.js','/manifest.webmanifest']){
   assert.throws(()=>harness('self.BB700_PWA_CACHE_VERSION='+JSON.stringify(version)+';self.BB700_PWA_PRECACHE='+JSON.stringify([url])+';'),/Invalid public PWA cache inventory/);
  }

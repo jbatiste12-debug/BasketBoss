@@ -53,7 +53,7 @@ describe('real browser generated700 offline shell',()=>{
     await navigator.serviceWorker.register('/service-worker.js');
     await navigator.serviceWorker.ready;
     if(!navigator.serviceWorker.controller)await new Promise(resolve=>navigator.serviceWorker.addEventListener('controllerchange',resolve,{once:true}));
-    const names=await caches.keys(),active=names.find(name=>name.startsWith('basketboss-premium-secure-shell-20261116-pantry-levels1-web700-'));
+    const names=await caches.keys(),active=names.find(name=>name.startsWith('basketboss-premium-secure-shell-20261116-add-food-amount1-web700-'));
     if(!active)throw Error('The generated700 worker did not activate');
     const cache=await caches.open(active),keys=await cache.keys(),free=await (await cache.match('/pwa700/recipes.json')).json();
     const html=await (await cache.match('/app')).text();
