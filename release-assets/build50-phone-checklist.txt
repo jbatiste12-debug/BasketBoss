@@ -1,0 +1,14 @@
+BasketBoss 1.0.4 (50) — release checks
+
+1. Confirm Xcode App target General shows Version 1.0.4 and Build 50.
+2. Run on your iPhone; check Got it, Running low, Out and Edit amount.
+3. Confirm 1kg pack, Running low = 250g estimated; add one full spare = 1,250g;
+   Out retains the 1,000g spare. A 500g requirement with 250g stocked buys 250g.
+4. Check the compact Shopping prompt, cooking remainder, scans, sign-in and
+   existing household/purchase/restore flows before release.
+5. Create a NEW archive. Organizer must show 1.0.4 (50), uk.co.basketboss.app.
+6. Upload the new archive, create version 1.0.4 in App Store Connect and select
+   the processed Build 50. The previous 1.0.3 archive cannot be reused.
+
+The internal catalogue client version remains 1.0.2. Physical-device testing,
+code signing and upload require your Mac. No upload runs automatically.

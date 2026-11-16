@@ -1,0 +1,9 @@
+Quicker stock checks, with exact amounts still close to hand.
+
+• Got it keeps the amount you already have recorded.
+• Running low estimates a quarter of one opened pack, plus your full spare packs.
+• Out keeps unopened spares counted, and Edit amount lets you enter an exact quantity.
+• A compact Check stock prompt in Shopping helps you review estimated amounts.
+• Confirmed pack sizes stay in step with your linked household, with checks for conflicting edits.
+
+Your shopping calculations, recipes and cooking stock deductions work as before.
