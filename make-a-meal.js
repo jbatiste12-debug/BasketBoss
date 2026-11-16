@@ -867,7 +867,7 @@ async function bbRefreshAIStatus(){
     foodScanPreview=data?.food_scan_preview===true;foodScanRemaining=Number.isInteger(data?.food_scan_remaining)?data.food_scan_remaining:null;
     foodScanStatusReady=true;foodScanStatusToken=token;foodScanStatusActor=actor;bbPublishFoodScanStatus();
     // Only authenticated entitlement-backed Live accounts receive false.
-    bbTurnstileRequired=!((aiEnabled||foodScanEnabled)&&data.turnstileRequired===false);
+    bbTurnstileRequired=!(aiEnabled&&data.turnstileRequired===false);
     const verifyPanel=$('#aiSecurityBox');
     if(verifyPanel){
       verifyPanel.hidden=!bbTurnstileRequired;

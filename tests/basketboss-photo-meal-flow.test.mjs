@@ -36,7 +36,7 @@ function harness({pantry=false,deferResize=false,diets=[],servings=4,responseBod
  const injection=`\nwindow.__photoTest={renderScanResponse,bbConfirmPhotoMeal,scanPhoto,generate,bbCheckGeneratedMealAccount,bbClearGeneratedMeal,
   choosePhoto(file){photoFile=file;bbPhotoReviewToken=bbPaidToken();scanRevision++;},
   disableAI(){aiEnabled=false;},
-  configure(){aiEnabled=true;bbTurnstileRequired=false;inventory={'cupboard|garlic':{name:'Garlic',selected:true}};},
+  configure(){aiEnabled=true;foodScanEnabled=true;foodScanStatusReady=true;foodScanStatusToken=bbPaidToken();foodScanStatusActor=bbScanActor();bbTurnstileRequired=false;inventory={'cupboard|garlic':{name:'Garlic',selected:true}};},
   state(){return {names:bbPhotoMealNames,reviewToken:bbPhotoReviewToken,generateInFlight,scanInFlight};},
   setLibrary(catalog){recipes=catalog;catalog.forEach(row=>bbSecureFreeIds.add(row.id));inventory={'cupboard|rice':{name:'Rice',selected:true}};bb5Confirmed=true;renderRecipes();},
   libraryResults(){return results.map(row=>row.r.id);},
@@ -216,7 +216,7 @@ test('a stalled scan response body releases its lock and preserves saved stock',
  assert.equal(h.api.state().scanInFlight,true,'receiving headers alone does not finish the scan');
  h.expireRequest();await work;
  assert.equal(h.api.state().scanInFlight,false);assert.equal(h.get('#scanBtn').disabled,false);
- assert.match(h.get('#scanResults').innerHTML,/timed out/);assert.deepEqual(h.writes,[]);assert.equal(h.timers.size,0);
+ assert.match(h.get('#scanResults').innerHTML,/timed out/);assert.deepEqual(h.writes,[]);await tick();assert.equal(h.timers.size,0);
 });
 
 test('a stalled availability check cannot leave recipe generation busy forever',async()=>{

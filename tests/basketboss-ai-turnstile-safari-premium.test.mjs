@@ -111,12 +111,12 @@ test('Paddle-completed fresh trial can scan before subscription.created webhook'
  assert.ok(calls.some(x=>x.url?.includes('/transactions/')));
  assert.ok(calls.some(x=>x.url?.includes('/subscriptions/')));
 });
-test('Live verified Owner can scan; unauthenticated/free users remain denied',async()=>{
+test('Live verified Owner can scan; unauthenticated users and free users without a challenge remain denied',async()=>{
  await check({actor:'owner_user',entitlementStatus:null},{},200);
  await check({entitlementStatus:null,fallback:false},{},403);
  await check({}, {token:'invalid'},403);
 });
-test('Live inactive subscriber cannot bypass entitlement',async()=>{
+test('Live inactive subscriber cannot bypass the free scan human challenge',async()=>{
  const {calls}=await check({entitlementStatus:'canceled'},{},403);
  assert.ok(!calls.some(x=>x.url?.includes('generativelanguage.googleapis.com')));
 });
@@ -135,7 +135,7 @@ test('Safari panel observer preserves the camera input and loads the current pho
  assert.match(js,/new MutationObserver\(check\)\.observe\(stage/);
  assert.match(js,/if\(bbTurnstileRequired&&!\$\('#bbToolStage'\)\?\.hidden\)setupHumanCheck\(bbSiteKey\)/);
  assert.match(js,/window\.turnstile\.render\(host,/);
- assert.match(js,/if\(!aiEnabled\)await bbRefreshAIStatus\(\)/);
+ assert.match(js,/if\(!\(verb==='scan'\?foodScanEnabled:aiEnabled\)\)await bbRefreshAIStatus\(\)/);
  assert.match(js,/const token=turnstileToken\|\|''/);
  assert.match(html,/<label class="scan-upload-label" for="ai-photo-input">/);
  assert.match(html,/<input accept="image\/\*"[^>]+id="ai-photo-input" type="file"/);
