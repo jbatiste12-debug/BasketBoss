@@ -223,10 +223,10 @@ for(const viewport of [{width:390,height:844},{width:320,height:568}])check('com
  await visibleRows(page).filter({hasText:rice.name}).getByRole('button',{name:'Edit '+rice.name+' in cupboard',exact:true}).click();
  const editor=page.locator('#bbpi-current-editor'),amount=editor.locator('.bbpi-amount-details'),more=editor.locator('.bbpi-more-options'),quantity=editor.locator('[data-bbpi-quantity]'),buffer=editor.locator('[data-bbpi-buffer]');
  await editor.waitFor();
- assert.equal(await amount.evaluate(node=>node.open),true,'exact entry remains immediately available until alternative inputs are implemented');
+ assert.equal(await amount.evaluate(node=>node.open),false,'quick stock controls lead for known food; exact amount stays under its disclosure');
  assert.equal(await more.evaluate(node=>node.open),false,'optional purchasing settings start collapsed');
  assert.equal(await quantity.inputValue(),'500');
- assert.equal(await quantity.evaluate(node=>document.activeElement===node),true,'a known food focuses its real amount input');
+ assert.equal(await editor.locator('.bbpi-stock-choice[aria-pressed="true"]').evaluate(node=>document.activeElement===node),true,'a known food focuses its current quick stock status');
  assert.equal(await editor.locator('.bbpi-needed-label').isVisible(),false);
  assert.equal(await editor.locator('.bbpi-buy-label').isVisible(),false);
  const before=await pantryBytes();
@@ -244,6 +244,7 @@ for(const viewport of [{width:390,height:844},{width:320,height:568}])check('com
   const box=await control.boundingBox();assert.ok(box&&box.height>=44&&box.width>=44,'editor actions retain44px targets');
  }
  const screenshots=process.env.BB_UI_SCREENSHOT_DIR||path.join(os.tmpdir(),'basketboss-ui-previews');await fs.mkdir(screenshots,{recursive:true});
+ if(!await amount.evaluate(node=>node.open))await amount.locator(':scope>summary').click();
  await quantity.focus();await page.screenshot({path:path.join(screenshots,'basketboss-pantry-editor-after-'+viewport.width+'.png'),animations:'disabled'});
 
  await more.locator(':scope>summary').click();

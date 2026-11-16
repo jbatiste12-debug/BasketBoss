@@ -7,6 +7,31 @@ import {isNewestVerifiedSession} from '../../../bb-server-lib/bb-premium-seat.js
 const SECTIONS=new Set(['planned_day','servings','pantry_item','kitchen_item','shopping_checked','budget_target','household_servings']);
 const SHOP_UNITS=new Set(['g','kg','ml','l','each','pack','clove','tin','loaf','slice','bulb']);
 const SHOP_UUID=/^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
+// A separate metadata namespace uses the existing per-leaf CAS transport.
+// It can never contain a pantry balance or an entire Kitchen record.
+const PANTRY_PACK_PREFIX='pantry-pack-v1:';
+const packObject=value=>!!value&&typeof value==='object'&&!Array.isArray(value);
+const packFields=(value,allowed)=>packObject(value)&&Object.keys(value).every(key=>allowed.includes(key));
+const packAmount=value=>typeof value==='number'&&Number.isFinite(value)&&value>=0&&value<=1000000;
+const packUnit=value=>['g','ml','each'].includes(value);
+function packHash(value,seed){let result=seed;for(let index=0;index<value.length;index++){result^=value.charCodeAt(index);result=Math.imul(result,16777619);}return (result>>>0).toString(16).padStart(8,'0');}
+function pantryPackValue(value,key,household){
+ if(!packFields(value,['version','name','loc','stockLevel','pack'])||!Object.hasOwn(value,'stockLevel')||value.version!==1||typeof value.name!=='string'||value.name!==value.name.normalize('NFKC').replace(/\s+/g,' ').trim().toLowerCase()||!value.name||value.name.length>160||/[|\u0000-\u001f\u007f]/.test(value.name)||['__proto__','prototype','constructor'].includes(value.name)||!['cupboard','fridge','freezer'].includes(value.loc))return false;
+ const identity=value.loc+'|'+value.name;
+ if(key!==PANTRY_PACK_PREFIX+value.loc+':'+packHash(identity,2166136261)+packHash(identity,2246822507))return false;
+ const level=value.stockLevel;
+ if(Object.hasOwn(value,'pack')){
+  const pack=value.pack;
+  if(!packFields(pack,['quantity','unit','estimated','source'])||Object.keys(pack).length!==4||!packAmount(pack.quantity)||pack.quantity<=0||!packUnit(pack.unit)||typeof pack.estimated!=='boolean'||!['label','receipt','catalogue','photo'].includes(pack.source))return false;
+  if(level&&(pack.quantity!==level.capacity||pack.unit!==level.unit||level.capacityEstimated&&!pack.estimated))return false;
+ }
+ if(level===null)return true;
+ if(!packFields(level,['version','capacity','unit','spares','portion','source','estimated','capacityEstimated','confirmedQuantity','confirmedUnit','scope','confirmedAt'])||level.version!==1||!packAmount(level.capacity)||level.capacity<=0||!packUnit(level.unit)||!Number.isInteger(level.spares)||level.spares<0||level.spares>100||!['full','half','low','out'].includes(level.portion)||!['label','receipt','catalogue','photo'].includes(level.source)||typeof level.estimated!=='boolean'||typeof level.capacityEstimated!=='boolean'||!packAmount(level.confirmedQuantity)||level.confirmedUnit!==level.unit)return false;
+ const quantity=Math.round(level.capacity*(level.spares+({full:1,half:.5,low:.25,out:0})[level.portion])*1000000)/1000000;
+ if(!packAmount(quantity)||quantity!==level.confirmedQuantity||quantity===0&&level.portion!=='out'||!level.estimated&&(level.capacityEstimated||['half','low'].includes(level.portion)))return false;
+ if(level.scope!==undefined&&(!packFields(level.scope,['kind','id'])||Object.keys(level.scope).length!==2||level.scope.kind!=='household'||level.scope.id!==household))return false;
+ return level.confirmedAt===undefined||typeof level.confirmedAt==='string'&&/^\d{4}-\d\d-\d\dT\d\d:\d\d:\d\d\.\d{3}Z$/.test(level.confirmedAt)&&Number.isFinite(Date.parse(level.confirmedAt))&&new Date(level.confirmedAt).toISOString()===level.confirmedAt;
+}
 function shoppingInput(data){return SHOP_UUID.test(data.id||'')&&typeof data.name==='string'&&data.name.trim().length>=1&&data.name.trim().length<=70&&!/[\u0000-\u001f\u007f]/.test(data.name)&&typeof data.quantity==='number'&&Number.isFinite(data.quantity)&&data.quantity>0&&data.quantity<=1000000&&Math.abs(data.quantity*1000000-Math.round(data.quantity*1000000))<0.0001&&SHOP_UNITS.has(data.unit)&&(data.unit!=='pack'||Number.isInteger(data.quantity));}
 function shoppingRow(row,household){return row&&typeof row==='object'&&!Array.isArray(row)&&row.household_id===household&&SHOP_UUID.test(row.id||'')&&shoppingInput(row)&&typeof row.completed==='boolean'&&Number.isSafeInteger(row.revision)&&row.revision>=1&&(row.created_by===null||SHOP_UUID.test(row.created_by||''))&&(row.completed_by===null||SHOP_UUID.test(row.completed_by||''))&&(row.added_by_name===null||typeof row.added_by_name==='string'&&row.added_by_name.length>=1&&row.added_by_name.length<=60);}
 function privateKey(env){return env.SUPABASE_SECRET_KEY||env.SUPABASE_SERVICE_ROLE_KEY||'';}
@@ -99,9 +124,17 @@ export async function onRequestGet({request,env}){
   }
   if(mode==='entries'){
    if(!household||!entitled)return json({error:'Verified Premium shared household required'},403);
-   const rows=await supa(env,`bb_household_entries?select=section,entry_key,value,revision,updated_at&${eq('household_id',household.id)}&order=section.asc,entry_key.asc&limit=1000`);
+   // Keep the dedicated namespace out of older clients' whole-Kitchen merge.
+   const rows=await supa(env,`bb_household_entries?select=section,entry_key,value,revision,updated_at&${eq('household_id',household.id)}&or=(section.neq.kitchen_item,entry_key.not.like.${encodeURIComponent(PANTRY_PACK_PREFIX+'*')})&order=section.asc,entry_key.asc&limit=1000`);
    if(!Array.isArray(rows)||rows.length>=1000)return json({error:'Household data too large; manual review required'},409);
-   return json({household_id:household.id,role,entries:rows});
+   return json({household_id:household.id,role,entries:rows.filter(row=>row?.section!=='kitchen_item'||!String(row.entry_key).startsWith(PANTRY_PACK_PREFIX))});
+  }
+  if(mode==='pantry_packs'){
+   if(!household||!entitled)return json({error:'Verified Premium shared household required'},403);
+   const rows=await supa(env,`bb_household_entries?select=section,entry_key,value,revision&${eq('household_id',household.id)}&section=eq.kitchen_item&entry_key=like.${encodeURIComponent(PANTRY_PACK_PREFIX+'*')}&order=entry_key.asc&limit=501`);
+   if(!Array.isArray(rows)||rows.length>500)return json({error:'Pack metadata too large; review required'},409);
+   if(!rows.every(row=>packFields(row,['section','entry_key','value','revision'])&&row.section==='kitchen_item'&&Number.isSafeInteger(row.revision)&&row.revision>=1&&pantryPackValue(row.value,row.entry_key,household.id))||new Set(rows.map(row=>row.entry_key)).size!==rows.length)throw Error('pack_metadata_response_invalid');
+   return json({household_id:household.id,entries:rows});
   }
   if(mode!=='status')return json({error:'Invalid mode'},400);
   const pending=!household?await getPending(env,auth.user):null;
@@ -157,11 +190,16 @@ export async function onRequestPost({request,env}){
    if(!SECTIONS.has(data.section)||typeof data.key!=='string'||data.key.length<1||data.key.length>180||
       !Number.isSafeInteger(data.expected)||data.expected<0||data.value===undefined||JSON.stringify(data.value).length>8192)
      return json({error:'Invalid section patch'},400);
+   const pantryPack=data.key.startsWith(PANTRY_PACK_PREFIX);
+   if(pantryPack){
+    if(!SHOP_UUID.test(data.expectedHouseholdId||'')||data.expectedHouseholdId!==household.id)return json({error:'Pack metadata household changed',conflict:true},409);
+    if(data.section!=='kitchen_item'||!Object.keys(data).every(key=>['action','section','key','value','expected','expectedHouseholdId'].includes(key))||!pantryPackValue(data.value,data.key,household.id))return json({error:'Invalid pack metadata'},400);
+   }
    const result=await supa(env,'rpc/bb_hh_service_patch','POST',{
     p_actor:actor.id,p_household:household.id,p_section:data.section,p_key:data.key,
     p_value:data.value,p_expected:data.expected
    });
-   return json(result,result?.conflict?409:200);
+   return json(pantryPack?{...result,household_id:household.id}:result,result?.conflict?409:200);
   }
   return json({error:'Unknown action'},400);
  }catch(e){console.warn('Household operation unavailable',e.message);return json({error:'Partner Sharing temporarily unavailable'},503);}

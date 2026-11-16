@@ -28,7 +28,7 @@ export const CLIENT_FILES=Object.freeze([
  'bb-kitchen-prices.js',
  'bb-shop-subcategories.js','bb-shop-subcategories.css','bb-essentials-confirm.js','bb-essentials-confirm.css',
  'bb-dietary-preferences.js','bb-meal-preferences.js','bb-meal-preferences.css','bb-kitchen-review.js','bb-kitchen-review.css',
- 'bb-kitchen-essentials.js','bb-kitchen-essentials.css','bb-pantry-inline.js','bb-pantry-inline.css','bb-pantry-groups.js','bb-pantry-groups-ui.js','bb-pantry-groups.css','bb-household-amount.js','bb-keyboard-layout.js','bb-keyboard-layout.css',
+ 'bb-pantry-stock-levels.js','bb-pantry-pack-sync.js','bb-pantry-stock-levels-ui.js','bb-kitchen-essentials.js','bb-kitchen-essentials.css','bb-pantry-inline.js','bb-pantry-inline.css','bb-pantry-groups.js','bb-pantry-groups-ui.js','bb-pantry-groups.css','bb-household-amount.js','bb-keyboard-layout.js','bb-keyboard-layout.css',
  'bb-cook-studio.js','bb-cook-studio.css','bb-cook-result.js','bb-cook-result.css',
  'bb-meal-image.js','bb-meal-image.css','bb-navigation-polish.js','bb-navigation-polish.css','bb-tab-viewport.js','bb-tab-viewport.css','bb-tab-swipe.js',
  'bb-account-polish.js','bb-account-polish.css','bb-account-pantry-live.js','bb-membership-compare.js','bb-membership-compare.css',

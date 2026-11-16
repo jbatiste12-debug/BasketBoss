@@ -86,13 +86,14 @@ async function fixture({width=390,recipeId=MORNAY,servings=4,requirements=null,s
  await page.goto('https://basketboss.co.uk/app',{waitUntil:'domcontentloaded'});
  await page.waitForFunction(()=>window.__plannedUnitQA?.ready());
  await page.locator('#bbPrimaryNavigation [data-bb-nav-item="kitchen"]').click();
- await page.locator('#bbpiSearch').waitFor();
+ await page.waitForFunction(()=>window.BBPantryEditor?.isCurrent?.()&&document.querySelector('.bbpi-enhanced')?.isConnected);
  return {page,context,errors};
 }
 
 async function addFood(page,name){
- await page.locator('[role="tab"][data-bbpi-storage="fridge"]').click();
- await page.locator('.bbpi-add-food:visible').first().click();
+ // Empty pantries show familiar-food actions before the storage tabs. Milk
+ // opens the same editable manual form in the fridge without saving a row.
+ await page.locator('[data-bbpi-quick-add="Milk"]').click();
  const panel=page.locator('#bbpi-current-editor');
  await panel.getByLabel('Food name',{exact:true}).fill(name);
  await panel.getByLabel('Food name',{exact:true}).press('Tab');
@@ -180,6 +181,7 @@ for(const width of [320,390]){
    assert.deepEqual(await page.evaluate(()=>window.__plannedUnitQA.stock()),stock);
    // Repair the old entry only after the user explicitly enters its weight.
    await page.getByRole('button',{name:'Edit Smoked haddock in fridge',exact:true}).click();
+   await panel.locator('.bbpi-amount-details>summary').click();
    await panel.locator('[data-bbpi-quantity]').fill('');
    await panel.locator('[aria-label^="Unit for "]').selectOption('g');
    await panel.locator('[data-bbpi-quantity]').fill('200');

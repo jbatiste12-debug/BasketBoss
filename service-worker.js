@@ -2,7 +2,7 @@
  * Caches app pages and assets only; no personal localStorage or sync data is transmitted.
  * Food photographs outside the preview are cached only after being viewed, where supported.
  */
-const CACHE_BASE = 'basketboss-premium-secure-shell-20261116-photo-schema1-web700';
+const CACHE_BASE = 'basketboss-premium-secure-shell-20261116-pantry-levels1-web700';
 const IMAGE_CACHE = 'basketboss-v20261116-recipe-photo-schema1';
 const APP_BASE = new URL(self.registration.scope);
 // Public build inventory only. The worker never imports account or API data.
@@ -94,6 +94,9 @@ const CORE = ['bb-plan-extras.js','bb-plan-extras.js?v=20261108-planner1','bb-pl
   'bb-household-aliases.js?v=20261112-household1','bb-pantry-alias-migration.js?v=20261112-household1','bb-shop-completion.js?v=20261112-completion1',
   'bb-tab-viewport.css?v=20261105-preflight1',
   'bb-tab-viewport.js?v=20261105-nav1',
+  'bb-pantry-stock-levels.js','bb-pantry-pack-sync.js','bb-pantry-stock-levels-ui.js',
+  'bb-pantry-stock-levels.js?v=20261116-levels1','bb-pantry-pack-sync.js?v=20261116-levels1','bb-pantry-stock-levels-ui.js?v=20261116-levels1',
+  'shopping-inventory.js?v=20261116-levels1','bb-pantry-inline.js?v=20261116-levels1','bb-pantry-inline.css?v=20261116-levels1',
   'app.html',
   'welcome.html',
   'basketboss-pricing-v19.js?v=20261108-baseline1',

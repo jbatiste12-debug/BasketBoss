@@ -422,7 +422,7 @@ async function build(){
   const shoppingChange=homeChange?.shoppingChange,shoppingBefore=Object.fromEntries(Object.keys(shoppingChange?.updates||{}).map(key=>[key,localStorage.getItem(key)]));
   const originalHomeRaw=homeChange?localStorage.getItem(homeChange.key):null;const featureChange=homeChange?.featureChange,originalFeatures=featureChange?localStorage.getItem(featureChange.key):null;
   const originalInventoryRaw=localStorage.getItem(INVENTORY),originalStockRaw=localStorage.getItem(MEASURED),originalConfirmedRaw=localStorage.getItem(CONFIRMED);
-  const receiptHost=window.BBReceiptHost;let accountSync=false,pantrySync;
+  const receiptHost=window.BBReceiptHost;let accountSync=false,pantrySync,packSync;
   try{
    accountSync=receiptHost?.accountPantrySyncEnabled?.()===true;
    if(accountSync){
@@ -431,9 +431,13 @@ async function build(){
     // owns this absolute target, including deletions and an empty pantry.
     pantrySync=receiptHost.preparePurchasedPantry({stock:nextStock,beforeStock:JSON.parse(originalStockRaw||'{}')});
    }
+   // Capacity metadata follows the existing stock save. It never supplies or
+   // replaces the measured balance used by meal and shopping calculations.
+   packSync=window.BBPantryPackSync?.prepare?.({beforeInventory:originalInv,afterInventory:nextInv});
   }catch(error){note.textContent=error?.message||'Could not prepare account sync. Your saved quantities have been kept.';return;}
   try{
    for(const [key,value]of Object.entries(pantrySync?.expected||{}))if(localStorage.getItem(key)!==value)throw Error('Account sync changed before saving');
+   for(const [key,value]of Object.entries(packSync?.expected||{}))if(localStorage.getItem(key)!==value)throw Error('Pack details changed before saving');
    const text=JSON.stringify(nextInv);localStorage.setItem(INVENTORY,text);if(localStorage.getItem(INVENTORY)!==text)throw Error('Inventory save verification failed');
    if(typeof bb307SaveStock==='function'){if(!bb307SaveStock(nextStock))throw Error('Stock save failed')}
    else{const stockText=JSON.stringify(nextStock);localStorage.setItem(MEASURED,stockText);if(localStorage.getItem(MEASURED)!==stockText)throw Error('Stock save verification failed')}
@@ -443,7 +447,7 @@ async function build(){
    if(homeChange){if(window.BBHome.actor()!==homeChange.who||localStorage.getItem(homeChange.key)!==homeChange.expected)throw Error('At home changed elsewhere');const homeText=JSON.stringify(homeChange.value);localStorage.setItem(homeChange.key,homeText);if(localStorage.getItem(homeChange.key)!==homeText)throw Error('Requirements save failed');}
    if(featureChange){if(localStorage.getItem(featureChange.key)!==featureChange.expected)throw Error('Household list changed');const value=JSON.stringify(featureChange.value);localStorage.setItem(featureChange.key,value);if(localStorage.getItem(featureChange.key)!==value)throw Error('Household save failed');}
    if(shoppingChange)window.BBHome.atomic(localStorage,shoppingChange.updates,shoppingChange.expected);
-   if(pantrySync)window.BBHome.atomic(localStorage,pantrySync.updates,pantrySync.expected);
+   if(pantrySync||packSync)window.BBHome.atomic(localStorage,{...pantrySync?.updates,...packSync?.updates},{...pantrySync?.expected,...packSync?.expected});
   }catch(err){
    try{for(const [key,value]of Object.entries(shoppingBefore)){if(value===null)localStorage.removeItem(key);else localStorage.setItem(key,value);}
    if(featureChange){if(originalFeatures===null)localStorage.removeItem(featureChange.key);else localStorage.setItem(featureChange.key,originalFeatures);}
@@ -456,6 +460,7 @@ async function build(){
    note.textContent='Could not save safely. Review storage and try again.';return;
   }
   pendingFoodDraft=null;stagedTargets.clear();openedRevision=physicalRevision();window.BBHome?.committed?.();externalAtOpen.clear();draftDirty=false;
+  window.BBPantryPackSync?.committed?.();
   window.BasketBossCloud?.scheduleSave?.();
   const unknown=chosen.filter(x=>x.qty===null);
   const requirements=window.BBHomeHost?.requirements?.()||[],mismatches=window.BBHomeHost?.consume?.(nextStock,requirements)?.mismatches||{};
@@ -485,6 +490,9 @@ async function build(){
     if(!automatic)void window.BBReceiptHost.reviewPantry();return;
    }
   }
+  // The metadata channel may retry only after the existing absolute-stock
+  // outbox has settled; it cannot resolve a household stock conflict itself.
+  void window.BBPantryPackSync?.retry?.();
   if(reviewText)return;
   note.textContent='✓ PANTRY confirmed. '+chosen.filter(x=>x.qty!==null).length+' measured item(s) saved. Shopping needs have been recalculated.';
   if(automatic){if(!draftDirty)drawOverview();return;}
@@ -600,6 +608,18 @@ async function build(){
    }else if(hasQuantity&&next.qty!==null){if(Number(next.qty)===0)next.stapleStatus='out';else if(!['in','low'].includes(next.stapleStatus))next.stapleStatus='in';}
    if(next.qty!==null&&Number(next.qty)>10000)return hasQuantity?incompleteQuantity(String(patch.qty).trim(),'Enter a container amount up to 10,000, or choose a stock status.'):editorFail('Enter a container amount up to 10,000, or choose a stock status.');
    next.unit='each';next.staple=true;
+  }
+  if(Object.hasOwn(patch,'stockLevel')){
+   if(patch.stockLevel===null)next.stockLevel=null;
+   else{
+    const levels=window.BBPantryStockLevels,checked=levels?.validate?.(patch.stockLevel);
+    if(!checked||isStapleRow(next))return editorFail('Review the pack details before saving this level. Your saved amount has been kept.');
+    const mapped=levels.select(next,{...checked,confirmed:true},{policy:policy(),market:policyMarket(),canonicalize:window.BBPantryAliasCanonical||window.BBPriceV19?.canonical});
+    const measured=policy()?.normalize(next.name,Number(next.qty),next.unit,policyOptions(next));
+    if(!mapped?.ok||!measured||measured.unit!==mapped.patch.unit||Math.abs(measured.quantity-mapped.patch.qty)>.000001)return editorFail('The pack level and amount do not match. Review them before saving.');
+    const scope=window.BBPantryPackSync?.scope?.();
+    next.stockLevel={...checked,...(scope?{scope}:{})};next.packEstimated=checked.capacityEstimated===true;
+   }
   }
   if(hasTarget){
    if(next.qty===null||next.qty===undefined||next.qty==='')return editorFail('Enter how much you already have; use 0 for none.');
