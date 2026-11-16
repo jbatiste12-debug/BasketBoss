@@ -301,10 +301,10 @@
      }
    }
    host.classList?.toggle('bbob-quick',quick);host.classList?.toggle('bbob-quick-welcome-screen',quick&&state.step===1);host.classList?.toggle('bbob-account-open',quick&&state.step===1&&(quickAccountOpen||state.partnerIntent==='join'||state.photoRequested===true));host.classList?.toggle('bbob-photo-account',quick&&state.step===1&&state.photoRequested===true);host.classList?.toggle('bbob-quick-premium',quick&&state.step===10);host.classList?.toggle('bbob-kitchen-slide',!quick&&state.step===9);restoreAuth();host.innerHTML=content();
-   if(state.step===1&&!validSession())mountAuth();
+   if(state.step===1&&(!accountRemembered()||quick&&!validSession()))mountAuth();
    syncWelcomeApple();
    sizeWelcomeViewport();host.scrollTop=0;
-   if(state.step===1&&!validSession()){
+   if(state.step===1&&(!accountRemembered()||quick&&!validSession())){
      const heading=host.querySelector('#bbob-title');heading?.setAttribute('tabindex','-1');heading?.focus({preventScroll:true});
    }else (host.querySelector('[data-bbob="quick-photo"]')||host.querySelector('[data-bbob="next"]')||host.querySelector('[data-bbob="free-complete"]'))?.focus({preventScroll:true});
  }
