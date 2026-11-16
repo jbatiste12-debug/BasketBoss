@@ -4504,6 +4504,31 @@ window.BasketBossSetOnboardingServings=function(size){
  render();
  return true;
 };
+/* BEGIN_BASKETBOSS_PHOTO_ONBOARDING_HOST_V1
+ * An explicit scanner handoff saves the real in-memory planner only when this
+ * device has no planner document yet. Startup itself remains read-only.
+ */
+window.BBPhotoOnboardingHost=Object.freeze({preparePlan(){
+ if(!bbStorageSafe||window.BBAccountDeletion?.isDeleting?.()===true)return false;
+ let sessionRaw,actor,before;
+ try{
+  sessionRaw=localStorage.getItem('basketboss_cloud_session_v1');
+  const session=JSON.parse(sessionRaw||'null');actor=session?.user?.id;
+  if(typeof actor!=='string'||!actor||typeof session?.access_token!=='string'||!session.access_token||!Number.isFinite(Number(session.expires_at))||Number(session.expires_at)*1000<=Date.now()+5000)return false;
+  const deletion=JSON.parse(localStorage.getItem('basketboss_account_deletion_v1')||'null');
+  if(deletion&&['pending','deleting','deleted'].includes(deletion.phase))return false;
+  if(window.BBHome?.actor?.()!==actor)return false;
+  before=localStorage.getItem(KEY);
+  if(before!==null){const saved=JSON.parse(before);return saved?.version===2&&Array.isArray(saved.planned)&&localStorage.getItem(KEY)===before&&localStorage.getItem('basketboss_cloud_session_v1')===sessionRaw&&window.BBHome?.actor?.()===actor;}
+  if(state?.version!==2||!Array.isArray(state.planned)||localStorage.getItem(KEY)!==null||localStorage.getItem('basketboss_cloud_session_v1')!==sessionRaw)return false;
+  if(persist()!==true)return false;
+  const attempted=JSON.stringify(state),saved=localStorage.getItem(KEY);
+  const current=localStorage.getItem('basketboss_cloud_session_v1')===sessionRaw&&window.BBHome?.actor?.()===actor&&window.BBAccountDeletion?.isDeleting?.()!==true;
+  if(!current){if(saved===attempted)localStorage.removeItem(KEY);return false;}
+  return saved===attempted;
+ }catch{return false;}
+}});
+/* END_BASKETBOSS_PHOTO_ONBOARDING_HOST_V1 */
 window.BasketBossMealPreferenceFeedback=function(error){if(error)notify(error);else{render();notify('Meal preferences saved.');}};
 window.BasketBossSetOnboardingMealPreferences=function(patch){
  if(typeof BBMealPreferences==='undefined')return false;
