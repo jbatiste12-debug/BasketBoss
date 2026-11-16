@@ -146,9 +146,9 @@ async function assertRowLayout(row){
  const layout=await row.evaluate(row=>{
   const main=row.querySelector('.bbcompact-main'),body=row.querySelector('.bb-shop-purchase-body');
   const box=selector=>{const r=row.querySelector(selector).getBoundingClientRect();return {x:r.x,right:r.right,y:r.y,bottom:r.bottom,width:r.width,height:r.height};};
-  return {columns:getComputedStyle(main).gridTemplateColumns.split(/\s+/).length,bodyDisplay:getComputedStyle(body).display,bodyWidth:body.getBoundingClientRect().width,title:box('.bb172-storefront-item-title'),price:box('.bbcompact-price'),more:box('.bbcompact-toggle'),need:box('.bbcompact-qty'),buying:box('.bb-shop-buying-pill')};
+  return {columns:getComputedStyle(main).gridTemplateColumns.split(/\s+/).length,bodyColumns:getComputedStyle(body).gridTemplateColumns.split(/\s+/).length,bodyDisplay:getComputedStyle(body).display,bodyWidth:body.getBoundingClientRect().width,title:box('.bb172-storefront-item-title'),price:box('.bbcompact-price'),more:box('.bbcompact-toggle'),need:box('.bbcompact-qty'),buying:box('.bb-shop-buying-pill')};
  });
- assert.equal(layout.columns,2);assert.equal(layout.bodyDisplay,'block');assert.ok(layout.bodyWidth>150);
+ assert.equal(layout.columns,2);assert.equal(layout.bodyDisplay,'grid');assert.equal(layout.bodyColumns,2);assert.ok(layout.bodyWidth>150);
  assert.ok(layout.title.width>60,'the food title retains a readable width');
  assert.ok(layout.title.right<=layout.price.x+1);assert.ok(layout.price.right<=layout.more.x+1);
  assert.ok(layout.title.bottom<=layout.need.y+1);assert.ok(layout.need.right<=layout.buying.x+1);
