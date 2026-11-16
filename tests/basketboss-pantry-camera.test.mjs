@@ -11,3 +11,33 @@ test('zero checked amount removes only that location from active stock',()=>{con
 test('stock names match the main app canonical pantry function across current public ingredients',()=>{const context=vm.createContext({});for(const name of ['basketboss-aisles-v20.js','basketboss-pricing-v19.js'])vm.runInContext(fs.readFileSync(new URL('../'+name,import.meta.url),'utf8'),context);const names=JSON.parse(fs.readFileSync(new URL('../normalized-ingredient-database.json',import.meta.url),'utf8')).recipes.flatMap(recipe=>recipe.ingredients.map(row=>row.key||row.name));const aliases={potatoes:'potato',eggs:'egg',tomatoes:'tomato',onions:'onion',peppers:'pepper',carrots:'carrot',bananas:'banana',apples:'apple',lemons:'lemon',limes:'lime',courgettes:'courgette',mushrooms:'mushroom',scallops:'scallop',wraps:'wrap'};for(const name of names){const key=context.BBPriceV19.canonical(name);assert.equal(camera.stockName(name),context.BBPriceV19.canonical(aliases[key]||key));}});
 test('two-store commit rolls back on storage failure and rejects a stale snapshot',()=>{const values=new Map([[camera.STOCK,'{}'],[camera.INVENTORY,'{}']]),expected=Object.fromEntries(values);let failed=false;const store={getItem:key=>values.get(key)??null,setItem(key,value){if(key===camera.INVENTORY&&!failed){failed=true;throw Error('full');}values.set(key,value);},removeItem:key=>values.delete(key)};assert.throws(()=>camera.commit(store,{stock:{'rice|g':100},inventory:{}},expected),/full/);assert.equal(values.get(camera.STOCK),'{}');values.set(camera.STOCK,'{"rice|g":20}');assert.throws(()=>camera.commit(store,{stock:{},inventory:{}},expected),/changed/);assert.equal(values.get(camera.STOCK),'{"rice|g":20}');});
 test('account or projection-owner changes during a pantry save roll back both stock writes',()=>{for(const guard of ['basketboss_cloud_session_v1','basketboss_receipt_projection_owner_v1']){const values=new Map([[camera.STOCK,'{}'],[camera.INVENTORY,'{}'],[guard,'alice']]),expected=Object.fromEntries(values);let switched=false;const store={getItem:key=>values.get(key)??null,setItem(key,value){values.set(key,value);if(key===camera.STOCK&&!switched){switched=true;values.set(guard,'bob');}},removeItem:key=>values.delete(key)};assert.throws(()=>camera.commit(store,{stock:{'milk|ml':500},inventory:{milk:{}}},expected),/account or pantry changed/);assert.equal(values.get(camera.STOCK),'{}');assert.equal(values.get(camera.INVENTORY),'{}');assert.equal(values.get(guard),'bob');}});
+
+function entryFixture({signedIn=false,premium=false,prepare=true,expired=false}={}){
+ const buttons=[],navigation=[],auth=[],events=new Map(),dismiss=[];let accountOpens=0,bar=null,prepareCalls=0,deleted=false;
+ const anchor={before(node){bar=node;}};
+ const app={querySelector:selector=>selector==='.bb-pantry-camera-bar'?bar:selector==='#bb76StorageSections'?anchor:null};
+ const node=()=>({children:[],className:'',setAttribute(){},append(...values){this.children.push(...values);}});
+ const doc={readyState:'complete',body:{dataset:{}},getElementById:id=>id==='app'?app:id==='cloud-open'?{click(){accountOpens++;}}:id==='cloud-close'?{addEventListener(_,listener){dismiss.push(listener);}}:id==='bbPantryCameraStatus'?bar?.children.find(child=>child.id===id)||null:null,querySelector:()=>null,createElement(tag){const value=node();if(tag==='button')buttons.push(value);return value;}};
+ const win={document:doc,location:{href:'https://basketboss.co.uk/app',assign:value=>navigation.push(value)},history:{replaceState(){}},localStorage:{getItem:key=>key==='basketboss_cloud_session_v1'&&signedIn?JSON.stringify({user:{id:'confirmed-account'},access_token:'test-session',expires_at:expired?0:9999999999}):null},BBAccountDeletion:{isDeleting:()=>deleted},BBPhotoOnboardingHost:{preparePlan(){prepareCalls++;return prepare;}},BBPantryCameraHost:{isPremium:()=>premium,getTab:()=> 'shop'},BBAuthFlow:{open:value=>auth.push(value)},MutationObserver:class{observe(){}},addEventListener(name,listener){events.set(name,listener);}};
+ camera.install(win);
+ return {buttons,navigation,auth,accountOpens:()=>accountOpens,prepareCalls:()=>prepareCalls,status:()=>doc.getElementById('bbPantryCameraStatus')?.textContent||'',signIn(){signedIn=true;expired=false;events.get('basketboss:session-changed')?.();},deleting(){deleted=true;events.get('basketboss:account-deletion-started')?.();},dismiss(){for(const listener of dismiss)listener();}};
+}
+test('the shared At home camera lets signed-in Free accounts reach the server-gated preview',()=>{
+ const h=entryFixture({signedIn:true});h.buttons[0].onclick();assert.equal(h.navigation.length,1);assert.match(h.navigation[0],/bbscan=pantry&location=fridge/);assert.equal(h.prepareCalls(),1);assert.deepEqual(h.auth,[]);
+});
+test('signed-out camera opens existing signup and resumes once only after a fresh session',()=>{
+ const h=entryFixture();h.buttons[1].onclick();assert.equal(h.accountOpens(),1);assert.deepEqual(h.auth,['sign-up']);assert.deepEqual(h.navigation,[]);assert.equal(h.prepareCalls(),0);
+ h.signIn();h.signIn();assert.equal(h.navigation.length,1);assert.match(h.navigation[0],/bbscan=pantry&location=cupboard/);assert.equal(h.prepareCalls(),1);
+});
+test('dismissing signup cancels a pending camera handoff before unrelated later sign-in',()=>{
+ const h=entryFixture();h.buttons[0].onclick();h.dismiss();h.signIn();assert.deepEqual(h.navigation,[]);assert.equal(h.prepareCalls(),0);
+});
+test('account deletion cancels pending and newly requested camera navigation',()=>{
+ const h=entryFixture();h.buttons[0].onclick();h.deleting();h.signIn();h.buttons[1].onclick();assert.deepEqual(h.navigation,[]);assert.equal(h.prepareCalls(),0);assert.match(h.status(),/account changes/);
+});
+test('failed fresh-plan preparation preserves At home and exposes a retryable error for Free and Premium',()=>{
+ for(const premium of [false,true]){const h=entryFixture({signedIn:true,premium,prepare:false});h.buttons[0].onclick();assert.deepEqual(h.navigation,[]);assert.equal(h.prepareCalls(),1);assert.match(h.status(),/Could not prepare your saved plan/);}
+});
+test('expired remembered sessions cannot navigate even when a Premium presentation remains',()=>{
+ const h=entryFixture({signedIn:true,premium:true,expired:true});h.buttons[0].onclick();assert.deepEqual(h.navigation,[]);assert.deepEqual(h.auth,['sign-up']);assert.equal(h.prepareCalls(),0);
+});

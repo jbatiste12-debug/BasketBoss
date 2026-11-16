@@ -1,4 +1,5 @@
-/* The camera reuses the existing consent, Premium and review scanner. Photo
+/* The camera reuses the existing consent and review scanner. Server checks
+ * enforce the Free food-photo allowance and Premium daily limits. Photo
  * estimates never become measured stock until a user enters an amount. */
 (function(root,factory){'use strict';const api=factory(typeof module==='object'&&module.exports?require('./bb-scan-food-identity.js'):root?.BBScanFoodIdentity,typeof module==='object'&&module.exports?require('./bb-pantry-policy.js'):root?.BBPantryPolicy);if(typeof module==='object'&&module.exports)module.exports=api;if(root){root.BBPantryCamera=api;api.install(root);}})(typeof window==='undefined'?null:window,function(identity,policy){
  'use strict';
@@ -75,10 +76,28 @@
   catch(error){for(const key of written.reverse())try{if(store.getItem(key)!==after[key])continue;if(expected[key]===null)store.removeItem(key);else store.setItem(key,expected[key]);}catch{}throw error;}return true;
  }
 
- function install(win){const doc=win.document;if(!doc)return;let queued=false;
+ function install(win){const doc=win.document;if(!doc)return;let queued=false,pendingLocation=null,pendingUntil=0,cameraBar=null;
+  function sessionReady(){try{const session=JSON.parse(win.localStorage.getItem('basketboss_cloud_session_v1')||'null');return !!(session?.user?.id&&typeof session.access_token==='string'&&session.access_token&&Number(session.expires_at)*1000>Date.now()+5000);}catch{return false;}}
+  function failure(message){let status=doc.querySelector('.bbpi-action-status')||doc.getElementById('bbPantryCameraStatus');if(!status&&cameraBar){status=doc.createElement('p');status.id='bbPantryCameraStatus';status.className='bb-pantry-camera-status';status.setAttribute('role','status');status.setAttribute('aria-live','polite');cameraBar.append(status);}if(status){status.hidden=false;status.textContent=message;}}
+  function deleting(){try{if(win.BBAccountDeletion?.isDeleting?.()===true)return true;const state=JSON.parse(win.localStorage.getItem('basketboss_account_deletion_v1')||'null');return ['pending','deleting','deleted'].includes(state?.phase);}catch{return true;}}
+  function navigate(loc){
+   if(deleting()||!sessionReady()){failure('Sign in to a confirmed account before scanning. You can still add food manually.');return false;}
+   try{if(win.BBPhotoOnboardingHost?.preparePlan?.()!==true){failure('Could not prepare your saved plan. Please retry; your food and shopping progress are unchanged.');return false;}}catch{failure('Could not prepare your saved plan. Please retry; your food and shopping progress are unchanged.');return false;}
+   const url=new URL('make-a-meal.html',win.location.href);url.searchParams.set('bbscan','pantry');url.searchParams.set('location',loc);url.hash='aiScanner';win.location.assign(url.href);return true;
+  }
+  function openScan(loc){
+   if(deleting()){failure('Finish account changes before scanning.');return;}
+   if(sessionReady()){pendingLocation=null;navigate(loc);return;}
+   pendingLocation=loc;pendingUntil=Date.now()+10*60*1000;
+   if(typeof win.BBAuthFlow?.open==='function'){doc.getElementById('cloud-open')?.click();win.BBAuthFlow.open('sign-up');}
+   else{pendingLocation=null;failure('Account sign-in is loading. Please retry, or add food manually.');}
+  }
+  win.addEventListener?.('basketboss:session-changed',()=>{if(pendingLocation&&Date.now()<pendingUntil&&sessionReady()){const loc=pendingLocation;pendingLocation=null;navigate(loc);}else if(Date.now()>=pendingUntil)pendingLocation=null;});
+  doc.getElementById('cloud-close')?.addEventListener?.('click',()=>{pendingLocation=null;});
+  for(const event of ['basketboss:account-deletion-started','basketboss:account-deletion-deleted'])win.addEventListener?.(event,()=>{pendingLocation=null;});
   function refresh(){queued=false;const app=doc.getElementById('app'),host=win.BBPantryCameraHost;const url=new URL(win.location.href);if(host&&url.searchParams.get('bbreturn')==='pantry'){url.searchParams.delete('bbreturn');win.history.replaceState(null,'',url);doc.querySelector('[data-tab="shop"]')?.click();}if(!app||!host||(host.getTab?.()||doc.body.dataset.bbnextView)!=='shop')return;const anchor=app.querySelector('#bb76StorageSections')||app.querySelector('#bb173ShopFridge');if(!anchor||app.querySelector('.bb-pantry-camera-bar'))return;
-   const bar=doc.createElement('div');bar.className='bb-pantry-camera-bar';bar.setAttribute('aria-label','Scan pantry ingredients');
-   for(const loc of ['fridge','cupboard']){const button=doc.createElement('button');button.type='button';button.className='bb-pantry-camera-button';button.setAttribute('aria-label','Scan '+loc+' ingredients with Premium AI');const icon=doc.createElement('span');icon.setAttribute('aria-hidden','true');icon.textContent='📷';const text=doc.createElement('span');text.textContent=loc==='fridge'?'Fridge':'Cupboard';const badge=doc.createElement('small');badge.textContent='Premium';button.append(icon,text,badge);button.onclick=()=>{const current=win.BBPantryCameraHost;if(current?.isPremium?.()!==true){current?.upgrade?.('AI pantry scanning');return;}const url=new URL('make-a-meal.html',win.location.href);url.searchParams.set('bbscan','pantry');url.searchParams.set('location',loc);url.hash='aiScanner';win.location.assign(url.href);};bar.append(button);}anchor.before(bar);
+   const bar=doc.createElement('div');cameraBar=bar;bar.className='bb-pantry-camera-bar';bar.setAttribute('aria-label','Scan pantry ingredients');
+   for(const loc of ['fridge','cupboard']){const button=doc.createElement('button');button.type='button';button.className='bb-pantry-camera-button';button.setAttribute('aria-label','Scan '+loc+' ingredients with Premium AI');const icon=doc.createElement('span');icon.setAttribute('aria-hidden','true');icon.textContent='📷';const text=doc.createElement('span');text.textContent=loc==='fridge'?'Fridge':'Cupboard';const badge=doc.createElement('small');badge.textContent=host.isPremium?.()===true?'Premium':'Free preview';button.append(icon,text,badge);button.onclick=()=>openScan(loc);bar.append(button);}anchor.before(bar);
   }
   function schedule(){if(queued)return;queued=true;queueMicrotask(refresh);}const start=()=>{refresh();new win.MutationObserver(schedule).observe(doc.body,{childList:true,subtree:true});};if(doc.readyState==='loading')doc.addEventListener('DOMContentLoaded',start,{once:true});else start();
  }
