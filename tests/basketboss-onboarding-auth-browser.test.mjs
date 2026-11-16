@@ -172,7 +172,7 @@ async function assertEventually(check, message) { const until = Date.now() + 100
 test('fresh guest explores, creates a real meal and shopping list, then sees contextual signup without automatic registration', options, async () => {
   const h = await fixture();
   try {
-    await h.page.getByRole('button', { name: 'Explore BasketBoss Free', exact: true }).click();
+    await h.page.getByRole('button', { name: 'Explore recipes', exact: true }).click();
     await h.page.locator('#bbNewOnboarding').waitFor({ state: 'detached' });
     await h.page.locator('.shell nav.tabs [data-tab="discover"]').click();
     await h.page.locator('[data-bb80-add-week="fajitas"]').click();

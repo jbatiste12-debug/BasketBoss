@@ -15,7 +15,7 @@
 <link rel="stylesheet" href="/bb-account-polish.css?v=81a9891e953f6261">
 <script defer src="/bb-account-polish.js?v=c16f04a7b8b852ec"></script>
 <script defer src="/bb-account-pantry-live.js?v=8df4603690c44f1a"></script>
-<link rel="stylesheet" href="/bb-onboarding-v2.css?v=e315f90d272ef653">
+<link rel="stylesheet" href="/bb-onboarding-v2.css?v=e34cb724838de3cc">
 <link rel="stylesheet" href="/bb-ux-cleanup.css?v=060e057bbc9586e1">
 <meta charset="utf-8"><meta http-equiv="Content-Type" content="text/html; charset=utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
 <meta name="apple-mobile-web-app-capable" content="yes"><meta name="apple-mobile-web-app-title" content="BasketBoss">
@@ -3830,6 +3830,8 @@ body[data-bbnext-view="discover"] #app .bb-featured-card #bbFeaturedBatch {
 <script src="/bb-shop-friendly-quantity-ui.js?v=2e4bccd216ff8b64"></script>
 <script src="/bb-weekly-spending-ui.js?v=663ed90e90c0e660"></script>
 <script src="/bb-shop-completion.js?v=e9ae792a713c9693"></script>
+<script src="/bb-shop-value.js?v=dfb454bd93966276"></script>
+<link rel="stylesheet" href="/bb-shop-value.css?v=9718d6346daf1cbf">
 <script src="/bb-recipe-purchase-basis.js?v=56122bf98efed0e3"></script>
 <script src="/bb-recipe-canonical.js?v=7859ebbf9ad539e0"></script>
 <script type="module" src="/bb-pantry-runtime.mjs?v=7c6a7711e53a3496"></script>
@@ -4536,6 +4538,31 @@ window.BasketBossSetOnboardingServings=function(size){
  render();
  return true;
 };
+/* BEGIN_BASKETBOSS_PHOTO_ONBOARDING_HOST_V1
+ * An explicit scanner handoff saves the real in-memory planner only when this
+ * device has no planner document yet. Startup itself remains read-only.
+ */
+window.BBPhotoOnboardingHost=Object.freeze({preparePlan(){
+ if(!bbStorageSafe||window.BBAccountDeletion?.isDeleting?.()===true)return false;
+ let sessionRaw,actor,before;
+ try{
+  sessionRaw=localStorage.getItem('basketboss_cloud_session_v1');
+  const session=JSON.parse(sessionRaw||'null');actor=session?.user?.id;
+  if(typeof actor!=='string'||!actor||typeof session?.access_token!=='string'||!session.access_token||!Number.isFinite(Number(session.expires_at))||Number(session.expires_at)*1000<=Date.now()+5000)return false;
+  const deletion=JSON.parse(localStorage.getItem('basketboss_account_deletion_v1')||'null');
+  if(deletion&&['pending','deleting','deleted'].includes(deletion.phase))return false;
+  if(window.BBHome?.actor?.()!==actor)return false;
+  before=localStorage.getItem(KEY);
+  if(before!==null){const saved=JSON.parse(before);return saved?.version===2&&Array.isArray(saved.planned)&&localStorage.getItem(KEY)===before&&localStorage.getItem('basketboss_cloud_session_v1')===sessionRaw&&window.BBHome?.actor?.()===actor;}
+  if(state?.version!==2||!Array.isArray(state.planned)||localStorage.getItem(KEY)!==null||localStorage.getItem('basketboss_cloud_session_v1')!==sessionRaw)return false;
+  if(persist()!==true)return false;
+  const attempted=JSON.stringify(state),saved=localStorage.getItem(KEY);
+  const current=localStorage.getItem('basketboss_cloud_session_v1')===sessionRaw&&window.BBHome?.actor?.()===actor&&window.BBAccountDeletion?.isDeleting?.()!==true;
+  if(!current){if(saved===attempted)localStorage.removeItem(KEY);return false;}
+  return saved===attempted;
+ }catch{return false;}
+}});
+/* END_BASKETBOSS_PHOTO_ONBOARDING_HOST_V1 */
 window.BasketBossMealPreferenceFeedback=function(error){if(error)notify(error);else{render();notify('Meal preferences saved.');}};
 window.BasketBossSetOnboardingMealPreferences=function(patch){
  if(typeof BBMealPreferences==='undefined')return false;
@@ -8289,6 +8316,7 @@ function bbShopOwnedSaved(){
 }
 function bb84SetPrimaryPurchase(id,checked,item,essential=false,additional={}){
  try{
+  if(checked&&typeof bbShopValueCapture==='function')bbShopValueCapture();
   const session=bbShopV7Session(),ownedExpected=additional.inventoryNow?bbShopOwnedExpected():{};
   const ticks=bb321ReadShopTicks(),purchases=bb84ReadPurchased();
   const partials=bbPartialAll(),choices=bbBetaPurchaseChoices(),undo={...session.checkboxUndo},reducedUndo={...session.reducedCheckboxUndo},key=bbPartialKey({id});
@@ -10557,6 +10585,47 @@ function bb172ShopSetActive(active){
  const app=document.getElementById('app');if(app)bb172ShopApplyView(app);
  bb172ShopRefreshStatus();
 }
+// This optional value note owns no stock or saved account data. Its baseline
+// lives only in this document and is captured before this trip's first purchase.
+var bbShopValueController;
+function bbShopValueContext(){
+ try{
+  if(!window.BBShopValue||!window.BBRecipeCanonical||typeof bbHomeCanonicalRecipeNeeds!=='function')return null;
+  const recipe=bbHomeCanonicalRecipeNeeds([]),lunch=bb321LunchboxRequirements();
+  const shape=rows=>rows.map(row=>[BB307Pantry.pantryId(row.key||row.name,row.unit),Number(row.required??row.qty),row.needsReview===true]).sort((a,b)=>JSON.stringify(a).localeCompare(JSON.stringify(b)));
+  return {actor:window.BBHome?.actor?.()||'guest',market:bb307Market,retailer:bb307ActiveRetailer()||null,sessionId:bbShopV7Session().id,planKey:JSON.stringify({recipe:shape(recipe),lunch:shape(lunch)})};
+ }catch{return null;}
+}
+function bbShopValueCapture(){
+ try{
+  if(!window.BBShopValue||bbReceiptPantryReviewRequired()||window.BBAccountDeletion?.isDeleting?.())return;
+  const context=bbShopValueContext();if(!context)return;
+  bbShopValueController??=window.BBShopValue.create();
+  if(bbShopValueController.preview(context))return;
+  const session=bbShopV7Snapshot(bbShopV7Session());if(window.BBShopValue.purchased(session))return;
+  const receipts=bb83ReadObject(BB_BETA_RECEIPT_KEY),hasPurchases=Object.entries(receipts).some(([id,row])=>id.startsWith(session.id+'|')||row?.week===session.id||row?.shopSessionId===session.id);
+  if(hasPurchases)return;
+  const items=bb321UnifiedShop(bb307Plan().items,true),stock=bbHomePhysicalStock();
+  const reconciliation=bbPantryReconcileStock(stock,items);
+  const rows=items.map(item=>{const id=BB307Pantry.pantryId(item.key||item.name,item.unit),estimate=reconciliation.estimates?.[id];return {...item,owned:Number(reconciliation.pantry[id]||0),measured:!estimate?.estimated&&!estimate?.assumptions?.length,pantryMismatch:reconciliation.mismatches?.[id]||[],assumed:item.bb172Assumed===true};});
+  bbShopValueController.capture({session,context,rows,hasPurchases,canonicalId:item=>BB307Pantry.pantryId(item.key||item.name,item.unit),quote:(item,quantity)=>bb15Quote({...item,toBuy:quantity})});
+ }catch{} // A missing value estimate can never block a real shopping action.
+}
+function bbShopValueFinishPin(){
+ try{bbShopValueCapture();const pin=bbShopValueContext();return pin&&bbShopValueController?.preview(pin)?pin:null;}catch{return null;}
+}
+function bbShopValueAfterFinish(pin){
+ try{
+  const current=bbShopValueContext();
+  if(!pin||!current||pin.actor!==current.actor||pin.market!==current.market||pin.retailer!==current.retailer||pin.planKey!==current.planKey)return;
+  const summary=bbShopValueController?.complete(pin),parent=document.getElementById('app');
+  if(summary&&parent){const card=window.BBShopValue.mount(summary,{document,parent});card?.scrollIntoView?.({block:'nearest',behavior:'auto'});}
+ }catch{}
+}
+(function bbShopValuePrivacy(){
+ const clear=()=>{bbShopValueController?.reset();document.getElementById('bbShopValueSummary')?.remove();};
+ for(const event of ['basketboss:session-changed','basketboss:market-changed','basketboss:account-deletion-started','basketboss:account-deletion-deleted','storage'])window.addEventListener(event,clear);
+})();
 function bb172ShopApplyView(app){
  document.body.classList.toggle('bb172-shop-mode-active',bb172ShopActive&&tab==='shop');
  const btn=app.querySelector('#bb172ShopModeButton');if(btn){btn.textContent='🛒 Open In-Store Experience  →';btn.setAttribute('aria-pressed',bb172ShopActive?'true':'false')}
@@ -10569,7 +10638,7 @@ function bb172ShopStart(){
 window.BBShoppingLaunch=Object.freeze({
  start:bb172ShopStart,
  sessionId:()=>bbShopV7Session().id,
- open:()=>{bb172ShopSetActive(true);bb172ShopLastReminder=0;bb172StorefrontOpen();},
+ open:()=>{if(typeof bbShopValueCapture==='function')bbShopValueCapture();bb172ShopSetActive(true);bb172ShopLastReminder=0;bb172StorefrontOpen();},
  close:()=>bb172ShopSetActive(false)
 });
 function bb172ShopRefreshStatus(){
@@ -11071,6 +11140,7 @@ function bbPartialSet(item,boughtTotal,reducedPrice,options={}){
  // decimals for kg/l. Never silently truncate an entered physical amount.
  const representable=bbPartialRound(total,unit);
  if(total>0&&(!(representable>0)||Math.abs(total-representable)>Number.EPSILON*Math.max(1,total)*8))return false;
+ if(total>0&&typeof bbShopValueCapture==='function')bbShopValueCapture();
  if(bbBetaReceiptRead()?.[bbBetaReceiptId(item.id)]&&!(options.inventoryNow&&bbShopV7Session().shelfEdits?.[item.id]?.kind==='shop-owned-v1'))return false;
  const session=bbShopV7Session(),ownedExpected=options.inventoryNow?bbShopOwnedExpected():{},partials=bbPartialAll(),key=bbPartialKey(item),prior=partials[key];
  if(prior?.bought>0&&prior.unit!==unit)return false;
@@ -11469,6 +11539,7 @@ function bb172ShopPrompt(kind,after){
  if(bb172ShopDialogOpen)return;
  const previous=document.activeElement;
  const rows=bb172ShopUncheckedRows(),n=rows.length;
+ const valuePin=kind==='finish'&&typeof bbShopValueFinishPin==='function'?bbShopValueFinishPin():null;
  const immediate=typeof window!=='undefined'&&window.BBShopOwnership?.enabled?.()===true;
  const pin=immediate?{actor:window.BBHome?.actor?.()||'guest',market:bb307Market,sessionId:bbBetaShopWeek(),token:localStorage.getItem('basketboss_cloud_session_v1')}:null;
  bb172ShopDialogOpen=true;
@@ -11518,7 +11589,7 @@ function bb172ShopPrompt(kind,after){
    if(pin&&(pin.actor!==(window.BBHome?.actor?.()||'guest')||pin.market!==bb307Market||pin.sessionId!==bbBetaShopWeek()||pin.token!==localStorage.getItem('basketboss_cloud_session_v1'))){close();notify('Your account or shop changed. Reopen Finish shop to save the current list.');return;}
    committing=true;
    for(const control of buttons.children){control.disabled=true;control.setAttribute('aria-busy','true');}
-   try{action();}catch{notify('Could not finish shopping. Your saved progress is safe; please try again.');}
+   try{action();if(closed&&kind==='finish'&&typeof bbShopValueAfterFinish==='function')bbShopValueAfterFinish(valuePin);}catch{notify('Could not finish shopping. Your saved progress is safe; please try again.');}
    finally{if(!closed){committing=false;for(const control of buttons.children){control.disabled=false;control.removeAttribute('aria-busy');}}}
   };
  }
@@ -13330,7 +13401,7 @@ if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',
   <button type="button" class="bbtrial-free" data-bbtrial-free>Continue with BasketBoss Free →</button>
   <p class="bbtrial-foot">200 starter recipes, manual ingredients and basic planning remain available without subscribing.</p>
  </div>
-</dialog><script src="/pwa700/bb-intro-trial.js?v=2a443fc0c0575862"></script><link rel="stylesheet" href="/bb-how-it-works.css?v=dbb7f80026cc2c2d"><script defer src="/bb-how-it-works.js?v=bdd83d8ee84dd641"></script><script defer src="/pwa700/bb-onboarding-v2.js?v=945763616f42b5de"></script><script defer src="/bb-cold-preview.js?v=46afe53cdbe6b6b6"></script><script defer src="/bb-funnel.js?v=e2b25c00c8ed3c5f"></script><script defer src="/bb-ux-cleanup.js?v=4ba6e15d362d6a86"></script><script src="/bb-us-market.js?v=a92fa7cfc1949b64"></script><script defer src="/bb-install.js?v=2014bf7430501c45"></script><script defer src="/pwa700/bb-welcome-splash.js?v=2c529c615a0409cb"></script><script defer src="/pwa700/bb-premium-features.js?v=4830cc7e770f8b03"></script>
+</dialog><script src="/pwa700/bb-intro-trial.js?v=2a443fc0c0575862"></script><link rel="stylesheet" href="/bb-how-it-works.css?v=dbb7f80026cc2c2d"><script defer src="/bb-how-it-works.js?v=bdd83d8ee84dd641"></script><script defer src="/pwa700/bb-onboarding-v2.js?v=daa8f469013b7a02"></script><script defer src="/bb-cold-preview.js?v=46afe53cdbe6b6b6"></script><script defer src="/bb-funnel.js?v=e2b25c00c8ed3c5f"></script><script defer src="/bb-ux-cleanup.js?v=4ba6e15d362d6a86"></script><script src="/bb-us-market.js?v=a92fa7cfc1949b64"></script><script defer src="/bb-install.js?v=2014bf7430501c45"></script><script defer src="/pwa700/bb-welcome-splash.js?v=2c529c615a0409cb"></script><script defer src="/pwa700/bb-premium-features.js?v=4830cc7e770f8b03"></script>
 <style id="bb175-ux-fix">
 /* BasketBoss v17.4.2 premium-preview usability improvements */
 #app .swipe-action.yes{color:#c91e43!important;background:#fff2f4!important;border:3px solid #d92c50!important;box-shadow:0 5px 18px rgba(192,22,60,.22)!important;font-size:37px!important;font-weight:900!important}
@@ -14184,7 +14255,7 @@ body[data-bbnext-view="discover"] #app .bb175-discover-heading{padding-top:calc(
 <script defer src="/bb-featured-framing.js?v=29afae1053f59379"></script>
 <script defer src="/bb-plan-drag.js?v=dfaeac46e04193ce"></script>
 <link rel="stylesheet" href="/bb-pantry-camera.css?v=887e5117a7076fe2">
-<script defer src="/bb-pantry-camera.js?v=01362f42eb2d96b5"></script>
+<script defer src="/bb-pantry-camera.js?v=e80e4241b0ed3d00"></script>
 <link rel="stylesheet" href="/bb-cook-experience.css?v=f39491cf4cc6e447">
 <link rel="stylesheet" href="/bb-tab-viewport.css?v=4cdf61c976b6f103">
 <script defer src="/bb-tab-viewport.js?v=953139a9877385f4"></script>
@@ -14206,8 +14277,8 @@ body[data-bbnext-view="discover"] #app .bb175-discover-heading{padding-top:calc(
 <link rel="stylesheet" href="/bb-premium-finish.css?v=53527c907ca0bb56">
 <link rel="stylesheet" href="/bb-premium-dialogs.css?v=e42b0968a6881d77">
 
-<link rel="stylesheet" href="/bb-plan-compact.css?v=747cad8a6d4d2917">
-<script defer src="/bb-plan-compact.js?v=88af339c621ad189"></script>
+<link rel="stylesheet" href="/bb-plan-compact.css?v=6f2f3f6a99ad7887">
+<script defer src="/bb-plan-compact.js?v=7dc471fb81599b87"></script>
 
 <link rel="stylesheet" href="/bb-day-plan-sheet.css?v=8a36e38906da4174">
 <script defer src="/bb-day-plan-sheet.js?v=24ac571e820dd23d"></script>

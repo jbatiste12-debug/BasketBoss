@@ -63,6 +63,15 @@ for(const viewport of [{width:390,height:844},{width:320,height:568}])test('plan
   await page.evaluate(()=>{window.__plannerOriginalNodes={lunch:document.getElementById('bb321SchoolLunchbox'),clear:document.getElementById('clearWeek'),days:[...document.querySelectorAll('#bbSimpleDinnersPane .bbnext-day')],review:document.getElementById('bb321LunchReview')};window.scrollTo({top:0,behavior:'instant'});});
   const before=await snapshot(page);
   if(output){await fs.mkdir(output,{recursive:true});await page.screenshot({path:path.join(output,viewport.width===390?'dinners.png':'dinners-small.png'),animations:'disabled'});}
+  const more=page.locator('#bbPlanMoreOptions');
+  assert.equal(await more.evaluate(node=>node.open),false);
+  assert.equal(await page.locator('.bbpc-filter-row').isVisible(),false,'secondary options start quietly collapsed');
+  await more.locator('summary').click();
+  for(const selector of ['#bbSimpleBudget>summary','#bbSimpleMealPreferences>summary','#bbAvoidIngredientTab','.bbnext-plan-actions>.bbnext-plan-secondary:not(#bbPantryPlannerButton)'])assert.equal(await page.locator(selector).isVisible(),true,'the existing control is reachable: '+selector);
+  await page.locator('#bbSimpleBudget>summary').click();await page.locator('#bbSimpleBudget>.bbs-budget-body').waitFor({state:'visible'});
+  const budgetBox=await page.locator('#bbSimpleBudget>.bbs-budget-body').boundingBox();assert.ok(budgetBox&&budgetBox.x>=0&&budgetBox.x+budgetBox.width<=viewport.width+1,'the original budget panel fits inside the phone');
+  await page.locator('#bbSimpleBudget>summary').click();await more.locator('summary').click();
+  assert.deepEqual(await snapshot(page),before,'opening visual options cannot change plans, stock, prices or budget');
   // Scroll just enough to keep the segmented bar visible on either phone.
   await page.locator('#bbSimplePlannerTabs').evaluate(node=>window.scrollTo({top:Math.max(0,node.getBoundingClientRect().top+window.scrollY-100),behavior:'instant'}));
   const scroll=await page.evaluate(()=>window.scrollY);

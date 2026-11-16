@@ -169,7 +169,7 @@ for(const viewport of [{width:320,height:700},{width:390,height:844},{width:844,
   assert.match(await host.innerText(),/Your weekly shop, sorted\. 👑/);
   assert.equal(await host.getByRole('button',{name:'Create free account',exact:true}).isVisible(),true);
   assert.equal(await host.getByRole('button',{name:'Sign in',exact:true}).isVisible(),true);
-  assert.match(await host.innerText(),/No subscription or account needed/);
+  assert.match(await host.innerText(),/Browse without an account/);
   assert.match(await host.innerText(),/200 free recipes/,'the current generated release advertises its actual Free catalogue');
   assert.doesNotMatch(await host.innerText(),/\b100\b/,'the current release never shows the legacy Free recipe count');
   assert.equal(await host.locator('#bbob-title').evaluate(node=>getComputedStyle(node).outlineStyle),'none','programmatic heading focus does not draw clipped outline rules');
@@ -220,7 +220,7 @@ test('generated 700 enters Free from one welcome and preserves the local plan wi
  const {page,context,errors,network}=await fixture();
  try{
   const original=await snapshot(page),host=await assertStep(page,1);
-  await host.getByRole('button',{name:'Explore BasketBoss Free',exact:true}).click();
+  await host.getByRole('button',{name:'Explore recipes',exact:true}).click();
   await host.waitFor({state:'detached'});
   assert.deepEqual(await snapshot(page),original,'guest exploration cannot replace the existing local draft');
   await assertNoCheckoutOrEntitlement(page,network);
@@ -338,7 +338,7 @@ for(const viewport of [{width:390,height:844},{width:402,height:874}])test(`nati
   const optionalSetup=host.getByRole('button',{name:'Set up my household · Optional',exact:true});
   assert.equal(await optionalSetup.getAttribute('data-bbob'),'next','the optional setup action keeps its existing handler');
   assert.equal(await optionalSetup.getAttribute('aria-label'),null,'the account identifier does not replace the optional setup label');
-  const exploreFree=host.getByRole('button',{name:'Explore BasketBoss Free',exact:true});
+  const exploreFree=host.getByRole('button',{name:'Explore recipes',exact:true});
   assert.equal(await exploreFree.getAttribute('data-bbob'),'free-complete','guest exploration finishes welcome without opening optional setup');
   assert.equal(await exploreFree.getAttribute('aria-label'),null,'the native account identifier does not replace the guest action label');
   await exploreFree.click();await host.waitFor({state:'detached'});
