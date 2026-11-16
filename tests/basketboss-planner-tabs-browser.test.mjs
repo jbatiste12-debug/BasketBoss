@@ -56,22 +56,49 @@ for(const viewport of [{width:390,height:844},{width:320,height:568}])test('plan
   assert.equal(await dinners.getAttribute('aria-selected'),'true');
   assert.equal(await page.locator('#bbSimpleDinnersPane .bbnext-day').count(),7);
   assert.equal(await page.locator('#bb321SchoolLunchbox').count(),1);
-  assert.ok(await page.locator('#clearWeek').isVisible());
+  assert.equal(await page.locator('#clearWeek').isVisible(),false,'Clear week is tucked into More options');
+  assert.equal(await page.locator('#bbPlanMoreOptions>#clearWeek').count(),1);
   assert.ok(await page.getByRole('button',{name:'Saved weeks',exact:true}).isVisible());
   assert.ok(await page.getByRole('button',{name:'Saved meals',exact:true}).isVisible());
   assert.match(await page.locator('.bbnext-plan-budget-text>p:not(.bb77-pantry-savings)').innerText(),/1\/7 dinners • 0\/5 school lunches/);
-  await page.evaluate(()=>{window.__plannerOriginalNodes={lunch:document.getElementById('bb321SchoolLunchbox'),clear:document.getElementById('clearWeek'),days:[...document.querySelectorAll('#bbSimpleDinnersPane .bbnext-day')],review:document.getElementById('bb321LunchReview')};window.scrollTo({top:0,behavior:'instant'});});
+  await page.evaluate(()=>{window.__plannerOriginalNodes={lunch:document.getElementById('bb321SchoolLunchbox'),clear:document.getElementById('clearWeek'),clearHandler:document.getElementById('clearWeek').onclick,remove:document.querySelector('[data-bb77-clear-day="Monday"]'),badge:document.querySelector('[data-bb-plan-handle="Monday"]'),days:[...document.querySelectorAll('#bbSimpleDinnersPane .bbnext-day')],review:document.getElementById('bb321LunchReview')};window.scrollTo({top:0,behavior:'instant'});});
   const before=await snapshot(page);
   if(output){await fs.mkdir(output,{recursive:true});await page.screenshot({path:path.join(output,viewport.width===390?'dinners.png':'dinners-small.png'),animations:'disabled'});}
   const more=page.locator('#bbPlanMoreOptions');
   assert.equal(await more.evaluate(node=>node.open),false);
   assert.equal(await page.locator('.bbpc-filter-row').isVisible(),false,'secondary options start quietly collapsed');
   await more.locator('summary').click();
+  assert.equal(await page.locator('#clearWeek').isVisible(),true);
+  assert.equal(await page.evaluate(()=>document.getElementById('clearWeek')===__plannerOriginalNodes.clear&&document.getElementById('clearWeek').onclick===__plannerOriginalNodes.clearHandler),true);
+  await page.locator('#clearWeek').click();await page.locator('#bbQaConfirmOverlay').waitFor();
+  assert.equal(await page.locator('#bbQaConfirmTitle').innerText(),'Clear this week?');
+  await page.locator('#bbQaConfirmOverlay').getByRole('button',{name:'Keep my week',exact:true}).click();
+  assert.deepEqual(await snapshot(page),before,'the unchanged Clear week confirmation still allows cancellation');
   for(const selector of ['#bbSimpleBudget>summary','#bbSimpleMealPreferences>summary','#bbAvoidIngredientTab','.bbnext-plan-actions>.bbnext-plan-secondary:not(#bbPantryPlannerButton)'])assert.equal(await page.locator(selector).isVisible(),true,'the existing control is reachable: '+selector);
   await page.locator('#bbSimpleBudget>summary').click();await page.locator('#bbSimpleBudget>.bbs-budget-body').waitFor({state:'visible'});
   const budgetBox=await page.locator('#bbSimpleBudget>.bbs-budget-body').boundingBox();assert.ok(budgetBox&&budgetBox.x>=0&&budgetBox.x+budgetBox.width<=viewport.width+1,'the original budget panel fits inside the phone');
   await page.locator('#bbSimpleBudget>summary').click();await more.locator('summary').click();
   assert.deepEqual(await snapshot(page),before,'opening visual options cannot change plans, stock, prices or budget');
+  const mondayCard=page.locator('.bbnext-day[data-bbnext-day="Monday"]'),overflow=mondayCard.getByRole('button',{name:'More options for Monday dinner',exact:true});
+  const shape=await mondayCard.evaluate(row=>{
+   const rect=selector=>{const r=row.querySelector(selector).getBoundingClientRect();return {x:r.x,y:r.y,right:r.right,bottom:r.bottom,width:r.width,height:r.height};};
+   return {photo:rect('.bb-beta-day-thumb'),badge:rect('.bbnext-day-label'),title:rect('.bbnext-day-description>strong'),time:rect('.bbpol-time'),swap:rect('[data-bb-plan-swap]'),labelKept:row.querySelector('[data-bb-plan-handle="Monday"]')===__plannerOriginalNodes.badge};
+  });
+  assert.ok(shape.badge.right<=shape.photo.x||shape.badge.x>=shape.photo.right||shape.badge.bottom<=shape.photo.y||shape.badge.y>=shape.photo.bottom,'day label never overlaps the meal image');
+  assert.equal(shape.labelKept,true);assert.ok(shape.badge.height>=44&&shape.swap.height>=44&&shape.swap.width>=44);
+  assert.ok(shape.time.y>=shape.title.bottom-1,'cooking time sits below the title');
+  if(viewport.width>350){for(const button of await mondayCard.locator('[data-bbfeed-pos="summary"] button').all()){const box=await button.boundingBox();assert.ok(box&&box.width>=44&&box.height>=44,'summary servings controls keep 44px tap targets');}}
+  assert.match(await page.locator('[data-bb-pantry-first-mode="pantry-first"]').innerText(),/^Prioritise/);
+  await overflow.click();const remove=mondayCard.getByRole('button',{name:'Remove Monday dinner',exact:true});await remove.waitFor({state:'visible'});
+  await mondayCard.locator('.bbpc-meal-menu').click({position:{x:2,y:2}});
+  assert.equal(await mondayCard.evaluate(node=>node.open),false,'opening overflow does not open Edit day');
+  assert.equal(await remove.evaluate(node=>node===__plannerOriginalNodes.remove),true,'Remove reuses the original button');
+  await remove.click();await page.locator('#bbQaConfirmOverlay').waitFor();assert.equal(await page.locator('#bbQaConfirmTitle').innerText(),'Clear Monday dinner?');
+  await page.locator('#bbQaConfirmOverlay').getByRole('button',{name:'Keep my week',exact:true}).click();
+  assert.deepEqual(await snapshot(page),before,'the original Remove confirmation cancels without any changes');
+  assert.equal(await remove.evaluate(node=>node===document.activeElement),true,'the existing confirmation restores focus to its original control');
+  await remove.press('Escape');assert.equal(await overflow.getAttribute('aria-expanded'),'false');
+  assert.equal(await overflow.evaluate(node=>node===document.activeElement),true);
   // Scroll just enough to keep the segmented bar visible on either phone.
   await page.locator('#bbSimplePlannerTabs').evaluate(node=>window.scrollTo({top:Math.max(0,node.getBoundingClientRect().top+window.scrollY-100),behavior:'instant'}));
   const scroll=await page.evaluate(()=>window.scrollY);
@@ -89,10 +116,11 @@ for(const viewport of [{width:390,height:844},{width:320,height:568}])test('plan
   if(output){await page.evaluate(()=>window.scrollTo({top:0,behavior:'instant'}));await page.screenshot({path:path.join(output,viewport.width===390?'lunches.png':'lunches-small.png'),animations:'disabled'});await page.locator('#bbSimplePlannerTabs').evaluate(node=>window.scrollTo({top:Math.max(0,node.getBoundingClientRect().top+window.scrollY-100),behavior:'instant'}));}
   await dinners.click();
   assert.equal(await page.evaluate(()=>document.getElementById('clearWeek')===__plannerOriginalNodes.clear&&[...document.querySelectorAll('#bbSimpleDinnersPane .bbnext-day')].every((node,index)=>node===__plannerOriginalNodes.days[index])),true);
-  assert.ok(await page.locator('#clearWeek').isVisible());assert.deepEqual(await snapshot(page),before);
+  assert.equal(await page.locator('#clearWeek').isVisible(),false);assert.deepEqual(await snapshot(page),before);
   // Existing native dinner disclosure still opens its original action controls.
   const monday=page.locator('.bbnext-day[data-bbnext-day="Monday"]');await monday.locator('.bbnext-day-description>strong').click();await page.waitForFunction(()=>document.querySelector('.bbnext-day[data-bbnext-day="Monday"]').open);assert.equal(await monday.evaluate(node=>node.open),true);
   assert.ok(await monday.locator('[data-move]').isVisible());
+  if(viewport.width<=350){const servingButtons=monday.locator('[data-bbfeed-pos="expanded"] button');assert.equal(await servingButtons.count(),2);for(const button of await servingButtons.all()){const box=await button.boundingBox();assert.ok(box&&box.width>=44&&box.height>=44,'expanded servings controls keep 44px tap targets');}}
   // Close the real day editor before exercising background planner tabs.
   const closeDay=monday.locator('.bbdps-close');if(await closeDay.count())await closeDay.click();
   // Keyboard tabs remain usable without a pointer or navigation event.
