@@ -423,8 +423,15 @@ function confirmMeal(){
 function copyMissing(i){const x=results[i];if(!x)return;const text=x.missing.map(z=>z.name+' — '+z.amount).join('\n');if(navigator.clipboard?.writeText)navigator.clipboard.writeText(text).then(()=>message('Missing-item checklist copied. Paste it into your shopping list.')).catch(()=>message(text,'warning'));else message(text,'warning')}
 
 // Public beta: the API is a same-origin Cloudflare Pages Function. No API or testing tokens in browser.
+let nativeHumanCheck=null,nativeHumanAccount=null;
+function clearNativeHumanCheck(){
+ nativeHumanCheck?.remove();nativeHumanCheck=null;nativeHumanAccount=null;turnstileToken='';
+}
+window.addEventListener('pagehide',clearNativeHumanCheck);
+window.addEventListener('basketboss:account-deletion-started',clearNativeHumanCheck);
 function resetHumanCheck(){
  turnstileToken='';
+ if(nativeHumanCheck){nativeHumanCheck.reset();return;}
  if(turnstileWidgetId!==null&&window.turnstile?.reset)window.turnstile.reset(turnstileWidgetId);
 }
 // The native iOS <label for=ai-photo-input> opens the panel via an inline
@@ -432,7 +439,7 @@ function resetHumanCheck(){
 function setupHumanCheck(siteKey){
  // Live subscribers have already been checked by the backend. Do not
  // load the broken Turnstile iframe in their scanner/meal modal.
- if(!bbTurnstileRequired)return;
+ if(!bbTurnstileRequired){clearNativeHumanCheck();return;}
  const stage=$('#bbToolStage'),host=$('#aiHumanCheck'),status=$('#aiHumanStatus');
  if(!stage||stage.hidden||!host?.isConnected||!status||
     !siteKey||!/^[-_a-zA-Z0-9]+$/.test(siteKey)||
@@ -445,6 +452,21 @@ function setupHumanCheck(siteKey){
    bbTurnstileLoading=false;turnstileWidgetId=null;
    status.textContent='Human check unavailable. Verified Live Premium members can continue securely.';
  };
+ if(location.protocol==='capacitor:'){
+   const account=bbPaidToken();
+   if(nativeHumanCheck&&nativeHumanAccount===account){bbTurnstileLoading=false;return;}
+   clearNativeHumanCheck();nativeHumanAccount=account;
+   const current=()=>account&&bbPaidToken()===account&&nativeHumanAccount===account&&window.BBAccountDeletion?.isDeleting?.()!==true;
+   if(!window.BBNativeHumanCheck?.isNative?.()){failed();return;}
+   nativeHumanCheck=window.BBNativeHumanCheck.mount(host,{
+     onToken:token=>{if(!current())return;turnstileToken=token;status.textContent='Verified. You can now scan your food.';},
+     onExpire:()=>{if(!current())return;turnstileToken='';status.textContent='Verification expired. Use Retry check.';},
+     onError:()=>{if(!current())return;turnstileToken='';status.textContent='Human check unavailable. Use Retry check, or add ingredients manually.';}
+   });
+   bbTurnstileLoading=false;
+   if(!nativeHumanCheck)failed();
+   return;
+ }
  const render=()=>requestAnimationFrame(()=>{
    if(!bbTurnstileRequired||stage.hidden||!host.isConnected){bbTurnstileLoading=false;return;}
    try{
@@ -486,7 +508,7 @@ function bbObserveAIHumanPanel(){
  let wasOpen=false;
  const check=()=>{
    const open=!stage.hidden;
-   if(!open){wasOpen=false;return;}
+   if(!open){wasOpen=false;clearNativeHumanCheck();return;}
    if(wasOpen)return;
    wasOpen=true;
    const panel=$('#aiSecurityBox');
@@ -726,6 +748,7 @@ function bbOpenTool(tool){
  stage.scrollIntoView({behavior:window.matchMedia?.('(prefers-reduced-motion: reduce)')?.matches?'auto':'smooth',block:'start'});
 }
 function bbCloseTool(){
+ clearNativeHumanCheck();
  const stage=$('#bbToolStage');stage.hidden=true;bbActiveTool=null;
  document.querySelectorAll('[data-open-tool]').forEach(btn=>btn.setAttribute('aria-expanded','false'));
  document.querySelector('[data-open-tool]')?.focus({preventScroll:true});
@@ -851,6 +874,7 @@ function bb15RestorePremiumEntry(){
 let bbAIStatusRequest=0,bbAIStatusFailure=null;
 async function bbRefreshAIStatus(){
   const token=bbPaidToken(),actor=bbScanActor(),requestId=++bbAIStatusRequest;
+  if(nativeHumanCheck&&nativeHumanAccount!==token)clearNativeHumanCheck();
   aiEnabled=false;foodScanEnabled=false;foodScanPreview=false;foodScanRemaining=null;foodScanStatusReady=false;foodScanStatusToken=null;foodScanStatusActor=null;bbSiteKey=null;bbAIStatusFailure=null;
   const initialSecurity=$('#aiSecurityBox');if(initialSecurity)initialSecurity.hidden=true;
   $('#aiStatus').textContent=token?'Checking Premium AI availability…':'Sign in to your Premium account to use AI.';
