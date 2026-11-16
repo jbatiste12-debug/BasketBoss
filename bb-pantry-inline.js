@@ -255,8 +255,8 @@
    const panel=current.card.querySelector('#bbKitchenFoodPanel');if(!panel)return;
    if(!emptyState?.isConnected){
     emptyState=el('section','bbpi-empty-start bbpi-ui');emptyState.id='bbpiEmptyStart';emptyState.setAttribute('aria-labelledby','bbpiEmptyTitle');
-    const title=el('h3','','Start with what’s at home');title.id='bbpiEmptyTitle';
-    const copy=el('p','','Add a few ingredients to make your next shop smarter.'),chips=el('div','bbpi-quick-adds');chips.setAttribute('role','group');chips.setAttribute('aria-label','Add a familiar food');
+    const title=el('h3','','Or start with a few basics');title.id='bbpiEmptyTitle';
+    const copy=el('p','','Choose a food, then confirm its amount.'),chips=el('div','bbpi-quick-adds');chips.setAttribute('role','group');chips.setAttribute('aria-label','Add a familiar food');
     for(const [name,loc]of[['Milk','fridge'],['Eggs','fridge'],['Bread','cupboard'],['Chicken','fridge'],['Pasta','cupboard'],['Butter','fridge']]){
      const chip=btn('+ '+name,()=>{
       addFood(loc,name);
@@ -265,26 +265,33 @@
       if(editor?.anchor==='manual'&&editor.loc===loc){setAmount(editor.quantity,null);refreshPreview(editor);}
      },'bbpi-quick-add');chip.dataset.bbpiQuickAdd=name;chips.append(chip);
     }
-    emptyState.append(title,copy,chips);panel.append(emptyState);
+    const note=el('p','bbpi-empty-note','Check AI results and amounts before saving. Prices are estimates.');
+    emptyState.append(title,copy,chips,note);panel.append(emptyState);
    }
    const empty=openedLocation==='all'&&!query.trim()&&stockFilter==='all'&&!current.list().some(visibleFood);
+   // Move the same controls, with their original handlers, so keyboard and
+   // screen-reader order follows the empty-state visual hierarchy as well.
+   const scan=globalActions?.querySelector('.bbpi-ai-scan'),add=globalActions?.querySelector('.bbpi-add-food'),receipt=globalActions?.querySelector('.bbpi-scan-receipt');
+   if(scan&&add&&receipt){if(empty&&scan.nextElementSibling!==add)add.before(scan);else if(!empty&&receipt.nextElementSibling!==scan)receipt.after(scan);}
    emptyState.hidden=!empty;current.card.dataset.bbpiEmpty=String(empty);
   }
   function mountGlobalActions(){
    const panel=current.card.querySelector('#bbKitchenFoodPanel'),storage=panel?.querySelector('#bb76StorageSections');if(!storage)return;
    if(globalActions?.parentNode===panel){syncReceiptOffer();return;}
    globalActions?.remove();globalActions=el('div','bbpi-global-actions bbpi-ui');
+   const photoTitle=el('h3','bbpi-photo-title','Start with a photo'),photoCopy=el('p','bbpi-photo-copy','Snap your fridge or cupboard, then review what we find.');
    const choices=el('div','bbpi-location-choices');choices.hidden=true;choices.id='bbpiScanLocationChoices';choices.setAttribute('role','group');choices.setAttribute('aria-label','Choose where to scan');
    choices.append(el('span','bbpi-location-prompt','Where are you scanning?'));
    for(const loc of ['fridge','cupboard'])choices.append(btn(locationName(loc),()=>{choices.hidden=true;scanFood(loc);},'bbpi-location-choice'));
    const add=btn('+ Add food',event=>{event.stopPropagation();addFood(openedLocation==='all'?'cupboard':openedLocation||location);},'bbpi-add-food');
-   const receipt=btn('',event=>{event.stopPropagation();void scanReceipt(receipt);},'bbpi-scan-receipt');receipt.setAttribute('aria-label','Scan receipt');receipt.append(el('span','bbpi-receipt-label','📷 Scan receipt'),el('small','bbpi-receipt-badge','Premium'));
+   const receipt=btn('',event=>{event.stopPropagation();void scanReceipt(receipt);},'bbpi-scan-receipt');receipt.setAttribute('aria-label','Scan receipt');
+   const receiptLabel=el('span','bbpi-receipt-label');receiptLabel.innerHTML='<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" aria-hidden="true"><path d="M4 6.5h4l1.5-2h5l1.5 2h4a1 1 0 0 1 1 1v12a1 1 0 0 1-1 1H4a1 1 0 0 1-1-1v-12a1 1 0 0 1 1-1Z"/><circle cx="12" cy="13" r="4"/></svg>';receiptLabel.append(el('span','','Scan receipt'));receipt.append(receiptLabel,el('small','bbpi-receipt-badge','Premium'));
    const scan=btn('',event=>{event.stopPropagation();if(openedLocation==='all')choices.hidden=!choices.hidden;else scanFood(openedLocation||location);},'bbpi-ai-scan');
    scan.innerHTML='<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" aria-hidden="true"><path d="M4 6.5h4l1.5-2h5l1.5 2h4a1 1 0 0 1 1 1v12a1 1 0 0 1-1 1H4a1 1 0 0 1-1-1v-12a1 1 0 0 1 1-1Z"/><circle cx="12" cy="13" r="4"/></svg>';
    scan.append(el('span','bbpi-food-scan-label','Scan food'),el('small','bbpi-scan-premium','Premium'));
    const help=el('p','bbpi-scan-help','AI photo scanning supports Fridge and Cupboard only. Add Freezer food manually.');help.id='bbpiScanHelp';help.hidden=true;scan.setAttribute('aria-describedby',help.id);scan.setAttribute('aria-controls',choices.id);
    const status=el('p','bbpi-action-status');status.setAttribute('role','status');status.setAttribute('aria-live','polite');
-   globalActions.append(add,receipt,scan,help,choices,status);storage.before(globalActions);syncScans();syncReceiptOffer();syncEmptyState();
+   globalActions.append(photoTitle,photoCopy,add,receipt,scan,help,choices,status);storage.before(globalActions);syncScans();syncReceiptOffer();syncEmptyState();
   }
   function knownFoods(){
    const foods=[],byId=new Map(),catalogue=Object.values(win.BBPriceV19?.catalog||{}),canonical=value=>win.BBPantryPolicy?.canonicalName(value,win.BBPantryAliasCanonical||win.BBPriceV19?.canonical)||foodFold(value);

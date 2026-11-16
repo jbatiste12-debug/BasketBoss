@@ -45,12 +45,12 @@ async function fixture(viewport,run,{seed=true}={}){
   });
   await page.goto('https://basketboss.co.uk/app',{waitUntil:'domcontentloaded'});
   await page.evaluate(()=>window.bb307SwitchIsland('Guernsey'));
-  await page.locator('#bbPrimaryNavigation [data-bb-nav-item="kitchen"]').click();await page.locator('#bbpiSearch').waitFor();
+  await page.locator('#bbPrimaryNavigation [data-bb-nav-item="kitchen"]').click();await page.locator('#bbpiSearch').waitFor({state:'attached'});
   if(seed)await page.evaluate(async()=>{
    for(const item of [{name:'Milk',loc:'fridge',qty:500,unit:'ml'},{name:'Rice',loc:'cupboard',qty:500,unit:'g'},{name:'Peas',loc:'freezer',qty:350,unit:'g'}]){const added=BBPantryEditor.add(item);if(!added?.ok)throw Error(added?.message||'seed');}
    await BBPantryEditor.flush();
   });
-  await tab(page,'all').waitFor();
+  await tab(page,'all').waitFor({state:'attached'});
   await run(page);
   assert.deepEqual(errors,[]);
  }finally{await context.close();}
@@ -189,6 +189,12 @@ for(const viewport of [{width:390,height:844},{width:320,height:568}])check('wee
 
 check('empty At home quick-adds reuse the quantity editor and receipt entry keeps the Premium gate',()=>fixture({width:390,height:844},async page=>{
  await page.locator('#bbpiEmptyStart:not([hidden])').waitFor();
+ assert.equal(await page.locator('#bbpiToolbar').isVisible(),false,'empty search, filters, selection and storage remain mounted but hidden');
+ assert.equal(await page.locator('.bbpi-photo-title').innerText(),'Start with a photo');
+ assert.deepEqual(await page.locator('.bbpi-global-actions>button').evaluateAll(nodes=>nodes.map(node=>node.className)),['bbpi-ai-scan','bbpi-add-food','bbpi-scan-receipt'],'keyboard order follows the photo-first layout');
+ for(const chip of await page.locator('.bbpi-quick-add').all()){const box=await chip.boundingBox();assert.ok(box&&box.height>=44&&box.width>=44,'staples keep44px tap targets');}
+ assert.equal(await page.locator('.bbpi-scan-receipt svg[aria-hidden="true"]').count(),1);
+ assert.match(await page.locator('.bbpi-empty-note').innerText(),/Check AI results.*Prices are estimates/);
  const balances=()=>page.evaluate(()=>{const keys=BBHomeHost.keys();return [localStorage.getItem(keys.stock),localStorage.getItem(keys.inventory)];});
  const before=await balances();
  for(const name of ['Milk','Eggs','Bread','Chicken','Pasta','Butter']){
@@ -204,6 +210,8 @@ check('empty At home quick-adds reuse the quantity editor and receipt entry keep
  await page.locator('[data-bbpi-quick-add="Pasta"]').click();const editor=page.locator('#bbpi-current-editor');
  await editor.locator('[data-bbpi-quantity]').fill('250');await editor.locator('.bbpi-done').click();await editor.waitFor({state:'detached'});
  await page.waitForFunction(()=>document.querySelector('.bbpi-hero-count')?.textContent==='1');
+ assert.equal(await page.locator('#bbpiToolbar').isVisible(),true,'the original controls return as soon as stock exists');
+ assert.equal(await page.locator('.bbpi-photo-title').isVisible(),false,'the empty photo introduction is hidden for stocked kitchens');
  assert.equal(await tab(page,'all').getAttribute('aria-selected'),'true');assert.equal(await page.locator('#bbpiEmptyStart').isVisible(),false);
  assert.match(await visibleRows(page).innerText(),/Pasta[\s\S]*250 g/);
 },{seed:false}));
