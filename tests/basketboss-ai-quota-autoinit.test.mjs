@@ -119,7 +119,7 @@ test('Safari inline scanner hides Turnstile for verified Live accounts and prese
   const html=await fs.readFile(new URL('../make-a-meal.html',import.meta.url),'utf8');
   assert.match(script,/bbTurnstileRequired=\!\(aiEnabled&&data.turnstileRequired===false\)/);
   assert.match(script,/verifyPanel.hidden=!bbTurnstileRequired/);
-  assert.match(script,/if\(!bbTurnstileRequired\)return;/);
+  assert.match(script,/if\(!bbTurnstileRequired\)\{clearNativeHumanCheck\(\);return;\}/);
   assert.match(html,/#aiSecurityBox:not\(\[hidden\]\)/);
   assert.match(html,/<label class="scan-upload-label" for="ai-photo-input">/);
   assert.match(html,/<input accept="image\/\*"[^>]+id="ai-photo-input" type="file"/);
