@@ -1,0 +1,8 @@
+A simpler Add food screen, with amount details close to hand.
+
+• Keep the main stock choices in view and open Add amount for more detail.
+• Extra unopened packs makes spare stock easier to understand.
+• None at home appears when Out leaves no stock, while spare packs stay counted.
+• Estimated amounts keep their explanatory notes, and fields that need confirmation open for review.
+
+Your existing amount calculations, shopping quantities and cooking stock deductions work as before.

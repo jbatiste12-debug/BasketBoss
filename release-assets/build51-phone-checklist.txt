@@ -1,0 +1,24 @@
+BasketBoss 1.0.4 (51) — release checks
+
+1. Confirm Xcode App target General shows Version 1.0.4 and Build 51.
+   Use the fresh Build 51 project so the Add food presentation is included.
+2. Open Add food. Check the name, Got it / Running low / Out choices and Done.
+   Open and close Add amount; confirm the existing amount, unit, pack size,
+   Extra unopened packs and additional options remain usable at narrow widths.
+3. With a confirmed 1kg pack, Running low remains 250g estimated. Add one extra
+   unopened pack: total 1,250g. Out keeps the 1,000g spare visible; with no spare
+   and zero total, Out shows None at home. Check the existing Estimated notes.
+4. Try a food with an unknown pack size and an invalid/incomplete amount.
+   Done must retain the existing confirmation requirements; Add amount must
+   reveal the relevant fields and validation message. Confirm a valid amount
+   can still be saved. Reopen the food and check the stored value.
+5. Confirm a 500g requirement with 250g stocked still buys 250g. Check cooking
+   remainder, Shopping stock checks, scan/edit flows, sign-in and existing
+   household/purchase/restore flows before release.
+6. Create a NEW archive. Organizer must show 1.0.4 (51), uk.co.basketboss.app.
+7. Upload the new archive and select the processed Build 51 for version 1.0.4
+   in App Store Connect. The approved 1.0.3 release train is closed.
+
+The internal catalogue client version remains 1.0.2 with catalogue 700.
+Physical-device testing, code signing and upload require your Mac.
+No upload runs automatically.
