@@ -207,3 +207,74 @@ check('empty At home quick-adds reuse the quantity editor and receipt entry keep
  assert.equal(await tab(page,'all').getAttribute('aria-selected'),'true');assert.equal(await page.locator('#bbpiEmptyStart').isVisible(),false);
  assert.match(await visibleRows(page).innerText(),/Pasta[\s\S]*250 g/);
 },{seed:false}));
+
+for(const viewport of [{width:390,height:844},{width:320,height:568}])check('compact pantry editor preserves exact amounts and original controls at '+viewport.width+'px',()=>fixture(viewport,async page=>{
+ const pantryBytes=()=>page.evaluate(()=>{const keys=BBHomeHost.keys();return [localStorage.getItem(keys.stock),localStorage.getItem(keys.inventory),localStorage.getItem('basketboss_at_home_requirements_v1')];});
+ await tab(page,'cupboard').click();
+ const rice=await page.evaluate(()=>{const id=BBHomeHost.id('Rice','g'),row=BBPantryEditor.list().find(item=>BBHomeHost.id(item.name,item.unit)===id);return {id,key:row.key,name:row.name};});
+ await visibleRows(page).filter({hasText:rice.name}).getByRole('button',{name:'Edit '+rice.name+' in cupboard',exact:true}).click();
+ const editor=page.locator('#bbpi-current-editor'),amount=editor.locator('.bbpi-amount-details'),more=editor.locator('.bbpi-more-options'),quantity=editor.locator('[data-bbpi-quantity]'),buffer=editor.locator('[data-bbpi-buffer]');
+ await editor.waitFor();
+ assert.equal(await amount.evaluate(node=>node.open),true,'exact entry remains immediately available until alternative inputs are implemented');
+ assert.equal(await more.evaluate(node=>node.open),false,'optional purchasing settings start collapsed');
+ assert.equal(await quantity.inputValue(),'500');
+ assert.equal(await quantity.evaluate(node=>document.activeElement===node),true,'a known food focuses its real amount input');
+ assert.equal(await editor.locator('.bbpi-needed-label').isVisible(),false);
+ assert.equal(await editor.locator('.bbpi-buy-label').isVisible(),false);
+ const before=await pantryBytes();
+ await editor.evaluate(node=>window.__pantryEditorControls=[...node.querySelectorAll('input,select,button')]);
+ for(const summary of [amount.locator(':scope>summary'),more.locator(':scope>summary')]){
+  const box=await summary.boundingBox();assert.ok(box&&box.height>=44&&box.width>=44,'disclosures retain44px targets');
+  await summary.focus();await summary.press('Enter');await summary.press('Enter');
+ }
+ assert.equal(await more.evaluate(node=>node.open),false);
+ assert.deepEqual(await pantryBytes(),before,'opening and closing disclosures never saves stock or shopping targets');
+ assert.equal(await editor.evaluate(node=>__pantryEditorControls.every(control=>control.isConnected&&node.contains(control))),true,'disclosure changes retain the original controls');
+ assert.equal(await editor.evaluate(node=>node.scrollWidth<=node.clientWidth),true,'the editor has no horizontal overflow');
+ assert.equal(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth),true);
+ for(const control of await editor.locator('.bbpi-done,.bbpi-remove,.bbpi-close').all()){
+  const box=await control.boundingBox();assert.ok(box&&box.height>=44&&box.width>=44,'editor actions retain44px targets');
+ }
+ const screenshots=process.env.BB_UI_SCREENSHOT_DIR||path.join(os.tmpdir(),'basketboss-ui-previews');await fs.mkdir(screenshots,{recursive:true});
+ await quantity.focus();await page.screenshot({path:path.join(screenshots,'basketboss-pantry-editor-after-'+viewport.width+'.png'),animations:'disabled'});
+
+ await more.locator(':scope>summary').click();
+ assert.equal(await editor.locator('.bbpi-needed-label input').getAttribute('readonly'),'');
+ const units=editor.getByRole('combobox',{name:'Unit for '+rice.name,exact:true});
+ await units.selectOption('kg');assert.equal(await quantity.inputValue(),'0.5');
+ await units.selectOption('g');assert.equal(await quantity.inputValue(),'500');
+ assert.deepEqual(await pantryBytes(),before,'unit changes remain an unsaved draft');
+ await buffer.fill('-1');await more.locator(':scope>summary').click();await editor.locator('.bbpi-done').click();
+ assert.equal(await more.evaluate(node=>node.open),true,'an invalid optional value reveals the existing validation field');
+ assert.equal(await buffer.evaluate(node=>document.activeElement===node),true);
+ assert.match(await editor.locator('.bbpi-notice.is-error').innerText(),/valid extra stock buffer/i);
+ assert.deepEqual(await pantryBytes(),before,'validation failure preserves saved bytes');
+ await buffer.fill('0');
+ const pack=editor.locator('.bbpi-pack'),capacity=editor.getByLabel('Container size for '+rice.name,{exact:true}),capacityUnit=editor.getByRole('combobox',{name:'Container contents unit',exact:true});
+ if(!await pack.evaluate(node=>node.open))await pack.locator(':scope>summary').click();await capacity.fill('500');
+ await pack.locator(':scope>summary').click();await more.locator(':scope>summary').click();await editor.locator('.bbpi-done').click();
+ assert.equal(await more.evaluate(node=>node.open),true);assert.equal(await pack.evaluate(node=>node.open),true,'validation opens both nested disclosures');
+ assert.equal(await capacity.evaluate(node=>document.activeElement===node),true);
+ assert.deepEqual(await pantryBytes(),before,'an incomplete container size cannot alter stock');
+ await capacity.fill('');await capacityUnit.selectOption('');
+ await quantity.fill('250');await editor.locator('.bbpi-done').click();await editor.waitFor({state:'detached'});
+ assert.equal(await page.evaluate(id=>BBPantryEditor.list().find(row=>row.key===id)?.qty,rice.key),250);
+ assert.equal(await page.evaluate(id=>JSON.parse(localStorage.getItem(BBHomeHost.keys().stock))[id],rice.id),250,'the existing save writes the precise physical amount');
+ assert.equal(await page.evaluate(()=>Object.keys(JSON.parse(localStorage.getItem(BBHomeHost.keys().inventory))).filter(key=>key.includes('rice')).length),1,'editing never creates a duplicate food');
+}));
+
+check('compact pantry editor keeps blank-food focus and qualitative oil tracking',()=>fixture({width:390,height:844},async page=>{
+ await tab(page,'cupboard').click();await page.locator('.bbpi-add-food:visible').click();
+ const editor=page.locator('#bbpi-current-editor');await editor.waitFor();
+ assert.equal(await editor.getByLabel('Food name',{exact:true}).evaluate(node=>document.activeElement===node),true,'a blank manual draft starts with its name');
+ await editor.getByRole('button',{name:'Close pantry item',exact:true}).click();
+ const key=await page.evaluate(async()=>{const result=BBPantryEditor.add({name:'Olive oil',loc:'cupboard',qty:1,unit:'each'});if(!result?.ok)throw Error(result?.message||'oil seed');await BBPantryEditor.flush();return BBPantryEditor.list().find(row=>/olive oil/i.test(row.name))?.key;});
+ await page.evaluate(key=>{if(!BBPantryInline.open(key))throw Error('oil editor');},key);await editor.waitFor();
+ const before=await page.evaluate(()=>{const keys=BBHomeHost.keys();return [localStorage.getItem(keys.stock),localStorage.getItem(keys.inventory)];});
+ assert.equal(await editor.locator('.bbpi-status-label').isVisible(),true,'existing stock status remains prominent');
+ assert.equal(await editor.locator('.bbpi-status-label select').inputValue(),'in');
+ assert.equal(await editor.locator('.bbpi-tracking-label').isVisible(),false,'optional tracking settings are tucked away');
+ assert.equal(await editor.getByRole('button',{name:/^(Full|Half|¼ pack)$/}).count(),0,'this step introduces no level controls');
+ await editor.getByRole('button',{name:'Close pantry item',exact:true}).click();
+ assert.deepEqual(await page.evaluate(()=>{const keys=BBHomeHost.keys();return [localStorage.getItem(keys.stock),localStorage.getItem(keys.inventory)];}),before,'inspecting an oil leaves its qualitative tracking untouched');
+}));

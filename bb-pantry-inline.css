@@ -238,6 +238,28 @@ html body dialog.bbpi-panel .bbpi-editor-content{
 html body dialog.bbpi-panel .bbpi-editor-controls{
  display:grid;grid-template-columns:minmax(0,1fr);gap:12px;align-items:end;
 }
+/* Keep amount entry first; optional controls retain their original fields. */
+html body dialog.bbpi-panel :is(.bbpi-amount-details,.bbpi-more-options){
+ margin:0;border:1px solid #dce5d5;border-radius:13px;background:#fffef9;
+}
+html body dialog.bbpi-panel :is(.bbpi-amount-details,.bbpi-more-options)>summary{
+ display:flex;align-items:center;gap:8px;min-height:44px;padding:10px 12px;
+ color:#315d44;font-size:13px;font-weight:750;line-height:1.4;cursor:pointer;
+ list-style:none;touch-action:manipulation;
+}
+html body dialog.bbpi-panel :is(.bbpi-amount-details,.bbpi-more-options)>summary::-webkit-details-marker{display:none}
+html body dialog.bbpi-panel :is(.bbpi-amount-details,.bbpi-more-options)>summary:after{
+ content:'+';margin-left:auto;color:#61765d;font-size:18px;font-weight:500;
+}
+html body dialog.bbpi-panel :is(.bbpi-amount-details,.bbpi-more-options)[open]>summary:after{content:'−'}
+html body dialog.bbpi-panel .bbpi-amount-details>.bbpi-editor-controls{
+ grid-template-columns:minmax(0,1fr) minmax(82px,.55fr);gap:10px;padding:0 12px 12px;
+}
+html body dialog.bbpi-panel .bbpi-name-label{margin-bottom:12px}
+html body dialog.bbpi-panel .bbpi-more-options{margin-top:12px;background:#f7f9f1}
+html body dialog.bbpi-panel .bbpi-options-controls{display:grid;gap:12px;padding:0 12px 12px}
+html body dialog.bbpi-panel .bbpi-options-controls :is(.bbpi-pack,.bbpg-item-group){margin-top:0}
+html body dialog.bbpi-panel .bbpi-options-controls[hidden]{display:none!important}
 html body dialog.bbpi-panel label{
  display:grid;gap:6px;font-size:12px;font-weight:750;line-height:1.4;color:#365e4b;
 }
@@ -349,6 +371,7 @@ html.bbpi-modal-open:has(#bbpi-current-editor[open]) body{
  html body dialog.bbpi-panel .bbpi-editor-content{padding:12px}
  html body dialog.bbpi-panel .bbpi-editor-actions{gap:8px;padding-left:12px;padding-right:12px}
  html body dialog.bbpi-panel .bbpi-pack-fields{grid-template-columns:minmax(0,1fr)}
+ html body dialog.bbpi-panel .bbpi-amount-details>.bbpi-editor-controls{grid-template-columns:minmax(0,1fr)}
 }
 
 /* Storage tabs are a presentation layer over the original pantry sections. */

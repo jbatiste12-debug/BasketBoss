@@ -141,7 +141,10 @@
   function btn(label,action,className){const node=el('button',className,label);node.type='button';node.addEventListener('click',action);return node;}
   function schedule(){if(queued||destroyed)return;queued=true;(win.requestAnimationFrame||win.setTimeout).call(win,refresh);}
   function safe(action){try{return action();}catch{return null;}}
-  function notice(view,value,error=false){if(view.conflict){if(value&&error)view.conflictNotice=value;if(!value){value=view.conflictNotice||'This item changed elsewhere. Reopen it before saving.';error=true;}}text(view.notice,value||'');view.notice.classList.toggle('is-error',error);view.notice.setAttribute('role',error?'alert':'status');}
+  function notice(view,value,error=false){if(view.conflict){if(value&&error)view.conflictNotice=value;if(!value){value=view.conflictNotice||'This item changed elsewhere. Reopen it before saving.';error=true;}}text(view.notice,value||'');view.notice.classList.toggle('is-error',error);view.notice.setAttribute('role',error?'alert':'status');
+   // Reveal the original fields before the existing validation focuses them.
+   if(error)for(const details of view.element.querySelectorAll('.bbpi-amount-details,.bbpi-more-options,.bbpi-pack'))details.open=true;
+  }
   function activeTile(){return current?.card?.querySelector('[data-bbpi-active="true"]');}
   const actor=()=>win.BBHome?.actor?.()||'guest';
   function fitEditor(){viewportFrame=null;if(!editor)return;const viewport=win.visualViewport;editor.element.style.setProperty('--bbpi-viewport-height',(Number(viewport?.height)||win.innerHeight)+'px');editor.element.style.setProperty('--bbpi-viewport-top',Math.max(0,Number(viewport?.offsetTop)||0)+'px');}
@@ -625,7 +628,16 @@
    };
    name?.addEventListener('input',recognizeName);name?.addEventListener('change',recognizeName);
    element.addEventListener('cancel',event=>{event.preventDefault();if(!view.busy)closeEditor();});element.addEventListener('close',()=>{if(editor===view&&!view.busy)closeEditor();});
-   configureTracking();doc.body.append(element);lockEditor();fitEditor();try{element.showModal();}catch{element.setAttribute('open','');}fitEditor();close.focus({preventScroll:true});refreshPreview(view);return true;
+   // Group the real controls without replacing their bindings or save path.
+   const amountDetails=el('details','bbpi-amount-details'),amountSummary=el('summary','','Edit amount');amountDetails.open=true;
+   content.insertBefore(amountDetails,controls);amountDetails.append(amountSummary,controls);
+   const moreOptions=el('details','bbpi-more-options'),moreSummary=el('summary','','More options'),optionsControls=el('div','bbpi-options-controls');
+   moreOptions.append(moreSummary,optionsControls);content.insertBefore(moreOptions,noticeNode);
+   optionsControls.append(trackingLabel,neededLabel,bufferLabel,buyLabel,buyFields);
+   if(view.packDetails)optionsControls.append(view.packDetails);
+   if(view.group)optionsControls.append(view.group.label);
+   element.addEventListener('invalid',event=>{for(let node=event.target?.parentElement;node&&node!==element;node=node.parentElement)if(node.tagName==='DETAILS')node.open=true;},true);
+   configureTracking();doc.body.append(element);lockEditor();fitEditor();try{element.showModal();}catch{element.setAttribute('open','');}fitEditor();(name&&!name.value.trim()?name:row.staple&&view.status?view.status:quantity).focus({preventScroll:true});refreshPreview(view);return true;
   }
   function adjustSummary(key,direction){
    if(!valid(current))return teardown();const api=current,row=api.read(key);if(!row)return;
