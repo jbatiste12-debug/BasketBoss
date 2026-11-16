@@ -514,7 +514,7 @@
     {
       "path": "app.html",
       "bytes": 3059604,
-      "sha256": "baa97bf884d86dd6f32238d293dc0abb4cb1098642984104cc9e944d0f7df378"
+      "sha256": "7cc76130a4ba476c8f49c6ee727e3b01d7b33cd2237f2e00401766f5bfd05130"
     },
     {
       "path": "basketboss-latest-guide.html",
@@ -649,7 +649,7 @@
     {
       "path": "precache.js",
       "bytes": 11575,
-      "sha256": "841ce5111cf815bbed827c3ecb0f5ba3080499d10296566da920a82e9be56c39"
+      "sha256": "b909313c89d8b227d871386d11bc724c350f57d866fbcbfe1d24a9e6075e6328"
     },
     {
       "path": "pricing-sandbox.html",

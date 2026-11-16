@@ -25,7 +25,7 @@ test('Make a Meal uses authenticated Premium delivery, not a 321-item public bun
 });
 test('service worker uses a fresh cache and avoids public full-catalogue caching',async()=>{
   const source=await read('service-worker.js');
-  assert.match(source,/basketboss-premium-secure-shell-20261116-plan-only1-web700/);
+  assert.match(source,/basketboss-premium-secure-shell-20261116-photo-schema1-web700/);
   const inventory=readWorkerInventory(source);assert.ok(inventory.core.length>50,'actual concatenated precache inventory is present');
   assert.equal(inventory.imports,1);assert.match(inventory.version,/^[a-f0-9]{64}$/);
   assert.equal(inventory.cache,inventory.base+'-'+inventory.version);

@@ -2,8 +2,8 @@
  * Caches app pages and assets only; no personal localStorage or sync data is transmitted.
  * Food photographs outside the preview are cached only after being viewed, where supported.
  */
-const CACHE_BASE = 'basketboss-premium-secure-shell-20261116-plan-only1-web700';
-const IMAGE_CACHE = 'basketboss-v20261102-audited-images-v2';
+const CACHE_BASE = 'basketboss-premium-secure-shell-20261116-photo-schema1-web700';
+const IMAGE_CACHE = 'basketboss-v20261116-recipe-photo-schema1';
 const APP_BASE = new URL(self.registration.scope);
 // Public build inventory only. The worker never imports account or API data.
 const USING_PWA700 = typeof importScripts === 'function';

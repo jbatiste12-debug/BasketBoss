@@ -52,7 +52,7 @@ test('Signup funnel retains account entrypoints and cache protections',()=>{
   assert.match(html,/id="cloud-open"/);
   assert.match(html,/id="bbColdVisitor"/);
   assert.match(html,/<meta property="og:image"/);
-  assert.match(worker,/20261116-plan-only1-web700/);
+  assert.match(worker,/20261116-photo-schema1-web700/);
   const inventory=readWorkerInventory(worker);assert.equal(inventory.imports,1);assert.match(inventory.version,/^[a-f0-9]{64}$/);assert.equal(inventory.cache,inventory.base+'-'+inventory.version);
   assert.match(worker,/target\.pathname\.startsWith\(new URL\('api\/', APP_BASE\)\.pathname\)\) return/);
   assert.match(privacy,/Anonymous usage steps/);

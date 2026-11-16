@@ -53,7 +53,7 @@ describe('real browser generated700 offline shell',()=>{
     await navigator.serviceWorker.register('/service-worker.js');
     await navigator.serviceWorker.ready;
     if(!navigator.serviceWorker.controller)await new Promise(resolve=>navigator.serviceWorker.addEventListener('controllerchange',resolve,{once:true}));
-    const names=await caches.keys(),active=names.find(name=>name.startsWith('basketboss-premium-secure-shell-20261116-plan-only1-web700-'));
+    const names=await caches.keys(),active=names.find(name=>name.startsWith('basketboss-premium-secure-shell-20261116-photo-schema1-web700-'));
     if(!active)throw Error('The generated700 worker did not activate');
     const cache=await caches.open(active),keys=await cache.keys(),free=await (await cache.match('/pwa700/recipes.json')).json();
     const html=await (await cache.match('/app')).text();
@@ -62,9 +62,9 @@ describe('real browser generated700 offline shell',()=>{
     // A unique authorised static request must bypass Cache Storage too.
     await fetch('/pwa700/recipes.json?synthetic-authorised-probe=1',{headers:{Authorization:'Bearer synthetic-browser-fixture'}});
     const after=(await cache.keys()).map(request=>new URL(request.url).pathname+new URL(request.url).search);
-    return {oldEvicted:!names.includes(old),imagesRetained:names.includes(images),freeCount:free.length,publicOnly:free.every(recipe=>recipe.premium!==true&&recipe.accessTier!=='premium'),has700Endpoint:html.includes('/api/recipes/v700/premium?catalogue=700'),protectedKeys:after.filter(url=>url.startsWith('/api/')||url.includes('synthetic-cache-probe')||url.includes('synthetic-authorised-probe')),inventory:keys.map(request=>new URL(request.url).pathname+new URL(request.url).search)};
+    return {oldEvicted:!names.includes(old),imagesEvicted:!names.includes(images),freeCount:free.length,publicOnly:free.every(recipe=>recipe.premium!==true&&recipe.accessTier!=='premium'),has700Endpoint:html.includes('/api/recipes/v700/premium?catalogue=700'),protectedKeys:after.filter(url=>url.startsWith('/api/')||url.includes('synthetic-cache-probe')||url.includes('synthetic-authorised-probe')),inventory:keys.map(request=>new URL(request.url).pathname+new URL(request.url).search)};
    });
-   assert.equal(installed.oldEvicted,true);assert.equal(installed.imagesRetained,true);assert.equal(installed.freeCount,200);assert.equal(installed.publicOnly,true);assert.equal(installed.has700Endpoint,true);assert.deepEqual(installed.protectedKeys,[]);
+   assert.equal(installed.oldEvicted,true);assert.equal(installed.imagesEvicted,true);assert.equal(installed.freeCount,200);assert.equal(installed.publicOnly,true);assert.equal(installed.has700Endpoint,true);assert.deepEqual(installed.protectedKeys,[]);
    assert.ok(installed.inventory.includes('/bb-receipt-inventory-core.mjs?v=20261105-business1'));
    assert.ok(installed.inventory.includes('/bb-pantry-policy.js'));
    await context.setOffline(true);
