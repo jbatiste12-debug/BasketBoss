@@ -39,6 +39,7 @@ export const CLIENT_FILES=Object.freeze([
  'bb-weekly-shop.js','bb-weekly-shop.css','bb-simple-layout.js','bb-simple-layout.css',
  'bb-weekly-spending-ui.js','bb-weekly-spending-ui.css',
  'bb-household-aliases.js','bb-pantry-alias-migration.js','bb-shop-completion.js',
+ 'bb-shop-value.js','bb-shop-value.css','bb-native-human-check.js',
  'bb-shop-ownership.js','bb-shop-continuation.js','bb-shop-continuation.css',
  'bb-shop-purchase-ui.js','bb-shop-purchase-ui.css',
  'bb-shop-friendly-quantity-ui.js','bb-shop-compact.css',
