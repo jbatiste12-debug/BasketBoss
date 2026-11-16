@@ -121,6 +121,8 @@ html body .shell #app.bbnext-plan[data-bb-compact-header="true"] .bb-plan-compac
 
 /* A quieter weekly hierarchy. Only presentation boxes change: the live
    estimate, disclosures, actions and day controls retain their DOM owners. */
+html body .shell #app.bbnext-plan[data-bb-compact-plan="true"][data-bb-compact-header="true"] .bbpc-budget-overview .bbpol-ring-svg{display:none!important}
+html body .shell #app.bbnext-plan[data-bb-compact-plan="true"][data-bb-compact-header="true"] .bbnext-plan-budget[data-bb-simple-budget] .bbpc-budget-overview .bb-myweek-emblem>.bbnext-plan-donut{align-self:flex-start!important;justify-self:start!important}
 html body .shell #app.bbnext-plan[data-bb-compact-plan="true"][data-bb-compact-header="true"]{gap:0!important}
 html body .shell #app.bbnext-plan[data-bb-compact-plan="true"][data-bb-compact-header="true"] .bbnext-plan-budget[data-bb-simple-budget]{min-height:0!important;margin:0 0 14px!important;padding:18px 20px!important;border-radius:22px!important;background:#1e4d3b!important;color:#fffdf5!important}
 html body .shell #app.bbnext-plan[data-bb-compact-plan="true"][data-bb-compact-header="true"] .bbnext-plan-budget[data-bb-simple-budget] .bbpc-budget-overview{display:flex!important;flex-direction:column!important;align-items:flex-start!important;gap:5px!important}
