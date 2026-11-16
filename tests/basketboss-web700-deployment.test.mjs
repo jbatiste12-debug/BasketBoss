@@ -5,7 +5,7 @@ import path from 'node:path';
 import {createHash} from 'node:crypto';
 import {spawnSync} from 'node:child_process';
 import {fileURLToPath} from 'node:url';
-import {verifyWeb700Deployment,waitForWeb700Deployment,web700DeploymentFailure,approvedEmailHintVariant} from '../scripts/verify-web700-deployment.mjs';
+import {verifyWeb700Deployment,waitForWeb700Deployment,web700DeploymentFailure,approvedEmailHintVariant,diagnosePublicManifest} from '../scripts/verify-web700-deployment.mjs';
 
 const root=path.resolve(new URL('..',import.meta.url).pathname);
 const inventory=JSON.parse(fs.readFileSync(path.join(root,'pwa700/manifest.json')));
@@ -37,6 +37,13 @@ test('public web700 deployment proof checks every generated asset, routed app, u
 test('deployment proof rejects a stale manifest before downloading the asset pack',async()=>{
  const f=fixture({replace:route=>route==='/pwa700/manifest.json'?{body:'{}'}:null});
  await assert.rejects(verifyWeb700Deployment({perform:f.perform}),/^Error: WEB700_MANIFEST_STALE$/);assert.equal(f.requests.length,1);
+});
+
+test('a stale public manifest reports only its allowlisted byte lengths and hashes',async()=>{
+ const f=fixture({replace:route=>route==='/pwa700/manifest.json'?{body:'{}'}:null});let failure;
+ try{await verifyWeb700Deployment({perform:f.perform});assert.fail('stale manifest');}catch(error){failure=error;}
+ const result=web700DeploymentFailure(failure);assert.equal(result.error,'WEB700_MANIFEST_STALE');assert.equal(result.details.publicPath,'/pwa700/manifest.json');assert.equal(result.details.receivedBytes,2);assert.equal(result.details.receivedSha256,createHash('sha256').update('{}').digest('hex'));assert.doesNotMatch(JSON.stringify(result),/Synthetic private|provider|authorization/);
+ assert.deepEqual(web700DeploymentFailure(Object.assign(Error('WEB700_MANIFEST_STALE'),{details:{publicPath:'/api/private',body:'secret'}})),{ok:false,error:'WEB700_MANIFEST_STALE'});
 });
 
 test('deployment proof rejects stale assets, missing HTML middleware, modified legacy recipes and MIME fallbacks',async()=>{
@@ -155,4 +162,12 @@ test('the approved HTML variant requires the manifest byte proof and exactly one
  assert.deepEqual(approvedEmailHintVariant(good,good.length,sha(good)),stripApprovedHints(good));
  assert.throws(()=>approvedEmailHintVariant(good,good.length+1,sha(good)),/WEB700_LOCAL_FILES/);assert.throws(()=>approvedEmailHintVariant(good,good.length,'0'.repeat(64)),/WEB700_LOCAL_FILES/);
  for(const text of [good.toString().replace('<!--email_off-->',''),good.toString().replace('<!--/email_off-->',''),good.toString().replace('<!--/email_off-->','<!--email_off--><!--/email_off-->'),good.toString().replace('<body><!--email_off-->','<body><p>Unprotected</p><!--email_off-->'),good.toString().replace('<!--/email_off--></body>','<!--/email_off--><p>Unprotected</p></body>'),good.toString().replace('</body>','</body><body></body>'),'<script><!--email_off-->not HTML<!--/email_off--></script>']){const malformed=Buffer.from(text);assert.throws(()=>approvedEmailHintVariant(malformed,malformed.length,sha(malformed)),/WEB700_LOCAL_FILES/);}
+});
+
+
+test('manifest diagnostics use only fixed anonymous public paths and report hashes rather than response content',async()=>{
+ const expected=fs.readFileSync(path.join(root,'pwa700/manifest.json')),calls=[];
+ const result=await diagnosePublicManifest({perform:async(address,options)=>{calls.push(address);assert.equal(options.redirect,'error');assert.equal(options.headers,undefined);assert.equal(options.cache,'no-store');const url=new URL(address);assert.equal(url.pathname,'/pwa700/manifest.json');assert.ok(['basketboss.co.uk','www.basketboss.co.uk','basketboss-site.pages.dev','basketboss-web.pages.dev'].includes(url.hostname));return new Response(expected,{headers:{'Content-Type':'application/json'}});}});
+ assert.equal(calls.length,8);assert.ok(result.every(value=>value.matchesExpected&&value.changedPublicFiles.length===0));assert.doesNotMatch(JSON.stringify(result),/access_token|Authorization|provider|files.*sha256/);
+ const denied=await diagnosePublicManifest({perform:async()=>new Response('synthetic-private-provider-body',{status:403})});assert.ok(denied.every(value=>value.status===403));assert.doesNotMatch(JSON.stringify(denied),/synthetic|provider-body/);
 });

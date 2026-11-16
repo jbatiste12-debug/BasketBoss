@@ -33,9 +33,9 @@ function requireAssetBytes(relative,expectedBytes,expectedSha256,actual,code,app
 // Never forward an unexpected error body, provider message or arbitrary details.
 export function web700DeploymentFailure(error,{root=ROOT}={}){
  const result={ok:false,error:CODES.has(error?.message)?error.message:'WEB700_UNAVAILABLE'};
- if(!['WEB700_ASSET_BYTES','WEB700_ROUTE','WEB700_LEGACY_PUBLIC','WEB700_ROOT_ASSET'].includes(result.error))return result;
+ if(!['WEB700_ASSET_BYTES','WEB700_ROUTE','WEB700_LEGACY_PUBLIC','WEB700_ROOT_ASSET','WEB700_MANIFEST_STALE'].includes(result.error))return result;
  try{
-  const inventory=JSON.parse(fs.readFileSync(path.join(root,'pwa700/manifest.json'))),allowed=new Set(['/app','/recipes.json',...rootAssets.map(name=>'/'+name)]);
+  const inventory=JSON.parse(fs.readFileSync(path.join(root,'pwa700/manifest.json'))),allowed=new Set(['/app','/recipes.json','/pwa700/manifest.json',...rootAssets.map(name=>'/'+name)]);
   for(const row of inventory.files||[])if(/^[a-zA-Z0-9_-]+\.(?:html|js|mjs|css|json)$/.test(row.path)&&!/(?:private|sealed|server)/i.test(row.path))allowed.add('/pwa700/'+row.path.replace(/\.html$/,''));
   const d=error.details,booleans=['cloudflareEmailProtection','cloudflareInsights','rocketLoader'];
   if(!d||!allowed.has(d.publicPath)||![d.expectedBytes,d.receivedBytes].every(n=>Number.isSafeInteger(n)&&n>=0&&n<=8*1024*1024+1024)||![d.expectedSha256,d.receivedSha256].every(value=>/^[a-f0-9]{64}$/.test(value))||!booleans.every(name=>typeof d[name]==='boolean'))return result;
@@ -64,7 +64,7 @@ export async function verifyWeb700Deployment({perform=fetch,root=ROOT}={}){
   return Buffer.concat(parts);
  }
  const deployedInventory=await bytes('/pwa700/manifest.json','manifest.json',inventoryBytes.length+1024);
- check(hash(deployedInventory)===hash(inventoryBytes),'MANIFEST_STALE');
+ requireAssetBytes('/pwa700/manifest.json',inventoryBytes.length,hash(inventoryBytes),deployedInventory,'MANIFEST_STALE');
  // A fresh anonymous landing read checks the advertised price without requiring
  // unrelated edge-managed HTML (such as email protection) to be byte-identical.
  const landingSource=fs.readFileSync(path.join(root,'welcome.html'));
@@ -98,7 +98,26 @@ export async function waitForWeb700Deployment({attempts=12,pause=()=>new Promise
  throw failure;
 }
 
+// Fixed anonymous static paths only. Diagnose domain/cache differences without
+// printing a returned document, a provider message or any account information.
+export async function diagnosePublicManifest({perform=fetch,root=ROOT}={}){
+ const expected=fs.readFileSync(path.join(root,'pwa700/manifest.json')),expectedHash=hash(expected),inventory=JSON.parse(expected);
+ const origins=['https://basketboss.co.uk','https://www.basketboss.co.uk','https://basketboss-site.pages.dev','https://basketboss-web.pages.dev'];
+ return Promise.all(origins.flatMap(origin=>[false,true].map(async fresh=>{
+  const address=origin+'/pwa700/manifest.json'+(fresh?'?bb_verify='+expectedHash.slice(0,16):''),result={origin,fresh};
+  try{
+   const response=await perform(address,{method:'GET',cache:'no-store',redirect:'error',signal:AbortSignal.timeout(15000)});result.status=response.status;
+   if(response.status!==200||!/application\/json/i.test(response.headers.get('content-type')||'')){await response.body?.cancel().catch(()=>{});return result;}
+   const reader=response.body.getReader(),parts=[];let size=0;
+   try{for(;;){const {done,value}=await reader.read();if(done)break;size+=value.length;if(size>expected.length+8192)throw Error('size');parts.push(Buffer.from(value));}}finally{await reader.cancel().catch(()=>{});}
+   const bytes=Buffer.concat(parts),remote=JSON.parse(bytes);result.bytes=bytes.length;result.sha256=hash(bytes);result.matchesExpected=result.sha256===expectedHash;
+   if(Array.isArray(remote.files))result.changedPublicFiles=inventory.files.filter(row=>{const other=remote.files.find(value=>value?.path===row.path);return !other||other.bytes!==row.bytes||other.sha256!==row.sha256;}).map(row=>row.path);
+  }catch{result.unavailable=true;}
+  return result;
+ })));
+}
+
 if(process.argv[1]&&pathToFileURL(path.resolve(process.argv[1])).href===import.meta.url){
  try{console.log(JSON.stringify(await waitForWeb700Deployment({attempts:process.argv.includes('--once')?1:12})));}
- catch(error){console.error(JSON.stringify(web700DeploymentFailure(error)));process.exitCode=1;}
+ catch(error){console.error(JSON.stringify(web700DeploymentFailure(error)));if(error?.message==='WEB700_MANIFEST_STALE')console.error(JSON.stringify({publicManifestDiagnostics:await diagnosePublicManifest()}));process.exitCode=1;}
 }
