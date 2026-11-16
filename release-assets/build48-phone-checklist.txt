@@ -1,0 +1,18 @@
+BasketBoss1.0.3(48) — phone checks
+
+1. Run on your iPhone from the new Xcode workspace; confirm build48.
+2. Browse Discover: check turkey meatballs, a toastie, a bake and a bowl.
+   Photos should show varied angles, sensible cutlery and clear food identity.
+3. Check Plan thumbnails, expanded meal cards and Cook. Day labels remain off
+   photographs; scroll the last card above the floating navigation bar.
+4. Empty At home: Scan food is primary; Add food/Scan receipt and staples work.
+   Existing scanner access checks remain. Quick-add opens the quantity editor.
+5. Add food: search, selection and All/Fridge/Cupboard/Freezer controls reappear.
+6. Verify500g needed /250g stocked =250g to buy, plus checking/unchecking an item
+   and confirming a cooked meal. Confirm the original stock changes only once.
+7. Confirm your existing account/session, optional Apple sign-in, household
+   sharing, Premium access and Restore Purchases behave as before.
+8. Reopen offline after viewing a recipe; its photo should remain available.
+
+Signing, an actual device run and Apple upload are Mac checks. Automated Linux
+checks and matching web/native image hashes do not certify a signed iOS build.
