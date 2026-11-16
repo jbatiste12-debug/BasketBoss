@@ -8256,6 +8256,7 @@ function bbShopOwnedSaved(){
 }
 function bb84SetPrimaryPurchase(id,checked,item,essential=false,additional={}){
  try{
+  if(checked&&typeof bbShopValueCapture==='function')bbShopValueCapture();
   const session=bbShopV7Session(),ownedExpected=additional.inventoryNow?bbShopOwnedExpected():{};
   const ticks=bb321ReadShopTicks(),purchases=bb84ReadPurchased();
   const partials=bbPartialAll(),choices=bbBetaPurchaseChoices(),undo={...session.checkboxUndo},reducedUndo={...session.reducedCheckboxUndo},key=bbPartialKey({id});
@@ -10500,6 +10501,47 @@ function bb172ShopSetActive(active){
  const app=document.getElementById('app');if(app)bb172ShopApplyView(app);
  bb172ShopRefreshStatus();
 }
+// This optional value note owns no stock or saved account data. Its baseline
+// lives only in this document and is captured before this trip's first purchase.
+var bbShopValueController;
+function bbShopValueContext(){
+ try{
+  if(!window.BBShopValue||!window.BBRecipeCanonical||typeof bbHomeCanonicalRecipeNeeds!=='function')return null;
+  const recipe=bbHomeCanonicalRecipeNeeds([]),lunch=bb321LunchboxRequirements();
+  const shape=rows=>rows.map(row=>[BB307Pantry.pantryId(row.key||row.name,row.unit),Number(row.required??row.qty),row.needsReview===true]).sort((a,b)=>JSON.stringify(a).localeCompare(JSON.stringify(b)));
+  return {actor:window.BBHome?.actor?.()||'guest',market:bb307Market,retailer:bb307ActiveRetailer()||null,sessionId:bbShopV7Session().id,planKey:JSON.stringify({recipe:shape(recipe),lunch:shape(lunch)})};
+ }catch{return null;}
+}
+function bbShopValueCapture(){
+ try{
+  if(!window.BBShopValue||bbReceiptPantryReviewRequired()||window.BBAccountDeletion?.isDeleting?.())return;
+  const context=bbShopValueContext();if(!context)return;
+  bbShopValueController??=window.BBShopValue.create();
+  if(bbShopValueController.preview(context))return;
+  const session=bbShopV7Snapshot(bbShopV7Session());if(window.BBShopValue.purchased(session))return;
+  const receipts=bb83ReadObject(BB_BETA_RECEIPT_KEY),hasPurchases=Object.entries(receipts).some(([id,row])=>id.startsWith(session.id+'|')||row?.week===session.id||row?.shopSessionId===session.id);
+  if(hasPurchases)return;
+  const items=bb321UnifiedShop(bb307Plan().items,true),stock=bbHomePhysicalStock();
+  const reconciliation=bbPantryReconcileStock(stock,items);
+  const rows=items.map(item=>{const id=BB307Pantry.pantryId(item.key||item.name,item.unit),estimate=reconciliation.estimates?.[id];return {...item,owned:Number(reconciliation.pantry[id]||0),measured:!estimate?.estimated&&!estimate?.assumptions?.length,pantryMismatch:reconciliation.mismatches?.[id]||[],assumed:item.bb172Assumed===true};});
+  bbShopValueController.capture({session,context,rows,hasPurchases,canonicalId:item=>BB307Pantry.pantryId(item.key||item.name,item.unit),quote:(item,quantity)=>bb15Quote({...item,toBuy:quantity})});
+ }catch{} // A missing value estimate can never block a real shopping action.
+}
+function bbShopValueFinishPin(){
+ try{bbShopValueCapture();const pin=bbShopValueContext();return pin&&bbShopValueController?.preview(pin)?pin:null;}catch{return null;}
+}
+function bbShopValueAfterFinish(pin){
+ try{
+  const current=bbShopValueContext();
+  if(!pin||!current||pin.actor!==current.actor||pin.market!==current.market||pin.retailer!==current.retailer||pin.planKey!==current.planKey)return;
+  const summary=bbShopValueController?.complete(pin),parent=document.getElementById('app');
+  if(summary&&parent){const card=window.BBShopValue.mount(summary,{document,parent});card?.scrollIntoView?.({block:'nearest',behavior:'auto'});}
+ }catch{}
+}
+(function bbShopValuePrivacy(){
+ const clear=()=>{bbShopValueController?.reset();document.getElementById('bbShopValueSummary')?.remove();};
+ for(const event of ['basketboss:session-changed','basketboss:market-changed','basketboss:account-deletion-started','basketboss:account-deletion-deleted','storage'])window.addEventListener(event,clear);
+})();
 function bb172ShopApplyView(app){
  document.body.classList.toggle('bb172-shop-mode-active',bb172ShopActive&&tab==='shop');
  const btn=app.querySelector('#bb172ShopModeButton');if(btn){btn.textContent='🛒 Open In-Store Experience  →';btn.setAttribute('aria-pressed',bb172ShopActive?'true':'false')}
@@ -10512,7 +10554,7 @@ function bb172ShopStart(){
 window.BBShoppingLaunch=Object.freeze({
  start:bb172ShopStart,
  sessionId:()=>bbShopV7Session().id,
- open:()=>{bb172ShopSetActive(true);bb172ShopLastReminder=0;bb172StorefrontOpen();},
+ open:()=>{if(typeof bbShopValueCapture==='function')bbShopValueCapture();bb172ShopSetActive(true);bb172ShopLastReminder=0;bb172StorefrontOpen();},
  close:()=>bb172ShopSetActive(false)
 });
 function bb172ShopRefreshStatus(){
@@ -11014,6 +11056,7 @@ function bbPartialSet(item,boughtTotal,reducedPrice,options={}){
  // decimals for kg/l. Never silently truncate an entered physical amount.
  const representable=bbPartialRound(total,unit);
  if(total>0&&(!(representable>0)||Math.abs(total-representable)>Number.EPSILON*Math.max(1,total)*8))return false;
+ if(total>0&&typeof bbShopValueCapture==='function')bbShopValueCapture();
  if(bbBetaReceiptRead()?.[bbBetaReceiptId(item.id)]&&!(options.inventoryNow&&bbShopV7Session().shelfEdits?.[item.id]?.kind==='shop-owned-v1'))return false;
  const session=bbShopV7Session(),ownedExpected=options.inventoryNow?bbShopOwnedExpected():{},partials=bbPartialAll(),key=bbPartialKey(item),prior=partials[key];
  if(prior?.bought>0&&prior.unit!==unit)return false;
@@ -11412,6 +11455,7 @@ function bb172ShopPrompt(kind,after){
  if(bb172ShopDialogOpen)return;
  const previous=document.activeElement;
  const rows=bb172ShopUncheckedRows(),n=rows.length;
+ const valuePin=kind==='finish'&&typeof bbShopValueFinishPin==='function'?bbShopValueFinishPin():null;
  const immediate=typeof window!=='undefined'&&window.BBShopOwnership?.enabled?.()===true;
  const pin=immediate?{actor:window.BBHome?.actor?.()||'guest',market:bb307Market,sessionId:bbBetaShopWeek(),token:localStorage.getItem('basketboss_cloud_session_v1')}:null;
  bb172ShopDialogOpen=true;
@@ -11461,7 +11505,7 @@ function bb172ShopPrompt(kind,after){
    if(pin&&(pin.actor!==(window.BBHome?.actor?.()||'guest')||pin.market!==bb307Market||pin.sessionId!==bbBetaShopWeek()||pin.token!==localStorage.getItem('basketboss_cloud_session_v1'))){close();notify('Your account or shop changed. Reopen Finish shop to save the current list.');return;}
    committing=true;
    for(const control of buttons.children){control.disabled=true;control.setAttribute('aria-busy','true');}
-   try{action();}catch{notify('Could not finish shopping. Your saved progress is safe; please try again.');}
+   try{action();if(closed&&kind==='finish'&&typeof bbShopValueAfterFinish==='function')bbShopValueAfterFinish(valuePin);}catch{notify('Could not finish shopping. Your saved progress is safe; please try again.');}
    finally{if(!closed){committing=false;for(const control of buttons.children){control.disabled=false;control.removeAttribute('aria-busy');}}}
   };
  }
