@@ -71,3 +71,6 @@ body.bb-photo-meal-page .bb-cook-result{animation:bbpm-arrive .45s ease-out;box-
 @media(prefers-reduced-motion:reduce){body.bb-photo-meal-page #bb15AiPremiumHub *,body.bb-photo-meal-page #bb15AiPremiumHub *:before,body.bb-photo-meal-page #bb15AiPremiumHub *:after{animation:none!important;transition:none!important;scroll-behavior:auto!important}.bbpm-scan-line{opacity:0!important}body.bb-photo-meal-page #bbToolStage .scan-upload-label:hover{transform:none}}
 
 .bb-photo-meal-page #aiScanner:has(#photoPreview.show) .bbpm-scan-line{top:6px;left:4px;width:34px;--bbpm-scan-distance:20px}
+
+/* Only explicit manual entry or reviewed scan foods reveal the real workspace. */
+body.bb-photo-meal-page #bb82MealWorkspace[data-bb-food-review="visible"]{display:block!important}
