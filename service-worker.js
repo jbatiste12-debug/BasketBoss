@@ -2,7 +2,7 @@
  * Caches app pages and assets only; no personal localStorage or sync data is transmitted.
  * Food photographs outside the preview are cached only after being viewed, where supported.
  */
-const CACHE_BASE = 'basketboss-premium-secure-shell-20261109-v78-web700';
+const CACHE_BASE = 'basketboss-premium-secure-shell-20261116-plan-only1-web700';
 const IMAGE_CACHE = 'basketboss-v20261102-audited-images-v2';
 const APP_BASE = new URL(self.registration.scope);
 // Public build inventory only. The worker never imports account or API data.
@@ -98,7 +98,8 @@ const CORE = ['bb-plan-extras.js','bb-plan-extras.js?v=20261108-planner1','bb-pl
   'welcome.html',
   'basketboss-pricing-v19.js?v=20261108-baseline1',
   'bb-family-landing.css?v=20261105-simple1',
-  'bb-family-landing.js?v=20261104-landing1'
+  'bb-family-landing.js?v=20261104-landing1',
+  'bb-plan-compact.js?v=20261116-plan1','bb-plan-compact.css?v=20261116-plan1'
 ,"./cloud-config.js","bb-home.js?v=20261114-onboarding1","bb-onboarding-v2.css?v=20261114-account2","bb-receipt-host.js?v=20261114-account2","bb-onboarding-v2.js?v=20261114-account2","bb-auth-flow.js?v=20261114-account2",'bb-onboarding-v2.css','bb-ux-cleanup.css','bb-cold-preview.css','bb-membership-settings.css','bb-membership-settings.js','basketboss-aisles-v20.js','bb-household-aliases.js','bb-pantry-alias-migration.js','bb-pantry-policy.js','bb-pantry-display.js','bb-shop-completion.js','bb-recipe-canonical.js','bb-pantry-runtime.mjs','basketboss-pricing-v19.js','bb-serving-scale.js','bb-receipt-host.js?v=20261114-layout1','bb-onboarding-v2.js','bb-cold-preview.js','bb-funnel.js?v=20261114-account2','bb-ux-cleanup.js','bb-mobile-beta-polish.js','bb-settings-premium-polish.css','bb-mobile-three-20261027.css','bb-shop-cook-clarity.css','bb-servings-mobile-polish.css','bb-partner-signup-prompt.css','bb-partner-signup-prompt.js','bb-household-sharing.css','bb-household-sharing.js','bb-pantry-groups.css','bb-pantry-groups.js','bb-pantry-groups-ui.js','bb-household-amount.js','bb-kitchen-essentials.js?v=20261114-layout1','bb-pantry-inline.css','bb-pantry-inline.js?v=20261114-layout1','bb-pantry-inline.js','bb-day-done.css','bb-day-done.js','bb-shop-add.css','bb-shop-add.js','bb-cupboard-staples.js','bb-pantry-autofill.js','bb-tab-viewport.css','bb-tab-viewport.js','bb-auth-flow.css?v=20261114-account2','bb-plan-compact.css?v=20261114-layout1','bb-plan-compact.css','bb-plan-compact.js?v=20261114-layout1','bb-plan-compact.js','bb-day-plan-sheet.css?v=20261114-layout1','bb-day-plan-sheet.css','bb-day-plan-sheet.js?v=20261114-layout1','bb-day-plan-sheet.js','bb-at-home-compact.css?v=20261114-layout1','bb-at-home-compact.css','bb-weekly-spending-ui.js?v=20261114-budget1','bb-weekly-spending-ui.js','bb-simple-layout.js?v=20261114-budget1','bb-weekly-spending-ui.css?v=20261114-budget1','bb-weekly-spending-ui.css'].concat(PWA700_CORE)
   .map(path => new URL(path, APP_BASE).href);
 self.addEventListener('install', event => {

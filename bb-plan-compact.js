@@ -12,6 +12,23 @@
    !actions.querySelector('#bb172FillSixDinners')||!actions.querySelector('.bbnext-plan-secondary')||
    !card.querySelector(':scope>#bbnextPlanAutofill')||!app.querySelector('#bbSimplePlannerTabs'))return;
   if(app.dataset.bbCompactHeader!=='true')app.dataset.bbCompactHeader='true';
+  // The delegated mode/week handlers depend on their current DOM parents.
+  // This native disclosure reveals those same secondary controls with CSS;
+  // it never moves, clones, clicks or replaces a planning control.
+  const filters=card.querySelector('.bbpc-filter-row');
+  const add=actions.querySelector('.bbnext-plan-secondary:not(#bbPantryPlannerButton)');
+  if(!filters.id)filters.id='bbPlanSecondaryOptions';
+  if(add&&!add.id)add.id='bbPlanAddMealControl';
+  let more=card.querySelector(':scope>.bbpc-more-options');
+  if(!more){
+   more=doc.createElement('details');more.className='bbpc-more-options';more.id='bbPlanMoreOptions';
+   const summary=doc.createElement('summary');summary.textContent='More options';
+   summary.setAttribute('aria-controls',[filters.id,add?.id].filter(Boolean).join(' '));
+   more.append(summary);card.append(more);
+  }
+  // Existing validation may open Budget or preferences after a failed save.
+  // Keep the owner's actual feedback visible instead of hiding an open form.
+  if(card.querySelector('#bbSimpleBudget[open],#bbSimpleMealPreferences[open],#bbAvoidIngredientTab[aria-expanded="true"]'))more.open=true;
   const heading=app.querySelector('#bb1759MealsSummary>.bb1759-summary-heading');
   const paragraph=heading?.querySelector('p');
   if(paragraph&&!paragraph.closest('.bb-plan-compact-tips')){
