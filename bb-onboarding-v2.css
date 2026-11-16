@@ -289,3 +289,12 @@ html.bb-onboarding-open body .shell .tabs,html.bb-onboarding-open body nav.bb-r6
 #bbNewOnboarding.bbob-quick-welcome-screen .bbob-footer .bbob-link{font-size:11px}
 @media(max-height:700px){#bbNewOnboarding.bbob-quick-welcome-screen .bbob-main{padding-top:12px}#bbNewOnboarding.bbob-quick-welcome-screen h1{font-size:28px}#bbNewOnboarding.bbob-quick-welcome-screen .bbob-quick-welcome{min-height:100px}#bbNewOnboarding.bbob-quick-welcome-screen .bbob-quick-welcome>img{height:105px!important;max-height:105px!important}#bbNewOnboarding .bbob-quick-benefits{gap:7px;margin-bottom:11px}#bbNewOnboarding .bbob-quick-benefits li{font-size:12px}}
 @media(max-width:560px){#bbNewOnboarding.bbob-quick.bbob-keyboard .bbob-quick-benefits,#bbNewOnboarding.bbob-quick.bbob-keyboard .bbob-quick-auth-actions,#bbNewOnboarding.bbob-quick.bbob-keyboard .bbob-quick-account-note{display:none}}
+
+/* Photo-first setup keeps manual entry and account controls optional. */
+#bbNewOnboarding .bbob-photo-setup{font-size:12px;line-height:1.5;color:#5b705f;margin:10px 0}
+#bbNewOnboarding .bbob-photo-alternatives{display:grid;grid-template-columns:1fr 1fr;gap:8px;width:100%}
+#bbNewOnboarding .bbob-photo-alternatives .bbob-btn{min-height:44px;padding:9px 8px;font-size:12px}
+#bbNewOnboarding .bbob-photo-account-note{font-size:12px;line-height:1.5;color:#48634e;background:#edf3e5;border:1px solid #d8e3cf;border-radius:12px;padding:10px;margin:8px 0}
+#bbNewOnboarding .bbob-photo-account-note[hidden]{display:none!important}
+#bbNewOnboarding.bbob-account-open .bbob-photo-setup{display:none}
+#bbNewOnboarding.bbob-photo-account.bbob-account-open .bbob-quick-apple:not([hidden]){display:block}

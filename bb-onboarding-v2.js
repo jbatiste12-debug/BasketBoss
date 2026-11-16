@@ -79,12 +79,12 @@
  let quickSetupOriginal=null,quickAccountOpen=false,quickPreferencesOpen=false,quickPartnerOpen=false;
  let quickAppleBusy=false,quickAppleMessage='';
  function welcomeAppleAvailable(){
-   try{return native()&&!blocked()&&!accountRemembered()&&window.BBAuthFlow?.appleAvailable?.()===true;}catch(_){return false;}
+   try{return native()&&!blocked()&&!validSession()&&window.BBAuthFlow?.appleAvailable?.()===true;}catch(_){return false;}
  }
  function syncWelcomeApple(){
    if(!quick||!host||state.step!==1)return;
    const section=host.querySelector('[data-bbob-apple]');if(!section)return;
-   const available=welcomeAppleAvailable(),visible=native()&&!blocked()&&!accountRemembered()&&(available||quickAppleBusy);
+   const available=welcomeAppleAvailable(),visible=native()&&!blocked()&&!validSession()&&(available||quickAppleBusy);
    section.hidden=!visible;host.classList?.toggle('bbob-apple-ready',visible);
    const button=section.querySelector('[data-bbob="quick-apple"]');
    if(button){button.disabled=quickAppleBusy||!available;button.setAttribute('aria-busy',String(quickAppleBusy));}
@@ -101,7 +101,7 @@
    finally{quickAppleBusy=false;syncWelcomeApple();}
  }
  const changedPreferences=new Set();
- function persist(commitReplay=false){if(blocked())return false;if(replaying&&!commitReplay)return true;return write(KEY,JSON.stringify({step:state.step,house:state.house,goals:state.goals,diets:state.diets,region:state.region,started:state.started,complete:state.complete,partnerStepV2:true,wantsPartnerInvite:state.wantsPartnerInvite===true,partnerIntent:state.partnerIntent||'none'}));}
+ function persist(commitReplay=false){if(blocked())return false;if(replaying&&!commitReplay)return true;return write(KEY,JSON.stringify({step:state.step,house:state.house,goals:state.goals,diets:state.diets,region:state.region,started:state.started,complete:state.complete,partnerStepV2:true,wantsPartnerInvite:state.wantsPartnerInvite===true,partnerIntent:state.partnerIntent||'none',...(quick?{photoRequested:state.photoRequested===true}:{})}));}
  const btn=(label,action,kind='primary')=>`<button type="button" class="bbob-btn bbob-${kind}" data-bbob="${action}">${label}</button>`;
  // Reuse exactly the SVG basket/crown paths and keyframe names from the original
  // bb-welcome-splash.js / bb-welcome-splash.css. No second splash dialog fires.
@@ -136,14 +136,14 @@
    if(state.step===1){
      title=state.partnerIntent==='join'?'Join your partner’s kitchen.':'Your weekly shop, <span class="bbob-title-together">sorted. 👑</span>';
      description='Plan meals, organise your groceries and make better use of what you’ve already got.';
-     art=`<div class="bbob-quick-welcome"><img src="${RECIPES[1].image}" alt="Creamy garlic parmesan chicken pasta" width="500" height="300"><div><span>LESS DINNER ADMIN. MORE FAMILY TIME.</span><strong>A little help for the whole week.</strong></div></div><ul class="bbob-quick-benefits" aria-label="What you can do with BasketBoss"><li><span aria-hidden="true">▦</span><span>Plan meals for the week.</span></li><li><span aria-hidden="true">✓</span><span>Organise groceries and household essentials.</span></li><li><span aria-hidden="true">♧</span><span>Use pantry ingredients and leftovers.</span></li></ul><div class="bbob-quick-free"><p><strong>Explore 100 free recipes.</strong><span>No subscription or account needed to get started.</span></p></div>`;
-     if(accountRemembered()){
+     art=`<div class="bbob-quick-welcome"><img src="${RECIPES[1].image}" alt="Creamy garlic parmesan chicken pasta" width="500" height="300"><div><span>LESS DINNER ADMIN. MORE FAMILY TIME.</span><strong>Snap your fridge. See what you can cook tonight.</strong></div></div><p class="bbob-photo-setup">A little setup, then less weekly admin. Review your food and amounts, then keep them up to date as you shop and cook.</p><ul class="bbob-quick-benefits" aria-label="What you can do with BasketBoss"><li><span aria-hidden="true">▦</span><span>Plan meals for the week.</span></li><li><span aria-hidden="true">✓</span><span>Organise groceries and household essentials.</span></li><li><span aria-hidden="true">♧</span><span>Use pantry ingredients and leftovers.</span></li></ul><div class="bbob-quick-free"><p><strong>Explore 100 free recipes.</strong><span>Browse without an account. Try two food-photo scans with a confirmed free account — no card needed.</span></p></div>`;
+     if(accountRemembered()&&validSession()){
        art+='<div class="bbob-auth-ready" role="status">✓ You’re already signed in. Your account and saved meals are ready.</div>';
      }else{
-       const accountOpen=quickAccountOpen||state.partnerIntent==='join';
-       art+=`<section class="bbob-quick-account" data-bbob-account><div class="bbob-quick-apple" data-bbob-apple ${welcomeAppleAvailable()?'':'hidden'}><button type="button" class="bbob-btn bbob-apple" data-bbob="quick-apple" aria-label="Continue with Apple"><svg viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path fill="currentColor" d="M17.05 20.28c-.98.95-2.05.8-3.08.35-1.09-.46-2.09-.48-3.24 0-1.44.62-2.2.44-3.06-.35C2.79 15.26 3.5 7.59 9.05 7.31c1.35.07 2.29.76 3.08.82 1.18-.24 2.31-.94 3.57-.85 1.51.12 2.65.72 3.4 1.8-3.12 1.87-2.38 5.98.48 7.13-.57 1.5-1.31 2.99-2.54 4.08l.01-.01zM12.03 7.25C11.88 5.02 13.69 3.18 15.77 3c.29 2.58-2.34 4.5-3.74 4.25z"/></svg><span data-bbob-apple-label>Continue with Apple</span></button><p class="bbob-quick-apple-status" data-bbob-apple-status role="status" aria-live="polite" hidden></p></div><div class="bbob-quick-auth-actions">${btn('Create free account','quick-signup','outline')}${btn(state.partnerIntent==='join'?'Sign in with invited email':'Sign in','quick-signin','outline')}</div><p class="bbob-quick-account-note">Sign in to save and sync. Exploring Free needs no account.</p><div id="bbobQuickAccountPanel" class="bbob-quick-account-panel" ${accountOpen?'':'hidden'}><div id="bbobAuthSlot" class="bbob-auth-slot"></div><div id="bbobMessageSlot" class="bbob-message-slot" aria-live="polite"></div>${btn('Back to welcome','quick-account','link')}</div></section>`;
+       const accountOpen=quickAccountOpen||state.partnerIntent==='join'||state.photoRequested===true;
+       art+=`<section class="bbob-quick-account" data-bbob-account><div class="bbob-quick-apple" data-bbob-apple ${welcomeAppleAvailable()?'':'hidden'}><button type="button" class="bbob-btn bbob-apple" data-bbob="quick-apple" aria-label="Continue with Apple"><svg viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path fill="currentColor" d="M17.05 20.28c-.98.95-2.05.8-3.08.35-1.09-.46-2.09-.48-3.24 0-1.44.62-2.2.44-3.06-.35C2.79 15.26 3.5 7.59 9.05 7.31c1.35.07 2.29.76 3.08.82 1.18-.24 2.31-.94 3.57-.85 1.51.12 2.65.72 3.4 1.8-3.12 1.87-2.38 5.98.48 7.13-.57 1.5-1.31 2.99-2.54 4.08l.01-.01zM12.03 7.25C11.88 5.02 13.69 3.18 15.77 3c.29 2.58-2.34 4.5-3.74 4.25z"/></svg><span data-bbob-apple-label>Continue with Apple</span></button><p class="bbob-quick-apple-status" data-bbob-apple-status role="status" aria-live="polite" hidden></p></div><div class="bbob-quick-auth-actions">${btn('Create free account','quick-signup','outline')}${btn(state.partnerIntent==='join'?'Sign in with invited email':'Sign in','quick-signin','outline')}</div><p class="bbob-quick-account-note">Sign in to save and sync. Exploring Free needs no account.</p><p class="bbob-photo-account-note" data-bbob-photo-note ${state.photoRequested?'':'hidden'}>Your two free food-photo scans need a confirmed free account. After signing in, you can choose a photo and approve uploading it. You can also add foods manually or explore recipes.</p><div id="bbobQuickAccountPanel" class="bbob-quick-account-panel" ${accountOpen?'':'hidden'}><div id="bbobAuthSlot" class="bbob-auth-slot"></div><div id="bbobMessageSlot" class="bbob-message-slot" aria-live="polite"></div>${btn('Back to welcome','quick-account','link')}</div></section>`;
      }
-     actions=btn(state.partnerIntent==='join'?'Continue without joining':'Explore BasketBoss Free','free-complete')+btn('Set up my household · Optional','next','link');
+     actions=(state.partnerIntent==='join'?btn('Continue without joining','free-complete'):btn('📷 Snap your fridge','quick-photo')+'<div class="bbob-photo-alternatives">'+btn('Add food manually','quick-manual','outline')+btn('Explore recipes','free-complete','outline')+'</div>')+btn('Set up my household · Optional','next','link');
    }else if(state.step===3){
      title='Make it work for your household.';
      description='Set your usual portions and shopping region. Everything here is optional and can be changed later.';
@@ -300,13 +300,13 @@
        const details=host.querySelector(selector);if(details)remember(details.open===true);
      }
    }
-   host.classList?.toggle('bbob-quick',quick);host.classList?.toggle('bbob-quick-welcome-screen',quick&&state.step===1);host.classList?.toggle('bbob-account-open',quick&&state.step===1&&(quickAccountOpen||state.partnerIntent==='join'));host.classList?.toggle('bbob-quick-premium',quick&&state.step===10);host.classList?.toggle('bbob-kitchen-slide',!quick&&state.step===9);restoreAuth();host.innerHTML=content();
-   if(state.step===1&&!accountRemembered())mountAuth();
+   host.classList?.toggle('bbob-quick',quick);host.classList?.toggle('bbob-quick-welcome-screen',quick&&state.step===1);host.classList?.toggle('bbob-account-open',quick&&state.step===1&&(quickAccountOpen||state.partnerIntent==='join'||state.photoRequested===true));host.classList?.toggle('bbob-photo-account',quick&&state.step===1&&state.photoRequested===true);host.classList?.toggle('bbob-quick-premium',quick&&state.step===10);host.classList?.toggle('bbob-kitchen-slide',!quick&&state.step===9);restoreAuth();host.innerHTML=content();
+   if(state.step===1&&!validSession())mountAuth();
    syncWelcomeApple();
    sizeWelcomeViewport();host.scrollTop=0;
-   if(state.step===1&&!accountRemembered()){
+   if(state.step===1&&!validSession()){
      const heading=host.querySelector('#bbob-title');heading?.setAttribute('tabindex','-1');heading?.focus({preventScroll:true});
-   }else (host.querySelector('[data-bbob="next"]')||host.querySelector('[data-bbob="free-complete"]'))?.focus({preventScroll:true});
+   }else (host.querySelector('[data-bbob="quick-photo"]')||host.querySelector('[data-bbob="next"]')||host.querySelector('[data-bbob="free-complete"]'))?.focus({preventScroll:true});
  }
  // No changes to app state take place on preview, survey selection or Back.
  // Commit to the existing app's OWN setters only when the user exits onboarding.
@@ -335,6 +335,7 @@
  }
  function authenticated(){
    if(!validSession()||blocked())return false;
+   if(quick&&host&&state.step===1&&state.photoRequested===true)return completeWelcomeAccount();
    if(quick&&!state.complete){
      if(state.partnerIntent==='join'&&host){finishJoinHandoff();return state.complete===true;}
      // Account creation is enough to start. Household setup remains available
@@ -371,9 +372,12 @@
    dismiss(false);return true;
  }
  function completeWelcomeAccount(){
+   const photoRequested=quick&&state.photoRequested===true;
+   if(photoRequested&&!prepareFirstPhoto())return false;
+   if(replaying){const saved=complete();if(saved&&photoRequested)openFirstPhoto();return saved;}
    // Signing in commits no optional preference draft or planner changes.
-   const previous={complete:state.complete,started:state.started};
-   state.complete=true;state.started=false;
+   const previous={complete:state.complete,started:state.started,photoRequested:state.photoRequested};
+   state.complete=true;state.started=false;state.photoRequested=false;
    if(!persist(true)){
      Object.assign(state,previous);
      const status=host?.querySelector('#bbobSaveError')||id('cloud-message');
@@ -382,11 +386,30 @@
    }
    write('basketboss_onboarding_seen_v1','true');
    try{sessionStorage.setItem('basketboss_welcome_splash_seen_v1','1')}catch(_){}
-   dismiss(false);return true;
+   dismiss(false);if(photoRequested)openFirstPhoto();return true;
+ }
+ function prepareFirstPhoto(){
+   try{if(window.BBPhotoOnboardingHost?.preparePlan?.()===true)return true;}catch(_){}
+   const status=host?.querySelector('#bbobSaveError');if(status)status.textContent='Could not prepare your saved plan. Please retry, or explore recipes. Your existing meals are unchanged.';
+   return false;
+ }
+ function openFirstPhoto(){
+   window.location?.assign?.('make-a-meal.html?bbscan=pantry&location=fridge&bbfirst=photo');
+ }
+ function requestFirstPhoto(){
+   if(!quick||!host||state.step!==1||blocked())return;
+   const previous=state.photoRequested;state.photoRequested=true;
+   if(!persist()){state.photoRequested=previous;const status=host.querySelector('#bbobSaveError');if(status)status.textContent='Could not save your photo choice. Please retry, or explore recipes.';return;}
+   if(validSession()){completeWelcomeAccount();return;}
+   const panel=host.querySelector('#bbobQuickAccountPanel');if(!panel)return;
+   quickAccountOpen=true;panel.hidden=false;host.classList?.toggle('bbob-account-open',true);host.classList?.toggle('bbob-photo-account',true);
+   const note=host.querySelector('[data-bbob-photo-note]');if(note)note.hidden=false;
+   window.BBAuthFlow?.open?.('sign-up');sizeWelcomeViewport();panel.scrollIntoView?.({block:'start',behavior:'instant'});
  }
  function complete(goPremium=false){
    if(!host||blocked())return false;
    const firstSetup=!replaying;
+   state.photoRequested=false;
    if(!persist()){
      host.querySelector('#bbobSaveError')?.replaceChildren(document.createTextNode('Unable to save your setup on this device. Please check browser storage and retry.'));
      return false;
@@ -518,11 +541,14 @@
      const option=e.target.closest('[data-bbob-opt]');if(option){chooseOption(Number(option.dataset.bbobOpt),option.dataset.bbobGroup);return;}
      const action=e.target.closest('[data-bbob]')?.dataset.bbob;if(!action)return;
      if(action==='replay-cancel'){dismiss();return;}
+     if(action==='quick-photo'){requestFirstPhoto();return;}
+     if(action==='quick-manual'&&quick&&state.step===1){if(complete()===true)document.querySelector('.shell .tabs [data-tab="shop"]')?.click();return;}
      if(action==='quick-apple'&&quick&&state.step===1){void signInWelcomeApple();return;}
      if(['quick-account','quick-signup','quick-signin'].includes(action)&&quick&&state.step===1){
        const panel=host.querySelector('#bbobQuickAccountPanel'),toggle=host.querySelector('[data-bbob="quick-account"]');
        if(!panel)return;
        quickAccountOpen=action==='quick-account'?panel.hidden:true;
+       if(!quickAccountOpen&&state.photoRequested){state.photoRequested=false;persist();host.classList?.toggle('bbob-photo-account',false);const note=host.querySelector('[data-bbob-photo-note]');if(note)note.hidden=true;}
        if(!quickAccountOpen&&panel.contains(document.activeElement))document.activeElement.blur?.();
        panel.hidden=!quickAccountOpen;toggle?.setAttribute('aria-expanded',String(quickAccountOpen));
        host.classList?.toggle('bbob-account-open',quickAccountOpen);
@@ -566,6 +592,7 @@
        state.step=3;persist();render();return;
      }
      if(action==='next'){
+       if(quick&&state.step===1)state.photoRequested=false;
        if((state.step===2||quick&&state.step===1) && state.partnerIntent==='join' && validSession()){finishJoinHandoff();return;}
        state.step=quick?(state.step===1?3:10):Math.min(STEP_MAX,state.step+1);persist();render();return;
      }

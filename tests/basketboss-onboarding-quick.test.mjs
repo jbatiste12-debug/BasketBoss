@@ -9,13 +9,13 @@ const KEY='bb_onboarding_fresh_once_20261028_v1';
 const PLAN='basketboss_321_unified_state_v1',SESSION='basketboss_cloud_session_v1';
 const prior={step:4,started:true,complete:false,house:'2 people',region:'UK',goals:['Plan dinners faster'],diets:['Vegetarian'],partnerStepV2:true,wantsPartnerInvite:true,partnerIntent:'invite'};
 
-function harness({saved,native=false,hook=true,premium=false,store,script=source,quick=true,appleReady=false,appleAction}={}){
+function harness({saved,native=false,hook=true,premium=false,store,script=source,quick=true,appleReady=false,appleAction,preparePlan=true}={}){
  const storage=store||new Map([[PLAN,'existing meals, pantry and budget']]);
  if(saved)storage.set(KEY,JSON.stringify(saved));
  const nodes=[],writes=[],preferences=[],navigation=[],events=new Map(),docEvents=new Map();
  let storageBlocked=false,completionBlocked=false,mealsSaved=true,activePremium=premium,howMany=0;
  const on=(map,name,fn)=>{const list=map.get(name)||[];list.push(fn);map.set(name,list);};
- const status={textContent:'',replaceChildren(node){this.textContent=node.textContent;}};
+ const status={textContent:'',replaceChildren(node){this.textContent=node.textContent;}},photoNote={hidden:true},accountPanel={hidden:true,contains:()=>false,scrollIntoView(){}};let preparations=0;
  const rootClasses=new Set();
  const appleCalls=[],appleModes=[],appleButton={disabled:false,attributes:new Map(),setAttribute(key,value){this.attributes.set(key,value);}},appleLabel={textContent:''},appleStatus={textContent:'',hidden:true};
  const appleSection={hidden:true,querySelector:selector=>selector==='[data-bbob="quick-apple"]'?appleButton:selector==='[data-bbob-apple-label]'?appleLabel:selector==='[data-bbob-apple-status]'?appleStatus:null};
@@ -24,16 +24,16 @@ function harness({saved,native=false,hook=true,premium=false,store,script=source
  const location={hostname:native?'localhost':'basketboss.co.uk',protocol:native?'capacitor:':'https:',search:'',hash:'',assign(target){navigation.push({target,saved:JSON.parse(storage.get(KEY)),closed:!active()});}};
  const document={readyState:'complete',activeElement:replayButton,body:{style:{overflow:''},appendChild(node){nodes.push(node);}},documentElement:{style:{setProperty(){},removeProperty(){}},classList:{contains:name=>rootClasses.has(name),add:name=>rootClasses.add(name),remove:name=>rootClasses.delete(name)}},
   querySelector(selector){return quick&&selector==='meta[name="basketboss-onboarding"]'?{content:'quick-v1'}:null;},querySelectorAll:()=>[],getElementById:id=>id===replayButton.id?replayButton:null,createTextNode:text=>({textContent:text}),
-  createElement(){const classes=new Set();return {innerHTML:'',events:new Map(),classList:{toggle(name,enabled){enabled?classes.add(name):classes.delete(name);},contains:name=>classes.has(name)},style:{setProperty(){}},contains:()=>false,setAttribute(){},addEventListener(name,fn){on(this.events,name,fn);},querySelector:selector=>selector==='#bbobSaveError'?status:selector==='[data-bbob-apple]'?appleSection:null,remove(){this.removed=true;}};},addEventListener(name,fn){on(docEvents,name,fn);}};
+  createElement(){const classes=new Set();return {innerHTML:'',events:new Map(),classList:{toggle(name,enabled){enabled?classes.add(name):classes.delete(name);},contains:name=>classes.has(name)},style:{setProperty(){}},contains:()=>false,setAttribute(){},addEventListener(name,fn){on(this.events,name,fn);},querySelector:selector=>selector==='#bbobSaveError'?status:selector==='[data-bbob-apple]'?appleSection:selector==='#bbobQuickAccountPanel'?accountPanel:selector==='[data-bbob-photo-note]'?photoNote:null,remove(){this.removed=true;}};},addEventListener(name,fn){on(docEvents,name,fn);}};
  const active=()=>nodes.findLast(node=>!node.removed);
  const window={location,innerHeight:844,innerWidth:390,scrollTo(){},matchMedia:()=>({matches:false}),addEventListener(name,fn){on(events,name,fn);},BBNative:native?{isNative:true}:undefined,
   BBAuthFlow:{appleAvailable:()=>appleReady,open:mode=>appleModes.push(mode),signInWithApple(options){appleCalls.push(JSON.parse(JSON.stringify(options)));return Promise.resolve(appleAction?.(options)??false);}},
-  BasketBossVerifiedPremium:{isActive:()=>activePremium},BBHowItWorks:{setupFinished(){howMany++;}},BasketBossSetOnboardingServings(value){preferences.push({house:value});return true;},bb307SwitchIsland(value){preferences.push({region:value});return true;},BasketBossSetOnboardingMealPreferences(value){preferences.push({meals:JSON.parse(JSON.stringify(value))});return mealsSaved;}};
+  BBPhotoOnboardingHost:{preparePlan(){preparations++;return preparePlan;}},BasketBossVerifiedPremium:{isActive:()=>activePremium},BBHowItWorks:{setupFinished(){howMany++;}},BasketBossSetOnboardingServings(value){preferences.push({house:value});return true;},bb307SwitchIsland(value){preferences.push({region:value});return true;},BasketBossSetOnboardingMealPreferences(value){preferences.push({meals:JSON.parse(JSON.stringify(value))});return mealsSaved;}};
  if(native&&hook)window.BBNativeMembership={open(){navigation.push({target:'native-membership',saved:JSON.parse(storage.get(KEY)),closed:!active()});return true;}};
  const context={window,document,location,localStorage:{getItem:key=>storage.get(key)??null,setItem(key,value){if(storageBlocked||completionBlocked&&key===KEY&&JSON.parse(value).complete===true)throw Error('storage unavailable');writes.push([key,value]);storage.set(key,value);}},sessionStorage:{setItem(){}},navigator:{standalone:false},URLSearchParams,queueMicrotask,console};
  vm.runInNewContext(script,context,{timeout:1000});
  function tap(action,option,group){assert.ok(active(),'onboarding should be open');for(const fn of active().events.get('click')||[])fn({target:{closest(selector){if(selector==='[data-bbob-opt]'&&option!==undefined)return {dataset:{bbobOpt:String(option),bbobGroup:group}};if(selector==='[data-bbob]'&&action)return {dataset:{bbob:action}};return null;}}});}
- return {window,storage,writes,preferences,navigation,status,active,tap,read:()=>JSON.parse(storage.get(KEY)||'null'),setStorageBlocked:value=>{storageBlocked=value;},setCompletionBlocked:value=>{completionBlocked=value;},setMealsSaved:value=>{mealsSaved=value;},howMany:()=>howMany,
+ return {window,storage,writes,preferences,navigation,status,active,tap,preparations:()=>preparations,accountPanel,photoNote,setPreparePlan:value=>{preparePlan=value;},read:()=>JSON.parse(storage.get(KEY)||'null'),setStorageBlocked:value=>{storageBlocked=value;},setCompletionBlocked:value=>{completionBlocked=value;},setMealsSaved:value=>{mealsSaved=value;},howMany:()=>howMany,
   apple:{section:appleSection,button:appleButton,label:appleLabel,status:appleStatus,calls:appleCalls,modes:appleModes},setAppleReady(value){appleReady=value;for(const fn of events.get('basketboss:apple-auth-availability')||[])fn({detail:{available:value}});},
   region(value){for(const fn of active().events.get('change')||[])fn({target:{value,matches:()=>true}});},signIn(){storage.set(SESSION,JSON.stringify({user:{id:'existing-account'},access_token:'fresh-token',expires_at:9999999999}));},dispatch(name){for(const fn of events.get(name)||[])fn();},verifyPremium(value){activePremium=value;for(const fn of docEvents.get('basketboss:premium-verified')||[])fn();}};
 }
@@ -233,4 +233,33 @@ test('verified Premium members get Continue without an upsell and Free completio
  assert.match(h.active().innerHTML,/Your Premium kitchen is ready|Continue to BasketBoss/);assert.doesNotMatch(h.active().innerHTML,/data-bbob="quick-premium"/);
  h.tap('free-complete');assert.equal(h.window.BasketBossVerifiedPremium.isActive(),true);assert.equal(h.navigation.length,0);
  const active=harness({premium:true});active.tap('next');active.tap('next');assert.doesNotMatch(active.active().innerHTML,/data-bbob="quick-premium"/);
+});
+
+
+test('photo-first welcome explains the two-scan account allowance and retains manual and recipe alternatives',()=>{
+ const h=harness(),html=h.active().innerHTML;
+ assert.match(html,/data-bbob="quick-photo"/);assert.match(html,/two food-photo scans with a confirmed free account/);assert.match(html,/data-bbob="quick-manual"/);assert.match(html,/Explore recipes/);assert.equal(h.storage.has(SESSION),false);assert.equal(h.preparations(),0);
+});
+test('Snap opens existing signup without creating an account or navigating before verified sign-in',()=>{
+ const h=harness();h.tap('quick-photo');assert.equal(h.read().photoRequested,true);assert.deepEqual(h.apple.modes,['sign-up']);assert.equal(h.accountPanel.hidden,false);assert.equal(h.photoNote.hidden,false);assert.equal(h.storage.has(SESSION),false);assert.deepEqual(h.navigation,[]);
+ h.signIn();h.dispatch('basketboss:session-changed');assert.equal(h.preparations(),1);assert.equal(h.active(),undefined);assert.equal(h.read().complete,true);assert.equal(h.read().photoRequested,false);assert.match(h.navigation[0].target,/make-a-meal.html\?bbscan=pantry&location=fridge/);assert.equal(h.navigation[0].closed,true);
+});
+test('failed planner preparation leaves verified photo signup retryable without completing welcome',()=>{
+ const h=harness({preparePlan:false});h.tap('quick-photo');h.signIn();h.dispatch('basketboss:session-changed');assert.ok(h.active());assert.equal(h.read().complete,false);assert.equal(h.read().photoRequested,true);assert.deepEqual(h.navigation,[]);assert.match(h.status.textContent,/prepare your saved plan/);h.setPreparePlan(true);h.tap('quick-photo');assert.equal(h.navigation.length,1);assert.equal(h.read().complete,true);
+});
+test('exploring or manual entry cancels a pending photo without signup or a scanner handoff',()=>{
+ for(const action of ['quick-manual','free-complete']){const h=harness();h.tap('quick-photo');h.tap(action);assert.equal(h.read().complete,true);assert.equal(h.read().photoRequested,false);assert.equal(h.navigation.length,0);assert.equal(h.preparations(),0);h.signIn();h.dispatch('basketboss:session-changed');assert.equal(h.navigation.length,0);}
+});
+test('closing the photo account panel clears pending intent while preserving optional account controls',()=>{
+ const h=harness();h.tap('quick-photo');h.tap('quick-account');assert.equal(h.accountPanel.hidden,true);assert.equal(h.read().photoRequested,false);assert.equal(h.photoNote.hidden,true);h.signIn();h.dispatch('basketboss:session-changed');assert.equal(h.navigation.length,0);
+});
+test('storage failure prevents signup intent and does not launch a photo flow',()=>{
+ const h=harness();h.setStorageBlocked(true);h.tap('quick-photo');assert.deepEqual(h.apple.modes,[]);assert.deepEqual(h.navigation,[]);assert.match(h.status.textContent,/save your photo choice/);assert.equal(h.read().photoRequested,false);
+});
+test('Settings replay photo action prepares the original planner before completing and navigating',()=>{
+ const storage=new Map([[PLAN,'preserved own planner'],[SESSION,JSON.stringify({user:{id:'own'},access_token:'synthetic',expires_at:9999999999})],[KEY,JSON.stringify({...prior,complete:true,started:false})]]),h=harness({store:storage});
+ assert.equal(h.active(),undefined);assert.equal(h.window.BBOnboard2026.open(),true);h.tap('quick-photo');assert.equal(h.preparations(),1);assert.equal(h.navigation.length,1);assert.equal(h.storage.get(PLAN),'preserved own planner');assert.equal(h.read().complete,true);
+});
+test('a photo signup can continue directly with Apple and keeps the Apple option visible',async()=>{
+ let h;h=harness({native:true,appleReady:true,appleAction:()=>{h.signIn();h.dispatch('basketboss:session-changed');return true;}});h.tap('quick-photo');assert.equal(h.active().classList.contains('bbob-photo-account'),true);assert.equal(h.apple.section.hidden,false);h.tap('quick-apple');await Promise.resolve();await Promise.resolve();assert.equal(h.preparations(),1);assert.equal(h.navigation.length,1);assert.match(h.navigation[0].target,/bbscan=pantry/);assert.deepEqual(h.apple.calls,[{intent:'sign-up'}]);
 });
