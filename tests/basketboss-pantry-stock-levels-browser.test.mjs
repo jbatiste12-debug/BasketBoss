@@ -4,7 +4,6 @@ import fs from 'node:fs/promises';
 import path from 'node:path';
 import {fileURLToPath} from 'node:url';
 import {createRequire} from 'node:module';
-import {execFileSync} from 'node:child_process';
 const require=createRequire(import.meta.url),ROOT=fileURLToPath(new URL('..',import.meta.url));
 let chromium,browser;
 try{({chromium}=require(process.env.BB_PLAYWRIGHT_MODULE||'playwright'));}catch{}
@@ -12,8 +11,7 @@ before(async()=>{if(chromium)browser=await chromium.launch({headless:true,execut
 after(async()=>{await browser?.close();});
 const skip=!chromium?'Set BB_PLAYWRIGHT_MODULE to run real-app browser checks':false;
 const output=process.env.BB_PANTRY_LEVELS_SCREENSHOTS;
-const oldFiles=new Map();
-async function fixture(width=390,{baseline=false,qty=500,unit='g',buffer=0,pack=1000}={}){
+async function fixture(width=390,{qty=500,unit='g',buffer=0,pack=1000,unknown=false}={}){
  const context=await browser.newContext({viewport:{width,height:844},isMobile:true,hasTouch:true,serviceWorkers:'block',reducedMotion:'reduce'}),page=await context.newPage(),errors=[];
  page.setDefaultTimeout(12000);page.on('pageerror',error=>errors.push(error.message));page.on('dialog',dialog=>dialog.dismiss());
  await context.route('**/*',async route=>{
@@ -24,10 +22,7 @@ async function fixture(width=390,{baseline=false,qty=500,unit='g',buffer=0,pack=
   if(['app','app/','app.html','index.html','index',''].includes(name))name='pwa700/app.html';
   if(name.includes('..'))return route.fulfill({status:404,body:''});
   let body;try{
-   if(baseline){
-    if(!oldFiles.has(name))oldFiles.set(name,execFileSync('git',['show','HEAD:'+name],{cwd:ROOT,maxBuffer:16*1024*1024,stdio:['ignore','pipe','ignore']}));
-    body=oldFiles.get(name);
-   }else body=await fs.readFile(path.join(ROOT,name));
+   body=await fs.readFile(path.join(ROOT,name));
   }catch{return route.fulfill({status:404,body:''});}
   const types={'.html':'text/html','.js':'application/javascript','.mjs':'application/javascript','.css':'text/css','.json':'application/json','.webp':'image/webp','.png':'image/png','.svg':'image/svg+xml'};
   return route.fulfill({status:200,contentType:types[path.extname(name)]||'application/octet-stream',body});
@@ -41,11 +36,11 @@ async function fixture(width=390,{baseline=false,qty=500,unit='g',buffer=0,pack=
  await page.goto('https://basketboss.co.uk/app',{waitUntil:'domcontentloaded'});
  await page.locator('#bbPrimaryNavigation [data-bb-nav-item="kitchen"]').click();
  await page.waitForFunction(()=>window.BBPantryEditor?.isCurrent?.());
- const key=await page.evaluate(async({qty,unit,buffer,pack})=>{
-  const added=BBPantryEditor.add({name:'Rice',loc:'cupboard',qty,unit});if(!added?.ok)throw Error(added?.message||'seed');await BBPantryEditor.flush();
+ const key=await page.evaluate(async({qty,unit,buffer,pack,unknown})=>{
+  const added=unknown?{ok:!!BBPantryEditor.select('Rice','cupboard',{unit})}:BBPantryEditor.add({name:'Rice',loc:'cupboard',qty,unit});if(!added?.ok)throw Error(added?.message||'seed');await BBPantryEditor.flush();
   const row=BBPantryEditor.list().find(row=>BBHomeHost.id(row.name,'')===BBHomeHost.id('Rice',''));
-  const changed=BBPantryEditor.update(row.key,{packQuantity:pack,packUnit:'g',extraBuffer:buffer===0?0:BBPantryPolicy.normalize(row.name,buffer,unit).quantity/BBPantryPolicy.normalize(row.name,1,row.unit).quantity});if(!changed?.ok)throw Error(changed?.message||'capacity');await BBPantryEditor.flush();return row.key;
- },{qty,unit,buffer,pack});
+  if(!unknown){const changed=BBPantryEditor.update(row.key,{packQuantity:pack,packUnit:'g',extraBuffer:buffer===0?0:BBPantryPolicy.normalize(row.name,buffer,unit).quantity/BBPantryPolicy.normalize(row.name,1,row.unit).quantity});if(!changed?.ok)throw Error(changed?.message||'capacity');await BBPantryEditor.flush();}return row.key;
+ },{qty,unit,buffer,pack,unknown});
  const snapshot=()=>page.evaluate(key=>{const row=BBPantryEditor.read(key),keys=BBHomeHost.keys();return {row,stock:localStorage.getItem(keys.stock),inventory:localStorage.getItem(keys.inventory)};},key);
  const open=async()=>{await page.evaluate(key=>BBPantryInline.open(key),key);await page.locator('#bbpi-current-editor').waitFor();};
  const capture=async name=>{if(output){await fs.mkdir(output,{recursive:true});await page.screenshot({path:path.join(output,name+'.png')});}};
@@ -56,8 +51,14 @@ async function low(h){
  const size=h.panel.locator('.bbpi-stock-capacity').filter({hasText:'saved size'}).first();
  if(await size.isVisible())await size.click();
 }
-test('mobile before screenshot uses the unmodified released pantry',{skip},async()=>{
- const h=await fixture(390,{baseline:true});try{await h.capture('before-at-home');await h.open();await h.capture('before-item-editor');assert.equal(await h.panel.locator('.bbpi-stock-levels').count(),0);assert.deepEqual(h.errors,[]);}finally{await h.context.close();}
+test('unknown stock requires a confirmed amount and never covers the meal after quick taps',{skip},async()=>{
+ const h=await fixture(390,{unknown:true});try{
+  const original=await h.snapshot();assert.equal(original.row.qty,null);assert.equal(original.row.unroundedShortfall,500);await h.open();
+  assert.equal(await h.panel.locator('.bbpi-amount-details').evaluate(node=>node.open),true);
+  await h.panel.locator('[data-bbpi-stock-level="got"]').click();await h.panel.locator('[data-bbpi-stock-level="low"]').click();
+  assert.equal(await h.panel.locator('[data-bbpi-quantity]').inputValue(),'');assert.deepEqual(await h.snapshot(),original);
+  await h.panel.locator('.bbpi-close').click();assert.deepEqual(await h.snapshot(),original);assert.deepEqual(h.errors,[]);
+ }finally{await h.context.close();}
 });
 for(const width of [320,390])test('stock levels keep exact stock, spare counts and mobile access at '+width+'px',{skip},async()=>{
  const h=await fixture(width);try{
