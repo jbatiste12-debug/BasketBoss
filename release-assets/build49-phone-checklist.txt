@@ -1,0 +1,32 @@
+BasketBoss 1.0.3 (49) — phone checks
+
+1. Run on your iPhone from the new Xcode workspace; confirm version 1.0.3, build 49.
+2. At home: open Rice with a known amount. Tap Got it, then save. The amount
+   must stay the same. Close another draft without confirming; stock stays saved
+   as it was. Check the editor fits a narrow screen and its controls remain usable.
+3. With a confirmed 1kg pack and no spares, Running low should show an estimated
+   250g. Add one same-size full spare: it should show 1,250g. Tap Out: the opened
+   pack is empty and the full spare still counts as 1,000g. Repeated taps must not
+   add more stock. Negative or fractional spare counts must not save.
+4. Open Edit amount, enter an exact 175.25g, and save. Reopen: retain that exact
+   amount. A missing or incompatible pack size must require review before using
+   a level estimate. Change a pack size after estimating: choose a level again or
+   enter an exact amount before saving. A stale editor must not overwrite a newer
+   saved amount.
+5. In Shopping, an estimate should show a compact Check stock prompt. Open it:
+   the same editor appears and opening alone does not change the amount. Verify
+   500g needed / 250g stocked = 250g to buy. Cooking deducts once; checking an item
+   and importing its receipt must not credit the same purchase twice.
+6. With existing household access, save a confirmed pack size and check it on the
+   linked partner's device. Exact balances must not be credited again by capacity
+   sync. Check an offline edit after reconnecting; conflicting edits should ask
+   for attention. Switching account or household must not send the old household's
+   queued pack metadata into the new household.
+7. Confirm the empty and populated At home views, food/receipt scans, saved plans,
+   Discover/Plan/Cook recipe pictures, and existing sign-in, household access and
+   purchase/restore flows. Reopen a previously viewed recipe offline.
+8. Archive, then confirm version 1.0.3 (49) and uk.co.basketboss.app before upload.
+   Use the prepared workspace; do not run ordinary ios:sync after preparation.
+
+Signing, an actual device run and Apple upload are Mac checks. Automated Linux
+checks do not certify a signed iOS build or a live household session.
