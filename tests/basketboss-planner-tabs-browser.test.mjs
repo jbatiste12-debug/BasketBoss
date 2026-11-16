@@ -90,6 +90,8 @@ for(const viewport of [{width:390,height:844},{width:320,height:568}])test('plan
   if(viewport.width>350){for(const button of await mondayCard.locator('[data-bbfeed-pos="summary"] button').all()){const box=await button.boundingBox();assert.ok(box&&box.width>=44&&box.height>=44,'summary servings controls keep 44px tap targets');}}
   assert.match(await page.locator('[data-bb-pantry-first-mode="pantry-first"]').innerText(),/^Prioritise/);
   await overflow.click();const remove=mondayCard.getByRole('button',{name:'Remove Monday dinner',exact:true});await remove.waitFor({state:'visible'});
+  await page.evaluate(()=>window.dispatchEvent(new Event('scroll')));
+  assert.equal(await remove.isVisible(),true,'a late browser scroll cannot dismiss newly opened meal actions');
   await mondayCard.locator('.bbpc-meal-menu').click({position:{x:2,y:2}});
   assert.equal(await mondayCard.evaluate(node=>node.open),false,'opening overflow does not open Edit day');
   assert.equal(await remove.evaluate(node=>node===__plannerOriginalNodes.remove),true,'Remove reuses the original button');

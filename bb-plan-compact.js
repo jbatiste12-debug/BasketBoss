@@ -96,7 +96,8 @@
    if(event.key==='Escape'&&menu&&!menu.hidden){event.preventDefault();event.stopPropagation();closeMenus();wrap.querySelector('.bbpc-overflow-trigger')?.focus();}
   },true);
   window.addEventListener?.('basketboss:market-changed',schedule);
-  window.addEventListener?.('scroll',()=>{if(!doc.getElementById('bbQaConfirmOverlay'))closeMenus();},{passive:true});
+  // Browser scrolling to a lower day's trigger can finish after it opens.
+  // Keep that menu reachable; outside taps, focus changes and Escape close it.
  }
  window.BBPlanCompact=Object.freeze({refresh});
  if(doc.readyState==='loading')doc.addEventListener('DOMContentLoaded',start,{once:true});else start();
