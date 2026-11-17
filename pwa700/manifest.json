@@ -513,8 +513,8 @@
   "files": [
     {
       "path": "app.html",
-      "bytes": 3059919,
-      "sha256": "4b391a2efc74a60c326c8d9fc2f3f96446ed65a1d66848a793bb84be8b11f935"
+      "bytes": 3059879,
+      "sha256": "56e583aae7759d47a6a013fc845e8595eedc373594c7dac1142e06afcb146ae5"
     },
     {
       "path": "basketboss-latest-guide.html",
@@ -633,13 +633,13 @@
     },
     {
       "path": "make-a-meal.html",
-      "bytes": 40111,
-      "sha256": "d9c02865dc78b735bf0a6f46146e7da3fcaf97bb9a4f9ffce1e7b63080566b0f"
+      "bytes": 40091,
+      "sha256": "0e49e6c663bf18bd17d7a700ba83c3c05bd87c30fd4c8e5029b2452814533382"
     },
     {
       "path": "make-a-meal.js",
-      "bytes": 117048,
-      "sha256": "db7cddad9d759e4b30be8887d493cf216b0b6f4a56a61613628adc1b71b55bb2"
+      "bytes": 117551,
+      "sha256": "9d1bfca152a3c757c2c22d25e54895170c00e33dddc7076d8b1940a497d17880"
     },
     {
       "path": "normalized-ingredient-database.json",
@@ -648,8 +648,8 @@
     },
     {
       "path": "precache.js",
-      "bytes": 11790,
-      "sha256": "9e9bb9eeaa40c4e5ae2aa8b0a58feba0944f31f67abf32333a7157eedaa9ab4c"
+      "bytes": 11662,
+      "sha256": "86321b247098668b2a73bf4a079a060ea7ebc89e4f72d4d763cfe83fd650ddb7"
     },
     {
       "path": "pricing-sandbox.html",
