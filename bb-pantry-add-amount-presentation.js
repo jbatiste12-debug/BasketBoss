@@ -14,8 +14,8 @@
   if(!doc||!win||!dialog?.matches?.('#bbpi-current-editor')||!dialog.querySelector('.bbpi-name-label'))return EMPTY;
   if(mounts.has(dialog))return mounts.get(dialog);
   const content=dialog.querySelector('.bbpi-editor-content');if(!content)return EMPTY;
-  const amount=doc.createElement('details'),summary=doc.createElement('summary'),none=doc.createElement('p');
-  amount.className='bbpa-amount';summary.textContent='Add amount';amount.append(summary);
+  const amount=doc.createElement('details'),summary=doc.createElement('summary'),summaryCopy=doc.createElement('span'),summaryLabel=doc.createElement('span'),summaryHint=doc.createElement('span'),none=doc.createElement('p');
+  amount.className='bbpa-amount';summaryCopy.className='bbpa-summary-copy';summaryLabel.textContent='Add amount (optional)';summaryHint.className='bbpa-summary-hint';summaryHint.textContent='Pack size or exact weight';summaryCopy.append(summaryLabel,summaryHint);summary.append(summaryCopy);amount.append(summary);
   none.className='bbpa-none-at-home';none.textContent='None at home';none.hidden=true;none.setAttribute('aria-live','polite');
   dialog.classList.add('bbpa-add-food');
   // Move each live node once, including all of its original listeners.
@@ -24,7 +24,11 @@
   const first=originalOptional.find(node=>node.parentElement===content)||ownedReadouts[0];
   if(first)first.before(amount);else content.append(amount);
   for(const node of [...originalOptional,...ownedReadouts])amount.append(node);
-  const region=content.querySelector('.bbpi-stock-levels'),readout=region?.querySelector('.bbpi-stock-amount');
+  const nameLabel=content.querySelector('.bbpi-name-label'),nameText=[...nameLabel.childNodes].find(node=>node.nodeType===3);
+  if(nameText)nameText.nodeValue='Food';
+  const title=dialog.querySelector('.bbpi-editor-heading h4');if(title)title.setAttribute('aria-label','Add food');
+  const region=content.querySelector('.bbpi-stock-levels'),readout=region?.querySelector('.bbpi-stock-amount'),choices=region?.querySelector('.bbpi-stock-choices');
+  if(choices){const prompt=doc.createElement('p');prompt.className='bbpa-stock-label';prompt.textContent='How much do you have?';choices.before(prompt);}
   if(readout)readout.after(none);else content.insertBefore(none,amount);
   const legacyToggle=region?.querySelector('.bbpi-stock-pack-toggle'),sparesLabel=amount.querySelector('.bbpi-stock-spares-label'),spares=sparesLabel?.querySelector('input'),done=dialog.querySelector('.bbpi-done');
   if(sparesLabel){
@@ -78,7 +82,7 @@
    const out=!qualitative&&region.querySelector('[data-bbpi-stock-level="out"]')?.getAttribute('aria-pressed')==='true';
    // A positive unopened-pack balance remains visible even when Out is active.
    const empty=out&&raw!==''&&raw!==undefined&&Number.isFinite(Number(raw))&&Number(raw)===0;
-   setClass('bbpa-out-zero',empty);setHidden(none,!empty);setHidden(amount,empty&&!reviewRequired);
+   setClass('bbpa-out-zero',empty);setClass('bbpa-out-balance',out&&!empty);setHidden(none,!empty);setHidden(amount,empty&&!reviewRequired);
    const busy=!!done&&(done.disabled||done.getAttribute('aria-busy')==='true');
    setClass('bbpa-done-busy',busy);
    if(done){const label=busy?done.textContent.trim()||'Done':'Done';if(done.getAttribute('aria-label')!==label)done.setAttribute('aria-label',label);}

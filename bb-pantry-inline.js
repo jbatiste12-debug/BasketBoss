@@ -656,7 +656,14 @@
      if(rawBuffer.trim()!==''&&nextBuffer===null){notice(view,'Review the extra stock buffer unit before choosing a pack level.',true);return false;}
      unitOptions(units,api.units?.()||[nextUnit],nextUnit,before);units.value=nextUnit;view.unit=nextUnit;setAmount(quantity,value);if(nextBuffer!==null)setAmount(buffer,nextBuffer);
      view.touched.add('quantity');view.touched.add('unit');view.dirty=true;notice(view,'');refreshPreview(view);return true;}});
-   configureTracking();doc.body.append(element);lockEditor();fitEditor();try{element.showModal();}catch{element.setAttribute('open','');}fitEditor();(name&&!name.value.trim()?name:row.staple&&view.status?view.status:!amountDetails.open?element.querySelector('.bbpi-stock-choice[aria-pressed="true"]')||element.querySelector('.bbpi-stock-choice')||quantity:quantity).focus({preventScroll:true});refreshPreview(view);return true;
+   configureTracking();doc.body.append(element);
+   // Group the live amount fields before showing or focusing the sheet, so a
+   // quick-add cannot briefly summon a number keyboard for a field we hide.
+   safe(()=>win.BBPantryAddAmountPresentation?.mount?.(view,{win,doc}));
+   lockEditor();fitEditor();try{element.showModal();}catch{element.setAttribute('open','');}fitEditor();
+   const originalFocus=name&&!name.value.trim()?name:row.staple&&view.status?view.status:!amountDetails.open?element.querySelector('.bbpi-stock-choice[aria-pressed="true"]')||element.querySelector('.bbpi-stock-choice')||quantity:quantity;
+   const firstFocus=originalFocus.closest('.bbpa-amount:not([open])')?element.querySelector('.bbpi-stock-choice[aria-pressed="true"]')||element.querySelector('.bbpi-stock-choice')||name||close:originalFocus;
+   firstFocus.focus({preventScroll:true});refreshPreview(view);return true;
   }
   function adjustSummary(key,direction){
    if(!valid(current))return teardown();const api=current,row=api.read(key);if(!row)return;

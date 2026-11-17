@@ -7,6 +7,7 @@ import {createRequire} from 'node:module';
 
 const require=createRequire(import.meta.url),ROOT=fileURLToPath(new URL('..',import.meta.url));
 const captureBefore=process.env.BB_ADD_FOOD_CAPTURE_BEFORE==='1';
+const baselineDirectory=process.env.BB_ADD_FOOD_BASELINE_DIR;
 const output=process.env.BB_ADD_FOOD_SCREENSHOTS||'/workspace/shared/BasketBoss-Add-Food-20261116';
 let chromium,browser;
 try{({chromium}=require(process.env.BB_PLAYWRIGHT_MODULE||'playwright'));}catch{}
@@ -16,8 +17,8 @@ const skip=!chromium?'Set BB_PLAYWRIGHT_MODULE to run real-app browser checks':f
 
 // Only the disposable browser context is seeded. Every control, calculation
 // and save below uses the real generated app and its existing editor handlers.
-async function fixture(width=390,{qty=500,pack=1000,buffer=0,unknown=false}={}){
- const context=await browser.newContext({viewport:{width,height:844},isMobile:true,hasTouch:true,serviceWorkers:'block',reducedMotion:'reduce'}),page=await context.newPage(),errors=[];
+async function fixture(width=390,{qty=500,pack=1000,buffer=0,unknown=false,reducedMotion='reduce'}={}){
+ const context=await browser.newContext({viewport:{width,height:844},isMobile:true,hasTouch:true,serviceWorkers:'block',reducedMotion}),page=await context.newPage(),errors=[];
  page.setDefaultTimeout(12000);page.on('pageerror',error=>errors.push(error.message));page.on('dialog',dialog=>dialog.dismiss());
  const baseline=captureBefore?await fs.readFile('/tmp/basketboss-add-food-before-app.html'):null;
  await context.route('**/*',async route=>{
@@ -28,7 +29,8 @@ async function fixture(width=390,{qty=500,pack=1000,buffer=0,unknown=false}={}){
   const app=['app','app/','app.html','index.html','index',''].includes(name);
   if(app)name='pwa700/app.html';
   if(name.includes('..'))return route.fulfill({status:404,body:''});
-  let body;try{body=app&&baseline?baseline:await fs.readFile(path.join(ROOT,name));}catch{return route.fulfill({status:404,body:''});}
+  const source=baselineDirectory&&['bb-pantry-inline.js','bb-pantry-inline.css','bb-pantry-add-amount-presentation.js'].includes(name)?path.join(baselineDirectory,name):path.join(ROOT,name);
+  let body;try{body=app&&baseline?baseline:await fs.readFile(source);}catch{return route.fulfill({status:404,body:''});}
   const types={'.html':'text/html','.js':'application/javascript','.mjs':'application/javascript','.css':'text/css','.json':'application/json','.webp':'image/webp','.png':'image/png','.svg':'image/svg+xml'};
   return route.fulfill({status:200,contentType:types[path.extname(name)]||'application/octet-stream',body});
  });
@@ -94,7 +96,7 @@ if(captureBefore){
    const targets=await h.panel.locator('.bbpi-stock-choice,.bbpi-close,.bbpi-done,.bbpa-amount>summary').evaluateAll(nodes=>nodes.map(node=>({label:node.textContent,width:node.getBoundingClientRect().width,height:node.getBoundingClientRect().height})));
    assert.ok(targets.every(rect=>rect.width>=44&&rect.height>=44),'all default controls keep 44px targets: '+JSON.stringify(targets));
    assert.equal(await h.panel.evaluate(node=>node.scrollWidth<=node.clientWidth+1),true);
-   if(width===390)await h.capture('after');
+   await h.capture(width===390?'after':'after-320');
    await h.panel.evaluate(node=>{window.__addFoodControls={name:node.querySelector('.bbpi-name-label input'),quantity:node.querySelector('[data-bbpi-quantity]'),spares:node.querySelector('.bbpi-stock-spares'),portions:[...node.querySelectorAll('.bbpi-stock-portion')]};});
    await expand(h);assert.equal(await h.panel.getByLabel('Extra unopened packs',{exact:true}).count(),1);
    assert.match(await h.panel.locator('.bbpi-stock-spares-label').innerText(),/^Extra unopened packs/);
@@ -103,7 +105,7 @@ if(captureBefore){
    assert.ok(Math.abs(portionBoxes[0]-portionBoxes[1])<2,'Full and Half share one row');
    assert.equal(await h.page.evaluate(()=>Object.values(__addFoodControls).flat().every(node=>node.isConnected)),true);
    assert.deepEqual(await h.snapshot(),original,'opening optional amount controls does not save stock');
-   if(width===390)await h.capture('after-expanded');
+   await h.capture(width===390?'after-expanded':'after-expanded-320');
    await amount.locator(':scope>summary').click();assert.equal(await amount.evaluate(node=>node.open),false);
    await h.panel.locator('.bbpi-close').click();assert.deepEqual(await h.snapshot(),original,'collapse and dismiss preserve saved pantry bytes');assert.deepEqual(h.errors,[]);
   }finally{await h.context.close();}
@@ -164,6 +166,44 @@ if(captureBefore){
    await amount.locator(':scope>summary').click();await h.panel.getByRole('button',{name:'Done',exact:true}).click();
    assert.equal(await amount.evaluate(node=>node.open),true);assert.equal(await quantity.isVisible(),true);assert.equal(await quantity.evaluate(node=>node===document.activeElement),true);
    assert.deepEqual(await h.snapshot(),original,'the existing unknown-amount validation preserves stock');await h.panel.locator('.bbpi-close').click();assert.deepEqual(await h.snapshot(),original);assert.deepEqual(h.errors,[]);
+  }finally{await h.context.close();}
+ });
+
+ test('a prefilled quick-add opens in normal motion without focusing hidden amount fields or changing stock',{skip},async()=>{
+  const h=await fixture(390,{reducedMotion:'no-preference'});try{
+   await h.page.evaluate(async key=>{
+    BBPantryEditor.remove(key);await BBPantryEditor.flush();
+    window.__pantryOpenFocus=[];
+    document.addEventListener('focusin',event=>{
+     const panel=event.target.closest?.('#bbpi-current-editor');
+     if(panel)window.__pantryOpenFocus.push({type:event.target.type||'',label:event.target.getAttribute('aria-label')});
+    });
+   },h.key);
+   const original=await h.snapshot();
+   await h.page.locator('[data-bbpi-quick-add="Pasta"]').click();await h.panel.waitFor();
+   const amount=h.panel.locator('.bbpa-amount'),name=h.panel.getByLabel('Food name',{exact:true});
+   assert.equal(await name.inputValue(),'Pasta');assert.equal(await amount.evaluate(node=>node.open),false);
+   assert.equal(await h.panel.locator('[data-bbpi-quantity]').isVisible(),false);
+   const initialFocus=await h.page.evaluate(()=>({
+    numberFocused:window.__pantryOpenFocus.some(entry=>entry.type==='number'),
+    visible:document.activeElement.getClientRects().length>0,
+    inSheet:!!document.activeElement.closest('#bbpi-current-editor'),
+    hiddenAmount:!!document.activeElement.closest('.bbpa-amount:not([open])')
+   }));
+   assert.deepEqual(initialFocus,{numberFocused:false,visible:true,inSheet:true,hiddenAmount:false},'opening must not flash a number keyboard then blur to the page');
+   await h.panel.evaluate(node=>{window.__quickAddControls=[node.querySelector('.bbpi-name-label input'),node.querySelector('[data-bbpi-quantity]'),node.querySelector('.bbpi-stock-spares')];});
+   const frames=await h.panel.evaluate(async node=>{
+    const result=[];for(let i=0;i<4;i++){await new Promise(requestAnimationFrame);const rect=node.getBoundingClientRect();result.push({top:rect.top,bottom:rect.bottom,left:rect.left,width:rect.width});}return result;
+   });
+   assert.ok(frames.every(rect=>Math.abs(rect.top-frames[0].top)<1&&Math.abs(rect.left-frames[0].left)<1&&rect.width<=390&&rect.bottom<=845),'the sheet settles without jumping between top and bottom');
+   await h.page.setViewportSize({width:390,height:520});
+   await name.focus();await name.fill('Pasta');
+   const keyboardGeometry=await h.panel.boundingBox();
+   assert.ok(keyboardGeometry.y>=0&&keyboardGeometry.y+keyboardGeometry.height<=521,'simulated keyboard viewport keeps the sheet in reach');
+   assert.equal(await h.page.evaluate(()=>__quickAddControls.every(node=>node.isConnected)),true);
+   assert.deepEqual(await h.snapshot(),original,'quick-add and viewport changes remain an unsaved draft');
+   await h.page.setViewportSize({width:390,height:844});await h.capture('after-quick-add');
+   await h.panel.locator('.bbpi-close').click();assert.deepEqual(await h.snapshot(),original);assert.deepEqual(h.errors,[]);
   }finally{await h.context.close();}
  });
 }

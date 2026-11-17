@@ -578,3 +578,44 @@ html body #bbpi-current-editor.bbpa-add-food .bbpa-none-at-home[hidden]{display:
  html body #bbpi-current-editor.bbpa-add-food .bbpa-amount[open]>summary{margin-inline:-8px}
  html body #bbpi-current-editor.bbpa-add-food .bbpi-stock-spares-label{grid-template-columns:minmax(0,1fr) 68px;column-gap:7px}
 }
+
+/* Reference Add food sheet: presentation only, over the original live form. */
+html body dialog#bbpi-current-editor.bbpi-panel.bbpa-add-food{
+ top:auto!important;bottom:max(0px,calc(100dvh - var(--bbpi-viewport-height,100dvh) - var(--bbpi-viewport-top,0px)))!important;
+ width:100%;max-width:520px;max-height:calc(var(--bbpi-viewport-height,100dvh) - max(8px,env(safe-area-inset-top,0px)));
+ margin:0 auto;border:1px solid #e4e5db;border-bottom:0;border-radius:28px 28px 0 0;background:#faf8f2;color:#213b30;
+ box-shadow:0 -12px 48px #18362920;
+}
+html body dialog#bbpi-current-editor.bbpa-add-food:before{content:'';display:block;flex:none;width:42px;height:4px;margin:12px auto 0;border-radius:999px;background:#d1d8c9}
+html body dialog#bbpi-current-editor.bbpa-add-food .bbpi-editor-heading{padding:20px 20px 13px;column-gap:12px;row-gap:4px;border:0!important;background:#faf8f2!important;color:#213b30!important}
+html body dialog#bbpi-current-editor.bbpa-add-food .bbpi-eyebrow{font:750 11px/1.3 system-ui,sans-serif;letter-spacing:.08em;color:#345e48!important}
+html body dialog#bbpi-current-editor.bbpa-add-food .bbpi-editor-heading h4{font-size:0;line-height:0;letter-spacing:normal;color:#213b30}
+html body dialog#bbpi-current-editor.bbpa-add-food .bbpi-editor-heading h4:after{content:'Add food';font:700 29px/1.15 Georgia,'Times New Roman',serif;color:#213b30}
+html body dialog#bbpi-current-editor.bbpi-panel.bbpa-add-food .bbpi-close{width:46px!important;min-width:46px!important;max-width:46px!important;height:46px!important;min-height:46px!important;max-height:46px!important;border:0!important;border-radius:50%!important;background:#edf0e4!important;color:#213b30!important;font-size:27px!important}
+html body dialog#bbpi-current-editor.bbpa-add-food .bbpi-editor-content{padding:10px 20px 6px}
+html body dialog#bbpi-current-editor.bbpa-add-food .bbpi-name-label{gap:10px;margin:0 0 20px;color:#536054;font:650 14px/1.35 system-ui,sans-serif}
+html body dialog#bbpi-current-editor.bbpa-add-food .bbpi-name-label input{min-height:58px;padding:13px 15px;border:2px solid #315e48;border-radius:17px;background:#fff;color:#243b30;font:500 18px/1.35 system-ui,sans-serif}
+html body dialog#bbpi-current-editor.bbpa-add-food .bbpa-stock-label{margin:0 0 10px;color:#536054;font:650 14px/1.35 system-ui,sans-serif}
+html body dialog#bbpi-current-editor.bbpa-add-food .bbpi-stock-choices{grid-template-columns:repeat(3,minmax(0,1fr));gap:3px;padding:4px;border:0;border-radius:18px;background:#edf0e3}
+html body dialog#bbpi-current-editor.bbpa-add-food .bbpi-stock-choice{min-height:52px;padding:8px 4px;border:0;border-radius:14px;color:#263a2f;font:650 14px/1.3 system-ui,sans-serif}
+html body dialog#bbpi-current-editor.bbpa-add-food .bbpi-stock-choice[aria-pressed=true]{border:0;background:#1e4d3b;color:#fffef7;box-shadow:0 2px 5px #1e4d3b12}
+html body dialog#bbpi-current-editor.bbpa-add-food .bbpi-stock-amount{display:none}
+html body dialog#bbpi-current-editor.bbpa-add-food.bbpa-out-balance .bbpi-stock-amount,
+html body dialog#bbpi-current-editor.bbpa-add-food:has(.bbpa-amount[open]):not(.bbpa-out-zero) .bbpi-stock-amount{display:block}
+html body dialog#bbpi-current-editor.bbpa-add-food :is(.bbpi-stock-explanation,.bbpi-stock-message){font:400 13px/1.5 system-ui,sans-serif;color:#687366}
+html body dialog#bbpi-current-editor.bbpa-add-food .bbpi-stock-explanation{margin-top:9px}
+html body dialog#bbpi-current-editor.bbpa-add-food .bbpa-amount{margin:19px 0 0;border:1px solid #cfd7c8;border-radius:18px;background:#fff;box-shadow:0 1px 3px #213b3005}
+html body dialog#bbpi-current-editor.bbpa-add-food .bbpa-amount>summary{justify-content:space-between;gap:14px;min-height:63px;padding:11px 15px;color:#315e48;font:750 16px/1.35 system-ui,sans-serif}
+html body dialog#bbpi-current-editor.bbpa-add-food .bbpa-summary-copy{display:grid;gap:2px}
+html body dialog#bbpi-current-editor.bbpa-add-food .bbpa-summary-hint{color:#6b7668;font:400 12px/1.4 system-ui,sans-serif}
+html body dialog#bbpi-current-editor.bbpa-add-food .bbpa-amount>summary:after{content:'';flex:none;width:9px;height:9px;margin:0 2px 4px auto;border-right:2px solid #315e48;border-bottom:2px solid #315e48;transform:rotate(45deg)}
+html body dialog#bbpi-current-editor.bbpa-add-food .bbpa-amount[open]>summary:after{content:'';transform:rotate(225deg);margin-bottom:0}
+html body dialog#bbpi-current-editor.bbpa-add-food .bbpi-editor-actions{padding:17px 20px max(20px,env(safe-area-inset-bottom,0px));border:0!important;background:#faf8f2!important}
+html body dialog#bbpi-current-editor.bbpa-add-food .bbpi-done{min-height:58px;border:0;border-radius:18px;background:#1e4d3b;color:#fffdf7;box-shadow:none}
+html body dialog#bbpi-current-editor.bbpa-add-food:not(.bbpa-done-busy) .bbpi-done:after{font:650 18px/1.3 system-ui,sans-serif}
+@media(max-width:359px){
+ html body dialog#bbpi-current-editor.bbpa-add-food .bbpi-editor-heading{padding-inline:16px}
+ html body dialog#bbpi-current-editor.bbpa-add-food .bbpi-editor-content{padding-inline:16px}
+ html body dialog#bbpi-current-editor.bbpa-add-food .bbpi-editor-actions{padding-inline:16px}
+ html body dialog#bbpi-current-editor.bbpa-add-food .bbpi-stock-choice{font-size:12px}
+}
