@@ -1,0 +1,46 @@
+name: Inspect meal generation public boundaries
+
+on:
+  push:
+    branches: [fix/meal-generation-error-reporting-20261117]
+    paths: [.github/workflows/inspect-meal-generation.yml]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  public-boundaries:
+    runs-on: ubuntu-latest
+    timeout-minutes: 3
+    steps:
+      - uses: actions/setup-node@v5
+        with:
+          node-version: '24'
+      - name: Inspect public native responses without account credentials or AI requests
+        shell: bash
+        run: |
+          node --input-type=module <<'NODE'
+          const origin='capacitor://localhost';
+          const hosts=['https://basketboss.co.uk','https://www.basketboss.co.uk'];
+          const checks=[['GET','/api/bb173/status'],['OPTIONS','/api/bb173/generate'],['OPTIONS','/api/bb173/meal-image'],['POST','/api/bb173/generate']];
+          await Promise.all(hosts.flatMap(host=>checks.map(async([method,path])=>{
+            const started=Date.now(),headers={Origin:origin,Accept:'application/json'};
+            if(method==='OPTIONS')Object.assign(headers,{'Access-Control-Request-Method':'POST','Access-Control-Request-Headers':'authorization, content-type'});
+            if(method==='POST')headers['Content-Type']='application/json';
+            try{
+              // No Authorization, user data or valid generation payload is sent.
+              // The production authorization guard must reject this POST before quota/provider work.
+              const response=await fetch(host+path,{method,headers,...(method==='POST'?{body:'{}'}:{}),redirect:'manual',signal:AbortSignal.timeout(15000)});
+              const contentType=(response.headers.get('Content-Type')||'').split(';')[0];
+              const location=response.headers.get('Location');
+              let destination=null;
+              if(location){try{const address=new URL(location,host);destination=hosts.includes(address.origin)?address.origin:'other';}catch{destination='invalid';}}
+              console.log(JSON.stringify({host,path,method,status:response.status,contentType:['application/json','text/html'].includes(contentType)?contentType:'other',nativeCors:response.headers.get('Access-Control-Allow-Origin')===origin,redirect:destination,elapsedMs:Date.now()-started}));
+              await response.body?.cancel();
+            }catch{
+              console.log(JSON.stringify({host,path,method,status:null,elapsedMs:Date.now()-started,failure:'NO_RESPONSE'}));
+              process.exitCode=1;
+            }
+          })));
+          NODE
