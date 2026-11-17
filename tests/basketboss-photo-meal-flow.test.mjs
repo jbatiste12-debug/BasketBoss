@@ -26,7 +26,7 @@ function harness({pantry=false,deferResize=false,diets=[],servings=4,responseBod
  const fetch=async(url,options)=>{
   const action=String(url).split('/').pop();
   if(action==='status'){if(availabilityHangs)return new Promise(()=>{});return {ok:true,json:async()=>({status:'available',premium_ai:true,siteKey:'fixture-key',turnstileRequired:false})};}
-  return new Promise((resolve,reject)=>requests.push({action,body:JSON.parse(options.body),options,resolve:payload=>resolve({ok:true,json:async()=>responseBodyHangs?new Promise(()=>{}):payload}),reject}));
+  return new Promise((resolve,reject)=>requests.push({action,body:JSON.parse(options.body),options,resolve:payload=>resolve({ok:true,json:async()=>responseBodyHangs?new Promise(()=>{}):payload}),resolveResponse:resolve,reject}));
  };
  const window={document,navigator:{onLine:!offline},location:{href:'http://localhost/make-a-meal.html'+(pantry?'?bbscan=pantry&location=fridge':''),search:pantry?'?bbscan=pantry&location=fridge':''},BB173_FREE_RECIPE_IDS:[],BBAccountDeletion:{isDeleting:()=>deleting},BasketBossVerifiedPremium:{isActive:()=>!!token&&!deleting},localStorage:storage,addEventListener:on,BBMealImage:{cancelAll(){}},BBCookResult:{render(host,value,options){rendered.push({recipe:value,options});host.innerHTML='RECIPE READY';return{cancel(){host.innerHTML='';}};},clear:host=>host.replaceChildren()}};
  const context=vm.createContext({window,document,location:window.location,URL,URLSearchParams,localStorage:storage,Date,AbortController,fetch,confirm:message=>{dialogs.push(message);return consent;},setInterval:()=>1,clearInterval(){},setTimeout:(fn,wait)=>{const id=++timerId;timers.set(id,{fn,wait});return id;},clearTimeout:id=>timers.delete(id),requestAnimationFrame:fn=>fn(),MutationObserver:class{observe(){}},createImageBitmap:()=>deferResize?new Promise(resolve=>{resizeResolve=resolve;}):Promise.resolve(bitmap),console});
@@ -233,4 +233,87 @@ test('offline scans fail locally and release controls without sending photos or 
  const h=harness({offline:true});h.api.choosePhoto({type:'image/png',size:100});await h.api.scanPhoto();
  assert.equal(h.requests.length,0);assert.equal(h.api.state().scanInFlight,false);assert.equal(h.get('#scanBtn').disabled,false);
  assert.match(h.get('#scanResults').innerHTML,/offline/);assert.deepEqual(h.writes,[]);assert.equal(h.values.get('basketboss_321_v7_measured_pantry'),'{"garlic|clove":7}');
+});
+
+async function beginReviewedGeneration(h){
+ h.api.renderScanResponse({items:[{name:'Rice'},{name:'Cooked chicken'}]});
+ const reviewed=h.form([{name:'Rice'},{name:'Cooked chicken'},{name:'Black pepper',checked:false}]);
+ h.api.bbConfirmPhotoMeal(reviewed);await tick();
+ assert.equal(h.requests.length,1);assert.equal(h.requests[0].action,'generate');
+ assert.equal(h.api.state().generateInFlight,true);assert.equal(h.get('#generate').disabled,true);
+ assert.equal(h.get('#reviewMealFoods button[type="submit"]').disabled,true);
+ return reviewed;
+}
+
+function assertFailedGenerationPreserved(h,reviewed){
+ assert.equal(h.api.state().generateInFlight,false);assert.equal(h.get('#generate').disabled,false);
+ assert.equal(h.get('#reviewMealFoods button[type="submit"]').disabled,false);
+ assert.equal(h.requests.length,1,'a failed paid request is not retried automatically');
+ assert.equal(h.rendered.length,0);assert.deepEqual(h.writes,[]);
+ assert.equal(h.values.get('basketboss_321_v7_measured_pantry'),'{"garlic|clove":7}');
+ assert.equal(h.values.get('basketboss_makeameal_v1_inventory'),'{"cupboard|garlic":{"name":"Garlic","selected":true}}');
+ assert.deepEqual(Array.from(h.api.state().names),['Rice','Cooked chicken']);
+ assert.deepEqual(reviewed.rows.map(({field,check})=>({name:field.value,checked:check.checked})),[
+  {name:'Rice',checked:true},{name:'Cooked chicken',checked:true},{name:'Black pepper',checked:false}
+ ]);
+ assert.equal(h.timers.size,0,'settled requests release their deadline timers');
+ const html=h.get('#generated').innerHTML;
+ assert.doesNotMatch(html,/\.\.|member-A|private-body|stack-trace|check your signal/);
+ assert.equal((html.match(/Your (?:saved ingredients|selections) were not changed/g)||[]).length,1,'show one preservation reassurance');
+ return html;
+}
+
+test('unreadable generation responses identify the service failure without exposing response bodies',async()=>{
+ for(const {body,status,expected} of [
+  {body:'<html>private-body Bearer member-A</html>',status:502,expected:'The AI service returned an unreadable response (HTTP 502). Please try again shortly.'},
+  {body:'{"private-body":"member-A",',status:200,expected:'The AI service returned an unreadable response. Please try again shortly.'},
+  {body:'',status:502,expected:'The AI service returned an unreadable response (HTTP 502). Please try again shortly.'}
+ ]){
+  const h=harness(),reviewed=await beginReviewedGeneration(h);
+  h.requests[0].resolveResponse(new Response(body,{status,headers:{'Content-Type':status===200?'application/json':'text/html'}}));await tick();
+  const html=assertFailedGenerationPreserved(h,reviewed);
+  assert.equal(html,'<div class="warning">'+expected+' Your saved ingredients were not changed.</div>');
+  assert.doesNotMatch(html,/<html>|&lt;html&gt;|SyntaxError|Unexpected token|Unexpected end|Connection interrupted/);
+ }
+});
+
+test('unreadable response status labels accept only integer HTTP error statuses',async()=>{
+ for(const status of [undefined,0,200,399,600,502.5,'502',400,599]){
+  const h=harness(),reviewed=await beginReviewedGeneration(h);
+  h.requests[0].resolveResponse({ok:false,status,json:async()=>{throw new SyntaxError('private-body member-A stack-trace');}});await tick();
+  const html=assertFailedGenerationPreserved(h,reviewed);
+  const expected=Number.isInteger(status)&&status>=400&&status<=599?' (HTTP '+status+')':'';
+  assert.equal(html,'<div class="warning">The AI service returned an unreadable response'+expected+'. Please try again shortly. Your saved ingredients were not changed.</div>');
+ }
+});
+
+test('generation transport rejection does not blame signal or expose exception details',async()=>{
+ const h=harness(),reviewed=await beginReviewedGeneration(h);
+ h.requests[0].reject(new TypeError('private-body member-A stack-trace'));await tick();
+ const html=assertFailedGenerationPreserved(h,reviewed);
+ assert.equal(html,'<div class="warning">The AI request was interrupted before a response was received. Please try again shortly. Your saved ingredients were not changed.</div>');
+ assert.doesNotMatch(html,/unreadable|HTTP|Connection interrupted/);
+});
+
+test('valid JSON generation errors preserve safe service wording for limits and temporary failures',async()=>{
+ for(const {status,error} of [
+  {status:429,error:'Daily AI limit reached. Please try again tomorrow.'},
+  {status:503,error:'The AI service is temporarily unavailable'}
+ ]){
+  const h=harness(),reviewed=await beginReviewedGeneration(h);
+  h.requests[0].resolveResponse(Response.json({error,privateDetails:'private-body member-A stack-trace'},{status}));await tick();
+  const html=assertFailedGenerationPreserved(h,reviewed);
+  assert.equal(html,'<div class="warning">'+error.replace(/\.$/,'')+'. Your saved ingredients were not changed.</div>');
+  assert.doesNotMatch(html,/unreadable|interrupted|Try again when you are ready/);
+ }
+});
+
+test('a stalled generation body times out without losing reviewed foods or leaving controls locked',async()=>{
+ const h=harness({responseBodyHangs:true}),reviewed=await beginReviewedGeneration(h);
+ h.requests[0].resolve({ok:true,reviewRequired:true,recipe:recipe()});await tick();
+ assert.equal(h.api.state().generateInFlight,true,'headers alone do not complete generation');
+ assert.equal([...h.timers.values()].at(-1).wait,30000,'generation keeps its existing bounded deadline');
+ h.expireRequest();await tick();
+ const html=assertFailedGenerationPreserved(h,reviewed);
+ assert.equal(html,'<div class="warning">Request timed out. Your selections were not changed; try again or use local recipes.</div>');
 });

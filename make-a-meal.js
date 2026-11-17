@@ -17,18 +17,25 @@ let bbSecureLastToken=null;
 async function bbMealJSON(url,options={},timeoutMs=12000){
  if(window.navigator?.onLine===false)throw Error('You are offline. Your saved ingredients were not changed; reconnect to use AI.');
  const controller=new AbortController(),external=options.signal;
- let timeout=false,stop;
+ let timeout=false,stop,response;
  const abort=()=>controller.abort();
  const stopped=new Promise((_,reject)=>controller.signal.addEventListener('abort',()=>reject(Error(timeout?'Request timed out. Your selections were not changed; try again or use local recipes.':'Request cancelled. Your selections were not changed.')),{once:true}));
  if(external?.aborted)abort();else external?.addEventListener?.('abort',abort,{once:true});
  stop=setTimeout(()=>{timeout=true;abort();},timeoutMs);
  const request=Promise.resolve().then(async()=>{
   if(controller.signal.aborted)throw Error('Request cancelled.');
-  const response=await fetch(url,{...options,signal:controller.signal});
+  response=await fetch(url,{...options,signal:controller.signal});
   const data=await response.json();return {response,data};
  });
  try{return await Promise.race([request,stopped]);}
- catch(error){if(controller.signal.aborted)throw error;throw Error('Connection interrupted. Your selections were not changed; check your signal and try again.');}
+ catch(error){
+  if(controller.signal.aborted)throw error;
+  if(response){
+   const status=response.status,http=Number.isInteger(status)&&status>=400&&status<=599?' (HTTP '+status+')':'';
+   throw Error('The AI service returned an unreadable response'+http+'. Please try again shortly.');
+  }
+  throw Error('The AI request was interrupted before a response was received. Please try again shortly.');
+ }
  finally{clearTimeout(stop);external?.removeEventListener?.('abort',abort);}
 }
 function bb176MakeMealAllowed(recipe){
@@ -622,6 +629,10 @@ function bbValidGeneratedRecipe(recipe){
   strings(recipe.steps,15,600)&&recipe.steps.length>=1&&recipe.steps.every(step=>!window.BBCookMethod||text(window.BBCookMethod.normalizeStep(step,recipe),600))&&strings(recipe.extraIngredients,2,120)&&
   strings(recipe.allergens,25,120)&&strings(recipe.safetyNotes,25,400);
 }
+function bbMealFailureMessage(error){
+ const detail=String(error?.message||'The AI request could not be completed.').trim().replace(/\.{2,}$/,'.');
+ return detail+(/[.!?]$/.test(detail)?'':'.')+(/\bYour (?:saved ingredients|selections) were not changed\b/i.test(detail)?'':' Your saved ingredients were not changed.');
+}
 function generate(){
  bbCheckGeneratedMealAccount();
  if(generateInFlight)return;
@@ -663,7 +674,7 @@ function generate(){
   }
   const duration=(Number(r.prepMinutes)||0)+(Number(r.cookMinutes)||0),steps=bbMealMethod(r).slice(0,15),allergens=Array.isArray(r.allergens)?r.allergens:[],safety=Array.isArray(r.safetyNotes)?r.safetyNotes:[];
   $('#generated').innerHTML=`<article class="generated"><div class="eyebrow" style="color:var(--green)">Unverified AI recipe · early access</div><h3>${esc(r.title||'AI meal')}</h3><p>${esc(r.servings)} servings · ${esc(bbMealDuration(duration))} estimated</p><p>${esc(r.summary||'')}</p><p class="hint">No cost estimate. This AI recipe is NOT automatically added to Planner or Shopping.</p><h4>Ingredients</h4><ul>${r.ingredients.map(a=>`<li><span data-bb-measures>${esc(bbMealQuantity(a.quantity||'Quantity unclear',a.name))}</span> ${esc(a.name||'')} · ${a.fromHome===false?'<strong>To buy</strong>':'Have (check quantity)'}</li>`).join('')}</ul><h4>Method (review for food safety)</h4><ol class="bb-recipe-method">${steps.map(bbMealStepHTML).join('')}</ol><h4>Possible allergens</h4><p>${esc(allergens.join(', ')||'Review packaged ingredients and allergens yourself')}</p><h4>Food safety reminders</h4><ul>${safety.map(s=>`<li data-bb-measures>${esc(bbMealStep(s))}</li>`).join('')||'<li>Check safe handling, storage and cooking temperatures.</li>'}</ul><div class="warning">AI-generated, not kitchen-tested or verified as safe for dietary requirements. Confirm all ingredients, allergens, quantities and cooking safety. BasketBoss never automatically adds AI drafts to the Planner.</div></article>`;
- }).catch(e=>{if(isCurrent())$('#generated').innerHTML='<div class="warning">'+esc(e.message+'. Your saved ingredients were not changed. Try again when you are ready.')+'</div>';}).finally(()=>{if(revision===generateRevision){generateInFlight=false;btn.disabled=false;if(reviewButton)reviewButton.disabled=false;}});
+ }).catch(e=>{if(isCurrent())$('#generated').innerHTML='<div class="warning">'+esc(bbMealFailureMessage(e))+'</div>';}).finally(()=>{if(revision===generateRevision){generateInFlight=false;btn.disabled=false;if(reviewButton)reviewButton.disabled=false;}});
 }
 window.addEventListener('basketboss:account-deletion-started',bbClearGeneratedMeal);
 window.addEventListener('basketboss:account-deletion-deleted',bbClearGeneratedMeal);
