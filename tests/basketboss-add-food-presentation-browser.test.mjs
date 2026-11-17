@@ -206,4 +206,75 @@ if(captureBefore){
    await h.panel.locator('.bbpi-close').click();assert.deepEqual(await h.snapshot(),original);assert.deepEqual(h.errors,[]);
   }finally{await h.context.close();}
  });
+
+ for(const unknown of [false,true])test('single touch level changes stay acknowledged and in place with '+(unknown?'unknown':'known')+' stock',{skip},async()=>{
+  const h=await fixture(390,{unknown,reducedMotion:'no-preference'});try{
+   const original=await h.snapshot();await h.open();
+   const first=await h.panel.locator('[data-bbpi-stock-level="got"]').boundingBox();
+   for(const level of ['low','got','out','got','low','out']){
+    await h.panel.locator('[data-bbpi-stock-level="'+level+'"]').tap();
+    assert.deepEqual(await h.panel.locator('.bbpi-stock-choice[aria-pressed="true"]').evaluateAll(nodes=>nodes.map(node=>node.dataset.bbpiStockLevel)),[level],'one tap acknowledges the most recent choice');
+    const box=await h.panel.locator('[data-bbpi-stock-level="'+level+'"]').boundingBox();
+    assert.ok(Math.abs(box.y-first.y)<4,'changing level does not move the selector');
+    if(level!=='out'&&await h.panel.locator('.bbpi-stock-pending').isVisible()){
+     assert.match(await h.panel.locator('.bbpi-stock-pending').innerText(),/selected|Confirm/);
+     assert.match(await h.panel.locator('.bbpi-stock-explanation').innerText(),/Amount not changed yet/);
+     assert.equal(await h.panel.locator('.bbpa-amount>summary').innerText(),'Confirm amount\nConfirm the amount before Done');
+    }
+    assert.deepEqual(await h.snapshot(),original,'level taps remain drafts until Done');
+   }
+   await h.capture(unknown?'after-toggle-unknown':'after-toggle-known');
+   await h.panel.locator('[data-bbpi-stock-level="got"]').tap();
+   await h.panel.getByRole('button',{name:'Done',exact:true}).tap();
+   assert.equal(await h.panel.isVisible(),true,'unconfirmed Got it cannot save the previous Out draft');
+   assert.deepEqual(await h.snapshot(),original);assert.match(await h.panel.innerText(),/Confirm Full or Half pack/);
+   await h.capture(unknown?'after-toggle-unknown-review':'after-toggle-known-review');
+   await h.panel.locator('.bbpi-close').click();assert.deepEqual(await h.snapshot(),original);assert.deepEqual(h.errors,[]);
+  }finally{await h.context.close();}
+ });
+
+ test('new Got it intent survives extra-pack and unit edits until an explicit portion is confirmed',{skip},async()=>{
+  const h=await fixture(390,{reducedMotion:'no-preference'});try{
+   const original=await h.snapshot();await h.open();await expand(h);await chooseCapacity(h);
+   await h.panel.locator('[data-bbpi-stock-portion="half"]').tap();
+   await h.panel.locator('[data-bbpi-stock-level="out"]').tap();
+   await h.panel.locator('[data-bbpi-stock-level="got"]').tap();
+   const spares=h.panel.getByLabel('Extra unopened packs',{exact:true});await spares.fill('2');
+   assert.equal(await h.panel.locator('[data-bbpi-quantity]').inputValue(),'0','editing extras cannot reapply the old Out portion');
+   assert.equal(await h.panel.locator('.bbpi-stock-pending').isVisible(),true);
+   await h.panel.getByRole('button',{name:'Done',exact:true}).tap();assert.equal(await h.panel.isVisible(),true);assert.deepEqual(await h.snapshot(),original);
+   const amount=h.panel.locator('.bbpi-amount-details');if(!await amount.evaluate(node=>node.open))await amount.locator(':scope>summary').click();
+   await h.panel.locator('.bbpi-unit-label select').selectOption('kg');assert.equal(await h.panel.locator('.bbpi-stock-pending').isVisible(),true,'a unit-only edit cannot confirm Got it');
+   await h.panel.getByRole('button',{name:'Done',exact:true}).tap();assert.equal(await h.panel.isVisible(),true);assert.deepEqual(await h.snapshot(),original);
+   await h.panel.locator('.bbpi-unit-label select').selectOption('g');
+   await h.panel.locator('[data-bbpi-quantity]').fill('175.25');
+   assert.equal(await h.panel.locator('.bbpi-stock-pending').isVisible(),false,'an explicitly entered exact amount resolves the intent');
+   await save(h);assert.equal((await h.snapshot()).row.qty,175.25);assert.deepEqual(h.errors,[]);
+  }finally{await h.context.close();}
+ });
+
+ test('the latest requested level owns pack confirmation after an invalid extra-pack count',{skip},async()=>{
+  const h=await fixture(390,{reducedMotion:'no-preference'});try{
+   const original=await h.snapshot();await h.open();await h.panel.locator('[data-bbpi-stock-level="low"]').tap();
+   const spares=h.panel.getByLabel('Extra unopened packs',{exact:true});await spares.fill('-1');
+   await h.panel.locator('[data-bbpi-stock-level="out"]').tap();await spares.fill('2');await chooseCapacity(h);
+   assert.equal(await h.panel.locator('[data-bbpi-quantity]').inputValue(),'2000','Out with two full spares must not apply the older Low request');
+   assert.equal(await h.panel.locator('.bbpi-stock-pending').isVisible(),false);
+   assert.deepEqual(await h.snapshot(),original);await save(h);const saved=await h.snapshot();
+   assert.equal(saved.row.qty,2000);assert.equal(saved.row.stockLevel.portion,'out');assert.equal(saved.row.stockLevel.spares,2);assert.deepEqual(h.errors,[]);
+  }finally{await h.context.close();}
+ });
+
+ test('an unconfirmed Half pack request cannot fall back to the previous Low portion',{skip},async()=>{
+  const h=await fixture(390,{reducedMotion:'no-preference'});try{
+   const original=await h.snapshot();await h.open();await expand(h);await chooseCapacity(h);
+   await h.panel.locator('[data-bbpi-stock-level="low"]').tap();assert.equal(await h.panel.locator('[data-bbpi-quantity]').inputValue(),'250');
+   const spares=h.panel.getByLabel('Extra unopened packs',{exact:true});await spares.fill('-1');
+   await h.panel.locator('[data-bbpi-stock-portion="half"]').tap();await spares.fill('2');
+   assert.equal(await h.panel.locator('[data-bbpi-quantity]').inputValue(),'250','invalid Half confirmation must not apply the old Low draft with new spares');
+   await h.panel.getByRole('button',{name:'Done',exact:true}).tap();assert.equal(await h.panel.isVisible(),true);assert.deepEqual(await h.snapshot(),original);
+   await chooseCapacity(h);assert.equal(await h.panel.locator('[data-bbpi-quantity]').inputValue(),'2500');
+   await save(h);const saved=await h.snapshot();assert.equal(saved.row.qty,2500);assert.equal(saved.row.stockLevel.portion,'half');assert.equal(saved.row.stockLevel.spares,2);assert.deepEqual(h.errors,[]);
+  }finally{await h.context.close();}
+ });
 }

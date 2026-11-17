@@ -661,8 +661,8 @@
    configureTracking();doc.body.append(element);
    // Group the live amount fields before showing or focusing the sheet, so a
    // quick-add cannot briefly summon a number keyboard for a field we hide.
-   safe(()=>win.BBPantryAddAmountPresentation?.mount?.(view,{win,doc}));
-   lockEditor();fitEditor();try{element.showModal();}catch{element.setAttribute('open','');}fitEditor();
+   const presentation=safe(()=>win.BBPantryAddAmountPresentation?.mount?.(view,{win,doc}));
+   lockEditor();fitEditor();try{element.showModal();}catch{element.setAttribute('open','');}safe(()=>presentation?.lockHeight?.());fitEditor();
    const originalFocus=name&&!name.value.trim()?name:row.staple&&view.status?view.status:!amountDetails.open?element.querySelector('.bbpi-stock-choice[aria-pressed="true"]')||element.querySelector('.bbpi-stock-choice')||quantity:quantity;
    const firstFocus=originalFocus.closest('.bbpa-amount:not([open])')?element.querySelector('.bbpi-stock-choice[aria-pressed="true"]')||element.querySelector('.bbpi-stock-choice')||name||close:originalFocus;
    firstFocus.focus({preventScroll:true});refreshPreview(view);return true;

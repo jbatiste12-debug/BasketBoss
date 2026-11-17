@@ -9,13 +9,13 @@
   const policy=deps.policy||win.BBPantryPolicy,market=()=>typeof deps.market==='function'?deps.market():deps.market||win.bb307ActiveMarket?.()||'UK';
   const model=()=>deps.model(),isQualitative=row=>row?.staple===true||policy?.isStaple?.(row?.name)===true;
   if(isQualitative(model()))return EMPTY;
-  let destroyed=false,pending=null,manual=false,applying=false,opened=false,desired=null,selected=null,confirmed=false,sparesDirty=false,capacityReview=false,reviewAmount=null,lastName=String(model().name||''),initialStamp=null,capacityStamp=null;
+  let destroyed=false,pending=null,manual=false,applying=false,opened=false,desired=null,selected=null,confirmed=false,sparesDirty=false,capacityReview=false,reviewAmount=null,lastName=String(model().name||''),initialStamp=null,capacityStamp=null,requestedStatus=null;
   const listeners=[],node=(tag,className,value)=>{const element=doc.createElement(tag);if(className)element.className=className;if(value!==undefined)element.textContent=value;return element;};
   const listen=(element,event,handler)=>{element.addEventListener(event,handler);listeners.push(()=>element.removeEventListener(event,handler));};
   const button=(label,className,handler)=>{const element=node('button',className,label);element.type='button';listen(element,'click',handler);return element;};
   const number=value=>new Intl.NumberFormat(market()==='US'?'en-US':'en-GB',{maximumFractionDigits:3,useGrouping:false}).format(value);
   const amount=(qty,unit)=>{try{if(typeof deps.formatAmount==='function')return deps.formatAmount(qty,unit);const visible=win.BBShopPurchaseUI?.formatDisplayQty?.(qty,unit,{market:market(),countMode:'balance'});if(visible&&!/^Check\b/.test(visible))return visible;}catch{}const rendered=number(qty);return (qty>0&&Number(rendered)===0?'<0.001':rendered)+' '+(unit==='l'?'litres':unit||'');};
-  const region=node('section','bbpi-stock-levels'),statusGroup=node('div','bbpi-stock-choices'),readout=node('p','bbpi-stock-amount'),explanation=node('p','bbpi-stock-explanation'),chooser=node('div','bbpi-stock-pack'),capacityGroup=node('div','bbpi-stock-capacities'),capacityHelp=node('p','bbpi-stock-capacity-help'),portionGroup=node('div','bbpi-stock-portions'),sparesLabel=node('label','bbpi-stock-spares-label','Same-size full spares'),spares=node('input','bbpi-stock-spares'),message=node('p','bbpi-stock-message');
+  const region=node('section','bbpi-stock-levels'),statusGroup=node('div','bbpi-stock-choices'),readout=node('p','bbpi-stock-amount'),explanation=node('p','bbpi-stock-explanation'),chooser=node('div','bbpi-stock-pack'),capacityGroup=node('div','bbpi-stock-capacities'),capacityHelp=node('p','bbpi-stock-capacity-help'),portionGroup=node('div','bbpi-stock-portions'),sparesLabel=node('label','bbpi-stock-spares-label','Same-size full spares'),spares=node('input','bbpi-stock-spares'),message=node('p','bbpi-stock-message'),confirmation=node('p','bbpi-stock-pending');
   region.setAttribute('aria-label','Quick stock update');statusGroup.setAttribute('role','group');statusGroup.setAttribute('aria-label','Stock status for '+model().name);readout.setAttribute('aria-live','polite');message.setAttribute('role','status');message.setAttribute('aria-live','polite');
   const statuses={};
   for(const [key,label]of[['got','Got it'],['low','Running low'],['out','Out']]){const control=button(label,'bbpi-stock-choice',()=>chooseStatus(key));control.dataset.bbpiStockLevel=key;control.setAttribute('aria-pressed','false');statuses[key]=control;statusGroup.append(control);}
@@ -24,7 +24,8 @@
   portionGroup.setAttribute('role','group');portionGroup.setAttribute('aria-label','Amount remaining in the opened pack');
   for(const [key,label]of[['full','Full pack'],['half','Half pack']]){const control=button(label,'bbpi-stock-portion',()=>choosePortion(key));control.dataset.bbpiStockPortion=key;control.setAttribute('aria-pressed','false');portionGroup.append(control);}
   spares.type='number';spares.inputMode='numeric';spares.min='0';spares.max='100';spares.step='1';spares.value='0';spares.setAttribute('aria-label','Same-size full spare packs');sparesLabel.append(spares,node('small','','Unopened packs in addition to the opened pack.'));
-  chooser.append(capacityHelp,capacityGroup,portionGroup,sparesLabel);region.append(statusGroup,readout,explanation,toggle,chooser,message);content.insertBefore(region,details);
+  confirmation.id='bbpiStockPending';confirmation.hidden=true;confirmation.setAttribute('role','status');
+  chooser.append(capacityHelp,capacityGroup,portionGroup,sparesLabel);region.append(statusGroup,confirmation,readout,explanation,toggle,chooser,message);content.insertBefore(region,details);
   const savedMeta=row=>{let value=row.stockLevel;try{const synced=win.BBPantryPackSync?.read?.(row);if(synced&&Object.hasOwn(synced,'stockLevel'))value=synced.stockLevel;value=typeof win.BBPantryStockLevels?.validate==='function'?win.BBPantryStockLevels.validate(value):value&&typeof value==='object'?value:null;if(value?.scope){const projection=win.BBReceiptHost?.getProjection?.(),active=value.scope.kind==='user'?win.BBHome?.actor?.()||projection?.actorId:projection?.scope?.kind==='household'?projection.scope.id:null;if(active!==value.scope.id)return null;}return value;}catch{return null;}};
   const canonical=(row,qty=row.qty,unit=row.unit)=>{if(!finite(qty))return null;try{return policy?.normalize?.(row.name,Number(qty),unit,{market:row.inputMarket||market(),packReviewed:row.packReviewed===true,packQuantity:row.packQuantity,packUnit:row.packUnit})||{quantity:Number(qty),unit};}catch{return null;}};
   const equal=(row,qty,unit)=>{const a=canonical(row),b=canonical(row,qty,unit);return !!a&&!!b&&a.unit===b.unit&&Math.abs(a.quantity-b.quantity)<=Math.max(.000001,Math.abs(b.quantity)*.00000001);};
@@ -49,18 +50,26 @@
    for(const control of capacityGroup.querySelectorAll('button')){const value=values[Number(control.dataset.bbpiCapacityIndex)];control.setAttribute('aria-pressed',String(confirmed&&selected?.unit===value?.unit&&Math.abs(selected.capacity-value.capacity)<=.000001));}
   }
   function text(element,value){if(element.textContent!==value)element.textContent=value;}
+  function stockStatus(row){const metadata=currentMeta(row);return capacityReview?null:metadata?.portion==='low'?'low':metadata?.portion==='out'?'out':finite(row.qty)?Number(row.qty)===0?'out':'got':null;}
   function sparesValue(){return spares.value.trim()!==''&&spares.validity.valid&&Number.isInteger(Number(spares.value))?Number(spares.value):null;}
   function showChooser(portion){opened=true;desired=portion;paint();text(message,portion==='low'?'Choose the size of one pack to estimate a quarter remaining.':portion==='out'?'Confirm the pack size to keep your full spares counted.':'Choose a confirmed pack size, then Full pack or Half pack.');}
   function chooseStatus(value){
    if(destroyed)return;const row=model();if(isQualitative(row))return;
+   const unchangedSpares=!sparesDirty||Number(currentMeta(row)?.spares||0)===sparesValue();
+   // A requested level is a UI draft, never an amount. Returning to the
+   // existing level cancels that request without crediting or clearing stock.
+   if(requestedStatus&&value===stockStatus(row)&&unchangedSpares){requestedStatus=null;desired=null;text(message,'Your current amount is kept.');paint();return;}
    if(value==='got'){
-    if(!finite(row.qty)||Number(row.qty)===0||currentMeta(row)?.portion==='low'||currentMeta(row)?.portion==='out')showChooser(null);
-    else{text(message,'Your current amount is kept. Use Full / half pack to change it.');paint();}
+    if(!finite(row.qty)||Number(row.qty)===0||currentMeta(row)?.portion==='low'||currentMeta(row)?.portion==='out'||!unchangedSpares){requestedStatus='got';showChooser(null);}
+    else{requestedStatus=null;desired=null;text(message,'Your current amount is kept. Use Full / half pack to change it.');paint();}
     return;
    }
+   requestedStatus=value;
    choosePortion(value);
   }
   function choosePortion(portion){
+   desired=portion;
+   if(portion==='full'||portion==='half')requestedStatus='got';
    if(sparesValue()===null){opened=true;paint();text(message,'Use a whole number of same-size full spare packs from 0 to 100.');spares.focus({preventScroll:true});return;}
    if((portion!=='out'||sparesValue()>0)&&(!confirmed||!selected)){showChooser(portion);return;}
    apply(portion);
@@ -73,32 +82,38 @@
    const before=pending,wasManual=manual;pending=result.patch;manual=false;desired=null;applying=true;let success=true;
    try{success=deps.setQuantity(result.patch.qty,result.patch.unit)!==false;}catch{success=false;}finally{applying=false;}
    if(!success){pending=before;manual=wasManual;text(message,'This amount could not be applied. Review Edit amount before saving.');paint();return;}
-   capacityReview=false;reviewAmount=null;text(message,'Draft updated. Confirm below to save.');paint();
+   capacityReview=false;reviewAmount=null;requestedStatus=null;text(message,'Draft updated. Confirm below to save.');paint();
   }
-  function invalidate(){if(applying||destroyed)return;pending=null;manual=true;sparesDirty=false;capacityReview=false;reviewAmount=null;text(message,'Your edited amount will be used.');paint();}
+  function invalidate(event){if(applying||destroyed)return;const keepIntent=event===true||event?.target===view.units;if(!keepIntent)requestedStatus=null;pending=null;manual=true;sparesDirty=false;capacityReview=false;reviewAmount=null;text(message,'Your edited amount will be used.');paint();}
   listen(view.quantity,'input',invalidate);listen(view.units,'change',invalidate);
-  const invalidateCapacity=()=>{if(applying||destroyed)return;const review=capacityReview||!!pending?.stockLevel||!manual&&savedMeta(model())?.estimated===true;selected=null;confirmed=false;desired=null;invalidate();if(review){capacityReview=true;reviewAmount=stamp(model());opened=true;paint();text(message,'Pack size changed. Choose a stock level again, or edit the amount.');}else text(message,'Your edited container size will be used. Choose a stock level again to make a new estimate.');};
+  const invalidateCapacity=()=>{if(applying||destroyed)return;const review=capacityReview||!!pending?.stockLevel||!manual&&savedMeta(model())?.estimated===true;selected=null;confirmed=false;desired=null;invalidate(true);if(review){capacityReview=true;reviewAmount=stamp(model());opened=true;paint();text(message,'Pack size changed. Choose a stock level again, or edit the amount.');}else text(message,'Your edited container size will be used. Choose a stock level again to make a new estimate.');};
   if(view.packQuantity)listen(view.packQuantity,'input',invalidateCapacity);if(view.packUnit)listen(view.packUnit,'change',invalidateCapacity);
-  listen(spares,'input',()=>{if(destroyed)return;sparesDirty=true;if(sparesValue()===null){text(message,'Use a whole number of same-size full spare packs from 0 to 100.');return;}if(pending?.stockLevel&&confirmed)apply(pending.stockLevel.portion);else if(pending){pending=null;showChooser('out');}else text(message,'Choose the amount remaining in the opened pack to include these spares.');});
+  listen(spares,'input',()=>{if(destroyed)return;sparesDirty=true;if(sparesValue()===null){text(message,'Use a whole number of same-size full spare packs from 0 to 100.');return;}if(requestedStatus){text(message,'Confirm the amount remaining in the opened pack to include these spares.');paint();return;}if(pending?.stockLevel&&confirmed)apply(pending.stockLevel.portion);else if(pending){pending=null;showChooser('out');}else text(message,'Choose the amount remaining in the opened pack to include these spares.');});
   function paint(){
    if(destroyed)return;const row=model();region.hidden=isQualitative(row);if(region.hidden)return;
    statusGroup.setAttribute('aria-label','Stock status for '+row.name);
-   const metadata=currentMeta(row),quantityKnown=finite(row.qty),state=capacityReview?null:metadata?.portion==='low'?'low':metadata?.portion==='out'?'out':quantityKnown?Number(row.qty)===0?'out':'got':null;
-   for(const [key,control]of Object.entries(statuses))control.setAttribute('aria-pressed',String(key===state));
-   text(readout,quantityKnown?amount(Number(row.qty),row.unit)+' at home':'Amount unknown');
+   const metadata=currentMeta(row),quantityKnown=finite(row.qty),state=requestedStatus||stockStatus(row);
+   region.dataset.bbpiPending=requestedStatus||'';
+   for(const [key,control]of Object.entries(statuses)){
+    control.setAttribute('aria-pressed',String(key===state));control.dataset.bbpiPending=String(!!requestedStatus&&key===requestedStatus);
+    if(requestedStatus&&key===requestedStatus)control.setAttribute('aria-describedby',confirmation.id);else control.removeAttribute('aria-describedby');
+   }
+   const pendingCopy=requestedStatus==='got'?'Got it selected. Choose Full or Half pack, or edit the amount, before Done.':requestedStatus==='low'?'Running low selected. Confirm the pack size before Done.':requestedStatus==='out'?'Out selected. Confirm the pack size and extra unopened packs before Done.':'';
+   text(confirmation,pendingCopy);confirmation.hidden=!requestedStatus;
+   text(readout,(requestedStatus?'Current amount: ':'')+(quantityKnown?amount(Number(row.qty),row.unit)+' at home':'Amount unknown'));
    const capacity=metadata&&finite(metadata.capacity)?amount(metadata.capacity,metadata.unit):'';
    let note=metadata?.portion==='low'?'Estimated ¼ of one '+capacity+' pack remaining.':metadata?.portion==='half'?'Estimated ½ of one '+capacity+' pack remaining.':metadata?.portion==='out'?'No opened pack remaining.':metadata?.portion==='full'?'One full '+capacity+' pack remaining.':quantityKnown?'Keeps your current amount.':'Choose a pack amount or enter the amount you have.';
    if(metadata&&Number(metadata.spares)>0)note+=' Plus '+number(metadata.spares)+' same-size full spare'+(Number(metadata.spares)===1?' pack.':' packs.');
    if(metadata?.capacityEstimated)note+=' Pack size is estimated; check the label.';
    if(!manual&&!pending&&savedMeta(row)&&!trustedMeta(row))note='Current amount shown. Previous pack estimate needs checking after stock changed.';
    if(capacityReview)note='This amount was estimated with a different pack size. Choose a stock level again, or edit the amount.';
-   text(explanation,note);toggle.setAttribute('aria-expanded',String(opened));chooser.hidden=!opened;
+   text(explanation,(requestedStatus?'Amount not changed yet. ':'')+note);toggle.setAttribute('aria-expanded',String(opened));chooser.hidden=!opened;
    for(const control of portionGroup.querySelectorAll('button'))control.setAttribute('aria-pressed',String(control.dataset.bbpiStockPortion===metadata?.portion));
    if(opened)paintCapacities(row);
   }
   function refresh(){
    if(destroyed)return;const row=model(),name=String(row.name||'');
-   if(name!==lastName){pending=null;manual=true;selected=null;confirmed=false;desired=null;sparesDirty=false;capacityReview=false;reviewAmount=null;spares.value='0';lastName=name;}
+   if(name!==lastName){pending=null;manual=true;selected=null;confirmed=false;desired=null;sparesDirty=false;capacityReview=false;reviewAmount=null;requestedStatus=null;spares.value='0';lastName=name;}
    if(capacityReview&&!applying&&stamp(row)!==reviewAmount){capacityReview=false;reviewAmount=null;manual=true;}
    if(pending&&!applying&&!equal(row,pending.qty,pending.unit)){pending=null;manual=true;}
    if(!pending&&!manual&&initialStamp!==null&&stamp(row)!==initialStamp)manual=true;
@@ -108,10 +123,11 @@
   // Retain the existing native disclosure and every bound exact-amount field.
   details.open=!finite(initial.qty);paint();
   return {refresh,patch(existingPatch){
-   const fail=error=>{opened=true;paint();return {error,field:spares};};
+   const fail=(error,field=spares)=>{opened=true;paint();return {error,field};};
    refresh();if(capacityReview){opened=true;paint();return {error:'Pack size changed. Choose a stock level again, or edit the amount.',field:capacityGroup.querySelector('button')||details.querySelector('summary')};}
    if((pending||sparesDirty&&!manual)&&sparesValue()===null)return fail('Use a whole number of same-size full spare packs from 0 to 100.');
    if(sparesDirty&&!manual&&!pending)return fail('Confirm the pack size and choose what remains in the opened pack to include these spares.');
+   if(requestedStatus)return fail(requestedStatus==='got'?'Confirm Full or Half pack, or enter the amount, before saving Got it.':requestedStatus==='low'?'Confirm the pack size before saving Running low.':'Confirm the pack size and extra unopened packs before saving Out.',confirmed&&selected?portionGroup.querySelector('button'):capacityGroup.querySelector('button')||details.querySelector('summary'));
    if(pending)return {...existingPatch,...pending};
    return manual?{...existingPatch,stockLevel:null}:existingPatch;
   },destroy(){if(destroyed)return;destroyed=true;for(const remove of listeners)remove();region.remove();}};

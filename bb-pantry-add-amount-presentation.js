@@ -42,6 +42,10 @@
   const listen=(node,type,handler,capture=false)=>{node.addEventListener(type,handler,capture);listeners.push(()=>node.removeEventListener(type,handler,capture));};
   const setHidden=(node,value)=>{if(node&&node.hidden!==value)node.hidden=value;};
   const setClass=(name,value)=>{if(dialog.classList.contains(name)!==value)dialog.classList.toggle(name,value);};
+  function lockHeight(){
+   if(destroyed||!dialog.open||dialog.style.getPropertyValue('--bbpa-sheet-height'))return;
+   const height=dialog.getBoundingClientRect().height;if(height>0)dialog.style.setProperty('--bbpa-sheet-height',Math.ceil(height)+'px');
+  }
   function reveal(field,review=false){
    if(destroyed)return;if(review)reviewRequired=true;
    setHidden(amount,false);if(!amount.open)amount.open=true;
@@ -79,7 +83,10 @@
    }
    const quantity=dialog.querySelector('[data-bbpi-quantity]'),raw=quantity?.value?.trim();
    const qualitative=!region||region.hidden;setClass('bbpa-qualitative',qualitative);
-   const out=!qualitative&&region.querySelector('[data-bbpi-stock-level="out"]')?.getAttribute('aria-pressed')==='true';
+   const pending=region?.dataset.bbpiPending||'',label=pending?'Confirm amount':'Add amount (optional)';
+   if(summaryLabel.textContent!==label)summaryLabel.textContent=label;
+   if(summaryHint.textContent!==(pending?'Confirm the amount before Done':'Pack size or exact weight'))summaryHint.textContent=pending?'Confirm the amount before Done':'Pack size or exact weight';
+   const out=!pending&&!qualitative&&region.querySelector('[data-bbpi-stock-level="out"]')?.getAttribute('aria-pressed')==='true';
    // A positive unopened-pack balance remains visible even when Out is active.
    const empty=out&&raw!==''&&raw!==undefined&&Number.isFinite(Number(raw))&&Number(raw)===0;
    setClass('bbpa-out-zero',empty);setClass('bbpa-out-balance',out&&!empty);setHidden(none,!empty);setHidden(amount,empty&&!reviewRequired);
@@ -121,8 +128,8 @@
   });
   listen(dialog,'input',schedule);listen(dialog,'change',schedule);
   const observer=win.MutationObserver?new win.MutationObserver(schedule):null;
-  observer?.observe(dialog,{subtree:true,childList:true,characterData:true,attributes:true,attributeFilter:['aria-expanded','aria-pressed','aria-busy','class','hidden','open','disabled']});
-  const api={refresh,destroy(){if(destroyed)return;destroyed=true;observer?.disconnect();for(const remove of listeners)remove();mounts.delete(dialog);}};
+  observer?.observe(dialog,{subtree:true,childList:true,characterData:true,attributes:true,attributeFilter:['aria-expanded','aria-pressed','aria-busy','class','hidden','open','disabled','data-bbpi-pending']});
+  const api={refresh,lockHeight,destroy(){if(destroyed)return;destroyed=true;observer?.disconnect();for(const remove of listeners)remove();mounts.delete(dialog);}};
   mounts.set(dialog,api);refresh();return api;
  }
  function install(win){
