@@ -317,7 +317,9 @@
   kitchen.querySelector('#bb5Reconcile')?.classList.add('bbke-reconcile-top');
   sections(kitchen,essentials);
  }
- function schedule(){if(!queued){queued=true;requestAnimationFrame(refresh);}}
+ // Settle the destination presentation before the browser paints. This only
+ // batches DOM decoration; the original inventory/save owners stay unchanged.
+ function schedule(){if(!queued){queued=true;(window.queueMicrotask||window.setTimeout).call(window,refresh);}}
  function start(){
   refresh();const app=doc.getElementById('app');if(!app)return;
   app.addEventListener('input',event=>{if(event.target.matches('[data-bb5-qty],[data-bb5-needed]')||event.target.closest?.('#bbKitchenEssentials .bb-home-quantities'))schedule();});

@@ -1,0 +1,130 @@
+import test,{before,after} from 'node:test';
+import assert from 'node:assert/strict';
+import fs from 'node:fs/promises';
+import path from 'node:path';
+import os from 'node:os';
+import {fileURLToPath} from 'node:url';
+import {createRequire} from 'node:module';
+import {transform700Html,transform700Planning,transform700PreviewConfig,validatePublic700Release} from '../tools/catalogue700/build-client.mjs';
+import {transform700Presentation} from '../tools/catalogue700/presentation.mjs';
+
+const require=createRequire(import.meta.url),root=fileURLToPath(new URL('..',import.meta.url));
+let chromium,browser,release;
+for(const name of [process.env.BB_PLAYWRIGHT_MODULE,'playwright','/opt/codex/runtimes/codex-primary-runtime/dependencies/node/node_modules/playwright'].filter(Boolean))try{({chromium}=require(name));break;}catch{}
+before(async()=>{
+ release=validatePublic700Release({directory:path.join(root,'catalogues/700/release'),sourceDirectory:root});
+ if(chromium)browser=await chromium.launch({headless:true,executablePath:process.env.BB_CHROMIUM_PATH||'/usr/bin/chromium',args:['--no-sandbox']});
+});
+after(async()=>{await browser?.close();});
+
+async function fixture(viewport,run){
+ const context=await browser.newContext({viewport,isMobile:viewport.width<768,hasTouch:viewport.width<768,reducedMotion:'no-preference',serviceWorkers:'block'}),page=await context.newPage(),errors=[];
+ page.setDefaultTimeout(12000);page.on('pageerror',error=>errors.push(error.message));page.on('dialog',dialog=>dialog.dismiss());
+ const app=transform700Presentation(transform700Html(await fs.readFile(path.join(root,'app.html'),'utf8'),release));
+ // Every request is local, including API calls. No production data or billing
+ // operations are possible, and the original renderer/handlers are exercised.
+ await context.route('**/*',async route=>{
+  const url=new URL(route.request().url());
+  if(!['basketboss.co.uk','www.basketboss.co.uk'].includes(url.hostname))return route.fulfill({status:200,body:''});
+  if(url.pathname.startsWith('/api/'))return route.fulfill({status:401,contentType:'application/json',body:'{"authenticated":false,"error":"sign_in_required"}'});
+  let rel=decodeURIComponent(url.pathname).replace(/^\//,'').replace(/^pwa700\//,'');
+  if(['app','app/','app.html','index.html','index',''].includes(rel))rel='app.html';
+  if(rel.includes('..'))return route.fulfill({status:404,body:''});
+  try{
+   let body;
+   if(rel==='app.html')body=app;
+   else{
+    try{body=await fs.readFile(path.join(root,rel));}catch{body=await fs.readFile(path.join(root,'catalogues/700/release/assets',rel));}
+    if(rel==='bb-recipe-planning.js')body=transform700Planning(body.toString(),release.roles);
+    else if(rel==='bb-premium-preview-config.js')body=transform700PreviewConfig(body.toString(),release);
+    if(rel.endsWith('.js'))body=transform700Presentation(body.toString());
+   }
+   const types={'.html':'text/html','.js':'application/javascript','.mjs':'application/javascript','.css':'text/css','.json':'application/json','.svg':'image/svg+xml','.webp':'image/webp','.png':'image/png','.jpg':'image/jpeg'};
+   return route.fulfill({status:200,contentType:types[path.extname(rel)]||'application/octet-stream',body});
+  }catch{return route.fulfill({status:404,body:''});}
+ });
+ await context.addInitScript(()=>{
+  if(localStorage.getItem('navigation-first-paint-fixture'))return;
+  localStorage.setItem('bb_onboarding_fresh_once_20261028_v1',JSON.stringify({step:10,complete:true,started:false,partnerStepV2:true,house:'3–4 people',region:'Guernsey',goals:[],diets:[]}));
+  localStorage.setItem('basketboss_321_unified_state_v1',JSON.stringify({version:2,planned:[{recipeId:'veggie-fried-rice',day:'Monday',servings:4}],plannedBreakfasts:[],plannedDesserts:[],servings:4,feedingSet:true,pantry:{}}));
+  localStorage.setItem('basketboss_321_features_v1',JSON.stringify({version:1,essentials:[]}));localStorage.setItem('basketboss_321_v7_market','Guernsey');
+  localStorage.setItem('basketboss_how_it_works_v1',JSON.stringify({version:1,seen:true}));sessionStorage.setItem('basketboss_welcome_splash_seen_v1','1');
+  localStorage.setItem('navigation-first-paint-fixture','1');
+ });
+ try{
+  await page.goto('https://basketboss.co.uk/app',{waitUntil:'domcontentloaded'});
+  await page.waitForSelector('.bbnext-day.has-meal');
+  await page.waitForFunction(()=>typeof window.BBPantryNormalize==='function');
+  await run(page,context);
+  assert.deepEqual(errors,[]);
+ }finally{await context.close();}
+}
+
+const physical=page=>page.evaluate(()=>({inventory:localStorage.getItem('basketboss_makeameal_v1_inventory'),stock:localStorage.getItem('basketboss_321_v7_measured_pantry'),planned:JSON.parse(localStorage.getItem('basketboss_321_unified_state_v1')).planned}));
+const nav=(page,name)=>page.locator('#bbPrimaryNavigation [data-bb-nav-item="'+name+'"]');
+
+for(const viewport of [{width:390,height:844},{width:1440,height:1000}])test('normal-motion tab paints never expose retired pantry UI at '+viewport.width+'px',{skip:!chromium?'Playwright unavailable':false},()=>fixture(viewport,async(page,context)=>{
+ const saved=await physical(page);
+ // A rAF sample runs in the browser before each paint, rather than querying
+ // the DOM after a screenshot event (which can see a later, corrected DOM).
+ await page.evaluate(()=>{
+  const probe=window.__navPaint={frames:[],mutations:0};
+  const visible=node=>!!node&&node.getClientRects().length>0&&getComputedStyle(node).display!=='none'&&getComputedStyle(node).visibility!=='hidden';
+  new MutationObserver(records=>probe.mutations+=records.length).observe(document.getElementById('app'),{childList:true,subtree:true,attributes:true,characterData:true});
+  const sample=()=>{
+   const view=document.body.dataset.bbnextView;
+   probe.frames.push({view,legacy:view==='shop'&&['bb172Cupboard','bb172StaplesPanel'].some(id=>visible(document.getElementById(id))),pantryReady:view==='shop'&&!!document.querySelector('#bb173ShopFridge.bbpi-enhanced #bbpiToolbar')});
+   if(probe.frames.length<2000)requestAnimationFrame(sample);
+  };requestAnimationFrame(sample);
+ });
+ const directory=path.join(process.env.BB_UI_SCREENSHOT_DIR||path.join(os.tmpdir(),'basketboss-ui-previews'),'navigation-'+viewport.width);await fs.mkdir(directory,{recursive:true});
+ const cdp=await context.newCDPSession(page),frames=[],pending=[];
+ cdp.on('Page.screencastFrame',event=>{
+  const index=frames.length;frames.push(event.metadata.timestamp);
+  pending.push(Promise.all([cdp.send('Page.screencastFrameAck',{sessionId:event.sessionId}),fs.writeFile(path.join(directory,String(index).padStart(3,'0')+'.png'),Buffer.from(event.data,'base64'))]));
+ });
+ await cdp.send('Page.startScreencast',{format:'png',everyNthFrame:1});
+ // The first At home entry is cold; later entries reuse the same core module.
+ for(const target of ['discover','kitchen','shop','plan','kitchen','plan']){
+  await nav(page,target).click();await page.waitForTimeout(400);
+  const view={plan:'week',discover:'discover',kitchen:'shop',shop:'shop-list'}[target];
+  assert.equal(await page.evaluate(()=>document.body.dataset.bbnextView),view);
+  assert.equal(await nav(page,target).getAttribute('data-bb-nav-current'),'true');
+  if(target==='kitchen')await page.locator('#bb173ShopFridge.bbpi-enhanced #bbpiEmptyStart').waitFor({state:'attached'});
+ }
+ // Queue quick genuine nav clicks within a task, including a pending At home
+ // render, to exercise disconnected-card and stale-observer guards.
+ await page.evaluate(()=>{for(const key of ['kitchen','discover','plan','shop','kitchen'])document.querySelector('#bbPrimaryNavigation [data-bb-nav-item="'+key+'"]').click();});
+ await page.waitForTimeout(700);
+ assert.equal(await nav(page,'kitchen').getAttribute('data-bb-nav-current'),'true');
+ assert.equal(await page.locator('#bb173ShopFridge.bbpi-enhanced').count(),1);
+ assert.equal(await page.locator('#bbpiToolbar').count(),1);
+ assert.equal(await page.locator('#bbKitchenSections').count(),1);
+ assert.equal(await page.locator('.bbpi-global-actions').count(),1);
+ const samples=await page.evaluate(()=>__navPaint.frames);
+ assert.ok(samples.filter(frame=>frame.view==='shop').length>5,'recorded several real At home paint opportunities');
+ assert.deepEqual(samples.filter(frame=>frame.legacy),[],'no retired cupboard tiles appear for even one frame');
+ assert.deepEqual(samples.filter(frame=>frame.view==='shop'&&!frame.pantryReady),[],'At home presentation is ready before its first paint');
+ const baseline=await page.evaluate(()=>__navPaint.mutations);await page.waitForTimeout(700);
+ const after=await page.evaluate(()=>__navPaint.mutations);
+ assert.ok(after-baseline<20,'presentation observers converge while idle: '+(after-baseline)+' mutations');
+ assert.deepEqual(await physical(page),saved,'navigation does not change physical pantry quantities or the meal plan');
+ await cdp.send('Page.stopScreencast');await Promise.all(pending);assert.ok(frames.length>6,'captured actual compositor frames for visual inspection');
+ await fs.writeFile(path.join(directory,'paint-samples.json'),JSON.stringify(samples,null,2));
+ // Cook is the existing standalone fifth destination, not a replaced handler.
+ const href=await nav(page,'cook').getAttribute('href');assert.match(href,/make-a-meal\.html/);
+ await nav(page,'cook').click();await page.waitForURL(/make-a-meal\.html/);
+ await page.waitForFunction(()=>document.body.classList.contains('bb-r6-cook-page'));
+ await page.locator('[data-bb-navigation="polished"] [data-bb-nav-item="plan"]').click();
+ await page.waitForSelector('.bbnext-day.has-meal');assert.equal(await nav(page,'plan').getAttribute('data-bb-nav-current'),'true');
+ assert.deepEqual(await physical(page),saved);
+}));
+
+test('pantry runtime exposes the existing module API without replacing an injected host',async()=>{
+ const {readFile}=fs,vm=await import('node:vm'),source=await readFile(new URL('../bb-pantry-runtime.mjs',import.meta.url),'utf8');
+ const runtime=source.replace(/^import[^\n]+\n/m,''),normalise=()=>{},core={normalizePantryState:normalise};
+ for(const existing of [undefined,{normalizePantryState:()=>{}}]){
+  const win={BBReceiptInventoryCore:existing};vm.runInNewContext(runtime,{window:win,receiptCore:core});
+  assert.equal(win.BBReceiptInventoryCore,existing||core);assert.equal(win.BBPantryNormalize,normalise);assert.equal(win.BBPantryLiveSync,true);
+ }
+});
