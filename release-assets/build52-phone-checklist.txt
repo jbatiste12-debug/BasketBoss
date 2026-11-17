@@ -1,0 +1,57 @@
+BasketBoss 1.0.4 (52) — phone checklist
+
+1. Prepare and run
+   Run the Build 52 launcher on your Mac. Confirm Xcode shows version 1.0.4 and
+   build 52 for the App target, then connect your iPhone and choose Product > Run.
+
+2. Add food appearance
+   Open At home > Add food. Check the cream sheet, location label, rounded food
+   input, Got it / Running low / Out selector, Add amount section and Done button.
+   Close using the X and reopen; closing must not add or change food.
+
+3. Typing and autocomplete
+   Type a food name slowly, then choose an autocomplete suggestion. The keyboard,
+   cursor and input should stay stable, without flashing, jumping or lost text.
+   Try switching stock levels, opening Add amount and closing the sheet again.
+
+4. Amount review and saving
+   Check existing measured amounts remain unchanged unless deliberately edited.
+   Expand Add amount when needed and enter a known pack or exact quantity. Any
+   required confirmation must remain visible; do not assume an unknown amount
+   covers a recipe. Confirm once with Done and check the pantry contains one item.
+
+5. Out and unopened packs
+   Check Out shows the existing zero-stock guidance. If unopened packs are already
+   recorded, keep their existing review behaviour; selecting Out must not silently
+   discard them. Cancel a review and confirm saved stock stays as it was.
+
+6. Sheet dismissal and Plan
+   Open and close Add food several times, then return to Plan. Check there is no
+   lingering green rectangle or dimmed layer, and that the plan cards can be tapped.
+   Tap a meal card's arrow. Its day sheet must appear above the dimmed plan;
+   close it with X, then open another day. Background and reopen the app once,
+   then repeat the same check.
+
+7. Budget label
+   Check the Plan amount and "to buy" label stay separate with an empty week and
+   with a populated week. Check portrait and landscape; meal counts stay dynamic.
+
+8. Reconciliation unchanged
+   Using a known test item, check 500 g required with 250 g confirmed at home leaves
+   a 250 g gap before buyable-pack rounding. Confirmed stock covering the full need
+   should not force an extra purchase. Keep optional top-ups separate.
+
+9. AI generation: one controlled check
+   With internet available and your existing verified Premium access, review a few
+   ingredients and request one meal. Check that a recipe appears before its optional
+   picture. If it fails, record the exact safe reference/error text and approximate
+   time; do not repeatedly retry because failed requests may use a daily attempt.
+   A picture-only failure must leave the recipe readable. Confirm saved pantry
+   ingredients and the existing plan are unchanged by generation or a failed request.
+
+10. Before uploading
+    Confirm the tests above pass on the phone. Use the same launcher with --archive
+    only after testing, or choose Product > Archive in the prepared workspace.
+    Verify the archive is 1.0.4 (52) before choosing Distribute App. Do not run
+    ordinary ios:sync, and do not report the AI service fixed without a successful
+    controlled generation check.
