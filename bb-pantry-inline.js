@@ -141,7 +141,7 @@
   function btn(label,action,className){const node=el('button',className,label);node.type='button';node.addEventListener('click',action);return node;}
   // Keep the freshly rendered pantry and its presentation in the same paint;
   // viewport/toolbar measurements retain their separate animation-frame work.
-  function schedule(){if(queued||destroyed)return;queued=true;(win.queueMicrotask||win.setTimeout).call(win,refresh);}
+  function schedule(){if(queued||destroyed)return;queued=true;(win.queueMicrotask||win.requestAnimationFrame||win.setTimeout).call(win,refresh);}
   function safe(action){try{return action();}catch{return null;}}
   function notice(view,value,error=false){if(view.conflict){if(value&&error)view.conflictNotice=value;if(!value){value=view.conflictNotice||'This item changed elsewhere. Reopen it before saving.';error=true;}}text(view.notice,value||'');view.notice.classList.toggle('is-error',error);view.notice.setAttribute('role',error?'alert':'status');
    // Reveal the original fields before the existing validation focuses them.
