@@ -1,6 +1,10 @@
 /* Day editor presentation only. Every live action stays in its original owner. */
 .bbdps-header,.bbdps-backdrop{display:none}
 html.bb-day-plan-sheet-open,html.bb-day-plan-sheet-open body{overflow:hidden!important}
+/* The completed view-entry animation retains translateY(0) on desktop.
+   A transformed ancestor anchors fixed children to the whole Plan instead
+   of the viewport, leaving only the backdrop visible above the hidden sheet. */
+html.bb-day-plan-sheet-open body .shell #app.bbnext-plan{animation:none!important;transform:none!important}
 html.bb-day-plan-sheet-open body nav#bbPrimaryNavigation[data-bb-navigation="polished"]{z-index:850!important}
 html body .shell #app.bbnext-plan .bbnext-day.bbdps-active>.bbdps-backdrop{
  display:block!important;position:fixed!important;inset:0!important;z-index:8000!important;
