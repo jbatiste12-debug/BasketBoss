@@ -72,7 +72,7 @@ test('a generated false ingredient is rejected before the route can issue a meal
  try{
   const request=new Request('https://basketboss.co.uk/api/bb173/generate',{method:'POST',headers:{Origin:'https://basketboss.co.uk','Content-Type':'application/json',Authorization:'Bearer synthetic'},body:JSON.stringify(input(['Chicken stock']))});
   const response=await onRequest({request,env,params:{action:'generate'}});
-  assert.equal(response.status,502);assert.deepEqual(await response.json(),{error:'AI request could not be completed or validated.'});
+  assert.equal(response.status,502);assert.deepEqual(await response.json(),{error:'The AI result did not pass its recipe checks. Please try again. Reference: BB_MEAL_RESPONSE_INVALID.',code:'BB_MEAL_RESPONSE_INVALID'});
   assert.equal(providerCalls.length,1);assert(!providerCalls[0].includes('flash-image'));
  }finally{globalThis.fetch=previous;db.close();}
 });

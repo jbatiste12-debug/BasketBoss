@@ -6,6 +6,7 @@ import {canonicalIngredientKey} from '../../../bb-receipt-inventory-core.mjs';
 import {digestDeletionActor} from '../../../bb-server-lib/bb-account-deletion.js';
 import {receiptInventoryConfigured,onRequestGet as receiptInventoryStatus} from '../receipt-inventory.js';
 import {issueMealImageTicket,verifyMealImageTicket,mealImageModel,mealImageGlobalCap,requestMealImage} from '../../../bb-server-lib/bb-meal-image.js';
+import {mealProviderCode,mealServiceErrorPayload,logMealDiagnostic} from '../../../bb-server-lib/bb-meal-service-error.js';
 import dietary from '../../../bb-dietary-preferences.js';
 import cookMethod from '../../../bb-cook-method.js';
 // BasketBoss AI structured output formats, taken from the successful private test.
@@ -223,6 +224,10 @@ const JSON_HEADERS={
   'X-Robots-Tag':'noindex, nofollow',
 };
 function respond(obj,status=200){return new Response(JSON.stringify(obj),{status,headers:JSON_HEADERS});}
+function mealFailure(code,stage,status=502){
+  logMealDiagnostic(stage,code,status);
+  return respond(mealServiceErrorPayload(code),status);
+}
 
 function limits(env){
   const n=Number(env.BB_AI_GLOBAL_DAILY_CAP);
@@ -417,16 +422,18 @@ async function consumeQuota(db,userId,action,globalCap,globalAction='all'){
 }
 async function gemini(action,body,env,member,origin){
   const {parts,schema,maxOutputTokens}=geminiRequest(action,body);
-  let provider;
+  let provider,stage='provider_request';
   try{
     provider=await fetch(GEMINI_URL,{method:'POST',headers:{'Content-Type':'application/json','x-goog-api-key':env.GEMINI_API_KEY},
       body:JSON.stringify({contents:[{role:'user',parts}],generationConfig:{temperature:0.25,maxOutputTokens,responseMimeType:'application/json',responseSchema:schema}}),
       signal:AbortSignal.timeout(body.scanKind==='receipt_inventory'?45000:25000)});
-    if(!provider.ok)return respond({error:'AI provider currently unavailable. Please try later.'},502);
+    if(!provider.ok)return mealFailure(mealProviderCode(provider.status),stage);
+    stage='provider_response';
     const data=await provider.json();
     const txt=data?.candidates?.[0]?.content?.parts?.find(x=>typeof x.text==='string')?.text;
     if(!txt)throw Error('missing');
     const output=JSON.parse(txt.replace(/^```(?:json)?\s*/i,'').replace(/\s*```$/,''));
+    stage='response_validation';
     if(!validateGeminiResult(action,output,body))throw Error('schema');
     return respond(action==='scan'?
       body.scanKind==='receipt_inventory'?{ok:true,aiGenerated:true,reviewRequired:true,warning:'Review every food, essential, quantity, paid price and total before confirming. Confirmed food updates Pantry; non-food stays in Weekly Essentials.',receiptInventory:output}:
@@ -434,10 +441,18 @@ async function gemini(action,body,env,member,origin){
       {ok:true,aiGenerated:true,reviewRequired:true,warning:'Confirm each ingredient before saving.',scan:output}:
       {ok:true,aiGenerated:true,reviewRequired:true,warning:'Unverified recipe. Confirm quantities, allergens, cooking and storage safety.',recipe:output,
        mealImage:await issueMealImageTicket(output,member,env,origin)});
-  }catch(_){return respond({error:'AI request could not be completed or validated.'},502);}
+  }catch(error){
+    const timeout=error?.name==='TimeoutError'||error?.name==='AbortError';
+    return mealFailure(timeout?'BB_MEAL_TIMEOUT':stage==='provider_request'?'BB_MEAL_PROVIDER_UNAVAILABLE':
+      stage==='provider_response'?'BB_MEAL_PROVIDER_RESPONSE':'BB_MEAL_RESPONSE_INVALID',stage);
+  }
 }
 
-export async function onRequest({request,env,params}){
+export async function onRequest(context){
+  try{return await handleRequest(context);}
+  catch{return mealFailure('BB_MEAL_SERVICE_FAILURE','request',503);}
+}
+async function handleRequest({request,env,params}){
   const action=params?.action;
   if(!['status','generate','scan','meal-image'].includes(action))
     return respond({error:'Not found'},404);
