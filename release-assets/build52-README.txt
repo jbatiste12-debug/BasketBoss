@@ -3,14 +3,16 @@ BasketBoss 1.0.4 — Build 52
 Shop your kitchen first.
 
 Reviewed application source:
-6d295be7f658d9da8b1dc52688903cdb7800ec25
+8c76547da15fd0873619e7d9ac5f2e84a66f8b1d
 
 What this build contains
 
 - A cream Add food sheet with a clearer stock selector, optional amount section and Done button.
 - More stable typing, autocomplete and keyboard focus when adding pantry food.
+- Clear pending feedback and stable controls when switching stock levels; an unresolved choice cannot save the previous amount.
 - A fix for the meal-card arrow showing a green backdrop with the day sheet off screen.
 - A desktop budget label that sits beside the amount without overlapping it.
+- Cleaner tab changes without the retired pantry screen flashing first.
 - Clearer AI failure messages and safe server references for diagnosis.
 
 The AI changes improve error handling. They do not establish or fix the unknown

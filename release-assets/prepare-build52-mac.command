@@ -80,8 +80,8 @@ BB52_DIR="$(mktemp -d "$HOME/BasketBoss-1.0.4-build52.XXXXXX")"
 BB52_STAGE="$(mktemp -d "${TMPDIR:-/tmp}/BasketBoss-native52.XXXXXX")"
 git clone --depth 1 --branch main --single-branch https://github.com/jbatiste12-debug/BasketBoss.git "$BB52_DIR"
 cd "$BB52_DIR"
-git fetch --depth 1 origin 6d295be7f658d9da8b1dc52688903cdb7800ec25
-git checkout --detach 6d295be7f658d9da8b1dc52688903cdb7800ec25
+git fetch --depth 1 origin 8c76547da15fd0873619e7d9ac5f2e84a66f8b1d
+git checkout --detach 8c76547da15fd0873619e7d9ac5f2e84a66f8b1d
 npm ci --no-audit --no-fund
 # Only native Xcode version settings change; the catalogue client protocol
 # remains 1.0.2 because its verified recipe-release contract is independent.

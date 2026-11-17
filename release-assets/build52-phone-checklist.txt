@@ -14,6 +14,12 @@ BasketBoss 1.0.4 (52) — phone checklist
    cursor and input should stay stable, without flashing, jumping or lost text.
    Try switching stock levels, opening Add amount and closing the sheet again.
 
+   Tap Got it, Running low and Out in turn. The selector should stay in place
+   and acknowledge each tap. If pack or amount confirmation is needed, it must
+   say so before changing the quantity. Try Out > Got it > Done without confirming
+   an amount: the sheet must stay open and saved stock must remain unchanged.
+   Confirm Full pack, Half pack or an exact amount to resolve that pending choice.
+
 4. Amount review and saving
    Check existing measured amounts remain unchanged unless deliberately edited.
    Expand Add amount when needed and enter a known pack or exact quantity. Any
@@ -31,6 +37,8 @@ BasketBoss 1.0.4 (52) — phone checklist
    Tap a meal card's arrow. Its day sheet must appear above the dimmed plan;
    close it with X, then open another day. Background and reopen the app once,
    then repeat the same check.
+   Switch between Plan, Discover, At home, Shop and Cook, then repeat rapidly.
+   The selected destination should appear without flashing the old cupboard view.
 
 7. Budget label
    Check the Plan amount and "to buy" label stay separate with an empty week and
@@ -40,6 +48,9 @@ BasketBoss 1.0.4 (52) — phone checklist
    Using a known test item, check 500 g required with 250 g confirmed at home leaves
    a 250 g gap before buyable-pack rounding. Confirmed stock covering the full need
    should not force an extra purchase. Keep optional top-ups separate.
+   Review any item previously saved after Out > Got it > Done without confirming
+   an amount: the old flow could keep it at zero. This update does not guess or
+   reconstruct earlier stock balances.
 
 9. AI generation: one controlled check
    With internet available and your existing verified Premium access, review a few
