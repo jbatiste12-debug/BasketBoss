@@ -1,0 +1,67 @@
+BasketBoss 1.0.4 (53) — phone checklist
+
+1. Prepare and run
+   Run the Build 53 launcher. Confirm version 1.0.4 and build 53 in the App target,
+   connect your iPhone and choose Product > Run. Earlier projects stay intact.
+
+2. Add food default and keyboard
+   Open At home > Add food. Only Food, Got it / Running low / Out, the short helper,
+   collapsed Add amount and Done should show. Check autocomplete, normal typing
+   and the X close button. Opening or closing must not change saved food.
+   Open Add amount. Scroll its contents; the header, statuses and Done stay visible.
+   Check the first tap on a pack-size chip works, including with the keyboard open.
+
+3. Got it without an amount
+   Add a new food, choose Got it and tap Done without opening Add amount. It should
+   save once as unknown. If a meal requires it, Shop must retain the full quantity
+   to buy and show Check stock. Unknown does not mean zero, a full pack or enough.
+   Tap Done twice quickly on a fresh item and confirm only one item is saved.
+
+4. Running low and estimates
+   Choose Running low, open Add amount and confirm the actual pack size. Low means
+   an estimated quarter of the opened pack. A 1 kg pack should show 250 g remaining
+   before adding any unopened packs. Suggested sizes retain Estimated/check-label
+   guidance; guessing a size must never silently cover an unconfirmed quantity.
+
+5. Out and unopened packs
+   With no unopened packs, Out shows None at home and hides amount fields.
+   With one unopened 1 kg pack, Out shows Opened pack finished and one unopened
+   pack left. The saved total remains 1000 g. Reopen through autocomplete and make
+   sure the unopened-pack count is retained, including after another Out tap.
+
+6. Optional amounts and known stock
+   Check Full pack and Half pack each appear once. Use Extra unopened packs ±,
+   then Exact amount and Unit. Save an exact amount and reopen to check it.
+   Existing saved 250 g stock must remain 250 g unless deliberately changed.
+   Clearing a known amount must ask for review instead of silently forgetting it.
+   Invalid or unfinished fields must not save an older valid amount.
+
+7. Shopping gap
+   For a meal requiring 500 g with 250 g confirmed at home, Shop must show a
+   250 g gap before buyable-pack rounding. Full coverage must not force a top-up.
+   Repeat with unknown stock: the complete 500 g need stays until checked.
+
+8. New week — cancellation and archives
+   Populate a test week. Start next week, then cancel; the plan and pantry must
+   remain unchanged. Start again and confirm. The new meal plan should be empty,
+   with Auto-fill still available. Check the previous week in Saved weeks and the
+   previous shopping trip/unfinished list in its existing history.
+
+9. New week — unfinished days and optional pantry review
+   Leave a planned day unfinished and start next week. Choose Keep pantry as it is:
+   stock must stay unchanged and the meal must not become Done or cooked.
+   Repeat with a disposable test week and choose the optional pantry review. Review
+   should open only after the week has successfully changed; stock changes only
+   through your deliberate existing pantry controls. Cancelled or failed transitions
+   must neither open the review nor deduct any ingredients.
+
+10. Navigation and one controlled AI check
+    Switch Plan, Discover, At home, Shop and Cook. Check no old screen flashes or
+    stranded dimmed layer. With verified Premium and internet, request one meal.
+    If generation fails, record the safe error/reference and time; repeated failures
+    may use daily attempts. A picture-only failure should leave the recipe readable.
+
+11. Upload after device checks
+    Archive from the prepared workspace, or run the same launcher with --archive.
+    Confirm archive 1.0.4 (53), then Distribute App > App Store Connect > Upload.
+    Do not run ordinary ios:sync. Linux checks do not replace this device test.
