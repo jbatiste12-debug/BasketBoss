@@ -28,6 +28,8 @@ BasketBoss 1.0.4 (54) — phone checklist
    confirmation. Confirm 250 g remains and the estimate is labelled.
    Open Add amount and check Full pack, Half pack and Quarter left each appear once.
    Check suggested catalogue amounts keep the reminder to check the label.
+   Change the reviewed rice pack from 1 kg to 500 g, then tap Running low. It must
+   use 125 g, not the old 250 g; with 500 g needed the shopping gap is 375 g.
    A custom food without a known compatible pack must keep unknown/check behaviour.
 
 6. Keyboard and exact amount
