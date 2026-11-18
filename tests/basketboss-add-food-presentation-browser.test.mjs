@@ -29,7 +29,7 @@ async function fixture(width=390,{qty=500,pack=1000,buffer=0,unknown=false,reduc
   const app=['app','app/','app.html','index.html','index',''].includes(name);
   if(app)name='pwa700/app.html';
   if(name.includes('..'))return route.fulfill({status:404,body:''});
-  const source=baselineDirectory&&['bb-pantry-inline.js','bb-pantry-inline.css','bb-pantry-add-amount-presentation.js'].includes(name)?path.join(baselineDirectory,name):path.join(ROOT,name);
+  const source=baselineDirectory&&['bb-pantry-inline.js','bb-pantry-inline.css','bb-pantry-add-amount-presentation.js','bb-pantry-stock-levels-ui.js'].includes(name)?path.join(baselineDirectory,name):path.join(ROOT,name);
   let body;try{body=app&&baseline?baseline:await fs.readFile(source);}catch{return route.fulfill({status:404,body:''});}
   const types={'.html':'text/html','.js':'application/javascript','.mjs':'application/javascript','.css':'text/css','.json':'application/json','.webp':'image/webp','.png':'image/png','.svg':'image/svg+xml'};
   return route.fulfill({status:200,contentType:types[path.extname(name)]||'application/octet-stream',body});
@@ -92,6 +92,8 @@ if(captureBefore){
    assert.equal(await h.panel.locator('.bbpi-stock-pack-toggle').count(),1,'the original toggle remains mounted');
    assert.equal(await h.panel.locator('.bbpi-stock-pack-toggle').isVisible(),false);
    assert.equal(await h.panel.locator('[data-bbpi-quantity]').isVisible(),false);assert.equal(await h.panel.locator('.bbpi-stock-spares').isVisible(),false);
+   assert.equal(await h.panel.getByText("No amount needed. We'll check with you if a meal needs a lot.",{exact:true}).isVisible(),true);
+   assert.equal(await h.panel.locator('.bbpa-amount>summary').innerText(),'Add amount (optional)\nPack size or exact weight');
    assert.deepEqual(await h.panel.locator('.bbpi-stock-choice').allTextContents(),['Got it','Running low','Out']);
    const targets=await h.panel.locator('.bbpi-stock-choice,.bbpi-close,.bbpi-done,.bbpa-amount>summary').evaluateAll(nodes=>nodes.map(node=>({label:node.textContent,width:node.getBoundingClientRect().width,height:node.getBoundingClientRect().height})));
    assert.ok(targets.every(rect=>rect.width>=44&&rect.height>=44),'all default controls keep 44px targets: '+JSON.stringify(targets));
@@ -104,6 +106,12 @@ if(captureBefore){
    const portionBoxes=await h.panel.locator('.bbpi-stock-portion').evaluateAll(nodes=>nodes.map(node=>node.getBoundingClientRect().y));
    assert.ok(Math.abs(portionBoxes[0]-portionBoxes[1])<2,'Full and Half share one row');
    assert.equal(await h.page.evaluate(()=>Object.values(__addFoodControls).flat().every(node=>node.isConnected)),true);
+   const fixedBefore=await h.panel.locator('.bbpi-editor-heading,.bbpi-stock-choices,.bbpi-done').evaluateAll(nodes=>nodes.map(node=>node.getBoundingClientRect().y));
+   await h.panel.locator('.bbpa-amount-scroll').evaluate(node=>node.scrollTop=node.scrollHeight);
+   const fixedAfter=await h.panel.locator('.bbpi-editor-heading,.bbpi-stock-choices,.bbpi-done').evaluateAll(nodes=>nodes.map(node=>node.getBoundingClientRect().y));
+   assert.ok(fixedAfter.every((y,index)=>Math.abs(y-fixedBefore[index])<1),'only optional amount content scrolls');
+   const doneBox=await h.panel.locator('.bbpi-done').boundingBox();assert.ok(doneBox.y>=0&&doneBox.y+doneBox.height<=844,'Done remains in the viewport');
+   await h.panel.locator('.bbpa-amount-scroll').evaluate(node=>node.scrollTop=0);
    assert.deepEqual(await h.snapshot(),original,'opening optional amount controls does not save stock');
    await h.capture(width===390?'after-expanded':'after-expanded-320');
    await amount.locator(':scope>summary').click();assert.equal(await amount.evaluate(node=>node.open),false);
@@ -125,10 +133,10 @@ if(captureBefore){
 
  test('Running low keeps Estimated and check-label guidance visible outside Add amount',{skip},async()=>{
   const h=await fixture();try{
-   await h.open();await h.panel.locator('[data-bbpi-stock-level="low"]').click();await chooseCapacity(h,'suggested');
+   await h.open();await h.panel.locator('[data-bbpi-stock-level="low"]').click();assert.equal(await h.panel.locator('.bbpa-amount').evaluate(node=>node.open),false);await expand(h);await chooseCapacity(h,'suggested');
    const explanation=h.panel.locator('.bbpi-stock-explanation');assert.match(await explanation.innerText(),/Estimated/);assert.match(await explanation.innerText(),/check the label/i);
    const amount=h.panel.locator('.bbpa-amount');await amount.locator(':scope>summary').click();assert.equal(await amount.evaluate(node=>node.open),false);
-   assert.equal(await explanation.isVisible(),true);await save(h);const saved=await h.snapshot();assert.equal(saved.row.stockLevel.estimated,true);assert.equal(saved.row.stockLevel.capacityEstimated,true);assert.deepEqual(h.errors,[]);
+   assert.equal(await h.panel.locator('.bbpa-estimated').isVisible(),true);assert.equal(await explanation.isVisible(),false);await save(h);const saved=await h.snapshot();assert.equal(saved.row.stockLevel.estimated,true);assert.equal(saved.row.stockLevel.capacityEstimated,true);assert.deepEqual(h.errors,[]);
   }finally{await h.context.close();}
  });
 
@@ -141,8 +149,13 @@ if(captureBefore){
    await h.open();await expand(h);await chooseCapacity(h);await h.panel.locator('[data-bbpi-stock-portion="full"]').click();
    await h.panel.getByLabel('Extra unopened packs',{exact:true}).fill('1');await h.panel.locator('[data-bbpi-stock-level="out"]').click();
    assert.equal(await h.panel.locator('[data-bbpi-quantity]').inputValue(),'1000');assert.equal(await h.panel.getByText('None at home',{exact:true}).isVisible(),false);
-   assert.equal(await h.panel.locator('.bbpi-stock-amount').isVisible(),true);assert.match(await h.panel.locator('.bbpi-stock-amount').innerText(),/at home/);
+   assert.equal(await h.panel.getByText('Opened pack finished · 1 unopened pack left',{exact:true}).isVisible(),true);
+   assert.equal(await h.panel.locator('.bbpa-amount').evaluate(node=>node.open),false,'applied Out keeps amount controls collapsed even when unopened packs remain');
+   assert.equal(await h.panel.locator('[data-bbpi-quantity]').isVisible(),false);assert.equal(await h.panel.locator('.bbpi-stock-spares').isVisible(),false);
    await h.capture('after-out-with-unopened-pack');await save(h);const saved=await h.snapshot();assert.equal(saved.row.qty,1000);assert.equal(saved.row.stockLevel.portion,'out');assert.equal(saved.row.stockLevel.spares,1);assert.deepEqual(h.errors,[]);
+   await h.open();await expand(h);assert.equal(await h.panel.getByLabel('Extra unopened packs',{exact:true}).inputValue(),'1','autocomplete restores the saved unopened pack count');
+   await h.panel.locator('[data-bbpi-stock-level="out"]').tap();assert.equal(await h.panel.locator('[data-bbpi-quantity]').inputValue(),'1000','Out cannot erase an unconfirmed unopened pack');
+   await expand(h);await chooseCapacity(h);assert.equal(await h.panel.locator('[data-bbpi-quantity]').inputValue(),'1000');await save(h);assert.equal((await h.snapshot()).row.stockLevel.spares,1);
   }finally{await h.context.close();}
  });
 
@@ -157,15 +170,61 @@ if(captureBefore){
   }finally{await h.context.close();}
  });
 
- test('unknown stock cannot be saved by Got it and the existing amount error reveals and focuses its field',{skip},async()=>{
+ test('Got it saves an existing unknown amount and keeps its full gap with a Check stock prompt',{skip},async()=>{
   const h=await fixture(390,{unknown:true});try{
    const original=await h.snapshot();assert.equal(original.row.qty,null);await h.open();
    const amount=h.panel.locator('.bbpa-amount'),quantity=h.panel.locator('[data-bbpi-quantity]');assert.equal(await amount.evaluate(node=>node.open),false);
-   await h.panel.locator('[data-bbpi-stock-level="got"]').click();assert.equal(await amount.evaluate(node=>node.open),true);
+   await h.panel.locator('[data-bbpi-stock-level="got"]').click();assert.equal(await amount.evaluate(node=>node.open),false);
    assert.equal(await quantity.inputValue(),'');assert.deepEqual(await h.snapshot(),original,'Got it alone supplies no unknown stock');
-   await amount.locator(':scope>summary').click();await h.panel.getByRole('button',{name:'Done',exact:true}).click();
-   assert.equal(await amount.evaluate(node=>node.open),true);assert.equal(await quantity.isVisible(),true);assert.equal(await quantity.evaluate(node=>node===document.activeElement),true);
-   assert.deepEqual(await h.snapshot(),original,'the existing unknown-amount validation preserves stock');await h.panel.locator('.bbpi-close').click();assert.deepEqual(await h.snapshot(),original);assert.deepEqual(h.errors,[]);
+   await save(h);const saved=await h.snapshot();assert.equal(saved.row.qty,null);assert.ok(saved.row.unroundedShortfall>0);assert.equal(saved.row.unroundedShortfall,original.row.unroundedShortfall);assert.equal(saved.stock,original.stock);
+   await h.page.locator('#bbPrimaryNavigation [data-bb-nav-item="shop"]').click();
+   await h.page.locator('.bbpi-stock-shop-check').waitFor();assert.match(await h.page.locator('.bbpi-stock-shop-check').innerText(),/Rice · Check amount/);assert.equal(await h.page.getByRole('button',{name:'Check stock',exact:true}).isVisible(),true);assert.deepEqual(h.errors,[]);
+  }finally{await h.context.close();}
+ });
+
+ test('a genuinely new Got it quick-add saves unknown once despite duplicate Done taps',{skip},async()=>{
+  const h=await fixture();try{
+   await h.page.evaluate(async key=>{BBPantryEditor.remove(key);await BBPantryEditor.flush();},h.key);
+   const original=await h.snapshot();await h.page.locator('[data-bbpi-quick-add="Pasta"]').click();await h.panel.waitFor();
+   await h.panel.locator('[data-bbpi-stock-level="got"]').tap();assert.equal(await h.panel.locator('.bbpa-amount').evaluate(node=>node.open),false);
+   assert.equal(await h.panel.locator('[data-bbpi-quantity]').inputValue(),'');
+   await h.panel.locator('.bbpi-done').evaluate(node=>{node.click();node.click();});await h.panel.waitFor({state:'detached'});
+   const saved=await h.page.evaluate(()=>BBPantryEditor.list().filter(row=>row.name==='Pasta'));
+   assert.equal(saved.length,1);assert.equal(saved[0].qty,null);assert.equal((await h.snapshot()).stock,original.stock);assert.deepEqual(h.errors,[]);
+  }finally{await h.context.close();}
+ });
+
+ test('Got it keeps an existing exact measured balance when amount controls stay closed',{skip},async()=>{
+  const h=await fixture(390,{qty:250.125});try{
+   const original=await h.snapshot();await h.open();await h.panel.locator('[data-bbpi-stock-level="got"]').tap();
+   assert.equal(await h.panel.locator('.bbpa-amount').evaluate(node=>node.open),false);await save(h);
+   const saved=await h.snapshot();assert.equal(saved.row.qty,original.row.qty);assert.equal(saved.row.qty,250.125);assert.equal(saved.stock,original.stock);assert.equal(saved.row.unroundedShortfall,original.row.unroundedShortfall);assert.deepEqual(h.errors,[]);
+  }finally{await h.context.close();}
+ });
+
+ test('clearing a known amount still asks for review and leaves the saved stock intact',{skip},async()=>{
+  const h=await fixture();try{
+   const original=await h.snapshot();await h.open();await exactAmount(h,'');await h.panel.locator('[data-bbpi-stock-level="got"]').tap();
+   await h.panel.getByRole('button',{name:'Done',exact:true}).tap();assert.equal(await h.panel.isVisible(),true);assert.deepEqual(await h.snapshot(),original);assert.match(await h.panel.innerText(),/Enter how much you have/);assert.deepEqual(h.errors,[]);
+  }finally{await h.context.close();}
+ });
+
+ test('unknown stock cannot silently discard an edited shopping buffer',{skip},async()=>{
+  const h=await fixture(390,{unknown:true});try{
+   const original=await h.snapshot();await h.open();await expand(h);await h.panel.locator('.bbpi-more-options>summary').click();await h.panel.locator('[data-bbpi-buffer]').fill('20');
+   await h.panel.getByRole('button',{name:'Done',exact:true}).tap();assert.equal(await h.panel.isVisible(),true);assert.deepEqual(await h.snapshot(),original);assert.match(await h.panel.innerText(),/Enter how much you have/);assert.deepEqual(h.errors,[]);
+  }finally{await h.context.close();}
+ });
+
+ test('a keyboard-sized viewport keeps statuses and Done visible while optional controls scroll',{skip},async()=>{
+  const h=await fixture();try{
+   await h.open();await h.page.setViewportSize({width:390,height:480});await expand(h);
+   const fixed=h.panel.locator('.bbpi-editor-heading,.bbpi-stock-choices,.bbpi-done');
+   const before=await fixed.evaluateAll(nodes=>nodes.map(node=>{const r=node.getBoundingClientRect();return {y:r.y,bottom:r.bottom};}));
+   assert.ok(before.every(rect=>rect.y>=0&&rect.bottom<=481),'header, statuses and Done remain visible above a keyboard');
+   await h.panel.locator('.bbpa-amount-scroll').evaluate(node=>node.scrollTop=node.scrollHeight);
+   const after=await fixed.evaluateAll(nodes=>nodes.map(node=>node.getBoundingClientRect().y));assert.ok(after.every((y,i)=>Math.abs(y-before[i].y)<1));
+   await h.capture('after-keyboard');assert.deepEqual(h.errors,[]);
   }finally{await h.context.close();}
  });
 
@@ -219,7 +278,7 @@ if(captureBefore){
     if(level!=='out'&&await h.panel.locator('.bbpi-stock-pending').isVisible()){
      assert.match(await h.panel.locator('.bbpi-stock-pending').innerText(),/selected|Confirm/);
      assert.match(await h.panel.locator('.bbpi-stock-explanation').innerText(),/Amount not changed yet/);
-     assert.equal(await h.panel.locator('.bbpa-amount>summary').innerText(),'Confirm amount\nConfirm the amount before Done');
+     assert.equal(await h.panel.locator('.bbpa-amount>summary').innerText(),'Add amount (optional)\nPack size or exact weight');
     }
     assert.deepEqual(await h.snapshot(),original,'level taps remain drafts until Done');
    }
@@ -239,6 +298,7 @@ if(captureBefore){
    await h.panel.locator('[data-bbpi-stock-portion="half"]').tap();
    await h.panel.locator('[data-bbpi-stock-level="out"]').tap();
    await h.panel.locator('[data-bbpi-stock-level="got"]').tap();
+   await expand(h);
    const spares=h.panel.getByLabel('Extra unopened packs',{exact:true});await spares.fill('2');
    assert.equal(await h.panel.locator('[data-bbpi-quantity]').inputValue(),'0','editing extras cannot reapply the old Out portion');
    assert.equal(await h.panel.locator('.bbpi-stock-pending').isVisible(),true);
@@ -255,7 +315,7 @@ if(captureBefore){
 
  test('the latest requested level owns pack confirmation after an invalid extra-pack count',{skip},async()=>{
   const h=await fixture(390,{reducedMotion:'no-preference'});try{
-   const original=await h.snapshot();await h.open();await h.panel.locator('[data-bbpi-stock-level="low"]').tap();
+   const original=await h.snapshot();await h.open();await h.panel.locator('[data-bbpi-stock-level="low"]').tap();await expand(h);
    const spares=h.panel.getByLabel('Extra unopened packs',{exact:true});await spares.fill('-1');
    await h.panel.locator('[data-bbpi-stock-level="out"]').tap();await spares.fill('2');await chooseCapacity(h);
    assert.equal(await h.panel.locator('[data-bbpi-quantity]').inputValue(),'2000','Out with two full spares must not apply the older Low request');

@@ -112,6 +112,46 @@ test('unknown capacity stays visible and cannot cancel the real 500g shopping ne
  assert.equal(deduction.proposal({stock:h.stock(),ingredients:[cookFixture.ingredient('rice',500)]}).rows[0].deduct,0);
 });
 
+test('selecting Got it without an amount persists unknown stock and retains the full shopping gap',async()=>{
+ const h=await editorFixture({requirements:[{key:'Rice',unit:'g',required:500}],live:true}),editor=h.win.BBPantryEditor;
+ const key=editor.select('Rice','cupboard',{unit:'g'});assert.ok(key);
+ assert.equal(editor.update(key,{unit:'g'}).ok,true);await editor.flush();
+ const saved=h.inventory()[key],current=editor.read(key);
+ assert.equal(saved.selected,true);assert.equal(saved.qty,null);assert.equal(current.qty,null);assert.equal(current.unroundedShortfall,500);
+ assert.deepEqual(copy(h.stock()),{});assert.equal(h.needed()[0].toBuy,500);
+ assert.equal(deduction.proposal({stock:h.stock(),ingredients:[cookFixture.ingredient('rice',500)]}).rows[0].deduct,0);
+});
+
+test('repeated unknown Got it selections and saves neither duplicate food nor credit stock',async()=>{
+ const h=await editorFixture({requirements:[{key:'Rice',unit:'g',required:500}],live:true}),editor=h.win.BBPantryEditor;
+ const key=editor.select('Rice','cupboard',{unit:'g'});
+ for(let tap=0;tap<3;tap++){
+  assert.equal(editor.select('Rice','cupboard',{unit:'g'}),key);assert.equal(editor.update(key,{unit:'g'}).ok,true);await editor.flush();
+ }
+ const saved=Object.values(h.inventory()).filter(item=>item.selected&&item.name==='Rice');
+ assert.equal(saved.length,1);assert.equal(saved[0].qty,null);assert.equal(editor.read(key).unroundedShortfall,500);assert.deepEqual(copy(h.stock()),{});
+});
+
+test('a presence-only save preserves an existing measured amount and its saved pack level',async()=>{
+ const existing={...row,...selected(row),selected:true,bb173StockKey:'rice|g',bb173StockValue:250};
+ const h=await editorFixture({requirements:[{key:'Rice',unit:'g',required:500}],inventory:{'cupboard|rice':existing},stock:{'rice|g':250},live:true,configureWindow:win=>win.BBPantryStockLevels=levels});
+ const key=h.win.BBPantryEditor.list().find(item=>item.name==='Rice').key,before=copy(h.inventory()[key]);
+ assert.equal(h.win.BBPantryEditor.select('Rice','cupboard',{unit:'g'}),key);
+ assert.equal(h.win.BBPantryEditor.update(key,{unit:'g'}).ok,true);await h.win.BBPantryEditor.flush();
+ const saved=h.inventory()[key];assert.equal(saved.qty,before.qty);assert.equal(saved.unit,before.unit);assert.equal(saved.packQuantity,before.packQuantity);assert.equal(saved.packUnit,before.packUnit);
+ assert.deepEqual(copy(saved.stockLevel),before.stockLevel);assert.deepEqual(copy(h.stock()),{'rice|g':250});assert.equal(h.win.BBPantryEditor.read(key).unroundedShortfall,250);
+});
+
+test('Out saves zero only without unopened packs and preserves unopened stock in the shopping gap',async()=>{
+ for(const [spares,expected,gap]of [[0,0,2500],[2,2000,500]]){
+  const initial={...row,...selected(row,{portion:'full',spares:2}),selected:true,bb173StockKey:'rice|g',bb173StockValue:3000};
+  const h=await editorFixture({requirements:[{key:'Rice',unit:'g',required:2500}],inventory:{'cupboard|rice':initial},stock:{'rice|g':3000},live:true,configureWindow:win=>win.BBPantryStockLevels=levels});
+  const saved=await apply(h,selected(initial,{portion:'out',spares}));
+  assert.equal(saved.qty,expected);assert.equal(saved.stockLevel.portion,'out');assert.equal(saved.stockLevel.spares,spares);assert.equal(saved.unroundedShortfall,gap);
+  assert.equal(h.stock()['rice|g'],expected);assert.equal(h.inventory()[saved.key].selected,true);assert.equal(h.needed()[0].toBuy,gap);
+ }
+});
+
 test('repeated level taps replace the same absolute amount without adding another container',async()=>{
  const h=await editorFixture({requirements:[{key:'Rice',unit:'g',required:500}],inventory:{'cupboard|rice':{...row,selected:true,bb173StockKey:'rice|g',bb173StockValue:250}},stock:{'rice|g':250},live:true,configureWindow:win=>win.BBPantryStockLevels=levels});
  const patch=selected();await apply(h,patch);await apply(h,patch);assert.equal(h.stock()['rice|g'],250);

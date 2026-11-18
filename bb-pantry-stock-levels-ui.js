@@ -60,6 +60,7 @@
    // existing level cancels that request without crediting or clearing stock.
    if(requestedStatus&&value===stockStatus(row)&&unchangedSpares){requestedStatus=null;desired=null;text(message,'Your current amount is kept.');paint();return;}
    if(value==='got'){
+    if(!finite(row.qty)&&!finite(view.row?.qty)&&unchangedSpares&&sparesValue()===0&&!pending&&!capacityReview){requestedStatus=null;desired=null;text(message,'Amount unknown. Your shopping list will ask you to check it.');paint();return;}
     if(!finite(row.qty)||Number(row.qty)===0||currentMeta(row)?.portion==='low'||currentMeta(row)?.portion==='out'||!unchangedSpares){requestedStatus='got';showChooser(null);}
     else{requestedStatus=null;desired=null;text(message,'Your current amount is kept. Use Full / half pack to change it.');paint();}
     return;
@@ -92,7 +93,7 @@
   function paint(){
    if(destroyed)return;const row=model();region.hidden=isQualitative(row);if(region.hidden)return;
    statusGroup.setAttribute('aria-label','Stock status for '+row.name);
-   const metadata=currentMeta(row),quantityKnown=finite(row.qty),state=requestedStatus||stockStatus(row);
+   const metadata=currentMeta(row),quantityKnown=finite(row.qty),state=requestedStatus||stockStatus(row)||(!quantityKnown?'got':null);
    region.dataset.bbpiPending=requestedStatus||'';
    for(const [key,control]of Object.entries(statuses)){
     control.setAttribute('aria-pressed',String(key===state));control.dataset.bbpiPending=String(!!requestedStatus&&key===requestedStatus);
@@ -113,7 +114,10 @@
   }
   function refresh(){
    if(destroyed)return;const row=model(),name=String(row.name||'');
-   if(name!==lastName){pending=null;manual=true;selected=null;confirmed=false;desired=null;sparesDirty=false;capacityReview=false;reviewAmount=null;requestedStatus=null;spares.value='0';lastName=name;}
+   if(name!==lastName){
+    const restored=name===String(view.row?.name||'')?trustedMeta(row):null;
+    pending=null;manual=!restored;selected=null;confirmed=false;desired=null;sparesDirty=false;capacityReview=false;reviewAmount=null;requestedStatus=null;spares.value=String(restored?.spares||0);lastName=name;initialStamp=stamp(row);
+   }
    if(capacityReview&&!applying&&stamp(row)!==reviewAmount){capacityReview=false;reviewAmount=null;manual=true;}
    if(pending&&!applying&&!equal(row,pending.qty,pending.unit)){pending=null;manual=true;}
    if(!pending&&!manual&&initialStamp!==null&&stamp(row)!==initialStamp)manual=true;
@@ -122,7 +126,10 @@
   const initial=model(),metadata=trustedMeta(initial);initialStamp=stamp(initial);if(metadata&&Number.isInteger(Number(metadata.spares))&&Number(metadata.spares)>=0&&Number(metadata.spares)<=100)spares.value=String(metadata.spares);
   // Retain the existing native disclosure and every bound exact-amount field.
   details.open=!finite(initial.qty);paint();
-  return {refresh,patch(existingPatch){
+  return {refresh,allowsUnknown(){
+   refresh();
+   return !isQualitative(model())&&!finite(view.row?.qty)&&view.quantity.value.trim()===''&&!pending&&!requestedStatus&&!capacityReview&&!sparesDirty&&sparesValue()===0&&!['buffer','buy','pack','tracking'].some(field=>view.touched?.has(field));
+  },patch(existingPatch){
    const fail=(error,field=spares)=>{opened=true;paint();return {error,field};};
    refresh();if(capacityReview){opened=true;paint();return {error:'Pack size changed. Choose a stock level again, or edit the amount.',field:capacityGroup.querySelector('button')||details.querySelector('summary')};}
    if((pending||sparesDirty&&!manual)&&sparesValue()===null)return fail('Use a whole number of same-size full spare packs from 0 to 100.');

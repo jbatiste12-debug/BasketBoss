@@ -621,3 +621,48 @@ html body dialog#bbpi-current-editor.bbpa-add-food:not(.bbpa-done-busy) .bbpi-do
  html body dialog#bbpi-current-editor.bbpa-add-food .bbpi-editor-actions{padding-inline:16px}
  html body dialog#bbpi-current-editor.bbpa-add-food .bbpi-stock-choice{font-size:12px}
 }
+
+/* Keep the food and status fixed; only optional amount controls scroll. */
+html body dialog#bbpi-current-editor.bbpa-add-food{--bbpa-summary-height:63px}
+html body dialog#bbpi-current-editor.bbpa-add-food .bbpi-editor-content{display:flex;flex-direction:column;overflow:hidden}
+html body dialog#bbpi-current-editor.bbpa-add-food .bbpi-editor-content>:not(.bbpa-amount){flex:none}
+html body dialog#bbpi-current-editor.bbpa-add-food.bbpa-amount-open,
+html body dialog#bbpi-current-editor.bbpa-add-food:has(.bbpa-amount[open]:not([hidden])){height:min(780px,calc(var(--bbpi-viewport-height,100dvh) - 8px))}
+html body dialog#bbpi-current-editor.bbpa-add-food .bbpa-amount{flex:none;min-height:0;overflow:hidden}
+html body dialog#bbpi-current-editor.bbpa-add-food .bbpa-amount[open]{position:relative;flex:1 1 0;padding:0;min-height:var(--bbpa-summary-height)}
+html body dialog#bbpi-current-editor.bbpa-add-food .bbpa-amount[open]>summary{height:var(--bbpa-summary-height);min-height:var(--bbpa-summary-height);margin-inline:0}
+html body dialog#bbpi-current-editor.bbpa-add-food .bbpa-amount-scroll{position:absolute;inset:var(--bbpa-summary-height) 0 0;padding:0 12px 12px;overflow-y:auto;overscroll-behavior-y:contain;scroll-padding:12px;-webkit-overflow-scrolling:touch}
+html body dialog#bbpi-current-editor.bbpa-add-food .bbpa-amount:not([open])>.bbpa-amount-scroll{display:none}
+html body dialog#bbpi-current-editor.bbpa-add-food .bbpa-amount-scroll>.bbpi-stock-pack{margin:0 0 10px}
+html body dialog#bbpi-current-editor.bbpa-add-food .bbpa-amount-scroll>.bbpi-more-options{margin-top:12px}
+html body dialog#bbpi-current-editor.bbpa-add-food .bbpa-amount-scroll>.bbpi-readout{margin:12px 0 6px;font:700 13px/1.45 system-ui,sans-serif}
+html body dialog#bbpi-current-editor.bbpa-add-food .bbpa-helper{margin:9px 0 0;color:#687366;font:400 13px/1.5 system-ui,sans-serif}
+html body dialog#bbpi-current-editor.bbpa-add-food .bbpa-estimated{margin-left:8px;padding:3px 6px;border-radius:5px;background:#f3e8c6;color:#635129;font:650 10px/1.2 system-ui,sans-serif}
+html body dialog#bbpi-current-editor.bbpa-add-food .bbpa-stock-label{display:flex;align-items:center;flex-wrap:wrap;gap:4px}
+html body dialog#bbpi-current-editor.bbpa-add-food .bbpi-stock-levels{margin-bottom:0}
+html body dialog#bbpi-current-editor.bbpa-add-food .bbpi-stock-spares-label{grid-template-columns:minmax(0,1fr);gap:6px}
+html body dialog#bbpi-current-editor.bbpa-add-food .bbpa-spares-stepper{display:grid;grid-template-columns:44px minmax(44px,1fr) 44px;gap:5px;grid-column:1;grid-row:auto;max-width:210px}
+html body dialog#bbpi-current-editor.bbpa-add-food .bbpa-spares-stepper .bbpi-stock-spares{grid-column:auto;grid-row:auto;min-height:44px;padding:8px 4px}
+html body dialog#bbpi-current-editor.bbpa-add-food .bbpa-spares-step{display:inline-flex;align-items:center;justify-content:center;width:44px;min-height:44px;padding:0;border:1px solid #bfd0b9;border-radius:10px;background:#fffef9;color:#315e48;font:650 23px/1 system-ui,sans-serif;cursor:pointer;touch-action:manipulation}
+html body dialog#bbpi-current-editor.bbpa-add-food .bbpi-stock-spares-label small{grid-column:1}
+html body dialog#bbpi-current-editor.bbpa-add-food .bbpi-more-options>.bbpi-remove{min-width:44px;min-height:44px;margin:0 12px 12px;padding:10px 14px;border-radius:10px}
+html body dialog#bbpi-current-editor.bbpa-add-food .bbpa-none-at-home{margin:9px 0 0;font:650 13px/1.5 system-ui,sans-serif}
+html body dialog#bbpi-current-editor.bbpa-add-food .bbpa-helper[hidden],
+html body dialog#bbpi-current-editor.bbpa-add-food .bbpa-estimated[hidden]{display:none!important}
+@media(max-height:600px){
+ html body dialog#bbpi-current-editor.bbpa-add-food{--bbpa-summary-height:58px}
+ html body dialog#bbpi-current-editor.bbpa-add-food:before{margin-top:7px}
+ html body dialog#bbpi-current-editor.bbpa-add-food .bbpi-editor-heading{padding:9px 16px 6px}
+ html body dialog#bbpi-current-editor.bbpa-add-food .bbpi-editor-heading h4:after{font-size:24px}
+ html body dialog#bbpi-current-editor.bbpa-add-food .bbpi-editor-content{padding:5px 16px 3px}
+ html body dialog#bbpi-current-editor.bbpa-add-food .bbpi-name-label{gap:5px;margin-bottom:10px;font-size:12px}
+ html body dialog#bbpi-current-editor.bbpa-add-food .bbpi-name-label input{min-height:44px;padding:8px 12px;font-size:16px}
+ html body dialog#bbpi-current-editor.bbpa-add-food .bbpa-stock-label{gap:0;margin:0;font-size:0;line-height:0}
+ html body dialog#bbpi-current-editor.bbpa-add-food .bbpa-stock-label:has(.bbpa-estimated:not([hidden])){margin-bottom:4px}
+ html body dialog#bbpi-current-editor.bbpa-add-food .bbpi-stock-choice{min-height:44px}
+ html body dialog#bbpi-current-editor.bbpa-add-food .bbpa-helper{margin-top:6px;font-size:12px}
+ html body dialog#bbpi-current-editor.bbpa-add-food .bbpa-amount{margin-top:10px}
+ html body dialog#bbpi-current-editor.bbpa-add-food .bbpa-amount>summary{min-height:58px;padding:8px 12px;font-size:14px}
+ html body dialog#bbpi-current-editor.bbpa-add-food .bbpi-editor-actions{padding:9px 16px max(10px,env(safe-area-inset-bottom,0px))}
+ html body dialog#bbpi-current-editor.bbpa-add-food .bbpi-done{min-height:48px}
+}

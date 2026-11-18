@@ -8,28 +8,39 @@
  const mounts=new WeakMap(),installations=new WeakMap();
  const EMPTY=Object.freeze({refresh(){},destroy(){}});
  const OPTIONAL='.bbpi-stock-pack,.bbpi-amount-details,.bbpi-more-options,.bbpi-scan-products,.bbpi-readout,.bbpi-rounding-note';
- const NEEDS_REVIEW=/Choose (?:a confirmed|the size|a stock level|what remains)|Confirm the pack size|Use a whole number|Open Edit amount|could not be applied|Pack size changed/i;
  function mount(target,deps={}){
   const dialog=target?.element||target,doc=deps.doc||dialog?.ownerDocument,win=deps.win||doc?.defaultView;
   if(!doc||!win||!dialog?.matches?.('#bbpi-current-editor')||!dialog.querySelector('.bbpi-name-label'))return EMPTY;
   if(mounts.has(dialog))return mounts.get(dialog);
   const content=dialog.querySelector('.bbpi-editor-content');if(!content)return EMPTY;
-  const amount=doc.createElement('details'),summary=doc.createElement('summary'),summaryCopy=doc.createElement('span'),summaryLabel=doc.createElement('span'),summaryHint=doc.createElement('span'),none=doc.createElement('p');
-  amount.className='bbpa-amount';summaryCopy.className='bbpa-summary-copy';summaryLabel.textContent='Add amount (optional)';summaryHint.className='bbpa-summary-hint';summaryHint.textContent='Pack size or exact weight';summaryCopy.append(summaryLabel,summaryHint);summary.append(summaryCopy);amount.append(summary);
+  const amount=doc.createElement('details'),summary=doc.createElement('summary'),summaryCopy=doc.createElement('span'),summaryLabel=doc.createElement('span'),summaryHint=doc.createElement('span'),amountBody=doc.createElement('div'),none=doc.createElement('p'),helper=doc.createElement('p'),estimate=doc.createElement('span');
+  amount.className='bbpa-amount';summaryCopy.className='bbpa-summary-copy';summaryLabel.textContent='Add amount (optional)';summaryHint.className='bbpa-summary-hint';summaryHint.textContent='Pack size or exact weight';summaryCopy.append(summaryLabel,summaryHint);summary.append(summaryCopy);amountBody.className='bbpa-amount-scroll';amount.append(summary,amountBody);
   none.className='bbpa-none-at-home';none.textContent='None at home';none.hidden=true;none.setAttribute('aria-live','polite');
+  helper.className='bbpa-helper';helper.textContent="No amount needed. We'll check with you if a meal needs a lot.";
+  estimate.className='bbpa-estimated';estimate.textContent='Estimated';estimate.hidden=true;
   dialog.classList.add('bbpa-add-food');
   // Move each live node once, including all of its original listeners.
   const originalOptional=[...content.querySelectorAll(OPTIONAL)].filter(node=>!node.parentElement?.closest(OPTIONAL));
   const ownedReadouts=[...content.children].filter(node=>node.matches('.bbpi-notice')&&!node.hasAttribute('role')&&!node.hasAttribute('aria-live'));
   const first=originalOptional.find(node=>node.parentElement===content)||ownedReadouts[0];
   if(first)first.before(amount);else content.append(amount);
-  for(const node of [...originalOptional,...ownedReadouts])amount.append(node);
+  for(const node of [...originalOptional,...ownedReadouts])amountBody.append(node);
+  const exact=amountBody.querySelector('.bbpi-amount-details'),more=amountBody.querySelector('.bbpi-more-options'),pack=amountBody.querySelector('.bbpi-stock-pack');
+  if(exact){exact.open=false;const label=exact.querySelector(':scope>summary');if(label)label.textContent='Exact amount';}
+  if(pack)amountBody.prepend(pack);
+  const capacities=pack?.querySelector('.bbpi-stock-capacities'),capacityHelp=pack?.querySelector('.bbpi-stock-capacity-help');
+  if(capacities&&capacityHelp)capacities.after(capacityHelp);
+  if(exact)pack?pack.after(exact):amountBody.prepend(exact);
   const nameLabel=content.querySelector('.bbpi-name-label'),nameText=[...nameLabel.childNodes].find(node=>node.nodeType===3);
   if(nameText)nameText.nodeValue='Food';
   const title=dialog.querySelector('.bbpi-editor-heading h4');if(title)title.setAttribute('aria-label','Add food');
   const region=content.querySelector('.bbpi-stock-levels'),readout=region?.querySelector('.bbpi-stock-amount'),choices=region?.querySelector('.bbpi-stock-choices');
-  if(choices){const prompt=doc.createElement('p');prompt.className='bbpa-stock-label';prompt.textContent='How much do you have?';choices.before(prompt);}
-  if(readout)readout.after(none);else content.insertBefore(none,amount);
+  if(choices){const prompt=doc.createElement('p');prompt.className='bbpa-stock-label';prompt.textContent='How much do you have?';prompt.append(estimate);choices.before(prompt);choices.after(helper,none);}
+  else content.insertBefore(none,amount);
+  const explanation=region?.querySelector('.bbpi-stock-explanation'),message=region?.querySelector('.bbpi-stock-message'),pendingNote=region?.querySelector('.bbpi-stock-pending');
+  for(const node of [pendingNote,readout,explanation,message])if(node)amountBody.append(node);
+  for(const node of [...content.children].filter(node=>node.matches('.bbpi-notice')))amountBody.append(node);
+  if(more)amountBody.append(more);
   const legacyToggle=region?.querySelector('.bbpi-stock-pack-toggle'),sparesLabel=amount.querySelector('.bbpi-stock-spares-label'),spares=sparesLabel?.querySelector('input'),done=dialog.querySelector('.bbpi-done');
   if(sparesLabel){
    const leading=[...sparesLabel.childNodes].find(node=>node.nodeType===3);
@@ -37,11 +48,20 @@
   }
   if(spares)spares.setAttribute('aria-label','Extra unopened packs');
   if(done)done.setAttribute('aria-label','Done');
-  let destroyed=false,queued=false,lastExpanded=legacyToggle?.getAttribute('aria-expanded')==='true',lastErrors='',lastFocus=null,reviewRequired=false;
+  let destroyed=false,queued=false,lastErrors='',lastFocus=null,reviewRequired=false;
   const listeners=[];
   const listen=(node,type,handler,capture=false)=>{node.addEventListener(type,handler,capture);listeners.push(()=>node.removeEventListener(type,handler,capture));};
   const setHidden=(node,value)=>{if(node&&node.hidden!==value)node.hidden=value;};
   const setClass=(name,value)=>{if(dialog.classList.contains(name)!==value)dialog.classList.toggle(name,value);};
+  if(spares){
+   const stepper=doc.createElement('span');stepper.className='bbpa-spares-stepper';spares.before(stepper);stepper.append(spares);
+   for(const [label,direction,copy]of [['−',-1,'Fewer extra unopened packs'],['+',1,'More extra unopened packs']]){
+    const control=doc.createElement('button');control.type='button';control.className='bbpa-spares-step';control.textContent=label;control.setAttribute('aria-label',copy);
+    listen(control,'click',()=>{if(spares.disabled)return;direction>0?spares.stepUp():spares.stepDown();spares.dispatchEvent(new win.Event('input',{bubbles:true}));});
+    direction<0?stepper.prepend(control):stepper.append(control);
+   }
+  }
+  const remove=dialog.querySelector('.bbpi-remove');if(remove&&more)more.append(remove);
   function lockHeight(){
    if(destroyed||!dialog.open||dialog.style.getPropertyValue('--bbpa-sheet-height'))return;
    const height=dialog.getBoundingClientRect().height;if(height>0)dialog.style.setProperty('--bbpa-sheet-height',Math.ceil(height)+'px');
@@ -65,11 +85,9 @@
   }
   function refresh(){
    if(destroyed)return;queued=false;
-   const expanded=legacyToggle?.getAttribute('aria-expanded')==='true';
    const errorNodes=errors(),errorStamp=errorNodes.map(node=>node.textContent).join('\n');
    const newError=!!errorStamp&&errorStamp!==lastErrors;
-   if(expanded&&!lastExpanded)reveal(null,true);
-   lastExpanded=expanded;lastErrors=errorStamp;
+   lastErrors=errorStamp;
    if(newError){
     // The original handler has already chosen the error and opened its native
     // inner disclosures. Reveal the outer disclosure without rerunning it.
@@ -83,13 +101,16 @@
    }
    const quantity=dialog.querySelector('[data-bbpi-quantity]'),raw=quantity?.value?.trim();
    const qualitative=!region||region.hidden;setClass('bbpa-qualitative',qualitative);
-   const pending=region?.dataset.bbpiPending||'',label=pending?'Confirm amount':'Add amount (optional)';
-   if(summaryLabel.textContent!==label)summaryLabel.textContent=label;
-   if(summaryHint.textContent!==(pending?'Confirm the amount before Done':'Pack size or exact weight'))summaryHint.textContent=pending?'Confirm the amount before Done':'Pack size or exact weight';
+   const pending=region?.dataset.bbpiPending||'';
    const out=!pending&&!qualitative&&region.querySelector('[data-bbpi-stock-level="out"]')?.getAttribute('aria-pressed')==='true';
    // A positive unopened-pack balance remains visible even when Out is active.
    const empty=out&&raw!==''&&raw!==undefined&&Number.isFinite(Number(raw))&&Number(raw)===0;
-   setClass('bbpa-out-zero',empty);setClass('bbpa-out-balance',out&&!empty);setHidden(none,!empty);setHidden(amount,empty&&!reviewRequired);
+   const count=spares?.value?.trim(),unopened=out&&!empty&&count!==''&&Number.isInteger(Number(count))&&Number(count)>0;
+   const outCopy=empty?'None at home':unopened?'Opened pack finished · '+count+' unopened '+(Number(count)===1?'pack':'packs')+' left':'';
+   if(none.textContent!==outCopy)none.textContent=outCopy;
+   setClass('bbpa-out-zero',empty);setClass('bbpa-out-balance',!!unopened);setHidden(none,!outCopy);setHidden(helper,!!outCopy);setHidden(amount,empty&&!reviewRequired);
+   setHidden(estimate,!/\bestimat/i.test(explanation?.textContent||''));
+   setClass('bbpa-amount-open',amount.open&&!amount.hidden);
    const busy=!!done&&(done.disabled||done.getAttribute('aria-busy')==='true');
    setClass('bbpa-done-busy',busy);
    if(done){const label=busy?done.textContent.trim()||'Done':'Done';if(done.getAttribute('aria-label')!==label)done.setAttribute('aria-label',label);}
@@ -103,7 +124,8 @@
    schedule();
   });
   listen(dialog,'focusin',event=>{
-   if(event.target!==summary&&amount.contains(event.target)){lastFocus=event.target;reveal(event.target,true);}
+   // A native summary toggles after focus. Do not pre-open it before its click.
+   if(event.target.tagName!=='SUMMARY'&&amount.contains(event.target)){lastFocus=event.target;reveal(event.target,true);}
   },true);
   listen(dialog,'invalid',event=>{if(amount.contains(event.target))reveal(event.target,true);},true);
   listen(dialog,'click',event=>{
@@ -116,13 +138,7 @@
   listen(dialog,'click',event=>{
    const choice=event.target.closest?.('.bbpi-stock-choice,.bbpi-stock-portion');
    if(choice?.getAttribute('data-bbpi-stock-level')==='out'&&!errors().length){
-    const raw=dialog.querySelector('[data-bbpi-quantity]')?.value?.trim();
-    if(raw!==''&&raw!==undefined&&Number(raw)===0)reviewRequired=false;
-   }
-   const message=region?.querySelector('.bbpi-stock-message')?.textContent||'';
-   if(choice&&legacyToggle?.getAttribute('aria-expanded')==='true'&&NEEDS_REVIEW.test(message)){
-    const field=/Use a whole number/i.test(message)?spares:null;reveal(field,true);
-    if(field&&doc.activeElement!==field)field.focus({preventScroll:true});
+    if(!region?.dataset.bbpiPending){reviewRequired=false;amount.open=false;}
    }
    refresh();
   });

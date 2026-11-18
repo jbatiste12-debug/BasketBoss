@@ -472,6 +472,9 @@
    if(view.group&&(view.groupDirty||view.newItem)){
     try{const pin=win.BBPantryGroups.context();if(pin.actor!==view.actor||pin.raw!==view.group.pin.raw)return {error:'Subcategories changed. Close this panel and review them before saving.'};view.group.pin=pin;}catch{return {error:'Reopen At home to review your subcategories before saving.'};}
    }
+   // select() already stores an unknown balance. Do not turn a blank into
+   // zero or send quantity/target fields that require a measured amount.
+   if(raw===''&&view.stockLevels?.allowsUnknown?.())return {row,patch:{unit:row.unit}};
    if(raw===''||!view.quantity.validity.valid||!Number.isFinite(Number(raw))||Number(raw)<0)return {error:'Enter how much you have; use 0 for none.',field:view.quantity};
    if(!target)return {error:view.neededHelp.textContent,field:view.units};
    if(bufferRaw===''||!view.buffer.validity.valid||!Number.isFinite(Number(bufferRaw))||Number(bufferRaw)<0)return {error:'Enter a valid extra stock buffer; use 0 for none.',field:view.buffer};
