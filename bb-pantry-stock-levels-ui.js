@@ -124,6 +124,13 @@
    const core=win.BBPantryStockLevels;if(typeof core?.select!=='function'){text(message,'Open Edit amount to update your stock.');details.open=true;return;}
    const result=core.select(row,{portion,capacity:confirmed?selected?.capacity:null,unit:confirmed?selected?.unit:row.unit,spares:count,confirmed:true,source:selected?.source||'label',capacityEstimated:selected?.capacityEstimated===true},{policy,market:market()});
    if(!result?.ok||!result.patch){text(message,result?.message||result?.error||'Confirm the pack size, or use Edit amount.');return;}
+   if(result.patch.qty===0&&!['g','kg','ml','l','each'].includes(result.patch.unit)){
+    let zero;try{zero=policy?.normalize?.(row.name,0,result.patch.unit,{market:row.inputMarket||market(),packReviewed:row.packReviewed===true,packQuantity:row.packQuantity,packUnit:row.packUnit});}catch{}
+    const base=policy?.baseUnit?.(row.name);
+    // An empty unknown-size jar has zero contents in any base unit. There is
+    // no pack estimate to confirm, and positive unopened stock never enters here.
+    if(!zero&&['g','ml','each'].includes(base))result.patch.unit=base;
+   }
    const before=pending,wasManual=manual;pending=result.patch;manual=false;desired=null;applying=true;let success=true;
    try{success=deps.setQuantity(result.patch.qty,result.patch.unit)!==false;}catch{success=false;}finally{applying=false;}
    if(!success){pending=before;manual=wasManual;text(message,'This amount could not be applied. Review Edit amount before saving.');paint();return;}

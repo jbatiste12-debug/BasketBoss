@@ -221,4 +221,16 @@ if(captureOnly){
    assert.equal(saved.row.packQuantity,original.row.packQuantity);assert.equal(saved.row.stockLevel,original.row.stockLevel);
   }finally{await h.context.close();}
  });
+ test('Out saves an unknown custom jar without requiring its container capacity',{skip},async()=>{
+  const h=await fixture({name:'Family preserve',unit:'jar',unknown:true,pack:0});try{
+   await h.open();await h.panel.locator('[data-bbpi-stock-level="out"]').click();
+   assert.equal(await h.panel.locator('[data-bbpi-quantity]').inputValue(),'0');assert.equal(await h.panel.getByText('None at home',{exact:true}).isVisible(),true);
+   assert.equal(await h.panel.locator('.bbpa-counts:visible,.bbpa-amount:visible').count(),0,'Out requires neither a count nor a pack size');
+   await h.panel.getByRole('button',{name:'Done',exact:true}).click();
+   await h.page.waitForFunction(()=>{const node=document.querySelector('#bbpi-current-editor');return !node||[...node.querySelectorAll('.bbpi-notice.is-error')].some(error=>error.textContent.trim());});
+   const error=await h.panel.count()?await h.panel.locator('.bbpi-notice.is-error').allTextContents():[];
+   assert.equal(await h.panel.count(),0,'Done must save Out without an amount review: '+error.join(' '));
+   const saved=await h.snapshot();assert.equal(saved.row.qty,0);assert.ok(Object.values(JSON.parse(saved.stock||'{}')).every(quantity=>quantity===0),'Out cannot create positive stock');assert.deepEqual(h.errors,[]);
+  }finally{await h.context.close();}
+ });
 }
