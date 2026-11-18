@@ -123,6 +123,19 @@ if(captureOnly){
    await h.open();await h.panel.locator('[data-bbpi-stock-level="got"]').click();await save(h);assert.equal((await h.snapshot()).row.qty,250,'Got it cannot silently refill a measured balance');
   }finally{await h.context.close();}
  });
+ test('Running low uses a newly edited physical pack size instead of stale level metadata',{skip},async()=>{
+  const h=await fixture({qty:500,pack:1000});try{
+   await h.open();await h.panel.locator('[data-bbpi-stock-level="low"]').click();await save(h);
+   assert.equal((await h.snapshot()).row.stockLevel.capacity,1000);
+   await h.open();await expand(h);
+   const more=h.panel.locator('.bbpi-more-options');if(!await more.evaluate(node=>node.open))await more.locator(':scope>summary').click();
+   const pack=h.panel.locator('.bbpi-pack');if(!await pack.evaluate(node=>node.open))await pack.locator(':scope>summary').click();
+   await pack.locator('input').fill('500');assert.equal(await pack.locator('select').inputValue(),'g');
+   await h.panel.locator('[data-bbpi-stock-level="low"]').click();
+   assert.equal(await h.panel.locator('[data-bbpi-quantity]').inputValue(),'125','a new 500g physical pack must replace the previous 1kg basis');
+   await save(h);const saved=await h.snapshot();assert.equal(saved.row.qty,125);assert.equal(saved.row.packQuantity,500);assert.equal(saved.row.stockLevel.capacity,500);assert.equal(saved.row.unroundedShortfall,375);
+  }finally{await h.context.close();}
+ });
  test('Full, Half and Quarter actions are one row and duplicate taps keep an absolute balance',{skip},async()=>{
   const h=await fixture({qty:500,pack:1000});try{
    await h.open();await expand(h);

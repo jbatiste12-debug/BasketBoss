@@ -54,6 +54,10 @@
   function automaticCapacity(row){
    if(confirmed&&selected)return selected;
    const values=capacityOptions(row),metadata=trustedMeta(row),shared=win.BBPantryPackSync?.read?.(row);
+   if(view.touched?.has('pack')){
+    let edited;try{edited=policy?.normalize?.(row.name,Number(row.packQuantity),row.packUnit,{market:row.inputMarket||market()});}catch{}
+    return row.packReviewed===true&&values.find(value=>value.unit===edited?.unit&&Math.abs(value.capacity-edited.quantity)<=.000001)||null;
+   }
    const saved=metadata||shared?.packReviewed===true||row.packReviewed===true?values[0]:null;if(saved)return saved;
    // A generic pricing fallback is not evidence of a custom food's pack size.
    let standard;try{standard=deps.defaultPack?.();}catch{}
