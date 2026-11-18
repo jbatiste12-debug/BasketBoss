@@ -1,0 +1,61 @@
+BasketBoss 1.0.4 (54) — phone checklist
+
+1. Prepare and run
+   Run the Build 54 launcher. Confirm version 1.0.4 and build 54 in the App target,
+   connect your iPhone and choose Product > Run. Earlier projects stay intact.
+
+2. Countable foods
+   Open At home > Add food and choose Eggs using autocomplete. Confirm you see
+   Got it / Running low / Out, How many left?, count buttons and one stepper.
+   Pack-size suggestions, Full/Half pack and extra-pack instructions must be hidden.
+   Tap 4 and Done. Reopen and confirm four eggs remain. Check an existing item via
+   its Edit control receives the same simpler presentation.
+
+3. Running low without interrogation
+   With six eggs recorded, tap Running low. The suggested count should be two;
+   adjust if needed, then tap Done immediately. Done confirms that displayed count.
+   With one egg recorded, Running low must not increase it to two. Repeated taps
+   must not add stock. Test a tin recorded with its container unit as well.
+
+4. Got it without an amount
+   Add a new food, choose Got it and Done without adding an amount. It should save
+   once as unknown. A required recipe ingredient must keep the full shopping gap
+   and show Check stock. Unknown must not become zero, a full pack or enough food.
+   Tap Done twice quickly and confirm only one item is saved.
+
+5. Measured pack shortcuts
+   With rice and a reviewed 1 kg pack, tap Running low and Done without another
+   confirmation. Confirm 250 g remains and the estimate is labelled.
+   Open Add amount and check Full pack, Half pack and Quarter left each appear once.
+   Check suggested catalogue amounts keep the reminder to check the label.
+   A custom food without a known compatible pack must keep unknown/check behaviour.
+
+6. Keyboard and exact amount
+   Open Add amount > Exact amount, tap the number to open the iPhone keypad and
+   enter 250 g. The complete minus, number, plus and unit controls must remain
+   reachable by scrolling, with no vertical clipping. Done must stay above the
+   keyboard. Test portrait, landscape and a smaller iPhone if available.
+   Dismiss the keypad, then tap count buttons or plus/minus: they must not reopen it.
+
+7. Out and unopened packs
+   With no unopened packs, Out shows None at home and hides amount fields.
+   With two unopened 1 kg packs, Out must keep 2000 g and show the unopened-pack
+   balance. Reopen and repeat Out; it must not erase or duplicate those packs.
+   Repeat with two unopened six-packs of eggs and confirm twelve eggs remain.
+
+8. Shopping gap and cooking
+   For 500 g needed with 250 g at home, check a 250 g shopping gap before buyable
+   pack rounding. With unknown stock, all 500 g remains to buy until checked.
+   Cook a test meal and confirm the remaining pantry stock is deducted once.
+   Closing, cancelling or reopening the sheet must not change saved stock.
+
+9. Navigation and save safety
+   Switch Plan, Discover, At home, Shop and Cook. Check there is no stale screen
+   flash or stranded backdrop. Try an offline save, reconnect and confirm one
+   absolute quantity is retained. Check a second household device if applicable;
+   do not overwrite a partner conflict without reviewing the existing warning.
+
+10. Upload after device checks
+    Archive from the prepared workspace, or run the launcher with --archive.
+    Confirm archive 1.0.4 (54), then Distribute App > App Store Connect > Upload.
+    Do not run ordinary ios:sync. Browser checks do not replace a real phone test.
