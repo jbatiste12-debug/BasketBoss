@@ -1940,8 +1940,8 @@ if(!app||!app.querySelector)return;
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="default">
 <meta name="apple-mobile-web-app-title" content="BasketBoss">
-<link rel="icon" type="image/png" href="icons/basketboss-crowned-v1766-192.png">
-<link rel="apple-touch-icon" sizes="180x180" href="icons/basketboss-crowned-v1766-180.png">
+<link rel="icon" type="image/png" href="/icons/basketboss-crowned-v1766-192.png?v=6ba99451bf2dc605">
+<link rel="apple-touch-icon" sizes="180x180" href="/icons/basketboss-crowned-v1766-180.png?v=07919dc833f694f9">
 <style id="bb172CustomTileBudgetCSS">
 /* Scoped v17.2 custom food and budget styles; existing BasketBoss CSS unchanged. */
 #bb172WeeklyBudget,#bb172LunchCustom,#bb172PantryCustom{font-family:inherit;box-sizing:border-box;color:#1b4365}
@@ -9243,11 +9243,24 @@ function bbNextWeekReady(){
   !document.querySelector('.cook-overlay')&&window.BBReceiptHost?.hasPendingConfirmation?.()!==true&&
   !bbReceiptPantryReviewRequired()&&window.BBHome?.blocked?.()!==true;
 }
+function bbNextWeekUnfinishedDays(week){
+ return BB_AF_DAYS.filter(day=>{
+  const planned=[...week.planned,...week.plannedBreakfasts,...week.plannedDesserts].some(row=>row.day===day)||
+   Object.hasOwn(week.customDinners,day)||(week.lunch.days[day]||[]).length||
+   (week.bbManualBatch?.pairs||[]).some(pair=>pair.leftoverDay===day)||week.bb81Batch&&['Tuesday','Thursday'].includes(day);
+  if(!planned)return false;
+  try{
+   const meals=window.BBHomeHost?.dayMeals?.(day);
+   return !Array.isArray(meals)||!meals.length||typeof window.BBHome?.isCooked!=='function'||meals.some(item=>!item.occurrence||!window.BBHome.isCooked(item.occurrence));
+  }catch{return true;}
+ });
+}
 async function bbStartNextWeek(options={}){
  const result=await bbAfWithLock(()=>bbStartNextWeekRun(options));
  return result||{ok:false,message:'Auto-fill is already busy. Your current plan has been kept.'};
 }
-async function bbStartNextWeekRun({mode}={}){
+async function bbStartNextWeekRun({mode,empty=false,confirmEmpty}={}){
+ empty=empty===true;
  const failed=message=>{notify(message);return {ok:false,message};};
  if(!bbNextWeekReady())return failed('Finish cooking or review your pantry and account before starting next week.');
  const initial=bbSavedWeekSnapshot();if(!initial.ready)return failed(initial.message);
@@ -9258,9 +9271,9 @@ async function bbStartNextWeekRun({mode}={}){
   const currentWeek=window.BBSavedWeeks.capture({plan:initial.plan,lunch:initial.lunch,notes:initial.notes});
   const planningState={...initial.plan,planned:[],plannedBreakfasts:[],plannedDesserts:[],mealServings:{},dayServings:{},leftoverSources:{},leftoverConfirmed:{},bbManualBatch:null,bb81Batch:null};
   const filters=bb176IsPremiumPreview()?{...bb81ProFilters}:{};
-  if(filters.batch)return failed('Turn off Cook Once, Eat Twice before starting a varied new week.');
-  const selection=bbAfDraw(BB_AF_DAYS,[],filters,false,pantryMode,{planningState,reserveCurrentMeals:false,storage:stage.storage});
-  if(!selection?.additions?.length)return failed('No dinners match your preferences and variety rules. Your current week has been kept.');
+  if(!empty&&filters.batch)return failed('Turn off Cook Once, Eat Twice before starting a varied new week.');
+  const selection=empty?{additions:[]}:bbAfDraw(BB_AF_DAYS,[],filters,false,pantryMode,{planningState,reserveCurrentMeals:false,storage:stage.storage});
+  if(!empty&&!selection?.additions?.length)return failed('No dinners match your preferences and variety rules. Your current week has been kept.');
   let savedName='';
   const hasCurrent=currentWeek.planned.length||currentWeek.plannedBreakfasts.length||currentWeek.plannedDesserts.length||Object.keys(currentWeek.customDinners).length||Object.values(currentWeek.lunch.days).some(rows=>rows.length);
   if(hasCurrent){
@@ -9276,15 +9289,19 @@ async function bbStartNextWeekRun({mode}={}){
   };
   if(!current())return failed('Your week or pantry changed. Review the latest amounts and try again.');
   const meals=selection.additions.map(row=>row.day.slice(0,3)+': '+(getRecipe(row.recipeId)?.name||row.recipeId)).join('\n');
-  const message=(savedName?'Save your current week as “'+savedName+'”, then replace the visible planner':'Replace the empty visible planner')+' with '+selection.additions.length+' new dinners?\n\n'+meals+'\n\nAt home quantities stay unchanged. Breakfasts, desserts, school lunches and dinner notes start empty. Your previous shopping trip and unfinished list are saved.'+bbAfDietNotice(selection.additions.length,BB_AF_DAYS.length);
-  if(!await bbQaConfirm(message,'Start next week?','Start next week'))return {ok:false,cancelled:true,message:'Your current week has been kept.'};
+  const unfinishedDays=empty?bbNextWeekUnfinishedDays(currentWeek):[];
+  const message=empty?(savedName?'Save your current week as “'+savedName+'”, then start with an empty meal plan?':'Start with an empty meal plan?')+'\n\nDinners, breakfasts, desserts, school lunches and dinner notes start empty. Your previous shopping trip and unfinished list are saved. At home quantities stay unchanged. Meals not confirmed as done will not deduct ingredients.':
+   (savedName?'Save your current week as “'+savedName+'”, then replace the visible planner':'Replace the empty visible planner')+' with '+selection.additions.length+' new dinners?\n\n'+meals+'\n\nAt home quantities stay unchanged. Breakfasts, desserts, school lunches and dinner notes start empty. Your previous shopping trip and unfinished list are saved.'+bbAfDietNotice(selection.additions.length,BB_AF_DAYS.length);
+  const answer=empty&&typeof confirmEmpty==='function'?await confirmEmpty(message,'Start next week?','Start next week',unfinishedDays):await bbQaConfirm(message,'Start next week?','Start next week');
+  if(answer!==true&&answer?.confirmed!==true)return {ok:false,cancelled:true,message:'Your current week has been kept.'};
+  const reviewPantry=empty&&unfinishedDays.length>0&&answer?.reviewPantry===true;
   if(!current())return failed('Your account, week or pantry changed. Nothing was replaced.');
   const additions=selection.additions;
-  if(additions.some(row=>!BB_AF_DAYS.includes(row.day)||!bb176AllowedRecipe(row.recipeId)||!bbAfIngredientAllowed(getRecipe(row.recipeId)))||
+  if(!empty&&(additions.some(row=>!BB_AF_DAYS.includes(row.day)||!bb176AllowedRecipe(row.recipeId)||!bbAfIngredientAllowed(getRecipe(row.recipeId)))||
     !bbPlanVarietyValid(additions,true)||new Set(additions.map(row=>row.day)).size!==additions.length||new Set(additions.map(row=>row.recipeId)).size!==additions.length||
-    bbAfWorldCount(additions)>1||bbAfWorldCount(additions)>0&&!selection.worldAllowed)return failed('Your recipe access or preferences changed. Your current week has been kept.');
-  if(!selection.rotation.commit())return failed('Recipe rotation changed. Your current week has been kept.');
-  bbRecordPlannedRecipesToStorage(additions.map(row=>row.recipeId),stage.storage);
+    bbAfWorldCount(additions)>1||bbAfWorldCount(additions)>0&&!selection.worldAllowed))return failed('Your recipe access or preferences changed. Your current week has been kept.');
+  if(!empty&&!selection.rotation.commit())return failed('Recipe rotation changed. Your current week has been kept.');
+  if(!empty)bbRecordPlannedRecipesToStorage(additions.map(row=>row.recipeId),stage.storage);
   if(!current())return failed('Your saved week changed. Nothing was replaced.');
   const next={...planningState,pantryPlanGeneration:crypto.randomUUID(),planned:additions.map(row=>({...row}))};
   const lunch=BB321Lunch.normaliseLunchbox({version:1,children:currentWeek.lunch.children,days:{},menus:{}});
@@ -9294,10 +9311,13 @@ async function bbStartNextWeekRun({mode}={}){
   // Its existing write/rollback guard owns every staged key in this transfer.
   if(!bbShopV7Close({updates,expected:{...initial.raw,...Object.fromEntries(stage.expected)},allowUninitialized:true}))return failed('Could not start next week. Your current plan and saved weeks have been kept.');
   state=next;bb321LunchState=lunch;bb80OpenPlanDays.clear();bb80RememberPlanDays();bbNextExpandedPlanDay=null;
-  if(typeof bbOnboardingPlanCreated==='function')bbOnboardingPlanCreated(additions.map(row=>row.recipeId));
+  if(!empty&&typeof bbOnboardingPlanCreated==='function')bbOnboardingPlanCreated(additions.map(row=>row.recipeId));
   try{window.BasketBossCloud?.scheduleSave();}catch{}
-  render();const messageText='Next week started. Your At home stock has been kept'+(savedName?' and your previous week is in Saved weeks.':'.');notify(messageText);
-  return {ok:true,savedName,added:additions.length,message:messageText};
+  render();const messageText=(empty?'Next week started with an empty meal plan. ':'Next week started. ')+'Your At home stock has been kept'+(savedName?' and your previous week is in Saved weeks.':'.');notify(messageText);
+  // Reviewing is optional and happens only after the existing atomic transfer.
+  // Opening the review never confirms missed cooking or deducts ingredients.
+  if(reviewPantry)try{window.BBHomeHost?.openAtHome?.();window.BBKitchenReview?.open?.();}catch{}
+  return {ok:true,savedName,added:additions.length,reviewPantry,message:messageText};
  }catch{return failed('Could not prepare next week. Your current plan and pantry have been kept.');}
 }
 window.BBPantryFirstHost=Object.freeze({startNextWeek:bbStartNextWeek});
@@ -14172,16 +14192,16 @@ body[data-bbnext-view="discover"] #app .bb175-discover-heading{padding-top:calc(
 <script defer src="/bb-household-amount.js?v=8c3273f895ce9c7f"></script>
 <script defer src="/bb-kitchen-essentials.js?v=25c8a667a3dea215"></script>
 <script defer src="/bb-kitchen-prices.js?v=f5b3676ce68feeec"></script>
-<link rel="stylesheet" href="/bb-pantry-inline.css?v=acb4cf0af00d2dff">
-<script defer src="/bb-pantry-stock-levels-ui.js?v=4be3f307a1eb28d7"></script>
-<script defer src="/bb-pantry-inline.js?v=cf6a2c758d7cc685"></script>
-<script defer src="/bb-pantry-add-amount-presentation.js?v=4e1f678672922bd1"></script>
+<link rel="stylesheet" href="/bb-pantry-inline.css?v=be143cfad16cd094">
+<script defer src="/bb-pantry-stock-levels-ui.js?v=25d1197ccadae890"></script>
+<script defer src="/bb-pantry-inline.js?v=29c82de2b354e647"></script>
+<script defer src="/bb-pantry-add-amount-presentation.js?v=7712f394e767929e"></script>
 <link rel="stylesheet" href="/bb-keyboard-layout.css?v=3010ec5f4a32a9bb">
 <script defer src="/bb-keyboard-layout.js?v=f4fa20927c15c703"></script>
 <link rel="stylesheet" href="/bb-simple-layout.css?v=b78ffdb3dab2f664">
 <script defer src="/bb-simple-layout.js?v=48d64fd307288197"></script>
 <script defer src="/bb-pantry-deduction.js?v=7f7ea56758539457"></script>
-<script defer src="/bb-home.js?v=6ef580b0821a489f"></script><link rel="stylesheet" href="/bb-day-done.css?v=253f0f3f5c07d102"><script defer src="/bb-day-done.js?v=c73510319a99a836"></script><link rel="stylesheet" href="/bb-shop-add.css?v=76495afe6b55de2b"><script defer src="/bb-shop-add.js?v=5fea55d7b536cd6d"></script><script defer src="/bb-cupboard-staples.js?v=ee852189a99dad60"></script><script src="/bb-pantry-autofill.js?v=436984c5e56295f2"></script><link rel="stylesheet" href="/bb-pantry-first-controls.css?v=bc00a8eb47b0af9e"><script defer src="/bb-pantry-first-controls.js?v=6a0e5866b0926f3b"></script>
+<script defer src="/bb-home.js?v=6ef580b0821a489f"></script><link rel="stylesheet" href="/bb-day-done.css?v=253f0f3f5c07d102"><script defer src="/bb-day-done.js?v=c73510319a99a836"></script><link rel="stylesheet" href="/bb-shop-add.css?v=76495afe6b55de2b"><script defer src="/bb-shop-add.js?v=5fea55d7b536cd6d"></script><script defer src="/bb-cupboard-staples.js?v=ee852189a99dad60"></script><script src="/bb-pantry-autofill.js?v=436984c5e56295f2"></script><link rel="stylesheet" href="/bb-pantry-first-controls.css?v=11be113518928663"><script defer src="/bb-pantry-first-controls.js?v=e243a87c38672c12"></script>
 <link rel="stylesheet" href="/bb-shared-shopping.css?v=608ff045e8152025">
 <script defer src="/bb-shared-shopping.js?v=fb0c4aa8a858f3e9"></script>
 <link rel="stylesheet" href="/bb-plan-drag.css?v=c54ef00f36c09c35">
