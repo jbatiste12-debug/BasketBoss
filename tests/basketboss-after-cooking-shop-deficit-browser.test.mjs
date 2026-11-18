@@ -193,20 +193,28 @@ test('Plan offers pantry-first and fresh modes without changing stock or existin
 });
 
 
-test('Start next week saves the current plan and keeps real post-cooking pantry balances',{skip:!chromium&&'Playwright unavailable',timeout:90000},async()=>{
+for(const reviewPantry of [false,true])test('Start next week opens an empty plan and '+(reviewPantry?'offers the chosen pantry review':'keeps pantry as it is')+' after real cooking',{skip:!chromium&&'Playwright unavailable',timeout:90000},async()=>{
  const {page,context,errors}=await fixture(390,{online:true,reviewRequired:true});
  try{
   await confirmMonday(page);await page.waitForFunction(()=>BBReceiptHost.getConsumptionStatus().ready);
   assert.equal(await page.evaluate(()=>BBReceiptHost.requiresPantryReview()),true);
-  const before=await page.evaluate(()=>({stock:localStorage.getItem('basketboss_321_v7_measured_pantry'),inventory:localStorage.getItem('basketboss_makeameal_v1_inventory'),planned:__stockDeficitQA.planned(),generation:JSON.parse(localStorage.getItem('basketboss_321_unified_state_v1')).pantryPlanGeneration,cooked:JSON.parse(localStorage.getItem('basketboss_at_home_requirements_v1')).byActor[BBHome.actor()].cooked}));
-  await page.locator('[data-bb-start-next-week]').click();const confirmation=page.locator('#bbQaConfirmOverlay');await confirmation.waitFor();
+  const before=await page.evaluate(()=>({stock:localStorage.getItem('basketboss_321_v7_measured_pantry'),inventory:localStorage.getItem('basketboss_makeameal_v1_inventory'),ledger:localStorage.getItem('basketboss_at_home_requirements_v1'),planned:__stockDeficitQA.planned(),generation:JSON.parse(localStorage.getItem('basketboss_321_unified_state_v1')).pantryPlanGeneration,cooked:JSON.parse(localStorage.getItem('basketboss_at_home_requirements_v1')).byActor[BBHome.actor()].cooked}));
+  await page.locator('[data-bb-start-next-week]').click();const confirmation=page.locator('#bbNextWeekDialog');await confirmation.waitFor();
   assert.match(await confirmation.innerText(),/At home quantities stay unchanged/);
+  assert.match(await confirmation.innerText(),/empty meal plan/);assert.match(await confirmation.innerText(),/Tuesday/);assert.doesNotMatch(await confirmation.locator('fieldset p').innerText(),/Monday/);
+  assert.equal(await confirmation.getByLabel('Keep pantry as it is',{exact:true}).isChecked(),true);assert.equal(await confirmation.getByLabel('Review pantry after starting',{exact:true}).isChecked(),false);
   const preview=await page.evaluate(()=>({stock:localStorage.getItem('basketboss_321_v7_measured_pantry'),planned:__stockDeficitQA.planned(),saved:BBSavedWeeks.createStore({storage:localStorage,context:BBSavedWeeksHost.context}).read()}));
   assert.equal(preview.stock,before.stock);assert.deepEqual(preview.planned,before.planned);assert.equal(preview.saved.weeks.length,0,'preview has not saved or replaced the week');
+  await confirmation.getByRole('button',{name:'Keep my week',exact:true}).click();await confirmation.waitFor({state:'detached'});
+  const cancelled=await page.evaluate(()=>({stock:localStorage.getItem('basketboss_321_v7_measured_pantry'),inventory:localStorage.getItem('basketboss_makeameal_v1_inventory'),ledger:localStorage.getItem('basketboss_at_home_requirements_v1'),planned:__stockDeficitQA.planned()}));
+  assert.equal(cancelled.stock,before.stock);assert.equal(cancelled.inventory,before.inventory);assert.equal(cancelled.ledger,before.ledger);assert.deepEqual(cancelled.planned,before.planned);
+  await page.locator('[data-bb-start-next-week]').click();await confirmation.waitFor();
+  if(reviewPantry)await confirmation.getByLabel('Review pantry after starting',{exact:true}).check();
   await confirmation.getByRole('button',{name:'Start next week',exact:true}).click();await confirmation.waitFor({state:'detached'});
-  await page.waitForFunction(()=>__stockDeficitQA.planned().length===7);
-  const after=await page.evaluate(()=>({stock:localStorage.getItem('basketboss_321_v7_measured_pantry'),inventory:localStorage.getItem('basketboss_makeameal_v1_inventory'),planned:__stockDeficitQA.planned(),generation:JSON.parse(localStorage.getItem('basketboss_321_unified_state_v1')).pantryPlanGeneration,cooked:JSON.parse(localStorage.getItem('basketboss_at_home_requirements_v1')).byActor[BBHome.actor()].cooked,saved:BBSavedWeeks.createStore({storage:localStorage,context:BBSavedWeeksHost.context}).read()}));
-  assert.equal(after.stock,before.stock);assert.equal(after.inventory,before.inventory);assert.deepEqual(after.cooked,before.cooked);
-  assert.notEqual(after.generation,before.generation);assert.equal(after.saved.weeks.length,1);assert.deepEqual(after.saved.weeks[0].week.planned,before.planned);assert.equal(new Set(after.planned.map(row=>row.day)).size,7);assert.deepEqual(errors,[]);
+  await page.waitForFunction(()=>__stockDeficitQA.planned().length===0);
+  if(reviewPantry)await page.locator('#bbKitchenReviewDialog').waitFor();else assert.equal(await page.locator('#bbKitchenReviewDialog').count(),0);
+  const after=await page.evaluate(()=>({stock:localStorage.getItem('basketboss_321_v7_measured_pantry'),inventory:localStorage.getItem('basketboss_makeameal_v1_inventory'),ledger:localStorage.getItem('basketboss_at_home_requirements_v1'),planned:__stockDeficitQA.planned(),generation:JSON.parse(localStorage.getItem('basketboss_321_unified_state_v1')).pantryPlanGeneration,cooked:JSON.parse(localStorage.getItem('basketboss_at_home_requirements_v1')).byActor[BBHome.actor()].cooked,saved:JSON.parse(localStorage.getItem('basketboss_saved_weeks_v1:'+encodeURIComponent(BBHome.actor())))}));
+  assert.equal(after.stock,before.stock);assert.equal(after.inventory,before.inventory);assert.equal(after.ledger,before.ledger);assert.deepEqual(after.cooked,before.cooked);
+  assert.notEqual(after.generation,before.generation);assert.equal(after.saved.weeks.length,1);assert.deepEqual(after.saved.weeks[0].week.planned,before.planned);assert.deepEqual(after.planned,[]);assert.deepEqual(errors,[]);
  }finally{await context.close();}
 });

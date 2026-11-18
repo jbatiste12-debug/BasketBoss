@@ -209,3 +209,45 @@ test('routine pantry reminders allow a new week while true stock conflicts remai
   if(!ready){assert.equal(h.writes.length,0);assert.equal(h.draws.length,0);assert.equal(h.ctx.state.planned[0].recipeId,'old-dinner');}
  }
 });
+
+test('the Start next week UI can archive the old week and open a genuinely empty plan without drawing recipes',async()=>{
+ const h=nextWeekHarness(),old=plain(h.ctx.state),stock=h.values.get('stock'),inventory=h.values.get('basketboss_makeameal_v1_inventory'),history=h.values.get('basketboss_at_home_requirements_v1'),rotation=h.values.get(h.rotationKey);
+ h.ctx.bb81ProFilters={batch:true};h.ctx.bb176IsPremiumPreview=()=>true;h.ctx.bbOnboardingPlanCreated=()=>{throw Error('An empty week is not a first plan.');};
+ h.ctx.window.BBHomeHost={dayMeals:day=>day==='Monday'?[{occurrence:'already-cooked'}]:[{occurrence:day}]};h.ctx.window.BBHome.isCooked=key=>key==='already-cooked';
+ let confirmations=0;
+ const result=await h.next.startNextWeek({empty:true,confirmEmpty:async(message,title,action,days)=>{
+  confirmations++;assert.equal(h.writes.length,0);assert.match(message,/empty meal plan/);assert.doesNotMatch(message,/new dinners/);assert.equal(title,'Start next week?');assert.equal(action,'Start next week');assert.deepEqual(plain(days),['Thursday','Sunday']);return {confirmed:true,reviewPantry:false};
+ }});
+ assert.equal(result.ok,true);assert.equal(result.added,0);assert.equal(confirmations,1);assert.equal(h.draws.length,0);assert.deepEqual(plain(h.ctx.state.planned),[]);assert.deepEqual(plain(h.ctx.state.plannedBreakfasts),[]);assert.deepEqual(plain(h.ctx.state.plannedDesserts),[]);
+ assert.deepEqual(plain(h.ctx.state.mealServings),{});assert.deepEqual(plain(h.ctx.state.dayServings),{});assert.deepEqual(JSON.parse(h.values.get('notes')),{});assert.ok(Object.values(h.ctx.bb321LunchState.days).every(rows=>!rows.length));
+ assert.equal(h.values.get('stock'),stock);assert.equal(h.values.get('basketboss_makeameal_v1_inventory'),inventory);assert.equal(h.values.get('basketboss_at_home_requirements_v1'),history);assert.equal(h.values.get(h.rotationKey),rotation);assert.equal(h.values.has('basketboss_planned_recipe_dates_v1'),false);
+ const saved=model.createStore({storage:h.storage,context:h.host.context}).read();assert.equal(saved.weeks.length,1);assert.deepEqual(saved.weeks[0].week.planned,old.planned);assert.deepEqual(h.archivedPlans,[old.planned]);assert.equal(h.ended.length,1);
+});
+
+test('optional pantry review opens only after a successful empty-week transfer and never deducts missed meals',async()=>{
+ for(const reviewPantry of [false,true]){
+  const h=nextWeekHarness(),stock=h.values.get('stock'),history=h.values.get('basketboss_at_home_requirements_v1'),opened=[];
+  h.ctx.window.BBHomeHost={dayMeals:()=>[{occurrence:'not-done'}],openAtHome(){assert.deepEqual(plain(h.ctx.state.planned),[]);assert.equal(h.ended.length,1);opened.push('home');}};
+  h.ctx.window.BBKitchenReview={open(){opened.push('review');}};h.ctx.window.BBHome.isCooked=()=>false;h.ctx.window.BBHome.finishDay=()=>{throw Error('Never confirm an unfinished day.');};h.ctx.window.BBHome.cooked=()=>{throw Error('Never assume a meal was cooked.');};
+  const result=await h.next.startNextWeek({empty:true,confirmEmpty:async()=>({confirmed:true,reviewPantry})});assert.equal(result.ok,true);assert.equal(result.reviewPantry,reviewPantry);assert.deepEqual(opened,reviewPantry?['home','review']:[]);assert.equal(h.values.get('stock'),stock);assert.equal(h.values.get('basketboss_at_home_requirements_v1'),history);
+ }
+});
+
+test('cancelled, stale and failed empty-week transitions preserve the plan, stock and saved history',async()=>{
+ for(const change of [null,h=>h.values.set('stock',JSON.stringify({'rice|g':300})),h=>h.values.set('basketboss_cloud_session_v1',JSON.stringify({user:{id:'other'}})),h=>{h.ctx.state.servings=2;}]){
+  const h=nextWeekHarness();let after;h.ctx.window.BBHomeHost={openAtHome(){throw Error('No review after failed transfer.');}};
+  const result=await h.next.startNextWeek({empty:true,confirmEmpty:async()=>{change?.(h);after=[...h.values];return {confirmed:!!change,reviewPantry:true};}});assert.equal(result.ok,false);assert.deepEqual([...h.values],after);assert.equal(h.writes.length,0);assert.equal(h.draws.length,0);assert.equal(h.renders,0);
+ }
+ for(const failureKey of [model.KEY+ACTOR,'plan','lunch','notes','backup','archive','shop','ticks','purchases','choices']){
+  const h=nextWeekHarness(),before=new Map(h.values),state=JSON.stringify(h.ctx.state);let fail=true;
+  h.writeHook(key=>{if(key===failureKey&&fail){fail=false;throw Error('quota');}});
+  assert.equal((await h.next.startNextWeek({empty:true,confirmEmpty:async()=>({confirmed:true,reviewPantry:true})})).ok,false,failureKey);assert.deepEqual(new Map(h.values),before,failureKey);assert.equal(JSON.stringify(h.ctx.state),state);assert.equal(h.renders,0);
+ }
+});
+
+test('rapid empty-week taps cannot clear or archive twice and completed days do not request pantry review',async()=>{
+ const h=nextWeekHarness();let confirm,shown;const waiting=new Promise(resolve=>{shown=resolve;});
+ h.ctx.window.BBHomeHost={dayMeals:()=>[{occurrence:'done'}],openAtHome(){throw Error('No review needed for completed food.');}};h.ctx.window.BBHome.isCooked=()=>true;
+ const first=h.next.startNextWeek({empty:true,confirmEmpty:(message,title,action,days)=>{assert.deepEqual(plain(days),[]);shown();return new Promise(resolve=>{confirm=resolve;});}});await waiting;
+ assert.equal((await h.next.startNextWeek({empty:true})).ok,false);assert.equal(h.writes.length,0);confirm({confirmed:true,reviewPantry:true});assert.equal((await first).ok,true);assert.equal(h.ended.length,1);assert.equal(h.draws.length,0);assert.equal(model.createStore({storage:h.storage,context:h.host.context}).read().weeks.length,1);
+});

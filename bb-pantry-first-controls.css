@@ -27,3 +27,19 @@
  grid-column:1/-1;margin:0;font:500 12px/1.4 system-ui,-apple-system,sans-serif;color:#375a42;
 }
 #app.bbnext-plan .bbnext-plan-actions>.bb-pantry-first-status[hidden]{display:none}
+
+/* Only the Start next week confirmation uses this optional pantry choice. */
+html body dialog.bb-next-week-dialog{width:calc(100% - 32px);max-width:480px;max-height:calc(100dvh - 32px);margin:auto;padding:22px;border:1px solid #d5decf;border-radius:22px;background:#faf8f2;color:#244d3c;overflow-y:auto;box-sizing:border-box;font-family:system-ui,-apple-system,sans-serif}
+html body dialog.bb-next-week-dialog::backdrop{background:#102d2780}
+html body dialog.bb-next-week-dialog h2{margin:0 0 12px;font-size:24px;line-height:1.2;color:#1e4d3b}
+html body dialog.bb-next-week-dialog .bb-next-week-copy{margin:0 0 16px;white-space:pre-line;font-size:14px;line-height:1.5}
+html body dialog.bb-next-week-dialog fieldset{margin:0 0 14px;padding:12px;border:1px solid #d5decf;border-radius:14px}
+html body dialog.bb-next-week-dialog legend{padding:0 4px;font-size:14px;font-weight:750}
+html body dialog.bb-next-week-dialog fieldset p{margin:2px 0 10px;font-size:13px;line-height:1.4;color:#5d6f61}
+html body dialog.bb-next-week-dialog fieldset label{display:flex;align-items:center;gap:10px;min-height:44px;padding:4px;font-size:14px;line-height:1.35;cursor:pointer}
+html body dialog.bb-next-week-dialog input[type=radio]{flex:none;width:20px;height:20px;margin:0;accent-color:#1e4d3b}
+html body dialog.bb-next-week-dialog .bb-next-week-note{margin:0 0 18px;font-size:12px;line-height:1.5;color:#5d6f61}
+html body dialog.bb-next-week-dialog .bb-next-week-actions{display:flex;flex-wrap:wrap;gap:8px}
+html body dialog.bb-next-week-dialog button{flex:1;min-width:120px;min-height:46px;padding:10px 12px;border:1px solid #c5d3bf;border-radius:12px;background:#fffef9;color:#244d3c;font:750 14px/1.3 system-ui,-apple-system,sans-serif;cursor:pointer;touch-action:manipulation}
+html body dialog.bb-next-week-dialog button.bb-next-week-primary{background:#1e4d3b;color:#fffef9;border-color:#1e4d3b}
+html body dialog.bb-next-week-dialog :is(button,input):focus-visible{outline:3px solid #c9a851;outline-offset:3px}

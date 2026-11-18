@@ -6,20 +6,24 @@ const {install}=createRequire(import.meta.url)('../bb-pantry-first-controls.js')
 // A small DOM fixture exercises delegation and remounting without a second
 // browser runner or a replacement implementation of planner selection.
 class Element{
- constructor(tag='div'){this.tagName=tag.toUpperCase();this.children=[];this.parentNode=null;this.attributes=new Map();this.className='';this.id='';this.disabled=false;}
+ constructor(tag='div'){this.tagName=tag.toUpperCase();this.children=[];this.parentNode=null;this.attributes=new Map();this.className='';this.id='';this.disabled=false;this.listeners=new Map();}
  setAttribute(key,value){this.attributes.set(key,String(value));}
  getAttribute(key){return this.attributes.get(key)??null;}
  append(...nodes){for(const node of nodes){node.remove();node.parentNode=this;this.children.push(node);}}
  prepend(node){node.remove();node.parentNode=this;this.children.unshift(node);}
  remove(){if(this.parentNode){const siblings=this.parentNode.children;siblings.splice(siblings.indexOf(this),1);this.parentNode=null;}}
  matches(selector){
-  if(selector.startsWith('['))return this.attributes.has(selector.slice(1,-1));
+  const tag=selector.match(/^([a-z][\w-]*)/i)?.[1];if(tag&&tag.toUpperCase()!==this.tagName)return false;
+  for(const match of selector.matchAll(/\[([^=\]]+)(?:="?([^"\]]+)"?)?\]/g))if(!this.attributes.has(match[1])||match[2]!==undefined&&this.attributes.get(match[1])!==match[2])return false;
   const id=selector.match(/#([\w-]+)/)?.[1],classes=[...selector.matchAll(/\.([\w-]+)/g)].map(match=>match[1]);
   return (!id||this.id===id)&&classes.every(value=>this.className.split(/\s+/).includes(value));
  }
  closest(selector){let node=this;while(node){if(node.matches(selector))return node;node=node.parentNode;}return null;}
  querySelectorAll(selector){return this.children.flatMap(node=>[...(node.matches(selector)?[node]:[]),...node.querySelectorAll(selector)]);}
  querySelector(selector){return this.querySelectorAll(selector)[0]||null;}
+ addEventListener(type,handler){this.listeners.set(type,handler);}
+ showModal(){this.setAttribute('open','');}
+ focus(){}
 }
 function fixture({loading=false,plan=true}={}){
  const body=new Element('body'),app=new Element(),actions=new Element(),working=new Element('button'),add=new Element('button');
@@ -72,7 +76,7 @@ test('Start next week captures one selected mode and blocks repeated taps until 
  h.win.BBPantryFirstHost={startNextWeek:options=>{calls.push(options);return new Promise(resolve=>{finish=resolve;});}};h.api.mount();
  h.click(h.choice('fresh'));const next=h.app.querySelector('[data-bb-start-next-week]');
  const event=h.click(next);h.click(next);h.click(h.choice('pantry-first'));
- assert.equal(event.stopped,true);assert.equal(event.prevented,true);assert.deepEqual(calls,[{mode:'fresh'}]);assert.equal(h.api.mode(),'fresh');
+ assert.equal(event.stopped,true);assert.equal(event.prevented,true);assert.equal(calls.length,1);assert.equal(calls[0].mode,'fresh');assert.equal(calls[0].empty,true);assert.equal(typeof calls[0].confirmEmpty,'function');assert.equal(h.api.mode(),'fresh');
  assert.equal(next.disabled,true);assert.equal(h.working.onclick,h.original);
  finish({ok:true});await new Promise(resolve=>setImmediate(resolve));assert.equal(next.disabled,false);
  assert.equal(h.actions.querySelectorAll('[data-bb-start-next-week]').length,1);
@@ -82,4 +86,26 @@ test('next-week host failures leave an accessible retry message without invoking
  const next=h.app.querySelector('[data-bb-start-next-week]');h.click(next);await new Promise(resolve=>setImmediate(resolve));
  const status=h.app.querySelector('.bb-pantry-first-status');assert.equal(status.hidden,false);assert.equal(status.getAttribute('role'),'status');
  assert.match(status.textContent,/current week has been kept/);assert.equal(next.disabled,false);assert.equal(h.working.onclick,h.original);
+});
+
+test('the next-week confirmation defaults to keeping pantry and permits an explicit review choice',async()=>{
+ for(const review of [false,true]){
+  const h=fixture(),answers=[];
+  h.win.BBPantryFirstHost={startNextWeek:async options=>{answers.push(await options.confirmEmpty('Your current week is saved.','Start next week?','Start next week',['Monday','Thursday']));return {ok:true};}};h.api.mount();
+  h.click(h.app.querySelector('[data-bb-start-next-week]'));
+  const dialog=h.doc.querySelector('.bb-next-week-dialog'),inputs=dialog.querySelectorAll('input');assert.equal(inputs.length,2);assert.equal(inputs[0].checked,true);assert.equal(inputs[1].checked,false);
+  assert.match(dialog.querySelector('.bb-next-week-note').textContent,/never marks meals done or deducts ingredients/);
+  if(review){inputs[0].checked=false;inputs[1].checked=true;}
+  dialog.querySelector('.bb-next-week-primary').onclick();await new Promise(resolve=>setImmediate(resolve));
+  assert.deepEqual(answers,[{confirmed:true,reviewPantry:review}]);assert.equal(h.doc.querySelector('.bb-next-week-dialog'),null);
+ }
+});
+
+test('cancelling or dismissing a next-week confirmation never opts into pantry review',async()=>{
+ for(const escape of [false,true]){
+  const h=fixture(),answers=[];h.win.BBPantryFirstHost={startNextWeek:async options=>{answers.push(await options.confirmEmpty('Keep old plan until confirmed.','Start next week?','Start next week',['Monday']));return {ok:false,cancelled:true};}};h.api.mount();
+  h.click(h.app.querySelector('[data-bb-start-next-week]'));const dialog=h.doc.querySelector('.bb-next-week-dialog');dialog.querySelectorAll('input')[1].checked=true;
+  if(escape)dialog.listeners.get('cancel')({preventDefault(){}});else dialog.querySelectorAll('button')[0].onclick();
+  await new Promise(resolve=>setImmediate(resolve));assert.deepEqual(answers,[{confirmed:false,reviewPantry:false}]);assert.equal(h.doc.querySelector('.bb-next-week-dialog'),null);
+ }
 });

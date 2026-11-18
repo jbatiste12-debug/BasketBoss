@@ -46,6 +46,29 @@
    }
    paint(group,working);return true;
   }
+  function confirmNextWeek(message,title,action,unfinishedDays=[]){
+   if(doc.querySelector('dialog[open]')||doc.querySelector('#bbQaConfirmOverlay'))return Promise.resolve({confirmed:false});
+   return new Promise(resolve=>{
+    const previous=doc.activeElement,dialog=doc.createElement('dialog'),heading=doc.createElement('h2'),copy=doc.createElement('p'),actions=doc.createElement('div');
+    dialog.className='bb-next-week-dialog';dialog.id='bbNextWeekDialog';dialog.setAttribute('aria-modal','true');dialog.setAttribute('aria-labelledby','bbNextWeekTitle');
+    heading.id='bbNextWeekTitle';heading.textContent=title;copy.textContent=message;copy.className='bb-next-week-copy';dialog.append(heading,copy);
+    let review=null,settled=false;
+    if(unfinishedDays.length){
+     const choices=doc.createElement('fieldset'),legend=doc.createElement('legend'),hint=doc.createElement('p');
+     legend.textContent='Some days are not confirmed as done';hint.textContent=unfinishedDays.join(', ')+'. You can check what remains at home after starting.';choices.append(legend,hint);
+     for(const [value,label]of [['keep','Keep pantry as it is'],['review','Review pantry after starting']]){
+      const row=doc.createElement('label'),input=doc.createElement('input'),text=doc.createElement('span');input.type='radio';input.name='bb-next-week-pantry';input.value=value;input.checked=value==='keep';text.textContent=label;row.append(input,text);choices.append(row);if(value==='review')review=input;
+     }
+     dialog.append(choices);
+    }
+    const note=doc.createElement('p');note.className='bb-next-week-note';note.textContent='Starting a week never marks meals done or deducts ingredients. Pantry changes only when you confirm an edit.';dialog.append(note);
+    const cancel=doc.createElement('button'),accept=doc.createElement('button');cancel.type=accept.type='button';cancel.textContent='Keep my week';accept.textContent=action;accept.className='bb-next-week-primary';actions.className='bb-next-week-actions';actions.append(cancel,accept);dialog.append(actions);
+    const close=confirmed=>{if(settled)return;settled=true;const reviewPantry=confirmed&&review?.checked===true;dialog.remove();previous?.focus?.({preventScroll:true});resolve({confirmed,reviewPantry});};
+    cancel.onclick=()=>close(false);accept.onclick=()=>close(true);
+    dialog.addEventListener('cancel',event=>{event.preventDefault();close(false);});dialog.addEventListener('close',()=>close(false));dialog.addEventListener('click',event=>{if(event.target===dialog){const box=dialog.getBoundingClientRect();if(event.clientX<box.left||event.clientX>box.right||event.clientY<box.top||event.clientY>box.bottom)close(false);}});
+    doc.body.append(dialog);try{dialog.showModal();}catch{dialog.setAttribute('open','');}cancel.focus?.({preventScroll:true});
+   });
+  }
   async function startNext(event,button){
    const actions=button.parentNode,app=actions?.closest?.('#app.bbnext-plan'),working=actions?.querySelector('#bb172FillSixDinners');
    if(!app||actions!==app.querySelector('.bbnext-plan-actions'))return;
@@ -53,7 +76,7 @@
    if(nextBusy||button.disabled||!working||working.disabled||working.getAttribute('aria-busy')==='true'||typeof win.BBPantryFirstHost?.startNextWeek!=='function')return;
    const chosen=capture();nextBusy=true;paint(actions.querySelector('.bb-pantry-first-controls'),working);
    let result;
-   try{result=await win.BBPantryFirstHost.startNextWeek({mode:chosen});}
+   try{result=await win.BBPantryFirstHost.startNextWeek({mode:chosen,empty:true,confirmEmpty:confirmNextWeek});}
    catch{result={ok:false,message:'Could not start next week. Your current week has been kept.'};}
    finally{nextBusy=false;mount();}
    const status=doc.querySelector('#app.bbnext-plan')?.querySelector('.bb-pantry-first-status');
