@@ -9,7 +9,8 @@
   const policy=deps.policy||win.BBPantryPolicy,market=()=>typeof deps.market==='function'?deps.market():deps.market||win.bb307ActiveMarket?.()||'UK';
   const model=()=>deps.model(),isQualitative=row=>row?.staple===true||policy?.isStaple?.(row?.name)===true;
   if(isQualitative(model()))return EMPTY;
-  let destroyed=false,pending=null,manual=false,applying=false,opened=false,desired=null,selected=null,confirmed=false,sparesDirty=false,capacityReview=false,reviewAmount=null,lastName=String(model().name||''),initialStamp=null,capacityStamp=null,requestedStatus=null;
+  let destroyed=false,pending=null,manual=false,applying=false,opened=false,desired=null,selected=null,confirmed=false,sparesDirty=false,capacityReview=false,reviewAmount=null,lastName=String(model().name||''),initialStamp=null,capacityStamp=null,requestedStatus=null,displayStatus=null,countEstimated=false;
+  const counted=row=>['each','tin','can','jar','pack','bag','bottle','loaf','slice','bulb','clove','whole','item','piece'].includes(row.unit);
   const listeners=[],node=(tag,className,value)=>{const element=doc.createElement(tag);if(className)element.className=className;if(value!==undefined)element.textContent=value;return element;};
   const listen=(element,event,handler)=>{element.addEventListener(event,handler);listeners.push(()=>element.removeEventListener(event,handler));};
   const button=(label,className,handler)=>{const element=node('button',className,label);element.type='button';listen(element,'click',handler);return element;};
@@ -20,9 +21,9 @@
   const statuses={};
   for(const [key,label]of[['got','Got it'],['low','Running low'],['out','Out']]){const control=button(label,'bbpi-stock-choice',()=>chooseStatus(key));control.dataset.bbpiStockLevel=key;control.setAttribute('aria-pressed','false');statuses[key]=control;statusGroup.append(control);}
   const toggle=button('Full / half pack…','bbpi-stock-pack-toggle',()=>{opened=!opened;desired=null;paint();});toggle.setAttribute('aria-expanded','false');chooser.id='bbpiStockPackChoices';toggle.setAttribute('aria-controls',chooser.id);chooser.hidden=true;
-  capacityHelp.textContent='Confirm the size of one pack. Suggested sizes are estimates; check the label.';capacityGroup.setAttribute('role','group');capacityGroup.setAttribute('aria-label','Size of one pack');
+  capacityHelp.textContent='Suggested sizes are estimates; check the label.';capacityGroup.setAttribute('role','group');capacityGroup.setAttribute('aria-label','Size of one pack');
   portionGroup.setAttribute('role','group');portionGroup.setAttribute('aria-label','Amount remaining in the opened pack');
-  for(const [key,label]of[['full','Full pack'],['half','Half pack']]){const control=button(label,'bbpi-stock-portion',()=>choosePortion(key));control.dataset.bbpiStockPortion=key;control.setAttribute('aria-pressed','false');portionGroup.append(control);}
+  for(const [key,label]of[['full','Full pack'],['half','Half pack'],['low','Quarter left']]){const control=button(label,'bbpi-stock-portion',()=>choosePortion(key));control.dataset.bbpiStockPortion=key;control.setAttribute('aria-pressed','false');portionGroup.append(control);}
   spares.type='number';spares.inputMode='numeric';spares.min='0';spares.max='100';spares.step='1';spares.value='0';spares.setAttribute('aria-label','Same-size full spare packs');sparesLabel.append(spares,node('small','','Unopened packs in addition to the opened pack.'));
   confirmation.id='bbpiStockPending';confirmation.hidden=true;confirmation.setAttribute('role','status');
   chooser.append(capacityHelp,capacityGroup,portionGroup,sparesLabel);region.append(statusGroup,confirmation,readout,explanation,toggle,chooser,message);content.insertBefore(region,details);
@@ -44,24 +45,59 @@
   function paintCapacities(row){
    const values=capacityOptions(row),nextStamp=JSON.stringify([market(),values]);
    if(nextStamp!==capacityStamp){capacityStamp=nextStamp;capacityGroup.replaceChildren();
-    for(const [index,value]of values.entries()){const control=node('button','bbpi-stock-capacity',amount(value.capacity,value.unit)+(value.capacityEstimated?' · suggested':' · saved size'));control.type='button';control.dataset.bbpiCapacityIndex=String(index);control.onclick=()=>{selected=value;confirmed=true;if(desired)apply(desired);else{text(message,'Pack size confirmed. Choose Full pack, Half pack, Running low or Out.');paint();}};capacityGroup.append(control);}
+    for(const [index,value]of values.entries()){const control=node('button','bbpi-stock-capacity',amount(value.capacity,value.unit)+(value.capacityEstimated?' · suggested':' · saved size'));control.type='button';control.dataset.bbpiCapacityIndex=String(index);control.onclick=()=>{selected=value;confirmed=true;if(desired||pending?.stockLevel)apply(desired||pending.stockLevel.portion);else{text(message,'Pack size selected.');paint();}};capacityGroup.append(control);}
     if(!values.length)capacityGroup.append(node('p','bbpi-stock-no-capacity','No pack size is confirmed. Use Edit amount, or add the size on the label in More options.'));
    }
    for(const control of capacityGroup.querySelectorAll('button')){const value=values[Number(control.dataset.bbpiCapacityIndex)];control.setAttribute('aria-pressed',String(confirmed&&selected?.unit===value?.unit&&Math.abs(selected.capacity-value.capacity)<=.000001));}
   }
   function text(element,value){if(element.textContent!==value)element.textContent=value;}
+  function automaticCapacity(row){
+   if(confirmed&&selected)return selected;
+   const values=capacityOptions(row),metadata=trustedMeta(row),shared=win.BBPantryPackSync?.read?.(row);
+   const saved=metadata||shared?.packReviewed===true||row.packReviewed===true?values[0]:null;if(saved)return saved;
+   // A generic pricing fallback is not evidence of a custom food's pack size.
+   let standard;try{standard=deps.defaultPack?.();}catch{}
+   if(!standard)return null;
+   let normalized;try{normalized=policy?.normalize?.(row.name,standard.quantity,standard.unit,{market:row.inputMarket||market(),packReviewed:row.packReviewed===true,packQuantity:row.packQuantity,packUnit:row.packUnit});}catch{}
+   return values.find(value=>value.unit===normalized?.unit&&Math.abs(value.capacity-normalized.quantity)<=.000001)||null;
+  }
+  function directCount(row){
+   const suggestion=/\beggs?\b/i.test(row.name)?2:1;
+   const quantity=finite(row.qty)&&Number(row.qty)>0?Math.min(Number(row.qty),suggestion):suggestion;
+   let normalized;try{normalized=policy?.normalize?.(row.name,quantity,row.unit,{market:row.inputMarket||market(),packReviewed:row.packReviewed===true,packQuantity:row.packQuantity,packUnit:row.packUnit});}catch{}
+   if(!normalized){
+    // No physical size is known for a custom jar/bag. Keep its unknown stock
+    // as a check item instead of inventing contents or forcing pack setup.
+    requestedStatus=null;desired=null;displayStatus='low';countEstimated=false;
+    text(message,'Amount unknown. Your shopping list will ask you to check it.');paint();return;
+   }
+   pending={qty:quantity,unit:row.unit,stockLevel:null};manual=true;desired=null;requestedStatus=null;displayStatus='low';countEstimated=true;applying=true;
+   try{if(deps.setQuantity(quantity,row.unit)===false){pending=null;displayStatus=null;countEstimated=false;}}finally{applying=false;}
+   text(message,'Suggested count. Done confirms the number shown.');paint();
+  }
   function stockStatus(row){const metadata=currentMeta(row);return capacityReview?null:metadata?.portion==='low'?'low':metadata?.portion==='out'?'out':finite(row.qty)?Number(row.qty)===0?'out':'got':null;}
   function sparesValue(){return spares.value.trim()!==''&&spares.validity.valid&&Number.isInteger(Number(spares.value))?Number(spares.value):null;}
   function showChooser(portion){opened=true;desired=portion;paint();text(message,portion==='low'?'Choose the size of one pack to estimate a quarter remaining.':portion==='out'?'Confirm the pack size to keep your full spares counted.':'Choose a confirmed pack size, then Full pack or Half pack.');}
   function chooseStatus(value){
    if(destroyed)return;const row=model();if(isQualitative(row))return;
+   displayStatus=null;
+   if(value==='got'&&finite(row.qty)&&Number(row.qty)>0){requestedStatus=null;desired=null;displayStatus='got';text(message,'Your current amount is kept.');paint();return;}
+   if(value==='got'&&pending?.qty===0){
+    // Undo an unsaved Out selection rather than replenishing a real balance.
+    pending=null;manual=false;requestedStatus=null;desired=null;countEstimated=false;applying=true;
+    try{deps.setQuantity(view.row?.qty??null,view.row?.unit||row.unit);}finally{applying=false;}
+    displayStatus='got';paint();return;
+   }
+   if(value==='low'&&counted(row)&&Number(currentMeta(row)?.spares||0)===0){directCount(row);return;}
    const unchangedSpares=!sparesDirty||Number(currentMeta(row)?.spares||0)===sparesValue();
    // A requested level is a UI draft, never an amount. Returning to the
    // existing level cancels that request without crediting or clearing stock.
    if(requestedStatus&&value===stockStatus(row)&&unchangedSpares){requestedStatus=null;desired=null;text(message,'Your current amount is kept.');paint();return;}
    if(value==='got'){
     if(!finite(row.qty)&&!finite(view.row?.qty)&&unchangedSpares&&sparesValue()===0&&!pending&&!capacityReview){requestedStatus=null;desired=null;text(message,'Amount unknown. Your shopping list will ask you to check it.');paint();return;}
-    if(!finite(row.qty)||Number(row.qty)===0||currentMeta(row)?.portion==='low'||currentMeta(row)?.portion==='out'||!unchangedSpares){requestedStatus='got';showChooser(null);}
+    if(!finite(row.qty)||Number(row.qty)===0||currentMeta(row)?.portion==='low'||currentMeta(row)?.portion==='out'||!unchangedSpares){
+     if(counted(row)){directCount(row);displayStatus='got';paint();}else choosePortion('full');
+    }
     else{requestedStatus=null;desired=null;text(message,'Your current amount is kept. Use Full / half pack to change it.');paint();}
     return;
    }
@@ -69,10 +105,14 @@
    choosePortion(value);
   }
   function choosePortion(portion){
-   desired=portion;
+   desired=portion;displayStatus=null;countEstimated=false;
    if(portion==='full'||portion==='half')requestedStatus='got';
    if(sparesValue()===null){opened=true;paint();text(message,'Use a whole number of same-size full spare packs from 0 to 100.');spares.focus({preventScroll:true});return;}
-   if((portion!=='out'||sparesValue()>0)&&(!confirmed||!selected)){showChooser(portion);return;}
+   if((portion!=='out'||sparesValue()>0)&&(!confirmed||!selected)){
+    const automatic=automaticCapacity(model());
+    if(automatic){selected=automatic;confirmed=true;}
+    else{requestedStatus=null;desired=null;displayStatus=portion==='low'?'low':'got';text(message,'Amount unknown. Your shopping list will ask you to check it.');paint();return;}
+   }
    apply(portion);
   }
   function apply(portion){
@@ -85,7 +125,7 @@
    if(!success){pending=before;manual=wasManual;text(message,'This amount could not be applied. Review Edit amount before saving.');paint();return;}
    capacityReview=false;reviewAmount=null;requestedStatus=null;text(message,'Draft updated. Confirm below to save.');paint();
   }
-  function invalidate(event){if(applying||destroyed)return;const keepIntent=event===true||event?.target===view.units;if(!keepIntent)requestedStatus=null;pending=null;manual=true;sparesDirty=false;capacityReview=false;reviewAmount=null;text(message,'Your edited amount will be used.');paint();}
+  function invalidate(event){if(applying||destroyed)return;const keepIntent=event===true||event?.target===view.units;if(!keepIntent)requestedStatus=null;pending=null;manual=true;sparesDirty=false;capacityReview=false;reviewAmount=null;displayStatus=null;countEstimated=false;text(message,'Your edited amount will be used.');paint();}
   listen(view.quantity,'input',invalidate);listen(view.units,'change',invalidate);
   const invalidateCapacity=()=>{if(applying||destroyed)return;const review=capacityReview||!!pending?.stockLevel||!manual&&savedMeta(model())?.estimated===true;selected=null;confirmed=false;desired=null;invalidate(true);if(review){capacityReview=true;reviewAmount=stamp(model());opened=true;paint();text(message,'Pack size changed. Choose a stock level again, or edit the amount.');}else text(message,'Your edited container size will be used. Choose a stock level again to make a new estimate.');};
   if(view.packQuantity)listen(view.packQuantity,'input',invalidateCapacity);if(view.packUnit)listen(view.packUnit,'change',invalidateCapacity);
@@ -93,7 +133,8 @@
   function paint(){
    if(destroyed)return;const row=model();region.hidden=isQualitative(row);if(region.hidden)return;
    statusGroup.setAttribute('aria-label','Stock status for '+row.name);
-   const metadata=currentMeta(row),quantityKnown=finite(row.qty),state=requestedStatus||stockStatus(row)||(!quantityKnown?'got':null);
+   const metadata=currentMeta(row),quantityKnown=finite(row.qty),state=requestedStatus||displayStatus||stockStatus(row)||(!quantityKnown?'got':null);
+   region.dataset.bbpiCounted=String(counted(row));region.dataset.bbpiEstimated=String(countEstimated||metadata?.estimated===true||counted(row)&&row.packEstimated===true);
    region.dataset.bbpiPending=requestedStatus||'';
    for(const [key,control]of Object.entries(statuses)){
     control.setAttribute('aria-pressed',String(key===state));control.dataset.bbpiPending=String(!!requestedStatus&&key===requestedStatus);
@@ -116,10 +157,10 @@
    if(destroyed)return;const row=model(),name=String(row.name||'');
    if(name!==lastName){
     const restored=name===String(view.row?.name||'')?trustedMeta(row):null;
-    pending=null;manual=!restored;selected=null;confirmed=false;desired=null;sparesDirty=false;capacityReview=false;reviewAmount=null;requestedStatus=null;spares.value=String(restored?.spares||0);lastName=name;initialStamp=stamp(row);
+    pending=null;manual=!restored;selected=null;confirmed=false;desired=null;sparesDirty=false;capacityReview=false;reviewAmount=null;requestedStatus=null;displayStatus=null;countEstimated=false;spares.value=String(restored?.spares||0);lastName=name;initialStamp=stamp(row);
    }
    if(capacityReview&&!applying&&stamp(row)!==reviewAmount){capacityReview=false;reviewAmount=null;manual=true;}
-   if(pending&&!applying&&!equal(row,pending.qty,pending.unit)){pending=null;manual=true;}
+   if(pending&&!applying&&!equal(row,pending.qty,pending.unit)){pending=null;manual=true;displayStatus=null;countEstimated=false;}
    if(!pending&&!manual&&initialStamp!==null&&stamp(row)!==initialStamp)manual=true;
    paint();
   }

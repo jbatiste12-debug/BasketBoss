@@ -10,7 +10,7 @@
  const OPTIONAL='.bbpi-stock-pack,.bbpi-amount-details,.bbpi-more-options,.bbpi-scan-products,.bbpi-readout,.bbpi-rounding-note';
  function mount(target,deps={}){
   const dialog=target?.element||target,doc=deps.doc||dialog?.ownerDocument,win=deps.win||doc?.defaultView;
-  if(!doc||!win||!dialog?.matches?.('#bbpi-current-editor')||!dialog.querySelector('.bbpi-name-label'))return EMPTY;
+  if(!doc||!win||!dialog?.matches?.('#bbpi-current-editor')||!dialog.querySelector('.bbpi-amount-details'))return EMPTY;
   if(mounts.has(dialog))return mounts.get(dialog);
   const content=dialog.querySelector('.bbpi-editor-content');if(!content)return EMPTY;
   const amount=doc.createElement('details'),summary=doc.createElement('summary'),summaryCopy=doc.createElement('span'),summaryLabel=doc.createElement('span'),summaryHint=doc.createElement('span'),amountBody=doc.createElement('div'),none=doc.createElement('p'),helper=doc.createElement('p'),estimate=doc.createElement('span');
@@ -31,9 +31,11 @@
   const capacities=pack?.querySelector('.bbpi-stock-capacities'),capacityHelp=pack?.querySelector('.bbpi-stock-capacity-help');
   if(capacities&&capacityHelp)capacities.after(capacityHelp);
   if(exact)pack?pack.after(exact):amountBody.prepend(exact);
-  const nameLabel=content.querySelector('.bbpi-name-label'),nameText=[...nameLabel.childNodes].find(node=>node.nodeType===3);
+  const nameLabel=content.querySelector('.bbpi-name-label'),nameText=[...nameLabel?.childNodes||[]].find(node=>node.nodeType===3);
   if(nameText)nameText.nodeValue='Food';
-  const title=dialog.querySelector('.bbpi-editor-heading h4');if(title)title.setAttribute('aria-label','Add food');
+  const title=dialog.querySelector('.bbpi-editor-heading h4');
+  dialog.classList.toggle('bbpa-existing-item',!nameLabel);
+  if(title){title.dataset.bbpaTitle=nameLabel?'Add food':title.textContent;title.setAttribute('aria-label',nameLabel?'Add food':title.textContent);}
   const region=content.querySelector('.bbpi-stock-levels'),readout=region?.querySelector('.bbpi-stock-amount'),choices=region?.querySelector('.bbpi-stock-choices');
   if(choices){const prompt=doc.createElement('p');prompt.className='bbpa-stock-label';prompt.textContent='How much do you have?';prompt.append(estimate);choices.before(prompt);choices.after(helper,none);}
   else content.insertBefore(none,amount);
@@ -42,13 +44,16 @@
   for(const node of [...content.children].filter(node=>node.matches('.bbpi-notice')))amountBody.append(node);
   if(more)amountBody.append(more);
   const legacyToggle=region?.querySelector('.bbpi-stock-pack-toggle'),sparesLabel=amount.querySelector('.bbpi-stock-spares-label'),spares=sparesLabel?.querySelector('input'),done=dialog.querySelector('.bbpi-done');
+  const quantity=dialog.querySelector('[data-bbpi-quantity]'),quantityLabel=quantity?.closest('.bbpi-quantity-label'),units=dialog.querySelector('.bbpi-unit-label select'),unitLabel=units?.closest('.bbpi-unit-label'),exactControls=exact?.querySelector('.bbpi-editor-controls'),optionsControls=more?.querySelector('.bbpi-options-controls');
+  const counts=doc.createElement('section'),presets=doc.createElement('div');counts.className='bbpa-counts';counts.hidden=true;counts.setAttribute('aria-label','How many left?');presets.className='bbpa-count-presets';presets.setAttribute('role','group');presets.setAttribute('aria-label','How many left?');amount.before(counts);
+  if(sparesLabel&&optionsControls)optionsControls.append(sparesLabel);
   if(sparesLabel){
    const leading=[...sparesLabel.childNodes].find(node=>node.nodeType===3);
    if(leading)leading.nodeValue='Extra unopened packs';
   }
   if(spares)spares.setAttribute('aria-label','Extra unopened packs');
   if(done)done.setAttribute('aria-label','Done');
-  let destroyed=false,queued=false,lastErrors='',lastFocus=null,reviewRequired=false;
+  let destroyed=false,queued=false,lastErrors='',lastFocus=null,reviewRequired=false,countMode=null,presetStamp='',viewportFrame=null,minimumFrame=null,minimumKey='';
   const listeners=[];
   const listen=(node,type,handler,capture=false)=>{node.addEventListener(type,handler,capture);listeners.push(()=>node.removeEventListener(type,handler,capture));};
   const setHidden=(node,value)=>{if(node&&node.hidden!==value)node.hidden=value;};
@@ -62,9 +67,58 @@
    }
   }
   const remove=dialog.querySelector('.bbpi-remove');if(remove&&more)more.append(remove);
+  // A collapsed-sheet minimum keeps level buttons stationary. Expanded amount
+  // content remains natural-height; the existing viewport maximum still wins.
   function lockHeight(){
-   if(destroyed||!dialog.open||dialog.style.getPropertyValue('--bbpa-sheet-height'))return;
-   const height=dialog.getBoundingClientRect().height;if(height>0)dialog.style.setProperty('--bbpa-sheet-height',Math.ceil(height)+'px');
+   keyboardLayout();
+   if(destroyed||!dialog.open||amount.open||dialog.classList.contains('bbpa-keyboard-open')||dialog.style.getPropertyValue('--bbpa-sheet-min-height'))return;
+   const height=dialog.getBoundingClientRect().height;if(height>0)dialog.style.setProperty('--bbpa-sheet-min-height',Math.ceil(height)+'px');
+  }
+  function rememberMinimum(counted){
+   const food=String(nameLabel?.querySelector('input')?.value||target?.row?.name||title?.textContent||'');
+   const key=JSON.stringify([food,counted]);
+   if(key!==minimumKey){minimumKey=key;dialog.style.removeProperty('--bbpa-sheet-min-height');}
+   if(dialog.style.getPropertyValue('--bbpa-sheet-min-height')||minimumFrame!==null)return;
+   minimumFrame=win.requestAnimationFrame(()=>{minimumFrame=null;lockHeight();});
+  }
+  function keyboardLayout(){
+   if(destroyed)return;
+   const viewport=win.visualViewport,height=Number(viewport?.height)||win.innerHeight;
+   setClass('bbpa-keyboard-open',height<600||win.innerHeight-height>120);
+   if(viewportFrame!==null)win.cancelAnimationFrame(viewportFrame);
+   viewportFrame=win.requestAnimationFrame(()=>{
+    viewportFrame=null;const field=doc.activeElement;if(!field||!content.contains(field)||!field.matches('input,select,textarea'))return;
+    const area=content.getBoundingClientRect(),rect=field.getBoundingClientRect();
+    if(rect.bottom>area.bottom-12)content.scrollTop+=rect.bottom-area.bottom+12;
+    else if(rect.top<area.top+12)content.scrollTop-=area.top-rect.top+12;
+   });
+  }
+  function countLayout(counted){
+   if(countMode!==counted){
+    countMode=counted;setClass('bbpa-counted',counted);
+    if(counted){
+     if(quantityLabel){const text=[...quantityLabel.childNodes].find(node=>node.nodeType===3);if(text)text.nodeValue='How many left?';counts.append(quantityLabel);quantityLabel.querySelector('.bbpi-stepper')?.before(presets);}
+     if(quantity)quantity.placeholder='Optional';
+     if(unitLabel&&optionsControls)optionsControls.prepend(unitLabel);
+     summaryLabel.textContent='More options';summaryHint.textContent='Units and shopping preferences';
+     if(more){more.open=true;setHidden(more.querySelector(':scope>summary'),true);}
+    }else{
+     if(quantityLabel&&exactControls){const text=[...quantityLabel.childNodes].find(node=>node.nodeType===3);if(text)text.nodeValue='At home';exactControls.prepend(quantityLabel);}
+     if(quantity)quantity.placeholder='Amount';
+     if(unitLabel&&exactControls)exactControls.append(unitLabel);
+     summaryLabel.textContent='Add amount (optional)';summaryHint.textContent='Pack size or exact weight';
+     if(more){more.open=false;setHidden(more.querySelector(':scope>summary'),false);}
+    }
+   }
+   if(!counted)return;
+   const food=String(nameLabel?.querySelector('input')?.value||target?.row?.name||title?.textContent||'');
+   const values=/\beggs?\b/i.test(food)?[1,2,4,6,12]:[1,2,3,4],nextStamp=values.join(',');
+   if(presetStamp!==nextStamp){
+    presetStamp=nextStamp;presets.replaceChildren();
+    for(const value of values){const button=doc.createElement('button');button.type='button';button.className='bbpa-count-preset';button.textContent=String(value);button.setAttribute('aria-label',String(value));
+     listen(button,'click',()=>{if(!quantity||quantity.disabled)return;quantity.value=String(value);quantity.dispatchEvent(new win.Event('input',{bubbles:true}));});presets.append(button);}
+   }
+   for(const button of presets.children){const pressed=String(quantity?.value.trim()!==''&&Number(quantity.value)===Number(button.textContent));if(button.getAttribute('aria-pressed')!==pressed)button.setAttribute('aria-pressed',pressed);}
   }
   function reveal(field,review=false){
    if(destroyed)return;if(review)reviewRequired=true;
@@ -99,8 +153,10 @@
      if(field){reveal(field,true);field.focus({preventScroll:true});}
     }
    }
-   const quantity=dialog.querySelector('[data-bbpi-quantity]'),raw=quantity?.value?.trim();
+   const raw=quantity?.value?.trim();
    const qualitative=!region||region.hidden;setClass('bbpa-qualitative',qualitative);
+   const counted=!qualitative&&(region?.dataset.bbpiCounted==='true'||['each','tin','can','jar','pack','bag','bottle','loaf','slice','bulb','clove','whole','item','piece'].includes(units?.value));
+   countLayout(counted);
    const pending=region?.dataset.bbpiPending||'';
    const out=!pending&&!qualitative&&region.querySelector('[data-bbpi-stock-level="out"]')?.getAttribute('aria-pressed')==='true';
    // A positive unopened-pack balance remains visible even when Out is active.
@@ -109,7 +165,13 @@
    const outCopy=empty?'None at home':unopened?'Opened pack finished · '+count+' unopened '+(Number(count)===1?'pack':'packs')+' left':'';
    if(none.textContent!==outCopy)none.textContent=outCopy;
    setClass('bbpa-out-zero',empty);setClass('bbpa-out-balance',!!unopened);setHidden(none,!outCopy);setHidden(helper,!!outCopy);setHidden(amount,empty&&!reviewRequired);
-   setHidden(estimate,!/\bestimat/i.test(explanation?.textContent||''));
+   setHidden(counts,!counted||empty);setHidden(presets,!counted);setHidden(exact,counted);setHidden(pack,counted||qualitative);setHidden(capacityHelp,true);setHidden(sparesLabel,counted);
+   for(const node of [pendingNote,readout,explanation,message])setHidden(node,true);
+   const estimated=region?.dataset.bbpiEstimated==='true'||/\bestimat/i.test(explanation?.textContent||'');setHidden(estimate,!estimated);
+   const help=estimated?(counted?'Suggested count — adjust if needed. Done confirms this number.':'Estimated pack amount — check the label.'):
+    counted&&raw!==''?'Tap a number, or use − and +.':"No amount needed. We'll check with you if a meal needs a lot.";
+   if(helper.textContent!==help)helper.textContent=help;
+   rememberMinimum(counted);
    setClass('bbpa-amount-open',amount.open&&!amount.hidden);
    const busy=!!done&&(done.disabled||done.getAttribute('aria-busy')==='true');
    setClass('bbpa-done-busy',busy);
@@ -143,10 +205,12 @@
    refresh();
   });
   listen(dialog,'input',schedule);listen(dialog,'change',schedule);
+  if(win.visualViewport){listen(win.visualViewport,'resize',keyboardLayout);listen(win.visualViewport,'scroll',keyboardLayout);}
+  listen(win,'resize',keyboardLayout);listen(dialog,'focusin',keyboardLayout);
   const observer=win.MutationObserver?new win.MutationObserver(schedule):null;
-  observer?.observe(dialog,{subtree:true,childList:true,characterData:true,attributes:true,attributeFilter:['aria-expanded','aria-pressed','aria-busy','class','hidden','open','disabled','data-bbpi-pending']});
-  const api={refresh,lockHeight,destroy(){if(destroyed)return;destroyed=true;observer?.disconnect();for(const remove of listeners)remove();mounts.delete(dialog);}};
-  mounts.set(dialog,api);refresh();return api;
+  observer?.observe(dialog,{subtree:true,childList:true,characterData:true,attributes:true,attributeFilter:['aria-expanded','aria-pressed','aria-busy','class','hidden','open','disabled','data-bbpi-pending','data-bbpi-counted','data-bbpi-estimated']});
+  const api={refresh,lockHeight,destroy(){if(destroyed)return;destroyed=true;observer?.disconnect();if(viewportFrame!==null)win.cancelAnimationFrame(viewportFrame);if(minimumFrame!==null)win.cancelAnimationFrame(minimumFrame);for(const remove of listeners)remove();mounts.delete(dialog);}};
+  mounts.set(dialog,api);refresh();keyboardLayout();return api;
  }
  function install(win){
   if(!win?.document?.createElement||!win.MutationObserver)return EMPTY;
@@ -155,7 +219,7 @@
   function refresh(){
    if(destroyed)return;queued=false;
    for(const [dialog,presenter]of active)if(!dialog.isConnected){presenter.destroy();active.delete(dialog);}
-   for(const dialog of doc.querySelectorAll('#bbpi-current-editor'))if(dialog.querySelector('.bbpi-name-label')&&!active.has(dialog))active.set(dialog,mount(dialog,{win,doc}));
+   for(const dialog of doc.querySelectorAll('#bbpi-current-editor'))if(dialog.querySelector('.bbpi-amount-details')&&!active.has(dialog))active.set(dialog,mount(dialog,{win,doc}));
   }
   function schedule(){if(destroyed||queued)return;queued=true;(win.queueMicrotask||((callback)=>Promise.resolve().then(callback)))(refresh);}
   function start(){if(destroyed||observer||!doc.body)return;observer=new win.MutationObserver(schedule);observer.observe(doc.body,{childList:true,subtree:true});refresh();}

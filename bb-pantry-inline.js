@@ -315,7 +315,7 @@
    const match=matchedFood(name,foods,loc,value=>win.BBPantryPolicy?.canonicalName(value,win.BBPantryAliasCanonical||win.BBPriceV19?.canonical)||foodFold(value));
    return current.preview?.(match?.name||name.trim(),loc)||null;
   }
-  function packChoices(row){
+  function standardPack(row){
    let standard=null;
    if(!row.staple)try{
     const pricing=win.BBPriceV19,key=pricing?.canonical?.(row.name),declared=Object.values(pricing?.catalog||{}).find(food=>pricing.canonical(food.ingredient)===key);
@@ -324,7 +324,16 @@
     const pack=declared&&pricing.getPack?.(row.name,declared.standard_pack_unit,market());
     if(pack)standard={quantity:pack.standard_pack_size,unit:pack.standard_pack_unit};
    }catch{}
-   return purchasePresets(row,win.BBPantryPolicy,market(),standard);
+   return standard;
+  }
+  function packChoices(row){
+   return purchasePresets(row,win.BBPantryPolicy,market(),standardPack(row));
+  }
+  function editorUnit(row){
+   // Preserve a recorded tin/count input even when storage uses base grams.
+   // A user-reviewed measured preference still takes precedence.
+   const container=row.trackingMode==='measured'&&row.measurementReviewed===true?null:row.containerUnit;
+   return ['tin','can','jar'].includes(container)?container:['tin','can','jar'].includes(row.unit)?row.unit:rowUnit(row);
   }
   function addFood(loc,name=query){
    if(!valid(current))return;location=loc;const row=previewFood(String(name||''),loc)||{name:String(name||'').trim(),loc,qty:null,unit:'each',totalNeeded:0};openEditor(null,undefined,'manual',row);
@@ -536,7 +545,7 @@
    if(!valid(current))return;const api=current,row=key?api.read(key):draft;if(!row)return;
    if([...doc.querySelectorAll('dialog[open]')].some(node=>node!==editor?.element&&node!==options.returnTo))return false;
    closeEditor(false);
-   let unit=row.staple?'each':preferred||rowUnit(row)||row.unit||'each';
+   let unit=row.staple?'each':preferred||editorUnit(row)||row.unit||'each';
    if(row.qty!==null&&row.qty!==undefined&&row.qty!==''&&converted(row,unit,win.BBPantryPolicy,market())===null)unit=row.unit;
    const element=el('dialog','bbpi-editor bbpi-ui bbpi-panel');element.id='bbpi-current-editor';element.setAttribute('aria-modal','true');element.setAttribute('aria-labelledby','bbpiEditorTitle');
    const heading=el('header','bbpi-editor-heading'),title=el('h4','',row.name||'Add food'),caption=el('span','bbpi-eyebrow',row.loc[0].toUpperCase()+row.loc.slice(1)),close=btn('×',()=>{if(!editor?.busy)closeEditor();},'bbpi-close');title.id='bbpiEditorTitle';close.setAttribute('aria-label','Close pantry item');heading.append(caption,title,close);element.append(heading);
@@ -628,7 +637,7 @@
     const value=name.value.trim(),preview=previewFood(value,row.loc,foods);view.resolvedInput=preview?foodFold(value):null;
     if(!preview){text(title,value||'Add food');refreshPreview(view);return;}view.row={...preview};view.matchedKey=api.read(preview.key)?preview.key:null;text(title,preview.name||'Add food');
     if(!view.touched.has('tracking'))tracking.value=preview.trackingMode==='measured'&&preview.measurementReviewed===true?'measured':'containers';
-    if(!view.touched.has('unit')&&!view.touched.has('quantity')){view.unit=preview.staple?'each':rowUnit(preview)||preview.unit;unitOptions(units,api.units?.()||[view.unit],view.unit,preview);}
+    if(!view.touched.has('unit')&&!view.touched.has('quantity')){view.unit=preview.staple?'each':editorUnit(preview)||preview.unit;unitOptions(units,api.units?.()||[view.unit],view.unit,preview);}
     if(!view.touched.has('quantity'))setAmount(quantity,rowAmount(preview,view.unit));
     for(const input of [quantity,needed,buffer]){input.max=preview.staple?'10000':'1000000';input.step=preview.staple?'1':'any';}
     quantity.step='any';text(off,preview.staple?'Whole containers':'Exact amount (no rounding)');
@@ -654,7 +663,7 @@
    if(view.group)optionsControls.append(view.group.label);
    element.addEventListener('invalid',event=>{for(let node=event.target?.parentElement;node&&node!==element;node=node.parentElement)if(node.tagName==='DETAILS')node.open=true;},true);
    view.amountDetails=amountDetails;view.packStamp=JSON.stringify(win.BBPantryPackSync?.read?.(row)||null);
-   view.stockLevels=win.BBPantryStockLevelsUI?.mount?.(view,{win,doc,model:()=>draftRow(view),policy:win.BBPantryPolicy,market:market(),suggestions:()=>packChoices(draftRow(view)),edited,
+   view.stockLevels=win.BBPantryStockLevelsUI?.mount?.(view,{win,doc,model:()=>draftRow(view),policy:win.BBPantryPolicy,market:market(),suggestions:()=>packChoices(draftRow(view)),defaultPack:()=>standardPack(draftRow(view)),edited,
     setQuantity:(value,nextUnit)=>{
      if(editor!==view||view.busy||view.conflict)return false;
      const before=draftRow(view),rawBuffer=amountValue(buffer),nextBuffer=rawBuffer.trim()===''?null:Number(rawBuffer)===0?0:converted({...before,qty:Number(rawBuffer)},nextUnit,win.BBPantryPolicy,market());
@@ -725,10 +734,10 @@
     if(urgent(row))main.append(el('span','bbpi-use-soon','🏷️ Use soon (Reduced)'));
     if(labels.get(row.key))main.append(el('small','bb-kitchen-last-price',labels.get(row.key)));
     const levelRow={...row,...(win.BBPantryPackSync?.read?.(row)||{})},level=win.BBPantryStockLevels?.describe?.(levelRow,{policy:win.BBPantryPolicy,market:market()});
-    if(level){const badge=btn(level.label+(level.estimated?' · Estimated':''),event=>{event.stopPropagation();openEditor(row.key,unit,'summary');},'bbpi-stock-badge');badge.setAttribute('aria-label','Review '+row.name+' stock level');main.append(badge);}
+    if(level){const badge=btn(level.label+(level.estimated?' · Estimated':''),event=>{event.stopPropagation();openEditor(row.key,editorUnit(row),'summary');},'bbpi-stock-badge');badge.setAttribute('aria-label','Review '+row.name+' stock level');main.append(badge);}
     if(row.scanNeedsReview)main.append(el('small','bbpi-scan-review','Scanned product details need review.'));
     if(produce?.display?.needsReview){const check=el('small','bbpi-scan-review bbpi-count-review','Check count');check.title=produce.display.message;main.append(check);}
-    const controls=el('div','bbpi-summary-actions'),less=btn('−',event=>{event.stopPropagation();adjustSummary(row.key,-1);},'bbpi-step'),more=btn('+',event=>{event.stopPropagation();adjustSummary(row.key,1);},'bbpi-step'),edit=btn('Edit ›',event=>{event.stopPropagation();openEditor(row.key,unit,'summary');},'bbpi-edit');
+    const controls=el('div','bbpi-summary-actions'),less=btn('−',event=>{event.stopPropagation();adjustSummary(row.key,-1);},'bbpi-step'),more=btn('+',event=>{event.stopPropagation();adjustSummary(row.key,1);},'bbpi-step'),edit=btn('Edit ›',event=>{event.stopPropagation();openEditor(row.key,editorUnit(row),'summary');},'bbpi-edit');
     less.setAttribute('aria-label','Less '+row.name+' in '+view.loc);more.setAttribute('aria-label','More '+row.name+' in '+view.loc);edit.setAttribute('aria-label','Edit '+row.name+' in '+view.loc);controls.append(less,more);
     const titleLine=el('div','bbpi-summary-title');titleLine.append(name,edit);main.prepend(titleLine);
     // The explicit Edit button remains the keyboard action. A row tap uses its
