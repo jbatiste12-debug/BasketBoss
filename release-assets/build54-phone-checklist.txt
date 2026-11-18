@@ -41,6 +41,8 @@ BasketBoss 1.0.4 (54) — phone checklist
 
 7. Out and unopened packs
    With no unopened packs, Out shows None at home and hides amount fields.
+   Add a custom jar with no known pack size, choose Out and tap Done. It must save
+   zero without requesting a pack size or treating unknown stock as available.
    With two unopened 1 kg packs, Out must keep 2000 g and show the unopened-pack
    balance. Reopen and repeat Out; it must not erase or duplicate those packs.
    Repeat with two unopened six-packs of eggs and confirm twelve eggs remain.
