@@ -1,4 +1,37 @@
 /* A single, opaque dock across PWA and native. Decorative changes only. */
+/* Keep the retired startup banner out of the first paint. The original region
+   controls and disclaimer are still moved into the header by their owner. */
+html body>[role="note"]:has(#bb307Island){display:none!important}
+/* A slow presentation script must still get a compact, usable live summary,
+   rather than the retired white card and oversized ring. This fallback styles
+   the original nodes; no page-wide hiding timer or loading overlay is needed. */
+html body[data-bbnext-view="week"] .shell #app.bbnext-plan:not([data-bb-compact-header="true"]) .bbnext-plan-budget{
+ display:flex!important;align-items:center!important;gap:12px!important;min-height:104px!important;
+ margin:0 0 12px!important;padding:16px!important;border:1px solid #345d45!important;border-radius:18px!important;
+ background:linear-gradient(120deg,#173e2e,#24583e)!important;color:#fffef6!important;box-shadow:none!important;
+}
+html body[data-bbnext-view="week"] .shell #app.bbnext-plan:not([data-bb-compact-header="true"]) .bbnext-plan-budget::before{display:none!important}
+html body[data-bbnext-view="week"] .shell #app.bbnext-plan:not([data-bb-compact-header="true"]) .bb-myweek-emblem{
+ display:block!important;flex:0 0 56px!important;width:56px!important;min-width:56px!important;height:56px!important;margin:0!important;
+}
+html body[data-bbnext-view="week"] .shell #app.bbnext-plan:not([data-bb-compact-header="true"]) .bbnext-plan-budget .bb-myweek-emblem>.bbnext-plan-donut{
+ width:56px!important;height:56px!important;min-width:56px!important;margin:0!important;
+}
+html body[data-bbnext-view="week"] .shell #app.bbnext-plan:not([data-bb-compact-header="true"]) .bbnext-plan-budget .bb-myweek-emblem .bbnext-plan-donut-core{width:44px!important;height:44px!important}
+html body[data-bbnext-view="week"] .shell #app.bbnext-plan:not([data-bb-compact-header="true"]) .bbnext-plan-budget .bb-myweek-emblem .bbnext-plan-donut-core strong{font-size:10px!important;letter-spacing:-.4px!important}
+/* The simple wrapper can arrive before the final compact header. Its older
+   desktop rule sets an 88px minimum as well as a height; cover that short
+   intermediate state without constraining the completed hero. */
+html body[data-bbnext-view="week"] .shell #app.bbnext-plan:not([data-bb-compact-header="true"]) .bbnext-plan-budget[data-bb-simple-budget] .bbpc-budget-overview .bb-myweek-emblem,
+html body[data-bbnext-view="week"] .shell #app.bbnext-plan:not([data-bb-compact-header="true"]) .bbnext-plan-budget[data-bb-simple-budget] .bbpc-budget-overview .bb-myweek-emblem>.bbnext-plan-donut{width:56px!important;min-width:56px!important;max-width:56px!important;height:56px!important;min-height:56px!important;max-height:56px!important}
+html body[data-bbnext-view="week"] .shell #app.bbnext-plan:not([data-bb-compact-header="true"]) .bbnext-plan-budget-text{
+ min-width:0!important;flex:1!important;grid-area:auto!important;text-align:left!important;
+}
+html body[data-bbnext-view="week"] .shell #app.bbnext-plan:not([data-bb-compact-header="true"]) .bbnext-plan-budget-text h2{
+ margin:0 0 4px!important;font-size:23px!important;line-height:1.1!important;color:#fffef6!important;-webkit-text-fill-color:currentColor!important;
+}
+html body[data-bbnext-view="week"] .shell #app.bbnext-plan:not([data-bb-compact-header="true"]) .bbnext-plan-budget-text>p{font-size:11px!important;color:#edf1e4!important}
+html body[data-bbnext-view="week"] .shell #app.bbnext-plan:not([data-bb-compact-header="true"]) .bbnext-plan-budget :is(.bb77-week-mark,.bbnext-plan-kicker){display:none!important}
 html body nav#bbPrimaryNavigation[data-bb-navigation="polished"]{
  position:fixed!important;inset:auto 0 max(8px,env(safe-area-inset-bottom,0px)) 0!important;
  transform:none!important;display:grid!important;grid-template-columns:repeat(5,minmax(0,1fr))!important;

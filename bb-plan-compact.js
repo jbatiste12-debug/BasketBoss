@@ -82,7 +82,9 @@
    paragraph.before(details);details.append(summary,paragraph);
   }
  }
- function schedule(){if(queued)return;queued=true;window.requestAnimationFrame(refresh);}
+ // The simple layout creates our prerequisites in the same mutation turn.
+ // Converge before paint instead of showing another intermediate Plan frame.
+ function schedule(){if(queued)return;queued=true;queueMicrotask(refresh);}
  function start(){
   const app=doc.getElementById('app');if(!app)return;
   refresh();new MutationObserver(schedule).observe(app,{childList:true,subtree:true});

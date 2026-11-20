@@ -138,7 +138,9 @@
   const tab=doc.body.dataset.bbnextView;
   if(tab==='week')plan(app);else if(tab==='shop')kitchen(app);
  }
- function schedule(){if(!queued){queued=true;requestAnimationFrame(refresh);}}
+ // Finish the dependent presentation wrappers before the next paint. Chained
+ // animation frames exposed the retired budget card between tab changes.
+ function schedule(){if(!queued){queued=true;queueMicrotask(refresh);}}
  function start(){
   // Existing section jumps and overview shortcuts keep their original handlers
   // and target IDs. Reveal their original lunch target before those handlers run.
