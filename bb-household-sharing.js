@@ -7,7 +7,7 @@ const KITCHEN='basketboss_makeameal_v1_inventory';
 const TICKS='basketboss_321_v11_shop_ticks',SESSION='basketboss_active_shop_session_v7',BUDGET='basketboss_v172_weekly_budget_target_v1';
 const SYNC_KEYS=[STATE,STOCK,KITCHEN,TICKS,SESSION,BUDGET];
 const DAYS=['Monday','Tuesday','Wednesday','Thursday','Friday','Saturday','Sunday'];
-let status=null,busy=false,dialog=null,lastPoll=0,booted=false,conflicts=[],heldConflicts=[],deletionPaused=false,generation=0;
+let status=null,busy=false,dialog=null,lastPoll=0,booted=false,conflicts=[],heldConflicts=[],deletionPaused=false,generation=0,openRevision=0;
 const deleting=()=>deletionPaused||window.BBAccountDeletion?.isDeleting?.()===true;
 const pauseDeletion=()=>{deletionPaused=true;generation++;status=null;conflicts=[];heldConflicts=[];dialog?.close?.();};
 window.addEventListener('basketboss:account-deletion-started',pauseDeletion);
@@ -19,12 +19,13 @@ const copy=v=>JSON.parse(JSON.stringify(v));
 const esc=v=>String(v??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 const eq=(a,b)=>JSON.stringify(a)===JSON.stringify(b);
 const userSession=()=>{if(deleting())return null;const s=read('basketboss_cloud_session_v1',null);return s?.access_token?s:null};
-async function api(path,body){
+async function accountRequest(url,body){
  const session=userSession(),serial=generation;if(!session)throw Error('Sign in to your BasketBoss account first.');
- const r=await fetch(ROOT+path,{method:body?'POST':'GET',headers:{'Authorization':'Bearer '+session.access_token,'Content-Type':'application/json'},
+ const r=await fetch(url,{method:body?'POST':'GET',headers:{'Authorization':'Bearer '+session.access_token,'Content-Type':'application/json'},
   body:body?JSON.stringify(body):undefined,credentials:'same-origin',cache:'no-store'});
- const data=await r.json().catch(()=>({}));const current=userSession();if(deleting()||serial!==generation||current?.user?.id!==session.user?.id||current?.access_token!==session.access_token)throw Error('Account changed during sharing request.');if(!r.ok){const e=Error(data.error||'Sharing unavailable');e.status=r.status;e.data=data;throw e;}return data;
+ const data=await r.json().catch(()=>({}));const current=userSession();if(deleting()||serial!==generation||current?.user?.id!==session.user?.id||current?.access_token!==session.access_token)throw Error('Account changed during sharing request.');if(!r.ok){const e=Error(data?.error||'Sharing unavailable');e.status=r.status;e.data=data;throw e;}return data;
 }
+async function api(path,body){return accountRequest(ROOT+path,body);}
 const key=(s,k)=>s+'\u001f'+k;
 // Receipt inventory has its own revision-checked whole-stock transaction. Do
 // not replay the older per-leaf pantry channel over that authoritative stock.
@@ -239,10 +240,10 @@ function makeModal(){if(dialog)return dialog;
  dialog.querySelector('.bbhs-close').onclick=()=>dialog.close();
  dialog.addEventListener('click',e=>{if(e.target===dialog)dialog.close()});return dialog;
 }
-async function refreshStatus(){
+async function refreshStatus({throwErrors=false}={}){
  if(deleting())return null;
  if(!userSession()){status=null;return null;}
- try{status=await api('?mode=status');return status}catch{status=null;return null;}
+ try{status=await api('?mode=status');return status}catch(error){status=null;if(throwErrors)throw error;return null;}
 }
 function householdChanged(action){
  if(deleting())return;
@@ -251,12 +252,32 @@ function householdChanged(action){
  try{const event=new Event('basketboss:household-changed');event.detail={action};window.dispatchEvent?.(event);}catch{}
 }
 async function open(){if(deleting())return;makeModal();if(!dialog.open)dialog.showModal();const body=dialog.querySelector('[data-bbhs-body]');
- body.textContent='Checking account…';message('');dialog.querySelector('[data-bbhs-review]').replaceChildren();const s=await refreshStatus();
- if(!s){body.innerHTML='<p>Sign in to link a partner, or explore BasketBoss Premium. Your saved plan is unchanged.</p><a class="bbhs-primary" href="pricing-sandbox.html">Explore Premium</a>';return;}
- if(!s.configured){body.innerHTML='<p>Household Partner Sharing is being prepared. It is not activated yet; your saved plan remains private on this device.</p><a class="bbhs-primary" href="pricing-sandbox.html">Explore Premium</a>';return;}
- if(s.invite){body.innerHTML='<p>You have been invited to share a BasketBoss household.</p><button class="bbhs-primary" data-accept>Accept &amp; Sync</button>';
+ const session=userSession(),serial=generation,view=++openRevision;
+ const current=()=>{const active=userSession();return !deleting()&&dialog.open&&view===openRevision&&serial===generation&&active?.user?.id===session?.user?.id&&active?.access_token===session?.access_token;};
+ const signIn=(copy='Sign in to your BasketBoss account to check Partner Sharing. Your saved plan is unchanged.')=>{body.innerHTML='<p>'+esc(copy)+'</p><button class="bbhs-primary" data-signin>Sign in to BasketBoss</button>';body.querySelector('[data-signin]').onclick=()=>{const button=document.getElementById('cloud-open');if(button){dialog.close();button.click();}else message('Close this panel and sign in from Settings, then try again.');};};
+ const retry=copy=>{body.innerHTML='<p>'+esc(copy)+'</p><button class="bbhs-primary" data-retry>Try again</button>';body.querySelector('[data-retry]').onclick=()=>open();};
+ body.textContent='Checking account…';message('');dialog.querySelector('[data-bbhs-review]').replaceChildren();let s,problem;
+ try{s=await refreshStatus({throwErrors:true});}catch(error){problem=error;}
+ if(!current())return;
+ if(!session||problem?.status===401){signIn();return;}
+ if(s?.configured===true&&s.invite){body.innerHTML='<p>You have been invited to share a BasketBoss household.</p><button class="bbhs-primary" data-accept>Accept &amp; Sync</button>';
   body.querySelector('[data-accept]').onclick=async()=>{try{await api('',{action:'accept',household_id:s.invite.household_id});message('Invite accepted. Your existing device data is preserved.');await refreshStatus();householdChanged('accept');await synchronize();await open();}catch{message('Unable to accept now; nothing changed on this device.')}};return;}
- if(!s.premium){body.innerHTML='<p>Partner Sharing is part of BasketBoss Premium.</p><a href="pricing-sandbox.html" class="bbhs-primary">Explore Premium plans</a>';return;}
+ if(s?.configured!==true||s.premium!==true){
+  // Membership only explains this unavailable state. The household response
+  // remains the sole authority for invitation and shared-data controls.
+  let membership;
+  try{membership=await accountRequest('/api/subscription/status');if(membership?.authenticated!==true||typeof membership.premiumAccess!=='boolean')throw Error('Membership unavailable');}
+  catch(error){if(!current())return;if(error.status===401)signIn();else retry('Your membership and Partner Sharing could not be checked. Please try again. Your saved plan is unchanged.');return;}
+  if(!current())return;
+  if(problem?.status===403){
+   signIn(membership.premiumAccess?'Your Premium membership is recognised. Sign in again on this device to refresh Partner Sharing access. You do not need another subscription.':undefined);return;
+  }
+  if(membership.premiumAccess){
+   retry('Your Premium membership is recognised. '+(s?.configured===false?'Partner Sharing is not available on this site right now.':problem?'Partner Sharing is temporarily unavailable.':'Partner Sharing is not available for your account right now.')+' You do not need another subscription. Your saved plan is unchanged.');return;
+  }
+  if(problem||typeof s?.configured!=='boolean'||typeof s?.premium!=='boolean'){retry('Partner Sharing could not be checked. Please try again. Your saved plan is unchanged.');return;}
+  body.innerHTML=(s.configured?'':'<p>Partner Sharing is not available on this site right now. Your saved plan remains private on this device.</p>')+'<p>Partner Sharing is part of BasketBoss Premium.</p><a href="pricing-sandbox.html" class="bbhs-primary">Explore Premium plans</a>';return;
+ }
  if(s.role==='partner'){body.innerHTML='<p>Connected to your shared Premium household. Any conflicting changes are kept for review.</p><button data-sync class="bbhs-primary">Sync safely now</button>';}
  else{body.innerHTML=`<label>Partner email <input data-email type="email" autocomplete="email" placeholder="partner@example.com" value="${esc(s.partner_email||'')}"></label><p>${s.invite_status==='accepted'?'Connected':s.invite_status==='pending'?'Invitation pending':'No partner linked'}</p><button class="bbhs-primary" data-invite>Create Partner Invite</button><button data-unlink ${s.invite_status==='none'?'disabled':''}>Unlink partner</button><button data-sync>Sync safely now</button><button data-init-import>Start sharing this device’s saved plan</button><small>One partner only. A pending invite appears when the partner signs in with the matching confirmed email. No invitation email is sent yet.</small>`;
   body.querySelector('[data-invite]').onclick=async()=>{try{const email=body.querySelector('[data-email]').value;const result=await api('',{action:'invite',email});message(result.message);await refreshStatus();householdChanged('invite');}catch(e){message(e.message)}};
