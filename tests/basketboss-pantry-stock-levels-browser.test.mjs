@@ -51,13 +51,21 @@ async function low(h){
  const size=h.panel.locator('.bbpi-stock-capacity').filter({hasText:'saved size'}).first();
  if(await size.isVisible())await size.click();
 }
-test('unknown stock requires a confirmed amount and never covers the meal after quick taps',{skip},async()=>{
+async function showAmount(h,{exact=false,more=false}={}){
+ const optional=h.panel.locator('.bbpa-amount');if(!await optional.evaluate(node=>node.open))await optional.locator(':scope>summary').click();
+ const details=h.panel.locator('.bbpi-amount-details');if(exact&&await details.isVisible()&&!await details.evaluate(node=>node.open))await details.locator(':scope>summary').click();
+ const options=h.panel.locator('.bbpi-more-options');if(more&&!await options.evaluate(node=>node.open))await options.locator(':scope>summary').click();
+}
+test('Got it can save an unknown amount without reducing the meal shopping gap',{skip},async()=>{
  const h=await fixture(390,{unknown:true});try{
   const original=await h.snapshot();assert.equal(original.row.qty,null);assert.equal(original.row.unroundedShortfall,500);await h.open();
-  assert.equal(await h.panel.locator('.bbpi-amount-details').evaluate(node=>node.open),true);
-  await h.panel.locator('[data-bbpi-stock-level="got"]').click();await h.panel.locator('[data-bbpi-stock-level="low"]').click();
+  assert.equal(await h.panel.locator('.bbpa-amount').evaluate(node=>node.open),false);
+  await h.panel.locator('[data-bbpi-stock-level="got"]').click();
   assert.equal(await h.panel.locator('[data-bbpi-quantity]').inputValue(),'');assert.deepEqual(await h.snapshot(),original);
-  await h.panel.locator('.bbpi-close').click();assert.deepEqual(await h.snapshot(),original);assert.deepEqual(h.errors,[]);
+  assert.equal(await h.panel.locator('.bbpi-done').isEnabled(),true);await h.panel.locator('.bbpi-done').click();await h.panel.waitFor({state:'detached'});
+  const saved=await h.snapshot();assert.equal(saved.row.qty,null);assert.equal(saved.row.unroundedShortfall,500,'unknown stock cannot cover any of the 500 g recipe requirement');assert.equal(saved.stock,original.stock,'saving unknown stock never invents a measured balance');
+  await h.open();await h.panel.locator('.bbpi-close').click();assert.deepEqual(await h.snapshot(),saved,'dismissing the saved unknown item preserves its data');
+  await h.page.locator('#bbPrimaryNavigation [data-bb-nav-item="shop"]').click();await h.page.locator('.bbpi-stock-shop-check').waitFor();assert.deepEqual(h.errors,[]);
  }finally{await h.context.close();}
 });
 for(const width of [320,390])test('stock levels keep exact stock, spare counts and mobile access at '+width+'px',{skip},async()=>{
@@ -66,18 +74,18 @@ for(const width of [320,390])test('stock levels keep exact stock, spare counts a
   await h.panel.locator('[data-bbpi-stock-level="got"]').click();assert.deepEqual(await h.snapshot(),original,'Got it does not silently replenish stock');
   await h.panel.locator('.bbpi-close').click();assert.deepEqual(await h.snapshot(),original,'dismiss keeps saved bytes');await h.open();
   await low(h);await h.panel.locator('[data-bbpi-stock-level="low"]').click();
-  assert.equal(await h.panel.locator('[data-bbpi-quantity]').inputValue(),'250');assert.match(await h.panel.locator('.bbpi-stock-explanation').innerText(),/Estimated ¼/);
+  assert.equal(await h.panel.locator('[data-bbpi-quantity]').inputValue(),'250');assert.equal(await h.panel.locator('.bbpa-estimated:visible').textContent(),'Estimated');assert.match(await h.panel.locator('.bbpa-helper:visible').innerText(),/check the label/i);
   const bounds=await h.panel.locator('.bbpi-stock-choice').evaluateAll(nodes=>nodes.map(n=>({width:n.getBoundingClientRect().width,height:n.getBoundingClientRect().height})));
   assert.ok(bounds.every(r=>r.width>=44&&r.height>=44),'all three level choices have 44px targets');
   assert.ok(await h.panel.evaluate(n=>n.scrollWidth<=n.clientWidth+1),'dialog has no horizontal overflow');
   if(width===390)await h.capture('after-running-low');
-  await h.panel.locator('.bbpi-stock-spares').fill('-1');await h.panel.locator('.bbpi-done').click();assert.ok(await h.panel.isVisible());assert.equal((await h.snapshot()).stock,original.stock,'invalid spares cannot save an earlier draft');
+  await showAmount(h,{more:true});await h.panel.locator('.bbpi-stock-spares').fill('-1');await h.panel.locator('.bbpi-done').click();assert.ok(await h.panel.isVisible());assert.equal((await h.snapshot()).stock,original.stock,'invalid spares cannot save an earlier draft');
   await h.panel.locator('.bbpi-stock-spares').fill('1');assert.equal(await h.panel.locator('[data-bbpi-quantity]').inputValue(),'1250');
   await h.panel.locator('[data-bbpi-stock-level="out"]').click();assert.equal(await h.panel.locator('[data-bbpi-quantity]').inputValue(),'1000','Out keeps a full spare');
   if(width===390)await h.capture('after-out-with-spare');
   await h.panel.locator('[data-bbpi-stock-level="low"]').click();await h.panel.locator('.bbpi-done').click();await h.panel.waitFor({state:'detached'});
-  const saved=await h.snapshot();assert.equal(saved.row.qty,1250);assert.equal(saved.row.stockLevel.spares,1);assert.equal(saved.row.stockLevel.estimated,true);
-  await h.open();await h.panel.locator('.bbpi-stock-pack-toggle').click();await h.panel.locator('[data-bbpi-stock-portion="half"]').click();
+  const saved=await h.snapshot();assert.equal(saved.row.qty,1250);assert.equal(saved.row.stockLevel.spares,1);assert.equal(saved.row.stockLevel.estimated,true);assert.equal(saved.row.stockLevel.portion,'low');assert.equal(saved.row.stockLevel.capacity,1000,'Running low remains exactly one quarter of the selected pack plus full spares');
+  await h.open();await showAmount(h,{more:true});await h.panel.locator('[data-bbpi-stock-portion="half"]').click();
   if(await h.panel.locator('.bbpi-stock-capacity').filter({hasText:'saved size'}).first().isVisible())await h.panel.locator('.bbpi-stock-capacity').filter({hasText:'saved size'}).first().click();
   assert.equal(await h.panel.locator('[data-bbpi-quantity]').inputValue(),'1500');await h.panel.locator('.bbpi-stock-spares').fill('0');assert.equal(await h.panel.locator('[data-bbpi-quantity]').inputValue(),'500');
   await h.panel.locator('.bbpi-done').click();await h.panel.waitFor({state:'detached'});assert.equal((await h.snapshot()).row.qty,500);
@@ -86,23 +94,23 @@ for(const width of [320,390])test('stock levels keep exact stock, spare counts a
 });
 test('pack selection converts an existing kg buffer and respects later exact edits',{skip},async()=>{
  const h=await fixture(390,{qty:.5,unit:'kg',buffer:.5});try{
-  await h.open();await h.panel.locator('.bbpi-amount-details>summary').click();await h.panel.getByRole('combobox',{name:/^Unit for /}).selectOption('kg');await low(h);assert.equal(await h.panel.locator('[data-bbpi-quantity]').inputValue(),'250');
+  await h.open();await showAmount(h,{exact:true});await h.panel.getByRole('combobox',{name:/^Unit for /}).selectOption('kg');await low(h);assert.equal(await h.panel.locator('[data-bbpi-quantity]').inputValue(),'250');
   await h.panel.locator('.bbpi-done').click();await h.panel.waitFor({state:'detached'});assert.equal((await h.snapshot()).row.extraBufferQuantity,500,'0.5kg buffer stays 500g');
-  await h.open();await low(h);await h.panel.locator('.bbpi-amount-details>summary').click();await h.panel.locator('[data-bbpi-quantity]').fill('175.25');
+  await h.open();await low(h);await showAmount(h,{exact:true});await h.panel.locator('[data-bbpi-quantity]').fill('175.25');
   await h.panel.locator('.bbpi-done').click();await h.panel.waitFor({state:'detached'});const saved=await h.snapshot();assert.equal(saved.row.qty,175.25);assert.equal(saved.row.stockLevel,null);
   assert.deepEqual(h.errors,[]);
  }finally{await h.context.close();}
 });
 test('later capacity edits are kept and stale stock dialogs cannot overwrite a new amount',{skip},async()=>{
  const h=await fixture();try{
-  await h.open();await low(h);await h.panel.locator('.bbpi-more-options>summary').click();await h.panel.locator('.bbpi-pack>summary').click();
+  await h.open();await low(h);await showAmount(h,{more:true});await h.panel.locator('.bbpi-pack>summary').click();
   await h.panel.getByRole('spinbutton',{name:/^Container size for /}).fill('500');await h.panel.locator('.bbpi-done').click();
   assert.ok(await h.panel.isVisible());assert.match(await h.panel.innerText(),/Pack size changed/);assert.equal((await h.snapshot()).row.packQuantity,1000,'an unresolved estimate cannot save a newly typed pack size');
   await h.panel.locator('[data-bbpi-stock-level="low"]').click();await h.panel.locator('.bbpi-stock-capacity').filter({hasText:/500 g.*saved size/}).click();
   await h.panel.locator('.bbpi-done').click();await h.panel.waitFor({state:'detached'});
   let saved=await h.snapshot();assert.equal(saved.row.packQuantity,500);assert.equal(saved.row.qty,125);assert.equal(saved.row.stockLevel.estimated,true);
   await h.open();await h.page.evaluate(async key=>{const changed=BBPantryEditor.update(key,{qty:123});if(!changed.ok)throw Error(changed.message);await BBPantryEditor.flush();},h.key);
-  await h.page.waitForTimeout(150);assert.equal((await h.snapshot()).row.qty,123,'external update saves before stale dialog submit');await h.panel.locator('.bbpi-done').evaluate(node=>node.click());saved=await h.snapshot();assert.equal(saved.row.qty,123);assert.ok(await h.panel.isVisible());assert.match(await h.panel.innerText(),/changed|review|Reopen/i);
+  await h.page.waitForTimeout(150);assert.equal((await h.snapshot()).row.qty,123,'external update saves before stale dialog submit');assert.equal(await h.panel.locator('.bbpi-done').isDisabled(),true,'a stale editor cannot be submitted through its real Done control');saved=await h.snapshot();assert.equal(saved.row.qty,123);assert.ok(await h.panel.isVisible());assert.match(await h.panel.innerText(),/changed|review|Reopen/i);
   assert.deepEqual(h.errors,[]);
  }finally{await h.context.close();}
 });
@@ -115,7 +123,7 @@ for(const width of [320,390])test('Shopping flags an estimate and opens the exis
   await check.waitFor();const bounds=await check.boundingBox(),buttonBounds=await check.getByRole('button',{name:'Check stock',exact:true}).boundingBox();assert.ok(bounds.height<=64,'the notice stays compact');assert.ok(buttonBounds.height>=44,'the button keeps a 44px tap target');if(width===390)await h.capture('after-shopping-check');
   await check.getByRole('button',{name:'Check stock',exact:true}).click();await h.panel.waitFor();
   assert.equal((await h.snapshot()).stock,saved.stock,'reviewing an estimate does not invent more stock');
-  assert.equal(await h.panel.locator('[data-bbpi-quantity]').inputValue(),'250');assert.match(await h.panel.locator('.bbpi-stock-explanation').innerText(),/Estimated/);
+  assert.equal(await h.panel.locator('[data-bbpi-quantity]').inputValue(),'250');assert.equal(await h.panel.locator('.bbpa-estimated:visible').textContent(),'Estimated');
   assert.deepEqual(h.errors,[]);
  }finally{await h.context.close();}
 });

@@ -90,6 +90,14 @@ async function fixture({width=390,recipeId=MORNAY,servings=4,requirements=null,s
  return {page,context,errors};
 }
 
+async function showAmount(panel,{exact=false}={}){
+ const optional=panel.locator('.bbpa-amount');await optional.waitFor({state:'attached'});
+ if(!await optional.evaluate(node=>node.open))await optional.locator(':scope>summary').click();
+ const details=panel.locator('.bbpi-amount-details');
+ // Countable foods expose their real quantity stepper as "How many left?";
+ // their unused nested Exact disclosure is deliberately hidden.
+ if(exact&&await details.isVisible()&&!await details.evaluate(node=>node.open))await details.locator(':scope>summary').click();
+}
 async function addFood(page,name){
  // Empty pantries show familiar-food actions before the storage tabs. Milk
  // opens the same editable manual form in the fridge without saving a row.
@@ -97,11 +105,7 @@ async function addFood(page,name){
  const panel=page.locator('#bbpi-current-editor');
  await panel.getByLabel('Food name',{exact:true}).fill(name);
  await panel.getByLabel('Food name',{exact:true}).press('Tab');
- const optional=panel.locator('.bbpa-amount');
- await optional.waitFor({state:'attached'});
- if(!await optional.evaluate(node=>node.open))await optional.locator(':scope>summary').click();
- const exact=panel.locator('.bbpi-amount-details');
- if(!await exact.evaluate(node=>node.open))await exact.locator(':scope>summary').click();
+ await showAmount(panel,{exact:true});
  return panel;
 }
 const descriptor=(page,name)=>page.evaluate(name=>BBPantryEditor.list().find(row=>BBHomeHost.id(row.name,'')===BBHomeHost.id(name,'')),name);
@@ -186,9 +190,10 @@ for(const width of [320,390]){
    assert.deepEqual(await page.evaluate(()=>window.__plannedUnitQA.stock()),stock);
    // Repair the old entry only after the user explicitly enters its weight.
    await page.getByRole('button',{name:'Edit Smoked haddock in fridge',exact:true}).click();
-   await panel.locator('.bbpi-amount-details>summary').click();
+   await showAmount(panel,{exact:true});
    await panel.locator('[data-bbpi-quantity]').fill('');
    await panel.locator('[aria-label^="Unit for "]').selectOption('g');
+   await showAmount(panel,{exact:true});
    await panel.locator('[data-bbpi-quantity]').fill('200');
    assert.equal(await panel.locator('[data-bbpi-needed]').inputValue(),'600');
    assert.equal(await panel.locator('.bbpi-readout').textContent(),'Add to Shop: 400 g');

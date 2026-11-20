@@ -68,27 +68,28 @@ test('callback capture precedes other scripts and the landing makes no account o
 test('the pantry-first hero explains the weekly benefit without promising savings or live prices',()=>{
  const hero=page.match(/<section\b[^>]*\bclass="hero wrap"[^>]*>([\s\S]*?)<\/section>/)?.[1];
  assert.ok(hero);
- assert.match(hero,/<h1\b[^>]*>Shop your kitchen<br><span>before the supermarket\.<\/span><\/h1>/);
- assert.match(hero,/Check your fridge, freezer and cupboards/);
+ assert.match(hero,/<h1\b[^>]*>Start with what you <span>have\.<\/span><br>Shop for what you <span>need\.<\/span><\/h1>/);
+ assert.match(hero,/plan family dinners around food at home — then shows you what’s missing for the shop\./);
+ assert.match(hero,/cupboards, fridge and freezer/);
  assert.match(hero,/Prices are estimates until you enter or confirm what you paid/);
- assert.match(hero,/200 free recipes on the web\. No payment card\./);
- assert.match(hero,/href="#recipe-availability">App Store recipe availability/);
+ assert.match(hero,/200 free recipes on the web · No payment card to start · Premium optional\./);
+ assert.match(hero,/href="#recipe-availability">App Store availability/);
  assert.doesNotMatch(page,/Loved by thousands|star rating|Google Play badge|average savings|guaranteed £25|£25\+ a week|live supermarket prices/i);
 });
 
 test('the hero uses an app screenshot and preserves the public PWA identity',()=>{
  assert.match(page,/src="landing-assets\/basketboss-plan-build21\.png"/);
- assert.match(page,/Actual app screen · example plan/);
- assert.match(page,/alt="BasketBoss Plan screen[^"]+"/);
+ assert.match(page,/Actual BasketBoss app screen · example plan/);
+ assert.match(page,/alt="Actual BasketBoss Plan screen[^"]+"/);
  assert.match(page,/<link rel="canonical" href="https:\/\/basketboss\.co\.uk\/">/);
  assert.match(page,/<link rel="manifest" href="\/manifest\.webmanifest">/);
  assert.match(page,/<link rel="apple-touch-icon" href="\/icons\/basketboss-crowned-v1766-192\.png">/);
 });
 
 test('stock and Premium claims retain confirmation, review and availability boundaries',()=>{
- assert.match(page,/Confirmed purchases add stock\. Confirmed cooking deducts it\./);
- assert.match(page,/Review and adjust what’s left/);
- assert.match(page,/Premium puts yellow-sticker food first/);
+ assert.match(page,/Finish Shop adds confirmed purchases\. Confirm cooked deducts ingredients once\./);
+ assert.match(page,/Check quantities and manually review changes, leftovers and food safety\./);
+ assert.match(page,/Premium: put yellow-sticker buys into <strong>Use soon<\/strong>/);
  assert.match(page,/AI outputs need review\. Daily limits and availability apply\./);
  assert.match(page,/<section[^>]*id="smart-receipt"[^>]*data-bb-smart-receipt-ready[^>]*hidden/);
  assert.match(page,/one verified household partner/);

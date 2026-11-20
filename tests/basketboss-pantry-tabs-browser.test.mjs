@@ -17,8 +17,8 @@ async function openAddFoodAmount(panel){
  const optional=panel.locator('.bbpa-amount');
  await optional.waitFor({state:'attached'});
  if(!await optional.evaluate(node=>node.open))await optional.locator(':scope>summary').click();
- const exact=panel.locator('.bbpi-amount-details');
- if(!await exact.evaluate(node=>node.open))await exact.locator(':scope>summary').click();
+ const exact=panel.locator('.bbpi-amount-details'),summary=exact.locator(':scope>summary');
+ if(await summary.isVisible()&&!await exact.evaluate(node=>node.open))await summary.click();
 }
 // Exercise the actual generated app with disposable local storage and local
 // assets. Fresh source overrides prevent a stale pwa700 enhancement from hiding
@@ -240,6 +240,12 @@ for(const viewport of [{width:390,height:844},{width:320,height:568}])check('com
  assert.equal(await editor.locator('.bbpi-buy-label').isVisible(),false);
  const before=await pantryBytes();
  await editor.evaluate(node=>window.__pantryEditorControls=[...node.querySelectorAll('input,select,button')]);
+ const optional=editor.locator('.bbpa-amount'),optionalSummary=optional.locator(':scope>summary');
+ assert.equal(await optional.evaluate(node=>node.open),false,'amount and purchasing settings start behind the outer disclosure');
+ const optionalBox=await optionalSummary.boundingBox();assert.ok(optionalBox&&optionalBox.height>=44&&optionalBox.width>=44,'the outer amount disclosure retains44px targets');
+ await optionalSummary.focus();await optionalSummary.press('Enter');await optionalSummary.press('Enter');
+ assert.equal(await optional.evaluate(node=>node.open),false,'keyboard toggling closes the outer disclosure again');
+ await optionalSummary.click();
  for(const summary of [amount.locator(':scope>summary'),more.locator(':scope>summary')]){
   const box=await summary.boundingBox();assert.ok(box&&box.height>=44&&box.width>=44,'disclosures retain44px targets');
   await summary.focus();await summary.press('Enter');await summary.press('Enter');
@@ -249,9 +255,11 @@ for(const viewport of [{width:390,height:844},{width:320,height:568}])check('com
  assert.equal(await editor.evaluate(node=>__pantryEditorControls.every(control=>control.isConnected&&node.contains(control))),true,'disclosure changes retain the original controls');
  assert.equal(await editor.evaluate(node=>node.scrollWidth<=node.clientWidth),true,'the editor has no horizontal overflow');
  assert.equal(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth),true);
+ await more.locator(':scope>summary').click();
  for(const control of await editor.locator('.bbpi-done,.bbpi-remove,.bbpi-close').all()){
   const box=await control.boundingBox();assert.ok(box&&box.height>=44&&box.width>=44,'editor actions retain44px targets');
  }
+ await more.locator(':scope>summary').click();
  const screenshots=process.env.BB_UI_SCREENSHOT_DIR||path.join(os.tmpdir(),'basketboss-ui-previews');await fs.mkdir(screenshots,{recursive:true});
  if(!await amount.evaluate(node=>node.open))await amount.locator(':scope>summary').click();
  await quantity.focus();await page.screenshot({path:path.join(screenshots,'basketboss-pantry-editor-after-'+viewport.width+'.png'),animations:'disabled'});

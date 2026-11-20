@@ -23,7 +23,11 @@ test('Comparison page is accurate, accessible and links to existing actual produ
   assert.match(compare, /<th scope="col">Premium<\/th>/);
   assert.match(compare, /<td>200 recipes<\/td>/);
   assert.match(compare, /<td>All 700 recipes<\/td>/);
-  assert.match(compare, /App Store: currently 100 Free and 500 total/);
+  const availability=compare.match(/<p[^>]*id="recipe-availability"[^>]*>([\s\S]*?)<\/p>/)?.[1];
+  assert.match(availability, /Web &amp; Home Screen app: 200 Free recipes, all 700 with Premium/);
+  assert.match(availability, /iPhone and iPad recipe availability may vary by installed version/);
+  assert.match(availability, /<a href="https:\/\/apps\.apple\.com\/app\/id6829160611">current App Store listing<\/a>/);
+  assert.doesNotMatch(compare, /App Store: currently 100 Free and 500 total|expanded collection is coming in an update/);
   assert.match(compare, /7-day free trial, then £1\.99\/month/);
   assert.match(compare, /3-day free trial, then £3\.99\/month/);
   assert.match(compare, /first 25 eligible confirmed subscribers/);

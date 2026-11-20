@@ -30,7 +30,11 @@ for(const width of [320,390])for(const field of ['cloud-email','cloud-password']
    window.visualViewport.dispatchEvent(new Event('resize'));
   },field);
   await page.waitForFunction(()=>document.getElementById('bbNewOnboarding')?.classList.contains('bbob-keyboard'));
+  // The class changes synchronously; the original viewport owner adjusts the
+  // focused field in rAF. Settle that work before simulating the user's scroll.
+  await page.evaluate(()=>new Promise(resolve=>requestAnimationFrame(()=>requestAnimationFrame(resolve))));
   await host.locator('.bbob-main').evaluate(node=>{node.scrollTop=node.scrollHeight;});
+  await page.evaluate(()=>new Promise(resolve=>requestAnimationFrame(()=>requestAnimationFrame(resolve))));
   const geometry=await login.evaluate(node=>{
    const b=node.getBoundingClientRect(),host=document.getElementById('bbNewOnboarding').getBoundingClientRect(),main=document.querySelector('#bbNewOnboarding .bbob-main').getBoundingClientRect(),hit=document.elementFromPoint(b.x+b.width/2,b.y+b.height/2);
    return {top:b.top,bottom:b.bottom,left:b.left,right:b.right,height:b.height,hostBottom:host.bottom,mainTop:main.top,mainBottom:main.bottom,hit:hit===node||node.contains(hit),same:node===document.getElementById('cloud-login'),focused:document.activeElement?.id};
