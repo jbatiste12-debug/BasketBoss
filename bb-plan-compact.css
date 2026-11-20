@@ -229,3 +229,42 @@ html body .shell #app.bbnext-plan[data-bb-compact-header="true"] .bbfeed-control
  html body .shell #app.bbnext-plan[data-bb-compact-plan="true"][data-bb-compact-header="true"] .bbnext-day.has-meal .bbfeed-meta>[data-bbfeed-pos="summary"]{display:none!important}
  html body .shell #app.bbnext-plan[data-bb-compact-header="true"] .bbnext-day .bbfeed-night-row{display:flex!important}
 }
+
+/* More options is a normal page section. Keep the original delegated control
+   parents, forms and disclosures, while their contents push the plan down. */
+html body #app.bbnext-plan[data-bb-compact-header="true"]:has(#bbPlanMoreOptions[open]) #bbpolAutofillCard>.bbpc-filter-row{
+ grid-template-columns:minmax(0,1fr)!important;align-items:stretch!important;gap:8px!important;z-index:auto!important;
+}
+html body #app.bbnext-plan[data-bb-compact-header="true"]:has(#bbPlanMoreOptions[open]) #bbpolAutofillCard .bbpc-filter-row :is(#bbSimpleBudget,#bbSimpleMealPreferences,#bbIngredientPicker){
+ position:relative!important;inset:auto!important;transform:none!important;box-sizing:border-box;width:100%!important;min-width:0!important;max-width:100%!important;
+ margin:0!important;padding:0!important;border:1px solid #dce4d5!important;border-radius:14px!important;background:#fffef9!important;overflow:visible!important;
+}
+html body #app.bbnext-plan[data-bb-compact-header="true"]:has(#bbPlanMoreOptions[open]) #bbpolAutofillCard .bbpc-filter-row :is(#bbSimpleBudget>summary,#bbSimpleMealPreferences>summary,#bbAvoidIngredientTab){
+ display:flex!important;align-items:center!important;justify-content:space-between!important;gap:10px!important;box-sizing:border-box;
+ width:100%!important;min-height:48px!important;height:auto!important;margin:0!important;padding:12px 14px!important;border:0!important;border-radius:13px!important;
+ background:transparent!important;color:#35563e!important;font-size:13px!important;line-height:1.35!important;text-align:left!important;white-space:normal!important;box-shadow:none!important;
+}
+html body #app.bbnext-plan[data-bb-compact-header="true"]:has(#bbPlanMoreOptions[open]) #bbpolAutofillCard #bbSimpleBudget>summary::after{content:'⌄';font-size:18px;line-height:1}
+html body #app.bbnext-plan[data-bb-compact-header="true"]:has(#bbPlanMoreOptions[open]) #bbpolAutofillCard #bbSimpleBudget[open]>summary::after{transform:rotate(180deg)}
+html body #app.bbnext-plan[data-bb-compact-header="true"]:has(#bbPlanMoreOptions[open]) #bbpolAutofillCard :is(#bbSimpleBudget>.bbs-budget-body,#bbSimpleMealPreferences>.bb-meal-preference-body){
+ position:static!important;inset:auto!important;transform:none!important;box-sizing:border-box;width:100%!important;min-width:0!important;max-width:100%!important;
+ height:auto!important;max-height:none!important;margin:0!important;padding:12px 14px!important;border:0!important;border-top:1px solid #e2e8da!important;border-radius:0 0 13px 13px!important;
+ background:#fffef9!important;overflow:visible!important;box-shadow:none!important;
+}
+html body #app.bbnext-plan[data-bb-compact-header="true"]:has(#bbPlanMoreOptions[open]) #bbpolAutofillCard #bbSimpleBudget .bb77-budget-controls{
+ display:grid!important;grid-template-columns:minmax(0,1fr) auto!important;align-items:stretch!important;gap:8px!important;width:100%!important;
+}
+html body #app.bbnext-plan[data-bb-compact-header="true"]:has(#bbPlanMoreOptions[open]) #bbpolAutofillCard #bbSimpleBudget .bb77-budget-controls :is(input,button){min-width:0!important;min-height:44px!important;max-width:100%!important;scroll-margin-block:16px 124px}
+html body #app.bbnext-plan[data-bb-compact-header="true"]:has(#bbPlanMoreOptions[open]) #bbpolAutofillCard #bbSimpleBudget #bb77BudgetTarget{font-size:16px!important}
+html body #app.bbnext-plan[data-bb-compact-header="true"]:has(#bbPlanMoreOptions[open]) #bbpolAutofillCard #bbSimpleBudget .bb77-weekly-spending>summary{min-height:44px!important;box-sizing:border-box;padding:10px 0!important}
+html body #app.bbnext-plan[data-bb-compact-header="true"]:has(#bbPlanMoreOptions[open]) #bbpolAutofillCard #bbSimpleMealPreferences .bb81-pro-pill{min-height:44px!important;white-space:normal!important}
+html body #app.bbnext-plan[data-bb-compact-header="true"]:has(#bbPlanMoreOptions[open]) #bbpolAutofillCard #bbPlanMoreOptions>summary{justify-content:flex-start!important;padding-right:110px!important}
+html body #app.bbnext-plan[data-bb-compact-header="true"]:has(#bbPlanMoreOptions[open]) #bbpolAutofillCard #bbPlanMoreOptions #clearWeek{
+ position:absolute!important;inset:0 0 auto auto!important;display:inline-flex!important;align-items:center!important;justify-content:flex-end!important;
+ width:auto!important;min-width:44px!important;min-height:44px!important;max-width:104px!important;margin:0!important;padding:8px 5px!important;border:0!important;border-radius:8px!important;
+ background:transparent!important;color:#786354!important;font-size:12px!important;font-weight:650!important;line-height:1.35!important;text-decoration:underline;text-underline-offset:3px;box-shadow:none!important;
+}
+html body #app.bbnext-plan[data-bb-compact-header="true"][data-bb-planner-pane="lunches"]:has(#bbPlanMoreOptions[open]) #bbpolAutofillCard #bbPlanMoreOptions #clearWeek{display:none!important}
+@media(max-width:350px){
+ html body #app.bbnext-plan[data-bb-compact-header="true"]:has(#bbPlanMoreOptions[open]) #bbpolAutofillCard #bbSimpleBudget .bb77-budget-controls{grid-template-columns:minmax(0,1fr)!important}
+}
