@@ -2,6 +2,7 @@ import {json,isBillingEnabled,isLive,billingMode,isConfigured,authenticatedUser,
 import {ensureDeletionSchema,digestDeletionActor,isAccountDeleting} from '../../../bb-server-lib/bb-account-deletion.js';
 import {readAppleEntitlement} from '../../../bb-server-lib/bb-apple-subscriptions.js';
 import {readTestFlightBetaGrant} from '../../../bb-server-lib/bb-testflight-beta.js';
+import {ANDROID_ORIGIN} from '../../../bb-server-lib/bb-request-origin.js';
 const MAX_BODY=1024;
 // A Founder seat is a temporary hold until Paddle confirms a subscription.
 // Release only AFTER Paddle confirms its unpaid transaction is canceled.
@@ -137,6 +138,8 @@ async function releaseExpiredFounderHolds(env,db){
 }
 
 export async function onRequestPost({request,env}) {
+  if(request.headers.get('Origin')===ANDROID_ORIGIN)
+    return json({error:'Purchases are unavailable in this Android test build. View your account status in Settings.'},403);
   // Two independent locks: Live backend may be configured before checkout can open.
   if (!isBillingEnabled(env)||!isConfigured(env)||
       !(isLive(env)?env.PADDLE_LIVE_API_KEY:env.PADDLE_SANDBOX_API_KEY)||

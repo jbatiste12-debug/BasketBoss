@@ -1,0 +1,7 @@
+<?xml version='1.0' encoding='utf-8'?>
+<resources>
+    <string name="app_name">BasketBoss</string>
+    <string name="title_activity_main">BasketBoss</string>
+    <string name="package_name">uk.co.basketboss.app</string>
+    <string name="custom_url_scheme">uk.co.basketboss.app</string>
+</resources>

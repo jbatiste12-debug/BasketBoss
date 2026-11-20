@@ -5,6 +5,7 @@
   "server": {
     "hostname": "localhost",
     "iosScheme": "capacitor",
+    "androidScheme": "https",
     "cleartext": false
   },
   "ios": {
@@ -13,6 +14,12 @@
     "contentInset": "never",
     "backgroundColor": "#fffdf7",
     "allowsLinkPreview": false
+  },
+  "android": {
+    "backgroundColor": "#fffdf7",
+    "allowMixedContent": false,
+    "webContentsDebuggingEnabled": false,
+    "loggingBehavior": "none"
   },
   "plugins": {
     "CapacitorHttp": { "enabled": false },
