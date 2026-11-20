@@ -258,3 +258,17 @@ test('identical concurrent recipe/count pair changes can establish the new basel
  h.entries=shared.map(value=>value.section==='planned_day'?row('planned_day','Monday',{recipeId:'same-replacement'},2):value.section==='servings'?row('servings','Monday',{count:5},2):value);
  const result=await h.api.synchronize();assert.equal(result.conflicts,0);assert.deepEqual(h.writes(),[]);assert.equal(JSON.parse(h.values.get(BASE))['servings\u001fMonday'].revision,2);
 });
+
+for(const marker of ['held','localOnly'])test(`a ${marker} dinner keeps both recipe and serving changes isolated`,async()=>{
+ const h=fixture();await h.adopted();const baseline=JSON.parse(h.values.get(BASE));baseline['planned_day\u001fMonday'][marker]=true;h.values.set(BASE,JSON.stringify(baseline));
+ const local=h.saved();local.planned[0].recipeId='private-replacement';local.dayServings.Monday={recipeId:'private-replacement',count:5};h.values.set(STATE,JSON.stringify(local));
+ h.entries=shared.map(value=>value.section==='planned_day'?row('planned_day','Monday',{recipeId:'remote-replacement'},2):value.section==='servings'?row('servings','Monday',{count:6},2):value);
+ const before=h.values.get(STATE);await h.api.synchronize();assert.equal(h.values.get(STATE),before);assert.deepEqual(h.writes(),[]);assert.deepEqual(JSON.parse(h.values.get(BASE))['planned_day\u001fMonday'],baseline['planned_day\u001fMonday']);assert.deepEqual(JSON.parse(h.values.get(BASE))['servings\u001fMonday'],baseline['servings\u001fMonday']);
+});
+
+test('only an explicit owner import releases a held recipe/count pair into an empty household',async()=>{
+ const h=fixture({household:OWNER,entries:[]});await h.api.refreshStatus();await h.api.synchronize();assert.deepEqual(h.writes(),[]);assert.equal(JSON.parse(h.values.get(BASE))['planned_day\u001fMonday'].held,true);
+ await h.api.synchronize({allowInitialImport:true});const writes=h.writes().map(value=>value.request);
+ assert.ok(writes.some(value=>value.section==='planned_day'&&value.key==='Monday'&&value.expected===0));assert.ok(writes.some(value=>value.section==='servings'&&value.key==='Monday'&&value.value.count===4&&value.expected===0));
+ assert.equal(JSON.parse(h.values.get(BASE))['planned_day\u001fMonday'].held,undefined);
+});
