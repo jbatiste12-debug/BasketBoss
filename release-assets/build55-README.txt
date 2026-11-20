@@ -3,13 +3,15 @@ BasketBoss 1.0.5 — Build 55
 Shop your kitchen first.
 
 Reviewed application source:
-ceae711283ea74770279deb15c1163edf69200eb
+ef330cc051f67fbdccb778b8a75c16c89025e9b3
 
 What this build adds
 
 - Settings > Household Partner Sharing uses verified server access. Eligible
   Premium owners open the invitation screen without being offered another plan.
 - Pending invited partners can accept without buying their own subscription.
+  Protected recipes refresh through the verified API before the shared plan
+  opens, without reloading the app or replacing an unfinished edit.
   Recognised Premium with unavailable sharing gets an accurate explanation,
   sign-in or retry action; disabled server features are not automatically enabled.
 - Invitations can send an email and appear in the invited account in the app.

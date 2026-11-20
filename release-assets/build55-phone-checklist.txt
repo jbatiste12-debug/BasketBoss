@@ -27,6 +27,8 @@ customer data just to complete these checks. Restore only your own membership.
    and leave the app in the foreground. Check its invitation notice appears.
    A partner with a pending invite must be able to accept without buying Premium.
    After acceptance, confirm the shared household opens and the notice clears.
+   Include a Premium-only dinner in the shared week. Its name, ingredients and
+   Cook action should load without changing tabs or restarting the app.
 
 5. Foreground household updates
    With both test devices signed in to the same accepted household, make a small
