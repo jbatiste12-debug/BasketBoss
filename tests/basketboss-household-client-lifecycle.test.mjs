@@ -48,10 +48,10 @@ function element(tag='div'){
  };return result;
 }
 
-function fixture({household=PARTNER,entries=shared,confirm=true,enabledPantry=false,pantryResult,backupFailure=false,baselineFailure=false,readablePlan=true,emailSent=false}={}){
+function fixture({household=PARTNER,entries=shared,confirm=true,enabledPantry=false,pantryResult,backupFailure=false,baselineFailure=false,readablePlan=true,emailSent=false,prepareRecipes}={}){
  const values=new Map([[AUTH,JSON.stringify({user:{id:ACTOR},access_token:'synthetic-token'})],[STOCK,'{"rice|g":250}'],[TICKS,'{"old-item":true}'],[BUDGET,'90']]);
  if(readablePlan)values.set(STATE,JSON.stringify({version:2,planned:[{day:'Monday',recipeId:'private-dinner'},{day:'Tuesday',recipeId:'private-tuesday'}],dayServings:{Monday:{recipeId:'private-dinner',count:4}},pantry:{'private-rice':true},servings:4,breakfasts:{Monday:'private-breakfast'},customMarker:'preserve-unshared'}));
- const body=element('body'),app=element('main'),account=element('section'),cloud=element('button'),docEvents=new Map(),win=new EventTarget(),calls=[],refreshes=[],events=[],timers=[];
+ const body=element('body'),app=element('main'),account=element('section'),cloud=element('button'),docEvents=new Map(),win=new EventTarget(),calls=[],refreshes=[],events=[],timers=[],preparations=[],membershipChecks=[];
  let state=structuredClone(household),rows=structuredClone(entries),ready=true,allowConfirm=confirm,onRequest=null,pantryCalls=0,clock=10000;
  app.querySelector=()=>null;account.querySelector=()=>null;
  const document={readyState:'loading',hidden:false,activeElement:null,body,
@@ -60,6 +60,8 @@ function fixture({household=PARTNER,entries=shared,confirm=true,enabledPantry=fa
  const store={getItem:key=>values.get(key)??null,setItem(key,value){if(backupFailure&&key.startsWith('bb_partner_premerge_')||baselineFailure&&key===BASE)throw Error('Synthetic storage full');values.set(key,String(value));},removeItem:key=>values.delete(key)};
  win.location={hash:'',href:'https://www.basketboss.co.uk/app'};
  win.BBHomeHost={canRefreshSharedHousehold(pin){return ready&&!document.hidden&&pin.actor===JSON.parse(values.get(AUTH)||'null')?.user?.id&&pin.token===JSON.parse(values.get(AUTH)||'null')?.access_token&&pin.expected===values.get(STATE);},refreshSharedHousehold(pin){if(!this.canRefreshSharedHousehold(pin))return false;refreshes.push({...pin});return true;}};
+ if(prepareRecipes)win.BBHomeHost.prepareSharedHouseholdRecipes=async pin=>{preparations.push({...pin});return prepareRecipes(pin);};
+ win.BasketBossVerifiedPremium={refresh:force=>{membershipChecks.push(force);return Promise.resolve(false);}};
  win.BBReceiptHost={accountPantrySyncEnabled:()=>enabledPantry,handlesInventorySync:()=>enabledPantry&&pantryCalls>0,async connectHouseholdPantry(){pantryCalls++;return pantryResult||{ok:true,adoptedScope:{kind:'household',id:HH},backupKey:'synthetic-pantry-backup'};}};
  win.addEventListener('basketboss:household-changed',event=>events.push(event.detail?.action));
  const sandbox={window:win,document,localStorage:store,navigator:{onLine:true,clipboard:{writeText:async()=>{}}},Event,JSON,console,Map,Set,Date:class extends Date{static now(){return clock;}},confirm:()=>allowConfirm,
@@ -79,7 +81,7 @@ function fixture({household=PARTNER,entries=shared,confirm=true,enabledPantry=fa
    throw Error('Unexpected synthetic request');
   }};
  vm.runInNewContext(source,sandbox);
- return {api:win.__lifecycle,win,document,values,body,calls,refreshes,events,timers,sandbox,account,
+ return {api:win.__lifecycle,win,document,values,body,calls,refreshes,events,timers,sandbox,account,preparations,membershipChecks,
   get dialog(){return body.nodes.find(node=>node.id==='bbhs-dialog');},get modalBody(){return this.dialog?.querySelector('[data-bbhs-body]');},get message(){return this.dialog?.querySelector('[data-bbhs-message]')?.textContent||'';},
   get pantryCalls(){return pantryCalls;},get state(){return state;},set state(next){state=next;},set entries(next){rows=structuredClone(next);},set ready(value){ready=value;},set requestHook(value){onRequest=value;},
   changeActor(){values.set(AUTH,JSON.stringify({user:{id:OTHER},access_token:'other-token'}));win.dispatchEvent(new Event('basketboss:session-changed'));},
@@ -271,4 +273,31 @@ test('only an explicit owner import releases a held recipe/count pair into an em
  await h.api.synchronize({allowInitialImport:true});const writes=h.writes().map(value=>value.request);
  assert.ok(writes.some(value=>value.section==='planned_day'&&value.key==='Monday'&&value.expected===0));assert.ok(writes.some(value=>value.section==='servings'&&value.key==='Monday'&&value.value.count===4&&value.expected===0));
  assert.equal(JSON.parse(h.values.get(BASE))['planned_day\u001fMonday'].held,undefined);
+});
+
+test('explicit acceptance awaits server recipe preparation before reading or adopting shared dinners',async()=>{
+ const gate=deferred(),h=fixture({household:INVITED,prepareRecipes:()=>gate.promise});await h.open();const before=new Map(h.values),pending=h.click('[data-accept]');await wait();
+ assert.equal(h.preparations.length,1);assert.equal(h.preparations[0].actor,ACTOR);assert.equal(h.preparations[0].token,'synthetic-token');assert.equal(h.preparations[0].expected,before.get(STATE));
+ assert.equal(h.calls.some(call=>String(call.url).includes('mode=entries')),false);assert.deepEqual(h.values,before);assert.equal(h.refreshes.length,0);
+ gate.resolve(true);await pending;assert.equal(h.saved().planned[0].recipeId,'owner-dinner');assert.equal(h.refreshes.length,1);assert.deepEqual(h.membershipChecks,[true],'the existing UI verifier rechecks server status after accepting');
+});
+
+test('a declined or dirty recipe preparation leaves local stock, plan and baseline unchanged',async()=>{
+ for(const dirty of [false,true]){
+  const h=fixture({prepareRecipes:async()=>{if(dirty)h.ready=false;return false;}}),before=new Map(h.values);
+  await assert.rejects(()=>h.adopted(),/editing|safely|changed/i);assert.deepEqual(h.values,before);assert.deepEqual(h.writes(),[]);assert.equal(h.refreshes.length,0);assert.equal(h.calls.some(call=>String(call.url).includes('mode=entries')),false);
+ }
+});
+
+for(const change of ['actor','plan','dirty','deletion'])test(`delayed recipe preparation cancels shared adoption after ${change} changes`,async()=>{
+ const gate=deferred(),h=fixture({prepareRecipes:async pin=>{await gate.promise;return h.win.BBHomeHost.canRefreshSharedHousehold(pin);}});const pending=h.adopted();await wait();assert.equal(h.preparations.length,1);
+ if(change==='actor')h.changeActor();
+ if(change==='plan')h.values.set(STATE,JSON.stringify({...h.saved(),planned:[{day:'Friday',recipeId:'new-local-draft'}]}));
+ if(change==='dirty')h.ready=false;
+ if(change==='deletion')h.win.dispatchEvent(new Event('basketboss:account-deletion-started'));
+ const before=new Map(h.values);gate.resolve();await assert.rejects(()=>pending,/editing|safely|changed/i);assert.deepEqual(h.values,before);assert.deepEqual(h.writes(),[]);assert.equal(h.refreshes.length,0);assert.equal(h.calls.some(call=>String(call.url).includes('mode=entries')),false);
+});
+
+test('the explicit Use shared household data retry runs recipe preparation again without inventing Premium',async()=>{
+ const h=fixture({prepareRecipes:async()=>true});await h.open();await h.click('[data-adopt]');assert.equal(h.preparations.length,1);assert.equal(h.saved().planned[0].recipeId,'owner-dinner');assert.deepEqual(h.membershipChecks,[],'recipe preparation does not publish a new membership');assert.deepEqual(h.writes(),[]);
 });

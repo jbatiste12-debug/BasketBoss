@@ -9103,8 +9103,14 @@ function bbRefreshSharedHousehold(pin){
   state=next;bb307Stock=stock;bb307FeatureState=features;render();return true;
  }catch{state=previous.state;bb307Stock=previous.stock;bb307FeatureState=previous.features;return false;}
 }
+async function bbPrepareSharedHouseholdRecipes(pin){
+ if(!bbCanRefreshSharedHousehold(pin))return false;
+ if(!bbVerifiedPaidRecipes||bbPremiumUser!==pin.actor||bbPremiumToken!==pin.token)
+  await bbPremiumReload(()=>bbCanRefreshSharedHousehold(pin));
+ return bbCanRefreshSharedHousehold(pin);
+}
 window.BBHomeHost=Object.freeze({needsLegacyReview:bbHomeNeedsLegacyReview,settlePurchases:bbHomeSettlePurchases,
- canRefreshSharedHousehold:bbCanRefreshSharedHousehold,refreshSharedHousehold:bbRefreshSharedHousehold,
+ canRefreshSharedHousehold:bbCanRefreshSharedHousehold,refreshSharedHousehold:bbRefreshSharedHousehold,prepareSharedHouseholdRecipes:bbPrepareSharedHouseholdRecipes,
  id:BB307Pantry.pantryId,stock:bbHomePhysicalStock,
  openCook:id=>{if(getRecipe(id)&&bb176AllowedRecipe(id)){openCook(id);const url=new URL(location.href);url.searchParams.delete('bbcook');history.replaceState(null,'',url);return true;}return false;},
  keys:()=>({stock:BB307_STOCK_KEY,inventory:'basketboss_makeameal_v1_inventory'}),
@@ -9369,7 +9375,9 @@ function bbPremiumClear(){
   for(const r of bbFreeRecipes){BB307_ORIGINAL_COSTS.set(r.id,bbFreeCosts.get(r.id));BB307_VALID_IDS.add(r.id);}
   render();bbPremiumSignal();
 }
-async function bbPremiumReload(){
+async function bbPremiumReload(canApply){
+  const mayApply=()=>typeof canApply!=='function'||canApply();
+  if(!mayApply())return;
   const stamp=++bbPremiumRequest;
   const pin=bbPremiumIdentity();
   if(!pin){bbPremiumClear();return;}
@@ -9379,16 +9387,19 @@ async function bbPremiumReload(){
     const response=await fetch('/api/recipes/premium?catalogue=500',{headers:{'Authorization':'Bearer '+pin.token,'Accept':'application/json'},credentials:'same-origin',cache:'no-store'});
     if(stamp!==bbPremiumRequest)return;
     if(!bbPremiumMatches(pin)){bbPremiumClear();return;}
+    if(!mayApply())return;
     if(!response.ok){bbPremiumClear();return;}
     const data=await response.json();
     if(stamp!==bbPremiumRequest)return;
     if(!bbPremiumMatches(pin)){bbPremiumClear();return;}
+    if(!mayApply())return;
     if(![221,400].includes(data?.count)||!Array.isArray(data.recipes)||data.recipes.length!==data.count||!Array.isArray(data.normalized)||data.normalized.length!==data.count)throw Error('Premium recipe data incomplete');
     for(const recipe of data.recipes)Object.assign(recipe,BBRecipePlanning.metadata(recipe));
     const fresh=new Set(bbFreeRecipes.map(x=>x.id)),unique=new Set();
     for(const r of data.recipes){if(typeof r?.id!=='string'||fresh.has(r.id)||unique.has(r.id))throw Error('Premium recipe IDs invalid');unique.add(r.id)}
     if(!data.normalized.every(r=>unique.has(r?.id)))throw Error('Premium ingredient IDs invalid');
     // Clear any cached data for a different member before adopting new server data.
+    if(!mayApply())return;
     bbPremiumClear();
     window.BBRecipePurchaseBasis?.apply(data.recipes,data.normalized,{canonicalize:BBPriceV19.canonical});
     RECIPES.push(...data.recipes);BB307_NORMALIZED.push(...data.normalized);
@@ -9400,7 +9411,7 @@ async function bbPremiumReload(){
     bbVerifiedPaidRecipes=true;bbPremiumUser=id;bbPremiumToken=pin.token;
     if(typeof bb307ApplyRememberedMarket==='function')bb307ApplyRememberedMarket();
     render();bbPremiumSignal();
-  }catch(error){if(stamp===bbPremiumRequest)bbPremiumClear()}
+  }catch(error){if(stamp===bbPremiumRequest&&mayApply())bbPremiumClear()}
 }
 window.addEventListener('basketboss:session-changed',()=>{void bbPremiumReload()});
 window.addEventListener('focus',()=>{void bbPremiumReload()});

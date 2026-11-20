@@ -313,6 +313,8 @@ function householdChanged(action){
  // The account pantry lifecycle rechecks the server-derived scope. This is
  // only a notification; sharing never chooses or migrates that scope here.
  try{const event=new Event('basketboss:household-changed');event.detail={action};window.dispatchEvent?.(event);}catch{}
+ // Refresh the same authenticated membership check; this event grants nothing.
+ try{void window.BasketBossVerifiedPremium?.refresh?.(true)?.catch?.(()=>{});}catch{}
 }
 async function connectPantry(pin,hid){
  if(!sameAccount(pin))throw Error('Account changed. Reopen Partner Sharing.');
@@ -326,6 +328,10 @@ async function connectPantry(pin,hid){
 }
 async function adoptRemote(pin,hid){
  if(!sameAccount(pin)||status?.configured!==true||status?.premium!==true||status?.role!=='partner'||status.household_id!==hid)throw Error('Refresh your household access before using shared data.');
+ const prepare=window.BBHomeHost?.prepareSharedHouseholdRecipes;
+ if(typeof prepare==='function'){
+  if(!await prepare(hostPin(pin))||!sameAccount(pin)||!readyToRender(pin))throw Error('Finish editing, then tap Use shared household data to connect safely.');
+ }
  const local=snapshot();if(!local)return {ok:false,message:'Invitation accepted. Open Plan once, then return here to connect your saved household data.'};
  if(!readyToRender(pin))return {ok:false,message:'Invitation accepted. Finish editing, then tap Use shared household data to connect safely.'};
  const observed=Object.fromEntries(SYNC_KEYS.map(k=>[k,raw(k)])),baselineStorageKey=baselineKey(hid),expectedBaseline=raw(baselineStorageKey);

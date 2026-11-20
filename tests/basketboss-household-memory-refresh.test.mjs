@@ -7,23 +7,26 @@ import {createRequire} from 'node:module';
 const require=createRequire(import.meta.url),source=fs.readFileSync(new URL('../app.html',import.meta.url),'utf8');
 const from=source.indexOf('function bbCanRefreshSharedHousehold('),to=source.indexOf('window.BBHomeHost=Object.freeze(',from);
 const normalize=source.slice(source.indexOf('function normalize(s){'),source.indexOf('\nfunction norm(s)',source.indexOf('function normalize(s){')));
-const code=normalize+'\n'+source.slice(from,to)+'\nglobalThis.sharedRefresh={can:bbCanRefreshSharedHousehold,refresh:bbRefreshSharedHousehold};';
+const code=normalize+'\n'+source.slice(from,to)+'\nglobalThis.sharedRefresh={can:bbCanRefreshSharedHousehold,refresh:bbRefreshSharedHousehold,prepare:bbPrepareSharedHouseholdRecipes};';
 const ACTOR='5ed78e55-f45b-4fa0-bc4d-88807f526aae',TOKEN='verified-session-token',KEY='saved-plan';
 const clone=value=>JSON.parse(JSON.stringify(value));
 function fixture(){
  const previous={version:2,planned:[{day:'Monday',recipeId:'before'}]},stock={before:250},features={version:1,essentials:[]};
  const saved={version:2,planned:[{day:'Tuesday',recipeId:'after',servings:6}],pantry:{rice:true},servings:6,feedingSet:true,dayServings:{Tuesday:{recipeId:'after',count:6}},plannedBreakfasts:[{day:'Tuesday',recipeId:'oats'}]};
  const store=new Map([[KEY,JSON.stringify(saved)],['basketboss_cloud_session_v1',JSON.stringify({user:{id:ACTOR},access_token:TOKEN})]]),fields=[],modals=[];
- let renders=0,deleted=false,readFailure=false;
+ let renders=0,deleted=false,readFailure=false,loader=async()=>{};const loads=[];
  const ctx={state:previous,bb307Stock:stock,bb307FeatureState:features,bbStorageSafe:true,KEY,DAYS:['Monday','Tuesday','Wednesday','Thursday','Friday','Saturday','Sunday'],
   BBServing:require('../bb-serving-scale.js'),BBPlanExtras:require('../bb-plan-extras.js'),
   localStorage:{getItem:key=>{if(readFailure)throw Error('device storage blocked');return store.get(key)??null;},setItem:()=>{throw Error('A memory refresh must not save');},removeItem:()=>{throw Error('A memory refresh must not delete');}},
   document:{hidden:false,activeElement:{matches:()=>false},querySelectorAll:selector=>selector.startsWith('dialog')?modals:fields},
   window:{BBAccountDeletion:{isDeleting:()=>deleted}},
-  bb307ReadStock:()=>({after:250}),bb307ReadFeatures:()=>clone(features),render:()=>{renders++;}
+  bb307ReadStock:()=>({after:250}),bb307ReadFeatures:()=>clone(features),render:()=>{renders++;},
+  bbVerifiedPaidRecipes:false,bbPremiumUser:null,bbPremiumToken:null,
+  bbPremiumMatches:pin=>{const current=JSON.parse(store.get('basketboss_cloud_session_v1')||'null');return pin?.id===current?.user?.id&&pin?.token===current?.access_token;},
+  bbPremiumReload:async guard=>{loads.push(guard);return loader(guard);}
  };
  vm.createContext(ctx);vm.runInContext(code,ctx);
- return {ctx,store,fields,modals,previous,stock,features,saved,host:ctx.sharedRefresh,pin:()=>({actor:ACTOR,token:TOKEN,expected:store.get(KEY)}),deleting:()=>{deleted=true;},failStorage:()=>{readFailure=true;},get renders(){return renders;}};
+ return {ctx,store,fields,modals,previous,stock,features,saved,loads,host:ctx.sharedRefresh,pin:()=>({actor:ACTOR,token:TOKEN,expected:store.get(KEY)}),deleting:()=>{deleted=true;},failStorage:()=>{readFailure=true;},set loader(value){loader=value;},get renders(){return renders;}};
 }
 const field=(values={})=>({tagName:'INPUT',type:'text',value:'',defaultValue:'',disabled:false,readOnly:false,hidden:false,getClientRects:()=>[{}],...values});
 
@@ -85,5 +88,31 @@ test('normalizer or renderer failure restores the original plan, stock and featu
  for(const fail of ['normalize','render']){
   const h=fixture();h.ctx[fail]=()=>{throw Error('temporarily unavailable');};
   assert.equal(h.host.refresh(h.pin()),false);assert.equal(h.ctx.state,h.previous);assert.equal(h.ctx.bb307Stock,h.stock);assert.equal(h.ctx.bb307FeatureState,h.features);
+ }
+});
+
+test('preparing shared recipes delegates to the server loader with the existing readiness guard without granting access',async()=>{
+ const h=fixture(),before=[...h.store];assert.equal(await h.host.prepare(h.pin()),true);
+ assert.equal(h.loads.length,1);assert.equal(typeof h.loads[0],'function');assert.equal(h.loads[0](),true);
+ h.fields.push(field({value:'unsaved food'}));assert.equal(h.loads[0](),false,'the exact same callback checks drafts again at response time');
+ assert.equal(h.ctx.bbVerifiedPaidRecipes,false,'only the real verified loader may hydrate private recipes');assert.equal(h.renders,0);assert.deepEqual([...h.store],before);
+});
+
+test('preparing shared recipes does not start a request while editing, stale, hidden or deleting',async()=>{
+ for(const change of [h=>{h.ctx.document.activeElement={matches:()=>true};},h=>h.fields.push(field({value:'typed draft'})),h=>h.modals.push(field({id:'pantry-editor'})),h=>{h.ctx.document.hidden=true;},h=>h.deleting(),(h,p)=>{p.expected='older saved plan';}]){
+  const h=fixture(),pin=h.pin();change(h,pin);const before=[...h.store];assert.equal(await h.host.prepare(pin),false);assert.equal(h.loads.length,0);assert.equal(h.renders,0);assert.deepEqual([...h.store],before);
+ }
+});
+
+test('a delayed recipe load cannot complete preparation after actor, token, plan, draft or deletion changes',async()=>{
+ for(const change of [h=>h.store.set('basketboss_cloud_session_v1',JSON.stringify({user:{id:'another-actor'},access_token:TOKEN})),h=>h.store.set('basketboss_cloud_session_v1',JSON.stringify({user:{id:ACTOR},access_token:'another-token'})),h=>h.store.set(KEY,JSON.stringify({...h.saved,planned:[]})),h=>h.fields.push(field({value:'new unsaved food'})),h=>h.deleting()]){
+  const h=fixture();let finish;h.loader=()=>new Promise(resolve=>{finish=resolve;});const pending=h.host.prepare(h.pin());assert.equal(h.loads.length,1);change(h);const before=[...h.store];assert.equal(h.loads[0](),false);finish();assert.equal(await pending,false);assert.equal(h.renders,0);assert.deepEqual([...h.store],before);
+ }
+});
+
+test('only a private catalogue already loaded for the same actor and token skips the server loader',async()=>{
+ for(const cache of [{actor:ACTOR,token:TOKEN,expected:0},{actor:'another-actor',token:TOKEN,expected:1},{actor:ACTOR,token:'old-token',expected:1}]){
+  const h=fixture();h.ctx.bbVerifiedPaidRecipes=true;h.ctx.bbPremiumUser=cache.actor;h.ctx.bbPremiumToken=cache.token;
+  assert.equal(await h.host.prepare(h.pin()),true);assert.equal(h.loads.length,cache.expected);assert.equal(h.renders,0);
  }
 });
