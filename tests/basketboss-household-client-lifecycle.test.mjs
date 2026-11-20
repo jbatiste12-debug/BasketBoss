@@ -2,6 +2,9 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import vm from 'node:vm';
+import {createRequire} from 'node:module';
+
+const Serving=createRequire(import.meta.url)('../bb-serving-scale.js');
 
 // Execute the shipped closure. Network, host rendering and storage failures are
 // synthetic; no customer records, environment flags or credentials are used.
@@ -183,4 +186,75 @@ test('post-adoption local dinner edits retain per-leaf expected revision checks'
  await h.api.synchronize();const patches=h.writes().filter(call=>call.request.action==='patch');
  assert.deepEqual(patches.find(call=>call.request.section==='planned_day').request,{action:'patch',section:'planned_day',key:'Monday',value:{recipeId:'local-updated-dinner'},expected:1});
  assert.ok(patches.every(call=>call.request.expected===1&&['planned_day','servings'].includes(call.request.section)),'recipe-bound serving override cleanup uses the same revision guard');
+});
+
+test('adopting a dinner without a day override uses the shared default over private legacy servings',async()=>{
+ const h=fixture({entries:[row('planned_day','Monday',{recipeId:'owner-dinner'}),row('household_servings','default',{count:4})]});
+ const local=h.saved();local.dayServings={};local.mealServings={'owner-dinner':8};h.values.set(STATE,JSON.stringify(local));
+ assert.equal((await h.adopted()).ok,true);const saved=h.saved();
+ assert.equal(Serving.forMeal(saved,saved.planned[0],{servings:4}),4);
+ assert.equal(saved.mealServings['owner-dinner'],8,'unrelated legacy preferences stay saved');
+ assert.deepEqual(saved.dayServings.Monday,{recipeId:'owner-dinner',count:null});
+ assert.deepEqual(JSON.parse(h.values.get(BASE))['servings\u001fMonday'],{revision:0,value:{deleted:true}});
+ await h.api.synchronize();assert.deepEqual(h.writes(),[],'the private legacy override is never uploaded after adoption');
+});
+
+test('owner import serialises the same explicit slot serving count used by the meal resolver',async()=>{
+ const h=fixture({household:OWNER,entries:[]}),local=h.saved();local.planned[0].servings=6;local.mealServings={'private-dinner':8};h.values.set(STATE,JSON.stringify(local));
+ const actual=Serving.forMeal(local,local.planned[0],{servings:4});assert.equal(actual,6);
+ await h.api.refreshStatus();await h.api.synchronize({allowInitialImport:true});
+ assert.equal(h.writes().find(call=>call.request.section==='servings'&&call.request.key==='Monday').request.value.count,actual);
+});
+
+test('an invalid explicit slot count falls back to the matching day override when sharing',async()=>{
+ for(const invalid of [0,13,'invalid']){
+  const h=fixture({household:OWNER,entries:[]}),local=h.saved();local.planned[0].servings=invalid;h.values.set(STATE,JSON.stringify(local));
+  const actual=Serving.forMeal(local,local.planned[0],{servings:4});assert.equal(actual,4);
+  await h.api.refreshStatus();await h.api.synchronize({allowInitialImport:true});
+  assert.equal(h.writes().find(call=>call.request.section==='servings'&&call.request.key==='Monday').request.value.count,actual);
+ }
+});
+
+test('ordinary dinner replacement retains an unchanged authoritative day serving override',async()=>{
+ const h=fixture();await h.adopted();const local=h.saved();local.mealServings={'replacement-dinner':8};h.values.set(STATE,JSON.stringify(local));
+ h.entries=shared.map(value=>value.section==='planned_day'?row('planned_day','Monday',{recipeId:'replacement-dinner'},2):value);
+ await h.api.synchronize();const saved=h.saved();assert.equal(saved.planned[0].recipeId,'replacement-dinner');
+ assert.equal(Serving.forMeal(saved,saved.planned[0],{servings:4}),3);await h.api.synchronize();assert.deepEqual(h.writes(),[],'private legacy count never overwrites the unchanged shared override');
+});
+
+test('ordinary replacement without a day override uses the shared household default',async()=>{
+ const entries=[row('planned_day','Monday',{recipeId:'owner-dinner'}),row('household_servings','default',{count:4})],h=fixture({entries});await h.adopted();
+ const local=h.saved();local.mealServings={'replacement-dinner':8};h.values.set(STATE,JSON.stringify(local));h.entries=entries.map(value=>value.section==='planned_day'?row('planned_day','Monday',{recipeId:'replacement-dinner'},2):value);
+ await h.api.synchronize();const saved=h.saved();assert.equal(Serving.forMeal(saved,saved.planned[0],{servings:4}),4);assert.deepEqual(saved.dayServings.Monday,{recipeId:'replacement-dinner',count:null});
+ await h.api.synchronize();assert.deepEqual(h.writes(),[]);
+});
+
+test('a conflicting day serving override defers its replacement dinner without advancing that baseline',async()=>{
+ const h=fixture();await h.adopted();const local=h.saved();local.dayServings.Monday.count=5;h.values.set(STATE,JSON.stringify(local));
+ h.entries=shared.map(value=>value.section==='planned_day'?row('planned_day','Monday',{recipeId:'replacement-dinner'},2):value.section==='servings'?row('servings','Monday',{count:6},2):value);
+ const result=await h.api.synchronize();assert.ok(result.conflicts>=2);const saved=h.saved();assert.equal(saved.planned[0].recipeId,'owner-dinner');assert.equal(Serving.forMeal(saved,saved.planned[0],{servings:4}),5);
+ assert.deepEqual(JSON.parse(h.values.get(BASE))['planned_day\u001fMonday'],{revision:1,value:{recipeId:'owner-dinner'}});assert.deepEqual(h.writes(),[]);
+});
+
+test('a conflicting dinner defers incoming serving changes and preserves the local recipe headcount',async()=>{
+ const h=fixture();await h.adopted();const local=h.saved();local.planned[0].recipeId='private-replacement';local.dayServings.Monday={recipeId:'private-replacement',count:3};h.values.set(STATE,JSON.stringify(local));
+ h.entries=shared.map(value=>value.section==='planned_day'?row('planned_day','Monday',{recipeId:'remote-replacement'},2):value.section==='servings'?row('servings','Monday',{count:6},2):value);
+ await h.api.synchronize();const saved=h.saved();assert.equal(saved.planned[0].recipeId,'private-replacement');assert.equal(Serving.forMeal(saved,saved.planned[0],{servings:4}),3);
+ assert.deepEqual(JSON.parse(h.values.get(BASE))['servings\u001fMonday'],{revision:1,value:{count:3}});assert.deepEqual(h.writes(),[]);
+});
+
+for(const variant of ['different-recipes','local-count-remote-recipe','local-recipe-remote-count'])test(`recipe/count pair preflight prevents outgoing or incoming cross-recipe changes: ${variant}`,async()=>{
+ const h=fixture();await h.adopted();const local=h.saved();
+ if(variant!=='local-count-remote-recipe')local.planned[0].recipeId='private-replacement';
+ const localCount=variant==='local-recipe-remote-count'?3:5;local.dayServings.Monday={recipeId:local.planned[0].recipeId,count:localCount};h.values.set(STATE,JSON.stringify(local));
+ h.entries=shared.map(value=>value.section==='planned_day'&&variant!=='local-recipe-remote-count'?row('planned_day','Monday',{recipeId:'remote-replacement'},2):value.section==='servings'&&variant==='local-recipe-remote-count'?row('servings','Monday',{count:6},2):value).reverse();
+ const result=await h.api.synchronize();assert.ok(result.conflicts>=2);const saved=h.saved();assert.equal(saved.planned[0].recipeId,local.planned[0].recipeId);assert.equal(Serving.forMeal(saved,saved.planned[0],{servings:4}),localCount);
+ assert.deepEqual(h.writes(),[],'neither recipe nor headcount is uploaded before the pair conflict is resolved');
+ const baseline=JSON.parse(h.values.get(BASE));assert.deepEqual(baseline['planned_day\u001fMonday'],{revision:1,value:{recipeId:'owner-dinner'}});assert.deepEqual(baseline['servings\u001fMonday'],{revision:1,value:{count:3}});
+});
+
+test('identical concurrent recipe/count pair changes can establish the new baseline without a conflict',async()=>{
+ const h=fixture();await h.adopted();const local=h.saved();local.planned[0].recipeId='same-replacement';local.dayServings.Monday={recipeId:'same-replacement',count:5};h.values.set(STATE,JSON.stringify(local));
+ h.entries=shared.map(value=>value.section==='planned_day'?row('planned_day','Monday',{recipeId:'same-replacement'},2):value.section==='servings'?row('servings','Monday',{count:5},2):value);
+ const result=await h.api.synchronize();assert.equal(result.conflicts,0);assert.deepEqual(h.writes(),[]);assert.equal(JSON.parse(h.values.get(BASE))['servings\u001fMonday'].revision,2);
 });

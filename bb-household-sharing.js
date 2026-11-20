@@ -47,7 +47,9 @@ function snapshot(){
  for(const day of DAYS){const p=state.planned.find(x=>x?.day===day);if(p?.recipeId){
   out.set(key('planned_day',day),{section:'planned_day',entry_key:day,value:{recipeId:p.recipeId}});
   const perDay=state.dayServings?.[day];
-  const n=perDay?.recipeId===p.recipeId?perDay.count:state.mealServings?.[p.recipeId];
+  // Match the existing meal resolver: an explicit slot count wins over a
+  // recipe-bound day override, then the legacy recipe-scoped value.
+  const slotCount=Number(p.servings),n=Number.isInteger(slotCount)&&slotCount>=1&&slotCount<=12?slotCount:Number(perDay?.recipeId===p.recipeId?perDay.count:state.mealServings?.[p.recipeId]);
   if(Number.isInteger(n)&&n>=1&&n<=12)
    out.set(key('servings',day),{section:'servings',entry_key:day,value:{count:n}});
  }}
@@ -168,9 +170,33 @@ async function synchronize({allowInitialImport=false,automatic=false}={}){
   const initialSync=Object.keys(prior).length===0;
   // A fresh device is never permitted to replace existing remote entries.
   const union=new Set([...remote.keys(),...local.keys(),...Object.keys(prior)]);
+  // A day and its recipe-bound headcount form one shared choice. Preflight
+  // both leaves before ANY patch: otherwise a private count could be sent to
+  // another device's replacement recipe even though each leaf's CAS succeeds.
+  const valueOf=(entries,k)=>entries.get(k)?.value??{deleted:true};
+  const unresolved=k=>{const r=remote.get(k),l=local.get(k),b=prior[k];
+   if(!b)return !!(r&&l&&!eq(l.value,r.value)||!r&&l&&initialSync&&(!allowInitialImport||status.role!=='owner'));
+   if(b.held)return !(allowInitialImport&&status.role==='owner'&&!r&&l);
+   if(b.localOnly)return true;
+   const lv=valueOf(local,k),rv=valueOf(remote,k);
+   return !eq(lv,b.value)&&(!eq(rv,b.value)||Number(r?.revision||0)!==b.revision)&&!eq(lv,rv);
+  };
+  const blockedDays=new Set();
+  for(const day of DAYS){const keys=[key('planned_day',day),key('servings',day)],known=keys.some(k=>prior[k]);
+   const localChanged=known&&keys.some(k=>!eq(valueOf(local,k),prior[k]?.value??{deleted:true}));
+   const remoteChanged=known&&keys.some(k=>!eq(valueOf(remote,k),prior[k]?.value??{deleted:true})||Number(remote.get(k)?.revision||0)!==Number(prior[k]?.revision||0));
+   if(keys.some(unresolved)||localChanged&&remoteChanged&&keys.some(k=>!eq(valueOf(local,k),valueOf(remote,k))))blockedDays.add(day);
+  }
   for(const k of union){const r=remote.get(k),l=local.get(k),b=prior[k];
    const parts=k.split('\u001f');if(receiptInventoryOwnsLeaf(parts[0],parts[1]))continue;
    const localValue=l?.value??{deleted:true},remoteValue=r?.value??{deleted:true};
+   if((parts[0]==='planned_day'||parts[0]==='servings')&&blockedDays.has(parts[1])){
+    conflicts.push(k);
+    if(b)nextBaseline[k]=b;
+    else if(!r&&l&&initialSync&&(!allowInitialImport||status.role!=='owner')){nextBaseline[k]={revision:0,value:localValue,held:true};heldConflicts.push(k);}
+    else delete nextBaseline[k];
+    continue;
+   }
    if(!b){
     if(r&&l&&!eq(localValue,remoteValue)){conflicts.push(k);continue;}
     if(r&&!l){changes.push(r);nextBaseline[k]={revision:r.revision,value:remoteValue};continue;}
@@ -208,6 +234,21 @@ async function synchronize({allowInitialImport=false,automatic=false}={}){
    if(remoteEdited&&!localEdited){if(r)changes.push(r);else changes.push({section:k.split('\u001f')[0],entry_key:k.split('\u001f')[1],value:{deleted:true}});
     nextBaseline[k]={revision:r?.revision||0,value:remoteValue};continue;}
    nextBaseline[k]={revision:r?.revision||0,value:remoteValue};
+  }
+  for(const change of [...changes])if(change.section==='planned_day'&&!change.value?.deleted){
+   const day=change.entry_key,planKey=key('planned_day',day),servingKey=key('servings',day),saved=nextBaseline[servingKey];
+   if(conflicts.includes(servingKey)||saved?.held||saved?.localOnly){
+    // A dinner and its headcount must not be applied separately while that
+    // day's serving choice is still held or conflicting.
+    changes.splice(changes.indexOf(change),1);if(!conflicts.includes(planKey))conflicts.push(planKey);
+    if(prior[planKey])nextBaseline[planKey]=prior[planKey];else delete nextBaseline[planKey];
+    continue;
+   }
+   // Reapply the authoritative day count even when it was unchanged relative
+   // to the baseline. A replacement recipe must not revive a private legacy
+   // override. Include any count just confirmed by our successful CAS patch.
+   const count=saved||remote.get(servingKey),value=count?.value??{deleted:true},revision=count?.revision||0;
+   changes.push({section:'servings',entry_key:day,value});nextBaseline[servingKey]={revision,value};
   }
   // Never mark a remote change as applied if the local write fails.
   requireUnchanged();if(changes.length){if(!readyToRender(pin)){message('Your shared changes are ready. Finish editing, then tap Sync safely now.');return;}applied=applyLeaves(changes,{baselineStorageKey,baselineValue:nextBaseline,expectedBaseline});}
@@ -309,6 +350,13 @@ async function adoptRemote(pin,hid){
   // partner's old budget or serving preference to the owner's shared plan.
   if(row.section==='budget_target'||row.section==='household_servings'){next[k]={revision:0,value:copy(row.value),localOnly:true};continue;}
   changes.push({...row,value:{deleted:true}});next[k]={revision:0,value:{deleted:true}};
+ }
+ for(const row of remote.values())if(row.section==='planned_day'&&!row.value?.deleted&&!remote.has(key('servings',row.entry_key))){
+  // An absent shared day override means use the shared household default,
+  // never this partner's older private recipe-scoped serving preference.
+  const k=key('servings',row.entry_key);
+  if(!next[k])changes.push({section:'servings',entry_key:row.entry_key,value:{deleted:true}});
+  next[k]={revision:0,value:{deleted:true}};
  }
  if(!unchanged())throw Error('Your device changed. Your previous plan is kept.');
  // applyLeaves validates every supported value and writes its durable recovery
