@@ -146,7 +146,7 @@ function hydrationHarness({cryptoAvailable=true,tamperPublic=false}={}){
  const context=vm.createContext({RECIPES:publicRecipes,BB307_NORMALIZED:clone(release.normal),BB307_SOURCE_RECIPES:clone(release.free),BB307_ORIGINAL_COSTS:new Map(release.free.map(r=>[r.id,{total:r.cost,lines:r.ingredients.map(i=>i[2])}])),BB307_VALID_IDS:new Set(release.free.map(r=>r.id)),bbVerifiedPaidRecipes:false,TextEncoder,crypto:cryptoAvailable?webcrypto:undefined,fetch:(url,args)=>{assert.equal(url,'/api/recipes/v700/premium?catalogue=700');assert.equal(args.cache,'no-store');return response(url,args);},localStorage:{getItem:()=>session?JSON.stringify(session):null},BBRecipePlanning:{metadata:()=>({})},render(){},document:{dispatchEvent(){}},Event:class{constructor(type){this.type=type;}}});
  context.window=context;
  vm.runInContext(html.slice(proofAt,proofEnd)+'\n'+code+'\nglobalThis.hydrate=bbPremiumReload;globalThis.snapshot=()=>({recipes:RECIPES.length,normalized:BB307_NORMALIZED.length,paid:bbVerifiedPaidRecipes});',context);
- return {release,context,session:value=>{session=value;},response:value=>{response=value;},reload:()=>context.hydrate(),snapshot:()=>({...context.snapshot()})};
+ return {release,context,session:value=>{session=value;},response:value=>{response=value;},reload:guard=>context.hydrate(guard),snapshot:()=>({...context.snapshot()})};
 }
 
 test('700 hydration adopts only a complete matching release and clears private rows on sign-out',async()=>{
@@ -173,6 +173,38 @@ test('700 hydration discards a delayed response after account or token changes',
  const pending=h.reload();h.session({user:{id:'member-b'},access_token:'token-b',expires_at:Date.now()/1000+3600});
  finish(new Response(JSON.stringify({catalogueVersion:700,releaseId:h.release.manifest.release_id,count:500,total:700,targetTotal:700,freeRecipesSha256:h.release.manifest.free_recipes_sha256,freeNormalizedSha256:h.release.manifest.free_normalized_sha256,recipes:h.release.premium,normalized:h.release.premiumNormal})));
  await pending;assert.deepEqual(h.snapshot(),{recipes:200,normalized:200,paid:false});
+});
+
+test('household hydration defers before fetching or rendering when an editor is already open',async()=>{
+ const h=hydrationHarness();let requests=0,renders=0;
+ h.context.fetch=async()=>{requests++;throw Error('must not fetch while editing');};h.context.render=()=>{renders++;};
+ await h.reload(()=>false);assert.equal(requests,0);assert.equal(renders,0);
+ assert.deepEqual(h.snapshot(),{recipes:200,normalized:200,paid:false});
+});
+
+test('household hydration preserves a draft opened while the protected response is pending',async()=>{
+ for(const outcome of ['valid','denied','network']){
+  const h=hydrationHarness();let allowed=true,finish,fail,renders=0;
+  h.context.render=()=>{renders++;};h.response(()=>new Promise((resolve,reject)=>{finish=resolve;fail=reject;}));
+  const pending=h.reload(()=>allowed);allowed=false;
+  if(outcome==='network')fail(Error('synthetic offline'));
+  else if(outcome==='denied')finish(new Response('{}',{status:403}));
+  else finish(new Response(JSON.stringify({catalogueVersion:700,releaseId:h.release.manifest.release_id,count:500,total:700,targetTotal:700,freeRecipesSha256:h.release.manifest.free_recipes_sha256,freeNormalizedSha256:h.release.manifest.free_normalized_sha256,recipes:h.release.premium,normalized:h.release.premiumNormal})));
+  await pending;assert.equal(renders,0,outcome+' cannot replace an unfinished form');
+  assert.deepEqual(h.snapshot(),{recipes:200,normalized:200,paid:false});
+ }
+});
+
+test('household hydration rechecks drafts after the generated catalogue proof and can safely retry',async()=>{
+ const h=hydrationHarness();let allowed=true,releaseProof,started=0,renders=0;
+ const proof=new Promise(resolve=>{releaseProof=resolve;});
+ h.context.crypto={subtle:{digest:async(...args)=>{started++;await proof;return webcrypto.subtle.digest(...args);}}};
+ h.context.render=()=>{renders++;};const pending=h.reload(()=>allowed);
+ while(started<2)await new Promise(resolve=>setImmediate(resolve));
+ allowed=false;releaseProof();await pending;
+ assert.equal(renders,0);assert.deepEqual(h.snapshot(),{recipes:200,normalized:200,paid:false});
+ allowed=true;await h.reload(()=>allowed);
+ assert.equal(renders,1);assert.deepEqual(h.snapshot(),{recipes:700,normalized:700,paid:true});
 });
 
 test('native digest fallback preserves the same pinned release when SubtleCrypto is unavailable',async()=>{

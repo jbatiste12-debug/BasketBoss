@@ -4,6 +4,7 @@ import {livePaidBillingEnabled,readPersonalPaidAccess,testFlightBetaEnabled} fro
    secret is server-only. No legacy basketboss_data restore is called here. */
 import {json,authenticatedUser,isLive,expectedPrice,entitlementForStatus,requireSameOrigin} from '../../../bb-server-lib/bb-billing.js';
 import {isNewestVerifiedSession} from '../../../bb-server-lib/bb-premium-seat.js';
+import {sendHouseholdInviteEmail} from '../../../bb-server-lib/bb-household-email.js';
 const SECTIONS=new Set(['planned_day','servings','pantry_item','kitchen_item','shopping_checked','budget_target','household_servings']);
 const SHOP_UNITS=new Set(['g','kg','ml','l','each','pack','clove','tin','loaf','slice','bulb']);
 const SHOP_UUID=/^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
@@ -156,7 +157,14 @@ export async function onRequestPost({request,env}){
    const email=String(data.email||'').trim().toLowerCase();
    if(!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)||email.length>254)return json({error:'Invalid partner email'},400);
    const result=await supa(env,'rpc/bb_hh_service_invite','POST',{p_owner:actor.id,p_email:email});
-   return json({...result,email_sent:false,message:'Invite saved. Ask your partner to sign in using their confirmed email.'});
+   const delivery=await sendHouseholdInviteEmail(env,{
+    ownerId:actor.id,recipient:email,householdId:result?.household_id,
+    readPending:async()=>({
+     household:await first(env,'bb_households',`${eq('id',result.household_id)}&${eq('owner_user_id',actor.id)}`,'id,owner_user_id,partner_user_id,partner_email,invite_status'),
+     invite:await first(env,'bb_household_invites',`${eq('household_id',result.household_id)}&${eq('partner_email',email)}&status=eq.pending`,'id,household_id,partner_email,status,accepted_by,expires_at')
+    })
+   });
+   return json({...result,...delivery});
   }
   if(data.action==='accept'){
    if(household)return json({error:'Already linked to a household'},409);

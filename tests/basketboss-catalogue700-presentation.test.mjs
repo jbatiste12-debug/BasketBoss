@@ -76,8 +76,14 @@ test('public web copy advertises the updated Paddle price and keeps platform and
   assert.match(landing, /200 free recipes/);
   assert.match(landing, /All 700 recipes/);
   assert.match(landing, /50 breakfast options/);
-  assert.match(landing, /App Store: currently 100 Free and 500 total/);
-  assert.match(landing, /expanded collection is coming in an update/);
+  for (const [file, source] of [['welcome.html', landing], ['compare.html', compare]]) {
+    const availability = source.match(/<p\b[^>]*\bid="recipe-availability"[^>]*>([\s\S]*?)<\/p>/)?.[1];
+    assert.ok(availability, file + ' keeps a dedicated platform availability note');
+    assert.match(availability, /Web &amp; Home Screen app: 200 Free recipes, all 700 with Premium/, file);
+    assert.match(availability, /iPhone and iPad recipe availability may vary by installed version/, file);
+    assert.match(availability, /<a href="https:\/\/apps\.apple\.com\/app\/id6829160611">current App Store listing<\/a>/, file);
+    assert.doesNotMatch(availability, /App Store: currently 100 Free and 500 total|expanded collection is coming in an update/, file);
+  }
   assert.doesNotMatch(landing, /BasketBoss is currently in Beta|BasketBoss · Beta/);
   assert.match(pricing, /All 700 recipes/);
   assert.match(pricing, /50 breakfast options/);
@@ -93,7 +99,6 @@ test('public web copy advertises the updated Paddle price and keeps platform and
   assert.match(subscriptions, /web trials above do not automatically apply/);
   assert.match(compare, /All 700 recipes/);
   assert.match(compare, /50 options across the full collection/);
-  assert.match(compare, /App Store: currently 100 Free and 500 total/);
   assert.match(terms, /complete collection available in your app version/);
   assert.match(terms, /Recipe counts may vary by app version/);
   for (const source of [landing, pricing, compare, terms, subscriptions]) assert.equal(transform700Presentation(source), source, 'already updated web copy and its App Store availability note stay stable');

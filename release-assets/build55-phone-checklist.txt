@@ -1,0 +1,75 @@
+BasketBoss 1.0.5 (55) — phone checklist
+
+Use your own test household accounts. Do not create purchases or change live
+customer data just to complete these checks. Restore only your own membership.
+
+1. Prepare and run
+   Run the Build 55 launcher. Confirm version 1.0.5 and build 55 in the App target,
+   connect your iPhone and choose Product > Run. Earlier projects stay intact.
+
+2. Premium owner opens sharing
+   In your existing Premium account, open Settings > Household Partner Sharing.
+   If the server confirms your sharing eligibility, the invitation screen opens.
+   It must not offer another subscription. Confirm your expected owner role.
+
+3. Accurate unavailable and Free states
+   If Premium is recognised but sharing is unavailable, check the explanation
+   says no additional subscription is needed and offers the appropriate retry
+   or sign-in action. Do not enable disabled sharing features for this test.
+   A verified Free account can still use the normal upgrade path. Network or
+   configuration errors must not be presented as a confirmed Free membership.
+
+4. Invitation, email and in-app notice
+   Send an invitation only to your own consenting test account. Confirm the
+   delivery result is honest: sent, unavailable or failed. An invite can be
+   saved even if server email delivery is unavailable; do not expect an email
+   without the server email provider configured. Sign in to the invited account
+   and leave the app in the foreground. Check its invitation notice appears.
+   A partner with a pending invite must be able to accept without buying Premium.
+   After acceptance, confirm the shared household opens and the notice clears.
+   Include a Premium-only dinner in the shared week. Its name, ingredients and
+   Cook action should load without changing tabs or restarting the app.
+
+5. Foreground household updates
+   With both test devices signed in to the same accepted household, make a small
+   reversible change to your test shopping list. Keep the other app foregrounded
+   and wait for its refresh cycle. Confirm it updates without manual reopening.
+   Repeat in the opposite direction. Check loading, offline and retry states
+   are clear; periodic refresh must not duplicate items or overwrite conflicts.
+   Backgrounding the app does not promise instantaneous push or email reminders.
+
+6. Session and account isolation
+   While sharing is loading, close its sheet or switch between your own test
+   accounts. An older account's invitation or household must not flash into the
+   new account, and a closed sheet must not reopen itself. Cancelled work must
+   not send an invite. Do not delete a real account for this smoke test; deletion
+   boundaries and stale responses are covered by isolated regression fixtures.
+
+7. Navigation and meal details
+   Switch Plan, Discover, At home, Shop and Cook repeatedly, including quick
+   taps while loading. No retired screen should appear then disappear. Open a
+   meal using its arrow, close it and switch tabs. No green backdrop should be
+   stranded, and the correct screen must remain usable with its normal controls.
+
+8. Pantry and shopping regression
+   Add a test item with Got it and no amount: unknown stock must stay unknown.
+   For 500 g needed with 250 g at home, confirm the 250 g shopping gap before
+   buyable-pack rounding. Running low, Out and existing unopened packs must
+   retain their existing behaviour. Open Add amount with the iPhone keypad:
+   all controls remain reachable, Done is visible, and no row is clipped.
+
+9. Native checks
+   Check your existing sign-in, own membership restoration, camera access,
+   safe areas and bottom navigation. No extra subscription should be required
+   for an already recognised Premium account. Never share keys or login links.
+
+10. Upload after device checks
+    Confirm 1.0.5 is the intended App Store Connect version and build 55 is unused.
+    Archive from the prepared workspace, or run the launcher with --archive.
+    Confirm archive 1.0.5 (55), then Distribute App > App Store Connect > Upload.
+    Do not run ordinary ios:sync. Browser tests do not replace a real phone test.
+
+PLAN OPTIONS
+- Open More options, then Budget & household and Meal preferences. Both should expand within the page and push later controls down.
+- Open the keyboard in the budget field, scroll to Set budget, and check no content is clipped.
+- Cancel Clear week and confirm all meals remain.

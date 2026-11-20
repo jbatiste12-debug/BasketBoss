@@ -57,10 +57,13 @@ test('public web pricing and comparison describe 200 Free and all 700 while reta
  assert.equal(Number(pricing.match(/All (\d+) recipes/)?.[1]),webTotal);
  assert.equal(Number(pricing.match(/Same (\d+)-recipe access/)?.[1]),webTotal);
  assert.match(pricing,/Free: 200 recipes/);
- for(const page of [pricing,comparison]){
-  assert.match(page,/App Store: currently 100 Free and 500 total/);
-  assert.match(page,/expanded collection is coming in an update/);
- }
+ assert.match(pricing,/App Store: currently 100 Free and 500 total/);
+ assert.match(pricing,/expanded collection is coming in an update/);
+ const availability=comparison.match(/<p[^>]*id="recipe-availability"[^>]*>([\s\S]*?)<\/p>/)?.[1];
+ assert.match(availability,/Web &amp; Home Screen app: 200 Free recipes, all 700 with Premium/);
+ assert.match(availability,/iPhone and iPad recipe availability may vary by installed version/);
+ assert.match(availability,/<a href="https:\/\/apps\.apple\.com\/app\/id6829160611">current App Store listing<\/a>/);
+ assert.doesNotMatch(comparison,/App Store: currently 100 Free and 500 total|expanded collection is coming in an update/);
 });
 
 test('preserved legacy onboarding and tours continue to describe 100 Free and all 500',()=>{
@@ -75,12 +78,19 @@ test('landing visible copy and metadata describe 200 Free and all 700 for the we
  const page=read('welcome.html');
  assert.match(page,/<strong>200 free recipes<\/strong>/);
  assert.match(page,/<h3>Premium<\/h3>[\s\S]*?<strong>All 700 recipes<\/strong>/);
- assert.match(page,/App Store: currently 100 Free and 500 total/);
- assert.match(page,/expanded collection is coming in an update/);
+ const availability=page.match(/<p[^>]*id="recipe-availability"[^>]*>([\s\S]*?)<\/p>/)?.[1];
+ assert.match(availability,/Web &amp; Home Screen app: 200 Free recipes, all 700 with Premium/);
+ assert.match(availability,/iPhone and iPad recipe availability may vary by installed version/);
+ assert.match(availability,/<a href="https:\/\/apps\.apple\.com\/app\/id6829160611">current App Store listing<\/a>/);
+ assert.doesNotMatch(page,/App Store: currently 100 Free and 500 total|expanded collection is coming in an update/);
  const schema=JSON.parse(page.match(/<script type="application\/ld\+json">([\s\S]*?)<\/script>/)[1]);
  assert.match(schema.description,/200 free recipes, all 700 with Premium/);
  assert.ok(schema.featureList.includes('200 free recipes; all 700 with Premium'));
- for(const name of ['description','twitter:description','og:description']){
+ const description=page.match(/<meta name="description" content="([^"]+)"/)?.[1];
+ assert.match(description,/UK meal planner and grocery list/);
+ assert.match(description,/food already at home, check pantry stock and shop for what is missing/);
+ assert.match(description,/Start free\./);
+ for(const name of ['twitter:description','og:description']){
   const tag=page.match(new RegExp('<meta (?:name|property)="'+name+'" content="([^"]+)"'))?.[1];
   assert.match(tag,/200 free recipes/);
   assert.match(tag,/700 with Premium on the web/);

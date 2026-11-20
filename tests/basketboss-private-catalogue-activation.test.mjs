@@ -69,7 +69,10 @@ test('live checks require public100, landing500, protected Premium and actual We
   await assert.rejects(verifyLivePublicRoutes(rows, async () => ({ok: true, text: async () => '321 recipes'})), /not yet published/);
 });
 test('legacy live check accepts the explicit installed-500 availability note alongside web700', async () => {
-  const {rows} = catalogue();const landing = fs.readFileSync(new URL('../welcome.html', import.meta.url), 'utf8');
+  const {rows} = catalogue();
+  // This version-500 activation gate deliberately requires an explicit legacy
+  // installed-app note. The current web700 marketing page is not that contract.
+  const landing = '<p>Web &amp; Home Screen app: 200 Free recipes, all 700 with Premium.</p><p>App Store: currently 100 Free and 500 total.</p>';
   const result = await verifyLivePublicRoutes(rows, async address => {
     const url = new URL(address);
     if (url.pathname === '/') return {ok: true, text: async () => landing};
@@ -78,7 +81,7 @@ test('legacy live check accepts the explicit installed-500 availability note alo
     return {ok: true, headers: new Headers({'content-type': 'image/webp'})};
   });
   assert.equal(result.landing500, true);
-  for (const copy of ['700 recipes', 'App Store: currently 200 Free and 700 total']) {
+  for (const copy of ['700 recipes', 'App Store: currently 200 Free and 700 total', fs.readFileSync(new URL('../welcome.html', import.meta.url), 'utf8')]) {
     await assert.rejects(verifyLivePublicRoutes(rows, async () => ({ok:true,text:async()=>copy})), /not yet published/);
   }
 });

@@ -10,7 +10,7 @@
 
 <link rel="stylesheet" href="/bb-food-visuals.css?v=98a1d9f601abfce8">
 <script src="/bb-food-visuals.js?v=aaaeaee1397a7c4c"></script>
-<link rel="stylesheet" href="/bb-navigation-polish.css?v=1f9c559ea6d2c12b">
+<link rel="stylesheet" href="/bb-navigation-polish.css?v=1c8c22f39f6e74be">
 <script defer src="/bb-navigation-polish.js?v=aee9704e7660f8a4"></script>
 <link rel="stylesheet" href="/bb-account-polish.css?v=81a9891e953f6261">
 <script defer src="/bb-account-polish.js?v=c16f04a7b8b852ec"></script>
@@ -9131,6 +9131,42 @@ function bbHomePrepareHouseholdRemoval(id){
  row.selected=false;row.manualPending=false;
  return {key:BB307_FEATURE_KEY,value:next,expected:before,id:row.id};
 }
+/* Household refreshes reload already-saved values in memory, without a new
+ * document navigation, cloud upload or replacement of an unfinished form. */
+function bbCanRefreshSharedHousehold({actor,token,expected}={}){
+ try{
+  if(!bbStorageSafe||document.hidden||window.BBAccountDeletion?.isDeleting?.()===true||typeof actor!=='string'||!actor||typeof token!=='string'||!token||typeof expected!=='string'||localStorage.getItem(KEY)!==expected)return false;
+  const session=JSON.parse(localStorage.getItem('basketboss_cloud_session_v1')||'null'),saved=JSON.parse(expected);
+  if(session?.user?.id!==actor||session?.access_token!==token||saved?.version!==2||!Array.isArray(saved.planned))return false;
+  if(document.activeElement?.matches?.('input,textarea,select,[contenteditable="true"]'))return false;
+  const visible=node=>!node.hidden&&node.getClientRects().length>0;
+  if([...document.querySelectorAll('dialog[open],[role="dialog"][aria-modal="true"],.cook-overlay')].some(node=>node.id!=='bbhs-dialog'&&visible(node)))return false;
+  for(const field of document.querySelectorAll('#app input,#app textarea,#app select')){
+   if(!visible(field)||field.disabled||field.readOnly)continue;
+   if(field.tagName==='SELECT'){
+    const options=[...field.options];
+    if(field.multiple){if(options.some(option=>option.selected!==option.defaultSelected))return false;}
+    else{const selected=options.findIndex(option=>option.defaultSelected),initial=selected<0?(options.length?0:-1):selected;if(field.selectedIndex!==initial)return false;}
+   }else if(!['checkbox','radio','button','submit','reset','hidden'].includes(field.type)&&field.value!==field.defaultValue)return false;
+  }
+  return true;
+ }catch{return false;}
+}
+function bbRefreshSharedHousehold(pin){
+ if(!bbCanRefreshSharedHousehold(pin))return false;
+ const previous={state,stock:bb307Stock,features:bb307FeatureState};
+ try{
+  const next=normalize(JSON.parse(pin.expected)),stock=bb307ReadStock(),features=bb307ReadFeatures();
+  if(!bbCanRefreshSharedHousehold(pin))return false;
+  state=next;bb307Stock=stock;bb307FeatureState=features;render();return true;
+ }catch{state=previous.state;bb307Stock=previous.stock;bb307FeatureState=previous.features;return false;}
+}
+async function bbPrepareSharedHouseholdRecipes(pin){
+ if(!bbCanRefreshSharedHousehold(pin))return false;
+ if(!bbVerifiedPaidRecipes||bbPremiumUser!==pin.actor||bbPremiumToken!==pin.token)
+  await bbPremiumReload(()=>bbCanRefreshSharedHousehold(pin));
+ return bbCanRefreshSharedHousehold(pin);
+}
 (function(win){const bindPlanner=function currentPlanner(){
   const store=win.localStorage;
   const context=()=>{
@@ -9151,6 +9187,7 @@ function bbHomePrepareHouseholdRemoval(id){
   return {storage:store,planKey:KEY,recoveryKey:BB_SNAPSHOT,getState:()=>state,setState:next=>{state=next;},context,recipe:getRecipe,allowed:bb176AllowedRecipe,ingredientsAllowed:bbAfIngredientAllowed,dinner:recipe=>BBRecipePlanning.isDinner(recipe),under30:bb81Under30,kidAllowed:bb81KidOK,variety:planned=>bbPlanVarietyValid(planned,true),fits:(recipe,day,other)=>{const map=new Map(RECIPES.map(value=>[value.id,bbAfTags(value)]));return bbAfFits(recipe,day,other,id=>map.get(id)||null,typeof BBPantryAutofill!=='undefined');},servings:(plan,slot,recipe)=>BBServing.forMeal(plan,slot,recipe),batchPairs:bbBatchPairs,completion:day=>{const meals=bbHomeDayMeals(day),confirmed=meals.some(meal=>win.BBHome?.isCooked?.(meal.occurrence)===true);if(!confirmed)return {confirmed:false};const undo=win.BBHome?.previewUndoDay?.({day,actorId:win.BBHome.actor()});return {confirmed:true,undoDay:undo?.ok===true&&undo.already===false};},rotationKey:actor=>BBRecipePlanning.STORAGE_KEY+':'+encodeURIComponent(actor),draw:bbAfDraw,replacement:(snapshot,id)=>win.BBPlanSwapCore.replacement(snapshot,id),readOnly:operation=>win.BBPlanSwapHostFactory.readOnlyStorage(win,operation),estimate,persist,record:bbRecordPlannedRecipes,render,notify,locked:()=>bbAfBusy,withLock:bbAfWithLock,yield:()=>new Promise(resolve=>win.requestAnimationFrame(()=>win.requestAnimationFrame(resolve)))};
  };win.BBPlanSwapHost=win.BBPlanSwapHostFactory.createHost(bindPlanner());})(window);
 window.BBHomeHost=Object.freeze({needsLegacyReview:bbHomeNeedsLegacyReview,settlePurchases:bbHomeSettlePurchases,
+ canRefreshSharedHousehold:bbCanRefreshSharedHousehold,refreshSharedHousehold:bbRefreshSharedHousehold,prepareSharedHouseholdRecipes:bbPrepareSharedHouseholdRecipes,
  id:BB307Pantry.pantryId,stock:bbHomePhysicalStock,
  openCook:id=>{if(getRecipe(id)&&bb176AllowedRecipe(id)){openCook(id);const url=new URL(location.href);url.searchParams.delete('bbcook');history.replaceState(null,'',url);return true;}return false;},
  keys:()=>({stock:BB307_STOCK_KEY,inventory:'basketboss_makeameal_v1_inventory'}),
@@ -9415,7 +9452,9 @@ function bbPremiumClear(){
   for(const r of bbFreeRecipes){BB307_ORIGINAL_COSTS.set(r.id,bbFreeCosts.get(r.id));BB307_VALID_IDS.add(r.id);}
   render();bbPremiumSignal();
 }
-async function bbPremiumReload(){
+async function bbPremiumReload(canApply){
+  const mayApply=()=>typeof canApply!=='function'||canApply();
+  if(!mayApply())return;
   const stamp=++bbPremiumRequest;
   const pin=bbPremiumIdentity();
   if(!pin){bbPremiumClear();return;}
@@ -9425,10 +9464,12 @@ async function bbPremiumReload(){
     const response=await fetch('/api/recipes/v700/premium?catalogue=700',{headers:{'Authorization':'Bearer '+pin.token,'Accept':'application/json'},credentials:'same-origin',cache:'no-store'});
     if(stamp!==bbPremiumRequest)return;
     if(!bbPremiumMatches(pin)){bbPremiumClear();return;}
+    if(!mayApply())return;
     if(!response.ok){bbPremiumClear();return;}
     const data=await response.json();
     if(stamp!==bbPremiumRequest)return;
     if(!bbPremiumMatches(pin)){bbPremiumClear();return;}
+    if(!mayApply())return;
     if(data?.catalogueVersion!==700||data.releaseId!==BB_CATALOGUE700_RELEASE.releaseId||data.count!==500||data.total!==700||data.targetTotal!==700||data.freeRecipesSha256!==BB_CATALOGUE700_RELEASE.freeRecipesSha256||data.freeNormalizedSha256!==BB_CATALOGUE700_RELEASE.freeNormalizedSha256||!Array.isArray(data.recipes)||data.recipes.length!==500||!Array.isArray(data.normalized)||data.normalized.length!==500)throw Error('Premium recipe data incomplete');
     if(!await BB_CATALOGUE700_FREE_PROOF)throw Error('Public recipe release mismatch');
     if(stamp!==bbPremiumRequest)return;
@@ -9439,6 +9480,7 @@ async function bbPremiumReload(){
     for(const r of data.recipes){if(typeof r?.id!=='string'||fresh.has(r.id)||unique.has(r.id))throw Error('Premium recipe IDs invalid');unique.add(r.id)}
     if(!data.normalized.every(r=>unique.has(r?.id)))throw Error('Premium ingredient IDs invalid');
     // Clear any cached data for a different member before adopting new server data.
+    if(!mayApply())return;
     bbPremiumClear();
     window.BBRecipePurchaseBasis?.apply(data.recipes,data.normalized,{canonicalize:BBPriceV19.canonical});
     RECIPES.push(...data.recipes);BB307_NORMALIZED.push(...data.normalized);
@@ -9450,7 +9492,7 @@ async function bbPremiumReload(){
     bbVerifiedPaidRecipes=true;bbPremiumUser=id;bbPremiumToken=pin.token;
     if(typeof bb307ApplyRememberedMarket==='function')bb307ApplyRememberedMarket();
     render();bbPremiumSignal();
-  }catch(error){if(stamp===bbPremiumRequest)bbPremiumClear()}
+  }catch(error){if(stamp===bbPremiumRequest&&mayApply())bbPremiumClear()}
 }
 window.addEventListener('basketboss:session-changed',()=>{void bbPremiumReload()});
 window.addEventListener('focus',()=>{void bbPremiumReload()});
@@ -14166,7 +14208,7 @@ body[data-bbnext-view="discover"] #app .bb175-discover-heading{padding-top:calc(
 <link rel="stylesheet" href="/bb-membership-compare.css?v=ad910a66d1cf7c71">
 <script defer src="/pwa700/bb-membership-compare.js?v=b318bb5e665db375"></script>
 <link rel="stylesheet" href="/bb-plan-premium-polish.css?v=0223a44bb8f3aae4">
-<script defer src="/pwa700/bb-plan-premium-polish.js?v=119b12c93909fd8e"></script>
+<script defer src="/pwa700/bb-plan-premium-polish.js?v=293c8115194d75ec"></script>
 <link rel="stylesheet" href="/bb-ingredient-picker.css?v=9b21ceeb3e24ebc0">
 <link rel="stylesheet" href="/bb-evening-pivot-ui.css?v=f5e043dd0ce3bffd">
 <link rel="stylesheet" href="/bb-cook-voice.css?v=ddca166cde743c7d">
@@ -14176,8 +14218,8 @@ body[data-bbnext-view="discover"] #app .bb175-discover-heading{padding-top:calc(
 <link rel="stylesheet" href="/bb-servings-mobile-polish.css?v=cc45ed59fe0bd110">
 <link rel="stylesheet" href="/bb-partner-signup-prompt.css?v=4b8718904151c105">
 <script defer src="/bb-partner-signup-prompt.js?v=4d5dba284b0f176f"></script>
-<link rel="stylesheet" href="/bb-household-sharing.css?v=5a899815065c9b06">
-<script defer src="/bb-household-sharing.js?v=f620b7a97e86b3cc"></script>
+<link rel="stylesheet" href="/bb-household-sharing.css?v=b26e50b91249d42a">
+<script defer src="/bb-household-sharing.js?v=08042d25dfcdfa20"></script>
 <link rel="stylesheet" href="/bb-recipe-ingredient-layout.css?v=7a30d20f75de3e74">
 <style id="bb-hide-dish-price-badges">
 /* Dish cards show time and servings; Shop and budget prices keep their own selectors. */
@@ -14199,7 +14241,7 @@ body[data-bbnext-view="discover"] #app .bb175-discover-heading{padding-top:calc(
 <link rel="stylesheet" href="/bb-keyboard-layout.css?v=3010ec5f4a32a9bb">
 <script defer src="/bb-keyboard-layout.js?v=f4fa20927c15c703"></script>
 <link rel="stylesheet" href="/bb-simple-layout.css?v=b78ffdb3dab2f664">
-<script defer src="/bb-simple-layout.js?v=48d64fd307288197"></script>
+<script defer src="/bb-simple-layout.js?v=9187defc2c7cf2cf"></script>
 <script defer src="/bb-pantry-deduction.js?v=7f7ea56758539457"></script>
 <script defer src="/bb-home.js?v=6ef580b0821a489f"></script><link rel="stylesheet" href="/bb-day-done.css?v=253f0f3f5c07d102"><script defer src="/bb-day-done.js?v=c73510319a99a836"></script><link rel="stylesheet" href="/bb-shop-add.css?v=76495afe6b55de2b"><script defer src="/bb-shop-add.js?v=5fea55d7b536cd6d"></script><script defer src="/bb-cupboard-staples.js?v=ee852189a99dad60"></script><script src="/bb-pantry-autofill.js?v=436984c5e56295f2"></script><link rel="stylesheet" href="/bb-pantry-first-controls.css?v=11be113518928663"><script defer src="/bb-pantry-first-controls.js?v=e243a87c38672c12"></script>
 <link rel="stylesheet" href="/bb-shared-shopping.css?v=608ff045e8152025">
@@ -14230,8 +14272,8 @@ body[data-bbnext-view="discover"] #app .bb175-discover-heading{padding-top:calc(
 <link rel="stylesheet" href="/bb-premium-finish.css?v=53527c907ca0bb56">
 <link rel="stylesheet" href="/bb-premium-dialogs.css?v=e42b0968a6881d77">
 
-<link rel="stylesheet" href="/bb-plan-compact.css?v=08224fe4bd43ebf0">
-<script defer src="/bb-plan-compact.js?v=e5bd2424afceafee"></script>
+<link rel="stylesheet" href="/bb-plan-compact.css?v=7bf7020841cb5e27">
+<script defer src="/bb-plan-compact.js?v=f9212c2abd7d1744"></script>
 
 <link rel="stylesheet" href="/bb-day-plan-sheet.css?v=2fb05a73c941490b">
 <script defer src="/bb-day-plan-sheet.js?v=24ac571e820dd23d"></script>

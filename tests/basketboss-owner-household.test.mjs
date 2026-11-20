@@ -74,6 +74,8 @@ test('owner sharing needs the exact server string flag and explicit production h
 test('a nonowner or malformed configured identity cannot claim complimentary sharing',async()=>{
  const f=await fixture();try{
   for(const actor of [PARTNER,OTHER,'owner'])assert.equal((await readPersonalPaidAccess(f.env,actor,options)).premiumAccess,false);
+  const forged=await householdPost({request:request(PARTNER,'/api/household',{action:'invite',email:email(OTHER),premium:true,tier:'owner',owner_user_id:OWNER}),env:f.env});
+  assert.equal(forged.status,403);assert.equal(f.calls.some(call=>call.url.pathname.endsWith('/rpc/bb_hh_service_invite')),false,'client claims cannot authorise an invitation');
   await assert.rejects(readPersonalPaidAccess(f.env,undefined,options),'an absent caller identity must never grant access');
   for(const id of ['',OTHER,'owner',null]){f.env.BB_OWNER_USER_ID=id;assert.equal((await readPersonalPaidAccess(f.env,OWNER,options)).premiumAccess,false);}
  }finally{f.restore();}
@@ -89,7 +91,9 @@ test('default-OFF owner membership remains separate from a sharing or paid subsc
 test('enabled owner can invite one partner, who inherits access but no subscription management rights',async()=>{
  const f=await fixture();try{
   assert.equal((await householdPost({request:request(OWNER,'/api/household',{action:'invite',email:email(PARTNER)}),env:f.env})).status,200);
-  assert.equal((await householdGet({request:request(PARTNER),env:f.env})).status,200);
+  const pending=await householdGet({request:request(PARTNER),env:f.env});assert.equal(pending.status,200);
+  const invitation=await pending.json();assert.equal(invitation.premium,false);assert.equal(invitation.role,'free');assert.equal(invitation.invite.household_id,HH,'a personally Free partner can still accept an eligible invitation');
+  assert.equal((await (await membershipGet({request:request(PARTNER,'/api/subscription/status'),env:f.env})).json()).premiumAccess,false);
   assert.equal((await householdPost({request:request(PARTNER,'/api/household',{action:'accept',household_id:HH}),env:f.env})).status,200);
   const access=await readMemberPaidAccess(request(PARTNER),f.env,user(PARTNER));
   assert.equal(access.premiumAccess,true);assert.equal(access.provider,'household');assert.equal(access.householdOwnerId,OWNER);assert.equal(access.paddleRow,null);
@@ -97,6 +101,19 @@ test('enabled owner can invite one partner, who inherits access but no subscript
   assert.equal((await portalGet({request:request(PARTNER,'/api/subscription/portal'),env:f.env})).status,404);
   assert.equal((await householdPost({request:request(PARTNER,'/api/household',{action:'invite',email:email(OTHER)}),env:f.env})).status,403);
  }finally{f.restore();}
+});
+
+test('live Founder and standard members can invite without the complimentary owner grant',async()=>{
+ for(const plan of ['founder','standard'])for(const status of ['active','trialing']){
+  const f=await fixture({enabled:'false'});try{
+   f.sql.prepare('INSERT INTO bb_paid_entitlements(user_id,status,price_id,plan,updated_at_ms) VALUES(?,?,?,?,?)').run(OTHER,status,plan==='founder'?FOUNDER_PRICE:PRICE,plan,Date.now());
+   const state=await (await householdGet({request:request(OTHER),env:f.env})).json();
+   assert.equal(state.configured,true);assert.equal(state.premium,true);assert.equal(state.role,'free');assert.equal(state.household_id,null);
+   const invite=await householdPost({request:request(OTHER,'/api/household',{action:'invite',email:email(PARTNER)}),env:f.env});
+   assert.equal(invite.status,200,plan+' '+status);
+   assert.deepEqual(f.calls.find(call=>call.url.pathname.endsWith('/rpc/bb_hh_service_invite')).body,{p_owner:OTHER,p_email:email(PARTNER)});
+  }finally{f.restore();}
+ }
 });
 test('owner and accepted partner use the same server-selected receipt scope and cannot select another household',async()=>{
  const f=await fixture({linked:true});try{

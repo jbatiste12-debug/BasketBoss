@@ -11,7 +11,7 @@ import {onRequestGet as status} from '../functions/api/subscription/status.js';
 import {onRequestGet as recipes} from '../functions/api/recipes/premium.js';
 import {onRequest as ai} from '../functions/api/bb173/[action].js';
 import {onRequestGet as inventory} from '../functions/api/receipt-inventory.js';
-import {onRequestGet as household} from '../functions/api/household/index.js';
+import {onRequestGet as household,onRequestPost as householdPost} from '../functions/api/household/index.js';
 const USER='11111111-1111-4111-8111-111111111111',OWNER='22222222-2222-4222-8222-222222222222',TOKEN='33333333-3333-4333-8333-333333333333',SID='44444444-4444-4444-8444-444444444444',HH='55555555-5555-4555-8555-555555555555';
 const LIVE='https://kbhyosxuvlcazyzzinqv.supabase.co',ORIGIN='https://basketboss.co.uk',PRICE='pri_'+'p'.repeat(26);
 const apiKey=generateKeyPairSync('ec',{namedCurve:'prime256v1',privateKeyEncoding:{format:'pem',type:'pkcs8'},publicKeyEncoding:{format:'pem',type:'spki'}}).privateKey;
@@ -41,12 +41,18 @@ async function fixture(options={}){
    return Response.json([h]);
   }
   if(u.pathname.endsWith('/bb_household_invites'))return Response.json([]);
+  if(u.pathname.endsWith('/rpc/bb_hh_service_invite'))return Response.json({household_id:HH,status:'pending'});
   if(u.pathname.endsWith('/rpc/bb_receipt_inventory_service'))return Response.json({ok:true,autoStockReady:true});
   throw Error('Unexpected outbound request '+u.origin+u.pathname);
  };
  return {env,db,calls,restore(){globalThis.fetch=realFetch;db.sql.close();}};
 }
 function request(pathname){const bearer='header.'+Buffer.from(JSON.stringify({sub:USER,session_id:SID,exp:Date.now()/1000+3600})).toString('base64url')+'.signature';return new Request(ORIGIN+pathname,{headers:{Authorization:'Bearer '+bearer}});}
+function inviteRequest(){
+ const source=request('/api/household'),headers=new Headers(source.headers);
+ headers.set('Origin',ORIGIN);headers.set('Content-Type','application/json');
+ return new Request(source,{method:'POST',headers,body:JSON.stringify({action:'invite',email:'partner@example.test'})});
+}
 async function paidApple(f,id=USER,extra={}){
  const now=Date.now();f.db.sql.prepare('INSERT OR IGNORE INTO bb_apple_account_tokens VALUES(?,?,?)').run(id,TOKEN,now);
  await persistAppleSubscription(f.env,id,{environment:'Production',originalTransactionId:'20000000000000',transactionId:'20000000000001',appAccountToken:TOKEN,productId:'uk.co.basketboss.premium.monthly',plan:'monthly',status:'active',expiresAtMs:now+3600000,graceExpiresAtMs:null,revokedAtMs:null,cancelAtPeriodEnd:false,appleSignedAtMs:now,lastVerifiedAtMs:now,...extra});
@@ -70,6 +76,21 @@ test('cancellation retains paid access until expiry; expired and refunded Apple 
    const state=await (await status({request:request('/api/subscription/status'),env:f.env})).json();
    assert.equal(state.premiumAccess,expected);assert.equal(state.provider,'apple');assert.equal(state.subscription.cancelAtPeriodEnd,expected);
    assert.equal((await recipes({request:request('/api/recipes/premium'),env:f.env})).status,expected?200:403);
+  }finally{f.restore();}
+ }
+});
+test('current Production Apple members can create an invitation before they own a household',async()=>{
+ // Apple introductory trials use the same verified active entitlement; they
+ // do not introduce a separate client-controlled trial sharing grant.
+ for(const extra of [{},{cancelAtPeriodEnd:true},{status:'grace_period',expiresAtMs:Date.now()-1000,graceExpiresAtMs:Date.now()+3600000}]){
+  const f=await fixture();try{
+   await paidApple(f,USER,extra);
+   const member=await (await status({request:request('/api/subscription/status'),env:f.env})).json();
+   assert.equal(member.premiumAccess,true);assert.equal(member.provider,'apple');
+   const sharing=await (await household({request:request('/api/household'),env:f.env})).json();
+   assert.equal(sharing.configured,true);assert.equal(sharing.premium,true);assert.equal(sharing.role,'free');assert.equal(sharing.household_id,null);
+   assert.equal((await householdPost({request:inviteRequest(),env:f.env})).status,200);
+   assert.deepEqual(JSON.parse(f.calls.find(call=>call.url.endsWith('/rpc/bb_hh_service_invite')).init.body),{p_owner:USER,p_email:'partner@example.test'});
   }finally{f.restore();}
  }
 });
@@ -103,6 +124,8 @@ test('Sandbox purchase remains personal and cannot enable household, partner rec
   assert.equal(await sharedHouseholdPremiumOwner(request('/api/subscription/status'),f.env,{id:USER,email:'member@example.test'}),null);
   assert.equal((await recipes({request:request('/api/recipes/premium'),env:f.env})).status,403);
   assert.equal((await (await household({request:request('/api/household'),env:f.env})).json()).premium,false);
+  assert.equal((await householdPost({request:inviteRequest(),env:f.env})).status,403);
+  assert.equal(f.calls.some(call=>call.url.endsWith('/rpc/bb_hh_service_invite')),false,'a personal Sandbox entitlement cannot create a production invitation');
  }finally{f.restore();}
 });
 test('pending invitations, identity mismatch, deletion and invalid SKU cannot grant Apple Premium',async()=>{

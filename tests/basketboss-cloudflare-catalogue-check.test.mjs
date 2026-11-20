@@ -29,7 +29,7 @@ test('review readiness rejects an outdated privacy revision even when it is a va
  await assert.rejects(verifyReviewDeployment(async()=>new Response('Last updated 1 November 2026.',{headers:{'Content-Type':'text/html'}})),/App review compliance routes/);
 });
 
-function landingFixture({hidden=false,assetType,assetStatus=200,headline='Shop your kitchen<br><span>before the supermarket.</span>',html,pageStatus=200,pageType='text/html'}={}){
+function landingFixture({hidden=false,assetType,assetStatus=200,headline='Start with what you <span>have.</span><br>Shop for what you <span>need.</span>',html,pageStatus=200,pageType='text/html'}={}){
  const requests=[];
  const perform=async(address,options)=>{
   requests.push({address,options});
@@ -56,6 +56,7 @@ test('landing verification accepts the actual checked-in pantry-first page witho
 
 test('landing verification rejects stale copy, missing assets and HTML fallback assets',async()=>{
  await assert.rejects(verifyLandingDeployment(landingFixture({headline:'Previous landing'}).perform),/headline is not present/);
+ await assert.rejects(verifyLandingDeployment(landingFixture({headline:'Shop your kitchen<br><span>before the supermarket.</span>'}).perform),/headline is not present/);
   await assert.rejects(verifyLandingDeployment(landingFixture({headline:'Your kitchen.<br><em>Made simple.</em>'}).perform),/headline is not present/);
  await assert.rejects(verifyLandingDeployment(landingFixture({headline:'Aim to save<br><span>£25+ a week.</span>'}).perform),/headline is not present/);
  await assert.rejects(verifyLandingDeployment(landingFixture({assetStatus:404}).perform),/asset is not available/);

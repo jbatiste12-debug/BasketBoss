@@ -188,7 +188,16 @@
    if(hint)hint.textContent='Your free plan stays available. Premium checkout requires an account, and eligibility and renewal terms are confirmed securely before payment.';
  }
  function start(){
-   setupHeader();decorateBudget();decorateMealRows();decorateAutofill();enhanceExistingProDialog();
+   setupHeader();
+   // The original account adapter can finish its header after our synchronous
+   // startup. Watch only its shell until those same controls are available;
+   // the observer disconnects as soon as the existing header is decorated.
+   const shell=$('.shell');
+   if(!headerReady&&shell){
+     const headerObserver=new MutationObserver(()=>{setupHeader();if(headerReady)headerObserver.disconnect();});
+     headerObserver.observe(shell,{childList:true,subtree:true});
+   }
+   decorateBudget();decorateMealRows();decorateAutofill();enhanceExistingProDialog();
    const app=$('#app');if(app){
      const observer=new MutationObserver(()=>{updateHeader();decorateBudget();decorateMealRows();decorateAutofill();enhanceExistingProDialog();});
      observer.observe(app,{childList:true,subtree:true});
@@ -202,6 +211,6 @@
    const resizePlan=()=>{if(sizeFrame!==null)return;sizeFrame=requestAnimationFrame(()=>{sizeFrame=null;sizePlanPopovers($('#app[data-bb-compact-plan="true"] #bbpolAutofillCard'));});};
    window.addEventListener('resize',resizePlan,{passive:true});window.addEventListener('scroll',resizePlan,{passive:true});window.visualViewport?.addEventListener('resize',resizePlan,{passive:true});
  }
- if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',()=>setTimeout(start,0),{once:true});
- else setTimeout(start,0);
+ if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',start,{once:true});
+ else start();
 })();

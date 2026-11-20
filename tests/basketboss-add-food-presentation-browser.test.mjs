@@ -2,13 +2,14 @@ import test,{before,after} from 'node:test';
 import assert from 'node:assert/strict';
 import fs from 'node:fs/promises';
 import path from 'node:path';
+import os from 'node:os';
 import {fileURLToPath} from 'node:url';
 import {createRequire} from 'node:module';
 
 const require=createRequire(import.meta.url),ROOT=fileURLToPath(new URL('..',import.meta.url));
 const captureBefore=process.env.BB_ADD_FOOD_CAPTURE_BEFORE==='1';
 const baselineDirectory=process.env.BB_ADD_FOOD_BASELINE_DIR;
-const output=process.env.BB_ADD_FOOD_SCREENSHOTS||'/workspace/shared/BasketBoss-Add-Food-20261116';
+const output=process.env.BB_ADD_FOOD_SCREENSHOTS||path.join(os.tmpdir(),'BasketBoss-Add-Food-20261116');
 let chromium,browser;
 try{({chromium}=require(process.env.BB_PLAYWRIGHT_MODULE||'playwright'));}catch{}
 before(async()=>{if(chromium)browser=await chromium.launch({headless:true,executablePath:process.env.BB_CHROMIUM_PATH||'/usr/bin/chromium',args:['--no-sandbox']});});

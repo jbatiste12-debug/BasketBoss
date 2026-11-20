@@ -14,7 +14,8 @@ globalThis.__bbPackApiFixture={
 const source=fs.readFileSync(new URL('../functions/api/household/index.js',import.meta.url),'utf8')
  .replace(/import \{([^\n]+)\} from '\.\.\/\.\.\/\.\.\/bb-server-lib\/bb-paid-access\.js';/,'const {$1}=globalThis.__bbPackApiFixture;')
  .replace(/import \{([^\n]+)\} from '\.\.\/\.\.\/\.\.\/bb-server-lib\/bb-billing\.js';/,'const {$1}=globalThis.__bbPackApiFixture;')
- .replace(/import \{([^\n]+)\} from '\.\.\/\.\.\/\.\.\/bb-server-lib\/bb-premium-seat\.js';/,'const {$1}=globalThis.__bbPackApiFixture;');
+ .replace(/import \{([^\n]+)\} from '\.\.\/\.\.\/\.\.\/bb-server-lib\/bb-premium-seat\.js';/,'const {$1}=globalThis.__bbPackApiFixture;')
+ .replace("../../../bb-server-lib/bb-household-email.js",new URL("../bb-server-lib/bb-household-email.js",import.meta.url).href);
 assert.ok(!source.includes(" from '../../../bb-server-lib/"));
 const api=await import('data:text/javascript;base64,'+Buffer.from(source).toString('base64'));
 const env=()=>({CF_PAGES_BRANCH:'main',BB_PARTNER_SHARING_ENABLED:'true',BB_PARTNER_PRODUCTION_READY:'true',BB_PREMIUM_SINGLE_SESSION_ENABLED:'true',BB_LIVE_WEBHOOK_ENABLED:'true',SUPABASE_URL:'https://kbhyosxuvlcazyzzinqv.supabase.co',SUPABASE_PUBLISHABLE_KEY:'public_fixture_'+'p'.repeat(30),SUPABASE_SECRET_KEY:'sb_secret_fixture_'+'s'.repeat(40),BILLING_DB:{prepare(){}},fixturePremium:true});

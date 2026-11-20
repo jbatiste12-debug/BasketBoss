@@ -17,7 +17,7 @@ before(async()=>{
 });
 after(async()=>{await browser?.close();});
 
-async function fixture(viewport,run){
+async function fixture(viewport,run,{slowPolishMs=0,observeColdPaint=false}={}){
  const context=await browser.newContext({viewport,isMobile:viewport.width<768,hasTouch:viewport.width<768,reducedMotion:'no-preference',serviceWorkers:'block'}),page=await context.newPage(),errors=[];
  page.setDefaultTimeout(12000);page.on('pageerror',error=>errors.push(error.message));page.on('dialog',dialog=>dialog.dismiss());
  const app=transform700Presentation(transform700Html(await fs.readFile(path.join(root,'app.html'),'utf8'),release));
@@ -28,6 +28,7 @@ async function fixture(viewport,run){
   if(!['basketboss.co.uk','www.basketboss.co.uk'].includes(url.hostname))return route.fulfill({status:200,body:''});
   if(url.pathname.startsWith('/api/'))return route.fulfill({status:401,contentType:'application/json',body:'{"authenticated":false,"error":"sign_in_required"}'});
   let rel=decodeURIComponent(url.pathname).replace(/^\//,'').replace(/^pwa700\//,'');
+  if(slowPolishMs&&rel==='bb-plan-premium-polish.js')await new Promise(resolve=>setTimeout(resolve,slowPolishMs));
   if(['app','app/','app.html','index.html','index',''].includes(rel))rel='app.html';
   if(rel.includes('..'))return route.fulfill({status:404,body:''});
   try{
@@ -42,6 +43,26 @@ async function fixture(viewport,run){
    const types={'.html':'text/html','.js':'application/javascript','.mjs':'application/javascript','.css':'text/css','.json':'application/json','.svg':'image/svg+xml','.webp':'image/webp','.png':'image/png','.jpg':'image/jpeg'};
    return route.fulfill({status:200,contentType:types[path.extname(rel)]||'application/octet-stream',body});
   }catch{return route.fulfill({status:404,body:''});}
+ });
+ if(observeColdPaint)await context.addInitScript(()=>{
+  const probe=window.__coldNavPaint={frames:[],stop:false};
+  const visible=node=>!!node&&node.getClientRects().length>0&&getComputedStyle(node).visibility!=='hidden'&&getComputedStyle(node).display!=='none'&&(!node.checkVisibility||node.checkVisibility({checkOpacity:true,checkVisibilityCSS:true}));
+  const sample=()=>{
+   const region=document.getElementById('bb307Island')?.closest('[role="note"]'),ring=document.querySelector('#app.bbnext-plan .bbnext-plan-donut');
+   const legacyPlan=visible(ring)&&ring.getBoundingClientRect().height>70;
+   let diagnostic;
+   if(legacyPlan){
+    const declarations=[];
+    const inspect=(rules,source)=>{for(const rule of rules){
+     if(rule.selectorText){try{if(ring.matches(rule.selectorText)&&(rule.style.height||rule.style.minHeight||rule.style.padding||rule.style.transform))declarations.push({source,selector:rule.selectorText,height:rule.style.height,minHeight:rule.style.minHeight,padding:rule.style.padding,transform:rule.style.transform});}catch{}}
+     else if(rule.cssRules&&(!rule.media||matchMedia(rule.conditionText).matches))inspect(rule.cssRules,source);
+    }};
+    for(const sheet of document.styleSheets)try{inspect(sheet.cssRules,sheet.href);}catch{}
+    diagnostic={appData:{...document.getElementById('app')?.dataset},appClass:document.getElementById('app')?.className,ringClass:ring.className,ringParent:ring.parentElement?.className,ringHeight:ring.getBoundingClientRect().height,computedHeight:getComputedStyle(ring).height,overview:!!document.querySelector('.bbpc-budget-overview'),declarations};
+   }
+   probe.frames.push({time:performance.now(),ready:document.readyState,legacyRegion:region?.parentElement===document.body&&visible(region),legacyPlan,...(diagnostic?{diagnostic}:{})});
+   if(!probe.stop&&probe.frames.length<3000)requestAnimationFrame(sample);
+  };requestAnimationFrame(sample);
  });
  await context.addInitScript(()=>{
   if(localStorage.getItem('navigation-first-paint-fixture'))return;
@@ -63,6 +84,31 @@ async function fixture(viewport,run){
 const physical=page=>page.evaluate(()=>({inventory:localStorage.getItem('basketboss_makeameal_v1_inventory'),stock:localStorage.getItem('basketboss_321_v7_measured_pantry'),planned:JSON.parse(localStorage.getItem('basketboss_321_unified_state_v1')).planned}));
 const nav=(page,name)=>page.locator('#bbPrimaryNavigation [data-bb-nav-item="'+name+'"]');
 
+for(const viewport of [{width:390,height:844},{width:1440,height:1000}])test('cold entry and Cook return never paint the retired region banner or Plan card with a slow presenter at '+viewport.width+'px',{skip:!chromium?'Playwright unavailable':false},()=>fixture(viewport,async page=>{
+ const saved=await physical(page);
+ async function checkColdPaint(label){
+  await page.waitForFunction(()=>document.querySelector('#app')?.dataset.bbCompactHeader==='true');
+  await page.waitForTimeout(100);
+  const frames=await page.evaluate(()=>{window.__coldNavPaint.stop=true;return window.__coldNavPaint.frames;});
+  const directory=path.join(process.env.BB_UI_SCREENSHOT_DIR||path.join(os.tmpdir(),'basketboss-ui-previews'),'cold-navigation-'+viewport.width);await fs.mkdir(directory,{recursive:true});
+  await fs.writeFile(path.join(directory,label==='initial entry'?'entry-paint-samples.json':'cook-return-paint-samples.json'),JSON.stringify(frames,null,2));
+  assert.ok(frames.length>2,label+': sampled the actual document loading period');
+  assert.ok(frames.some(frame=>frame.ready==='loading'),label+': probe starts before deferred presentation scripts');
+  assert.deepEqual(frames.filter(frame=>frame.legacyRegion),[],label+': no raw region banner flashes before the current header');
+  assert.deepEqual(frames.filter(frame=>frame.legacyPlan),[],label+': no retired full-size budget ring flashes before the compact hero');
+  assert.equal(await page.locator('#bbpolRegionPill').count(),1,label+': the current region control is installed after its original DOM becomes available');
+  assert.equal(await page.locator('#bbpolUpgradePill').count(),1,label+': the current membership control remains available');
+ }
+ await checkColdPaint('initial entry');
+ await nav(page,'cook').click();await page.waitForURL(/make-a-meal\.html/);
+ await page.waitForFunction(()=>document.body.classList.contains('bb-r6-cook-page'));
+ await page.locator('[data-bb-navigation="polished"] [data-bb-nav-item="plan"]').click();
+ await page.waitForSelector('.bbnext-day.has-meal');
+ await checkColdPaint('return from Cook');
+ assert.equal(await nav(page,'plan').getAttribute('data-bb-nav-current'),'true');
+ assert.deepEqual(await physical(page),saved,'returning from Cook preserves the saved plan and stock');
+},{slowPolishMs:800,observeColdPaint:true}));
+
 for(const viewport of [{width:390,height:844},{width:1440,height:1000}])test('normal-motion tab paints never expose retired pantry UI at '+viewport.width+'px',{skip:!chromium?'Playwright unavailable':false},()=>fixture(viewport,async(page,context)=>{
  const saved=await physical(page);
  // A rAF sample runs in the browser before each paint, rather than querying
@@ -73,7 +119,8 @@ for(const viewport of [{width:390,height:844},{width:1440,height:1000}])test('no
   new MutationObserver(records=>probe.mutations+=records.length).observe(document.getElementById('app'),{childList:true,subtree:true,attributes:true,characterData:true});
   const sample=()=>{
    const view=document.body.dataset.bbnextView;
-   probe.frames.push({view,legacy:view==='shop'&&['bb172Cupboard','bb172StaplesPanel'].some(id=>visible(document.getElementById(id))),pantryReady:view==='shop'&&!!document.querySelector('#bb173ShopFridge.bbpi-enhanced #bbpiToolbar')});
+   const region=document.getElementById('bb307Island')?.closest('[role="note"]'),ring=document.querySelector('#app.bbnext-plan .bbnext-plan-donut');
+   probe.frames.push({view,legacy:view==='shop'&&['bb172Cupboard','bb172StaplesPanel'].some(id=>visible(document.getElementById(id))),legacyRegion:region?.parentElement===document.body&&visible(region),legacyPlan:visible(ring)&&ring.getBoundingClientRect().height>70,pantryReady:view==='shop'&&!!document.querySelector('#bb173ShopFridge.bbpi-enhanced #bbpiToolbar')});
    if(probe.frames.length<2000)requestAnimationFrame(sample);
   };requestAnimationFrame(sample);
  });
@@ -104,6 +151,7 @@ for(const viewport of [{width:390,height:844},{width:1440,height:1000}])test('no
  const samples=await page.evaluate(()=>__navPaint.frames);
  assert.ok(samples.filter(frame=>frame.view==='shop').length>5,'recorded several real At home paint opportunities');
  assert.deepEqual(samples.filter(frame=>frame.legacy),[],'no retired cupboard tiles appear for even one frame');
+ assert.deepEqual(samples.filter(frame=>frame.legacyRegion||frame.legacyPlan),[],'tab changes never repaint the retired region banner or Plan card');
  assert.deepEqual(samples.filter(frame=>frame.view==='shop'&&!frame.pantryReady),[],'At home presentation is ready before its first paint');
  const baseline=await page.evaluate(()=>__navPaint.mutations);await page.waitForTimeout(700);
  const after=await page.evaluate(()=>__navPaint.mutations);
