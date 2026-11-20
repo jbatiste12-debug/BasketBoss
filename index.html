@@ -9073,7 +9073,38 @@ function bbHomePrepareHouseholdRemoval(id){
  row.selected=false;row.manualPending=false;
  return {key:BB307_FEATURE_KEY,value:next,expected:before,id:row.id};
 }
+/* Household refreshes reload already-saved values in memory, without a new
+ * document navigation, cloud upload or replacement of an unfinished form. */
+function bbCanRefreshSharedHousehold({actor,token,expected}={}){
+ try{
+  if(!bbStorageSafe||document.hidden||window.BBAccountDeletion?.isDeleting?.()===true||typeof actor!=='string'||!actor||typeof token!=='string'||!token||typeof expected!=='string'||localStorage.getItem(KEY)!==expected)return false;
+  const session=JSON.parse(localStorage.getItem('basketboss_cloud_session_v1')||'null'),saved=JSON.parse(expected);
+  if(session?.user?.id!==actor||session?.access_token!==token||saved?.version!==2||!Array.isArray(saved.planned))return false;
+  if(document.activeElement?.matches?.('input,textarea,select,[contenteditable="true"]'))return false;
+  const visible=node=>!node.hidden&&node.getClientRects().length>0;
+  if([...document.querySelectorAll('dialog[open],[role="dialog"][aria-modal="true"],.cook-overlay')].some(node=>node.id!=='bbhs-dialog'&&visible(node)))return false;
+  for(const field of document.querySelectorAll('#app input,#app textarea,#app select')){
+   if(!visible(field)||field.disabled||field.readOnly)continue;
+   if(field.tagName==='SELECT'){
+    const options=[...field.options];
+    if(field.multiple){if(options.some(option=>option.selected!==option.defaultSelected))return false;}
+    else{const selected=options.findIndex(option=>option.defaultSelected),initial=selected<0?(options.length?0:-1):selected;if(field.selectedIndex!==initial)return false;}
+   }else if(!['checkbox','radio','button','submit','reset','hidden'].includes(field.type)&&field.value!==field.defaultValue)return false;
+  }
+  return true;
+ }catch{return false;}
+}
+function bbRefreshSharedHousehold(pin){
+ if(!bbCanRefreshSharedHousehold(pin))return false;
+ const previous={state,stock:bb307Stock,features:bb307FeatureState};
+ try{
+  const next=normalize(JSON.parse(pin.expected)),stock=bb307ReadStock(),features=bb307ReadFeatures();
+  if(!bbCanRefreshSharedHousehold(pin))return false;
+  state=next;bb307Stock=stock;bb307FeatureState=features;render();return true;
+ }catch{state=previous.state;bb307Stock=previous.stock;bb307FeatureState=previous.features;return false;}
+}
 window.BBHomeHost=Object.freeze({needsLegacyReview:bbHomeNeedsLegacyReview,settlePurchases:bbHomeSettlePurchases,
+ canRefreshSharedHousehold:bbCanRefreshSharedHousehold,refreshSharedHousehold:bbRefreshSharedHousehold,
  id:BB307Pantry.pantryId,stock:bbHomePhysicalStock,
  openCook:id=>{if(getRecipe(id)&&bb176AllowedRecipe(id)){openCook(id);const url=new URL(location.href);url.searchParams.delete('bbcook');history.replaceState(null,'',url);return true;}return false;},
  keys:()=>({stock:BB307_STOCK_KEY,inventory:'basketboss_makeameal_v1_inventory'}),
