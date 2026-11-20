@@ -17,7 +17,7 @@ const OWNER={configured:true,premium:true,role:'free',household_id:null,invite_s
 const deferred=()=>{let resolve;const promise=new Promise(done=>resolve=done);return {resolve,promise};};
 const tick=()=>new Promise(resolve=>setImmediate(resolve));
 
-function fixture({household=INELIGIBLE,householdStatus=200,membership=FREE,membershipStatus=200,fetchMembership,fetchHousehold,spoof=false}={}){
+function fixture({household=INELIGIBLE,householdStatus=200,membership=FREE,membershipStatus=200,fetchMembership,fetchHousehold,spoof=false,allowConfirm=false}={}){
  const values=new Map([[SESSION,JSON.stringify({user:{id:ACTOR},access_token:'synthetic-current-token'})],['basketboss_321_v7_measured_pantry','{"rice|g":250}']]);
  const calls=[],events=[],navigation=[];let state=structuredClone(household);
  function node(tag='button',attributes={},label=''){
@@ -57,7 +57,7 @@ function fixture({household=INELIGIBLE,householdStatus=200,membership=FREE,membe
  win.addEventListener('basketboss:household-changed',event=>events.push(event.detail?.action));
  const storage={getItem:key=>values.get(key)??null,setItem(){throw Error('Access checks must not write pantry or account data');},removeItem(){throw Error('Access checks must not delete pantry or account data');}};
  const sandbox={window:win,document,localStorage:storage,navigator:{onLine:true},Event,JSON,Date,URL,console,
-  location:{href:win.location.href,reload(){throw Error('Access checks must not reload or adopt household data');}},confirm:()=>false,
+  location:{href:win.location.href,reload(){throw Error('Access checks must not reload or adopt household data');}},confirm:()=>allowConfirm,
   fetch:async(url,options={})=>{
    const path=new URL(String(url),'https://basketboss.co.uk').pathname,request=options.body?JSON.parse(options.body):null;
    calls.push({path,url:String(url),request,options});
@@ -90,11 +90,17 @@ test('eligible Premium owner opens invitation controls without a second membersh
  }
 });
 
-test('eligible invitation keeps its existing server action and only notifies after the mocked server commits',async()=>{
- const h=fixture({household:OWNER}),before=new Map(h.values);await h.api.open();
+test('an explicitly confirmed invitation keeps its server action and only notifies after the mocked server commits',async()=>{
+ const h=fixture({household:OWNER,allowConfirm:true}),before=new Map(h.values);await h.api.open();
  h.body.querySelector('[data-email]').value='partner@example.invalid';await h.body.querySelector('[data-invite]').click();
  assert.deepEqual(h.writes().map(call=>call.request),[{action:'invite',email:'partner@example.invalid'}]);
  assert.deepEqual(h.events,['invite']);assert.deepEqual(h.values,before);assert.equal(h.membershipCalls().length,0);
+});
+
+test('cancelling the owner sharing confirmation sends no invitation and changes no saved data',async()=>{
+ const h=fixture({household:OWNER}),before=new Map(h.values);await h.api.open();
+ h.body.querySelector('[data-email]').value='partner@example.invalid';await h.body.querySelector('[data-invite]').click();
+ assert.deepEqual(h.writes(),[]);assert.deepEqual(h.events,[]);assert.deepEqual(h.values,before);
 });
 
 test('a pending partner sees and can accept an invitation without personal Premium',async()=>{
