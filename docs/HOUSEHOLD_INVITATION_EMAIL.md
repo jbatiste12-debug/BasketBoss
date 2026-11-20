@@ -18,8 +18,8 @@ screenshots or chat.
 | `BB_HOUSEHOLD_INVITE_EMAIL_FROM` | Your verified sender, for example `BasketBoss <invite@your-verified-domain>` |
 
 Use a sender domain already verified in your Resend account. Existing Supabase
-SMTP credentials cannot be substituted for the API key. Keep provider account
-quotas enabled. This implementation has not inspected or changed live secrets,
+SMTP settings do not populate Cloudflare's API key: configure the Resend API key
+directly in Cloudflare. Keep provider account quotas enabled. This implementation has not inspected or changed live secrets,
 verified a sender, sent a real email, or confirmed inbox delivery.
 
 Missing settings return a successful saved invitation with `email_sent:false`
