@@ -1,0 +1,7 @@
+Shared dinners now refresh automatically while BasketBoss is open, including
+when Partner Sharing is open. Moving from Account or Settings into Sharing
+also lets your shared Plan update without extra taps.
+
+Improved account-deletion feedback explains when sign-in verification or
+subscription cancellation needs attention. Saved data stays protected while
+an unfinished deletion is checked.
