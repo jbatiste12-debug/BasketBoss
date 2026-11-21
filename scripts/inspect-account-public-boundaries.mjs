@@ -32,6 +32,29 @@ async function probe(label,host,route,method,origin){
  }catch{result.transport='unavailable';}
  console.log(JSON.stringify(result));
 }
+async function prefixText(response){
+ const reader=response.body?.getReader();if(!reader)return '';
+ const chunks=[];let length=0;
+ try{for(;;){const {done,value}=await reader.read();if(done)break;const part=value.slice(0,65536-length);chunks.push(part);length+=part.byteLength;if(length>=65536)break;}return Buffer.concat(chunks).toString('utf8');}
+ finally{try{await reader.cancel();}catch{}}
+}
+async function feedbackAsset(label,host){
+ const result={kind:'feedback_asset',host:label,updated:false};
+ try{
+  const page=await fetch(host+'/app',{redirect:'manual',credentials:'omit',cache:'no-store',signal:AbortSignal.timeout(12000)});
+  result.pageStatus=page.status;const html=await prefixText(page);
+  const source=html.match(/<script\b[^>]*\bsrc=["']([^"']*bb-account-deletion\.js[^"']*)["']/i)?.[1];
+  const base=html.match(/<base\b[^>]*\bhref=["']([^"']+)["']/i)?.[1]||'/app';
+  if(!source)throw Error('No asset');
+  const url=new URL(source,new URL(base,host+'/app'));
+  if(url.origin!==host||url.pathname!=='/bb-account-deletion.js')throw Error('Unexpected asset');
+  result.assetPath=url.pathname;
+  const script=await fetch(url,{redirect:'manual',credentials:'omit',cache:'no-store',signal:AbortSignal.timeout(12000)});
+  result.assetStatus=script.status;const body=await prefixText(script);
+  result.updated=script.status===200&&body.includes('A security check blocked this deletion request.')&&body.includes('This connection is not permitted to request account deletion.');
+ }catch{result.check='incomplete';}
+ console.log(JSON.stringify(result));
+}
 await Promise.all(hosts.map(async([label,host])=>{
  for(const [route,method,origin]of [
   ['/api/account/delete','GET',native],
@@ -41,4 +64,5 @@ await Promise.all(hosts.map(async([label,host])=>{
   ['/api/household?mode=status','GET',native],
   ['/api/subscription/status','GET',native]
  ])await probe(label,host,route,method,origin);
+ await feedbackAsset(label,host);
 }));
