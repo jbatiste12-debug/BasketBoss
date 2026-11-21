@@ -1,5 +1,5 @@
-/* Native iOS and Android use bearer tokens, never cross-origin browser cookies.
- * Trust exact Capacitor origins only on the official production HTTPS API endpoints.
+/* Native apps use bearer tokens, never cross-origin browser cookies. Trust the
+ * exact Capacitor origins only on the official production HTTPS API endpoints.
  * CORS is transport permission, not authentication or a Premium entitlement. */
 export const IOS_ORIGIN = 'capacitor://localhost';
 export const ANDROID_ORIGIN = 'https://localhost';

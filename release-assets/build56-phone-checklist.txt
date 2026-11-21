@@ -1,0 +1,54 @@
+BasketBoss 1.0.6 (56) — phone checklist
+
+Use your own accepted test household and reversible plan changes. Restore
+only your own existing membership; no new purchase is needed for these checks.
+
+1. Prepare and run
+   Run the Build 56 launcher. Confirm App version 1.0.6, build 56 and bundle ID
+   uk.co.basketboss.app. Connect your iPhone and choose Product > Run.
+
+2. Sharing entry layers
+   Open Share with Partner from Account, then from Settings. Sharing should
+   replace its entry panel. Close Sharing and confirm no earlier modal or
+   backdrop remains stranded over Plan.
+
+3. Automatic dinner updates with Sharing open
+   Keep both accepted household apps in the foreground. On one device, make
+   a small test dinner change or confirm Auto-fill into eligible empty days.
+   Leave the other device's Partner Sharing panel open. Wait for its periodic
+   refresh and confirm the changed dinner is received without pressing Sync.
+   Close Sharing and confirm Plan displays the received dinner.
+
+4. Automatic dinner updates with Sharing closed
+   Repeat with the receiving app already showing Plan. Check the dinner name,
+   day and servings update without changing tabs or restarting. Repeat in the
+   other direction. Keep both native clients on this update for the check.
+
+5. Edits and cooking remain protected
+   Leave an unfinished text entry or cooking screen open on the receiver.
+   A shared change must wait, rather than erase the draft or interrupt Cook.
+   Finish or close the editor, then return to the foreground and confirm the
+   next safe refresh. Conflicting dinner edits must remain available for review.
+
+6. Account and deletion feedback
+   Confirm normal sign-in, your existing household role and your own membership
+   restoration still work. An old request must not update another account.
+   Account-deletion cancellation failures must retain saved data and the
+   pending-deletion state; they must not claim success or bypass cancellation.
+   Use isolated automated fixtures for destructive failure cases.
+
+7. Pantry, shopping and native controls
+   Check a known pantry quantity and its shopping gap before and after sharing.
+   Receiving a Plan must not consume stock. Check camera access, native safe
+   areas, bottom navigation and keyboard reachability in Add amount.
+
+8. Archive and upload
+   Confirm 1.0.6 is the intended App Store Connect version and build 56 is unused.
+   Archive from the prepared workspace or rerun the launcher with --archive.
+   Confirm Organizer shows BasketBoss 1.0.6 (56), then choose Distribute App >
+   App Store Connect > Upload. Upload and App Store submission are manual.
+   Do not run ordinary ios:sync after the launcher.
+
+The app refreshes while it is open. Background push updates and instantaneous
+delivery are not promised. Browser and mocked archive checks do not replace
+these physical-device checks.
