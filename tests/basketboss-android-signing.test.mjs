@@ -31,3 +31,14 @@ test('interactive setup uses an existing external key, masked password prompts a
 test('an upload key inside the checkout is rejected before use',async()=>{
  const h=fixture();try{await assert.rejects(()=>configureSigning({root:h.root,keystore:path.join(h.root,'key.jks'),mode:'interactive'}),/outside the repository/);}finally{fs.rmSync(h.parent,{recursive:true,force:true});}
 });
+test('signing properties reject existing and dangling symlinks without writing credentials outside the checkout',async()=>{
+ for(const targetExists of [false,true]){
+  const h=fixture(),target=path.join(h.parent,'outside.properties');
+  try{
+   fs.writeFileSync(h.key,'existing-private-key');if(targetExists)fs.writeFileSync(target,'keep existing contents');
+   fs.symlinkSync(target,path.join(h.root,'android/keystore.properties'));
+   await assert.rejects(()=>configureSigning({root:h.root,keystore:h.key,mode:'interactive',ask:async()=> 'synthetic-answer'}),/must not be a symlink/);
+   assert.equal(fs.existsSync(target),targetExists);if(targetExists)assert.equal(fs.readFileSync(target,'utf8'),'keep existing contents');
+  }finally{fs.rmSync(h.parent,{recursive:true,force:true});}
+ }
+});

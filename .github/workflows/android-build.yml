@@ -126,6 +126,15 @@ jobs:
           test ! -e android/keystore.properties
           cd android
           ./gradlew --no-daemon bundleRelease -PbbAllowUnsignedTestBuild=true
+      - name: Validate the actual bundle, image pack and signature coverage
+        env:
+          BB_REQUIRE_SIGNED_AAB: ${{ github.event_name == 'workflow_dispatch' && inputs.signed }}
+        run: |
+          if [[ "$BB_REQUIRE_SIGNED_AAB" == 'true' ]]; then
+            node scripts/verify-android-aab.mjs --bundle android/app/build/outputs/bundle/release/app-release.aab --require-signed
+          else
+            node scripts/verify-android-aab.mjs --bundle android/app/build/outputs/bundle/release/app-release.aab
+          fi
       - name: Retain the signed bundle for manual Play Console upload
         if: ${{ github.event_name == 'workflow_dispatch' && inputs.signed }}
         uses: actions/upload-artifact@v6

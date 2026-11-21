@@ -35,7 +35,7 @@ explains how your upload key differs from Google's Play App Signing key.
 From the repository root, prepare signing and build the signed bundle:
 
 ```bash
-npm ci --no-audit --no-fund && node scripts/android-signing.mjs --interactive --keystore-file "$HOME/.basketboss-android/basketboss-upload-key.jks" && npm run android:sync && npm run android:verify && (cd android && ./gradlew bundleRelease)
+npm ci --no-audit --no-fund && node scripts/android-signing.mjs --interactive --keystore-file "$HOME/.basketboss-android/basketboss-upload-key.jks" && npm run android:sync && npm run android:verify && (cd android && ./gradlew bundleRelease) && node scripts/verify-android-aab.mjs --bundle android/app/build/outputs/bundle/release/app-release.aab --require-signed
 ```
 
 The signing helper asks for passwords privately, confirms the alias, and writes
@@ -54,6 +54,15 @@ Run `npm run android:sync` for future Android web-asset updates. It prepares a
 separate Android catalogue-700 bundle and syncs Android only. The iOS project,
 root Capacitor configuration and existing iOS packaging path stay intact. The
 convenience launcher is [prepare-android-mac.command](../release-assets/prepare-android-mac.command).
+
+The bundle keeps all existing recipe pictures unchanged in a `recipe_images`
+**install-time asset pack**. The base web assets are about 13 MB and the image
+pack about 491 MB. Play installs both together, retaining offline image access.
+An ordinary `assembleDebug` APK does not establish that the pack is installed:
+test an AAB-derived installation through Play Internal testing or bundletool.
+The final verifier downloads the official bundletool 1.18.3 JAR into a temporary
+directory, checks its pinned SHA-256, validates both module manifests and the
+actual bundled image bytes, and requires signed payloads for upload builds.
 
 ## Build in GitHub Actions instead
 
@@ -95,13 +104,16 @@ deployment before real Android sign-in and account requests can work. A
 successful local or cloud compilation does not deploy those server changes or
 prove production login. Existing server entitlement checks remain authoritative.
 
-In Play Console, use **Testing → Closed testing**, configure your tester group,
-and create a release using the signed `.aab`. Follow the Console's Play App
-Signing setup. The new-personal-account rule currently requires at least **12
+Start with **Testing → Internal testing** and upload the signed `.aab`. Follow
+the Console's Play App Signing setup, add your test account and install from its
+opt-in link on an Android phone. Once the phone checks below pass, promote the
+same bundle to **Testing → Closed testing** and configure your tester group.
+Internal testing does not count towards the new-personal-account rule, which
+currently requires at least **12
 testers opted in continuously for 14 days** before you can apply for production
 access; meeting that threshold is not automatic production approval. Confirm
-the requirement shown for your account. [Google's personal-account testing requirements](https://support.google.com/googleplay/android-developer/answer/14151465)
-were checked on 20 November 2026.
+the requirement shown for your account and [Google's personal-account testing requirements](https://support.google.com/googleplay/android-developer/answer/14151465)
+before scheduling the closed test.
 
 For **App content → App access**, provide a dedicated, working **email/password**
 reviewer account if any features require sign-in. Give it legitimately authorised

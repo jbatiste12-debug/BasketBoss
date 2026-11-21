@@ -48,10 +48,15 @@ export async function configureSigning({root=path.resolve(path.dirname(fileURLTo
   }
   const realKey=fs.realpathSync(keyPath);assert.ok(!realKey.startsWith(actualRoot+path.sep),'Keep the upload keystore outside the repository');
   const file=path.join(actualRoot,'android/keystore.properties');
-  if(fs.existsSync(file))assert.ok(!fs.lstatSync(file).isSymbolicLink(),'Signing properties must not be a symlink');
-  if(fs.existsSync(file))fs.chmodSync(file,0o600);
+  const existing=fs.lstatSync(file,{throwIfNoEntry:false});
+  assert.ok(!existing?.isSymbolicLink(),'Signing properties must not be a symlink');
+  assert.ok(!existing||existing.isFile(),'Signing properties must be a regular file');
   const content=signingProperties({keystore:realKey,storePassword,keyPassword,keyAlias});
-  fs.writeFileSync(file,content,{mode:0o600});fs.chmodSync(file,0o600);
+  const descriptor=fs.openSync(file,fs.constants.O_WRONLY|fs.constants.O_CREAT|fs.constants.O_NOFOLLOW,0o600);
+  try{
+   assert.ok(fs.fstatSync(descriptor).isFile(),'Signing properties must be a regular file');
+   fs.fchmodSync(descriptor,0o600);fs.ftruncateSync(descriptor,0);fs.writeFileSync(descriptor,content);
+  }finally{fs.closeSync(descriptor);}
   return {ok:true,configured:true,credentialsPrinted:false};
  }catch(error){if(created)fs.rmSync(keyPath,{force:true});throw error;}
 }
