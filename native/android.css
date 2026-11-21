@@ -14,7 +14,15 @@ html.bb-native-android body .shell:has(>nav#bbPrimaryNavigation[data-bb-navigati
 .bb-native-android .bb-native-membership button{min-height:44px;padding:11px 16px;border:1px solid #2a6c43;border-radius:10px;background:#195f3c;color:#fff;font:inherit;font-weight:750;margin:5px 8px 5px 0}
 .bb-native-android .bb-native-membership p{font-size:14px;line-height:1.6}
 .bb-native-android .bb-native-membership [role=status]{min-height:24px}
-.bb-native-android .bb-native-membership button[hidden]{display:none!important}
+.bb-native-android .bb-native-membership [hidden]{display:none!important}
+.bb-native-android .bb-native-membership button:disabled{opacity:.58;cursor:default}
+.bb-native-android .bb-native-google-plans{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,240px),1fr));gap:12px;margin:14px 0}
+.bb-native-android .bb-native-membership .bb-native-google-plan{display:flex;flex-direction:column;align-items:flex-start;gap:8px;width:100%;margin:0;text-align:left;white-space:normal;overflow-wrap:anywhere}
+.bb-native-android .bb-native-google-plan strong{font-size:17px}
+.bb-native-android .bb-native-google-plan span{font-size:15px;font-weight:650}
+.bb-native-android .bb-native-google-plan small{font-size:13px;font-weight:550}
+.bb-native-android .bb-native-membership .bb-native-google-secondary{background:#fffdf7;color:#195f3c}
+.bb-native-android .bb-native-membership .bb-native-membership-disclosure{font-size:13px;color:#365844}
 .bb-native-android .bb-native-membership-legal{display:flex;gap:18px}
 .bb-native-android .bb-native-membership-legal a{display:inline-block;min-height:44px;padding:10px 2px;color:#195f3c}
 .bb-native-android .bb-public-beta-badge,.bb-native-android .bb-beta-badge,.bb-native-android #bb17513-qa-mode-bar{display:none!important}

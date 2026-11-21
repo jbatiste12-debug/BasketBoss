@@ -91,6 +91,26 @@ export async function eraseAccountD1(env,userId,billing){
  for(const id of billing.subscriptions)statements.push(db.prepare('INSERT OR IGNORE INTO bb_account_deletion_refs(ref_hash) VALUES(?)').bind(await digestDeletionRef('subscription',id)));
  for(const slot of billing.confirmedSlots||[])statements.push(db.prepare("UPDATE bb_founder_slots SET state='retired' WHERE slot_no=? AND user_id=?").bind(slot,userId));
  const tableExists=async name=>!!await db.prepare("SELECT 1 AS found FROM sqlite_master WHERE type='table' AND name=?").bind(name).first();
+ const googleTables={};
+ for(const name of ['bb_google_play_subscriptions','bb_google_play_notifications','bb_google_play_leases','bb_google_play_lineages','bb_google_play_account_tokens'])
+  googleTables[name]=await tableExists(name);
+ if(env.GOOGLE_PLAY_BILLING_ENABLED==='true'&&Object.values(googleTables).some(exists=>!exists))throw Error('google_play_cleanup_unavailable');
+ if(Object.values(googleTables).some(Boolean)){
+  // The actor barrier stops in-flight writes before collecting references. A
+  // token tombstone then survives removal of every raw Play purchase token.
+  if(!await isAccountDeleting(env,userId))throw Error('account_deletion_barrier_required');
+  if(googleTables.bb_google_play_subscriptions){
+   const tokens=(await db.prepare('SELECT token_hash FROM bb_google_play_subscriptions WHERE user_id=?').bind(userId).all()).results||[];
+   for(const token of tokens)statements.push(db.prepare('INSERT OR IGNORE INTO bb_account_deletion_refs(ref_hash) VALUES(?)').bind(await digestDeletionRef('google_play_token',token.token_hash)));
+   for(const name of ['bb_google_play_notifications','bb_google_play_leases']){
+    if(googleTables[name])statements.push(db.prepare(`DELETE FROM ${name}
+     WHERE token_hash IN(SELECT token_hash FROM bb_google_play_subscriptions WHERE user_id=?)`).bind(userId));
+   }
+   statements.push(db.prepare('DELETE FROM bb_google_play_subscriptions WHERE user_id=?').bind(userId));
+  }
+  if(googleTables.bb_google_play_lineages)statements.push(db.prepare('DELETE FROM bb_google_play_lineages WHERE user_id=?').bind(userId));
+  if(googleTables.bb_google_play_account_tokens)statements.push(db.prepare('DELETE FROM bb_google_play_account_tokens WHERE user_id=?').bind(userId));
+ }
  const appleSubscriptions=await tableExists('bb_apple_subscriptions');
  if(appleSubscriptions&&await tableExists('bb_apple_notifications'))statements.push(db.prepare(`DELETE FROM bb_apple_notifications
   WHERE EXISTS(SELECT 1 FROM bb_apple_subscriptions s WHERE s.user_id=?

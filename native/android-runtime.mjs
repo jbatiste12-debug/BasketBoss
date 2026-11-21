@@ -6,12 +6,13 @@ import {SplashScreen} from '@capacitor/splash-screen';
 import {PRODUCTION_ORIGIN} from './routing.mjs';
 import {androidApiURL,androidPageURL,androidMembershipURL,isAndroidBillingURL,installAndroidFetch,installAndroidXHR,installAndroidWindowOpen} from './android-routing.mjs';
 import {installAndroidMembership} from './android-membership.mjs';
+import {installAndroidGooglePlayPurchases} from './google-play-purchases.mjs';
 import {installNativeStartup} from './startup.mjs';
 import {watchNativeEntryReadiness} from './entry-readiness.mjs';
 
 // This entry is bundled only into Android output. The iOS entry and its native
 // Apple plugins are left intact. Email auth remains owned by BBAuthFlow.
-export function installAndroidRuntime({window:win=globalThis.window,document:doc=globalThis.document,app=App,browser=Browser,haptics=Haptics,bars=SystemBars,splash=SplashScreen,registerNative=registerPlugin,installStartup=installNativeStartup,watchEntry=watchNativeEntryReadiness,installMembership=installAndroidMembership}={}){
+export function installAndroidRuntime({window:win=globalThis.window,document:doc=globalThis.document,app=App,browser=Browser,haptics=Haptics,bars=SystemBars,splash=SplashScreen,registerNative=registerPlugin,installStartup=installNativeStartup,watchEntry=watchNativeEntryReadiness,installMembership=installAndroidMembership,installPurchases=installAndroidGooglePlayPurchases}={}){
  doc.documentElement.classList.add('bb-native-android');
  const originalFetch=installAndroidFetch({window:win});
  const deleting=()=>win.BBAccountDeletion?.isDeleting?.()===true;
@@ -65,8 +66,8 @@ export function installAndroidRuntime({window:win=globalThis.window,document:doc
   if(isAndroidBillingURL(target,win.location.href)){event.preventDefault();event.stopImmediatePropagation();win.BBNativeMembership.open();}
  },true);
  doc.addEventListener('basketboss:receipt-confirmed',()=>void haptic('success'));
- let membership;
- const prepareMembership=()=>{if(!membership)membership=installMembership({window:win,document:doc,readSession,apiURL:path=>PRODUCTION_ORIGIN+path,fetch:originalFetch});};
+ let membership,purchases;
+ const prepareMembership=()=>{if(!membership){purchases=installPurchases({plugin:registerNative('BasketBossGooglePlay'),window:win,readSession,apiURL:path=>PRODUCTION_ORIGIN+path,fetch:originalFetch,isDeleting:deleting});membership=installMembership({window:win,document:doc,readSession,apiURL:path=>PRODUCTION_ORIGIN+path,fetch:originalFetch,purchases});}};
  const entry=watchEntry({window:win,document:doc,startup,prepareMembership});
  function ready(){entry.stop();prepareMembership();void bars.setStyle({style:SystemBarsStyle.Light}).catch(()=>{});void splash.hide({fadeOutDuration:0}).catch(()=>{});win.requestAnimationFrame(()=>startup.ready());}
  if(doc.readyState==='loading')doc.addEventListener('DOMContentLoaded',ready,{once:true});else ready();
@@ -90,6 +91,6 @@ export function installAndroidRuntime({window:win=globalThis.window,document:doc
  }
  void app.addListener('appUrlOpen',({url})=>void authLink(url));
  void app.getLaunchUrl().then(value=>{if(value?.url)void authLink(value.url,true);}).catch(()=>{});
- return {authLink,prepareMembership,get membership(){return membership;}};
+ return {authLink,prepareMembership,get membership(){return membership;},get purchases(){return purchases;}};
 }
 if(Capacitor.isNativePlatform()&&Capacitor.getPlatform()==='android')installAndroidRuntime();

@@ -16,7 +16,7 @@ const json=(dir,name)=>JSON.parse(read(dir,name));
 export function androidDocument(source){
  assert.match(source,/<meta name="basketboss-native-build" content="ios">/);
  return source.replace('<meta name="basketboss-native-build" content="ios">','<meta name="basketboss-native-build" content="android">')
-  .replace(/Use (?:100|200) recipes free, or choose Apple Premium\./g,'Use 200 recipes free, or sign in to your existing account. Purchases are not available in this Android test build.')
+  .replace(/Use (?:100|200) recipes free, or choose Apple Premium\./g,'Use 200 recipes free, or sign in to view your Premium options.')
   .replace('<div id="bbNativePlanComparison" data-bb-membership-comparison></div>','<div id="bbNativePlanComparison" hidden></div>');
 }
 export function treeDigest(dir){
@@ -68,7 +68,9 @@ export function verifyAndroidWeb({root=ANDROID_ROOT,directory=path.join(root,'di
   assert.doesNotMatch(html,/<meta name="basketboss-native-build" content="ios">|choose Apple Premium/);
  }
  const runtime=read(directory,'bb-native-runtime.js').toString();
- assert.ok(runtime.includes('bb-native-android'));assert.doesNotMatch(runtime,/BasketBossAppleAuth|BasketBossPurchases|BasketBossCookVoice|uk\.co\.basketboss\.premium\.monthly/);
+ assert.ok(runtime.includes('bb-native-android'));assert.ok(runtime.includes('BasketBossGooglePlay'),'Google Play bridge is missing from the Android runtime');
+ assert.doesNotMatch(runtime,/BasketBossAppleAuth|BasketBossPurchases|BasketBossCookVoice|uk\.co\.basketboss\.premium\.monthly/);
+ assert.doesNotMatch(runtime,/GOOGLE_PLAY_PRIVATE_KEY|GOOGLE_PLAY_SERVICE_ACCOUNT_EMAIL|BEGIN (?:RSA )?PRIVATE KEY/,'Server Google credentials must never be bundled in Android');
  assert.ok(read(directory,'bb-native.css').includes(Buffer.from('.bb-native-android')));
  return {ok:true,appId:manifest.appId,platform:'android',catalogueVersion:700,freeRecipes:200,premiumRecipes:500,privateRecipeBundle:false,files:verified.files};
 }

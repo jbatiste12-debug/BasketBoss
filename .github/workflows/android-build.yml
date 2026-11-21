@@ -31,6 +31,16 @@ on:
       - functions/api/subscription/portal.js
       - tests/basketboss-android-*.test.mjs
       - tests/basketboss-native-api-origin.test.mjs
+      - tests/basketboss-google-play-*.test.mjs
+      - bb-server-lib/bb-google-play*.js
+      - bb-server-lib/bb-paid-access.js
+      - bb-server-lib/bb-account-deletion.js
+      - bb-server-lib/bb-household-premium.js
+      - functions/api/subscription/status.js
+      - functions/api/apple/purchase-context.js
+      - functions/api/household/index.js
+      - functions/api/google-play/**
+      - sql/basketboss_google_play*.sql
   push:
     branches: [main]
     paths:
@@ -54,6 +64,16 @@ on:
       - functions/api/subscription/portal.js
       - tests/basketboss-android-*.test.mjs
       - tests/basketboss-native-api-origin.test.mjs
+      - tests/basketboss-google-play-*.test.mjs
+      - bb-server-lib/bb-google-play*.js
+      - bb-server-lib/bb-paid-access.js
+      - bb-server-lib/bb-account-deletion.js
+      - bb-server-lib/bb-household-premium.js
+      - functions/api/subscription/status.js
+      - functions/api/apple/purchase-context.js
+      - functions/api/household/index.js
+      - functions/api/google-play/**
+      - sql/basketboss_google_play*.sql
 
 permissions:
   contents: read
@@ -95,6 +115,10 @@ jobs:
         run: >-
           node --test
           tests/basketboss-android-*.test.mjs
+          tests/basketboss-google-play-*.test.mjs
+          tests/basketboss-apple-subscriptions.test.mjs
+          tests/basketboss-apple-access.test.mjs
+          tests/basketboss-account-deletion-billing-races.test.mjs
           tests/basketboss-native-api-origin.test.mjs
           tests/basketboss-native-billing-guard.test.mjs
           tests/basketboss-native-membership-navigation.test.mjs
@@ -139,7 +163,7 @@ jobs:
         if: ${{ github.event_name == 'workflow_dispatch' && inputs.signed }}
         uses: actions/upload-artifact@v6
         with:
-          name: BasketBoss-Android-SIGNED-1.0.2-code1
+          name: BasketBoss-Android-SIGNED-1.0.2-code2
           path: android/app/build/outputs/bundle/release/app-release.aab
           if-no-files-found: error
           retention-days: 7
@@ -147,7 +171,7 @@ jobs:
         if: ${{ github.event_name != 'workflow_dispatch' || !inputs.signed }}
         uses: actions/upload-artifact@v6
         with:
-          name: BasketBoss-Android-UNSIGNED-CI-1.0.2-code1
+          name: BasketBoss-Android-UNSIGNED-CI-1.0.2-code2
           path: android/app/build/outputs/bundle/release/app-release.aab
           if-no-files-found: error
           retention-days: 7

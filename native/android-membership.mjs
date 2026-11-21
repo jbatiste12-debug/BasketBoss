@@ -1,9 +1,9 @@
 import {androidMembershipURL,isAndroidBillingURL} from './android-routing.mjs';
 
-// Android closed testing has account access, not a Google Play purchase flow.
-// A server response changes presentation only; no local entitlement is minted.
-export function installAndroidMembership({window:win=globalThis.window,document:doc=globalThis.document,readSession,apiURL,fetch:perform=globalThis.fetch}={}){
- let sequence=0,card,status,login,message='',phase='signed_out',destroyed=false;
+// Both the account-only fallback and Play UI use server membership presentation.
+// Neither writes an entitlement, session, or purchase proof to browser storage.
+export function installAndroidMembership({window:win=globalThis.window,document:doc=globalThis.document,readSession,apiURL,fetch:perform=globalThis.fetch,purchases=null}={}){
+ let sequence=0,card,status,login,message='',phase='signed_out',destroyed=false,unsubscribe,unsubscribePlans;
  const deleting=()=>win.BBAccountDeletion?.isDeleting?.()===true;
  const identity=()=>{
   try{const session=readSession();
@@ -22,6 +22,7 @@ export function installAndroidMembership({window:win=globalThis.window,document:
  }
  async function refresh(){
   if(destroyed||deleting())return false;
+  if(purchases){await purchases.refresh();return purchases.state.premiumAccess===true;}
   const pin=identity(),stamp=++sequence;
   if(!pin){phase='signed_out';message='Sign in to use your existing BasketBoss account. Free recipes remain available.';paint();return false;}
   phase='checking';message='Checking your membership…';paint();
@@ -41,27 +42,58 @@ export function installAndroidMembership({window:win=globalThis.window,document:
   if(card?.isConnected)return;
   card=doc.createElement('section');card.className='bb-native-membership';card.setAttribute('aria-label','BasketBoss membership');
   const title=doc.createElement('h3');title.textContent='Your BasketBoss account';
-  const note=doc.createElement('p');note.textContent='Use the Free recipes, or sign in to an existing Premium account. New purchases are not available in this Android test build.';
+  const note=doc.createElement('p');note.textContent=purchases?'Use the Free recipes, sign in to your existing membership, or choose an eligible Google Play plan.':'Use the Free recipes, or sign in to an existing Premium account. New purchases are not available in this Android test build.';
   status=doc.createElement('p');status.setAttribute('role','status');status.setAttribute('aria-live','polite');
   login=doc.createElement('button');login.type='button';login.textContent='Sign in';login.addEventListener('click',signIn);
-  const retry=doc.createElement('button');retry.type='button';retry.textContent='Refresh membership';retry.addEventListener('click',()=>void refresh());
+  const retry=doc.createElement('button');retry.type='button';retry.textContent=purchases?'Refresh membership & prices':'Refresh membership';retry.addEventListener('click',()=>void refresh());
   const legal=doc.createElement('p');legal.className='bb-native-membership-legal';
   for(const [name,href]of [['Privacy','/privacy'],['Terms','/terms']]){const link=doc.createElement('a');link.textContent=name;link.href=href;legal.append(link);}
-  card.append(title,note,status,login,retry,legal);parent.append(card);paint();
+  card.append(title,note,status,login,retry,legal);if(purchases)mountPurchases(card,retry,legal);parent.append(card);paint();
+ }
+ function mountPurchases(parent,retry,legal){
+  const heading=doc.createElement('h4');heading.textContent='BasketBoss Premium';
+  const benefits=doc.createElement('p');benefits.textContent='Explore the full recipe collection, batch cooking and eligible AI meal tools.';
+  const plans=doc.createElement('div');plans.className='bb-native-google-plans';plans.setAttribute('aria-label','Google Play subscription options');
+  const catalogue=doc.createElement('p');catalogue.className='bb-native-membership-disclosure';
+  const controls=doc.createElement('div');controls.className='bb-native-google-actions';
+  const restore=doc.createElement('button');restore.type='button';restore.className='bb-native-google-secondary';restore.textContent='Restore purchases';restore.addEventListener('click',()=>{if(!identity()){signIn();return;}void purchases.restore();});
+  const manage=doc.createElement('button');manage.type='button';manage.textContent='Manage Google Play subscription';manage.addEventListener('click',()=>void purchases.manage());
+  controls.append(restore,manage);
+  const terms=doc.createElement('p');terms.className='bb-native-membership-disclosure';
+  parent.append(heading,benefits,plans,catalogue,controls,terms,legal);
+  let previous='';
+  unsubscribePlans=purchases.subscribeState(state=>{
+   restore.disabled=state.busy;manage.disabled=state.busy;retry.disabled=state.busy;login.disabled=state.busy;
+   manage.hidden=!state.authenticated;text(manage,state.provider==='google_play'?'Manage Google Play subscription':'Google Play subscription settings');
+   text(catalogue,state.availabilityMessage||'');catalogue.hidden=!catalogue.textContent;catalogue.setAttribute('data-product-load-state',state.productLoadState);
+   plans.hidden=state.premiumAccess;heading.hidden=state.premiumAccess;benefits.hidden=state.premiumAccess;
+   terms.hidden=state.premiumAccess||!state.offers.length;
+   text(terms,(state.offers.some(offer=>offer.hasTrial)?'Payment is charged to your Google Play account when you confirm, or when the eligible free trial shown for your selected offer ends. ':'Payment is charged to your Google Play account when you confirm. ')+'Subscriptions renew automatically at the renewal price shown above unless cancelled before renewal. Manage or cancel in Google Play before your trial or billing period ends. Google Play confirms your selected offer and price before purchase.');
+   const next=JSON.stringify({offers:state.offers,busy:state.busy,available:state.available,premiumAccess:state.premiumAccess,authenticated:state.authenticated,membershipState:state.membershipState});
+   if(next===previous)return;previous=next;plans.replaceChildren();
+   for(const offer of state.offers){
+    const button=doc.createElement('button');button.type='button';button.className='bb-native-google-plan';button.disabled=state.busy||!state.available||state.premiumAccess||state.authenticated&&state.membershipState!=='free';
+    button.setAttribute('data-google-play-plan',offer.plan);
+    const label=doc.createElement('strong');label.textContent=offer.title;
+    const price=doc.createElement('span');price.textContent=offer.price;
+    const action=doc.createElement('small');action.textContent=state.authenticated?'Continue with Google Play':'Sign in to continue';
+    button.append(label,price,action);button.addEventListener('click',()=>{if(!identity()){signIn();return;}void purchases.subscribe(offer.key);});plans.append(button);
+   }
+  });
  }
  function tidy(){
   if(destroyed)return;
   const intro=doc.getElementById('bbIntroTrialDialog');if(intro?.open)intro.close();hide(intro);
   hide(doc.getElementById('bbNativePlanComparison'));
   const lead=doc.getElementById('bbNativeMembershipHeading')?.nextElementSibling;
-  if(lead?.tagName==='P'&&/choose Apple Premium/.test(lead.textContent))text(lead,'Use the Free recipes, or sign in to your existing account. Purchases are not available in this Android test build.');
+  if(lead?.tagName==='P'&&/choose Apple Premium/.test(lead.textContent))text(lead,purchases?'Use the Free recipes, or sign in to view your Premium options.':'Use the Free recipes, or sign in to your existing account. Purchases are not available in this Android test build.');
   doc.querySelectorAll('#bbMembershipSettings,.bbc-secondary,.bbc-note,.bb173-tier-plans,.bb173-tier-disclaimer,#bb175TierCompare,.bb175-tier-compare,.bbtrial-plans,.bbtrial-legal').forEach(node=>{if(node.tagName==='DIALOG'&&node.open)node.close();hide(node);});
   for(const node of doc.querySelectorAll('.bbob-plan-premium')){
    if(node.dataset.androidMembership==='true')continue;
    node.dataset.androidMembership='true';
-   const title=doc.createElement('strong');title.textContent='Already have Premium?';const p=doc.createElement('p');p.textContent='Sign in to use your existing membership. Purchases are not available in this Android test build.';node.replaceChildren(title,p);
+   const title=doc.createElement('strong');title.textContent='Already have Premium?';const p=doc.createElement('p');p.textContent=purchases?'Sign in to use your existing membership, or view eligible Google Play plans in your account.':'Sign in to use your existing membership. Purchases are not available in this Android test build.';node.replaceChildren(title,p);
   }
-  for(const node of doc.querySelectorAll('.bbob-footnote'))if(/Paddle|trial|checkout|renewal|Founder/i.test(node.textContent))text(node,'Use BasketBoss Free, or sign in to an existing account. Purchases are not available in this Android test build.');
+  for(const node of doc.querySelectorAll('.bbob-footnote'))if(/Paddle|trial|checkout|renewal|Founder/i.test(node.textContent))text(node,purchases?'Use BasketBoss Free, or sign in to view your Premium options.':'Use BasketBoss Free, or sign in to an existing account. Purchases are not available in this Android test build.');
   for(const node of doc.querySelectorAll('a[href]')){
    if(!isAndroidBillingURL(node.getAttribute('href'),win.location.href))continue;
    const target=androidMembershipURL(win.location.href);if(node.getAttribute('href')!==target)node.setAttribute('href',target);text(node,label());
@@ -75,8 +107,7 @@ export function installAndroidMembership({window:win=globalThis.window,document:
  const Observer=win.MutationObserver||globalThis.MutationObserver,observer=new Observer(tidy);
  tidy();observer.observe(doc.body,{childList:true,subtree:true});
  const refreshEvents=['basketboss:session-changed','focus','basketboss:native-resumed','basketboss:household-changed','basketboss:account-deletion-cancelled'];
- for(const name of refreshEvents)win.addEventListener(name,change);
- for(const name of ['basketboss:account-deletion-started','basketboss:account-deletion-deleted'])win.addEventListener(name,pause);
- void refresh();
- return {refresh,destroy(){destroyed=true;sequence++;observer.disconnect();if(win.BasketBossNativeTrialOffer===offer)delete win.BasketBossNativeTrialOffer;for(const name of refreshEvents)win.removeEventListener(name,change);for(const name of ['basketboss:account-deletion-started','basketboss:account-deletion-deleted'])win.removeEventListener(name,pause);}};
+ if(purchases)unsubscribe=purchases.subscribeState(state=>{phase=state.membershipState;message=state.message;paint();});
+ else{for(const name of refreshEvents)win.addEventListener(name,change);for(const name of ['basketboss:account-deletion-started','basketboss:account-deletion-deleted'])win.addEventListener(name,pause);void refresh();}
+ return {refresh,destroy(){destroyed=true;sequence++;unsubscribe?.();unsubscribePlans?.();observer.disconnect();if(win.BasketBossNativeTrialOffer===offer)delete win.BasketBossNativeTrialOffer;for(const name of refreshEvents)win.removeEventListener(name,change);for(const name of ['basketboss:account-deletion-started','basketboss:account-deletion-deleted'])win.removeEventListener(name,pause);}};
 }

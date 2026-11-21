@@ -52,6 +52,7 @@ function configured(env,request){
   (livePaidBillingEnabled(env)||testFlightBetaEnabled(env))&&
   ((isLive(env)&&env.BB_LIVE_WEBHOOK_ENABLED==='true'&&!!expectedPrice(env,'founder')&&!!expectedPrice(env,'standard'))||
    (env.APPLE_BILLING_ENABLED==='true'&&env.APPLE_ENVIRONMENT==='Production')||
+   (env.GOOGLE_PLAY_BILLING_ENABLED==='true'&&env.GOOGLE_PLAY_BILLING_MODE==='live'&&env.GOOGLE_PLAY_LIVE_BILLING_ENABLED==='true')||
    testFlightBetaEnabled(env))&&
   env.SUPABASE_URL===LIVE_SUPABASE&&
   typeof env.SUPABASE_PUBLISHABLE_KEY==='string'&&env.SUPABASE_PUBLISHABLE_KEY.length>20&&

@@ -10,10 +10,10 @@ import {verifyAndroid} from '../scripts/verify-android.mjs';
 
 test('Android generated documents remove Apple purchase copy before first paint without changing source HTML',()=>{
  const source='<head><meta name="basketboss-native-build" content="ios"></head><body><p>Use 200 recipes free, or choose Apple Premium.</p><div id="bbNativePlanComparison" data-bb-membership-comparison></div></body>',copy=androidDocument(source);
- assert.match(copy,/content="android"/);assert.match(copy,/Purchases are not available in this Android test build/);assert.doesNotMatch(copy,/choose Apple Premium|data-bb-membership-comparison/);assert.match(source,/choose Apple Premium/);assert.throws(()=>androidDocument('<head></head>'));
+ assert.match(copy,/content="android"/);assert.match(copy,/sign in to view your Premium options/);assert.doesNotMatch(copy,/choose Apple Premium|data-bb-membership-comparison/);assert.match(source,/choose Apple Premium/);assert.throws(()=>androidDocument('<head></head>'));
 });
 test('Android source locks package/version/target and protects the shared iOS configuration',()=>{
- const result=verifyAndroid({assets:false});assert.equal(result.appId,'uk.co.basketboss.app');assert.equal(result.versionName,'1.0.2');assert.equal(result.versionCode,1);assert.equal(result.targetSdk,36);
+ const result=verifyAndroid({assets:false});assert.equal(result.appId,'uk.co.basketboss.app');assert.equal(result.versionName,'1.0.2');assert.equal(result.versionCode,2);assert.equal(result.targetSdk,36);
  const baseline=JSON.parse(fs.readFileSync(new URL('./fixtures/android-ios-baseline.json',import.meta.url)));
  const current=JSON.parse(fs.readFileSync(path.join(ANDROID_ROOT,'capacitor.config.json')));assert.deepEqual(current.ios,baseline.ios);assert.deepEqual(current.plugins,baseline.plugins);assert.equal(current.server.iosScheme,baseline.iosScheme);
  for(const [name,hash]of Object.entries(baseline.files))assert.equal(createHash('sha256').update(fs.readFileSync(path.join(ANDROID_ROOT,name))).digest('hex'),hash,'Protected iOS/core source changed: '+name);
