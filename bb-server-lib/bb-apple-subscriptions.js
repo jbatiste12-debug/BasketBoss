@@ -8,6 +8,7 @@ import {appleRootCertificates} from './bb-apple-roots.js';
 import {withAppleOCSPDateCompatibility} from './bb-apple-ocsp.js';
 import {expectedPrice,entitlementForStatus} from './bb-billing.js';
 import {ensureDeletionSchema,isAccountDeleting,digestDeletionActor} from './bb-account-deletion.js';
+import {purchaseIntentsEnabled,proofStatements} from './bb-purchase-intents.js';
 export const APPLE_BUNDLE_ID='uk.co.basketboss.app';
 export const APPLE_DEFAULT_PRODUCTS=Object.freeze({monthly:'uk.co.basketboss.premium.monthly',annual:'uk.co.basketboss.premium.annual'});
 const UUID=/^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
@@ -216,12 +217,12 @@ export async function fetchAppleCurrentSubscription(service,originalId,accountTo
  if(transaction.originalTransactionId!==originalId||transaction.appAccountToken.toLowerCase()!==accountToken.toLowerCase())fail('apple_account_mismatch','This Apple subscription belongs to another BasketBoss account.',409);
  return evaluateAppleSubscription(config,transaction,renewal,item.status);
 }
-export async function persistAppleSubscription(env,userId,state){
+export async function persistAppleSubscription(env,userId,state,{reservation=null,actor=null}={}){
  const actorHash=await digestDeletionActor(userId);
  // Every write checks the durable account deletion barrier in the same statement.
  // The immutable account-token row also prevents a late request recreating a
  // subscription after the parent's deletion cleanup removed that mapping.
- await env.BILLING_DB.prepare(`INSERT INTO bb_apple_subscriptions(environment,original_transaction_id,user_id,app_account_token,
+ const write=env.BILLING_DB.prepare(`INSERT INTO bb_apple_subscriptions(environment,original_transaction_id,user_id,app_account_token,
   latest_transaction_id,product_id,plan,status,expires_at_ms,grace_expires_at_ms,revoked_at_ms,cancel_at_period_end,apple_signed_at_ms,last_verified_at_ms)
   SELECT ?,?,?,?,?,?,?,?,?,?,?,?,?,? WHERE EXISTS(SELECT 1 FROM bb_apple_account_tokens WHERE user_id=? AND app_account_token=?)
   AND NOT EXISTS(SELECT 1 FROM bb_account_deletions WHERE actor_hash=?)
@@ -233,7 +234,20 @@ export async function persistAppleSubscription(env,userId,state){
   AND (excluded.apple_signed_at_ms>bb_apple_subscriptions.apple_signed_at_ms OR
    (excluded.apple_signed_at_ms=bb_apple_subscriptions.apple_signed_at_ms AND excluded.last_verified_at_ms>=bb_apple_subscriptions.last_verified_at_ms))`)
  .bind(state.environment,state.originalTransactionId,userId,state.appAccountToken,state.transactionId,state.productId,state.plan,state.status,
-  state.expiresAtMs,state.graceExpiresAtMs,state.revokedAtMs,Number(state.cancelAtPeriodEnd),state.appleSignedAtMs,state.lastVerifiedAtMs,userId,state.appAccountToken,actorHash).run();
+  state.expiresAtMs,state.graceExpiresAtMs,state.revokedAtMs,Number(state.cancelAtPeriodEnd),state.appleSignedAtMs,state.lastVerifiedAtMs,userId,state.appAccountToken,actorHash);
+ if(purchaseIntentsEnabled(env)){
+  // A current, account-bound Apple proof is recorded atomically with the
+  // ownership-safe subscription row. Reservation data can correlate an attempt,
+  // never grant Premium, reject a valid restore, or select another user's row.
+  const proofs=await proofStatements(env,{userId,provider:'apple',mode:state.environment==='Sandbox'?'test':'live',productId:state.productId,
+   // The original ID binds the account/renewal lineage, not a checkout attempt.
+   // A later re-subscription may reuse that lineage; only this purchase's unique
+   // transaction ID can resolve its own reservation without moving old proof.
+   reference:state.transactionId,phase:'completed',reservation,actor,
+   guardSQL:'EXISTS(SELECT 1 FROM bb_apple_subscriptions WHERE environment=? AND original_transaction_id=? AND user_id=? AND app_account_token=? AND latest_transaction_id=? AND product_id=? AND apple_signed_at_ms=? AND last_verified_at_ms=?)',
+   guardBindings:[state.environment,state.originalTransactionId,userId,state.appAccountToken,state.transactionId,state.productId,state.appleSignedAtMs,state.lastVerifiedAtMs]});
+  await env.BILLING_DB.batch([write,...proofs]);
+ }else await write.run();
  const saved=await env.BILLING_DB.prepare('SELECT * FROM bb_apple_subscriptions WHERE environment=? AND original_transaction_id=?').bind(state.environment,state.originalTransactionId).first();
  if(!saved||saved.user_id!==userId||saved.app_account_token!==state.appAccountToken)fail('apple_account_mismatch','This Apple subscription is unavailable for this BasketBoss account.',409);
  return saved;
@@ -245,7 +259,7 @@ export function appleEntitlementFromRow(config,row,now=Date.now()){
   originalTransactionId:row.original_transaction_id,productId:row.product_id,expiresAt:iso(row.expires_at_ms),currentPeriodEndsAt:iso(row.expires_at_ms),
   cancelAtPeriodEnd:row.cancel_at_period_end===1,environment:row.environment,lastVerifiedAt:iso(row.last_verified_at_ms)};
 }
-export async function readAppleEntitlement(env,userId){
+export async function readAppleEntitlement(env,userId,{forCheckout=false}={}){
  const baseConfig=getVerifiedAppleConfig(env);if(!baseConfig||!appleUserAllowed(baseConfig,userId))return null;
  const config=appleConfigForUser(baseConfig,userId);
  await assertAppleAccountReady(env,config,userId);
@@ -253,13 +267,21 @@ export async function readAppleEntitlement(env,userId){
  if(rows.length>20)fail('apple_account_unavailable','Apple subscription records require support review.');
  const result=[];
  for(let row of rows){
-  if(Date.now()-row.last_verified_at_ms>=REFRESH_MS){
+  if(forCheckout||Date.now()-row.last_verified_at_ms>=REFRESH_MS){
    const state=await fetchAppleCurrentSubscription(await getAppleServices(env,config),row.original_transaction_id,row.app_account_token);
-   row=await persistAppleSubscription(env,userId,state);
+   if(forCheckout&&!['active','grace_period','billing_retry'].includes(state.status)){
+    // A strict checkout needs fresh evidence that an old lineage cannot resume,
+    // not another identical inactive proof revision that invalidates its own
+    // start on every retry. This projection grants no access and changes no
+    // persisted status; normal restore/status reconciliation remains unchanged.
+    row={...row,environment:state.environment,product_id:state.productId,plan:state.plan,status:state.status,
+     expires_at_ms:state.expiresAtMs,grace_expires_at_ms:state.graceExpiresAtMs,revoked_at_ms:state.revokedAtMs,
+     cancel_at_period_end:Number(state.cancelAtPeriodEnd),last_verified_at_ms:state.lastVerifiedAtMs};
+   }else row=await persistAppleSubscription(env,userId,state);
   }
   const entitlement=appleEntitlementFromRow(config,row);if(entitlement)result.push(entitlement);
  }
- return result.find(item=>item.premiumAccess)||result[0]||null;
+ return result.find(item=>item.premiumAccess)||(forCheckout?result.find(item=>item.status==='billing_retry'):null)||result[0]||null;
 }
 export async function hasExistingWebPremium(env,user){
  if(user.id&&user.id===env.BB_OWNER_USER_ID)return 'owner';

@@ -64,7 +64,7 @@ export function installAndroidMembership({window:win=globalThis.window,document:
   parent.append(heading,benefits,plans,catalogue,controls,terms,legal);
   let previous='';
   unsubscribePlans=purchases.subscribeState(state=>{
-   restore.disabled=state.busy;manage.disabled=state.busy;retry.disabled=state.busy;login.disabled=state.busy;
+   restore.disabled=state.busy||state.authenticated&&state.restoreAvailable!==true;manage.disabled=state.busy;retry.disabled=state.busy;login.disabled=state.busy;
    manage.hidden=!state.authenticated;text(manage,state.provider==='google_play'?'Manage Google Play subscription':'Google Play subscription settings');
    text(catalogue,state.availabilityMessage||'');catalogue.hidden=!catalogue.textContent;catalogue.setAttribute('data-product-load-state',state.productLoadState);
    plans.hidden=state.premiumAccess;heading.hidden=state.premiumAccess;benefits.hidden=state.premiumAccess;

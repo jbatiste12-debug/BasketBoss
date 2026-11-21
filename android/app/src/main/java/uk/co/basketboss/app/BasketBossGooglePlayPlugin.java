@@ -79,6 +79,9 @@ public final class BasketBossGooglePlayPlugin extends Plugin {
 
         void reject(String message, String code) {
             if (!active) return;
+            // A sheet that has never been invoked can be safely abandoned.
+            // Once launch was attempted, all ambiguous errors remain uncertain.
+            if (flow != null && flow.request == this && !flow.launched) code = "BB_PLAY_NOT_LAUNCHED";
             close();
             call.reject(message, code);
         }
@@ -95,9 +98,10 @@ public final class BasketBossGooglePlayPlugin extends Plugin {
         final Request request;
         final String productId;
         final String accountId;
+        final String profileId;
         boolean launched;
-        PurchaseFlow(long lease, Request request, String productId, String accountId) {
-            this.lease = lease; this.request = request; this.productId = productId; this.accountId = accountId;
+        PurchaseFlow(long lease, Request request, String productId, String accountId, String profileId) {
+            this.lease = lease; this.request = request; this.productId = productId; this.accountId = accountId; this.profileId = profileId;
         }
     }
 
@@ -183,6 +187,10 @@ public final class BasketBossGooglePlayPlugin extends Plugin {
     }
 
     private static JSArray purchasePayloads(List<Purchase> purchases, String productId, String accountId) {
+        return purchasePayloads(purchases, productId, accountId, null);
+    }
+
+    private static JSArray purchasePayloads(List<Purchase> purchases, String productId, String accountId, String profileId) {
         JSArray values = new JSArray(); Set<String> tokens = new LinkedHashSet<>();
         if (purchases == null) return values;
         for (Purchase purchase : purchases) {
@@ -190,6 +198,10 @@ public final class BasketBossGooglePlayPlugin extends Plugin {
             if (accountId != null) {
                 AccountIdentifiers identifiers = purchase.getAccountIdentifiers();
                 if (identifiers == null || !accountId.equals(identifiers.getObfuscatedAccountId())) continue;
+            }
+            if (profileId != null) {
+                AccountIdentifiers identifiers = purchase.getAccountIdentifiers();
+                if (identifiers == null || !GooglePlayPurchasePolicy.profileMatches(profileId, identifiers.getObfuscatedProfileId())) continue;
             }
             JSObject value = purchasePayload(purchase);
             if (value != null && tokens.add(purchase.getPurchaseToken())) values.put(value);
@@ -294,6 +306,7 @@ public final class BasketBossGooglePlayPlugin extends Plugin {
     private void resolve(PurchaseFlow candidate, String status, JSArray purchases) {
         if (flow != candidate) return;
         JSObject answer = envelope(purchases); answer.put("status", status);
+        answer.put("billingFlowLaunched", candidate.launched);
         candidate.request.resolve(answer); retire(candidate);
     }
 
@@ -302,14 +315,15 @@ public final class BasketBossGooglePlayPlugin extends Plugin {
             if (closed(call)) return;
             String productId = call.getString("productId"), basePlanId = call.getString("basePlanId");
             String offerToken = call.getString("offerToken"), accountId = call.getString("obfuscatedAccountId");
+            String profileId = call.getString("obfuscatedProfileId");
             if (!GooglePlayPurchasePolicy.productId(productId) || !GooglePlayPurchasePolicy.basePlanId(basePlanId) ||
-                !GooglePlayPurchasePolicy.accountId(accountId) || offerToken == null || offerToken.isEmpty() || offerToken.length() > 4096) {
+                !GooglePlayPurchasePolicy.accountId(accountId) || (profileId != null && !GooglePlayPurchasePolicy.profileId(profileId)) || offerToken == null || offerToken.isEmpty() || offerToken.length() > 4096) {
                 call.reject("A valid subscription and signed-in purchase context are required.", "BB_PLAY_INVALID_ARGUMENT"); return;
             }
             long lease = purchaseGate.begin();
             if (lease == 0) { call.reject("Another Google Play purchase is in progress. Restore purchases if its result was interrupted.", "BB_PLAY_BUSY"); return; }
             Request request = new Request(call, PURCHASE_TIMEOUT_MS);
-            PurchaseFlow candidate = new PurchaseFlow(lease, request, productId, accountId); flow = candidate;
+            PurchaseFlow candidate = new PurchaseFlow(lease, request, productId, accountId, profileId); flow = candidate;
             withClient(request, () -> {
                 try {
                     // A known subscription must be reconciled, not bought a second time or silently changed to another plan.
@@ -350,10 +364,11 @@ public final class BasketBossGooglePlayPlugin extends Plugin {
                 try {
                     BillingFlowParams.ProductDetailsParams product = BillingFlowParams.ProductDetailsParams.newBuilder()
                         .setProductDetails(found).setOfferToken(selected.getOfferToken()).build();
-                    BillingFlowParams params = BillingFlowParams.newBuilder().setProductDetailsParamsList(Collections.singletonList(product))
-                        .setObfuscatedAccountId(candidate.accountId).build();
+                    BillingFlowParams.Builder params = BillingFlowParams.newBuilder().setProductDetailsParamsList(Collections.singletonList(product))
+                        .setObfuscatedAccountId(candidate.accountId);
+                    if (candidate.profileId != null) params.setObfuscatedProfileId(candidate.profileId);
                     candidate.launched = true;
-                    BillingResult launch = billing.launchBillingFlow(activity, params);
+                    BillingResult launch = billing.launchBillingFlow(activity, params.build());
                     if (launch.getResponseCode() != BillingClient.BillingResponseCode.OK) completeBillingResult(candidate, launch);
                 } catch (RuntimeException unavailable) { reject(candidate, "Google Play could not open its purchase screen.", "BB_PLAY_PURCHASE_FAILED"); }
             }));
@@ -396,7 +411,7 @@ public final class BasketBossGooglePlayPlugin extends Plugin {
         if (candidate == null || !candidate.launched) return;
         if (code != BillingClient.BillingResponseCode.OK) { completeBillingResult(candidate, result); return; }
         // An unrelated/replayed purchase update cannot complete another account's sheet.
-        JSArray matching = purchasePayloads(purchases, candidate.productId, candidate.accountId);
+        JSArray matching = purchasePayloads(purchases, candidate.productId, candidate.accountId, candidate.profileId);
         if (matching.length() > 0) resolve(candidate, containsPurchased(matching) ? "purchased" : "pending", matching);
     }
 

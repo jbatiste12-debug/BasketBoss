@@ -1,7 +1,8 @@
 import {json,authenticatedUser,requireSameOrigin} from './bb-billing.js';
+import {PurchaseIntentError} from './bb-purchase-intents.js';
 import {GooglePlayBillingError,getVerifiedGooglePlayConfig,assertGooglePlayAccountReady} from './bb-google-play-subscriptions.js';
 export function googlePlayErrorResponse(error){
- if(error instanceof GooglePlayBillingError)return json({ok:false,code:error.code,error:error.message},error.status);
+ if(error instanceof GooglePlayBillingError||error instanceof PurchaseIntentError)return json({ok:false,code:error.code,error:error.message},error.status);
  return json({ok:false,code:'google_play_unavailable',error:'Google Play subscriptions are temporarily unavailable. Please try again.'},503);
 }
 export async function googlePlayAuthenticatedRequest(request,env){

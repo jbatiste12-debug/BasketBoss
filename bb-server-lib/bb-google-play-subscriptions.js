@@ -2,6 +2,7 @@
  * Disabled by default. Test purchases require Google's proof and our allowlist.
  * Purchase tokens and credentials must never be returned to a browser or logged.
  */
+import {purchaseIntentsStrict,purchaseIntentProofStatements} from './bb-purchase-intents.js';
 import {createPrivateKey} from 'node:crypto';
 import {digestHex} from './bb-billing.js';
 import {ensureDeletionSchema,isAccountDeleting,digestDeletionActor,digestDeletionRef} from './bb-account-deletion.js';
@@ -16,6 +17,8 @@ const fail=(code,message,status=503)=>{throw new GooglePlayBillingError(code,mes
 export const googlePlayBillingEnabled=env=>env.GOOGLE_PLAY_BILLING_ENABLED==='true'&&
  (env.GOOGLE_PLAY_BILLING_MODE==='test'||liveGooglePlayBillingEnabled(env));
 export const liveGooglePlayBillingEnabled=env=>env.GOOGLE_PLAY_BILLING_ENABLED==='true'&&env.GOOGLE_PLAY_BILLING_MODE==='live'&&env.GOOGLE_PLAY_LIVE_BILLING_ENABLED==='true';
+// Readers/restore have their own gate: pausing sales must never discard paid access.
+export const liveGooglePlayCheckoutEnabled=env=>liveGooglePlayBillingEnabled(env)&&env.GOOGLE_PLAY_LIVE_CHECKOUT_ENABLED==='true'&&purchaseIntentsStrict(env);
 const csv=value=>String(value||'').split(',').map(v=>v.trim()).filter(Boolean);
 export function getVerifiedGooglePlayConfig(env){
  if(!googlePlayBillingEnabled(env))return null;
@@ -145,6 +148,12 @@ export async function reconcileGooglePlayPurchase(env,config,userId,purchaseToke
    AND NOT EXISTS(SELECT 1 FROM bb_account_deletions WHERE actor_hash=?)
    AND EXISTS(SELECT 1 FROM bb_google_play_leases WHERE token_hash=? AND generation=? AND locked_until_ms>?)`;
   const guard=[userId,accountId,actorHash,hash,generation,Date.now()];
+  const proofInput={userId,provider:'google_play',mode:state.environment==='test'?'test':'live',productId:state.productId,reference:purchaseToken,
+   phase:state.status==='pending'?'pending':['pending_canceled','expired'].includes(state.status)?'canceled':state.acknowledged?'completed':'unknown',
+   // Only Google's verified per-attempt profile identifier can identify an intent.
+   trustedIntentId:purchase.externalAccountIdentifiers?.obfuscatedExternalProfileId,
+   guardSQL:'EXISTS(SELECT 1 FROM bb_google_play_subscriptions WHERE token_hash=? AND user_id=? AND reconciliation_generation=? AND replaced_by_hash IS NULL)',guardBindings:[hash,userId,generation]};
+  const coordination=await purchaseIntentProofStatements(env,proofInput);
   await db.batch([
    db.prepare(`INSERT OR IGNORE INTO bb_google_play_lineages(lineage_id,user_id,obfuscated_account_id,head_token_hash) SELECT ?,?,?,? WHERE ${safe}`)
     .bind(lineageId,userId,accountId,hash,...guard),
@@ -159,16 +168,19 @@ export async function reconcileGooglePlayPurchase(env,config,userId,purchaseToke
     .bind(hash,purchaseToken,userId,accountId,lineageId,state.productId,state.basePlanId,state.offerId,state.plan,state.status,state.environment,state.expiresAtMs,Number(state.cancelAtPeriodEnd),Number(state.acknowledged),generation,state.lastVerifiedAtMs,...guard,lineageId,userId,hash),
    db.prepare(`UPDATE bb_google_play_subscriptions SET replaced_by_hash=? WHERE lineage_id=? AND token_hash<>? AND replaced_by_hash IS NULL AND ${safe}
     AND EXISTS(SELECT 1 FROM bb_google_play_subscriptions WHERE token_hash=? AND reconciliation_generation=?) AND EXISTS(SELECT 1 FROM bb_google_play_lineages WHERE lineage_id=? AND head_token_hash=?)`)
-    .bind(hash,lineageId,hash,...guard,hash,generation,lineageId,hash)
+    .bind(hash,lineageId,hash,...guard,hash,generation,lineageId,hash),
+   ...coordination
   ]);
   let saved=await db.prepare('SELECT * FROM bb_google_play_subscriptions WHERE token_hash=?').bind(hash).first();
   if(!saved||saved.user_id!==userId||saved.reconciliation_generation!==generation||saved.replaced_by_hash)
    fail('google_play_purchase_replaced','This purchase was replaced or could not be safely verified. Restore the current purchase.',409);
   if(!saved.acknowledged&&['active','canceled','grace_period'].includes(saved.status)&&saved.expires_at_ms>Date.now()){
    await api.acknowledge(purchaseToken,state.productId);
-   await db.prepare(`UPDATE bb_google_play_subscriptions SET acknowledged=1 WHERE token_hash=? AND reconciliation_generation=? AND ${safe}
+   const acknowledgedProof=await purchaseIntentProofStatements(env,{...proofInput,phase:'completed',
+    guardSQL:proofInput.guardSQL+' AND EXISTS(SELECT 1 FROM bb_google_play_subscriptions WHERE token_hash=? AND acknowledged=1)',guardBindings:[...proofInput.guardBindings,hash]});
+   await db.batch([db.prepare(`UPDATE bb_google_play_subscriptions SET acknowledged=1 WHERE token_hash=? AND reconciliation_generation=? AND ${safe}
     AND replaced_by_hash IS NULL AND EXISTS(SELECT 1 FROM bb_google_play_lineages WHERE lineage_id=? AND head_token_hash=?)`)
-    .bind(hash,generation,...guard,lineageId,hash).run();
+    .bind(hash,generation,...guard,lineageId,hash),...acknowledgedProof]);
    saved=await db.prepare('SELECT * FROM bb_google_play_subscriptions WHERE token_hash=?').bind(hash).first();
    if(!saved||saved.acknowledged!==1||saved.reconciliation_generation!==generation||await isAccountDeleting(env,userId))fail('google_play_verification_pending','Purchase confirmation is awaiting a safe retry.',409);
   }

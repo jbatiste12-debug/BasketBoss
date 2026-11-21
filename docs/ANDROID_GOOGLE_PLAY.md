@@ -9,10 +9,12 @@ Build 4 includes the merged automatic shared-plan refresh and account-deletion f
 An already linked household now loads its saved dinners on a fresh device even
 before that device has a local plan record. Dinner and serving changes then
 refresh both ways while the apps are open, without pressing Sync.
-Licence-test purchases remain unavailable until the server, catalogue and test
-account are configured. Live checkout is deliberately blocked in this revision,
-including when live environment flags are supplied. Prices and eligible trial offers come from Google Play; they are not
-hardcoded in the app. Existing eligible Premium accounts should use their current
+Purchases remain unavailable until the server, catalogue and account are
+configured. New live sales require the additional checkout and shared purchase-intent
+gates described below; they are off by default. Switching off new sales does not
+disable configured restore, verification, management or an independently verified
+existing membership. Prices and eligible trial offers come from Google Play;
+they are not hardcoded in the app. Existing eligible Premium accounts should use their current
 membership rather than buy another subscription. Android does not open Paddle or
 iOS StoreKit. The new billing tables and server settings are not applied by a
 local build or by this guide; activation requires a separate reviewed deployment.
@@ -53,7 +55,7 @@ android/app/build/outputs/bundle/release/app-release.aab
 
 Run `npm run android:sync` for future Android web-asset updates. It prepares a
 separate Android catalogue-700 bundle and syncs Android only. The iOS project,
-root Capacitor configuration and existing iOS packaging path stay intact. The
+root Capacitor configuration and existing iOS native packaging path stay intact. The
 convenience launcher is [prepare-android-mac.command](../release-assets/prepare-android-mac.command).
 
 The bundle keeps all existing recipe pictures unchanged in a `recipe_images`
@@ -135,7 +137,7 @@ Before promoting the closed test, check on an Android phone:
    Android purchase-unavailable explanation, with no Paddle checkout.
 
 
-## Google Play subscriptions: licence-test setup
+## Google Play subscriptions: setup and staged activation
 
 The Android bridge uses Google's pinned Billing library 9.1.0. It has no npm
 billing dependency and does not modify the iOS StoreKit implementation. The new
@@ -144,25 +146,32 @@ purchases to an opaque ID for the authenticated BasketBoss account, persists the
 verified result in D1, and acknowledges purchases server-side. Native purchase
 callbacks, browser flags and localStorage never grant Premium.
 
-This revision is for **licence testing**, not live subscription sales. The
-config and purchase-context endpoints deliberately reject live checkout. A
-shared cross-provider purchase reservation and cancellation design must be
-reviewed before that fence is removed: checking already-active memberships
-alone cannot prevent simultaneous checkout sheets on two platforms. Existing
-nonterminal Google purchases also need resolving before another subscription.
-No live product, price, offer, database migration or customer record is changed
-by building the app.
+Start with **licence testing**. Production checkout is a separate, default-off
+activation after the release checks pass. Purchase preparation uses a durable
+account-scoped reservation across Apple, Google Play and Paddle when the shared
+purchase-intent feature is enabled. The server must authorise starting that
+reservation before the native sheet opens. Pending or uncertain attempts remain
+held for reconciliation; a timeout, app closure or empty purchase query cannot
+release them. Existing nonterminal Google purchases must also be resolved before
+another subscription. This coordinates updated BasketBoss clients; it cannot
+prevent a subscription started externally or by an older client outside this
+protocol. No live product, price, offer, database migration or customer record
+is changed by building the app. See [the parity audit](IOS_ANDROID_BILLING_PARITY.md)
+for the compatibility and rollout limits.
 
 1. Complete the Google Play payments profile directly in Play Console.
 2. Upload/publish the billing-enabled build to the Internal testing track. The
    original code-1 build lacked Billing; Google may keep product configuration
    unavailable until a billing-enabled version is in a track.
 3. Agree the catalogue and prices before creating or activating products. The
-   proposed model is one Premium product, `basketboss_premium`, with `monthly`
-   and `annual` auto-renewing base plans. These are proposed identifiers, not
-   existing Console objects. Prices, countries and eligible free-trial offers
-   remain owner decisions. Android displays Play-returned localized prices and
-   eligible pricing phases; it never substitutes a made-up price or trial.
+   release catalogue below is one Premium product, `basketboss_premium`, with
+   `monthly` and `annual` auto-renewing base plans. If offering the same eligible
+   seven-day trial as iOS, create an offer named `seven-day` under each plan.
+   These are exact identifiers to create/configure, not evidence of existing
+   Console objects. Prices, countries and trial activation remain owner decisions.
+   Android displays Play-returned localized prices and eligible pricing phases;
+   it never substitutes a made-up price or trial. A regular paid base plan
+   remains available when Play does not return an eligible trial.
 4. Add the Google account used by the Android device to both Internal testers
    and the developer account's **License testing** list. Use Google's test
    payment instruments. Internal testing alone does not prevent real charges.
@@ -181,26 +190,32 @@ by building the app.
    Google's OIDC signature and claims, then fetches current purchase state;
    notification fields alone never grant access.
 7. Review and apply `sql/basketboss_google_play_subscriptions_20261121.sql` to
-   the existing **Cloudflare D1 BILLING_DB**, then deploy the reviewed server
-   changes. This is not a Supabase migration. No existing Apple/Paddle rows are
-   modified by the new migration. Applying it is a separate approved action.
+   the existing **Cloudflare D1 BILLING_DB**. Also review/apply
+   `sql/basketboss_purchase_intents_20261121.sql` before enabling shared purchase
+   coordination or live checkout. Then deploy the reviewed server changes.
+   These are not Supabase migrations; they do not alter existing Apple/Paddle
+   provider rows. No migration is applied by these instructions or a native build.
 
 Required server settings (keep all purchase flags disabled until setup passes):
 
 | Setting | Meaning |
 | --- | --- |
 | `GOOGLE_PLAY_BILLING_ENABLED` | Explicit feature gate; default off |
-| `GOOGLE_PLAY_BILLING_MODE` | Use `test` for this delivery |
+| `GOOGLE_PLAY_BILLING_MODE` | Start with `test`; change to `live` only after the production checklist |
 | `GOOGLE_PLAY_TEST_USER_IDS` | Comma-separated verified BasketBoss test-user UUIDs |
-| `GOOGLE_PLAY_PRODUCT_ID` | Exact owner-approved Play subscription ID |
-| `GOOGLE_PLAY_MONTHLY_BASE_PLAN_ID` | Exact monthly auto-renewing base-plan ID |
-| `GOOGLE_PLAY_ANNUAL_BASE_PLAN_ID` | Exact annual auto-renewing base-plan ID |
-| `GOOGLE_PLAY_MONTHLY_OFFER_IDS` / `GOOGLE_PLAY_ANNUAL_OFFER_IDS` | Optional approved offer IDs; empty means no introductory offer |
+| `GOOGLE_PLAY_PRODUCT_ID` | `basketboss_premium` |
+| `GOOGLE_PLAY_MONTHLY_BASE_PLAN_ID` | `monthly` |
+| `GOOGLE_PLAY_ANNUAL_BASE_PLAN_ID` | `annual` |
+| `GOOGLE_PLAY_MONTHLY_OFFER_IDS` / `GOOGLE_PLAY_ANNUAL_OFFER_IDS` | Set each to `seven-day` only if that plan’s trial offer is created and active; leave empty for base-plan-only sales |
 | `GOOGLE_PLAY_SERVICE_ACCOUNT_EMAIL` | Developer API service-account identity |
 | `GOOGLE_PLAY_PRIVATE_KEY` | Secret PKCS#8 RSA private key; never a client value |
 | `GOOGLE_PLAY_PUBSUB_SERVICE_ACCOUNT_EMAIL` | Exact authenticated push identity |
 | `GOOGLE_PLAY_PUBSUB_AUDIENCE` | Exact configured HTTPS push audience |
 | `GOOGLE_PLAY_PUBSUB_SUBSCRIPTION` | Exact `projects/.../subscriptions/...` resource |
+| `GOOGLE_PLAY_LIVE_BILLING_ENABLED` | Additional production-token reader/verification gate; not permission to sell on its own |
+| `GOOGLE_PLAY_LIVE_CHECKOUT_ENABLED` | Additional explicit gate for starting new live Google payments |
+| `BB_PURCHASE_INTENTS_ENABLED` | Enable the reviewed durable shared coordinator after applying its D1 schema |
+| `BB_PURCHASE_INTENTS_STRICT` | Require the updated coordination protocol for new checkout; required together with the previous flag for live Google sales |
 
 The package is fixed to `uk.co.basketboss.app`. Test mode accepts only Google's
 verified test purchases from allowlisted BasketBoss accounts. Test access never
@@ -222,3 +237,90 @@ Cancellation is not required before account deletion. Its actionless deletion
 form retains the original handler even on the native pricing page; explicit
 payment-form actions remain blocked. Shared web/iOS deletion handlers are not
 modified.
+
+
+## Exact Console catalogue
+
+| Console object | Identifier | Configuration |
+| --- | --- | --- |
+| Application | `uk.co.basketboss.app` | Existing BasketBoss Play app; package is immutable |
+| Subscription product | `basketboss_premium` | Premium entitlement |
+| Monthly base plan | `monthly` | Auto-renewing, one month; set countries and real local prices |
+| Annual base plan | `annual` | Auto-renewing, one year; set countries and real local prices |
+| Monthly trial offer, optional | `seven-day` under `monthly` | Free phase of seven days, then monthly base-plan renewal |
+| Annual trial offer, optional | `seven-day` under `annual` | Free phase of seven days, then annual base-plan renewal |
+
+In **Monetise with Play → Products → Subscriptions**, create the product, then its
+base plans and offers. Activate the intended countries, base plans and offers.
+Names in the table must match the server values exactly, including case. Offer
+IDs are scoped to a base plan, so the same `seven-day` ID can be used under each.
+Do not enter an offer token: Play supplies that opaque token for the eligible
+customer at runtime. The app validates and passes the returned token.
+
+For trial eligibility, use Play's new-customer acquisition restrictions that
+match the intended household Premium policy (normally a customer who has never
+had a subscription in this app). Apple's introductory offer eligibility is
+managed per Apple subscription group. The two stores cannot share a customer's
+store purchase history, so a trial in one store cannot prove ineligibility in
+the other. Existing verified BasketBoss Premium suppresses another checkout.
+Do not advertise a seven-day trial unless the configured store offer is active
+and returned as eligible. Check App Store Connect's current offer and prices
+before choosing the Android values; the repository's StoreKit fixture is not
+that evidence.
+
+Keep historical offer IDs in the server verification allowlists after customers
+have purchased them. Stop new eligibility by deactivating an offer in Play
+Console; removing its ID from verification configuration would prevent existing
+purchases using that offer from being verified. Do not repurpose product or base
+plan IDs for different periods.
+
+## Production release checklist
+
+1. Review the billing code and both D1 migrations. Configure credentials directly
+   as server secrets. In Play Console grant the Developer API service account
+   access to **this app**, including **View financial data, orders, and
+   cancellation survey responses** and **Manage orders and subscriptions** as
+   needed to read and acknowledge subscriptions. Check the current Console
+   permission labels and keep other app access disabled. Enable the Android
+   Developer API in the service account's Google Cloud project.
+2. Give `google-play-developer-notifications@system.gserviceaccount.com` Pub/Sub
+   Publisher access to the configured topic and select that topic in Play's
+   real-time developer notification settings. Configure authenticated push to
+   the HTTPS `/api/google-play/notifications` endpoint, with the exact push
+   service-account email, OIDC audience and subscription resource in the server
+   settings. Test notification delivery; a Console test message is not a
+   subscription proof.
+3. Apply the reviewed schemas and deploy the reviewed endpoints with sales off.
+   Check readiness, membership, Restore and Manage with existing accounts.
+   Test mode requires both the BasketBoss UUID allowlist and Google's verified
+   test-purchase marker. Test purchases never grant production household sharing.
+4. Release updated iOS and Android clients capable of shared purchase-intent
+   start/result reporting before enabling strict new checkout. With strict mode
+   enabled, legacy clients may be asked to update before a **new** purchase;
+   existing entitlement checks, verification, Restore and Manage must continue.
+   Validate this explicitly with the current App Store build before activation.
+5. Complete the licence-device acceptance matrix in the parity audit, including
+   cancellation, deferred payment, app restart, notification recovery and
+   cross-provider simultaneous checkout. Resolve uncertain attempts from actual
+   provider evidence; do not clear database locks to make a test pass.
+6. Build with the original upload key, require the signed-bundle verifier to pass,
+   and confirm **package `uk.co.basketboss.app`, version `1.0.4`, code `4`** and
+   `com.android.vending.BILLING` in the packaged base manifest. If code 4 was
+   already uploaded, increment every version-code check and produce a new bundle.
+   Confirm the upload certificate matches the Console's registered upload key.
+7. Install through Play Internal testing, confirm all image-pack assets and the
+   full application work, then submit the intended track. Uploading an AAB does
+   not activate server billing, publish a subscription, apply a database
+   migration or enable live purchases.
+8. Only after release/setup approval, use `GOOGLE_PLAY_BILLING_MODE=live`, the
+   production verification gate, the explicit live-checkout gate and both shared
+   purchase-intent flags. Keep a way to disable **new sales alone** while keeping
+   production readers, verification, RTDN, Restore and existing paid access on.
+   Monitor verification/acknowledgement retries and notifications without logging
+   purchase tokens or credentials.
+
+A signed AAB cannot be manufactured from an unsigned CI artifact by renaming it.
+The signing key is held on the owner's Mac unless its existing key has separately
+been configured in private Actions secrets. The Mac command above produces the
+signed file; this documentation does not claim a signed artifact or successful
+real purchase until those checks have actually run.

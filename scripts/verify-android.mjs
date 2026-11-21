@@ -17,6 +17,7 @@ export function verifyAndroid({root=ANDROID_ROOT,assets=true}={}){
  assert.match(manifest,/android:scheme="basketboss" android:host="auth" android:path="\/callback"/);
  assert.match(manifest,/android:usesCleartextTraffic="false"/);assert.match(manifest,/android:allowBackup="false"/);assert.match(manifest,/android:windowSoftInputMode="adjustResize"/);
  const result={ok:true,appId:config.appId,appName:config.appName,versionName:'1.0.4',versionCode:4,targetSdk:36};
+ assert.match(manifest,/com\.android\.vending\.BILLING/);
  assert.match(gradle,/com\.android\.billingclient:billing:9\.1\.0/);
  assert.match(gradle,/assetPacks = \[":recipeImages"\]/);
  assert.match(read('android/recipeImages/build.gradle'),/deliveryType = "install-time"/);

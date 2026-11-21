@@ -73,7 +73,7 @@ test('a fresh server purchase context authorizes the exact Google offer and fina
   await h.api.ready;h.calls=[];h.native=[];
   const result=await h.subscribe();assert.deepEqual(result,{ok:true,status:'verified',premiumAccess:true});
   const context=h.calls.find(call=>call.path.endsWith('/purchase-context')),verify=h.calls.find(call=>call.path.endsWith('/verify'));
-  assert.deepEqual(context.body,{productId:PRODUCT,basePlanId:'monthly',offerId:null});assert.deepEqual(verify.body,{purchaseToken:'purchase-proof',productId:PRODUCT});
+  assert.deepEqual(context.body,{productId:PRODUCT,basePlanId:'monthly',offerId:null,reservationProtocol:1});assert.deepEqual(verify.body,{purchaseToken:'purchase-proof',productId:PRODUCT});
   assert.deepEqual(h.native.find(call=>call[0]==='purchase')[1],{productId:PRODUCT,basePlanId:'monthly',offerToken:'monthly-token',obfuscatedAccountId:'server-account-hash'});
   for(const call of h.calls){assert.equal(call.options.headers.Authorization,'Bearer session-a');assert.equal(call.options.credentials,'omit');assert.equal(call.options.redirect,'error');assert.equal(call.options.cache,'no-store');}
   assert.equal(h.api.state.premiumAccess,true);assert.equal(h.verifiedRefreshes,1);assert.equal(h.win.BasketBossVerifiedPremium.isActive,undefined,'controller never creates an authorization flag');
@@ -114,6 +114,56 @@ test('catalogue timeout or failure still permits owned-purchase reconciliation a
    h.getProducts=()=>failure==='timeout'?new Promise(()=>{}):failure==='error'?Promise.reject(Error('private store error')):Promise.resolve({products:[]});
    h.session=session();await h.api.refresh();
    assert.equal(h.native.some(call=>call[0]==='getPurchases'),true);assert.equal(h.calls.filter(call=>call.path.endsWith('/verify')).length,1);assert.equal(h.api.state.premiumAccess,true);assert.equal(h.api.state.available,false);assert.deepEqual(h.api.state.offers,[]);assert.equal(h.verifiedRefreshes,1);
+  }finally{h.api.destroy();}
+ }
+});
+
+test('disabled new sales still restore owned purchases through verification and fresh membership',async()=>{
+ const h=fixture({config:{...configuration(),available:false,restoreAvailable:true,mode:'live'}});try{
+  await h.api.ready;assert.equal(h.api.state.available,false);assert.equal(h.api.state.restoreAvailable,true);assert.deepEqual(h.api.state.offers,[]);
+  h.owned=[purchased()];h.calls=[];h.native=[];
+  assert.equal((await h.api.restore()).premiumAccess,true);
+  assert.deepEqual(h.native.map(call=>call[0]),['getPurchases']);
+  assert.deepEqual(h.calls.map(call=>call.path),['/api/google-play/config','/api/google-play/verify','/api/subscription/status']);
+  assert.equal(h.verifiedRefreshes,1);assert.equal(h.api.state.restoreAvailable,true);
+  assert.equal((await h.api.subscribe('invented-plan')).ok,false);assert.equal(h.native.some(call=>call[0]==='purchase'),false);
+  assert.equal(h.calls.some(call=>call.path.endsWith('/purchase-context')),false);
+ }finally{h.api.destroy();}
+});
+
+test('restore readiness accepts legacy available configs and rejects disabled or malformed services',async()=>{
+ const legacy=fixture();try{await legacy.api.ready;assert.equal(legacy.api.state.restoreAvailable,true,'legacy available:true continues to enable restore');}finally{legacy.api.destroy();}
+ for(const config of [{...configuration(),available:false,restoreAvailable:false},{...configuration(),restoreAvailable:false},{...configuration(),available:false,restoreAvailable:true,packageName:'other.app'},{...configuration(),available:false,restoreAvailable:'true'}]){
+  const h=fixture({config});try{
+   await h.api.ready;assert.equal(h.api.state.restoreAvailable,false);h.owned=[purchased()];
+   assert.equal((await h.api.restore()).ok,false);assert.equal(h.native.some(call=>call[0]==='getPurchases'),false);assert.equal(h.calls.some(call=>call.path.endsWith('/verify')),false);assert.equal(h.verifiedRefreshes,0);
+  }finally{h.api.destroy();}
+ }
+});
+
+test('restore readiness never substitutes for current account ownership or final membership',async()=>{
+ for(const failure of ['wrong_account','membership']){
+  const h=fixture({config:{...configuration(),available:false,restoreAvailable:true}});try{
+   await h.api.ready;h.owned=[purchased()];
+   if(failure==='wrong_account')h.overrides.set('/api/google-play/verify',()=>Response.json({code:'google_play_account_mismatch'},{status:409}));
+   else h.overrides.set('/api/subscription/status',()=>Response.json({authenticated:true,premiumAccess:false}));
+   const result=await h.api.restore();assert.equal(result.premiumAccess===true,false);assert.equal(h.api.state.premiumAccess,false);
+   if(failure==='wrong_account')assert.equal(h.verifiedRefreshes,0);
+  }finally{h.api.destroy();}
+ }
+});
+
+test('restore actor/token/deletion changes discard a delayed owned-purchase result',async()=>{
+ for(const change of ['actor','token','deletion']){
+  const h=fixture({config:{...configuration(),available:false,restoreAvailable:true}});try{
+   await h.api.ready;const owned=deferred();h.getPurchases=()=>owned.promise;
+   const before=h.native.filter(call=>call[0]==='getPurchases').length,attempt=h.api.restore();
+   await until(()=>h.native.filter(call=>call[0]==='getPurchases').length>before);
+   if(change==='deletion'){h.deleted=true;h.win.dispatchEvent(new Event('basketboss:account-deletion-started'));}
+   else h.changeSession(session(change==='actor'?'actor-b':'actor-a',change==='token'?'session-b':'session-a'));
+   owned.resolve({purchases:[purchased()]});assert.equal((await attempt).reason,'account_changed');
+   await until(()=>!h.api.state.busy);assert.equal(h.calls.some(call=>call.path.endsWith('/verify')),false);assert.equal(h.api.state.premiumAccess,false);assert.equal(h.verifiedRefreshes,0);
+   if(change==='deletion')assert.equal(h.api.state.restoreAvailable,false);
   }finally{h.api.destroy();}
  }
 });
@@ -179,5 +229,62 @@ test('Google Play management uses verified product metadata and remains reachabl
   h.config={available:false,provider:'google_play'};h.premium=false;await h.api.refresh();await h.api.manage();
   assert.deepEqual(h.native.filter(call=>call[0]==='manageSubscriptions').at(-1)[1],{});
   assert.equal(h.native.some(call=>call[0]==='purchase'),false);assert.equal(h.verifiedRefreshes,0);
+ }finally{h.api.destroy();}
+});
+
+function coordinated(h,{startFailure=false,reportFailure=false}={}){
+ let reservation={protocol:1,id:'55555555-5555-4555-8555-555555555555',capability:'a'.repeat(64),version:1,generation:1,phase:'prepared',provider:'google_play',mode:h.config.mode,productId:PRODUCT,basePlanId:'monthly',offerId:null,preparedExpiresAt:Date.now()+120000,billingRevision:0};
+ h.overrides.set('/api/google-play/purchase-context',async call=>Response.json({canPurchase:true,productId:PRODUCT,basePlanId:'monthly',offerId:null,obfuscatedAccountId:'server-account-hash',mode:h.config.mode,reservation}));
+ h.overrides.set('/api/subscription/purchase-intent',async call=>{
+  if(call.options.method==='GET')return Response.json({ok:true,reservation:{...reservation,capability:undefined}});
+  if(call.body.action==='start'&&startFailure)return Response.json({code:'purchase_intent_changed'},{status:409});
+  if(call.body.action==='report'&&reportFailure)return Response.json({code:'purchase_intent_unavailable'},{status:503});
+  reservation={...reservation,version:call.body.reservation.version+1,phase:call.body.action==='start'?'started':call.body.outcome};
+  return Response.json({ok:true,reservation});
+ });
+ return ()=>reservation;
+}
+
+test('coordinated Google checkout starts before opening Play and passes the exact opaque attempt profile',async()=>{
+ const h=fixture();try{await h.api.ready;coordinated(h);const result=await h.subscribe();assert.equal(result.ok,true);
+  const start=h.calls.find(call=>call.body?.action==='start');assert.ok(start);assert.equal(start.body.reservation.version,1);
+  assert.equal(h.native.find(call=>call[0]==='purchase')[1].obfuscatedProfileId,'55555555-5555-4555-8555-555555555555');
+  assert.equal(h.calls.find(call=>call.path.endsWith('/verify')).body.reservation,undefined,'Play correlation comes only from store-verified profile, not client assertion');
+ }finally{h.api.destroy();}
+});
+
+test('a denied start or mismatched reservation never opens Google Play or grants access',async()=>{
+ for(const reason of ['start','selection']){const h=fixture();try{await h.api.ready;coordinated(h,{startFailure:reason==='start'});
+  if(reason==='selection')h.overrides.set('/api/google-play/purchase-context',async()=>Response.json({canPurchase:true,productId:PRODUCT,basePlanId:'monthly',offerId:null,mode:'test',obfuscatedAccountId:'server-account-hash',reservation:{provider:'apple'}}));
+  assert.equal((await h.subscribe()).ok,false);assert.equal(h.native.some(call=>call[0]==='purchase'),false);assert.equal(h.api.state.premiumAccess,false);
+ }finally{h.api.destroy();}}
+});
+
+test('coordinated cancellation is definite while pending and unknown outcomes keep their separate states',async()=>{
+ for(const status of ['cancelled','pending','error']){const h=fixture();try{await h.api.ready;const current=coordinated(h);h.purchaseResult={status};
+  if(status==='error')h.purchase=async()=>{throw Error('synthetic timeout');};
+  await h.subscribe();assert.equal(current().phase,status==='cancelled'?'canceled':status==='error'?'unknown':'pending');
+  const report=h.calls.find(call=>call.body?.action==='report');assert.equal(report.body.outcome,current().phase);
+  if(status==='cancelled')assert.equal(report.body.cause,'native_user_cancelled');
+  assert.equal(h.api.state.premiumAccess,false);
+ }finally{h.api.destroy();}}
+});
+
+test('a native owned-purchase preflight that never launched a sheet releases only its unused attempt before verification',async()=>{
+ const h=fixture();try{await h.api.ready;const current=coordinated(h);h.owned=[purchased()];h.purchaseResult={status:'alreadyOwned',billingFlowLaunched:false,purchases:h.owned};
+  const result=await h.subscribe();assert.equal(result.premiumAccess,true);assert.equal(current().phase,'canceled');
+  assert.equal(h.calls.find(call=>call.body?.action==='report').body.cause,'not_launched');
+ }finally{h.api.destroy();}
+});
+
+test('a definite native prelaunch failure releases its unused authorization while ambiguous launch errors stay held',async()=>{
+ for(const code of ['BB_PLAY_NOT_LAUNCHED','BB_PLAY_PRODUCT_UNAVAILABLE','BB_PLAY_OFFER_UNAVAILABLE','BB_PLAY_TIMEOUT']){const h=fixture();try{await h.api.ready;const current=coordinated(h);h.purchase=async()=>{throw Object.assign(Error('synthetic'),{code});};await h.subscribe();assert.equal(current().phase,code==='BB_PLAY_TIMEOUT'?'unknown':'canceled');assert.equal(h.api.state.premiumAccess,false);}finally{h.api.destroy();}}
+});
+
+test('a lost definite cancellation report never advances its queued attempt to unknown before retry',async()=>{
+ const h=fixture();try{await h.api.ready;coordinated(h);h.purchaseResult={status:'cancelled'};let reports=0;
+ const route=h.overrides.get('/api/subscription/purchase-intent');h.overrides.set('/api/subscription/purchase-intent',async call=>{if(call.body?.action==='report'&&++reports===1)return Response.json({code:'purchase_intent_unavailable'},{status:503});return route(call);});
+ assert.equal((await h.subscribe()).ok,false);assert.equal(h.calls.filter(call=>call.body?.outcome==='unknown').length,0);
+ h.calls=[];await h.subscribe();const firstReport=h.calls.find(call=>call.body?.action==='report');assert.equal(firstReport.body.outcome,'canceled');assert.equal(firstReport.body.reservation.version,2);
  }finally{h.api.destroy();}
 });

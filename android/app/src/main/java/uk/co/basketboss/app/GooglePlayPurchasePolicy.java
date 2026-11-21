@@ -17,6 +17,14 @@ final class GooglePlayPurchasePolicy {
         return value != null && value.matches("[A-Za-z0-9_-]{16,64}");
     }
 
+    static boolean profileId(String value) {
+        return value != null && value.matches("[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89aAbB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}");
+    }
+
+    static boolean profileMatches(String expected, String returned) {
+        return expected == null || profileId(expected) && expected.equals(returned);
+    }
+
     static boolean autoRenewingPeriod(String period, int recurrenceMode) {
         return recurrenceMode == 1 && ("P1M".equals(period) || "P1Y".equals(period));
     }

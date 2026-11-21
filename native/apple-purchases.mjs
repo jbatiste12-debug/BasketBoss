@@ -1,5 +1,6 @@
 // Native StoreKit bridge controller. Only the server can grant Premium access.
 import {nativeMembershipURL} from './routing.mjs';
+import {createPurchaseIntentClient,PURCHASE_INTENT_PROTOCOL} from './purchase-intents.mjs';
 const MONTHLY='uk.co.basketboss.premium.monthly',ANNUAL='uk.co.basketboss.premium.annual';
 const PRODUCTS=Object.freeze([MONTHLY,ANNUAL]);
 const PRODUCT_ERRORS=new Map([
@@ -51,6 +52,7 @@ export function installNativeApplePurchases({plugin,apiURL,readSession,fetch:per
    return payload;
   }finally{requests.delete(controller);}
  }
+ const purchaseIntents=createPurchaseIntentClient({request:(path,actor,body)=>request(path,{pin:actor,body})});
  function catalogueSnapshot(){return Object.fromEntries(['available','products','invalidProductIds','availabilityMessage','purchaseServiceReady','sandboxPurchaseAllowed','appleEnvironment','serverReadiness','productLoadState','productLoadMessage'].map(key=>[key,state[key]]));}
  async function storeProducts(){
   let timer;
@@ -107,12 +109,12 @@ export function installNativeApplePurchases({plugin,apiURL,readSession,fetch:per
   return {...state};
  }
  function notifyMembership(){if(win?.dispatchEvent&&win?.Event)win.dispatchEvent(new win.Event('basketboss:apple-membership-updated'));}
- async function verify(transaction,actor){
+ async function verify(transaction,actor,reservation=null){
   const actorIdentity=identity();
   try{
    requireCurrent(actor);
    if(!transaction||typeof transaction.id!=='string'||typeof transaction.signedTransactionInfo!=='string'||!PRODUCTS.includes(transaction.productId))throw Error('Apple returned a purchase that could not be verified.');
-   const result=await request('/api/apple/verify',{pin:actor,body:{transactionId:transaction.id,signedTransactionInfo:transaction.signedTransactionInfo}});
+   const result=await request('/api/apple/verify',{pin:actor,body:{transactionId:transaction.id,signedTransactionInfo:transaction.signedTransactionInfo,...(reservation?{reservation:purchaseIntents.reference(reservation)}:{})}});
    requireCurrent(actor);
    if(result.ok!==true||result.acknowledged!==true)throw Error('The purchase is awaiting server confirmation. Use Restore Purchases to retry.');
    // An expired/refunded transaction can be acknowledged without active Premium.
@@ -146,16 +148,38 @@ export function installNativeApplePurchases({plugin,apiURL,readSession,fetch:per
   if(!state.purchaseServiceReady)throw Error(state.availabilityMessage||'Apple purchase verification is not ready. Refresh membership and prices, then try again.');
   if(state.invalidProductIds?.includes(productId))throw Error('Apple returned an unexpected billing period for this subscription. Refresh prices after its setup is checked.');
   const testPurchase=state.premiumAccess&&state.sandboxPurchaseAllowed===true;
-  const context=await request('/api/apple/purchase-context',{pin:actor,body:{productId,...(testPurchase?{testPurchase:true}:{})}});requireCurrent(actor);
+  await purchaseIntents.flush(actor);requireCurrent(actor);
+  const context=await request('/api/apple/purchase-context',{pin:actor,body:{productId,reservationProtocol:PURCHASE_INTENT_PROTOCOL,...(testPurchase?{testPurchase:true}:{})}});requireCurrent(actor);
   if(testPurchase&&(context.environment!=='Sandbox'||context.sandboxPurchaseAllowed!==true))throw Error('Sandbox purchase testing could not be authorized for this account.');
   if(context.canPurchase!==true||!UUID.test(context.appAccountToken||'')||!context.productIds?.includes(productId))throw Error('Your account is not ready for an Apple purchase. Refresh your membership and try again.');
+  if(context.reservation&&(context.reservation.provider!=='apple'||context.reservation.productId!==productId||context.reservation.mode!==(context.environment==='Sandbox'?'test':'live')||context.reservation.basePlanId!==null||context.reservation.offerId!==null))throw Error('Your Apple purchase authorization does not match this plan. Refresh membership and try again.');
+  const reservation=await purchaseIntents.start(context.reservation,actor);requireCurrent(actor);
   emit({message:'Checking this subscription with Apple…'});
-  const purchase=await plugin.purchase({productId,appAccountToken:context.appAccountToken});
+  let purchase;
+  try{purchase=await plugin.purchase({productId,appAccountToken:context.appAccountToken});}
+  catch(error){
+   // These two bridge errors occur during product resolution, before StoreKit's
+   // purchase call. Generic failures may have launched payment and stay unknown.
+   const outcome=PRODUCT_ERRORS.has(error?.code)?'not_launched':'unknown';
+   const cleanup=outcome==='not_launched'?purchaseIntents.cleanupActor(actor,pin()):actor;
+   try{if(cleanup)await purchaseIntents.report(reservation,outcome,cleanup);}catch{}
+   requireCurrent(actor);
+   throw error;
+  }
+  if(purchase?.status==='cancelled'){
+   const cleanup=purchaseIntents.cleanupActor(actor,pin());
+   try{if(cleanup)await purchaseIntents.report(reservation,'cancelled',cleanup);}finally{requireCurrent(actor);}
+   emit({phase:'ready',message:'Purchase cancelled. Your access has not changed.'});return {ok:true,status:'cancelled'};
+  }
   requireCurrent(actor);
-  if(purchase.status==='cancelled'){emit({phase:'ready',message:'Purchase cancelled. Your access has not changed.'});return {ok:true,status:'cancelled'};}
-  if(purchase.status==='pending'){emit({phase:'ready',message:'Your purchase is pending Apple approval. Premium will become available after it is approved and verified.'});return {ok:true,status:'pending'};}
-  if(!['purchased','alreadyOwned'].includes(purchase.status))throw Error('Apple could not complete this purchase. Try again later.');
-  const result=await verify(purchase.transaction,actor);
+  if(purchase?.status==='pending'){await purchaseIntents.report(reservation,'pending',actor);requireCurrent(actor);emit({phase:'ready',message:'Your purchase is pending Apple approval. Premium will become available after it is approved and verified.'});return {ok:true,status:'pending'};}
+  if(!['purchased','alreadyOwned'].includes(purchase?.status)){
+   try{await purchaseIntents.report(reservation,'unknown',actor);}catch{}
+   throw Error('Apple could not complete this purchase. Try again later.');
+  }
+  let result;
+  try{result=await verify(purchase.transaction,actor,reservation);}
+  catch(error){try{await purchaseIntents.report(reservation,'unknown',actor);}catch{}throw error;}
   await refresh();requireCurrent(actor);
   if(result.premiumAccess!==true)emit({phase:'ready',message:'Your Apple purchase was checked. It does not currently provide active Premium access.'});
   return {ok:true,status:'verified',premiumAccess:result.premiumAccess===true};

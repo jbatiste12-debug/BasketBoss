@@ -13,21 +13,21 @@ before(async()=>{
 });
 after(async()=>{await browser?.close();});
 const css=fs.readFileSync(new URL('../native/android.css',import.meta.url),'utf8');
-function html({premium=false,provider=null,available=true,signedOut=false}={}){
+function html({premium=false,provider=null,available=true,restoreAvailable,signedOut=false}={}){
  return `<!doctype html><html><head><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover"><style>*{box-sizing:border-box}body{margin:0;padding:12px!important}button{font:inherit}${css}</style></head><body><main id="bbNativeMembershipMount"></main><button id="cloud-open">Account sign in</button><script>
- window.__premium=${premium};window.__provider=${JSON.stringify(provider)};window.__available=${available};window.__native=[];window.__proofRefreshes=0;window.__purchaseStatus='cancelled';window.__signedIn=!${signedOut};
+ window.__premium=${premium};window.__provider=${JSON.stringify(provider)};window.__available=${available};window.__native=[];window.__proofRefreshes=0;window.__purchaseStatus='cancelled';window.__signedIn=!${signedOut};window.__restoreAvailable=${JSON.stringify(restoreAvailable)};window.__owned=[];window.__ownedQueries=0;window.__serviceCalls=[];
  if(__signedIn)localStorage.setItem('basketboss_cloud_session_v1',JSON.stringify({user:{id:'test-member'},access_token:'synthetic-bearer',expires_at:Date.now()/1000+3600}));
  document.getElementById('cloud-open').addEventListener('click',()=>window.__signInClicked=true);
  window.BasketBossVerifiedPremium={refresh:async()=>__proofRefreshes++};
  const phase=(period,price,micros,recurrenceMode=1,billingCycleCount=0)=>({formattedPrice:price,priceCurrencyCode:'AUD',priceAmountMicros:micros,billingPeriod:period,recurrenceMode,billingCycleCount});
  const product='uk.co.basketboss.premium';
- window.fetch=async(address,options)=>{const path=new URL(address,location.href).pathname;const body=options?.body?JSON.parse(options.body):{};
+ window.fetch=async(address,options)=>{const path=new URL(address,location.href).pathname;const body=options?.body?JSON.parse(options.body):{};__serviceCalls.push(path);
  if(path==='/api/subscription/status')return Response.json({authenticated:true,premiumAccess:__premium,...(__premium?{tier:'premium',mode:'sandbox',provider:__provider||'google_play',subscription:{productId:product}}:{})});
- if(path==='/api/google-play/config')return Response.json({available:__available,provider:'google_play',productId:product,productIds:[product],packageName:'uk.co.basketboss.app',plans:[{plan:'monthly',basePlanId:'monthly',offerIds:['eligible-trial']},{plan:'annual',basePlanId:'annual',offerIds:[]}],mode:'test'});
+ if(path==='/api/google-play/config')return Response.json({available:__available,restoreAvailable:__restoreAvailable,provider:'google_play',productId:product,productIds:[product],packageName:'uk.co.basketboss.app',plans:[{plan:'monthly',basePlanId:'monthly',offerIds:['eligible-trial']},{plan:'annual',basePlanId:'annual',offerIds:[]}],mode:'test'});
  if(path==='/api/google-play/purchase-context')return Response.json({canPurchase:true,...body,obfuscatedAccountId:'server-actor-hash',mode:'test'});
  if(path==='/api/google-play/verify'){__premium=true;__provider='google_play';return Response.json({ok:true,acknowledged:true,provider:'google_play',premiumAccess:true});}
  throw Error('Unexpected API');};
- const play={addListener:async()=>({remove(){}}),getProducts:async()=>({products:[{id:product,subscriptionOfferDetails:[{basePlanId:'monthly',offerId:'eligible-trial',offerToken:'eligible-sdk-offer',pricingPhases:[phase('P3D','A$0.00','0',2,1),phase('P1M','A$6.79','6790000')]},{basePlanId:'annual',offerId:null,offerToken:'annual-sdk-offer',pricingPhases:[phase('P1Y','A$64.99','64990000')]}]}]}),getPurchases:async()=>({purchases:[]}),purchase:async args=>{__native.push(['purchase',args]);return {status:__purchaseStatus,purchases:__purchaseStatus==='purchased'?[{purchaseToken:'memory-only-proof',productId:product,state:'purchased'}]:[]};},manageSubscriptions:async args=>{__native.push(['manage',args]);return {opened:true};}};
+ const play={addListener:async()=>({remove(){}}),getProducts:async()=>({products:[{id:product,subscriptionOfferDetails:[{basePlanId:'monthly',offerId:'eligible-trial',offerToken:'eligible-sdk-offer',pricingPhases:[phase('P3D','A$0.00','0',2,1),phase('P1M','A$6.79','6790000')]},{basePlanId:'annual',offerId:null,offerToken:'annual-sdk-offer',pricingPhases:[phase('P1Y','A$64.99','64990000')]}]}]}),getPurchases:async()=>{__ownedQueries++;return {purchases:__owned};},purchase:async args=>{__native.push(['purchase',args]);return {status:__purchaseStatus,purchases:__purchaseStatus==='purchased'?[{purchaseToken:'memory-only-proof',productId:product,state:'purchased'}]:[]};},manageSubscriptions:async args=>{__native.push(['manage',args]);return {opened:true};}};
  window.__play=play;
  </script><script>${bundle}</script><script>window.__runtime=BBAndroidQA.installAndroidRuntime({registerNative:name=>name==='BasketBossGooglePlay'?__play:{clearReceiptPhotos:async()=>({ok:true})},app:{addListener:async()=>({remove(){}}),getLaunchUrl:async()=>null},browser:{open:async()=>{}},bars:{setStyle:async()=>{}},splash:{hide:async()=>{}},installStartup:()=>({ready(){}}),watchEntry:()=>({stop(){}})});</script></body></html>`;
 }
@@ -62,6 +62,24 @@ test('existing Premium and disabled Play setup show clear account access without
 test('signed-out Android membership asks for the existing sign-in flow before prices or purchases',{skip:!chromium},async()=>{
  const {context,page}=await open({signedOut:true});try{
   const card=page.locator('.bb-native-membership');assert.equal(await card.locator('.bb-native-google-plan').count(),0);await card.getByRole('button',{name:'Sign in',exact:true}).click();assert.equal(await page.evaluate(()=>__signInClicked),true);assert.equal(await page.evaluate(()=>__native.length),0);
+ }finally{await context.close();}
+});
+
+test('disabled new sales keep restore and Google Play management usable when verification is ready',{skip:!chromium},async()=>{
+ const {context,page}=await open({available:false,restoreAvailable:true});try{
+  const card=page.locator('.bb-native-membership'),restore=card.getByRole('button',{name:'Restore purchases',exact:true});
+  assert.equal(await card.locator('.bb-native-google-plan').count(),0);assert.equal(await restore.isEnabled(),true);
+  assert.equal(await card.getByRole('button',{name:'Google Play subscription settings',exact:true}).isEnabled(),true);
+  await page.evaluate(()=>{__owned=[{purchaseToken:'synthetic-owned-proof',productId:'uk.co.basketboss.premium',state:'purchased'}];__serviceCalls=[];__ownedQueries=0;});
+  await restore.click();await page.waitForFunction(()=>__runtime.purchases.state.premiumAccess&&!__runtime.purchases.state.busy);
+  assert.equal(await page.evaluate(()=>__ownedQueries),1);
+  assert.deepEqual(await page.evaluate(()=>__serviceCalls),['/api/google-play/config','/api/google-play/verify','/api/subscription/status']);
+  assert.equal(await page.evaluate(()=>__proofRefreshes),1);assert.equal(await page.evaluate(()=>__native.some(call=>call[0]==='purchase')),false);
+  await card.getByRole('button',{name:'Manage Google Play subscription',exact:true}).click();
+  await page.waitForFunction(()=>__native.some(call=>call[0]==='manage'));assert.deepEqual(await page.evaluate(()=>__native.at(-1)),['manage',{productId:'uk.co.basketboss.premium'}]);
+  await page.evaluate(()=>{__restoreAvailable=false;});await card.getByRole('button',{name:'Refresh membership & prices',exact:true}).click();
+  await page.waitForFunction(()=>!__runtime.purchases.state.busy&&!__runtime.purchases.state.restoreAvailable);
+  assert.equal(await restore.isDisabled(),true);assert.equal(await card.getByRole('button',{name:'Manage Google Play subscription',exact:true}).isEnabled(),true);
  }finally{await context.close();}
 });
 

@@ -1,9 +1,10 @@
+import {createPurchaseIntentClient,PURCHASE_INTENT_PROTOCOL} from './purchase-intents.mjs';
 // Android Play Billing is a source of purchase proof, never a local entitlement.
 // Only authenticated BasketBoss verification and membership responses grant access.
 const PACKAGE='uk.co.basketboss.app';
 const PERIOD=/^P([1-9]\d{0,2})(D|W|M|Y)$/;
 const changed=()=>Object.assign(Error('Your account changed. Sign in to the account used for this purchase, then restore purchases.'),{code:'account_changed'});
-const errorText=error=>error?.code==='account_changed'?error.message:error?.status===409&&error?.code==='already_premium'?'Your account already has Premium. You do not need another subscription.':error?.status===401?'Sign in again to continue.':error?.code==='BB_PLAY_TIMEOUT'||error?.code==='play_timeout'?'Google Play did not respond in time. Check your connection and refresh prices.':'Google Play purchases could not be checked. Try again when you are connected. If payment completed, use Restore purchases to retry verification.';
+const errorText=error=>error?.code==='account_changed'?error.message:error?.code==='purchase_intent_busy'?'Another payment is awaiting confirmation. Restore or manage that purchase before starting another subscription.':error?.code==='purchase_intent_upgrade_required'?'Update BasketBoss before starting a new subscription. Restore and manage existing purchases remain available.':error?.status===409&&error?.code==='already_premium'?'Your account already has Premium. You do not need another subscription.':error?.status===401?'Sign in again to continue.':error?.code==='BB_PLAY_NOT_LAUNCHED'?'Google Play could not open its purchase screen. Refresh prices and try again.':error?.code==='BB_PLAY_TIMEOUT'||error?.code==='play_timeout'?'Google Play did not respond in time. Check your connection and refresh prices.':'Google Play purchases could not be checked. Try again when you are connected. If payment completed, use Restore purchases to retry verification.';
 
 function periodText(value,count=1){
  const match=PERIOD.exec(value||'');if(!match)return null;
@@ -17,7 +18,7 @@ function phaseValue(phase){
 // A native offer exists only if Google returned it as eligible for this account.
 // The server additionally limits which base plans and offers this release sells.
 export function googlePlayOffers(config,products){
- if(!validConfig(config)||!Array.isArray(products))return [];
+ if(config?.available!==true||!validConfig(config)||!Array.isArray(products))return [];
  const product=products.find(item=>item?.id===config.productId),offers=[];
  for(const plan of config.plans){
   for(const raw of Array.isArray(product?.subscriptionOfferDetails)?product.subscriptionOfferDetails:[]){
@@ -36,8 +37,9 @@ export function googlePlayOffers(config,products){
  return offers.filter((offer,index)=>offers.findIndex(item=>item.key===offer.key)===index);
 }
 function validConfig(value){
- return value?.available===true&&value.provider==='google_play'&&value.packageName===PACKAGE&&['test','live'].includes(value.mode)&&typeof value.productId==='string'&&/^[a-zA-Z0-9][a-zA-Z0-9._]{0,199}$/.test(value.productId)&&Array.isArray(value.productIds)&&value.productIds.length===1&&value.productIds[0]===value.productId&&Array.isArray(value.plans)&&value.plans.length>0&&value.plans.length<=2&&value.plans.every(plan=>['monthly','annual'].includes(plan?.plan)&&typeof plan.basePlanId==='string'&&/^[a-z0-9][a-z0-9-]{0,62}$/.test(plan.basePlanId)&&Array.isArray(plan.offerIds)&&plan.offerIds.every(id=>typeof id==='string'&&/^[a-z0-9][a-z0-9-]{0,62}$/.test(id)))&&new Set(value.plans.map(plan=>plan.plan)).size===value.plans.length;
+ return typeof value?.available==='boolean'&&(value.restoreAvailable===undefined||typeof value.restoreAvailable==='boolean')&&value.provider==='google_play'&&value.packageName===PACKAGE&&['test','live'].includes(value.mode)&&typeof value.productId==='string'&&/^[a-zA-Z0-9][a-zA-Z0-9._]{0,199}$/.test(value.productId)&&Array.isArray(value.productIds)&&value.productIds.length===1&&value.productIds[0]===value.productId&&Array.isArray(value.plans)&&value.plans.length>0&&value.plans.length<=2&&value.plans.every(plan=>['monthly','annual'].includes(plan?.plan)&&typeof plan.basePlanId==='string'&&/^[a-z0-9][a-z0-9-]{0,62}$/.test(plan.basePlanId)&&Array.isArray(plan.offerIds)&&plan.offerIds.every(id=>typeof id==='string'&&/^[a-z0-9][a-z0-9-]{0,62}$/.test(id)))&&new Set(value.plans.map(plan=>plan.plan)).size===value.plans.length;
 }
+const canRestore=value=>validConfig(value)&&(value.restoreAvailable===true||value.restoreAvailable===undefined&&value.available===true);
 export function installAndroidGooglePlayPurchases({plugin,readSession,apiURL,fetch:perform=globalThis.fetch,window:win=globalThis.window,isDeleting=()=>false,productLoadTimeoutMs=15000,requestTimeoutMs=15000}={}){
  let destroyed=false,generation=0,revision=0,operation=null,config=null,listenerHandle=null,reconcileQueued=false;
  const listeners=new Set(),requests=new Set(),timers=new Set(),cancellations=new Set(),verified=new Set(),verifying=new Map();
@@ -45,7 +47,7 @@ export function installAndroidGooglePlayPurchases({plugin,readSession,apiURL,fet
  const identity=()=>{try{const value=readSession();return typeof value?.access_token==='string'&&value.access_token&&typeof value.user?.id==='string'&&value.user.id&&Number.isFinite(Number(value.expires_at))&&Number(value.expires_at)*1000>Date.now()+5000?{actor:value.user.id,token:value.access_token}:null;}catch{return null;}};
  const identityKey=()=>{const actor=identity();return actor?JSON.stringify([actor.actor,actor.token]):null;};
  let previousIdentity=identityKey();
- let state={available:false,authenticated:false,premiumAccess:false,provider:null,subscription:null,membershipState:'signed_out',offers:[],busy:false,phase:'loading',productLoadState:'unavailable',availabilityMessage:'',message:'Checking your BasketBoss membership…'};
+ let state={available:false,restoreAvailable:false,authenticated:false,premiumAccess:false,provider:null,subscription:null,membershipState:'signed_out',offers:[],busy:false,phase:'loading',productLoadState:'unavailable',availabilityMessage:'',message:'Checking your BasketBoss membership…'};
  const snapshot=()=>({...state,offers:state.offers.map(offer=>({...offer,pricingPhases:offer.pricingPhases.map(phase=>({...phase}))}))});
  const emit=change=>{if(destroyed)return;state={...state,...change,busy:!!operation};for(const listener of listeners)listener(snapshot());};
  const pin=()=>{const actor=identity();return actor?{...actor,generation}:null;};
@@ -55,7 +57,7 @@ export function installAndroidGooglePlayPurchases({plugin,readSession,apiURL,fet
   generation++;revision++;config=null;operation=null;reconcileQueued=false;verified.clear();verifying.clear();
   for(const request of requests)request.abort();requests.clear();
   for(const cancel of cancellations)cancel();cancellations.clear();
-  emit({available:false,authenticated:false,premiumAccess:false,provider:null,subscription:null,offers:[],membershipState:isDeleting()?'unavailable':'signed_out',phase:isDeleting()?'paused':'loading',availabilityMessage:'',productLoadState:'unavailable',message:isDeleting()?'Account changes are paused during deletion.':'Sign in to use your BasketBoss account and load Google Play plans.'});
+  emit({available:false,restoreAvailable:false,authenticated:false,premiumAccess:false,provider:null,subscription:null,offers:[],membershipState:isDeleting()?'unavailable':'signed_out',phase:isDeleting()?'paused':'loading',availabilityMessage:'',productLoadState:'unavailable',message:isDeleting()?'Account changes are paused during deletion.':'Sign in to use your BasketBoss account and load Google Play plans.'});
  }
  function syncIdentity(){const next=identityKey();if(previousIdentity!==next){previousIdentity=next;invalidate();}}
  async function deadline(action,milliseconds){
@@ -72,25 +74,28 @@ export function installAndroidGooglePlayPurchases({plugin,readSession,apiURL,fet
    return data;
   }finally{controller.abort();requests.delete(controller);}
  }
+ const intents=createPurchaseIntentClient({request});
  async function catalogue(actor){
   const data=await request('/api/google-play/config',actor);requireCurrent(actor);
-  if(!validConfig(data))return {config:null,available:false,offers:[],productLoadState:'unavailable',availabilityMessage:'Google Play subscriptions are not available yet. Your Free recipes and existing membership remain available.'};
+  if(!validConfig(data))return {config:null,available:false,restoreAvailable:false,offers:[],productLoadState:'unavailable',availabilityMessage:'Google Play subscriptions are not available yet. Your Free recipes and existing membership remain available.'};
+  const restoreAvailable=canRestore(data);
+  if(data.available!==true)return {config:restoreAvailable?data:null,available:false,restoreAvailable,offers:[],productLoadState:'unavailable',availabilityMessage:restoreAvailable?'New Google Play purchases are not available right now. Restore purchases or manage an existing subscription below.':'Google Play subscriptions are not available yet. Your Free recipes and existing membership remain available.'};
   let result;
   try{result=await deadline(()=>plugin.getProducts({productIds:[...data.productIds]}),productLoadTimeoutMs);requireCurrent(actor);}
-  catch(error){requireCurrent(actor);return {config:data,available:false,offers:[],productLoadState:error?.code==='play_timeout'?'timeout':'error',availabilityMessage:errorText(error)};}
+  catch(error){requireCurrent(actor);return {config:data,available:false,restoreAvailable,offers:[],productLoadState:error?.code==='play_timeout'?'timeout':'error',availabilityMessage:errorText(error)};}
   const offers=googlePlayOffers(data,result?.products);
-  return {config:data,available:offers.length>0,offers,productLoadState:offers.length?'ready':'empty',availabilityMessage:offers.length?'':'Google Play returned no eligible subscription plans. Refresh prices after the Play subscription setup is ready.'};
+  return {config:data,available:offers.length>0,restoreAvailable,offers,productLoadState:offers.length?'ready':'empty',availabilityMessage:offers.length?'':'Google Play returned no eligible subscription plans. Refresh prices after the Play subscription setup is ready.'};
  }
  const validMembership=data=>data?.authenticated===true&&typeof data.premiumAccess==='boolean'&&(data.premiumAccess!==true||(['owner','premium'].includes(data.tier)&&['live','sandbox'].includes(data.mode)));
  async function refresh({restore=true,loadProducts=true}={}){
   if(destroyed)return snapshot();syncIdentity();
   if(isDeleting()){invalidate();return snapshot();}
   const actor=pin(),stamp=++revision;
-  if(!actor){emit({authenticated:false,premiumAccess:false,provider:null,subscription:null,available:false,offers:[],membershipState:'signed_out',phase:'ready',message:'Sign in to use your BasketBoss account and load Google Play plans.'});return snapshot();}
-  emit({authenticated:true,membershipState:'checking',...(loadProducts?{available:false,productLoadState:'loading'}:{}),phase:operation?'busy':'loading',message:'Checking your membership…'});
-  const results=await Promise.allSettled([request('/api/subscription/status',actor),loadProducts?catalogue(actor):Promise.resolve({config,available:state.available,offers:state.offers,productLoadState:state.productLoadState,availabilityMessage:state.availabilityMessage})]);
+  if(!actor){emit({authenticated:false,premiumAccess:false,provider:null,subscription:null,available:false,restoreAvailable:false,offers:[],membershipState:'signed_out',phase:'ready',message:'Sign in to use your BasketBoss account and load Google Play plans.'});return snapshot();}
+  emit({authenticated:true,membershipState:'checking',...(loadProducts?{available:false,restoreAvailable:false,productLoadState:'loading'}:{}),phase:operation?'busy':'loading',message:'Checking your membership…'});
+  const results=await Promise.allSettled([request('/api/subscription/status',actor),loadProducts?catalogue(actor):Promise.resolve({config,available:state.available,restoreAvailable:state.restoreAvailable,offers:state.offers,productLoadState:state.productLoadState,availabilityMessage:state.availabilityMessage})]);
   if(!current(actor)||stamp!==revision)return snapshot();
-  const catalogueResult=results[1],catalog=catalogueResult.status==='fulfilled'?catalogueResult.value:{config:null,available:false,offers:[],productLoadState:catalogueResult.reason?.code==='play_timeout'?'timeout':'error',availabilityMessage:errorText(catalogueResult.reason)};
+  const catalogueResult=results[1],catalog=catalogueResult.status==='fulfilled'?catalogueResult.value:{config:null,available:false,restoreAvailable:false,offers:[],productLoadState:catalogueResult.reason?.code==='play_timeout'?'timeout':'error',availabilityMessage:errorText(catalogueResult.reason)};
   config=catalog.config;
   const {config:ignored,...presentation}=catalog;
   if(results[0].status==='rejected'||!validMembership(results[0].value)){
@@ -98,7 +103,7 @@ export function installAndroidGooglePlayPurchases({plugin,readSession,apiURL,fet
   }
   const membership=results[0].value,premium=membership.premiumAccess,provider=membership.provider||membership.subscription?.provider||null;
   emit({...presentation,authenticated:true,premiumAccess:premium,provider,subscription:membership.subscription||null,membershipState:premium?'premium':'free',phase:operation?'busy':'ready',message:premium?(provider==='google_play'?'Your Google Play Premium membership is available. Manage or cancel it in Google Play.':'Your existing Premium membership is available. You do not need another subscription.'):'Your account currently has Free access. '+(catalog.available?'Choose a Google Play plan below.':catalog.availabilityMessage)});
-  if(restore&&config&&!operation)await restorePurchases({automatic:true});
+  if(restore&&state.restoreAvailable&&config&&!operation)await restorePurchases({automatic:true});
   return snapshot();
  }
  async function verify(purchase,actor){
@@ -137,12 +142,26 @@ export function installAndroidGooglePlayPurchases({plugin,readSession,apiURL,fet
   if(state.premiumAccess){emit({phase:'ready',message:'Your existing membership covers Premium. You do not need another subscription.'});return {ok:false,reason:'already_premium'};}
   const offer=state.offers.find(item=>item.key===selected.key);
   if(!state.available||state.membershipState!=='free'||!offer||!config)throw Error('offer_unavailable');
-  const context=await request('/api/google-play/purchase-context',actor,{productId:offer.productId,basePlanId:offer.basePlanId,offerId:offer.offerId});requireCurrent(actor);
+  await intents.flush(actor);requireCurrent(actor);
+  const context=await request('/api/google-play/purchase-context',actor,{productId:offer.productId,basePlanId:offer.basePlanId,offerId:offer.offerId,reservationProtocol:PURCHASE_INTENT_PROTOCOL});requireCurrent(actor);
   if(context?.canPurchase!==true||context.productId!==offer.productId||context.basePlanId!==offer.basePlanId||(context.offerId??null)!==offer.offerId||context.mode!==config.mode||typeof context.obfuscatedAccountId!=='string'||!/^[a-zA-Z0-9_-]{1,64}$/.test(context.obfuscatedAccountId))throw Error('context_unavailable');
-  // Fresh server authorization is the final step before opening Google's sheet.
-  const result=await plugin.purchase({productId:offer.productId,basePlanId:offer.basePlanId,offerToken:offer.offerToken,obfuscatedAccountId:context.obfuscatedAccountId});requireCurrent(actor);
-  if(result?.status==='cancelled'){emit({phase:'ready',message:'Purchase cancelled. Your access has not changed.'});return {ok:true,status:'cancelled'};}
-  if(result?.status==='pending'){emit({phase:'ready',message:'Your payment is pending in Google Play. Premium becomes available after payment completes and BasketBoss verifies it.'});return {ok:true,status:'pending'};}
+  // The optional protocol preserves old servers while requiring an atomic
+  // start authorization on servers with cross-provider coordination enabled.
+  if(context.reservation&&(context.reservation.provider!=='google_play'||context.reservation.mode!==config.mode||context.reservation.productId!==offer.productId||context.reservation.basePlanId!==offer.basePlanId||context.reservation.offerId!==offer.offerId))throw Error('context_unavailable');
+  let reservation=await intents.start(context.reservation,actor);requireCurrent(actor);
+  let definiteNotPurchased=false;
+  try{
+  const result=await plugin.purchase({productId:offer.productId,basePlanId:offer.basePlanId,offerToken:offer.offerToken,obfuscatedAccountId:context.obfuscatedAccountId,...(reservation?{obfuscatedProfileId:reservation.id}:{})});
+  const cleanupActor=intents.cleanupActor(actor,pin());
+  if(result?.status==='cancelled'&&cleanupActor&&!isDeleting()){
+   definiteNotPurchased=true;reservation=await intents.report(reservation,'canceled',cleanupActor,'native_user_cancelled');
+   requireCurrent(actor);emit({phase:'ready',message:'Purchase cancelled. Your access has not changed.'});return {ok:true,status:'cancelled'};
+  }
+  requireCurrent(actor);
+  if(result?.billingFlowLaunched===false&&['alreadyOwned','pending'].includes(result.status)){
+   definiteNotPurchased=true;await intents.report(reservation,'canceled',actor,'not_launched');requireCurrent(actor);reservation=null;
+  }
+  if(result?.status==='pending'){reservation=await intents.report(reservation,'pending',actor);requireCurrent(actor);emit({phase:'ready',message:'Your payment is pending in Google Play. Premium becomes available after payment completes and BasketBoss verifies it.'});return {ok:true,status:'pending'};}
   if(!['purchased','alreadyOwned'].includes(result?.status))throw Error('purchase_unavailable');
   let purchases=result.purchases;
   if(result.status==='alreadyOwned'){const owned=await plugin.getPurchases();requireCurrent(actor);purchases=owned?.purchases;}
@@ -152,12 +171,20 @@ export function installAndroidGooglePlayPurchases({plugin,readSession,apiURL,fet
   await verifiedRefresh(actor,proofVerified);requireCurrent(actor);
   if(!state.premiumAccess)emit({phase:'ready',message:pending?'Your payment is pending in Google Play. Premium becomes available after payment completes and BasketBoss verifies it.':'Your Google Play purchase was checked. It does not currently provide active Premium access.'});
   return {ok:true,status:pending?'pending':'verified',premiumAccess:state.premiumAccess};
+  }catch(error){
+   const cleanupActor=intents.cleanupActor(actor,pin());
+   if(reservation&&cleanupActor&&!isDeleting()&&!definiteNotPurchased)try{
+    if(['BB_PLAY_NOT_LAUNCHED','BB_PLAY_PRODUCT_UNAVAILABLE','BB_PLAY_OFFER_UNAVAILABLE'].includes(error?.code))await intents.report(reservation,'canceled',cleanupActor,'not_launched');
+    else if(current(actor))await intents.report(reservation,'unknown',actor);
+   }catch{}
+   throw error;
+  }
  });}
  async function restorePurchases({automatic=false}={}){return run(async actor=>{
   // Query current ownership, including reinstall/reconnection. Never retain an
   // event payload and attach it to whichever account happens to sign in next.
   const latest=await request('/api/google-play/config',actor);requireCurrent(actor);
-  if(!validConfig(latest))throw Error('service_unavailable');config=latest;
+  if(!canRestore(latest)){emit({restoreAvailable:false});throw Error('service_unavailable');}config=latest;emit({restoreAvailable:true});
   const owned=await deadline(()=>plugin.getPurchases(),productLoadTimeoutMs);requireCurrent(actor);
   if(!Array.isArray(owned?.purchases))throw Error('restore_unavailable');
   let proofVerified=false,pending=false,count=0;

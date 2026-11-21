@@ -78,7 +78,7 @@ test('successful purchase finishes only after backend acknowledgement and sends 
  assert.equal(result.premiumAccess,true);assert.deepEqual(h.order,['verified','finish']);
  assert.deepEqual(purchases(h)[0][1],{productId:MONTH,appAccountToken:TOKEN});
  assert.deepEqual(finishes(h)[0][1],{transactionId:transaction.id,serverVerified:true});
- assert.deepEqual(JSON.parse(h.calls.find(c=>c[1]==='/api/apple/purchase-context')[2].body),{productId:MONTH});
+ assert.deepEqual(JSON.parse(h.calls.find(c=>c[1]==='/api/apple/purchase-context')[2].body),{productId:MONTH,reservationProtocol:1});
  const verification=verifications(h)[0][2];assert.equal(verification.headers.Authorization,'Bearer actor-A-token');
  assert.deepEqual(JSON.parse(verification.body),{transactionId:transaction.id,signedTransactionInfo:transaction.signedTransactionInfo});
  assert.equal(h.controller.state.provider,'apple');
@@ -704,7 +704,7 @@ test('StoreKit empty, partial, invalid and timeout states are explicit and never
 test('an allowed existing Beta or web member can explicitly test Apple only in server-selected Sandbox',async()=>{
  for(const provider of ['testflight_beta','paddle','apple'])await withFixture({membership:{authenticated:true,premiumAccess:true,provider},config:{available:true,productIds:[MONTH,YEAR],environment:'Sandbox',sandboxPurchaseAllowed:true},fetch:(route,args,response)=>route==='/api/apple/purchase-context'?response({canPurchase:true,appAccountToken:TOKEN,productIds:[MONTH,YEAR],environment:'Sandbox',sandboxPurchaseAllowed:true}):null},async h=>{
   assert.equal(h.controller.state.sandboxPurchaseAllowed,true);assert.equal((await h.controller.subscribe(MONTH)).ok,true);
-  const context=h.calls.find(c=>c[0]==='http'&&c[1]==='/api/apple/purchase-context');assert.deepEqual(JSON.parse(context[2].body),{productId:MONTH,testPurchase:true});assert.equal(purchases(h).length,1);assert.deepEqual(h.order,['verified','finish']);
+  const context=h.calls.find(c=>c[0]==='http'&&c[1]==='/api/apple/purchase-context');assert.deepEqual(JSON.parse(context[2].body),{productId:MONTH,reservationProtocol:1,testPurchase:true});assert.equal(purchases(h).length,1);assert.deepEqual(h.order,['verified','finish']);
  });
 });
 

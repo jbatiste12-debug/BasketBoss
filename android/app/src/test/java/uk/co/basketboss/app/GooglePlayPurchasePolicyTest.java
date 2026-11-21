@@ -48,6 +48,17 @@ public class GooglePlayPurchasePolicyTest {
         }
     }
 
+    @Test public void lateOldPurchaseCannotCompleteANewerCoordinatedSheet() {
+        String current = "55555555-5555-4555-8555-555555555555";
+        String old = "66666666-6666-4666-8666-666666666666";
+        assertTrue(GooglePlayPurchasePolicy.profileId(current));
+        assertTrue(GooglePlayPurchasePolicy.profileMatches(current, current));
+        assertFalse(GooglePlayPurchasePolicy.profileMatches(current, old));
+        assertFalse(GooglePlayPurchasePolicy.profileMatches(current, null));
+        assertFalse(GooglePlayPurchasePolicy.profileId("member@example.com"));
+        assertTrue(GooglePlayPurchasePolicy.profileMatches(null, old)); // Legacy checkout.
+    }
+
     @Test public void doubleTapsCannotStartCompetingSheetsAndOldCallbacksCannotReleaseNewLease() {
         GooglePlayPurchasePolicy.Gate gate = new GooglePlayPurchasePolicy.Gate();
         long first = gate.begin(); assertTrue(first > 0);

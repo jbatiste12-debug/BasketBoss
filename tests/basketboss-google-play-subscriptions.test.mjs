@@ -8,6 +8,7 @@ import {googlePlayBillingEnabled,liveGooglePlayBillingEnabled,getVerifiedGoogleP
 import {onRequestGet as configEndpoint} from '../functions/api/google-play/config.js';
 import {onRequestPost as contextEndpoint} from '../functions/api/google-play/purchase-context.js';
 import {onRequestPost as verifyEndpoint} from '../functions/api/google-play/verify.js';
+import {purchaseIntentActor,reservePurchaseIntent,startPurchaseIntent,readPurchaseIntent} from '../bb-server-lib/bb-purchase-intents.js';
 import {googlePlayRequestJSON} from '../bb-server-lib/bb-google-play-http.js';
 const USER='11111111-1111-4111-8111-111111111111',OTHER='22222222-2222-4222-8222-222222222222';
 const TOKEN='fixture-token-aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa',NEW='fixture-token-bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb';
@@ -42,13 +43,32 @@ test('Play is default-off and live needs an independent explicit gate; invalid c
  const body=await response.json();assert.equal(body.available,false);assert.deepEqual(body.productIds,[]);assert.equal(JSON.stringify(body).includes('price'),false);
 });
 
-test('live configuration flags cannot advertise or open production checkout in the license-testing revision',async()=>{
+test('live sales remain fenced while configured authenticated accounts can restore existing purchases',async t=>{
  const f=await fixture(),live={...f.env,GOOGLE_PLAY_BILLING_MODE:'live',GOOGLE_PLAY_LIVE_BILLING_ENABLED:'true'};
- const response=await configEndpoint({env:live,request:new Request('https://basketboss.co.uk/api/google-play/config')});
- const body=await response.json();assert.equal(body.available,false);assert.equal(body.reason,'google_play_live_checkout_not_ready');assert.deepEqual(body.productIds,[]);
+ t.mock.method(globalThis,'fetch',async()=>Response.json({id:USER,email:'fixture@example.invalid',email_confirmed_at:'2026-11-01T00:00:00Z'}));
+ const response=await configEndpoint({env:live,request:new Request('https://basketboss.co.uk/api/google-play/config',{headers:{Authorization:'Bearer fixture'}})});
+ const body=await response.json();assert.equal(body.available,false);assert.equal(body.restoreAvailable,true);assert.equal(body.reason,'google_play_live_checkout_not_ready');assert.deepEqual(body.productIds,[PRODUCT]);assert.equal(body.packageName,'uk.co.basketboss.app');assert.equal(body.mode,'live');assert.equal(body.plans.length,2);
  const context=await contextEndpoint({env:live,request:request('purchase-context',{productId:PRODUCT,basePlanId:'monthly',offerId:null})});
  assert.equal(context.status,503);assert.equal((await context.json()).code,'google_play_live_checkout_not_ready');
  assert.equal(f.db.sql.prepare('SELECT count(*) AS n FROM bb_google_play_subscriptions').get().n,0);
+});
+
+test('restore configuration remains closed for disabled services, invalid identities and account state',async t=>{
+ for(const mode of ['disabled','live_gate','missing_auth','unconfirmed','wrong_account','deleting','schema','credentials']){
+  const f=await fixture();let user={id:USER,email:'fixture@example.invalid',email_confirmed_at:'2026-11-01T00:00:00Z'};
+  if(mode==='disabled')f.env.GOOGLE_PLAY_BILLING_ENABLED='false';
+  if(mode==='live_gate')f.env.GOOGLE_PLAY_BILLING_MODE='live';
+  if(mode==='unconfirmed')delete user.email_confirmed_at;
+  if(mode==='wrong_account')user.id=OTHER;
+  if(mode==='deleting')f.db.sql.prepare('INSERT INTO bb_account_deletions(actor_hash,retry_hash,started_at_ms) VALUES(?,?,?)').run(await digestDeletionActor(USER),'fixture',Date.now());
+  if(mode==='schema')f.db.sql.exec('DROP TABLE bb_google_play_schema');
+  if(mode==='credentials')f.env.GOOGLE_PLAY_PRIVATE_KEY='not-a-private-key';
+  t.mock.method(globalThis,'fetch',async()=>Response.json(user));
+  const request=new Request('https://basketboss.co.uk/api/google-play/config',{headers:mode==='missing_auth'?{}:{Authorization:'Bearer fixture'}});
+  const body=await (await configEndpoint({env:f.env,request})).json();
+  assert.equal(body.available,false,mode);assert.equal(body.restoreAvailable,false,mode);assert.deepEqual(body.productIds,[],mode);assert.deepEqual(body.plans,[],mode);assert.equal(body.packageName,undefined,mode);
+  t.mock.restoreAll();f.db.sql.close();
+ }
 });
 
 test('Google account/product/base plan/offer/test proof restrictions cannot be replaced with client claims',async()=>{
@@ -201,4 +221,50 @@ test('purchase context binds only an authenticated allowed account and refuses p
 test('bounded request readers reject oversized and malformed JSON without processing a token',async()=>{
  await assert.rejects(()=>googlePlayRequestJSON(request('verify',{value:'x'.repeat(20000)})),rejects('request_too_large'));
  await assert.rejects(()=>googlePlayRequestJSON(new Request('https://basketboss.co.uk',{method:'POST',headers:{'Content-Type':'application/json'},body:'[]'})),rejects('invalid_request'));
+});
+
+const coordinationJWT=()=>[Buffer.from('{"alg":"ES256"}').toString('base64url'),Buffer.from(JSON.stringify({iss:'https://fixture.supabase.co/auth/v1',sub:USER,session_id:'33333333-3333-4333-8333-333333333333',exp:Math.floor(Date.now()/1000)+3600})).toString('base64url'),'syntheticSignature'].join('.');
+function intentRequest(body){return new Request('https://basketboss.co.uk/api/google-play/purchase-context',{method:'POST',headers:{Origin:'https://localhost',Authorization:'Bearer '+coordinationJWT(),'Content-Type':'application/json'},body:JSON.stringify(body)});}
+function enableIntents(f){f.db.sql.exec(readFileSync(new URL('../sql/basketboss_purchase_intents_20261121.sql',import.meta.url),'utf8'));Object.assign(f.env,{BB_PURCHASE_INTENTS_ENABLED:'true',BB_PURCHASE_INTENTS_STRICT:'true'});}
+
+test('live checkout requires every explicit gate plus ready schema and the exact start protocol',async t=>{
+ const f=await fixture();Object.assign(f.env,{GOOGLE_PLAY_BILLING_MODE:'live',GOOGLE_PLAY_LIVE_BILLING_ENABLED:'true',GOOGLE_PLAY_LIVE_CHECKOUT_ENABLED:'true'});
+ t.mock.method(globalThis,'fetch',async()=>Response.json({id:USER,email:'fixture@example.invalid',email_confirmed_at:'2026-11-01'}));
+ const selection={productId:PRODUCT,basePlanId:'monthly',offerId:null,reservationProtocol:1};
+ assert.equal((await contextEndpoint({env:f.env,request:intentRequest(selection)})).status,503);
+ enableIntents(f);
+ const config=await (await configEndpoint({env:f.env,request:intentRequest(selection)})).json();assert.equal(config.available,true);assert.equal(config.restoreAvailable,true);
+ const legacy=await contextEndpoint({env:f.env,request:intentRequest({...selection,reservationProtocol:undefined})});assert.equal(legacy.status,426);assert.equal((await legacy.json()).code,'purchase_intent_upgrade_required');
+ const response=await contextEndpoint({env:f.env,request:intentRequest(selection)}),body=await response.json();assert.equal(response.status,200);assert.equal(body.reservation.phase,'prepared');assert.equal(body.reservation.provider,'google_play');
+ const actor=await purchaseIntentActor(intentRequest(selection),f.env);await startPurchaseIntent(f.env,actor,body.reservation);
+ const blocked=await contextEndpoint({env:f.env,request:intentRequest({...selection,basePlanId:'annual'})});assert.equal(blocked.status,409);assert.equal((await blocked.json()).code,'purchase_intent_busy');
+ f.db.sql.exec('DROP TABLE bb_purchase_intent_events');
+ const unavailable=await (await configEndpoint({env:f.env,request:intentRequest(selection)})).json();assert.equal(unavailable.available,false);assert.equal(unavailable.restoreAvailable,true,'checkout schema failure must not remove restore');
+});
+
+test('verified store intent binding persists pending until acknowledgment succeeds; restored proof never needs a reservation',async()=>{
+ const f=await fixture();enableIntents(f);const actor={userId:USER,sessionHash:'a'.repeat(64)};
+ const prepared=await reservePurchaseIntent(f.env,actor,{provider:'google_play',mode:'test',productId:PRODUCT,basePlanId:'monthly',protocol:1});
+ await startPurchaseIntent(f.env,actor,prepared);
+ const value=purchase(f,{acknowledgementState:'ACKNOWLEDGEMENT_STATE_PENDING',externalAccountIdentifiers:{obfuscatedExternalAccountId:f.accountId,obfuscatedExternalProfileId:prepared.id}});
+ await assert.rejects(()=>reconcileGooglePlayPurchase(f.env,f.config,USER,TOKEN,{api:{get:async()=>value,acknowledge:async()=>{throw Error('synthetic offline');}}}));
+ const held=await readPurchaseIntent(f.env,actor,{mode:'test'});assert.equal(held.id,prepared.id);assert.equal(held.phase,'unknown');assert.equal(f.db.sql.prepare('SELECT acknowledged FROM bb_google_play_subscriptions').get().acknowledged,0);
+ const saved=await reconcileGooglePlayPurchase(f.env,f.config,USER,TOKEN,{api:apiFor(value)});assert.equal(saved.acknowledged,1);assert.equal(await readPurchaseIntent(f.env,actor,{mode:'test'}),null);assert.equal(f.db.sql.prepare('SELECT phase FROM bb_purchase_intents WHERE id=?').get(prepared.id).phase,'completed');
+ const restored=await reconcileGooglePlayPurchase(f.env,f.config,USER,TOKEN,{api:apiFor(purchase(f))});assert.equal(googlePlayEntitlementFromRow(f.config,restored).premiumAccess,true);
+});
+
+test('unattributed historical Play proof cannot release a newer prepared checkout and prevents its start',async()=>{
+ const f=await fixture();enableIntents(f);const actor={userId:USER,sessionHash:'a'.repeat(64)};
+ const pending=await reservePurchaseIntent(f.env,actor,{provider:'apple',mode:'test',productId:'uk.co.basketboss.premium.monthly',protocol:1});
+ await reconcileGooglePlayPurchase(f.env,f.config,USER,TOKEN,{api:apiFor(purchase(f))});
+ assert.equal((await readPurchaseIntent(f.env,actor,{mode:'test'})).id,pending.id);
+ await assert.rejects(()=>startPurchaseIntent(f.env,actor,pending),error=>error.code==='purchase_intent_changed');
+});
+
+test('an authoritative expired unacknowledged Play purchase closes its attempt without acknowledgment or Premium',async()=>{
+ const f=await fixture();enableIntents(f);const actor={userId:USER,sessionHash:'a'.repeat(64)};
+ const prepared=await reservePurchaseIntent(f.env,actor,{provider:'google_play',mode:'test',productId:PRODUCT,basePlanId:'monthly',protocol:1});await startPurchaseIntent(f.env,actor,prepared);
+ let acknowledgments=0;const value=purchase(f,{subscriptionState:'SUBSCRIPTION_STATE_EXPIRED',acknowledgementState:'ACKNOWLEDGEMENT_STATE_PENDING',externalAccountIdentifiers:{obfuscatedExternalAccountId:f.accountId,obfuscatedExternalProfileId:prepared.id}});
+ const saved=await reconcileGooglePlayPurchase(f.env,f.config,USER,TOKEN,{api:{get:async()=>value,acknowledge:async()=>{acknowledgments++;}}});
+ assert.equal(acknowledgments,0);assert.equal(googlePlayEntitlementFromRow(f.config,saved).premiumAccess,false);assert.equal(await readPurchaseIntent(f.env,actor,{mode:'test'}),null);assert.equal(f.db.sql.prepare('SELECT phase FROM bb_purchase_intents WHERE id=?').get(prepared.id).phase,'canceled');
 });
