@@ -25,16 +25,19 @@
     const explicitPending = data?.pending === true || data?.deletion_pending === true;
     const explicitRejection = !response.ok && response.status !== 202 && data?.ok === false && data?.pending === false && !explicitPending;
     const pending = explicitPending || response.status === 202 || (!explicitRejection && (hadPending || response.status >= 500 || response.ok));
-    const code = typeof data?.code === 'string' && Object.hasOwn(pendingMessages, data.code) ? data.code : '';
+    const code = typeof data?.code === 'string' && (Object.hasOwn(pendingMessages, data.code) || ['deletion_origin_rejected', 'deletion_sign_in_required'].includes(data.code)) ? data.code : '';
     const kept = 'Your saved device data has been kept';
     if (pending) {
-      const progress = code ? pendingMessages[code] : 'Deletion has not been confirmed yet.';
+      const progress = pendingMessages[code] || 'Deletion has not been confirmed yet.';
       return { pending, code, text: progress + ' ' + kept + ' and syncing is paused. Re-enter your password and retry to finish.' };
     }
     if (code === 'deletion_auth_unavailable') return { pending, code, text: 'We could not verify your sign-in right now. Your account and saved device data have been kept, and syncing can continue. Please try again later.' };
     if (code === 'deletion_not_ready') return { pending, code, text: 'Account deletion is not available yet. Your account and saved device data have been kept, and syncing can continue. Please try again later.' };
     if (code === 'deletion_apple_required' || code === 'deletion_apple_unavailable') return { pending, code, text: pendingMessages[code] + ' ' + kept + ' and syncing can continue.' };
-    if (code === 'deletion_password_required' || response.status === 401 || response.status === 403) return { pending, code, text: 'Your password or session could not be verified. ' + kept + ' and syncing can continue. Check your password, or close this window and sign in again.' };
+    if (code === 'deletion_origin_rejected') return { pending, code, text: 'This connection is not permitted to request account deletion. ' + kept + ' and syncing can continue. Close this window and reopen BasketBoss before trying again.' };
+    if (code === 'deletion_password_required') return { pending, code, text: 'Your password could not be verified. ' + kept + ' and syncing can continue. Check your password before trying again.' };
+    if (code === 'deletion_sign_in_required' || response.status === 401) return { pending, code, text: 'Sign in again before deleting your account. ' + kept + ' and syncing can continue. Close this window and sign in again.' };
+    if (response.status === 403) return { pending, code, text: 'A security check blocked this deletion request. ' + kept + ' and syncing can continue. Please try again later.' };
     return { pending, code, text: 'Your account deletion could not be completed. ' + kept + ' and syncing can continue. Please retry.' };
   }
 
