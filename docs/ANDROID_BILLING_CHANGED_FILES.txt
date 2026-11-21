@@ -2,6 +2,7 @@ BasketBoss Android subscription parity: complete changed-file inventory
 Compared with production main 57cfa3a20126e34f9ace4a5ae9862187168d41c9.
 Includes the existing Android draft foundation and the parity completion.
 Generated platform outputs and private signing material are not tracked.
+Application source pin: 9635eef97e3c546aaddf3a543f1ead397d33c70a
 
 .github/workflows/android-build.yml
 .gitignore
@@ -92,7 +93,10 @@ native/google-play-purchases.mjs
 native/purchase-intents.mjs
 package-lock.json
 package.json
+release-assets/build57-README.txt
+release-assets/build57-phone-checklist.txt
 release-assets/prepare-android-mac.command
+release-assets/prepare-build57-mac.command
 scripts/android-signing.mjs
 scripts/android-sync.mjs
 scripts/build-android-web.mjs
@@ -110,6 +114,7 @@ tests/basketboss-android-runtime-browser.test.mjs
 tests/basketboss-android-runtime.test.mjs
 tests/basketboss-android-server-transport.test.mjs
 tests/basketboss-android-signing.test.mjs
+tests/basketboss-build57-launcher-archive.test.mjs
 tests/basketboss-google-play-access-integration.test.mjs
 tests/basketboss-google-play-api.test.mjs
 tests/basketboss-google-play-notifications.test.mjs
