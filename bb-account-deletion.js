@@ -21,6 +21,21 @@
     deletion_not_ready: 'Account deletion is temporarily unavailable. A previous deletion request still needs to finish.'
   });
 
+  const verificationMessages = Object.freeze({
+    bearer_missing: 'The deletion request did not include your sign-in.',
+    bearer_invalid: 'The deletion request included an invalid sign-in.',
+    bearer_oversized: 'The deletion request included an invalid sign-in.',
+    auth_configuration: 'The deletion service could not connect to the sign-in service.',
+    auth_session_rejected: 'The sign-in service rejected the session used for deletion.',
+    auth_http_unavailable: 'The sign-in service could not complete the deletion check.',
+    auth_timeout: 'The sign-in check for deletion timed out.',
+    auth_fetch_failed: 'The deletion service could not reach the sign-in service.',
+    auth_response_invalid: 'The deletion service could not read the sign-in check.',
+    auth_user_invalid: 'The sign-in check did not return a valid account.',
+    auth_user_unconfirmed: 'The sign-in check did not return a confirmed email address.',
+    auth_user_identifier_invalid: 'The sign-in check did not return a valid account identifier.'
+  });
+
   function failureFeedback(response, data, hadPending) {
     const explicitPending = data?.pending === true || data?.deletion_pending === true;
     const explicitRejection = !response.ok && response.status !== 202 && data?.ok === false && data?.pending === false && !explicitPending;
@@ -36,6 +51,7 @@
     if (code === 'deletion_apple_required' || code === 'deletion_apple_unavailable') return { pending, code, text: pendingMessages[code] + ' ' + kept + ' and syncing can continue.' };
     if (code === 'deletion_origin_rejected') return { pending, code, text: 'This connection is not permitted to request account deletion. ' + kept + ' and syncing can continue. Close this window and reopen BasketBoss before trying again.' };
     if (code === 'deletion_password_required') return { pending, code, text: 'Your password could not be verified. ' + kept + ' and syncing can continue. Check your password before trying again.' };
+    if (code === 'deletion_sign_in_required' && response.status === 401 && typeof data?.verification === 'string' && Object.hasOwn(verificationMessages, data.verification)) return { pending, code, text: verificationMessages[data.verification] + ' ' + kept + ' and syncing can continue.' };
     if (code === 'deletion_sign_in_required' || response.status === 401) return { pending, code, text: 'Sign in again before deleting your account. ' + kept + ' and syncing can continue. Close this window and sign in again.' };
     if (response.status === 403) return { pending, code, text: 'A security check blocked this deletion request. ' + kept + ' and syncing can continue. Please try again later.' };
     return { pending, code, text: 'Your account deletion could not be completed. ' + kept + ' and syncing can continue. Please retry.' };

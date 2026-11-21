@@ -423,6 +423,42 @@ test('a sign-in provider outage is not presented as a rejected password', async 
   assert.equal(h.local.getItem(SESSION), session());
 });
 
+test('known deletion verification categories give fixed feedback without exposing provider values',async()=>{
+ for(const [verification,expected] of [
+  ['bearer_missing',/did not include your sign-in/],['bearer_invalid',/included an invalid sign-in/],['bearer_oversized',/included an invalid sign-in/],
+  ['auth_configuration',/could not connect to the sign-in service/],['auth_session_rejected',/sign-in service rejected the session/],
+  ['auth_http_unavailable',/could not complete the deletion check/],['auth_timeout',/sign-in check for deletion timed out/],
+  ['auth_fetch_failed',/could not reach the sign-in service/],['auth_response_invalid',/could not read the sign-in check/],
+  ['auth_user_invalid',/did not return a valid account/],['auth_user_unconfirmed',/did not return a confirmed email/],
+  ['auth_user_identifier_invalid',/did not return a valid account identifier/]
+ ]){
+  const h=harness(async()=>response(401,{ok:false,code:'deletion_sign_in_required',verification,error:'synthetic-private-provider-body'}));
+  const result=await h.remove();
+  assert.equal(result.pending,false);assert.equal(h.api.isDeleting(),false);assert.match(result.message,expected);
+  assert.doesNotMatch(result.message,/synthetic-private|Nothing has been deleted/);
+  assert.equal(h.local.getItem(SESSION),session());assert.equal(h.local.getItem('basketboss_321_unified_state_v1'),'meal plan');assert.deepEqual(h.redirects,[]);
+ }
+});
+
+test('untrusted verification values and unrelated statuses cannot replace sign-in feedback',async()=>{
+ for(const verification of ['private provider body','__proto__','constructor',{toString:'private'},null]){
+  const h=harness(async()=>response(401,{ok:false,code:'deletion_sign_in_required',verification}));
+  const result=await h.remove();assert.match(result.message,/Sign in again before deleting your account/);assert.doesNotMatch(result.message,/private|__proto__|constructor/);
+ }
+ const h=harness(async()=>response(403,{ok:false,code:'deletion_password_required',verification:'auth_fetch_failed'}));
+ assert.match((await h.remove()).message,/Your password could not be verified/);
+});
+
+test('verification feedback cannot unlock an existing pending deletion',async()=>{
+ for(const explicitPending of [undefined,true]){
+  const h=harness(async()=>response(401,{ok:false,code:'deletion_sign_in_required',verification:'auth_session_rejected',...(explicitPending?{pending:true}:{})}));
+  h.local.setItem(LOCK,JSON.stringify({actorId:actor.actorId,phase:'pending'}));
+  const result=await h.remove();assert.equal(result.pending,true);assert.equal(h.api.isDeleting(),true);
+  assert.match(result.message,/syncing is paused/);assert.doesNotMatch(result.message,/syncing can continue/);
+  assert.equal(h.local.getItem(SESSION),session());assert.equal(h.local.getItem('basketboss_321_unified_state_v1'),'meal plan');
+ }
+});
+
 function useAppleSession(h){
  const value=JSON.parse(h.local.getItem(SESSION));value.user.identities=[{provider:'apple',identity_data:{sub:'synthetic-apple-subject'}}];
  h.local.setItem(SESSION,JSON.stringify(value));
