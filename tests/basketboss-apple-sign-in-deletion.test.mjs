@@ -16,11 +16,12 @@ function token(claims={}){
  return unsigned+'.'+sign('RSA-SHA256',Buffer.from(unsigned),appleKeys.privateKey).toString('base64url');
 }
 const response=(value,status=200)=>new Response(JSON.stringify(value),{status,headers:{'Content-Type':'application/json'}});
-function fixture({claims,exchangedClaims,revokeStatus=200,exchangeStatus=200}={}){
+function fixture({claims,exchangedClaims,revokeStatus=200,exchangeStatus=200,redirectPath}={}){
  const calls=[],identityToken=token(claims),credential={identityToken,nonce,authorizationCode:'synthetic-authorization-code'};
  const fetcher=async(address,options={})=>{
   const url=new URL(address);calls.push({path:url.pathname,body:options.body,options});
-  assert.equal(url.origin,'https://appleid.apple.com');assert.equal(options.redirect,'error');
+  assert.equal(url.origin,'https://appleid.apple.com');assert.equal(options.redirect,'manual');
+  if(url.pathname===redirectPath)return new Response(null,{status:307,headers:{Location:'https://untrusted.example.invalid/credentials'}});
   if(url.pathname==='/auth/keys')return response({keys:[publicKey]});
   if(url.pathname==='/auth/token')return response({id_token:token(exchangedClaims),refresh_token:'synthetic-apple-refresh'},exchangeStatus);
   if(url.pathname==='/auth/revoke')return response({},revokeStatus);
@@ -59,6 +60,18 @@ test('untrusted signatures and unavailable revocation fail closed with fixed saf
  const h=fixture();const parts=h.credential.identityToken.split('.');parts[2]='A'.repeat(parts[2].length);h.credential.identityToken=parts.join('.');
  await assert.rejects(h.run(),error=>error.code==='deletion_apple_required');assert.deepEqual(h.calls.map(value=>value.path),['/auth/keys']);
  const unavailable=fixture({revokeStatus:503});await assert.rejects(unavailable.run(),error=>error.code==='deletion_apple_unavailable'&&error.message==='deletion_apple_unavailable');
+});
+
+test('Apple verification, exchange and revocation reject redirects before deletion can proceed',async()=>{
+ for(const [redirectPath,expectedCode,expectedCalls] of [
+  ['/auth/keys','deletion_apple_unavailable',1],
+  ['/auth/token','deletion_apple_required',2],
+  ['/auth/revoke','deletion_apple_unavailable',3]
+ ]){
+  const h=fixture({redirectPath});
+  await assert.rejects(h.run(),error=>error.code===expectedCode);
+  assert.equal(h.calls.length,expectedCalls);assert.equal(h.calls.at(-1).path,redirectPath);
+ }
 });
 
 test('deletion identity derives Apple subjects from the fresh authenticated Supabase user only',async()=>{

@@ -11,6 +11,7 @@ import {generateKeyPairSync,sign,X509Certificate} from 'node:crypto';
 import jsrsasign from 'jsrsasign';
 import {build} from 'esbuild';
 import {appleBuiltinFacades} from './build-apple-sdk.mjs';
+import {testDeletionWorkerFetch} from './test-deletion-worker-fetch.mjs';
 const require=createRequire(import.meta.url);
 const rootDir=path.resolve(path.dirname(fileURLToPath(import.meta.url)),'..');
 const toolsDir=process.env.BB_WORKER_TEST_TOOLS||path.join(rootDir,'node_modules');
@@ -132,5 +133,6 @@ try{
  const pagesOptions={workers:[{modules:true,modulesRoot:directory,scriptPath:path.join(directory,'pages-built/index.js'),compatibilityDate:'2026-10-01',bindings:{APPLE_BILLING_ENABLED:'false'}}]};
  const pages=new Miniflare(convertV4MiniflareOptions?convertV4MiniflareOptions(pagesOptions):pagesOptions);
  try{const disabled=await pages.dispatchFetch('https://basketboss.co.uk/api/apple/config');assert.equal(disabled.status,200);assert.deepEqual(await disabled.json(),{available:false,productIds:[],reason:'apple_not_enabled'});}finally{await pages.dispose();}
+ await testDeletionWorkerFetch();
  console.log(JSON.stringify({runtime:'workerd',compatibilityDate:'2026-10-01',coldStart:true,pagesAppleDisabled:true,...result,onlineChecks}));
 }finally{await mf.dispose();fs.rmSync(directory,{recursive:true,force:true});}
