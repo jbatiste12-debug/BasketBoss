@@ -459,6 +459,33 @@ test('verification feedback cannot unlock an existing pending deletion',async()=
  }
 });
 
+test('billing diagnostics show the failed operation while keeping every deletion barrier and saved record',async()=>{
+ for(const [billing,expected] of [
+  [{stage:'claims_read',reason:'columns_missing',mode:'live',missing:['slot_no']},/reading your saved payment records.*Required billing fields are missing.*Founder slot/],
+  [{stage:'subscription_read',reason:'http',mode:'live',status:403},/looking up your Paddle subscription.*Provider HTTP 403/],
+  [{stage:'subscription_cancel',reason:'http',mode:'live',status:403,providerCode:'forbidden'},/cancelling your Paddle subscription.*lacks permission.*Provider HTTP 403/],
+  [{stage:'subscription_read',reason:'http',mode:'live',status:403,providerCode:'invalid_token'},/looking up your Paddle subscription.*rejected the server API key/],
+  [{stage:'subscription_cancel',reason:'http',mode:'live',status:404},/cancelling your Paddle subscription.*Provider HTTP 404/],
+  [{stage:'claim_linkage',reason:'claim_mismatch',mode:'live'},/matching the Paddle payment to your account.*could not be matched/]
+ ]){
+  const h=harness(async()=>response(202,{ok:false,pending:true,code:'deletion_billing_pending',billing,error:'synthetic-private-provider-body'}));
+  const result=await h.remove();assert.equal(result.pending,true);assert.equal(h.api.isDeleting(),true);assert.match(result.message,expected);
+  assert.match(result.message,/syncing is paused/);assert.doesNotMatch(result.message,/syncing can continue|synthetic-private/);
+  assert.equal(h.local.getItem(SESSION),session());assert.equal(h.local.getItem('basketboss_321_unified_state_v1'),'meal plan');assert.ok(h.local.getItem(LOCK));assert.deepEqual(h.redirects,[]);
+  assert.equal(h.events.filter(event=>event.type==='basketboss:account-deletion-cancelled').length,0);
+ }
+});
+
+test('arbitrary billing diagnostics cannot become UI feedback or release a pending deletion',async()=>{
+ for(const billing of [{stage:'constructor',reason:'http',mode:'live'},{stage:'claims_read',reason:'private response',mode:'live'},{stage:'claims_read',reason:'http',mode:'private environment'},'private response',null]){
+  const h=harness(async()=>response(202,{ok:false,pending:true,code:'deletion_billing_pending',billing}));
+  const result=await h.remove();assert.equal(result.pending,true);assert.equal(h.api.isDeleting(),true);
+  assert.match(result.message,/could not complete the subscription check or cancellation/);assert.doesNotMatch(result.message,/constructor|private/);
+ }
+ const h=harness(async()=>response(202,{ok:false,pending:true,code:'deletion_billing_pending',billing:{stage:'claims_read',reason:'columns_missing',mode:'live',status:'private status',missing:['private column','slot_no']}}));
+ const result=await h.remove();assert.match(result.message,/Founder slot/);assert.doesNotMatch(result.message,/private/);assert.equal(h.api.isDeleting(),true);
+});
+
 function useAppleSession(h){
  const value=JSON.parse(h.local.getItem(SESSION));value.user.identities=[{provider:'apple',identity_data:{sub:'synthetic-apple-subject'}}];
  h.local.setItem(SESSION,JSON.stringify(value));

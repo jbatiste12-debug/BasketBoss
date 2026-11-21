@@ -50,18 +50,27 @@ export async function digestHex(input) {
   const raw=await crypto.subtle.digest('SHA-256',new TextEncoder().encode(input));
   return [...new Uint8Array(raw)].map(x=>x.toString(16).padStart(2,'0')).join('');
 }
-export async function paddleApi(env,path,method='GET',body=undefined) {
-  if(!isBillingEnabled(env)) throw Error('Paddle billing mode disabled');
+// Fixed public Paddle error codes only; never expose provider detail/errors.
+const paddleDiagnosticCodes=new Set(['invalid_token','forbidden','not_found','invalid_field','authentication_missing','authentication_malformed','subscription_is_canceled_action_invalid']);
+export function paddleDiagnosticCode(value){return typeof value==='string'&&paddleDiagnosticCodes.has(value)?value:null;}
+export async function paddleApi(env,path,method='GET',body=undefined,{onFailure}={}) {
+  // Observers receive fixed categories only and cannot change billing results.
+  // Never pass provider payloads, request details, credentials or exceptions.
+  const report=(reason,status,code)=>{const providerCode=paddleDiagnosticCode(code);try{onFailure?.({reason,...(Number.isInteger(status)&&status>=100&&status<=599?{status}:{}),...(providerCode?{providerCode}:{})});}catch{}};
+  if(!isBillingEnabled(env)){report('disabled');throw Error('Paddle billing mode disabled');}
   const live=isLive(env);
   const key=live?env.PADDLE_LIVE_API_KEY:env.PADDLE_SANDBOX_API_KEY;
-  if(!key) throw Error('Paddle API credential not configured');
+  if(!key){report('credential_missing');throw Error('Paddle API credential not configured');}
   const host=live?'https://api.paddle.com':'https://sandbox-api.paddle.com';
-  const r=await fetch(host+path,{
-    method,headers:{ Authorization:'Bearer '+key,'Content-Type':'application/json'},
-    body:body===undefined?undefined:JSON.stringify(body),signal:AbortSignal.timeout(9000),redirect:'manual'
-  });
-  const payload=await r.json().catch(()=>null);
-  if(!r.ok || !payload?.data) throw Error('Paddle API response not successful: '+r.status);
+  let r;
+  try{r=await fetch(host+path,{
+      method,headers:{ Authorization:'Bearer '+key,'Content-Type':'application/json'},
+      body:body===undefined?undefined:JSON.stringify(body),signal:AbortSignal.timeout(9000),redirect:'manual'
+    });
+  }catch(error){report(['TimeoutError','AbortError'].includes(error?.name)?'timeout':'transport');throw error;}
+  let bodyFailure='response_invalid';
+  const payload=await r.json().catch(error=>{if(['TimeoutError','AbortError'].includes(error?.name))bodyFailure='timeout';return null;});
+  if(!r.ok || !payload?.data){report(!r.ok?'http':bodyFailure,r.status,!r.ok?payload?.error?.code:null);throw Error('Paddle API response not successful: '+r.status);}
   return payload.data;
 }
 export function entitlementForStatus(status) { return status==='active'||status==='trialing'; }
