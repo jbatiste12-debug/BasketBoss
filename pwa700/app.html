@@ -9133,11 +9133,11 @@ function bbHomePrepareHouseholdRemoval(id){
 }
 /* Household refreshes reload already-saved values in memory, without a new
  * document navigation, cloud upload or replacement of an unfinished form. */
-function bbCanRefreshSharedHousehold({actor,token,expected}={}){
+function bbSharedHouseholdScreenReady({actor,token,expected}={}){
  try{
-  if(!bbStorageSafe||document.hidden||window.BBAccountDeletion?.isDeleting?.()===true||typeof actor!=='string'||!actor||typeof token!=='string'||!token||typeof expected!=='string'||localStorage.getItem(KEY)!==expected)return false;
-  const session=JSON.parse(localStorage.getItem('basketboss_cloud_session_v1')||'null'),saved=JSON.parse(expected);
-  if(session?.user?.id!==actor||session?.access_token!==token||saved?.version!==2||!Array.isArray(saved.planned))return false;
+  if(!bbStorageSafe||document.hidden||window.BBAccountDeletion?.isDeleting?.()===true||typeof actor!=='string'||!actor||typeof token!=='string'||!token||(expected!==null&&typeof expected!=='string')||localStorage.getItem(KEY)!==expected)return false;
+  const session=JSON.parse(localStorage.getItem('basketboss_cloud_session_v1')||'null');
+  if(session?.user?.id!==actor||session?.access_token!==token)return false;
   if(document.activeElement?.matches?.('input,textarea,select,[contenteditable="true"]'))return false;
   const visible=node=>!node.hidden&&node.getClientRects().length>0;
   if([...document.querySelectorAll('dialog[open],[role="dialog"][aria-modal="true"],.cook-overlay')].some(node=>node.id!=='bbhs-dialog'&&visible(node)))return false;
@@ -9150,6 +9150,30 @@ function bbCanRefreshSharedHousehold({actor,token,expected}={}){
    }else if(!['checkbox','radio','button','submit','reset','hidden'].includes(field.type)&&field.value!==field.defaultValue)return false;
   }
   return true;
+ }catch{return false;}
+}
+function bbCanRefreshSharedHousehold(pin){
+ try{
+  if(typeof pin?.expected!=='string'||!bbSharedHouseholdScreenReady(pin))return false;
+  const saved=JSON.parse(pin.expected);
+  return saved?.version===2&&Array.isArray(saved.planned);
+ }catch{return false;}
+}
+function bbPrepareEmptySharedHousehold(pin){
+ try{
+  // A linked account can receive its household on a genuinely new browser.
+  // Persist only the existing empty in-memory plan; never replace an old,
+  // unreadable, recovered or migrated plan or dismiss an unfinished editor.
+  const recoveryKeys=[BB_SNAPSHOT,OLD_PLAN,OLD_PANTRY];
+  const untouched=()=>pin?.expected===null&&!bbRecovered&&bbSharedHouseholdScreenReady(pin)&&recoveryKeys.every(key=>localStorage.getItem(key)===null);
+  if(!untouched()||state?.version!==2)return false;
+  for(const key of ['planned','plannedBreakfasts','plannedDesserts','customPantry','dismissed'])if(!Array.isArray(state[key])||state[key].length)return false;
+  for(const key of ['pantry','mealServings','dayServings','recipePhotos','recipeCollections','leftoverSources','leftoverConfirmed'])if(!state[key]||typeof state[key]!=='object'||Array.isArray(state[key])||Object.keys(state[key]).length)return false;
+  if(state.bbManualBatch||state.bb81Batch)return false;
+  const empty=JSON.stringify(state);
+  if(!untouched()||JSON.stringify(state)!==empty)return false;
+  localStorage.setItem(KEY,empty);
+  return bbCanRefreshSharedHousehold({...pin,expected:empty});
  }catch{return false;}
 }
 function bbRefreshSharedHousehold(pin){
@@ -9187,7 +9211,7 @@ async function bbPrepareSharedHouseholdRecipes(pin){
   return {storage:store,planKey:KEY,recoveryKey:BB_SNAPSHOT,getState:()=>state,setState:next=>{state=next;},context,recipe:getRecipe,allowed:bb176AllowedRecipe,ingredientsAllowed:bbAfIngredientAllowed,dinner:recipe=>BBRecipePlanning.isDinner(recipe),under30:bb81Under30,kidAllowed:bb81KidOK,variety:planned=>bbPlanVarietyValid(planned,true),fits:(recipe,day,other)=>{const map=new Map(RECIPES.map(value=>[value.id,bbAfTags(value)]));return bbAfFits(recipe,day,other,id=>map.get(id)||null,typeof BBPantryAutofill!=='undefined');},servings:(plan,slot,recipe)=>BBServing.forMeal(plan,slot,recipe),batchPairs:bbBatchPairs,completion:day=>{const meals=bbHomeDayMeals(day),confirmed=meals.some(meal=>win.BBHome?.isCooked?.(meal.occurrence)===true);if(!confirmed)return {confirmed:false};const undo=win.BBHome?.previewUndoDay?.({day,actorId:win.BBHome.actor()});return {confirmed:true,undoDay:undo?.ok===true&&undo.already===false};},rotationKey:actor=>BBRecipePlanning.STORAGE_KEY+':'+encodeURIComponent(actor),draw:bbAfDraw,replacement:(snapshot,id)=>win.BBPlanSwapCore.replacement(snapshot,id),readOnly:operation=>win.BBPlanSwapHostFactory.readOnlyStorage(win,operation),estimate,persist,record:bbRecordPlannedRecipes,render,notify,locked:()=>bbAfBusy,withLock:bbAfWithLock,yield:()=>new Promise(resolve=>win.requestAnimationFrame(()=>win.requestAnimationFrame(resolve)))};
  };win.BBPlanSwapHost=win.BBPlanSwapHostFactory.createHost(bindPlanner());})(window);
 window.BBHomeHost=Object.freeze({needsLegacyReview:bbHomeNeedsLegacyReview,settlePurchases:bbHomeSettlePurchases,
- canRefreshSharedHousehold:bbCanRefreshSharedHousehold,refreshSharedHousehold:bbRefreshSharedHousehold,prepareSharedHouseholdRecipes:bbPrepareSharedHouseholdRecipes,
+ canRefreshSharedHousehold:bbCanRefreshSharedHousehold,refreshSharedHousehold:bbRefreshSharedHousehold,prepareSharedHouseholdRecipes:bbPrepareSharedHouseholdRecipes,prepareEmptySharedHousehold:bbPrepareEmptySharedHousehold,
  id:BB307Pantry.pantryId,stock:bbHomePhysicalStock,
  openCook:id=>{if(getRecipe(id)&&bb176AllowedRecipe(id)){openCook(id);const url=new URL(location.href);url.searchParams.delete('bbcook');history.replaceState(null,'',url);return true;}return false;},
  keys:()=>({stock:BB307_STOCK_KEY,inventory:'basketboss_makeameal_v1_inventory'}),
@@ -14219,7 +14243,7 @@ body[data-bbnext-view="discover"] #app .bb175-discover-heading{padding-top:calc(
 <link rel="stylesheet" href="/bb-partner-signup-prompt.css?v=4b8718904151c105">
 <script defer src="/bb-partner-signup-prompt.js?v=4d5dba284b0f176f"></script>
 <link rel="stylesheet" href="/bb-household-sharing.css?v=b26e50b91249d42a">
-<script defer src="/bb-household-sharing.js?v=48fd2435b2daaa30"></script>
+<script defer src="/bb-household-sharing.js?v=c268b60c119ee1ed"></script>
 <link rel="stylesheet" href="/bb-recipe-ingredient-layout.css?v=7a30d20f75de3e74">
 <style id="bb-hide-dish-price-badges">
 /* Dish cards show time and servings; Shop and budget prices keep their own selectors. */
