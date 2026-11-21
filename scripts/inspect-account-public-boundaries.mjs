@@ -5,7 +5,7 @@ if(process.env.GITHUB_ACTIONS!=='true'||process.env.GITHUB_REPOSITORY!==REPO||![
 const native='capacitor://localhost';
 const hosts=[['apex','https://basketboss.co.uk'],['www','https://www.basketboss.co.uk']];
 const codes=new Set(['deletion_origin_rejected','deletion_sign_in_required','deletion_unavailable','deletion_confirmation_required']);
-const reasons=new Set(['server_not_configured','authentication_required','billing_not_enabled']);
+const reasons=new Set(['server_not_configured','authentication_required','billing_not_enabled','checkout_configuration_incomplete']);
 const verificationReasons=new Set(['bearer_missing','bearer_invalid','bearer_oversized','auth_configuration','auth_session_rejected','auth_http_unavailable','auth_timeout','auth_fetch_failed','auth_response_invalid','auth_user_invalid','auth_user_unconfirmed','auth_user_identifier_invalid']);
 async function boundedJson(response){
  const reader=response.body?.getReader();if(!reader)return null;
@@ -30,7 +30,8 @@ async function probe(label,host,route,method,origin){
   if(codes.has(data?.code))result.code=data.code;
   if(reasons.has(data?.reason))result.reason=data.reason;
   if(verificationReasons.has(data?.verification))result.verification=data.verification;
-  for(const key of ['available','migrationReady','configured'])if(typeof data?.[key]==='boolean')result[key]=data[key];
+  for(const key of ['available','migrationReady','configured','enabled'])if(typeof data?.[key]==='boolean')result[key]=data[key];
+  if(['live','sandbox'].includes(data?.mode))result.mode=data.mode;
  }catch{result.transport='unavailable';}
  console.log(JSON.stringify(result));
 }
@@ -64,7 +65,8 @@ await Promise.all(hosts.map(async([label,host])=>{
   ['/api/account/delete','POST',native],
   ['/api/account/delete','POST',host],
   ['/api/household?mode=status','GET',native],
-  ['/api/subscription/status','GET',native]
+  ['/api/subscription/status','GET',native],
+  ['/api/subscription/checkout-config','GET',host]
  ])await probe(label,host,route,method,origin);
  await feedbackAsset(label,host);
 }));
