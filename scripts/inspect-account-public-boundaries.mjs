@@ -6,6 +6,7 @@ const native='capacitor://localhost';
 const hosts=[['apex','https://basketboss.co.uk'],['www','https://www.basketboss.co.uk']];
 const codes=new Set(['deletion_origin_rejected','deletion_sign_in_required','deletion_unavailable','deletion_confirmation_required']);
 const reasons=new Set(['server_not_configured','authentication_required','billing_not_enabled']);
+const verificationReasons=new Set(['bearer_missing','bearer_invalid','bearer_oversized','auth_configuration','auth_session_rejected','auth_http_unavailable','auth_timeout','auth_fetch_failed','auth_response_invalid','auth_user_invalid','auth_user_unconfirmed','auth_user_identifier_invalid']);
 async function boundedJson(response){
  const reader=response.body?.getReader();if(!reader)return null;
  let length=0;const parts=[];
@@ -28,6 +29,7 @@ async function probe(label,host,route,method,origin){
   if(!data)try{await r.body?.cancel();}catch{}
   if(codes.has(data?.code))result.code=data.code;
   if(reasons.has(data?.reason))result.reason=data.reason;
+  if(verificationReasons.has(data?.verification))result.verification=data.verification;
   for(const key of ['available','migrationReady','configured'])if(typeof data?.[key]==='boolean')result[key]=data[key];
  }catch{result.transport='unavailable';}
  console.log(JSON.stringify(result));
@@ -51,7 +53,7 @@ async function feedbackAsset(label,host){
   result.assetPath=url.pathname;
   const script=await fetch(url,{redirect:'manual',credentials:'omit',cache:'no-store',signal:AbortSignal.timeout(12000)});
   result.assetStatus=script.status;const body=await prefixText(script);
-  result.updated=script.status===200&&body.includes('A security check blocked this deletion request.')&&body.includes('This connection is not permitted to request account deletion.');
+  result.updated=script.status===200&&body.includes('auth_response_invalid')&&body.includes('The deletion service could not read the sign-in check.')&&body.includes('The deletion request did not include your sign-in.');
  }catch{result.check='incomplete';}
  console.log(JSON.stringify(result));
 }
