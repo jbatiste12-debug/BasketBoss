@@ -13,10 +13,14 @@
     "ios:verify": "node scripts/verify-ios.mjs",
     "audit:pantry": "node scripts/audit-pantry-regions.mjs",
     "test:native": "node --test --test-isolation=none tests/basketboss-native-*.test.mjs",
-    "build:auth": "node scripts/build-auth-sdk.mjs"
+    "build:auth": "node scripts/build-auth-sdk.mjs",
+    "android:sync": "node scripts/android-sync.mjs",
+    "android:verify": "node scripts/verify-android.mjs",
+    "android:bundle": "npm run android:sync && cd android && ./gradlew bundleRelease"
   },
   "dependencies": {
     "@apple/app-store-server-library": "3.1.0",
+    "@capacitor/android": "8.6.0",
     "@capacitor/app": "8.1.2",
     "@capacitor/browser": "8.0.5",
     "@capacitor/camera": "8.2.6",

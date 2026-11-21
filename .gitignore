@@ -22,3 +22,20 @@ supabase/.temp/
 
 # Local plaintext catalogue drafts and protected baseline exports.
 .local-private/
+
+# Android build outputs and private upload signing material.
+*.jks
+*.keystore
+*.aab
+*.apk
+**/keystore.properties
+android/local.properties
+android/.gradle/
+android/.idea/
+android/**/build/
+android/capacitor-cordova-android-plugins/
+android/app/src/main/assets/public/
+android/recipeImages/src/main/assets/
+android/app/src/main/assets/capacitor.config.json
+android/app/src/main/assets/capacitor.plugins.json
+android/app/src/main/res/xml/config.xml
