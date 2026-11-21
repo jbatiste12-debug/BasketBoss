@@ -54,3 +54,5 @@ delivery are not promised. Browser and mocked archive checks do not replace
 these physical-device checks.
 
 On a fresh test installation, sign into an already linked household. Confirm its saved dinners arrive without pressing Sync or Use shared household data. Check a dinner move and serving change in each direction.
+
+In the native app, confirm Add to Home Screen is absent. Open a dinner overflow menu and Remove: cancellation keeps the plan, confirmation removes only that dinner.
