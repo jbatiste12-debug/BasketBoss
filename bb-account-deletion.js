@@ -65,9 +65,19 @@
     unknown: 'The billing check could not be completed.'
   });
   const billingFields = Object.freeze({paddle_subscription_id:'subscription reference',user_id:'account link',claim_id:'payment claim',transaction_id:'payment reference',claim_state:'payment status',slot_no:'Founder slot'});
+  const paddleFailureMessages = Object.freeze({
+    invalid_token:'Paddle rejected the server API key.',
+    forbidden:'The Paddle API key lacks permission for this operation.',
+    not_found:'Paddle could not find the requested billing record.',
+    invalid_field:'Paddle rejected a request field.',
+    authentication_missing:'Paddle did not receive API authentication.',
+    authentication_malformed:'Paddle rejected the API authentication format.',
+    subscription_is_canceled_action_invalid:'Paddle reports that this cancellation action is invalid for an already-canceled subscription.'
+  });
   function billingFeedback(value) {
     if (typeof value?.stage !== 'string' || !Object.hasOwn(billingOperations,value.stage) || typeof value.reason !== 'string' || !Object.hasOwn(billingReasons,value.reason) || !['live','sandbox'].includes(value.mode)) return '';
-    let text = 'The subscription check stopped while ' + billingOperations[value.stage] + '. ' + billingReasons[value.reason];
+    const providerExplanation=value.reason==='http'&&typeof value.providerCode==='string'&&Object.hasOwn(paddleFailureMessages,value.providerCode)?paddleFailureMessages[value.providerCode]:'';
+    let text = 'The subscription check stopped while ' + billingOperations[value.stage] + '. ' + (providerExplanation||billingReasons[value.reason]);
     if (Number.isInteger(value.status) && value.status >= 100 && value.status <= 599) text += ' Provider HTTP ' + value.status + '.';
     if (value.reason === 'columns_missing' && Array.isArray(value.missing)) {
       const fields = [...new Set(value.missing.filter(name=>typeof name==='string'&&Object.hasOwn(billingFields,name)))].map(name=>billingFields[name]);

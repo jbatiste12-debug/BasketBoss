@@ -463,6 +463,8 @@ test('billing diagnostics show the failed operation while keeping every deletion
  for(const [billing,expected] of [
   [{stage:'claims_read',reason:'columns_missing',mode:'live',missing:['slot_no']},/reading your saved payment records.*Required billing fields are missing.*Founder slot/],
   [{stage:'subscription_read',reason:'http',mode:'live',status:403},/looking up your Paddle subscription.*Provider HTTP 403/],
+  [{stage:'subscription_cancel',reason:'http',mode:'live',status:403,providerCode:'forbidden'},/cancelling your Paddle subscription.*lacks permission.*Provider HTTP 403/],
+  [{stage:'subscription_read',reason:'http',mode:'live',status:403,providerCode:'invalid_token'},/looking up your Paddle subscription.*rejected the server API key/],
   [{stage:'subscription_cancel',reason:'http',mode:'live',status:404},/cancelling your Paddle subscription.*Provider HTTP 404/],
   [{stage:'claim_linkage',reason:'claim_mismatch',mode:'live'},/matching the Paddle payment to your account.*could not be matched/]
  ]){

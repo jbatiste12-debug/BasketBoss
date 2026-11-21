@@ -353,6 +353,8 @@ test('billing diagnostic serialization excludes unknown fields, references, sche
  const safe={stage:'claims_read',reason:'columns_missing',mode:'live',missing:['slot_no']};
  assert.deepEqual(accountDeletionBillingDiagnostic({...safe,missing:['slot_no','private_column','slot_no'],status:'403',password:PASSWORD,sql:'private query',body:'private response'}),safe);
  for(const patch of [{stage:'private query'},{reason:'private response'},{mode:'private environment'}])assert.equal(accountDeletionBillingDiagnostic({...safe,...patch}),null);
+ assert.deepEqual(accountDeletionBillingDiagnostic({...safe,reason:'http',providerCode:'forbidden',status:403}),{stage:'claims_read',reason:'http',mode:'live',providerCode:'forbidden',status:403});
+ assert.deepEqual(accountDeletionBillingDiagnostic({...safe,providerCode:'private response'}),safe);
 });
 
 test('deletion verification distinguishes missing, malformed and oversized sign-ins before provider calls',async t=>{

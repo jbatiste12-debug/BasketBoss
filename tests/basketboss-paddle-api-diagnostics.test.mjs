@@ -46,6 +46,15 @@ test('non-JSON and missing data preserve the original HTTP200 failure message',a
  }
 });
 
+test('only documented fixed Paddle codes can explain HTTP failures',async t=>{
+ for(const code of ['invalid_token','forbidden','not_found','invalid_field','authentication_missing','authentication_malformed','subscription_is_canceled_action_invalid','private response','__proto__',null]){
+  const seen=[];t.mock.method(globalThis,'fetch',async()=>json({error:{code,detail:'synthetic-private-provider-body'},request_id:'synthetic-private-request'},403));
+  await assert.rejects(paddleApi(env,path,'GET',undefined,{onFailure:value=>seen.push(value)}),error=>error.message==='Paddle API response not successful: 403');
+  const allowed=typeof code==='string'&&!['private response','__proto__'].includes(code);
+  assert.deepEqual(seen,[{reason:'http',status:403,...(allowed?{providerCode:code}:{})}]);safe(seen);t.mock.restoreAll();
+ }
+});
+
 test('body-read timeouts report timeout while preserving the original response failure',async t=>{
  const seen=[];t.mock.method(globalThis,'fetch',async()=>new Response(new ReadableStream({start(controller){controller.error(new DOMException('synthetic-private-timeout','AbortError'));}})));
  await assert.rejects(paddleApi(env,path,'GET',undefined,{onFailure:value=>seen.push(value)}),error=>error.message==='Paddle API response not successful: 200');

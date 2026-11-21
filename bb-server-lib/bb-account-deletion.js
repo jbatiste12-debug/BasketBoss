@@ -1,6 +1,6 @@
 /* Server-only deletion journal. Hashes suppress late billing events; identifiers
  * exist only while a deletion needs retry. No passwords/tokens are persisted. */
-import {digestHex,paddleApi,billingMode} from './bb-billing.js';
+import {digestHex,paddleApi,billingMode,paddleDiagnosticCode} from './bb-billing.js';
 export const digestDeletionActor = id => digestHex('basketboss:account-deletion:actor:'+id);
 export const digestDeletionRef = (kind,id) => digestHex('basketboss:account-deletion:'+kind+':'+id);
 export const digestDeletionRetry = token => digestHex('basketboss:account-deletion:retry:'+token);
@@ -58,6 +58,8 @@ const billingColumns=new Set(['paddle_subscription_id','user_id','claim_id','tra
 export function accountDeletionBillingDiagnostic(value){
  if(!value||!billingStages.has(value.stage)||!billingReasons.has(value.reason)||!['live','sandbox'].includes(value.mode))return null;
  const safe={stage:value.stage,reason:value.reason,mode:value.mode};
+ const providerCode=value.reason==='http'?paddleDiagnosticCode(value.providerCode):null;
+ if(providerCode)safe.providerCode=providerCode;
  if(Number.isInteger(value.status)&&value.status>=100&&value.status<=599)safe.status=value.status;
  if(value.reason==='columns_missing'&&Array.isArray(value.missing)){
   const missing=[...new Set(value.missing.filter(name=>typeof name==='string'&&billingColumns.has(name)))].slice(0,billingColumns.size);
