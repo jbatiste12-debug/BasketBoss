@@ -1,8 +1,10 @@
 import {
   json,isBillingEnabled,isLive,isConfigured,expectedPrice,authenticatedUser
 } from '../../../bb-server-lib/bb-billing.js';
+import {ANDROID_ORIGIN} from '../../../bb-server-lib/bb-request-origin.js';
 
 export async function onRequestGet({request,env}){
+  if(request.headers.get('Origin')===ANDROID_ORIGIN)return json({enabled:false,reason:'native_account_status_only'},403);
   if(request.headers.get('Origin')==='capacitor://localhost')return json({enabled:false,reason:'native_account_status_only'});
   const live=isLive(env);
   // Match the checkout POST gates exactly; NEVER enable public checkout

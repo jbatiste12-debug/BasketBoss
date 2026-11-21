@@ -1,4 +1,5 @@
 import {json,isBillingEnabled,isLive,billingMode,isConfigured,authenticatedUser,requireSameOrigin,expectedPrice,paddleApi,digestHex} from '../../../bb-server-lib/bb-billing.js';
+import {ANDROID_ORIGIN} from '../../../bb-server-lib/bb-request-origin.js';
 import {ensureDeletionSchema,digestDeletionActor,isAccountDeleting} from '../../../bb-server-lib/bb-account-deletion.js';
 import {readAppleEntitlement} from '../../../bb-server-lib/bb-apple-subscriptions.js';
 import {readTestFlightBetaGrant} from '../../../bb-server-lib/bb-testflight-beta.js';
@@ -137,6 +138,8 @@ async function releaseExpiredFounderHolds(env,db){
 }
 
 export async function onRequestPost({request,env}) {
+  if(request.headers.get('Origin')===ANDROID_ORIGIN)
+    return json({error:'External billing is unavailable in the Android app'},403);
   // Two independent locks: Live backend may be configured before checkout can open.
   if (!isBillingEnabled(env)||!isConfigured(env)||
       !(isLive(env)?env.PADDLE_LIVE_API_KEY:env.PADDLE_SANDBOX_API_KEY)||

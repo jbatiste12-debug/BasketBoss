@@ -1,6 +1,8 @@
 /* No browser-submitted subscription IDs. Paddle returns temporary management URLs. */
 import {json,isBillingEnabled,isConfigured,authenticatedUser,paddleApi} from '../../../bb-server-lib/bb-billing.js';
+import {ANDROID_ORIGIN} from '../../../bb-server-lib/bb-request-origin.js';
 export async function onRequestGet({request,env}) {
+  if(request.headers.get('Origin')===ANDROID_ORIGIN)return json({error:'External billing is unavailable in the Android app'},403);
   if(request.headers.get('Origin')==='capacitor://localhost')return json({error:'External billing is unavailable in the iOS app'},403);
   if(!isBillingEnabled(env)||!isConfigured(env)) return json({error:'Billing disabled'},503);
   const user=await authenticatedUser(request,env);if(!user) return json({error:'Sign in required'},401);
