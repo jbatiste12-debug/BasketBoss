@@ -1,7 +1,7 @@
 // Operational, credential-free HTTP probes only. No login, DELETE confirmation,
 // password, valid bearer, provider action, configuration or database write.
 const REPO='jbatiste12-debug/BasketBoss';
-if(process.env.GITHUB_ACTIONS!=='true'||process.env.GITHUB_REPOSITORY!==REPO||process.env.GITHUB_REF!=='refs/heads/diagnostics/account-delete-public-20261121')throw Error('Diagnostic branch required');
+if(process.env.GITHUB_ACTIONS!=='true'||process.env.GITHUB_REPOSITORY!==REPO||!['refs/heads/main','refs/heads/diagnostics/account-delete-public-20261121'].includes(process.env.GITHUB_REF))throw Error('Approved diagnostic ref required');
 const native='capacitor://localhost';
 const hosts=[['apex','https://basketboss.co.uk'],['www','https://www.basketboss.co.uk']];
 const codes=new Set(['deletion_origin_rejected','deletion_sign_in_required','deletion_unavailable','deletion_confirmation_required']);

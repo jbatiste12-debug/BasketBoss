@@ -4,7 +4,7 @@ import path from 'node:path';
 import {fileURLToPath} from 'node:url';
 
 const REPOSITORY='jbatiste12-debug/BasketBoss';
-const BRANCH='refs/heads/diagnostics/account-delete-public-20261121';
+const BRANCH='refs/heads/main';
 const PROJECT='basketboss-site',API='https://api.cloudflare.com/client/v4/';
 export const ACCOUNT_DELETE_PRODUCTION_SHA='02b5a8a0a84cef711e24614842dcde0d3f707a02';
 export const ACCOUNT_DELETE_INSPECT_LIMITS=Object.freeze({durationMs:90000,eventBytes:1048576,events:100});

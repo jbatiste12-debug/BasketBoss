@@ -1,7 +1,7 @@
 name: Inspect public account API boundaries
 on:
   push:
-    branches: [diagnostics/account-delete-public-20261121]
+    branches: [main, diagnostics/account-delete-public-20261121]
     paths:
       - .github/workflows/inspect-account-public-boundaries.yml
       - scripts/inspect-account-public-boundaries.mjs
@@ -26,7 +26,7 @@ jobs:
         run: node scripts/inspect-account-public-boundaries.mjs
   live-read-only:
     needs: public-probes
-    if: github.repository == 'jbatiste12-debug/BasketBoss' && github.ref == 'refs/heads/diagnostics/account-delete-public-20261121'
+    if: github.repository == 'jbatiste12-debug/BasketBoss' && github.ref == 'refs/heads/main'
     runs-on: ubuntu-latest
     timeout-minutes: 4
     environment: github-pages

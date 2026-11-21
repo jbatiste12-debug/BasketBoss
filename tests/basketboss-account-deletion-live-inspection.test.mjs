@@ -5,7 +5,7 @@ import {inspectAccountDeletionLive,requireAccountDeletionInspectEnvironment,sani
  ACCOUNT_DELETE_SCHEMA_SQL} from '../scripts/inspect-account-deletion-live.mjs';
 
 const PRIVATE='PRIVATE_FIXTURE_MUST_NEVER_APPEAR',DEPLOYMENT='11111111-1111-4111-8111-111111111111';
-const ENV={GITHUB_ACTIONS:'true',GITHUB_REPOSITORY:'jbatiste12-debug/BasketBoss',GITHUB_REF:'refs/heads/diagnostics/account-delete-public-20261121',GITHUB_SHA:'a'.repeat(40),
+const ENV={GITHUB_ACTIONS:'true',GITHUB_REPOSITORY:'jbatiste12-debug/BasketBoss',GITHUB_REF:'refs/heads/main',GITHUB_SHA:'a'.repeat(40),
  CLOUDFLARE_ACCOUNT_ID:'b'.repeat(32),CLOUDFLARE_API_TOKEN:'TOKEN_'+PRIVATE.repeat(2)};
 const COLUMNS={bb_account_deletions:['actor_hash','retry_hash','user_id','email','started_at_ms','completed_at_ms','locked_until_ms'],
  bb_account_deletion_refs:['ref_hash'],bb_paid_entitlements:['paddle_subscription_id','paddle_customer_id','user_id','status','price_id','plan','trial_ends_at','current_period_ends_at','cancellation_effective_at','cancel_at_period_end','updated_at_ms'],
@@ -43,8 +43,8 @@ function fixture({projectPatch={},tailId='tail:'+PRIVATE+'+opaque=',tailURL='wss
  return {calls,emitted,sockets,timers,project,options,run:(mode='tail')=>inspectAccountDeletionLive(ENV,{...options,mode})};
 }
 
-test('only the exact diagnostic branch in this repository Actions environment can use protected credentials',async()=>{
- for(const patch of [{GITHUB_ACTIONS:'false'},{GITHUB_REPOSITORY:'other/repository'},{GITHUB_REF:'refs/heads/main'},{GITHUB_REF:'refs/heads/diagnostics/account-delete-public-20261121-extra'},
+test('only protected main in this repository Actions environment can use protected credentials',async()=>{
+ for(const patch of [{GITHUB_ACTIONS:'false'},{GITHUB_REPOSITORY:'other/repository'},{GITHUB_REF:'refs/heads/diagnostics/account-delete-public-20261121'},{GITHUB_REF:'refs/heads/main-extra'},
   {GITHUB_SHA:'not-a-sha'},{CLOUDFLARE_API_TOKEN:''},{CLOUDFLARE_API_TOKEN:{value:PRIVATE}},{CLOUDFLARE_ACCOUNT_ID:'../account'}]){
   let calls=0;
   await assert.rejects(()=>inspectAccountDeletionLive({...ENV,...patch},{perform:async()=>{calls++;throw Error(PRIVATE);}}),error=>['INSPECT_ENVIRONMENT','INSPECT_CREDENTIALS'].includes(error.code));
