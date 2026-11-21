@@ -1,14 +1,19 @@
-/* Native iOS uses bearer tokens, never cross-origin browser cookies. Trust the
- * exact Capacitor origin only on the official production HTTPS API endpoints.
+/* Native iOS and Android use bearer tokens, never cross-origin browser cookies.
+ * Trust exact Capacitor origins only on the official production HTTPS API endpoints.
  * CORS is transport permission, not authentication or a Premium entitlement. */
 export const IOS_ORIGIN = 'capacitor://localhost';
+export const ANDROID_ORIGIN = 'https://localhost';
 const PRODUCTION_ORIGINS = new Set(['https://basketboss.co.uk', 'https://www.basketboss.co.uk']);
 const NATIVE_METHODS = new Set(['GET', 'POST']);
 const NATIVE_HEADERS = new Set(['accept', 'authorization', 'content-type', 'cache-control', 'pragma']);
 
+export function isNativeOrigin(origin) {
+  return origin === IOS_ORIGIN || origin === ANDROID_ORIGIN;
+}
+
 export function isNativeApiRequest(request) {
   const url = new URL(request.url);
-  return request.headers.get('Origin') === IOS_ORIGIN && PRODUCTION_ORIGINS.has(url.origin) && url.pathname.startsWith('/api/');
+  return isNativeOrigin(request.headers.get('Origin')) && PRODUCTION_ORIGINS.has(url.origin) && url.pathname.startsWith('/api/');
 }
 
 export function requestOriginAllowed(request, enforceFetchSite = false) {
@@ -22,7 +27,7 @@ export function requestOriginAllowed(request, enforceFetchSite = false) {
 export function nativeCorsResponse(request, response) {
   if (!isNativeApiRequest(request)) return response;
   const headers = new Headers(response.headers);
-  headers.set('Access-Control-Allow-Origin', IOS_ORIGIN);
+  headers.set('Access-Control-Allow-Origin', request.headers.get('Origin'));
   // The native client sends its verified Bearer token. Cookie credentials are
   // deliberately not enabled, and browser-private response headers stay private.
   headers.delete('Access-Control-Allow-Credentials');

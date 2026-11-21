@@ -1,9 +1,11 @@
 import {
   json,isBillingEnabled,isLive,isConfigured,expectedPrice,authenticatedUser
 } from '../../../bb-server-lib/bb-billing.js';
+import {ANDROID_ORIGIN,isNativeOrigin} from '../../../bb-server-lib/bb-request-origin.js';
 
 export async function onRequestGet({request,env}){
-  if(request.headers.get('Origin')==='capacitor://localhost')return json({enabled:false,reason:'native_account_status_only'});
+  const origin=request.headers.get('Origin');
+  if(isNativeOrigin(origin))return json({enabled:false,reason:'native_account_status_only'},origin===ANDROID_ORIGIN?403:200);
   const live=isLive(env);
   // Match the checkout POST gates exactly; NEVER enable public checkout
   // merely because Paddle approved the domain or a browser flag is set.

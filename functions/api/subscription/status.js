@@ -10,16 +10,26 @@ export async function onRequestGet({request,env}) {
     return json({authenticated:true,mode:billingMode(env),tier:'owner',premium:true,premiumAccess:true,subscription:null});
   if(!paidBillingEnabled(env)) return json({authenticated:true,mode:billingMode(env),tier:'free',premium:false,premiumAccess:false,subscription:null,reason:'billing_not_enabled'});
   try {
-    // Keep complete Paddle management metadata, then consider verified Apple.
+    // Keep complete Paddle management metadata, then consider verified stores.
     // bb_paid_entitlements remains the web billing authority.
-    const row=isBillingEnabled(env)?await env.BILLING_DB.prepare(`SELECT paddle_subscription_id,paddle_customer_id,status,price_id,plan,
+    let row;
+    try{row=isBillingEnabled(env)?await env.BILLING_DB.prepare(`SELECT paddle_subscription_id,paddle_customer_id,status,price_id,plan,
       trial_ends_at,current_period_ends_at,cancellation_effective_at,cancel_at_period_end
-      FROM bb_paid_entitlements WHERE user_id=? ORDER BY updated_at_ms DESC LIMIT 1`).bind(user.id).first():null;
+      FROM bb_paid_entitlements WHERE user_id=? ORDER BY updated_at_ms DESC LIMIT 1`).bind(user.id).first():null;}
+    catch{row=undefined;} // Another verified provider may still grant access.
     const access=await readMemberPaidAccess(request,env,user,{paddleRow:row});
     if(access.provider==='testflight_beta')return json({authenticated:true,mode:'sandbox',tier:'premium',
       provider:'testflight_beta',premium:true,premiumAccess:true,beta:access.beta,subscription:null,portalUrl:null});
     if(access.householdOwnerId)return json({authenticated:true,mode:billingMode(env),tier:'premium',
       premium:true,premiumAccess:true,householdRole:'partner',subscription:null,portalUrl:null});
+    const googlePlay=access.googlePlay;
+    if(access.provider==='google_play'||(!access.premiumAccess&&googlePlay&&!access.apple))return json({
+      authenticated:true,mode:googlePlay.environment==='production'?'live':'sandbox',provider:'google_play',
+      tier:access.premiumAccess?'premium':'free',premium:access.premiumAccess,premiumAccess:access.premiumAccess,
+      subscription:{provider:'google_play',productId:googlePlay.productId,plan:googlePlay.plan,status:googlePlay.status,
+        currentPeriodEndsAt:googlePlay.currentPeriodEndsAt,cancelAtPeriodEnd:googlePlay.cancelAtPeriodEnd,
+        environment:googlePlay.environment},portalUrl:null
+    });
     const apple=access.apple;
     if(access.provider==='apple'||(!access.premiumAccess&&apple))return json({
       authenticated:true,mode:apple.environment==='Production'?'live':'sandbox',provider:'apple',
@@ -35,8 +45,8 @@ export async function onRequestGet({request,env}) {
       subscription:paddle?{provider:'paddle',id:paddle.paddle_subscription_id,plan:paddle.price_id===expected?paddle.plan:null,
         status:paddle.status,trialEndsAt:paddle.trial_ends_at,currentPeriodEndsAt:paddle.current_period_ends_at,
         cancellationEffectiveAt:paddle.cancellation_effective_at,cancelAtPeriodEnd:paddle.cancel_at_period_end===1}:null,portalUrl:null});
-  } catch(err) {
-    console.error('BasketBoss subscription status query failed',err);
+  } catch {
+    console.error('BasketBoss subscription status query failed');
     return json({tier:'free',premium:false,reason:'billing_database_unavailable'},503);
   }
 }

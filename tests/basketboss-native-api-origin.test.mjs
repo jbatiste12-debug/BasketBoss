@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import {IOS_ORIGIN,isNativeApiRequest,requestOriginAllowed,nativeCorsResponse,nativePreflightResponse} from '../bb-server-lib/bb-request-origin.js';
+import {IOS_ORIGIN,ANDROID_ORIGIN,isNativeOrigin,isNativeApiRequest,requestOriginAllowed,nativeCorsResponse,nativePreflightResponse} from '../bb-server-lib/bb-request-origin.js';
 import {requireSameOrigin} from '../bb-server-lib/bb-billing.js';
 import {onRequest as middleware} from '../functions/api/_middleware.js';
 import {onRequest as ai} from '../functions/api/bb173/[action].js';
@@ -9,14 +9,20 @@ const api='https://basketboss.co.uk/api/receipt-inventory';
 const request=(url=api,origin=IOS_ORIGIN,extra={})=>new Request(url,{headers:{Origin:origin,...extra}});
 const preflight=(headers={},url=api)=>new Request(url,{method:'OPTIONS',headers:{Origin:IOS_ORIGIN,'Access-Control-Request-Method':'POST','Access-Control-Request-Headers':'authorization, content-type',...headers}});
 
-test('only the exact native origin is trusted on official production HTTPS API routes',()=>{
- for(const url of [api,'https://www.basketboss.co.uk/api/household'])assert.equal(isNativeApiRequest(request(url)),true);
- for(const origin of ['capacitor://localhost.evil','capacitor://localhost:8080','capacitor://localhost/','http://localhost','https://localhost','null','https://evil.example'])assert.equal(isNativeApiRequest(request(api,origin)),false,origin);
- for(const url of ['http://basketboss.co.uk/api/receipt-inventory','https://basketboss.co.uk:8443/api/receipt-inventory','https://preview.basketboss-site.pages.dev/api/receipt-inventory','https://basketboss-site.pages.dev/api/receipt-inventory','https://evil.example/api/receipt-inventory','https://basketboss.co.uk/pricing-sandbox.html'])assert.equal(isNativeApiRequest(request(url)),false,url);
+test('only the exact iOS and Android origins are trusted on official production HTTPS API routes',()=>{
+ for(const origin of [IOS_ORIGIN,ANDROID_ORIGIN]){
+  assert.equal(isNativeOrigin(origin),true);
+  for(const url of [api,'https://www.basketboss.co.uk/api/household'])assert.equal(isNativeApiRequest(request(url,origin)),true);
+  for(const url of ['http://basketboss.co.uk/api/receipt-inventory','https://basketboss.co.uk:8443/api/receipt-inventory','https://preview.basketboss-site.pages.dev/api/receipt-inventory','https://basketboss-site.pages.dev/api/receipt-inventory','https://evil.example/api/receipt-inventory','https://basketboss.co.uk/pricing-sandbox.html'])assert.equal(isNativeApiRequest(request(url,origin)),false,url);
+ }
+ for(const origin of ['capacitor://localhost.evil','capacitor://localhost:8080','capacitor://localhost/','http://localhost','https://localhost:443','https://localhost:8443','https://localhost/','https://LOCALHOST','https://user@localhost','https://localhost.evil','null','https://evil.example']){
+  assert.equal(isNativeOrigin(origin),false,origin);assert.equal(isNativeApiRequest(request(api,origin)),false,origin);
+ }
 });
 
 test('native cross-site fetch works while existing web Origin and Fetch-Site protections remain',()=>{
  assert.equal(requireSameOrigin(request(api,IOS_ORIGIN,{'Sec-Fetch-Site':'cross-site'}),true),true);
+ assert.equal(requireSameOrigin(request(api,ANDROID_ORIGIN,{'Sec-Fetch-Site':'cross-site'}),true),true);
  assert.equal(requestOriginAllowed(request(api,'https://basketboss.co.uk')),true);
  assert.equal(requireSameOrigin(request(api,'https://basketboss.co.uk',{'Sec-Fetch-Site':'cross-site'}),true),false);
  assert.equal(requireSameOrigin(request(api,'https://evil.example')),false);
