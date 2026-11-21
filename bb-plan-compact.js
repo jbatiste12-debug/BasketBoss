@@ -2,7 +2,19 @@
    text labels and layout wrappers are owned by this adapter. */
 (()=>{'use strict';
  if(window.BBPlanCompact)return;
- const doc=document;let queued=false;
+ const doc=document;let queued=false,pointerMenu=null,pointerFinish=null;
+ function finishPointerMenu(){
+  if(pointerFinish!==null)window.clearTimeout(pointerFinish);
+  const wrap=pointerMenu;pointerMenu=null;pointerFinish=null;
+  if(wrap&&!wrap.contains(doc.activeElement)&&!doc.getElementById('bbQaConfirmOverlay')){
+   const menu=wrap.querySelector('.bbpc-meal-menu');if(menu)menu.hidden=true;
+   wrap.querySelector('.bbpc-overflow-trigger')?.setAttribute('aria-expanded','false');
+  }
+ }
+ function deferPointerFinish(){
+  if(pointerFinish!==null)window.clearTimeout(pointerFinish);
+  pointerFinish=window.setTimeout(finishPointerMenu,0);
+ }
  function closeMenus(except=null){
   for(const menu of doc.querySelectorAll?.('.bbpc-meal-menu')||[]){
    if(menu===except)continue;menu.hidden=true;
@@ -35,7 +47,7 @@
   };
   trigger.addEventListener('click',event=>{event.preventDefault();event.stopPropagation();if(menu.hidden)show();else{menu.hidden=true;trigger.setAttribute('aria-expanded','false');}});
   trigger.addEventListener('keydown',event=>{if(['ArrowDown','ArrowUp'].includes(event.key)){event.preventDefault();event.stopPropagation();show();}});
-  wrap.addEventListener('focusout',event=>{if(!wrap.contains(event.relatedTarget)&&!doc.getElementById('bbQaConfirmOverlay')){menu.hidden=true;trigger.setAttribute('aria-expanded','false');}});
+  wrap.addEventListener('focusout',event=>{if(pointerMenu!==wrap&&!wrap.contains(event.relatedTarget)&&!doc.getElementById('bbQaConfirmOverlay')){menu.hidden=true;trigger.setAttribute('aria-expanded','false');}});
   toggle.append(wrap);wrap.append(trigger,menu);menu.append(remove);
  }
  function refresh(){
@@ -92,8 +104,23 @@
   for(const type of ['pointerdown','touchstart','click'])window.addEventListener?.(type,event=>{
    if(event.target?.closest?.('.bbpc-meal-menu')&&!event.target.closest('button')){event.preventDefault();event.stopPropagation();}
   },{capture:true,passive:false});
-  doc.addEventListener?.('pointerdown',event=>{if(!event.target?.closest?.('.bbpc-meal-overflow')&&!doc.getElementById('bbQaConfirmOverlay'))closeMenus();},true);
+  doc.addEventListener?.('pointerdown',event=>{
+   if(pointerFinish!==null){window.clearTimeout(pointerFinish);pointerFinish=null;}
+   pointerMenu=event.button===0?event.target?.closest?.('.bbpc-meal-overflow'):null;
+   if(!event.target?.closest?.('.bbpc-meal-overflow')&&!doc.getElementById('bbQaConfirmOverlay'))closeMenus();
+  },true);
+  // Keep the pressed action present through mouseup and click, even if the
+  // browser moves focus during mousedown. Otherwise click reaches the summary.
+  doc.addEventListener?.('pointerup',event=>{if(pointerMenu&&!pointerMenu.contains(event.target))deferPointerFinish();},true);
+  doc.addEventListener?.('pointercancel',finishPointerMenu,true);
+  doc.addEventListener?.('click',event=>{
+   if(!pointerMenu)return;
+   const button=event.target?.closest?.('button');
+   if(button&&pointerMenu.contains(button)&&!button.disabled)button.focus({preventScroll:true});
+   deferPointerFinish();
+  },true);
   doc.addEventListener?.('keydown',event=>{
+   if(event.key==='Tab'||event.key==='Escape'){if(pointerFinish!==null)window.clearTimeout(pointerFinish);pointerMenu=null;pointerFinish=null;}
    const wrap=event.target?.closest?.('.bbpc-meal-overflow'),menu=wrap?.querySelector('.bbpc-meal-menu');
    if(event.key==='Escape'&&menu&&!menu.hidden){event.preventDefault();event.stopPropagation();closeMenus();wrap.querySelector('.bbpc-overflow-trigger')?.focus();}
   },true);
