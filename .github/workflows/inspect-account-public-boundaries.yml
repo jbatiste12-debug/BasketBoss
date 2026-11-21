@@ -1,0 +1,50 @@
+name: Inspect public account API boundaries
+on:
+  push:
+    branches: [main, diagnostics/account-delete-public-20261121]
+    paths:
+      - .github/workflows/inspect-account-public-boundaries.yml
+      - scripts/inspect-account-public-boundaries.mjs
+      - scripts/inspect-account-deletion-live.mjs
+      - tests/basketboss-account-deletion-live-inspection.test.mjs
+permissions:
+  contents: read
+jobs:
+  public-probes:
+    runs-on: ubuntu-latest
+    timeout-minutes: 3
+    steps:
+      - uses: actions/checkout@v5
+        with:
+          persist-credentials: false
+          sparse-checkout: scripts/inspect-account-public-boundaries.mjs
+          sparse-checkout-cone-mode: false
+      - uses: actions/setup-node@v5
+        with:
+          node-version: '24'
+      - name: Read public readiness and reject credential-free requests
+        run: node scripts/inspect-account-public-boundaries.mjs
+  live-read-only:
+    needs: public-probes
+    if: github.repository == 'jbatiste12-debug/BasketBoss' && github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    timeout-minutes: 4
+    environment: github-pages
+    env:
+      CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+      CLOUDFLARE_ACCOUNT_ID: ${{ vars.CLOUDFLARE_ACCOUNT_ID || secrets.CLOUDFLARE_ACCOUNT_ID }}
+    steps:
+      - uses: actions/checkout@v5
+        with:
+          persist-credentials: false
+          sparse-checkout: |
+            scripts/inspect-account-deletion-live.mjs
+            tests/basketboss-account-deletion-live-inspection.test.mjs
+          sparse-checkout-cone-mode: false
+      - uses: actions/setup-node@v5
+        with:
+          node-version: '24'
+      - name: Verify read-only limits and diagnostic redaction
+        run: node --test tests/basketboss-account-deletion-live-inspection.test.mjs
+      - name: Inspect production configuration, schema and sanitized deletion events
+        run: node scripts/inspect-account-deletion-live.mjs
