@@ -3,6 +3,7 @@
 const REPO='jbatiste12-debug/BasketBoss';
 if(process.env.GITHUB_ACTIONS!=='true'||process.env.GITHUB_REPOSITORY!==REPO||!['refs/heads/main','refs/heads/diagnostics/account-delete-public-20261121'].includes(process.env.GITHUB_REF))throw Error('Approved diagnostic ref required');
 const native='capacitor://localhost';
+const android='https://localhost';
 const hosts=[['apex','https://basketboss.co.uk'],['www','https://www.basketboss.co.uk']];
 const codes=new Set(['deletion_origin_rejected','deletion_sign_in_required','deletion_unavailable','deletion_confirmation_required']);
 const reasons=new Set(['server_not_configured','authentication_required','billing_not_enabled','checkout_configuration_incomplete']);
@@ -20,11 +21,11 @@ async function probe(label,host,route,method,origin){
  const headers={Origin:origin,Accept:'application/json'};
  if(method==='POST')headers['Content-Type']='application/json';
  if(method==='OPTIONS'){headers['Access-Control-Request-Method']='POST';headers['Access-Control-Request-Headers']='authorization, content-type';}
- const result={host:label,route,method,origin:origin===native?'native':'web'};
+ const result={host:label,route,method,origin:origin===native?'native':origin===android?'android':origin==='https://localhost.evil'?'spoof':'web'};
  try{
   const r=await fetch(host+route,{method,headers,...(method==='POST'?{body:'{}'}:{}),redirect:'manual',credentials:'omit',cache:'no-store',signal:AbortSignal.timeout(12000)});
   const type=(r.headers.get('content-type')||'').split(';')[0].trim().toLowerCase();
-  Object.assign(result,{status:r.status,contentType:['application/json','text/html'].includes(type)?type:'other',redirect:redirectKind(r.headers.get('location')),challenge:r.headers.get('cf-mitigated')==='challenge',nativeCors:r.headers.get('access-control-allow-origin')===native});
+  Object.assign(result,{status:r.status,contentType:['application/json','text/html'].includes(type)?type:'other',redirect:redirectKind(r.headers.get('location')),challenge:r.headers.get('cf-mitigated')==='challenge',nativeCors:r.headers.get('access-control-allow-origin')===native,androidCors:r.headers.get('access-control-allow-origin')===android,cookieCredentials:r.headers.get('access-control-allow-credentials')==='true'});
   const data=type==='application/json'?await boundedJson(r):null;
   if(!data)try{await r.body?.cancel();}catch{}
   if(codes.has(data?.code))result.code=data.code;
@@ -34,6 +35,7 @@ async function probe(label,host,route,method,origin){
   if(['live','sandbox'].includes(data?.mode))result.mode=data.mode;
  }catch{result.transport='unavailable';}
  console.log(JSON.stringify(result));
+ return result;
 }
 async function prefixText(response){
  const reader=response.body?.getReader();if(!reader)return '';
@@ -70,4 +72,19 @@ await Promise.all(hosts.map(async([label,host])=>{
   ['/api/subscription/checkout-config','GET',host]
  ])await probe(label,host,route,method,origin);
  await feedbackAsset(label,host);
+ for(const [route,method,status]of [
+  ['/api/household?mode=entries','OPTIONS',204],
+  ['/api/household?mode=entries','GET',401],
+  ['/api/subscription/status','GET',401],
+  ['/api/account/delete','POST',401],
+  ['/api/subscription/checkout-config','GET',403],
+  ['/api/subscription/checkout','POST',403],
+  ['/api/subscription/portal','GET',403]
+ ]){
+  const result=await probe(label,host,route,method,android);
+  if(result.status!==status||result.androidCors!==true||result.cookieCredentials!==false||route.endsWith('checkout-config')&&result.enabled!==false)
+   throw Error('Android public transport or anonymous/native billing boundary failed');
+ }
+ const spoof=await probe(label,host,'/api/household?mode=entries','OPTIONS','https://localhost.evil');
+ if(spoof.androidCors!==false||spoof.nativeCors!==false||spoof.cookieCredentials!==false)throw Error('Spoofed native origin received CORS permission');
 }));

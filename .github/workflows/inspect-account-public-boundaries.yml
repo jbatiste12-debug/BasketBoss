@@ -25,21 +25,6 @@ jobs:
           node-version: '24'
       - name: Read public readiness and reject credential-free requests
         run: node scripts/inspect-account-public-boundaries.mjs
-  webkit-origin:
-    if: github.ref == 'refs/heads/diagnostics/account-delete-public-20261121'
-    runs-on: macos-15
-    timeout-minutes: 4
-    steps:
-      - uses: actions/checkout@v5
-        with:
-          persist-credentials: false
-          sparse-checkout: scripts/inspect-webkit-origin.mjs
-          sparse-checkout-cone-mode: false
-      - uses: actions/setup-node@v5
-        with:
-          node-version: '24'
-      - name: Check real WebKit Origin headers using local fixture requests only
-        run: node scripts/inspect-webkit-origin.mjs
   live-read-only:
     needs: public-probes
     if: github.repository == 'jbatiste12-debug/BasketBoss' && github.ref == 'refs/heads/main'
