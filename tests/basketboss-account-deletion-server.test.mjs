@@ -3,7 +3,7 @@ import assert from 'node:assert/strict';
 import {DatabaseSync} from 'node:sqlite';
 import {createHash,generateKeyPairSync,sign} from 'node:crypto';
 import {onRequestGet,onRequestPost} from '../functions/api/account/delete.js';
-import {digestDeletionActor,digestDeletionRef,digestDeletionRetry,ensureDeletionSchema} from '../bb-server-lib/bb-account-deletion.js';
+import {digestDeletionActor,digestDeletionRef,digestDeletionRetry,ensureDeletionSchema,accountDeletionBillingDiagnostic,cancelAccountBilling} from '../bb-server-lib/bb-account-deletion.js';
 
 const USER='11111111-1111-4111-8111-111111111111',OTHER='22222222-2222-4222-8222-222222222222';
 const EMAIL='delete-me@example.invalid',TOKEN='Bearer synthetic-original-session',PASSWORD='synthetic current password';
@@ -81,6 +81,7 @@ function fixture(t){
    }
   }
   if(url.origin==='https://sandbox-api.paddle.com'){
+   if(f.paddleResponse){const reply=await f.paddleResponse(url,options);if(reply)return reply;}
    const subscription=url.pathname.match(/^\/subscriptions\/(sub_[a-z0-9]{26})(\/cancel)?$/);
    if(subscription){
     const key=subscription[1];
@@ -272,6 +273,86 @@ test('a wrong password before any intent explicitly leaves deletion inactive',as
  const response=await remove(f),result=await response.json();
  assert.equal(response.status,403);assert.equal(result.pending,false);assert.equal(result.code,'deletion_password_required');
  assert.equal(rows(f,'bb_account_deletions').length,0);assertNoRemoteDeletion(f);
+});
+
+test('billing table and column diagnostics remain pending without initializing or deleting account records',async t=>{
+ for(const [sql,reason,missing] of [
+  ['DROP TABLE bb_billing_claims','table_missing',undefined],
+  ['ALTER TABLE bb_billing_claims RENAME COLUMN slot_no TO legacy_slot','columns_missing',['slot_no']]
+ ]){
+  const f=fixture(t);activeSubscription(f);f.db.sql.exec(sql);
+  const result=await(await remove(f)).json();
+  assert.equal(result.pending,true);assert.equal(result.code,'deletion_billing_pending');
+  assert.deepEqual(result.billing,{stage:'claims_read',reason,mode:'sandbox',...(missing?{missing}:{})});
+  assert.equal(rows(f,'bb_account_deletions').length,1);assert.equal(f.authDeleted,false);assert.equal(f.deleteCalls,0);
+  assert.equal(f.calls.filter(call=>call.url.startsWith('https://sandbox-api.paddle.com')).length,0);
+  assert.equal(f.db.sql.prepare("SELECT count(*) AS n FROM pragma_table_info('bb_billing_claims') WHERE name='slot_no'").get().n,0);
+  assert.ok(f.plans.has(USER));assert.equal(f.subscriptions.get(SUB),'active');
+ }
+});
+
+test('provider read and cancel failures expose only safe diagnostics and never unlock or clean up',async t=>{
+ for(const [stage,status] of [['subscription_read',401],['subscription_read',403],['subscription_read',404],['subscription_read',429],['subscription_read',503],['subscription_cancel',403],['subscription_cancel',503]]){
+  const f=fixture(t);activeSubscription(f);const before=savedRows(f);
+  f.paddleResponse=(url,options)=>((stage==='subscription_cancel')===(options.method==='POST'))?json({error:'synthetic-private-provider-body'},status):null;
+  const response=await remove(f),result=await response.json();
+  assert.equal(response.status,202);assert.equal(result.pending,true);assert.equal(result.code,'deletion_billing_pending');
+  assert.deepEqual(result.billing,{stage,reason:'http',mode:'sandbox',status});
+  assert.deepEqual(savedRows(f),before);assert.equal(f.authDeleted,false);assert.equal(f.deleteCalls,0);assert.ok(f.plans.has(USER));
+  assert.equal(f.subscriptions.get(SUB),'active');assert.equal(rows(f,'bb_account_deletions').length,1);
+  for(const secret of [USER,EMAIL,TOKEN,PASSWORD,SUB,'synthetic-private'])assert.ok(!JSON.stringify(result).includes(secret));
+ }
+});
+
+test('Paddle transport failures and unreadable responses retain the original pending deletion',async t=>{
+ for(const [reason,status,reply] of [
+  ['timeout',undefined,()=>{throw Object.assign(Error('synthetic-private-timeout'),{name:'TimeoutError'});}],
+  ['transport',undefined,()=>{throw new TypeError('synthetic-private-network');}],
+  ['response_invalid',200,()=>new Response('synthetic-private-invalid-json')]
+ ]){
+  const f=fixture(t);activeSubscription(f);f.paddleResponse=reply;
+  const response=await remove(f),result=await response.json();
+  assert.equal(response.status,202);assert.equal(result.pending,true);
+  assert.deepEqual(result.billing,{stage:'subscription_read',reason,mode:'sandbox',...(status?{status}:{})});
+  assert.equal(f.authDeleted,false);assert.equal(f.deleteCalls,0);assert.equal(f.subscriptions.get(SUB),'active');assert.ok(f.plans.has(USER));
+ }
+});
+
+test('a scheduled cancellation or mismatched subscription cannot be treated as completed cancellation',async t=>{
+ const f=fixture(t);activeSubscription(f);
+ f.paddleResponse=(url,options)=>options.method==='POST'?json({data:{id:SUB,status:'active',scheduled_change:{action:'cancel'}}}):null;
+ let response=await remove(f),result=await response.json();
+ assert.equal(response.status,202);assert.equal(result.pending,true);assert.deepEqual(result.billing,{stage:'subscription_cancel',reason:'cancellation_unconfirmed',mode:'sandbox'});
+ assert.equal(f.authDeleted,false);assert.equal(f.deleteCalls,0);
+ f.paddleResponse=()=>json({data:{id:OTHER_SUB,status:'canceled'}});
+ response=await remove(f);result=await response.json();assert.equal(response.status,202);assert.equal(result.pending,true);
+ assert.deepEqual(result.billing,{stage:'subscription_read',reason:'subscription_mismatch',mode:'sandbox'});assert.equal(f.authDeleted,false);assert.equal(f.deleteCalls,0);
+ f.paddleResponse=null;response=await remove(f);assert.equal(response.status,200);assert.equal((await response.json()).deleted,true);assert.equal(f.subscriptions.get(SUB),'canceled');
+});
+
+test('billing observers cannot replace the original provider failure or authorize cleanup',async t=>{
+ const f=fixture(t);activeSubscription(f);f.paddleResponse=()=>json({error:'synthetic-private-provider-body'},403);
+ await assert.rejects(cancelAccountBilling(f.env,USER,{onFailure:()=>{throw Error('observer must not change billing');}}),error=>error.message==='Paddle API response not successful: 403');
+ assert.equal(f.authDeleted,false);assert.equal(f.deleteCalls,0);assert.equal(f.subscriptions.get(SUB),'active');
+});
+
+test('claim matching and checkout cancellation diagnostics keep the existing verification guards',async t=>{
+ for(const mismatched of [true,false]){
+  const f=fixture(t);
+  f.db.sql.prepare('INSERT INTO bb_billing_claims(claim_id,user_id,transaction_id,claim_state,created_at_ms) VALUES(?,?,?,?,?)').run(CLAIM,USER,TX,'transaction_created',Date.now());
+  f.transactions.set(TX,{status:mismatched?'completed':'draft',custom_data:{bb_claim_id:mismatched?'synthetic-private-wrong-claim':CLAIM},...(mismatched?{subscription_id:SUB}:{})});
+  if(!mismatched)f.paddleResponse=(url,options)=>options.method==='PATCH'?json({error:'synthetic-private-provider-body'},403):null;
+  const response=await remove(f),result=await response.json();
+  assert.equal(response.status,202);assert.equal(result.pending,true);assert.equal(result.code,'deletion_billing_pending');
+  assert.deepEqual(result.billing,mismatched?{stage:'claim_linkage',reason:'claim_mismatch',mode:'sandbox'}:{stage:'transaction_cancel',reason:'http',mode:'sandbox',status:403});
+  assert.equal(f.authDeleted,false);assert.equal(f.deleteCalls,0);assert.ok(f.plans.has(USER));assert.doesNotMatch(JSON.stringify(result),/synthetic-private/);
+ }
+});
+
+test('billing diagnostic serialization excludes unknown fields, references, schema names and invalid status values',()=>{
+ const safe={stage:'claims_read',reason:'columns_missing',mode:'live',missing:['slot_no']};
+ assert.deepEqual(accountDeletionBillingDiagnostic({...safe,missing:['slot_no','private_column','slot_no'],status:'403',password:PASSWORD,sql:'private query',body:'private response'}),safe);
+ for(const patch of [{stage:'private query'},{reason:'private response'},{mode:'private environment'}])assert.equal(accountDeletionBillingDiagnostic({...safe,...patch}),null);
 });
 
 test('deletion verification distinguishes missing, malformed and oversized sign-ins before provider calls',async t=>{

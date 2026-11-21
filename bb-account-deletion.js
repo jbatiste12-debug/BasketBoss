@@ -36,6 +36,46 @@
     auth_user_identifier_invalid: 'The sign-in check did not return a valid account identifier.'
   });
 
+  const billingOperations = Object.freeze({
+    entitlements_read: 'reading your saved subscription reference',
+    claims_read: 'reading your saved payment records',
+    transaction_read: 'checking the Paddle payment',
+    transaction_cancel: 'cancelling an earlier Paddle checkout',
+    claim_linkage: 'matching the Paddle payment to your account',
+    subscription_reference: 'checking your subscription reference',
+    subscription_read: 'looking up your Paddle subscription',
+    subscription_cancel: 'cancelling your Paddle subscription'
+  });
+  const billingReasons = Object.freeze({
+    disabled: 'Paddle billing is disabled on the server.',
+    credential_missing: 'The server is missing its Paddle API credential.',
+    transport: 'The server could not reach Paddle.',
+    timeout: 'The request to Paddle timed out.',
+    http: 'Paddle rejected the request.',
+    response_invalid: 'Paddle returned an unreadable verification response.',
+    database: 'The billing records could not be read.',
+    table_missing: 'A required billing table is missing.',
+    columns_missing: 'Required billing fields are missing.',
+    invalid_reference: 'A saved billing reference could not be verified.',
+    transaction_mismatch: 'The payment reference did not match the provider response.',
+    claim_mismatch: 'The payment could not be matched to its saved claim.',
+    subscription_mismatch: 'The subscription reference did not match the provider response.',
+    cancellation_unconfirmed: 'Paddle has not confirmed immediate cancellation.',
+    checkout_pending: 'An earlier checkout has not been resolved.',
+    unknown: 'The billing check could not be completed.'
+  });
+  const billingFields = Object.freeze({paddle_subscription_id:'subscription reference',user_id:'account link',claim_id:'payment claim',transaction_id:'payment reference',claim_state:'payment status',slot_no:'Founder slot'});
+  function billingFeedback(value) {
+    if (typeof value?.stage !== 'string' || !Object.hasOwn(billingOperations,value.stage) || typeof value.reason !== 'string' || !Object.hasOwn(billingReasons,value.reason) || !['live','sandbox'].includes(value.mode)) return '';
+    let text = 'The subscription check stopped while ' + billingOperations[value.stage] + '. ' + billingReasons[value.reason];
+    if (Number.isInteger(value.status) && value.status >= 100 && value.status <= 599) text += ' Provider HTTP ' + value.status + '.';
+    if (value.reason === 'columns_missing' && Array.isArray(value.missing)) {
+      const fields = [...new Set(value.missing.filter(name=>typeof name==='string'&&Object.hasOwn(billingFields,name)))].map(name=>billingFields[name]);
+      if (fields.length) text += ' Missing fields: ' + fields.join(', ') + '.';
+    }
+    return text + ' Paddle mode: ' + value.mode + '.';
+  }
+
   function failureFeedback(response, data, hadPending) {
     const explicitPending = data?.pending === true || data?.deletion_pending === true;
     const explicitRejection = !response.ok && response.status !== 202 && data?.ok === false && data?.pending === false && !explicitPending;
@@ -43,7 +83,7 @@
     const code = typeof data?.code === 'string' && (Object.hasOwn(pendingMessages, data.code) || ['deletion_origin_rejected', 'deletion_sign_in_required'].includes(data.code)) ? data.code : '';
     const kept = 'Your saved device data has been kept';
     if (pending) {
-      const progress = pendingMessages[code] || 'Deletion has not been confirmed yet.';
+      const progress = (code === 'deletion_billing_pending' && billingFeedback(data?.billing)) || pendingMessages[code] || 'Deletion has not been confirmed yet.';
       return { pending, code, text: progress + ' ' + kept + ' and syncing is paused. Re-enter your password and retry to finish.' };
     }
     if (code === 'deletion_auth_unavailable') return { pending, code, text: 'We could not verify your sign-in right now. Your account and saved device data have been kept, and syncing can continue. Please try again later.' };

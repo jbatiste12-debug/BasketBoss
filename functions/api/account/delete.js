@@ -1,5 +1,5 @@
 import {json,authenticatedUser,requireSameOrigin} from '../../../bb-server-lib/bb-billing.js';
-import {deletionConfigured,deletionReady,deletionRpc,ensureDeletionSchema,digestDeletionActor,digestDeletionRetry,reauthenticateDeletion,cancelAccountBilling,eraseAccountD1} from '../../../bb-server-lib/bb-account-deletion.js';
+import {deletionConfigured,deletionReady,deletionRpc,ensureDeletionSchema,digestDeletionActor,digestDeletionRetry,reauthenticateDeletion,cancelAccountBilling,eraseAccountD1,accountDeletionBillingDiagnostic} from '../../../bb-server-lib/bb-account-deletion.js';
 import {authenticatedDeletionUser,reauthenticateAppleDeletion} from '../../../bb-server-lib/bb-apple-sign-in.js';
 const UUID=/^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
 const messages={
@@ -11,7 +11,10 @@ const messages={
  deletion_auth_unavailable:'Your password could not be checked right now. Your saved device data has been kept. Please retry later.',
  deletion_state_unknown:'We could not check whether account deletion has started. Your saved device data has been kept. Please retry.'
 };
-const pending=(code='deletion_database_pending',status=202)=>json({ok:false,pending:true,code,error:messages[code]||messages.deletion_database_pending},status);
+const pending=(code='deletion_database_pending',status=202,billingFailure)=>{
+ const billing=code==='deletion_billing_pending'?accountDeletionBillingDiagnostic(billingFailure):null;
+ return json({ok:false,pending:true,code,error:messages[code]||messages.deletion_database_pending,...(billing?{billing}:{})},status);
+};
 const rejected=(code,error,status,pendingState)=>json({ok:false,...(pendingState===undefined?{}:{pending:pendingState}),code,error},status);
 const signInRejected=verification=>json({ok:false,code:'deletion_sign_in_required',verification,error:'Sign in to delete your account.'},401);
 export async function onRequestGet({request,env}){
@@ -66,7 +69,7 @@ export async function onRequestPost({request,env}){
    if(Object.keys(body).some(key=>!['confirmation','resume'].includes(key)))throw Error();
   }else if(size>2048||Object.keys(body).some(key=>!['confirmation','password'].includes(key))||typeof body.password!=='string'||body.password.length<1||body.password.length>1024)throw Error();
  }catch{return rejected('deletion_confirmation_required','Enter DELETE and your current password to confirm.',400);}
- let row,locked=false,intentStarted=false,knownNoJournal=false,stage='state';
+ let row,locked=false,intentStarted=false,knownNoJournal=false,stage='state',billingFailure=null;
  try{
   await ensureDeletionSchema(env);
   const db=env.BILLING_DB,retryHash=await digestDeletionRetry(token);
@@ -118,7 +121,7 @@ export async function onRequestPost({request,env}){
    .bind(Date.now()+60000,row.actor_hash,Date.now()).first();
   if(!locked)return pending();
   stage='billing';
-  const billing=await cancelAccountBilling(env,row.user_id);
+  const billing=await cancelAccountBilling(env,row.user_id,{onFailure:value=>{billingFailure=accountDeletionBillingDiagnostic(value);}});
   // Finish D1 before deleting auth, so an outage can still be retried. Both
   // stages are idempotent and the durable tombstone blocks data resurrection.
   stage='database';
@@ -140,7 +143,7 @@ export async function onRequestPost({request,env}){
    stage==='cloud'?'deletion_cloud_pending':stage==='readiness'?'deletion_not_ready':
    stage==='authentication'?'deletion_auth_unavailable':'deletion_database_pending';
   console.warn('BB_ACCOUNT_DELETE: '+code);
-  if(row||intentStarted)return pending(code);
+  if(row||intentStarted)return pending(code,202,billingFailure);
   if(knownNoJournal)return rejected(stage==='readiness'?'deletion_not_ready':stage==='authentication'?'deletion_auth_unavailable':'deletion_unavailable',
    stage==='authentication'?'Your password could not be checked right now. Nothing has been deleted. Please retry later.':
     'Account deletion could not start. Your account and saved data have been kept. Please try again later.',503,false);
