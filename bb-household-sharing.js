@@ -23,6 +23,11 @@ const userSession=()=>{if(deleting())return null;const s=read('basketboss_cloud_
 const accountPin=()=>{const s=userSession();return {actor:s?.user?.id,token:s?.access_token,serial:generation};};
 const sameAccount=pin=>{const s=userSession();return !deleting()&&pin.serial===generation&&pin.actor===s?.user?.id&&pin.token===s?.access_token;};
 const hostPin=pin=>({actor:pin.actor,token:pin.token,expected:raw(STATE)});
+function prepareReadablePlan(pin){
+ if(!sameAccount(pin))return false;
+ if(raw(STATE)!==null)return true;
+ return window.BBHomeHost?.prepareEmptySharedHousehold?.(hostPin(pin))===true&&sameAccount(pin);
+}
 const readyToRender=pin=>sameAccount(pin)&&window.BBHomeHost?.canRefreshSharedHousehold?.(hostPin(pin))===true;
 function refreshRenderedHousehold(pin){
  if(!sameAccount(pin))return false;
@@ -151,6 +156,7 @@ async function synchronize({allowInitialImport=false,automatic=false}={}){
  const pin=accountPin();
  // Do not replace visible app state while a meal or pantry editor is in use.
  // The host bridge validates the exact account and saved plan before rendering.
+ if(!prepareReadablePlan(pin))return;
  if(automatic&&!readyToRender(pin))return;
  message('Checking your shared household for changes…');
  busy=true;let applied=false;try{
@@ -331,6 +337,7 @@ async function connectPantry(pin,hid){
 }
 async function adoptRemote(pin,hid){
  if(!sameAccount(pin)||status?.configured!==true||status?.premium!==true||status?.role!=='partner'||status.household_id!==hid)throw Error('Refresh your household access before using shared data.');
+ if(!prepareReadablePlan(pin))throw Error('This device has unfinished or recovered data. Your saved data has been kept; finish reviewing it before using shared household data.');
  const prepare=window.BBHomeHost?.prepareSharedHouseholdRecipes;
  if(typeof prepare==='function'){
   if(!await prepare(hostPin(pin))||!sameAccount(pin)||!readyToRender(pin))throw Error('Finish editing, then tap Use shared household data to connect safely.');
