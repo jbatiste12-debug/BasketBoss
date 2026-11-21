@@ -3,6 +3,7 @@ import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
+import {spawnSync} from 'node:child_process';
 import {propertyValue,signingProperties,configureSigning} from '../scripts/android-signing.mjs';
 const fixture=()=>{const parent=fs.mkdtempSync(path.join(os.tmpdir(),'bb-android-signing-')),root=path.join(parent,'repo');fs.mkdirSync(path.join(root,'android'),{recursive:true});return {parent,root,key:path.join(parent,'upload.jks')};};
 test('Java properties preserve password whitespace, punctuation, backslashes and Unicode without extra entries',()=>{
@@ -30,6 +31,20 @@ test('interactive setup uses an existing external key, masked password prompts a
 });
 test('an upload key inside the checkout is rejected before use',async()=>{
  const h=fixture();try{await assert.rejects(()=>configureSigning({root:h.root,keystore:path.join(h.root,'key.jks'),mode:'interactive'}),/outside the repository/);}finally{fs.rmSync(h.parent,{recursive:true,force:true});}
+});
+test('the update launcher stops before setup or key generation when the original upload key is absent',()=>{
+ const h=fixture(),bin=path.join(h.parent,'bin'),marker=path.join(h.parent,'unexpected-tool-call');
+ try{
+  fs.mkdirSync(bin);fs.writeFileSync(path.join(bin,'uname'),'#!/bin/sh\nprintf Darwin\n',{mode:0o755});
+  for(const name of ['node','git','keytool','mkdir','chmod'])fs.writeFileSync(path.join(bin,name),'#!/bin/sh\nprintf unexpected > "'+marker+'"\nexit 70\n',{mode:0o755});
+  const source=fs.readFileSync(new URL('../release-assets/prepare-android-mac.command',import.meta.url),'utf8');
+  // Isolate only the private key path; the actual launcher performs the check.
+  const isolated=source.replace('BB_ANDROID_PRIVATE="$HOME/.basketboss-android"','BB_ANDROID_PRIVATE="'+h.parent+'/missing-private-directory"');
+  assert.notEqual(isolated,source);
+  const result=spawnSync('bash',['-s'],{input:isolated,encoding:'utf8',env:{...process.env,PATH:bin+':'+process.env.PATH}});
+  assert.equal(result.status,1);assert.match(result.stderr,/Restore the original key/);assert.match(result.stderr,/Do not create a replacement key/);
+  assert.equal(fs.existsSync(marker),false);assert.equal(fs.existsSync(path.join(h.parent,'missing-private-directory')),false);
+ }finally{fs.rmSync(h.parent,{recursive:true,force:true});}
 });
 test('signing properties reject existing and dangling symlinks without writing credentials outside the checkout',async()=>{
  for(const targetExists of [false,true]){

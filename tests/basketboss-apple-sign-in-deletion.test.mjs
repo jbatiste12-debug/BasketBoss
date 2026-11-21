@@ -16,11 +16,12 @@ function token(claims={}){
  return unsigned+'.'+sign('RSA-SHA256',Buffer.from(unsigned),appleKeys.privateKey).toString('base64url');
 }
 const response=(value,status=200)=>new Response(JSON.stringify(value),{status,headers:{'Content-Type':'application/json'}});
-function fixture({claims,exchangedClaims,revokeStatus=200,exchangeStatus=200}={}){
+function fixture({claims,exchangedClaims,revokeStatus=200,exchangeStatus=200,redirectPath}={}){
  const calls=[],identityToken=token(claims),credential={identityToken,nonce,authorizationCode:'synthetic-authorization-code'};
  const fetcher=async(address,options={})=>{
   const url=new URL(address);calls.push({path:url.pathname,body:options.body,options});
-  assert.equal(url.origin,'https://appleid.apple.com');assert.equal(options.redirect,'error');
+  assert.equal(url.origin,'https://appleid.apple.com');assert.equal(options.redirect,'manual');
+  if(url.pathname===redirectPath)return new Response(null,{status:307,headers:{Location:'https://untrusted.example.invalid/credentials'}});
   if(url.pathname==='/auth/keys')return response({keys:[publicKey]});
   if(url.pathname==='/auth/token')return response({id_token:token(exchangedClaims),refresh_token:'synthetic-apple-refresh'},exchangeStatus);
   if(url.pathname==='/auth/revoke')return response({},revokeStatus);
@@ -61,6 +62,18 @@ test('untrusted signatures and unavailable revocation fail closed with fixed saf
  const unavailable=fixture({revokeStatus:503});await assert.rejects(unavailable.run(),error=>error.code==='deletion_apple_unavailable'&&error.message==='deletion_apple_unavailable');
 });
 
+test('Apple verification, exchange and revocation reject redirects before deletion can proceed',async()=>{
+ for(const [redirectPath,expectedCode,expectedCalls] of [
+  ['/auth/keys','deletion_apple_unavailable',1],
+  ['/auth/token','deletion_apple_required',2],
+  ['/auth/revoke','deletion_apple_unavailable',3]
+ ]){
+  const h=fixture({redirectPath});
+  await assert.rejects(h.run(),error=>error.code===expectedCode);
+  assert.equal(h.calls.length,expectedCalls);assert.equal(h.calls.at(-1).path,redirectPath);
+ }
+});
+
 test('deletion identity derives Apple subjects from the fresh authenticated Supabase user only',async()=>{
  const request=new Request('https://basketboss.co.uk/api/account/delete',{headers:{Authorization:'Bearer synthetic-account-session'}});
  const config={SUPABASE_URL:'https://synthetic.supabase.co',SUPABASE_PUBLISHABLE_KEY:'synthetic-public'};
@@ -70,6 +83,17 @@ test('deletion identity derives Apple subjects from the fresh authenticated Supa
  }});
  assert.deepEqual(found,user);
  assert.equal(await authenticatedDeletionUser(request,config,{fetcher:async()=>response({},401)}),null);
+});
+
+test('verification observers cannot change authenticated identity or failed verification',async()=>{
+ const request=new Request('https://basketboss.co.uk/api/account/delete',{headers:{Authorization:'Bearer synthetic-account-session'}});
+ const config={SUPABASE_URL:'https://synthetic.supabase.co',SUPABASE_PUBLISHABLE_KEY:'synthetic-public'};
+ let observed=0;
+ const onFailure=reason=>{observed++;assert.equal(reason,'auth_session_rejected');throw Error('observer must not authorize deletion');};
+ assert.equal(await authenticatedDeletionUser(request,config,{onFailure,fetcher:async()=>response({},401)}),null);
+ assert.equal(observed,1);
+ const found=await authenticatedDeletionUser(request,config,{onFailure:()=>assert.fail('success has no failure category'),fetcher:async()=>response({id:user.id,email:user.email,email_confirmed_at:'2026-11-14T12:00:00Z',identities:[{provider:'apple',identity_data:{sub:subject}}]})});
+ assert.deepEqual(found,user);
 });
 
 test('public Apple readiness never leaks credentials and stays disabled before configuration',async()=>{

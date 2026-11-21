@@ -106,6 +106,84 @@ test('a rejected password or deletion request keeps the account and local data',
   assert.deepEqual(h.events.map(event => event.type), ['basketboss:account-deletion-started', 'basketboss:account-deletion-cancelled']);
 });
 
+test('origin, session and password rejections give distinct fixed guidance without clearing saved records', async () => {
+  for (const [status, code, expected] of [
+    [403, 'deletion_origin_rejected', /connection is not permitted/],
+    [401, 'deletion_sign_in_required', /Sign in again before deleting your account/],
+    [403, 'deletion_password_required', /Your password could not be verified/]
+  ]) {
+    let calls = 0;
+    const h = harness(async () => { calls++; return response(status, { ok: false, code, error: 'private provider detail' }); });
+    const before = [...h.local.map], beforeTab = [...h.tab.map];
+    const result = await h.remove();
+    assert.equal(result.pending, false); assert.equal(result.code, code); assert.match(result.message, expected);
+    assert.doesNotMatch(result.message, /private provider detail/);
+    if (code !== 'deletion_password_required') assert.doesNotMatch(result.message, /password/);
+    assert.equal(h.api.isDeleting(), false); assert.deepEqual([...h.local.map], before); assert.deepEqual([...h.tab.map], beforeTab);
+    assert.equal(calls, 1); assert.deepEqual(h.redirects, []);
+  }
+});
+
+test('an HTML security block preserves all device data and never retries deletion automatically', async () => {
+  let calls = 0, cleanups = 0;
+  const h = harness(async () => {
+    calls++;
+    return { status: 403, ok: false, json: async () => { throw new SyntaxError('<html>private security diagnostic</html>'); } };
+  }, {
+    caches: { keys: async () => { cleanups++; return []; } },
+    BBNative: { isNative: true, clearTemporaryData: async () => { cleanups++; return { ok: true }; } }
+  });
+  const before = [...h.local.map], beforeTab = [...h.tab.map];
+  const result = await h.remove();
+  await new Promise(setImmediate);
+  assert.equal(result.pending, false); assert.equal(result.code, ''); assert.equal(h.api.isDeleting(), false);
+  assert.match(result.message, /security check blocked/); assert.match(result.message, /syncing can continue/);
+  assert.doesNotMatch(result.message, /password|<html>|private security diagnostic/);
+  assert.deepEqual([...h.local.map], before); assert.deepEqual([...h.tab.map], beforeTab);
+  assert.equal(calls, 1); assert.equal(cleanups, 0); assert.deepEqual(h.redirects, []);
+  assert.deepEqual(h.events.map(event => event.type), ['basketboss:account-deletion-started', 'basketboss:account-deletion-cancelled']);
+});
+
+test('an unknown JSON security rejection never displays its code or provider response', async () => {
+  const h = harness(async () => response(403, { ok: false, code: 'private-rule-id', error: '<script>private-provider-body</script>' }));
+  const result = await h.remove();
+  assert.match(result.message, /security check blocked/); assert.equal(result.code, '');
+  assert.doesNotMatch(result.message, /password|private-rule-id|script|private-provider-body/);
+  assert.equal(h.local.getItem(SESSION), session()); assert.equal(h.local.getItem('basketboss_321_unified_state_v1'), 'meal plan');
+});
+
+test('new fixed rejection codes with an explicitly pending deletion retain generic locked feedback', async () => {
+  for (const [status, code] of [[403, 'deletion_origin_rejected'], [401, 'deletion_sign_in_required']]) {
+    const h = harness(async () => response(status, { ok: false, pending: true, code }));
+    const result = await h.remove();
+    assert.equal(result.pending, true); assert.equal(result.code, code); assert.equal(h.api.isDeleting(), true);
+    assert.match(result.message, /Deletion has not been confirmed yet/); assert.match(result.message, /syncing is paused/);
+    assert.doesNotMatch(result.message, /undefined|syncing can continue/);
+    assert.equal(h.local.getItem(SESSION), session()); assert.equal(h.local.getItem('basketboss_321_unified_state_v1'), 'meal plan');
+    assert.equal(h.events.filter(event => event.type === 'basketboss:account-deletion-cancelled').length, 0);
+  }
+});
+
+test('a saved pending deletion stays locked after HTML blocks and unconfirmed authentication rejections', async () => {
+  for (const reply of [
+    { status: 403, ok: false, json: async () => { throw new SyntaxError('private security page'); } },
+    response(401, { ok: false, code: 'deletion_sign_in_required' }),
+    response(403, { ok: false, pending: true, code: 'deletion_password_required' })
+  ]) {
+    let calls = 0;
+    const h = harness(async () => { calls++; return reply; });
+    h.local.setItem(LOCK, JSON.stringify({ actorId: actor.actorId, phase: 'pending' }));
+    const result = await h.remove();
+    await new Promise(setImmediate);
+    assert.equal(result.pending, true); assert.equal(h.api.isDeleting(), true); assert.equal(calls, 1);
+    assert.match(result.message, /syncing is paused/); assert.doesNotMatch(result.message, /undefined|private security page|syncing can continue/);
+    assert.equal(JSON.parse(h.local.getItem(LOCK)).phase, 'pending');
+    assert.equal(h.local.getItem(SESSION), session()); assert.equal(h.local.getItem('basketboss_321_unified_state_v1'), 'meal plan');
+    assert.equal(h.events.filter(event => event.type === 'basketboss:account-deletion-cancelled').length, 0);
+    assert.deepEqual(h.redirects, []);
+  }
+});
+
 test('an accepted but pending deletion keeps device data and blocks further writes until retry succeeds', async () => {
   let calls = 0;
   const h = harness(async () => ++calls === 1 ? response(503, { ok: false, pending: true }) : response(200, { ok: true, deleted: true }));
@@ -343,6 +421,69 @@ test('a sign-in provider outage is not presented as a rejected password', async 
   assert.match(result.message, /We could not verify your sign-in right now/); assert.match(result.message, /syncing can continue/);
   assert.doesNotMatch(result.message, /password or session could not be verified|supabase|private diagnostic/);
   assert.equal(h.local.getItem(SESSION), session());
+});
+
+test('known deletion verification categories give fixed feedback without exposing provider values',async()=>{
+ for(const [verification,expected] of [
+  ['bearer_missing',/did not include your sign-in/],['bearer_invalid',/included an invalid sign-in/],['bearer_oversized',/included an invalid sign-in/],
+  ['auth_configuration',/could not connect to the sign-in service/],['auth_session_rejected',/sign-in service rejected the session/],
+  ['auth_http_unavailable',/could not complete the deletion check/],['auth_timeout',/sign-in check for deletion timed out/],
+  ['auth_fetch_failed',/could not reach the sign-in service/],['auth_response_invalid',/could not read the sign-in check/],
+  ['auth_user_invalid',/did not return a valid account/],['auth_user_unconfirmed',/did not return a confirmed email/],
+  ['auth_user_identifier_invalid',/did not return a valid account identifier/]
+ ]){
+  const h=harness(async()=>response(401,{ok:false,code:'deletion_sign_in_required',verification,error:'synthetic-private-provider-body'}));
+  const result=await h.remove();
+  assert.equal(result.pending,false);assert.equal(h.api.isDeleting(),false);assert.match(result.message,expected);
+  assert.doesNotMatch(result.message,/synthetic-private|Nothing has been deleted/);
+  assert.equal(h.local.getItem(SESSION),session());assert.equal(h.local.getItem('basketboss_321_unified_state_v1'),'meal plan');assert.deepEqual(h.redirects,[]);
+ }
+});
+
+test('untrusted verification values and unrelated statuses cannot replace sign-in feedback',async()=>{
+ for(const verification of ['private provider body','__proto__','constructor',{toString:'private'},null]){
+  const h=harness(async()=>response(401,{ok:false,code:'deletion_sign_in_required',verification}));
+  const result=await h.remove();assert.match(result.message,/Sign in again before deleting your account/);assert.doesNotMatch(result.message,/private|__proto__|constructor/);
+ }
+ const h=harness(async()=>response(403,{ok:false,code:'deletion_password_required',verification:'auth_fetch_failed'}));
+ assert.match((await h.remove()).message,/Your password could not be verified/);
+});
+
+test('verification feedback cannot unlock an existing pending deletion',async()=>{
+ for(const explicitPending of [undefined,true]){
+  const h=harness(async()=>response(401,{ok:false,code:'deletion_sign_in_required',verification:'auth_session_rejected',...(explicitPending?{pending:true}:{})}));
+  h.local.setItem(LOCK,JSON.stringify({actorId:actor.actorId,phase:'pending'}));
+  const result=await h.remove();assert.equal(result.pending,true);assert.equal(h.api.isDeleting(),true);
+  assert.match(result.message,/syncing is paused/);assert.doesNotMatch(result.message,/syncing can continue/);
+  assert.equal(h.local.getItem(SESSION),session());assert.equal(h.local.getItem('basketboss_321_unified_state_v1'),'meal plan');
+ }
+});
+
+test('billing diagnostics show the failed operation while keeping every deletion barrier and saved record',async()=>{
+ for(const [billing,expected] of [
+  [{stage:'claims_read',reason:'columns_missing',mode:'live',missing:['slot_no']},/reading your saved payment records.*Required billing fields are missing.*Founder slot/],
+  [{stage:'subscription_read',reason:'http',mode:'live',status:403},/looking up your Paddle subscription.*Provider HTTP 403/],
+  [{stage:'subscription_cancel',reason:'http',mode:'live',status:403,providerCode:'forbidden'},/cancelling your Paddle subscription.*lacks permission.*Provider HTTP 403/],
+  [{stage:'subscription_read',reason:'http',mode:'live',status:403,providerCode:'invalid_token'},/looking up your Paddle subscription.*rejected the server API key/],
+  [{stage:'subscription_cancel',reason:'http',mode:'live',status:404},/cancelling your Paddle subscription.*Provider HTTP 404/],
+  [{stage:'claim_linkage',reason:'claim_mismatch',mode:'live'},/matching the Paddle payment to your account.*could not be matched/]
+ ]){
+  const h=harness(async()=>response(202,{ok:false,pending:true,code:'deletion_billing_pending',billing,error:'synthetic-private-provider-body'}));
+  const result=await h.remove();assert.equal(result.pending,true);assert.equal(h.api.isDeleting(),true);assert.match(result.message,expected);
+  assert.match(result.message,/syncing is paused/);assert.doesNotMatch(result.message,/syncing can continue|synthetic-private/);
+  assert.equal(h.local.getItem(SESSION),session());assert.equal(h.local.getItem('basketboss_321_unified_state_v1'),'meal plan');assert.ok(h.local.getItem(LOCK));assert.deepEqual(h.redirects,[]);
+  assert.equal(h.events.filter(event=>event.type==='basketboss:account-deletion-cancelled').length,0);
+ }
+});
+
+test('arbitrary billing diagnostics cannot become UI feedback or release a pending deletion',async()=>{
+ for(const billing of [{stage:'constructor',reason:'http',mode:'live'},{stage:'claims_read',reason:'private response',mode:'live'},{stage:'claims_read',reason:'http',mode:'private environment'},'private response',null]){
+  const h=harness(async()=>response(202,{ok:false,pending:true,code:'deletion_billing_pending',billing}));
+  const result=await h.remove();assert.equal(result.pending,true);assert.equal(h.api.isDeleting(),true);
+  assert.match(result.message,/could not complete the subscription check or cancellation/);assert.doesNotMatch(result.message,/constructor|private/);
+ }
+ const h=harness(async()=>response(202,{ok:false,pending:true,code:'deletion_billing_pending',billing:{stage:'claims_read',reason:'columns_missing',mode:'live',status:'private status',missing:['private column','slot_no']}}));
+ const result=await h.remove();assert.match(result.message,/Founder slot/);assert.doesNotMatch(result.message,/private/);assert.equal(h.api.isDeleting(),true);
 });
 
 function useAppleSession(h){

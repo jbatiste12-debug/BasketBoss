@@ -1,11 +1,11 @@
 # BasketBoss on Google Play
 
 The Android package is **`uk.co.basketboss.app`**, named **BasketBoss**, with
-`versionName "1.0.2"` and `versionCode 2`. It uses Capacitor Android **8.6.0**,
+`versionName "1.0.3"` and `versionCode 3`. It uses Capacitor Android **8.6.0**,
 minimum Android API 24, and compile/target API 36. The package name must match
 your Play Console app. Increase `versionCode` for every later uploaded bundle.
 
-Build 2 includes an Android-only Google Play Billing bridge and membership flow.
+Build 3 includes the merged automatic shared-plan refresh and account-deletion fixes, alongside an Android-only Google Play Billing bridge and membership flow.
 Licence-test purchases remain unavailable until the server, catalogue and test
 account are configured. Live checkout is deliberately blocked in this revision,
 including when live environment flags are supplied. Prices and eligible trial offers come from Google Play; they are not
@@ -23,16 +23,11 @@ your JDK 21 and `ANDROID_HOME` to your SDK directory; the usual Mac SDK location
 is `$HOME/Library/Android/sdk`. The [Capacitor setup guide](https://capacitorjs.com/docs/getting-started/environment-setup)
 describes the Android tools. Builds below run entirely in Terminal.
 
-Create your private upload key **once**, if you do not already have one registered
-for BasketBoss. This command prompts for passwords and certificate details;
-passwords are not included in shell history:
-
-```bash
-umask 077 && mkdir -p "$HOME/.basketboss-android" && keytool -genkeypair -v -storetype JKS -keystore "$HOME/.basketboss-android/basketboss-upload-key.jks" -alias basketboss-upload -keyalg RSA -keysize 2048 -validity 10000
-```
-
-Keep a private backup of the key and its passwords. Reuse that upload key for
-updates. The [Android signing guide](https://developer.android.com/studio/publish/app-signing)
+This is an update to the existing Play app. Reuse your original upload key at
+`$HOME/.basketboss-android/basketboss-upload-key.jks` and its existing
+`basketboss-upload` alias. The launcher stops if that key is missing; restore it
+from your private backup before building. Do not generate a replacement key for
+this update. Keep the key and its passwords private. The [Android signing guide](https://developer.android.com/studio/publish/app-signing)
 explains how your upload key differs from Google's Play App Signing key.
 
 From the repository root, prepare signing and build the signed bundle:
@@ -72,7 +67,7 @@ actual bundled image bytes, and requires signed payloads for upload builds.
 Open **Actions → Build Android App Bundle → Run workflow**.
 
 - Leave **signed** off for compile verification. The artifact is labelled
-  `BasketBoss-Android-UNSIGNED-CI-1.0.2-code2`; it cannot be uploaded to Play.
+  `BasketBoss-Android-UNSIGNED-CI-1.0.3-code3`; it cannot be uploaded to Play.
 - For a signed bundle, first add the following repository Actions secrets, then
   run the workflow with **signed** on. Missing secrets stop the signed build.
 
@@ -92,7 +87,7 @@ base64 < "$HOME/.basketboss-android/basketboss-upload-key.jks" | tr -d '\n' | pb
 
 The workflow creates temporary signing files, runs `./gradlew bundleRelease`,
 uploads only the `.aab`, and removes its temporary signing material. Download the
-`BasketBoss-Android-SIGNED-1.0.2-code2` artifact and extract `app-release.aab` for
+`BasketBoss-Android-SIGNED-1.0.3-code3` artifact and extract `app-release.aab` for
 manual upload. It does not create an upload key, upload to Play Console, or
 release your app. No Play Console service-account key is required for this build.
 It runs the Node checks and Android JVM unit tests before bundling. This workflow

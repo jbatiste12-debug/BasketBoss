@@ -30,6 +30,7 @@ async function fixture({linked=false,current=true,confirmed=true,enabled='true'}
   BB_PREMIUM_AI_ENABLED:'true',GEMINI_API_KEY:'local-test',TURNSTILE_SITE_KEY:'local-test',TURNSTILE_SECRET_KEY:'local-test',BB_AI_GLOBAL_DAILY_CAP:'20'};
  await ensureDeletionSchema(env);
  let household=linked?{id:HH,owner_user_id:OWNER,partner_user_id:PARTNER,partner_email:email(PARTNER),invite_status:'accepted'}:null;
+ let invitations=[];
  const calls=[];
  globalThis.fetch=async(url,init={})=>{
   const address=new URL(String(url)),body=init.body?JSON.parse(init.body):null;calls.push({url:address,body});
@@ -40,21 +41,27 @@ async function fixture({linked=false,current=true,confirmed=true,enabled='true'}
   if(address.pathname.endsWith('/rpc/bb_hh_service_session_ok'))return Response.json(current);
   if(address.pathname.endsWith('/bb_households')){
    if(!household)return Response.json([]);
-   const owner=address.searchParams.get('owner_user_id'),partner=address.searchParams.get('partner_user_id');
+   const id=address.searchParams.get('id'),owner=address.searchParams.get('owner_user_id'),partner=address.searchParams.get('partner_user_id');
+   if(id&&id!=='eq.'+household.id)return Response.json([]);
    if(owner&&owner!=='eq.'+household.owner_user_id)return Response.json([]);
    if(partner&&partner!=='eq.'+household.partner_user_id)return Response.json([]);
    if(address.searchParams.get('invite_status')==='eq.accepted'&&household.invite_status!=='accepted')return Response.json([]);
    return Response.json([household]);
   }
-  if(address.pathname.endsWith('/bb_household_invites'))return Response.json(household?.invite_status==='pending'?[{id:'invite',household_id:HH,partner_email:email(PARTNER),expires_at:new Date(Date.now()+86400000).toISOString()}]:[]);
-  if(address.pathname.endsWith('/rpc/bb_hh_service_invite')){household={id:HH,owner_user_id:body.p_owner,partner_user_id:null,partner_email:body.p_email,invite_status:'pending'};return Response.json({household_id:HH,status:'pending'});}
-  if(address.pathname.endsWith('/rpc/bb_hh_service_accept')){household={...household,partner_user_id:body.p_user,invite_status:'accepted'};return Response.json({household_id:HH,status:'accepted'});}
+  if(address.pathname.endsWith('/bb_household_invites')){
+   const query=address.searchParams;
+   const rows=invitations.filter(invite=>['household_id','partner_email','status'].every(key=>!query.has(key)||query.get(key)==='eq.'+invite[key])&&
+    (!query.has('expires_at')||query.get('expires_at').startsWith('gt.')&&Date.parse(invite.expires_at)>Date.parse(query.get('expires_at').slice(3))));
+   return Response.json(rows.slice(0,Number(query.get('limit'))||rows.length));
+  }
+  if(address.pathname.endsWith('/rpc/bb_hh_service_invite')){household={id:HH,owner_user_id:body.p_owner,partner_user_id:null,partner_email:body.p_email,invite_status:'pending'};invitations=[{id:'invite',household_id:HH,partner_email:body.p_email,status:'pending',expires_at:new Date(Date.now()+86400000).toISOString()}];return Response.json({household_id:HH,status:'pending'});}
+  if(address.pathname.endsWith('/rpc/bb_hh_service_accept')){household={...household,partner_user_id:body.p_user,invite_status:'accepted'};invitations=invitations.map(invite=>({...invite,status:'accepted'}));return Response.json({household_id:HH,status:'accepted'});}
   if(address.pathname.endsWith('/bb_household_entries'))return Response.json([]);
   if(address.pathname.endsWith('/rpc/bb_receipt_inventory_service'))return Response.json({ok:true,autoStockReady:true,scope:{kind:body.p_scope_kind,id:body.p_scope_id},initialized:false,inventoryRevision:0,stock:{},inventory:[],essentials:[],priceObservations:[]});
   if(address.hostname==='generativelanguage.googleapis.com')return Response.json({candidates:[{content:{parts:[{text:JSON.stringify({items:[{name:'apple',estimatedQuantity:'one',confidence:'high',notes:'visible'}],caution:''})}]}}]});
   throw Error('Unexpected outbound request '+address.origin+address.pathname);
  };
- return {env,sql,calls,get household(){return household;},set household(value){household=value;},restore(){globalThis.fetch=realFetch;sql.close();}};
+ return {env,sql,calls,get household(){return household;},set household(value){household=value;},get invitations(){return invitations;},restore(){globalThis.fetch=realFetch;sql.close();}};
 }
 const options={productionOnly:true,includeOwnerHousehold:true};
 const user=id=>({id,email:email(id)});
@@ -101,6 +108,83 @@ test('enabled owner can invite one partner, who inherits access but no subscript
   assert.equal((await portalGet({request:request(PARTNER,'/api/subscription/portal'),env:f.env})).status,404);
   assert.equal((await householdPost({request:request(PARTNER,'/api/household',{action:'invite',email:email(OTHER)}),env:f.env})).status,403);
  }finally{f.restore();}
+});
+
+for(const [outage,ownerAccess] of [['paddle_database','owner'],['apple_configuration','owner'],['apple_configuration','founder']])test('a pending Free partner can review and accept '+ownerAccess+' access during a personal '+outage+' outage',async()=>{
+ const f=await fixture({enabled:ownerAccess==='owner'?'true':'false'});try{
+  if(ownerAccess==='founder')f.sql.prepare('INSERT INTO bb_paid_entitlements(user_id,status,price_id,plan,updated_at_ms) VALUES(?,?,?,?,?)').run(OWNER,'active',FOUNDER_PRICE,'founder',Date.now());
+  assert.equal((await householdPost({request:request(OWNER,'/api/household',{action:'invite',email:email(PARTNER)}),env:f.env})).status,200);
+  if(outage==='paddle_database')f.sql.exec('DROP TABLE bb_paid_entitlements');
+  else f.env.APPLE_BILLING_ENABLED='true'; // No Apple credentials: personal status cannot be verified.
+  assert.equal((await membershipGet({request:request(PARTNER,'/api/subscription/status'),env:f.env})).status,503,'the independent personal membership check really is unavailable');
+  const response=await householdGet({request:request(PARTNER,'/api/household?mode=status'),env:f.env});
+  assert.equal(response.status,200);const pending=await response.json();
+  assert.equal(pending.configured,true);assert.equal(pending.premium,false);assert.equal(pending.role,'free');assert.equal(pending.household_id,null);assert.equal(pending.invite.household_id,HH);
+  for(const mode of ['entries','shopping','pantry_packs']){
+   const shared=await householdGet({request:request(PARTNER,'/api/household?mode='+mode),env:f.env});
+   assert.ok([403,503].includes(shared.status),'reviewing an invitation cannot expose '+mode);
+  }
+  assert.equal(f.calls.some(call=>call.url.pathname.endsWith('/bb_household_entries')||call.url.pathname.endsWith('/rpc/bb_hh_service_shopping_list')),false);
+  assert.equal((await householdPost({request:request(PARTNER,'/api/household',{action:'accept',household_id:OTHER}),env:f.env})).status,403);
+  assert.equal(f.calls.some(call=>call.url.pathname.endsWith('/rpc/bb_hh_service_accept')),false,'a household supplied by the client cannot replace the eligible invitation');
+  assert.equal((await householdPost({request:request(PARTNER,'/api/household',{action:'accept',household_id:HH}),env:f.env})).status,200);
+  const pendingReads=f.calls.filter(call=>call.url.pathname.endsWith('/bb_household_invites')).length;
+  const accepted=await householdGet({request:request(PARTNER),env:f.env});assert.equal(accepted.status,200);
+  const state=await accepted.json();assert.equal(state.role,'partner');assert.equal(state.household_id,HH);assert.equal(state.premium,true);assert.equal(state.invite,null);
+  assert.equal(f.calls.filter(call=>call.url.pathname.endsWith('/bb_household_invites')).length,pendingReads,'accepted household status does not search for pending invitations');
+ }finally{f.restore();}
+});
+
+test('a Free recipient without an invitation keeps personal Free status',async()=>{
+ const f=await fixture();try{
+  const response=await householdGet({request:request(PARTNER),env:f.env});assert.equal(response.status,200);
+  const state=await response.json();assert.equal(state.configured,true);assert.equal(state.premium,false);assert.equal(state.role,'free');assert.equal(state.household_id,null);assert.equal(state.invite,null);
+  f.sql.exec('DROP TABLE bb_paid_entitlements');
+  assert.equal((await householdGet({request:request(PARTNER),env:f.env})).status,503,'without an eligible invitation personal billing still fails closed');
+ }finally{f.restore();}
+});
+
+test('pending review and acceptance still require one current matching invitation and an eligible owner',async()=>{
+ for(const change of ['flag','deletion','revocation','household_revocation','expired','email','ambiguous']){
+  const f=await fixture();try{
+   await householdPost({request:request(OWNER,'/api/household',{action:'invite',email:email(PARTNER)}),env:f.env});
+   if(change==='flag')f.env.BB_OWNER_HOUSEHOLD_ENABLED='false';
+   else if(change==='deletion')await deleteOwner(f);
+   else if(change==='revocation')f.invitations[0].status='revoked';
+   else if(change==='household_revocation')f.household={...f.household,invite_status:'none'};
+   else if(change==='expired')f.invitations[0].expires_at=new Date(Date.now()-1000).toISOString();
+   else if(change==='email')f.invitations[0].partner_email=email(OTHER);
+   else f.invitations.push({...f.invitations[0],id:'other-invite',household_id:OTHER});
+   const response=await householdGet({request:request(PARTNER),env:f.env});assert.equal(response.status,200);
+   const state=await response.json();assert.equal(state.premium,false);assert.equal(state.invite,null,change);
+   assert.equal((await householdPost({request:request(PARTNER,'/api/household',{action:'accept',household_id:HH}),env:f.env})).status,403);
+   assert.equal(f.calls.some(call=>call.url.pathname.endsWith('/rpc/bb_hh_service_accept')),false);
+  }finally{f.restore();}
+ }
+});
+
+test('an invitation preview cannot authorise acceptance after the owner grant is revoked',async()=>{
+ const f=await fixture();try{
+  await householdPost({request:request(OWNER,'/api/household',{action:'invite',email:email(PARTNER)}),env:f.env});
+  const preview=await (await householdGet({request:request(PARTNER),env:f.env})).json();
+  assert.equal(preview.invite.household_id,HH);
+  f.env.BB_OWNER_HOUSEHOLD_ENABLED='false';
+  const response=await householdPost({request:request(PARTNER,'/api/household',{action:'accept',household_id:preview.invite.household_id}),env:f.env});
+  assert.equal(response.status,403);
+  assert.equal(f.calls.some(call=>call.url.pathname.endsWith('/rpc/bb_hh_service_accept')),false);
+ }finally{f.restore();}
+});
+
+test('pending recipients still need a confirmed email and the newest session',async()=>{
+ for(const settings of [{confirmed:false},{current:false}]){
+  const f=await fixture(settings);try{
+   f.household={id:HH,owner_user_id:OWNER,partner_user_id:null,partner_email:email(PARTNER),invite_status:'pending'};
+   const expected=settings.confirmed===false?401:403;
+   assert.equal((await householdGet({request:request(PARTNER),env:f.env})).status,expected);
+   assert.equal((await householdPost({request:request(PARTNER,'/api/household',{action:'accept',household_id:HH}),env:f.env})).status,expected);
+   assert.equal(f.calls.some(call=>call.url.pathname.endsWith('/bb_household_invites')||call.url.pathname.endsWith('/rpc/bb_hh_service_accept')),false);
+  }finally{f.restore();}
+ }
 });
 
 test('live Founder and standard members can invite without the complimentary owner grant',async()=>{

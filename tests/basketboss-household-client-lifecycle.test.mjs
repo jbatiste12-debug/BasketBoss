@@ -183,6 +183,21 @@ test('after explicit adoption a foreground remote dinner edit renders without re
  await h.api.foregroundCheck({force:true});assert.equal(h.saved().planned[0].recipeId,'new-shared-dinner');assert.equal(h.refreshes.length,before+1);assert.deepEqual(h.writes(),[]);
 });
 
+test('a status poll started before explicit adoption cannot race that action with automatic entry sync',async()=>{
+ const h=fixture(),status=deferred(),adoption=deferred(),adoptionStarted=deferred();await h.open();await h.adopted();
+ let holdStatus=true;
+ h.requestHook=async({url,request})=>{
+  if(!request&&String(url).includes('mode=status')&&holdStatus){holdStatus=false;await status.promise;}
+  if(!request&&String(url).includes('mode=entries')){adoptionStarted.resolve();await adoption.promise;}
+  return null;
+ };
+ const entriesBefore=h.calls.filter(call=>String(call.url).includes('mode=entries')).length;
+ const polling=h.api.foregroundCheck({force:true}),action=h.click('[data-adopt]');await adoptionStarted.promise;
+ status.resolve();await polling;
+ assert.equal(h.calls.filter(call=>String(call.url).includes('mode=entries')).length,entriesBefore+1,'only the explicit adoption may read entries while its action is pending');
+ adoption.resolve();await action;assert.deepEqual(h.writes(),[]);assert.match(h.message,/backup/);
+});
+
 test('post-adoption local dinner edits retain per-leaf expected revision checks',async()=>{
  const h=fixture();await h.adopted();const next=h.saved();next.planned[0].recipeId='local-updated-dinner';h.values.set(STATE,JSON.stringify(next));
  await h.api.synchronize();const patches=h.writes().filter(call=>call.request.action==='patch');

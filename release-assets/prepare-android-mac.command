@@ -5,6 +5,13 @@ if [[ "$(uname -s)" != Darwin ]]; then
   printf 'Run this launcher on your Mac. GitHub Actions can build on Linux.\n' >&2
   exit 1
 fi
+BB_ANDROID_PRIVATE="$HOME/.basketboss-android"
+BB_ANDROID_UPLOAD_KEY="$BB_ANDROID_PRIVATE/basketboss-upload-key.jks"
+if [[ ! -f "$BB_ANDROID_UPLOAD_KEY" ]]; then
+  printf 'Your existing BasketBoss upload key was not found at %s.\nRestore the original key from your private backup before building this update. Do not create a replacement key.\n' "$BB_ANDROID_UPLOAD_KEY" >&2
+  exit 1
+fi
+
 command -v node >/dev/null 2>&1 || { printf 'Install Node.js 22 or newer first.\n' >&2; exit 1; }
 node -e 'if(Number(process.versions.node.split(".")[0])<22)process.exit(1)'
 
@@ -31,20 +38,12 @@ if [[ ! -f "$ANDROID_HOME/platforms/android-36/android.jar" || ! -x "$ANDROID_HO
   "$BB_ANDROID_SDKMANAGER" 'platforms;android-36' 'build-tools;36.0.0'
 fi
 
-BB_ANDROID_PROJECT="$(mktemp -d "$HOME/BasketBoss-Android-1.0.2.XXXXXX")"
-git clone --depth 1 --branch feat/android-google-play-billing-20261121 --single-branch https://github.com/jbatiste12-debug/BasketBoss.git "$BB_ANDROID_PROJECT"
+BB_ANDROID_PROJECT="$(mktemp -d "$HOME/BasketBoss-Android-1.0.3.XXXXXX")"
+git clone --depth 1 --branch release/android-household-sync-20261121 --single-branch https://github.com/jbatiste12-debug/BasketBoss.git "$BB_ANDROID_PROJECT"
 cd "$BB_ANDROID_PROJECT"
 git fetch --depth 1 origin "$BB_ANDROID_SOURCE"
 git checkout --detach "$BB_ANDROID_SOURCE"
 
-BB_ANDROID_PRIVATE="$HOME/.basketboss-android"
-mkdir -p "$BB_ANDROID_PRIVATE"
-chmod 700 "$BB_ANDROID_PRIVATE"
-BB_ANDROID_UPLOAD_KEY="$BB_ANDROID_PRIVATE/basketboss-upload-key.jks"
-if [[ ! -f "$BB_ANDROID_UPLOAD_KEY" ]]; then
-  printf '\nCreate your private upload key. Choose a password and keep a secure backup.\n'
-  (umask 077; keytool -genkeypair -v -keystore "$BB_ANDROID_UPLOAD_KEY" -alias basketboss-upload -keyalg RSA -keysize 2048 -validity 10000 -storetype JKS)
-fi
 npm ci --no-audit --no-fund
 node scripts/android-signing.mjs --interactive --keystore-file "$BB_ANDROID_UPLOAD_KEY"
 npm run android:sync
@@ -54,4 +53,4 @@ BB_ANDROID_AAB="$BB_ANDROID_PROJECT/android/app/build/outputs/bundle/release/app
 [[ -f "$BB_ANDROID_AAB" ]] || { printf 'Gradle did not create the release bundle.\n' >&2; exit 1; }
 node scripts/verify-android-aab.mjs --bundle "$BB_ANDROID_AAB" --require-signed
 open -R "$BB_ANDROID_AAB"
-printf '\nSigned Android bundle ready: %s\nPackage: uk.co.basketboss.app · version 1.0.2 · version code 2\nUpload it manually in Play Console > Testing > Internal testing first.\nKeep a secure backup of %s and its passwords.\n' "$BB_ANDROID_AAB" "$BB_ANDROID_UPLOAD_KEY"
+printf '\nSigned Android bundle ready: %s\nPackage: uk.co.basketboss.app · version 1.0.3 · version code 3\nUpload it manually in Play Console > Testing > Internal testing first.\nKeep a secure backup of %s and its passwords.\n' "$BB_ANDROID_AAB" "$BB_ANDROID_UPLOAD_KEY"

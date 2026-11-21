@@ -116,8 +116,11 @@ export async function onRequestGet({request,env}){
  const auth=await authorized(request,env);if(auth.error)return auth.error;
  try{
   const {household,role}=await householdForUser(env,auth.user);
-  const entitled=household?await premium(env,household.owner_user_id):await premium(env,auth.user.id);
   const mode=new URL(request.url).searchParams.get('mode')||'status';
+  // A pending partner needs the owner's verified access, not a personal
+  // subscription. Keep review available if unrelated personal billing fails.
+  const pending=mode==='status'&&!household?await getPending(env,auth.user):null;
+  const entitled=pending?false:household?await premium(env,household.owner_user_id):await premium(env,auth.user.id);
   if(mode==='shopping'){
    if(!household||!entitled)return json({error:'Verified Premium shared household required'},403);
    const result=await supa(env,'rpc/bb_hh_service_shopping_list','POST',{p_actor:auth.user.id,p_household:household.id});
@@ -139,7 +142,6 @@ export async function onRequestGet({request,env}){
    return json({household_id:household.id,entries:rows});
   }
   if(mode!=='status')return json({error:'Invalid mode'},400);
-  const pending=!household?await getPending(env,auth.user):null;
   return json({configured:true,premium:entitled,role,household_id:household?.id||null,
    invite_status:household?.invite_status||'none',partner_email:role==='owner'?household?.partner_email||null:null,
    invite:pending,entitlement_scope:'shared_household_only'});
