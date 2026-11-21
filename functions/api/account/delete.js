@@ -13,6 +13,7 @@ const messages={
 };
 const pending=(code='deletion_database_pending',status=202)=>json({ok:false,pending:true,code,error:messages[code]||messages.deletion_database_pending},status);
 const rejected=(code,error,status,pendingState)=>json({ok:false,...(pendingState===undefined?{}:{pending:pendingState}),code,error},status);
+const signInRejected=verification=>json({ok:false,code:'deletion_sign_in_required',verification,error:'Sign in to delete your account.'},401);
 export async function onRequestGet({request,env}){
  if(request&&new URL(request.url).searchParams.get('mode')==='status'){
   // Browsers normally omit Origin on a same-origin GET. Fetch metadata may
@@ -46,7 +47,9 @@ export async function onRequestPost({request,env}){
  if(!requireSameOrigin(request,true))return rejected('deletion_origin_rejected','Origin not allowed',403);
  if(!deletionConfigured(env))return rejected('deletion_unavailable','Account deletion is temporarily unavailable. Please try again later.',503);
  const token=request.headers.get('Authorization')||'';
- if(!/^Bearer [^\s]+$/.test(token)||token.length>16000)return rejected('deletion_sign_in_required','Sign in to delete your account.',401);
+ if(!token)return signInRejected('bearer_missing');
+ if(!/^Bearer [^\s]+$/.test(token))return signInRejected('bearer_invalid');
+ if(token.length>16000)return signInRejected('bearer_oversized');
  let body;
  try{
   const maximum=new URL(request.url).searchParams.get('reauth')==='apple'?24576:2048;
@@ -72,8 +75,10 @@ export async function onRequestPost({request,env}){
   row=await db.prepare('SELECT * FROM bb_account_deletions WHERE retry_hash=?').bind(retryHash).first();
   if(row?.completed_at_ms)return json({ok:true,deleted:true});
   if(!row){
-   const user=await authenticatedDeletionUser(request,env);
-   if(!user||!UUID.test(user.id))return rejected('deletion_sign_in_required','Sign in to delete your account.',401);
+   let verification='auth_user_invalid';
+   const user=await authenticatedDeletionUser(request,env,{onFailure:reason=>{verification=reason;}});
+   if(!user)return signInRejected(verification);
+   if(!UUID.test(user.id))return signInRejected('auth_user_identifier_invalid');
    const actorHash=await digestDeletionActor(user.id);
    // A refreshed session may resume an existing actor's job even though its
    // token hash is different. Never call that job "not started" or unpause it.

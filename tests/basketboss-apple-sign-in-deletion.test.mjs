@@ -72,6 +72,17 @@ test('deletion identity derives Apple subjects from the fresh authenticated Supa
  assert.equal(await authenticatedDeletionUser(request,config,{fetcher:async()=>response({},401)}),null);
 });
 
+test('verification observers cannot change authenticated identity or failed verification',async()=>{
+ const request=new Request('https://basketboss.co.uk/api/account/delete',{headers:{Authorization:'Bearer synthetic-account-session'}});
+ const config={SUPABASE_URL:'https://synthetic.supabase.co',SUPABASE_PUBLISHABLE_KEY:'synthetic-public'};
+ let observed=0;
+ const onFailure=reason=>{observed++;assert.equal(reason,'auth_session_rejected');throw Error('observer must not authorize deletion');};
+ assert.equal(await authenticatedDeletionUser(request,config,{onFailure,fetcher:async()=>response({},401)}),null);
+ assert.equal(observed,1);
+ const found=await authenticatedDeletionUser(request,config,{onFailure:()=>assert.fail('success has no failure category'),fetcher:async()=>response({id:user.id,email:user.email,email_confirmed_at:'2026-11-14T12:00:00Z',identities:[{provider:'apple',identity_data:{sub:subject}}]})});
+ assert.deepEqual(found,user);
+});
+
 test('public Apple readiness never leaks credentials and stays disabled before configuration',async()=>{
  const result=await onRequestGet({env:{}}),data=await result.json();
  assert.deepEqual(data,{available:false,nativeOnly:true,deletionReady:false,checks:{appleConfiguration:false,accountDeletionConfiguration:false,accountDeletionChecked:false,accountDeletionReady:false}});

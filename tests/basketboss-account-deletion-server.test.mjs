@@ -63,7 +63,7 @@ function fixture(t){
   f.calls.push({url:url.href,path:url.pathname,method,body,headers:new Headers(options.headers)});
   if(url.origin==='https://appleid.apple.com'&&f.appleFetch)return f.appleFetch(url,options);
   if(url.origin===env.SUPABASE_URL){
-   if(url.pathname==='/auth/v1/user')return f.knownActor&&!f.authDeleted?json({id:USER,email:EMAIL,email_confirmed_at:'2026-10-01T00:00:00Z',...(f.appleIdentity?{identities:[{provider:'apple',identity_data:{sub:'synthetic.apple.subject'}}]}:{})}):json({error:'Unknown session'},401);
+   if(url.pathname==='/auth/v1/user')return f.authResponse?f.authResponse():f.knownActor&&!f.authDeleted?json({id:USER,email:EMAIL,email_confirmed_at:'2026-10-01T00:00:00Z',...(f.appleIdentity?{identities:[{provider:'apple',identity_data:{sub:'synthetic.apple.subject'}}]}:{})}):json({error:'Unknown session'},401);
    if(url.pathname==='/auth/v1/token'){
     assert.equal(url.search,'?grant_type=password');
     if(f.passwordUnavailable)return json({error:'synthetic-private-auth-provider-body'},503);
@@ -272,6 +272,39 @@ test('a wrong password before any intent explicitly leaves deletion inactive',as
  const response=await remove(f),result=await response.json();
  assert.equal(response.status,403);assert.equal(result.pending,false);assert.equal(result.code,'deletion_password_required');
  assert.equal(rows(f,'bb_account_deletions').length,0);assertNoRemoteDeletion(f);
+});
+
+test('deletion verification distinguishes missing, malformed and oversized sign-ins before provider calls',async t=>{
+ const f=fixture(t);
+ for(const [token,verification] of [['','bearer_missing'],['Basic synthetic-private','bearer_invalid'],['Bearer '+'x'.repeat(16000),'bearer_oversized']]){
+  const response=await remove(f,{token}),result=await response.json();
+  assert.equal(response.status,401);assert.equal(result.code,'deletion_sign_in_required');assert.equal(result.verification,verification);
+  assert.equal(f.calls.length,0);assert.doesNotMatch(JSON.stringify(result),/synthetic-private|Bearer|xxxxx/);
+  assertNoRemoteDeletion(f);
+ }
+});
+
+test('deletion verification reports only fixed categories and never reaches password, billing or deletion',async t=>{
+ const f=fixture(t),valid={id:USER,email:EMAIL,email_confirmed_at:'2026-10-01T00:00:00Z'};
+ for(const [verification,reply] of [
+  ['auth_session_rejected',()=>json({error:'synthetic-private-provider-body'},401)],
+  ['auth_session_rejected',()=>json({error:'synthetic-private-provider-body'},403)],
+  ['auth_http_unavailable',()=>json({error:'synthetic-private-provider-body'},503)],
+  ['auth_timeout',()=>{throw Object.assign(Error('synthetic-private-provider-body'),{name:'TimeoutError'});}],
+  ['auth_timeout',()=>new Response(new ReadableStream({start(controller){controller.error(new DOMException('synthetic-private-provider-body','AbortError'));}}),{status:200})],
+  ['auth_fetch_failed',()=>{throw Error('synthetic-private-provider-body');}],
+  ['auth_response_invalid',()=>new Response('synthetic-private-provider-body',{status:200})],
+  ['auth_user_invalid',()=>json({...valid,id:null})],
+  ['auth_user_unconfirmed',()=>json({...valid,email_confirmed_at:null})],
+  ['auth_user_identifier_invalid',()=>json({...valid,id:'synthetic-private-invalid-id'})]
+ ]){
+  f.authResponse=reply;f.calls.length=0;
+  const response=await remove(f),result=await response.json();
+  assert.equal(response.status,401);assert.equal(result.code,'deletion_sign_in_required');assert.equal(result.verification,verification);
+  assert.equal(f.calls.length,1);assert.equal(f.calls[0].path,'/auth/v1/user');
+  assert.equal(rows(f,'bb_account_deletions').length,0);assertNoRemoteDeletion(f);
+  const printed=JSON.stringify(result);for(const privateValue of [EMAIL,USER,TOKEN,PASSWORD,'synthetic-private'])assert.ok(!printed.includes(privateValue));
+ }
 });
 
 async function pendingActor(f,token='Bearer earlier-password-verified-session'){

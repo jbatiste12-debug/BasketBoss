@@ -32,19 +32,29 @@ async function readJson(response,max=32768){
 
 // This is a fresh server /user response, with the same bearer whose deletion
 // will be authorized. Locally stored provider metadata never grants access.
-export async function authenticatedDeletionUser(request,env,{fetcher=fetch}={}){
+export async function authenticatedDeletionUser(request,env,{fetcher=fetch,onFailure}={}){
  const bearer=request.headers.get('Authorization')||'',url=String(env.SUPABASE_URL||'');
- if(!/^Bearer [^\s]+$/.test(bearer)||!/^https:\/\/[a-z0-9-]+\.supabase\.co$/.test(url)||!env.SUPABASE_PUBLISHABLE_KEY)return null;
+ // Only fixed failure categories leave this helper. Observers cannot change
+ // authentication, and never receive a bearer, account or upstream response.
+ const reject=reason=>{try{onFailure?.(reason);}catch{}return null;};
+ if(!/^Bearer [^\s]+$/.test(bearer))return reject('bearer_invalid');
+ if(!/^https:\/\/[a-z0-9-]+\.supabase\.co$/.test(url)||!env.SUPABASE_PUBLISHABLE_KEY)return reject('auth_configuration');
+ let response;
  try{
-  const response=await fetcher(url+'/auth/v1/user',{headers:{apikey:env.SUPABASE_PUBLISHABLE_KEY,Authorization:bearer},redirect:'error',signal:AbortSignal.timeout(6500)});
-  if(!response.ok)return null;
-  const user=await readJson(response);
-  if(typeof user?.id!=='string'||typeof user.email!=='string'||!user.email_confirmed_at)return null;
+  response=await fetcher(url+'/auth/v1/user',{headers:{apikey:env.SUPABASE_PUBLISHABLE_KEY,Authorization:bearer},redirect:'error',signal:AbortSignal.timeout(6500)});
+ }catch(error){return reject(['TimeoutError','AbortError'].includes(error?.name)?'auth_timeout':'auth_fetch_failed');}
+ try{if(!response.ok)return reject(response.status===401||response.status===403?'auth_session_rejected':'auth_http_unavailable');}
+ catch{return reject('auth_response_invalid');}
+ let user;
+ try{user=await readJson(response);}catch(error){return reject(['TimeoutError','AbortError'].includes(error?.name)?'auth_timeout':'auth_response_invalid');}
+ try{
+  if(typeof user?.id!=='string'||typeof user.email!=='string')return reject('auth_user_invalid');
+  if(!user.email_confirmed_at)return reject('auth_user_unconfirmed');
   const identities=Array.isArray(user.identities)?user.identities.filter(value=>value?.provider==='apple'):[];
   const appleIdentity=identities.length>0||user.app_metadata?.providers?.includes?.('apple')===true;
   const appleSubjects=identities.map(value=>value.identity_data?.sub||value.provider_id).filter(value=>text(value,255));
   return {id:user.id,email:user.email,appleIdentity,appleSubjects};
- }catch{return null;}
+ }catch{return reject('auth_user_invalid');}
 }
 
 function decodeJWT(value){
