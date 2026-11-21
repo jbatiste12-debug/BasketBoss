@@ -55,6 +55,7 @@ async function feedbackAsset(label,host){
   const script=await fetch(url,{redirect:'manual',credentials:'omit',cache:'no-store',signal:AbortSignal.timeout(12000)});
   result.assetStatus=script.status;const body=await prefixText(script);
   result.updated=script.status===200&&body.includes('auth_response_invalid')&&body.includes('The deletion service could not read the sign-in check.')&&body.includes('The deletion request did not include your sign-in.');
+  result.billingUpdated=script.status===200&&body.includes('function billingFeedback(value)')&&body.includes('The Paddle API key lacks permission for this operation.');
  }catch{result.check='incomplete';}
  console.log(JSON.stringify(result));
 }
