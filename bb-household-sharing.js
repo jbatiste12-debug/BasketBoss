@@ -270,16 +270,19 @@ function showHeldReview(){
  area.append(info);
  const button=document.createElement('button');button.type='button';button.textContent='Keep held item(s) on this device only';
  button.onclick=async()=>{
-  if(busy){message('Finish the current sync first.');return;}
+  if(busy||actionInFlight){message('Finish the current sync first.');return;}
   if(!status?.household_id){message('Reconnect to your household first.');return;}
   if(!confirm('Keep held local items on THIS device only? They will not be shared, deleted or overwrite household data.'))return;
-  button.disabled=true;
+  const pin=accountPin(),hid=status.household_id,view=openRevision;
+  const current=()=>sameAccount(pin)&&dialog?.open&&view===openRevision&&status?.configured===true&&status?.premium===true&&status.household_id===hid;
+  if(!current())return;
+  const action={};actionInFlight=action;button.disabled=true;
   try{
-   const hid=status.household_id,keys=[...new Set(heldConflicts)],prior=baseline(hid),local=snapshot();
+   const keys=[...new Set(heldConflicts)],prior=baseline(hid),local=snapshot();
    if(!local||keys.some(k=>!prior[k]?.held||!local.has(k)))throw Error('Local review has changed. Sync again.');
    const before=Object.fromEntries(SYNC_KEYS.map(k=>[k,raw(k)]));
    const latest=await api('?mode=entries');
-   if(latest.household_id!==hid)throw Error('Household changed.');
+   if(!current()||latest.household_id!==hid)throw Error('Household changed.');
    const remote=new Set((latest.entries||[]).map(e=>key(e.section,e.entry_key)));
    if(keys.some(k=>remote.has(k)))throw Error('A shared version now exists. Review the change before deciding.');
    if(SYNC_KEYS.some(k=>raw(k)!==before[k]))throw Error('Your device changed during review. Sync again.');
@@ -289,7 +292,7 @@ function showHeldReview(){
    heldConflicts=[];showHeldReview();
    message('Held items remain on this device only. Nothing was deleted or uploaded. Tap Sync safely now to check again.');
   }catch(e){message(e?.message||'Review could not complete; nothing was changed.');}
-  finally{button.disabled=false;}
+  finally{if(actionInFlight===action)actionInFlight=null;button.disabled=false;}
  };
  area.append(button);
 }
@@ -468,13 +471,24 @@ async function open(){if(deleting())return;makeModal();if(!dialog.open)dialog.sh
  }
  body.querySelector('[data-sync]')?.addEventListener('click',()=>{if(actionInFlight)return;if(pendingRefresh){if(!refreshRenderedHousehold(pendingRefresh)){message('Finish editing before refreshing the shared screen.');return;}}return synchronize();});
 }
+function openFromTrigger(trigger){
+ if(deleting())return;
+ // This is an explicit navigation from Account/Settings into Sharing. Close
+ // only those entry layers through their own controls; other editors continue
+ // to block the existing safe refresh bridge.
+ const account=trigger?.closest?.('#cloud-panel');
+ const settings=trigger?.closest?.('.bbui-settings-overlay')||(account?document.querySelector('.bbui-settings-overlay:not([hidden])'):null);
+ if(account)document.getElementById('cloud-close')?.click();
+ settings?.querySelector('.bbui-settings-close')?.click();
+ return open();
+}
 function attach(){if(deleting())return;const app=document.getElementById('app');if(!app)return;
  // Add independent buttons without moving existing elements or changing grids.
  // The My Week Feeding control is intentionally left untouched.
  const targets=[app.querySelector('.bb321-shop-summary-top'),
   document.getElementById('bbuiAccountSection'),document.getElementById('cloud-signed')].filter(Boolean);
  for(const target of targets){if(target.querySelector('[data-bbhs-trigger]'))continue;
-  const btn=document.createElement('button');btn.type='button';btn.className='bbhs-trigger';btn.dataset.bbhsTrigger='1';btn.textContent='👥 Share with Partner';btn.onclick=e=>{e.preventDefault();e.stopPropagation();open()};target.append(btn);
+  const btn=document.createElement('button');btn.type='button';btn.className='bbhs-trigger';btn.dataset.bbhsTrigger='1';btn.textContent='👥 Share with Partner';btn.onclick=e=>{e.preventDefault();e.stopPropagation();openFromTrigger(btn)};target.append(btn);
  }
 }
 function updateInvitationNotice(){
@@ -493,11 +507,13 @@ async function foregroundCheck({force=false}={}){
   if(pendingRefresh){if(!sameAccount(pendingRefresh))pendingRefresh=null;else if(!refreshRenderedHousehold(pendingRefresh))return;}
   // Status checks discover invitations as soon as the signed-in app is awake.
   // API-selected membership and per-leaf revisions remain the only authority.
-  const previous=JSON.stringify(status);await refreshStatus();if(!sameAccount(pin))return;
+  const previous=JSON.stringify(status);await refreshStatus();if(!sameAccount(pin)||actionInFlight||busy)return;
   if(entryRequested){entryRequested=false;await open();return;}
   if(dialog?.open){
    if(previous!==JSON.stringify(status)&&!document.activeElement?.matches?.('input,textarea,select,[contenteditable="true"]'))await open();
-   return;
+   // Linked households still receive changes while this read-only panel is
+   // open. Invitations and active actions keep their existing explicit flow.
+   if(!sameAccount(pin)||actionInFlight||busy||status?.invite_status!=='accepted'||!['owner','partner'].includes(status?.role))return;
   }
   await synchronize({automatic:true});
  }finally{polling=false;}
