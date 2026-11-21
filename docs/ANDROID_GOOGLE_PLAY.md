@@ -217,3 +217,10 @@ foreground recovery; expiry/hold/refund; account deletion races; and existing
 Premium users not being offered another charge. Use licence-test instruments
 and test accounts throughout. Mocked tests and a successful AAB compile do not
 establish real-device or live-provider readiness.
+
+The Android deletion sheet also explains that deleting BasketBoss does not
+cancel Google Play billing and provides the store's subscription settings.
+Cancellation is not required before account deletion. Its actionless deletion
+form retains the original handler even on the native pricing page; explicit
+payment-form actions remain blocked. Shared web/iOS deletion handlers are not
+modified.

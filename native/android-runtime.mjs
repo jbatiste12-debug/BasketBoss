@@ -62,7 +62,13 @@ export function installAndroidRuntime({window:win=globalThis.window,document:doc
   if(event.target.closest?.('[data-bb-haptic],button[data-tab],nav.tabs button'))void haptic('selection');
  },true);
  doc.addEventListener('submit',event=>{
-  const target=event.submitter?.getAttribute('formaction')||event.target.getAttribute?.('action')||win.location.href;
+  const form=event.target,action=form.getAttribute?.('action'),submitAction=event.submitter?.getAttribute('formaction');
+  const deletionDialog=doc.getElementById('bbAccountDeletionDialog');
+  // The existing deletion controller owns its actionless form, including when
+  // Account is opened from the membership page. Explicit payment actions still
+  // pass through the same billing guard, even inside a dialog with this ID.
+  if(form.tagName==='FORM'&&deletionDialog?.tagName==='DIALOG'&&form.parentElement===deletionDialog&&action===null&&(submitAction===null||submitAction===undefined))return;
+  const target=submitAction||action||win.location.href;
   if(isAndroidBillingURL(target,win.location.href)){event.preventDefault();event.stopImmediatePropagation();win.BBNativeMembership.open();}
  },true);
  doc.addEventListener('basketboss:receipt-confirmed',()=>void haptic('success'));

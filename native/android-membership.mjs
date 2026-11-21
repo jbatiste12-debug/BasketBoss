@@ -19,6 +19,7 @@ export function installAndroidMembership({window:win=globalThis.window,document:
   win.BasketBossMembershipUI?.setNativeState?.(phase);
   text(status,message);if(login)login.hidden=!!identity()&&phase!=='signed_out';
   text(doc.getElementById('bbNativeMembershipHeading'),phase==='premium'?'Your Premium membership':'Your BasketBoss account');
+  paintDeletionManage();
  }
  async function refresh(){
   if(destroyed||deleting())return false;
@@ -81,8 +82,22 @@ export function installAndroidMembership({window:win=globalThis.window,document:
    }
   });
  }
+ function paintDeletionManage(){
+  const button=doc.getElementById('bbGooglePlayDeletionManage');
+  if(button){const disabled=deleting()||purchases?.state?.busy===true;if(button.disabled!==disabled)button.disabled=disabled;}
+ }
+ function mountDeletionNotice(){
+  const explanation=doc.getElementById('bbAccountDeletionExplanation');
+  if(!purchases||!explanation||doc.getElementById('bbGooglePlayDeletionNotice'))return;
+  const notice=doc.createElement('div');notice.id='bbGooglePlayDeletionNotice';notice.className='bb-native-membership';
+  const note=doc.createElement('p');note.textContent='Deleting your BasketBoss account does not cancel Google Play billing. Manage or cancel your subscription in Google Play. You can still delete your account without cancelling first.';
+  const manage=doc.createElement('button');manage.id='bbGooglePlayDeletionManage';manage.type='button';manage.className='bb-native-google-secondary';manage.textContent='Google Play subscription settings';
+  manage.addEventListener('click',()=>{if(!deleting()&&!purchases.state.busy)void purchases.manage();});
+  notice.append(note,manage);explanation.append(notice);paintDeletionManage();
+ }
  function tidy(){
   if(destroyed)return;
+  mountDeletionNotice();
   const intro=doc.getElementById('bbIntroTrialDialog');if(intro?.open)intro.close();hide(intro);
   hide(doc.getElementById('bbNativePlanComparison'));
   const lead=doc.getElementById('bbNativeMembershipHeading')?.nextElementSibling;
