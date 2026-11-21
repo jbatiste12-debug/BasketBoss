@@ -50,7 +50,7 @@ function householdServer(){
  server.update=recipe=>{server.sharedRows=server.sharedRows.map(row=>row.section==='planned_day'?{...row,value:{recipeId:recipe},revision:row.revision+1}:row);};
  return server;
 }
-async function fixture(server,actor=A,{plannedDay='Monday'}={}){
+async function fixture(server,actor=A,{plannedDay='Monday',stateMode='seeded'}={}){
  const anchor='window.BBHomeHost=Object.freeze({',source=await fs.readFile(path.join(root,'app.html'),'utf8');assert.ok(source.includes(anchor));
  const app=transform700Presentation(transform700Html(source,release)).replace(anchor,bridge+anchor);
  const context=await browser.newContext({viewport:{width:390,height:844},isMobile:true,hasTouch:true,reducedMotion:'reduce',serviceWorkers:'block'}),page=await context.newPage(),errors=[];
@@ -113,11 +113,17 @@ async function fixture(server,actor=A,{plannedDay='Monday'}={}){
   }catch{return route.fulfill({status:404,body:''});}
  });
  const remote=server.projection(actor);
- await context.addInitScript(({actor,remote,STOCK,INVENTORY,plannedDay})=>{
+ await context.addInitScript(({actor,remote,STOCK,INVENTORY,plannedDay,stateMode})=>{
   if(localStorage.getItem('account-pantry-live-fixture-v1'))return;
   const expires=Math.floor(Date.now()/1000)+7200,encode=value=>btoa(JSON.stringify(value)).replace(/=/g,'').replace(/\+/g,'-').replace(/\//g,'_');
   localStorage.setItem('basketboss_cloud_session_v1',JSON.stringify({access_token:encode({alg:'HS256',typ:'JWT'})+'.'+encode({sub:actor,exp:expires,iat:expires-3600,aud:'authenticated',role:'authenticated'})+'.synthetic',expires_at:expires,user:{id:actor,email:'pantry-live-'+actor.slice(-2)+'@example.invalid',email_confirmed_at:'2026-01-01T00:00:00Z'}}));
   localStorage.setItem('basketboss_321_unified_state_v1',JSON.stringify({version:2,planned:[{recipeId:'sausage-gnocchi',day:plannedDay,servings:4}],plannedBreakfasts:[],plannedDesserts:[],servings:4,feedingSet:true,pantry:{},mealPreferences:{version:1,scope:actor,diets:[],goals:[]}}));
+  if(stateMode==='absent')localStorage.removeItem('basketboss_321_unified_state_v1');
+  if(stateMode==='empty')localStorage.setItem('basketboss_321_unified_state_v1',JSON.stringify({version:2,planned:[],servings:4}));
+  if(stateMode==='recovered'){
+   localStorage.setItem('basketboss_321_unified_recovery_v1',localStorage.getItem('basketboss_321_unified_state_v1'));
+   localStorage.removeItem('basketboss_321_unified_state_v1');
+  }
   localStorage.setItem('basketboss_321_features_v1',JSON.stringify({version:1,essentials:[]}));localStorage.setItem(STOCK,JSON.stringify(remote.stock));
   const inventory={};for(const [id,qty]of Object.entries(remote.stock)){const at=id.lastIndexOf('|'),name=id.slice(0,at),unit=id.slice(at+1);inventory['fridge|'+name]={name,loc:'fridge',selected:true,qty,unit,bb173StockKey:id,bb173StockValue:qty};}
   localStorage.setItem(INVENTORY,JSON.stringify(inventory));
@@ -125,12 +131,13 @@ async function fixture(server,actor=A,{plannedDay='Monday'}={}){
   localStorage.setItem(cacheKey,JSON.stringify(cached));localStorage.setItem('basketboss_receipt_projection_owner_v1',JSON.stringify({version:1,actorId:actor,scope:remote.scope,cacheKey,initialized:true,inventoryRevision:remote.inventoryRevision,serverStock:remote.stock}));
   localStorage.setItem('bb_onboarding_fresh_once_20261028_v1',JSON.stringify({step:10,complete:true,started:false,partnerStepV2:true}));localStorage.setItem('basketboss_how_it_works_v1',JSON.stringify({version:1,seen:true}));sessionStorage.setItem('basketboss_welcome_splash_seen_v1','1');localStorage.setItem('basketboss_321_v7_market','Guernsey');
   localStorage.setItem('account-pantry-live-fixture-v1','1');
- },{actor,remote,STOCK,INVENTORY,plannedDay});
- await context.addInitScript(({actor,HH,OLD})=>{
+ },{actor,remote,STOCK,INVENTORY,plannedDay,stateMode});
+ await context.addInitScript(({actor,HH,OLD,stateMode})=>{
+  if(stateMode!=='seeded')return;
   localStorage.setItem('bb_partner_baseline_v1_'+HH+'_'+actor,JSON.stringify({
    ['planned_day\u001fMonday']:{revision:1,value:{recipeId:OLD}},['servings\u001fMonday']:{revision:1,value:{count:4}},['household_servings\u001fdefault']:{revision:1,value:{count:4}}
   }));
- },{actor,HH,OLD});
+ },{actor,HH,OLD,stateMode});
  try{
   await page.goto('https://basketboss.co.uk/app',{waitUntil:'domcontentloaded'});await page.waitForFunction(()=>window.__householdAutoSyncQA?.ready());
   await page.waitForFunction(()=>window.BBReceiptHost?.getProjection?.()?.initialized===true&&window.BBReceiptHost.getConsumptionStatus().ready===true);
@@ -154,6 +161,56 @@ async function received(page,id){
  assert.ok((await page.locator('#app').innerText()).includes(recipe.name),'the actual Plan renderer displays the received recipe');
 }
 const skip=!chromium?'Playwright unavailable':false;
+
+test('fresh linked browsers receive all seven dinners without pressing Sync and changes then travel both ways',{skip,timeout:60000},async()=>{
+ const server=householdServer(),days=['Monday','Tuesday','Wednesday','Thursday','Friday','Saturday','Sunday'];
+ server.householdStatus.set(A,{...server.householdStatus.get(A),role:'owner'});
+ server.sharedRows=days.flatMap((day,i)=>[{section:'planned_day',entry_key:day,value:{recipeId:i%2?NEXT:OLD},revision:3},{section:'servings',entry_key:day,value:{count:4},revision:3}]);
+ server.sharedRows.push({section:'household_servings',entry_key:'default',value:{count:4},revision:3});
+ const owner=await fixture(server,A,{stateMode:'absent'}),partner=await fixture(server,B,{stateMode:'absent'});
+ try{
+  for(const h of [owner,partner]){
+   await foreground(h.page);await h.page.waitForFunction(()=>window.__householdAutoSyncQA.planned().length===7);
+   assert.equal((await saved(h.page)).planned.length,7);
+   assert.match(await h.page.locator('#app').innerText(),/7\s*\/\s*7/,'the actual Plan displays all seven saved dinners');
+   assert.equal(await h.page.evaluate(()=>window.__householdAutoSyncQA.canRefresh()),true);
+   assert.deepEqual(h.errors,[]);
+  }
+  assert.equal(server.patches.length,0,'a fresh empty browser never uploads over the saved household');
+  const initialOwnerPantry=await pantry(owner.page),initialPartnerPantry=await pantry(partner.page);
+  await owner.page.locator('[data-bbfeed-day="Monday"] [data-bbfeed-delta="1"]').first().click();
+  await foreground(owner.page);await foreground(partner.page);
+  assert.equal((await partner.page.evaluate(()=>window.__householdAutoSyncQA.planned())).find(row=>row.day==='Monday').recipeId,OLD);
+  assert.equal((await saved(partner.page)).dayServings.Monday.count,5);
+  await partner.page.locator('[data-bbfeed-day="Monday"] [data-bbfeed-delta="-1"]').first().click();
+  await foreground(partner.page);await foreground(owner.page);
+  assert.equal((await saved(owner.page)).dayServings.Monday.count,4);
+  assert.deepEqual(server.patches.map(p=>[p.section,p.key]),[['servings','Monday'],['servings','Monday']]);
+  const move=async(page,recipeId)=>page.evaluate(recipeId=>{const snapshot=window.BBPlanMoveHost.snapshot();return window.BBPlanMoveHost.move({from:'Monday',to:'Tuesday',expected:snapshot.fingerprint,recipeId});},recipeId);
+  assert.equal((await move(owner.page,OLD)).ok,true);
+  await foreground(owner.page);await foreground(partner.page);
+  assert.equal((await saved(partner.page)).planned.find(row=>row.day==='Monday').recipeId,NEXT);
+  assert.equal((await saved(partner.page)).planned.find(row=>row.day==='Tuesday').recipeId,OLD);
+  assert.equal((await move(partner.page,NEXT)).ok,true);
+  await foreground(partner.page);await foreground(owner.page);
+  assert.equal((await saved(owner.page)).planned.find(row=>row.day==='Monday').recipeId,OLD);
+  assert.equal((await saved(owner.page)).planned.find(row=>row.day==='Tuesday').recipeId,NEXT);
+  assert.deepEqual(server.patches.slice(2).map(p=>[p.section,p.key]),[['planned_day','Monday'],['planned_day','Tuesday'],['planned_day','Monday'],['planned_day','Tuesday']]);
+  assert.deepEqual(await pantry(owner.page),initialOwnerPantry);assert.deepEqual(await pantry(partner.page),initialPartnerPantry);
+ }finally{await owner.context.close();await partner.context.close();}
+});
+
+test('a recovered plan on a browser without its primary saved record is kept for review instead of initialized',{skip,timeout:60000},async()=>{
+ const server=householdServer(),h=await fixture(server,A,{stateMode:'recovered'});
+ try{
+  const recovery=await h.page.evaluate(()=>localStorage.getItem('basketboss_321_unified_recovery_v1'));
+  await foreground(h.page);
+  assert.equal(await h.page.evaluate(()=>localStorage.getItem('basketboss_321_unified_state_v1')),null);
+  assert.equal(await h.page.evaluate(()=>localStorage.getItem('basketboss_321_unified_recovery_v1')),recovery);
+  assert.equal((await h.page.evaluate(()=>window.__householdAutoSyncQA.planned()))[0].recipeId,OLD);
+  assert.deepEqual(server.patches,[]);assert.equal(server.entryReads,0);
+ }finally{await h.context.close();}
+});
 
 test('Settings and Account sharing entrypoints close their parent layers and receive automatic dinner changes with Sharing open or closed',{skip,timeout:60000},async()=>{
  const server=householdServer(),h=await fixture(server);
