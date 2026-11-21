@@ -1,5 +1,5 @@
 {
-  "source": "0247438fbabff8ac77d2927a9b288d7c4099397c",
+  "source": "57cfa3a20126e34f9ace4a5ae9862187168d41c9",
   "ios": {
     "loggingBehavior": "none",
     "minVersion": "16.0",
@@ -25,11 +25,11 @@
   },
   "iosScheme": "capacitor",
   "files": {
-    "app.html": "b0d89af8aa11c50f3e2419de7fd38c495d78127b9e29b7dbbc27cffd61cc8edf",
+    "app.html": "339d8d364d68d7793d993ec2f6be20e0218ccfbbd84f68b546a2f5e649c332ee",
     "bb-auth-flow.js": "d740d67879062f8b1a9f5fb85d77b8d105de97be47e942ca4739f4fd34459399",
     "bb-home.js": "6ef580b0821a489f32e581d2078fe9fa7d67204c410b63751659a65fa4d65d50",
     "bb-serving-scale.js": "fd997aeb765ffca26d0f37bf1da581a0f88feea1cda73e003badc43f63d2e4fd",
-    "index.html": "b0d89af8aa11c50f3e2419de7fd38c495d78127b9e29b7dbbc27cffd61cc8edf",
+    "index.html": "339d8d364d68d7793d993ec2f6be20e0218ccfbbd84f68b546a2f5e649c332ee",
     "ios/.gitignore": "2b7132a9943d2622e51e656897ca5162f56b121b40b423dedce1fbc699dba88a",
     "ios/App/App.xcodeproj/project.pbxproj": "29365a13c9827b6745bbf98fd6d61347cb887a8a4dc964d198bf1c1cbfd321ec",
     "ios/App/App.xcodeproj/xcshareddata/xcschemes/App.xcscheme": "f30d63f3e8b7186c6b178e6650bcb349161e2e0face96c395b42d1cad03a414f",
@@ -58,7 +58,7 @@
     "ios/App/Podfile": "146f9b60621c1df0ddcde561e65e30162694a175c50b528175d3f761e5b69437",
     "native/apple-auth.mjs": "1385bc916b53aa30ad22035212f5918c6b83f1e358fec1cba03afbaaac12e125",
     "native/apple-purchases.mjs": "1429dc707fae9d17a5ceeb2c6609f86ba4dbc91545c2a3ba399ebb4669681531",
-    "native/bb-native.css": "0509f760f6f48fb410b1455212f5d4d3790faac208507d80848398f25f06fe59",
+    "native/bb-native.css": "d10cc235bb37367f53fd1fa88e944a90927f6e96e3716baa12b4e13a36a4263b",
     "native/cook-voice.mjs": "906b700350761afbc3282208e85968e400d465b63ede1bcdf29fc5bd6b413b39",
     "native/entry-readiness.mjs": "7be8221eee82f31fe1ac1ed65857e49e41ed39dd1d3d242496c3312fbc149e33",
     "native/membership.html": "79fbf422d9bdfdca7564be69a544992148fbfde3848bd6ca59c65b4fe43cdec9",

@@ -1,0 +1,1 @@
+Linked households now load their saved dinners automatically on a fresh device, without pressing Sync. Dinner and serving changes update both ways while the apps are open, with existing edit and conflict protections.
