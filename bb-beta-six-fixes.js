@@ -152,7 +152,10 @@
     overview.hidden=false;
     body.classList.add('bb-r6-shop-ready');
   }
-  function schedule(){if(scheduled)return;scheduled=true;requestAnimationFrame(updateOverview);}
+  // Snapshot and dependent Plan wrappers are presentation finalizers. Finish
+  // them in the renderer's mutation turn so a queued frame cannot expose the
+  // older mobile list or leave yesterday's snapshot beside a fresh Plan.
+  function schedule(){if(scheduled)return;scheduled=true;queueMicrotask(updateOverview);}
 
 
   // v1767 Plan polish: DOM decoration only; use the original budget form,

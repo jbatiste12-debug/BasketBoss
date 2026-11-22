@@ -37,15 +37,18 @@
    const current=view(),active=overlay();attribute('data-bb-tab-viewport',current?'document':null);attribute('data-bb-tab-scroll-lock',active?'overlay':null);
    const storefront=doc.getElementById('bb172Storefront'),foot=storefront?.querySelector('.bb172-storefront-bottom');let clearance=0;
    if(visible(storefront)&&visible(foot)){const height=foot.getBoundingClientRect?.().height;if(Number.isFinite(height)&&height>0)clearance=Math.ceil(Math.min(height,600)+16);}
-   variable('--bb-tab-storefront-clearance',clearance+'px');
    let extra=0;
    if(!active)for(const bar of doc.querySelectorAll('[data-bb-tab-action-bar],.bb172-shop-status,.bb1745-list-launch')){
     if(!visible(bar)||bar.closest?.(NAV))continue;
     const rect=bar.getBoundingClientRect?.(),position=win.getComputedStyle?.(bar)?.position;
     if(rect&&['fixed','sticky'].includes(position)&&rect.top>Number(win.innerHeight||0)/2&&rect.bottom>=Number(win.innerHeight||0)-4)extra=Math.max(extra,Math.ceil(Math.min(rect.height,400)+16));
    }
+   // Read both bars before changing either clearance: interleaving these
+   // writes with geometry reads forces a second layout on every tab render.
+   variable('--bb-tab-storefront-clearance',clearance+'px');
    variable('--bb-tab-action-clearance',extra+'px');
    if(requeue&&!active&&pending&&!frames.length)queueFrames();
+   return active;
   }
   function scheduleMode(){if(destroyed||modeFrame!==null)return;modeFrame=raf(()=>{modeFrame=null;mode();});}
   function top(node){if(!node||node.isConnected===false)return;try{node.scrollTo?.({top:0,left:0,behavior:'instant'});}catch{}node.scrollTop=0;node.scrollLeft=0;}
@@ -53,15 +56,16 @@
   function windowTop(){try{win.scrollTo({top:0,left:0,behavior:'instant'});}catch{try{win.scrollTo(0,0);}catch{}}top(doc.scrollingElement||doc.documentElement);}
   function perform(intent){
    frames=[];if(destroyed||pending!==intent||manual!==intent.manual)return;
-   mode(false);
-   if(intent.view&&view()!==intent.view){if(!overlay())pending=null;return;}
+   if(modeFrame!==null){caf(modeFrame);modeFrame=null;}
+   const active=mode(false);
+   if(intent.view&&view()!==intent.view){if(!active)pending=null;return;}
    if(intent.kind==='panel'){
     const panel=intent.panel&&intent.panel.isConnected!==false?intent.panel:doc.querySelector(intent.selector);
     pending=null;if(visible(panel))top(panel);return;
    }
    // Keep a navigation reset pending until an active dialog closes. Never move
    // a keyboard-focused modal or the background its owner has locked.
-   if(overlay())return;
+   if(active)return;
    pending=null;windowTop();top(main());
   }
   function queueFrames(){
@@ -104,7 +108,9 @@
    const selectors={bbPhasePrep:'.cook-panel',bbPhaseCook:'.cook-panel',bbuiSettingsTab:'.bbui-settings-panel',bbuiTutorialsTab:'.bbui-settings-panel'};
    const selector=selectors[control.id];if(selector)reset({kind:'panel',panel:control.closest(selector),selector});
   }
-  function bodyChanged(){const next=view();if(next&&next!==lastView){lastView=next;reset({view:next});}mode();}
+  // The canonical renderer calls commit() synchronously. Coalesce other body
+  // decoration changes instead of measuring the whole viewport once per owner.
+  function bodyChanged(){const next=view();if(next&&next!==lastView){lastView=next;reset({view:next});}scheduleMode();}
   function consumeMarker(){
    try{const raw=win.sessionStorage?.getItem(KEY);if(!raw)return;const marker=JSON.parse(raw),now=Date.now();if(marker?.version!==1||!Number.isFinite(marker.createdAt)||marker.createdAt>now+1000||now-marker.createdAt>TTL){win.sessionStorage.removeItem(KEY);return;}const here=locationURL();if(!here||marker.target!==here.pathname+here.search||!normal(marker.view))return;win.sessionStorage.removeItem(KEY);reset({view:marker.view});}catch{try{win.sessionStorage?.removeItem(KEY);}catch{}}
   }

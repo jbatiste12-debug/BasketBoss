@@ -14,9 +14,9 @@ try{const requested=new URLSearchParams(location.search).get('bbview');if(!reque
 <link rel="stylesheet" href="bb-food-visuals.css?v=20261031-food2">
 <script src="bb-food-visuals.js?v=20261031-food2"></script>
 <link rel="stylesheet" href="bb-navigation-polish.css?v=20261122-transitions1">
-<script defer src="bb-navigation-polish.js?v=20261105-nav1"></script>
+<script defer src="bb-navigation-polish.js?v=20261122-instant1"></script>
 <link rel="stylesheet" href="bb-account-polish.css?v=20261122-google1">
-<script defer src="bb-account-polish.js?v=20261122-transitions1"></script>
+<script defer src="bb-account-polish.js?v=20261122-instant1"></script>
 <script defer src="bb-account-pantry-live.js"></script>
 <link rel="stylesheet" href="bb-onboarding-v2.css?v=20261122-google1">
 <link rel="stylesheet" href="bb-ux-cleanup.css?v=20261028-ux1">
@@ -5770,7 +5770,7 @@ function updateStats(){
 function tabs(){document.querySelectorAll('.tab').forEach(b=>b.classList.toggle('active',b.dataset.tab===tab))}
 function bbDecorate(){
  const app=document.getElementById('app');if(!app)return;
- app.classList.remove('bb-stage-enter');void app.offsetWidth;app.classList.add('bb-stage-enter');
+ app.classList.add('bb-stage-enter');
  document.querySelectorAll('.tab').forEach(b=>{if(b.classList.contains('active'))b.setAttribute('aria-current','page');else b.removeAttribute('aria-current')});
  if(tab==='week'){
   app.querySelectorAll('.planned').forEach(row=>{
@@ -7066,7 +7066,7 @@ function bbNextComposePlan(app){
  const disclaimer=document.createElement('small');disclaimer.textContent='Shopping estimates use full-pack prices, so fewer servings may still need the same packs. Meals with their own people count keep it when you change household size. Actual checkout prices may vary.';
  budgetText.append(kicker);
  const feed=document.createElement('div');feed.className='bbfeed-control bbfeed-global';feed.setAttribute('role','group');feed.setAttribute('aria-label','Household servings');
- const feedLabel=document.createElement('span');feedLabel.textContent='👥 Feeding:';
+ const feedLabel=document.createElement('span');feedLabel.textContent='Feeding:';
  const feedMinus=document.createElement('button');feedMinus.type='button';feedMinus.textContent='−';feedMinus.setAttribute('aria-label','Feed one fewer person');
  const feedValue=document.createElement('strong');feedValue.textContent=String(BBServing.count(state.servings)||4);
  const feedPlus=document.createElement('button');feedPlus.type='button';feedPlus.textContent='+';feedPlus.setAttribute('aria-label','Feed one more person');
@@ -7237,7 +7237,7 @@ function bbNextComposePlan(app){
    if(!available)details.classList.add('is-locked');
    details.open=bb80OpenPlanDays.has(day);
    const toggle=document.createElement('summary');toggle.className='bbnext-day-toggle';
-   const label=document.createElement('span');label.className='bbnext-day-label';label.textContent=day.slice(0,3).toUpperCase();
+   const label=document.createElement('span');label.className='bbnext-day-label';label.textContent=day;
    if(state.planned.some(p=>p.day===day)){label.dataset.bbPlanHandle=day;label.title='Hold to move '+day+' dinner. Double-tap to review all planned food for '+day+' done.';}
    const desc=document.createElement('span');desc.className='bbnext-day-description';
    const title=document.createElement('strong');title.textContent=pendingUnloaded?'Saved dinner · waiting for recipe access':available?(recipe?.name||'No meal planned'):'🔒 Premium dinner saved';
@@ -14046,7 +14046,7 @@ if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',
 </style>
 
 <!-- bb-r7-iphone-20261025 -->
-<script defer src="bb-beta-six-fixes.js?v=20261105-nav1"></script>
+<script defer src="bb-beta-six-fixes.js?v=20261122-instant1"></script>
 <!-- bb-qa-final-five-v1768-20261025 -->
 <script defer src="bb-beta-launch-polish.js?v=20261105-nav1"></script>
 
@@ -14150,7 +14150,7 @@ body[data-bbnext-view="discover"] #app .bb175-discover-heading{padding-top:calc(
 <!-- BasketBoss isolated Plan / premium UI polish; original app handlers unchanged -->
 <link rel="stylesheet" href="bb-premium-feature-badges.css?v=20261101-badge1">
 <script defer src="bb-premium-feature-badges.js?v=20261101-weeklyshop1"></script>
-<link rel="stylesheet" href="bb-weekly-shop.css?v=20261101-weeklyshop1">
+<link rel="stylesheet" href="bb-weekly-shop.css?v=20261122-instant1">
 <script defer src="bb-weekly-shop.js?v=20261105-preflight1"></script>
 <link rel="stylesheet" href="bb-membership-compare.css?v=20261101-member1">
 <script defer src="bb-membership-compare.js?v=20261105-reduced1"></script>
@@ -14190,7 +14190,7 @@ body[data-bbnext-view="discover"] #app .bb175-discover-heading{padding-top:calc(
 <link rel="stylesheet" href="bb-simple-layout.css?v=20261104-plan-budget1">
 <script defer src="bb-simple-layout.js?v=20261114-budget1"></script>
 <script defer src="bb-pantry-deduction.js?v=20261107-pantry-stock2"></script>
-<script defer src="bb-home.js?v=20261114-onboarding1"></script><link rel="stylesheet" href="bb-day-done.css?v=20261108-planner1"><script defer src="bb-day-done.js?v=20261108-planner1"></script><link rel="stylesheet" href="bb-shop-add.css?v=20261105-reduced1"><script defer src="bb-shop-add.js?v=20261114-onboarding1"></script><script defer src="bb-cupboard-staples.js?v=20261104-cupboard2"></script><script src="bb-pantry-autofill.js?v=20261105-reduced1"></script><link rel="stylesheet" href="bb-pantry-first-controls.css"><script defer src="bb-pantry-first-controls.js"></script>
+<script defer src="bb-home.js?v=20261114-onboarding1"></script><link rel="stylesheet" href="bb-day-done.css?v=20261108-planner1"><script defer src="bb-day-done.js?v=20261108-planner1"></script><link rel="stylesheet" href="bb-shop-add.css?v=20261105-reduced1"><script defer src="bb-shop-add.js?v=20261114-onboarding1"></script><script defer src="bb-cupboard-staples.js?v=20261104-cupboard2"></script><script src="bb-pantry-autofill.js?v=20261105-reduced1"></script><link rel="stylesheet" href="bb-pantry-first-controls.css"><script defer src="bb-pantry-first-controls.js?v=20261122-instant1"></script>
 <link rel="stylesheet" href="bb-shared-shopping.css?v=20261102-loop2">
 <script defer src="bb-shared-shopping.js?v=20261102-loop2"></script>
 <link rel="stylesheet" href="bb-plan-drag.css?v=20261105-daydone1">
@@ -14200,7 +14200,7 @@ body[data-bbnext-view="discover"] #app .bb175-discover-heading{padding-top:calc(
 <script defer src="bb-pantry-camera.js?v=20261107-pantry-stock2"></script>
 <link rel="stylesheet" href="bb-cook-experience.css?v=20261105-cook1">
 <link rel="stylesheet" href="bb-tab-viewport.css?v=20261105-preflight1">
-<script defer src="bb-tab-viewport.js?v=20261105-nav1"></script>
+<script defer src="bb-tab-viewport.js?v=20261122-instant1"></script>
 
 <link rel="stylesheet" href="bb-auth-flow.css?v=20261122-google1">
 <script defer src="bb-auth-sdk.js?v=20261104-auth1"></script>
@@ -14219,14 +14219,16 @@ body[data-bbnext-view="discover"] #app .bb175-discover-heading{padding-top:calc(
 <link rel="stylesheet" href="bb-premium-finish.css?v=20261110-forest1">
 <link rel="stylesheet" href="bb-premium-dialogs.css?v=20261110-forest1">
 
-<link rel="stylesheet" href="bb-plan-compact.css?v=20261122-transitions1">
+<link rel="stylesheet" href="bb-plan-compact.css?v=20261122-instant1">
 <script defer src="bb-plan-compact.js?v=20261122-week-polish1"></script>
+<link rel="stylesheet" href="bb-plan-home-snapshot.css?v=20261122-instant1">
+<script defer src="bb-plan-home-snapshot.js?v=20261122-instant1"></script>
 
 <link rel="stylesheet" href="bb-day-plan-sheet.css?v=20261114-layout1">
-<script defer src="bb-day-plan-sheet.js?v=20261114-layout1"></script>
+<script defer src="bb-day-plan-sheet.js?v=20261122-instant1"></script>
 <link rel="stylesheet" href="bb-at-home-compact.css?v=20261114-layout1">
 <link rel="stylesheet" href="bb-weekly-spending-ui.css?v=20261114-budget1">
 <link rel="stylesheet" href="bb-shop-compact.css?v=20261114-shop1">
 <link rel="stylesheet" href="bb-discover-compact.css?v=20261115-layout1">
-<script defer src="bb-discover-compact.js?v=20261115-layout1"></script>
+<script defer src="bb-discover-compact.js?v=20261122-instant1"></script>
 </body></html>

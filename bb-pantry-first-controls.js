@@ -98,7 +98,10 @@
   function schedule(){
    if(queued)return;queued=true;
    const update=()=>{queued=false;mount();};
-   if(typeof win.requestAnimationFrame==='function')win.requestAnimationFrame(update);
+   // This only mounts the existing controls and busy labels. Complete their
+   // dependent Plan wrappers before paint; purchase/planning hosts stay intact.
+   if(typeof win.queueMicrotask==='function')win.queueMicrotask(update);
+   else if(typeof win.requestAnimationFrame==='function')win.requestAnimationFrame(update);
    else win.setTimeout(update,0);
   }
   function start(){

@@ -79,7 +79,9 @@
   const app=doc.getElementById('app');if(!app)return;
   searchPanel(app);hero(app);gallery(app);
  }
- function schedule(){if(queued)return;queued=true;win.requestAnimationFrame(refresh);}
+ // These wrappers read the already-rendered recipe. They must settle before
+ // paint rather than briefly showing the unstyled legacy card on each visit.
+ function schedule(){if(queued)return;queued=true;win.queueMicrotask(refresh);}
  function start(){
   const app=doc.getElementById('app');if(!app)return;
   new MutationObserver(schedule).observe(app,{childList:true,subtree:true});

@@ -18,7 +18,8 @@
     const height = Math.max(1, Math.min(Number(view?.height) || root.innerHeight, root.innerHeight));
     const width = Math.max(1, Math.min(Number(view?.width) || root.innerWidth, root.innerWidth));
     for (const [name, value] of Object.entries({ height, width, top: Math.max(0, Number(view?.offsetTop) || 0), left: Math.max(0, Number(view?.offsetLeft) || 0) })) {
-      state.panel.style.setProperty('--bbap-viewport-' + name, value + 'px');
+      const property = '--bbap-viewport-' + name, next = value + 'px';
+      if (state.panel.style.getPropertyValue(property) !== next) state.panel.style.setProperty(property, next);
     }
     const card = doc.getElementById('cloud-card'), input = doc.activeElement;
     if (!card?.contains(input) || !input.matches?.('input,textarea,select')) return;
@@ -215,12 +216,15 @@
       if (state.focusBack?.isConnected && !panel.contains(state.focusBack)) state.focusBack.focus?.({ preventScroll: true });
       state.focusBack = null;
     }
-    if (opened) scheduleViewport();
+    // Opening sets the bounds synchronously. Later auth presentation changes
+    // only need a fit when a field is focused; keyboard/resize events keep
+    // their existing explicit viewport updates.
+    if (opened && card.contains(doc.activeElement) && doc.activeElement?.matches?.('input,textarea,select')) scheduleViewport();
   }
   function decorateHeader() {
     const header = doc.querySelector('.shell > header.top');
     if (!header) return;
-    header.dataset.bbAccountPolish = 'banner';
+    if (header.dataset.bbAccountPolish !== 'banner') header.dataset.bbAccountPolish = 'banner';
     const settings = doc.getElementById('bbuiOpenSettings');
     if (settings && !settings.dataset.bbAccountPolish) {
       settings.dataset.bbAccountPolish = 'trigger';
@@ -228,7 +232,10 @@
     }
   }
   function refresh() { state.queued = false; decorateHeader(); decorateSettings(); syncAccount(); }
-  function schedule() { if (!state.queued) { state.queued = true; root.requestAnimationFrame(refresh); } }
+  // Settings can be inserted by the legacy owner inside an animation frame.
+  // Decorate in that mutation's microtask checkpoint, before the next paint,
+  // rather than exposing its original layout until another frame runs.
+  function schedule() { if (!state.queued) { state.queued = true; if (root.queueMicrotask) root.queueMicrotask(refresh); else Promise.resolve().then(refresh); } }
   function start() {
     root.visualViewport?.addEventListener('resize', scheduleViewport);
     root.visualViewport?.addEventListener('scroll', scheduleViewport);

@@ -41,6 +41,7 @@ function fixture({open=[],count=8,bannerHidden=false}={}){
   querySelectorAll(selector){if(selector.startsWith(':scope>'))return this.children.filter(node=>node.matches(selector.slice(7)));return walk(this).slice(1).filter(node=>node.matches(selector));}
   querySelector(selector){return this.querySelectorAll(selector)[0]||null;}
   addEventListener(name,fn){listen(this.events,name,fn);}
+  getAttribute(name){return this.attributes[name]??null;}
   setAttribute(name,value){this.attributes[name]=String(value);}
   removeAttribute(name){delete this.attributes[name];}
   contains(node){return walk(this).includes(node);}
@@ -119,4 +120,17 @@ test('leaving Plan removes only presentation state and preserves the native open
  const h=fixture();h.fire('click',h.rows.Monday.title);h.doc.body.dataset.bbnextView='discover';h.win.BBPlanDaySheet.refresh();
  assert.equal(h.rows.Monday.row.open,true);assert.equal(h.doc.documentElement.classList.contains('bb-day-plan-sheet-open'),false);
  h.doc.body.dataset.bbnextView='week';h.win.BBPlanDaySheet.refresh();assert.equal(h.rows.Monday.row.classList.contains('bbdps-active'),false);
+});
+
+
+test('settled day sheets do not rewrite presentation classes or ARIA on unrelated DOM refreshes',()=>{
+ const h=fixture();h.fire('click',h.rows.Monday.title);
+ const row=h.rows.Monday.row,content=h.rows.Monday.content,html=h.doc.documentElement,calls={classes:0,aria:0};
+ for(const node of[row,html]){let value=node.className;Object.defineProperty(node,'className',{get:()=>value,set:next=>{calls.classes++;value=next;}});}
+ const set=content.setAttribute.bind(content);content.setAttribute=(...args)=>{calls.aria++;set(...args);};
+ for(let i=0;i<6;i++)h.win.BBPlanDaySheet.refresh();
+ assert.deepEqual(calls,{classes:0,aria:0});
+ h.fire('click',content.querySelector('.bbdps-close'));calls.classes=0;calls.aria=0;
+ for(let i=0;i<6;i++)h.win.BBPlanDaySheet.refresh();
+ assert.deepEqual(calls,{classes:0,aria:0},'closed sheets also leave the global presentation class alone');
 });

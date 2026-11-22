@@ -5,7 +5,7 @@ import vm from 'node:vm';
 const source=fs.readFileSync(new URL('../bb-navigation-polish.js',import.meta.url),'utf8');
 
 function fixture({cook=false,existingId='',unsupported=false}={}){
- const frames=[],watchers=[],windowEvents=new Map();let targets=[];
+ const frames=[],microtasks=[],watchers=[],windowEvents=new Map();let targets=[];
  class Node{
   constructor(tag,text=''){this.tagName=tag.toUpperCase();this._text=text;this.children=[];this.attributes=new Map();this.classes=new Set();this.id='';this.inner='';this.handlers=new Map();this.parent=null;this.dataset={};this.hidden=false;this.isConnected=true;this.computed={display:'block',visibility:'visible'};}
   get textContent(){return this._text+this.children.map(x=>x.textContent).join('');}set textContent(value){this._text=value;this.children=[];}
@@ -32,9 +32,9 @@ function fixture({cook=false,existingId='',unsupported=false}={}){
  const storefront=new Node('section');storefront.id='bb172Storefront';storefront.hidden=true;
  const doc={readyState:'complete',body,querySelectorAll:()=>[nav],createElement:tag=>new Node(tag),getElementById:id=>id===storefront.id?storefront:id===nav.id?nav:null};
  const win={addEventListener:(name,fn)=>windowEvents.set(name,fn),getComputedStyle:node=>node.computed};
- const context=vm.createContext({document:doc,window:win,MutationObserver:class{constructor(fn){this.fn=fn;watchers.push(this);}observe(node,options){this.node=node;this.options=options;}},requestAnimationFrame:fn=>frames.push(fn)});
+ const context=vm.createContext({document:doc,window:win,MutationObserver:class{constructor(fn){this.fn=fn;watchers.push(this);}observe(node,options){this.node=node;this.options=options;}},requestAnimationFrame:fn=>frames.push(fn),queueMicrotask:fn=>microtasks.push(fn)});
  vm.runInContext(source,context);
- return {nav,items:nav.children,body,storefront,win,frames,watchers,windowEvents,targets,refresh:()=>win.BBNavigationPolish.refresh()};
+ return {nav,items:nav.children,body,storefront,win,frames,microtasks,watchers,windowEvents,targets,refresh:()=>win.BBNavigationPolish.refresh()};
 }
 
 test('polishing preserves real tab elements, targets, labels, aria and click handlers',()=>{
@@ -88,7 +88,7 @@ test('refresh is stable and observers stay scoped to navigation and body state',
  h.refresh();h.refresh();assert.deepEqual(h.items.map(item=>item.querySelector('.nav-icon')),icons);assert.equal(h.nav.id,'existing-navigation');
  assert.equal(h.watchers.length,2);assert.equal(h.watchers[0].node,h.nav);assert.equal(h.watchers[0].options.subtree,true);
  assert.equal(h.watchers[1].node,h.body);assert.equal(h.watchers[1].options.subtree,undefined,'do not rescan on every app content mutation');
- h.watchers[0].fn();h.watchers[0].fn();assert.equal(h.frames.length,1,'batch repeated navigation mutations');h.frames.shift()();
+ h.watchers[0].fn();h.watchers[0].fn();assert.equal(h.microtasks.length,1,'batch repeated navigation mutations before paint');assert.equal(h.frames.length,0,'navigation finalization must not wait for a later animation frame');h.microtasks.shift()();
 });
 
 test('unrelated or incomplete navigation is untouched',()=>{
