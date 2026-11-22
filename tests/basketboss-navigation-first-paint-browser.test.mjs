@@ -49,7 +49,7 @@ async function fixture(viewport,run,{slowPolishMs=0,observeColdPaint=false}={}){
   const visible=node=>!!node&&node.getClientRects().length>0&&getComputedStyle(node).visibility!=='hidden'&&getComputedStyle(node).display!=='none'&&(!node.checkVisibility||node.checkVisibility({checkOpacity:true,checkVisibilityCSS:true}));
   const sample=()=>{
    const region=document.getElementById('bb307Island')?.closest('[role="note"]'),ring=document.querySelector('#app.bbnext-plan .bbnext-plan-donut');
-   const legacyPlan=visible(ring)&&ring.getBoundingClientRect().height>70;
+   const legacyPlan=visible(ring)&&!document.querySelector("#app .bbpc-week-header")&&ring.getBoundingClientRect().height>70;
    let diagnostic;
    if(legacyPlan){
     const declarations=[];
@@ -145,7 +145,7 @@ for(const viewport of [{width:390,height:844},{width:1440,height:1000}])test('no
   const sample=()=>{
    const view=document.body.dataset.bbnextView;
    const region=document.getElementById('bb307Island')?.closest('[role="note"]'),ring=document.querySelector('#app.bbnext-plan .bbnext-plan-donut');
-   probe.frames.push({view,legacy:view==='shop'&&['bb172Cupboard','bb172StaplesPanel'].some(id=>visible(document.getElementById(id))),legacyRegion:region?.parentElement===document.body&&visible(region),legacyPlan:visible(ring)&&ring.getBoundingClientRect().height>70,pantryReady:view==='shop'&&!!document.querySelector('#bb173ShopFridge.bbpi-enhanced #bbpiToolbar')});
+   probe.frames.push({view,legacy:view==='shop'&&['bb172Cupboard','bb172StaplesPanel'].some(id=>visible(document.getElementById(id))),legacyRegion:region?.parentElement===document.body&&visible(region),legacyPlan:visible(ring)&&!document.querySelector("#app .bbpc-week-header")&&ring.getBoundingClientRect().height>70,pantryReady:view==='shop'&&!!document.querySelector('#bb173ShopFridge.bbpi-enhanced #bbpiToolbar')});
    if(probe.frames.length<2000)requestAnimationFrame(sample);
   };requestAnimationFrame(sample);
  });
