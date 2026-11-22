@@ -15,7 +15,7 @@ fi
 command -v node >/dev/null 2>&1 || { printf 'Install Node.js 22 or newer first.\n' >&2; exit 1; }
 node -e 'if(Number(process.versions.node.split(".")[0])<22)process.exit(1)'
 
-BB_ANDROID_SOURCE='d18a88956a2a77608bd2a9b1c4c564eae1370839'
+BB_ANDROID_SOURCE='3592ae970114fb0df5cd4a2b8b160ecf3281549f'
 bb_android_is_java21() {
   "$1/bin/java" -XshowSettings:properties -version 2>&1 | grep -E 'java.specification.version = 21$' >/dev/null
 }

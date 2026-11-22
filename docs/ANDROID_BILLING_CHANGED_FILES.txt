@@ -1,8 +1,8 @@
-BasketBoss Android subscription parity: complete changed-file inventory
-Compared with production main 57cfa3a20126e34f9ace4a5ae9862187168d41c9.
-Includes the existing Android draft foundation and the parity completion.
+BasketBoss Android subscription parity and code5 visual release: complete changed-file inventory
+Compared with original production baseline 57cfa3a20126e34f9ace4a5ae9862187168d41c9.
+Includes the existing Android draft foundation, parity completion and approved visual updates.
 Generated platform outputs and private signing material are not tracked.
-Application source pin: d18a88956a2a77608bd2a9b1c4c564eae1370839
+Application source pin: 3592ae970114fb0df5cd4a2b8b160ecf3281549f
 
 .github/workflows/android-build.yml
 .gitignore
@@ -58,6 +58,11 @@ android/gradlew.bat
 android/recipeImages/build.gradle
 android/settings.gradle
 android/variables.gradle
+app.html
+bb-navigation-polish.css
+bb-plan-compact.css
+bb-plan-compact.js
+bb-plan-premium-polish.css
 bb-server-lib/bb-account-deletion.js
 bb-server-lib/bb-apple-subscriptions.js
 bb-server-lib/bb-checkout-state.js
@@ -85,6 +90,7 @@ functions/api/subscription/checkout.js
 functions/api/subscription/portal.js
 functions/api/subscription/purchase-intent.js
 functions/api/subscription/status.js
+index.html
 native/android-membership.mjs
 native/android-routing.mjs
 native/android-runtime.mjs
@@ -94,6 +100,10 @@ native/google-play-purchases.mjs
 native/purchase-intents.mjs
 package-lock.json
 package.json
+pwa700/app.html
+pwa700/make-a-meal.html
+pwa700/manifest.json
+pwa700/precache.js
 release-assets/build57-README.txt
 release-assets/build57-phone-checklist.txt
 release-assets/prepare-android-mac.command
@@ -116,16 +126,20 @@ tests/basketboss-android-runtime.test.mjs
 tests/basketboss-android-server-transport.test.mjs
 tests/basketboss-android-signing.test.mjs
 tests/basketboss-apple-deferred-intents.test.mjs
+tests/basketboss-bottom-nav-mask-browser.test.mjs
 tests/basketboss-build57-launcher-archive.test.mjs
 tests/basketboss-google-play-access-integration.test.mjs
 tests/basketboss-google-play-api.test.mjs
 tests/basketboss-google-play-notifications.test.mjs
 tests/basketboss-google-play-subscriptions.test.mjs
+tests/basketboss-my-week-visual-browser.test.mjs
 tests/basketboss-native-api-origin.test.mjs
 tests/basketboss-native-apple-purchase-intents.test.mjs
 tests/basketboss-native-apple-ui.test.mjs
 tests/basketboss-native-purchase-intents.test.mjs
+tests/basketboss-navigation-first-paint-browser.test.mjs
 tests/basketboss-paddle-purchase-intents.test.mjs
+tests/basketboss-plan-font-browser.test.mjs
 tests/basketboss-provider-purchase-intents.test.mjs
 tests/basketboss-purchase-intents-deletion.test.mjs
 tests/basketboss-purchase-intents.test.mjs
