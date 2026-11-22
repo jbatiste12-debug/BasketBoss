@@ -56,5 +56,49 @@
   doc.addEventListener?.('visibilitychange',pause);pause();refresh();
   const controller=Object.freeze({refresh,showMeal(){meal.hidden=false;},clearMeal(){meal.hidden=true;},destroy(){observer?.disconnect();doc.removeEventListener?.('visibilitychange',pause);mounted.delete(hub);}});mounted.set(hub,controller);return controller;
  }
+ // Hydrate the current photo workspace independently of the larger legacy
+ // controller. The same camera input remains the owner of the user's files.
+ // Readiness still belongs exclusively to the original controller's marker.
+ function mountInitial(){
+  const doc=root.document;
+  if(!doc?.querySelector||!doc.body?.classList.contains('bb-r6-cook-page')||doc.getElementById('bb15AiPremiumHub'))return;
+  const dashboard=doc.querySelector('.bb-meal-dashboard'),stage=doc.getElementById('bbToolStage');
+  if(!dashboard||!stage||!doc.getElementById('generate')){doc.documentElement.classList.add('bb-cook-unavailable');return;}
+  const parent=stage.parentNode,next=stage.nextSibling,wasHidden=dashboard.hidden;let hub;
+  try{
+  hub=doc.createElement('section');hub.id='bb15AiPremiumHub';dashboard.before(hub);
+  if(!mount({hub,workspace:dashboard}))throw Error('Cook presentation unavailable');
+  const input=doc.getElementById('ai-photo-input'),html=doc.documentElement;
+  if(!input||html.classList.contains('bb-cook-ready'))return;
+  let pending=null,finished=false;
+  const clear=()=>{pending=null;};
+  const capture=event=>{
+   if(html.classList.contains('bb-cook-ready'))return;
+   // Stop only pre-hydration delivery. Once the original handler is attached,
+   // replay the latest native selection exactly once on this identical input.
+   pending=event.type;event.stopImmediatePropagation();
+  };
+  const release=()=>{
+   if(finished||!html.classList.contains('bb-cook-ready'))return;
+   finished=true;observer.disconnect();
+   input.removeEventListener('change',capture,true);input.removeEventListener('cancel',capture,true);
+   for(const name of resetEvents)root.removeEventListener(name,clear);
+   const type=pending;pending=null;
+   if(type&&input.isConnected&&doc.getElementById('ai-photo-input')===input&&root.BBAccountDeletion?.isDeleting?.()!==true)input.dispatchEvent(new root.Event(type,{bubbles:true}));
+  };
+  const resetEvents=['basketboss:session-changed','basketboss:account-deletion-started','basketboss:account-deletion-deleted'];
+  for(const name of resetEvents)root.addEventListener(name,clear);
+  input.addEventListener('change',capture,true);input.addEventListener('cancel',capture,true);
+  const observer=new root.MutationObserver(release);observer.observe(html,{attributes:true,attributeFilter:['class']});
+  release();
+  }catch{
+   // A failed local enhancement must leave honest recovery navigation. Keep
+   // the original controls intact for the controller or an ordinary retry.
+   if(stage.parentNode!==parent)parent.insertBefore(stage,next?.parentNode===parent?next:null);
+   hub?.remove();dashboard.hidden=wasHidden;doc.body.classList.remove('bb-cook-studio-page','bb-photo-meal-page');
+   doc.documentElement.classList.add('bb-cook-unavailable');
+  }
+ }
  root.BBCookStudio=Object.freeze({mount,ingredientNames});
+ if(root.document?.readyState==='loading')root.document.addEventListener('DOMContentLoaded',mountInitial,{once:true});else mountInitial();
 })(typeof window==='undefined'?globalThis:window);

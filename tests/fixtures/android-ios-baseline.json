@@ -25,11 +25,11 @@
   },
   "iosScheme": "capacitor",
   "files": {
-    "app.html": "253c02af8eca20368648308061722b0078ba651d3141b4365673a9251708a4c2",
+    "app.html": "8030eb6202678338cf9ac77ce5ddd627676e8a7ede412dfb5abf428e968c7f63",
     "bb-auth-flow.js": "cc85150d13f6dde136d7b54d5876448495f14895c51ed1b57a55027193def381",
     "bb-home.js": "6ef580b0821a489f32e581d2078fe9fa7d67204c410b63751659a65fa4d65d50",
     "bb-serving-scale.js": "fd997aeb765ffca26d0f37bf1da581a0f88feea1cda73e003badc43f63d2e4fd",
-    "index.html": "253c02af8eca20368648308061722b0078ba651d3141b4365673a9251708a4c2",
+    "index.html": "8030eb6202678338cf9ac77ce5ddd627676e8a7ede412dfb5abf428e968c7f63",
     "ios/.gitignore": "2b7132a9943d2622e51e656897ca5162f56b121b40b423dedce1fbc699dba88a",
     "ios/App/App.xcodeproj/project.pbxproj": "29365a13c9827b6745bbf98fd6d61347cb887a8a4dc964d198bf1c1cbfd321ec",
     "ios/App/App.xcodeproj/xcshareddata/xcschemes/App.xcscheme": "f30d63f3e8b7186c6b178e6650bcb349161e2e0face96c395b42d1cad03a414f",
@@ -70,7 +70,7 @@
   },
   "reviewedOverrides": {
     "native/apple-purchases.mjs": "Optional protocol-1 coordination only; existing StoreKit product, receipt, restore, finish and paid-access rules remain covered by Apple regressions. Swift/Xcode baseline is unchanged.",
-    "app.html": "Reviewed presentation-only Plan typography, stable first paint and My Week markup/cache references through approved visual source8787a2e, merged as3604d55; every original inline script body is byte-identical to the protected source57cfa3a.",
-    "index.html": "Reviewed presentation-only Plan typography, stable first paint and My Week markup/cache references through approved visual source8787a2e, merged as3604d55; every original inline script body is byte-identical to the protected source57cfa3a."
+    "app.html": "Reviewed presentation-only instant tab/Cook hydration and readonly home snapshot asset references, hero CSS, exact obsolete entrance-animation reflow removal, removal of the people emoji from the Feeding label, and full-day display labels. No calculations, state, auth/deletion/onboarding restore, billing, or original click handlers changed. All other protected source hashes retained.",
+    "index.html": "Reviewed presentation-only instant tab/Cook hydration and readonly home snapshot asset references, hero CSS, exact obsolete entrance-animation reflow removal, removal of the people emoji from the Feeding label, and full-day display labels. No calculations, state, auth/deletion/onboarding restore, billing, or original click handlers changed. All other protected source hashes retained."
   }
 }
