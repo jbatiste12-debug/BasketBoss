@@ -42,6 +42,9 @@ on:
       - bb-server-lib/bb-household-premium.js
       - functions/api/subscription/status.js
       - functions/api/apple/purchase-context.js
+      - functions/api/apple/verify.js
+      - functions/api/apple/notifications.js
+      - tests/basketboss-apple-deferred-intents.test.mjs
       - functions/api/household/index.js
       - functions/api/google-play/**
       - sql/basketboss_google_play*.sql
@@ -83,6 +86,9 @@ on:
       - bb-server-lib/bb-household-premium.js
       - functions/api/subscription/status.js
       - functions/api/apple/purchase-context.js
+      - functions/api/apple/verify.js
+      - functions/api/apple/notifications.js
+      - tests/basketboss-apple-deferred-intents.test.mjs
       - functions/api/household/index.js
       - functions/api/google-play/**
       - sql/basketboss_google_play*.sql
@@ -137,6 +143,7 @@ jobs:
           tests/basketboss-native-billing-guard.test.mjs
           tests/basketboss-native-apple-trial.test.mjs
           tests/basketboss-apple-subscriptions.test.mjs
+          tests/basketboss-apple-deferred-intents.test.mjs
           tests/basketboss-apple-access.test.mjs
           tests/basketboss-account-deletion-billing-races.test.mjs
           tests/basketboss-native-api-origin.test.mjs

@@ -42,7 +42,10 @@ export async function onRequestPost({request,env}){
    if(googlePlay?.premiumAccess||['pending','on_hold','paused'].includes(googlePlay?.status))return json({ok:false,canPurchase:false,reason:googlePlay.premiumAccess?'already_premium':'existing_subscription',provider:'google_play',error:'Manage or complete your existing Google Play subscription before starting another subscription.'},409);
   }
   if(providerError)throw providerError;
-  const appAccountToken=await appleAccountToken(env,user.id,{create:true});
+  // New protocol purchases carry their durable attempt identity through Ask to
+  // Buy, app termination and server notifications. Legacy contexts retain the
+  // stable account token; neither token is itself an entitlement.
+  const appAccountToken=reservation?.id||await appleAccountToken(env,user.id,{create:true});
   const allowedProductIds=[body.productId];
   delivered=true;
   return json({canPurchase:true,appAccountToken,productIds:allowedProductIds,allowedProductIds,environment:config.environment,sandboxPurchaseAllowed,...(reservation?{reservation}:{})});

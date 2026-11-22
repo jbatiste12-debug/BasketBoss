@@ -72,12 +72,18 @@ export function installAndroidMembership({window:win=globalThis.window,document:
    text(terms,(state.offers.some(offer=>offer.hasTrial)?'Payment is charged to your Google Play account when you confirm, or when the eligible free trial shown for your selected offer ends. ':'Payment is charged to your Google Play account when you confirm. ')+'Subscriptions renew automatically at the renewal price shown above unless cancelled before renewal. Manage or cancel in Google Play before your trial or billing period ends. Google Play confirms your selected offer and price before purchase.');
    const next=JSON.stringify({offers:state.offers,busy:state.busy,available:state.available,premiumAccess:state.premiumAccess,authenticated:state.authenticated,membershipState:state.membershipState});
    if(next===previous)return;previous=next;plans.replaceChildren();
-   for(const offer of state.offers){
+   // Match StoreKit's one choice per billing period: use the eligible intro
+   // offer, with a regular base-plan fallback when Play does not return one.
+   const preferred=['monthly','annual'].map(plan=>{
+    const eligible=state.offers.filter(offer=>offer.plan===plan);
+    return eligible.find(offer=>offer.hasTrial)||eligible.find(offer=>offer.offerId!==null)||eligible[0];
+   }).filter(Boolean);
+   for(const offer of preferred){
     const button=doc.createElement('button');button.type='button';button.className='bb-native-google-plan';button.disabled=state.busy||!state.available||state.premiumAccess||state.authenticated&&state.membershipState!=='free';
     button.setAttribute('data-google-play-plan',offer.plan);
     const label=doc.createElement('strong');label.textContent=offer.title;
     const price=doc.createElement('span');price.textContent=offer.price;
-    const action=doc.createElement('small');action.textContent=state.authenticated?'Continue with Google Play':'Sign in to continue';
+    const action=doc.createElement('small');action.textContent=state.authenticated?(offer.hasTrial?'Start free trial with Google Play':'Continue with Google Play'):'Sign in to continue';
     button.append(label,price,action);button.addEventListener('click',()=>{if(!identity()){signIn();return;}void purchases.subscribe(offer.key);});plans.append(button);
    }
   });

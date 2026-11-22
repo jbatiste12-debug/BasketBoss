@@ -68,7 +68,7 @@ test('Apple context protocol is optional by default, strict requires new protoco
  assert.equal(response.status,409);assert.equal((await response.json()).provider,'owner');
  assert.equal(f.sql.prepare('SELECT phase FROM bb_purchase_intents').get().phase,'canceled');
  response=await appleContext({env:f.env,request:request('/api/apple/purchase-context',{productId:PRODUCT,reservationProtocol:1})});
- assert.equal(response.status,200);const context=await response.json();assert.equal(context.reservation.phase,'prepared');assert.equal(context.appAccountToken,ACCOUNT);
+ assert.equal(response.status,200);const context=await response.json();assert.equal(context.reservation.phase,'prepared');assert.equal(context.appAccountToken,context.reservation.id);
  assert.equal(f.sql.prepare('SELECT count(*) AS n FROM bb_apple_subscriptions').get().n,0);
 }));
 

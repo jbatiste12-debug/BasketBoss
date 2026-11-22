@@ -15,7 +15,7 @@ after(async()=>{await browser?.close();});
 const css=fs.readFileSync(new URL('../native/android.css',import.meta.url),'utf8');
 function html({premium=false,provider=null,available=true,restoreAvailable,signedOut=false}={}){
  return `<!doctype html><html><head><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover"><style>*{box-sizing:border-box}body{margin:0;padding:12px!important}button{font:inherit}${css}</style></head><body><main id="bbNativeMembershipMount"></main><button id="cloud-open">Account sign in</button><script>
- window.__premium=${premium};window.__provider=${JSON.stringify(provider)};window.__available=${available};window.__native=[];window.__proofRefreshes=0;window.__purchaseStatus='cancelled';window.__signedIn=!${signedOut};window.__restoreAvailable=${JSON.stringify(restoreAvailable)};window.__owned=[];window.__ownedQueries=0;window.__serviceCalls=[];
+ window.__premium=${premium};window.__provider=${JSON.stringify(provider)};window.__available=${available};window.__native=[];window.__proofRefreshes=0;window.__purchaseStatus='cancelled';window.__trialEligible=true;window.__signedIn=!${signedOut};window.__restoreAvailable=${JSON.stringify(restoreAvailable)};window.__owned=[];window.__ownedQueries=0;window.__serviceCalls=[];
  if(__signedIn)localStorage.setItem('basketboss_cloud_session_v1',JSON.stringify({user:{id:'test-member'},access_token:'synthetic-bearer',expires_at:Date.now()/1000+3600}));
  document.getElementById('cloud-open').addEventListener('click',()=>window.__signInClicked=true);
  window.BasketBossVerifiedPremium={refresh:async()=>__proofRefreshes++};
@@ -27,7 +27,7 @@ function html({premium=false,provider=null,available=true,restoreAvailable,signe
  if(path==='/api/google-play/purchase-context')return Response.json({canPurchase:true,...body,obfuscatedAccountId:'server-actor-hash',mode:'test'});
  if(path==='/api/google-play/verify'){__premium=true;__provider='google_play';return Response.json({ok:true,acknowledged:true,provider:'google_play',premiumAccess:true});}
  throw Error('Unexpected API');};
- const play={addListener:async()=>({remove(){}}),getProducts:async()=>({products:[{id:product,subscriptionOfferDetails:[{basePlanId:'monthly',offerId:'eligible-trial',offerToken:'eligible-sdk-offer',pricingPhases:[phase('P3D','A$0.00','0',2,1),phase('P1M','A$6.79','6790000')]},{basePlanId:'annual',offerId:null,offerToken:'annual-sdk-offer',pricingPhases:[phase('P1Y','A$64.99','64990000')]}]}]}),getPurchases:async()=>{__ownedQueries++;return {purchases:__owned};},purchase:async args=>{__native.push(['purchase',args]);return {status:__purchaseStatus,purchases:__purchaseStatus==='purchased'?[{purchaseToken:'memory-only-proof',productId:product,state:'purchased'}]:[]};},manageSubscriptions:async args=>{__native.push(['manage',args]);return {opened:true};}};
+ const play={addListener:async()=>({remove(){}}),getProducts:async()=>({products:[{id:product,subscriptionOfferDetails:[{basePlanId:'monthly',offerId:null,offerToken:'regular-sdk-offer',pricingPhases:[phase('P1M','A$6.79','6790000')]},{basePlanId:'monthly',offerId:'eligible-trial',offerToken:'eligible-sdk-offer',pricingPhases:[phase('P3D','A$0.00','0',2,1),phase('P1M','A$6.79','6790000')]},{basePlanId:'annual',offerId:null,offerToken:'annual-sdk-offer',pricingPhases:[phase('P1Y','A$64.99','64990000')]}].filter(offer=>__trialEligible||offer.offerId===null)}]}),getPurchases:async()=>{__ownedQueries++;return {purchases:__owned};},purchase:async args=>{__native.push(['purchase',args]);return {status:__purchaseStatus,purchases:__purchaseStatus==='purchased'?[{purchaseToken:'memory-only-proof',productId:product,state:'purchased'}]:[]};},manageSubscriptions:async args=>{__native.push(['manage',args]);return {opened:true};}};
  window.__play=play;
  </script><script>${bundle}</script><script>window.__runtime=BBAndroidQA.installAndroidRuntime({registerNative:name=>name==='BasketBossGooglePlay'?__play:{clearReceiptPhotos:async()=>({ok:true})},app:{addListener:async()=>({remove(){}}),getLaunchUrl:async()=>null},browser:{open:async()=>{}},bars:{setStyle:async()=>{}},splash:{hide:async()=>{}},installStartup:()=>({ready(){}}),watchEntry:()=>({stop(){}})});</script></body></html>`;
 }
@@ -41,7 +41,7 @@ test('Android Google Play UI displays actual eligible trial phases, cancellation
  const {context,page}=await open();try{
   const card=page.locator('.bb-native-membership');assert.match(await card.innerText(),/Free for 3 days, then A\$6\.79 \/ month/);assert.match(await card.innerText(),/A\$64\.99 \/ year/);assert.doesNotMatch(await card.innerText(),/£|7.day|Apple|Paddle/);
   assert.equal(await page.evaluate(()=>document.body.scrollWidth<=innerWidth),true);assert.equal(await card.locator('.bb-native-google-plan').count(),2);
-  const trial=card.locator('[data-google-play-plan="monthly"]');await trial.click();await page.waitForFunction(()=>__runtime.purchases.state.message.includes('Purchase cancelled'));assert.equal(await page.evaluate(()=>__proofRefreshes),0);
+  const trial=card.locator('[data-google-play-plan="monthly"]');await trial.click();await page.waitForFunction(()=>__runtime.purchases.state.message.includes('Purchase cancelled'));assert.equal(await page.evaluate(()=>__native.find(call=>call[0]==='purchase')[1].offerToken),'eligible-sdk-offer');assert.equal(await page.evaluate(()=>__proofRefreshes),0);
   await page.evaluate(()=>__purchaseStatus='pending');await trial.click();await page.waitForFunction(()=>__runtime.purchases.state.message.includes('payment is pending'));assert.equal(await page.evaluate(()=>__runtime.purchases.state.premiumAccess),false);
   await page.evaluate(()=>__purchaseStatus='purchased');await trial.click();await page.waitForFunction(()=>__runtime.purchases.state.premiumAccess&&!__runtime.purchases.state.busy);
   assert.equal(await page.evaluate(()=>__proofRefreshes),1);assert.equal(await card.locator('.bb-native-google-plans').isVisible(),false);await card.getByRole('button',{name:'Manage Google Play subscription',exact:true}).click();
@@ -125,5 +125,15 @@ test('Android pricing-page submit guard still blocks payment actions and other f
   });
   for(const outcome of outcomes){assert.equal(outcome.prevented,true,outcome.kind);assert.equal(outcome.originalReceived,false,outcome.kind+' must remain blocked before a form handler');}
   assert.equal(await page.evaluate(()=>__native.length),0);assert.equal(await page.evaluate(()=>__billingRedirects),5);
+ }finally{await context.close();}
+});
+
+test('eligible trial replaces the regular monthly choice and loss of eligibility requires a fresh base-plan choice',{skip:!chromium},async()=>{
+ const {context,page}=await open();try{
+  const card=page.locator('.bb-native-membership'),monthly=card.locator('[data-google-play-plan="monthly"]');assert.equal(await monthly.count(),1);assert.match(await monthly.innerText(),/Free for 3 days/);
+  await page.evaluate(()=>{__trialEligible=false;});await card.getByRole('button',{name:'Refresh membership & prices',exact:true}).click();
+  await page.waitForFunction(()=>!__runtime.purchases.state.busy&&!__runtime.purchases.state.offers.some(offer=>offer.hasTrial));
+  assert.equal(await monthly.count(),1);assert.doesNotMatch(await monthly.innerText(),/Free for|Start free trial/);assert.match(await monthly.innerText(),/A\$6\.79 \/ month/);
+  await monthly.click();await page.waitForFunction(()=>__native.some(call=>call[0]==='purchase'));assert.equal(await page.evaluate(()=>__native.find(call=>call[0]==='purchase')[1].offerToken),'regular-sdk-offer');
  }finally{await context.close();}
 });

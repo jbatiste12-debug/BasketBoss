@@ -158,12 +158,15 @@ export function installNativeApplePurchases({plugin,apiURL,readSession,fetch:per
   let purchase;
   try{purchase=await plugin.purchase({productId,appAccountToken:context.appAccountToken});}
   catch(error){
-   // These two bridge errors occur during product resolution, before StoreKit's
-   // purchase call. Generic failures may have launched payment and stay unknown.
-   const outcome=PRODUCT_ERRORS.has(error?.code)?'not_launched':'unknown';
+   // Product-resolution failures and an existing-token mismatch occur before
+   // StoreKit's purchase call. A coordinated token is specific to this attempt;
+   // an older owned subscription must be restored rather than sold again.
+   const existingPurchase=!!reservation&&error?.code==='BB_APPLE_ACCOUNT_MISMATCH';
+   const outcome=PRODUCT_ERRORS.has(error?.code)||existingPurchase?'not_launched':'unknown';
    const cleanup=outcome==='not_launched'?purchaseIntents.cleanupActor(actor,pin()):actor;
    try{if(cleanup)await purchaseIntents.report(reservation,outcome,cleanup);}catch{}
    requireCurrent(actor);
+   if(existingPurchase)throw Object.assign(Error('Apple already has a subscription. Use Restore Purchases to check its BasketBoss account.'),{code:error.code});
    throw error;
   }
   if(purchase?.status==='cancelled'){

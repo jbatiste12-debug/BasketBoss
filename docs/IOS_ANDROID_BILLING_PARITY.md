@@ -6,7 +6,7 @@ D1 schemas or notification delivery are configured in production. No store
 purchase, migration or customer-data change is made by this document. Build
 numbers and signed-AAB instructions are in [the Android release guide](ANDROID_GOOGLE_PLAY.md).
 
-## Existing iOS contract
+## Existing iOS contract before the parity changes
 
 | Area | Current implementation |
 | --- | --- |
@@ -90,6 +90,9 @@ plans and finite introductory phases followed by the expected regular renewal
 phase; it rejects mismatched products, periods, offers and unsupported shapes.
 Prices, currencies, trial duration and offer tokens are not invented by the UI.
 A normal paid base plan remains eligible when the customer has no trial offer.
+For each billing period the UI prefers the actual eligible trial/introductory
+offer and otherwise shows the regular base plan. Losing eligibility requires a
+fresh choice rather than silently converting a trial selection into a paid sale.
 App-driven plan replacement, prepaid subscriptions and instalment plans are not
 part of this release; Play management remains the route for an existing plan.
 
@@ -155,6 +158,17 @@ does not reconstruct the capability. An unresolved attempt with no recoverable
 store proof requires operator reconciliation against the provider; it is never
 unlocked by a local reset or a timer. This limitation must be exercised during
 signed-device acceptance before strict sales are enabled.
+
+For coordinated Apple purchases, the server issues the reservation UUID as an
+account token and retains its exact account/provider/environment/product mapping.
+Apple's signed transaction can therefore identify a delayed Ask to Buy approval
+without an in-memory callback or a date heuristic. Existing stable account
+tokens and owned subscription lineages remain valid, including when new sales
+or coordination are later disabled. A token rotation within an original lineage
+must remain bound to the same immutable user and a newer verified transaction.
+No Swift change is required: the existing bridge already passes the server UUID
+to StoreKit. Its existing ownership guard remains intact; an unused coordinated
+attempt blocked by that guard directs the user to Restore.
 
 Verified proof updates the provider row and coordinator revision atomically.
 An invalid or missing reservation cannot make a genuinely paid subscription
@@ -233,8 +247,8 @@ changed path relative to production source
 foundation and this parity completion. Swift/Xcode sources remain unchanged;
 the Apple JavaScript controller has a backwards-compatible optional handshake.
 
-The final local regression run passed 389 checks with zero failures; four
-generated-asset checks run after Android sync in CI. Both iOS and Android
+The final local regression run passed 404 checks with zero failures or skips,
+including the generated Android assets after a successful Android sync. Both iOS and Android
 JavaScript entries bundled successfully. These results cover Apple UI/trial/
 verification compatibility, Play pricing/lifecycle/restore, callback races,
 coordination, and deletion barriers. The final source pin and native Gradle/AAB

@@ -57,7 +57,7 @@
     "ios/App/BasketBossStoreKitTests/BasketBossStoreKitTests.swift": "1050a368a55c07efff46957bce7ebfec394bb978c4b528a6cd14e504cab5a00d",
     "ios/App/Podfile": "146f9b60621c1df0ddcde561e65e30162694a175c50b528175d3f761e5b69437",
     "native/apple-auth.mjs": "1385bc916b53aa30ad22035212f5918c6b83f1e358fec1cba03afbaaac12e125",
-    "native/apple-purchases.mjs": "e663c882076d43fc1058ecddf8833919b2ce044d714ac3364c82d752c1d82b9d",
+    "native/apple-purchases.mjs": "73a010757ad71af85210665624556a432d3168680a8920d833b33a11cf0567a6",
     "native/bb-native.css": "d10cc235bb37367f53fd1fa88e944a90927f6e96e3716baa12b4e13a36a4263b",
     "native/cook-voice.mjs": "906b700350761afbc3282208e85968e400d465b63ede1bcdf29fc5bd6b413b39",
     "native/entry-readiness.mjs": "7be8221eee82f31fe1ac1ed65857e49e41ed39dd1d3d242496c3312fbc149e33",

@@ -170,8 +170,8 @@ for the compatibility and rollout limits.
    These are exact identifiers to create/configure, not evidence of existing
    Console objects. Prices, countries and trial activation remain owner decisions.
    Android displays Play-returned localized prices and eligible pricing phases;
-   it never substitutes a made-up price or trial. A regular paid base plan
-   remains available when Play does not return an eligible trial.
+   it never substitutes a made-up price or trial. The UI prefers an eligible trial for each billing period; a regular paid base
+   plan appears when Play does not return an eligible introductory offer.
 4. Add the Google account used by the Android device to both Internal testers
    and the developer account's **License testing** list. Use Google's test
    payment instruments. Internal testing alone does not prevent real charges.

@@ -71,6 +71,7 @@ capacitor.config.json
 docs/ANDROID_BILLING_CHANGED_FILES.txt
 docs/ANDROID_GOOGLE_PLAY.md
 docs/IOS_ANDROID_BILLING_PARITY.md
+functions/api/apple/notifications.js
 functions/api/apple/purchase-context.js
 functions/api/apple/verify.js
 functions/api/google-play/config.js
@@ -114,6 +115,7 @@ tests/basketboss-android-runtime-browser.test.mjs
 tests/basketboss-android-runtime.test.mjs
 tests/basketboss-android-server-transport.test.mjs
 tests/basketboss-android-signing.test.mjs
+tests/basketboss-apple-deferred-intents.test.mjs
 tests/basketboss-build57-launcher-archive.test.mjs
 tests/basketboss-google-play-access-integration.test.mjs
 tests/basketboss-google-play-api.test.mjs

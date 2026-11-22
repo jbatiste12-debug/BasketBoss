@@ -104,3 +104,15 @@ test('JWT refresh permits only definite Apple cleanup while original paid-proof 
   }finally{h.api.destroy();}
  }
 });
+
+test('an existing Apple token mismatch releases only a coordinated unused intent and requests restoration',async()=>{
+ const message='This Apple subscription belongs to another BasketBoss account.';
+ for(const legacy of [false,true]){
+  const h=fixture({legacy,purchase:async()=>{throw Object.assign(Error(message),{code:'BB_APPLE_ACCOUNT_MISMATCH'});}});try{
+   await h.api.ready;const result=await h.api.subscribe(MONTH);assert.equal(result.reason,'BB_APPLE_ACCOUNT_MISMATCH');assert.equal(native(h).length,1);
+   assert.equal(requests(h,'/api/apple/verify').length,0);assert.equal(h.calls.some(call=>call.kind==='finish'),false);assert.equal(h.api.state.premiumAccess,false);
+   if(legacy){assert.equal(intents(h).length,0);assert.equal(h.api.state.message,message);}
+   else{const report=intents(h).at(-1).body;assert.equal(report.outcome,'canceled');assert.equal(report.cause,'not_launched');assert.match(h.api.state.message,/Use Restore Purchases/);assert.doesNotMatch(h.api.state.message,/another BasketBoss account/);}
+  }finally{h.api.destroy();}
+ }
+});
