@@ -60,7 +60,20 @@ async function fixture(viewport,run,{slowPolishMs=0,observeColdPaint=false}={}){
     for(const sheet of document.styleSheets)try{inspect(sheet.cssRules,sheet.href);}catch{}
     diagnostic={appData:{...document.getElementById('app')?.dataset},appClass:document.getElementById('app')?.className,ringClass:ring.className,ringParent:ring.parentElement?.className,ringHeight:ring.getBoundingClientRect().height,computedHeight:getComputedStyle(ring).height,overview:!!document.querySelector('.bbpc-budget-overview'),declarations};
    }
-   probe.frames.push({time:performance.now(),ready:document.readyState,legacyRegion:region?.parentElement===document.body&&visible(region),legacyPlan,...(diagnostic?{diagnostic}:{})});
+   const view=document.body?.dataset.bbnextView,app=document.getElementById('app');
+   const nav=[...document.querySelectorAll('.shell nav.tabs>.tab')].filter(visible).map(button=>{
+    const style=getComputedStyle(button),parts=style.backgroundColor.match(/[\d.]+/g)?.map(Number)||[];
+    const [red=0,green=0,blue=0,alpha=1]=parts;
+    const selected=style.backgroundImage!=='none'||alpha>.95&&green>red+15&&green>blue+10&&red<200&&green<210;
+    return {label:button.querySelector('.nav-label')?.textContent.trim(),selected,current:button.getAttribute('data-bb-nav-current'),active:button.classList.contains('active'),background:style.backgroundColor,image:style.backgroundImage};
+   });
+   const settings=document.getElementById('bbuiOpenSettings'),style=settings&&getComputedStyle(settings),icon=settings?.querySelector('svg');
+   const foreground=style?.color.match(/[\d.]+/g)?.map(Number)||[],background=style?.backgroundColor.match(/[\d.]+/g)?.map(Number)||[];
+   const blankSettings=visible(settings)&&foreground.slice(0,3).every(value=>value>230)&&background.slice(0,3).every(value=>value>230)&&(background[3]??1)>.95;
+   probe.frames.push({time:performance.now(),ready:document.readyState,view,entryHint:document.documentElement.dataset.bbPlanEntry,nav,
+    appOpacity:view==='week'&&visible(app)?getComputedStyle(app).opacity:null,
+    settings:visible(settings)?{svg:!!icon,iconWidth:icon?.getBoundingClientRect().width||0,blank:blankSettings,foreground:style.color,background:style.backgroundColor}:null,
+    legacyRegion:region?.parentElement===document.body&&visible(region),legacyPlan,...(diagnostic?{diagnostic}:{})});
    if(!probe.stop&&probe.frames.length<3000)requestAnimationFrame(sample);
   };requestAnimationFrame(sample);
  });
@@ -81,33 +94,45 @@ async function fixture(viewport,run,{slowPolishMs=0,observeColdPaint=false}={}){
  }finally{await context.close();}
 }
 
-const physical=page=>page.evaluate(()=>({inventory:localStorage.getItem('basketboss_makeameal_v1_inventory'),stock:localStorage.getItem('basketboss_321_v7_measured_pantry'),planned:JSON.parse(localStorage.getItem('basketboss_321_unified_state_v1')).planned}));
+const physical=page=>page.evaluate(()=>({inventory:localStorage.getItem('basketboss_makeameal_v1_inventory'),stock:localStorage.getItem('basketboss_321_v7_measured_pantry'),state:localStorage.getItem('basketboss_321_unified_state_v1'),features:localStorage.getItem('basketboss_321_features_v1'),planned:JSON.parse(localStorage.getItem('basketboss_321_unified_state_v1')).planned}));
 const nav=(page,name)=>page.locator('#bbPrimaryNavigation [data-bb-nav-item="'+name+'"]');
 
-for(const viewport of [{width:390,height:844},{width:1440,height:1000}])test('cold entry and Cook return never paint the retired region banner or Plan card with a slow presenter at '+viewport.width+'px',{skip:!chromium?'Playwright unavailable':false},()=>fixture(viewport,async page=>{
+for(const viewport of [{width:320,height:760},{width:390,height:844},{width:1440,height:1000}])for(const slowPolishMs of [0,800])test('cold entry and Cook return paint one opaque Plan with a visible settings icon at '+viewport.width+'px (presenter '+slowPolishMs+'ms)',{skip:!chromium?'Playwright unavailable':false},()=>fixture(viewport,async page=>{
  const saved=await physical(page);
  async function checkColdPaint(label){
   await page.waitForFunction(()=>document.querySelector('#app')?.dataset.bbCompactHeader==='true');
   await page.waitForTimeout(100);
   const frames=await page.evaluate(()=>{window.__coldNavPaint.stop=true;return window.__coldNavPaint.frames;});
-  const directory=path.join(process.env.BB_UI_SCREENSHOT_DIR||path.join(os.tmpdir(),'basketboss-ui-previews'),'cold-navigation-'+viewport.width);await fs.mkdir(directory,{recursive:true});
+  const directory=path.join(process.env.BB_UI_SCREENSHOT_DIR||path.join(os.tmpdir(),'basketboss-ui-previews'),'cold-navigation-'+viewport.width+'-'+slowPolishMs);await fs.mkdir(directory,{recursive:true});
   await fs.writeFile(path.join(directory,label==='initial entry'?'entry-paint-samples.json':'cook-return-paint-samples.json'),JSON.stringify(frames,null,2));
   assert.ok(frames.length>2,label+': sampled the actual document loading period');
   assert.ok(frames.some(frame=>frame.ready==='loading'),label+': probe starts before deferred presentation scripts');
   assert.deepEqual(frames.filter(frame=>frame.legacyRegion),[],label+': no raw region banner flashes before the current header');
   assert.deepEqual(frames.filter(frame=>frame.legacyPlan),[],label+': no retired full-size budget ring flashes before the compact hero');
+  const planFrames=frames.filter(frame=>frame.view==='week'||!frame.view&&frame.entryHint==='true');
+  assert.ok(planFrames.some(frame=>frame.nav.length===5),label+': sampled the real five-tab dock');
+  for(const frame of planFrames){
+   if(frame.nav.length===5)assert.deepEqual(frame.nav.filter(button=>button.selected).map(button=>button.label),['Plan'],label+': only Plan may be visibly highlighted at '+frame.time+'ms');
+   if(frame.appOpacity!==null)assert.equal(frame.appOpacity,'1',label+': Plan never enters through a half-opacity legacy frame');
+   if(frame.settings){assert.equal(frame.settings.svg,true,label+': settings SVG is present before its decorator');assert.ok(frame.settings.iconWidth>0,label+': settings icon has visible geometry');assert.equal(frame.settings.blank,false,label+': settings never paints ivory on opaque white');}
+  }
   assert.equal(await page.locator('#bbpolRegionPill').count(),1,label+': the current region control is installed after its original DOM becomes available');
   assert.equal(await page.locator('#bbpolUpgradePill').count(),1,label+': the current membership control remains available');
  }
  await checkColdPaint('initial entry');
+ const budget=await page.locator('#headerTotal').innerText();
  await nav(page,'cook').click();await page.waitForURL(/make-a-meal\.html/);
  await page.waitForFunction(()=>document.body.classList.contains('bb-r6-cook-page'));
  await page.locator('[data-bb-navigation="polished"] [data-bb-nav-item="plan"]').click();
  await page.waitForSelector('.bbnext-day.has-meal');
  await checkColdPaint('return from Cook');
  assert.equal(await nav(page,'plan').getAttribute('data-bb-nav-current'),'true');
- assert.deepEqual(await physical(page),saved,'returning from Cook preserves the saved plan and stock');
-},{slowPolishMs:800,observeColdPaint:true}));
+ assert.deepEqual(await physical(page),saved,'returning from Cook preserves the complete saved plan, stock, servings and budget data');
+ assert.equal(await page.locator('#headerTotal').innerText(),budget,'the original budget calculation is unchanged');
+ assert.equal(new URL(page.url()).searchParams.has('bbview'),false,'the original destination cleanup still runs');
+ await page.getByRole('button',{name:'Open BasketBoss settings',exact:true}).click();await page.locator('.bbui-settings-overlay').waitFor({state:'visible'});await page.locator('.bbui-settings-close').click();
+ assert.deepEqual(await physical(page),saved,'the same settings handler opens and closes without changing saved data');
+},{slowPolishMs,observeColdPaint:true}));
 
 for(const viewport of [{width:390,height:844},{width:1440,height:1000}])test('normal-motion tab paints never expose retired pantry UI at '+viewport.width+'px',{skip:!chromium?'Playwright unavailable':false},()=>fixture(viewport,async(page,context)=>{
  const saved=await physical(page);
