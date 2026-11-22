@@ -9,6 +9,7 @@ import {installAndroidMembership} from './android-membership.mjs';
 import {installAndroidGooglePlayPurchases} from './google-play-purchases.mjs';
 import {installNativeStartup} from './startup.mjs';
 import {watchNativeEntryReadiness} from './entry-readiness.mjs';
+import {installNativeAuthBrowser} from './auth-browser.mjs';
 
 // This entry is bundled only into Android output. The iOS entry and its native
 // Apple plugins are left intact. Email auth remains owned by BBAuthFlow.
@@ -40,6 +41,7 @@ export function installAndroidRuntime({window:win=globalThis.window,document:doc
   return result;
  };
  win.BBNative=Object.freeze({isNative:true,platform:'android',apiOrigin:PRODUCTION_ORIGIN,apiURL:path=>androidApiURL(path,win.location.href)||path,haptic,openExternal,dismissKeyboard,clearTemporaryData});
+ const authBrowser=installNativeAuthBrowser({window:win,browser,app,isDeleting:deleting});
  win.BBNativeMembership=Object.freeze({open(){
   if(deleting()||doc.getElementById('bbAccountDeletionDialog')?.open===true||doc.documentElement.classList.contains('bb-native-starting'))return false;
   win.location.assign(androidMembershipURL(win.location.href));return true;
@@ -88,6 +90,7 @@ export function installAndroidRuntime({window:win=globalThis.window,document:doc
    if(cold&&win.sessionStorage.getItem('basketboss_last_auth_launch_v1')===fingerprint)return;
    win.sessionStorage.setItem('basketboss_last_auth_launch_v1',fingerprint);
   }catch{/* The existing auth controller still validates and consumes the callback. */}
+  await authBrowser.complete(address);
   if(deleting())return;
   const receive=()=>{if(!deleting())void win.BBAuthFlow?.handleCallbackURL?.(address);};
   if(win.BBAuthFlow)receive();else{

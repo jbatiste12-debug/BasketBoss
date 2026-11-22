@@ -310,8 +310,9 @@ test('declined Apple auth preserves personalisation and does not remount the ori
   await personalise(h.page);await h.page.locator('[data-bbob="flow-apple"]').waitFor({state:'visible'});await openSignup(h.page);
   const input=await h.page.locator('#cloud-email').elementHandle();await h.page.locator('#cloud-email').fill('draft@example.invalid');
   await h.page.evaluate(()=>{window.BBNativeAppleAuth.signIn=async()=>{throw Object.assign(new Error('Cancelled'),{code:'USER_CANCELLED'});};});
-  await h.page.locator('[data-bbob="flow-apple"]').click();
-  await h.page.waitForFunction(()=>!document.querySelector('[data-bbob="flow-apple"]').disabled);
+  // Email now uses its original provider controls; outer duplicates are hidden.
+  await h.page.locator('#bbAuthApple').click();
+  await h.page.waitForFunction(()=>window.BBAuthFlow?.state().busy===false);
   assert.equal(await step(h.page),'3');assert.equal((await setup(h.page)).house,'3–4 people');
   assert.equal(await input.evaluate(n=>n===document.getElementById('cloud-email')),true);assert.equal(await h.page.locator('#cloud-email').inputValue(),'draft@example.invalid');
   assert.equal(await h.page.evaluate(()=>localStorage.getItem('basketboss_cloud_session_v1')),null);assert.deepEqual(h.errors,[]);
