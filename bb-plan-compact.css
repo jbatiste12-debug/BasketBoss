@@ -393,3 +393,39 @@ html body[data-bbnext-view="week"] .shell #app.bbnext-plan[data-bb-compact-plan=
  font-family:'Inter',-apple-system,BlinkMacSystemFont,sans-serif!important;
  font-weight:500!important;
 }
+/* End Plan card Inter typography. */
+
+/* My Week presentation only: original heading, household controls, live
+   estimate and helper nodes retain their listeners and renderer references. */
+html body .shell #app.bbnext-plan[data-bb-compact-plan="true"][data-bb-compact-header="true"] .bbnext-plan-budget[data-bb-simple-budget]{padding-bottom:74px!important}
+html body .shell #app.bbnext-plan[data-bb-compact-header="true"] .bbpc-week-header{order:0;display:flex;align-items:center;justify-content:space-between;gap:10px;width:100%;min-width:0}
+html body .shell #app.bbnext-plan[data-bb-compact-plan="true"][data-bb-compact-header="true"] .bbnext-plan-budget[data-bb-simple-budget] .bbpc-budget-overview .bbnext-plan-budget-text .bbpc-week-header>h2{flex:0 0 auto;width:auto!important;min-width:0!important;margin:0!important;font-size:28px!important;white-space:nowrap}
+html body .shell #app.bbnext-plan[data-bb-compact-header="true"] .bbpc-week-header>.bbfeed-global{flex:0 0 auto;display:flex!important;align-items:center;justify-content:flex-end;gap:3px;min-height:44px;margin:0!important;padding:0!important;border:0!important;border-radius:0!important;background:transparent!important;box-shadow:none!important;color:rgba(255,255,255,.9)!important;white-space:nowrap}
+html body .shell #app.bbnext-plan[data-bb-compact-header="true"] .bbpc-week-header>.bbfeed-global>span{font-size:11px!important;font-weight:600!important;color:inherit!important}
+html body .shell #app.bbnext-plan[data-bb-compact-header="true"] .bbpc-week-header>.bbfeed-global>strong{min-width:12px;font-size:14px!important;color:#fffdf5!important;text-align:center}
+html body .shell #app.bbnext-plan[data-bb-compact-header="true"] .bbpc-week-header>.bbfeed-global>button{box-sizing:border-box;margin:0!important;padding:0!important;border:1px solid #b8d0bf!important;border-radius:11px!important;background:#ffffff0d!important;color:#fffdf5!important;-webkit-text-fill-color:#fffdf5!important;font-size:20px!important;box-shadow:none!important}
+html body .shell #app.bbnext-plan[data-bb-compact-header="true"] .bbpc-week-header>.bbfeed-global>button:disabled{opacity:.5}
+html body .shell #app.bbnext-plan[data-bb-compact-header="true"] .bbpc-week-price{order:2;display:flex;flex-wrap:wrap;align-items:center;gap:6px 12px;width:100%;min-width:0}
+html body .shell #app.bbnext-plan[data-bb-compact-plan="true"][data-bb-compact-header="true"] .bbnext-plan-budget[data-bb-simple-budget] .bbpc-budget-overview .bb-myweek-emblem .bbpc-week-price>.bbnext-plan-donut{order:0;display:flex!important;align-items:center!important;justify-content:flex-start!important;width:max-content!important;height:auto!important;min-width:0!important;max-width:100%!important;min-height:0!important;max-height:none!important;aspect-ratio:auto!important;margin:7px 0 0!important;padding:0!important;border:0!important;border-radius:0!important;background:transparent!important;box-shadow:none!important;filter:none!important;overflow:visible!important}
+html body .shell #app.bbnext-plan[data-bb-compact-header="true"] .bbpc-week-info{flex:0 0 44px;min-width:0;margin:7px 0 0;padding:0;border:0;background:transparent;color:rgba(255,255,255,.88)}
+html body .shell #app.bbnext-plan[data-bb-compact-header="true"] .bbpc-week-info>summary{display:grid;place-items:center;box-sizing:border-box;width:44px;min-height:44px;margin:0;padding:0;border:1px solid #a9c5b5;border-radius:50%;list-style:none;cursor:pointer;font-size:23px;line-height:1;color:#edf7ee;background:#ffffff08}
+html body .shell #app.bbnext-plan[data-bb-compact-header="true"] .bbpc-week-info>summary::-webkit-details-marker{display:none}
+html body .shell #app.bbnext-plan[data-bb-compact-header="true"] .bbpc-week-info[open]{flex-basis:100%;margin-top:0}
+html body .shell #app.bbnext-plan[data-bb-compact-header="true"] .bbpc-week-info[open]>summary{background:#ffffff16}
+html body .shell #app.bbnext-plan[data-bb-compact-header="true"] .bbpc-week-info-body{padding-top:8px}
+html body .shell #app.bbnext-plan[data-bb-compact-plan="true"][data-bb-compact-header="true"] .bbpc-week-info-body>:is(p,small):not([hidden]){display:block;margin:0 0 7px!important;color:rgba(255,255,255,.88)!important;font-size:12px!important;line-height:1.5!important}
+html body .shell #app.bbnext-plan[data-bb-compact-header="true"] .bbpc-week-info-body>[hidden]{display:none!important}
+html body .shell #app.bbnext-plan[data-bb-compact-header="true"] .bbpc-week-info>summary:focus-visible,
+html body .shell #app.bbnext-plan[data-bb-compact-header="true"] .bbpc-week-header>.bbfeed-global>button:focus-visible{outline:3px solid #f0ca78!important;outline-offset:3px!important}
+/* Footer actions keep their original delegated parents and clear the header. */
+html body .shell #app.bbnext-plan[data-bb-compact-plan="true"][data-bb-compact-header="true"] #bbpolAutofillCard>.bbnext-plan-actions>.bb-pantry-first-next-week{align-self:end!important;margin:0 48px 32px 0!important}
+html body .shell #app.bbnext-plan[data-bb-compact-plan="true"][data-bb-compact-header="true"] #bbpolAutofillCard>#bbnextPlanAutofill{align-self:end!important;margin:0 0 32px!important}
+/* The completion marker belongs to its original badge, including on undo. */
+html body .shell #app.bbnext-plan[data-bb-compact-plan="true"][data-bb-compact-header="true"] .bbnext-day.has-meal .bbpc-day-tags>.bbnext-day-label.bb-day-is-done{flex:0 0 auto!important;width:max-content!important;max-width:none!important;padding-inline:9px!important}
+html body .shell #app.bbnext-plan[data-bb-compact-header="true"] .bbpc-day-tags>.bbnext-day-label>.bb-day-done-check{position:static!important;inset:auto!important;display:inline-grid;flex:0 0 15px;margin-inline-start:5px}
+@media(max-width:400px){
+ html body .shell #app.bbnext-plan[data-bb-compact-plan="true"][data-bb-compact-header="true"] .bbnext-plan-budget[data-bb-simple-budget] .bbpc-budget-overview .bbnext-plan-budget-text .bbpc-week-header>h2{font-size:23px!important;letter-spacing:-.6px!important}
+ html body .shell #app.bbnext-plan[data-bb-compact-header="true"] .bbpc-week-header{gap:6px}
+ html body .shell #app.bbnext-plan[data-bb-compact-header="true"] .bbpc-week-header>.bbfeed-global{gap:2px}
+ html body .shell #app.bbnext-plan[data-bb-compact-header="true"] .bbpc-week-header>.bbfeed-global>span{font-size:10px!important}
+}

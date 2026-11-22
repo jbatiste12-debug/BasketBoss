@@ -147,3 +147,10 @@ html body.bb172-storefront-visible nav#bbPrimaryNavigation[data-bb-navigation]{d
 /* Cook is its own kitchen workspace, alongside the four weekly-loop tabs. */
 html body .shell>nav.tabs>a.bb173-make-meal-link{position:relative!important}
 html body .shell>nav.tabs>a.bb173-make-meal-link:before{content:"";position:absolute;left:0;top:19%;bottom:19%;width:2px;border-radius:2px;background:#216345;pointer-events:none}
+/* The dock floats above the safe area; cover the viewport-wide gap underneath
+   it so scrolled cards cannot peek through. Keeping the cover on the dock
+   also hides it whenever an existing full-screen view hides the navigation. */
+html body nav#bbPrimaryNavigation[data-bb-navigation="polished"]::after{
+ content:"";position:fixed;inset:auto 0 0;height:max(8px,env(safe-area-inset-bottom,0px));
+ background:var(--bb-premium-ivory,#fffdf6);pointer-events:none;z-index:-1;
+}

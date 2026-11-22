@@ -13,7 +13,10 @@ before(async()=>{if(chromium)browser=await chromium.launch({headless:true,execut
 after(async()=>{await browser?.close();});
 const compact=await fs.readFile(path.join(ROOT,'bb-plan-compact.css'),'utf8'),polish=await fs.readFile(path.join(ROOT,'bb-plan-premium-polish.css'),'utf8');
 const FONT_MARKER='/* Inter font asset: @fontsource-variable/inter 5.2.8';
-const baselineCompact=compact.slice(0,compact.indexOf(FONT_MARKER));
+const FONT_END='/* End Plan card Inter typography. */';
+const fontEnd=compact.indexOf(FONT_END);
+assert.ok(compact.includes(FONT_MARKER)&&fontEnd>compact.indexOf(FONT_MARKER),'font-only block has explicit boundaries');
+const baselineCompact=compact.slice(0,compact.indexOf(FONT_MARKER))+compact.slice(fontEnd+FONT_END.length);
 const baselinePolish=polish.replace('font-family:"Avenir Next",ui-sans-serif,system-ui,sans-serif!important','font-family:"Avenir Next",Inter,ui-sans-serif,system-ui,sans-serif!important');
 const TITLE='.bbnext-day.has-meal .bbnext-day-description>strong',TIME='.bbnext-day.has-meal .bbpol-time';
 const STATE='basketboss_321_unified_state_v1';
@@ -23,7 +26,7 @@ test('Plan Inter is a pinned licensed local variable font, with only text proper
  const bytes=Buffer.from(encoded,'base64');assert.equal(bytes.length,48256);assert.equal(bytes.subarray(0,4).toString(),'wOF2');
  assert.equal(createHash('sha256').update(bytes).digest('hex'),compact.match(/Asset SHA-256: ([a-f0-9]{64})/)[1]);
  assert.match(compact,/SIL OPEN FONT LICENSE Version 1\.1/);assert.match(compact,/font-weight:100 900;/);assert.match(compact,/font-display:swap;/);
- const overrides=compact.slice(compact.indexOf('html body[data-bbnext-view="week"]',compact.indexOf('/* Plan card Inter typography')));
+ const overrides=compact.slice(compact.indexOf('html body[data-bbnext-view="week"]',compact.indexOf('/* Plan card Inter typography')),fontEnd);
  assert.doesNotMatch(overrides,/(?:^|[;{])\s*(?:display|position|margin|padding|gap|width|height|font-size|grid|background|color)\s*:/);
  assert.doesNotMatch(overrides,/button|bbfeed-control|bbfeed-meal/,'font overrides do not target controls or their parent');
 });
