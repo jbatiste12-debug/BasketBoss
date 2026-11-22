@@ -1,0 +1,57 @@
+BasketBoss — Google sign-in setup
+22 November 2026
+
+The app integration is prepared for web, iOS and Android. Google is not enabled yet: no Google OAuth client/provider credentials were supplied or changed. Until the provider is enabled, the Google button stays hidden and existing Apple/email sign-in remains available.
+
+1. Google Cloud — choose or create the BasketBoss project
+Open https://console.cloud.google.com/auth/overview
+Use Google Auth Platform (the Google sign-in service).
+Set the app name to BasketBoss and complete the support/developer contact fields.
+App homepage: https://basketboss.co.uk
+Privacy policy: https://basketboss.co.uk/privacy
+Terms: https://basketboss.co.uk/terms
+Use an External audience for a public consumer app. While Testing, add your Google account and each test user's actual Google address under Test users.
+Use the basic sign-in scopes: openid, email and profile. No Gmail, Drive or billing API permission is needed for this login.
+
+2. Create the OAuth client
+Google Auth Platform → Clients → Create client → Web application.
+Suggested client name: BasketBoss sign-in.
+Authorized JavaScript origins:
+  https://basketboss.co.uk
+  https://www.basketboss.co.uk
+Authorized redirect URI — copy EXACTLY:
+  https://kbhyosxuvlcazyzzinqv.supabase.co/auth/v1/callback
+Save the Client ID and Client Secret in your Google/Supabase consoles. Do not paste the secret in chat or add it to the app repository.
+The current implementation uses a system-browser OAuth flow on mobile, so it uses this Web client; no Google native SDK, iOS reversed-client scheme, Android signing fingerprint or extra Play Billing product is needed for this integration.
+
+3. Enable Google in Supabase
+Open https://supabase.com/dashboard/project/kbhyosxuvlcazyzzinqv/auth/providers
+Find Google, enable it, paste the Web Client ID and Client Secret, then save.
+Keep existing Apple/email settings and nonce/security defaults.
+
+4. Check Supabase return URLs
+Open https://supabase.com/dashboard/project/kbhyosxuvlcazyzzinqv/auth/url-configuration
+Keep existing Site URL and redirect entries. Add these exact return URLs if missing:
+  https://basketboss.co.uk/app?bb_auth=google
+  https://www.basketboss.co.uk/app?bb_auth=google
+  basketboss://auth/callback?bb_auth=google
+The custom basketboss:// URL belongs in Supabase's redirect allowlist. Google's Web client uses the HTTPS Supabase callback from step2.
+
+5. Test using the updated app source/build
+Reload/relaunch after enabling the provider. Open Save your personalised plan or Account → Continue with Google.
+- New user: verified Google sign-in returns to Offer with feeding/goal choices retained.
+- Returning user: Sign in from Welcome goes directly to Plan.
+- Cancel/deny: stays signed out with choices retained, and retry works.
+- Check that an existing membership still loads from the same verified BasketBoss account; login alone never grants Premium.
+- For a new-account test use an actual second Google account. Gmail +aliases are email aliases, not separate Google accounts.
+- Existing restore/subscription management still uses the original platform handlers.
+New native builds are required to include this source change. Earlier Build60/Android code7 commands remain pinned to older source and do not include Google sign-in.
+
+6. Password and deletion compatibility
+Google verifies sign-in, so a new Google-only user need not type a BasketBoss password to log in.
+The existing deletion guard still requires a separate BasketBoss password for non-Apple accounts. Account now includes Set a BasketBoss password: it opens the original email recovery flow, then the existing verified password-update flow. After setup, that BasketBoss password can be used in the unchanged deletion form. Never enter your Google password there.
+Accounts linked to Apple retain the existing Apple confirmation/revocation requirement.
+A direct Confirm with Google & delete flow is not part of this change; it would require separate server reauthentication work.
+
+Release status
+Prepared source and local intercepted tests only. No Google/Supabase settings, schema, billing/deletion endpoint, production deployment, PR merge, signed archive or store upload were changed by this setup document. Real Google/device acceptance follows console setup and an updated build.

@@ -9,6 +9,14 @@ html body #cloud-auth #bbAuthApple{display:flex;align-items:center;justify-conte
 #bbAuthAppleDivider{text-align:center;color:#536a5b;font-size:14px;margin:14px 0}
 #bbAuthAppleStatus{font-size:14px;line-height:1.5;color:#315744}
 html body #cloud-auth #bbAuthAppleRetry{min-height:44px;font-size:16px;font-weight:600}
+/* Google uses the same existing account form; hidden provider controls stay hidden. */
+html body #cloud-auth #bbAuthGoogle{display:flex;align-items:center;justify-content:center;gap:10px;width:100%;min-height:48px;margin:0;padding:10px 16px;border:1px solid #c5ccc4;border-radius:10px;background:#fff!important;color:#1f1f1f!important;font:600 15px/1.3 'Inter',-apple-system,BlinkMacSystemFont,sans-serif;box-shadow:none}
+#bbAuthGoogle svg{display:block;flex:none;width:20px;height:20px}
+#bbAuthGoogleStatus{font-size:13px;line-height:1.45;color:#315744;overflow-wrap:anywhere}
+html body #cloud-auth #bbAuthGoogleRetry{min-height:44px;font-size:14px;font-weight:600}
+#bbGooglePasswordHelp{margin:14px 0;padding:13px;border:1px solid #d7e2d3;border-radius:14px;background:#f4f7ef;color:#315744}
+#bbGooglePasswordHelp p{margin:0 0 9px;font-size:13px;line-height:1.5;overflow-wrap:anywhere}
+html body #bbGooglePasswordHelp .bbGoogleSetPassword{min-height:44px;margin:0;padding:10px 13px;border:1px solid #bbceb8;border-radius:11px;background:#fff;color:#20583d;font:600 13px/1.4 'Inter',-apple-system,BlinkMacSystemFont,sans-serif;box-shadow:none}
 #bbAuthStates{padding-top:12px;color:#214b36}
 #bbAuthStates h3{margin:0 0 10px;font-size:23px;color:#194b36}
 #bbAuthStates p{line-height:1.5;overflow-wrap:anywhere}

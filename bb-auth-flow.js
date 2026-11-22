@@ -15,13 +15,16 @@
   const SESSION = "basketboss_cloud_session_v1",
     RECOVERY = "basketboss_password_recovery_v1",
     COOLDOWN = "basketboss_auth_email_cooldowns_v1",
-    SIGNUP_PENDING = "basketboss_signup_pending_v1";
+    SIGNUP_PENDING = "basketboss_signup_pending_v1",
+    GOOGLE_PENDING = "basketboss_google_oauth_pending_v1";
   const validEmail = (email) =>
     typeof email === "string" &&
     email.length <= 254 &&
     /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email);
   const problem = (error) => {
     const code = String(error?.code || "");
+    if (error?.authType === "google" && (/pkce|code_verifier|flow_state/.test(code)))
+      return "This Google sign-in needs the app or browser where you started. Start Google sign-in again on this device.";
     if (/pkce|code_verifier/.test(code) || ["flow_state_not_found", "flow_state_expired"].includes(code))
       return error?.authType === "recovery"
         ? "This reset link needs the app or browser where you requested it. Open it there, or request a new reset link on this device."
@@ -83,6 +86,25 @@
     if (deployment?.available !== true || deployment.nativeOnly !== true || deployment.deletionReady !== true) return { enabled: false };
     return { enabled: true };
   }
+  async function googleAvailability(win, config) {
+    if (win.BBNative?.isNative && typeof win.BBNativeAuthBrowser?.open !== "function") return { enabled: false };
+    const response = await timedFetch(win, config.url.replace(/\/$/, "") + "/auth/v1/settings", {
+      headers: { apikey: config.anonKey }, credentials: "omit", cache: "no-store", redirect: "error",
+    });
+    if (!response.ok) throw Error("Google sign-in settings could not be checked.");
+    const settings = await response.json();
+    return { enabled: settings?.external?.google === true };
+  }
+  function googleAuthorizeURL(value, origin, redirectTo) {
+    try {
+      const url = new URL(value), configured = new URL(origin);
+      if (url.protocol !== "https:" || url.username || url.password || url.origin !== configured.origin ||
+          url.pathname !== "/auth/v1/authorize" || url.hash || ["provider", "redirect_to", "code_challenge", "code_challenge_method"].some(key => url.searchParams.getAll(key).length !== 1) || url.searchParams.get("provider") !== "google" ||
+          url.searchParams.get("redirect_to") !== redirectTo || url.searchParams.get("code_challenge_method") !== "s256" ||
+          !/^[A-Za-z0-9_-]{43,128}$/.test(url.searchParams.get("code_challenge") || "")) return null;
+      return url.href;
+    } catch { return null; }
+  }
   function create(options) {
     const auth = options.auth,
       store = options.storage,
@@ -103,10 +125,31 @@
       recoveryEvent = false,
       handlingCallback = false,
       signupCallback = false,
-      navigating = false;
+      navigating = false,
+      googleLaunching = false,
+      googleSequence = 0;
     const emit = () => options.onState?.({ ...state });
     const lifecycle = (event) => { try { options.onLifecycle?.(event); } catch {} };
     const pendingStore = options.pendingStorage || store;
+    const sessionActor = () => { const raw = options.sessionRaw?.();if (!raw) return null;try { return JSON.parse(raw)?.user?.id || "invalid-session"; } catch { return "invalid-session"; } };
+    function googleAttempt() {
+      try {
+        const value = JSON.parse(pendingStore?.getItem(GOOGLE_PENDING) || "null");
+        return value?.version === 1 && Number.isFinite(value.createdAt) && value.createdAt <= now() && now() - value.createdAt < 600000 ? value : null;
+      } catch { return null; }
+    }
+    function clearGoogleAttempt() { try { pendingStore?.removeItem(GOOGLE_PENDING); } catch {} }
+    function cancelGoogleSignIn() {
+      if (handlingCallback || state.action === "callback" || (!googleAttempt() && !googleLaunching)) return false;
+      clearGoogleAttempt();
+      if (pendingSignup()?.method === "google") clearPendingSignup();
+      googleSequence++;googleLaunching = false;
+      if (!state.busy || /^google-/.test(state.action)) {
+        navigating = false;
+        set({ busy: false, action: "", message: "Google sign-in cancelled. You can try again or use email." });
+      }
+      return true;
+    }
     function pendingSignup() {
       try {
         const value = JSON.parse(pendingStore?.getItem(SIGNUP_PENDING) || "null");
@@ -190,7 +233,7 @@
         throw Error(
           "Your browser could not save sign-in. Enable site storage and try again.",
         );
-      if (["signup", "apple-signup"].includes(state.action) || (handlingCallback && signupCallback && pendingSignup())) {
+      if (["signup", "apple-signup", "google-signup"].includes(state.action) || (handlingCallback && signupCallback && pendingSignup())) {
         clearPendingSignup();
         lifecycle("signup_succeeded");
       }
@@ -218,7 +261,7 @@
         return await task(p);
       } catch (error) {
         if (current(p)) {
-          if (["signup", "apple-signup"].includes(action)) lifecycle("signup_failed_" + errorCategory(error));
+          if (["signup", "apple-signup", "google-signup"].includes(action)) lifecycle("signup_failed_" + errorCategory(error));
           else if (action === "callback" && signupCallback) {
             const pending = pendingSignup();
             if (pending && !pending.verificationFailed) {
@@ -359,6 +402,51 @@
       navigating = false;
       set({ busy: false, action: "" });
     }
+    async function signInWithGoogle(selection = {}) {
+      if (state.busy || navigating || googleLaunching || blocked()) return false;
+      if (!options.google?.enabled?.()) {
+        set({ message: "Sign in with Google is unavailable. Use email or try again shortly." });
+        return false;
+      }
+      const signingUp = selection.intent === "sign-up" || (selection.intent !== "sign-in" && state.mode === "sign-up");
+      const sequence = ++googleSequence;
+      googleLaunching = true;
+      let address = null, owner, handedOff = false;
+      try {
+        const prepared = await run(signingUp ? "google-signup" : "google-signin", async (p) => {
+          owner = p;clearGoogleAttempt();
+          const result = await auth.signInWithOAuth({ provider: "google", options: {
+            redirectTo: options.redirectTo("google"), skipBrowserRedirect: true, queryParams: { prompt: "select_account" },
+          } });
+          check(result.error);
+          if (!current(p) || sequence !== googleSequence) return false;
+          address = googleAuthorizeURL(result.data?.url, options.google.origin, options.redirectTo("google"));
+          if (!address) throw Error("Google sign-in returned an unexpected destination. Use email or try again.");
+          const marker = JSON.stringify({ version: 1, createdAt: now(), actor: sessionActor(), signingUp });
+          pendingStore?.setItem(GOOGLE_PENDING, marker);
+          if (pendingStore?.getItem(GOOGLE_PENDING) !== marker) throw Error("Your device could not save secure sign-in progress. Allow site storage and retry.");
+          if (signingUp) { rememberPendingSignup({ createdAt: now(), method: "google" }); lifecycle("signup_attempted"); }
+          return true;
+        });
+        if (!prepared || !current(owner) || sequence !== googleSequence) return false;
+        // Finish run() before opening the system browser. A native callback can
+        // then use the existing verification lock even if Browser.open is slow.
+        if (!options.google.native) { navigating = true; set({ busy: true, action: "google-signin" }); }
+        const launch = options.google.navigate(address);handedOff = true;
+        await launch;
+        return sequence === googleSequence;
+      } catch (error) {
+        if (owner && current(owner) && sequence === googleSequence && googleAttempt() && !handlingCallback) {
+          clearGoogleAttempt();
+          if (pendingSignup()?.method === "google") clearPendingSignup();
+          navigating = false;
+          set({ busy: false, action: "", message: problem(error) });
+        }
+        return false;
+      } finally {
+        if (sequence === googleSequence) googleLaunching = !!(handedOff && options.google.native && googleAttempt());
+      }
+    }
     function resend() {
       if (
         state.view !== "check-email" ||
@@ -446,18 +534,25 @@
       if (!fields) return Promise.resolve(false);
       return run("callback", async (p) => {
         handlingCallback = true;
-        const callbackType = fields.type || fields.bb_auth || "";
-        signupCallback = ["signup", "email"].includes(callbackType) || (callbackType === "apple" && pendingSignup()?.method === "apple");
+        const callbackType = fields.bb_auth === "google" ? "google" : fields.type || fields.bb_auth || "";
+        const googleCallbackSequence = googleSequence;
+        signupCallback = ["signup", "email"].includes(callbackType) || (["apple", "google"].includes(callbackType) && pendingSignup()?.method === callbackType);
         recoveryEvent = false;
         set({ view: "verifying", linkRecovery: callbackType === "recovery" });
         try {
+          if (callbackType === "google") {
+            const attempt = googleAttempt();
+            if (!attempt || attempt.actor !== sessionActor()) throw Error("This Google sign-in expired or your account changed. Start Google sign-in again on this device.");
+            clearGoogleAttempt();
+            if (!fields.code && !fields.error && !fields.error_code) throw Error("This Google sign-in link is incomplete. Start Google sign-in again.");
+          }
           if (fields.error || fields.error_code) {
             // Retain a bounded provider error code for accurate local recovery.
             // Never reflect the URL's error_description or emit either value.
             const code = typeof fields.error_code === "string" && /^[a-z0-9_]{1,80}$/i.test(fields.error_code) ? fields.error_code : "auth_callback_error";
-            throw Object.assign(Error(callbackType === "recovery" ? "This password reset link could not be used. Request a fresh reset email from this device." : "This sign-in link could not be used. If you already confirmed your email, sign in with your email and password. Otherwise request a fresh email."), { code });
+            throw Object.assign(Error(callbackType === "google" ? "Google sign-in was not completed. Try Google again or use email." : callbackType === "recovery" ? "This password reset link could not be used. Request a fresh reset email from this device." : "This sign-in link could not be used. If you already confirmed your email, sign in with your email and password. Otherwise request a fresh email."), { code });
           }
-          const type = fields.type || fields.bb_auth || "";
+          const type = callbackType;
           let r;
           if (fields.code)
             r = await auth.exchangeCodeForSession(
@@ -476,6 +571,12 @@
             });
           else throw Error("This link is incomplete. Request a new email.");
           check(r.error);
+          if (callbackType === "google" && r.data?.session) {
+            // Provider API credentials are not needed for BasketBoss sign-in.
+            // Persist only the ordinary Supabase session in the existing owner.
+            const { provider_token, provider_refresh_token, ...session } = r.data.session;
+            r = { ...r, data: { ...r.data, session } };
+          }
           if (r.data?.redirectType === "recovery" || recoveryEvent) set({ linkRecovery: true });
           return await accept(
             r.data?.session,
@@ -488,6 +589,7 @@
           throw Object.assign(new Error(error?.message || "This sign-in link could not be used. Please try signing in or request a new email."), { name: error?.name || "Error", code: error?.code, authType: state.linkRecovery ? "recovery" : callbackType });
         } finally {
           handlingCallback = false;
+          if (callbackType === "google" && googleCallbackSequence === googleSequence) googleLaunching = false;
         }
       });
     }
@@ -523,6 +625,7 @@
     }
     function invalidate() {
       epoch++;
+      googleSequence++;googleLaunching = false;clearGoogleAttempt();
       navigating = false;
       lease = null;
       try {
@@ -548,6 +651,8 @@
       signUp,
       signIn,
       signInWithApple,
+      signInWithGoogle,
+      cancelGoogleSignIn,
       resumeNavigation,
       resend,
       requestReset,
@@ -690,8 +795,17 @@
     appleButton.setAttribute("aria-label", "Continue with Apple");
     appleStatus.setAttribute("role", "status");
     appleSection.append(appleButton, appleStatus, appleRetry, appleDivider);
-    form.insertBefore(appleSection, intro.nextSibling);
+    const providers = make("div", "bbAuthProviders"), googleSection = make("div", "bbAuthGoogleSection"),
+      googleButton = button("bbAuthGoogle", "Continue with Google"), googleStatus = make("p", "bbAuthGoogleStatus"),
+      googleRetry = button("bbAuthGoogleRetry", "Retry Google sign-in"), googleLabel = make("span", null, "Continue with Google"), googleMark = make("span");
+    googleMark.setAttribute("aria-hidden", "true");
+    googleMark.innerHTML = '<svg viewBox="0 0 48 48" focusable="false"><path fill="#EA4335" d="M24 9.5c3.54 0 6.71 1.22 9.21 3.6l6.85-6.85C35.9 2.38 30.47 0 24 0 14.62 0 6.51 5.38 2.56 13.22l7.98 6.19C12.43 13.72 17.74 9.5 24 9.5z"/><path fill="#4285F4" d="M46.98 24.55c0-1.57-.15-3.09-.38-4.55H24v9.02h12.94c-.58 2.96-2.26 5.48-4.78 7.18l7.73 6C44.4 38.04 46.98 31.88 46.98 24.55z"/><path fill="#FBBC05" d="M10.53 28.59A14.4 14.4 0 0 1 9.75 24c0-1.59.27-3.13.76-4.59l-7.98-6.19A23.87 23.87 0 0 0 0 24c0 3.87.93 7.53 2.56 10.78l7.97-6.19z"/><path fill="#34A853" d="M24 48c6.48 0 11.93-2.13 15.91-5.8l-7.73-6c-2.15 1.45-4.92 2.3-8.18 2.3-6.26 0-11.57-4.22-13.47-9.91l-7.98 6.19C6.51 42.62 14.62 48 24 48z"/></svg>';
+    googleButton.textContent = "";googleButton.append(googleMark, googleLabel);
+    googleButton.setAttribute("aria-label", "Continue with Google");googleStatus.setAttribute("role", "status");
+    googleSection.append(googleButton, googleStatus, googleRetry);providers.append(appleSection, googleSection);
+    form.insertBefore(providers, intro.nextSibling);
     let appleReady = false, appleChecking = false, appleProblem = "", appleCheckFailed = false;
+    let googleReady = false, googleChecking = false, googleProblem = "", googleCheckFailed = false;
     extra.append(
       title,
       copy,
@@ -738,7 +852,10 @@
       form.setAttribute("aria-busy", String(s.busy));
       for (const n of fields) if (n) n.hidden = !normal;
       modes.hidden = intro.hidden = !normal || blocked();
-      appleSection.hidden = !normal || blocked() || (!appleReady && !appleProblem);
+      const platform = win.BBNative?.isNative ? (win.BBNative.platform || (win.BBNativeAppleAuth ? "ios" : "android")) : "web";
+      if (form.dataset.bbAccountPlatform !== platform) form.dataset.bbAccountPlatform = platform;
+      providers.hidden = !normal || blocked();
+      appleSection.hidden = platform !== "ios" || !normal || blocked() || (!appleReady && !appleProblem);
       appleButton.hidden = appleDivider.hidden = !appleReady;
       appleButton.disabled = s.busy || !appleReady;
       appleLabel.textContent = s.busy && /^apple-/.test(s.action) ? "Connecting to Apple…" : "Continue with Apple";
@@ -746,6 +863,27 @@
       appleStatus.hidden = !appleProblem;
       appleRetry.hidden = !appleCheckFailed;
       appleRetry.disabled = s.busy || appleChecking;
+      googleSection.hidden = !normal || blocked() || (!googleReady && !googleProblem);
+      googleButton.hidden = !googleReady;googleButton.disabled = s.busy || !googleReady;
+      googleLabel.textContent = s.busy && /^google-/.test(s.action) ? "Connecting to Google…" : "Continue with Google";
+      googleStatus.textContent = googleProblem;googleStatus.hidden = !googleProblem;
+      googleRetry.hidden = !googleCheckFailed;googleRetry.disabled = s.busy || googleChecking;
+      let passwordHelp = doc.getElementById("bbGooglePasswordHelp");
+      const currentUser = (() => { try { return JSON.parse(win.localStorage.getItem(SESSION) || "null")?.user; } catch { return null; } })();
+      const hasProvider = name => currentUser?.identities?.some(identity => identity?.provider === name) || currentUser?.app_metadata?.providers?.includes(name);
+      if (signed && hasProvider("google") && !hasProvider("apple") && !passwordHelp) {
+        passwordHelp = make("section", "bbGooglePasswordHelp");
+        const help = make("p", null, "If you haven’t set a BasketBoss password, set one before deleting your BasketBoss account. This is separate from your Google password."),
+          setup = button("bbGoogleSetPassword", "Set a BasketBoss password");setup.className = "bbGoogleSetPassword";
+        setup.onclick = () => {
+          if (blocked()) return;
+          let account;try { account = JSON.parse(win.localStorage.getItem(SESSION) || 'null')?.user; } catch {}
+          if (!account?.id || !account.email) return;
+          recoveryEmail.value = account.email;doc.getElementById('cloud-open')?.click();core.open('forgot-password');
+        };
+        passwordHelp.append(help, setup);signed.append(passwordHelp);
+      }
+      if (passwordHelp) passwordHelp.hidden = !member || !hasProvider("google") || hasProvider("apple") || blocked();
       signup.hidden = !normal || !signingUp || blocked();
       login.hidden = !normal || (signingUp && !blocked());
       intro.textContent = s.allowAccountSwitch && member
@@ -944,7 +1082,30 @@
           win.location.assign(target.href);
         },
       },
+      google: {
+        enabled: () => googleReady,
+        origin: config.url,
+        get native() { return win.BBNative?.isNative === true; },
+        navigate: address => {
+          if (win.BBNative?.isNative) {
+            if (typeof win.BBNativeAuthBrowser?.open !== "function") throw Error("Google sign-in is still opening. Please retry or use email.");
+            return win.BBNativeAuthBrowser.open(address);
+          }
+          win.location.assign(address);
+        },
+      },
     });
+    async function checkGoogle() {
+      if (googleChecking) return;
+      googleChecking = true;googleCheckFailed = false;googleProblem = "";
+      paint(core.state());
+      try { googleReady = (await googleAvailability(win, config)).enabled; }
+      catch { googleReady = false;googleCheckFailed = true;googleProblem = "Google sign-in could not be checked. Use email or retry."; }
+      finally {
+        googleChecking = false;paint(core.state());
+        try { win.dispatchEvent(new win.CustomEvent("basketboss:google-auth-availability", { detail: { available: googleReady && !blocked() } })); } catch {}
+      }
+    }
     async function checkApple() {
       if (appleChecking) return;
       appleChecking = true;
@@ -967,6 +1128,8 @@
     }
     appleButton.onclick = () => core.signInWithApple();
     appleRetry.onclick = () => checkApple();
+    googleButton.onclick = () => core.signInWithGoogle();
+    googleRetry.onclick = () => checkGoogle();
     signupMode.onclick = () => core.open("sign-up");
     signinMode.onclick = () => core.open("sign-in");
     const accountOpened = () => {
@@ -1100,11 +1263,13 @@
     const api = {
       ...core,
       appleAvailable: () => appleReady && !blocked(),
+      googleAvailable: () => googleReady && !blocked(),
       handleCallbackURL,
       destroy() {
         win.removeEventListener("hashchange", routeChanged);
         win.removeEventListener("popstate", routeChanged);
         win.removeEventListener("pageshow", pageShown);
+        win.removeEventListener("basketboss:auth-browser-ready", checkGoogle);
         accountPresentation?.disconnect();
         win.removeEventListener("basketboss:session-changed", changed);
         doc.getElementById("cloud-open")?.removeEventListener("click", accountOpened);
@@ -1120,6 +1285,8 @@
     win.BBAuthFlow = Object.freeze(api);
     paint(core.state());
     void checkApple();
+    void checkGoogle();
+    win.addEventListener("basketboss:auth-browser-ready", checkGoogle);
     win.dispatchEvent(new win.Event("basketboss:auth-ready"));
     void consume().then(() => {
       if (!callbackBusy && core.state().view === "sign-in")
@@ -1132,5 +1299,5 @@
     });
     return api;
   }
-  return Object.freeze({ create, install, validEmail, timedFetch, appleAvailability });
+  return Object.freeze({ create, install, validEmail, timedFetch, appleAvailability, googleAvailability, googleAuthorizeURL });
 });

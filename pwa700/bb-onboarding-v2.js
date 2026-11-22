@@ -81,6 +81,8 @@
  let replaying=false,replayOriginal=null;
  let quickSetupOriginal=null,quickAccountOpen=false,quickPreferencesOpen=false,quickPartnerOpen=false;
  let quickAppleBusy=false,quickAppleMessage='';
+ let quickGoogleBusy=false,quickGoogleMessage='';
+ const GOOGLE_ICON='<svg viewBox="0 0 48 48" focusable="false"><path fill="#EA4335" d="M24 9.5c3.54 0 6.71 1.22 9.21 3.6l6.85-6.85C35.9 2.38 30.47 0 24 0 14.62 0 6.51 5.38 2.56 13.22l7.98 6.19C12.43 13.72 17.74 9.5 24 9.5z"/><path fill="#4285F4" d="M46.98 24.55c0-1.57-.15-3.09-.38-4.55H24v9.02h12.94c-.58 2.96-2.26 5.48-4.78 7.18l7.73 6C44.4 38.04 46.98 31.88 46.98 24.55z"/><path fill="#FBBC05" d="M10.53 28.59A14.4 14.4 0 0 1 9.75 24c0-1.59.27-3.13.76-4.59l-7.98-6.19A23.87 23.87 0 0 0 0 24c0 3.87.93 7.53 2.56 10.78l7.97-6.19z"/><path fill="#34A853" d="M24 48c6.48 0 11.93-2.13 15.91-5.8l-7.73-6c-2.15 1.45-4.92 2.3-8.18 2.3-6.26 0-11.57-4.22-13.47-9.91l-7.98 6.19C6.51 42.62 14.62 48 24 48z"/></svg>';
  // Presentation-only progress. Never part of the planner, auth or billing schema.
  const FLOW_KEY='bb_onboarding_four_step_v1';
  const FLOW_HOUSE=[['1','Just me'],['2','2 people'],['3','3 people'],['4+','3–4 people'],['Family with kids','Family with kids']];
@@ -117,6 +119,29 @@
      if(connected!==true)quickAppleMessage='Apple sign-in wasn’t completed. Try again, or explore Free.';
    }catch(_){quickAppleMessage='Could not connect to Apple. Try again, or explore Free.';}
    finally{quickAppleBusy=false;syncWelcomeApple();}
+ }
+ function welcomeGoogleAvailable(){
+   try{return four&&!blocked()&&!validSession()&&window.BBAuthFlow?.googleAvailable?.()===true;}catch(_){return false;}
+ }
+ function syncWelcomeGoogle(){
+   if(!four||!host||!flowAuthStep())return;
+   const section=host.querySelector('[data-bbob-google]');if(!section)return;
+   const available=welcomeGoogleAvailable();section.hidden=!(available||quickGoogleBusy);
+   const button=section.querySelector('[data-bbob="flow-google"]');
+   if(button){button.disabled=quickGoogleBusy||!available;button.setAttribute('aria-busy',String(quickGoogleBusy));}
+   const label=section.querySelector('[data-bbob-google-label]');if(label)label.textContent=quickGoogleBusy?'Connecting to Google…':'Continue with Google';
+   const status=section.querySelector('[data-bbob-google-status]');if(status){status.textContent=quickGoogleMessage;status.hidden=!quickGoogleMessage;}
+ }
+ async function signInWelcomeGoogle(){
+   if(quickGoogleBusy||!welcomeGoogleAvailable())return;
+   // Preserve the same return/save intent across the existing OAuth redirect.
+   if(!flow.authIntent){flow.authIntent='save';if(!saveFlow()){flowError('Could not save your progress. Please retry.');return;}}
+   quickGoogleBusy=true;quickGoogleMessage='';syncWelcomeGoogle();
+   try{
+     const opened=await window.BBAuthFlow.signInWithGoogle({intent:flow.authIntent==='return'?'sign-in':'sign-up'});
+     if(opened!==true)quickGoogleMessage=window.BBAuthFlow.state?.().message||'Google sign-in wasn’t completed. Try again, or use email.';
+   }catch(_){quickGoogleMessage='Could not connect to Google. Try again, or use email.';}
+   finally{quickGoogleBusy=false;syncWelcomeGoogle();}
  }
  const changedPreferences=new Set();
  function persist(commitReplay=false){if(blocked())return false;if(replaying&&!commitReplay)return true;return write(KEY,JSON.stringify({step:state.step,house:state.house,goals:state.goals,diets:state.diets,region:state.region,started:state.started,complete:state.complete,partnerStepV2:true,wantsPartnerInvite:state.wantsPartnerInvite===true,partnerIntent:state.partnerIntent||'none'}));}
@@ -167,7 +192,7 @@
      title=returning?'Welcome back.':'Save your personalised plan';
      description=returning?'Sign in to your saved kitchen.':`Keep your ${esc(flowHouseLabel())} plan and shopping list synced across devices.`;
      const accountOpen=quickAccountOpen;
-     art=`<section class="bbob-flow-auth"><div data-bbob-apple ${welcomeAppleAvailable()?'':'hidden'}><button type="button" class="bbob-btn bbob-apple" data-bbob="flow-apple"><svg viewBox="0 0 24 24" aria-hidden="true"><path fill="currentColor" d="M17.05 20.28c-.98.95-2.05.8-3.08.35-1.09-.46-2.09-.48-3.24 0-1.44.62-2.2.44-3.06-.35C2.79 15.26 3.5 7.59 9.05 7.31c1.35.07 2.29.76 3.08.82 1.18-.24 2.31-.94 3.57-.85 1.51.12 2.65.72 3.4 1.8-3.12 1.87-2.38 5.98.48 7.13-.57 1.5-1.31 2.99-2.54 4.08zM12.03 7.25C11.88 5.02 13.69 3.18 15.77 3c.29 2.58-2.34 4.5-3.74 4.25z"/></svg><span data-bbob-apple-label>Continue with Apple</span></button><p data-bbob-apple-status role="status" hidden></p></div>${btn('✉　Continue with Email','flow-email','outline')}<div id="bbobQuickAccountPanel" class="bbob-quick-account-panel" ${accountOpen?'':'hidden'}><div id="bbobAuthSlot" class="bbob-auth-slot"></div><div id="bbobMessageSlot" class="bbob-message-slot" aria-live="polite"></div></div></section>`;
+     art=`<section class="bbob-flow-auth"><div data-bbob-apple ${welcomeAppleAvailable()?'':'hidden'}><button type="button" class="bbob-btn bbob-apple" data-bbob="flow-apple"><svg viewBox="0 0 24 24" aria-hidden="true"><path fill="currentColor" d="M17.05 20.28c-.98.95-2.05.8-3.08.35-1.09-.46-2.09-.48-3.24 0-1.44.62-2.2.44-3.06-.35C2.79 15.26 3.5 7.59 9.05 7.31c1.35.07 2.29.76 3.08.82 1.18-.24 2.31-.94 3.57-.85 1.51.12 2.65.72 3.4 1.8-3.12 1.87-2.38 5.98.48 7.13-.57 1.5-1.31 2.99-2.54 4.08zM12.03 7.25C11.88 5.02 13.69 3.18 15.77 3c.29 2.58-2.34 4.5-3.74 4.25z"/></svg><span data-bbob-apple-label>Continue with Apple</span></button><p data-bbob-apple-status role="status" hidden></p></div><div data-bbob-google ${welcomeGoogleAvailable()?'':'hidden'}><button type="button" class="bbob-btn bbob-google" data-bbob="flow-google" aria-label="Continue with Google">${GOOGLE_ICON}<span data-bbob-google-label>Continue with Google</span></button><p data-bbob-google-status role="status" hidden></p></div>${btn('✉　Continue with Email','flow-email','outline')}<div id="bbobQuickAccountPanel" class="bbob-quick-account-panel" ${accountOpen?'':'hidden'}><div id="bbobAuthSlot" class="bbob-auth-slot"></div><div id="bbobMessageSlot" class="bbob-message-slot" aria-live="polite"></div></div></section>`;
      actions=btn(returning?'Back to welcome':'Skip for now',returning?'flow-back':'flow-skip','link');
    }else{
      title=premium?'Your Premium kitchen is ready':`Your ${esc(flowHouseLabel())} plan is ready`;
@@ -252,6 +277,7 @@
      panel.scrollIntoView?.({block:'nearest',behavior:'instant'});return;
    }
    if(action==='flow-apple'){void signInWelcomeApple();return;}
+   if(action==='flow-google'){void signInWelcomeGoogle();return;}
    if(action==='flow-trial'){
      if(!validSession()){flowAuth('save');return;}
      if(window.BasketBossVerifiedPremium?.isActive?.()===true){completeFour();return;}
@@ -443,7 +469,7 @@
    host.classList?.toggle('bbob-four-step',four);
    host.classList?.toggle('bbob-quick',quick&&!four);host.classList?.toggle('bbob-quick-welcome-screen',quick&&state.step===1);host.classList?.toggle('bbob-account-open',four?flowAuthStep()&&quickAccountOpen:quick&&state.step===1&&(quickAccountOpen||state.partnerIntent==='join'));host.classList?.toggle('bbob-quick-premium',quick&&state.step===10);host.classList?.toggle('bbob-kitchen-slide',!quick&&state.step===9);restoreAuth();host.innerHTML=content();
    if((four?flowAuthStep()&&!validSession():state.step===1&&!accountRemembered()))mountAuth();
-   syncWelcomeApple();
+   syncWelcomeApple();syncWelcomeGoogle();
    sizeWelcomeViewport();host.scrollTop=0;
    if(four){
      const target=choice?host.querySelector('[data-bbob-opt="'+choice.index+'"][data-bbob-group="'+choice.group+'"]'):host.querySelector('#bbob-title');
@@ -778,6 +804,8 @@
    window.addEventListener('orientationchange',sizeWelcomeViewport);
    window.addEventListener('basketboss:auth-ready',syncWelcomeApple);
    window.addEventListener('basketboss:apple-auth-availability',syncWelcomeApple);
+   window.addEventListener('basketboss:google-auth-availability',syncWelcomeGoogle);
+   window.addEventListener('basketboss:auth-ready',syncWelcomeGoogle);
    trimFounder();begin();replayLabel();
    document.addEventListener('click',event=>{
      if(!event.target.closest?.('#bbOnboardingReplay,#bbBetaWelcomeReplay'))return;
@@ -785,7 +813,7 @@
    },true);
    if(typeof MutationObserver==='function')new MutationObserver(replayLabel).observe(document.body,{childList:true,subtree:true});
    window.addEventListener('basketboss:session-changed',()=>{
-     if(four){syncWelcomeApple();return;}
+     if(four){syncWelcomeApple();syncWelcomeGoogle();return;}
      if(blocked()||!host||state.step!==1)return;
      // A late signed-out notification must not move the shared form while
      // someone is editing: reparenting it blurs the input and hides iOS's keyboard.
