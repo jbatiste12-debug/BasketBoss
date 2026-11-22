@@ -154,6 +154,8 @@
   function syncAccount() {
     const panel = doc.getElementById('cloud-panel'), card = doc.getElementById('cloud-card');
     if (!panel || !card) return;
+    const form = doc.getElementById('cloud-auth');
+    if (form && root.BBNative?.isNative === true && form.dataset.bbAccountNative !== 'true') form.dataset.bbAccountNative = 'true';
     if (!card.dataset.bbAccountPolish) {
       card.dataset.bbAccountPolish = 'account';
       panel.setAttribute('aria-label', 'BasketBoss account');
@@ -189,8 +191,11 @@
       });
       panel.addEventListener('focusin', scheduleViewport);
       state.panel = panel;
-      const observer = new root.MutationObserver(schedule);
-      observer.observe(panel, { attributes: true, attributeFilter: ['class', 'hidden'], subtree: true });
+      // Reconcile account copy before the next paint. Deferring this observer
+      // to another animation frame briefly pairs a new auth view with the
+      // previous heading. Focus and viewport adjustments retain their own rAF.
+      const observer = new root.MutationObserver(syncAccount);
+      observer.observe(panel, { attributes: true, attributeFilter: ['class', 'hidden', 'data-bb-auth-view'], subtree: true });
     }
     const signedIn = doc.getElementById('cloud-signed')?.hidden === false;
     syncPantryAccount();

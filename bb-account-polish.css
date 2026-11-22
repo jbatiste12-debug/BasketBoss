@@ -30,7 +30,7 @@ html body .bbui-settings-panel[data-bb-account-polish] .bb-native-membership{bac
 html body .bbui-settings-panel[data-bb-account-polish] .bb-native-membership h3{font-size:14px!important;margin:0 0 8px!important;letter-spacing:-.25px!important}
 html body .bbui-settings-panel[data-bb-account-polish] .bb-native-membership p{font-size:11px!important;line-height:1.65!important;margin:8px 0!important;color:#75816d!important}
 html body #cloud-panel.open:has([data-bb-account-polish]){background:#102d238f!important;backdrop-filter:blur(5px);display:grid!important;place-items:center!important;z-index:100001!important;padding:calc(15px + env(safe-area-inset-top,0px)) 14px calc(15px + env(safe-area-inset-bottom,0px))!important;overflow-y:auto!important;overscroll-behavior:contain!important}
-html body #cloud-card[data-bb-account-polish]{position:relative!important;box-sizing:border-box!important;min-width:0!important;width:min(100%,420px)!important;max-width:420px!important;max-height:calc(100dvh - 30px - env(safe-area-inset-top,0px) - env(safe-area-inset-bottom,0px))!important;margin:0!important;padding:27px 25px 23px!important;border-radius:26px!important;border:1px solid #e3e7d8!important;background:#fffdf7!important;color:#1b432e!important;box-shadow:0 26px 90px #0e2c2340!important;overflow-y:auto!important;overflow-x:hidden!important;overscroll-behavior:contain!important}
+html body #cloud-card{position:relative!important;box-sizing:border-box!important;min-width:0!important;width:min(100%,420px)!important;max-width:420px!important;max-height:calc(100dvh - 30px - env(safe-area-inset-top,0px) - env(safe-area-inset-bottom,0px))!important;margin:0!important;padding:27px 25px 23px!important;border-radius:26px!important;border:1px solid #e3e7d8!important;background:#fffdf7!important;color:#1b432e!important;box-shadow:0 26px 90px #0e2c2340!important;overflow-y:auto!important;overflow-x:hidden!important;overscroll-behavior:contain!important}
 html body #cloud-card[data-bb-account-polish] #cloud-close{position:absolute!important;right:15px!important;top:15px!important;display:grid!important;place-items:center!important;width:44px!important;min-width:44px!important;min-height:44px!important;height:44px!important;padding:0!important;margin:0!important;border:1px solid #e0e6d6!important;background:#f3f6e9!important;color:#68815b!important;border-radius:13px!important;box-shadow:none!important;font-size:15px!important;z-index:4!important}
 html body #cloud-card[data-bb-account-polish] .bbap-account-mark{display:grid;place-items:center;width:45px;height:45px;border:1px solid #dce6d0;border-radius:15px;background:#edf3e2;color:#648452;margin:0 0 21px}
 html body #cloud-card[data-bb-account-polish] .bbap-account-mark svg{width:23px;height:23px}
@@ -103,9 +103,34 @@ html body #cloud-card[data-bb-account-polish] #cloud-close{position:sticky!impor
 html.bb-account-open body{position:fixed!important;top:var(--bbap-page-top,0px)!important;left:0!important;right:0!important;width:100%!important;overflow:hidden!important;overscroll-behavior:none!important}
 html.bb-account-open body .shell,html.bb-account-open body .bbui-settings-overlay,html.bb-account-open body #bbNewOnboarding{visibility:hidden!important;opacity:0!important;pointer-events:none!important}
 html.bb-account-open body .shell .tabs,html.bb-account-open body nav.bb-r6-cook-nav{visibility:hidden!important;pointer-events:none!important}
+html:has(#cloud-panel.open) body :is(.shell,.bbui-settings-overlay,#bbNewOnboarding){visibility:hidden!important;opacity:0!important;pointer-events:none!important}
+html:has(#cloud-panel.open) body nav.bb-r6-cook-nav{visibility:hidden!important;pointer-events:none!important}
 html body #cloud-panel.open:has([data-bb-account-polish]){inset:auto!important;top:var(--bbap-viewport-top,0px)!important;left:var(--bbap-viewport-left,0px)!important;width:var(--bbap-viewport-width,100%)!important;height:var(--bbap-viewport-height,100dvh)!important;min-height:0!important;overflow:hidden!important;background:#f5f7ef!important;backdrop-filter:none!important;-webkit-backdrop-filter:none!important}
 html body #cloud-panel #cloud-card[data-bb-account-polish]{max-height:calc(var(--bbap-viewport-height,100dvh) - 30px - env(safe-area-inset-top,0px) - env(safe-area-inset-bottom,0px))!important;min-height:0!important;scroll-padding:52px 12px 16px}
 html body #cloud-card[data-bb-account-polish] .bbap-pantry-sync{margin:14px 0;padding:16px;border:1px solid #d6dfd2;border-radius:18px;background:#f3f7ee;color:#173e2e}
 html body #cloud-card[data-bb-account-polish] .bbap-pantry-sync h3{margin:0 0 8px;font-size:18px}
 html body #cloud-card[data-bb-account-polish] .bbap-pantry-sync p{margin:8px 0;font-size:16px;line-height:1.45}
 html body #cloud-card[data-bb-account-polish] .bbap-pantry-sync button{margin:12px 0 0;min-height:48px;font-size:16px}
+/* The legacy account can open while deferred account scripts are still loading.
+   Keep its controls out of the first paint and focus order until the existing
+   controller has painted a view. This also follows the form into onboarding;
+   its separate error message and the account close button remain available. */
+html body :is(#cloud-card,#bbNewOnboarding) #cloud-auth:not([data-bb-auth-view])>:is(label,button,div,section,p){display:none!important}
+html body #cloud-auth:not([data-bb-auth-view])::before{content:"Account tools are opening. If they do not appear, reload BasketBoss.";display:block;margin:12px 0;color:#617a53;font:400 14px/1.6 system-ui,-apple-system,sans-serif}
+/* Keep the controller's selected action visible when legacy cloud status copy
+   refreshes after a session change. The original controls and handlers stay put. */
+html body #cloud-auth[data-bb-auth-mode="sign-in"] #cloud-signup{display:none!important}
+/* Cover the planner from the opening mutation, before modal bookkeeping runs. */
+html body #cloud-panel.open{background:#f5f7ef!important;backdrop-filter:none!important;-webkit-backdrop-filter:none!important}
+html body #cloud-card:not([data-bb-account-polish])>:is(h2,#cloud-status,#cloud-signed){display:none!important}
+/* A compact provider row keeps native email controls steady while the existing
+   availability check settles. Hidden provider controls stay hidden; the row
+   instead explains that email is ready. Recovery and blocked forms have no row. */
+html body #cloud-auth[data-bb-account-native]:is([data-bb-auth-view="sign-in"],[data-bb-auth-view="sign-up"]):has(#bbAuthModes:not([hidden])) #bbAuthAppleSection{display:grid!important;grid-column:1/-1;grid-template-columns:minmax(0,1fr) auto;align-items:center;column-gap:10px;height:5em;min-height:5em;margin:0 0 16px;font:400 13px/1.4 system-ui,-apple-system,sans-serif}
+html body #cloud-auth[data-bb-account-native]:is([data-bb-auth-view="sign-in"],[data-bb-auth-view="sign-up"]):has(#bbAuthModes:not([hidden])) #bbAuthAppleSection[hidden]::before{content:"You can continue with email below.";grid-column:1/-1;color:#617a53}
+html body #cloud-auth[data-bb-account-native]:is([data-bb-auth-view="sign-in"],[data-bb-auth-view="sign-up"]):has(#bbAuthModes:not([hidden])) #bbAuthApple{grid-column:1/-1}
+html body #cloud-auth[data-bb-account-native]:is([data-bb-auth-view="sign-in"],[data-bb-auth-view="sign-up"]):has(#bbAuthModes:not([hidden])) #bbAuthAppleStatus{margin:0;font:inherit}
+html body #cloud-auth[data-bb-account-native]:is([data-bb-auth-view="sign-in"],[data-bb-auth-view="sign-up"]):has(#bbAuthModes:not([hidden])) #bbAuthAppleStatus:has(+ #bbAuthAppleRetry[hidden]){grid-column:1/-1}
+html body #cloud-auth[data-bb-account-native]:is([data-bb-auth-view="sign-in"],[data-bb-auth-view="sign-up"]):has(#bbAuthModes:not([hidden])) #bbAuthAppleRetry{width:100px;min-width:0;margin:0;padding:8px;font:650 13px/1.3 system-ui,-apple-system,sans-serif}
+html body #cloud-auth[data-bb-account-native]:is([data-bb-auth-view="sign-in"],[data-bb-auth-view="sign-up"]):has(#bbAuthModes:not([hidden])) #bbAuthAppleDivider{display:none!important}
+@media(max-width:359px){html body #cloud-auth[data-bb-account-native]:is([data-bb-auth-view="sign-in"],[data-bb-auth-view="sign-up"]):has(#bbAuthModes:not([hidden])) #bbAuthAppleSection{height:6.2em;min-height:6.2em}}
