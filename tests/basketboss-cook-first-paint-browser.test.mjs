@@ -34,6 +34,8 @@ async function fixture({width=390,platform='web',motion='no-preference',baseline
  const context=await browser.newContext({viewport:{width,height:width<768?844:1000},isMobile:width<768,hasTouch:width<768,reducedMotion:motion,serviceWorkers:'block'}),page=await context.newPage(),errors=[];
  page.setDefaultTimeout(12000);page.on('pageerror',error=>errors.push(error.message));page.on('dialog',dialog=>dialog.dismiss());
  let document=pwa?pwaSource:source;
+ // Remove this presentation fix from the current source copy; the baseline
+ // remains a counterexample after any later commit becomes HEAD.
  if(baseline)document=document.replace(/<style id="bb-cook-first-paint">[\s\S]*?<\/style>/,'').replace('bb-premium-companion bb-r6-cook-page','bb-premium-companion').replace(/<section id="bbCookOpening"[\s\S]*?<\/section>/,'');
  if(platform!=='web')document=document.replace('<html lang="en">','<html lang="en" class="bb-native-'+platform+'">').replace('</head>','<style>'+(platform==='ios'?iosCSS:androidCSS)+'</style></head>');
  await context.route('**/*',async route=>{
@@ -56,11 +58,11 @@ async function fixture({width=390,platform='web',motion='no-preference',baseline
   const probe=window.__cookFirstPaint={frames:[],stop:false};
   const visible=node=>!!node&&node.getClientRects().length>0&&getComputedStyle(node).display!=='none'&&getComputedStyle(node).visibility!=='hidden'&&(!node.checkVisibility||node.checkVisibility({checkOpacity:true,checkVisibilityCSS:true}));
   const sample=()=>{
-   const nav=document.querySelector('nav.bb-r6-cook-nav');
+   const nav=document.querySelector('nav.bb-r6-cook-nav'),hero=document.querySelector('#bb15AiPremiumHub .bbpm-intro'),heroStyle=visible(hero)?getComputedStyle(hero):null;
    probe.frames.push({time:performance.now(),state:document.readyState,ready:document.documentElement.classList.contains('bb-cook-ready'),photo:document.body?.classList.contains('bb-photo-meal-page')||false,
     legacyDashboard:visible(document.querySelector('.bb-meal-dashboard')),legacyHeader:visible(document.querySelector('.bb17513-meal-topbar')),legacyBack:visible(document.querySelector('.bb17513-meal-back')),
     rawNav:nav?.dataset.bbNavigation!=='polished'&&visible(nav),rawNavIcon:nav?.dataset.bbNavigation!=='polished'&&[...nav?.querySelectorAll('svg')||[]].some(visible),
-    studio:visible(document.querySelector('#bb15AiPremiumHub')),opening:visible(document.getElementById('bbCookOpening')),polishedNav:nav?.dataset.bbNavigation==='polished'&&visible(nav)});
+    studio:visible(document.querySelector('#bb15AiPremiumHub')),heroOpacity:heroStyle?.opacity??null,heroTransform:heroStyle?.transform??null,opening:visible(document.getElementById('bbCookOpening')),polishedNav:nav?.dataset.bbNavigation==='polished'&&visible(nav)});
    if(!probe.stop&&probe.frames.length<2000)requestAnimationFrame(sample);
   };requestAnimationFrame(sample);
  },stored);
@@ -93,6 +95,8 @@ for(const {width,platform}of [{width:390,platform:'web'},{width:1440,platform:'w
  assert.ok(pre.some(frame=>frame.opening),'the first presentation is a useful opening/recovery state');
  assert.deepEqual(pre.filter(frame=>frame.legacyDashboard||frame.legacyHeader||frame.legacyBack),[],'no retired controls or native pre-ready Back link escape the parent gate');
  assert.deepEqual(frames.filter(frame=>frame.rawNav||frame.rawNavIcon),[],'raw navigation never paints before its existing decorator');
+ const heroFrames=frames.filter(frame=>frame.heroOpacity!==null);assert.ok(heroFrames.length>0,'sampled the actual visible opening hero');
+ for(const frame of heroFrames){assert.equal(frame.heroOpacity,'1','the opening hero paints at full contrast at '+frame.time+'ms');assert.equal(frame.heroTransform,'none','the opening hero is already in its final position at '+frame.time+'ms');}
  assert.ok(frames.some(frame=>frame.ready&&frame.photo&&frame.studio&&!frame.opening&&frame.polishedNav),'the real current workspace and five-tab dock replace the opening state');
  assert.equal(await page.locator('[data-bb-nav-item="cook"]').getAttribute('data-bb-nav-current'),'true');
  assert.equal(await page.locator('#ai-photo-input').count(),1,'the existing file control stays intact');
