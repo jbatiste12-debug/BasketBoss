@@ -22,7 +22,8 @@ before(async () => {
   assert.ok(source.includes(anchor));
   // Read-only observations of the real app closure: no replacement planning,
   // pantry, auth SDK or session implementation is injected into this document.
-  app = transform700Presentation(transform700Html(source, release)).replace(anchor, `window.__authOnboardingQA={ready:()=>RECIPES.length===200&&!!window.BBAuthFlow,draft:()=>({planned:JSON.parse(JSON.stringify(state.planned)),pantry:JSON.parse(JSON.stringify(state.pantry)),stock:bb307ReadStock(),inventory:localStorage.getItem('basketboss_makeameal_v1_inventory')})};` + anchor);
+  // Preserve quick-v1 auth regressions; current four-v1 has its own route tests.
+  app = transform700Presentation(transform700Html(source, release)).replace('content="four-v1"','content="quick-v1"').replace(anchor, `window.__authOnboardingQA={ready:()=>RECIPES.length===200&&!!window.BBAuthFlow,draft:()=>({planned:JSON.parse(JSON.stringify(state.planned)),pantry:JSON.parse(JSON.stringify(state.pantry)),stock:bb307ReadStock(),inventory:localStorage.getItem('basketboss_makeameal_v1_inventory')})};` + anchor);
   if (chromium) browser = await chromium.launch({ headless: true, executablePath: process.env.BB_CHROMIUM_PATH || '/usr/bin/chromium', args: ['--no-sandbox'] });
 });
 after(async () => { await browser?.close(); });

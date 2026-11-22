@@ -44,7 +44,7 @@ export const CLIENT_FILES=Object.freeze([
  'bb-shop-friendly-quantity-ui.js','bb-shop-compact.css',
  'bb-household-stock-review.js','bb-loose-produce-ui.js',
  'bb-funnel.js','bb-household-sharing.js','bb-install.js','bb-intro-trial.js',
- 'bb-membership-settings.js','bb-mobile-beta-polish.js','bb-onboarding-v2.js',
+ 'bb-membership-settings.js','bb-mobile-beta-polish.js','bb-onboarding-v2.js','bb-onboarding-checkout-return.js',
  'bb-partner-signup-prompt.js','bb-plan-premium-polish.js','bb-premium-features.js',
  'bb-premium-preview-config.js','bb-price-scan.js','bb-real-app-tour-v82.js',
  'bb-real-app-tour.js','bb-receipt-host.js','bb-receipt-inventory.js',
