@@ -1,7 +1,7 @@
 BasketBoss — Google sign-in setup
 22 November 2026
 
-The app integration is prepared for web, iOS and Android. Google is not enabled yet: no Google OAuth client/provider credentials were supplied or changed. Until the provider is enabled, the Google button stays hidden and existing Apple/email sign-in remains available.
+The app integration is prepared for web, iOS and Android. The owner reports completing the Google Web client and Supabase Google-provider setup. Those console settings have not been independently verified. Until the public provider settings report Google enabled, the Google button stays hidden and existing Apple/email sign-in remains available.
 
 1. Google Cloud — choose or create the BasketBoss project
 Open https://console.cloud.google.com/auth/overview
@@ -35,6 +35,9 @@ Keep existing Site URL and redirect entries. Add these exact return URLs if miss
   https://basketboss.co.uk/app?bb_auth=google
   https://www.basketboss.co.uk/app?bb_auth=google
   basketboss://auth/callback?bb_auth=google
+  basketboss://auth/callback?bb_auth=signup
+  basketboss://auth/callback?bb_auth=recovery
+The signup and recovery entries support the existing native email-confirmation/password-recovery flows. Keep the existing website wildcard entries. Native Apple sign-in uses the existing ID-token flow and does not need an Apple URL added here.
 The custom basketboss:// URL belongs in Supabase's redirect allowlist. Google's Web client uses the HTTPS Supabase callback from step2.
 
 5. Test using the updated app source/build
@@ -45,7 +48,8 @@ Reload/relaunch after enabling the provider. Open Save your personalised plan or
 - Check that an existing membership still loads from the same verified BasketBoss account; login alone never grants Premium.
 - For a new-account test use an actual second Google account. Gmail +aliases are email aliases, not separate Google accounts.
 - Existing restore/subscription management still uses the original platform handlers.
-New native builds are required to include this source change. Earlier Build60/Android code7 commands remain pinned to older source and do not include Google sign-in.
+New native builds are required to include this source change. Use the new iOS Build 61 and Android 1.0.8 / code 8 release launchers. Earlier Build 60 / Android code 7 commands remain pinned to older source and do not include Google sign-in.
+If Google Auth Platform Audience is still Testing, add each real testing Google account under Test users before testing. Review production audience/branding requirements before offering Google sign-in publicly.
 
 6. Password and deletion compatibility
 Google verifies sign-in, so a new Google-only user need not type a BasketBoss password to log in.
@@ -54,4 +58,4 @@ Accounts linked to Apple retain the existing Apple confirmation/revocation requi
 A direct Confirm with Google & delete flow is not part of this change; it would require separate server reauthentication work.
 
 Release status
-Prepared source and local intercepted tests only. No Google/Supabase settings, schema, billing/deletion endpoint, production deployment, PR merge, signed archive or store upload were changed by this setup document. Real Google/device acceptance follows console setup and an updated build.
+Application source and local intercepted tests are prepared; actual Google/device acceptance is still required on the new builds. This setup document does not change Google/Supabase settings, schema, billing/deletion endpoints or store submissions. The owner reports making the console settings manually. The Android launcher requires the original upload keystore on the owner's Mac; a signed AAB is not available from this cloud workspace.
