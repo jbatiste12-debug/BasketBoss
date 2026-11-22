@@ -18,6 +18,8 @@ html body.bb-r6-cook-page:not(.bb-photo-meal-page)>.shell,
 html body.bb-r6-cook-page>nav.bb-r6-cook-nav:not([data-bb-navigation="polished"]){display:none!important}
 html body.bb-r6-cook-page{min-height:100dvh;background:radial-gradient(ellipse at 90% 0,#f0e9d7 0,transparent 38%),#faf8f1!important}
 html.bb-cook-ready body.bb-photo-meal-page>#bbCookOpening{display:none!important}
+/* Commit the opening hero at full contrast when the current workspace appears. */
+html.bb-cook-ready body.bb-photo-meal-page .bbpm-intro{animation:none!important;opacity:1!important;transform:none!important}
 /* The original Back link remains an exit if only dock decoration fails. */
 html.bb-cook-ready body.bb-photo-meal-page:has(>nav.bb-r6-cook-nav:not([data-bb-navigation="polished"]))>.shell .bb17513-meal-back{display:inline-flex!important;min-height:44px!important}
 #bbCookOpening{position:relative;top:clamp(64px,14vh,140px);box-sizing:border-box;width:min(440px,calc(100% - 32px));margin:0 auto 110px;padding:28px 24px;border:1px solid #dce5d7;border-radius:24px;background:#fffef8;color:#183f30;text-align:center;font-family:system-ui,-apple-system,sans-serif;box-shadow:0 9px 30px #193d2810}

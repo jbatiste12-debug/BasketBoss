@@ -633,8 +633,8 @@
     },
     {
       "path": "make-a-meal.html",
-      "bytes": 42704,
-      "sha256": "d88974dfa8f85df60b030a281013c662cdf3683d5051f8971f43809d83619325"
+      "bytes": 42913,
+      "sha256": "9df5d3f49ba01960a6bca3c3e93863e78f5fc579fd7ce4c194a4e70882e11733"
     },
     {
       "path": "make-a-meal.js",
@@ -649,7 +649,7 @@
     {
       "path": "precache.js",
       "bytes": 11790,
-      "sha256": "7a9f9b5095719163a6505a76297b988c669afaef13d5ff2aedb360ae39163d91"
+      "sha256": "de5dac20b1a19a8c615d5bc0577e3b06d54dfb08381bc3f36d0a42aca9660ca0"
     },
     {
       "path": "pricing-sandbox.html",

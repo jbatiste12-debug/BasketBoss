@@ -1,5 +1,5 @@
 /* Public web700 cache contract. Never include private/API/auth responses. */
-self.BB700_PWA_CACHE_VERSION="01e5e8d5e4e9a4b34b12d5ee0c90c82ed1d84787814813b5faab23e609c83cf7";
+self.BB700_PWA_CACHE_VERSION="656119a3a02c38418178e47c27630a3446d21895ac7943bfed347ceaa9865a1d";
 self.BB700_PWA_PRECACHE=Object.freeze([
   "/basketboss-aisles-v20.js?v=d45b76bac322b605",
   "/bb-account-deletion.css?v=645b166ac6fe196f",
