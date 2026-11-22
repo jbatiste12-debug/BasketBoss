@@ -1,5 +1,5 @@
 /* Public web700 cache contract. Never include private/API/auth responses. */
-self.BB700_PWA_CACHE_VERSION="656119a3a02c38418178e47c27630a3446d21895ac7943bfed347ceaa9865a1d";
+self.BB700_PWA_CACHE_VERSION="2b71b55cb444aaa0d11ee7b76e624056bcba8a251e2b9602953b7159681182e9";
 self.BB700_PWA_PRECACHE=Object.freeze([
   "/basketboss-aisles-v20.js?v=d45b76bac322b605",
   "/bb-account-deletion.css?v=645b166ac6fe196f",
@@ -93,7 +93,8 @@ self.BB700_PWA_PRECACHE=Object.freeze([
   "/bb-mobile-three-20261027.css?v=6acbd2e4381b1760",
   "/bb-navigation-polish.css?v=3011de338d536cb0",
   "/bb-navigation-polish.js?v=aee9704e7660f8a4",
-  "/bb-onboarding-v2.css?v=e315f90d272ef653",
+  "/bb-onboarding-checkout-return.js?v=3296bb1570cf82a1",
+  "/bb-onboarding-v2.css?v=c8c2959fb6a5a9af",
   "/bb-pantry-add-amount-presentation.js?v=d4cab43eb544d259",
   "/bb-pantry-alias-migration.js?v=fd31ff4c67c4b455",
   "/bb-pantry-autofill.js?v=436984c5e56295f2",
@@ -211,7 +212,7 @@ self.BB700_PWA_PRECACHE=Object.freeze([
   "/pwa700/bb-membership-compare.js",
   "/pwa700/bb-membership-compare.js?v=b318bb5e665db375",
   "/pwa700/bb-onboarding-v2.js",
-  "/pwa700/bb-onboarding-v2.js?v=945763616f42b5de",
+  "/pwa700/bb-onboarding-v2.js?v=40a2f080ed528407",
   "/pwa700/bb-pantry-selection.css",
   "/pwa700/bb-pantry-selection.css?v=f36a43f98c876ce5",
   "/pwa700/bb-pantry-selection.js",

@@ -62,7 +62,8 @@ const bridge=`window.__onboardingQA={
 async function fixture({width=390,height=844,onboarding}={}){
  const source=await fs.readFile(path.join(root,'app.html'),'utf8'),anchor='window.BBHomeHost=Object.freeze({';
  assert.ok(source.includes(anchor));
- const app=transform700Presentation(transform700Html(source,release)).replace(anchor,bridge+anchor);
+ // Exercise preserved quick-v1 clients; new four-v1 has a dedicated flow suite.
+ const app=transform700Presentation(transform700Html(source,release)).replace('content="four-v1"','content="quick-v1"').replace(anchor,bridge+anchor);
  assert.match(app,/<meta name="basketboss-onboarding" content="quick-v1">/,'the current generated document opts into the quick flow');
  const context=await browser.newContext({viewport:{width,height},isMobile:true,hasTouch:true,reducedMotion:'reduce',serviceWorkers:'block'}),page=await context.newPage(),errors=[],network=[];
  page.setDefaultTimeout(12000);page.on('pageerror',error=>errors.push(error.message));page.on('dialog',dialog=>dialog.dismiss());
