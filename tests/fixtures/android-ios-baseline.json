@@ -1,5 +1,5 @@
 {
-  "source": "57cfa3a20126e34f9ace4a5ae9862187168d41c9",
+  "source": "156bf52b0b5651b13b75fdf624a531eca8cb8d64",
   "ios": {
     "loggingBehavior": "none",
     "minVersion": "16.0",
@@ -25,11 +25,11 @@
   },
   "iosScheme": "capacitor",
   "files": {
-    "app.html": "339d8d364d68d7793d993ec2f6be20e0218ccfbbd84f68b546a2f5e649c332ee",
+    "app.html": "1f0d20a3376dee86d6fef5c07383f9b74c61e213eb22f2d5452933bfb6c4d520",
     "bb-auth-flow.js": "d740d67879062f8b1a9f5fb85d77b8d105de97be47e942ca4739f4fd34459399",
     "bb-home.js": "6ef580b0821a489f32e581d2078fe9fa7d67204c410b63751659a65fa4d65d50",
     "bb-serving-scale.js": "fd997aeb765ffca26d0f37bf1da581a0f88feea1cda73e003badc43f63d2e4fd",
-    "index.html": "339d8d364d68d7793d993ec2f6be20e0218ccfbbd84f68b546a2f5e649c332ee",
+    "index.html": "1f0d20a3376dee86d6fef5c07383f9b74c61e213eb22f2d5452933bfb6c4d520",
     "ios/.gitignore": "2b7132a9943d2622e51e656897ca5162f56b121b40b423dedce1fbc699dba88a",
     "ios/App/App.xcodeproj/project.pbxproj": "29365a13c9827b6745bbf98fd6d61347cb887a8a4dc964d198bf1c1cbfd321ec",
     "ios/App/App.xcodeproj/xcshareddata/xcschemes/App.xcscheme": "f30d63f3e8b7186c6b178e6650bcb349161e2e0face96c395b42d1cad03a414f",
@@ -69,6 +69,8 @@
     "shopping-inventory.js": "08f2b0bc565986e3ddd6567ae3463350936ea3cb85347cf91e0dfcd0b89eb9f6"
   },
   "reviewedOverrides": {
-    "native/apple-purchases.mjs": "Optional protocol-1 coordination only; existing StoreKit product, receipt, restore, finish and paid-access rules remain covered by Apple regressions. Swift/Xcode baseline is unchanged."
+    "native/apple-purchases.mjs": "Optional protocol-1 coordination only; existing StoreKit product, receipt, restore, finish and paid-access rules remain covered by Apple regressions. Swift/Xcode baseline is unchanged.",
+    "app.html": "Reviewed presentation-only Plan typography, stable first paint and My Week markup/cache references from visual source156bf52; every original inline script body is byte-identical to the protected source57cfa3a.",
+    "index.html": "Reviewed presentation-only Plan typography, stable first paint and My Week markup/cache references from visual source156bf52; every original inline script body is byte-identical to the protected source57cfa3a."
   }
 }

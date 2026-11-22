@@ -189,7 +189,7 @@ jobs:
         if: ${{ github.event_name == 'workflow_dispatch' && inputs.signed }}
         uses: actions/upload-artifact@v6
         with:
-          name: BasketBoss-Android-SIGNED-1.0.4-code4
+          name: BasketBoss-Android-SIGNED-1.0.5-code5
           path: android/app/build/outputs/bundle/release/app-release.aab
           if-no-files-found: error
           retention-days: 7
@@ -197,7 +197,7 @@ jobs:
         if: ${{ github.event_name != 'workflow_dispatch' || !inputs.signed }}
         uses: actions/upload-artifact@v6
         with:
-          name: BasketBoss-Android-UNSIGNED-CI-1.0.4-code4
+          name: BasketBoss-Android-UNSIGNED-CI-1.0.5-code5
           path: android/app/build/outputs/bundle/release/app-release.aab
           if-no-files-found: error
           retention-days: 7
