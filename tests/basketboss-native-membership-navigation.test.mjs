@@ -4,6 +4,7 @@ import fs from 'node:fs';
 import vm from 'node:vm';
 import {PRODUCTION_ORIGIN,productionApiURL,nativePageURL,nativeMembershipURL,isNativeBillingURL} from '../native/routing.mjs';
 import {installNativeAppleAuth} from '../native/apple-auth.mjs';
+import {installNativeAuthBrowser} from '../native/auth-browser.mjs';
 
 const source=fs.readFileSync(new URL('../native/runtime.mjs',import.meta.url),'utf8').replace(/^import .*;\n/gm,'');
 function fixture({native=true,platform='ios',href='capacitor://localhost/index.html'}={}){
@@ -12,7 +13,7 @@ function fixture({native=true,platform='ios',href='capacitor://localhost/index.h
  const location={href,hash:'',assign:value=>calls.navigation.push(value)};
  const document={readyState:'loading',documentElement:{classList:{add:value=>classes.add(value),contains:value=>value==='bb-native-starting'?flags.startup:classes.has(value)}},getElementById:id=>id==='bbAccountDeletionDialog'?{open:flags.dialog}:null,addEventListener(name,listener){events.set(name,listener);}};
  const window={location,BBAccountDeletion:{isDeleting:()=>flags.deleting},addEventListener(){},dispatchEvent(){}};
- const context={window,document,location,URL,Event,console,PRODUCTION_ORIGIN,productionApiURL,nativePageURL,nativeMembershipURL,isNativeBillingURL,installNativeAppleAuth,
+ const context={window,document,location,URL,Event,console,PRODUCTION_ORIGIN,productionApiURL,nativePageURL,nativeMembershipURL,isNativeBillingURL,installNativeAppleAuth,installNativeAuthBrowser,
   Capacitor:{isNativePlatform:()=>native,getPlatform:()=>platform,isPluginAvailable:()=>false},registerPlugin(name){calls.plugins.push(name);return {};},
   installNativeFetch:()=>async(...args)=>{calls.network.push(args);throw Error('Navigation must not send a request.');},installNativeXHR(){},installNativeWindowOpen(){},
   installNativeStartup:()=>({ready(){}}),watchNativeEntryReadiness:()=>({stop(){}}),installNativeCookVoice:()=>({stop(){}}),

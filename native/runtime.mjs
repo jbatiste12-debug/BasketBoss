@@ -12,6 +12,7 @@ import {installNativeStartup} from './startup.mjs';
 import {watchNativeEntryReadiness} from './entry-readiness.mjs';
 import {installNativeCookVoice} from './cook-voice.mjs';
 import {installNativeAppleAuth} from './apple-auth.mjs';
+import {installNativeAuthBrowser} from './auth-browser.mjs';
 
 if(Capacitor.isNativePlatform()&&Capacitor.getPlatform()==='ios'){
  document.documentElement.classList.add('bb-native-ios');
@@ -40,6 +41,7 @@ if(Capacitor.isNativePlatform()&&Capacitor.getPlatform()==='ios'){
   await Browser.open({url:url.href,presentationStyle:'popover'});
  }
  window.BBNative=Object.freeze({isNative:true,platform:'ios',apiOrigin:PRODUCTION_ORIGIN,apiURL:path=>productionApiURL(path)||path,haptic,openExternal,clearTemporaryData,dismissKeyboard});
+ const authBrowser=installNativeAuthBrowser({window,browser:Browser,app:App,isDeleting:deleting});
  // Setup can hand off after saving completion, without starting a purchase.
  window.BBNativeMembership=Object.freeze({open(){
   if(deleting()||document.getElementById('bbAccountDeletionDialog')?.open===true||document.documentElement.classList.contains('bb-native-starting'))return false;
@@ -123,6 +125,7 @@ if(Capacitor.isNativePlatform()&&Capacitor.getPlatform()==='ios'){
   let link;try{link=new URL(url);}catch{return;}
   if(link.protocol!=='basketboss:'||link.hostname!=='auth'||link.pathname!=='/callback'||url===lastAuthURL)return;lastAuthURL=url;
   try{const digest=await crypto.subtle.digest('SHA-256',new TextEncoder().encode(url)),fingerprint=Array.from(new Uint8Array(digest),n=>n.toString(16).padStart(2,'0')).join('');if(cold&&sessionStorage.getItem('basketboss_last_auth_launch_v1')===fingerprint)return;sessionStorage.setItem('basketboss_last_auth_launch_v1',fingerprint);}catch{}
+  await authBrowser.complete(url);
   const receive=()=>{void window.BBAuthFlow?.handleCallbackURL?.(url);};
   if(window.BBAuthFlow)receive();else{
    const ready=()=>{if(window.BBAuthFlow)receive();else if(document.getElementById('cloud-auth'))window.addEventListener('basketboss:auth-ready',receive,{once:true});else if(window.BBAuthCallbackBridge?.capture?.(url))window.location.assign(new URL('index.html?bb_auth_callback=1',window.location.href).href);};
