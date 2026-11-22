@@ -62,8 +62,8 @@ class BBAabCheck {
   Element base=xml(args[0]),pack=xml(args[1]);
   check("manifest".equals(base.getTagName()),"base manifest");
   check("uk.co.basketboss.app".equals(base.getAttribute("package")),"package");
-  check(integer(base.getAttributeNS(A,"versionCode"))==5,"versionCode");
-  check("1.0.5".equals(base.getAttributeNS(A,"versionName")),"versionName");
+  check(integer(base.getAttributeNS(A,"versionCode"))==6,"versionCode");
+  check("1.0.6".equals(base.getAttributeNS(A,"versionName")),"versionName");
   Element sdk=child(base,null,"uses-sdk");
   check(integer(sdk.getAttributeNS(A,"minSdkVersion"))==24,"minSdkVersion");
   check(integer(sdk.getAttributeNS(A,"targetSdkVersion"))==36,"targetSdkVersion");
@@ -77,7 +77,7 @@ class BBAabCheck {
   check(modes==1,"asset pack delivery must only be install-time");
   check("true".equals(child(module,D,"fusing").getAttributeNS(D,"include")),"asset pack fusing");
   int signed=args[2].equals("-")?0:signature(args[2]);
-  System.out.println("{\"package\":\"uk.co.basketboss.app\",\"versionName\":\"1.0.5\",\"versionCode\":5,\"minSdk\":24,\"targetSdk\":36,\"assetPack\":\"recipe_images\",\"delivery\":\"install-time\",\"fusing\":true,\"signatureChecked\":"+(!args[2].equals("-"))+",\"signedPayloadEntries\":"+signed+"}");
+  System.out.println("{\"package\":\"uk.co.basketboss.app\",\"versionName\":\"1.0.6\",\"versionCode\":6,\"minSdk\":24,\"targetSdk\":36,\"assetPack\":\"recipe_images\",\"delivery\":\"install-time\",\"fusing\":true,\"signatureChecked\":"+(!args[2].equals("-"))+",\"signedPayloadEntries\":"+signed+"}");
  }catch(Exception e){System.err.println("Android AAB verification: "+e.getMessage());System.exit(1);}}
 }
 `;

@@ -13,7 +13,7 @@ test('Android generated documents remove Apple purchase copy before first paint 
  assert.match(copy,/content="android"/);assert.match(copy,/sign in to view your Premium options/);assert.doesNotMatch(copy,/choose Apple Premium|data-bb-membership-comparison/);assert.match(source,/choose Apple Premium/);assert.throws(()=>androidDocument('<head></head>'));
 });
 test('Android source locks package/version/target and protects the shared iOS configuration',()=>{
- const result=verifyAndroid({assets:false});assert.equal(result.appId,'uk.co.basketboss.app');assert.equal(result.versionName,'1.0.5');assert.equal(result.versionCode,5);assert.equal(result.targetSdk,36);
+ const result=verifyAndroid({assets:false});assert.equal(result.appId,'uk.co.basketboss.app');assert.equal(result.versionName,'1.0.6');assert.equal(result.versionCode,6);assert.equal(result.targetSdk,36);
  const baseline=JSON.parse(fs.readFileSync(new URL('./fixtures/android-ios-baseline.json',import.meta.url)));
  const current=JSON.parse(fs.readFileSync(path.join(ANDROID_ROOT,'capacitor.config.json')));assert.deepEqual(current.ios,baseline.ios);assert.deepEqual(current.plugins,baseline.plugins);assert.equal(current.server.iosScheme,baseline.iosScheme);
  for(const [name,hash]of Object.entries(baseline.files))assert.equal(createHash('sha256').update(fs.readFileSync(path.join(ANDROID_ROOT,name))).digest('hex'),hash,'Protected iOS/core source changed: '+name);
