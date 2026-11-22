@@ -105,6 +105,7 @@ jobs:
           assert.equal(typeof chromium.launch, 'function');
           assert.equal(typeof PGlite, 'function');
           require('node:fs').accessSync(chromium.executablePath());
+          require('node:fs').appendFileSync(process.env.GITHUB_ENV, 'BB_CHROMIUM_PATH=' + chromium.executablePath() + '\n');
           console.log('Pinned browser and PostgreSQL test engines are available.');
           JS
       - name: Require deterministic public PWA assets

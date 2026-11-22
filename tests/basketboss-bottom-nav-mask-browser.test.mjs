@@ -12,6 +12,8 @@ const require=createRequire(import.meta.url),root=fileURLToPath(new URL('..',imp
 let chromium,PNG,browser,release;
 for(const name of [process.env.BB_PLAYWRIGHT_MODULE,'playwright','/opt/codex/runtimes/codex-primary-runtime/dependencies/node/node_modules/playwright'].filter(Boolean))try{({chromium}=require(name));break;}catch{}
 for(const name of ['pngjs','/opt/codex/runtimes/codex-primary-runtime/dependencies/node/node_modules/pngjs'].filter(Boolean))try{({PNG}=require(name));break;}catch{}
+// The pinned CI Playwright installation already bundles its PNG decoder.
+if(!PNG)for(const name of [process.env.BB_PLAYWRIGHT_MODULE,'playwright'].filter(Boolean))try{const runtimeRequire=createRequire(require.resolve(name)),core=path.dirname(runtimeRequire.resolve('playwright-core/package.json'));({PNG}=require(path.join(core,'lib/utilsBundle.js')));break;}catch{}
 before(async()=>{
  release=validatePublic700Release({directory:path.join(root,'catalogues/700/release'),sourceDirectory:root});
  if(chromium&&PNG)browser=await chromium.launch({headless:true,executablePath:process.env.BB_CHROMIUM_PATH||'/usr/bin/chromium',args:['--no-sandbox']});
