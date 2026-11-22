@@ -98,16 +98,18 @@ final class BasketBossAccountKeyboardUITests: XCTestCase {
         // another potentially slow AX snapshot or accept a late-ready result.
         print("BB keyboard startup " + startupScope + " elapsedSeconds=\(startupSeconds) gateSeconds=\(Int(startupReadinessTimeout)) probe=" + lastStartupProbe)
         XCTAssertEqual(readyResult, .completed, "The native launch cover and sign-in entry point must be ready before interaction. Last probe: \(lastStartupProbe)")
+        let fourStepReturning = app.buttons["Already have an account? Sign in"]
+        let fourStepOnboarding = onboarding && fourStepReturning.exists
         if onboarding {
             // WKWebView prepares Welcome underneath the native launch cover.
             // Its accessibility nodes can exist before UIKit finishes fading.
             // Wait for the production bridge's ready acknowledgement, then
             // use one real tap; never advance onboarding from injected JS.
-            let next = app.buttons["bbobNext"]
+            let next = fourStepOnboarding ? fourStepReturning : app.buttons["bbobNext"]
             XCTAssertTrue(next.waitForExistence(timeout: 25), "Fresh onboarding must start at its real welcome screen.")
             next.tap()
         }
-        let close = app.buttons[onboarding ? "bbobExit" : "cloud-close"]
+        let close = fourStepOnboarding ? app.buttons["Back"].firstMatch : app.buttons[onboarding ? "bbobExit" : "cloud-close"]
         XCTAssertTrue(close.waitForExistence(timeout: 25), "The sign-in surface must open.")
         assertLockedBackground(probe, onboarding: onboarding, phase: "initial")
         let field = password ? app.secureTextFields["cloud-password"] : app.textFields["cloud-email"]
@@ -164,6 +166,11 @@ final class BasketBossAccountKeyboardUITests: XCTestCase {
             XCTAssertTrue(keyboard.waitForNonExistence(timeout: 10), "Closing sign-in must dismiss the keyboard.")
         } else {
             waitFor("Closing sign-in must dismiss the keyboard.", timeout: 10) { !keyboard.exists }
+        }
+        if fourStepOnboarding {
+            let browse = app.buttons["Browse 200 free recipes"]
+            XCTAssertTrue(browse.waitForExistence(timeout: 10), "Back returns to the four-step Welcome.")
+            browse.tap()
         }
         let planDock = app.buttons["bbPlanNav"]
         waitFor("Closing sign-in must restore the Plan dock.") { planDock.isHittable }

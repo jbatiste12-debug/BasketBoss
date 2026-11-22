@@ -289,3 +289,77 @@ html.bb-onboarding-open body .shell .tabs,html.bb-onboarding-open body nav.bb-r6
 #bbNewOnboarding.bbob-quick-welcome-screen .bbob-footer .bbob-link{font-size:11px}
 @media(max-height:700px){#bbNewOnboarding.bbob-quick-welcome-screen .bbob-main{padding-top:12px}#bbNewOnboarding.bbob-quick-welcome-screen h1{font-size:28px}#bbNewOnboarding.bbob-quick-welcome-screen .bbob-quick-welcome{min-height:100px}#bbNewOnboarding.bbob-quick-welcome-screen .bbob-quick-welcome>img{height:105px!important;max-height:105px!important}#bbNewOnboarding .bbob-quick-benefits{gap:7px;margin-bottom:11px}#bbNewOnboarding .bbob-quick-benefits li{font-size:12px}}
 @media(max-width:560px){#bbNewOnboarding.bbob-quick.bbob-keyboard .bbob-quick-benefits,#bbNewOnboarding.bbob-quick.bbob-keyboard .bbob-quick-auth-actions,#bbNewOnboarding.bbob-quick.bbob-keyboard .bbob-quick-account-note{display:none}}
+
+/* Four-step setup: presentation only; the legacy tour keeps its own styles. */
+#bbNewOnboarding.bbob-four-step{background:#f7f7f0;color:#204f40;font-family:'Inter',-apple-system,BlinkMacSystemFont,sans-serif}
+#bbNewOnboarding.bbob-four-step .bbob-flow-shell{display:flex;flex-direction:column;width:min(100% - 40px,480px);height:100%;min-height:0;margin:0 auto;padding:calc(18px + env(safe-area-inset-top,0px)) 0 calc(10px + env(safe-area-inset-bottom,0px));overflow:hidden}
+#bbNewOnboarding.bbob-four-step .bbob-flow-top{display:flex;flex:0 0 auto;align-items:center;gap:14px;min-height:44px}
+#bbNewOnboarding.bbob-four-step .bbob-flow-brand{display:flex;align-items:center;gap:11px;color:#204f40;font-size:22px;line-height:1.2;font-weight:800;letter-spacing:-.04em}
+#bbNewOnboarding.bbob-four-step .bbob-flow-brand img{display:block;width:43px;height:43px;object-fit:contain;border-radius:13px}
+#bbNewOnboarding.bbob-four-step .bbob-flow-back{display:grid;place-items:center;flex:none;width:44px;height:44px;padding:0;border:1px solid #e2e4db;border-radius:14px;background:#fff;color:#275a48;font-size:28px;line-height:1;box-shadow:none}
+#bbNewOnboarding.bbob-four-step .bbob-flow-progress{display:flex;flex:1;gap:7px;align-items:center;margin:0;min-width:0}
+#bbNewOnboarding.bbob-four-step .bbob-flow-progress span{display:block;flex:1;height:6px;border-radius:99px;background:#e3e5d9}
+#bbNewOnboarding.bbob-four-step .bbob-flow-progress span.is-done{background:#204f40}
+#bbNewOnboarding.bbob-four-step .bbob-flow-top .bbob-link{margin-left:auto;min-height:44px;padding:8px 0 8px 10px;white-space:normal;font-size:13px;text-decoration:none}
+#bbNewOnboarding.bbob-four-step .bbob-flow-main{flex:1 1 0;display:flex;flex-direction:column;justify-content:flex-start;min-height:0;overflow:auto;overscroll-behavior:contain;padding:25px 1px 10px;scroll-padding-block:18px;scrollbar-width:thin;animation:none}
+#bbNewOnboarding.bbob-four-step .bbob-flow-main>*{flex-shrink:0}
+#bbNewOnboarding.bbob-four-step h1{margin:0 0 12px;padding:0;max-width:440px;border:0!important;background:transparent!important;box-shadow:none!important;color:#204f40;font-size:clamp(29px,7.8vw,36px);font-weight:800;line-height:1.17;letter-spacing:-.045em;text-decoration:none!important}
+#bbNewOnboarding.bbob-four-step h2{margin:25px 0 12px;color:#285342;font-size:15px;font-weight:750;line-height:1.4}
+#bbNewOnboarding.bbob-four-step .bbob-flow-main>p{margin:0 0 22px;color:#6b746c;font-size:14px;line-height:1.55}
+#bbNewOnboarding.bbob-four-step #bbob-title:focus{outline:none!important;box-shadow:none!important}
+#bbNewOnboarding.bbob-four-step #bbob-title::before,#bbNewOnboarding.bbob-four-step #bbob-title::after{content:none!important;display:none!important}
+#bbNewOnboarding.bbob-four-step .bbob-flow-hero{position:relative;isolation:isolate;overflow:hidden;flex:none;margin:8px 0 22px;border-radius:20px;background:#204f40;box-shadow:0 4px 9px #204f4012}
+#bbNewOnboarding.bbob-four-step .bbob-flow-hero img{display:block;width:100%;height:190px;max-height:25dvh;object-fit:cover;object-position:center}
+#bbNewOnboarding.bbob-four-step .bbob-flow-hero figcaption,#bbNewOnboarding.bbob-four-step .bbob-flow-hero>span{position:absolute;inset:auto 0 0;padding:34px 17px 16px;background:linear-gradient(0deg,#153b30f0,transparent);color:#fff;font-size:16px;font-weight:650;line-height:1.35;letter-spacing:-.02em}
+#bbNewOnboarding.bbob-four-step .bbob-flow-benefits{display:grid;gap:14px;list-style:none;margin:0;padding:0}
+#bbNewOnboarding.bbob-four-step .bbob-flow-benefits li{display:flex;align-items:center;gap:13px;color:#315847;font-size:14px;font-weight:600;line-height:1.45}
+#bbNewOnboarding.bbob-four-step .bbob-flow-benefits li>span:first-child{display:grid;place-items:center;flex:none;width:41px;height:41px;border-radius:50%;background:#e8f1eb;color:#285e4d;font-size:19px}
+#bbNewOnboarding.bbob-four-step .bbob-flow-footer{position:relative;z-index:2;display:grid;flex:0 0 auto;gap:6px;margin:0;padding-top:15px;background:#f7f7f0;box-shadow:0 -10px 16px #f7f7f0}
+#bbNewOnboarding.bbob-four-step .bbob-btn{min-height:54px;padding:13px 17px;border-radius:19px;font-size:15px;font-weight:700;line-height:1.35;letter-spacing:-.015em}
+#bbNewOnboarding.bbob-four-step .bbob-primary{border-color:#204f40;border-radius:99px;background:#204f40;color:#fff;box-shadow:0 4px 8px #204f4018}
+#bbNewOnboarding.bbob-four-step .bbob-outline{border-color:#bdc9be;background:#fff;color:#315a48}
+#bbNewOnboarding.bbob-four-step .bbob-link{min-height:40px;padding:8px;color:#3c6856;font-size:13px;line-height:1.4;font-weight:600;text-decoration:none;border-radius:10px}
+#bbNewOnboarding.bbob-four-step .bbob-link:hover{text-decoration:underline;text-underline-offset:3px}
+#bbNewOnboarding.bbob-four-step .bbob-btn:disabled{opacity:.65;cursor:wait}
+#bbNewOnboarding.bbob-four-step .bbob-flow-house{display:flex;flex-wrap:wrap;gap:9px;margin:0}
+#bbNewOnboarding.bbob-four-step .bbob-flow-house button{display:flex;align-items:center;justify-content:center;min-width:47px;min-height:47px;margin:0;padding:11px 15px;border:1px solid #e0e2d9;border-radius:99px;background:#fff;color:#315a48;font-size:14px;font-weight:650;line-height:1.25;box-shadow:none}
+#bbNewOnboarding.bbob-four-step .bbob-flow-house button.chosen{background:#204f40;border-color:#204f40;color:#fff}
+#bbNewOnboarding.bbob-four-step .bbob-flow-goals{display:grid;gap:9px;margin:0}
+#bbNewOnboarding.bbob-four-step .bbob-flow-goals button{display:flex;align-items:center;gap:11px;width:100%;min-height:58px;padding:11px 14px;border:1px solid #e0e2d9;border-radius:17px;background:#fff;color:#34483e;font-size:13px;font-weight:600;text-align:left;line-height:1.4;box-shadow:0 1px 0 #e0e2d9}
+#bbNewOnboarding.bbob-four-step .bbob-flow-goals button.chosen{border-color:#285b48;background:#e9f2ec;box-shadow:inset 0 0 0 1px #285b48}
+#bbNewOnboarding.bbob-four-step .bbob-flow-goals button>span:first-child{display:grid;place-items:center;flex:none;width:29px;height:29px;border-radius:50%;background:#f9faf5;font-size:18px}
+#bbNewOnboarding.bbob-four-step .bbob-flow-goals button>span:last-child{display:block;flex:none;width:17px;height:17px;margin-left:auto;border:2px solid #c7ccbf;border-radius:50%;font-size:0}
+#bbNewOnboarding.bbob-four-step .bbob-flow-goals button.chosen>span:last-child{border:5px solid #285b48;background:#fff}
+#bbNewOnboarding.bbob-four-step .bbob-flow-auth-mark{display:grid;place-items:center;width:48px;height:48px;margin:2px 0 20px;border-radius:16px;background:#e8f1eb;color:#285e4d;font-size:26px}
+#bbNewOnboarding.bbob-four-step .bbob-flow-auth-mark svg{display:block;width:25px;height:25px;fill:none;stroke:currentColor;stroke-width:1.7;stroke-linecap:round;stroke-linejoin:round}
+#bbNewOnboarding.bbob-four-step .bbob-flow-auth{display:grid;gap:12px;margin:6px 0 0}
+#bbNewOnboarding.bbob-four-step .bbob-flow-auth .bbob-apple{display:flex;align-items:center;justify-content:center;gap:9px;min-height:56px;width:100%;border:1px solid #111;background:#111;color:#fff;border-radius:18px;font:600 15px/1.3 -apple-system,BlinkMacSystemFont,sans-serif;box-shadow:none}
+#bbNewOnboarding.bbob-four-step .bbob-flow-auth [hidden]{display:none!important}
+#bbNewOnboarding.bbob-four-step #bbobQuickAccountPanel{margin:14px 0 0;padding:0 0 8px}
+#bbNewOnboarding.bbob-four-step #cloud-auth{gap:11px;padding:16px;border-color:#e1e4da;border-radius:18px;background:#fff}
+#bbNewOnboarding.bbob-four-step #cloud-auth input{background:#fcfcf8;border-color:#c8d3c7;border-radius:12px}
+#bbNewOnboarding.bbob-four-step #cloud-message{margin-top:12px;font-size:13px!important}
+#bbNewOnboarding.bbob-four-step .bbob-flow-tag{display:inline-flex;align-self:flex-start;align-items:center;gap:7px;margin:0 0 14px;padding:6px 10px;border-radius:99px;background:#e8f1eb;color:#35634f;font-size:10px;font-weight:750;line-height:1.3;letter-spacing:.08em;text-transform:uppercase}
+#bbNewOnboarding.bbob-four-step .bbob-flow-panel{margin:0 0 14px;padding:17px;border:1px solid #e0e3d7;border-radius:20px;background:#fff;box-shadow:none}
+#bbNewOnboarding.bbob-four-step .bbob-flow-panel h2{margin:0 0 13px;color:#396856;font-size:11px;font-weight:750;line-height:1.4;letter-spacing:.055em;text-transform:uppercase}
+#bbNewOnboarding.bbob-four-step .bbob-flow-includes{display:grid;gap:11px;list-style:none;margin:0;padding:0}
+#bbNewOnboarding.bbob-four-step .bbob-flow-includes li{display:flex;align-items:center;gap:10px;color:#315848;font-size:13px;font-weight:650;line-height:1.4}
+#bbNewOnboarding.bbob-four-step .bbob-flow-includes li>span:first-child{display:grid;place-items:center;flex:none;width:23px;height:23px;border-radius:50%;background:#e8f1eb;color:#285e4d;font-size:14px}
+#bbNewOnboarding.bbob-four-step .bbob-flow-timeline{display:grid;gap:17px;list-style:none;margin:0;padding:0}
+#bbNewOnboarding.bbob-four-step .bbob-flow-timeline li{position:relative;display:flex;align-items:flex-start;gap:12px;color:#315848;line-height:1.4}
+#bbNewOnboarding.bbob-four-step .bbob-flow-timeline li:not(:last-child)::before{content:'';position:absolute;left:13px;top:28px;bottom:-18px;width:2px;background:#e1e7dc}
+#bbNewOnboarding.bbob-four-step .bbob-flow-timeline li>span:first-child{position:relative;z-index:1;display:grid;place-items:center;flex:none;width:28px;height:28px;border:2px solid #8cae9f;border-radius:50%;background:#e8f1eb;color:#315848;font-size:12px;font-weight:750}
+#bbNewOnboarding.bbob-four-step .bbob-flow-timeline li:first-child>span:first-child{border-color:#204f40;background:#204f40;color:#fff}
+#bbNewOnboarding.bbob-four-step .bbob-flow-timeline strong{display:block;font-size:14px;font-weight:700}
+#bbNewOnboarding.bbob-four-step .bbob-flow-timeline p{margin:2px 0 0;color:#70796d;font-size:12px;line-height:1.5}
+#bbNewOnboarding.bbob-four-step .bbob-flow-note{margin:0 0 10px;color:#70796d;font-size:11px;line-height:1.5}
+#bbNewOnboarding.bbob-four-step .bbob-flow-main>.bbob-flow-terms{margin:0 2px 10px;color:#70796d;font-size:11px;line-height:1.5}
+#bbNewOnboarding.bbob-four-step .bbob-flow-hint{margin:8px 2px 0;color:#70796d;font-size:11px;line-height:1.5}
+#bbNewOnboarding.bbob-four-step .bbob-save-error{margin:9px 0 0!important;color:#a3292c!important;font-size:12px!important;line-height:1.45!important}
+#bbNewOnboarding.bbob-four-step .bbob-save-error:empty{display:none}
+@media(min-width:600px){#bbNewOnboarding.bbob-four-step .bbob-flow-shell{padding-top:34px;padding-bottom:24px}#bbNewOnboarding.bbob-four-step .bbob-flow-main{padding-top:30px}#bbNewOnboarding.bbob-four-step .bbob-flow-hero img{height:230px;max-height:29dvh}}
+@media(max-width:359px){#bbNewOnboarding.bbob-four-step .bbob-flow-shell{width:calc(100% - 30px)}#bbNewOnboarding.bbob-four-step h1{font-size:28px}#bbNewOnboarding.bbob-four-step .bbob-flow-main{padding-top:18px}#bbNewOnboarding.bbob-four-step .bbob-flow-benefits{gap:11px}#bbNewOnboarding.bbob-four-step .bbob-flow-benefits li{font-size:13px}#bbNewOnboarding.bbob-four-step .bbob-flow-goals button{padding:10px;gap:8px;font-size:12px}#bbNewOnboarding.bbob-four-step .bbob-flow-house{gap:7px}#bbNewOnboarding.bbob-four-step .bbob-flow-house button{min-width:43px;min-height:44px;padding:9px 13px}#bbNewOnboarding.bbob-four-step .bbob-flow-panel{padding:14px}}
+@media(max-height:700px){#bbNewOnboarding.bbob-four-step .bbob-flow-shell{padding-top:calc(10px + env(safe-area-inset-top,0px));padding-bottom:calc(6px + env(safe-area-inset-bottom,0px))}#bbNewOnboarding.bbob-four-step .bbob-flow-main{padding-top:17px}#bbNewOnboarding.bbob-four-step h1{font-size:28px}#bbNewOnboarding.bbob-four-step .bbob-flow-main>p{margin-bottom:16px;font-size:13px}#bbNewOnboarding.bbob-four-step .bbob-flow-hero{margin:4px 0 16px}#bbNewOnboarding.bbob-four-step .bbob-flow-hero img{height:150px;max-height:24dvh}#bbNewOnboarding.bbob-four-step .bbob-flow-footer{padding-top:10px;gap:3px}#bbNewOnboarding.bbob-four-step .bbob-btn{min-height:47px;padding:10px 15px}#bbNewOnboarding.bbob-four-step .bbob-link{min-height:36px;padding:6px}#bbNewOnboarding.bbob-four-step h2{margin-top:19px}}
+@media(max-width:560px){#bbNewOnboarding.bbob-four-step.bbob-keyboard .bbob-flow-footer,#bbNewOnboarding.bbob-four-step.bbob-keyboard .bbob-flow-auth-mark,#bbNewOnboarding.bbob-four-step.bbob-keyboard .bbob-flow-main>p{display:none}#bbNewOnboarding.bbob-four-step.bbob-keyboard .bbob-flow-main{padding-top:12px}#bbNewOnboarding.bbob-four-step.bbob-keyboard h1{font-size:22px;margin-bottom:10px}#bbNewOnboarding.bbob-four-step.bbob-keyboard #bbobQuickAccountPanel{margin-top:4px}}
+/* Reuse the Android runtime's existing measured system-bar insets. */
+html.bb-native-android #bbNewOnboarding.bbob-four-step .bbob-flow-shell{padding-top:calc(18px + var(--bb-android-top,0px));padding-bottom:calc(10px + var(--bb-android-bottom,0px))}
