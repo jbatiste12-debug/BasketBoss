@@ -48,11 +48,12 @@ async function fixture(viewport,run){
   window.__weekPresentationChecks=[];
   window.__captureWeekPresentation=app=>{
    const overview=app.querySelector('.bbpc-budget-overview'),copy=overview.querySelector('.bbnext-plan-budget-text'),price=overview.querySelector('.bbnext-plan-donut');
-   window.__weekPresentationBefore={heading:copy.querySelector('h2'),feed:app.querySelector('.bbfeed-global'),count:copy.querySelector(':scope>p:not(.bb77-pantry-savings)'),price,attrs:[...price.attributes].map(a=>[a.name,a.value]),estimate:price.querySelector('#myWeekEstimatedTotal'),state:JSON.stringify({...localStorage}),disclaimer:app.querySelector('#bbSimpleBudget>.bbs-budget-body>small')};
+   const next=app.querySelector('[data-bb-start-next-week]'),autofill=app.querySelector('#bbnextPlanAutofill');
+   window.__weekPresentationBefore={heading:copy.querySelector('h2'),feed:app.querySelector('.bbfeed-global'),count:copy.querySelector(':scope>p:not(.bb77-pantry-savings)'),price,attrs:[...price.attributes].map(a=>[a.name,a.value]),estimate:price.querySelector('#myWeekEstimatedTotal'),state:JSON.stringify({...localStorage}),disclaimer:app.querySelector('#bbSimpleBudget>.bbs-budget-body>small'),next,nextParent:next.parentNode,autofill,autofillParent:autofill.parentNode};
   };
   window.__checkWeekPresentation=app=>{
    const b=window.__weekPresentationBefore,info=app.querySelector('.bbpc-week-info-body');
-   window.__weekPresentationChecks.push({heading:app.querySelector('.bbpc-week-header>h2')===b.heading,feed:app.querySelector('.bbpc-week-header>.bbfeed-global')===b.feed,count:app.querySelector('.bbnext-plan-budget-text>p:not(.bb77-pantry-savings)')===b.count,price:app.querySelector('.bbpc-week-price>.bbnext-plan-donut')===b.price,estimate:document.getElementById('myWeekEstimatedTotal')===b.estimate,attributes:JSON.stringify([...b.price.attributes].map(a=>[a.name,a.value]))===JSON.stringify(b.attrs),disclaimer:!b.disclaimer||info.contains(b.disclaimer),state:JSON.stringify({...localStorage})===b.state});
+   window.__weekPresentationChecks.push({heading:app.querySelector('.bbpc-week-header>h2')===b.heading,feed:app.querySelector('.bbpc-week-header>.bbfeed-global')===b.feed,count:app.querySelector('.bbnext-plan-budget-text>p:not(.bb77-pantry-savings)')===b.count,price:app.querySelector('.bbpc-week-price>.bbnext-plan-donut')===b.price,estimate:document.getElementById('myWeekEstimatedTotal')===b.estimate,attributes:JSON.stringify([...b.price.attributes].map(a=>[a.name,a.value]))===JSON.stringify(b.attrs),disclaimer:!b.disclaimer||info.contains(b.disclaimer),next:app.querySelector('.bbnext-plan-actions>[data-bb-start-next-week]')===b.next&&b.next.parentNode===b.nextParent,autofill:app.querySelector('#bbpolAutofillCard>#bbnextPlanAutofill')===b.autofill&&b.autofill.parentNode===b.autofillParent,state:JSON.stringify({...localStorage})===b.state});
   };
   localStorage.setItem('bb_onboarding_fresh_once_20261028_v1',JSON.stringify({step:10,complete:true,started:false,partnerStepV2:true,house:'3–4 people',region:'Guernsey',goals:[],diets:[]}));
   localStorage.setItem('basketboss_321_unified_state_v1',JSON.stringify({version:2,planned:[{recipeId:'veggie-fried-rice',day:'Monday',servings:4}],plannedBreakfasts:[],plannedDesserts:[],servings:4,feedingSet:true,pantry:{}}));
@@ -69,19 +70,60 @@ async function fixture(viewport,run){
 
 
 const read=page=>page.evaluate(()=>({state:JSON.parse(localStorage.getItem('basketboss_321_unified_state_v1')),pantry:localStorage.getItem('basketboss_321_v7_measured_pantry'),inventory:localStorage.getItem('basketboss_makeameal_v1_inventory'),estimate:document.getElementById('myWeekEstimatedTotal').textContent}));
-for(const width of [320,390,1440])test('My Week keeps heading and original household controls aligned at '+width+'px',{skip:!chromium},()=>fixture({width,height:900},async page=>{
+for(const width of [320,390,768,1440])test('My Week balances the price/action row and original household controls at '+width+'px',{skip:!chromium},()=>fixture({width,height:900},async page=>{
+ const saved=await read(page);assert.equal(saved.estimate,'£9.90','the original recipe fixture still uses its unchanged calculated estimate');
+ // Size a representative longer amount without changing any recipe, price
+ // calculation or saved value; restore the original renderer-owned text below.
+ await page.locator('#myWeekEstimatedTotal').evaluate(node=>{node.textContent='£175.50';});
  const boxes=await page.evaluate(()=>{
   const rect=n=>{const r=n.getBoundingClientRect();return {left:r.left,right:r.right,top:r.top,bottom:r.bottom,width:r.width,height:r.height};};
-  return {heading:rect(document.querySelector('.bbpc-week-header>h2')),feed:rect(document.querySelector('.bbpc-week-header>.bbfeed-global')),header:rect(document.querySelector('.bbpc-week-header')),price:rect(document.querySelector('.bbpc-week-price')),next:rect(document.querySelector('[data-bb-start-next-week]')),buttons:[...document.querySelectorAll('.bbpc-week-header button')].map(rect),pageWidth:document.documentElement.scrollWidth,viewport:innerWidth};
+  const textRect=node=>{const range=document.createRange();range.selectNodeContents(node);return rect(range);};
+  const style=n=>{const s=getComputedStyle(n);return {border:s.borderTopWidth,background:s.backgroundColor};};
+  const feed=document.querySelector('.bbpc-week-header>.bbfeed-global'),pill=getComputedStyle(feed,'::before');
+  const hero=document.querySelector('.bbnext-plan-budget'),heroStyle=getComputedStyle(hero),priceInfo=document.querySelector('.bbpc-week-info>summary'),target=rect(priceInfo),glyph=getComputedStyle(priceInfo,'::before'),glyphWidth=parseFloat(glyph.width),glyphHeight=parseFloat(glyph.height);
+  // The native summary centers its small glyph in a larger hit target. Text
+  // ranges measure painted text instead of a stretched or centered container.
+  const priceInfoGlyph={left:target.left+(target.width-glyphWidth)/2,right:target.right-(target.width-glyphWidth)/2,top:target.top+(target.height-glyphHeight)/2,bottom:target.bottom-(target.height-glyphHeight)/2};
+  return {heading:rect(document.querySelector('.bbpc-week-header>h2')),feed:rect(feed),header:rect(document.querySelector('.bbpc-week-header')),heroContentLeft:rect(hero).left+parseFloat(heroStyle.borderLeftWidth)+parseFloat(heroStyle.paddingLeft),amountText:textRect(document.getElementById('myWeekEstimatedTotal')),captionText:textRect(document.querySelector('.bbnext-plan-donut-core>small')),priceInfoGlyph,price:rect(document.querySelector('.bbpc-week-price')),next:rect(document.querySelector('[data-bb-start-next-week]')),autofill:rect(document.querySelector('#bbnextPlanAutofill>summary')),buttons:[...feed.querySelectorAll('button')].map(rect),buttonStyles:[...feed.querySelectorAll('button')].map(style),pill:{width:parseFloat(pill.width),height:parseFloat(pill.height),radius:parseFloat(pill.borderRadius),background:pill.backgroundColor},pageWidth:document.documentElement.scrollWidth,viewport:innerWidth};
  });
+ const center=box=>(box.top+box.bottom)/2;
  assert.ok(boxes.heading.right<=boxes.feed.left,'heading and stepper do not overlap');
  assert.ok(boxes.heading.top>=boxes.feed.top&&boxes.heading.bottom<=boxes.feed.bottom,'heading is vertically centered on the same row');
  assert.ok(boxes.feed.right<=boxes.header.right+1,'household controls fit inside the header');
- assert.ok(boxes.price.bottom<=boxes.next.top+1,'the footer actions clear the price/info row');
+ assert.ok(Math.abs(boxes.header.left-boxes.heroContentLeft)<=1,'the heading row follows the hero left padding');
+ for(const [name,text]of [['amount',boxes.amountText],['caption',boxes.captionText]])assert.ok(text.width>0&&Math.abs(text.left-boxes.header.left)<=1,name+' text aligns with the heading and hero padding: '+JSON.stringify(boxes));
+ const captionInfoGap=boxes.priceInfoGlyph.left-boxes.captionText.right;
+ assert.ok(captionInfoGap>=6&&captionInfoGap<=18,'the information ring follows the actual caption text with a compact visual gap: '+JSON.stringify(boxes));
+ assert.ok(Math.abs(center(boxes.priceInfoGlyph)-center(boxes.captionText))<=2,'caption text and its information ring are vertically centered');
+ assert.ok(Math.abs(center(boxes.price)-center(boxes.next))<=4,'price and Start next week are centered on the same row: '+JSON.stringify(boxes));
+ assert.ok(Math.abs(center(boxes.next)-center(boxes.autofill))<=1,'the action and its info target share the same center');
+ assert.ok(boxes.price.right<=boxes.next.left+1&&boxes.next.right<=boxes.autofill.left+1,'price, action and info blocks do not overlap');
+ assert.ok(boxes.autofill.right<=boxes.header.right+1,'the action row fits inside My Week');
  assert.ok(boxes.buttons.every(r=>r.width>=44&&r.height>=44),'original household buttons retain 44px touch targets');
+ assert.ok(boxes.pill.width>=boxes.buttons[1].right-boxes.buttons[0].left&&boxes.pill.height>=44&&boxes.pill.radius>=16,'both controls share one rounded Feeding pill');
+ assert.ok(boxes.buttonStyles.every(s=>s.border==='0px'&&s.background==='rgba(0, 0, 0, 0)'),'individual Feeding buttons do not draw duplicate boxes inside the pill');
  assert.ok(boxes.pageWidth<=boxes.viewport+1,'no horizontal overflow');
  assert.ok(await page.evaluate(()=>window.__weekPresentationChecks.length>0&&window.__weekPresentationChecks.every(check=>Object.values(check).every(Boolean))),'presentation preserves the original controls, live price attributes/count references, and all stored state');
  const directory=process.env.BB_MY_WEEK_SCREENSHOTS||path.join(os.tmpdir(),'basketboss-ui-previews','my-week');await fs.mkdir(directory,{recursive:true});await page.screenshot({path:path.join(directory,'my-week-'+width+'.png'),animations:'disabled'});
+ await page.locator('#myWeekEstimatedTotal').evaluate((node,text)=>{node.textContent=text;},saved.estimate);
+ assert.deepEqual(await read(page),saved,'the amount-sizing probe changes no calculated estimate, plan or pantry data');
+}));
+
+test('My Week information targets use matching single small rings inside original 44px controls',{skip:!chromium},()=>fixture({width:390,height:844},async page=>{
+ const icons=await page.locator('.bbpc-week-info>summary,#bbnextPlanAutofill>summary').evaluateAll(nodes=>nodes.map(node=>{
+  const target=getComputedStyle(node),glyph=getComputedStyle(node,'::before'),extra=getComputedStyle(node,'::after'),r=node.getBoundingClientRect();
+  return {label:node.getAttribute('aria-label'),text:node.textContent,width:r.width,height:r.height,targetBorder:target.borderTopWidth,targetBackground:target.backgroundColor,targetFont:target.fontSize,targetShadow:target.boxShadow,ring:{width:parseFloat(glyph.width),height:parseFloat(glyph.height),radius:glyph.borderRadius,borders:[glyph.borderTopWidth,glyph.borderRightWidth,glyph.borderBottomWidth,glyph.borderLeftWidth],content:glyph.content,font:glyph.fontSize},extraVisible:extra.content!=='none'&&extra.content!=='normal'&&extra.display!=='none'};
+ }));
+ assert.equal(icons.length,2);assert.deepEqual(icons.map(icon=>icon.label),['About your weekly shopping estimate','How Auto-fill works']);
+ for(const icon of icons){
+  assert.ok(icon.width>=44&&icon.height>=44,'small glyph retains a full-size keyboard/touch target');
+  assert.equal(icon.targetBorder,'0px');assert.equal(icon.targetBackground,'rgba(0, 0, 0, 0)');assert.equal(icon.targetShadow,'none');
+  assert.equal(icon.targetFont,'0px','the previous circled glyph does not draw a second ring');assert.equal(icon.text,'ⓘ','original accessible text remains intact');
+  assert.ok(icon.ring.width>=18&&icon.ring.width<=20&&icon.ring.height===icon.ring.width,'visible ring measures 18–20px');
+  assert.ok(parseFloat(icon.ring.radius)>=icon.ring.width/2,'the single border is circular');assert.deepEqual(icon.ring.borders,['1px','1px','1px','1px']);
+  assert.equal(icon.extraVisible,false,'no additional decorative ring is visible');
+ }
+ assert.deepEqual(icons[0].ring,icons[1].ring,'both information glyphs use the same visual size and ring treatment');
 }));
 
 test('weekly estimate info uses native keyboard disclosure without changing saved data',{skip:!chromium},()=>fixture({width:390,height:844},async page=>{
@@ -93,7 +135,24 @@ test('weekly estimate info uses native keyboard disclosure without changing save
  assert.equal(await page.locator('.bbpc-week-info-body>[hidden]:visible').count(),0,'renderer-owned hidden price/savings notes remain hidden');
  const color=await page.locator('.bbpc-week-info-body>small:visible').last().evaluate(n=>getComputedStyle(n).color);assert.equal(color,'rgba(255, 255, 255, 0.88)','dark-card helper copy is pale and readable');
  await page.keyboard.press('Space');assert.equal(await info.evaluate(n=>n.open),false);
+ const autofill=page.locator('#bbnextPlanAutofill'),autofillSummary=autofill.locator(':scope>summary');
+ await autofillSummary.focus();await page.keyboard.press('Enter');assert.equal(await autofill.evaluate(n=>n.open),true);
+ await autofill.locator('.bbpc-info-content').waitFor({state:'visible'});
+ await page.keyboard.press('Space');assert.equal(await autofill.evaluate(n=>n.open),false);
+ await page.keyboard.press('Enter');assert.equal(await autofill.evaluate(n=>n.open),true);await page.keyboard.press('Escape');assert.equal(await autofill.evaluate(n=>n.open),false,'original Escape handler still closes Auto-fill information');
+ await autofillSummary.click();assert.equal(await autofill.evaluate(n=>n.open),true);await page.locator('.bbpc-week-header>h2').click();assert.equal(await autofill.evaluate(n=>n.open),false,'original outside-click handler still closes Auto-fill information');
  assert.deepEqual(await read(page),saved,'opening/closing information changes no plan, estimate or stock');
+}));
+
+test('the original Start next week action opens from the keyboard and cancellation keeps the plan',{skip:!chromium},()=>fixture({width:390,height:844},async page=>{
+ const saved=await read(page),next=page.getByRole('button',{name:'Start next week',exact:true});
+ await next.evaluate(node=>{window.__originalNextWeekControl=node;});await next.focus();await page.keyboard.press('Enter');
+ const dialog=page.locator('#bbNextWeekDialog');await dialog.waitFor({state:'visible'});
+ await dialog.getByRole('button',{name:'Keep my week',exact:true}).click();await dialog.waitFor({state:'detached'});
+ assert.equal(await next.evaluate(node=>node===window.__originalNextWeekControl&&node.parentNode===document.querySelector('#app .bbnext-plan-actions')),true,'the original delegated action and its owning parent remain intact');
+ await page.waitForFunction(()=>!window.__originalNextWeekControl.disabled);
+ await next.focus();await page.keyboard.press('Space');await dialog.waitFor({state:'visible'});await page.keyboard.press('Escape');await dialog.waitFor({state:'detached'});
+ assert.deepEqual(await read(page),saved,'cancelling the real next-week confirmation preserves the original plan, servings, estimate and pantry');
 }));
 
 test('original household plus/minus and budget save/validation retain their calculations and live bindings',{skip:!chromium},()=>fixture({width:390,height:844},async page=>{
