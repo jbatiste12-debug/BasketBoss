@@ -41,3 +41,14 @@ html.bb-native-android body nav.bb-r6-cook-nav{display:flex!important;position:f
    theme. Keep their existing contrast and tap handlers without extra backdrop
    layers when Android WebView scrolls or swaps the recipe cards. */
 html.bb-native-android body[data-bbnext-view="discover"] #app :is(.pill,.time-pill,#bbFeaturedAddWeek){backdrop-filter:none!important;-webkit-backdrop-filter:none!important}
+/* The web button theme interpolates its pressed transform for 160ms. Commit
+   that first feedback immediately; release/hover styling stays with its owner. */
+html.bb-native-android body :is(button,a[href],[role="button"],[role="tab"]):active{transition-duration:0s!important}
+/* These dialogs still blur the full live page behind an otherwise opaque
+   panel. Their existing dim backdrops, focus traps and scroll locks remain. */
+html.bb-native-android body .bbui-settings-overlay{backdrop-filter:none!important;-webkit-backdrop-filter:none!important}
+html.bb-native-android body :is(dialog.bb-how-dialog,dialog.bb-essentials-confirm-dialog,dialog.bb-kitchen-review-dialog,dialog.bb-evening-pivot-dialog)::backdrop{backdrop-filter:none!important;-webkit-backdrop-filter:none!important}
+/* Shopping progress reflects the owner's exact value without animating width
+   over several layout frames after each checked item. */
+html.bb-native-android body #bbReleaseShopOverview .bb-r6-track span,
+html.bb-native-android body .shop-progress-fill{transition:none!important}

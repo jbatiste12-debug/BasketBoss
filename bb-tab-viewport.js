@@ -16,16 +16,16 @@
   const locationURL=()=>{try{return new URL(win.location.href);}catch{return null;}};
   function view(){const saved=normal(doc.body?.dataset?.bbnextView);if(saved)return saved;const current=doc.querySelector('.tab.active,[data-bb-nav-current="true"]');const found=normal(current?.dataset?.tab)||NAV_ITEMS[current?.dataset?.bbNavItem];if(found)return found;return /(?:^|\/)make-a-meal\.html$/.test(locationURL()?.pathname||'')?'cook':null;}
   let lastView=view();
-  function visible(node){
-   if(!node||node.isConnected===false||node.hidden)return false;
-   try{const style=win.getComputedStyle?.(node);if(style?.display==='none'||style?.visibility==='hidden')return false;if(node.getClientRects&&!Array.from(node.getClientRects()).some(rect=>rect.width>0&&rect.height>0))return false;}catch{return false;}
-   return true;
+  function visibleStyle(node){
+   if(!node||node.isConnected===false||node.hidden)return null;
+   try{const style=win.getComputedStyle?.(node);if(style?.display==='none'||style?.visibility==='hidden')return null;if(node.getClientRects&&!Array.from(node.getClientRects()).some(rect=>rect.width>0&&rect.height>0))return null;return style||{};}catch{return null;}
   }
+  const visible=node=>!!visibleStyle(node);
   function overlay(){
    let active=null,level=-Infinity;
    for(const node of doc.querySelectorAll(OVERLAYS)){
-    if(!visible(node)||node.id==='bbToolStage'&&has(doc.body,'bb-photo-meal-page'))continue;
-    let z=0;try{z=Number.parseInt(win.getComputedStyle?.(node)?.zIndex,10)||0;}catch{}
+    const style=visibleStyle(node);if(!style||node.id==='bbToolStage'&&has(doc.body,'bb-photo-meal-page'))continue;
+    let z=0;try{z=Number.parseInt(style.zIndex,10)||0;}catch{}
     if(!active||active.contains?.(node)||z>=level){active=node;level=z;}
    }
    return active;
@@ -39,8 +39,8 @@
    if(visible(storefront)&&visible(foot)){const height=foot.getBoundingClientRect?.().height;if(Number.isFinite(height)&&height>0)clearance=Math.ceil(Math.min(height,600)+16);}
    let extra=0;
    if(!active)for(const bar of doc.querySelectorAll('[data-bb-tab-action-bar],.bb172-shop-status,.bb1745-list-launch')){
-    if(!visible(bar)||bar.closest?.(NAV))continue;
-    const rect=bar.getBoundingClientRect?.(),position=win.getComputedStyle?.(bar)?.position;
+    const style=visibleStyle(bar);if(!style||bar.closest?.(NAV))continue;
+    const rect=bar.getBoundingClientRect?.(),position=style.position;
     if(rect&&['fixed','sticky'].includes(position)&&rect.top>Number(win.innerHeight||0)/2&&rect.bottom>=Number(win.innerHeight||0)-4)extra=Math.max(extra,Math.ceil(Math.min(rect.height,400)+16));
    }
    // Read both bars before changing either clearance: interleaving these
@@ -70,7 +70,11 @@
   }
   function queueFrames(){
    const intent=pending;if(!intent||destroyed||frames.length)return;
-   frames.push(raf(()=>{if(pending!==intent||manual!==intent.manual)return;frames.push(raf(()=>perform(intent)));}));
+   // Original click handlers finish before the next frame. A reset already
+   // checks live view/modal/manual-scroll ownership in perform(); measuring in
+   // a separate frame first only repeats that work and exposes an old offset.
+   if(modeFrame!==null){caf(modeFrame);modeFrame=null;}
+   frames.push(raf(()=>perform(intent)));
   }
   function reset(options={}){for(const frame of frames)caf(frame);frames=[];pending={kind:options.kind||'primary',view:normal(options.view)||null,panel:options.panel||null,selector:options.selector||null,manual,id:++serial};queueFrames();}
   // The renderer commits a real destination before the browser paints it.

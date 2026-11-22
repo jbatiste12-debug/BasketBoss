@@ -5,7 +5,8 @@ const { install } = createRequire(import.meta.url)("../bb-tab-swipe.js");
 function fixture() {
   const events = new Map(),
     calls = [],
-    resets = [];
+    resets = [],
+    work = { queries: 0, styles: 0, selection: 0 };
   let current = "plan",
     modal = false,
     ignore = false,
@@ -55,9 +56,10 @@ function fixture() {
     body,
     documentElement: {},
     activeElement: null,
-    querySelector: () => null,
-    querySelectorAll: (selector) =>
-      selector.includes("nav.tabs")
+    querySelector: () => { work.queries++; return null; },
+    querySelectorAll: (selector) => {
+      work.queries++;
+      return selector.includes("nav.tabs")
         ? [nav]
         : modal
           ? [
@@ -69,7 +71,8 @@ function fixture() {
                 getClientRects: () => [{ width: 100, height: 100 }],
               },
             ]
-          : [],
+          : [];
+    },
     addEventListener: (type, fn) => events.set(type, fn),
     removeEventListener: (type) => events.delete(type),
   };
@@ -77,8 +80,8 @@ function fixture() {
     document: doc,
     innerWidth: 390,
     scrollY: 0,
-    getComputedStyle: (n) => n.style || style,
-    getSelection: () => ({ isCollapsed: !selected }),
+    getComputedStyle: (n) => { work.styles++; return n.style || style; },
+    getSelection: () => { work.selection++; return { isCollapsed: !selected }; },
     BBTabViewport: {
       activate: (n) => {
         n.click();
@@ -113,6 +116,8 @@ function fixture() {
     api,
     calls,
     resets,
+    work,
+    resetWork: () => { for (const name of Object.keys(work)) work[name] = 0; },
     start: (x = 210, y = 200) => fire("touchstart", x, y),
     move: (x, y) => fire("touchmove", x, y),
     end: (x = 90, y = 200) => fire("touchend", x, y),
@@ -222,4 +227,46 @@ test("disabled destination cannot be activated and teardown removes listeners", 
   assert.equal(install(h.win), h.api);
   h.api.destroy();
   assert.equal(h.events.size, 0);
+});
+
+test("ordinary interactive taps do not invoke document-wide swipe eligibility or layout scans", () => {
+  const h = fixture();
+  h.ignore();
+  h.start();
+  h.end(210);
+  assert.deepEqual(h.calls, []);
+  assert.deepEqual(h.work, { queries: 0, styles: 0, selection: 0 });
+});
+test("edge gestures and non-swipe touchend skip unnecessary modal/navigation work", () => {
+  const edge = fixture();
+  edge.start(10);
+  edge.end(10);
+  assert.deepEqual(edge.work, { queries: 0, styles: 0, selection: 0 });
+  for (const point of [[210, 200], [160, 200], [125, 270]]) {
+    const h = fixture();
+    h.start();
+    h.resetWork();
+    h.end(...point);
+    assert.deepEqual(h.calls, []);
+    assert.deepEqual(h.work, { queries: 0, styles: 0, selection: 0 });
+  }
+});
+test("eligible swipes still recheck live overlay and selection safety before existing activation", () => {
+  for (const method of ["modal", "selected", "keyboard"]) {
+    const h = fixture();
+    h.start();
+    h[method]();
+    h.resetWork();
+    h.end();
+    assert.deepEqual(h.calls, [], method);
+    if (method === "modal") assert.ok(h.work.queries >= 2);
+    if (method === "selected") assert.equal(h.work.selection, 1);
+  }
+  const h = fixture();
+  h.start();
+  h.resetWork();
+  h.end();
+  assert.deepEqual(h.calls, ["discover"]);
+  assert.ok(h.work.queries >= 3);
+  assert.equal(h.work.selection, 1);
 });
