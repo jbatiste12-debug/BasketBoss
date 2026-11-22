@@ -1,12 +1,12 @@
 /* Public web700 cache contract. Never include private/API/auth responses. */
-self.BB700_PWA_CACHE_VERSION="af41886d3cca117d2a9cfd262470a2e25c8009614b5d5ea0a271556fa2cfb515";
+self.BB700_PWA_CACHE_VERSION="73416bbd99aecb78b45276fceee81d7fc304a49f8e99f753e40a94f7745fe443";
 self.BB700_PWA_PRECACHE=Object.freeze([
   "/basketboss-aisles-v20.js?v=d45b76bac322b605",
   "/bb-account-deletion.css?v=645b166ac6fe196f",
   "/bb-account-deletion.js?v=0e198d2fc8b99abd",
   "/bb-account-pantry-live.js?v=8df4603690c44f1a",
-  "/bb-account-polish.css?v=cafb44c2ec50a7af",
-  "/bb-account-polish.js?v=5f91d1cc26482d2c",
+  "/bb-account-polish.css?v=35ddc13c82ec4b09",
+  "/bb-account-polish.js?v=7bf0cd00bbe0a1ad",
   "/bb-at-home-compact.css?v=7c8a5ca2dcc0cccb",
   "/bb-auth-callback.js?v=99efc75d95d6a644",
   "/bb-auth-flow.css?v=dec958e98696607c",
@@ -117,8 +117,8 @@ self.BB700_PWA_PRECACHE=Object.freeze([
   "/bb-pantry-stock-levels.js?v=eafc0a41f805c97d",
   "/bb-partner-signup-prompt.css?v=4b8718904151c105",
   "/bb-partner-signup-prompt.js?v=4d5dba284b0f176f",
-  "/bb-plan-compact.css?v=1dc52552a1190eac",
-  "/bb-plan-compact.js?v=276581a0e3e2006e",
+  "/bb-plan-compact.css?v=8072f6c7311dcf24",
+  "/bb-plan-compact.js?v=5d1919a84479d66c",
   "/bb-plan-drag.css?v=c54ef00f36c09c35",
   "/bb-plan-drag.js?v=dfaeac46e04193ce",
   "/bb-plan-extras-sync.js?v=25e09c436f406513",

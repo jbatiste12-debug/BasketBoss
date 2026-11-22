@@ -200,7 +200,7 @@ test('returning account and sign-out never paint both member controls and a lega
   } finally { await h.context.close(); }
 });
 
-test('native provider outcomes keep email and submit bounds stable without blocking email or adding a recovery slot', options, async () => {
+test('native provider group keeps email and submit bounds stable without blocking email or adding a recovery slot', options, async () => {
   const measurements = [], directory = path.join(os.tmpdir(), 'basketboss-ui-previews/account-providers');
   await fs.mkdir(directory, { recursive: true });
   for (const scenario of [
@@ -218,7 +218,7 @@ test('native provider outcomes keep email and submit bounds stable without block
       if (mode === 'sign-up') await h.page.locator('#bbAuthSignupMode').click();
       await h.page.locator('#cloud-email').fill(EMAIL); await h.page.locator('#cloud-password').fill('synthetic-frame-password');
       await nextFrames(h.page);
-      const bounds = () => h.page.evaluate(() => Object.fromEntries(['cloud-card', 'cloud-email', 'cloud-login', 'cloud-signup', 'bbAuthAppleSection'].map(id => {
+      const bounds = () => h.page.evaluate(() => Object.fromEntries(['cloud-card', 'cloud-email', 'cloud-login', 'cloud-signup', 'bbAuthProviders', 'bbAuthAppleSection'].map(id => {
         const node = document.getElementById(id), rect = node.getBoundingClientRect(); return [id, { top: rect.top, height: rect.height, scrollTop: node.scrollTop }];
       })));
       const before = await bounds(), submit = mode === 'sign-up' ? 'cloud-signup' : 'cloud-login';
@@ -228,19 +228,24 @@ test('native provider outcomes keep email and submit bounds stable without block
       const after = await bounds();
       measurements.push({ scenario, mode, before, after });
       if (mode === 'sign-in') await h.page.screenshot({ path: path.join(directory, `${scenario.native}-${scenario.providerOutcome}-${scenario.width || 390}-${scenario.height || 844}.png`) });
-      for (const id of ['cloud-card', 'cloud-email', submit, 'bbAuthAppleSection']) {
+      for (const id of ['cloud-card', 'cloud-email', submit, 'bbAuthProviders']) {
         assert.ok(Math.abs(before[id].top - after[id].top) < 0.1 && Math.abs(before[id].height - after[id].height) < 0.1, JSON.stringify({ scenario, mode, id, before, after }));
       }
-      assert.equal(await h.page.locator('#bbAuthApple').isVisible(), scenario.providerOutcome === 'available');
-      if (scenario.providerOutcome === 'available') assert.equal(await h.page.locator('#bbAuthApple').isEnabled(), true);
-      assert.equal(await h.page.locator('#bbAuthAppleRetry').isVisible(), scenario.providerOutcome === 'error');
-      if (scenario.providerOutcome === 'error') assert.equal(await h.page.locator('#bbAuthAppleRetry').isEnabled(), true);
-      assert.equal(await h.page.locator('#bbAuthAppleStatus').isVisible(), ['unavailable', 'error'].includes(scenario.providerOutcome));
+      // The shared Apple/Google wrapper reserves platform rows before either
+      // provider settles. Its initially hidden child is allowed to become visible.
+      assert.equal(after.bbAuthProviders.height, scenario.native === 'ios' ? 132 : 66);
+      const applePlatform = scenario.native === 'ios';
+      assert.equal(await h.page.locator('#bbAuthApple').isVisible(), applePlatform && scenario.providerOutcome === 'available');
+      if (applePlatform && scenario.providerOutcome === 'available') assert.equal(await h.page.locator('#bbAuthApple').isEnabled(), true);
+      assert.equal(await h.page.locator('#bbAuthAppleRetry').isVisible(), applePlatform && scenario.providerOutcome === 'error');
+      if (applePlatform && scenario.providerOutcome === 'error') assert.equal(await h.page.locator('#bbAuthAppleRetry').isEnabled(), true);
+      assert.equal(await h.page.locator('#bbAuthAppleStatus').isVisible(), applePlatform && ['unavailable', 'error'].includes(scenario.providerOutcome));
       assert.equal(await h.page.locator('#bbAuthAppleDivider').isVisible(), false);
-      if (scenario.providerOutcome === 'disabled') assert.match(await h.page.locator('#bbAuthAppleSection').evaluate(node => getComputedStyle(node, '::before').content), /continue with email/);
+      if (scenario.providerOutcome === 'disabled') assert.match(await h.page.locator('#bbAuthProviders').evaluate(node => getComputedStyle(node, '::before').content), /continue with email/);
       const row = await h.page.locator('#bbAuthAppleSection').evaluate(node => {
-        const rect = node.getBoundingClientRect(); return { top: rect.top, bottom: rect.bottom, children: [...node.children].filter(child => child.getClientRects().length).map(child => ({ top: child.getBoundingClientRect().top, bottom: child.getBoundingClientRect().bottom })) };
+        const rect = node.getBoundingClientRect(), group = node.closest('#bbAuthProviders').getBoundingClientRect(); return { visible: node.getClientRects().length > 0, top: rect.top, bottom: rect.bottom, groupTop: group.top, groupBottom: group.bottom, children: [...node.children].filter(child => child.getClientRects().length).map(child => ({ top: child.getBoundingClientRect().top, bottom: child.getBoundingClientRect().bottom })) };
       });
+      if (row.visible) assert.ok(row.top >= row.groupTop - 0.1 && row.bottom <= row.groupBottom + 0.1, JSON.stringify({ scenario, row }));
       assert.ok(row.children.every(child => child.top >= row.top - 0.1 && child.bottom <= row.bottom + 0.1), JSON.stringify({ scenario, row }));
       await h.page.locator('#cloud-close').click(); await h.page.locator('#cloud-open').click(); await nextFrames(h.page);
       // Normal Account entry selects sign-in; compare the same mode on reopen.
@@ -250,10 +255,12 @@ test('native provider outcomes keep email and submit bounds stable without block
       // Compare content positions so the existing blur/focus scroll behavior
       // remains independent of the provider reservation.
       assert.ok(Math.abs(after['cloud-email'].top + after['cloud-card'].scrollTop - reopened['cloud-email'].top - reopened['cloud-card'].scrollTop) < 0.1, JSON.stringify({ scenario, mode, after, reopened }));
-      assert.equal(after.bbAuthAppleSection.height, reopened.bbAuthAppleSection.height);
+      assert.equal(after.bbAuthProviders.height, reopened.bbAuthProviders.height);
       assert.equal(await h.page.locator('#cloud-email').inputValue(), EMAIL);
       await h.page.locator('#bbAuthSigninMode').click(); await h.page.locator('#bbAuthForgot').click(); await nextFrames(h.page);
       assert.equal(await h.page.locator('#bbAuthAppleSection').isVisible(), false, 'recovery has no provider reservation');
+      assert.equal(await h.page.locator('#bbAuthProviders').isVisible(), false, 'recovery has no shared provider reservation');
+      assert.equal((await bounds()).bbAuthProviders.height, 0);
       assert.equal((await bounds()).bbAuthAppleSection.height, 0);
       assert.deepEqual(h.errors, []);
     } finally { h.releaseProvider(); await h.context.close(); }

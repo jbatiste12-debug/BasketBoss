@@ -5,6 +5,17 @@
 /* Presentation hint only; the existing renderer still owns the requested tab. */
 try{const requested=new URLSearchParams(location.search).get('bbview');if(!requested||requested==='week')document.documentElement.dataset.bbPlanEntry='true';}catch{}
 </script>
+<style id="bbNativeEntryPresentationCritical">
+/* Native entry never offers browser installation. This selector also wins
+   against the retired inline banner's display:flex!important declaration. */
+html:is(.bb-native-ios,.bb-native-android) body .bb173-install-banner.bb1744-install-banner[data-bb173-install-banner]{display:none!important}
+html:is(.bb-native-ios,.bb-native-android) body>[role="note"]:has(#bb307Island){display:none!important}
+/* A returning native document skips its brand animation, but its parsed shell
+   still contains the retired header/nav until the real local presenters finish.
+   Isolate that shell only for the existing startup phase; retain all real DOM,
+   layout, handlers and current values. No extra cover, timer or loading UI. */
+html.bb-native-starting:is(.bb-native-ios,.bb-native-android) body>.shell{visibility:hidden!important;opacity:0!important;pointer-events:none!important}
+</style>
 
 <meta name="referrer" content="no-referrer">
 <script src="bb-auth-callback.js?v=20261104-auth1" referrerpolicy="no-referrer"></script>
@@ -15,8 +26,8 @@ try{const requested=new URLSearchParams(location.search).get('bbview');if(!reque
 <script src="bb-food-visuals.js?v=20261031-food2"></script>
 <link rel="stylesheet" href="bb-navigation-polish.css?v=20261122-transitions1">
 <script defer src="bb-navigation-polish.js?v=20261122-instant1"></script>
-<link rel="stylesheet" href="bb-account-polish.css?v=20261122-google1">
-<script defer src="bb-account-polish.js?v=20261122-instant1"></script>
+<link rel="stylesheet" href="bb-account-polish.css?v=20261122-nativepaint1">
+<script defer src="bb-account-polish.js?v=20261122-nativepaint1"></script>
 <script defer src="bb-account-pantry-live.js"></script>
 <link rel="stylesheet" href="bb-onboarding-v2.css?v=20261122-google1">
 <link rel="stylesheet" href="bb-ux-cleanup.css?v=20261028-ux1">
@@ -14219,8 +14230,8 @@ body[data-bbnext-view="discover"] #app .bb175-discover-heading{padding-top:calc(
 <link rel="stylesheet" href="bb-premium-finish.css?v=20261110-forest1">
 <link rel="stylesheet" href="bb-premium-dialogs.css?v=20261110-forest1">
 
-<link rel="stylesheet" href="bb-plan-compact.css?v=20261122-instant1">
-<script defer src="bb-plan-compact.js?v=20261122-week-polish1"></script>
+<link rel="stylesheet" href="bb-plan-compact.css?v=20261122-nativepaint1">
+<script defer src="bb-plan-compact.js?v=20261122-nativepaint1"></script>
 <link rel="stylesheet" href="bb-plan-home-snapshot.css?v=20261122-instant1">
 <script defer src="bb-plan-home-snapshot.js?v=20261122-instant1"></script>
 

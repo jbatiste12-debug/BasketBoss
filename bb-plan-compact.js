@@ -48,6 +48,29 @@
   for(const node of copy.querySelectorAll(':scope>.bb77-pantry-savings,:scope>.bb77-price-note'))body.append(node);
   const disclaimer=app.querySelector('#bbSimpleBudget>.bbs-budget-body>small');
   if(disclaimer)body.append(disclaimer);
+  polishBudgetComparison(app,overview);
+ }
+ function polishBudgetComparison(app,overview){
+  // Mirror the owner's verified saved-budget copy. The to-buy badge is a
+  // different scope from the recorded-purchases/weekly forecast comparison.
+  // Never infer a target from the editable input or calculate a remainder.
+  const target=app.querySelector('#bbSimpleBudget .bbnext-plan-budget-line');
+  const forecast=app.querySelector('#bbSimpleBudget .bb77-weekly-forecast');
+  const status=app.querySelector('#bbSimpleBudget .bb77-weekly-budget-state');
+  let comparison=overview.querySelector(':scope>.bbpc-week-budget-comparison');
+  if(status?.hidden!==false||!target?.textContent.trim()||!forecast?.textContent.trim()||!status.textContent.trim()){
+   comparison?.remove();return;
+  }
+  if(!comparison){
+   comparison=doc.createElement('section');comparison.className='bbpc-week-budget-comparison';
+   comparison.setAttribute('aria-label','Weekly budget comparison');
+   const estimate=doc.createElement('p');estimate.className='bbpc-week-budget-forecast';
+   const remaining=doc.createElement('strong');remaining.className='bbpc-week-budget-state';
+   comparison.append(estimate,remaining);overview.append(comparison);
+  }
+  for(const [selector,owner]of [['.bbpc-week-budget-forecast',forecast],['.bbpc-week-budget-state',status]]){
+   const node=comparison.querySelector(selector);if(node.textContent!==owner.textContent)node.textContent=owner.textContent;
+  }
  }
  function polishDay(row){
   const toggle=row.querySelector(':scope>summary.bbnext-day-toggle'),desc=toggle?.querySelector('.bbnext-day-description');
