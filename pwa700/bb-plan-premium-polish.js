@@ -166,14 +166,20 @@
    sizePlanPopovers(card);
  }
  function closePlanPopovers(event){
-   if(closingPlanPopover)return;
+   const escape=event.type==='keydown'&&event.key==='Escape';
+   if(closingPlanPopover||event.type==='keydown'&&!escape)return;
    const card=$('#app[data-bb-compact-plan="true"] #bbpolAutofillCard');if(!card)return;
-   sizePlanPopovers(card);
-   const escape=event.type==='keydown'&&event.key==='Escape';if(event.type==='keydown'&&!escape)return;
    const details=[...card.querySelectorAll('#bbSimpleBudget,#bbSimpleMealPreferences,#bbnextPlanAutofill')];
+   const ingredients=$('#bbIngredientPicker',card),toggle=$('#bbAvoidIngredientTab',ingredients||card);
+   const summary=event.target?.closest?.('summary');
+   // The summary's native default action can open after this listener. Size
+   // that genuine opening intent, but do not force card layout for unrelated
+   // taps or typing while all of these original popovers are closed.
+   const opening=event.type==='click'&&details.some(node=>node.firstElementChild===summary);
+   if(!opening&&!details.some(node=>node.open)&&toggle?.getAttribute('aria-expanded')!=='true')return;
+   sizePlanPopovers(card);
    let focus;
    for(const node of details)if(node.open&&(escape||!node.contains(event.target))){node.open=false;if(escape)focus=node.querySelector('summary');}
-   const ingredients=$('#bbIngredientPicker',card),toggle=$('#bbAvoidIngredientTab',ingredients||card);
    if(toggle?.getAttribute('aria-expanded')==='true'&&(escape||!ingredients.contains(event.target))){closingPlanPopover=true;try{toggle.click();}finally{closingPlanPopover=false;}if(escape)focus=toggle;}
    if(escape&&focus){event.preventDefault();focus.focus({preventScroll:true});}
  }
@@ -208,7 +214,12 @@
    document.addEventListener('click',closePlanPopovers);
    document.addEventListener('keydown',closePlanPopovers);
    let sizeFrame=null;
-   const resizePlan=()=>{if(sizeFrame!==null)return;sizeFrame=requestAnimationFrame(()=>{sizeFrame=null;sizePlanPopovers($('#app[data-bb-compact-plan="true"] #bbpolAutofillCard'));});};
+   const resizePlan=()=>{
+     if(sizeFrame!==null)return;
+     const card=$('#app[data-bb-compact-plan="true"] #bbpolAutofillCard');
+     if(!card?.querySelector('#bbSimpleBudget[open],#bbSimpleMealPreferences[open],#bbnextPlanAutofill[open],#bbAvoidIngredientTab[aria-expanded="true"]'))return;
+     sizeFrame=requestAnimationFrame(()=>{sizeFrame=null;sizePlanPopovers($('#app[data-bb-compact-plan="true"] #bbpolAutofillCard'));});
+   };
    window.addEventListener('resize',resizePlan,{passive:true});window.addEventListener('scroll',resizePlan,{passive:true});window.visualViewport?.addEventListener('resize',resizePlan,{passive:true});
  }
  if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',start,{once:true});

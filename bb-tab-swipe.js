@@ -109,7 +109,6 @@
       return null;
     }
     function reserved(node) {
-      if (node?.closest?.(IGNORE)) return true;
       for (
         let n = node;
         n && n !== doc.body && n !== doc.documentElement;
@@ -133,13 +132,15 @@
         event.isTrusted === false ||
         event.defaultPrevented ||
         event.touches?.length !== 1 ||
-        blocked() ||
-        reserved(event.target)
+        // Native button/tab taps already belong to their original controls.
+        // Reject them before document-wide modal/style eligibility work.
+        event.target?.closest?.(IGNORE)
       )
         return;
       const p = event.touches[0],
         width = win.innerWidth;
       if (p.clientX < 24 || p.clientX > width - 24) return;
+      if (blocked() || reserved(event.target)) return;
       const nav = navigation();
       if (!nav) return;
       gesture = {
@@ -183,7 +184,6 @@
         event.isTrusted === false ||
         event.defaultPrevented ||
         event.touches?.length ||
-        blocked() ||
         Date.now() - g.at > 900 ||
         Math.abs((win.scrollY || 0) - g.scroll) > 12
       )
@@ -195,6 +195,9 @@
       const dx = p.clientX - g.x,
         dy = p.clientY - g.y;
       if (Math.abs(dx) < 72 || Math.abs(dx) < Math.abs(dy) * 1.6) return;
+      // A tap/short drag cannot navigate, so it needs no second eligibility
+      // scan. Real swipes still recheck every live guard before activation.
+      if (blocked()) return;
       const nav = navigation();
       if (!nav || nav.current !== g.view) return;
       const index = ORDER.indexOf(nav.current) + (dx < 0 ? 1 : -1),

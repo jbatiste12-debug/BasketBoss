@@ -88,6 +88,11 @@
   wrap.className='bbpc-meal-overflow';trigger.type='button';trigger.className='bbpc-overflow-trigger';trigger.textContent='…';
   trigger.setAttribute('aria-label','More options for '+day+' dinner');trigger.setAttribute('aria-expanded','false');
   menu.id='bbPlanMealOptions-'+day;menu.className='bbpc-meal-menu';menu.hidden=true;menu.setAttribute('role','group');menu.setAttribute('aria-label',day+' dinner actions');
+  // Only menu padding needs a cancelable touch listener. Keep it on this
+  // newly created menu so ordinary app touches do not wait on a window hook.
+  menu.addEventListener('touchstart',event=>{
+   if(!event.target?.closest?.('button')){event.preventDefault();event.stopPropagation();}
+  },{capture:true,passive:false});
   trigger.setAttribute('aria-controls',menu.id);
   remove.textContent='Remove';remove.setAttribute('aria-label','Remove '+day+' dinner');remove.title='Remove '+day+' dinner';
   const show=()=>{
@@ -153,7 +158,7 @@
   const app=doc.getElementById('app');if(!app)return;
   refresh();new MutationObserver(schedule).observe(app,{childList:true,subtree:true});
   // Menu padding is decoration, not a tap on the underlying day summary.
-  for(const type of ['pointerdown','touchstart','click'])window.addEventListener?.(type,event=>{
+  for(const type of ['pointerdown','click'])window.addEventListener?.(type,event=>{
    if(event.target?.closest?.('.bbpc-meal-menu')&&!event.target.closest('button')){event.preventDefault();event.stopPropagation();}
   },{capture:true,passive:false});
   doc.addEventListener?.('pointerdown',event=>{

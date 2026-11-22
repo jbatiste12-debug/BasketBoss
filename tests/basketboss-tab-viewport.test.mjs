@@ -5,7 +5,7 @@ const {install}=createRequire(import.meta.url)('../bb-tab-viewport.js');
 const KEY='basketboss_tab_navigation_v1';
 
 function fixture({view='week',href='https://basketboss.co.uk/index.html',session=new Map()}={}){
- const frames=new Map(),scrolls=[],watchers=[],reads={overlays:0};let frameId=0;
+ const frames=new Map(),scrolls=[],watchers=[],reads={overlays:0,styles:new Map()};let frameId=0;
  const events=()=>{const handlers=new Map();return {addEventListener(type,fn){const list=handlers.get(type)||[];list.push(fn);handlers.set(type,list);},removeEventListener(type,fn){handlers.set(type,(handlers.get(type)||[]).filter(value=>value!==fn));},fire(type,event={}){for(const fn of [...handlers.get(type)||[]])fn({type,...event});}};};
  class Node{
   constructor(id='',tag='DIV'){this.id=id;this.tagName=tag;this.dataset={};this.attrs=new Map();this.children=[];this.parentNode=null;this.hidden=false;this.isConnected=true;this.scrollTop=300;this.scrollLeft=8;this.className='';this.computed={display:'block',visibility:'visible',position:'static',zIndex:'0'};this.rect={top:0,bottom:600,left:0,right:390,width:390,height:600};const styles=new Map();this.style={getPropertyValue:name=>styles.get(name)||'',setProperty:(name,value)=>styles.set(name,value)};this.classList={contains:name=>this.className.split(/\s+/).includes(name)};}
@@ -20,11 +20,12 @@ function fixture({view='week',href='https://basketboss.co.uk/index.html',session
  const body=new Node('body','BODY');body.dataset.bbnextView=view;const html=new Node('html','HTML'),app=new Node('app'),nav=new Node('nav','NAV'),panel=new Node('cook-panel'),storefront=new Node('bb172Storefront'),overview=new Node('bbReleaseShopOverview');storefront.hidden=true;overview.hidden=true;
  const overlays=[],bars=[],byId=new Map([html,body,app,storefront,overview].map(node=>[node.id,node]));
  const doc={...events(),readyState:'complete',documentElement:html,body,scrollingElement:html,getElementById:id=>byId.get(id)||null,querySelector:selector=>selector==='main,.page'?app:null,querySelectorAll:selector=>{if(selector.includes('dialog[open]')){reads.overlays++;return overlays;}return selector.includes('[data-bb-tab-action-bar]')?bars:[];}};
- const win={...events(),document:doc,location:{href},innerHeight:844,scrollY:500,sessionStorage:{getItem:key=>session.get(key)??null,setItem:(key,value)=>session.set(key,value),removeItem:key=>session.delete(key)},getComputedStyle:node=>node.computed,requestAnimationFrame(fn){const id=++frameId;frames.set(id,fn);return id;},cancelAnimationFrame:id=>frames.delete(id),scrollTo(options){scrolls.push(options);win.scrollY=options.top;},MutationObserver:class{constructor(fn){this.fn=fn;watchers.push(this);}observe(target,options){this.options=options;}disconnect(){this.disconnected=true;}}};
+ const win={...events(),document:doc,location:{href},innerHeight:844,scrollY:500,sessionStorage:{getItem:key=>session.get(key)??null,setItem:(key,value)=>session.set(key,value),removeItem:key=>session.delete(key)},getComputedStyle:node=>{reads.styles.set(node,(reads.styles.get(node)||0)+1);return node.computed;},requestAnimationFrame(fn){const id=++frameId;frames.set(id,fn);return id;},cancelAnimationFrame:id=>frames.delete(id),scrollTo(options){scrolls.push(options);win.scrollY=options.top;},MutationObserver:class{constructor(fn){this.fn=fn;watchers.push(this);}observe(target,options){this.options=options;}disconnect(){this.disconnected=true;}}};
  const controller=install(win);
- const flush=()=>{for(let count=0;frames.size&&count<20;count++){const pending=[...frames.values()];frames.clear();for(const fn of pending)fn();}assert.equal(frames.size,0,'scheduled viewport work settles');};
+ const frame=()=>{const pending=[...frames.values()];frames.clear();for(const fn of pending)fn();};
+ const flush=()=>{for(let count=0;frames.size&&count<20;count++)frame();assert.equal(frames.size,0,'scheduled viewport work settles');};
  const button=(tab,tag='BUTTON',target=null)=>{const node=new Node('',tag);node.dataset.tab=tab;if(target)node.setAttribute('href',target);nav.append(node);return node;};
- return {win,doc,html,app,nav,panel,body,storefront,overview,overlays,bars,scrolls,reads,controller,session,Node,button,flush,change(next){body.dataset.bbnextView=next;for(const watcher of watchers)if(!watcher.disconnected&&watcher.options?.attributeFilter?.includes('data-bbnext-view'))watcher.fn();},mutate(){for(const watcher of watchers)if(!watcher.disconnected&&watcher.options?.childList)watcher.fn();},click(node){doc.fire('click',{isTrusted:true,button:0,target:{closest:()=>node}});}};
+ return {win,doc,html,app,nav,panel,body,storefront,overview,overlays,bars,scrolls,reads,controller,session,Node,button,frame,flush,change(next){body.dataset.bbnextView=next;for(const watcher of watchers)if(!watcher.disconnected&&watcher.options?.attributeFilter?.includes('data-bbnext-view'))watcher.fn();},mutate(){for(const watcher of watchers)if(!watcher.disconnected&&watcher.options?.childList)watcher.fn();},click(node){doc.fire('click',{isTrusted:true,button:0,target:{closest:()=>node}});}};
 }
 
 test('each primary view starts at the document top, while an ordinary rerender preserves scroll',()=>{
@@ -123,4 +124,31 @@ test('a renderer commit measures modal ownership once and consumes queued duplic
  assert.equal(h.reads.overlays,1,'commit checks real modal ownership before the visible handoff');
  h.flush();assert.equal(h.reads.overlays,1,'queued decorators cannot repeat the same layout read');
  assert.equal(h.scrolls.length,1);
+});
+
+test('content-tab reset reaches its accepted panel on the first frame without a duplicate viewport scan',()=>{
+ const h=fixture(),control=new h.Node('bbPhaseCook','BUTTON');h.panel.append(control);h.reads.overlays=0;
+ h.click(control);assert.equal(h.panel.scrollTop,300,'the original handler retains the event turn');
+ h.frame();assert.equal(h.panel.scrollTop,0,'the next paint does not expose the old panel offset');
+ assert.equal(h.reads.overlays,1,'the accepted reset owns its viewport measurement');
+ assert.equal(h.win.scrollY,500);h.flush();assert.equal(h.reads.overlays,1);
+});
+
+test('first-frame fallback still reads current modal ownership and respects intervening manual scrolling',()=>{
+ const h=fixture(),modal=new h.Node('dialog');h.controller.reset({view:'week'});h.overlays.push(modal);
+ h.frame();assert.equal(h.win.scrollY,500,'a modal opened by the original handler retains its background');
+ assert.equal(h.html.getAttribute('data-bb-tab-scroll-lock'),'overlay');
+ h.win.fire('touchmove',{isTrusted:true});modal.hidden=true;h.controller.refresh();h.flush();
+ assert.equal(h.win.scrollY,500,'manual scrolling cancels even a modal-deferred intent');
+});
+
+test('a viewport pass reads each visible modal or action-bar style once without caching across updates',()=>{
+ const h=fixture(),modal=new h.Node('dialog'),bar=new h.Node('action');
+ h.overlays.push(modal);h.reads.styles.clear();h.controller.refresh();h.flush();
+ assert.equal(h.reads.styles.get(modal),1,'visibility and z-index share the same pass-local style');
+ modal.hidden=true;bar.computed.position='fixed';bar.rect={top:764,bottom:844,width:390,height:80};h.bars.push(bar);
+ h.reads.styles.clear();h.controller.refresh();h.flush();assert.equal(h.reads.styles.get(bar),1,'visibility and position share the same pass-local style');
+ assert.equal(h.html.style.getPropertyValue('--bb-tab-action-clearance'),'96px');
+ bar.computed.position='static';h.reads.styles.clear();h.controller.refresh();h.flush();
+ assert.equal(h.reads.styles.get(bar),1);assert.equal(h.html.style.getPropertyValue('--bb-tab-action-clearance'),'0px','later updates always re-read real style');
 });
