@@ -2,7 +2,7 @@ BasketBoss Android subscription parity: complete changed-file inventory
 Compared with production main 57cfa3a20126e34f9ace4a5ae9862187168d41c9.
 Includes the existing Android draft foundation and the parity completion.
 Generated platform outputs and private signing material are not tracked.
-Application source pin: 9635eef97e3c546aaddf3a543f1ead397d33c70a
+Application source pin: d18a88956a2a77608bd2a9b1c4c564eae1370839
 
 .github/workflows/android-build.yml
 .gitignore
