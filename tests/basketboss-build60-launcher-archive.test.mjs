@@ -178,7 +178,7 @@ test('build 60 prepares and verifies the project around catalogue-700 sync befor
  assert.match(source,/open "\$BB60_DIR\/ios\/App\/App\.xcworkspace"/);
  const pinned=source.match(/^BB60_SOURCE='([a-f0-9]{40})'$/m);
  assert.ok(pinned,'Build 60 uses one explicit reviewed source pin, independent of the launcher commit');
- assert.equal(pinned[1],'b6f87bc679b53c0a3c74a71171e233b333dc8189','Build 60 pins the reviewed shared presentation source commit');
+ assert.equal(pinned[1],'b6f01cf3b04db41fdd3db2c1ea7fbaa5b5363f0d','Build 60 pins the reviewed shared presentation source commit');
  assert.match(source,/^git fetch --depth 1 origin "\$BB60_SOURCE"$/m);
  assert.match(source,/^git checkout --detach "\$BB60_SOURCE"$/m);
  assert.ok(source.indexOf('bb60Source "$BB60_SOURCE"')<source.indexOf('git clone'),'an unpinned launcher fails before cloning or preparing a project');

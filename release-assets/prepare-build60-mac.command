@@ -74,7 +74,7 @@ bb60Source() {
 
 BB60_MODE="$(bb60Mode "$@")"
 # Pin to the reviewed application source, independently of this launcher commit.
-BB60_SOURCE='b6f87bc679b53c0a3c74a71171e233b333dc8189'
+BB60_SOURCE='b6f01cf3b04db41fdd3db2c1ea7fbaa5b5363f0d'
 bb60Source "$BB60_SOURCE"
 if [[ "$(uname -s)" != "Darwin" ]]; then
   printf 'Run this launcher on your Mac with Xcode installed.\n' >&2
