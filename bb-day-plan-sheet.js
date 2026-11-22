@@ -4,13 +4,14 @@
  const win=window,doc=document;if(win.BBPlanDaySheet)return;
  const DAYS=new Set(['Monday','Tuesday','Wednesday','Thursday','Friday','Saturday','Sunday']);
  const ingredientChoices=new Map();let desiredDay=null,active=null,queued=false,banner=null,bannerObserver=null,activationTimer=null,activationPending=false;
+ const attribute=(node,name,value)=>{if(node.getAttribute(name)!==value)node.setAttribute(name,value);};
  const make=(tag,cls,text)=>{const node=doc.createElement(tag);if(cls)node.className=cls;if(text!==undefined)node.textContent=text;return node;};
  const rows=()=>[...doc.querySelectorAll('#app.bbnext-plan .bbnext-day[data-bbnext-day]')];
  function anotherModal(){return !!doc.querySelector('dialog[open],#cloud-panel.open,#modalRoot > *,.bbui-settings-overlay:not([hidden])');}
  function isFront(){return !!active&&!anotherModal();}
  function clearActive(){
   if(active){active.classList.remove('bbdps-active');const content=active.querySelector(':scope>.bbnext-day-content');content?.removeAttribute('role');content?.removeAttribute('aria-modal');content?.removeAttribute('aria-labelledby');}
-  active=null;doc.documentElement.classList.remove('bb-day-plan-sheet-open');
+  active=null;if(doc.documentElement.classList.contains('bb-day-plan-sheet-open'))doc.documentElement.classList.remove('bb-day-plan-sheet-open');
  }
  function close(row=active){
   if(!row||row!==active)return;
@@ -67,11 +68,15 @@
   if(!row){clearActive();return;}
   const content=prepare(row);if(!content)return;
   const changed=active!==row;if(changed)clearActive();
-  active=row;row.classList.add('bbdps-active');doc.documentElement.classList.add('bb-day-plan-sheet-open');
-  content.setAttribute('role','dialog');content.setAttribute('aria-modal','true');content.setAttribute('aria-labelledby','bbDayPlanTitle-'+row.dataset.bbnextDay);
+  active=row;
+  if(!row.classList.contains('bbdps-active'))row.classList.add('bbdps-active');
+  if(!doc.documentElement.classList.contains('bb-day-plan-sheet-open'))doc.documentElement.classList.add('bb-day-plan-sheet-open');
+  attribute(content,'role','dialog');attribute(content,'aria-modal','true');attribute(content,'aria-labelledby','bbDayPlanTitle-'+row.dataset.bbnextDay);
   measure();
   if(changed&&!content.contains(doc.activeElement)&&isFront())content.querySelector('.bbdps-close')?.focus?.({preventScroll:true});
  }
+ // Trusted summary clicks run microtasks before the native disclosure toggle.
+ // Keep its frame boundary so the existing default action has settled.
  function schedule(){if(queued)return;queued=true;win.requestAnimationFrame(refresh);}
  function summaryClicked(event){
   if(event.defaultPrevented||!(event.target instanceof Element))return;

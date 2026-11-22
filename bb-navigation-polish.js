@@ -58,7 +58,9 @@
    }
   }
  }
- function schedule(){if(scheduled)return;scheduled=true;requestAnimationFrame(refresh);}
+ // Class/aria owners may settle after render()'s immediate refresh. Reconcile
+ // those presentation-only changes before the next paint, including Shop Mode.
+ function schedule(){if(scheduled)return;scheduled=true;queueMicrotask(refresh);}
  function start(){
   refresh();
   if(document.body)new MutationObserver(schedule).observe(document.body,{attributes:true,attributeFilter:['class']});

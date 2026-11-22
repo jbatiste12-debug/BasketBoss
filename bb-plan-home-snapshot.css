@@ -1,0 +1,12 @@
+/* The lower Plan card reflects existing saved names; original action owners stay. */
+html body[data-bbnext-view="week"] #app.bbnext-plan [data-bbph-information="true"]{display:none!important}
+html body[data-bbnext-view="week"] #app.bbnext-plan .bb-plan-home-snapshot{box-sizing:border-box;margin:16px 0 14px;padding:20px;border:1px solid #dce5d9;border-radius:20px;background:#fffdf7;color:#214c38}
+html body[data-bbnext-view="week"] #app.bbnext-plan .bb-plan-home-snapshot h3{margin:0 0 16px;font:750 21px/1.25 'Inter',-apple-system,BlinkMacSystemFont,sans-serif;letter-spacing:-.015em}
+html body[data-bbnext-view="week"] #app.bbnext-plan .bbph-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:20px}
+html body[data-bbnext-view="week"] #app.bbnext-plan .bbph-section{min-width:0}
+html body[data-bbnext-view="week"] #app.bbnext-plan .bbph-section h4{margin:0 0 7px;font:700 15px/1.3 'Inter',-apple-system,BlinkMacSystemFont,sans-serif}
+html body[data-bbnext-view="week"] #app.bbnext-plan :is(.bbph-count,.bbph-empty,.bbph-more){margin:0 0 10px;font:500 12px/1.5 'Inter',-apple-system,BlinkMacSystemFont,sans-serif;color:#607462}
+html body[data-bbnext-view="week"] #app.bbnext-plan .bbph-list{display:grid;gap:8px;margin:0;padding:0;list-style:none;font:500 14px/1.4 'Inter',-apple-system,BlinkMacSystemFont,sans-serif;overflow-wrap:anywhere}
+html body[data-bbnext-view="week"] #app.bbnext-plan .bbph-more{margin:10px 0 0}
+body:not([data-bbnext-view="week"]) #bbPlanHomeSnapshot{display:none!important}
+@media(max-width:359px){html body[data-bbnext-view="week"] #app.bbnext-plan .bbph-grid{grid-template-columns:minmax(0,1fr);gap:18px}}

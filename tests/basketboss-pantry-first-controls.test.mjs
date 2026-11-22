@@ -109,3 +109,12 @@ test('cancelling or dismissing a next-week confirmation never opts into pantry r
   await new Promise(resolve=>setImmediate(resolve));assert.deepEqual(answers,[{confirmed:false,reviewPantry:false}]);assert.equal(h.doc.querySelector('.bb-next-week-dialog'),null);
  }
 });
+
+
+test('presentation remount settles before paint when microtasks are available',()=>{
+ const h=fixture(),microtasks=[];h.win.queueMicrotask=callback=>microtasks.push(callback);
+ h.actions.remove();const replacement=new Element();replacement.className='bbnext-plan-actions';replacement.append(h.working);h.app.append(replacement);
+ h.observers[0].callback([]);h.observers[0].callback([]);
+ assert.equal(microtasks.length,1);assert.equal(h.frames.length,0,'the compact Plan header must not wait for a later frame');
+ microtasks.shift()();assert.equal(h.group().parentNode,replacement);assert.equal(h.working.onclick,h.original);assert.equal(h.api.mode(),'pantry-first');
+});
