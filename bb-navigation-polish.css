@@ -19,9 +19,9 @@ html[data-bb-plan-entry="true"] body:not([data-bbnext-view]) .shell nav.tabs>.ta
 html body[data-bbnext-view="week"] .shell nav.tabs>.tab,
 html[data-bb-plan-entry="true"] body:not([data-bbnext-view]) .shell>header.top #bbuiOpenSettings,
 html body[data-bbnext-view="week"] .shell>header.top #bbuiOpenSettings{transition:none!important}
-/* The desktop-only entry animation washed the just-rendered My Week card to
-   50% opacity. Plan now paints fully opaque, as its mobile presentation does. */
-html body[data-bbnext-view="week"] .shell #app.bbnext-plan.bb-stage-enter{animation:none!important;opacity:1!important;transform:none!important}
+/* Commit every tab at full opacity. The shared screen container retains Plan
+   classes between renders, so its actual body view owns tab presentation. */
+html body .shell #app.bb-stage-enter{animation:none!important;opacity:1!important;transform:none!important}
 
 /* A single, opaque dock across PWA and native. Decorative changes only. */
 /* Keep the retired startup banner out of the first paint. The original region
@@ -29,34 +29,35 @@ html body[data-bbnext-view="week"] .shell #app.bbnext-plan.bb-stage-enter{animat
 html body>[role="note"]:has(#bb307Island){display:none!important}
 /* A slow presentation script must still get a compact, usable live summary,
    rather than the retired white card and oversized ring. This fallback styles
-   the original nodes; no page-wide hiding timer or loading overlay is needed. */
-html body[data-bbnext-view="week"] .shell #app.bbnext-plan:not([data-bb-compact-header="true"]) .bbnext-plan-budget{
+   the original nodes; no page-wide hiding timer or loading overlay is needed.
+   Check the current header DOM: parent decoration attributes survive rerenders. */
+html body[data-bbnext-view="week"] .shell #app.bbnext-plan:is(:not([data-bb-compact-header="true"]),:not(:has(.bbpc-week-header))) .bbnext-plan-budget{
  display:flex!important;align-items:center!important;gap:12px!important;min-height:104px!important;
  margin:0 0 12px!important;padding:16px!important;border:1px solid #345d45!important;border-radius:18px!important;
  background:linear-gradient(120deg,#173e2e,#24583e)!important;color:#fffef6!important;box-shadow:none!important;
 }
-html body[data-bbnext-view="week"] .shell #app.bbnext-plan:not([data-bb-compact-header="true"]) .bbnext-plan-budget::before{display:none!important}
-html body[data-bbnext-view="week"] .shell #app.bbnext-plan:not([data-bb-compact-header="true"]) .bb-myweek-emblem{
+html body[data-bbnext-view="week"] .shell #app.bbnext-plan:is(:not([data-bb-compact-header="true"]),:not(:has(.bbpc-week-header))) .bbnext-plan-budget::before{display:none!important}
+html body[data-bbnext-view="week"] .shell #app.bbnext-plan:is(:not([data-bb-compact-header="true"]),:not(:has(.bbpc-week-header))) .bb-myweek-emblem{
  display:block!important;flex:0 0 56px!important;width:56px!important;min-width:56px!important;height:56px!important;margin:0!important;
 }
-html body[data-bbnext-view="week"] .shell #app.bbnext-plan:not([data-bb-compact-header="true"]) .bbnext-plan-budget .bb-myweek-emblem>.bbnext-plan-donut{
+html body[data-bbnext-view="week"] .shell #app.bbnext-plan:is(:not([data-bb-compact-header="true"]),:not(:has(.bbpc-week-header))) .bbnext-plan-budget .bb-myweek-emblem>.bbnext-plan-donut{
  width:56px!important;height:56px!important;min-width:56px!important;margin:0!important;
 }
-html body[data-bbnext-view="week"] .shell #app.bbnext-plan:not([data-bb-compact-header="true"]) .bbnext-plan-budget .bb-myweek-emblem .bbnext-plan-donut-core{width:44px!important;height:44px!important}
-html body[data-bbnext-view="week"] .shell #app.bbnext-plan:not([data-bb-compact-header="true"]) .bbnext-plan-budget .bb-myweek-emblem .bbnext-plan-donut-core strong{font-size:10px!important;letter-spacing:-.4px!important}
+html body[data-bbnext-view="week"] .shell #app.bbnext-plan:is(:not([data-bb-compact-header="true"]),:not(:has(.bbpc-week-header))) .bbnext-plan-budget .bb-myweek-emblem .bbnext-plan-donut-core{width:44px!important;height:44px!important}
+html body[data-bbnext-view="week"] .shell #app.bbnext-plan:is(:not([data-bb-compact-header="true"]),:not(:has(.bbpc-week-header))) .bbnext-plan-budget .bb-myweek-emblem .bbnext-plan-donut-core strong{font-size:10px!important;letter-spacing:-.4px!important}
 /* The simple wrapper can arrive before the final compact header. Its older
    desktop rule sets an 88px minimum as well as a height; cover that short
    intermediate state without constraining the completed hero. */
-html body[data-bbnext-view="week"] .shell #app.bbnext-plan:not([data-bb-compact-header="true"]) .bbnext-plan-budget[data-bb-simple-budget] .bbpc-budget-overview .bb-myweek-emblem,
-html body[data-bbnext-view="week"] .shell #app.bbnext-plan:not([data-bb-compact-header="true"]) .bbnext-plan-budget[data-bb-simple-budget] .bbpc-budget-overview .bb-myweek-emblem>.bbnext-plan-donut{width:56px!important;min-width:56px!important;max-width:56px!important;height:56px!important;min-height:56px!important;max-height:56px!important}
-html body[data-bbnext-view="week"] .shell #app.bbnext-plan:not([data-bb-compact-header="true"]) .bbnext-plan-budget-text{
+html body[data-bbnext-view="week"] .shell #app.bbnext-plan:is(:not([data-bb-compact-header="true"]),:not(:has(.bbpc-week-header))) .bbnext-plan-budget[data-bb-simple-budget] .bbpc-budget-overview .bb-myweek-emblem,
+html body[data-bbnext-view="week"] .shell #app.bbnext-plan:is(:not([data-bb-compact-header="true"]),:not(:has(.bbpc-week-header))) .bbnext-plan-budget[data-bb-simple-budget] .bbpc-budget-overview .bb-myweek-emblem>.bbnext-plan-donut{width:56px!important;min-width:56px!important;max-width:56px!important;height:56px!important;min-height:56px!important;max-height:56px!important}
+html body[data-bbnext-view="week"] .shell #app.bbnext-plan:is(:not([data-bb-compact-header="true"]),:not(:has(.bbpc-week-header))) .bbnext-plan-budget-text{
  min-width:0!important;flex:1!important;grid-area:auto!important;text-align:left!important;
 }
-html body[data-bbnext-view="week"] .shell #app.bbnext-plan:not([data-bb-compact-header="true"]) .bbnext-plan-budget-text h2{
+html body[data-bbnext-view="week"] .shell #app.bbnext-plan:is(:not([data-bb-compact-header="true"]),:not(:has(.bbpc-week-header))) .bbnext-plan-budget-text h2{
  margin:0 0 4px!important;font-size:23px!important;line-height:1.1!important;color:#fffef6!important;-webkit-text-fill-color:currentColor!important;
 }
-html body[data-bbnext-view="week"] .shell #app.bbnext-plan:not([data-bb-compact-header="true"]) .bbnext-plan-budget-text>p{font-size:11px!important;color:#edf1e4!important}
-html body[data-bbnext-view="week"] .shell #app.bbnext-plan:not([data-bb-compact-header="true"]) .bbnext-plan-budget :is(.bb77-week-mark,.bbnext-plan-kicker){display:none!important}
+html body[data-bbnext-view="week"] .shell #app.bbnext-plan:is(:not([data-bb-compact-header="true"]),:not(:has(.bbpc-week-header))) .bbnext-plan-budget-text>p{font-size:11px!important;color:#edf1e4!important}
+html body[data-bbnext-view="week"] .shell #app.bbnext-plan:is(:not([data-bb-compact-header="true"]),:not(:has(.bbpc-week-header))) .bbnext-plan-budget :is(.bb77-week-mark,.bbnext-plan-kicker){display:none!important}
 html body nav#bbPrimaryNavigation[data-bb-navigation="polished"]{
  position:fixed!important;inset:auto 0 max(8px,env(safe-area-inset-bottom,0px)) 0!important;
  transform:none!important;display:grid!important;grid-template-columns:repeat(5,minmax(0,1fr))!important;
@@ -75,7 +76,7 @@ html body nav#bbPrimaryNavigation[data-bb-navigation="polished"]>[data-bb-nav-it
  box-shadow:none!important;text-decoration:none!important;text-align:center!important;line-height:1.2!important;
  font:650 10.5px/1.2 system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif!important;
  cursor:pointer!important;touch-action:manipulation!important;-webkit-tap-highlight-color:transparent;
- transition:background-color .16s ease,color .16s ease!important;
+ transition:none!important;
 }
 html body nav#bbPrimaryNavigation[data-bb-navigation="polished"]>[data-bb-nav-item]::after{display:none!important;content:none!important}
 html body nav#bbPrimaryNavigation[data-bb-navigation="polished"]>[data-bb-nav-item]::before{display:none!important;content:none!important}

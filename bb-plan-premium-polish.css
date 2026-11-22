@@ -390,7 +390,7 @@ html body #app.bbnext-plan[data-bb-compact-plan="true"] #bbpolAutofillCard #bbSi
 }
 
 /* One planner card, two original plans. Tab selection is presentation only. */
-html body .shell #app.bbnext-plan{padding-bottom:calc(120px + env(safe-area-inset-bottom,0px))!important}
+html body[data-bbnext-view="week"] .shell #app.bbnext-plan{padding-bottom:calc(120px + env(safe-area-inset-bottom,0px))!important}
 #app.bbnext-plan #bb1759MealsSummary[data-bb-planner-tabs]{overflow-anchor:none}
 #app.bbnext-plan .bbs-planner-tabs{display:flex;align-items:center;gap:9px;min-width:0;margin:0 0 12px}
 #app.bbnext-plan .bbs-planner-tablist{display:flex;flex:1 1 auto;gap:4px;padding:4px;min-width:0;border:1px solid #c9d9bf;border-radius:999px;background:#e9efdf;box-sizing:border-box}
