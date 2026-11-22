@@ -29,3 +29,11 @@ html.bb-native-android body .shell:has(>nav#bbPrimaryNavigation[data-bb-navigati
 html.bb-native-android body nav.bb-r6-cook-nav{display:flex!important;position:fixed!important;left:var(--bb-android-left)!important;right:var(--bb-android-right)!important;bottom:max(8px,var(--bb-android-bottom))!important;z-index:9990!important}
 .bb-native-android:not(.bb-cook-ready) .bb17513-meal-back{display:inline-flex!important;min-height:44px;align-items:center}
 .bb-native-android #bbNewOnboarding .bbob-original-logo-motion,.bb-native-android #bbNewOnboarding .bbob-motion-basket,.bb-native-android #bbNewOnboarding .bbob-motion-crown{animation:none!important;opacity:1!important;transform:none!important}
+/* Full-height Cook scrolls beneath Android's system bars. Reserve the native
+   inset for its sticky actions as well as its document end; padding alone
+   cannot lift a bottom:0 sticky button while the ingredient list scrolls. */
+@media(max-width:600px){
+ html.bb-native-android body #modalRoot>.cook-overlay .cook-panel.bb-kitchen #bbStart{bottom:var(--bb-android-bottom)!important}
+ html.bb-native-android body #modalRoot>.cook-overlay .cook-panel.bb-kitchen #bbBody{padding-bottom:calc(20px + var(--bb-android-bottom))!important}
+ html.bb-native-android body #modalRoot>.cook-overlay .cook-panel.bb-kitchen .bb-controls{bottom:0!important;padding-bottom:calc(15px + var(--bb-android-bottom))!important}
+}

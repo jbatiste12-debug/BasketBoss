@@ -12,11 +12,11 @@ export function verifyAndroid({root=ANDROID_ROOT,assets=true}={}){
  for(const name of ['android','core','ios'])assert.equal(packageFile.dependencies['@capacitor/'+name],'8.6.0');
  const gradle=read('android/app/build.gradle'),variables=read('android/variables.gradle'),manifest=read('android/app/src/main/AndroidManifest.xml');
  assert.match(gradle,/namespace\s*=\s*"uk\.co\.basketboss\.app"/);assert.match(gradle,/applicationId "uk\.co\.basketboss\.app"/);
- assert.match(gradle,/versionCode 6\b/);assert.match(gradle,/versionName "1\.0\.6"/);assert.match(variables,/targetSdkVersion = 36/);assert.match(variables,/compileSdkVersion = 36/);
+ assert.match(gradle,/versionCode 7\b/);assert.match(gradle,/versionName "1\.0\.7"/);assert.match(variables,/targetSdkVersion = 36/);assert.match(variables,/compileSdkVersion = 36/);
  assert.match(gradle,/rootProject\.file\('keystore.properties'\)/);assert.match(gradle,/signingConfig signingConfigs.upload/);assert.match(gradle,/Release signing is required/);
  assert.match(manifest,/android:scheme="basketboss" android:host="auth" android:path="\/callback"/);
  assert.match(manifest,/android:usesCleartextTraffic="false"/);assert.match(manifest,/android:allowBackup="false"/);assert.match(manifest,/android:windowSoftInputMode="adjustResize"/);
- const result={ok:true,appId:config.appId,appName:config.appName,versionName:'1.0.6',versionCode:6,targetSdk:36};
+ const result={ok:true,appId:config.appId,appName:config.appName,versionName:'1.0.7',versionCode:7,targetSdk:36};
  assert.match(manifest,/com\.android\.vending\.BILLING/);
  assert.match(gradle,/com\.android\.billingclient:billing:9\.1\.0/);
  assert.match(gradle,/assetPacks = \[":recipeImages"\]/);

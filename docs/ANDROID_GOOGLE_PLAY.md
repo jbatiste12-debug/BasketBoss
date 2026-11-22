@@ -1,11 +1,11 @@
 # BasketBoss on Google Play
 
 The Android package is **`uk.co.basketboss.app`**, named **BasketBoss**, with
-`versionName "1.0.6"` and `versionCode 6`. It uses Capacitor Android **8.6.0**,
+`versionName "1.0.7"` and `versionCode 7`. It uses Capacitor Android **8.6.0**,
 minimum Android API 24, and compile/target API 36. The package name must match
 your Play Console app. Increase `versionCode` for every later uploaded bundle.
 
-Build 6 includes the latest approved My Week visual polish, alongside the Plan typography, stable Cook return and bottom-nav safe-area mask from Build 5. Existing automatic shared-plan refresh, account deletion, Android-only Google Play Billing and membership behavior are unchanged.
+Build 7 keeps Cook's Start cooking button and cooking controls above Android system navigation, with matching end-of-content spacing. It retains Build 6's approved My Week visual polish, alongside the Plan typography, stable Cook return and bottom-nav safe-area mask from Build 5. Existing automatic shared-plan refresh, account deletion, Android-only Google Play Billing and membership behavior are unchanged.
 An already linked household now loads its saved dinners on a fresh device even
 before that device has a local plan record. Dinner and serving changes then
 refresh both ways while the apps are open, without pressing Sync.
@@ -72,7 +72,7 @@ actual bundled image bytes, and requires signed payloads for upload builds.
 Open **Actions → Build Android App Bundle → Run workflow**.
 
 - Leave **signed** off for compile verification. The artifact is labelled
-  `BasketBoss-Android-UNSIGNED-CI-1.0.6-code6`; it cannot be uploaded to Play.
+  `BasketBoss-Android-UNSIGNED-CI-1.0.7-code7`; it cannot be uploaded to Play.
 - For a signed bundle, first add the following repository Actions secrets, then
   run the workflow with **signed** on. Missing secrets stop the signed build.
 
@@ -92,7 +92,7 @@ base64 < "$HOME/.basketboss-android/basketboss-upload-key.jks" | tr -d '\n' | pb
 
 The workflow creates temporary signing files, runs `./gradlew bundleRelease`,
 uploads only the `.aab`, and removes its temporary signing material. Download the
-`BasketBoss-Android-SIGNED-1.0.6-code6` artifact and extract `app-release.aab` for
+`BasketBoss-Android-SIGNED-1.0.7-code7` artifact and extract `app-release.aab` for
 manual upload. It does not create an upload key, upload to Play Console, or
 release your app. No Play Console service-account key is required for this build.
 It runs the Node checks and Android JVM unit tests before bundling. This workflow
@@ -304,8 +304,8 @@ plan IDs for different periods.
    cross-provider simultaneous checkout. Resolve uncertain attempts from actual
    provider evidence; do not clear database locks to make a test pass.
 6. Build with the original upload key, require the signed-bundle verifier to pass,
-   and confirm **package `uk.co.basketboss.app`, version `1.0.6`, code `6`** and
-   `com.android.vending.BILLING` in the packaged base manifest. If code 6 was
+   and confirm **package `uk.co.basketboss.app`, version `1.0.7`, code `7`** and
+   `com.android.vending.BILLING` in the packaged base manifest. If code 7 was
    already uploaded, increment every version-code check and produce a new bundle.
    Confirm the upload certificate matches the Console's registered upload key.
 7. Install through Play Internal testing, confirm all image-pack assets and the

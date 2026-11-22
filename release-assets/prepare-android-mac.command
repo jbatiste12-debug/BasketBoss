@@ -15,7 +15,7 @@ fi
 command -v node >/dev/null 2>&1 || { printf 'Install Node.js 22 or newer first.\n' >&2; exit 1; }
 node -e 'if(Number(process.versions.node.split(".")[0])<22)process.exit(1)'
 
-BB_ANDROID_SOURCE='cad0814ec0a8c676f96a863cd38bb07318bb354e'
+BB_ANDROID_SOURCE='5d230b4025ea8daeeb0f2f5bc0a066d7a2e80c42'
 bb_android_is_java21() {
   "$1/bin/java" -XshowSettings:properties -version 2>&1 | grep -E 'java.specification.version = 21$' >/dev/null
 }
@@ -38,8 +38,8 @@ if [[ ! -f "$ANDROID_HOME/platforms/android-36/android.jar" || ! -x "$ANDROID_HO
   "$BB_ANDROID_SDKMANAGER" 'platforms;android-36' 'build-tools;36.0.0'
 fi
 
-BB_ANDROID_PROJECT="$(mktemp -d "$HOME/BasketBoss-Android-1.0.6.XXXXXX")"
-git clone --depth 1 --branch release/android-fresh-household-sync-20261121 --single-branch https://github.com/jbatiste12-debug/BasketBoss.git "$BB_ANDROID_PROJECT"
+BB_ANDROID_PROJECT="$(mktemp -d "$HOME/BasketBoss-Android-1.0.7.XXXXXX")"
+git clone --depth 1 --branch release/android-cook-safe-area-20261122 --single-branch https://github.com/jbatiste12-debug/BasketBoss.git "$BB_ANDROID_PROJECT"
 cd "$BB_ANDROID_PROJECT"
 git fetch --depth 1 origin "$BB_ANDROID_SOURCE"
 git checkout --detach "$BB_ANDROID_SOURCE"
@@ -53,4 +53,4 @@ BB_ANDROID_AAB="$BB_ANDROID_PROJECT/android/app/build/outputs/bundle/release/app
 [[ -f "$BB_ANDROID_AAB" ]] || { printf 'Gradle did not create the release bundle.\n' >&2; exit 1; }
 node scripts/verify-android-aab.mjs --bundle "$BB_ANDROID_AAB" --require-signed
 open -R "$BB_ANDROID_AAB"
-printf '\nSigned Android bundle ready: %s\nPackage: uk.co.basketboss.app · version 1.0.6 · version code 6\nUpload it manually in Play Console > Testing > Internal testing first.\nKeep a secure backup of %s and its passwords.\n' "$BB_ANDROID_AAB" "$BB_ANDROID_UPLOAD_KEY"
+printf '\nSigned Android bundle ready: %s\nPackage: uk.co.basketboss.app · version 1.0.7 · version code 7\nUpload it manually in Play Console > Testing > Internal testing first.\nKeep a secure backup of %s and its passwords.\n' "$BB_ANDROID_AAB" "$BB_ANDROID_UPLOAD_KEY"

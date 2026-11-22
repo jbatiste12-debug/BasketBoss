@@ -1,10 +1,10 @@
 /* My Week layout only. display:contents changes boxes, not DOM ownership:
    Start next week and Auto-fill mode keep their existing delegated handlers. */
-html body .shell #app.bbnext-plan[data-bb-compact-plan="true"][data-bb-compact-header="true"]{
+html body[data-bbnext-view="week"] .shell #app.bbnext-plan[data-bb-compact-plan="true"][data-bb-compact-header="true"]{
  display:grid!important;grid-template-columns:minmax(0,1.3fr) minmax(0,1fr);gap:8px;
  align-items:start;padding-bottom:calc(128px + env(safe-area-inset-bottom,0px))!important;
 }
-html body .shell #app.bbnext-plan[data-bb-compact-header="true"]>*{grid-column:1/-1;min-width:0}
+html body[data-bbnext-view="week"] .shell #app.bbnext-plan[data-bb-compact-header="true"]>*{grid-column:1/-1;min-width:0}
 html body .shell #app.bbnext-plan[data-bb-compact-header="true"] .bbnext-plan-budget[data-bb-simple-budget]{
  grid-column:1/-1;grid-row:1;min-height:98px;box-sizing:border-box;
  margin:0 0 2px!important;padding:14px calc(44% + 10px) 14px 14px!important;
@@ -123,7 +123,7 @@ html body .shell #app.bbnext-plan[data-bb-compact-header="true"] .bb-plan-compac
    estimate, disclosures, actions and day controls retain their DOM owners. */
 html body .shell #app.bbnext-plan[data-bb-compact-plan="true"][data-bb-compact-header="true"] .bbpc-budget-overview .bbpol-ring-svg{display:none!important}
 html body .shell #app.bbnext-plan[data-bb-compact-plan="true"][data-bb-compact-header="true"] .bbnext-plan-budget[data-bb-simple-budget] .bbpc-budget-overview .bb-myweek-emblem>.bbnext-plan-donut{align-self:flex-start!important;justify-self:start!important}
-html body .shell #app.bbnext-plan[data-bb-compact-plan="true"][data-bb-compact-header="true"]{gap:0!important}
+html body[data-bbnext-view="week"] .shell #app.bbnext-plan[data-bb-compact-plan="true"][data-bb-compact-header="true"]{gap:0!important}
 html body .shell #app.bbnext-plan[data-bb-compact-plan="true"][data-bb-compact-header="true"] .bbnext-plan-budget[data-bb-simple-budget]{min-height:0!important;margin:0 0 14px!important;padding:18px 20px!important;border-radius:22px!important;background:#1e4d3b!important;color:#fffdf5!important}
 html body .shell #app.bbnext-plan[data-bb-compact-plan="true"][data-bb-compact-header="true"] .bbnext-plan-budget[data-bb-simple-budget] .bbpc-budget-overview{display:flex!important;flex-direction:column!important;align-items:flex-start!important;gap:5px!important}
 html body .shell #app.bbnext-plan[data-bb-compact-plan="true"][data-bb-compact-header="true"] .bbnext-plan-budget[data-bb-simple-budget] .bbpc-budget-overview .bbnext-plan-budget-text{display:contents!important}
@@ -397,7 +397,7 @@ html body[data-bbnext-view="week"] .shell #app.bbnext-plan[data-bb-compact-plan=
 
 /* My Week presentation only: original heading, household controls, live
    estimate and helper nodes retain their listeners and renderer references. */
-html body .shell #app.bbnext-plan[data-bb-compact-plan="true"][data-bb-compact-header="true"]{--bbpc-week-pad-block:18px;--bbpc-week-pad-inline:20px;--bbpc-week-action-space:176px;--bbpc-week-next-width:120px;--bbpc-week-price-size:36px;--bbpc-week-row-top:calc(var(--bbpc-week-pad-block) + 44px + 16.8px + 10px)}
+html body[data-bbnext-view="week"] .shell #app.bbnext-plan[data-bb-compact-plan="true"][data-bb-compact-header="true"]{--bbpc-week-pad-block:18px;--bbpc-week-pad-inline:20px;--bbpc-week-action-space:176px;--bbpc-week-next-width:120px;--bbpc-week-price-size:36px;--bbpc-week-row-top:calc(var(--bbpc-week-pad-block) + 44px + 16.8px + 10px)}
 html body .shell #app.bbnext-plan[data-bb-compact-plan="true"][data-bb-compact-header="true"] .bbnext-plan-budget[data-bb-simple-budget]{padding-bottom:18px!important}
 html body .shell #app.bbnext-plan[data-bb-compact-header="true"] .bbpc-week-header{order:0;display:flex;align-items:center;justify-content:space-between;gap:10px;width:100%;min-width:0}
 html body .shell #app.bbnext-plan[data-bb-compact-plan="true"][data-bb-compact-header="true"] .bbnext-plan-budget[data-bb-simple-budget] .bbpc-budget-overview .bbnext-plan-budget-text .bbpc-week-header>h2{flex:0 0 auto;width:auto!important;min-width:0!important;margin:0!important;font-size:28px!important;white-space:nowrap}
@@ -434,7 +434,7 @@ html body .shell #app.bbnext-plan[data-bb-compact-plan="true"][data-bb-compact-h
 html body .shell #app.bbnext-plan[data-bb-compact-plan="true"][data-bb-compact-header="true"] .bbnext-day.has-meal .bbpc-day-tags>.bbnext-day-label.bb-day-is-done{flex:0 0 auto!important;width:max-content!important;max-width:none!important;padding-inline:9px!important}
 html body .shell #app.bbnext-plan[data-bb-compact-header="true"] .bbpc-day-tags>.bbnext-day-label>.bb-day-done-check{position:static!important;inset:auto!important;display:inline-grid;flex:0 0 15px;margin-inline-start:5px}
 @media(max-width:400px){
- html body .shell #app.bbnext-plan[data-bb-compact-plan="true"][data-bb-compact-header="true"]{--bbpc-week-action-space:132px;--bbpc-week-next-width:76px;--bbpc-week-price-size:28px}
+ html body[data-bbnext-view="week"] .shell #app.bbnext-plan[data-bb-compact-plan="true"][data-bb-compact-header="true"]{--bbpc-week-action-space:132px;--bbpc-week-next-width:76px;--bbpc-week-price-size:28px}
  html body .shell #app.bbnext-plan[data-bb-compact-plan="true"][data-bb-compact-header="true"] .bbnext-plan-budget[data-bb-simple-budget] .bbpc-budget-overview .bbnext-plan-budget-text .bbpc-week-header>h2{font-size:23px!important;letter-spacing:-.6px!important}
  html body .shell #app.bbnext-plan[data-bb-compact-header="true"] .bbpc-week-header{gap:6px}
  html body .shell #app.bbnext-plan[data-bb-compact-header="true"] .bbpc-week-header>.bbfeed-global{gap:2px}
@@ -442,5 +442,5 @@ html body .shell #app.bbnext-plan[data-bb-compact-header="true"] .bbpc-day-tags>
 }
 
 @media(max-width:350px){
- html body .shell #app.bbnext-plan[data-bb-compact-plan="true"][data-bb-compact-header="true"]{--bbpc-week-pad-block:16px;--bbpc-week-pad-inline:14px}
+ html body[data-bbnext-view="week"] .shell #app.bbnext-plan[data-bb-compact-plan="true"][data-bb-compact-header="true"]{--bbpc-week-pad-block:16px;--bbpc-week-pad-inline:14px}
 }
