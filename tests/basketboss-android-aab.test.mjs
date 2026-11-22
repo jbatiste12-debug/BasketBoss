@@ -10,7 +10,7 @@ import {aabEntries,inspectAabManifests,verifyAabAssets,verifyAndroidAab} from '.
 
 const sha=bytes=>createHash('sha256').update(bytes).digest('hex');
 const A='http://schemas.android.com/apk/res/android',D='http://schemas.android.com/apk/distribution';
-const baseXml=`<manifest xmlns:android="${A}" package="uk.co.basketboss.app" android:versionCode="6" android:versionName="1.0.6"><uses-sdk android:minSdkVersion="24" android:targetSdkVersion="36"/><uses-permission android:name="com.android.vending.BILLING"/></manifest>`;
+const baseXml=`<manifest xmlns:android="${A}" package="uk.co.basketboss.app" android:versionCode="7" android:versionName="1.0.7"><uses-sdk android:minSdkVersion="24" android:targetSdkVersion="36"/><uses-permission android:name="com.android.vending.BILLING"/></manifest>`;
 const packXml=`<manifest xmlns:dist="${D}" package="uk.co.basketboss.app" split="recipe_images"><dist:module dist:type="asset-pack"><dist:delivery><dist:install-time/></dist:delivery><dist:fusing dist:include="true"/></dist:module></manifest>`;
 const payload=[['index.html','<html>Android fixture</html>'],['photos/old.jpg','original legacy image bytes'],['release-assets/meal.webp','approved canonical image bytes'],['food-thumbs/tile.webp','pantry thumbnail bytes']].map(([name,body])=>({name,body:Buffer.from(body)}));
 const row=({name,body})=>({path:name,bytes:body.length,sha256:sha(body)});
@@ -62,8 +62,8 @@ test('actual manifest inspection checks package, version, SDK, install-time deli
  const result=inspectAabManifests({baseXml,packXml});assert.equal(result.package,'uk.co.basketboss.app');assert.equal(result.targetSdk,36);assert.equal(result.delivery,'install-time');assert.equal(result.fusing,true);assert.equal(result.signatureChecked,false);
  for(const patch of [
   {baseXml:baseXml.replace('uk.co.basketboss.app','another.app')},
-  {baseXml:baseXml.replace('versionCode="6"','versionCode="1"')},
-  {baseXml:baseXml.replace('versionName="1.0.6"','versionName="1.0.1"')},
+  {baseXml:baseXml.replace('versionCode="7"','versionCode="1"')},
+  {baseXml:baseXml.replace('versionName="1.0.7"','versionName="1.0.1"')},
   {baseXml:baseXml.replace('minSdkVersion="24"','minSdkVersion="23"')},
   {baseXml:baseXml.replace('targetSdkVersion="36"','targetSdkVersion="35"')},
   {baseXml:baseXml.replace('com.android.vending.BILLING','another.permission')},
