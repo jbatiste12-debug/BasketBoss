@@ -22,6 +22,7 @@ export function partnerBenefitsEnabled(request,env){
     ((env.BB_LIVE_WEBHOOK_ENABLED==='true'&&isLive(env)&&
       !!expectedPrice(env,'founder')&&!!expectedPrice(env,'standard'))||
      (env.APPLE_BILLING_ENABLED==='true'&&env.APPLE_ENVIRONMENT==='Production')||
+     (env.GOOGLE_PLAY_BILLING_ENABLED==='true'&&env.GOOGLE_PLAY_BILLING_MODE==='live'&&env.GOOGLE_PLAY_LIVE_BILLING_ENABLED==='true')||
      testFlightBetaEnabled(env))&&
     env.SUPABASE_URL===LIVE&&
     typeof env.SUPABASE_PUBLISHABLE_KEY==='string'&&
@@ -60,17 +61,25 @@ export async function sharedHouseholdPremiumOwner(request,env,user){
      typeof h.partner_email!=='string'||h.partner_email.trim().toLowerCase()!==email||
      !UUID.test(h.owner_user_id||'')||h.owner_user_id===user.id)return null;
   // Inherit production payments, persisted TestFlight access or the explicit
-  // server owner sharing grant. No browser claim or Apple Sandbox payment.
-  const row=isLive(env)?await env.BILLING_DB.prepare(
+  // server owner sharing grant. Store test purchases remain personal.
+  let row,rowError;
+  try{row=isLive(env)?await env.BILLING_DB.prepare(
     `SELECT status,price_id,plan FROM bb_paid_entitlements WHERE user_id=?
      ORDER BY CASE WHEN status IN ('active','trialing') AND
       ((plan='founder' AND price_id=?) OR (plan='standard' AND price_id=?))
       THEN 0 ELSE 1 END,updated_at_ms DESC LIMIT 1`
-  ).bind(h.owner_user_id,expectedPrice(env,'founder'),expectedPrice(env,'standard')).first():null;
+  ).bind(h.owner_user_id,expectedPrice(env,'founder'),expectedPrice(env,'standard')).first():null;}
+  catch(error){rowError=error;}
   const expected=row?expectedPrice(env,row.plan):null;
   if(env.BB_OWNER_HOUSEHOLD_ENABLED!=='true'&&row&&expected&&entitlementForStatus(row.status)&&expected===row.price_id)return h.owner_user_id;
-  if(env.APPLE_BILLING_ENABLED!=='true'&&!testFlightBetaEnabled(env)&&env.BB_OWNER_HOUSEHOLD_ENABLED!=='true')return null;
+  if(env.APPLE_BILLING_ENABLED!=='true'&&
+     !(env.GOOGLE_PLAY_BILLING_ENABLED==='true'&&env.GOOGLE_PLAY_BILLING_MODE==='live'&&env.GOOGLE_PLAY_LIVE_BILLING_ENABLED==='true')&&
+     !testFlightBetaEnabled(env)&&env.BB_OWNER_HOUSEHOLD_ENABLED!=='true'){
+   if(rowError)throw rowError;
+   return null;
+  }
   const {readPersonalPaidAccess}=await import('./bb-paid-access.js');
   const access=await readPersonalPaidAccess(env,h.owner_user_id,{productionOnly:true,includeTestFlightBeta:true,includeOwnerHousehold:true,paddleRow:row});
+  if(!access.premiumAccess&&rowError)throw rowError;
   return access.premiumAccess?h.owner_user_id:null;
 }

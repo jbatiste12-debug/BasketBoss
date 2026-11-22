@@ -21,6 +21,34 @@
    menu.parentNode?.querySelector('.bbpc-overflow-trigger')?.setAttribute('aria-expanded','false');
   }
  }
+ function polishWeekOverview(app){
+  const overview=app.querySelector('.bbpc-budget-overview'),copy=overview?.querySelector('.bbnext-plan-budget-text');
+  const heading=copy?.querySelector('h2'),feed=app.querySelector('.bbfeed-global');
+  const emblem=overview?.querySelector('.bb-myweek-emblem'),price=emblem?.querySelector('.bbnext-plan-donut');
+  if(!heading||!feed||!price)return;
+  // Reuse the original live controls and copy. Their existing references,
+  // listeners and saved values remain owned by the Plan renderer.
+  let header=copy.querySelector(':scope>.bbpc-week-header');
+  if(!header){header=doc.createElement('div');header.className='bbpc-week-header';copy.prepend(header);}
+  if(heading.parentNode!==header)header.append(heading);
+  if(feed.parentNode!==header)header.append(feed);
+  let row=emblem.querySelector(':scope>.bbpc-week-price');
+  if(!row){row=doc.createElement('div');row.className='bbpc-week-price';emblem.append(row);}
+  if(price.parentNode!==row)row.append(price);
+  let info=row.querySelector(':scope>.bbpc-week-info');
+  if(!info){
+   info=doc.createElement('details');info.className='bbpc-week-info';
+   const summary=doc.createElement('summary');summary.textContent='ⓘ';summary.setAttribute('aria-label','About your weekly shopping estimate');
+   const body=doc.createElement('div');body.className='bbpc-week-info-body';
+   info.append(summary,body);row.append(info);
+  }
+  const body=info.querySelector('.bbpc-week-info-body');
+  // The first count paragraph must remain a direct child: Simple Layout
+  // updates its live dinner/lunch totals through that existing selector.
+  for(const node of copy.querySelectorAll(':scope>.bb77-pantry-savings,:scope>.bb77-price-note'))body.append(node);
+  const disclaimer=app.querySelector('#bbSimpleBudget>.bbs-budget-body>small');
+  if(disclaimer)body.append(disclaimer);
+ }
  function polishDay(row){
   const toggle=row.querySelector(':scope>summary.bbnext-day-toggle'),desc=toggle?.querySelector('.bbnext-day-description');
   const label=toggle?.querySelector('.bbnext-day-label');
@@ -59,6 +87,7 @@
    !actions.querySelector('#bb172FillSixDinners')||!actions.querySelector('.bbnext-plan-secondary')||
    !card.querySelector(':scope>#bbnextPlanAutofill')||!app.querySelector('#bbSimplePlannerTabs'))return;
   if(app.dataset.bbCompactHeader!=='true')app.dataset.bbCompactHeader='true';
+  polishWeekOverview(app);
   // The delegated mode/week handlers depend on their current DOM parents.
   // This native disclosure reveals those same secondary controls with CSS;
   // it never moves, clones, clicks or replaces a planning control.

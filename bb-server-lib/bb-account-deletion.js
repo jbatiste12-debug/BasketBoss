@@ -132,6 +132,51 @@ export async function eraseAccountD1(env,userId,billing){
  for(const id of billing.subscriptions)statements.push(db.prepare('INSERT OR IGNORE INTO bb_account_deletion_refs(ref_hash) VALUES(?)').bind(await digestDeletionRef('subscription',id)));
  for(const slot of billing.confirmedSlots||[])statements.push(db.prepare("UPDATE bb_founder_slots SET state='retired' WHERE slot_no=? AND user_id=?").bind(slot,userId));
  const tableExists=async name=>!!await db.prepare("SELECT 1 AS found FROM sqlite_master WHERE type='table' AND name=?").bind(name).first();
+ const purchaseIntentTables={};
+ for(const name of ['bb_purchase_intent_schema','bb_purchase_intent_slots','bb_purchase_intents','bb_purchase_intent_events','bb_purchase_intent_proofs'])
+  purchaseIntentTables[name]=await tableExists(name);
+ if(Object.values(purchaseIntentTables).some(Boolean)){
+  // Only a definitively absent optional schema is safe to skip. Keep the
+  // deletion retryable if a partial migration or failed read hides user data.
+  if(Object.values(purchaseIntentTables).some(exists=>!exists)||
+   (await db.prepare('SELECT version FROM bb_purchase_intent_schema WHERE id=1').first())?.version!==1)
+   throw Error('purchase_intent_cleanup_unavailable');
+  if(!await isAccountDeleting(env,userId))throw Error('account_deletion_barrier_required');
+  const intents=(await db.prepare('SELECT id,deletion_ref_hash,reference_hash FROM bb_purchase_intents WHERE user_id=?').bind(userId).all()).results||[];
+  const proofs=(await db.prepare('SELECT reference_hash FROM bb_purchase_intent_proofs WHERE user_id=?').bind(userId).all()).results||[];
+  const refs=new Set(intents.map(intent=>intent.deletion_ref_hash));
+  for(const reference of new Set([...intents,...proofs].map(row=>row.reference_hash).filter(Boolean)))
+   refs.add(await digestDeletionRef('purchase_intent_proof',reference));
+  for(const ref of refs)statements.push(db.prepare('INSERT OR IGNORE INTO bb_account_deletion_refs(ref_hash) VALUES(?)').bind(ref));
+  // The actor barrier already prevents late attempts and proofs. Tombstones,
+  // event history and all session/capability material change in one D1 batch.
+  statements.push(
+   db.prepare('DELETE FROM bb_purchase_intent_events WHERE intent_id IN(SELECT id FROM bb_purchase_intents WHERE user_id=?)').bind(userId),
+   db.prepare('DELETE FROM bb_purchase_intent_proofs WHERE user_id=?').bind(userId),
+   db.prepare('DELETE FROM bb_purchase_intents WHERE user_id=?').bind(userId),
+   db.prepare('DELETE FROM bb_purchase_intent_slots WHERE user_id=?').bind(userId)
+  );
+ }
+ const googleTables={};
+ for(const name of ['bb_google_play_subscriptions','bb_google_play_notifications','bb_google_play_leases','bb_google_play_lineages','bb_google_play_account_tokens'])
+  googleTables[name]=await tableExists(name);
+ if(env.GOOGLE_PLAY_BILLING_ENABLED==='true'&&Object.values(googleTables).some(exists=>!exists))throw Error('google_play_cleanup_unavailable');
+ if(Object.values(googleTables).some(Boolean)){
+  // The actor barrier stops in-flight writes before collecting references. A
+  // token tombstone then survives removal of every raw Play purchase token.
+  if(!await isAccountDeleting(env,userId))throw Error('account_deletion_barrier_required');
+  if(googleTables.bb_google_play_subscriptions){
+   const tokens=(await db.prepare('SELECT token_hash FROM bb_google_play_subscriptions WHERE user_id=?').bind(userId).all()).results||[];
+   for(const token of tokens)statements.push(db.prepare('INSERT OR IGNORE INTO bb_account_deletion_refs(ref_hash) VALUES(?)').bind(await digestDeletionRef('google_play_token',token.token_hash)));
+   for(const name of ['bb_google_play_notifications','bb_google_play_leases']){
+    if(googleTables[name])statements.push(db.prepare(`DELETE FROM ${name}
+     WHERE token_hash IN(SELECT token_hash FROM bb_google_play_subscriptions WHERE user_id=?)`).bind(userId));
+   }
+   statements.push(db.prepare('DELETE FROM bb_google_play_subscriptions WHERE user_id=?').bind(userId));
+  }
+  if(googleTables.bb_google_play_lineages)statements.push(db.prepare('DELETE FROM bb_google_play_lineages WHERE user_id=?').bind(userId));
+  if(googleTables.bb_google_play_account_tokens)statements.push(db.prepare('DELETE FROM bb_google_play_account_tokens WHERE user_id=?').bind(userId));
+ }
  const appleSubscriptions=await tableExists('bb_apple_subscriptions');
  if(appleSubscriptions&&await tableExists('bb_apple_notifications'))statements.push(db.prepare(`DELETE FROM bb_apple_notifications
   WHERE EXISTS(SELECT 1 FROM bb_apple_subscriptions s WHERE s.user_id=?

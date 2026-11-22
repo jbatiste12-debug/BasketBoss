@@ -168,7 +168,7 @@ test('build 57 prepares and verifies the project around catalogue-700 sync befor
  assert.match(source,/open "\$BB57_DIR\/ios\/App\/App\.xcworkspace"/);
  const fetch=source.match(/^git fetch --depth 1 origin ([a-f0-9]{40})$/m),checkout=source.match(/^git checkout --detach ([a-f0-9]{40})$/m);
  assert.ok(fetch&&checkout);assert.equal(fetch[1],checkout[1]);
- assert.equal(fetch[1],'0247438fbabff8ac77d2927a9b288d7c4099397c','Build 57 fetches the reviewed application source even if the launcher is committed later');
+ assert.equal(fetch[1],'d18a88956a2a77608bd2a9b1c4c564eae1370839','Build 57 fetches the reviewed application source even if the launcher is committed later');
  assert.match(source,/BB57_DIR="\$\(mktemp -d \"\$HOME\/BasketBoss-1\.0\.6-build57\.XXXXXX\"\)"/,'each run creates a fresh Build 57 project');
  assert.match(source,/BB57_STAGE="\$\(mktemp -d "\$\{TMPDIR:-\/tmp\}\/BasketBoss-native57\.XXXXXX"\)"/,'catalogue staging uses a fresh Build 57 temporary directory');
  assert.match(source,/^git clone --depth 1 --branch main --single-branch https:\/\/github\.com\/jbatiste12-debug\/BasketBoss\.git \"\$BB57_DIR\"$/m);

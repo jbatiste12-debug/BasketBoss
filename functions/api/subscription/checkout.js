@@ -1,15 +1,17 @@
 import {json,isBillingEnabled,isLive,billingMode,isConfigured,authenticatedUser,requireSameOrigin,expectedPrice,paddleApi,digestHex} from '../../../bb-server-lib/bb-billing.js';
-import {ANDROID_ORIGIN} from '../../../bb-server-lib/bb-request-origin.js';
 import {ensureDeletionSchema,digestDeletionActor,isAccountDeleting} from '../../../bb-server-lib/bb-account-deletion.js';
 import {readAppleEntitlement} from '../../../bb-server-lib/bb-apple-subscriptions.js';
+import {googlePlayBillingEnabled,readGooglePlayEntitlement} from '../../../bb-server-lib/bb-google-play-subscriptions.js';
 import {readTestFlightBetaGrant} from '../../../bb-server-lib/bb-testflight-beta.js';
+import {PurchaseIntentError,purchaseIntentsEnabled,purchaseIntentActor,reservePurchaseIntent,startPurchaseIntent,reportPurchaseIntent,cancelUncreatedPurchaseIntent,associatePurchaseIntentReference,proofStatements} from '../../../bb-server-lib/bb-purchase-intents.js';
+import {ANDROID_ORIGIN} from '../../../bb-server-lib/bb-request-origin.js';
+import {readResumableCheckoutBlock} from '../../../bb-server-lib/bb-checkout-state.js';
 const MAX_BODY=1024;
 // A Founder seat is a temporary hold until Paddle confirms a subscription.
 // Release only AFTER Paddle confirms its unpaid transaction is canceled.
 const FOUNDER_HOLD_MS=60*60*1000;
-// A missing transaction ID is an unfinished server-side checkout, not a paid
-// Founder seat. A 30-second lease prevents two taps from racing Paddle.
-const PENDING_RECOVERY_MS=30*1000;
+// A transport failure may have created a payable remote transaction. An unknown
+// transaction ID must NEVER authorize another POST merely because time passed.
 const TX_ID=/^txn_[a-z0-9]{26}$/;
 
 // Retain Paddle's diagnostic text but redact any accidentally echoed API token.
@@ -32,7 +34,7 @@ function paddleErrorInfo(err){
 // Keep the explicit HTTP rejection reason visible without leaking the API key.
 // On network failures, timeouts, 5xx or unparseable success, the outcome is
 // ambiguous: keep the claim and its Founder reservation for safe recovery.
-async function createPaddleCheckoutTransaction(env,priceId,claimId,plan){
+async function createPaddleCheckoutTransaction(env,priceId,claimId,plan,intent=null){
   const host=isLive(env)?'https://api.paddle.com':'https://sandbox-api.paddle.com';
   const key=isLive(env)?env.PADDLE_LIVE_API_KEY:env.PADDLE_SANDBOX_API_KEY;
   let response;
@@ -41,11 +43,11 @@ async function createPaddleCheckoutTransaction(env,priceId,claimId,plan){
       method:'POST',redirect:'manual',signal:AbortSignal.timeout(9000),
       headers:{Authorization:'Bearer '+key,'Content-Type':'application/json'},
       body:JSON.stringify({items:[{price_id:priceId,quantity:1}],collection_mode:'automatic',
-        custom_data:{bb_claim_id:claimId,bb_plan:plan,bb_environment:billingMode(env)}})
+        custom_data:{bb_claim_id:claimId,bb_plan:plan,bb_environment:billingMode(env),...(intent?{bb_purchase_intent_id:intent.id}:{})}})
     });
   }catch(err){
     console.error('Paddle checkout transport error',err?.name||'request_failed');
-    throw Error('Paddle did not confirm whether the transaction was created. Please retry after a short interval.');
+    throw Error('Paddle did not confirm whether the transaction was created. Checkout is retained for secure reconciliation; no second transaction will be created.');
   }
   const payload=await response.json().catch(()=>null);
   if(!response.ok){
@@ -114,6 +116,9 @@ async function releaseUnpaidFounder(env,db,claim){
     const canceled=await paddleApi(env,url,'PATCH',{status:'canceled'});
     if(canceled?.id!==claim.transaction_id||canceled.status!=='canceled')return false;
   }
+  const coordination=purchaseIntentsEnabled(env)?await proofStatements(env,{userId:claim.user_id,provider:'paddle',mode:isLive(env)?'live':'test',productId:expectedPrice(env,claim.plan),reference:claim.transaction_id,phase:'canceled',
+    guardSQL:"EXISTS(SELECT 1 FROM bb_billing_claims WHERE claim_id=? AND user_id=? AND transaction_id=? AND claim_state='checkout_created')",guardBindings:[claim.claim_id,claim.user_id,claim.transaction_id]}):[];
+  if(coordination.length)await db.batch(coordination);
   const hash=await digestHex(claim.claim_id);
   const freed=await db.prepare(`UPDATE bb_founder_slots
     SET state='available',user_id=NULL,reservation_token_hash=NULL,reservation_expires_at_ms=NULL,updated_at_ms=?
@@ -139,7 +144,7 @@ async function releaseExpiredFounderHolds(env,db){
 
 export async function onRequestPost({request,env}) {
   if(request.headers.get('Origin')===ANDROID_ORIGIN)
-    return json({error:'External billing is unavailable in the Android app'},403);
+    return json({error:'Purchases are unavailable in this Android test build. View your account status in Settings.'},403);
   // Two independent locks: Live backend may be configured before checkout can open.
   if (!isBillingEnabled(env)||!isConfigured(env)||
       !(isLive(env)?env.PADDLE_LIVE_API_KEY:env.PADDLE_SANDBOX_API_KEY)||
@@ -167,6 +172,7 @@ export async function onRequestPost({request,env}) {
   const priceId=expectedPrice(env,plan);
   if(!priceId) return json({error:'Plan unavailable'},400);
   const db=env.BILLING_DB;
+  let intent=null,intentActor=null,creationAttempted=false;
   try {
     await ensureDeletionSchema(env);
     const deletionHash=await digestDeletionActor(user.id);
@@ -181,48 +187,45 @@ export async function onRequestPost({request,env}) {
       return json({released},released?200:409);
     }
     if(plan==='founder')await releaseExpiredFounderHolds(env,db);
+    const existing=await db.prepare(`SELECT claim_id,user_id,plan,price_id,slot_no,claim_state,transaction_id,created_at_ms
+      FROM bb_billing_claims WHERE user_id=? AND claim_state IN ('pending','checkout_created') LIMIT 1`).bind(user.id).first();
+    // Capture the billing revision BEFORE fresh entitlement checks. If another
+    // provider confirms payment during those checks, start must reject this
+    // attempt before any Paddle transaction request can be sent.
+    if(!existing&&purchaseIntentsEnabled(env)){
+      intentActor=await purchaseIntentActor(request,env,user);
+      intent=await reservePurchaseIntent(env,intentActor,{provider:'paddle',mode:isLive(env)?'live':'test',productId:priceId,protocol:1});
+    }
     if(await readTestFlightBetaGrant(env,user.id))return json({error:'Your Beta Premium access is already available. No purchase is needed.',provider:'testflight_beta'},409);
     const hasSub=await db.prepare("SELECT 1 AS found FROM bb_paid_entitlements WHERE user_id=? AND status IN ('trialing','active') LIMIT 1").bind(user.id).first();
     if(hasSub) return json({error:'You already have an eligible subscription'},409);
+    const blocked=await readResumableCheckoutBlock(env,user.id,{mode:isLive(env)?'live':'test'});
+    if(blocked)return json({ok:false,canPurchase:false,...blocked},409);
     // Apple purchases belong to the same BasketBoss account on the website.
     // A fresh verified Apple entitlement prevents a second Paddle charge.
-    const apple=await readAppleEntitlement(env,user.id);
+    let apple,providerError;
+    try{apple=await readAppleEntitlement(env,user.id);}
+    catch(error){if(!googlePlayBillingEnabled(env))throw error;providerError=error;}
     if(apple?.premiumAccess)return json({error:'You already have Premium through Apple. Manage your subscription in your Apple account.',provider:'apple'},409);
-    const existing=await db.prepare(`SELECT claim_id,user_id,plan,price_id,slot_no,claim_state,transaction_id,created_at_ms
-      FROM bb_billing_claims WHERE user_id=? AND claim_state IN ('pending','checkout_created') LIMIT 1`).bind(user.id).first();
+    if(googlePlayBillingEnabled(env)){
+      let googlePlay;
+      try{googlePlay=await readGooglePlayEntitlement(env,user.id);}catch(error){providerError ||= error;}
+      if(googlePlay?.premiumAccess||['pending','on_hold','paused'].includes(googlePlay?.status))return json({error:'You already have a Google Play subscription. Manage or complete it in Google Play before starting another subscription.',provider:'google_play'},409);
+    }
+    if(providerError)throw providerError;
     const now=Date.now();let claimId=crypto.randomUUID(),slot=null,recovered=null;
     if(existing){
       if(existing.claim_state==='pending' && existing.transaction_id==null){
-        // Reuse an orphan's ORIGINAL Founder reservation; never allocate a 2nd
-        // seat or accidentally consume one of the first 25 places twice.
-        if(!Number.isFinite(existing.created_at_ms)||now-existing.created_at_ms<PENDING_RECOVERY_MS)
-          return json({error:'Checkout is being prepared. Please try again in 30 seconds.'},409);
-        if(!await verifyPendingFounderSeat(db,existing))
-          return json({error:'Founder reservation needs secure reconciliation; no new place was taken'},409);
-        // Atomic compare-and-swap lease. Another tap cannot create in parallel.
-        const lease=await db.prepare(`UPDATE bb_billing_claims SET created_at_ms=?
-          WHERE claim_id=? AND user_id=? AND claim_state='pending'
-            AND transaction_id IS NULL AND created_at_ms=?
-            AND NOT EXISTS (SELECT 1 FROM bb_account_deletions WHERE actor_hash=?)
-          RETURNING claim_id`).bind(now,existing.claim_id,user.id,existing.created_at_ms,deletionHash).first();
-        if(!lease)return json({error:'Checkout is already being recovered. Please try again shortly.'},409);
-        recovered={...existing,created_at_ms:now};
-        if(existing.plan===plan && existing.price_id===priceId){
-          claimId=existing.claim_id;slot=existing.slot_no;
-        }else{
-          // Switching plans: release the old uncompleted claim/Founder hold,
-          // then create a normal fresh claim for the selected plan.
-          if(!await releasePendingWithoutPaddle(db,recovered))
-            return json({error:'Previous uncompleted checkout could not be safely released'},503);
-          recovered=null;
-        }
+        return json({code:'paddle_checkout_unknown',error:'Your previous checkout is awaiting secure payment confirmation. No new checkout was created.',claim_state:'pending_reconciliation'},409);
       }else if(plan==='founder'&&existing.plan==='founder'&&existing.claim_state==='checkout_created'){
         const tx=await paddleApi(env,'/transactions/'+existing.transaction_id);
         if(tx?.id===existing.transaction_id && tx.custom_data?.bb_claim_id===existing.claim_id){
           if(['draft','ready'].includes(tx.status)&&!await isAccountDeleting(env,user.id))
             return json({transactionId:tx.id,plan,mode:billingMode(env),reused:true});
           if(tx.status==='canceled' && await releaseUnpaidFounder(env,db,existing)){
-            // Reclaim the canceled checkout, then create a fresh Founder transaction.
+            // A coordinated new checkout must reserve before its own fresh
+            // provider checks. Begin it on the next request after safe release.
+            if(purchaseIntentsEnabled(env))return json({code:'paddle_checkout_canceled',error:'The previous checkout was canceled. Select your plan again to start a fresh checkout.'},409);
           }else return json({error:'Checkout awaiting payment confirmation; try again shortly'},409);
         }else return json({error:'Existing checkout could not be verified'},409);
       }else return json({error:'Existing checkout awaiting confirmation; contact support before starting another'},409);
@@ -250,10 +253,18 @@ export async function onRequestPost({request,env}) {
     }
     let transaction;
     try{
-      transaction=await createPaddleCheckoutTransaction(env,priceId,claimId,plan);
+      if(intent)intent=await startPurchaseIntent(env,intentActor,intent);
+      creationAttempted=true;
+      transaction=await createPaddleCheckoutTransaction(env,priceId,claimId,plan,intent);
     }catch(err){
       console.error('Paddle transaction creation:',String(err?.message||'unknown').slice(0,300));
+      if(err instanceof PurchaseIntentError){
+        try{await releasePendingWithoutPaddle(db,{claim_id:claimId,user_id:user.id,plan,slot_no:slot,claim_state:'pending',transaction_id:null,created_at_ms:now});}catch{}
+        if(intent){try{await cancelUncreatedPurchaseIntent(env,intentActor,intent);}catch{}}
+        throw err;
+      }
       if(err?.paddleRejected===true){
+        if(intent){try{intent=await cancelUncreatedPurchaseIntent(env,intentActor,intent);}catch{/* Retain the slot if coordination is unavailable. */}}
         // HTTP 4xx: Paddle expressly rejected creation, so there is no remote
         // transaction to reconcile. Release only this claimant's pending hold.
         const claim={claim_id:claimId,user_id:user.id,plan,slot_no:slot,
@@ -266,6 +277,7 @@ export async function onRequestPost({request,env}) {
           claim_state:released?'released':'needs_reconciliation'
         },502);
       }
+      if(intent){try{await reportPurchaseIntent(env,intentActor,{...intent,outcome:'unknown'});}catch{/* An uncertain request remains held. */}}
       return json({
         error:String(err?.message||'Paddle transaction creation uncertain'),
         ...paddleErrorInfo(err),
@@ -279,6 +291,7 @@ export async function onRequestPost({request,env}) {
         AND transaction_id IS NULL AND created_at_ms=? RETURNING claim_id`)
       .bind(transaction.id,claimId,user.id,plan,now).first();
     if(!saved)return json({error:'Paddle created a transaction, but its local claim could not be linked; contact support before retrying'},503);
+    if(intent)intent=await associatePurchaseIntentReference(env,intentActor,{...intent,reference:transaction.id});
     // Always preserve the remote ID first. A deletion which observed a pending
     // claim must wait for this linkage before canceling it; never lose proof of
     // a payable transaction by dropping the write when deletion starts.
@@ -291,9 +304,16 @@ export async function onRequestPost({request,env}) {
       return json({error:'Account deletion is in progress. Checkout has been stopped.'},409);
     }
     return json({transactionId:transaction.id,plan,mode:billingMode(env),recovered:!!recovered});
-  } catch(err) {
-    console.error('BasketBoss checkout server error',err);
+  } catch(error) {
+    if(error instanceof PurchaseIntentError)return json({ok:false,code:error.code,error:error.message},error.status);
+    console.error('BasketBoss checkout server error');
     return json({error:'Billing database unavailable; no checkout started'},503);
+  } finally {
+    // Only our own, definitely unlaunched attempt can be rolled back. Once the
+    // provider request is sent, timeout/closure/sign-out can never release it.
+    if(intent&&!creationAttempted&&intent.phase==='prepared'){
+      try{await cancelUncreatedPurchaseIntent(env,intentActor,intent);}catch{/* Fail closed; an unstarted prepared reservation alone may expire. */}
+    }
   }
 }
 export function onRequestGet(){return json({error:'Method not allowed'},405);}

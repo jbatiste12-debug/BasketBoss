@@ -8,6 +8,7 @@ import {appleRootCertificates} from './bb-apple-roots.js';
 import {withAppleOCSPDateCompatibility} from './bb-apple-ocsp.js';
 import {expectedPrice,entitlementForStatus} from './bb-billing.js';
 import {ensureDeletionSchema,isAccountDeleting,digestDeletionActor} from './bb-account-deletion.js';
+import {purchaseIntentsEnabled,purchaseIntentSchemaReady,proofStatements} from './bb-purchase-intents.js';
 export const APPLE_BUNDLE_ID='uk.co.basketboss.app';
 export const APPLE_DEFAULT_PRODUCTS=Object.freeze({monthly:'uk.co.basketboss.premium.monthly',annual:'uk.co.basketboss.premium.annual'});
 const UUID=/^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
@@ -164,6 +165,34 @@ export async function appleAccountToken(env,userId,{create=false}={}){
  if(!UUID.test(row?.app_account_token||''))fail('apple_account_token_unavailable','Prepare the Apple purchase again.',409);
  return row.app_account_token.toLowerCase();
 }
+// Called ONLY after Apple's signature/app/environment/product verification.
+// The store token is an opaque server-issued intent UUID for new purchases;
+// historical stable account tokens and already-owned lineages remain valid.
+// Looking up historical mappings is deliberately independent of the sales flag.
+export async function resolveVerifiedAppleAccount(env,config,transaction,{userId=null}={}){
+ validateTransactionClaims(config,transaction);
+ const token=transaction.appAccountToken.toLowerCase(),mode=config.environment==='Sandbox'?'test':'live';
+ await ensureDeletionSchema(env);
+ const existing=await env.BILLING_DB.prepare('SELECT user_id,app_account_token FROM bb_apple_subscriptions WHERE environment=? AND original_transaction_id=?').bind(config.environment,transaction.originalTransactionId).first();
+ if(userId&&existing&&existing.user_id!==userId)fail('apple_account_mismatch','Restore this subscription using the original BasketBoss account.',409);
+ let intent=null;
+ if(await purchaseIntentSchemaReady(env))intent=await env.BILLING_DB.prepare('SELECT id,user_id,provider,mode,product_id,deletion_ref_hash FROM bb_purchase_intents WHERE id=?').bind(token).first();
+ const owner=userId||existing?.user_id||intent?.user_id;
+ if(!owner)return null; // Legacy unlinked notifications still cannot claim users.
+ if(!appleUserAllowed(config,owner)||await isAccountDeleting(env,owner))fail('apple_account_mismatch','This Apple account linkage is unavailable.',409);
+ if(intent){
+  if(intent.user_id!==owner||intent.provider!=='apple'||intent.mode!==mode||await env.BILLING_DB.prepare('SELECT 1 AS found FROM bb_account_deletion_refs WHERE ref_hash=?').bind(intent.deletion_ref_hash).first())fail('apple_account_mismatch','Apple account linkage does not match.',409);
+  // Store-managed renewal/plan changes may retain the original token. A known
+  // immutable lineage authorizes that account, but does not rebind the original
+  // intent to a different product or complete an unrelated checkout.
+  if(intent.product_id!==transaction.productId&&!(existing?.user_id===owner&&existing.app_account_token===token))fail('apple_account_mismatch','Apple purchase product linkage does not match.',409);
+ }
+ let linked=existing?.user_id===owner&&existing.app_account_token===token;
+ if(!linked&&intent?.product_id===transaction.productId)linked=true;
+ if(!linked&&userId){const legacy=await env.BILLING_DB.prepare('SELECT app_account_token FROM bb_apple_account_tokens WHERE user_id=?').bind(owner).first();linked=legacy?.app_account_token?.toLowerCase()===token;}
+ if(!linked)return null;
+ return {userId:owner,appAccountToken:token,trustedIntentId:intent?.product_id===transaction.productId?intent.id:null};
+}
 export async function verifyAppleTransaction(services,signed){
  validateAppleJWS(signed);
  let transaction;
@@ -199,7 +228,7 @@ export function evaluateAppleSubscription(config,transaction,renewal,status,now=
   expiresAtMs:transaction.expiresDate,graceExpiresAtMs:grace,revokedAtMs:transaction.revocationDate||null,
   cancelAtPeriodEnd:renewal.autoRenewStatus===0,appleSignedAtMs:Math.max(transaction.signedDate,renewal.signedDate),lastVerifiedAtMs:now};
 }
-export async function fetchAppleCurrentSubscription(service,originalId,accountToken){
+export async function fetchAppleCurrentSubscription(service,originalId,accountToken,{resolveAccountToken}={}){
  const {config,client,verifier}=service;
  if(!TX.test(originalId||'')||!UUID.test(accountToken||''))fail('apple_transaction_mismatch','Invalid Apple subscription identifier.',400);
  let response;
@@ -213,27 +242,54 @@ export async function fetchAppleCurrentSubscription(service,originalId,accountTo
  let renewal;
  try{validateAppleJWS(item.signedRenewalInfo);renewal=await bounded(verifier.verifyAndDecodeRenewalInfo(item.signedRenewalInfo));}
  catch(error){if(error instanceof AppleBillingError)throw error;fail('apple_status_mismatch','Apple renewal information could not be verified.');}
- if(transaction.originalTransactionId!==originalId||transaction.appAccountToken.toLowerCase()!==accountToken.toLowerCase())fail('apple_account_mismatch','This Apple subscription belongs to another BasketBoss account.',409);
+ if(transaction.originalTransactionId!==originalId)fail('apple_account_mismatch','This Apple subscription belongs to another BasketBoss account.',409);
+ const resolvedToken=resolveAccountToken?await resolveAccountToken(transaction):accountToken.toLowerCase();
+ if(resolvedToken!==transaction.appAccountToken.toLowerCase())fail('apple_account_mismatch','This Apple subscription belongs to another BasketBoss account.',409);
  return evaluateAppleSubscription(config,transaction,renewal,item.status);
 }
-export async function persistAppleSubscription(env,userId,state){
+export async function fetchAppleCurrentSubscriptionForAccount(env,service,originalId,accountToken,userId){
+ return fetchAppleCurrentSubscription(service,originalId,accountToken,{resolveAccountToken:async transaction=>(await resolveVerifiedAppleAccount(env,service.config,transaction,{userId}))?.appAccountToken});
+}
+export async function persistAppleSubscription(env,userId,state,{reservation=null,actor=null}={}){
+ state={...state,appAccountToken:String(state.appAccountToken||'').toLowerCase()};
  const actorHash=await digestDeletionActor(userId);
  // Every write checks the durable account deletion barrier in the same statement.
  // The immutable account-token row also prevents a late request recreating a
  // subscription after the parent's deletion cleanup removed that mapping.
- await env.BILLING_DB.prepare(`INSERT INTO bb_apple_subscriptions(environment,original_transaction_id,user_id,app_account_token,
+ // A valid per-attempt token must still restore when new-sales coordination is
+ // disabled. Inspect its durable mapping without using the enablement flag.
+ let mapped=null;
+ if(await purchaseIntentSchemaReady(env))mapped=await env.BILLING_DB.prepare("SELECT id,deletion_ref_hash FROM bb_purchase_intents WHERE id=? AND user_id=? AND provider='apple' AND mode=? AND product_id=? AND NOT EXISTS(SELECT 1 FROM bb_account_deletion_refs WHERE ref_hash=bb_purchase_intents.deletion_ref_hash)").bind(state.appAccountToken,userId,state.environment==='Sandbox'?'test':'live',state.productId).first();
+ const mapSQL=mapped?" OR EXISTS(SELECT 1 FROM bb_purchase_intents WHERE id=? AND user_id=? AND provider='apple' AND mode=? AND product_id=? AND NOT EXISTS(SELECT 1 FROM bb_account_deletion_refs WHERE ref_hash=bb_purchase_intents.deletion_ref_hash))":'';
+ const mapArgs=mapped?[state.appAccountToken,userId,state.environment==='Sandbox'?'test':'live',state.productId]:[];
+ const write=env.BILLING_DB.prepare(`INSERT INTO bb_apple_subscriptions(environment,original_transaction_id,user_id,app_account_token,
   latest_transaction_id,product_id,plan,status,expires_at_ms,grace_expires_at_ms,revoked_at_ms,cancel_at_period_end,apple_signed_at_ms,last_verified_at_ms)
-  SELECT ?,?,?,?,?,?,?,?,?,?,?,?,?,? WHERE EXISTS(SELECT 1 FROM bb_apple_account_tokens WHERE user_id=? AND app_account_token=?)
+  SELECT ?,?,?,?,?,?,?,?,?,?,?,?,?,? WHERE (EXISTS(SELECT 1 FROM bb_apple_account_tokens WHERE user_id=? AND app_account_token=?)
+  OR EXISTS(SELECT 1 FROM bb_apple_subscriptions WHERE environment=? AND original_transaction_id=? AND user_id=? AND app_account_token=?)${mapSQL})
   AND NOT EXISTS(SELECT 1 FROM bb_account_deletions WHERE actor_hash=?)
   ON CONFLICT(environment,original_transaction_id) DO UPDATE SET latest_transaction_id=excluded.latest_transaction_id,
-  product_id=excluded.product_id,plan=excluded.plan,status=excluded.status,expires_at_ms=excluded.expires_at_ms,
+  app_account_token=excluded.app_account_token,product_id=excluded.product_id,plan=excluded.plan,status=excluded.status,expires_at_ms=excluded.expires_at_ms,
   grace_expires_at_ms=excluded.grace_expires_at_ms,revoked_at_ms=excluded.revoked_at_ms,cancel_at_period_end=excluded.cancel_at_period_end,
   apple_signed_at_ms=excluded.apple_signed_at_ms,last_verified_at_ms=excluded.last_verified_at_ms
-  WHERE bb_apple_subscriptions.user_id=excluded.user_id AND bb_apple_subscriptions.app_account_token=excluded.app_account_token
+  WHERE bb_apple_subscriptions.user_id=excluded.user_id AND (bb_apple_subscriptions.app_account_token=excluded.app_account_token${mapped?' OR (excluded.apple_signed_at_ms>bb_apple_subscriptions.apple_signed_at_ms AND ('+mapSQL.slice(4)+'))':''})
   AND (excluded.apple_signed_at_ms>bb_apple_subscriptions.apple_signed_at_ms OR
    (excluded.apple_signed_at_ms=bb_apple_subscriptions.apple_signed_at_ms AND excluded.last_verified_at_ms>=bb_apple_subscriptions.last_verified_at_ms))`)
  .bind(state.environment,state.originalTransactionId,userId,state.appAccountToken,state.transactionId,state.productId,state.plan,state.status,
-  state.expiresAtMs,state.graceExpiresAtMs,state.revokedAtMs,Number(state.cancelAtPeriodEnd),state.appleSignedAtMs,state.lastVerifiedAtMs,userId,state.appAccountToken,actorHash).run();
+  state.expiresAtMs,state.graceExpiresAtMs,state.revokedAtMs,Number(state.cancelAtPeriodEnd),state.appleSignedAtMs,state.lastVerifiedAtMs,userId,state.appAccountToken,
+  state.environment,state.originalTransactionId,userId,state.appAccountToken,...mapArgs,actorHash,...mapArgs);
+ if(purchaseIntentsEnabled(env)){
+  // A current, account-bound Apple proof is recorded atomically with the
+  // ownership-safe subscription row. Reservation data can correlate an attempt,
+  // never grant Premium, reject a valid restore, or select another user's row.
+  const proofs=await proofStatements(env,{userId,provider:'apple',mode:state.environment==='Sandbox'?'test':'live',productId:state.productId,
+   // The original ID binds the account/renewal lineage, not a checkout attempt.
+   // A later re-subscription may reuse that lineage; only this purchase's unique
+   // transaction ID can resolve its own reservation without moving old proof.
+   reference:state.transactionId,phase:'completed',reservation,actor,trustedIntentId:mapped?.id||null,
+   guardSQL:'EXISTS(SELECT 1 FROM bb_apple_subscriptions WHERE environment=? AND original_transaction_id=? AND user_id=? AND app_account_token=? AND latest_transaction_id=? AND product_id=? AND apple_signed_at_ms=? AND last_verified_at_ms=?)',
+   guardBindings:[state.environment,state.originalTransactionId,userId,state.appAccountToken,state.transactionId,state.productId,state.appleSignedAtMs,state.lastVerifiedAtMs]});
+  await env.BILLING_DB.batch([write,...proofs]);
+ }else await write.run();
  const saved=await env.BILLING_DB.prepare('SELECT * FROM bb_apple_subscriptions WHERE environment=? AND original_transaction_id=?').bind(state.environment,state.originalTransactionId).first();
  if(!saved||saved.user_id!==userId||saved.app_account_token!==state.appAccountToken)fail('apple_account_mismatch','This Apple subscription is unavailable for this BasketBoss account.',409);
  return saved;
@@ -245,7 +301,7 @@ export function appleEntitlementFromRow(config,row,now=Date.now()){
   originalTransactionId:row.original_transaction_id,productId:row.product_id,expiresAt:iso(row.expires_at_ms),currentPeriodEndsAt:iso(row.expires_at_ms),
   cancelAtPeriodEnd:row.cancel_at_period_end===1,environment:row.environment,lastVerifiedAt:iso(row.last_verified_at_ms)};
 }
-export async function readAppleEntitlement(env,userId){
+export async function readAppleEntitlement(env,userId,{forCheckout=false}={}){
  const baseConfig=getVerifiedAppleConfig(env);if(!baseConfig||!appleUserAllowed(baseConfig,userId))return null;
  const config=appleConfigForUser(baseConfig,userId);
  await assertAppleAccountReady(env,config,userId);
@@ -253,13 +309,21 @@ export async function readAppleEntitlement(env,userId){
  if(rows.length>20)fail('apple_account_unavailable','Apple subscription records require support review.');
  const result=[];
  for(let row of rows){
-  if(Date.now()-row.last_verified_at_ms>=REFRESH_MS){
-   const state=await fetchAppleCurrentSubscription(await getAppleServices(env,config),row.original_transaction_id,row.app_account_token);
-   row=await persistAppleSubscription(env,userId,state);
+  if(forCheckout||Date.now()-row.last_verified_at_ms>=REFRESH_MS){
+   const state=await fetchAppleCurrentSubscriptionForAccount(env,await getAppleServices(env,config),row.original_transaction_id,row.app_account_token,userId);
+   if(forCheckout&&!['active','grace_period','billing_retry'].includes(state.status)){
+    // A strict checkout needs fresh evidence that an old lineage cannot resume,
+    // not another identical inactive proof revision that invalidates its own
+    // start on every retry. This projection grants no access and changes no
+    // persisted status; normal restore/status reconciliation remains unchanged.
+    row={...row,environment:state.environment,product_id:state.productId,plan:state.plan,status:state.status,
+     expires_at_ms:state.expiresAtMs,grace_expires_at_ms:state.graceExpiresAtMs,revoked_at_ms:state.revokedAtMs,
+     cancel_at_period_end:Number(state.cancelAtPeriodEnd),last_verified_at_ms:state.lastVerifiedAtMs};
+   }else row=await persistAppleSubscription(env,userId,state);
   }
   const entitlement=appleEntitlementFromRow(config,row);if(entitlement)result.push(entitlement);
  }
- return result.find(item=>item.premiumAccess)||result[0]||null;
+ return result.find(item=>item.premiumAccess)||(forCheckout?result.find(item=>item.status==='billing_retry'):null)||result[0]||null;
 }
 export async function hasExistingWebPremium(env,user){
  if(user.id&&user.id===env.BB_OWNER_USER_ID)return 'owner';

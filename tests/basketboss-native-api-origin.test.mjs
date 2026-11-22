@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import {IOS_ORIGIN,ANDROID_ORIGIN,isNativeApiRequest,requestOriginAllowed,nativeCorsResponse,nativePreflightResponse} from '../bb-server-lib/bb-request-origin.js';
+import {IOS_ORIGIN,ANDROID_ORIGIN,isNativeOrigin,isNativeApiRequest,requestOriginAllowed,nativeCorsResponse,nativePreflightResponse} from '../bb-server-lib/bb-request-origin.js';
 import {requireSameOrigin} from '../bb-server-lib/bb-billing.js';
 import {onRequest as middleware} from '../functions/api/_middleware.js';
 import {onRequest as ai} from '../functions/api/bb173/[action].js';
@@ -14,10 +14,11 @@ const preflight=(headers={},url=api)=>new Request(url,{method:'OPTIONS',headers:
 
 test('only exact iOS and Android origins are trusted on official production HTTPS API routes',()=>{
  for(const origin of [IOS_ORIGIN,ANDROID_ORIGIN]){
+  assert.equal(isNativeOrigin(origin),true);
   for(const url of [api,'https://www.basketboss.co.uk/api/household'])assert.equal(isNativeApiRequest(request(url,origin)),true);
   for(const url of ['http://basketboss.co.uk/api/receipt-inventory','https://basketboss.co.uk:8443/api/receipt-inventory','https://preview.basketboss-site.pages.dev/api/receipt-inventory','https://basketboss-site.pages.dev/api/receipt-inventory','https://evil.example/api/receipt-inventory','https://basketboss.co.uk/pricing-sandbox.html'])assert.equal(isNativeApiRequest(request(url,origin)),false,url);
  }
- for(const origin of ['capacitor://localhost.evil','capacitor://localhost:8080','capacitor://localhost/','http://localhost','https://localhost.evil','https://localhost:443','https://localhost:8080','https://localhost/','https://127.0.0.1','null','https://evil.example'])assert.equal(isNativeApiRequest(request(api,origin)),false,origin);
+ for(const origin of ['capacitor://localhost.evil','capacitor://localhost:8080','capacitor://localhost/','http://localhost','https://localhost.evil','https://localhost:443','https://localhost:8080','https://localhost:8443','https://localhost/','https://LOCALHOST','https://user@localhost','https://127.0.0.1','null','https://evil.example'])assert.equal(isNativeApiRequest(request(api,origin)),false,origin);
 });
 
 test('native cross-site fetch works while existing web Origin and Fetch-Site protections remain',()=>{
@@ -137,7 +138,7 @@ test('Android cannot start Paddle checkout, read enabled checkout config or open
    const response=await handler({request:new Request('https://basketboss.co.uk/api/subscription/'+path,{method,headers:{Origin:ANDROID_ORIGIN,Authorization:'Bearer '+bearer},...(method==='POST'?{body:'{}'}:{})}),env});
    assert.equal(response.status,403,path);const body=await response.json();
    if(path==='checkout-config'){assert.equal(body.enabled,false);assert.equal(body.reason,'native_account_status_only');}
-   else assert.match(body.error,/Android app/);
+   else assert.equal(body.error,'Purchases are unavailable in this Android test build. View your account status in Settings.');
   }
   assert.equal(network,0);assert.equal(configuration,0);
  }finally{globalThis.fetch=original;}

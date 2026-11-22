@@ -1,0 +1,206 @@
+name: Build Android App Bundle
+
+on:
+  workflow_dispatch:
+    inputs:
+      signed:
+        description: Build a signed upload bundle using the configured Actions secrets
+        type: boolean
+        required: false
+        default: false
+  pull_request:
+    branches: [main]
+    paths:
+      - .github/workflows/android-build.yml
+      - android/**
+      - native/**
+      - scripts/*android*.mjs
+      - scripts/build-native-web.mjs
+      - tools/catalogue700/**
+      - catalogues/700/release/**
+      - capacitor.config.json
+      - package.json
+      - package-lock.json
+      - app.html
+      - index.html
+      - make-a-meal.*
+      - bb-*.js
+      - bb-*.css
+      - bb-server-lib/bb-request-origin.js
+      - functions/api/subscription/checkout*.js
+      - functions/api/subscription/portal.js
+      - tests/basketboss-android-*.test.mjs
+      - tests/basketboss-native-api-origin.test.mjs
+      - tests/basketboss-google-play-*.test.mjs
+      - bb-server-lib/bb-google-play*.js
+      - bb-server-lib/bb-paid-access.js
+      - bb-server-lib/bb-apple-subscriptions.js
+      - bb-server-lib/bb-checkout-state.js
+      - functions/api/paddle/webhook.js
+      - tests/basketboss-resumable-checkout-state.test.mjs
+      - bb-server-lib/bb-account-deletion.js
+      - bb-server-lib/bb-household-premium.js
+      - functions/api/subscription/status.js
+      - functions/api/apple/purchase-context.js
+      - functions/api/apple/verify.js
+      - functions/api/apple/notifications.js
+      - tests/basketboss-apple-deferred-intents.test.mjs
+      - functions/api/household/index.js
+      - functions/api/google-play/**
+      - sql/basketboss_google_play*.sql
+      - sql/basketboss_purchase_intents*.sql
+      - bb-server-lib/bb-purchase-intents.js
+      - functions/api/subscription/purchase-intent.js
+      - tests/basketboss-*purchase-intents*.test.mjs
+  push:
+    branches: [main]
+    paths:
+      - .github/workflows/android-build.yml
+      - android/**
+      - native/**
+      - scripts/*android*.mjs
+      - scripts/build-native-web.mjs
+      - tools/catalogue700/**
+      - catalogues/700/release/**
+      - capacitor.config.json
+      - package.json
+      - package-lock.json
+      - app.html
+      - index.html
+      - make-a-meal.*
+      - bb-*.js
+      - bb-*.css
+      - bb-server-lib/bb-request-origin.js
+      - functions/api/subscription/checkout*.js
+      - functions/api/subscription/portal.js
+      - tests/basketboss-android-*.test.mjs
+      - tests/basketboss-native-api-origin.test.mjs
+      - tests/basketboss-google-play-*.test.mjs
+      - bb-server-lib/bb-google-play*.js
+      - bb-server-lib/bb-paid-access.js
+      - bb-server-lib/bb-apple-subscriptions.js
+      - bb-server-lib/bb-checkout-state.js
+      - functions/api/paddle/webhook.js
+      - tests/basketboss-resumable-checkout-state.test.mjs
+      - bb-server-lib/bb-account-deletion.js
+      - bb-server-lib/bb-household-premium.js
+      - functions/api/subscription/status.js
+      - functions/api/apple/purchase-context.js
+      - functions/api/apple/verify.js
+      - functions/api/apple/notifications.js
+      - tests/basketboss-apple-deferred-intents.test.mjs
+      - functions/api/household/index.js
+      - functions/api/google-play/**
+      - sql/basketboss_google_play*.sql
+      - sql/basketboss_purchase_intents*.sql
+      - bb-server-lib/bb-purchase-intents.js
+      - functions/api/subscription/purchase-intent.js
+      - tests/basketboss-*purchase-intents*.test.mjs
+
+permissions:
+  contents: read
+
+concurrency:
+  group: android-bundle-${{ github.head_ref || github.ref }}-${{ inputs.signed || false }}
+  cancel-in-progress: true
+
+jobs:
+  bundle:
+    runs-on: ubuntu-latest
+    timeout-minutes: 35
+    steps:
+      - uses: actions/checkout@v5
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@v5
+        with:
+          node-version: '24'
+          cache: npm
+      - uses: actions/setup-java@v5
+        with:
+          distribution: temurin
+          java-version: '21'
+      - name: Install the Android 36 SDK packages
+        run: |
+          test -n "$ANDROID_HOME"
+          "$ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager" \
+            'platform-tools' 'platforms;android-36' 'build-tools;36.0.0'
+      - name: Install pinned dependencies
+        run: npm ci --no-audit --no-fund
+      - name: Stage the isolated Android catalogue 700 client
+        run: npm run android:sync
+      - name: Verify the Android package and unchanged iOS configuration
+        run: |
+          npm run android:verify
+          git diff --exit-code -- ios capacitor.config.json
+      - name: Check Android transport, membership and existing native guards
+        run: >-
+          node --test
+          tests/basketboss-android-*.test.mjs
+          tests/basketboss-google-play-*.test.mjs
+          tests/basketboss-*purchase-intents*.test.mjs
+          tests/basketboss-resumable-checkout-state.test.mjs
+          tests/basketboss-native-billing-guard.test.mjs
+          tests/basketboss-native-apple-trial.test.mjs
+          tests/basketboss-apple-subscriptions.test.mjs
+          tests/basketboss-apple-deferred-intents.test.mjs
+          tests/basketboss-apple-access.test.mjs
+          tests/basketboss-account-deletion-billing-races.test.mjs
+          tests/basketboss-native-api-origin.test.mjs
+          tests/basketboss-native-membership-navigation.test.mjs
+          tests/basketboss-native-storekit-release.test.mjs
+      - name: Run Android native unit tests
+        working-directory: android
+        run: ./gradlew --no-daemon testDebugUnitTest
+      - name: Configure the upload key for a manually requested signed build
+        if: ${{ github.event_name == 'workflow_dispatch' && inputs.signed }}
+        env:
+          BB_ANDROID_KEYSTORE_BASE64: ${{ secrets.BB_ANDROID_KEYSTORE_BASE64 }}
+          BB_ANDROID_STORE_PASSWORD: ${{ secrets.BB_ANDROID_STORE_PASSWORD }}
+          BB_ANDROID_KEY_PASSWORD: ${{ secrets.BB_ANDROID_KEY_PASSWORD }}
+          BB_ANDROID_KEY_ALIAS: ${{ secrets.BB_ANDROID_KEY_ALIAS }}
+        run: |
+          node --input-type=module <<'JS'
+          for (const key of ['BB_ANDROID_KEYSTORE_BASE64', 'BB_ANDROID_STORE_PASSWORD', 'BB_ANDROID_KEY_PASSWORD', 'BB_ANDROID_KEY_ALIAS']) {
+            if (!process.env[key]) throw new Error('Missing Actions secret: ' + key);
+          }
+          JS
+          node scripts/android-signing.mjs --from-env --keystore-file "$RUNNER_TEMP/basketboss-upload-key.jks"
+      - name: Build the signed upload bundle
+        if: ${{ github.event_name == 'workflow_dispatch' && inputs.signed }}
+        working-directory: android
+        run: ./gradlew --no-daemon bundleRelease
+      - name: Build an unsigned compilation test bundle
+        if: ${{ github.event_name != 'workflow_dispatch' || !inputs.signed }}
+        run: |
+          test ! -e android/keystore.properties
+          cd android
+          ./gradlew --no-daemon bundleRelease -PbbAllowUnsignedTestBuild=true
+      - name: Validate the actual bundle, image pack and signature coverage
+        env:
+          BB_REQUIRE_SIGNED_AAB: ${{ github.event_name == 'workflow_dispatch' && inputs.signed }}
+        run: |
+          if [[ "$BB_REQUIRE_SIGNED_AAB" == 'true' ]]; then
+            node scripts/verify-android-aab.mjs --bundle android/app/build/outputs/bundle/release/app-release.aab --require-signed
+          else
+            node scripts/verify-android-aab.mjs --bundle android/app/build/outputs/bundle/release/app-release.aab
+          fi
+      - name: Retain the signed bundle for manual Play Console upload
+        if: ${{ github.event_name == 'workflow_dispatch' && inputs.signed }}
+        uses: actions/upload-artifact@v6
+        with:
+          name: BasketBoss-Android-SIGNED-1.0.5-code5
+          path: android/app/build/outputs/bundle/release/app-release.aab
+          if-no-files-found: error
+          retention-days: 7
+      - name: Retain the UNSIGNED compilation test bundle
+        if: ${{ github.event_name != 'workflow_dispatch' || !inputs.signed }}
+        uses: actions/upload-artifact@v6
+        with:
+          name: BasketBoss-Android-UNSIGNED-CI-1.0.5-code5
+          path: android/app/build/outputs/bundle/release/app-release.aab
+          if-no-files-found: error
+          retention-days: 7
+      - name: Remove temporary signing material
+        if: ${{ always() && github.event_name == 'workflow_dispatch' && inputs.signed }}
+        run: rm -f android/keystore.properties "$RUNNER_TEMP/basketboss-upload-key.jks"
