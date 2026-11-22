@@ -9,8 +9,8 @@ const style=fs.readFileSync('bb-onboarding-v2.css','utf8');
 const compare=fs.readFileSync('compare.html','utf8');
 
 test('new onboarding runs before legacy animation without modifying its artwork',()=>{
- assert.match(index,/bb-onboarding-v2\.js\?v=20261114-account2/);
- assert.match(index,/bb-onboarding-v2\.css\?v=20261114-account2/);
+ assert.match(index,/bb-onboarding-v2\.js\?v=20261122-four1/);
+ assert.match(index,/bb-onboarding-v2\.css\?v=20261122-four1/);
  assert.ok(index.indexOf('bb-onboarding-v2.js')<index.indexOf('bb-welcome-splash.js'));
  assert.match(index,/if\(window\.BBOnboard2026\)return;/);
  assert.match(splash,/!window\.BBOnboard2026/);
@@ -79,9 +79,9 @@ test('real three Free recipe previews use canonical data and no interactive app 
  assert.doesNotMatch(onboarding, /\b(?:addRecipe|bbPlanDessert|bb307SetPantry|bbShopV7Close|Paddle\.Checkout)\s*\(/);
 });
 
-test('survey stores choices and uses original household and region setters only on completion',()=>{
+test('legacy survey keeps original household and region setters on completion',()=>{
  assert.match(onboarding,/function applyChosenPreferences/);
- assert.match(onboarding,/function complete\(goPremium=false\)/);
+ assert.match(onboarding,/function complete\(goPremium=false,destination='discover'\)/);
  assert.match(onboarding,/window\.BasketBossSetOnboardingServings/);
  assert.match(onboarding,/window\.bb307SwitchIsland/);
  assert.match(index,/basketboss_321_unified_state_v1/);
