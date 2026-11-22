@@ -202,8 +202,10 @@
     syncPantryAccount();
     const title = card.querySelector('h2');
     const authView=doc.getElementById('cloud-auth')?.dataset.bbAuthView;const authTitles={'check-email':'Check your email.','forgot-password':'Reset your password.','reset-sent':'Check your email.','set-password':'Set a new password.','verifying':'Checking your link…','link-error':'This link couldn’t be used.'};
-    setText(title, authTitles[authView] || (signedIn ? 'Your account.' : 'Welcome back.'));
-    setText(doc.getElementById('bbapAccountIntro'), authTitles[authView] ? 'Your BasketBoss account.' : signedIn ? 'Your plans, your account, your choices.' : 'Sign in to access your saved cloud plan.');
+    // Raw account DOM and cached legacy copy can exist before the real auth
+    // presenter. Its view marker alone makes account-specific copy eligible.
+    setText(title, authView ? authTitles[authView] || (signedIn ? 'Your account.' : 'Welcome back.') : 'BasketBoss account');
+    setText(doc.getElementById('bbapAccountIntro'), !authView ? '' : authTitles[authView] ? 'Your BasketBoss account.' : signedIn ? 'Your plans, your account, your choices.' : 'Sign in to access your saved cloud plan.');
     const opened = panel.classList.contains('open');
     const wasOpened = state.opened;
     state.opened = opened;

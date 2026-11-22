@@ -77,7 +77,7 @@ export function installAndroidRuntime({window:win=globalThis.window,document:doc
  let membership,purchases;
  const prepareMembership=()=>{if(!membership){purchases=installPurchases({plugin:registerNative('BasketBossGooglePlay'),window:win,readSession,apiURL:path=>PRODUCTION_ORIGIN+path,fetch:originalFetch,isDeleting:deleting});membership=installMembership({window:win,document:doc,readSession,apiURL:path=>PRODUCTION_ORIGIN+path,fetch:originalFetch,purchases});}};
  const entry=watchEntry({window:win,document:doc,startup,prepareMembership});
- function ready(){entry.stop();prepareMembership();void bars.setStyle({style:SystemBarsStyle.Light}).catch(()=>{});void splash.hide({fadeOutDuration:0}).catch(()=>{});win.requestAnimationFrame(()=>startup.ready());}
+ function ready(){prepareMembership();void bars.setStyle({style:SystemBarsStyle.Light}).catch(()=>{});void splash.hide({fadeOutDuration:0}).catch(()=>{});entry.ready();}
  if(doc.readyState==='loading')doc.addEventListener('DOMContentLoaded',ready,{once:true});else ready();
  void app.addListener('appStateChange',({isActive})=>{if(isActive){win.dispatchEvent(new win.Event('focus'));win.dispatchEvent(new win.Event('basketboss:native-resumed'));}});
  let lastAuthURL=null;

@@ -123,6 +123,11 @@ html body #cloud-auth[data-bb-auth-mode="sign-in"] #cloud-signup{display:none!im
 /* Cover the planner from the opening mutation, before modal bookkeeping runs. */
 html body #cloud-panel.open{background:#f5f7ef!important;backdrop-filter:none!important;-webkit-backdrop-filter:none!important}
 html body #cloud-card:not([data-bb-account-polish])>:is(h2,#cloud-status,#cloud-signed){display:none!important}
+/* The legacy #account route can open during parsing, before deferred SDK or
+   account presentation. Decorating the card is not proof that its auth view
+   is ready: retain only the close control, neutral opening copy and real error
+   message until the existing auth owner marks the original form. */
+html body #cloud-card:not(:has(#cloud-auth[data-bb-auth-view]))>:is(h2,.bbap-account-note,#cloud-status,#cloud-signed){display:none!important}
 /* A compact provider row keeps native email controls steady while the existing
    availability check settles. Hidden provider controls stay hidden; the row
    instead explains that email is ready. Recovery and blocked forms have no row. */
@@ -150,3 +155,7 @@ html body #cloud-auth #bbAuthProviders :is(#bbAuthAppleStatus:has(+ #bbAuthApple
 html body #cloud-auth #bbAuthProviders :is(#bbAuthAppleRetry,#bbAuthGoogleRetry){width:100px;min-width:0;min-height:44px;margin:0;padding:7px;font:650 12px/1.3 system-ui,-apple-system,sans-serif;white-space:normal}
 html body #cloud-auth #bbAuthProviders:not(:has(#bbAuthAppleSection:not([hidden]),#bbAuthGoogleSection:not([hidden])))::before{content:"You can continue with email below.";position:absolute;inset:0;display:flex;align-items:center;color:#617a53;font:inherit}
 html body #cloud-card[data-bb-account-polish] #bbGooglePasswordHelp p{color:#607553;font-size:12px;line-height:1.5}
+/* The raw hash-account dialog sits outside the native shell. Keep it under
+   the same existing startup handoff until deletion recovery and local entry
+   presentation have run; no dialog action or auth readiness is fabricated. */
+html.bb-native-starting:is(.bb-native-ios,.bb-native-android) body>#cloud-panel{visibility:hidden!important;opacity:0!important;pointer-events:none!important}
