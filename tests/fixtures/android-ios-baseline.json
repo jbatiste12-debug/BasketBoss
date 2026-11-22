@@ -25,11 +25,11 @@
   },
   "iosScheme": "capacitor",
   "files": {
-    "app.html": "755d8c0e23fb0c5711894fe728653904083a5303c3a1a6f42ffc97fd349c617e",
-    "bb-auth-flow.js": "d740d67879062f8b1a9f5fb85d77b8d105de97be47e942ca4739f4fd34459399",
+    "app.html": "253c02af8eca20368648308061722b0078ba651d3141b4365673a9251708a4c2",
+    "bb-auth-flow.js": "cc85150d13f6dde136d7b54d5876448495f14895c51ed1b57a55027193def381",
     "bb-home.js": "6ef580b0821a489f32e581d2078fe9fa7d67204c410b63751659a65fa4d65d50",
     "bb-serving-scale.js": "fd997aeb765ffca26d0f37bf1da581a0f88feea1cda73e003badc43f63d2e4fd",
-    "index.html": "755d8c0e23fb0c5711894fe728653904083a5303c3a1a6f42ffc97fd349c617e",
+    "index.html": "253c02af8eca20368648308061722b0078ba651d3141b4365673a9251708a4c2",
     "ios/.gitignore": "2b7132a9943d2622e51e656897ca5162f56b121b40b423dedce1fbc699dba88a",
     "ios/App/App.xcodeproj/project.pbxproj": "29365a13c9827b6745bbf98fd6d61347cb887a8a4dc964d198bf1c1cbfd321ec",
     "ios/App/App.xcodeproj/xcshareddata/xcschemes/App.xcscheme": "f30d63f3e8b7186c6b178e6650bcb349161e2e0face96c395b42d1cad03a414f",
@@ -64,7 +64,7 @@
     "native/membership.html": "6c929f4ec7b52f18eb960fc7c98e49ccf82bb908f76d779f975a21e9bcb095ed",
     "native/membership.mjs": "efda5cd094457915465b531561c409ac2d40cbd629a47fb98657428a975aa9aa",
     "native/routing.mjs": "5dcaf659738d9783701fe2dbf808448377042dff9d3c23a70e084460f305203a",
-    "native/runtime.mjs": "e4ee8fefa82a39e2b2f2085f66a89112017d574380d717b1e848d7b71a9806c5",
+    "native/runtime.mjs": "f31114d1ce5c7d83b089386ee9845531c368b7acf061164d1d93357c8ca70e5b",
     "native/startup.mjs": "6cc9fca7123f565cd7021c7ccaaabec9d96ff7bd2fddf1cbd409c12bd0b6f952",
     "shopping-inventory.js": "08f2b0bc565986e3ddd6567ae3463350936ea3cb85347cf91e0dfcd0b89eb9f6"
   },

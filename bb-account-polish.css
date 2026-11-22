@@ -126,11 +126,27 @@ html body #cloud-card:not([data-bb-account-polish])>:is(h2,#cloud-status,#cloud-
 /* A compact provider row keeps native email controls steady while the existing
    availability check settles. Hidden provider controls stay hidden; the row
    instead explains that email is ready. Recovery and blocked forms have no row. */
-html body #cloud-auth[data-bb-account-native]:is([data-bb-auth-view="sign-in"],[data-bb-auth-view="sign-up"]):has(#bbAuthModes:not([hidden])) #bbAuthAppleSection{display:grid!important;grid-column:1/-1;grid-template-columns:minmax(0,1fr) auto;align-items:center;column-gap:10px;height:5em;min-height:5em;margin:0 0 16px;font:400 13px/1.4 system-ui,-apple-system,sans-serif}
-html body #cloud-auth[data-bb-account-native]:is([data-bb-auth-view="sign-in"],[data-bb-auth-view="sign-up"]):has(#bbAuthModes:not([hidden])) #bbAuthAppleSection[hidden]::before{content:"You can continue with email below.";grid-column:1/-1;color:#617a53}
-html body #cloud-auth[data-bb-account-native]:is([data-bb-auth-view="sign-in"],[data-bb-auth-view="sign-up"]):has(#bbAuthModes:not([hidden])) #bbAuthApple{grid-column:1/-1}
-html body #cloud-auth[data-bb-account-native]:is([data-bb-auth-view="sign-in"],[data-bb-auth-view="sign-up"]):has(#bbAuthModes:not([hidden])) #bbAuthAppleStatus{margin:0;font:inherit}
-html body #cloud-auth[data-bb-account-native]:is([data-bb-auth-view="sign-in"],[data-bb-auth-view="sign-up"]):has(#bbAuthModes:not([hidden])) #bbAuthAppleStatus:has(+ #bbAuthAppleRetry[hidden]){grid-column:1/-1}
-html body #cloud-auth[data-bb-account-native]:is([data-bb-auth-view="sign-in"],[data-bb-auth-view="sign-up"]):has(#bbAuthModes:not([hidden])) #bbAuthAppleRetry{width:100px;min-width:0;margin:0;padding:8px;font:650 13px/1.3 system-ui,-apple-system,sans-serif}
-html body #cloud-auth[data-bb-account-native]:is([data-bb-auth-view="sign-in"],[data-bb-auth-view="sign-up"]):has(#bbAuthModes:not([hidden])) #bbAuthAppleDivider{display:none!important}
-@media(max-width:359px){html body #cloud-auth[data-bb-account-native]:is([data-bb-auth-view="sign-in"],[data-bb-auth-view="sign-up"]):has(#bbAuthModes:not([hidden])) #bbAuthAppleSection{height:6.2em;min-height:6.2em}}
+html body #cloud-auth[data-bb-account-native]:not(:has(#bbAuthProviders)):is([data-bb-auth-view="sign-in"],[data-bb-auth-view="sign-up"]):has(#bbAuthModes:not([hidden])) #bbAuthAppleSection{display:grid!important;grid-column:1/-1;grid-template-columns:minmax(0,1fr) auto;align-items:center;column-gap:10px;height:5em;min-height:5em;margin:0 0 16px;font:400 13px/1.4 system-ui,-apple-system,sans-serif}
+html body #cloud-auth[data-bb-account-native]:not(:has(#bbAuthProviders)):is([data-bb-auth-view="sign-in"],[data-bb-auth-view="sign-up"]):has(#bbAuthModes:not([hidden])) #bbAuthAppleSection[hidden]::before{content:"You can continue with email below.";grid-column:1/-1;color:#617a53}
+html body #cloud-auth[data-bb-account-native]:not(:has(#bbAuthProviders)):is([data-bb-auth-view="sign-in"],[data-bb-auth-view="sign-up"]):has(#bbAuthModes:not([hidden])) #bbAuthApple{grid-column:1/-1}
+html body #cloud-auth[data-bb-account-native]:not(:has(#bbAuthProviders)):is([data-bb-auth-view="sign-in"],[data-bb-auth-view="sign-up"]):has(#bbAuthModes:not([hidden])) #bbAuthAppleStatus{margin:0;font:inherit}
+html body #cloud-auth[data-bb-account-native]:not(:has(#bbAuthProviders)):is([data-bb-auth-view="sign-in"],[data-bb-auth-view="sign-up"]):has(#bbAuthModes:not([hidden])) #bbAuthAppleStatus:has(+ #bbAuthAppleRetry[hidden]){grid-column:1/-1}
+html body #cloud-auth[data-bb-account-native]:not(:has(#bbAuthProviders)):is([data-bb-auth-view="sign-in"],[data-bb-auth-view="sign-up"]):has(#bbAuthModes:not([hidden])) #bbAuthAppleRetry{width:100px;min-width:0;margin:0;padding:8px;font:650 13px/1.3 system-ui,-apple-system,sans-serif}
+html body #cloud-auth[data-bb-account-native]:not(:has(#bbAuthProviders)):is([data-bb-auth-view="sign-in"],[data-bb-auth-view="sign-up"]):has(#bbAuthModes:not([hidden])) #bbAuthAppleDivider{display:none!important}
+@media(max-width:359px){html body #cloud-auth[data-bb-account-native]:not(:has(#bbAuthProviders)):is([data-bb-auth-view="sign-in"],[data-bb-auth-view="sign-up"]):has(#bbAuthModes:not([hidden])) #bbAuthAppleSection{height:6.2em;min-height:6.2em}}
+/* The new provider group reserves its rows before availability checks finish.
+   The prior Apple-only layout above remains the fallback for older clients. */
+html body #cloud-auth:is([data-bb-auth-view="sign-in"],[data-bb-auth-view="sign-up"]) #bbAuthProviders:not([hidden]){position:relative;display:grid!important;grid-column:1/-1;grid-template-columns:minmax(0,1fr);grid-auto-rows:66px;align-content:start;height:var(--bbap-provider-height,66px);min-height:var(--bbap-provider-height,66px);margin:0 0 12px;padding:0;font:400 12px/1.4 system-ui,-apple-system,sans-serif}
+html.bb-native-ios body #cloud-auth #bbAuthProviders,html body #cloud-auth[data-bb-account-platform="ios"] #bbAuthProviders{--bbap-provider-height:132px}
+html.bb-native-ios body #cloud-auth #bbAuthProviders #bbAuthGoogleSection,html body #cloud-auth[data-bb-account-platform="ios"] #bbAuthProviders #bbAuthGoogleSection{grid-row:2}
+html body #cloud-auth #bbAuthProviders[hidden]{display:none!important}
+html body #cloud-auth #bbAuthProviders :is(#bbAuthAppleSection,#bbAuthGoogleSection){display:grid;grid-template-columns:minmax(0,1fr) auto;grid-template-rows:minmax(0,1fr);align-items:center;gap:0 9px;height:66px;min-height:0;margin:0;padding:0;font:inherit}
+html body #cloud-auth #bbAuthProviders :is(#bbAuthAppleSection,#bbAuthGoogleSection)[hidden]{display:none!important}
+html body #cloud-auth #bbAuthProviders #bbAuthAppleSection::before{content:none!important}
+html body #cloud-auth #bbAuthProviders :is(#bbAuthApple,#bbAuthGoogle){grid-column:1/-1;min-height:48px;max-width:100%;margin:0}
+html body #cloud-auth #bbAuthProviders #bbAuthAppleDivider{display:none!important}
+html body #cloud-auth #bbAuthProviders :is(#bbAuthAppleStatus,#bbAuthGoogleStatus){min-width:0;margin:0;font:inherit;line-height:1.4;overflow-wrap:anywhere;color:#617a53}
+html body #cloud-auth #bbAuthProviders :is(#bbAuthAppleStatus:has(+ #bbAuthAppleRetry[hidden]),#bbAuthGoogleStatus:has(+ #bbAuthGoogleRetry[hidden])){grid-column:1/-1}
+html body #cloud-auth #bbAuthProviders :is(#bbAuthAppleRetry,#bbAuthGoogleRetry){width:100px;min-width:0;min-height:44px;margin:0;padding:7px;font:650 12px/1.3 system-ui,-apple-system,sans-serif;white-space:normal}
+html body #cloud-auth #bbAuthProviders:not(:has(#bbAuthAppleSection:not([hidden]),#bbAuthGoogleSection:not([hidden])))::before{content:"You can continue with email below.";position:absolute;inset:0;display:flex;align-items:center;color:#617a53;font:inherit}
+html body #cloud-card[data-bb-account-polish] #bbGooglePasswordHelp p{color:#607553;font-size:12px;line-height:1.5}
