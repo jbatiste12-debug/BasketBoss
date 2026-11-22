@@ -1,8 +1,8 @@
-BasketBoss Android subscription parity and code5 visual release: complete changed-file inventory
+BasketBoss Android subscription parity and code 6 visual release: complete changed-file inventory
 Compared with original production baseline 57cfa3a20126e34f9ace4a5ae9862187168d41c9.
 Includes the existing Android draft foundation, parity completion and approved visual updates.
 Generated platform outputs and private signing material are not tracked.
-Application source pin: 3592ae970114fb0df5cd4a2b8b160ecf3281549f
+Application source pin: cad0814ec0a8c676f96a863cd38bb07318bb354e
 
 .github/workflows/android-build.yml
 .gitignore
