@@ -386,7 +386,7 @@ test('four-step Settings replay can cancel without committing household or local
   await h.page.evaluate(()=>window.BBOnboard2026.open());await h.page.getByRole('button',{name:'Build My Weekly Plan',exact:true}).click();
   await h.page.locator('[data-bbob-group="flow-house"][data-bbob-opt="2"]').click();await h.page.locator('[data-bbob-group="flow-goal"][data-bbob-opt="3"]').click();
   assert.equal(await h.page.evaluate(()=>localStorage.getItem('basketboss_321_unified_state_v1')),plan);
-  await h.page.keyboard.press('Escape');await h.page.locator('#bbNewOnboarding').waitFor({state:'detached'});
+  await h.page.getByRole('button',{name:'Cancel setup',exact:true}).click();await h.page.locator('#bbNewOnboarding').waitFor({state:'detached'});
   assert.deepEqual(await setup(h.page),original);assert.equal(await h.page.evaluate(()=>localStorage.getItem('basketboss_321_unified_state_v1')),plan);assert.deepEqual(h.errors,[]);
  }finally{await h.context.close();}
 });
