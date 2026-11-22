@@ -110,13 +110,13 @@ if(Capacitor.isNativePlatform()&&Capacitor.getPlatform()==='ios'){
  window.addEventListener('basketboss:apple-membership-updated',()=>window.dispatchEvent(new Event('basketboss:session-changed')));
  const earlyEntry=watchNativeEntryReadiness({startup,prepareMembership});
  function ready(){
-  earlyEntry.stop();prepareMembership();
+  prepareMembership();
   void StatusBar.setStyle({style:Style.Light}).catch(()=>{});
   void StatusBar.setOverlaysWebView({overlay:false}).catch(()=>{});
   // UIKit already animates while WKWebView initializes. Dismiss both layers
   // when real app controls are present, without waiting for a second intro.
   void SplashScreen.hide({fadeOutDuration:0}).catch(()=>{});
-  requestAnimationFrame(()=>startup.ready());
+  earlyEntry.ready();
  }
  if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',ready,{once:true});else ready();
  void App.addListener('appStateChange',({isActive})=>{if(isActive){window.dispatchEvent(new Event('focus'));window.dispatchEvent(new Event('basketboss:native-resumed'));}else{void cookVoice.stop();}});
