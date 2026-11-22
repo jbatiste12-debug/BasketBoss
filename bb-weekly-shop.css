@@ -17,3 +17,9 @@ html body.bb-r6-shop-ready.bb-weekly-basic-open[data-bbnext-view="shop-list"] #a
 html body.bb-r6-shop-ready.bb-weekly-basic-open[data-bbnext-view="shop-list"] #app>#bb321Printable{display:block!important}
 html body.bb-r6-shop-ready.bb-weekly-basic-open[data-bbnext-view="shop-list"] #app>:not(#bb321Printable){display:none!important}
 html body.bb-r6-shop-ready.bb-weekly-basic-open[data-bbnext-view="shop-list"] #bbWeeklyBasicBack{display:inline-flex}
+/* Acknowledge the existing server-approved Shop action without changing its
+   label, accessible name, dimensions or approval state. */
+body :is(#bb172ShopModeButton,#bb172StoreMode,.bb1745-go-button,.bbm-begin,.bb-r6-begin)[data-bb-weekly-pending][aria-busy="true"]{position:relative!important;cursor:progress!important}
+body :is(#bb172ShopModeButton,#bb172StoreMode,.bb1745-go-button,.bbm-begin,.bb-r6-begin)[data-bb-weekly-pending][aria-busy="true"]::after{content:'';position:absolute;inset:auto 12px 5px;height:3px;border-radius:999px;background:currentColor;pointer-events:none;transform-origin:center;animation:bbWeeklyShopPending .8s ease-in-out infinite alternate}
+@keyframes bbWeeklyShopPending{from{transform:scaleX(.2)}to{transform:scaleX(1)}}
+@media(prefers-reduced-motion:reduce){body :is(#bb172ShopModeButton,#bb172StoreMode,.bb1745-go-button,.bbm-begin,.bb-r6-begin)[data-bb-weekly-pending][aria-busy="true"]::after{animation:none!important;transform:none!important}}

@@ -9,18 +9,28 @@
 <!-- bb174-trial-ux-preview-v1: verified status display ONLY, no entitlement gate -->
 <link rel="stylesheet" href="bb174-trial-ux.css?v=174trial1">
 <script defer src="bb174-trial-ux.js?v=174trial1"></script>
+<script id="bb-cook-presentation-recovery">
+// Deferred controllers have either hydrated or failed when parsing completes.
+// An actual local script/runtime failure keeps ordinary recovery links usable.
+document.addEventListener('DOMContentLoaded',function(){if(!document.documentElement.classList.contains('bb-cook-ready')||!document.body.classList.contains('bb-photo-meal-page'))document.documentElement.classList.add('bb-cook-unavailable');},{once:true});
+</script>
 <style id="bb-cook-first-paint">
-/* The current photo workspace mounts before these existing readiness markers.
-   Keep its retired source controls out of every earlier paint, including a
-   failed enhancement, while ordinary recovery links stay available. */
-html:not(.bb-cook-ready) body.bb-r6-cook-page>.shell,
+/* Render the current local photo workspace without waiting for the larger
+   controller. Retired source controls stay hidden; recovery appears only on
+   a real script failure, never as a normal tab-transition loading wall. */
 html body.bb-r6-cook-page:not(.bb-photo-meal-page)>.shell,
 html body.bb-r6-cook-page>nav.bb-r6-cook-nav:not([data-bb-navigation="polished"]){display:none!important}
 html body.bb-r6-cook-page{min-height:100dvh;background:radial-gradient(ellipse at 90% 0,#f0e9d7 0,transparent 38%),#faf8f1!important}
-html.bb-cook-ready body.bb-photo-meal-page>#bbCookOpening{display:none!important}
+html body.bb-r6-cook-page>#bbCookOpening{display:none!important}
+html.bb-cook-unavailable body.bb-r6-cook-page>#bbCookOpening{display:block!important}
+html.bb-cook-unavailable body.bb-r6-cook-page>.shell{display:none!important}
+html.bb-cook-unavailable.bb-cook-ready body.bb-photo-meal-page>#bbCookOpening{display:none!important}
+html.bb-cook-unavailable.bb-cook-ready body.bb-photo-meal-page>.shell{display:block!important}
 /* Commit the opening hero at full contrast when the current workspace appears. */
-html.bb-cook-ready body.bb-photo-meal-page .bbpm-intro{animation:none!important;opacity:1!important;transform:none!important}
-/* The original Back link remains an exit if only dock decoration fails. */
+html body.bb-photo-meal-page .bbpm-intro{animation:none!important;opacity:1!important;transform:none!important}
+/* The authored five-tab dock is usable before its optional decorator. */
+html body.bb-r6-cook-page.bb-photo-meal-page .bb17513-meal-topbar .bb17513-meal-back{display:none!important}
+/* Retain the original Back link for older documents without that dock. */
 html.bb-cook-ready body.bb-photo-meal-page:has(>nav.bb-r6-cook-nav:not([data-bb-navigation="polished"]))>.shell .bb17513-meal-back{display:inline-flex!important;min-height:44px!important}
 #bbCookOpening{position:relative;top:clamp(64px,14vh,140px);box-sizing:border-box;width:min(440px,calc(100% - 32px));margin:0 auto 110px;padding:28px 24px;border:1px solid #dce5d7;border-radius:24px;background:#fffef8;color:#183f30;text-align:center;font-family:system-ui,-apple-system,sans-serif;box-shadow:0 9px 30px #193d2810}
 #bbCookOpening img{width:48px;height:48px;border-radius:13px}
@@ -85,8 +95,8 @@ html,body{background:#E9ECEF!important;background-image:none!important;min-heigh
 <link rel="stylesheet" href="bb-servings-mobile-polish.css?v=20261029-preview1">
 <link rel="stylesheet" href="bb-premium-feature-badges.css?v=20261101-badge1">
 <script defer src="bb-premium-feature-badges.js?v=20261101-badge1"></script>
-<link rel="stylesheet" href="bb-cook-studio.css?v=20261103-photo-premium1">
-<script defer src="bb-cook-studio.js?v=20261103-photo-premium1"></script>
+<link rel="stylesheet" href="bb-cook-studio.css?v=20261122-instant1">
+<script defer src="bb-cook-studio.js?v=20261122-instant1" onerror="document.documentElement.classList.add('bb-cook-unavailable')"></script>
 <link rel="stylesheet" href="bb-cook-result.css?v=20261101-cook1">
 <link rel="stylesheet" href="bb-cook-clarity.css?v=20261102-loop2">
 <script defer src="bb-duration.js?v=20261102-duration2"></script>
@@ -102,15 +112,15 @@ html,body{background:#E9ECEF!important;background-image:none!important;min-heigh
 <link rel="stylesheet" href="bb-meal-image.css?v=20261101-cook1">
 <script defer src="bb-meal-image.js?v=20261101-cook1"></script>
 <link rel="stylesheet" href="bb-navigation-polish.css?v=20261122-transitions1">
-<script defer src="bb-navigation-polish.js?v=20261105-nav1"></script>
+<script defer src="bb-navigation-polish.js?v=20261122-instant1"></script>
 <link rel="stylesheet" href="bb-account-polish.css?v=20261122-google1">
-<script defer src="bb-account-polish.js?v=20261122-transitions1"></script>
+<script defer src="bb-account-polish.js?v=20261122-instant1"></script>
 </head>
 <body class="bb-premium-companion bb-r6-cook-page">
 <section id="bbCookOpening" role="status" aria-labelledby="bbCookOpeningTitle">
   <img src="icons/basketboss-crowned-v1766-192.png" width="48" height="48" alt="" aria-hidden="true">
-  <h1 id="bbCookOpeningTitle">Opening your kitchen…</h1>
-  <p>If Cook takes longer to open, try again or return to your plan.</p>
+  <h1 id="bbCookOpeningTitle">Your kitchen could not open</h1>
+  <p>Try again or return to your plan. Your saved meals and ingredients are unchanged.</p>
   <div class="bb-cook-recovery"><a id="bbCookOpeningRetry" href="make-a-meal.html">Try again</a><a href="index.html?bbview=week">Back to Plan</a></div>
 </section>
 <script id="bb-cook-recovery-link">document.getElementById('bbCookOpeningRetry')?.setAttribute('href',window.location.href);</script>
@@ -324,7 +334,7 @@ html,body{background:#E9ECEF!important;background-image:none!important;min-heigh
   });
 })();
 </script>
-<script src="bb-premium-preview-config.js?v=1743-premium-leftovers"></script><script defer="" src="make-a-meal.js?v=20261107-pantry-stock2"></script><script>if('serviceWorker' in navigator&&location.protocol==='https:')addEventListener('load',()=>navigator.serviceWorker.register('./service-worker.js').catch(()=>{}),{once:true})</script><script defer src="premium-upgrade.js?v=bb-native-ai-open-20261027-v1"></script><script src="bb-us-market.js?v=20261102-loop2"></script><script defer src="bb-install.js?v=173install1"></script><script src="bb-real-app-tour.js?v=17513real1" defer></script>
+<script src="bb-premium-preview-config.js?v=1743-premium-leftovers"></script><script defer="" src="make-a-meal.js?v=20261107-pantry-stock2" onerror="document.documentElement.classList.add('bb-cook-unavailable')"></script><script>if('serviceWorker' in navigator&&location.protocol==='https:')addEventListener('load',()=>navigator.serviceWorker.register('./service-worker.js').catch(()=>{}),{once:true})</script><script defer src="premium-upgrade.js?v=bb-native-ai-open-20261027-v1"></script><script src="bb-us-market.js?v=20261102-loop2"></script><script defer src="bb-install.js?v=173install1"></script><script src="bb-real-app-tour.js?v=17513real1" defer></script>
 <!-- BB17513 private QA membership switch: PRIVATE CODESPACES HOSTS ONLY. Not an entitlement. -->
 <style id="bb17513-private-qa-toggle-css">
 #bb17513-qa-mode-bar{position:relative;z-index:3;max-width:1100px;margin:8px auto 12px;padding:9px 12px;display:flex;align-items:center;justify-content:space-between;gap:10px;flex-wrap:wrap;background:#fff7df;color:#3e3525;border:1px solid #d7be76;border-radius:15px;font:600 12px/1.35 system-ui,-apple-system,sans-serif;box-shadow:0 2px 9px #0000000a;box-sizing:border-box}
@@ -395,19 +405,19 @@ html,body{background:#E9ECEF!important;background-image:none!important;min-heigh
 <script defer src="bb-cloudflare-qa.js?v=17513-owner1"></script>
 
 <!-- bb-r7-iphone-20261025 -->
-<nav class="bb-r6-cook-nav" aria-label="BasketBoss navigation">
-<a href="index.html?bbview=week" aria-label="Plan my week"><svg viewBox="0 0 24 24"><rect x="3" y="5" width="18" height="16" rx="3"/><path d="M7 3v4M17 3v4M3 10h18"/></svg><span>Plan</span></a>
-<a href="index.html?bbview=discover" aria-label="Discover recipes"><svg viewBox="0 0 24 24"><rect x="3" y="3" width="7" height="7" rx="2"/><rect x="14" y="3" width="7" height="7" rx="2"/><rect x="3" y="14" width="7" height="7" rx="2"/><rect x="14" y="14" width="7" height="7" rx="2"/></svg><span>Discover</span></a>
-<a href="index.html?bbview=shop" aria-label="Open At home"><svg viewBox="0 0 24 24"><path d="M4 6h17l-2 9H7L4 3H2M8 20h.01M18 20h.01"/></svg><span>At home</span></a>
-<a href="index.html?bbview=shop-list" aria-label="Open shopping overview"><svg viewBox="0 0 24 24"><path d="M8 5h12M8 12h12M8 19h12M3 5h1M3 12h1M3 19h1"/></svg><span>Shop</span></a>
-<a href="make-a-meal.html" aria-current="page" aria-label="Cook"><svg viewBox="0 0 24 24"><path d="M4 10h16l-2 11H6L4 10ZM8 10V7a4 4 0 0 1 8 0v3"/></svg><span>Cook</span></a>
+<nav id="bbPrimaryNavigation" data-bb-navigation="polished" class="bb-r6-cook-nav" aria-label="BasketBoss navigation">
+<a href="index.html?bbview=week" aria-label="Plan my week" data-bb-nav-item="plan" data-bb-nav-current="false"><span class="nav-icon" data-bb-nav-vector="plan" aria-hidden="true"><svg viewBox="0 0 24 24" width="22" height="22" aria-hidden="true" focusable="false" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="5" width="18" height="16" rx="3"/><path d="M7 3v4m10-4v4M3 10h18"/></svg></span><span class="nav-label">Plan</span></a>
+<a href="index.html?bbview=discover" aria-label="Discover recipes" data-bb-nav-item="discover" data-bb-nav-current="false"><span class="nav-icon" data-bb-nav-vector="discover" aria-hidden="true"><svg viewBox="0 0 24 24" width="22" height="22" aria-hidden="true" focusable="false" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="7" height="7" rx="2"/><rect x="14" y="3" width="7" height="7" rx="2"/><rect x="3" y="14" width="7" height="7" rx="2"/><rect x="14" y="14" width="7" height="7" rx="2"/></svg></span><span class="nav-label">Discover</span></a>
+<a href="index.html?bbview=shop" aria-label="Open At home" data-bb-nav-item="kitchen" data-bb-nav-current="false"><span class="nav-icon" data-bb-nav-vector="kitchen" aria-hidden="true"><svg viewBox="0 0 24 24" width="22" height="22" aria-hidden="true" focusable="false" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path d="m3 10 2 10h14l2-10H3Zm5 0V7a4 4 0 0 1 8 0v3m-7 4v3m6-3v3"/></svg></span><span class="nav-label">At home</span></a>
+<a href="index.html?bbview=shop-list" aria-label="Open shopping overview" data-bb-nav-item="shop" data-bb-nav-current="false"><span class="nav-icon" data-bb-nav-vector="shop" aria-hidden="true"><svg viewBox="0 0 24 24" width="22" height="22" aria-hidden="true" focusable="false" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path d="M10 5h11M10 12h11M10 19h11M3 5l1 1 2-3m-3 9 1 1 2-3m-3 9 1 1 2-3"/></svg></span><span class="nav-label">Shop</span></a>
+<a href="make-a-meal.html" aria-current="page" aria-label="Cook" data-bb-nav-item="cook" data-bb-nav-current="true"><span class="nav-icon" data-bb-nav-vector="cook" aria-hidden="true"><svg viewBox="0 0 24 24" width="22" height="22" aria-hidden="true" focusable="false" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path d="M5 10h14v7a3 3 0 0 1-3 3H8a3 3 0 0 1-3-3v-7ZM3 10h18M9 7h6v3M2 13h3m14 0h3M8 3v1m8-1v1"/></svg></span><span class="nav-label">Cook</span></a>
 </nav>
 <!-- Destination entrypoints reset their own scroll; keep Cook still while links open. -->
-<script defer src="bb-beta-six-fixes.js?v=20261105-nav1"></script>
+<script defer src="bb-beta-six-fixes.js?v=20261122-instant1"></script>
 <link rel="stylesheet" href="bb-keyboard-layout.css?v=20261105-preflight2">
 <script defer src="bb-keyboard-layout.js?v=20261105-preflight1"></script>
 <link rel="stylesheet" href="bb-tab-viewport.css?v=20261105-preflight1">
-<script defer src="bb-tab-viewport.js?v=20261105-nav1"></script>
+<script defer src="bb-tab-viewport.js?v=20261122-instant1"></script>
 <script defer src="bb-tab-swipe.js?v=20261104-swipe1"></script>
 
 <!-- Shared app finish: loaded after the legacy component styles. -->

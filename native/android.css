@@ -37,3 +37,7 @@ html.bb-native-android body nav.bb-r6-cook-nav{display:flex!important;position:f
  html.bb-native-android body #modalRoot>.cook-overlay .cook-panel.bb-kitchen #bbBody{padding-bottom:calc(20px + var(--bb-android-bottom))!important}
  html.bb-native-android body #modalRoot>.cook-overlay .cook-panel.bb-kitchen .bb-controls{bottom:0!important;padding-bottom:calc(15px + var(--bb-android-bottom))!important}
 }
+/* Discover's photo badges and Add action inherited frosted glass from the web
+   theme. Keep their existing contrast and tap handlers without extra backdrop
+   layers when Android WebView scrolls or swaps the recipe cards. */
+html.bb-native-android body[data-bbnext-view="discover"] #app :is(.pill,.time-pill,#bbFeaturedAddWeek){backdrop-filter:none!important;-webkit-backdrop-filter:none!important}
