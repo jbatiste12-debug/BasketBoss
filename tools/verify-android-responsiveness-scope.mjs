@@ -30,22 +30,24 @@ const reviewedNumber=` const number=value=>{
   const text=formatter.format(value);return value>0&&Number(text)===0?value.toExponential(2):text;
  };`;
 const retiredGate=" // The current owners hide this retired meter with their existing CSS.\n // Keep the original fallback until the current Plan budget is actually present.\n if(tab==='week'&&(app.classList.contains('bb1748-plan-active')||app.classList.contains('bb1756-planner-flow'))&&app.querySelector('.bb1748-planner-budget,.bbnext-plan-budget'))return;\n if(tab==='shop'&&app.classList.contains('bb1756-cupboard-only'))return;\n";
-const assetNames=['bb-plan-premium-polish.js','bb-pantry-inline.js','bb-pantry-stock-levels-ui.js'];
+const assetNames=['bb-plan-premium-polish.js','bb-pantry-inline.js','bb-pantry-stock-levels-ui.js','bb-us-market.js'];
 function versions(text){
  for(const name of assetNames){const escaped=name.replace(/[.*+?^${}()|[\]\\]/g,'\\$&');text=text.replace(new RegExp('('+escaped+'\\?v=)[^"\\s]+','g'),'$1REVIEWED_ASSET_VERSION');}
  return text;
 }
 function originalHtml(text){return versions(exact(exact(text,reviewedNumber,originalNumber,'immutable display formatter'),retiredGate,'','hidden retired meter gate'));}
 for(const name of ['app.html','index.html','pwa700/app.html'])assert.equal(originalHtml(read(name)),versions(old(name)),'All other HTML, inline scripts, calculations, routing and actions must be byte-identical: '+name);
+assert.equal(versions(read('pwa700/make-a-meal.html')),versions(old('pwa700/make-a-meal.html')),'Generated make-a-meal permits only the reviewed presentation asset digest');
 assert.equal(read('app.html'),read('index.html'),'Legacy public entrypoints remain equal');
 
 // Complete presentation-module identities pinned after independent diff review.
 // Explicit rows live only within a synchronous valid pantry refresh; actions,
 // actor/deletion guards, matching/editor conflict validation keep their owner reads.
 const reviewedModules={
- 'bb-pantry-inline.js':'3eed9a01db6cb7e5bc2569de4a4ec229ad9427484404e80954c9b3e46b00ebe4',
+ 'bb-pantry-inline.js':'5923ab22916f9cc81a1f982ec1f29fe3c579ae11258962c0f43ccaf8c68ecba4',
  'bb-plan-premium-polish.js':'d5920cf22ef4a3912eb1de234f8f691fcca14029ddbee08c04238220cbc36927',
- 'bb-pantry-stock-levels-ui.js':'a50ecbce8187afaeaccdf7ef3b6712a6cea01a027730cd6811528965b422681c'
+ 'bb-pantry-stock-levels-ui.js':'a50ecbce8187afaeaccdf7ef3b6712a6cea01a027730cd6811528965b422681c',
+ 'bb-us-market.js':'eb155bdcd7f9d42e63219eb3e3c5136709c80319e90858f962ca7c0fa5a680c5'
 };
 for(const [name,hash]of Object.entries(reviewedModules))assert.equal(sha(read(name)),hash,'Unexpected change outside reviewed presentation patch: '+name);
 assert.equal(read('pwa700/bb-plan-premium-polish.js'),transform700Presentation(read('bb-plan-premium-polish.js')),'Generated popover script must exactly match current source transform');
@@ -61,7 +63,7 @@ for(const name of ['app.html','index.html']){
 assert.deepEqual(fixture,oldFixture,'All other iOS/native/math/auth baseline values must remain exact');
 
 const currentManifest=JSON.parse(read('pwa700/manifest.json')),oldManifest=JSON.parse(old('pwa700/manifest.json'));
-const generatedChanges=new Set(['app.html','bb-plan-premium-polish.js','precache.js']);
+const generatedChanges=new Set(['app.html','bb-plan-premium-polish.js','make-a-meal.html','precache.js']);
 const declared=currentManifest.files.map(row=>row.path);
 assert.deepEqual(declared,oldManifest.files.map(row=>row.path),'No generated file additions/removals');
 for(let i=0;i<currentManifest.files.length;i++){
@@ -72,9 +74,9 @@ currentManifest.files=[];oldManifest.files=[];assert.deepEqual(currentManifest,o
 const normalizePrecache=text=>versions(text.replace(/self\.BB700_PWA_CACHE_VERSION="[a-f0-9]{64}";/,'self.BB700_PWA_CACHE_VERSION="REVIEWED_CACHE_HASH";'));
 assert.equal(normalizePrecache(read('pwa700/precache.js')),normalizePrecache(old('pwa700/precache.js')),'Only changed presentation asset digests and cache version may differ');
 
-const sourceScope=new Set(['app.html','index.html',...Object.keys(reviewedModules),'pwa700/app.html','pwa700/bb-plan-premium-polish.js','pwa700/manifest.json','pwa700/precache.js','tests/fixtures/android-ios-baseline.json']);
+const sourceScope=new Set(['app.html','index.html',...Object.keys(reviewedModules),'pwa700/app.html','pwa700/bb-plan-premium-polish.js','pwa700/make-a-meal.html','pwa700/manifest.json','pwa700/precache.js','tests/fixtures/android-ios-baseline.json']);
 const toolingScope=new Set([
- 'tests/basketboss-plan-popover-hotpath-browser.test.mjs','tests/basketboss-shop-quantity-format-performance.test.mjs','tests/basketboss-legacy-budget-render-performance.test.mjs','tests/basketboss-pantry-refresh-snapshot-browser.test.mjs','tests/basketboss-stock-banner-layout-browser.test.mjs',
+ 'tests/basketboss-plan-popover-hotpath-browser.test.mjs','tests/basketboss-shop-quantity-format-performance.test.mjs','tests/basketboss-legacy-budget-render-performance.test.mjs','tests/basketboss-pantry-refresh-snapshot-browser.test.mjs','tests/basketboss-stock-banner-layout-browser.test.mjs','tests/basketboss-us-market-lazy-display.test.mjs',
  'tools/verify-android-responsiveness-scope.mjs','tools/audit-android-responsiveness.mjs','tools/audit-android-state-equivalence.mjs',
  '.github/workflows/android-build.yml','android/app/build.gradle','scripts/verify-android.mjs','scripts/verify-android-aab.mjs','tests/basketboss-android-package.test.mjs','tests/basketboss-android-aab.test.mjs','tests/basketboss-android-release11-launcher.test.mjs','tests/basketboss-android-release12-launcher.test.mjs','release-assets/prepare-android-mac.command'
 ]);

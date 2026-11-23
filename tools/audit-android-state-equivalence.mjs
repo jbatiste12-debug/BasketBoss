@@ -3,6 +3,7 @@
 // changes restored. Never filters persisted keys or overrides app safety owners.
 import fs from 'node:fs/promises';
 import path from 'node:path';
+import os from 'node:os';
 import assert from 'node:assert/strict';
 import {createHash} from 'node:crypto';
 import {execFileSync} from 'node:child_process';
@@ -12,13 +13,13 @@ import {build} from 'esbuild';
 import {transform700Presentation} from './catalogue700/presentation.mjs';
 
 const ROOT=fileURLToPath(new URL('..',import.meta.url)),BASE='c05180b1d28b4c30d2ae7b272faeab0f0565e546';
-const require=createRequire(import.meta.url),{chromium}=require(process.env.BB_PLAYWRIGHT_MODULE||'/opt/codex/runtimes/codex-primary-runtime/dependencies/node/node_modules/playwright');
-const output=process.argv.find(arg=>arg.startsWith('--output='))?.slice(9)||'/workspace/release-assets/a13-recovery-20261123/state-equivalence.json';
+const require=createRequire(import.meta.url),{chromium}=require(process.env.BB_PLAYWRIGHT_MODULE||'playwright');
+const output=process.argv.find(arg=>arg.startsWith('--output='))?.slice(9)||path.join(os.tmpdir(),'basketboss-android-state-equivalence.json');
 const sha=value=>createHash('sha256').update(value).digest('hex');
 const old=name=>execFileSync('git',['show',BASE+':'+name],{cwd:ROOT,encoding:'utf8',maxBuffer:16e6});
 const section=(text,begin,end)=>{const first=text.indexOf(begin),last=text.indexOf(end,first+begin.length);assert.ok(first>=0&&last>first&&text.indexOf(begin,first+1)<0,'unique '+begin);return text.slice(first,last);};
 const baselineHTML=old('app.html'),baselineAssets=new Map();
-for(const name of ['bb-pantry-inline.js','bb-plan-premium-polish.js','bb-pantry-stock-levels-ui.js'])baselineAssets.set(name,transform700Presentation(old(name)));
+for(const name of ['bb-pantry-inline.js','bb-plan-premium-polish.js','bb-pantry-stock-levels-ui.js','bb-us-market.js'])baselineAssets.set(name,transform700Presentation(old(name)));
 const restoreHTML=current=>{for(const [begin,end]of [['function bbShopExactQuantity(','function bbShopPurchasePack('],['function bb172RenderBudget(','function bb172ImageMark(']])current=current.replace(section(current,begin,end),transform700Presentation(section(baselineHTML,begin,end)));return current;};
 const transport=`const call=(plugin,method)=>async(...args)=>{if(method==='addListener')return{remove:async()=>{}};if(method==='clearReceiptPhotos')return{ok:true};if(method==='isAvailable')return{available:true};return{};};const plugin=name=>new Proxy({},{get:(_,method)=>call(name,method)});export const Capacitor={isNativePlatform:()=>true,getPlatform:()=> 'android',isPluginAvailable:()=>true};export const registerPlugin=plugin;export const App=plugin('App'),Browser=plugin('Browser'),Camera=plugin('Camera'),Haptics=plugin('Haptics'),StatusBar=plugin('StatusBar'),SplashScreen=plugin('SplashScreen'),SystemBars=plugin('SystemBars');export const CameraResultType={Uri:'uri'},CameraSource={Prompt:'PROMPT'},ImpactStyle={Light:'LIGHT'},NotificationType={Success:'SUCCESS'},Style={Light:'LIGHT'},SystemBarsStyle={Light:'LIGHT'};`;
 const bundled=await build({entryPoints:[path.join(ROOT,'native/android-runtime.mjs')],write:false,bundle:true,format:'iife',platform:'browser',target:'es2020',minify:true,absWorkingDir:ROOT,plugins:[{name:'unavailable-native-transport-only',setup(builder){builder.onResolve({filter:/^@capacitor\//},args=>({path:args.path,namespace:'transport'}));builder.onLoad({filter:/.*/,namespace:'transport'},()=>({contents:transport,loader:'js'}));}}]});
@@ -64,7 +65,7 @@ try{for(const variant of ['baseline','fixed']){
   view:document.body.dataset.bbnextView,
   nav:[...document.querySelectorAll('[data-bb-nav-current="true"]')].map(node=>node.dataset.bbNavItem),
   inputs:[...document.querySelectorAll('input,select,textarea')].filter(node=>node.getClientRects().length&&getComputedStyle(node).visibility!=='hidden').map(node=>({id:node.id,type:node.type,value:node.value,disabled:node.disabled,checked:node.checked})),
-  settingsOpen:document.querySelector('.bbui-settings-overlay')?.classList.contains('open')||false
+  settingsOpen:document.querySelector('.bbui-settings-overlay')?.hidden===false
  }));snapshots.push({name,...value});console.log(JSON.stringify({variant,checkpoint:name,keys:Object.keys(value.storage).length,visibleHash:sha(value.visible),storageHash:sha(JSON.stringify(value.storage))}));}
  async function click(selector){await page.evaluate(selector=>{const node=document.querySelector(selector);if(!node)throw Error('Missing original control '+selector);node.click();},selector);await settle();}
  try{
@@ -82,6 +83,14 @@ try{for(const variant of ['baseline','fixed']){
  }finally{await context.close();}
  }}finally{await browser.close();}
 const [baseline,fixed]=all;const checkpoints=[];
+const freeIds=new Set(JSON.parse(await generated('recipes.json')).map(row=>row.id));
+for(const variant of all){
+ const initial=variant.snapshots[0].storage,model=JSON.parse(initial.basketboss_321_unified_state_v1);
+ assert.equal(model.planned.length,7);assert.ok(model.planned.every(row=>freeIds.has(row.recipeId)),'all seven saved dinners are in the real generated Free catalogue');
+ assert.equal(model.servings,4);assert.equal(Object.keys(JSON.parse(initial.basketboss_makeameal_v1_inventory)).length,15);
+ assert.equal(variant.snapshots.find(row=>row.name==='Settings open').settingsOpen,true);
+ assert.equal(variant.snapshots.find(row=>row.name==='Settings close').settingsOpen,false);
+}
 for(let i=0;i<baseline.snapshots.length;i++){
  const a=baseline.snapshots[i],b=fixed.snapshots[i];assert.equal(a.name,b.name);assert.deepEqual(b.storage,a.storage,a.name+': ALL localStorage bytes');
  for(const key of ['visible','budget','view','nav','inputs','settingsOpen'])assert.deepEqual(b[key],a[key],a.name+': '+key);

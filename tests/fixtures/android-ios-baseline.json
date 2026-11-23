@@ -25,11 +25,11 @@
   },
   "iosScheme": "capacitor",
   "files": {
-    "app.html": "a85debb0a49d3ee9ce4b6fdce35fb136f36ea55656697b44481c848c7fe670b0",
+    "app.html": "ee1f57ca1596a0627ae3d44e975024ee937fa096f88c8b0acaa438e7ffa968ac",
     "bb-auth-flow.js": "cc85150d13f6dde136d7b54d5876448495f14895c51ed1b57a55027193def381",
     "bb-home.js": "6ef580b0821a489f32e581d2078fe9fa7d67204c410b63751659a65fa4d65d50",
     "bb-serving-scale.js": "fd997aeb765ffca26d0f37bf1da581a0f88feea1cda73e003badc43f63d2e4fd",
-    "index.html": "a85debb0a49d3ee9ce4b6fdce35fb136f36ea55656697b44481c848c7fe670b0",
+    "index.html": "ee1f57ca1596a0627ae3d44e975024ee937fa096f88c8b0acaa438e7ffa968ac",
     "ios/.gitignore": "2b7132a9943d2622e51e656897ca5162f56b121b40b423dedce1fbc699dba88a",
     "ios/App/App.xcodeproj/project.pbxproj": "29365a13c9827b6745bbf98fd6d61347cb887a8a4dc964d198bf1c1cbfd321ec",
     "ios/App/App.xcodeproj/xcshareddata/xcschemes/App.xcscheme": "f30d63f3e8b7186c6b178e6650bcb349161e2e0face96c395b42d1cad03a414f",

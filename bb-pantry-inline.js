@@ -781,7 +781,19 @@
    if(row)openEditor(row.key,preferredUnit(name,policy,rowUnit(row),{preferMeasured:true}));else{const preview=previewFood(name,loc);if(preview)openEditor(null,preferredUnit(name,policy,preview.unit,{preferMeasured:true}),'tile',preview);}
   }
   const reset=()=>{if(editor&&editor.actor===actor()&&editor.market===market()&&!win.BBAccountDeletion?.isDeleting?.()){schedule();return;}teardown();schedule();};
-  const storageToggle=event=>{if(event.target?.matches?.('[data-bb76-store]')&&current?.card?.contains(event.target)){/* The legacy accordion closes siblings at its target. All owns only this presentation event. */if(openedLocation==='all'&&current.card.classList.contains('bbpi-enhanced'))event.stopPropagation();if(event.target.open!==(openedLocation==='all'||event.target.dataset.bb76Store===openedLocation))schedule();syncLocation();}};
+  const storageToggle=event=>{if(event.target?.matches?.('[data-bb76-store]')&&current?.card?.contains(event.target)){
+   /* The legacy accordion closes siblings at its target. All owns only this presentation event. */
+   if(openedLocation==='all'&&current.card.classList.contains('bbpi-enhanced'))event.stopPropagation();
+   const visible=openedLocation==='all'||event.target.dataset.bb76Store===openedLocation;
+   if(event.target.open!==visible)schedule();
+   if(!valid(current))return;
+   // applyStorageView already painted these exact location markers and tabs.
+   // Native details notifications need no second descriptor read in that case.
+   // Real closes (openedLocation=null), missing markers and divergent state
+   // retain the original live update and mismatch recovery above.
+   if(event.target.open===visible&&event.target.dataset.bbpiVisible===String(visible)&&current.card.dataset.bbpiStorage===openedLocation&&toolbar?.querySelector('[data-bbpi-storage="'+openedLocation+'"][aria-selected="true"]'))return;
+   syncLocation();
+  }};
   doc.addEventListener('click',click,true);doc.addEventListener('toggle',storageToggle,true);win.addEventListener('resize',measureToolbar);win.addEventListener('resize',scheduleFit);win.visualViewport?.addEventListener('resize',scheduleFit);win.visualViewport?.addEventListener('scroll',scheduleFit);win.addEventListener('bb:pantry-editor',schedule);win.addEventListener('basketboss:market-changed',schedule);win.addEventListener('basketboss:session-changed',reset);for(const event of['basketboss:account-deletion-started','basketboss:account-deletion-deleted'])win.addEventListener(event,reset);
   const storage=event=>{if(event.key==='basketboss_cloud_session_v1'||event.key===null)reset();};win.addEventListener('storage',storage);
   const keydown=event=>{if(event.key==='Escape'&&editor){event.preventDefault();if(!editor.busy)closeEditor();}};doc.addEventListener('keydown',keydown);

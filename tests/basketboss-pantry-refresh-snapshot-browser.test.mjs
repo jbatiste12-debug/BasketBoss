@@ -34,6 +34,8 @@ async function fixture(source,run){
      body=String(body);const original='list:()=>[...staged.keys()].map(editorRow)';
      assert.equal(body.split(original).length,2,'instrument the original owner read only');
      body=body.replace(original,'list:()=>{(window.__pantryListReads||=[]).push(new Error().stack);return [...staged.keys()].map(editorRow)}');
+     const guard='isCurrent:()=>!editorGuard()';assert.equal(body.split(guard).length,2);
+     body=body.replace(guard,'isCurrent:()=>{window.__pantryGuardReads=(window.__pantryGuardReads||0)+1;return !editorGuard()}');
     }
    }catch(error){if(error.code==='ENOENT')return route.fulfill({status:404,body:''});throw error;}
    const types={'.html':'text/html','.js':'application/javascript','.mjs':'application/javascript','.css':'text/css','.json':'application/json','.webp':'image/webp','.png':'image/png','.svg':'image/svg+xml'};
@@ -90,4 +92,49 @@ test('later pantry actions and refreshes see live owner changes, market changes,
   await page.evaluate(()=>{localStorage.setItem('basketboss_cloud_session_v1',JSON.stringify({user:{id:'different-test-actor'}}));BBPantryInline.refresh();});await settle(page);
   assert.equal(await page.locator('#bbpiToolbar').count(),0,'original actor pin rejects an obsolete owner');
  });
+});
+
+// Native <details> toggle notifications arrive after applyStorageView has
+// already updated the location, visibility markers and tab selection. Verify
+// that only such settled notifications skip descriptor construction: a real
+// legacy summary close, a missing/current-state marker or recovery still reads
+// the live owner. The source at c05180b provides the paired event-flow oracle.
+test('settled native storage notifications avoid duplicate work while real open/close, search, filters and recovery retain baseline behavior',options,async()=>{
+ async function scenario(source,optimized){let result;
+  await fixture(source,async page=>{
+   await settle(page);const before=await storage(page);
+   const notification=await page.evaluate(()=>{
+    window.__pantryListReads=[];window.__pantryGuardReads=0;
+    for(const area of document.querySelectorAll('[data-bb76-store]'))area.dispatchEvent(new Event('toggle'));
+    return {reads:__pantryListReads.length,guards:__pantryGuardReads};
+   });
+   assert.equal(notification.reads,optimized?0:3,'only already-painted native notifications skip descriptor reads');assert.ok(notification.guards>=3,'every notification still invokes the current owner safety check');
+   assert.deepEqual(await storage(page),before);
+   await page.evaluate(()=>{
+    document.querySelector('[role="tab"][data-bbpi-storage="all"]').setAttribute('aria-selected','false');
+    window.__pantryListReads=[];document.querySelector('[data-bb76-store="fridge"]').dispatchEvent(new Event('toggle'));
+   });
+   assert.equal(await page.evaluate(()=>__pantryListReads.length),1,'a divergent nav marker gets the original live update');
+   assert.equal(await page.getByRole('tab',{name:/^All,/}).getAttribute('aria-selected'),'true');
+   await page.getByRole('tab',{name:/^Cupboard,/}).click();await settle(page);
+   await page.evaluate(()=>{window.__pantryListReads=[];document.querySelector('[data-bb76-store="cupboard"]>summary').click();});await settle(page);
+   assert.equal(await page.locator('[data-bbpi-storage][aria-selected="true"]').count(),0,'captured legacy summary close clears location selection');
+   assert.equal(await page.locator('[data-bb76-store="cupboard"]').evaluate(node=>node.open),false);
+   assert.ok(await page.evaluate(()=>__pantryListReads.length)>0,'legacy close retains its required fresh owner read');
+   await page.locator('[data-bb76-store="cupboard"]>summary').evaluate(node=>node.click());await settle(page);
+   assert.equal(await page.getByRole('tab',{name:/^Cupboard,/}).getAttribute('aria-selected'),'true');
+   assert.equal(await page.locator('[data-bb76-store="cupboard"]').evaluate(node=>node.open),true);
+   await page.getByRole('tab',{name:/^All,/}).click();await settle(page);
+   await page.evaluate(()=>{document.querySelector('[data-bb76-store="fridge"]').open=false;});await settle(page);
+   assert.equal(await page.locator('[data-bb76-store]').evaluateAll(nodes=>nodes.every(node=>node.open)),true,'an unexpected native collapse still runs original recovery and keeps All open');
+   await page.locator('#bbpiSearch').fill('Milk');await settle(page);
+   assert.equal(await page.locator('.bbpi-summary-row:visible').count(),1,'live search still updates row/location counts');
+   await page.locator('#bbpiSearch').fill('');await page.locator('#bbpiViewFilters').click();
+   await page.getByRole('button',{name:'Low / Out',exact:true}).click();await settle(page);
+   assert.equal(await page.locator('.bbpi-summary-row:visible').count(),0,'filter change retains pending reveal and fresh row matching');
+   await page.getByRole('button',{name:'All food',exact:true}).click();await settle(page);
+   result={rows:await rows(page),presentation:await presentation(page),storage:await storage(page),open:await page.locator('[data-bb76-store]').evaluateAll(nodes=>nodes.map(node=>[node.dataset.bb76Store,node.open,node.dataset.bbpiVisible]))};
+  });return result;
+ }
+ assert.deepEqual(await scenario(await fs.readFile(path.join(ROOT,'bb-pantry-inline.js'),'utf8'),true),await scenario(baseline(),false),'all resulting DOM, quantities and saved bytes match the original event flow');
 });
