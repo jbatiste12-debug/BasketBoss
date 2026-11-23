@@ -12,7 +12,7 @@ const baseline=process.env.BB_POPOVER_HOTPATH_BASELINE==='1';
 let chromium,browser,source;
 for(const name of [process.env.BB_PLAYWRIGHT_MODULE,'playwright','/opt/codex/runtimes/codex-primary-runtime/dependencies/node/node_modules/playwright'].filter(Boolean))try{({chromium}=require(name));break;}catch{}
 before(async()=>{
- source=baseline?execFileSync('git',['show','96fccbd:bb-plan-premium-polish.js'],{cwd:root,encoding:'utf8'}):await fs.readFile(path.join(root,'bb-plan-premium-polish.js'),'utf8');
+ source=baseline?execFileSync('git',['show',(process.env.BB_POPOVER_HOTPATH_BASELINE_REF||'96fccbd')+':bb-plan-premium-polish.js'],{cwd:root,encoding:'utf8'}):await fs.readFile(path.join(root,'bb-plan-premium-polish.js'),'utf8');
  if(chromium)browser=await chromium.launch({headless:true,executablePath:process.env.BB_CHROMIUM_PATH||'/usr/bin/chromium',args:['--no-sandbox']});
 });
 after(async()=>{await browser?.close();});
@@ -51,6 +51,33 @@ test('closed Plan popovers do not schedule card layout for scroll and resize',op
  await reset(page);await page.setViewportSize({width:390,height:760});await frames(page);
  await page.evaluate(()=>scrollTo(0,180));await frames(page);
  assert.equal(await count(page),0);
+}));
+
+test('closed Plan decoration mutations do not force geometry while active popovers still refit',options,()=>fixture(async page=>{
+ await page.evaluate(()=>{
+  const app=document.getElementById('app'),card=document.getElementById('bbpolAutofillCard');
+  app.classList.add('bbnext-plan');
+  for(const name of ['bbnext-plan-actions','bb81-pro-filters']){
+   const node=document.createElement('div');node.className=name;card.append(node);
+  }
+ });
+ await frames(page);await reset(page);
+ await page.evaluate(async()=>{
+  const actions=document.querySelector('.bbnext-plan-actions');
+  for(let i=0;i<3;i++){
+   const note=document.createElement('span');note.textContent='Current presentation '+i;actions.append(note);
+   await new Promise(resolve=>queueMicrotask(resolve));
+  }
+ });
+ await frames(page);
+ assert.equal(await count(page),0,'closed observer passes must not synchronously flush card layout');
+ await page.locator('#bbSimpleBudget>summary').click();await frames(page);
+ assert.equal(await page.locator('#bbSimpleBudget').evaluate(node=>node.open),true);
+ await reset(page);
+ await page.evaluate(()=>document.querySelector('.bbnext-plan-actions').append(document.createElement('span')));
+ await frames(page);
+ assert.ok(await count(page)>0,'an actual open popover retains fitting after its content changes');
+ assert.equal(await actualHeight(page),await expectedHeight(page));
 }));
 
 for(const id of ['bbSimpleBudget','bbSimpleMealPreferences','bbnextPlanAutofill'])test('original '+id+' summary opens with current sizing and keeps its native close behavior',options,()=>fixture(async page=>{

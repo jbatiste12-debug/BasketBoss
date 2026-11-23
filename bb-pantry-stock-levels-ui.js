@@ -209,7 +209,9 @@
      const key=pending.key;pending=null;win.BBPantryInline?.open?.(key);
     }
    }
-   const shop=doc.querySelector('.shell nav.tabs .tab.active')?.dataset.tab==='shop-list',target=['#bb172Storefront','#bbReleaseShopOverview','#bb321Printable','#app'].map(selector=>doc.querySelector(selector)).find(node=>node&&node.getClientRects().length&&win.getComputedStyle(node).display!=='none');
+   // Inactive tabs already return below. Do not flush their layout to find a
+   // Shop-only banner target; pending editor and live deletion checks stay owned here.
+   const shop=doc.querySelector('.shell nav.tabs .tab.active')?.dataset.tab==='shop-list',target=shop?['#bb172Storefront','#bbReleaseShopOverview','#bb321Printable','#app'].map(selector=>doc.querySelector(selector)).find(node=>node&&node.getClientRects().length&&win.getComputedStyle(node).display!=='none'):null;
    if(!shop||!target||win.BBAccountDeletion?.isDeleting?.()){banner?.remove();banner=null;stamp='';return;}
    let rows,requirements;
    try{const keys=win.BBHomeHost?.keys?.();if(!keys)return;rows=Object.entries(JSON.parse(win.localStorage.getItem(keys.inventory)||'{}')).filter(([,row])=>row?.selected&&row.name&&!row.staple).map(([key,row])=>({...row,key}));requirements=win.BBHomeHost.requirements();}catch{return;}

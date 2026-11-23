@@ -8040,7 +8040,14 @@ function bb84SeedPreviouslyBought(items,essentials,ticks){
 function bbShopExactQuantity(quantity,unit,market=bb307Market){
  const n=Number(quantity),u=String(unit||'each').toLowerCase();
  if(!Number.isFinite(n)||n<0)return 'Check quantity';
- const number=value=>{const text=new Intl.NumberFormat(market==='US'?'en-US':'en-GB',{maximumFractionDigits:6,useGrouping:false}).format(value);return value>0&&Number(text)===0?value.toExponential(2):text;};
+ const number=value=>{
+  // Cache only immutable display formatters; every quantity is still formatted
+  // from the current input and market with the original precision rules.
+  const locale=market==='US'?'en-US':'en-GB';
+  const formatters=bbShopExactQuantity.displayFormatters||(bbShopExactQuantity.displayFormatters=Object.create(null));
+  const formatter=formatters[locale]||(formatters[locale]=Object.freeze(new Intl.NumberFormat(locale,{maximumFractionDigits:6,useGrouping:false})));
+  const text=formatter.format(value);return value>0&&Number(text)===0?value.toExponential(2):text;
+ };
  if(u==='each')return number(n);
  if(['g','kg','ml','l'].includes(u)){const weight=u==='g'||u==='kg',base=n*(['kg','l'].includes(u)?1000:1);return number(base>=1000?base/1000:base)+' '+(base>=1000?(weight?'kg':'L'):(weight?'g':'ml'));}
  return number(n)+' '+u;
@@ -9507,6 +9514,10 @@ function bb172Money(n){return BBPriceV19.money(n,bb307Market)}
 function bb172RenderBudget(app){
  if(tab==='overview')return; // UI-NEXT: goal donut replaces the duplicate Overview linear meter.
  if(!['overview','week','shop'].includes(tab))return;
+ // The current owners hide this retired meter with their existing CSS.
+ // Keep the original fallback until the current Plan budget is actually present.
+ if(tab==='week'&&(app.classList.contains('bb1748-plan-active')||app.classList.contains('bb1756-planner-flow'))&&app.querySelector('.bb1748-planner-budget,.bbnext-plan-budget'))return;
+ if(tab==='shop'&&app.classList.contains('bb1756-cupboard-only'))return;
  let summary;
  try{summary=bb321WeeklySummary()}catch(err){console.warn('Budget summary unavailable',err);return}
  const spending=Number(summary.total)||0;
@@ -14166,7 +14177,7 @@ body[data-bbnext-view="discover"] #app .bb175-discover-heading{padding-top:calc(
 <link rel="stylesheet" href="bb-membership-compare.css?v=20261101-member1">
 <script defer src="bb-membership-compare.js?v=20261105-reduced1"></script>
 <link rel="stylesheet" href="bb-plan-premium-polish.css?v=20261122-transitions1">
-<script defer src="bb-plan-premium-polish.js?v=20261122-android-taps1"></script>
+<script defer src="bb-plan-premium-polish.js?v=20261123-android-loading1"></script>
 <link rel="stylesheet" href="bb-ingredient-picker.css?v=20261105-avoid-modal1">
 <link rel="stylesheet" href="bb-evening-pivot-ui.css?v=20261101-pivot2">
 <link rel="stylesheet" href="bb-cook-voice.css?v=20261103-mentor1">
@@ -14193,8 +14204,8 @@ body[data-bbnext-view="discover"] #app .bb175-discover-heading{padding-top:calc(
 <script defer src="bb-kitchen-essentials.js?v=20261114-layout1"></script>
 <script defer src="bb-kitchen-prices.js?v=20261105-shop-confirm1"></script>
 <link rel="stylesheet" href="bb-pantry-inline.css?v=20261116-levels1">
-<script defer src="bb-pantry-stock-levels-ui.js?v=20261116-levels1"></script>
-<script defer src="bb-pantry-inline.js?v=20261116-levels1"></script>
+<script defer src="bb-pantry-stock-levels-ui.js?v=20261123-android-loading1"></script>
+<script defer src="bb-pantry-inline.js?v=20261123-android-loading1"></script>
 <script defer src="bb-pantry-add-amount-presentation.js?v=20261116-amount1"></script>
 <link rel="stylesheet" href="bb-keyboard-layout.css?v=20261105-preflight2">
 <script defer src="bb-keyboard-layout.js?v=20261105-preflight1"></script>

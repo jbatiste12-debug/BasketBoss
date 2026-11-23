@@ -513,8 +513,8 @@
   "files": [
     {
       "path": "app.html",
-      "bytes": 3067747,
-      "sha256": "bdc3b2b66ec89e571def795e8913a956dd6322e842659a35867b37b771a95883"
+      "bytes": 3068545,
+      "sha256": "ead538422e5693a46ee46d210d5e35759f031724451b7c5fe3a630c83f77c3ca"
     },
     {
       "path": "basketboss-latest-guide.html",
@@ -558,8 +558,8 @@
     },
     {
       "path": "bb-plan-premium-polish.js",
-      "bytes": 15706,
-      "sha256": "a4f3b18bdb5d250cf98c86e05fb0a0b3d4ebc7d9ef1f199950bb60deca560677"
+      "bytes": 16004,
+      "sha256": "777d83a7d7e158247127b92579fcb76f10532b3956acdc5420489d25cc91e72c"
     },
     {
       "path": "bb-plan-swap-core.js",
@@ -649,7 +649,7 @@
     {
       "path": "precache.js",
       "bytes": 11949,
-      "sha256": "d22ccab17e983e4b9d32104dae865733da64c3c37a3484814f6c80227d835bbb"
+      "sha256": "5e09c73246ef40daff6664013a35f0426eae1cbe2cf050395bc03ac8c235a1cb"
     },
     {
       "path": "pricing-sandbox.html",

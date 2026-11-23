@@ -163,7 +163,9 @@
    if(note&&infoBody&&note.parentNode!==infoBody)infoBody.append(note);
    const working=$('#bb172FillSixDinners',actions);
    card.dataset.bbAutofillReady=working&&pantry&&disclosure?'true':'false';
-   sizePlanPopovers(card);
+   // Closed disclosures are sized by their original opening handler. Avoid
+   // forcing layout after every otherwise unrelated decoration mutation.
+   if(card.querySelector('#bbSimpleBudget[open],#bbSimpleMealPreferences[open],#bbnextPlanAutofill[open],#bbAvoidIngredientTab[aria-expanded="true"]'))sizePlanPopovers(card);
  }
  function closePlanPopovers(event){
    const escape=event.type==='keydown'&&event.key==='Escape';

@@ -186,9 +186,9 @@
    return matchesInventory(row,{query,filter:stockFilter,useSoon:urgent(row)});
   }
   const locationName=loc=>loc==='all'?'All':loc[0].toUpperCase()+loc.slice(1);
-  function syncLocation(){
+  function syncLocation(snapshotRows){
    if(!toolbar?.isConnected||!valid(current))return;
-   const rows=current.list().filter(visibleFood);
+   const rows=(snapshotRows===undefined?current.list():snapshotRows).filter(visibleFood);
    for(const control of toolbar.querySelectorAll('[data-bbpi-storage]')){
     const loc=control.dataset.bbpiStorage,selected=loc===openedLocation;
     control.setAttribute('aria-selected',String(selected));control.tabIndex=selected?0:-1;
@@ -202,7 +202,7 @@
    if(heading){if(!originalHeading)originalHeading={node:heading,value:heading.textContent};text(heading,'At home');if(!heroCount?.isConnected){heroCount=el('span','bbpi-hero-count');heading.after(heroCount);}}
    if(intro&&nav&&nav.parentNode!==intro){if(!originalNav)originalNav={node:nav,parent:nav.parentNode,next:nav.nextSibling};intro.append(nav);}
   }
-  function applyStorageView(){
+  function applyStorageView(snapshotRows){
    if(!valid(current))return;
    current.card.dataset.bbpiStorage=openedLocation||location;
    for(const area of current.card.querySelectorAll('[data-bb76-store]')){
@@ -212,7 +212,7 @@
     const header=sections.get(loc)?.summary.querySelector(':scope>header');
     if(header){header.hidden=openedLocation!=='all';text(header.querySelector('h4'),locationName(loc));}
    }
-   syncLocation();syncScans();syncEmptyState();
+   syncLocation(snapshotRows);syncScans();syncEmptyState(snapshotRows);
   }
   function chooseMatchingLocation(){
    if(!valid(current))return;const rows=current.list().filter(inventoryMatches);
@@ -221,7 +221,7 @@
    const area=current.card.querySelector('[data-bb76-store="'+location+'"]');if(area)openArea(area);syncLocation();
   }
   function openArea(area){openedLocation=area.dataset.bb76Store;applyStorageView();}
-  function revealLocation(){syncLocation();}
+  function revealLocation(snapshotRows){syncLocation(snapshotRows);}
   function jump(loc){
    if(!valid(current)||!LOCATIONS.includes(loc)&&loc!=='all')return;
    if(loc!=='all')location=loc;openedLocation=loc;
@@ -252,7 +252,7 @@
    try{await host.openReceiptEntry();}catch{text(status,'Receipt scanning could not open. Please try again.');}
    finally{receiptOpening=false;if(control.isConnected)control.disabled=false;}
   }
-  function syncEmptyState(){
+  function syncEmptyState(snapshotRows){
    if(!valid(current))return;
    const panel=current.card.querySelector('#bbKitchenFoodPanel');if(!panel)return;
    if(!emptyState?.isConnected){
@@ -270,14 +270,14 @@
     const note=el('p','bbpi-empty-note','Check AI results and amounts before saving. Prices are estimates.');
     emptyState.append(title,copy,chips,note);panel.append(emptyState);
    }
-   const empty=openedLocation==='all'&&!query.trim()&&stockFilter==='all'&&!current.list().some(visibleFood);
+   const empty=openedLocation==='all'&&!query.trim()&&stockFilter==='all'&&!(snapshotRows===undefined?current.list():snapshotRows).some(visibleFood);
    // Move the same controls, with their original handlers, so keyboard and
    // screen-reader order follows the empty-state visual hierarchy as well.
    const scan=globalActions?.querySelector('.bbpi-ai-scan'),add=globalActions?.querySelector('.bbpi-add-food'),receipt=globalActions?.querySelector('.bbpi-scan-receipt');
    if(scan&&add&&receipt){if(empty&&scan.nextElementSibling!==add)add.before(scan);else if(!empty&&receipt.nextElementSibling!==scan)receipt.after(scan);}
    emptyState.hidden=!empty;current.card.dataset.bbpiEmpty=String(empty);
   }
-  function mountGlobalActions(){
+  function mountGlobalActions(snapshotRows){
    const panel=current.card.querySelector('#bbKitchenFoodPanel'),storage=panel?.querySelector('#bb76StorageSections');if(!storage)return;
    if(globalActions?.parentNode===panel){syncReceiptOffer();return;}
    globalActions?.remove();globalActions=el('div','bbpi-global-actions bbpi-ui');
@@ -293,12 +293,12 @@
    scan.append(el('span','bbpi-food-scan-label','Scan food'),el('small','bbpi-scan-premium','Premium'));
    const help=el('p','bbpi-scan-help','AI photo scanning supports Fridge and Cupboard only. Add Freezer food manually.');help.id='bbpiScanHelp';help.hidden=true;scan.setAttribute('aria-describedby',help.id);scan.setAttribute('aria-controls',choices.id);
    const status=el('p','bbpi-action-status');status.setAttribute('role','status');status.setAttribute('aria-live','polite');
-   globalActions.append(photoTitle,photoCopy,add,receipt,scan,help,choices,status);storage.before(globalActions);syncScans();syncReceiptOffer();syncEmptyState();
+   globalActions.append(photoTitle,photoCopy,add,receipt,scan,help,choices,status);storage.before(globalActions);syncScans();syncReceiptOffer();syncEmptyState(snapshotRows);
   }
-  function knownFoods(){
+  function knownFoods(snapshotRows){
    const foods=[],byId=new Map(),catalogue=Object.values(win.BBPriceV19?.catalog||{}),canonical=value=>win.BBPantryPolicy?.canonicalName(value,win.BBPantryAliasCanonical||win.BBPriceV19?.canonical)||foodFold(value);
    const put=(name,loc,aliases=[])=>{if(!name||!LOCATIONS.includes(loc)||win.BBKitchenChoiceRules?.isHousehold?.(name))return;const id=loc+'|'+canonical(name),old=byId.get(id);if(old){old.aliases.push(...aliases,name);return;}const food={id,name,loc,aliases};byId.set(id,food);foods.push(food);};
-   for(const row of current.list())put(row.name,row.loc);
+   for(const row of snapshotRows===undefined?current.list():snapshotRows)put(row.name,row.loc);
    for(const tile of current.card.querySelectorAll('[data-bb5-food]')){
     const loc=tile.closest('[data-bb76-store]')?.dataset.bb76Store,name=tile.dataset.bb5Food;
     // The cupboard tile is tinned tuna. Keep fresh/frozen tuna distinct, and
@@ -338,14 +338,14 @@
   function addFood(loc,name=query){
    if(!valid(current))return;location=loc;const row=previewFood(String(name||''),loc)||{name:String(name||'').trim(),loc,qty:null,unit:'each',totalNeeded:0};openEditor(null,undefined,'manual',row);
   }
-  function searchChoices(){
+  function searchChoices(snapshotRows){
    const choices=toolbar?.querySelector('.bbpi-search-matches');if(!choices||!valid(current))return;
    choices.replaceChildren();if(!query.trim()){choices.hidden=true;return;}
-   const foods=matchingFoods(query,knownFoods(),location);
+   const foods=matchingFoods(query,knownFoods(snapshotRows),location);
    for(const food of foods){const control=btn('+ '+food.name,()=>{jump(food.loc);addFood(food.loc,food.name);},'bbpi-search-choice');control.setAttribute('aria-label','Add '+food.name+' to '+food.loc);choices.append(control);}
    choices.hidden=!query.trim();if(!foods.length&&query.trim())choices.append(el('span','bbpi-search-empty','No match — add your own food.'));
   }
-  function mountToolbar(){
+  function mountToolbar(snapshotRows){
    const panel=current.card.querySelector('#bbKitchenFoodPanel');if(!panel)return;
    if(toolbar?.parentNode===panel)return;
    toolbar?.remove();toolbarResize?.disconnect();toolbar=el('section','bbpi-toolbar bbpi-ui');toolbar.id='bbpiToolbar';toolbar.setAttribute('aria-label','Pantry tools');
@@ -359,7 +359,7 @@
    for(const [key,label]of[['all','All food'],['use-soon','Use soon'],['low','Low / Out']]){const control=btn(label,()=>{closeEditor();stockFilter=key;for(const button of filterPanel.querySelectorAll('button'))button.setAttribute('aria-pressed',String(button===control));chooseMatchingLocation();pendingReveal=location;schedule();},'bbpi-filter');control.dataset.bbpiFilter=key;control.setAttribute('aria-pressed',String(key===stockFilter));filterPanel.append(control);}
    search.addEventListener('input',()=>{closeEditor();query=search.value;chooseMatchingLocation();searchChoices();schedule();});
    const choices=el('div','bbpi-search-matches');choices.setAttribute('aria-label','Matching foods');choices.hidden=true;
-   toolbar.append(actions,tabs,choices,filterPanel);panel.prepend(toolbar);current.card.dataset.bbpiFilters='false';searchChoices();
+   toolbar.append(actions,tabs,choices,filterPanel);panel.prepend(toolbar);current.card.dataset.bbpiFilters='false';searchChoices(snapshotRows);
    if(win.ResizeObserver){toolbarResize=new win.ResizeObserver(measureToolbar);toolbarResize.observe(toolbar);}measureToolbar();
   }
   function measureToolbar(){if(toolbar?.isConnected&&current?.card?.isConnected)current.card.style.setProperty('--bbpi-toolbar-height','0px');}
@@ -762,7 +762,9 @@
   }}
   function refresh(){queued=false;if(destroyed)return;const api=win.BBPantryEditor;const stay=doc.body.dataset.bbnextView==='shop'&&presentationActor===actor(),keep=!!editor&&editor.actor===actor()&&editor.market===market()&&doc.body.dataset.bbnextView==='shop';if(!valid(api)){teardown(keep,stay);return;}
    if(current!==api){teardown(keep,true);presentationActor=actor();current=api;const node=current.card.querySelector('.bb76-title>div>p:last-child');if(node)originalIntro={node,value:node.textContent};const status=current.card.querySelector('#bb5StockStatus');if(status){originalStatus={node:status,parent:status.parentNode,next:status.nextSibling,value:status.textContent};text(status,'Confirm your amounts to update Shop.');status.classList.add('bbpi-save-status');current.card.querySelector('.bb76-kitchen-intro')?.after(status);}}
-   try{if(originalIntro)text(originalIntro.node,'Enter what you have and what you need, then confirm.');for(const area of current.card.querySelectorAll('[data-bb76-store]'))mountSection(area);summaries(current.list());displayEditor();mountToolbar();compactHeader();mountGlobalActions();current.card.classList.add('bbpi-enhanced');applyStorageView();if(pendingReveal){const loc=pendingReveal;pendingReveal=null;revealLocation(loc);}}
+   // One read-only descriptor snapshot belongs to this synchronous paint only.
+   // Original editor validation and every later action still read their owner live.
+   try{const rows=current.list();if(originalIntro)text(originalIntro.node,'Enter what you have and what you need, then confirm.');for(const area of current.card.querySelectorAll('[data-bb76-store]'))mountSection(area);summaries(rows);displayEditor();mountToolbar(rows);compactHeader();mountGlobalActions(rows);current.card.classList.add('bbpi-enhanced');applyStorageView(rows);if(pendingReveal){pendingReveal=null;revealLocation(rows);}}
    catch{teardown(keep,stay);if(editor)notice(editor,'The pantry is refreshing. Your entries are kept in this panel.',true);}
   }
   function click(event){
