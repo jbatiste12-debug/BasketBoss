@@ -1,0 +1,88 @@
+name: Public landing visual-safety checks
+
+on:
+  pull_request:
+    paths:
+      - welcome.html
+      - bb-family-landing.css
+      - tests/basketboss-landing-entry.test.mjs
+      - .github/workflows/public-landing-qa.yml
+  push:
+    branches: [main]
+    paths:
+      - welcome.html
+      - bb-family-landing.css
+      - tests/basketboss-landing-entry.test.mjs
+      - .github/workflows/public-landing-qa.yml
+
+permissions:
+  contents: read
+
+jobs:
+  landing-regression:
+    runs-on: ubuntu-latest
+    timeout-minutes: 8
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Verify original routing, App Store gate, landing copy and pricing links
+        run: node --test tests/basketboss-landing-entry.test.mjs tests/basketboss-receipt-landing.test.mjs
+      - name: Verify public landing artwork files exist
+        run: |
+          node --input-type=module <<'JS'
+          import fs from 'node:fs';
+          const html=fs.readFileSync('welcome.html','utf8');
+          const css=fs.readFileSync('bb-family-landing.css','utf8');
+          const assets=[...html.matchAll(/\b(?:src|href)="([^"]+)"/g)].map(m=>m[1]);
+          const checked=[];
+          for(const address of assets){
+            if(!/\.(?:png|jpe?g|webp|svg)(?:\?|$)/i.test(address))continue;
+            const url=new URL(address,'https://basketboss.co.uk/');
+            if(url.host!=='basketboss.co.uk')continue;
+            const pathname=decodeURIComponent(url.pathname).replace(/^\//,'');
+            if(!pathname||pathname.startsWith('.')||pathname.includes('..'))throw Error('Unsafe local asset reference '+address);
+            if(!fs.existsSync(pathname))throw Error('Missing landing asset '+pathname);
+            checked.push(pathname);
+          }
+          if(/\.webp(?:[?"']|$)/i.test(html)||/url\([^)]*\.webp/i.test(css))throw Error('Unexpected WebP landing reference; decode and preview explicitly');
+          console.log('Verified '+checked.length+' landing image references: '+[...new Set(checked)].join(', '));
+          JS
+
+  existing-webp-decode-audit:
+    # Read-only audit. Existing app recipe imagery must not block a CSS-only landing update.
+    runs-on: ubuntu-latest
+    timeout-minutes: 12
+    continue-on-error: true
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - run: python -m pip install --disable-pip-version-check pillow
+      - name: Decode existing WebP files without modifying them
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+          from PIL import Image
+          files=sorted(Path('.').rglob('*.webp'))
+          failed=[]
+          for file in files:
+              try:
+                  with Image.open(file) as picture:
+                      if picture.format!='WEBP':
+                          raise ValueError('Incorrect WebP format')
+                      picture.load()
+              except Exception as exc:
+                  failed.append(f'{file}: {exc}')
+          print(f'Decoded {len(files)} existing .webp assets; failures: {len(failed)}')
+          for item in failed[:30]:
+              print(item)
+          if failed:
+              raise SystemExit(1)
+          PY

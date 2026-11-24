@@ -123,3 +123,18 @@ test('checkout and cancellation trust links remain available alongside Premium',
  }
  assert.match(pricing,/href="subscriptions\.html">Cancel anytime/);
 });
+
+
+test('landing craft pass preserves native store gating, route CTAs and complete responsive previews',()=>{
+ assert.match(page,/bb-family-landing\.css\?v=20261124-craft-polish/);
+ assert.match(page,/<a class="app-store-badge" href="https:\/\/apps\.apple\.com\/app\/id6829160611"[^>]*data-bb-app-store-launch hidden>/);
+ assert.match(page,/<a class="button hero-cta" href="\/app" data-bbc-free>/);
+ assert.match(page,/<a class="text-link" href="\/pricing-sandbox\.html">See Premium plans/);
+ assert.match(page,/<a class="compare-link" href="\/compare\.html">/);
+ assert.doesNotMatch(page,/hero-art-sticker|hero-art-label|hero-art-orbit/);
+ assert.match(css,/\.hero h1 span:after\{content:none;display:none\}/);
+ assert.match(css,/\.benefit-illustration\{[^}]*height:auto;[^}]*overflow:visible\}/);
+ assert.match(css,/@media\(max-width:680px\)/);
+ assert.doesNotMatch(page,/\.webp(?:["'?]|$)/);
+ assert.doesNotMatch(css,/url\([^)]*\.webp/i);
+});
