@@ -126,7 +126,7 @@ test('checkout and cancellation trust links remain available alongside Premium',
 
 
 test('landing craft pass preserves native store gating, route CTAs and complete responsive previews',()=>{
- assert.match(page,/bb-family-landing\.css\?v=20261124-craft-polish/);
+ assert.match(page,/bb-family-landing\.css\?v=20261124-real-screens/);
  assert.match(page,/<a class="app-store-badge" href="https:\/\/apps\.apple\.com\/app\/id6829160611"[^>]*data-bb-app-store-launch hidden>/);
  assert.match(page,/<a class="button hero-cta" href="\/app" data-bbc-free>/);
  assert.match(page,/<a class="text-link" href="\/pricing-sandbox\.html">See Premium plans/);
@@ -142,7 +142,7 @@ test('landing craft pass preserves native store gating, route CTAs and complete 
 
 test('three workflow cards show authentic linked app screenshots and preserve existing wording',()=>{
  const assets=[
-  ['at-home','landing-assets/basketboss-actual-at-home-20261114.png'],
+  ['home','landing-assets/basketboss-actual-at-home-20261114.png'],
   ['plan','landing-assets/basketboss-actual-plan-20261114.png'],
   ['shop','landing-assets/basketboss-actual-shop-20261114.png']
  ];
