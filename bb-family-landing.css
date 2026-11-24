@@ -238,3 +238,23 @@ footer{border-top:1px solid var(--line)}
  .app-store-badge{transition:none}
  .app-store-badge:hover{transform:none}
 }
+
+
+/* Genuine App Store capture previews: same source pixels, no fabricated app UI.
+   Deliberate viewport crops are clickable to open the complete original screenshots. */
+.benefit-app-preview{position:relative;isolation:isolate;display:block;flex:0 0 auto;margin-top:auto;height:275px;width:100%;overflow:hidden;border:1px solid #d6dfd1;border-radius:14px;background:#f8faf5;box-shadow:inset 0 0 0 1px rgba(255,255,255,.5);text-decoration:none}
+.benefit-app-preview img{display:block;width:100%;height:100%;max-width:none;object-fit:cover;transition:transform .22s ease,filter .22s ease}
+.benefit-app-preview--home img{object-position:center 36%}
+.benefit-app-preview--plan img{object-position:center 34%}
+.benefit-app-preview--shop img{object-position:center 24%}
+.benefit-app-preview:after{content:"";position:absolute;z-index:1;inset:auto 0 0;height:87px;background:linear-gradient(180deg,rgba(248,250,245,0),rgba(245,249,241,.98));pointer-events:none}
+.benefit-screen-label{position:absolute;z-index:2;left:12px;right:12px;bottom:12px;display:flex;justify-content:space-between;align-items:center;gap:12px;min-height:35px;padding:7px 11px;border:1px solid #c6d8c8;border-radius:9px;background:rgba(255,255,255,.96);color:var(--forest);font-size:11px;font-weight:750;letter-spacing:.012em;box-shadow:0 2px 10px rgba(22,62,45,.06)}
+.benefit-screen-label>span{font-size:16px;line-height:1;transition:transform .18s ease}
+.benefit-app-preview:hover img{transform:scale(1.035);filter:saturate(1.03)}
+.benefit-app-preview:hover .benefit-screen-label>span{transform:translate(2px,-2px)}
+.benefit-app-preview:focus-visible{outline:3px solid #94701c;outline-offset:5px}
+@media(max-width:1000px){.benefit-app-preview{height:245px}}
+@media(max-width:820px){.benefit-app-preview{height:232px}}
+@media(max-width:680px){.benefit-app-preview{height:315px}}
+@media(max-width:385px){.benefit-app-preview{height:265px}}
+@media(prefers-reduced-motion:reduce){.benefit-app-preview img,.benefit-screen-label>span{transition:none}.benefit-app-preview:hover img{transform:none}.benefit-app-preview:hover .benefit-screen-label>span{transform:none}}

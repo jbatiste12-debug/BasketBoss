@@ -126,7 +126,7 @@ test('checkout and cancellation trust links remain available alongside Premium',
 
 
 test('landing craft pass preserves native store gating, route CTAs and complete responsive previews',()=>{
- assert.match(page,/bb-family-landing\.css\?v=20261124-craft-polish/);
+ assert.match(page,/bb-family-landing\.css\?v=20261124-real-screens/);
  assert.match(page,/<a class="app-store-badge" href="https:\/\/apps\.apple\.com\/app\/id6829160611"[^>]*data-bb-app-store-launch hidden>/);
  assert.match(page,/<a class="button hero-cta" href="\/app" data-bbc-free>/);
  assert.match(page,/<a class="text-link" href="\/pricing-sandbox\.html">See Premium plans/);
@@ -137,4 +137,28 @@ test('landing craft pass preserves native store gating, route CTAs and complete 
  assert.match(css,/@media\(max-width:680px\)/);
  assert.doesNotMatch(page,/\.webp(?:["'?]|$)/);
  assert.doesNotMatch(css,/url\([^)]*\.webp/i);
+});
+
+
+test('three workflow cards show authentic linked app screenshots and preserve existing wording',()=>{
+ const assets=[
+  ['home','landing-assets/basketboss-actual-at-home-20261114.png'],
+  ['plan','landing-assets/basketboss-actual-plan-20261114.png'],
+  ['shop','landing-assets/basketboss-actual-shop-20261114.png']
+ ];
+ assert.equal((page.match(/class="benefit-app-preview benefit-app-preview--/g)||[]).length,3);
+ assert.doesNotMatch(page,/class="benefit-illustration"/);
+ for(const [step,relative] of assets){
+   assert.match(page,new RegExp('class="benefit-app-preview benefit-app-preview--'+step+'"'));
+   assert.ok(page.includes('href="/'+relative+'"'),step+' opens its original screenshot');
+   assert.ok(page.includes('src="/'+relative+'"'),step+' displays its original screenshot');
+   assert.ok(fs.existsSync(path.join(root,relative)),step+' genuine app image exists');
+ }
+ assert.match(page,/01 \/ AT HOME/);
+ assert.match(page,/02 \/ PLAN/);
+ assert.match(page,/03 \/ SHOP/);
+ assert.match(page,/href="\/tutorial\.html#kitchen"/);
+ assert.match(css,/\.benefit-app-preview\{[^}]*overflow:hidden/);
+ assert.match(css,/@media\(max-width:680px\)\{\.benefit-app-preview\{/);
+ assert.match(page,/bb-family-landing\.css\?v=20261124-real-screens/);
 });
