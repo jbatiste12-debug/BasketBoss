@@ -39,6 +39,7 @@ function server() {
   let clock = 7;
   const api = {
     calls, operations, values, intercept: null, protocol: 2,
+    advanceClock(value) { assert.ok(Number.isSafeInteger(value) && value >= clock); clock = value; },
     snapshot() {
       return {
         ok: true, protocol: api.protocol, household_id: HOUSEHOLD,
@@ -765,31 +766,84 @@ test('an older async apply consumes only the passed proof IDs and preserves a ne
   first.engine.destroy(); second.engine.destroy();
 });
 
-test('a cached snapshot cannot expose or consume a proof newer than its clock', { timeout: 10000 }, async () => {
-  let accept = false;
-  const f = fixture({ onApply: () => accept });
-  await f.engine.initialize();
-  const captured = f.engine.capture(pantry, stock(500));
-  await drain(f.engine);
-  const proof = proofFor(f.engine, captured.operationId);
-  assert.ok(proof);
-  f.remote.intercept = async (action, payload, perform) => {
+test('a reload rejects clock 19 after an acknowledged order 20 without writing or consuming its proof', { timeout: 10000 }, async () => {
+  const remote = server(), storage = new MemoryStorage(), first = fixture({ remote, storage });
+  await first.engine.initialize();
+  remote.advanceClock(19);
+  let committed = false;
+  remote.intercept = async (action, payload, perform) => {
+    if (action === 'auto_sync' && committed) throw new Error('Crash before projection');
     const response = await perform(action, payload);
-    if (action === 'auto_sync') response.clock = proof.order - 1;
+    if (action === 'sync_apply') committed = true;
     return response;
   };
-  // Defer one stale read first so refresh cannot consume the legitimate newer
-  // cached snapshot before this test exercises the older response clock.
+  const captured = first.engine.capture(pantry, stock(500));
+  await drain(first.engine);
+  const proof = proofFor(first.engine, captured.operationId);
+  assert.equal(proof.order, 20);
+  assert.equal(first.engine.read().pending.length, 0);
+  first.engine.destroy();
+
+  let readClock = 19;
+  remote.intercept = async (action, payload, perform) => {
+    const response = await perform(action, payload);
+    if (action === 'auto_sync') response.clock = readClock;
+    return response;
+  };
+  const before = storage.snapshot(), writesBefore = storage.writes.length;
+  const second = fixture({ remote, storage });
+  await second.engine.initialize();
+  assert.equal(second.applied.length, 0, 'a backward response must never reach the adapter');
+  assert.deepEqual(storage.snapshot(), before);
+  assert.equal(storage.writes.length, writesBefore, 'reject the response before any durable write');
+  assert.equal(second.engine.read().ready, true, 'a stale read does not revoke proven protocol capability');
+  assert.deepEqual(proofFor(second.engine, captured.operationId), proof);
+  assert.equal(reserves(remote).length, 1, 'restart keeps the acknowledged original identity');
+
+  remote.advanceClock(21);
+  readClock = 21;
+  await second.engine.refresh();
+  assert.equal(second.applied.length, 1);
+  assert.deepEqual(second.applied[0].context.acknowledged, [proof]);
+  assert.deepEqual(second.engine.read().acknowledged, []);
+  assert.equal(second.engine.read().ready, true);
+  second.engine.destroy();
+});
+
+test('a backward GET preserves a pending queue without writes, while equal and newer clocks remain usable', { timeout: 10000 }, async () => {
+  const f = fixture();
+  await f.engine.initialize();
+  let offline = true, readClock = 7;
+  f.remote.intercept = async (action, payload, perform) => {
+    if (action === 'sync_reserve' && offline) throw new Error('Offline write');
+    const response = await perform(action, payload);
+    if (action === 'auto_sync') response.clock = readClock;
+    return response;
+  };
+  const captured = f.engine.capture(pantry, stock(500));
+  await drain(f.engine);
+  const before = f.storage.snapshot(), pending = f.engine.read().pending;
+  const writesBefore = f.storage.writes.length, appliesBefore = f.applied.length;
+  readClock = 6;
   await f.engine.refresh();
-  assert.deepEqual(proofFor(f.engine, captured.operationId), proof);
-  accept = true;
+  assert.deepEqual(f.storage.snapshot(), before);
+  assert.equal(f.storage.writes.length, writesBefore);
+  assert.equal(f.applied.length, appliesBefore);
+  assert.deepEqual(f.engine.read().pending, pending);
+  assert.equal(f.engine.read().ready, true);
+
+  readClock = 7;
   await f.engine.refresh();
-  assert.deepEqual(f.applied.at(-1).context.acknowledged, []);
-  assert.deepEqual(proofFor(f.engine, captured.operationId), proof);
-  f.remote.intercept = null;
+  assert.equal(f.applied.length, appliesBefore + 1, 'equal clock snapshots are valid');
+  assert.deepEqual(f.engine.read().pending, pending);
+  readClock = 8;
   await f.engine.refresh();
-  assert.deepEqual(f.applied.at(-1).context.acknowledged, [proof]);
-  assert.deepEqual(f.engine.read().acknowledged, []);
+  assert.equal(f.applied.length, appliesBefore + 2, 'a later fresh snapshot recovers normally');
+  assert.equal(f.engine.read().ready, true);
+  offline = false;
+  await drain(f.engine);
+  assert.equal(f.engine.read().pending.length, 0);
+  assert.deepEqual(new Set(reserves(f.remote).map(call => call.payload.operationId)), new Set([captured.operationId]));
   f.engine.destroy();
 });
 

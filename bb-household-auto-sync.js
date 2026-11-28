@@ -321,12 +321,15 @@
     async function applyLatest(pin) {
       const response = latest;
       if (!response || !valid(pin)) return false;
+      const before = load(pin);
+      if (!before || response.clock < before.doc.clock) return false;
       try {
         // The host also pins any asynchronous work inside its backup/apply.
         await adapter.backup?.();
         if (!valid(pin)) return false;
         const current = load(pin);
         if (!current || !valid(pin)) return false;
+        if (response.clock < current.doc.clock) return false;
         const acknowledged = current.doc.acknowledged.filter(proof => proof.order <= response.clock);
         const applied = await adapter.apply(clone(response), targets(current.doc), {acknowledged: clone(acknowledged)});
         if (!valid(pin)) return false;
@@ -364,6 +367,10 @@
       const record = load(pin);
       // Account deletion can remove the outbox while a GET is in flight.
       if (!record || before.raw !== null && record.raw === null) return false;
+      if (response.clock < record.doc.clock) {
+        failure('stale', 'An older household update was ignored. Sync will retry.');
+        return false;
+      }
       const doc = clone(record.doc);
       doc.protocol = 2;
       doc.clock = Math.max(doc.clock, response.clock);
