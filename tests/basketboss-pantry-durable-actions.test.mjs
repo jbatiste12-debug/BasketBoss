@@ -46,6 +46,12 @@ test('a failed Add retains its inputs and retry saves its staged food once witho
  h.storage.setItem=write;await form.submit();assert.deepEqual(clone(h.stock()),{'pasta|g':500});assert.match(form.notices.at(-1).message,/Food saved/);assert.equal(form.quantity.value,'');
 });
 
+test('a failed Add without the optional live controller checks its own pending draft and never claims saved',async()=>{
+ const h=await fixture({live:false}),form=addForm(h),write=h.storage.setItem;assert.equal(h.win.BBPantryLive,undefined);
+ h.storage.setItem=(key,value)=>{if(key===INVENTORY&&value!=='{}')throw Error('synthetic quota');write(key,value);};
+ await form.submit();assert.equal(h.win.BBPantryEditor.hasPending(),true);assert.deepEqual(clone(h.stock()),{});assert.equal(form.quantity.value,'500');assert.equal(form.notices.at(-1).error,true);assert.equal(form.notices.some(row=>/Food saved/.test(row.message)),false);
+});
+
 test('explicit flush commits a validated pending edit after its original card disconnects',async()=>{
  const h=await fixture();assert.equal(h.win.BBPantryEditor.add({name:'Pasta',loc:'cupboard',qty:500,unit:'g'}).ok,true);
  h.win.BBPantryEditor.card.remove();await h.win.BBPantryEditor.flush();assert.deepEqual(clone(h.stock()),{'pasta|g':500});assert.equal(h.win.BBPantryLive.hasPending(),false);
@@ -90,6 +96,35 @@ test('legacy removal reports success only after the existing stock transaction s
   const inventory={'cupboard|pasta':{name:'Pasta',loc:'cupboard',qty:500,unit:'g',selected:true,bb173StockKey:'pasta|g',bb173StockValue:500}},h=await fixture({stock:{'pasta|g':500},inventory});
   if(failure){const write=h.storage.setItem,before=h.storage.getItem(INVENTORY);h.storage.setItem=(key,value)=>{if(key===INVENTORY&&value!==before)throw Error('synthetic quota');write(key,value);};}
   await h.control('data-bb5-remove','cupboard|pasta').click();assert.deepEqual(clone(h.stock()),failure?{'pasta|g':500}:{});assert.equal(h.win.BBPantryLive.hasPending(),failure);assert.match(h.status(),failure?/not been saved/:/removed and saved/);
+ }
+});
+
+test('Enough for this week saves its exact coverage before success and keeps failed coverage pending',async()=>{
+ for(const failure of [false,true]){
+  const h=await fixture({requirements:[{key:'Milk',unit:'ml',required:233.333333}]});await h.choose('Milk','fridge');
+  if(failure){const write=h.storage.setItem;h.storage.setItem=(key,value)=>{if(key===INVENTORY&&value!=='{}')throw Error('synthetic quota');write(key,value);};}
+  await h.enough('fridge|milk');assert.deepEqual(clone(h.stock()),failure?{}:{'milk|ml':233.333333});assert.equal(h.win.BBPantryEditor.hasPending(),failure);assert.match(h.status(),failure?/not been saved/:/saved for this week/);
+ }
+});
+
+test('pagehide and hidden visibility perform the existing local save without waiting for receipt synchronization',async()=>{
+ for(const type of ['pagehide','visibilitychange']){
+  const handlers=new Map(),h=await fixture({configureWindow(win){win.addEventListener=(name,fn)=>handlers.set(name,fn);win.document.addEventListener=(name,fn)=>handlers.set(name,fn);}});
+  h.win.BBPantryEditor.add({name:'Pasta',loc:'cupboard',qty:500,unit:'g'});h.doc.hidden=true;h.doc.visibilityState='hidden';handlers.get(type)();
+  assert.deepEqual(clone(h.stock()),{'pasta|g':500});assert.equal(h.win.BBPantryEditor.hasPending(),false);assert.equal(h.syncs(),0,'background save stops after the guarded local transaction');
+  const reopened=await fixture({stock:h.stock(),inventory:h.inventory()});assert.deepEqual(clone(reopened.stock()),{'pasta|g':500});
+ }
+});
+
+test('background flush keeps deletion, actor and exact physical-byte guards',async()=>{
+ for(const changed of ['deletion','actor','physical']){
+  const handlers=new Map(),h=await fixture({configureWindow(win){win.addEventListener=(name,fn)=>handlers.set(name,fn);win.document.addEventListener=(name,fn)=>handlers.set(name,fn);}});
+  h.win.BBPantryEditor.add({name:'Pasta',loc:'cupboard',qty:500,unit:'g'});
+  if(changed==='deletion')h.win.BBAccountDeletion={isDeleting:()=>true};
+  if(changed==='actor')h.storage.setItem('basketboss_cloud_session_v1',JSON.stringify({user:{id:'different_actor'},access_token:'synthetic-token'}));
+  if(changed==='physical')h.storage.setItem(STOCK,JSON.stringify({'milk|ml':250}));
+  const before=clone([...h.values]);handlers.get('pagehide')();await new Promise(resolve=>setImmediate(resolve));
+  assert.deepEqual(clone([...h.values]),before);assert.equal(h.win.BBPantryEditor.hasPending(),true);assert.equal(h.syncs(),0);
  }
 });
 

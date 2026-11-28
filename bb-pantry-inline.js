@@ -153,7 +153,8 @@
    if(typeof api?.flush!=='function')throw Error('Pantry saving is still loading. Try again.');
    const live=win.BBPantryLive,saved=await api.flush();
    if(actor()!==who)throw Error('Your account changed. Reopen At home before saving.');
-   if(saved===false||saved?.ok===false||live?.hasPending?.())throw Error(api.status?.()||'Your changes have not been saved. Try again before leaving At home.');
+   const pending=typeof api.hasPending==='function'?api.hasPending():live?.hasPending?.();
+   if(saved===false||saved?.ok===false||pending)throw Error(api.status?.()||'Your changes have not been saved. Try again before leaving At home.');
   }
   function fitEditor(){viewportFrame=null;if(!editor)return;const viewport=win.visualViewport;editor.element.style.setProperty('--bbpi-viewport-height',(Number(viewport?.height)||win.innerHeight)+'px');editor.element.style.setProperty('--bbpi-viewport-top',Math.max(0,Number(viewport?.offsetTop)||0)+'px');}
   function scheduleFit(){if(editor&&viewportFrame===null)viewportFrame=win.requestAnimationFrame(fitEditor);}
@@ -535,9 +536,8 @@
     const result=remove?api.remove(key):api.update(key,ready.patch);
     if(!result?.ok)throw Error(result?.message||'Check your amounts before saving.');
     if(result.row)view.row=result.row;
-    const live=win.BBPantryLive;await api.flush();
+    await flushSaved(api,view.actor);
     if(editor!==view||view.actor!==actor())return;
-    if(live?.hasPending?.())throw Error(api.status?.()||'Your amounts could not be saved. Please try again.');
     view.stockSaved=true;
     if(!remove&&view.group&&(view.groupDirty||view.newItem)){
      const groups=win.BBPantryGroups,name=ready.row.name;
