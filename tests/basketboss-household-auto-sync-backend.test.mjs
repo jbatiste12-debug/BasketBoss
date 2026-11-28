@@ -47,7 +47,12 @@ test('Pantry writes need the server inventory gate and canonical identities; par
   const data = reserve({kind:'pantry',key:'egg|each'},{quantity:1.125,location:'fridge'});
   assert.equal((await call(data,projection())).status,403);
   const state = {entries:[],initialized:true,inventoryRevision:4,stock:{'egg|each':1.125},locations:{'egg|each':'fridge'}};
+  state.inventory = {ok:true,scope:{kind:'household',id:household},initialized:true,inventoryRevision:4,stock:{'egg|each':1.125},
+    inventory:[{stockKey:'egg|each',canonicalKey:'egg',unit:'each',quantity:1.125,location:'fridge',revision:4}],
+    essentials:[{name:'Shampoo',pricePaid:4}],priceObservations:[{packPrice:1.25}],receipts:[{receiptTotal:5.25}],pantryReview:{required:false}};
   assert.equal((await call(data,projection({state}),{inventoryAllowed:true})).status,200);
+  assert.deepEqual((await call(data,projection({state}),{inventoryAllowed:true})).body.state.inventory,state.inventory);
+  assert.equal((await call(data,projection({state:{...state,inventory:{...state.inventory,scope:{kind:'household',id}}}}),{inventoryAllowed:true})).status,503);
   for (const key of ['eggs|each','pasta|kg','soap|each','__proto__|g','pasta|g|each'])
     assert.throws(() => validateHouseholdSyncInput(reserve({kind:'pantry',key},{quantity:0,location:'cupboard'}),household));
   assert.equal(validateHouseholdSyncInput(reserve({kind:'pantry',key:'egg|each'},{quantity:0,location:'fridge'}),household).payload.value.quantity,0);

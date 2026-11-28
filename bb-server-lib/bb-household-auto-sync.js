@@ -17,6 +17,8 @@ const servings = value => Number.isInteger(value) && value >= 1 && value <= 12;
 const deleted = value => fields(value, ['deleted']) && value.deleted === true;
 const utf8Bytes = value => new TextEncoder().encode(JSON.stringify(value)).length;
 const failure = (error, status = 400) => ({body: {ok: false, error}, status});
+const sameStock = (left, right) => object(left) && object(right) && Object.keys(left).length === Object.keys(right).length &&
+  Object.entries(left).every(([key, value]) => Object.hasOwn(right, key) && right[key] === value);
 
 function dinnerValue(value) {
   return fields(value, ['recipeId','servings']) &&
@@ -92,7 +94,7 @@ function validProjection(result, householdId, inventoryAllowed, input) {
         input.action === 'apply' && op.status === 'reserved' ||
         input.action === 'apply' && op.status !== 'expired' && op.order !== input.payload.order) return false;
   } else if (Object.hasOwn(result, 'operation')) return false;
-  if (!inventoryAllowed) return !['stock','locations','inventoryRevision','initialized'].some(key => Object.hasOwn(result.state, key));
+  if (!inventoryAllowed) return !['stock','locations','inventoryRevision','initialized','inventory'].some(key => Object.hasOwn(result.state, key));
   const state = result.state;
   if (typeof state.initialized !== 'boolean' || !clock(state.inventoryRevision) || !object(state.stock) || !object(state.locations)) return false;
   try {
@@ -100,7 +102,21 @@ function validProjection(result, householdId, inventoryAllowed, input) {
     if (Object.keys(normalized).length !== Object.keys(state.stock).length ||
         Object.entries(state.stock).some(([key, value]) => !Object.hasOwn(normalized, key) || normalized[key] !== value)) return false;
   } catch {return false;}
-  return Object.entries(state.locations).every(([key, value]) => Object.hasOwn(state.stock, key) && LOCATIONS.has(value));
+  if (!Object.entries(state.locations).every(([key, value]) => Object.hasOwn(state.stock, key) && LOCATIONS.has(value))) return false;
+  const inventory = state.inventory;
+  if (!object(inventory) || inventory.ok !== true || inventory.scope?.kind !== 'household' || inventory.scope.id !== householdId ||
+      inventory.initialized !== state.initialized || inventory.inventoryRevision !== state.inventoryRevision || !sameStock(inventory.stock, state.stock) ||
+      !Array.isArray(inventory.inventory) || inventory.inventory.length !== Object.keys(state.stock).length ||
+      !Array.isArray(inventory.essentials) || inventory.essentials.length > 500 || !Array.isArray(inventory.priceObservations) || inventory.priceObservations.length > 2000 ||
+      !Array.isArray(inventory.receipts) || inventory.receipts.length > 500 || !object(inventory.pantryReview) || typeof inventory.pantryReview.required !== 'boolean') return false;
+  const items = new Set();
+  for (const item of inventory.inventory) {
+    if (!object(item) || items.has(item.stockKey) || !Object.hasOwn(state.stock, item.stockKey) ||
+        item.stockKey !== item.canonicalKey + '|' + item.unit || item.quantity !== state.stock[item.stockKey] ||
+        item.revision !== state.inventoryRevision || item.location !== (state.locations[item.stockKey] || 'cupboard')) return false;
+    items.add(item.stockKey);
+  }
+  return true;
 }
 
 export async function householdAutoSync({data, actor, household, inventoryAllowed = false, supa}) {

@@ -1,7 +1,8 @@
 -- Household deliberate-edit synchronization v2. Review/apply separately as DB owner.
 -- This file creates functions only: existing tables, columns, constraints, receipt
 -- history, accounting, pricing and authorization policy remain authoritative.
--- All RPCs are server-only, behind the existing session/Premium household API.
+-- Apply after the household, receipt-inventory, account-deletion and current
+-- receipt policy files. All RPCs remain behind the existing server guards.
 BEGIN;
 
 -- Reserve the metadata namespace at the older write boundary as well as the API.
@@ -274,7 +275,8 @@ BEGIN
  state_value:=jsonb_build_object('entries',entry_values);
  IF p_inventory_allowed THEN
   state_value:=state_value||jsonb_build_object('stock',coalesce(inventory.stock,'{}'::jsonb),'locations',coalesce(inventory.locations,'{}'::jsonb),
-   'inventoryRevision',coalesce(inventory.inventory_revision,0),'initialized',coalesce(inventory.initialized,false));
+   'inventoryRevision',coalesce(inventory.inventory_revision,0),'initialized',coalesce(inventory.initialized,false),
+   'inventory',public.bb_receipt_inventory_snapshot('household',p_household,NULL));
  END IF;
  result:=jsonb_build_object('ok',true,'protocol',2,'household_id',p_household,'clock',clock_value,'pruneFloor',prune_floor,'state',state_value);
  IF op IS NOT NULL THEN result:=result||jsonb_build_object('operation',op-'intent'); END IF;
