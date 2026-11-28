@@ -15,6 +15,7 @@
 
   const PREFIX = 'bb_partner_auto_v2_';
   const MAX_PENDING = 256;
+  const MAX_ACKNOWLEDGED = 256;
   const clone = value => JSON.parse(JSON.stringify(value));
   const object = value => value !== null && typeof value === 'object' && !Array.isArray(value);
   const integer = value => Number.isSafeInteger(value) && value >= 0;
@@ -91,7 +92,7 @@
       return {queued: false, reason};
     }
     function emptyDocument(pin) {
-      return {version: 2, actor: pin.actor, householdId: pin.householdId, protocol: capability, clock: 0, pruneFloor: 0, pending: []};
+      return {version: 2, actor: pin.actor, householdId: pin.householdId, protocol: capability, clock: 0, pruneFloor: 0, pending: [], acknowledged: []};
     }
     function parseDocument(raw, pin) {
       if (raw === null) return emptyDocument(pin);
@@ -105,6 +106,18 @@
             !(operation.order === null || integer(operation.order) && operation.order > 0)) throw new Error('Saved household edits are unreadable.');
         validatedChange(operation.target, operation.value);
         ids.add(operation.id);
+      }
+      if (doc.acknowledged === undefined) doc.acknowledged = [];
+      if (!Array.isArray(doc.acknowledged) || doc.acknowledged.length > MAX_ACKNOWLEDGED) throw new Error('Saved household acknowledgements are unreadable.');
+      const acknowledgedTargets = new Set();
+      for (const proof of doc.acknowledged) {
+        if (!object(proof) || typeof proof.id !== 'string' || !uuidPattern.test(proof.id) || ids.has(proof.id) || !integer(proof.order) || proof.order < 1)
+          throw new Error('Saved household acknowledgements are unreadable.');
+        validatedChange(proof.target, proof.value);
+        const target = proof.target.kind + '\u001f' + proof.target.key;
+        if (acknowledgedTargets.has(target)) throw new Error('Saved household acknowledgements are unreadable.');
+        acknowledgedTargets.add(target);
+        ids.add(proof.id);
       }
       return doc;
     }
@@ -151,13 +164,14 @@
     function read() {
       const pin = ensureContext(), record = pin && load(pin);
       return {
-        ok: !!record && capability === 2 && record.doc.pending.length === 0 && !unqueuedTargets.size && !latest && !lastError,
+        ok: !!record && capability === 2 && record.doc.pending.length === 0 && record.doc.acknowledged.length === 0 && !unqueuedTargets.size && !latest && !lastError,
         queued: !!record?.doc.pending.length,
         ready: !!record && capability === 2,
         busy: busy > 0,
         pending: record ? clone(record.doc.pending) : [],
+        acknowledged: record ? clone(record.doc.acknowledged) : [],
         pendingTargets: targets(record?.doc),
-        pendingApply: !!latest,
+        pendingApply: !!latest || !!record?.doc.acknowledged.length,
         lastError: lastError && {...lastError},
         identity: pin ? {actor: pin.actor, householdId: pin.householdId} : null
       };
@@ -199,7 +213,7 @@
       if (!Array.isArray(changes)) return failure('invalid', 'No household edits were supplied.');
       if (!changes.length) return {queued: true, updates: {}, expected: {}, operationIds: []};
       if (record.doc.pending.length + changes.length > MAX_PENDING) return failure('queue-full', 'Household sync has too many saved edits. Reconnect before making another shared edit.');
-      const doc = clone(record.doc), ids = new Set(doc.pending.map(operation => operation.id)), operationIds = [];
+      const doc = clone(record.doc), ids = new Set([...doc.pending, ...doc.acknowledged].map(operation => operation.id)), operationIds = [];
       try {
         for (const change of changes) {
           if (!object(change)) throw new Error('Invalid household edit.');
@@ -260,27 +274,72 @@
       if (response.operation.status !== 'expired' && operation.order !== null && response.operation.order !== operation.order) throw new Error('Household operation order changed.');
       return response.operation;
     }
-    function updateOperation(pin, id, updater) {
+    const sameIntent = (left, right) => left.id === right.id && left.baseClock === right.baseClock &&
+      JSON.stringify(left.target) === JSON.stringify(right.target) && JSON.stringify(left.value) === JSON.stringify(right.value);
+    function updateOperation(pin, id, updater, expected) {
       const record = load(pin);
       if (!record) return false;
       const index = record.doc.pending.findIndex(operation => operation.id === id);
       if (index < 0) return false;
+      if (expected && (!sameIntent(record.doc.pending[index], expected) || expected.order !== null && record.doc.pending[index].order !== expected.order)) {
+        failure('changed', 'This saved household edit changed before its acknowledgement arrived.');
+        return false;
+      }
       const doc = clone(record.doc), next = updater(doc.pending[index]);
       if (next === null) doc.pending.splice(index, 1); else doc.pending[index] = next;
+      return write(pin, record, doc);
+    }
+    function completeOperation(pin, operation, reply) {
+      const record = load(pin);
+      if (!record) return false;
+      const index = record.doc.pending.findIndex(saved => saved.id === operation.id), saved = record.doc.pending[index];
+      if (!saved) return false;
+      if (!sameIntent(saved, operation) || operation.order !== null && saved.order !== operation.order ||
+          reply.status !== 'expired' && saved.order !== null && saved.order !== reply.order) {
+        failure('changed', 'This saved household edit changed before its acknowledgement arrived.');
+        return false;
+      }
+      const doc = clone(record.doc);
+      if (reply.status === 'applied' || reply.status === 'superseded') {
+        const proof = {id: operation.id, order: reply.order, target: clone(operation.target), value: clone(operation.value)};
+        const existing = doc.acknowledged.findIndex(item => item.target.kind === proof.target.kind && item.target.key === proof.target.key);
+        if (existing < 0) {
+          if (doc.acknowledged.length >= MAX_ACKNOWLEDGED) {
+            failure('proof-full', 'Household changes are waiting to appear on this device. Finish the current screen before syncing more edits.');
+            return false;
+          }
+          doc.acknowledged.push(proof);
+        } else if (doc.acknowledged[existing].order <= proof.order) doc.acknowledged[existing] = proof;
+        doc.clock = Math.max(doc.clock, proof.order);
+      }
+      doc.pending.splice(index, 1);
+      // Removal and its original-value proof are one durable transaction. A
+      // quota failure leaves the pending UUID/order available for safe retry.
       return write(pin, record, doc);
     }
     const expiredError = error => error?.status === 410 || ['operation_expired', 'sync_operation_expired', 'sync_expired'].includes(error?.code || error?.data?.code);
     async function applyLatest(pin) {
       const response = latest;
       if (!response || !valid(pin)) return false;
+      const before = load(pin);
+      if (!before || response.clock < before.doc.clock) return false;
       try {
         // The host also pins any asynchronous work inside its backup/apply.
         await adapter.backup?.();
         if (!valid(pin)) return false;
         const current = load(pin);
         if (!current || !valid(pin)) return false;
-        const applied = await adapter.apply(clone(response), targets(current.doc));
+        if (response.clock < current.doc.clock) return false;
+        const acknowledged = current.doc.acknowledged.filter(proof => proof.order <= response.clock);
+        const applied = await adapter.apply(clone(response), targets(current.doc), {acknowledged: clone(acknowledged)});
         if (!valid(pin)) return false;
+        if (applied === true && acknowledged.length) {
+          const after = load(pin);
+          if (!after || !valid(pin)) return false;
+          const consumed = new Set(acknowledged.map(proof => proof.id));
+          const remaining = after.doc.acknowledged.filter(proof => !consumed.has(proof.id));
+          if (remaining.length !== after.doc.acknowledged.length && !write(pin, after, {...after.doc, acknowledged: remaining})) return false;
+        }
         if (applied === true && latest === response) latest = null;
         return applied === true;
       } catch (error) {
@@ -308,6 +367,10 @@
       const record = load(pin);
       // Account deletion can remove the outbox while a GET is in flight.
       if (!record || before.raw !== null && record.raw === null) return false;
+      if (response.clock < record.doc.clock) {
+        failure('stale', 'An older household update was ignored. Sync will retry.');
+        return false;
+      }
       const doc = clone(record.doc);
       doc.protocol = 2;
       doc.clock = Math.max(doc.clock, response.clock);
@@ -347,13 +410,16 @@
             if (!valid(pin)) return;
             const reply = operationReply(response, operation);
             if (reply.status !== 'reserved') {
-              if (!updateOperation(pin, operation.id, () => null)) break;
+              if (!completeOperation(pin, operation, reply)) break;
               acknowledged = true;
               continue;
             }
             // Never apply an order that has not been saved. A lost reserve
             // response is retried with this same immutable operation ID.
-            if (!updateOperation(pin, operation.id, saved => ({...saved, order: reply.order}))) break;
+            if (!updateOperation(pin, operation.id, saved => {
+              if (saved.order !== null && saved.order !== reply.order) throw new Error('Household operation order changed.');
+              return {...saved, order: reply.order};
+            }, operation)) break;
           }
           if (!valid(pin)) return;
           const saved = load(pin)?.doc.pending.find(item => item.id === operation.id);
@@ -362,13 +428,13 @@
           if (!valid(pin)) return;
           const reply = operationReply(response, saved);
           if (reply.status === 'reserved') throw new Error('Household operation was not applied.');
-          if (!updateOperation(pin, saved.id, () => null)) break;
+          if (!completeOperation(pin, saved, reply)) break;
           acknowledged = true;
           lastError = null;
         } catch (error) {
           if (!valid(pin)) return;
           if (expiredError(error)) {
-            if (!updateOperation(pin, operation.id, () => null)) break;
+            if (!completeOperation(pin, operation, {status: 'expired', order: null})) break;
             acknowledged = true;
             continue;
           }
@@ -376,7 +442,7 @@
           break;
         }
       }
-      if (acknowledged && valid(pin)) await fetchLatest(pin);
+      if (valid(pin) && (acknowledged || load(pin)?.doc.acknowledged.length)) await fetchLatest(pin);
     }
     function flush(fromCapture) {
       const pin = ensureContext();
@@ -419,5 +485,5 @@
     function destroy() { reset(); destroyed = true; }
     return {initialize, read, capture, captureMany, prepareCapture, prepareMany, flush, refresh, reset, destroy};
   }
-  return {createEngine, PREFIX, MAX_PENDING};
+  return {createEngine, PREFIX, MAX_PENDING, MAX_ACKNOWLEDGED};
 });

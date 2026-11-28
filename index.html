@@ -3862,9 +3862,9 @@ body[data-bbnext-view="discover"] #app .bb-featured-card #bbFeaturedBatch {
 <script src="bb-cook-assistant.js?v=20261105-cook1"></script>
 <script src="bb-cook-voice.js?v=20261104-mentor-stream1"></script>
 <script defer src="bb-weekly-essentials.js?v=20261105-shop-confirm1"></script>
-<script defer src="bb-receipt-inventory.js?v=20261128-auto-sync1"></script>
+<script defer src="bb-receipt-inventory.js?v=20261128-persistence2"></script>
 <script defer src="bb-receipt-scanner.js?v=20261105-preflight1"></script>
-<script defer src="bb-receipt-host.js?v=20261128-auto-sync1"></script>
+<script defer src="bb-receipt-host.js?v=20261128-persistence2"></script>
 <link rel="stylesheet" href="bb-receipt-scanner.css?v=20261031-receipt-pantry">
 <link rel="stylesheet" href="bb-receipt-host.css?v=20261101-receipt-tab1">
 <script>
@@ -4636,7 +4636,7 @@ function bb307StoreFeatures(){
  try{
   const raw=localStorage.getItem(BB307_FEATURE_KEY),saved=raw===null?{}:JSON.parse(raw);
   if(!saved||typeof saved!=='object'||Array.isArray(saved))throw Error('Saved household data needs review. Existing data has been kept.');
-  localStorage.setItem(BB307_FEATURE_KEY,JSON.stringify(bb307FeatureState));if(typeof bbOnboardingEssentialRequested==='function')bbOnboardingEssentialRequested(bb307FeatureState,saved);return true}
+  const next=JSON.stringify(bb307FeatureState);localStorage.setItem(BB307_FEATURE_KEY,next);if(localStorage.getItem(BB307_FEATURE_KEY)!==next)throw Error('Feature save verification failed');if(typeof bbOnboardingEssentialRequested==='function')bbOnboardingEssentialRequested(bb307FeatureState,saved);return true}
  catch(e){console.warn('BasketBoss feature changes not saved',e);notify('Could not save changes to this device.');return false}
 }
 function bb307FeaturesRefresh(){
@@ -4791,11 +4791,11 @@ function bb307FeaturesRender(app){
    const packQuantity=v('bb307EssPackQty')===''?null:Number(v('bb307EssPackQty')),packUnit=v('bb307EssPackUnit'),unit=v('bb307EssUnit'),price=v('bb307EssPrice');
    if((packQuantity!==null&&!packUnit)||(packUnit&&packQuantity===null))throw Error('Enter both the pack amount and pack unit, or leave both blank.');
    if(price!==''&&['g','ml'].includes(unit)&&!(packQuantity>0&&packUnit===unit))throw Error('Add the matching pack size and unit before entering a price for this measured item.');
-   bb307FeatureState=BB307Features.addEssential(bb307FeatureState,{name:v('bb307EssName'),qty:v('bb307EssQty'),unit,estimatedPackPrice:price,productName:v('bb307EssProduct'),brand:v('bb307EssBrand'),packQuantity,packUnit:packUnit||null,priceMarket:bb307Market,priceRetailer:bb307ActiveRetailer(),priceCurrency:bb307Market==='US'?'USD':'GBP',priceScope:bb307ActiveRetailer()?'store':'region'},RECIPES);
-   bb307StoreFeatures();bb307FeaturesRefresh();notify('Essential added ✓');
+   const before=bb307FeatureState;bb307FeatureState=BB307Features.addEssential(before,{name:v('bb307EssName'),qty:v('bb307EssQty'),unit,estimatedPackPrice:price,productName:v('bb307EssProduct'),brand:v('bb307EssBrand'),packQuantity,packUnit:packUnit||null,priceMarket:bb307Market,priceRetailer:bb307ActiveRetailer(),priceCurrency:bb307Market==='US'?'USD':'GBP',priceScope:bb307ActiveRetailer()?'store':'region'},RECIPES);
+   if(!bb307StoreFeatures()){bb307FeatureState=before;return;}bb307FeaturesRefresh();notify('Essential added ✓');
   }catch(err){notify(err.message)}};
   const update=(sel,fn)=>region.querySelectorAll(sel).forEach(el=>el.onclick=()=>{
-   const x=all.find(y=>y.id===el.dataset[Object.keys(el.dataset).find(k=>k.startsWith('bb307'))]);if(!x)return;fn(x);bb307StoreFeatures();bb307FeaturesRefresh();
+   const x=all.find(y=>y.id===el.dataset[Object.keys(el.dataset).find(k=>k.startsWith('bb307'))]);if(!x)return;const before={...x};fn(x);if(!bb307StoreFeatures()){Object.assign(x,before);return;}bb307FeaturesRefresh();
   });
   update('[data-bb307-owned]',x=>{x.owned=true;x.selected=false});
   update('[data-bb307-skip]',x=>{x.selected=false});
@@ -13345,7 +13345,7 @@ if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',
 </script>
 <script defer src="bb-pantry-stock-levels.js?v=20261116-levels1"></script>
 <script defer src="bb-pantry-pack-sync.js?v=20261116-levels1"></script>
-<script src="shopping-inventory.js?v=20261128-auto-sync1" defer></script><dialog id="bbIntroTrialDialog" aria-labelledby="bbIntroTrialTitle" aria-describedby="bbIntroTrialText">
+<script src="shopping-inventory.js?v=20261128-persistence2" defer></script><dialog id="bbIntroTrialDialog" aria-labelledby="bbIntroTrialTitle" aria-describedby="bbIntroTrialText">
  <div class="bbtrial-hero">
   <button type="button" class="bbtrial-x" data-bbtrial-close aria-label="Close Premium offer">×</button>
   <p class="bbtrial-topline">🚀 FOUNDING MEMBER BETA · FIRST 25 PLACES</p>
@@ -14201,8 +14201,8 @@ body[data-bbnext-view="discover"] #app .bb175-discover-heading{padding-top:calc(
 <link rel="stylesheet" href="bb-partner-signup-prompt.css?v=partner-main1">
 <script defer src="bb-partner-signup-prompt.js?v=partner-main1"></script>
 <link rel="stylesheet" href="bb-household-sharing.css?v=20261030-rc1">
-<script defer src="bb-household-auto-sync.js?v=20261128-auto-sync1"></script>
-<script defer src="bb-household-sharing.js?v=20261128-auto-sync1"></script>
+<script defer src="bb-household-auto-sync.js?v=20261128-persistence2"></script>
+<script defer src="bb-household-sharing.js?v=20261128-persistence2"></script>
 <link rel="stylesheet" href="bb-recipe-ingredient-layout.css?v=20261031-sidebar">
 <style id="bb-hide-dish-price-badges">
 /* Dish cards show time and servings; Shop and budget prices keep their own selectors. */
@@ -14219,7 +14219,7 @@ body[data-bbnext-view="discover"] #app .bb175-discover-heading{padding-top:calc(
 <script defer src="bb-kitchen-prices.js?v=20261105-shop-confirm1"></script>
 <link rel="stylesheet" href="bb-pantry-inline.css?v=20261116-levels1">
 <script defer src="bb-pantry-stock-levels-ui.js?v=20261116-levels1"></script>
-<script defer src="bb-pantry-inline.js?v=20261116-levels1"></script>
+<script defer src="bb-pantry-inline.js?v=20261128-persistence2"></script>
 <script defer src="bb-pantry-add-amount-presentation.js?v=20261116-amount1"></script>
 <link rel="stylesheet" href="bb-keyboard-layout.css?v=20261105-preflight2">
 <script defer src="bb-keyboard-layout.js?v=20261105-preflight1"></script>

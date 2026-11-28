@@ -563,7 +563,7 @@
       return purchaseSyncPromise;
     }
     function accountPantrySyncEnabled() {return options.accountPantrySync === true;}
-    async function receiveSharedAutoSnapshot(snapshot, {precondition} = {}) {
+    async function receiveSharedAutoSnapshot(snapshot, {precondition, acknowledged = [], protectedTargets = []} = {}) {
       const pin = tripPin();
       const ready = () => {
         if (!sameTripPin(pin) || isolationError || !accountPantrySyncEnabled() || reviewing || confirmingCurrent || choosingTrip || accountPantryAdopting || accountPantrySyncPromise || accountPantryRefreshPromise || hasPendingConfirmation() || inlineReviews.size || projectionHolds.size || root.BBPantryLive?.hasPending?.() === true) return false;
@@ -573,7 +573,7 @@
       };
       try {
         if (!ready() || typeof adapter()?.ingestSharedHousehold !== 'function') return {ok: false, deferred: true};
-        return await adapter().ingestSharedHousehold(snapshot, {precondition: ready});
+        return await adapter().ingestSharedHousehold(snapshot, {precondition: ready, acknowledged, protectedTargets});
       } catch {return {ok: false, deferred: true};}
     }
     function visibleAccountProjection() {
