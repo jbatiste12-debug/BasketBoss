@@ -7,10 +7,10 @@
   const KEYS = Object.freeze({ stock: 'basketboss_321_v7_measured_pantry', kitchen: 'basketboss_makeameal_v1_inventory', confirmed: 'basketboss_ui_next_confirmed_pantry_v1', finishShop: 'basketboss_purchase_receipts_v1', owner: 'basketboss_receipt_projection_owner_v1', session: 'basketboss_cloud_session_v1' });
   function createReceiptInventoryAdapter(initial = {}) {
     let options = { ...initial }, corePromise, memoryDrafts = new Map();
-    const inFlight = new Map();
+    const inFlight = new Map(), sharedProjectionAcknowledgements = new Map();
     let deletionPaused = false, generation = 0;
     const deleting = () => deletionPaused || root.BBAccountDeletion?.isDeleting?.() === true;
-    const pauseDeletion = () => { deletionPaused = true; generation++; memoryDrafts.clear(); };
+    const pauseDeletion = () => { deletionPaused = true; generation++; memoryDrafts.clear(); sharedProjectionAcknowledgements.clear(); };
     root.addEventListener?.('basketboss:account-deletion-started', pauseDeletion);
     root.addEventListener?.('basketboss:account-deletion-deleted', pauseDeletion);
     root.addEventListener?.('basketboss:account-deletion-cancelled', () => { deletionPaused = false; generation++; });
@@ -313,18 +313,28 @@
       // a local Cook allocation into a new Kitchen representation. Keep its
       // display units, zero rows and lot metadata. GET acknowledgements have
       // already passed the account, scope and monotonic revision guards above.
-      const preserveKitchen = identicalGetAcknowledgement || sharedAuto && equalStock(currentStock, nextStock) && equalStock(savedStock, nextStock) || body?.action === 'confirm_pantry' && owner.actorId === captured.actorId && owner.cacheKey === key && explicitScopeAdoption && equalStock(currentStock, nextStock) && equalStock(savedStock, nextStock);
-      let kitchen = clone(preserveKitchen ? currentKitchen : local.inventory);
       for (const [field, limit] of [['inventory', 2000], ['essentials', 500], ['priceObservations', 2000], ['receipts', 500]]) if (response[field] !== undefined && (!Array.isArray(response[field]) || response[field].length > limit)) throw Error('receipt_projection_payload_limit');
       const inventory = (response.inventory || []).map(x => safeServerRecord(x, ['stockKey', 'canonicalKey', 'quantity', 'unit', 'location', 'revision']));
       for (const item of inventory) {
         if (typeof item.stockKey !== 'string' || item.stockKey.length > 180 || item.stockKey !== `${item.canonicalKey}|${item.unit}` || !Number.isFinite(item.quantity) || item.quantity < 0 || item.quantity > 1000000 || item.quantity > 0 && rawServerStock[item.stockKey] !== item.quantity || !Number.isInteger(item.revision) || item.revision < 0 || !['cupboard', 'fridge', 'freezer'].includes(item.location)) throw Error('invalid_receipt_inventory_projection');
       }
+      const matchesStockKey = (row, stockKey) => row && typeof row === 'object' && row.selected !== false && (row.bb173StockKey === stockKey || row.name && c.canonicalIngredientKey(row.name, canonicalize) + '|' + c.normalizeStockQuantity(row.qty, row.unit)?.unit === stockKey);
+      const sharedLocationsMatch = !sharedAuto || inventory.every(item => {
+        if (!(item.quantity > 0)) return true;
+        const matches = Object.values(currentKitchen).filter(row => matchesStockKey(row, item.stockKey));
+        return matches.length > 0 && matches.every(row => row.loc === item.location);
+      });
+      const preserveKitchen = sharedAuto ? equalStock(currentStock, nextStock) && equalStock(savedStock, nextStock) && sharedLocationsMatch : identicalGetAcknowledgement || body?.action === 'confirm_pantry' && owner.actorId === captured.actorId && owner.cacheKey === key && explicitScopeAdoption && equalStock(currentStock, nextStock) && equalStock(savedStock, nextStock);
+      let kitchen = clone(preserveKitchen ? currentKitchen : local.inventory);
       for (const stockKey of preserveKitchen ? [] : new Set([...Object.keys(priorServerStock), ...Object.keys(nextServerStock)])) {
         const split = stockKey.lastIndexOf('|'), name = stockKey.slice(0, split), unit = stockKey.slice(split + 1);
         const matches = Object.entries(kitchen).filter(([, x]) => x?.selected && (x.bb173StockKey===stockKey||x.name && c.canonicalIngredientKey(x.name, canonicalize) === name && c.normalizeStockQuantity(x.qty, x.unit)?.unit === unit));
         const bucketed=root.BBReducedStock?.projectFrozenBuckets?.({inventory:kitchen,stockKey,currentQuantity:Number(currentStock[stockKey])||0,nextQuantity:nextStock[stockKey]||0,location:inventory.find(row=>row.stockKey===stockKey)?.location||'cupboard',actor:captured.actorId,canonicalize,market:activeContext().market});
-        if(bucketed){kitchen=bucketed;continue;}
+        if(bucketed){
+          const location = sharedAuto && inventory.find(row => row.stockKey === stockKey)?.location;
+          if (location) for (const row of Object.values(bucketed)) if (matchesStockKey(row, stockKey)) row.loc = location;
+          kitchen=bucketed;continue;
+        }
         const existing = matches[0];
         // A merged cloud balance cannot inherit whichever reviewed conversion
         // happened to be first when the local physical entries disagree.
@@ -336,7 +346,7 @@
         const conversionConflict = matches.length > 1 && new Set(matches.map(([, entry]) => conversionSignature(entry))).size > 1;
         const reviewConversion = previous => conversionConflict ? {...previous, packReviewed: false, measurementReviewed: false, conversionNeedsReview: true, conversionReviewSource: {quantity: previous.qty ?? null, unit: previous.unit ?? null, stockKey: previous.bb173StockKey ?? null, packQuantity: previous.packQuantity ?? null, packUnit: previous.packUnit ?? null, packReviewed: previous.packReviewed === true, measurementReviewed: previous.measurementReviewed === true, densityGPerMl: previous.densityGPerMl ?? null, gramsPerEach: previous.gramsPerEach ?? null}} : previous;
         for (const [oldId, previous] of matches.slice(1)) { kitchen[oldId] = {...reviewConversion(previous), selected: false, qty: null}; delete kitchen[oldId].bb173StockKey; delete kitchen[oldId].bb173StockValue; }
-        const item = inventory.find(x => x.stockKey === stockKey), location = existing?.[1]?.loc || item?.location || 'cupboard';
+        const item = inventory.find(x => x.stockKey === stockKey), location = sharedAuto ? item?.location || existing?.[1]?.loc || 'cupboard' : existing?.[1]?.loc || item?.location || 'cupboard';
         const id = existing?.[0] || kitchenRecordId(kitchen,`${location}|${name}`,stockKey), previous = reviewConversion(existing?.[1] || {});
         const quantity = nextStock[stockKey] || 0;
         const pepperLine=pepperLines.find(line=>line.canonicalKey===name&&line.unit===unit);
@@ -670,7 +680,10 @@
         const normalized = c.normalizeStockMap(response.stock, {canonicalize});
         if (!response.stock || typeof response.stock !== 'object' || Array.isArray(response.stock) || !equalStock(response.stock, normalized)) throw Error('receipt_server_stock_missing');
         if (!current()) throw Error('receipt_local_data_changed');
+        const fingerprint = JSON.stringify(stable({response, context})), acknowledged = sharedProjectionAcknowledgements.get(owner.cacheKey);
+        if (acknowledged?.fingerprint === fingerprint && keys.every(key => storage().getItem(key) === acknowledged.raw[key])) return {ok: true, localApplied: false, unchanged: true};
         const projected = await applyProjection(response, captured, null, {}, current, true);
+        sharedProjectionAcknowledgements.set(owner.cacheKey, {fingerprint, raw: Object.fromEntries(keys.map(key => [key, storage().getItem(key)]))});
         return {ok: true, localApplied: true, projection: projected};
       });
     }

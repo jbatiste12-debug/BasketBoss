@@ -433,7 +433,7 @@
       writeAtomic({[backupKey]: {version: 1, actorId: actor(), scope: clone(row.scope), queue: clone(row), quarantinedAt: clock()}, [purchaseSyncKey()]: null}, {[backupKey]: null, [purchaseSyncKey()]: raw, [KEYS.owner]: ownerRaw, [KEYS.actor]: markerRaw});
       return true;
     }
-    function preparePurchasedPantry({stock, beforeStock, shopSessionId, sharedUserEdit = false} = {}) {
+    function preparePurchasedPantry({stock, beforeStock, shopSessionId, sharedUserEdit = false, beforeInventory, inventory} = {}) {
       if (blocked() || isolationError) throw Error('purchase_pantry_sync_paused');
       const target = purchaseStock(stock), baseline = purchaseStock(beforeStock), id = actor();
       if (id === 'guest') return {updates: {}, expected: {}, queued: false, localOnly: true};
@@ -443,7 +443,7 @@
       if (shared) {
         // The caller commits this intent with its physical stock in the same
         // existing local transaction. Merely preparing an edit writes nothing.
-        const prepared = shared.preparePantryEdit({beforeStock: baseline, stock: target});
+        const prepared = shared.preparePantryEdit({beforeStock: baseline, stock: target, ...(beforeInventory !== undefined ? {beforeInventory} : {}), ...(inventory !== undefined ? {inventory} : {})});
         if (!isObject(prepared?.updates) || !isObject(prepared?.expected)) throw Error('shared_pantry_sync_unavailable');
         return {...prepared, expected: {...prepared.expected, [KEYS.owner]: ownerRaw, [KEYS.actor]: markerRaw}, queued: Object.keys(prepared.updates).length > 0, localOnly: false, needsReview: false, shared: true};
       }

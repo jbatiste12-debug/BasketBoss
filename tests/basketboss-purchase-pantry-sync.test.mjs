@@ -2,7 +2,9 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import {readFile} from 'node:fs/promises';
 import vm from 'node:vm';
+import {createRequire} from 'node:module';
 import * as core from '../bb-receipt-inventory-core.mjs';
+const reducedStock = createRequire(import.meta.url)('../bb-reduced-stock.js');
 
 const [hostSource, adapterSource] = await Promise.all(['../bb-receipt-host.js', '../bb-receipt-inventory.js'].map(path => readFile(new URL(path, import.meta.url), 'utf8')));
 const actor = 'purchase_user_01', otherActor = 'purchase_user_02';
@@ -64,6 +66,38 @@ test('a tagged manual shared pantry edit prepares only the per-item outbox witho
   assert.deepEqual(shared.edits, [{beforeStock: {'rice|g': 100}, stock: {'rice|g': 275}}]);
   assert.deepEqual(Object.keys(prepared.updates), [shared.key]);assert.equal(prepared.expected[f.inventory.keys.owner], before.get(f.inventory.keys.owner));
   assert.equal(Object.hasOwn(prepared.updates, f.outboxKey), false);assert.equal(f.remote.posts.length, 0);
+});
+
+test('tagged shared preparation forwards location maps even when its stock quantity is unchanged', async () => {
+  const f = await fixture({household: true, accountPantrySync: true}), shared = sharedEngine(f), stock = f.stock();
+  const beforeInventory = {'fridge|rice': {name: 'Rice', selected: true, loc: 'fridge', qty: 100, unit: 'g', bb173StockKey: 'rice|g'}};
+  const inventory = {'fridge|rice': {...beforeInventory['fridge|rice'], loc: 'freezer'}};
+  const before = new Map(f.store.values), prepared = f.host.preparePurchasedPantry({beforeStock: stock, stock, beforeInventory, inventory, sharedUserEdit: true});
+  assert.equal(prepared.shared, true);assert.deepEqual(shared.edits, [{beforeStock: stock, stock, beforeInventory, inventory}]);assert.deepEqual(f.store.values, before);
+});
+
+test('same-quantity shared location changes move Kitchen food between fridge and freezer while retaining its notes', async () => {
+  for (const [beforeLocation, location] of [['fridge', 'freezer'], ['freezer', 'fridge']]) {
+    const f = await fixture({household: true, accountPantrySync: true});f.root.BBReducedStock = reducedStock;
+    const kitchen = JSON.parse(f.store.getItem(f.inventory.keys.kitchen)), id = Object.keys(kitchen)[0];
+    kitchen[id].loc = beforeLocation;kitchen[id].notes = 'Keep this physical food note';f.store.setItem(f.inventory.keys.kitchen, JSON.stringify(kitchen));
+    f.remote.revision++;const snapshot = {...f.remote.snapshot(), inventory: [{stockKey: 'rice|g', canonicalKey: 'rice', quantity: 100, unit: 'g', location, revision: f.remote.revision}]};
+    assert.equal((await f.host.receiveSharedAutoSnapshot(snapshot, {precondition: () => true})).localApplied, true);
+    const rows = Object.values(JSON.parse(f.store.getItem(f.inventory.keys.kitchen))).filter(row => row.selected !== false && row.bb173StockKey === 'rice|g');
+    assert.equal(rows.length, 1);assert.equal(rows[0].loc, location);assert.equal(rows[0].qty, 100);assert.equal(rows[0].notes, 'Keep this physical food note');assert.deepEqual(f.stock(), {'rice|g': 100});
+    const beforeReplay = new Map(f.store.values);assert.equal((await f.host.receiveSharedAutoSnapshot(snapshot, {precondition: () => true})).unchanged, true);assert.deepEqual(f.store.values, beforeReplay);
+  }
+});
+
+test('an unchanged validated shared snapshot performs no writes or render work and never skips a pending intent', async () => {
+  const f = await fixture({household: true, accountPantrySync: true});f.remote.stock = {'rice|g': 250};f.remote.revision++;
+  const snapshot = f.remote.snapshot();assert.equal((await f.host.receiveSharedAutoSnapshot(snapshot, {precondition: () => true})).localApplied, true);
+  const before = new Map(f.store.values), write = f.store.setItem;let writes = 0;
+  f.store.setItem = (...args) => {writes++;write(...args);};
+  const result = await f.host.receiveSharedAutoSnapshot(snapshot, {precondition: () => true});assert.equal(result.unchanged, true);assert.equal(result.localApplied, false);assert.equal(writes, 0);assert.deepEqual(f.store.values, before);
+  assert.equal((await f.host.receiveSharedAutoSnapshot(snapshot, {precondition: () => false})).deferred, true);assert.equal(writes, 0);
+  const kitchen = JSON.parse(f.store.getItem(f.inventory.keys.kitchen)), id = Object.keys(kitchen)[0];kitchen[id].notes = 'Newer local note';write(f.inventory.keys.kitchen, JSON.stringify(kitchen));
+  assert.equal((await f.host.receiveSharedAutoSnapshot(snapshot, {precondition: () => true})).localApplied, true);assert.ok(writes > 0);assert.equal(JSON.parse(f.store.getItem(f.inventory.keys.kitchen))[id].notes, 'Newer local note');
 });
 
 test('an explicit edit can stage before the protocol read is ready without flushing or replacing legacy stock', async () => {
