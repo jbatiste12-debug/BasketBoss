@@ -118,7 +118,7 @@
   const doc=win.document;if(!doc?.addEventListener)return {refresh(){},destroy(){}};
   let current=null,editor=null,queued=false,destroyed=false,observer,originalIntro=null,originalStatus=null,originalHeading=null,originalNav=null,heroCount=null,globalActions=null,emptyState=null,receiptOpening=false;
   let toolbar=null,toolbarResize=null,query='',stockFilter='all',location='cupboard',openedLocation='all',presentationActor=null,pendingReveal=null,scrollLock=null,viewportFrame=null;
-  const sections=new Map(),summaryStamps=new WeakMap(),exactAmounts=new WeakMap();
+  const sections=new Map(),summaryStamps=new WeakMap(),exactAmounts=new WeakMap(),summarySaves=new Set();
   const el=(tag,className,text)=>{const node=doc.createElement(tag);if(className)node.className=className;if(text!==undefined)node.textContent=text;return node;};
   const text=(node,value)=>{if(node&&node.textContent!==value)node.textContent=value;};
   const market=()=>win.bb307ActiveMarket?.()||'UK';
@@ -149,6 +149,12 @@
   }
   function activeTile(){return current?.card?.querySelector('[data-bbpi-active="true"]');}
   const actor=()=>win.BBHome?.actor?.()||'guest';
+  async function flushSaved(api,who){
+   if(typeof api?.flush!=='function')throw Error('Pantry saving is still loading. Try again.');
+   const live=win.BBPantryLive,saved=await api.flush();
+   if(actor()!==who)throw Error('Your account changed. Reopen At home before saving.');
+   if(saved===false||saved?.ok===false||live?.hasPending?.())throw Error(api.status?.()||'Your changes have not been saved. Try again before leaving At home.');
+  }
   function fitEditor(){viewportFrame=null;if(!editor)return;const viewport=win.visualViewport;editor.element.style.setProperty('--bbpi-viewport-height',(Number(viewport?.height)||win.innerHeight)+'px');editor.element.style.setProperty('--bbpi-viewport-top',Math.max(0,Number(viewport?.offsetTop)||0)+'px');}
   function scheduleFit(){if(editor&&viewportFrame===null)viewportFrame=win.requestAnimationFrame(fitEditor);}
   function lockEditor(){if(scrollLock)return;const html=doc.documentElement;scrollLock={x:win.scrollX||0,y:win.scrollY||0,value:html.style.getPropertyValue('--bbpi-scroll-top'),had:html.classList.contains('bbpi-modal-open')};html.style.setProperty('--bbpi-scroll-top',editor?.returnTo?.open?win.getComputedStyle(doc.body).top:-scrollLock.y+'px');html.classList.add('bbpi-modal-open');}
@@ -679,22 +685,26 @@
    const firstFocus=originalFocus.closest('.bbpa-amount:not([open])')?element.querySelector('.bbpi-stock-choice[aria-pressed="true"]')||element.querySelector('.bbpi-stock-choice')||name||close:originalFocus;
    firstFocus.focus({preventScroll:true});refreshPreview(view);return true;
   }
-  function adjustSummary(key,direction){
+  async function adjustSummary(key,direction){
    if(!valid(current))return teardown();const api=current,row=api.read(key);if(!row)return;
+   if(summarySaves.has(key))return;
    const produce=looseProduce(row),unit=rowUnit(row),patch=stepPatch(row,unit,direction,win.BBPantryPolicy,market());if(!patch)return;
    const who=actor(),result=safe(()=>api.update(key,patch));
    if(!result?.ok){openEditor(key,unit,'summary');if(editor)notice(editor,result?.message||'Review this amount.',true);}
-   else if(produce?.display?.needsReview===false&&produce.context&&typeof api.flush==='function'){
-    // The existing editor owns the stock transaction. Only after it finishes
-    // may this separate UI proof follow the newly committed physical balance.
-    Promise.resolve().then(()=>api.flush()).then(()=>{
-     if(!valid(api)||current!==api||actor()!==who||win.BBPantryLive?.hasPending?.())return;
-     const next=api.read(key);if(!next)return;
-     let after;try{after=win.BBHomeHost?.stock?.()?.[produce.context.stockKey]??0;}catch{return;}
-     if(typeof after!=='number'||!Number.isFinite(after)||after<0)return;
-     produce.ui.writeStockProof(win.localStorage,produce.context,{beforeQuantity:produce.quantity,afterQuantity:after,selection:produce.ui.selection(row.name,1,win.BBPantryPolicy)},win.BBPantryPolicy);
-     schedule();
-    }).catch(()=>{schedule();});
+   else{
+    const view=sections.get(row.loc);summarySaves.add(key);if(view)notice(view,'Saving…');
+    try{await flushSaved(api,who);if(current!==api||actor()!==who)return;
+     if(view)notice(view,'Amount saved. Shopping is updated.');
+     if(produce?.display?.needsReview===false&&produce.context){
+      // The existing editor owns the stock transaction. Only after it finishes
+      // may this UI proof follow the newly committed physical balance.
+      const next=api.read(key);if(!next)return;
+      let after;try{after=win.BBHomeHost?.stock?.()?.[produce.context.stockKey]??0;}catch{return;}
+      if(typeof after!=='number'||!Number.isFinite(after)||after<0)return;
+      produce.ui.writeStockProof(win.localStorage,produce.context,{beforeQuantity:produce.quantity,afterQuantity:after,selection:produce.ui.selection(row.name,1,win.BBPantryPolicy)},win.BBPantryPolicy);
+     }
+    }catch(error){if(current===api&&actor()===who&&view)notice(view,error?.message||'The amount has not been saved. Try again.',true);}
+    finally{summarySaves.delete(key);schedule();}
    }
    schedule();
   }
@@ -707,8 +717,23 @@
    let view=sections.get(loc);if(view?.body===body&&view.form.isConnected)return;
    view?.form.remove();view?.summary.remove();area.open=loc===openedLocation;
    const form=el('form','bbpi-manual bbpi-ui');form.setAttribute('aria-label','Add food to '+loc);const title=el('h4','','Add your own food'),nameTag=el('label','bbpi-manual-name','Item name'),name=el('input');name.type='text';name.maxLength=70;name.required=true;name.placeholder=loc==='freezer'?'e.g. Frozen fish':loc==='fridge'?'e.g. Strawberries':'e.g. Brown rice';name.setAttribute('aria-label','Food name for '+loc);nameTag.append(name);const amountTag=el('label','bbpi-manual-qty','Quantity'),quantity=el('input');quantity.type='number';quantity.inputMode='decimal';quantity.required=true;quantity.min='0';quantity.max='1000000';quantity.step='any';quantity.placeholder='Amount';quantity.setAttribute('aria-label','Quantity to add to '+loc);amountTag.append(quantity);const unitTag=el('label','bbpi-manual-unit','Unit'),unit=el('select');unit.setAttribute('aria-label','Unit to add to '+loc);unitOptions(unit,current.units?.()||['each','g','kg','ml','l','pack','bag','tin'],'each');unitTag.append(unit);const add=el('button','bbpi-manual-add','Add');add.type='submit';const noticeNode=el('p','bbpi-notice');noticeNode.setAttribute('aria-live','polite');form.append(title,nameTag,amountTag,unitTag,add,noticeNode);
-   const summary=el('section','bbpi-summary bbpi-ui'),header=el('header'),heading=el('h4','','Food at home'),count=el('span','bbpi-count'),list=el('ul','bbpi-summary-list'),footer=el('footer','bbpi-summary-footer'),addFoodButton=btn('+ Add food',()=>addFood(loc),'bbpi-add-food'),closeAdd=btn('Done adding',()=>{delete body.dataset.bbpiAdding;closeEditor();},'bbpi-close-add');footer.append(addFoodButton,closeAdd);header.append(heading,count);header.hidden=!!body.closest('.bb76-store')?.querySelector(':scope>summary');summary.append(header,list,footer,noticeNode);view={loc,body,form,summary,count,list,notice:noticeNode,stamp:null};sections.set(loc,view);body.prepend(form);body.prepend(summary);
-   form.addEventListener('submit',event=>{event.preventDefault();event.stopPropagation();if(!valid(current))return teardown();const result=safe(()=>current.add({name:name.value,loc,qty:quantity.value,unit:unit.value}));if(!result?.ok){notice(view,result?.message||'Enter the item, quantity and unit.',true);return;}name.value='';quantity.value='';notice(view,'Food added. Shopping updates automatically.');schedule();name.focus({preventScroll:true});});
+   const summary=el('section','bbpi-summary bbpi-ui'),header=el('header'),heading=el('h4','','Food at home'),count=el('span','bbpi-count'),list=el('ul','bbpi-summary-list'),footer=el('footer','bbpi-summary-footer'),addFoodButton=btn('+ Add food',()=>addFood(loc),'bbpi-add-food'),closeAdd=btn('Done adding',async()=>{
+    if(view.busy||!valid(current))return;const api=current,who=actor();view.busy=true;closeAdd.disabled=true;notice(view,'Saving…');
+    try{await flushSaved(api,who);if(current!==api)return;view.pendingAdd=null;name.value='';quantity.value='';delete body.dataset.bbpiAdding;closeEditor();}
+    catch(error){if(current===api&&actor()===who)notice(view,error?.message||'Your food has not been saved. Try again.',true);}
+    finally{view.busy=false;closeAdd.disabled=false;}
+   },'bbpi-close-add');footer.append(addFoodButton,closeAdd);header.append(heading,count);header.hidden=!!body.closest('.bb76-store')?.querySelector(':scope>summary');summary.append(header,list,footer,noticeNode);view={loc,body,form,element:form,summary,count,list,notice:noticeNode,stamp:null};sections.set(loc,view);body.prepend(form);body.prepend(summary);
+   form.addEventListener('submit',async event=>{
+    event.preventDefault();event.stopPropagation();if(view.busy)return;if(!valid(current))return teardown();const api=current,who=actor(),signature=JSON.stringify([name.value,quantity.value,unit.value]);
+    if(view.pendingAdd&&(view.pendingAdd.api!==api||view.pendingAdd.actor!==who||view.pendingAdd.signature!==signature)){notice(view,'Retry saving the pending addition before changing this form.',true);return;}
+    const controls=[name,quantity,unit,add],disabled=controls.map(node=>node.disabled);view.busy=true;controls.forEach(node=>node.disabled=true);notice(view,'Saving…');
+    try{
+     if(!view.pendingAdd){const result=api.add({name:name.value,loc,qty:quantity.value,unit:unit.value});if(!result?.ok)throw Error(result?.message||'Enter the item, quantity and unit.');view.pendingAdd={api,actor:who,signature};}
+     await flushSaved(api,who);if(current!==api||actor()!==who)return;
+     view.pendingAdd=null;name.value='';quantity.value='';notice(view,'Food saved. Shopping is updated.');schedule();name.focus({preventScroll:true});
+    }catch(error){if(current===api&&actor()===who)notice(view,error?.message||'Your food has not been saved. Try again.',true);}
+    finally{view.busy=false;controls.forEach((node,index)=>node.disabled=disabled[index]);}
+   });
   }
   function summaries(rows){for(const view of sections.values()){
    const all=rows.filter(row=>row.loc===view.loc&&visibleFood(row)),visible=all.filter(inventoryMatches);

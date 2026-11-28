@@ -175,15 +175,16 @@ async function build(){
  let autoTimer=null,saving=null,movingReduced=false;
  const live=()=>window.BBPantryLiveSync===true;
  function scheduleAuto(){if(!live()||!draftDirty)return;clearTimeout(autoTimer);autoTimer=setTimeout(()=>{autoTimer=null;void runSave(true);},350);}
- function runSave(automatic=false){
+ function runSave(automatic=false,explicit=false){
   if(autoTimer!==null)clearTimeout(autoTimer);autoTimer=null;
-  if(automatic&&(!live()||!draftDirty||!card.isConnected||document.querySelector('.tab.active')?.dataset.tab!=='shop'))return Promise.resolve();
-  if(saving)return saving.then(()=>draftDirty&&card.isConnected?runSave(automatic):undefined);
+  if(automatic&&(!draftDirty||!explicit&&(!live()||!card.isConnected||document.querySelector('.tab.active')?.dataset.tab!=='shop')))return Promise.resolve();
+  if(saving)return saving.then(()=>draftDirty&&(!automatic||explicit||card.isConnected)?runSave(automatic,explicit):undefined);
   if(automatic&&[...staged.values()].some(row=>row.qty!==null&&row.qty!==undefined&&(String(row.qty).trim()===''||!Number.isFinite(Number(row.qty))||Number(row.qty)<0||Number(row.qty)>1000000||row.staple&&Number(row.qty)>10000))){note.textContent='Enter a valid amount to update Shopping. Existing stock has been kept.';return Promise.resolve();}
   const savedDraft=JSON.stringify([...staged]);
   saving=reconcilePantry(automatic).finally(()=>{saving=null;if(draftDirty&&card.isConnected&&JSON.stringify([...staged])!==savedDraft)scheduleAuto();});return saving;
  }
- if(live()){window.BBPantryLive={flush:()=>runSave(true),hasPending:()=>draftDirty,householdChanged:()=>{draftDirty=true;scheduleAuto();}};reconcile.textContent='Update Shopping now';card.querySelectorAll('li')[3].textContent='Valid amounts save automatically and update Shopping. Done saves pending picker changes.';note.textContent='Valid changes update Shopping automatically.';review.querySelector('.bb174-fridge-review-head p').textContent='Set actual quantities or staple status. Valid edits save automatically; Done saves any pending picker changes.';review.querySelector('.bb174-fridge-explain').textContent='Known quantities reduce what is left to buy. Unknown amounts and containers stay visible for review.';}
+ const flushDraft=()=>draftDirty?runSave(true,true):Promise.resolve();
+ if(live()){window.BBPantryLive={flush:flushDraft,hasPending:()=>draftDirty,householdChanged:()=>{draftDirty=true;scheduleAuto();}};reconcile.textContent='Update Shopping now';card.querySelectorAll('li')[3].textContent='Valid amounts save automatically and update Shopping. Done saves pending picker changes.';note.textContent='Valid changes update Shopping automatically.';review.querySelector('.bb174-fridge-review-head p').textContent='Set actual quantities or staple status. Valid edits save automatically; Done saves any pending picker changes.';review.querySelector('.bb174-fridge-explain').textContent='Known quantities reduce what is left to buy. Unknown amounts and containers stay visible for review.';}
  function sid(loc,name){return loc+'|'+(policy()?.canonicalName(name,window.BBPantryAliasCanonical||window.BBPriceV19?.canonical)||canon(name))}
  const draftKeys=(loc,name)=>[...staged].filter(([,row])=>sid(row.loc,row.name)===sid(loc,name)).map(([key])=>key);
  function stageValue(rec,inventoryId){
@@ -296,8 +297,9 @@ async function build(){
   else{const old=openingState.inventory[k],staple=policy()?.isStaple(name);staged.set(k,stageValue({name,loc,qty:old?.selected?old.qty??null:staple?1:null,unit:old?.selected?(old.unit||bb5SuggestedUnit(name)):bb5SuggestedUnit(name),...(staple?{staple:true,stapleStatus:'in'}:{})},k))}
   draftDirty=true;render();note.textContent=live()?'Selection updated. Enter an amount in PANTRY to update Shopping.':'Selection updated. Review amounts in PANTRY before confirming.';
  });
- card.querySelector('#bb76StorageSections').addEventListener('submit',e=>{
+ card.querySelector('#bb76StorageSections').addEventListener('submit',async e=>{
   const f=e.target.closest('[data-bb76-add]');if(!f)return;e.preventDefault();
+  if(f.dataset.bb5Saving)return;
   const loc=f.dataset.bb76Add,name=f.elements.name.value.trim(),k=sid(loc,name);
   if(!BB5_LOCATIONS.includes(loc)||!name||!canon(name))return;
   if(window.BBKitchenChoiceRules?.isHousehold(name)){note.textContent='Add household items in Weekly essentials instead.';return;}
@@ -305,7 +307,10 @@ async function build(){
   let groupNote='';
   const group=window.BBPantryGroupsUI?.active(loc);
   if(group&&group!=='all'&&draftActor()===openedActor)try{const api=window.BBPantryGroups;api.assign(loc,api.itemKey(name),group,api.context());}catch{groupNote=' Choose its subcategory again in the item menu.';}
-  f.reset();draftDirty=true;render();note.textContent='Food added to '+loc+'. Enter its amount in PANTRY below.'+groupNote;
+  draftDirty=true;render();note.textContent='Saving…';f.dataset.bb5Saving='1';
+  try{await flushDraft();if(draftActor()!==openedActor)return;if(draftDirty){note.textContent='This food has not been saved. '+(note.textContent||'Try again before leaving At home.');return;}f.reset();note.textContent='Food saved to '+loc+'. Enter its amount in PANTRY below.'+groupNote;}
+  catch{note.textContent='This food has not been saved. Review storage and try again before leaving At home.';}
+  finally{delete f.dataset.bb5Saving;}
  });
  rows.addEventListener('input',e=>{
   const pack=e.target.dataset.bb5PackQuantity;if(pack&&staged.has(pack)){const row=staged.get(pack);row.packQuantity=e.target.value===''?null:Number(e.target.value);row.packReviewed=Number(row.packQuantity)>0&&BB5_CONTENT_UNITS.includes(row.packUnit);draftDirty=true;drawAmount(pack,e.target);drawOverview();return;}
@@ -327,10 +332,12 @@ async function build(){
   }
   row.unit=nextUnit;row.inputMarket=policyMarket();if(['tin','can','bag','pack','bottle','jar','pint'].includes(row.unit))row.containerUnit=row.unit;draftDirty=true;render();
  });
- rows.addEventListener('click',e=>{
+ rows.addEventListener('click',async e=>{
   const enough=e.target.closest('[data-bb5-enough]');
   if(enough){const row=staged.get(enough.dataset.bb5Enough),coverage=row&&bb5WeekCoverage(row);if(!coverage)return;const changedUnit=row.unit!==coverage.unit;row.qty=coverage.qty;row.unit=coverage.unit;if(changedUnit){delete row.totalNeeded;delete row.targetChanged;}draftDirty=true;render();note.textContent=row.name+': '+coverage.qty+' '+coverage.unit+(live()?' recorded for this week. Shopping updates automatically.':' recorded for this week. Confirm to update Shopping, or edit the amount.');return;}
-  const btn=e.target.closest('[data-bb5-remove]');if(!btn)return;staged.delete(btn.dataset.bb5Remove);draftDirty=true;render();note.textContent=live()?'Item removed. Shopping is updating.':'Item removed from draft; Reconcile to save.';
+  const btn=e.target.closest('[data-bb5-remove]');if(!btn)return;staged.delete(btn.dataset.bb5Remove);draftDirty=true;render();note.textContent='Saving…';
+  try{await flushDraft();if(draftActor()!==openedActor)return;note.textContent=draftDirty?'The removal has not been saved. Review storage and try again.':'Item removed and saved. Shopping is updated.';}
+  catch{note.textContent='The removal has not been saved. Review storage and try again.';}
  });
  async function reconcilePantry(automatic=false){
   if(window.BBAccountDeletion?.isDeleting?.()){note.textContent='Finish the account review before changing pantry quantities.';return;}
@@ -712,7 +719,7 @@ async function build(){
  window.BBPantryEditor=Object.freeze({card,list:()=>[...staged.keys()].map(editorRow),read:editorRow,preview:editorPreview,isCurrent:()=>!editorGuard(),select:editorSelect,update:editorUpdate,add:editorAdd,
   moveToFreezer:editorMoveToFreezer,
   remove:key=>{const blocked=editorGuard();if(blocked)return editorFail(blocked);if(!staged.has(key))return {ok:false};staged.delete(key);for(const [id,target]of stagedTargets)if(target.sourceKey===key)stagedTargets.delete(id);draftDirty=true;render();editorEvent('remove',key);return {ok:true};},
-  flush:()=>runSave(true),status:()=>note.textContent,units:entryUnits});
+  flush:flushDraft,status:()=>note.textContent,units:entryUnits});
  // One Kitchen picker and one Pantry list. Keep legacy controllers in the DOM
  // for their saved data, but do not expose duplicate editing forms or banners.
  app.prepend(card);render();
@@ -845,7 +852,7 @@ document.addEventListener?.('click',event=>{
  if(button.dataset.bbPantryNavigate==='ready'){delete button.dataset.bbPantryNavigate;return;}
  const active=window.BBPantryLive;if(!active?.hasPending?.())return;
  event.preventDefault();event.stopImmediatePropagation();
- Promise.resolve(active.flush()).then(()=>window.BBPantryLive!==active&&window.BBPantryLive?.hasPending?.()?window.BBPantryLive.flush():undefined).finally(()=>{if(button.isConnected){button.dataset.bbPantryNavigate='ready';button.click();}});
+ Promise.resolve(active.flush()).then(()=>window.BBPantryLive!==active&&window.BBPantryLive?.hasPending?.()?window.BBPantryLive.flush():undefined).then(()=>{if(active.hasPending?.()||window.BBPantryLive?.hasPending?.())return;if(button.isConnected){button.dataset.bbPantryNavigate='ready';button.click();}}).catch(()=>{});
 },true);
 const start=()=>{const app=document.getElementById('app');if(!app)return;build();new MutationObserver(()=>build()).observe(app,{childList:true,subtree:false})};
 if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',start,{once:true});else start();
