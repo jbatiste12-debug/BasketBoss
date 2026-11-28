@@ -26,6 +26,7 @@ const syncFile = 'sql/basketboss_household_auto_sync_v2_20261128.sql';
 const migrations = [
   'sql/basketboss_household_production_20261029.sql',
   'sql/basketboss_receipt_inventory_20261031.sql',
+  'sql/basketboss_account_deletion_20261031.sql',
   'supabase/migrations/20261104174441_receipt_auto_stock_policy.sql',
   'supabase/migrations/20261104174450_pantry_fractional_stock_balances.sql',
   'supabase/migrations/20261105084102_receipt_household_price_projection.sql'
@@ -104,13 +105,20 @@ async function setup() {
   await sql(`CREATE ROLE anon; CREATE ROLE authenticated; CREATE ROLE service_role BYPASSRLS;
     CREATE SCHEMA auth;
     CREATE TABLE auth.users(id uuid PRIMARY KEY,email text,email_confirmed_at timestamptz);
-    CREATE TABLE auth.sessions(id uuid PRIMARY KEY,user_id uuid REFERENCES auth.users(id),created_at timestamptz NOT NULL DEFAULT now(),not_after timestamptz);
+    CREATE TABLE auth.sessions(id uuid PRIMARY KEY,user_id uuid REFERENCES auth.users(id) ON DELETE CASCADE,created_at timestamptz NOT NULL DEFAULT now(),not_after timestamptz);
+    CREATE TABLE auth.refresh_tokens(id integer PRIMARY KEY,user_id text);
+    CREATE TABLE auth.flow_state(id integer PRIMARY KEY,user_id uuid,linking_target_id uuid);
     CREATE FUNCTION auth.uid() RETURNS uuid LANGUAGE sql STABLE AS $$ SELECT NULL::uuid $$;
     INSERT INTO auth.users VALUES
       ('${actor}','owner@example.invalid','2026-10-01'),
       ('${partner}','partner@example.invalid','2026-10-01'),
       ('${outsider}','other@example.invalid','2026-10-01'),
-      ('${unconfirmed}','unconfirmed@example.invalid',NULL);`);
+      ('${unconfirmed}','unconfirmed@example.invalid',NULL);
+    INSERT INTO auth.sessions(id,user_id) VALUES
+      ('66666666-6666-4666-8666-666666666666','${actor}'),
+      ('77777777-7777-4777-8777-777777777777','${partner}');
+    INSERT INTO auth.refresh_tokens VALUES(1,'${actor}'),(2,'${partner}');
+    INSERT INTO auth.flow_state VALUES(1,'${actor}',NULL),(2,'${partner}','${actor}'),(3,'${partner}',NULL);`);
   for (const file of migrations) await sql(fs.readFileSync(new URL(file, root), 'utf8'));
   await sql(`INSERT INTO public.bb_households(id,owner_user_id,partner_user_id,partner_email,invite_status)
     VALUES('${household}','${actor}','${partner}','partner@example.invalid','accepted');`);
@@ -128,6 +136,8 @@ try {
     SELECT table_name,column_name,data_type,ordinal_position FROM information_schema.columns
     WHERE table_schema='public' AND table_name LIKE 'bb_%') x;`);
   await check('function file is repeatable and adds no tables or columns', () => assert.deepEqual(schemaAfter, schemaBefore));
+  const deletionReady = await result('SELECT public.bb_account_deletion_ready();');
+  await check('real account-deletion migration and guarded household patch remain ready', () => assert.equal(deletionReady.ready, true));
 
   const initial = await read();
   await check('read does not initialize household inventory', async () => {
@@ -139,7 +149,7 @@ try {
   const mealsOnlyRead = await read({inventory: false});
   await check('an unarmed inventory gate returns shared dinners without exposing stock', () => {
     assert.equal(mealsOnlyRead.ok, true);
-    for (const key of ['stock', 'locations', 'inventoryRevision', 'initialized']) assert.equal(Object.hasOwn(mealsOnlyRead.state, key), false);
+    for (const key of ['stock', 'locations', 'inventoryRevision', 'initialized', 'inventory']) assert.equal(Object.hasOwn(mealsOnlyRead.state, key), false);
   });
 
   const first = await reserve(dinner('Monday'), {recipeId: 'chilli', servings: 4});
@@ -264,6 +274,17 @@ try {
     assert.deepEqual(stockAfterIndependent.state.stock, {'pasta|g': 125.5, 'egg|each': 2.25});
     assert.deepEqual(stockAfterIndependent.state.locations, {'pasta|g': 'cupboard', 'egg|each': 'fridge'});
   });
+  await check('inventory projection is the complete existing household receipt snapshot', async () => {
+    assert.deepEqual(stockAfterIndependent.state.inventory, await inventorySnapshot());
+    assert.deepEqual(stockAfterIndependent.state.inventory.scope, {kind: 'household', id: household});
+  });
+  const oldAppliedRetry = await apply(first);
+  await check('an old applied-operation retry acknowledges its original order and returns latest household state', () => {
+    assert.equal(oldAppliedRetry.operation.status, 'applied');
+    assert.equal(oldAppliedRetry.operation.order, first.answer.operation.order);
+    assert.equal(oldAppliedRetry.clock, stockAfterIndependent.clock);
+    assert.deepEqual(oldAppliedRetry.state, stockAfterIndependent.state);
+  });
 
   const pantryOld = await reserve(pantry('pasta|g'), {quantity: 999, location: 'cupboard'});
   const pantryDelete = await reserve(pantry('pasta|g'), {quantity: 0, location: 'cupboard'}, {user: partner});
@@ -385,12 +406,31 @@ try {
   await check('reapplying functions preserves household state and operation history', () => {
     assert.deepEqual(afterReapply, current);
   });
-  await sql(`DELETE FROM auth.users WHERE id='${actor}';`);
-  await check('existing owner deletion cascades remove household, sync metadata and inventory', async () => {
+  const drainingSync = sql(`SET application_name='bb-test-delete-barrier'; BEGIN;
+    SET LOCAL lock_timeout='3s'; SET LOCAL statement_timeout='5s';
+    ${rpcSql('get')} SELECT pg_sleep(0.4); COMMIT;`);
+  await waitForSleep('bb-test-delete-barrier');
+  const deletedOwner = await result(`SET lock_timeout='3s'; SET statement_timeout='5s';
+    SELECT public.bb_account_delete_data('${actor}','owner@example.invalid');`);
+  await drainingSync;
+  await check('real account deletion drains in-flight sync and removes household metadata and inventory', async () => {
+    assert.equal(deletedOwner.deleted, true);
     assert.equal(await sql(`SELECT count(*) FROM public.bb_households WHERE id='${household}';`), '0');
     assert.equal(await sql(`SELECT count(*) FROM public.bb_household_entries WHERE household_id='${household}';`), '0');
     assert.equal(await sql(`SELECT count(*) FROM public.bb_receipt_inventory_scopes WHERE scope_kind='household' AND scope_id='${household}';`), '0');
     assert.equal(await sql(`SELECT count(*) FROM public.bb_receipt_inventory_receipts WHERE scope_kind='household' AND scope_id='${household}';`), '0');
+    assert.equal(await sql(`SELECT count(*) FROM auth.sessions WHERE user_id='${actor}';`), '0');
+    assert.equal(await sql(`SELECT count(*) FROM auth.refresh_tokens WHERE user_id='${actor}';`), '0');
+    assert.equal(await sql(`SELECT count(*) FROM auth.flow_state WHERE user_id='${actor}' OR linking_target_id='${actor}';`), '0');
+    assert.equal(await sql(`SELECT count(*) FROM auth.refresh_tokens WHERE user_id='${partner}';`), '1');
+    assert.equal(await sql(`SELECT count(*) FROM auth.flow_state WHERE user_id='${partner}';`), '1');
+  });
+  const deletedRetry = await result(`SELECT public.bb_account_delete_data('${actor}','owner@example.invalid');`);
+  const delayedAfterDeletion = await apply(pasta);
+  await check('deletion retries stay idempotent and delayed operations cannot restore deleted data', () => {
+    assert.equal(deletedRetry.deleted, true);
+    assert.equal(delayedAfterDeletion.ok, false);
+    assert.equal(delayedAfterDeletion.forbidden, true);
   });
   console.log(JSON.stringify({status: 'passed', checks, engine: 'isolated PostgreSQL', version: execFileSync(binary('postgres'), ['--version'], {encoding: 'utf8'}).trim(), productionWrites: false}));
 } catch (error) {
