@@ -260,11 +260,13 @@ BEGIN
    END IF;
    INSERT INTO public.bb_household_entries(household_id,section,entry_key,value)
     VALUES(p_household,'kitchen_item',target_row_key,target_state)
-    ON CONFLICT(household_id,section,entry_key) DO UPDATE SET value=excluded.value,revision=bb_household_entries.revision+1,updated_at=now();
+    ON CONFLICT(household_id,section,entry_key) DO UPDATE SET value=excluded.value,revision=bb_household_entries.revision+1,updated_at=now()
+     WHERE bb_household_entries.value IS DISTINCT FROM excluded.value;
   END IF;
   IF clock_value>9007199254740991 THEN RAISE EXCEPTION 'household_sync_limit'; END IF;
   UPDATE public.bb_household_entries SET value=jsonb_build_object('version',2,'clock',clock_value,'pruneFloor',prune_floor),revision=revision+1,updated_at=now()
-   WHERE household_id=p_household AND section='kitchen_item' AND entry_key='__bb_sync_v2:clock';
+   WHERE household_id=p_household AND section='kitchen_item' AND entry_key='__bb_sync_v2:clock' AND
+    value IS DISTINCT FROM jsonb_build_object('version',2,'clock',clock_value,'pruneFloor',prune_floor);
  END IF;
 
  -- Complete weekly projection plus the existing shared settings. Hidden
