@@ -26,7 +26,9 @@ test('server actor, household and inventory gate are forwarded independently of 
 
 test('household mismatch, malformed UUID and extra payload fields never reach the database', async () => {
   let invoked = 0;
-  for (const data of [{...reserve(),expectedHouseholdId:id},{...reserve(),operationId:'old-request'},
+  const changed = await call({...reserve(),expectedHouseholdId:id},null,{supa:async () => {invoked++;}});
+  assert.deepEqual(changed,{status:409,body:{ok:false,error:'household_sync_scope_changed'}});
+  for (const data of [{...reserve(),expectedHouseholdId:'not-a-household'},{...reserve(),operationId:'old-request'},
       {...reserve(),order:999},{...reserve(),baseClock:Number.MAX_SAFE_INTEGER+1}]) {
     const result = await call(data,null,{supa:async () => {invoked++;}});
     assert.equal(result.status,400);

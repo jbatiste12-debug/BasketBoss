@@ -124,6 +124,8 @@ export async function householdAutoSync({data, actor, household, inventoryAllowe
   const householdId = typeof household === 'string' ? household : household?.id;
   if (!UUID.test(actorId || '') || !UUID.test(householdId || '') || typeof inventoryAllowed !== 'boolean' || typeof supa !== 'function')
     return failure('household_sync_forbidden', 403);
+  if (object(data) && ['sync_reserve','sync_apply'].includes(data.action) && UUID.test(data.expectedHouseholdId || '') && data.expectedHouseholdId !== householdId)
+    return failure('household_sync_scope_changed', 409);
   let input;
   try {input = validateHouseholdSyncInput(data, householdId);} catch {return failure('household_sync_invalid');}
   if (input.payload.target?.kind === 'pantry' && !inventoryAllowed) return failure('household_sync_inventory_forbidden', 403);
