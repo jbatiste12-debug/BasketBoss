@@ -66,6 +66,8 @@ const dinner = day => ({kind: 'dinner', key: day});
 const pantry = key => ({kind: 'pantry', key});
 const entry = (state, section, key) => state.entries.find(row => row.section === section && row.entry_key === key);
 const identity = reserved => ({id: reserved.body.operationId, order: reserved.answer.operation.order});
+const entrySnapshot = () => sql(`SELECT jsonb_agg(to_jsonb(e) ORDER BY section,entry_key)
+  FROM public.bb_household_entries e WHERE household_id='${household}';`);
 const inventorySnapshot = () => result(`SELECT public.bb_receipt_inventory_snapshot('household','${household}',NULL);`);
 function receiptSql(body) {
   const {inventoryBaseline, expectedScope, requestId, priceObservations, ...semantic} = body;
@@ -157,6 +159,14 @@ try {
     assert.equal(first.answer.operation.status, 'reserved');
     assert.equal(entry((await read()).state, 'planned_day', 'Monday'), undefined);
   });
+  const beforeReservedRetry = await entrySnapshot();
+  const reservedRetry = await rpc('reserve', first.body);
+  const afterReservedRetry = await entrySnapshot();
+  await check('retrying a pending reservation performs no hidden metadata writes', () => {
+    assert.equal(reservedRetry.operation.status, 'reserved');
+    assert.equal(reservedRetry.operation.order, first.answer.operation.order);
+    assert.equal(afterReservedRetry, beforeReservedRetry);
+  });
   const firstApplied = await apply(first);
   await check('dinner and servings apply together with the reserved order', () => {
     assert.equal(firstApplied.ok, true);
@@ -166,14 +176,17 @@ try {
     assert.deepEqual(entry(firstApplied.state, 'servings', 'Monday').value, {count: 4});
   });
 
+  const beforeTerminalRetries = await entrySnapshot();
   const duplicateReserve = await rpc('reserve', first.body);
   const duplicateApply = await apply(first);
+  const afterTerminalRetries = await entrySnapshot();
   await check('lost responses retry the same operation without new writes or order', async () => {
     assert.equal(duplicateReserve.operation.order, first.answer.operation.order);
     assert.equal(duplicateReserve.operation.status, 'applied');
     assert.equal(duplicateApply.operation.status, 'applied');
     assert.equal(duplicateApply.clock, firstApplied.clock);
     assert.equal(entry(duplicateApply.state, 'planned_day', 'Monday').revision, entry(firstApplied.state, 'planned_day', 'Monday').revision);
+    assert.equal(afterTerminalRetries, beforeTerminalRetries);
   });
   const changedValue = await rpc('reserve', {...first.body, value: {recipeId: 'different', servings: 4}});
   const changedActor = await rpc('reserve', first.body, {user: partner});
