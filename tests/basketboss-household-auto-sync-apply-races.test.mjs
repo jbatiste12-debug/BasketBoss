@@ -30,7 +30,7 @@ const clone = value => JSON.parse(JSON.stringify(value));
 const deferred = () => {let resolve; const promise = new Promise(done => {resolve = done;}); return {promise, resolve};};
 const row = (section, entry_key, value, revision = 1) => ({section, entry_key, value, revision});
 
-async function fixture() {
+async function fixture({afterApplyDinner=null}={}) {
   const initial = {version:2, planned:[{day:'Monday',recipeId:'old-monday'},{day:'Tuesday',recipeId:'old-tuesday'}],
     plannedBreakfasts:[{day:'Monday',recipeId:'private-breakfast'}],plannedDesserts:[],servings:4,feedingSet:true,
     pantry:{'private-checklist':true},dayServings:{},mealServings:{},customMarker:'keep-unrelated-data'};
@@ -69,6 +69,7 @@ async function fixture() {
       entries.set('servings:' + operation.target.key, row('servings',operation.target.key,operation.value.servings === null ? {deleted:true} : {count:operation.value.servings},operation.order));
     } else assert.equal(operation.target.kind, 'pantry');
     operation.status = 'applied';
+    if(afterApplyDinner?.day===operation.target.key){remoteChanged=true;entries.set('planned_day:'+afterApplyDinner.day,row('planned_day',afterApplyDinner.day,{recipeId:afterApplyDinner.recipeId},++clock));}
     return Response.json({ok:true,operation:{id:operation.id,order:operation.order,status:operation.status}});
   };
   const context = {
@@ -98,6 +99,8 @@ async function fixture() {
   return {context,storage,requests,renders,generatedIds,pantryStarted,releasePantry,
     engine:context.__applyRace.engine(), saved:() => JSON.parse(storage.getItem(STATE)),
     receiveMonday() {remoteChanged=true; entries.set('planned_day:Monday',row('planned_day','Monday',{recipeId:'remote-monday'},++clock));},
+    receiveDinner(day,recipeId) {remoteChanged=true;entries.set('planned_day:'+day,row('planned_day',day,{recipeId},++clock));},
+    removeDinner(day) {remoteChanged=true;entries.delete('planned_day:'+day);entries.delete('servings:'+day);clock++;},
     replaceTuesday() {context.currentId='old-tuesday';context.selectedDay='Tuesday';vm.runInContext(replaceSource+"\ncommit('local-tuesday');",context);}
   };
 }
@@ -220,4 +223,55 @@ test('an explicit pantry location edit reserves the unchanged physical quantity 
     assert.deepEqual(JSON.parse(f.storage.getItem(STOCK)), stock);
     assert.equal(JSON.parse(f.storage.getItem(kitchenKey)).pasta.loc, 'freezer');
   } finally {f.engine.destroy();}
+});
+
+
+test('a saved older-client dinner survives repeated background reads while unrelated shared days update',async()=>{
+ const f=await fixture();
+ try{
+  const saved=f.saved();saved.planned.find(slot=>slot.day==='Monday').recipeId='saved-on-this-phone';
+  f.storage.setItem(STATE,JSON.stringify(saved));f.context.state=clone(saved);
+  f.receiveDinner('Tuesday','new-shared-tuesday');f.releasePantry.resolve({ok:true,localApplied:false});
+  await f.engine.refresh();await f.engine.refresh();
+  assert.equal(f.saved().planned.find(slot=>slot.day==='Monday')?.recipeId,'saved-on-this-phone');
+  assert.equal(f.context.state.planned.find(slot=>slot.day==='Monday')?.recipeId,'saved-on-this-phone');
+  assert.equal(f.saved().planned.find(slot=>slot.day==='Tuesday')?.recipeId,'new-shared-tuesday');
+  assert.equal(f.requests.filter(request=>request.body).length,0,'a saved snapshot does not become a new deliberate edit');
+ }finally{f.releasePantry.resolve({ok:true});f.engine.destroy();}
+});
+
+test('a later partner dinner wins after a matching local acknowledgment despite the older cached day',async()=>{
+ const f=await fixture({afterApplyDinner:{day:'Tuesday',recipeId:'latest-partner-tuesday'}});
+ try{
+  f.releasePantry.resolve({ok:true,localApplied:false});f.replaceTuesday();await f.engine.flush();
+  assert.equal(f.saved().planned.find(slot=>slot.day==='Tuesday')?.recipeId,'latest-partner-tuesday');
+  assert.equal(f.context.state.planned.find(slot=>slot.day==='Tuesday')?.recipeId,'latest-partner-tuesday');
+  assert.equal(f.requests.filter(request=>request.body?.action==='sync_reserve').length,1);
+  assert.equal(f.engine.read().acknowledged.length,0,'proof is consumed after Plan memory and storage receive the authoritative day');
+ }finally{f.releasePantry.resolve({ok:true});f.engine.destroy();}
+});
+
+test('a shared recipe with default servings suppresses its legacy count and accepts a later peer deletion',async()=>{
+ const f=await fixture();
+ try{
+  const saved=f.saved();saved.mealServings['remote-monday']=6;
+  f.storage.setItem(STATE,JSON.stringify(saved));f.context.state=clone(saved);
+  f.releasePantry.resolve({ok:true,localApplied:false});
+  // The complete peer snapshot has a new Monday recipe and no explicit count.
+  // Its default must remain recipe-bound even when the old day also defaulted.
+  f.receiveMonday();await f.engine.refresh();
+  assert.equal(f.saved().planned.find(slot=>slot.day==='Monday')?.recipeId,'remote-monday');
+  assert.deepEqual(f.saved().dayServings.Monday,{recipeId:'remote-monday',count:null});
+  assert.deepEqual(clone(f.context.state.dayServings.Monday),{recipeId:'remote-monday',count:null});
+  assert.equal(f.saved().mealServings['remote-monday'],6,'the unrelated legacy recipe preference stays saved but cannot override this shared day');
+
+  f.removeDinner('Monday');await f.engine.refresh();await f.engine.refresh();
+  assert.equal(f.saved().planned.some(slot=>slot.day==='Monday'),false,'a real peer delete is not mistaken for a conflict with a revived legacy count');
+  assert.equal(f.context.state.planned.some(slot=>slot.day==='Monday'),false);
+  assert.equal(f.saved().planned.find(slot=>slot.day==='Tuesday')?.recipeId,'old-tuesday');
+  assert.equal(f.saved().customMarker,'keep-unrelated-data');
+  assert.deepEqual(f.saved().plannedBreakfasts,[{day:'Monday',recipeId:'private-breakfast'}]);
+  assert.equal(f.requests.filter(request=>request.body).length,0,'receiving a recipe/default pair or deletion creates no local intent');
+  assert.equal(f.generatedIds.length,0);
+ }finally{f.releasePantry.resolve({ok:true});f.engine.destroy();}
 });
