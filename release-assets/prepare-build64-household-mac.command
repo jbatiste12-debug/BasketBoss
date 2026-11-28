@@ -80,8 +80,8 @@ BB64_DIR="$(mktemp -d "$HOME/BasketBoss-1.0.6-build64.XXXXXX")"
 BB64_STAGE="$(mktemp -d "${TMPDIR:-/tmp}/BasketBoss-native64.XXXXXX")"
 git clone --depth 1 --branch release/android12-household-sync-20261128 --single-branch https://github.com/jbatiste12-debug/BasketBoss.git "$BB64_DIR"
 cd "$BB64_DIR"
-git fetch --depth 1 origin a8f0784e3da2b90742bdd4fdbaabc3c7a6879103
-git checkout --detach a8f0784e3da2b90742bdd4fdbaabc3c7a6879103
+git fetch --depth 1 origin 8ec8760669b017251a9fb09141275a4527cf72df
+git checkout --detach 8ec8760669b017251a9fb09141275a4527cf72df
 printf 'This candidate includes household sync. Deploy its matching backend before testing partner sync; phone testing is the default.\n'
 npm ci --no-audit --no-fund
 # Only native Xcode version settings change; the catalogue client protocol

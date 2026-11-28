@@ -1,5 +1,5 @@
 import test from 'node:test';import assert from 'node:assert/strict';import fs from 'node:fs';import {execFileSync,spawnSync} from 'node:child_process';
-const SHA='a8f0784e3da2b90742bdd4fdbaabc3c7a6879103';
+const SHA='8ec8760669b017251a9fb09141275a4527cf72df';
 const android=fs.readFileSync('release-assets/prepare-android-household-mac.command','utf8'),ios=fs.readFileSync('release-assets/prepare-build64-household-mac.command','utf8');
 test('both launchers pin source that actually contains ordered sync and current native integrations',()=>{
  for(const source of [android,ios]){assert.ok(source.includes(SHA));assert.match(source,/--branch release\/android12-household-sync-20261128 --single-branch/);assert.equal(spawnSync('bash',['-n'],{input:source,encoding:'utf8'}).status,0);}

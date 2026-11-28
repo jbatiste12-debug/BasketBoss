@@ -111,3 +111,17 @@ Additional changed files:
 - release-assets/prepare-android-household-mac.command
 - release-assets/prepare-build64-household-mac.command
 - tests/basketboss-household-release-launchers.test.mjs
+
+28 November saved-entry prevention update
+The user declined pantry recovery and requested PWA rollout. Recovery is no
+longer a blocker. The current reviewed native source is
+8ec8760669b017251a9fb09141275a4527cf72df, superseding the earlier a8f snapshot.
+It includes the save-before-success, local-first network retry, dirty-local
+protection, durable acknowledgments, monotonic reads, quick-swap capture and
+legacy Essentials failure checks described in persistence-regressions.txt.
+Final combined matrix:495 checks passed,0skips;5 real Chromium cases passed.
+Full iOS700 web validation:1182 assets,200public/500protected. Android1.0.12
+sync+verify:1182 assets,13405884basewebbytes,491105344imagebytes. Original persist
+body is byte-identical to f49, and platform/auth/billing/deletion files remain
+unchanged. Xcode signing and physical-phone acceptance still require the Mac.
+The immutable launchers now pin8ec and default to phone/internal testing.
