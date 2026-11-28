@@ -83,10 +83,22 @@ test('same-quantity shared location changes move Kitchen food between fridge and
     kitchen[id].loc = beforeLocation;kitchen[id].notes = 'Keep this physical food note';f.store.setItem(f.inventory.keys.kitchen, JSON.stringify(kitchen));
     f.remote.revision++;const snapshot = {...f.remote.snapshot(), inventory: [{stockKey: 'rice|g', canonicalKey: 'rice', quantity: 100, unit: 'g', location, revision: f.remote.revision}]};
     assert.equal((await f.host.receiveSharedAutoSnapshot(snapshot, {precondition: () => true})).localApplied, true);
-    const rows = Object.values(JSON.parse(f.store.getItem(f.inventory.keys.kitchen))).filter(row => row.selected !== false && row.bb173StockKey === 'rice|g');
-    assert.equal(rows.length, 1);assert.equal(rows[0].loc, location);assert.equal(rows[0].qty, 100);assert.equal(rows[0].notes, 'Keep this physical food note');assert.deepEqual(f.stock(), {'rice|g': 100});
+    const active = Object.entries(JSON.parse(f.store.getItem(f.inventory.keys.kitchen))).filter(([, row]) => row.selected !== false && row.bb173StockKey === 'rice|g'), rows = active.map(([, row]) => row);
+    assert.equal(rows.length, 1);assert.equal(rows[0].loc, location);assert.ok(active[0][0].startsWith(location + '|'), 'received records retain the Pantry editor ownership prefix');assert.equal(rows[0].qty, 100);assert.equal(rows[0].notes, 'Keep this physical food note');assert.deepEqual(f.stock(), {'rice|g': 100});
     const beforeReplay = new Map(f.store.values);assert.equal((await f.host.receiveSharedAutoSnapshot(snapshot, {precondition: () => true})).unchanged, true);assert.deepEqual(f.store.values, beforeReplay);
   }
+});
+
+test('shared location rekeying preserves separate physical lots and existing destination records', async () => {
+  const f = await fixture({household: true, accountPantrySync: true});f.root.BBReducedStock = reducedStock;
+  const rice = {name: 'Rice', selected: true, loc: 'fridge', qty: 50, unit: 'g', bb173StockKey: 'rice|g', bb173StockValue: 50};
+  const destination = {name: 'Milk', selected: true, loc: 'freezer', qty: 20, unit: 'ml', bb173StockKey: 'milk|ml', bb173StockValue: 20, notes: 'Existing unrelated source'};
+  f.store.setItem(f.inventory.keys.kitchen, JSON.stringify({'fridge|rice:first': {...rice, notes: 'First rice lot'}, 'fridge|rice:second': {...rice, notes: 'Second rice lot'}, 'freezer|rice': destination}));
+  f.remote.revision++;const snapshot = {...f.remote.snapshot(), inventory: [{stockKey: 'rice|g', canonicalKey: 'rice', quantity: 100, unit: 'g', location: 'freezer', revision: f.remote.revision}]};
+  assert.equal((await f.host.receiveSharedAutoSnapshot(snapshot, {precondition: () => true})).localApplied, true);
+  const after = JSON.parse(f.store.getItem(f.inventory.keys.kitchen)), lots = Object.entries(after).filter(([, row]) => row.selected !== false && row.bb173StockKey === 'rice|g');
+  assert.equal(lots.length, 2);assert.ok(lots.every(([id, row]) => id.startsWith('freezer|') && row.loc === 'freezer' && row.qty === 50));assert.deepEqual(lots.map(([, row]) => row.notes).sort(), ['First rice lot', 'Second rice lot']);
+  assert.deepEqual(after['freezer|rice'], destination);assert.equal(after['fridge|rice:first'], undefined);assert.equal(after['fridge|rice:second'], undefined);
 });
 
 test('an unchanged validated shared snapshot performs no writes or render work and never skips a pending intent', async () => {

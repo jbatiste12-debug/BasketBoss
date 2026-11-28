@@ -25,9 +25,9 @@
     };
     // A measured receipt must not replace an independent package source with
     // the same display name. Keep both until their contents can be reviewed.
-    const kitchenRecordId = (kitchen, base, stockKey) => {
+    const kitchenRecordId = (kitchen, base, stockKey, reuse = true) => {
       let id=base,index=0;
-      while(Object.hasOwn(kitchen,id)&&kitchen[id]?.bb173StockKey!==stockKey){id=base+'|'+stockKey+(index?'|'+index:'');index++;}
+      while(Object.hasOwn(kitchen,id)&&(!reuse||kitchen[id]?.bb173StockKey!==stockKey)){id=base+'|'+stockKey+(index?'|'+index:'');index++;}
       return id;
     };
     const stable = value => Array.isArray(value) ? value.map(stable) : value && typeof value === 'object' ? Object.fromEntries(Object.keys(value).sort().map(key => [key, stable(value[key])])) : value;
@@ -321,8 +321,8 @@
       const matchesStockKey = (row, stockKey) => row && typeof row === 'object' && row.selected !== false && (row.bb173StockKey === stockKey || row.name && c.canonicalIngredientKey(row.name, canonicalize) + '|' + c.normalizeStockQuantity(row.qty, row.unit)?.unit === stockKey);
       const sharedLocationsMatch = !sharedAuto || inventory.every(item => {
         if (!(item.quantity > 0)) return true;
-        const matches = Object.values(currentKitchen).filter(row => matchesStockKey(row, item.stockKey));
-        return matches.length > 0 && matches.every(row => row.loc === item.location);
+        const matches = Object.entries(currentKitchen).filter(([, row]) => matchesStockKey(row, item.stockKey));
+        return matches.length > 0 && matches.every(([id, row]) => row.loc === item.location && id.startsWith(item.location + '|'));
       });
       const preserveKitchen = sharedAuto ? equalStock(currentStock, nextStock) && equalStock(savedStock, nextStock) && sharedLocationsMatch : identicalGetAcknowledgement || body?.action === 'confirm_pantry' && owner.actorId === captured.actorId && owner.cacheKey === key && explicitScopeAdoption && equalStock(currentStock, nextStock) && equalStock(savedStock, nextStock);
       let kitchen = clone(preserveKitchen ? currentKitchen : local.inventory);
@@ -360,6 +360,13 @@
           if(ambiguousPepper){kitchen[id].conversionNeedsReview=true;kitchen[id].staple=true;kitchen[id].stapleStatus='unknown';}
         }
         else if (existing) { kitchen[id] = { ...previous, selected: false, qty: null }; delete kitchen[id].bb173StockKey; delete kitchen[id].bb173StockValue; }
+      }
+      if (sharedAuto && !preserveKitchen) for (const [oldId, row] of Object.entries(kitchen)) {
+        if (row?.selected === false || !['cupboard', 'fridge', 'freezer'].includes(row?.loc) || oldId.startsWith(row.loc + '|')) continue;
+        const item = inventory.find(item => matchesStockKey(row, item.stockKey));
+        if (!item) continue;
+        const id = kitchenRecordId(kitchen, row.loc + '|' + item.canonicalKey, item.stockKey, false);
+        kitchen[id] = row;delete kitchen[oldId];
       }
       if (!preserveKitchen && root.BBReducedStock?.settleInventory) kitchen = root.BBReducedStock.settleInventory({before: currentKitchen, after: kitchen, actor: captured.actorId});
       const essentials = (response.essentials || []).slice(0, 500).map(x => safeServerRecord(x, ['id', 'lineId', 'receiptId', 'name', 'productName', 'brand', 'quantity', 'unit', 'packQuantity', 'packUnit', 'packCount', 'pricePaid', 'currency', 'market', 'retailer', 'shopSessionId', 'confirmedAt', 'purchasedAt', 'addToPantry', 'kind', 'priceType', 'eligibleForRegularPrice']));
