@@ -56,7 +56,7 @@ function fixture({household=INELIGIBLE,householdStatus=200,membership=FREE,membe
  if(spoof){win.BasketBossVerifiedPremium={isActive:()=>true,state:()=> 'premium'};win.BasketBossPremium=true;win.bb175_isPremium=true;}
  win.addEventListener('basketboss:household-changed',event=>events.push(event.detail?.action));
  const storage={getItem:key=>values.get(key)??null,setItem(){throw Error('Access checks must not write pantry or account data');},removeItem(){throw Error('Access checks must not delete pantry or account data');}};
- const sandbox={window:win,document,localStorage:storage,navigator:{onLine:true},Event,JSON,Date,URL,console,
+ const sandbox={AbortController,setTimeout,clearTimeout,window:win,document,localStorage:storage,navigator:{onLine:true},Event,JSON,Date,URL,console,
   location:{href:win.location.href,reload(){throw Error('Access checks must not reload or adopt household data');}},confirm:()=>allowConfirm,
   fetch:async(url,options={})=>{
    const path=new URL(String(url),'https://basketboss.co.uk').pathname,request=options.body?JSON.parse(options.body):null;

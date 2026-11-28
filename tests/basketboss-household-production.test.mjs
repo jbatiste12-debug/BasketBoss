@@ -2,7 +2,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import * as requestOrigin from '../bb-server-lib/bb-request-origin.js';
-const HOUSE=fs.readFileSync('functions/api/household/index.js','utf8');
+const HOUSE=fs.readFileSync('functions/api/household/index.js','utf8').replace('../../../bb-server-lib/bb-household-auto-sync.js',new URL('../bb-server-lib/bb-household-auto-sync.js',import.meta.url).href).replace('../receipt-inventory.js',new URL('../functions/api/receipt-inventory.js',import.meta.url).href);
 const MIDDLE=fs.readFileSync('functions/api/_middleware.js','utf8');
 const SEAT=fs.readFileSync('bb-server-lib/bb-premium-seat.js','utf8');
 const SQL=fs.readFileSync('sql/basketboss_household_production_20261029.sql','utf8');

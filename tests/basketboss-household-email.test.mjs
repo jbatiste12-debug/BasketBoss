@@ -94,7 +94,7 @@ globalThis.__bbInviteEmailFixture={json:reply,authenticatedUser:async()=>actor,i
 const apiSource=fs.readFileSync(new URL('../functions/api/household/index.js',import.meta.url),'utf8')
  .replace(/import \{([^\n]+)\} from '\.\.\/\.\.\/\.\.\/bb-server-lib\/(?:bb-paid-access|bb-billing|bb-premium-seat)\.js';/g,'const {$1}=globalThis.__bbInviteEmailFixture;')
  .replace('../../../bb-server-lib/bb-household-email.js',new URL('../bb-server-lib/bb-household-email.js',import.meta.url).href);
-const api=await import('data:text/javascript;base64,'+Buffer.from(apiSource).toString('base64'));
+const api=await import('data:text/javascript;base64,'+Buffer.from(apiSource.replace('../../../bb-server-lib/bb-household-auto-sync.js',new URL('../bb-server-lib/bb-household-auto-sync.js',import.meta.url).href).replace('../receipt-inventory.js',new URL('../functions/api/receipt-inventory.js',import.meta.url).href)).toString('base64'));
 const serverEnv=extra=>({CF_PAGES_BRANCH:'main',BB_PARTNER_SHARING_ENABLED:'true',BB_PARTNER_PRODUCTION_READY:'true',BB_PREMIUM_SINGLE_SESSION_ENABLED:'true',BB_LIVE_WEBHOOK_ENABLED:'true',SUPABASE_URL:'https://kbhyosxuvlcazyzzinqv.supabase.co',SUPABASE_PUBLISHABLE_KEY:'publishable_'+'x'.repeat(30),SUPABASE_SECRET_KEY:'sb_secret_'+'x'.repeat(40),BILLING_DB:{prepare(){}},...extra});
 const request=(extra={},origin=ORIGIN)=>new Request(ORIGIN+'/api/household',{method:'POST',headers:{Origin:origin,'Content-Type':'application/json'},body:JSON.stringify({action:'invite',email:EMAIL,...extra})});
 function serverFixture(){
