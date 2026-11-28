@@ -1,5 +1,5 @@
 /* Public web700 cache contract. Never include private/API/auth responses. */
-self.BB700_PWA_CACHE_VERSION="db010cc9f6d79b6b4deacc93e33780daa900bad44a33a5faf742231a48e709ce";
+self.BB700_PWA_CACHE_VERSION="4320c53e4383ec7db2b2b993aa97920ea52b0392ecff2a269ad4fb6ba498b621";
 self.BB700_PWA_PRECACHE=Object.freeze([
   "/basketboss-aisles-v20.js?v=d45b76bac322b605",
   "/bb-account-deletion.css?v=645b166ac6fe196f",
@@ -60,9 +60,9 @@ self.BB700_PWA_PRECACHE=Object.freeze([
   "/bb-home.js?v=6ef580b0821a489f",
   "/bb-household-aliases.js?v=d1f7dccdbbdb5f11",
   "/bb-household-amount.js?v=8c3273f895ce9c7f",
-  "/bb-household-auto-sync.js?v=566275aeb120870a",
+  "/bb-household-auto-sync.js?v=ef3f34a515ee606f",
   "/bb-household-sharing.css?v=b26e50b91249d42a",
-  "/bb-household-sharing.js?v=521260a6b9035afa",
+  "/bb-household-sharing.js?v=c30a29a53d68b749",
   "/bb-household-stock-review.js?v=7dfd3a0a58079526",
   "/bb-how-it-works.css?v=dbb7f80026cc2c2d",
   "/bb-how-it-works.js?v=bdd83d8ee84dd641",
@@ -109,7 +109,7 @@ self.BB700_PWA_PRECACHE=Object.freeze([
   "/bb-pantry-groups.css?v=2eac4c2ce30aa037",
   "/bb-pantry-groups.js?v=9b432ca060be5785",
   "/bb-pantry-inline.css?v=f6e9383672fe6499",
-  "/bb-pantry-inline.js?v=5923ab22916f9cc8",
+  "/bb-pantry-inline.js?v=a1e65b3519bcf9b7",
   "/bb-pantry-pack-sync.js?v=5c8d3568b4d7aef6",
   "/bb-pantry-policy.js",
   "/bb-pantry-policy.js?v=18e8defa9f94cb86",
@@ -138,9 +138,9 @@ self.BB700_PWA_PRECACHE=Object.freeze([
   "/bb-purchase-choice.css?v=7982c53202f5c96f",
   "/bb-real-app-tour.css?v=e70325086ae3874f",
   "/bb-receipt-host.css?v=144740b15969b571",
-  "/bb-receipt-host.js?v=9fc5a7005d11a5e8",
+  "/bb-receipt-host.js?v=640bced3949d0902",
   "/bb-receipt-inventory-core.mjs?v=20261105-business1",
-  "/bb-receipt-inventory.js?v=f1649b1aebf11b8a",
+  "/bb-receipt-inventory.js?v=455a4fd129c89c27",
   "/bb-receipt-quantity.js?v=bf57b05a9993d398",
   "/bb-receipt-scanner.css?v=f5a7f0035dc6279e",
   "/bb-receipt-scanner.js?v=44189473c8d617fe",
@@ -225,7 +225,7 @@ self.BB700_PWA_PRECACHE=Object.freeze([
   "/pwa700/bb-plan-swap-core.js",
   "/pwa700/bb-plan-swap-core.js?v=c23734f59cd64a61",
   "/pwa700/bb-plan-swap-host.js",
-  "/pwa700/bb-plan-swap-host.js?v=55a3ab04f6b58424",
+  "/pwa700/bb-plan-swap-host.js?v=dfb44cb1349cda4f",
   "/pwa700/bb-plan-swap.css",
   "/pwa700/bb-plan-swap.css?v=f4b14af683e47ce7",
   "/pwa700/bb-plan-swap.js",
@@ -255,7 +255,7 @@ self.BB700_PWA_PRECACHE=Object.freeze([
   "/pwa700/pricing-sandbox",
   "/pwa700/recipes.json",
   "/pwa700/shopping-inventory.js",
-  "/pwa700/shopping-inventory.js?v=24026a35f8d33fec",
+  "/pwa700/shopping-inventory.js?v=789f25b27711ab90",
   "/pwa700/subscriptions",
   "/pwa700/tutorial"
 ]);

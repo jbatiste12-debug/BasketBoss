@@ -76,11 +76,15 @@
     if(app.persist()!==true||app.getState()!==next||JSON.stringify(app.getState())!==expectedPlan||app.storage.getItem(app.planKey)!==expectedPlan||!same(app.context(),snapshot.context)||!valid(snapshot,proposal,next))throw Error('Plan save failed');
     const rotation=proposal.selection.rotation,snap=rotation.snapshot();rotationWritten=JSON.stringify({version:1,cycle:snap.cycle,seen:snap.seen,last:snap.selected.slice(-7)});
     if(rotation.commit()!==true||app.getState()!==next||app.storage.getItem(app.planKey)!==expectedPlan||!same(app.context(),snapshot.context))throw Error('Rotation save failed');
+    const result={ok:true,message:snapshot.day+' dinner changed to '+app.recipe(proposal.recipeId).name+'.'};
+    // Only the complete explicit swap is intent. A failed plan or rotation
+    // transaction above still follows its existing rollback without upload.
+    try{const queued=win?.BBHouseholdSharingAuto?.capturePlanEdit?.({before:snapshot.rawPlan,after:app.storage.getItem(app.planKey)});queued?.catch?.(()=>{});}catch{}
     // These best-effort UI/history effects must not roll back a durably saved
     // plan and rotation if a renderer or history cache becomes unavailable.
     try{app.record([proposal.recipeId]);}catch{}
     try{app.render();}catch{}
-    return {ok:true,message:snapshot.day+' dinner changed to '+app.recipe(proposal.recipeId).name+'.'};
+    return result;
    }catch{rollback();return {ok:false,reason:'save_failed',message:'Dinner could not be saved. Your previous meal is restored.'};}
   }
   return Object.freeze({read,propose,valid,save,notify:app.notify,locked:app.locked,withLock:app.withLock,yield:app.yield,visibleSlot:day=>(app.getState()?.planned||[]).find(row=>row.day===day)||null});

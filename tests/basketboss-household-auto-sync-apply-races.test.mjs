@@ -100,7 +100,8 @@ async function fixture({afterApplyDinner=null}={}) {
     engine:context.__applyRace.engine(), saved:() => JSON.parse(storage.getItem(STATE)),
     receiveMonday() {remoteChanged=true; entries.set('planned_day:Monday',row('planned_day','Monday',{recipeId:'remote-monday'},++clock));},
     receiveDinner(day,recipeId) {remoteChanged=true;entries.set('planned_day:'+day,row('planned_day',day,{recipeId},++clock));},
-    removeDinner(day) {remoteChanged=true;entries.delete('planned_day:'+day);entries.delete('servings:'+day);clock++;},
+    removeDinner(day) {remoteChanged=true;const revision=++clock;entries.set('planned_day:'+day,row('planned_day',day,{deleted:true},revision));entries.set('servings:'+day,row('servings',day,{deleted:true},revision));},
+    staleDinner(day,recipeId) {entries.set('planned_day:'+day,row('planned_day',day,{recipeId},1));},
     replaceTuesday() {context.currentId='old-tuesday';context.selectedDay='Tuesday';vm.runInContext(replaceSource+"\ncommit('local-tuesday');",context);}
   };
 }
@@ -273,5 +274,19 @@ test('a shared recipe with default servings suppresses its legacy count and acce
   assert.deepEqual(f.saved().plannedBreakfasts,[{day:'Monday',recipeId:'private-breakfast'}]);
   assert.equal(f.requests.filter(request=>request.body).length,0,'receiving a recipe/default pair or deletion creates no local intent');
   assert.equal(f.generatedIds.length,0);
+ }finally{f.releasePantry.resolve({ok:true});f.engine.destroy();}
+});
+
+
+test('an older per-day revision cannot roll back a saved shared dinner even at a current household clock',async()=>{
+ const f=await fixture();try{
+  f.releasePantry.resolve({ok:true,localApplied:false});f.receiveMonday();await f.engine.refresh();
+  assert.equal(f.saved().planned.find(slot=>slot.day==='Monday')?.recipeId,'remote-monday');
+  f.staleDinner('Monday','old-cached-monday');await f.engine.refresh();
+  assert.equal(f.saved().planned.find(slot=>slot.day==='Monday')?.recipeId,'remote-monday');
+  assert.equal(f.context.state.planned.find(slot=>slot.day==='Monday')?.recipeId,'remote-monday');
+  assert.equal(f.requests.filter(request=>request.body).length,0);
+  f.removeDinner('Monday');await f.engine.refresh();
+  assert.equal(f.saved().planned.some(slot=>slot.day==='Monday'),false,'a newer explicit deletion still replaces the saved dinner');
  }finally{f.releasePantry.resolve({ok:true});f.engine.destroy();}
 });
