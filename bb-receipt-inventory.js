@@ -420,7 +420,7 @@
       }
       atomicWrite(changes, captured.actorId);
       const projection = { stock: nextStock, inventory: kitchen, essentials, receipts, pantryReview, scope, ...reducedReviewResult(reviewIssues) };
-      try { options.onProjection?.(projection); } catch { /* Stored projection remains valid if rendering fails. */ }
+      if (!sharedAuto) try { options.onProjection?.(projection); } catch { /* Stored projection remains valid if rendering fails. */ }
       return projection;
     }
     async function commitLocalReceiptInternal(packet) {
@@ -588,13 +588,13 @@
       inFlight.set(operationKey, { digest, promise: operation });
       try { return await operation; } finally { inFlight.delete(operationKey); }
     }
-    async function synchronizeInternal({ signal } = {}) {
+    async function synchronizeInternal({ signal, precondition } = {}) {
       const captured = session(), context = activeContext(), pending = pendingConfirmation(captured.actorId), response = await request('GET', captured, null, signal, pending.receiptId ? { receiptId: pending.receiptId } : null);
       if (!sameSession(captured) || !sameContext(context) || signal?.aborted) throw Error('receipt_context_changed');
       if (pending.receiptId && (response.receiptId !== pending.receiptId || !Number.isSafeInteger(response.receiptRevision) || response.receiptRevision < 1)) return { ok: true, localApplied: false, syncRequired: true, pendingReceipt: true, localError: 'pending_receipt_not_yet_confirmed' };
       const confirmedAt = pending.receiptId ? receiptConfirmedAt(response, pending.receiptId, null) : null;
       if (pending.receiptId) reportReducedReceipt(pending.body, pending.reducedLineIds || [], captured, context, confirmedAt);
-      try { const projection = await applyProjection(response, captured, pending.receiptId ? pending.body : null, {reducedLineIds: pending.reducedLineIds || [], confirmedAt}); return { ok: true, localApplied: true, projection, needsPantryConfirmation: response.pantryReview?.required !== false, ...reducedReviewResult(projection.reviewIssues) }; }
+      try { const projection = await applyProjection(response, captured, pending.receiptId ? pending.body : null, {reducedLineIds: pending.reducedLineIds || [], confirmedAt}, precondition); return { ok: true, localApplied: true, projection, needsPantryConfirmation: response.pantryReview?.required !== false, ...reducedReviewResult(projection.reviewIssues) }; }
       catch (error) { return { ok: true, localApplied: false, syncRequired: true, localError: error.message }; }
     }
     async function retryPendingConfirmationInternal({ signal } = {}) {

@@ -399,12 +399,28 @@
       const key = purchaseSyncKey();
       if (store().getItem(key) === expected) writeAtomic({[key]: null}, {[key]: expected});
     }
+    function knownHouseholdPantry() {
+      if (!accountPantrySyncEnabled() || blocked() || isolationError || actor() === 'guest') return false;
+      const owner = read(KEYS.owner), marker = read(KEYS.actor), cached = projection();
+      return owner.actorId === actor() && marker.actorId === actor() && owner.scope?.kind === 'household' && samePurchaseScope(owner.scope, cached?.scope) && Number.isSafeInteger(owner.inventoryRevision) && owner.inventoryRevision >= 0;
+    }
     function sharedPantryEngine({allowStaging = false} = {}) {
       const engine = root.BBHouseholdSharingAuto;
-      if (!accountPantrySyncEnabled() || blocked() || isolationError || actor() === 'guest' || !(engine?.isReady?.() === true || allowStaging && engine?.canCapture?.() === true)) return null;
-      const owner = read(KEYS.owner), marker = read(KEYS.actor), cached = projection();
-      if (owner.actorId !== actor() || marker.actorId !== actor() || owner.scope?.kind !== 'household' || !samePurchaseScope(owner.scope, cached?.scope) || !Number.isSafeInteger(owner.inventoryRevision)) return null;
-      return engine;
+      return knownHouseholdPantry() && (engine?.isReady?.() === true || allowStaging && engine?.canCapture?.() === true) ? engine : null;
+    }
+    function getSharedHouseholdCaptureScope() {
+      try {
+        if (!knownHouseholdPantry()) return null;
+        const owner = read(KEYS.owner), cached = projection();
+        const expectedCacheKey = 'basketboss_receipt_inventory_v1:' + encodeURIComponent(actor()) + ':household:' + encodeURIComponent(owner.scope.id);
+        if (cached?.version !== 1 || cached.actorId !== actor() || cached.inventoryRevision !== owner.inventoryRevision || owner.cacheKey !== expectedCacheKey) return null;
+        return clone(owner.scope);
+      } catch {return null;}
+    }
+    function sharedPantryPending({includeReady = false} = {}) {
+      if (!knownHouseholdPantry()) return false;
+      const engine = root.BBHouseholdSharingAuto, owner = read(KEYS.owner);
+      return includeReady && engine?.isReady?.() === true || engine?.hasPendingPantry?.() === true || !!purchasedPantry() || !isObject(owner.serverStock) || !samePurchaseStock(options.getStock?.() || read(KEYS.stock), owner.serverStock);
     }
     function quarantineLegacyHouseholdQueue() {
       const {raw, row} = purchasedPantrySnapshot();
@@ -468,9 +484,11 @@
         if (!current() || isolationError) return {ok: false, queued: true, needsReview: true};
         let queued;
         try {queued = purchasedPantry();} catch {return {ok: false, queued: true, needsReview: true};}
-        const shared = sharedPantryEngine();
+        const shared = sharedPantryEngine({allowStaging: true});
+        if (!shared && knownHouseholdPantry()) return {ok: true, queued: true, needsReview: false, pending: true, localOnly: false};
         if (shared) {
           if (reviewing || confirmingCurrent || choosingTrip || hasPendingConfirmation()) return {ok: false, queued: true, needsReview: false, pending: true};
+          if (shared.isReady?.() !== true) return {ok: true, queued: true, needsReview: false, pending: true, localOnly: false};
           // A v1 absolute snapshot cannot be replayed over a partner's later
           // item edits. Keep its full intent recoverable before leaving v1.
           const quarantined = quarantineLegacyHouseholdQueue();
@@ -605,14 +623,22 @@
       if (adoptScope) return adoptAccountPantryScope();
       if (!accountPantrySyncEnabled()) return Promise.resolve({ok: false, code: 'account_pantry_sync_disabled'});
       if (accountPantrySyncPromise) return accountPantrySyncPromise;
+      // Route the ordered channel before taking this legacy operation's flag:
+      // its snapshot receiver must be free to apply the flush we await here.
+      try {
+        isolate();
+        if (getAccountLocalPantryStatus().ready && sharedPantryPending({includeReady: true})) return retryPurchasedPantry();
+      } catch {return Promise.resolve({ok: false, queued: true, needsReview: true});}
       const run = async () => {
         isolate();const pin = tripPin(), local = getAccountLocalPantryStatus();
         if (!local.ready) return {ok: false, needsReview: true, code: local.reason};
         if (actor() === 'guest' || !session()?.access_token) return {ok: true, localOnly: true, queued: false};
         if (purchaseSyncPromise) await purchaseSyncPromise;
         if (!sameTripPin(pin)) return {ok: false, needsReview: true, code: 'account_changed'};
+        if (sharedPantryPending({includeReady: true})) return retryPurchasedPantry();
         await refreshAvailability({synchronize: false, force: true});
         if (!sameTripPin(pin)) return {ok: false, needsReview: true, code: 'account_changed'};
+        if (sharedPantryPending({includeReady: true})) return retryPurchasedPantry();
         if (!availability.available) return {ok: true, localOnly: true, queued: !!purchasedPantry()};
         if (!resolveConflict) {
           const pending = purchasedPantry(), owner = read(KEYS.owner);
@@ -624,6 +650,7 @@
         // Fetch scope/revision without applying its old stock to the local pantry.
         const remote = await fetchInventory();
         if (!sameTripPin(pin) || !getAccountLocalPantryStatus().ready) return {ok: false, needsReview: true, code: 'account_changed'};
+        if (sharedPantryPending({includeReady: true})) return retryPurchasedPantry();
         if (purchaseSyncPromise) return {ok: false, queued: true, retryable: true};
         const ownerRaw = store().getItem(KEYS.owner), markerRaw = store().getItem(KEYS.actor), stockRaw = store().getItem(KEYS.stock), owner = read(KEYS.owner), cached = projection(), latest = purchasedPantrySnapshot();
         if (!validAccountScope(remote.scope) || owner.scope && !samePurchaseScope(owner.scope, remote.scope) || cached?.scope && !samePurchaseScope(cached.scope, remote.scope) || latest.row?.scope && !samePurchaseScope(latest.row.scope, remote.scope)) {issue = 'receipt_household_scope_changed';return {ok: false, needsReview: true, code: 'receipt_household_scope_changed'};}
@@ -685,6 +712,11 @@
     function refreshAccountPantry() {
       if (!accountPantrySyncEnabled()) return Promise.resolve({ok: false, code: 'account_pantry_sync_disabled'});
       if (accountPantryRefreshPromise) return accountPantryRefreshPromise;
+      try {
+        isolate();
+        if (!accountPantrySyncPromise && !pendingHouseholdConnection && getAccountLocalPantryStatus().ready && sharedPantryPending({includeReady: true}))
+          return retryPurchasedPantry().then(result => ({...result, refreshed: false}));
+      } catch {return Promise.resolve({ok: false, queued: true, needsReview: true, refreshed: false});}
       const run = async () => {
         isolate();const pin = tripPin();
         if (accountPantrySyncPromise) await accountPantrySyncPromise;
@@ -702,6 +734,10 @@
         }
         if (!sameTripPin(pin) || !getAccountLocalPantryStatus().ready) return {ok: false, needsReview: true};
         if (actor() === 'guest' || !session()?.access_token) return {ok: true, localOnly: true};
+        // The ordered household channel owns deliberate pantry edits as soon
+        // as it can stage them, including while its first read is in flight.
+        // Inferring a v1 whole-stock edit here would erase a partner's items.
+        if (sharedPantryPending({includeReady: true})) return {...await retryPurchasedPantry(), refreshed: false};
         // Drain local intent first. A GET must not replace or prefill a pending
         // deletion/absolute edit, even after a restart or a household revision.
         let pending = purchasedPantry();
@@ -716,6 +752,7 @@
         } else if (!owner.scope && Object.keys(stock).length) return {ok: false, needsReview: true, refreshed: false, code: 'account_pantry_initialization_required'};
         await refreshAvailability({synchronize: false, force: true});
         if (!sameTripPin(pin) || !getAccountLocalPantryStatus().ready) return {ok: false, needsReview: true};
+        if (sharedPantryPending({includeReady: true})) return {...await retryPurchasedPantry(), refreshed: false};
         if (!availability.available) return {ok: true, localOnly: true, refreshed: false};
         if (purchasedPantry()) return {ok: false, queued: true, refreshed: false};
         // An idle GET must not rebuild Kitchen metadata: a physical purchase's
@@ -723,6 +760,7 @@
         // displayed quantities would look identical after another projection.
         const remote = await fetchInventory();
         if (!sameTripPin(pin) || !getAccountLocalPantryStatus().ready) return {ok: false, needsReview: true, refreshed: false};
+        if (sharedPantryPending({includeReady: true})) return {...await retryPurchasedPantry(), refreshed: false};
         if (purchasedPantry()) return {ok: false, queued: true, refreshed: false};
         const latestOwner = read(KEYS.owner), latestStock = purchaseStock(options.getStock?.() || read(KEYS.stock));
         if (latestOwner.scope && !samePurchaseScope(latestOwner.scope, remote.scope)) {issue = 'receipt_household_scope_changed';return {ok: false, needsReview: true, refreshed: false, code: issue};}
@@ -731,7 +769,7 @@
           if (remote.inventoryRevision === latestOwner.inventoryRevision && remote.initialized === latestOwner.initialized && samePurchaseStock(remote.stock, latestOwner.serverStock)) {issue = null;return {ok: true, refreshed: false, unchanged: true};}
           if (remote.inventoryRevision <= latestOwner.inventoryRevision) {issue = 'receipt_local_remote_pantry_merge_required';return {ok: false, needsReview: true, refreshed: false, code: issue};}
         }
-        const result = await adapter().synchronize();
+        const result = await adapter().synchronize({precondition: () => !sharedPantryPending()});
         if (!sameTripPin(pin)) {
           const now = tripPin(), savedOwner = read(KEYS.owner), established = pin.scope === null && validAccountScope(savedOwner.scope) && now.scope === savedOwner.scope.kind + ':' + savedOwner.scope.id && !blocked() && ['actorId', 'token', 'market', 'retailer', 'shopSessionId', 'generation'].every(key => now[key] === pin[key]);
           if (!established) return {ok: false, needsReview: true, refreshed: false};
@@ -855,6 +893,7 @@
           if (availability.available && synchronize) {
             adapter()?.recoverLocalTransaction?.();
             if (accountPantrySyncEnabled()) {
+              if (sharedPantryPending()) return availability;
               if (!getAccountLocalPantryStatus().ready || purchasedPantry()) return availability;
               const owner = read(KEYS.owner), stock = purchaseStock(options.getStock?.() || read(KEYS.stock));
               if (owner.scope && (!isObject(owner.serverStock) || !samePurchaseStock(stock, owner.serverStock))) return availability;
@@ -863,6 +902,7 @@
               // projection can invalidate reversible physical purchase records.
               const remote = await fetchInventory();
               if (blocked() || serial !== generation || id !== actor() || token !== session()?.access_token) return {available: false};
+              if (sharedPantryPending()) return availability;
               if (!getAccountLocalPantryStatus().ready || purchasedPantry()) return availability;
               const latestOwner = read(KEYS.owner), latestStock = purchaseStock(options.getStock?.() || read(KEYS.stock));
               if (latestOwner.scope && !samePurchaseScope(latestOwner.scope, remote.scope)) {issue = 'receipt_household_scope_changed';return availability;}
@@ -872,7 +912,7 @@
                 if (remote.inventoryRevision <= latestOwner.inventoryRevision) {issue = 'receipt_local_remote_pantry_merge_required';return availability;}
               } else if (Object.keys(latestStock).length && (remote.initialized !== true || !samePurchaseStock(latestStock, remote.stock))) return availability;
             }
-            const result = await adapter().synchronize();
+            const result = await adapter().synchronize({precondition: () => !sharedPantryPending()});
             if (blocked() || serial !== generation || id !== actor()) return {available: false};
             issue = result?.localApplied === false ? result.localError || 'receipt_refresh_required' : null;
           }
@@ -1264,7 +1304,7 @@
       options.onProjection?.({externalStorage: true});schedule();
     }
     root.addEventListener?.('storage', externalChange);
-    const api = Object.freeze({configure, afterRender, refreshAvailability, open, openReceiptEntry, saveLegacyReceipt, reviewPantry, confirmCurrentPantry, confirmCookedPantry, preparePurchasedPantry, confirmPurchasedPantry, retryPurchasedPantry, receiveSharedAutoSnapshot, accountPantrySyncEnabled, getAccountPantryStatus, syncAccountPantry, refreshAccountPantry, adoptAccountPantryScope, connectHouseholdPantry, canConsumePantry, getConsumptionStatus, confirmLocalPantryReview, recoverReceipt, requiresPantryReview, hasPendingConfirmation, allowLegacyTransfer, allowPurchaseTransfer, handlesInventorySync, coversLegacyCredit, switchActor, exportBackup, prepareBackupRestore, hasLocalData, getAvailability: () => ({...availability}), getProjection: projection, weeklySummary: () => weeklyReceiptSummary(projection(), context(), clock()), keys: KEYS});
+    const api = Object.freeze({configure, afterRender, refreshAvailability, open, openReceiptEntry, saveLegacyReceipt, reviewPantry, confirmCurrentPantry, confirmCookedPantry, preparePurchasedPantry, confirmPurchasedPantry, retryPurchasedPantry, receiveSharedAutoSnapshot, getSharedHouseholdCaptureScope, accountPantrySyncEnabled, getAccountPantryStatus, syncAccountPantry, refreshAccountPantry, adoptAccountPantryScope, connectHouseholdPantry, canConsumePantry, getConsumptionStatus, confirmLocalPantryReview, recoverReceipt, requiresPantryReview, hasPendingConfirmation, allowLegacyTransfer, allowPurchaseTransfer, handlesInventorySync, coversLegacyCredit, switchActor, exportBackup, prepareBackupRestore, hasLocalData, getAvailability: () => ({...availability}), getProjection: projection, weeklySummary: () => weeklyReceiptSummary(projection(), context(), clock()), keys: KEYS});
     return api;
   }
   root.BBReceiptHostFactory = createHost;
