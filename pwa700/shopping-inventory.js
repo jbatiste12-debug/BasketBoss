@@ -429,7 +429,7 @@ async function build(){
     if(typeof receiptHost.preparePurchasedPantry!=='function'||typeof receiptHost.retryPurchasedPantry!=='function'||typeof window.BBHome?.atomic!=='function')throw Error('Account sync is still loading. Try saving again in a moment.');
     // Prepare from the persisted pre-edit balance. The existing local save
     // owns this absolute target, including deletions and an empty pantry.
-    pantrySync=receiptHost.preparePurchasedPantry({stock:nextStock,beforeStock:JSON.parse(originalStockRaw||'{}')});
+    pantrySync=receiptHost.preparePurchasedPantry({stock:nextStock,beforeStock:JSON.parse(originalStockRaw||'{}'),beforeInventory:originalInv,inventory:nextInv,sharedUserEdit:true});
    }
    // Capacity metadata follows the existing stock save. It never supplies or
    // replaces the measured balance used by meal and shopping calculations.

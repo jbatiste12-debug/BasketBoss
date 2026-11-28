@@ -513,8 +513,8 @@
   "files": [
     {
       "path": "app.html",
-      "bytes": 3066757,
-      "sha256": "6ed4ecb141e768e940aabff06634bdf2c6f37d673bf616a0897222cf704c6af8"
+      "bytes": 3069869,
+      "sha256": "4cec65d26b310a362dabd4cb901b64927317bb10796a638a863e17ce97adba1a"
     },
     {
       "path": "basketboss-latest-guide.html",
@@ -648,8 +648,8 @@
     },
     {
       "path": "precache.js",
-      "bytes": 11790,
-      "sha256": "fa4600e69ce1251c1403696231d20145ec4db26cce724a7c7e51a36fe7d31dfe"
+      "bytes": 11841,
+      "sha256": "bd7b125627b1eda4c2c62c1b1f2c986de790f5e700a68feb7ae721f364f995d5"
     },
     {
       "path": "pricing-sandbox.html",
@@ -663,8 +663,8 @@
     },
     {
       "path": "shopping-inventory.js",
-      "bytes": 89327,
-      "sha256": "5e8c714217fac7c2786d21250c728f99f44c9bc10bc1b97362cc7af6d2c8cc1d"
+      "bytes": 89393,
+      "sha256": "24026a35f8d33fec49573b00bd6264c99149f39ab113fadcbe9fd846523ae097"
     },
     {
       "path": "subscriptions.html",

@@ -1400,7 +1400,7 @@ const tab=window.bb172ActiveTab;
  const number=document.createElement('output');number.className='bb172-servings-count';number.textContent=String(current);number.setAttribute('aria-label','Current servings');
  const plus=document.createElement('button');plus.className='bb172-stepper';plus.textContent='+';plus.type='button';plus.setAttribute('aria-label','Increase household servings');
  const explanation=document.createElement('small');explanation.className='bb172-family-note';explanation.textContent='Shopping quantities recalculate for this many servings per planned recipe. View prices and your total budget in Shop.';
- const change=delta=>{const next=Math.max(1,Math.min(12,(Number(state.servings)||4)+delta));if(next===Number(state.servings))return;state.servings=next;if(persist()===false){bb172Msg('Could not save the household size');return}render();bb172Msg('Shopping list recalculated for '+next+' servings ✓')};
+ const change=delta=>{const next=Math.max(1,Math.min(12,(Number(state.servings)||4)+delta));if(next===Number(state.servings))return;state.servings=next;if(bbPersistSharedPlanEdit()===false){bb172Msg('Could not save the household size');return}render();bb172Msg('Shopping list recalculated for '+next+' servings ✓')};
  minus.addEventListener('click',()=>change(-1));plus.addEventListener('click',()=>change(1));step.append(minus,number,plus);bar.append(title,step,explanation);
  if(tab==='shop'){const summary=app.querySelector('.bb321-shop-summary');if(summary)summary.before(bar);else app.prepend(bar)}
  else if(tab==='overview'||tab==='home'){const heading=app.querySelector('.bb16-overview-heading');if(heading)heading.after(bar);else app.prepend(bar)}
@@ -1500,6 +1500,7 @@ function bb172BudgetBar(app){
   const raw=input.value.trim(),n=Number(raw);
   if(raw&&(!Number.isFinite(n)||n<=0||n>10000)){bb172Msg('Enter a weekly target between £1 and £10,000, or clear it.');return}
   try{if(raw){localStorage.setItem(BB172_BUDGET_KEY,String(n));localStorage.setItem('basketboss_v172_weekly_budget_target_v1',String(n));}else{localStorage.removeItem(BB172_BUDGET_KEY);localStorage.removeItem('basketboss_v172_weekly_budget_target_v1');}}catch(e){bb172Msg('Unable to save weekly budget');return}
+  try{if(localStorage.getItem(BB172_BUDGET_KEY)===(raw?String(n):null)&&localStorage.getItem('basketboss_v172_weekly_budget_target_v1')===(raw?String(n):null))window.BBHouseholdSharingAuto?.captureSettingEdit?.({section:'budget_target',key:'weekly',value:raw?{amount:n}:null})?.catch?.(()=>{});}catch{}
   render();bb172Msg(raw?'Weekly budget saved ✓':'Weekly budget cleared ✓');
  };
  input.addEventListener('keydown',e=>{if(e.key==='Enter'){e.preventDefault();button.click()}});
@@ -1780,10 +1781,12 @@ function bb172ApplyPlan(next,old,description,rotation=null){
   if(next.some(p=>!previous.has(p.day+'|'+p.recipeId)&& (!bb176AllowedRecipe(p.recipeId)||!bbAfIngredientAllowed(getRecipe(p.recipeId))))){
    bb172Msg('A suggested recipe is locked. No meals were added.');return false;
   }
+  const sharedBefore=bbReadSharedPlanEdit();
   state.planned=next;
  try{if(persist()===false){state.planned=old;render();bb172Msg('Could not save changes. Your previous plan was restored.');return false}}
  catch(e){state.planned=old;render();bb172Msg('Could not save changes. Your previous plan was restored.');return false}
  if(rotation&&!bbCommitRotation(rotation,old))return false;
+ bbCaptureSharedPlanEdit(sharedBefore);
  if(!rotation&&typeof bbOnboardingPlanCreated==='function')bbOnboardingPlanCreated(next.filter(row=>!(old||[]).some(previous=>previous.day===row.day&&previous.recipeId===row.recipeId)).map(row=>row.recipeId));
  render();bb172Msg(description);return true;
 }
@@ -3872,9 +3875,9 @@ body[data-bbnext-view="discover"] #app .bb-featured-card #bbFeaturedBatch {
 <script src="/bb-cook-assistant.js?v=490b11713cc4b2a9"></script>
 <script src="/bb-cook-voice.js?v=01f8387775264833"></script>
 <script defer src="/bb-weekly-essentials.js?v=46a2d5b9851a1f61"></script>
-<script defer src="/bb-receipt-inventory.js?v=019d71232baa6f96"></script>
+<script defer src="/bb-receipt-inventory.js?v=f1649b1aebf11b8a"></script>
 <script defer src="/bb-receipt-scanner.js?v=44189473c8d617fe"></script>
-<script defer src="/bb-receipt-host.js?v=073ae771b0f028b3"></script>
+<script defer src="/bb-receipt-host.js?v=9fc5a7005d11a5e8"></script>
 <link rel="stylesheet" href="/bb-receipt-scanner.css?v=f5a7f0035dc6279e">
 <link rel="stylesheet" href="/bb-receipt-host.css?v=144740b15969b571">
 <script>
@@ -4498,9 +4501,11 @@ function bb307Plan(){
 function bb307SetPantry(name,baseUnit,quantity,inputUnit){
  const id=BB307Pantry.pantryId(name,baseUnit);
  const amount=BB307Pantry.stockToBase(quantity,inputUnit,baseUnit);
+ const beforeStock={...bb307Stock};
  const next={...bb307Stock};if(amount>0)next[id]=amount;else delete next[id];
  if(!bb307SaveStock(next))return false;
  if(state.pantry?.[bb307NormaliseName(name)]){delete state.pantry[bb307NormaliseName(name)];persist()}
+ try{const result=window.BBHouseholdSharingAuto?.capturePantryEdit?.({beforeStock,stock:next});result?.catch?.(()=>{});}catch{}
  return true;
 }
 // Meal cards use the same regional ingredient packs as Shopping. Scale source
@@ -4537,7 +4542,7 @@ window.BasketBossSetOnboardingServings=function(size){
  const previous=state.servings;
  if(previous===requested)return true;
  state.servings=requested;
- if(!persist()){state.servings=previous;return false;}
+ if(!bbPersistSharedPlanEdit()){state.servings=previous;return false;}
  render();
  return true;
 };
@@ -4778,7 +4783,7 @@ function bb307FeaturesRender(app){
     if(!allowedSaved.length){bb176OpenPremiumUpgrade();return;}
     const merged=BB307Features.addSavedMeals(allowedSaved,state.planned||[],new Set([...BB307_VALID_IDS].filter(bb176AllowedRecipe)));
    if(!merged.added.length){notify('No empty day to add these meals.');return;}
-   state.planned=merged.planned;if(persist()){bbRecordPlannedRecipes(merged.added.map(row=>row.recipeId),false);render();notify('Added '+merged.added.length+' meals without clearing existing plans ✓')}
+   state.planned=merged.planned;if(bbPersistSharedPlanEdit()){bbRecordPlannedRecipes(merged.added.map(row=>row.recipeId),false);render();notify('Added '+merged.added.length+' meals without clearing existing plans ✓')}
   });
   region.querySelectorAll('[data-bb307-remove-basket]').forEach(el=>el.onclick=()=>{
    bb307FeatureState.savedBaskets=bb307FeatureState.savedBaskets.filter(b=>b.id!==el.dataset.bb307RemoveBasket);
@@ -5277,7 +5282,7 @@ function bb176MaskPremiumPlans(app){
   const remove=document.createElement('button');remove.type='button';remove.className='small-btn';remove.textContent='Remove this dinner';remove.onclick=()=>{
    if(!confirm('Remove this saved Premium dinner from '+day+'?'))return;
    const original=state.planned.slice();state.planned=state.planned.filter(item=>!(item.day===day&&item.recipeId===p.recipeId));
-   if(!persist())state.planned=original;
+   if(!bbPersistSharedPlanEdit())state.planned=original;
    render();
   };
   card.append(note,unlock,remove);
@@ -5598,7 +5603,7 @@ function bbFeedingSave(next,id,day){
  if(id&&day&&DAYS.includes(day)){state.dayServings={...state.dayServings,[day]:{recipeId:id,count:n}};state.planned=state.planned.map(slot=>slot.recipeId===id&&slot.day===day&&Object.hasOwn(slot,'servings')?{...slot,servings:n}:slot);}
  else if(!id){state.servings=n;state.feedingSet=true;}
  else return false;
- if(!persist()){state.servings=oldServings;state.feedingSet=oldSet;state.dayServings=oldByDay;state.planned=oldPlan;return false;}
+ if(!bbPersistSharedPlanEdit()){state.servings=oldServings;state.feedingSet=oldSet;state.dayServings=oldByDay;state.planned=oldPlan;return false;}
  render();return true;
 }
 /* Each day stepper is its own contained control; the original summary/card
@@ -5653,6 +5658,23 @@ function persist(){
   return true;
  }catch(e){console.error('BasketBoss save failed',e);notify('Saving failed. Export a backup before leaving.');return false}
 }
+/* Shared household intent comes only from explicit, successful plan edits.
+ * Cloud/file restores, startup normalization and passive refreshes keep their existing writers. */
+function bbCaptureSharedPlanEdit(before){
+ if(before===undefined)return;
+ try{
+  const after=localStorage.getItem(KEY);
+  const result=window.BBHouseholdSharingAuto?.capturePlanEdit?.({before,after});
+  result?.catch?.(()=>{});
+ }catch{}
+}
+function bbReadSharedPlanEdit(){try{return localStorage.getItem(KEY);}catch{return undefined;}}
+function bbPersistSharedPlanEdit(){
+ const before=bbReadSharedPlanEdit();
+ const saved=persist();
+ if(saved===true)bbCaptureSharedPlanEdit(before);
+ return saved;
+}
 function notify(msg){const root=document.getElementById('toastRoot');root.innerHTML='<div class="toast" role="status"></div>';root.firstChild.textContent=typeof bbUiQuantityText==='function'?bbUiQuantityText(msg):msg;clearTimeout(toastHandle);toastHandle=setTimeout(()=>root.innerHTML='',2600)}
 function esc(s){return String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]))}
 function money(n){return n==null||!Number.isFinite(Number(n))?'Estimate unavailable':'Approx. Est. '+BBPriceV19.money(n,bb307Market)}
@@ -5702,7 +5724,7 @@ if(window.BBEveningPivotApp&&window.BBEveningPivotUI){
   if(window.BBAccountDeletion?.isDeleting?.()===true||!bbVerifiedPremiumFeature()||bbEveningApp.fingerprint()!==stamp)return false;
   const previous={planned:state.planned,dayServings:state.dayServings};
   state.planned=next.planned;state.dayServings=next.dayServings;
-  if(!persist()){Object.assign(state,previous);return false;}
+  if(!bbPersistSharedPlanEdit()){Object.assign(state,previous);return false;}
   render();notify('Tonight’s dinner swapped. Serving amounts and PANTRY quantities kept.');return true;
  }});
  window.BBEveningPivotUI.configure({preview:bbEveningApp.preview,apply:bbEveningApp.apply,currentDay:bbEveningToday,
@@ -5780,7 +5802,7 @@ function bbAddSuggestedLeftover(sourceId,targetId){
  if(!day){notify('No free day after this meal. Free a later day first.');return}
  state.planned.push({recipeId:targetId,day});
  state.leftoverConfirmed[targetId]=false;
- if(!persist()){state.planned=state.planned.filter(p=>p.recipeId!==targetId);return}
+ if(!bbPersistSharedPlanEdit()){state.planned=state.planned.filter(p=>p.recipeId!==targetId);return}
  if(typeof bbOnboardingPlanCreated==='function')bbOnboardingPlanCreated([targetId]);
  notify('Leftover recipe planned for '+day+'. Confirm leftovers after cooking.');render();
 }
@@ -5913,7 +5935,7 @@ function bb172OpenReplacePicker(currentId) {
     if (!bbAfIngredientAllowed(candidate)) { notify('That meal does not match your current meal preferences.'); return; }
     const prior = state.planned.map(p => ({...p}));
     state.planned[idx] = {...state.planned[idx], recipeId:newId};
-    if (!persist()) { state.planned = prior; notify('Could not save. Your original dinner was restored.'); return; }
+    if (!bbPersistSharedPlanEdit()) { state.planned = prior; notify('Could not save. Your original dinner was restored.'); return; }
     close(); render(); notify(selectedDay + ' dinner replaced ✓');
   }
   function redraw() {
@@ -5950,7 +5972,7 @@ function bb172OpenReplacePicker(currentId) {
     if (!window.confirm('Remove ' + selectedDay + ' dinner without replacing it?')) return;
     const prior = state.planned.map(p=>({...p}));
     state.planned = state.planned.filter(p=>!(p.recipeId===currentId && p.day===selectedDay));
-    if (!persist()) {state.planned=prior;notify('Saving failed. Dinner was restored.');return;}
+    if (!bbPersistSharedPlanEdit()) {state.planned=prior;notify('Saving failed. Dinner was restored.');return;}
     close(); render();notify(selectedDay+' dinner removed');
   });
   veil.querySelectorAll('[data-bb172-filter]').forEach(b=>b.addEventListener('click',()=>{filter=b.dataset.bb172Filter;redraw();}));
@@ -6612,7 +6634,7 @@ function bbManualBatchPlan(id,sourceDay,allowReplace=false){
  const sourceSlot=current.find(p=>p.day===sourceDay&&p.recipeId===id);
  const nextPlan=current.filter(p=>p.day!==sourceDay&&p.day!==next).concat(sourceSlot?{...sourceSlot}:{day:sourceDay,recipeId:id});
  state.planned=nextPlan;state.bbManualBatch={version:1,pairs:[...existing,{sourceDay,leftoverDay:next,recipeId:id}]};
- if(!persist()){state.planned=oldPlan;state.bbManualBatch=oldBatch;return {ok:false,reason:'Could not save; the previous weekly plan was restored.'};}
+ if(!bbPersistSharedPlanEdit()){state.planned=oldPlan;state.bbManualBatch=oldBatch;return {ok:false,reason:'Could not save; the previous weekly plan was restored.'};}
  bb80OpenPlanDays.add(sourceDay);bb80OpenPlanDays.add(next);bb80RememberPlanDays();
  tab='week';render({navigation:true});notify('🍲 '+recipe.name+' now covers '+sourceDay+' and '+next+'. Shopping includes 2× ingredients once.');
  return {ok:true};
@@ -6920,7 +6942,7 @@ function bb81TrimBasket(){
  if(!window.confirm('Trim My Basket · estimated shopping saving '+currency(res.saving)+'\n\n'+lines+'\n\nReplace these dinners? Pantry, bought ticks and lunches will stay unchanged. Actual checkout prices may differ.'))return;
  if(state.planned!==previous||!bb176IsPremiumPreview()||res.plan.some(p=>!bb176AllowedRecipe(p.recipeId))){notify('Plan or access changed; nothing saved.');return;}
  state.planned=res.plan;
- if(!persist()){state.planned=previous;notify('Trim could not save. Your original dinners are restored.');return;}
+ if(!bbPersistSharedPlanEdit()){state.planned=previous;notify('Trim could not save. Your original dinners are restored.');return;}
  bb81TrimCache=null;
  render();
  notify('Swapped '+res.swaps.map(x=>x.from+' for '+x.to).join(' and ')+' — Saved approximately '+currency(res.saving)+' on the estimated basket!');
@@ -7237,9 +7259,11 @@ function bbNextComposePlan(app){
         if(!dinners&&!desserts&&!breakfasts)return;
         if(!await bbQaConfirm('Clear '+dinners+' dinner'+(dinners===1?'':'s')+' and '+desserts+' dessert'+(desserts===1?'':'s')+' and '+breakfasts+' breakfast'+(breakfasts===1?'':'s')+' from this week?\n\nShopping will be recalculated. PANTRY, School Lunches, saved recipes and account settings will remain unchanged.','Clear this week?','Clear week'))return;
         const before={planned:state.planned,plannedDesserts:state.plannedDesserts,plannedBreakfasts:state.plannedBreakfasts,leftoverSources:state.leftoverSources,leftoverConfirmed:state.leftoverConfirmed,pantryPlanGeneration:state.pantryPlanGeneration};
+        const sharedBefore=bbReadSharedPlanEdit();
         state.planned=[];state.plannedDesserts=[];state.plannedBreakfasts=[];state.pantryPlanGeneration=crypto.randomUUID();state.leftoverSources={};state.leftoverConfirmed={};
         if(!persist()){Object.assign(state,before);notify('Could not clear the week; your plan has been restored.');return;}
         if(!bbShopV7Close()){Object.assign(state,before);persist();notify('Could not close shopping session; plan restored');return;}
+        bbCaptureSharedPlanEdit(sharedBefore);
         bb80OpenPlanDays.clear();bb80RememberPlanDays();bbNextExpandedPlanDay=null;render();notify('Week cleared. Shopping recalculated; PANTRY and lunches kept.');
       };
       oldIntro.append(clear);
@@ -7259,7 +7283,7 @@ function bbNextComposePlan(app){
     if(!current||current.recipeId!==expectedRecipeId){notify('That dinner changed while confirming. Nothing was removed.');return false;}
     const before={planned:state.planned,bb81Batch:state.bb81Batch,bbManualBatch:state.bbManualBatch};
     state.planned=before.planned.filter(p=>!(p.day===day&&p.recipeId===expectedRecipeId));
-    if(!persist()){
+    if(!bbPersistSharedPlanEdit()){
       Object.assign(state,before);
       notify('Could not save. Your dinner remains planned.');return false;
     }
@@ -7709,8 +7733,8 @@ function bbPlanExtraActionLayout(app){
  }
 }
 
-function addRecipe(id,day){if(bbIsBreakfast(getRecipe(id))){return bbPlanBreakfast(id,day||DAYS.find(value=>!(state.plannedBreakfasts||[]).some(slot=>slot.day===value)));}if(!bb176AllowedRecipe(id)){bb176OpenPremiumUpgrade();return;}const dessertRecipe=getRecipe(id);if(bbIsDessert(dessertRecipe)){bbPlanDessert(id,day);return}if(state.planned.some(p=>p.recipeId===id)){notify('That recipe is already in your week.');return}const used=new Set(state.planned.map(p=>p.day));for(const day of bbBatchPairs().map(x=>x.leftoverDay))used.add(day);if(day&&used.has(day)){notify('That day already has a dinner or linked leftover night.');return}const assigned=day||DAYS.find(d=>!used.has(d));if(!assigned){notify('No free dinner slots; remove one first.');return}state.planned.push({recipeId:id,day:assigned});if(!persist()){state.planned.pop();return;}bbRecordPlannedRecipes([id]);notify('Added to '+assigned+' \u2713');render()}
-function renderWeek(app){const planned=getPlanned();app.innerHTML=`<div class="section-head"><div><h3>Your weekly game plan</h3><p>One dinner per day keeps the week simple.</p></div><button class="btn" id="clearWeek">Clear week</button></div><div class="notice">Tip: changing a meal's day updates your shopping list automatically. Duplicate recipe bookings are prevented.</div>${DAYS.map((d,i)=>{const p=planned.find(x=>x.day===d);return `<section class="day"><div class="day-head"><strong>${d}</strong><span>${p?'Dinner planned':'Open slot'}</span></div>${p?`<div class="planned"><div><strong>${esc(p.recipe.name)}</strong><div class="muted" style="font-size:10px;margin-top:3px">${window.BBDuration?.format(p.recipe.mins)||"?"}</div></div><div class="small-actions"><select data-move="${p.recipeId}" aria-label="Move ${esc(p.recipe.name)} to another day">${DAYS.map(x=>`<option ${x===d?'selected':''}>${x}</option>`).join('')}</select><button class="small-btn" data-cook="${p.recipeId}">Cook</button><button class="small-btn" data-remove="${p.recipeId}" aria-label="Remove ${esc(p.recipe.name)}">\u2715</button></div></div>${bbLeftoverControls(p,planned)}`:`<button class="btn" data-add-day="${d}">\uFF0B Choose dinner</button>`}${bbExtrasForDay(d)}</section>`}).join('')}`;app.querySelector('#clearWeek').onclick=async()=>{if(await bbQaConfirm('Clear all planned dinners, breakfasts and desserts? Your pantry checklist will stay saved.','Clear this week?','Clear week')){const old={planned:state.planned,plannedDesserts:state.plannedDesserts,plannedBreakfasts:state.plannedBreakfasts,leftoverSources:state.leftoverSources,leftoverConfirmed:state.leftoverConfirmed};state.planned=[];state.plannedDesserts=[];state.plannedBreakfasts=[];state.pantryPlanGeneration=crypto.randomUUID();state.leftoverSources={};state.leftoverConfirmed={};if(!persist()||!bbShopV7Close()){Object.assign(state,old);persist();notify('Could not safely clear week');return;}render()}};app.querySelectorAll('[data-move]').forEach(el=>el.onchange=()=>{const from=el.closest('[data-bbnext-day]')?.dataset.bbnextDay||el.querySelector('option[selected]')?.value;const snapshot=bbPlanMoveSnapshot();const result=bbPlanMoveDinner({from,to:el.value,expected:snapshot.fingerprint,recipeId:el.dataset.move});if(!result.ok)render();notify(result.message);});app.querySelectorAll('[data-remove]').forEach(el=>el.onclick=()=>{state.planned=state.planned.filter(p=>p.recipeId!==el.dataset.remove);persist();render();notify('Meal removed')});app.querySelectorAll('[data-leftover-source]').forEach(el=>el.onchange=()=>{state.leftoverSources[el.dataset.leftoverSource]=el.checked;if(!el.checked){for(const r of bbLeftoverSuggestions(el.dataset.leftoverSource))state.leftoverConfirmed[r.id]=false}persist();render()});
+function addRecipe(id,day){if(bbIsBreakfast(getRecipe(id))){return bbPlanBreakfast(id,day||DAYS.find(value=>!(state.plannedBreakfasts||[]).some(slot=>slot.day===value)));}if(!bb176AllowedRecipe(id)){bb176OpenPremiumUpgrade();return;}const dessertRecipe=getRecipe(id);if(bbIsDessert(dessertRecipe)){bbPlanDessert(id,day);return}if(state.planned.some(p=>p.recipeId===id)){notify('That recipe is already in your week.');return}const used=new Set(state.planned.map(p=>p.day));for(const day of bbBatchPairs().map(x=>x.leftoverDay))used.add(day);if(day&&used.has(day)){notify('That day already has a dinner or linked leftover night.');return}const assigned=day||DAYS.find(d=>!used.has(d));if(!assigned){notify('No free dinner slots; remove one first.');return}state.planned.push({recipeId:id,day:assigned});if(!bbPersistSharedPlanEdit()){state.planned.pop();return;}bbRecordPlannedRecipes([id]);notify('Added to '+assigned+' \u2713');render()}
+function renderWeek(app){const planned=getPlanned();app.innerHTML=`<div class="section-head"><div><h3>Your weekly game plan</h3><p>One dinner per day keeps the week simple.</p></div><button class="btn" id="clearWeek">Clear week</button></div><div class="notice">Tip: changing a meal's day updates your shopping list automatically. Duplicate recipe bookings are prevented.</div>${DAYS.map((d,i)=>{const p=planned.find(x=>x.day===d);return `<section class="day"><div class="day-head"><strong>${d}</strong><span>${p?'Dinner planned':'Open slot'}</span></div>${p?`<div class="planned"><div><strong>${esc(p.recipe.name)}</strong><div class="muted" style="font-size:10px;margin-top:3px">${window.BBDuration?.format(p.recipe.mins)||"?"}</div></div><div class="small-actions"><select data-move="${p.recipeId}" aria-label="Move ${esc(p.recipe.name)} to another day">${DAYS.map(x=>`<option ${x===d?'selected':''}>${x}</option>`).join('')}</select><button class="small-btn" data-cook="${p.recipeId}">Cook</button><button class="small-btn" data-remove="${p.recipeId}" aria-label="Remove ${esc(p.recipe.name)}">\u2715</button></div></div>${bbLeftoverControls(p,planned)}`:`<button class="btn" data-add-day="${d}">\uFF0B Choose dinner</button>`}${bbExtrasForDay(d)}</section>`}).join('')}`;app.querySelector('#clearWeek').onclick=async()=>{if(await bbQaConfirm('Clear all planned dinners, breakfasts and desserts? Your pantry checklist will stay saved.','Clear this week?','Clear week')){const old={planned:state.planned,plannedDesserts:state.plannedDesserts,plannedBreakfasts:state.plannedBreakfasts,leftoverSources:state.leftoverSources,leftoverConfirmed:state.leftoverConfirmed};const sharedBefore=bbReadSharedPlanEdit();state.planned=[];state.plannedDesserts=[];state.plannedBreakfasts=[];state.pantryPlanGeneration=crypto.randomUUID();state.leftoverSources={};state.leftoverConfirmed={};if(!persist()||!bbShopV7Close()){Object.assign(state,old);persist();notify('Could not safely clear week');return;}bbCaptureSharedPlanEdit(sharedBefore);render()}};app.querySelectorAll('[data-move]').forEach(el=>el.onchange=()=>{const from=el.closest('[data-bbnext-day]')?.dataset.bbnextDay||el.querySelector('option[selected]')?.value;const snapshot=bbPlanMoveSnapshot();const result=bbPlanMoveDinner({from,to:el.value,expected:snapshot.fingerprint,recipeId:el.dataset.move});if(!result.ok)render();notify(result.message);});app.querySelectorAll('[data-remove]').forEach(el=>el.onclick=()=>{state.planned=state.planned.filter(p=>p.recipeId!==el.dataset.remove);bbPersistSharedPlanEdit();render();notify('Meal removed')});app.querySelectorAll('[data-leftover-source]').forEach(el=>el.onchange=()=>{state.leftoverSources[el.dataset.leftoverSource]=el.checked;if(!el.checked){for(const r of bbLeftoverSuggestions(el.dataset.leftoverSource))state.leftoverConfirmed[r.id]=false}persist();render()});
 app.querySelectorAll('[data-leftover-confirm]').forEach(el=>el.onchange=()=>{state.leftoverConfirmed[el.dataset.leftoverConfirm]=el.checked;persist();render()});
 app.querySelectorAll('[data-leftover-add]').forEach(el=>el.onclick=()=>bbAddSuggestedLeftover(el.dataset.leftoverFrom,el.dataset.leftoverAdd));
 app.querySelectorAll('[data-dessert-add-day]').forEach(el=>el.onclick=()=>{
@@ -8285,7 +8309,7 @@ function bbShopOwnedChanges(id,updates,item,essential=false,initialExpected={},o
  }else delete shelfEdits[id];
  const combined={...updates,...physical,[BB_SHOP_SESSION_V7_KEY]:completedSession({...session,shelfEdits})};
  const afterStock=combined[BB307_STOCK_KEY]||beforeStock;
- const queue=window.BBReceiptHost?.preparePurchasedPantry?.({stock:afterStock,beforeStock,shopSessionId:session.id});
+ const queue=window.BBReceiptHost?.preparePurchasedPantry?.({stock:afterStock,beforeStock,shopSessionId:session.id,sharedUserEdit:true});
  return {updates:{...combined,...queue?.updates},expected:{...expected,...queue?.expected},beforeStock};
 }
 function bbShopOwnedSaved(){
@@ -8325,7 +8349,9 @@ function bb84SetPrimaryPurchase(id,checked,item,essential=false,additional={}){
   if(additional.inventoryNow)changes=bbShopOwnedChanges(id,changes.updates,item,essential,ownedExpected);
   const saved=bbShopV7Write(changes.updates,{...changes.expected,...additional.expected});
   if(saved&&additional.inventoryNow)bbShopOwnedSaved();
-  if(saved&&checked)window.BBHomeHost?.reload?.();return saved;
+  if(saved&&checked)window.BBHomeHost?.reload?.();
+  if(saved)try{window.BBHouseholdSharingAuto?.captureSettingEdit?.({section:'shopping_checked',key:id,value:!!checked})?.catch?.(()=>{});}catch{}
+  return saved;
  }catch(e){console.error('Cannot save purchase checkbox',e);if(additional.inventoryNow)notify(e.message||'Review this purchase in At home.');return false}
 }
 function bb84ExtraNeeded(id,needed,ticks){
@@ -8583,7 +8609,10 @@ function renderShop(app){
  app.querySelector('#bb321ClearTicks').onclick=()=>notify('Your shopping progress is protected. Use Finish shop or Clear week to start a new shopping session.');
  app.querySelector('#bb307Reset').onclick=()=>{
   if(!window.confirm('Clear all measured pantry quantities and older owned ticks in this preview?'))return;
-  if(!bb307SaveStock({}))return;state.pantry={};persist();render();
+  const beforeStock={...bb307Stock};
+  if(!bb307SaveStock({}))return;state.pantry={};
+  if(persist()===true)try{window.BBHouseholdSharingAuto?.capturePantryEdit?.({beforeStock,stock:{}})?.catch?.(()=>{});}catch{}
+  render();
  };
  app.querySelectorAll('[data-bb321-tick]').forEach(el=>{el.addEventListener('click',event=>event.stopPropagation());el.onchange=event=>{
   event?.stopPropagation();
@@ -8605,7 +8634,7 @@ function renderShop(app){
    if(!saved){el.checked=!el.checked;notify('Purchase save failed — no progress lost');return;}
    if(typeof bbShopPurchaseRememberCount==='function')bbShopPurchaseRememberCount(view,selected?view.purchaseSelection||view.uiDefaultPurchase:null,beforeCountStock);
   }
-  else {const next=bb321ReadShopTicks();if(el.checked)next[id]=true;else delete next[id];if(!bb321WriteShopTicks(next)){el.checked=!el.checked;return;}}
+  else {const next=bb321ReadShopTicks();if(el.checked)next[id]=true;else delete next[id];if(!bb321WriteShopTicks(next)){el.checked=!el.checked;return;}try{window.BBHouseholdSharingAuto?.captureSettingEdit?.({section:'shopping_checked',key:id,value:!!el.checked})?.catch?.(()=>{});}catch{}}
   render();
  };});
  bbShopPurchaseAttachRows(app,purchaseMap);
@@ -8615,7 +8644,7 @@ function renderShop(app){
   try{if(bb307SetPantry(item.key,item.unit,Math.max(needed,owned),item.unit)){render();notify('Added to your pantry for next week ✓')}}catch(e){notify(e.message)}
  });
  app.querySelectorAll('[data-bb172-need]').forEach(el=>el.onclick=()=>{
-  const key=el.dataset.bb172Need;const next={...bb307Stock};delete next[key];if(bb307SaveStock(next)){render();notify('Removed from saved pantry ✓')}
+  const key=el.dataset.bb172Need,beforeStock={...bb307Stock};const next={...bb307Stock};delete next[key];if(bb307SaveStock(next)){try{window.BBHouseholdSharingAuto?.capturePantryEdit?.({beforeStock,stock:next})?.catch?.(()=>{});}catch{}render();notify('Removed from saved pantry ✓')}
  });
  app.querySelectorAll('[data-bb172-uncheck-staple]').forEach(el=>el.onclick=()=>{
   const name=String(el.dataset.bb172UncheckStaple||'').toLowerCase();
@@ -8639,7 +8668,7 @@ function renderShop(app){
   if(item&&bb307SetPantry(item.key,item.unit,['each','pack','clove'].includes(item.unit)?Math.ceil(item.required):item.required,item.unit)){render();notify('Marked enough in pantry ✓')}
  });
  app.querySelectorAll('[data-bb321-stock-remove]').forEach(el=>el.onclick=()=>{
-  const next={...bb307Stock};delete next[el.dataset.bb321StockRemove];if(bb307SaveStock(next))render();
+  const beforeStock={...bb307Stock},next={...bb307Stock};delete next[el.dataset.bb321StockRemove];if(bb307SaveStock(next)){try{window.BBHouseholdSharingAuto?.capturePantryEdit?.({beforeStock,stock:next})?.catch?.(()=>{});}catch{}render();}
  });
  app.querySelector('#bb321ManualStock').onsubmit=e=>{
   e.preventDefault();const name=app.querySelector('#bb321StockName').value.trim(),num=app.querySelector('#bb321StockAmount').value,unit=app.querySelector('#bb321StockUnit').value;
@@ -9286,6 +9315,7 @@ function bbRestoreSavedWeek({week,expected,actor}={}){
   if(!bbShopV7Close({updates,expected:initial.raw,allowUninitialized:true}))throw Error('save');
   bb321LunchState=lunch;
  }catch{state=before;bb321LunchState=oldLunch;return {ok:false,message:'Could not load this week. Your previous plan and lunches have been kept.'};}
+ bbCaptureSharedPlanEdit(initial.raw[KEY]);
  try{window.BasketBossCloud?.scheduleSave();}catch{}
  const saveStatus=document.getElementById('saveStatus');if(saveStatus)saveStatus.textContent='✓ Saved on this device';
  bbRecordPlannedRecipes([...ids],false);bb80OpenPlanDays.clear();bb80RememberPlanDays();bbNextExpandedPlanDay=null;render();notify('Saved week loaded. Check At home, then open Shop.');
@@ -9376,7 +9406,7 @@ async function bbStartNextWeekRun({mode,empty=false,confirmEmpty}={}){
   // Keep the old in-memory week until Close has archived ITS remaining list.
   // Its existing write/rollback guard owns every staged key in this transfer.
   if(!bbShopV7Close({updates,expected:{...initial.raw,...Object.fromEntries(stage.expected)},allowUninitialized:true}))return failed('Could not start next week. Your current plan and saved weeks have been kept.');
-  state=next;bb321LunchState=lunch;bb80OpenPlanDays.clear();bb80RememberPlanDays();bbNextExpandedPlanDay=null;
+  state=next;bb321LunchState=lunch;bbCaptureSharedPlanEdit(initial.raw[KEY]);bb80OpenPlanDays.clear();bb80RememberPlanDays();bbNextExpandedPlanDay=null;
   if(!empty&&typeof bbOnboardingPlanCreated==='function')bbOnboardingPlanCreated(additions.map(row=>row.recipeId));
   try{window.BasketBossCloud?.scheduleSave();}catch{}
   render();const messageText=(empty?'Next week started with an empty meal plan. ':'Next week started. ')+'Your At home stock has been kept'+(savedName?' and your previous week is in Saved weeks.':'.');notify(messageText);
@@ -9452,6 +9482,7 @@ function bbPlanMoveDinner({from,to,expected,recipeId}={}){
   try{if(localStorage.getItem(KEY)===attempted){if(oldRaw===null)localStorage.removeItem(KEY);else localStorage.setItem(KEY,oldRaw);}}catch(_){}
   return {ok:false,message:'Could not save your week. Your dinners stay on their original days.'};
  }
+ bbCaptureSharedPlanEdit(oldRaw);
  render();
  return {ok:true,message:change.swapped?from+' and '+to+' dinners swapped.':'Dinner moved from '+from+' to '+to+'.'};
 }
@@ -9569,7 +9600,9 @@ function bb172GetBudget(){
 }
 function bb172SaveBudget(n){
  if(!Number.isFinite(n)||n<1||n>10000){notify('Choose a weekly budget between £1 and £10,000.');return false}
- try{localStorage.setItem(BB172_BUDGET_KEY,String(n));localStorage.setItem('basketboss_v172_weekly_budget_v1',String(n));bb172BudgetTarget=n;return true}
+ try{localStorage.setItem(BB172_BUDGET_KEY,String(n));localStorage.setItem('basketboss_v172_weekly_budget_v1',String(n));bb172BudgetTarget=n;
+  try{if(localStorage.getItem(BB172_BUDGET_KEY)===String(n)&&localStorage.getItem('basketboss_v172_weekly_budget_v1')===String(n))window.BBHouseholdSharingAuto?.captureSettingEdit?.({section:'budget_target',key:'weekly',value:{amount:n}})?.catch?.(()=>{});}catch{}
+  return true}
  catch(e){notify('Could not save the budget on this device');return false}
 }
 bb172Tiles=bb172GetTiles();bb172BudgetTarget=bb172GetBudget();
@@ -10298,7 +10331,7 @@ function bbAfCommit(previous,planSnapshot,notesSnapshot,batchData,selection){
   new Set(next.map(x=>x.recipeId)).size!==next.length){
   notify('Conflicting dinner detected. Nothing saved.');return false;
  }
- const oldBatch=state.bb81Batch;
+ const oldBatch=state.bb81Batch,sharedBefore=bbReadSharedPlanEdit();
  state.planned=next;if(batchData)state.bb81Batch=batchData;
  try{if(persist()!==true)throw Error('Save failed');}
  catch(_){
@@ -10309,6 +10342,7 @@ function bbAfCommit(previous,planSnapshot,notesSnapshot,batchData,selection){
   state.planned=previous;state.bb81Batch=oldBatch;persist();
   notify('Could not save recipe rotation. Your previous plan was restored.');return false;
  }
+ bbCaptureSharedPlanEdit(sharedBefore);
  bbRecordPlannedRecipes(selection.additions.map(row=>row.recipeId));render();return true;
 }
 /* END_BASKETBOSS_AUTOFILL_VARIETY_ROTATION_V1 */
@@ -10915,7 +10949,7 @@ function bbShopV7Close(transfer=null){
  if(immediate){
   closeExpected.basketboss_cloud_session_v1=localStorage.getItem('basketboss_cloud_session_v1');
   if(Object.hasOwn(closeUpdates,BB307_STOCK_KEY))try{
-   const queue=window.BBReceiptHost?.preparePurchasedPantry?.({stock:closeUpdates[BB307_STOCK_KEY],beforeStock:bb307ReadStock(),shopSessionId:session.id});
+   const queue=window.BBReceiptHost?.preparePurchasedPantry?.({stock:closeUpdates[BB307_STOCK_KEY],beforeStock:bb307ReadStock(),shopSessionId:session.id,sharedUserEdit:true});
    if(queue){Object.assign(closeUpdates,queue.updates);Object.assign(closeExpected,queue.expected);}
   }catch{return false;}
  }
@@ -11189,6 +11223,7 @@ function bbPartialSet(item,boughtTotal,reducedPrice,options={}){
  if(options.inventoryNow)try{prepared=bbShopOwnedChanges(item.id,changed,basket||{key:item.name,unit},item.id.startsWith('ess:'),ownedExpected);}catch(error){notify(error.message);return false;}
  if(!bbShopV7Write(prepared.updates,prepared.expected)){notify('Purchase could not be saved. Nothing was credited to At home.');return false;}
  if(options.inventoryNow)bbShopOwnedSaved();
+ try{window.BBHouseholdSharingAuto?.captureSettingEdit?.({section:'shopping_checked',key:item.id,value:total>=required})?.catch?.(()=>{});}catch{}
  if(total>=required)window.BBHomeHost?.reload?.();
  render();bb172StorefrontRefresh();
  notify(total<required?item.name+': '+bbPartialRound(required-total,unit)+' '+unit+' still to buy.':item.name+' marked bought ✓');
@@ -11241,7 +11276,7 @@ function bbPantryPlannerPopulate(suggestions){
  }
  if(!chosen.length)return {ok:false,reason:'No safe empty days or matching recipes. No changes made.'};
  const old=state.planned;state.planned=[...old,...chosen];
- if(!persist()){state.planned=old;return {ok:false,reason:'Planner save failed. Your existing week was restored.'};}
+ if(!bbPersistSharedPlanEdit()){state.planned=old;return {ok:false,reason:'Planner save failed. Your existing week was restored.'};}
  if(typeof bbOnboardingPlanCreated==='function')bbOnboardingPlanCreated(chosen.map(row=>row.recipeId));
  render();return {ok:true,added:chosen};
 }
@@ -12049,7 +12084,7 @@ function bbHouseholdStockReviewOptions(onSaved){
  const keys={stock:BB307_STOCK_KEY,inventory:BB83_KITCHEN_INVENTORY,features:BB307_FEATURE_KEY};
  return {document,keys,market:bb307Market,isHousehold:name=>window.BBKitchenChoiceRules.isHousehold(name),canonicalize:window.BBPantryAliasCanonical||BBPriceV19.canonical,reconcile:window.BBWeeklyEssentials.reconcile,formatDisplayQty:window.BBShopPurchaseUI?.formatDisplayQty,
   read:()=>{const expected=bbShopOwnedExpected();for(const key of Object.values(window.BBReceiptHost?.keys||{}))if(typeof key==='string'&&!Object.hasOwn(expected,key))expected[key]=localStorage.getItem(key);return {actor:window.BBHome?.actor?.()||'guest',trip:bbBetaShopWeek(),session:localStorage.getItem('basketboss_cloud_session_v1'),stock:JSON.parse(localStorage.getItem(keys.stock)||'{}'),inventory:JSON.parse(localStorage.getItem(keys.inventory)||'{}'),features:JSON.parse(localStorage.getItem(keys.features)||'{"version":1,"essentials":[]}'),expected};},
-  preparePurchasedPantry:request=>window.BBReceiptHost?.preparePurchasedPantry?.(request),write:bbShopV7Write,
+  preparePurchasedPantry:request=>window.BBReceiptHost?.preparePurchasedPantry?.({...request,sharedUserEdit:true}),write:bbShopV7Write,
   onSaved:prepared=>{bb307Stock=bb307ReadStock();bb307FeatureState=bb307ReadFeatures();render();bb172StorefrontRefresh();try{window.BBReceiptHost?.retryPurchasedPantry?.()?.catch?.(()=>{});}catch{}notify('Household stock saved in Weekly essentials.');onSaved?.(prepared);}
  };
 }
@@ -13392,7 +13427,7 @@ if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',
 </script>
 <script defer src="/bb-pantry-stock-levels.js?v=eafc0a41f805c97d"></script>
 <script defer src="/bb-pantry-pack-sync.js?v=5c8d3568b4d7aef6"></script>
-<script src="/pwa700/shopping-inventory.js?v=5e8c714217fac7c2" defer></script><dialog id="bbIntroTrialDialog" aria-labelledby="bbIntroTrialTitle" aria-describedby="bbIntroTrialText">
+<script src="/pwa700/shopping-inventory.js?v=24026a35f8d33fec" defer></script><dialog id="bbIntroTrialDialog" aria-labelledby="bbIntroTrialTitle" aria-describedby="bbIntroTrialText">
  <div class="bbtrial-hero">
   <button type="button" class="bbtrial-x" data-bbtrial-close aria-label="Close Premium offer">×</button>
   <p class="bbtrial-topline">🚀 FOUNDING MEMBER BETA · FIRST 25 PLACES</p>
@@ -14248,7 +14283,8 @@ body[data-bbnext-view="discover"] #app .bb175-discover-heading{padding-top:calc(
 <link rel="stylesheet" href="/bb-partner-signup-prompt.css?v=4b8718904151c105">
 <script defer src="/bb-partner-signup-prompt.js?v=4d5dba284b0f176f"></script>
 <link rel="stylesheet" href="/bb-household-sharing.css?v=b26e50b91249d42a">
-<script defer src="/bb-household-sharing.js?v=c268b60c119ee1ed"></script>
+<script defer src="/bb-household-auto-sync.js?v=566275aeb120870a"></script>
+<script defer src="/bb-household-sharing.js?v=521260a6b9035afa"></script>
 <link rel="stylesheet" href="/bb-recipe-ingredient-layout.css?v=7a30d20f75de3e74">
 <style id="bb-hide-dish-price-badges">
 /* Dish cards show time and servings; Shop and budget prices keep their own selectors. */

@@ -1,5 +1,5 @@
 /* Public web700 cache contract. Never include private/API/auth responses. */
-self.BB700_PWA_CACHE_VERSION="d4e16d29e56cf6559f9886d475b6d03db859e42084e7c51c1307d2b984f35614";
+self.BB700_PWA_CACHE_VERSION="7cfe7278fa57aa96dfd6d44c0f4d391963638342125aa51b9be893e46038c83f";
 self.BB700_PWA_PRECACHE=Object.freeze([
   "/basketboss-aisles-v20.js?v=d45b76bac322b605",
   "/bb-account-deletion.css?v=645b166ac6fe196f",
@@ -60,8 +60,9 @@ self.BB700_PWA_PRECACHE=Object.freeze([
   "/bb-home.js?v=6ef580b0821a489f",
   "/bb-household-aliases.js?v=e661be8bd0f2cf19",
   "/bb-household-amount.js?v=8c3273f895ce9c7f",
+  "/bb-household-auto-sync.js?v=566275aeb120870a",
   "/bb-household-sharing.css?v=b26e50b91249d42a",
-  "/bb-household-sharing.js?v=c268b60c119ee1ed",
+  "/bb-household-sharing.js?v=521260a6b9035afa",
   "/bb-household-stock-review.js?v=7dfd3a0a58079526",
   "/bb-how-it-works.css?v=dbb7f80026cc2c2d",
   "/bb-how-it-works.js?v=bdd83d8ee84dd641",
@@ -134,9 +135,9 @@ self.BB700_PWA_PRECACHE=Object.freeze([
   "/bb-purchase-choice.css?v=7982c53202f5c96f",
   "/bb-real-app-tour.css?v=e70325086ae3874f",
   "/bb-receipt-host.css?v=144740b15969b571",
-  "/bb-receipt-host.js?v=073ae771b0f028b3",
+  "/bb-receipt-host.js?v=9fc5a7005d11a5e8",
   "/bb-receipt-inventory-core.mjs?v=20261105-business1",
-  "/bb-receipt-inventory.js?v=019d71232baa6f96",
+  "/bb-receipt-inventory.js?v=f1649b1aebf11b8a",
   "/bb-receipt-quantity.js?v=bf57b05a9993d398",
   "/bb-receipt-scanner.css?v=f5a7f0035dc6279e",
   "/bb-receipt-scanner.js?v=44189473c8d617fe",
@@ -251,7 +252,7 @@ self.BB700_PWA_PRECACHE=Object.freeze([
   "/pwa700/pricing-sandbox",
   "/pwa700/recipes.json",
   "/pwa700/shopping-inventory.js",
-  "/pwa700/shopping-inventory.js?v=5e8c714217fac7c2",
+  "/pwa700/shopping-inventory.js?v=24026a35f8d33fec",
   "/pwa700/subscriptions",
   "/pwa700/tutorial"
 ]);
