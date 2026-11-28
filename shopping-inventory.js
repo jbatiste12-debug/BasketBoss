@@ -178,12 +178,24 @@ async function build(){
  function runSave(automatic=false,explicit=false,localOnly=false){
   if(autoTimer!==null)clearTimeout(autoTimer);autoTimer=null;
   if(automatic&&(!draftDirty||!explicit&&(!live()||!card.isConnected||document.querySelector('.tab.active')?.dataset.tab!=='shop')))return Promise.resolve();
-  if(saving)return saving.then(()=>draftDirty&&(!automatic||explicit||card.isConnected)?runSave(automatic,explicit,localOnly):undefined);
   if(automatic&&[...staged.values()].some(row=>row.qty!==null&&row.qty!==undefined&&(String(row.qty).trim()===''||!Number.isFinite(Number(row.qty))||Number(row.qty)<0||Number(row.qty)>1000000||row.staple&&Number(row.qty)>10000))){note.textContent='Enter a valid amount to update Shopping. Existing stock has been kept.';return Promise.resolve();}
+  // Reconciliation commits its guarded local transaction before its first
+  // await. A prior server retry must not hold up another explicit local save.
+  if(explicit&&localOnly)return reconcilePantry(automatic,true);
+  if(saving)return saving.then(()=>draftDirty&&(!automatic||explicit||card.isConnected)?runSave(automatic,explicit,localOnly):undefined);
   const savedDraft=JSON.stringify([...staged]);
   saving=reconcilePantry(automatic,localOnly).finally(()=>{saving=null;if(draftDirty&&card.isConnected&&JSON.stringify([...staged])!==savedDraft)scheduleAuto();});return saving;
  }
- const flushDraft=options=>draftDirty?runSave(true,true,options?.localOnly===true):Promise.resolve();
+ const flushDraft=options=>{
+  if(!draftDirty)return Promise.resolve();const who=draftActor();
+  return runSave(true,true,true).then(()=>{
+   if(options?.localOnly===true||draftDirty||who!==openedActor||draftActor()!==who||physicalRevision()!==openedRevision||window.BBAccountDeletion?.isDeleting?.())return;
+   window.BBPantryPackSync?.committed?.();window.BasketBossCloud?.scheduleSave?.();
+   if(who==='guest')return;
+   const host=window.BBReceiptHost;if(host?.accountPantrySyncEnabled?.()!==true)return;
+   try{Promise.resolve(host.retryPurchasedPantry?.()).catch(()=>{});}catch{}
+  });
+ };
  if(live()){window.BBPantryLive={flush:flushDraft,hasPending:()=>draftDirty,householdChanged:()=>{draftDirty=true;scheduleAuto();}};reconcile.textContent='Update Shopping now';card.querySelectorAll('li')[3].textContent='Valid amounts save automatically and update Shopping. Done saves pending picker changes.';note.textContent='Valid changes update Shopping automatically.';review.querySelector('.bb174-fridge-review-head p').textContent='Set actual quantities or staple status. Valid edits save automatically; Done saves any pending picker changes.';review.querySelector('.bb174-fridge-explain').textContent='Known quantities reduce what is left to buy. Unknown amounts and containers stay visible for review.';}
  function sid(loc,name){return loc+'|'+(policy()?.canonicalName(name,window.BBPantryAliasCanonical||window.BBPriceV19?.canonical)||canon(name))}
  const draftKeys=(loc,name)=>[...staged].filter(([,row])=>sid(row.loc,row.name)===sid(loc,name)).map(([key])=>key);
@@ -467,8 +479,7 @@ async function build(){
    note.textContent='Could not save safely. Review storage and try again.';return;
   }
   pendingFoodDraft=null;stagedTargets.clear();openedRevision=physicalRevision();window.BBHome?.committed?.();externalAtOpen.clear();draftDirty=false;
-  window.BBPantryPackSync?.committed?.();
-  window.BasketBossCloud?.scheduleSave?.();
+  if(!localOnly){window.BBPantryPackSync?.committed?.();window.BasketBossCloud?.scheduleSave?.();}
   const unknown=chosen.filter(x=>x.qty===null);
   const requirements=window.BBHomeHost?.requirements?.()||[],mismatches=window.BBHomeHost?.consume?.(nextStock,requirements)?.mismatches||{};
   const incompatible=chosen.filter(x=>!x.staple&&(x.conversionNeedsReview||x.qty>0&&requirements.some(row=>pantryStockId(row.key||row.name,'')===pantryStockId(x.name,'')&&mismatches[pantryStockId(row.key||row.name,row.unit)]?.length)));

@@ -30,6 +30,34 @@ function addForm(h){
  vm.runInNewContext(flushSource+'\nthis.submit='+actionSource("form.addEventListener('submit',async event=>{",'\n   });').replace(/^/,'async event=>{')+';',context);
  return {submit:()=>context.submit(event()),notices,name,quantity,view};
 }
+async function stalledAccountFixture(){
+ const actor='durable_pantry_user',outbox='basketboss_purchase_pantry_sync_v1:'+actor;let retries=0,cloud=0;
+ const never=new Promise(()=>{}),h=await fixture({configureWindow(win){
+  win.localStorage.setItem('basketboss_cloud_session_v1',JSON.stringify({user:{id:actor},access_token:'synthetic-token'}));
+  win.BasketBossCloud={scheduleSave(){cloud++;}};
+  win.BBReceiptHost={accountPantrySyncEnabled:()=>true,hasPendingConfirmation:()=>false,
+   preparePurchasedPantry({stock}){return {updates:{[outbox]:{stock}},expected:{[outbox]:win.localStorage.getItem(outbox)},queued:true};},
+   retryPurchasedPantry(){retries++;return never;}};
+ }});
+ return {...h,outbox:()=>JSON.parse(h.storage.getItem(outbox)||'null'),retries:()=>retries,cloud:()=>cloud};
+}
+
+test('explicit Add resolves after its durable local commit while account synchronization never resolves',{timeout:1000},async()=>{
+ const h=await stalledAccountFixture(),form=addForm(h);await form.submit();
+ assert.match(form.notices.at(-1).message,/Food saved/);assert.deepEqual(clone(h.stock()),{'pasta|g':500});assert.deepEqual(clone(h.outbox().stock),{'pasta|g':500});assert.equal(h.retries(),1);assert.equal(h.win.BBPantryEditor.hasPending(),false);
+});
+
+test('a previous autosave awaiting the server cannot block another explicit local Add',{timeout:1000},async()=>{
+ const h=await stalledAccountFixture(),before=new Set(held.keys());h.win.BBPantryEditor.add({name:'Pasta',loc:'cupboard',qty:500,unit:'g'});
+ const timer=[...held].find(([id])=>!before.has(id));assert.ok(timer);held.delete(timer[0]);timer[1]();assert.equal(h.retries(),1);
+ const form=addForm(h);await form.submit();assert.match(form.notices.at(-1).message,/Food saved/);assert.deepEqual(clone(h.stock()),{'pasta|g':1000});assert.deepEqual(clone(h.outbox().stock),{'pasta|g':1000});assert.equal(h.win.BBPantryEditor.hasPending(),false);
+});
+
+test('a failed explicit local commit does not schedule cloud work or an account retry',async()=>{
+ const h=await stalledAccountFixture(),form=addForm(h),write=h.storage.setItem;
+ h.storage.setItem=(key,value)=>{if(key===INVENTORY&&value!=='{}')throw Error('synthetic quota');write(key,value);};
+ await form.submit();assert.equal(form.notices.at(-1).error,true);assert.equal(h.win.BBPantryEditor.hasPending(),true);assert.deepEqual(clone(h.stock()),{});assert.equal(h.outbox(),null);assert.equal(h.retries(),0);assert.equal(h.cloud(),0);
+});
 
 test('Add saves before its success and survives a tab change and cold restart with its 350ms timer held',async()=>{
  const h=await fixture(),form=addForm(h);assert.deepEqual(clone(h.stock()),{});
@@ -109,9 +137,10 @@ test('Enough for this week saves its exact coverage before success and keeps fai
 
 test('pagehide and hidden visibility perform the existing local save without waiting for receipt synchronization',async()=>{
  for(const type of ['pagehide','visibilitychange']){
-  const handlers=new Map(),h=await fixture({configureWindow(win){win.addEventListener=(name,fn)=>handlers.set(name,fn);win.document.addEventListener=(name,fn)=>handlers.set(name,fn);}});
+  const handlers=new Map();let cloud=0,packs=0;
+  const h=await fixture({configureWindow(win){win.addEventListener=(name,fn)=>handlers.set(name,fn);win.document.addEventListener=(name,fn)=>handlers.set(name,fn);win.BasketBossCloud={scheduleSave(){cloud++;}};win.BBPantryPackSync={committed(){packs++;}};}});
   h.win.BBPantryEditor.add({name:'Pasta',loc:'cupboard',qty:500,unit:'g'});h.doc.hidden=true;h.doc.visibilityState='hidden';handlers.get(type)();
-  assert.deepEqual(clone(h.stock()),{'pasta|g':500});assert.equal(h.win.BBPantryEditor.hasPending(),false);assert.equal(h.syncs(),0,'background save stops after the guarded local transaction');
+  assert.deepEqual(clone(h.stock()),{'pasta|g':500});assert.equal(h.win.BBPantryEditor.hasPending(),false);assert.equal(h.syncs(),0,'background save stops after the guarded local transaction');assert.equal(cloud,0);assert.equal(packs,0);
   const reopened=await fixture({stock:h.stock(),inventory:h.inventory()});assert.deepEqual(clone(reopened.stock()),{'pasta|g':500});
  }
 });
