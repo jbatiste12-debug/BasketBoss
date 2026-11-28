@@ -1,0 +1,121 @@
+{
+  "baseline": "c05180b1d28b4c30d2ae7b272faeab0f0565e546",
+  "generatedClient": "dist/android",
+  "fixture": "7 Free dinners, household 4 then5,15 foods, saved budget200 then250, guest/completed onboarding",
+  "limitations": "Desktop Chromium actual generated client. Only unavailable native transport replaced; server unavailable guest APIs return401. Date,crypto.randomUUID,Math.random fixed for repeatability. No localStorage keys excluded.",
+  "checkpoints": [
+    {
+      "name": "startup",
+      "everyStorageByteEqual": true,
+      "persistedKeys": 18,
+      "storageSha256": "df3706595223c0e8045e1471892142b441d085caa103cf4d91cc090923bf2f22",
+      "visibleSha256": "80f22e0efd61ef19ca68fe0e332c5de3cef9bebe68110e5f4efa6e5945a73dc0",
+      "view": "week",
+      "selected": [
+        "plan"
+      ]
+    },
+    {
+      "name": "Discover",
+      "everyStorageByteEqual": true,
+      "persistedKeys": 19,
+      "storageSha256": "6d1f04b5a1f2e87be4b809236930478fa200bf35edd818d3e0cce2abca8cce39",
+      "visibleSha256": "e80429061fa9aeed761c11c7aeccc45a3fea37175ace61d76bba39ca1ca8dce2",
+      "view": "discover",
+      "selected": [
+        "discover"
+      ]
+    },
+    {
+      "name": "Plan",
+      "everyStorageByteEqual": true,
+      "persistedKeys": 19,
+      "storageSha256": "6d1f04b5a1f2e87be4b809236930478fa200bf35edd818d3e0cce2abca8cce39",
+      "visibleSha256": "80f22e0efd61ef19ca68fe0e332c5de3cef9bebe68110e5f4efa6e5945a73dc0",
+      "view": "week",
+      "selected": [
+        "plan"
+      ]
+    },
+    {
+      "name": "At home",
+      "everyStorageByteEqual": true,
+      "persistedKeys": 20,
+      "storageSha256": "1b73a521ec598f5731416be3803a6fdc582ed75466370c56bdf89e1821290238",
+      "visibleSha256": "c6735eea54119a06846eb0edfa53368b7e354626bb74fedfc2ff87c7f59723c9",
+      "view": "shop",
+      "selected": [
+        "kitchen"
+      ]
+    },
+    {
+      "name": "Shop",
+      "everyStorageByteEqual": true,
+      "persistedKeys": 20,
+      "storageSha256": "1b73a521ec598f5731416be3803a6fdc582ed75466370c56bdf89e1821290238",
+      "visibleSha256": "78f11a258fbcc2380f28e3b64673fea246592a828d5b418342032d4fee06a5b9",
+      "view": "shop-list",
+      "selected": [
+        "shop"
+      ]
+    },
+    {
+      "name": "Plan return",
+      "everyStorageByteEqual": true,
+      "persistedKeys": 20,
+      "storageSha256": "1b73a521ec598f5731416be3803a6fdc582ed75466370c56bdf89e1821290238",
+      "visibleSha256": "80f22e0efd61ef19ca68fe0e332c5de3cef9bebe68110e5f4efa6e5945a73dc0",
+      "view": "week",
+      "selected": [
+        "plan"
+      ]
+    },
+    {
+      "name": "budget saved 250",
+      "everyStorageByteEqual": true,
+      "persistedKeys": 20,
+      "storageSha256": "cdae64f11be0c7314a7814902f3ef3f3fbcf541491a89edad7807303890eb625",
+      "visibleSha256": "0e21dbe38cca4c405d4947ef58cf1fa54e9cc576654b108e60770bd353c8485d",
+      "view": "week",
+      "selected": [
+        "plan"
+      ]
+    },
+    {
+      "name": "Feeding +",
+      "everyStorageByteEqual": true,
+      "persistedKeys": 21,
+      "storageSha256": "31ad998adc043a0b5fb6c7ea70164589ed77b9822ed67847878deea2bf8eb61c",
+      "visibleSha256": "2b214d41468edc02abbfd9caaec6b4cbfd50b22c7fb6807377b1d6294954f5f5",
+      "view": "week",
+      "selected": [
+        "plan"
+      ]
+    },
+    {
+      "name": "Settings open",
+      "everyStorageByteEqual": true,
+      "persistedKeys": 21,
+      "storageSha256": "31ad998adc043a0b5fb6c7ea70164589ed77b9822ed67847878deea2bf8eb61c",
+      "visibleSha256": "6e9ef6333dc63894042b5df6c773a1518497c72084a0421c596e090ec73bd658",
+      "view": "week",
+      "selected": [
+        "plan"
+      ]
+    },
+    {
+      "name": "Settings close",
+      "everyStorageByteEqual": true,
+      "persistedKeys": 21,
+      "storageSha256": "31ad998adc043a0b5fb6c7ea70164589ed77b9822ed67847878deea2bf8eb61c",
+      "visibleSha256": "2b214d41468edc02abbfd9caaec6b4cbfd50b22c7fb6807377b1d6294954f5f5",
+      "view": "week",
+      "selected": [
+        "plan"
+      ]
+    }
+  ],
+  "allTenCheckpointsPassed": true,
+  "excludedStorageKeys": [],
+  "fullSnapshots": "Retained in the execution audit; this compact report records every checkpoint and identical storage/visible-state hashes."
+}

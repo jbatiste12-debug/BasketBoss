@@ -1,0 +1,1219 @@
+{
+  "schemaVersion": 1,
+  "baselineSource": "c05180b1d28b4c30d2ae7b272faeab0f0565e546",
+  "reviewedSource": "dc3ffa155d377059c5156c65b47e708d519d1321",
+  "launcherCommit": "b285f4558eecc931accddb39c01fbf1498507b64",
+  "android": {
+    "versionName": "1.0.12",
+    "versionCode": 12,
+    "appId": "uk.co.basketboss.app"
+  },
+  "date": "2026-11-28",
+  "method": {
+    "client": "Actual generated Android700 dist/android assets; production runtime with only unavailable Capacitor transport replaced",
+    "fixture": "Seven valid Free dinners,15 measured foods,feeding4 then5,budget200,completed onboarding,guest state",
+    "order": [
+      "baseline1x",
+      "current1x",
+      "baseline4x",
+      "current4x"
+    ],
+    "network": "All application assets served locally; no artificial script or network holds; guest server APIs return401 in both variants",
+    "input": "Programmatic .click synchronous-handler and first-RAF measurements plus a separately observed real Playwright touchscreen tap",
+    "firstRafMeaning": "First requestAnimationFrame callback, not physical screen paint",
+    "limits": [
+      "Desktop Chromium CPU simulation, not measurements from a physical Galaxy A13",
+      "One representative sequential run per condition; not a latency distribution",
+      "Settled document wall time includes a650ms audit quiet period and automation overhead",
+      "This guest local-state audit does not validate remote household synchronization or production purchase behavior"
+    ]
+  },
+  "generatedAndroidIndexSha256": "bba63d4400fa3b00cf1f27254082d0b7650667ba631b31e48bcaf6ad90f2a1a3",
+  "runs": [
+    {
+      "variant": "baseline",
+      "cpuRate": 1,
+      "startup": {
+        "nativeReadyMs": 2497,
+        "firstNavigationRafMs": 2709,
+        "scriptMs": 4237,
+        "totalBlockingMs": 3912,
+        "longestTaskMs": 2100,
+        "afterNativeReady": {
+          "count": 3,
+          "totalMs": 3042,
+          "blockingMs": 2892,
+          "maximumMs": 2100,
+          "tasks": [
+            {
+              "start": 2497,
+              "duration": 211
+            },
+            {
+              "start": 2715,
+              "duration": 2100
+            },
+            {
+              "start": 4860,
+              "duration": 731
+            }
+          ]
+        },
+        "postFirstNavigation": {
+          "count": 2,
+          "totalMs": 2831,
+          "blockingMs": 2731,
+          "maximumMs": 2100,
+          "tasks": [
+            {
+              "start": 2715,
+              "duration": 2100
+            },
+            {
+              "start": 4860,
+              "duration": 731
+            }
+          ]
+        },
+        "layoutCount": 47,
+        "styleRecalculationCount": 54
+      },
+      "interactions": [
+        {
+          "name": "Discover",
+          "handlerMs": 229,
+          "firstRafMs": 269,
+          "selectedOnReturn": [
+            "discover"
+          ],
+          "metrics": {
+            "ScriptDuration": 222,
+            "TaskDuration": 399,
+            "LayoutDuration": 58,
+            "RecalcStyleDuration": 41,
+            "LayoutCount": 6,
+            "RecalcStyleCount": 7,
+            "Nodes": 1119,
+            "JSHeapUsedSize": 2584464
+          }
+        },
+        {
+          "name": "Plan",
+          "handlerMs": 690,
+          "firstRafMs": 1092,
+          "selectedOnReturn": [
+            "plan"
+          ],
+          "metrics": {
+            "ScriptDuration": 1051,
+            "TaskDuration": 1200,
+            "LayoutDuration": 18,
+            "RecalcStyleDuration": 71,
+            "LayoutCount": 14,
+            "RecalcStyleCount": 17,
+            "Nodes": 9432,
+            "JSHeapUsedSize": 3838372
+          }
+        },
+        {
+          "name": "At home",
+          "handlerMs": 566,
+          "firstRafMs": 2365,
+          "selectedOnReturn": [
+            "kitchen"
+          ],
+          "metrics": {
+            "ScriptDuration": 3245,
+            "TaskDuration": 3597,
+            "LayoutDuration": 18,
+            "RecalcStyleDuration": 54,
+            "LayoutCount": 5,
+            "RecalcStyleCount": 6,
+            "Nodes": -7293,
+            "JSHeapUsedSize": 2715544
+          }
+        },
+        {
+          "name": "Shop",
+          "handlerMs": 657,
+          "firstRafMs": 1001,
+          "selectedOnReturn": [
+            "shop"
+          ],
+          "metrics": {
+            "ScriptDuration": 1505,
+            "TaskDuration": 1656,
+            "LayoutDuration": 20,
+            "RecalcStyleDuration": 61,
+            "LayoutCount": 7,
+            "RecalcStyleCount": 9,
+            "Nodes": 11825,
+            "JSHeapUsedSize": 2728968
+          }
+        },
+        {
+          "name": "Plan return",
+          "handlerMs": 745,
+          "firstRafMs": 1169,
+          "selectedOnReturn": [
+            "plan"
+          ],
+          "metrics": {
+            "ScriptDuration": 1117,
+            "TaskDuration": 1350,
+            "LayoutDuration": 18,
+            "RecalcStyleDuration": 86,
+            "LayoutCount": 14,
+            "RecalcStyleCount": 16,
+            "Nodes": -25704,
+            "JSHeapUsedSize": -15231016
+          }
+        },
+        {
+          "name": "Feeding +",
+          "handlerMs": 729,
+          "firstRafMs": 1179,
+          "selectedOnReturn": [
+            "plan"
+          ],
+          "metrics": {
+            "ScriptDuration": 1124,
+            "TaskDuration": 1264,
+            "LayoutDuration": 18,
+            "RecalcStyleDuration": 63,
+            "LayoutCount": 13,
+            "RecalcStyleCount": 15,
+            "Nodes": 9399,
+            "JSHeapUsedSize": 17262520
+          }
+        },
+        {
+          "name": "Settings open",
+          "handlerMs": 29,
+          "firstRafMs": 45,
+          "selectedOnReturn": [
+            "plan"
+          ],
+          "metrics": {
+            "ScriptDuration": 5,
+            "TaskDuration": 123,
+            "LayoutDuration": 8,
+            "RecalcStyleDuration": 32,
+            "LayoutCount": 2,
+            "RecalcStyleCount": 4,
+            "Nodes": 49,
+            "JSHeapUsedSize": 622420
+          }
+        },
+        {
+          "name": "Settings close",
+          "handlerMs": 9,
+          "firstRafMs": 12,
+          "selectedOnReturn": [
+            "plan"
+          ],
+          "metrics": {
+            "ScriptDuration": 3,
+            "TaskDuration": 86,
+            "LayoutDuration": 0,
+            "RecalcStyleDuration": 15,
+            "LayoutCount": 2,
+            "RecalcStyleCount": 2,
+            "Nodes": 42,
+            "JSHeapUsedSize": 608060
+          }
+        },
+        {
+          "name": "Real touchscreen tap Plan \u2192 Discover",
+          "inputToClickMs": 3,
+          "inputToFirstRafMs": 260,
+          "clickToFirstRafMs": 257,
+          "events": [
+            {
+              "type": "pointerdown",
+              "timeFromFirstInputMs": 0
+            },
+            {
+              "type": "touchstart",
+              "timeFromFirstInputMs": 0
+            },
+            {
+              "type": "pointerup",
+              "timeFromFirstInputMs": 1
+            },
+            {
+              "type": "touchend",
+              "timeFromFirstInputMs": 1
+            },
+            {
+              "type": "click",
+              "timeFromFirstInputMs": 3
+            }
+          ],
+          "selectedAtFrame": [
+            "discover"
+          ],
+          "metrics": {
+            "ScriptDuration": 216,
+            "TaskDuration": 312,
+            "LayoutDuration": 17,
+            "RecalcStyleDuration": 55,
+            "LayoutCount": 8,
+            "RecalcStyleCount": 13,
+            "Nodes": 1132,
+            "JSHeapUsedSize": 3499656
+          }
+        },
+        {
+          "name": "Cook document",
+          "wallMs": 897
+        },
+        {
+          "name": "Cook \u2192 Plan document",
+          "wallMs": 4969,
+          "nativeReadyMs": 1937,
+          "firstNavigationMs": 2150,
+          "postVisible": {
+            "count": 2,
+            "totalMs": 2041,
+            "blockingMs": 1941,
+            "maximumMs": 1336,
+            "tasks": [
+              {
+                "start": 2155,
+                "duration": 1336
+              },
+              {
+                "start": 3526,
+                "duration": 705
+              }
+            ]
+          },
+          "afterNativeReady": {
+            "count": 3,
+            "totalMs": 2253,
+            "blockingMs": 2103,
+            "maximumMs": 1336,
+            "tasks": [
+              {
+                "start": 1937,
+                "duration": 212
+              },
+              {
+                "start": 2155,
+                "duration": 1336
+              },
+              {
+                "start": 3526,
+                "duration": 705
+              }
+            ]
+          }
+        }
+      ],
+      "javascriptErrors": [],
+      "missingAssets": []
+    },
+    {
+      "variant": "current",
+      "cpuRate": 1,
+      "startup": {
+        "nativeReadyMs": 1530,
+        "firstNavigationRafMs": 2815,
+        "scriptMs": 1780,
+        "totalBlockingMs": 1796,
+        "longestTaskMs": 1277,
+        "afterNativeReady": {
+          "count": 2,
+          "totalMs": 1340,
+          "blockingMs": 1240,
+          "maximumMs": 1277,
+          "tasks": [
+            {
+              "start": 1535,
+              "duration": 1277
+            },
+            {
+              "start": 2858,
+              "duration": 63
+            }
+          ]
+        },
+        "postFirstNavigation": {
+          "count": 1,
+          "totalMs": 63,
+          "blockingMs": 13,
+          "maximumMs": 63,
+          "tasks": [
+            {
+              "start": 2858,
+              "duration": 63
+            }
+          ]
+        },
+        "layoutCount": 25,
+        "styleRecalculationCount": 31
+      },
+      "interactions": [
+        {
+          "name": "Discover",
+          "handlerMs": 160,
+          "firstRafMs": 197,
+          "selectedOnReturn": [
+            "discover"
+          ],
+          "metrics": {
+            "ScriptDuration": 155,
+            "TaskDuration": 282,
+            "LayoutDuration": 23,
+            "RecalcStyleDuration": 41,
+            "LayoutCount": 6,
+            "RecalcStyleCount": 7,
+            "Nodes": 1126,
+            "JSHeapUsedSize": 4654800
+          }
+        },
+        {
+          "name": "Plan",
+          "handlerMs": 510,
+          "firstRafMs": 535,
+          "selectedOnReturn": [
+            "plan"
+          ],
+          "metrics": {
+            "ScriptDuration": 520,
+            "TaskDuration": 620,
+            "LayoutDuration": 18,
+            "RecalcStyleDuration": 29,
+            "LayoutCount": 9,
+            "RecalcStyleCount": 11,
+            "Nodes": 9294,
+            "JSHeapUsedSize": 3211816
+          }
+        },
+        {
+          "name": "At home",
+          "handlerMs": 400,
+          "firstRafMs": 1051,
+          "selectedOnReturn": [
+            "kitchen"
+          ],
+          "metrics": {
+            "ScriptDuration": 1013,
+            "TaskDuration": 1335,
+            "LayoutDuration": 19,
+            "RecalcStyleDuration": 62,
+            "LayoutCount": 6,
+            "RecalcStyleCount": 8,
+            "Nodes": 19335,
+            "JSHeapUsedSize": -849124
+          }
+        },
+        {
+          "name": "Shop",
+          "handlerMs": 571,
+          "firstRafMs": 840,
+          "selectedOnReturn": [
+            "shop"
+          ],
+          "metrics": {
+            "ScriptDuration": 1125,
+            "TaskDuration": 1279,
+            "LayoutDuration": 29,
+            "RecalcStyleDuration": 58,
+            "LayoutCount": 6,
+            "RecalcStyleCount": 8,
+            "Nodes": 11813,
+            "JSHeapUsedSize": 1790644
+          }
+        },
+        {
+          "name": "Plan return",
+          "handlerMs": 514,
+          "firstRafMs": 542,
+          "selectedOnReturn": [
+            "plan"
+          ],
+          "metrics": {
+            "ScriptDuration": 529,
+            "TaskDuration": 681,
+            "LayoutDuration": 15,
+            "RecalcStyleDuration": 33,
+            "LayoutCount": 9,
+            "RecalcStyleCount": 11,
+            "Nodes": -51178,
+            "JSHeapUsedSize": -8345540
+          }
+        },
+        {
+          "name": "Feeding +",
+          "handlerMs": 461,
+          "firstRafMs": 510,
+          "selectedOnReturn": [
+            "plan"
+          ],
+          "metrics": {
+            "ScriptDuration": 484,
+            "TaskDuration": 583,
+            "LayoutDuration": 14,
+            "RecalcStyleDuration": 31,
+            "LayoutCount": 10,
+            "RecalcStyleCount": 11,
+            "Nodes": 9302,
+            "JSHeapUsedSize": 1765464
+          }
+        },
+        {
+          "name": "Settings open",
+          "handlerMs": 17,
+          "firstRafMs": 32,
+          "selectedOnReturn": [
+            "plan"
+          ],
+          "metrics": {
+            "ScriptDuration": 4,
+            "TaskDuration": 85,
+            "LayoutDuration": 5,
+            "RecalcStyleDuration": 23,
+            "LayoutCount": 2,
+            "RecalcStyleCount": 4,
+            "Nodes": 49,
+            "JSHeapUsedSize": 538576
+          }
+        },
+        {
+          "name": "Settings close",
+          "handlerMs": 8,
+          "firstRafMs": 11,
+          "selectedOnReturn": [
+            "plan"
+          ],
+          "metrics": {
+            "ScriptDuration": 3,
+            "TaskDuration": 62,
+            "LayoutDuration": 0,
+            "RecalcStyleDuration": 14,
+            "LayoutCount": 2,
+            "RecalcStyleCount": 2,
+            "Nodes": 42,
+            "JSHeapUsedSize": 520888
+          }
+        },
+        {
+          "name": "Real touchscreen tap Plan \u2192 Discover",
+          "inputToClickMs": 3,
+          "inputToFirstRafMs": 221,
+          "clickToFirstRafMs": 218,
+          "events": [
+            {
+              "type": "pointerdown",
+              "timeFromFirstInputMs": 0
+            },
+            {
+              "type": "touchstart",
+              "timeFromFirstInputMs": 0
+            },
+            {
+              "type": "pointerup",
+              "timeFromFirstInputMs": 1
+            },
+            {
+              "type": "touchend",
+              "timeFromFirstInputMs": 1
+            },
+            {
+              "type": "click",
+              "timeFromFirstInputMs": 3
+            }
+          ],
+          "selectedAtFrame": [
+            "discover"
+          ],
+          "metrics": {
+            "ScriptDuration": 170,
+            "TaskDuration": 269,
+            "LayoutDuration": 13,
+            "RecalcStyleDuration": 55,
+            "LayoutCount": 8,
+            "RecalcStyleCount": 13,
+            "Nodes": 1139,
+            "JSHeapUsedSize": 12057236
+          }
+        },
+        {
+          "name": "Cook document",
+          "wallMs": 865
+        },
+        {
+          "name": "Cook \u2192 Plan document",
+          "wallMs": 2301,
+          "nativeReadyMs": 836,
+          "firstNavigationMs": 1476,
+          "postVisible": {
+            "count": 1,
+            "totalMs": 64,
+            "blockingMs": 14,
+            "maximumMs": 64,
+            "tasks": [
+              {
+                "start": 1509,
+                "duration": 64
+              }
+            ]
+          },
+          "afterNativeReady": {
+            "count": 2,
+            "totalMs": 698,
+            "blockingMs": 598,
+            "maximumMs": 634,
+            "tasks": [
+              {
+                "start": 840,
+                "duration": 634
+              },
+              {
+                "start": 1509,
+                "duration": 64
+              }
+            ]
+          }
+        }
+      ],
+      "javascriptErrors": [],
+      "missingAssets": []
+    },
+    {
+      "variant": "baseline",
+      "cpuRate": 4,
+      "startup": {
+        "nativeReadyMs": 9877,
+        "firstNavigationRafMs": 10983,
+        "scriptMs": 21682,
+        "totalBlockingMs": 23055,
+        "longestTaskMs": 11035,
+        "afterNativeReady": {
+          "count": 6,
+          "totalMs": 15881,
+          "blockingMs": 15581,
+          "maximumMs": 11035,
+          "tasks": [
+            {
+              "start": 9877,
+              "duration": 1103
+            },
+            {
+              "start": 11017,
+              "duration": 11035
+            },
+            {
+              "start": 22053,
+              "duration": 161
+            },
+            {
+              "start": 22249,
+              "duration": 3391
+            },
+            {
+              "start": 25640,
+              "duration": 76
+            },
+            {
+              "start": 25832,
+              "duration": 115
+            }
+          ]
+        },
+        "postFirstNavigation": {
+          "count": 5,
+          "totalMs": 14778,
+          "blockingMs": 14528,
+          "maximumMs": 11035,
+          "tasks": [
+            {
+              "start": 11017,
+              "duration": 11035
+            },
+            {
+              "start": 22053,
+              "duration": 161
+            },
+            {
+              "start": 22249,
+              "duration": 3391
+            },
+            {
+              "start": 25640,
+              "duration": 76
+            },
+            {
+              "start": 25832,
+              "duration": 115
+            }
+          ]
+        },
+        "layoutCount": 56,
+        "styleRecalculationCount": 68
+      },
+      "interactions": [
+        {
+          "name": "Discover",
+          "handlerMs": 984,
+          "firstRafMs": 1169,
+          "selectedOnReturn": [
+            "discover"
+          ],
+          "metrics": {
+            "ScriptDuration": 1032,
+            "TaskDuration": 1737,
+            "LayoutDuration": 107,
+            "RecalcStyleDuration": 248,
+            "LayoutCount": 7,
+            "RecalcStyleCount": 9,
+            "Nodes": 1130,
+            "JSHeapUsedSize": 3662008
+          }
+        },
+        {
+          "name": "Plan",
+          "handlerMs": 3791,
+          "firstRafMs": 5900,
+          "selectedOnReturn": [
+            "plan"
+          ],
+          "metrics": {
+            "ScriptDuration": 5613,
+            "TaskDuration": 6561,
+            "LayoutDuration": 143,
+            "RecalcStyleDuration": 405,
+            "LayoutCount": 14,
+            "RecalcStyleCount": 17,
+            "Nodes": -17681,
+            "JSHeapUsedSize": -8401160
+          }
+        },
+        {
+          "name": "At home",
+          "handlerMs": 3091,
+          "firstRafMs": 12013,
+          "selectedOnReturn": [
+            "kitchen"
+          ],
+          "metrics": {
+            "ScriptDuration": 16712,
+            "TaskDuration": 18283,
+            "LayoutDuration": 60,
+            "RecalcStyleDuration": 320,
+            "LayoutCount": 6,
+            "RecalcStyleCount": 8,
+            "Nodes": 19369,
+            "JSHeapUsedSize": 9355036
+          }
+        },
+        {
+          "name": "Shop",
+          "handlerMs": 3527,
+          "firstRafMs": 5075,
+          "selectedOnReturn": [
+            "shop"
+          ],
+          "metrics": {
+            "ScriptDuration": 7243,
+            "TaskDuration": 7947,
+            "LayoutDuration": 86,
+            "RecalcStyleDuration": 255,
+            "LayoutCount": 7,
+            "RecalcStyleCount": 8,
+            "Nodes": 11825,
+            "JSHeapUsedSize": 2086256
+          }
+        },
+        {
+          "name": "Plan return",
+          "handlerMs": 4430,
+          "firstRafMs": 6618,
+          "selectedOnReturn": [
+            "plan"
+          ],
+          "metrics": {
+            "ScriptDuration": 7567,
+            "TaskDuration": 8509,
+            "LayoutDuration": 87,
+            "RecalcStyleDuration": 492,
+            "LayoutCount": 16,
+            "RecalcStyleCount": 20,
+            "Nodes": -10336,
+            "JSHeapUsedSize": -355736
+          }
+        },
+        {
+          "name": "Feeding +",
+          "handlerMs": 3774,
+          "firstRafMs": 6364,
+          "selectedOnReturn": [
+            "plan"
+          ],
+          "metrics": {
+            "ScriptDuration": 6109,
+            "TaskDuration": 6888,
+            "LayoutDuration": 71,
+            "RecalcStyleDuration": 392,
+            "LayoutCount": 14,
+            "RecalcStyleCount": 17,
+            "Nodes": 9422,
+            "JSHeapUsedSize": 18871132
+          }
+        },
+        {
+          "name": "Settings open",
+          "handlerMs": 79,
+          "firstRafMs": 154,
+          "selectedOnReturn": [
+            "plan"
+          ],
+          "metrics": {
+            "ScriptDuration": 88,
+            "TaskDuration": 622,
+            "LayoutDuration": 27,
+            "RecalcStyleDuration": 149,
+            "LayoutCount": 3,
+            "RecalcStyleCount": 6,
+            "Nodes": 75,
+            "JSHeapUsedSize": 1954456
+          }
+        },
+        {
+          "name": "Settings close",
+          "handlerMs": 45,
+          "firstRafMs": 62,
+          "selectedOnReturn": [
+            "plan"
+          ],
+          "metrics": {
+            "ScriptDuration": 22,
+            "TaskDuration": 424,
+            "LayoutDuration": 2,
+            "RecalcStyleDuration": 76,
+            "LayoutCount": 2,
+            "RecalcStyleCount": 2,
+            "Nodes": 42,
+            "JSHeapUsedSize": 614764
+          }
+        },
+        {
+          "name": "Real touchscreen tap Plan \u2192 Discover",
+          "inputToClickMs": 12,
+          "inputToFirstRafMs": 1297,
+          "clickToFirstRafMs": 1285,
+          "events": [
+            {
+              "type": "pointerdown",
+              "timeFromFirstInputMs": 0
+            },
+            {
+              "type": "touchstart",
+              "timeFromFirstInputMs": 1
+            },
+            {
+              "type": "pointerup",
+              "timeFromFirstInputMs": 4
+            },
+            {
+              "type": "touchend",
+              "timeFromFirstInputMs": 5
+            },
+            {
+              "type": "click",
+              "timeFromFirstInputMs": 12
+            }
+          ],
+          "selectedAtFrame": [
+            "discover"
+          ],
+          "metrics": {
+            "ScriptDuration": 981,
+            "TaskDuration": 1497,
+            "LayoutDuration": 79,
+            "RecalcStyleDuration": 271,
+            "LayoutCount": 8,
+            "RecalcStyleCount": 11,
+            "Nodes": -8606,
+            "JSHeapUsedSize": -21513360
+          }
+        },
+        {
+          "name": "Cook document",
+          "wallMs": 1178
+        },
+        {
+          "name": "Cook \u2192 Plan document",
+          "wallMs": 22496,
+          "nativeReadyMs": 8596,
+          "firstNavigationMs": 9609,
+          "postVisible": {
+            "count": 5,
+            "totalMs": 11925,
+            "blockingMs": 11675,
+            "maximumMs": 7690,
+            "tasks": [
+              {
+                "start": 9628,
+                "duration": 7690
+              },
+              {
+                "start": 17320,
+                "duration": 197
+              },
+              {
+                "start": 17562,
+                "duration": 3894
+              },
+              {
+                "start": 21458,
+                "duration": 60
+              },
+              {
+                "start": 21618,
+                "duration": 84
+              }
+            ]
+          },
+          "afterNativeReady": {
+            "count": 6,
+            "totalMs": 12927,
+            "blockingMs": 12627,
+            "maximumMs": 7690,
+            "tasks": [
+              {
+                "start": 8596,
+                "duration": 1002
+              },
+              {
+                "start": 9628,
+                "duration": 7690
+              },
+              {
+                "start": 17320,
+                "duration": 197
+              },
+              {
+                "start": 17562,
+                "duration": 3894
+              },
+              {
+                "start": 21458,
+                "duration": 60
+              },
+              {
+                "start": 21618,
+                "duration": 84
+              }
+            ]
+          }
+        }
+      ],
+      "javascriptErrors": [],
+      "missingAssets": []
+    },
+    {
+      "variant": "current",
+      "cpuRate": 4,
+      "startup": {
+        "nativeReadyMs": 6401,
+        "firstNavigationRafMs": 12566,
+        "scriptMs": 9084,
+        "totalBlockingMs": 10213,
+        "longestTaskMs": 6142,
+        "afterNativeReady": {
+          "count": 4,
+          "totalMs": 6683,
+          "blockingMs": 6483,
+          "maximumMs": 6142,
+          "tasks": [
+            {
+              "start": 6423,
+              "duration": 6142
+            },
+            {
+              "start": 12566,
+              "duration": 198
+            },
+            {
+              "start": 12790,
+              "duration": 282
+            },
+            {
+              "start": 13192,
+              "duration": 61
+            }
+          ]
+        },
+        "postFirstNavigation": {
+          "count": 2,
+          "totalMs": 343,
+          "blockingMs": 243,
+          "maximumMs": 282,
+          "tasks": [
+            {
+              "start": 12790,
+              "duration": 282
+            },
+            {
+              "start": 13192,
+              "duration": 61
+            }
+          ]
+        },
+        "layoutCount": 34,
+        "styleRecalculationCount": 46
+      },
+      "interactions": [
+        {
+          "name": "Discover",
+          "handlerMs": 848,
+          "firstRafMs": 1100,
+          "selectedOnReturn": [
+            "discover"
+          ],
+          "metrics": {
+            "ScriptDuration": 812,
+            "TaskDuration": 1571,
+            "LayoutDuration": 130,
+            "RecalcStyleDuration": 303,
+            "LayoutCount": 6,
+            "RecalcStyleCount": 7,
+            "Nodes": 1121,
+            "JSHeapUsedSize": 4362160
+          }
+        },
+        {
+          "name": "Plan",
+          "handlerMs": 2863,
+          "firstRafMs": 3012,
+          "selectedOnReturn": [
+            "plan"
+          ],
+          "metrics": {
+            "ScriptDuration": 2957,
+            "TaskDuration": 3655,
+            "LayoutDuration": 110,
+            "RecalcStyleDuration": 226,
+            "LayoutCount": 10,
+            "RecalcStyleCount": 13,
+            "Nodes": -17172,
+            "JSHeapUsedSize": -7112896
+          }
+        },
+        {
+          "name": "At home",
+          "handlerMs": 2184,
+          "firstRafMs": 5417,
+          "selectedOnReturn": [
+            "kitchen"
+          ],
+          "metrics": {
+            "ScriptDuration": 4928,
+            "TaskDuration": 6723,
+            "LayoutDuration": 63,
+            "RecalcStyleDuration": 304,
+            "LayoutCount": 6,
+            "RecalcStyleCount": 8,
+            "Nodes": 18420,
+            "JSHeapUsedSize": 1221740
+          }
+        },
+        {
+          "name": "Shop",
+          "handlerMs": 2873,
+          "firstRafMs": 4352,
+          "selectedOnReturn": [
+            "shop"
+          ],
+          "metrics": {
+            "ScriptDuration": 6075,
+            "TaskDuration": 6786,
+            "LayoutDuration": 104,
+            "RecalcStyleDuration": 322,
+            "LayoutCount": 7,
+            "RecalcStyleCount": 8,
+            "Nodes": 11825,
+            "JSHeapUsedSize": 18501652
+          }
+        },
+        {
+          "name": "Plan return",
+          "handlerMs": 2707,
+          "firstRafMs": 2836,
+          "selectedOnReturn": [
+            "plan"
+          ],
+          "metrics": {
+            "ScriptDuration": 2766,
+            "TaskDuration": 3343,
+            "LayoutDuration": 91,
+            "RecalcStyleDuration": 187,
+            "LayoutCount": 10,
+            "RecalcStyleCount": 13,
+            "Nodes": -10336,
+            "JSHeapUsedSize": -339068
+          }
+        },
+        {
+          "name": "Feeding +",
+          "handlerMs": 2679,
+          "firstRafMs": 2943,
+          "selectedOnReturn": [
+            "plan"
+          ],
+          "metrics": {
+            "ScriptDuration": 2822,
+            "TaskDuration": 3342,
+            "LayoutDuration": 56,
+            "RecalcStyleDuration": 209,
+            "LayoutCount": 11,
+            "RecalcStyleCount": 13,
+            "Nodes": 9325,
+            "JSHeapUsedSize": 1835848
+          }
+        },
+        {
+          "name": "Settings open",
+          "handlerMs": 80,
+          "firstRafMs": 100,
+          "selectedOnReturn": [
+            "plan"
+          ],
+          "metrics": {
+            "ScriptDuration": 21,
+            "TaskDuration": 327,
+            "LayoutDuration": 26,
+            "RecalcStyleDuration": 54,
+            "LayoutCount": 2,
+            "RecalcStyleCount": 4,
+            "Nodes": 28,
+            "JSHeapUsedSize": 526752
+          }
+        },
+        {
+          "name": "Settings close",
+          "handlerMs": 54,
+          "firstRafMs": 72,
+          "selectedOnReturn": [
+            "plan"
+          ],
+          "metrics": {
+            "ScriptDuration": 25,
+            "TaskDuration": 293,
+            "LayoutDuration": 2,
+            "RecalcStyleDuration": 51,
+            "LayoutCount": 2,
+            "RecalcStyleCount": 2,
+            "Nodes": 21,
+            "JSHeapUsedSize": 525872
+          }
+        },
+        {
+          "name": "Real touchscreen tap Plan \u2192 Discover",
+          "inputToClickMs": 13,
+          "inputToFirstRafMs": 1167,
+          "clickToFirstRafMs": 1154,
+          "events": [
+            {
+              "type": "pointerdown",
+              "timeFromFirstInputMs": 0
+            },
+            {
+              "type": "touchstart",
+              "timeFromFirstInputMs": 1
+            },
+            {
+              "type": "pointerup",
+              "timeFromFirstInputMs": 6
+            },
+            {
+              "type": "touchend",
+              "timeFromFirstInputMs": 7
+            },
+            {
+              "type": "click",
+              "timeFromFirstInputMs": 13
+            }
+          ],
+          "selectedAtFrame": [
+            "discover"
+          ],
+          "metrics": {
+            "ScriptDuration": 826,
+            "TaskDuration": 1283,
+            "LayoutDuration": 82,
+            "RecalcStyleDuration": 275,
+            "LayoutCount": 7,
+            "RecalcStyleCount": 12,
+            "Nodes": 1123,
+            "JSHeapUsedSize": 12061204
+          }
+        },
+        {
+          "name": "Cook document",
+          "wallMs": 1312
+        },
+        {
+          "name": "Cook \u2192 Plan document",
+          "wallMs": 8488,
+          "nativeReadyMs": 3740,
+          "firstNavigationMs": 7001,
+          "postVisible": {
+            "count": 2,
+            "totalMs": 401,
+            "blockingMs": 301,
+            "maximumMs": 307,
+            "tasks": [
+              {
+                "start": 7193,
+                "duration": 307
+              },
+              {
+                "start": 7635,
+                "duration": 94
+              }
+            ]
+          },
+          "afterNativeReady": {
+            "count": 4,
+            "totalMs": 3786,
+            "blockingMs": 3586,
+            "maximumMs": 3222,
+            "tasks": [
+              {
+                "start": 3776,
+                "duration": 3222
+              },
+              {
+                "start": 7000,
+                "duration": 163
+              },
+              {
+                "start": 7193,
+                "duration": 307
+              },
+              {
+                "start": 7635,
+                "duration": 94
+              }
+            ]
+          }
+        }
+      ],
+      "javascriptErrors": [],
+      "missingAssets": []
+    }
+  ],
+  "unresolved": {
+    "instantResponsivenessEstablished": false,
+    "physicalGalaxyA13Validation": false,
+    "initialNavigationRegressesAt4x": true,
+    "baselineFirstNavigationRafMs": 10983,
+    "currentFirstNavigationRafMs": 12566,
+    "currentLongestStartupTaskMs": 6142,
+    "remainingCause": "Synchronous original core render, receipt-host setup and repeated live shopping/pantry matching remain; these protected owners were not bypassed or rewritten."
+  }
+}

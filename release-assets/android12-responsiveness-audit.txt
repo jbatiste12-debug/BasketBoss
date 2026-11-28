@@ -1,0 +1,103 @@
+BasketBoss Android1.0.12/code12 responsiveness audit
+Final verification:28 November2026
+Baseline Android1.0.11: c05180b1d28b4c30d2ae7b272faeab0f0565e546
+Reviewed build source: dc3ffa155d377059c5156c65b47e708d519d1321
+Immutable Mac launcher commit: b285f4558eecc931accddb39c01fbf1498507b64
+Draft PR154: https://github.com/jbatiste12-debug/BasketBoss/pull/154
+
+Outcome and remaining limit
+The candidate removes duplicated main-thread work and retains the existing business rules and safety owners. Warm Plan, At home and Feeding transitions improve materially in the controlled simulation. It does not establish instant responsiveness. The first navigation RAF is slightly slower at1x and regresses from10,983ms to12,566ms at4x; a6,142ms startup task remains before that frame. A physical Galaxy A13 installation is still required. This build is not being represented as a complete fix for every loading delay.
+
+Root causes and targeted changes
+1. Quantity readouts constructed an Intl.NumberFormat for each displayed amount. Two immutable locale-specific formatters are reused. Every current input, unit conversion, market, precision and tiny-positive display rule still runs unchanged.
+2. A retired budget meter continued recalculating the canonical weekly summary although current Plan/At home presentation already hid it. Only that retired renderer is skipped when its exact current owner exists. Missing owners retain the original fallback and save/error behavior. The real weekly summary is neither rewritten nor cached.
+3. One pantry presentation refresh rebuilt the same live descriptors repeatedly. A read-only array is passed only within that valid synchronous paint. Later actions, external changes, editor conflicts and actor/deletion guards still read their live owners.
+4. Native details notifications repeated descriptor work after their storage/open/visible/navigation markers were already painted. Only identical settled presentation notifications skip that redundant work. Real closes, mismatches and missing markers keep the original live update.
+5. Closed Plan disclosures forced card geometry on unrelated mutations. Their closed decoration pass no longer measures layout; actual opening and existing resize/scroll/focus/Escape/outside-click behavior remain.
+6. The Shop stock banner measured hidden or missing targets on other tabs. Inactive views skip those geometry reads; active-Shop state, actor/session handling, deletion locks and requirement ownership remain.
+7. Non-US text painting eagerly computed US name/unit conversions that it discarded. Only the selected original display expression is evaluated. Market switching, live source text, pricing controls, offers and stored data remain unchanged.
+8. Ingredient strings repeatedly traversed identical Unicode/case/dash/whitespace cleanup expressions. Three private helpers now retain only primitive normalization strings, limited to512 entries and256 UTF-16 input units. Pricing still performs String(s||'') on every call; pantry/household retain their original nonstring guards. Long inputs bypass retention. No canonical identity, callback, final match, price, quantity, plan, account, entitlement or safety result is cached.
+9. The dominant remaining delay is original synchronous rendering and live shopping/pantry matching, including the required receipt-host render during startup. Desktop real-touch traces show little input-to-click hesitation compared with handler-to-frame delay. No extra touch/CSS/routing rewrite was added to mask this work.
+
+Method and final matched measurements
+The actual generated Android700 client ran in mobile/touch Chromium with local assets. Only unavailable Capacitor transport was replaced; production runtime/readiness/deletion/onboarding owners remained. The fixture had seven valid Free dinners,15 foods,feeding4 and a200 budget. Runs were isolated and sequential: baseline1x,current1x,baseline4x,current4x. There were no artificial asset/network holds and no competing browser/CPU tests.
+Each cell below is one representative run in milliseconds, not a statistical distribution or physical-phone timing. FirstRAF is a requestAnimationFrame callback, not measured screen-paint completion.
+Metric                                      baseline1x current1x baseline4x current4x
+Startup native-ready event                       2497      1530      9877      6401
+Startup first navigation RAF                     2709      2815     10983     12566
+Startup JavaScript execution                     4237      1780     21682      9084
+Startup total blocking                           3912      1796     23055     10213
+Startup longest task                             2100      1277     11035      6142
+Discover first RAF                                269       197      1169      1100
+Plan first RAF                                   1092       535      5900      3012
+At home first RAF                                2365      1051     12013      5417
+Shop first RAF                                   1001       840      5075      4352
+Plan return first RAF                            1169       542      6618      2836
+Feeding + first RAF                              1179       510      6364      2943
+Settings open first RAF                            45        32       154       100
+Settings close first RAF                           12        11        62        72
+Cook document settled wall                        897       865      1178      1312
+Cook → Plan document settled wall                4969      2301     22496      8488
+
+Document settled-wall measurements include the650ms audit quiet period and automation overhead; they are not first-paint times. All four runs had zero JavaScript errors and zero missing assets. The separate real touchscreen Plan-to-Discover trace at4x recorded input-to-click12ms baseline versus13ms current, and click-to-firstRAF1,285ms versus1,154ms. Main-thread work dominates the remaining lag.
+Full compact measurements: release-assets/android12-responsiveness-metrics.json. Raw CPUprofiles are retained in the execution audit; the committed tool reproduces them.
+
+Preservation and verification
+- Strict source/generated proof passed:2,202 other baseline tracked files are frozen. The complete three helper modules reverse exactly to baseline after removing only the reviewed cache blocks. Full generated PWA/native pricing restores exactly, including all700 pack tables; native baseline pricing SHA256 is cfa61b2696731ec6cc6f82025ee48a7fda694781b50ac1ecb3bd31e42a74cbb6.
+- The three helper implementations changed; their cleanup expressions, type guards and coercions did not. Canonical callbacks, physical matching rules, serving/budget/quantity/price calculations and their owners remain unchanged.
+- Auth, account-deletion locks/flows, onboarding restoration, entitlements, StoreKit/Google Play/Paddle implementations, native safety/backend/schema source and routing remain unchanged. No safety owner is bypassed or deferred.
+- All10 generated-Android checkpoints passed:startup,Discover,Plan,At home,Shop,Plan return,budget save250,Feeding+ to5,Settings open,Settings close. Every localStorage byte is identical (18→21 keys;none excluded), along with full visible text, budget, nav, visible inputs and actual Settings open/closed state. The compact proof records each checkpoint hash. This local guest proof does not establish remote household sync or production checkout behavior.
+- Current-module normalization regression:8/8 passed, including public foods/Unicode fuzzing,hits/eviction/oversized inputs,live/throwing/Symbol coercion,regional pack quotes and real callback behavior.
+- Core regression suite:184 passed. Relevant alias/pantry/pricing suite:719 passed,1 skipped,0 failed across48 files. The skip requires live PostgreSQL;no database behavior is claimed tested by that case. These suites overlap and their counts must not be added together.
+- Package/signing/AAB tests:22 passed;final immutable-launcher tests:3 passed. Full Android sync/verify passed1181 assets,13,333,863 base web bytes and491,105,344 install-time image bytes. ios/ files and shared Capacitor configuration are unchanged.
+- Catalogue/access/API metadata remains200 Free/500 protected recipes with no private bundle. PWA manifest/precache changes are regenerated file digests and asset versions.
+
+Release status
+1.0.12/code12 is a draft test candidate. The Mac helper requires the original external upload key, builds from the immutable reviewed source, verifies the signed AAB, and reveals it in Finder. No signed owner-key AAB is claimed from this environment. No production deployment or store upload was requested. Existing Cloudflare integrations automatically created normal branch previews on Git pushes; those are separate from production.
+Immutable helper URL: https://raw.githubusercontent.com/jbatiste12-debug/BasketBoss/b285f4558eecc931accddb39c01fbf1498507b64/release-assets/prepare-android-mac.command
+Test the signed update in Play Console Internal testing on the actual Galaxy A13 before wider release. Initial first-frame delay and remaining multi-second4x interactions remain unresolved.
+
+Every changed file and current line references versus Android1.0.11
+References below identify changed hunk starts in current files;new evidence files start atline1. The retired code11 launcher test has no current line because it was renamed/replaced by the code12 test.
+.github/workflows/android-build.yml:115,193,201
+android/app/build.gradle:26
+app.html:3825,3827,3842,8043,9517,13366,14180,14207
+basketboss-pricing-v19.js:7
+bb-household-aliases.js:10
+bb-pantry-inline.js:189,191,205,215,224,255,273,280,296,298,301,341,344,348,362,765,784
+bb-pantry-policy.js:7
+bb-pantry-stock-levels-ui.js:212
+bb-plan-premium-polish.js:166
+bb-us-market.js:58
+index.html:3825,3827,3842,8043,9517,13366,14180,14207
+pwa700/app.html:3838,3840,3855,8101,9598,13448,14262,14289
+pwa700/basketboss-pricing-v19.js:7
+pwa700/bb-plan-premium-polish.js:166
+pwa700/make-a-meal.html:110,340
+pwa700/manifest.json:516,526,561,637,652
+pwa700/precache.js:2,61,111,114,116,182,209,223
+release-assets/android12-independent-review.txt:1
+release-assets/android12-responsiveness-audit.txt:1
+release-assets/android12-responsiveness-metrics.json:1
+release-assets/android12-scope-review.json:1
+release-assets/android12-state-equivalence.json:1
+release-assets/prepare-android-mac.command:18,41,56
+scripts/verify-android-aab.mjs:65,80
+scripts/verify-android.mjs:15,19
+tests/basketboss-android-aab.test.mjs:13,65
+tests/basketboss-android-package.test.mjs:16
+tests/basketboss-android-release11-launcher.test.mjs [removed/renamed;no current line]
+tests/basketboss-android-release12-launcher.test.mjs:1
+tests/basketboss-legacy-budget-render-performance.test.mjs:1
+tests/basketboss-normalization-performance.test.mjs:1
+tests/basketboss-pantry-refresh-snapshot-browser.test.mjs:1
+tests/basketboss-plan-popover-hotpath-browser.test.mjs:15,56
+tests/basketboss-shop-quantity-format-performance.test.mjs:1
+tests/basketboss-stock-banner-layout-browser.test.mjs:1
+tests/basketboss-us-market-lazy-display.test.mjs:1
+tests/fixtures/android-ios-baseline.json:28,32,73
+tools/audit-android-responsiveness.mjs:1
+tools/audit-android-state-equivalence.mjs:1
+tools/verify-android-responsiveness-scope.mjs:1
+
+File roles: app/index and seven shared JavaScript modules contain the targeted performance changes; pwa700 files are generated counterparts/digests. Android workflow/Gradle/verifier/fixture changes identify code12 and retain original signing/SDK checks. Tests and tools provide the differential/state/scope/performance evidence. release-assets files provide the immutable Mac helper and review artifacts. No unrelated screen/component refactor or system-wide architecture change was included.
