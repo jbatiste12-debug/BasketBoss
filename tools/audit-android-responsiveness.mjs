@@ -23,6 +23,27 @@ async function generated(rel){if(!files.has(rel))files.set(rel,await fs.readFile
 const between=(text,start,end)=>{const a=text.indexOf(start),b=text.indexOf(end,a+start.length);assert.ok(a>=0&&b>a&&text.indexOf(start,a+start.length)<0,'unique function boundary '+start);return text.slice(a,b);};
 const baselineHTML=await baselineSource('app.html'),baselineJS=new Map();
 for(const name of ['bb-pantry-inline.js','bb-plan-premium-polish.js','bb-pantry-stock-levels-ui.js','bb-us-market.js'])baselineJS.set(name,transform700Presentation(await baselineSource(name)));
+// Restore only the reviewed normalization helper inside each generated module.
+// In particular, retain all generated catalogue700 pack additions and factors.
+const baselineNormalizers=new Map();
+for(const name of ['bb-household-aliases.js','bb-pantry-policy.js','basketboss-pricing-v19.js']){
+ const prior=await baselineSource(name),source=await fs.readFile(path.join(ROOT,name),'utf8');
+ const old=prior.split('\n').find(line=>line.trimStart().startsWith('const clean='));
+ assert.ok(old,'baseline normalization declaration '+name);
+ const marker='// Bounded primitive normalization only; callbacks and matching stay live.';
+ const at=source.indexOf(marker);
+ if(at<0){assert.ok(source.includes(old),'unchanged normalization '+name);continue;}
+ assert.equal(source.indexOf(marker,at+marker.length),-1,'unique normalization helper '+name);
+ const start=source.lastIndexOf('\n',at)+1,indent=source.slice(start,at),ending='\n'+indent+'};';
+ const end=source.indexOf(ending,at);
+ assert.ok(end>at,'bounded normalization closure '+name);
+ baselineNormalizers.set(name,{old,current:source.slice(start,end+ending.length)});
+}
+function restoreNormalization(rel,body){
+ const entry=baselineNormalizers.get(rel);if(!entry)return body;
+ const text=body.toString();assert.equal(text.split(entry.current).length,2,'exact generated normalization '+rel);
+ return text.replace(entry.current,entry.old);
+}
 function restoreHTML(current){for(const [start,end]of [['function bbShopExactQuantity(','function bbShopPurchasePack('],['function bb172RenderBudget(','function bb172ImageMark(']])current=current.replace(between(current,start,end),transform700Presentation(between(baselineHTML,start,end)));return current;}
 function summarizeLong(tasks,after=0){const selected=tasks.filter(x=>x.start>=after);return {count:selected.length,totalMs:Math.round(selected.reduce((n,x)=>n+x.duration,0)),blockingMs:Math.round(selected.reduce((n,x)=>n+Math.max(0,x.duration-50),0)),maximumMs:Math.round(Math.max(0,...selected.map(x=>x.duration))),tasks:selected.map(x=>({start:Math.round(x.start),duration:Math.round(x.duration)}))};}
 function blockingAfter(tasks,time){return summarizeLong(tasks.filter(x=>x.start+x.duration>time).map(x=>({start:Math.max(time,x.start),duration:x.duration-Math.max(0,time-x.start)})));}
@@ -32,7 +53,7 @@ function metricDelta(a,b){return Object.fromEntries(['ScriptDuration','TaskDurat
 async function settle(page){await page.waitForFunction(()=>performance.now()-window.__a13.lastWork>650,{},{timeout:45000});}
 async function main(){await fs.mkdir(OUTPUT,{recursive:true});const browser=await chromium.launch({headless:true,executablePath:process.env.BB_CHROMIUM_PATH||'/usr/bin/chromium',args:['--no-sandbox']});const results=[];try{for(const rate of rates)for(const variant of variants){
  const context=await browser.newContext({viewport:{width:390,height:844},deviceScaleFactor:1,isMobile:true,hasTouch:true,serviceWorkers:'block'}),page=await context.newPage(),errors=[],missing=[];page.setDefaultTimeout(60000);page.on('pageerror',error=>errors.push(error.message));page.on('dialog',dialog=>dialog.dismiss());
- await context.route('**/*',async route=>{const url=new URL(route.request().url());if(url.pathname.startsWith('/api/'))return route.fulfill({status:401,contentType:'application/json',headers:{'Access-Control-Allow-Origin':'https://localhost'},body:'{"authenticated":false,"error":"sign_in_required"}'});if(url.hostname!=='localhost')return route.fulfill({status:200,body:''});let rel=decodeURIComponent(url.pathname).replace(/^\//,'')||'index.html';if(rel.includes('..'))return route.fulfill({status:404,body:''});try{let body=rel==='bb-native-runtime.js'?runtime:variant==='baseline'&&baselineJS.has(rel)?baselineJS.get(rel):await generated(rel);if(variant==='baseline'&&['app.html','index.html'].includes(rel))body=restoreHTML(body.toString());const mime={'.html':'text/html','.js':'application/javascript','.mjs':'application/javascript','.css':'text/css','.json':'application/json','.webp':'image/webp','.png':'image/png','.svg':'image/svg+xml','.woff2':'font/woff2'};return route.fulfill({status:200,body,contentType:mime[path.extname(rel)]||'application/octet-stream'});}catch{missing.push(rel);return route.fulfill({status:404,body:''});}});
+ await context.route('**/*',async route=>{const url=new URL(route.request().url());if(url.pathname.startsWith('/api/'))return route.fulfill({status:401,contentType:'application/json',headers:{'Access-Control-Allow-Origin':'https://localhost'},body:'{"authenticated":false,"error":"sign_in_required"}'});if(url.hostname!=='localhost')return route.fulfill({status:200,body:''});let rel=decodeURIComponent(url.pathname).replace(/^\//,'')||'index.html';if(rel.includes('..'))return route.fulfill({status:404,body:''});try{let body=rel==='bb-native-runtime.js'?runtime:variant==='baseline'&&baselineJS.has(rel)?baselineJS.get(rel):await generated(rel);if(variant==='baseline'&&['app.html','index.html'].includes(rel))body=restoreHTML(body.toString());if(variant==='baseline'||variant==='ui-only')body=restoreNormalization(rel,body);const mime={'.html':'text/html','.js':'application/javascript','.mjs':'application/javascript','.css':'text/css','.json':'application/json','.webp':'image/webp','.png':'image/png','.svg':'image/svg+xml','.woff2':'font/woff2'};return route.fulfill({status:200,body,contentType:mime[path.extname(rel)]||'application/octet-stream'});}catch{missing.push(rel);return route.fulfill({status:404,body:''});}});
  await context.addInitScript(()=>{
   if(!sessionStorage.getItem('__a13_seeded')){
    const days=['Monday','Tuesday','Wednesday','Thursday','Friday','Saturday','Sunday'],ids=['fajitas','chicken-burgers','creamy-pasta','sausage-gnocchi','pulled-pork','beef-chilli','stir-fry'];

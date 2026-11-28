@@ -7,7 +7,18 @@
  if(root){root.BBHouseholdAliases=api;if(root.document){root.BBPantryAliasCanonical=name=>api.resolve(name,root.BBPriceV19?.canonical);root.BBPantryConversionCanonical=name=>api.conversionName(name,root.BBPriceV19?.canonical);}}
 })(typeof window!=='undefined'?window:typeof globalThis!=='undefined'?globalThis:null,function(){
  'use strict';
- const clean=value=>typeof value==='string'?value.normalize('NFKC').replace(/[\u0000-\u001f\u007f]/g,' ').toLowerCase().replace(/[–—]/g,'-').replace(/\s+/g,' ').trim():'';
+ // Bounded primitive normalization only; callbacks and matching stay live.
+ const cleanStrings=new Map();
+ const clean=value=>{
+  if(typeof value!=='string')return '';
+  if(value.length<=256){const cached=cleanStrings.get(value);if(cached!==undefined)return cached;}
+  const result=value.normalize('NFKC').replace(/[\u0000-\u001f\u007f]/g,' ').toLowerCase().replace(/[–—]/g,'-').replace(/\s+/g,' ').trim();
+  if(value.length<=256){
+   if(cleanStrings.size===512)cleanStrings.delete(cleanStrings.keys().next().value);
+   cleanStrings.set(value,result);
+  }
+  return result;
+ };
  const safe=value=>!!value&&value.length<=200&&!value.includes('|')&&!['__proto__','prototype','constructor'].includes(value);
  const definitions=[
   ['pork-sausages','Meat & fish','pork sausages',['sausage','sausages','pork sausage','pork sausages']],
