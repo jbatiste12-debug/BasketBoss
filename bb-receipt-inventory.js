@@ -255,7 +255,7 @@
       }
       return out;
     }
-    async function applyProjection(response, captured, body = null, reducedReview = {}, precondition = null, sharedAuto = false) {
+    async function applyProjection(response, captured, body = null, reducedReview = {}, precondition = null, sharedAuto = false, acknowledged = [], protectedTargets = []) {
       const c = await core();
       if (!sameSession(captured)) throw Error('receipt_account_changed');
       if (sharedAuto && (typeof precondition !== 'function' || precondition() !== true)) throw Error('receipt_local_data_changed');
@@ -308,7 +308,33 @@
         if (!(Number(owner.inventoryRevision) >= response.receiptRevision)) priorServerStock = body.inventoryBaseline?.stock || {};
       } else if (body?.localProjectionBaseline) priorServerStock = body.localProjectionBaseline;
       if(tracking)priorServerStock=c.normalizePantryState(priorServerStock,currentKitchen,{canonicalize,market:activeContext().market,exactConversionsOnly:true}).stock;
-      const nextStock = sharedAuto ? nextServerStock : identicalGetAcknowledgement ? currentStock : c.projectReceiptInventory(currentStock, priorServerStock, nextServerStock);
+      const matchesStockKey = (row, stockKey) => row && typeof row === 'object' && row.selected !== false && (row.bb173StockKey === stockKey || row.name && c.canonicalIngredientKey(row.name, canonicalize) + '|' + c.normalizeStockQuantity(row.qty, row.unit)?.unit === stockKey);
+      const retainedLocalKeys = new Set();
+      let nextStock;
+      if (sharedAuto) {
+        // A saved balance can predate the ordered outbox. Preserve each local
+        // difference from its last actual server baseline until it is matched
+        // by the server or by this exact deliberate operation's acknowledgment.
+        // Clean keys still receive peer changes, including real removals.
+        const latestAcknowledged = new Map();
+        const pendingKeys = new Set(protectedTargets.map(target => target.key));
+        for (const proof of acknowledged) {
+          const previous = latestAcknowledged.get(proof.target.key);
+          if (!previous || proof.order > previous.order) latestAcknowledged.set(proof.target.key, proof);
+        }
+        nextStock = {...nextServerStock};
+        for (const stockKey of new Set([...Object.keys(currentStock), ...Object.keys(priorServerStock), ...Object.keys(nextServerStock), ...pendingKeys])) {
+          const localQuantity = currentStock[stockKey] || 0, baselineQuantity = priorServerStock[stockKey] || 0, remoteQuantity = nextServerStock[stockKey] || 0;
+          if (!pendingKeys.has(stockKey)) {
+            if (localQuantity === baselineQuantity || localQuantity === remoteQuantity) continue;
+            const proof = latestAcknowledged.get(stockKey), knownLocations = Object.values(currentKitchen)
+              .filter(row => matchesStockKey(row, stockKey) && ['cupboard','fridge','freezer'].includes(row.loc)).map(row => row.loc);
+            if (proof?.value.quantity === localQuantity && knownLocations.every(location => location === proof.value.location)) continue;
+          }
+          retainedLocalKeys.add(stockKey);
+          if (localQuantity > 0) nextStock[stockKey] = localQuantity; else delete nextStock[stockKey];
+        }
+      } else nextStock = identicalGetAcknowledgement ? currentStock : c.projectReceiptInventory(currentStock, priorServerStock, nextServerStock);
       // An acknowledgement of the exact same physical balances must not turn
       // a local Cook allocation into a new Kitchen representation. Keep its
       // display units, zero rows and lot metadata. GET acknowledgements have
@@ -318,15 +344,15 @@
       for (const item of inventory) {
         if (typeof item.stockKey !== 'string' || item.stockKey.length > 180 || item.stockKey !== `${item.canonicalKey}|${item.unit}` || !Number.isFinite(item.quantity) || item.quantity < 0 || item.quantity > 1000000 || item.quantity > 0 && rawServerStock[item.stockKey] !== item.quantity || !Number.isInteger(item.revision) || item.revision < 0 || !['cupboard', 'fridge', 'freezer'].includes(item.location)) throw Error('invalid_receipt_inventory_projection');
       }
-      const matchesStockKey = (row, stockKey) => row && typeof row === 'object' && row.selected !== false && (row.bb173StockKey === stockKey || row.name && c.canonicalIngredientKey(row.name, canonicalize) + '|' + c.normalizeStockQuantity(row.qty, row.unit)?.unit === stockKey);
       const sharedLocationsMatch = !sharedAuto || inventory.every(item => {
-        if (!(item.quantity > 0)) return true;
+        if (!(item.quantity > 0) || retainedLocalKeys.has(item.stockKey)) return true;
         const matches = Object.entries(currentKitchen).filter(([, row]) => matchesStockKey(row, item.stockKey));
         return matches.length > 0 && matches.every(([id, row]) => row.loc === item.location && id.startsWith(item.location + '|'));
       });
       const preserveKitchen = sharedAuto ? equalStock(currentStock, nextStock) && equalStock(savedStock, nextStock) && sharedLocationsMatch : identicalGetAcknowledgement || body?.action === 'confirm_pantry' && owner.actorId === captured.actorId && owner.cacheKey === key && explicitScopeAdoption && equalStock(currentStock, nextStock) && equalStock(savedStock, nextStock);
       let kitchen = clone(preserveKitchen ? currentKitchen : local.inventory);
       for (const stockKey of preserveKitchen ? [] : new Set([...Object.keys(priorServerStock), ...Object.keys(nextServerStock)])) {
+        if (sharedAuto && retainedLocalKeys.has(stockKey)) continue;
         const split = stockKey.lastIndexOf('|'), name = stockKey.slice(0, split), unit = stockKey.slice(split + 1);
         const matches = Object.entries(kitchen).filter(([, x]) => x?.selected && (x.bb173StockKey===stockKey||x.name && c.canonicalIngredientKey(x.name, canonicalize) === name && c.normalizeStockQuantity(x.qty, x.unit)?.unit === unit));
         const bucketed=root.BBReducedStock?.projectFrozenBuckets?.({inventory:kitchen,stockKey,currentQuantity:Number(currentStock[stockKey])||0,nextQuantity:nextStock[stockKey]||0,location:inventory.find(row=>row.stockKey===stockKey)?.location||'cupboard',actor:captured.actorId,canonicalize,market:activeContext().market});
@@ -364,7 +390,7 @@
       if (sharedAuto && !preserveKitchen) for (const [oldId, row] of Object.entries(kitchen)) {
         if (row?.selected === false || !['cupboard', 'fridge', 'freezer'].includes(row?.loc) || oldId.startsWith(row.loc + '|')) continue;
         const item = inventory.find(item => matchesStockKey(row, item.stockKey));
-        if (!item) continue;
+        if (!item || retainedLocalKeys.has(item.stockKey)) continue;
         const id = kitchenRecordId(kitchen, row.loc + '|' + item.canonicalKey, item.stockKey, false);
         kitchen[id] = row;delete kitchen[oldId];
       }
@@ -436,7 +462,7 @@
         if (precondition() !== true) throw Error('receipt_local_data_changed');
       }
       atomicWrite(changes, captured.actorId);
-      const projection = { stock: nextStock, inventory: kitchen, essentials, receipts, pantryReview, scope, ...reducedReviewResult(reviewIssues) };
+      const projection = { stock: nextStock, inventory: kitchen, essentials, receipts, pantryReview, scope, ...reducedReviewResult(reviewIssues), ...(sharedAuto ? {retainedLocalKeys: [...retainedLocalKeys]} : {}) };
       if (!sharedAuto) try { options.onProjection?.(projection); } catch { /* Stored projection remains valid if rendering fails. */ }
       return projection;
     }
@@ -673,10 +699,19 @@
     const synchronize = value => withInventoryLock(() => synchronizeInternal(value));
     const retryPendingConfirmation = value => withInventoryLock(() => retryPendingConfirmationInternal(value));
     const confirmPantry = value => withInventoryLock(() => confirmPantryInternal(value));
-    async function ingestSharedHousehold(snapshot, {precondition} = {}) {
+    async function ingestSharedHousehold(snapshot, {precondition, acknowledged = [], protectedTargets = []} = {}) {
       const captured = session(), context = activeContext(), owner = json(KEYS.owner, {});
       if (snapshot?.ok !== true || snapshot.scope?.kind !== 'household' || owner.actorId !== captured.actorId || owner.scope?.kind !== 'household' || owner.scope.id !== snapshot.scope.id || owner.cacheKey !== cacheKey(captured.actorId, snapshot.scope)) throw Error('receipt_household_scope_changed');
       const response = clone(snapshot), cached = json(owner.cacheKey, {}), keys = [KEYS.stock, KEYS.kitchen, KEYS.owner, KEYS.confirmed, KEYS.session, owner.cacheKey], observed = Object.fromEntries(keys.map(key => [key, storage().getItem(key)]));
+      const proofs = (Array.isArray(acknowledged) ? clone(acknowledged).slice(0, 256) : []).filter(proof =>
+        proof && typeof proof.id === 'string' && /^[0-9a-f]{8}(?:-[0-9a-f]{4}){3}-[0-9a-f]{12}$/i.test(proof.id) &&
+        Number.isSafeInteger(proof.order) && proof.order > 0 && proof.target?.kind === 'pantry' &&
+        typeof proof.target.key === 'string' && proof.target.key.length > 0 && proof.target.key.length <= 180 &&
+        proof.value && typeof proof.value.quantity === 'number' && Number.isFinite(proof.value.quantity) && proof.value.quantity >= 0 && proof.value.quantity <= 1000000 &&
+        ['cupboard','fridge','freezer'].includes(proof.value.location));
+      const protectedItems = (Array.isArray(protectedTargets) ? clone(protectedTargets) : []).filter(target =>
+        target?.kind === 'pantry' && typeof target.key === 'string' && target.key.length > 0 && target.key.length <= 180)
+        .map(target => ({kind:'pantry',key:target.key}));
       // A full original receipt snapshot can refresh its read-only histories;
       // a balance-only projection cannot erase histories omitted by its API.
       for (const field of ['essentials', 'receipts', 'priceObservations']) if (response[field] === undefined) response[field] = clone(cached[field] || []);
@@ -687,11 +722,11 @@
         const normalized = c.normalizeStockMap(response.stock, {canonicalize});
         if (!response.stock || typeof response.stock !== 'object' || Array.isArray(response.stock) || !equalStock(response.stock, normalized)) throw Error('receipt_server_stock_missing');
         if (!current()) throw Error('receipt_local_data_changed');
-        const fingerprint = JSON.stringify(stable({response, context})), acknowledged = sharedProjectionAcknowledgements.get(owner.cacheKey);
-        if (acknowledged?.fingerprint === fingerprint && keys.every(key => storage().getItem(key) === acknowledged.raw[key])) return {ok: true, localApplied: false, unchanged: true};
-        const projected = await applyProjection(response, captured, null, {}, current, true);
-        sharedProjectionAcknowledgements.set(owner.cacheKey, {fingerprint, raw: Object.fromEntries(keys.map(key => [key, storage().getItem(key)]))});
-        return {ok: true, localApplied: true, projection: projected};
+        const fingerprint = JSON.stringify(stable({response, context, acknowledged: proofs, protectedTargets: protectedItems})), previous = sharedProjectionAcknowledgements.get(owner.cacheKey);
+        if (previous?.fingerprint === fingerprint && keys.every(key => storage().getItem(key) === previous.raw[key])) return {ok: true, localApplied: false, unchanged: true, retainedLocalKeys: clone(previous.retainedLocalKeys)};
+        const projected = await applyProjection(response, captured, null, {}, current, true, proofs, protectedItems);
+        sharedProjectionAcknowledgements.set(owner.cacheKey, {fingerprint, raw: Object.fromEntries(keys.map(key => [key, storage().getItem(key)])), retainedLocalKeys: clone(projected.retainedLocalKeys)});
+        return {ok: true, localApplied: true, projection: projected, retainedLocalKeys: clone(projected.retainedLocalKeys)};
       });
     }
     return Object.freeze({ configure(value) { options = { ...options, ...value }; return this; }, normalizeDraft, commitLocalReceipt, commitReviewedReceipt, cancelDraft, canonicalOptions, synchronize, retryPendingConfirmation, confirmPantry, ingestSharedHousehold, getCachedProjection, getLearnedPrice, recoverLocalTransaction, withInventoryLock, getPendingConfirmation: () => clone(pendingConfirmation(session().actorId)), keys: KEYS });

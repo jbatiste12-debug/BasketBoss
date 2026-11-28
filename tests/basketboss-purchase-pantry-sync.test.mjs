@@ -59,6 +59,105 @@ function sharedEngine(f) {
   f.root.BBHouseholdSharingAuto = engine;return {engine, key, edits, flushes};
 }
 
+function savedPhysicalStock(f, stock, location = 'cupboard') {
+  const kitchen = {};
+  for (const [stockKey, quantity] of Object.entries(stock)) {
+    const split = stockKey.lastIndexOf('|'), name = stockKey.slice(0, split);
+    kitchen[location+'|'+name] = {name,loc:location,selected:true,qty:quantity,unit:stockKey.slice(split+1),bb173StockKey:stockKey,bb173StockValue:quantity,notes:'Saved physical food'};
+  }
+  f.store.setItem(f.inventory.keys.stock, JSON.stringify(stock));f.store.setItem(f.inventory.keys.kitchen, JSON.stringify(kitchen));
+}
+const pantryAcknowledgment = (quantity, location = 'cupboard', order = 10) =>
+  ({id:'11111111-1111-4111-8111-111111111111',order,target:{kind:'pantry',key:'pasta|g'},value:{quantity,location}});
+
+test('unknown saved Pasta survives an empty shared snapshot and two cold restarts without being uploaded', async () => {
+  for (const baseline of [{}, {'pasta|g':100}]) {
+    const remote=server();remote.stock=baseline;
+    let f=await fixture({remote,household:true,accountPantrySync:true});savedPhysicalStock(f,{'pasta|g':500});
+    const kitchen=f.store.getItem(f.inventory.keys.kitchen);remote.stock={};remote.revision++;
+    for (let restart=0;restart<3;restart++) {
+      if(restart) f=await fixture({store:f.store,remote,household:true,accountPantrySync:true,initialize:false});
+      const result=await f.host.receiveSharedAutoSnapshot(remote.snapshot(),{precondition:()=>true});
+      assert.deepEqual(copy(result.retainedLocalKeys),['pasta|g']);assert.deepEqual(f.stock(),{'pasta|g':500});
+      assert.equal(f.store.getItem(f.inventory.keys.kitchen),kitchen);
+      const owner=JSON.parse(f.store.getItem(f.inventory.keys.owner));assert.deepEqual(owner.serverStock,{});
+      assert.deepEqual(copy(f.inventory.getCachedProjection().serverStock),{});assert.equal(remote.posts.length,0);
+      const unchanged=await f.host.receiveSharedAutoSnapshot(remote.snapshot(),{precondition:()=>true});
+      assert.equal(unchanged.unchanged,true);assert.deepEqual(copy(unchanged.retainedLocalKeys),['pasta|g']);
+    }
+  }
+});
+
+test('a clean acknowledged Pasta balance accepts a real peer removal and remains removed after restart', async () => {
+  const remote=server();remote.stock={'pasta|g':500};let f=await fixture({remote,household:true,accountPantrySync:true});
+  remote.stock={};remote.revision++;
+  let result=await f.host.receiveSharedAutoSnapshot(remote.snapshot(),{precondition:()=>true});
+  assert.deepEqual(copy(result.retainedLocalKeys),[]);assert.deepEqual(f.stock(),{});
+  f=await fixture({store:f.store,remote,household:true,accountPantrySync:true,initialize:false});
+  result=await f.host.receiveSharedAutoSnapshot(remote.snapshot(),{precondition:()=>true});
+  assert.deepEqual(copy(result.retainedLocalKeys),[]);assert.deepEqual(f.stock(),{});assert.equal(remote.posts.length,0);
+});
+
+test('matching durable item acknowledgments allow a later peer quantity or deletion to win over the saved local edit', async () => {
+  for (const stock of [{'pasta|g':700}, {}]) {
+    const remote=server();remote.stock={'pasta|g':100};const f=await fixture({remote,household:true,accountPantrySync:true});
+    savedPhysicalStock(f,{'pasta|g':500});remote.stock=stock;remote.revision++;
+    const result=await f.host.receiveSharedAutoSnapshot(remote.snapshot(),{precondition:()=>true,acknowledged:[pantryAcknowledgment(500)]});
+    assert.deepEqual(copy(result.retainedLocalKeys),[]);assert.deepEqual(f.stock(),stock);
+    assert.deepEqual(JSON.parse(f.store.getItem(f.inventory.keys.owner)).serverStock,stock);assert.equal(remote.posts.length,0);
+  }
+});
+
+test('an unrelated Milk update arrives while unknown saved Pasta and its physical notes remain intact', async () => {
+  const remote=server();remote.stock={'pasta|g':100,'milk|ml':250};const f=await fixture({remote,household:true,accountPantrySync:true});
+  savedPhysicalStock(f,{'pasta|g':500,'milk|ml':250});
+  const before=JSON.parse(f.store.getItem(f.inventory.keys.kitchen))['cupboard|pasta'];remote.stock={'milk|ml':750};remote.revision++;
+  const result=await f.host.receiveSharedAutoSnapshot(remote.snapshot(),{precondition:()=>true});
+  assert.deepEqual(copy(result.retainedLocalKeys),['pasta|g']);assert.deepEqual(f.stock(),{'milk|ml':750,'pasta|g':500});
+  assert.deepEqual(JSON.parse(f.store.getItem(f.inventory.keys.kitchen))['cupboard|pasta'],before);
+  assert.deepEqual(JSON.parse(f.store.getItem(f.inventory.keys.owner)).serverStock,{'milk|ml':750});assert.equal(remote.posts.length,0);
+});
+
+test('new acknowledgment proof is part of shared no-op identity and can release a previously protected item', async () => {
+  const remote=server();remote.stock={};const f=await fixture({remote,household:true,accountPantrySync:true});savedPhysicalStock(f,{'pasta|g':500});
+  const snapshot=remote.snapshot(),first=await f.host.receiveSharedAutoSnapshot(snapshot,{precondition:()=>true});
+  assert.deepEqual(copy(first.retainedLocalKeys),['pasta|g']);assert.deepEqual(f.stock(),{'pasta|g':500});
+  const second=await f.host.receiveSharedAutoSnapshot(snapshot,{precondition:()=>true,acknowledged:[pantryAcknowledgment(500)]});
+  assert.equal(second.localApplied,true);assert.deepEqual(copy(second.retainedLocalKeys),[]);assert.deepEqual(f.stock(),{});
+});
+
+test('wrong, older or differently located acknowledgment proof cannot erase a newer unknown local value', async () => {
+  for(const proofs of [[pantryAcknowledgment(400)],[pantryAcknowledgment(500,'fridge')],
+    [pantryAcknowledgment(500,'cupboard',9),pantryAcknowledgment(700,'cupboard',10)],
+    [{...pantryAcknowledgment(500),order:null}],[{...pantryAcknowledgment(500),target:{kind:'dinner',key:'pasta|g'}}]]) {
+    const remote=server();remote.stock={};const f=await fixture({remote,household:true,accountPantrySync:true});savedPhysicalStock(f,{'pasta|g':500});
+    const result=await f.host.receiveSharedAutoSnapshot(remote.snapshot(),{precondition:()=>true,acknowledged:proofs});
+    assert.deepEqual(copy(result.retainedLocalKeys),['pasta|g']);assert.deepEqual(f.stock(),{'pasta|g':500});assert.equal(remote.posts.length,0);
+  }
+});
+
+test('pending item protection wins even at a clean baseline while another acknowledged item receives its peer update', async () => {
+  const remote=server();remote.stock={'pasta|g':100,'milk|ml':250};const f=await fixture({remote,household:true,accountPantrySync:true});
+  savedPhysicalStock(f,{'pasta|g':100,'milk|ml':500});remote.stock={'pasta|g':700,'milk|ml':750};remote.revision++;
+  const milk={...pantryAcknowledgment(500),target:{kind:'pantry',key:'milk|ml'}};
+  const result=await f.host.receiveSharedAutoSnapshot(remote.snapshot(),{precondition:()=>true,acknowledged:[milk],protectedTargets:[{kind:'pantry',key:'pasta|g'}]});
+  assert.deepEqual(copy(result.retainedLocalKeys),['pasta|g']);assert.deepEqual(f.stock(),{'pasta|g':100,'milk|ml':750});
+  assert.deepEqual(JSON.parse(f.store.getItem(f.inventory.keys.owner)).serverStock,remote.stock);assert.equal(remote.posts.length,0);
+});
+
+test('protected unknown frozen lots retain their exact notes, quantities and locations while unrelated stock receives', async () => {
+  const remote=server();remote.stock={'pasta|g':100,'milk|ml':250};const f=await fixture({remote,household:true,accountPantrySync:true});f.root.BBReducedStock=reducedStock;
+  savedPhysicalStock(f,{'pasta|g':500,'milk|ml':250});const kitchen=JSON.parse(f.store.getItem(f.inventory.keys.kitchen));
+  const pasta=kitchen['cupboard|pasta'];delete kitchen['cupboard|pasta'];
+  kitchen['fridge|pasta:first']={...pasta,qty:200,bb173StockValue:200,loc:'fridge',notes:'Open packet'};
+  kitchen['freezer|pasta:second']={...pasta,qty:300,bb173StockValue:300,loc:'freezer',notes:'Frozen packet'};
+  f.store.setItem(f.inventory.keys.kitchen,JSON.stringify(kitchen));remote.stock={'milk|ml':750};remote.revision++;
+  await f.host.receiveSharedAutoSnapshot(remote.snapshot(),{precondition:()=>true});
+  const after=JSON.parse(f.store.getItem(f.inventory.keys.kitchen));
+  for(const id of ['fridge|pasta:first','freezer|pasta:second'])assert.deepEqual(after[id],kitchen[id]);
+  assert.deepEqual(f.stock(),{'milk|ml':750,'pasta|g':500});assert.equal(remote.posts.length,0);
+});
+
 test('a tagged manual shared pantry edit prepares only the per-item outbox without writing or echoing legacy stock', async () => {
   const f = await fixture({household: true, accountPantrySync: true}), shared = sharedEngine(f), before = new Map(f.store.values);
   const prepared = f.host.preparePurchasedPantry({beforeStock: f.stock(), stock: {'rice|g': 275}, sharedUserEdit: true});
