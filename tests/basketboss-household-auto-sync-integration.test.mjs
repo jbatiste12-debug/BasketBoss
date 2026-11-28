@@ -45,10 +45,10 @@ const deferred = () => {let resolve;const promise = new Promise(done => {resolve
 const turn = () => new Promise(resolve => setImmediate(resolve));
 const same = (left, right) => JSON.stringify(left) === JSON.stringify(right);
 
-function orderedServer() {
+function orderedServer({initialStock = {}} = {}) {
   const entries = new Map([['household_servings:default', {section:'household_servings',entry_key:'default',value:{count:4},revision:1}]]);
-  const operations = new Map(), targets = new Map(), requests = [], gates = new Map(), readGates = new Map(), lostAcks = new Set();
-  let clock = 0, inventoryRevision = 1, stock = {}, locations = {};
+  const operations = new Map(), targets = new Map(), requests = [], gates = new Map(), readGates = new Map(), statuses = new Map(), lostAcks = new Set();
+  let clock = 0, inventoryRevision = 1, stock = clone(initialStock), locations = {};
   const inventory = () => ({ok:true,schemaVersion:1,autoStockReady:true,scope:{kind:'household',id:HH},initialized:true,
     inventoryRevision,stock:clone(stock),inventory:Object.entries(stock).map(([stockKey,quantity]) => {
       const index = stockKey.lastIndexOf('|');return {stockKey,canonicalKey:stockKey.slice(0,index),unit:stockKey.slice(index+1),quantity,location:locations[stockKey] || 'cupboard',revision:inventoryRevision};
@@ -65,6 +65,7 @@ function orderedServer() {
     appliedCount:() => [...operations.values()].filter(row => row.status === 'applied').length,
     stock:() => clone(stock),
     dinner:day => entries.get('planned_day:' + day)?.value,
+    setStatus(actor, value) {statuses.set(actor,clone(value));},
     pauseApply(actor) {const gate={started:deferred(),release:deferred()};gates.set(actor,gate);return gate;},
     pauseRead(actor) {const gate={started:deferred(),release:deferred()};readGates.set(actor,gate);return gate;},
     loseApplyAck(actor) {lostAcks.add(actor);},
@@ -80,8 +81,16 @@ function orderedServer() {
       }
       assert.equal(parsed.pathname,'/api/household');
       if (!body) {
-        if (parsed.searchParams.get('mode') === 'auto_sync') {const gate=readGates.get(actor);if(gate){readGates.delete(actor);gate.started.resolve();await gate.release.promise;}return Response.json(snapshot());}
-        return Response.json({configured:true,premium:true,role:actor === ACTOR ? 'owner' : 'partner',household_id:HH,invite_status:'accepted'});
+        const status=statuses.get(actor)||{configured:true,premium:true,role:actor === ACTOR ? 'owner' : 'partner',household_id:HH,invite_status:'accepted'};
+        if (parsed.searchParams.get('mode') === 'auto_sync') {
+          const gate=readGates.get(actor);if(gate){readGates.delete(actor);gate.started.resolve();await gate.release.promise;}
+          if(!status.premium)return Response.json({ok:false,error:'premium_required'},{status:403});
+          const response=snapshot();
+          if(status.household_id!==HH){response.household_id=status.household_id;response.state={entries:[],stock:{},locations:{},inventoryRevision:1,initialized:true,
+            inventory:{...inventory(),scope:{kind:'household',id:status.household_id},stock:{},inventory:[]}};}
+          return Response.json(response);
+        }
+        return Response.json(status);
       }
       assert.ok(['sync_reserve','sync_apply'].includes(body.action),'receiving a snapshot never uploads a legacy patch, invite or restore');
       assert.equal(body.expectedHouseholdId,HH);
@@ -152,6 +161,7 @@ async function device(server, actor, {values = new Map(), initialPlan = [], init
   await inventory.synchronize();
   ctx.BBReceiptHost=ctx.BBReceiptHostFactory({storage,inventory,fetch:ctx.fetch,getSession,getContext,accountPantrySync:true,getStock:ctx.bb307ReadStock,document:{getElementById:() => null,querySelector:() => null,querySelectorAll:() => []}});
   ctx.BBReceiptHost.configure();
+  ctx.bb307Stock=ctx.bb307ReadStock();
   vm.runInContext(engineSource,ctx);vm.runInContext(sharingSource,ctx);
   const api=ctx.__integration;
   const fixture={actor,ctx,values,storage,api,inventory,renders,notices,
@@ -251,12 +261,62 @@ test('a private local stock restore before household status is known is never in
   const server=orderedServer(),owner=await device(server,ACTOR,{initialize:false});
   try {
     owner.storage.setItem(STOCK,JSON.stringify({'pasta|g':900}));owner.ctx.bb307Stock=owner.stock();
-    assert.equal(owner.ctx.BBHouseholdSharingAuto.canCapture(),false);
+    assert.equal(owner.ctx.BBHouseholdSharingAuto.isReady(),false);
+    assert.equal(owner.ctx.BBHouseholdSharingAuto.canCapture(),true,'exact cached household association permits local staging only');
     await owner.ctx.BBReceiptHost.refreshAccountPantry();
     assert.equal(server.reserveCount(),0);
     assert.deepEqual(server.requests.filter(row => row.body),[],
       'startup stock mismatch is a local snapshot, never permission to replace all household items');
     assert.deepEqual(server.stock(),{});
+  } finally {owner.destroy();}
+});
+
+test('a deliberate pantry edit before verified sharing status is retained and later sends only its captured item', async () => {
+  const server=orderedServer({initialStock:{'pasta|g':100,'milk|ml':250}}),owner=await device(server,ACTOR,{initialize:false});
+  try {
+    assert.equal(owner.ctx.BBHouseholdSharingAuto.isReady(),false);
+    assert.equal(owner.ctx.BBHouseholdSharingAuto.canCapture(),true);
+    assert.equal(owner.setPantry('Pasta','g',500),true);
+    assert.deepEqual(owner.stock(),{'pasta|g':500,'milk|ml':250});
+    await turn();assert.equal(server.requests.filter(row=>row.body).length,0,'cached household association never authorizes a network mutation');
+    assert.equal(server.requests.filter(row=>row.url.includes('mode=auto_sync')).length,0,'cached association does not authorize shared reads either');
+    await owner.initialize();await owner.sync();
+    assert.deepEqual(owner.stock(),{'pasta|g':500,'milk|ml':250},
+      'the first authoritative read must not erase a manually captured edit made while status verification was pending');
+    assert.deepEqual(server.stock(),{'pasta|g':500,'milk|ml':250});
+    assert.deepEqual(server.requests.filter(row => row.body?.action==='sync_reserve').map(row => [row.body.target,row.body.value]),
+      [[{kind:'pantry',key:'pasta|g'},{quantity:500,location:'cupboard'}]],'the unchanged Milk and all unrelated private stock remain absent from the upload');
+    assert.equal(owner.queued().length,0);
+  } finally {owner.destroy();}
+});
+
+test('a deliberately selected Monday dinner before verified status stages locally and then propagates automatically', async () => {
+  const server=orderedServer(),owner=await device(server,ACTOR,{initialize:false});
+  try {
+    owner.pick('Monday','salmon');await turn();
+    assert.equal(owner.saved().planned[0].recipeId,'salmon');assert.equal(server.requests.filter(row=>row.body).length,0);
+    assert.equal(server.requests.filter(row=>row.url.includes('mode=auto_sync')).length,0);
+    await owner.initialize();await owner.sync();
+    assert.deepEqual(server.dinner('Monday'),{recipeId:'salmon'});
+    assert.equal(owner.state().planned.find(row=>row.day==='Monday')?.recipeId,'salmon');assert.equal(owner.queued().length,0);
+    assert.equal(server.reserveCount(),1);
+  } finally {owner.destroy();}
+});
+
+for(const changed of ['premium denied','household changed'])test('pre-status deliberate edits remain local when fresh verification reports '+changed,async()=>{
+  const server=orderedServer({initialStock:{'pasta|g':100,'milk|ml':250}}),owner=await device(server,ACTOR,{initialize:false});
+  try {
+    owner.pick('Monday','salmon');owner.setPantry('Pasta','g',500);await turn();
+    assert.equal(server.requests.filter(row=>row.body).length,0);
+    server.setStatus(ACTOR,{configured:true,premium:changed!=='premium denied',role:'owner',invite_status:'accepted',
+      household_id:changed==='household changed'?'44444444-4444-4444-8444-444444444444':HH});
+    await owner.initialize();await owner.sync();
+    assert.deepEqual(server.requests.filter(row=>row.body),[],'old cached actor/household intent is never redirected or authorized by itself');
+    assert.deepEqual(server.stock(),{'pasta|g':100,'milk|ml':250});assert.equal(server.dinner('Monday'),undefined);
+    assert.equal(owner.saved().planned.find(row=>row.day==='Monday')?.recipeId,'salmon');assert.deepEqual(owner.stock(),{'pasta|g':500,'milk|ml':250});
+    const parked=[...owner.values].filter(([key])=>key.startsWith(owner.ctx.BBHouseholdAutoSync.PREFIX)).map(([,raw])=>JSON.parse(raw))
+      .find(row=>row.actor===ACTOR&&row.householdId===HH);
+    assert.equal(parked.pending.length,2,'unverified old-household edits remain durable for their original scope');
   } finally {owner.destroy();}
 });
 
