@@ -1,3 +1,4 @@
+import {householdPlanCaptureSource} from './helpers/household-plan-capture.mjs';
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
@@ -81,7 +82,7 @@ test('unified planner adapter keeps cloud backup values scoped and rolls back fa
 
 const blockStart=html.indexOf("const BB_AF_DAYS=['Monday'");
 const blockEnd=html.indexOf('/* END_BASKETBOSS_AUTOFILL_VARIETY_ROTATION_V1 */',blockStart);
-const drawSource=html.match(/function bbPlanVarietyValid\(plans(?:,softProteinAdjacency=false)?\)\{[\s\S]*?\n\}/)[0]+'\n'+html.slice(blockStart,blockEnd);
+const drawSource=householdPlanCaptureSource(html)+html.match(/function bbPlanVarietyValid\(plans(?:,softProteinAdjacency=false)?\)\{[\s\S]*?\n\}/)[0]+'\n'+html.slice(blockStart,blockEnd);
 function planner(recipes=real){
  const h=core(),state={planned:[],bb81Batch:null},notices=[];let saves=0;
  const context={BBRecipeEditorial:require('../bb-recipe-editorial.js'),RECIPES:recipes,state,localStorage:h.storage,console,BBRecipePlanning:planning,BBIngredientPreferences:h.api,DAYS,
@@ -151,7 +152,7 @@ test('Pantry suggestions and the final Populate Planner recheck both respect ing
   getRecipe:id=>recipes.find(r=>r.id===id),bb172QuickDinners:()=>({}),bbBatchPairs:()=>[],bbPartialRound:n=>n,
   BB307Pantry:{pantryName:name=>name.toLowerCase(),pantryId:(name,unit)=>name.toLowerCase()+'|'+unit,reconcileStock:(stock,items)=>({pantry:Object.fromEntries(items.map(i=>[i.key.toLowerCase()+'|'+i.unit,stock[i.key.toLowerCase()+'|'+i.unit]||0]))})},
   persist:()=>{saves++;return true;},render:()=>{}};
- const source=html.match(/function bbAfIngredientAllowed\(r\)\{[^\n]+\}/)[0]+'\n'+html.slice(html.indexOf('function bbPantryRecipeMatches(){'),html.indexOf('function bbPantryPlannerModal(){'));
+ const source=householdPlanCaptureSource(html)+html.match(/function bbAfIngredientAllowed\(r\)\{[^\n]+\}/)[0]+'\n'+html.slice(html.indexOf('function bbPantryRecipeMatches(){'),html.indexOf('function bbPantryPlannerModal(){'));
  vm.createContext(context);vm.runInContext(source,context);
  const result=vm.runInContext('bbPantryRecipeMatches()',context);assert.deepEqual(Array.from(result.recipes,x=>x.id),['beans']);
  // A previously displayed recipe is rechecked, not blindly trusted by ID.
