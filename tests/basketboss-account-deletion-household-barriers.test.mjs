@@ -13,7 +13,7 @@ const deferred=()=>{let resolve;const promise=new Promise(r=>{resolve=r;});retur
 function harness(fetcher){
  const store=new Map([[sessionKey,JSON.stringify({access_token:'current-token',user:{id:actor}})]]),events=new Map(),calls=[];
  const window={addEventListener(name,handler){const all=events.get(name)||[];all.push(handler);events.set(name,all);}};
- const context={window,document:{readyState:'loading',addEventListener(){}},localStorage:{getItem:k=>store.get(k)??null,setItem:(k,v)=>store.set(k,v),removeItem:k=>store.delete(k)},fetch:async(...args)=>{calls.push(args);return fetcher(...args);},navigator:{onLine:true},Date,JSON,console};
+ const context={AbortController,setTimeout,clearTimeout,window,document:{readyState:'loading',addEventListener(){}},localStorage:{getItem:k=>store.get(k)??null,setItem:(k,v)=>store.set(k,v),removeItem:k=>store.delete(k)},fetch:async(...args)=>{calls.push(args);return fetcher(...args);},navigator:{onLine:true},Date,JSON,console};
  vm.runInNewContext(source,context);
  return {api:window.__sharingUnderTest,store,calls,event(name){for(const fn of events.get(name)||[])fn();}};
 }

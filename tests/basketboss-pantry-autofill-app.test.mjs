@@ -1,3 +1,4 @@
+import {householdPlanCaptureSource} from './helpers/household-plan-capture.mjs';
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
@@ -8,7 +9,7 @@ const STOCK='basketboss_321_v7_measured_pantry',HISTORY='basketboss_planned_reci
 const DAYS=['Monday','Tuesday','Wednesday','Thursday','Friday','Saturday','Sunday'];
 const plain=value=>JSON.parse(JSON.stringify(value));
 function extract(name,next){const start=index.indexOf('function '+name+'('),end=index.indexOf(next,start);assert.ok(start>=0&&end>start,name+' must remain available');return index.slice(start,end);}
-const helpers=extract('bbRotationSession','/* BASKETBOSS_EVENING_PIVOT_ADAPTER')+'\n'+
+const helpers=householdPlanCaptureSource(index)+extract('bbRotationSession','/* BASKETBOSS_EVENING_PIVOT_ADAPTER')+'\n'+
  extract('bbPlanVarietyValid','\nfunction bbRotationMessage')+'\n'+
  extract('bbHomeRecipeIngredients','\nfunction bbHomeDayMeals')+'\n'+
  extract('bbHomeDayMeals','\nfunction bbHomeLunchForShopping')+'\n'+

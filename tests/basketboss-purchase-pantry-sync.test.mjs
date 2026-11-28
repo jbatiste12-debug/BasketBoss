@@ -2,7 +2,9 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import {readFile} from 'node:fs/promises';
 import vm from 'node:vm';
+import {createRequire} from 'node:module';
 import * as core from '../bb-receipt-inventory-core.mjs';
+const reducedStock = createRequire(import.meta.url)('../bb-reduced-stock.js');
 
 const [hostSource, adapterSource] = await Promise.all(['../bb-receipt-host.js', '../bb-receipt-inventory.js'].map(path => readFile(new URL(path, import.meta.url), 'utf8')));
 const actor = 'purchase_user_01', otherActor = 'purchase_user_02';
@@ -28,7 +30,8 @@ function server() {
     }
   };
 }
-async function fixture({store = memoryStorage(), remote = server(), initialize = true, guest = false} = {}) {
+async function fixture({store = memoryStorage(), remote = server(), initialize = true, guest = false, household = false, accountPantrySync = false} = {}) {
+  if (household) remote.scope = {kind: 'household', id: '33333333-3333-4333-8333-333333333333'};
   const events = new Map(), root = {localStorage: store, Intl, Date, console, queueMicrotask, addEventListener(name, fn) {events.set(name, [...(events.get(name) || []), fn]);}};
   vm.runInNewContext(adapterSource, root);vm.runInNewContext(hostSource, root);
   const session = {value: guest ? null : {user: {id: actor}, access_token: 'private-token-never-persist', expires_at: 9999999999}};
@@ -36,7 +39,7 @@ async function fixture({store = memoryStorage(), remote = server(), initialize =
   const getSession = () => session.value, getContext = () => context.value;
   const inventory = root.BBReceiptInventoryFactory({core, storage: store, fetch: remote.fetch.bind(remote), getSession, getContext});
   if (initialize && !guest) await inventory.synchronize();
-  const host = root.BBReceiptHostFactory({storage: store, inventory, fetch: remote.fetch.bind(remote), getSession, getContext, getStock: () => JSON.parse(store.getItem(inventory.keys.stock) || '{}')});host.configure();
+  const host = root.BBReceiptHostFactory({storage: store, inventory, fetch: remote.fetch.bind(remote), getSession, getContext, accountPantrySync, getStock: () => JSON.parse(store.getItem(inventory.keys.stock) || '{}')});host.configure();
   const stock = () => JSON.parse(store.getItem(inventory.keys.stock) || '{}');
   const outboxKey = 'basketboss_purchase_pantry_sync_v1:' + actor;
   const outbox = () => JSON.parse(store.getItem(outboxKey) || 'null');
@@ -49,6 +52,367 @@ async function fixture({store = memoryStorage(), remote = server(), initialize =
   };
   return {root, store, remote, session, context, host, inventory, stock, outbox, outboxKey, commit, event(name) {for (const fn of events.get(name) || []) fn();}};
 }
+
+function sharedEngine(f) {
+  const key = 'basketboss_household_auto_test_outbox_v2', edits = [], flushes = [];
+  const engine = {isReady: () => true, preparePantryEdit(value) {edits.push(copy(value));return {updates: {[key]: {version: 2, value: copy(value)}}, expected: {[key]: f.store.getItem(key)}};}, async flush() {flushes.push(true);return {ok: true, queued: false};}};
+  f.root.BBHouseholdSharingAuto = engine;return {engine, key, edits, flushes};
+}
+
+function savedPhysicalStock(f, stock, location = 'cupboard') {
+  const kitchen = {};
+  for (const [stockKey, quantity] of Object.entries(stock)) {
+    const split = stockKey.lastIndexOf('|'), name = stockKey.slice(0, split);
+    kitchen[location+'|'+name] = {name,loc:location,selected:true,qty:quantity,unit:stockKey.slice(split+1),bb173StockKey:stockKey,bb173StockValue:quantity,notes:'Saved physical food'};
+  }
+  f.store.setItem(f.inventory.keys.stock, JSON.stringify(stock));f.store.setItem(f.inventory.keys.kitchen, JSON.stringify(kitchen));
+}
+const pantryAcknowledgment = (quantity, location = 'cupboard', order = 10) =>
+  ({id:'11111111-1111-4111-8111-111111111111',order,target:{kind:'pantry',key:'pasta|g'},value:{quantity,location}});
+
+test('unknown saved Pasta survives an empty shared snapshot and two cold restarts without being uploaded', async () => {
+  for (const baseline of [{}, {'pasta|g':100}]) {
+    const remote=server();remote.stock=baseline;
+    let f=await fixture({remote,household:true,accountPantrySync:true});savedPhysicalStock(f,{'pasta|g':500});
+    const kitchen=f.store.getItem(f.inventory.keys.kitchen);remote.stock={};remote.revision++;
+    for (let restart=0;restart<3;restart++) {
+      if(restart) f=await fixture({store:f.store,remote,household:true,accountPantrySync:true,initialize:false});
+      const result=await f.host.receiveSharedAutoSnapshot(remote.snapshot(),{precondition:()=>true});
+      assert.deepEqual(copy(result.retainedLocalKeys),['pasta|g']);assert.deepEqual(f.stock(),{'pasta|g':500});
+      assert.equal(f.store.getItem(f.inventory.keys.kitchen),kitchen);
+      const owner=JSON.parse(f.store.getItem(f.inventory.keys.owner));assert.deepEqual(owner.serverStock,{});
+      assert.deepEqual(copy(f.inventory.getCachedProjection().serverStock),{});assert.equal(remote.posts.length,0);
+      const unchanged=await f.host.receiveSharedAutoSnapshot(remote.snapshot(),{precondition:()=>true});
+      assert.equal(unchanged.unchanged,true);assert.deepEqual(copy(unchanged.retainedLocalKeys),['pasta|g']);
+    }
+  }
+});
+
+test('a clean acknowledged Pasta balance accepts a real peer removal and remains removed after restart', async () => {
+  const remote=server();remote.stock={'pasta|g':500};let f=await fixture({remote,household:true,accountPantrySync:true});
+  remote.stock={};remote.revision++;
+  let result=await f.host.receiveSharedAutoSnapshot(remote.snapshot(),{precondition:()=>true});
+  assert.deepEqual(copy(result.retainedLocalKeys),[]);assert.deepEqual(f.stock(),{});
+  f=await fixture({store:f.store,remote,household:true,accountPantrySync:true,initialize:false});
+  result=await f.host.receiveSharedAutoSnapshot(remote.snapshot(),{precondition:()=>true});
+  assert.deepEqual(copy(result.retainedLocalKeys),[]);assert.deepEqual(f.stock(),{});assert.equal(remote.posts.length,0);
+});
+
+test('an empty shared snapshot cannot erase a clean saved balance at the same inventory revision', async () => {
+  const remote=server();remote.stock={'pasta|g':500};const f=await fixture({remote,household:true,accountPantrySync:true});
+  const before=new Map(f.store.values);remote.stock={};
+  const result=await f.host.receiveSharedAutoSnapshot(remote.snapshot(),{precondition:()=>true});
+  assert.equal(result.deferred,true);assert.deepEqual(f.stock(),{'pasta|g':500});assert.deepEqual(f.store.values,before);
+  assert.equal(remote.posts.length,0);
+  // The same authoritative deletion is legitimate once the server advances it.
+  remote.revision++;
+  assert.equal((await f.host.receiveSharedAutoSnapshot(remote.snapshot(),{precondition:()=>true})).localApplied,true);
+  assert.deepEqual(f.stock(),{});
+});
+
+test('matching durable item acknowledgments allow a later peer quantity or deletion to win over the saved local edit', async () => {
+  for (const stock of [{'pasta|g':700}, {}]) {
+    const remote=server();remote.stock={'pasta|g':100};const f=await fixture({remote,household:true,accountPantrySync:true});
+    savedPhysicalStock(f,{'pasta|g':500});remote.stock=stock;remote.revision++;
+    const result=await f.host.receiveSharedAutoSnapshot(remote.snapshot(),{precondition:()=>true,acknowledged:[pantryAcknowledgment(500)]});
+    assert.deepEqual(copy(result.retainedLocalKeys),[]);assert.deepEqual(f.stock(),stock);
+    assert.deepEqual(JSON.parse(f.store.getItem(f.inventory.keys.owner)).serverStock,stock);assert.equal(remote.posts.length,0);
+  }
+});
+
+test('an unrelated Milk update arrives while unknown saved Pasta and its physical notes remain intact', async () => {
+  const remote=server();remote.stock={'pasta|g':100,'milk|ml':250};const f=await fixture({remote,household:true,accountPantrySync:true});
+  savedPhysicalStock(f,{'pasta|g':500,'milk|ml':250});
+  const before=JSON.parse(f.store.getItem(f.inventory.keys.kitchen))['cupboard|pasta'];remote.stock={'milk|ml':750};remote.revision++;
+  const result=await f.host.receiveSharedAutoSnapshot(remote.snapshot(),{precondition:()=>true});
+  assert.deepEqual(copy(result.retainedLocalKeys),['pasta|g']);assert.deepEqual(f.stock(),{'milk|ml':750,'pasta|g':500});
+  assert.deepEqual(JSON.parse(f.store.getItem(f.inventory.keys.kitchen))['cupboard|pasta'],before);
+  assert.deepEqual(JSON.parse(f.store.getItem(f.inventory.keys.owner)).serverStock,{'milk|ml':750});assert.equal(remote.posts.length,0);
+});
+
+test('new acknowledgment proof is part of shared no-op identity and can release a previously protected item', async () => {
+  const remote=server();remote.stock={};const f=await fixture({remote,household:true,accountPantrySync:true});savedPhysicalStock(f,{'pasta|g':500});
+  const snapshot=remote.snapshot(),first=await f.host.receiveSharedAutoSnapshot(snapshot,{precondition:()=>true});
+  assert.deepEqual(copy(first.retainedLocalKeys),['pasta|g']);assert.deepEqual(f.stock(),{'pasta|g':500});
+  const second=await f.host.receiveSharedAutoSnapshot(snapshot,{precondition:()=>true,acknowledged:[pantryAcknowledgment(500)]});
+  assert.equal(second.localApplied,true);assert.deepEqual(copy(second.retainedLocalKeys),[]);assert.deepEqual(f.stock(),{});
+});
+
+test('wrong, older or differently located acknowledgment proof cannot erase a newer unknown local value', async () => {
+  for(const proofs of [[pantryAcknowledgment(400)],[pantryAcknowledgment(500,'fridge')],
+    [pantryAcknowledgment(500,'cupboard',9),pantryAcknowledgment(700,'cupboard',10)],
+    [{...pantryAcknowledgment(500),order:null}],[{...pantryAcknowledgment(500),target:{kind:'dinner',key:'pasta|g'}}]]) {
+    const remote=server();remote.stock={};const f=await fixture({remote,household:true,accountPantrySync:true});savedPhysicalStock(f,{'pasta|g':500});
+    const result=await f.host.receiveSharedAutoSnapshot(remote.snapshot(),{precondition:()=>true,acknowledged:proofs});
+    assert.deepEqual(copy(result.retainedLocalKeys),['pasta|g']);assert.deepEqual(f.stock(),{'pasta|g':500});assert.equal(remote.posts.length,0);
+  }
+});
+
+test('pending item protection wins even at a clean baseline while another acknowledged item receives its peer update', async () => {
+  const remote=server();remote.stock={'pasta|g':100,'milk|ml':250};const f=await fixture({remote,household:true,accountPantrySync:true});
+  savedPhysicalStock(f,{'pasta|g':100,'milk|ml':500});remote.stock={'pasta|g':700,'milk|ml':750};remote.revision++;
+  const milk={...pantryAcknowledgment(500),target:{kind:'pantry',key:'milk|ml'}};
+  const result=await f.host.receiveSharedAutoSnapshot(remote.snapshot(),{precondition:()=>true,acknowledged:[milk],protectedTargets:[{kind:'pantry',key:'pasta|g'}]});
+  assert.deepEqual(copy(result.retainedLocalKeys),['pasta|g']);assert.deepEqual(f.stock(),{'pasta|g':100,'milk|ml':750});
+  assert.deepEqual(JSON.parse(f.store.getItem(f.inventory.keys.owner)).serverStock,remote.stock);assert.equal(remote.posts.length,0);
+});
+
+test('protected unknown frozen lots retain their exact notes, quantities and locations while unrelated stock receives', async () => {
+  const remote=server();remote.stock={'pasta|g':100,'milk|ml':250};const f=await fixture({remote,household:true,accountPantrySync:true});f.root.BBReducedStock=reducedStock;
+  savedPhysicalStock(f,{'pasta|g':500,'milk|ml':250});const kitchen=JSON.parse(f.store.getItem(f.inventory.keys.kitchen));
+  const pasta=kitchen['cupboard|pasta'];delete kitchen['cupboard|pasta'];
+  kitchen['fridge|pasta:first']={...pasta,qty:200,bb173StockValue:200,loc:'fridge',notes:'Open packet'};
+  kitchen['freezer|pasta:second']={...pasta,qty:300,bb173StockValue:300,loc:'freezer',notes:'Frozen packet'};
+  f.store.setItem(f.inventory.keys.kitchen,JSON.stringify(kitchen));remote.stock={'milk|ml':750};remote.revision++;
+  await f.host.receiveSharedAutoSnapshot(remote.snapshot(),{precondition:()=>true});
+  const after=JSON.parse(f.store.getItem(f.inventory.keys.kitchen));
+  for(const id of ['fridge|pasta:first','freezer|pasta:second'])assert.deepEqual(after[id],kitchen[id]);
+  assert.deepEqual(f.stock(),{'milk|ml':750,'pasta|g':500});assert.equal(remote.posts.length,0);
+});
+
+test('a tagged manual shared pantry edit prepares only the per-item outbox without writing or echoing legacy stock', async () => {
+  const f = await fixture({household: true, accountPantrySync: true}), shared = sharedEngine(f), before = new Map(f.store.values);
+  const prepared = f.host.preparePurchasedPantry({beforeStock: f.stock(), stock: {'rice|g': 275}, sharedUserEdit: true});
+  assert.deepEqual(f.store.values, before);assert.equal(prepared.shared, true);assert.equal(prepared.queued, true);
+  assert.deepEqual(shared.edits, [{beforeStock: {'rice|g': 100}, stock: {'rice|g': 275}}]);
+  assert.deepEqual(Object.keys(prepared.updates), [shared.key]);assert.equal(prepared.expected[f.inventory.keys.owner], before.get(f.inventory.keys.owner));
+  assert.equal(Object.hasOwn(prepared.updates, f.outboxKey), false);assert.equal(f.remote.posts.length, 0);
+});
+
+test('tagged shared preparation forwards location maps even when its stock quantity is unchanged', async () => {
+  const f = await fixture({household: true, accountPantrySync: true}), shared = sharedEngine(f), stock = f.stock();
+  const beforeInventory = {'fridge|rice': {name: 'Rice', selected: true, loc: 'fridge', qty: 100, unit: 'g', bb173StockKey: 'rice|g'}};
+  const inventory = {'fridge|rice': {...beforeInventory['fridge|rice'], loc: 'freezer'}};
+  const before = new Map(f.store.values), prepared = f.host.preparePurchasedPantry({beforeStock: stock, stock, beforeInventory, inventory, sharedUserEdit: true});
+  assert.equal(prepared.shared, true);assert.deepEqual(shared.edits, [{beforeStock: stock, stock, beforeInventory, inventory}]);assert.deepEqual(f.store.values, before);
+});
+
+test('same-quantity shared location changes move Kitchen food between fridge and freezer while retaining its notes', async () => {
+  for (const [beforeLocation, location] of [['fridge', 'freezer'], ['freezer', 'fridge']]) {
+    const f = await fixture({household: true, accountPantrySync: true});f.root.BBReducedStock = reducedStock;
+    const kitchen = JSON.parse(f.store.getItem(f.inventory.keys.kitchen)), id = Object.keys(kitchen)[0];
+    kitchen[id].loc = beforeLocation;kitchen[id].notes = 'Keep this physical food note';f.store.setItem(f.inventory.keys.kitchen, JSON.stringify(kitchen));
+    f.remote.revision++;const snapshot = {...f.remote.snapshot(), inventory: [{stockKey: 'rice|g', canonicalKey: 'rice', quantity: 100, unit: 'g', location, revision: f.remote.revision}]};
+    assert.equal((await f.host.receiveSharedAutoSnapshot(snapshot, {precondition: () => true})).localApplied, true);
+    const active = Object.entries(JSON.parse(f.store.getItem(f.inventory.keys.kitchen))).filter(([, row]) => row.selected !== false && row.bb173StockKey === 'rice|g'), rows = active.map(([, row]) => row);
+    assert.equal(rows.length, 1);assert.equal(rows[0].loc, location);assert.ok(active[0][0].startsWith(location + '|'), 'received records retain the Pantry editor ownership prefix');assert.equal(rows[0].qty, 100);assert.equal(rows[0].notes, 'Keep this physical food note');assert.deepEqual(f.stock(), {'rice|g': 100});
+    const beforeReplay = new Map(f.store.values);assert.equal((await f.host.receiveSharedAutoSnapshot(snapshot, {precondition: () => true})).unchanged, true);assert.deepEqual(f.store.values, beforeReplay);
+  }
+});
+
+test('shared location rekeying preserves separate physical lots and existing destination records', async () => {
+  const f = await fixture({household: true, accountPantrySync: true});f.root.BBReducedStock = reducedStock;
+  const rice = {name: 'Rice', selected: true, loc: 'fridge', qty: 50, unit: 'g', bb173StockKey: 'rice|g', bb173StockValue: 50};
+  const destination = {name: 'Milk', selected: true, loc: 'freezer', qty: 20, unit: 'ml', bb173StockKey: 'milk|ml', bb173StockValue: 20, notes: 'Existing unrelated source'};
+  f.store.setItem(f.inventory.keys.kitchen, JSON.stringify({'fridge|rice:first': {...rice, notes: 'First rice lot'}, 'fridge|rice:second': {...rice, notes: 'Second rice lot'}, 'freezer|rice': destination}));
+  f.remote.revision++;const snapshot = {...f.remote.snapshot(), inventory: [{stockKey: 'rice|g', canonicalKey: 'rice', quantity: 100, unit: 'g', location: 'freezer', revision: f.remote.revision}]};
+  assert.equal((await f.host.receiveSharedAutoSnapshot(snapshot, {precondition: () => true})).localApplied, true);
+  const after = JSON.parse(f.store.getItem(f.inventory.keys.kitchen)), lots = Object.entries(after).filter(([, row]) => row.selected !== false && row.bb173StockKey === 'rice|g');
+  assert.equal(lots.length, 2);assert.ok(lots.every(([id, row]) => id.startsWith('freezer|') && row.loc === 'freezer' && row.qty === 50));assert.deepEqual(lots.map(([, row]) => row.notes).sort(), ['First rice lot', 'Second rice lot']);
+  assert.deepEqual(after['freezer|rice'], destination);assert.equal(after['fridge|rice:first'], undefined);assert.equal(after['fridge|rice:second'], undefined);
+});
+
+test('an unchanged validated shared snapshot performs no writes or render work and never skips a pending intent', async () => {
+  const f = await fixture({household: true, accountPantrySync: true});f.remote.stock = {'rice|g': 250};f.remote.revision++;
+  const snapshot = f.remote.snapshot();assert.equal((await f.host.receiveSharedAutoSnapshot(snapshot, {precondition: () => true})).localApplied, true);
+  const before = new Map(f.store.values), write = f.store.setItem;let writes = 0;
+  f.store.setItem = (...args) => {writes++;write(...args);};
+  const result = await f.host.receiveSharedAutoSnapshot(snapshot, {precondition: () => true});assert.equal(result.unchanged, true);assert.equal(result.localApplied, false);assert.equal(writes, 0);assert.deepEqual(f.store.values, before);
+  assert.equal((await f.host.receiveSharedAutoSnapshot(snapshot, {precondition: () => false})).deferred, true);assert.equal(writes, 0);
+  const kitchen = JSON.parse(f.store.getItem(f.inventory.keys.kitchen)), id = Object.keys(kitchen)[0];kitchen[id].notes = 'Newer local note';write(f.inventory.keys.kitchen, JSON.stringify(kitchen));
+  assert.equal((await f.host.receiveSharedAutoSnapshot(snapshot, {precondition: () => true})).localApplied, true);assert.ok(writes > 0);assert.equal(JSON.parse(f.store.getItem(f.inventory.keys.kitchen))[id].notes, 'Newer local note');
+});
+
+test('an explicit edit can stage before the protocol read is ready without flushing or replacing legacy stock', async () => {
+  const f = await fixture({household: true, accountPantrySync: true}), shared = sharedEngine(f), before = new Map(f.store.values);
+  shared.engine.isReady = () => false;shared.engine.canCapture = () => true;
+  const prepared = f.host.preparePurchasedPantry({beforeStock: f.stock(), stock: {'rice|g': 275}, sharedUserEdit: true});
+  assert.equal(prepared.shared, true);assert.equal(shared.edits.length, 1);assert.deepEqual(f.store.values, before);
+  assert.equal((await f.host.retryPurchasedPantry()).queued, true);assert.equal(shared.flushes.length, 0);assert.equal(f.remote.posts.length, 0);
+});
+
+test('staged household intents prevent legacy whole-stock writes from every account pantry refresh path', async () => {
+  for (const action of ['refreshAccountPantry', 'syncAccountPantry', 'retryPurchasedPantry']) {
+    const f = await fixture({household: true, accountPantrySync: true}), shared = sharedEngine(f);
+    shared.engine.isReady = () => false;shared.engine.canCapture = () => true;shared.engine.hasPendingPantry = () => true;
+    f.remote.stock = {'rice|g': 100, 'milk|ml': 700};f.remote.revision++;
+    const prepared = f.host.preparePurchasedPantry({beforeStock: f.stock(), stock: {'rice|g': 500}, sharedUserEdit: true});
+    for (const [key, value] of Object.entries(prepared.updates)) f.store.setItem(key, JSON.stringify(value));
+    f.store.setItem(f.inventory.keys.stock, JSON.stringify({'rice|g': 500}));const before = new Map(f.store.values);
+    const result = await f.host[action]();assert.equal(result.queued, true, action);assert.equal(f.remote.posts.length, 0, action);assert.deepEqual(f.store.values, before, action);assert.deepEqual(f.remote.stock, {'rice|g': 100, 'milk|ml': 700});
+    assert.equal(shared.flushes.length, 0);assert.equal(f.outbox(), null);
+  }
+});
+
+test('routine receipt availability checks defer projections while a household pantry intent is staged', async () => {
+  const f = await fixture({household: true, accountPantrySync: true}), shared = sharedEngine(f);
+  shared.engine.isReady = () => false;shared.engine.canCapture = () => true;shared.engine.hasPendingPantry = () => true;
+  f.remote.stock = {'rice|g': 100, 'milk|ml': 700};f.remote.revision++;
+  const before = new Map(f.store.values);await f.host.refreshAvailability({force: true});
+  assert.deepEqual(f.store.values, before);assert.equal(f.remote.posts.length, 0);
+});
+
+test('a known household stock mismatch before coordinator verification never becomes a whole-stock edit', async () => {
+  for (const action of ['refreshAccountPantry', 'syncAccountPantry', 'retryPurchasedPantry']) {
+    const f = await fixture({household: true, accountPantrySync: true});
+    f.root.BBHouseholdSharingAuto = {isReady: () => false, canCapture: () => false};
+    f.store.setItem(f.inventory.keys.stock, JSON.stringify({'rice|g': 900}));f.remote.stock = {'rice|g': 100, 'milk|ml': 700};f.remote.revision++;
+    const before = new Map(f.store.values), result = await f.host[action]();
+    assert.equal(result.pending, true, action);assert.deepEqual(f.store.values, before);assert.equal(f.remote.posts.length, 0);assert.deepEqual(f.remote.stock, {'rice|g': 100, 'milk|ml': 700});assert.equal(f.outbox(), null);
+  }
+});
+
+test('shared capture scope is a copy of the exact known household and never exposes a personal or switched account', async () => {
+  const f = await fixture({household: true, accountPantrySync: true}), scope = f.host.getSharedHouseholdCaptureScope();
+  assert.deepEqual(copy(scope), f.remote.scope);scope.id = 'changed-copy';assert.deepEqual(copy(f.host.getSharedHouseholdCaptureScope()), f.remote.scope);
+  const owner = JSON.parse(f.store.getItem(f.inventory.keys.owner)), cached = JSON.parse(f.store.getItem(owner.cacheKey));
+  for (const changed of [{version: 2}, {actorId: otherActor}, {inventoryRevision: cached.inventoryRevision + 1}]) {
+    f.store.setItem(owner.cacheKey, JSON.stringify({...cached, ...changed}));assert.equal(f.host.getSharedHouseholdCaptureScope(), null);
+  }
+  f.store.setItem(owner.cacheKey, JSON.stringify(cached));
+  f.session.value = {...f.session.value, user: {id: otherActor}};assert.equal(f.host.getSharedHouseholdCaptureScope(), null);
+  const personal = await fixture({accountPantrySync: true}), guest = await fixture({guest: true, accountPantrySync: true});
+  assert.equal(personal.host.getSharedHouseholdCaptureScope(), null);assert.equal(guest.host.getSharedHouseholdCaptureScope(), null);
+});
+
+test('a shared physical projection leaves its notification to the combined household render', async () => {
+  const f = await fixture({household: true, accountPantrySync: true});let renders = 0;
+  f.inventory.configure({onProjection() {renders++;}});f.remote.stock = {'rice|g': 250};f.remote.revision++;
+  assert.equal((await f.host.receiveSharedAutoSnapshot(f.remote.snapshot(), {precondition: () => true})).ok, true);assert.equal(renders, 0);
+  f.remote.stock = {'rice|g': 300};f.remote.revision++;await f.inventory.synchronize();assert.equal(renders, 1, 'ordinary receipt projection keeps its original notification');
+});
+
+test('a household intent staged during a background projection prevents its late local writes', async () => {
+  const f = await fixture({household: true, accountPantrySync: true}), shared = sharedEngine(f);
+  let pending = false;shared.engine.hasPendingPantry = () => pending;
+  f.remote.stock = {'rice|g': 250};f.remote.revision++;
+  const originalFetch = f.remote.fetch.bind(f.remote);let start, release;
+  const entered = new Promise(resolve => {start = resolve;}), gate = new Promise(resolve => {release = resolve;});
+  f.inventory.configure({fetch: async (...args) => {const response = await originalFetch(...args);start();await gate;return response;}});
+  const projection = f.inventory.synchronize({precondition: () => !pending});await entered;
+  pending = true;f.store.setItem(f.inventory.keys.stock, JSON.stringify({'rice|g': 500}));const before = new Map(f.store.values);release();
+  assert.equal((await projection).localApplied, false);assert.deepEqual(f.store.values, before);
+});
+
+test('account pantry timers allow the ordered flush snapshot to apply during the same refresh', async () => {
+  for (const action of ['refreshAccountPantry', 'syncAccountPantry']) {
+    const f = await fixture({household: true, accountPantrySync: true}), shared = sharedEngine(f);
+    f.remote.stock = {'rice|g': 250};f.remote.revision++;
+    shared.engine.flush = async () => {
+      const applied = await f.host.receiveSharedAutoSnapshot(f.remote.snapshot(), {precondition: () => true});
+      assert.equal(applied.localApplied, true, action+' must not block the snapshot it awaits');return {ok: applied.ok, queued: false};
+    };
+    assert.equal((await f.host[action]()).ok, true);assert.deepEqual(f.stock(), f.remote.stock);assert.equal(f.remote.posts.length, 0);
+  }
+});
+
+test('untagged household receipt accounting keeps its existing preparation and private or guest pantry edits never enter the shared outbox', async () => {
+  for (const options of [{household: true, accountPantrySync: true}, {accountPantrySync: true}, {guest: true, accountPantrySync: true}]) {
+    const f = await fixture(options), shared = sharedEngine(f), before = new Map(f.store.values);
+    const prepared = f.host.preparePurchasedPantry({beforeStock: f.stock(), stock: {'rice|g': 275}, sharedUserEdit: options.household !== true});
+    assert.deepEqual(shared.edits, []);assert.deepEqual(f.store.values, before);
+    if (!options.guest) assert.ok(Object.hasOwn(prepared.updates, f.outboxKey));else assert.equal(prepared.localOnly, true);
+  }
+});
+
+test('ready household retries preserve the old whole-stock queue in quarantine and flush only the new engine', async () => {
+  const f = await fixture({household: true, accountPantrySync: true});f.commit({'rice|g': 500});const raw = f.store.getItem(f.outboxKey), shared = sharedEngine(f);
+  const result = await f.host.retryPurchasedPantry();
+  assert.equal(result.ok, true);assert.equal(result.legacyQueueQuarantined, true);assert.equal(f.outbox(), null);assert.equal(shared.flushes.length, 1);assert.equal(f.remote.posts.length, 0);
+  const backups = [...f.store.values].filter(([key]) => key.startsWith('basketboss_household_legacy_pantry_queue_v1:'));
+  assert.equal(backups.length, 1);assert.deepEqual(JSON.parse(backups[0][1]).queue, JSON.parse(raw));assert.deepEqual(f.stock(), {'rice|g': 500});
+});
+
+test('a failed quarantine backup retains the old intent and never sends its whole-household stock', async () => {
+  const f = await fixture({household: true, accountPantrySync: true});f.commit({'rice|g': 500});const before = new Map(f.store.values), shared = sharedEngine(f), write = f.store.setItem;
+  f.store.setItem = (key, value) => {if (key.startsWith('basketboss_household_legacy_pantry_queue_v1:')) throw Error('synthetic storage full');write(key, value);};
+  await assert.rejects(f.host.retryPurchasedPantry(), /storage full/);assert.deepEqual(f.store.values, before);assert.equal(shared.flushes.length, 0);assert.equal(f.remote.posts.length, 0);
+});
+
+test('a verified same-household snapshot uses the original inventory projection without generating a local edit', async () => {
+  const f = await fixture({household: true, accountPantrySync: true}), shared = sharedEngine(f);
+  f.remote.stock = {'rice|g': 250, 'milk|ml': 200};f.remote.revision++;
+  const result = await f.host.receiveSharedAutoSnapshot(f.remote.snapshot(), {precondition: () => true});
+  assert.equal(result.ok, true);assert.equal(result.localApplied, true);assert.deepEqual(f.stock(), f.remote.stock);
+  assert.equal(f.inventory.getCachedProjection().inventoryRevision, f.remote.revision);assert.deepEqual(shared.edits, []);assert.equal(f.remote.posts.length, 0);
+});
+
+test('a shared snapshot cannot silently adopt a personal pantry or bypass pending pantry edits', async () => {
+  const personal = await fixture({accountPantrySync: true});personal.remote.scope = {kind: 'household', id: '33333333-3333-4333-8333-333333333333'};
+  let before = new Map(personal.store.values);assert.equal((await personal.host.receiveSharedAutoSnapshot(personal.remote.snapshot(), {precondition: () => true})).deferred, true);assert.deepEqual(personal.store.values, before);
+  const f = await fixture({household: true, accountPantrySync: true});f.remote.stock = {'rice|g': 250};f.remote.revision++;
+  for (const reason of ['editor', 'caller', 'legacy-queue']) {
+    f.root.BBPantryLive = {hasPending: () => reason === 'editor'};
+    if (reason === 'legacy-queue') f.commit({'rice|g': 500});
+    before = new Map(f.store.values);
+    assert.equal((await f.host.receiveSharedAutoSnapshot(f.remote.snapshot(), {precondition: () => reason !== 'caller'})).deferred, true);assert.deepEqual(f.store.values, before);
+  }
+});
+
+test('a local write while a shared projection awaits the inventory lock prevents stale snapshot application', async () => {
+  const f = await fixture({household: true, accountPantrySync: true});f.remote.stock = {'rice|g': 250};f.remote.revision++;
+  let unlock, started;const gate = new Promise(resolve => {unlock = resolve;}), entered = new Promise(resolve => {started = resolve;});
+  f.inventory.configure({locks: {async request(_name, _options, work) {started();await gate;return work();}}});
+  const pending = f.host.receiveSharedAutoSnapshot(f.remote.snapshot(), {precondition: () => true});await entered;
+  f.store.setItem(f.inventory.keys.stock, JSON.stringify({'rice|g': 600}));const before = new Map(f.store.values);unlock();
+  assert.equal((await pending).deferred, true);assert.deepEqual(f.store.values, before);
+});
+
+test('shared projection storage failure rolls back stock, Kitchen and projection metadata together', async () => {
+  const f = await fixture({household: true, accountPantrySync: true});f.remote.stock = {'rice|g': 250};f.remote.revision++;
+  const before = new Map(f.store.values), write = f.store.setItem;let fail = true;
+  f.store.setItem = (key, value) => {if (fail && key === f.inventory.keys.owner) {fail = false;throw Error('synthetic projection storage full');}write(key, value);};
+  assert.equal((await f.host.receiveSharedAutoSnapshot(f.remote.snapshot(), {precondition: () => true})).deferred, true);
+  for (const [key, value] of before) assert.equal(f.store.getItem(key), value);
+  assert.equal([...f.store.values].filter(([key]) => key.startsWith('basketboss_household_auto_premerge_v2:')).length, 1, 'the durable recovery copy survives a failed projection');
+});
+
+test('an acknowledged manual edit plus another partner item projects the absolute stock once and keeps receipt accounting intact', async () => {
+  const f = await fixture({household: true, accountPantrySync: true}), shared = sharedEngine(f);
+  const ledger = JSON.stringify({original: {credited: 11, receiptId: 'original-receipt'}}), budgetKey = 'basketboss_v172_weekly_budget_target_v1';
+  f.store.setItem(f.inventory.keys.finishShop, ledger);f.store.setItem(budgetKey, '85');
+  f.store.setItem(f.inventory.keys.stock, JSON.stringify({'rice|g': 500}));
+  const beforeOwner = f.store.getItem(f.inventory.keys.owner);
+  f.remote.stock = {'rice|g': 500, 'milk|ml': 700};f.remote.revision++;
+  const snapshot = f.remote.snapshot();
+  assert.equal((await f.host.receiveSharedAutoSnapshot(snapshot, {precondition: () => true})).ok, true);assert.deepEqual(f.stock(), snapshot.stock);
+  const backups = [...f.store.values].filter(([key]) => key.startsWith('basketboss_household_auto_premerge_v2:'));assert.equal(backups.length, 1);
+  const backup = JSON.parse(backups[0][1]);assert.equal(backup.before[f.inventory.keys.owner], beforeOwner);assert.equal(backup.before[f.inventory.keys.stock], JSON.stringify({'rice|g': 500}));
+  assert.equal((await f.host.receiveSharedAutoSnapshot(snapshot, {precondition: () => true})).ok, true);assert.deepEqual(f.stock(), snapshot.stock);
+  assert.equal([...f.store.values].filter(([key]) => key.startsWith('basketboss_household_auto_premerge_v2:')).length, 1);
+  assert.equal(f.store.getItem(f.inventory.keys.finishShop), ledger);assert.equal(f.store.getItem(budgetKey), '85');assert.deepEqual(shared.edits, []);assert.equal(f.remote.posts.length, 0);
+});
+
+test('a shared snapshot recovery-copy failure aborts before replacing physical stock or account metadata', async () => {
+  const f = await fixture({household: true, accountPantrySync: true});f.remote.stock = {'rice|g': 250};f.remote.revision++;
+  const before = new Map(f.store.values), write = f.store.setItem;
+  f.store.setItem = (key, value) => {if (key.startsWith('basketboss_household_auto_premerge_v2:')) throw Error('synthetic backup storage full');write(key, value);};
+  assert.equal((await f.host.receiveSharedAutoSnapshot(f.remote.snapshot(), {precondition: () => true})).deferred, true);assert.deepEqual(f.store.values, before);
+});
+
+test('shared physical projection preserves cached receipt history and never invokes receipt-accounting hooks', async () => {
+  const f = await fixture({household: true, accountPantrySync: true}), owner = JSON.parse(f.store.getItem(f.inventory.keys.owner)), cached = JSON.parse(f.store.getItem(owner.cacheKey));
+  const histories = {essentials: [{id: 'saved-essential', name: 'Soap', addToPantry: true}], receipts: [{receiptId: 'saved-receipt', receiptTotal: 12.5}], priceObservations: [{id: 'saved-price', scopeId: owner.scope.id, market: 'UK', currency: 'GBP', retailer: 'Tesco', canonicalKey: 'rice', packQuantity: 1000, packUnit: 'g', packCount: 1, packPrice: 2, priceType: 'regular'}]};
+  Object.assign(cached, histories);f.store.setItem(owner.cacheKey, JSON.stringify(cached));
+  const confirmed = f.store.getItem(f.inventory.keys.confirmed);let accountingCalls = 0;
+  f.inventory.configure({prepareReceiptSave() {accountingCalls++;throw Error('shared reads must not invoke receipt accounting');}});
+  f.remote.stock = {'rice|g': 250};f.remote.revision++;
+  const snapshot = f.remote.snapshot();for (const field of Object.keys(histories)) delete snapshot[field];
+  assert.equal((await f.host.receiveSharedAutoSnapshot(snapshot, {precondition: () => true})).ok, true);
+  const after = f.inventory.getCachedProjection();for (const [field, value] of Object.entries(histories)) assert.deepEqual(copy(after[field]), value);
+  assert.equal(accountingCalls, 0);assert.equal(f.store.getItem(f.inventory.keys.confirmed), confirmed);
+  const fresh = {...f.remote.snapshot(), receipts: [...histories.receipts, {receiptId: 'partner-receipt', receiptTotal: 7.5}], essentials: histories.essentials, priceObservations: histories.priceObservations};
+  assert.equal((await f.host.receiveSharedAutoSnapshot(fresh, {precondition: () => true})).ok, true);
+  assert.deepEqual(copy(f.inventory.getCachedProjection().receipts), fresh.receipts);assert.equal(accountingCalls, 0);
+});
+
+test('shared snapshots reject malformed stock and stale inventory revisions without losing saved data', async () => {
+  const f = await fixture({household: true, accountPantrySync: true}), original = f.remote.snapshot();
+  for (const changed of [{stock: {'rice|g': -1}}, {stock: {'rice|g': '250'}}, {stock: {'__proto__|g': 1}}, {inventoryRevision: 2}, {initialized: 'true'}]) {
+    const before = new Map(f.store.values);
+    assert.equal((await f.host.receiveSharedAutoSnapshot({...original, ...changed}, {precondition: () => true})).deferred, true);assert.deepEqual(f.store.values, before);
+  }
+});
 
 test('a local purchase durably prepares its CAS and acknowledges the exact stock without adding twice', async () => {
   const f = await fixture(), before = [...f.store.values];

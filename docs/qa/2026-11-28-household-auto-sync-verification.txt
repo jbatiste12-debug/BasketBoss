@@ -1,0 +1,145 @@
+BasketBoss household automatic sync — verification checkpoint, 28 November 2026
+
+Outcome
+The implementation sends deliberate dinner-day and pantry-item edits in both
+directions through an ordered durable outbox. It does not infer edits from an
+arbitrary restored/private snapshot. All seven dinner days and their existing
+serving overrides are included. Different targets retain each other's changes;
+the later server-reserved edit wins on the same target. Device clock times do
+not decide ordering. Offline work is ordered when first accepted by the server.
+
+Confirmed root causes in the old client
+1. A differing entry without a sharing baseline stays in review and does not
+   upload through repeated ordinary syncs.
+2. The separate receipt pantry channel can adopt an already initialized remote
+   pantry before the owner Share action publishes local dinners. An initialized
+   empty remote pantry is a valid authoritative target in that old flow.
+3. Legacy background pantry sync can infer a whole-stock upload from a restored
+   local mismatch, including while household status/handshake is pending.
+4. Sharing fetch and JSON completion were unbounded and could hold the checking
+   message and action lock indefinitely.
+
+Implementation and regressions closed
+- Existing auth, origin, newest verified session, household membership and owner
+  Premium checks remain the API gates. The existing receipt authorizer alone
+  grants inventory access. New RPCs revoke PUBLIC/anon/authenticated execution.
+- The existing JSONB entry table stores bounded operation metadata, immutable
+  operation IDs/orders and target signatures. No tables, columns or constraints
+  were added. Existing generic writers cannot write the reserved namespace, and
+  old clients cannot receive that namespace as Kitchen records.
+- Recipe choice and its day-serving override are applied atomically per day.
+  Pantry operations set only the deliberately edited canonical item, not a full
+  stock replacement. Receipt/paid-price/essential accounting is unchanged.
+- Intent hooks run only after successful explicit user saves or within an
+  existing atomic stock transaction. File/cloud/actor restore is not an edit.
+- Exact actor-isolated cached household ownership may stage an explicit edit
+  before status returns. Transport requires freshly pinned verified membership,
+  token and household; denied/changed membership never sends the old queue.
+- UUID/order survive lost replies and reload. Older replies cannot discard new
+  local intent. Storage failures retain local data and protect unqueued targets.
+- Ordered-protocol failure does not fall through to the old snapshot writer.
+- Pending intents prevent late legacy projections. Legacy pantry queues are
+  backed up before quarantine; a repeated whole-stock retry cannot wipe another
+  partner's unrelated stock. Timer flushes can receive their own projections.
+- Received Plan storage and memory refresh together before any pantry await,
+  preventing an unrelated tap from serializing the previous week's memory.
+- Shared inventory uses absolute stock, preserves original receipt histories,
+  backs up physical data, and retains ordinary receipt transaction behavior.
+  Location-only edits preserve quantity and collision-safe Kitchen record IDs.
+- Repeated unchanged snapshots with exact unchanged post-apply local bytes make
+  no storage writes and do not rerender the app.
+- Sharing requests have a 15-second deadline across headers and body. Ambiguous
+  POST timeout is not reported as rollback and does not create a fresh operation.
+
+Verification (overlapping suites; do not add counts)
+- 33 checks against isolated PostgreSQL 17.12: actual functions, membership,
+  privileges, idempotency, per-target races, receipt concurrency, pruning,
+  fractional stock, unlink and real account-deletion locking/cleanup.
+- 170 core API/client/app-hook/deadline/legacy lifecycle cases passed.
+- 284 focused receipt/account-host/safety/integration cases passed, no skips.
+- 14 full glue integration cases passed: actual app save handlers + outbox +
+  receipt factories, two actors, seven dinners, startup/reload/offline races,
+  denied/changed household, unavailable protocol and no snapshot echo.
+- 5 Plan memory/startup/location race cases passed.
+- 2 isolated Chromium v2 cases passed against the actual application shell,
+  manual dinner picker and pantry editor. Monday Salmon + Pasta500 arrive on
+  the other device; a delayed older same-item apply loses to a later edit while
+  unrelated stock is retained. No old whole-stock POST or echo reservations.
+- 7 retained v1-client Chromium cases passed with the newer optional engine
+  deliberately omitted in that compatibility fixture.
+- 5 download-only recovery exporter cases passed: exact actor filtering, raw
+  quantities, no token/ledger export, unreadable-copy reporting and no storage
+  mutation/network requests.
+- PWA700 and native web build validation completed. No native signed AAB/archive
+  or physical-phone verification is claimed by this checkpoint.
+
+Preserved scope
+No changes to quantity/budget/serving arithmetic, Auth configuration or handler
+bodies, onboarding restore checks, account-deletion flows/locks, existing billing
+or entitlement logic, receipt accounting or database table/column schemas.
+The expressly authorized sync conflict policy and backend RPCs are changed.
+functions/api/receipt-inventory.js only exports its existing authorizer for reuse.
+
+Rollout and recovery status
+No production SQL writes, customer data edits, production merge/deployment or
+store upload were made during this implementation. The new RPC remained absent
+in the live metadata check. The reported missing pantry is in the existing app;
+its exact initiating action is unknown. Local recovery copies cannot be checked
+remotely. release-assets/export-pantry-recovery.js only reads actor-associated
+physical pantry copies and downloads JSON; it never restores or uploads data.
+Do not represent recovery as successful before inspecting an actual phone copy.
+
+Older owner data without a trustworthy baseline requires one explicit publish
+of that phone's chosen current week. Normal captured new edits thereafter are
+automatic. Never silently treat a restored old phone as the newest household.
+Both native devices need the packaged client update; backend alone cannot make
+an old client send edits it currently withholds. Preserve current native release
+features by applying this narrow feature delta to the Android12 source, not by
+replacing its tree with older production-main files.
+
+Every changed file relative to production main (generated PWA included)
+- app.html
+- bb-household-auto-sync.js
+- bb-household-sharing.js
+- bb-receipt-host.js
+- bb-receipt-inventory.js
+- bb-server-lib/bb-household-auto-sync.js
+- docs/qa/2026-11-28-household-auto-sync-safety.txt
+- docs/qa/2026-11-28-household-auto-sync-verification.txt
+- functions/api/household/index.js
+- functions/api/receipt-inventory.js
+- index.html
+- pwa700/app.html
+- pwa700/manifest.json
+- pwa700/precache.js
+- pwa700/shopping-inventory.js
+- release-assets/export-pantry-recovery.js
+- scripts/build-native-web.mjs
+- scripts/verify-household-auto-sync-postgres.mjs
+- shopping-inventory.js
+- sql/basketboss_household_auto_sync_v2_20261128.sql
+- tests/basketboss-account-deletion-household-barriers.test.mjs
+- tests/basketboss-autofill-variety-rotation.test.mjs
+- tests/basketboss-dietary-autofill.test.mjs
+- tests/basketboss-household-auto-sync-app-hooks.test.mjs
+- tests/basketboss-household-auto-sync-apply-races.test.mjs
+- tests/basketboss-household-auto-sync-backend.test.mjs
+- tests/basketboss-household-auto-sync-browser.test.mjs
+- tests/basketboss-household-auto-sync-engine.test.mjs
+- tests/basketboss-household-auto-sync-integration.test.mjs
+- tests/basketboss-household-auto-sync-safety-api.test.mjs
+- tests/basketboss-household-auto-sync-v2-browser.test.mjs
+- tests/basketboss-household-client-lifecycle.test.mjs
+- tests/basketboss-household-email.test.mjs
+- tests/basketboss-household-pantry-events.test.mjs
+- tests/basketboss-household-production.test.mjs
+- tests/basketboss-household-request-deadline.test.mjs
+- tests/basketboss-ingredient-preferences.test.mjs
+- tests/basketboss-onboarding-milestones.test.mjs
+- tests/basketboss-onboarding-v2.test.mjs
+- tests/basketboss-pantry-autofill-app.test.mjs
+- tests/basketboss-pantry-recovery-export.test.mjs
+- tests/basketboss-partner-sharing-access.test.mjs
+- tests/basketboss-plan-move-host.test.mjs
+- tests/basketboss-purchase-pantry-sync.test.mjs
+- tests/helpers/household-plan-capture.mjs

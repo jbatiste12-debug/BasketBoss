@@ -1,3 +1,4 @@
+import {householdPlanCaptureSource} from './helpers/household-plan-capture.mjs';
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
@@ -11,7 +12,7 @@ const app=fs.readFileSync(new URL('../app.html',import.meta.url),'utf8');
 const start=index.indexOf("const BB_AF_DAYS=['Monday'");
 const end=index.indexOf('/* END_BASKETBOSS_AUTOFILL_VARIETY_ROTATION_V1 */',start);
 assert.ok(start>0&&end>start,'Auto-fill code is present in the page');
-const code=index.match(/function bbPlanVarietyValid\(plans(?:,softProteinAdjacency=false)?\)\{[\s\S]*?\n\}/)[0]+'\n'+index.slice(start,end);
+const code=householdPlanCaptureSource(index)+index.match(/function bbPlanVarietyValid\(plans(?:,softProteinAdjacency=false)?\)\{[\s\S]*?\n\}/)[0]+'\n'+index.slice(start,end);
 const DAYS=['Monday','Tuesday','Wednesday','Thursday','Friday','Saturday','Sunday'];
 function harness(catalog,freeIds=new Set(catalog.map(r=>r.id)),options={}){
  const storage=new Map(),state={planned:[],bb81Batch:null};

@@ -1,0 +1,141 @@
+Household automatic synchronization: independent safety review
+Base reviewed: 863eb99 (main), 2026-11-28
+Reviewer scope: local source, synthetic API fixtures and disposable PostgreSQL only.
+No customer data queried. No production writes or deployment performed.
+
+Authorized behavior
+- A real edit has a stable UUID and one server-assigned order. Retrying that
+  intent must never give it a newer order. Later server-accepted edits win per
+  dinner day or pantry stock key, including recipe-bound day servings.
+- Preserve unrelated stock, plan fields, breakfasts, desserts, preferences,
+  price data, receipts and history. No new table or column is needed.
+- Existing authentication, Premium, billing, calculations and account deletion
+  behavior remain protected.
+- "Latest" means first server reservation acceptance order. An offline edit
+  that has never been reserved receives an order when first accepted; device
+  wall-clock chronology is not trusted. Retries retain the original order.
+  The actual-value pantry signature cannot detect a legacy ABA or same-value
+  write, while v2 writes are always ordered by their reserved operation.
+
+Required backend boundaries
+- Private __bb_sync_v2: kitchen_item metadata must be excluded by the upstream
+  legacy entries query BEFORE its limit=1000. Also filter it defensively from
+  legacy output. In-memory filtering alone breaks ordinary household reads
+  after metadata grows beyond the limit.
+- Escape '_' in PostgREST LIKE patterns: SQL treats it as a one-character
+  wildcard. The reserved prefix must not hide similarly shaped ordinary keys.
+- Generic patch must reject the namespace in both the API and existing SQL
+  function. The new sync RPC must remain callable only by service_role.
+- Derive actor and household from the verified request, verify accepted
+  membership inside every reserve/read/apply SQL call, and bind immutable
+  actor+baseClock+target+value to each UUID.
+- Reserve/apply use the existing receipt scope advisory lock for pantry edits;
+  dinner+servings and pantry quantity+location must commit atomically.
+- Compare actual target signatures at reserve and apply. Old clients and
+  receipt mutations can change data without updating v2 clocks. A pending old
+  intent must not silently overwrite such an intervening mutation.
+- Pruned/expired UUID retries must fail or return superseded/expired; no new
+  server order may be allocated for the same original intent.
+- Metadata rows remain within the existing 8,192-byte row constraint.
+
+Migration and private-device data
+- Existing v1 baseline held/localOnly flags identify private device data.
+  Never convert those values into automatic shared outbox intents.
+- An established baseline proves a shared association, not the chronology of
+  simultaneous v1 conflicts. Local != baseline and remote != baseline has no
+  trustworthy edit order. Assigning new orders to all existing conflicts would
+  falsely promote old edits. A one-time remote adoption/rebase (with backup),
+  or explicit per-target user adoption, is required.
+- Fresh partner adoption is a download-only transaction. Preserve a recovery
+  backup before replacing supported local leaves. Missing optional household
+  defaults must remain private. A fresh partner must never upload its previous
+  dinners or stock merely because it signed in.
+- Existing legacy adoption preserves unsupported state and backs up before
+  the first local write; storage failure aborts/rolls back before rendering.
+
+Restore and local-write capture
+- app.html cloud pull, backup-file restore and startup recovery can replace
+  the unified state and reload while retaining the v1 household baseline.
+  A snapshot-diff poller alone would misclassify an old restored plan as a new
+  household edit. Capture deliberate edit events or explicitly rebase/invalidate
+  the sync state around restore; never queue a whole-household replacement.
+- Saved-week restore is an explicit planning action and should queue each
+  changed dinner day atomically with that day's servings, preserving stock.
+- Do not replay server projection or household apply writes as new local edits.
+- Receipt projection already owns shared physical stock. Legacy kitchen and
+  measured pantry per-leaf sync must continue to yield to that projection.
+
+Account, lifecycle and storage boundaries
+- Pin actor, token, household, generation, exact observed local bytes and editor
+  readiness around asynchronous work; old responses cannot cross an account
+  switch, unlink, deletion pause, household move or later same-device edit.
+- Persist an intent before reserving it. A lost reserve/apply response retries
+  the same UUID and order. A changed local target gets a distinct new UUID.
+- New localStorage cache/outbox keys must begin bb_ or basketboss_ so existing
+  account-deletion cleanup removes them without deletion-feature changes.
+  __bb_sync_v2: is a database entry namespace, not a safe localStorage prefix.
+
+Documentation check
+- Required Supabase skill read. Changelog and direct function-doc HTTP requests
+  returned 403 in this environment. Connected Supabase docs search confirmed
+  RLS/service-key and explicit privileged-function grants guidance. No live
+  project inspection was needed or performed.
+
+Validation pending implementation
+- Focused synthetic API namespace, limit and authorization regression tests.
+- Disposable PostgreSQL transactional race/idempotency tests owned by backend.
+- Root integration must verify fresh-device adoption, legacy conflicts, lost
+  replies, restore safety, simultaneous dinner and pantry edits, editor guards,
+  browser rendering and protected file scope before review/publishing.
+
+Initial regression evidence (before backend implementation)
+- 77 existing household production, pantry metadata API, client lifecycle and
+  account-deletion household barrier tests passed, no skips.
+- New namespace/limit/output tests failed against unchanged API as intended;
+  ordinary patch, row-limit and authentication/Premium contract tests passed.
+
+Pantry adapter implementation owned by this reviewer
+- shopping-inventory.js tags only its deliberate manual save sharedUserEdit.
+  bb-receipt-host.js redirects that tagged edit to the new prepared outbox only
+  for its exact known household actor/owner/projection. canCapture permits safe
+  staging before a protocol read; only isReady permits flushing.
+- Preparing writes nothing. The existing caller commits physical stock and
+  prepared intent together. Original untagged receipt accounting, personal,
+  guest and alias/migration paths retain their prior preparation behavior.
+- A ready household retry never sends its old whole-stock queue. It atomically
+  preserves the full old intent in an actor/household quarantine backup before
+  clearing that queue and flushing the new engine. Storage failure retains it.
+- receiveSharedAutoSnapshot(snapshot,{precondition}) accepts only the already
+  known household and idle receipt/editor/projection state. Its required caller
+  predicate must prove that no pantry intent is pending. Adapter ingestion uses
+  the existing inventory lock and checks actor, token, scope, context and exact
+  local bytes immediately before writing.
+- Named internal sharedAuto projection uses the normalized authoritative
+  absolute stock under those guards, avoiding a legacy delta merge after a
+  manual intent was acknowledged. It preserves a verified raw recovery copy
+  before replacing stock/Kitchen/owner/cache. Backup or write failures abort or
+  roll back physical state; the successful recovery copy remains available.
+- Original receipt snapshot arrays refresh read-only histories when supplied;
+  omitted arrays preserve their cached histories. This physical sync path does
+  not call receipt-accounting hooks or rewrite receipt confirmation metadata.
+  Existing normal receipt/GET/confirmation mathematics remain unchanged.
+
+Final focused verification during integration
+- 195 cases passed, no skips, across purchase-pantry-sync, receipt-host,
+  receipt-inventory-core and the new household-auto-sync-safety-api suite.
+- New cases cover tagged atomic preparation, staging, personal/guest/untagged
+  isolation, old-queue quarantine and backup failure, exact same-household
+  projection with no echo, personal-scope refusal, editor/pending-intent deferral,
+  local writes during lock wait, projection rollback, malformed/stale stock,
+  absolute manual500 + partnerMilk700 reconciliation and replay, durable backup,
+  receipt/price/essential cache preservation and no accounting side effects.
+- The 12 API safety cases now pass. The real SQL-LIKE wildcard collision was
+  fixed by escaping underscores in the upstream metadata exclusion pattern.
+- SHA-256 comparison against base 863eb99 found zero changes in 40 protected
+  existing files: auth/deletion code, billing/access/session libraries, account/
+  Apple/subscription/Paddle API routes, all existing SQL and migrations, and
+  available frozen core/home/policy/backup/live-pantry files. This is a snapshot
+  of the shared worktree during integration, not a final repository-wide proof.
+- PostgreSQL checks are owned/reported by the backend reviewer. No browser,
+  heavy profile, customer query, production schema change or deployment was
+  performed by this reviewer. Root still owns final end-to-end integration.

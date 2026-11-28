@@ -1,3 +1,4 @@
+import {householdPlanCaptureSource} from './helpers/household-plan-capture.mjs';
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
@@ -12,7 +13,7 @@ const plain=value=>JSON.parse(JSON.stringify(value));
 function extract(name,next){const a=html.indexOf('function '+name+'('),b=html.indexOf(next,a);assert.ok(a>0&&b>a,name);return html.slice(a,b);}
 const a=html.indexOf("const BB_AF_DAYS=['Monday'"), b=html.indexOf('/* END_BASKETBOSS_AUTOFILL_VARIETY_ROTATION_V1 */',a);
 assert.ok(a>0&&b>a);
-const source=extract('bbRotationSession','/* BASKETBOSS_EVENING_PIVOT_ADAPTER')+'\n'+extract('bbPlanVarietyValid','\nfunction bbRotationMessage')+'\n'+html.slice(a,b);
+const source=householdPlanCaptureSource(html)+extract('bbRotationSession','/* BASKETBOSS_EVENING_PIVOT_ADAPTER')+'\n'+extract('bbPlanVarietyValid','\nfunction bbRotationMessage')+'\n'+html.slice(a,b);
 function fixture(id,protein,ingredients){return {id,name:id+' dinner',category:'Family dinner',tag:'STYLE-'+id,editorialCollection:'Everyday Favourites',primaryProtein:protein,cheeseHeavy:false,servings:4,mins:25,cost:5,ingredients:ingredients.map(name=>[name,'100 g'])};}
 const mixed=[
  fixture('chicken','chicken',['Chicken breast','Rice','Carrots']),

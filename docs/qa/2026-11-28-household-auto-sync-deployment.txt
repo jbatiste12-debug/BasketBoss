@@ -1,0 +1,193 @@
+Household automatic-sync deployment readiness — 28 November 2026
+
+READ-ONLY AUDIT. No live SQL writes, schema changes, workflow dispatches,
+deployment, billing/auth changes or customer-record modifications were performed.
+Live queries read PostgreSQL catalogues and function definitions only for this
+readiness report. Separate incident diagnostics are intentionally excluded.
+
+Conclusion
+----------
+The live database prerequisites match the checked-in baseline exactly, including
+the two function-definition replacement anchors. The new service functions are
+absent and this feature remains undeployed. A release still needs a reviewed
+combined source commit, compatibility-first API rollout, approved function SQL,
+schema-cache verification and current authenticated acceptance checks. Do not
+replace the current native release tree with this main-based feature tree.
+
+Live database compatibility
+--------------------------
+Project:kbhyosxuvlcazyzzinqv. PostgreSQL17.11 observed on28 November2026.
+Existing public.bb_household_entries retains these exact properties:
+  - household_id UUID, section TEXT, entry_key TEXT, value JSONB, revision BIGINT,
+    updated_at TIMESTAMPTZ and nullable updated_by UUID.
+  - PRIMARY KEY(household_id,section,entry_key).
+  - entry_key length1..180; kitchen_item is an existing allowed section.
+  - CHECK(octet_length(value::text)<=8192), unchanged.
+  - Household FK cascades on deletion; updated_by FK becomesNULL on user deletion.
+  - RLS enabled; anon/authenticated have no direct SELECT or INSERT grant.
+Existing receipt scopes retain scope_kind/scope_id, initialized, inventory_revision,
+stock JSONB, locations JSONB and existing review/accounting metadata. Household
+and user FKs retain their deletion cascades. Revision remains capped at the
+JavaScript safe-integer limit. RLS is enabled with no browser table grants.
+
+The new SQL creates functions and narrows the existing generic patch function;
+it does not add/alter tables, columns, constraints or RLS policies. Metadata uses
+separate existing kitchen_item rows under the reserved __bb_sync_v2: prefix.
+Clock, target and individual immutable operation rows remain separate. Incoming
+RPC JSON is capped at4096 UTF8 bytes; the live8192-byte row constraint still
+enforces each stored record. The latest1024 operation identities are retained.
+
+Exact live function-body matches against checked-in prerequisites (MD5 is used
+only as a drift fingerprint, not as an authentication/security mechanism):
+  bb_hh_service_patch(uuid,uuid,text,text,jsonb,bigint)
+    3487bytes;2899d220d88eae3b71c64fce179f71fb
+    matches sql/basketboss_account_deletion_20261031.sql.
+  bb_account_delete_data(uuid,text)
+    4958bytes;7c56974c892a55c2197242330f0311c5
+    matches the same account-deletion SQL file.
+  bb_account_deletion_ready()
+    1980bytes;ecc641c47def5c1c9f6ec995f99a8156
+    matches the same account-deletion SQL file.
+  bb_receipt_inventory_service(uuid,text,uuid,text,text,text,text,jsonb)
+    25605bytes;0f24523e2af6735f55c7423b8f972785
+    matches supabase/migrations/20261104174450_pantry_fractional_stock_balances.sql.
+  bb_receipt_inventory_valid_stock(jsonb)
+    910bytes;3e9a8a865f18bb753dd16db7aee5b67f
+    matches the same fractional-stock SQL file.
+  bb_receipt_inventory_snapshot(text,uuid,text)
+    4546bytes;0c0f78bbb98f944649f26a8269684fce
+    matches the auto-stock snapshot after the exact checked-in price-projection
+    replacement from20261105084102_receipt_household_price_projection.sql.
+
+Both generic-patch replacement anchors occur exactly once in live prosrc:
+  p_key IS NULL OR length(p_key) NOT BETWEEN 1 AND 180 OR p_value IS NULL OR
+  IF p_expected=0 THEN
+The reserved prefix is not already present. Existing patch confirmed-email and
+household FOR SHARE guards are present. The SQL's narrow DO replacement retains
+the entire existing body, adds reserved-prefix rejection and the same metadata
+advisory lock, and aborts if either expected anchor is not unique.
+
+The live snapshot contains scope, stock, inventory, inventoryRevision, initialized,
+essentials, priceObservations, receipts, pantryReview and autoStockReady, plus the
+existing essential price-projection upgrade. The new response wraps this original
+snapshot; it does not reconstruct or mutate receipt accounting/history.
+
+All inspected existing service RPCs deny EXECUTE to anon/authenticated and allow
+service_role. Existing service functions use SECURITY DEFINER with empty
+search_path; the stock validator is invoker. The new SQL explicitly applies the
+same browser denial/service-only grant to its RPC and signature helper.
+bb_hh_service_sync_v2(uuid,uuid,text,jsonb,boolean) and
+bb_hh_sync_v2_signature(uuid,text,text) are absent live.
+
+Lock/lifecycle compatibility
+----------------------------
+Live receipt service:confirmed identity -> household FOR SHARE -> existing
+bb-receipt:<scope-kind>:<scope-id> advisory lock -> inventory scope FOR UPDATE.
+Live deletion RPC:households ORDER BY id FOR UPDATE -> each receipt advisory lock
+-> personal receipt advisory lock -> auth.users FOR UPDATE -> existing cleanup.
+Live unlink retains household FOR UPDATE. These existing functions are unchanged.
+
+New sync:household FOR SHARE -> confirmed auth identity FOR KEY SHARE -> sync
+metadata advisory lock/clock row -> existing household receipt advisory lock ->
+existing inventory row -> independent dinner/setting leaves. The patched legacy
+CAS takes the same sync advisory lock after its existing membership/share check.
+Receipt never acquires sync metadata, and supported deletion obtains the household
+lock before the auth lock. No opposing metadata/receipt lock dependency is added.
+Local real-PostgreSQL verification covers receipt interleaving, actual deletion
+draining in-flight work, unlink, atomic meal/servings, pruning and duplicate
+acknowledgments with unchanged row values/revisions/timestamps.
+
+Workflow and deployment mechanics
+---------------------------------
+GitHub main was863eb9969d10ccb28d71f9905fecd6bee6bdcdd8 during this audit.
+The published source branch was45ed41f7eb76c1e669c38b2ff5746bd380c4f0bb when
+read; additional local source/test work is still being reviewed. No workflow file
+differs between main and this feature worktree. A feature push does not deploy
+production through the inspected main-only operational workflows.
+
+Cloudflare GitHub check-runs on main863 report successful deployments for
+basketboss-site, basketboss-web and the partner QA project. The existing
+Check Cloudflare catalogue connection workflow run45345710513 has successful
+deployment-status and inspect jobs. Its inspect job138279620103 records at
+2026-11-24T07:11:16Z:project basketboss-site, production branch main, latest deploy
+success and canonical productionCommit863eb9969d10ccb28d71f9905fecd6bee6bdcdd8.
+The aggregate workflow failed in a separate recipe-audit job; that failure does
+not negate the successful deployment metadata jobs.
+
+This is the last verified management snapshot, not proof against a subsequent
+manual Cloudflare rollback. Direct management credentials are not available in
+this workspace, and public asset fetches were unavailable here. Current canonical
+deployment metadata must therefore be re-read by an authorized operator before
+rollout. The existing inspector can provide it without changing deployment.
+
+Workflow behavior verified from main and the source branch:
+  - cloudflare-catalogue-check.yml reads production state in the github-pages
+    environment on matching main pushes or explicit inspection dispatches.
+  - verify-web700-deployment.yml reads public release bytes and anonymous access
+    boundaries on matching main pushes; it does not deploy.
+  - web700-regression.yml runs full suites for a non-draft PR or a manual run;
+    its main push job is deliberately skipped. A main merge alone is not proof
+    of a green complete regression suite.
+  - Apple/iOS workflows build/verify native artifacts; they are separate from a
+    signed owner-key Android release or an installed-device update.
+  - repair-apple-runtime and catalogue activation workflows can mutate production
+    or rebuild the current canonical deployment. They are unrelated operational
+    tools and must not be dispatched for this household feature.
+  - No inspected workflow automatically applies this new Supabase SQL file.
+The application API also gates live service use on its known host/main branch
+and existing Premium/session/membership configuration. A feature-branch preview
+cannot be treated as a fully enabled production household acceptance test.
+
+Safest exact rollout sequence — plan only, not executed
+------------------------------------------------------
+1. Preserve/reconcile the current approved native tree. This feature began from
+   main863, while the Android performance candidate isf49c89b. Root found213
+   baseline-path differences affecting Android/Google auth, onboarding, purchase
+   intent and UI fixes. Port only this reviewed household patch onto the intended
+   current release tree, regenerate its public/native derivatives and verify those
+   protected systems. Do not publish the whole main-based feature tree as the
+   replacement native build.
+2. Freeze a reviewed exact source SHA and establish the currently canonical
+   basketboss-site commit/configuration. Complete required tests on that exact
+   SHA. Preserve existing auth, entitlement, seat, membership and deletion gates.
+3. Deploy the compatibility API before any new metadata can be created:reserved
+   prefix rejection, escaped prefix filtering BEFORE the legacy entries limit,
+   helper/new action routes and unchanged receipt-authorization export. Keep
+   legacy reads and ordinary CAS behavior available. The old browser/native
+   clients must receive filtered legacy responses from this API.
+4. After that API is verified on all serving hosts, apply ONLY the reviewed
+   sql/basketboss_household_auto_sync_v2_20261128.sql to the intended project as
+   an explicitly authorized database deployment. Existing baseline SQL must not
+   be rerun afterward because it would replace the patched generic CAS body.
+   Re-read function hashes, anchors, ACLs, grants and unchanged constraints. Reload
+   PostgREST's schema cache if necessary and verify RPC discoverability before
+   enabling client traffic. No customer household needs a test write for schema
+   or privilege verification.
+5. Deploy the reviewed client/app/PWA assets and build the combined native release.
+   If API/client are deployed together before the SQL, protocol readiness must
+   hold local outboxes without falling back to legacy snapshot uploads; this is
+   a staging condition rather than completed activation.
+6. Use explicitly authorized test accounts for bidirectional manual day/item edits,
+   all seven dinners, restart persistence, normal deletion propagation, lost
+   acknowledgments and access revocation. The current incident's cold-restart
+   retention review remains a release blocker until its exact cases pass.
+7. Native users need the newly packaged installed app. Backend availability cannot
+   make an older bundled client capture changes it currently refuses to send.
+
+Rollback boundary:once reserved metadata exists, retain the compatibility API
+filter/denial and existing operation identities/prune floor. Do not roll the API
+back to a version that exposes metadata as Kitchen records, and do not delete
+operation rows/tombstones as an ad-hoc reset. Client rollback and backend rollback
+have different compatibility requirements; prepare the exact plan before release.
+
+Remaining blockers
+------------------
+ - The new SQL/RPC is intentionally not installed.
+ - Current canonical Cloudflare state needs a fresh management read, beyond the
+   verified24November snapshot.
+ - Exact combined native/source SHA, protected-system preservation and final full
+   validation are pending; main-based source is not the approved native tree.
+ - Cold-restart preservation of saved local Pantry versus an initialized empty
+   household is under independent design/test review and must be resolved.
+ - Authenticated device acceptance, publishing and database activation have not
+   been performed or claimed by this audit.

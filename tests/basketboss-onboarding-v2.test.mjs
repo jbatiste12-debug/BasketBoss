@@ -87,7 +87,7 @@ test('survey stores choices and uses original household and region setters only 
  assert.match(index,/basketboss_321_unified_state_v1/);
  assert.doesNotMatch(onboarding,/localStorage\.setItem\(['"]basketboss_321_unified_state_v1/);
  assert.match(index,/window\.BasketBossSetOnboardingServings\s*=\s*function/);
- assert.match(index,/if\(!persist\(\)\)\{state\.servings=previous;return false;\}/);
+ assert.match(index,/if\(!bbPersistSharedPlanEdit\(\)\)\{state\.servings=previous;return false;\}/);
  assert.match(index,/window\.bb307SwitchIsland=bb307SwitchIsland/);
 });
 

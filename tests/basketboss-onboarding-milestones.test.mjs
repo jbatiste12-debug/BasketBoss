@@ -1,3 +1,4 @@
+import {householdPlanCaptureSource} from './helpers/household-plan-capture.mjs';
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
@@ -11,7 +12,7 @@ const begin=source.indexOf('/* BEGIN_BASKETBOSS_ACTIVATION_MILESTONES_V1');
 const end=source.indexOf('function bbRecordPlannedRecipesToStorage',begin);
 assert.ok(begin>=0&&end>begin);
 const milestones=source.slice(begin,end);
-const addRecipe=source.slice(source.indexOf('function addRecipe(id,day){'),source.indexOf('\nfunction renderWeek(app)',source.indexOf('function addRecipe(id,day){')));
+const addRecipe=householdPlanCaptureSource(source)+source.slice(source.indexOf('function addRecipe(id,day){'),source.indexOf('\nfunction renderWeek(app)',source.indexOf('function addRecipe(id,day){')));
 
 function fixture({save=true,listenerThrows=false}={}){
  const events=[],history=[],state={planned:[]};

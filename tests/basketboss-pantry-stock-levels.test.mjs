@@ -187,8 +187,8 @@ test('offline level edits retain one absolute target across restart and safe ret
 });
 test('a household revision conflict preserves both the local level amount and the partner balance',async()=>{
  const remote=manualFixture.server();remote.scope={kind:'household',id:ACTOR};const h=await manualFixture.fixture({remote});h.win.BBPantryStockLevels=levels;
- remote.stock={'rice|g':900};remote.revision++;remote.available=true;await saveLevelRice(h);
- assert.deepEqual(copy(h.stock()),{'rice|g':250});assert.deepEqual(copy(remote.stock),{'rice|g':900});assert.equal(h.outbox().remoteConflict,true);assert.equal(h.outbox().stock['rice|g'],250);assert.match(h.status(),/Account & cloud sync/);
+ remote.stock={'rice|g':900};remote.revision++;remote.available=true;await saveLevelRice(h);await h.host.retryPurchasedPantry();
+ assert.deepEqual(copy(h.stock()),{'rice|g':250});assert.deepEqual(copy(remote.stock),{'rice|g':900});assert.equal(h.outbox().remoteConflict,true);assert.equal(h.outbox().stock['rice|g'],250);assert.equal(h.host.getAccountPantryStatus().status,'conflict');
 });
 
 test('a failed metadata-intent write rolls back the real pantry balance and metadata together',async()=>{
