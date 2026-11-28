@@ -47,7 +47,7 @@ const same = (left, right) => JSON.stringify(left) === JSON.stringify(right);
 
 function orderedServer({initialStock = {}} = {}) {
   const entries = new Map([['household_servings:default', {section:'household_servings',entry_key:'default',value:{count:4},revision:1}]]);
-  const operations = new Map(), targets = new Map(), requests = [], gates = new Map(), readGates = new Map(), statuses = new Map(), lostAcks = new Set();
+  const operations = new Map(), targets = new Map(), requests = [], gates = new Map(), readGates = new Map(), statuses = new Map(), protocols = new Map(), lostAcks = new Set();
   let clock = 0, inventoryRevision = 1, stock = clone(initialStock), locations = {};
   const inventory = () => ({ok:true,schemaVersion:1,autoStockReady:true,scope:{kind:'household',id:HH},initialized:true,
     inventoryRevision,stock:clone(stock),inventory:Object.entries(stock).map(([stockKey,quantity]) => {
@@ -66,6 +66,7 @@ function orderedServer({initialStock = {}} = {}) {
     stock:() => clone(stock),
     dinner:day => entries.get('planned_day:' + day)?.value,
     setStatus(actor, value) {statuses.set(actor,clone(value));},
+    setProtocol(actor, value) {protocols.set(actor,value);},
     pauseApply(actor) {const gate={started:deferred(),release:deferred()};gates.set(actor,gate);return gate;},
     pauseRead(actor) {const gate={started:deferred(),release:deferred()};readGates.set(actor,gate);return gate;},
     loseApplyAck(actor) {lostAcks.add(actor);},
@@ -85,11 +86,14 @@ function orderedServer({initialStock = {}} = {}) {
         if (parsed.searchParams.get('mode') === 'auto_sync') {
           const gate=readGates.get(actor);if(gate){readGates.delete(actor);gate.started.resolve();await gate.release.promise;}
           if(!status.premium)return Response.json({ok:false,error:'premium_required'},{status:403});
+          if(protocols.get(actor)==='503')return Response.json({ok:false,error:'household_sync_unavailable'},{status:503});
           const response=snapshot();
+          if(protocols.get(actor)==='protocol1')response.protocol=1;
           if(status.household_id!==HH){response.household_id=status.household_id;response.state={entries:[],stock:{},locations:{},inventoryRevision:1,initialized:true,
             inventory:{...inventory(),scope:{kind:'household',id:status.household_id},stock:{},inventory:[]}};}
           return Response.json(response);
         }
+        if(parsed.searchParams.get('mode')==='entries')return Response.json({household_id:status.household_id,entries:clone([...entries.values()])});
         return Response.json(status);
       }
       assert.ok(['sync_reserve','sync_apply'].includes(body.action),'receiving a snapshot never uploads a legacy patch, invite or restore');
@@ -317,6 +321,28 @@ for(const changed of ['premium denied','household changed'])test('pre-status del
     const parked=[...owner.values].filter(([key])=>key.startsWith(owner.ctx.BBHouseholdAutoSync.PREFIX)).map(([,raw])=>JSON.parse(raw))
       .find(row=>row.actor===ACTOR&&row.householdId===HH);
     assert.equal(parked.pending.length,2,'unverified old-household edits remain durable for their original scope');
+  } finally {owner.destroy();}
+});
+
+for(const unavailable of ['503','protocol1'])test('an unavailable '+unavailable+' protocol retains explicit edits without falling back to legacy snapshot uploads',async()=>{
+  const server=orderedServer({initialStock:{'pasta|g':100,'milk|ml':250}}),owner=await device(server,ACTOR,{initialize:false});
+  try {
+    // A real upgraded client may already have the old per-leaf baseline. Without
+    // the protocol brake, legacy synchronize would infer outgoing changes here.
+    const baseline={['household_servings\u001fdefault']:{revision:1,value:{count:4}}};
+    for(const day of DAYS)for(const section of ['planned_day','servings'])baseline[section+'\u001f'+day]={revision:0,value:{deleted:true}};
+    owner.storage.setItem('bb_partner_baseline_v1_'+HH+'_'+ACTOR,JSON.stringify(baseline));
+    server.setProtocol(ACTOR,unavailable);
+    owner.pick('Monday','salmon');owner.setPantry('Pasta','g',500);await turn();
+    await owner.initialize();await owner.sync();
+    assert.equal(owner.ctx.BBHouseholdSharingAuto.isReady(),false);
+    assert.equal(owner.saved().planned.find(row=>row.day==='Monday')?.recipeId,'salmon');assert.deepEqual(owner.stock(),{'pasta|g':500,'milk|ml':250});
+    assert.equal(owner.queued().length,2);assert.equal(server.requests.filter(row=>row.body).length,0);
+    assert.equal(server.requests.some(row=>row.url.includes('mode=entries')),false,'installed automatic transport never falls back to legacy snapshot inference');
+    server.setProtocol(ACTOR,null);await owner.sync();
+    assert.deepEqual(server.dinner('Monday'),{recipeId:'salmon'});assert.deepEqual(server.stock(),{'pasta|g':500,'milk|ml':250});
+    assert.equal(owner.queued().length,0);assert.equal(server.reserveCount(),2);
+    assert.equal(server.requests.filter(row=>row.body).every(row=>['sync_reserve','sync_apply'].includes(row.body.action)),true);
   } finally {owner.destroy();}
 });
 
