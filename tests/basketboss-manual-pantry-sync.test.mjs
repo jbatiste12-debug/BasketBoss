@@ -65,7 +65,7 @@ async function replaceFood(h,add=true){
 test('manual removal and addition queue one exact pantry target offline and survive restart',async()=>{
  const h=await fixture();await replaceFood(h);
  assert.deepEqual(h.stock(),{'sausages|each':4});assert.deepEqual(h.outbox().stock,{'sausages|each':4});assert.deepEqual(h.outbox().baselineStock,INITIAL);assert.equal(h.outbox().expectedRevision,3);
- assert.equal(h.remote.posts.length,0);assert.equal(h.reviewCalls(),0);assert.match(h.status(),/saved in At home/);
+ assert.equal(h.remote.posts.length,0);assert.equal(h.reviewCalls(),0);assert.match(h.status(),/Pantry saved/);
  const reloaded=await fixture({remote:h.remote,saved:new Map(h.values)});h.remote.available=true;
  assert.equal((await reloaded.host.retryPurchasedPantry()).queued,false);assert.deepEqual(reloaded.stock(),{'sausages|each':4});assert.deepEqual(h.remote.stock,{'sausages|each':4});assert.equal(reloaded.outbox(),null);
  assert.equal((await reloaded.adapter.synchronize()).localApplied,true);assert.deepEqual(reloaded.stock(),{'sausages|each':4});assert.equal(reloaded.reviewCalls(),0);
@@ -90,9 +90,9 @@ test('failed online synchronization retains the saved local target for a later s
 test('a real remote conflict never restores deleted foods or changes unrelated shopping progress',async()=>{
  const h=await fixture();h.remote.stock={'milk|ml':250};h.remote.revision++;h.remote.available=true;
  const ticks='{"unrelated|each":true}';h.storage.setItem('basketboss_321_v11_shop_ticks',ticks);
- await replaceFood(h);
+ await replaceFood(h);await h.host.retryPurchasedPantry();
  assert.deepEqual(h.stock(),{'sausages|each':4});assert.deepEqual(h.outbox().stock,{'sausages|each':4});assert.equal(h.outbox().remoteConflict,true);assert.deepEqual(h.remote.stock,{'milk|ml':250});
- assert.equal(h.storage.getItem('basketboss_321_v11_shop_ticks'),ticks);assert.equal(h.reviewCalls(),0);assert.match(h.status(),/Account & cloud sync/);
+ assert.equal(h.storage.getItem('basketboss_321_v11_shop_ticks'),ticks);assert.equal(h.reviewCalls(),0);assert.equal(h.host.getAccountPantryStatus().status,'conflict');
 });
 
 for(const failedKey of [OUTBOX,STOCK,INVENTORY])test('failure writing '+failedKey+' rolls back stock and pending sync together',async()=>{

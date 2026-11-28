@@ -18,7 +18,7 @@ test('bulk deletion uses the actual pantry transaction, removes only selected st
  const proposal=h.host.preview(['cupboard|rice','fridge|milk']);assert.equal(proposal.ok,true);assert.deepEqual(h.stock(),seed().stock,'preview never saves');
  const result=await h.host.remove(proposal);assert.equal(result.ok,true);assert.equal(result.removed,2);assert.deepEqual(h.stock(),{'peas|g':350});
  assert.equal(h.inventory()['cupboard|rice'].selected,false);assert.equal(h.inventory()['fridge|milk'].selected,false);assert.equal(h.inventory()['freezer|peas'].selected,true);
- assert.deepEqual(h.needed().map(row=>row.toBuy),[800,1500,150]);assert.equal(h.storage.getItem('shopping-history-sentinel'),'kept');assert.equal(JSON.parse(h.storage.getItem('saved-plan-sentinel')).planned[0].recipeId,'fajitas');assert.equal(h.syncs(),1);
+ assert.deepEqual(h.needed().map(row=>row.toBuy),[800,1500,150]);assert.equal(h.storage.getItem('shopping-history-sentinel'),'kept');assert.equal(JSON.parse(h.storage.getItem('saved-plan-sentinel')).planned[0].recipeId,'fajitas');assert.equal(h.syncs(),0,'explicit deletion commits locally without a guest network confirmation');
 });
 
 test('selection supports unknown amounts while unrelated foods and household records remain intact',async()=>{
@@ -50,7 +50,7 @@ test('stale physical stock, changed quantities and switched accounts reject conf
 });
 
 test('double confirmation is one transaction and a later online failure does not resurrect committed food',async()=>{
- const h=await selectedFixture({onlineError:true}),proposal=h.host.preview(['cupboard|rice']);const first=h.host.remove(proposal),second=await h.host.remove(proposal);assert.equal(second.ok,false);const result=await first;assert.equal(result.ok,true);assert.equal(h.inventory()['cupboard|rice'].selected,false);assert.equal(h.syncs(),1);assert.equal(h.stock()['rice|g'],undefined);
+ const h=await selectedFixture({onlineError:true}),proposal=h.host.preview(['cupboard|rice']);const first=h.host.remove(proposal),second=await h.host.remove(proposal);assert.equal(second.ok,false);const result=await first;assert.equal(result.ok,true);assert.equal(h.inventory()['cupboard|rice'].selected,false);assert.equal(h.syncs(),0,'local success does not wait for an unavailable confirmation');assert.equal(h.stock()['rice|g'],undefined);
 });
 
 test('cancelled or malformed selections have no mutation and generated binding fails closed when its anchor moves',async()=>{

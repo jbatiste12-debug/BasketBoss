@@ -1,0 +1,127 @@
+Combined native household-sync candidate, 28 November2026
+
+Native baseline: f49c89b0cc89ef22722f64010853a67274e48ebc
+Narrow household feature: c21014e2d968a2f0ecc2b9d29c40f2dc7e62df37
+
+Production web main is older than the installed native release. A three-way
+application of only the household feature delta preserves the native release's
+existing Google sign-in, purchase intent flows, native first-paint fixes and
+Android responsiveness work. No whole source tree or built asset directory was
+copied from older main. Generated PWA/Android files were rebuilt from this tree.
+The sole source conflict was the native CLIENT_FILES list: it now includes BOTH
+the ordered household module and the existing onboarding checkout-return module.
+All existing plan-home-snapshot references remain.
+
+Preservation
+Git diff against native baseline is empty for ios/, native/, android/, shared
+Capacitor config, auth handlers, onboarding implementation, subscription APIs
+and billing library. app/index only add deliberate-save sync hooks and module
+versions. Original persist and quantity/price/serving/budget calculations remain.
+The frozen Android/iOS fixture updates only app/index and shopping-inventory
+hashes with explicit review annotations; all other frozen hashes stay intact.
+The pre-existing onboarding test expected an old four1 asset tag; this native
+branch actually uses google1. The assertion now expects that exact existing tag,
+without changing either onboarding implementation or script/CSS references.
+
+Verification on the combined tree
+- 153 release/intent/Google/Apple/package/routing/onboarding checks passed.
+- 138 backend/receipt/account-host/deletion checks passed.
+- 2 real-shell two-device Chromium v2 cases passed: dinner and Pasta500 travel,
+  later same-item edit wins over delayed older apply, unrelated stock retained.
+- PWA700 builds with200 public/500 authenticated recipes.
+- Android sync+verify passes1.0.12/code12, target36,1182 assets,13390243 base web
+  bytes and491105344 install-time image bytes. No private recipe bundle.
+- Portable iOS verification passes; Xcode compilation/signing is not verified
+  here. Full catalogue700 iOS web bundle is separately validated.
+- SQL/engine and broad feature evidence is in the companion household report;
+  overlapping test counts must not be summed.
+
+Status
+No signed AAB, Xcode archive, production deployment, database mutation or store
+upload occurred. Both native devices need the packaged client update plus the
+separately deployed backend. The affected phone's existing local recovery copies
+have not been read; no successful pantry restoration is claimed. Preserve that
+phone's app/storage before any recovery operation. The download-only exporter
+contains no restoration path and never writes app storage or sends requests.
+
+Every file changed from native baseline
+- app.html
+- bb-household-auto-sync.js
+- bb-household-sharing.js
+- bb-receipt-host.js
+- bb-receipt-inventory.js
+- bb-server-lib/bb-household-auto-sync.js
+- docs/qa/2026-11-28-household-auto-sync-safety.txt
+- docs/qa/2026-11-28-household-auto-sync-verification.txt
+- docs/qa/2026-11-28-household-native-integration.txt
+- functions/api/household/index.js
+- functions/api/receipt-inventory.js
+- index.html
+- pwa700/app.html
+- pwa700/manifest.json
+- pwa700/precache.js
+- pwa700/shopping-inventory.js
+- release-assets/export-pantry-recovery.js
+- scripts/build-native-web.mjs
+- scripts/verify-household-auto-sync-postgres.mjs
+- shopping-inventory.js
+- sql/basketboss_household_auto_sync_v2_20261128.sql
+- tests/basketboss-account-deletion-household-barriers.test.mjs
+- tests/basketboss-autofill-variety-rotation.test.mjs
+- tests/basketboss-dietary-autofill.test.mjs
+- tests/basketboss-household-auto-sync-app-hooks.test.mjs
+- tests/basketboss-household-auto-sync-apply-races.test.mjs
+- tests/basketboss-household-auto-sync-backend.test.mjs
+- tests/basketboss-household-auto-sync-browser.test.mjs
+- tests/basketboss-household-auto-sync-engine.test.mjs
+- tests/basketboss-household-auto-sync-integration.test.mjs
+- tests/basketboss-household-auto-sync-safety-api.test.mjs
+- tests/basketboss-household-auto-sync-v2-browser.test.mjs
+- tests/basketboss-household-client-lifecycle.test.mjs
+- tests/basketboss-household-email.test.mjs
+- tests/basketboss-household-pantry-events.test.mjs
+- tests/basketboss-household-production.test.mjs
+- tests/basketboss-household-request-deadline.test.mjs
+- tests/basketboss-ingredient-preferences.test.mjs
+- tests/basketboss-onboarding-milestones.test.mjs
+- tests/basketboss-onboarding-v2.test.mjs
+- tests/basketboss-pantry-autofill-app.test.mjs
+- tests/basketboss-pantry-recovery-export.test.mjs
+- tests/basketboss-partner-sharing-access.test.mjs
+- tests/basketboss-plan-move-host.test.mjs
+- tests/basketboss-purchase-pantry-sync.test.mjs
+- tests/fixtures/android-ios-baseline.json
+- tests/helpers/household-plan-capture.mjs
+
+Immutable launchers and final web evidence
+- Reviewed native source commit:a8f0784e3da2b90742bdd4fdbaabc3c7a6879103.
+- Full catalogue700 iOS web validation passes1182 assets,200public/500 protected,
+  ordered module loads before sharing; existing checkout-return module retained.
+  No Xcode compilation/signing was run on Linux.
+- New Android household launcher pins that source, uses the existing external
+  upload key, verifies the signed AAB, and requires manual internal-test upload.
+- New iOS household launcher pins the same source, prepares1.0.6/build64 through
+  the existing catalogue700 wrapper and opens Xcode for phone testing by default.
+  Archive is opt-in and no upload occurs automatically. Account/team signing
+  and the availability of unused build64 must be checked on the Mac.
+-3 launcher checks pass: actual pinned source includes ordered/native modules,
+  original Android key is required, signed payload checked before reveal, iOS
+  test-first/archive-flag behavior and shell syntax are preserved.
+Additional changed files:
+- release-assets/prepare-android-household-mac.command
+- release-assets/prepare-build64-household-mac.command
+- tests/basketboss-household-release-launchers.test.mjs
+
+28 November saved-entry prevention update
+The user declined pantry recovery and requested PWA rollout. Recovery is no
+longer a blocker. The current reviewed native source is
+8ec8760669b017251a9fb09141275a4527cf72df, superseding the earlier a8f snapshot.
+It includes the save-before-success, local-first network retry, dirty-local
+protection, durable acknowledgments, monotonic reads, quick-swap capture and
+legacy Essentials failure checks described in persistence-regressions.txt.
+Final combined matrix:495 checks passed,0skips;5 real Chromium cases passed.
+Full iOS700 web validation:1182 assets,200public/500protected. Android1.0.12
+sync+verify:1182 assets,13405884basewebbytes,491105344imagebytes. Original persist
+body is byte-identical to f49, and platform/auth/billing/deletion files remain
+unchanged. Xcode signing and physical-phone acceptance still require the Mac.
+The immutable launchers now pin8ec and default to phone/internal testing.

@@ -1,3 +1,4 @@
+import {householdPlanCaptureSource} from './helpers/household-plan-capture.mjs';
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
@@ -7,7 +8,7 @@ const model=createRequire(import.meta.url)('../bb-plan-move.js');
 const source=fs.readFileSync(new URL('../app.html',import.meta.url),'utf8');
 const start=source.indexOf('function bbPlanMoveSnapshot(){');
 const end=source.indexOf('window.BBPlanMoveHost=Object.freeze(',start);
-const code=source.slice(start,source.indexOf('\n',end));
+const code=householdPlanCaptureSource(source)+source.slice(start,source.indexOf('\n',end));
 function harness(){
  const store=new Map(),state={planned:[{recipeId:'a',day:'Monday'},{recipeId:'b',day:'Tuesday'}],dayServings:{Monday:{recipeId:'a',count:6},Tuesday:{recipeId:'b',count:null}},mealServings:{a:3},plannedDesserts:[{recipeId:'cake',day:'Monday'}],bb81Batch:null,bbManualBatch:null,leftoverSources:{},leftoverConfirmed:{},servings:4};
  let failed=false,renders=0,saves=0,cleanOnFailure=false;

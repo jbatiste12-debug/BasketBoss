@@ -64,7 +64,7 @@ function fixture({household=PARTNER,entries=shared,confirm=true,enabledPantry=fa
  win.BasketBossVerifiedPremium={refresh:force=>{membershipChecks.push(force);return Promise.resolve(false);}};
  win.BBReceiptHost={accountPantrySyncEnabled:()=>enabledPantry,handlesInventorySync:()=>enabledPantry&&pantryCalls>0,async connectHouseholdPantry(){pantryCalls++;return pantryResult||{ok:true,adoptedScope:{kind:'household',id:HH},backupKey:'synthetic-pantry-backup'};}};
  win.addEventListener('basketboss:household-changed',event=>events.push(event.detail?.action));
- const sandbox={window:win,document,localStorage:store,navigator:{onLine:true,clipboard:{writeText:async()=>{}}},Event,JSON,console,Map,Set,Date:class extends Date{static now(){return clock;}},confirm:()=>allowConfirm,
+ const sandbox={AbortController,setTimeout,clearTimeout,window:win,document,localStorage:store,navigator:{onLine:true,clipboard:{writeText:async()=>{}}},Event,JSON,console,Map,Set,Date:class extends Date{static now(){return clock;}},confirm:()=>allowConfirm,
   location:{reload(){throw Error('Foreground sharing must never reload the document');}},MutationObserver:class{observe(){}},setInterval:handler=>timers.push(handler),
   fetch:async(url,options={})=>{
    const request=options.body?JSON.parse(options.body):null;calls.push({url,request,options});

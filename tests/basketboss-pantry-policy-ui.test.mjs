@@ -145,5 +145,5 @@ test('live pantry saves valid piece counts, flushes pending edits and keeps stoc
  await new Promise(resolve=>setTimeout(resolve,420));assert.equal(h.stock()['carrot|g'],240,'valid quantity edits save without pressing Reconcile');
  qty.value='';await qty.dispatch('input');await new Promise(resolve=>setTimeout(resolve,420));assert.equal(h.stock()['carrot|g'],240,'clearing an input while typing never clears saved stock');
  qty.value='4';await qty.dispatch('input');await h.win.BBPantryLive.flush();assert.equal(h.stock()['carrot|g'],320);assert.equal(h.win.BBPantryLive.hasPending(),false);
- assert.equal(h.syncs(),3,'each valid saved revision syncs once');
+ assert.equal(h.syncs(),1,'the ordinary autosave keeps its original confirmation; explicit local saves do not wait for it');
 });

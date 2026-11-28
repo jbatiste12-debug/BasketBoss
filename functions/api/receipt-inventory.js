@@ -74,6 +74,8 @@ async function authorized(request, env) {
   if(!premium&&personalError)throw personalError;
   return premium ? {user, scope, householdOwnerId} : {error: json({ok: false, error: 'receipt_premium_required'}, 403)};
 }
+// The household sync transport reuses this exact server-derived access check.
+export {authorized as authorizeReceiptInventory};
 function fullStock(value) {
   // Existing manual Kitchen stock may include custom foods. Preserve those
   // measured amounts without inventing a price/pack mapping. Scanned food

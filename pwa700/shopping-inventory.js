@@ -175,15 +175,28 @@ async function build(){
  let autoTimer=null,saving=null,movingReduced=false;
  const live=()=>window.BBPantryLiveSync===true;
  function scheduleAuto(){if(!live()||!draftDirty)return;clearTimeout(autoTimer);autoTimer=setTimeout(()=>{autoTimer=null;void runSave(true);},350);}
- function runSave(automatic=false){
+ function runSave(automatic=false,explicit=false,localOnly=false){
   if(autoTimer!==null)clearTimeout(autoTimer);autoTimer=null;
-  if(automatic&&(!live()||!draftDirty||!card.isConnected||document.querySelector('.tab.active')?.dataset.tab!=='shop'))return Promise.resolve();
-  if(saving)return saving.then(()=>draftDirty&&card.isConnected?runSave(automatic):undefined);
+  if(automatic&&(!draftDirty||!explicit&&(!live()||!card.isConnected||document.querySelector('.tab.active')?.dataset.tab!=='shop')))return Promise.resolve();
   if(automatic&&[...staged.values()].some(row=>row.qty!==null&&row.qty!==undefined&&(String(row.qty).trim()===''||!Number.isFinite(Number(row.qty))||Number(row.qty)<0||Number(row.qty)>1000000||row.staple&&Number(row.qty)>10000))){note.textContent='Enter a valid amount to update Shopping. Existing stock has been kept.';return Promise.resolve();}
+  // Reconciliation commits its guarded local transaction before its first
+  // await. A prior server retry must not hold up another explicit local save.
+  if(explicit&&localOnly)return reconcilePantry(automatic,true);
+  if(saving)return saving.then(()=>draftDirty&&(!automatic||explicit||card.isConnected)?runSave(automatic,explicit,localOnly):undefined);
   const savedDraft=JSON.stringify([...staged]);
-  saving=reconcilePantry(automatic).finally(()=>{saving=null;if(draftDirty&&card.isConnected&&JSON.stringify([...staged])!==savedDraft)scheduleAuto();});return saving;
+  saving=reconcilePantry(automatic,localOnly).finally(()=>{saving=null;if(draftDirty&&card.isConnected&&JSON.stringify([...staged])!==savedDraft)scheduleAuto();});return saving;
  }
- if(live()){window.BBPantryLive={flush:()=>runSave(true),hasPending:()=>draftDirty,householdChanged:()=>{draftDirty=true;scheduleAuto();}};reconcile.textContent='Update Shopping now';card.querySelectorAll('li')[3].textContent='Valid amounts save automatically and update Shopping. Done saves pending picker changes.';note.textContent='Valid changes update Shopping automatically.';review.querySelector('.bb174-fridge-review-head p').textContent='Set actual quantities or staple status. Valid edits save automatically; Done saves any pending picker changes.';review.querySelector('.bb174-fridge-explain').textContent='Known quantities reduce what is left to buy. Unknown amounts and containers stay visible for review.';}
+ const flushDraft=options=>{
+  if(!draftDirty)return Promise.resolve();const who=draftActor();
+  return runSave(true,true,true).then(()=>{
+   if(options?.localOnly===true||draftDirty||who!==openedActor||draftActor()!==who||physicalRevision()!==openedRevision||window.BBAccountDeletion?.isDeleting?.())return;
+   window.BBPantryPackSync?.committed?.();window.BasketBossCloud?.scheduleSave?.();
+   if(who==='guest')return;
+   const host=window.BBReceiptHost;if(host?.accountPantrySyncEnabled?.()!==true)return;
+   try{Promise.resolve(host.retryPurchasedPantry?.()).catch(()=>{});}catch{}
+  });
+ };
+ if(live()){window.BBPantryLive={flush:flushDraft,hasPending:()=>draftDirty,householdChanged:()=>{draftDirty=true;scheduleAuto();}};reconcile.textContent='Update Shopping now';card.querySelectorAll('li')[3].textContent='Valid amounts save automatically and update Shopping. Done saves pending picker changes.';note.textContent='Valid changes update Shopping automatically.';review.querySelector('.bb174-fridge-review-head p').textContent='Set actual quantities or staple status. Valid edits save automatically; Done saves any pending picker changes.';review.querySelector('.bb174-fridge-explain').textContent='Known quantities reduce what is left to buy. Unknown amounts and containers stay visible for review.';}
  function sid(loc,name){return loc+'|'+(policy()?.canonicalName(name,window.BBPantryAliasCanonical||window.BBPriceV19?.canonical)||canon(name))}
  const draftKeys=(loc,name)=>[...staged].filter(([,row])=>sid(row.loc,row.name)===sid(loc,name)).map(([key])=>key);
  function stageValue(rec,inventoryId){
@@ -298,8 +311,9 @@ async function build(){
   else{const old=openingState.inventory[k],staple=policy()?.isStaple(name);staged.set(k,stageValue({name,loc,qty:old?.selected?old.qty??null:staple?1:null,unit:old?.selected?(old.unit||bb5SuggestedUnit(name)):bb5SuggestedUnit(name),...(staple?{staple:true,stapleStatus:'in'}:{})},k))}
   draftDirty=true;render();note.textContent=live()?'Selection updated. Enter an amount in PANTRY to update Shopping.':'Selection updated. Review amounts in PANTRY before confirming.';
  });
- card.querySelector('#bb76StorageSections').addEventListener('submit',e=>{
+ card.querySelector('#bb76StorageSections').addEventListener('submit',async e=>{
   const f=e.target.closest('[data-bb76-add]');if(!f)return;e.preventDefault();
+  if(f.dataset.bb5Saving)return;
   const loc=f.dataset.bb76Add,name=f.elements.name.value.trim(),k=sid(loc,name);
   if(!BB5_LOCATIONS.includes(loc)||!name||!canon(name))return;
   if(window.BBKitchenChoiceRules?.isHousehold(name)){note.textContent='Add household items in Weekly essentials instead.';return;}
@@ -307,7 +321,10 @@ async function build(){
   let groupNote='';
   const group=window.BBPantryGroupsUI?.active(loc);
   if(group&&group!=='all'&&draftActor()===openedActor)try{const api=window.BBPantryGroups;api.assign(loc,api.itemKey(name),group,api.context());}catch{groupNote=' Choose its subcategory again in the item menu.';}
-  f.reset();draftDirty=true;render();note.textContent='Food added to '+loc+'. Enter its amount in PANTRY below.'+groupNote;
+  draftDirty=true;render();note.textContent='Saving…';f.dataset.bb5Saving='1';
+  try{await flushDraft();if(draftActor()!==openedActor)return;if(draftDirty){note.textContent='This food has not been saved. '+(note.textContent||'Try again before leaving At home.');return;}f.reset();note.textContent='Food saved to '+loc+'. Enter its amount in PANTRY below.'+groupNote;}
+  catch{note.textContent='This food has not been saved. Review storage and try again before leaving At home.';}
+  finally{delete f.dataset.bb5Saving;}
  });
  rows.addEventListener('input',e=>{
   const pack=e.target.dataset.bb5PackQuantity;if(pack&&staged.has(pack)){const row=staged.get(pack);row.packQuantity=e.target.value===''?null:Number(e.target.value);row.packReviewed=Number(row.packQuantity)>0&&BB5_CONTENT_UNITS.includes(row.packUnit);draftDirty=true;drawAmount(pack,e.target);drawOverview();return;}
@@ -329,12 +346,16 @@ async function build(){
   }
   row.unit=nextUnit;row.inputMarket=policyMarket();if(['tin','can','bag','pack','bottle','jar','pint'].includes(row.unit))row.containerUnit=row.unit;draftDirty=true;render();
  });
- rows.addEventListener('click',e=>{
+ rows.addEventListener('click',async e=>{
   const enough=e.target.closest('[data-bb5-enough]');
-  if(enough){const row=staged.get(enough.dataset.bb5Enough),coverage=row&&bb5WeekCoverage(row);if(!coverage)return;const changedUnit=row.unit!==coverage.unit;row.qty=coverage.qty;row.unit=coverage.unit;if(changedUnit){delete row.totalNeeded;delete row.targetChanged;}draftDirty=true;render();note.textContent=row.name+': '+coverage.qty+' '+coverage.unit+(live()?' recorded for this week. Shopping updates automatically.':' recorded for this week. Confirm to update Shopping, or edit the amount.');return;}
-  const btn=e.target.closest('[data-bb5-remove]');if(!btn)return;staged.delete(btn.dataset.bb5Remove);draftDirty=true;render();note.textContent=live()?'Item removed. Shopping is updating.':'Item removed from draft; Reconcile to save.';
+  if(enough){const row=staged.get(enough.dataset.bb5Enough),coverage=row&&bb5WeekCoverage(row);if(!coverage)return;const changedUnit=row.unit!==coverage.unit;row.qty=coverage.qty;row.unit=coverage.unit;if(changedUnit){delete row.totalNeeded;delete row.targetChanged;}draftDirty=true;render();note.textContent='Saving…';
+   try{await flushDraft();if(draftActor()!==openedActor)return;note.textContent=draftDirty?'This amount has not been saved. Review storage and try again.':row.name+': '+coverage.qty+' '+coverage.unit+' saved for this week. Shopping is updated.';}
+   catch{note.textContent='This amount has not been saved. Review storage and try again.';}return;}
+  const btn=e.target.closest('[data-bb5-remove]');if(!btn)return;staged.delete(btn.dataset.bb5Remove);draftDirty=true;render();note.textContent='Saving…';
+  try{await flushDraft();if(draftActor()!==openedActor)return;note.textContent=draftDirty?'The removal has not been saved. Review storage and try again.':'Item removed and saved. Shopping is updated.';}
+  catch{note.textContent='The removal has not been saved. Review storage and try again.';}
  });
- async function reconcilePantry(automatic=false){
+ async function reconcilePantry(automatic=false,localOnly=false){
   if(window.BBAccountDeletion?.isDeleting?.()){note.textContent='Finish the account review before changing pantry quantities.';return;}
   if(draftActor()!==openedActor||physicalRevision()!==openedRevision){note.textContent='At home changed elsewhere. Reopen At home and review the latest amounts first.';return;}
   if(window.BBReceiptHost?.hasPendingConfirmation?.()){
@@ -429,7 +450,7 @@ async function build(){
     if(typeof receiptHost.preparePurchasedPantry!=='function'||typeof receiptHost.retryPurchasedPantry!=='function'||typeof window.BBHome?.atomic!=='function')throw Error('Account sync is still loading. Try saving again in a moment.');
     // Prepare from the persisted pre-edit balance. The existing local save
     // owns this absolute target, including deletions and an empty pantry.
-    pantrySync=receiptHost.preparePurchasedPantry({stock:nextStock,beforeStock:JSON.parse(originalStockRaw||'{}')});
+    pantrySync=receiptHost.preparePurchasedPantry({stock:nextStock,beforeStock:JSON.parse(originalStockRaw||'{}'),beforeInventory:originalInv,inventory:nextInv,sharedUserEdit:true});
    }
    // Capacity metadata follows the existing stock save. It never supplies or
    // replaces the measured balance used by meal and shopping calculations.
@@ -460,8 +481,7 @@ async function build(){
    note.textContent='Could not save safely. Review storage and try again.';return;
   }
   pendingFoodDraft=null;stagedTargets.clear();openedRevision=physicalRevision();window.BBHome?.committed?.();externalAtOpen.clear();draftDirty=false;
-  window.BBPantryPackSync?.committed?.();
-  window.BasketBossCloud?.scheduleSave?.();
+  if(!localOnly){window.BBPantryPackSync?.committed?.();window.BasketBossCloud?.scheduleSave?.();}
   const unknown=chosen.filter(x=>x.qty===null);
   const requirements=window.BBHomeHost?.requirements?.()||[],mismatches=window.BBHomeHost?.consume?.(nextStock,requirements)?.mismatches||{};
   const incompatible=chosen.filter(x=>!x.staple&&(x.conversionNeedsReview||x.qty>0&&requirements.some(row=>pantryStockId(row.key||row.name,'')===pantryStockId(x.name,'')&&mismatches[pantryStockId(row.key||row.name,row.unit)]?.length)));
@@ -472,6 +492,7 @@ async function build(){
    rows.querySelectorAll('[data-bb5-qty]').forEach(input=>{if(input.dataset.bb5Qty===key){input.focus({preventScroll:true});input.closest('[data-bb5-row]').scrollIntoView({behavior:'smooth',block:'center'});}});
   }
   if(automatic)note.textContent=reviewText||'✓ Pantry saved. Shopping has been updated.';
+  if(localOnly)return;
   if(accountSync){
    let synced;reconcile.disabled=true;
    try{synced=await receiptHost.retryPurchasedPantry();}
@@ -714,7 +735,7 @@ async function build(){
  window.BBPantryEditor=Object.freeze({card,list:()=>[...staged.keys()].map(editorRow),read:editorRow,preview:editorPreview,isCurrent:()=>!editorGuard(),select:editorSelect,update:editorUpdate,add:editorAdd,
   moveToFreezer:editorMoveToFreezer,
   remove:key=>{const blocked=editorGuard();if(blocked)return editorFail(blocked);if(!staged.has(key))return {ok:false};staged.delete(key);for(const [id,target]of stagedTargets)if(target.sourceKey===key)stagedTargets.delete(id);draftDirty=true;render();editorEvent('remove',key);return {ok:true};},
-  flush:()=>runSave(true),status:()=>note.textContent,units:entryUnits});
+  flush:flushDraft,hasPending:()=>draftDirty,status:()=>note.textContent,units:entryUnits});
 
  if(window.BBPantrySelection)window.BBPantrySelection.bind({
   editor:window.BBPantryEditor,
@@ -857,12 +878,20 @@ css.textContent+=`
 }
 `;
 document.head.append(css);
+const flushBeforeHidden=()=>{
+ const active=window.BBPantryLive;if(!active?.hasPending?.())return;
+ // Best effort only: the existing guarded local transaction owns this save.
+ // Closing an app cannot guarantee that an asynchronous operation will finish.
+ try{Promise.resolve(active.flush({localOnly:true})).catch(()=>{});}catch{}
+};
+window.addEventListener?.('pagehide',flushBeforeHidden);
+document.addEventListener?.('visibilitychange',()=>{if(document.hidden||document.visibilityState==='hidden')flushBeforeHidden();});
 document.addEventListener?.('click',event=>{
  const button=event.target.closest?.('.tab[data-tab]');if(!window.BBPantryLiveSync||!button||button.dataset.tab==='shop')return;
  if(button.dataset.bbPantryNavigate==='ready'){delete button.dataset.bbPantryNavigate;return;}
  const active=window.BBPantryLive;if(!active?.hasPending?.())return;
  event.preventDefault();event.stopImmediatePropagation();
- Promise.resolve(active.flush()).then(()=>window.BBPantryLive!==active&&window.BBPantryLive?.hasPending?.()?window.BBPantryLive.flush():undefined).finally(()=>{if(button.isConnected){button.dataset.bbPantryNavigate='ready';button.click();}});
+ Promise.resolve(active.flush()).then(()=>window.BBPantryLive!==active&&window.BBPantryLive?.hasPending?.()?window.BBPantryLive.flush():undefined).then(()=>{if(active.hasPending?.()||window.BBPantryLive?.hasPending?.())return;if(button.isConnected){button.dataset.bbPantryNavigate='ready';button.click();}}).catch(()=>{});
 },true);
 const start=()=>{const app=document.getElementById('app');if(!app)return;build();new MutationObserver(()=>build()).observe(app,{childList:true,subtree:false})};
 if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',start,{once:true});else start();

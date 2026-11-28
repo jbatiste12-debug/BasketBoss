@@ -21,7 +21,7 @@ function fixture({action='invite',fail=false,allowConfirm=true}={}){
  const document={readyState:'loading',hidden:false,body:{append(){}},createElement:()=>dialog,addEventListener(){}};
  const storage={getItem:key=>values.get(key)??null,setItem(){throw Error('Link notifications must not move pantry data');},removeItem(){throw Error('Link notifications must not remove pantry data');}};
  win.addEventListener('basketboss:household-changed',event=>events.push({committed,action:event.detail?.action}));
- const sandbox={window:win,document,localStorage:storage,navigator:{onLine:true},Event,JSON,Date,console,location:{reload(){throw Error('No unrelated local merge is expected');}},confirm(){confirmed++;return allowConfirm;},fetch:async(url,options={})=>{
+ const sandbox={AbortController,setTimeout,clearTimeout,window:win,document,localStorage:storage,navigator:{onLine:true},Event,JSON,Date,console,location:{reload(){throw Error('No unrelated local merge is expected');}},confirm(){confirmed++;return allowConfirm;},fetch:async(url,options={})=>{
   const request=options.body?JSON.parse(options.body):null;calls.push({url,request});
   if(!request)return Response.json(current);
   if(fail)return Response.json({error:'Synthetic rejected household action'},{status:409});

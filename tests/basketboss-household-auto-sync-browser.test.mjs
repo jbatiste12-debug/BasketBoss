@@ -21,6 +21,8 @@ before(async()=>{
 });
 after(async()=>{await browser?.close();});
 
+// Retained v1-client contract: omit the newer optional ordered engine in this
+// fixture. Full v2 application coverage lives in auto-sync-v2-browser.test.mjs.
 // Actual application shell, account controls and household host bridge. Every
 // request is fulfilled locally; no customer, provider or live mutation is used.
 const bridge=`window.__householdAutoSyncQA={
@@ -96,6 +98,7 @@ async function fixture(server,actor=A,{plannedDay='Monday',stateMode='seeded'}={
    return route.fulfill({status:200,contentType:'application/json',body:JSON.stringify(data)});
   }
   let relative=decodeURIComponent(url.pathname).replace(/^\//,'').replace(/^pwa700\//,'');if(['app','app.html','index','index.html',''].includes(relative))relative='app.html';
+  if(relative==='bb-household-auto-sync.js')return route.fulfill({status:200,contentType:'application/javascript',body:'/* Existing v1 client: ordered engine is absent. */'});
   if(relative.includes('..'))return route.fulfill({status:404,body:''});
   try{
    let body;if(relative==='app.html')body=app;else{

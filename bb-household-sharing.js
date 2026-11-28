@@ -1,5 +1,5 @@
-/* BasketBoss partner sharing — preview feature, fail-closed. No legacy restore.
-   Per-leaf CAS; conflicting keys are NEVER silently overwritten. */
+/* BasketBoss partner sharing. Deliberate edits use ordered per-target sync.
+   Legacy clients retain their original CAS and restore protections. */
 (()=>{'use strict';
 const ROOT='/api/household';
 const STATE='basketboss_321_unified_state_v1',STOCK='basketboss_321_v7_measured_pantry';
@@ -8,7 +8,7 @@ const TICKS='basketboss_321_v11_shop_ticks',SESSION='basketboss_active_shop_sess
 const SYNC_KEYS=[STATE,STOCK,KITCHEN,TICKS,SESSION,BUDGET];
 const DAYS=['Monday','Tuesday','Wednesday','Thursday','Friday','Saturday','Sunday'];
 let status=null,busy=false,dialog=null,lastPoll=0,booted=false,conflicts=[],heldConflicts=[],deletionPaused=false,generation=0,openRevision=0;
-let invitationNotice=null,actionInFlight=null,polling=false,entryRequested=false,pendingRefresh=null,statusRevision=0;
+let invitationNotice=null,actionInFlight=null,polling=false,entryRequested=false,pendingRefresh=null,statusRevision=0,statusAccountPin=null;
 const deleting=()=>deletionPaused||window.BBAccountDeletion?.isDeleting?.()===true;
 const pauseDeletion=()=>{deletionPaused=true;generation++;status=null;conflicts=[];heldConflicts=[];pendingRefresh=null;invitationNotice?.remove?.();invitationNotice=null;dialog?.close?.();};
 window.addEventListener('basketboss:account-deletion-started',pauseDeletion);
@@ -35,13 +35,186 @@ function refreshRenderedHousehold(pin){
  if(window.BBHomeHost?.refreshSharedHousehold?.({actor:pin.actor,token:pin.token,expected})===true){pendingRefresh=null;return true;}
  pendingRefresh={...pin,expected};return false;
 }
+const REQUEST_DEADLINE_MS=15000;
 async function accountRequest(url,body){
  const session=userSession(),serial=generation;if(!session)throw Error('Sign in to your BasketBoss account first.');
- const r=await fetch(url,{method:body?'POST':'GET',headers:{'Authorization':'Bearer '+session.access_token,'Content-Type':'application/json'},
-  body:body?JSON.stringify(body):undefined,credentials:'same-origin',cache:'no-store'});
- const data=await r.json().catch(()=>({}));const current=userSession();if(deleting()||serial!==generation||current?.user?.id!==session.user?.id||current?.access_token!==session.access_token)throw Error('Account changed during sharing request.');if(!r.ok){const e=Error(data?.error||'Sharing unavailable');e.status=r.status;e.data=data;throw e;}return data;
+ const controller=typeof AbortController==='function'?new AbortController():null;let expired=false,timer;
+ const deadline=new Promise((_,reject)=>{timer=setTimeout(()=>{
+  expired=true;
+  const error=Error(body?'Sharing timed out. A sent change may already be saved. Reopen Partner Sharing to check the household before trying again.':'Sharing timed out. Check your connection and try again.');
+  error.code='BB_SHARING_REQUEST_TIMEOUT';error.requestMayHaveCompleted=!!body;
+  // Reject independently of abort: native transports may ignore cancellation.
+  reject(error);try{controller?.abort();}catch{}
+ },REQUEST_DEADLINE_MS);});
+ try{
+  const request=(async()=>{
+   const r=await fetch(url,{method:body?'POST':'GET',headers:{'Authorization':'Bearer '+session.access_token,'Content-Type':'application/json'},
+    body:body?JSON.stringify(body):undefined,credentials:'same-origin',cache:'no-store',signal:controller?.signal});
+   if(expired)throw Error('Sharing request expired.');
+   const data=await r.json().catch(()=>({}));
+   if(expired)throw Error('Sharing request expired.');
+   const current=userSession();if(deleting()||serial!==generation||current?.user?.id!==session.user?.id||current?.access_token!==session.access_token)throw Error('Account changed during sharing request.');if(!r.ok){const e=Error(data?.error||'Sharing unavailable');e.status=r.status;e.data=data;throw e;}return data;
+  })();
+  // The deadline covers headers and the complete response body, with no retry.
+  return await Promise.race([request,deadline]);
+ }finally{clearTimeout(timer);}
 }
 async function api(path,body){return accountRequest(ROOT+path,body);}
+// Automatic sharing records deliberate edits; a restored device snapshot is never an edit.
+let autoEngine=null,autoScope=null,autoInit=null,autoMigrationPending=false,autoPublishing=false,autoLastResponse=null,autoRetainedPantry=false;
+const autoTarget=(kind,key)=>kind+'\u001f'+key;
+function autoIdentity(){if(!statusAccountPin||!sameAccount(statusAccountPin))return null;const s=userSession();return status?.configured===true&&status?.premium===true&&status.household_id&&s?.user?.id&&s.access_token?{actor:s.user.id,token:s.access_token,householdId:status.household_id}:null;}
+function autoCaptureIdentity(){
+ const verified=autoIdentity();if(verified)return verified;
+ // Existing actor-isolated receipt ownership can identify a staging bucket,
+ // never grant membership. A fresh authoritative denial disables staging.
+ if(status!==null||deleting())return null;
+ const session=userSession(),scope=window.BBReceiptHost?.getSharedHouseholdCaptureScope?.();
+ return session?.user?.id&&session.access_token&&scope?.kind==='household'&&scope.id?{actor:session.user.id,token:session.access_token,householdId:scope.id}:null;
+}
+function autoEnsureEngine(){
+ const identity=autoCaptureIdentity();if(!identity||!window.BBHouseholdAutoSync?.createEngine)return null;
+ const scope=identity.actor+'|'+identity.householdId;
+ if(autoScope!==scope){autoEngine?.destroy();autoMigrationPending=false;autoLastResponse=null;autoRetainedPantry=false;autoScope=scope;autoInit=null;
+  autoEngine=window.BBHouseholdAutoSync.createEngine({storage:localStorage,identity:autoCaptureIdentity,blocked:deleting,allowStaging:true,
+   request:(action,body)=>{
+    const verified=autoIdentity(),active=autoCaptureIdentity();
+    if(!verified||!active||verified.actor!==active.actor||verified.householdId!==active.householdId||verified.token!==active.token)throw Error('Household sharing is still verifying this account.');
+    return action==='auto_sync'?api('?mode=auto_sync'):api('',{action,...body});
+   },apply:autoApply,backup:()=>{},notify:state=>{if(state.busy&&state.queued)message('Syncing your dinners and pantry…');}});
+ }
+ return autoEngine;
+}
+function autoCanCapture(){return !!autoEnsureEngine();}
+function autoReady(){return !!autoIdentity()&&autoCanCapture()&&autoEngine.read().ready===true;}
+
+function autoDay(state,day){
+ const slot=state.planned?.find(row=>row?.day===day);if(!slot?.recipeId)return {recipeId:null,servings:null};
+ const override=state.dayServings?.[day],value=Number.isInteger(slot.servings)?slot.servings:override?.recipeId===slot.recipeId?override.count:state.mealServings?.[slot.recipeId];
+ return {recipeId:slot.recipeId,servings:Number.isInteger(value)&&value>=1&&value<=12?value:null};
+}
+function autoPending(kind,key){return autoEngine?.read().pendingTargets?.some(target=>target.kind===kind&&target.key===key)===true;}
+function autoStockLocation(key,inventory=read(KITCHEN,{})){
+ try{for(const row of Object.values(inventory||{}))if(row?.selected&&row.bb173StockKey===key&&['fridge','cupboard','freezer'].includes(row.loc))return row.loc;}catch{}
+ return 'cupboard';
+}
+function autoPantryChanges(beforeStock,stock,beforeInventory,inventory){
+ const changes=[];for(const key of new Set([...Object.keys(beforeStock||{}),...Object.keys(stock||{})])){
+  const before=Number(beforeStock?.[key]||0),quantity=Number(stock?.[key]||0);
+  const location=autoStockLocation(key,inventory),locationChanged=beforeInventory&&inventory&&quantity>0&&autoStockLocation(key,beforeInventory)!==location;
+  if(before===quantity&&!locationChanged)continue;
+  if(!Number.isFinite(quantity)||quantity<0||quantity>1000000)throw Error('Invalid pantry amount.');
+  changes.push({target:{kind:'pantry',key},value:{quantity,location}});
+ }return changes;
+}
+function autoCapturePlan({before,after}={}){
+ if(!autoCanCapture())return {queued:false};
+ try{const next=JSON.parse(after),previous=before===null?{version:2,planned:[],servings:next?.servings}:JSON.parse(before);if(previous?.version!==2||next?.version!==2||!Array.isArray(previous.planned)||!Array.isArray(next.planned))return {queued:false};
+  const changes=[];for(const day of DAYS){const value=autoDay(next,day);if(!eq(autoDay(previous,day),value))changes.push({target:{kind:'dinner',key:day},value});}
+  if(next.servings!==previous.servings&&Number.isInteger(next.servings)&&next.servings>=1&&next.servings<=12)changes.push({target:{kind:'setting',key:'household_servings:default'},value:{count:next.servings}});
+  return autoCaptureMany(changes);
+ }catch{message('Saved on this phone. Household upload is waiting to reconnect.');return {queued:false};}
+}
+function autoCaptureMany(changes){
+ if(!autoCanCapture())return {queued:false};
+ const result=autoEngine.captureMany(changes);
+ if(!result.queued)message('Saved on this phone. Household upload is waiting for a connection or device storage.');
+ return result;
+}
+async function autoApply(response,_pending,{acknowledged=[]}={}){
+ const pin=accountPin(),identity=autoIdentity();if(!identity||response?.household_id!==identity.householdId||!sameAccount(pin)||!prepareReadablePlan(pin)||!readyToRender(pin))return false;
+ autoLastResponse=response;
+ const remoteState=response.state;if(!remoteState||!Array.isArray(remoteState.entries))return false;
+ const local=snapshot();if(!local)return false;
+ const hid=identity.householdId,prior=baseline(hid),pending=()=>autoEngine.read().pendingTargets||[];
+ const entries=remoteState.entries.filter(row=>!String(row?.entry_key).startsWith('__bb_sync_v2:'));
+ const remote=new Map(entries.map(row=>[key(row.section,row.entry_key),row]));
+ // A saved legacy/private day is not a new upload, and a background read
+ // must not discard it. Match an acknowledged deliberate edit exactly before
+ // allowing a later partner edit to replace a locally changed day.
+ const fromEntries=(rows,day)=>{const meal=rows.get(key('planned_day',day))?.value,count=rows.get(key('servings',day))?.value;return {recipeId:meal?.deleted?null:meal?.recipeId||null,servings:meal?.recipeId&&!meal.deleted&&Number.isInteger(count?.count)?count.count:null};};
+ const previous=new Map(Object.entries(prior)),retainedDays=new Set(),staleDays=new Set(),staleTargets=new Set();
+ for(const day of DAYS){
+  if(autoPending('dinner',day))continue;
+  const ids=[key('planned_day',day),key('servings',day)],saved=fromEntries(local,day),shared=fromEntries(remote,day);
+  if(ids.some(id=>Number(prior[id]?.revision||0)>Number(remote.get(id)?.revision||0)&&!prior[id]?.held&&!prior[id]?.localOnly)){staleDays.add(day);staleTargets.add('dinner:'+day);continue;}
+  const unbased=!ids.some(id=>prior[id])||ids.some(id=>prior[id]?.held||prior[id]?.localOnly);
+  const dirty=unbased?saved.recipeId!==null||ids.some(id=>prior[id]?.held||prior[id]?.localOnly):!eq(saved,fromEntries(previous,day));
+  const acknowledgedHere=acknowledged.some(proof=>proof?.target?.kind==='dinner'&&proof.target.key===day&&eq(proof.value,saved));
+  if(dirty&&!eq(saved,shared)&&!acknowledgedHere&&!autoPublishing)retainedDays.add(day);
+ }
+ autoMigrationPending=retainedDays.size>0;
+ const nextBaseline={...prior},changes=[];
+ const consider=(section,entry_key)=>{
+  const kind=section==='planned_day'||section==='servings'?'dinner':'setting',targetKey=kind==='dinner'?entry_key:section+':'+entry_key;
+  if(autoPending(kind,targetKey)||kind==='dinner'&&staleDays.has(entry_key))return;
+  const id=key(section,entry_key),row=remote.get(id),value=row?.value??{deleted:true};
+  if(Number(prior[id]?.revision||0)>Number(row?.revision||0)&&!prior[id]?.held&&!prior[id]?.localOnly){staleTargets.add(kind+':'+targetKey);return;}
+  const replaceDayCount=section==='servings'&&changes.some(change=>change.section==='planned_day'&&change.entry_key===entry_key&&!change.value?.deleted);
+  if(!(kind==='dinner'&&retainedDays.has(entry_key))&&(replaceDayCount||!eq(local.get(id)?.value??{deleted:true},value)))changes.push(row||{section,entry_key,value});
+  nextBaseline[id]={revision:row?.revision||0,value};
+ };
+ for(const day of DAYS){consider('planned_day',day);consider('servings',day);}
+ consider('household_servings','default');consider('budget_target','weekly');
+ const checks=new Set([...remote.values(),...local.values()].filter(row=>row.section==='shopping_checked').map(row=>row.entry_key));
+ for(const id of checks)consider('shopping_checked',id);
+ const expectedBaseline=raw(baselineKey(hid)),expected=Object.fromEntries(SYNC_KEYS.map(k=>[k,raw(k)]));
+ const unchanged=()=>sameAccount(pin)&&autoIdentity()?.householdId===hid&&raw(baselineKey(hid))===expectedBaseline&&SYNC_KEYS.every(k=>raw(k)===expected[k]);
+ if(changes.length&&typeof window.BBHomeHost?.prepareSharedHouseholdRecipes==='function')if(!await window.BBHomeHost.prepareSharedHouseholdRecipes(hostPin(pin)))return false;
+ if(!unchanged()||!readyToRender(pin))return false;
+ // Recheck intents after the async recipe load; pending targets may have changed.
+ for(const change of changes)if(autoPending(['planned_day','servings'].includes(change.section)?'dinner':'setting',['planned_day','servings'].includes(change.section)?change.entry_key:change.section+':'+change.entry_key))return false;
+ let rendered=!acknowledged.some(proof=>staleTargets.has(proof.target.kind+':'+proof.target.key));
+ // Keep Plan memory and its durable representation together before awaiting
+ // the separate inventory transaction. A tap during that await must serialize
+ // the received week, not the previous in-memory week.
+ if(changes.length){applyLeaves(changes,{baselineStorageKey:baselineKey(hid),baselineValue:nextBaseline,expectedBaseline});if(!refreshRenderedHousehold(pin))return false;}
+ else if(!eq(prior,nextBaseline))writeBaseline(hid,nextBaseline);
+ const protectedTargets=pending().filter(target=>target.kind==='pantry'),protectedAtStart=JSON.stringify(protectedTargets);
+ if(remoteState.inventory){
+  const currentPin=accountPin(),inventory=remoteState.inventory;
+  const result=await window.BBReceiptHost?.receiveSharedAutoSnapshot?.(inventory,{acknowledged,protectedTargets,precondition:()=>sameAccount(currentPin)&&autoIdentity()?.householdId===hid&&JSON.stringify(pending().filter(target=>target.kind==='pantry'))===protectedAtStart&&readyToRender(currentPin)});
+  if(result?.ok===true)autoRetainedPantry=Array.isArray(result.retainedLocalKeys)&&result.retainedLocalKeys.length>0;
+  if(result?.localApplied===true)rendered=refreshRenderedHousehold(pin)&&rendered;
+  if(result&&result.ok===false||!result&&acknowledged.some(proof=>proof?.target?.kind==='pantry'))rendered=false;
+ }else if(acknowledged.some(proof=>proof?.target?.kind==='pantry'))rendered=false;
+ return rendered;
+}
+async function ensureAuto(){
+ const engine=autoEnsureEngine();if(!engine||!autoIdentity())return null;
+ if(autoEngine.read().ready)return autoEngine;
+ if(!autoInit)autoInit=autoEngine.initialize().then(()=>autoEngine).catch(()=>null).finally(()=>{autoInit=null;});
+ return autoInit;
+}
+async function autoSynchronize(){
+ const engine=await ensureAuto();if(!engine?.read().ready){
+  if(window.BBHouseholdAutoSync?.createEngine&&autoIdentity()){message('Your changes are saved on this phone. Automatic household sync is reconnecting.');return {ok:false,queued:true,deferred:true};}
+  return null;
+ }
+ const result=await engine.flush();await engine.refresh();
+ if(autoMigrationPending||autoRetainedPantry)message('Your existing entries are kept on this phone. Share this phone’s saved plan and pantry once to connect those entries.');
+ else message(engine.read().queued?'Your changes are saved on this phone and queued to sync.':engine.read().pendingApply?'Shared changes are ready. Finish saving your current screen to display them.':'Your household is up to date. Changes sync automatically while the app is open.');
+ return result;
+}
+async function autoPublishCurrent(pin,hid){
+ const engine=await ensureAuto();if(!sameAccount(pin)||status?.role!=='owner'||status.household_id!==hid)return null;
+ if(!engine?.read().ready){if(window.BBHouseholdAutoSync?.createEngine)throw Error('Automatic sharing is reconnecting. Your current week and pantry are kept; try again when connected.');return null;}
+ if(autoLastResponse?.state?.inventory?.initialized===false){await connectPantry(pin,hid);if(!sameAccount(pin))throw Error('Account changed.');await engine.refresh();}
+ const current=read(STATE,null);if(current?.version!==2||!Array.isArray(current.planned)||!readyToRender(pin))throw Error('Finish saving this phone’s plan before sharing.');
+ const before=Object.fromEntries(SYNC_KEYS.map(key=>[key,raw(key)]));
+ let backup='bb_partner_premerge_'+Date.now(),serial=0;while(raw(backup)!==null)backup='bb_partner_premerge_'+Date.now()+'_'+(++serial);
+ localStorage.setItem(backup,JSON.stringify(before));
+ const changes=DAYS.map(day=>({target:{kind:'dinner',key:day},value:autoDay(current,day)}));
+ const stock=autoLastResponse?.state?.inventory?.initialized===true?read(STOCK,{}):{};for(const [key,quantity]of Object.entries(stock))if(Number(quantity)>0)changes.push({target:{kind:'pantry',key},value:{quantity:Number(quantity),location:autoStockLocation(key)}});
+ if(!sameAccount(pin)||SYNC_KEYS.some(key=>raw(key)!==before[key]))throw Error('This phone changed before sharing. Try again.');
+ autoPublishing=true;try{const queued=autoCaptureMany(changes);if(!queued.queued)throw Error('The household upload could not be saved. Your plan is kept.');await engine.flush();if(engine.read().queued)throw Error('Your changes are queued. They will sync when connected.');autoMigrationPending=false;await engine.refresh();return {ok:true};}finally{autoPublishing=false;}
+}
+window.BBHouseholdSharingAuto=Object.freeze({isReady:autoReady,canCapture:autoCanCapture,hasPendingPantry:()=>autoEngine?.read().pendingTargets?.some(target=>target.kind==='pantry')===true,flush:async()=>{const result=await autoSynchronize();return result||{ok:false,queued:true};},capturePlanEdit:autoCapturePlan,
+ captureSettingEdit({section,key:entryKey,value}={}){return autoCaptureMany([{target:{kind:'setting',key:section+':'+entryKey},value:value===null?{deleted:true}:value}]);},
+ preparePantryEdit({beforeStock,stock,beforeInventory,inventory}={}){if(!autoCanCapture())throw Error('Household sharing is still connecting.');return autoEngine.prepareMany(autoPantryChanges(beforeStock,stock,beforeInventory,inventory));},
+ capturePantryEdit({beforeStock,stock,beforeInventory,inventory}={}){return autoCaptureMany(autoPantryChanges(beforeStock,stock,beforeInventory,inventory));}
+});
+
 const key=(s,k)=>s+'\u001f'+k;
 // Receipt inventory has its own revision-checked whole-stock transaction. Do
 // not replay the older per-leaf pantry channel over that authoritative stock.
@@ -148,6 +321,7 @@ function applyLeaves(remoteChanges,{baselineStorageKey=null,baselineValue=null,e
 }
 async function synchronize({allowInitialImport=false,automatic=false}={}){
  if(deleting())return;
+ const auto=await autoSynchronize();if(auto)return auto;
  const serial=generation;
  if(busy){message('A household sync is already running.');return;}
  if(!status?.premium||!status?.household_id){message('Household access needs refreshing. Close and reopen Partner Sharing.');return;}
@@ -263,7 +437,7 @@ async function synchronize({allowInitialImport=false,automatic=false}={}){
   else message(changes.length?'Household changes received and saved safely.':'Sync complete. No new household changes to apply.');
   showHeldReview();
   return {ok:true,conflicts:conflicts.length,applied};
- }catch(e){message(e.status===409?'Another device changed the same item. No data was overwritten.':'Sharing unavailable; this device remains unchanged.');}
+ }catch(e){if(sameAccount(pin))message(e.code==='BB_SHARING_REQUEST_TIMEOUT'?e.message:e.status===409?'Another device changed the same item. No data was overwritten.':'Sharing unavailable; this device remains unchanged.');}
  finally{busy=false;if(applied&&sameAccount(pin)&&!refreshRenderedHousehold(pin))message('Household changes were saved. Finish editing, then tap Sync safely now to refresh this screen.');}
 }
 function message(t){const el=dialog?.querySelector('[data-bbhs-message]');if(el)el.textContent=t;}
@@ -312,9 +486,9 @@ function makeModal(){if(dialog)return dialog;
 }
 async function refreshStatus({throwErrors=false}={}){
  if(deleting())return null;
- const revision=++statusRevision;
+ const revision=++statusRevision,pin=accountPin();
  if(!userSession()){status=null;updateInvitationNotice();return null;}
- try{const next=await api('?mode=status');if(revision!==statusRevision)return status;status=next;updateInvitationNotice();return status;}
+ try{const next=await api('?mode=status');if(revision!==statusRevision||!sameAccount(pin))return status;status=next;statusAccountPin=pin;updateInvitationNotice();void ensureAuto();return status;}
  catch(error){if(revision===statusRevision){status=null;updateInvitationNotice();}if(throwErrors)throw error;return null;}
 }
 function householdChanged(action){
@@ -459,7 +633,7 @@ async function open(){if(deleting())return;makeModal();if(!dialog.open)dialog.sh
    await refreshStatus({throwErrors:true});if(!current())return;
    let feedback=invitationFeedback(result);
    if(status?.configured===true&&status?.premium===true&&status?.role==='owner'&&status.household_id===result.household_id){
-    try{await connectPantry(pin,status.household_id);if(!current())return;const synced=await synchronize({allowInitialImport:true});feedback+=synced?.ok?(synced.conflicts?' Some existing items need review before they can be shared.':' Your saved dinners and list are shared.'):' Your invitation is saved; tap Share this device’s saved dinners to finish connecting the plan.';}
+    try{const published=await autoPublishCurrent(pin,status.household_id);if(!current())return;await connectPantry(pin,status.household_id);if(!current())return;const synced=published||await synchronize({allowInitialImport:true});feedback+=synced?.ok?(synced.conflicts?' Some existing items need review before they can be shared.':' Your saved dinners, pantry and list are shared.'):' Your invitation is saved; share this phone’s saved plan and pantry to finish connecting.';}
     catch(error){feedback+=' '+(error?.message||'Your saved data still needs connecting.');}
    }else feedback+=' Household access needs refreshing before your saved data can be shared.';
    if(!current())return;householdChanged('invite');await open();if(sameAccount(pin)&&dialog.open)message(feedback);
@@ -468,13 +642,19 @@ async function open(){if(deleting())return;makeModal();if(!dialog.open)dialog.sh
    if(!s.household_id){message('Send an invitation to start your shared household first.');return;}
    if(!confirm('Share this device’s saved dinners, pantry, servings and shopping checkmarks with your linked household? Only do this if the saved plan belongs to this account.'))return;
    finishConfirmedSharingInput();if(!current())return;
-   const pin=accountPin();await connectPantry(pin,s.household_id);if(current())await synchronize({allowInitialImport:true});
+   const pin=accountPin();const published=await autoPublishCurrent(pin,s.household_id);if(published){await connectPantry(pin,s.household_id);if(current())await autoSynchronize();return;}await connectPantry(pin,s.household_id);if(current())await synchronize({allowInitialImport:true});
   });
   const unlinkButton=body.querySelector('[data-unlink]');unlinkButton.onclick=()=>runAction(unlinkButton,current,async()=>{
    if(!confirm('Unlink your partner and revoke any pending invitation? Their device will keep its existing local plan.'))return;
    if(!current())return;
    await api('',{action:'unlink'});if(!current())return;await refreshStatus({throwErrors:true});if(!current())return;householdChanged('unlink');await open();message('Partner unlinked. Your stored plan remains.');
   });
+ }
+ if(autoReady()){
+  const summary=body.querySelector('.bbhs-summary p');if(summary)summary.textContent='Your weekly dinners and pantry update automatically in both directions. Changes apply to each day or item.';
+  const sync=body.querySelector('[data-sync]');if(sync)sync.textContent='Sync now';
+  const publish=body.querySelector('[data-init-import]');if(publish)publish.textContent='Share this phone’s saved plan and pantry';
+  const note=body.querySelector('small:last-child');if(note)note.textContent='Your previous device data is backed up. New edits sync automatically while BasketBoss is open.';
  }
  body.querySelector('[data-sync]')?.addEventListener('click',()=>{if(actionInFlight)return;if(pendingRefresh){if(!refreshRenderedHousehold(pendingRefresh)){message('Finish editing before refreshing the shared screen.');return;}}return synchronize();});
 }

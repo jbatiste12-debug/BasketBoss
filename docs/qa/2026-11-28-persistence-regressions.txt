@@ -1,0 +1,92 @@
+BasketBoss saved-entry and cold-restart prevention,28 November2026
+
+Focus: prevent saved entries disappearing for any user. The owner declined
+recovery work; inspecting their phone is not a rollout requirement. None of the
+reproduced code paths proves which action occurred on that particular phone.
+
+Reproduced failure paths and fixes
+1. Inline Add reported success before its350ms draft autosave. Done adding,
+   ordinary amount steppers and legacy Add/remove/Enough paths could also leave
+   a draft pending. Explicit actions now await the original guarded local
+   transaction and verify the owning editor has no pending draft before saved
+   feedback. This works even without the optional live-runtime controller.
+   Failed/quota/silent writes retain inputs; a retry does not add the amount twice.
+   Failed saves do not navigate away from At home.
+2. Explicit saving formerly waited for account network retry after local commit.
+   It now resolves after durable local storage/outbox, then triggers the same
+   account retry in the background. A prior slow autosave request cannot hold a
+   new local Add. Hidden/pagehide attempts a guarded local-only flush and does
+   not wait for receipt/cloud sync. This is best effort, not an OS-kill guarantee
+   for an uncommitted draft. Confirmed saved feedback requires the local commit.
+3. Ordered refresh replaced an old-client saved local500 with an empty shared
+   snapshot when no v2 intent existed. The real Chromium app reproduced this.
+   Per-item projection now preserves local differences from their actual prior
+   server baseline, while clean items receive peer updates/removals. Unknown
+   saved snapshots are never inferred as new uploads. Server baselines stay the
+   actual server values, so retained local data remains identifiable on reload.
+4. Acknowledgment could remove the outbox before local projection committed.
+   Exact id/order/target/value proofs are now persisted with pending removal,
+   survive restart, and are consumed only after successful projection. Matching
+   proof lets a genuinely newer peer edit/delete win. New pending targets and
+   unqueued storage-failure targets remain protected. Older global snapshots,
+   older day revisions, and inconsistent same-version stock cannot roll back
+   saved values or consume newer proofs.
+5. Incoming recipe/default-serving pairs could revive an older recipe count and
+   then incorrectly resist a peer delete. Replacement days always receive their
+   authoritative explicit count/null together; original serving math is reused.
+6. Visible quick dinner swaps saved successfully but omitted the household intent.
+   The exact before/after plan is captured only after both plan and rotation
+   commit. All rollback paths remain unhooked; optional sync failure cannot undo
+   the local swap. Owner reinvitation publishes selected local data before
+   reconnecting an initialized pantry, avoiding the old empty-adoption ordering.
+7. Legacy Essentials fallback ignored a failed store result and reported Added.
+   It now verifies the storage bytes, restores its in-memory prior state on
+   failure, retains the form, and reports success only after the existing save.
+
+Safety scope
+No auth/session handlers or configuration, account-deletion locks, onboarding
+restore checks, billing/entitlement rules, quantity/serving/price/budget formulas,
+receipt accounting, native platform source/config or database tables changed.
+The authorized household sync policy and its dedicated outbox metadata changed.
+No new draft journal or system-wide architecture was introduced.
+
+Verification before rollout
+-495 unit/integration/receipt/safety cases passed on the final stamped source,
+ zero skips. This includes explicit local-save failure/retry and delayed network.
+-5 real Chromium two-device/cold-restart cases cover queued offline restart,
+ older empty online snapshots, old-client saved data without an outbox, stable
+ operation IDs, no inferred uploads and legitimate later partner changes.
+-13+ durable-action failure/lifecycle cases and the exact unknown500-loss case
+ have failure-before/fix-after evidence. Counts overlap with the suite above.
+-33 isolated PostgreSQL checks from the existing backend feature remain valid;
+ this follow-up did not modify the SQL or server authorization code.
+-Generated PWA and native assets are rebuilt from this combined source. Physical
+ Galaxy A13/iPhone installation, Xcode signing and store submission are separate.
+
+Every file changed in this prevention follow-up (from29e2828)
+- app.html
+- bb-household-auto-sync.js
+- bb-household-sharing.js
+- bb-pantry-inline.js
+- bb-plan-swap-host.js
+- bb-receipt-host.js
+- bb-receipt-inventory.js
+- docs/qa/2026-11-28-persistence-regressions.txt
+- index.html
+- pwa700/app.html
+- pwa700/bb-plan-swap-host.js
+- pwa700/manifest.json
+- pwa700/precache.js
+- pwa700/shopping-inventory.js
+- shopping-inventory.js
+- tests/basketboss-household-auto-sync-apply-races.test.mjs
+- tests/basketboss-household-auto-sync-engine.test.mjs
+- tests/basketboss-household-auto-sync-v2-browser.test.mjs
+- tests/basketboss-manual-pantry-sync.test.mjs
+- tests/basketboss-pantry-durable-actions.test.mjs
+- tests/basketboss-pantry-policy-ui.test.mjs
+- tests/basketboss-pantry-selection.test.mjs
+- tests/basketboss-pantry-stock-levels.test.mjs
+- tests/basketboss-plan-swap.test.mjs
+- tests/basketboss-purchase-pantry-sync.test.mjs
+- tests/fixtures/android-ios-baseline.json
