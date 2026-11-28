@@ -399,12 +399,38 @@
       const key = purchaseSyncKey();
       if (store().getItem(key) === expected) writeAtomic({[key]: null}, {[key]: expected});
     }
-    function preparePurchasedPantry({stock, beforeStock, shopSessionId} = {}) {
+    function sharedPantryEngine({allowStaging = false} = {}) {
+      const engine = root.BBHouseholdSharingAuto;
+      if (!accountPantrySyncEnabled() || blocked() || isolationError || actor() === 'guest' || !(engine?.isReady?.() === true || allowStaging && engine?.canCapture?.() === true)) return null;
+      const owner = read(KEYS.owner), marker = read(KEYS.actor), cached = projection();
+      if (owner.actorId !== actor() || marker.actorId !== actor() || owner.scope?.kind !== 'household' || !samePurchaseScope(owner.scope, cached?.scope) || !Number.isSafeInteger(owner.inventoryRevision)) return null;
+      return engine;
+    }
+    function quarantineLegacyHouseholdQueue() {
+      const {raw, row} = purchasedPantrySnapshot();
+      if (!row || row.scope?.kind !== 'household') return false;
+      const ownerRaw = store().getItem(KEYS.owner), markerRaw = store().getItem(KEYS.actor), owner = read(KEYS.owner);
+      if (owner.actorId !== actor() || !samePurchaseScope(owner.scope, row.scope)) throw Error('purchase_pantry_account_changed');
+      const base = 'basketboss_household_legacy_pantry_queue_v1:' + encodeURIComponent(actor()) + ':' + encodeURIComponent(row.scope.id) + ':' + clock();
+      let backupKey = base, serial = 0;
+      while (store().getItem(backupKey) !== null) backupKey = base + ':' + (++serial);
+      writeAtomic({[backupKey]: {version: 1, actorId: actor(), scope: clone(row.scope), queue: clone(row), quarantinedAt: clock()}, [purchaseSyncKey()]: null}, {[backupKey]: null, [purchaseSyncKey()]: raw, [KEYS.owner]: ownerRaw, [KEYS.actor]: markerRaw});
+      return true;
+    }
+    function preparePurchasedPantry({stock, beforeStock, shopSessionId, sharedUserEdit = false} = {}) {
       if (blocked() || isolationError) throw Error('purchase_pantry_sync_paused');
       const target = purchaseStock(stock), baseline = purchaseStock(beforeStock), id = actor();
       if (id === 'guest') return {updates: {}, expected: {}, queued: false, localOnly: true};
       const key = purchaseSyncKey(), {raw, row: pending} = purchasedPantrySnapshot(), ownerRaw = store().getItem(KEYS.owner), markerRaw = store().getItem(KEYS.actor), owner = ownerRaw === null ? {} : JSON.parse(ownerRaw), marker = markerRaw === null ? {} : JSON.parse(markerRaw), active = context();
       if (!isObject(owner) || !isObject(marker) || owner.actorId && owner.actorId !== id || marker.actorId !== id) throw Error('purchase_pantry_account_changed');
+      const shared = sharedUserEdit === true ? sharedPantryEngine({allowStaging: true}) : null;
+      if (shared) {
+        // The caller commits this intent with its physical stock in the same
+        // existing local transaction. Merely preparing an edit writes nothing.
+        const prepared = shared.preparePantryEdit({beforeStock: baseline, stock: target});
+        if (!isObject(prepared?.updates) || !isObject(prepared?.expected)) throw Error('shared_pantry_sync_unavailable');
+        return {...prepared, expected: {...prepared.expected, [KEYS.owner]: ownerRaw, [KEYS.actor]: markerRaw}, queued: Object.keys(prepared.updates).length > 0, localOnly: false, needsReview: false, shared: true};
+      }
       // An unowned/Free pantry has no verified online balance to replace.
       if (!pending && (!owner.actorId || !owner.scope || !Number.isSafeInteger(owner.inventoryRevision))) return {updates: {}, expected: {}, queued: false, localOnly: true};
       let next;
@@ -442,6 +468,17 @@
         if (!current() || isolationError) return {ok: false, queued: true, needsReview: true};
         let queued;
         try {queued = purchasedPantry();} catch {return {ok: false, queued: true, needsReview: true};}
+        const shared = sharedPantryEngine();
+        if (shared) {
+          if (reviewing || confirmingCurrent || choosingTrip || hasPendingConfirmation()) return {ok: false, queued: true, needsReview: false, pending: true};
+          // A v1 absolute snapshot cannot be replayed over a partner's later
+          // item edits. Keep its full intent recoverable before leaving v1.
+          const quarantined = quarantineLegacyHouseholdQueue();
+          if (!current()) return {ok: false, queued: true, needsReview: true};
+          const result = await shared.flush();
+          if (!current()) return {ok: false, queued: true, needsReview: true};
+          return {...(isObject(result) ? result : {ok: false, queued: true}), localOnly: false, ...(quarantined ? {legacyQueueQuarantined: true} : {})};
+        }
         if (!queued) return {ok: true, queued: false, localOnly: true, needsReview: false};
         if (queued.remoteConflict) return {ok: false, queued: true, needsReview: true, conflict: true};
         if (reviewing || confirmingCurrent || choosingTrip || hasPendingConfirmation()) return {ok: false, queued: true, needsReview: false, pending: true};
@@ -508,6 +545,19 @@
       return purchaseSyncPromise;
     }
     function accountPantrySyncEnabled() {return options.accountPantrySync === true;}
+    async function receiveSharedAutoSnapshot(snapshot, {precondition} = {}) {
+      const pin = tripPin();
+      const ready = () => {
+        if (!sameTripPin(pin) || isolationError || !accountPantrySyncEnabled() || reviewing || confirmingCurrent || choosingTrip || accountPantryAdopting || accountPantrySyncPromise || accountPantryRefreshPromise || hasPendingConfirmation() || inlineReviews.size || projectionHolds.size || root.BBPantryLive?.hasPending?.() === true) return false;
+        if (typeof precondition !== 'function' || precondition() !== true) return false;
+        const owner = read(KEYS.owner), cached = projection();
+        return snapshot?.scope?.kind === 'household' && owner.actorId === actor() && samePurchaseScope(owner.scope, snapshot.scope) && samePurchaseScope(cached?.scope, snapshot.scope) && !purchasedPantry() && getAccountLocalPantryStatus().ready;
+      };
+      try {
+        if (!ready() || typeof adapter()?.ingestSharedHousehold !== 'function') return {ok: false, deferred: true};
+        return await adapter().ingestSharedHousehold(snapshot, {precondition: ready});
+      } catch {return {ok: false, deferred: true};}
+    }
     function visibleAccountProjection() {
       try {
         const meaningful = value => Array.isArray(value) ? value.map(meaningful) : isObject(value) ? Object.fromEntries(Object.keys(value).filter(key => !['syncedAt', 'appliedAt'].includes(key)).sort().map(key => [key, meaningful(value[key])])) : value;
@@ -1214,7 +1264,7 @@
       options.onProjection?.({externalStorage: true});schedule();
     }
     root.addEventListener?.('storage', externalChange);
-    const api = Object.freeze({configure, afterRender, refreshAvailability, open, openReceiptEntry, saveLegacyReceipt, reviewPantry, confirmCurrentPantry, confirmCookedPantry, preparePurchasedPantry, confirmPurchasedPantry, retryPurchasedPantry, accountPantrySyncEnabled, getAccountPantryStatus, syncAccountPantry, refreshAccountPantry, adoptAccountPantryScope, connectHouseholdPantry, canConsumePantry, getConsumptionStatus, confirmLocalPantryReview, recoverReceipt, requiresPantryReview, hasPendingConfirmation, allowLegacyTransfer, allowPurchaseTransfer, handlesInventorySync, coversLegacyCredit, switchActor, exportBackup, prepareBackupRestore, hasLocalData, getAvailability: () => ({...availability}), getProjection: projection, weeklySummary: () => weeklyReceiptSummary(projection(), context(), clock()), keys: KEYS});
+    const api = Object.freeze({configure, afterRender, refreshAvailability, open, openReceiptEntry, saveLegacyReceipt, reviewPantry, confirmCurrentPantry, confirmCookedPantry, preparePurchasedPantry, confirmPurchasedPantry, retryPurchasedPantry, receiveSharedAutoSnapshot, accountPantrySyncEnabled, getAccountPantryStatus, syncAccountPantry, refreshAccountPantry, adoptAccountPantryScope, connectHouseholdPantry, canConsumePantry, getConsumptionStatus, confirmLocalPantryReview, recoverReceipt, requiresPantryReview, hasPendingConfirmation, allowLegacyTransfer, allowPurchaseTransfer, handlesInventorySync, coversLegacyCredit, switchActor, exportBackup, prepareBackupRestore, hasLocalData, getAvailability: () => ({...availability}), getProjection: projection, weeklySummary: () => weeklyReceiptSummary(projection(), context(), clock()), keys: KEYS});
     return api;
   }
   root.BBReceiptHostFactory = createHost;

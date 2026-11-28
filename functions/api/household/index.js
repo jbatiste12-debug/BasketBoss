@@ -5,6 +5,9 @@ import {livePaidBillingEnabled,readPersonalPaidAccess,testFlightBetaEnabled} fro
 import {json,authenticatedUser,isLive,expectedPrice,entitlementForStatus,requireSameOrigin} from '../../../bb-server-lib/bb-billing.js';
 import {isNewestVerifiedSession} from '../../../bb-server-lib/bb-premium-seat.js';
 import {sendHouseholdInviteEmail} from '../../../bb-server-lib/bb-household-email.js';
+import {householdAutoSync} from '../../../bb-server-lib/bb-household-auto-sync.js';
+import {receiptInventoryConfigured,authorizeReceiptInventory} from '../receipt-inventory.js';
+const AUTO_SYNC_PREFIX='__bb_sync_v2:';
 const SECTIONS=new Set(['planned_day','servings','pantry_item','kitchen_item','shopping_checked','budget_target','household_servings']);
 const SHOP_UNITS=new Set(['g','kg','ml','l','each','pack','clove','tin','loaf','slice','bulb']);
 const SHOP_UUID=/^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
@@ -108,6 +111,11 @@ async function authorized(request,env){
  }catch{return {error:json({error:'Device session verification is temporarily unavailable'},503)};}
  return {user};
 }
+async function autoInventoryAllowed(request,env,actor,household){
+ if(!receiptInventoryConfigured(request,env))return false;
+ const access=await authorizeReceiptInventory(request,env);
+ return !access.error&&access.user?.id===actor.id&&access.scope?.kind==='household'&&access.scope.id===household.id;
+}
 export async function onRequestGet({request,env}){
  // A gated-off production feature is a supported, non-error state. Do not emit 503
  // network noise or touch local data merely because the migration is absent.
@@ -120,6 +128,12 @@ export async function onRequestGet({request,env}){
   // subscription. Keep review available if unrelated personal billing fails.
   const pending=mode==='status'&&!household?await getPending(env,auth.user):null;
   const entitled=pending?false:household?await premium(env,household.owner_user_id):await premium(env,auth.user.id);
+  if(mode==='auto_sync'){
+   if(!household||!entitled)return json({error:'Verified Premium shared household required'},403);
+   const inventoryAllowed=await autoInventoryAllowed(request,env,auth.user,household);
+   const result=await householdAutoSync({data:{action:'sync_read'},actor:auth.user,household,inventoryAllowed,supa:(path,method,body)=>supa(env,path,method,body)});
+   return json({...result.body,role},result.status);
+  }
   if(mode==='shopping'){
    if(!household||!entitled)return json({error:'Verified Premium shared household required'},403);
    const result=await supa(env,'rpc/bb_hh_service_shopping_list','POST',{p_actor:auth.user.id,p_household:household.id});
@@ -129,9 +143,9 @@ export async function onRequestGet({request,env}){
   if(mode==='entries'){
    if(!household||!entitled)return json({error:'Verified Premium shared household required'},403);
    // Keep the dedicated namespace out of older clients' whole-Kitchen merge.
-   const rows=await supa(env,`bb_household_entries?select=section,entry_key,value,revision,updated_at&${eq('household_id',household.id)}&or=(section.neq.kitchen_item,entry_key.not.like.${encodeURIComponent(PANTRY_PACK_PREFIX+'*')})&order=section.asc,entry_key.asc&limit=1000`);
+   const rows=await supa(env,`bb_household_entries?select=section,entry_key,value,revision,updated_at&${eq('household_id',household.id)}&or=(section.neq.kitchen_item,entry_key.not.like.${encodeURIComponent(PANTRY_PACK_PREFIX+'*')})&entry_key=not.like.${encodeURIComponent(AUTO_SYNC_PREFIX.replaceAll('_','\\_')+'*')}&order=section.asc,entry_key.asc&limit=1000`);
    if(!Array.isArray(rows)||rows.length>=1000)return json({error:'Household data too large; manual review required'},409);
-   return json({household_id:household.id,role,entries:rows.filter(row=>row?.section!=='kitchen_item'||!String(row.entry_key).startsWith(PANTRY_PACK_PREFIX))});
+   return json({household_id:household.id,role,entries:rows.filter(row=>!String(row?.entry_key).startsWith(AUTO_SYNC_PREFIX)&&(row?.section!=='kitchen_item'||!String(row.entry_key).startsWith(PANTRY_PACK_PREFIX)))});
   }
   if(mode==='pantry_packs'){
    if(!household||!entitled)return json({error:'Verified Premium shared household required'},403);
@@ -154,6 +168,12 @@ export async function onRequestPost({request,env}){
  const actor=auth.user;
  try{
   const {household,role}=await householdForUser(env,actor);
+  if(data.action==='sync_reserve'||data.action==='sync_apply'){
+   if(!household||!await premium(env,household.owner_user_id))return json({error:'Verified Premium shared household required'},403);
+   const inventoryAllowed=await autoInventoryAllowed(request,env,actor,household);
+   const result=await householdAutoSync({data,actor,household,inventoryAllowed,supa:(path,method,body)=>supa(env,path,method,body)});
+   return json({...result.body,role},result.status);
+  }
   if(data.action==='invite'){
    if(role==='partner'||!await premium(env,actor.id))return json({error:'Owner Premium required'},403);
    const email=String(data.email||'').trim().toLowerCase();
@@ -196,6 +216,7 @@ export async function onRequestPost({request,env}){
    return json({...result,household_id:household.id},result?.conflict||result?.limit_reached?409:result?.not_found?404:200);
   }
   if(data.action==='patch'){
+   if(typeof data.key==='string'&&data.key.startsWith(AUTO_SYNC_PREFIX))return json({error:'Reserved sync metadata'},400);
    if(!household||!await premium(env,household.owner_user_id))return json({error:'Verified Premium household required'},403);
    if(!SECTIONS.has(data.section)||typeof data.key!=='string'||data.key.length<1||data.key.length>180||
       !Number.isSafeInteger(data.expected)||data.expected<0||data.value===undefined||JSON.stringify(data.value).length>8192)

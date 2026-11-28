@@ -255,9 +255,10 @@
       }
       return out;
     }
-    async function applyProjection(response, captured, body = null, reducedReview = {}) {
+    async function applyProjection(response, captured, body = null, reducedReview = {}, precondition = null, sharedAuto = false) {
       const c = await core();
       if (!sameSession(captured)) throw Error('receipt_account_changed');
+      if (sharedAuto && (typeof precondition !== 'function' || precondition() !== true)) throw Error('receipt_local_data_changed');
       const scope = { kind: response.scope?.kind, id: response.scope?.id };
       const key = cacheKey(captured.actorId, scope), owner = json(KEYS.owner, {});
       const explicitScopeAdoption = body?.action === 'confirm_pantry' && body.expectedScope?.kind === scope.kind && body.expectedScope?.id === scope.id;
@@ -298,7 +299,7 @@
       const completeSnapshot = response.projectionMode === undefined || response.projectionMode === 'full';
       const identicalGetAcknowledgement = !body && completeSnapshot && response.initialized === true && (!owner.actorId || newerDirtyProjection) && equalStock(currentStock, nextServerStock);
       if (!owner.actorId && response.initialized === true && Object.keys(currentStock).length && !body?.localProjectionBaseline && !identicalGetAcknowledgement) throw Error('receipt_initial_pantry_merge_required');
-      if (newerDirtyProjection && !identicalGetAcknowledgement) throw Error('receipt_local_remote_pantry_merge_required');
+      if (newerDirtyProjection && !identicalGetAcknowledgement && !sharedAuto) throw Error('receipt_local_remote_pantry_merge_required');
       let priorServerStock = normalizedPrior;
       if (body?.action === 'confirm_receipt') {
         if (!Number.isSafeInteger(response.receiptRevision) || response.receiptRevision < 1 || response.receiptRevision > response.inventoryRevision) throw Error('receipt_commit_revision_missing');
@@ -307,12 +308,12 @@
         if (!(Number(owner.inventoryRevision) >= response.receiptRevision)) priorServerStock = body.inventoryBaseline?.stock || {};
       } else if (body?.localProjectionBaseline) priorServerStock = body.localProjectionBaseline;
       if(tracking)priorServerStock=c.normalizePantryState(priorServerStock,currentKitchen,{canonicalize,market:activeContext().market,exactConversionsOnly:true}).stock;
-      const nextStock = identicalGetAcknowledgement ? currentStock : c.projectReceiptInventory(currentStock, priorServerStock, nextServerStock);
+      const nextStock = sharedAuto ? nextServerStock : identicalGetAcknowledgement ? currentStock : c.projectReceiptInventory(currentStock, priorServerStock, nextServerStock);
       // An acknowledgement of the exact same physical balances must not turn
       // a local Cook allocation into a new Kitchen representation. Keep its
       // display units, zero rows and lot metadata. GET acknowledgements have
       // already passed the account, scope and monotonic revision guards above.
-      const preserveKitchen = identicalGetAcknowledgement || body?.action === 'confirm_pantry' && owner.actorId === captured.actorId && owner.cacheKey === key && explicitScopeAdoption && equalStock(currentStock, nextStock) && equalStock(savedStock, nextStock);
+      const preserveKitchen = identicalGetAcknowledgement || sharedAuto && equalStock(currentStock, nextStock) && equalStock(savedStock, nextStock) || body?.action === 'confirm_pantry' && owner.actorId === captured.actorId && owner.cacheKey === key && explicitScopeAdoption && equalStock(currentStock, nextStock) && equalStock(savedStock, nextStock);
       let kitchen = clone(preserveKitchen ? currentKitchen : local.inventory);
       for (const [field, limit] of [['inventory', 2000], ['essentials', 500], ['priceObservations', 2000], ['receipts', 500]]) if (response[field] !== undefined && (!Array.isArray(response[field]) || response[field].length > limit)) throw Error('receipt_projection_payload_limit');
       const inventory = (response.inventory || []).map(x => safeServerRecord(x, ['stockKey', 'canonicalKey', 'quantity', 'unit', 'location', 'revision']));
@@ -374,9 +375,10 @@
       }
       const confirmed = json(KEYS.confirmed, {});
       const changes = { [key]: nextCache, [KEYS.stock]: nextStock, [KEYS.kitchen]: kitchen, [KEYS.owner]: { version: 1, actorId: captured.actorId, scope, cacheKey: key, initialized: response.initialized === true, inventoryRevision: response.inventoryRevision, serverStock: nextServerStock, appliedAt: now() }, [KEYS.confirmed]: { ...confirmed, receiptReviewRequired: pantryReview.required, receiptId: response.receiptId || null, receiptChangedAt: now() } };
+      if (sharedAuto) delete changes[KEYS.confirmed];
       if (body?.shopSessionId && body.addToPantry !== false) changes[KEYS.finishShop] = ledger;
-      const appliedEssentialIds = {...(cached.appliedEssentialIds || {})}, newEssentials = essentials.filter(x => x.addToPantry === true && typeof x.id === 'string' && !appliedEssentialIds[x.id]);
-      const appliedPriceIds = {...(cached.appliedPriceIds || {})}, newPrices = priceObservations.filter(x => typeof x.id === 'string' && !appliedPriceIds[x.id]);
+      const appliedEssentialIds = {...(cached.appliedEssentialIds || {})}, newEssentials = sharedAuto ? [] : essentials.filter(x => x.addToPantry === true && typeof x.id === 'string' && !appliedEssentialIds[x.id]);
+      const appliedPriceIds = {...(cached.appliedPriceIds || {})}, newPrices = sharedAuto ? [] : priceObservations.filter(x => typeof x.id === 'string' && !appliedPriceIds[x.id]);
       const appliedReceiptIds = {...(cached.appliedReceiptIds || {})}, freshReceipt = body?.action === 'confirm_receipt' && !appliedReceiptIds[body.receiptId];
       const reduced = freshReceipt ? reducedItems(body, reducedReview.reducedLineIds || []) : [];
       const reviewIssues = freshReceipt ? [] : clone(cached.reducedReviewIssuesByReceipt?.[body?.receiptId] || []);
@@ -396,7 +398,7 @@
       // Pass the prepared food proof rather than making it reread an older
       // ledger and overwrite this receipt's coverage when it nets essentials.
       packet.finishShopCredits = clone(ledger);
-      Object.assign(changes, preparedChanges(packet));
+      if (!sharedAuto) Object.assign(changes, preparedChanges(packet));
       for (const row of newEssentials) appliedEssentialIds[row.id] = true;
       for (const row of newPrices) appliedPriceIds[row.id] = true;
       if (freshReceipt) appliedReceiptIds[body.receiptId] = true;
@@ -405,6 +407,17 @@
       nextCache.appliedReceiptIds = appliedReceiptIds;
       if (body?.action === 'confirm_receipt' && pendingConfirmation(captured.actorId).receiptId === body.receiptId) changes[pendingKey(captured.actorId)] = null;
       if (!sameSession(captured)) throw Error('receipt_account_changed');
+      if (precondition && precondition() !== true) throw Error('receipt_local_data_changed');
+      if (sharedAuto && (owner.inventoryRevision !== response.inventoryRevision || !equalStock(savedStock, nextStock))) {
+        const base = 'basketboss_household_auto_premerge_v2:' + encodeURIComponent(captured.actorId) + ':' + encodeURIComponent(scope.id) + ':' + now();
+        let backupKey = base, serial = 0;
+        while (storage().getItem(backupKey) !== null) backupKey = base + ':' + (++serial);
+        const before = Object.fromEntries([KEYS.stock, KEYS.kitchen, KEYS.owner, KEYS.confirmed, key].map(target => [target, storage().getItem(target)]));
+        const backup = JSON.stringify({version: 2, actorId: captured.actorId, scope, before});
+        storage().setItem(backupKey, backup);
+        if (storage().getItem(backupKey) !== backup) throw Error('receipt_shared_backup_failed');
+        if (precondition() !== true) throw Error('receipt_local_data_changed');
+      }
       atomicWrite(changes, captured.actorId);
       const projection = { stock: nextStock, inventory: kitchen, essentials, receipts, pantryReview, scope, ...reducedReviewResult(reviewIssues) };
       try { options.onProjection?.(projection); } catch { /* Stored projection remains valid if rendering fails. */ }
@@ -643,7 +656,25 @@
     const synchronize = value => withInventoryLock(() => synchronizeInternal(value));
     const retryPendingConfirmation = value => withInventoryLock(() => retryPendingConfirmationInternal(value));
     const confirmPantry = value => withInventoryLock(() => confirmPantryInternal(value));
-    return Object.freeze({ configure(value) { options = { ...options, ...value }; return this; }, normalizeDraft, commitLocalReceipt, commitReviewedReceipt, cancelDraft, canonicalOptions, synchronize, retryPendingConfirmation, confirmPantry, getCachedProjection, getLearnedPrice, recoverLocalTransaction, withInventoryLock, getPendingConfirmation: () => clone(pendingConfirmation(session().actorId)), keys: KEYS });
+    async function ingestSharedHousehold(snapshot, {precondition} = {}) {
+      const captured = session(), context = activeContext(), owner = json(KEYS.owner, {});
+      if (snapshot?.ok !== true || snapshot.scope?.kind !== 'household' || owner.actorId !== captured.actorId || owner.scope?.kind !== 'household' || owner.scope.id !== snapshot.scope.id || owner.cacheKey !== cacheKey(captured.actorId, snapshot.scope)) throw Error('receipt_household_scope_changed');
+      const response = clone(snapshot), cached = json(owner.cacheKey, {}), keys = [KEYS.stock, KEYS.kitchen, KEYS.owner, KEYS.confirmed, KEYS.session, owner.cacheKey], observed = Object.fromEntries(keys.map(key => [key, storage().getItem(key)]));
+      // A full original receipt snapshot can refresh its read-only histories;
+      // a balance-only projection cannot erase histories omitted by its API.
+      for (const field of ['essentials', 'receipts', 'priceObservations']) if (response[field] === undefined) response[field] = clone(cached[field] || []);
+      if (response.pantryReview === undefined) response.pantryReview = clone(cached.pantryReview || {required: false});
+      const current = () => sameSession(captured) && sameContext(context) && keys.every(key => storage().getItem(key) === observed[key]) && !pendingConfirmation(captured.actorId).receiptId && typeof precondition === 'function' && precondition() === true;
+      return withInventoryLock(async () => {
+        const c = await core();
+        const normalized = c.normalizeStockMap(response.stock, {canonicalize});
+        if (!response.stock || typeof response.stock !== 'object' || Array.isArray(response.stock) || !equalStock(response.stock, normalized)) throw Error('receipt_server_stock_missing');
+        if (!current()) throw Error('receipt_local_data_changed');
+        const projected = await applyProjection(response, captured, null, {}, current, true);
+        return {ok: true, localApplied: true, projection: projected};
+      });
+    }
+    return Object.freeze({ configure(value) { options = { ...options, ...value }; return this; }, normalizeDraft, commitLocalReceipt, commitReviewedReceipt, cancelDraft, canonicalOptions, synchronize, retryPendingConfirmation, confirmPantry, ingestSharedHousehold, getCachedProjection, getLearnedPrice, recoverLocalTransaction, withInventoryLock, getPendingConfirmation: () => clone(pendingConfirmation(session().actorId)), keys: KEYS });
   }
   root.BBReceiptInventoryFactory = createReceiptInventoryAdapter;
   root.BBReceiptInventory = createReceiptInventoryAdapter();
