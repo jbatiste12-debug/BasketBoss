@@ -9,8 +9,8 @@ const style=fs.readFileSync('bb-onboarding-v2.css','utf8');
 const compare=fs.readFileSync('compare.html','utf8');
 
 test('new onboarding runs before legacy animation without modifying its artwork',()=>{
- assert.match(index,/bb-onboarding-v2\.js\?v=20261122-four1/);
- assert.match(index,/bb-onboarding-v2\.css\?v=20261122-four1/);
+ assert.match(index,/bb-onboarding-v2\.js\?v=20261122-google1/);
+ assert.match(index,/bb-onboarding-v2\.css\?v=20261122-google1/);
  assert.ok(index.indexOf('bb-onboarding-v2.js')<index.indexOf('bb-welcome-splash.js'));
  assert.match(index,/if\(window\.BBOnboard2026\)return;/);
  assert.match(splash,/!window\.BBOnboard2026/);
@@ -87,7 +87,7 @@ test('legacy survey keeps original household and region setters on completion',(
  assert.match(index,/basketboss_321_unified_state_v1/);
  assert.doesNotMatch(onboarding,/localStorage\.setItem\(['"]basketboss_321_unified_state_v1/);
  assert.match(index,/window\.BasketBossSetOnboardingServings\s*=\s*function/);
- assert.match(index,/if\(!persist\(\)\)\{state\.servings=previous;return false;\}/);
+ assert.match(index,/if\(!bbPersistSharedPlanEdit\(\)\)\{state\.servings=previous;return false;\}/);
  assert.match(index,/window\.bb307SwitchIsland=bb307SwitchIsland/);
 });
 
