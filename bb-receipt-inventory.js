@@ -271,6 +271,10 @@
       if ((!owner.cacheKey || owner.cacheKey === key) && Number.isSafeInteger(owner.inventoryRevision) && owner.inventoryRevision > response.inventoryRevision) throw Error('receipt_stale_server_projection');
       if (!response.stock || typeof response.stock !== 'object' || Array.isArray(response.stock)) throw Error('receipt_server_stock_missing');
       const rawServerStock = c.normalizeStockMap(response.projectionMode === 'patch' ? { ...(cached.serverStock || {}), ...response.stock } : response.stock, { canonicalize });
+      // A shared stock mutation must advance the server revision. Check the
+      // original canonical baseline before Kitchen metadata can reinterpret it.
+      if (sharedAuto && owner.inventoryRevision === response.inventoryRevision &&
+          !equalStock(c.normalizeStockMap(owner.serverStock || {}, {canonicalize}), rawServerStock)) throw Error('receipt_inconsistent_server_projection');
       const currentKitchen=json(KEYS.kitchen,{}),savedStock=json(KEYS.stock,{}),tracking=options.pantryPolicy===true;
       const local=tracking?c.normalizePantryState(savedStock,currentKitchen,{canonicalize,market:activeContext().market,exactConversionsOnly:true}):{stock:savedStock,inventory:currentKitchen};
       const serverKitchen=clone(currentKitchen),pepperLines=tracking&&body?.action==='confirm_receipt'&&body.addToPantry!==false?(body.lines||[]).filter(line=>line.kind==='food'&&c.canonicalIngredientKey(line.canonicalKey,canonicalize)==='pepper'):[];

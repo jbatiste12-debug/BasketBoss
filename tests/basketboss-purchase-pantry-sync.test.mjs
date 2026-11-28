@@ -98,6 +98,18 @@ test('a clean acknowledged Pasta balance accepts a real peer removal and remains
   assert.deepEqual(copy(result.retainedLocalKeys),[]);assert.deepEqual(f.stock(),{});assert.equal(remote.posts.length,0);
 });
 
+test('an empty shared snapshot cannot erase a clean saved balance at the same inventory revision', async () => {
+  const remote=server();remote.stock={'pasta|g':500};const f=await fixture({remote,household:true,accountPantrySync:true});
+  const before=new Map(f.store.values);remote.stock={};
+  const result=await f.host.receiveSharedAutoSnapshot(remote.snapshot(),{precondition:()=>true});
+  assert.equal(result.deferred,true);assert.deepEqual(f.stock(),{'pasta|g':500});assert.deepEqual(f.store.values,before);
+  assert.equal(remote.posts.length,0);
+  // The same authoritative deletion is legitimate once the server advances it.
+  remote.revision++;
+  assert.equal((await f.host.receiveSharedAutoSnapshot(remote.snapshot(),{precondition:()=>true})).localApplied,true);
+  assert.deepEqual(f.stock(),{});
+});
+
 test('matching durable item acknowledgments allow a later peer quantity or deletion to win over the saved local edit', async () => {
   for (const stock of [{'pasta|g':700}, {}]) {
     const remote=server();remote.stock={'pasta|g':100};const f=await fixture({remote,household:true,accountPantrySync:true});
