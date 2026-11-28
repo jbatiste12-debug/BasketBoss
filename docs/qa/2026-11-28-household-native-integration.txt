@@ -92,3 +92,22 @@ Every file changed from native baseline
 - tests/basketboss-purchase-pantry-sync.test.mjs
 - tests/fixtures/android-ios-baseline.json
 - tests/helpers/household-plan-capture.mjs
+
+Immutable launchers and final web evidence
+- Reviewed native source commit:a8f0784e3da2b90742bdd4fdbaabc3c7a6879103.
+- Full catalogue700 iOS web validation passes1182 assets,200public/500 protected,
+  ordered module loads before sharing; existing checkout-return module retained.
+  No Xcode compilation/signing was run on Linux.
+- New Android household launcher pins that source, uses the existing external
+  upload key, verifies the signed AAB, and requires manual internal-test upload.
+- New iOS household launcher pins the same source, prepares1.0.6/build64 through
+  the existing catalogue700 wrapper and opens Xcode for phone testing by default.
+  Archive is opt-in and no upload occurs automatically. Account/team signing
+  and the availability of unused build64 must be checked on the Mac.
+-3 launcher checks pass: actual pinned source includes ordered/native modules,
+  original Android key is required, signed payload checked before reveal, iOS
+  test-first/archive-flag behavior and shell syntax are preserved.
+Additional changed files:
+- release-assets/prepare-android-household-mac.command
+- release-assets/prepare-build64-household-mac.command
+- tests/basketboss-household-release-launchers.test.mjs
