@@ -3822,9 +3822,9 @@ body[data-bbnext-view="discover"] #app .bb-featured-card #bbFeaturedBatch {
 <div id="modalRoot"></div><div id="toastRoot" aria-live="polite"></div>
 <script src="basketboss-aisles-v20.js?v=bb82-aisle-20261024"></script>
 <script src="bb-supermarkets.js?v=20261105-reduced1"></script>
-<script src="bb-household-aliases.js?v=20261112-household1"></script>
+<script src="bb-household-aliases.js?v=20261128-android-normalization1"></script>
 <script src="bb-pantry-alias-migration.js?v=20261112-household1"></script>
-<script src="bb-pantry-policy.js?v=20261108-baseline1"></script>
+<script src="bb-pantry-policy.js?v=20261128-android-normalization1"></script>
 <script src="bb-pantry-display.js?v=20261104-regions2"></script>
 <link rel="stylesheet" href="bb-shop-purchase-ui.css?v=20261111-integrity1">
 <script src="bb-household-stock-review.js?v=20261111-integrity1"></script>
@@ -3839,7 +3839,7 @@ body[data-bbnext-view="discover"] #app .bb-featured-card #bbFeaturedBatch {
 <script src="bb-receipt-quantity.js?v=20261105-business1"></script>
 <script src="bb-duration.js?v=20261102-duration2"></script>
 <script src="bb-price-scan.js?v=20261105-reduced1"></script>
-<script src="basketboss-pricing-v19.js?v=20261108-baseline1"></script>
+<script src="basketboss-pricing-v19.js?v=20261128-android-normalization1"></script>
 <script src="bb-serving-scale.js?v=20261108-planner1"></script>
 <script src="bb-plan-extras.js?v=20261108-planner1"></script>
 <script src="bb-plan-extras-sync.js?v=20261108-planner1"></script>
@@ -8040,7 +8040,14 @@ function bb84SeedPreviouslyBought(items,essentials,ticks){
 function bbShopExactQuantity(quantity,unit,market=bb307Market){
  const n=Number(quantity),u=String(unit||'each').toLowerCase();
  if(!Number.isFinite(n)||n<0)return 'Check quantity';
- const number=value=>{const text=new Intl.NumberFormat(market==='US'?'en-US':'en-GB',{maximumFractionDigits:6,useGrouping:false}).format(value);return value>0&&Number(text)===0?value.toExponential(2):text;};
+ const number=value=>{
+  // Cache only immutable display formatters; every quantity is still formatted
+  // from the current input and market with the original precision rules.
+  const locale=market==='US'?'en-US':'en-GB';
+  const formatters=bbShopExactQuantity.displayFormatters||(bbShopExactQuantity.displayFormatters=Object.create(null));
+  const formatter=formatters[locale]||(formatters[locale]=Object.freeze(new Intl.NumberFormat(locale,{maximumFractionDigits:6,useGrouping:false})));
+  const text=formatter.format(value);return value>0&&Number(text)===0?value.toExponential(2):text;
+ };
  if(u==='each')return number(n);
  if(['g','kg','ml','l'].includes(u)){const weight=u==='g'||u==='kg',base=n*(['kg','l'].includes(u)?1000:1);return number(base>=1000?base/1000:base)+' '+(base>=1000?(weight?'kg':'L'):(weight?'g':'ml'));}
  return number(n)+' '+u;
@@ -9507,6 +9514,10 @@ function bb172Money(n){return BBPriceV19.money(n,bb307Market)}
 function bb172RenderBudget(app){
  if(tab==='overview')return; // UI-NEXT: goal donut replaces the duplicate Overview linear meter.
  if(!['overview','week','shop'].includes(tab))return;
+ // The current owners hide this retired meter with their existing CSS.
+ // Keep the original fallback until the current Plan budget is actually present.
+ if(tab==='week'&&(app.classList.contains('bb1748-plan-active')||app.classList.contains('bb1756-planner-flow'))&&app.querySelector('.bb1748-planner-budget,.bbnext-plan-budget'))return;
+ if(tab==='shop'&&app.classList.contains('bb1756-cupboard-only'))return;
  let summary;
  try{summary=bb321WeeklySummary()}catch(err){console.warn('Budget summary unavailable',err);return}
  const spending=Number(summary.total)||0;
@@ -13352,7 +13363,7 @@ if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',
   <button type="button" class="bbtrial-free" data-bbtrial-free>Continue with BasketBoss Free →</button>
   <p class="bbtrial-foot">100 starter recipes, manual ingredients and basic planning remain available without subscribing.</p>
  </div>
-</dialog><script src="bb-intro-trial.js?v=bb-account-first-20261027-v1"></script><link rel="stylesheet" href="bb-how-it-works.css?v=20261104-kitchen1"><script defer src="bb-how-it-works.js?v=20261108-planner1"></script><script defer src="bb-onboarding-v2.js?v=20261122-google1"></script><script defer src="bb-cold-preview.js?v=20261028-conversion-1"></script><script defer src="bb-funnel.js?v=20261114-account2"></script><script defer src="bb-ux-cleanup.js?v=20261028-ux1"></script><script src="bb-us-market.js?v=20261102-loop2"></script><script defer src="bb-install.js?v=173install1"></script><script defer src="bb-welcome-splash.js?v=20261101-signin2"></script><script defer src="bb-premium-features.js?v=20261105-preflight1"></script>
+</dialog><script src="bb-intro-trial.js?v=bb-account-first-20261027-v1"></script><link rel="stylesheet" href="bb-how-it-works.css?v=20261104-kitchen1"><script defer src="bb-how-it-works.js?v=20261108-planner1"></script><script defer src="bb-onboarding-v2.js?v=20261122-google1"></script><script defer src="bb-cold-preview.js?v=20261028-conversion-1"></script><script defer src="bb-funnel.js?v=20261114-account2"></script><script defer src="bb-ux-cleanup.js?v=20261028-ux1"></script><script src="bb-us-market.js?v=20261123-android-loading1"></script><script defer src="bb-install.js?v=173install1"></script><script defer src="bb-welcome-splash.js?v=20261101-signin2"></script><script defer src="bb-premium-features.js?v=20261105-preflight1"></script>
 <style id="bb175-ux-fix">
 /* BasketBoss v17.4.2 premium-preview usability improvements */
 #app .swipe-action.yes{color:#c91e43!important;background:#fff2f4!important;border:3px solid #d92c50!important;box-shadow:0 5px 18px rgba(192,22,60,.22)!important;font-size:37px!important;font-weight:900!important}
@@ -14166,7 +14177,7 @@ body[data-bbnext-view="discover"] #app .bb175-discover-heading{padding-top:calc(
 <link rel="stylesheet" href="bb-membership-compare.css?v=20261101-member1">
 <script defer src="bb-membership-compare.js?v=20261105-reduced1"></script>
 <link rel="stylesheet" href="bb-plan-premium-polish.css?v=20261122-transitions1">
-<script defer src="bb-plan-premium-polish.js?v=20261122-android-taps1"></script>
+<script defer src="bb-plan-premium-polish.js?v=20261123-android-loading1"></script>
 <link rel="stylesheet" href="bb-ingredient-picker.css?v=20261105-avoid-modal1">
 <link rel="stylesheet" href="bb-evening-pivot-ui.css?v=20261101-pivot2">
 <link rel="stylesheet" href="bb-cook-voice.css?v=20261103-mentor1">
@@ -14193,8 +14204,8 @@ body[data-bbnext-view="discover"] #app .bb175-discover-heading{padding-top:calc(
 <script defer src="bb-kitchen-essentials.js?v=20261114-layout1"></script>
 <script defer src="bb-kitchen-prices.js?v=20261105-shop-confirm1"></script>
 <link rel="stylesheet" href="bb-pantry-inline.css?v=20261116-levels1">
-<script defer src="bb-pantry-stock-levels-ui.js?v=20261116-levels1"></script>
-<script defer src="bb-pantry-inline.js?v=20261116-levels1"></script>
+<script defer src="bb-pantry-stock-levels-ui.js?v=20261123-android-loading1"></script>
+<script defer src="bb-pantry-inline.js?v=20261123-android-loading1"></script>
 <script defer src="bb-pantry-add-amount-presentation.js?v=20261116-amount1"></script>
 <link rel="stylesheet" href="bb-keyboard-layout.css?v=20261105-preflight2">
 <script defer src="bb-keyboard-layout.js?v=20261105-preflight1"></script>

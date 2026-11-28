@@ -1,0 +1,120 @@
+BasketBoss Android 1.0.12: independent responsiveness and safety review
+Baseline: c05180b1d28b4c30d2ae7b272faeab0f0565e546, Android 1.0.11.
+Recovery and final generated-state verification: 28 November 2026.
+
+Implementation scope and causes
+
+The changes address repeated main-thread rendering work rather than waiting on
+remote auth or billing. Identical quantity formatters were repeatedly created;
+an already-hidden retired budget renderer recalculated the weekly summary;
+closed Plan popovers and inactive Shop banners forced unnecessary geometry
+reads; a pantry paint repeatedly rebuilt identical row descriptors; settled
+native details notifications repeated that work; non-US pages computed unused
+US translations; and identical primitive text was repeatedly normalized with
+the same Unicode/whitespace expressions.
+
+app.html and index.html reuse immutable display formatters and skip the retired
+meter only when an existing current Plan owner is present, or the current
+cupboard-only owner already hides it. Missing owners retain the original
+fallback, input/save/error behavior and current summary calculation.
+
+bb-pantry-inline.js passes one descriptor array only through the same valid
+synchronous presentation refresh. Its later actions and editor conflict checks
+continue to read the live owner. A native details notification skips rebuilding
+only when the already-painted open/visible/location/navigation markers agree;
+real closes, mismatches and missing markers retain the original live update.
+
+bb-plan-premium-polish.js avoids measuring closed disclosures. Actual opening,
+resize, scroll, Escape, outside-click and focus behavior remain intact.
+bb-pantry-stock-levels-ui.js avoids measuring a Shop banner target on inactive
+tabs; pending actor/session handling, active-Shop deletion checks and original
+banner/requirements behavior remain unchanged. bb-us-market.js computes only
+the selected market's original display expression, preserving its live source
+handling, selected output, controls and storage behavior.
+
+The private clean implementations in bb-household-aliases.js,
+bb-pantry-policy.js and basketboss-pricing-v19.js now retain only immutable
+primitive normalization text, at most 512 entries with inputs no longer than
+256 UTF-16 code units. Household/pantry retain the original type guard before
+lookup. Pricing executes the exact original String(s||'') coercion on every
+call, including hits. Oversized inputs use the original expression without
+retention. Empty strings, exceptions and eviction retain original outcomes.
+
+This changes those helper implementations. It does not change their Unicode,
+case, dash, comma or whitespace rules, and does not cache canonical identities,
+alias callbacks, final matches, quantities, prices, weekly summaries, model
+results, actor/session values, auth, deletion, restore or entitlement checks.
+Every contextual callback, lookup, matching rule and calculation remains live.
+
+Exact source and generated-asset proof
+
+tools/verify-android-responsiveness-scope.mjs passed against the published
+baseline. Removing only each exact reviewed clean cache restores every byte of
+all three original modules. All remaining alias, callback, matching, quantity,
+pack and pricing code is identical. The full generated PWA pricing module and
+native pricing asset also restore exactly, including all catalogue-700 pack
+additions. The restored native pricing SHA256 is
+cfa61b2696731ec6cc6f82025ee48a7fda694781b50ac1ecb3bd31e42a74cbb6.
+
+The complete app/index/generated-app documents reverse-normalize to baseline
+after only the separately reviewed formatter, hidden-meter and asset-version
+edits. Complete presentation modules have pinned reviewed identities. Generated
+make-a-meal.html permits only presentation asset digest changes; its original
+source and action bodies are unchanged. Catalogue/API/access metadata is
+unchanged: 200 Free recipes, 500 protected recipes, no private recipe bundle.
+All 1181 generated Android files verify. The audit freezes 2202 other baseline
+tracked files; renamed/deleted test paths are explicitly counted.
+
+All auth, account-deletion locks/flows, onboarding restoration, entitlement,
+StoreKit, Google Play Billing, Paddle, native/backend and database schema
+source remains unchanged. The side-effectful canonical weekly summary is
+neither cached nor rewritten. Existing safety checks are not bypassed.
+
+Behavioral evidence
+
+The portable normalization regression passed all eight cases against the real
+current modules and the original Git baseline. It covers public ingredients,
+Unicode/control/surrogate fuzzing, repeated hits, empty values, eviction and
+oversized bypass; fresh coercion and thrown values; complete identities,
+protected food distinctions, regional pack quotes and live callback changes.
+The related 48-file unit suite passed 719 tests, with one skipped and no
+failures. The core suite passed 184; package/signing/AAB checks passed 22, and the
+three pinned-launcher checks passed separately (25 packaging/helper checks).
+These suites overlap and their counts should not be added together.
+
+tools/audit-android-state-equivalence.mjs compared the actual generated Android
+client before and after every reviewed performance change. The fixture has
+seven valid Free dinners, 15 foods, feeding four and a saved budget of 200.
+Its ten checkpoints are startup, Discover, Plan, At home, Shop, Plan return,
+the original budget-save action to 250, Feeding+ to five, Settings open and
+Settings close. At every checkpoint, every localStorage value is byte-identical
+(18 keys initially, rising to 21), with no excluded keys. Complete visible
+text, budget copy, selected navigation, live visible inputs and actual Settings
+open/closed state match. Date, randomUUID and Math.random are deterministic in
+the fixture only. No application safety owner is overridden; only unavailable
+Capacitor transport is replaced for desktop Chromium, with guest APIs returning
+unauthenticated responses in both variants.
+
+Evidence files: android12-scope-review.json and android12-state-equivalence.json.
+The exact complete changed-file inventory is in the scope report; it includes
+the targeted client sources, regenerated assets, relevant tests/audit tools,
+baseline hash rationale, Android version metadata and the Mac build helper.
+
+Release and limits
+
+Android package/version validators and fixtures target 1.0.12/code12. The
+workflow fetches history for pinned-source tests. Package ID, SDK, permissions,
+signing requirement, asset delivery/fusing and signature checks are unchanged.
+The Mac helper retains the original external upload key and verifies a real
+signed bundle before revealing it. It introduces no key generation or store
+upload. It pins reviewed versioned source
+dc3ffa155d377059c5156c65b47e708d519d1321; the corresponding launcher assertion
+uses the same exact commit. This pin is the only helper change in the recovery.
+
+This is source, rules, state and generated-client verification. Performance
+measurements are separate desktop CPU-throttled comparisons, not physical
+Galaxy A13 measurements. The candidate still needs installation and testing on
+the phone; these checks do not establish that every interaction is instant.
+No production deployment or store upload is performed by these audit tools.
+
+Final matched performance evidence: android12-responsiveness-metrics.json. At4x, startup JavaScript is21,682→9,084ms, Plan firstRAF5,900→3,012ms, At home12,013→5,417ms and Feeding6,364→2,943ms. Initial navigation firstRAF regresses10,983→12,566ms;the6,142ms pre-frame task remains unresolved. These are desktop simulations,not physical A13 results,and do not establish instant responsiveness.

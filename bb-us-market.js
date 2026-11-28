@@ -55,14 +55,20 @@
   const live=node.nodeValue;
   let info=sources.get(node);
   if(!info||live!==info.last){info={base:live,last:live};sources.set(node,info);}
-  const regional=measures(foodNames(info.base));
-  // The legacy regional converter and its source cache stay unchanged. Its
-  // already-localized text only needs the readable display wrapper here.
-  const translated=window.BBRecipeMeasures?.displayStep?.(regional,'UK')??window.BBShopPurchaseUI?.formatDisplayQuantityText?.(regional,{market:'US'})??regional;
-  // Keep already-readable integer prose (including the mentor's answer)
-  // intact; only decimal quantities need the non-US rounding adapter.
-  const originalDisplay=/\d*\.\d+/.test(info.base)?(window.BBRecipeMeasures?.displayStep?.(info.base,'UK')??window.BBShopPurchaseUI?.formatDisplayQuantityText?.(info.base,{market:market()})??info.base):info.base;
-  const out=isUS()?(nativeRegionalPrices()?translated:approximateCost(translated)):originalDisplay;
+  let out;
+  if(isUS()){
+   // This translation is display-only and is used only in US mode. Other
+   // markets keep their live source and original decimal display adapter.
+   const regional=measures(foodNames(info.base));
+   // The legacy regional converter and its source cache stay unchanged. Its
+   // already-localized text only needs the readable display wrapper here.
+   const translated=window.BBRecipeMeasures?.displayStep?.(regional,'UK')??window.BBShopPurchaseUI?.formatDisplayQuantityText?.(regional,{market:'US'})??regional;
+   out=nativeRegionalPrices()?translated:approximateCost(translated);
+  }else{
+   // Keep already-readable integer prose (including the mentor's answer)
+   // intact; only decimal quantities need the non-US rounding adapter.
+   out=/\d*\.\d+/.test(info.base)?(window.BBRecipeMeasures?.displayStep?.(info.base,'UK')??window.BBShopPurchaseUI?.formatDisplayQuantityText?.(info.base,{market:market()})??info.base):info.base;
+  }
   if(out!==live){node.nodeValue=out;info.last=out;}
  }
  function textWalk(root){if(!root)return;const walker=document.createTreeWalker(root,NodeFilter.SHOW_TEXT);let node,count=0;while((node=walker.nextNode())&&count<20000){count++;if(node.nodeValue&&node.nodeValue.trim())localizeText(node);}}

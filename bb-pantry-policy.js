@@ -4,7 +4,18 @@
  'use strict';
  const MAX=1000000;
  const object=value=>value!==null&&typeof value==='object'&&!Array.isArray(value);
- const clean=value=>typeof value==='string'?value.normalize('NFKC').replace(/[\u0000-\u001f\u007f]/g,' ').toLowerCase().replace(/[–—]/g,'-').replace(/\s+/g,' ').trim():'';
+ // Bounded primitive normalization only; callbacks and matching stay live.
+ const cleanStrings=new Map();
+ const clean=value=>{
+  if(typeof value!=='string')return '';
+  if(value.length<=256){const cached=cleanStrings.get(value);if(cached!==undefined)return cached;}
+  const result=value.normalize('NFKC').replace(/[\u0000-\u001f\u007f]/g,' ').toLowerCase().replace(/[–—]/g,'-').replace(/\s+/g,' ').trim();
+  if(value.length<=256){
+   if(cleanStrings.size===512)cleanStrings.delete(cleanStrings.keys().next().value);
+   cleanStrings.set(value,result);
+  }
+  return result;
+ };
  const number=value=>value!==null&&value!==undefined&&value!==''&&typeof value!=='boolean'&&Number.isFinite(Number(value))&&Number(value)>=0&&Number(value)<=MAX?Number(value):null;
  const round=value=>Math.round(value*1000000)/1000000;
  const aliases={gram:'g',grams:'g',kilogram:'kg',kilograms:'kg',millilitre:'ml',millilitres:'ml',milliliter:'ml',milliliters:'ml',litre:'l',litres:'l',liter:'l',liters:'l',counts:'each',count:'each',unit:'each',units:'each',piece:'each',pieces:'each',item:'each',items:'each',pcs:'each',pc:'each',cloves:'clove',tins:'tin',can:'tin',cans:'tin',packs:'pack',packets:'pack',packet:'pack',bags:'bag',bottles:'bottle',jars:'jar',pouches:'pouch',bunches:'bunch',teaspoon:'tsp',teaspoons:'tsp',tablespoon:'tbsp',tablespoons:'tbsp',pints:'pint',pinches:'pinch',dashes:'dash',cups:'cup',ounce:'oz',ounces:'oz',pound:'lb',pounds:'lb',lbs:'lb','fluid ounce':'fl oz','fluid ounces':'fl oz',floz:'fl oz','us cup':'cup','us cups':'cup','us fl oz':'fl oz'};
