@@ -5,7 +5,7 @@ import {execFileSync,spawnSync} from 'node:child_process';
 import {fileURLToPath} from 'node:url';
 const root=fileURLToPath(new URL('..',import.meta.url));
 const source=fs.readFileSync(new URL('../release-assets/prepare-android-mac.command',import.meta.url),'utf8');
-const approved='5d3662bfa44b627a56bd76d5a9bccb81be350288';
+const approved='dc3ffa155d377059c5156c65b47e708d519d1321';
 
 test('Android code12 launcher pins the reviewed versioned source instead of a mutable branch',()=>{
  const match=source.match(/^BB_ANDROID_SOURCE='([a-f0-9]{40})'$/m);assert.ok(match);
