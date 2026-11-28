@@ -93,7 +93,8 @@ test('explicit enough-for-week declarations reconcile Honey spoons and a whole L
  const h=fixture();await h.choose('Honey','cupboard');await h.choose('Lettuce','fridge');
  assert.match(h.control('data-bb5-enough','cupboard|honey').textContent,/2 tbsp/);
  assert.match(h.control('data-bb5-enough','fridge|lettuce').textContent,/I have 1 each/,'the whole count being declared is visible even when the recipe needs half');
- await h.enough('cupboard|honey');await h.enough('fridge|lettuce');assert.deepEqual(h.stock(),{},'draft buttons do not commit stock');await h.confirm();
+ await h.enough('cupboard|honey');assert.deepEqual(h.stock(),{'honey|tbsp':2},'explicit coverage is saved before reporting success');
+ await h.enough('fridge|lettuce');assert.deepEqual(h.stock(),{'honey|tbsp':2,'lettuce|each':1});assert.equal(h.win.BBPantryEditor.hasPending(),false);await h.confirm();
  assert.deepEqual(h.stock(),{'honey|tbsp':2,'lettuce|each':1});assert.deepEqual(h.needed().map(row=>row.toBuy),[0,0]);assert.equal(h.visits(),1);assert.equal(h.syncs(),1);
  assert.equal(h.inventory()['cupboard|honey'].bb173StockKey,'honey|tbsp');assert.equal(h.inventory()['fridge|lettuce'].bb173StockKey,'lettuce|each');
  await h.confirm();assert.deepEqual(h.stock(),{'honey|tbsp':2,'lettuce|each':1},'reconfirming cannot add or consume the same stock again');
