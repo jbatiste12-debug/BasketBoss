@@ -64,9 +64,10 @@ async function fixture() {
     assert.equal(body.action, 'sync_apply');
     const operation = operations.get(body.operationId);
     assert.ok(operation); assert.equal(body.order, operation.order);
-    assert.equal(operation.target.kind, 'dinner');
-    entries.set('planned_day:' + operation.target.key, row('planned_day',operation.target.key,{recipeId:operation.value.recipeId},operation.order));
-    entries.set('servings:' + operation.target.key, row('servings',operation.target.key,operation.value.servings === null ? {deleted:true} : {count:operation.value.servings},operation.order));
+    if (operation.target.kind === 'dinner') {
+      entries.set('planned_day:' + operation.target.key, row('planned_day',operation.target.key,{recipeId:operation.value.recipeId},operation.order));
+      entries.set('servings:' + operation.target.key, row('servings',operation.target.key,operation.value.servings === null ? {deleted:true} : {count:operation.value.servings},operation.order));
+    } else assert.equal(operation.target.kind, 'pantry');
     operation.status = 'applied';
     return Response.json({ok:true,operation:{id:operation.id,order:operation.order,status:operation.status}});
   };
@@ -186,5 +187,37 @@ for (const [name, nextSession] of [
     assert.equal(f.requests.length, requestCount, 'the prior status cannot authorize even a household read with the new token');
     assert.equal(f.storage.getItem(outboxKey), outboxBefore, 'the old account outbox is retained without mutation');
     assert.equal(f.saved().planned[0].recipeId, 'local-after-session-change', 'the local save remains untouched');
+  } finally {f.engine.destroy();}
+});
+
+test('an explicit pantry location edit reserves the unchanged physical quantity with its new location', {timeout:10000}, async () => {
+  const f = await fixture();
+  try {
+    const stock = {'pasta|g':500}, beforeInventory = {pasta:{name:'Pasta',bb173StockKey:'pasta|g',selected:true,loc:'fridge',qty:500,unit:'g'}};
+    const inventory = {pasta:{...beforeInventory.pasta,loc:'freezer'}};
+    const kitchenKey = 'basketboss_makeameal_v1_inventory';
+    f.storage.setItem(STOCK, JSON.stringify(stock));
+    f.storage.setItem(kitchenKey, JSON.stringify(beforeInventory));
+    const prepared = f.context.BBHouseholdSharingAuto.preparePantryEdit({beforeStock:clone(stock),stock:clone(stock),beforeInventory,inventory});
+    assert.equal(prepared.queued, true);
+    assert.equal(prepared.operationIds.length, 1, 'one explicit move creates one item intent without an amount delta');
+    assert.equal(f.engine.read().pending.length, 0, 'preparation alone cannot upload the move');
+    for (const [key, expected] of Object.entries(prepared.expected)) assert.equal(f.storage.getItem(key), expected);
+    // The real editor combines these exact prepared outbox values with its
+    // physical stock and Kitchen writes in one synchronous local transaction.
+    for (const [key, value] of Object.entries({...prepared.updates,[STOCK]:stock,[kitchenKey]:inventory})) f.storage.setItem(key, JSON.stringify(value));
+    const pending = clone(f.engine.read().pending);
+    assert.equal(pending.length, 1);
+    assert.deepEqual(pending[0].target, {kind:'pantry',key:'pasta|g'});
+    assert.deepEqual(pending[0].value, {quantity:500,location:'freezer'});
+    await f.engine.flush();
+    const reserved = f.requests.filter(request => request.body?.action === 'sync_reserve');
+    assert.equal(reserved.length, 1);
+    assert.deepEqual(reserved[0].body.target, {kind:'pantry',key:'pasta|g'});
+    assert.deepEqual(reserved[0].body.value, {quantity:500,location:'freezer'});
+    assert.equal(reserved[0].body.operationId, prepared.operationIds[0]);
+    assert.equal(f.requests.filter(request => request.body?.action === 'sync_apply').length, 1);
+    assert.deepEqual(JSON.parse(f.storage.getItem(STOCK)), stock);
+    assert.equal(JSON.parse(f.storage.getItem(kitchenKey)).pasta.loc, 'freezer');
   } finally {f.engine.destroy();}
 });
