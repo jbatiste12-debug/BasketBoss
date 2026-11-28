@@ -86,7 +86,7 @@ function fixture({ storage = new MemoryStorage(), remote = server(), identity = 
   const engine = createEngine({
     storage, allowStaging, identity: () => current.identity, blocked: () => current.blocked,
     request: (action, payload) => remote.request(action, payload),
-    apply: (response, pendingTargets) => { applied.push({ response: clone(response), pendingTargets: clone(pendingTargets) }); return onApply ? onApply(response, pendingTargets) : true; },
+    apply: (response, pendingTargets, context = { acknowledged: [] }) => { applied.push({ response: clone(response), pendingTargets: clone(pendingTargets), context: clone(context) }); return onApply ? onApply(response, pendingTargets, context) : true; },
     backup: () => { backups++; return onBackup?.(); }, notify: (...args) => notifications.push(args), uuid
   });
   return { engine, current, applied, notifications, storage, remote, get backups() { return backups; } };
@@ -640,5 +640,263 @@ test('captureMany quota failure protects every saved dinner while preserving the
   assert.deepEqual(JSON.parse(storage.getItem(localPlanKey)), localPlan, 'incoming remote dinners cannot overwrite any locally saved day');
   assert.deepEqual(new Set(reserves(remote).map(call => call.payload.operationId)), new Set([previous.operationId]));
   assert.ok(f.notifications.length > 0);
+  f.engine.destroy();
+});
+
+const proofFor = (engine, operationId) => engine.read().acknowledged.find(proof => proof.id === operationId);
+
+test('an exact acknowledgement is durable across a crash before projection and is delivered after reload', { timeout: 10000 }, async () => {
+  const remote = server(), storage = new MemoryStorage(), first = fixture({ remote, storage });
+  await first.engine.initialize();
+  let acknowledged = false;
+  remote.intercept = async (action, payload, perform) => {
+    if (action === 'auto_sync' && acknowledged) throw new Error('Connection lost before projection');
+    const response = await perform(action, payload);
+    if (action === 'sync_apply') acknowledged = true;
+    return response;
+  };
+  const captured = first.engine.capture(pantry, stock(500));
+  const writesBefore = storage.writes.length;
+  await drain(first.engine);
+  assert.equal(first.engine.read().pending.length, 0);
+  const proof = proofFor(first.engine, captured.operationId);
+  assert.deepEqual(proof, { id: captured.operationId, order: remote.operations.get(captured.operationId).order, target: pantry, value: stock(500) });
+  const persisted = storage.writes.slice(writesBefore).map(write => JSON.parse(write.value)).filter(doc => Array.isArray(doc.pending));
+  assert.ok(persisted.some(doc => !doc.pending.some(operation => operation.id === captured.operationId) && doc.acknowledged?.some(item => item.id === captured.operationId)), 'pending removal and proof addition commit together');
+  assert.ok(persisted.every(doc => doc.pending.some(operation => operation.id === captured.operationId) || doc.acknowledged?.some(item => item.id === captured.operationId)), 'the acknowledged local value never disappears between durable states');
+  first.engine.destroy();
+
+  remote.intercept = null;
+  let accept = false;
+  const second = fixture({ remote, storage, onApply: () => accept });
+  await second.engine.initialize();
+  assert.deepEqual(second.applied.at(-1).context.acknowledged, [proof]);
+  assert.deepEqual(proofFor(second.engine, captured.operationId), proof);
+  assert.equal(reserves(remote).length, 1, 'projection recovery does not create a replacement operation');
+  const publicProofs = second.engine.read().acknowledged;
+  publicProofs[0].value.quantity = 999;
+  assert.equal(proofFor(second.engine, captured.operationId).value.quantity, 500, 'read returns a defensive copy');
+  accept = true;
+  await second.engine.refresh();
+  assert.deepEqual(second.engine.read().acknowledged, []);
+  second.engine.destroy();
+});
+
+test('proof of the exact local 500 allows a newer peer 700 projection without echoing a fresh edit', { timeout: 10000 }, async () => {
+  let localQuantity = 0, peerChanged = false, receivedProof;
+  const f = fixture({ onApply(response, _pendingTargets, context) {
+    const incoming = response.state.stock[pantry.key];
+    if (incoming === undefined) return true;
+    receivedProof = context.acknowledged.find(proof => proof.target.kind === 'pantry' && proof.target.key === pantry.key && proof.value.quantity === localQuantity);
+    if (!receivedProof) return false;
+    localQuantity = incoming;
+    return true;
+  } });
+  await f.engine.initialize();
+  f.remote.intercept = async (action, payload, perform) => {
+    const response = await perform(action, payload);
+    if (action === 'sync_apply') peerChanged = true;
+    if (action === 'auto_sync' && peerChanged) { response.clock++; response.state.stock[pantry.key] = 700; }
+    return response;
+  };
+  localQuantity = 500;
+  const captured = f.engine.capture(pantry, stock(localQuantity));
+  await drain(f.engine);
+  assert.equal(localQuantity, 700, 'a later deliberate peer value wins over the acknowledged local value');
+  assert.equal(receivedProof.id, captured.operationId);
+  assert.equal(receivedProof.value.quantity, 500);
+  assert.equal(reserves(f.remote).length, 1, 'receiving peer 700 creates no fresh UUID or upload');
+  assert.deepEqual(f.engine.read().acknowledged, []);
+  f.engine.destroy();
+});
+
+test('false, throwing, and cleanup quota failures retain proof until projection succeeds durably', { timeout: 10000 }, async () => {
+  let mode = 'accept', f;
+  f = fixture({ onApply() {
+    if (mode === 'throw') throw new Error('Editor is unavailable');
+    if (mode === 'quota') { f.storage.failWrites = true; return true; }
+    return mode === 'accept';
+  } });
+  await f.engine.initialize();
+  mode = 'defer';
+  const captured = f.engine.capture(pantry, stock(500));
+  await drain(f.engine);
+  const proof = proofFor(f.engine, captured.operationId);
+  assert.ok(proof);
+  mode = 'throw';
+  await f.engine.refresh();
+  assert.deepEqual(proofFor(f.engine, captured.operationId), proof);
+  mode = 'quota';
+  await f.engine.refresh();
+  assert.deepEqual(proofFor(f.engine, captured.operationId), proof, 'successful rendering alone cannot lose proof when its cleanup fails');
+  f.storage.failWrites = false;
+  mode = 'accept';
+  await f.engine.refresh();
+  assert.deepEqual(f.engine.read().acknowledged, []);
+  assert.equal(reserves(f.remote).length, 1);
+  f.engine.destroy();
+});
+
+test('an older async apply consumes only the passed proof IDs and preserves a newer proof from another tab', { timeout: 10000 }, async () => {
+  const remote = server(), storage = new MemoryStorage(), started = deferred(), release = deferred();
+  let hold = false;
+  const first = fixture({ remote, storage, onApply: async () => {
+    if (!hold) return false;
+    hold = false; started.resolve(); await release.promise; return true;
+  } });
+  await first.engine.initialize();
+  const original = first.engine.capture(dinner, meal('acknowledged-dinner'));
+  await drain(first.engine);
+  assert.ok(proofFor(first.engine, original.operationId));
+  hold = true;
+  const applying = first.engine.refresh();
+  await started.promise;
+  const passed = first.applied.at(-1).context.acknowledged;
+  assert.deepEqual(passed.map(proof => proof.id), [original.operationId]);
+
+  const second = fixture({ remote, storage, onApply: () => false });
+  await second.engine.initialize();
+  const newer = second.engine.capture(pantry, stock(500));
+  await drain(second.engine);
+  assert.deepEqual(new Set(second.engine.read().acknowledged.map(proof => proof.id)), new Set([original.operationId, newer.operationId]));
+  release.resolve();
+  await applying;
+  assert.deepEqual(first.engine.read().acknowledged.map(proof => proof.id), [newer.operationId], 'cleanup rereads pinned storage and retains proof created after this apply began');
+  first.engine.destroy(); second.engine.destroy();
+});
+
+test('a cached snapshot cannot expose or consume a proof newer than its clock', { timeout: 10000 }, async () => {
+  let accept = false;
+  const f = fixture({ onApply: () => accept });
+  await f.engine.initialize();
+  const captured = f.engine.capture(pantry, stock(500));
+  await drain(f.engine);
+  const proof = proofFor(f.engine, captured.operationId);
+  assert.ok(proof);
+  f.remote.intercept = async (action, payload, perform) => {
+    const response = await perform(action, payload);
+    if (action === 'auto_sync') response.clock = proof.order - 1;
+    return response;
+  };
+  // Defer one stale read first so refresh cannot consume the legitimate newer
+  // cached snapshot before this test exercises the older response clock.
+  await f.engine.refresh();
+  assert.deepEqual(proofFor(f.engine, captured.operationId), proof);
+  accept = true;
+  await f.engine.refresh();
+  assert.deepEqual(f.applied.at(-1).context.acknowledged, []);
+  assert.deepEqual(proofFor(f.engine, captured.operationId), proof);
+  f.remote.intercept = null;
+  await f.engine.refresh();
+  assert.deepEqual(f.applied.at(-1).context.acknowledged, [proof]);
+  assert.deepEqual(f.engine.read().acknowledged, []);
+  f.engine.destroy();
+});
+
+test('denied replacement tokens and changed household scope cannot reuse an old scope proof', { timeout: 10000 }, async t => {
+  for (const change of [
+    { name: 'token rotation', identity: { actor: ACTOR, token: 'denied-token', householdId: HOUSEHOLD } },
+    { name: 'actor and household change', identity: { actor: '00000000-0000-4000-8000-000000000099', token: 'other-token', householdId: '99999999-9999-4999-8999-999999999999' } }
+  ]) await t.test(change.name, async () => {
+    const f = fixture({ onApply: () => false });
+    await f.engine.initialize();
+    const captured = f.engine.capture(pantry, stock(500));
+    await drain(f.engine);
+    assert.ok(proofFor(f.engine, captured.operationId));
+    const before = f.storage.snapshot(), beforeApply = f.applied.length, beforeUuid = nextUuid;
+    f.current.identity = change.identity;
+    f.remote.intercept = async () => { throw Object.assign(new Error('Forbidden household'), { status: 403 }); };
+    await f.engine.refresh();
+    await drain(f.engine);
+    assert.equal(f.engine.read().ready, false);
+    assert.equal(f.applied.length, beforeApply, 'the adapter never receives an old proof after denied access');
+    assert.deepEqual(f.storage.snapshot(), before);
+    assert.equal(f.engine.capture(pantry, stock(600)).queued, false);
+    assert.equal(nextUuid, beforeUuid);
+    if (change.identity.householdId !== HOUSEHOLD) assert.deepEqual(f.engine.read().acknowledged, []);
+    f.engine.destroy();
+  });
+});
+
+test('proof persistence quota failure keeps the original pending UUID and retries its applied order', { timeout: 10000 }, async () => {
+  const started = deferred(), release = deferred();
+  const f = fixture({ onApply: () => false });
+  await f.engine.initialize();
+  let hold = true;
+  f.remote.intercept = async (action, payload, perform) => {
+    const response = await perform(action, payload);
+    if (action === 'sync_apply' && hold) { hold = false; started.resolve(); await release.promise; }
+    return response;
+  };
+  const captured = f.engine.capture(pantry, stock(500));
+  await started.promise;
+  const before = f.storage.snapshot(), order = f.remote.operations.get(captured.operationId).order;
+  f.storage.failWrites = true;
+  release.resolve();
+  await drain(f.engine);
+  assert.deepEqual(f.storage.snapshot(), before);
+  assert.deepEqual(f.engine.read().acknowledged, []);
+  assert.equal(f.engine.read().pending[0].id, captured.operationId);
+  assert.equal(f.engine.read().pending[0].order, order);
+  f.storage.failWrites = false;
+  await drain(f.engine);
+  assert.equal(reserves(f.remote).length, 1, 'a known order never reserves a fresh operation');
+  assert.deepEqual(new Set(applies(f.remote).map(call => call.payload.operationId)), new Set([captured.operationId]));
+  assert.deepEqual(new Set(applies(f.remote).map(call => call.payload.order)), new Set([order]));
+  assert.equal(f.engine.read().pending.length, 0);
+  assert.equal(proofFor(f.engine, captured.operationId).value.quantity, 500);
+  f.engine.destroy();
+});
+
+test('applied and superseded acknowledgements retain exact proof while expired operations retain none', { timeout: 10000 }, async t => {
+  for (const status of ['applied', 'superseded', 'expired']) await t.test(status, async () => {
+    const f = fixture({ onApply: () => false });
+    await f.engine.initialize();
+    f.remote.intercept = async (action, payload, perform) => {
+      const response = await perform(action, payload);
+      if (action === 'sync_reserve') response.operation = { id: payload.operationId, order: status === 'expired' ? null : response.operation.order, status };
+      return response;
+    };
+    const captured = f.engine.capture(pantry, stock(500));
+    await drain(f.engine);
+    assert.equal(f.engine.read().pending.length, 0);
+    assert.equal(applies(f.remote).length, 0);
+    if (status === 'expired') assert.deepEqual(f.engine.read().acknowledged, []);
+    else {
+      const proof = proofFor(f.engine, captured.operationId);
+      assert.deepEqual(proof.target, pantry);
+      assert.deepEqual(proof.value, stock(500));
+      assert.ok(Number.isSafeInteger(proof.order));
+    }
+    f.engine.destroy();
+  });
+});
+
+test('proof capacity keeps an unprojected 257th target pending and deduplicates a newer proof of the same target', { timeout: 10000 }, async () => {
+  let accept = false;
+  const f = fixture({ onApply: () => accept });
+  await f.engine.initialize();
+  const changes = Array.from({ length: 256 }, (_, index) => ({ target: { kind: 'pantry', key: `proof-${index}|each` }, value: stock(index + 1) }));
+  assert.equal(f.engine.captureMany(changes).queued, true);
+  await drain(f.engine);
+  assert.equal(f.engine.read().acknowledged.length, 256);
+  assert.equal(f.engine.read().pending.length, 0);
+  const replacement = f.engine.capture(changes[0].target, stock(999));
+  await drain(f.engine);
+  assert.equal(f.engine.read().acknowledged.length, 256);
+  assert.equal(proofFor(f.engine, replacement.operationId).value.quantity, 999);
+  assert.equal(f.engine.read().acknowledged.filter(proof => proof.target.key === changes[0].target.key).length, 1);
+
+  const blocked = f.engine.capture({ kind: 'pantry', key: 'proof-overflow|each' }, stock(500));
+  await drain(f.engine);
+  assert.equal(f.engine.read().acknowledged.length, 256);
+  assert.equal(f.engine.read().pending.length, 1, 'an applied operation cannot vanish when there is no room for its durable proof');
+  assert.equal(f.engine.read().pending[0].id, blocked.operationId);
+  accept = true;
+  await f.engine.refresh();
+  assert.deepEqual(f.engine.read().acknowledged, []);
+  await drain(f.engine);
+  assert.equal(f.engine.read().pending.length, 0);
+  assert.deepEqual(new Set(reserves(f.remote).filter(call => call.payload.operationId === blocked.operationId).map(call => call.payload.operationId)), new Set([blocked.operationId]));
   f.engine.destroy();
 });
